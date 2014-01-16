@@ -567,7 +567,7 @@ unsigned type_size(type *r, where *from)
 {
 	switch(r->type){
 		case type_type:
-			return type_size(r->bits.type, from);
+			return btype_size(r->bits.type, from);
 
 		case type_tdef:
 		{
@@ -917,12 +917,12 @@ void type_add_type_str(type *r,
 			const btype *t = t_ref ? t_ref->bits.type : NULL;
 
 			BUF_ADD(" (aka '%s')",
-					t ? type_to_str(t)
+					t ? btype_to_str(t)
 					: type_to_str_r_spel_aka(buf, of, NULL, 0));
 		}
 
 	}else{
-		BUF_ADD("%s", type_to_str(rt->bits.type));
+		BUF_ADD("%s", btype_to_str(rt->bits.type));
 	}
 }
 #undef BUF_ADD

@@ -74,6 +74,10 @@ enum type_cmp btype_cmp(const btype *a, const btype *b);
 int type_primitive_is_signed(enum type_primitive);
 int btype_is_signed(const btype *);
 
+const char *btype_to_str(const btype *t);
+unsigned btype_size( const btype *, where *from);
+unsigned btype_align(const btype *, where *from);
+
 /* is there a loss of qualifiers going from 'b' to 'a' ? */
 int type_qual_loss(enum type_qualifier a, enum type_qualifier b);
 

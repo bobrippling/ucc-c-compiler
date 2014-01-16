@@ -1,6 +1,6 @@
 btype.o: btype.c ../util/where.h ../util/compiler.h ../util/util.h \
-  data_structs.h tree.h btype.h expr.h strings.h ../util/dynmap.h \
-  ../util/dyn.h ops/expr_addr.h ops/expr_assign.h \
+  ../util/platform.h data_structs.h tree.h btype.h expr.h strings.h \
+  ../util/dynmap.h ../util/dyn.h ops/expr_addr.h ops/expr_assign.h \
   ops/expr_assign_compound.h ops/expr_cast.h ops/expr_comma.h \
   ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \
   ops/expr_sizeof.h ops/expr_val.h ops/expr_stmt.h ops/expr_deref.h \

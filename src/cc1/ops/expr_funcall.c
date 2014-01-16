@@ -109,7 +109,7 @@ static void static_array_check(
 
 void fold_expr_funcall(expr *e, symtable *stab)
 {
-	type *type_func;
+	type *func_ty;
 	funcargs *args_from_decl;
 	char *sp = NULL;
 	int count_decl = 0;
@@ -153,7 +153,7 @@ invalid:
 			/* set up the funcargs as if it's "x()" - i.e. any args */
 			funcargs_empty(args);
 
-			type_func = type_new_func(
+			func_ty = type_new_func(
 					type_new_type(type_new_primitive(type_int)),
 					args, /*new symtable for args:*/ symtab_new(stab));
 
@@ -161,7 +161,7 @@ invalid:
 					"implicit declaration of function \"%s\"", sp);
 
 			df = decl_new();
-			df->ref = type_func;
+			df->ref = func_ty;
 			df->spel = e->expr->bits.ident.spel;
 
 			fold_decl(df, stab, NULL); /* update calling conv, for e.g. */
@@ -173,11 +173,11 @@ invalid:
 	}
 
 	FOLD_EXPR(e->expr, stab);
-	type_func = e->expr->tree_type;
+	func_ty = e->expr->tree_type;
 
-	if(!type_is_callable(type_func)){
+	if(!type_is_callable(func_ty)){
 		die_at(&e->expr->where, "%s-expression (type '%s') not callable",
-				e->expr->f_str(), type_to_str(type_func));
+				e->expr->f_str(), type_to_str(func_ty));
 	}
 
 	if(expr_kind(e->expr, deref)
@@ -187,7 +187,7 @@ invalid:
 		e->expr = expr_deref_what(e->expr);
 	}
 
-	e->tree_type = type_func_call(type_func, &args_from_decl);
+	e->tree_type = type_func_call(func_ty, &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
 	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", sp);
@@ -220,7 +220,7 @@ invalid:
 
 		char buf[64];
 
-		if((da = type_attr_present(type_func, attr_nonnull)))
+		if((da = type_attr_present(func_ty, attr_nonnull)))
 			nonnulls = da->bits.nonnull_args;
 
 		for(i = j = 0; e->funcargs[i]; i++){

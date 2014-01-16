@@ -207,7 +207,7 @@ static void print_type_eng(type *ref)
 			break;
 
 		case type_type:
-			fprintf(cc1_out, "%s", type_to_str(ref->bits.type));
+			fprintf(cc1_out, "%s", btype_to_str(ref->bits.type));
 			break;
 
 		case type_tdef:

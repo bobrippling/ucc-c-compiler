@@ -252,7 +252,7 @@ unsigned type_align(type *r, where *from)
 	}
 
 	if((test = type_is(r, type_type)))
-		return type_align(test->bits.type, from);
+		return btype_align(test->bits.type, from);
 
 	if((test = type_is(r, type_array)))
 		return type_align(test->ref, from);

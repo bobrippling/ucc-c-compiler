@@ -54,8 +54,8 @@ static void bitfield_size_align(
 
 	ty = tref->bits.type;
 
-	*psz = type_size(ty, from);
-	*palign = type_align(ty, from);
+	*psz = btype_size(ty, from);
+	*palign = btype_align(ty, from);
 }
 
 static void fold_enum(struct_union_enum_st *en, symtable *stab)
