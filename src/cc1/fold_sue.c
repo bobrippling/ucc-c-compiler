@@ -48,7 +48,7 @@ static void bitfield_size_align(
 	 * We make it take that align,
 	 * and reserve a max. of that size for the bitfield
 	 */
-	const type *ty;
+	const btype *ty;
 	tref = type_ref_is_type(tref, type_unknown);
 	assert(tref);
 

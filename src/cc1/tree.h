@@ -21,22 +21,22 @@ typedef struct decl_init   decl_init;
 
 #include "type.h"
 
-const type *type_new_primitive(enum type_primitive);
-const type *type_new_primitive_sue(enum type_primitive, struct_union_enum_st *);
+const btype *type_new_primitive(enum type_primitive);
+const btype *type_new_primitive_sue(enum type_primitive, struct_union_enum_st *);
 #define type_free(x) free(x)
 
 void where_cc1_current(struct where *w);
 void where_cc1_adj_identifier(where *w, const char *sp);
 
 const char *op_to_str(  const enum op_type o);
-const char *type_to_str(const type *t);
+const char *type_to_str(const btype *t);
 
 const char *type_primitive_to_str(const enum type_primitive);
 const char *type_qual_to_str(     const enum type_qualifier, int trailing_space);
 
 int type_floating(enum type_primitive);
-unsigned type_size( const type *, where *from);
-unsigned type_align(const type *, where *from);
+unsigned type_size( const btype *, where *from);
+unsigned type_align(const btype *, where *from);
 unsigned type_primitive_size(enum type_primitive tp);
 unsigned long long
 type_primitive_max(enum type_primitive p, int is_signed);

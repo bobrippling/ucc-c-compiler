@@ -77,7 +77,7 @@ static void fold_const_expr_op(expr *e, consty *k)
 				k->bits.num.val.i = r; /* convert to bool */
 
 			}else{
-				const type *ty = type_ref_get_type(e->tree_type);
+				const btype *ty = type_ref_get_type(e->tree_type);
 
 				UCC_ASSERT(ty, "no float type for float op?");
 

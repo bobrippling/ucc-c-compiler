@@ -35,7 +35,7 @@ static int type_convertible(enum type_primitive p)
 	return 0;
 }
 
-enum type_cmp type_cmp(const type *a, const type *b)
+enum type_cmp btype_cmp(const btype *a, const btype *b)
 {
 	switch(a->primitive){
 		case type_void:
@@ -112,7 +112,7 @@ int type_primitive_is_signed(enum type_primitive p)
 	ucc_unreach(0);
 }
 
-int type_is_signed(const type *t)
+int btype_is_signed(const btype *t)
 {
 	return type_primitive_is_signed(t->primitive);
 }

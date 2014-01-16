@@ -131,22 +131,22 @@ int integral_high_bit(integral_t val, type_ref *ty)
 	}
 }
 
-static type *type_new_primitive1(enum type_primitive p)
+static btype *type_new_primitive1(enum type_primitive p)
 {
-	type *t = umalloc(sizeof *t);
+	btype *t = umalloc(sizeof *t);
 	where_cc1_current(&t->where);
 	t->primitive = p;
 	return t;
 }
 
-const type *type_new_primitive_sue(enum type_primitive p, struct_union_enum_st *s)
+const btype *type_new_primitive_sue(enum type_primitive p, struct_union_enum_st *s)
 {
-	type *t = type_new_primitive1(p);
+	btype *t = type_new_primitive1(p);
 	t->sue = s;
 	return t;
 }
 
-const type *type_new_primitive(enum type_primitive p)
+const btype *type_new_primitive(enum type_primitive p)
 {
 	return type_new_primitive1(p);
 }
@@ -245,7 +245,7 @@ type_primitive_max(enum type_primitive p, int is_signed)
 	return is_signed ? max : max * 2 + 1;
 }
 
-unsigned type_size(const type *t, where *from)
+unsigned type_size(const btype *t, where *from)
 {
 	if(t->sue)
 		return sue_size(t->sue, from);
@@ -253,7 +253,7 @@ unsigned type_size(const type *t, where *from)
 	return type_primitive_size(t->primitive);
 }
 
-unsigned type_align(const type *t, where *from)
+unsigned type_align(const btype *t, where *from)
 {
 	if(t->sue)
 		return sue_align(t->sue, from);
@@ -465,7 +465,7 @@ int op_returns_bool(enum op_type o)
 	return op_is_comparison(o) || op_is_shortcircuit(o);
 }
 
-const char *type_to_str(const type *t)
+const char *type_to_str(const btype *t)
 {
 #define BUF_SIZE (sizeof(buf) - (bufp - buf))
 	static char buf[TYPE_STATIC_BUFSIZ];

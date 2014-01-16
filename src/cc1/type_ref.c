@@ -102,7 +102,7 @@ static enum type_cmp type_ref_cmp_r(
 	switch(a->type){
 		case type_ref_type:
 			subchk = 0;
-			ret = type_cmp(a->bits.type, b->bits.type);
+			ret = btype_cmp(a->bits.type, b->bits.type);
 			break;
 
 		case type_ref_array:

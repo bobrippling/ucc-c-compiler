@@ -39,7 +39,7 @@ static struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(
 {
 	r = type_ref_skip_casts(r);
 	if(r->type == type_ref_type){
-		const type *t = r->bits.type;
+		const btype *t = r->bits.type;
 		switch(t->primitive){
 			case type_enum:
 				if(!allow_e)

@@ -13,7 +13,7 @@ type_ref *type_ref_is_ptr(type_ref *r);
 type_ref *type_ref_is_array(type_ref *r);
 type_ref *type_ref_is_scalar(type_ref *r);
 
-const type *type_ref_get_type(type_ref *r);
+const btype *type_ref_get_type(type_ref *r);
 
 int type_ref_is_bool(type_ref *r);
 int type_ref_is_fptr(type_ref *r);

@@ -55,9 +55,9 @@ enum type_qualifier
 	qual_restrict = 1 << 2,
 };
 
-typedef struct type type;
+typedef struct btype btype;
 
-struct type
+struct btype
 {
 	where where;
 
@@ -70,9 +70,9 @@ struct type
 	decl_attr *attr;
 };
 
-enum type_cmp type_cmp(const type *a, const type *b);
+enum type_cmp btype_cmp(const btype *a, const btype *b);
 int type_primitive_is_signed(enum type_primitive);
-int type_is_signed(const type *);
+int btype_is_signed(const btype *);
 
 /* is there a loss of qualifiers going from 'b' to 'a' ? */
 int type_qual_loss(enum type_qualifier a, enum type_qualifier b);

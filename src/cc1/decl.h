@@ -129,7 +129,7 @@ void         type_ref_free_1(type_ref *);
 
 void type_ref_init(symtable *stab);
 type_ref *type_ref_new_tdef(expr *, decl *);
-type_ref *type_ref_new_type(const type *);
+type_ref *type_ref_new_type(const btype *);
 type_ref *type_ref_new_type_primitive(enum type_primitive);
 type_ref *type_ref_new_type_qual(enum type_primitive, enum type_qualifier);
 type_ref *type_ref_new_ptr(  type_ref *to, enum type_qualifier);

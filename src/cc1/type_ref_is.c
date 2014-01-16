@@ -151,7 +151,7 @@ type_ref *type_ref_is_func_or_block(type_ref *r)
 	return NULL;
 }
 
-const type *type_ref_get_type(type_ref *r)
+const btype *type_ref_get_type(type_ref *r)
 {
 	for(; r; )
 		switch(r->type){
@@ -268,7 +268,7 @@ int type_ref_is_complete(type_ref *r)
 	switch(r->type){
 		case type_ref_type:
 		{
-			const type *t = r->bits.type;
+			const btype *t = r->bits.type;
 
 			switch(t->primitive){
 				case type_void:
@@ -446,7 +446,7 @@ int type_ref_is_signed(type_ref *r)
 	while(r)
 		switch(r->type){
 			case type_ref_type:
-				return type_is_signed(r->bits.type);
+				return btype_is_signed(r->bits.type);
 
 			case type_ref_ptr:
 				/* "unspecified" */

@@ -434,7 +434,7 @@ stack:
 			ICE("TODO: stack __builtin_va_arg()");
 
 		}else{
-			const type *typ = type_ref_get_type(ty);
+			const btype *typ = type_ref_get_type(ty);
 			const int fp = typ && type_floating(typ->primitive);
 			struct_union_enum_st *sue_va;
 

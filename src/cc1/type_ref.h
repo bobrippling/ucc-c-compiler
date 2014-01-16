@@ -23,7 +23,7 @@ struct type_ref
 	union
 	{
 		/* ref_type */
-		const type *type;
+		const btype *type;
 
 		/* ref_tdef */
 		struct type_ref_tdef

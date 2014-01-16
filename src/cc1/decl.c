@@ -130,7 +130,7 @@ type_ref *type_ref_cached_VA_LIST_decayed(void)
 	return cache_va_list_decayed;
 }
 
-type_ref *type_ref_new_type(const type *t)
+type_ref *type_ref_new_type(const btype *t)
 {
 	type_ref *r = type_ref_new(type_ref_type, NULL);
 	r->bits.type = t;
@@ -914,7 +914,7 @@ void type_ref_add_type_str(type_ref *r,
 		if(aka && of){
 			/* descend to the type if it's next */
 			type_ref *t_ref = type_ref_is_type(of, type_unknown);
-			const type *t = t_ref ? t_ref->bits.type : NULL;
+			const btype *t = t_ref ? t_ref->bits.type : NULL;
 
 			BUF_ADD(" (aka '%s')",
 					t ? type_to_str(t)
