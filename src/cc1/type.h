@@ -1,23 +1,23 @@
-#ifndef TYPE_REF_H
-#define TYPE_REF_H
+#ifndef TYPE_H
+#define TYPE_H
 
-struct type_ref
+struct type
 {
 	where where;
-	type_ref *ref, *tmp; /* tmp used for things like printing */
+	type *ref, *tmp; /* tmp used for things like printing */
 
 	decl_attr *attr;
 	int folded;
 
-	enum type_ref_type
+	enum type_type
 	{
-		type_ref_type,  /* end - at type */
-		type_ref_tdef,  /* type reference to next ref */
-		type_ref_ptr,   /* pointer to next ref */
-		type_ref_block, /* block pointer to next ref (func) */
-		type_ref_func,  /* function */
-		type_ref_array, /* array of next ref, similar to pointer */
-		type_ref_cast   /* used for adding qualifiers */
+		type_type,  /* end - at type */
+		type_tdef,  /* type reference to next ref */
+		type_ptr,   /* pointer to next ref */
+		type_block, /* block pointer to next ref (func) */
+		type_func,  /* function */
+		type_array, /* array of next ref, similar to pointer */
+		type_cast   /* used for adding qualifiers */
 	} type;
 
 	union
@@ -26,7 +26,7 @@ struct type_ref
 		const btype *type;
 
 		/* ref_tdef */
-		struct type_ref_tdef
+		struct type_tdef
 		{
 			expr *type_of;
 			decl *decl;
@@ -77,8 +77,8 @@ enum type_cmp_opts
 };
 
 enum type_cmp
-type_ref_cmp(
-		type_ref *, type_ref *,
+type_cmp(
+		type *, type *,
 		enum type_cmp_opts);
 
 #endif
