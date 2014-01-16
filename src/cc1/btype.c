@@ -8,7 +8,7 @@
 #include "data_structs.h"
 #include "expr.h"
 #include "sue.h"
-#include "type.h"
+#include "btype.h"
 #include "cc1.h"
 
 static int type_convertible(enum type_primitive p)

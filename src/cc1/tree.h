@@ -19,7 +19,7 @@ typedef struct decl_attr   decl_attr;
 
 typedef struct decl_init   decl_init;
 
-#include "type.h"
+#include "btype.h"
 
 const btype *type_new_primitive(enum type_primitive);
 const btype *type_new_primitive_sue(enum type_primitive, struct_union_enum_st *);

@@ -1,5 +1,5 @@
-#ifndef TYPE_H
-#define TYPE_H
+#ifndef BTYPE_H
+#define BTYPE_H
 
 enum type_cmp
 {
