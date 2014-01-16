@@ -294,7 +294,7 @@ static decl_init *decl_init_brace_up_scalar(
 	{
 		expr *e = FOLD_EXPR(first_init->bits.expr, stab);
 
-		if(type_is_type(e->tree_type, type_void))
+		if(type_is_primitive(e->tree_type, type_void))
 			die_at(&e->where, "initialisation from void expression");
 
 		fold_type_chk_and_cast(

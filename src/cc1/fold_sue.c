@@ -49,7 +49,7 @@ static void bitfield_size_align(
 	 * and reserve a max. of that size for the bitfield
 	 */
 	const btype *ty;
-	tref = type_is_type(tref, type_unknown);
+	tref = type_is_primitive(tref, type_unknown);
 	assert(tref);
 
 	ty = tref->bits.type;

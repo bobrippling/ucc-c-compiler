@@ -84,7 +84,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	if(lhs_sym)
 		lhs_sym->nreads--; /* cancel the read that fold_ident thinks it got */
 
-	if(type_is_type(e->rhs->tree_type, type_void))
+	if(type_is_primitive(e->rhs->tree_type, type_void))
 		die_at(&e->where, "assignment from void expression");
 
 	expr_must_lvalue(e->lhs);

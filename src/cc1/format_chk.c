@@ -37,7 +37,7 @@ static void format_check_printf_1(char fmt, type *const t_in,
 		case 'p': prim = type_void; goto ptr;
 		case 'n': prim = type_int;  goto ptr;
 ptr:
-			tt = type_is_type(type_is_ptr(t_in), prim);
+			tt = type_is_primitive(type_is_ptr(t_in), prim);
 			if(!tt){
 				snprintf(expected, sizeof expected,
 						"'%s *'", type_primitive_to_str(prim));
@@ -56,7 +56,7 @@ ptr:
 			allow_long = 1;
 			if(!type_is_integral(t_in))
 				strcpy(expected, "integral");
-			if((attr & printf_attr_long) && !type_is_type(t_in, type_long))
+			if((attr & printf_attr_long) && !type_is_primitive(t_in, type_long))
 				strcpy(expected, "'long'");
 			break;
 

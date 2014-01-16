@@ -67,7 +67,7 @@ static void fold_cast_num(expr *const e, numeric *const num)
 		UCC_ASSERT(K_FLOATING(*num), "i/f mismatch types");
 
 		/* special case _Bool */
-		if(type_is_type(e->tree_type, type__Bool)){
+		if(type_is_primitive(e->tree_type, type__Bool)){
 			num->val.i = !!num->val.f;
 		}else{
 			/* float -> int */
@@ -83,7 +83,7 @@ static void fold_cast_num(expr *const e, numeric *const num)
 
 #define pv (&num->val.i)
 	/* need to cast the val.i down as appropriate */
-	if(type_is_type(e->tree_type, type__Bool)){
+	if(type_is_primitive(e->tree_type, type__Bool)){
 		*pv = !!*pv; /* analagous to out/out.c::out_normalise()'s constant case */
 
 	}else if(!from_fp){

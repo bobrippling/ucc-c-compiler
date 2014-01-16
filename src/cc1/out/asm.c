@@ -241,7 +241,7 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 			asm_out_section(sec, ASM_COMMENT " flex array init skipped\n");
 		}
 
-	}else if((r = type_is_type(tfor, type_struct))){
+	}else if((r = type_is_primitive(tfor, type_struct))){
 		/* array of stmts for each member
 		 * assumes the ->bits.inits order is member order
 		 */
@@ -381,7 +381,7 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 			asm_declare_init(sec, this, next);
 		}
 
-	}else if((r = type_is_type(tfor, type_union))){
+	}else if((r = type_is_primitive(tfor, type_union))){
 		/* union inits are decl_init_brace with spaces up to the first union init,
 		 * then NULL/end of the init-array */
 		struct_union_enum_st *sue = type_is_s_or_u(r);

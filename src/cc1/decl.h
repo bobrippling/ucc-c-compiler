@@ -209,7 +209,7 @@ enum type_primitive type_primitive(type *);
 unsigned type_align(type *, where *from);
 unsigned type_array_len(type *);
 type *type_is(type *, enum type_type);
-type *type_is_type(type *, enum type_primitive);
+type *type_is_primitive(type *, enum type_primitive);
 decl     *type_is_tdef(type *);
 type *type_is_ptr(type *); /* returns r->ref iff ptr */
 type *type_is_ptr_or_block(type *);

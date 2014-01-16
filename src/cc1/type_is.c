@@ -97,7 +97,7 @@ type *type_is(type *r, enum type_type t)
 	return r;
 }
 
-type *type_is_type(type *r, enum type_primitive p)
+type *type_is_primitive(type *r, enum type_primitive p)
 {
 	r = type_is(r, type_type);
 
@@ -196,13 +196,13 @@ int type_is_nonfptr(type *r)
 
 int type_is_void_ptr(type *r)
 {
-	return !!type_is_type(type_is_ptr(r), type_void);
+	return !!type_is_primitive(type_is_ptr(r), type_void);
 }
 
 int type_is_nonvoid_ptr(type *r)
 {
 	if((r = type_is_ptr(r)))
-		return !type_is_type(r, type_void);
+		return !type_is_primitive(r, type_void);
 	return 0;
 }
 
@@ -320,7 +320,7 @@ type_str_type(type *r)
 	type *t = type_is_array(r);
 	if(!t)
 		t = type_is_ptr(r);
-	t = type_is_type(t, type_unknown);
+	t = type_is_primitive(t, type_unknown);
 	switch(t ? t->bits.type->primitive : type_unknown){
 		case type_schar:
 		case type_nchar:
@@ -437,7 +437,7 @@ type *type_decay(type *const r)
 
 int type_is_void(type *r)
 {
-	return !!type_is_type(r, type_void);
+	return !!type_is_primitive(r, type_void);
 }
 
 int type_is_signed(type *r)
@@ -514,7 +514,7 @@ enum type_qualifier type_qual(const type *r)
 
 enum type_primitive type_primitive(type *ty)
 {
-	ty = type_is_type(ty, type_unknown);
+	ty = type_is_primitive(ty, type_unknown);
 	UCC_ASSERT(ty, "not primitive?");
 	return ty->bits.type->primitive;
 }
@@ -564,7 +564,7 @@ unsigned type_array_len(type *r)
 
 int type_is_promotable(type *r, type **pto)
 {
-	if((r = type_is_type(r, type_unknown))){
+	if((r = type_is_primitive(r, type_unknown))){
 		static unsigned sz_int, sz_double;
 		const int fp = type_floating(r->bits.type->primitive);
 		unsigned rsz;

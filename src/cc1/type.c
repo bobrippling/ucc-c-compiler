@@ -75,7 +75,7 @@ static enum type_cmp type_cmp_r(
 	/* array/func decay takes care of any array->ptr checks */
 	if(a->type != b->type){
 		/* allow _Bool <- pointer */
-		if(type_is_type(a, type__Bool) && type_is_ptr(b))
+		if(type_is_primitive(a, type__Bool) && type_is_ptr(b))
 			return TYPE_CONVERTIBLE_IMPLICIT;
 
 		/* allow int <-> ptr */

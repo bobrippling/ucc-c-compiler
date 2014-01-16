@@ -974,10 +974,10 @@ static int calc_ptr_step(type *t)
 	/* we are calculating the sizeof *t */
 	int mul;
 
-	if(type_is_type(type_is_ptr(t), type_void))
+	if(type_is_primitive(type_is_ptr(t), type_void))
 		return type_primitive_size(type_void);
 
-	if(type_is_type(t, type_unknown))
+	if(type_is_primitive(t, type_unknown))
 		mul = 1;
 	else
 		mul = type_size(type_next(t), NULL);
@@ -1302,7 +1302,7 @@ void out_cast(type *to, int normalise_bool)
 	/* normalise before the cast, otherwise we do things like
 	 * 5.3 -> 5, then normalise 5, instead of 5.3 != 0.0
 	 */
-	if(normalise_bool && type_is_type(to, type__Bool))
+	if(normalise_bool && type_is_primitive(to, type__Bool))
 		out_normalise();
 
 	v_cast(vtop, to);

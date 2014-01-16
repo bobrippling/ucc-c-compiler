@@ -684,7 +684,7 @@ type *type_ptr_depth_dec(type *r, where *w)
 type *type_ptr_depth_inc(type *r)
 {
 	type *test;
-	if((test = type_is_type(r, type_unknown))){
+	if((test = type_is_primitive(r, type_unknown))){
 		type *p = cache_ptr[test->bits.type->primitive];
 		if(p)
 			return p;
@@ -913,7 +913,7 @@ void type_add_type_str(type *r,
 
 		if(aka && of){
 			/* descend to the type if it's next */
-			type *t_ref = type_is_type(of, type_unknown);
+			type *t_ref = type_is_primitive(of, type_unknown);
 			const btype *t = t_ref ? t_ref->bits.type : NULL;
 
 			BUF_ADD(" (aka '%s')",

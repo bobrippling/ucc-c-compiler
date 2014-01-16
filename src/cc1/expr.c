@@ -87,7 +87,7 @@ int expr_is_null_ptr(expr *e, enum null_strictness ty)
 	int b = 0;
 
 	/* void * always qualifies */
-	if(type_is_type(type_is_ptr(e->tree_type), type_void))
+	if(type_is_primitive(type_is_ptr(e->tree_type), type_void))
 		b = 1;
 	else if(ty == NULL_STRICT_INT && type_is_integral(e->tree_type))
 		b = 1;
