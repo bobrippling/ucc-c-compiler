@@ -9,7 +9,7 @@ btype.o: btype.c ../util/where.h ../util/compiler.h ../util/util.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h sue.h cc1.h ../util/std.h
+  ops/stmt_continue.h sym.h decl.h type.h sue.h cc1.h ../util/std.h
 cc1.o: cc1.c ../util/util.h ../util/where.h ../util/compiler.h \
   ../util/platform.h data_structs.h tree.h btype.h expr.h strings.h \
   ../util/dynmap.h ../util/dyn.h ops/expr_addr.h ops/expr_assign.h \
@@ -21,7 +21,7 @@ cc1.o: cc1.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h tokenise.h parse.h cc1.h \
+  ops/stmt_continue.h sym.h decl.h type.h tokenise.h parse.h cc1.h \
   ../util/std.h fold.h gen_asm.h gen_str.h gen_style.h fold_sym.h \
   ops/__builtin.h out/asm.h opt.h pass1.h ../as_cfg.h
 const.o: const.c ../util/util.h ../util/where.h ../util/compiler.h \
@@ -35,8 +35,7 @@ const.o: const.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h const.h cc1.h \
-  ../util/std.h
+  ops/stmt_continue.h sym.h decl.h type.h const.h cc1.h ../util/std.h
 decl.o: decl.c ../util/util.h ../util/where.h ../util/compiler.h \
   ../util/alloc.h ../util/platform.h ../util/dynarray.h ../util/dyn.h \
   data_structs.h tree.h btype.h expr.h strings.h ../util/dynmap.h \
@@ -49,8 +48,8 @@ decl.o: decl.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h macros.h sue.h const.h \
-  cc1.h ../util/std.h fold.h funcargs.h defs.h
+  ops/stmt_continue.h sym.h decl.h type.h macros.h sue.h const.h cc1.h \
+  ../util/std.h fold.h funcargs.h defs.h
 decl_init.o: decl_init.c ../util/util.h ../util/where.h \
   ../util/compiler.h ../util/dynarray.h ../util/dyn.h ../util/dynmap.h \
   ../util/alloc.h data_structs.h tree.h btype.h expr.h strings.h \
@@ -63,7 +62,7 @@ decl_init.o: decl_init.c ../util/util.h ../util/where.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h cc1.h ../util/std.h fold.h \
+  ops/stmt_continue.h sym.h decl.h type.h cc1.h ../util/std.h fold.h \
   const.h macros.h sue.h ops/__builtin.h decl_init.h
 expr.o: expr.c ../util/util.h ../util/where.h ../util/compiler.h \
   ../util/alloc.h data_structs.h tree.h btype.h expr.h strings.h \
@@ -76,8 +75,7 @@ expr.o: expr.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h cc1.h ../util/std.h \
-  const.h
+  ops/stmt_continue.h sym.h decl.h type.h cc1.h ../util/std.h const.h
 fold.o: fold.c defs.h ../util/util.h ../util/where.h ../util/compiler.h \
   data_structs.h tree.h btype.h expr.h strings.h ../util/dynmap.h \
   ../util/dyn.h ops/expr_addr.h ops/expr_assign.h \
@@ -89,7 +87,7 @@ fold.o: fold.c defs.h ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h cc1.h ../util/std.h fold.h \
+  ops/stmt_continue.h sym.h decl.h type.h cc1.h ../util/std.h fold.h \
   fold_sym.h ../util/platform.h const.h ../util/alloc.h \
   ../util/dynarray.h sue.h decl_init.h pack.h funcargs.h out/lbl.h \
   fold_sue.h format_chk.h
@@ -104,7 +102,7 @@ fold_sue.o: fold_sue.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h cc1.h ../util/std.h fold.h \
+  ops/stmt_continue.h sym.h decl.h type.h cc1.h ../util/std.h fold.h \
   sue.h const.h pack.h defs.h fold_sue.h
 fold_sym.o: fold_sym.c ../util/util.h ../util/where.h ../util/compiler.h \
   ../util/alloc.h ../util/dynarray.h ../util/dyn.h ../util/dynmap.h \
@@ -118,9 +116,8 @@ fold_sym.o: fold_sym.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h cc1.h ../util/std.h \
-  fold_sym.h pack.h sue.h fold.h fold_sue.h decl_init.h out/lbl.h \
-  const.h label.h
+  ops/stmt_continue.h sym.h decl.h type.h cc1.h ../util/std.h fold_sym.h \
+  pack.h sue.h fold.h fold_sue.h decl_init.h out/lbl.h const.h label.h
 format_chk.o: format_chk.c ../util/where.h ../util/compiler.h \
   ../util/util.h ../util/dynarray.h ../util/dyn.h data_structs.h tree.h \
   btype.h expr.h strings.h ../util/dynmap.h ops/expr_addr.h \
@@ -133,7 +130,7 @@ format_chk.o: format_chk.c ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h const.h funcargs.h \
+  ops/stmt_continue.h sym.h decl.h type.h const.h funcargs.h \
   format_chk.h
 funcargs.o: funcargs.c ../util/util.h ../util/where.h ../util/compiler.h \
   ../util/alloc.h ../util/dynarray.h ../util/dyn.h data_structs.h tree.h \
@@ -147,8 +144,8 @@ funcargs.o: funcargs.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h funcargs.h cc1.h \
-  ../util/std.h fold.h
+  ops/stmt_continue.h sym.h decl.h type.h funcargs.h cc1.h ../util/std.h \
+  fold.h
 gen_asm.o: gen_asm.c ../util/util.h ../util/where.h ../util/compiler.h \
   ../util/dynarray.h ../util/dyn.h ../util/alloc.h data_structs.h tree.h \
   btype.h expr.h strings.h ../util/dynmap.h ops/expr_addr.h \
@@ -161,9 +158,9 @@ gen_asm.o: gen_asm.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h cc1.h ../util/std.h \
-  macros.h ../util/platform.h gen_asm.h const.h out/out.h out/lbl.h \
-  out/asm.h gen_style.h out/dbg.h
+  ops/stmt_continue.h sym.h decl.h type.h cc1.h ../util/std.h macros.h \
+  ../util/platform.h gen_asm.h const.h out/out.h out/lbl.h out/asm.h \
+  gen_style.h out/dbg.h
 gen_c.o: gen_c.c
 gen_str.o: gen_str.c ../util/util.h ../util/where.h ../util/compiler.h \
   ../util/platform.h ../util/dynarray.h ../util/dyn.h data_structs.h \
@@ -177,9 +174,8 @@ gen_str.o: gen_str.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h macros.h cc1.h \
-  ../util/std.h sue.h gen_str.h str.h const.h decl_init.h funcargs.h \
-  out/asm.h
+  ops/stmt_continue.h sym.h decl.h type.h macros.h cc1.h ../util/std.h \
+  sue.h gen_str.h str.h const.h decl_init.h funcargs.h out/asm.h
 gen_style.o: gen_style.c ../util/util.h ../util/where.h \
   ../util/compiler.h ../util/dynarray.h ../util/dyn.h data_structs.h \
   tree.h btype.h expr.h strings.h ../util/dynmap.h ops/expr_addr.h \
@@ -192,7 +188,7 @@ gen_style.o: gen_style.c ../util/util.h ../util/where.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h cc1.h ../util/std.h \
+  ops/stmt_continue.h sym.h decl.h type.h cc1.h ../util/std.h \
   gen_style.h gen_asm.h decl_init.h out/asm.h
 label.o: label.c ../util/where.h ../util/compiler.h ../util/alloc.h \
   label.h out/lbl.h
@@ -208,7 +204,7 @@ parse.o: parse.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h tokenise.h parse.h \
+  ops/stmt_continue.h sym.h decl.h type.h tokenise.h parse.h \
   ../util/alloc.h tokconv.h cc1.h ../util/std.h ../util/dynarray.h sue.h \
   parse_type.h const.h ops/__builtin.h funcargs.h
 parse_attr.o: parse_attr.c
@@ -225,7 +221,7 @@ parse_type.o: parse_type.c ../util/util.h ../util/where.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h decl_init.h funcargs.h \
+  ops/stmt_continue.h sym.h decl.h type.h decl_init.h funcargs.h \
   tokenise.h tokconv.h sue.h cc1.h ../util/std.h parse.h parse_type.h \
   parse_attr.c parse_init.c
 pass1.o: pass1.c ../util/where.h ../util/compiler.h ../util/dynarray.h \
@@ -239,7 +235,7 @@ pass1.o: pass1.c ../util/where.h ../util/compiler.h ../util/dynarray.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h fold_sym.h tokenise.h \
+  ops/stmt_continue.h sym.h decl.h type.h fold_sym.h tokenise.h \
   tokconv.h parse.h parse_type.h cc1.h ../util/std.h fold.h const.h \
   pass1.h
 stmt.o: stmt.c ../util/util.h ../util/where.h ../util/compiler.h \
@@ -253,7 +249,7 @@ stmt.o: stmt.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h cc1.h ../util/std.h
+  ops/stmt_continue.h sym.h decl.h type.h cc1.h ../util/std.h
 str.o: str.c ../util/util.h ../util/where.h ../util/compiler.h \
   ../util/alloc.h ../util/escape.h data_structs.h tree.h btype.h expr.h \
   strings.h ../util/dynmap.h ../util/dyn.h ops/expr_addr.h \
@@ -266,7 +262,7 @@ str.o: str.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h str.h macros.h
+  ops/stmt_continue.h sym.h decl.h type.h str.h macros.h
 strings.o: strings.c strings.h ../util/dynmap.h ../util/dyn.h \
   ../util/alloc.h ../util/compiler.h out/lbl.h
 sue.o: sue.c ../util/alloc.h ../util/compiler.h ../util/util.h \
@@ -281,7 +277,7 @@ sue.o: sue.c ../util/alloc.h ../util/compiler.h ../util/util.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h sue.h cc1.h ../util/std.h
+  ops/stmt_continue.h sym.h decl.h type.h sue.h cc1.h ../util/std.h
 sym.o: sym.c ../util/util.h ../util/where.h ../util/compiler.h \
   data_structs.h tree.h btype.h expr.h strings.h ../util/dynmap.h \
   ../util/dyn.h ops/expr_addr.h ops/expr_assign.h \
@@ -293,7 +289,7 @@ sym.o: sym.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h ../util/alloc.h macros.h \
+  ops/stmt_continue.h sym.h decl.h type.h ../util/alloc.h macros.h \
   ../util/dynarray.h sue.h funcargs.h label.h
 tokconv.o: tokconv.c ../util/util.h ../util/where.h ../util/compiler.h \
   data_structs.h tree.h btype.h expr.h strings.h ../util/dynmap.h \
@@ -306,8 +302,8 @@ tokconv.o: tokconv.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h tokenise.h tokconv.h \
-  macros.h cc1.h ../util/std.h
+  ops/stmt_continue.h sym.h decl.h type.h tokenise.h tokconv.h macros.h \
+  cc1.h ../util/std.h
 tokenise.o: tokenise.c ../util/util.h ../util/where.h ../util/compiler.h \
   data_structs.h tree.h btype.h expr.h strings.h ../util/dynmap.h \
   ../util/dyn.h ops/expr_addr.h ops/expr_assign.h \
@@ -319,7 +315,7 @@ tokenise.o: tokenise.c ../util/util.h ../util/where.h ../util/compiler.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h tokenise.h ../util/alloc.h \
+  ops/stmt_continue.h sym.h decl.h type.h tokenise.h ../util/alloc.h \
   ../util/str.h ../util/escape.h str.h cc1.h ../util/std.h
 tree.o: tree.c ../util/alloc.h ../util/compiler.h ../util/util.h \
   ../util/where.h data_structs.h tree.h btype.h expr.h strings.h \
@@ -332,9 +328,9 @@ tree.o: tree.c ../util/alloc.h ../util/compiler.h ../util/util.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h macros.h \
-  ../util/platform.h ../util/limits.h sue.h cc1.h ../util/std.h defs.h
-type_ref.o: type_ref.c ../util/where.h ../util/compiler.h ../util/util.h \
+  ops/stmt_continue.h sym.h decl.h type.h macros.h ../util/platform.h \
+  ../util/limits.h sue.h cc1.h ../util/std.h defs.h
+type.o: type.c ../util/where.h ../util/compiler.h ../util/util.h \
   data_structs.h tree.h btype.h expr.h strings.h ../util/dynmap.h \
   ../util/dyn.h ops/expr_addr.h ops/expr_assign.h \
   ops/expr_assign_compound.h ops/expr_cast.h ops/expr_comma.h \
@@ -345,22 +341,20 @@ type_ref.o: type_ref.c ../util/where.h ../util/compiler.h ../util/util.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h sue.h const.h funcargs.h \
-  cc1.h ../util/std.h type_ref_is.h
-type_ref_is.o: type_ref_is.c ../util/where.h ../util/compiler.h \
-  ../util/util.h ../util/platform.h data_structs.h tree.h btype.h expr.h \
-  strings.h ../util/dynmap.h ../util/dyn.h ops/expr_addr.h \
-  ops/expr_assign.h ops/expr_assign_compound.h ops/expr_cast.h \
-  ops/expr_comma.h ops/expr_funcall.h ops/expr_identifier.h \
-  ops/expr_if.h ops/expr_op.h ops/expr_sizeof.h ops/expr_val.h \
-  ops/expr_stmt.h ops/expr_deref.h ops/expr_struct.h \
-  ops/expr_compound_lit.h ops/expr_string.h stmt.h ops/stmt_break.h \
-  ops/stmt_case.h ops/stmt_case_range.h ops/stmt_code.h \
+  ops/stmt_continue.h sym.h decl.h type.h sue.h const.h funcargs.h cc1.h \
+  ../util/std.h type_is.h
+type_is.o: type_is.c ../util/where.h ../util/compiler.h ../util/util.h \
+  ../util/platform.h data_structs.h tree.h btype.h expr.h strings.h \
+  ../util/dynmap.h ../util/dyn.h ops/expr_addr.h ops/expr_assign.h \
+  ops/expr_assign_compound.h ops/expr_cast.h ops/expr_comma.h \
+  ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \
+  ops/expr_sizeof.h ops/expr_val.h ops/expr_stmt.h ops/expr_deref.h \
+  ops/expr_struct.h ops/expr_compound_lit.h ops/expr_string.h stmt.h \
+  ops/stmt_break.h ops/stmt_case.h ops/stmt_case_range.h ops/stmt_code.h \
   ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
   ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
   ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h \
-  ops/stmt_continue.h sym.h decl.h type_ref.h sue.h const.h \
-  type_ref_is.h
+  ops/stmt_continue.h sym.h decl.h type.h sue.h const.h type_is.h
 ops/__builtin.o: ops/__builtin.c ops/../../util/util.h ops/../../util/where.h \
   ops/../../util/compiler.h ops/../../util/dynarray.h \
   ops/../../util/dyn.h ops/../../util/alloc.h ops/../data_structs.h \
@@ -379,7 +373,7 @@ ops/__builtin.o: ops/__builtin.c ops/../../util/util.h ops/../../util/where.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/__builtin.h ops/../cc1.h \
+  ops/../decl.h ops/../type.h ops/__builtin.h ops/../cc1.h \
   ops/../../util/std.h ops/../tokenise.h ops/../parse.h ops/../fold.h \
   ops/../funcargs.h ops/../const.h ops/../gen_asm.h ops/../gen_str.h \
   ops/../out/out.h ops/__builtin_va.h ops/__builtin_va.def
@@ -402,11 +396,11 @@ ops/__builtin_va.o: ops/__builtin_va.c ops/../../util/util.h \
   ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/__builtin.h ops/__builtin_va.h \
+  ops/../decl.h ops/../type.h ops/__builtin.h ops/__builtin_va.h \
   ops/__builtin_va.def ops/../cc1.h ops/../../util/std.h ops/../fold.h \
   ops/../gen_asm.h ops/../out/out.h ops/../out/lbl.h ops/../pack.h \
   ops/../sue.h ops/../funcargs.h ops/../tokenise.h ops/../tokconv.h \
-  ops/../parse.h ops/../parse_type.h ops/../type_ref_is.h
+  ops/../parse.h ops/../parse_type.h ops/../type_is.h
 ops/expr__Generic.o: ops/expr__Generic.c ops/ops.h ops/../../util/util.h \
   ops/../../util/where.h ops/../../util/compiler.h ops/../data_structs.h \
   ops/../tree.h ops/../btype.h ops/../expr.h ops/../strings.h \
@@ -424,7 +418,7 @@ ops/expr__Generic.o: ops/expr__Generic.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/expr__Generic.h
 ops/expr_addr.o: ops/expr_addr.c ops/ops.h ops/../../util/util.h \
@@ -444,7 +438,7 @@ ops/expr_addr.o: ops/expr_addr.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../out/lbl.h ops/../label.h
 ops/expr_assign.o: ops/expr_assign.c ops/ops.h ops/../../util/util.h \
@@ -464,7 +458,7 @@ ops/expr_assign.o: ops/expr_assign.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/__builtin.h
 ops/expr_assign_compound.o: ops/expr_assign_compound.c ops/ops.h \
@@ -485,7 +479,7 @@ ops/expr_assign_compound.o: ops/expr_assign_compound.c ops/ops.h \
   ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h
 ops/expr_block.o: ops/expr_block.c ops/ops.h ops/../../util/util.h \
@@ -505,7 +499,7 @@ ops/expr_block.o: ops/expr_block.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/expr_block.h ops/../out/lbl.h \
   ops/../../util/dynarray.h ops/../funcargs.h
@@ -526,7 +520,7 @@ ops/expr_cast.o: ops/expr_cast.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../../util/alloc.h \
   ops/../../util/platform.h ops/../sue.h ops/../defs.h
@@ -547,7 +541,7 @@ ops/expr_comma.o: ops/expr_comma.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h
 ops/expr_compound_lit.o: ops/expr_compound_lit.c ops/ops.h \
@@ -568,7 +562,7 @@ ops/expr_compound_lit.o: ops/expr_compound_lit.c ops/ops.h \
   ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../out/asm.h ops/../out/lbl.h \
   ops/../decl_init.h
@@ -589,7 +583,7 @@ ops/expr_deref.o: ops/expr_deref.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h
 ops/expr_funcall.o: ops/expr_funcall.c ops/ops.h ops/../../util/util.h \
@@ -609,7 +603,7 @@ ops/expr_funcall.o: ops/expr_funcall.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../../util/dynarray.h \
   ops/../../util/platform.h ops/../../util/alloc.h ops/../funcargs.h \
@@ -631,7 +625,7 @@ ops/expr_identifier.o: ops/expr_identifier.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../out/asm.h ops/../sue.h
 ops/expr_if.o: ops/expr_if.c ops/ops.h ops/../../util/util.h \
@@ -651,7 +645,7 @@ ops/expr_if.o: ops/expr_if.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../sue.h ops/../out/lbl.h
 ops/expr_op.o: ops/expr_op.c ops/../defs.h ops/ops.h ops/../../util/util.h \
@@ -671,10 +665,10 @@ ops/expr_op.o: ops/expr_op.c ops/../defs.h ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../out/lbl.h ops/../out/asm.h \
-  ops/../type_ref_is.h
+  ops/../type_is.h
 ops/expr_sizeof.o: ops/expr_sizeof.c ops/ops.h ops/../../util/util.h \
   ops/../../util/where.h ops/../../util/compiler.h ops/../data_structs.h \
   ops/../tree.h ops/../btype.h ops/../expr.h ops/../strings.h \
@@ -692,7 +686,7 @@ ops/expr_sizeof.o: ops/expr_sizeof.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../sue.h ops/../out/asm.h
 ops/expr_stmt.o: ops/expr_stmt.c ops/ops.h ops/../../util/util.h \
@@ -712,7 +706,7 @@ ops/expr_stmt.o: ops/expr_stmt.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../../util/dynarray.h
 ops/expr_string.o: ops/expr_string.c ops/ops.h ops/../../util/util.h \
@@ -732,7 +726,7 @@ ops/expr_string.o: ops/expr_string.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../decl_init.h ops/../str.h \
   ops/../out/lbl.h ops/../../util/dynarray.h ops/../../util/platform.h
@@ -753,7 +747,7 @@ ops/expr_struct.o: ops/expr_struct.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../sue.h ops/../out/asm.h
 ops/expr_val.o: ops/expr_val.c ops/ops.h ops/../../util/util.h \
@@ -773,7 +767,7 @@ ops/expr_val.o: ops/expr_val.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../out/asm.h
 ops/stmt_break.o: ops/stmt_break.c ops/ops.h ops/../../util/util.h \
@@ -793,7 +787,7 @@ ops/stmt_break.o: ops/stmt_break.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h
 ops/stmt_case.o: ops/stmt_case.c ops/ops.h ops/../../util/util.h \
@@ -813,7 +807,7 @@ ops/stmt_case.o: ops/stmt_case.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../out/lbl.h
 ops/stmt_case_range.o: ops/stmt_case_range.c ops/ops.h ops/../../util/util.h \
@@ -833,7 +827,7 @@ ops/stmt_case_range.o: ops/stmt_case_range.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../out/lbl.h
 ops/stmt_code.o: ops/stmt_code.c ops/ops.h ops/../../util/util.h \
@@ -853,7 +847,7 @@ ops/stmt_code.o: ops/stmt_code.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../decl_init.h \
   ops/../../util/dynarray.h ops/../fold_sym.h ops/../out/lbl.h
@@ -874,7 +868,7 @@ ops/stmt_continue.o: ops/stmt_continue.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h
 ops/stmt_default.o: ops/stmt_default.c ops/ops.h ops/../../util/util.h \
@@ -894,7 +888,7 @@ ops/stmt_default.o: ops/stmt_default.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../out/lbl.h
 ops/stmt_do.o: ops/stmt_do.c ops/ops.h ops/../../util/util.h \
@@ -914,7 +908,7 @@ ops/stmt_do.o: ops/stmt_do.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../out/lbl.h
 ops/stmt_expr.o: ops/stmt_expr.c ops/ops.h ops/../../util/util.h \
@@ -934,7 +928,7 @@ ops/stmt_expr.o: ops/stmt_expr.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h
 ops/stmt_for.o: ops/stmt_for.c ops/ops.h ops/../../util/util.h \
@@ -954,7 +948,7 @@ ops/stmt_for.o: ops/stmt_for.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../out/lbl.h \
   ops/../decl_init.h
@@ -975,7 +969,7 @@ ops/stmt_goto.o: ops/stmt_goto.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../out/lbl.h ops/../label.h
 ops/stmt_if.o: ops/stmt_if.c ops/ops.h ops/../../util/util.h \
@@ -995,7 +989,7 @@ ops/stmt_if.o: ops/stmt_if.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../out/lbl.h ops/../fold_sym.h
 ops/stmt_label.o: ops/stmt_label.c ops/ops.h ops/../../util/util.h \
@@ -1015,7 +1009,7 @@ ops/stmt_label.o: ops/stmt_label.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../label.h ops/../out/lbl.h
 ops/stmt_noop.o: ops/stmt_noop.c ops/ops.h ops/../../util/util.h \
@@ -1035,7 +1029,7 @@ ops/stmt_noop.o: ops/stmt_noop.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h
 ops/stmt_return.o: ops/stmt_return.c ops/ops.h ops/../../util/util.h \
@@ -1055,7 +1049,7 @@ ops/stmt_return.o: ops/stmt_return.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/expr_block.h ops/../funcargs.h
 ops/stmt_switch.o: ops/stmt_switch.c ops/ops.h ops/../../util/util.h \
@@ -1075,7 +1069,7 @@ ops/stmt_switch.o: ops/stmt_switch.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../sue.h \
   ops/../../util/alloc.h ops/../../util/dynarray.h ops/../out/lbl.h
@@ -1096,7 +1090,7 @@ ops/stmt_while.o: ops/stmt_while.c ops/ops.h ops/../../util/util.h \
   ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
   ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
   ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../sym.h \
-  ops/../decl.h ops/../type_ref.h ops/../cc1.h ops/../../util/std.h \
+  ops/../decl.h ops/../type.h ops/../cc1.h ops/../../util/std.h \
   ops/../out/out.h ops/../fold.h ops/../const.h ops/../gen_str.h \
   ops/../gen_style.h ops/../gen_asm.h ops/../out/lbl.h
 out/asm.o: out/asm.c out/../../util/util.h out/../../util/where.h \
@@ -1116,7 +1110,7 @@ out/asm.o: out/asm.c out/../../util/util.h out/../../util/where.h \
   out/../ops/stmt_label.h out/../ops/stmt_noop.h \
   out/../ops/stmt_return.h out/../ops/stmt_switch.h \
   out/../ops/stmt_while.h out/../ops/stmt_continue.h out/../sym.h \
-  out/../decl.h out/../type_ref.h out/../cc1.h out/../../util/std.h \
+  out/../decl.h out/../type.h out/../cc1.h out/../../util/std.h \
   out/asm.h out/../../util/platform.h out/../../util/alloc.h \
   out/../../util/dynarray.h out/../sue.h out/../const.h out/../gen_asm.h \
   out/../decl_init.h out/../pack.h out/out.h out/../str.h
@@ -1139,7 +1133,7 @@ out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
   out/../ops/stmt_label.h out/../ops/stmt_noop.h \
   out/../ops/stmt_return.h out/../ops/stmt_switch.h \
   out/../ops/stmt_while.h out/../ops/stmt_continue.h out/../sym.h \
-  out/../decl.h out/../type_ref.h out/../const.h out/../funcargs.h \
+  out/../decl.h out/../type.h out/../const.h out/../funcargs.h \
   out/../sue.h out/asm.h out/../defs.h out/../../as_cfg.h out/leb.h \
   out/lbl.h out/dbg.h out/write.h
 out/impl.o: out/impl.c out/../../util/util.h out/../../util/where.h \
@@ -1159,7 +1153,7 @@ out/impl.o: out/impl.c out/../../util/util.h out/../../util/where.h \
   out/../ops/stmt_label.h out/../ops/stmt_noop.h \
   out/../ops/stmt_return.h out/../ops/stmt_switch.h \
   out/../ops/stmt_while.h out/../ops/stmt_continue.h out/../sym.h \
-  out/../decl.h out/../type_ref.h out/vstack.h out/asm.h out/impl.h \
+  out/../decl.h out/../type.h out/vstack.h out/asm.h out/impl.h \
   out/x86_64.h out/write.h
 out/lbl.o: out/lbl.c out/../../util/alloc.h out/../../util/compiler.h \
   out/../../util/util.h out/../../util/where.h out/common.h out/lbl.h \
@@ -1183,7 +1177,7 @@ out/mipsel_32.o: out/mipsel_32.c out/../../util/util.h out/../../util/where.h \
   out/../ops/stmt_label.h out/../ops/stmt_noop.h \
   out/../ops/stmt_return.h out/../ops/stmt_switch.h \
   out/../ops/stmt_while.h out/../ops/stmt_continue.h out/../sym.h \
-  out/../decl.h out/../type_ref.h out/vstack.h out/impl.h out/x86_64.h \
+  out/../decl.h out/../type.h out/vstack.h out/impl.h out/x86_64.h \
   out/../cc1.h out/../../util/std.h out/asm.h out/common.h out/out.h \
   out/lbl.h
 out/out.o: out/out.c out/../../util/util.h out/../../util/where.h \
@@ -1203,7 +1197,7 @@ out/out.o: out/out.c out/../../util/util.h out/../../util/where.h \
   out/../ops/stmt_if.h out/../ops/stmt_label.h out/../ops/stmt_noop.h \
   out/../ops/stmt_return.h out/../ops/stmt_switch.h \
   out/../ops/stmt_while.h out/../ops/stmt_continue.h out/../sym.h \
-  out/../decl.h out/../type_ref.h out/asm.h out/out.h out/vstack.h \
+  out/../decl.h out/../type.h out/asm.h out/out.h out/vstack.h \
   out/impl.h out/x86_64.h out/lbl.h out/../../util/platform.h \
   out/../cc1.h out/../../util/std.h out/../pack.h out/../defs.h \
   out/../opt.h out/../const.h
@@ -1224,7 +1218,7 @@ out/vm.o: out/vm.c out/../../util/util.h out/../../util/where.h \
   out/../ops/stmt_label.h out/../ops/stmt_noop.h \
   out/../ops/stmt_return.h out/../ops/stmt_switch.h \
   out/../ops/stmt_while.h out/../ops/stmt_continue.h out/../sym.h \
-  out/../decl.h out/../type_ref.h out/vstack.h out/impl.h out/x86_64.h \
+  out/../decl.h out/../type.h out/vstack.h out/impl.h out/x86_64.h \
   out/../cc1.h out/../../util/std.h
 out/write.o: out/write.c out/../../util/where.h out/../../util/compiler.h \
   out/../../util/alloc.h out/asm.h out/write.h out/dbg.h out/lbl.h \
@@ -1248,6 +1242,6 @@ out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/where.h \
   out/../ops/stmt_label.h out/../ops/stmt_noop.h \
   out/../ops/stmt_return.h out/../ops/stmt_switch.h \
   out/../ops/stmt_while.h out/../ops/stmt_continue.h out/../sym.h \
-  out/../decl.h out/../type_ref.h out/vstack.h out/asm.h out/impl.h \
+  out/../decl.h out/../type.h out/vstack.h out/asm.h out/impl.h \
   out/x86_64.h out/../cc1.h out/../../util/std.h out/common.h out/out.h \
   out/lbl.h out/../funcargs.h out/write.h

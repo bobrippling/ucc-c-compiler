@@ -60,7 +60,7 @@ expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of)
 	w.chr -= what_of == what_alignof ? 7 : 6; /* go back over the *of */
 
 	if(accept(token_open_paren)){
-		type_ref *r = parse_type(0);
+		type *r = parse_type(0);
 
 		if(r){
 			EAT(token_close_paren);
@@ -107,7 +107,7 @@ static expr *parse_expr__Generic()
 	lbls = NULL;
 
 	for(;;){
-		type_ref *r;
+		type *r;
 		expr *e;
 		struct generic_lbl *lbl;
 
@@ -158,7 +158,7 @@ static expr *parse_block()
 			symtab_root(current_scope));
 
 	funcargs *args;
-	type_ref *rt;
+	type *rt;
 	symtable *orig_scope;
 	expr *r;
 
@@ -170,9 +170,9 @@ static expr *parse_block()
 	rt = parse_type(0);
 
 	if(rt){
-		if(type_ref_is(rt, type_ref_func)){
+		if(type_is(rt, type_func)){
 			/* got ^int (args...) */
-			rt = type_ref_func_call(rt, &args);
+			rt = type_func_call(rt, &args);
 		}else{
 			/* ^int {...} */
 			goto def_args;
@@ -234,7 +234,7 @@ static expr *parse_expr_primary()
 			where loc_start;
 
 			if(accept_where(token_open_paren, &loc_start)){
-				type_ref *r;
+				type *r;
 				expr *e;
 
 				if((r = parse_type(0))){
@@ -537,15 +537,15 @@ expr *parse_expr_exp()
 	return e;
 }
 
-type_ref **parse_type_list()
+type **parse_type_list()
 {
-	type_ref **types = NULL;
+	type **types = NULL;
 
 	if(curtok == token_close_paren)
 		return types;
 
 	do{
-		type_ref *r = parse_type(0);
+		type *r = parse_type(0);
 
 		if(!r)
 			die_at(NULL, "type expected");

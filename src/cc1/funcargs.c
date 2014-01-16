@@ -54,7 +54,7 @@ enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 		unsigned i;
 
 		for(i = 0; args_to->arglist[i]; i++){
-			switch(type_ref_cmp(args_to->arglist[i]->ref, args_from->arglist[i]->ref, 0)){
+			switch(type_cmp(args_to->arglist[i]->ref, args_from->arglist[i]->ref, 0)){
 				case TYPE_EQUAL:
 				case TYPE_QUAL_CHANGE: /* f(const int) and f(int) */
 				case TYPE_EQUAL_TYPEDEF:
@@ -86,7 +86,7 @@ void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)
 	*n_int = *n_fp = 0;
 
 	for(di = fa->arglist; di && *di; di++)
-		if(type_ref_is_floating((*di)->ref))
+		if(type_is_floating((*di)->ref))
 			++*n_fp;
 		else
 			++*n_int;

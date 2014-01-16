@@ -144,30 +144,30 @@ static void print_decl_init(decl_init *di)
 	}
 }
 
-static void print_type_ref_eng(type_ref *ref)
+static void print_type_eng(type *ref)
 {
 	if(!ref)
 		return;
 
-	print_type_ref_eng(ref->ref);
+	print_type_eng(ref->ref);
 
 	switch(ref->type){
-		case type_ref_cast:
+		case type_cast:
 			if(ref->bits.cast.is_signed_cast)
 				fprintf(cc1_out, "%s ", ref->bits.cast.signed_true ? "signed" : "unsigned");
 			else
 				fprintf(cc1_out, "%s", type_qual_to_str(ref->bits.cast.qual, 1));
 			break;
 
-		case type_ref_ptr:
+		case type_ptr:
 			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.ptr.qual, 1));
 			break;
 
-		case type_ref_block:
+		case type_block:
 			fprintf(cc1_out, "block returning ");
 			break;
 
-		case type_ref_func:
+		case type_func:
 		{
 #ifdef ENGLISH_PRINT_ARGLIST
 			funcargs *fargs = ref->bits.func.args;
@@ -199,18 +199,18 @@ static void print_type_ref_eng(type_ref *ref)
 			break;
 		}
 
-		case type_ref_array:
+		case type_array:
 			fputs("array[", cc1_out);
 			if(ref->bits.array.size)
 				print_expr_val(ref->bits.array.size);
 			fputs("] of ", cc1_out);
 			break;
 
-		case type_ref_type:
+		case type_type:
 			fprintf(cc1_out, "%s", type_to_str(ref->bits.type));
 			break;
 
-		case type_ref_tdef:
+		case type_tdef:
 			ICE("TODO");
 	}
 }
@@ -220,16 +220,16 @@ static void print_decl_eng(decl *d)
 	if(d->spel)
 		fprintf(cc1_out, "\"%s\": ", d->spel);
 
-	print_type_ref_eng(d->ref);
+	print_type_eng(d->ref);
 }
 
-void print_type_ref(type_ref *ref, decl *d)
+void print_type(type *ref, decl *d)
 {
 	char buf[TYPE_REF_STATIC_BUFSIZ];
 	decl_attr *da;
 
 	fprintf(cc1_out, "%s",
-			type_ref_to_str_r_spel(buf, ref, d ? d->spel : NULL));
+			type_to_str_r_spel(buf, ref, d ? d->spel : NULL));
 
 	for(da = ref->attr; da; da = da->next){
 		fprintf(cc1_out, " __attribute__((%s))",
@@ -276,7 +276,7 @@ static void print_decl_attr(decl_attr *da)
 	}
 }
 
-static void print_type_attr(type_ref *r)
+static void print_type_attr(type *r)
 {
 	enum decl_attr_type i;
 
@@ -298,7 +298,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(fopt_mode & FOPT_ENGLISH){
 		print_decl_eng(d);
 	}else{
-		print_type_ref(d->ref, d);
+		print_type(d->ref, d);
 	}
 
 	if(mode & PDECL_SYM_OFFSET){
@@ -315,7 +315,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 	}
 
 	if(mode & PDECL_SIZE && !DECL_IS_FUNC(d)){
-		if(type_ref_is_complete(d->ref)){
+		if(type_is_complete(d->ref)){
 			const int sz = decl_size(d);
 			fprintf(cc1_out, " size %d bytes. %d platform-word(s)", sz, sz / platform_word_size());
 		}else{
@@ -365,7 +365,7 @@ void print_expr(expr *e)
 	if(e->tree_type){ /* might be a label */
 		idt_printf("tree_type: ");
 		gen_str_indent++;
-		print_type_ref(e->tree_type, NULL);
+		print_type(e->tree_type, NULL);
 		gen_str_indent--;
 		fputc('\n', cc1_out);
 	}

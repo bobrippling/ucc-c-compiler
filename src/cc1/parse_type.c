@@ -27,18 +27,18 @@
 
 /*#define PARSE_DECL_VERBOSE*/
 
-/* we don't do the type_ref_is_* since it needs to be folded for that */
-#define PARSE_type_ref_is(r, ty) ((type_ref_skip_casts(r)->type == ty) ? (r) : NULL)
-#define PARSE_DECL_IS_FUNC(d) PARSE_type_ref_is(type_ref_skip_casts(d->ref), type_ref_func)
+/* we don't do the type_is_* since it needs to be folded for that */
+#define PARSE_type_is(r, ty) ((type_skip_casts(r)->type == ty) ? (r) : NULL)
+#define PARSE_DECL_IS_FUNC(d) PARSE_type_is(type_skip_casts(d->ref), type_func)
 
-#define PARSE_type_ref_is_s_or_u_or_e(r) PARSE_type_ref_is_s_or_u_or_e2(r, 1)
-#define PARSE_type_ref_is_s_or_u(r)      PARSE_type_ref_is_s_or_u_or_e2(r, 0)
+#define PARSE_type_is_s_or_u_or_e(r) PARSE_type_is_s_or_u_or_e2(r, 1)
+#define PARSE_type_is_s_or_u(r)      PARSE_type_is_s_or_u_or_e2(r, 0)
 
-static struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(
-		type_ref *r, int allow_e)
+static struct_union_enum_st *PARSE_type_is_s_or_u_or_e2(
+		type *r, int allow_e)
 {
-	r = type_ref_skip_casts(r);
-	if(r->type == type_ref_type){
+	r = type_skip_casts(r);
+	if(r->type == type_type){
 		const btype *t = r->bits.type;
 		switch(t->primitive){
 			case type_enum:
@@ -53,7 +53,7 @@ static struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(
 	return NULL;
 }
 
-static type_ref *parse_type_ref2(enum decl_mode mode, decl *dfor);
+static type *parse_type2(enum decl_mode mode, decl *dfor);
 
 /* newdecl_context:
  * struct B { int b; };
@@ -61,7 +61,7 @@ static type_ref *parse_type_ref2(enum decl_mode mode, decl *dfor);
  *   struct A { struct B; }; // this is not a new B
  * };
  */
-static type_ref *parse_type_sue(
+static type *parse_type_sue(
 		enum type_primitive prim,
 		int newdecl_context)
 {
@@ -162,7 +162,7 @@ static type_ref *parse_type_sue(
 		/* sue may already exist */
 		decl_attr_append(&sue->attr, this_sue_attr);
 
-		return type_ref_new_type(
+		return type_new_type(
 				type_new_primitive_sue(prim, sue));
 	}
 }
@@ -248,7 +248,7 @@ static void btype_set_store(
 	*pstore_set = 1;
 }
 
-static type_ref *parse_btype(
+static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
 		int newdecl_context)
 {
@@ -368,7 +368,7 @@ static type_ref *parse_btype(
 		{
 			const enum token tok = curtok;
 			const char *str;
-			type_ref *tref;
+			type *tref;
 			int is_qual;
 
 			EAT(curtok);
@@ -410,7 +410,7 @@ static type_ref *parse_btype(
 			}
 
 			/* *store is assigned elsewhere */
-			return type_ref_new_cast_add(tref, qual);
+			return type_new_cast_add(tref, qual);
 
 		}else if(accept(token_typeof)){
 			if(primitive_mode != NONE)
@@ -465,7 +465,7 @@ static type_ref *parse_btype(
 
 		}else if(curtok == token__Alignas){
 			struct decl_align *da, **psave;
-			type_ref *as_ty;
+			type *as_ty;
 
 			if(!palign)
 				die_at(NULL, "%s unexpected", token_to_str(curtok));
@@ -502,7 +502,7 @@ static type_ref *parse_btype(
 	|| is_noreturn
 	|| (palign && *palign))
 	{
-		type_ref *r;
+		type *r;
 
 		if(signed_set){
 			switch(primitive){
@@ -545,7 +545,7 @@ static type_ref *parse_btype(
 		}
 
 		if(is_va_list){
-			r = type_ref_cached_VA_LIST();
+			r = type_cached_VA_LIST();
 
 		}else switch(primitive_mode){
 			case TYPEDEF:
@@ -557,7 +557,7 @@ static type_ref *parse_btype(
 							tdef_typeof->bits.ident.spel);
 				}
 
-				r = type_ref_new_tdef(tdef_typeof, tdef_decl);
+				r = type_new_tdef(tdef_typeof, tdef_decl);
 				break;
 
 			case PRIMITIVE_NO_MORE:
@@ -569,7 +569,7 @@ static type_ref *parse_btype(
 				if(primitive_mode == NONE && !signed_set)
 					primitive = type_int;
 
-				r = type_ref_new_type(type_new_primitive(primitive));
+				r = type_new_type(type_new_primitive(primitive));
 				break;
 		}
 
@@ -580,7 +580,7 @@ static type_ref *parse_btype(
 			die_at(NULL, "typedefs can't be aligned");
 		}
 
-		r = type_ref_new_cast_add(r, qual);
+		r = type_new_cast_add(r, qual);
 
 		r->attr = attr;
 		parse_add_attr(&r->attr); /* int/struct-A __attr__ */
@@ -665,8 +665,8 @@ funcargs *parse_func_arglist()
 		decl *argdecl = parse_arg_decl();
 
 		/* check for x(void) (or an equivalent typedef) */
-		/* can't use type_ref_is, since that requires folding */
-		if(argdecl->ref->type == type_ref_type
+		/* can't use type_is, since that requires folding */
+		if(argdecl->ref->type == type_type
 		&& argdecl->ref->bits.type->primitive == type_void
 		&& !argdecl->spel)
 		{
@@ -703,7 +703,7 @@ fin:;
 			if(curtok != token_identifier)
 				EAT(token_identifier); /* error */
 
-			d->ref = type_ref_new_type(type_new_primitive(type_int));
+			d->ref = type_new_type(type_new_primitive(type_int));
 
 			d->spel = token_current_spel();
 			dynarray_add(&args->arglist, d);
@@ -741,10 +741,10 @@ declarator:
 		;
 */
 
-static type_ref *parse_type_ref_nest(enum decl_mode mode, decl *dfor)
+static type *parse_type_nest(enum decl_mode mode, decl *dfor)
 {
 	if(accept(token_open_paren)){
-		type_ref *ret;
+		type *ret;
 
 		/*
 		 * we could be here:
@@ -762,7 +762,7 @@ static type_ref *parse_type_ref_nest(enum decl_mode mode, decl *dfor)
 			return NULL;
 		}
 
-		ret = parse_type_ref2(mode, dfor);
+		ret = parse_type2(mode, dfor);
 		EAT(token_close_paren);
 		return ret;
 
@@ -784,9 +784,9 @@ static type_ref *parse_type_ref_nest(enum decl_mode mode, decl *dfor)
 	return NULL;
 }
 
-static type_ref *parse_type_ref_array(enum decl_mode mode, decl *dfor)
+static type *parse_type_array(enum decl_mode mode, decl *dfor)
 {
-	type_ref *r = parse_type_ref_nest(mode, dfor);
+	type *r = parse_type_nest(mode, dfor);
 
 	while(accept(token_open_square)){
 		expr *size;
@@ -818,20 +818,20 @@ static type_ref *parse_type_ref_array(enum decl_mode mode, decl *dfor)
 		if(is_static > 1)
 			die_at(NULL, "multiple static specifiers in array size");
 
-		r = type_ref_new_array2(r, size, q, is_static);
+		r = type_new_array2(r, size, q, is_static);
 	}
 
 	return r;
 }
 
-static type_ref *parse_type_ref_func(enum decl_mode mode, decl *dfor)
+static type *parse_type_func(enum decl_mode mode, decl *dfor)
 {
-	type_ref *sub = parse_type_ref_array(mode, dfor);
+	type *sub = parse_type_array(mode, dfor);
 
 	while(accept(token_open_paren)){
 		current_scope = symtab_new(current_scope);
 
-		sub = type_ref_new_func(sub, parse_func_arglist(), current_scope);
+		sub = type_new_func(sub, parse_func_arglist(), current_scope);
 
 		current_scope = current_scope->parent;
 
@@ -841,15 +841,15 @@ static type_ref *parse_type_ref_func(enum decl_mode mode, decl *dfor)
 	return sub;
 }
 
-static type_ref *parse_type_ref_ptr(enum decl_mode mode, decl *dfor)
+static type *parse_type_ptr(enum decl_mode mode, decl *dfor)
 {
 	int ptr;
 
 	if((ptr = accept(token_multiply)) || accept(token_xor)){
-		typedef type_ref *(*ptr_creator_f)(type_ref *, enum type_qualifier);
-		ptr_creator_f creater = ptr ? type_ref_new_ptr : type_ref_new_block;
+		typedef type *(*ptr_creator_f)(type *, enum type_qualifier);
+		ptr_creator_f creater = ptr ? type_new_ptr : type_new_block;
 
-		type_ref *r_ptr;
+		type *r_ptr;
 		decl_attr *attr = NULL;
 
 		enum type_qualifier qual = qual_none;
@@ -863,20 +863,20 @@ static type_ref *parse_type_ref_ptr(enum decl_mode mode, decl *dfor)
 			}
 		}
 
-		r_ptr = creater(parse_type_ref2(mode, dfor), qual);
+		r_ptr = creater(parse_type2(mode, dfor), qual);
 		r_ptr->attr = attr;
 		return r_ptr;
 	}
 
-	return parse_type_ref_func(mode, dfor);
+	return parse_type_func(mode, dfor);
 }
 
-static type_ref *parse_type_ref2(enum decl_mode mode, decl *dfor)
+static type *parse_type2(enum decl_mode mode, decl *dfor)
 {
-	return parse_type_ref_ptr(mode, dfor);
+	return parse_type_ptr(mode, dfor);
 }
 
-static type_ref *type_ref_reverse(type_ref *r, type_ref *subtype)
+static type *type_reverse(type *r, type *subtype)
 {
 	/*
 	 * e.g.  int (*f)() is parsed as:
@@ -884,7 +884,7 @@ static type_ref *type_ref_reverse(type_ref *r, type_ref *subtype)
 	 * swap to
 	 *   ptr -> func -> subtype
 	 */
-	type_ref *i, *next, *prev = subtype;
+	type *i, *next, *prev = subtype;
 
 	for(i = r; i; prev = i, i = next){
 		next = i->ref;
@@ -894,15 +894,15 @@ static type_ref *type_ref_reverse(type_ref *r, type_ref *subtype)
 	return prev;
 }
 
-static type_ref *parse_type3(
-		enum decl_mode mode, decl *dfor, type_ref *btype)
+static type *parse_type3(
+		enum decl_mode mode, decl *dfor, type *btype)
 {
-	return type_ref_reverse(parse_type_ref2(mode, dfor), btype);
+	return type_reverse(parse_type2(mode, dfor), btype);
 }
 
-type_ref *parse_type(int newdecl)
+type *parse_type(int newdecl)
 {
-	type_ref *btype = parse_btype(NULL, NULL, newdecl);
+	type *btype = parse_btype(NULL, NULL, newdecl);
 
 	return btype ? parse_type3(0, NULL, btype) : NULL;
 }
@@ -933,7 +933,7 @@ static void parse_add_asm(decl *d)
 	}
 }
 
-static decl *parse_decl(type_ref *btype, enum decl_mode mode)
+static decl *parse_decl(type *btype, enum decl_mode mode)
 {
 	decl *d = decl_new();
 	where w_eq;
@@ -968,15 +968,15 @@ static void prevent_typedef(where *w, enum decl_storage store)
 		die_at(w, "typedef unexpected");
 }
 
-static type_ref *default_type(void)
+static type *default_type(void)
 {
 	cc1_warn_at(NULL, 0, WARN_IMPLICIT_INT, "defaulting type to int");
 
-	return type_ref_new_type(type_new_primitive(type_int));
+	return type_new_type(type_new_primitive(type_int));
 }
 
 static decl *parse_decl_extra(
-		type_ref *r, enum decl_mode mode,
+		type *r, enum decl_mode mode,
 		enum decl_storage store, struct decl_align *align)
 {
 	decl *d = parse_decl(r, mode);
@@ -988,7 +988,7 @@ static decl *parse_decl_extra(
 decl *parse_decl_single(enum decl_mode mode, int newdecl)
 {
 	enum decl_storage store = store_default;
-	type_ref *r = parse_btype(
+	type *r = parse_btype(
 			mode & DECL_ALLOW_STORE ? &store : NULL,
 			/*align:*/NULL,
 			newdecl);
@@ -1010,7 +1010,7 @@ decl **parse_decls_one_type(int newdecl)
 {
 	enum decl_storage store = store_default;
 	struct decl_align *align = NULL;
-	type_ref *r = parse_btype(&store, &align, newdecl);
+	type *r = parse_btype(&store, &align, newdecl);
 	decl **decls = NULL;
 
 	if(!r)
@@ -1028,7 +1028,7 @@ decl **parse_decls_one_type(int newdecl)
 
 static int is_old_func(decl *d)
 {
-	type_ref *r = PARSE_type_ref_is(d->ref, type_ref_func);
+	type *r = PARSE_type_is(d->ref, type_func);
 	return r && r->bits.func.args->args_old_proto;
 }
 
@@ -1039,7 +1039,7 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 	int i;
 	funcargs *dfuncargs = d->ref->bits.func.args;
 
-	UCC_ASSERT(PARSE_type_ref_is(d->ref, type_ref_func), "not func");
+	UCC_ASSERT(PARSE_type_is(d->ref, type_func), "not func");
 
 	if(!dfuncargs->args_old_proto){
 		die_at(&d->where, dfuncargs->arglist
@@ -1085,7 +1085,7 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 {
 	char wbuf[WHERE_BUF_SIZ];
 
-	if(!type_ref_is(d_prev->ref, type_ref_func))
+	if(!type_is(d_prev->ref, type_func))
 		return; /* error caught later */
 
 	if(d_prev->func_code){
@@ -1123,8 +1123,8 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 
 	/* update the f(void) bools */
 	{
-		funcargs *fargs_this = type_ref_funcargs(d_this->ref),
-		         *fargs_prev = type_ref_funcargs(d_prev->ref);
+		funcargs *fargs_this = type_funcargs(d_this->ref),
+		         *fargs_prev = type_funcargs(d_prev->ref);
 
 		fargs_this->args_void          |= fargs_prev->args_void;
 		fargs_this->args_void_implicit |= fargs_prev->args_void_implicit;
@@ -1142,7 +1142,7 @@ int parse_decls_single_type(
 
 	enum decl_storage store = store_default;
 	struct decl_align *align = NULL;
-	type_ref *this_ref;
+	type *this_ref;
 	decl *last = NULL;
 
 	UCC_ASSERT(scope || pdecls, "what shall I do?");
@@ -1164,7 +1164,7 @@ int parse_decls_single_type(
 	}
 
 	if(store != store_typedef){
-		struct_union_enum_st *sue = PARSE_type_ref_is_s_or_u(this_ref);
+		struct_union_enum_st *sue = PARSE_type_is_s_or_u(this_ref);
 
 		if(sue && !parse_at_decl_spec()){
 			/*
@@ -1178,7 +1178,7 @@ int parse_decls_single_type(
 					warn_at(&this_ref->where, "anonymous %s with no instances", sue_str(sue));
 
 				/* check for storage/qual on no-instance */
-				qual = type_ref_qual(this_ref);
+				qual = type_qual(this_ref);
 				if(qual || store != store_default){
 					warn_at(&this_ref->where, "ignoring %s%s%son no-instance %s",
 							store != store_default ? decl_store_to_str(store) : "",
@@ -1212,7 +1212,7 @@ int parse_decls_single_type(
 				struct_union_enum_st *sue;
 
 				/* check for no-fwd and anon */
-				sue = type_ref_is_s_or_u_or_e(this_ref);
+				sue = type_is_s_or_u_or_e(this_ref);
 				switch(sue ? sue->primitive : type_unknown){
 					case type_struct:
 					case type_union:
@@ -1236,8 +1236,8 @@ int parse_decls_single_type(
 					 */
 					const char *emsg = "declaration doesn't declare anything";
 
-					if(PARSE_type_ref_is(d->ref, type_ref_type)
-					|| PARSE_type_ref_is(d->ref, type_ref_tdef))
+					if(PARSE_type_is(d->ref, type_type)
+					|| PARSE_type_is(d->ref, type_tdef))
 					{
 						warn_at(&d->where, "%s", emsg);
 					}else{
@@ -1291,7 +1291,7 @@ int parse_decls_single_type(
 
 			/* clang-style allows __attribute__ and then a function block */
 			if(need_func || curtok == token_open_block){
-				type_ref *func_r = PARSE_DECL_IS_FUNC(d);
+				type *func_r = PARSE_DECL_IS_FUNC(d);
 				symtable *const old_scope = current_scope;
 
 				/* need to set scope to include function arguments,
@@ -1309,7 +1309,7 @@ int parse_decls_single_type(
 				/* if:
 				 * f(){...}, then we don't have args_void, but implicitly we do
 				 */
-				type_ref_funcargs(d->ref)->args_void_implicit = 1;
+				type_funcargs(d->ref)->args_void_implicit = 1;
 			}
 		}
 

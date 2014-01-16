@@ -141,7 +141,7 @@ void gen_block_decls(symtable *stab, const char **dbg_end_lbl)
 		int func;
 
 		/* we may need a '.extern fn...' for prototypes... */
-		if((func = !!type_ref_is(d->ref, type_ref_func))
+		if((func = !!type_is(d->ref, type_func))
 		|| decl_store_static_or_extern(d->store))
 		{
 			/* if it's a string, go,

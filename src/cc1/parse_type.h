@@ -2,7 +2,7 @@
 #define PARSE_TYPE_H
 
 /* (type *[]) */
-type_ref *parse_type(int newdecl);
+type *parse_type(int newdecl);
 
 decl *parse_decl_single(enum decl_mode mode, int newdecl);
 

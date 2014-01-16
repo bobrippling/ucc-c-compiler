@@ -50,14 +50,14 @@ int numeric_cmp(const numeric *a, const numeric *b)
 	}
 }
 
-int integral_str(char *buf, size_t nbuf, integral_t v, type_ref *ty)
+int integral_str(char *buf, size_t nbuf, integral_t v, type *ty)
 {
 	/* the final resting place for an integral */
-	const int is_signed = type_ref_is_signed(ty);
+	const int is_signed = type_is_signed(ty);
 
 	if(ty){
 		sintegral_t sv;
-		v = integral_truncate(v, type_ref_size(ty, NULL), &sv);
+		v = integral_truncate(v, type_size(ty, NULL), &sv);
 		if(is_signed)
 			v = sv;
 	}
@@ -115,13 +115,13 @@ integral_t integral_truncate(
 			sign_extended);
 }
 
-int integral_high_bit(integral_t val, type_ref *ty)
+int integral_high_bit(integral_t val, type *ty)
 {
-	if(type_ref_is_signed(ty)){
+	if(type_is_signed(ty)){
 		const sintegral_t as_signed = val;
 
 		if(as_signed < 0)
-			val = integral_truncate(val, type_ref_size(ty, &ty->where), NULL);
+			val = integral_truncate(val, type_size(ty, &ty->where), NULL);
 	}
 
 	{

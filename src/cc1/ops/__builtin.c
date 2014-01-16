@@ -205,29 +205,29 @@ static void fold_memset(expr *e, symtable *stab)
 	if((unsigned)e->bits.builtin_memset.ch > 255)
 		warn_at(&e->where, "memset with value > UCHAR_MAX");
 
-	e->tree_type = type_ref_cached_VOID_PTR();
+	e->tree_type = type_cached_VOID_PTR();
 }
 
 static void builtin_gen_memset(expr *e)
 {
 	size_t n, rem;
 	unsigned i;
-	type_ref *tzero = type_ref_cached_MAX_FOR(e->bits.builtin_memset.len);
-	type_ref *textra, *textrap;
+	type *tzero = type_cached_MAX_FOR(e->bits.builtin_memset.len);
+	type *textra, *textrap;
 
 	if(!tzero)
-		tzero = type_ref_cached_CHAR(n);
+		tzero = type_cached_CHAR(n);
 
-	n   = e->bits.builtin_memset.len / type_ref_size(tzero, NULL);
-	rem = e->bits.builtin_memset.len % type_ref_size(tzero, NULL);
+	n   = e->bits.builtin_memset.len / type_size(tzero, NULL);
+	rem = e->bits.builtin_memset.len % type_size(tzero, NULL);
 
-	if((textra = rem ? type_ref_cached_MAX_FOR(rem) : NULL))
-		textrap = type_ref_new_ptr(textra, qual_none);
+	if((textra = rem ? type_cached_MAX_FOR(rem) : NULL))
+		textrap = type_new_ptr(textra, qual_none);
 
 	/* works fine for bitfields - struct lea acts appropriately */
 	lea_expr(e->lhs);
 
-	out_change_type(type_ref_new_ptr(tzero, qual_none));
+	out_change_type(type_new_ptr(tzero, qual_none));
 
 	out_dup();
 
@@ -236,7 +236,7 @@ static void builtin_gen_memset(expr *e)
 			e->expr->f_str(),
 			e->bits.builtin_memset.ch,
 			e->bits.builtin_memset.len,
-			type_ref_to_str(tzero), n);
+			type_to_str(tzero), n);
 #endif
 
 	for(i = 0; i < n; i++){
@@ -248,7 +248,7 @@ static void builtin_gen_memset(expr *e)
 		out_pop();
 
 		/* p++ (copied pointer) */
-		out_push_l(type_ref_cached_INTPTR_T(), 1);
+		out_push_l(type_cached_INTPTR_T(), 1);
 		out_op(op_plus);
 
 		if(rem){
@@ -300,11 +300,11 @@ static void fold_memcpy(expr *e, symtable *stab)
 	fold_expr_no_decay(e->lhs, stab);
 	fold_expr_no_decay(e->rhs, stab);
 
-	e->tree_type = type_ref_cached_VOID_PTR();
+	e->tree_type = type_cached_VOID_PTR();
 }
 
 #ifdef BUILTIN_USE_LIBC
-static decl *decl_new_tref(char *sp, type_ref *ref)
+static decl *decl_new_tref(char *sp, type *ref)
 {
 	decl *d = decl_new();
 	d->ref = ref;
@@ -315,10 +315,10 @@ static decl *decl_new_tref(char *sp, type_ref *ref)
 
 static void builtin_memcpy_single(void)
 {
-	static type_ref *t1;
+	static type *t1;
 
 	if(!t1)
-		t1 = type_ref_cached_INTPTR_T();
+		t1 = type_cached_INTPTR_T();
 
 	/* ds */
 
@@ -349,25 +349,25 @@ static void builtin_gen_memcpy(expr *e)
 	/* TODO - also with memset */
 	funcargs *fargs = funcargs_new();
 
-	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_ref_cached_VOID_PTR()));
-	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_ref_cached_VOID_PTR()));
-	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_ref_cached_INTPTR_T()));
+	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_cached_VOID_PTR()));
+	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_cached_VOID_PTR()));
+	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_cached_INTPTR_T()));
 
-	type_ref *ctype = type_ref_new_func(
+	type *ctype = type_new_func(
 			e->tree_type, fargs);
 
 	out_push_lbl("memcpy", 0);
-	out_push_l(type_ref_cached_INTPTR_T(), e->bits.num.val);
+	out_push_l(type_cached_INTPTR_T(), e->bits.num.val);
 	lea_expr(e->rhs, stab);
 	lea_expr(e->lhs, stab);
 	out_call(3, e->tree_type, ctype);
 #else
 	/* TODO: backend rep movsb */
 	unsigned i = e->bits.num.val.i;
-	type_ref *tptr = type_ref_new_ptr(
-				type_ref_cached_MAX_FOR(e->bits.num.val.i),
+	type *tptr = type_new_ptr(
+				type_cached_MAX_FOR(e->bits.num.val.i),
 				qual_none);
-	unsigned tptr_sz = type_ref_size(tptr, &e->where);
+	unsigned tptr_sz = type_size(tptr, &e->where);
 
 	lea_expr(e->lhs); /* d */
 	lea_expr(e->rhs); /* ds */
@@ -386,8 +386,8 @@ static void builtin_gen_memcpy(expr *e)
 
 		if(i > 0){
 			tptr_sz /= 2;
-			tptr = type_ref_new_ptr(
-					type_ref_cached_MAX_FOR(tptr_sz),
+			tptr = type_new_ptr(
+					type_cached_MAX_FOR(tptr_sz),
 					qual_none);
 		}
 	}
@@ -432,9 +432,9 @@ static void fold_unreachable(expr *e, symtable *stab)
 {
 	(void)stab;
 
-	e->tree_type = type_ref_func_call(
-			e->expr->tree_type = type_ref_new_func(
-				type_ref_cached_VOID(), funcargs_new(), stab), NULL);
+	e->tree_type = type_func_call(
+			e->expr->tree_type = type_new_func(
+				type_cached_VOID(), funcargs_new(), stab), NULL);
 
 	decl_attr_append(&e->tree_type->attr, decl_attr_new(attr_noreturn));
 
@@ -458,27 +458,27 @@ static expr *parse_unreachable(const char *ident)
 
 static void fold_compatible_p(expr *e, symtable *stab)
 {
-	type_ref **types = e->bits.types;
+	type **types = e->bits.types;
 
 	if(dynarray_count(types) != 2)
 		die_at(&e->where, "need two arguments for %s", BUILTIN_SPEL(e->expr));
 
-	fold_type_ref(types[0], NULL, stab);
-	fold_type_ref(types[1], NULL, stab);
+	fold_type(types[0], NULL, stab);
+	fold_type(types[1], NULL, stab);
 
-	e->tree_type = type_ref_cached_BOOL();
+	e->tree_type = type_cached_BOOL();
 	wur_builtin(e);
 }
 
 static void const_compatible_p(expr *e, consty *k)
 {
-	type_ref **types = e->bits.types;
+	type **types = e->bits.types;
 
 	CONST_FOLD_LEAF(k);
 
 	k->type = CONST_NUM;
 
-	k->bits.num.val.i = !!(type_ref_cmp(types[0], types[1], 0) & TYPE_EQUAL_ANY);
+	k->bits.num.val.i = !!(type_cmp(types[0], types[1], 0) & TYPE_EQUAL_ANY);
 }
 
 static expr *expr_new_funcall_typelist(void)
@@ -510,7 +510,7 @@ static void fold_constant_p(expr *e, symtable *stab)
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
-	e->tree_type = type_ref_cached_BOOL();
+	e->tree_type = type_cached_BOOL();
 	wur_builtin(e);
 }
 
@@ -558,8 +558,8 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 	memcpy_safe(&e->bits.num, &k.bits.num);
 
-	e->tree_type = type_ref_new_ptr(
-			type_ref_new_type(
+	e->tree_type = type_new_ptr(
+			type_new_type(
 				type_new_primitive(type_nchar)
 			),
 			qual_none);
@@ -602,7 +602,7 @@ expr *builtin_new_frame_address(int depth)
 static void fold_reg_save_area(expr *e, symtable *stab)
 {
 	(void)stab;
-	e->tree_type = type_ref_cached_CHAR_PTR(n);
+	e->tree_type = type_cached_CHAR_PTR(n);
 }
 
 static void gen_reg_save_area(expr *e)
@@ -737,26 +737,26 @@ static expr *parse_choose_expr(const char *ident)
 
 static void fold_is_signed(expr *e, symtable *stab)
 {
-	type_ref **tl = e->bits.types;
+	type **tl = e->bits.types;
 	int incomplete;
 
 	if(dynarray_count(tl) != 1)
 		die_at(&e->where, "need a single argument for %s", BUILTIN_SPEL(e->expr));
 
-	fold_type_ref(tl[0], NULL, stab);
+	fold_type(tl[0], NULL, stab);
 
-	if((incomplete = !type_ref_is_complete(tl[0]))
-	|| !type_ref_is_scalar(tl[0]))
+	if((incomplete = !type_is_complete(tl[0]))
+	|| !type_is_scalar(tl[0]))
 	{
 		warn_at_print_error(&e->where, "%s on %s type '%s'",
 				BUILTIN_SPEL(e->expr),
 				incomplete ? "incomplete" : "non-scalar",
-				type_ref_to_str(tl[0]));
+				type_to_str(tl[0]));
 
 		fold_had_error = 1;
 	}
 
-	e->tree_type = type_ref_cached_BOOL();
+	e->tree_type = type_cached_BOOL();
 	wur_builtin(e);
 }
 
@@ -764,7 +764,7 @@ static void const_is_signed(expr *e, consty *k)
 {
 	CONST_FOLD_LEAF(k);
 	k->type = CONST_NUM;
-	k->bits.num.val.i = type_ref_is_signed(e->bits.types[0]);
+	k->bits.num.val.i = type_is_signed(e->bits.types[0]);
 }
 
 static expr *parse_is_signed(const char *ident)
@@ -808,7 +808,7 @@ need_char_p:
 		case builtin_nan:  prim = type_double; break;
 		case builtin_nanl: prim = type_ldouble; break;
 	}
-	e->tree_type = type_ref_new_type(type_new_primitive(prim));
+	e->tree_type = type_new_type(type_new_primitive(prim));
 
 	wur_builtin(e);
 }

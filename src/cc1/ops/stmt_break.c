@@ -16,7 +16,7 @@ void fold_stmt_break_continue(stmt *t, char *lbl)
 	t->expr = expr_new_identifier(lbl);
 	memcpy_safe(&t->expr->where, &t->where);
 
-	t->expr->tree_type = type_ref_cached_VOID();
+	t->expr->tree_type = type_cached_VOID();
 }
 
 void fold_stmt_break(stmt *t)

@@ -41,7 +41,7 @@ static void struct_pack_finish_bitfield(
 }
 
 static void bitfield_size_align(
-		type_ref *tref, unsigned *psz, unsigned *palign, where *from)
+		type *tref, unsigned *psz, unsigned *palign, where *from)
 {
 	/* implementation defined if ty isn't one of:
 	 * unsigned, signed or _Bool.
@@ -49,7 +49,7 @@ static void bitfield_size_align(
 	 * and reserve a max. of that size for the bitfield
 	 */
 	const btype *ty;
-	tref = type_ref_is_type(tref, type_unknown);
+	tref = type_is_type(tref, type_unknown);
 	assert(tref);
 
 	ty = tref->bits.type;
@@ -129,7 +129,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
 			unsigned align, sz;
-			struct_union_enum_st *sub_sue = type_ref_is_s_or_u_or_e(d->ref);
+			struct_union_enum_st *sub_sue = type_is_s_or_u_or_e(d->ref);
 
 			fold_decl(d, stab, NULL);
 
@@ -140,7 +140,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				 */
 				if(d->field_width){
 					/* fine */
-				}else if(sub_sue && !type_ref_is_ptr(d->ref)){
+				}else if(sub_sue && !type_is_ptr(d->ref)){
 					/* anon */
 					char *prob = NULL;
 					int ignore = 0;
@@ -170,13 +170,13 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				}
 			}
 
-			if(!type_ref_is_complete(d->ref)
-			&& !type_ref_is_incomplete_array(d->ref)) /* allow flexarrays */
+			if(!type_is_complete(d->ref)
+			&& !type_is_incomplete_array(d->ref)) /* allow flexarrays */
 			{
 				die_at(&d->where, "incomplete field '%s'", decl_to_str(d));
 			}
 
-			if(type_ref_is_const(d->ref))
+			if(type_is_const(d->ref))
 				submemb_const = 1;
 
 			if(sub_sue){
@@ -187,7 +187,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 						submemb_const = 1;
 				}
 
-				if(type_ref_is(d->ref, type_ref_ptr)
+				if(type_is(d->ref, type_ptr)
 				|| sub_sue->primitive == type_enum)
 					goto normal;
 
@@ -234,7 +234,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 						struct_pack_finish_bitfield(&offset, &bitfield.current_off);
 					}
 
-					bf_cur_lim = CHAR_BIT * type_ref_size(d->ref, &d->where);
+					bf_cur_lim = CHAR_BIT * type_size(d->ref, &d->where);
 
 					/* Get some initial padding.
 					 * Note that we want to affect the align_max
@@ -265,7 +265,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 			}else{
 normal:
 				align = decl_align(d);
-				if(type_ref_is_incomplete_array(d->ref)){
+				if(type_is_incomplete_array(d->ref)){
 					if(i[1])
 						die_at(&d->where, "flexible array not at end of struct");
 					else if(sue->primitive != type_struct)

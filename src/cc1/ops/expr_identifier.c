@@ -91,7 +91,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			e->bits.num = m->val->bits.num;
 			FOLD_EXPR(e, stab);
 
-			e->tree_type = type_ref_new_type(
+			e->tree_type = type_new_type(
 					type_new_primitive_sue(type_enum, sue));
 		}
 		return;
@@ -101,7 +101,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 	/* set if lvalue - expr_is_lval() checks for arrays */
 	e->f_lea =
-		type_ref_is(e->tree_type, type_ref_func)
+		type_is(e->tree_type, type_func)
 		? NULL
 		: gen_expr_identifier_lea;
 

@@ -21,7 +21,7 @@ enum printf_attr
 	printf_attr_long = 1 << 0
 };
 
-static void format_check_printf_1(char fmt, type_ref *const t_in,
+static void format_check_printf_1(char fmt, type *const t_in,
 		where *w, enum printf_attr attr)
 {
 	int allow_long = 0;
@@ -31,13 +31,13 @@ static void format_check_printf_1(char fmt, type_ref *const t_in,
 
 	switch(fmt){
 		enum type_primitive prim;
-		type_ref *tt;
+		type *tt;
 
 		case 's': prim = type_nchar; goto ptr;
 		case 'p': prim = type_void; goto ptr;
 		case 'n': prim = type_int;  goto ptr;
 ptr:
-			tt = type_ref_is_type(type_ref_is_ptr(t_in), prim);
+			tt = type_is_type(type_is_ptr(t_in), prim);
 			if(!tt){
 				snprintf(expected, sizeof expected,
 						"'%s *'", type_primitive_to_str(prim));
@@ -54,9 +54,9 @@ ptr:
 		case 'd':
 		case 'i':
 			allow_long = 1;
-			if(!type_ref_is_integral(t_in))
+			if(!type_is_integral(t_in))
 				strcpy(expected, "integral");
-			if((attr & printf_attr_long) && !type_ref_is_type(t_in, type_long))
+			if((attr & printf_attr_long) && !type_is_type(t_in, type_long))
 				strcpy(expected, "'long'");
 			break;
 
@@ -68,7 +68,7 @@ ptr:
 		case 'G':
 		case 'a':
 		case 'A':
-			if(!type_ref_is_floating(t_in))
+			if(!type_is_floating(t_in))
 				strcpy(expected, "'double'");
 			break;
 
@@ -83,7 +83,7 @@ ptr:
 	if(*expected){
 		warn_at(w, "format %%%s%c expects %s argument (got %s)",
 				attr & printf_attr_long ? "l" : "", fmt,
-				expected, type_ref_to_str(t_in));
+				expected, type_to_str(t_in));
 	}
 }
 
@@ -213,7 +213,7 @@ not_string:
 }
 
 void format_check_call(
-		where *w, type_ref *ref,
+		where *w, type *ref,
 		expr **args, const int variadic)
 {
 	decl_attr *attr = type_attr_present(ref, attr_format);
@@ -253,7 +253,7 @@ void format_check_call(
 
 void format_check_decl(decl *d, decl_attr *da)
 {
-	type_ref *r_func = type_ref_is_func_or_block(d->ref);
+	type *r_func = type_is_func_or_block(d->ref);
 	funcargs *fargs;
 	int fmt_idx, var_idx, nargs;
 
@@ -287,7 +287,7 @@ void format_check_decl(decl *d, decl_attr *da)
 		assert(var_idx > fmt_idx);
 	}
 
-	if(type_ref_str_type(fargs->arglist[fmt_idx]->ref) != type_ref_str_char){
+	if(type_str_type(fargs->arglist[fmt_idx]->ref) != type_str_char){
 		warn_at(&da->where, "format argument not a string type");
 		return;
 	}

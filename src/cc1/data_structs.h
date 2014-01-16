@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 typedef struct numeric numeric;
-typedef struct type_ref  type_ref;
+typedef struct type  type;
 
 typedef unsigned long long integral_t;
 typedef   signed long long sintegral_t;
@@ -43,7 +43,7 @@ struct numeric
 int numeric_cmp(const numeric *, const numeric *);
 
 #define INTEGRAL_BUF_SIZ 32
-int integral_str(char *buf, size_t nbuf, integral_t v, type_ref *ty);
+int integral_str(char *buf, size_t nbuf, integral_t v, type *ty);
 
 integral_t integral_truncate(
 		integral_t val, unsigned bytes, sintegral_t *sign_extended);
@@ -53,7 +53,7 @@ integral_t integral_truncate_bits(
 		unsigned bits,
 		sintegral_t *signed_v);
 
-int integral_high_bit(const integral_t val, type_ref *ty);
+int integral_high_bit(const integral_t val, type *ty);
 
 enum op_type
 {

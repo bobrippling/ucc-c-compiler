@@ -137,7 +137,7 @@ void gen_expr_str_compound_lit(expr *e)
 
 void gen_expr_style_compound_lit(expr *e)
 {
-	stylef("(%s)", type_ref_to_str(e->bits.complit.decl->ref));
+	stylef("(%s)", type_to_str(e->bits.complit.decl->ref));
 	gen_style_dinit(e->bits.complit.decl->init);
 }
 
@@ -148,7 +148,7 @@ void mutate_expr_compound_lit(expr *e)
 	e->f_const_fold = const_expr_compound_lit;
 }
 
-static decl *compound_lit_decl(type_ref *t, decl_init *init)
+static decl *compound_lit_decl(type *t, decl_init *init)
 {
 	decl *d = decl_new();
 
@@ -158,7 +158,7 @@ static decl *compound_lit_decl(type_ref *t, decl_init *init)
 	return d;
 }
 
-expr *expr_new_compound_lit(type_ref *t, decl_init *init)
+expr *expr_new_compound_lit(type *t, decl_init *init)
 {
 	expr *e = expr_new_wrapper(compound_lit);
 	e->bits.complit.decl = compound_lit_decl(t, init);

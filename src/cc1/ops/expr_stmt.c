@@ -29,7 +29,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 				FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_ST_UN,
 				"({ ... }) statement");
 	}else{
-		e->tree_type = type_ref_cached_VOID(); /* void expr */
+		e->tree_type = type_cached_VOID(); /* void expr */
 	}
 
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */

@@ -143,7 +143,7 @@ chosen:
 		p = TYPE_PRIMITIVE_TO_UNSIGNED(p);
 
 	EOF_WHERE(&e->where,
-		e->tree_type = type_ref_new_type(type_new_primitive(p));
+		e->tree_type = type_new_type(type_new_primitive(p));
 	);
 
 	(void)stab;

@@ -125,7 +125,7 @@ static void sue_get_decls(sue_member **mems, sue_member ***pds)
 			dynarray_add(pds, *mems);
 		}else{
 			/* either an anonymous struct/union OR a bitfield */
-			struct_union_enum_st *sub = type_ref_is_s_or_u(d->ref);
+			struct_union_enum_st *sub = type_is_s_or_u(d->ref);
 
 			if(sub)
 				sue_get_decls(sub->members, pds);
@@ -331,7 +331,7 @@ static void *sue_member_find(
 				if(!strcmp(sp, spel))
 					return d;
 
-			}else if((sub = type_ref_is_s_or_u(d->ref))){
+			}else if((sub = type_is_s_or_u(d->ref))){
 				/* C11 anonymous struct/union */
 				decl *dsub = NULL;
 				decl *tdef;
@@ -342,7 +342,7 @@ static void *sue_member_find(
 					continue;
 
 				if((fopt_mode & FOPT_PLAN9_EXTENSIONS)
-				&& (tdef = type_ref_is_tdef(d->ref))
+				&& (tdef = type_is_tdef(d->ref))
 				&& !strcmp(tdef->spel, spel))
 				{
 					dsub = tdef;
@@ -398,7 +398,7 @@ decl *struct_union_member_find_sue(struct_union_enum_st *in, struct_union_enum_s
 
 	for(i = in->members; i && *i; i++){
 		decl *d = (*i)->struct_member;
-		struct_union_enum_st *s = type_ref_is_s_or_u(d->ref);
+		struct_union_enum_st *s = type_is_s_or_u(d->ref);
 
 		if(s == needle)
 			return d;

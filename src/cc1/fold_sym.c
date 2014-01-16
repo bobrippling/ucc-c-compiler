@@ -100,7 +100,7 @@ void symtab_check_static_asserts(symtable *stab)
 		sa->checked = 1;
 
 		FOLD_EXPR(sa->e, sa->scope);
-		if(!type_ref_is_integral(sa->e->tree_type))
+		if(!type_is_integral(sa->e->tree_type))
 			die_at(&sa->e->where,
 					"static assert: not an integral expression (%s)",
 					sa->e->f_str());

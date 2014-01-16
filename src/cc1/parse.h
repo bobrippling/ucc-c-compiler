@@ -30,7 +30,7 @@ expr *parse_expr_sizeof_typeof_alignof(enum what_of what_of);
 expr *parse_expr_exp(void);
 
 void parse_static_assert(void);
-type_ref **parse_type_list(void);
+type **parse_type_list(void);
 expr **parse_funcargs(void);
 symtable_gasm *parse_gasm(void);
 

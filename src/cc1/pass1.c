@@ -50,7 +50,7 @@ void parse_and_fold(symtable_global *globals)
 
 	current_scope = &globals->stab;
 
-	type_ref_init(current_scope);
+	type_init(current_scope);
 
 	while(curtok != token_eof){
 		decl **new = NULL;

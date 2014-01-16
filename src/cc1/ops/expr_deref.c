@@ -23,7 +23,7 @@ void fold_expr_deref(expr *e, symtable *stab)
 
 	fold_check_bounds(ptr, 0);
 
-	e->tree_type = type_ref_ptr_depth_dec(ptr->tree_type, &e->where);
+	e->tree_type = type_ptr_depth_dec(ptr->tree_type, &e->where);
 }
 
 static void gen_expr_deref_lea(expr *e)
@@ -40,7 +40,7 @@ void gen_expr_deref(expr *e)
 
 void gen_expr_str_deref(expr *e)
 {
-	idt_printf("deref, size: %s\n", type_ref_to_str(e->tree_type));
+	idt_printf("deref, size: %s\n", type_to_str(e->tree_type));
 	gen_str_indent++;
 	print_expr(expr_deref_what(e));
 	gen_str_indent--;

@@ -24,7 +24,7 @@ void bitfield_trunc_check(decl *mem, expr *from)
 		const sintegral_t kexp = k.bits.num.val.i;
 		/* highest may be -1 - kexp is zero */
 		const int highest = integral_high_bit(k.bits.num.val.i, from->tree_type);
-		const int is_signed = type_ref_is_signed(mem->field_width->tree_type);
+		const int is_signed = type_is_signed(mem->field_width->tree_type);
 
 		const_fold(mem->field_width, &k);
 
@@ -48,7 +48,7 @@ void expr_must_lvalue(expr *e)
 {
 	if(!expr_is_lval(e)){
 		die_at(&e->where, "assignment to %s/%s - not an lvalue",
-				type_ref_to_str(e->tree_type),
+				type_to_str(e->tree_type),
 				e->f_str());
 	}
 }
@@ -65,7 +65,7 @@ static void lea_assign_lhs(expr *e)
 
 void expr_assign_const_check(expr *e, where *w)
 {
-	if(type_ref_is_const(e->tree_type)){
+	if(type_is_const(e->tree_type)){
 		fold_had_error = 1;
 		warn_at_print_error(w, "can't modify const expression %s",
 				e->f_str());
@@ -84,7 +84,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	if(lhs_sym)
 		lhs_sym->nreads--; /* cancel the read that fold_ident thinks it got */
 
-	if(type_ref_is_type(e->rhs->tree_type, type_void))
+	if(type_is_type(e->rhs->tree_type, type_void))
 		die_at(&e->where, "assignment from void expression");
 
 	expr_must_lvalue(e->lhs);
@@ -114,10 +114,10 @@ void fold_expr_assign(expr *e, symtable *stab)
 	}
 
 
-	if(type_ref_is_s_or_u(e->tree_type)){
+	if(type_is_s_or_u(e->tree_type)){
 		e->expr = builtin_new_memcpy(
 				e->lhs, e->rhs,
-				type_ref_size(e->rhs->tree_type, &e->rhs->where));
+				type_size(e->rhs->tree_type, &e->rhs->where));
 
 		FOLD_EXPR(e->expr, stab);
 
@@ -134,7 +134,7 @@ void gen_expr_assign(expr *e)
 {
 	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
 
-	if(type_ref_is_s_or_u(e->tree_type)){
+	if(type_is_s_or_u(e->tree_type)){
 		/* memcpy */
 		gen_expr(e->expr);
 	}else{

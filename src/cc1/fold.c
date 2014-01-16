@@ -27,7 +27,7 @@
 
 int fold_had_error;
 
-void fold_insert_casts(type_ref *tlhs, expr **prhs, symtable *stab)
+void fold_insert_casts(type *tlhs, expr **prhs, symtable *stab)
 {
 	/* insert a cast: rhs -> lhs */
 	*prhs = expr_set_where(
@@ -39,12 +39,12 @@ void fold_insert_casts(type_ref *tlhs, expr **prhs, symtable *stab)
 }
 
 int fold_type_chk_warn(
-		type_ref *lhs, type_ref *rhs,
+		type *lhs, type *rhs,
 		where *w, const char *desc)
 {
 	int error = 1;
 
-	switch(type_ref_cmp(lhs, rhs, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
+	switch(type_cmp(lhs, rhs, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
 		case TYPE_CONVERTIBLE_IMPLICIT:
 			/* attempt to insert regardless, e.g. _Bool x = 5;
 			 *  - they match but we need the _Bool cast */
@@ -67,8 +67,8 @@ int fold_type_chk_warn(
 					w,
 					"mismatching types, %s:\n%s: note: '%s' vs '%s'",
 					desc, where_str_r(wbuf, w),
-					type_ref_to_str_r(buf, lhs),
-					type_ref_to_str(       rhs));
+					type_to_str_r(buf, lhs),
+					type_to_str(       rhs));
 
 			if(error){
 				fold_had_error = 1;
@@ -81,7 +81,7 @@ int fold_type_chk_warn(
 }
 
 void fold_type_chk_and_cast(
-		type_ref *lhs, expr **prhs,
+		type *lhs, expr **prhs,
 		symtable *stab, where *w,
 		const char *desc)
 {
@@ -89,16 +89,16 @@ void fold_type_chk_and_cast(
 	int strict = 0;
 
 	/* stronger checks for blocks, functions and (non-void) pointers */
-	if(type_ref_is_nonvoid_ptr(a)
-	&& type_ref_is_nonvoid_ptr(b))
+	if(type_is_nonvoid_ptr(a)
+	&& type_is_nonvoid_ptr(b))
 	{
 		strict = 1;
 	}
 	else
-	if(type_ref_is(a, type_ref_block)
-	|| type_ref_is(b, type_ref_block)
-	|| type_ref_is(a, type_ref_func)
-	|| type_ref_is(b, type_ref_func))
+	if(type_is(a, type_block)
+	|| type_is(b, type_block)
+	|| type_is(a, type_func)
+	|| type_is(b, type_func))
 	{
 		strict = 1;
 	}
@@ -106,7 +106,7 @@ void fold_type_chk_and_cast(
 	int cast = 0;
 
 	/* special case - allow assignment to pointer from 0-constant */
-	if(type_ref_is_ptr_or_block(lhs) && expr_is_null_ptr(*prhs, NULL_STRICT_INT))
+	if(type_is_ptr_or_block(lhs) && expr_is_null_ptr(*prhs, NULL_STRICT_INT))
 		cast = 1; /* no warning, but still sign extend the zero */
 	else if(fold_type_chk_warn(lhs, (*prhs)->tree_type, w, desc))
 		cast = 1;
@@ -118,8 +118,8 @@ void fold_type_chk_and_cast(
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w)
 {
 	/* restrict operation checks */
-	const enum type_qualifier ql = type_ref_qual(lhs->tree_type),
-				                    qr = type_ref_qual(rhs->tree_type);
+	const enum type_qualifier ql = type_qual(lhs->tree_type),
+				                    qr = type_qual(rhs->tree_type);
 
 	if((ql & qual_restrict) && (qr & qual_restrict))
 		warn_at(w, "restrict pointers in %s", desc);
@@ -167,15 +167,15 @@ static expr *fold_expr_lval2rval(expr *e, symtable *stab)
 expr *fold_expr_decay(expr *e, symtable *stab)
 {
 	/* perform array decay and pointer decay */
-	type_ref *r;
-	type_ref *decayed;
+	type *r;
+	type *decayed;
 
 	e = fold_expr_lval2rval(e, stab);
 
 	r = e->tree_type;
 
 	EOF_WHERE(&e->where,
-			decayed = type_ref_decay(r);
+			decayed = type_decay(r);
 		);
 
 	if(decayed != r){
@@ -189,7 +189,7 @@ expr *fold_expr_decay(expr *e, symtable *stab)
 	return e;
 }
 
-static void fold_calling_conv(type_ref *r)
+static void fold_calling_conv(type *r)
 {
 	enum calling_conv conv;
 	decl_attr *found;
@@ -220,10 +220,10 @@ static void fold_calling_conv(type_ref *r)
 		conv = def_conv;
 	}
 
-	type_ref_funcargs(r)->conv = conv;
+	type_funcargs(r)->conv = conv;
 }
 
-void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
+void fold_type(type *r, type *parent, symtable *stab)
 {
 	enum type_qualifier q_to_check = qual_none;
 
@@ -233,7 +233,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 	r->folded = 1;
 
 	switch(r->type){
-		case type_ref_array:
+		case type_array:
 			if(r->bits.array.size){
 				consty k;
 
@@ -254,9 +254,9 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			}
 			break;
 
-		case type_ref_func:
-			if(type_ref_is(parent, type_ref_ptr)
-			&& (type_ref_qual(parent) & qual_restrict))
+		case type_func:
+			if(type_is(parent, type_ptr)
+			&& (type_qual(parent) & qual_restrict))
 			{
 				die_at(&r->where, "restrict qualified function pointer");
 			}
@@ -268,24 +268,24 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			fold_calling_conv(r);
 			break;
 
-		case type_ref_block:
+		case type_block:
 			/*q_to_check = r->bits.block.qual; - allowed */
 			break;
 
-		case type_ref_cast:
+		case type_cast:
 			if(!r->bits.cast.is_signed_cast)
-				q_to_check = type_ref_qual(r);
+				q_to_check = type_qual(r);
 			break;
 
-		case type_ref_ptr:
+		case type_ptr:
 			/*q_to_check = r->bits.qual; - allowed */
 			break;
 
-		case type_ref_type:
+		case type_type:
 		{
 			/* check if we're a new struct/union/enum decl
 			 * (yes - enums too) */
-			struct_union_enum_st *sue = type_ref_is_s_or_u_or_e(r);
+			struct_union_enum_st *sue = type_is_s_or_u_or_e(r);
 
 			if(sue){
 				fold_sue(sue, stab);
@@ -304,7 +304,7 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 			break;
 		}
 
-		case type_ref_tdef:
+		case type_tdef:
 		{
 			expr *p_expr = r->bits.tdef.type_of;
 
@@ -323,28 +323,28 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 	 * since typedef int *intptr; intptr restrict a; is valid
 	 */
 	if(q_to_check & qual_restrict)
-		warn_at(&r->where, "restrict on non-pointer type '%s'", type_ref_to_str(r));
+		warn_at(&r->where, "restrict on non-pointer type '%s'", type_to_str(r));
 
-	fold_type_ref(r->ref, r, stab);
+	fold_type(r->ref, r, stab);
 
 	/* checks that rely on r->ref being folded... */
 	switch(r->type){
-		case type_ref_array:
-		case type_ref_func:
-			if(type_ref_is(r->ref, type_ref_func)){
+		case type_array:
+		case type_func:
+			if(type_is(r->ref, type_func)){
 				fold_had_error = 1;
 				warn_at_print_error(&r->where,
-						r->type == type_ref_func
+						r->type == type_func
 							? "function returning a function"
 							: "array of functions");
 			}
 			break;
 
-		case type_ref_block:
-			if(!type_ref_is(r->ref, type_ref_func)){
+		case type_block:
+			if(!type_is(r->ref, type_func)){
 				fold_had_error = 1;
 				warn_at_print_error(&r->where, "invalid block pointer - function required (got %s)",
-						type_ref_to_str(r->ref));
+						type_to_str(r->ref));
 			}
 			break;
 
@@ -355,12 +355,12 @@ void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab)
 
 	{
 		/* warn on embedded structs/unions with flexarrs */
-		struct_union_enum_st *sue = type_ref_is_s_or_u(r);
+		struct_union_enum_st *sue = type_is_s_or_u(r);
 		if(sue && sue->flexarr
-		&& (type_ref_is_array(parent) || type_ref_is_s_or_u(parent)))
+		&& (type_is_array(parent) || type_is_s_or_u(parent)))
 		{
 			warn_at(&r->where, "%s with flex-array embedded in %s",
-					sue_str(sue), type_ref_to_str(parent));
+					sue_str(sue), type_to_str(parent));
 		}
 	}
 }
@@ -384,7 +384,7 @@ static int fold_align(int al, int min, int max, where *w)
 
 static void fold_func_attr(decl *d)
 {
-	funcargs *fa = type_ref_funcargs(d->ref);
+	funcargs *fa = type_funcargs(d->ref);
 	decl_attr *da;
 
 	if(decl_attr_present(d, attr_sentinel) && !fa->variadic)
@@ -423,7 +423,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	 * e.g. a code-block (explicit or implicit),
 	 *      global scope
 	 * and an if/switch/while statement: if((struct A { int i; } *)0)...
-	 * an argument list/type_ref::func: f(struct A { int i, j; } *p, ...)
+	 * an argument list/type::func: f(struct A { int i, j; } *p, ...)
 	 */
 
 	decl_attr *attrib = NULL;
@@ -433,7 +433,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		return;
 	d->folded = 1;
 
-	fold_type_ref(d->ref, NULL, stab);
+	fold_type(d->ref, NULL, stab);
 
 	if(d->spel)
 		fold_decl_add_sym(d, stab);
@@ -441,7 +441,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 #if 0
 	/* if we have a type and it's incomplete, error */
 	no - only on use
-	if(!type_ref_is_complete(d->ref))
+	if(!type_is_complete(d->ref))
 		die_at(&d->where, "use of incomplete type - %s (%s)", d->spel, decl_to_str(d));
 #endif
 
@@ -468,7 +468,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 						"none-anonymous bitfield \"%s\" with 0-width",
 						d->spel);
 		}else{
-			const unsigned max = CHAR_BIT * type_ref_size(d->ref, &d->where);
+			const unsigned max = CHAR_BIT * type_size(d->ref, &d->where);
 			if(k.bits.num.val.i > max){
 				die_at(&d->where,
 						"bitfield too large for \"%s\" (%u bits)",
@@ -476,13 +476,13 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 			}
 		}
 
-		if(!type_ref_is_integral(d->ref))
+		if(!type_is_integral(d->ref))
 			die_at(&d->where, "field width on non-integral field %s",
 					decl_to_str(d));
 
 		/* FIXME: only warn if "int" specified,
 		 * i.e. detect explicit signed/unsigned */
-		if(k.bits.num.val.i == 1 && type_ref_is_signed(d->ref))
+		if(k.bits.num.val.i == 1 && type_is_signed(d->ref))
 			warn_at(&d->where, "1-bit signed field \"%s\" takes values -1 and 0",
 					decl_to_str(d));
 
@@ -521,7 +521,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	}
 
 	if(d->align || (attrib = decl_attr_present(d, attr_aligned))){
-		const int tal = type_ref_align(d->ref, &d->where);
+		const int tal = type_align(d->ref, &d->where);
 
 		struct decl_align *i;
 		int max_al = 0;
@@ -549,10 +549,10 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 
 				al = k.bits.num.val.i;
 			}else{
-				type_ref *ty = i->bits.align_ty;
+				type *ty = i->bits.align_ty;
 				UCC_ASSERT(ty, "no type");
-				fold_type_ref(ty, NULL, stab);
-				al = type_ref_align(ty, &d->where);
+				fold_type(ty, NULL, stab);
+				al = type_align(ty, &d->where);
 			}
 
 			if(al == 0)
@@ -674,7 +674,7 @@ void fold_decl_global_init(decl *d, symtable *stab)
 
 }
 
-void fold_func_passable(decl *func_decl, type_ref *func_ret)
+void fold_func_passable(decl *func_decl, type *func_ret)
 {
 	struct
 	{
@@ -683,7 +683,7 @@ void fold_func_passable(decl *func_decl, type_ref *func_ret)
 	} the_return = { NULL, NULL };
 
 	if(decl_attr_present(func_decl, attr_noreturn)){
-		if(!type_ref_is_void(func_ret)){
+		if(!type_is_void(func_ret)){
 			cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
 					"function \"%s\" marked no-return has a non-void return value",
 					func_decl->spel);
@@ -713,7 +713,7 @@ void fold_func_passable(decl *func_decl, type_ref *func_ret)
 					func_decl->spel, the_return.extra);
 		}
 
-	}else if(!type_ref_is_void(func_ret)){
+	}else if(!type_is_void(func_ret)){
 		/* non-void func - check it doesn't return */
 		if(fold_passable(func_decl->func_code)){
 			cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
@@ -734,10 +734,10 @@ void fold_func_code(decl *func_decl, symtable *arg_symtab)
 			die_at(&func_decl->where, "argument %ld in \"%s\" is unnamed",
 					i - arg_symtab->decls + 1, func_decl->spel);
 
-		if(!type_ref_is_complete(d->ref))
+		if(!type_is_complete(d->ref))
 			die_at(&d->where,
 					"function argument \"%s\" has incomplete type '%s'",
-					d->spel, type_ref_to_str(d->ref));
+					d->spel, type_to_str(d->ref));
 	}
 
 	fold_stmt(func_decl->func_code);
@@ -754,7 +754,7 @@ void fold_global_func(decl *func_decl)
 	if(func_decl->func_code){
 		symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(func_decl);
 		funcargs *args;
-		type_ref *func_ret = type_ref_func_call(func_decl->ref, &args);
+		type *func_ret = type_func_call(func_decl->ref, &args);
 
 		arg_symtab->in_func = func_decl;
 
@@ -766,7 +766,7 @@ void fold_global_func(decl *func_decl)
 					"(missing \"static\" or \"extern\")");
 		}
 
-		if(type_ref_is_tdef(func_decl->ref))
+		if(type_is_tdef(func_decl->ref))
 			warn_at(&func_decl->where,
 					"typedef function implementation is an extension");
 
@@ -802,10 +802,10 @@ void fold_decl_global(decl *d, symtable *stab)
 
 	/* can't check typedefs here - not folded.
 	 * functions can't be typedefs anyway */
-	if((is_fn = d->ref->type == type_ref_func) && d->func_code){
+	if((is_fn = d->ref->type == type_func) && d->func_code){
 		symtab_add_params(
 				DECL_FUNC_ARG_SYMTAB(d),
-				type_ref_funcargs(d->ref)->arglist);
+				type_funcargs(d->ref)->arglist);
 	}
 
 	fold_decl(d, stab, NULL);
@@ -825,13 +825,13 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 
 	/* fatal ones first */
 
-	if((chk & FOLD_CHK_ALLOW_VOID) == 0 && type_ref_is_void(e->tree_type))
+	if((chk & FOLD_CHK_ALLOW_VOID) == 0 && type_is_void(e->tree_type))
 		die_at(&e->where, "%s requires non-void expression", desc);
 
 	if(chk & FOLD_CHK_NO_ST_UN){
 		struct_union_enum_st *sue;
 
-		if((sue = type_ref_is_s_or_u(e->tree_type))){
+		if((sue = type_is_s_or_u(e->tree_type))){
 			die_at(&e->where, "%s involved in %s",
 					sue_str(sue), desc);
 		}
@@ -847,9 +847,9 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 	}
 
 	if(chk & FOLD_CHK_INTEGRAL){
-		if(type_ref_is_floating(e->tree_type)){
+		if(type_is_floating(e->tree_type)){
 			die_at(&e->where, "%s requires an integral expression (not \"%s\")",
-					desc, type_ref_to_str(e->tree_type));
+					desc, type_to_str(e->tree_type));
 		}
 	}
 
@@ -857,10 +857,10 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 		cc1_warn_at(&e->where, 0,WARN_TEST_ASSIGN, "assignment in %s", desc);
 
 	if(chk & FOLD_CHK_BOOL){
-		if(!type_ref_is_bool(e->tree_type)){
+		if(!type_is_bool(e->tree_type)){
 			cc1_warn_at(&e->where, 0, WARN_TEST_BOOL,
 					"testing a non-boolean expression (%s), in %s",
-					type_ref_to_str(e->tree_type), desc);
+					type_to_str(e->tree_type), desc);
 		}
 
 		if(expr_kind(e, addr)){
@@ -899,7 +899,7 @@ void fold_stmt_and_add_to_curswitch(stmt *t)
 	/* TODO: copy ->freestanding? */
 }
 
-void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
+void fold_funcargs(funcargs *fargs, symtable *stab, type *from)
 {
 	decl_attr *da;
 	unsigned long nonnulls = 0;
@@ -920,7 +920,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 				die_at(&d->where, "parameter '%s' is initialised", d->spel);
 			fold_decl(d, stab, NULL);
 
-			if(type_ref_is_void(d->ref)){
+			if(type_is_void(d->ref)){
 				/* allow if it's the first, only and unnamed */
 				if(i != 0 || fargs->arglist[1] || d->spel)
 					die_at(&d->where, "function parameter is void");
@@ -930,7 +930,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 			EOF_WHERE(&d->where,
 				/* must be before the decl is folded (since fold checks this) */
 				if(decl_conv_array_func_to_ptr(d))
-					fold_type_ref(d->ref, NULL, stab); /* refold if we converted */
+					fold_type(d->ref, NULL, stab); /* refold if we converted */
 			);
 
 			if(decl_store_static_or_extern(d->store))
@@ -941,12 +941,12 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from)
 			/* ensure ptr, unless __attribute__((nonnull)) */
 			if(nonnulls != ~0UL
 			&& (nonnulls & (1 << i))
-			&& !type_ref_is(d->ref, type_ref_ptr)
-			&& !type_ref_is(d->ref, type_ref_block))
+			&& !type_is(d->ref, type_ptr)
+			&& !type_is(d->ref, type_block))
 			{
 				warn_at(&fargs->arglist[i]->where,
 						"nonnull attribute applied to non-pointer argument '%s'",
-						type_ref_to_str(d->ref));
+						type_to_str(d->ref));
 			}
 		}
 
@@ -1006,7 +1006,7 @@ void fold_merge_tenatives(symtable *stab)
 							where_str_r(wbuf, &d->where));
 				}
 				init = d;
-			}else if(DECL_IS_ARRAY(d) && type_ref_is_complete(d->ref)){
+			}else if(DECL_IS_ARRAY(d) && type_is_complete(d->ref)){
 				init = d;
 				decl_default_init(d, stab);
 			}

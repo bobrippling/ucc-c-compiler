@@ -41,21 +41,21 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 	/* we access a struct, of the right ptr depth */
 	{
-		type_ref *r = e->lhs->tree_type;
+		type *r = e->lhs->tree_type;
 
 		if(ptr_expect){
-			type_ref *rtest = type_ref_is(r, type_ref_ptr);
+			type *rtest = type_is(r, type_ptr);
 
-			if(!rtest && !(rtest = type_ref_is(r, type_ref_array)))
+			if(!rtest && !(rtest = type_is(r, type_array)))
 				goto err;
 
 			r = rtest->ref; /* safe - rtest is an array */
 		}
 
-		if(!(sue = type_ref_is_s_or_u(r))){
+		if(!(sue = type_is_s_or_u(r))){
 err:
 			die_at(&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
-					type_ref_to_str(e->lhs->tree_type),
+					type_to_str(e->lhs->tree_type),
 					e->lhs->f_str(),
 					ptr_expect ? "pointer to " : "",
 					spel);
@@ -70,7 +70,7 @@ err:
 				ptr_expect
 					? "dereferencing pointer to"
 					: "accessing member of",
-				type_ref_to_str(e->lhs->tree_type),
+				type_to_str(e->lhs->tree_type),
 				where_str_r(wbuf, &sue->where));
 	}
 
@@ -99,7 +99,7 @@ err:
 		expr *cast, *addr;
 
 		addr = expr_new_addr(e->lhs);
-		cast = expr_new_cast(addr, type_ref_cached_VOID_PTR(), 1);
+		cast = expr_new_cast(addr, type_cached_VOID_PTR(), 1);
 
 		e->lhs = cast;
 		e->expr_is_st_dot = 0;
@@ -109,9 +109,9 @@ err:
 
 	/* pull qualifiers from the struct to the member */
 	{
-		enum type_qualifier addon = type_ref_qual(e->lhs->tree_type);
+		enum type_qualifier addon = type_qual(e->lhs->tree_type);
 
-		e->tree_type = type_ref_new_cast_add(e->bits.struct_mem.d->ref, addon);
+		e->tree_type = type_new_cast_add(e->bits.struct_mem.d->ref, addon);
 	}
 }
 
@@ -121,8 +121,8 @@ static void gen_expr_struct_lea(expr *e)
 
 	gen_expr(e->lhs);
 
-	out_change_type(type_ref_cached_VOID_PTR()); /* cast for void* arithmetic */
-	out_push_l(type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
+	out_change_type(type_cached_VOID_PTR()); /* cast for void* arithmetic */
+	out_push_l(type_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
 	out_op(op_plus);
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
@@ -132,7 +132,7 @@ static void gen_expr_struct_lea(expr *e)
 	{
 		decl *d = e->bits.struct_mem.d;
 
-		out_change_type(type_ref_ptr_depth_inc(d->ref));
+		out_change_type(type_ptr_depth_inc(d->ref));
 
 		/* set if we're a bitfield - out_deref() and out_store()
 		 * i.e. read + write then handle this

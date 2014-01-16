@@ -238,14 +238,14 @@ enum dwarf_encoding
 static struct DIE *dwarf_suetype(
 		struct DIE_compile_unit *cu,
 		struct_union_enum_st *sue,
-		type_ref *suety);
+		type *suety);
 
 static struct DIE **dwarf_formal_params(
 		struct DIE_compile_unit *cu, funcargs *args);
 
 static struct DIE *dwarf_type_die(
 		struct DIE_compile_unit *cu,
-		struct DIE *parent, type_ref *ty);
+		struct DIE *parent, type *ty);
 
 
 static void dwarf_die_new_at(struct DIE *d, enum dwarf_tag tag)
@@ -449,16 +449,16 @@ static struct DIE *dwarf_basetype(enum type_primitive prim)
 	return tydie;
 }
 
-static int type_ref_cmp_bool(void *a, void *b)
+static int type_cmp_bool(void *a, void *b)
 {
-	return type_ref_cmp(a, b, 0) != TYPE_EQUAL;
+	return type_cmp(a, b, 0) != TYPE_EQUAL;
 }
 
 static void dwarf_set_DW_AT_type(
 		struct DIE *in,
 		struct DIE_compile_unit *cu,
 		struct DIE *parent,
-		type_ref *ty)
+		type *ty)
 {
 	struct DIE *tydie = dwarf_type_die(cu, parent, ty);
 	if(tydie)
@@ -466,28 +466,28 @@ static void dwarf_set_DW_AT_type(
 }
 
 static void dwarf_add_tydie(
-		struct DIE_compile_unit *cu, type_ref *ty, struct DIE *tydie)
+		struct DIE_compile_unit *cu, type *ty, struct DIE *tydie)
 {
 	if(!cu->types_to_dies)
-		cu->types_to_dies = dynmap_new(&type_ref_cmp_bool);
-	dynmap_set(type_ref *, struct DIE *, cu->types_to_dies, ty, tydie);
+		cu->types_to_dies = dynmap_new(&type_cmp_bool);
+	dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, tydie);
 }
 
 static struct DIE *dwarf_type_die(
 		struct DIE_compile_unit *cu,
-		struct DIE *parent, type_ref *ty)
+		struct DIE *parent, type *ty)
 {
 	/* search back and up for a type DIE */
 	struct DIE *tydie;
 
 	if(cu->types_to_dies){
-		tydie = dynmap_get(type_ref *, struct DIE *, cu->types_to_dies, ty);
+		tydie = dynmap_get(type *, struct DIE *, cu->types_to_dies, ty);
 		if(tydie)
 			return tydie;
 	}
 
 	switch(ty->type){
-		case type_ref_type:
+		case type_type:
 		{
 			struct_union_enum_st *sue = ty->bits.type->sue;
 
@@ -503,7 +503,7 @@ static struct DIE *dwarf_type_die(
 			break;
 		}
 
-		case type_ref_tdef:
+		case type_tdef:
 			if(ty->bits.tdef.decl){
 				decl *d = ty->bits.tdef.decl;
 
@@ -520,8 +520,8 @@ static struct DIE *dwarf_type_die(
 			}
 			break;
 
-		case type_ref_block: /* act as if type_ref_ptr */
-		case type_ref_ptr:
+		case type_block: /* act as if type_ptr */
+		case type_ptr:
 		{
 			form_data_t sz = platform_word_size();
 
@@ -534,7 +534,7 @@ static struct DIE *dwarf_type_die(
 			break;
 		}
 
-		case type_ref_func:
+		case type_func:
 		{
 			long flag = 1;
 
@@ -548,7 +548,7 @@ static struct DIE *dwarf_type_die(
 			break;
 		}
 
-		case type_ref_array:
+		case type_array:
 		{
 			int have_sz = !!ty->bits.array.size;
 			struct DIE *szdie;
@@ -574,7 +574,7 @@ static struct DIE *dwarf_type_die(
 			break;
 		}
 
-		case type_ref_cast:
+		case type_cast:
 		{
 
 			if(ty->bits.cast.is_signed_cast){
@@ -613,7 +613,7 @@ static struct DIE *dwarf_sue_header(struct_union_enum_st *sue, int dwarf_tag)
 static struct DIE *dwarf_suetype(
 		struct DIE_compile_unit *cu,
 		struct_union_enum_st *sue,
-		type_ref *suety)
+		type *suety)
 {
 	struct DIE *suedie;
 
@@ -704,7 +704,7 @@ static struct DIE *dwarf_suetype(
 				/* bitfield */
 				if(dmem->field_width){
 					form_data_t width = const_fold_val_i(dmem->field_width);
-					form_data_t whole_sz = type_ref_size(dmem->ref, NULL);
+					form_data_t whole_sz = type_size(dmem->ref, NULL);
 
 					/* address of top-end */
 					form_data_t off =
@@ -843,7 +843,7 @@ static void dwarf_attr_decl(
 		struct DIE_compile_unit *cu,
 		struct DIE *in,
 		decl *d,
-		type_ref *ty, int show_extern)
+		type *ty, int show_extern)
 {
 	long attrv;
 
@@ -982,13 +982,13 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 {
 	struct DIE *subprog = dwarf_die_new(DW_TAG_subprogram);
 
-	funcargs *args = type_ref_funcargs(d->ref);
+	funcargs *args = type_funcargs(d->ref);
 
 	/* generate the DW_TAG_subprogram */
 	const char *asmsp = decl_asm_spel(d);
 
 	dwarf_attr_decl(cu, subprog,
-			d, type_ref_func_call(d->ref, NULL),
+			d, type_func_call(d->ref, NULL),
 			/*show_extern:*/1);
 
 	if(d->func_code){
@@ -1338,7 +1338,7 @@ void out_dbginfo(symtable_global *globs,
 		for(diter = globs->stab.decls; diter && *diter; diter++){
 			decl *d = *diter;
 
-			struct DIE *new = (type_ref_is_func_or_block(d->ref)
+			struct DIE *new = (type_is_func_or_block(d->ref)
 					? dwarf_subprogram_func
 					: dwarf_global_variable)(compile_unit, d);
 

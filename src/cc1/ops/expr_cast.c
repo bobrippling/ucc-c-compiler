@@ -14,8 +14,8 @@
 #define IS_DECAY_CAST(e) ((e)->bits.cast.tref && e->bits.cast.is_decay)
 
 static integral_t convert_integral_to_integral_warn(
-		const integral_t in, type_ref *tin,
-		type_ref *tout,
+		const integral_t in, type *tin,
+		type *tout,
 		int do_warn, where *w);
 
 
@@ -28,8 +28,8 @@ static void fold_cast_num(expr *const e, numeric *const num)
 {
 	int to_fp, from_fp;
 
-	to_fp = type_ref_is_floating(e->tree_type);
-	from_fp = type_ref_is_floating(expr_cast_child(e)->tree_type);
+	to_fp = type_is_floating(e->tree_type);
+	from_fp = type_is_floating(expr_cast_child(e)->tree_type);
 
 	if(to_fp){
 		if(from_fp){
@@ -47,7 +47,7 @@ static void fold_cast_num(expr *const e, numeric *const num)
 		}
 
 		/* perform the trunc */
-		switch(type_ref_primitive(e->tree_type)){
+		switch(type_primitive(e->tree_type)){
 			default:
 				ICE("fp expected");
 
@@ -67,7 +67,7 @@ static void fold_cast_num(expr *const e, numeric *const num)
 		UCC_ASSERT(K_FLOATING(*num), "i/f mismatch types");
 
 		/* special case _Bool */
-		if(type_ref_is_type(e->tree_type, type__Bool)){
+		if(type_is_type(e->tree_type, type__Bool)){
 			num->val.i = !!num->val.f;
 		}else{
 			/* float -> int */
@@ -83,7 +83,7 @@ static void fold_cast_num(expr *const e, numeric *const num)
 
 #define pv (&num->val.i)
 	/* need to cast the val.i down as appropriate */
-	if(type_ref_is_type(e->tree_type, type__Bool)){
+	if(type_is_type(e->tree_type, type__Bool)){
 		*pv = !!*pv; /* analagous to out/out.c::out_normalise()'s constant case */
 
 	}else if(!from_fp){
@@ -96,8 +96,8 @@ static void fold_cast_num(expr *const e, numeric *const num)
 }
 
 static integral_t convert_integral_to_integral_warn(
-		const integral_t in, type_ref *tin,
-		type_ref *tout,
+		const integral_t in, type *tin,
+		type *tout,
 		int do_warn, where *w)
 {
 	/*
@@ -125,9 +125,9 @@ static integral_t convert_integral_to_integral_warn(
 	 * or conversion is unsigned -> signed and in < signed-max
 	 */
 
-	const unsigned sz_in = type_ref_size(tin, w);
-	const int signed_in = type_ref_is_signed(tin);
-	const int signed_out = type_ref_is_signed(tout);
+	const unsigned sz_in = type_size(tin, w);
+	const int signed_in = type_is_signed(tin);
+	const int signed_out = type_is_signed(tout);
 	sintegral_t to_iv_sign_ext;
 	integral_t to_iv = integral_truncate(in, sz_in, &to_iv_sign_ext);
 	integral_t ret;
@@ -152,7 +152,7 @@ static integral_t convert_integral_to_integral_warn(
 		}else if(signed_out ? (sintegral_t)ret > 0 : 1){
 			/* ret > 0 - don't warn for -1 <-- -1L */
 			int in_high = integral_high_bit(in, tin);
-			int out_high = integral_high_bit(type_ref_max(tout, w), tout);
+			int out_high = integral_high_bit(type_max(tout, w), tout);
 
 			if(in_high > out_high){
 				warn_at(w,
@@ -169,12 +169,12 @@ static void fold_const_expr_cast(expr *e, consty *k)
 {
 	int to_fp;
 
-	if(type_ref_is_void(e->tree_type)){
+	if(type_is_void(e->tree_type)){
 		k->type = CONST_NO;
 		return;
 	}
 
-	to_fp = type_ref_is_floating(e->tree_type);
+	to_fp = type_is_floating(e->tree_type);
 
 	const_fold(expr_cast_child(e), k);
 
@@ -208,12 +208,12 @@ static void fold_const_expr_cast(expr *e, consty *k)
 			}
 
 			/* allow if we're casting to a same-size type */
-			l = type_ref_size(e->tree_type, &e->where);
+			l = type_size(e->tree_type, &e->where);
 
-			if(type_ref_decayable(expr_cast_child(e)->tree_type))
+			if(type_decayable(expr_cast_child(e)->tree_type))
 				r = platform_word_size(); /* func-ptr or array->ptr */
 			else
-				r = type_ref_size(expr_cast_child(e)->tree_type, &expr_cast_child(e)->where);
+				r = type_size(expr_cast_child(e)->tree_type, &expr_cast_child(e)->where);
 
 			if(l < r){
 				/* shouldn't fit, check if it will */
@@ -256,8 +256,8 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 	/* if casting from pointer to int, it's not a constant
 	 * but we treat it as such, as an extension */
-	if(type_ref_is_ptr(e->expr->tree_type)
-	&& !type_ref_is_ptr(e->tree_type)
+	if(type_is_ptr(e->expr->tree_type)
+	&& !type_is_ptr(e->tree_type)
 	&& !k->nonstandard_const)
 	{
 		k->nonstandard_const = e;
@@ -273,14 +273,14 @@ static void lea_expr_cast(expr *e)
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 {
 	int flag;
-	type_ref *tlhs, *trhs;
+	type *tlhs, *trhs;
 
 	if(descend)
 		FOLD_EXPR(expr_cast_child(e), stab);
 
 	if(IS_RVAL_CAST(e)){
 		/* remove cv-qualifiers */
-		e->tree_type = type_ref_new_cast(expr_cast_child(e)->tree_type, qual_none);
+		e->tree_type = type_new_cast(expr_cast_child(e)->tree_type, qual_none);
 
 		/* rval cast can have a lea */
 		if(expr_cast_child(e)->f_lea)
@@ -288,11 +288,11 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 	}else{
 		/* casts remove restrict qualifiers */
-		enum type_qualifier q = type_ref_qual(e->bits.cast.tref);
+		enum type_qualifier q = type_qual(e->bits.cast.tref);
 
-		e->tree_type = type_ref_new_cast(e->bits.cast.tref, q & ~qual_restrict);
+		e->tree_type = type_new_cast(e->bits.cast.tref, q & ~qual_restrict);
 
-		fold_type_ref(e->tree_type, NULL, stab); /* struct lookup, etc */
+		fold_type(e->tree_type, NULL, stab); /* struct lookup, etc */
 
 		tlhs = e->tree_type;
 		trhs = expr_cast_child(e)->tree_type;
@@ -304,29 +304,29 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 					FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
 					"cast-expr");
 
-			if(type_ref_is_void(tlhs))
+			if(type_is_void(tlhs))
 				return; /* fine */
 			fold_check_expr(e,
 					FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
 					"cast-target");
 
-			if(!type_ref_is_complete(tlhs)){
+			if(!type_is_complete(tlhs)){
 				die_at(&e->where, "%scast to incomplete type %s",
 						IMPLICIT_STR(e),
-						type_ref_to_str(tlhs));
+						type_to_str(tlhs));
 			}
 
-			if((flag = !!type_ref_is(tlhs, type_ref_func))
-			|| type_ref_is(tlhs, type_ref_array))
+			if((flag = !!type_is(tlhs, type_func))
+			|| type_is(tlhs, type_array))
 			{
 				die_at(&e->where, "%scast to %s type '%s'",
 						IMPLICIT_STR(e),
 						flag ? "function" : "array",
-						type_ref_to_str(tlhs));
+						type_to_str(tlhs));
 			}
 
-			if(((flag = !!type_ref_is_ptr(tlhs)) && type_ref_is_floating(trhs))
-			||           (type_ref_is_ptr(trhs)  && type_ref_is_floating(tlhs)))
+			if(((flag = !!type_is_ptr(tlhs)) && type_is_floating(trhs))
+			||           (type_is_ptr(trhs)  && type_is_floating(tlhs)))
 			{
 				/* TODO: factor to a error-continuing function */
 				fold_had_error = 1;
@@ -338,21 +338,21 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				return;
 			}
 
-			size_lhs = type_ref_size(tlhs, &e->where);
-			size_rhs = type_ref_size(trhs, &expr_cast_child(e)->where);
+			size_lhs = type_size(tlhs, &e->where);
+			size_rhs = type_size(trhs, &expr_cast_child(e)->where);
 			if(size_lhs < size_rhs){
 				char buf[DECL_STATIC_BUFSIZ];
 
-				strcpy(buf, type_ref_to_str(trhs));
+				strcpy(buf, type_to_str(trhs));
 
 				cc1_warn_at(&e->where, 0, WARN_LOSS_PRECISION,
 						"possible loss of precision %s, size %d <-- %s, size %d",
-						type_ref_to_str(tlhs), size_lhs,
+						type_to_str(tlhs), size_lhs,
 						buf, size_rhs);
 			}
 
-			if((flag = (type_ref_is_fptr(tlhs) && type_ref_is_nonfptr(trhs)))
-			||         (type_ref_is_fptr(trhs) && type_ref_is_nonfptr(tlhs)))
+			if((flag = (type_is_fptr(tlhs) && type_is_nonfptr(trhs)))
+			||         (type_is_fptr(trhs) && type_is_nonfptr(tlhs)))
 			{
 				/* allow cast from NULL to func ptr */
 				if(!expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_VOID_PTR)){
@@ -362,7 +362,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 							"%s <- %s",
 							IMPLICIT_STR(e),
 							flag ? "" : "function-", flag ? "function-" : "",
-							type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
+							type_to_str(tlhs), type_to_str_r(buf, trhs));
 				}
 			}
 
@@ -396,13 +396,13 @@ void gen_expr_cast(expr *e)
 	if(IS_RVAL_CAST(e)){
 		/*out_to_rvalue();*/
 	}else{
-		type_ref *tto, *tfrom;
+		type *tto, *tfrom;
 
 		tto = e->tree_type;
 		tfrom = expr_cast_child(e)->tree_type;
 
 		/* return if cast-to-void */
-		if(type_ref_is_void(tto)){
+		if(type_is_void(tto)){
 			out_change_type(tto);
 			out_comment("cast to void");
 			return;
@@ -410,8 +410,8 @@ void gen_expr_cast(expr *e)
 
 		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
 			/* allow b to be an anonymous member of a */
-			struct_union_enum_st *a_sue = type_ref_is_s_or_u(type_ref_is_ptr(tto)),
-													 *b_sue = type_ref_is_s_or_u(type_ref_is_ptr(tfrom));
+			struct_union_enum_st *a_sue = type_is_s_or_u(type_is_ptr(tto)),
+													 *b_sue = type_is_s_or_u(type_is_ptr(tfrom));
 
 			if(a_sue && b_sue && a_sue != b_sue){
 				decl *mem = struct_union_member_find_sue(b_sue, a_sue);
@@ -419,12 +419,12 @@ void gen_expr_cast(expr *e)
 				if(mem){
 					/*char buf[TYPE_REF_STATIC_BUFSIZ];
 						fprintf(stderr, "CAST %s -> %s, adj by %d\n",
-						type_ref_to_str(tfrom),
-						type_ref_to_str_r(buf, tto),
+						type_to_str(tfrom),
+						type_to_str_r(buf, tto),
 						mem->struct_offset);*/
 
-					out_change_type(type_ref_cached_VOID_PTR());
-					out_push_l(type_ref_cached_INTPTR_T(), mem->struct_offset);
+					out_change_type(type_cached_VOID_PTR());
+					out_push_l(type_cached_INTPTR_T(), mem->struct_offset);
 					out_op(op_plus);
 				}
 			}
@@ -447,7 +447,7 @@ void mutate_expr_cast(expr *e)
 	e->f_const_fold = fold_const_expr_cast;
 }
 
-expr *expr_new_cast(expr *what, type_ref *to, int implicit)
+expr *expr_new_cast(expr *what, type *to, int implicit)
 {
 	expr *e = expr_new_wrapper(cast);
 	e->bits.cast.tref = to;
@@ -466,7 +466,7 @@ expr *expr_new_cast_rval(expr *sub)
 	return e;
 }
 
-expr *expr_new_cast_decay(expr *sub, type_ref *to)
+expr *expr_new_cast_decay(expr *sub, type *to)
 {
 	expr *e = expr_new_wrapper(cast);
 	/* mark as decay */
@@ -478,6 +478,6 @@ expr *expr_new_cast_decay(expr *sub, type_ref *to)
 
 void gen_expr_style_cast(expr *e)
 {
-	stylef("(%s)", type_ref_to_str(e->bits.cast.tref));
+	stylef("(%s)", type_to_str(e->bits.cast.tref));
 	gen_expr(expr_cast_child(e));
 }

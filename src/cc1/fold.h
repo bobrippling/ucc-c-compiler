@@ -10,25 +10,25 @@ void fold_merge_tenatives(symtable *stab);
 void fold_decl(decl *d, symtable *stab, stmt **pinit_code);
 void fold_global_func(decl *);
 void fold_func_code(decl *, symtable *);
-void fold_func_passable(decl *, type_ref *);
+void fold_func_passable(decl *, type *);
 
-void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab);
+void fold_type(type *r, type *parent, symtable *stab);
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
 
-void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from);
+void fold_funcargs(funcargs *fargs, symtable *stab, type *from);
 
 void fold_stmt_and_add_to_curswitch(stmt *t);
 
 /* cast insertion */
-void fold_insert_casts(type_ref *tlhs, expr **prhs, symtable *stab);
+void fold_insert_casts(type *tlhs, expr **prhs, symtable *stab);
 
 int fold_type_chk_warn(
-		type_ref *lhs, type_ref *rhs,
+		type *lhs, type *rhs,
 		where *w, const char *desc);
 
 void fold_type_chk_and_cast(
-		type_ref *lhs, expr **prhs,
+		type *lhs, expr **prhs,
 		symtable *stab, where *w,
 		const char *desc);
 

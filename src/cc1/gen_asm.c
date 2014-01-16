@@ -94,7 +94,7 @@ void gen_asm_global(decl *d)
 	}
 
 	/* order of the if matters */
-	if(DECL_IS_FUNC(d) || type_ref_is(d->ref, type_ref_block)){
+	if(DECL_IS_FUNC(d) || type_is(d->ref, type_block)){
 		/* check .func_code, since it could be a block */
 		int nargs = 0, is_vari;
 		decl **aiter;
@@ -121,7 +121,7 @@ void gen_asm_global(decl *d)
 		out_func_prologue(d->ref,
 				d->func_code->symtab->auto_total_size,
 				nargs,
-				is_vari = type_ref_is_variadic_func(d->ref),
+				is_vari = type_is_variadic_func(d->ref),
 				offsets, &d->func_var_offset);
 
 		assign_arg_offsets(arg_symtab->decls, offsets);

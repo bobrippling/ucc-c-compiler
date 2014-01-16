@@ -15,7 +15,7 @@ OBJ = \
 	str.o label.o strings.o \
 	cc1.o pass1.o \
 	tree.o decl.o decl_init.o funcargs.o expr.o stmt.o \
-	btype.o type_ref.o type_ref_is.o \
+	btype.o type.o type_is.o \
 	tokconv.o tokenise.o \
 	parse.o parse_type.o \
 	fold.o fold_sym.o fold_sue.o const.o format_chk.o \

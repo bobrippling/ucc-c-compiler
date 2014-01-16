@@ -15,7 +15,7 @@ const char *str_expr_funcall()
 	return "funcall";
 }
 
-static void sentinel_check(where *w, type_ref *ref, expr **args,
+static void sentinel_check(where *w, type *ref, expr **args,
 		const int variadic, const int nstdargs, symtable *stab)
 {
 #define ATTR_WARN_RET(w, ...) do{ warn_at(w, __VA_ARGS__); return; }while(0)
@@ -59,7 +59,7 @@ static void sentinel_check(where *w, type_ref *ref, expr **args,
 	/* must be of a pointer type, printf("%p\n", 0) is undefined */
 	if(!expr_is_null_ptr(sentinel, NULL_STRICT_ANY_PTR))
 		ATTR_WARN_RET(&sentinel->where, "sentinel argument expected (got %s)",
-				type_ref_to_str(sentinel->tree_type));
+				type_to_str(sentinel->tree_type));
 
 #undef ATTR_WARN_RET
 }
@@ -68,8 +68,8 @@ static void static_array_check(
 		decl *arg_decl, expr *arg_expr)
 {
 	/* if ty_func is x[static %d], check counts */
-	type_ref *ty_expr = arg_expr->tree_type;
-	type_ref *ty_decl = decl_is_decayed_array(arg_decl);
+	type *ty_expr = arg_expr->tree_type;
+	type *ty_decl = decl_is_decayed_array(arg_decl);
 	consty k_decl;
 
 	if(!ty_decl || !ty_decl->bits.ptr.is_static)
@@ -86,8 +86,8 @@ static void static_array_check(
 
 	const_fold(ty_decl->bits.ptr.size, &k_decl);
 
-	if((ty_expr = type_ref_is_decayed_array(ty_expr))){
-		/* ty_expr is the type_ref_ptr, decayed from array */
+	if((ty_expr = type_is_decayed_array(ty_expr))){
+		/* ty_expr is the type_ptr, decayed from array */
 		if(ty_expr->bits.ptr.size){
 			consty k_arg;
 
@@ -109,7 +109,7 @@ static void static_array_check(
 
 void fold_expr_funcall(expr *e, symtable *stab)
 {
-	type_ref *type_func;
+	type *type_func;
 	funcargs *args_from_decl;
 	char *sp = NULL;
 	int count_decl = 0;
@@ -153,8 +153,8 @@ invalid:
 			/* set up the funcargs as if it's "x()" - i.e. any args */
 			funcargs_empty(args);
 
-			type_func = type_ref_new_func(
-					type_ref_new_type(type_new_primitive(type_int)),
+			type_func = type_new_func(
+					type_new_type(type_new_primitive(type_int)),
 					args, /*new symtable for args:*/ symtab_new(stab));
 
 			cc1_warn_at(&e->expr->where, 0, WARN_IMPLICIT_FUNC,
@@ -175,19 +175,19 @@ invalid:
 	FOLD_EXPR(e->expr, stab);
 	type_func = e->expr->tree_type;
 
-	if(!type_ref_is_callable(type_func)){
+	if(!type_is_callable(type_func)){
 		die_at(&e->expr->where, "%s-expression (type '%s') not callable",
-				e->expr->f_str(), type_ref_to_str(type_func));
+				e->expr->f_str(), type_to_str(type_func));
 	}
 
 	if(expr_kind(e->expr, deref)
-	&& type_ref_is(type_ref_is_ptr(expr_deref_what(e->expr)->tree_type), type_ref_func)){
+	&& type_is(type_is_ptr(expr_deref_what(e->expr)->tree_type), type_func)){
 		/* XXX: memleak */
 		/* (*f)() - dereffing to a function, then calling - remove the deref */
 		e->expr = expr_deref_what(e->expr);
 	}
 
-	e->tree_type = type_ref_func_call(type_func, &args_from_decl);
+	e->tree_type = type_func_call(type_func, &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
 	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", sp);
@@ -279,12 +279,12 @@ invalid:
 			expr_promote_default(&e->funcargs[i], stab);
 	}
 
-	if(type_ref_is_s_or_u(e->tree_type))
+	if(type_is_s_or_u(e->tree_type))
 		ICW("TODO: function returning a struct");
 
 	/* attr */
 	{
-		type_ref *r = e->expr->tree_type;
+		type *r = e->expr->tree_type;
 
 		format_check_call(
 				&e->where, r,

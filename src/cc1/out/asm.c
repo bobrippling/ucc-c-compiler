@@ -32,18 +32,18 @@ struct bitfield_val
 	unsigned width;
 };
 
-int asm_table_lookup(type_ref *r)
+int asm_table_lookup(type *r)
 {
 	int sz;
 	int i;
 
 	if(!r)
 		sz = type_primitive_size(type_long); /* or ptr */
-	else if(type_ref_is(r, type_ref_array) || type_ref_is(r, type_ref_func))
+	else if(type_is(r, type_array) || type_is(r, type_func))
 		/* special case for funcs and arrays */
 		sz = platform_word_size();
 	else
-		sz = type_ref_size(r, NULL);
+		sz = type_size(r, NULL);
 
 	for(i = 0; i < ASM_TABLE_LEN; i++)
 		if(asm_type_table[i].sz == sz)
@@ -53,12 +53,12 @@ int asm_table_lookup(type_ref *r)
 	return -1;
 }
 
-const char *asm_type_directive(type_ref *r)
+const char *asm_type_directive(type *r)
 {
 	return asm_type_table[asm_table_lookup(r)].directive;
 }
 
-int asm_type_size(type_ref *r)
+int asm_type_size(type *r)
 {
 	return asm_type_table[asm_table_lookup(r)].sz;
 }
@@ -69,7 +69,7 @@ static void asm_declare_pad(enum section_type sec, unsigned pad, const char *why
 		asm_out_section(sec, ".space %u " ASM_COMMENT " %s\n", pad, why);
 }
 
-static void asm_declare_init_type(enum section_type sec, type_ref *ty)
+static void asm_declare_init_type(enum section_type sec, type *ty)
 {
 	asm_out_section(sec, ".%s ", asm_type_directive(ty));
 }
@@ -77,7 +77,7 @@ static void asm_declare_init_type(enum section_type sec, type_ref *ty)
 static void asm_declare_init_bitfields(
 		enum section_type sec,
 		struct bitfield_val *vals, unsigned n,
-		type_ref *ty)
+		type *ty)
 {
 #define BITFIELD_DBG(...) /*fprintf(stderr, __VA_ARGS__)*/
 	integral_t v = 0;
@@ -114,7 +114,7 @@ static void asm_declare_init_bitfields(
 static void bitfields_out(
 		enum section_type sec,
 		struct bitfield_val *bfs, unsigned *pn,
-		type_ref *ty)
+		type *ty)
 {
 	asm_declare_init_bitfields(sec, bfs, *pn, ty);
 	*pn = 0;
@@ -148,9 +148,9 @@ static struct bitfield_val *bitfields_add(
 	return bfs;
 }
 
-void asm_out_fp(enum section_type sec, type_ref *ty, floating_t f)
+void asm_out_fp(enum section_type sec, type *ty, floating_t f)
 {
-	switch(type_ref_primitive(ty)){
+	switch(type_primitive(ty)){
 		case type_float:
 			{
 				union { float f; unsigned u; } u;
@@ -175,7 +175,7 @@ void asm_out_fp(enum section_type sec, type_ref *ty, floating_t f)
 	}
 }
 
-static void static_val(enum section_type sec, type_ref *ty, expr *e)
+static void static_val(enum section_type sec, type *ty, expr *e)
 {
 	consty k;
 
@@ -225,23 +225,23 @@ static void static_val(enum section_type sec, type_ref *ty, expr *e)
 	asm_out_section(sec, "\n");
 }
 
-static void asm_declare_init(enum section_type sec, decl_init *init, type_ref *tfor)
+static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 {
-	type_ref *r;
+	type *r;
 
 	if(init == DYNARRAY_NULL)
 		init = NULL;
 
 	if(!init){
 		/* don't initialise flex-arrays */
-		if(!type_ref_is_incomplete_array(tfor)){
-			asm_declare_pad(sec, type_ref_size(tfor, NULL),
-					"null init"/*, type_ref_to_str(tfor)*/);
+		if(!type_is_incomplete_array(tfor)){
+			asm_declare_pad(sec, type_size(tfor, NULL),
+					"null init"/*, type_to_str(tfor)*/);
 		}else{
 			asm_out_section(sec, ASM_COMMENT " flex array init skipped\n");
 		}
 
-	}else if((r = type_ref_is_type(tfor, type_struct))){
+	}else if((r = type_is_type(tfor, type_struct))){
 		/* array of stmts for each member
 		 * assumes the ->bits.inits order is member order
 		 */
@@ -328,10 +328,10 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type_ref *t
 				asm_declare_init(sec, di_to_use, d_mem->ref);
 			}
 
-			if(type_ref_is_incomplete_array(d_mem->ref)){
+			if(type_is_incomplete_array(d_mem->ref)){
 				UCC_ASSERT(!mem[1], "flex-arr not at end");
 			}else if(!d_mem->field_width || d_mem->first_bitfield){
-				unsigned last_sz = type_ref_size(d_mem->ref, NULL);
+				unsigned last_sz = type_size(d_mem->ref, NULL);
 
 				end_of_last = d_mem->struct_offset + last_sz;
 				DEBUG("done with member \"%s\", end_of_last = %d",
@@ -348,18 +348,18 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type_ref *t
 				sue_size(sue, NULL) - end_of_last,
 				"struct tail");
 
-	}else if((r = type_ref_is(tfor, type_ref_array))){
+	}else if((r = type_is(tfor, type_array))){
 		size_t i, len;
 		decl_init **p;
-		type_ref *next = type_ref_next(tfor);
+		type *next = type_next(tfor);
 
 		UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
 
-		if(type_ref_is_incomplete_array(tfor)){
+		if(type_is_incomplete_array(tfor)){
 			len = dynarray_count(init->bits.ar.inits);
 		}else{
-			UCC_ASSERT(type_ref_is_complete(tfor), "incomplete array/type init");
-			len = type_ref_array_len(tfor);
+			UCC_ASSERT(type_is_complete(tfor), "incomplete array/type init");
+			len = type_array_len(tfor);
 		}
 
 		for(i = len, p = init->bits.ar.inits;
@@ -381,10 +381,10 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type_ref *t
 			asm_declare_init(sec, this, next);
 		}
 
-	}else if((r = type_ref_is_type(tfor, type_union))){
+	}else if((r = type_is_type(tfor, type_union))){
 		/* union inits are decl_init_brace with spaces up to the first union init,
 		 * then NULL/end of the init-array */
-		struct_union_enum_st *sue = type_ref_is_s_or_u(r);
+		struct_union_enum_st *sue = type_is_s_or_u(r);
 		unsigned i, sub = 0;
 		decl_init *u_init;
 
@@ -395,7 +395,7 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type_ref *t
 
 		if((u_init = init->bits.ar.inits[i])){
 			decl *mem = sue->members[i]->struct_member;
-			type_ref *mem_r = mem->ref;
+			type *mem_r = mem->ref;
 
 			/* union init, member at index `i' */
 			if(mem->field_width){
@@ -411,11 +411,11 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type_ref *t
 				asm_declare_init(sec, u_init, mem_r);
 			}
 
-			sub = type_ref_size(mem_r, NULL);
+			sub = type_size(mem_r, NULL);
 		} /* else null union init */
 
 		asm_declare_pad(sec,
-				type_ref_size(r, NULL) - sub,
+				type_size(r, NULL) - sub,
 				"union extra");
 
 	}else{
@@ -429,14 +429,14 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type_ref *t
 			char buf[TYPE_REF_STATIC_BUFSIZ];
 
 			UCC_ASSERT(
-					type_ref_cmp(exp->tree_type, tfor, TYPE_CMP_ALLOW_TENATIVE_ARRAY) != TYPE_NOT_EQUAL,
+					type_cmp(exp->tree_type, tfor, TYPE_CMP_ALLOW_TENATIVE_ARRAY) != TYPE_NOT_EQUAL,
 					"mismatching init types: %s and %s",
-					type_ref_to_str_r(buf, exp->tree_type),
-					type_ref_to_str(tfor));
+					type_to_str_r(buf, exp->tree_type),
+					type_to_str(tfor));
 		}
 
 		/* use tfor, since "abc" has type (char[]){(int)'a', (int)'b', ...} */
-		DEBUG("  scalar init for %s:", type_ref_to_str(tfor));
+		DEBUG("  scalar init for %s:", type_to_str(tfor));
 		static_val(sec, tfor, exp);
 	}
 }

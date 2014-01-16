@@ -32,7 +32,8 @@ void asm_out_sectionv(enum section_type t, const char *fmt, va_list l);
 void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align);
 
 #ifdef TYPE_H
-void asm_out_fp(enum section_type sec, type_ref *ty, floating_t f);
+void asm_out_fp(enum section_type sec, type *ty, floating_t f);
+void asm_out_fp(enum section_type sec, type *ty, floating_t f);
 #endif
 
 #ifdef STRINGS_H
@@ -55,9 +56,9 @@ extern const struct asm_type_table
 #define ASM_TABLE_LEN 4
 
 #ifdef TYPE_H
-int         asm_table_lookup(type_ref *);
-int         asm_type_size(type_ref *);
-const char *asm_type_directive(type_ref *);
+int         asm_table_lookup(type *);
+int         asm_type_size(type *);
+const char *asm_type_directive(type *);
 #endif
 
 #endif

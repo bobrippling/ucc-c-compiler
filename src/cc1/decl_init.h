@@ -72,7 +72,7 @@ void decl_default_init(decl *d, symtable *stab);
 /* creates assignment exprs - only used for local inits */
 void decl_init_create_assignments_base(
 		decl_init *init,
-		type_ref *tfor, expr *base,
+		type *tfor, expr *base,
 		stmt *code);
 
 #endif

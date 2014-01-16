@@ -40,9 +40,9 @@ typedef struct consty
 #define CONST_AT_COMPILE_TIME(t) (t != CONST_NO && t != CONST_NEED_ADDR)
 
 #define CONST_ADDR_OR_NEED_TREF(r)  \
-	(  type_ref_is_array(r)           \
-	|| type_ref_is_decayed_array(r)   \
-	|| type_ref_is(r, type_ref_func)  \
+	(  type_is_array(r)           \
+	|| type_is_decayed_array(r)   \
+	|| type_is(r, type_func)  \
 		? CONST_ADDR : CONST_NEED_ADDR)
 
 #define CONST_ADDR_OR_NEED(d) CONST_ADDR_OR_NEED_TREF((d)->ref)
@@ -142,17 +142,17 @@ struct expr
 		struct
 		{
 			funcargs *args;
-			type_ref *retty;
+			type *retty;
 			sym *sym;
 		} block;
 
-		type_ref **types; /* used in __builtin */
+		type **types; /* used in __builtin */
 
-		type_ref *va_arg_type;
+		type *va_arg_type;
 
 		struct
 		{
-			type_ref *tref; /* from cast */
+			type *tref; /* from cast */
 			int is_decay;
 			/* cast type:
 			 * tref == NULL
@@ -166,14 +166,14 @@ struct expr
 		struct
 		{
 			unsigned sz;
-			type_ref *of_type;
+			type *of_type;
 		} size_of;
 
 		struct
 		{
 			struct generic_lbl
 			{
-				type_ref *t; /* NULL -> default */
+				type *t; /* NULL -> default */
 				expr *e;
 			} **list, *chosen;
 		} generic;
@@ -198,7 +198,7 @@ struct expr
 	stmt *code; /* ({ ... }), comp. lit. assignments */
 
 	/* type propagation */
-	type_ref *tree_type;
+	type *tree_type;
 };
 
 
@@ -253,7 +253,7 @@ expr *expr_new_decl_init(decl *d, decl_init *di);
 #define expr_free(x) do{                 \
 		if(x){                               \
 			/*if((x)->tree_type)*/             \
-			/*type_ref_free((x)->tree_type);*/ \
+			/*type_free((x)->tree_type);*/ \
 			free(x);                           \
 		}                                    \
 	}while(0)
@@ -261,9 +261,9 @@ expr *expr_new_decl_init(decl *d, decl_init *di);
 #define expr_kind(exp, kind) ((exp)->f_str == str_expr_ ## kind)
 
 expr *expr_new_identifier(char *sp);
-expr *expr_new_cast(expr *, type_ref *cast_to, int implicit);
+expr *expr_new_cast(expr *, type *cast_to, int implicit);
 expr *expr_new_cast_rval(expr *);
-expr *expr_new_cast_decay(expr *, type_ref *cast_to);
+expr *expr_new_cast_decay(expr *, type *cast_to);
 
 expr *expr_new_identifier(char *sp);
 expr *expr_new_val(int val);
@@ -271,14 +271,14 @@ expr *expr_new_op(enum op_type o);
 expr *expr_new_op2(enum op_type o, expr *l, expr *r);
 expr *expr_new_if(expr *test);
 expr *expr_new_stmt(stmt *code);
-expr *expr_new_sizeof_type(type_ref *, enum what_of what_of);
+expr *expr_new_sizeof_type(type *, enum what_of what_of);
 expr *expr_new_sizeof_expr(expr *, enum what_of what_of);
 expr *expr_new_funcall(void);
 expr *expr_new_assign(         expr *to, expr *from);
 expr *expr_new_assign_init(    expr *to, expr *from);
 expr *expr_new_assign_compound(expr *to, expr *from, enum op_type);
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
-expr *expr_new_block(type_ref *rt, funcargs *args, stmt *code);
+expr *expr_new_block(type *rt, funcargs *args, stmt *code);
 expr *expr_new_deref(expr *);
 expr *expr_new_struct(expr *sub, int dot, expr *ident);
 expr *expr_new_struct_mem(expr *sub, int dot, decl *);

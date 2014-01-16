@@ -14,8 +14,8 @@ const char *str_expr_addr()
 int expr_is_addressable(expr *e)
 {
 	return expr_is_lval(e)
-		|| type_ref_is(e->tree_type, type_ref_array)
-		|| type_ref_is(e->tree_type, type_ref_func);
+		|| type_is(e->tree_type, type_array)
+		|| type_is(e->tree_type, type_func);
 }
 
 void fold_expr_addr(expr *e, symtable *stab)
@@ -30,8 +30,8 @@ void fold_expr_addr(expr *e, symtable *stab)
 			->uses++;
 
 		/* address of label - void * */
-		e->tree_type = type_ref_new_ptr(
-				type_ref_new_type(type_new_primitive(type_void)),
+		e->tree_type = type_new_ptr(
+				type_new_type(type_new_primitive(type_void)),
 				qual_none);
 
 	}else{
@@ -43,7 +43,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		/* can address: lvalues, arrays and functions */
 		if(!expr_is_addressable(e->lhs)){
 			die_at(&e->where, "can't take the address of %s (%s)",
-					e->lhs->f_str(), type_ref_to_str(e->lhs->tree_type));
+					e->lhs->f_str(), type_to_str(e->lhs->tree_type));
 		}
 
 		if(expr_kind(e->lhs, identifier)){
@@ -55,7 +55,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 		fold_check_expr(e->lhs, FOLD_CHK_NO_BITFIELD, "address-of");
 
-		e->tree_type = type_ref_new_ptr(e->lhs->tree_type, qual_none);
+		e->tree_type = type_new_ptr(e->lhs->tree_type, qual_none);
 	}
 }
 
