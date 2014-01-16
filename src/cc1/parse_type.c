@@ -38,7 +38,7 @@ static struct_union_enum_st *PARSE_type_is_s_or_u_or_e2(
 		type *r, int allow_e)
 {
 	r = type_skip_casts(r);
-	if(r->type == type_type){
+	if(r->type == type_btype){
 		const btype *t = r->bits.type;
 		switch(t->primitive){
 			case type_enum:
@@ -666,7 +666,7 @@ funcargs *parse_func_arglist()
 
 		/* check for x(void) (or an equivalent typedef) */
 		/* can't use type_is, since that requires folding */
-		if(argdecl->ref->type == type_type
+		if(argdecl->ref->type == type_btype
 		&& argdecl->ref->bits.type->primitive == type_void
 		&& !argdecl->spel)
 		{
@@ -1236,7 +1236,7 @@ int parse_decls_single_type(
 					 */
 					const char *emsg = "declaration doesn't declare anything";
 
-					if(PARSE_type_is(d->ref, type_type)
+					if(PARSE_type_is(d->ref, type_btype)
 					|| PARSE_type_is(d->ref, type_tdef))
 					{
 						warn_at(&d->where, "%s", emsg);

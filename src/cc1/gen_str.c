@@ -206,7 +206,7 @@ static void print_type_eng(type *ref)
 			fputs("] of ", cc1_out);
 			break;
 
-		case type_type:
+		case type_btype:
 			fprintf(cc1_out, "%s", btype_to_str(ref->bits.type));
 			break;
 

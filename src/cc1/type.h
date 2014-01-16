@@ -9,9 +9,9 @@ struct type
 	decl_attr *attr;
 	int folded;
 
-	enum type_type
+	enum type_kind
 	{
-		type_type,  /* end - at type */
+		type_btype,  /* end - at type */
 		type_tdef,  /* type reference to next ref */
 		type_ptr,   /* pointer to next ref */
 		type_block, /* block pointer to next ref (func) */

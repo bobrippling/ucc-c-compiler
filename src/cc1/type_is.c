@@ -70,7 +70,7 @@ type *type_next(type *r)
 		return NULL;
 
 	switch(r->type){
-		case type_type:
+		case type_btype:
 			ICE("%s on type", __func__);
 
 		case type_tdef:
@@ -87,7 +87,7 @@ type *type_next(type *r)
 	ucc_unreach(NULL);
 }
 
-type *type_is(type *r, enum type_type t)
+type *type_is(type *r, enum type_kind t)
 {
 	r = type_skip_tdefs_casts(r);
 
@@ -99,7 +99,7 @@ type *type_is(type *r, enum type_type t)
 
 type *type_is_primitive(type *r, enum type_primitive p)
 {
-	r = type_is(r, type_type);
+	r = type_is(r, type_btype);
 
 	/* extra checks for a type */
 	if(r && (p == type_unknown || r->bits.type->primitive == p))
@@ -158,7 +158,7 @@ const btype *type_get_type(type *r)
 			case type_tdef:
 				r = type_skip_tdefs_casts(r);
 				break;
-			case type_type:
+			case type_btype:
 				return r->bits.type;
 			default:
 				goto no;
@@ -173,7 +173,7 @@ int type_is_bool(type *r)
 	if(type_is(r, type_ptr))
 		return 1;
 
-	r = type_is(r, type_type);
+	r = type_is(r, type_btype);
 
 	if(!r)
 		return 0;
@@ -208,7 +208,7 @@ int type_is_nonvoid_ptr(type *r)
 
 int type_is_integral(type *r)
 {
-	r = type_is(r, type_type);
+	r = type_is(r, type_btype);
 
 	if(!r)
 		return 0;
@@ -251,7 +251,7 @@ unsigned type_align(type *r, where *from)
 		return platform_word_size();
 	}
 
-	if((test = type_is(r, type_type)))
+	if((test = type_is(r, type_btype)))
 		return btype_align(test->bits.type, from);
 
 	if((test = type_is(r, type_array)))
@@ -266,7 +266,7 @@ int type_is_complete(type *r)
 	r = type_skip_tdefs_casts(r);
 
 	switch(r->type){
-		case type_type:
+		case type_btype:
 		{
 			const btype *t = r->bits.type;
 
@@ -359,7 +359,7 @@ type *type_complete_array(type *r, int sz)
 
 struct_union_enum_st *type_is_s_or_u_or_e(type *r)
 {
-	type *test = type_is(r, type_type);
+	type *test = type_is(r, type_btype);
 
 	if(!test)
 		return NULL;
@@ -445,7 +445,7 @@ int type_is_signed(type *r)
 	/* need to take casts into account */
 	while(r)
 		switch(r->type){
-			case type_type:
+			case type_btype:
 				return btype_is_signed(r->bits.type);
 
 			case type_ptr:
@@ -466,7 +466,7 @@ int type_is_signed(type *r)
 
 int type_is_floating(type *r)
 {
-	r = type_is(r, type_type);
+	r = type_is(r, type_btype);
 
 	if(!r)
 		return 0;
@@ -482,7 +482,7 @@ enum type_qualifier type_qual(const type *r)
 		return qual_none;
 
 	switch(r->type){
-		case type_type:
+		case type_btype:
 			if(r->bits.type->primitive == type_struct
 			|| r->bits.type->primitive == type_union)
 			{

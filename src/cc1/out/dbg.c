@@ -487,7 +487,7 @@ static struct DIE *dwarf_type_die(
 	}
 
 	switch(ty->type){
-		case type_type:
+		case type_btype:
 		{
 			struct_union_enum_st *sue = ty->bits.type->sue;
 

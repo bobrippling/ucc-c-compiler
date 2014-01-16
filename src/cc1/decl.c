@@ -21,7 +21,7 @@
 		if(dp->type == typ)
 
 
-static type *type_new(enum type_type t, type *of)
+static type *type_new(enum type_kind k, type *of)
 {
 	type *r = umalloc(sizeof *r);
 	if(of)
@@ -29,7 +29,7 @@ static type *type_new(enum type_type t, type *of)
 	else
 		where_cc1_current(&r->where);
 
-	r->type = t;
+	r->type = k;
 	r->ref = of;
 	return r;
 }
@@ -132,7 +132,7 @@ type *type_cached_VA_LIST_decayed(void)
 
 type *type_new_type(const btype *t)
 {
-	type *r = type_new(type_type, NULL);
+	type *r = type_new(type_btype, NULL);
 	r->bits.type = t;
 	return r;
 }
@@ -326,7 +326,7 @@ void type_free_1(type *r)
 		return;
 
 	switch(r->type){
-		case type_type:
+		case type_btype:
 			/* XXX: memleak */
 			/*type_free(r->bits.type);*/
 			if(r == cache_basics[r->bits.type->primitive])
@@ -425,7 +425,7 @@ decl_attr *type_attr_present(type *r, enum decl_attr_type t)
 			return da;
 
 		switch(r->type){
-			case type_type:
+			case type_btype:
 			{
 				struct_union_enum_st *sue = r->bits.type->sue;
 				if((da = attr_present(r->bits.type->attr, t)))
@@ -566,7 +566,7 @@ integral_t type_max(type *r, where *from)
 unsigned type_size(type *r, where *from)
 {
 	switch(r->type){
-		case type_type:
+		case type_btype:
 			return btype_size(r->bits.type, from);
 
 		case type_tdef:
@@ -736,7 +736,7 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 
 	q = qual_none;
 	switch(r->ref->type){
-		case type_type:
+		case type_btype:
 		case type_tdef: /* just starting */
 		case type_cast: /* no need */
 			need_paren = 0;
@@ -799,7 +799,7 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 	switch(r->type){
 		case type_tdef:
 			/* tdef "aka: %s" handled elsewhere */
-		case type_type:
+		case type_btype:
 		case type_cast:
 			/**/
 		case type_block:
@@ -883,7 +883,7 @@ void type_add_type_str(type *r,
 	const type *rt;
 
 	**bufp = '\0';
-	for(rt = r; rt && rt->type != type_type && rt->type != type_tdef; rt = rt->ref);
+	for(rt = r; rt && rt->type != type_btype && rt->type != type_tdef; rt = rt->ref);
 
 	if(!rt)
 		return;

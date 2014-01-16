@@ -281,7 +281,7 @@ void fold_type(type *r, type *parent, symtable *stab)
 			/*q_to_check = r->bits.qual; - allowed */
 			break;
 
-		case type_type:
+		case type_btype:
 		{
 			/* check if we're a new struct/union/enum decl
 			 * (yes - enums too) */

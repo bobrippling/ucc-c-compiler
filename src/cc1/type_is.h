@@ -7,7 +7,7 @@ type *type_skip_casts(type *r);
 decl *type_is_tdef(type *r);
 
 type *type_next(type *r);
-type *type_is(type *r, enum type_type t);
+type *type_is(type *r, enum type_kind t);
 type *type_is_primitive(type *r, enum type_primitive p);
 type *type_is_ptr(type *r);
 type *type_is_array(type *r);
