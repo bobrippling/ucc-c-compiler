@@ -1,9 +1,9 @@
 static void parse_attr_bracket_chomp(int had_open_paren);
 
-static decl_attr *parse_attr_format(void)
+static attribute *parse_attr_format(void)
 {
 	/* __attribute__((format (printf, fmtarg, firstvararg))) */
-	decl_attr *da;
+	attribute *da;
 	char *func;
 	enum fmt_type fmt;
 
@@ -29,7 +29,7 @@ static decl_attr *parse_attr_format(void)
 		return NULL;
 	}
 
-	da = decl_attr_new(attr_format);
+	da = attribute_new(attr_format);
 	da->bits.format.fmt_func = fmt;
 
 	EAT(token_comma);
@@ -47,10 +47,10 @@ static decl_attr *parse_attr_format(void)
 	return da;
 }
 
-static decl_attr *parse_attr_section()
+static attribute *parse_attr_section()
 {
 	/* __attribute__((section ("sectionname"))) */
-	decl_attr *da;
+	attribute *da;
 	char *func;
 	size_t len, i;
 
@@ -69,7 +69,7 @@ static decl_attr *parse_attr_section()
 			break;
 		}
 
-	da = decl_attr_new(attr_section);
+	da = attribute_new(attr_section);
 
 	da->bits.section = func;
 
@@ -78,13 +78,13 @@ static decl_attr *parse_attr_section()
 	return da;
 }
 
-static decl_attr *parse_attr_nonnull()
+static attribute *parse_attr_nonnull()
 {
 	/* __attribute__((nonnull(1, 2, 3, 4...)))
 	 * or
 	 * __attribute__((nonnull)) - all args
 	 */
-	decl_attr *da = decl_attr_new(attr_nonnull);
+	attribute *da = attribute_new(attr_nonnull);
 	unsigned long l = 0;
 	int had_error = 0;
 
@@ -137,18 +137,18 @@ out:
 	return NULL;
 }
 
-static decl_attr *parse_attr_sentinel()
+static attribute *parse_attr_sentinel()
 {
-	decl_attr *da = decl_attr_new(attr_sentinel);
+	attribute *da = attribute_new(attr_sentinel);
 
   da->bits.sentinel = optional_parened_expr();
 
 	return da;
 }
 
-static decl_attr *parse_attr_aligned()
+static attribute *parse_attr_aligned()
 {
-	decl_attr *da = decl_attr_new(attr_aligned);
+	attribute *da = attribute_new(attr_aligned);
 
   da->bits.align = optional_parened_expr();
 
@@ -156,9 +156,9 @@ static decl_attr *parse_attr_aligned()
 }
 
 #define EMPTY(t)                      \
-static decl_attr *parse_ ## t()       \
+static attribute *parse_ ## t()       \
 {                                     \
-	return decl_attr_new(t);            \
+	return attribute_new(t);            \
 }
 
 EMPTY(attr_unused)
@@ -171,9 +171,9 @@ EMPTY(attr_packed)
 #undef EMPTY
 
 #define CALL_CONV(n)                            \
-static decl_attr *parse_attr_## n()             \
+static attribute *parse_attr_## n()             \
 {                                               \
-	decl_attr *a = decl_attr_new(attr_call_conv); \
+	attribute *a = attribute_new(attr_call_conv); \
 	a->bits.conv = conv_ ## n;                    \
 	return a;                                     \
 }
@@ -185,7 +185,7 @@ CALL_CONV(fastcall)
 static struct
 {
 	const char *ident;
-	decl_attr *(*parser)(void);
+	attribute *(*parser)(void);
 } attrs[] = {
 #define ATTR(x) { #x, parse_attr_ ## x }
 	ATTR(format),
@@ -227,7 +227,7 @@ static void parse_attr_bracket_chomp(int had_open_paren)
 	}
 }
 
-static decl_attr *parse_attr_single(const char *ident)
+static attribute *parse_attr_single(const char *ident)
 {
 	int i;
 
@@ -249,12 +249,12 @@ static decl_attr *parse_attr_single(const char *ident)
 	return NULL;
 }
 
-static decl_attr *parse_attr(void)
+static attribute *parse_attr(void)
 {
-	decl_attr *attr = NULL, **next = &attr;
+	attribute *attr = NULL, **next = &attr;
 
 	for(;;){
-		decl_attr *this;
+		attribute *this;
 		where w;
 		int alloc;
 		char *ident = curtok_to_identifier(&alloc);

@@ -6,10 +6,15 @@
 #include "../util/util.h"
 #include "../util/platform.h"
 #include "../util/dynarray.h"
+
 #include "macros.h"
+
 #include "sym.h"
 #include "cc1.h"
 #include "sue.h"
+#include "expr.h"
+#include "stmt.h"
+#include "type_is.h"
 #include "gen_str.h"
 #include "str.h"
 #include "const.h"
@@ -225,21 +230,21 @@ static void print_decl_eng(decl *d)
 void print_type(type *ref, decl *d)
 {
 	char buf[TYPE_STATIC_BUFSIZ];
-	decl_attr *da;
+	attribute *da;
 
 	fprintf(cc1_out, "%s",
 			type_to_str_r_spel(buf, ref, d ? d->spel : NULL));
 
 	for(da = ref->attr; da; da = da->next){
 		fprintf(cc1_out, " __attribute__((%s))",
-				decl_attr_to_str(da));
+				attribute_to_str(da));
 	}
 }
 
-static void print_decl_attr(decl_attr *da)
+static void print_attribute(attribute *da)
 {
 	for(; da; da = da->next){
-		idt_printf("__attribute__((%s))\n", decl_attr_to_str(da));
+		idt_printf("__attribute__((%s))\n", attribute_to_str(da));
 
 		gen_str_indent++;
 		switch(da->type){
@@ -277,12 +282,12 @@ static void print_decl_attr(decl_attr *da)
 
 static void print_type_attr(type *r)
 {
-	enum decl_attr_type i;
+	enum attribute_type i;
 
 	for(i = 0; i < attr_LAST; i++){
-		decl_attr *da;
+		attribute *da;
 		if((da = type_attr_present(r, i)))
-			print_decl_attr(da);
+			print_attribute(da);
 	}
 }
 
@@ -336,7 +341,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 		if(d->align)
 			idt_printf("[align={as_int=%d, resolved=%d}]\n",
 					d->align->as_int, d->align->resolved);
-		print_decl_attr(d->attr);
+		print_attribute(d->attr);
 		print_type_attr(d->ref);
 		gen_str_indent--;
 	}

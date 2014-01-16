@@ -1,5 +1,7 @@
-#ifndef STAT_H
-#define STAT_H
+#ifndef STMT_H
+#define STMT_H
+
+#include "sym.h"
 
 typedef void        func_fold_stmt(struct stmt *);
 typedef void        func_gen_stmt(struct stmt *);

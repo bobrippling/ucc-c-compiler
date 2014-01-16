@@ -6,6 +6,7 @@
 #include "stmt.h"
 #include "cc1.h"
 #include "cc1_where.h"
+#include "expr.h"
 
 stmt_flow *stmt_flow_new(symtable *parent)
 {

@@ -70,7 +70,7 @@ static type *parse_type_sue(
 	int is_complete = 0;
 	char *spel = NULL;
 	sue_member **members = NULL;
-	decl_attr *this_sue_attr = NULL;
+	attribute *this_sue_attr = NULL;
 
 	parse_add_attr(&this_sue_attr); /* struct __attr__(()) name { ... } ... */
 
@@ -89,7 +89,7 @@ static type *parse_type_sue(
 				where w;
 				expr *e;
 				char *sp;
-				decl_attr *en_attr = NULL;
+				attribute *en_attr = NULL;
 
 				where_cc1_current(&w);
 				sp = token_current_spel();
@@ -162,7 +162,7 @@ static type *parse_type_sue(
 		parse_add_attr(&this_sue_attr); /* struct A { ... } __attr__ */
 
 		/* sue may already exist */
-		decl_attr_append(&sue->attr, this_sue_attr);
+		attribute_append(&sue->attr, this_sue_attr);
 
 		return type_root_suetype(cc1_type_root, sue);
 	}
@@ -171,14 +171,14 @@ static type *parse_type_sue(
 #include "parse_attr.c"
 #include "parse_init.c"
 
-void parse_add_attr(decl_attr **append)
+void parse_add_attr(attribute **append)
 {
 	while(accept(token_attribute)){
 		EAT(token_open_paren);
 		EAT(token_open_paren);
 
 		if(curtok != token_close_paren)
-			decl_attr_append(append, parse_attr());
+			attribute_append(append, parse_attr());
 
 		EAT(token_close_paren);
 		EAT(token_close_paren);
@@ -255,7 +255,7 @@ static type *parse_btype(
 {
 	/* *store and *palign should be initialised */
 	expr *tdef_typeof = NULL;
-	decl_attr *attr = NULL;
+	attribute *attr = NULL;
 	enum type_qualifier qual = qual_none;
 	enum type_primitive primitive = type_int;
 	int is_signed = 1, is_inline = 0, had_attr = 0, is_noreturn = 0, is_va_list = 0;
@@ -396,7 +396,7 @@ static type *parse_btype(
 			/* fine... although a _Noreturn function returning a sue
 			 * is pretty daft... */
 			if(is_noreturn)
-				decl_attr_append(&tref->attr, decl_attr_new(attr_noreturn));
+				attribute_append(&tref->attr, attribute_new(attr_noreturn));
 
 			/*
 			 * struct A { ... } const x;
@@ -587,7 +587,7 @@ static type *parse_btype(
 		parse_add_attr(&r->attr); /* int/struct-A __attr__ */
 
 		if(is_noreturn)
-			decl_attr_append(&r->attr, decl_attr_new(attr_noreturn));
+			attribute_append(&r->attr, attribute_new(attr_noreturn));
 
 		return r;
 	}else{
@@ -847,7 +847,7 @@ static type *parse_type_ptr(enum decl_mode mode, decl *dfor)
 		ptr_creator_f creater = ptr ? type_ptr_to : type_block_of;
 
 		type *r_ptr;
-		decl_attr *attr = NULL;
+		attribute *attr = NULL;
 
 		enum type_qualifier qual = qual_none;
 

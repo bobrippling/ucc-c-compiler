@@ -140,7 +140,7 @@ void symtab_check_rw(symtable *tab)
 			{
 				/* arg + local checks */
 				const int unused = RW_TEST(d, nreads);
-				const int has_unused_attr = !!decl_attr_present(d, attr_unused);
+				const int has_unused_attr = !!attribute_present(d, attr_unused);
 
 				if(d->sym->type != sym_arg){
 					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){

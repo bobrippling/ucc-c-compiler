@@ -14,7 +14,7 @@ OBJ = \
 	../util/str.o ../util/std.o ../util/escape.o \
 	str.o label.o strings.o \
 	cc1.o pass1.o \
-	decl.o decl_init.o funcargs.o expr.o stmt.o \
+	decl.o attribute.o decl_init.o funcargs.o expr.o stmt.o \
 	btype.o type.o type_is.o type_root.o \
 	tokconv.o tokenise.o \
 	parse.o parse_type.o \

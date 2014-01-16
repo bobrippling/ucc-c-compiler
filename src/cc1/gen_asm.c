@@ -7,13 +7,18 @@
 #include "../util/util.h"
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
-#include "cc1.h"
-#include "macros.h"
 #include "../util/platform.h"
-#include "sym.h"
-#include "gen_asm.h"
+
+#include "macros.h"
 #include "../util/util.h"
+
+#include "cc1.h"
+#include "sym.h"
 #include "const.h"
+#include "expr.h"
+#include "stmt.h"
+#include "type_is.h"
+#include "gen_asm.h"
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
@@ -41,7 +46,7 @@ void gen_expr(expr *e)
 		else
 			stylef("%" NUMERIC_FMT_D, k.bits.num.val.i);
 	}else{
-		EOF_WHERE(&e->where, e->f_gen(e));
+		e->f_gen(e);
 	}
 }
 
@@ -62,7 +67,7 @@ void gen_stmt(stmt *t)
 {
 	out_dbg_where(&t->where);
 
-	EOF_WHERE(&t->where, t->f_gen(t));
+	t->f_gen(t);
 }
 
 static void assign_arg_offsets(decl **decls, int const offsets[])
@@ -83,9 +88,9 @@ static void assign_arg_offsets(decl **decls, int const offsets[])
 
 void gen_asm_global(decl *d)
 {
-	decl_attr *sec;
+	attribute *sec;
 
-	if((sec = decl_attr_present(d, attr_section))){
+	if((sec = attribute_present(d, attr_section))){
 		ICW("%s: TODO: section attribute \"%s\" on %s",
 				where_str(&sec->where),
 				sec->bits.section, d->spel);

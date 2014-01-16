@@ -776,7 +776,7 @@ static stmt *parse_label(void)
 {
 	where w;
 	char *lbl;
-	decl_attr *attr = NULL, *ai;
+	attribute *attr = NULL, *ai;
 	stmt *lblstmt;
 
 	where_cc1_current(&w);
@@ -797,9 +797,9 @@ static stmt *parse_label(void)
 		else
 			warn_at(&ai->where,
 					"ignoring attribute \"%s\" on label",
-					decl_attr_to_str(ai));
+					attribute_to_str(ai));
 
-	decl_attr_free(attr);
+	attribute_free(attr);
 
 	return parse_label_next(lblstmt);
 }

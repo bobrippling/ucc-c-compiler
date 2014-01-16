@@ -1,5 +1,5 @@
-#ifndef ASM_H
-#define ASM_H
+#ifndef OUT_ASM_H
+#define OUT_ASM_H
 
 enum section_type
 {

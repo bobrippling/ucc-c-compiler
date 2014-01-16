@@ -20,7 +20,7 @@ static void sentinel_check(where *w, type *ref, expr **args,
 {
 #define ATTR_WARN_RET(w, ...) do{ warn_at(w, __VA_ARGS__); return; }while(0)
 
-	decl_attr *attr = type_attr_present(ref, attr_sentinel);
+	attribute *attr = type_attr_present(ref, attr_sentinel);
 	int i, nvs;
 	expr *sentinel;
 
@@ -212,7 +212,7 @@ invalid:
 	if(e->funcargs){
 		unsigned long nonnulls = 0;
 		int i, j;
-		decl_attr *da;
+		attribute *da;
 #define ARG_BUF(buf, i, sp)             \
 				snprintf(buf, sizeof buf,       \
 						"argument %d to %s",        \
@@ -296,7 +296,7 @@ invalid:
 				count_decl, stab);
 	}
 
-	/* check the subexp tree type to get the funcall decl_attrs */
+	/* check the subexp tree type to get the funcall attributes */
 	if(expr_attr_present(e->expr, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 }

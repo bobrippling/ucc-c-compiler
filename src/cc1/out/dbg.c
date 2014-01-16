@@ -13,9 +13,13 @@
 #include "../str.h"
 
 #include "../expr.h"
+#include "../stmt.h"
 #include "../const.h"
 #include "../funcargs.h"
 #include "../sue.h"
+#include "../type.h"
+#include "../funcargs.h"
+#include "../type_is.h"
 
 #include "asm.h" /* cc_out[] */
 

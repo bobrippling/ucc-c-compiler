@@ -25,6 +25,7 @@
 #include "../parse.h"
 #include "../parse_type.h"
 #include "../type_is.h"
+#include "../type_root.h"
 
 static void va_type_check(expr *va_l, expr *in, symtable *stab)
 {
@@ -33,13 +34,15 @@ static void va_type_check(expr *va_l, expr *in, symtable *stab)
 	 * aka
 	 * f(__builtin_va_list *l) [the array has decayed]
 	 */
+	enum type_cmp cmp;
+
 	if(!symtab_func(stab))
 		die_at(&in->where, "%s() outside a function",
 				BUILTIN_SPEL(in));
 
-	if(!(type_cmp(va_l->tree_type, type_cached_VA_LIST_decayed(), 0)
-				& TYPE_EQUAL_ANY))
-	{
+	cmp = type_cmp(va_l->tree_type, type_decay(type_root_va_list(cc1_type_root)), 0);
+
+	if(!(cmp & TYPE_EQUAL_ANY)){
 		die_at(&va_l->where,
 				"first argument to %s should be a va_list (not %s)",
 				BUILTIN_SPEL(in), type_to_str(va_l->tree_type));
@@ -150,7 +153,7 @@ static void fold_va_start(expr *e, symtable *stab)
 #undef W
 #endif
 
-	e->tree_type = type_cached_VOID();
+	e->tree_type = type_root_btype(cc1_type_root, type_void);
 }
 
 static void builtin_gen_va_start(expr *e)
@@ -207,19 +210,19 @@ static void va_arg_gen_read(
 	const unsigned increment = fp ? 2 * ws : ws;
 
 	gen_expr(e->lhs); /* va_list */
-	out_change_type(type_cached_VOID_PTR());
+	out_change_type(type_ptr_to(type_root_btype(cc1_type_root, type_void)));
 	out_dup(); /* va, va */
 
-	out_push_l(type_cached_LONG(), offset_decl->struct_offset);
+	out_push_l(type_root_btype(cc1_type_root, type_long), offset_decl->struct_offset);
 	out_op(op_plus); /* va, &va.gp_offset */
 
 	/*out_set_lvalue(); * val.gp_offset is an lvalue */
 
-	out_change_type(type_cached_INT_PTR());
+	out_change_type(type_root_btype(cc1_type_root, type_intptr_t));
 	out_dup(); /* va, &gp_o, &gp_o */
 
 	out_deref(); /* va, &gp_o, gp_o */
-	out_push_l(type_cached_INT(), max_reg_args_sz);
+	out_push_l(type_root_btype(cc1_type_root, type_int), max_reg_args_sz);
 	out_op(op_lt); /* va, &gp_o, <cond> */
 	out_jfalse(lbl_stack);
 
@@ -230,18 +233,18 @@ static void va_arg_gen_read(
 	/* increment either 8 for an integral, or 16 for a float argument
 	 * since xmm0 are 128-bit registers, aka 16 byte
 	 */
-	out_push_l(type_cached_INT(), increment); /* pws */
+	out_push_l(type_root_btype(cc1_type_root, type_int), increment); /* pws */
 	out_op(op_plus); /* va, &gp_o, gp_o+ws */
 
 	out_store(); /* va, gp_o+ws */
-	out_push_l(type_cached_INT(), increment); /* pws */
+	out_push_l(type_root_btype(cc1_type_root, type_int), increment); /* pws */
 	out_op(op_minus); /* va, gp_o */
-	out_change_type(type_cached_LONG());
+	out_change_type(type_root_btype(cc1_type_root, type_long));
 
 	out_swap(); /* gp_o, va */
-	out_push_l(type_cached_LONG(), mem_reg_save_area->struct_offset);
+	out_push_l(type_root_btype(cc1_type_root, type_long), mem_reg_save_area->struct_offset);
 	out_op(op_plus); /* gp_o, &reg_save_area */
-	out_change_type(type_cached_LONG_PTR());
+	out_change_type(type_ptr_to(type_root_btype(cc1_type_root, type_long)));
 	out_deref();
 	out_swap();
 	out_op(op_plus); /* reg_save_area + gp_o */
@@ -257,23 +260,23 @@ static void va_arg_gen_read(
 
 	gen_expr(e->lhs);
 	/* va */
-	out_change_type(type_cached_VOID_PTR());
-	out_push_l(type_cached_LONG(), mem_overflow_arg_area->struct_offset);
+	out_change_type(type_ptr_to(type_root_btype(cc1_type_root, type_void)));
+	out_push_l(type_root_btype(cc1_type_root, type_long), mem_overflow_arg_area->struct_offset);
 	out_op(op_plus);
 	/* &overflow_a */
 
 	/*out_set_lvalue(); * overflow entry in the struct is an lvalue */
 
-	out_dup(), out_change_type(type_cached_LONG_PTR()), out_deref();
+	out_dup(), out_change_type(type_ptr_to(type_root_btype(cc1_type_root, type_long))), out_deref();
 	/* &overflow_a, overflow_a */
 
 	/* XXX: pws will need changing if we jump directly to stack, e.g. passing a struct */
-	out_push_l(type_cached_LONG(), ws);
+	out_push_l(type_root_btype(cc1_type_root, type_long), ws);
 	out_op(op_plus);
 
 	out_store();
 
-	out_push_l(type_cached_LONG(), ws);
+	out_push_l(type_root_btype(cc1_type_root, type_long), ws);
 	out_op(op_minus);
 
 	/* ensure we match the other block's final result before the merge */
@@ -283,12 +286,8 @@ static void va_arg_gen_read(
 	out_label(lbl_fin);
 
 	/* now have a pointer to the right memory address */
-	{
-		type *r_tmp = type_new_ptr(ty, qual_none);
-		out_change_type(r_tmp);
-		out_deref();
-		type_free_1(r_tmp);
-	}
+	out_change_type(type_ptr_to(ty));
+	out_deref();
 
 	/*
 	 * this works by using phi magic - we end up with something like this:
@@ -441,8 +440,7 @@ stack:
 				goto stack;
 
 			/* register */
-			sue_va = type_next(
-					type_cached_VA_LIST())->bits.type->sue;
+			sue_va = type_next(type_root_va_list(cc1_type_root))->bits.type->sue;
 
 #define VA_DECL(nam) \
 			decl *mem_ ## nam = struct_union_member_find(sue_va, #nam, NULL, NULL)
@@ -527,7 +525,7 @@ static void fold_va_end(expr *e, symtable *stab)
 
 	/*va_ensure_variadic(e, stab); - va_end can be anywhere */
 
-	e->tree_type = type_cached_VOID();
+	e->tree_type = type_root_btype(cc1_type_root, type_void);
 }
 
 expr *parse_va_end(const char *ident)
@@ -560,11 +558,11 @@ static void fold_va_copy(expr *e, symtable *stab)
 	e->lhs = builtin_new_memcpy(
 			expr_new_deref(e->funcargs[0]),
 			expr_new_deref(e->funcargs[1]),
-			type_size(type_cached_VA_LIST(), &e->where));
+			type_size(type_root_va_list(cc1_type_root), &e->where));
 
 	FOLD_EXPR(e->lhs, stab);
 
-	e->tree_type = type_cached_VOID();
+	e->tree_type = type_root_btype(cc1_type_root, type_void);
 }
 
 expr *parse_va_copy(const char *ident)

@@ -190,7 +190,7 @@ expr *fold_expr_decay(expr *e, symtable *stab)
 static void fold_calling_conv(type *r)
 {
 	enum calling_conv conv;
-	decl_attr *found;
+	attribute *found;
 
 	/* don't currently check for a second one... */
 	found = type_attr_present(r, attr_call_conv);
@@ -383,12 +383,12 @@ static int fold_align(int al, int min, int max, where *w)
 static void fold_func_attr(decl *d)
 {
 	funcargs *fa = type_funcargs(d->ref);
-	decl_attr *da;
+	attribute *da;
 
-	if(decl_attr_present(d, attr_sentinel) && !fa->variadic)
+	if(attribute_present(d, attr_sentinel) && !fa->variadic)
 		warn_at(&d->where, "variadic function required for sentinel check");
 
-	if((da = decl_attr_present(d, attr_format)))
+	if((da = attribute_present(d, attr_format)))
 		format_check_decl(d, da);
 }
 
@@ -424,7 +424,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	 * an argument list/type::func: f(struct A { int i, j; } *p, ...)
 	 */
 
-	decl_attr *attrib = NULL;
+	attribute *attrib = NULL;
 	int can_align = 1;
 
 	if(d->folded)
@@ -518,7 +518,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		warn_at(&d->where, "inline on non-function");
 	}
 
-	if(d->align || (attrib = decl_attr_present(d, attr_aligned))){
+	if(d->align || (attrib = attribute_present(d, attr_aligned))){
 		const int tal = type_align(d->ref, &d->where);
 
 		struct decl_align *i;
@@ -676,7 +676,7 @@ void fold_func_passable(decl *func_decl, type *func_ret)
 		where *where;
 	} the_return = { NULL, NULL };
 
-	if(decl_attr_present(func_decl, attr_noreturn)){
+	if(attribute_present(func_decl, attr_noreturn)){
 		if(!type_is_void(func_ret)){
 			cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
 					"function \"%s\" marked no-return has a non-void return value",
@@ -895,7 +895,7 @@ void fold_stmt_and_add_to_curswitch(stmt *t)
 
 void fold_funcargs(funcargs *fargs, symtable *stab, type *from)
 {
-	decl_attr *da;
+	attribute *da;
 	unsigned long nonnulls = 0;
 
 	/* check nonnull corresponds to a pointer arg */

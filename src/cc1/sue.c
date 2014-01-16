@@ -30,7 +30,7 @@ void enum_vals_add(
 		sue_member ***pmembers,
 		where *w,
 		char *sp, expr *e,
-		decl_attr *attr)
+		attribute *attr)
 {
 	enum_member *emem = umalloc(sizeof *emem);
 	sue_member *mem = umalloc(sizeof *mem);

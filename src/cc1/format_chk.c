@@ -216,7 +216,7 @@ void format_check_call(
 		where *w, type *ref,
 		expr **args, const int variadic)
 {
-	decl_attr *attr = type_attr_present(ref, attr_format);
+	attribute *attr = type_attr_present(ref, attr_format);
 	int n, fmt_idx, var_idx;
 
 	if(!attr || !attr->bits.format.valid || !variadic)
@@ -251,7 +251,7 @@ void format_check_call(
 	}
 }
 
-void format_check_decl(decl *d, decl_attr *da)
+void format_check_decl(decl *d, attribute *da)
 {
 	type *r_func = type_is_func_or_block(d->ref);
 	funcargs *fargs;

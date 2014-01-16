@@ -3,8 +3,11 @@
 
 #include "ops.h"
 #include "expr_addr.h"
+
 #include "../out/lbl.h"
 #include "../label.h"
+#include "../type_is.h"
+#include "../type_root.h"
 
 const char *str_expr_addr()
 {
@@ -30,9 +33,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 			->uses++;
 
 		/* address of label - void * */
-		e->tree_type = type_new_ptr(
-				type_new_type(type_new_primitive(type_void)),
-				qual_none);
+		e->tree_type = type_ptr_to(type_root_btype(cc1_type_root, type_void));
 
 	}else{
 		/* if it's an identifier, act as a read */
@@ -55,7 +56,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 
 		fold_check_expr(e->lhs, FOLD_CHK_NO_BITFIELD, "address-of");
 
-		e->tree_type = type_new_ptr(e->lhs->tree_type, qual_none);
+		e->tree_type = type_ptr_to(e->lhs->tree_type);
 	}
 }
 

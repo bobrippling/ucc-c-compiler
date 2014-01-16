@@ -4,6 +4,8 @@
 #include "btype.h"
 #include "sue.h"
 #include "type.h"
+#include "decl.h"
+#include "expr.h"
 
 struct type_root;
 
@@ -15,8 +17,10 @@ type *type_root_btype(struct type_root *root, enum type_primitive p);
 type *type_root_suetype(struct type_root *root, struct_union_enum_st *);
 
 type *type_root_va_list(struct type_root *root);
+type *type_decay(type *);
 
 type *type_ptr_to(type *);
+type *type_pointed_to(type *);
 type *type_block_of(type *);
 
 type *type_array_of(type *, struct expr *sz);

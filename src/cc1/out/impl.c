@@ -2,7 +2,10 @@
 #include <stdarg.h>
 
 #include "../../util/util.h"
+
 #include "../decl.h"
+#include "../op.h"
+
 #include "vstack.h"
 #include "asm.h"
 #include "impl.h"

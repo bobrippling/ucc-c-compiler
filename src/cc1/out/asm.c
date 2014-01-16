@@ -4,19 +4,25 @@
 #include <stdlib.h>
 
 #include "../../util/util.h"
-#include "../cc1.h"
-#include "../sym.h"
-#include "asm.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
+
+#include "../cc1.h"
+#include "../sym.h"
+#include "../expr.h"
+#include "../stmt.h"
+#include "../type_is.h"
+
 #include "../sue.h"
 #include "../const.h"
 #include "../gen_asm.h"
 #include "../decl_init.h"
 #include "../pack.h"
-#include "out.h"
 #include "../str.h"
+
+#include "asm.h"
+#include "out.h"
 
 #define ASSERT_SCALAR(di)                  \
 	UCC_ASSERT(di->type == decl_init_scalar, \

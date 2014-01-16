@@ -5,13 +5,15 @@
 
 #include "../util/util.h"
 #include "../util/alloc.h"
-#include "cc1.h"
-#include "const.h"
-#include "cc1_where.h"
-#include "type_is.h"
 
-/* needed for expr_assignment() */
-#include "ops/expr_assign.h"
+#include "cc1.h"
+#include "type.h"
+#include "decl.h"
+#include "expr.h"
+#include "type_is.h"
+#include "const.h"
+
+#include "cc1_where.h"
 
 void expr_mutate(expr *e, func_mutate_expr *f,
 		func_fold *f_fold,

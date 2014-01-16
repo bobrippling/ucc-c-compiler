@@ -5,6 +5,6 @@ void format_check_call(
 		where *w, type *ref,
 		expr **args, const int variadic);
 
-void format_check_decl(decl *d, decl_attr *da);
+void format_check_decl(decl *d, attribute *da);
 
 #endif

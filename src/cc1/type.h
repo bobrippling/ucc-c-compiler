@@ -11,7 +11,7 @@ struct type
 	where where;
 	type *ref, *tmp; /* tmp used for things like printing */
 
-	struct decl_attr *attr;
+	struct attribute *attr;
 	int folded;
 
 	enum type_kind

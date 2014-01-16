@@ -5,17 +5,21 @@
 
 #include "../../util/util.h"
 #include "../../util/alloc.h"
-#include "asm.h"
-#include "out.h"
-#include "vstack.h"
-#include "impl.h"
-#include "lbl.h"
+
 #include "../../util/platform.h"
 #include "../cc1.h"
 #include "../pack.h"
 #include "../defs.h"
 #include "../opt.h"
 #include "../const.h"
+#include "../type_root.h"
+#include "../type_is.h"
+
+#include "asm.h"
+#include "out.h"
+#include "vstack.h"
+#include "impl.h"
+#include "lbl.h"
 
 typedef char chk[OUT_VPHI_SZ == sizeof(struct vstack) ? 1 : -1];
 
@@ -94,7 +98,7 @@ v_push_reg(int r, type *ty)
 
 static void v_push_sp(void)
 {
-	v_push_reg(REG_SP, type_cached_VOID_PTR());
+	v_push_reg(REG_SP, type_ptr_to(type_root_btype(cc1_type_root, type_void)));
 }
 
 void v_clear(struct vstack *vp, type *t)
@@ -107,7 +111,7 @@ void v_set_flag(
 		struct vstack *vp,
 		enum flag_cmp c, enum flag_mod mods)
 {
-	v_clear(vp, type_cached_BOOL());
+	v_clear(vp, type_root_btype(cc1_type_root, type__Bool));
 
 	vp->type = V_FLAG;
 	vp->bits.flag.cmp = c;
@@ -443,7 +447,7 @@ void v_freeup_regp(struct vstack *vp)
 static void v_stack_adj(unsigned amt, int sub)
 {
 	v_push_sp();
-	out_push_l(type_cached_INTPTR_T(), amt);
+	out_push_l(type_root_btype(cc1_type_root, type_intptr_t), amt);
 	out_op(sub ? op_minus : op_plus);
 	out_flush_volatile();
 	out_pop();
@@ -502,7 +506,7 @@ unsigned v_alloc_stack(unsigned sz, const char *desc)
 unsigned v_stack_align(unsigned const align, int force_mask)
 {
 	if(force_mask || (stack_sz & (align - 1))){
-		type *const ty = type_cached_INTPTR_T();
+		type *const ty = type_root_btype(cc1_type_root, type_intptr_t);
 		const unsigned new_sz = pack_to_align(stack_sz, align);
 		const unsigned added = new_sz - stack_sz;
 
@@ -725,14 +729,14 @@ static void out_set_lbl(const char *s, int pic)
 
 void out_push_lbl(const char *s, int pic)
 {
-	vpush(type_cached_VOID_PTR());
+	vpush(type_ptr_to(type_root_btype(cc1_type_root, type_void)));
 
 	out_set_lbl(s, pic);
 }
 
 void out_push_noop()
 {
-	out_push_zero(type_cached_INTPTR_T());
+	out_push_zero(type_root_btype(cc1_type_root, type_intptr_t));
 }
 
 void out_dup(void)
@@ -804,7 +808,7 @@ static void bitfield_scalar_merge(const struct vbitfield *const bf)
 	 */
 
 	/* we get the lvalue type - change to pointer */
-	type *const ty = vtop[-1].t, *ty_ptr = type_ptr_depth_inc(ty);
+	type *const ty = vtop[-1].t, *ty_ptr = type_pointed_to(ty);
 	unsigned long mask_leading_1s, mask_back_0s, mask_rm;
 
 	/* coerce vtop to a vtop[-1] type */
@@ -873,7 +877,7 @@ void out_store()
 	val   = &vtop[0];
 	store = &vtop[-1];
 
-	store->t = type_ptr_depth_dec(store->t, NULL);
+	store->t = type_pointed_to(store->t);
 
 	v_store(val, store);
 
@@ -931,7 +935,7 @@ void out_push_sym(sym *s)
 {
 	decl *const d = s->decl;
 
-	vpush(type_ptr_depth_inc(d->ref));
+	vpush(type_ptr_to(d->ref));
 
 	switch(s->type){
 		case sym_local:
@@ -1131,7 +1135,7 @@ pop_const:
 								if((swap = (val != vtop)))
 									vswap();
 
-								out_push_l(type_cached_INTPTR_T(), ptr_step);
+								out_push_l(type_root_btype(cc1_type_root, type_intptr_t), ptr_step);
 								out_op(op_multiply);
 
 								if(swap)
@@ -1154,7 +1158,7 @@ pop_const:
 		impl_op(op);
 
 		if(div){
-			out_push_l(type_cached_VOID_PTR(), div);
+			out_push_l(type_ptr_to(type_root_btype(cc1_type_root, type_void)), div);
 			out_op(op_divide);
 		}
 	}
@@ -1195,7 +1199,7 @@ static void bitfield_to_scalar(const struct vbitfield *bf)
 void v_deref_decl(struct vstack *vp)
 {
 	/* XXX: memleak */
-	vp->t = type_ptr_depth_dec(vp->t, NULL);
+	vp->t = type_pointed_to(vp->t);
 }
 
 void out_deref()
@@ -1208,7 +1212,7 @@ void out_deref()
 	type *indir;
 	int fp;
 
-	indir = type_ptr_depth_dec(vtop->t, NULL);
+	indir = type_pointed_to(vtop->t);
 
 	/* if the pointed-to object is not an lvalue, don't deref */
 	if(type_is(indir, type_array)
@@ -1498,7 +1502,7 @@ void out_undefined(void)
 
 void out_push_overflow(void)
 {
-	vpush(type_cached_BOOL());
+	vpush(type_root_btype(cc1_type_root, type__Bool));
 	impl_set_overflow();
 }
 
@@ -1506,8 +1510,8 @@ void out_push_frame_ptr(int nframes)
 {
 	/* XXX: memleak */
 	struct vreg r;
-	type *const void_pp = type_ptr_depth_inc(
-			type_cached_VOID_PTR());
+	type *const void_pp = type_ptr_to(
+			type_ptr_to(type_root_btype(cc1_type_root, type_void)));
 
 	vpush(void_pp);
 	v_set_reg_i(vtop, REG_BP);
@@ -1522,14 +1526,14 @@ void out_push_frame_ptr(int nframes)
 		impl_deref(vtop, &r, void_pp); /* movq (<reg>), <reg> */
 
 	/* force to void * */
-	out_change_type(type_ptr_depth_dec(void_pp, NULL));
+	out_change_type(type_pointed_to(void_pp));
 }
 
 void out_push_reg_save_ptr(void)
 {
 	out_flush_volatile();
 
-	vpush(type_cached_VOID_PTR());
+	vpush(type_ptr_to(type_root_btype(cc1_type_root, type_void)));
 	v_set_stack(vtop, NULL, -stack_variadic_offset, /*lval:*/0);
 }
 

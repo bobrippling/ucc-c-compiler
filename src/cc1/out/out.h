@@ -3,6 +3,11 @@
 
 #define OUT_VPHI_SZ 64 /* sizeof(struct vstack) */
 
+#include "../type.h"
+#include "../num.h"
+#include "../sym.h"
+#include "../op.h"
+
 void out_pop(void);
 void out_pop_func_ret(type *) ucc_nonnull((1));
 
@@ -49,7 +54,7 @@ void out_func_prologue(
 void out_func_epilogue(type *);
 
 void out_comment(const char *, ...) ucc_printflike(1, 2);
-#ifdef ASM_H
+#ifdef OUT_ASM_H
 void out_comment_sec(enum section_type, const char *, ...) ucc_printflike(2, 3);
 #endif
 
