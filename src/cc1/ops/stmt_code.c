@@ -7,6 +7,7 @@
 #include "../../util/dynarray.h"
 #include "../fold_sym.h"
 #include "../out/lbl.h"
+#include "../type_is.h"
 
 const char *str_stmt_code()
 {
@@ -102,7 +103,7 @@ void fold_stmt_code(stmt *s)
 	for(siter = s->bits.code.stmts; siter && *siter; siter++){
 		stmt *const st = *siter;
 
-		EOF_WHERE(&st->where, fold_stmt(st));
+		fold_stmt(st);
 
 		/*
 		 * check for dead code

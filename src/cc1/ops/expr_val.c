@@ -5,6 +5,7 @@
 #include "ops.h"
 #include "expr_val.h"
 #include "../out/asm.h"
+#include "../type_root.h"
 
 const char *str_expr_val()
 {
@@ -142,9 +143,7 @@ chosen:
 	if(!is_signed)
 		p = TYPE_PRIMITIVE_TO_UNSIGNED(p);
 
-	EOF_WHERE(&e->where,
-		e->tree_type = type_new_type(type_new_primitive(p));
-	);
+	e->tree_type = type_root_btype(cc1_type_root, p);
 
 	(void)stab;
 }

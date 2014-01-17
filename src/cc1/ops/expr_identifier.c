@@ -4,6 +4,8 @@
 #include "../out/asm.h"
 #include "../sue.h"
 #include "expr_addr.h"
+#include "../type_is.h"
+#include "../type_root.h"
 
 const char *str_expr_identifier()
 {
@@ -71,7 +73,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 				sp = in_fn->spel;
 			}
 
-			expr_mutate_str(e, sp, strlen(sp) + 1, /*wide:*/0, &e->where);
+			expr_mutate_str(e, sp, strlen(sp) + 1, /*wide:*/0, &e->where, stab);
 			/* +1 - take the null byte */
 			e->bits.strlit.is_func = 1;
 
@@ -91,8 +93,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			e->bits.num = m->val->bits.num;
 			FOLD_EXPR(e, stab);
 
-			e->tree_type = type_new_type(
-					type_new_primitive_sue(type_enum, sue));
+			e->tree_type = type_root_suetype(cc1_type_root, sue);
 		}
 		return;
 	}

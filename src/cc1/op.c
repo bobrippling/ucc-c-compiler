@@ -1,4 +1,8 @@
+#include <stdlib.h>
+#include <assert.h>
+
 #include "op.h"
+#include "macros.h"
 
 const char *op_to_str(const enum op_type o)
 {
@@ -79,7 +83,7 @@ int op_is_commutative(enum op_type o)
 			return 1;
 
 		case op_unknown:
-			ICE("bad op");
+			assert(0);
 		case op_minus:
 		case op_divide:
 		case op_modulus:

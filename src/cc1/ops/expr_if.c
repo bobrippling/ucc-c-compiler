@@ -5,6 +5,8 @@
 #include "expr_if.h"
 #include "../sue.h"
 #include "../out/lbl.h"
+#include "../type_is.h"
+#include "../type_root.h"
 
 const char *str_expr_if()
 {
@@ -107,11 +109,11 @@ void fold_expr_if(expr *e, symtable *stab)
 				middle_op, &e->rhs, &e->where, stab);
 
 	}else if(type_is_void(tt_l) || type_is_void(tt_r)){
-		e->tree_type = type_new_type(type_new_primitive(type_void));
+		e->tree_type = type_root_btype(cc1_type_root, type_void);
 
 	}else if(type_cmp(tt_l, tt_r, 0) & TYPE_EQUAL_ANY){
 		/* pointer to 'compatible' type */
-		e->tree_type = type_new_cast(tt_l,
+		e->tree_type = type_qualify(tt_l,
 				type_qual(tt_l) | type_qual(tt_r));
 
 	}else{
@@ -135,15 +137,10 @@ void fold_expr_if(expr *e, symtable *stab)
 				fold_type_chk_warn(
 						tt_l, tt_r, &e->where, "?: pointer type mismatch");
 
-				/* void * */
-				e->tree_type = type_new_ptr(type_cached_VOID(), qual_none);
-
-				{
-					enum type_qualifier q = type_qual(tt_l) | type_qual(tt_r);
-
-					if(q)
-						e->tree_type = type_new_cast(e->tree_type, q);
-				}
+				/* qualified void * */
+				e->tree_type = type_qualify(
+						type_ptr_to(type_root_btype(cc1_type_root, type_void)),
+						type_qual(tt_l) | type_qual(tt_r));
 
 			}else{
 				char buf[TYPE_STATIC_BUFSIZ];
@@ -151,7 +148,7 @@ void fold_expr_if(expr *e, symtable *stab)
 				warn_at(&e->where, "conditional type mismatch (%s vs %s)",
 						type_to_str(tt_l), type_to_str_r(buf, tt_r));
 
-				e->tree_type = type_cached_VOID();
+				e->tree_type = type_root_btype(cc1_type_root, type_void);
 			}
 		}
 	}

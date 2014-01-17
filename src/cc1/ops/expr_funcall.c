@@ -2,13 +2,16 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#include "ops.h"
-#include "expr_funcall.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
+
+#include "ops.h"
+#include "expr_funcall.h"
 #include "../funcargs.h"
 #include "../format_chk.h"
+#include "../type_is.h"
+#include "../type_root.h"
 
 const char *str_expr_funcall()
 {
@@ -153,9 +156,10 @@ invalid:
 			/* set up the funcargs as if it's "x()" - i.e. any args */
 			funcargs_empty(args);
 
-			func_ty = type_new_func(
-					type_new_type(type_new_primitive(type_int)),
-					args, /*new symtable for args:*/ symtab_new(stab));
+			func_ty = type_func_of(
+					type_root_btype(cc1_type_root, type_int),
+					args);
+					/*symtab_new(stab) *new symtable for args);*/
 
 			cc1_warn_at(&e->expr->where, 0, WARN_IMPLICIT_FUNC,
 					"implicit declaration of function \"%s\"", sp);

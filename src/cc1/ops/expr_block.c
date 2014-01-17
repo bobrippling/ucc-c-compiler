@@ -3,6 +3,7 @@
 #include "../out/lbl.h"
 #include "../../util/dynarray.h"
 #include "../funcargs.h"
+#include "../type_root.h"
 
 const char *str_expr_block(void)
 {
@@ -13,9 +14,10 @@ void expr_block_set_ty(decl *db, type *retty, symtable *scope)
 {
 	expr *e = db->block_expr;
 
-	db->ref = type_new_block(
-			type_new_func(retty, e->bits.block.args, scope),
-			qual_const);
+	(void)scope;
+
+	db->ref = type_block_of(
+			type_func_of(retty, e->bits.block.args/*, scope*/));
 }
 
 /*
@@ -64,11 +66,11 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 
 	/* if we didn't hit any returns, we're a void block */
 	if(!df->ref)
-		expr_block_set_ty(df, type_cached_VOID(), scope_stab);
+		expr_block_set_ty(df, type_root_btype(cc1_type_root, type_void), scope_stab);
 
 	e->tree_type = df->ref;
 
-	fold_func_passable(df, type_func_call(e->tree_type, NULL));
+	fold_func_passable(df, type_called(e->tree_type, NULL));
 }
 
 void gen_expr_block(expr *e)

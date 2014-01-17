@@ -2,6 +2,8 @@
 #include "expr_struct.h"
 #include "../sue.h"
 #include "../out/asm.h"
+#include "../type_is.h"
+#include "../type_root.h"
 
 #define ASSERT_NOT_DOT() UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now")
 
@@ -99,7 +101,9 @@ err:
 		expr *cast, *addr;
 
 		addr = expr_new_addr(e->lhs);
-		cast = expr_new_cast(addr, type_cached_VOID_PTR(), 1);
+		cast = expr_new_cast(addr,
+				type_ptr_to(type_root_btype(cc1_type_root, type_void)),
+				1);
 
 		e->lhs = cast;
 		e->expr_is_st_dot = 0;
@@ -108,11 +112,9 @@ err:
 	}
 
 	/* pull qualifiers from the struct to the member */
-	{
-		enum type_qualifier addon = type_qual(e->lhs->tree_type);
-
-		e->tree_type = type_new_cast_add(e->bits.struct_mem.d->ref, addon);
-	}
+	e->tree_type = type_qualify(
+			e->bits.struct_mem.d->ref,
+			type_qual(e->lhs->tree_type));
 }
 
 static void gen_expr_struct_lea(expr *e)
@@ -121,8 +123,9 @@ static void gen_expr_struct_lea(expr *e)
 
 	gen_expr(e->lhs);
 
-	out_change_type(type_cached_VOID_PTR()); /* cast for void* arithmetic */
-	out_push_l(type_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
+	/* cast for void* arithmetic */
+	out_change_type(type_ptr_to(type_root_btype(cc1_type_root, type_void)));
+	out_push_l(type_root_btype(cc1_type_root, type_intptr_t), struct_offset(e)); /* integral offset */
 	out_op(op_plus);
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
@@ -132,7 +135,7 @@ static void gen_expr_struct_lea(expr *e)
 	{
 		decl *d = e->bits.struct_mem.d;
 
-		out_change_type(type_ptr_depth_inc(d->ref));
+		out_change_type(type_ptr_to(d->ref));
 
 		/* set if we're a bitfield - out_deref() and out_store()
 		 * i.e. read + write then handle this

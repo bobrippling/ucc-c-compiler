@@ -2,6 +2,8 @@
 
 #include "ops.h"
 #include "stmt_break.h"
+#include "../type_is.h"
+#include "../type_root.h"
 
 const char *str_stmt_break()
 {
@@ -16,7 +18,7 @@ void fold_stmt_break_continue(stmt *t, char *lbl)
 	t->expr = expr_new_identifier(lbl);
 	memcpy_safe(&t->expr->where, &t->where);
 
-	t->expr->tree_type = type_cached_VOID();
+	t->expr->tree_type = type_root_btype(cc1_type_root, type_void);
 }
 
 void fold_stmt_break(stmt *t)

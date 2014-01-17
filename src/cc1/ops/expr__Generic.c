@@ -1,5 +1,7 @@
 #include "ops.h"
 #include "expr__Generic.h"
+#include "../type_is.h"
+#include "../type_root.h"
 
 const char *str_expr__Generic()
 {

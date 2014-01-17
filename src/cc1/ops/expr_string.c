@@ -1,12 +1,14 @@
 #include <string.h>
 
+#include "../../util/dynarray.h"
+#include "../../util/platform.h"
+
 #include "ops.h"
 #include "expr_string.h"
 #include "../decl_init.h"
 #include "../str.h"
 #include "../out/lbl.h"
-#include "../../util/dynarray.h"
-#include "../../util/platform.h"
+#include "../type_root.h"
 
 const char *str_expr_str(void)
 {
@@ -22,9 +24,11 @@ void fold_expr_str(expr *e, symtable *stab)
 	FOLD_EXPR(sz, stab);
 
 	/* (const? char []) */
-	e->tree_type = type_new_array(
-			type_new_type_qual(
-				strlit->wide ? type_wchar : type_nchar,
+	e->tree_type = type_array_of(
+			type_qualify(
+				type_root_btype(
+					cc1_type_root,
+					strlit->wide ? type_wchar : type_nchar),
 				e->bits.strlit.is_func ? qual_const : qual_none),
 			sz);
 }
@@ -85,22 +89,22 @@ void expr_mutate_str(
 		expr *e,
 		char *s, size_t len,
 		int wide,
-		where *w)
+		where *w, symtable *stab)
 {
 	expr_mutate_wrapper(e, str);
 
 	e->bits.strlit.lit_at.lit = strings_lookup(
-			&symtab_global(current_scope)->literals,
+			&symtab_global(stab)->literals,
 			s, len, wide);
 
 	memcpy_safe(&e->bits.strlit.lit_at.where, w);
 	memcpy_safe(&e->where, w);
 }
 
-expr *expr_new_str(char *s, size_t l, int wide, where *w)
+expr *expr_new_str(char *s, size_t l, int wide, where *w, symtable *stab)
 {
 	expr *e = expr_new_wrapper(str);
-	expr_mutate_str(e, s, l, wide, w);
+	expr_mutate_str(e, s, l, wide, w, stab);
 	return e;
 }
 

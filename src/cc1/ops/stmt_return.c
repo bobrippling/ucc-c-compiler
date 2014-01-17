@@ -3,6 +3,8 @@
 
 #include "expr_block.h"
 #include "../funcargs.h"
+#include "../type_is.h"
+#include "../type_root.h"
 
 const char *str_stmt_return()
 {
@@ -19,7 +21,7 @@ void fold_stmt_return(stmt *s)
 		die_at(&s->where, "return outside a function");
 
 	if(in_func->ref){
-		ret_ty = type_func_call(in_func->ref, NULL);
+		ret_ty = type_called(in_func->ref, NULL);
 		void_func = type_is_void(ret_ty);
 	}else{
 		/* we're the first return stmt in a block */
@@ -57,7 +59,7 @@ void fold_stmt_return(stmt *s)
 
 	if(!ret_ty){
 		/* first return of a block */
-		ret_ty = s->expr ? s->expr->tree_type : type_cached_VOID();
+		ret_ty = s->expr ? s->expr->tree_type : type_root_btype(cc1_type_root, type_void);
 		expr_block_set_ty(in_func, ret_ty, s->symtab);
 	}
 }

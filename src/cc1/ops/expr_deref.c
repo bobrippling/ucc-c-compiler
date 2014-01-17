@@ -2,6 +2,8 @@
 
 #include "ops.h"
 #include "expr_deref.h"
+#include "../type_root.h"
+#include "../type_is.h"
 
 const char *str_expr_deref()
 {
@@ -23,7 +25,7 @@ void fold_expr_deref(expr *e, symtable *stab)
 
 	fold_check_bounds(ptr, 0);
 
-	e->tree_type = type_ptr_depth_dec(ptr->tree_type, &e->where);
+	e->tree_type = type_pointed_to(ptr->tree_type);
 }
 
 static void gen_expr_deref_lea(expr *e)

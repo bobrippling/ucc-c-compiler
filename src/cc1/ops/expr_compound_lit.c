@@ -5,6 +5,7 @@
 #include "../out/asm.h"
 #include "../out/lbl.h"
 #include "../decl_init.h"
+#include "../type_is.h"
 
 const char *str_expr_compound_lit(void)
 {

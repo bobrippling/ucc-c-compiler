@@ -29,10 +29,13 @@ type *type_array_of_qual(
 		enum type_qualifier, int is_static);
 
 type *type_func_of(type *, struct funcargs *args);
+type *type_called(type *, struct funcargs **pfuncargs);
 
 type *type_tdef_of(expr *, decl *);
 
+type *type_unqualify(type *);
 type *type_qualify(type *, enum type_qualifier);
+type *type_sign(type *, int is_signed);
 
 type *type_root_MAX_FOR(struct type_root *, unsigned sz);
 
@@ -61,7 +64,6 @@ enum type_primitive type_primitive(type *);
 unsigned type_align(type *, where *from);
 unsigned type_array_len(type *);
 
-type *type_func_call(type *, funcargs **pfuncargs);
 int       type_decayable(type *r);
 type *type_decay(type *);
 #endif

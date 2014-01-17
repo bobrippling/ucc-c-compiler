@@ -238,7 +238,7 @@ expr *expr_new_block(type *rt, struct funcargs *args, struct stmt *code);
 expr *expr_new_deref(expr *);
 expr *expr_new_struct(expr *sub, int dot, expr *ident);
 expr *expr_new_struct_mem(expr *sub, int dot, decl *);
-expr *expr_new_str(char *, size_t, int wide, where *);
+expr *expr_new_str(char *, size_t, int wide, where *, symtable *stab);
 expr *expr_new_addr_lbl(char *);
 expr *expr_new_addr(expr *);
 

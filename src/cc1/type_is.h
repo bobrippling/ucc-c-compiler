@@ -1,10 +1,12 @@
-#ifndef TYPE_REF_IS_H
-#define TYPE_REF_IS_H
+#ifndef TYPE_IS_H
+#define TYPE_IS_H
+
+struct decl;
 
 type *type_skip_tdefs_casts(type *r);
 
 type *type_skip_casts(type *r);
-decl *type_is_tdef(type *r);
+struct decl *type_is_tdef(type *r);
 
 type *type_next(type *r);
 type *type_is(type *r, enum type_kind t);
@@ -91,7 +93,7 @@ type *type_is_decayed_array(type *);
 
 type *type_is(type *, enum type_kind);
 type *type_is_primitive(type *, enum type_primitive);
-decl     *type_is_tdef(type *);
+struct decl     *type_is_tdef(type *);
 type *type_is_ptr(type *); /* returns r->ref iff ptr */
 type *type_is_ptr_or_block(type *);
 int       type_is_nonfptr(type *);

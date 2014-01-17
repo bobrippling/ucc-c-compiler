@@ -12,10 +12,10 @@ OBJ = \
 	../util/alloc.o ../util/util.o ../util/platform.o \
 	../util/dynarray.o ../util/dynmap.o ../util/where.o \
 	../util/str.o ../util/std.o ../util/escape.o \
-	str.o label.o strings.o \
+	str.o num.o label.o strings.o \
 	cc1.o pass1.o \
 	decl.o attribute.o decl_init.o funcargs.o expr.o stmt.o \
-	btype.o type.o type_is.o type_root.o \
+	btype.o type.o type_is.o type_root.o op.o \
 	tokconv.o tokenise.o \
 	parse.o parse_type.o \
 	fold.o fold_sym.o fold_sue.o const.o format_chk.o \

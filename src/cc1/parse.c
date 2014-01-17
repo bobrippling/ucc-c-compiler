@@ -221,7 +221,7 @@ static expr *parse_expr_primary()
 			token_get_current_str(&s, &l, &wide, &w);
 			EAT(token_string);
 
-			return expr_new_str(s, l, wide, &w);
+			return expr_new_str(s, l, wide, &w, current_scope);
 		}
 
 		case token__Generic:

@@ -185,9 +185,10 @@ gen_style.o: gen_style.c ../util/util.h ../util/where.h \
  cc1.h ../util/std.h gen_style.h decl_init.h gen_asm.h out/asm.h
 label.o: label.c ../util/where.h ../util/compiler.h ../util/alloc.h \
  label.h out/lbl.h
-num.o: num.c num.h
-op.o: op.c op.h
-pack.o: pack.c pack.h ../util/platform.h
+num.o: num.c type.h num.h btype.h ../util/where.h ../util/compiler.h \
+ type_is.h cc1.h ../util/std.h defs.h
+op.o: op.c op.h macros.h
+pack.o: pack.c pack.h ../util/platform.h ../util/compiler.h
 parse.o: parse.c ../util/util.h ../util/where.h ../util/compiler.h \
  tokenise.h num.h parse.h expr.h strings.h ../util/dynmap.h ../util/dyn.h \
  type.h btype.h ../util/where.h op.h sym.h decl.h attribute.h const.h \
@@ -369,7 +370,8 @@ ops/expr__Generic.o: ops/expr__Generic.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_deref.h ops/../ops/expr_struct.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
- ops/../decl_init.h ops/../gen_asm.h ops/expr__Generic.h
+ ops/../decl_init.h ops/../gen_asm.h ops/expr__Generic.h ops/../type_is.h \
+ ops/../type_root.h ops/../btype.h ops/../sue.h
 ops/expr_addr.o: ops/expr_addr.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -422,7 +424,7 @@ ops/expr_assign.o: ops/expr_assign.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/expr_assign.h ops/__builtin.h \
- ops/../expr.h
+ ops/../expr.h ops/../type_is.h
 ops/expr_assign_compound.o: ops/expr_assign_compound.c ops/ops.h \
  ops/../../util/util.h ops/../../util/where.h ops/../../util/compiler.h \
  ops/../cc1.h ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -473,7 +475,8 @@ ops/expr_block.o: ops/expr_block.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/expr_block.h ops/../out/lbl.h \
- ops/../../util/dynarray.h ops/../../util/dyn.h ops/../funcargs.h
+ ops/../../util/dynarray.h ops/../../util/dyn.h ops/../funcargs.h \
+ ops/../type_root.h ops/../btype.h ops/../sue.h
 ops/expr_cast.o: ops/expr_cast.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -500,7 +503,7 @@ ops/expr_cast.o: ops/expr_cast.c ops/ops.h ops/../../util/util.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/../../util/alloc.h \
  ops/../../util/platform.h ops/expr_cast.h ops/../sue.h ops/../btype.h \
- ops/../defs.h
+ ops/../defs.h ops/../type_is.h ops/../type_root.h ops/../sue.h
 ops/expr_comma.o: ops/expr_comma.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -525,7 +528,7 @@ ops/expr_comma.o: ops/expr_comma.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_deref.h ops/../ops/expr_struct.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
- ops/../decl_init.h ops/../gen_asm.h ops/expr_comma.h
+ ops/../decl_init.h ops/../gen_asm.h ops/expr_comma.h ops/../type_is.h
 ops/expr_compound_lit.o: ops/expr_compound_lit.c ops/ops.h \
  ops/../../util/util.h ops/../../util/where.h ops/../../util/compiler.h \
  ops/../cc1.h ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -551,7 +554,7 @@ ops/expr_compound_lit.o: ops/expr_compound_lit.c ops/ops.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/expr_compound_lit.h \
- ops/../out/asm.h ops/../out/lbl.h ops/../decl_init.h
+ ops/../out/asm.h ops/../out/lbl.h ops/../decl_init.h ops/../type_is.h
 ops/expr_deref.o: ops/expr_deref.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -576,34 +579,36 @@ ops/expr_deref.o: ops/expr_deref.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_deref.h ops/../ops/expr_struct.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
- ops/../decl_init.h ops/../gen_asm.h ops/expr_deref.h
-ops/expr_funcall.o: ops/expr_funcall.c ops/ops.h ops/../../util/util.h \
- ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
- ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
- ops/../out/../num.h ops/../out/../btype.h ops/../out/../../util/where.h \
- ops/../out/../num.h ops/../out/../sym.h ops/../out/../decl.h \
- ops/../out/../type.h ops/../out/../attribute.h \
- ops/../out/../../util/dynmap.h ops/../out/../../util/dyn.h \
- ops/../out/../op.h ops/../fold.h ops/../decl.h ops/../sym.h \
- ops/../stmt.h ops/../ops/stmt_break.h ops/../ops/stmt_case.h \
- ops/../ops/stmt_case_range.h ops/../ops/stmt_code.h \
- ops/../ops/stmt_default.h ops/../ops/stmt_do.h ops/../ops/stmt_expr.h \
- ops/../ops/stmt_for.h ops/../ops/stmt_goto.h ops/../ops/stmt_if.h \
- ops/../ops/stmt_label.h ops/../ops/stmt_noop.h ops/../ops/stmt_return.h \
- ops/../ops/stmt_switch.h ops/../ops/stmt_while.h \
- ops/../ops/stmt_continue.h ops/../expr.h ops/../strings.h \
- ops/../../util/dynmap.h ops/../type.h ops/../op.h ops/../const.h \
- ops/../num.h ops/../ops/expr_addr.h ops/../ops/expr_assign.h \
- ops/../ops/expr_assign_compound.h ops/../ops/expr_cast.h \
- ops/../ops/expr_comma.h ops/../ops/expr_funcall.h \
+ ops/../decl_init.h ops/../gen_asm.h ops/expr_deref.h ops/../type_root.h \
+ ops/../btype.h ops/../sue.h ops/../type_is.h
+ops/expr_funcall.o: ops/expr_funcall.c ops/../../util/dynarray.h \
+ ops/../../util/dyn.h ops/../../util/platform.h ops/../../util/compiler.h \
+ ops/../../util/alloc.h ops/ops.h ops/../../util/util.h \
+ ops/../../util/where.h ops/../cc1.h ops/../../util/std.h \
+ ops/../out/out.h ops/../out/../type.h ops/../out/../num.h \
+ ops/../out/../btype.h ops/../out/../../util/where.h ops/../out/../num.h \
+ ops/../out/../sym.h ops/../out/../decl.h ops/../out/../type.h \
+ ops/../out/../attribute.h ops/../out/../../util/dynmap.h \
+ ops/../out/../../util/dyn.h ops/../out/../op.h ops/../fold.h \
+ ops/../decl.h ops/../sym.h ops/../stmt.h ops/../ops/stmt_break.h \
+ ops/../ops/stmt_case.h ops/../ops/stmt_case_range.h \
+ ops/../ops/stmt_code.h ops/../ops/stmt_default.h ops/../ops/stmt_do.h \
+ ops/../ops/stmt_expr.h ops/../ops/stmt_for.h ops/../ops/stmt_goto.h \
+ ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
+ ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
+ ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../expr.h \
+ ops/../strings.h ops/../../util/dynmap.h ops/../type.h ops/../op.h \
+ ops/../const.h ops/../num.h ops/../ops/expr_addr.h \
+ ops/../ops/expr_assign.h ops/../ops/expr_assign_compound.h \
+ ops/../ops/expr_cast.h ops/../ops/expr_comma.h ops/../ops/expr_funcall.h \
  ops/../ops/expr_identifier.h ops/../ops/expr_if.h ops/../ops/expr_op.h \
  ops/../ops/expr_sizeof.h ops/../ops/expr_val.h ops/../ops/expr_stmt.h \
  ops/../ops/expr_deref.h ops/../ops/expr_struct.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
- ops/../decl_init.h ops/../gen_asm.h ops/expr_funcall.h \
- ops/../../util/dynarray.h ops/../../util/dyn.h ops/../../util/platform.h \
- ops/../../util/alloc.h ops/../funcargs.h ops/../format_chk.h
+ ops/../decl_init.h ops/../gen_asm.h ops/expr_funcall.h ops/../funcargs.h \
+ ops/../format_chk.h ops/../type_is.h ops/../type_root.h ops/../btype.h \
+ ops/../sue.h
 ops/expr_identifier.o: ops/expr_identifier.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -629,7 +634,8 @@ ops/expr_identifier.o: ops/expr_identifier.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/expr_identifier.h \
- ops/../out/asm.h ops/../sue.h ops/../btype.h ops/expr_addr.h
+ ops/../out/asm.h ops/../sue.h ops/../btype.h ops/expr_addr.h \
+ ops/../type_is.h ops/../type_root.h ops/../sue.h
 ops/expr_if.o: ops/expr_if.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -655,7 +661,8 @@ ops/expr_if.o: ops/expr_if.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/expr_if.h ops/../sue.h \
- ops/../btype.h ops/../out/lbl.h
+ ops/../btype.h ops/../out/lbl.h ops/../type_is.h ops/../type_root.h \
+ ops/../sue.h
 ops/expr_op.o: ops/expr_op.c ops/../defs.h ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -681,7 +688,8 @@ ops/expr_op.o: ops/expr_op.c ops/../defs.h ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/expr_op.h ops/../out/lbl.h \
- ops/../out/asm.h ops/../type_is.h
+ ops/../out/asm.h ops/../type_is.h ops/../type_root.h ops/../btype.h \
+ ops/../sue.h
 ops/expr_sizeof.o: ops/expr_sizeof.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -707,7 +715,8 @@ ops/expr_sizeof.o: ops/expr_sizeof.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/expr_sizeof.h ops/../sue.h \
- ops/../btype.h ops/../out/asm.h
+ ops/../btype.h ops/../out/asm.h ops/../type_is.h ops/../type_root.h \
+ ops/../sue.h
 ops/expr_stmt.o: ops/expr_stmt.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -733,9 +742,11 @@ ops/expr_stmt.o: ops/expr_stmt.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/expr_stmt.h \
- ops/../../util/dynarray.h ops/../../util/dyn.h
-ops/expr_string.o: ops/expr_string.c ops/ops.h ops/../../util/util.h \
- ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
+ ops/../../util/dynarray.h ops/../../util/dyn.h ops/../type_root.h \
+ ops/../btype.h ops/../sue.h
+ops/expr_string.o: ops/expr_string.c ops/../../util/dynarray.h \
+ ops/../../util/dyn.h ops/../../util/platform.h ops/../../util/compiler.h \
+ ops/ops.h ops/../../util/util.h ops/../../util/where.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
  ops/../out/../num.h ops/../out/../btype.h ops/../out/../../util/where.h \
  ops/../out/../num.h ops/../out/../sym.h ops/../out/../decl.h \
@@ -759,8 +770,8 @@ ops/expr_string.o: ops/expr_string.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/expr_string.h ops/../decl_init.h \
- ops/../str.h ops/../out/lbl.h ops/../../util/dynarray.h \
- ops/../../util/dyn.h ops/../../util/platform.h
+ ops/../str.h ops/../out/lbl.h ops/../type_root.h ops/../btype.h \
+ ops/../sue.h
 ops/expr_struct.o: ops/expr_struct.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -786,7 +797,8 @@ ops/expr_struct.o: ops/expr_struct.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/expr_struct.h ops/../sue.h \
- ops/../btype.h ops/../out/asm.h
+ ops/../btype.h ops/../out/asm.h ops/../type_is.h ops/../type_root.h \
+ ops/../sue.h
 ops/expr_val.o: ops/expr_val.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -811,7 +823,8 @@ ops/expr_val.o: ops/expr_val.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_deref.h ops/../ops/expr_struct.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
- ops/../decl_init.h ops/../gen_asm.h ops/expr_val.h ops/../out/asm.h
+ ops/../decl_init.h ops/../gen_asm.h ops/expr_val.h ops/../out/asm.h \
+ ops/../type_root.h ops/../btype.h ops/../sue.h
 ops/stmt_break.o: ops/stmt_break.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -836,7 +849,8 @@ ops/stmt_break.o: ops/stmt_break.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_deref.h ops/../ops/expr_struct.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
- ops/../decl_init.h ops/../gen_asm.h ops/stmt_break.h
+ ops/../decl_init.h ops/../gen_asm.h ops/stmt_break.h ops/../type_is.h \
+ ops/../type_root.h ops/../btype.h ops/../sue.h
 ops/stmt_case.o: ops/stmt_case.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -914,7 +928,7 @@ ops/stmt_code.o: ops/stmt_code.c ops/ops.h ops/../../util/util.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/stmt_code.h ops/../decl_init.h \
  ops/../../util/dynarray.h ops/../../util/dyn.h ops/../fold_sym.h \
- ops/../out/lbl.h
+ ops/../out/lbl.h ops/../type_is.h
 ops/stmt_continue.o: ops/stmt_continue.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -1014,7 +1028,7 @@ ops/stmt_expr.o: ops/stmt_expr.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_deref.h ops/../ops/expr_struct.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
- ops/../decl_init.h ops/../gen_asm.h ops/stmt_expr.h
+ ops/../decl_init.h ops/../gen_asm.h ops/stmt_expr.h ops/../type_is.h
 ops/stmt_for.o: ops/stmt_for.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -1169,7 +1183,8 @@ ops/stmt_return.o: ops/stmt_return.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/stmt_return.h ops/expr_block.h \
- ops/../funcargs.h
+ ops/../funcargs.h ops/../type_is.h ops/../type_root.h ops/../btype.h \
+ ops/../sue.h
 ops/stmt_switch.o: ops/stmt_switch.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -1196,7 +1211,7 @@ ops/stmt_switch.o: ops/stmt_switch.c ops/ops.h ops/../../util/util.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/stmt_switch.h ops/../sue.h \
  ops/../btype.h ops/../../util/alloc.h ops/../../util/dynarray.h \
- ops/../../util/dyn.h ops/../out/lbl.h
+ ops/../../util/dyn.h ops/../out/lbl.h ops/../type_is.h
 ops/stmt_while.o: ops/stmt_while.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -1310,9 +1325,17 @@ out/write.o: out/write.c out/../../util/where.h out/../../util/compiler.h \
 out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/where.h \
  out/../../util/compiler.h out/../../util/alloc.h \
  out/../../util/dynarray.h out/../../util/dyn.h out/../../util/platform.h \
- out/vstack.h out/asm.h out/impl.h out/x86_64.h out/../cc1.h \
- out/../../util/std.h out/common.h out/out.h out/../type.h out/../num.h \
- out/../btype.h out/../../util/where.h out/../num.h out/../sym.h \
- out/../decl.h out/../type.h out/../attribute.h out/../../util/dynmap.h \
- out/../op.h out/lbl.h out/../funcargs.h out/write.h \
- out/../../util/compiler.h
+ out/../op.h out/../decl.h out/../type.h out/../num.h out/../btype.h \
+ out/../../util/where.h out/../attribute.h out/../type.h out/../type_is.h \
+ out/../type_root.h out/../sue.h out/../decl.h out/../expr.h \
+ out/../strings.h out/../../util/dynmap.h out/../op.h out/../sym.h \
+ out/../const.h out/../ops/expr_addr.h out/../ops/expr_assign.h \
+ out/../ops/expr_assign_compound.h out/../ops/expr_cast.h \
+ out/../ops/expr_comma.h out/../ops/expr_funcall.h \
+ out/../ops/expr_identifier.h out/../ops/expr_if.h out/../ops/expr_op.h \
+ out/../ops/expr_sizeof.h out/../ops/expr_val.h out/../ops/expr_stmt.h \
+ out/../ops/expr_deref.h out/../ops/expr_struct.h \
+ out/../ops/expr_compound_lit.h out/../ops/expr_string.h out/vstack.h \
+ out/asm.h out/impl.h out/x86_64.h out/../cc1.h out/../../util/std.h \
+ out/common.h out/out.h out/../num.h out/../sym.h out/lbl.h \
+ out/../funcargs.h out/write.h out/../../util/compiler.h

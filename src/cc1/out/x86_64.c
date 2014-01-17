@@ -7,6 +7,13 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
+
+#include "../op.h"
+#include "../decl.h"
+#include "../type.h"
+#include "../type_is.h"
+#include "../type_root.h"
+
 #include "vstack.h"
 #include "asm.h"
 #include "impl.h"
@@ -468,8 +475,8 @@ void impl_func_prologue_save_variadic(type *rf)
 	unsigned n_call_regs;
 	const struct vreg *call_regs;
 
-	type *const ty_dbl = type_cached_DOUBLE();
-	type *const ty_integral = type_cached_INTPTR_T();
+	type *const ty_dbl = type_root_btype(cc1_type_root, type_double);
+	type *const ty_integral = type_root_btype(cc1_type_root, type_intptr_t);
 
 	unsigned n_int_args, n_fp_args;
 
@@ -507,7 +514,7 @@ void impl_func_prologue_save_variadic(type *rf)
 
 	{
 		char *vfin = out_label_code("va_skip_float");
-		type *const ty_ch = type_cached_CHAR(n);
+		type *const ty_ch = type_root_btype(cc1_type_root, type_nchar);
 
 		/* testb %al, %al ; jz vfin */
 		vpush(ty_ch);
@@ -636,7 +643,7 @@ void impl_load_fp(struct vstack *from)
 				from->type = V_CONST_I;
 				from->bits.val_i = from->bits.val_f;
 				/* TODO: use just an int if we can get away with it */
-				from->t = type_cached_LLONG();
+				from->t = type_root_btype(cc1_type_root, type_llong);
 
 				out_cast(ty_fp, /*normalise_bool:*/1);
 				break;
@@ -732,7 +739,7 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 				out_asm("jp %s", parity);
 
 			/* XXX: memleak */
-			from->t = type_cached_CHAR(n); /* force set%s to set the low byte */
+			from->t = type_root_btype(cc1_type_root, type_nchar); /* force set%s to set the low byte */
 
 			/* actual cmp */
 			out_asm("set%s %%%s",
@@ -958,7 +965,6 @@ void impl_op(enum op_type op)
 		case op_shiftr:
 		{
 			char bufv[VSTACK_STR_SZ], bufs[VSTACK_STR_SZ];
-			type *free_this = NULL;
 			struct vreg rtmp;
 
 			/* value to shift must be a register */
@@ -972,7 +978,7 @@ void impl_op(enum op_type op)
 					v_to_reg(vtop); /* TODO: v_to_reg_preferred(vtop, X86_64_REG_RCX) */
 
 				case V_REG:
-					free_this = vtop->t = type_cached_CHAR(n);
+					vtop->t = type_root_btype(cc1_type_root, type_nchar);
 
 					rtmp.is_float = 0, rtmp.idx = X86_64_REG_RCX;
 					if(!vreg_eq(&vtop->bits.regoff.reg, &rtmp)){
@@ -997,8 +1003,6 @@ void impl_op(enum op_type op)
 					bufs, bufv);
 
 			vpop();
-
-			type_free_1(free_this);
 			return;
 		}
 
@@ -1369,7 +1373,7 @@ static void x86_xchg_fi(struct vstack *vp, type *tfrom, type *tto)
 	/* need to promote vp to int for cvtsi2ss */
 	if(type_size(ty_int, NULL) < type_primitive_size(type_int)){
 		/* need to pretend we're using an int */
-		type *const ty = *(to_float ? &tfrom : &tto) = type_cached_INT();
+		type *const ty = *(to_float ? &tfrom : &tto) = type_root_btype(cc1_type_root, type_int);
 
 		if(to_float){
 			/* cast up to int, then to float */
@@ -1687,7 +1691,7 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 
 			/* only the register arguments - glibc's printf of x86_64 linux
 			 * segfaults if this is 9 or greater */
-			out_push_l(type_cached_CHAR(n), MIN(nfloats, N_CALL_REGS_F));
+			out_push_l(type_root_btype(cc1_type_root, type_nchar), MIN(nfloats, N_CALL_REGS_F));
 			v_to_reg_given(vtop, &r);
 			vpop();
 		}

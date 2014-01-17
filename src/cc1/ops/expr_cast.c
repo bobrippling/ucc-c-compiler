@@ -8,6 +8,8 @@
 #include "expr_cast.h"
 #include "../sue.h"
 #include "../defs.h"
+#include "../type_is.h"
+#include "../type_root.h"
 
 #define IMPLICIT_STR(e) ((e)->expr_cast_implicit ? "implicit " : "")
 #define IS_RVAL_CAST(e)  (!(e)->bits.cast.tref)
@@ -280,7 +282,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 	if(IS_RVAL_CAST(e)){
 		/* remove cv-qualifiers */
-		e->tree_type = type_new_cast(expr_cast_child(e)->tree_type, qual_none);
+		e->tree_type = type_unqualify(expr_cast_child(e)->tree_type);
 
 		/* rval cast can have a lea */
 		if(expr_cast_child(e)->f_lea)
@@ -290,7 +292,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		/* casts remove restrict qualifiers */
 		enum type_qualifier q = type_qual(e->bits.cast.tref);
 
-		e->tree_type = type_new_cast(e->bits.cast.tref, q & ~qual_restrict);
+		e->tree_type = type_qualify(e->bits.cast.tref, q & ~qual_restrict);
 
 		fold_type(e->tree_type, NULL, stab); /* struct lookup, etc */
 
@@ -423,8 +425,11 @@ void gen_expr_cast(expr *e)
 						type_to_str_r(buf, tto),
 						mem->struct_offset);*/
 
-					out_change_type(type_cached_VOID_PTR());
-					out_push_l(type_cached_INTPTR_T(), mem->struct_offset);
+					out_change_type(type_ptr_to(
+								type_root_btype(cc1_type_root, type_void)));
+
+					out_push_l(type_root_btype(cc1_type_root, type_intptr_t),
+							mem->struct_offset);
 					out_op(op_plus);
 				}
 			}

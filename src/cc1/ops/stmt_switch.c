@@ -7,6 +7,7 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 #include "../out/lbl.h"
+#include "../type_is.h"
 
 const char *str_stmt_switch()
 {

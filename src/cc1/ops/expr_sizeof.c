@@ -4,6 +4,8 @@
 #include "expr_sizeof.h"
 #include "../sue.h"
 #include "../out/asm.h"
+#include "../type_is.h"
+#include "../type_root.h"
 
 #define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->bits.size_of.of_type)
 #define SIZEOF_SIZE(e)  (e)->bits.size_of.sz
@@ -94,7 +96,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 							SIZEOF_WHAT(e), &e->where);
 
 			/* size_t */
-			e->tree_type = type_new_type(type_new_primitive(type_ulong));
+			e->tree_type = type_root_btype(cc1_type_root, type_ulong);
 			break;
 		}
 	}

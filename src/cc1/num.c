@@ -1,17 +1,19 @@
-#include "num.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <assert.h>
 
-numeric *numeric_new(long v)
-{
-	numeric *num = umalloc(sizeof *num);
-	num->val.i = v;
-	return num;
-}
+#include "type.h"
+#include "type_is.h"
+
+#include "cc1.h"
+#include "defs.h"
+
+#include "num.h"
 
 int numeric_cmp(const numeric *a, const numeric *b)
 {
-	UCC_ASSERT(
-			(a->suffix & VAL_FLOATING) == (b->suffix & VAL_FLOATING),
-			"cmp int and float?");
+	assert((a->suffix & VAL_FLOATING) == (b->suffix & VAL_FLOATING));
 
 	if(a->suffix & VAL_FLOATING){
 		const floating_t fa = a->val.f, fb = b->val.f;

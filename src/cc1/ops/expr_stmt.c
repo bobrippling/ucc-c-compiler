@@ -1,6 +1,7 @@
 #include "ops.h"
 #include "expr_stmt.h"
 #include "../../util/dynarray.h"
+#include "../type_root.h"
 
 const char *str_expr_stmt()
 {
@@ -29,7 +30,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 				FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_ST_UN,
 				"({ ... }) statement");
 	}else{
-		e->tree_type = type_cached_VOID(); /* void expr */
+		e->tree_type = type_root_btype(cc1_type_root, type_void);
 	}
 
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */

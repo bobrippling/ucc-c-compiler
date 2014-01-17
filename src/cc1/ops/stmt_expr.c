@@ -2,6 +2,7 @@
 
 #include "ops.h"
 #include "stmt_expr.h"
+#include "../type_is.h"
 
 const char *str_stmt_expr()
 {

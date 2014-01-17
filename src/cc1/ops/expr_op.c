@@ -7,6 +7,7 @@
 #include "../out/lbl.h"
 #include "../out/asm.h"
 #include "../type_is.h"
+#include "../type_root.h"
 
 const char *str_expr_op()
 {
@@ -216,7 +217,7 @@ type *op_required_promotion(
 		/* cast _to_ the floating type */
 		type *res = floating_lhs ? (*prhs = tlhs) : (*plhs = trhs);
 
-		resolved = op_is_comparison(op) ? type_cached_BOOL() : res;
+		resolved = op_is_comparison(op) ? type_root_btype(cc1_type_root, type__Bool) : res;
 
 		goto fin;
 		/* else we pick the largest floating or integral type */
@@ -258,7 +259,7 @@ type *op_required_promotion(
 						break;
 				}
 
-				resolved = type_cached_INTPTR_T();
+				resolved = type_root_btype(cc1_type_root, type_intptr_t);
 
 			}else if(op_returns_bool(op)){
 ptr_relation:
@@ -269,11 +270,11 @@ ptr_relation:
 							: "comparison between pointer and integer"))
 					{
 						/* not equal - ptr vs int */
-						*(l_ptr ? prhs : plhs) = type_cached_INTPTR_T();
+						*(l_ptr ? prhs : plhs) = type_root_btype(cc1_type_root, type_intptr_t);
 					}
 				}
 
-				resolved = type_cached_BOOL();
+				resolved = type_root_btype(cc1_type_root, type__Bool);
 
 			}else{
 				die_at(w, "operation between two pointers must be relational or subtraction");
@@ -303,7 +304,7 @@ ptr_relation:
 			resolved = l_ptr ? tlhs : trhs;
 
 			/* FIXME: promote to unsigned */
-			*(l_ptr ? prhs : plhs) = type_cached_INTPTR_T();
+			*(l_ptr ? prhs : plhs) = type_root_btype(cc1_type_root, type_intptr_t);
 
 			/* + or -, check if we can */
 			{
@@ -366,7 +367,7 @@ ptr_relation:
 
 		}else if(op == op_andsc || op == op_orsc){
 			/* no promotion */
-			resolved = type_cached_BOOL();
+			resolved = type_root_btype(cc1_type_root, type__Bool);
 
 		}else{
 			const int l_unsigned = !type_is_signed(tlhs),
@@ -412,12 +413,12 @@ ptr_relation:
 				/* else convert both to (unsigned)signed_type */
 				type *signed_t = l_unsigned ? trhs : tlhs;
 
-				tlarger = *plhs = *prhs = type_new_cast_signed(signed_t, 0);
+				tlarger = *plhs = *prhs = type_sign(signed_t, 0);
 			}
 
 			/* if we have a _comparison_ (e.g. between enums), convert to _Bool */
 			resolved = op_returns_bool(op)
-				? type_cached_BOOL()
+				? type_root_btype(cc1_type_root, type__Bool)
 				: tlarger;
 		}
 	}
@@ -710,7 +711,7 @@ void fold_expr_op(expr *e, symtable *stab)
 
 		if(op_float_check(e)){
 			/* short circuit - TODO: error expr */
-			e->tree_type = type_cached_INT();
+			e->tree_type = type_root_btype(cc1_type_root, type_int);
 			return;
 		}
 
@@ -753,7 +754,7 @@ void fold_expr_op(expr *e, symtable *stab)
 						FOLD_CHK_NO_ST_UN,
 						op_to_str(e->op));
 
-				e->tree_type = type_cached_INT();
+				e->tree_type = type_root_btype(cc1_type_root, type_int);
 				break;
 
 			case op_plus:
