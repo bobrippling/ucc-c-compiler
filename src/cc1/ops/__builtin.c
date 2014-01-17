@@ -13,7 +13,7 @@
 #include "../parse.h"
 #include "../fold.h"
 #include "../funcargs.h"
-#include "../type_root.h"
+#include "../type_nav.h"
 #include "../type_is.h"
 
 #include "../const.h"
@@ -206,26 +206,26 @@ static void fold_memset(expr *e, symtable *stab)
 	if((unsigned)e->bits.builtin_memset.ch > 255)
 		warn_at(&e->where, "memset with value > UCHAR_MAX");
 
-	e->tree_type = type_ptr_to(type_root_btype(cc1_type_root, type_void));
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
 
 static void builtin_gen_memset(expr *e)
 {
 	size_t n, rem;
 	unsigned i;
-	type *tzero = type_root_MAX_FOR(
-			cc1_type_root,
+	type *tzero = type_nav_MAX_FOR(
+			cc1_type_nav,
 			e->bits.builtin_memset.len);
 
 	type *textra, *textrap;
 
 	if(!tzero)
-		tzero = type_root_btype(cc1_type_root, type_nchar);
+		tzero = type_nav_btype(cc1_type_nav, type_nchar);
 
 	n   = e->bits.builtin_memset.len / type_size(tzero, NULL);
 	rem = e->bits.builtin_memset.len % type_size(tzero, NULL);
 
-	if((textra = rem ? type_root_MAX_FOR(cc1_type_root, rem) : NULL))
+	if((textra = rem ? type_nav_MAX_FOR(cc1_type_nav, rem) : NULL))
 		textrap = type_ptr_to(textra);
 
 	/* works fine for bitfields - struct lea acts appropriately */
@@ -252,7 +252,7 @@ static void builtin_gen_memset(expr *e)
 		out_pop();
 
 		/* p++ (copied pointer) */
-		out_push_l(type_root_btype(cc1_type_root, type_intptr_t), 1);
+		out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t), 1);
 		out_op(op_plus);
 
 		if(rem){
@@ -304,7 +304,7 @@ static void fold_memcpy(expr *e, symtable *stab)
 	fold_expr_no_decay(e->lhs, stab);
 	fold_expr_no_decay(e->rhs, stab);
 
-	e->tree_type = type_ptr_to(type_root_btype(cc1_type_root, type_void));
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
 
 #ifdef BUILTIN_USE_LIBC
@@ -322,7 +322,7 @@ static void builtin_memcpy_single(void)
 	static type *t1;
 
 	if(!t1)
-		t1 = type_root_btype(cc1_type_root, type_intptr_t);
+		t1 = type_nav_btype(cc1_type_nav, type_intptr_t);
 
 	/* ds */
 
@@ -369,7 +369,7 @@ static void builtin_gen_memcpy(expr *e)
 	/* TODO: backend rep movsb */
 	unsigned i = e->bits.num.val.i;
 	type *tptr = type_ptr_to(
-				type_root_MAX_FOR(cc1_type_root, e->bits.num.val.i));
+				type_nav_MAX_FOR(cc1_type_nav, e->bits.num.val.i));
 	unsigned tptr_sz = type_size(tptr, &e->where);
 
 	lea_expr(e->lhs); /* d */
@@ -389,7 +389,7 @@ static void builtin_gen_memcpy(expr *e)
 
 		if(i > 0){
 			tptr_sz /= 2;
-			tptr = type_ptr_to(type_root_MAX_FOR(cc1_type_root, tptr_sz));
+			tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, tptr_sz));
 		}
 	}
 
@@ -431,7 +431,7 @@ static expr *parse_memcpy(void)
 
 static void fold_unreachable(expr *e, symtable *stab)
 {
-	type *tvoid = type_root_btype(cc1_type_root , type_void);
+	type *tvoid = type_nav_btype(cc1_type_nav , type_void);
 
 	(void)stab;
 
@@ -469,7 +469,7 @@ static void fold_compatible_p(expr *e, symtable *stab)
 	fold_type(types[0], NULL, stab);
 	fold_type(types[1], NULL, stab);
 
-	e->tree_type = type_root_btype(cc1_type_root, type__Bool);
+	e->tree_type = type_nav_btype(cc1_type_nav, type__Bool);
 	wur_builtin(e);
 }
 
@@ -513,7 +513,7 @@ static void fold_constant_p(expr *e, symtable *stab)
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
-	e->tree_type = type_root_btype(cc1_type_root, type__Bool);
+	e->tree_type = type_nav_btype(cc1_type_nav, type__Bool);
 	wur_builtin(e);
 }
 
@@ -561,7 +561,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 	memcpy_safe(&e->bits.num, &k.bits.num);
 
-	e->tree_type = type_ptr_to(type_root_btype(cc1_type_root, type_nchar));
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar));
 
 	wur_builtin(e);
 }
@@ -601,7 +601,7 @@ expr *builtin_new_frame_address(int depth)
 static void fold_reg_save_area(expr *e, symtable *stab)
 {
 	(void)stab;
-	e->tree_type = type_ptr_to(type_root_btype(cc1_type_root, type_nchar));
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar));
 }
 
 static void gen_reg_save_area(expr *e)
@@ -755,7 +755,7 @@ static void fold_is_signed(expr *e, symtable *stab)
 		fold_had_error = 1;
 	}
 
-	e->tree_type = type_root_btype(cc1_type_root, type__Bool);
+	e->tree_type = type_nav_btype(cc1_type_nav, type__Bool);
 	wur_builtin(e);
 }
 
@@ -807,7 +807,7 @@ need_char_p:
 		case builtin_nan:  prim = type_double; break;
 		case builtin_nanl: prim = type_ldouble; break;
 	}
-	e->tree_type = type_root_btype(cc1_type_root, prim);
+	e->tree_type = type_nav_btype(cc1_type_nav, prim);
 
 	wur_builtin(e);
 }

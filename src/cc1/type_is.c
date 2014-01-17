@@ -9,7 +9,7 @@
 #include "expr.h"
 #include "sue.h"
 #include "type.h"
-#include "type_root.h"
+#include "type_nav.h"
 #include "decl.h"
 #include "const.h"
 #include "funcargs.h"
@@ -554,7 +554,7 @@ int type_is_promotable(type *r, type **pto)
 		rsz = type_primitive_size(r->bits.type->primitive);
 
 		if(rsz < (fp ? sz_double : sz_int)){
-			*pto = type_root_btype(cc1_type_root, fp ? type_double : type_int);
+			*pto = type_nav_btype(cc1_type_nav, fp ? type_double : type_int);
 			return 1;
 		}
 	}

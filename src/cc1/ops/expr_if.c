@@ -6,7 +6,7 @@
 #include "../sue.h"
 #include "../out/lbl.h"
 #include "../type_is.h"
-#include "../type_root.h"
+#include "../type_nav.h"
 
 const char *str_expr_if()
 {
@@ -109,7 +109,7 @@ void fold_expr_if(expr *e, symtable *stab)
 				middle_op, &e->rhs, &e->where, stab);
 
 	}else if(type_is_void(tt_l) || type_is_void(tt_r)){
-		e->tree_type = type_root_btype(cc1_type_root, type_void);
+		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 
 	}else if(type_cmp(tt_l, tt_r, 0) & TYPE_EQUAL_ANY){
 		/* pointer to 'compatible' type */
@@ -139,7 +139,7 @@ void fold_expr_if(expr *e, symtable *stab)
 
 				/* qualified void * */
 				e->tree_type = type_qualify(
-						type_ptr_to(type_root_btype(cc1_type_root, type_void)),
+						type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
 						type_qual(tt_l) | type_qual(tt_r));
 
 			}else{
@@ -148,7 +148,7 @@ void fold_expr_if(expr *e, symtable *stab)
 				warn_at(&e->where, "conditional type mismatch (%s vs %s)",
 						type_to_str(tt_l), type_to_str_r(buf, tt_r));
 
-				e->tree_type = type_root_btype(cc1_type_root, type_void);
+				e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 			}
 		}
 	}

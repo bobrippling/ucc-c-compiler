@@ -9,7 +9,7 @@
 #include "../sue.h"
 #include "../defs.h"
 #include "../type_is.h"
-#include "../type_root.h"
+#include "../type_nav.h"
 
 #define IMPLICIT_STR(e) ((e)->expr_cast_implicit ? "implicit " : "")
 #define IS_RVAL_CAST(e)  (!(e)->bits.cast.tref)
@@ -426,9 +426,9 @@ void gen_expr_cast(expr *e)
 						mem->struct_offset);*/
 
 					out_change_type(type_ptr_to(
-								type_root_btype(cc1_type_root, type_void)));
+								type_nav_btype(cc1_type_nav, type_void)));
 
-					out_push_l(type_root_btype(cc1_type_root, type_intptr_t),
+					out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t),
 							mem->struct_offset);
 					out_op(op_plus);
 				}

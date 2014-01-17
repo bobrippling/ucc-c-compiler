@@ -5,7 +5,7 @@
 #include "../sue.h"
 #include "expr_addr.h"
 #include "../type_is.h"
-#include "../type_root.h"
+#include "../type_nav.h"
 
 const char *str_expr_identifier()
 {
@@ -93,7 +93,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			e->bits.num = m->val->bits.num;
 			FOLD_EXPR(e, stab);
 
-			e->tree_type = type_root_suetype(cc1_type_root, sue);
+			e->tree_type = type_nav_suetype(cc1_type_nav, sue);
 		}
 		return;
 	}

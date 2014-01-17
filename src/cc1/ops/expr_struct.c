@@ -3,7 +3,7 @@
 #include "../sue.h"
 #include "../out/asm.h"
 #include "../type_is.h"
-#include "../type_root.h"
+#include "../type_nav.h"
 
 #define ASSERT_NOT_DOT() UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now")
 
@@ -102,7 +102,7 @@ err:
 
 		addr = expr_new_addr(e->lhs);
 		cast = expr_new_cast(addr,
-				type_ptr_to(type_root_btype(cc1_type_root, type_void)),
+				type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
 				1);
 
 		e->lhs = cast;
@@ -124,8 +124,8 @@ static void gen_expr_struct_lea(expr *e)
 	gen_expr(e->lhs);
 
 	/* cast for void* arithmetic */
-	out_change_type(type_ptr_to(type_root_btype(cc1_type_root, type_void)));
-	out_push_l(type_root_btype(cc1_type_root, type_intptr_t), struct_offset(e)); /* integral offset */
+	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
+	out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t), struct_offset(e)); /* integral offset */
 	out_op(op_plus);
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)

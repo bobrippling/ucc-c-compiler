@@ -7,7 +7,7 @@
 #include "../out/lbl.h"
 #include "../label.h"
 #include "../type_is.h"
-#include "../type_root.h"
+#include "../type_nav.h"
 
 const char *str_expr_addr()
 {
@@ -33,7 +33,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 			->uses++;
 
 		/* address of label - void * */
-		e->tree_type = type_ptr_to(type_root_btype(cc1_type_root, type_void));
+		e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 
 	}else{
 		/* if it's an identifier, act as a read */

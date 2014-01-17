@@ -5,7 +5,7 @@
 #include "ops.h"
 #include "expr_val.h"
 #include "../out/asm.h"
-#include "../type_root.h"
+#include "../type_nav.h"
 
 const char *str_expr_val()
 {
@@ -143,7 +143,7 @@ chosen:
 	if(!is_signed)
 		p = TYPE_PRIMITIVE_TO_UNSIGNED(p);
 
-	e->tree_type = type_root_btype(cc1_type_root, p);
+	e->tree_type = type_nav_btype(cc1_type_nav, p);
 
 	(void)stab;
 }

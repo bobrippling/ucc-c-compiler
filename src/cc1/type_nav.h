@@ -7,16 +7,16 @@
 #include "decl.h"
 #include "expr.h"
 
-struct type_root;
+struct type_nav;
 
-extern struct type_root *cc1_type_root;
+extern struct type_nav *cc1_type_nav;
 
-struct type_root *type_root_init(void);
+struct type_nav *type_nav_init(void);
 
-type *type_root_btype(struct type_root *root, enum type_primitive p);
-type *type_root_suetype(struct type_root *root, struct_union_enum_st *);
+type *type_nav_btype(struct type_nav *root, enum type_primitive p);
+type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *);
 
-type *type_root_va_list(struct type_root *root);
+type *type_nav_va_list(struct type_nav *root);
 type *type_decay(type *);
 
 type *type_ptr_to(type *);
@@ -37,7 +37,7 @@ type *type_unqualify(type *);
 type *type_qualify(type *, enum type_qualifier);
 type *type_sign(type *, int is_signed);
 
-type *type_root_MAX_FOR(struct type_root *, unsigned sz);
+type *type_nav_MAX_FOR(struct type_nav *, unsigned sz);
 
 #if 0
 type *type_new_tdef(expr *, decl *);

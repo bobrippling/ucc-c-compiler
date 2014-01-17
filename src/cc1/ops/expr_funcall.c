@@ -11,7 +11,7 @@
 #include "../funcargs.h"
 #include "../format_chk.h"
 #include "../type_is.h"
-#include "../type_root.h"
+#include "../type_nav.h"
 
 const char *str_expr_funcall()
 {
@@ -157,7 +157,7 @@ invalid:
 			funcargs_empty(args);
 
 			func_ty = type_func_of(
-					type_root_btype(cc1_type_root, type_int),
+					type_nav_btype(cc1_type_nav, type_int),
 					args);
 					/*symtab_new(stab) *new symtable for args);*/
 

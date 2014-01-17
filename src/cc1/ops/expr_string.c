@@ -8,7 +8,7 @@
 #include "../decl_init.h"
 #include "../str.h"
 #include "../out/lbl.h"
-#include "../type_root.h"
+#include "../type_nav.h"
 
 const char *str_expr_str(void)
 {
@@ -26,8 +26,8 @@ void fold_expr_str(expr *e, symtable *stab)
 	/* (const? char []) */
 	e->tree_type = type_array_of(
 			type_qualify(
-				type_root_btype(
-					cc1_type_root,
+				type_nav_btype(
+					cc1_type_nav,
 					strlit->wide ? type_wchar : type_nchar),
 				e->bits.strlit.is_func ? qual_const : qual_none),
 			sz);

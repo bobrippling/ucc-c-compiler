@@ -6,18 +6,18 @@
 #include "btype.h"
 #include "type.h"
 
-#include "type_root.h"
+#include "type_nav.h"
 
-struct type_root
+struct type_nav
 {
 	type **btypes; /* indexed by type_primitive */
 };
 
-struct type_root *cc1_type_root;
+struct type_nav *cc1_type_nav;
 
-struct type_root *type_root_init(void)
+struct type_nav *type_nav_init(void)
 {
-	struct type_root *root = umalloc(sizeof *root);
+	struct type_nav *root = umalloc(sizeof *root);
 	root->btypes = ucalloc(type_unknown, sizeof *root->btypes);
 	return root;
 }
@@ -41,6 +41,28 @@ static type *type_new_btype(const btype *b)
 	t->bits.type = b;
 	return t;
 }
+
+#if 0
+TODO:
+
+type_array_of
+type_array_of_qual
+type_block_of
+type_called
+type_func_of
+type_pointed_to
+type_ptr_to
+type_qualify
+type_nav_MAX_FOR
+type_nav_suetype
+type_nav_va_list
+type_sign
+type_tdef_of
+type_unqualify
+
+and obviously the type navigation code
+
+#endif
 
 #if 0
 static type *type_new_type_qual(enum type_primitive t, enum type_qualifier q)
@@ -146,7 +168,7 @@ static type *type_new_cast_signed(type *to, int is_signed)
 }
 #endif
 
-type *type_root_btype(struct type_root *root, enum type_primitive p)
+type *type_nav_btype(struct type_nav *root, enum type_primitive p)
 {
 	assert(p < type_struct);
 

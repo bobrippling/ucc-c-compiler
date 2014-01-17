@@ -4,7 +4,7 @@
 #include "expr_block.h"
 #include "../funcargs.h"
 #include "../type_is.h"
-#include "../type_root.h"
+#include "../type_nav.h"
 
 const char *str_stmt_return()
 {
@@ -59,7 +59,7 @@ void fold_stmt_return(stmt *s)
 
 	if(!ret_ty){
 		/* first return of a block */
-		ret_ty = s->expr ? s->expr->tree_type : type_root_btype(cc1_type_root, type_void);
+		ret_ty = s->expr ? s->expr->tree_type : type_nav_btype(cc1_type_nav, type_void);
 		expr_block_set_ty(in_func, ret_ty, s->symtab);
 	}
 }

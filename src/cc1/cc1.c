@@ -24,7 +24,7 @@
 #include "out/asm.h" /* NUM_SECTIONS */
 #include "opt.h"
 #include "pass1.h"
-#include "type_root.h"
+#include "type_nav.h"
 
 #include "../as_cfg.h"
 

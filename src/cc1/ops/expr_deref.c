@@ -2,7 +2,7 @@
 
 #include "ops.h"
 #include "expr_deref.h"
-#include "../type_root.h"
+#include "../type_nav.h"
 #include "../type_is.h"
 
 const char *str_expr_deref()

@@ -20,7 +20,7 @@
 #include "cc1.h"
 #include "fold.h"
 #include "const.h"
-#include "type_root.h"
+#include "type_nav.h"
 
 #include "pass1.h"
 

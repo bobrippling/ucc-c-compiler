@@ -12,7 +12,7 @@
 #include "../defs.h"
 #include "../opt.h"
 #include "../const.h"
-#include "../type_root.h"
+#include "../type_nav.h"
 #include "../type_is.h"
 
 #include "asm.h"
@@ -98,7 +98,7 @@ v_push_reg(int r, type *ty)
 
 static void v_push_sp(void)
 {
-	v_push_reg(REG_SP, type_ptr_to(type_root_btype(cc1_type_root, type_void)));
+	v_push_reg(REG_SP, type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 }
 
 void v_clear(struct vstack *vp, type *t)
@@ -111,7 +111,7 @@ void v_set_flag(
 		struct vstack *vp,
 		enum flag_cmp c, enum flag_mod mods)
 {
-	v_clear(vp, type_root_btype(cc1_type_root, type__Bool));
+	v_clear(vp, type_nav_btype(cc1_type_nav, type__Bool));
 
 	vp->type = V_FLAG;
 	vp->bits.flag.cmp = c;
@@ -447,7 +447,7 @@ void v_freeup_regp(struct vstack *vp)
 static void v_stack_adj(unsigned amt, int sub)
 {
 	v_push_sp();
-	out_push_l(type_root_btype(cc1_type_root, type_intptr_t), amt);
+	out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t), amt);
 	out_op(sub ? op_minus : op_plus);
 	out_flush_volatile();
 	out_pop();
@@ -506,7 +506,7 @@ unsigned v_alloc_stack(unsigned sz, const char *desc)
 unsigned v_stack_align(unsigned const align, int force_mask)
 {
 	if(force_mask || (stack_sz & (align - 1))){
-		type *const ty = type_root_btype(cc1_type_root, type_intptr_t);
+		type *const ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 		const unsigned new_sz = pack_to_align(stack_sz, align);
 		const unsigned added = new_sz - stack_sz;
 
@@ -729,14 +729,14 @@ static void out_set_lbl(const char *s, int pic)
 
 void out_push_lbl(const char *s, int pic)
 {
-	vpush(type_ptr_to(type_root_btype(cc1_type_root, type_void)));
+	vpush(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 
 	out_set_lbl(s, pic);
 }
 
 void out_push_noop()
 {
-	out_push_zero(type_root_btype(cc1_type_root, type_intptr_t));
+	out_push_zero(type_nav_btype(cc1_type_nav, type_intptr_t));
 }
 
 void out_dup(void)
@@ -1135,7 +1135,7 @@ pop_const:
 								if((swap = (val != vtop)))
 									vswap();
 
-								out_push_l(type_root_btype(cc1_type_root, type_intptr_t), ptr_step);
+								out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t), ptr_step);
 								out_op(op_multiply);
 
 								if(swap)
@@ -1158,7 +1158,7 @@ pop_const:
 		impl_op(op);
 
 		if(div){
-			out_push_l(type_ptr_to(type_root_btype(cc1_type_root, type_void)), div);
+			out_push_l(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)), div);
 			out_op(op_divide);
 		}
 	}
@@ -1502,7 +1502,7 @@ void out_undefined(void)
 
 void out_push_overflow(void)
 {
-	vpush(type_root_btype(cc1_type_root, type__Bool));
+	vpush(type_nav_btype(cc1_type_nav, type__Bool));
 	impl_set_overflow();
 }
 
@@ -1511,7 +1511,7 @@ void out_push_frame_ptr(int nframes)
 	/* XXX: memleak */
 	struct vreg r;
 	type *const void_pp = type_ptr_to(
-			type_ptr_to(type_root_btype(cc1_type_root, type_void)));
+			type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 
 	vpush(void_pp);
 	v_set_reg_i(vtop, REG_BP);
@@ -1533,7 +1533,7 @@ void out_push_reg_save_ptr(void)
 {
 	out_flush_volatile();
 
-	vpush(type_ptr_to(type_root_btype(cc1_type_root, type_void)));
+	vpush(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 	v_set_stack(vtop, NULL, -stack_variadic_offset, /*lval:*/0);
 }
 

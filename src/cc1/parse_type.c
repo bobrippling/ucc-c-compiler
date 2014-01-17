@@ -24,7 +24,7 @@
 #include "parse_type.h"
 
 #include "expr.h"
-#include "type_root.h"
+#include "type_nav.h"
 #include "type_is.h"
 
 /*#define PARSE_DECL_VERBOSE*/
@@ -164,7 +164,7 @@ static type *parse_type_sue(
 		/* sue may already exist */
 		attribute_append(&sue->attr, this_sue_attr);
 
-		return type_root_suetype(cc1_type_root, sue);
+		return type_nav_suetype(cc1_type_nav, sue);
 	}
 }
 
@@ -546,7 +546,7 @@ static type *parse_btype(
 		}
 
 		if(is_va_list){
-			r = type_root_va_list(cc1_type_root);
+			r = type_nav_va_list(cc1_type_nav);
 
 		}else switch(primitive_mode){
 			case TYPEDEF:
@@ -570,7 +570,7 @@ static type *parse_btype(
 				if(primitive_mode == NONE && !signed_set)
 					primitive = type_int;
 
-				r = type_root_btype(cc1_type_root, primitive);
+				r = type_nav_btype(cc1_type_nav, primitive);
 				break;
 		}
 
@@ -704,7 +704,7 @@ fin:;
 			if(curtok != token_identifier)
 				EAT(token_identifier); /* error */
 
-			d->ref = type_root_btype(cc1_type_root, type_int);
+			d->ref = type_nav_btype(cc1_type_nav, type_int);
 
 			d->spel = token_current_spel();
 			dynarray_add(&args->arglist, d);
@@ -972,7 +972,7 @@ static type *default_type(void)
 {
 	cc1_warn_at(NULL, 0, WARN_IMPLICIT_INT, "defaulting type to int");
 
-	return type_root_btype(cc1_type_root, type_int);
+	return type_nav_btype(cc1_type_nav, type_int);
 }
 
 static decl *parse_decl_extra(
