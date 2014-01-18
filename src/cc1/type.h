@@ -60,7 +60,6 @@ struct type
 		{
 			char is_signed_cast; /* if true - signed_true else qual */
 			char signed_true;
-			char additive; /* replace qual or add? */
 			enum type_qualifier qual;
 		} cast;
 

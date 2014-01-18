@@ -487,8 +487,7 @@ enum type_qualifier type_qual(const type *r)
 			/* descend */
 			if(r->bits.cast.is_signed_cast)
 				return type_qual(r->ref);
-			return r->bits.cast.qual
-				| (r->bits.cast.additive ? type_qual(r->ref) : qual_none);
+			return r->bits.cast.qual | type_qual(r->ref);
 
 		case type_ptr:
 		case type_block:
