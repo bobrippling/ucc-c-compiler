@@ -55,59 +55,77 @@ static type *type_new_btype(const btype *b)
 	return t;
 }
 
-#define UPTREE_DECLS \
-	struct type_tree_ent **ent
+static type *type_uptree_find_or_new(
+		type *to, enum type_kind idx,
+		int (*eq)(type *, void *),
+		void (*init)(type *, void *),
+		void *ctx)
+{
+	struct type_tree_ent **ent;
 
-#define UPTREE_INIT(to)                         \
-	if(!to->uptree)                               \
-		to->uptree = umalloc(sizeof *to->uptree)
+	if(!to->uptree)
+		to->uptree = umalloc(sizeof *to->uptree);
 
-#define UPTREE_ITER_BEGIN(to, idx)   \
-	for(ent = &to->uptree->ups[idx]; *ent; ent = &(*ent)->next)
+	for(ent = &to->uptree->ups[idx]; *ent; ent = &(*ent)->next){
+		type *candidate = (*ent)->t;
+		assert(candidate->type == idx);
 
-#define UPTREE_ITER_ENT(nam, idx) \
-		type *nam = (*ent)->t;        \
-		assert(nam->type == idx)
+		if(!eq || eq(candidate, ctx))
+			return candidate;
+	}
 
-#define UPTREE_STORE(new_t)       \
-		*ent = umalloc(sizeof **ent); \
-		(*ent)->t = new_t
+	{
+		type *new_t = type_new(idx, to);
+
+		if(init)
+			init(new_t, ctx);
+
+		*ent = umalloc(sizeof **ent);
+		(*ent)->t = new_t;
+		return new_t;
+	}
+}
+
+struct ctx_array
+{
+	expr *sz;
+	integral_t sz_i;
+	int is_static;
+};
+
+static int eq_array(type *candidate, void *ctx)
+{
+	struct ctx_array *c = ctx;
+
+	if(candidate->bits.array.is_static != c->is_static)
+		return 0;
+
+	if(candidate->bits.array.size == c->sz){
+		/* including [] */
+		return 1;
+	}
+
+	return c->sz_i == const_fold_val_i(candidate->bits.array.size);
+}
+
+static void init_array(type *ty, void *ctx)
+{
+	struct ctx_array *c = ctx;
+	ty->bits.array.size = c->sz;
+	ty->bits.array.is_static = c->is_static;
+}
 
 type *type_array_of_static(type *to, struct expr *new_sz, int is_static)
 {
-	integral_t new_sz_i = new_sz ? const_fold_val_i(new_sz) : 0;
-	UPTREE_DECLS;
+	struct ctx_array ctx;
+	ctx.sz_i = new_sz ? const_fold_val_i(new_sz) : 0;
+	ctx.sz = new_sz;
+	ctx.is_static = is_static;
 
-	UPTREE_INIT(to);
-
-	UPTREE_ITER_BEGIN(to, type_array){
-		integral_t sz;
-
-		UPTREE_ITER_ENT(candidate, type_array);
-
-		if(candidate->bits.array.is_static != is_static)
-			continue;
-
-		if(candidate->bits.array.size == new_sz){
-			/* including [] */
-			return candidate;
-		}
-
-		sz = const_fold_val_i(candidate->bits.array.size);
-		if(sz == new_sz_i)
-			return candidate;
-	}
-
-	/* not found */
-	{
-		type *new_t = type_new(type_array, to);
-
-		new_t->bits.array.size = new_sz;
-
-		UPTREE_STORE(new_t);
-
-		return new_t;
-	}
+	return type_uptree_find_or_new(
+			to, type_array,
+			eq_array, init_array,
+			&ctx);
 }
 
 type *type_array_of(type *to, struct expr *new_sz)
@@ -115,75 +133,82 @@ type *type_array_of(type *to, struct expr *new_sz)
 	return type_array_of_static(to, new_sz, 0);
 }
 
+static void init_func(type *ty, void *ctx)
+{
+	ty->bits.func.args = ctx;
+}
+
+static int eq_func(type *ty, void *ctx)
+{
+	if(funcargs_cmp(ty->bits.func.args, ctx) == FUNCARGS_ARE_EQUAL){
+		funcargs_free(ctx, 0);
+		return 1;
+	}
+	return 0;
+}
+
 type *type_func_of(type *ty_ret, struct funcargs *args)
 {
-	UPTREE_DECLS;
-
-	UPTREE_INIT(ty_ret);
-
-	UPTREE_ITER_BEGIN(ty_ret, type_func){
-		UPTREE_ITER_ENT(candidate, type_func);
-
-		if(!funcargs_cmp(candidate->bits.func.args, args) == FUNCARGS_ARE_EQUAL){
-			/* match */
-			funcargs_free(args, 0);
-			return candidate;
-		}
-	}
-
-	{
-		type *new_t = type_new(type_func, ty_ret);
-
-		new_t->bits.func.args = args;
-		/*r->bits.func.arg_scope = arg_scope;*/
-
-		UPTREE_STORE(new_t);
-
-		return new_t;
-	}
+	return type_uptree_find_or_new(
+			ty_ret, type_func,
+			eq_func, init_func,
+			args);
 }
 
 type *type_block_of(type *fn)
 {
-	UPTREE_DECLS;
+	return type_uptree_find_or_new(
+			fn, type_block,
+			NULL, NULL, NULL);
+}
 
-	UPTREE_INIT(fn);
-
-	UPTREE_ITER_BEGIN(fn, type_block){
-		UPTREE_ITER_ENT(candidate, type_block);
+static int eq_attr(type *candidate, void *ctx)
+{
+	if(attribute_equal(candidate->bits.attr, ctx)){
+		attribute_free(ctx);
+		return 1;
 	}
+	return 0;
+}
 
-	{
-		type *new_t = type_new(type_block, fn);
-		UPTREE_STORE(new_t);
-		return new_t;
-	}
+static void init_attr(type *ty, void *ctx)
+{
+	ty->bits.attr = ctx;
 }
 
 type *type_attributed(type *ty, attribute *attr)
 {
-	UPTREE_DECLS;
+	return type_uptree_find_or_new(
+			ty, type_attr,
+			eq_attr, init_attr,
+			attr);
+}
 
-	UPTREE_INIT(ty);
+type *type_ptr_to(type *pointee)
+{
+	return type_uptree_find_or_new(
+			pointee, type_ptr,
+			NULL, NULL, NULL);
+}
 
-	UPTREE_ITER_BEGIN(ty, type_attr){
-		UPTREE_ITER_ENT(candidate, type_attr);
+static int eq_qual(type *candidate, void *ctx)
+{
+	if(candidate->bits.cast.is_signed_cast)
+		return 0;
+	return candidate->bits.cast.qual == *(enum type_qualifier *)ctx;
+}
 
-		if(attribute_equal(candidate->bits.attr, attr)){
-			attribute_free(attr);
-			return candidate;
-		}
-	}
+static void init_qual(type *t, void *ctx)
+{
+	t->bits.cast.qual = *(enum type_qualifier *)ctx;
+}
 
-	{
-		type *new_t = type_new(type_attr, ty);
-
-		new_t->bits.attr = attr;
-
-		UPTREE_STORE(new_t);
-
-		return new_t;
-	}
+type *type_qualify(type *unqualified, enum type_qualifier qual)
+{
+	return type_uptree_find_or_new(
+			unqualified, type_cast,
+			eq_qual, init_qual,
+			&qual);
 }
 
 type *type_called(type *functy, struct funcargs **pfuncargs)
@@ -209,49 +234,9 @@ type *type_pointed_to(type *ty)
 	return ty;
 }
 
-type *type_ptr_to(type *pointee)
-{
-	UPTREE_DECLS;
-
-	UPTREE_INIT(pointee);
-	UPTREE_ITER_BEGIN(pointee, type_ptr){
-		UPTREE_ITER_ENT(candidate, type_ptr);
-		/* no checks to be made */
-		return candidate;
-	}
-
-	{
-		type *ptr = type_new(type_ptr, pointee);
-		UPTREE_STORE(ptr);
-		return ptr;
-	}
-}
-
-type *type_qualify(type *unqualified, enum type_qualifier qual)
-{
-	UPTREE_DECLS;
-
-	UPTREE_INIT(unqualified);
-	UPTREE_ITER_BEGIN(unqualified, type_cast){
-		UPTREE_ITER_ENT(candidate, type_cast);
-
-		if(candidate->bits.cast.is_signed_cast)
-			continue;
-		if(candidate->bits.cast.qual != qual)
-			continue;
-	}
-
-	{
-		type *ptr = type_new(type_ptr, unqualified);
-		UPTREE_STORE(ptr);
-		return ptr;
-	}
-}
-
 #if 0
 TODO:
 
-type_ptr_to
 type_nav_MAX_FOR
 type_nav_suetype
 type_nav_va_list
