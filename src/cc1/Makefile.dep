@@ -295,7 +295,7 @@ type_nav.o: type_nav.c ../util/alloc.h ../util/compiler.h cc1_where.h \
  ops/expr_cast.h ops/expr_comma.h ops/expr_funcall.h \
  ops/expr_identifier.h ops/expr_if.h ops/expr_op.h ops/expr_sizeof.h \
  ops/expr_val.h ops/expr_stmt.h ops/expr_deref.h ops/expr_struct.h \
- ops/expr_compound_lit.h ops/expr_string.h funcargs.h
+ ops/expr_compound_lit.h ops/expr_string.h type_is.h funcargs.h
 ops/__builtin.o: ops/__builtin.c ops/../../util/util.h ops/../../util/where.h \
  ops/../../util/compiler.h ops/../../util/dynarray.h ops/../../util/dyn.h \
  ops/../../util/alloc.h ops/__builtin.h ops/../expr.h ops/../strings.h \

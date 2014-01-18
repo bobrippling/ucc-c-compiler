@@ -7,6 +7,7 @@
 #include "type.h"
 
 #include "type_nav.h"
+#include "type_is.h"
 
 #include "const.h"
 #include "funcargs.h"
@@ -185,10 +186,18 @@ type *type_attributed(type *ty, attribute *attr)
 	}
 }
 
+type *type_called(type *functy, struct funcargs **pfuncargs)
+{
+	functy = type_skip_tdefs_casts(functy);
+	assert(functy->type == type_func);
+	if(pfuncargs)
+		*pfuncargs = functy->bits.func.args;
+	return functy->ref;
+}
+
 #if 0
 TODO:
 
-type_called
 type_pointed_to
 type_ptr_to
 type_qualify
