@@ -1366,7 +1366,7 @@ add:
 next:
 		/* end of type, if we have an identifier, '(' or '*', it's an unknown type name */
 		if(parse_at_decl_spec())
-			die_at(NULL, "unknown type name '%s'", last->spel);
+			die_at(&last->where, "unknown type name '%s'", last->spel);
 		/* else die here: */
 		EAT(token_semicolon);
 	}
