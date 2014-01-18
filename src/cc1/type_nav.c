@@ -8,9 +8,20 @@
 
 #include "type_nav.h"
 
+#include "const.h"
+
 struct type_nav
 {
 	type **btypes; /* indexed by type_primitive */
+};
+
+struct type_tree
+{
+	struct type_tree_ent
+	{
+		type *t;
+		struct type_tree_ent *next;
+	} *ups[N_TYPE_KINDS];
 };
 
 struct type_nav *cc1_type_nav;
@@ -42,10 +53,45 @@ static type *type_new_btype(const btype *b)
 	return t;
 }
 
+type *type_array_of(type *to, struct expr *new_sz)
+{
+	integral_t new_sz_i = new_sz ? const_fold_val_i(new_sz) : 0;
+	struct type_tree_ent **ent;
+
+	if(!to->uptree)
+		to->uptree = umalloc(sizeof *to->uptree);
+
+	for(ent = &to->uptree->ups[type_array]; *ent; ent = &(*ent)->next){
+		type *candidate = (*ent)->t;
+		integral_t sz;
+
+		assert(candidate->type == type_array);
+		if(candidate->bits.array.size == new_sz){
+			/* including [] */
+			return candidate;
+		}
+
+		sz = const_fold_val_i(candidate->bits.array.size);
+		if(sz == new_sz_i)
+			return candidate;
+	}
+
+	/* not found */
+	{
+		type *new_t = type_new(type_array, to);
+
+		new_t->bits.array.size = new_sz;
+
+		*ent = umalloc(sizeof **ent);
+		(*ent)->t = new_t;
+
+		return new_t;
+	}
+}
+
 #if 0
 TODO:
 
-type_array_of
 type_array_of_qual
 type_block_of
 type_called

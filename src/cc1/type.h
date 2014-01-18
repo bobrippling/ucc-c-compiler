@@ -13,6 +13,8 @@ struct type
 
 	int folded;
 
+	struct type_tree *uptree;
+
 	enum type_kind
 	{
 		type_btype,  /* end - at type */
