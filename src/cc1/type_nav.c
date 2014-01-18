@@ -9,6 +9,7 @@
 #include "type_nav.h"
 
 #include "const.h"
+#include "funcargs.h"
 
 struct type_nav
 {
@@ -56,16 +57,20 @@ static type *type_new_btype(const btype *b)
 #define UPTREE_DECLS \
 	struct type_tree_ent **ent
 
-#define UPTREE_INIT()                           \
+#define UPTREE_INIT(to)                         \
 	if(!to->uptree)                               \
 		to->uptree = umalloc(sizeof *to->uptree)
 
-#define UPTREE_ITER_BEGIN(idx)                                 \
+#define UPTREE_ITER_BEGIN(to, idx)   \
 	for(ent = &to->uptree->ups[idx]; *ent; ent = &(*ent)->next)
 
 #define UPTREE_ITER_ENT(nam, idx) \
 		type *nam = (*ent)->t;        \
 		assert(nam->type == idx)
+
+#define UPTREE_STORE(new_t)       \
+		*ent = umalloc(sizeof **ent); \
+		(*ent)->t = new_t
 
 type *type_array_of_qual(
 		type *to, struct expr *new_sz,
@@ -74,9 +79,9 @@ type *type_array_of_qual(
 	integral_t new_sz_i = new_sz ? const_fold_val_i(new_sz) : 0;
 	UPTREE_DECLS;
 
-	UPTREE_INIT();
+	UPTREE_INIT(to);
 
-	UPTREE_ITER_BEGIN(type_array){
+	UPTREE_ITER_BEGIN(to, type_array){
 		integral_t sz;
 
 		UPTREE_ITER_ENT(candidate, type_array);
@@ -103,8 +108,7 @@ type *type_array_of_qual(
 
 		new_t->bits.array.size = new_sz;
 
-		*ent = umalloc(sizeof **ent);
-		(*ent)->t = new_t;
+		UPTREE_STORE(new_t);
 
 		return new_t;
 	}
@@ -115,12 +119,39 @@ type *type_array_of(type *to, struct expr *new_sz)
 	return type_array_of_qual(to, new_sz, qual_none, 0);
 }
 
+type *type_func_of(type *ty_ret, struct funcargs *args)
+{
+	UPTREE_DECLS;
+
+	UPTREE_INIT(ty_ret);
+
+	UPTREE_ITER_BEGIN(ty_ret, type_func){
+		UPTREE_ITER_ENT(candidate, type_func);
+
+		if(!funcargs_cmp(candidate->bits.func.args, args) == FUNCARGS_ARE_EQUAL){
+			/* match */
+			funcargs_free(args, 0);
+			return candidate;
+		}
+	}
+
+	{
+		type *new_t = type_new(type_func, ty_ret);
+
+		new_t->bits.func.args = args;
+		/*r->bits.func.arg_scope = arg_scope;*/
+
+		UPTREE_STORE(new_t);
+
+		return new_t;
+	}
+}
+
 #if 0
 TODO:
 
 type_block_of
 type_called
-type_func_of
 type_pointed_to
 type_ptr_to
 type_qualify
@@ -179,15 +210,6 @@ static type *type_new_array2(type *to, struct expr *sz,
 	type *r = type_new_array(to, sz);
 	r->bits.array.is_static = is_static;
 	r->bits.array.qual      = q;
-	return r;
-}
-
-static type *type_new_func(
-		type *of, struct funcargs *args, struct symtable *arg_scope)
-{
-	type *r = type_new(type_func, of);
-	r->bits.func.args = args;
-	r->bits.func.arg_scope = arg_scope;
 	return r;
 }
 
