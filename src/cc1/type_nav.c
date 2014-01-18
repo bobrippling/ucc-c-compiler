@@ -15,6 +15,7 @@
 struct type_nav
 {
 	type **btypes; /* indexed by type_primitive */
+	dynmap *suetypes; /* sue => type */
 };
 
 struct type_tree
@@ -347,4 +348,27 @@ type *type_nav_btype(struct type_nav *root, enum type_primitive p)
 	}
 
 	return root->btypes[p];
+}
+
+type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *sue)
+{
+	type *ent;
+	btype *bt;
+
+	if(!root->suetypes)
+		root->suetypes = dynmap_new(/*refeq:*/NULL);
+
+	ent = dynmap_get(struct_union_enum_st *, type *, root->suetypes, sue);
+
+	if(ent)
+		return ent;
+
+	bt = umalloc(sizeof *bt);
+	bt->primitive = sue->primitive;
+	bt->sue = sue;
+	ent = type_new_btype(bt);
+
+	dynmap_set(struct_union_enum_st *, type *, root->suetypes, sue, ent);
+
+	return ent;
 }
