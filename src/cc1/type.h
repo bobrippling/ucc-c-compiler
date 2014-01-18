@@ -27,17 +27,17 @@ struct type
 
 	union
 	{
-		/* ref_type */
+		/* type_btype */
 		const btype *type;
 
-		/* ref_tdef */
+		/* type_tdef */
 		struct type_tdef
 		{
 			struct expr *type_of;
 			struct decl *decl;
 		} tdef;
 
-		/* ref_{ptr,array} */
+		/* type_{ptr,array} */
 		struct
 		{
 			enum type_qualifier qual;
@@ -50,7 +50,7 @@ struct type
 			 */
 		} ptr, array;
 
-		/* ref_cast */
+		/* type_cast */
 		struct
 		{
 			char is_signed_cast; /* if true - signed_true else qual */
@@ -59,14 +59,14 @@ struct type
 			enum type_qualifier qual;
 		} cast;
 
-		/* ref_func */
+		/* type_func */
 		struct
 		{
 			struct funcargs *args;
 			struct symtable *arg_scope;
 		} func;
 
-		/* ref_block */
+		/* type_block */
 		struct
 		{
 			struct funcargs *func;
