@@ -40,7 +40,8 @@ static void va_type_check(expr *va_l, expr *in, symtable *stab)
 		die_at(&in->where, "%s() outside a function",
 				BUILTIN_SPEL(in));
 
-	cmp = type_cmp(va_l->tree_type, type_decay(type_nav_va_list(cc1_type_nav)), 0);
+	cmp = type_cmp(va_l->tree_type,
+			type_decay(type_nav_va_list(cc1_type_nav)), 0);
 
 	if(!(cmp & TYPE_EQUAL_ANY)){
 		die_at(&va_l->where,
@@ -439,7 +440,6 @@ stack:
 			if(typ && typ->primitive == type_ldouble)
 				goto stack;
 
-			/* register */
 			sue_va = type_next(type_nav_va_list(cc1_type_nav))->bits.type->sue;
 
 #define VA_DECL(nam) \

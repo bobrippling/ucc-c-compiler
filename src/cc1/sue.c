@@ -160,7 +160,7 @@ struct_union_enum_st *sue_decl(
 	int new = 0;
 	int descended;
 
-	if(spel && (sue = sue_find_descend(stab, spel, &descended))){
+	if(spel && stab && (sue = sue_find_descend(stab, spel, &descended))){
 		char wbuf[WHERE_BUF_SIZ];
 
 		/* redef checks */
@@ -289,7 +289,8 @@ new_type:
 			cc1_warn_at(NULL, 0, WARN_PREDECL_ENUM,
 					"forward-declaration of enum %s", sue->spel);
 
-		dynarray_add(&stab->sues, sue);
+		if(stab)
+			dynarray_add(&stab->sues, sue);
 	}
 
 	return sue;

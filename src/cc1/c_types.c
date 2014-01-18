@@ -1,12 +1,22 @@
+#include <stdlib.h>
+
+#include "../util/dynarray.h"
+#include "../util/alloc.h"
+
+#include "type.h"
+#include "sue.h"
+
+#include "type_nav.h"
+
 #include "c_types.h"
 
-type *c_types_make_va_list()
+type *c_types_make_va_list(void)
 {
 	/* pointer to struct __builtin_va_list */
 	/* must match platform abi - vfprintf(..., ap); */
 	sue_member **sue_members = NULL;
 
-	type *void_ptr = type_cached_VOID_PTR();
+	type *void_ptr = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 
 	/*
 	unsigned int gp_offset;
@@ -22,8 +32,8 @@ type *c_types_make_va_list()
 #define ADD_SCALAR(to, ty, sp)     \
 	ADD_DECL(to,                     \
 	    decl_new_ty_sp(              \
-	      type_new_type(             \
-	        type_new_primitive(ty)), \
+	      type_nav_btype(            \
+	        cc1_type_nav, ty),       \
 	      ustrdup(sp)))
 
 
@@ -34,22 +44,19 @@ type *c_types_make_va_list()
 
 	/* typedef struct __va_list_struct __builtin_va_list[1]; */
 	{
-		type *va_list_struct = type_new_type(
-				type_new_primitive_sue(
-					type_struct,
-					sue_decl(stab, ustrdup("__va_list_struct"),
-						sue_members, type_struct, 1, 1)));
+		type *va_list_struct = type_nav_suetype(
+				cc1_type_nav,
+				sue_decl(NULL, ustrdup("__va_list_struct"),
+					sue_members, type_struct, 1, 1));
 
 
-		type *builtin_ar = type_new_array(
+		type *builtin_ar = type_array_of(
 				va_list_struct,
 				expr_new_val(1));
 
-		type *td = type_new_tdef(
+		return type_tdef_of(
 				expr_new_sizeof_type(builtin_ar, 1),
 				decl_new_ty_sp(builtin_ar,
 					ustrdup("__builtin_va_list")));
-
-		cache_va_list = td;
 	}
 }

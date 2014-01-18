@@ -15,7 +15,14 @@ btype.o: btype.c ../util/where.h ../util/compiler.h ../util/util.h \
  ops/expr_sizeof.h ops/expr_val.h ops/expr_stmt.h ops/expr_deref.h \
  ops/expr_struct.h ops/expr_compound_lit.h ops/expr_string.h sue.h cc1.h \
  ../util/std.h
-c_types.o: c_types.c c_types.h
+c_types.o: c_types.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
+ ../util/compiler.h type.h num.h btype.h ../util/where.h sue.h type_nav.h \
+ decl.h attribute.h expr.h strings.h ../util/dynmap.h op.h sym.h const.h \
+ ops/expr_addr.h ops/expr_assign.h ops/expr_assign_compound.h \
+ ops/expr_cast.h ops/expr_comma.h ops/expr_funcall.h \
+ ops/expr_identifier.h ops/expr_if.h ops/expr_op.h ops/expr_sizeof.h \
+ ops/expr_val.h ops/expr_stmt.h ops/expr_deref.h ops/expr_struct.h \
+ ops/expr_compound_lit.h ops/expr_string.h c_types.h
 cc1.o: cc1.c ../util/util.h ../util/where.h ../util/compiler.h \
  ../util/platform.h tokenise.h num.h parse.h expr.h strings.h \
  ../util/dynmap.h ../util/dyn.h type.h btype.h ../util/where.h op.h sym.h \
@@ -295,7 +302,7 @@ type_nav.o: type_nav.c ../util/alloc.h ../util/compiler.h cc1_where.h \
  ops/expr_cast.h ops/expr_comma.h ops/expr_funcall.h \
  ops/expr_identifier.h ops/expr_if.h ops/expr_op.h ops/expr_sizeof.h \
  ops/expr_val.h ops/expr_stmt.h ops/expr_deref.h ops/expr_struct.h \
- ops/expr_compound_lit.h ops/expr_string.h type_is.h funcargs.h
+ ops/expr_compound_lit.h ops/expr_string.h type_is.h funcargs.h c_types.h
 ops/__builtin.o: ops/__builtin.c ops/../../util/util.h ops/../../util/where.h \
  ops/../../util/compiler.h ops/../../util/dynarray.h ops/../../util/dyn.h \
  ops/../../util/alloc.h ops/__builtin.h ops/../expr.h ops/../strings.h \

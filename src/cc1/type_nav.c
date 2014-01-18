@@ -11,11 +11,13 @@
 
 #include "const.h"
 #include "funcargs.h"
+#include "c_types.h"
 
 struct type_nav
 {
 	type **btypes; /* indexed by type_primitive */
 	dynmap *suetypes; /* sue => type */
+	type *tva_list;
 };
 
 struct type_tree
@@ -371,4 +373,12 @@ type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *sue)
 	dynmap_set(struct_union_enum_st *, type *, root->suetypes, sue, ent);
 
 	return ent;
+}
+
+type *type_nav_va_list(struct type_nav *root)
+{
+	if(!root->tva_list)
+		root->tva_list = c_types_make_va_list();
+
+	return root->tva_list;
 }
