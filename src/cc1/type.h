@@ -72,10 +72,7 @@ struct type
 		} func;
 
 		/* type_block */
-		struct
-		{
-			struct funcargs *func;
-		} block;
+		/* nothing */
 	} bits;
 };
 

@@ -142,6 +142,23 @@ type *type_func_of(type *ty_ret, struct funcargs *args)
 	}
 }
 
+type *type_block_of(type *fn)
+{
+	UPTREE_DECLS;
+
+	UPTREE_INIT(fn);
+
+	UPTREE_ITER_BEGIN(fn, type_block){
+		UPTREE_ITER_ENT(candidate, type_block);
+	}
+
+	{
+		type *new_t = type_new(type_block, fn);
+		UPTREE_STORE(new_t);
+		return new_t;
+	}
+}
+
 type *type_attributed(type *ty, attribute *attr)
 {
 	UPTREE_DECLS;
@@ -171,7 +188,6 @@ type *type_attributed(type *ty, attribute *attr)
 #if 0
 TODO:
 
-type_block_of
 type_called
 type_pointed_to
 type_ptr_to
@@ -208,13 +224,6 @@ static type *type_new_ptr(type *to, enum type_qualifier q)
 {
 	type *r = type_new(type_ptr, to);
 	r->bits.ptr.qual = q;
-	return r;
-}
-
-static type *type_new_block(type *to, enum type_qualifier q)
-{
-	type *r = type_new_ptr(to, q);
-	r->type = type_block;
 	return r;
 }
 
