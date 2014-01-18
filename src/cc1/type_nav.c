@@ -53,19 +53,40 @@ static type *type_new_btype(const btype *b)
 	return t;
 }
 
-type *type_array_of(type *to, struct expr *new_sz)
+#define UPTREE_DECLS \
+	struct type_tree_ent **ent
+
+#define UPTREE_INIT()                           \
+	if(!to->uptree)                               \
+		to->uptree = umalloc(sizeof *to->uptree)
+
+#define UPTREE_ITER_BEGIN(idx)                                 \
+	for(ent = &to->uptree->ups[idx]; *ent; ent = &(*ent)->next)
+
+#define UPTREE_ITER_ENT(nam, idx) \
+		type *nam = (*ent)->t;        \
+		assert(nam->type == idx)
+
+type *type_array_of_qual(
+		type *to, struct expr *new_sz,
+		enum type_qualifier qual, int is_static)
 {
 	integral_t new_sz_i = new_sz ? const_fold_val_i(new_sz) : 0;
-	struct type_tree_ent **ent;
+	UPTREE_DECLS;
 
-	if(!to->uptree)
-		to->uptree = umalloc(sizeof *to->uptree);
+	UPTREE_INIT();
 
-	for(ent = &to->uptree->ups[type_array]; *ent; ent = &(*ent)->next){
-		type *candidate = (*ent)->t;
+	UPTREE_ITER_BEGIN(type_array){
 		integral_t sz;
 
-		assert(candidate->type == type_array);
+		UPTREE_ITER_ENT(candidate, type_array);
+
+		if(candidate->bits.array.is_static != is_static
+		|| candidate->bits.array.qual != qual)
+		{
+			continue;
+		}
+
 		if(candidate->bits.array.size == new_sz){
 			/* including [] */
 			return candidate;
@@ -89,10 +110,14 @@ type *type_array_of(type *to, struct expr *new_sz)
 	}
 }
 
+type *type_array_of(type *to, struct expr *new_sz)
+{
+	return type_array_of_qual(to, new_sz, qual_none, 0);
+}
+
 #if 0
 TODO:
 
-type_array_of_qual
 type_block_of
 type_called
 type_func_of
