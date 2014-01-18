@@ -44,7 +44,7 @@ dynmap_nochk_pair(dynmap *map, void *key)
 	assert(key && "null key");
 
 	for(i = map->pairs; i; i = i->next)
-		if(!map->cmp(i->key, key))
+		if(map->cmp ? !map->cmp(i->key, key) : i->key == key)
 			return i;
 
 	return NULL;
