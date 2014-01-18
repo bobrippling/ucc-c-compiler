@@ -235,10 +235,23 @@ type *type_pointed_to(type *ty)
 	return ty;
 }
 
+type *type_nav_MAX_FOR(struct type_nav *root, unsigned sz)
+{
+	enum type_primitive prims[] = {
+		type_llong, type_long, type_int, type_short, type_nchar
+	};
+	unsigned i;
+
+	for(i = 0; i < sizeof(prims)/sizeof(*prims); i++)
+		if(sz >= type_primitive_size(prims[i]))
+			return type_nav_btype(root, prims[i]);
+
+	return NULL;
+}
+
 #if 0
 TODO:
 
-type_nav_MAX_FOR
 type_nav_suetype
 type_nav_va_list
 type_sign
@@ -287,19 +300,6 @@ static type *type_new_array2(type *to, struct expr *sz,
 	r->bits.array.is_static = is_static;
 	r->bits.array.qual      = q;
 	return r;
-}
-
-static type *type_cached_MAX_FOR(unsigned sz)
-{
-	enum type_primitive prims[] = {
-		type_long, type_int, type_short, type_nchar
-	};
-	unsigned i;
-
-	for(i = 0; i < sizeof(prims)/sizeof(*prims); i++)
-		if(sz >= type_primitive_size(prims[i]))
-			return type_new_btype(type_new_primitive(prims[i]));
-	return NULL;
 }
 
 static type *type_new_cast_is_additive(
