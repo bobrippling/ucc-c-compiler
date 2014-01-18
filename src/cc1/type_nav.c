@@ -251,6 +251,15 @@ type *type_nav_MAX_FOR(struct type_nav *root, unsigned sz)
 	return NULL;
 }
 
+type *type_unqualify(type *t)
+{
+	while(t)
+		if(t->type == type_cast && !t->bits.cast.is_signed_cast)
+			t = t->ref;
+
+	return t;
+}
+
 #if 0
 TODO:
 
