@@ -545,6 +545,8 @@ usage:
 
 	show_current_line = fopt_mode & FOPT_SHOW_LINE;
 
+	cc1_type_nav = type_nav_init();
+
 	globs = symtabg_new();
 	tokenise_set_input(next_line, fname);
 
