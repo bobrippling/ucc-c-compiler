@@ -65,6 +65,8 @@ attribute *type_attr_present(struct type *, enum attribute_type);
 attribute *attribute_present(struct decl *, enum attribute_type);
 attribute *expr_attr_present(struct expr *, enum attribute_type);
 
+int attribute_equal(attribute *, attribute *);
+
 void attribute_free(struct attribute *a);
 
 #endif

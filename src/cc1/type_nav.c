@@ -147,6 +147,32 @@ type *type_func_of(type *ty_ret, struct funcargs *args)
 	}
 }
 
+type *type_attributed(type *ty, attribute *attr)
+{
+	UPTREE_DECLS;
+
+	UPTREE_INIT(ty);
+
+	UPTREE_ITER_BEGIN(ty, type_attr){
+		UPTREE_ITER_ENT(candidate, type_attr);
+
+		if(attribute_equal(candidate->bits.attr, attr)){
+			attribute_free(attr);
+			return candidate;
+		}
+	}
+
+	{
+		type *new_t = type_new(type_attr, ty);
+
+		new_t->bits.attr = attr;
+
+		UPTREE_STORE(new_t);
+
+		return new_t;
+	}
+}
+
 #if 0
 TODO:
 

@@ -1,4 +1,6 @@
 #include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 
 #include "../util/where.h"
 #include "../util/alloc.h"
@@ -159,4 +161,65 @@ void attribute_free(attribute *a)
 
 	attribute_free(a->next);
 	free(a);
+}
+
+int attribute_equal(attribute *a, attribute *b)
+{
+#define NEQ(bit, memb) (a->bits.bit.memb != b->bits.bit.memb)
+
+		for(; a && b; a = a->next, b = b->next){
+			if(a->type != b->type)
+				return 0;
+			switch(a->type){
+				case attr_LAST:
+					assert(0);
+				case attr_format:
+					if(NEQ(format, fmt_func)
+					|| NEQ(format, fmt_idx)
+					|| NEQ(format, var_idx))
+					{
+						return 0;
+					}
+					break;
+
+				case attr_section:
+					if(strcmp(a->bits.section, b->bits.section))
+						return 0;
+					break;
+
+				case attr_call_conv:
+					if(a->bits.conv != b->bits.conv)
+						return 0;
+					break;
+
+				case attr_nonnull:
+					if(a->bits.nonnull_args != b->bits.nonnull_args)
+						return 0;
+					break;
+
+				case attr_sentinel:
+					/* lazy solution for now */
+					if(a->bits.sentinel != b->bits.sentinel)
+						return 0;
+					break;
+
+				case attr_aligned:
+					/* same as sentinel */
+					if(a->bits.align != b->bits.align)
+						return 0;
+					break;
+
+				case attr_unused:
+				case attr_warn_unused:
+				case attr_enum_bitmask:
+				case attr_noreturn:
+				case attr_noderef:
+				case attr_packed:
+					/* equal */
+					break;
+			}
+		}
+
+		/* both null? */
+		return a == b;
 }
