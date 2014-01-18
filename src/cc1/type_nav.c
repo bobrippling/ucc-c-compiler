@@ -195,10 +195,41 @@ type *type_called(type *functy, struct funcargs **pfuncargs)
 	return functy->ref;
 }
 
+type *type_pointed_to(type *ty)
+{
+	type *const r_save = ty;
+
+	ty = type_is_ptr(ty);
+	assert(ty);
+
+	/* *(void (*)()) does nothing */
+	if(type_is(ty, type_func))
+		return r_save;
+
+	return ty;
+}
+
+type *type_ptr_to(type *pointee)
+{
+	UPTREE_DECLS;
+
+	UPTREE_INIT(pointee);
+	UPTREE_ITER_BEGIN(pointee, type_ptr){
+		UPTREE_ITER_ENT(candidate, type_ptr);
+		/* no checks to be made */
+		return candidate;
+	}
+
+	{
+		type *ptr = type_new(type_ptr, pointee);
+		UPTREE_STORE(ptr);
+		return ptr;
+	}
+}
+
 #if 0
 TODO:
 
-type_pointed_to
 type_ptr_to
 type_qualify
 type_nav_MAX_FOR
@@ -312,41 +343,3 @@ type *type_nav_btype(struct type_nav *root, enum type_primitive p)
 
 	return root->btypes[p];
 }
-
-#if 0
-type *type_ptr_depth_dec(type *r, where *w)
-{
-	type *const r_save = r;
-
-	r = type_is_ptr(r);
-
-	if(!r){
-		die_at(w,
-				"invalid indirection applied to %s",
-				r_save ? type_to_str(r_save) : "(NULL)");
-	}
-
-	/* *(void (*)()) does nothing */
-	if(type_is(r, type_func))
-		return r_save;
-
-	/* don't check for incomplete types here */
-
-	/* XXX: memleak */
-	/*type_free(r_save);*/
-
-	return r;
-}
-
-type *type_ptr_depth_inc(type *r)
-{
-	type *test;
-	if((test = type_is_primitive(r, type_unknown))){
-		type *p = cache_ptr[test->bits.type->primitive];
-		if(p)
-			return p;
-	}
-
-	return type_new_ptr(r, qual_none);
-}
-#endif
