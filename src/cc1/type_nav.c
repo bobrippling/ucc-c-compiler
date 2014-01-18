@@ -227,11 +227,31 @@ type *type_ptr_to(type *pointee)
 	}
 }
 
+type *type_qualify(type *unqualified, enum type_qualifier qual)
+{
+	UPTREE_DECLS;
+
+	UPTREE_INIT(unqualified);
+	UPTREE_ITER_BEGIN(unqualified, type_cast){
+		UPTREE_ITER_ENT(candidate, type_cast);
+
+		if(candidate->bits.cast.is_signed_cast)
+			continue;
+		if(candidate->bits.cast.qual != qual)
+			continue;
+	}
+
+	{
+		type *ptr = type_new(type_ptr, unqualified);
+		UPTREE_STORE(ptr);
+		return ptr;
+	}
+}
+
 #if 0
 TODO:
 
 type_ptr_to
-type_qualify
 type_nav_MAX_FOR
 type_nav_suetype
 type_nav_va_list
