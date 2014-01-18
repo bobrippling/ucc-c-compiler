@@ -450,7 +450,7 @@ static type *parse_btype(
 			assert(tdef_decl_test->store == store_typedef);
 
 			tdef_decl = tdef_decl_test;
-			tdef_typeof = expr_new_sizeof_type(tdef_decl->ref, 1);
+			tdef_typeof = expr_new_sizeof_type(tdef_decl->ref, what_typeof);
 
 			primitive_mode = TYPEDEF;
 

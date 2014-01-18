@@ -235,6 +235,40 @@ type *type_sign(type *ty, int is_signed)
 			&is_signed);
 }
 
+struct ctx_tdef
+{
+	expr *e;
+	decl *d;
+};
+
+static int eq_tdef(type *candidate, void *ctx)
+{
+	struct ctx_tdef *c = ctx;
+	return candidate->bits.tdef.type_of == c->e
+		&&   candidate->bits.tdef.decl == c->d;
+}
+
+static void init_tdef(type *candidate, void *ctx)
+{
+	struct ctx_tdef *c = ctx;
+	candidate->bits.tdef.type_of = c->e;
+	candidate->bits.tdef.decl = c->d;
+}
+
+type *type_tdef_of(expr *e, decl *d)
+{
+	struct ctx_tdef ctx;
+
+	assert(e);
+	ctx.e = e;
+	ctx.d = d;
+
+	return type_uptree_find_or_new(
+			e->tree_type, type_tdef,
+			eq_tdef, init_tdef,
+			&ctx);
+}
+
 type *type_called(type *functy, struct funcargs **pfuncargs)
 {
 	functy = type_skip_tdefs_casts(functy);

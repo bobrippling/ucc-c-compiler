@@ -39,7 +39,9 @@ struct type
 		/* type_tdef */
 		struct type_tdef
 		{
+			/* never null - expression whose type is the typedef or typeof type */
 			struct expr *type_of;
+			/* null for typeof. non-null means it's the typedef decl */
 			struct decl *decl;
 		} tdef;
 
