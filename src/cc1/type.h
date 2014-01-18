@@ -46,7 +46,6 @@ struct type
 		/* type_{ptr,array} */
 		struct
 		{
-			enum type_qualifier qual;
 			unsigned is_static : 1;
 			unsigned decayed : 1; /* old size may be NULL - track here */
 			struct expr *size;
@@ -76,7 +75,6 @@ struct type
 		struct
 		{
 			struct funcargs *func;
-			enum type_qualifier qual;
 		} block;
 	} bits;
 };

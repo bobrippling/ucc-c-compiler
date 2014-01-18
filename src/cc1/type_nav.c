@@ -72,9 +72,7 @@ static type *type_new_btype(const btype *b)
 		*ent = umalloc(sizeof **ent); \
 		(*ent)->t = new_t
 
-type *type_array_of_qual(
-		type *to, struct expr *new_sz,
-		enum type_qualifier qual, int is_static)
+type *type_array_of_static(type *to, struct expr *new_sz, int is_static)
 {
 	integral_t new_sz_i = new_sz ? const_fold_val_i(new_sz) : 0;
 	UPTREE_DECLS;
@@ -86,11 +84,8 @@ type *type_array_of_qual(
 
 		UPTREE_ITER_ENT(candidate, type_array);
 
-		if(candidate->bits.array.is_static != is_static
-		|| candidate->bits.array.qual != qual)
-		{
+		if(candidate->bits.array.is_static != is_static)
 			continue;
-		}
 
 		if(candidate->bits.array.size == new_sz){
 			/* including [] */
@@ -116,7 +111,7 @@ type *type_array_of_qual(
 
 type *type_array_of(type *to, struct expr *new_sz)
 {
-	return type_array_of_qual(to, new_sz, qual_none, 0);
+	return type_array_of_static(to, new_sz, 0);
 }
 
 type *type_func_of(type *ty_ret, struct funcargs *args)

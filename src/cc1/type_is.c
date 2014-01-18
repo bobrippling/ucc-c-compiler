@@ -492,7 +492,7 @@ enum type_qualifier type_qual(const type *r)
 
 		case type_ptr:
 		case type_block:
-			return r->bits.ptr.qual; /* no descend */
+			return qual_none; /* no descend */
 
 		case type_tdef:
 			return type_qual(r->bits.tdef.type_of->tree_type);

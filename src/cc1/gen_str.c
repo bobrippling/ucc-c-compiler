@@ -164,7 +164,7 @@ static void print_type_eng(type *ref)
 			break;
 
 		case type_ptr:
-			fprintf(cc1_out, "%spointer to ", type_qual_to_str(ref->bits.ptr.qual, 1));
+			fprintf(cc1_out, "pointer to ");
 			break;
 
 		case type_block:

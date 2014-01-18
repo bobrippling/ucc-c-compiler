@@ -24,9 +24,7 @@ type *type_pointed_to(type *);
 type *type_block_of(type *);
 
 type *type_array_of(type *, struct expr *sz);
-type *type_array_of_qual(
-		type *, struct expr *sz,
-		enum type_qualifier, int is_static);
+type *type_array_of_static(type *, struct expr *sz, int is_static);
 
 type *type_func_of(type *, struct funcargs *args);
 type *type_called(type *, struct funcargs **pfuncargs);

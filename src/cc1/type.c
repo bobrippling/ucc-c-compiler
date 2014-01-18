@@ -361,7 +361,6 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 
 			ADD_SPC();
 			BUF_ADD("*");
-			q = r->bits.ptr.qual;
 			break;
 
 		case type_cast:
@@ -376,7 +375,6 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 		case type_block:
 			ADD_SPC();
 			BUF_ADD("^");
-			q = r->bits.block.qual;
 			break;
 
 		default:break;
@@ -439,6 +437,7 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 					spc = 1;
 				}
 
+#if 0
 				if(r->bits.array.qual){
 					BUF_ADD(
 							"%s%s",
@@ -446,6 +445,7 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 							type_qual_to_str(r->bits.array.qual, 0));
 					spc = 1;
 				}
+#endif
 
 				BUF_ADD(
 						"%s%" NUMERIC_FMT_D,

@@ -819,7 +819,9 @@ static type *parse_type_array(enum decl_mode mode, decl *dfor)
 		if(is_static > 1)
 			die_at(NULL, "multiple static specifiers in array size");
 
-		r = type_array_of_qual(r, size, q, is_static);
+		r = type_qualify(
+				type_array_of_static(r, size, is_static),
+				q);
 	}
 
 	return r;
