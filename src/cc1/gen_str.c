@@ -215,6 +215,7 @@ static void print_type_eng(type *ref)
 			break;
 
 		case type_tdef:
+		case type_attr:
 			ICE("TODO");
 	}
 }
@@ -230,14 +231,16 @@ static void print_decl_eng(decl *d)
 void print_type(type *ref, decl *d)
 {
 	char buf[TYPE_STATIC_BUFSIZ];
-	attribute *da;
 
 	fprintf(cc1_out, "%s",
 			type_to_str_r_spel(buf, ref, d ? d->spel : NULL));
 
-	for(da = ref->attr; da; da = da->next){
-		fprintf(cc1_out, " __attribute__((%s))",
-				attribute_to_str(da));
+	if(ref->type == type_attr){
+		attribute *da;
+		for(da = ref->bits.attr; da; da = da->next){
+			fprintf(cc1_out, " __attribute__((%s))",
+					attribute_to_str(da));
+		}
 	}
 }
 

@@ -39,6 +39,7 @@ type *type_skip_tdefs_casts(type *r)
 		switch(r->type){
 			case type_tdef:
 			case type_cast:
+			case type_attr:
 				r = type_next_1(r);
 				continue;
 			default:
@@ -49,11 +50,17 @@ fin:
 	return r;
 }
 
-type *type_skip_casts(type *r)
+type *type_skip_attrs_casts(type *r)
 {
-	while(r && r->type == type_cast)
-		r = type_next_1(r);
-
+	while(r) switch(r->type){
+		case type_cast:
+		case type_attr:
+			r = type_next_1(r);
+			break;
+		default:
+			goto out;
+	}
+out:
 	return r;
 }
 
@@ -76,6 +83,7 @@ type *type_next(type *r)
 
 		case type_tdef:
 		case type_cast:
+		case type_attr:
 			return type_next(type_skip_tdefs_casts(r));
 
 		case type_ptr:
@@ -270,6 +278,7 @@ int type_is_complete(type *r)
 			break;
 
 		case type_tdef:
+		case type_attr:
 		case type_cast:
 			ICE("should've been skipped");
 	}
@@ -470,6 +479,9 @@ enum type_qualifier type_qual(const type *r)
 		case type_func:
 		case type_array:
 			return qual_none;
+
+		case type_attr:
+			return type_qual(r->ref);
 
 		case type_cast:
 			/* descend */

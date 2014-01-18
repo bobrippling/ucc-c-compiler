@@ -54,9 +54,6 @@ attribute *type_attr_present(type *r, enum attribute_type t)
 	while(r){
 		attribute *da;
 
-		if((da = attr_present(r->attr, t)))
-			return da;
-
 		switch(r->type){
 			case type_btype:
 			{
@@ -73,6 +70,11 @@ attribute *type_attr_present(type *r, enum attribute_type t)
 
 				return expr_attr_present(r->bits.tdef.type_of, t);
 			}
+
+			case type_attr:
+				if((da = attr_present(r->bits.attr, t)))
+					return da;
+				break;
 
 			case type_ptr:
 			case type_block:

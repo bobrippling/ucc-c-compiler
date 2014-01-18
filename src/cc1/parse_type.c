@@ -30,8 +30,8 @@
 /*#define PARSE_DECL_VERBOSE*/
 
 /* we don't do the type_is_* since it needs to be folded for that */
-#define PARSE_type_is(r, ty) ((type_skip_casts(r)->type == ty) ? (r) : NULL)
-#define PARSE_DECL_IS_FUNC(d) PARSE_type_is(type_skip_casts(d->ref), type_func)
+#define PARSE_type_is(r, ty) ((type_skip_attrs_casts(r)->type == ty) ? (r) : NULL)
+#define PARSE_DECL_IS_FUNC(d) PARSE_type_is(type_skip_attrs_casts(d->ref), type_func)
 
 #define PARSE_type_is_s_or_u_or_e(r) PARSE_type_is_s_or_u_or_e2(r, 1)
 #define PARSE_type_is_s_or_u(r)      PARSE_type_is_s_or_u_or_e2(r, 0)
@@ -39,7 +39,7 @@
 static struct_union_enum_st *PARSE_type_is_s_or_u_or_e2(
 		type *r, int allow_e)
 {
-	r = type_skip_casts(r);
+	r = type_skip_attrs_casts(r);
 	if(r->type == type_btype){
 		const btype *t = r->bits.type;
 		switch(t->primitive){
@@ -396,7 +396,7 @@ static type *parse_btype(
 			/* fine... although a _Noreturn function returning a sue
 			 * is pretty daft... */
 			if(is_noreturn)
-				attribute_append(&tref->attr, attribute_new(attr_noreturn));
+				tref = type_attributed(tref, attribute_new(attr_noreturn));
 
 			/*
 			 * struct A { ... } const x;
@@ -583,11 +583,11 @@ static type *parse_btype(
 
 		r = type_qualify(r, qual);
 
-		r->attr = attr;
-		parse_add_attr(&r->attr); /* int/struct-A __attr__ */
-
 		if(is_noreturn)
-			attribute_append(&r->attr, attribute_new(attr_noreturn));
+			attribute_append(&attr, attribute_new(attr_noreturn));
+
+		parse_add_attr(&attr); /* int/struct-A __attr__ */
+		r = type_attributed(r, attr);
 
 		return r;
 	}else{
@@ -864,8 +864,7 @@ static type *parse_type_ptr(enum decl_mode mode, decl *dfor)
 				creater(parse_type2(mode, dfor)),
 				qual);
 
-		r_ptr->attr = attr;
-		return r_ptr;
+		return type_attributed(r_ptr, attr);
 	}
 
 	return parse_type_func(mode, dfor);
@@ -1272,8 +1271,11 @@ int parse_decls_single_type(
 			 * decls after the final close-paren
 			 */
 			if(curtok == token_attribute && !is_old_func(d)){
-				/* add to .ref, since this is what is checked when the function decays to a pointer */
-				parse_add_attr(&d->ref->attr);
+				/* add to .ref, since this is what is checked
+				 * when the function decays to a pointer */
+				attribute *a = NULL;
+				parse_add_attr(&a);
+				d->ref = type_attributed(d->ref, a);
 			}else{
 				decl **old_args = NULL;
 				/* NULL - we don't want these in a scope */

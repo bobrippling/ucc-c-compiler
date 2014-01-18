@@ -5,7 +5,6 @@ struct decl;
 
 type *type_skip_tdefs_casts(type *r);
 
-type *type_skip_casts(type *r);
 struct decl *type_is_tdef(type *r);
 
 type *type_next(type *r);

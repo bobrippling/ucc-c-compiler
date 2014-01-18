@@ -588,6 +588,11 @@ static struct DIE *dwarf_type_die(
 			}
 			break;
 		}
+
+		case type_attr:
+			/* skip */
+			tydie = dwarf_type_die(cu, parent, ty->ref);
+			break;
 	}
 
 	dwarf_add_tydie(cu, ty, tydie);

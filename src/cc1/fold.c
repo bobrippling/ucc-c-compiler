@@ -270,6 +270,10 @@ void fold_type(type *r, type *parent, symtable *stab)
 			/*q_to_check = r->bits.block.qual; - allowed */
 			break;
 
+		case type_attr:
+			/* nothing to do */
+			break;
+
 		case type_cast:
 			if(!r->bits.cast.is_signed_cast)
 				q_to_check = type_qual(r);

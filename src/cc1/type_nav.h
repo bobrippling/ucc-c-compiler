@@ -37,6 +37,8 @@ type *type_unqualify(type *);
 type *type_qualify(type *, enum type_qualifier);
 type *type_sign(type *, int is_signed);
 
+type *type_attributed(type *, attribute *);
+
 type *type_nav_MAX_FOR(struct type_nav *, unsigned sz);
 
 #if 0

@@ -132,6 +132,7 @@ static enum type_cmp type_cmp_r(
 
 		case type_cast:
 		case type_tdef:
+		case type_attr:
 			ICE("should've been skipped");
 
 		case type_func:
@@ -259,6 +260,7 @@ unsigned type_size(type *r, where *from)
 			return type_size(sub, from);
 		}
 
+		case type_attr:
 		case type_cast:
 			return type_size(r->ref, from);
 
@@ -397,6 +399,8 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 	switch(r->type){
 		case type_tdef:
 			/* tdef "aka: %s" handled elsewhere */
+		case type_attr:
+			/* attribute not handled here */
 		case type_btype:
 		case type_cast:
 			/**/
