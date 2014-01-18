@@ -214,6 +214,27 @@ type *type_qualify(type *unqualified, enum type_qualifier qual)
 			&qual);
 }
 
+static int eq_sign(type *candidate, void *ctx)
+{
+	if(!candidate->bits.cast.is_signed_cast)
+		return 0;
+	return candidate->bits.cast.signed_true == *(int *)ctx;
+}
+
+static void init_sign(type *t, void *ctx)
+{
+	t->bits.cast.is_signed_cast = 1;
+	t->bits.cast.signed_true = *(int *)ctx;
+}
+
+type *type_sign(type *ty, int is_signed)
+{
+	return type_uptree_find_or_new(
+			ty, type_cast,
+			eq_sign, init_sign,
+			&is_signed);
+}
+
 type *type_called(type *functy, struct funcargs **pfuncargs)
 {
 	functy = type_skip_tdefs_casts(functy);
