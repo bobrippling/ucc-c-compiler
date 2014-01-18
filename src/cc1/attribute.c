@@ -76,7 +76,6 @@ attribute *type_attr_present(type *r, enum attribute_type t)
 			case type_attr:
 				if((da = attr_present(r->bits.attr, t)))
 					return da;
-				break;
 
 			case type_ptr:
 			case type_block:
