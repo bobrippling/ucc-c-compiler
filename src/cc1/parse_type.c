@@ -55,7 +55,7 @@ static struct_union_enum_st *PARSE_type_is_s_or_u_or_e2(
 	return NULL;
 }
 
-static type *parse_type2(enum decl_mode mode, decl *dfor);
+static type *parse_type2(enum decl_mode mode, decl *dfor, type *base);
 
 /* newdecl_context:
  * struct B { int b; };
@@ -742,7 +742,7 @@ declarator:
 		;
 */
 
-static type *parse_type_nest(enum decl_mode mode, decl *dfor)
+static type *parse_type_nest(enum decl_mode mode, decl *dfor, type *base)
 {
 	if(accept(token_open_paren)){
 		type *ret;
@@ -760,10 +760,10 @@ static type *parse_type_nest(enum decl_mode mode, decl *dfor)
 			/* int() or char(short) - func decl */
 			uneat(token_open_paren);
 			/* parse_...func will grab this as funcargs instead */
-			return NULL;
+			return base;
 		}
 
-		ret = parse_type2(mode, dfor);
+		ret = parse_type2(mode, dfor, base);
 		EAT(token_close_paren);
 		return ret;
 
@@ -782,12 +782,12 @@ static type *parse_type_nest(enum decl_mode mode, decl *dfor)
 		die_at(NULL, "need identifier for decl");
 	}
 
-	return NULL;
+	return base;
 }
 
-static type *parse_type_array(enum decl_mode mode, decl *dfor)
+static type *parse_type_array(enum decl_mode mode, decl *dfor, type *base)
 {
-	type *r = parse_type_nest(mode, dfor);
+	type *r = parse_type_nest(mode, dfor, base);
 
 	while(accept(token_open_square)){
 		expr *size;
@@ -827,9 +827,9 @@ static type *parse_type_array(enum decl_mode mode, decl *dfor)
 	return r;
 }
 
-static type *parse_type_func(enum decl_mode mode, decl *dfor)
+static type *parse_type_func(enum decl_mode mode, decl *dfor, type *base)
 {
-	type *sub = parse_type_array(mode, dfor);
+	type *sub = parse_type_array(mode, dfor, base);
 
 	while(accept(token_open_paren)){
 		sub = type_func_of(sub, parse_func_arglist());
@@ -840,7 +840,7 @@ static type *parse_type_func(enum decl_mode mode, decl *dfor)
 	return sub;
 }
 
-static type *parse_type_ptr(enum decl_mode mode, decl *dfor)
+static type *parse_type_ptr(enum decl_mode mode, decl *dfor, type *base)
 {
 	int ptr;
 
@@ -863,42 +863,24 @@ static type *parse_type_ptr(enum decl_mode mode, decl *dfor)
 		}
 
 		r_ptr = type_qualify(
-				creater(parse_type2(mode, dfor)),
+				creater(parse_type2(mode, dfor, base)),
 				qual);
 
 		return type_attributed(r_ptr, attr);
+	}else{
+		return parse_type_func(mode, dfor, base);
 	}
-
-	return parse_type_func(mode, dfor);
 }
 
-static type *parse_type2(enum decl_mode mode, decl *dfor)
+static type *parse_type2(enum decl_mode mode, decl *dfor, type *base)
 {
-	return parse_type_ptr(mode, dfor);
-}
-
-static type *type_reverse(type *r, type *subtype)
-{
-	/*
-	 * e.g.  int (*f)() is parsed as:
-	 *   func -> ptr -> NULL
-	 * swap to
-	 *   ptr -> func -> subtype
-	 */
-	type *i, *next, *prev = subtype;
-
-	for(i = r; i; prev = i, i = next){
-		next = i->ref;
-		i->ref = prev;
-	}
-
-	return prev;
+	return parse_type_ptr(mode, dfor, base);
 }
 
 static type *parse_type3(
 		enum decl_mode mode, decl *dfor, type *btype)
 {
-	return type_reverse(parse_type2(mode, dfor), btype);
+	return parse_type2(mode, dfor, btype);
 }
 
 type *parse_type(int newdecl)
