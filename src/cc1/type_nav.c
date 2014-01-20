@@ -181,6 +181,9 @@ static void init_attr(type *ty, void *ctx)
 
 type *type_attributed(type *ty, attribute *attr)
 {
+	if(!attr)
+		return ty;
+
 	return type_uptree_find_or_new(
 			ty, type_attr,
 			eq_attr, init_attr,
@@ -208,6 +211,9 @@ static void init_qual(type *t, void *ctx)
 
 type *type_qualify(type *unqualified, enum type_qualifier qual)
 {
+	if(!qual)
+		return unqualified;
+
 	return type_uptree_find_or_new(
 			unqualified, type_cast,
 			eq_qual, init_qual,
