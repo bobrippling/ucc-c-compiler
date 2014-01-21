@@ -165,6 +165,8 @@ case "$unam_os" in
 		then
 			UCC_AS_ARGS_M32='-arch i386'
 			UCC_AS_ARGS_M64='-arch x86_64'
+			UCC_LD_ARGS_M32='-arch i386'
+			UCC_LD_ARGS_M64='-arch x86_64'
 		else
 			echo >&2 "Darwin on non-x86?"
 			exit 1
