@@ -391,7 +391,7 @@ static type *parse_btype(
 			}
 
 			if(signed_set || primitive_mode != NONE)
-				die_at(&tref->where, "primitive/signed/unsigned with %s", str);
+				die_at(NULL, "primitive/signed/unsigned with %s", str);
 
 			/* fine... although a _Noreturn function returning a sue
 			 * is pretty daft... */
@@ -832,7 +832,7 @@ static type *parse_type_func(enum decl_mode mode, decl *dfor, type *base)
 	type *sub = parse_type_array(mode, dfor, base);
 
 	while(accept(token_open_paren)){
-		current_scope = symtab_new(current_scope);
+		current_scope = symtab_new(current_scope, where_cc1_current(NULL));
 
 		sub = type_func_of(sub, parse_func_arglist(), current_scope);
 
@@ -949,10 +949,10 @@ static decl *parse_decl(type *btype, enum decl_mode mode)
 	return d;
 }
 
-static void prevent_typedef(where *w, enum decl_storage store)
+static void prevent_typedef(enum decl_storage store)
 {
 	if(store_typedef == store)
-		die_at(w, "typedef unexpected");
+		die_at(NULL, "typedef unexpected");
 }
 
 static type *default_type(void)
@@ -992,7 +992,7 @@ decl *parse_decl_single(enum decl_mode mode, int newdecl)
 		r = default_type();
 
 	}else{
-		prevent_typedef(&r->where, store);
+		prevent_typedef(store);
 	}
 
 	return parse_decl_extra(r, mode, store, NULL /* align */);
@@ -1008,7 +1008,7 @@ decl **parse_decls_one_type(int newdecl)
 	if(!r)
 		return NULL;
 
-	prevent_typedef(&r->where, store);
+	prevent_typedef(store);
 
 	do{
 		decl *d = parse_decl_extra(r, DECL_SPEL_NEED, store, align);
@@ -1167,12 +1167,12 @@ int parse_decls_single_type(
 				enum type_qualifier qual;
 
 				if(sue->anon)
-					warn_at(&this_ref->where, "anonymous %s with no instances", sue_str(sue));
+					warn_at(NULL, "anonymous %s with no instances", sue_str(sue));
 
 				/* check for storage/qual on no-instance */
 				qual = type_qual(this_ref);
 				if(qual || store != store_default){
-					warn_at(&this_ref->where, "ignoring %s%s%son no-instance %s",
+					warn_at(NULL, "ignoring %s%s%son no-instance %s",
 							store != store_default ? decl_store_to_str(store) : "",
 							store != store_default ? " " : "",
 							type_qual_to_str(qual, 1),

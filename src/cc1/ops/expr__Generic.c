@@ -32,7 +32,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 			/* duplicate default checked below */
 			if(m && (type_cmp(m, l->t, 0) & TYPE_EQUAL_ANY))
-				die_at(&m->where, "duplicate type in _Generic: %s",
+				die_at(&(*j)->e->where, "duplicate type in _Generic: %s",
 						type_to_str(l->t));
 		}
 

@@ -50,7 +50,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		 *   and again on our call to gen_stmt() in our gen function
 		 */
 		e->code = stmt_set_where(
-				stmt_new_wrapper(code, symtab_new(stab)),
+				stmt_new_wrapper(code, symtab_new(stab, &e->where)),
 				&e->where);
 		decl_init_create_assignments_base(d->bits.var.init, d->ref, e, e->code);
 

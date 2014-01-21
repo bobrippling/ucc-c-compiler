@@ -166,13 +166,19 @@ int current_line_str_used = 0;
 #define SET_CURRENT_LINE_STR(new) SET_CURRENT(line_str, new)
 
 
-void where_cc1_current(struct where *w)
+struct where *where_cc1_current(struct where *w)
 {
+	static struct where here;
+
+	if(!w) w = &here;
+
 	/* XXX: current_chr positions at the end of the current token */
 	where_current(w);
 
 	current_fname_used = 1;
 	current_line_str_used = 1;
+
+	return w;
 }
 
 void where_cc1_adj_identifier(where *w, const char *sp)

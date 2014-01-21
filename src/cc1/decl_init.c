@@ -259,7 +259,7 @@ static decl_init *decl_init_brace_up_scalar(
 		symtable *stab)
 {
 	decl_init *first_init;
-	where *const w = ITER_WHERE(iter, &tfor->where);
+	where *const w = ITER_WHERE(iter, &stab->where);
 
 	if(current){
 		override_warn(tfor, &current->where, w, 0);
@@ -909,7 +909,7 @@ static void die_incomplete(init_iter *iter, type *tfor)
 	if(sue)
 		sue_incomplete_chk(sue, ITER_WHERE(iter, &sue->where));
 
-	die_at(ITER_WHERE(iter, &tfor->where),
+	die_at(ITER_WHERE(iter, NULL),
 			"initialising %s", type_to_str(tfor));
 }
 
@@ -1092,8 +1092,12 @@ static decl_init *decl_init_brace_up_start(
 
 	if(type_is_incomplete_array(tfor)){
 		/* complete it */
+		expr *sz = expr_set_where(
+				expr_new_val(dynarray_count(ret->bits.ar.inits)),
+				&init->where);
+
 		UCC_ASSERT(ret->type == decl_init_brace, "unbraced array");
-		*ptfor = type_complete_array(tfor, dynarray_count(ret->bits.ar.inits));
+		*ptfor = type_complete_array(tfor, sz);
 	}
 
 	return ret;

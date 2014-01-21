@@ -234,16 +234,17 @@ void fold_type(type *r, type *parent, symtable *stab)
 		case type_array:
 			if(r->bits.array.size){
 				consty k;
+				where *loc = &r->bits.array.size->where;
 
 				FOLD_EXPR(r->bits.array.size, stab);
 				const_fold(r->bits.array.size, &k);
 
 				if(k.type != CONST_NUM)
-					die_at(&r->where, "not a constant for array size");
+					die_at(loc, "not a constant for array size");
 				else if(K_FLOATING(k.bits.num))
-					die_at(&r->where, "not an integral array size");
+					die_at(loc, "not an integral array size");
 				else if((sintegral_t)k.bits.num.val.i < 0)
-					die_at(&r->where, "negative array size");
+					die_at(loc, "negative array size");
 				/* allow zero length arrays */
 				else if(k.nonstandard_const)
 					warn_at(&k.nonstandard_const->where,
@@ -256,7 +257,7 @@ void fold_type(type *r, type *parent, symtable *stab)
 			if(type_is(parent, type_ptr)
 			&& (type_qual(parent) & qual_restrict))
 			{
-				die_at(&r->where, "restrict qualified function pointer");
+				die_at(&stab->where, "restrict qualified function pointer");
 			}
 
 			r->bits.func.arg_scope->are_params = 1;
@@ -297,7 +298,7 @@ void fold_type(type *r, type *parent, symtable *stab)
 							stab->parent, sue->spel, NULL);
 
 					if(!above){
-						warn_at(&r->where,
+						warn_at(&sue->where,
 								"declaration of '%s %s' only visible inside function",
 								sue_str(sue), sue->spel);
 					}
@@ -361,7 +362,7 @@ void fold_type(type *r, type *parent, symtable *stab)
 		if(sue && sue->flexarr
 		&& (type_is_array(parent) || type_is_s_or_u(parent)))
 		{
-			warn_at(&r->where, "%s with flex-array embedded in %s",
+			warn_at(&sue->where, "%s with flex-array embedded in %s",
 					sue_str(sue), type_to_str(parent));
 		}
 	}
@@ -544,7 +545,7 @@ static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
 			}else if(pinit_code){
 				if(!inits){
 					inits = stmt_set_where(
-							stmt_new_wrapper(code, symtab_new(stab)),
+							stmt_new_wrapper(code, symtab_new(stab, &d->where)),
 							&d->where);
 				}
 

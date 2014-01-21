@@ -22,7 +22,7 @@
 #include "type_is.h"
 
 #define STAT_NEW(type)      stmt_new_wrapper(type, current_scope)
-#define STAT_NEW_NEST(type) stmt_new_wrapper(type, symtab_new(current_scope))
+#define STAT_NEW_NEST(type, w) stmt_new_wrapper(type, symtab_new(current_scope, w))
 
 #define STMT_SCOPE_RECOVER(t)              \
 	if(t->flow)                              \
@@ -155,13 +155,15 @@ static expr *parse_expr_identifier()
 
 static expr *parse_block()
 {
-	symtable *const arg_symtab = symtab_new(
-			symtab_root(current_scope));
+	symtable *arg_symtab = symtab_new(
+			symtab_root(current_scope),
+			where_cc1_current(NULL));
 
 	funcargs *args;
 	type *rt;
 	symtable *orig_scope;
 	expr *r;
+
 
 	orig_scope = current_scope;
 	current_scope = arg_symtab;
@@ -577,6 +579,9 @@ expr **parse_funcargs()
 static void parse_test_init_expr(stmt *t)
 {
 	decl *d;
+	where here;
+
+	where_cc1_current(&here);
 
 	EAT(token_open_paren);
 
@@ -587,11 +592,11 @@ static void parse_test_init_expr(stmt *t)
 	 * C90 drags the scope of the enum up to the enclosing block
 	 */
 	if(cc1_std == STD_C99)
-		t->symtab = current_scope = symtab_new(current_scope);
+		t->symtab = current_scope = symtab_new(current_scope, &here);
 
 	d = parse_decl_single(DECL_SPEL_NEED, 0);
 	if(d){
-		t->flow = stmt_flow_new(symtab_new(current_scope));
+		t->flow = stmt_flow_new(symtab_new(current_scope, &here));
 
 		current_scope = t->flow->for_init_symtab;
 
@@ -697,7 +702,7 @@ static stmt *parse_for()
 	EAT(token_for);
 	EAT(token_open_paren);
 
-	sf = s->flow = stmt_flow_new(symtab_new(s->symtab));
+	sf = s->flow = stmt_flow_new(symtab_new(s->symtab, &s->where));
 
 	current_scope = sf->for_init_symtab;
 
@@ -806,7 +811,7 @@ static stmt *parse_label(void)
 
 static stmt *parse_stmt_and_decls(void)
 {
-	stmt *code_stmt = STAT_NEW_NEST(code);
+	stmt *code_stmt = STAT_NEW_NEST(code, where_cc1_current(NULL));
 
 	current_scope = code_stmt->symtab;
 

@@ -329,16 +329,13 @@ int type_is_incomplete_array(type *r)
 	return 0;
 }
 
-type *type_complete_array(type *r, int sz)
+type *type_complete_array(type *r, expr *sz)
 {
 	r = type_is(r, type_array);
 
 	UCC_ASSERT(r, "not an array");
 
-	r = type_array_of(r->ref,
-			expr_set_where(
-				expr_new_val(sz),
-				&r->where));
+	r = type_array_of(r->ref, sz);
 
 	return r;
 }

@@ -159,7 +159,7 @@ invalid:
 			func_ty = type_func_of(
 					type_nav_btype(cc1_type_nav, type_int),
 					args,
-					symtab_new(stab) /*new symtable for args*/);
+					symtab_new(stab, &e->where) /*new symtable for args*/);
 
 			cc1_warn_at(&e->expr->where, 0, WARN_IMPLICIT_FUNC,
 					"implicit declaration of function \"%s\"", sp);

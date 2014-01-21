@@ -106,7 +106,7 @@ int integral_high_bit(integral_t val, type *ty)
 		const sintegral_t as_signed = val;
 
 		if(as_signed < 0)
-			val = integral_truncate(val, type_size(ty, &ty->where), NULL);
+			val = integral_truncate(val, type_size(ty, NULL), NULL);
 	}
 
 	{

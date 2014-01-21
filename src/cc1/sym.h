@@ -39,6 +39,8 @@ struct static_assert
 typedef struct symtable symtable;
 struct symtable
 {
+	where where;
+
 	int auto_total_size;
 	unsigned folded : 1, laidout : 1;
 	unsigned internal_nest : 1, are_params : 1;
@@ -85,9 +87,9 @@ struct symtable_global
 sym *sym_new(decl *d, enum sym_type t);
 sym *sym_new_stab(symtable *, decl *d, enum sym_type t);
 
-symtable_global *symtabg_new(void);
+symtable_global *symtabg_new(where *);
 
-symtable *symtab_new(symtable *parent);
+symtable *symtab_new(symtable *parent, where *w);
 void      symtab_set_parent(symtable *child, symtable *parent);
 void      symtab_rm_parent( symtable *child);
 

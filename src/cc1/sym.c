@@ -45,17 +45,20 @@ void symtab_set_parent(symtable *child, symtable *parent)
 	dynarray_add(&parent->children, child);
 }
 
-symtable *symtab_new(symtable *parent)
+symtable *symtab_new(symtable *parent, where *w)
 {
 	symtable *p = umalloc(sizeof *p);
 	UCC_ASSERT(parent, "no parent for symtable");
 	symtab_set_parent(p, parent);
+	memcpy_safe(&p->where, w);
 	return p;
 }
 
-symtable_global *symtabg_new(void)
+symtable_global *symtabg_new(where *w)
 {
-	return umalloc(sizeof *symtabg_new());
+	symtable_global *s = umalloc(sizeof *s);
+	memcpy_safe(&s->stab.where, w);
+	return s;
 }
 
 symtable *symtab_root(symtable *stab)

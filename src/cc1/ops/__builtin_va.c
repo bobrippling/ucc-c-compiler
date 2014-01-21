@@ -95,7 +95,7 @@ static void fold_va_start(expr *e, symtable *stab)
 #ifndef UCC_VA_ABI
 	{
 		stmt *assigns = stmt_set_where(
-				stmt_new_wrapper(code, symtab_new(stab)),
+				stmt_new_wrapper(code, symtab_new(stab, &e->where)),
 				&e->where);
 		expr *assign;
 

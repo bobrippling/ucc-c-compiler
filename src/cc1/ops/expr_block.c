@@ -17,7 +17,10 @@ void expr_block_set_ty(decl *db, type *retty, symtable *scope)
 	(void)scope;
 
 	db->ref = type_block_of(
-			type_func_of(retty, e->bits.block.args, symtab_new(scope)));
+			type_func_of(
+				retty,
+				e->bits.block.args,
+				symtab_new(scope, &e->where)));
 }
 
 /*

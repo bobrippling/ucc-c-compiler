@@ -31,7 +31,7 @@ unsigned type_align(type *r, where *from);
 int type_is_complete(type *r);
 int type_is_incomplete_array(type *r);
 
-type *type_complete_array(type *r, int sz);
+type *type_complete_array(type *r, struct expr *sz);
 
 struct struct_union_enum_st *type_is_s_or_u_or_e(type *r);
 struct struct_union_enum_st *type_is_s_or_u(type *r);

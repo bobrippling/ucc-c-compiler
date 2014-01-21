@@ -25,6 +25,7 @@
 #include "opt.h"
 #include "pass1.h"
 #include "type_nav.h"
+#include "cc1_where.h"
 
 #include "../as_cfg.h"
 
@@ -352,6 +353,7 @@ static char *next_line()
 
 int main(int argc, char **argv)
 {
+	where loc_start;
 	static symtable_global *globs;
 	void (*gf)(symtable_global *) = NULL;
 	const char *fname;
@@ -547,8 +549,10 @@ usage:
 
 	cc1_type_nav = type_nav_init();
 
-	globs = symtabg_new();
 	tokenise_set_input(next_line, fname);
+
+	where_cc1_current(&loc_start);
+	globs = symtabg_new(&loc_start);
 
 	parse_and_fold(globs);
 
