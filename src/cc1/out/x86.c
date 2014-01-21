@@ -1615,6 +1615,10 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	/* align the stack to 16-byte, for sse insns */
 	v_stack_align(16, 0);
 
+	if(IS_32_BIT()){
+		v_alloc_stack(8, "32-bit 8-byte stack adjust");
+	}
+
 	if(arg_stack > 0){
 		unsigned nfloats = 0, nints = 0; /* shadow */
 		unsigned stack_pos;
