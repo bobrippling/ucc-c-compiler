@@ -7,7 +7,10 @@
 
 #define ASSERT_NOT_DOT() UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now")
 
-#define struct_offset(e) ((e)->bits.struct_mem.d->struct_offset + (e)->bits.struct_mem.extra_off)
+#define struct_offset(e) (                            \
+	 (e)->bits.struct_mem.d->bits.var.struct_offset +   \
+	 (e)->bits.struct_mem.extra_off                     \
+	 )
 
 static void gen_expr_struct_lea(expr *e);
 
@@ -140,9 +143,9 @@ static void gen_expr_struct_lea(expr *e)
 		/* set if we're a bitfield - out_deref() and out_store()
 		 * i.e. read + write then handle this
 		 */
-		if(d->field_width){
-			unsigned w = const_fold_val_i(d->field_width);
-			out_set_bitfield(d->struct_offset_bitfield, w);
+		if(d->bits.var.field_width){
+			unsigned w = const_fold_val_i(d->bits.var.field_width);
+			out_set_bitfield(d->bits.var.struct_offset_bitfield, w);
 			out_comment("struct bitfield lea");
 		}
 	}
@@ -164,10 +167,10 @@ void gen_expr_str_struct(expr *e)
 	idt_printf("struct/union member %s offset %d\n",
 			mem->spel, struct_offset(e));
 
-	if(mem->field_width)
+	if(mem->bits.var.field_width)
 		idt_printf("bitfield offset %u, width %u\n",
-				mem->struct_offset_bitfield,
-				(unsigned)const_fold_val_i(mem->field_width));
+				mem->bits.var.struct_offset_bitfield,
+				(unsigned)const_fold_val_i(mem->bits.var.field_width));
 
 	gen_str_indent++;
 	print_expr(e->lhs);

@@ -31,7 +31,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 			stab, d, stab->parent ? sym_local : sym_global);
 
 	/* fold the initialiser */
-	UCC_ASSERT(d->init, "no init for comp.literal");
+	UCC_ASSERT(d->bits.var.init, "no init for comp.literal");
 
 	decl_init_brace_up_fold(d, stab);
 
@@ -52,7 +52,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		e->code = stmt_set_where(
 				stmt_new_wrapper(code, symtab_new(stab)),
 				&e->where);
-		decl_init_create_assignments_base(d->init, d->ref, e, e->code);
+		decl_init_create_assignments_base(d->bits.var.init, d->ref, e, e->code);
 
 		fold_stmt_code(e->code);
 	}else{
@@ -94,7 +94,7 @@ static void const_expr_compound_lit(expr *e, consty *k)
 	decl *d = e->bits.complit.decl;
 	expr *nonstd = NULL;
 
-	if(decl_init_is_const(d->init, NULL, &nonstd)){
+	if(decl_init_is_const(d->bits.var.init, NULL, &nonstd)){
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR_OR_NEED(d);
 		k->bits.addr.is_lbl = 1;
@@ -139,7 +139,7 @@ void gen_expr_str_compound_lit(expr *e)
 void gen_expr_style_compound_lit(expr *e)
 {
 	stylef("(%s)", type_to_str(e->bits.complit.decl->ref));
-	gen_style_dinit(e->bits.complit.decl->init);
+	gen_style_dinit(e->bits.complit.decl->bits.var.init);
 }
 
 void mutate_expr_compound_lit(expr *e)
@@ -154,7 +154,7 @@ static decl *compound_lit_decl(type *t, decl_init *init)
 	decl *d = decl_new();
 
 	d->ref = t;
-	d->init = init;
+	d->bits.var.init = init;
 
 	return d;
 }

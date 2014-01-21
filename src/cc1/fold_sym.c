@@ -149,7 +149,7 @@ void symtab_check_rw(symtable *tab)
 						case store_auto:
 						case store_static:
 							/* static analysis on sym */
-							if(!has_unused_attr && !d->init)
+							if(!has_unused_attr && !DECL_IS_FUNC(d) && !d->bits.var.init)
 								RW_WARN(WRITTEN, d, nwrites, "written to");
 							break;
 						case store_extern:
@@ -194,12 +194,14 @@ static int ident_loc_cmp(const void *a, const void *b)
 	const struct ident_loc *ia = a, *ib = b;
 	int r = strcmp(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
 
-	/* sort according to spel, then according to func_code
+	/* sort according to spel, then according to func-code
 	 * so it makes checking redefinitions easier, e.g.
 	 * f(){} f(); f(){}
 	 */
-	if(r == 0 && ia->has_decl && ib->has_decl)
-		r = !!ia->bits.decl->func_code - !!ib->bits.decl->func_code;
+	if(r == 0 && ia->has_decl && ib->has_decl){
+		r = !!DECL_HAS_FUNC_CODE(ia->bits.decl)
+			- !!DECL_HAS_FUNC_CODE(ib->bits.decl);
+	}
 
 	return r;
 }
@@ -377,7 +379,10 @@ void symtab_fold_decls(symtable *tab)
 									}else{
 										/* fine - both extern */
 									}
-								}else if(a_func && da->func_code && db->func_code){
+								}else if(a_func
+								&& DECL_HAS_FUNC_CODE(da)
+								&& DECL_HAS_FUNC_CODE(db))
+								{
 									clash = "duplicate";
 								}else if((da->store & STORE_MASK_STORE) == store_typedef){
 									warn_c11_retypedef(da, db);

@@ -417,124 +417,54 @@ static void fold_decl_add_sym(decl *d, symtable *stab)
 	}
 }
 
-void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
+static void fold_decl_func(decl *d, symtable *stab)
 {
-#define inits (*pinit_code)
-	/* this is called from wherever we can define a
-	 * struct/union/enum,
-	 * e.g. a code-block (explicit or implicit),
-	 *      global scope
-	 * and an if/switch/while statement: if((struct A { int i; } *)0)...
-	 * an argument list/type::func: f(struct A { int i, j; } *p, ...)
-	 */
-
-	attribute *attrib = NULL;
-	int can_align = 1;
-
-	if(d->folded)
-		return;
-	d->folded = 1;
-
-	fold_type(d->ref, NULL, stab);
-
-	if(d->spel)
-		fold_decl_add_sym(d, stab);
-
-#if 0
-	/* if we have a type and it's incomplete, error */
-	no - only on use
-	if(!type_is_complete(d->ref))
-		die_at(&d->where, "use of incomplete type - %s (%s)", d->spel, decl_to_str(d));
-#endif
-
-	if(d->field_width){
-		consty k;
-
-		FOLD_EXPR(d->field_width, stab);
-		const_fold(d->field_width, &k);
-
-		if(k.type != CONST_NUM)
-			die_at(&d->where, "constant expression required for field width");
-		if(K_FLOATING(k.bits.num))
-			die_at(&d->where, "integral expression required for field width");
-
-		if((sintegral_t)k.bits.num.val.i < 0)
-			die_at(&d->where, "field width must be positive");
-
-		if(k.bits.num.val.i == 0){
-			/* allow anonymous 0-width bitfields
-			 * we align the next bitfield to a boundary
-			 */
-			if(d->spel)
-				die_at(&d->where,
-						"none-anonymous bitfield \"%s\" with 0-width",
-						d->spel);
-		}else{
-			const unsigned max = CHAR_BIT * type_size(d->ref, &d->where);
-			if(k.bits.num.val.i > max){
-				die_at(&d->where,
-						"bitfield too large for \"%s\" (%u bits)",
-						decl_to_str(d), max);
-			}
-		}
-
-		if(!type_is_integral(d->ref))
-			die_at(&d->where, "field width on non-integral field %s",
-					decl_to_str(d));
-
-		/* FIXME: only warn if "int" specified,
-		 * i.e. detect explicit signed/unsigned */
-		if(k.bits.num.val.i == 1 && type_is_signed(d->ref))
-			warn_at(&d->where, "1-bit signed field \"%s\" takes values -1 and 0",
-					decl_to_str(d));
-
-		can_align = 0;
-	}
-
 	/* allow:
 	 *   register int (*f)();
 	 * disallow:
 	 *   register int   f();
 	 *   register int  *f();
 	 */
-	if(DECL_IS_FUNC(d)){
-		switch(d->store & STORE_MASK_STORE){
-			case store_register:
-			case store_auto:
-				fold_had_error = 1;
-				warn_at_print_error(&d->where,
-						"%s storage for function",
-						decl_store_to_str(d->store));
-		}
-
-		if(stab->parent){
-			if(d->func_code)
-				die_at(&d->func_code->where, "nested function %s", d->spel);
-			else if((d->store & STORE_MASK_STORE) == store_static)
-				die_at(&d->where, "block-scoped function cannot have static storage");
-		}
-
-		can_align = 0;
-
-		fold_func_attr(d);
-
-	}else if((d->store & STORE_MASK_EXTRA) == store_inline){
-		warn_at(&d->where, "inline on non-function");
+	switch(d->store & STORE_MASK_STORE){
+		case store_register:
+		case store_auto:
+			fold_had_error = 1;
+			warn_at_print_error(&d->where,
+					"%s storage for function",
+					decl_store_to_str(d->store));
 	}
 
-	if(d->align || (attrib = attribute_present(d, attr_aligned))){
+	if(stab->parent){
+		if(d->bits.func.code)
+			die_at(&d->bits.func.code->where, "nested function %s", d->spel);
+		else if((d->store & STORE_MASK_STORE) == store_static)
+			die_at(&d->where, "block-scoped function cannot have static storage");
+	}
+
+	fold_func_attr(d);
+}
+
+static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
+{
+#define inits (*pinit_code)
+	attribute *attrib = NULL;
+
+	if((d->store & STORE_MASK_EXTRA) == store_inline)
+		warn_at(&d->where, "inline on non-function");
+
+	if(d->bits.var.align || (attrib = attribute_present(d, attr_aligned))){
 		const int tal = type_align(d->ref, &d->where);
 
 		struct decl_align *i;
 		int max_al = 0;
 
-		if((d->store & STORE_MASK_STORE) == store_register)
-			can_align = 0;
-
-		if(!can_align)
+		if((d->store & STORE_MASK_STORE) == store_register
+		|| d->bits.var.field_width)
+		{
 			die_at(&d->where, "can't align %s", decl_to_str(d));
+		}
 
-		for(i = d->align; i; i = i->next){
+		for(i = d->bits.var.align; i; i = i->next){
 			int al;
 
 			if(i->as_int){
@@ -579,14 +509,14 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 			}
 
 			max_al = fold_align(al, tal, max_al, &attrib->where);
-			if(!d->align)
-				d->align = umalloc(sizeof *d->align);
+			if(!d->bits.var.align)
+				d->bits.var.align = umalloc(sizeof *d->bits.var.align);
 		}
 
-		d->align->resolved = max_al;
+		d->bits.var.align->resolved = max_al;
 	}
 
-	if(d->init){
+	if(d->bits.var.init){
 		const int is_static_init =
 			(d->store & STORE_MASK_STORE) == store_static || !stab->parent;
 
@@ -620,7 +550,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 
 				decl_init_brace_up_fold(d, inits->symtab);
 				decl_init_create_assignments_base(
-						d->init, d->ref,
+						d->bits.var.init, d->ref,
 						expr_set_where(
 							expr_new_identifier(d->spel),
 							&d->where),
@@ -630,6 +560,86 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 				ICE("fold_decl(%s) with no pinit_code?", d->spel);
 			}
 		}
+	}
+#undef inits
+}
+
+static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
+{
+	consty k;
+
+	FOLD_EXPR(d->bits.var.field_width, stab);
+	const_fold(d->bits.var.field_width, &k);
+
+	if(k.type != CONST_NUM)
+		die_at(&d->where, "constant expression required for field width");
+	if(K_FLOATING(k.bits.num))
+		die_at(&d->where, "integral expression required for field width");
+
+	if((sintegral_t)k.bits.num.val.i < 0)
+		die_at(&d->where, "field width must be positive");
+
+	if(k.bits.num.val.i == 0){
+		/* allow anonymous 0-width bitfields
+		 * we align the next bitfield to a boundary
+		 */
+		if(d->spel)
+			die_at(&d->where,
+					"none-anonymous bitfield \"%s\" with 0-width",
+					d->spel);
+	}else{
+		const unsigned max = CHAR_BIT * type_size(d->ref, &d->where);
+		if(k.bits.num.val.i > max){
+			die_at(&d->where,
+					"bitfield too large for \"%s\" (%u bits)",
+					decl_to_str(d), max);
+		}
+	}
+
+	if(!type_is_integral(d->ref))
+		die_at(&d->where, "field width on non-integral field %s",
+				decl_to_str(d));
+
+	/* FIXME: only warn if "int" specified,
+	 * i.e. detect explicit signed/unsigned */
+	if(k.bits.num.val.i == 1 && type_is_signed(d->ref))
+		warn_at(&d->where, "1-bit signed field \"%s\" takes values -1 and 0",
+				decl_to_str(d));
+}
+
+void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
+{
+	/* this is called from wherever we can define a
+	 * struct/union/enum,
+	 * e.g. a code-block (explicit or implicit),
+	 *      global scope
+	 * and an if/switch/while statement: if((struct A { int i; } *)0)...
+	 * an argument list/type::func: f(struct A { int i, j; } *p, ...)
+	 */
+
+	if(d->folded)
+		return;
+	d->folded = 1;
+
+	fold_type(d->ref, NULL, stab);
+
+	if(d->spel)
+		fold_decl_add_sym(d, stab);
+
+#if 0
+	/* if we have a type and it's incomplete, error */
+	no - only on use
+	if(!type_is_complete(d->ref))
+		die_at(&d->where, "use of incomplete type - %s (%s)", d->spel, decl_to_str(d));
+#endif
+
+	if(DECL_IS_FUNC(d)){
+		fold_decl_func(d, stab);
+	}else{
+		if(d->bits.var.field_width)
+			fold_decl_var_fieldwidth(d, stab);
+
+		fold_decl_var(d, stab, pinit_code);
 	}
 
 	/* name static decls */
@@ -641,7 +651,6 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 					symtab_func(stab)->spel,
 					d->spel);
 	}
-#undef inits
 }
 
 void fold_decl_global_init(decl *d, symtable *stab)
@@ -649,23 +658,23 @@ void fold_decl_global_init(decl *d, symtable *stab)
 	expr *nonstd = NULL;
 	const char *type;
 
-	if(!d->init)
+	if(!DECL_IS_FUNC(d) && !d->bits.var.init)
 		return;
 
 	/* this completes the array, if any */
 	decl_init_brace_up_fold(d, stab);
 
 	type = stab->parent ? "static" : "global";
-	if(!decl_init_is_const(d->init, stab, &nonstd)){
-		die_at(&d->init->where, "%s %s initialiser not constant",
-				type, decl_init_to_str(d->init->type));
+	if(!decl_init_is_const(d->bits.var.init, stab, &nonstd)){
+		die_at(&d->bits.var.init->where, "%s %s initialiser not constant",
+				type, decl_init_to_str(d->bits.var.init->type));
 	}else if(nonstd){
 		char wbuf[WHERE_BUF_SIZ];
 
-		warn_at(&d->init->where,
+		warn_at(&d->bits.var.init->where,
 				"%s %s initialiser contains non-standard constant expression\n"
 				"%s: note: %s expression here",
-				type, decl_init_to_str(d->init->type),
+				type, decl_init_to_str(d->bits.var.init->type),
 				where_str_r(wbuf, &nonstd->where),
 				nonstd->f_str());
 	}
@@ -688,14 +697,14 @@ void fold_func_passable(decl *func_decl, type *func_ret)
 		}
 
 
-		if(fold_passable(func_decl->func_code)){
+		if(fold_passable(func_decl->bits.func.code)){
 			/* if we reach the end, it's bad */
 			the_return.extra = "implicitly ";
 			the_return.where = &func_decl->where;
 		}else{
 			stmt *ret = NULL;
 
-			stmt_walk(func_decl->func_code,
+			stmt_walk(func_decl->bits.func.code,
 					stmt_walk_first_return, NULL, &ret);
 
 			if(ret){
@@ -713,7 +722,7 @@ void fold_func_passable(decl *func_decl, type *func_ret)
 
 	}else if(!type_is_void(func_ret)){
 		/* non-void func - check it doesn't return */
-		if(fold_passable(func_decl->func_code)){
+		if(fold_passable(func_decl->bits.func.code)){
 			cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
 					"control reaches end of non-void function %s",
 					func_decl->spel);
@@ -738,7 +747,7 @@ void fold_func_code(decl *func_decl, symtable *arg_symtab)
 					d->spel, type_to_str(d->ref));
 	}
 
-	fold_stmt(func_decl->func_code);
+	fold_stmt(func_decl->bits.func.code);
 
 	/* now decls are folded, layout both parameters and local variables */
 	symtab_layout_decls(arg_symtab, 0);
@@ -749,7 +758,7 @@ void fold_func_code(decl *func_decl, symtable *arg_symtab)
 
 void fold_global_func(decl *func_decl)
 {
-	if(func_decl->func_code){
+	if(func_decl->bits.func.code){
 		symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(func_decl);
 		funcargs *args;
 		type *func_ret = type_func_call(func_decl->ref, &args);
@@ -800,7 +809,7 @@ void fold_decl_global(decl *d, symtable *stab)
 
 	/* can't check typedefs here - not folded.
 	 * functions can't be typedefs anyway */
-	if((is_fn = d->ref->type == type_func) && d->func_code){
+	if((is_fn = d->ref->type == type_func) && d->bits.func.code){
 		symtab_add_params(
 				DECL_FUNC_ARG_SYMTAB(d),
 				type_funcargs(d->ref)->arglist);
@@ -809,7 +818,7 @@ void fold_decl_global(decl *d, symtable *stab)
 	fold_decl(d, stab, NULL);
 
 	if(is_fn){
-		UCC_ASSERT(!d->init, "function has init?");
+		UCC_ASSERT(!d->bits.var.init, "function has init?");
 		fold_global_func(d);
 	}
 }
@@ -839,7 +848,9 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 		if(e && expr_kind(e, struct)){
 			decl *d = e->bits.struct_mem.d;
 
-			if(d->field_width)
+			assert(!DECL_IS_FUNC(d));
+
+			if(d->bits.var.field_width)
 				die_at(&e->where, "bitfield in %s", desc);
 		}
 	}
@@ -913,8 +924,10 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type *from)
 		for(i = 0; fargs->arglist[i]; i++){
 			decl *const d = fargs->arglist[i];
 
+			const int is_var = !DECL_IS_FUNC(d);
+
 			/* fold before for array checks, etc */
-			if(d->init)
+			if(is_var && d->bits.var.init)
 				die_at(&d->where, "parameter '%s' is initialised", d->spel);
 			fold_decl(d, stab, NULL);
 
@@ -994,7 +1007,7 @@ void fold_merge_tenatives(symtable *stab)
 		/* check for a single init between all prototypes */
 		for(; d; d = d->proto){
 			d->proto_flag = 1;
-			if(d->init){
+			if(!DECL_IS_FUNC(d) && d->bits.var.init){
 				if(init){
 					char wbuf[WHERE_BUF_SIZ];
 					die_at(&init->where, "multiple definitions of \"%s\"\n"

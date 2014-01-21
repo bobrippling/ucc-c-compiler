@@ -698,7 +698,7 @@ static struct DIE *dwarf_suetype(
 				blkents[0].type = BLOCK_HEADER;
 				blkents[0].bits.v = DW_OP_plus_uconst;
 				blkents[1].type = BLOCK_LEB128_U;
-				blkents[1].bits.v = dmem->struct_offset;
+				blkents[1].bits.v = dmem->bits.var.struct_offset;
 
 				offset = umalloc(sizeof *offset);
 				offset->cnt = 2;
@@ -709,14 +709,14 @@ static struct DIE *dwarf_suetype(
 						offset);
 
 				/* bitfield */
-				if(dmem->field_width){
-					form_data_t width = const_fold_val_i(dmem->field_width);
+				if(dmem->bits.var.field_width){
+					form_data_t width = const_fold_val_i(dmem->bits.var.field_width);
 					form_data_t whole_sz = type_size(dmem->ref, NULL);
 
 					/* address of top-end */
 					form_data_t off =
 						(whole_sz * CHAR_BIT)
-						- (width + dmem->struct_offset_bitfield);
+						- (width + dmem->bits.var.struct_offset_bitfield);
 
 					dwarf_attr(memdie,
 							DW_AT_bit_offset, DW_FORM_data1,
@@ -998,13 +998,15 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 			d, type_func_call(d->ref, NULL),
 			/*show_extern:*/1);
 
-	if(d->func_code){
+	if(d->bits.func.code){
 		dwarf_attr(subprog, DW_AT_low_pc, DW_FORM_addr, ustrdup(asmsp));
 		dwarf_attr(subprog, DW_AT_high_pc, DW_FORM_addr, out_dbg_func_end(asmsp));
 
 		dwarf_children(subprog, dwarf_formal_params(cu, args));
 
-		dwarf_symtable_scope(cu, subprog, d->func_code->symtab, d->func_var_offset);
+		dwarf_symtable_scope(cu, subprog,
+				d->bits.func.code->symtab,
+				d->bits.func.var_offset);
 	}
 
 	return subprog;

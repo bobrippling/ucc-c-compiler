@@ -26,7 +26,7 @@ static void struct_pack(
 	pack_next(poffset, &after_space, sz, align);
 	/* offset is the end of the decl, after_space is the start */
 
-	d->struct_offset = after_space;
+	d->bits.var.struct_offset = after_space;
 }
 
 static void struct_pack_finish_bitfield(
@@ -136,7 +136,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				 * a useless decl, unless it's an anon struct/union
 				 * or a bitfield
 				 */
-				if(d->field_width){
+				if(d->bits.var.field_width){
 					/* fine */
 				}else if(sub_sue && !type_is_ptr(d->ref)){
 					/* anon */
@@ -198,8 +198,8 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				sz = sue_size(sub_sue, &d->where);
 				align = sub_sue->align;
 
-			}else if(d->field_width){
-				const unsigned bits = const_fold_val_i(d->field_width);
+			}else if(d->bits.var.field_width){
+				const unsigned bits = const_fold_val_i(d->bits.var.field_width);
 
 				sz = align = 0; /* don't affect sz_max or align_max */
 
@@ -211,7 +211,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 					realign_next = 1;
 
 					/* also set struct_offset for 0-len bf, for pad reasons */
-					d->struct_offset = offset;
+					d->bits.var.struct_offset = offset;
 
 				}else if(realign_next
 				|| !bitfield.current_off
@@ -242,17 +242,17 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 					/* we are onto the beginning of a new group */
 					struct_pack(d, &offset, sz, align);
-					bitfield.first_off = d->struct_offset;
-					d->first_bitfield = 1;
+					bitfield.first_off = d->bits.var.struct_offset;
+					d->bits.var.first_bitfield = 1;
 
 				}else{
 					/* mirror previous bitfields' offset in the struct
 					 * difference is in .struct_offset_bitfield
 					 */
-					d->struct_offset = bitfield.first_off;
+					d->bits.var.struct_offset = bitfield.first_off;
 				}
 
-				d->struct_offset_bitfield = bitfield.current_off;
+				d->bits.var.struct_offset_bitfield = bitfield.current_off;
 				bitfield.current_off += bits; /* allowed to go above sizeof(int) */
 
 				if(bitfield.current_off == bf_cur_lim){
@@ -278,7 +278,7 @@ normal:
 				}
 			}
 
-			if(sue->primitive == type_struct && !d->field_width){
+			if(sue->primitive == type_struct && !d->bits.var.field_width){
 				const int prev_offset = offset;
 
 				if(bitfield.current_off){
@@ -290,7 +290,7 @@ normal:
 				struct_pack(d, &offset, sz, align);
 
 				{
-					int pad = d->struct_offset - prev_offset;
+					int pad = d->bits.var.struct_offset - prev_offset;
 					if(pad){
 						cc1_warn_at(&d->where, 0, WARN_PAD,
 								"padding '%s' with %d bytes to align '%s'",

@@ -429,7 +429,7 @@ void gen_expr_cast(expr *e)
 								type_nav_btype(cc1_type_nav, type_void)));
 
 					out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t),
-							mem->struct_offset);
+							mem->bits.var.struct_offset);
 					out_op(op_plus);
 				}
 			}

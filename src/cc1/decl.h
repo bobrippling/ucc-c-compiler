@@ -28,37 +28,47 @@ struct decl
 
 	attribute *attr;
 
-	char *spel, *spel_asm; /* if !spel but spel_asm, it's global asm??? */
+	char *spel, *spel_asm;
 
-	struct expr *field_width;
-	unsigned struct_offset;
-	unsigned struct_offset_bitfield; /* add onto struct_offset */
-	int first_bitfield; /* marker for the first bitfield in a set */
-
-	struct decl_align
+	union
 	{
-		int as_int;
-		unsigned resolved;
-		union
+		struct
 		{
-			struct expr *align_intk;
-			struct type *align_ty;
-		} bits;
-		struct decl_align *next;
-	} *align;
+			struct expr *field_width;
+			unsigned struct_offset;
+			unsigned struct_offset_bitfield; /* add onto struct_offset */
+			int first_bitfield; /* marker for the first bitfield in a set */
 
-	int init_normalised;
-	int folded;
-	int proto_flag;
+			struct decl_align
+			{
+				int as_int;
+				unsigned resolved;
+				union
+				{
+					struct expr *align_intk;
+					struct type *align_ty;
+				} bits;
+				struct decl_align *next;
+			} *align;
+
+			int init_normalised;
+
+			/* initialiser - converted to an assignment for non-globals */
+			struct decl_init *init;
+		} var;
+		struct
+		{
+			struct stmt *code;
+			int var_offset;
+		} func;
+	} bits;
 
 	/* a reference to a previous prototype, used for attribute checks */
+	int folded;
+	int proto_flag;
 	struct decl *proto;
 
 	struct sym *sym;
-
-	struct decl_init *init; /* initialiser - converted to an assignment for non-globals */
-	struct stmt *func_code;
-	int func_var_offset;
 
 	/* ^(){} has a decl+sym
 	 * the decl/sym has a ref to the expr block,
@@ -93,6 +103,7 @@ const char *decl_store_to_str(const enum decl_storage);
 #define DECL_IS_FUNC(d)   type_is((d)->ref, type_func)
 #define DECL_IS_ARRAY(d)  type_is((d)->ref, type_array)
 #define DECL_IS_S_OR_U(d) type_is_s_or_u((d)->ref)
-#define DECL_FUNC_ARG_SYMTAB(d) ((d)->func_code->symtab->parent)
+#define DECL_FUNC_ARG_SYMTAB(d) ((d)->bits.func.code->symtab->parent)
+#define DECL_HAS_FUNC_CODE(d) (DECL_IS_FUNC(d) && d->bits.func.code)
 
 #endif

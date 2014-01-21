@@ -146,9 +146,9 @@ static struct bitfield_val *bitfields_add(
 
 	bitfield_val_set(&bfs[i],
 			di ? di->bits.expr : NULL,
-			mem->field_width);
+			mem->bits.var.field_width);
 
-	bfs[i].offset = mem->struct_offset_bitfield;
+	bfs[i].offset = mem->bits.var.struct_offset_bitfield;
 
 	return bfs;
 }
@@ -291,24 +291,24 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 					di_to_use ? di_to_use->bits.expr->f_str() : NULL);
 
 			/* only pad if we're not on a bitfield or we're on the first bitfield */
-			if(!d_mem->field_width || !first_bf){
+			if(!d_mem->bits.var.field_width || !first_bf){
 				DEBUG("prev padding, offset=%d, end_of_last=%d",
 						d_mem->struct_offset, end_of_last);
 
 				UCC_ASSERT(
-						d_mem->struct_offset >= end_of_last,
+						d_mem->bits.var.struct_offset >= end_of_last,
 						"negative struct pad, sue %s, member %s "
 						"offset %u, end_of_last %u",
 						sue->spel, decl_to_str(d_mem),
-						d_mem->struct_offset, end_of_last);
+						d_mem->bits.var.struct_offset, end_of_last);
 
 				asm_declare_pad(sec,
-						d_mem->struct_offset - end_of_last,
+						d_mem->bits.var.struct_offset - end_of_last,
 						"prev struct padding");
 			}
 
-			if(d_mem->field_width){
-				if(!first_bf || d_mem->first_bitfield){
+			if(d_mem->bits.var.field_width){
+				if(!first_bf || d_mem->bits.var.first_bitfield){
 					if(first_bf){
 						DEBUG("new bitfield group (%s is new boundary), old:",
 								d_mem->spel);
@@ -335,10 +335,10 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 
 			if(type_is_incomplete_array(d_mem->ref)){
 				UCC_ASSERT(!mem[1], "flex-arr not at end");
-			}else if(!d_mem->field_width || d_mem->first_bitfield){
+			}else if(!d_mem->bits.var.field_width || d_mem->bits.var.first_bitfield){
 				unsigned last_sz = type_size(d_mem->ref, NULL);
 
-				end_of_last = d_mem->struct_offset + last_sz;
+				end_of_last = d_mem->bits.var.struct_offset + last_sz;
 				DEBUG("done with member \"%s\", end_of_last = %d",
 						d_mem->spel, end_of_last);
 			}
@@ -403,13 +403,13 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 			type *mem_r = mem->ref;
 
 			/* union init, member at index `i' */
-			if(mem->field_width){
+			if(mem->bits.var.field_width){
 				/* we know it's integral */
 				struct bitfield_val bfv;
 
 				ASSERT_SCALAR(u_init);
 
-				bitfield_val_set(&bfv, u_init->bits.expr, mem->field_width);
+				bitfield_val_set(&bfv, u_init->bits.expr, mem->bits.var.field_width);
 
 				asm_declare_init_bitfields(sec, &bfv, 1, mem_r);
 			}else{
@@ -514,9 +514,9 @@ void asm_declare_decl_init(enum section_type sec, decl *d)
 	if((d->store & STORE_MASK_STORE) == store_extern){
 		asm_predeclare_extern(d);
 
-	}else if(d->init && !decl_init_is_zero(d->init)){
+	}else if(d->bits.var.init && !decl_init_is_zero(d->bits.var.init)){
 		asm_nam_begin(sec, d);
-		asm_declare_init(sec, d->init, d->ref);
+		asm_declare_init(sec, d->bits.var.init, d->ref);
 		asm_out_section(sec, "\n");
 
 	}else{

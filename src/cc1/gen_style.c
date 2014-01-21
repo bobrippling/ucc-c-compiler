@@ -12,6 +12,7 @@
 #include "gen_asm.h" /* FIXME: gen_stmt/_expr should be in gen.h */
 #include "decl_init.h"
 #include "out/asm.h" /* cc*_out */
+#include "type_is.h"
 
 void stylef(const char *fmt, ...)
 {
@@ -62,14 +63,14 @@ void gen_style_decl(decl *d)
 {
 	stylef("%s", decl_to_str(d));
 
-	if(d->func_code){
-		gen_stmt(d->func_code);
+	if(DECL_IS_FUNC(d)){
+		gen_stmt(d->bits.func.code);
 		return;
 	}
 
-	if(d->init){
+	if(d->bits.var.init){
 		stylef(" = ");
-		gen_style_dinit(d->init);
+		gen_style_dinit(d->bits.var.init);
 	}
 	stylef(";\n");
 }

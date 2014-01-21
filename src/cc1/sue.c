@@ -252,7 +252,7 @@ new_type:
 			for(i = 0; decls && decls[i]; i++){
 				decl *d2, *d = decls[i]->struct_member;
 
-				if(d->init)
+				if(d->bits.var.init)
 					die_at(&d->where, "%s member %s is initialised",
 							sue_str(sue), d->spel);
 
@@ -358,7 +358,7 @@ static void *sue_member_find(
 				if(dsub){
 					if(pin)
 						*pin = sub;
-					*extra_off += d->struct_offset;
+					*extra_off += d->bits.var.struct_offset;
 					return dsub;
 				}
 			}

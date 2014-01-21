@@ -333,34 +333,35 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(mode & PDECL_NEWLINE)
 		fputc('\n', cc1_out);
 
-	if(d->init && mode & PDECL_PINIT){
+	if(!DECL_IS_FUNC(d) && d->bits.var.init && mode & PDECL_PINIT){
 		gen_str_indent++;
-		print_decl_init(d->init);
+		print_decl_init(d->bits.var.init);
 		gen_str_indent--;
 	}
 
 	if(mode & PDECL_ATTR){
 		gen_str_indent++;
-		if(d->align)
+		if(!DECL_IS_FUNC(d) && d->bits.var.align)
 			idt_printf("[align={as_int=%d, resolved=%d}]\n",
-					d->align->as_int, d->align->resolved);
+					d->bits.var.align->as_int, d->bits.var.align->resolved);
 		print_attribute(d->attr);
 		print_type_attr(d->ref);
 		gen_str_indent--;
 	}
 
-	if((mode & PDECL_FUNC_DESCEND) && d->func_code){
+	if((mode & PDECL_FUNC_DESCEND) && DECL_HAS_FUNC_CODE(d)){
 		decl **iter;
 
 		gen_str_indent++;
 
-		for(iter = d->func_code->symtab->decls; iter && *iter; iter++)
+		for(iter = d->bits.func.code->symtab->decls; iter && *iter; iter++)
 			idt_printf("offset of %s = %d\n", (*iter)->spel,
 					(*iter)->sym->loc.stack_pos);
 
-		idt_printf("function stack space %d\n", d->func_code->symtab->auto_total_size);
+		idt_printf("function stack space %d\n",
+				d->bits.func.code->symtab->auto_total_size);
 
-		print_stmt(d->func_code);
+		print_stmt(d->bits.func.code);
 
 		gen_str_indent--;
 	}
@@ -403,19 +404,21 @@ static void print_struct(struct_union_enum_st *sue)
 		gen_str_indent++;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
 
-#define SHOW_FIELD(nam) idt_printf("." #nam " = %u\n", d->nam)
-		SHOW_FIELD(struct_offset);
+		if(!DECL_IS_FUNC(d)){
+#define SHOW_FIELD(nam) idt_printf("." #nam " = %u\n", d->bits.var.nam)
+			SHOW_FIELD(struct_offset);
 
-		if(d->field_width){
-			integral_t v = const_fold_val_i(d->field_width);
+			if(d->bits.var.field_width){
+				integral_t v = const_fold_val_i(d->bits.var.field_width);
 
-			gen_str_indent++;
+				gen_str_indent++;
 
-			idt_printf(".field_width = %" NUMERIC_FMT_D "\n", v);
+				idt_printf(".field_width = %" NUMERIC_FMT_D "\n", v);
 
-			SHOW_FIELD(struct_offset_bitfield);
+				SHOW_FIELD(struct_offset_bitfield);
 
-			gen_str_indent--;
+				gen_str_indent--;
+			}
 		}
 
 		gen_str_indent--;

@@ -105,7 +105,7 @@ void gen_asm_global(decl *d)
 		int *offsets;
 		symtable *arg_symtab;
 
-		if(!d->func_code)
+		if(!d->bits.func.code)
 			return;
 
 		out_dbg_where(&d->where);
@@ -122,20 +122,20 @@ void gen_asm_global(decl *d)
 		out_label(sp);
 
 		out_func_prologue(d->ref,
-				d->func_code->symtab->auto_total_size,
+				d->bits.func.code->symtab->auto_total_size,
 				nargs,
 				is_vari = type_is_variadic_func(d->ref),
-				offsets, &d->func_var_offset);
+				offsets, &d->bits.func.var_offset);
 
 		assign_arg_offsets(arg_symtab->decls, offsets);
 
 		curfunc_lblfin = out_label_code(sp);
 
-		gen_stmt(d->func_code);
+		gen_stmt(d->bits.func.code);
 
 		out_label(curfunc_lblfin);
 
-		out_dbg_where(&d->func_code->where_cbrace);
+		out_dbg_where(&d->bits.func.code->where_cbrace);
 
 		out_func_epilogue(d->ref);
 
@@ -216,14 +216,14 @@ void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 				}
 			}
 
-			if(!d->func_code){
+			if(!d->bits.func.code){
 				asm_predeclare_extern(d);
 				continue;
 			}
 		}else{
 			/* variable - if there's no init,
 			 * it's tenative and not output */
-			if(!d->init){
+			if(!d->bits.var.init){
 				asm_predeclare_extern(d);
 				continue;
 			}

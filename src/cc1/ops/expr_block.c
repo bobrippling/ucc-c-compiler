@@ -50,7 +50,7 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 	UCC_ASSERT(stmt_kind(e->code, code), "!code for block");
 
 	df->spel = out_label_block("globl");
-	df->func_code = e->code;
+	df->bits.func.code = e->code;
 	df->block_expr = e;
 
 	if(e->bits.block.retty){

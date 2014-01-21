@@ -50,7 +50,7 @@ void decl_replace_with(decl *to, decl *from)
 	to->attr     = from->attr;
 	to->spel_asm = from->spel_asm;
 	/* no point copying bitfield stuff */
-	to->align    = from->align;
+	memcpy_safe(&to->bits, &from->bits);
 }
 
 const char *decl_asm_spel(decl *d)
@@ -99,7 +99,7 @@ void decl_free(decl *d)
 	if(!d)
 		return;
 
-	expr_free(d->field_width); /* XXX: bad? */
+	/* expr_free(d->field_width); XXX: leak */
 
 	free(d);
 }
@@ -137,7 +137,7 @@ unsigned decl_size(decl *d)
 	if(type_is_void(d->ref))
 		die_at(&d->where, "%s is void", d->spel);
 
-	if(d->field_width)
+	if(!DECL_IS_FUNC(d) && d->bits.var.field_width)
 		die_at(&d->where, "can't take size of a bitfield");
 
 	return type_size(d->ref, &d->where);
@@ -147,8 +147,8 @@ unsigned decl_align(decl *d)
 {
 	unsigned al = 0;
 
-	if(d->align)
-		al = d->align->resolved;
+	if(!DECL_IS_FUNC(d) && d->bits.var.align)
+		al = d->bits.var.align->resolved;
 
 	return al ? al : type_align(d->ref, &d->where);
 }

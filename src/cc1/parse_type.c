@@ -936,10 +936,10 @@ static decl *parse_decl(type *btype, enum decl_mode mode)
 		parse_add_attr(&d->attr); /* int spel __attr__ */
 	}
 
-	if(d->spel && accept_where(token_assign, &w_eq)){
-		d->init = parse_initialisation();
+	if(d->spel && !PARSE_DECL_IS_FUNC(d) && accept_where(token_assign, &w_eq)){
+		d->bits.var.init = parse_initialisation();
 		/* top-level inits have their .where on the '=' token */
-		memcpy_safe(&d->init->where, &w_eq);
+		memcpy_safe(&d->bits.var.init->where, &w_eq);
 	}
 
 	return d;
@@ -964,7 +964,12 @@ static decl *parse_decl_extra(
 {
 	decl *d = parse_decl(r, mode);
 	d->store = store;
-	d->align = align;
+
+	if(!PARSE_DECL_IS_FUNC(d))
+		d->bits.var.align = align;
+	else if(align)
+		ICE("align for function?");
+
 	return d;
 }
 
@@ -1039,7 +1044,7 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 	for(i = 0; i < n_old_args; i++){
 		int j, found = 0;
 
-		if(old_args[i]->init)
+		if(DECL_IS_FUNC(old_args[i]) || !old_args[i]->bits.var.init)
 			die_at(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
 
 		for(j = 0; j < n_proto_decls; j++){
@@ -1071,7 +1076,7 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 	if(!type_is(d_prev->ref, type_func))
 		return; /* error caught later */
 
-	if(d_prev->func_code){
+	if(d_prev->bits.func.code){
 		/* just warn that we have a declaration
 		 * after a definition, then get out.
 		 *
@@ -1177,13 +1182,18 @@ int parse_decls_single_type(
 
 	do{
 		decl *d = parse_decl_extra(this_ref, parse_flag, store, align);
+		int had_field_width = 0;
 
-		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
+		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH)
+		&& !PARSE_DECL_IS_FUNC(d)
+		&& accept(token_colon))
+		{
 			/* normal decl, check field spec */
-			d->field_width = parse_expr_no_comma();
+			d->bits.var.field_width = parse_expr_no_comma();
+			had_field_width = 1;
 		}
 
-		if(!d->spel && !d->field_width){
+		if(!d->spel && !had_field_width){
 			/*
 			 * int; - fine for "int;", but "int i,;" needs to fail
 			 * struct A; - fine
@@ -1280,13 +1290,13 @@ int parse_decls_single_type(
 				type *func_r = PARSE_DECL_IS_FUNC(d);
 				symtable *const old_scope = current_scope;
 
-				/* need to set scope to include function arguments,
+				/* need to set scope to include function argumen
 				 * e.g. f(struct A { ... })
 				 */
 				UCC_ASSERT(func_r, "function expected");
 				current_scope = func_r->bits.func.arg_scope;
 
-				d->func_code = parse_stmt_block();
+				d->bits.func.code = parse_stmt_block();
 
 				current_scope = current_scope->parent;
 				UCC_ASSERT(current_scope == old_scope,
@@ -1330,7 +1340,7 @@ add:
 
 		/* FIXME: check later for functions, not here - typedefs */
 		if(PARSE_DECL_IS_FUNC(d)){
-			if(d->func_code && (mode & DECL_MULTI_ACCEPT_FUNC_CODE) == 0)
+			if(d->bits.func.code && (mode & DECL_MULTI_ACCEPT_FUNC_CODE) == 0)
 				die_at(&d->where, "function code not wanted (%s)", d->spel);
 
 			if((mode & DECL_MULTI_ACCEPT_FUNC_DECL) == 0)
@@ -1338,17 +1348,19 @@ add:
 		}
 
 		if(store == store_typedef){
-			if(PARSE_DECL_IS_FUNC(d) && d->func_code)
-				die_at(&d->where, "can't have a typedef function with code");
-			else if(d->init)
+			if(PARSE_DECL_IS_FUNC(d)){
+				if(d->bits.func.code)
+					die_at(&d->where, "can't have a typedef function with code");
+			}else if(d->bits.var.init){
 				die_at(&d->where, "can't init a typedef");
+			}
 		}
 
 		last = d;
 	}while(accept(token_comma));
 
 
-	if(last && !last->func_code){
+	if(last && (!PARSE_DECL_IS_FUNC(last) || !last->bits.func.code)){
 next:
 		/* end of type, if we have an identifier, '(' or '*', it's an unknown type name */
 		if(parse_at_decl_spec())

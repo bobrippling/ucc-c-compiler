@@ -214,7 +214,10 @@ static void va_arg_gen_read(
 	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 	out_dup(); /* va, va */
 
-	out_push_l(type_nav_btype(cc1_type_nav, type_long), offset_decl->struct_offset);
+	out_push_l(
+			type_nav_btype(cc1_type_nav, type_long),
+			offset_decl->bits.var.struct_offset);
+
 	out_op(op_plus); /* va, &va.gp_offset */
 
 	/*out_set_lvalue(); * val.gp_offset is an lvalue */
@@ -243,7 +246,10 @@ static void va_arg_gen_read(
 	out_change_type(type_nav_btype(cc1_type_nav, type_long));
 
 	out_swap(); /* gp_o, va */
-	out_push_l(type_nav_btype(cc1_type_nav, type_long), mem_reg_save_area->struct_offset);
+	out_push_l(
+			type_nav_btype(cc1_type_nav, type_long),
+			mem_reg_save_area->bits.var.struct_offset);
+
 	out_op(op_plus); /* gp_o, &reg_save_area */
 	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_long)));
 	out_deref();
@@ -262,7 +268,10 @@ static void va_arg_gen_read(
 	gen_expr(e->lhs);
 	/* va */
 	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
-	out_push_l(type_nav_btype(cc1_type_nav, type_long), mem_overflow_arg_area->struct_offset);
+	out_push_l(
+			type_nav_btype(cc1_type_nav, type_long),
+			mem_overflow_arg_area->bits.var.struct_offset);
+
 	out_op(op_plus);
 	/* &overflow_a */
 

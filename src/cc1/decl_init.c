@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/dynarray.h"
@@ -51,7 +52,10 @@ typedef struct
 	 ? &it->pos[0]->where \
 	 : def)
 
-#define DECL_IS_ANON_BITFIELD(d) ((d)->field_width && !(d)->spel)
+#define DECL_IS_ANON_BITFIELD(d) ( \
+		!DECL_IS_FUNC(d)               \
+		&& (d)->bits.var.field_width   \
+		&& !(d)->spel)
 
 typedef decl_init **aggregate_brace_f(
 		decl_init **current, struct init_cpy ***range_store,
@@ -707,7 +711,8 @@ static decl_init **decl_init_brace_up_sue2(
 			dynarray_padinsert(&current, i, &n, braced_sub);
 
 			/* done, check bitfield truncation */
-			if(braced_sub && d_mem->field_width){
+			assert(!DECL_IS_FUNC(d_mem));
+			if(braced_sub && d_mem->bits.var.field_width){
 				UCC_ASSERT(braced_sub->type == decl_init_scalar,
 						"scalar init expected for bitfield");
 				bitfield_trunc_check(d_mem, braced_sub->bits.expr);
@@ -1096,9 +1101,15 @@ static decl_init *decl_init_brace_up_start(
 
 void decl_init_brace_up_fold(decl *d, symtable *stab)
 {
-	if(!d->init_normalised){
-		d->init = decl_init_brace_up_start(d->init, &d->ref, stab);
-		d->init_normalised = 1;
+	assert(!DECL_IS_FUNC(d));
+	if(!d->bits.var.init_normalised){
+
+		d->bits.var.init = decl_init_brace_up_start(
+				d->bits.var.init,
+				&d->ref,
+				stab);
+
+		d->bits.var.init_normalised = 1;
 	}
 }
 
@@ -1116,7 +1127,7 @@ static expr *sue_base_for_init_assignment(
 
 	/* don't create zero-width bitfield inits */
 	if(DECL_IS_ANON_BITFIELD(smem)
-	&& const_expr_and_zero(smem->field_width))
+	&& const_expr_and_zero(smem->bits.var.field_width))
 	{
 		return NULL;
 	}
@@ -1315,8 +1326,10 @@ zero_init:
 
 void decl_default_init(decl *d, symtable *stab)
 {
-	UCC_ASSERT(!d->init, "already initialised?");
+	assert(!DECL_IS_FUNC(d));
 
-	d->init = decl_init_new_w(decl_init_brace, &d->where);
+	UCC_ASSERT(!d->bits.var.init, "already initialised?");
+
+	d->bits.var.init = decl_init_new_w(decl_init_brace, &d->where);
 	decl_init_brace_up_fold(d, stab);
 }

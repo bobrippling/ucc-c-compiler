@@ -25,9 +25,9 @@ void bitfield_trunc_check(decl *mem, expr *from)
 		const sintegral_t kexp = k.bits.num.val.i;
 		/* highest may be -1 - kexp is zero */
 		const int highest = integral_high_bit(k.bits.num.val.i, from->tree_type);
-		const int is_signed = type_is_signed(mem->field_width->tree_type);
+		const int is_signed = type_is_signed(mem->bits.var.field_width->tree_type);
 
-		const_fold(mem->field_width, &k);
+		const_fold(mem->bits.var.field_width, &k);
 
 		UCC_ASSERT(k.type == CONST_NUM, "bitfield size not val?");
 		UCC_ASSERT(K_INTEGRAL(k.bits.num), "fp bitfield size?");
@@ -108,7 +108,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	{
 		decl *mem;
 		if(expr_kind(e->lhs, struct)
-		&& (mem = e->lhs->bits.struct_mem.d)->field_width)
+		&& (mem = e->lhs->bits.struct_mem.d)->bits.var.field_width)
 		{
 			bitfield_trunc_check(mem, e->rhs);
 		}
