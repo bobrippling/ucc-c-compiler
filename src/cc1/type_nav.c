@@ -335,6 +335,8 @@ type *type_unqualify(type *t)
 	while(t)
 		if(t->type == type_cast && !t->bits.cast.is_signed_cast)
 			t = t->ref;
+		else
+			break;
 
 	return t;
 }
