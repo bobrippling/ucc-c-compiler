@@ -325,7 +325,7 @@ void fold_type(type *r, type *parent, symtable *stab)
 	 * now we've folded, check for restrict
 	 * since typedef int *intptr; intptr restrict a; is valid
 	 */
-	if(q_to_check & qual_restrict)
+	if(q_to_check & qual_restrict && !type_is_ptr(r))
 		warn_at(&r->where, "restrict on non-pointer type '%s'", type_to_str(r));
 
 	fold_type(r->ref, r, stab);
