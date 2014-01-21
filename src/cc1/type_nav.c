@@ -136,26 +136,44 @@ type *type_array_of(type *to, struct expr *new_sz)
 	return type_array_of_static(to, new_sz, 0);
 }
 
+struct ctx_func
+{
+	funcargs *args;
+	symtable *arg_scope;
+};
+
 static void init_func(type *ty, void *ctx)
 {
-	ty->bits.func.args = ctx;
+	struct ctx_func *c = ctx;
+	ty->bits.func.args = c->args;
+	ty->bits.func.arg_scope = c->arg_scope;
 }
 
 static int eq_func(type *ty, void *ctx)
 {
-	if(funcargs_cmp(ty->bits.func.args, ctx) == FUNCARGS_ARE_EQUAL){
+	struct ctx_func *c = ctx;
+
+	if(c->arg_scope != ty->bits.func.arg_scope)
+		return 0;
+
+	if(funcargs_cmp(ty->bits.func.args, c->args) == FUNCARGS_ARE_EQUAL){
 		funcargs_free(ctx, 0);
 		return 1;
 	}
 	return 0;
 }
 
-type *type_func_of(type *ty_ret, struct funcargs *args)
+type *type_func_of(type *ty_ret,
+		struct funcargs *args, struct symtable *arg_scope)
 {
+	struct ctx_func ctx;
+	ctx.args = args;
+	ctx.arg_scope = arg_scope;
+
 	return type_uptree_find_or_new(
 			ty_ret, type_func,
 			eq_func, init_func,
-			args);
+			&ctx);
 }
 
 type *type_block_of(type *fn)

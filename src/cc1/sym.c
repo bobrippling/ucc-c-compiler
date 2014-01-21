@@ -48,8 +48,8 @@ void symtab_set_parent(symtable *child, symtable *parent)
 symtable *symtab_new(symtable *parent)
 {
 	symtable *p = umalloc(sizeof *p);
-	if(parent)
-		symtab_set_parent(p, parent);
+	UCC_ASSERT(parent, "no parent for symtable");
+	symtab_set_parent(p, parent);
 	return p;
 }
 

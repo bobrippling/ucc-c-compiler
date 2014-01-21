@@ -436,7 +436,8 @@ static void fold_unreachable(expr *e, symtable *stab)
 	(void)stab;
 
 
-	e->expr->tree_type = type_func_of(tvoid, funcargs_new());
+	e->expr->tree_type = type_func_of(tvoid,
+			funcargs_new(), symtab_new(stab));
 
 	e->tree_type = type_attributed(tvoid, attribute_new(attr_noreturn));
 

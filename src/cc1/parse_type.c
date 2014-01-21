@@ -832,7 +832,11 @@ static type *parse_type_func(enum decl_mode mode, decl *dfor, type *base)
 	type *sub = parse_type_array(mode, dfor, base);
 
 	while(accept(token_open_paren)){
-		sub = type_func_of(sub, parse_func_arglist());
+		current_scope = symtab_new(current_scope);
+
+		sub = type_func_of(sub, parse_func_arglist(), current_scope);
+
+		current_scope = current_scope->parent;
 
 		EAT(token_close_paren);
 	}
