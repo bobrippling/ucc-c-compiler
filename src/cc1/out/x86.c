@@ -1780,6 +1780,10 @@ const out_val *impl_call(
 	/* need to save regs before pushes/call */
 	v_save_regs(octx, fnty, local_args, fn);
 
+	if(IS_32_BIT()){
+		v_alloc_stack(8, "32-bit 8-byte stack adjust");
+	}
+
 	if(arg_stack > 0){
 		out_comment(octx, "stack space for %d arguments", arg_stack);
 		/* this aligns the stack-ptr and returns arg_stack padded */
