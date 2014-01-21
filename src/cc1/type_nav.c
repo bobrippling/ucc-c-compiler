@@ -287,10 +287,19 @@ type *type_tdef_of(expr *e, decl *d)
 	ctx.e = e;
 	ctx.d = d;
 
+#if 0
+	/* TODO: this won't work until parse() and fold() are merged */
 	return type_uptree_find_or_new(
 			e->tree_type, type_tdef,
 			eq_tdef, init_tdef,
 			&ctx);
+#else
+	{
+		type *t = type_new(type_tdef, NULL);
+		init_tdef(t, &ctx);
+		return t;
+	}
+#endif
 }
 
 type *type_called(type *functy, struct funcargs **pfuncargs)
