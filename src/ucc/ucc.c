@@ -337,6 +337,7 @@ int main(int argc, char **argv)
 	char **args[4] = { 0 };
 	char *output = NULL;
 	char *backend = NULL;
+	int is_m32 = 0;
 	struct
 	{
 		char optn;
@@ -360,11 +361,6 @@ int main(int argc, char **argv)
 	 * or showing up in error messages
 	 */
 	dynarray_add(&args[mode_compile], ustrdup("-fno-track-initial-fname"));
-
-	/* bring in CPPFLAGS and CFLAGS */
-	add_cfg_args(&args[mode_compile], UCC_CFLAGS);
-	add_cfg_args(&args[mode_preproc], UCC_CPPFLAGS);
-
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "--")){
@@ -434,7 +430,7 @@ int main(int argc, char **argv)
 						const struct arch_args *chosen;
 						int arch = atoi(argv[i] + 2);
 
-						if(arch == 32)
+						if((is_m32 = arch == 32))
 							chosen = &m32;
 						else if(arch == 64)
 							chosen = &m64;
@@ -597,6 +593,13 @@ missing_arg:	die("need argument for %s", argv[i - 1]);
 input:	dynarray_add(&inputs, argv[i]);
 		}
 	}
+
+	/* bring in CPPFLAGS and CFLAGS */
+	add_cfg_args(&args[mode_preproc], UCC_CPPFLAGS);
+	/* this is a hack - proper specs files
+	 * that match archs to flags will be used */
+	add_cfg_args(&args[mode_compile], is_m32 ? UCC_CFLAGS_32 : UCC_CFLAGS_64);
+
 
 	{
 		const int ninputs = dynarray_count(inputs);

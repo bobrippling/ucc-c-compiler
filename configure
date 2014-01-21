@@ -20,7 +20,8 @@ Usage: $0 [--as=path/to/as] [--target=...] [--with-ucc-lib] [clean]
 
 set_leading_underscore(){
 	UCC_CPPFLAGS="-D__LEADING_UNDERSCORE $UCC_CPPFLAGS"
-	UCC_CFLAGS="-fleading-underscore $UCC_CFLAGS"
+	UCC_CFLAGS_32="-fleading-underscore $UCC_CFLAGS_32"
+	UCC_CFLAGS_64="-fleading-underscore $UCC_CFLAGS_64"
 }
 
 guess_arch(){
@@ -31,7 +32,8 @@ guess_arch(){
 UCC_CPPFLAGS=
 
 # -fleading-underscore, etc
-UCC_CFLAGS=
+UCC_CFLAGS_32=
+UCC_CFLAGS_64=
 
 # system assembler to use
 UCC_AS=as
@@ -154,7 +156,7 @@ case "$unam_os" in
 		;;
 
 	Darwin)
-		UCC_CFLAGS='-mpreferred-stack-boundary=4' # 2^4 = 16 byte aligned
+		UCC_CFLAGS_64='-mpreferred-stack-boundary=4' # 2^4 = 16 byte aligned
 		UCC_STDLIB='-lSystem'
 		UCC_CRT='-lcrt1.o'
 		UCC_LDFLAGS='-macosx_version_min 10.5'
@@ -218,7 +220,8 @@ cat > src/ucc/cfg.h <<!
 #define UCC_INC     "${UCC_INC}"
 
 #define UCC_CPPFLAGS "${UCC_CPPFLAGS}"
-#define UCC_CFLAGS   "${UCC_CFLAGS}"
+#define UCC_CFLAGS_32 "${UCC_CFLAGS_32}"
+#define UCC_CFLAGS_64 "${UCC_CFLAGS_64}"
 #define UCC_LDFLAGS  "${UCC_LDFLAGS}"
 
 #define UCC_STDLIB "${UCC_STDLIB}"
