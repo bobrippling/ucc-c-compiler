@@ -1372,18 +1372,35 @@ static void x86_fp_conv(
 	char vbuf[VSTACK_STR_SZ];
 
 	/* FIXME: long long on 32-bit */
-	out_asm("cvt%s2%s%s %s, %%%s # tto=%s, int_ty=%s",
-			/*truncate ? "t" : "",*/
-			sfrom, sto,
-			/* if we're doing an int-float conversion,
-			 * see if we need to do 64 or 32 bit
-			 */
-			int_ty ? type_ref_size(int_ty, NULL) == 8 ? "q" : "l" : "",
-			vstack_str_r(vbuf, vp, vp->type == V_REG_SAVE),
-			x86_reg_str(r, tto),
 
-			type_ref_to_str_r((char[TYPE_REF_STATIC_BUFSIZ]){0}, tto),
-			type_ref_to_str_r((char[TYPE_REF_STATIC_BUFSIZ]){0}, int_ty));
+	if(IS_32_BIT()){
+		/* fild{,l,ll} -> word, long, long long */
+		const char *ext = "";
+
+		switch(type_ref_size(int_ty, NULL)){
+			case 1:
+				ICE("TODO: sign ext. to word"); /* TODO */
+			case 2:
+				break;
+			case 4: ext = "l"; break;
+			case 8: ext = "ll"; break;
+		}
+
+		/* vp is one of st(0...7) - TODO */
+
+		out_asm("fild%s %s", ext, vstack_str());
+
+	}else{
+		out_asm("cvt%s2%s%s %s, %%%s # tto=%s, int_ty=%s",
+				/*truncate ? "t" : "",*/
+				sfrom, sto,
+				/* if we're doing an int-float conversion,
+				 * see if we need to do 64 or 32 bit
+				 */
+				int_ty ? type_ref_size(int_ty, NULL) == 8 ? "q" : "l" : "",
+				vstack_str_r(vbuf, vp, vp->type == V_REG_SAVE),
+				x86_reg_str(r, tto));
+	}
 }
 
 static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
