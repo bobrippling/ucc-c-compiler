@@ -5,7 +5,7 @@ CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
 
 ARCH_OBJ = out/${UCC_CPU}.o
 
-CFLAGS  += -Wno-missing-field-initializers -Werror
+CFLAGS  += -Wno-missing-field-initializers
 LDFLAGS += -lm
 
 OBJ = \
