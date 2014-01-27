@@ -75,4 +75,6 @@ const char *type_to_str_r_show_decayed(char buf[ucc_static_param TYPE_STATIC_BUF
 const char *type_to_str(type *);
 #endif
 
+void type_nav_dump(struct type_nav *);
+
 #endif

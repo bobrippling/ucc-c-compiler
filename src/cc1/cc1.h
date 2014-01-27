@@ -79,6 +79,7 @@ enum fopt
 	FOPT_SYMBOL_ARITH          = 1 << 16,
 	FOPT_SIGNED_CHAR           = 1 << 17,
 	FOPT_CAST_W_BUILTIN_TYPES  = 1 << 18,
+	FOPT_DUMP_TYPE_TREE        = 1 << 19,
 };
 
 enum mopt

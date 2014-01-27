@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <assert.h>
 
 #include "../util/alloc.h"
@@ -392,4 +393,38 @@ type *type_nav_va_list(struct type_nav *root)
 		root->tva_list = c_types_make_va_list();
 
 	return root->tva_list;
+}
+
+static void type_dump_t(type *t, FILE *f, int indent)
+{
+	int i;
+	for(i = 0; i < indent; i++)
+		putchar(' ');
+
+	fprintf(f, "%s %s\n",
+			type_kind_to_str(t->type),
+			type_to_str(t));
+
+	if(t->uptree){
+		indent++;
+
+		for(i = 0; i < N_TYPE_KINDS; i++){
+			struct type_tree_ent *ent;
+			for(ent = t->uptree->ups[i]; ent; ent = ent->next)
+				if(ent->t)
+					type_dump_t(ent->t, f, indent);
+		}
+
+		indent--;
+	}
+}
+
+void type_nav_dump(struct type_nav *nav)
+{
+	int i;
+	for(i = 0; i < N_TYPE_KINDS; i++){
+		type *t = nav->btypes[i];
+		if(t)
+			type_dump_t(t, stderr, 0);
+	}
 }

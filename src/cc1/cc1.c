@@ -133,6 +133,7 @@ struct
 	{ 'f',  "signed-char",         FOPT_SIGNED_CHAR },
 	{ 'f',  "unsigned-char",      ~FOPT_SIGNED_CHAR },
 	{ 'f',  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
+	{ 'f',  "dump-type-tree", FOPT_DUMP_TYPE_TREE },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 
@@ -598,6 +599,9 @@ usage:
 
 
 	io_fin(gf == NULL, fname);
+
+	if(fopt_mode & FOPT_DUMP_TYPE_TREE)
+		type_nav_dump(cc1_type_nav);
 
 	return 0;
 }
