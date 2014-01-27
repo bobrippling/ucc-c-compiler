@@ -6,6 +6,8 @@
 #include "../util/util.h"
 #include "../util/platform.h"
 
+#include "macros.h"
+
 #include "expr.h"
 #include "sue.h"
 #include "type.h"
@@ -575,4 +577,19 @@ const char *type_to_str(type *r)
 {
 	static char buf[TYPE_STATIC_BUFSIZ];
 	return type_to_str_r(buf, r);
+}
+
+const char *type_kind_to_str(enum type_kind k)
+{
+	switch(k){
+		CASE_STR_PREFIX(type, btype);
+		CASE_STR_PREFIX(type, tdef);
+		CASE_STR_PREFIX(type, ptr);
+		CASE_STR_PREFIX(type, block);
+		CASE_STR_PREFIX(type, func);
+		CASE_STR_PREFIX(type, array);
+		CASE_STR_PREFIX(type, cast);
+		CASE_STR_PREFIX(type, attr);
+	}
+	ucc_unreach(NULL);
 }

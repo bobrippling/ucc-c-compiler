@@ -91,6 +91,8 @@ type_cmp(
 unsigned type_size(type *r, where *from);
 unsigned type_align(type *r, where *from);
 
+const char *type_kind_to_str(enum type_kind);
+
 #define TYPE_STATIC_BUFSIZ 512
 
 const char *type_to_str_r_spel(
