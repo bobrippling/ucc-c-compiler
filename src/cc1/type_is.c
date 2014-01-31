@@ -508,13 +508,17 @@ funcargs *type_funcargs(type *r)
 {
 	type *test;
 
+	r = type_skip_tdefs_casts(r);
+
 	if((test = type_is(r, type_ptr))
 	|| (test = type_is(r, type_block)))
 	{
-		r = test->ref; /* jump down past the (*)() */
+		r = type_skip_tdefs_casts(test->ref); /* jump down past the (*)() */
 	}
 
-	UCC_ASSERT(r, "not a function type");
+	UCC_ASSERT(r && r->type == type_func,
+			"not a function type - %s",
+			type_kind_to_str(r->type));
 
 	return r->bits.func.args;
 }
