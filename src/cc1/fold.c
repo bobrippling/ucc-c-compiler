@@ -819,10 +819,8 @@ void fold_decl_global(decl *d, symtable *stab)
 
 	fold_decl(d, stab, NULL);
 
-	if(fn_type){
-		UCC_ASSERT(!d->bits.var.init, "function has init?");
+	if(fn_type)
 		fold_global_func(d);
-	}
 }
 
 void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
