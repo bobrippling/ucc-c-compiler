@@ -595,7 +595,8 @@ static struct DIE *dwarf_type_die(
 			break;
 	}
 
-	dwarf_add_tydie(cu, ty, tydie);
+	if(tydie) /* may be btype/void */
+		dwarf_add_tydie(cu, ty, tydie);
 
 	return tydie;
 }
