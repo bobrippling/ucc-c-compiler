@@ -908,6 +908,7 @@ static type_parsed *parsed_type_ptr(
 
 		type_parsed *r_ptr;
 		attribute *attr = NULL;
+		type_parsed *sub;
 
 		enum type_qualifier qual = qual_none;
 
@@ -920,12 +921,28 @@ static type_parsed *parsed_type_ptr(
 			}
 		}
 
-		r_ptr = type_parsed_new(PARSED_PTR, base);
+		r_ptr = type_parsed_new(PARSED_PTR, NULL);
 		r_ptr->bits.ptr.maker = maker;
 		r_ptr->bits.ptr.attr = attr;
 		r_ptr->bits.ptr.qual = qual;
 
-		return parsed_type_declarator(mode, dfor, r_ptr);
+		/* this is essentially
+		 * r_ptr = maker(parse_type(...), qual);
+		 * i.e. we wait until we've parsed the sub-bit then insert ourselves
+		 */
+		sub = parsed_type_declarator(mode, dfor, NULL);
+		if(sub){
+			type_parsed *i;
+
+			r_ptr->prev = sub;
+			for(i = sub; i->prev; i = i->prev);
+			i->prev = base;
+
+			return r_ptr;
+		}else{
+			r_ptr->prev = base;
+			return r_ptr;
+		}
 	}else{
 		return parsed_type_func(mode, dfor, base);
 	}
