@@ -952,10 +952,10 @@ static type *parse_type_declarator(
 		enum decl_mode mode, decl *dfor, type *base)
 {
 	type_parsed *parsed = parsed_type_declarator(mode, dfor, NULL);
-	type_parsed *i;
+	type_parsed *i, *tofree;
 	type *ty = base;
 
-	for(i = parsed; i; i = i->prev){
+	for(i = parsed; i; tofree = i, i = i->prev, free(tofree)){
 		switch(i->type){
 			case PARSED_PTR:
 				ty = type_qualify(
