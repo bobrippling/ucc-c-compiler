@@ -29,12 +29,17 @@
 
 /*#define PARSE_DECL_VERBOSE*/
 
-/* we don't do the type_is_* since it needs to be folded for that */
-#define PARSE_type_is(r, ty) ((type_skip_attrs_casts(r)->type == ty) ? (r) : NULL)
 #define PARSE_DECL_IS_FUNC(d) PARSE_type_is(type_skip_attrs_casts(d->ref), type_func)
 
 #define PARSE_type_is_s_or_u_or_e(r) PARSE_type_is_s_or_u_or_e2(r, 1)
 #define PARSE_type_is_s_or_u(r)      PARSE_type_is_s_or_u_or_e2(r, 0)
+
+/* we don't do the type_is_* since it needs to be folded for that */
+static type *PARSE_type_is(type *t, enum type_kind k)
+{
+	t = type_skip_attrs_casts(t);
+	return t->type == k ? t : NULL;
+}
 
 static struct_union_enum_st *PARSE_type_is_s_or_u_or_e2(
 		type *r, int allow_e)
