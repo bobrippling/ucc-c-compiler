@@ -1040,12 +1040,12 @@ static decl *parse_decl(type *btype, enum decl_mode mode)
 		/* parse __asm__ naming before attributes, as per gcc and clang */
 		parse_add_asm(d);
 		parse_add_attr(&d->attr); /* int spel __attr__ */
-	}
 
-	if(d->spel && !PARSE_DECL_IS_FUNC(d) && accept_where(token_assign, &w_eq)){
-		d->bits.var.init = parse_initialisation();
-		/* top-level inits have their .where on the '=' token */
-		memcpy_safe(&d->bits.var.init->where, &w_eq);
+		if(d->spel && accept_where(token_assign, &w_eq)){
+			d->bits.var.init = parse_initialisation();
+			/* top-level inits have their .where on the '=' token */
+			memcpy_safe(&d->bits.var.init->where, &w_eq);
+		}
 	}
 
 	return d;
