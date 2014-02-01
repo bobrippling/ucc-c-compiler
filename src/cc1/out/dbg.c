@@ -876,7 +876,7 @@ static void dwarf_attr_decl(
 		decl *d,
 		type *ty, int show_extern)
 {
-	long attrv;
+	form_data_t attrv;
 
 	if(d->spel)
 		dwarf_attr(in, DW_AT_name, DW_FORM_string, d->spel);
