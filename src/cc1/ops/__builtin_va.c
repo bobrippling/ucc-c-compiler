@@ -222,7 +222,7 @@ static void va_arg_gen_read(
 
 	/*out_set_lvalue(); * val.gp_offset is an lvalue */
 
-	out_change_type(type_nav_btype(cc1_type_nav, type_intptr_t));
+	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_int)));
 	out_dup(); /* va, &gp_o, &gp_o */
 
 	out_deref(); /* va, &gp_o, gp_o */
