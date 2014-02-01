@@ -808,7 +808,7 @@ static void bitfield_scalar_merge(const struct vbitfield *const bf)
 	 */
 
 	/* we get the lvalue type - change to pointer */
-	type *const ty = vtop[-1].t, *ty_ptr = type_pointed_to(ty);
+	type *const ty = vtop[-1].t, *ty_ptr = type_ptr_to(ty);
 	unsigned long mask_leading_1s, mask_back_0s, mask_rm;
 
 	/* coerce vtop to a vtop[-1] type */
