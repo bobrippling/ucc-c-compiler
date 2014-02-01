@@ -154,7 +154,7 @@ type *type_is_func_or_block(type *r)
 
 	t = type_is(r, type_block);
 	if(t){
-		t = type_next(t);
+		t = type_skip_all(type_next(t));
 		UCC_ASSERT(t->type == type_func,
 				"block->next not func?");
 		return t;
