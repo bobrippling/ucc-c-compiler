@@ -160,7 +160,7 @@ static int eq_func(type *ty, void *ctx)
 	if(c->arg_scope != ty->bits.func.arg_scope)
 		return 0;
 
-	if(funcargs_cmp(ty->bits.func.args, c->args) == FUNCARGS_ARE_EQUAL){
+	if(funcargs_cmp(ty->bits.func.args, c->args) == FUNCARGS_EXACT_EQUAL){
 		funcargs_free(ctx, 0);
 		return 1;
 	}

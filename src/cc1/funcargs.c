@@ -40,17 +40,23 @@ enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 	const int count_to = dynarray_count(args_to->arglist);
 	const int count_from = dynarray_count(args_from->arglist);
 
+	if(args_to == args_from)
+		return FUNCARGS_EXACT_EQUAL;
+
+	if(count_to == count_from && args_to->args_void == args_from->args_void)
+		return FUNCARGS_EXACT_EQUAL;
+
 	if((count_to   == 0 && !args_to->args_void)
 	|| (count_from == 0 && !args_from->args_void)){
 		/* a() or b() */
-		return FUNCARGS_ARE_EQUAL;
+		return FUNCARGS_IMPLICIT_CONV;
 	}
 
 	if(args_to->args_old_proto || args_from->args_old_proto)
-		return FUNCARGS_ARE_EQUAL;
+		return FUNCARGS_IMPLICIT_CONV;
 
 	if(!(args_to->variadic ? count_to <= count_from : count_to == count_from))
-		return FUNCARGS_ARE_MISMATCH_COUNT;
+		return FUNCARGS_MISMATCH_COUNT;
 
 	if(count_to){
 		unsigned i;
@@ -66,12 +72,12 @@ enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 				case TYPE_CONVERTIBLE_IMPLICIT:
 				case TYPE_QUAL_LOSS:
 				case TYPE_NOT_EQUAL:
-					return FUNCARGS_ARE_MISMATCH_TYPES;
+					return FUNCARGS_MISMATCH_TYPES;
 			}
 		}
 	}
 
-	return FUNCARGS_ARE_EQUAL;
+	return FUNCARGS_EXACT_EQUAL;
 }
 
 funcargs *funcargs_new()

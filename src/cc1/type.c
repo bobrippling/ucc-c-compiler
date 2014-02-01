@@ -138,12 +138,14 @@ static enum type_cmp type_cmp_r(
 			ICE("should've been skipped");
 
 		case type_func:
-			if(funcargs_cmp(a->bits.func.args, b->bits.func.args)
-					!= FUNCARGS_ARE_EQUAL)
-			{
-				/* "void (int)" and "void (int, int)" aren't equal,
-				 * but a cast can soon fix it */
-				return TYPE_CONVERTIBLE_EXPLICIT;
+			switch(funcargs_cmp(a->bits.func.args, b->bits.func.args)){
+				case FUNCARGS_EXACT_EQUAL:
+				case FUNCARGS_IMPLICIT_CONV:
+					break;
+				default:
+					/* "void (int)" and "void (int, int)" aren't equal,
+					 * but a cast can soon fix it */
+					return TYPE_CONVERTIBLE_EXPLICIT;
 			}
 			break;
 	}
