@@ -210,7 +210,7 @@ struct DIE
 		} bits;
 	} **attrs;
 
-	struct DIE **children;
+	struct DIE **children, *parent;
 };
 
 struct DIE_compile_unit
@@ -287,15 +287,19 @@ static struct DIE *dwarf_die_new(enum dwarf_tag tag)
 
 static void dwarf_child(struct DIE *parent, struct DIE *child)
 {
+	if(child->parent)
+		return;
 	dynarray_add(&parent->children, RETAIN(child));
+	child->parent = parent;
 }
 
 static void dwarf_children(struct DIE *parent, struct DIE **children)
 {
 	struct DIE **i;
 	for(i = children; i && *i; i++)
-		(void)RETAIN(*i);
-	dynarray_add_tmparray(&parent->children, children);
+		dwarf_child(parent, *i);
+
+	free(children);
 }
 
 static void dwarf_die_free_1(struct DIE *die)
@@ -1280,6 +1284,8 @@ static unsigned long dwarf_offset_die(
 		unsigned long *abbrev, unsigned long off)
 {
 	struct DIE_attr **at;
+
+	UCC_ASSERT(die->locn == 0, "double offset die?");
 
 	die->locn = off;
 
