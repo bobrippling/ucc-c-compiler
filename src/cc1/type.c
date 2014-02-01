@@ -341,11 +341,14 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 		case type_btype:
 		case type_tdef: /* just starting */
 		case type_cast: /* no need */
+		case type_attr:
+		case type_ptr:
+		case type_block:
 			need_paren = 0;
 			break;
 
-		default:
-			/* for now. can be altered */
+		case type_func:
+		case type_array:
 			need_paren = !r->tmp || r->type != r->tmp->type;
 	}
 
