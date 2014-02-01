@@ -939,7 +939,7 @@ void out_push_sym(sym *s)
 
 	switch(s->type){
 		case sym_local:
-			if(DECL_IS_FUNC(d))
+			if(type_is(d->ref, type_func))
 				goto label;
 
 			if((d->store & STORE_MASK_STORE) == store_register && d->spel_asm)

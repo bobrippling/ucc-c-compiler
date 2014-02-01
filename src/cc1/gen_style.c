@@ -63,7 +63,7 @@ void gen_style_decl(decl *d)
 {
 	stylef("%s", decl_to_str(d));
 
-	if(DECL_IS_FUNC(d)){
+	if(type_is(d->ref, type_func)){
 		gen_stmt(d->bits.func.code);
 		return;
 	}

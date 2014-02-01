@@ -32,7 +32,7 @@ void fold_block_decls(symtable *stab, stmt **pinit_blk)
 
 		fold_decl(d, stab, pinit_blk);
 
-		if((is_func = !!DECL_IS_FUNC(d)))
+		if((is_func = !!type_is(d->ref, type_func)))
 			chk_shadow = 1;
 		else if(warn_mode & (WARN_SHADOW_LOCAL | WARN_SHADOW_GLOBAL))
 			chk_shadow = 1;
@@ -45,7 +45,7 @@ void fold_block_decls(symtable *stab, stmt **pinit_blk)
 
 			/* allow functions redefined as decls and vice versa */
 			if(is_func
-			&& DECL_IS_FUNC(found)
+			&& type_is(found->ref, type_func)
 			&& !(decl_cmp(d, found, 0) & TYPE_EQUAL_ANY))
 			{
 				die_at(&d->where,

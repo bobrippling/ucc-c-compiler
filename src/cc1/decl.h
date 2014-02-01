@@ -100,10 +100,7 @@ const char *decl_to_str(decl *d);
 const char *decl_to_str_r(char buf[ucc_static_param DECL_STATIC_BUFSIZ], decl *);
 const char *decl_store_to_str(const enum decl_storage);
 
-#define DECL_IS_FUNC(d)   type_is((d)->ref, type_func)
-#define DECL_IS_ARRAY(d)  type_is((d)->ref, type_array)
-#define DECL_IS_S_OR_U(d) type_is_s_or_u((d)->ref)
 #define DECL_FUNC_ARG_SYMTAB(d) ((d)->bits.func.code->symtab->parent)
-#define DECL_HAS_FUNC_CODE(d) (DECL_IS_FUNC(d) && d->bits.func.code)
+#define DECL_HAS_FUNC_CODE(d) (type_is(d->ref, type_func) && d->bits.func.code)
 
 #endif

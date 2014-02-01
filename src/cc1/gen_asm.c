@@ -97,7 +97,7 @@ void gen_asm_global(decl *d)
 	}
 
 	/* order of the if matters */
-	if(DECL_IS_FUNC(d) || type_is(d->ref, type_block)){
+	if(type_is_func_or_block(d->ref)){
 		/* check .func_code, since it could be a block */
 		int nargs = 0, is_vari;
 		decl **aiter;
@@ -200,7 +200,7 @@ void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 				break;
 		}
 
-		if(DECL_IS_FUNC(d)){
+		if(type_is(d->ref, type_func)){
 			if(d->store & store_inline){
 				/*
 				 * inline semantics

@@ -323,7 +323,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 		}
 	}
 
-	if(mode & PDECL_SIZE && !DECL_IS_FUNC(d)){
+	if(mode & PDECL_SIZE && !type_is(d->ref, type_func)){
 		if(type_is_complete(d->ref)){
 			const int sz = decl_size(d);
 			fprintf(cc1_out, " size %d bytes. %d platform-word(s)", sz, sz / platform_word_size());
@@ -335,7 +335,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(mode & PDECL_NEWLINE)
 		fputc('\n', cc1_out);
 
-	if(!DECL_IS_FUNC(d) && d->bits.var.init && mode & PDECL_PINIT){
+	if(!type_is(d->ref, type_func) && d->bits.var.init && mode & PDECL_PINIT){
 		gen_str_indent++;
 		print_decl_init(d->bits.var.init);
 		gen_str_indent--;
@@ -343,7 +343,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 	if(mode & PDECL_ATTR){
 		gen_str_indent++;
-		if(!DECL_IS_FUNC(d) && d->bits.var.align)
+		if(!type_is(d->ref, type_func) && d->bits.var.align)
 			idt_printf("[align={as_int=%d, resolved=%d}]\n",
 					d->bits.var.align->as_int, d->bits.var.align->resolved);
 		print_attribute(d->attr);
@@ -406,7 +406,7 @@ static void print_struct(struct_union_enum_st *sue)
 		gen_str_indent++;
 		print_decl(d, PDECL_INDENT | PDECL_NEWLINE | PDECL_ATTR);
 
-		if(!DECL_IS_FUNC(d)){
+		if(!type_is(d->ref, type_func)){
 #define SHOW_FIELD(nam) idt_printf("." #nam " = %u\n", d->bits.var.nam)
 			SHOW_FIELD(struct_offset);
 

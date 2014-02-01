@@ -28,9 +28,9 @@
             && decl->spel                       \
             && (decl->store & STORE_MASK_STORE) \
                     != store_typedef            \
-            && !DECL_IS_ARRAY(decl)             \
-            && !DECL_IS_FUNC(decl)              \
-            && !DECL_IS_S_OR_U(decl)
+            && !type_is(decl->ref, type_func)   \
+            && !type_is(decl->ref, type_array)  \
+            && !type_is_s_or_u(decl->ref)
 
 #define RW_SHOW(decl, w, str)          \
           cc1_warn_at(&decl->where, 0, \
@@ -149,7 +149,7 @@ void symtab_check_rw(symtable *tab)
 						case store_auto:
 						case store_static:
 							/* static analysis on sym */
-							if(!has_unused_attr && !DECL_IS_FUNC(d) && !d->bits.var.init)
+							if(!has_unused_attr && !type_is(d->ref, type_func) && !d->bits.var.init)
 								RW_WARN(WRITTEN, d, nwrites, "written to");
 							break;
 						case store_extern:
@@ -340,9 +340,9 @@ void symtab_fold_decls(symtable *tab)
 						decl *da = a->bits.decl;
 						decl *db = b->bits.decl;
 
-						const int a_func = !!DECL_IS_FUNC(da);
+						const int a_func = !!type_is(da->ref, type_func);
 
-						if(!!DECL_IS_FUNC(db) != a_func){
+						if(!!type_is(db->ref, type_func) != a_func){
 							clash = "mismatching";
 						}else switch(decl_cmp(da, db, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
 							case TYPE_NOT_EQUAL:
@@ -440,7 +440,7 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 					break;
 
 				case sym_local: /* warn on unused args and locals */
-					if(DECL_IS_FUNC(d))
+					if(type_is(d->ref, type_func))
 						continue;
 
 					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){

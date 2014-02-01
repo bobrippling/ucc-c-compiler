@@ -52,10 +52,8 @@ typedef struct
 	 ? &it->pos[0]->where \
 	 : def)
 
-#define DECL_IS_ANON_BITFIELD(d) ( \
-		!DECL_IS_FUNC(d)               \
-		&& (d)->bits.var.field_width   \
-		&& !(d)->spel)
+#define DECL_IS_ANON_BITFIELD(d) \
+	((d)->bits.var.field_width && !(d)->spel)
 
 typedef decl_init **aggregate_brace_f(
 		decl_init **current, struct init_cpy ***range_store,
@@ -711,7 +709,7 @@ static decl_init **decl_init_brace_up_sue2(
 			dynarray_padinsert(&current, i, &n, braced_sub);
 
 			/* done, check bitfield truncation */
-			assert(!DECL_IS_FUNC(d_mem));
+			assert(!type_is(d_mem->ref, type_func));
 			if(braced_sub && d_mem->bits.var.field_width){
 				UCC_ASSERT(braced_sub->type == decl_init_scalar,
 						"scalar init expected for bitfield");
@@ -1105,7 +1103,7 @@ static decl_init *decl_init_brace_up_start(
 
 void decl_init_brace_up_fold(decl *d, symtable *stab)
 {
-	assert(!DECL_IS_FUNC(d));
+	assert(!type_is(d->ref, type_func));
 	if(!d->bits.var.init_normalised){
 
 		d->bits.var.init = decl_init_brace_up_start(
@@ -1330,7 +1328,7 @@ zero_init:
 
 void decl_default_init(decl *d, symtable *stab)
 {
-	assert(!DECL_IS_FUNC(d));
+	assert(!type_is(d->ref, type_func));
 
 	UCC_ASSERT(!d->bits.var.init, "already initialised?");
 

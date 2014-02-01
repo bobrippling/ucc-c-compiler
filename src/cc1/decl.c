@@ -57,7 +57,7 @@ const char *decl_asm_spel(decl *d)
 {
 	if(!d->spel_asm){
 		/* apply underscore prefixes, name mangling, etc */
-		type *rf = DECL_IS_FUNC(d);
+		type *rf = type_is(d->ref, type_func);
 		char *pre, suff[8];
 
 		pre = fopt_mode & FOPT_LEADING_UNDERSCORE ? "_" : "";
@@ -137,7 +137,7 @@ unsigned decl_size(decl *d)
 	if(type_is_void(d->ref))
 		die_at(&d->where, "%s is void", d->spel);
 
-	if(!DECL_IS_FUNC(d) && d->bits.var.field_width)
+	if(!type_is(d->ref, type_func) && d->bits.var.field_width)
 		die_at(&d->where, "can't take size of a bitfield");
 
 	return type_size(d->ref, &d->where);
@@ -147,7 +147,7 @@ unsigned decl_align(decl *d)
 {
 	unsigned al = 0;
 
-	if(!DECL_IS_FUNC(d) && d->bits.var.align)
+	if(!type_is(d->ref, type_func) && d->bits.var.align)
 		al = d->bits.var.align->resolved;
 
 	return al ? al : type_align(d->ref, &d->where);

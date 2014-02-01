@@ -109,9 +109,9 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 	if(sym->type == sym_local
 	&& !decl_store_static_or_extern(sym->decl->store)
-	&& !DECL_IS_ARRAY(sym->decl)
-	&& !DECL_IS_S_OR_U(sym->decl)
-	&& !DECL_IS_FUNC(sym->decl)
+	&& !type_is(sym->decl->ref, type_array)
+	&& !type_is(sym->decl->ref, type_func)
+	&& !type_is_s_or_u(sym->decl->ref)
 	&& sym->nwrites == 0
 	&& !sym->decl->bits.var.init)
 	{
@@ -132,15 +132,13 @@ void gen_expr_identifier(expr *e)
 {
 	sym *sym = e->bits.ident.sym;
 
-	if(DECL_IS_FUNC(sym->decl)){
-		UCC_ASSERT(sym->type != sym_arg,
-				"function as argument?");
+	if(type_is(sym->decl->ref, type_func)){
+		UCC_ASSERT(sym->type != sym_arg, "function as argument?");
 
 		out_push_sym(sym);
 	}else{
 		out_push_sym_val(sym);
 	}
-
 }
 
 void mutate_expr_identifier(expr *e)

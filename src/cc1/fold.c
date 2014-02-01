@@ -523,9 +523,6 @@ static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
 		const int is_static_init =
 			(d->store & STORE_MASK_STORE) == store_static || !stab->parent;
 
-		if(DECL_IS_FUNC(d))
-			die_at(&d->where, "initialisation of function '%s'", d->spel);
-
 		if((d->store & STORE_MASK_STORE) == store_extern){
 			/* allow for globals - remove extern since it's a definition */
 			if(stab->parent){
@@ -636,7 +633,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		die_at(&d->where, "use of incomplete type - %s (%s)", d->spel, decl_to_str(d));
 #endif
 
-	if(DECL_IS_FUNC(d)){
+	if(type_is(d->ref, type_func)){
 		fold_decl_func(d, stab);
 	}else{
 		if(d->bits.var.field_width)
@@ -661,7 +658,7 @@ void fold_decl_global_init(decl *d, symtable *stab)
 	expr *nonstd = NULL;
 	const char *type;
 
-	if(!DECL_IS_FUNC(d) && !d->bits.var.init)
+	if(!type_is(d->ref, type_func) && !d->bits.var.init)
 		return;
 
 	/* this completes the array, if any */
@@ -807,7 +804,7 @@ void fold_decl_global(decl *d, symtable *stab)
 			warn_at_print_error(&d->where,
 					"invalid storage class '%s' on global scoped %s",
 					decl_store_to_str(d->store),
-					DECL_IS_FUNC(d) ? "function" : "variable");
+					type_is(d->ref, type_func) ? "function" : "variable");
 	}
 
 	/* can't check typedefs here - not folded.
@@ -850,7 +847,7 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 		if(e && expr_kind(e, struct)){
 			decl *d = e->bits.struct_mem.d;
 
-			assert(!DECL_IS_FUNC(d));
+			assert(!type_is(d->ref, type_func));
 
 			if(d->bits.var.field_width)
 				die_at(&e->where, "bitfield in %s", desc);
@@ -926,7 +923,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type *from)
 		for(i = 0; fargs->arglist[i]; i++){
 			decl *const d = fargs->arglist[i];
 
-			const int is_var = !DECL_IS_FUNC(d);
+			const int is_var = !type_is(d->ref, type_func);
 
 			/* fold before for array checks, etc */
 			if(is_var && d->bits.var.init)
@@ -995,7 +992,7 @@ void fold_merge_tenatives(symtable *stab)
 
 		/* functions are checked in fold_sym,
 		 * where we compare local definitions too */
-		if(d->proto_flag || !d->spel || DECL_IS_FUNC(d))
+		if(d->proto_flag || !d->spel || !!type_is(d->ref, type_func))
 			continue;
 
 		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
@@ -1009,7 +1006,7 @@ void fold_merge_tenatives(symtable *stab)
 		/* check for a single init between all prototypes */
 		for(; d; d = d->proto){
 			d->proto_flag = 1;
-			if(!DECL_IS_FUNC(d) && d->bits.var.init){
+			if(!type_is(d->ref, type_func) && d->bits.var.init){
 				if(init){
 					char wbuf[WHERE_BUF_SIZ];
 					die_at(&init->where, "multiple definitions of \"%s\"\n"
@@ -1017,7 +1014,7 @@ void fold_merge_tenatives(symtable *stab)
 							where_str_r(wbuf, &d->where));
 				}
 				init = d;
-			}else if(DECL_IS_ARRAY(d) && type_is_complete(d->ref)){
+			}else if(type_is(d->ref, type_array) && type_is_complete(d->ref)){
 				init = d;
 				decl_default_init(d, stab);
 			}
@@ -1028,7 +1025,7 @@ void fold_merge_tenatives(symtable *stab)
 
 			decl_default_init(d, stab);
 
-			if(DECL_IS_ARRAY(d)){
+			if(type_is(d->ref, type_array)){
 				warn_at(&d->where,
 						"tenative array definition assumed to have one element");
 			}

@@ -1142,7 +1142,7 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 	/* check then replace old args */
 	int n_proto_decls, n_old_args;
 	int i;
-	funcargs *dfuncargs = d->ref->bits.func.args;
+	funcargs *dfuncargs = type_is_func_or_block(d->ref)->bits.func.args;
 
 	UCC_ASSERT(PARSE_type_is(d->ref, type_func), "not func");
 
@@ -1161,8 +1161,11 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 	for(i = 0; i < n_old_args; i++){
 		int j, found = 0;
 
-		if(DECL_IS_FUNC(old_args[i]) || !old_args[i]->bits.var.init)
-			die_at(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
+		if(!type_is(old_args[i]->ref, type_func) && old_args[i]->bits.var.init){
+			die_at(&old_args[i]->where,
+					"parameter \"%s\" is initialised",
+					old_args[i]->spel);
+		}
 
 		for(j = 0; j < n_proto_decls; j++){
 			if(!strcmp(old_args[i]->spel, dfuncargs->arglist[j]->spel)){
