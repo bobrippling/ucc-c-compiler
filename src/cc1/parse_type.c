@@ -670,11 +670,12 @@ funcargs *parse_func_arglist()
 	 */
 	if(curtok != token_identifier || parse_at_tdef()){
 		decl *argdecl = parse_arg_decl();
+		type *ty_v = PARSE_type_is(argdecl->ref, type_btype);
 
 		/* check for x(void) (or an equivalent typedef) */
 		/* can't use type_is, since that requires folding */
-		if(argdecl->ref->type == type_btype
-		&& argdecl->ref->bits.type->primitive == type_void
+		if(ty_v
+		&& ty_v->bits.type->primitive == type_void
 		&& !argdecl->spel)
 		{
 			/* x(void); */
