@@ -14,13 +14,10 @@ void expr_block_set_ty(decl *db, type *retty, symtable *scope)
 {
 	expr *e = db->block_expr;
 
-	(void)scope;
-
-	db->ref = type_block_of(
-			type_func_of(
+	db->ref = type_func_of(
 				retty,
 				e->bits.block.args,
-				symtab_new(scope, &e->where)));
+				symtab_new(scope, &e->where));
 }
 
 /*
@@ -42,8 +39,6 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 	symtable *const sym_root = symtab_root(arg_symtab);
 	decl *df = decl_new();
 
-	(void)scope_stab;
-
 	arg_symtab->in_func = df;
 
 	/* add a global symbol for the block */
@@ -63,17 +58,21 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 		 * which sets df->ref for us */
 	}
 
+	/* arguments and code, then we have the type for the decl */
 	fold_funcargs(e->bits.block.args, arg_symtab, NULL);
-	fold_decl(df, arg_symtab, /*pinitcode:*/NULL);
-	fold_func_code(df, arg_symtab);
+	fold_func_code(e->code, &e->where, "block", arg_symtab);
 
 	/* if we didn't hit any returns, we're a void block */
 	if(!df->ref)
 		expr_block_set_ty(df, type_nav_btype(cc1_type_nav, type_void), scope_stab);
 
-	e->tree_type = df->ref;
+	/* said decl: */
+	fold_decl(df, sym_root, /*pinitcode:*/NULL);
 
-	fold_func_passable(df, type_called(e->tree_type, NULL));
+	/* block pointer to the function */
+	e->tree_type = type_block_of(df->ref);
+
+	fold_func_passable(df, type_called(df->ref, NULL));
 }
 
 void gen_expr_block(expr *e)

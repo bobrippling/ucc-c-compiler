@@ -730,7 +730,7 @@ void fold_func_passable(decl *func_decl, type *func_ret)
 	}
 }
 
-void fold_func_code(decl *func_decl, symtable *arg_symtab)
+void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab)
 {
 	decl **i;
 
@@ -738,8 +738,8 @@ void fold_func_code(decl *func_decl, symtable *arg_symtab)
 		decl *d = *i;
 
 		if(!d->spel)
-			die_at(&func_decl->where, "argument %ld in \"%s\" is unnamed",
-					i - arg_symtab->decls + 1, func_decl->spel);
+			die_at(w, "argument %ld in \"%s\" is unnamed",
+					i - arg_symtab->decls + 1, sp);
 
 		if(!type_is_complete(d->ref))
 			die_at(&d->where,
@@ -747,7 +747,7 @@ void fold_func_code(decl *func_decl, symtable *arg_symtab)
 					d->spel, type_to_str(d->ref));
 	}
 
-	fold_stmt(func_decl->bits.func.code);
+	fold_stmt(code);
 
 	/* now decls are folded, layout both parameters and local variables */
 	symtab_layout_decls(arg_symtab, 0);
@@ -777,7 +777,11 @@ void fold_global_func(decl *func_decl)
 			warn_at(&func_decl->where,
 					"typedef function implementation is an extension");
 
-		fold_func_code(func_decl, arg_symtab);
+		fold_func_code(
+				func_decl->bits.func.code,
+				&func_decl->where,
+				func_decl->spel,
+				arg_symtab);
 
 		fold_func_passable(func_decl, func_ret);
 	}
