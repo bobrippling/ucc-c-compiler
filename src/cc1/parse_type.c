@@ -55,8 +55,6 @@ static struct_union_enum_st *PARSE_type_is_s_or_u_or_e2(
 	return NULL;
 }
 
-static type *parse_type2(enum decl_mode mode, decl *dfor, type *base);
-
 /* newdecl_context:
  * struct B { int b; };
  * {
@@ -742,10 +740,61 @@ declarator:
 		;
 */
 
-static type *parse_type_nest(enum decl_mode mode, decl *dfor, type *base)
+typedef struct type_parsed type_parsed;
+struct type_parsed
+{
+	enum type_parsed_kind
+	{
+		PARSED_PTR,
+		PARSED_FUNC,
+		PARSED_ARRAY
+	} type;
+
+	attribute *attr;
+
+	union
+	{
+		struct
+		{
+			type *(*maker)(type *);
+			attribute *attr;
+			enum type_qualifier qual;
+		} ptr;
+		struct
+		{
+			funcargs *arglist;
+			symtable *scope;
+		} func;
+		struct
+		{
+			expr *size;
+			enum type_qualifier qual;
+			int is_static;
+		} array;
+	} bits;
+
+	type_parsed *prev;
+};
+
+static type_parsed *parsed_type_ptr(
+		enum decl_mode mode, decl *dfor,
+		type_parsed *base);
+#define parsed_type_declarator parsed_type_ptr
+
+static type_parsed *type_parsed_new(
+		enum type_parsed_kind kind, type_parsed *prev)
+{
+	type_parsed *tp = umalloc(sizeof *tp);
+	tp->type = kind;
+	tp->prev = prev;
+	return tp;
+}
+
+static type_parsed *parsed_type_nest(
+		enum decl_mode mode, decl *dfor, type_parsed *base)
 {
 	if(accept(token_open_paren)){
-		type *ret;
+		type_parsed *ret;
 
 		/*
 		 * we could be here:
@@ -763,7 +812,7 @@ static type *parse_type_nest(enum decl_mode mode, decl *dfor, type *base)
 			return base;
 		}
 
-		ret = parse_type2(mode, dfor, base);
+		ret = parsed_type_declarator(mode, dfor, base);
 		EAT(token_close_paren);
 		return ret;
 
@@ -785,9 +834,10 @@ static type *parse_type_nest(enum decl_mode mode, decl *dfor, type *base)
 	return base;
 }
 
-static type *parse_type_array(enum decl_mode mode, decl *dfor, type *base)
+static type_parsed *parsed_type_array(
+		enum decl_mode mode, decl *dfor, type_parsed *base)
 {
-	type *r = parse_type_nest(mode, dfor, base);
+	type_parsed *r = parsed_type_nest(mode, dfor, base);
 
 	while(accept(token_open_square)){
 		expr *size;
@@ -819,22 +869,26 @@ static type *parse_type_array(enum decl_mode mode, decl *dfor, type *base)
 		if(is_static > 1)
 			die_at(NULL, "multiple static specifiers in array size");
 
-		r = type_qualify(
-				type_array_of_static(r, size, is_static),
-				q);
+		r = type_parsed_new(PARSED_ARRAY, r);
+		r->bits.array.size = size;
+		r->bits.array.qual = q;
+		r->bits.array.is_static = is_static;
 	}
 
 	return r;
 }
 
-static type *parse_type_func(enum decl_mode mode, decl *dfor, type *base)
+static type_parsed *parsed_type_func(
+		enum decl_mode mode, decl *dfor, type_parsed *base)
 {
-	type *sub = parse_type_array(mode, dfor, base);
+	type_parsed *sub = parsed_type_array(mode, dfor, base);
 
 	while(accept(token_open_paren)){
 		current_scope = symtab_new(current_scope, where_cc1_current(NULL));
 
-		sub = type_func_of(sub, parse_func_arglist(), current_scope);
+		sub = type_parsed_new(PARSED_FUNC, sub);
+		sub->bits.func.arglist = parse_func_arglist();
+		sub->bits.func.scope = current_scope;
 
 		current_scope = current_scope->parent;
 
@@ -844,15 +898,15 @@ static type *parse_type_func(enum decl_mode mode, decl *dfor, type *base)
 	return sub;
 }
 
-static type *parse_type_ptr(enum decl_mode mode, decl *dfor, type *base)
+static type_parsed *parsed_type_ptr(
+		enum decl_mode mode, decl *dfor, type_parsed *base)
 {
 	int ptr;
 
 	if((ptr = accept(token_multiply)) || accept(token_xor)){
-		typedef type *(*ptr_creator_f)(type *);
-		ptr_creator_f creater = ptr ? type_ptr_to : type_block_of;
+		type *(*maker)(type *) = ptr ? type_ptr_to : type_block_of;
 
-		type *r_ptr;
+		type_parsed *r_ptr;
 		attribute *attr = NULL;
 
 		enum type_qualifier qual = qual_none;
@@ -866,32 +920,58 @@ static type *parse_type_ptr(enum decl_mode mode, decl *dfor, type *base)
 			}
 		}
 
-		r_ptr = type_qualify(
-				creater(parse_type2(mode, dfor, base)),
-				qual);
+		r_ptr = type_parsed_new(PARSED_PTR, base);
+		r_ptr->bits.ptr.maker = maker;
+		r_ptr->bits.ptr.attr = attr;
+		r_ptr->bits.ptr.qual = qual;
 
-		return type_attributed(r_ptr, attr);
+		return parsed_type_declarator(mode, dfor, r_ptr);
 	}else{
-		return parse_type_func(mode, dfor, base);
+		return parsed_type_func(mode, dfor, base);
 	}
 }
 
-static type *parse_type2(enum decl_mode mode, decl *dfor, type *base)
+static type *parse_type_declarator(
+		enum decl_mode mode, decl *dfor, type *base)
 {
-	return parse_type_ptr(mode, dfor, base);
-}
+	type_parsed *parsed = parsed_type_declarator(mode, dfor, NULL);
+	type_parsed *i;
+	type *ty = base;
 
-static type *parse_type3(
-		enum decl_mode mode, decl *dfor, type *btype)
-{
-	return parse_type2(mode, dfor, btype);
+	for(i = parsed; i; i = i->prev){
+		switch(i->type){
+			case PARSED_PTR:
+				ty = type_qualify(
+						i->bits.ptr.maker(ty),
+						i->bits.ptr.qual);
+				break;
+			case PARSED_ARRAY:
+				ty = type_qualify(
+						type_array_of_static(
+							ty,
+							i->bits.array.size,
+							i->bits.array.is_static),
+						i->bits.ptr.qual);
+				break;
+			case PARSED_FUNC:
+				ty = type_func_of(
+						ty,
+						i->bits.func.arglist,
+						i->bits.func.scope);
+				break;
+		}
+
+		ty = type_attributed(ty, i->attr);
+	}
+
+	return ty;
 }
 
 type *parse_type(int newdecl)
 {
 	type *btype = parse_btype(NULL, NULL, newdecl);
 
-	return btype ? parse_type3(0, NULL, btype) : NULL;
+	return btype ? parse_type_declarator(0, NULL, btype) : NULL;
 }
 
 static void parse_add_asm(decl *d)
@@ -925,7 +1005,7 @@ static decl *parse_decl(type *btype, enum decl_mode mode)
 	decl *d = decl_new();
 	where w_eq;
 
-	d->ref = parse_type3(mode, d, btype);
+	d->ref = parse_type_declarator(mode, d, btype);
 
 	/* only check if it's not a function, otherwise it could be
 	 * int f(i)
