@@ -20,7 +20,7 @@ type *type_nav_va_list(struct type_nav *root);
 type *type_decay(type *);
 
 type *type_ptr_to(type *);
-type *type_pointed_to(type *);
+type *type_pointed_to(type *); /* just pointers */
 type *type_block_of(type *);
 
 type *type_array_of(type *, struct expr *sz);
@@ -38,6 +38,8 @@ type *type_sign(type *, int is_signed);
 type *type_attributed(type *, attribute *);
 
 type *type_nav_MAX_FOR(struct type_nav *, unsigned sz);
+
+type *type_at_where(type *, where *);
 
 #if 0
 type *type_new_tdef(expr *, decl *);

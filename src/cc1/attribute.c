@@ -82,6 +82,7 @@ attribute *type_attr_present(type *r, enum attribute_type t)
 			case type_func:
 			case type_array:
 			case type_cast:
+			case type_where:
 				r = r->ref;
 				break;
 		}

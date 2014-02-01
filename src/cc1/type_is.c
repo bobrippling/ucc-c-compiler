@@ -33,13 +33,14 @@ static type *type_next_1(type *r)
 	return r->ref;
 }
 
-type *type_skip_tdefs_casts(type *r)
+type *type_skip_all(type *r)
 {
 	while(r)
 		switch(r->type){
 			case type_tdef:
 			case type_cast:
 			case type_attr:
+			case type_where:
 				r = type_next_1(r);
 				continue;
 			default:
@@ -50,11 +51,12 @@ fin:
 	return r;
 }
 
-type *type_skip_attrs_casts(type *r)
+type *type_skip_non_tdefs(type *r)
 {
 	while(r) switch(r->type){
 		case type_cast:
 		case type_attr:
+		case type_where:
 			r = type_next_1(r);
 			break;
 		default:
@@ -84,7 +86,8 @@ type *type_next(type *r)
 		case type_tdef:
 		case type_cast:
 		case type_attr:
-			return type_next(type_skip_tdefs_casts(r));
+		case type_where:
+			return type_next(type_skip_all(r));
 
 		case type_ptr:
 		case type_block:
@@ -98,7 +101,7 @@ type *type_next(type *r)
 
 type *type_is(type *r, enum type_kind t)
 {
-	r = type_skip_tdefs_casts(r);
+	r = type_skip_all(r);
 
 	if(!r || r->type != t)
 		return NULL;
@@ -165,7 +168,7 @@ const btype *type_get_type(type *r)
 	for(; r; )
 		switch(r->type){
 			case type_tdef:
-				r = type_skip_tdefs_casts(r);
+				r = type_skip_all(r);
 				break;
 			case type_btype:
 				return r->bits.type;
@@ -248,7 +251,7 @@ int type_is_integral(type *r)
 int type_is_complete(type *r)
 {
 	/* decl is "void" or incomplete-struct or array[] */
-	r = type_skip_tdefs_casts(r);
+	r = type_skip_all(r);
 
 	switch(r->type){
 		case type_btype:
@@ -280,6 +283,7 @@ int type_is_complete(type *r)
 		case type_tdef:
 		case type_attr:
 		case type_cast:
+		case type_where:
 			ICE("should've been skipped");
 	}
 
@@ -360,7 +364,7 @@ struct_union_enum_st *type_is_s_or_u(type *r)
 
 type *type_func_call(type *fp, funcargs **pfuncargs)
 {
-	fp = type_skip_tdefs_casts(fp);
+	fp = type_skip_all(fp);
 	switch(fp->type){
 		case type_ptr:
 		case type_block:
@@ -384,7 +388,7 @@ type *type_func_call(type *fp, funcargs **pfuncargs)
 
 int type_decayable(type *r)
 {
-	switch(type_skip_tdefs_casts(r)->type){
+	switch(type_skip_all(r)->type){
 		case type_array:
 		case type_func:
 			return 1;
@@ -396,7 +400,7 @@ int type_decayable(type *r)
 type *type_decay(type *const r)
 {
 	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
-	type *test = type_skip_tdefs_casts(r);
+	type *test = type_skip_all(r);
 
 	switch(test->type){
 		case type_array:
@@ -477,6 +481,7 @@ enum type_qualifier type_qual(const type *r)
 		case type_array:
 			return qual_none;
 
+		case type_where:
 		case type_attr:
 			return type_qual(r->ref);
 
@@ -508,12 +513,12 @@ funcargs *type_funcargs(type *r)
 {
 	type *test;
 
-	r = type_skip_tdefs_casts(r);
+	r = type_skip_all(r);
 
 	if((test = type_is(r, type_ptr))
 	|| (test = type_is(r, type_block)))
 	{
-		r = type_skip_tdefs_casts(test->ref); /* jump down past the (*)() */
+		r = type_skip_all(test->ref); /* jump down past the (*)() */
 	}
 
 	UCC_ASSERT(r && r->type == type_func,
@@ -527,7 +532,7 @@ int type_is_callable(type *r)
 {
 	type *test;
 
-	r = type_skip_tdefs_casts(r);
+	r = type_skip_all(r);
 
 	if((test = type_is(r, type_ptr)) || (test = type_is(r, type_block)))
 		return !!type_is(test->ref, type_func);

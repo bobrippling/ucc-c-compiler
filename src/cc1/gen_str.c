@@ -217,6 +217,8 @@ static void print_type_eng(type *ref)
 		case type_tdef:
 		case type_attr:
 			ICE("TODO");
+		case type_where:
+			break;
 	}
 }
 

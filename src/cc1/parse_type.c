@@ -29,7 +29,7 @@
 
 /*#define PARSE_DECL_VERBOSE*/
 
-#define PARSE_DECL_IS_FUNC(d) PARSE_type_is(type_skip_attrs_casts(d->ref), type_func)
+#define PARSE_DECL_IS_FUNC(d) PARSE_type_is(type_skip_non_tdefs(d->ref), type_func)
 
 #define PARSE_type_is_s_or_u_or_e(r) PARSE_type_is_s_or_u_or_e2(r, 1)
 #define PARSE_type_is_s_or_u(r)      PARSE_type_is_s_or_u_or_e2(r, 0)
@@ -37,14 +37,14 @@
 /* we don't do the type_is_* since it needs to be folded for that */
 static type *PARSE_type_is(type *t, enum type_kind k)
 {
-	t = type_skip_attrs_casts(t);
+	t = type_skip_non_tdefs(t);
 	return t->type == k ? t : NULL;
 }
 
 static struct_union_enum_st *PARSE_type_is_s_or_u_or_e2(
 		type *r, int allow_e)
 {
-	r = type_skip_attrs_casts(r);
+	r = type_skip_non_tdefs(r);
 	if(r->type == type_btype){
 		const btype *t = r->bits.type;
 		switch(t->primitive){
@@ -748,6 +748,8 @@ declarator:
 typedef struct type_parsed type_parsed;
 struct type_parsed
 {
+	where where;
+
 	enum type_parsed_kind
 	{
 		PARSED_PTR,
@@ -792,6 +794,7 @@ static type_parsed *type_parsed_new(
 	type_parsed *tp = umalloc(sizeof *tp);
 	tp->type = kind;
 	tp->prev = prev;
+	where_cc1_current(&tp->where);
 	return tp;
 }
 
@@ -961,19 +964,19 @@ static type *parse_type_declarator(
 	type *ty = base;
 
 	for(i = parsed; i; tofree = i, i = i->prev, free(tofree)){
+		enum type_qualifier qual = qual_none;
+
 		switch(i->type){
 			case PARSED_PTR:
-				ty = type_qualify(
-						i->bits.ptr.maker(ty),
-						i->bits.ptr.qual);
+				ty = i->bits.ptr.maker(ty);
+				qual = i->bits.ptr.qual;
 				break;
 			case PARSED_ARRAY:
-				ty = type_qualify(
-						type_array_of_static(
+				qual = i->bits.ptr.qual;
+				ty = type_array_of_static(
 							ty,
 							i->bits.array.size,
-							i->bits.array.is_static),
-						i->bits.ptr.qual);
+							i->bits.array.is_static);
 				break;
 			case PARSED_FUNC:
 				ty = type_func_of(
@@ -983,7 +986,11 @@ static type *parse_type_declarator(
 				break;
 		}
 
-		ty = type_attributed(ty, i->attr);
+		ty = type_attributed(
+				type_qualify(
+					type_at_where(ty, &i->where),
+					qual),
+				i->attr);
 	}
 
 	return ty;

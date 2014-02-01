@@ -3,7 +3,7 @@
 
 struct decl;
 
-type *type_skip_tdefs_casts(type *r);
+type *type_skip_all(type *r);
 
 struct decl *type_is_tdef(type *r);
 

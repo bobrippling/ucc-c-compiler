@@ -8,7 +8,6 @@ typedef struct type type;
 
 struct type
 {
-	where where;
 	type *ref, *tmp; /* tmp used for things like printing */
 
 	int folded;
@@ -24,8 +23,9 @@ struct type
 		type_func,  /* function */
 		type_array, /* array of next ref, similar to pointer */
 		type_cast,  /* used for adding qualifiers */
-		type_attr   /* __attribute__ */
-#define N_TYPE_KINDS (type_attr + 1)
+		type_attr,  /* __attribute__ */
+		type_where  /* .where */
+#define N_TYPE_KINDS (type_where + 1)
 	} type;
 
 	union
@@ -74,6 +74,9 @@ struct type
 
 		/* type_block */
 		/* nothing */
+
+		/* type_where */
+		where where;
 	} bits;
 };
 
@@ -118,6 +121,8 @@ enum type_str_type type_str_type(type *);
 
 integral_t type_max(type *r, where *from);
 
-type *type_skip_attrs_casts(type *);
+type *type_skip_non_tdefs(type *);
+
+where *type_loc(type *);
 
 #endif

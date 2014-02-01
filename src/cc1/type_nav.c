@@ -42,11 +42,6 @@ struct type_nav *type_nav_init(void)
 static type *type_new(enum type_kind t, type *of)
 {
 	type *r = umalloc(sizeof *r);
-	if(of)
-		memcpy_safe(&r->where, &of->where);
-	else
-		where_cc1_current(&r->where);
-
 	r->type = t;
 	r->ref = of;
 	return r;
@@ -308,7 +303,7 @@ type *type_tdef_of(expr *e, decl *d)
 
 type *type_called(type *functy, struct funcargs **pfuncargs)
 {
-	functy = type_skip_tdefs_casts(functy);
+	functy = type_skip_all(functy);
 	assert(functy->type == type_func);
 	if(pfuncargs)
 		*pfuncargs = functy->bits.func.args;
@@ -351,6 +346,15 @@ type *type_unqualify(type *t)
 		else
 			break;
 
+	return t;
+}
+
+type *type_at_where(type *t, where *w)
+{
+	if(t->type != type_where || !where_equal(w, &t->bits.where)){
+		t = type_new(type_where, t);
+		memcpy_safe(&t->bits.where, w);
+	}
 	return t;
 }
 

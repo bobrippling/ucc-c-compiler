@@ -72,8 +72,8 @@ static enum type_cmp type_cmp_r(
 	if(!orig_a || !orig_b)
 		return orig_a == orig_b ? TYPE_EQUAL : TYPE_NOT_EQUAL;
 
-	a = type_skip_tdefs_casts(orig_a);
-	b = type_skip_tdefs_casts(orig_b);
+	a = type_skip_all(orig_a);
+	b = type_skip_all(orig_b);
 
 	/* array/func decay takes care of any array->ptr checks */
 	if(a->type != b->type){
@@ -135,6 +135,7 @@ static enum type_cmp type_cmp_r(
 		case type_cast:
 		case type_tdef:
 		case type_attr:
+		case type_where:
 			ICE("should've been skipped");
 
 		case type_func:
@@ -266,6 +267,7 @@ unsigned type_size(type *r, where *from)
 
 		case type_attr:
 		case type_cast:
+		case type_where:
 			return type_size(r->ref, from);
 
 		case type_ptr:
@@ -319,6 +321,23 @@ unsigned type_align(type *r, where *from)
 	return 1;
 }
 
+where *type_loc(type *t)
+{
+	while(t){
+		switch(t->type){
+			case type_where:
+				return &t->bits.where;
+			case type_attr:
+			case type_cast:
+				t = t->ref;
+				break;
+			default:
+				t = NULL;
+		}
+	}
+	return NULL;
+}
+
 static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz)
 {
 #define BUF_ADD(...) \
@@ -344,6 +363,7 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 		case type_tdef: /* just starting */
 		case type_cast: /* no need */
 		case type_attr:
+		case type_where:
 		case type_ptr:
 		case type_block:
 			need_paren = 0;
@@ -408,6 +428,7 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 			/* attribute not handled here */
 		case type_btype:
 		case type_cast:
+		case type_where:
 			/**/
 		case type_block:
 			break;
@@ -595,6 +616,7 @@ const char *type_kind_to_str(enum type_kind k)
 		CASE_STR_PREFIX(type, array);
 		CASE_STR_PREFIX(type, cast);
 		CASE_STR_PREFIX(type, attr);
+		CASE_STR_PREFIX(type, where);
 	}
 	ucc_unreach(NULL);
 }

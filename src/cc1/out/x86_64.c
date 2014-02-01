@@ -308,7 +308,7 @@ static int x86_caller_cleanup(type *fr)
 	const int cr_clean = x86_conv_lookup(fr)->caller_cleanup;
 
 	if(!cr_clean && type_is_variadic_func(fr))
-		die_at(&fr->where, "variadic functions can't be callee cleanup");
+		die_at(type_loc(fr), "variadic functions can't be callee cleanup");
 
 	return cr_clean;
 }

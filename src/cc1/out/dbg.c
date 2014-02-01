@@ -590,6 +590,7 @@ static struct DIE *dwarf_type_die(
 		}
 
 		case type_attr:
+		case type_where:
 			/* skip */
 			tydie = dwarf_type_die(cu, parent, ty->ref);
 			break;

@@ -271,6 +271,7 @@ void fold_type(type *r, type *parent, symtable *stab)
 			/*q_to_check = r->bits.block.qual; - allowed */
 			break;
 
+		case type_where:
 		case type_attr:
 			/* nothing to do */
 			break;
@@ -326,7 +327,7 @@ void fold_type(type *r, type *parent, symtable *stab)
 	 * since typedef int *intptr; intptr restrict a; is valid
 	 */
 	if(q_to_check & qual_restrict && !type_is_ptr(r))
-		warn_at(&r->where, "restrict on non-pointer type '%s'", type_to_str(r));
+		warn_at(type_loc(r), "restrict on non-pointer type '%s'", type_to_str(r));
 
 	fold_type(r->ref, r, stab);
 
@@ -336,7 +337,7 @@ void fold_type(type *r, type *parent, symtable *stab)
 		case type_func:
 			if(type_is(r->ref, type_func)){
 				fold_had_error = 1;
-				warn_at_print_error(&r->where,
+				warn_at_print_error(type_loc(r),
 						r->type == type_func
 							? "function returning a function"
 							: "array of functions");
@@ -346,7 +347,8 @@ void fold_type(type *r, type *parent, symtable *stab)
 		case type_block:
 			if(!type_is(r->ref, type_func)){
 				fold_had_error = 1;
-				warn_at_print_error(&r->where, "invalid block pointer - function required (got %s)",
+				warn_at_print_error(type_loc(r),
+						"invalid block pointer - function required (got %s)",
 						type_to_str(r->ref));
 			}
 			break;
@@ -810,7 +812,7 @@ void fold_decl_global(decl *d, symtable *stab)
 
 	/* can't check typedefs here - not folded.
 	 * functions can't be typedefs anyway */
-	fn_type = type_skip_attrs_casts(d->ref);
+	fn_type = type_skip_non_tdefs(d->ref);
 	if(fn_type->type == type_func && d->bits.func.code){
 		symtab_add_params(
 				DECL_FUNC_ARG_SYMTAB(d),
