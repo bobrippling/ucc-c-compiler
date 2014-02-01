@@ -18,12 +18,21 @@ const char *str_expr_funcall()
 	return "funcall";
 }
 
-static void sentinel_check(where *w, type *ref, expr **args,
+static attribute *func_attr_present(expr *e, enum attribute_type t)
+{
+	attribute *a;
+	a = expr_attr_present(e, t);
+	if(a)
+		return a;
+	return expr_attr_present(e->expr, t);
+}
+
+static void sentinel_check(where *w, expr *e, expr **args,
 		const int variadic, const int nstdargs, symtable *stab)
 {
 #define ATTR_WARN_RET(w, ...) do{ warn_at(w, __VA_ARGS__); return; }while(0)
 
-	attribute *attr = type_attr_present(ref, attr_sentinel);
+	attribute *attr = func_attr_present(e, attr_sentinel);
 	int i, nvs;
 	expr *sentinel;
 
@@ -224,7 +233,7 @@ invalid:
 
 		char buf[64];
 
-		if((da = type_attr_present(func_ty, attr_nonnull)))
+		if((da = func_attr_present(e, attr_nonnull)))
 			nonnulls = da->bits.nonnull_args;
 
 		for(i = j = 0; e->funcargs[i]; i++){
@@ -295,13 +304,13 @@ invalid:
 				e->funcargs, args_from_decl->variadic);
 
 		sentinel_check(
-				&e->where, r,
+				&e->where, e,
 				e->funcargs, args_from_decl->variadic,
 				count_decl, stab);
 	}
 
 	/* check the subexp tree type to get the funcall attributes */
-	if(expr_attr_present(e->expr, attr_warn_unused))
+	if(func_attr_present(e, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 }
 
@@ -373,7 +382,7 @@ void mutate_expr_funcall(expr *e)
 int expr_func_passable(expr *e)
 {
 	/* need to check the sub-expr, i.e. the function */
-	return !expr_attr_present(e->expr, attr_noreturn);
+	return !func_attr_present(e, attr_noreturn);
 }
 
 expr *expr_new_funcall()

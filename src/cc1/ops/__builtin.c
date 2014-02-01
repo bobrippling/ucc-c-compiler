@@ -433,9 +433,6 @@ static void fold_unreachable(expr *e, symtable *stab)
 {
 	type *tvoid = type_nav_btype(cc1_type_nav , type_void);
 
-	(void)stab;
-
-
 	e->expr->tree_type = type_func_of(tvoid,
 			funcargs_new(), symtab_new(stab, &e->where));
 
