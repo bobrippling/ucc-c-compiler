@@ -32,6 +32,8 @@
 #include "dbg.h"
 #include "write.h" /* dbg_add_file */
 
+#define RETAIN(x) (++(x)->retains, x)
+
 #define DW_TAGS                        \
 	X(DW_TAG_compile_unit, 0x11)         \
 	X(DW_TAG_subprogram, 0x2e)           \
@@ -189,6 +191,7 @@ struct dwarf_block
 
 struct DIE
 {
+	unsigned retains;
 	enum dwarf_tag tag;
 	unsigned long locn;
 	unsigned long abbrev_code;
@@ -249,6 +252,26 @@ static struct DIE *dwarf_type_die(
 		struct DIE_compile_unit *cu,
 		struct DIE *parent, type *ty);
 
+static void dwarf_die_free_r(struct DIE *die);
+
+static void dwarf_release(struct DIE *die)
+{
+	if(--die->retains == 0)
+		dwarf_die_free_r(die);
+}
+
+static void dwarf_release_children(struct DIE *parent)
+{
+	struct DIE **const ar = parent->children, **i;
+
+	/* prevent recursive releases from freeing us again */
+	parent->children = NULL;
+
+	for(i = ar; i && *i; i++)
+		dwarf_release(*i);
+
+	free(ar);
+}
 
 static void dwarf_die_new_at(struct DIE *d, enum dwarf_tag tag)
 {
@@ -264,11 +287,14 @@ static struct DIE *dwarf_die_new(enum dwarf_tag tag)
 
 static void dwarf_child(struct DIE *parent, struct DIE *child)
 {
-	dynarray_add(&parent->children, child);
+	dynarray_add(&parent->children, RETAIN(child));
 }
 
 static void dwarf_children(struct DIE *parent, struct DIE **children)
 {
+	struct DIE **i;
+	for(i = children; i && *i; i++)
+		(void)RETAIN(*i);
 	dynarray_add_tmparray(&parent->children, children);
 }
 
@@ -296,6 +322,7 @@ static void dwarf_die_free_1(struct DIE *die)
 
 			case DW_FORM_ref4:
 				/* tydie */
+				dwarf_release(a->bits.type_die);
 				break;
 
 			case DW_FORM_addr:
@@ -320,16 +347,15 @@ static void dwarf_die_free_1(struct DIE *die)
 		free(a);
 	}
 
+	dwarf_release_children(die);
+
 	free(die->attrs);
-	free(die->children);
 	free(die);
 }
 
 static void dwarf_die_free_r(struct DIE *die)
 {
-	struct DIE **child;
-	for(child = die->children; child && *child; child++)
-		dwarf_die_free_r(*child);
+	dwarf_release_children(die);
 
 	dwarf_die_free_1(die);
 }
@@ -459,7 +485,7 @@ static void dwarf_set_DW_AT_type(
 {
 	struct DIE *tydie = dwarf_type_die(cu, parent, ty);
 	if(tydie)
-		dwarf_attr(in, DW_AT_type, DW_FORM_ref4, tydie);
+		dwarf_attr(in, DW_AT_type, DW_FORM_ref4, RETAIN(tydie));
 }
 
 static void dwarf_add_tydie(
@@ -467,7 +493,8 @@ static void dwarf_add_tydie(
 {
 	if(!cu->types_to_dies)
 		cu->types_to_dies = dynmap_new(/*refeq:*/NULL);
-	dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, tydie);
+
+	dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, RETAIN(tydie));
 }
 
 static struct DIE *dwarf_type_die(
@@ -760,12 +787,12 @@ static struct DIE **dwarf_formal_params(
 			dwarf_attr(param, DW_AT_name, DW_FORM_string, d->spel);
 		}
 
-		dynarray_add(&dieargs, param);
+		dynarray_add(&dieargs, RETAIN(param));
 	}
 
 	if(args->variadic){
-		dynarray_add(&dieargs,
-				dwarf_die_new(DW_TAG_unspecified_parameters));
+		struct DIE *unspec = dwarf_die_new(DW_TAG_unspecified_parameters);
+		dynarray_add(&dieargs, RETAIN(unspec));
 	}
 
 	return dieargs;
@@ -1349,7 +1376,7 @@ void out_dbginfo(symtable_global *globs,
 					: dwarf_global_variable)(compile_unit, d);
 
 			if(new)
-				dynarray_add(&compile_unit->die.children, new);
+				dwarf_child(&compile_unit->die, new);
 		}
 	}
 
@@ -1357,7 +1384,7 @@ void out_dbginfo(symtable_global *globs,
 	    (tydie = dynmap_value(struct DIE *, compile_unit->types_to_dies, i));
 	    i++)
 	{
-		dynarray_add(&compile_unit->die.children, tydie);
+		dwarf_child(&compile_unit->die, tydie);
 	}
 
 	dwarf_offset_die(&compile_unit->die, &abbrev, info_offset);
@@ -1367,6 +1394,12 @@ void out_dbginfo(symtable_global *globs,
 			cc_out[SECTION_DBG_INFO],
 			info_offset);
 
+	for(i = 0;
+	    (tydie = dynmap_value(struct DIE *, compile_unit->types_to_dies, i));
+	    i++)
+	{
+		dwarf_release(tydie);
+	}
 	dynmap_free(compile_unit->types_to_dies);
 
 	dwarf_die_free_r(&compile_unit->die);
