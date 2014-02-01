@@ -31,6 +31,9 @@ dynmap_free(dynmap *map)
 {
 	pair *p, *q;
 
+	if(!map)
+		return;
+
 	for(p = map->pairs; p; q = p->next, free(p), p = q);
 
 	free(map);
