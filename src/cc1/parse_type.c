@@ -506,7 +506,10 @@ static type *parse_btype(
 	|| is_noreturn
 	|| (palign && *palign))
 	{
+		where w;
 		type *r;
+
+		where_cc1_current(&w);
 
 		if(signed_set){
 			switch(primitive){
@@ -592,7 +595,7 @@ static type *parse_btype(
 		parse_add_attr(&attr); /* int/struct-A __attr__ */
 		r = type_attributed(r, attr);
 
-		return r;
+		return type_at_where(r, &w);
 	}else{
 		return NULL;
 	}
