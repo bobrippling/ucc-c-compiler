@@ -451,11 +451,6 @@ static struct DIE *dwarf_basetype(enum type_primitive prim)
 	return tydie;
 }
 
-static int type_cmp_bool(void *a, void *b)
-{
-	return type_cmp(a, b, 0) != TYPE_EQUAL;
-}
-
 static void dwarf_set_DW_AT_type(
 		struct DIE *in,
 		struct DIE_compile_unit *cu,
@@ -471,7 +466,7 @@ static void dwarf_add_tydie(
 		struct DIE_compile_unit *cu, type *ty, struct DIE *tydie)
 {
 	if(!cu->types_to_dies)
-		cu->types_to_dies = dynmap_new(&type_cmp_bool);
+		cu->types_to_dies = dynmap_new(/*refeq:*/NULL);
 	dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, tydie);
 }
 
