@@ -949,16 +949,16 @@ static decl_init *is_char_init(
 
 static decl_init *decl_init_brace_up_array_chk_char(
 		decl_init *current, init_iter *iter,
-		type *next_type, symtable *stab)
+		type *const next_type, symtable *stab)
 {
 	const int limit = type_is_incomplete_array(next_type)
 		? -1 : (signed)type_array_len(next_type);
 
-	type *next = type_next(next_type);
+	type *array_of = type_next(next_type);
 
 	decl_init *strk;
 
-	if(!type_is_complete(next))
+	if(!type_is_complete(array_of))
 		die_incomplete(iter, next_type);
 
 	if((strk = is_char_init(next_type, iter, stab, NULL))){
@@ -1011,7 +1011,7 @@ static decl_init *decl_init_brace_up_array_chk_char(
 	return decl_init_brace_up_aggregate(
 			current, iter, stab, next_type,
 			(aggregate_brace_f *)&decl_init_brace_up_array2,
-			type_next(next_type), limit, /*allow_struct_copy:*/1);
+			array_of, limit, /*allow_struct_copy:*/1);
 }
 
 
