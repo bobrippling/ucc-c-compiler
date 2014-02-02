@@ -43,9 +43,6 @@ enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 	if(args_to == args_from)
 		return FUNCARGS_EXACT_EQUAL;
 
-	if(count_to == count_from && args_to->args_void == args_from->args_void)
-		return FUNCARGS_EXACT_EQUAL;
-
 	if((count_to   == 0 && !args_to->args_void)
 	|| (count_from == 0 && !args_from->args_void)){
 		/* a() or b() */
