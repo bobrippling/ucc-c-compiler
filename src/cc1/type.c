@@ -371,7 +371,7 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 
 		case type_func:
 		case type_array:
-			need_paren = !r->tmp || r->type != r->tmp->type;
+			need_paren = r->tmp && r->type != r->tmp->type;
 	}
 
 	if(need_paren){
