@@ -1,4 +1,4 @@
-// RUN: %ucc %s -S; [ $? -ne 0 ]
+// RUN: %ucc %s -S -o %t; [ $? -ne 0 ]
 
 main()
 {
