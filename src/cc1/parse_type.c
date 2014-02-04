@@ -881,6 +881,8 @@ static type_parsed *parsed_type_array(
 			/* grammar says it's a conditional here, hence no-comma */
 			size = PARSE_EXPR_NO_COMMA(scope);
 			EAT(token_close_square);
+
+			FOLD_EXPR(size, scope);
 		}
 
 		if(is_static > 1)
