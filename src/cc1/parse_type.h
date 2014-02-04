@@ -1,6 +1,8 @@
 #ifndef PARSE_TYPE_H
 #define PARSE_TYPE_H
 
+#include "../util/compiler.h"
+
 enum decl_mode
 {
 	DECL_SPEL_NEED    = 1 << 0,
@@ -34,15 +36,16 @@ decl **parse_decls_one_type(int newdecl, symtable *scope);
 int parse_decls_single_type(
 		enum decl_multi_mode mode,
 		int newdecl,
-		symtable *scope,
-		decl ***pdecls);
+		symtable *in_scope,
+		symtable *add_to_scope, decl ***pdecls);
 
 /* multiple of the above */
 void parse_decls_multi_type(
 		enum decl_multi_mode mode,
 		int newdecl_context,
-		symtable *scope,
-		decl ***pnew);
+		symtable *in_scope,
+		symtable *add_to_scope, decl ***pnew)
+	ucc_nonnull((3));
 
 struct funcargs *parse_func_arglist(symtable *);
 

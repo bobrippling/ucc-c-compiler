@@ -139,8 +139,8 @@ static type *parse_type_sue(
 					| DECL_MULTI_NAMELESS
 					| DECL_MULTI_ALLOW_ALIGNAS,
 					/*newdecl_context:*/0,
-					NULL,
-					&dmembers);
+					scope,
+					NULL, &dmembers);
 
 			if(!dmembers){
 				warn_at(NULL, "empty %s", sue_str_type(prim));
@@ -1265,8 +1265,8 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 int parse_decls_single_type(
 		enum decl_multi_mode mode,
 		int newdecl,
-		symtable *scope,
-		decl ***pdecls)
+		symtable *in_scope,
+		symtable *add_to_scope, decl ***pdecls)
 {
 	const enum decl_mode parse_flag =
 		(mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0);
@@ -1276,14 +1276,14 @@ int parse_decls_single_type(
 	type *this_ref;
 	decl *last = NULL;
 
-	UCC_ASSERT(scope || pdecls, "what shall I do?");
+	UCC_ASSERT(add_to_scope || pdecls, "what shall I do?");
 
-	parse_static_assert(scope);
+	parse_static_assert(in_scope);
 
 	this_ref = parse_btype(
 			mode & DECL_MULTI_ALLOW_STORE ? &store : NULL,
 			mode & DECL_MULTI_ALLOW_ALIGNAS ? &align : NULL,
-			newdecl, scope);
+			newdecl, in_scope);
 
 	if(!this_ref){
 		/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
@@ -1324,7 +1324,7 @@ int parse_decls_single_type(
 	}
 
 	do{
-		decl *d = parse_decl_extra(this_ref, parse_flag, store, align, scope);
+		decl *d = parse_decl_extra(this_ref, parse_flag, store, align, in_scope);
 		int had_field_width = 0;
 
 		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH)
@@ -1332,7 +1332,7 @@ int parse_decls_single_type(
 		&& accept(token_colon))
 		{
 			/* normal decl, check field spec */
-			d->bits.var.field_width = PARSE_EXPR_NO_COMMA(scope);
+			d->bits.var.field_width = PARSE_EXPR_NO_COMMA(in_scope);
 			had_field_width = 1;
 		}
 
@@ -1411,12 +1411,15 @@ int parse_decls_single_type(
 				/* add to .ref, since this is what is checked
 				 * when the function decays to a pointer */
 				attribute *a = NULL;
-				parse_add_attr(&a, scope);
+				parse_add_attr(&a, in_scope);
 				d->ref = type_attributed(d->ref, a);
 			}else{
 				decl **old_args = NULL;
 				/* NULL - we don't want these in a scope */
-				parse_decls_multi_type(0, /*newdecl_context:*/0, NULL, &old_args);
+				parse_decls_multi_type(
+						0, /*newdecl_context:*/0,
+						in_scope,
+						NULL, &old_args);
 				if(old_args){
 					check_and_replace_old_func(d, old_args);
 
@@ -1457,7 +1460,7 @@ add:
 			 * This also means any use of d will have the most up to date
 			 * attribute information about it
 			 */
-			decl *d_prev = symtab_search_d(scope, d->spel, NULL);
+			decl *d_prev = symtab_search_d(in_scope, d->spel, NULL);
 
 			if(d_prev){
 				/* link the proto chain for __attribute__ checking,
@@ -1471,8 +1474,8 @@ add:
 			}
 		}
 
-		if(scope)
-			dynarray_add(&scope->decls, d);
+		if(add_to_scope)
+			dynarray_add(&add_to_scope->decls, d);
 		if(pdecls)
 			dynarray_add(pdecls, d);
 
@@ -1513,11 +1516,16 @@ next:
 void parse_decls_multi_type(
 		enum decl_multi_mode mode,
 		int newdecl_context,
-		symtable *scope,
-		decl ***pdecls)
+		symtable *in_scope,
+		symtable *add_to_scope, decl ***pdecls)
 {
-	for(;;)
-		if(!parse_decls_single_type(mode,
-					newdecl_context, scope, pdecls))
+	for(;;){
+		if(!parse_decls_single_type(
+					mode, newdecl_context,
+					in_scope,
+					add_to_scope, pdecls))
+		{
 			break;
+		}
+	}
 }

@@ -271,7 +271,7 @@ static stmt *parse_stmt_and_decls(const struct stmt_ctx *const ctx)
 			| DECL_MULTI_ALLOW_ALIGNAS,
 			/*newdecl_context:*/1,
 			subctx.scope,
-			NULL);
+			subctx.scope, NULL);
 
 	if(curtok != token_close_block){
 		/* fine with a normal statement */
