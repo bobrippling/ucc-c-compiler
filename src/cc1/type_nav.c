@@ -406,7 +406,7 @@ static void type_dump_t(type *t, FILE *f, int indent)
 {
 	int i;
 	for(i = 0; i < indent; i++)
-		putchar(' ');
+		fputc(' ', f);
 
 	fprintf(f, "%s %s\n",
 			type_kind_to_str(t->type),
