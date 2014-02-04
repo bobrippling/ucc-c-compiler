@@ -429,9 +429,18 @@ static void type_dump_t(type *t, FILE *f, int indent)
 void type_nav_dump(struct type_nav *nav)
 {
 	int i;
+	type *t;
+
 	for(i = 0; i < N_TYPE_KINDS; i++){
-		type *t = nav->btypes[i];
+		t = nav->btypes[i];
 		if(t)
 			type_dump_t(t, stderr, 0);
+	}
+
+	for(i = 0;
+	    (t = dynmap_value(type *, nav->suetypes, i));
+			i++)
+	{
+		type_dump_t(t, stderr, 0);
 	}
 }
