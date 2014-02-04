@@ -224,7 +224,7 @@ invalid:
 	/* this block folds the args and type-checks */
 	if(e->funcargs){
 		unsigned long nonnulls = 0;
-		int i, j;
+		int i;
 		attribute *da;
 #define ARG_BUF(buf, i, sp)             \
 				snprintf(buf, sizeof buf,       \
@@ -236,7 +236,7 @@ invalid:
 		if((da = func_attr_present(e, attr_nonnull)))
 			nonnulls = da->bits.nonnull_args;
 
-		for(i = j = 0; e->funcargs[i]; i++){
+		for(i = 0; e->funcargs[i]; i++){
 			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
 
 			ARG_BUF(buf, i, sp);
