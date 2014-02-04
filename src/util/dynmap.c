@@ -58,6 +58,9 @@ dynmap_nochk_get(dynmap *map, void *key)
 {
 	pair *i;
 
+	if(!map)
+		return NULL;
+
 	i = dynmap_nochk_pair(map, key);
 	if(i)
 		return i->value;
