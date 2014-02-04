@@ -4,6 +4,7 @@
 struct decl;
 
 type *type_skip_all(type *r);
+type *type_skip_non_tdefs(type *);
 
 struct decl *type_is_tdef(type *r);
 

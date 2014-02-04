@@ -33,37 +33,40 @@ static type *type_next_1(type *r)
 	return r->ref;
 }
 
-type *type_skip_all(type *r)
+enum type_skippage
 {
-	while(r)
-		switch(r->type){
+	STOP_AT_TDEF = 1 << 0,
+};
+static type *type_skip(type *t, enum type_skippage skippage)
+{
+	while(t){
+		switch(t->type){
 			case type_tdef:
+				if(skippage & STOP_AT_TDEF)
+					goto fin;
+				break;
 			case type_cast:
 			case type_attr:
 			case type_where:
-				r = type_next_1(r);
-				continue;
+				break;
 			default:
 				goto fin;
 		}
+		t = type_next_1(t);
+	}
 
 fin:
-	return r;
+	return t;
 }
 
-type *type_skip_non_tdefs(type *r)
+type *type_skip_all(type *t)
 {
-	while(r) switch(r->type){
-		case type_cast:
-		case type_attr:
-		case type_where:
-			r = type_next_1(r);
-			break;
-		default:
-			goto out;
-	}
-out:
-	return r;
+	return type_skip(t, 0);
+}
+
+type *type_skip_non_tdefs(type *t)
+{
+	return type_skip(t, STOP_AT_TDEF);
 }
 
 decl *type_is_tdef(type *r)

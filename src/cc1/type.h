@@ -121,8 +121,6 @@ enum type_str_type type_str_type(type *);
 
 integral_t type_max(type *r, where *from);
 
-type *type_skip_non_tdefs(type *);
-
 where *type_loc(type *);
 
 #endif
