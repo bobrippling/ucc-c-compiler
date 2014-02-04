@@ -10,7 +10,6 @@
 
 #include "../cc1.h"
 #include "../tokenise.h"
-#include "../parse.h"
 #include "../fold.h"
 #include "../funcargs.h"
 #include "../type_nav.h"
@@ -23,9 +22,13 @@
 #include "../out/out.h"
 #include "__builtin_va.h"
 
+#include "../parse_expr.h"
+#include "../parse_type.h"
+
 #define PREFIX "__builtin_"
 
-typedef expr *func_builtin_parse(const char *ident);
+typedef expr *func_builtin_parse(
+		const char *ident, symtable *);
 
 static func_builtin_parse parse_unreachable,
                           parse_compatible_p,
@@ -117,15 +120,15 @@ static builtin_table *builtin_find(const char *sp)
 	return found;
 }
 
-expr *builtin_parse(const char *sp)
+expr *builtin_parse(const char *sp, symtable *scope)
 {
 	builtin_table *b;
 
 	if((fopt_mode & FOPT_BUILTIN) && (b = builtin_find(sp))){
-		expr *(*f)(const char *) = b->parser;
+		expr *(*f)(const char *, symtable *) = b->parser;
 
 		if(f)
-			return f(sp);
+			return f(sp, scope);
 	}
 
 	return NULL;
@@ -183,11 +186,11 @@ static void builtin_gen_undefined(expr *e)
 	out_push_noop(); /* needed for function return pop */
 }
 
-expr *parse_any_args(void)
+expr *parse_any_args(symtable *scope)
 {
 	expr *fcall = expr_new_funcall();
 
-	fcall->funcargs = parse_funcargs();
+	fcall->funcargs = parse_funcargs(scope);
 	return fcall;
 }
 
@@ -441,11 +444,12 @@ static void fold_unreachable(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static expr *parse_unreachable(const char *ident)
+static expr *parse_unreachable(const char *ident, symtable *scope)
 {
 	expr *fcall = expr_new_funcall();
 
 	(void)ident;
+	(void)scope;
 
 	expr_mutate_builtin(fcall, unreachable);
 
@@ -481,18 +485,18 @@ static void const_compatible_p(expr *e, consty *k)
 	k->bits.num.val.i = !!(type_cmp(types[0], types[1], 0) & TYPE_EQUAL_ANY);
 }
 
-static expr *expr_new_funcall_typelist(void)
+static expr *expr_new_funcall_typelist(symtable *scope)
 {
 	expr *fcall = expr_new_funcall();
 
-	fcall->bits.types = parse_type_list();
+	fcall->bits.types = parse_type_list(scope);
 
 	return fcall;
 }
 
-static expr *parse_compatible_p(const char *ident)
+static expr *parse_compatible_p(const char *ident, symtable *scope)
 {
-	expr *fcall = expr_new_funcall_typelist();
+	expr *fcall = expr_new_funcall_typelist(scope);
 
 	(void)ident;
 
@@ -528,9 +532,9 @@ static void const_constant_p(expr *e, consty *k)
 	k->bits.num.val.i = is_const;
 }
 
-static expr *parse_constant_p(const char *ident)
+static expr *parse_constant_p(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 	(void)ident;
 
 	expr_mutate_builtin_const(fcall, constant_p);
@@ -577,11 +581,11 @@ static expr *builtin_frame_address_mutate(expr *e)
 	return e;
 }
 
-static expr *parse_frame_address(const char *ident)
+static expr *parse_frame_address(const char *ident, symtable *scope)
 {
 	(void)ident;
 
-	return builtin_frame_address_mutate(parse_any_args());
+	return builtin_frame_address_mutate(parse_any_args(scope));
 }
 
 expr *builtin_new_frame_address(int depth)
@@ -652,9 +656,9 @@ static void const_expect(expr *e, consty *k)
 	const_fold(e->funcargs[0], k);
 }
 
-static expr *parse_expect(const char *ident)
+static expr *parse_expect(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 
 	(void)ident;
 
@@ -716,9 +720,9 @@ static void gen_choose_expr(expr *e)
 	gen_expr(CHOOSE_EXPR_CHOSEN(e));
 }
 
-static expr *parse_choose_expr(const char *ident)
+static expr *parse_choose_expr(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 
 	(void)ident;
 
@@ -763,9 +767,9 @@ static void const_is_signed(expr *e, consty *k)
 	k->bits.num.val.i = type_is_signed(e->bits.types[0]);
 }
 
-static expr *parse_is_signed(const char *ident)
+static expr *parse_is_signed(const char *ident, symtable *scope)
 {
-	expr *fcall = expr_new_funcall_typelist();
+	expr *fcall = expr_new_funcall_typelist(scope);
 
 	(void)ident;
 
@@ -821,9 +825,9 @@ static expr *builtin_nan_mutate(expr *e)
 	return e;
 }
 
-static expr *parse_nan(const char *ident)
+static expr *parse_nan(const char *ident, symtable *scope)
 {
-	expr *e = builtin_nan_mutate(parse_any_args());
+	expr *e = builtin_nan_mutate(parse_any_args(scope));
 
 	if(!strncmp(ident, PREFIX, strlen(PREFIX)))
 		ident += strlen(PREFIX);
@@ -867,9 +871,9 @@ static void const_strlen(expr *e, consty *k)
 	}
 }
 
-static expr *parse_strlen(const char *ident)
+static expr *parse_strlen(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 
 	(void)ident;
 

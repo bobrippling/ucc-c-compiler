@@ -14,8 +14,9 @@
 
 #include "tokenise.h"
 #include "tokconv.h"
-#include "parse.h"
+
 #include "parse_type.h"
+#include "parse_stmt.h"
 
 #include "cc1.h"
 #include "fold.h"
@@ -48,8 +49,6 @@ void parse_and_fold(symtable_global *globals)
 {
 	symtable_gasm **last_gasms = NULL;
 
-	current_scope = &globals->stab;
-
 	while(curtok != token_eof){
 		decl **new = NULL;
 		decl **di;
@@ -61,18 +60,18 @@ void parse_and_fold(symtable_global *globals)
 				| DECL_MULTI_ALLOW_STORE
 				| DECL_MULTI_ALLOW_ALIGNAS,
 				/*newdecl:*/1,
-				current_scope,
+				&globals->stab,
 				&new);
 
 		/* global struct layout-ing */
-		symtab_fold_sues(current_scope);
+		symtab_fold_sues(&globals->stab);
 
 		if(new){
 			link_gasms(&last_gasms, *new);
 
 			/* fold what we got */
 			for(di = new; di && *di; di++)
-				fold_decl_global(*di, current_scope);
+				fold_decl_global(*di, &globals->stab);
 
 			dynarray_free(decl **, &new, NULL);
 
@@ -88,18 +87,18 @@ void parse_and_fold(symtable_global *globals)
 
 	EAT(token_eof);
 
-	symtab_fold_sues(current_scope); /* superflous except for empty
+	symtab_fold_sues(&globals->stab); /* superflous except for empty
 	                                  * files/trailing struct defs */
-	symtab_fold_decls(current_scope); /* check for dups */
-	symtab_check_rw(current_scope); /* basic static analysis */
-	symtab_check_static_asserts(current_scope);
+	symtab_fold_decls(&globals->stab); /* check for dups */
+	symtab_check_rw(&globals->stab); /* basic static analysis */
+	symtab_check_static_asserts(&globals->stab);
 
-	fold_merge_tenatives(current_scope);
+	fold_merge_tenatives(&globals->stab);
 
 	dynarray_free(symtable_gasm **, &last_gasms, NULL);
 
 	if(parse_had_error || fold_had_error)
 		exit(1);
 
-	UCC_ASSERT(!current_scope->parent, "scope leak during parse");
+	UCC_ASSERT(!globals->stab.parent, "scope leak during parse");
 }

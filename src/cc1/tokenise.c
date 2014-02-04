@@ -140,6 +140,7 @@ static struct line_list
 
 /* -- */
 enum token curtok, curtok_uneat;
+int parse_had_error;
 
 numeric currentval = { { 0 } }; /* an integer literal */
 

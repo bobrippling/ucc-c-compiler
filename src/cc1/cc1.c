@@ -12,7 +12,6 @@
 #include "../util/util.h"
 #include "../util/platform.h"
 #include "tokenise.h"
-#include "parse.h"
 #include "cc1.h"
 #include "fold.h"
 #include "gen_asm.h"

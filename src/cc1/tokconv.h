@@ -35,6 +35,4 @@ int          curtok_is_compound_assignment(void);
 char *token_to_str(enum token t);
 char *curtok_to_identifier(int *alloc); /* e.g. token_const -> "const" */
 
-extern int parse_had_error;
-
 #endif

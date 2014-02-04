@@ -22,10 +22,11 @@
 
 #include "../tokenise.h"
 #include "../tokconv.h"
-#include "../parse.h"
 #include "../parse_type.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+
+#include "../parse_expr.h"
 
 static void va_type_check(expr *va_l, expr *in, symtable *stab)
 {
@@ -182,12 +183,12 @@ static void builtin_gen_va_start(expr *e)
 #endif
 }
 
-expr *parse_va_start(const char *ident)
+expr *parse_va_start(const char *ident, symtable *scope)
 {
 	/* va_start(__builtin_va_list &, identifier)
 	 * second argument may be any expression - we don't use it
 	 */
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 	(void)ident;
 	expr_mutate_builtin_gen(fcall, va_start);
 	return fcall;
@@ -498,17 +499,17 @@ static void fold_va_arg(expr *e, symtable *stab)
 #endif
 }
 
-expr *parse_va_arg(const char *ident)
+expr *parse_va_arg(const char *ident, symtable *scope)
 {
 	/* va_arg(list, type) */
 	expr *fcall = expr_new_funcall();
-	expr *list = parse_expr_no_comma();
+	expr *list = PARSE_EXPR_NO_COMMA(scope);
 	type *ty;
 
 	(void)ident;
 
 	EAT(token_comma);
-	ty = parse_type(0);
+	ty = parse_type(0, scope);
 
 	fcall->lhs = list;
 	fcall->bits.va_arg_type = ty;
@@ -537,9 +538,9 @@ static void fold_va_end(expr *e, symtable *stab)
 	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
-expr *parse_va_end(const char *ident)
+expr *parse_va_end(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 
 	(void)ident;
 	expr_mutate_builtin_gen(fcall, va_end);
@@ -574,9 +575,9 @@ static void fold_va_copy(expr *e, symtable *stab)
 	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
-expr *parse_va_copy(const char *ident)
+expr *parse_va_copy(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 	(void)ident;
 	expr_mutate_builtin_gen(fcall, va_copy);
 	return fcall;

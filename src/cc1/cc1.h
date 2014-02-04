@@ -4,7 +4,6 @@
 #include "../util/std.h"
 
 /*#define FANCY_STACK_INIT 1*/
-#define ASM_INLINE_FNAME "__asm__"
 
 enum warning
 {

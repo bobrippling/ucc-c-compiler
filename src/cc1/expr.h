@@ -1,6 +1,8 @@
 #ifndef EXPR_H
 #define EXPR_H
 
+#define ASM_INLINE_FNAME "__asm__"
+
 #include "strings.h"
 #include "type.h"
 #include "op.h"

@@ -1,11 +1,30 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <ctype.h>
+
+#include "../util/util.h"
+
+#include "parse_attr.h"
+
+#include "tokenise.h"
+#include "tokconv.h"
+
+#include "cc1_where.h"
+
+#include "parse_expr.h"
+
 static void parse_attr_bracket_chomp(int had_open_paren);
 
-static attribute *parse_attr_format(void)
+static attribute *parse_attr_format(symtable *scope)
 {
 	/* __attribute__((format (printf, fmtarg, firstvararg))) */
 	attribute *da;
 	char *func;
 	enum fmt_type fmt;
+
+	(void)scope;
 
 	EAT(token_open_paren);
 
@@ -119,7 +138,7 @@ static attribute *parse_attr_nonnull()
 	return da;
 }
 
-static expr *optional_parened_expr(void)
+static expr *optional_parened_expr(symtable *scope)
 {
 	if(accept(token_open_paren)){
 		expr *e;
@@ -127,7 +146,7 @@ static expr *optional_parened_expr(void)
 		if(accept(token_close_paren))
 			goto out;
 
-		e = parse_expr_no_comma();
+		e = PARSE_EXPR_NO_COMMA(scope);
 
 		EAT(token_close_paren);
 
@@ -137,20 +156,20 @@ out:
 	return NULL;
 }
 
-static attribute *parse_attr_sentinel()
+static attribute *parse_attr_sentinel(symtable *scope)
 {
 	attribute *da = attribute_new(attr_sentinel);
 
-  da->bits.sentinel = optional_parened_expr();
+  da->bits.sentinel = optional_parened_expr(scope);
 
 	return da;
 }
 
-static attribute *parse_attr_aligned()
+static attribute *parse_attr_aligned(symtable *scope)
 {
 	attribute *da = attribute_new(attr_aligned);
 
-  da->bits.align = optional_parened_expr();
+  da->bits.align = optional_parened_expr(scope);
 
 	return da;
 }
@@ -185,7 +204,7 @@ CALL_CONV(fastcall)
 static struct
 {
 	const char *ident;
-	attribute *(*parser)(void);
+	attribute *(*parser)(symtable *);
 } attrs[] = {
 #define ATTR(x) { #x, parse_attr_ ## x }
 	ATTR(format),
@@ -227,7 +246,7 @@ static void parse_attr_bracket_chomp(int had_open_paren)
 	}
 }
 
-static attribute *parse_attr_single(const char *ident)
+static attribute *parse_attr_single(const char *ident, symtable *scope)
 {
 	int i;
 
@@ -236,7 +255,7 @@ static attribute *parse_attr_single(const char *ident)
 		if(!strcmp(attrs[i].ident, ident)
 		|| (snprintf(buf, sizeof buf, "__%s__", attrs[i].ident), !strcmp(buf, ident)))
 		{
-			return attrs[i].parser();
+			return attrs[i].parser(scope);
 		}
 	}
 
@@ -249,7 +268,7 @@ static attribute *parse_attr_single(const char *ident)
 	return NULL;
 }
 
-static attribute *parse_attr(void)
+attribute *parse_attr(symtable *scope)
 {
 	attribute *attr = NULL, **next = &attr;
 
@@ -273,7 +292,7 @@ static attribute *parse_attr(void)
 
 		EAT(curtok);
 
-		if((this = *next = parse_attr_single(ident))){
+		if((this = *next = parse_attr_single(ident, scope))){
 			memcpy_safe(&this->where, &w);
 			next = &(*next)->next;
 		}

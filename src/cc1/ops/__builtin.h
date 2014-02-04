@@ -8,8 +8,8 @@
 expr *builtin_new_reg_save_area(void);
 expr *builtin_new_frame_address(int depth);
 
-expr *builtin_parse(const char *sp);
-expr *parse_any_args(void);
+expr *builtin_parse(const char *sp, symtable *scope);
+expr *parse_any_args(symtable *scope);
 
 void builtin_gen_print(expr *);
 #define BUILTIN_SET_GEN(exp, target)      \

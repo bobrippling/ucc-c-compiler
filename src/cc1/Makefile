@@ -17,7 +17,7 @@ OBJ = \
 	decl.o attribute.o decl_init.o funcargs.o expr.o stmt.o \
 	btype.o type.o type_is.o type_nav.o op.o c_types.o \
 	tokconv.o tokenise.o \
-	parse.o parse_type.o \
+	parse_expr.o parse_stmt.o parse_type.o parse_attr.o parse_init.o \
 	fold.o fold_sym.o fold_sue.o const.o format_chk.o \
 	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o \
 	gen_asm.o gen_str.o gen_style.o \

@@ -3,8 +3,6 @@
 
 #include "num.h"
 
-extern numeric currentval;
-
 enum token
 {
 	token_do,
@@ -129,5 +127,9 @@ char *token_current_spel(void);
 char *token_current_spel_peek(void);
 
 int tok_at_label(void);
+
+extern numeric currentval;
+extern enum token curtok;
+extern int parse_had_error;
 
 #endif
