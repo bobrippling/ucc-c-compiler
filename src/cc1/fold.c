@@ -43,6 +43,7 @@ int fold_type_chk_warn(
 		where *w, const char *desc)
 {
 	int error = 1;
+	const char *detail = "";
 
 	switch(type_cmp(lhs, rhs, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
 		case TYPE_CONVERTIBLE_IMPLICIT:
@@ -57,6 +58,7 @@ int fold_type_chk_warn(
 			break;
 
 		case TYPE_QUAL_NESTED_CHANGE: /* char ** <- const char ** or vice versa */
+			detail = "nested ";
 		case TYPE_QUAL_POINTED_SUB: /* char * <- const char * */
 		case TYPE_CONVERTIBLE_EXPLICIT:
 			error = 0;
@@ -68,8 +70,8 @@ int fold_type_chk_warn(
 
 			(error ? warn_at_print_error : warn_at)(
 					w,
-					"mismatching types, %s:\n%s: note: '%s' vs '%s'",
-					desc, where_str_r(wbuf, w),
+					"mismatching %stypes, %s:\n%s: note: '%s' vs '%s'",
+					detail, desc, where_str_r(wbuf, w),
 					type_to_str_r(buf, lhs),
 					type_to_str(       rhs));
 
