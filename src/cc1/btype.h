@@ -8,13 +8,16 @@ enum type_cmp
 	TYPE_EQUAL = 1 << 0,
 	TYPE_EQUAL_TYPEDEF = 1 << 1, /* size_t <-> unsigned long */
 
-	TYPE_QUAL_LOSS = 1 << 2,
-	TYPE_QUAL_CHANGE = 1 << 3, /* const int -> int, etc */
+	TYPE_QUAL_ADD = 1 << 2, /* const int <- int */
+	TYPE_QUAL_SUB = 1 << 3, /* int <- const int */
+	TYPE_QUAL_POINTED_ADD = 1 << 4, /* const char * <- char * */
+	TYPE_QUAL_POINTED_SUB = 1 << 5, /* char * <- const char * */
+	TYPE_QUAL_NESTED_CHANGE = 1 << 6, /* char ** <- const char ** */
 
-	TYPE_CONVERTIBLE_IMPLICIT = 1 << 4,
-	TYPE_CONVERTIBLE_EXPLICIT = 1 << 5,
+	TYPE_CONVERTIBLE_IMPLICIT = 1 << 7,
+	TYPE_CONVERTIBLE_EXPLICIT = 1 << 8,
 
-	TYPE_NOT_EQUAL = 1 << 6
+	TYPE_NOT_EQUAL = 1 << 9
 };
 #define TYPE_EQUAL_ANY (TYPE_EQUAL | TYPE_EQUAL_TYPEDEF)
 
@@ -76,9 +79,6 @@ int btype_is_signed(const btype *);
 const char *btype_to_str(const btype *t);
 unsigned btype_size( const btype *, where *from);
 unsigned btype_align(const btype *, where *from);
-
-/* is there a loss of qualifiers going from 'b' to 'a' ? */
-int type_qual_loss(enum type_qualifier a, enum type_qualifier b);
 
 const char *type_primitive_to_str(const enum type_primitive);
 const char *type_qual_to_str(     const enum type_qualifier, int trailing_space);

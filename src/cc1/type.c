@@ -19,45 +19,53 @@
 
 #include "type_is.h"
 
-static int type_qual_cmp(type *a, type *b)
+static enum type_qualifier type_cast_get_qual(type *t)
 {
-	int at = a->type == type_cast;
-	int bt = b->type == type_cast;
+	t = type_skip_non_casts(t);
+	if(t->type != type_cast)
+		return qual_none;
+	if(t->bits.cast.is_signed_cast)
+		return qual_none;
+	return t->bits.cast.qual;
+}
 
-	switch(at - bt){
-		case -1:
-		case 1:
-			/* different */
-			return 1;
-
-		default:
-			ucc_unreach(0);
-
+static int type_qual_cmp_1(
+		enum type_qualifier a,
+		enum type_qualifier b,
+		enum type_qualifier mask)
+{
+	switch(!!(a & mask) - !!(b & mask)){
 		case 0:
-			if(!at)
-				return 0; /* neither are casts */
-			/* equal: compare qualifiers */
-			break;
-	}
-
-	switch(a->bits.cast.is_signed_cast - b->bits.cast.is_signed_cast){
-		case -1:
-		case 1:
+			return 0;
+		case 1: /* a has it */
+			return -1;
+		case -1: /* b has it */
 			return 1;
-
-		default:
-			ucc_unreach(0);
-
-		case 0:
-			break;
 	}
+	ucc_unreach(0);
+}
 
-	if(a->bits.cast.is_signed_cast){
-		/* not bothered */
+static int type_qual_cmp(enum type_qualifier a, enum type_qualifier b)
+{
+	int r;
+
+	a &= ~qual_restrict,
+	b &= ~qual_restrict;
+
+	if(a == b)
 		return 0;
-	}
 
-	return type_qual_loss(a->bits.cast.qual, b->bits.cast.qual);
+	/* check const, then volatile */
+	r = type_qual_cmp_1(a, b, qual_const);
+	if(r)
+		return r;
+
+	r = type_qual_cmp_1(a, b, qual_volatile);
+	if(r)
+		return r;
+
+	/* should be unreachable, or we've missed a qual_* */
+	return 0;
 }
 
 static enum type_cmp type_cmp_r(
@@ -186,22 +194,39 @@ static enum type_cmp type_cmp_r(
 	if(ret == TYPE_CONVERTIBLE_IMPLICIT && a->type == type_ptr)
 		ret = TYPE_CONVERTIBLE_EXPLICIT;
 
-	if(ret & TYPE_EQUAL_ANY
-	&& (a->type == type_ptr || a->type == type_block))
-	{
-		/* check qualifiers of what we point to */
-		const enum type_qualifier qa = type_qual(a->ref),
-		                          qb = type_qual(b->ref);
-
-		if(type_qual_loss(qa, qb))
-			/* warns are done, but conversion allowed */
-			ret = TYPE_QUAL_LOSS;
+	if(a->type == type_ptr || a->type == type_block){
+		switch(ret){
+#define MAP(a, b) case a: ret = b; break
+			MAP(TYPE_QUAL_ADD, TYPE_QUAL_POINTED_ADD);
+			MAP(TYPE_QUAL_SUB, TYPE_QUAL_POINTED_SUB);
+			MAP(TYPE_QUAL_POINTED_ADD, TYPE_QUAL_NESTED_CHANGE);
+			MAP(TYPE_QUAL_POINTED_SUB, TYPE_QUAL_NESTED_CHANGE);
+#undef MAP
+			default:
+				break;
+		}
 	}
 
-	/* check int <- int const */
 	if(ret & TYPE_EQUAL_ANY){
-		if(type_qual_cmp(orig_a, orig_b))
-			ret = TYPE_QUAL_CHANGE;
+		int a_cast = type_cast_get_qual(orig_a);
+		int b_cast = type_cast_get_qual(orig_b);
+
+		if(a_cast && b_cast){
+			switch(type_qual_cmp(orig_a->bits.cast.qual, orig_b->bits.cast.qual)){
+				case -1:
+					/* a has more */
+					ret = TYPE_QUAL_ADD;
+					break;
+				case 1:
+					/* b has more */
+					ret = TYPE_QUAL_SUB;
+					break;
+			}
+		}else if(a_cast){
+			ret = TYPE_QUAL_ADD;
+		}else if(b_cast){
+			ret = TYPE_QUAL_SUB;
+		} /* else neither are casts */
 	}
 
 	if(ret == TYPE_EQUAL){

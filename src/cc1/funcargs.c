@@ -61,13 +61,16 @@ enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 		for(i = 0; args_to->arglist[i]; i++){
 			switch(type_cmp(args_to->arglist[i]->ref, args_from->arglist[i]->ref, 0)){
 				case TYPE_EQUAL:
-				case TYPE_QUAL_CHANGE: /* f(const int) and f(int) */
+				case TYPE_QUAL_ADD: /* f(const int) and f(int) */
+				case TYPE_QUAL_SUB: /* f(int) and f(const int) */
 				case TYPE_EQUAL_TYPEDEF:
 					break;
 
+				case TYPE_QUAL_POINTED_ADD:
+				case TYPE_QUAL_POINTED_SUB:
+				case TYPE_QUAL_NESTED_CHANGE:
 				case TYPE_CONVERTIBLE_EXPLICIT:
 				case TYPE_CONVERTIBLE_IMPLICIT:
-				case TYPE_QUAL_LOSS:
 				case TYPE_NOT_EQUAL:
 					return FUNCARGS_MISMATCH_TYPES;
 			}

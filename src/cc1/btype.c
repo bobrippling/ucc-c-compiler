@@ -120,17 +120,6 @@ int btype_is_signed(const btype *t)
 	return type_primitive_is_signed(t->primitive);
 }
 
-int type_qual_loss(enum type_qualifier a, enum type_qualifier b)
-{
-	a &= ~qual_restrict,
-	b &= ~qual_restrict;
-
-	/* if we have b, remove all of a's bits and still have stuff,
-	 * e.g. const or volatile, then a takes away b's qualifiers
-	 */
-	return b & ~a ? 1 : 0;
-}
-
 unsigned btype_size(const btype *t, where *from)
 {
 	if(t->sue)

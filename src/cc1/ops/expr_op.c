@@ -252,8 +252,11 @@ type *op_required_promotion(
 					case TYPE_NOT_EQUAL:
 						die_at(w, "subtraction of distinct pointer types %s and %s",
 								type_to_str(tlhs), type_to_str_r(buf, trhs));
-					case TYPE_QUAL_LOSS:
-					case TYPE_QUAL_CHANGE:
+					case TYPE_QUAL_ADD:
+					case TYPE_QUAL_SUB:
+					case TYPE_QUAL_POINTED_ADD:
+					case TYPE_QUAL_POINTED_SUB:
+					case TYPE_QUAL_NESTED_CHANGE:
 					case TYPE_EQUAL:
 					case TYPE_EQUAL_TYPEDEF:
 						break;

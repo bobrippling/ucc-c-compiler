@@ -50,11 +50,14 @@ int fold_type_chk_warn(
 			 *  - they match but we need the _Bool cast */
 			return 1;
 		case TYPE_EQUAL:
-		case TYPE_QUAL_CHANGE:
+		case TYPE_QUAL_ADD: /* const int <- int */
+		case TYPE_QUAL_SUB: /* int <- const int */
+		case TYPE_QUAL_POINTED_ADD: /* const char * <- char * */
 		case TYPE_EQUAL_TYPEDEF:
 			break;
 
-		case TYPE_QUAL_LOSS:
+		case TYPE_QUAL_NESTED_CHANGE: /* char ** <- const char ** or vice versa */
+		case TYPE_QUAL_POINTED_SUB: /* char * <- const char * */
 		case TYPE_CONVERTIBLE_EXPLICIT:
 			error = 0;
 
