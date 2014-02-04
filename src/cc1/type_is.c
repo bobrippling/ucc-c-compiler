@@ -307,27 +307,6 @@ int type_is_variably_modified(type *r)
 	return 0;
 }
 
-enum type_str_type
-type_str_type(type *r)
-{
-	type *t = type_is_array(r);
-	if(!t)
-		t = type_is_ptr(r);
-	t = type_is_primitive(t, type_unknown);
-	switch(t ? t->bits.type->primitive : type_unknown){
-		case type_schar:
-		case type_nchar:
-		case type_uchar:
-			return type_str_char;
-
-		case type_int:
-			return type_str_wchar;
-
-		default:
-			return type_str_no;
-	}
-}
-
 int type_is_incomplete_array(type *r)
 {
 	if((r = type_is(r, type_array)))

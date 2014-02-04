@@ -620,3 +620,24 @@ const char *type_kind_to_str(enum type_kind k)
 	}
 	ucc_unreach(NULL);
 }
+
+enum type_str_type
+type_str_type(type *r)
+{
+	type *t = type_is_array(r);
+	if(!t)
+		t = type_is_ptr(r);
+	t = type_is_primitive(t, type_unknown);
+	switch(t ? t->bits.type->primitive : type_unknown){
+		case type_schar:
+		case type_nchar:
+		case type_uchar:
+			return type_str_char;
+
+		case type_int:
+			return type_str_wchar;
+
+		default:
+			return type_str_no;
+	}
+}
