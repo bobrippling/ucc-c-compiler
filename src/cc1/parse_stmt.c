@@ -28,7 +28,6 @@ struct stmt_ctx
 
 static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 {
-	decl *d;
 	where here;
 
 	where_cc1_current(&here);
@@ -41,16 +40,33 @@ static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 	 *
 	 * C90 drags the scope of the enum up to the enclosing block
 	 */
-	if(cc1_std == STD_C99)
+	if(cc1_std >= STD_C99){
 		ctx->scope = t->symtab = symtab_new(t->symtab, &here);
+	}
 
-	d = parse_decl_single(DECL_SPEL_NEED, 0, ctx->scope);
-	if(d){
-		t->flow = stmt_flow_new(symtab_new(ctx->scope, &here));
+  if(parse_at_decl(ctx->scope)){
+		decl *d;
+
+		/* if we are at a type, push a scope for it, for
+		 * for(int i ...), if(int i = ...) etc
+		 */
+		symtable *init_scope = symtab_new(t->symtab, &here);
+
+		d = parse_decl_single(
+				DECL_SPEL_NEED, 0,
+				ctx->scope, init_scope);
+
+		UCC_ASSERT(d, "at decl, but no decl?");
+
+		t->flow = stmt_flow_new(init_scope);
+
+		UCC_ASSERT(
+				t->flow->for_init_symtab == init_scope,
+				"wrong scope for stmt-init");
 
 		ctx->scope = t->symtab = t->flow->for_init_symtab;
 
-		dynarray_add(&t->symtab->decls, d);
+		/* `d' is added to the scope implicitly */
 
 		if(accept(token_comma)){
 			/* if(int i = 5, i > f()){ ... } */
@@ -172,7 +188,7 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 			sf->for_init = parse_expr_exp(subctx.scope);
 		}
 
-		EAT(token_semicolon);
+		/* ';' eaten by parse_decls_single_type() */
 	}
 
 	if(!accept(token_semicolon)){
