@@ -154,27 +154,31 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 
 	subctx.scope = sf->for_init_symtab;
 
-#define SEMI_WRAP(code)         \
-	if(!accept(token_semicolon)){ \
-		code;                       \
-		EAT(token_semicolon);       \
+	if(!accept(token_semicolon)){
+		decl **c99inits = NULL;
+
+		parse_decls_single_type(
+				DECL_MULTI_ALLOW_ALIGNAS,
+				/*newdecl context:*/1,
+				subctx.scope, subctx.scope,
+				&c99inits);
+
+		if(c99inits){
+			if(cc1_std < STD_C99)
+				warn_at(NULL, "use of C99 for-init");
+
+			dynarray_free(decl **, &c99inits, NULL);
+		}else{
+			sf->for_init = parse_expr_exp(subctx.scope);
+		}
+
+		EAT(token_semicolon);
 	}
 
-	SEMI_WRAP(
-			decl **c99inits = parse_decls_one_type(0, subctx.scope);
-			if(c99inits){
-				dynarray_add_array(&subctx.scope->decls, c99inits);
-
-				if(cc1_std < STD_C99)
-					warn_at(NULL, "use of C99 for-init");
-			}else{
-				sf->for_init = parse_expr_exp(subctx.scope);
-			}
-	);
-
-	SEMI_WRAP(sf->for_while = parse_expr_exp(subctx.scope));
-
-#undef SEMI_WRAP
+	if(!accept(token_semicolon)){
+		sf->for_while = parse_expr_exp(subctx.scope);
+		EAT(token_semicolon);
+	}
 
 	if(!accept(token_close_paren)){
 		sf->for_inc = parse_expr_exp(subctx.scope);
