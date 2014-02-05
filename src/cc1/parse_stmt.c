@@ -171,21 +171,18 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 	subctx.scope = sf->for_init_symtab;
 
 	if(!accept(token_semicolon)){
-		decl **c99inits = NULL;
-
-		parse_decls_single_type(
+		int got_decl = parse_decls_single_type(
 				DECL_MULTI_ALLOW_ALIGNAS,
 				/*newdecl context:*/1,
 				subctx.scope, subctx.scope,
-				&c99inits);
+				NULL);
 
-		if(c99inits){
+		if(got_decl){
 			if(cc1_std < STD_C99)
 				warn_at(NULL, "use of C99 for-init");
-
-			dynarray_free(decl **, &c99inits, NULL);
 		}else{
 			sf->for_init = parse_expr_exp(subctx.scope);
+			EAT(token_semicolon);
 		}
 
 		/* ';' eaten by parse_decls_single_type() */
