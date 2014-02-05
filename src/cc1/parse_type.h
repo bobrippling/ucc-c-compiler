@@ -28,7 +28,7 @@ type *parse_type(int newdecl_ctx, symtable *scope);
 /* type *name[]... */
 decl *parse_decl_single(
 		enum decl_mode mode, int newdecl_ctx,
-		symtable *scope);
+		symtable *scope, symtable *add_to_scope);
 
 /* type ident...; */
 int parse_decls_single_type(

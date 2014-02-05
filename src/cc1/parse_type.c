@@ -607,7 +607,7 @@ static decl *parse_arg_decl(symtable *scope)
 {
 	/* argument decls can default to int */
 	const enum decl_mode flags = DECL_CAN_DEFAULT | DECL_ALLOW_STORE;
-	decl *argdecl = parse_decl_single(flags, 0, scope);
+	decl *argdecl = parse_decl_single(flags, 0, scope, NULL);
 
 	if(!argdecl)
 		die_at(NULL, "type expected (got %s)", token_to_str(curtok));
@@ -1029,12 +1029,17 @@ static void parse_add_asm(decl *d)
 static decl *parse_decl_stored_aligned(
 		type *btype, enum decl_mode mode,
 		enum decl_storage store, struct decl_align *align,
-		symtable *scope)
+		symtable *scope, symtable *add_to_scope)
 {
 	decl *d = decl_new();
 	where w_eq;
 
 	d->ref = parse_type_declarator(mode, d, btype, scope);
+
+	if(add_to_scope){
+		dynarray_add(&add_to_scope->decls, d);
+		fold_type(d->ref, NULL, scope);
+	}
 
 	/* only check if it's not a function, otherwise it could be
 	 * int f(i)
@@ -1078,7 +1083,9 @@ static type *default_type(void)
 	return type_nav_btype(cc1_type_nav, type_int);
 }
 
-decl *parse_decl_single(enum decl_mode mode, int newdecl, symtable *scope)
+decl *parse_decl_single(
+		enum decl_mode mode, int newdecl,
+		symtable *scope, symtable *add_to_scope)
 {
 	enum decl_storage store = store_default;
 	type *r = parse_btype(
@@ -1099,7 +1106,7 @@ decl *parse_decl_single(enum decl_mode mode, int newdecl, symtable *scope)
 	return parse_decl_stored_aligned(
 			r, mode,
 			store, NULL /* align */,
-			scope);
+			scope, add_to_scope);
 }
 
 static int is_old_func(decl *d)
@@ -1224,6 +1231,9 @@ static void warn_for_unaccessible_sue(
 		return;
 
 	sue = type_is_s_or_u_or_e(d->ref);
+
+	if(!sue)
+		return;
 
 	if(sue->anon)
 		warn_at(NULL, "anonymous %s with no instances", sue_str(sue));
@@ -1417,16 +1427,17 @@ int parse_decls_single_type(
 		decl *d = parse_decl_stored_aligned(
 				this_ref, parse_flag,
 				store, align,
-				in_scope);
+				in_scope, NULL);
 
 		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH)
-		&& !type_is(d->ref, type_func)
 		&& accept(token_colon))
 		{
 			/* normal decl, check field spec */
 			d->bits.var.field_width = PARSE_EXPR_NO_COMMA(in_scope);
 			had_field_width = 1;
 		}
+
+		fold_type(d->ref, NULL, in_scope);
 
 		if(!d->spel && !had_field_width){
 			/*
@@ -1451,11 +1462,12 @@ int parse_decls_single_type(
 			parse_post_func(d, in_scope);
 		}
 
+		/* must be before adding to scope */
 		if(d->spel)
 			link_to_previous_decl(d, in_scope);
-
 		if(add_to_scope)
 			dynarray_add(&add_to_scope->decls, d);
+
 		if(pdecls)
 			dynarray_add(pdecls, d);
 
