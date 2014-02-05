@@ -1210,33 +1210,34 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 	}
 }
 
-#if 0
-static void warn_for_unaccessible_sue()
+static void warn_for_unaccessible_sue(
+		decl *d, enum decl_multi_mode mode)
 {
+	enum type_qualifier qual;
+	struct_union_enum_st *sue;
+
 	/*
 	 * struct { int i; }; - continue to next one
 	 * this is either struct or union, not enum
 	 */
-	if((mode & DECL_MULTI_NAMELESS) == 0){
-		enum type_qualifier qual;
+	if(mode & DECL_MULTI_NAMELESS)
+		return;
 
-		if(sue->anon)
-			warn_at(NULL, "anonymous %s with no instances", sue_str(sue));
+	sue = type_is_s_or_u_or_e(d->ref);
 
-		/* check for storage/qual on no-instance */
-		qual = type_qual(this_ref);
-		if(qual || store != store_default){
-			warn_at(NULL, "ignoring %s%s%son no-instance %s",
-					store != store_default ? decl_store_to_str(store) : "",
-					store != store_default ? " " : "",
-					type_qual_to_str(qual, 1),
-					sue_str(sue));
-		}
+	if(sue->anon)
+		warn_at(NULL, "anonymous %s with no instances", sue_str(sue));
 
-		goto next;
+	/* check for storage/qual on no-instance */
+	qual = type_qual(d->ref);
+	if(qual || d->store != store_default){
+		warn_at(NULL, "ignoring %s%s%son no-instance %s",
+				d->store != store_default ? decl_store_to_str(d->store) : "",
+				d->store != store_default ? " " : "",
+				type_qual_to_str(qual, 1),
+				sue_str(sue));
 	}
 }
-#endif
 
 static int warn_for_unused_typename(
 		decl *d, enum decl_multi_mode mode)
@@ -1459,6 +1460,8 @@ int parse_decls_single_type(
 			dynarray_add(pdecls, d);
 
 		error_on_unwanted_func(d, mode);
+
+		warn_for_unaccessible_sue(d, mode);
 
 		last = d;
 	}while(accept(token_comma));
