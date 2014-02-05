@@ -34,37 +34,6 @@
 
 /*#define PARSE_DECL_VERBOSE*/
 
-#define PARSE_DECL_IS_FUNC(d) PARSE_type_is(type_skip_non_tdefs(d->ref), type_func)
-
-#define PARSE_type_is_s_or_u_or_e(r) PARSE_type_is_s_or_u_or_e2(r, 1)
-#define PARSE_type_is_s_or_u(r)      PARSE_type_is_s_or_u_or_e2(r, 0)
-
-/* we don't do the type_is_* since it needs to be folded for that */
-static type *PARSE_type_is(type *t, enum type_kind k)
-{
-	t = type_skip_non_tdefs(t);
-	return t->type == k ? t : NULL;
-}
-
-static struct_union_enum_st *PARSE_type_is_s_or_u_or_e2(
-		type *r, int allow_e)
-{
-	r = type_skip_non_tdefs(r);
-	if(r->type == type_btype){
-		const btype *t = r->bits.type;
-		switch(t->primitive){
-			case type_enum:
-				if(!allow_e)
-			default:
-					break;
-			case type_struct:
-			case type_union:
-				return t->sue;
-		}
-	}
-	return NULL;
-}
-
 /* newdecl_context:
  * struct B { int b; };
  * {
@@ -675,7 +644,7 @@ funcargs *parse_func_arglist(symtable *scope)
 	 */
 	if(curtok != token_identifier || parse_at_tdef(scope)){
 		decl *argdecl = parse_arg_decl(scope);
-		type *ty_v = PARSE_type_is(argdecl->ref, type_btype);
+		type *ty_v = type_is(argdecl->ref, type_btype);
 
 		/* check for x(void) (or an equivalent typedef) */
 		/* can't use type_is, since that requires folding */
@@ -1057,7 +1026,10 @@ static void parse_add_asm(decl *d)
 	}
 }
 
-static decl *parse_decl(type *btype, enum decl_mode mode, symtable *scope)
+static decl *parse_decl_stored_aligned(
+		type *btype, enum decl_mode mode,
+		enum decl_storage store, struct decl_align *align,
+		symtable *scope)
 {
 	decl *d = decl_new();
 	where w_eq;
@@ -1071,7 +1043,7 @@ static decl *parse_decl(type *btype, enum decl_mode mode, symtable *scope)
 	 * }
 	 */
 
-	if(!PARSE_DECL_IS_FUNC(d)){
+	if(!type_is(d->ref, type_func)){
 		/* parse __asm__ naming before attributes, as per gcc and clang */
 		parse_add_asm(d);
 		parse_add_attr(&d->attr, scope); /* int spel __attr__ */
@@ -1082,6 +1054,13 @@ static decl *parse_decl(type *btype, enum decl_mode mode, symtable *scope)
 			memcpy_safe(&d->bits.var.init->where, &w_eq);
 		}
 	}
+
+	d->store = store;
+
+	if(!type_is(d->ref, type_func))
+		d->bits.var.align = align;
+	else if(align)
+		ICE("align for function?");
 
 	return d;
 }
@@ -1097,22 +1076,6 @@ static type *default_type(void)
 	cc1_warn_at(NULL, 0, WARN_IMPLICIT_INT, "defaulting type to int");
 
 	return type_nav_btype(cc1_type_nav, type_int);
-}
-
-static decl *parse_decl_extra(
-		type *r, enum decl_mode mode,
-		enum decl_storage store, struct decl_align *align,
-		symtable *scope)
-{
-	decl *d = parse_decl(r, mode, scope);
-	d->store = store;
-
-	if(!PARSE_DECL_IS_FUNC(d))
-		d->bits.var.align = align;
-	else if(align)
-		ICE("align for function?");
-
-	return d;
 }
 
 decl *parse_decl_single(enum decl_mode mode, int newdecl, symtable *scope)
@@ -1133,32 +1096,15 @@ decl *parse_decl_single(enum decl_mode mode, int newdecl, symtable *scope)
 		prevent_typedef(store);
 	}
 
-	return parse_decl_extra(r, mode, store, NULL /* align */, scope);
-}
-
-decl **parse_decls_one_type(int newdecl, symtable *scope)
-{
-	enum decl_storage store = store_default;
-	struct decl_align *align = NULL;
-	type *r = parse_btype(&store, &align, newdecl, scope);
-	decl **decls = NULL;
-
-	if(!r)
-		return NULL;
-
-	prevent_typedef(store);
-
-	do{
-		decl *d = parse_decl_extra(r, DECL_SPEL_NEED, store, align, scope);
-		dynarray_add(&decls, d);
-	}while(accept(token_comma));
-
-	return decls;
+	return parse_decl_stored_aligned(
+			r, mode,
+			store, NULL /* align */,
+			scope);
 }
 
 static int is_old_func(decl *d)
 {
-	type *r = PARSE_type_is(d->ref, type_func);
+	type *r = type_is(d->ref, type_func);
 	return r && r->bits.func.args->args_old_proto;
 }
 
@@ -1169,7 +1115,7 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 	int i;
 	funcargs *dfuncargs = type_is_func_or_block(d->ref)->bits.func.args;
 
-	UCC_ASSERT(PARSE_type_is(d->ref, type_func), "not func");
+	UCC_ASSERT(type_is(d->ref, type_func), "not func");
 
 	if(!dfuncargs->args_old_proto){
 		die_at(&d->where, dfuncargs->arglist
@@ -1264,6 +1210,177 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 	}
 }
 
+#if 0
+static void warn_for_unaccessible_sue()
+{
+	/*
+	 * struct { int i; }; - continue to next one
+	 * this is either struct or union, not enum
+	 */
+	if((mode & DECL_MULTI_NAMELESS) == 0){
+		enum type_qualifier qual;
+
+		if(sue->anon)
+			warn_at(NULL, "anonymous %s with no instances", sue_str(sue));
+
+		/* check for storage/qual on no-instance */
+		qual = type_qual(this_ref);
+		if(qual || store != store_default){
+			warn_at(NULL, "ignoring %s%s%son no-instance %s",
+					store != store_default ? decl_store_to_str(store) : "",
+					store != store_default ? " " : "",
+					type_qual_to_str(qual, 1),
+					sue_str(sue));
+		}
+
+		goto next;
+	}
+}
+#endif
+
+static int warn_for_unused_typename(
+		decl *d, enum decl_multi_mode mode)
+{
+	const char *emsg = "declaration doesn't declare anything";
+	struct_union_enum_st *sue = type_is_s_or_u_or_e(d->ref);
+
+	if(sue) switch(sue->primitive){
+		case type_struct:
+		case type_union:
+			/* don't warn for tagged struct/unions */
+			if(mode & DECL_MULTI_NAMELESS)
+				break;
+
+			if(sue->anon)
+				break;
+			/* don't warn for named structs/unions */
+			return 0;
+
+		case type_enum:
+			/* don't warn for enums - they're always declarations */
+			return 0;
+
+		default:
+			break;
+	}
+
+	/*
+	 * die if it's a complex decl,
+	 * e.g. int (const *a)
+	 * function with int argument
+	 */
+	if(type_is(d->ref, type_btype)){
+		warn_at(&d->where, "%s", emsg);
+	}else{
+		warn_at_print_error(&d->where, "%s", emsg);
+		parse_had_error = 1;
+	}
+
+	return 1;
+}
+
+static void parse_post_func(decl *d, symtable *in_scope)
+{
+	int need_func = 0;
+
+	/* special case - support asm directly after a function
+	 * no parse ambiguity - asm can only appear at the end of a decl,
+	 * before __attribute__
+	 */
+	if(curtok == token_asm)
+		parse_add_asm(d);
+
+	/* special case - support GCC __attribute__
+	 * directly after a "new"/prototype function
+	 *
+	 * only accept if it's a new-style function,
+	 * i.e.
+	 *
+	 * f(i) __attribute__(()) int i; { ... }
+	 *
+	 * is invalid, since old-style functions have
+	 * decls after the final close-paren
+	 */
+	if(curtok == token_attribute && !is_old_func(d)){
+		/* add to .ref, since this is what is checked
+		 * when the function decays to a pointer */
+		attribute *a = NULL;
+		parse_add_attr(&a, in_scope);
+		d->ref = type_attributed(d->ref, a);
+	}else{
+		decl **old_args = NULL;
+		/* NULL - we don't want these in a scope */
+		parse_decls_multi_type(
+				0, /*newdecl_context:*/0,
+				in_scope,
+				NULL, &old_args);
+		if(old_args){
+			check_and_replace_old_func(d, old_args);
+
+			dynarray_free(decl **, &old_args, NULL);
+
+			/* old function with decls after the close paren,
+			 * need a function */
+			need_func = 1;
+		}
+	}
+
+	/* clang-style allows __attribute__ and then a function block */
+	if(need_func || curtok == token_open_block){
+		type *func_r = type_is(d->ref, type_func);
+
+		/* need to set scope to include function argumen
+		 * e.g. f(struct A { ... })
+		 */
+		UCC_ASSERT(func_r, "function expected");
+
+		d->bits.func.code = parse_stmt_block(
+				func_r->bits.func.arg_scope, NULL);
+
+		/* if:
+		 * f(){...}, then we don't have args_void, but implicitly we do
+		 */
+		type_funcargs(d->ref)->args_void_implicit = 1;
+	}
+}
+
+static void link_to_previous_decl(decl *d, symtable *in_scope)
+{
+	/* Look for a previous declaration of d->spel.
+	 * if found, we pull its asm() and attributes to the current,
+	 * thus propagating them down in O(1) to the eventual definition.
+	 * Do this before adding, so we don't find 'd'
+	 *
+	 * This also means any use of d will have the most up to date
+	 * attribute information about it
+	 */
+	decl *d_prev = symtab_search_d(in_scope, d->spel, NULL);
+
+	if(d_prev){
+		/* link the proto chain for __attribute__ checking,
+		 * nested function prototype checking and
+		 * '.extern fn' code gen easing
+		 */
+		d->proto = d_prev;
+
+		if(type_is(d->ref, type_func) && type_is(d_prev->ref, type_func))
+			decl_pull_to_func(d, d_prev);
+	}
+}
+
+static void error_on_unwanted_func(
+		decl *d, enum decl_multi_mode mode)
+{
+	if(!type_is(d->ref, type_func))
+		return;
+
+	if(d->bits.func.code && (mode & DECL_MULTI_ACCEPT_FUNC_CODE) == 0)
+		die_at(&d->where, "function code not wanted (%s)", d->spel);
+
+	if((mode & DECL_MULTI_ACCEPT_FUNC_DECL) == 0)
+		die_at(&d->where, "function declaration not wanted (%s)", d->spel);
+}
+
 int parse_decls_single_type(
 		enum decl_multi_mode mode,
 		int newdecl,
@@ -1288,49 +1405,21 @@ int parse_decls_single_type(
 			newdecl, in_scope);
 
 	if(!this_ref){
-		/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
-		if(parse_at_decl_spec() && (mode & DECL_MULTI_CAN_DEFAULT)){
-			this_ref = default_type();
-		}else{
-			return 0; /* normal exit */
-		}
-	}
+		if(!parse_at_decl_spec() || !(mode & DECL_MULTI_CAN_DEFAULT))
+			return 0;
 
-	if(store != store_typedef){
-		struct_union_enum_st *sue = PARSE_type_is_s_or_u(this_ref);
-
-		if(sue && !parse_at_decl_spec()){
-			/*
-			 * struct { int i; }; - continue to next one
-			 * this is either struct or union, not enum
-			 */
-			if((mode & DECL_MULTI_NAMELESS) == 0){
-				enum type_qualifier qual;
-
-				if(sue->anon)
-					warn_at(NULL, "anonymous %s with no instances", sue_str(sue));
-
-				/* check for storage/qual on no-instance */
-				qual = type_qual(this_ref);
-				if(qual || store != store_default){
-					warn_at(NULL, "ignoring %s%s%son no-instance %s",
-							store != store_default ? decl_store_to_str(store) : "",
-							store != store_default ? " " : "",
-							type_qual_to_str(qual, 1),
-							sue_str(sue));
-				}
-
-				goto next;
-			}
-		}
+		this_ref = default_type();
 	}
 
 	do{
-		decl *d = parse_decl_extra(this_ref, parse_flag, store, align, in_scope);
 		int had_field_width = 0;
+		decl *d = parse_decl_stored_aligned(
+				this_ref, parse_flag,
+				store, align,
+				in_scope);
 
 		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH)
-		&& !PARSE_DECL_IS_FUNC(d)
+		&& !type_is(d->ref, type_func)
 		&& accept(token_colon))
 		{
 			/* normal decl, check field spec */
@@ -1344,168 +1433,40 @@ int parse_decls_single_type(
 			 * struct A; - fine
 			 * struct { int i; }; - warn
 			 */
-
-			if(last == NULL){
-				int warn = 0;
-				struct_union_enum_st *sue;
-
-				/* check for no-fwd and anon */
-				sue = type_is_s_or_u_or_e(this_ref);
-				switch(sue ? sue->primitive : type_unknown){
-					case type_struct:
-					case type_union:
-						/* don't warn for tagged struct/unions */
-						if(mode & DECL_MULTI_NAMELESS)
-							goto add;
-
-						UCC_ASSERT(!sue->anon, "tagless struct should've been caught above");
-					case type_enum:
-						warn = 0; /* don't warn for enums - they're always declarations */
-						break;
-
-					default:
-						warn = 1;
+			if(!last){
+				if(warn_for_unused_typename(d, mode)){
+					decl_free(d);
+					/* continue after error */
+					EAT(token_comma);
+					continue;
 				}
-				if(warn){
-					/*
-					 * die if it's a complex decl,
-					 * e.g. int (const *a)
-					 * [function with int argument, not a pointer to const int
-					 */
-					const char *emsg = "declaration doesn't declare anything";
-
-					if(PARSE_type_is(d->ref, type_btype)
-					|| PARSE_type_is(d->ref, type_tdef))
-					{
-						warn_at(&d->where, "%s", emsg);
-					}else{
-						warn_at_print_error(&d->where, "%s", emsg);
-						parse_had_error = 1;
-					}
-				}
-
-				decl_free(d);
-				goto next;
-			}
-			die_at(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
-		}else if(PARSE_DECL_IS_FUNC(d)){
-			int need_func = 0;
-
-			/* special case - support asm directly after a function
-			 * no parse ambiguity - asm can only appear at the end of a decl,
-			 * before __attribute__
-			 */
-			if(curtok == token_asm)
-				parse_add_asm(d);
-
-			/* special case - support GCC __attribute__
-			 * directly after a "new"/prototype function
-			 *
-			 * only accept if it's a new-style function,
-			 * i.e.
-			 *
-			 * f(i) __attribute__(()) int i; { ... }
-			 *
-			 * is invalid, since old-style functions have
-			 * decls after the final close-paren
-			 */
-			if(curtok == token_attribute && !is_old_func(d)){
-				/* add to .ref, since this is what is checked
-				 * when the function decays to a pointer */
-				attribute *a = NULL;
-				parse_add_attr(&a, in_scope);
-				d->ref = type_attributed(d->ref, a);
 			}else{
-				decl **old_args = NULL;
-				/* NULL - we don't want these in a scope */
-				parse_decls_multi_type(
-						0, /*newdecl_context:*/0,
-						in_scope,
-						NULL, &old_args);
-				if(old_args){
-					check_and_replace_old_func(d, old_args);
-
-					dynarray_free(decl **, &old_args, NULL);
-
-					/* old function with decls after the close paren,
-					 * need a function */
-					need_func = 1;
-				}
+				die_at(&d->where,
+						"identifier expected for declaration (got %s)",
+						token_to_str(curtok));
 			}
 
-			/* clang-style allows __attribute__ and then a function block */
-			if(need_func || curtok == token_open_block){
-				type *func_r = PARSE_DECL_IS_FUNC(d);
-
-				/* need to set scope to include function argumen
-				 * e.g. f(struct A { ... })
-				 */
-				UCC_ASSERT(func_r, "function expected");
-
-				d->bits.func.code = parse_stmt_block(
-						func_r->bits.func.arg_scope, NULL);
-
-				/* if:
-				 * f(){...}, then we don't have args_void, but implicitly we do
-				 */
-				type_funcargs(d->ref)->args_void_implicit = 1;
-			}
+		}else if(type_is(d->ref, type_func)){
+			parse_post_func(d, in_scope);
 		}
 
-add:
-		if(d->spel){
-			/* Look for a previous declaration of d->spel.
-			 * if found, we pull its asm() and attributes to the current,
-			 * thus propagating them down in O(1) to the eventual definition.
-			 * Do this before adding, so we don't find 'd'
-			 *
-			 * This also means any use of d will have the most up to date
-			 * attribute information about it
-			 */
-			decl *d_prev = symtab_search_d(in_scope, d->spel, NULL);
-
-			if(d_prev){
-				/* link the proto chain for __attribute__ checking,
-				 * nested function prototype checking and
-				 * '.extern fn' code gen easing
-				 */
-				d->proto = d_prev;
-
-				if(PARSE_DECL_IS_FUNC(d) && PARSE_DECL_IS_FUNC(d_prev))
-					decl_pull_to_func(d, d_prev);
-			}
-		}
+		if(d->spel)
+			link_to_previous_decl(d, in_scope);
 
 		if(add_to_scope)
 			dynarray_add(&add_to_scope->decls, d);
 		if(pdecls)
 			dynarray_add(pdecls, d);
 
-		/* FIXME: check later for functions, not here - typedefs */
-		if(PARSE_DECL_IS_FUNC(d)){
-			if(d->bits.func.code && (mode & DECL_MULTI_ACCEPT_FUNC_CODE) == 0)
-				die_at(&d->where, "function code not wanted (%s)", d->spel);
-
-			if((mode & DECL_MULTI_ACCEPT_FUNC_DECL) == 0)
-				die_at(&d->where, "function decl not wanted (%s)", d->spel);
-		}
-
-		if(store == store_typedef){
-			if(PARSE_DECL_IS_FUNC(d)){
-				if(d->bits.func.code)
-					die_at(&d->where, "can't have a typedef function with code");
-			}else if(d->bits.var.init){
-				die_at(&d->where, "can't init a typedef");
-			}
-		}
+		error_on_unwanted_func(d, mode);
 
 		last = d;
 	}while(accept(token_comma));
 
 
-	if(last && (!PARSE_DECL_IS_FUNC(last) || !last->bits.func.code)){
-next:
-		/* end of type, if we have an identifier, '(' or '*', it's an unknown type name */
+	if(last && (!type_is(last->ref, type_func) || !last->bits.func.code)){
+		/* end of type, if we have an identifier,
+		 * '(' or '*', it's an unknown type name */
 		if(parse_at_decl_spec())
 			die_at(NULL, "unknown type name '%s'", last->spel);
 		/* else die here: */

@@ -23,19 +23,17 @@ enum decl_multi_mode
 
 
 /* (type *[]) */
-type *parse_type(int newdecl, symtable *scope);
+type *parse_type(int newdecl_ctx, symtable *scope);
 
+/* type *name[]... */
 decl *parse_decl_single(
-		enum decl_mode mode, int newdecl,
+		enum decl_mode mode, int newdecl_ctx,
 		symtable *scope);
-
-/* type ident(, ident, ...) - multiple of the above */
-decl **parse_decls_one_type(int newdecl, symtable *scope);
 
 /* type ident...; */
 int parse_decls_single_type(
 		enum decl_multi_mode mode,
-		int newdecl,
+		int newdecl_ctx,
 		symtable *in_scope,
 		symtable *add_to_scope, decl ***pdecls);
 
