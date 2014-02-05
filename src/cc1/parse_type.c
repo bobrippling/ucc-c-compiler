@@ -1230,7 +1230,11 @@ static void warn_for_unaccessible_sue(
 	if(mode & DECL_MULTI_NAMELESS)
 		return;
 
-	sue = type_is_s_or_u_or_e(d->ref);
+	if(d->spel)
+		return;
+
+	/* enums are fine */
+	sue = type_is_s_or_u(d->ref);
 
 	if(!sue)
 		return;
