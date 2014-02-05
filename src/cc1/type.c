@@ -208,11 +208,11 @@ static enum type_cmp type_cmp_r(
 	}
 
 	if(ret & TYPE_EQUAL_ANY){
-		int a_cast = type_cast_get_qual(orig_a);
-		int b_cast = type_cast_get_qual(orig_b);
+		enum type_qualifier a_qual = type_cast_get_qual(orig_a);
+		enum type_qualifier b_qual = type_cast_get_qual(orig_b);
 
-		if(a_cast && b_cast){
-			switch(type_qual_cmp(orig_a->bits.cast.qual, orig_b->bits.cast.qual)){
+		if(a_qual && b_qual){
+			switch(type_qual_cmp(a_qual, b_qual)){
 				case -1:
 					/* a has more */
 					ret = TYPE_QUAL_ADD;
@@ -222,9 +222,9 @@ static enum type_cmp type_cmp_r(
 					ret = TYPE_QUAL_SUB;
 					break;
 			}
-		}else if(a_cast){
+		}else if(a_qual){
 			ret = TYPE_QUAL_ADD;
-		}else if(b_cast){
+		}else if(b_qual){
 			ret = TYPE_QUAL_SUB;
 		} /* else neither are casts */
 	}
