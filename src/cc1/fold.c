@@ -768,8 +768,6 @@ void fold_global_func(decl *func_decl)
 		funcargs *args;
 		type *func_ret = type_func_call(func_decl->ref, &args);
 
-		arg_symtab->in_func = func_decl;
-
 		if(func_decl->store & store_inline
 		&& (func_decl->store & STORE_MASK_STORE) == store_default)
 		{

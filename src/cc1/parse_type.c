@@ -1343,14 +1343,17 @@ static void parse_post_func(decl *d, symtable *in_scope)
 	/* clang-style allows __attribute__ and then a function block */
 	if(need_func || curtok == token_open_block){
 		type *func_r = type_is(d->ref, type_func);
+		symtable *arg_symtab;
 
 		/* need to set scope to include function argumen
 		 * e.g. f(struct A { ... })
 		 */
 		UCC_ASSERT(func_r, "function expected");
 
-		d->bits.func.code = parse_stmt_block(
-				func_r->bits.func.arg_scope, NULL);
+		arg_symtab = func_r->bits.func.arg_scope;
+		arg_symtab->in_func = d;
+
+		d->bits.func.code = parse_stmt_block(arg_symtab, NULL);
 
 		/* if:
 		 * f(){...}, then we don't have args_void, but implicitly we do
