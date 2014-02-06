@@ -18,6 +18,8 @@
 #include "parse_type.h"
 #include "parse_expr.h"
 
+#include "fold.h"
+
 struct stmt_ctx
 {
 	stmt *continue_target,
@@ -78,6 +80,7 @@ static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 	}else{
 		t->expr = parse_expr_exp(t->symtab);
 	}
+	fold_expr(t->expr, t->symtab);
 
 	EAT(token_close_paren);
 }
@@ -131,6 +134,7 @@ static stmt *parse_do(const struct stmt_ctx *const ctx)
 	EAT(token_while);
 	EAT(token_open_paren);
 	t->expr = parse_expr_exp(subctx.scope);
+	fold_expr(t->expr, ctx->scope);
 	EAT(token_close_paren);
 	EAT(token_semicolon);
 
@@ -182,6 +186,7 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 				warn_at(NULL, "use of C99 for-init");
 		}else{
 			sf->for_init = parse_expr_exp(subctx.scope);
+			FOLD_EXPR(sf->for_init, subctx.scope);
 			EAT(token_semicolon);
 		}
 
@@ -190,11 +195,13 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 
 	if(!accept(token_semicolon)){
 		sf->for_while = parse_expr_exp(subctx.scope);
+		FOLD_EXPR(sf->for_while, subctx.scope);
 		EAT(token_semicolon);
 	}
 
 	if(!accept(token_close_paren)){
 		sf->for_inc = parse_expr_exp(subctx.scope);
+		FOLD_EXPR(sf->for_inc, subctx.scope);
 		EAT(token_close_paren);
 	}
 
@@ -449,8 +456,10 @@ stmt *parse_stmt(const struct stmt_ctx *ctx)
 			}else if(accept(token_return)){
 				t = stmt_new_wrapper(return, ctx->scope);
 
-				if(curtok != token_semicolon)
+				if(curtok != token_semicolon){
 					t->expr = parse_expr_exp(ctx->scope);
+					fold_expr(t->expr, ctx->scope);
+				}
 			}else{
 				t = stmt_new_wrapper(goto, ctx->scope);
 
@@ -536,6 +545,7 @@ flow:
 				t = parse_label(ctx);
 			}else{
 				t = expr_to_stmt(parse_expr_exp(ctx->scope), ctx->scope);
+				fold_stmt(t);
 				EAT(token_semicolon);
 			}
 			break;
