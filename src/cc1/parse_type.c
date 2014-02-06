@@ -1473,18 +1473,19 @@ int parse_decls_single_type(
 						token_to_str(curtok));
 			}
 
-		}else if(type_is(d->ref, type_func)){
-			parse_post_func(d, in_scope);
 		}
 
-		/* must be before adding to scope */
+		/* must link to previous before adding to scope */
 		if(d->spel)
 			link_to_previous_decl(d, in_scope);
 		if(add_to_scope)
 			dynarray_add(&add_to_scope->decls, d);
-
 		if(pdecls)
 			dynarray_add(pdecls, d);
+
+		/* now we have the function in scope we parse its code */
+		if(type_is(d->ref, type_func))
+			parse_post_func(d, in_scope);
 
 		error_on_unwanted_func(d, mode);
 
