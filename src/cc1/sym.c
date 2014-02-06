@@ -122,8 +122,11 @@ decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
 sym *symtab_search(symtable *tab, const char *sp)
 {
 	decl *d = symtab_search_d(tab, sp, NULL);
-	/* d->sym may be null if it's not been assigned yet */
-	return d ? d->sym : NULL;
+	if(!d)
+		return NULL;
+
+	UCC_ASSERT(d->sym, "no symbol for decl");
+	return d->sym;
 }
 
 int typedef_visible(symtable *stab, const char *spel)
