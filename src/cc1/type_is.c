@@ -37,6 +37,7 @@ enum type_skippage
 {
 	STOP_AT_TDEF = 1 << 0,
 	STOP_AT_CAST = 1 << 1,
+	STOP_AT_ATTR = 1 << 2,
 };
 static type *type_skip(type *t, enum type_skippage skippage)
 {
@@ -51,6 +52,9 @@ static type *type_skip(type *t, enum type_skippage skippage)
 					goto fin;
 				break;
 			case type_attr:
+				if(skippage & STOP_AT_ATTR)
+					goto fin;
+				break;
 			case type_where:
 				break;
 			default:
@@ -76,6 +80,11 @@ type *type_skip_non_tdefs(type *t)
 type *type_skip_non_casts(type *t)
 {
 	return type_skip(t, STOP_AT_CAST);
+}
+
+type *type_skip_wheres(type *t)
+{
+	return type_skip(t, ~0);
 }
 
 decl *type_is_tdef(type *r)

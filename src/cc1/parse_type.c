@@ -538,6 +538,10 @@ static type *parse_btype(
 							tdef_typeof->bits.ident.spel);
 				}
 
+				if(tdef_decl) /* typedef only */
+					fold_decl(tdef_decl, scope, NULL);
+				FOLD_EXPR(tdef_typeof, scope);
+
 				r = type_tdef_of(tdef_typeof, tdef_decl);
 				break;
 

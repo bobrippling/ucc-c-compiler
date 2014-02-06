@@ -62,6 +62,8 @@ static type *type_uptree_find_or_new(
 {
 	struct type_tree_ent **ent;
 
+	to = type_skip_wheres(to);
+
 	if(!to->uptree)
 		to->uptree = umalloc(sizeof *to->uptree);
 
@@ -267,8 +269,7 @@ struct ctx_tdef
 static int eq_tdef(type *candidate, void *ctx)
 {
 	struct ctx_tdef *c = ctx;
-	return candidate->bits.tdef.type_of == c->e
-		&&   candidate->bits.tdef.decl == c->d;
+	return candidate->bits.tdef.decl == c->d;
 }
 
 static void init_tdef(type *candidate, void *ctx)
@@ -286,19 +287,10 @@ type *type_tdef_of(expr *e, decl *d)
 	ctx.e = e;
 	ctx.d = d;
 
-#if 0
-	/* TODO: this won't work until parse() and fold() are merged */
 	return type_uptree_find_or_new(
 			e->tree_type, type_tdef,
 			eq_tdef, init_tdef,
 			&ctx);
-#else
-	{
-		type *t = type_new(type_tdef, NULL);
-		init_tdef(t, &ctx);
-		return t;
-	}
-#endif
 }
 
 type *type_called(type *functy, struct funcargs **pfuncargs)

@@ -5,6 +5,7 @@
 
 #include "type.h"
 #include "sue.h"
+#include "fold.h"
 
 #include "type_nav.h"
 
@@ -54,9 +55,14 @@ type *c_types_make_va_list(void)
 				va_list_struct,
 				expr_new_val(1));
 
-		return type_tdef_of(
-				expr_new_sizeof_type(builtin_ar, 1),
-				decl_new_ty_sp(builtin_ar,
-					ustrdup("__builtin_va_list")));
+		decl *typedef_decl = decl_new_ty_sp(
+				builtin_ar, ustrdup("__builtin_va_list"));
+
+		expr *sz = expr_new_sizeof_type(builtin_ar, 1);
+
+		fold_decl_global(typedef_decl, NULL);
+		FOLD_EXPR(sz, NULL);
+
+		return type_tdef_of(sz, typedef_decl);
 	}
 }
