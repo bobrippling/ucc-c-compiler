@@ -470,13 +470,12 @@ stmt *parse_stmt(const struct stmt_ctx *ctx)
 			break;
 		}
 
-		case token_if:
-			t = parse_if(ctx);
-			break;
-
 		{
 			stmt *(*parse_f)(const struct stmt_ctx *);
 
+		case token_if:
+			parse_f = parse_if;
+			goto flow;
 		case token_while:
 			parse_f = parse_while;
 			goto flow;
