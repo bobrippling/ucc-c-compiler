@@ -434,12 +434,17 @@ static void fold_decl_func(decl *d, symtable *stab)
 	 *   register int  *f();
 	 */
 	switch(d->store & STORE_MASK_STORE){
+		case store_typedef:
+			if(!d->bits.func.code)
+				break;
+
 		case store_register:
 		case store_auto:
 			fold_had_error = 1;
 			warn_at_print_error(&d->where,
 					"%s storage for function",
 					decl_store_to_str(d->store));
+			break;
 	}
 
 	if(stab->parent){
@@ -525,17 +530,27 @@ static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
 	}
 
 	if(d->bits.var.init){
-		const int is_static_init =
-			(d->store & STORE_MASK_STORE) == store_static || !stab->parent;
+		int is_static_init = !stab->parent;
 
-		if((d->store & STORE_MASK_STORE) == store_extern){
-			/* allow for globals - remove extern since it's a definition */
-			if(stab->parent){
-				die_at(&d->where, "externs can't be initialised");
-			}else{
-				warn_at(&d->where, "extern initialisation");
-				d->store &= ~store_extern;
-			}
+		switch(d->store & STORE_MASK_STORE){
+			case store_static:
+				is_static_init = 1;
+				break;
+
+			case store_typedef:
+				fold_had_error = 1;
+				warn_at_print_error(&d->where, "initialised typedef");
+				break;
+
+			case store_extern:
+				/* allow for globals - remove extern since it's a definition */
+				if(stab->parent){
+					die_at(&d->where, "externs can't be initialised");
+				}else{
+					warn_at(&d->where, "extern initialisation");
+					d->store &= ~store_extern;
+				}
+				break;
 		}
 
 		/* don't generate for anonymous symbols
