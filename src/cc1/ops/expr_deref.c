@@ -16,6 +16,15 @@ void fold_expr_deref(expr *e, symtable *stab)
 
 	ptr = FOLD_EXPR(expr_deref_what(e), stab);
 
+	if(!type_is_ptr(ptr->tree_type)){
+		fold_had_error = 1;
+		warn_at_print_error(&ptr->where,
+				"indirection applied to '%s'",
+				type_to_str(ptr->tree_type));
+		e->tree_type = ptr->tree_type;
+		return;
+	}
+
 	if(expr_attr_present(ptr, attr_noderef))
 		warn_at(&ptr->where, "dereference of noderef expression");
 

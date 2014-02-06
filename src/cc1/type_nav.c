@@ -302,18 +302,16 @@ type *type_called(type *functy, struct funcargs **pfuncargs)
 	return functy->ref;
 }
 
-type *type_pointed_to(type *ty)
+type *type_pointed_to(type *const ty_ptr)
 {
-	type *const r_save = ty;
-
-	ty = type_is_ptr(ty);
-	assert(ty);
+	type *const pointee = type_is_ptr(ty_ptr);
+	assert(pointee);
 
 	/* *(void (*)()) does nothing */
-	if(type_is(ty, type_func))
-		return r_save;
+	if(type_is(pointee, type_func))
+		return ty_ptr;
 
-	return ty;
+	return pointee;
 }
 
 type *type_nav_MAX_FOR(struct type_nav *root, unsigned sz)
