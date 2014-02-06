@@ -85,20 +85,24 @@ void fold_block_decls(symtable *stab, stmt **pinit_blk)
 	}
 }
 
+void stmt_code_got_decls(stmt *code)
+{
+	stmt *init_blk = NULL;
+
+	fold_block_decls(code->symtab, &init_blk);
+
+	if(init_blk)
+		dynarray_prepend(&code->bits.code.stmts, init_blk);
+}
+
 void fold_stmt_code(stmt *s)
 {
 	stmt **siter;
-	stmt *init_blk = NULL;
 	int warned = 0;
 
 	/* local struct layout-ing */
 	/* we fold decls ourselves, to get their inits */
 	symtab_fold_sues(s->symtab);
-
-	fold_block_decls(s->symtab, &init_blk);
-
-	if(init_blk)
-		dynarray_prepend(&s->bits.code.stmts, init_blk);
 
 	for(siter = s->bits.code.stmts; siter && *siter; siter++){
 		stmt *const st = *siter;

@@ -38,7 +38,7 @@ int parse_decls_single_type(
 		symtable *add_to_scope, decl ***pdecls);
 
 /* multiple of the above */
-void parse_decls_multi_type(
+int parse_decls_multi_type(
 		enum decl_multi_mode mode,
 		int newdecl_context,
 		symtable *in_scope,

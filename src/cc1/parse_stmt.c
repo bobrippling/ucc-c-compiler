@@ -277,18 +277,22 @@ static stmt *parse_stmt_and_decls(const struct stmt_ctx *const ctx)
 	stmt *code_stmt = stmt_new_wrapper(
 			code, symtab_new(ctx->scope, where_cc1_current(NULL)));
 	struct stmt_ctx subctx = *ctx;
+	int got_decls;
 
 	subctx.scope = code_stmt->symtab;
 
 	parse_static_assert(subctx.scope);
 
-	parse_decls_multi_type(
+	got_decls = parse_decls_multi_type(
 			DECL_MULTI_ACCEPT_FUNC_DECL
 			| DECL_MULTI_ALLOW_STORE
 			| DECL_MULTI_ALLOW_ALIGNAS,
 			/*newdecl_context:*/1,
 			subctx.scope,
 			subctx.scope, NULL);
+
+	if(got_decls)
+		stmt_code_got_decls(code_stmt);
 
 	if(curtok != token_close_block){
 		/* fine with a normal statement */

@@ -1358,7 +1358,7 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		arg_symtab->in_func = d;
 
 		symtab_add_params(arg_symtab, func_r->bits.func.args->arglist);
-		fold_decl(d, arg_symtab, NULL);
+		fold_decl(d, arg_symtab->parent, NULL);
 
 
 		d->bits.func.code = parse_stmt_block(arg_symtab, NULL);
@@ -1506,12 +1506,13 @@ int parse_decls_single_type(
 	return 1;
 }
 
-void parse_decls_multi_type(
+int parse_decls_multi_type(
 		enum decl_multi_mode mode,
 		int newdecl_context,
 		symtable *in_scope,
 		symtable *add_to_scope, decl ***pdecls)
 {
+	int ret = 0;
 	for(;;){
 		if(!parse_decls_single_type(
 					mode, newdecl_context,
@@ -1520,5 +1521,7 @@ void parse_decls_multi_type(
 		{
 			break;
 		}
+		ret = 1;
 	}
+	return ret;
 }
