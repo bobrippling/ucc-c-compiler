@@ -807,8 +807,6 @@ void fold_global_func(decl *func_decl)
 
 void fold_decl_global(decl *d, symtable *stab)
 {
-	type *fn_type;
-
 	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		case store_extern:
 		case store_default:
@@ -829,18 +827,9 @@ void fold_decl_global(decl *d, symtable *stab)
 					type_is(d->ref, type_func) ? "function" : "variable");
 	}
 
-	/* can't check typedefs here - not folded.
-	 * functions can't be typedefs anyway */
-	fn_type = type_skip_non_tdefs(d->ref);
-	if(fn_type->type == type_func && d->bits.func.code){
-		symtab_add_params(
-				DECL_FUNC_ARG_SYMTAB(d),
-				type_funcargs(d->ref)->arglist);
-	}
-
 	fold_decl(d, stab, NULL);
 
-	if(fn_type)
+	if(type_is(d->ref, type_func))
 		fold_global_func(d);
 }
 

@@ -1357,6 +1357,10 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		arg_symtab = func_r->bits.func.arg_scope;
 		arg_symtab->in_func = d;
 
+		symtab_add_params(arg_symtab, func_r->bits.func.args->arglist);
+		fold_decl(d, arg_symtab, NULL);
+
+
 		d->bits.func.code = parse_stmt_block(arg_symtab, NULL);
 
 		/* if:
