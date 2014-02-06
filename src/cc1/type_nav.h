@@ -16,7 +16,7 @@ struct type_nav *type_nav_init(void);
 type *type_nav_btype(struct type_nav *root, enum type_primitive p);
 type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *);
 
-type *type_nav_va_list(struct type_nav *root);
+type *type_nav_va_list(struct type_nav *root, symtable *symtab);
 type *type_decay(type *);
 
 type *type_ptr_to(type *);

@@ -42,7 +42,7 @@ static void va_type_check(expr *va_l, expr *in, symtable *stab)
 				BUILTIN_SPEL(in));
 
 	cmp = type_cmp(va_l->tree_type,
-			type_decay(type_nav_va_list(cc1_type_nav)), 0);
+			type_decay(type_nav_va_list(cc1_type_nav, stab)), 0);
 
 	if(!(cmp & TYPE_EQUAL_ANY)){
 		die_at(&va_l->where,
@@ -450,7 +450,9 @@ stack:
 			if(typ && typ->primitive == type_ldouble)
 				goto stack;
 
-			sue_va = type_next(type_nav_va_list(cc1_type_nav))->bits.type->sue;
+			sue_va = type_next(
+						type_nav_va_list(cc1_type_nav, NULL)
+					)->bits.type->sue;
 
 #define VA_DECL(nam) \
 			decl *mem_ ## nam = struct_union_member_find(sue_va, #nam, NULL, NULL)
@@ -568,7 +570,7 @@ static void fold_va_copy(expr *e, symtable *stab)
 	e->lhs = builtin_new_memcpy(
 			expr_new_deref(e->funcargs[0]),
 			expr_new_deref(e->funcargs[1]),
-			type_size(type_nav_va_list(cc1_type_nav), &e->where));
+			type_size(type_nav_va_list(cc1_type_nav, stab), &e->where));
 
 	FOLD_EXPR(e->lhs, stab);
 

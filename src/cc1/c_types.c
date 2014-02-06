@@ -11,7 +11,7 @@
 
 #include "c_types.h"
 
-type *c_types_make_va_list(void)
+type *c_types_make_va_list(symtable *symtab)
 {
 	/* pointer to struct __builtin_va_list */
 	/* must match platform abi - vfprintf(..., ap); */
@@ -60,8 +60,8 @@ type *c_types_make_va_list(void)
 
 		expr *sz = expr_new_sizeof_type(builtin_ar, 1);
 
-		fold_decl_global(typedef_decl, NULL);
-		FOLD_EXPR(sz, NULL);
+		fold_decl_global(typedef_decl, symtab);
+		FOLD_EXPR(sz, symtab);
 
 		return type_tdef_of(sz, typedef_decl);
 	}

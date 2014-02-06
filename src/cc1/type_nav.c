@@ -386,10 +386,10 @@ type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *sue)
 	return ent;
 }
 
-type *type_nav_va_list(struct type_nav *root)
+type *type_nav_va_list(struct type_nav *root, symtable *symtab)
 {
 	if(!root->tva_list)
-		root->tva_list = c_types_make_va_list();
+		root->tva_list = c_types_make_va_list(symtab);
 
 	return root->tva_list;
 }

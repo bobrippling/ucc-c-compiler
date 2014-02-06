@@ -526,7 +526,7 @@ static type *parse_btype(
 		}
 
 		if(is_va_list){
-			r = type_nav_va_list(cc1_type_nav);
+			r = type_nav_va_list(cc1_type_nav, scope);
 
 		}else switch(primitive_mode){
 			case TYPEDEF:
