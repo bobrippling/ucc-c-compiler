@@ -1268,7 +1268,7 @@ static int warn_for_unused_typename(
 		case type_union:
 			/* don't warn for tagged struct/unions */
 			if(mode & DECL_MULTI_NAMELESS)
-				break;
+				return 0;
 
 			if(sue->anon)
 				break;
