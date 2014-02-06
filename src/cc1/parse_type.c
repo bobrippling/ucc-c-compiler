@@ -1439,6 +1439,8 @@ int parse_decls_single_type(
 
 	do{
 		int had_field_width = 0;
+		int done = 0;
+
 		decl *d = parse_decl_stored_aligned(
 				this_ref, parse_flag,
 				store, align,
@@ -1454,25 +1456,25 @@ int parse_decls_single_type(
 
 		fold_type(d->ref, NULL, in_scope);
 
-		if(!d->spel && !had_field_width){
-			/*
-			 * int; - fine for "int;", but "int i,;" needs to fail
-			 * struct A; - fine
-			 * struct { int i; }; - warn
-			 */
-			if(!last){
+		if(!d->spel){
+			if(!had_field_width){
+				/*
+				 * int; - fine for "int;", but "int i,;" needs to fail
+				 * struct A; - fine
+				 * struct { int i; }; - warn
+				 */
+				if(last){
+					die_at(&d->where,
+							"identifier expected for declaration (got %s)",
+							token_to_str(curtok));
+				}
+
 				if(warn_for_unused_typename(d, mode)){
 					decl_free(d);
 					/* continue after error */
-					EAT(token_comma);
-					continue;
 				}
-			}else{
-				die_at(&d->where,
-						"identifier expected for declaration (got %s)",
-						token_to_str(curtok));
 			}
-
+			done = 1;
 		}
 
 		/* must link to previous before adding to scope */
@@ -1492,6 +1494,8 @@ int parse_decls_single_type(
 		warn_for_unaccessible_sue(d, mode);
 
 		last = d;
+		if(done)
+			break;
 	}while(accept(token_comma));
 
 
