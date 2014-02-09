@@ -173,10 +173,12 @@ iter_lines(
 
 			if($found == $rev){
 				$missing_warning = 1;
-				warn "check $match "
+				warn "$check->{line}"
+				. ($check->{above} ? " ^" : "")
+				. ": check $match "
 				. ($rev ? "" : "not ")
-				. "found in warnings on line $check->{line}"
-				. ($check->{above} ? " ^" : "") . "\n"
+				. "found"
+				. "\n"
 			}
 		}
 	}
