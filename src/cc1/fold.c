@@ -226,8 +226,11 @@ static void fold_calling_conv(type *r)
 	type_funcargs(r)->conv = conv;
 }
 
-void fold_type(type *r, type *parent, symtable *stab)
+void fold_type_w_attr(
+		type *r, type *parent,
+		symtable *stab, attribute *attr)
 {
+	attribute *this_attr = NULL;
 	enum type_qualifier q_to_check = qual_none;
 
 	if(!r || r->folded)
@@ -268,7 +271,7 @@ void fold_type(type *r, type *parent, symtable *stab)
 			r->bits.func.arg_scope->are_params = 1;
 
 			symtab_fold_sues(r->bits.func.arg_scope);
-			fold_funcargs(r->bits.func.args, r->bits.func.arg_scope, r);
+			fold_funcargs(r->bits.func.args, r->bits.func.arg_scope, attr);
 			fold_calling_conv(r);
 			break;
 
@@ -276,8 +279,11 @@ void fold_type(type *r, type *parent, symtable *stab)
 			/*q_to_check = r->bits.block.qual; - allowed */
 			break;
 
-		case type_where:
 		case type_attr:
+			this_attr = r->bits.attr;
+			break;
+
+		case type_where:
 			/* nothing to do */
 			break;
 
@@ -334,7 +340,7 @@ void fold_type(type *r, type *parent, symtable *stab)
 	if(q_to_check & qual_restrict && !type_is_ptr(r))
 		warn_at(type_loc(r), "restrict on non-pointer type '%s'", type_to_str(r));
 
-	fold_type(r->ref, r, stab);
+	fold_type_w_attr(r->ref, r, stab, this_attr ? this_attr : attr);
 
 	/* checks that rely on r->ref being folded... */
 	switch(r->type){
@@ -373,6 +379,11 @@ void fold_type(type *r, type *parent, symtable *stab)
 					sue_str(sue), type_to_str(parent));
 		}
 	}
+}
+
+void fold_type(type *t, type *parent, symtable *stab)
+{
+	fold_type_w_attr(t, parent, stab, NULL);
 }
 
 static int fold_align(int al, int min, int max, where *w)
@@ -496,7 +507,7 @@ static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
 			}else{
 				type *ty = i->bits.align_ty;
 				UCC_ASSERT(ty, "no type");
-				fold_type(ty, NULL, stab);
+				fold_type_w_attr(ty, NULL, stab, d->attr);
 				al = type_align(ty, &d->where);
 			}
 
@@ -641,7 +652,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		return;
 	d->folded = 1;
 
-	fold_type(d->ref, NULL, stab);
+	fold_type_w_attr(d->ref, NULL, stab, d->attr);
 
 	if(d->spel)
 		fold_decl_add_sym(d, stab);
@@ -918,13 +929,13 @@ void fold_stmt_and_add_to_curswitch(stmt *t)
 	/* TODO: copy ->freestanding? */
 }
 
-void fold_funcargs(funcargs *fargs, symtable *stab, type *from)
+void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 {
 	attribute *da;
 	unsigned long nonnulls = 0;
 
 	/* check nonnull corresponds to a pointer arg */
-	if((da = type_attr_present(from, attr_nonnull)))
+	if((da = attr_present(attr, attr_nonnull)))
 		nonnulls = da->bits.nonnull_args;
 
 	if(fargs->arglist){
@@ -949,8 +960,10 @@ void fold_funcargs(funcargs *fargs, symtable *stab, type *from)
 
 			/* convert any array definitions and functions to pointers */
 			/* must be before the decl is folded (since fold checks this) */
-			if(decl_conv_array_func_to_ptr(d))
-				fold_type(d->ref, NULL, stab); /* refold if we converted */
+			if(decl_conv_array_func_to_ptr(d)){
+				/* refold if we converted */
+				fold_type_w_attr(d->ref, NULL, stab, d->attr);
+			}
 
 			if(decl_store_static_or_extern(d->store))
 				die_at(&fargs->where,

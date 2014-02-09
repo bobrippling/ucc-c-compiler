@@ -19,10 +19,13 @@ void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab);
 void fold_func_passable(decl *, type *);
 
 void fold_type(type *r, type *parent, symtable *stab);
+void fold_type_w_attr(
+		type *, type *parent,
+		symtable *stab, attribute *attr);
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
 
-void fold_funcargs(funcargs *fargs, symtable *stab, type *from);
+void fold_funcargs(funcargs *fargs, symtable *stab, attribute *);
 
 void fold_stmt_and_add_to_curswitch(stmt *t);
 
