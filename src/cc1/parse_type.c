@@ -1309,24 +1309,7 @@ static void parse_post_func(decl *d, symtable *in_scope)
 	if(curtok == token_asm)
 		parse_add_asm(d);
 
-	/* special case - support GCC __attribute__
-	 * directly after a "new"/prototype function
-	 *
-	 * only accept if it's a new-style function,
-	 * i.e.
-	 *
-	 * f(i) __attribute__(()) int i; { ... }
-	 *
-	 * is invalid, since old-style functions have
-	 * decls after the final close-paren
-	 */
-	if(curtok == token_attribute && !is_old_func(d)){
-		/* add to .ref, since this is what is checked
-		 * when the function decays to a pointer */
-		attribute *a = NULL;
-		parse_add_attr(&a, in_scope);
-		d->ref = type_attributed(d->ref, a);
-	}else{
+	if(is_old_func(d)){
 		decl **old_args = NULL;
 		/* NULL - we don't want these in a scope */
 		parse_decls_multi_type(
@@ -1407,6 +1390,28 @@ static void error_on_unwanted_func(
 		die_at(&d->where, "function declaration not wanted (%s)", d->spel);
 }
 
+static void parse_decl_attr(decl *d, symtable *scope)
+{
+	/* special case - support GCC __attribute__
+	 * directly after a "new"/prototype function
+	 *
+	 * only accept if it's a new-style function,
+	 * i.e.
+	 *
+	 * f(i) __attribute__(()) int i; { ... }
+	 *
+	 * is invalid, since old-style functions have
+	 * decls after the final close-paren
+	 */
+	if(curtok == token_attribute && !is_old_func(d)){
+		/* add to .ref, since this is what is checked
+		 * when the function decays to a pointer */
+		attribute *a = NULL;
+		parse_add_attr(&a, scope);
+		d->ref = type_attributed(d->ref, a);
+	}
+}
+
 int parse_decls_single_type(
 		enum decl_multi_mode mode,
 		int newdecl,
@@ -1453,6 +1458,9 @@ int parse_decls_single_type(
 			d->bits.var.field_width = PARSE_EXPR_NO_COMMA(in_scope);
 			had_field_width = 1;
 		}
+
+		/* need to parse __attribute__ before folding the type */
+		parse_decl_attr(d, in_scope);
 
 		fold_type(d->ref, NULL, in_scope);
 
