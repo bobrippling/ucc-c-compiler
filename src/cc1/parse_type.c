@@ -31,6 +31,7 @@
 #include "type_is.h"
 
 #include "fold.h"
+#include "fold_sue.h"
 
 /*#define PARSE_DECL_VERBOSE*/
 
@@ -143,6 +144,8 @@ static type *parse_type_sue(
 
 		/* sue may already exist */
 		attribute_append(&sue->attr, this_sue_attr);
+
+		fold_sue(sue, scope);
 
 		return type_nav_suetype(cc1_type_nav, sue);
 	}
