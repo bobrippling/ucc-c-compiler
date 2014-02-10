@@ -360,6 +360,12 @@ where *type_loc(type *t)
 	return &fallback;
 }
 
+int type_has_loc(type *t)
+{
+	t = type_skip_non_wheres(t);
+	return t && t->type == type_where;
+}
+
 static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz)
 {
 #define BUF_ADD(...) \

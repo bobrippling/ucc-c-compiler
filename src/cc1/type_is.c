@@ -412,7 +412,15 @@ type *type_decay(type *const r)
 
 	switch(test->type){
 		case type_array:
-			return type_decayed_ptr_to(test->ref, test);
+		{
+			type *decayed = type_decayed_ptr_to(test->ref, test);
+
+			/* preserve location */
+			if(!type_has_loc(decayed) && type_has_loc(r))
+				decayed = type_at_where(decayed, type_loc(r));
+
+			return decayed;
+		}
 
 		case type_func:
 			return type_ptr_to(test);
