@@ -618,12 +618,20 @@ const char *type_to_str_r(char buf[TYPE_STATIC_BUFSIZ], type *r)
 	return type_to_str_r_spel(buf, r, NULL);
 }
 
-const char *type_to_str_r_show_decayed(char buf[TYPE_STATIC_BUFSIZ], type *r)
+const char *type_to_str_r_show_decayed(char buf[TYPE_STATIC_BUFSIZ], struct type *r)
 {
 	const char *s;
-	r->type = type_array;
+	enum type_kind restore;
+
+	r = type_skip_all(r);
+	restore = r->type;
+	if(r->type == type_ptr)
+		r->type = type_array;
+
 	s = type_to_str_r(buf, r);
-	r->type = type_ptr;
+
+	r->type = restore;
+
 	return s;
 }
 
