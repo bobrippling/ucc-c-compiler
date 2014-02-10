@@ -348,19 +348,16 @@ unsigned type_align(type *r, where *from)
 
 where *type_loc(type *t)
 {
-	while(t){
-		switch(t->type){
-			case type_where:
-				return &t->bits.where;
-			case type_attr:
-			case type_cast:
-				t = t->ref;
-				break;
-			default:
-				t = NULL;
-		}
-	}
-	return NULL;
+	static where fallback;
+
+	t = type_skip_non_wheres(t);
+	if(t && t->type == type_where)
+		return &t->bits.where;
+
+	if(!fallback.fname)
+		fallback.fname = "<unknown>";
+
+	return &fallback;
 }
 
 static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz)

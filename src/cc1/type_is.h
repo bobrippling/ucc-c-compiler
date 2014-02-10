@@ -7,6 +7,7 @@ type *type_skip_all(type *r);
 type *type_skip_non_tdefs(type *);
 type *type_skip_non_casts(type *);
 type *type_skip_wheres(type *);
+type *type_skip_non_wheres(type *);
 
 struct decl *type_is_tdef(type *r);
 
