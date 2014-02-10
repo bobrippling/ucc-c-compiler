@@ -288,12 +288,15 @@ static stmt *parse_label(const struct stmt_ctx *ctx)
 	return parse_label_next(lblstmt, ctx);
 }
 
-static stmt *parse_stmt_and_decls(const struct stmt_ctx *const ctx)
+static stmt *parse_stmt_and_decls(
+		const struct stmt_ctx *const ctx, int nested_scope)
 {
 	stmt *code_stmt = stmt_new_wrapper(
 			code, symtab_new(ctx->scope, where_cc1_current(NULL)));
 	struct stmt_ctx subctx = *ctx;
 	int got_decls;
+
+	code_stmt->symtab->internal_nest = nested_scope;
 
 	subctx.scope = code_stmt->symtab;
 
@@ -345,7 +348,7 @@ static stmt *parse_stmt_and_decls(const struct stmt_ctx *const ctx)
 
 		if(at_decl){
 			if(code_stmt->bits.code.stmts){
-				stmt *nest = parse_stmt_and_decls(&subctx);
+				stmt *nest = parse_stmt_and_decls(&subctx, 1);
 
 				if(cc1_std < STD_C99){
 					static int warned = 0;
@@ -355,9 +358,6 @@ static stmt *parse_stmt_and_decls(const struct stmt_ctx *const ctx)
 								"mixed code and declarations");
 					}
 				}
-
-				/* mark as internal - for duplicate checks */
-				nest->symtab->internal_nest = 1;
 
 				dynarray_add(&code_stmt->bits.code.stmts, nest);
 			}else{
@@ -427,7 +427,7 @@ stmt *parse_stmt_block(symtable *scope, const struct stmt_ctx *const ctx)
 
 	EAT(token_open_block);
 
-	t = parse_stmt_and_decls(&subctx);
+	t = parse_stmt_and_decls(&subctx, 0);
 
 	EAT(token_close_block);
 
