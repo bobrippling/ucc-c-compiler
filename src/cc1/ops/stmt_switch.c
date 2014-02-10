@@ -144,13 +144,9 @@ ret:
 
 void fold_stmt_switch(stmt *s)
 {
-	symtable *stab = s->symtab;
-
-	flow_fold(s->flow, &stab);
-
 	s->lbl_break = out_label_flow("switch");
 
-	FOLD_EXPR(s->expr, stab);
+	FOLD_EXPR(s->expr, s->symtab);
 
 	fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch");
 

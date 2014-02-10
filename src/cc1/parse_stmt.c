@@ -66,7 +66,8 @@ static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 				t->flow->for_init_symtab == init_scope,
 				"wrong scope for stmt-init");
 
-		ctx->scope = t->symtab = t->flow->for_init_symtab;
+		flow_fold(t->flow, &t->symtab);
+		ctx->scope = t->symtab;
 
 		/* `d' is added to the scope implicitly */
 
@@ -175,17 +176,25 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 	subctx.scope = sf->for_init_symtab;
 
 	if(!accept(token_semicolon)){
-		int got_decl = parse_decls_single_type(
+		decl **decls = NULL;
+
+		parse_decls_single_type(
 				DECL_MULTI_ALLOW_ALIGNAS,
 				/*newdecl context:*/1,
 				subctx.scope, subctx.scope,
-				NULL);
+				&decls);
 
-		if(got_decl){
+		if(decls){
 			if(cc1_std < STD_C99)
 				warn_at(NULL, "use of C99 for-init");
+
+			stmt_for_got_decls(s);
 		}else{
 			sf->for_init = parse_expr_exp(subctx.scope);
+
+			flow_fold(s->flow, &s->symtab);
+			subctx.scope = s->symtab;
+
 			FOLD_EXPR(sf->for_init, subctx.scope);
 			EAT(token_semicolon);
 		}
