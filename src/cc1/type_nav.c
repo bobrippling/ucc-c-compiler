@@ -119,12 +119,20 @@ static void init_array(type *ty, void *ctx)
 	ty->bits.array.is_static = c->is_static;
 }
 
+static void ctx_array_init(
+		struct ctx_array *ctx,
+		expr *sz, int is_static)
+{
+	ctx->sz_i = sz ? const_fold_val_i(sz) : 0;
+	ctx->sz = sz;
+	ctx->is_static = is_static;
+}
+
 type *type_array_of_static(type *to, struct expr *new_sz, int is_static)
 {
 	struct ctx_array ctx;
-	ctx.sz_i = new_sz ? const_fold_val_i(new_sz) : 0;
-	ctx.sz = new_sz;
-	ctx.is_static = is_static;
+
+	ctx_array_init(&ctx, new_sz, is_static);
 
 	return type_uptree_find_or_new(
 			to, type_array,
@@ -214,6 +222,35 @@ type *type_ptr_to(type *pointee)
 	return type_uptree_find_or_new(
 			pointee, type_ptr,
 			NULL, NULL, NULL);
+}
+
+static int eq_decayed_array(type *candidate, void *ctx)
+{
+	if(!candidate->bits.ptr.decayed)
+		return 0;
+
+	return eq_array(candidate, ctx);
+}
+
+static void init_decayed_array(type *ty, void *ctx)
+{
+	init_array(ty, ctx);
+	ty->bits.ptr.decayed = 1;
+}
+
+type *type_decayed_ptr_to(type *pointee, type *array_from)
+{
+	struct ctx_array ctx;
+
+	ctx_array_init(
+			&ctx,
+			array_from->bits.array.size,
+			array_from->bits.array.is_static);
+
+	return type_uptree_find_or_new(
+			pointee, type_ptr,
+			eq_decayed_array, init_decayed_array,
+			&ctx);
 }
 
 static int eq_qual(type *candidate, void *ctx)

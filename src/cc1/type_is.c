@@ -404,13 +404,7 @@ type *type_decay(type *const r)
 
 	switch(test->type){
 		case type_array:
-		{
-			/* don't mutate a type */
-			type *new = type_ptr_to(test->ref);
-			new->bits.ptr = test->bits.array; /* save the old size, etc */
-			new->bits.ptr.decayed = 1; /* old size may be NULL */
-			return new;
-		}
+			return type_decayed_ptr_to(test->ref, test);
 
 		case type_func:
 			return type_ptr_to(test);

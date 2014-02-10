@@ -20,6 +20,7 @@ type *type_nav_va_list(struct type_nav *root, symtable *symtab);
 type *type_decay(type *);
 
 type *type_ptr_to(type *);
+type *type_decayed_ptr_to(type *, type *array_from);
 type *type_pointed_to(type *); /* just pointers */
 type *type_block_of(type *);
 
