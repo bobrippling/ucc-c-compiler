@@ -11,9 +11,12 @@ const char *str_stmt_expr()
 
 void fold_stmt_expr(stmt *s)
 {
+	int folded = !s->expr->tree_type;
+
 	FOLD_EXPR(s->expr, s->symtab);
 
-	if(!s->freestanding
+	if(!folded
+	&& !s->freestanding
 	&& !s->expr->freestanding
 	&& !type_is_void(s->expr->tree_type))
 	{
