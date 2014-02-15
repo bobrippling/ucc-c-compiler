@@ -66,13 +66,26 @@ static void arm_jmp(const char *pre)
 
 void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 {
+	int i;
+
 	(void)r_ret;
 	(void)r_func;
 
-	if(nargs)
-		ICW("TODO: nargs");
+	for(i = 0; i < nargs; i++){
+		struct vreg call_reg = VREG_INIT(i, 0);
+
+		v_freeup_reg(&call_reg, 0);
+		v_to_reg_given(vtop, &call_reg);
+		v_reserve_reg(&call_reg);
+		vpop();
+	}
 
 	arm_jmp("bl");
+
+	for(i = 0; i < nargs; i++){
+		struct vreg call_reg = VREG_INIT(i, 0);
+		v_unreserve_reg(&call_reg);
+	}
 }
 
 void impl_jmp(void)
