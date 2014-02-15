@@ -1,3 +1,0 @@
-unnamed bitfields can't be initialised
-flexible array members can't be initialised
-wchar_t s[] = "Hello" etc

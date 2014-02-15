@@ -33,6 +33,8 @@ OBJ = \
 	ops/expr_assign_compound.o ops/expr_string.o \
 	${ARCH_OBJ}
 
+SRC = ${OBJ:.o=.c}
+
 cc1: ${OBJ}
 	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${OBJ}
 
@@ -42,8 +44,8 @@ cc1: ${OBJ}
 clean:
 	rm -f *.o cc1 ops/*.o out/*.o
 
-tags:
-	ctags -R .
+tags: ${SRC}
+	${CTAGS}
 
 .PHONY: clean deps
 

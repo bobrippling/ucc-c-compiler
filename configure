@@ -9,6 +9,7 @@ UCC_LD      = ${UCC_LD}
 UCC_ARCH    = ${UCC_ARCH}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
 UCC_CPU     = ${UCC_CPU}
+CTAGS       = ${TAG_CMD}
 !
 
 	cat > src/ucc/cfg.h <<!
@@ -82,6 +83,17 @@ leading_underscore(){
 	UCC_CFLAGS="-fleading-underscore $UCC_CFLAGS"
 }
 
+try_set(){
+	var="$1"
+	shift
+	for ent in $@
+	do
+		if test -f "$ent"
+		then eval "$var=\"\$$var:$ent\""
+		fi
+	done
+}
+
 UCC_AS=as
 UCC_LD=ld
 
@@ -98,23 +110,28 @@ unam="$(uname -s)"
 # TODO: option to use local ./lib path
 UCC_INC="-I/usr/include"
 
+TAG_CMD='ctags -R .'
+
 # defaults for an OS
 case "$unam" in
 	Linux)
 		# assume gcc
 		unam_lc="$(echo "$unam" | tr A-Z a-z)"
-		# FIXME: gcc specific + version specific
-		UCC_INC="$UCC_INC -I/usr/include/$UCC_CPU-$unam_lc-gnu -I/usr/lib/gcc/$UCC_CPU-$unam_lc-gnu/4.7.2/include"
 
-		UCC_LDFLAGS="$UCC_LDFLAGS"
 		UCC_DYN="-dynamic-linker /lib64/ld-linux-x86-64.so.2"
 		UCC_STDLIB="-lc"
 
-		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crt1.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crti.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtbegin.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtend.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crtn.o"
+		machine_path="$UCC_CPU-$unam_lc-gnu"
+
+		try_set UCC_CRT /usr/lib/"${machine_path}"/crt1.o
+		try_set UCC_CRT /usr/lib/"${machine_path}"/crti.o
+		try_set UCC_CRT /usr/lib/"${machine_path}"/crtn.o
+
+		gcc_inc=$(echo /usr/lib/gcc/$machine_path/*/ | tr ' ' '\n' | sort | tail -1)
+		echo "Borrowing gcc-$(basename "$gcc_inc")'s include/"
+
+		try_set UCC_INC "/usr/include/$machine_path"
+		try_set UCC_INC "$gcc_inc/include"
 		;;
 
 
@@ -131,6 +148,8 @@ case "$unam" in
 		UCC_LDFLAGS='-macosx_version_min 10.5'
 		ASM_PLBL=L
 		leading_underscore
+
+		TAG_CMD='ctags -dt $$(find . -iname "*.[ch]")'
 		;;
 
 	CYGWIN_NT-*)

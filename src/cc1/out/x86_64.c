@@ -690,7 +690,7 @@ void impl_load_fp(struct vstack *from)
 				/* TODO: use just an int if we can get away with it */
 				from->t = type_ref_cached_LLONG();
 
-				out_cast(ty_fp);
+				out_cast(ty_fp, /*normalise_bool:*/1);
 				break;
 			}
 			/* fall */
@@ -1762,7 +1762,9 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			r.idx = X86_64_REG_RAX;
 			r.is_float = 0;
 
-			out_push_l(type_ref_cached_CHAR(n), nfloats);
+			/* only the register arguments - glibc's printf of x86_64 linux
+			 * segfaults if this is 9 or greater */
+			out_push_l(type_ref_cached_CHAR(n), MIN(nfloats, N_CALL_REGS_F));
 			v_to_reg_given(vtop, &r);
 			vpop();
 		}

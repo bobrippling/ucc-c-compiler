@@ -9,12 +9,12 @@ const char *str_expr_block(void)
 	return "block";
 }
 
-void expr_block_set_ty(decl *db, type_ref *retty)
+void expr_block_set_ty(decl *db, type_ref *retty, symtable *scope)
 {
 	expr *e = db->block_expr;
 
 	db->ref = type_ref_new_block(
-			type_ref_new_func(retty, e->bits.block.args),
+			type_ref_new_func(retty, e->bits.block.args, scope),
 			qual_const);
 }
 
@@ -52,7 +52,7 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 	df->block_expr = e;
 
 	if(e->bits.block.retty){
-		expr_block_set_ty(df, e->bits.block.retty);
+		expr_block_set_ty(df, e->bits.block.retty, scope_stab);
 	}else{
 		/* df->ref is NULL until we find a return statement,
 		 * which sets df->ref for us */
@@ -64,7 +64,7 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 
 	/* if we didn't hit any returns, we're a void block */
 	if(!df->ref)
-		expr_block_set_ty(df, type_ref_cached_VOID());
+		expr_block_set_ty(df, type_ref_cached_VOID(), scope_stab);
 
 	e->tree_type = df->ref;
 

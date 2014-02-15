@@ -21,8 +21,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	/* skip the addr we inserted */
 	expr_must_lvalue(lvalue);
 
-	if(type_ref_is_const(lvalue->tree_type))
-		die_at(&e->where, "can't modify const expression %s", lvalue->f_str());
+	expr_assign_const_check(lvalue, &e->where);
 
 	fold_check_restrict(lvalue, e->rhs, "compound assignment", &e->where);
 
@@ -63,8 +62,6 @@ void gen_expr_assign_compound(expr *e)
 	lea_expr(e->bits.compound_upcast ? expr_cast_child(e->lhs) : e->lhs);
 
 	if(e->assign_is_post){
-		UCC_ASSERT(!e->bits.compound_upcast, "can't do upcast for (%s)++", e->lhs->f_str());
-
 		out_dup();
 		out_deref();
 		out_flush_volatile();
@@ -83,13 +80,13 @@ void gen_expr_assign_compound(expr *e)
 	out_swap();
 	out_deref();
 	if(e->bits.compound_upcast)
-		out_cast(e->lhs->tree_type);
+		out_cast(e->lhs->tree_type, /*normalise_bool:*/1);
 	out_swap();
 
 	out_op(e->op);
 
 	if(e->bits.compound_upcast) /* need to cast back down to store */
-		out_cast(e->tree_type);
+		out_cast(e->tree_type, /*normalise_bool:*/1);
 
 	out_store();
 

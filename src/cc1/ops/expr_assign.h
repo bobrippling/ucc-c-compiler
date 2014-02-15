@@ -10,5 +10,6 @@ func_gen     gen_expr_style_assign;
 
 void expr_must_lvalue(expr *e);
 void bitfield_trunc_check(decl *mem, expr *from);
+void expr_assign_const_check(expr *e, where *w);
 
 #endif

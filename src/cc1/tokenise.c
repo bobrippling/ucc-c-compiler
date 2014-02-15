@@ -683,7 +683,7 @@ void nexttoken()
 		}
 	}
 
-	if(isdigit(c)){
+	if(isdigit(c) || (c == '.' && isdigit(peeknextchar()))){
 		char *const num_start = bufferpos - 1;
 		enum base mode;
 
@@ -719,7 +719,8 @@ void nexttoken()
 			bufferpos--; /* rewind */
 		}
 
-		read_number(mode);
+		if(c != '.')
+			read_number(mode);
 
 #if 0
 		if(tolower(peeknextchar()) == 'e'){
@@ -737,7 +738,7 @@ void nexttoken()
 		}
 #endif
 
-		if(peeknextchar() == '.'){
+		if(c == '.' || peeknextchar() == '.'){
 			/* floating point */
 
 			currentval.val.f = strtold(num_start, &bufferpos);
