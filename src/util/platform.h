@@ -4,7 +4,8 @@
 enum platform
 {
 	PLATFORM_mipsel_32,
-	PLATFORM_x86_64
+	PLATFORM_x86_64,
+	PLATFORM_armv7
 };
 
 enum platform_sys

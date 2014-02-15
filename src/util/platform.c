@@ -44,6 +44,7 @@ unsigned platform_word_size()
 {
 	INIT();
 	switch(platform_t){
+		case PLATFORM_armv7:
 		case PLATFORM_mipsel_32:
 		 return 4;
 		case PLATFORM_x86_64:
