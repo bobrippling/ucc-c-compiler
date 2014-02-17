@@ -405,31 +405,57 @@ int type_decayable(type *r)
 	}
 }
 
-type *type_decay(type *const r)
+static type *type_keep_w_attr(type *t, where *loc, attribute *attr)
+{
+	if(loc && !type_has_loc(t))
+		t = type_at_where(t, loc);
+
+	return type_attributed(t, RETAIN(attr));
+}
+
+type *type_decay(type *const ty)
 {
 	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
-	type *test = type_skip_all(r);
+	where *loc = NULL;
+	attribute *attr = NULL;
+	type *test;
 
-	switch(test->type){
-		case type_array:
-		{
-			type *decayed = type_decayed_ptr_to(test->ref, test);
+	for(test = ty; test; test = type_next_1(test)){
+		switch(test->type){
+			case type_where:
+				if(!loc)
+					loc = &test->bits.where;
+				break;
 
-			/* preserve location */
-			if(!type_has_loc(decayed) && type_has_loc(r))
-				decayed = type_at_where(decayed, type_loc(r));
+			case type_attr:
+				if(!attr)
+					attr = test->bits.attr;
+				break;
 
-			return decayed;
+			case type_cast:
+			case type_tdef:
+				/* skip */
+				break;
+
+			case type_btype:
+			case type_ptr:
+			case type_block:
+				/* nothing to decay */
+				return ty;
+
+			case type_array:
+				return type_keep_w_attr(
+						type_decayed_ptr_to(test->ref, test),
+						loc, attr);
+
+			case type_func:
+				return type_keep_w_attr(
+						type_ptr_to(test),
+						loc, attr);
 		}
-
-		case type_func:
-			return type_ptr_to(test);
-
-		default:
-			break;
 	}
 
-	return r; /* we don't return a tdef/cast skipped type */
+	return ty;
 }
 
 int type_is_void(type *r)
