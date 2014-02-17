@@ -20,6 +20,7 @@
 #include "../type.h"
 #include "../funcargs.h"
 #include "../type_is.h"
+#include "../retain.h"
 
 #include "asm.h" /* cc_out[] */
 
@@ -31,8 +32,6 @@
 #include "lbl.h"
 #include "dbg.h"
 #include "write.h" /* dbg_add_file */
-
-#define RETAIN(x) (++(x)->retains, x)
 
 #define DW_TAGS                        \
 	X(DW_TAG_compile_unit, 0x11)         \
@@ -191,7 +190,8 @@ struct dwarf_block
 
 struct DIE
 {
-	unsigned retains;
+	struct retain rc;
+
 	enum dwarf_tag tag;
 	unsigned long locn;
 	unsigned long abbrev_code;
@@ -256,8 +256,7 @@ static void dwarf_die_free_r(struct DIE *die);
 
 static void dwarf_release(struct DIE *die)
 {
-	if(--die->retains == 0)
-		dwarf_die_free_r(die);
+	RELEASE(die);
 }
 
 static void dwarf_release_children(struct DIE *parent)
@@ -275,6 +274,7 @@ static void dwarf_release_children(struct DIE *parent)
 
 static void dwarf_die_new_at(struct DIE *d, enum dwarf_tag tag)
 {
+	RETAIN_INIT(d, &dwarf_die_free_r);
 	d->tag = tag;
 }
 

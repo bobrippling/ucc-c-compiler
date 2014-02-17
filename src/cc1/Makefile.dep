@@ -1330,7 +1330,7 @@ out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
  out/../ops/stmt_label.h out/../ops/stmt_noop.h out/../ops/stmt_return.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../const.h out/../funcargs.h out/../sue.h \
- out/../type.h out/../type_is.h out/asm.h out/../defs.h \
+ out/../type.h out/../type_is.h out/../retain.h out/asm.h out/../defs.h \
  out/../../as_cfg.h out/leb.h out/lbl.h out/dbg.h out/write.h \
  out/../../util/compiler.h
 out/impl.o: out/impl.c out/../../util/util.h out/../../util/where.h \
