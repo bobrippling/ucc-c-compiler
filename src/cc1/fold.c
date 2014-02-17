@@ -247,11 +247,13 @@ void fold_type_w_attr(
 				FOLD_EXPR(r->bits.array.size, stab);
 				const_fold(r->bits.array.size, &k);
 
-				if(k.type != CONST_NUM)
-					die_at(loc, "not a constant for array size");
-				else if(K_FLOATING(k.bits.num))
-					die_at(loc, "not an integral array size");
-				else if((sintegral_t)k.bits.num.val.i < 0)
+				UCC_ASSERT(k.type == CONST_NUM,
+						"not a constant for array size");
+
+				UCC_ASSERT(K_INTEGRAL(k.bits.num),
+						"integral array should be checked during parse");
+
+				if((sintegral_t)k.bits.num.val.i < 0)
 					die_at(loc, "negative array size");
 				/* allow zero length arrays */
 				else if(k.nonstandard_const)

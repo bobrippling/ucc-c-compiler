@@ -855,10 +855,19 @@ static type_parsed *parsed_type_array(
 		}else{
 			/* fold.c checks for const-ness */
 			/* grammar says it's a conditional here, hence no-comma */
+			consty k;
+
 			size = PARSE_EXPR_NO_COMMA(scope);
 			EAT(token_close_square);
 
 			FOLD_EXPR(size, scope);
+			const_fold(size, &k);
+
+			if(k.type != CONST_NUM)
+				die_at(NULL, "not a constant for array size");
+
+			if(!K_INTEGRAL(k.bits.num))
+				die_at(NULL, "not an integral array size");
 		}
 
 		if(is_static > 1)
