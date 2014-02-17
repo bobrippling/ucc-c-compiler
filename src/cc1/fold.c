@@ -673,7 +673,9 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		if(d->bits.var.field_width)
 			fold_decl_var_fieldwidth(d, stab);
 
-		if(pinit_code){
+		if(pinit_code
+		|| /* globals never have pinit_code: */ !stab->parent)
+		{
 			d->fold_state = DECL_FOLD_INIT;
 			fold_decl_var(d, stab, pinit_code);
 		}
