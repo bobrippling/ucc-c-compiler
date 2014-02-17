@@ -1502,6 +1502,8 @@ int parse_decls_single_type(
 
 		warn_for_unaccessible_sue(d, mode);
 
+		fold_decl(d, in_scope, NULL);
+
 		last = d;
 		if(done)
 			break;

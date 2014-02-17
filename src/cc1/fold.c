@@ -647,22 +647,23 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	 * and an if/switch/while statement: if((struct A { int i; } *)0)...
 	 * an argument list/type::func: f(struct A { int i, j; } *p, ...)
 	 */
+	int just_init = 0;
+	switch(d->fold_state){
+		case DECL_FOLD_EXCEPT_INIT:
+			just_init = 1;
+		case DECL_FOLD_NO:
+			break;
+		case DECL_FOLD_INIT:
+			return;
+	}
+	d->fold_state = DECL_FOLD_EXCEPT_INIT;
 
-	if(d->folded)
-		return;
-	d->folded = 1;
+	if(!just_init){
+		fold_type_w_attr(d->ref, NULL, stab, d->attr);
 
-	fold_type_w_attr(d->ref, NULL, stab, d->attr);
-
-	if(d->spel)
-		fold_decl_add_sym(d, stab);
-
-#if 0
-	/* if we have a type and it's incomplete, error */
-	no - only on use
-	if(!type_is_complete(d->ref))
-		die_at(&d->where, "use of incomplete type - %s (%s)", d->spel, decl_to_str(d));
-#endif
+		if(d->spel)
+			fold_decl_add_sym(d, stab);
+	}
 
 	if(type_is(d->ref, type_func)){
 		fold_decl_func(d, stab);
@@ -670,11 +671,15 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		if(d->bits.var.field_width)
 			fold_decl_var_fieldwidth(d, stab);
 
-		fold_decl_var(d, stab, pinit_code);
+		if(pinit_code){
+			d->fold_state = DECL_FOLD_INIT;
+			fold_decl_var(d, stab, pinit_code);
+		}
 	}
 
 	/* name static decls */
-	if(stab->parent
+	if(!just_init
+	&& stab->parent
 	&& (d->store & STORE_MASK_STORE) == store_static
 	&& d->spel)
 	{

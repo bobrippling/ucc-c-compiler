@@ -64,7 +64,12 @@ struct decl
 	} bits;
 
 	/* a reference to a previous prototype, used for attribute checks */
-	int folded;
+	enum
+	{
+		DECL_FOLD_NO,
+		DECL_FOLD_EXCEPT_INIT,
+		DECL_FOLD_INIT
+	} fold_state;
 	int proto_flag;
 	struct decl *proto;
 
