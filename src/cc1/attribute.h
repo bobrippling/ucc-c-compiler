@@ -2,11 +2,14 @@
 #define ATTR_H
 
 #include "type.h"
+#include "retain.h"
 
 typedef struct attribute attribute;
 struct attribute
 {
 	where where;
+
+	struct retain rc;
 
 	enum attribute_type
 	{

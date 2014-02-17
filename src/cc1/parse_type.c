@@ -84,6 +84,7 @@ static type *parse_type_sue(
 					e = NULL;
 
 				enum_vals_add(&members, &w, sp, e, en_attr);
+				RELEASE(en_attr);
 
 				if(!accept(token_comma))
 					break;
@@ -144,6 +145,8 @@ static type *parse_type_sue(
 
 		/* sue may already exist */
 		attribute_append(&sue->attr, this_sue_attr);
+
+		RELEASE(this_sue_attr);
 
 		fold_sue(sue, scope);
 
@@ -575,6 +578,7 @@ static type *parse_btype(
 
 		parse_add_attr(&attr, scope); /* int/struct-A __attr__ */
 		r = type_attributed(r, attr);
+		RELEASE(attr);
 
 		return type_at_where(r, &w);
 	}else{
@@ -925,7 +929,7 @@ static type_parsed *parsed_type_ptr(
 
 		r_ptr = type_parsed_new(PARSED_PTR, NULL);
 		r_ptr->bits.ptr.maker = maker;
-		r_ptr->bits.ptr.attr = attr;
+		r_ptr->bits.ptr.attr = attr; /* pass ownership */
 		r_ptr->bits.ptr.qual = qual;
 
 		/* this is essentially
@@ -1421,6 +1425,7 @@ static void parse_decl_attr(decl *d, symtable *scope)
 		attribute *a = NULL;
 		parse_add_attr(&a, scope);
 		d->ref = type_attributed(d->ref, a);
+		RELEASE(a);
 	}
 }
 

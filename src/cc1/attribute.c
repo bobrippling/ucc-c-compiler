@@ -17,6 +17,7 @@
 attribute *attribute_new(enum attribute_type t)
 {
 	attribute *da = umalloc(sizeof *da);
+	RETAIN_INIT(da, attribute_free);
 	where_cc1_current(&da->where);
 	da->type = t;
 	return da;
@@ -28,8 +29,7 @@ void attribute_append(attribute **loc, attribute *new)
 	while(*loc)
 		loc = &(*loc)->next;
 
-	/* we can just link up, since pointers aren't rewritten now */
-	*loc = /*attribute_copy(*/new/*)*/;
+	*loc = RETAIN(new);
 }
 
 attribute *attr_present(attribute *da, enum attribute_type t)
@@ -156,10 +156,13 @@ const char *attribute_to_str(attribute *da)
 
 void attribute_free(attribute *a)
 {
+	attribute *i;
 	if(!a)
 		return;
 
-	attribute_free(a->next);
+	for(i = a->next; i; i = i->next)
+		RELEASE(i);
+
 	free(a);
 }
 

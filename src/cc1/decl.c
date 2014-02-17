@@ -47,7 +47,7 @@ void decl_replace_with(decl *to, decl *from)
 	/* XXX: memleak of .ref */
 	memcpy_safe(&to->where, &from->where);
 	to->ref      = from->ref;
-	to->attr     = from->attr;
+	to->attr = RETAIN(from->attr);
 	to->spel_asm = from->spel_asm;
 	/* no point copying bitfield stuff */
 	memcpy_safe(&to->bits, &from->bits);

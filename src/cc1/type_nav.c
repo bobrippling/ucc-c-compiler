@@ -194,27 +194,29 @@ type *type_block_of(type *fn)
 
 static int eq_attr(type *candidate, void *ctx)
 {
-	if(attribute_equal(candidate->bits.attr, ctx)){
-		attribute_free(ctx);
-		return 1;
-	}
-	return 0;
+	return attribute_equal(candidate->bits.attr, ctx);
 }
 
 static void init_attr(type *ty, void *ctx)
 {
-	ty->bits.attr = ctx;
+	ty->bits.attr = RETAIN((attribute *)ctx);
 }
 
 type *type_attributed(type *ty, attribute *attr)
 {
+	type *attributed;
+
 	if(!attr)
 		return ty;
 
-	return type_uptree_find_or_new(
+	attributed = type_uptree_find_or_new(
 			ty, type_attr,
 			eq_attr, init_attr,
 			attr);
+
+	RELEASE(attr);
+
+	return attributed;
 }
 
 type *type_ptr_to(type *pointee)

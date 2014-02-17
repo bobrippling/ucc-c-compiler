@@ -40,7 +40,7 @@ void enum_vals_add(
 
 	emem->spel = sp;
 	emem->val  = e;
-	emem->attr = attr;
+	emem->attr = RETAIN(attr);
 	memcpy_safe(&emem->where, w);
 
 	mem->enum_member = emem;
