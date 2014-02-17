@@ -179,7 +179,7 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 		decl **decls = NULL;
 
 		parse_decls_single_type(
-				DECL_MULTI_ALLOW_ALIGNAS,
+				DECL_MULTI_ALLOW_ALIGNAS | DECL_MULTI_ALLOW_STORE,
 				/*newdecl context:*/1,
 				subctx.scope, subctx.scope,
 				&decls);
