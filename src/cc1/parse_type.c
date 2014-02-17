@@ -543,7 +543,7 @@ static type *parse_btype(
 
 				if(tdef_decl) /* typedef only */
 					fold_decl(tdef_decl, scope, NULL);
-				FOLD_EXPR(tdef_typeof, scope);
+				fold_expr_no_decay(tdef_typeof, scope);
 
 				r = type_tdef_of(tdef_typeof, tdef_decl);
 				break;
