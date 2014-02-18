@@ -118,7 +118,10 @@ void impl_deref(
 		const struct vreg *to,
 		type_ref *tpointed_to)
 {
-	out_asm("mov %s, [%s]", arm_reg_to_str(to->idx), "?");
+	v_to_reg(vp);
+	out_asm("mov %s, [%s]",
+			arm_reg_to_str(to->idx),
+			arm_reg_to_str(vp->bits.regoff.reg.idx));
 }
 
 void impl_i2f(struct vstack *vp, type_ref *t_i, type_ref *t_f)
