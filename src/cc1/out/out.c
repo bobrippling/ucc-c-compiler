@@ -244,7 +244,10 @@ int v_unused_reg(int stack_as_backup, int fp, struct vreg *out)
 	first = NULL;
 
 	for(it = vstack; it <= vtop; it++){
-		if(it->type == V_REG && it->bits.regoff.reg.is_float == fp){
+		if(it->type == V_REG
+		&& it->bits.regoff.reg.is_float == fp
+		&& impl_reg_is_scratch(&it->bits.regoff.reg))
+		{
 			if(!first)
 				first = it;
 			used[impl_reg_to_scratch(&it->bits.regoff.reg)] = 1;

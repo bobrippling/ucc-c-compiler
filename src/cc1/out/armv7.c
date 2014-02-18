@@ -347,6 +347,12 @@ int impl_reg_is_callee_save(const struct vreg *r, type_ref *fr)
 	return 0;
 }
 
+int impl_reg_is_scratch(const struct vreg *reg)
+{
+	return (/*ARM_REG_R0 <= reg->idx &&*/ reg->idx < ARM_REG_R3)
+		|| ARM_REG_R12 == reg->idx;
+}
+
 int impl_reg_to_scratch(const struct vreg *reg)
 {
 	if(/*ARM_REG_R0 <= reg->idx &&*/ reg->idx < ARM_REG_R3)

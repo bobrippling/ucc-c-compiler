@@ -45,7 +45,8 @@ void impl_set_overflow(void);
 void impl_set_nan(type_ref *);
 
 /* scratch register indexing */
-int  impl_reg_to_scratch(const struct vreg *);
+int impl_reg_is_scratch(const struct vreg *);
+int impl_reg_to_scratch(const struct vreg *);
 void impl_scratch_to_reg(int scratch, struct vreg *);
 
 /* callee save register bools */
