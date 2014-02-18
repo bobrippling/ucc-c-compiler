@@ -20,6 +20,11 @@ void expr_block_set_ty(decl *db, type *retty, symtable *scope)
 				symtab_new(scope, &e->where));
 }
 
+void expr_block_got_params(symtable *symtab, funcargs *args)
+{
+	fold_funcargs(args, symtab, NULL);
+}
+
 /*
  * TODO:
  * search e->code for expr_identifier,

@@ -228,7 +228,7 @@ parse_expr.o: parse_expr.c ../util/util.h ../util/where.h \
  ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
  ops/stmt_while.h ops/stmt_continue.h cc1_where.h tokenise.h tokconv.h \
  parse_type.h parse_init.h decl_init.h ops/__builtin.h ops/../expr.h \
- funcargs.h type_is.h
+ funcargs.h type_is.h ops/expr_block.h
 parse_init.o: parse_init.c ../util/where.h ../util/compiler.h \
  ../util/alloc.h ../util/util.h ../util/where.h ../util/dynarray.h \
  ../util/dyn.h sym.h decl.h type.h num.h btype.h attribute.h retain.h \

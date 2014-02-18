@@ -20,6 +20,8 @@
 #include "funcargs.h"
 #include "type_is.h"
 
+#include "ops/expr_block.h"
+
 expr *parse_expr_unary(symtable *scope);
 #define PARSE_EXPR_CAST(s) parse_expr_unary(s)
 
@@ -160,6 +162,7 @@ def_args:
 	}
 
 	symtab_add_params(arg_symtab, args->arglist);
+	expr_block_got_params(arg_symtab, args);
 
 	r = expr_new_block(rt, args, parse_stmt_block(arg_symtab, NULL));
 
