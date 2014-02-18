@@ -727,14 +727,25 @@ static decl_init **decl_init_brace_up_sue2(
 	&& !had_desig /* don't warn for designated inits */
 	&& i < sue_nmem)
 	{
-		const unsigned diff = sue_nmem - i;
-		decl *last_memb = sue->members[i]->struct_member;
+		unsigned diff = 0;
+		unsigned si;
+		decl *last_memb = NULL;
+
+		for(si = i; si < sue_nmem; si++){
+			decl *ent = sue->members[si]->struct_member;
+
+			if(!DECL_IS_ANON_BITFIELD(ent)){
+				diff++;
+				if(!last_memb)
+					last_memb = sue->members[si]->struct_member;
+			}
+		}
 
 		if(diff == 1
 		&& type_is_incomplete_array(last_memb->ref))
 		{
 			/* don't warn for flexarr */
-		}else{
+		}else if(diff > 0){
 			where *loc = ITER_WHERE(iter, last_loc ? last_loc : &sue->where);
 
 			warn_at(loc,
