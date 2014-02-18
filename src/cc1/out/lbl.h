@@ -26,6 +26,7 @@ char *out_label_block(const char *funcsp);
 
 char *out_dbg_func_end(const char *fn);
 
-void out_label(const char *);
+void out_label(const char *lbl);
+void out_label_noop(const char *lbl); /* doesn't flush volatiles */
 
 #endif

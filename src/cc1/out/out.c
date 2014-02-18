@@ -1422,12 +1422,24 @@ void out_jfalse(const char *lbl)
 	vpop();
 }
 
-void out_label(const char *lbl)
+static void out_label2(const char *lbl, int affect_code)
 {
-	/* if we have volatile data, ensure it's in a register */
-	out_flush_volatile();
+	if(affect_code){
+		/* if we have volatile data, ensure it's in a register */
+		out_flush_volatile();
+	}
 
 	impl_lbl(lbl);
+}
+
+void out_label(const char *lbl)
+{
+	out_label2(lbl, 1);
+}
+
+void out_label_noop(const char *lbl)
+{
+	out_label2(lbl, 0);
 }
 
 static void out_comment_vsec(

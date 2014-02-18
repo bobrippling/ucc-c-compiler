@@ -60,7 +60,7 @@ void flow_end(const char *endlbls[2])
 	int i;
 	for(i = 0; i < 2; i++)
 		if(endlbls[i])
-			out_label(endlbls[i]);
+			out_label_noop(endlbls[i]);
 }
 
 void fold_stmt_if(stmt *s)

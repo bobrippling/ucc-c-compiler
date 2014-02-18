@@ -134,7 +134,7 @@ void gen_block_decls(symtable *stab, const char **dbg_end_lbl)
 		stab->lbl_begin = out_label_code("dbg_begin");
 		stab->lbl_end = out_label_code("dbg_end");
 
-		out_label(stab->lbl_begin);
+		out_label_noop(stab->lbl_begin);
 		*dbg_end_lbl = stab->lbl_end;
 	}else{
 		*dbg_end_lbl = NULL;
@@ -169,7 +169,7 @@ void gen_stmt_code(stmt *s)
 		gen_stmt(*titer);
 
 	if(endlbl)
-		out_label(endlbl);
+		out_label_noop(endlbl);
 }
 
 void style_stmt_code(stmt *s)
