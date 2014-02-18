@@ -197,13 +197,22 @@ int main(int argc, char **argv)
 
 	switch(platform_type()){
 		case PLATFORM_x86_64:
-			macro_add("__LP64__", "1");
-			macro_add("__x86_64__", "1");
-			/* TODO: __i386__ for 32 bit */
+			if(platform_32bit()){
+				macro_add("__i386__", "1");
+			}else{
+				macro_add("__LP64__", "1");
+				macro_add("__x86_64__", "1");
+				macro_add("__amd64__", "1");
+			}
 			break;
 
 		case PLATFORM_mipsel_32:
-			macro_add("__MIPS__", "1");
+			macro_add("__mips__", "1");
+			break;
+
+		case PLATFORM_armv7:
+			macro_add("__arm__", "1");
+			break;
 	}
 
 	switch(platform_sys()){
