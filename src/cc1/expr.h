@@ -236,7 +236,7 @@ expr *expr_new_assign(         expr *to, expr *from);
 expr *expr_new_assign_init(    expr *to, expr *from);
 expr *expr_new_assign_compound(expr *to, expr *from, enum op_type);
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
-expr *expr_new_block(type *rt, struct funcargs *args, struct stmt *code);
+expr *expr_new_block(type *rt, struct funcargs *args);
 expr *expr_new_deref(expr *);
 expr *expr_new_struct(expr *sub, int dot, expr *ident);
 expr *expr_new_struct_mem(expr *sub, int dot, decl *);

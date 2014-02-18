@@ -135,7 +135,7 @@ static expr *parse_block(symtable *const scope)
 
 	funcargs *args;
 	type *rt;
-	expr *r;
+	expr *blk;
 
 	EAT(token_xor);
 
@@ -161,12 +161,16 @@ def_args:
 		args->args_void = 1;
 	}
 
-	symtab_add_params(arg_symtab, args->arglist);
-	expr_block_got_params(arg_symtab, args);
+	blk = expr_new_block(rt, args);
+	expr_block_got_params(blk, arg_symtab, args);
 
-	r = expr_new_block(rt, args, parse_stmt_block(arg_symtab, NULL));
+	{
+		stmt *code = parse_stmt_block(arg_symtab, NULL);
 
-	return r;
+		expr_block_got_code(blk, code);
+
+		return blk;
+	}
 }
 
 static expr *parse_expr_primary(symtable *scope)

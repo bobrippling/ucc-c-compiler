@@ -20,9 +20,28 @@ void expr_block_set_ty(decl *db, type *retty, symtable *scope)
 				symtab_new(scope, &e->where));
 }
 
-void expr_block_got_params(symtable *symtab, funcargs *args)
+void expr_block_got_params(
+		expr *e,
+		symtable *symtab, funcargs *args)
 {
+	decl *df = decl_new();
+
+	df->spel = out_label_block("globl");
+	df->block_expr = e;
+
+	symtab_add_params(symtab, args->arglist);
 	fold_funcargs(args, symtab, NULL);
+
+	symtab->in_func = df;
+
+	/* add a global symbol for the block */
+	e->bits.block.sym = sym_new_stab(
+			symtab_root(symtab), df, sym_global);
+}
+
+void expr_block_got_code(expr *e, stmt *code)
+{
+	e->code = code;
 }
 
 /*
@@ -42,19 +61,12 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 	/* prevent access to nested vars */
 	symtable *const arg_symtab = e->code->symtab->parent;
 	symtable *const sym_root = symtab_root(arg_symtab);
-	decl *df = decl_new();
-
-	arg_symtab->in_func = df;
-
-	/* add a global symbol for the block */
-	e->bits.block.sym = sym_new_stab(sym_root, df, sym_global);
+	decl *const df = arg_symtab->in_func;
 
 	/* fold block code (needs to be done before return-type of block) */
 	UCC_ASSERT(stmt_kind(e->code, code), "!code for block");
 
-	df->spel = out_label_block("globl");
 	df->bits.func.code = e->code;
-	df->block_expr = e;
 
 	if(e->bits.block.retty){
 		expr_block_set_ty(df, e->bits.block.retty, scope_stab);
@@ -104,10 +116,9 @@ void mutate_expr_block(expr *e)
 	(void)e;
 }
 
-expr *expr_new_block(type *rt, funcargs *args, stmt *code)
+expr *expr_new_block(type *rt, funcargs *args)
 {
 	expr *e = expr_new_wrapper(block);
-	e->code = code;
 	e->bits.block.args = args;
 	e->bits.block.retty = rt; /* return type if not null */
 	return e;
