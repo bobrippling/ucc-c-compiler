@@ -219,8 +219,16 @@ void format_check_call(
 	attribute *attr = type_attr_present(ref, attr_format);
 	int n, fmt_idx, var_idx;
 
-	if(!attr || !attr->bits.format.valid || !variadic)
+	if(!attr || !variadic)
 		return;
+	switch(attr->bits.format.validity){
+		case fmt_unchecked:
+			ICW("unchecked __attribute__((format...))");
+		case fmt_invalid:
+			return;
+		case fmt_valid:
+			break;
+	}
 
 	fmt_idx = attr->bits.format.fmt_idx;
 	var_idx = attr->bits.format.var_idx;
@@ -253,16 +261,22 @@ void format_check_call(
 
 void format_check_decl(decl *d, attribute *da)
 {
-	type *r_func = type_is_func_or_block(d->ref);
+	type *r_func;
 	funcargs *fargs;
 	int fmt_idx, var_idx, nargs;
 
+	if(da->bits.format.validity != fmt_unchecked){
+		/* i.e. checked */
+		return;
+	}
+
+	r_func = type_is_func_or_block(d->ref);
 	assert(r_func);
 	fargs = r_func->bits.func.args;
 
 	if(!fargs->variadic){
 		warn_at(&da->where, "variadic function required for format attribute");
-		return;
+		goto invalid;
 	}
 
 	nargs = dynarray_count(fargs->arglist);
@@ -273,7 +287,7 @@ void format_check_decl(decl *d, attribute *da)
 	if(fmt_idx >= nargs){
 		warn_at(&da->where, "format argument out of bounds (%d >= %d)",
 				fmt_idx, nargs);
-		return;
+		goto invalid;
 	}
 
 	if(var_idx != -1){
@@ -281,7 +295,7 @@ void format_check_decl(decl *d, attribute *da)
 		if(var_idx != nargs){
 			warn_at(&da->where, "variadic argument out of bounds (should be %d)",
 					nargs + 1); /* +1 to get to the "..." index as 1-based */
-			return;
+			goto invalid;
 		}
 
 		assert(var_idx > fmt_idx);
@@ -289,8 +303,11 @@ void format_check_decl(decl *d, attribute *da)
 
 	if(type_str_type(fargs->arglist[fmt_idx]->ref) != type_str_char){
 		warn_at(&da->where, "format argument not a string type");
-		return;
+		goto invalid;
 	}
 
-	da->bits.format.valid = 1;
+	da->bits.format.validity = fmt_valid;
+	return;
+invalid:
+	da->bits.format.validity = fmt_invalid;
 }
