@@ -246,16 +246,34 @@ void impl_load_iv(struct vstack *from)
 
 void impl_op(enum op_type op)
 {
+	const char *opc;
+
 	switch(op){
-		case op_multiply:
-		case op_divide:
-		case op_modulus:
-		case op_plus:
-		case op_minus:
-		case op_xor:
-		case op_or:
-		case op_and:
-			ICW("TODO: %s", op_to_str(op));
+		case op_multiply: opc = "mul"; goto op;
+		case op_minus: opc = "sub"; goto op; //
+		case op_divide: opc = "div"; goto op; //
+		case op_modulus: opc = "mod"; goto op; //
+		case op_plus: opc = "add"; goto op; //
+		case op_xor: opc = "or"; goto op; //
+		case op_or: opc = "or"; goto op; //
+		case op_and: opc = "and"; goto op; //
+op:
+		{
+			const char *rA, *rB;
+
+			/* can clobber vtop[0] and vtop[-1] */
+			v_to_reg(vtop);
+			v_to_reg(vtop-1);
+
+			rA = arm_reg_to_str(vtop->bits.regoff.reg.idx);
+			rB = arm_reg_to_str(vtop[-1].bits.regoff.reg.idx);
+
+			/* put the result in vtop-1's reg */
+			out_asm("%s %s, %s, %s", opc, rB, rA, rB);
+
+			vpop();
+			return;
+		}
 
 		case op_orsc:
 		case op_andsc:
