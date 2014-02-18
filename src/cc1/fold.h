@@ -10,7 +10,7 @@ void fold_merge_tenatives(symtable *stab);
 void fold_decl(decl *d, symtable *stab, stmt **pinit_code);
 void fold_global_func(decl *);
 void fold_func_code(decl *, symtable *);
-void fold_func_passable(decl *, type_ref *);
+int fold_func_is_passable(decl *, type_ref *, int warn);
 
 void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab);
 

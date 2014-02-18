@@ -68,7 +68,7 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 
 	e->tree_type = df->ref;
 
-	fold_func_passable(df, type_ref_func_call(e->tree_type, NULL));
+	fold_func_is_passable(df, type_ref_func_call(e->tree_type, NULL), 1);
 }
 
 void gen_expr_block(expr *e)

@@ -668,8 +668,16 @@ void fold_decl_global_init(decl *d, symtable *stab)
 
 }
 
-void fold_func_passable(decl *func_decl, type_ref *func_ret)
+static void warn_passable_func(decl *d)
 {
+	cc1_warn_at(&d->where, 0, WARN_RETURN_UNDEF,
+			"control reaches end of non-void function %s",
+			d->spel);
+}
+
+int fold_func_is_passable(decl *func_decl, type_ref *func_ret, int warn)
+{
+	int passable = 0;
 	struct
 	{
 		char *extra;
@@ -688,6 +696,7 @@ void fold_func_passable(decl *func_decl, type_ref *func_ret)
 			/* if we reach the end, it's bad */
 			the_return.extra = "implicitly ";
 			the_return.where = &func_decl->where;
+			passable = 1;
 		}else{
 			stmt *ret = NULL;
 
@@ -710,11 +719,13 @@ void fold_func_passable(decl *func_decl, type_ref *func_ret)
 	}else if(!type_ref_is_void(func_ret)){
 		/* non-void func - check it doesn't return */
 		if(fold_passable(func_decl->func_code)){
-			cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
-					"control reaches end of non-void function %s",
-					func_decl->spel);
+			passable = 1;
+			if(warn)
+				warn_passable_func(func_decl);
 		}
 	}
+
+	return passable;
 }
 
 void fold_func_code(decl *func_decl, symtable *arg_symtab)
@@ -766,7 +777,22 @@ void fold_global_func(decl *func_decl)
 
 		fold_func_code(func_decl, arg_symtab);
 
-		fold_func_passable(func_decl, func_ret);
+		if(fold_func_is_passable(func_decl, func_ret, 0)){
+			if((fopt_mode & FOPT_FREESTANDING) == 0
+			&& cc1_std >= STD_C99
+			&& !strcmp(func_decl->spel, "main"))
+			{
+				/* hosted environment, in main. return 0 */
+				stmt *zret = stmt_new_wrapper(return, func_decl->func_code->symtab);
+				zret->expr = expr_new_val(0);
+
+				dynarray_add(&func_decl->func_code->codes, zret);
+				fold_stmt(zret);
+
+			}else{
+				warn_passable_func(func_decl);
+			}
+		}
 	}
 }
 
