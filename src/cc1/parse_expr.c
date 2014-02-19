@@ -137,6 +137,8 @@ static expr *parse_block(symtable *const scope)
 	type *rt;
 	expr *blk;
 
+	arg_symtab->are_params = 1;
+
 	EAT(token_xor);
 
 	rt = parse_type(0, arg_symtab);

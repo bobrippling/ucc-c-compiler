@@ -81,7 +81,7 @@ symtable_global *symtab_global(symtable *stab)
 
 void symtab_add_params(symtable *stab, decl **params)
 {
-	stab->are_params = 1;
+	UCC_ASSERT(stab->are_params, "add params to a non-param symtable");
 	dynarray_add_array(&stab->decls, params);
 }
 

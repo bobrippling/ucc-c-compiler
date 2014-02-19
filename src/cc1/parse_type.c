@@ -897,6 +897,8 @@ static type_parsed *parsed_type_func(
 	while(accept(token_open_paren)){
 		symtable *subscope = symtab_new(scope, where_cc1_current(NULL));
 
+		subscope->are_params = 1;
+
 		sub = type_parsed_new(PARSED_FUNC, sub);
 		sub->bits.func.arglist = parse_func_arglist(subscope);
 		sub->bits.func.scope = subscope;
