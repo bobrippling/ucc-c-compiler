@@ -1287,7 +1287,6 @@ static void warn_for_unaccessible_sue(
 static int warn_for_unused_typename(
 		decl *d, enum decl_multi_mode mode)
 {
-	const char *emsg = "declaration doesn't declare anything";
 	struct_union_enum_st *sue = type_is_s_or_u_or_e(d->ref);
 
 	if(sue) switch(sue->primitive){
@@ -1310,17 +1309,13 @@ static int warn_for_unused_typename(
 			break;
 	}
 
-	/*
-	 * die if it's a complex decl,
-	 * e.g. int (const *a)
-	 * function with int argument
+	/* C 6.7/2:
+	 * A decl shall declare at least a declarator a tag,
+	 * or the members of an enumeration.
+	 *
+	 * allow nameless as an extension
 	 */
-	if(type_is(d->ref, type_btype)){
-		warn_at(&d->where, "%s", emsg);
-	}else{
-		warn_at_print_error(&d->where, "%s", emsg);
-		parse_had_error = 1;
-	}
+	warn_at(&d->where, "declaration doesn't declare anything");
 
 	return 1;
 }
@@ -1510,7 +1505,7 @@ int parse_decl_group(
 			}
 
 			if(warn_for_unused_typename(d, mode)){
-				/* continue after error */
+				/* ignore the decl */
 			}
 			done = 1;
 		}
