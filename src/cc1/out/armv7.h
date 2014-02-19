@@ -23,8 +23,8 @@
 #define ARM_REG_R8   8
 #define ARM_REG_R9   9
 #define ARM_REG_R10 10
-#define ARM_REG_R11 11
-#define ARM_REG_R12 12
+#define ARM_REG_R11 11 /* fp */
+#define ARM_REG_R12 12 /* ip: inter-proc scratch */
 #define ARM_REG_R13 13 /* sp */
 #define ARM_REG_R14 14 /* lr */
 #define ARM_REG_R15 15 /* pc */
@@ -33,7 +33,7 @@
 #define N_SCRATCH_REGS_F 0 /*TODO*/
 
 #define REG_SP ARM_REG_R13
-#define REG_BP 0 /* ??? */
+#define REG_BP ARM_REG_R15
 
 #define REG_RET_F 0 /*TODO*/
 #define REG_RET_I ARM_REG_R0

@@ -135,8 +135,8 @@ void impl_f2f(struct vstack *vp, type_ref *from, type_ref *to)
 
 void impl_func_prologue_save_fp(void)
 {
-	out_asm("push { r4, lr }");
-	out_asm("mov r4, sp");
+	out_asm("push { fp, lr }");
+	out_asm("mov fp, sp");
 }
 
 void impl_func_prologue_save_call_regs(
@@ -157,8 +157,8 @@ void impl_func_prologue_save_variadic(type_ref *rf)
 
 void impl_func_epilogue(type_ref *ty)
 {
-	out_asm("mov sp, r4");
-	out_asm("pop { r4, pc }");
+	out_asm("mov sp, fp");
+	out_asm("pop { fp, pc }");
 }
 
 void impl_load(struct vstack *from, const struct vreg *reg)
