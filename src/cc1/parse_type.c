@@ -104,14 +104,17 @@ static type *parse_type_sue(
 			decl **dmembers = NULL;
 			decl **i;
 
-			parse_decls_multi_type(
+			while(parse_decl_group(
 					  DECL_MULTI_CAN_DEFAULT
 					| DECL_MULTI_ACCEPT_FIELD_WIDTH
 					| DECL_MULTI_NAMELESS
 					| DECL_MULTI_ALLOW_ALIGNAS,
 					/*newdecl_context:*/0,
 					scope,
-					NULL, &dmembers);
+					NULL, &dmembers,
+					/*pinit_code:*/NULL))
+			{
+			}
 
 			if(!dmembers){
 				warn_at(NULL, "empty %s", sue_str_type(prim));
@@ -618,7 +621,7 @@ static decl *parse_arg_decl(symtable *scope)
 {
 	/* argument decls can default to int */
 	const enum decl_mode flags = DECL_CAN_DEFAULT | DECL_ALLOW_STORE;
-	decl *argdecl = parse_decl_single(flags, 0, scope, NULL);
+	decl *argdecl = parse_decl(flags, 0, scope, NULL, NULL);
 
 	if(!argdecl)
 		die_at(NULL, "type expected (got %s)", token_to_str(curtok));
@@ -1103,15 +1106,17 @@ static type *default_type(void)
 	return type_nav_btype(cc1_type_nav, type_int);
 }
 
-decl *parse_decl_single(
+decl *parse_decl(
 		enum decl_mode mode, int newdecl,
-		symtable *scope, symtable *add_to_scope)
+		symtable *scope, symtable *add_to_scope,
+		stmt **pinit_code)
 {
 	enum decl_storage store = store_default;
 	type *r = parse_btype(
 			mode & DECL_ALLOW_STORE ? &store : NULL,
 			/*align:*/NULL,
 			newdecl, scope);
+	decl *d;
 
 	if(!r){
 		if((mode & DECL_CAN_DEFAULT) == 0)
@@ -1123,10 +1128,14 @@ decl *parse_decl_single(
 		prevent_typedef(store);
 	}
 
-	return parse_decl_stored_aligned(
+	d = parse_decl_stored_aligned(
 			r, mode,
 			store, NULL /* align */,
 			scope, add_to_scope);
+
+	fold_decl(d, scope, pinit_code);
+
+	return d;
 }
 
 static int is_old_func(decl *d)
@@ -1328,10 +1337,14 @@ static void parse_post_func(decl *d, symtable *in_scope)
 	if(is_old_func(d)){
 		decl **old_args = NULL;
 		/* NULL - we don't want these in a scope */
-		parse_decls_multi_type(
+		while(parse_decl_group(
 				0, /*newdecl_context:*/0,
 				in_scope,
-				NULL, &old_args);
+				NULL, &old_args,
+				/*pinit_code:*/NULL))
+		{
+		}
+
 		if(old_args){
 			check_and_replace_old_func(d, old_args);
 
@@ -1429,11 +1442,12 @@ static void parse_decl_attr(decl *d, symtable *scope)
 	}
 }
 
-int parse_decls_single_type(
+int parse_decl_group(
 		const enum decl_multi_mode mode,
 		int newdecl,
 		symtable *in_scope,
-		symtable *add_to_scope, decl ***pdecls)
+		symtable *add_to_scope, decl ***pdecls,
+		stmt **pinit_code)
 {
 	const enum decl_mode parse_flag =
 		(mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0);
@@ -1516,7 +1530,8 @@ int parse_decls_single_type(
 
 		warn_for_unaccessible_sue(d, mode);
 
-		fold_decl(d, in_scope, NULL);
+		/* must fold _after_ we get the bitfield, etc */
+		fold_decl(d, in_scope, pinit_code);
 
 		last = d;
 		if(done)
@@ -1534,24 +1549,4 @@ int parse_decls_single_type(
 	}
 
 	return 1;
-}
-
-int parse_decls_multi_type(
-		enum decl_multi_mode mode,
-		int newdecl_context,
-		symtable *in_scope,
-		symtable *add_to_scope, decl ***pdecls)
-{
-	int ret = 0;
-	for(;;){
-		if(!parse_decls_single_type(
-					mode, newdecl_context,
-					in_scope,
-					add_to_scope, pdecls))
-		{
-			break;
-		}
-		ret = 1;
-	}
-	return ret;
 }

@@ -54,14 +54,15 @@ void parse_and_fold(symtable_global *globals)
 		decl **di;
 		int cont;
 
-		cont = parse_decls_single_type(
+		cont = parse_decl_group(
 				  DECL_MULTI_CAN_DEFAULT
 				| DECL_MULTI_ACCEPT_FUNC_CODE
 				| DECL_MULTI_ALLOW_STORE
 				| DECL_MULTI_ALLOW_ALIGNAS,
 				/*newdecl:*/1,
 				&globals->stab,
-				&globals->stab, &new);
+				&globals->stab, &new,
+				/* init blk: */NULL);
 
 		/* global struct layout-ing */
 		symtab_fold_sues(&globals->stab);

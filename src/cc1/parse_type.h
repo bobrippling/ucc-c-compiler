@@ -26,23 +26,18 @@ enum decl_multi_mode
 type *parse_type(int newdecl_ctx, symtable *scope);
 
 /* type *name[]... */
-decl *parse_decl_single(
+decl *parse_decl(
 		enum decl_mode mode, int newdecl_ctx,
-		symtable *scope, symtable *add_to_scope);
+		symtable *scope, symtable *add_to_scope,
+		struct stmt **pinit_code);
 
 /* type ident...; */
-int parse_decls_single_type(
+int parse_decl_group(
 		enum decl_multi_mode mode,
 		int newdecl_ctx,
 		symtable *in_scope,
-		symtable *add_to_scope, decl ***pdecls);
-
-/* multiple of the above */
-int parse_decls_multi_type(
-		enum decl_multi_mode mode,
-		int newdecl_context,
-		symtable *in_scope,
-		symtable *add_to_scope, decl ***pnew)
+		symtable *add_to_scope, decl ***pdecls,
+		struct stmt **pinit_code)
 	ucc_nonnull((3));
 
 struct funcargs *parse_func_arglist(symtable *);

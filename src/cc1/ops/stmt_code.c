@@ -85,16 +85,6 @@ void fold_block_decls(symtable *stab, stmt **pinit_blk)
 	}
 }
 
-void stmt_code_got_decls(stmt *code)
-{
-	stmt *init_blk = NULL;
-
-	fold_block_decls(code->symtab, &init_blk);
-
-	if(init_blk)
-		dynarray_prepend(&code->bits.code.stmts, init_blk);
-}
-
 void fold_stmt_code(stmt *s)
 {
 	stmt **siter;

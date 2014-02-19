@@ -53,10 +53,12 @@ static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 		 * for(int i ...), if(int i = ...) etc
 		 */
 		symtable *init_scope = symtab_new(t->symtab, &here);
+		stmt *init_code = NULL;
 
-		d = parse_decl_single(
+		d = parse_decl(
 				DECL_SPEL_NEED, 0,
-				ctx->scope, init_scope);
+				ctx->scope, init_scope,
+				&init_code);
 
 		UCC_ASSERT(d, "at decl, but no decl?");
 
@@ -176,15 +178,15 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 	subctx.scope = sf->for_init_symtab;
 
 	if(!accept(token_semicolon)){
-		decl **decls = NULL;
+		int got_decls;
 
-		parse_decls_single_type(
+		got_decls = parse_decl_group(
 				DECL_MULTI_ALLOW_ALIGNAS | DECL_MULTI_ALLOW_STORE,
 				/*newdecl context:*/1,
 				subctx.scope, subctx.scope,
-				&decls);
+				NULL, /*pinit_code:*/&sf->init_blk);
 
-		if(decls){
+		if(got_decls){
 			if(cc1_std < STD_C99)
 				warn_at(NULL, "use of C99 for-init");
 
@@ -294,7 +296,7 @@ static stmt *parse_stmt_and_decls(
 	stmt *code_stmt = stmt_new_wrapper(
 			code, symtab_new(ctx->scope, where_cc1_current(NULL)));
 	struct stmt_ctx subctx = *ctx;
-	int got_decls;
+	int got_decls = 0;
 
 	code_stmt->symtab->internal_nest = nested_scope;
 
@@ -302,16 +304,31 @@ static stmt *parse_stmt_and_decls(
 
 	parse_static_assert(subctx.scope);
 
-	got_decls = parse_decls_multi_type(
-			DECL_MULTI_ACCEPT_FUNC_DECL
-			| DECL_MULTI_ALLOW_STORE
-			| DECL_MULTI_ALLOW_ALIGNAS,
-			/*newdecl_context:*/1,
-			subctx.scope,
-			subctx.scope, NULL);
+	while(1){
+		stmt *init_blk = NULL;
+
+		int new_group = parse_decl_group(
+				DECL_MULTI_ACCEPT_FUNC_DECL
+				| DECL_MULTI_ALLOW_STORE
+				| DECL_MULTI_ALLOW_ALIGNAS,
+				/*newdecl_context:*/1,
+				subctx.scope,
+				subctx.scope, NULL,
+				&init_blk);
+
+		if(new_group){
+			got_decls = 1;
+
+			if(init_blk)
+				dynarray_add(&code_stmt->bits.code.stmts, init_blk);
+		}else{
+			UCC_ASSERT(!init_blk, "inits but no decls?");
+			break;
+		}
+	}
 
 	if(got_decls)
-		stmt_code_got_decls(code_stmt);
+		fold_block_decls(subctx.scope, /*init blk:*/NULL);
 
 	if(curtok != token_close_block){
 		/* fine with a normal statement */
