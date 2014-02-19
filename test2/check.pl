@@ -40,7 +40,11 @@ my $nchecks = 0;
 # read warnings in
 
 for my $w (parse_warnings((<STDIN>))){
-	push @{$lines[$w->{line} - 1]->{warnings}}, $w;
+	my $ln = $w->{line};
+
+	if($ln > 0){
+		push @{$lines[$ln - 1]->{warnings}}, $w;
+	}
 }
 
 # ---------------------------
