@@ -1510,7 +1510,6 @@ int parse_decl_group(
 			}
 
 			if(warn_for_unused_typename(d, mode)){
-				decl_free(d);
 				/* continue after error */
 			}
 			done = 1;
