@@ -14,7 +14,7 @@ const char *str_stmt_code()
 	return "code";
 }
 
-void fold_block_decls(symtable *stab, stmt **pinit_blk)
+void fold_shadow_dup_check_block_decls(symtable *stab)
 {
 	/* must iterate using an index, since the array may
 	 * resize under us */
@@ -30,7 +30,7 @@ void fold_block_decls(symtable *stab, stmt **pinit_blk)
 		symtable *above_scope;
 		int chk_shadow = 0, is_func = 0;
 
-		fold_decl(d, stab, pinit_blk);
+		fold_decl(d, stab, NULL);
 
 		if((is_func = !!type_is(d->ref, type_func)))
 			chk_shadow = 1;

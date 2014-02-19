@@ -328,7 +328,7 @@ static stmt *parse_stmt_and_decls(
 	}
 
 	if(got_decls)
-		fold_block_decls(subctx.scope, /*init blk:*/NULL);
+		fold_shadow_dup_check_block_decls(subctx.scope);
 
 	if(curtok != token_close_block){
 		/* fine with a normal statement */

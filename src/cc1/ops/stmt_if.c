@@ -18,7 +18,7 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 
 		*pstab = flow->for_init_symtab;
 
-		fold_block_decls(*pstab, &flow->init_blk);
+		fold_shadow_dup_check_block_decls(*pstab);
 
 		/* sanity check on _flow_ vars only */
 		for(i = (*pstab)->decls; i && *i; i++){
