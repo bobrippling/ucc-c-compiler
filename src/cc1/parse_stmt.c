@@ -53,16 +53,15 @@ static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 		 * for(int i ...), if(int i = ...) etc
 		 */
 		symtable *init_scope = symtab_new(t->symtab, &here);
-		stmt *init_code = NULL;
+
+		t->flow = stmt_flow_new(init_scope);
 
 		d = parse_decl(
 				DECL_SPEL_NEED, 0,
-				ctx->scope, init_scope,
-				&init_code);
+				init_scope, init_scope,
+				&t->flow->init_blk);
 
 		UCC_ASSERT(d, "at decl, but no decl?");
-
-		t->flow = stmt_flow_new(init_scope);
 
 		UCC_ASSERT(
 				t->flow->for_init_symtab == init_scope,
