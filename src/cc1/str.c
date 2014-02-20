@@ -62,7 +62,10 @@ char *str_add_escape(const char *s, const size_t len)
 			*p++ = '\\';
 			*p++ = s[i];
 		}else if(!isprint(s[i])){
-			int n = sprintf(p, "\\%03o", s[i]);
+			/* cast to unsigned char so we don't try printing
+			 * some massive sign extended negative number */
+			int n = sprintf(p, "\\%03o", (unsigned char)s[i]);
+			UCC_ASSERT(n <= 4, "sprintf(octal), length %d > 4", n);
 			p += n;
 		}else{
 			*p++ = s[i];
