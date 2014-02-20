@@ -369,14 +369,17 @@ static void builtin_gen_memcpy(expr *e)
 	lea_expr(e->lhs, stab);
 	out_call(3, e->tree_type, ctype);
 #else
-	/* TODO: backend rep movsb */
-	unsigned i = e->bits.num.val.i;
-	type *tptr = type_ptr_to(
-				type_nav_MAX_FOR(cc1_type_nav, e->bits.num.val.i));
-	unsigned tptr_sz = type_size(tptr, &e->where);
+	size_t i = e->bits.num.val.i;
+	type *tptr;
+	unsigned tptr_sz;
 
 	lea_expr(e->lhs); /* d */
 	lea_expr(e->rhs); /* ds */
+
+	if(i > 0){
+		tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, e->bits.num.val.i));
+		tptr_sz = type_size(tptr, &e->where);
+	}
 
 	while(i > 0){
 		/* as many copies as we can */

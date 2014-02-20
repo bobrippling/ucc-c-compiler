@@ -364,7 +364,7 @@ type *type_nav_MAX_FOR(struct type_nav *root, unsigned sz)
 		if(sz >= type_primitive_size(prims[i]))
 			return type_nav_btype(root, prims[i]);
 
-	return NULL;
+	assert(0 && "no type max");
 }
 
 type *type_unqualify(type *t)
