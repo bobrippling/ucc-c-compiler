@@ -41,7 +41,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			enum { OKAY, INCOMPLETE, VARIABLE, FUNC } prob = OKAY;
 			const char *sprob;
 
-			fold_type(l->t, NULL, stab);
+			fold_type(l->t, stab);
 
 			if(!type_is_complete(l->t))
 				prob = INCOMPLETE;

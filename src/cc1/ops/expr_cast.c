@@ -294,7 +294,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 		e->tree_type = type_qualify(e->bits.cast.tref, q & ~qual_restrict);
 
-		fold_type(e->tree_type, NULL, stab); /* struct lookup, etc */
+		fold_type(e->tree_type, stab); /* struct lookup, etc */
 
 		tlhs = e->tree_type;
 		trhs = expr_cast_child(e)->tree_type;

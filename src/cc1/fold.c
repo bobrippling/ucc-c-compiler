@@ -227,7 +227,7 @@ static void fold_calling_conv(type *r)
 }
 
 void fold_type_w_attr(
-		type *r, type *parent,
+		type *r, type *parent, where *loc,
 		symtable *stab, attribute *attr)
 {
 	attribute *this_attr = NULL;
@@ -340,9 +340,11 @@ void fold_type_w_attr(
 	 * since typedef int *intptr; intptr restrict a; is valid
 	 */
 	if(q_to_check & qual_restrict && !type_is_ptr(r))
-		warn_at(type_loc(r), "restrict on non-pointer type '%s'", type_to_str(r));
+		warn_at(loc,
+				"restrict on non-pointer type '%s'",
+				type_to_str(r));
 
-	fold_type_w_attr(r->ref, r, stab, this_attr ? this_attr : attr);
+	fold_type_w_attr(r->ref, r, loc, stab, this_attr ? this_attr : attr);
 
 	/* checks that rely on r->ref being folded... */
 	switch(r->type){
@@ -350,7 +352,7 @@ void fold_type_w_attr(
 		case type_func:
 			if(type_is(r->ref, type_func)){
 				fold_had_error = 1;
-				warn_at_print_error(type_loc(r),
+				warn_at_print_error(loc,
 						r->type == type_func
 							? "function returning a function"
 							: "array of functions");
@@ -360,7 +362,7 @@ void fold_type_w_attr(
 		case type_block:
 			if(!type_is(r->ref, type_func)){
 				fold_had_error = 1;
-				warn_at_print_error(type_loc(r),
+				warn_at_print_error(loc,
 						"invalid block pointer - function required (got %s)",
 						type_to_str(r->ref));
 			}
@@ -383,9 +385,9 @@ void fold_type_w_attr(
 	}
 }
 
-void fold_type(type *t, type *parent, symtable *stab)
+void fold_type(type *t, symtable *stab)
 {
-	fold_type_w_attr(t, parent, stab, NULL);
+	fold_type_w_attr(t, NULL, type_loc(t), stab, NULL);
 }
 
 static int fold_align(int al, int min, int max, where *w)
@@ -509,7 +511,7 @@ static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
 			}else{
 				type *ty = i->bits.align_ty;
 				UCC_ASSERT(ty, "no type");
-				fold_type_w_attr(ty, NULL, stab, d->attr);
+				fold_type_w_attr(ty, NULL, type_loc(d->ref), stab, d->attr);
 				al = type_align(ty, &d->where);
 			}
 
@@ -661,7 +663,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	d->fold_state = DECL_FOLD_EXCEPT_INIT;
 
 	if(!just_init){
-		fold_type_w_attr(d->ref, NULL, stab, d->attr);
+		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), stab, d->attr);
 
 		if(d->spel)
 			fold_decl_add_sym(d, stab);
@@ -976,7 +978,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 			/* must be before the decl is folded (since fold checks this) */
 			if(decl_conv_array_func_to_ptr(d)){
 				/* refold if we converted */
-				fold_type_w_attr(d->ref, NULL, stab, d->attr);
+				fold_type_w_attr(d->ref, NULL, type_loc(d->ref), stab, d->attr);
 			}
 
 			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){

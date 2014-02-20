@@ -467,8 +467,8 @@ static void fold_compatible_p(expr *e, symtable *stab)
 	if(dynarray_count(types) != 2)
 		die_at(&e->where, "need two arguments for %s", BUILTIN_SPEL(e->expr));
 
-	fold_type(types[0], NULL, stab);
-	fold_type(types[1], NULL, stab);
+	fold_type(types[0], stab);
+	fold_type(types[1], stab);
 
 	e->tree_type = type_nav_btype(cc1_type_nav, type__Bool);
 	wur_builtin(e);
@@ -743,7 +743,7 @@ static void fold_is_signed(expr *e, symtable *stab)
 	if(dynarray_count(tl) != 1)
 		die_at(&e->where, "need a single argument for %s", BUILTIN_SPEL(e->expr));
 
-	fold_type(tl[0], NULL, stab);
+	fold_type(tl[0], stab);
 
 	if((incomplete = !type_is_complete(tl[0]))
 	|| !type_is_scalar(tl[0]))

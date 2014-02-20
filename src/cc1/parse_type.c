@@ -1051,7 +1051,7 @@ static decl *parse_decl_stored_aligned(
 
 	if(add_to_scope){
 		dynarray_add(&add_to_scope->decls, d);
-		fold_type_w_attr(d->ref, NULL, scope, d->attr);
+		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), scope, d->attr);
 	}
 
 	/* only check if it's not a function, otherwise it could be
@@ -1478,7 +1478,7 @@ int parse_decl_group(
 		/* need to parse __attribute__ before folding the type */
 		parse_decl_attr(d, in_scope);
 
-		fold_type_w_attr(d->ref, NULL, in_scope, d->attr);
+		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), in_scope, d->attr);
 
 		if(!d->spel && !had_field_width){
 			/*

@@ -479,7 +479,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 	type *to;
 
 	FOLD_EXPR(e->lhs, stab);
-	fold_type(ty, NULL, stab);
+	fold_type(ty, stab);
 
 	va_type_check(e->lhs, e->expr, stab);
 

@@ -1030,7 +1030,7 @@ static decl_init *decl_init_brace_up_r(
 {
 	struct_union_enum_st *sue;
 
-	fold_type(tfor, NULL, stab);
+	fold_type(tfor, stab);
 
 	if(type_is(tfor, type_array))
 		return decl_init_brace_up_array_chk_char(
