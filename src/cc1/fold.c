@@ -685,11 +685,16 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	if(!just_init
 	&& stab->parent
 	&& (d->store & STORE_MASK_STORE) == store_static
-	&& d->spel)
+	&& d->spel
+	/* ignore static arguments - error handled elsewhere */
+	&& (!d->sym || d->sym->type != sym_arg))
 	{
-			d->spel_asm = out_label_static_local(
-					symtab_func(stab)->spel,
-					d->spel);
+		decl *in_fn = symtab_func(stab);
+		UCC_ASSERT(in_fn, "not in function for \"%s\"", d->spel);
+
+		d->spel_asm = out_label_static_local(
+				in_fn->spel,
+				d->spel);
 	}
 }
 
@@ -974,10 +979,21 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 				fold_type_w_attr(d->ref, NULL, stab, d->attr);
 			}
 
-			if(decl_store_static_or_extern(d->store))
-				die_at(&fargs->where,
-						"function argument %d is static or extern",
-						i + 1);
+			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+				case store_auto:
+				case store_static:
+				case store_extern:
+				case store_typedef:
+				case store_inline:
+					die_at(&fargs->where,
+							"%s storage on \"%s\"",
+							decl_store_to_str(d->store), d->spel);
+					break;
+
+				case store_register:
+				case store_default:
+					break;
+			}
 
 			/* ensure ptr, unless __attribute__((nonnull)) */
 			if(nonnulls != ~0UL
