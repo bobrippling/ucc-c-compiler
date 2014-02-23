@@ -227,9 +227,10 @@ static void fold_calling_conv(type *r)
 }
 
 void fold_type_w_attr(
-		type *r, type *parent, where *loc,
+		type *const r, type *const parent, where *loc,
 		symtable *stab, attribute *attr)
 {
+	type *thisparent = r;
 	attribute *this_attr = NULL;
 	enum type_qualifier q_to_check = qual_none;
 
@@ -242,7 +243,7 @@ void fold_type_w_attr(
 		case type_array:
 			if(r->bits.array.size){
 				consty k;
-				where *loc = &r->bits.array.size->where;
+				where *array_loc = &r->bits.array.size->where;
 
 				FOLD_EXPR(r->bits.array.size, stab);
 				const_fold(r->bits.array.size, &k);
@@ -254,7 +255,7 @@ void fold_type_w_attr(
 						"integral array should be checked during parse");
 
 				if((sintegral_t)k.bits.num.val.i < 0)
-					die_at(loc, "negative array size");
+					die_at(array_loc, "negative array size");
 				/* allow zero length arrays */
 				else if(k.nonstandard_const)
 					warn_at(&k.nonstandard_const->where,
@@ -283,15 +284,18 @@ void fold_type_w_attr(
 
 		case type_attr:
 			this_attr = r->bits.attr;
+			thisparent = parent;
 			break;
 
 		case type_where:
 			/* nothing to do */
+			thisparent = parent;
 			break;
 
 		case type_cast:
 			if(!r->bits.cast.is_signed_cast)
 				q_to_check = type_qual(r);
+			thisparent = parent;
 			break;
 
 		case type_ptr:
@@ -331,6 +335,7 @@ void fold_type_w_attr(
 			if(r->bits.tdef.decl)
 				fold_decl(r->bits.tdef.decl, stab, NULL);
 
+			thisparent = parent;
 			break;
 		}
 	}
@@ -344,7 +349,7 @@ void fold_type_w_attr(
 				"restrict on non-pointer type '%s'",
 				type_to_str(r));
 
-	fold_type_w_attr(r->ref, r, loc, stab, this_attr ? this_attr : attr);
+	fold_type_w_attr(r->ref, thisparent, loc, stab, this_attr ? this_attr : attr);
 
 	/* checks that rely on r->ref being folded... */
 	switch(r->type){

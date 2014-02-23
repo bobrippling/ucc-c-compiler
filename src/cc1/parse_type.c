@@ -1478,7 +1478,7 @@ int parse_decl_group(
 		/* need to parse __attribute__ before folding the type */
 		parse_decl_attr(d, in_scope);
 
-		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), in_scope, d->attr);
+		fold_type_w_attr(d->ref, NULL, &d->where, in_scope, d->attr);
 
 		if(!d->spel && !had_field_width){
 			/*
