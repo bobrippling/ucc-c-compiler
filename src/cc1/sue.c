@@ -6,9 +6,12 @@
 #include "../util/alloc.h"
 #include "../util/util.h"
 #include "../util/dynarray.h"
-#include "data_structs.h"
 #include "sue.h"
 #include "cc1.h"
+#include "cc1_where.h"
+#include "expr.h"
+#include "decl.h"
+#include "type_is.h"
 
 static void sue_set_spel(struct_union_enum_st *sue, char *spel)
 {
@@ -27,7 +30,7 @@ void enum_vals_add(
 		sue_member ***pmembers,
 		where *w,
 		char *sp, expr *e,
-		decl_attr *attr)
+		attribute *attr)
 {
 	enum_member *emem = umalloc(sizeof *emem);
 	sue_member *mem = umalloc(sizeof *mem);
@@ -37,7 +40,7 @@ void enum_vals_add(
 
 	emem->spel = sp;
 	emem->val  = e;
-	emem->attr = attr;
+	emem->attr = RETAIN(attr);
 	memcpy_safe(&emem->where, w);
 
 	mem->enum_member = emem;
@@ -125,7 +128,7 @@ static void sue_get_decls(sue_member **mems, sue_member ***pds)
 			dynarray_add(pds, *mems);
 		}else{
 			/* either an anonymous struct/union OR a bitfield */
-			struct_union_enum_st *sub = type_ref_is_s_or_u(d->ref);
+			struct_union_enum_st *sub = type_is_s_or_u(d->ref);
 
 			if(sub)
 				sue_get_decls(sub->members, pds);
@@ -157,7 +160,7 @@ struct_union_enum_st *sue_decl(
 	int new = 0;
 	int descended;
 
-	if(spel && (sue = sue_find_descend(stab, spel, &descended))){
+	if(spel && stab && (sue = sue_find_descend(stab, spel, &descended))){
 		char wbuf[WHERE_BUF_SIZ];
 
 		/* redef checks */
@@ -249,7 +252,7 @@ new_type:
 			for(i = 0; decls && decls[i]; i++){
 				decl *d2, *d = decls[i]->struct_member;
 
-				if(d->init)
+				if(d->bits.var.init)
 					die_at(&d->where, "%s member %s is initialised",
 							sue_str(sue), d->spel);
 
@@ -286,7 +289,8 @@ new_type:
 			cc1_warn_at(NULL, 0, WARN_PREDECL_ENUM,
 					"forward-declaration of enum %s", sue->spel);
 
-		dynarray_add(&stab->sues, sue);
+		if(stab)
+			dynarray_add(&stab->sues, sue);
 	}
 
 	return sue;
@@ -331,7 +335,7 @@ static void *sue_member_find(
 				if(!strcmp(sp, spel))
 					return d;
 
-			}else if((sub = type_ref_is_s_or_u(d->ref))){
+			}else if((sub = type_is_s_or_u(d->ref))){
 				/* C11 anonymous struct/union */
 				decl *dsub = NULL;
 				decl *tdef;
@@ -342,7 +346,7 @@ static void *sue_member_find(
 					continue;
 
 				if((fopt_mode & FOPT_PLAN9_EXTENSIONS)
-				&& (tdef = type_ref_is_tdef(d->ref))
+				&& (tdef = type_is_tdef(d->ref))
 				&& !strcmp(tdef->spel, spel))
 				{
 					dsub = tdef;
@@ -354,7 +358,7 @@ static void *sue_member_find(
 				if(dsub){
 					if(pin)
 						*pin = sub;
-					*extra_off += d->struct_offset;
+					*extra_off += d->bits.var.struct_offset;
 					return dsub;
 				}
 			}
@@ -398,7 +402,7 @@ decl *struct_union_member_find_sue(struct_union_enum_st *in, struct_union_enum_s
 
 	for(i = in->members; i && *i; i++){
 		decl *d = (*i)->struct_member;
-		struct_union_enum_st *s = type_ref_is_s_or_u(d->ref);
+		struct_union_enum_st *s = type_is_s_or_u(d->ref);
 
 		if(s == needle)
 			return d;

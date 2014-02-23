@@ -4,12 +4,12 @@
 #include <string.h>
 
 #include "../util/util.h"
-#include "data_structs.h"
 #include "tokenise.h"
 #include "tokconv.h"
 #include "../util/util.h"
 #include "macros.h"
 #include "cc1.h"
+#include "cc1_where.h"
 
 extern enum token curtok;
 static enum token curtok_save = token_unknown;

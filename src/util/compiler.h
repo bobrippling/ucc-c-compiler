@@ -20,4 +20,6 @@
 #  define ucc_static_param
 #endif
 
+#define memcpy_safe(a, b) (*(a) = *(b))
+
 #endif

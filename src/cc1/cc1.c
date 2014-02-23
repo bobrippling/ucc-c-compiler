@@ -11,9 +11,7 @@
 
 #include "../util/util.h"
 #include "../util/platform.h"
-#include "data_structs.h"
 #include "tokenise.h"
-#include "parse.h"
 #include "cc1.h"
 #include "fold.h"
 #include "gen_asm.h"
@@ -25,10 +23,10 @@
 #include "out/asm.h" /* NUM_SECTIONS */
 #include "opt.h"
 #include "pass1.h"
+#include "type_nav.h"
+#include "cc1_where.h"
 
 #include "../as_cfg.h"
-#define QUOTE(...) #__VA_ARGS__
-#define EXPAND_QUOTE(y) QUOTE(y)
 
 struct opt_flags cc1_opts;
 
@@ -134,6 +132,7 @@ struct
 	{ 'f',  "signed-char",         FOPT_SIGNED_CHAR },
 	{ 'f',  "unsigned-char",      ~FOPT_SIGNED_CHAR },
 	{ 'f',  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
+	{ 'f',  "dump-type-tree", FOPT_DUMP_TYPE_TREE },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 
@@ -155,6 +154,7 @@ struct
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 char  fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
+char *cc1_first_fname;
 
 enum warning warn_mode = ~(
 		  WARN_VOID_ARITH
@@ -191,10 +191,13 @@ int caught_sig = 0;
 
 int show_current_line;
 
-const char *section_names[NUM_SECTIONS] = {
-	EXPAND_QUOTE(SECTION_TEXT),
-	EXPAND_QUOTE(SECTION_DATA),
-	EXPAND_QUOTE(SECTION_BSS),
+struct section sections[NUM_SECTIONS] = {
+	{ "text", QUOTE(SECTION_NAME_TEXT) },
+	{ "data", QUOTE(SECTION_NAME_DATA) },
+	{ "bss",  QUOTE(SECTION_NAME_BSS) },
+	{ "dbg_abrv", QUOTE(SECTION_NAME_DBG_ABBREV) },
+	{ "dbg_info", QUOTE(SECTION_NAME_DBG_INFO) },
+	{ "dbg_line", QUOTE(SECTION_NAME_DBG_LINE) },
 };
 
 static FILE *infile;
@@ -289,14 +292,7 @@ static void io_fin(int do_sections, const char *fname)
 {
 	int i;
 
-#if 0
-	if(do_sections){
-		if(fprintf(cc1_out, "\t.file \"%s\"\n", fname) < 0)
-			ccdie(0, "write to cc1_out:");
-	}
-#else
 	(void)fname;
-#endif
 
 	for(i = 0; i < NUM_SECTIONS; i++){
 		/* cat cc_out[i] to cc1_out, with section headers */
@@ -307,8 +303,11 @@ static void io_fin(int do_sections, const char *fname)
 			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
 				ccdie(0, "seeking on section file %d:", i);
 
-			if(fprintf(cc1_out, ".section %s\n", section_names[i]) < 0)
+			if(fprintf(cc1_out, ".section %s\n", sections[i].name) < 0
+			|| fprintf(cc1_out, "%s%s:\n", SECTION_BEGIN, sections[i].desc) < 0)
+			{
 				ccdie(0, "write to cc1 output:");
+			}
 
 			while(fgets(buf, sizeof buf, cc_out[i]))
 				if(fputs(buf, cc1_out) == EOF)
@@ -316,6 +315,9 @@ static void io_fin(int do_sections, const char *fname)
 
 			if(ferror(cc_out[i]))
 				ccdie(0, "read from section file %d:", i);
+
+			if(fprintf(cc1_out, "%s%s:\n", SECTION_END, sections[i].desc) < 0)
+				ccdie(0, "terminating section %d:", i);
 		}
 	}
 
@@ -351,8 +353,9 @@ static char *next_line()
 
 int main(int argc, char **argv)
 {
+	where loc_start;
 	static symtable_global *globs;
-	void (*gf)(symtable_global *);
+	void (*gf)(symtable_global *) = NULL;
 	const char *fname;
 	int i;
 	int werror = 0;
@@ -540,18 +543,16 @@ usage:
 		fname = "-";
 	}
 
-	switch(cc1_backend){
-		case BACKEND_ASM:   gf = gen_asm;   break;
-		case BACKEND_STYLE: gf = gen_style; break;
-		case BACKEND_PRINT: gf = gen_str;   break;
-	}
-
 	io_setup();
 
 	show_current_line = fopt_mode & FOPT_SHOW_LINE;
 
-	globs = symtabg_new();
+	cc1_type_nav = type_nav_init();
+
 	tokenise_set_input(next_line, fname);
+
+	where_cc1_current(&loc_start);
+	globs = symtabg_new(&loc_start);
 
 	parse_and_fold(globs);
 
@@ -561,9 +562,45 @@ usage:
 	if(werror && warning_count)
 		ccdie(0, "%s: Treating warnings as errors", *argv);
 
-	gf(globs);
+	switch(cc1_backend){
+		case BACKEND_STYLE:
+			gf = gen_style;
+			if(0){
+		case BACKEND_PRINT:
+				gf = gen_str;
+			}
+			gf(globs);
+			break;
 
-	io_fin(gf == gen_asm, fname);
+		case BACKEND_ASM:
+		{
+			char buf[4096];
+			char *compdir;
+
+			compdir = getcwd(NULL, 0);
+			if(!compdir){
+				/* no auto-malloc */
+				compdir = getcwd(buf, sizeof(buf)-1);
+				/* PATH_MAX may not include the  ^ nul byte */
+				if(!compdir)
+					die("getcwd():");
+			}
+
+			gen_asm(globs,
+					cc1_first_fname ? cc1_first_fname : fname,
+					compdir);
+
+			if(compdir != buf)
+				free(compdir);
+			break;
+		}
+	}
+
+
+	io_fin(gf == NULL, fname);
+
+	if(fopt_mode & FOPT_DUMP_TYPE_TREE)
+		type_nav_dump(cc1_type_nav);
 
 	return 0;
 }

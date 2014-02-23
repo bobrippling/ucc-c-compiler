@@ -1,7 +1,9 @@
+#ifndef NUM_H
+#define NUM_H
+
 #include <stdint.h>
 
 typedef struct numeric numeric;
-typedef struct type_ref  type_ref;
 
 typedef unsigned long long integral_t;
 typedef   signed long long sintegral_t;
@@ -43,7 +45,8 @@ struct numeric
 int numeric_cmp(const numeric *, const numeric *);
 
 #define INTEGRAL_BUF_SIZ 32
-int integral_str(char *buf, size_t nbuf, integral_t v, type_ref *ty);
+struct type;
+int integral_str(char *buf, size_t nbuf, integral_t v, struct type *ty);
 
 integral_t integral_truncate(
 		integral_t val, unsigned bytes, sintegral_t *sign_extended);
@@ -53,30 +56,6 @@ integral_t integral_truncate_bits(
 		unsigned bits,
 		sintegral_t *signed_v);
 
-int integral_high_bit(const integral_t val, type_ref *ty);
+int integral_high_bit(const integral_t val, struct type *ty);
 
-enum op_type
-{
-	/* binary */
-	op_multiply, op_divide, op_modulus,
-	op_plus, op_minus,
-	op_xor, op_or, op_and,
-	op_orsc, op_andsc,
-	op_shiftl, op_shiftr,
-
-	/* unary */
-	op_not,  op_bnot,
-
-	/* comparison */
-	op_eq, op_ne,
-	op_le, op_lt,
-	op_ge, op_gt,
-
-	op_unknown
-};
-
-#include "tree.h"
-#include "expr.h"
-#include "stmt.h"
-#include "sym.h"
-#include "decl.h"
+#endif

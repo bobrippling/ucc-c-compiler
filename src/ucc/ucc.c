@@ -9,6 +9,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include "cfg.h"
+
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "ucc_lib.h"
@@ -17,7 +19,6 @@
 #include "../util/util.h"
 #include "../util/platform.h"
 #include "str.h"
-#include "cfg.h"
 
 enum mode
 {
@@ -56,6 +57,7 @@ struct cc_file
 
 static char **remove_these;
 static int unlink_tmps = 1;
+static int gdebug = 0, generated_temp_obj = 0;
 const char *argv0;
 char *wrapper;
 
@@ -107,7 +109,7 @@ static void create_file(struct cc_file *file, enum mode mode, char *in)
 			goto assume_obj;
 	}
 
-#define ASSIGN(x)                \
+#define FILL_WITH_TMP(x)         \
 			if(!file->x){              \
 				file->x = tmpfilenam();  \
 				if(mode == mode_ ## x){  \
@@ -121,18 +123,21 @@ static void create_file(struct cc_file *file, enum mode mode, char *in)
 		switch(ext[1]){
 preproc:
 			case 'c':
-				ASSIGN(preproc);
+				FILL_WITH_TMP(preproc);
 compile:
 			case 'i':
-				ASSIGN(compile);
+				FILL_WITH_TMP(compile);
 				goto after_compile;
 assemb:
 			case 'S':
 				file->preproc_asm = 1;
-				ASSIGN(preproc); /* preprocess .S assembly files by default */
+				FILL_WITH_TMP(preproc); /* preprocess .S assembly files by default */
 after_compile:
 			case 's':
-				ASSIGN(assemb);
+				if(NEED_DSYM && !file->assemb)
+					generated_temp_obj = 1;
+
+				FILL_WITH_TMP(assemb);
 				file->out = file->assemb;
 				break;
 
@@ -275,7 +280,15 @@ static void process_files(enum mode mode, char **inputs, char *output, char **ar
 			/* ld_crt_args() refers to static memory */
 			dynarray_add_array(&links, ld_stdlib_args());
 
-		link_all(links, output ? output : "a.out", args[mode_link]);
+		if(!output)
+			output = "a.out";
+
+		link_all(links, output, args[mode_link]);
+
+		if(NEED_DSYM && gdebug && generated_temp_obj){
+			/* only need dsym if we use temporary .o files */
+			dsym(output);
+		}
 	}else{
 		rename_files(files, ninputs, output, mode);
 	}
@@ -467,7 +480,8 @@ arg_ld:
 					if(argv[i][2])
 						die("-g... unexpected");
 					ADD_ARG(mode_compile);
-					ADD_ARG(mode_assemb);
+					gdebug = 1;
+					/* don't pass to the assembler */
 					continue;
 
 				case 'M':

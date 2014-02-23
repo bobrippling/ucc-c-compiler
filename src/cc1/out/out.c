@@ -5,21 +5,25 @@
 
 #include "../../util/util.h"
 #include "../../util/alloc.h"
-#include "../data_structs.h"
-#include "asm.h"
-#include "out.h"
-#include "vstack.h"
-#include "impl.h"
+
 #include "../../util/platform.h"
 #include "../cc1.h"
 #include "../pack.h"
 #include "../defs.h"
 #include "../opt.h"
 #include "../const.h"
+#include "../type_nav.h"
+#include "../type_is.h"
+
+#include "asm.h"
+#include "out.h"
+#include "vstack.h"
+#include "impl.h"
+#include "lbl.h"
 
 typedef char chk[OUT_VPHI_SZ == sizeof(struct vstack) ? 1 : -1];
 
-static int calc_ptr_step(type_ref *t);
+static int calc_ptr_step(type *t);
 
 /*
  * This entire stack-output idea was inspired by tinycc, and improved somewhat
@@ -65,7 +69,7 @@ int v_stack_sz()
 	return stack_sz;
 }
 
-void vpush(type_ref *t)
+void vpush(type *t)
 {
 	if(!vtop){
 		vtop = vstack;
@@ -85,7 +89,7 @@ void vpush(type_ref *t)
 
 static void
 ucc_nonnull()
-v_push_reg(int r, type_ref *ty)
+v_push_reg(int r, type *ty)
 {
 	struct vreg reg = VREG_INIT(r, 0);
 	vpush(ty);
@@ -94,10 +98,10 @@ v_push_reg(int r, type_ref *ty)
 
 static void v_push_sp(void)
 {
-	v_push_reg(REG_SP, type_ref_cached_VOID_PTR());
+	v_push_reg(REG_SP, type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 }
 
-void v_clear(struct vstack *vp, type_ref *t)
+void v_clear(struct vstack *vp, type *t)
 {
 	memset(vp, 0, sizeof *vp);
 	vp->t = t;
@@ -107,7 +111,7 @@ void v_set_flag(
 		struct vstack *vp,
 		enum flag_cmp c, enum flag_mod mods)
 {
-	v_clear(vp, type_ref_cached_BOOL());
+	v_clear(vp, type_nav_btype(cc1_type_nav, type__Bool));
 
 	vp->type = V_FLAG;
 	vp->bits.flag.cmp = c;
@@ -225,7 +229,7 @@ void out_dump(void)
 
 	for(i = 0; &vstack[i] <= vtop; i++)
 		out_comment("vstack[%d] = { .type=%d, .t=%s, .reg.idx = %d }",
-				i, vstack[i].type, type_ref_to_str(vstack[i].t),
+				i, vstack[i].type, type_to_str(vstack[i].t),
 				vstack[i].bits.regoff.reg.idx);
 }
 
@@ -286,7 +290,7 @@ void v_set_reg_i(struct vstack *vp, int i)
 
 void v_to_reg_given(struct vstack *from, const struct vreg *given)
 {
-	type_ref *const save = from->t;
+	type *const save = from->t;
 
 	impl_load(from, given);
 	v_clear(from, save);
@@ -300,7 +304,7 @@ void v_to_reg_out(struct vstack *conv, struct vreg *out)
 		if(!out)
 			out = &chosen;
 
-		v_unused_reg(1, type_ref_is_floating(conv->t), out);
+		v_unused_reg(1, type_is_floating(conv->t), out);
 		v_to_reg_given(conv, out);
 	}else if(out){
 		memcpy_safe(out, &conv->bits.regoff.reg);
@@ -313,7 +317,7 @@ void v_to_reg(struct vstack *conv)
 }
 
 static void v_set_stack(
-		struct vstack *vp, type_ref *ty,
+		struct vstack *vp, type *ty,
 		long off, int lval)
 {
 	v_set_reg_i(vp, REG_BP);
@@ -443,7 +447,7 @@ void v_freeup_regp(struct vstack *vp)
 static void v_stack_adj(unsigned amt, int sub)
 {
 	v_push_sp();
-	out_push_l(type_ref_cached_INTPTR_T(), amt);
+	out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t), amt);
 	out_op(sub ? op_minus : op_plus);
 	out_flush_volatile();
 	out_pop();
@@ -502,7 +506,7 @@ unsigned v_alloc_stack(unsigned sz, const char *desc)
 unsigned v_stack_align(unsigned const align, int force_mask)
 {
 	if(force_mask || (stack_sz & (align - 1))){
-		type_ref *const ty = type_ref_cached_INTPTR_T();
+		type *const ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 		const unsigned new_sz = pack_to_align(stack_sz, align);
 		const unsigned added = new_sz - stack_sz;
 
@@ -542,7 +546,7 @@ void v_save_reg(struct vstack *vp)
 
 	out_comment("register spill:");
 
-	v_alloc_stack(type_ref_size(vp->t, NULL), "save reg");
+	v_alloc_stack(type_size(vp->t, NULL), "save reg");
 
 	v_to_mem_given(
 			vp,
@@ -551,7 +555,7 @@ void v_save_reg(struct vstack *vp)
 	vp->type = V_REG_SAVE;
 }
 
-void v_save_regs(int n_ignore, type_ref *func_ty)
+void v_save_regs(int n_ignore, type *func_ty)
 {
 	struct vstack *p;
 	int n;
@@ -670,9 +674,9 @@ void out_set_lvalue()
 	vtop->is_lval = 1;
 }
 
-void out_push_num(type_ref *t, const numeric *n)
+void out_push_num(type *t, const numeric *n)
 {
-	const int ty_fp = type_ref_is_floating(t),
+	const int ty_fp = type_is_floating(t),
 				n_fp = K_FLOATING(*n);
 
 	vpush(t);
@@ -694,7 +698,7 @@ void out_push_num(type_ref *t, const numeric *n)
 	}
 }
 
-void out_push_l(type_ref *t, long l)
+void out_push_l(type *t, long l)
 {
 	numeric iv;
 	memset(&iv, 0, sizeof iv);
@@ -703,12 +707,12 @@ void out_push_l(type_ref *t, long l)
 	out_push_num(t, &iv);
 }
 
-void out_push_zero(type_ref *t)
+void out_push_zero(type *t)
 {
 	numeric n;
 	memset(&n, 0, sizeof n);
 
-	if(type_ref_is_floating(t))
+	if(type_is_floating(t))
 		n.suffix = VAL_FLOAT;
 
 	out_push_num(t, &n);
@@ -725,14 +729,14 @@ static void out_set_lbl(const char *s, int pic)
 
 void out_push_lbl(const char *s, int pic)
 {
-	vpush(type_ref_cached_VOID_PTR());
+	vpush(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 
 	out_set_lbl(s, pic);
 }
 
 void out_push_noop()
 {
-	out_push_zero(type_ref_cached_INTPTR_T());
+	out_push_zero(type_nav_btype(cc1_type_nav, type_intptr_t));
 }
 
 void out_dup(void)
@@ -804,7 +808,7 @@ static void bitfield_scalar_merge(const struct vbitfield *const bf)
 	 */
 
 	/* we get the lvalue type - change to pointer */
-	type_ref *const ty = vtop[-1].t, *ty_ptr = type_ref_ptr_depth_inc(ty);
+	type *const ty = vtop[-1].t, *ty_ptr = type_ptr_to(ty);
 	unsigned long mask_leading_1s, mask_back_0s, mask_rm;
 
 	/* coerce vtop to a vtop[-1] type */
@@ -873,7 +877,7 @@ void out_store()
 	val   = &vtop[0];
 	store = &vtop[-1];
 
-	store->t = type_ref_ptr_depth_dec(store->t, NULL);
+	store->t = type_pointed_to(store->t);
 
 	v_store(val, store);
 
@@ -931,11 +935,11 @@ void out_push_sym(sym *s)
 {
 	decl *const d = s->decl;
 
-	vpush(type_ref_ptr_depth_inc(d->ref));
+	vpush(type_ptr_to(d->ref));
 
 	switch(s->type){
 		case sym_local:
-			if(DECL_IS_FUNC(d))
+			if(type_is(d->ref, type_func))
 				goto label;
 
 			if((d->store & STORE_MASK_STORE) == store_register && d->spel_asm)
@@ -968,18 +972,18 @@ void out_push_sym_val(sym *s)
 	out_deref();
 }
 
-static int calc_ptr_step(type_ref *t)
+static int calc_ptr_step(type *t)
 {
 	/* we are calculating the sizeof *t */
 	int mul;
 
-	if(type_ref_is_type(type_ref_is_ptr(t), type_void))
+	if(type_is_primitive(type_is_ptr(t), type_void))
 		return type_primitive_size(type_void);
 
-	if(type_ref_is_type(t, type_unknown))
+	if(type_is_primitive(t, type_unknown))
 		mul = 1;
 	else
-		mul = type_ref_size(type_ref_next(t), NULL);
+		mul = type_size(type_next(t), NULL);
 
 	return mul;
 }
@@ -1082,7 +1086,7 @@ pop_const:
 			const char *err = NULL;
 			const integral_t eval = const_op_exec(
 					vtop[-1].bits.val_i, &vtop->bits.val_i,
-					op, type_ref_is_signed(vtop->t),
+					op, type_is_signed(vtop->t),
 					&err);
 
 			if(!err){
@@ -1101,8 +1105,8 @@ pop_const:
 			case op_plus:
 			case op_minus:
 			{
-				int l_ptr = !!type_ref_is(vtop[-1].t, type_ref_ptr),
-				    r_ptr = !!type_ref_is(vtop->t   , type_ref_ptr);
+				int l_ptr = !!type_is(vtop[-1].t, type_ptr),
+				    r_ptr = !!type_is(vtop->t   , type_ptr);
 
 				if(l_ptr || r_ptr){
 					const int ptr_step = calc_ptr_step(
@@ -1131,7 +1135,7 @@ pop_const:
 								if((swap = (val != vtop)))
 									vswap();
 
-								out_push_l(type_ref_cached_INTPTR_T(), ptr_step);
+								out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t), ptr_step);
 								out_op(op_multiply);
 
 								if(swap)
@@ -1154,7 +1158,7 @@ pop_const:
 		impl_op(op);
 
 		if(div){
-			out_push_l(type_ref_cached_VOID_PTR(), div);
+			out_push_l(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)), div);
 			out_op(op_divide);
 		}
 	}
@@ -1169,7 +1173,7 @@ void out_set_bitfield(unsigned off, unsigned nbits)
 
 static void bitfield_to_scalar(const struct vbitfield *bf)
 {
-	type_ref *const ty = vtop->t;
+	type *const ty = vtop->t;
 
 	/* shift right, then mask */
 	out_push_l(ty, bf->off);
@@ -1181,8 +1185,8 @@ static void bitfield_to_scalar(const struct vbitfield *bf)
 	/* if it's signed we need to sign extend
 	 * using a signed right shift to copy its MSB
 	 */
-	if(type_ref_is_signed(ty)){
-		const unsigned ty_sz = type_ref_size(ty, NULL);
+	if(type_is_signed(ty)){
+		const unsigned ty_sz = type_size(ty, NULL);
 		const unsigned nshift = CHAR_BIT * ty_sz - bf->nbits;
 
 		out_push_l(ty, nshift);
@@ -1195,7 +1199,7 @@ static void bitfield_to_scalar(const struct vbitfield *bf)
 void v_deref_decl(struct vstack *vp)
 {
 	/* XXX: memleak */
-	vp->t = type_ref_ptr_depth_dec(vp->t, NULL);
+	vp->t = type_pointed_to(vp->t);
 }
 
 void out_deref()
@@ -1203,22 +1207,22 @@ void out_deref()
 	const struct vbitfield bf = vtop->bitfield;
 #define DEREF_CHECK
 #ifdef DEREF_CHECK
-	type_ref *const vtop_t = vtop->t;
+	type *const vtop_t = vtop->t;
 #endif
-	type_ref *indir;
+	type *indir;
 	int fp;
 
-	indir = type_ref_ptr_depth_dec(vtop->t, NULL);
+	indir = type_pointed_to(vtop->t);
 
 	/* if the pointed-to object is not an lvalue, don't deref */
-	if(type_ref_is(indir, type_ref_array)
-	|| type_ref_is(type_ref_is_ptr(vtop->t), type_ref_func)){
+	if(type_is(indir, type_array)
+	|| type_is(type_is_ptr(vtop->t), type_func)){
 		out_change_type(indir);
 		return; /* noop */
 	}
 
 	v_deref_decl(vtop);
-	fp = type_ref_is_floating(vtop->t);
+	fp = type_is_floating(vtop->t);
 
 	switch(vtop->type){
 		case V_FLAG:
@@ -1296,42 +1300,42 @@ void out_op_unary(enum op_type op)
 	impl_op_unary(op);
 }
 
-void out_cast(type_ref *to, int normalise_bool)
+void out_cast(type *to, int normalise_bool)
 {
 	/* normalise before the cast, otherwise we do things like
 	 * 5.3 -> 5, then normalise 5, instead of 5.3 != 0.0
 	 */
-	if(normalise_bool && type_ref_is_type(to, type__Bool))
+	if(normalise_bool && type_is_primitive(to, type__Bool))
 		out_normalise();
 
 	v_cast(vtop, to);
 }
 
-void v_cast(struct vstack *vp, type_ref *to)
+void v_cast(struct vstack *vp, type *to)
 {
-	type_ref *const from = vp->t;
+	type *const from = vp->t;
 	char fp[2];
-	fp[0] = type_ref_is_floating(from);
-	fp[1] = type_ref_is_floating(to);
+	fp[0] = type_is_floating(from);
+	fp[1] = type_is_floating(to);
 
 	if(fp[0] || fp[1]){
 		if(fp[0] && fp[1]){
 
-			if(type_ref_primitive(from) != type_ref_primitive(to))
+			if(type_primitive(from) != type_primitive(to))
 				impl_f2f(vp, from, to);
 			/* else no-op cast */
 
 		}else if(fp[0]){
 			/* float -> int */
-			UCC_ASSERT(type_ref_is_integral(to),
-					"fp to %s?", type_ref_to_str(to));
+			UCC_ASSERT(type_is_integral(to),
+					"fp to %s?", type_to_str(to));
 
 			impl_f2i(vp, from, to);
 
 		}else{
 			/* int -> float */
-			UCC_ASSERT(type_ref_is_integral(from),
-					"%s to fp?", type_ref_to_str(from));
+			UCC_ASSERT(type_is_integral(from),
+					"%s to fp?", type_to_str(from));
 
 			impl_i2f(vp, from, to);
 		}
@@ -1352,13 +1356,13 @@ void v_cast(struct vstack *vp, type_ref *to)
 					 * the type
 					 */
 					impl_cast_load(vp, from, to,
-							type_ref_is_signed(from));
+							type_is_signed(from));
 				}else{
-					char buf[TYPE_REF_STATIC_BUFSIZ];
+					char buf[TYPE_STATIC_BUFSIZ];
 
 					out_comment("truncate cast from %s to %s, size %d -> %d",
-							from ? type_ref_to_str_r(buf, from) : "",
-							to   ? type_ref_to_str(to) : "",
+							from ? type_to_str_r(buf, from) : "",
+							to   ? type_to_str(to) : "",
 							szfrom, szto);
 				}
 			}
@@ -1368,14 +1372,14 @@ void v_cast(struct vstack *vp, type_ref *to)
 	vp->t = to;
 }
 
-void out_change_type(type_ref *t)
+void out_change_type(type *t)
 {
 	impl_change_type(t);
 }
 
-void out_call(int nargs, type_ref *r_ret, type_ref *r_func)
+void out_call(int nargs, type *r_ret, type *r_func)
 {
-	const int fp = type_ref_is_floating(r_ret);
+	const int fp = type_is_floating(r_ret);
 	struct vreg vr = VREG_INIT(fp ? REG_RET_F : REG_RET_I, fp);
 
 	impl_call(nargs, r_ret, r_func);
@@ -1418,12 +1422,24 @@ void out_jfalse(const char *lbl)
 	vpop();
 }
 
-void out_label(const char *lbl)
+static void out_label2(const char *lbl, int affect_code)
 {
-	/* if we have volatile data, ensure it's in a register */
-	out_flush_volatile();
+	if(affect_code){
+		/* if we have volatile data, ensure it's in a register */
+		out_flush_volatile();
+	}
 
 	impl_lbl(lbl);
+}
+
+void out_label(const char *lbl)
+{
+	out_label2(lbl, 1);
+}
+
+void out_label_noop(const char *lbl)
+{
+	out_label2(lbl, 0);
 }
 
 static void out_comment_vsec(
@@ -1451,9 +1467,9 @@ void out_comment(const char *fmt, ...)
 }
 
 void out_func_prologue(
-		type_ref *rf,
+		type *rf,
 		int stack_res, int nargs, int variadic,
-		int arg_offsets[])
+		int arg_offsets[], int *local_offset)
 {
 	UCC_ASSERT(stack_sz == 0, "non-empty stack for new func");
 
@@ -1470,12 +1486,13 @@ void out_func_prologue(
 	/* setup "pointers" to the right place in the stack */
 	stack_variadic_offset = stack_sz - platform_word_size();
 	stack_local_offset = stack_sz;
+	*local_offset = stack_local_offset;
 
 	if(stack_res)
 		v_alloc_stack(stack_res, "local variables");
 }
 
-void out_func_epilogue(type_ref *rf)
+void out_func_epilogue(type *rf)
 {
 	if(fopt_mode & FOPT_VERBOSE_ASM)
 		out_comment("epilogue, stack_sz = %u", stack_sz);
@@ -1484,7 +1501,7 @@ void out_func_epilogue(type_ref *rf)
 	stack_local_offset = stack_sz = 0;
 }
 
-void out_pop_func_ret(type_ref *t)
+void out_pop_func_ret(type *t)
 {
 	impl_pop_func_ret(t);
 }
@@ -1497,7 +1514,7 @@ void out_undefined(void)
 
 void out_push_overflow(void)
 {
-	vpush(type_ref_cached_BOOL());
+	vpush(type_nav_btype(cc1_type_nav, type__Bool));
 	impl_set_overflow();
 }
 
@@ -1505,8 +1522,8 @@ void out_push_frame_ptr(int nframes)
 {
 	/* XXX: memleak */
 	struct vreg r;
-	type_ref *const void_pp = type_ref_ptr_depth_inc(
-			type_ref_cached_VOID_PTR());
+	type *const void_pp = type_ptr_to(
+			type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 
 	vpush(void_pp);
 	v_set_reg_i(vtop, REG_BP);
@@ -1521,20 +1538,20 @@ void out_push_frame_ptr(int nframes)
 		impl_deref(vtop, &r, void_pp); /* movq (<reg>), <reg> */
 
 	/* force to void * */
-	out_change_type(type_ref_ptr_depth_dec(void_pp, NULL));
+	out_change_type(type_pointed_to(void_pp));
 }
 
 void out_push_reg_save_ptr(void)
 {
 	out_flush_volatile();
 
-	vpush(type_ref_cached_VOID_PTR());
+	vpush(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 	v_set_stack(vtop, NULL, -stack_variadic_offset, /*lval:*/0);
 }
 
-void out_push_nan(type_ref *ty)
+void out_push_nan(type *ty)
 {
-	UCC_ASSERT(type_ref_is_floating(ty),
+	UCC_ASSERT(type_is_floating(ty),
 			"non-float nan?");
 	vpush(ty);
 	impl_set_nan(ty);

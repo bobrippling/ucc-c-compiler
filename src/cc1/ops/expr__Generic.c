@@ -1,5 +1,7 @@
 #include "ops.h"
 #include "expr__Generic.h"
+#include "../type_is.h"
+#include "../type_nav.h"
 
 const char *str_expr__Generic()
 {
@@ -26,12 +28,12 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		fold_expr_no_decay(l->e, stab);
 
 		for(j = i + 1; *j; j++){
-			type_ref *m = (*j)->t;
+			type *m = (*j)->t;
 
 			/* duplicate default checked below */
-			if(m && type_ref_cmp(m, l->t, 0) == TYPE_EQUAL)
-				die_at(&m->where, "duplicate type in _Generic: %s",
-						type_ref_to_str(l->t));
+			if(m && (type_cmp(m, l->t, 0) & TYPE_EQUAL_ANY))
+				die_at(&(*j)->e->where, "duplicate type in _Generic: %s",
+						type_to_str(l->t));
 		}
 
 
@@ -39,13 +41,13 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			enum { OKAY, INCOMPLETE, VARIABLE, FUNC } prob = OKAY;
 			const char *sprob;
 
-			fold_type_ref(l->t, NULL, stab);
+			fold_type(l->t, stab);
 
-			if(!type_ref_is_complete(l->t))
+			if(!type_is_complete(l->t))
 				prob = INCOMPLETE;
-			else if(type_ref_is_variably_modified(l->t))
+			else if(type_is_variably_modified(l->t))
 				prob = VARIABLE;
-			else if(type_ref_is_func_or_block(l->t))
+			else if(type_is_func_or_block(l->t))
 				prob = FUNC;
 
 			switch(prob){
@@ -65,10 +67,10 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 			if(sprob){
 				die_at(&l->e->where, "%s type '%s' in _Generic",
-						sprob, type_ref_to_str(l->t));
+						sprob, type_to_str(l->t));
 			}
 
-			if(type_ref_cmp(e->expr->tree_type, l->t, 0) == TYPE_EQUAL){
+			if(type_cmp(e->expr->tree_type, l->t, 0) & TYPE_EQUAL_ANY){
 				UCC_ASSERT(!e->bits.generic.chosen,
 						"already chosen expr for _Generic");
 				e->bits.generic.chosen = l;
@@ -85,7 +87,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		if(def)
 			e->bits.generic.chosen = def;
 		else
-			die_at(&e->where, "no type satisfying %s", type_ref_to_str(e->expr->tree_type));
+			die_at(&e->where, "no type satisfying %s", type_to_str(e->expr->tree_type));
 	}
 
 	if(expr_is_lval(e->bits.generic.chosen->e))
@@ -122,7 +124,7 @@ void gen_expr_str__Generic(expr *e)
 		if(l->t){
 			idt_printf("type: ");
 			gen_str_indent++;
-			print_type_ref(l->t, NULL);
+			print_type(l->t, NULL);
 			gen_str_indent--;
 			fprintf(gen_file(), "\n");
 		}else{
@@ -168,7 +170,7 @@ void gen_expr_style__Generic(expr *e)
 		struct generic_lbl *l = *i;
 
 		idt_printf("%s: ",
-				l->t ? type_ref_to_str(l->t) : "default");
+				l->t ? type_to_str(l->t) : "default");
 
 		gen_expr(l->e);
 	}

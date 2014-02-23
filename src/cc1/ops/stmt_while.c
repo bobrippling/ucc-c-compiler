@@ -12,14 +12,9 @@ const char *str_stmt_while()
 
 void fold_stmt_while(stmt *s)
 {
-	symtable *stab = s->symtab;
-
-	flow_fold(s->flow, &stab);
-
 	s->lbl_break    = out_label_flow("while_break");
 	s->lbl_continue = out_label_flow("while_cont");
 
-	FOLD_EXPR(s->expr, stab);
 	fold_check_expr(
 			s->expr,
 			FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
@@ -30,9 +25,11 @@ void fold_stmt_while(stmt *s)
 
 void gen_stmt_while(stmt *s)
 {
+	const char *endlbls[2];
+
 	out_label(s->lbl_continue);
 
-	flow_gen(s->flow, s->symtab);
+	flow_gen(s->flow, s->symtab, endlbls);
 	gen_expr(s->expr);
 
 	out_op_unary(op_not);
@@ -43,6 +40,7 @@ void gen_stmt_while(stmt *s)
 	out_push_lbl(s->lbl_continue, 0);
 	out_jmp();
 
+	flow_end(endlbls);
 	out_label(s->lbl_break);
 }
 

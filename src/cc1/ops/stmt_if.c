@@ -18,7 +18,7 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 
 		*pstab = flow->for_init_symtab;
 
-		fold_block_decls(*pstab, &flow->init_blk);
+		fold_shadow_dup_check_block_decls(*pstab);
 
 		/* sanity check on _flow_ vars only */
 		for(i = (*pstab)->decls; i && *i; i++){
@@ -40,13 +40,14 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 	}
 }
 
-void flow_gen(stmt_flow *flow, symtable *stab)
+void flow_gen(stmt_flow *flow, symtable *stab, const char *endlbls[2])
 {
-	gen_block_decls(stab);
+	gen_block_decls(stab, &endlbls[0]);
+	endlbls[1] = NULL;
 
 	if(flow){
 		if(stab != flow->for_init_symtab)
-			gen_block_decls(flow->for_init_symtab);
+			gen_block_decls(flow->for_init_symtab, &endlbls[1]);
 
 		if(flow->init_blk)
 			gen_stmt(flow->init_blk);
@@ -54,14 +55,16 @@ void flow_gen(stmt_flow *flow, symtable *stab)
 	}
 }
 
+void flow_end(const char *endlbls[2])
+{
+	int i;
+	for(i = 0; i < 2; i++)
+		if(endlbls[i])
+			out_label_noop(endlbls[i]);
+}
+
 void fold_stmt_if(stmt *s)
 {
-	symtable *stab = s->symtab;
-
-	flow_fold(s->flow, &stab);
-
-	FOLD_EXPR(s->expr, stab);
-
 	fold_check_expr(s->expr, FOLD_CHK_BOOL, s->f_str());
 
 	fold_stmt(s->lhs);
@@ -73,8 +76,9 @@ void gen_stmt_if(stmt *s)
 {
 	char *lbl_else = out_label_code("else");
 	char *lbl_fi   = out_label_code("fi");
+	const char *el[2];
 
-	flow_gen(s->flow, s->symtab);
+	flow_gen(s->flow, s->symtab, el);
 	gen_expr(s->expr);
 
 	out_jfalse(lbl_else);
@@ -87,6 +91,8 @@ void gen_stmt_if(stmt *s)
 	if(s->rhs)
 		gen_stmt(s->rhs);
 	out_label(lbl_fi);
+
+	flow_end(el);
 
 	free(lbl_else);
 	free(lbl_fi);

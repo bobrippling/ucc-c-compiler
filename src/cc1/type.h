@@ -1,73 +1,127 @@
 #ifndef TYPE_H
 #define TYPE_H
 
-enum type_cmp
-{
-	TYPE_EQUAL,
-	TYPE_CONVERTIBLE_IMPLICIT,
-	TYPE_CONVERTIBLE_EXPLICIT,
-	TYPE_NOT_EQUAL,
-	TYPE_QUAL_LOSS
-};
-
-enum type_primitive
-{
-	type_void,
-	type__Bool,
-#define type_wchar (platform_sys() == PLATFORM_CYGWIN ? type_short : type_int)
-
-	/* signed, unsigned and 'normal' */
-	type_nchar,
-	type_schar,
-	type_uchar,
-
-	/* unsigned primitive is signed primitive + 1 */
-#define TYPE_PRIMITIVE_TO_UNSIGNED(p) ((p) + 1)
-#define S_U_TY(nam) type_ ## nam, type_u ## nam
-
-	S_U_TY(int),
-	S_U_TY(short),
-	S_U_TY(long),
-	S_U_TY(llong),
-
-	type_float,
-	type_double,
-	type_ldouble,
-
-	type_struct,
-	type_union,
-	type_enum,
-
-	type_unknown
-};
-
-enum type_qualifier
-{
-	qual_none     = 0,
-	qual_const    = 1 << 0,
-	qual_volatile = 1 << 1,
-	qual_restrict = 1 << 2,
-};
+#include "num.h"
+#include "btype.h"
 
 typedef struct type type;
 
 struct type
 {
-	where where;
+	type *ref, *tmp; /* tmp used for things like printing */
 
-	enum type_primitive primitive;
+	int folded;
 
-	/* NULL unless this is a struct, union or enum */
-	struct_union_enum_st *sue;
+	struct type_tree *uptree;
 
-	/* attr applied to all decls whose type is this type */
-	decl_attr *attr;
+	enum type_kind
+	{
+		type_btype,  /* end - at type */
+		type_tdef,  /* type reference to next ref */
+		type_ptr,   /* pointer to next ref */
+		type_block, /* block pointer to next ref (func) */
+		type_func,  /* function */
+		type_array, /* array of next ref, similar to pointer */
+		type_cast,  /* used for adding qualifiers */
+		type_attr,  /* __attribute__ */
+		type_where  /* .where */
+#define N_TYPE_KINDS (type_where + 1)
+	} type;
+
+	union
+	{
+		/* type_btype */
+		const btype *type;
+
+		/* type_attr */
+		struct attribute *attr;
+
+		/* type_tdef */
+		struct type_tdef
+		{
+			/* never null - expression whose type is the typedef or typeof type */
+			struct expr *type_of;
+			/* null for typeof. non-null means it's the typedef decl */
+			struct decl *decl;
+		} tdef;
+
+		/* type_{ptr,array} */
+		struct
+		{
+			unsigned is_static : 1;
+			unsigned decayed : 1; /* old size may be NULL - track here */
+			struct expr *size;
+			/* when we decay
+			 * f(int x[2]) -> f(int *x)
+			 * we save the size + is_static
+			 */
+		} ptr, array;
+
+		/* type_cast */
+		struct
+		{
+			char is_signed_cast; /* if true - signed_true else qual */
+			char signed_true;
+			enum type_qualifier qual;
+		} cast;
+
+		/* type_func */
+		struct
+		{
+			struct funcargs *args;
+			struct symtable *arg_scope;
+		} func;
+
+		/* type_block */
+		/* nothing */
+
+		/* type_where */
+		where where;
+	} bits;
 };
 
-enum type_cmp type_cmp(const type *a, const type *b);
-int type_is_signed(const type *);
 
-/* is there a loss of qualifiers going from 'b' to 'a' ? */
-int type_qual_loss(enum type_qualifier a, enum type_qualifier b);
+enum type_cmp_opts
+{
+	TYPE_CMP_ALLOW_TENATIVE_ARRAY = 1 << 0,
+};
+
+enum type_cmp
+type_cmp(
+		type *, type *,
+		enum type_cmp_opts);
+
+unsigned type_size(type *r, where *from);
+unsigned type_align(type *r, where *from);
+
+const char *type_kind_to_str(enum type_kind);
+
+#define TYPE_STATIC_BUFSIZ 512
+
+const char *type_to_str_r_spel(
+		char buf[TYPE_STATIC_BUFSIZ],
+		type *r, char *spel);
+
+const char *type_to_str_r_show_decayed(
+		char buf[TYPE_STATIC_BUFSIZ], type *r);
+
+const char *type_to_str_r(char buf[TYPE_STATIC_BUFSIZ], type *r);
+
+const char *type_to_str(type *r);
+
+
+/* char[] and char *, etc */
+enum type_str_type
+{
+	type_str_no,
+	type_str_char,
+	type_str_wchar
+};
+enum type_str_type type_str_type(type *);
+
+integral_t type_max(type *r, where *from);
+
+where *type_loc(type *);
+int type_has_loc(type *);
 
 #endif

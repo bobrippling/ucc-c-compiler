@@ -7,7 +7,6 @@
 #include "../util/util.h"
 #include "../util/where.h"
 
-#include "data_structs.h"
 #include "cc1.h"
 #include "fold.h"
 #include "sue.h"
@@ -17,6 +16,7 @@
 #include "defs.h"
 
 #include "fold_sue.h"
+#include "type_is.h"
 
 static void struct_pack(
 		decl *d, unsigned *poffset, unsigned sz, unsigned align)
@@ -26,7 +26,7 @@ static void struct_pack(
 	pack_next(poffset, &after_space, sz, align);
 	/* offset is the end of the decl, after_space is the start */
 
-	d->struct_offset = after_space;
+	d->bits.var.struct_offset = after_space;
 }
 
 static void struct_pack_finish_bitfield(
@@ -41,21 +41,21 @@ static void struct_pack_finish_bitfield(
 }
 
 static void bitfield_size_align(
-		type_ref *tref, unsigned *psz, unsigned *palign, where *from)
+		type *tref, unsigned *psz, unsigned *palign, where *from)
 {
 	/* implementation defined if ty isn't one of:
 	 * unsigned, signed or _Bool.
 	 * We make it take that align,
 	 * and reserve a max. of that size for the bitfield
 	 */
-	const type *ty;
-	tref = type_ref_is_type(tref, type_unknown);
+	const btype *ty;
+	tref = type_is_primitive(tref, type_unknown);
 	assert(tref);
 
 	ty = tref->bits.type;
 
-	*psz = type_size(ty, from);
-	*palign = type_align(ty, from);
+	*psz = btype_size(ty, from);
+	*palign = btype_align(ty, from);
 }
 
 static void fold_enum(struct_union_enum_st *en, symtable *stab)
@@ -71,9 +71,9 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 		/* -1 because we can't do dynarray_add(..., 0) */
 		if(e == (expr *)-1){
 
-			EOF_WHERE(&en->where,
-				m->val = expr_new_val(defval)
-			);
+			m->val = expr_set_where(
+					expr_new_val(defval),
+					&en->where);
 
 			if(has_bitmask)
 				defval <<= 1;
@@ -127,7 +127,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
 			unsigned align, sz;
-			struct_union_enum_st *sub_sue = type_ref_is_s_or_u_or_e(d->ref);
+			struct_union_enum_st *sub_sue = type_is_s_or_u_or_e(d->ref);
 
 			fold_decl(d, stab, NULL);
 
@@ -136,9 +136,9 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				 * a useless decl, unless it's an anon struct/union
 				 * or a bitfield
 				 */
-				if(d->field_width){
+				if(d->bits.var.field_width){
 					/* fine */
-				}else if(sub_sue && !type_ref_is_ptr(d->ref)){
+				}else if(sub_sue && !type_is_ptr(d->ref)){
 					/* anon */
 					char *prob = NULL;
 					int ignore = 0;
@@ -160,7 +160,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 							/* drop the decl */
 							sue_member *dropped = sue_drop(sue, i);
 							i--;
-							decl_free(dropped->struct_member, /*free ref:*/0);
+							decl_free(dropped->struct_member);
 							free(dropped);
 							continue;
 						}
@@ -168,13 +168,13 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				}
 			}
 
-			if(!type_ref_is_complete(d->ref)
-			&& !type_ref_is_incomplete_array(d->ref)) /* allow flexarrays */
+			if(!type_is_complete(d->ref)
+			&& !type_is_incomplete_array(d->ref)) /* allow flexarrays */
 			{
 				die_at(&d->where, "incomplete field '%s'", decl_to_str(d));
 			}
 
-			if(type_ref_is_const(d->ref))
+			if(type_is_const(d->ref))
 				submemb_const = 1;
 
 			if(sub_sue){
@@ -185,7 +185,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 						submemb_const = 1;
 				}
 
-				if(type_ref_is(d->ref, type_ref_ptr)
+				if(type_is(d->ref, type_ptr)
 				|| sub_sue->primitive == type_enum)
 					goto normal;
 
@@ -198,8 +198,8 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				sz = sue_size(sub_sue, &d->where);
 				align = sub_sue->align;
 
-			}else if(d->field_width){
-				const unsigned bits = const_fold_val_i(d->field_width);
+			}else if(d->bits.var.field_width){
+				const unsigned bits = const_fold_val_i(d->bits.var.field_width);
 
 				sz = align = 0; /* don't affect sz_max or align_max */
 
@@ -211,7 +211,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 					realign_next = 1;
 
 					/* also set struct_offset for 0-len bf, for pad reasons */
-					d->struct_offset = offset;
+					d->bits.var.struct_offset = offset;
 
 				}else if(realign_next
 				|| !bitfield.current_off
@@ -232,7 +232,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 						struct_pack_finish_bitfield(&offset, &bitfield.current_off);
 					}
 
-					bf_cur_lim = CHAR_BIT * type_ref_size(d->ref, &d->where);
+					bf_cur_lim = CHAR_BIT * type_size(d->ref, &d->where);
 
 					/* Get some initial padding.
 					 * Note that we want to affect the align_max
@@ -242,17 +242,17 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 					/* we are onto the beginning of a new group */
 					struct_pack(d, &offset, sz, align);
-					bitfield.first_off = d->struct_offset;
-					d->first_bitfield = 1;
+					bitfield.first_off = d->bits.var.struct_offset;
+					d->bits.var.first_bitfield = 1;
 
 				}else{
 					/* mirror previous bitfields' offset in the struct
 					 * difference is in .struct_offset_bitfield
 					 */
-					d->struct_offset = bitfield.first_off;
+					d->bits.var.struct_offset = bitfield.first_off;
 				}
 
-				d->struct_offset_bitfield = bitfield.current_off;
+				d->bits.var.struct_offset_bitfield = bitfield.current_off;
 				bitfield.current_off += bits; /* allowed to go above sizeof(int) */
 
 				if(bitfield.current_off == bf_cur_lim){
@@ -263,7 +263,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 			}else{
 normal:
 				align = decl_align(d);
-				if(type_ref_is_incomplete_array(d->ref)){
+				if(type_is_incomplete_array(d->ref)){
 					if(i[1])
 						die_at(&d->where, "flexible array not at end of struct");
 					else if(sue->primitive != type_struct)
@@ -278,7 +278,7 @@ normal:
 				}
 			}
 
-			if(sue->primitive == type_struct && !d->field_width){
+			if(sue->primitive == type_struct && !d->bits.var.field_width){
 				const int prev_offset = offset;
 
 				if(bitfield.current_off){
@@ -290,7 +290,7 @@ normal:
 				struct_pack(d, &offset, sz, align);
 
 				{
-					int pad = d->struct_offset - prev_offset;
+					int pad = d->bits.var.struct_offset - prev_offset;
 					if(pad){
 						cc1_warn_at(&d->where, 0, WARN_PAD,
 								"padding '%s' with %d bytes to align '%s'",

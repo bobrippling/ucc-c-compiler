@@ -8,11 +8,11 @@
 #include "../util/util.h"
 #include "../util/dynarray.h"
 
-#include "data_structs.h"
 #include "expr.h"
 #include "decl.h"
 #include "const.h"
 #include "funcargs.h"
+#include "type_is.h"
 
 #include "format_chk.h"
 
@@ -21,23 +21,23 @@ enum printf_attr
 	printf_attr_long = 1 << 0
 };
 
-static void format_check_printf_1(char fmt, type_ref *const t_in,
+static void format_check_printf_1(char fmt, type *const t_in,
 		where *w, enum printf_attr attr)
 {
 	int allow_long = 0;
-	char expected[TYPE_STATIC_BUFSIZ];
+	char expected[BTYPE_STATIC_BUFSIZ];
 
 	expected[0] = '\0';
 
 	switch(fmt){
 		enum type_primitive prim;
-		type_ref *tt;
+		type *tt;
 
 		case 's': prim = type_nchar; goto ptr;
 		case 'p': prim = type_void; goto ptr;
 		case 'n': prim = type_int;  goto ptr;
 ptr:
-			tt = type_ref_is_type(type_ref_is_ptr(t_in), prim);
+			tt = type_is_primitive(type_is_ptr(t_in), prim);
 			if(!tt){
 				snprintf(expected, sizeof expected,
 						"'%s *'", type_primitive_to_str(prim));
@@ -54,9 +54,9 @@ ptr:
 		case 'd':
 		case 'i':
 			allow_long = 1;
-			if(!type_ref_is_integral(t_in))
+			if(!type_is_integral(t_in))
 				strcpy(expected, "integral");
-			if((attr & printf_attr_long) && !type_ref_is_type(t_in, type_long))
+			if((attr & printf_attr_long) && !type_is_primitive(t_in, type_long))
 				strcpy(expected, "'long'");
 			break;
 
@@ -68,7 +68,7 @@ ptr:
 		case 'G':
 		case 'a':
 		case 'A':
-			if(!type_ref_is_floating(t_in))
+			if(!type_is_floating(t_in))
 				strcpy(expected, "'double'");
 			break;
 
@@ -83,7 +83,7 @@ ptr:
 	if(*expected){
 		warn_at(w, "format %%%s%c expects %s argument (got %s)",
 				attr & printf_attr_long ? "l" : "", fmt,
-				expected, type_ref_to_str(t_in));
+				expected, type_to_str(t_in));
 	}
 }
 
@@ -213,14 +213,22 @@ not_string:
 }
 
 void format_check_call(
-		where *w, type_ref *ref,
+		where *w, type *ref,
 		expr **args, const int variadic)
 {
-	decl_attr *attr = type_attr_present(ref, attr_format);
+	attribute *attr = type_attr_present(ref, attr_format);
 	int n, fmt_idx, var_idx;
 
-	if(!attr || !attr->bits.format.valid || !variadic)
+	if(!attr || !variadic)
 		return;
+	switch(attr->bits.format.validity){
+		case fmt_unchecked:
+			ICW("unchecked __attribute__((format...))");
+		case fmt_invalid:
+			return;
+		case fmt_valid:
+			break;
+	}
 
 	fmt_idx = attr->bits.format.fmt_idx;
 	var_idx = attr->bits.format.var_idx;
@@ -251,18 +259,24 @@ void format_check_call(
 	}
 }
 
-void format_check_decl(decl *d, decl_attr *da)
+void format_check_decl(decl *d, attribute *da)
 {
-	type_ref *r_func = type_ref_is_func_or_block(d->ref);
+	type *r_func;
 	funcargs *fargs;
 	int fmt_idx, var_idx, nargs;
 
+	if(da->bits.format.validity != fmt_unchecked){
+		/* i.e. checked */
+		return;
+	}
+
+	r_func = type_is_func_or_block(d->ref);
 	assert(r_func);
 	fargs = r_func->bits.func.args;
 
 	if(!fargs->variadic){
 		warn_at(&da->where, "variadic function required for format attribute");
-		return;
+		goto invalid;
 	}
 
 	nargs = dynarray_count(fargs->arglist);
@@ -273,7 +287,7 @@ void format_check_decl(decl *d, decl_attr *da)
 	if(fmt_idx >= nargs){
 		warn_at(&da->where, "format argument out of bounds (%d >= %d)",
 				fmt_idx, nargs);
-		return;
+		goto invalid;
 	}
 
 	if(var_idx != -1){
@@ -281,16 +295,19 @@ void format_check_decl(decl *d, decl_attr *da)
 		if(var_idx != nargs){
 			warn_at(&da->where, "variadic argument out of bounds (should be %d)",
 					nargs + 1); /* +1 to get to the "..." index as 1-based */
-			return;
+			goto invalid;
 		}
 
 		assert(var_idx > fmt_idx);
 	}
 
-	if(type_ref_str_type(fargs->arglist[fmt_idx]->ref) != type_ref_str_char){
+	if(type_str_type(fargs->arglist[fmt_idx]->ref) != type_str_char){
 		warn_at(&da->where, "format argument not a string type");
-		return;
+		goto invalid;
 	}
 
-	da->bits.format.valid = 1;
+	da->bits.format.validity = fmt_valid;
+	return;
+invalid:
+	da->bits.format.validity = fmt_invalid;
 }

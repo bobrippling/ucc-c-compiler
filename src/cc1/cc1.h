@@ -4,7 +4,6 @@
 #include "../util/std.h"
 
 /*#define FANCY_STACK_INIT 1*/
-#define ASM_INLINE_FNAME "__asm__"
 
 enum warning
 {
@@ -79,6 +78,7 @@ enum fopt
 	FOPT_SYMBOL_ARITH          = 1 << 16,
 	FOPT_SIGNED_CHAR           = 1 << 17,
 	FOPT_CAST_W_BUILTIN_TYPES  = 1 << 18,
+	FOPT_DUMP_TYPE_TREE        = 1 << 19,
 };
 
 enum mopt
@@ -110,5 +110,7 @@ extern int cc1_error_limit;
 
 extern int cc1_mstack_align; /* 2^n */
 extern int cc1_gdebug; /* -g */
+
+extern char *cc1_first_fname;
 
 #endif

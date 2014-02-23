@@ -7,13 +7,14 @@
 #include <limits.h>
 
 #include "../util/util.h"
-#include "data_structs.h"
 #include "tokenise.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
 #include "../util/escape.h"
 #include "str.h"
 #include "cc1.h"
+#include "cc1_where.h"
+#include "btype.h"
 
 #ifndef CHAR_BIT
 #  define CHAR_BIT 8
@@ -139,6 +140,7 @@ static struct line_list
 
 /* -- */
 enum token curtok, curtok_uneat;
+int parse_had_error;
 
 numeric currentval = { { 0 } }; /* an integer literal */
 
@@ -165,30 +167,19 @@ int current_line_str_used = 0;
 #define SET_CURRENT_LINE_STR(new) SET_CURRENT(line_str, new)
 
 
-void where_cc1_current(struct where *w)
+struct where *where_cc1_current(struct where *w)
 {
-	if(parse_finished){
-eof_w:
-		if(eof_where){
-			memcpy(w, eof_where, sizeof *w);
-		}else if(current_fname){
-			/* still parsing, at EOF */
-			goto final;
-		}else{
-			ICE("where_new() after buffer eof");
-		}
+	static struct where here;
 
-	}else{
-final:
-		/* XXX: current_chr positions at the end of the current token */
-		where_current(w);
+	if(!w) w = &here;
 
-		if(!w->fname)
-			goto eof_w;
+	/* XXX: current_chr positions at the end of the current token */
+	where_current(w);
 
-		current_fname_used = 1;
-		current_line_str_used = 1;
-	}
+	current_fname_used = 1;
+	current_line_str_used = 1;
+
+	return w;
 }
 
 void where_cc1_adj_identifier(where *w, const char *sp)
@@ -227,6 +218,9 @@ static void handle_line_file_directive(char *fnam, int lno)
 
 	/* logic for knowing when to pop and when to push */
 	int i;
+
+	if(!cc1_first_fname)
+		cc1_first_fname = ustrdup(fnam);
 
 	for(i = current_fname_stack_cnt - 1; i >= 0; i--){
 		struct fnam_stack *stk = &current_fname_stack[i];

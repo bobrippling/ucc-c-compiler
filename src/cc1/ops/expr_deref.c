@@ -2,6 +2,8 @@
 
 #include "ops.h"
 #include "expr_deref.h"
+#include "../type_nav.h"
+#include "../type_is.h"
 
 const char *str_expr_deref()
 {
@@ -14,6 +16,15 @@ void fold_expr_deref(expr *e, symtable *stab)
 
 	ptr = FOLD_EXPR(expr_deref_what(e), stab);
 
+	if(!type_is_ptr(ptr->tree_type)){
+		fold_had_error = 1;
+		warn_at_print_error(&ptr->where,
+				"indirection applied to '%s'",
+				type_to_str(ptr->tree_type));
+		e->tree_type = ptr->tree_type;
+		return;
+	}
+
 	if(expr_attr_present(ptr, attr_noderef))
 		warn_at(&ptr->where, "dereference of noderef expression");
 
@@ -23,7 +34,7 @@ void fold_expr_deref(expr *e, symtable *stab)
 
 	fold_check_bounds(ptr, 0);
 
-	e->tree_type = type_ref_ptr_depth_dec(ptr->tree_type, &e->where);
+	e->tree_type = type_pointed_to(ptr->tree_type);
 }
 
 static void gen_expr_deref_lea(expr *e)
@@ -40,7 +51,7 @@ void gen_expr_deref(expr *e)
 
 void gen_expr_str_deref(expr *e)
 {
-	idt_printf("deref, size: %s\n", type_ref_to_str(e->tree_type));
+	idt_printf("deref, size: %s\n", type_to_str(e->tree_type));
 	gen_str_indent++;
 	print_expr(expr_deref_what(e));
 	gen_str_indent--;
