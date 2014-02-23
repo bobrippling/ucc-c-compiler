@@ -1,3 +1,5 @@
+// RUN: %check -e %s
+
 typedef int f(void) // CHECK: error: typedef storage for function
 {
 	return 3;
