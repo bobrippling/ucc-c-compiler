@@ -95,10 +95,12 @@ type *type_skip_non_wheres(type *t)
 	return type_skip(t, STOP_AT_WHERE);
 }
 
-decl *type_is_tdef(type *r)
+decl *type_is_tdef(type *t)
 {
-	if(r && r->type == type_tdef)
-		return r->bits.tdef.decl;
+	t = type_skip_non_tdefs(t);
+
+	if(t && t->type == type_tdef)
+		return t->bits.tdef.decl;
 
 	return NULL;
 }
