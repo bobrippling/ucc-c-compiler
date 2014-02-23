@@ -192,21 +192,10 @@ type *type_is_func_or_block(type *r)
 	return NULL;
 }
 
-const btype *type_get_type(type *r)
+const btype *type_get_type(type *t)
 {
-	for(; r; )
-		switch(r->type){
-			case type_tdef:
-				r = type_skip_all(r);
-				break;
-			case type_btype:
-				return r->bits.type;
-			default:
-				goto no;
-		}
-
-no:
-	return NULL;
+	t = type_skip_all(t);
+	return t && t->type == type_btype ? t->bits.type : NULL;
 }
 
 int type_is_bool(type *r)
