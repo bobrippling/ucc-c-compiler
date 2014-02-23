@@ -265,12 +265,6 @@ void fold_type_w_attr(
 			break;
 
 		case type_func:
-			if(type_is(parent, type_ptr)
-			&& (type_qual(parent) & qual_restrict))
-			{
-				die_at(&stab->where, "restrict qualified function pointer");
-			}
-
 			r->bits.func.arg_scope->are_params = 1;
 
 			symtab_fold_sues(r->bits.func.arg_scope);
@@ -344,10 +338,17 @@ void fold_type_w_attr(
 	 * now we've folded, check for restrict
 	 * since typedef int *intptr; intptr restrict a; is valid
 	 */
-	if(q_to_check & qual_restrict && !type_is_ptr(r))
-		warn_at(loc,
-				"restrict on non-pointer type '%s'",
-				type_to_str(r));
+	if(q_to_check & qual_restrict){
+		if(!type_is_ptr(r)){
+			warn_at(loc,
+					"restrict on non-pointer type '%s'",
+					type_to_str(r));
+
+		}else if(type_is_fptr(r->ref)){
+			/* ^ next is a pointer, what's after that? */
+			die_at(loc, "restrict qualified function pointer");
+		}
+	}
 
 	fold_type_w_attr(r->ref, thisparent, loc, stab, this_attr ? this_attr : attr);
 
