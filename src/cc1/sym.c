@@ -5,7 +5,6 @@
 #include <stdarg.h>
 
 #include "../util/util.h"
-#include "data_structs.h"
 #include "sym.h"
 #include "../util/alloc.h"
 #include "macros.h"
@@ -46,17 +45,20 @@ void symtab_set_parent(symtable *child, symtable *parent)
 	dynarray_add(&parent->children, child);
 }
 
-symtable *symtab_new(symtable *parent)
+symtable *symtab_new(symtable *parent, where *w)
 {
 	symtable *p = umalloc(sizeof *p);
-	if(parent)
-		symtab_set_parent(p, parent);
+	UCC_ASSERT(parent, "no parent for symtable");
+	symtab_set_parent(p, parent);
+	memcpy_safe(&p->where, w);
 	return p;
 }
 
-symtable_global *symtabg_new(void)
+symtable_global *symtabg_new(where *w)
 {
-	return umalloc(sizeof *symtabg_new());
+	symtable_global *s = umalloc(sizeof *s);
+	memcpy_safe(&s->stab.where, w);
+	return s;
 }
 
 symtable *symtab_root(symtable *stab)
@@ -79,7 +81,7 @@ symtable_global *symtab_global(symtable *stab)
 
 void symtab_add_params(symtable *stab, decl **params)
 {
-	stab->are_params = 1;
+	UCC_ASSERT(stab->are_params, "add params to a non-param symtable");
 	dynarray_add_array(&stab->decls, params);
 }
 
@@ -120,8 +122,11 @@ decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
 sym *symtab_search(symtable *tab, const char *sp)
 {
 	decl *d = symtab_search_d(tab, sp, NULL);
-	/* d->sym may be null if it's not been assigned yet */
-	return d ? d->sym : NULL;
+	if(!d)
+		return NULL;
+
+	UCC_ASSERT(d->sym, "no symbol for decl");
+	return d->sym;
 }
 
 int typedef_visible(symtable *stab, const char *spel)

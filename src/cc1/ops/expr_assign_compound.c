@@ -28,8 +28,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	UCC_ASSERT(op_can_compound(e->op), "non-compound op in compound expr");
 
 	{
-		type_ref *tlhs, *trhs;
-		type_ref *resolved = op_required_promotion(e->op, lvalue, e->rhs, &e->where, &tlhs, &trhs);
+		type *tlhs, *trhs;
+		type *resolved = op_required_promotion(e->op, lvalue, e->rhs, &e->where, &tlhs, &trhs);
 
 		if(tlhs){
 			/* must cast the lvalue, then down cast once the operation is done
@@ -48,7 +48,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 		e->tree_type = lvalue->tree_type;
 
 		(void)resolved;
-		/*type_ref_free_1(resolved); XXX: memleak */
+		/*type_free_1(resolved); XXX: memleak */
 	}
 
 	/* type check is done in op_required_promotion() */

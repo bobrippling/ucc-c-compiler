@@ -18,7 +18,7 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 
 		*pstab = flow->for_init_symtab;
 
-		fold_block_decls(*pstab, &flow->init_blk);
+		fold_shadow_dup_check_block_decls(*pstab);
 
 		/* sanity check on _flow_ vars only */
 		for(i = (*pstab)->decls; i && *i; i++){
@@ -60,17 +60,11 @@ void flow_end(const char *endlbls[2])
 	int i;
 	for(i = 0; i < 2; i++)
 		if(endlbls[i])
-			out_label(endlbls[i]);
+			out_label_noop(endlbls[i]);
 }
 
 void fold_stmt_if(stmt *s)
 {
-	symtable *stab = s->symtab;
-
-	flow_fold(s->flow, &stab);
-
-	FOLD_EXPR(s->expr, stab);
-
 	fold_check_expr(s->expr, FOLD_CHK_BOOL, s->f_str());
 
 	fold_stmt(s->lhs);

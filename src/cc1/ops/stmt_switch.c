@@ -7,6 +7,7 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 #include "../out/lbl.h"
+#include "../type_is.h"
 
 const char *str_stmt_switch()
 {
@@ -143,13 +144,9 @@ ret:
 
 void fold_stmt_switch(stmt *s)
 {
-	symtable *stab = s->symtab;
-
-	flow_fold(s->flow, &stab);
-
 	s->lbl_break = out_label_flow("switch");
 
-	FOLD_EXPR(s->expr, stab);
+	FOLD_EXPR(s->expr, s->symtab);
 
 	fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch");
 
@@ -164,7 +161,7 @@ void fold_stmt_switch(stmt *s)
 
 	/* check for an enum */
 	{
-		struct_union_enum_st *sue = type_ref_is_s_or_u_or_e(
+		struct_union_enum_st *sue = type_is_s_or_u_or_e(
 					s->expr->tree_type);
 
 		if(sue && sue->primitive == type_enum)

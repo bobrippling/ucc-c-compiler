@@ -20,8 +20,4 @@ do ; while(a = c);
 for(;a = c;);
 // CARETS:
 //     ^ assignment in
-
-return _Generic(0, char: 5);
-// CARETS:
-//     ^ no type satisfying
 }

@@ -12,14 +12,9 @@ const char *str_stmt_while()
 
 void fold_stmt_while(stmt *s)
 {
-	symtable *stab = s->symtab;
-
-	flow_fold(s->flow, &stab);
-
 	s->lbl_break    = out_label_flow("while_break");
 	s->lbl_continue = out_label_flow("while_cont");
 
-	FOLD_EXPR(s->expr, stab);
 	fold_check_expr(
 			s->expr,
 			FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,

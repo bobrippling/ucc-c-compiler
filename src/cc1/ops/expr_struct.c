@@ -2,10 +2,15 @@
 #include "expr_struct.h"
 #include "../sue.h"
 #include "../out/asm.h"
+#include "../type_is.h"
+#include "../type_nav.h"
 
 #define ASSERT_NOT_DOT() UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now")
 
-#define struct_offset(e) ((e)->bits.struct_mem.d->struct_offset + (e)->bits.struct_mem.extra_off)
+#define struct_offset(e) (                            \
+	 (e)->bits.struct_mem.d->bits.var.struct_offset +   \
+	 (e)->bits.struct_mem.extra_off                     \
+	 )
 
 static void gen_expr_struct_lea(expr *e);
 
@@ -41,21 +46,21 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 	/* we access a struct, of the right ptr depth */
 	{
-		type_ref *r = e->lhs->tree_type;
+		type *r = e->lhs->tree_type;
 
 		if(ptr_expect){
-			type_ref *rtest = type_ref_is(r, type_ref_ptr);
+			type *rtest = type_is(r, type_ptr);
 
-			if(!rtest && !(rtest = type_ref_is(r, type_ref_array)))
+			if(!rtest && !(rtest = type_is(r, type_array)))
 				goto err;
 
 			r = rtest->ref; /* safe - rtest is an array */
 		}
 
-		if(!(sue = type_ref_is_s_or_u(r))){
+		if(!(sue = type_is_s_or_u(r))){
 err:
 			die_at(&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
-					type_ref_to_str(e->lhs->tree_type),
+					type_to_str(e->lhs->tree_type),
 					e->lhs->f_str(),
 					ptr_expect ? "pointer to " : "",
 					spel);
@@ -70,7 +75,7 @@ err:
 				ptr_expect
 					? "dereferencing pointer to"
 					: "accessing member of",
-				type_ref_to_str(e->lhs->tree_type),
+				type_to_str(e->lhs->tree_type),
 				where_str_r(wbuf, &sue->where));
 	}
 
@@ -99,7 +104,9 @@ err:
 		expr *cast, *addr;
 
 		addr = expr_new_addr(e->lhs);
-		cast = expr_new_cast(addr, type_ref_cached_VOID_PTR(), 1);
+		cast = expr_new_cast(addr,
+				type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
+				1);
 
 		e->lhs = cast;
 		e->expr_is_st_dot = 0;
@@ -108,11 +115,9 @@ err:
 	}
 
 	/* pull qualifiers from the struct to the member */
-	{
-		enum type_qualifier addon = type_ref_qual(e->lhs->tree_type);
-
-		e->tree_type = type_ref_new_cast_add(e->bits.struct_mem.d->ref, addon);
-	}
+	e->tree_type = type_qualify(
+			e->bits.struct_mem.d->ref,
+			type_qual(e->lhs->tree_type));
 }
 
 static void gen_expr_struct_lea(expr *e)
@@ -121,8 +126,9 @@ static void gen_expr_struct_lea(expr *e)
 
 	gen_expr(e->lhs);
 
-	out_change_type(type_ref_cached_VOID_PTR()); /* cast for void* arithmetic */
-	out_push_l(type_ref_cached_INTPTR_T(), struct_offset(e)); /* integral offset */
+	/* cast for void* arithmetic */
+	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
+	out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t), struct_offset(e)); /* integral offset */
 	out_op(op_plus);
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
@@ -132,14 +138,14 @@ static void gen_expr_struct_lea(expr *e)
 	{
 		decl *d = e->bits.struct_mem.d;
 
-		out_change_type(type_ref_ptr_depth_inc(d->ref));
+		out_change_type(type_ptr_to(d->ref));
 
 		/* set if we're a bitfield - out_deref() and out_store()
 		 * i.e. read + write then handle this
 		 */
-		if(d->field_width){
-			unsigned w = const_fold_val_i(d->field_width);
-			out_set_bitfield(d->struct_offset_bitfield, w);
+		if(d->bits.var.field_width){
+			unsigned w = const_fold_val_i(d->bits.var.field_width);
+			out_set_bitfield(d->bits.var.struct_offset_bitfield, w);
 			out_comment("struct bitfield lea");
 		}
 	}
@@ -161,10 +167,10 @@ void gen_expr_str_struct(expr *e)
 	idt_printf("struct/union member %s offset %d\n",
 			mem->spel, struct_offset(e));
 
-	if(mem->field_width)
+	if(mem->bits.var.field_width)
 		idt_printf("bitfield offset %u, width %u\n",
-				mem->struct_offset_bitfield,
-				(unsigned)const_fold_val_i(mem->field_width));
+				mem->bits.var.struct_offset_bitfield,
+				(unsigned)const_fold_val_i(mem->bits.var.field_width));
 
 	gen_str_indent++;
 	print_expr(e->lhs);

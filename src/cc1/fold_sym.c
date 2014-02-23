@@ -9,7 +9,6 @@
 #include "../util/dynmap.h"
 #include "../util/platform.h"
 
-#include "data_structs.h"
 #include "cc1.h"
 #include "sym.h"
 #include "fold_sym.h"
@@ -21,6 +20,7 @@
 #include "out/lbl.h"
 #include "const.h"
 #include "label.h"
+#include "type_is.h"
 
 
 #define RW_TEST(decl, var)                      \
@@ -28,9 +28,9 @@
             && decl->spel                       \
             && (decl->store & STORE_MASK_STORE) \
                     != store_typedef            \
-            && !DECL_IS_ARRAY(decl)             \
-            && !DECL_IS_FUNC(decl)              \
-            && !DECL_IS_S_OR_U(decl)
+            && !type_is(decl->ref, type_func)   \
+            && !type_is(decl->ref, type_array)  \
+            && !type_is_s_or_u(decl->ref)
 
 #define RW_SHOW(decl, w, str)          \
           cc1_warn_at(&decl->where, 0, \
@@ -100,7 +100,7 @@ void symtab_check_static_asserts(symtable *stab)
 		sa->checked = 1;
 
 		FOLD_EXPR(sa->e, sa->scope);
-		if(!type_ref_is_integral(sa->e->tree_type))
+		if(!type_is_integral(sa->e->tree_type))
 			die_at(&sa->e->where,
 					"static assert: not an integral expression (%s)",
 					sa->e->f_str());
@@ -140,7 +140,7 @@ void symtab_check_rw(symtable *tab)
 			{
 				/* arg + local checks */
 				const int unused = RW_TEST(d, nreads);
-				const int has_unused_attr = !!decl_attr_present(d, attr_unused);
+				const int has_unused_attr = !!attribute_present(d, attr_unused);
 
 				if(d->sym->type != sym_arg){
 					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
@@ -149,7 +149,7 @@ void symtab_check_rw(symtable *tab)
 						case store_auto:
 						case store_static:
 							/* static analysis on sym */
-							if(!has_unused_attr && !d->init)
+							if(!has_unused_attr && !type_is(d->ref, type_func) && !d->bits.var.init)
 								RW_WARN(WRITTEN, d, nwrites, "written to");
 							break;
 						case store_extern:
@@ -194,12 +194,14 @@ static int ident_loc_cmp(const void *a, const void *b)
 	const struct ident_loc *ia = a, *ib = b;
 	int r = strcmp(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
 
-	/* sort according to spel, then according to func_code
+	/* sort according to spel, then according to func-code
 	 * so it makes checking redefinitions easier, e.g.
 	 * f(){} f(); f(){}
 	 */
-	if(r == 0 && ia->has_decl && ib->has_decl)
-		r = !!ia->bits.decl->func_code - !!ib->bits.decl->func_code;
+	if(r == 0 && ia->has_decl && ib->has_decl){
+		r = !!DECL_HAS_FUNC_CODE(ia->bits.decl)
+			- !!DECL_HAS_FUNC_CODE(ib->bits.decl);
+	}
 
 	return r;
 }
@@ -338,15 +340,18 @@ void symtab_fold_decls(symtable *tab)
 						decl *da = a->bits.decl;
 						decl *db = b->bits.decl;
 
-						const int a_func = !!DECL_IS_FUNC(da);
+						const int a_func = !!type_is(da->ref, type_func);
 
-						if(!!DECL_IS_FUNC(db) != a_func){
+						if(!!type_is(db->ref, type_func) != a_func){
 							clash = "mismatching";
 						}else switch(decl_cmp(da, db, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
 							case TYPE_NOT_EQUAL:
-							case TYPE_QUAL_CHANGE:
+							case TYPE_QUAL_ADD:
+							case TYPE_QUAL_SUB:
+							case TYPE_QUAL_POINTED_ADD:
+							case TYPE_QUAL_POINTED_SUB:
+							case TYPE_QUAL_NESTED_CHANGE:
 								/* must be an exact match */
-							case TYPE_QUAL_LOSS:
 							case TYPE_CONVERTIBLE_IMPLICIT:
 							case TYPE_CONVERTIBLE_EXPLICIT:
 								/* allow static/non-static redecl for non-functions */
@@ -377,7 +382,10 @@ void symtab_fold_decls(symtable *tab)
 									}else{
 										/* fine - both extern */
 									}
-								}else if(a_func && da->func_code && db->func_code){
+								}else if(a_func
+								&& DECL_HAS_FUNC_CODE(da)
+								&& DECL_HAS_FUNC_CODE(db))
+								{
 									clash = "duplicate";
 								}else if((da->store & STORE_MASK_STORE) == store_typedef){
 									warn_c11_retypedef(da, db);
@@ -435,7 +443,7 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 					break;
 
 				case sym_local: /* warn on unused args and locals */
-					if(DECL_IS_FUNC(d))
+					if(type_is(d->ref, type_func))
 						continue;
 
 					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){

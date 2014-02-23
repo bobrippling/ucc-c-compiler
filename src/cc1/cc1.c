@@ -11,9 +11,7 @@
 
 #include "../util/util.h"
 #include "../util/platform.h"
-#include "data_structs.h"
 #include "tokenise.h"
-#include "parse.h"
 #include "cc1.h"
 #include "fold.h"
 #include "gen_asm.h"
@@ -25,6 +23,8 @@
 #include "out/asm.h" /* NUM_SECTIONS */
 #include "opt.h"
 #include "pass1.h"
+#include "type_nav.h"
+#include "cc1_where.h"
 
 #include "../as_cfg.h"
 
@@ -132,6 +132,7 @@ struct
 	{ 'f',  "signed-char",         FOPT_SIGNED_CHAR },
 	{ 'f',  "unsigned-char",      ~FOPT_SIGNED_CHAR },
 	{ 'f',  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
+	{ 'f',  "dump-type-tree", FOPT_DUMP_TYPE_TREE },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 
@@ -352,6 +353,7 @@ static char *next_line()
 
 int main(int argc, char **argv)
 {
+	where loc_start;
 	static symtable_global *globs;
 	void (*gf)(symtable_global *) = NULL;
 	const char *fname;
@@ -545,8 +547,12 @@ usage:
 
 	show_current_line = fopt_mode & FOPT_SHOW_LINE;
 
-	globs = symtabg_new();
+	cc1_type_nav = type_nav_init();
+
 	tokenise_set_input(next_line, fname);
+
+	where_cc1_current(&loc_start);
+	globs = symtabg_new(&loc_start);
 
 	parse_and_fold(globs);
 
@@ -592,6 +598,9 @@ usage:
 
 
 	io_fin(gf == NULL, fname);
+
+	if(fopt_mode & FOPT_DUMP_TYPE_TREE)
+		type_nav_dump(cc1_type_nav);
 
 	return 0;
 }

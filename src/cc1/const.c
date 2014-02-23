@@ -3,10 +3,11 @@
 #include <string.h>
 
 #include "../util/util.h"
-#include "data_structs.h"
+#include "../util/util.h"
+
 #include "const.h"
 #include "sym.h"
-#include "../util/util.h"
+#include "expr.h"
 #include "cc1.h"
 
 void const_fold(expr *e, consty *k)
