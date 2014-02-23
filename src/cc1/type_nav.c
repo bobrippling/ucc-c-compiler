@@ -369,11 +369,34 @@ type *type_nav_MAX_FOR(struct type_nav *root, unsigned sz)
 
 type *type_unqualify(type *t)
 {
-	while(t)
-		if(t->type == type_cast && !t->bits.cast.is_signed_cast)
+	type *t_restrict = NULL, *prev = NULL;
+
+	while(t){
+		if(t->type == type_cast && !t->bits.cast.is_signed_cast){
+			/* restrict qualifier is special, and is only on pointer
+			 * types and doesn't really apply to the expression itself
+			 */
+			if(t->bits.cast.qual & qual_restrict)
+				t_restrict = t;
+
+			prev = t;
 			t = t->ref;
-		else
+		}else{
 			break;
+		}
+	}
+
+	if(t_restrict){
+		assert(prev);
+		if(prev == t_restrict){
+			/* fine - we can just return this, preserving restrictness,
+			 * as nothing below it is a qualifier */
+			return t_restrict;
+		}else{
+			/* preserve restrict */
+			return type_qualify(t, qual_restrict);
+		}
+	}
 
 	return t;
 }

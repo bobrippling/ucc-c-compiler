@@ -124,7 +124,7 @@ void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w)
 {
 	/* restrict operation checks */
 	const enum type_qualifier ql = type_qual(lhs->tree_type),
-				                    qr = type_qual(rhs->tree_type);
+	                          qr = type_qual(rhs->tree_type);
 
 	if((ql & qual_restrict) && (qr & qual_restrict))
 		warn_at(w, "restrict pointers in %s", desc);
