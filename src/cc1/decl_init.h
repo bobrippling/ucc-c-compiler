@@ -70,7 +70,9 @@ int decl_init_is_const(
 int decl_init_is_zero(decl_init *dinit);
 
 /* normalises braces */
-void decl_init_brace_up_fold(struct decl *d, struct symtable *);
+void decl_init_brace_up_fold(
+		struct decl *d, struct symtable *stab,
+		const int allow_initial_struct_copy);
 
 /* used for default initialising tenatives */
 void decl_default_init(struct decl *d, struct symtable *stab);
