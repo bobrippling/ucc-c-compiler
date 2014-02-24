@@ -5,12 +5,15 @@
 
 #include "../util/util.h"
 #include "../util/alloc.h"
-#include "data_structs.h"
+
 #include "cc1.h"
+#include "type.h"
+#include "decl.h"
+#include "expr.h"
+#include "type_is.h"
 #include "const.h"
 
-/* needed for expr_assignment() */
-#include "ops/expr_assign.h"
+#include "cc1_where.h"
 
 void expr_mutate(expr *e, func_mutate_expr *f,
 		func_fold *f_fold,
@@ -87,25 +90,32 @@ int expr_is_null_ptr(expr *e, enum null_strictness ty)
 	int b = 0;
 
 	/* void * always qualifies */
-	if(type_ref_is_type(type_ref_is_ptr(e->tree_type), type_void))
+	if(type_is_primitive(type_is_ptr(e->tree_type), type_void))
 		b = 1;
-	else if(ty == NULL_STRICT_INT && type_ref_is_integral(e->tree_type))
+	else if(ty == NULL_STRICT_INT && type_is_integral(e->tree_type))
 		b = 1;
-	else if(ty == NULL_STRICT_ANY_PTR && type_ref_is_ptr(e->tree_type))
+	else if(ty == NULL_STRICT_ANY_PTR && type_is_ptr(e->tree_type))
 		b = 1;
 
 	return b && const_expr_and_zero(e);
 }
 
-int expr_is_lval_yes(expr *e)
-{
-	(void)e;
-	return 1;
-}
-
 int expr_is_lval(expr *e)
 {
-	return e->f_is_lval ? e->f_is_lval(e) : 0;
+	if(!e->f_lea)
+		return 0;
+
+	/* special case:
+	 * (a = b) = c
+	 * ^~~~~~~ not an lvalue, but internally we handle it as one
+	 */
+	if(expr_kind(e, assign) && type_is_s_or_u(e->tree_type))
+		return 0;
+
+	if(type_is_array(e->tree_type))
+		return 0;
+
+	return 1;
 }
 
 expr *expr_new_array_idx_e(expr *base, expr *idx)

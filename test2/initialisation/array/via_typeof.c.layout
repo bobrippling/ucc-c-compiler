@@ -1,0 +1,8 @@
+ent1:
+.long 0, 0
+.long 0, 0
+.long 0, 0
+ent2:
+.long 0, 0
+.long 0, 0
+.long 0, 0

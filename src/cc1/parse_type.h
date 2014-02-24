@@ -1,37 +1,51 @@
 #ifndef PARSE_TYPE_H
 #define PARSE_TYPE_H
 
+#include "../util/compiler.h"
+
+enum decl_mode
+{
+	DECL_SPEL_NEED    = 1 << 0,
+	DECL_CAN_DEFAULT  = 1 << 1,
+	DECL_ALLOW_STORE  = 1 << 2
+};
+
+enum decl_multi_mode
+{
+	DECL_MULTI_CAN_DEFAULT        = 1 << 0,
+	DECL_MULTI_ACCEPT_FIELD_WIDTH = 1 << 1,
+	DECL_MULTI_ACCEPT_FUNC_DECL   = 1 << 2,
+	DECL_MULTI_ACCEPT_FUNC_CODE   = 1 << 3 | DECL_MULTI_ACCEPT_FUNC_DECL,
+	DECL_MULTI_ALLOW_STORE        = 1 << 4,
+	DECL_MULTI_NAMELESS           = 1 << 5,
+	DECL_MULTI_ALLOW_ALIGNAS      = 1 << 6,
+};
+
+
 /* (type *[]) */
-type_ref *parse_type(int newdecl);
+type *parse_type(int newdecl_ctx, symtable *scope);
 
-decl *parse_decl_single(enum decl_mode mode, int newdecl);
-
-/* type ident(, ident, ...) - multiple of the above */
-decl **parse_decls_one_type(int newdecl);
+/* type *name[]... */
+decl *parse_decl(
+		enum decl_mode mode, int newdecl_ctx,
+		symtable *scope, symtable *add_to_scope,
+		struct stmt **pinit_code);
 
 /* type ident...; */
-int parse_decls_single_type(
+int parse_decl_group(
 		enum decl_multi_mode mode,
-		int newdecl,
-		symtable *scope,
-		decl ***pdecls);
+		int newdecl_ctx,
+		symtable *in_scope,
+		symtable *add_to_scope, decl ***pdecls,
+		struct stmt **pinit_code)
+	ucc_nonnull((3));
 
-/* multiple of the above */
-void parse_decls_multi_type(
-		enum decl_multi_mode mode,
-		int newdecl_context,
-		symtable *scope,
-		decl ***pnew);
+struct funcargs *parse_func_arglist(symtable *);
 
-/* if scope is NULL, args are returned, otherwise
- * args are also added to scope's ->decls
- */
-funcargs *parse_func_arglist(symtable *scope);
+int parse_at_decl(symtable *scope);
 
-decl_init *parse_initialisation(void); /* expr or {{...}} */
+void parse_add_attr(attribute **append, symtable *scope);
 
-int parse_at_decl(void);
-
-void parse_add_attr(decl_attr **append);
+type **parse_type_list(symtable *scope);
 
 #endif

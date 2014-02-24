@@ -578,7 +578,7 @@ char *fgets(char *s, int l, FILE *f)
 
 	/* FIXME: read only one line at a time */
 
-	s[MIN(l, r)] = '\0';
+	s[MIN((unsigned)l, r)] = '\0';
 
 	return s;
 }

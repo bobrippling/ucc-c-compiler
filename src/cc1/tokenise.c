@@ -7,13 +7,14 @@
 #include <limits.h>
 
 #include "../util/util.h"
-#include "data_structs.h"
 #include "tokenise.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
 #include "../util/escape.h"
 #include "str.h"
 #include "cc1.h"
+#include "cc1_where.h"
+#include "btype.h"
 
 #ifndef CHAR_BIT
 #  define CHAR_BIT 8
@@ -139,6 +140,7 @@ static struct line_list
 
 /* -- */
 enum token curtok, curtok_uneat;
+int parse_had_error;
 
 numeric currentval = { { 0 } }; /* an integer literal */
 
@@ -165,30 +167,19 @@ int current_line_str_used = 0;
 #define SET_CURRENT_LINE_STR(new) SET_CURRENT(line_str, new)
 
 
-void where_cc1_current(struct where *w)
+struct where *where_cc1_current(struct where *w)
 {
-	if(parse_finished){
-eof_w:
-		if(eof_where){
-			memcpy(w, eof_where, sizeof *w);
-		}else if(current_fname){
-			/* still parsing, at EOF */
-			goto final;
-		}else{
-			ICE("where_new() after buffer eof");
-		}
+	static struct where here;
 
-	}else{
-final:
-		/* XXX: current_chr positions at the end of the current token */
-		where_current(w);
+	if(!w) w = &here;
 
-		if(!w->fname)
-			goto eof_w;
+	/* XXX: current_chr positions at the end of the current token */
+	where_current(w);
 
-		current_fname_used = 1;
-		current_line_str_used = 1;
-	}
+	current_fname_used = 1;
+	current_line_str_used = 1;
+
+	return w;
 }
 
 void where_cc1_adj_identifier(where *w, const char *sp)
@@ -228,6 +219,9 @@ static void handle_line_file_directive(char *fnam, int lno)
 	/* logic for knowing when to pop and when to push */
 	int i;
 
+	if(!cc1_first_fname)
+		cc1_first_fname = ustrdup(fnam);
+
 	for(i = current_fname_stack_cnt - 1; i >= 0; i--){
 		struct fnam_stack *stk = &current_fname_stack[i];
 
@@ -241,6 +235,47 @@ static void handle_line_file_directive(char *fnam, int lno)
 	}
 
 	push_fname(fnam, lno);
+}
+
+static void parse_line_directive(char *l)
+{
+	int lno;
+	char *ep;
+
+	l = str_spc_skip(l + 1);
+	if(!strncmp(l, "line", 4))
+		l += 4;
+
+	lno = strtol(l, &ep, 0);
+	if(ep == l)
+		die("couldn't parse number for #line directive (%s)", ep);
+
+	if(lno < 0)
+		die("negative #line directive argument");
+
+	loc_now.line = lno - 1; /* inc'd below */
+
+	ep = str_spc_skip(ep);
+
+	switch(*ep){
+		case '"':
+			{
+				char *p = str_quotefin(++ep);
+				if(!p)
+					die("no terminating quote to #line directive (%s)", l);
+				handle_line_file_directive(ustrdup2(ep, p), lno);
+				/*l = str_spc_skip(p + 1);
+					if(*l)
+					die("characters after #line?");
+					- gcc puts characters after the string */
+				break;
+			}
+		case '\0':
+			break;
+
+		default:
+			die("expected '\"' or nothing after #line directive (%s)", ep);
+	}
 }
 
 void include_bt(FILE *f)
@@ -281,44 +316,7 @@ static ucc_wur char *tokenise_read_line()
 
 		/* format is # line? [0-9] "filename" ([0-9])* */
 		if(!in_comment && *l == '#'){
-			int lno;
-			char *ep;
-
-			l = str_spc_skip(l + 1);
-			if(!strncmp(l, "line", 4))
-				l += 4;
-
-			lno = strtol(l, &ep, 0);
-			if(ep == l)
-				die("couldn't parse number for #line directive (%s)", ep);
-
-			if(lno < 0)
-				die("negative #line directive argument");
-
-			loc_now.line = lno - 1; /* inc'd below */
-
-			ep = str_spc_skip(ep);
-
-			switch(*ep){
-				case '"':
-				{
-					char *p = str_quotefin(++ep);
-					if(!p)
-						die("no terminating quote to #line directive (%s)", l);
-					handle_line_file_directive(ustrdup2(ep, p), lno);
-					/*l = str_spc_skip(p + 1);
-					if(*l)
-						die("characters after #line?");
-						- gcc puts characters after the string */
-					break;
-				}
-				case '\0':
-					break;
-
-				default:
-					die("expected '\"' or nothing after #line directive (%s)", ep);
-			}
-
+			parse_line_directive(l);
 			return tokenise_read_line();
 		}
 
@@ -376,32 +374,27 @@ char *token_current_spel_peek(void)
 	return currentspelling;
 }
 
-char *tok_at_label(where *w)
+int tok_at_label(void)
 {
 	/* [a-z]+:
 	 * need to cater for newlines
 	 */
-	char *p;
+	char *p = bufferpos;
 
 	if(curtok != token_identifier)
-		return NULL;
+		return 0;
 
-	/* look for a colon */
-	for(p = bufferpos; *p; p++){
+	/* if we're on a #line, ignore */
+	if(*bufferpos == '#'){
+		parse_line_directive(bufferpos);
+
+	}else for(; *p; p++){
 		if(*p == ':'){
-			char *ret;
 
-			where_cc1_current(w);
-
-			bufferpos = p + 1;
-			ret = token_current_spel();
-
-			nexttoken();
-
-			return ret;
+			return 1;
 
 		}else if(!isspace(*p)){
-			return NULL;
+			return 0;
 		}
 	}
 
@@ -418,9 +411,9 @@ char *tok_at_label(where *w)
 			p = buffer + poff;
 			memcpy(p, new, newlen + 1);
 			bufferpos = p;
-			return tok_at_label(w);
+			return tok_at_label();
 		}
-		return NULL;
+		return 0;
 	}
 }
 
@@ -684,7 +677,7 @@ void nexttoken()
 		}
 	}
 
-	if(isdigit(c)){
+	if(isdigit(c) || (c == '.' && isdigit(peeknextchar()))){
 		char *const num_start = bufferpos - 1;
 		enum base mode;
 
@@ -720,7 +713,8 @@ void nexttoken()
 			bufferpos--; /* rewind */
 		}
 
-		read_number(mode);
+		if(c != '.')
+			read_number(mode);
 
 #if 0
 		if(tolower(peeknextchar()) == 'e'){
@@ -738,7 +732,7 @@ void nexttoken()
 		}
 #endif
 
-		if(peeknextchar() == '.'){
+		if(c == '.' || peeknextchar() == '.'){
 			/* floating point */
 
 			currentval.val.f = strtold(num_start, &bufferpos);

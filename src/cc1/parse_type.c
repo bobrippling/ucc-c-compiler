@@ -8,7 +8,6 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
-#include "data_structs.h"
 #include "decl_init.h"
 #include "funcargs.h"
 
@@ -19,41 +18,22 @@
 #include "sym.h"
 
 #include "cc1.h"
+#include "cc1_where.h"
 
-#include "parse.h"
 #include "parse_type.h"
+#include "parse_expr.h"
+#include "parse_attr.h"
+#include "parse_init.h"
+#include "parse_stmt.h"
 
 #include "expr.h"
+#include "type_nav.h"
+#include "type_is.h"
+
+#include "fold.h"
+#include "fold_sue.h"
 
 /*#define PARSE_DECL_VERBOSE*/
-
-/* we don't do the type_ref_is_* since it needs to be folded for that */
-#define PARSE_type_ref_is(r, ty) ((type_ref_skip_casts(r)->type == ty) ? (r) : NULL)
-#define PARSE_DECL_IS_FUNC(d) PARSE_type_ref_is(type_ref_skip_casts(d->ref), type_ref_func)
-
-#define PARSE_type_ref_is_s_or_u_or_e(r) PARSE_type_ref_is_s_or_u_or_e2(r, 1)
-#define PARSE_type_ref_is_s_or_u(r)      PARSE_type_ref_is_s_or_u_or_e2(r, 0)
-
-static struct_union_enum_st *PARSE_type_ref_is_s_or_u_or_e2(
-		type_ref *r, int allow_e)
-{
-	r = type_ref_skip_casts(r);
-	if(r->type == type_ref_type){
-		const type *t = r->bits.type;
-		switch(t->primitive){
-			case type_enum:
-				if(!allow_e)
-			default:
-					break;
-			case type_struct:
-			case type_union:
-				return t->sue;
-		}
-	}
-	return NULL;
-}
-
-static type_ref *parse_type_ref2(enum decl_mode mode, decl *dfor);
 
 /* newdecl_context:
  * struct B { int b; };
@@ -61,16 +41,18 @@ static type_ref *parse_type_ref2(enum decl_mode mode, decl *dfor);
  *   struct A { struct B; }; // this is not a new B
  * };
  */
-static type_ref *parse_type_sue(
+static type *parse_type_sue(
 		enum type_primitive prim,
-		int newdecl_context)
+		int newdecl_context,
+		symtable *scope)
 {
 	int is_complete = 0;
 	char *spel = NULL;
 	sue_member **members = NULL;
-	decl_attr *this_sue_attr = NULL;
+	attribute *this_sue_attr = NULL;
 
-	parse_add_attr(&this_sue_attr); /* struct __attr__(()) name { ... } ... */
+	/* struct __attr__(()) name { ... } ... */
+	parse_add_attr(&this_sue_attr, scope);
 
 	if(curtok == token_identifier){
 		spel = token_current_spel();
@@ -79,7 +61,8 @@ static type_ref *parse_type_sue(
 
 	/* FIXME: struct A { int i; };
 	 * struct A __attr__((packed)) a; - affects all struct A instances */
-	parse_add_attr(&this_sue_attr); /* int/struct-A __attr__ */
+	/* int/struct-A __attr__ */
+	parse_add_attr(&this_sue_attr, scope);
 
 	if(accept(token_open_block)){
 		if(prim == type_enum){
@@ -87,20 +70,21 @@ static type_ref *parse_type_sue(
 				where w;
 				expr *e;
 				char *sp;
-				decl_attr *en_attr = NULL;
+				attribute *en_attr = NULL;
 
 				where_cc1_current(&w);
 				sp = token_current_spel();
 				EAT(token_identifier);
 
-				parse_add_attr(&en_attr);
+				parse_add_attr(&en_attr, scope);
 
 				if(accept(token_assign))
-					e = parse_expr_no_comma(); /* no commas */
+					e = PARSE_EXPR_NO_COMMA(scope); /* no commas */
 				else
 					e = NULL;
 
 				enum_vals_add(&members, &w, sp, e, en_attr);
+				RELEASE(en_attr);
 
 				if(!accept(token_comma))
 					break;
@@ -120,14 +104,17 @@ static type_ref *parse_type_sue(
 			decl **dmembers = NULL;
 			decl **i;
 
-			parse_decls_multi_type(
+			while(parse_decl_group(
 					  DECL_MULTI_CAN_DEFAULT
 					| DECL_MULTI_ACCEPT_FIELD_WIDTH
 					| DECL_MULTI_NAMELESS
 					| DECL_MULTI_ALLOW_ALIGNAS,
 					/*newdecl_context:*/0,
-					NULL,
-					&dmembers);
+					scope,
+					NULL, &dmembers,
+					/*pinit_code:*/NULL))
+			{
+			}
 
 			if(!dmembers){
 				warn_at(NULL, "empty %s", sue_str_type(prim));
@@ -153,42 +140,41 @@ static type_ref *parse_type_sue(
 		 * it's a straight declaration if we have a ';'
 		 */
 		struct_union_enum_st *sue = sue_decl(
-				current_scope, spel,
+				scope, spel,
 				members, prim, is_complete,
 				/* isdef = */newdecl_context && curtok == token_semicolon);
 
-		parse_add_attr(&this_sue_attr); /* struct A { ... } __attr__ */
+		parse_add_attr(&this_sue_attr, scope); /* struct A { ... } __attr__ */
 
 		/* sue may already exist */
-		decl_attr_append(&sue->attr, this_sue_attr);
+		attribute_append(&sue->attr, this_sue_attr);
 
-		return type_ref_new_type(
-				type_new_primitive_sue(prim, sue));
+		RELEASE(this_sue_attr);
+
+		fold_sue(sue, scope);
+
+		return type_nav_suetype(cc1_type_nav, sue);
 	}
 }
 
-#include "parse_attr.c"
-#include "parse_init.c"
-
-void parse_add_attr(decl_attr **append)
+void parse_add_attr(attribute **append, symtable *scope)
 {
 	while(accept(token_attribute)){
 		EAT(token_open_paren);
 		EAT(token_open_paren);
 
 		if(curtok != token_close_paren)
-			decl_attr_append(append, parse_attr());
+			attribute_append(append, parse_attr(scope));
 
 		EAT(token_close_paren);
 		EAT(token_close_paren);
 	}
 }
 
-static decl *parse_at_tdef(void)
+static decl *parse_at_tdef(symtable *scope)
 {
 	if(curtok == token_identifier){
-		decl *d = symtab_search_d(current_scope,
-				token_current_spel_peek(), NULL);
+		decl *d = symtab_search_d(scope, token_current_spel_peek(), NULL);
 
 		if(d && d->store == store_typedef)
 			return d;
@@ -196,7 +182,7 @@ static decl *parse_at_tdef(void)
 	return NULL;
 }
 
-int parse_at_decl(void)
+int parse_at_decl(symtable *scope)
 {
 	/* this is similar to parse_btype() initial test logic */
 	switch(curtok){
@@ -219,7 +205,7 @@ int parse_at_decl(void)
 			return 1;
 
 		case token_identifier:
-			return !!parse_at_tdef();
+			return !!parse_at_tdef(scope);
 	}
 }
 
@@ -236,18 +222,26 @@ static int parse_at_decl_spec(void)
 	}
 }
 
-#define PARSE_BTYPE(mode, ps, pa, ndecl)                 \
-parse_btype(mode & DECL_MULTI_ALLOW_STORE   ? ps : NULL, \
-            mode & DECL_MULTI_ALLOW_ALIGNAS ? pa : NULL, \
-            ndecl)
+static void btype_set_store(
+		enum decl_storage *store, int *pstore_set, enum decl_storage st)
+{
+	if(!store)
+		die_at(NULL, "storage unwanted (%s)", decl_store_to_str(st));
 
-static type_ref *parse_btype(
+	if(*pstore_set)
+		die_at(NULL, "second store %s", decl_store_to_str(st));
+
+	*store = st;
+	*pstore_set = 1;
+}
+
+static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
-		int newdecl_context)
+		int newdecl_context, symtable *scope)
 {
 	/* *store and *palign should be initialised */
 	expr *tdef_typeof = NULL;
-	decl_attr *attr = NULL;
+	attribute *attr = NULL;
 	enum type_qualifier qual = qual_none;
 	enum type_primitive primitive = type_int;
 	int is_signed = 1, is_inline = 0, had_attr = 0, is_noreturn = 0, is_va_list = 0;
@@ -270,16 +264,8 @@ static type_ref *parse_btype(
 			EAT(curtok);
 
 		}else if(curtok_is_decl_store()){
-			const enum decl_storage st = curtok_to_decl_storage();
 
-			if(!store)
-				die_at(NULL, "storage unwanted (%s)", decl_store_to_str(st));
-
-			if(store_set)
-				die_at(NULL, "second store %s", decl_store_to_str(st));
-
-			*store = st;
-			store_set = 1;
+			btype_set_store(store, &store_set, curtok_to_decl_storage());
 			EAT(curtok);
 
 		}else if(curtok_is_type_primitive()){
@@ -363,10 +349,14 @@ static type_ref *parse_btype(
 			is_noreturn = 1;
 			EAT(curtok);
 
-		}else if(curtok == token_struct || curtok == token_union || curtok == token_enum){
+		}else if(curtok == token_struct
+				|| curtok == token_union
+				|| curtok == token_enum)
+		{
 			const enum token tok = curtok;
 			const char *str;
-			type_ref *tref;
+			type *tref;
+			int is_qual;
 
 			EAT(curtok);
 
@@ -374,7 +364,7 @@ static type_ref *parse_btype(
 #define CASE(a)                              \
 				case token_ ## a:                    \
 					tref = parse_type_sue(type_ ## a,  \
-							newdecl_context);              \
+							newdecl_context, scope);       \
 					str = #a;                          \
 					break
 
@@ -387,30 +377,33 @@ static type_ref *parse_btype(
 			}
 
 			if(signed_set || primitive_mode != NONE)
-				die_at(&tref->where, "primitive/signed/unsigned with %s", str);
+				die_at(NULL, "primitive/signed/unsigned with %s", str);
 
 			/* fine... although a _Noreturn function returning a sue
 			 * is pretty daft... */
 			if(is_noreturn)
-				decl_attr_append(&tref->attr, decl_attr_new(attr_noreturn));
+				tref = type_attributed(tref, attribute_new(attr_noreturn));
 
 			/*
 			 * struct A { ... } const x;
-			 * accept qualifiers for the type, not decl
+			 * accept qualifiers and storage for the type, not decl
 			 */
-			while(curtok_is_type_qual()){
-				qual |= curtok_to_type_qualifier();
+			while((is_qual = curtok_is_type_qual()) || curtok_is_decl_store()){
+				if(is_qual)
+					qual |= curtok_to_type_qualifier();
+				else
+					btype_set_store(store, &store_set, curtok_to_decl_storage());
 				EAT(curtok);
 			}
 
 			/* *store is assigned elsewhere */
-			return type_ref_new_cast_add(tref, qual);
+			return type_qualify(tref, qual);
 
 		}else if(accept(token_typeof)){
 			if(primitive_mode != NONE)
 				die_at(NULL, "typeof specifier after primitive");
 
-			tdef_typeof = parse_expr_sizeof_typeof_alignof(what_typeof);
+			tdef_typeof = parse_expr_sizeof_typeof_alignof(what_typeof, scope);
 			primitive_mode = TYPEOF;
 
 		}else if(accept(token___builtin_va_list)){
@@ -422,7 +415,7 @@ static type_ref *parse_btype(
 			primitive = type_struct;
 
 		}else if(!signed_set /* can't sign a typedef */
-		&& (tdef_decl_test = parse_at_tdef()))
+		&& (tdef_decl_test = parse_at_tdef(scope)))
 		{
 			/* typedef name or decl:
 			 * if we find a decl named this in our scope,
@@ -443,23 +436,14 @@ static type_ref *parse_btype(
 			assert(tdef_decl_test->store == store_typedef);
 
 			tdef_decl = tdef_decl_test;
-			tdef_typeof = expr_new_sizeof_type(tdef_decl->ref, 1);
+			tdef_typeof = expr_new_sizeof_type(tdef_decl->ref, what_typeof);
 
 			primitive_mode = TYPEDEF;
 
 			EAT(token_identifier);
 
-			/*
-			 * FIXME
-			 * check for a following colon, in the case of
-			 * typedef int x;
-			 * x:;
-			 *
-			 * x is a valid label
-			 */
-
 		}else if(curtok == token_attribute){
-			parse_add_attr(&attr); /* __attr__ int ... */
+			parse_add_attr(&attr, scope); /* __attr__ int ... */
 			had_attr = 1;
 			/*
 			 * can't depend on !!attr, since it is null when:
@@ -468,7 +452,7 @@ static type_ref *parse_btype(
 
 		}else if(curtok == token__Alignas){
 			struct decl_align *da, **psave;
-			type_ref *as_ty;
+			type *as_ty;
 
 			if(!palign)
 				die_at(NULL, "%s unexpected", token_to_str(curtok));
@@ -480,12 +464,12 @@ static type_ref *parse_btype(
 			EAT(token__Alignas);
 			EAT(token_open_paren);
 
-			if((as_ty = parse_type(newdecl_context))){
+			if((as_ty = parse_type(newdecl_context, scope))){
 				da->as_int = 0;
 				da->bits.align_ty = as_ty;
 			}else{
 				da->as_int = 1;
-				da->bits.align_intk = parse_expr_exp();
+				da->bits.align_intk = parse_expr_exp(scope);
 			}
 
 			EAT(token_close_paren);
@@ -505,7 +489,10 @@ static type_ref *parse_btype(
 	|| is_noreturn
 	|| (palign && *palign))
 	{
-		type_ref *r;
+		where w;
+		type *r;
+
+		where_cc1_current(&w);
 
 		if(signed_set){
 			switch(primitive){
@@ -548,7 +535,7 @@ static type_ref *parse_btype(
 		}
 
 		if(is_va_list){
-			r = type_ref_cached_VA_LIST();
+			r = type_nav_va_list(cc1_type_nav, scope);
 
 		}else switch(primitive_mode){
 			case TYPEDEF:
@@ -560,7 +547,11 @@ static type_ref *parse_btype(
 							tdef_typeof->bits.ident.spel);
 				}
 
-				r = type_ref_new_tdef(tdef_typeof, tdef_decl);
+				if(tdef_decl) /* typedef only */
+					fold_decl(tdef_decl, scope, NULL);
+				fold_expr_no_decay(tdef_typeof, scope);
+
+				r = type_tdef_of(tdef_typeof, tdef_decl);
 				break;
 
 			case PRIMITIVE_NO_MORE:
@@ -572,7 +563,7 @@ static type_ref *parse_btype(
 				if(primitive_mode == NONE && !signed_set)
 					primitive = type_int;
 
-				r = type_ref_new_type(type_new_primitive(primitive));
+				r = type_nav_btype(cc1_type_nav, primitive);
 				break;
 		}
 
@@ -583,21 +574,22 @@ static type_ref *parse_btype(
 			die_at(NULL, "typedefs can't be aligned");
 		}
 
-		r = type_ref_new_cast_add(r, qual);
-
-		r->attr = attr;
-		parse_add_attr(&r->attr); /* int/struct-A __attr__ */
+		r = type_qualify(r, qual);
 
 		if(is_noreturn)
-			decl_attr_append(&r->attr, decl_attr_new(attr_noreturn));
+			attribute_append(&attr, attribute_new(attr_noreturn));
 
-		return r;
+		parse_add_attr(&attr, scope); /* int/struct-A __attr__ */
+		r = type_attributed(r, attr);
+		RELEASE(attr);
+
+		return type_at_where(r, &w);
 	}else{
 		return NULL;
 	}
 }
 
-static int parse_curtok_is_type(void)
+static int parse_curtok_is_type(symtable *scope)
 {
 	if(curtok_is_type_qual()
 	|| curtok_is_decl_store()
@@ -616,7 +608,7 @@ static int parse_curtok_is_type(void)
 			return 1;
 
 		case token_identifier:
-			return typedef_visible(current_scope, token_current_spel_peek());
+			return typedef_visible(scope, token_current_spel_peek());
 
 		default:
 			break;
@@ -625,13 +617,15 @@ static int parse_curtok_is_type(void)
 	return 0;
 }
 
-static decl *parse_arg_decl(void)
+static decl *parse_arg_decl(symtable *scope)
 {
 	/* argument decls can default to int */
-	const enum decl_mode flags = DECL_CAN_DEFAULT;
-	decl *argdecl = parse_decl_single(flags, 0);
+	const enum decl_mode flags = DECL_CAN_DEFAULT | DECL_ALLOW_STORE;
+	decl *argdecl = parse_decl(flags, 0, scope, NULL, NULL);
+
 	if(!argdecl)
 		die_at(NULL, "type expected (got %s)", token_to_str(curtok));
+
 	return argdecl;
 }
 
@@ -650,13 +644,14 @@ funcargs *parse_func_arglist(symtable *scope)
 	 * f( <here>  (int)) = f(int (int)) = f(int (*)(int))
 	 * f( <here> ident) -> old function
 	 */
-	if(curtok != token_identifier || parse_at_tdef()){
-		decl *argdecl = parse_arg_decl();
+	if(curtok != token_identifier || parse_at_tdef(scope)){
+		decl *argdecl = parse_arg_decl(scope);
+		type *ty_v = type_is(argdecl->ref, type_btype);
 
 		/* check for x(void) (or an equivalent typedef) */
-		/* can't use type_ref_is, since that requires folding */
-		if(argdecl->ref->type == type_ref_type
-		&& argdecl->ref->bits.type->primitive == type_void
+		/* can't use type_is, since that requires folding */
+		if(ty_v
+		&& ty_v->bits.type->primitive == type_void
 		&& !argdecl->spel)
 		{
 			/* x(void); */
@@ -679,7 +674,7 @@ funcargs *parse_func_arglist(symtable *scope)
 			}
 
 			/* continue loop */
-			argdecl = parse_arg_decl();
+			argdecl = parse_arg_decl(scope);
 		}
 
 fin:;
@@ -692,7 +687,7 @@ fin:;
 			if(curtok != token_identifier)
 				EAT(token_identifier); /* error */
 
-			d->ref = type_ref_new_type(type_new_primitive(type_int));
+			d->ref = type_nav_btype(cc1_type_nav, type_int);
 
 			d->spel = token_current_spel();
 			dynarray_add(&args->arglist, d);
@@ -711,9 +706,6 @@ fin:;
 	}
 
 empty_func:
-	if(scope)
-		symtab_add_params(scope, args->arglist);
-
 	return args;
 }
 
@@ -733,10 +725,64 @@ declarator:
 		;
 */
 
-static type_ref *parse_type_ref_nest(enum decl_mode mode, decl *dfor)
+typedef struct type_parsed type_parsed;
+struct type_parsed
+{
+	where where;
+
+	enum type_parsed_kind
+	{
+		PARSED_PTR,
+		PARSED_FUNC,
+		PARSED_ARRAY
+	} type;
+
+	attribute *attr;
+
+	union
+	{
+		struct
+		{
+			type *(*maker)(type *);
+			attribute *attr;
+			enum type_qualifier qual;
+		} ptr;
+		struct
+		{
+			funcargs *arglist;
+			symtable *scope;
+		} func;
+		struct
+		{
+			expr *size;
+			enum type_qualifier qual;
+			int is_static;
+		} array;
+	} bits;
+
+	type_parsed *prev;
+};
+
+static type_parsed *parsed_type_ptr(
+		enum decl_mode mode, decl *dfor,
+		type_parsed *base, symtable *);
+#define parsed_type_declarator parsed_type_ptr
+
+static type_parsed *type_parsed_new(
+		enum type_parsed_kind kind, type_parsed *prev)
+{
+	type_parsed *tp = umalloc(sizeof *tp);
+	tp->type = kind;
+	tp->prev = prev;
+	where_cc1_current(&tp->where);
+	return tp;
+}
+
+static type_parsed *parsed_type_nest(
+		enum decl_mode mode, decl *dfor, type_parsed *base, symtable *scope)
 {
 	if(accept(token_open_paren)){
-		type_ref *ret;
+		type_parsed *ret;
 
 		/*
 		 * we could be here:
@@ -747,14 +793,14 @@ static type_ref *parse_type_ref_nest(enum decl_mode mode, decl *dfor)
 		 * we don't look for open parens - they're used for nexting, e.g.
 		 * int ((*p)(void));
 		 */
-		if(parse_curtok_is_type() || curtok == token_close_paren){
+		if(parse_curtok_is_type(scope) || curtok == token_close_paren){
 			/* int() or char(short) - func decl */
 			uneat(token_open_paren);
 			/* parse_...func will grab this as funcargs instead */
-			return NULL;
+			return base;
 		}
 
-		ret = parse_type_ref2(mode, dfor);
+		ret = parsed_type_declarator(mode, dfor, base, scope);
 		EAT(token_close_paren);
 		return ret;
 
@@ -773,12 +819,13 @@ static type_ref *parse_type_ref_nest(enum decl_mode mode, decl *dfor)
 		die_at(NULL, "need identifier for decl");
 	}
 
-	return NULL;
+	return base;
 }
 
-static type_ref *parse_type_ref_array(enum decl_mode mode, decl *dfor)
+static type_parsed *parsed_type_array(
+		enum decl_mode mode, decl *dfor, type_parsed *base, symtable *scope)
 {
-	type_ref *r = parse_type_ref_nest(mode, dfor);
+	type_parsed *r = parsed_type_nest(mode, dfor, base, scope);
 
 	while(accept(token_open_square)){
 		expr *size;
@@ -803,30 +850,46 @@ static type_ref *parse_type_ref_array(enum decl_mode mode, decl *dfor)
 		}else{
 			/* fold.c checks for const-ness */
 			/* grammar says it's a conditional here, hence no-comma */
-			size = parse_expr_no_comma();
+			consty k;
+
+			size = PARSE_EXPR_NO_COMMA(scope);
 			EAT(token_close_square);
+
+			FOLD_EXPR(size, scope);
+			const_fold(size, &k);
+
+			if(k.type != CONST_NUM)
+				die_at(NULL, "not a constant for array size");
+
+			if(!K_INTEGRAL(k.bits.num))
+				die_at(NULL, "not an integral array size");
 		}
 
 		if(is_static > 1)
 			die_at(NULL, "multiple static specifiers in array size");
 
-		r = type_ref_new_array2(r, size, q, is_static);
+		r = type_parsed_new(PARSED_ARRAY, r);
+		r->bits.array.size = size;
+		r->bits.array.qual = q;
+		r->bits.array.is_static = is_static;
 	}
 
 	return r;
 }
 
-static type_ref *parse_type_ref_func(enum decl_mode mode, decl *dfor)
+static type_parsed *parsed_type_func(
+		enum decl_mode mode, decl *dfor, type_parsed *base, symtable *scope)
 {
-	type_ref *sub = parse_type_ref_array(mode, dfor);
+	type_parsed *sub = parsed_type_array(mode, dfor, base, scope);
 
 	while(accept(token_open_paren)){
-		current_scope = symtab_new(current_scope);
+		symtable *subscope = symtab_new(scope, where_cc1_current(NULL));
 
-		sub = type_ref_new_func(sub,
-				parse_func_arglist(current_scope));
+		subscope->are_params = 1;
 
-		current_scope = current_scope->parent;
+		sub = type_parsed_new(PARSED_FUNC, sub);
+		sub->bits.func.arglist = parse_func_arglist(subscope);
+		sub->bits.func.scope = subscope;
 
 		EAT(token_close_paren);
 	}
@@ -834,70 +897,120 @@ static type_ref *parse_type_ref_func(enum decl_mode mode, decl *dfor)
 	return sub;
 }
 
-static type_ref *parse_type_ref_ptr(enum decl_mode mode, decl *dfor)
+static type_parsed *parsed_type_ptr(
+		enum decl_mode mode, decl *dfor, type_parsed *base, symtable *scope)
 {
 	int ptr;
 
 	if((ptr = accept(token_multiply)) || accept(token_xor)){
-		typedef type_ref *(*ptr_creator_f)(type_ref *, enum type_qualifier);
-		ptr_creator_f creater = ptr ? type_ref_new_ptr : type_ref_new_block;
+		type *(*maker)(type *) = ptr ? type_ptr_to : type_block_of;
 
-		type_ref *r_ptr;
-		decl_attr *attr = NULL;
+		type_parsed *r_ptr;
+		attribute *attr = NULL;
+		type_parsed *sub;
 
 		enum type_qualifier qual = qual_none;
 
 		while(curtok_is_type_qual() || curtok == token_attribute){
 			if(curtok == token_attribute){
-				parse_add_attr(&attr);
+				parse_add_attr(&attr, scope);
 			}else{
 				qual |= curtok_to_type_qualifier();
 				EAT(curtok);
 			}
 		}
 
-		r_ptr = creater(parse_type_ref2(mode, dfor), qual);
-		r_ptr->attr = attr;
-		return r_ptr;
+		r_ptr = type_parsed_new(PARSED_PTR, NULL);
+		r_ptr->bits.ptr.maker = maker;
+		r_ptr->bits.ptr.attr = attr; /* pass ownership */
+		r_ptr->bits.ptr.qual = qual;
+
+		/* this is essentially
+		 * r_ptr = maker(parse_type(...), qual);
+		 * i.e. we wait until we've parsed the sub-bit then insert ourselves
+		 */
+		sub = parsed_type_declarator(mode, dfor, NULL, scope);
+		if(sub){
+			type_parsed *i;
+
+			r_ptr->prev = sub;
+			for(i = sub; i->prev; i = i->prev);
+			i->prev = base;
+
+			return r_ptr;
+		}else{
+			r_ptr->prev = base;
+			return r_ptr;
+		}
+	}else{
+		return parsed_type_func(mode, dfor, base, scope);
+	}
+}
+
+static type *parse_type_declarator(
+		enum decl_mode mode, decl *dfor, type *base, symtable *scope)
+{
+	type_parsed *parsed = parsed_type_declarator(mode, dfor, NULL, scope);
+	type_parsed *i, *tofree;
+	type *ty = base;
+
+	for(i = parsed; i; tofree = i, i = i->prev, free(tofree)){
+		enum type_qualifier qual = qual_none;
+
+		switch(i->type){
+			case PARSED_PTR:
+				ty = i->bits.ptr.maker(ty);
+				qual = i->bits.ptr.qual;
+				break;
+			case PARSED_ARRAY:
+				qual = i->bits.ptr.qual;
+				ty = type_array_of_static(
+							ty,
+							i->bits.array.size,
+							i->bits.array.is_static);
+				break;
+			case PARSED_FUNC:
+				ty = type_func_of(
+						ty,
+						i->bits.func.arglist,
+						i->bits.func.scope);
+				break;
+		}
+
+		ty = type_attributed(
+				type_qualify(
+					type_at_where(ty, &i->where),
+					qual),
+				i->attr);
 	}
 
-	return parse_type_ref_func(mode, dfor);
+	return ty;
 }
 
-static type_ref *parse_type_ref2(enum decl_mode mode, decl *dfor)
+type *parse_type(int newdecl, symtable *scope)
 {
-	return parse_type_ref_ptr(mode, dfor);
+	type *btype = parse_btype(NULL, NULL, newdecl, scope);
+
+	return btype ? parse_type_declarator(0, NULL, btype, scope) : NULL;
 }
 
-static type_ref *type_ref_reverse(type_ref *r, type_ref *subtype)
+type **parse_type_list(symtable *scope)
 {
-	/*
-	 * e.g.  int (*f)() is parsed as:
-	 *   func -> ptr -> NULL
-	 * swap to
-	 *   ptr -> func -> subtype
-	 */
-	type_ref *i, *next, *prev = subtype;
+	type **types = NULL;
 
-	for(i = r; i; prev = i, i = next){
-		next = i->ref;
-		i->ref = prev;
-	}
+	if(curtok == token_close_paren)
+		return types;
 
-	return prev;
-}
+	do{
+		type *r = parse_type(0, scope);
 
-static type_ref *parse_type3(
-		enum decl_mode mode, decl *dfor, type_ref *btype)
-{
-	return type_ref_reverse(parse_type_ref2(mode, dfor), btype);
-}
+		if(!r)
+			die_at(NULL, "type expected");
 
-type_ref *parse_type(int newdecl)
-{
-	type_ref *btype = parse_btype(NULL, NULL, newdecl);
+		dynarray_add(&types, r);
+	}while(accept(token_comma));
 
-	return btype ? parse_type3(0, NULL, btype) : NULL;
+	return types;
 }
 
 static void parse_add_asm(decl *d)
@@ -926,12 +1039,20 @@ static void parse_add_asm(decl *d)
 	}
 }
 
-static decl *parse_decl(type_ref *btype, enum decl_mode mode)
+static decl *parse_decl_stored_aligned(
+		type *btype, enum decl_mode mode,
+		enum decl_storage store, struct decl_align *align,
+		symtable *scope, symtable *add_to_scope)
 {
 	decl *d = decl_new();
 	where w_eq;
 
-	d->ref = parse_type3(mode, d, btype);
+	d->ref = parse_type_declarator(mode, d, btype, scope);
+
+	if(add_to_scope){
+		dynarray_add(&add_to_scope->decls, d);
+		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), scope, d->attr);
+	}
 
 	/* only check if it's not a function, otherwise it could be
 	 * int f(i)
@@ -940,48 +1061,52 @@ static decl *parse_decl(type_ref *btype, enum decl_mode mode)
 	 * }
 	 */
 
-	if(!PARSE_DECL_IS_FUNC(d)){
+	if(!type_is(d->ref, type_func)){
 		/* parse __asm__ naming before attributes, as per gcc and clang */
 		parse_add_asm(d);
-		parse_add_attr(&d->attr); /* int spel __attr__ */
+		parse_add_attr(&d->attr, scope); /* int spel __attr__ */
+
+		if(d->spel && accept_where(token_assign, &w_eq)){
+			d->bits.var.init = parse_init(scope);
+			/* top-level inits have their .where on the '=' token */
+			memcpy_safe(&d->bits.var.init->where, &w_eq);
+		}
 	}
 
-	if(d->spel && accept_where(token_assign, &w_eq)){
-		d->init = parse_initialisation();
-		/* top-level inits have their .where on the '=' token */
-		memcpy_safe(&d->init->where, &w_eq);
-	}
+	d->store = store;
+
+	if(!type_is(d->ref, type_func))
+		d->bits.var.align = align;
+	else if(align)
+		ICE("align for function?");
 
 	return d;
 }
 
-static void prevent_typedef(where *w, enum decl_storage store)
+static void prevent_typedef(enum decl_storage store)
 {
 	if(store_typedef == store)
-		die_at(w, "typedef unexpected");
+		die_at(NULL, "typedef unexpected");
 }
 
-static type_ref *default_type(void)
+static type *default_type(void)
 {
 	cc1_warn_at(NULL, 0, WARN_IMPLICIT_INT, "defaulting type to int");
 
-	return type_ref_new_type(type_new_primitive(type_int));
+	return type_nav_btype(cc1_type_nav, type_int);
 }
 
-static decl *parse_decl_extra(
-		type_ref *r, enum decl_mode mode,
-		enum decl_storage store, struct decl_align *align)
-{
-	decl *d = parse_decl(r, mode);
-	d->store = store;
-	d->align = align;
-	return d;
-}
-
-decl *parse_decl_single(enum decl_mode mode, int newdecl)
+decl *parse_decl(
+		enum decl_mode mode, int newdecl,
+		symtable *scope, symtable *add_to_scope,
+		stmt **pinit_code)
 {
 	enum decl_storage store = store_default;
-	type_ref *r = PARSE_BTYPE(mode, &store, NULL /* align */, newdecl);
+	type *r = parse_btype(
+			mode & DECL_ALLOW_STORE ? &store : NULL,
+			/*align:*/NULL,
+			newdecl, scope);
+	decl *d;
 
 	if(!r){
 		if((mode & DECL_CAN_DEFAULT) == 0)
@@ -990,35 +1115,22 @@ decl *parse_decl_single(enum decl_mode mode, int newdecl)
 		r = default_type();
 
 	}else{
-		prevent_typedef(&r->where, store);
+		prevent_typedef(store);
 	}
 
-	return parse_decl_extra(r, mode, store, NULL /* align */);
-}
+	d = parse_decl_stored_aligned(
+			r, mode,
+			store, NULL /* align */,
+			scope, add_to_scope);
 
-decl **parse_decls_one_type(int newdecl)
-{
-	enum decl_storage store = store_default;
-	struct decl_align *align = NULL;
-	type_ref *r = parse_btype(&store, &align, newdecl);
-	decl **decls = NULL;
+	fold_decl(d, scope, pinit_code);
 
-	if(!r)
-		return NULL;
-
-	prevent_typedef(&r->where, store);
-
-	do{
-		decl *d = parse_decl_extra(r, DECL_SPEL_NEED, store, align);
-		dynarray_add(&decls, d);
-	}while(accept(token_comma));
-
-	return decls;
+	return d;
 }
 
 static int is_old_func(decl *d)
 {
-	type_ref *r = PARSE_type_ref_is(d->ref, type_ref_func);
+	type *r = type_is(d->ref, type_func);
 	return r && r->bits.func.args->args_old_proto;
 }
 
@@ -1027,9 +1139,9 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 	/* check then replace old args */
 	int n_proto_decls, n_old_args;
 	int i;
-	funcargs *dfuncargs = d->ref->bits.func.args;
+	funcargs *dfuncargs = type_is_func_or_block(d->ref)->bits.func.args;
 
-	UCC_ASSERT(PARSE_type_ref_is(d->ref, type_ref_func), "not func");
+	UCC_ASSERT(type_is(d->ref, type_func), "not func");
 
 	if(!dfuncargs->args_old_proto){
 		die_at(&d->where, dfuncargs->arglist
@@ -1046,8 +1158,11 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 	for(i = 0; i < n_old_args; i++){
 		int j, found = 0;
 
-		if(old_args[i]->init)
-			die_at(&old_args[i]->where, "parameter \"%s\" is initialised", old_args[i]->spel);
+		if(!type_is(old_args[i]->ref, type_func) && old_args[i]->bits.var.init){
+			die_at(&old_args[i]->where,
+					"parameter \"%s\" is initialised",
+					old_args[i]->spel);
+		}
 
 		for(j = 0; j < n_proto_decls; j++){
 			if(!strcmp(old_args[i]->spel, dfuncargs->arglist[j]->spel)){
@@ -1059,7 +1174,7 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 				 */
 				decl_replace_with(dfuncargs->arglist[j], old_args[i]);
 
-				decl_free(old_args[i], 0);
+				decl_free(old_args[i]);
 
 				found = 1;
 				break;
@@ -1075,10 +1190,10 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 {
 	char wbuf[WHERE_BUF_SIZ];
 
-	if(!type_ref_is(d_prev->ref, type_ref_func))
+	if(!type_is(d_prev->ref, type_func))
 		return; /* error caught later */
 
-	if(d_prev->func_code){
+	if(d_prev->bits.func.code){
 		/* just warn that we have a declaration
 		 * after a definition, then get out.
 		 *
@@ -1113,262 +1228,309 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 
 	/* update the f(void) bools */
 	{
-		funcargs *fargs_this = type_ref_funcargs(d_this->ref),
-		         *fargs_prev = type_ref_funcargs(d_prev->ref);
+		funcargs *fargs_this = type_funcargs(d_this->ref),
+		         *fargs_prev = type_funcargs(d_prev->ref);
 
 		fargs_this->args_void          |= fargs_prev->args_void;
 		fargs_this->args_void_implicit |= fargs_prev->args_void_implicit;
 	}
 }
 
-int parse_decls_single_type(
-		enum decl_multi_mode mode,
+static void warn_for_unaccessible_sue(
+		decl *d, enum decl_multi_mode mode)
+{
+	enum type_qualifier qual;
+	struct_union_enum_st *sue;
+
+	/*
+	 * struct { int i; }; - continue to next one
+	 * this is either struct or union, not enum
+	 */
+	if(mode & DECL_MULTI_NAMELESS)
+		return;
+
+	if(d->spel)
+		return;
+
+	/* enums are fine */
+	sue = type_is_s_or_u(d->ref);
+
+	if(!sue)
+		return;
+
+	if(sue->anon)
+		warn_at(NULL, "anonymous %s with no instances", sue_str(sue));
+
+	/* check for storage/qual on no-instance */
+	qual = type_qual(d->ref);
+	if(qual || d->store != store_default){
+		warn_at(NULL, "ignoring %s%s%son no-instance %s",
+				d->store != store_default ? decl_store_to_str(d->store) : "",
+				d->store != store_default ? " " : "",
+				type_qual_to_str(qual, 1),
+				sue_str(sue));
+	}
+}
+
+static int warn_for_unused_typename(
+		decl *d, enum decl_multi_mode mode)
+{
+	struct_union_enum_st *sue = type_is_s_or_u_or_e(d->ref);
+
+	if(sue) switch(sue->primitive){
+		case type_struct:
+		case type_union:
+			/* don't warn for tagged struct/unions */
+			if(mode & DECL_MULTI_NAMELESS)
+				return 0;
+
+			if(sue->anon)
+				break;
+			/* don't warn for named structs/unions */
+			return 0;
+
+		case type_enum:
+			/* don't warn for enums - they're always declarations */
+			return 0;
+
+		default:
+			break;
+	}
+
+	/* C 6.7/2:
+	 * A decl shall declare at least a declarator a tag,
+	 * or the members of an enumeration.
+	 *
+	 * allow nameless as an extension
+	 */
+	warn_at(&d->where, "declaration doesn't declare anything");
+
+	return 1;
+}
+
+static void parse_post_func(decl *d, symtable *in_scope)
+{
+	int need_func = 0;
+
+	/* special case - support asm directly after a function
+	 * no parse ambiguity - asm can only appear at the end of a decl,
+	 * before __attribute__
+	 */
+	if(curtok == token_asm)
+		parse_add_asm(d);
+
+	if(is_old_func(d)){
+		decl **old_args = NULL;
+		/* NULL - we don't want these in a scope */
+		while(parse_decl_group(
+				0, /*newdecl_context:*/0,
+				in_scope,
+				NULL, &old_args,
+				/*pinit_code:*/NULL))
+		{
+		}
+
+		if(old_args){
+			check_and_replace_old_func(d, old_args);
+
+			dynarray_free(decl **, &old_args, NULL);
+
+			/* old function with decls after the close paren,
+			 * need a function */
+			need_func = 1;
+		}
+	}
+
+	/* clang-style allows __attribute__ and then a function block */
+	if(need_func || curtok == token_open_block){
+		type *func_r = type_is(d->ref, type_func);
+		symtable *arg_symtab;
+
+		/* need to set scope to include function argumen
+		 * e.g. f(struct A { ... })
+		 */
+		UCC_ASSERT(func_r, "function expected");
+
+		arg_symtab = func_r->bits.func.arg_scope;
+		arg_symtab->in_func = d;
+
+		symtab_add_params(arg_symtab, func_r->bits.func.args->arglist);
+		fold_decl(d, arg_symtab->parent, NULL);
+
+
+		d->bits.func.code = parse_stmt_block(arg_symtab, NULL);
+
+		/* if:
+		 * f(){...}, then we don't have args_void, but implicitly we do
+		 */
+		type_funcargs(d->ref)->args_void_implicit = 1;
+	}
+}
+
+static void link_to_previous_decl(decl *d, symtable *in_scope)
+{
+	/* Look for a previous declaration of d->spel.
+	 * if found, we pull its asm() and attributes to the current,
+	 * thus propagating them down in O(1) to the eventual definition.
+	 * Do this before adding, so we don't find 'd'
+	 *
+	 * This also means any use of d will have the most up to date
+	 * attribute information about it
+	 */
+	decl *d_prev = symtab_search_d(in_scope, d->spel, NULL);
+
+	if(d_prev){
+		/* link the proto chain for __attribute__ checking,
+		 * nested function prototype checking and
+		 * '.extern fn' code gen easing
+		 */
+		d->proto = d_prev;
+
+		if(type_is(d->ref, type_func) && type_is(d_prev->ref, type_func))
+			decl_pull_to_func(d, d_prev);
+	}
+}
+
+static void error_on_unwanted_func(
+		decl *d, enum decl_multi_mode mode)
+{
+	if(!type_is(d->ref, type_func))
+		return;
+
+	if(d->bits.func.code && (mode & DECL_MULTI_ACCEPT_FUNC_CODE) == 0)
+		die_at(&d->where, "function code not wanted (%s)", d->spel);
+
+	if((mode & DECL_MULTI_ACCEPT_FUNC_DECL) == 0)
+		die_at(&d->where, "function declaration not wanted (%s)", d->spel);
+}
+
+static void parse_decl_attr(decl *d, symtable *scope)
+{
+	/* special case - support GCC __attribute__
+	 * directly after a "new"/prototype function
+	 *
+	 * only accept if it's a new-style function,
+	 * i.e.
+	 *
+	 * f(i) __attribute__(()) int i; { ... }
+	 *
+	 * is invalid, since old-style functions have
+	 * decls after the final close-paren
+	 */
+	if(curtok == token_attribute && !is_old_func(d)){
+		/* add to .ref, since this is what is checked
+		 * when the function decays to a pointer */
+		attribute *a = NULL;
+		parse_add_attr(&a, scope);
+		d->ref = type_attributed(d->ref, a);
+		RELEASE(a);
+	}
+}
+
+int parse_decl_group(
+		const enum decl_multi_mode mode,
 		int newdecl,
-		symtable *scope,
-		decl ***pdecls)
+		symtable *in_scope,
+		symtable *add_to_scope, decl ***pdecls,
+		stmt **pinit_code)
 {
 	const enum decl_mode parse_flag =
 		(mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0);
 
 	enum decl_storage store = store_default;
 	struct decl_align *align = NULL;
-	type_ref *this_ref;
+	type *this_ref;
 	decl *last = NULL;
 
-	UCC_ASSERT(scope || pdecls, "what shall I do?");
+	UCC_ASSERT(add_to_scope || pdecls, "what shall I do?");
 
-	parse_static_assert();
+	parse_static_assert(in_scope);
 
-	this_ref = PARSE_BTYPE(mode, &store, &align, newdecl);
+	this_ref = parse_btype(
+			mode & DECL_MULTI_ALLOW_STORE ? &store : NULL,
+			mode & DECL_MULTI_ALLOW_ALIGNAS ? &align : NULL,
+			newdecl, in_scope);
 
 	if(!this_ref){
-		/* can_default makes sure we don't parse { int *p; *p = 5; } the latter as a decl */
-		if(parse_at_decl_spec() && (mode & DECL_MULTI_CAN_DEFAULT)){
-			this_ref = default_type();
-		}else{
-			return 0; /* normal exit */
-		}
-	}
+		if(!parse_at_decl_spec() || !(mode & DECL_MULTI_CAN_DEFAULT))
+			return 0;
 
-	if(store != store_typedef){
-		struct_union_enum_st *sue = PARSE_type_ref_is_s_or_u(this_ref);
-
-		if(sue && !parse_at_decl_spec()){
-			/*
-			 * struct { int i; }; - continue to next one
-			 * this is either struct or union, not enum
-			 */
-			if((mode & DECL_MULTI_NAMELESS) == 0){
-				enum type_qualifier qual;
-
-				if(sue->anon)
-					warn_at(&this_ref->where, "anonymous %s with no instances", sue_str(sue));
-
-				/* check for storage/qual on no-instance */
-				qual = type_ref_qual(this_ref);
-				if(qual || store != store_default){
-					warn_at(&this_ref->where, "ignoring %s%s%son no-instance %s",
-							store != store_default ? decl_store_to_str(store) : "",
-							store != store_default ? " " : "",
-							type_qual_to_str(qual, 1),
-							sue_str(sue));
-				}
-
-				goto next;
-			}
-		}
+		this_ref = default_type();
 	}
 
 	do{
-		decl *d = parse_decl_extra(this_ref, parse_flag, store, align);
+		int had_field_width = 0;
+		int done = 0;
 
-		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH) && accept(token_colon)){
+		decl *d = parse_decl_stored_aligned(
+				this_ref, parse_flag,
+				store, align,
+				in_scope, NULL);
+
+		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH)
+		&& accept(token_colon))
+		{
 			/* normal decl, check field spec */
-			d->field_width = parse_expr_no_comma();
+			d->bits.var.field_width = PARSE_EXPR_NO_COMMA(in_scope);
+			had_field_width = 1;
 		}
 
-		if(!d->spel && !d->field_width){
+		/* need to parse __attribute__ before folding the type */
+		parse_decl_attr(d, in_scope);
+
+		fold_type_w_attr(d->ref, NULL, &d->where, in_scope, d->attr);
+
+		if(!d->spel && !had_field_width){
 			/*
 			 * int; - fine for "int;", but "int i,;" needs to fail
 			 * struct A; - fine
 			 * struct { int i; }; - warn
 			 */
-
-			if(last == NULL){
-				int warn = 0;
-				struct_union_enum_st *sue;
-
-				/* check for no-fwd and anon */
-				sue = type_ref_is_s_or_u_or_e(this_ref);
-				switch(sue ? sue->primitive : type_unknown){
-					case type_struct:
-					case type_union:
-						/* don't warn for tagged struct/unions */
-						if(mode & DECL_MULTI_NAMELESS)
-							goto add;
-
-						UCC_ASSERT(!sue->anon, "tagless struct should've been caught above");
-					case type_enum:
-						warn = 0; /* don't warn for enums - they're always declarations */
-						break;
-
-					default:
-						warn = 1;
-				}
-				if(warn){
-					/*
-					 * die if it's a complex decl,
-					 * e.g. int (const *a)
-					 * [function with int argument, not a pointer to const int
-					 */
-					const char *emsg = "declaration doesn't declare anything";
-
-					if(PARSE_type_ref_is(d->ref, type_ref_type)
-					|| PARSE_type_ref_is(d->ref, type_ref_tdef))
-					{
-						warn_at(&d->where, "%s", emsg);
-					}else{
-						warn_at_print_error(&d->where, "%s", emsg);
-						parse_had_error = 1;
-					}
-				}
-
-				decl_free(d, 0);
-				goto next;
-			}
-			die_at(&d->where, "identifier expected after decl (got %s)", token_to_str(curtok));
-		}else if(PARSE_DECL_IS_FUNC(d)){
-			int need_func = 0;
-
-			/* special case - support asm directly after a function
-			 * no parse ambiguity - asm can only appear at the end of a decl,
-			 * before __attribute__
-			 */
-			if(curtok == token_asm)
-				parse_add_asm(d);
-
-			/* special case - support GCC __attribute__
-			 * directly after a "new"/prototype function
-			 *
-			 * only accept if it's a new-style function,
-			 * i.e.
-			 *
-			 * f(i) __attribute__(()) int i; { ... }
-			 *
-			 * is invalid, since old-style functions have
-			 * decls after the final close-paren
-			 */
-			if(curtok == token_attribute && !is_old_func(d)){
-				/* add to .ref, since this is what is checked when the function decays to a pointer */
-				parse_add_attr(&d->ref->attr);
-			}else{
-				decl **old_args = NULL;
-				/* NULL - we don't want these in a scope */
-				parse_decls_multi_type(0, /*newdecl_context:*/0, NULL, &old_args);
-				if(old_args){
-					check_and_replace_old_func(d, old_args);
-
-					dynarray_free(decl **, &old_args, NULL);
-
-					/* old function with decls after the close paren,
-					 * need a function */
-					need_func = 1;
-				}
+			if(last){
+				die_at(&d->where,
+						"identifier expected for declaration (got %s)",
+						token_to_str(curtok));
 			}
 
-			/* clang-style allows __attribute__ and then a function block */
-			if(need_func || curtok == token_open_block){
-				type_ref *func_r = PARSE_DECL_IS_FUNC(d);
-				symtable *const old_scope = current_scope;
-
-				/* need to set scope to include function arguments,
-				 * e.g. f(struct A { ... })
-				 */
-				UCC_ASSERT(func_r, "function expected");
-				current_scope = func_r->bits.func.arg_scope;
-
-				d->func_code = parse_stmt_block();
-
-				current_scope = current_scope->parent;
-				UCC_ASSERT(current_scope == old_scope,
-						"scope change in parsing func block");
-
-				/* if:
-				 * f(){...}, then we don't have args_void, but implicitly we do
-				 */
-				type_ref_funcargs(d->ref)->args_void_implicit = 1;
+			if(warn_for_unused_typename(d, mode)){
+				/* ignore the decl */
 			}
+			done = 1;
 		}
 
-add:
-		if(d->spel){
-			/* Look for a previous declaration of d->spel.
-			 * if found, we pull its asm() and attributes to the current,
-			 * thus propagating them down in O(1) to the eventual definition.
-			 * Do this before adding, so we don't find 'd'
-			 *
-			 * This also means any use of d will have the most up to date
-			 * attribute information about it
-			 */
-			decl *d_prev = symtab_search_d(current_scope, d->spel, NULL);
-
-			if(d_prev){
-				/* link the proto chain for __attribute__ checking,
-				 * nested function prototype checking and
-				 * '.extern fn' code gen easing
-				 */
-				d->proto = d_prev;
-
-				if(PARSE_DECL_IS_FUNC(d) && PARSE_DECL_IS_FUNC(d_prev))
-					decl_pull_to_func(d, d_prev);
-			}
-		}
-
-		if(scope)
-			dynarray_add(&scope->decls, d);
+		/* must link to previous before adding to scope */
+		if(d->spel)
+			link_to_previous_decl(d, in_scope);
+		if(add_to_scope)
+			dynarray_add(&add_to_scope->decls, d);
 		if(pdecls)
 			dynarray_add(pdecls, d);
 
-		/* FIXME: check later for functions, not here - typedefs */
-		if(PARSE_DECL_IS_FUNC(d)){
-			if(d->func_code && (mode & DECL_MULTI_ACCEPT_FUNC_CODE) == 0)
-				die_at(&d->where, "function code not wanted (%s)", d->spel);
+		/* now we have the function in scope we parse its code */
+		if(type_is(d->ref, type_func))
+			parse_post_func(d, in_scope);
 
-			if((mode & DECL_MULTI_ACCEPT_FUNC_DECL) == 0)
-				die_at(&d->where, "function decl not wanted (%s)", d->spel);
-		}
+		error_on_unwanted_func(d, mode);
 
-		if(store == store_typedef){
-			if(PARSE_DECL_IS_FUNC(d) && d->func_code)
-				die_at(&d->where, "can't have a typedef function with code");
-			else if(d->init)
-				die_at(&d->where, "can't init a typedef");
-		}
+		warn_for_unaccessible_sue(d, mode);
+
+		/* must fold _after_ we get the bitfield, etc */
+		fold_decl(d, in_scope, pinit_code);
 
 		last = d;
+		if(done)
+			break;
 	}while(accept(token_comma));
 
 
-	if(last && !last->func_code){
-next:
-		/* end of type, if we have an identifier, '(' or '*', it's an unknown type name */
+	if(last && (!type_is(last->ref, type_func) || !last->bits.func.code)){
+		/* end of type, if we have an identifier,
+		 * '(' or '*', it's an unknown type name */
 		if(parse_at_decl_spec())
-			die_at(NULL, "unknown type name '%s'", last->spel);
+			die_at(&last->where, "unknown type name '%s'", last->spel);
 		/* else die here: */
 		EAT(token_semicolon);
 	}
 
 	return 1;
-}
-
-void parse_decls_multi_type(
-		enum decl_multi_mode mode,
-		int newdecl_context,
-		symtable *scope,
-		decl ***pdecls)
-{
-	for(;;)
-		if(!parse_decls_single_type(mode,
-					newdecl_context, scope, pdecls))
-			break;
 }

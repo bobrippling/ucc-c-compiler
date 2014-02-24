@@ -9,7 +9,12 @@
 #include "../../util/platform.h"
 #include "../../util/limits.h"
 
-#include "../data_structs.h"
+#include "../op.h"
+#include "../decl.h"
+#include "../type.h"
+#include "../type_is.h"
+#include "../type_nav.h"
+
 #include "vstack.h"
 #include "asm.h"
 #include "impl.h"
@@ -17,9 +22,15 @@
 #include "common.h"
 #include "out.h"
 #include "lbl.h"
+#include "write.h"
 #include "../funcargs.h"
 #include "../../as_cfg.h"
-#undef SECTION_DATA /* HACK until macro renamed */
+
+/* Darwin's `as' can only create movq:s with
+ * immediate operands whose highest bit is bit
+ * 31 or lower (i.e. up to UINT_MAX)
+ */
+#define AS_MAX_MOV_BIT 31
 
 #define integral_high_bit_ABS(v, t) integral_high_bit(llabs(v), t)
 
@@ -92,7 +103,20 @@ static const struct calling_conv_desc
 		}
 	},
 
-	[conv_cdecl]    = { 1, 0 },
+	[conv_cdecl] = {
+		1,
+		0,
+		{
+			{ 0 }
+		},
+		3,
+		{
+			X86_64_REG_RBX,
+			X86_64_REG_RDI,
+			X86_64_REG_RSI
+		}
+	},
+
 	[conv_stdcall]  = { 0, 0 },
 
 	[conv_fastcall] = {
@@ -105,7 +129,7 @@ static const struct calling_conv_desc
 	}
 };
 
-static const char *x86_intreg_str(unsigned reg, type_ref *r)
+static const char *x86_intreg_str(unsigned reg, type *r)
 {
 	static const char *const rnames[][4] = {
 #define REG(x) {  #x "l",  #x "x", "e"#x"x", "r"#x"x" }
@@ -143,31 +167,31 @@ static const char *x86_fpreg_str(unsigned i)
 	return nams[i];
 }
 
-static const char *x86_suffix(type_ref *ty)
+static const char *x86_suffix(type *ty)
 {
-	if(type_ref_is_floating(ty)){
-		switch(type_ref_primitive(ty)){
+	if(type_is_floating(ty)){
+		switch(type_primitive(ty)){
 			case type_float:
 				return "ss";
 			case type_double:
 				return "sd";
 			case type_ldouble:
-				ICE("TODO");
+				ICE("TODO: ldouble");
 			default:
 				ICE("bad float");
 		}
 	}
 
-	switch(ty ? type_ref_size(ty, NULL) : 8){
+	switch(ty ? type_size(ty, NULL) : 8){
 		case 1: return "b";
 		case 2: return "w";
 		case 4: return "l";
 		case 8: return "q";
 	}
-	ICE("no suffix for %s", type_ref_to_str(ty));
+	ICE("no suffix for %s", type_to_str(ty));
 }
 
-static const char *x86_reg_str(const struct vreg *reg, type_ref *r)
+static const char *x86_reg_str(const struct vreg *reg, type *r)
 {
 	/* must be sync'd with header */
 	if(reg->is_float){
@@ -279,25 +303,25 @@ void impl_scratch_to_reg(int scratch, struct vreg *r)
 	r->idx = scratch;
 }
 
-static const struct calling_conv_desc *x86_conv_lookup(type_ref *fr)
+static const struct calling_conv_desc *x86_conv_lookup(type *fr)
 {
-	funcargs *fa = type_ref_funcargs(fr);
+	funcargs *fa = type_funcargs(fr);
 
 	return &calling_convs[fa->conv];
 }
 
-static int x86_caller_cleanup(type_ref *fr)
+static int x86_caller_cleanup(type *fr)
 {
 	const int cr_clean = x86_conv_lookup(fr)->caller_cleanup;
 
-	if(!cr_clean && type_ref_is_variadic_func(fr))
-		die_at(&fr->where, "variadic functions can't be callee cleanup");
+	if(!cr_clean && type_is_variadic_func(fr))
+		die_at(type_loc(fr), "variadic functions can't be callee cleanup");
 
 	return cr_clean;
 }
 
 static void x86_call_regs(
-		type_ref *fr, unsigned *pn,
+		type *fr, unsigned *pn,
 		const struct vreg **par)
 {
 	const struct calling_conv_desc *ent = x86_conv_lookup(fr);
@@ -306,12 +330,12 @@ static void x86_call_regs(
 		*par = ent->call_regs;
 }
 
-static int x86_func_nargs(type_ref *rf)
+static int x86_func_nargs(type *rf)
 {
-	return dynarray_count(type_ref_funcargs(rf)->arglist);
+	return dynarray_count(type_funcargs(rf)->arglist);
 }
 
-int impl_reg_is_callee_save(const struct vreg *r, type_ref *fr)
+int impl_reg_is_callee_save(const struct vreg *r, type *fr)
 {
 	const struct calling_conv_desc *ent;
 	unsigned i;
@@ -330,7 +354,7 @@ int impl_reg_is_callee_save(const struct vreg *r, type_ref *fr)
 	return 0;
 }
 
-unsigned impl_n_call_regs(type_ref *rf)
+unsigned impl_n_call_regs(type *rf)
 {
 	unsigned n;
 	x86_call_regs(rf, &n, NULL);
@@ -352,7 +376,7 @@ void impl_func_prologue_save_fp(void)
 
 static void reg_to_stack(
 		const struct vreg *vr,
-		type_ref *ty, long where)
+		type *ty, long where)
 {
 	vpush(ty);
 	v_set_reg(vtop, vr);
@@ -361,13 +385,13 @@ static void reg_to_stack(
 }
 
 void impl_func_prologue_save_call_regs(
-		type_ref *rf, unsigned nargs,
+		type *rf, unsigned nargs,
 		int arg_offsets[/*nargs*/])
 {
 	if(nargs){
 		const unsigned ws = platform_word_size();
 
-		funcargs *const fa = type_ref_funcargs(rf);
+		funcargs *const fa = type_funcargs(rf);
 
 		unsigned n_call_i, n_call_f;
 		const struct vreg *call_regs;
@@ -402,11 +426,11 @@ void impl_func_prologue_save_call_regs(
 					i_arg < nargs;
 					i_arg++)
 			{
-				type_ref *const ty = fa->arglist[i_arg]->ref;
+				type *const ty = fa->arglist[i_arg]->ref;
 				const struct vreg *rp;
 				struct vreg vr;
 
-				if(type_ref_is_floating(ty)){
+				if(type_is_floating(ty)){
 					if(i_f >= n_call_f)
 						goto pass_via_stack;
 
@@ -456,15 +480,15 @@ pass_via_stack:
 	}
 }
 
-void impl_func_prologue_save_variadic(type_ref *rf)
+void impl_func_prologue_save_variadic(type *rf)
 {
 	const unsigned pws = platform_word_size();
 
 	unsigned n_call_regs;
 	const struct vreg *call_regs;
 
-	type_ref *const ty_dbl = type_ref_cached_DOUBLE();
-	type_ref *const ty_integral = type_ref_cached_INTPTR_T();
+	type *const ty_dbl = type_nav_btype(cc1_type_nav, type_double);
+	type *const ty_integral = type_nav_btype(cc1_type_nav, type_intptr_t);
 
 	unsigned n_int_args, n_fp_args;
 
@@ -473,7 +497,7 @@ void impl_func_prologue_save_variadic(type_ref *rf)
 
 	x86_call_regs(rf, &n_call_regs, &call_regs);
 
-	funcargs_ty_calc(type_ref_funcargs(rf), &n_int_args, &n_fp_args);
+	funcargs_ty_calc(type_funcargs(rf), &n_int_args, &n_fp_args);
 
 	/* space for all call regs */
 	v_alloc_stack(
@@ -502,7 +526,7 @@ void impl_func_prologue_save_variadic(type_ref *rf)
 
 	{
 		char *vfin = out_label_code("va_skip_float");
-		type_ref *const ty_ch = type_ref_cached_CHAR(n);
+		type *const ty_ch = type_nav_btype(cc1_type_nav, type_nchar);
 
 		/* testb %al, %al ; jz vfin */
 		vpush(ty_ch);
@@ -527,7 +551,7 @@ void impl_func_prologue_save_variadic(type_ref *rf)
 	}
 }
 
-void impl_func_epilogue(type_ref *rf)
+void impl_func_epilogue(type *rf)
 {
 	out_asm("leave");
 
@@ -544,14 +568,14 @@ void impl_func_epilogue(type_ref *rf)
 	}
 }
 
-void impl_pop_func_ret(type_ref *ty)
+void impl_pop_func_ret(type *ty)
 {
 	struct vreg r;
 
 	/* FIXME: merge with mips */
 
 	r.idx =
-		(r.is_float = type_ref_is_floating(ty))
+		(r.is_float = type_is_floating(ty))
 		? REG_RET_F
 		: REG_RET_I;
 
@@ -599,10 +623,10 @@ void impl_load_iv(struct vstack *vp)
 
 		if(high_bit > 31 /* not necessarily AS_MAX_INTMOV_BIT */){
 			/* must be loading a long */
-			if(type_ref_size(vp->t, NULL) != 8){
+			if(type_size(vp->t, NULL) != 8){
 				/* FIXME: enums don't auto-size currently */
 				ICW("loading 64-bit literal (%lld) for non-8-byte type? (%s)",
-						vp->bits.val_i, type_ref_to_str(vp->t));
+						vp->bits.val_i, type_to_str(vp->t));
 			}
 		}
 
@@ -627,17 +651,19 @@ void impl_load_fp(struct vstack *from)
 			if(from->bits.val_f == (integral_t)from->bits.val_f
 			&& fopt_mode & FOPT_INTEGRAL_FLOAT_LOAD)
 			{
-				type_ref *const ty_fp = from->t;
+				type *const ty_fp = from->t;
 
 				from->type = V_CONST_I;
 				from->bits.val_i = from->bits.val_f;
 
 				/* use just an int if we can get away with it */
-				from->t = from->bits.val_i < UCC_INT_MAX
-					? type_ref_cached_INT()
-					: type_ref_cached_LLONG();
+				from->t = type_nav_btype(
+						cc1_type_nav,
+						from->bits.val_i < UCC_INT_MAX
+							? type_int
+							: type_llong);
 
-				out_cast(ty_fp);
+				out_cast(ty_fp, /*normalise_bool:*/1);
 				break;
 			}
 			/* fall */
@@ -645,10 +671,10 @@ void impl_load_fp(struct vstack *from)
 		default:
 		{
 			/* save to a label */
-			char *lbl = out_label_data_store(0);
+			char *lbl = out_label_data_store(STORE_FLOAT);
 			struct vreg r;
 
-			asm_nam_begin3(SECTION_DATA, lbl, type_ref_align(from->t, NULL));
+			asm_nam_begin3(SECTION_DATA, lbl, type_align(from->t, NULL));
 			asm_out_fp(SECTION_DATA, from->t, from->bits.val_f);
 
 			v_clear(from, from->t);
@@ -731,7 +757,7 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 				out_asm("jp %s", parity);
 
 			/* XXX: memleak */
-			from->t = type_ref_cached_CHAR(n); /* force set%s to set the low byte */
+			from->t = type_nav_btype(cc1_type_nav, type_nchar); /* force set%s to set the low byte */
 
 			/* actual cmp */
 			out_asm("set%s %%%s",
@@ -769,13 +795,13 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 lea:
 		case V_LBL:
 		{
-			const int fp = type_ref_is_floating(from->t);
+			const int fp = type_is_floating(from->t);
 			/* leab doesn't work as an instruction */
-			type_ref *suff_ty = fp ? NULL : from->t;
-			type_ref *chosen_ty = from->t;
+			type *suff_ty = fp ? NULL : from->t;
+			type *chosen_ty = from->t;
 
 			/* just go with leaq for small sizes */
-			if(suff_ty && type_ref_size(suff_ty, NULL) < 4)
+			if(suff_ty && type_size(suff_ty, NULL) < 4)
 				suff_ty = chosen_ty = NULL;
 
 			out_asm("%s%s %s, %%%s",
@@ -877,7 +903,7 @@ void impl_op(enum op_type op)
 #define OP(e, s) case op_ ## e: opc = s; break
 	const char *opc;
 
-	if(type_ref_is_floating(vtop->t)){
+	if(type_is_floating(vtop->t)){
 		if(op_is_comparison(op)){
 			/* ucomi%s reg_or_mem, reg */
 			char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
@@ -957,7 +983,6 @@ void impl_op(enum op_type op)
 		case op_shiftr:
 		{
 			char bufv[VSTACK_STR_SZ], bufs[VSTACK_STR_SZ];
-			type_ref *free_this = NULL;
 			struct vreg rtmp;
 
 			/* value to shift must be a register */
@@ -971,7 +996,7 @@ void impl_op(enum op_type op)
 					v_to_reg(vtop); /* TODO: v_to_reg_preferred(vtop, X86_64_REG_RCX) */
 
 				case V_REG:
-					free_this = vtop->t = type_ref_cached_CHAR(n);
+					vtop->t = type_nav_btype(cc1_type_nav, type_nchar);
 
 					rtmp.is_float = 0, rtmp.idx = X86_64_REG_RCX;
 					if(!vreg_eq(&vtop->bits.regoff.reg, &rtmp)){
@@ -991,13 +1016,11 @@ void impl_op(enum op_type op)
 
 			out_asm("%s%s %s, %s",
 					op == op_shiftl      ? "shl" :
-					type_ref_is_signed(vtop[-1].t) ? "sar" : "shr",
+					type_is_signed(vtop[-1].t) ? "sar" : "shr",
 					x86_suffix(vtop[-1].t),
 					bufs, bufv);
 
 			vpop();
-
-			type_ref_free_1(free_this);
 			return;
 		}
 
@@ -1057,7 +1080,7 @@ void impl_op(enum op_type op)
 
 				case V_REG:
 				{
-					const unsigned sz = type_ref_size(vtop->t, NULL);
+					const unsigned sz = type_size(vtop->t, NULL);
 
 					if(vtop->bits.regoff.reg.idx == X86_64_REG_RDX){
 						/* prevent rdx in division operand */
@@ -1111,9 +1134,9 @@ void impl_op(enum op_type op)
 		case op_lt:
 		case op_ge:
 		case op_gt:
-			UCC_ASSERT(!type_ref_is_floating(vtop->t), "TODO float cmp");
+			UCC_ASSERT(!type_is_floating(vtop->t), "TODO float cmp");
 		{
-			const int is_signed = type_ref_is_signed(vtop->t);
+			const int is_signed = type_is_signed(vtop->t);
 			char buf[VSTACK_STR_SZ];
 			int inv = 0;
 			struct vstack *vconst = NULL;
@@ -1225,7 +1248,7 @@ void impl_op(enum op_type op)
 void impl_deref(
 		struct vstack *vp,
 		const struct vreg *to,
-		type_ref *tpointed_to)
+		type *tpointed_to)
 {
 	char ptr[VSTACK_STR_SZ];
 
@@ -1251,7 +1274,7 @@ void impl_op_unary(enum op_type op)
 			return;
 
 		case op_minus:
-			if(type_ref_is_floating(vtop->t)){
+			if(type_is_floating(vtop->t)){
 				out_push_zero(vtop->t);
 				out_op(op_minus);
 				return;
@@ -1260,7 +1283,7 @@ void impl_op_unary(enum op_type op)
 			break;
 
 		case op_bnot:
-			UCC_ASSERT(!type_ref_is_floating(vtop->t), "~ on float");
+			UCC_ASSERT(!type_is_floating(vtop->t), "~ on float");
 			opc = "not";
 			break;
 
@@ -1275,7 +1298,7 @@ void impl_op_unary(enum op_type op)
 			vstack_str(vtop, 0));
 }
 
-void impl_change_type(type_ref *t)
+void impl_change_type(type *t)
 {
 	vtop->t = t;
 
@@ -1291,12 +1314,12 @@ void impl_change_type(type_ref *t)
 	}
 }
 
-void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_signed)
+void impl_cast_load(struct vstack *vp, type *small, type *big, int is_signed)
 {
 	/* we are always up-casting here, i.e. int -> long */
 	char buf_small[VSTACK_STR_SZ];
 
-	UCC_ASSERT(!type_ref_is_floating(small) && !type_ref_is_floating(big),
+	UCC_ASSERT(!type_is_floating(small) && !type_is_floating(big),
 			"we don't cast-load floats");
 
 	switch(vp->type){
@@ -1352,8 +1375,8 @@ void impl_cast_load(struct vstack *vp, type_ref *small, type_ref *big, int is_si
 
 static void x86_fp_conv(
 		struct vstack *vp,
-		struct vreg *r, type_ref *tto,
-		type_ref *int_ty,
+		struct vreg *r, type *tto,
+		type *int_ty,
 		const char *sfrom, const char *sto)
 {
 	char vbuf[VSTACK_STR_SZ];
@@ -1365,22 +1388,22 @@ static void x86_fp_conv(
 			/* if we're doing an int-float conversion,
 			 * see if we need to do 64 or 32 bit
 			 */
-			int_ty ? type_ref_size(int_ty, NULL) == 8 ? "q" : "l" : "",
+			int_ty ? type_size(int_ty, NULL) == 8 ? "q" : "l" : "",
 			vstack_str_r(vbuf, vp, vp->type == V_REG_SAVE),
 			x86_reg_str(r, tto),
 
-			type_ref_to_str_r((char[TYPE_REF_STATIC_BUFSIZ]){0}, tto),
-			type_ref_to_str_r((char[TYPE_REF_STATIC_BUFSIZ]){0}, int_ty));
+			type_to_str_r((char[TYPE_STATIC_BUFSIZ]){0}, tto),
+			type_to_str_r((char[TYPE_STATIC_BUFSIZ]){0}, int_ty));
 }
 
-static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
+static void x86_xchg_fi(struct vstack *vp, type *tfrom, type *tto)
 {
 	struct vreg r;
 	int to_float;
 	const char *fp_s;
-	type_ref *ty_fp, *ty_int;
+	type *ty_fp, *ty_int;
 
-	if((to_float = type_ref_is_floating(tto)))
+	if((to_float = type_is_floating(tto)))
 		ty_fp = tto, ty_int = tfrom;
 	else
 		ty_fp = tfrom, ty_int = tto;
@@ -1393,18 +1416,18 @@ static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
 	v_to(vp, TO_REG | TO_MEM);
 
 	/* need to promote vp to int for cvtsi2ss */
-	if(type_ref_size(ty_int, NULL) < type_primitive_size(type_int)){
+	if(type_size(ty_int, NULL) < type_primitive_size(type_int)){
 		/* need to pretend we're using an int */
-		type_ref *const ty = *(to_float ? &tfrom : &tto) = type_ref_cached_INT();
+		type *const ty = *(to_float ? &tfrom : &tto) = type_nav_btype(cc1_type_nav, type_int);
 
 		if(to_float){
 			/* cast up to int, then to float */
 			v_cast(vp, ty);
 		}else{
-			char buf[TYPE_REF_STATIC_BUFSIZ];
+			char buf[TYPE_STATIC_BUFSIZ];
 			out_comment("%s to %s - truncated",
-					type_ref_to_str(tfrom),
-					type_ref_to_str_r(buf, tto));
+					type_to_str(tfrom),
+					type_to_str_r(buf, tto));
 		}
 	}
 
@@ -1417,17 +1440,17 @@ static void x86_xchg_fi(struct vstack *vp, type_ref *tfrom, type_ref *tto)
 	/* type set later in v_cast */
 }
 
-void impl_i2f(struct vstack *vp, type_ref *t_i, type_ref *t_f)
+void impl_i2f(struct vstack *vp, type *t_i, type *t_f)
 {
 	x86_xchg_fi(vp, t_i, t_f);
 }
 
-void impl_f2i(struct vstack *vp, type_ref *t_f, type_ref *t_i)
+void impl_f2i(struct vstack *vp, type *t_f, type *t_i)
 {
 	x86_xchg_fi(vp, t_f, t_i);
 }
 
-void impl_f2f(struct vstack *vp, type_ref *from, type_ref *to)
+void impl_f2f(struct vstack *vp, type *from, type *to)
 {
 	struct vreg r;
 
@@ -1554,7 +1577,7 @@ void impl_jcond(int true, const char *lbl)
 	}
 }
 
-void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
+void impl_call(const int nargs, type *r_ret, type *r_func)
 {
 	const unsigned pws = platform_word_size();
 	char *const float_arg = umalloc(nargs);
@@ -1563,7 +1586,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	unsigned n_call_iregs;
 
 	unsigned nfloats = 0, nints = 0;
-	unsigned arg_stack = 0;
+	unsigned arg_stack = 0, align_stack = 0;
 	unsigned stk_snapshot = 0;
 	int i;
 
@@ -1582,7 +1605,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		if(vp->type == V_FLAG)
 			v_to_reg(&vtop[-i]);
 
-		if((float_arg[i] = type_ref_is_floating(vp->t)))
+		if((float_arg[i] = type_is_floating(vp->t)))
 			nfloats++;
 		else
 			nints++;
@@ -1599,18 +1622,20 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	/* need to save regs before pushes/call */
 	v_save_regs(nargs, r_func);
 
-	/* align the stack to 16-byte, for sse insns */
-	v_stack_align(16, 0);
-
 	if(arg_stack > 0){
-		unsigned nfloats = 0, nints = 0; /* shadow */
-		unsigned stack_pos;
-
 		out_comment("stack space for %d arguments", arg_stack);
 		/* this aligns the stack-ptr and returns arg_stack padded */
 		arg_stack = v_alloc_stack(arg_stack * pws,
 				"call argument space");
+	}
 
+	/* align the stack to 16-byte, for sse insns */
+	align_stack = v_stack_align(16, 0);
+
+	if(arg_stack > 0){
+		unsigned nfloats = 0, nints = 0; /* shadow */
+
+		unsigned stack_pos;
 		/* must be called after v_alloc_stack() */
 		stk_snapshot = stack_pos = v_stack_sz();
 		out_comment("-- stack snapshot (%u) --", stk_snapshot);
@@ -1643,7 +1668,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	nints = nfloats = 0;
 	for(i = 0; i < nargs; i++){
 		struct vstack *const vp = &vtop[-i];
-		const int is_float = type_ref_is_floating(vp->t);
+		const int is_float = type_is_floating(vp->t);
 
 		const struct vreg *rp = NULL;
 		struct vreg r;
@@ -1696,7 +1721,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 		vpop();
 
 	{
-		funcargs *args = type_ref_funcargs(r_func);
+		funcargs *args = type_funcargs(r_func);
 		int need_float_count = args->variadic || (!args->arglist && !args->args_void);
 		/* jtarget must be assigned before "movb $0, %al" */
 		const char *jtarget = x86_call_jmp_target(vtop, need_float_count);
@@ -1709,7 +1734,9 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 			r.idx = X86_64_REG_RAX;
 			r.is_float = 0;
 
-			out_push_l(type_ref_cached_CHAR(n), nfloats);
+			/* only the register arguments - glibc's printf of x86_64 linux
+			 * segfaults if this is 9 or greater */
+			out_push_l(type_nav_btype(cc1_type_nav, type_nchar), MIN(nfloats, N_CALL_REGS_F));
 			v_to_reg_given(vtop, &r);
 			vpop();
 		}
@@ -1719,6 +1746,8 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 
 	if(arg_stack && x86_caller_cleanup(r_func))
 		v_dealloc_stack(arg_stack);
+	if(align_stack)
+		v_dealloc_stack(align_stack);
 
 	free(float_arg);
 }
@@ -1733,19 +1762,37 @@ void impl_set_overflow(void)
 	v_set_flag(vtop, flag_overflow, 0);
 }
 
-void impl_set_nan(type_ref *ty)
+void impl_set_nan(type *ty)
 {
-	const union
-	{
-		unsigned l;
-		float f;
-	} u = { 0x7fc00000U };
+	UCC_ASSERT(type_is_floating(ty),
+			"%s for non %s", __func__, type_to_str(ty));
 
-	ICW("using nan of float type for %s", type_ref_to_str(ty));
-	(void)ty;
+	switch(type_size(ty, NULL)){
+		case 4:
+		{
+			const union
+			{
+				unsigned l;
+				float f;
+			} u = { 0x7fc00000u };
+			vtop->bits.val_f = u.f;
+			break;
+		}
+		case 8:
+		{
+			const union
+			{
+				unsigned long l;
+				double d;
+			} u = { 0x7ff8000000000000u };
+			vtop->bits.val_f = u.d;
+			break;
+		}
+		default:
+			ICE("TODO: long double nan");
+	}
 
 	vtop->type = V_CONST_F;
-	vtop->bits.val_f = u.f;
 	/* vtop->t should be set */
 	impl_load_fp(vtop);
 }

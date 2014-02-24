@@ -12,20 +12,15 @@ const char *str_stmt_for()
 	return "for";
 }
 
+void stmt_for_got_decls(stmt *s)
+{
+	flow_fold(s->flow, &s->symtab);
+}
+
 void fold_stmt_for(stmt *s)
 {
-	symtable *stab = NULL;
-	flow_fold(s->flow, &stab);
-	UCC_ASSERT(stab, "fold_flow in for didn't pick up .flow");
-
 	s->lbl_break    = out_label_flow("for_start");
 	s->lbl_continue = out_label_flow("for_contiune");
-
-#define FOLD_IF(x) if(x) FOLD_EXPR(x, stab)
-	FOLD_IF(s->flow->for_init);
-	FOLD_IF(s->flow->for_while);
-	FOLD_IF(s->flow->for_inc);
-#undef FOLD_IF
 
 	if(s->flow->for_while)
 		fold_check_expr(
@@ -39,8 +34,9 @@ void fold_stmt_for(stmt *s)
 void gen_stmt_for(stmt *s)
 {
 	char *lbl_test = out_label_flow("for_test");
+	const char *el[2];
 
-	flow_gen(s->flow, s->flow->for_init_symtab);
+	flow_gen(s->flow, s->flow->for_init_symtab, el);
 
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){
@@ -69,6 +65,7 @@ void gen_stmt_for(stmt *s)
 	out_jmp();
 
 	out_label(s->lbl_break);
+	flow_end(el);
 
 	free(lbl_test);
 }

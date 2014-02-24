@@ -26,6 +26,7 @@ if($ARGV[0] eq '-v'){
 }
 
 my $exp = shift;
+my @unlinks;
 
 if($exp !~ /^[0-9]+$/){
 	die "$exp not numeric";
@@ -40,6 +41,7 @@ unless(-x $ARGV[0]){
 	die "$0: no \$UCC" unless $ucc;
 
 	my $tmp = "/tmp/$$.out";
+	push @unlinks, $tmp;
 	if(system_v($ucc, '-o', $tmp, $cmd, @args)){
 		die;
 	}
@@ -53,4 +55,11 @@ $r >>= 8;
 
 if($exp != $r){
 	die "$0: expected $exp, got $r, from @ARGV\n";
+}
+
+END
+{
+	my $r = $?;
+	unlink @unlinks;
+	$? = $r;
 }

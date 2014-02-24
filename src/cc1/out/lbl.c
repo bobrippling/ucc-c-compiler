@@ -49,6 +49,7 @@ char *out_label_data_store(enum out_label_store ty)
 		case STORE_P_CHAR: pre = "str"; break;
 		case STORE_P_WCHAR: pre = "wstr"; break;
 		case STORE_COMP_LIT: pre = "data"; break;
+		case STORE_FLOAT: pre = "float"; break;
 	}
 	SNPRINTF(ret, 16, "%s.%d", pre, str_last++);
 	return ret;
@@ -107,4 +108,9 @@ char *out_label_flow(const char *fmt)
 	char *ret = umalloc(len);
 	SNPRINTF(ret, len, ASM_PLBL_PRE "flow_%s_%d", fmt, flow_last++);
 	return ret;
+}
+
+char *out_dbg_func_end(const char *fn)
+{
+	return ustrprintf(ASM_PLBL_PRE "funcend_%s", fn);
 }

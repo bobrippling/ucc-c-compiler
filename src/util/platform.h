@@ -19,9 +19,8 @@ enum platform_os
 enum platform_arch platform_arch(void);
 enum platform_os platform_os( void);
 
-#ifndef ucc_const
-#  define ucc_const
-#endif
+#include "compiler.h"
+
 unsigned platform_word_size(void) ucc_const;
 
 unsigned platform_align_max(void) ucc_const;

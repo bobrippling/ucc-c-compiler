@@ -27,6 +27,18 @@ guess_arch(){
 	uname -m
 }
 
+try_set(){
+	var="$1"
+	shift
+	for ent in $@
+	do
+		if test -f "$ent"
+		then eval "$var=\"\$$var:$ent\""
+		fi
+	done
+}
+
+
 # -D__LEADING_UNDERSCORE, etc
 UCC_CPPFLAGS=
 
@@ -39,6 +51,7 @@ UCC_AS=as
 # assembler 'private' label prefix
 ASM_PLBL=.L
 AS_MAX_INTMOV_BIT=31
+NEED_DSYM=0
 
 # assume GNU as - specify word size
 UCC_AS_ARGS_M32='"--32"'
@@ -54,6 +67,9 @@ UCC_INC="-I/usr/include"
 
 # lib settings
 LIB_CFLAGS=
+
+# ctags
+TAG_CMD='ctags -R .'
 
 
 # arguments
@@ -132,17 +148,21 @@ case "$unam_os" in
 	Linux)
 		# assume gcc
 		unam_lc="$(echo "$unam_os" | tr A-Z a-z)"
-		# FIXME: gcc specific + version specific
-		UCC_INC="$UCC_INC -I/usr/include/$UCC_ARCH-$unam_lc-gnu -I/usr/lib/gcc/$UCC_ARCH-$unam_lc-gnu/4.7.2/include"
 
 		UCC_DYN="-dynamic-linker /lib64/ld-linux-x86-64.so.2"
 		UCC_STDLIB="-lc"
 
-		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crt1.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crti.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtbegin.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtend.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crtn.o"
+		machine_path="$UCC_CPU-$unam_lc-gnu"
+
+		try_set UCC_CRT /usr/lib/"${machine_path}"/crt1.o
+		try_set UCC_CRT /usr/lib/"${machine_path}"/crti.o
+		try_set UCC_CRT /usr/lib/"${machine_path}"/crtn.o
+
+		gcc_inc=$(echo /usr/lib/gcc/$machine_path/*/ | tr ' ' '\n' | sort | tail -1)
+		echo "Borrowing gcc-$(basename "$gcc_inc")'s include/"
+
+		try_set UCC_INC "/usr/include/$machine_path"
+		try_set UCC_INC "$gcc_inc/include"
 		;;
 
 	FreeBSD)
@@ -157,6 +177,8 @@ case "$unam_os" in
 		UCC_LDFLAGS='-macosx_version_min 10.5'
 		ASM_PLBL=L
 		AS_MAX_INTMOV_BIT=30
+		NEED_DSYM=1
+		TAG_CMD='ctags -dt $$(find . -iname "*.[ch]")'
 
 		if [ "$UCC_ARCH" = x86 ]
 		then
@@ -203,13 +225,14 @@ UCC_LD      = ${UCC_LD}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
 UCC_ARCH    = ${UCC_ARCH}
 UCC_SUBARCH = ${UCC_SUBARCH}
-CFLAGS      = ${LIB_CFLAGS}
+CTAGS       = ${TAG_CMD}
 !
 
 # variables used by the ucc driver
 cat > src/ucc/cfg.h <<!
 #define UCC_AS      "${UCC_AS}"
 #define UCC_LD      "${UCC_LD}"
+#define UCC_ARCH    "${UCC_ARCH}"
 #define UCC_INC     "${UCC_INC}"
 
 #define UCC_CPPFLAGS "${UCC_CPPFLAGS}"
@@ -221,6 +244,8 @@ cat > src/ucc/cfg.h <<!
 
 #define UCC_AS_ARGS_M32 ${UCC_AS_ARGS_M32}
 #define UCC_AS_ARGS_M64 ${UCC_AS_ARGS_M64}
+
+#define NEED_DSYM $NEED_DSYM
 !
 
 
@@ -230,15 +255,29 @@ then
 	SECTION_TEXT="__TEXT,__text"
 	SECTION_DATA="__DATA,__data"
 	SECTION_BSS="__BSS,__bss"
+	SECTION_DBG_ABBREV="__DWARF,__debug_abbrev,regular,debug"
+	SECTION_DBG_INFO="__DWARF,__debug_info,regular,debug"
+	SECTION_DBG_LINE="__DWARF,__debug_line,regular,debug"
+	DWARF_INDIRECT_SECTION_LINKS=0
 else
 	SECTION_TEXT=".text"
 	SECTION_DATA=".data"
 	SECTION_BSS=".bss"
+	SECTION_DBG_ABBREV=".debug_abbrev"
+	SECTION_DBG_INFO=".debug_info"
+	DWARF_INDIRECT_SECTION_LINKS=1
 fi
+
 cat > src/as_cfg.h <<!
-#define SECTION_TEXT $SECTION_TEXT
-#define SECTION_DATA $SECTION_DATA
-#define SECTION_BSS  $SECTION_BSS
+#define SECTION_NAME_TEXT $SECTION_TEXT
+#define SECTION_NAME_DATA $SECTION_DATA
+#define SECTION_NAME_BSS  $SECTION_BSS
+#define SECTION_NAME_DBG_ABBREV $SECTION_DBG_ABBREV
+#define SECTION_NAME_DBG_INFO $SECTION_DBG_INFO
+#define SECTION_NAME_DBG_LINE $SECTION_DBG_LINE
+
+#define DWARF_INDIRECT_SECTION_LINKS $DWARF_INDIRECT_SECTION_LINKS
+
 #define ASM_PLBL_PRE "$ASM_PLBL"
 /* Darwin's 'as' can only create movq:s with
  * immediate operands whose highest bit is bit
