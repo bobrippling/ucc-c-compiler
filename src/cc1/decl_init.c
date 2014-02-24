@@ -1051,7 +1051,7 @@ static decl_init *decl_init_brace_up_r(
 
 static decl_init *decl_init_brace_up_start(
 		decl_init *init, type **ptfor,
-		symtable *stab)
+		symtable *stab, const int allow_initial_copy)
 {
 	decl_init *inits[2] = {
 		init, NULL
@@ -1097,7 +1097,7 @@ static decl_init *decl_init_brace_up_start(
 		/* else struct copy init */
 	}
 
-	ret = decl_init_brace_up_r(NULL, &it, tfor, stab, 1);
+	ret = decl_init_brace_up_r(NULL, &it, tfor, stab, allow_initial_copy);
 
 	if(type_is_incomplete_array(tfor)){
 		/* complete it */
@@ -1112,7 +1112,9 @@ static decl_init *decl_init_brace_up_start(
 	return ret;
 }
 
-void decl_init_brace_up_fold(decl *d, symtable *stab)
+void decl_init_brace_up_fold(
+		decl *d, symtable *stab,
+		const int allow_initial_struct_copy)
 {
 	assert(!type_is(d->ref, type_func));
 	if(!d->bits.var.init_normalised){
@@ -1120,7 +1122,7 @@ void decl_init_brace_up_fold(decl *d, symtable *stab)
 		d->bits.var.init = decl_init_brace_up_start(
 				d->bits.var.init,
 				&d->ref,
-				stab);
+				stab, allow_initial_struct_copy);
 
 		d->bits.var.init_normalised = 1;
 	}
@@ -1344,5 +1346,5 @@ void decl_default_init(decl *d, symtable *stab)
 	UCC_ASSERT(!d->bits.var.init, "already initialised?");
 
 	d->bits.var.init = decl_init_new_w(decl_init_brace, &d->where);
-	decl_init_brace_up_fold(d, stab);
+	decl_init_brace_up_fold(d, stab, 1);
 }

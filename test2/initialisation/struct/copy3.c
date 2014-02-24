@@ -5,7 +5,7 @@ struct A
 	int i, j;
 };
 
-void f(struct A *p)
+f(struct A *p)
 {
 	struct A a = *p;
 

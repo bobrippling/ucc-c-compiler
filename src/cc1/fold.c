@@ -589,7 +589,7 @@ static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
 							&d->where);
 				}
 
-				decl_init_brace_up_fold(d, inits->symtab);
+				decl_init_brace_up_fold(d, inits->symtab, /*struct_copy:*/1);
 				decl_init_create_assignments_base(
 						d->bits.var.init, d->ref,
 						expr_set_where(
@@ -715,7 +715,7 @@ void fold_decl_global_init(decl *d, symtable *stab)
 		return;
 
 	/* this completes the array, if any */
-	decl_init_brace_up_fold(d, stab);
+	decl_init_brace_up_fold(d, stab, /*struct_copy:*/1);
 
 	type = stab->parent ? "static" : "global";
 	if(!decl_init_is_const(d->bits.var.init, stab, &nonstd)){
