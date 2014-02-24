@@ -1316,8 +1316,11 @@ static void parse_post_func(decl *d, symtable *in_scope)
 	 * no parse ambiguity - asm can only appear at the end of a decl,
 	 * before __attribute__
 	 */
-	if(curtok == token_asm)
+	if(curtok == token_asm){
 		parse_add_asm(d);
+
+		parse_add_attr(&d->attr, in_scope);
+	}
 
 	if(is_old_func(d)){
 		decl **old_args = NULL;
