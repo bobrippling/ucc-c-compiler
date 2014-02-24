@@ -1,0 +1,20 @@
+The expression data structre is pretty easy, an expression has a left and a
+right hand side, etc etc
+
+The complicated bit is the type/decl structure, documented in type_system.txt
+
+Variables are represented by the "decl" struct, which is essentially a name and
+a type:
+
+int a;
+
+decl = {
+	.spel = "a",
+	.ref = {
+		.type = type_type,
+		.bits.type = <"int" btype>
+	}
+}
+
+Decls also hold information on things like bitfields and storage (static,
+extern, typedef, etc).
