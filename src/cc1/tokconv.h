@@ -1,7 +1,11 @@
 #ifndef TOKCONV_H
 #define TOKCONV_H
 
-enum op_type        curtok_to_op(void);
+#include "op.h"
+#include "btype.h"
+#include "decl.h"
+
+enum op_type curtok_to_op(void);
 
 enum type_primitive curtok_to_type_primitive(void);
 enum type_qualifier curtok_to_type_qualifier(void);
@@ -30,7 +34,5 @@ int          curtok_is_compound_assignment(void);
 
 char *token_to_str(enum token t);
 char *curtok_to_identifier(int *alloc); /* e.g. token_const -> "const" */
-
-extern int parse_had_error;
 
 #endif

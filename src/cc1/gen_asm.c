@@ -7,19 +7,23 @@
 #include "../util/util.h"
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
-#include "data_structs.h"
-#include "cc1.h"
-#include "macros.h"
 #include "../util/platform.h"
-#include "sym.h"
-#include "gen_asm.h"
+
+#include "macros.h"
 #include "../util/util.h"
+
+#include "cc1.h"
+#include "sym.h"
 #include "const.h"
-#include "tree.h"
+#include "expr.h"
+#include "stmt.h"
+#include "type_is.h"
+#include "gen_asm.h"
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
 #include "gen_style.h"
+#include "out/dbg.h"
 
 char *curfunc_lblfin; /* extern */
 
@@ -33,6 +37,8 @@ void gen_expr(expr *e)
 	else
 		k.type = CONST_NO;
 
+	out_dbg_where(&e->where);
+
 	if(k.type == CONST_NUM){
 		/* -O0 skips this? */
 		if(cc1_backend == BACKEND_ASM)
@@ -40,10 +46,7 @@ void gen_expr(expr *e)
 		else
 			stylef("%" NUMERIC_FMT_D, k.bits.num.val.i);
 	}else{
-		if(cc1_gdebug)
-			out_comment("at %s", where_str(&e->where));
-
-		EOF_WHERE(&e->where, e->f_gen(e));
+		e->f_gen(e);
 	}
 }
 
@@ -55,6 +58,8 @@ void lea_expr(expr *e)
 			"invalid store expression expr-%s @ %s (no f_lea())",
 			e->f_str(), where_str_r(buf, &e->where));
 
+	out_dbg_where(&e->where);
+
 	e->f_lea(e);
 }
 
@@ -65,7 +70,9 @@ void gen_maybe_struct_expr(expr *e)
 
 void gen_stmt(stmt *t)
 {
-	EOF_WHERE(&t->where, t->f_gen(t));
+	out_dbg_where(&t->where);
+
+	t->f_gen(t);
 }
 
 static void assign_arg_offsets(decl **decls, int const offsets[])
@@ -86,16 +93,16 @@ static void assign_arg_offsets(decl **decls, int const offsets[])
 
 void gen_asm_global(decl *d)
 {
-	decl_attr *sec;
+	attribute *sec;
 
-	if((sec = decl_attr_present(d, attr_section))){
+	if((sec = attribute_present(d, attr_section))){
 		ICW("%s: TODO: section attribute \"%s\" on %s",
 				where_str(&sec->where),
 				sec->bits.section, d->spel);
 	}
 
 	/* order of the if matters */
-	if(DECL_IS_FUNC(d) || type_ref_is(d->ref, type_ref_block)){
+	if(type_is_func_or_block(d->ref)){
 		/* check .func_code, since it could be a block */
 		int nargs = 0, is_vari;
 		decl **aiter;
@@ -103,8 +110,10 @@ void gen_asm_global(decl *d)
 		int *offsets;
 		symtable *arg_symtab;
 
-		if(!d->func_code)
+		if(!d->bits.func.code)
 			return;
+
+		out_dbg_where(&d->where);
 
 		arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
 		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++)
@@ -118,20 +127,28 @@ void gen_asm_global(decl *d)
 		out_label(sp);
 
 		out_func_prologue(d->ref,
-				d->func_code->symtab->auto_total_size,
+				d->bits.func.code->symtab->auto_total_size,
 				nargs,
-				is_vari = type_ref_is_variadic_func(d->ref),
-				offsets);
+				is_vari = type_is_variadic_func(d->ref),
+				offsets, &d->bits.func.var_offset);
 
 		assign_arg_offsets(arg_symtab->decls, offsets);
 
 		curfunc_lblfin = out_label_code(sp);
 
-		gen_stmt(d->func_code);
+		gen_stmt(d->bits.func.code);
 
 		out_label(curfunc_lblfin);
 
+		out_dbg_where(&d->bits.func.code->where_cbrace);
+
 		out_func_epilogue(d->ref);
+
+		{
+			char *end = out_dbg_func_end(decl_asm_spel(d));
+			out_label(end);
+			free(end);
+		}
 
 		free(curfunc_lblfin);
 		free(offsets);
@@ -156,7 +173,7 @@ static void gen_stringlits(dynmap *litmap)
 			asm_declare_stringlit(SECTION_DATA, lit);
 }
 
-void gen_asm(symtable_global *globs)
+void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 {
 	decl **diter;
 	struct symtable_gasm **iasm = globs->gasms;
@@ -188,7 +205,7 @@ void gen_asm(symtable_global *globs)
 				break;
 		}
 
-		if(DECL_IS_FUNC(d)){
+		if(type_is(d->ref, type_func)){
 			if(d->store & store_inline){
 				/*
 				 * inline semantics
@@ -204,14 +221,14 @@ void gen_asm(symtable_global *globs)
 				}
 			}
 
-			if(!d->func_code){
+			if(!d->bits.func.code){
 				asm_predeclare_extern(d);
 				continue;
 			}
 		}else{
 			/* variable - if there's no init,
 			 * it's tenative and not output */
-			if(!d->init){
+			if(!d->bits.var.init){
 				asm_predeclare_extern(d);
 				continue;
 			}
@@ -228,4 +245,7 @@ void gen_asm(symtable_global *globs)
 		gen_gasm((*iasm)->asm_str);
 
 	gen_stringlits(globs->literals);
+
+	if(cc1_gdebug && globs->stab.decls)
+		out_dbginfo(globs, fname, compdir);
 }

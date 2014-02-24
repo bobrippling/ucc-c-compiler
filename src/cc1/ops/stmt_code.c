@@ -6,13 +6,15 @@
 #include "../decl_init.h"
 #include "../../util/dynarray.h"
 #include "../fold_sym.h"
+#include "../out/lbl.h"
+#include "../type_is.h"
 
 const char *str_stmt_code()
 {
 	return "code";
 }
 
-void fold_block_decls(symtable *stab, stmt **pinit_blk)
+void fold_shadow_dup_check_block_decls(symtable *stab)
 {
 	/* must iterate using an index, since the array may
 	 * resize under us */
@@ -28,9 +30,9 @@ void fold_block_decls(symtable *stab, stmt **pinit_blk)
 		symtable *above_scope;
 		int chk_shadow = 0, is_func = 0;
 
-		fold_decl(d, stab, pinit_blk);
+		fold_decl(d, stab, NULL);
 
-		if((is_func = !!DECL_IS_FUNC(d)))
+		if((is_func = !!type_is(d->ref, type_func)))
 			chk_shadow = 1;
 		else if(warn_mode & (WARN_SHADOW_LOCAL | WARN_SHADOW_GLOBAL))
 			chk_shadow = 1;
@@ -43,8 +45,8 @@ void fold_block_decls(symtable *stab, stmt **pinit_blk)
 
 			/* allow functions redefined as decls and vice versa */
 			if(is_func
-			&& DECL_IS_FUNC(found)
-			&& decl_cmp(d, found, 0) != TYPE_EQUAL)
+			&& type_is(found->ref, type_func)
+			&& !(decl_cmp(d, found, 0) & TYPE_EQUAL_ANY))
 			{
 				die_at(&d->where,
 						"incompatible redefinition of \"%s\"\n"
@@ -86,22 +88,15 @@ void fold_block_decls(symtable *stab, stmt **pinit_blk)
 void fold_stmt_code(stmt *s)
 {
 	stmt **siter;
-	stmt *init_blk = NULL;
 	int warned = 0;
 
 	/* local struct layout-ing */
-	/* we fold decls ourselves, to get their inits */
 	symtab_fold_sues(s->symtab);
 
-	fold_block_decls(s->symtab, &init_blk);
-
-	if(init_blk)
-		dynarray_prepend(&s->codes, init_blk);
-
-	for(siter = s->codes; siter && *siter; siter++){
+	for(siter = s->bits.code.stmts; siter && *siter; siter++){
 		stmt *const st = *siter;
 
-		EOF_WHERE(&st->where, fold_stmt(st));
+		fold_stmt(st);
 
 		/*
 		 * check for dead code
@@ -120,9 +115,19 @@ void fold_stmt_code(stmt *s)
 	}
 }
 
-void gen_block_decls(symtable *stab)
+void gen_block_decls(symtable *stab, const char **dbg_end_lbl)
 {
 	decl **diter;
+
+	if(cc1_gdebug && !stab->lbl_begin){
+		stab->lbl_begin = out_label_code("dbg_begin");
+		stab->lbl_end = out_label_code("dbg_end");
+
+		out_label_noop(stab->lbl_begin);
+		*dbg_end_lbl = stab->lbl_end;
+	}else{
+		*dbg_end_lbl = NULL;
+	}
 
 	/* declare strings, extern functions and blocks */
 	for(diter = stab->decls; diter && *diter; diter++){
@@ -130,7 +135,7 @@ void gen_block_decls(symtable *stab)
 		int func;
 
 		/* we may need a '.extern fn...' for prototypes... */
-		if((func = !!type_ref_is(d->ref, type_ref_func))
+		if((func = !!type_is(d->ref, type_func))
 		|| decl_store_static_or_extern(d->store))
 		{
 			/* if it's a string, go,
@@ -148,15 +153,19 @@ void gen_block_decls(symtable *stab)
 void gen_stmt_code_m1(stmt *s, int m1)
 {
 	stmt **titer;
+	const char *endlbl;
 
 	/* stmt_for/if/while/do needs to do this too */
-	gen_block_decls(s->symtab);
+	gen_block_decls(s->symtab, &endlbl);
 
-	for(titer = s->codes; titer && *titer; titer++){
+	for(titer = s->bits.code.stmts; titer && *titer; titer++){
 		if(m1 && !titer[1])
 			break;
 		gen_stmt(*titer);
 	}
+
+	if(endlbl)
+		out_label_noop(endlbl);
 }
 
 void gen_stmt_code(stmt *s)
@@ -174,7 +183,7 @@ void style_stmt_code(stmt *s)
 	for(i_d = s->symtab->decls; i_d && *i_d; i_d++)
 		gen_style_decl(*i_d);
 
-	for(i_s = s->codes; i_s && *i_s; i_s++)
+	for(i_s = s->bits.code.stmts; i_s && *i_s; i_s++)
 		gen_stmt(*i_s);
 
 	stylef("\n}\n");
@@ -186,7 +195,7 @@ static int code_passable(stmt *s)
 
 	/* note: this also checks for inits which call noreturn funcs */
 
-	for(i = s->codes; i && *i; i++){
+	for(i = s->bits.code.stmts; i && *i; i++){
 		stmt *sub = *i;
 		if(!fold_passable(sub))
 			return 0;

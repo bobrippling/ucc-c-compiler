@@ -57,11 +57,12 @@ my %vars = (
 	'ocheck'    => './retcheck.pl',
 	'layout_check' => './layout_check.sh',
 	'caret_check' => './caret_check.pl',
+	'debug_check' => './debug_check.pl',
 );
 
 if($verbose){
 	my @verbose_support = (
-		'check', 'ocheck'
+		'check', 'ocheck', 'debug_check'
 	);
 
 	$vars{$_} .=  " -v" for @verbose_support;

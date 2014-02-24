@@ -2,25 +2,37 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#include "ops.h"
-#include "expr_funcall.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
+
+#include "ops.h"
+#include "expr_funcall.h"
 #include "../funcargs.h"
 #include "../format_chk.h"
+#include "../type_is.h"
+#include "../type_nav.h"
 
 const char *str_expr_funcall()
 {
 	return "funcall";
 }
 
-static void sentinel_check(where *w, type_ref *ref, expr **args,
+static attribute *func_attr_present(expr *e, enum attribute_type t)
+{
+	attribute *a;
+	a = expr_attr_present(e, t);
+	if(a)
+		return a;
+	return expr_attr_present(e->expr, t);
+}
+
+static void sentinel_check(where *w, expr *e, expr **args,
 		const int variadic, const int nstdargs, symtable *stab)
 {
 #define ATTR_WARN_RET(w, ...) do{ warn_at(w, __VA_ARGS__); return; }while(0)
 
-	decl_attr *attr = type_attr_present(ref, attr_sentinel);
+	attribute *attr = func_attr_present(e, attr_sentinel);
 	int i, nvs;
 	expr *sentinel;
 
@@ -59,7 +71,7 @@ static void sentinel_check(where *w, type_ref *ref, expr **args,
 	/* must be of a pointer type, printf("%p\n", 0) is undefined */
 	if(!expr_is_null_ptr(sentinel, NULL_STRICT_ANY_PTR))
 		ATTR_WARN_RET(&sentinel->where, "sentinel argument expected (got %s)",
-				type_ref_to_str(sentinel->tree_type));
+				type_to_str(sentinel->tree_type));
 
 #undef ATTR_WARN_RET
 }
@@ -68,8 +80,8 @@ static void static_array_check(
 		decl *arg_decl, expr *arg_expr)
 {
 	/* if ty_func is x[static %d], check counts */
-	type_ref *ty_expr = arg_expr->tree_type;
-	type_ref *ty_decl = decl_is_decayed_array(arg_decl);
+	type *ty_expr = arg_expr->tree_type;
+	type *ty_decl = decl_is_decayed_array(arg_decl);
 	consty k_decl;
 
 	if(!ty_decl || !ty_decl->bits.ptr.is_static)
@@ -86,8 +98,8 @@ static void static_array_check(
 
 	const_fold(ty_decl->bits.ptr.size, &k_decl);
 
-	if((ty_expr = type_ref_is_decayed_array(ty_expr))){
-		/* ty_expr is the type_ref_ptr, decayed from array */
+	if((ty_expr = type_is_decayed_array(ty_expr))){
+		/* ty_expr is the type_ptr, decayed from array */
 		if(ty_expr->bits.ptr.size){
 			consty k_arg;
 
@@ -115,7 +127,7 @@ static void lea_expr_funcall(expr *e)
 
 void fold_expr_funcall(expr *e, symtable *stab)
 {
-	type_ref *type_func;
+	type *func_ty;
 	funcargs *args_from_decl;
 	char *sp = NULL;
 	int count_decl = 0;
@@ -159,15 +171,16 @@ invalid:
 			/* set up the funcargs as if it's "x()" - i.e. any args */
 			funcargs_empty(args);
 
-			type_func = type_ref_new_func(
-					type_ref_new_type(type_new_primitive(type_int)),
-					args, /*new symtable for args:*/ symtab_new(stab));
+			func_ty = type_func_of(
+					type_nav_btype(cc1_type_nav, type_int),
+					args,
+					symtab_new(stab, &e->where) /*new symtable for args*/);
 
 			cc1_warn_at(&e->expr->where, 0, WARN_IMPLICIT_FUNC,
 					"implicit declaration of function \"%s\"", sp);
 
 			df = decl_new();
-			df->ref = type_func;
+			df->ref = func_ty;
 			df->spel = e->expr->bits.ident.spel;
 
 			fold_decl(df, stab, NULL); /* update calling conv, for e.g. */
@@ -179,21 +192,21 @@ invalid:
 	}
 
 	FOLD_EXPR(e->expr, stab);
-	type_func = e->expr->tree_type;
+	func_ty = e->expr->tree_type;
 
-	if(!type_ref_is_callable(type_func)){
+	if(!type_is_callable(func_ty)){
 		die_at(&e->expr->where, "%s-expression (type '%s') not callable",
-				e->expr->f_str(), type_ref_to_str(type_func));
+				e->expr->f_str(), type_to_str(func_ty));
 	}
 
 	if(expr_kind(e->expr, deref)
-	&& type_ref_is(type_ref_is_ptr(expr_deref_what(e->expr)->tree_type), type_ref_func)){
+	&& type_is(type_is_ptr(expr_deref_what(e->expr)->tree_type), type_func)){
 		/* XXX: memleak */
 		/* (*f)() - dereffing to a function, then calling - remove the deref */
 		e->expr = expr_deref_what(e->expr);
 	}
 
-	e->tree_type = type_ref_func_call(type_func, &args_from_decl);
+	e->tree_type = type_func_call(func_ty, &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
 	UCC_ASSERT(args_from_decl, "no funcargs for decl %s", sp);
@@ -217,8 +230,8 @@ invalid:
 	/* this block folds the args and type-checks */
 	if(e->funcargs){
 		unsigned long nonnulls = 0;
-		int i, j;
-		decl_attr *da;
+		int i;
+		attribute *da;
 #define ARG_BUF(buf, i, sp)             \
 				snprintf(buf, sizeof buf,       \
 						"argument %d to %s",        \
@@ -226,19 +239,23 @@ invalid:
 
 		char buf[64];
 
-		if((da = type_attr_present(type_func, attr_nonnull)))
+		if((da = func_attr_present(e, attr_nonnull)))
 			nonnulls = da->bits.nonnull_args;
 
-		for(i = j = 0; e->funcargs[i]; i++){
+		for(i = 0; e->funcargs[i]; i++){
 			expr *arg = FOLD_EXPR(e->funcargs[i], stab);
 
 			ARG_BUF(buf, i, sp);
 
 			fold_check_expr(arg, 0, buf);
 
-			if((nonnulls & (1 << i)) && expr_is_null_ptr(arg, NULL_STRICT_INT))
+			if(i < count_decl && (nonnulls & (1 << i))
+			&& type_is_ptr(args_from_decl->arglist[i]->ref)
+			&& expr_is_null_ptr(arg, NULL_STRICT_INT))
+			{
 				warn_at(&arg->where, "null passed where non-null required (arg %d)",
 						i + 1);
+			}
 		}
 	}
 
@@ -285,27 +302,27 @@ invalid:
 			expr_promote_default(&e->funcargs[i], stab);
 	}
 
-	if(type_ref_is_s_or_u(e->tree_type)){
+	if(type_is_s_or_u(e->tree_type)){
 		e->f_lea = lea_expr_funcall;
 		e->lvalue_internal = 1;
 	}
 
 	/* attr */
 	{
-		type_ref *r = e->expr->tree_type;
+		type *r = e->expr->tree_type;
 
 		format_check_call(
 				&e->where, r,
 				e->funcargs, args_from_decl->variadic);
 
 		sentinel_check(
-				&e->where, r,
+				&e->where, e,
 				e->funcargs, args_from_decl->variadic,
 				count_decl, stab);
 	}
 
-	/* check the subexp tree type to get the funcall decl_attrs */
-	if(expr_attr_present(e->expr, attr_warn_unused))
+	/* check the subexp tree type to get the funcall attributes */
+	if(func_attr_present(e, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 }
 
@@ -377,7 +394,7 @@ void mutate_expr_funcall(expr *e)
 int expr_func_passable(expr *e)
 {
 	/* need to check the sub-expr, i.e. the function */
-	return !expr_attr_present(e->expr, attr_noreturn);
+	return !func_attr_present(e, attr_noreturn);
 }
 
 expr *expr_new_funcall()

@@ -1,7 +1,7 @@
-#ifndef token_ise_h
-#define token_ise_h
+#ifndef TOKENISE_H
+#define TOKENISE_H
 
-extern numeric currentval;
+#include "num.h"
 
 enum token
 {
@@ -127,5 +127,9 @@ char *token_current_spel(void);
 char *token_current_spel_peek(void);
 
 int tok_at_label(void);
+
+extern numeric currentval;
+extern enum token curtok;
+extern int parse_had_error;
 
 #endif

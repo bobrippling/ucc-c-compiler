@@ -7,6 +7,7 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 #include "../out/lbl.h"
+#include "../type_is.h"
 
 const char *str_stmt_switch()
 {
@@ -17,7 +18,7 @@ static void fold_switch_dups(stmt *sw)
 {
 	typedef int (*qsort_f)(const void *, const void *);
 
-	int n = dynarray_count(sw->codes);
+	int n = dynarray_count(sw->bits.code.stmts);
 	struct
 	{
 		numeric start, end;
@@ -28,7 +29,7 @@ static void fold_switch_dups(stmt *sw)
 	int i;
 
 	/* gather all switch values */
-	for(i = 0, titer = sw->codes; titer && *titer; titer++){
+	for(i = 0, titer = sw->bits.code.stmts; titer && *titer; titer++){
 		stmt *cse = *titer;
 
 		if(cse->expr->expr_is_default){
@@ -91,7 +92,7 @@ static void fold_switch_enum(
 		warn_at(&sw->where, "switch on enum with enum_bitmask attribute");
 
 	/* for each case/default/case_range... */
-	for(titer = sw->codes; titer && *titer; titer++){
+	for(titer = sw->bits.code.stmts; titer && *titer; titer++){
 		stmt *cse = *titer;
 		integral_t v, w;
 
@@ -143,19 +144,15 @@ ret:
 
 void fold_stmt_switch(stmt *s)
 {
-	symtable *stab = s->symtab;
-
-	flow_fold(s->flow, &stab);
-
 	s->lbl_break = out_label_flow("switch");
 
-	FOLD_EXPR(s->expr, stab);
+	FOLD_EXPR(s->expr, s->symtab);
 
 	fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch");
 
 	/* this folds sub-statements,
-	 * causing case: and default: to add themselves to ->parent->codes,
-	 * i.e. s->codes
+	 * causing case: and default: to add themselves to ->parent->bits.code.stmts,
+	 * i.e. s->bits.code.stmts
 	 */
 	fold_stmt(s->lhs);
 
@@ -164,7 +161,7 @@ void fold_stmt_switch(stmt *s)
 
 	/* check for an enum */
 	{
-		struct_union_enum_st *sue = type_ref_is_s_or_u_or_e(
+		struct_union_enum_st *sue = type_is_s_or_u_or_e(
 					s->expr->tree_type);
 
 		if(sue && sue->primitive == type_enum)
@@ -182,7 +179,7 @@ void gen_stmt_switch(stmt *s)
 
 	out_comment("switch on this");
 
-	for(titer = s->codes; titer && *titer; titer++){
+	for(titer = s->bits.code.stmts; titer && *titer; titer++){
 		stmt *cse = *titer;
 		numeric iv;
 

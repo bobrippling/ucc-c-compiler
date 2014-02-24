@@ -5,6 +5,8 @@
 #include "expr_if.h"
 #include "../sue.h"
 #include "../out/lbl.h"
+#include "../type_is.h"
+#include "../type_nav.h"
 
 static void lea_expr_if(expr *);
 
@@ -62,7 +64,7 @@ static void fold_const_expr_if(expr *e, consty *k)
 void fold_expr_if(expr *e, symtable *stab)
 {
 	consty konst;
-	type_ref *tt_l, *tt_r;
+	type *tt_l, *tt_r;
 
 	FOLD_EXPR(e->expr, stab);
 	const_fold(e->expr, &konst);
@@ -99,7 +101,7 @@ void fold_expr_if(expr *e, symtable *stab)
 	tt_l = (e->lhs ? e->lhs : e->expr)->tree_type;
 	tt_r = e->rhs->tree_type;
 
-	if(type_ref_is_integral(tt_l) && type_ref_is_integral(tt_r)){
+	if(type_is_integral(tt_l) && type_is_integral(tt_r)){
 		expr **middle_op = e->lhs ? &e->lhs : &e->expr;
 
 		expr_check_sign("?:", *middle_op, e->rhs, &e->where);
@@ -108,15 +110,15 @@ void fold_expr_if(expr *e, symtable *stab)
 				op_unknown,
 				middle_op, &e->rhs, &e->where, stab);
 
-	}else if(type_ref_is_void(tt_l) || type_ref_is_void(tt_r)){
-		e->tree_type = type_ref_new_type(type_new_primitive(type_void));
+	}else if(type_is_void(tt_l) || type_is_void(tt_r)){
+		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 
-	}else if(type_ref_cmp(tt_l, tt_r, 0) == TYPE_EQUAL){
+	}else if(type_cmp(tt_l, tt_r, 0) & TYPE_EQUAL_ANY){
 		/* pointer to 'compatible' type */
-		e->tree_type = type_ref_new_cast(tt_l,
-				type_ref_qual(tt_l) | type_ref_qual(tt_r));
+		e->tree_type = type_qualify(tt_l,
+				type_qual(tt_l) | type_qual(tt_r));
 
-		if(type_ref_is_s_or_u(tt_l)){
+		if(type_is_s_or_u(tt_l)){
 			e->f_lea = lea_expr_if;
 			e->lvalue_internal = 1;
 		}
@@ -128,37 +130,32 @@ void fold_expr_if(expr *e, symtable *stab)
 
 		int r_ptr_null = expr_is_null_ptr(e->rhs, NULL_STRICT_VOID_PTR);
 
-		int l_complete = !l_ptr_null && type_ref_is_complete(tt_l);
-		int r_complete = !r_ptr_null && type_ref_is_complete(tt_r);
+		int l_complete = !l_ptr_null && type_is_complete(tt_l);
+		int r_complete = !r_ptr_null && type_is_complete(tt_r);
 
 		if((l_complete && r_ptr_null) || (r_complete && l_ptr_null)){
 			e->tree_type = l_ptr_null ? tt_r : tt_l;
 
 		}else{
-			int l_ptr = l_ptr_null || type_ref_is(tt_l, type_ref_ptr);
-			int r_ptr = r_ptr_null || type_ref_is(tt_r, type_ref_ptr);
+			int l_ptr = l_ptr_null || type_is(tt_l, type_ptr);
+			int r_ptr = r_ptr_null || type_is(tt_r, type_ptr);
 
 			if(l_ptr || r_ptr){
 				fold_type_chk_warn(
 						tt_l, tt_r, &e->where, "?: pointer type mismatch");
 
-				/* void * */
-				e->tree_type = type_ref_new_ptr(type_ref_cached_VOID(), qual_none);
-
-				{
-					enum type_qualifier q = type_ref_qual(tt_l) | type_ref_qual(tt_r);
-
-					if(q)
-						e->tree_type = type_ref_new_cast(e->tree_type, q);
-				}
+				/* qualified void * */
+				e->tree_type = type_qualify(
+						type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
+						type_qual(tt_l) | type_qual(tt_r));
 
 			}else{
-				char buf[TYPE_REF_STATIC_BUFSIZ];
+				char buf[TYPE_STATIC_BUFSIZ];
 
 				warn_at(&e->where, "conditional type mismatch (%s vs %s)",
-						type_ref_to_str(tt_l), type_ref_to_str_r(buf, tt_r));
+						type_to_str(tt_l), type_to_str_r(buf, tt_r));
 
-				e->tree_type = type_ref_cached_VOID();
+				e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 			}
 		}
 	}

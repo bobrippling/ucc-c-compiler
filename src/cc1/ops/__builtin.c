@@ -6,14 +6,14 @@
 #include "../../util/dynarray.h"
 #include "../../util/alloc.h"
 
-#include "../data_structs.h"
 #include "__builtin.h"
 
 #include "../cc1.h"
 #include "../tokenise.h"
-#include "../parse.h"
 #include "../fold.h"
 #include "../funcargs.h"
+#include "../type_nav.h"
+#include "../type_is.h"
 
 #include "../const.h"
 #include "../gen_asm.h"
@@ -22,9 +22,13 @@
 #include "../out/out.h"
 #include "__builtin_va.h"
 
+#include "../parse_expr.h"
+#include "../parse_type.h"
+
 #define PREFIX "__builtin_"
 
-typedef expr *func_builtin_parse(const char *ident);
+typedef expr *func_builtin_parse(
+		const char *ident, symtable *);
 
 static func_builtin_parse parse_unreachable,
                           parse_compatible_p,
@@ -116,15 +120,15 @@ static builtin_table *builtin_find(const char *sp)
 	return found;
 }
 
-expr *builtin_parse(const char *sp)
+expr *builtin_parse(const char *sp, symtable *scope)
 {
 	builtin_table *b;
 
 	if((fopt_mode & FOPT_BUILTIN) && (b = builtin_find(sp))){
-		expr *(*f)(const char *) = b->parser;
+		expr *(*f)(const char *, symtable *) = b->parser;
 
 		if(f)
-			return f(sp);
+			return f(sp, scope);
 	}
 
 	return NULL;
@@ -182,11 +186,11 @@ static void builtin_gen_undefined(expr *e)
 	out_push_noop(); /* needed for function return pop */
 }
 
-expr *parse_any_args(void)
+expr *parse_any_args(symtable *scope)
 {
 	expr *fcall = expr_new_funcall();
 
-	fcall->funcargs = parse_funcargs();
+	fcall->funcargs = parse_funcargs(scope);
 	return fcall;
 }
 
@@ -205,29 +209,32 @@ static void fold_memset(expr *e, symtable *stab)
 	if((unsigned)e->bits.builtin_memset.ch > 255)
 		warn_at(&e->where, "memset with value > UCHAR_MAX");
 
-	e->tree_type = type_ref_cached_VOID_PTR();
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
 
 static void builtin_gen_memset(expr *e)
 {
 	size_t n, rem;
 	unsigned i;
-	type_ref *tzero = type_ref_cached_MAX_FOR(e->bits.builtin_memset.len);
-	type_ref *textra, *textrap;
+	type *tzero = type_nav_MAX_FOR(
+			cc1_type_nav,
+			e->bits.builtin_memset.len);
+
+	type *textra, *textrap;
 
 	if(!tzero)
-		tzero = type_ref_cached_CHAR(n);
+		tzero = type_nav_btype(cc1_type_nav, type_nchar);
 
-	n   = e->bits.builtin_memset.len / type_ref_size(tzero, NULL);
-	rem = e->bits.builtin_memset.len % type_ref_size(tzero, NULL);
+	n   = e->bits.builtin_memset.len / type_size(tzero, NULL);
+	rem = e->bits.builtin_memset.len % type_size(tzero, NULL);
 
-	if((textra = rem ? type_ref_cached_MAX_FOR(rem) : NULL))
-		textrap = type_ref_new_ptr(textra, qual_none);
+	if((textra = rem ? type_nav_MAX_FOR(cc1_type_nav, rem) : NULL))
+		textrap = type_ptr_to(textra);
 
 	/* works fine for bitfields - struct lea acts appropriately */
 	lea_expr(e->lhs);
 
-	out_change_type(type_ref_new_ptr(tzero, qual_none));
+	out_change_type(type_ptr_to(tzero));
 
 	out_dup();
 
@@ -236,7 +243,7 @@ static void builtin_gen_memset(expr *e)
 			e->expr->f_str(),
 			e->bits.builtin_memset.ch,
 			e->bits.builtin_memset.len,
-			type_ref_to_str(tzero), n);
+			type_to_str(tzero), n);
 #endif
 
 	for(i = 0; i < n; i++){
@@ -248,7 +255,7 @@ static void builtin_gen_memset(expr *e)
 		out_pop();
 
 		/* p++ (copied pointer) */
-		out_push_l(type_ref_cached_INTPTR_T(), 1);
+		out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t), 1);
 		out_op(op_plus);
 
 		if(rem){
@@ -300,11 +307,11 @@ static void fold_memcpy(expr *e, symtable *stab)
 	fold_expr_no_decay(e->lhs, stab);
 	fold_expr_no_decay(e->rhs, stab);
 
-	e->tree_type = type_ref_cached_VOID_PTR();
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
 
 #ifdef BUILTIN_USE_LIBC
-static decl *decl_new_tref(char *sp, type_ref *ref)
+static decl *decl_new_tref(char *sp, type *ref)
 {
 	decl *d = decl_new();
 	d->ref = ref;
@@ -319,15 +326,15 @@ static void builtin_gen_memcpy(expr *e)
 	/* TODO - also with memset */
 	funcargs *fargs = funcargs_new();
 
-	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_ref_cached_VOID_PTR()));
-	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_ref_cached_VOID_PTR()));
-	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_ref_cached_INTPTR_T()));
+	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_cached_VOID_PTR()));
+	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_cached_VOID_PTR()));
+	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_cached_INTPTR_T()));
 
-	type_ref *ctype = type_ref_new_func(
+	type *ctype = type_new_func(
 			e->tree_type, fargs);
 
 	out_push_lbl("memcpy", 0);
-	out_push_l(type_ref_cached_INTPTR_T(), e->bits.num.val);
+	out_push_l(type_cached_INTPTR_T(), e->bits.num.val);
 	lea_expr(e->rhs, stab);
 	lea_expr(e->lhs, stab);
 	out_call(3, e->tree_type, ctype);
@@ -374,22 +381,22 @@ static expr *parse_memcpy(void)
 
 static void fold_unreachable(expr *e, symtable *stab)
 {
-	(void)stab;
+	type *tvoid = type_nav_btype(cc1_type_nav , type_void);
 
-	e->tree_type = type_ref_func_call(
-			e->expr->tree_type = type_ref_new_func(
-				type_ref_cached_VOID(), funcargs_new(), stab), NULL);
+	e->expr->tree_type = type_func_of(tvoid,
+			funcargs_new(), symtab_new(stab, &e->where));
 
-	decl_attr_append(&e->tree_type->attr, decl_attr_new(attr_noreturn));
+	e->tree_type = type_attributed(tvoid, attribute_new(attr_noreturn));
 
 	wur_builtin(e);
 }
 
-static expr *parse_unreachable(const char *ident)
+static expr *parse_unreachable(const char *ident, symtable *scope)
 {
 	expr *fcall = expr_new_funcall();
 
 	(void)ident;
+	(void)scope;
 
 	expr_mutate_builtin(fcall, unreachable);
 
@@ -402,41 +409,41 @@ static expr *parse_unreachable(const char *ident)
 
 static void fold_compatible_p(expr *e, symtable *stab)
 {
-	type_ref **types = e->bits.types;
+	type **types = e->bits.types;
 
 	if(dynarray_count(types) != 2)
 		die_at(&e->where, "need two arguments for %s", BUILTIN_SPEL(e->expr));
 
-	fold_type_ref(types[0], NULL, stab);
-	fold_type_ref(types[1], NULL, stab);
+	fold_type(types[0], stab);
+	fold_type(types[1], stab);
 
-	e->tree_type = type_ref_cached_BOOL();
+	e->tree_type = type_nav_btype(cc1_type_nav, type__Bool);
 	wur_builtin(e);
 }
 
 static void const_compatible_p(expr *e, consty *k)
 {
-	type_ref **types = e->bits.types;
+	type **types = e->bits.types;
 
 	CONST_FOLD_LEAF(k);
 
 	k->type = CONST_NUM;
 
-	k->bits.num.val.i = type_ref_cmp(types[0], types[1], 0) == TYPE_EQUAL;
+	k->bits.num.val.i = !!(type_cmp(types[0], types[1], 0) & TYPE_EQUAL_ANY);
 }
 
-static expr *expr_new_funcall_typelist(void)
+static expr *expr_new_funcall_typelist(symtable *scope)
 {
 	expr *fcall = expr_new_funcall();
 
-	fcall->bits.types = parse_type_list();
+	fcall->bits.types = parse_type_list(scope);
 
 	return fcall;
 }
 
-static expr *parse_compatible_p(const char *ident)
+static expr *parse_compatible_p(const char *ident, symtable *scope)
 {
-	expr *fcall = expr_new_funcall_typelist();
+	expr *fcall = expr_new_funcall_typelist(scope);
 
 	(void)ident;
 
@@ -454,7 +461,7 @@ static void fold_constant_p(expr *e, symtable *stab)
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
-	e->tree_type = type_ref_cached_BOOL();
+	e->tree_type = type_nav_btype(cc1_type_nav, type__Bool);
 	wur_builtin(e);
 }
 
@@ -472,9 +479,9 @@ static void const_constant_p(expr *e, consty *k)
 	k->bits.num.val.i = is_const;
 }
 
-static expr *parse_constant_p(const char *ident)
+static expr *parse_constant_p(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 	(void)ident;
 
 	expr_mutate_builtin_const(fcall, constant_p);
@@ -502,11 +509,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 	memcpy_safe(&e->bits.num, &k.bits.num);
 
-	e->tree_type = type_ref_new_ptr(
-			type_ref_new_type(
-				type_new_primitive(type_nchar)
-			),
-			qual_none);
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar));
 
 	wur_builtin(e);
 }
@@ -525,11 +528,11 @@ static expr *builtin_frame_address_mutate(expr *e)
 	return e;
 }
 
-static expr *parse_frame_address(const char *ident)
+static expr *parse_frame_address(const char *ident, symtable *scope)
 {
 	(void)ident;
 
-	return builtin_frame_address_mutate(parse_any_args());
+	return builtin_frame_address_mutate(parse_any_args(scope));
 }
 
 expr *builtin_new_frame_address(int depth)
@@ -546,7 +549,7 @@ expr *builtin_new_frame_address(int depth)
 static void fold_reg_save_area(expr *e, symtable *stab)
 {
 	(void)stab;
-	e->tree_type = type_ref_cached_CHAR_PTR(n);
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar));
 }
 
 static void gen_reg_save_area(expr *e)
@@ -600,9 +603,9 @@ static void const_expect(expr *e, consty *k)
 	const_fold(e->funcargs[0], k);
 }
 
-static expr *parse_expect(const char *ident)
+static expr *parse_expect(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 
 	(void)ident;
 
@@ -664,9 +667,9 @@ static void gen_choose_expr(expr *e)
 	gen_expr(CHOOSE_EXPR_CHOSEN(e));
 }
 
-static expr *parse_choose_expr(const char *ident)
+static expr *parse_choose_expr(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 
 	(void)ident;
 
@@ -681,26 +684,26 @@ static expr *parse_choose_expr(const char *ident)
 
 static void fold_is_signed(expr *e, symtable *stab)
 {
-	type_ref **tl = e->bits.types;
+	type **tl = e->bits.types;
 	int incomplete;
 
 	if(dynarray_count(tl) != 1)
 		die_at(&e->where, "need a single argument for %s", BUILTIN_SPEL(e->expr));
 
-	fold_type_ref(tl[0], NULL, stab);
+	fold_type(tl[0], stab);
 
-	if((incomplete = !type_ref_is_complete(tl[0]))
-	|| !type_ref_is_scalar(tl[0]))
+	if((incomplete = !type_is_complete(tl[0]))
+	|| !type_is_scalar(tl[0]))
 	{
 		warn_at_print_error(&e->where, "%s on %s type '%s'",
 				BUILTIN_SPEL(e->expr),
 				incomplete ? "incomplete" : "non-scalar",
-				type_ref_to_str(tl[0]));
+				type_to_str(tl[0]));
 
 		fold_had_error = 1;
 	}
 
-	e->tree_type = type_ref_cached_BOOL();
+	e->tree_type = type_nav_btype(cc1_type_nav, type__Bool);
 	wur_builtin(e);
 }
 
@@ -708,12 +711,12 @@ static void const_is_signed(expr *e, consty *k)
 {
 	CONST_FOLD_LEAF(k);
 	k->type = CONST_NUM;
-	k->bits.num.val.i = type_ref_is_signed(e->bits.types[0]);
+	k->bits.num.val.i = type_is_signed(e->bits.types[0]);
 }
 
-static expr *parse_is_signed(const char *ident)
+static expr *parse_is_signed(const char *ident, symtable *scope)
 {
-	expr *fcall = expr_new_funcall_typelist();
+	expr *fcall = expr_new_funcall_typelist(scope);
 
 	(void)ident;
 
@@ -752,7 +755,7 @@ need_char_p:
 		case builtin_nan:  prim = type_double; break;
 		case builtin_nanl: prim = type_ldouble; break;
 	}
-	e->tree_type = type_ref_new_type(type_new_primitive(prim));
+	e->tree_type = type_nav_btype(cc1_type_nav, prim);
 
 	wur_builtin(e);
 }
@@ -769,9 +772,9 @@ static expr *builtin_nan_mutate(expr *e)
 	return e;
 }
 
-static expr *parse_nan(const char *ident)
+static expr *parse_nan(const char *ident, symtable *scope)
 {
-	expr *e = builtin_nan_mutate(parse_any_args());
+	expr *e = builtin_nan_mutate(parse_any_args(scope));
 
 	if(!strncmp(ident, PREFIX, strlen(PREFIX)))
 		ident += strlen(PREFIX);
@@ -815,9 +818,9 @@ static void const_strlen(expr *e, consty *k)
 	}
 }
 
-static expr *parse_strlen(const char *ident)
+static expr *parse_strlen(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 
 	(void)ident;
 

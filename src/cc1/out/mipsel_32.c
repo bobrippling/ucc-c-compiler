@@ -6,7 +6,6 @@
 #include "../../util/util.h"
 #include "../../util/alloc.h"
 #include "../../util/platform.h"
-#include "../data_structs.h"
 #include "vstack.h"
 #include "impl.h"
 #include "../cc1.h"
@@ -104,7 +103,7 @@ int impl_scratch_to_reg(int i)
 	return MIPS_REG_TMP_0 + i;
 }
 
-int impl_n_call_regs(type_ref *fr)
+int impl_n_call_regs(type *fr)
 {
 	(void)fr;
 	return N_CALL_REGS;
@@ -118,7 +117,7 @@ void impl_func_prologue_save_fp(void)
 	out_asm("move  $fp, $sp");     /* new frame */
 }
 
-void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
+void impl_func_prologue_save_call_regs(type *rf, int nargs)
 {
 	const unsigned pws = platform_word_size();
 	int i;
@@ -137,14 +136,14 @@ void impl_func_prologue_save_call_regs(type_ref *rf, int nargs)
 	}
 }
 
-int impl_func_prologue_save_variadic(type_ref *rf, int nargs)
+int impl_func_prologue_save_variadic(type *rf, int nargs)
 {
 	(void)rf;
 	ICW("variadic function prologue on MIPS");
 	return 0; /* FIXME */
 }
 
-void impl_func_epilogue(type_ref *fr)
+void impl_func_epilogue(type *fr)
 {
 	out_asm("move $sp, $fp");
 	out_asm("lw $fp,  ($sp)");
@@ -177,15 +176,15 @@ void impl_lea(struct vstack *from, int reg)
 	}
 }
 
-static const char *mips_type_ch(type_ref *ty, int chk_sig)
+static const char *mips_type_ch(type *ty, int chk_sig)
 {
 	int sz, sig;
 
 	if(!ty)
 		return "w";
 
-	sz = type_ref_size(ty, NULL);
-	sig = chk_sig ? type_ref_is_signed(ty) : 1;
+	sz = type_size(ty, NULL);
+	sig = chk_sig ? type_is_signed(ty) : 1;
 
 	switch(sz){
 		case 1:
@@ -221,7 +220,7 @@ void impl_load(struct vstack *from, int reg)
 				out_asm("move $%s, $%s", rstr, sym_regs[MIPS_REG_ZERO]);
 			else
 				out_asm("li%s $%s, %ld",
-						type_ref_is_signed(from->t) ? "" : "u",
+						type_is_signed(from->t) ? "" : "u",
 						rstr, from->bits.val);
 			break;
 
@@ -325,7 +324,7 @@ void impl_op(enum op_type op)
 		reg_str_r(r_vtop, vtop);
 	}
 
-	ssigned = type_ref_is_signed(vtop->t) ? "" : "u";
+	ssigned = type_is_signed(vtop->t) ? "" : "u";
 
 	switch(op){
 #define OP(ty) case op_ ## ty: cmp = #ty; goto cmp
@@ -424,11 +423,11 @@ void impl_op_unary(enum op_type op)
 	}
 }
 
-void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
+void impl_cast_load(type *small, type *big, int is_signed)
 {
 	if(vtop->type != REG){
 		out_comment("// mips cast to %s - loading to register",
-				type_ref_to_str(big));
+				type_to_str(big));
 		v_to_reg(vtop);
 	}
 }
@@ -472,7 +471,7 @@ void impl_jcond(int true, const char *lbl)
 	}
 }
 
-void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
+void impl_call(const int nargs, type *r_ret, type *r_func)
 {
 	int i;
 
@@ -498,7 +497,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	}
 }
 
-void impl_pop_func_ret(type_ref *r)
+void impl_pop_func_ret(type *r)
 {
 	(void)r;
 	v_to_reg2(vtop, REG_RET);
@@ -507,8 +506,8 @@ void impl_pop_func_ret(type_ref *r)
 
 void impl_undefined(void)
 {
-	type_ref *char_ptr = type_ref_new_ptr(
-				type_ref_new_type(
+	type *char_ptr = type_new_ptr(
+				type_new_type(
 					type_new_primitive(type_char)),
 				qual_none);
 

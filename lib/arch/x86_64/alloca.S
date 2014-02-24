@@ -1,5 +1,5 @@
 #include "../../../src/as_cfg.h"
-.section SECTION_TEXT
+.section SECTION_NAME_TEXT
 .globl alloca
 alloca:
 	popq %rsi // return addr

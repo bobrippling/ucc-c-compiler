@@ -24,4 +24,9 @@ char *out_label_case(enum out_label_type, int val);
 char *out_label_flow(const char *fmt);
 char *out_label_block(const char *funcsp);
 
+char *out_dbg_func_end(const char *fn);
+
+void out_label(const char *lbl);
+void out_label_noop(const char *lbl); /* doesn't flush volatiles */
+
 #endif

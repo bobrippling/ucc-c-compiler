@@ -18,6 +18,8 @@ CTAGS       = ${TAG_CMD}
 #define UCC_ARCH    "${UCC_ARCH}"
 #define UCC_INC     "${UCC_INC}"
 
+#define NEED_DSYM $NEED_DSYM
+
 #define UCC_CPPFLAGS "${UCC_CPPFLAGS}"
 #define UCC_CFLAGS   "${UCC_CFLAGS}"
 #define UCC_LDFLAGS  "${UCC_LDFLAGS}"
@@ -31,17 +33,29 @@ CTAGS       = ${TAG_CMD}
 		SECTION_TEXT="__TEXT,__text"
 		SECTION_DATA="__DATA,__data"
 		SECTION_BSS="__BSS,__bss"
+		SECTION_DBG_ABBREV="__DWARF,__debug_abbrev,regular,debug"
+		SECTION_DBG_INFO="__DWARF,__debug_info,regular,debug"
+		SECTION_DBG_LINE="__DWARF,__debug_line,regular,debug"
+		DWARF_INDIRECT_SECTION_LINKS=1
 	else
 		SECTION_TEXT=".text"
 		SECTION_DATA=".data"
 		SECTION_BSS=".bss"
+		SECTION_DBG_ABBREV=".debug_abbrev"
+		SECTION_DBG_INFO=".debug_info"
+		SECTION_DBG_LINE=".debug_line"
+		DWARF_INDIRECT_SECTION_LINKS=0
 	fi
 
 	cat > src/as_cfg.h <<!
-#define SECTION_TEXT $SECTION_TEXT
-#define SECTION_DATA $SECTION_DATA
-#define SECTION_BSS  $SECTION_BSS
+#define SECTION_NAME_TEXT $SECTION_TEXT
+#define SECTION_NAME_DATA $SECTION_DATA
+#define SECTION_NAME_BSS  $SECTION_BSS
+#define SECTION_NAME_DBG_ABBREV $SECTION_DBG_ABBREV
+#define SECTION_NAME_DBG_INFO $SECTION_DBG_INFO
+#define SECTION_NAME_DBG_LINE $SECTION_DBG_LINE
 #define UCC_M32      ${UCC_M32}
+#define DWARF_INDIRECT_SECTION_LINKS $DWARF_INDIRECT_SECTION_LINKS
 #define ASM_PLBL_PRE "$ASM_PLBL"
 !
 
@@ -103,6 +117,7 @@ UCC_CFLAGS=''
 UCC_CPU=x86_64
 UCC_M32=0
 ASM_PLBL=.L
+NEED_DSYM=0
 
 unam="$(uname -s)"
 
@@ -147,6 +162,7 @@ case "$unam" in
 		UCC_CRT='-lcrt1.o'
 		UCC_LDFLAGS='-macosx_version_min 10.5'
 		ASM_PLBL=L
+		NEED_DSYM=1
 		leading_underscore
 
 		TAG_CMD='ctags -dt $$(find . -iname "*.[ch]")'

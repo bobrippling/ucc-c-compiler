@@ -11,6 +11,11 @@ struct A
 	int vals[];
 };
 
+typedef unsigned long size_t;
+extern void *malloc(size_t);
+int memcmp(void const *, void const *, size_t);
+void abort(void);
+
 struct A a = { 2, { 1, 2 } };
 
 struct A *make(int first, ...)

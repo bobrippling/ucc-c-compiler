@@ -31,6 +31,9 @@ dynmap_free(dynmap *map)
 {
 	pair *p, *q;
 
+	if(!map)
+		return;
+
 	for(p = map->pairs; p; q = p->next, free(p), p = q);
 
 	free(map);
@@ -44,7 +47,7 @@ dynmap_nochk_pair(dynmap *map, void *key)
 	assert(key && "null key");
 
 	for(i = map->pairs; i; i = i->next)
-		if(!map->cmp(i->key, key))
+		if(map->cmp ? !map->cmp(i->key, key) : i->key == key)
 			return i;
 
 	return NULL;
@@ -54,6 +57,9 @@ void *
 dynmap_nochk_get(dynmap *map, void *key)
 {
 	pair *i;
+
+	if(!map)
+		return NULL;
 
 	i = dynmap_nochk_pair(map, key);
 	if(i)

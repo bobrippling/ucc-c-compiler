@@ -12,16 +12,16 @@ OBJ = \
 	../util/alloc.o ../util/util.o ../util/platform.o \
 	../util/dynarray.o ../util/dynmap.o ../util/where.o \
 	../util/str.o ../util/std.o ../util/escape.o \
-	str.o label.o strings.o \
+	str.o num.o label.o strings.o \
 	cc1.o pass1.o \
-	tree.o decl.o decl_init.o funcargs.o expr.o stmt.o \
-	type.o type_ref.o type_ref_is.o \
+	decl.o attribute.o decl_init.o funcargs.o expr.o stmt.o \
+	btype.o type.o type_is.o type_nav.o op.o c_types.o \
 	tokconv.o tokenise.o \
-	parse.o parse_type.o \
+	parse_expr.o parse_stmt.o parse_type.o parse_attr.o parse_init.o \
 	fold.o fold_sym.o fold_sue.o const.o format_chk.o \
 	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o \
 	gen_asm.o gen_str.o gen_style.o \
-	out/out.o out/asm.o out/lbl.o out/impl.o \
+	out/out.o out/asm.o out/lbl.o out/impl.o out/write.o out/dbg.o out/leb.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
 	ops/expr_funcall.o ops/expr_identifier.o ops/expr_if.o ops/expr_op.o \
 	ops/expr_sizeof.o ops/expr_val.o ops/expr_stmt.o ops/expr__Generic.o \

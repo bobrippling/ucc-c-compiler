@@ -17,7 +17,7 @@ struct vstack
 	} type;
 	int is_lval;
 
-	type_ref *t;
+	type *t;
 
 	union
 	{
@@ -66,12 +66,12 @@ struct vstack
 
 extern struct vstack *vtop;
 
-void vpush(type_ref *) ucc_nonnull();
+void vpush(type *) ucc_nonnull();
 void vpop(void);
 void vswap(void);
 
-void v_clear(struct vstack *vp, type_ref *);
-void v_clear(struct vstack *vp, type_ref *) ucc_nonnull();
+void v_clear(struct vstack *vp, type *);
+void v_clear(struct vstack *vp, type *) ucc_nonnull();
 void v_set_reg(struct vstack *vp, const struct vreg *r);
 void v_set_reg_i(struct vstack *vp, int idx);
 
@@ -81,10 +81,10 @@ void v_set_flag(
 		enum flag_mod mods);
 
 void v_set_stack(
-		struct vstack *vp, type_ref *ty,
+		struct vstack *vp, type *ty,
 		long off, int lval);
 
-void v_cast(struct vstack *vp, type_ref *to);
+void v_cast(struct vstack *vp, type *to);
 
 void v_inv_cmp(struct flag_opts *);
 
@@ -116,7 +116,7 @@ void v_freeup_reg(const struct vreg *, int allowable_stack);
 void v_freeup_regs(const struct vreg *, const struct vreg *);
 void v_save_reg(struct vstack *vp);
 /* if func_ty != NULL, don't save callee-save-regs */
-void v_save_regs(int n_ignore, type_ref *func_ty);
+void v_save_regs(int n_ignore, type *func_ty);
 void v_reserve_reg(const struct vreg *);
 void v_unreserve_reg(const struct vreg *);
 
@@ -135,7 +135,7 @@ unsigned v_stack_align(unsigned const align, int do_mask);
 void v_deref_decl(struct vstack *vp);
 
 int impl_n_scratch_regs(void);
-unsigned impl_n_call_regs(type_ref *);
+unsigned impl_n_call_regs(type *);
 int impl_ret_reg(void);
 
 #endif

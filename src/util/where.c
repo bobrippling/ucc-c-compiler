@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <string.h>
+
 #include "where.h"
 
 #define WHERE_FMT "%s:%d:%d"
@@ -26,4 +28,9 @@ void where_current(where *w)
 	w->chr      = loc_tok.chr;
 	w->line_str = current_line_str;
 	w->len      = 0;
+}
+
+int where_equal(where *a, where *b)
+{
+	return memcmp(a, b, sizeof *a) == 0;
 }

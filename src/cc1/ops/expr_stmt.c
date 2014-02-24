@@ -1,6 +1,7 @@
 #include "ops.h"
 #include "expr_stmt.h"
 #include "../../util/dynarray.h"
+#include "../type_nav.h"
 
 static void expr_stmt_lea(expr *);
 
@@ -16,9 +17,9 @@ void fold_expr_stmt(expr *e, symtable *stab)
 
 	(void)stab;
 
-	last = dynarray_count(e->code->codes);
+	last = dynarray_count(e->code->bits.code.stmts);
 	if(last){
-		last_stmt = e->code->codes[last - 1];
+		last_stmt = e->code->bits.code.stmts[last - 1];
 		last_stmt->freestanding = 1; /* allow the final to be freestanding */
 		last_stmt->expr_no_pop = 1;
 	}
@@ -38,7 +39,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 			e->lvalue_internal = 1;
 		}
 	}else{
-		e->tree_type = type_ref_cached_VOID(); /* void expr */
+		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 	}
 
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */
@@ -51,8 +52,8 @@ static void expr_stmt_maybe_push(expr *e)
 	 * if the last stmt isn't an expression, we put something
 	 * on the stack for it
 	 */
-	int n = dynarray_count(e->code->codes);
-	if(n == 0 || !stmt_kind(e->code->codes[n-1], expr))
+	int n = dynarray_count(e->code->bits.code.stmts);
+	if(n == 0 || !stmt_kind(e->code->bits.code.stmts[n-1], expr))
 		out_push_noop();
 }
 
@@ -72,8 +73,8 @@ static void expr_stmt_lea(expr *e)
 	gen_stmt_code_m1(e->code, 1);
 	/* vstack hasn't changed, no implicit pops done for ^ */
 
-	n = dynarray_count(e->code->codes);
-	lea_expr(e->code->codes[n - 1]->expr);
+	n = dynarray_count(e->code->bits.code.stmts);
+	lea_expr(e->code->bits.code.stmts[n - 1]->expr);
 }
 
 void gen_expr_str_stmt(expr *e)

@@ -109,3 +109,8 @@ char *out_label_flow(const char *fmt)
 	SNPRINTF(ret, len, ASM_PLBL_PRE "flow_%s_%d", fmt, flow_last++);
 	return ret;
 }
+
+char *out_dbg_func_end(const char *fn)
+{
+	return ustrprintf(ASM_PLBL_PRE "funcend_%s", fn);
+}
