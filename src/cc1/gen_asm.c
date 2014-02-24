@@ -65,7 +65,10 @@ void lea_expr(expr *e)
 
 void gen_maybe_struct_expr(expr *e)
 {
-	(e->f_lea ? lea_expr : gen_expr)(e);
+	/* if we have a struct, we load its address to save dereferencing and
+	 * splattering it all over the backend code gen. */
+
+	(e->f_lea && type_is_s_or_u(e->tree_type) ? lea_expr : gen_expr)(e);
 }
 
 void gen_stmt(stmt *t)
