@@ -355,6 +355,14 @@ void fold_type_w_attr(
 	/* checks that rely on r->ref being folded... */
 	switch(r->type){
 		case type_array:
+			if(!type_is_complete(r->ref)){
+				fold_had_error = 1;
+				warn_at_print_error(loc,
+						"array has incomplete type '%s'",
+						type_to_str(r->ref));
+			}
+			/* fall through to x()[] check */
+
 		case type_func:
 			if(type_is(r->ref, type_func)){
 				fold_had_error = 1;
