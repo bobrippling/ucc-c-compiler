@@ -54,6 +54,11 @@ int impl_reg_is_callee_save(const struct vreg *r, type *fr);
 void impl_comment(enum section_type, const char *fmt, va_list l);
 void impl_lbl(const char *lbl);
 
+/* implicitly takes vtop as a pointer to the memory */
+void impl_overlay_mem2regs(
+		unsigned memsz, unsigned nregs,
+		struct vreg regs[]);
+
 enum flag_cmp op_to_flag(enum op_type op);
 
 /* can't do this for gen_deps.sh */

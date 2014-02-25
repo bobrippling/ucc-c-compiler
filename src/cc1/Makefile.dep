@@ -1338,10 +1338,20 @@ out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
  out/../../as_cfg.h out/leb.h out/lbl.h out/dbg.h out/write.h \
  out/../../util/compiler.h
 out/impl.o: out/impl.c out/../../util/util.h out/../../util/where.h \
- out/../../util/compiler.h out/../decl.h out/../type.h out/../num.h \
- out/../btype.h out/../../util/where.h out/../attribute.h out/../retain.h \
- out/../op.h out/vstack.h out/asm.h out/impl.h out/x86_64.h out/write.h \
- out/../../util/compiler.h
+ out/../../util/compiler.h out/../../util/platform.h out/../decl.h \
+ out/../type.h out/../num.h out/../btype.h out/../../util/where.h \
+ out/../attribute.h out/../retain.h out/../op.h out/../type_nav.h \
+ out/../sue.h out/../decl.h out/../expr.h out/../strings.h \
+ out/../../util/dynmap.h out/../../util/dyn.h out/../op.h out/../sym.h \
+ out/../const.h out/../ops/expr_addr.h out/../ops/expr_assign.h \
+ out/../ops/expr_assign_compound.h out/../ops/expr_cast.h \
+ out/../ops/expr_comma.h out/../ops/expr_funcall.h \
+ out/../ops/expr_identifier.h out/../ops/expr_if.h out/../ops/expr_op.h \
+ out/../ops/expr_sizeof.h out/../ops/expr_val.h out/../ops/expr_stmt.h \
+ out/../ops/expr_deref.h out/../ops/expr_struct.h \
+ out/../ops/expr_compound_lit.h out/../ops/expr_string.h out/vstack.h \
+ out/asm.h out/impl.h out/x86_64.h out/write.h out/../../util/compiler.h \
+ out/out.h out/../type.h out/../num.h out/../sym.h
 out/lbl.o: out/lbl.c out/../../util/alloc.h out/../../util/compiler.h \
  out/../../util/util.h out/../../util/where.h out/common.h out/lbl.h \
  out/../../as_cfg.h

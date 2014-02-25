@@ -654,61 +654,14 @@ static void x86_func_ret_memcpy(struct vreg *ret_reg, type *called)
 
 static void x86_func_ret_regs(type *called)
 {
-	struct vreg rax = VREG_INIT(X86_64_REG_RAX, 0);
-	struct vreg rdx = VREG_INIT(X86_64_REG_RDX, 0);
 	const unsigned sz = type_size(called, NULL);
+	struct vreg regs[] = {
+		VREG_INIT(X86_64_REG_RAX, 0),
+		VREG_INIT(X86_64_REG_RDX, 0)
+	};
 
-	/* overlay *vtop into rdx:rax */
-	{
-		out_dup(); /* vv */
-
-		/* read either an int or a long */
-		out_change_type(
-				type_ptr_to(
-					type_nav_btype(
-						cc1_type_nav,
-						sz > 4 ? type_long : type_int)));
-
-		out_deref(); /* vA */
-
-		/* move to %rax */
-		v_freeup_reg(&rax, 0);
-		v_to_reg_given(vtop, &rax);
-		v_reserve_reg(&rax); /* prevent changes */
-		/* forget about %rax, as far as the vstack is concerned */
-		out_pop();
-
-		if(sz > 8){
-			out_change_type(
-					type_ptr_to(
-						type_nav_btype(cc1_type_nav, type_uchar)));
-			/* v */
-
-			out_push_l(
-					type_nav_btype(cc1_type_nav, type_intptr_t),
-					8);
-			/* v8 */
-
-			out_op(op_plus);
-			/* {v+8} */
-
-			out_change_type(
-					type_ptr_to(
-						type_nav_btype(
-							cc1_type_nav,
-							sz > 12 ? type_long : type_int)));
-
-			out_deref();
-			/* D */
-
-			/* move to %rdx */
-			v_freeup_reg(&rdx, 0);
-			v_to_reg_given(vtop, &rdx);
-			out_pop();
-		}
-	}
-
-	v_unreserve_reg(&rax);
+	/* read from the stack to registers */
+	impl_overlay_mem2regs(sz, 2, regs);
 }
 
 void impl_pop_func_ret(type *ty_f)
