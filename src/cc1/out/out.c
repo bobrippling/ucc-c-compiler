@@ -934,6 +934,7 @@ void out_memcpy(unsigned long bytes)
 	unsigned tptr_sz;
 
 	if(bytes > 0){
+		out_comment("builtin-memcpy(%ld)", bytes);
 		tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, bytes));
 		tptr_sz = type_size(tptr, NULL);
 	}

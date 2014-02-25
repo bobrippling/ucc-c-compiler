@@ -63,6 +63,11 @@ static void impl_overlay_mem_reg(
 			nregs * pws >= memsz,
 			"not enough registers for memory overlay");
 
+	out_comment("overlay, %s2%s(%u)",
+			mem2reg ? "mem" : "reg",
+			mem2reg ? "reg" : "mem",
+			memsz);
+
 	if(!mem2reg){
 		/* reserve all registers so we don't accidentally wipe before the spill */
 		for(reg_i = 0; reg_i < nregs; reg_i++)
