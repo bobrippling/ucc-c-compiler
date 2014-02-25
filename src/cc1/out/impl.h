@@ -59,6 +59,11 @@ void impl_overlay_mem2regs(
 		unsigned memsz, unsigned nregs,
 		struct vreg regs[]);
 
+/* same - implicit vtop */
+void impl_overlay_regs2mem(
+		unsigned memsz, unsigned nregs,
+		struct vreg regs[]);
+
 enum flag_cmp op_to_flag(enum op_type op);
 
 /* can't do this for gen_deps.sh */

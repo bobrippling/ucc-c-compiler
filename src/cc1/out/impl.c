@@ -51,9 +51,9 @@ int vreg_eq(const struct vreg *a, const struct vreg *b)
 	return a->idx == b->idx && a->is_float == b->is_float;
 }
 
-void impl_overlay_mem2regs(
+static void impl_overlay_mem_reg(
 		unsigned memsz, unsigned nregs,
-		struct vreg regs[])
+		struct vreg regs[], int mem2reg)
 {
 	const unsigned pws = platform_word_size();
 	struct vreg *cur_reg = regs;
@@ -63,28 +63,42 @@ void impl_overlay_mem2regs(
 			nregs * pws >= memsz,
 			"not enough registers for memory overlay");
 
-	out_dup(); /* vv */
+	if(!mem2reg){
+		/* reserve all registers so we don't accidentally wipe before the spill */
+		for(reg_i = 0; reg_i < nregs; reg_i++)
+			v_reserve_reg(&regs[reg_i]);
+	}
 
 	for(;; cur_reg++, reg_i++){
-		/* read whatever size is required */
-		type *this_read_ty = type_nav_MAX_FOR(cc1_type_nav, memsz);
-		unsigned this_read_sz = type_size(this_read_ty, NULL);
+		/* read/write whatever size is required */
+		type *this_ty = type_nav_MAX_FOR(cc1_type_nav, memsz);
+		unsigned this_sz = type_size(this_ty, NULL);
 
-		UCC_ASSERT(this_read_sz <= memsz, "reading too much memory");
+		UCC_ASSERT(this_sz <= memsz, "reading/writing too much memory");
 
-		out_change_type(type_ptr_to(this_read_ty));
-		out_deref(); /* vA */
+		out_dup(); /* vv */
+		out_change_type(type_ptr_to(this_ty));
 
-		/* move to register */
-		UCC_ASSERT(reg_i < nregs, "reg oob");
-		v_freeup_reg(cur_reg, 0);
-		v_to_reg_given(vtop, cur_reg);
-		v_reserve_reg(cur_reg); /* prevent changes */
+		if(mem2reg){
+			out_deref(); /* vA */
 
-		/* forget about the register, as far as the vstack is concerned */
-		out_pop(); /* v */
+			/* move to register */
+			UCC_ASSERT(reg_i < nregs, "reg oob");
+			v_freeup_reg(cur_reg, 0);
+			v_to_reg_given(vtop, cur_reg);
+			v_reserve_reg(cur_reg); /* prevent changes */
 
-		memsz -= this_read_sz;
+			/* forget about the register, as far as the vstack is concerned */
+			out_pop(); /* v */
+		}else{
+			vpush(this_ty); /* vvR */
+			v_set_reg(vtop, cur_reg);
+			out_store(); /* vv */
+
+			out_pop(); /* v */
+		}
+
+		memsz -= this_sz;
 
 		/* early termination */
 		if(memsz == 0)
@@ -103,4 +117,18 @@ void impl_overlay_mem2regs(
 	/* done, unreserve all registers */
 	for(reg_i = 0; reg_i < nregs; reg_i++)
 		v_unreserve_reg(&regs[reg_i]);
+}
+
+void impl_overlay_mem2regs(
+		unsigned memsz, unsigned nregs,
+		struct vreg regs[])
+{
+	impl_overlay_mem_reg(memsz, nregs, regs, 1);
+}
+
+void impl_overlay_regs2mem(
+		unsigned memsz, unsigned nregs,
+		struct vreg regs[])
+{
+	impl_overlay_mem_reg(memsz, nregs, regs, 0);
 }
