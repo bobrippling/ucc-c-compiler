@@ -1,22 +1,21 @@
 struct A
 {
 	int i, j, k;
-	float f;
+	//float f;
 };
 
-f(struct A a)
-#ifdef I
+struct A f(void)
+#ifdef IMPL
 {
-	return a.i + a.j + a.k + a.f;
+	return (struct A){ 1, 2 };
 }
 #else
 ;
-#endif
 
-#ifndef I
-main()
+int main()
 {
-	struct A a = { 1, 2, 3, 4 };
-	return f(a);
+	struct A x = f();
+
+	printf("%d %d %d\n", x.i, x.j, x.k);
 }
 #endif
