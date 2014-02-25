@@ -189,14 +189,45 @@ static const char *x86_suffix(type *ty)
 	ICE("no suffix for %s", type_to_str(ty));
 }
 
-static unsigned x86_stret(type *r)
+enum stret
 {
-	if(type_is_s_or_u(r)){
-		unsigned sz = type_size(r, NULL);
-		if(sz > platform_word_size())
-			return sz;
+	stret_scalar,
+	stret_regs,
+	stret_memcpy
+};
+
+static enum stret x86_stret(type *ty, unsigned *stack_space)
+{
+	int nfloats;
+	struct_union_enum_st *su = type_is_s_or_u(ty);
+
+	if(!su){
+		if(stack_space)
+			*stack_space = 0;
+		return stret_scalar;
 	}
-	return 0;
+
+	if(IS_32_BIT())
+		ICE("TODO: 32-bit stret");
+
+	nfloats = struct_union_nfloats(su);
+	if(nfloats){
+		ICE("TODO: float stret");
+
+	}else{
+		unsigned sz = type_size(ty, NULL);
+
+		/* rdx:rax */
+		if(sz > 2 * platform_word_size()){
+			if(stack_space)
+				*stack_space = sz;
+			return stret_memcpy;
+		}
+
+		if(stack_space)
+			*stack_space = 0;
+		return stret_regs;
+	}
 }
 
 static void x86_set_stret_ptr(struct vstack *vp)
@@ -403,11 +434,17 @@ void impl_func_prologue_save_call_regs(
 		type *rf, unsigned nargs,
 		int arg_offsets[/*nargs*/])
 {
-	unsigned stret = 0;
+	int is_stret = 0;
 
 	/* save the stret hidden argument */
-	if((stret = x86_stret(type_func_call(rf, NULL))))
-		nargs++;
+	switch(x86_stret(type_func_call(rf, NULL), NULL)){
+		case stret_regs:
+		case stret_scalar:
+			break;
+		case stret_memcpy:
+			nargs++;
+			is_stret = 1;
+	}
 
 	if(nargs){
 		const unsigned ws = platform_word_size();
@@ -426,7 +463,7 @@ void impl_func_prologue_save_call_regs(
 
 			funcargs_ty_calc(fa, &int_cnt, &fp_cnt);
 
-			int_cnt += stret;
+			int_cnt += is_stret;
 
 			n_call_i = MIN(n_call_i, int_cnt);
 			n_call_f = MIN(n_call_f, fp_cnt);
@@ -472,12 +509,12 @@ void impl_func_prologue_save_call_regs(
 
 					reg_to_stack(rp, ty, off);
 
-					set_arg_offset(arg_offsets, i_arg, stret, -off);
+					set_arg_offset(arg_offsets, i_arg, is_stret, -off);
 				}
 
 				continue;
 pass_via_stack:
-				set_arg_offset(arg_offsets, i_arg, stret, (i_arg_stk++ + 2) * ws);
+				set_arg_offset(arg_offsets, i_arg, is_stret, (i_arg_stk++ + 2) * ws);
 			}
 		}else{
 			unsigned i;
@@ -488,10 +525,10 @@ pass_via_stack:
 							x86_reg_str(&call_regs[i], NULL));
 
 					/* +1 to step over saved rbp */
-					set_arg_offset(arg_offsets, i, stret, -(i + 1) * ws);
+					set_arg_offset(arg_offsets, i, is_stret, -(i + 1) * ws);
 				}else{
 					/* +2 to step back over saved rbp and saved rip */
-					set_arg_offset(arg_offsets, i, stret, (i - n_call_i + 2) * ws);
+					set_arg_offset(arg_offsets, i, is_stret, (i - n_call_i + 2) * ws);
 				}
 			}
 
@@ -1597,7 +1634,7 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 	unsigned stret_stack = 0, stret_pos = 0;
 	unsigned stk_snapshot = 0;
 	int i;
-	int stret = 0;
+	enum stret stret_kind;
 
 	x86_call_regs(r_func, &n_call_iregs, &call_iregs);
 
@@ -1621,11 +1658,15 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 	}
 
 	/* hidden stret argument */
-	if((stret_stack = x86_stret(r_ret))){
-		nints++;
-		stret = 1;
-		stret_stack = v_alloc_stack(stret_stack, "stret space");
-		stret_pos = v_stack_sz();
+	switch((stret_kind = x86_stret(r_ret, &stret_stack))){
+		case stret_memcpy:
+			nints++; /* only an extra pointer arg for stret_memcpy */
+			/* fall */
+		case stret_regs:
+			stret_stack = v_alloc_stack(stret_stack, "stret space");
+			stret_pos = v_stack_sz();
+		case stret_scalar:
+			break;
 	}
 
 	/* do we need to do any stacking? */
@@ -1683,8 +1724,8 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 	}
 
 	nints = nfloats = 0;
-	/* hidden stret pointer */
-	if(stret){
+	/* setup hidden stret pointer argument */
+	if(stret_kind == stret_memcpy){
 		const struct vreg *stret_reg = &call_iregs[nints];
 		nints++;
 
@@ -1768,7 +1809,10 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 
 			/* only the register arguments - glibc's printf of x86_64 linux
 			 * segfaults if this is 9 or greater */
-			out_push_l(type_nav_btype(cc1_type_nav, type_nchar), MIN(nfloats, N_CALL_REGS_F));
+			out_push_l(
+					type_nav_btype(cc1_type_nav, type_nchar),
+					MIN(nfloats, N_CALL_REGS_F));
+
 			v_to_reg_given(vtop, &r);
 			vpop();
 		}

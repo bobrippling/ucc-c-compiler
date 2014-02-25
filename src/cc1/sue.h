@@ -93,6 +93,8 @@ unsigned sue_size(struct_union_enum_st *, where *w);
 unsigned sue_align(struct_union_enum_st *, where *w);
 int sue_enum_size(struct_union_enum_st *st);
 
+unsigned struct_union_nfloats(struct_union_enum_st *);
+
 void sue_incomplete_chk(struct_union_enum_st *st, where *w);
 
 struct decl *struct_union_member_find(struct_union_enum_st *,

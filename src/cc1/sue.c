@@ -90,6 +90,19 @@ unsigned sue_align(struct_union_enum_st *st, where *w)
 	return st->align;
 }
 
+unsigned struct_union_nfloats(struct_union_enum_st *su)
+{
+	sue_member **mi;
+	unsigned nfloats = 0;
+
+	UCC_ASSERT(su->primitive != type_enum, "enum?");
+
+	for(mi = su->members; mi && *mi; mi++)
+		nfloats += type_is_floating((*mi)->struct_member->ref);
+
+	return nfloats;
+}
+
 struct_union_enum_st *sue_find_this_scope(symtable *stab, const char *spel)
 {
 	struct_union_enum_st **i;
