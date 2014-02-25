@@ -1865,11 +1865,33 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 		if(stret_kind == stret_regs){
 			/* we behave the same as stret_memcpy(),
 			 * but we must spill the regs out */
+			struct vreg regs[] = {
+				VREG_INIT(X86_64_REG_RAX, 0),
+				VREG_INIT(X86_64_REG_RDX, 0)
+			};
 
-			/* TODO: x86_func_ret_regs_save(); */
+			v_clear(vtop, type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
+			v_set_stack(vtop, NULL, -(long)stret_pos, /*lval:*/0);
+			/* to leave... */
+
+			/* spill from registers to the stack */
+			impl_overlay_regs2mem(stret_stack, 2, regs);
+
+			/* left as the return vstack */
 		}
 
 		v_dealloc_stack(stret_stack);
+	}
+
+	/* return type */
+	if(stret_kind != stret_regs){
+		/* rax / xmm0, otherwise the return has
+		 * been set to a local stack address */
+		const int fp = type_is_floating(r_ret);
+		struct vreg vr = VREG_INIT(fp ? REG_RET_F : REG_RET_I, fp);
+
+		v_clear(vtop, r_ret);
+		v_set_reg(vtop, &vr);
 	}
 
 	free(float_arg);

@@ -1437,15 +1437,7 @@ void out_change_type(type *t)
 
 void out_call(int nargs, type *r_ret, type *r_func)
 {
-	const int fp = type_is_floating(r_ret);
-	struct vreg vr = VREG_INIT(fp ? REG_RET_F : REG_RET_I, fp);
-
 	impl_call(nargs, r_ret, r_func);
-
-	/* return type */
-	v_clear(vtop, r_ret);
-
-	v_set_reg(vtop, &vr);
 }
 
 void out_jmp(void)
