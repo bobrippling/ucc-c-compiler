@@ -1111,7 +1111,7 @@ static void dwarf_flush_die_block(
 			break;
 
 		case BLOCK_ADDR_STR:
-			dwarf_printf(&state->info, QUAD,
+			dwarf_printf(&state->info, platform_word_size(),
 					"%s # DW_FORM_block, address\n",
 					e->bits.str);
 			break;
@@ -1190,7 +1190,7 @@ form_data:
 				break;
 
 			case DW_FORM_ADDR4: fty = LONG; goto addr;
-			case DW_FORM_addr: fty = QUAD; goto addr;
+			case DW_FORM_addr: fty = platform_word_size(); goto addr;
 addr:
 				dwarf_printf(&state->info, fty, "%s",
 						a->bits.str ?  a->bits.str : "0");
@@ -1298,7 +1298,7 @@ static unsigned long dwarf_offset_die(
 		enum dwarf_attr_encoding enc = a->enc;
 
 		switch(enc){
-			case DW_FORM_addr:  off += QUAD; break;
+			case DW_FORM_addr:  off += platform_word_size(); break;
 			case DW_FORM_ADDR4: off += LONG; break;
 
 			case DW_FORM_data1: off += BYTE; break;
@@ -1339,7 +1339,7 @@ static unsigned long dwarf_offset_die(
 									e->type == BLOCK_LEB128_S);
 							break;
 						case BLOCK_ADDR_STR:
-							off += QUAD;
+							off += platform_word_size();
 							break;
 					}
 				}
