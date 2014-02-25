@@ -1,32 +1,47 @@
 UCC = ./ucc
-GCC = gcc-4.9
-LD = ${GCC}
+LD = ${CC}
 
-OUTS = struct_call.ucc_i.gcc_c.out struct_call.gcc_i.ucc_c.out \
-	struct_call.ucc_i.ucc_c.out struct_call.gcc_i.gcc_c.out
+MACRO = IMPL
 
-all: ${OUTS}
+.PHONY: T tcheck clean
 
-clean:
-	rm -f ${OUTS} struct_call*.o
+T: tcheck
+	make -f struct_call.mk \
+		$T.ucc_i.xcc_c	\
+		$T.ucc_i.ucc_c	\
+		$T.xcc_i.xcc_c	\
+		$T.xcc_i.ucc_c
 
-struct_call.ucc_i.gcc_c.out: struct_call.ucc_i.o struct_call.gcc_c.o
+tcheck:
+	@if test -z "$T"; then echo >&2 "Need target / \$$T"; false; fi
+
+clean: tcheck
+	rm -f \
+		$T.ucc_i.xcc_c	\
+		$T.ucc_i.ucc_c	\
+		$T.xcc_i.xcc_c	\
+		$T.xcc_i.ucc_c
+
+%: \
+	%.ucc_i.xcc_c \
+	%.ucc_i.ucc_c \
+	%.xcc_i.xcc_c \
+	%.xcc_i.ucc_c
+
+%.ucc_i.xcc_c: %.ucc_i.o %.xcc_c.o
+	${LD} -o $@ $^
+%.xcc_i.ucc_c: %.xcc_i.o %.ucc_c.o
+	${LD} -o $@ $^
+%.ucc_i.ucc_c: %.ucc_i.o %.ucc_c.o
+	${LD} -o $@ $^
+%.xcc_i.xcc_c: %.xcc_i.o %.xcc_c.o
 	${LD} -o $@ $^
 
-struct_call.gcc_i.ucc_c.out: struct_call.gcc_i.o struct_call.ucc_c.o
-	${LD} -o $@ $^
-
-struct_call.ucc_i.ucc_c.out: struct_call.ucc_i.o struct_call.ucc_c.o
-	${LD} -o $@ $^
-
-struct_call.gcc_i.gcc_c.out: struct_call.gcc_i.o struct_call.gcc_c.o
-	${LD} -o $@ $^
-
-struct_call.gcc_c.o: struct_call.c
-	${GCC} -c -o $@ $<
-struct_call.gcc_i.o: struct_call.c
-	${GCC} -c -DI -o $@ $<
-struct_call.ucc_c.o: struct_call.c
+%.xcc_c.o: %.c
+	${CC} -c -o $@ $<
+%.xcc_i.o: %.c
+	${CC} -c -D${MACRO} -o $@ $<
+%.ucc_c.o: %.c
 	${UCC} -c -o $@ $<
-struct_call.ucc_i.o: struct_call.c
-	${UCC} -c -DI -o $@ $<
+%.ucc_i.o: %.c
+	${UCC} -c -D${MACRO} -o $@ $<
