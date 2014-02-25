@@ -217,15 +217,19 @@ static enum stret x86_stret(type *ty, unsigned *stack_space)
 	}else{
 		unsigned sz = type_size(ty, NULL);
 
-		/* rdx:rax */
-		if(sz > 2 * platform_word_size()){
-			if(stack_space)
-				*stack_space = sz;
-			return stret_memcpy;
-		}
-
+		/* We unconditionally want to spill rdx:rax to the stack on return.
+		 * This could be optimised in the future
+		 * (in a similar vein as long long on x86/32-bit)
+		 * so that we can handle vtops with structure/union type
+		 * and multiple registers.
+		 */
 		if(stack_space)
-			*stack_space = 0;
+			*stack_space = sz;
+
+		/* rdx:rax? */
+		if(sz > 2 * platform_word_size())
+			return stret_memcpy;
+
 		return stret_regs;
 	}
 }
@@ -709,12 +713,13 @@ static void x86_func_ret_regs(type *called)
 
 void impl_pop_func_ret(type *ty_f)
 {
-	/* FIXME: merge with mips */
 	type *called = type_func_call(ty_f, NULL);
 	struct vreg r;
 
 	switch(x86_stret(called, NULL)){
 		case stret_memcpy:
+			/* this function is responsible for memcpy()ing
+			 * the struct back */
 			x86_func_ret_memcpy(&r, called);
 			break;
 
@@ -724,7 +729,11 @@ void impl_pop_func_ret(type *ty_f)
 			break;
 
 		case stret_regs:
+			/* this function returns in regs, the caller is
+			 * responsible doing what it wants,
+			 * i.e. memcpy()ing the regs into stack space */
 			x86_func_ret_regs(called);
+			vpop();
 			return;
 	}
 
@@ -1898,8 +1907,17 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 		v_dealloc_stack(arg_stack);
 	if(align_stack)
 		v_dealloc_stack(align_stack);
-	if(stret_stack)
+
+	if(stret_stack){
+		if(stret_kind == stret_regs){
+			/* we behave the same as stret_memcpy(),
+			 * but we must spill the regs out */
+
+			/* TODO: x86_func_ret_regs_save(); */
+		}
+
 		v_dealloc_stack(stret_stack);
+	}
 
 	free(float_arg);
 }
