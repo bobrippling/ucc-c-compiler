@@ -628,32 +628,44 @@ void impl_func_epilogue(type *rf)
 	}
 }
 
+static void x86_func_ret_memcpy(struct vreg *ret_reg, type *called)
+{
+	/* copy from *%rax to *%rdi (first argument) */
+	out_comment("stret copy");
+
+	vpush(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
+	x86_set_stret_ptr(vtop);
+
+	out_swap();
+	out_memcpy(type_size(called, NULL));
+
+	out_pop();
+
+	/* return the stret pointer argument */
+	x86_set_stret_ptr(vtop);
+
+	ret_reg->is_float = 0;
+	ret_reg->idx = REG_RET_I;
+}
+
 void impl_pop_func_ret(type *ty_f)
 {
 	/* FIXME: merge with mips */
 	type *called = type_func_call(ty_f, NULL);
 	struct vreg r;
 
-	if(x86_stret(called)){
-		/* copy from *%rax to *%rdi (first argument) */
-		out_comment("stret copy");
+	switch(x86_stret(called, NULL)){
+		case stret_memcpy:
+			x86_func_ret_memcpy(&r, called);
+			break;
 
-		vpush(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
-		x86_set_stret_ptr(vtop);
+		case stret_scalar:
+			r.is_float = type_is_floating(called);
+			r.idx = r.is_float ? REG_RET_F : REG_RET_I;
+			break;
 
-		out_swap();
-		out_memcpy(type_size(called, NULL));
-
-		out_pop();
-
-		/* return the stret pointer argument */
-		x86_set_stret_ptr(vtop);
-
-		r.is_float = 0;
-		r.idx = REG_RET_I;
-	}else{
-		r.is_float = type_is_floating(called);
-		r.idx = r.is_float ? REG_RET_F : REG_RET_I;
+		case stret_regs:
+			ICE("TODO: pop to stret regs");
 	}
 
 	/* v_to_reg since we don't handle lea/load ourselves */
