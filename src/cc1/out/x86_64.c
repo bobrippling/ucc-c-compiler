@@ -1877,7 +1877,9 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 			/* spill from registers to the stack */
 			impl_overlay_regs2mem(stret_stack, 2, regs);
 
-			/* left as the return vstack */
+			/* left as the return vstack - the previous call would mutate
+			 * our stret pointer, so we reset it */
+			v_set_stack(vtop, NULL, -(long)stret_pos, /*lval:*/0);
 		}
 
 		v_dealloc_stack(stret_stack);
