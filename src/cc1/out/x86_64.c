@@ -290,9 +290,15 @@ static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
 
 	UCC_ASSERT(su->primitive != type_enum, "enum?");
 
-	for(i = 0, mi = su->members; mi && *mi; mi++, i++)
-		types[i] = type_is_floating((*mi)->struct_member->ref) ? FLOAT : INT;
+	for(i = 0, mi = su->members; mi && *mi; mi++, i++){
 
+		/* TODO: bitfields */
+		UCC_ASSERT(i < 4, "too many members for regpair struct");
+
+		types[i] = type_is_floating((*mi)->struct_member->ref) ? FLOAT : INT;
+	}
+
+	/* TODO: factor this into the loop, `previous == FLOAT' etc etc */
 	if(types[0] == FLOAT && types[1] == FLOAT){
 		regpair[0].is_float = 1;
 		regpair[0].idx = X86_64_REG_XMM0;
