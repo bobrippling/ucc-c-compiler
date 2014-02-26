@@ -10,6 +10,9 @@ MACRO = IMPL
 T: tcheck
 	make -f struct_call.mk ${TARGETS}
 
+run: T
+	for t in ${TARGETS}; do ./$$t || break; done
+
 tcheck:
 	@if test -z "$T"; then echo >&2 "Need target / \$$T"; false; fi
 
