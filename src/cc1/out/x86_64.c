@@ -198,6 +198,28 @@ enum stret
 
 static enum stret x86_stret(type *ty, unsigned *stack_space)
 {
+	/*
+	 * in short:
+	 * rdx:rax
+	 *   all integer structs from char <--> long long
+	 *
+	 * xmm0:xmm1
+	 *   all float structs from float <--> double[2] / double+float[2]
+	 *
+	 * x87 (TODO)
+	 *   struct { long double; } // anything larger is in memory
+	 *   return (_Complex long double)0 // x87
+	 *   return (struct { _Complex long double cld; }){ 0 }; // memory
+	 *
+	 * xmm0:rax
+	 *   struct { char<-->long, float[1..2]/double }
+	 * rax:xmm0
+	 *   inverse of above
+	 *
+	 * memory:
+	 *   struct { char[17..]/short[9..]/etc }
+	 *   struct { char, short, int, char } // final char busts it due to padding
+	 */
 	unsigned nfloats;
 	unsigned sz;
 	struct_union_enum_st *su = type_is_s_or_u(ty);
@@ -240,7 +262,26 @@ static enum stret x86_stret(type *ty, unsigned *stack_space)
 static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
 {
 	/* if we have two floats at either 0-1 or 2-3, then we can do
-	 * a xmm0:rax or rax:xmm0 return */
+	 * a xmm0:rax or rax:xmm0 return. Otherwise we fallback to rdx:rax overlay
+	 *
+	 * x86_64 ABI, 3.2.3:
+	 *
+	 * 4. Each field [...] classified recursively so that always two fields
+	 * are considered.
+	 *   (a) If both classes are equal, this is the resulting class.
+	 *   // adjacent floats or ints
+	 *   (b) If one of the classes is NO_CLASS, the resulting class is the other.
+	 *   // empty structs - ignored
+	 *   (c) If one of the classes is MEMORY, the result is the MEMORY class.
+	 *   // big struct, etc
+	 *   (d) If one of the classes is INTEGER, the result is the INTEGER.
+	 *   // float,int -> INTEGER; int,int -> INTEGER
+	 *   (e) If one of the classes is X87, X87UP, COMPLEX_X87, MEMORY is used.
+	 *   // ignored for now
+	 *   (f) Otherwise class SSE is used.
+	 *   // ignored for now
+	 */
+
 	sue_member **mi;
 	struct_union_enum_st *su = type_is_s_or_u(retty);
 	enum { INT, FLOAT } types[4]; /* max of four */
