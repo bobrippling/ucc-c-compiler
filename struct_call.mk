@@ -22,12 +22,6 @@ clean: tcheck
 		$T.xcc_i.xcc_c	\
 		$T.xcc_i.ucc_c
 
-%: \
-	%.ucc_i.xcc_c \
-	%.ucc_i.ucc_c \
-	%.xcc_i.xcc_c \
-	%.xcc_i.ucc_c
-
 %.ucc_i.xcc_c: %.ucc_i.o %.xcc_c.o
 	${LD} -o $@ $^
 %.xcc_i.ucc_c: %.xcc_i.o %.ucc_c.o
