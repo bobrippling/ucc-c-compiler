@@ -1,26 +1,20 @@
 UCC = ./ucc
 LD = ${CC}
 
+TARGETS = $T.ucc_i.xcc_c $T.ucc_i.ucc_c $T.xcc_i.xcc_c $T.xcc_i.ucc_c
+
 MACRO = IMPL
 
 .PHONY: T tcheck clean
 
 T: tcheck
-	make -f struct_call.mk \
-		$T.ucc_i.xcc_c	\
-		$T.ucc_i.ucc_c	\
-		$T.xcc_i.xcc_c	\
-		$T.xcc_i.ucc_c
+	make -f struct_call.mk ${TARGETS}
 
 tcheck:
 	@if test -z "$T"; then echo >&2 "Need target / \$$T"; false; fi
 
 clean: tcheck
-	rm -f \
-		$T.ucc_i.xcc_c	\
-		$T.ucc_i.ucc_c	\
-		$T.xcc_i.xcc_c	\
-		$T.xcc_i.ucc_c
+	rm -f ${TARGETS}
 
 %.ucc_i.xcc_c: %.ucc_i.o %.xcc_c.o
 	${LD} -o $@ $^
