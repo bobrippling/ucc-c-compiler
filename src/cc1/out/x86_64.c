@@ -198,7 +198,8 @@ enum stret
 
 static enum stret x86_stret(type *ty, unsigned *stack_space)
 {
-	int nfloats;
+	unsigned nfloats;
+	unsigned sz;
 	struct_union_enum_st *su = type_is_s_or_u(ty);
 
 	if(!su){
@@ -210,27 +211,62 @@ static enum stret x86_stret(type *ty, unsigned *stack_space)
 	if(IS_32_BIT())
 		ICE("TODO: 32-bit stret");
 
+	sz = type_size(ty, NULL);
+
+	/* rdx:rax? */
+	if(sz > 2 * platform_word_size())
+		return stret_memcpy;
+
 	nfloats = struct_union_nfloats(su);
 	if(nfloats){
-		ICE("TODO: float stret");
+		/* if we have a run of floats,
+		 * we may return via xmm0:rax or rdx:rax */
 
+		ICE("TODO");
+	}
+
+	/* We unconditionally want to spill rdx:rax to the stack on return.
+	 * This could be optimised in the future
+	 * (in a similar vein as long long on x86/32-bit)
+	 * so that we can handle vtops with structure/union type
+	 * and multiple registers.
+	 */
+	if(stack_space)
+		*stack_space = sz;
+
+	return stret_regs;
+}
+
+static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
+{
+	/* if we have two floats at either 0-1 or 2-3, then we can do
+	 * a xmm0:rax or rax:xmm0 return */
+	sue_member **mi;
+	struct_union_enum_st *su = type_is_s_or_u(retty);
+	enum { INT, FLOAT } types[4]; /* max of four */
+	int i;
+	int first_float = 0;
+
+	UCC_ASSERT(su->primitive != type_enum, "enum?");
+
+	for(i = 0, mi = su->members; mi && *mi; mi++, i++)
+		types[i] = type_is_floating((*mi)->struct_member->ref) ? FLOAT : INT;
+
+	if(types[0] == FLOAT && types[1] == FLOAT){
+		regpair[0].is_float = 1;
+		regpair[0].idx = X86_64_REG_XMM0;
+		first_float = 1;
 	}else{
-		unsigned sz = type_size(ty, NULL);
+		regpair[0].is_float = 0;
+		regpair[0].idx = X86_64_REG_RAX;
+	}
 
-		/* We unconditionally want to spill rdx:rax to the stack on return.
-		 * This could be optimised in the future
-		 * (in a similar vein as long long on x86/32-bit)
-		 * so that we can handle vtops with structure/union type
-		 * and multiple registers.
-		 */
-		if(stack_space)
-			*stack_space = sz;
-
-		/* rdx:rax? */
-		if(sz > 2 * platform_word_size())
-			return stret_memcpy;
-
-		return stret_regs;
+	if(types[2] == FLOAT && types[3] == FLOAT){
+		regpair[1].is_float = 1;
+		regpair[1].idx = first_float ? X86_64_REG_XMM1 : X86_64_REG_XMM1;
+	}else{
+		regpair[1].is_float = 0;
+		regpair[1].idx = first_float ? X86_64_REG_RAX : X86_64_REG_RDX;
 	}
 }
 
@@ -1865,17 +1901,15 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 		if(stret_kind == stret_regs){
 			/* we behave the same as stret_memcpy(),
 			 * but we must spill the regs out */
-			struct vreg regs[] = {
-				VREG_INIT(X86_64_REG_RAX, 0),
-				VREG_INIT(X86_64_REG_RDX, 0)
-			};
+			struct vreg regpair[2];
+			x86_overlay_regpair(regpair, r_ret);
 
 			v_clear(vtop, type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 			v_set_stack(vtop, NULL, -(long)stret_pos, /*lval:*/0);
 			/* to leave... */
 
 			/* spill from registers to the stack */
-			impl_overlay_regs2mem(stret_stack, 2, regs);
+			impl_overlay_regs2mem(stret_stack, 2, regpair);
 
 			/* left as the return vstack - the previous call would mutate
 			 * our stret pointer, so we reset it */
