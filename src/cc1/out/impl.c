@@ -76,8 +76,20 @@ static void impl_overlay_mem_reg(
 
 	for(;; cur_reg++, reg_i++){
 		/* read/write whatever size is required */
-		type *this_ty = type_nav_MAX_FOR(cc1_type_nav, memsz);
-		unsigned this_sz = type_size(this_ty, NULL);
+		type *this_ty;
+		unsigned this_sz;
+
+		if(cur_reg->is_float){
+			UCC_ASSERT(memsz >= 4, "float for memsz %u?", memsz);
+
+			this_ty = type_nav_btype(
+					cc1_type_nav,
+					memsz > 4 ? type_double : type_float);
+
+		}else{
+			this_ty = type_nav_MAX_FOR(cc1_type_nav, memsz);
+		}
+		this_sz = type_size(this_ty, NULL);
 
 		UCC_ASSERT(this_sz <= memsz, "reading/writing too much memory");
 
