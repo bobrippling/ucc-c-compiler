@@ -783,10 +783,9 @@ static void x86_func_ret_memcpy(struct vreg *ret_reg, type *called)
 static void x86_func_ret_regs(type *called)
 {
 	const unsigned sz = type_size(called, NULL);
-	struct vreg regs[] = {
-		VREG_INIT(X86_64_REG_RAX, 0),
-		VREG_INIT(X86_64_REG_RDX, 0)
-	};
+	struct vreg regs[2];
+
+	x86_overlay_regpair(regs, called);
 
 	/* read from the stack to registers */
 	impl_overlay_mem2regs(sz, 2, regs);
