@@ -4,7 +4,12 @@ struct A
 	// f-k:j-i
 	int i, j, k;
 	float f;
-} af(){ return (struct A){ 1, 2, 3, 4 }; }
+} af()
+#ifdef IMPL
+{ return (struct A){ 1, 2, 3, 4 }; }
+#else
+;
+#endif
 
 struct B
 {
@@ -12,7 +17,12 @@ struct B
 	//  b-a:j-i
 	int i, j;
 	float a, b;
-} bf(){ return (struct B){ 1, 2, 3, 4 }; }
+} bf()
+#ifdef IMPL
+{ return (struct B){ 1, 2, 3, 4 }; }
+#else
+;
+#endif
 
 struct C
 {
@@ -22,7 +32,12 @@ struct C
 	float a;
 	int j;
 	float b;
-} cf(){ return (struct C){ 1, 2, 3, 4 }; }
+} cf()
+#ifdef IMPL
+{ return (struct C){ 1, 2, 3, 4 }; }
+#else
+;
+#endif
 
 struct D
 {
@@ -31,7 +46,12 @@ struct D
 	int i;
 	float a, b;
 	int j;
-} df(){ return (struct D){ 1, 2, 3, 4 }; }
+} df()
+#ifdef IMPL
+{ return (struct D){ 1, 2, 3, 4 }; }
+#else
+;
+#endif
 
 struct E
 {
@@ -40,7 +60,12 @@ struct E
 	float a;
 	int i, j;
 	float b;
-} ef(){ return (struct E){ 1, 2, 3, 4 }; }
+} ef()
+#ifdef IMPL
+{ return (struct E){ 1, 2, 3, 4 }; }
+#else
+;
+#endif
 
 struct F
 {
@@ -48,8 +73,14 @@ struct F
 	// j-i:b-a
 	float a, b;
 	int i, j;
-} ff(){ return (struct F){ 1, 2, 3, 4 }; }
+} ff()
+#ifdef IMPL
+{ return (struct F){ 1, 2, 3, 4 }; }
+#else
+;
+#endif
 
+#ifndef IMPL
 int main()
 {
 	extern int printf(const char *, ...) __attribute((format(printf, 1, 2)));
@@ -72,3 +103,4 @@ int main()
 	struct F f = ff();
 	printf("%f %f %d %d\n", f.a, f.b, f.i, f.j);
 }
+#endif
