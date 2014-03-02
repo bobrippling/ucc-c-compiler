@@ -86,21 +86,21 @@ int main()
 	extern int printf(const char *, ...) __attribute((format(printf, 1, 2)));
 
 	struct A a = af();
-	printf("%d %d %d %f\n", a.i, a.j, a.k, a.f);
+	printf("%d %d %d %.0f\n", a.i, a.j, a.k, a.f);
 
 	struct B b = bf();
-	printf("%d %d %f %f\n", b.i, b.j, b.a, b.b);
+	printf("%d %d %.0f %.0f\n", b.i, b.j, b.a, b.b);
 
 	struct C c = cf();
-	printf("%d %f %d %f\n", c.i, c.a, c.j, c.b);
+	printf("%d %.0f %d %.0f\n", c.i, c.a, c.j, c.b);
 
 	struct D d = df();
-	printf("%d %f %f %d\n", d.i, d.a, d.b, d.j);
+	printf("%d %.0f %.0f %d\n", d.i, d.a, d.b, d.j);
 
 	struct E e = ef();
-	printf("%f %d %d %f\n", e.a, e.i, e.j, e.b);
+	printf("%.0f %d %d %.0f\n", e.a, e.i, e.j, e.b);
 
 	struct F f = ff();
-	printf("%f %f %d %d\n", f.a, f.b, f.i, f.j);
+	printf("%.0f %.0f %d %d\n", f.a, f.b, f.i, f.j);
 }
 #endif
