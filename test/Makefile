@@ -5,12 +5,6 @@ DIRS =                        \
 	initialisation/structs/     \
 	inline/                     \
 	other/                      \
-	packing/                    \
-	pointers/                   \
-	programs/                   \
-	promotion/                  \
-	stack-align/                \
-	stack_save/                 \
 	structs/                    \
 	type_parsing/               \
 	types/
