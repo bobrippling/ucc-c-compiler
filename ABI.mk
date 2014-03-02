@@ -1,3 +1,5 @@
+CFLAGS = -std=c99
+
 UCC = ./ucc
 LD = ${CC}
 
@@ -29,10 +31,10 @@ clean: tcheck
 	${LD} -o $@ $^
 
 %.xcc_c.o: %.c
-	${CC} -c -o $@ $<
+	${CC} ${CFLAGS} -c -o $@ $<
 %.xcc_i.o: %.c
-	${CC} -c -D${MACRO} -o $@ $<
+	${CC} ${CFLAGS} -c -D${MACRO} -o $@ $<
 %.ucc_c.o: %.c
-	${UCC} -c -o $@ $<
+	${UCC} ${CFLAGS} -c -o $@ $<
 %.ucc_i.o: %.c
-	${UCC} -c -D${MACRO} -o $@ $<
+	${UCC} ${CFLAGS} -c -D${MACRO} -o $@ $<
