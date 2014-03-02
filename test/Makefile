@@ -1,19 +1,15 @@
 DIRS =                        \
-	arrays/                     \
-	anywhere_decl/              \
-	assignment/                 \
-	blocks/                     \
-	builtin/                    \
-	decl_parsing/               \
+	apply/                      \
 	initialisation/array/       \
 	initialisation/scalar/      \
 	initialisation/structs/     \
 	inline/                     \
-	lib/                        \
-	lvalue/                     \
-	messing                     \
 	other/                      \
+	packing/                    \
 	pointers/                   \
+	programs/                   \
+	promotion/                  \
+	stack-align/                \
 	stack_save/                 \
 	structs/                    \
 	type_parsing/               \
