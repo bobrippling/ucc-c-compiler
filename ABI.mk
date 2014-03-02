@@ -8,7 +8,7 @@ MACRO = IMPL
 .PHONY: T tcheck clean
 
 T: tcheck
-	make -f struct_call.mk ${TARGETS}
+	make -f ABI.mk ${TARGETS}
 
 run: T
 	for t in ${TARGETS}; do ./$$t || break; done
