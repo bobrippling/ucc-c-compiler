@@ -19,6 +19,7 @@ sub usage()
 }
 
 my $dir = shift;
+die "no dir" unless $dir;
 
 usage() if @ARGV;
 
