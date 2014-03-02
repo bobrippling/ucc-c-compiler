@@ -23,6 +23,7 @@
 #include "lbl.h"
 #include "../funcargs.h"
 #include "write.h"
+#include "../defs.h"
 
 /* Darwin's `as' can only create movq:s with
  * immediate operands whose highest bit is bit
@@ -220,7 +221,6 @@ static enum stret x86_stret(type *ty, unsigned *stack_space)
 	 *   struct { char[17..]/short[9..]/etc }
 	 *   struct { char, short, int, char } // final char busts it due to padding
 	 */
-	unsigned nfloats;
 	unsigned sz;
 	struct_union_enum_st *su = type_is_s_or_u(ty);
 
@@ -239,14 +239,6 @@ static enum stret x86_stret(type *ty, unsigned *stack_space)
 	if(sz > 2 * platform_word_size())
 		return stret_memcpy;
 
-	nfloats = struct_union_nfloats(su);
-	if(nfloats){
-		/* if we have a run of floats,
-		 * we may return via xmm0:rax or rdx:rax */
-
-		ICE("TODO");
-	}
-
 	/* We unconditionally want to spill rdx:rax to the stack on return.
 	 * This could be optimised in the future
 	 * (in a similar vein as long long on x86/32-bit)
@@ -257,6 +249,40 @@ static enum stret x86_stret(type *ty, unsigned *stack_space)
 		*stack_space = sz;
 
 	return stret_regs;
+}
+
+enum regtype
+{
+	NONE,
+	INT,
+	FLOAT
+};
+
+static void x86_overlay_regpair_1(
+		struct vreg regs[], enum regtype chosentype, int *regpair_idx)
+{
+	switch(chosentype){
+		case NONE:
+		case INT:
+			regs[*regpair_idx].is_float = 0;
+
+			regs[*regpair_idx].idx =
+				(*regpair_idx == 0 || regs[0].is_float)
+				? X86_64_REG_RAX
+				: X86_64_REG_RDX;
+			break;
+
+		case FLOAT:
+			regs[*regpair_idx].is_float = 1;
+
+			regs[*regpair_idx].idx =
+				(*regpair_idx == 0 || !regs[0].is_float)
+				? X86_64_REG_XMM0
+				: X86_64_REG_XMM1;
+			break;
+	}
+
+	++*regpair_idx;
 }
 
 static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
@@ -282,38 +308,57 @@ static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
 	 *   // ignored for now
 	 */
 
-	sue_member **mi;
 	struct_union_enum_st *su = type_is_s_or_u(retty);
-	enum { INT, FLOAT } types[4]; /* max of four */
-	int i;
-	int first_float = 0;
+	sue_member **mi;
+	unsigned current_size_bits = 0;
+	enum regtype current_type = NONE;
+	int regpair_idx = 0;
 
 	UCC_ASSERT(su->primitive != type_enum, "enum?");
 
-	for(i = 0, mi = su->members; mi && *mi; mi++, i++){
+	for(mi = su->members; mi && *mi; mi++){
+		decl *mem = (*mi)->struct_member;
+		type *ty = mem->ref;
 
-		/* TODO: bitfields */
-		UCC_ASSERT(i < 4, "too many members for regpair struct");
+		enum regtype this_type = type_is_floating(ty) ? FLOAT : INT;
 
-		types[i] = type_is_floating((*mi)->struct_member->ref) ? FLOAT : INT;
+		if(current_type == NONE)
+			current_type = this_type;
+		else if(this_type != current_type)
+			current_type = INT; /* floats defer to ints */
+
+		if(mem->bits.var.field_width){
+			const unsigned bits = const_fold_val_i(
+					mem->bits.var.field_width);
+
+			/* XXX: 0 width? up current_size_bits to a 8-bit boundary? */
+			current_size_bits += bits;
+			ICW("TODO: field width");
+
+		}else{
+			current_size_bits += CHAR_BIT * type_size(ty, NULL);
+		}
+
+		/* if we pass 64... */
+		if(current_size_bits >= CHAR_BIT * 8){
+			UCC_ASSERT(regpair_idx < 2, "too many regpairs");
+
+			/* hit one eightbyte, decide how we pass this group */
+			x86_overlay_regpair_1(
+					regpair,
+					current_type,
+					&regpair_idx);
+
+			current_type = NONE;
+			current_size_bits = 0;
+		}
 	}
 
-	/* TODO: factor this into the loop, `previous == FLOAT' etc etc */
-	if(types[0] == FLOAT && types[1] == FLOAT){
-		regpair[0].is_float = 1;
-		regpair[0].idx = X86_64_REG_XMM0;
-		first_float = 1;
-	}else{
-		regpair[0].is_float = 0;
-		regpair[0].idx = X86_64_REG_RAX;
-	}
-
-	if(types[2] == FLOAT && types[3] == FLOAT){
-		regpair[1].is_float = 1;
-		regpair[1].idx = first_float ? X86_64_REG_XMM1 : X86_64_REG_XMM1;
-	}else{
-		regpair[1].is_float = 0;
-		regpair[1].idx = first_float ? X86_64_REG_RAX : X86_64_REG_RDX;
+	if(regpair_idx < 2){
+		x86_overlay_regpair_1(
+				regpair,
+				current_type,
+				&regpair_idx);
 	}
 }
 
