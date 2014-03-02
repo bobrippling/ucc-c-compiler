@@ -1199,7 +1199,27 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 		 *
 		 * any declarations after this aren't warned about
 		 * (since d_prev is different), but one warning is fine
+		 *
+		 * special case: we allow changing a pure inline function
+		 * to extern- or static-inline.
 		 */
+		if(d_prev->store & store_inline
+		&& decl_store_static_or_extern(d_this->store))
+		{
+			/* check we aren't changing anything
+			 * errors are caught later on in the decl folding stage */
+			if(!decl_store_static_or_extern(d_prev->store)){
+				/* keep previous inline, obtain this extern/static */
+				d_prev->store =
+					(d_prev->store & STORE_MASK_EXTRA)
+					| (d_this->store & STORE_MASK_STORE);
+			}
+
+			if(!d_this->spel_asm)
+				return;
+			/* else we want the warning below */
+		}
+
 		warn_at(&d_this->where,
 				"declaration of \"%s\" after definition is ignored\n"
 				"%s: note: definition here",

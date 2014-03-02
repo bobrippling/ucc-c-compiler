@@ -835,14 +835,6 @@ void fold_global_func(decl *func_decl)
 		funcargs *args;
 		type *func_ret = type_func_call(func_decl->ref, &args);
 
-		if(func_decl->store & store_inline
-		&& (func_decl->store & STORE_MASK_STORE) == store_default)
-		{
-			warn_at(&func_decl->where,
-					"pure inline function will not have code emitted "
-					"(missing \"static\" or \"extern\")");
-		}
-
 		if(type_is_tdef(func_decl->ref))
 			warn_at(&func_decl->where,
 					"typedef function implementation is an extension");
