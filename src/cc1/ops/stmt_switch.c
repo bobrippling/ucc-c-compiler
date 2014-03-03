@@ -60,7 +60,9 @@ static void fold_switch_dups(stmt *sw)
 			const int overlap = vals[i  ].end.val.i != vals[i  ].start.val.i
 				               || vals[i-1].end.val.i != vals[i-1].start.val.i;
 
-			die_at(&vals[i-1].cse->where, "%s case statements %s %ld (from %s)",
+			die_at(&vals[i-1].cse->where,
+					"%s case statements %s %ld\n"
+					"%s: note: other case",
 					overlap ? "overlapping" : "duplicate",
 					overlap ? "starting at" : "for",
 					(long)vals[i].start.val.i,
