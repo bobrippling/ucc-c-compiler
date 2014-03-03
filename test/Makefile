@@ -6,8 +6,7 @@ DIRS =                        \
 	inline/                     \
 	other/                      \
 	structs/                    \
-	type_parsing/               \
-	types/
+	type_parsing/
 
 MAKEFILES = ${DIRS:/=/Makefile}
 
