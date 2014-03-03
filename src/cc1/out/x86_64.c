@@ -1094,7 +1094,8 @@ void impl_op(enum op_type op)
 		case op_lt:
 		case op_ge:
 		case op_gt:
-			UCC_ASSERT(!type_is_floating(vtop->t), "TODO float cmp");
+			UCC_ASSERT(!type_is_floating(vtop->t),
+					"float cmp should be handled above");
 		{
 			const int is_signed = type_is_signed(vtop->t);
 			char buf[VSTACK_STR_SZ];
