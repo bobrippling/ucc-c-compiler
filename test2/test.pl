@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 use warnings;
 
+my $timeout = 2;
+
 sub apply_vars;
 sub die2;
 sub usage
@@ -10,7 +12,7 @@ sub usage
 
 sub timeout
 {
-	my $r = system("./timeout", '1', @_);
+	my $r = system("./timeout", $timeout, @_);
 	return $r;
 }
 
@@ -31,6 +33,11 @@ for(@ARGV){
 		$ucc = $1;
 	}elsif($_ eq '-v'){
 		$verbose = 1;
+	}elsif(/--timeout=(.+)/){
+		$timeout = $1;
+		if($timeout !~ /^[0-9]+$/){
+			die "$0: timeout must be numeric\n";
+		}
 	}elsif($_ eq '--keep'){
 		$keep_temps = 1;
 	}elsif(!defined $file){
