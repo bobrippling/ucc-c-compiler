@@ -14,5 +14,5 @@ main()
 	a.b = 2;
 	a.c = 3;
 
-	return f(&a);
+	return f(&a) == 3 ? 0 : 1;
 }
