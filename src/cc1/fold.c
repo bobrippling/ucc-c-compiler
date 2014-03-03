@@ -965,20 +965,6 @@ void fold_stmt(stmt *t)
 	t->f_fold(t);
 }
 
-void fold_stmt_and_add_to_curswitch(stmt *t)
-{
-	fold_stmt(t->lhs); /* compound */
-
-	if(!t->parent)
-		die_at(&t->where, "%s not inside switch", t->f_str());
-
-	dynarray_add(&t->parent->bits.code.stmts, t);
-
-	/* we are compound, copy some attributes */
-	t->kills_below_code = t->lhs->kills_below_code;
-	/* TODO: copy ->freestanding? */
-}
-
 void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 {
 	attribute *da;

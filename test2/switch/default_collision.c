@@ -2,7 +2,7 @@
 f()
 {
 	switch(5){
-		default:;
+		default:; // CHECK: note: other default here
 		case 3:;
 		default:; // CHECK: error: duplicate default statement
 	}

@@ -1263,8 +1263,7 @@ ops/stmt_switch.o: ops/stmt_switch.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/stmt_switch.h ops/../sue.h \
- ops/../btype.h ops/../../util/alloc.h ops/../../util/dynarray.h \
- ops/../../util/dyn.h ops/../out/lbl.h ops/../type_is.h
+ ops/../btype.h ops/../../util/alloc.h ops/../out/lbl.h ops/../type_is.h
 ops/stmt_while.o: ops/stmt_while.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -1340,8 +1339,8 @@ out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
 out/impl.o: out/impl.c out/../../util/util.h out/../../util/where.h \
  out/../../util/compiler.h out/../decl.h out/../type.h out/../num.h \
  out/../btype.h out/../../util/where.h out/../attribute.h out/../retain.h \
- out/../op.h out/vstack.h out/asm.h out/impl.h out/x86_64.h out/write.h \
- out/../../util/compiler.h
+ out/../op.h out/../macros.h out/vstack.h out/asm.h out/impl.h \
+ out/x86_64.h out/write.h out/../../util/compiler.h
 out/lbl.o: out/lbl.c out/../../util/alloc.h out/../../util/compiler.h \
  out/../../util/util.h out/../../util/where.h out/common.h out/lbl.h \
  out/../../as_cfg.h

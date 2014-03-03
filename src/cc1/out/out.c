@@ -731,6 +731,8 @@ static void out_set_lbl(const char *s, int pic)
 
 void out_push_lbl(const char *s, int pic)
 {
+	UCC_ASSERT(s, "null label");
+
 	vpush(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 
 	out_set_lbl(s, pic);
@@ -1426,6 +1428,8 @@ void out_jfalse(const char *lbl)
 
 static void out_label2(const char *lbl, int affect_code)
 {
+	UCC_ASSERT(lbl, "no label");
+
 	if(affect_code){
 		/* if we have volatile data, ensure it's in a register */
 		out_flush_volatile();

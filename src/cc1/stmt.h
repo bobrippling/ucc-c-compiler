@@ -38,6 +38,7 @@ struct stmt
 
 	struct
 	{
+		/* goto and labels */
 		struct
 		{
 			struct label *label;
@@ -45,11 +46,25 @@ struct stmt
 			int unused;
 		} lbl;
 
+		/* for a case/default */
+		char *case_lbl;
+
 		/* for a code block */
 		struct
 		{
 			stmt **stmts;
 		} code;
+
+		/* switch */
+		struct
+		{
+			size_t ncases;
+			struct switch_case
+			{
+				stmt *code;
+				char *lbl;
+			} *cases, default_case;
+		} switch_;
 	} bits;
 
 	symtable *symtab; /* block definitions, e.g. { int i... } */

@@ -5,44 +5,35 @@
 #include "stmt_switch.h"
 #include "../sue.h"
 #include "../../util/alloc.h"
-#include "../../util/dynarray.h"
 #include "../out/lbl.h"
 #include "../type_is.h"
+
+#define ITER_SWITCH(sw, iter) \
+	for(iter = sw->bits.switch_.cases; iter && iter->code; iter++)
 
 const char *str_stmt_switch()
 {
 	return "switch";
 }
 
+/* checks case duplicates, not default */
 static void fold_switch_dups(stmt *sw)
 {
 	typedef int (*qsort_f)(const void *, const void *);
 
-	int n = dynarray_count(sw->bits.code.stmts);
 	struct
 	{
 		numeric start, end;
 		stmt *cse;
-	} *const vals = malloc(n * sizeof *vals);
+	} *const vals = malloc(sw->bits.switch_.ncases * sizeof *vals);
 
-	stmt **titer, *def = NULL;
-	int i;
+
+	struct switch_case *titer;
+	size_t i = 0;
 
 	/* gather all switch values */
-	for(i = 0, titer = sw->bits.code.stmts; titer && *titer; titer++){
-		stmt *cse = *titer;
-
-		if(cse->expr->expr_is_default){
-			if(def){
-				char buf[WHERE_BUF_SIZ];
-
-				die_at(&cse->where, "duplicate default statement (from %s)",
-						where_str_r(buf, &def->where));
-			}
-			def = cse;
-			n--;
-			continue;
-		}
+	ITER_SWITCH(sw, titer){
+		stmt *cse = titer->code;
 
 		vals[i].cse = cse;
 
@@ -57,9 +48,10 @@ static void fold_switch_dups(stmt *sw)
 	}
 
 	/* sort vals for comparison */
-	qsort(vals, n, sizeof(*vals), (qsort_f)numeric_cmp); /* struct layout guarantees this */
+	qsort(vals, sw->bits.switch_.ncases,
+			sizeof(*vals), (qsort_f)numeric_cmp); /* struct layout guarantees this */
 
-	for(i = 1; i < n; i++){
+	for(i = 1; i < sw->bits.switch_.ncases; i++){
 		const long last_prev  = vals[i-1].end.val.i;
 		const long first_this = vals[i].start.val.i;
 
@@ -82,22 +74,25 @@ static void fold_switch_dups(stmt *sw)
 static void fold_switch_enum(
 		stmt *sw, struct_union_enum_st *enum_sue)
 {
-	const int nents = enum_nentries(enum_sue);
-	stmt **titer;
-	char *const marks = umalloc(nents * sizeof *marks);
+	struct switch_case *iter;
+	char *marks;
+	int nents;
 	int midx;
+
+	if(sw->bits.switch_.default_case.code)
+		return;
+
+	nents = enum_nentries(enum_sue);
+	marks = umalloc(nents * sizeof *marks);
 
 	/* warn if we switch on an enum bitmask */
 	if(expr_attr_present(sw->expr, attr_enum_bitmask))
 		warn_at(&sw->where, "switch on enum with enum_bitmask attribute");
 
 	/* for each case/default/case_range... */
-	for(titer = sw->bits.code.stmts; titer && *titer; titer++){
-		stmt *cse = *titer;
+	ITER_SWITCH(sw, iter){
+		stmt *cse = iter->code;
 		integral_t v, w;
-
-		if(cse->expr->expr_is_default)
-			goto ret;
 
 		fold_check_expr(cse->expr,
 				FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
@@ -138,8 +133,51 @@ static void fold_switch_enum(
 					enum_sue->anon ? "" : enum_sue->spel,
 					enum_sue->members[midx]->enum_member->spel);
 
-ret:
 	free(marks);
+}
+
+void fold_stmt_and_add_to_curswitch(stmt *cse, char **lbl)
+{
+	stmt *sw = cse->parent;
+	struct switch_case *this_case;
+
+	fold_stmt(cse->lhs); /* compound */
+
+	if(!sw)
+		die_at(&cse->where, "%s not inside switch", cse->f_str());
+
+	if(*lbl){
+		/* promote to the controlling statement */
+		fold_insert_casts(sw->expr->tree_type, &cse->expr, cse->symtab);
+
+		sw->bits.switch_.ncases++;
+		sw->bits.switch_.cases = urealloc(
+				sw->bits.switch_.cases,
+				sizeof(sw->bits.switch_.cases[0]) * (1 + sw->bits.switch_.ncases),
+				sizeof(sw->bits.switch_.cases[0]) * sw->bits.switch_.ncases);
+
+		this_case = &sw->bits.switch_.cases[sw->bits.switch_.ncases - 1];
+	}else{
+		this_case = &sw->bits.switch_.default_case;
+		if(this_case->code){
+			char buf[WHERE_BUF_SIZ];
+
+			die_at(&cse->where,
+					"duplicate default statement\n"
+					"%s: note: other default here",
+					where_str_r(buf, &this_case->code->where));
+
+			return;
+		}
+		*lbl = out_label_case(CASE_DEF, 0);
+	}
+
+	this_case->code = cse;
+	this_case->lbl = *lbl;
+
+	/* we are compound, copy some attributes */
+	cse->kills_below_code = cse->lhs->kills_below_code;
+	/* TODO: copy ->freestanding? */
 }
 
 void fold_stmt_switch(stmt *s)
@@ -150,9 +188,12 @@ void fold_stmt_switch(stmt *s)
 
 	fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch");
 
+	/* default integer promotions */
+	expr_promote_default(&s->expr, s->symtab);
+
 	/* this folds sub-statements,
-	 * causing case: and default: to add themselves to ->parent->bits.code.stmts,
-	 * i.e. s->bits.code.stmts
+	 * causing case: and default: to add themselves to
+	 * ->parent->bits.switch_.cases
 	 */
 	fold_stmt(s->lhs);
 
@@ -171,27 +212,17 @@ void fold_stmt_switch(stmt *s)
 
 void gen_stmt_switch(stmt *s)
 {
-	stmt **titer, *tdefault;
-
-	tdefault = NULL;
+	struct switch_case *iter, *pdefault;
 
 	gen_expr(s->expr);
 
 	out_comment("switch on this");
 
-	for(titer = s->bits.code.stmts; titer && *titer; titer++){
-		stmt *cse = *titer;
+	for(iter = s->bits.switch_.cases; iter && iter->code; iter++){
+		stmt *cse = iter->code;
 		numeric iv;
 
-		if(cse->expr->expr_is_default){
-			tdefault = cse;
-			continue;
-		}
-
 		const_fold_integral(cse->expr, &iv);
-
-		UCC_ASSERT(cse->expr->expr_is_default || !(iv.suffix & VAL_UNSIGNED),
-				"don't handle unsigned yet");
 
 		if(stmt_kind(cse, case_range)){
 			char *skip = out_label_code("range_skip");
@@ -210,7 +241,7 @@ void gen_stmt_switch(stmt *s)
 			out_push_num(cse->expr2->tree_type, &max);
 			out_op(op_gt);
 
-			out_jfalse(cse->expr->bits.ident.spel);
+			out_jfalse(iter->lbl);
 
 			out_label(skip);
 			free(skip);
@@ -221,13 +252,18 @@ void gen_stmt_switch(stmt *s)
 
 			out_op(op_eq);
 
-			out_jtrue(cse->expr->bits.ident.spel);
+			out_jtrue(iter->lbl);
 		}
 	}
 
 	out_pop(); /* free the value we switched on asap */
 
-	out_push_lbl(tdefault ? tdefault->expr->bits.ident.spel : s->lbl_break, 0);
+	pdefault = &s->bits.switch_.default_case;
+
+	out_push_lbl(pdefault->code
+			? pdefault->lbl
+			: s->lbl_break, 0);
+
 	out_jmp();
 
 	/* out-stack must be empty from here on */

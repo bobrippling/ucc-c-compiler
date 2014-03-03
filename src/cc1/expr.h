@@ -43,7 +43,6 @@ struct expr
 	/* do we return the altered value or the old one? */
 	int assign_is_post;
 	int assign_is_init;
-#define expr_is_default    assign_is_post
 #define expr_cast_implicit assign_is_post
 #define expr_is_st_dot     assign_is_post
 #define expr_addr_implicit assign_is_post
