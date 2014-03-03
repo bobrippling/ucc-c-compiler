@@ -1133,8 +1133,15 @@ void impl_op(enum op_type op)
 			vpop();
 
 			v_set_flag(vtop, op_to_flag(op), is_signed ? flag_mod_signed : 0);
-			if(inv)
-				v_inv_cmp(&vtop->bits.flag);
+			if(inv){
+				/* invert >, >=, < and <=, but not == and !=, aka
+				 * the commutative operators.
+				 *
+				 * i.e. 5 == 2 is the same as 2 == 5, but
+				 *      5 >= 2 is not the same as 2 >= 5
+				 */
+				v_inv_cmp(&vtop->bits.flag, /*invert_eq:*/0);
+			}
 			return;
 		}
 
@@ -1476,7 +1483,7 @@ void impl_jcond(int true, const char *lbl)
 			char *bb_lbl = NULL;
 
 			if(inv)
-				v_inv_cmp(&vtop->bits.flag);
+				v_inv_cmp(&vtop->bits.flag, 1);
 
 			parity_chk = x86_need_fp_parity_p(&vtop->bits.flag, &parity_rev);
 

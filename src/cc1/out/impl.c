@@ -5,6 +5,7 @@
 
 #include "../decl.h"
 #include "../op.h"
+#include "../macros.h"
 
 #include "vstack.h"
 #include "asm.h"
@@ -41,6 +42,21 @@ enum flag_cmp op_to_flag(enum op_type op)
 
 	ICE("invalid op");
 	return -1;
+}
+
+const char *flag_cmp_to_str(enum flag_cmp cmp)
+{
+	switch(cmp){
+		CASE_STR_PREFIX(flag, eq);
+		CASE_STR_PREFIX(flag, ne);
+		CASE_STR_PREFIX(flag, le);
+		CASE_STR_PREFIX(flag, lt);
+		CASE_STR_PREFIX(flag, ge);
+		CASE_STR_PREFIX(flag, gt);
+		CASE_STR_PREFIX(flag, overflow);
+		CASE_STR_PREFIX(flag, no_overflow);
+	}
+	return NULL;
 }
 
 int vreg_eq(const struct vreg *a, const struct vreg *b)

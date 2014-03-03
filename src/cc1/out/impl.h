@@ -55,6 +55,7 @@ void impl_comment(enum section_type, const char *fmt, va_list l);
 void impl_lbl(const char *lbl);
 
 enum flag_cmp op_to_flag(enum op_type op);
+const char *flag_cmp_to_str(enum flag_cmp);
 
 /* can't do this for gen_deps.sh */
 #ifdef CC1_IMPL_FNAME

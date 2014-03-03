@@ -82,7 +82,7 @@ void v_set_flag(
 
 void v_cast(struct vstack *vp, type *to);
 
-void v_inv_cmp(struct flag_opts *);
+void v_inv_cmp(struct flag_opts *, int invert_eq);
 
 void v_to_reg(struct vstack *conv);
 void v_to_reg_out(struct vstack *conv, struct vreg *);
