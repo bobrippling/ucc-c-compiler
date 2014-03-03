@@ -904,8 +904,8 @@ static decl_init *decl_init_brace_up_aggregate(
 		 * and it's not a struct copy */
 		if(!was_desig && !decl_init_is_struct_copy(r)){
 			warn_at(loc,
-					"missing braces for initialisation of sub-object '%s' %d",
-					type_to_str(tfor), allow_struct_copy);
+					"missing braces for initialisation of sub-object '%s'",
+					type_to_str(tfor));
 		}
 
 		return r;
