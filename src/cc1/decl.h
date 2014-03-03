@@ -95,6 +95,7 @@ unsigned decl_align(decl *);
 
 enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts);
 int   decl_store_static_or_extern(enum decl_storage);
+int decl_store_duration_extern(decl *d, struct symtable *symtab);
 
 int decl_conv_array_func_to_ptr(decl *d);
 struct type *decl_is_decayed_array(decl *);

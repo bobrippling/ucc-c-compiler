@@ -197,6 +197,11 @@ int decl_store_static_or_extern(enum decl_storage s)
 	}
 }
 
+int decl_store_duration_extern(decl *d, symtable *symtab)
+{
+	return (d->store & STORE_MASK_STORE) == store_extern || !symtab->parent;
+}
+
 const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
 {
 	char *bufp = buf;

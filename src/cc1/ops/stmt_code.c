@@ -42,10 +42,12 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 		&& (found = symtab_search_d(stab->parent, d->spel, &above_scope)))
 		{
 			char buf[WHERE_BUF_SIZ];
+			int both_func = is_func && type_is(found->ref, type_func);
+			int both_extern = decl_store_duration_extern(d, stab)
+				&& decl_store_duration_extern(found, above_scope);
 
 			/* allow functions redefined as decls and vice versa */
-			if(is_func
-			&& type_is(found->ref, type_func)
+			if((both_func || both_extern)
 			&& !(decl_cmp(d, found, 0) & TYPE_EQUAL_ANY))
 			{
 				die_at(&d->where,
@@ -56,10 +58,7 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 				const int same_scope = symtab_nested_internal(above_scope, stab);
 
 				/* same scope? error unless they're both extern */
-				if(same_scope && (
-					d->store != found->store
-					|| (STORE_MASK_STORE & d->store) != store_extern))
-				{
+				if(same_scope && !both_extern){
 					die_at(&d->where, "redefinition of \"%s\"\n"
 							"%s: note: previous definition here",
 							d->spel, where_str_r(buf, &found->where));
