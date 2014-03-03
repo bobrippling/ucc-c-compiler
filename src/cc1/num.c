@@ -25,13 +25,39 @@ int numeric_cmp(const numeric *a, const numeric *b)
 		return 0;
 
 	}else{
-		const integral_t la = a->val.i, lb = b->val.i;
+		int au = !!(a->suffix & VAL_UNSIGNED);
+		int bu = !!(b->suffix & VAL_UNSIGNED);
 
-		if(la > lb)
-			return 1;
-		if(la < lb)
-			return -1;
-		return 0;
+		switch(au + bu){
+			case 1:
+				/* fall through to signed comparison */
+
+			case 0:
+			{
+				/* signed comparison */
+				const sintegral_t la = a->val.i, lb = b->val.i;
+
+				if(la > lb)
+					return 1;
+				if(la < lb)
+					return -1;
+				return 0;
+			}
+
+			case 2:
+			{
+				/* unsigned comparison */
+				const integral_t la = a->val.i, lb = b->val.i;
+
+				if(la > lb)
+					return 1;
+				if(la < lb)
+					return -1;
+				return 0;
+			}
+		}
+
+		assert(0 && "unreachable");
 	}
 }
 
