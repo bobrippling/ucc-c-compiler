@@ -112,10 +112,11 @@ void symtab_check_static_asserts(symtable *stab)
 					"static assert: not an integer constant expression (%s)",
 					sa->e->f_str());
 
-		if(!k.bits.num.val.i)
-			die_at(&sa->e->where, "static assertion failure: %s", sa->s);
+		if(!k.bits.num.val.i){
+			warn_at_print_error(&sa->e->where, "static assertion failure: %s", sa->s);
+			fold_had_error = 1;
 
-		if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
+		}else if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
 			fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
 					where_str(&sa->e->where), sa->e->f_str(), sa->s);
 		}
