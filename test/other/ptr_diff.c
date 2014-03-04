@@ -9,5 +9,6 @@ main()
 	pa = &a;
 	pb = &b;
 
-	assert(abs(pb - pa) == 1);
+	if(abs(pb - pa) != 1)
+		abort();
 }

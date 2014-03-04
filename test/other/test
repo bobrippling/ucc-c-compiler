@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 use warnings;
+use POSIX ":sys_wait_h";
 
 sub extra_args
 {
@@ -67,7 +68,10 @@ die if @ARGV;
 for my $f (glob '*.c'){
 	my $out = "$f.out";
 
+	next if -f $out;
+
 	# TODO: make-esque checks
+	print "$f...\n";
 	compile($f, "-o", $out);
 
 	my $ret = system_timeout("./$out > $f.ref");

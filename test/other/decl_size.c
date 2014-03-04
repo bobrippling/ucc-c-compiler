@@ -1,26 +1,8 @@
-//#include <assert.h>
-
 #define SZ_INT sizeof(int)
 #define SZ_VP  sizeof(void *)
-//#define SZ_INT 8
-//#define SZ_VP  8
 
-#if 0
-#define WRITE(x) write(1, x "\n", strlen(x) + 1)
-
-sz_assert(int vsz, const char *s, int expected)
-{
-	if(vsz != expected){
-		WRITE(s);
-		//printf("sizeof(%s) != %d (got %d)\n", s, expected, vsz);
-	}
-}
-#define SZ_ASSERT(var, sz) sz_assert(sizeof(var), #var, sz)
-#endif
-
-int f(int,int);
-
-#define SZ_ASSERT(var, sz) f(sizeof(var), sz)
+extern void abort(void);
+#define SZ_ASSERT(var, sz) if(sizeof(var) != (sz)) abort()
 
 main()
 {
