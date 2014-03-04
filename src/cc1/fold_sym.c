@@ -360,12 +360,23 @@ void symtab_fold_decls(symtable *tab)
 							case TYPE_QUAL_POINTED_ADD:
 							case TYPE_QUAL_POINTED_SUB:
 							case TYPE_QUAL_NESTED_CHANGE:
-								/* must be an exact match */
-							case TYPE_CONVERTIBLE_IMPLICIT:
 							case TYPE_CONVERTIBLE_EXPLICIT:
-								/* allow static/non-static redecl for non-functions */
-								if(a_func || (da->store & STORE_MASK_STORE) != store_static)
+								/* must be an exact match */
+								clash = "mismatching";
+								break;
+							case TYPE_CONVERTIBLE_IMPLICIT:
+								if(a_func){
+									/* allow 'a' to be static and 'b' to not be */
+									if((da->store & STORE_MASK_STORE) == store_static
+									&& (db->store & STORE_MASK_STORE) != store_static)
+									{
+										/* fine */
+									}else{
+										clash = "mismatching";
+									}
+								}else{
 									clash = "mismatching";
+								}
 								break;
 
 							case TYPE_EQUAL_TYPEDEF:
@@ -391,13 +402,23 @@ void symtab_fold_decls(symtable *tab)
 									}else{
 										/* fine - both extern */
 									}
-								}else if(a_func
-								&& DECL_HAS_FUNC_CODE(da)
-								&& DECL_HAS_FUNC_CODE(db))
-								{
-									clash = "duplicate";
-								}else if((da->store & STORE_MASK_STORE) == store_typedef){
-									warn_c11_retypedef(da, db);
+								}else{
+									if(a_func){
+										if(DECL_HAS_FUNC_CODE(da) && DECL_HAS_FUNC_CODE(db)){
+											clash = "duplicate";
+										}
+									}else{
+										/* variables at global scope - check static redef */
+										if(((da->store & STORE_MASK_STORE) == store_static)
+										 !=((db->store & STORE_MASK_STORE) == store_static))
+										{
+											clash = "mismatching";
+										}
+									}
+
+									if(!clash && (da->store & STORE_MASK_STORE) == store_typedef){
+										warn_c11_retypedef(da, db);
+									}
 								}
 								break;
 						}
