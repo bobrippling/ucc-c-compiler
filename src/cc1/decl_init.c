@@ -914,7 +914,7 @@ static decl_init *decl_init_brace_up_aggregate(
 
 static void die_incomplete(init_iter *iter, type *tfor)
 {
-	struct_union_enum_st *sue = type_is_s_or_u(tfor);
+	struct_union_enum_st *sue = type_is_s_or_u_or_e(tfor);
 	if(sue)
 		sue_incomplete_chk(sue, ITER_WHERE(iter, &sue->where));
 
