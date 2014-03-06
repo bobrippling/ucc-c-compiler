@@ -29,10 +29,10 @@ IF_TY_EQ(A *, A *, void *);
 IF_TY_EQ(volatile const A *, volatile A *, const A *);
 
 /* volatile void * is not the null pointer constant */
-IF_TY_EQ(const volatile void *, A const *, volatile void *);
+IF_TY_EQ(const volatile void *, A const *, volatile void *); // FIXME
 
 /* const void * is not the null pointer constant */
-IF_TY_EQ(const void *, const A *, const void *);
+IF_TY_EQ(const void *, const A *, const void *); // FIXME
 
 /* -------- */
 typedef const void *c_vp;
@@ -42,9 +42,9 @@ typedef volatile int *v_ip;
 typedef int *ip;
 typedef const char *c_cp;
 
-IF_TY_EQ(const void *, c_vp, c_ip);
+IF_TY_EQ(const void *, c_vp, c_ip); // FIXME
 IF_EXPR_EQ(volatile int *, (v_ip)0, 0); // clang failure
-IF_TY_EQ(const volatile int *, c_ip, v_ip); // clang failure
-IF_TY_EQ(const void *, vp, c_cp); // gcc+clang failure
-IF_TY_EQ(const int *, ip, c_ip); // clang failure
-IF_TY_EQ(void *, vp, ip); // gcc failure
+IF_TY_EQ(const volatile int *, c_ip, v_ip); // clang failure // FIXME
+IF_TY_EQ(const void *, vp, c_cp); // gcc+clang failure // FIXME
+IF_TY_EQ(const int *, ip, c_ip); // clang failure // FIXME
+IF_TY_EQ(void *, vp, ip); // gcc failure // FIXME
