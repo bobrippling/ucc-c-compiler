@@ -533,7 +533,7 @@ const char *type_to_str_r_spel_aka(
 		char *spel, const int aka);
 
 static
-void type_add_type_str(type *r,
+type *type_add_type_str(type *r,
 		char **bufp, int sz,
 		const int aka)
 {
@@ -541,19 +541,23 @@ void type_add_type_str(type *r,
 	const type *rt;
 
 	**bufp = '\0';
-	for(rt = r; rt && rt->type != type_btype && rt->type != type_tdef; rt = rt->ref);
+	for(rt = r;
+			rt && rt->type != type_btype && rt->type != type_tdef;
+			rt = rt->ref);
 
 	if(!rt)
-		return;
+		return NULL;
 
 	if(rt->type == type_tdef){
 		char buf[BTYPE_STATIC_BUFSIZ];
 		decl *d = rt->bits.tdef.decl;
 		type *of;
+		type *next = NULL;
 
 		if(d){
 			BUF_ADD("%s", d->spel);
 			of = d->ref;
+			next = type_next(of);
 
 		}else{
 			expr *const e = rt->bits.tdef.type_of;
@@ -567,6 +571,7 @@ void type_add_type_str(type *r,
 
 			/* don't show aka for typeof types - it's there already */
 			of = is_type ? NULL : e->tree_type;
+			next = type_next(e->tree_type);
 		}
 
 		if(aka && of){
@@ -579,9 +584,13 @@ void type_add_type_str(type *r,
 					: type_to_str_r_spel_aka(buf, of, NULL, 0));
 		}
 
+		return next;
+
 	}else{
 		BUF_ADD("%s", btype_to_str(rt->bits.type));
 	}
+
+	return NULL;
 }
 #undef BUF_ADD
 
@@ -592,8 +601,12 @@ const char *type_to_str_r_spel_aka(
 {
 	char *bufp = buf;
 	int spc = 1;
+	type *skipped;
 
-	type_add_type_str(r, &bufp, TYPE_STATIC_BUFSIZ, aka);
+	skipped = type_add_type_str(r, &bufp, TYPE_STATIC_BUFSIZ, aka);
+
+	if(skipped)
+		r = skipped;
 
 	/* print in reverse order */
 	r = type_set_parent(r, NULL);

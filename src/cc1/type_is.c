@@ -112,7 +112,7 @@ type *type_next(type *r)
 
 	switch(r->type){
 		case type_btype:
-			ICE("%s on type", __func__);
+			return NULL;
 
 		case type_tdef:
 		case type_cast:
