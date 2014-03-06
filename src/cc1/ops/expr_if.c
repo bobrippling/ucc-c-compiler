@@ -157,8 +157,10 @@ void fold_expr_if(expr *e, symtable *stab)
 					e->tree_type = l_ptr_null ? tt_r : tt_l;
 
 				}else{
-					int l_ptr = l_ptr_null || type_is(tt_l, type_ptr);
-					int r_ptr = r_ptr_null || type_is(tt_r, type_ptr);
+					int l_strict_ptr = !!type_is(tt_l, type_ptr);
+					int r_strict_ptr = !!type_is(tt_r, type_ptr);
+					int l_ptr = l_ptr_null || l_strict_ptr;
+					int r_ptr = r_ptr_null || r_strict_ptr;
 
 					if(l_ptr || r_ptr){
 						fold_type_chk_warn(
@@ -167,7 +169,9 @@ void fold_expr_if(expr *e, symtable *stab)
 						/* qualified void * */
 						e->tree_type = type_qualify(
 								type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
-								type_qual(tt_l) | type_qual(tt_r));
+								(l_strict_ptr ? type_qual(type_next(tt_l)) : qual_none)
+								|
+								(r_strict_ptr ? type_qual(type_next(tt_r)) : qual_none));
 
 					}else{
 						char buf[TYPE_STATIC_BUFSIZ];
