@@ -111,44 +111,73 @@ void fold_expr_if(expr *e, symtable *stab)
 	}else if(type_is_void(tt_l) || type_is_void(tt_r)){
 		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 
-	}else if(type_cmp(tt_l, tt_r, 0) & TYPE_EQUAL_ANY){
-		/* pointer to 'compatible' type */
-		e->tree_type = type_qualify(tt_l,
-				type_qual(tt_l) | type_qual(tt_r));
-
 	}else{
-		/* brace yourself. */
-		int l_ptr_null = expr_is_null_ptr(
-				e->lhs ? e->lhs : e->expr, NULL_STRICT_INT);
-
-		int r_ptr_null = expr_is_null_ptr(e->rhs, NULL_STRICT_INT);
-
-		int l_complete = !l_ptr_null && type_is_complete(tt_l);
-		int r_complete = !r_ptr_null && type_is_complete(tt_r);
-
-		if((l_complete && r_ptr_null) || (r_complete && l_ptr_null)){
-			e->tree_type = l_ptr_null ? tt_r : tt_l;
-
-		}else{
-			int l_ptr = l_ptr_null || type_is(tt_l, type_ptr);
-			int r_ptr = r_ptr_null || type_is(tt_r, type_ptr);
-
-			if(l_ptr || r_ptr){
-				fold_type_chk_warn(
-						tt_l, tt_r, &e->where, "?: pointer type mismatch");
-
-				/* qualified void * */
-				e->tree_type = type_qualify(
-						type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
+		switch(type_cmp(tt_l, tt_r, 0)){
+			case TYPE_EQUAL:
+			case TYPE_EQUAL_TYPEDEF:
+				/* pointer to 'compatible' type */
+				e->tree_type = type_qualify(tt_l,
 						type_qual(tt_l) | type_qual(tt_r));
+				break;
 
-			}else{
-				char buf[TYPE_STATIC_BUFSIZ];
+			case TYPE_QUAL_POINTED_ADD:
+			case TYPE_QUAL_POINTED_SUB:
+			{
+				/* difference in nested qualifiers - combine from both */
+				e->tree_type =
+					type_ptr_to(
+							type_qualify(
+								type_next(tt_l),
+								type_qual(type_next(tt_r))));
+				break;
+			}
 
-				warn_at(&e->where, "conditional type mismatch (%s vs %s)",
-						type_to_str(tt_l), type_to_str_r(buf, tt_r));
+			case TYPE_QUAL_ADD:
+			case TYPE_QUAL_SUB:
+			{
+				/* difference only in qualifiers - combine from both */
+				e->tree_type = type_qualify(
+						type_unqualify(tt_l),
+						type_qual(tt_l) | type_qual(tt_r));
+				break;
+			}
 
-				e->tree_type = type_nav_btype(cc1_type_nav, type_void);
+			default:
+			{
+				/* brace yourself. */
+				int l_ptr_null = expr_is_null_ptr(
+						e->lhs ? e->lhs : e->expr, NULL_STRICT_INT);
+
+				int r_ptr_null = expr_is_null_ptr(e->rhs, NULL_STRICT_INT);
+
+				int l_complete = !l_ptr_null && type_is_complete(tt_l);
+				int r_complete = !r_ptr_null && type_is_complete(tt_r);
+
+				if((l_complete && r_ptr_null) || (r_complete && l_ptr_null)){
+					e->tree_type = l_ptr_null ? tt_r : tt_l;
+
+				}else{
+					int l_ptr = l_ptr_null || type_is(tt_l, type_ptr);
+					int r_ptr = r_ptr_null || type_is(tt_r, type_ptr);
+
+					if(l_ptr || r_ptr){
+						fold_type_chk_warn(
+								tt_l, tt_r, &e->where, "?: pointer type mismatch");
+
+						/* qualified void * */
+						e->tree_type = type_qualify(
+								type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
+								type_qual(tt_l) | type_qual(tt_r));
+
+					}else{
+						char buf[TYPE_STATIC_BUFSIZ];
+
+						warn_at(&e->where, "conditional type mismatch (%s vs %s)",
+								type_to_str(tt_l), type_to_str_r(buf, tt_r));
+
+						e->tree_type = type_nav_btype(cc1_type_nav, type_void);
+					}
+				}
 			}
 		}
 	}
