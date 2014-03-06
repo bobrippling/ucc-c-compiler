@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "../util/where.h"
 #include "../util/util.h"
@@ -334,12 +335,18 @@ const char *type_primitive_to_str(const enum type_primitive p)
 const char *type_qual_to_str(const enum type_qualifier qual, int trailing_space)
 {
 	static char buf[32];
+
 	/* trailing space is purposeful */
-	snprintf(buf, sizeof buf, "%s%s%s%s",
-		qual & qual_const    ? "const"    : "",
-		qual & qual_volatile ? "volatile" : "",
-		qual & qual_restrict ? "restrict" : "",
-		qual && trailing_space ? " " : "");
+	snprintf(buf, sizeof buf, "%s%s%s",
+		qual & qual_const    ? "const "    : "",
+		qual & qual_volatile ? "volatile " : "",
+		qual & qual_restrict ? "restrict " : "");
+
+	if(!trailing_space){
+		char *last = strrchr(buf, ' ');
+		if(last)
+			*last = '\0';
+	}
+
 	return buf;
 }
-
