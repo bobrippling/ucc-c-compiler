@@ -1,4 +1,4 @@
-// RUN: %ucc -fsyntax-only %s
+// RUN: %check %s
 
 #define IF_TY_EQ(ty, a, b)          \
 	_Static_assert(                    \
