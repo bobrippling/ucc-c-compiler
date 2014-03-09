@@ -204,6 +204,16 @@ int parse_at_decl(symtable *scope)
 		case token__Alignas:
 			return 1;
 
+		case token___extension__:
+		{
+			/* check for __extension__ <type> */
+			int r;
+			EAT(curtok);
+			r = parse_at_decl(scope);
+			uneat(token___extension__);
+			return r;
+		}
+
 		case token_identifier:
 			return !!parse_at_tdef(scope);
 	}
@@ -255,6 +265,8 @@ static type *parse_btype(
 		TYPEDEF,
 		TYPEOF
 	} primitive_mode = NONE;
+
+	accept(token___extension__);
 
 	for(;;){
 		decl *tdef_decl_test;

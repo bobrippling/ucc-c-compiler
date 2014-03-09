@@ -107,6 +107,8 @@ struct statement
 	KEYWORD(_Generic),
 	KEYWORD(_Static_assert),
 
+	KEYWORD(__extension__),
+
 	KEYWORD__ALL(typeof),
 
 	KEYWORD__(attribute, token_attribute),

@@ -384,6 +384,10 @@ expr *parse_expr_unary(symtable *scope)
 				e = parse_expr_sizeof_typeof_alignof(what_alignof, scope);
 				break;
 
+			case token___extension__:
+				EAT(curtok);
+				return parse_expr_unary(scope);
+
 			default:
 				set_w = 0;
 				e = parse_expr_postfix(scope);
