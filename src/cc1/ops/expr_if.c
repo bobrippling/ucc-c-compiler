@@ -163,15 +163,19 @@ void fold_expr_if(expr *e, symtable *stab)
 					int r_ptr = r_ptr_null || r_strict_ptr;
 
 					if(l_ptr || r_ptr){
+						enum type_qualifier qual_both
+							= (l_strict_ptr ? type_qual(type_next(tt_l)) : qual_none)
+							|
+							(r_strict_ptr ? type_qual(type_next(tt_r)) : qual_none);
+
 						fold_type_chk_warn(
 								tt_l, tt_r, &e->where, "?: pointer type mismatch");
 
 						/* qualified void * */
-						e->tree_type = type_qualify(
-								type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
-								(l_strict_ptr ? type_qual(type_next(tt_l)) : qual_none)
-								|
-								(r_strict_ptr ? type_qual(type_next(tt_r)) : qual_none));
+						e->tree_type = type_ptr_to(
+								type_qualify(
+									type_nav_btype(cc1_type_nav, type_void),
+									qual_both));
 
 					}else{
 						char buf[TYPE_STATIC_BUFSIZ];
