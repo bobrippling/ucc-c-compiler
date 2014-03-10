@@ -124,3 +124,15 @@ void macros_stats(void)
 	ITER_MACROS(m)
 		printf("%s %d\n", m->nam, m->use_dump);
 }
+
+void macros_warn_unused(void)
+{
+	ITER_MACROS(m){
+		if(m->use_dump == 0 && m->nam[0] != '_'){
+			current_line--;
+			preproc_backtrace();
+			warn_at(&m->where, "macro \"%s\" not not used", m->nam);
+			current_line++;
+		}
+	}
+}

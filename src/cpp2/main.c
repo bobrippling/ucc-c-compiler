@@ -431,6 +431,9 @@ defaul:
 
 	preprocess();
 
+	if(wmode & WUNUSED)
+		macros_warn_unused();
+
 	switch(dump){
 		case NONE:
 			break;

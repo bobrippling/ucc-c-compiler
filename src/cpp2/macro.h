@@ -23,6 +23,7 @@ macro *macro_find(const char *sp);
 int    macro_remove(const char *nam);
 void   macros_dump(void);
 void   macros_stats(void);
+void macros_warn_unused(void);
 
 extern macro **macros;
 
