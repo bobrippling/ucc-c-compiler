@@ -17,16 +17,11 @@ extern int no_output;
 extern struct loc loc_tok;
 #define current_line loc_tok.line
 
-/* bit of a hack, as we've already
- * incremented current_line when we
- * reach the die() call */
 #define CPP_X(wm, f, ...)      \
   do{                          \
     if(wm == 0 || wm & wmode){ \
-      current_line--;          \
       preproc_backtrace();     \
       f(NULL, __VA_ARGS__);    \
-      current_line++;          \
     }                          \
   }while(0)
 

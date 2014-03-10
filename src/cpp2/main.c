@@ -187,7 +187,7 @@ int main(int argc, char **argv)
 
 	infname = outfname = NULL;
 
-	current_line = 1;
+	current_line = 0;
 	current_fname = FNAME_BUILTIN;
 
 	macro_add_limits();

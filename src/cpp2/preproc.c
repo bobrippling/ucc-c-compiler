@@ -81,7 +81,7 @@ void preproc_push(FILE *f, const char *fname)
 	/* setup new state */
 	file_stack[file_stack_idx].file    = f;
 	file_stack[file_stack_idx].fname   = ustrdup(fname);
-	file_stack[file_stack_idx].line_no = current_line = 1;
+	file_stack[file_stack_idx].line_no = current_line = 0;
 
 	preproc_out_info();
 }

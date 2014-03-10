@@ -176,7 +176,6 @@ static void handle_error_warning(token **tokens, int err)
 
 	/* we're already on the next line */
 	where_current(&w);
-	w.line--;
 
 #ifdef __clang__
 	/* this works around clang's buggy __attribute__((noreturn))
