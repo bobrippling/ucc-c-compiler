@@ -8,10 +8,48 @@
 #include "../fold_sym.h"
 #include "../out/lbl.h"
 #include "../type_is.h"
+#include "../type_nav.h"
 
 const char *str_stmt_code()
 {
 	return "code";
+}
+
+static void cleanup_check(decl *d, attribute *cleanup)
+{
+	decl *fn = cleanup->bits.cleanup;
+	funcargs *args;
+	int nargs;
+	type *targ, *expected;
+
+	/* fn can return anything, but must take a single argument */
+	if(!type_is(fn->ref, type_func)){
+		fold_had_error = 1;
+		warn_at_print_error(&cleanup->where, "cleanup is not a function");
+		return;
+	}
+
+	type_called(fn->ref, &args);
+	if((nargs = dynarray_count(args->arglist)) != 1){
+		fold_had_error = 1;
+		warn_at_print_error(&cleanup->where,
+				"cleanup needs one argument (not %d)", nargs);
+		return;
+	}
+
+	targ = args->arglist[0]->ref;
+	expected = type_ptr_to(d->ref);
+	if(!(type_cmp(targ, expected, 0) & TYPE_EQUAL_ANY)){
+		char targ_buf[TYPE_STATIC_BUFSIZ];
+		char expected_buf[TYPE_STATIC_BUFSIZ];
+
+		fold_had_error = 1;
+		warn_at_print_error(&cleanup->where,
+				"type '%s' passed - cleanup needs '%s'",
+				type_to_str_r(targ_buf, targ),
+				type_to_str_r(expected_buf, expected));
+		return;
+	}
 }
 
 void fold_shadow_dup_check_block_decls(symtable *stab)
@@ -29,8 +67,12 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 		decl *found;
 		symtable *above_scope;
 		int chk_shadow = 0, is_func = 0;
+		attribute *attr;
 
 		fold_decl(d, stab, NULL);
+
+		if((attr = attribute_present(d, attr_cleanup)))
+			cleanup_check(d, attr);
 
 		if((is_func = !!type_is(d->ref, type_func)))
 			chk_shadow = 1;
