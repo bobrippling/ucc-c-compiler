@@ -146,6 +146,14 @@ void gen_block_decls(symtable *stab, const char **dbg_end_lbl)
 	}
 }
 
+void gen_block_decls_end(symtable *stab, const char *endlbl)
+{
+	(void)stab;
+
+	if(endlbl)
+		out_label_noop(endlbl);
+}
+
 void gen_stmt_code(stmt *s)
 {
 	stmt **titer;
@@ -157,8 +165,7 @@ void gen_stmt_code(stmt *s)
 	for(titer = s->bits.code.stmts; titer && *titer; titer++)
 		gen_stmt(*titer);
 
-	if(endlbl)
-		out_label_noop(endlbl);
+	gen_block_decls_end(s->symtab, endlbl);
 }
 
 void style_stmt_code(stmt *s)

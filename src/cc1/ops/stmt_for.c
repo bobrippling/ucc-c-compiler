@@ -65,7 +65,7 @@ void gen_stmt_for(stmt *s)
 	out_jmp();
 
 	out_label(s->lbl_break);
-	flow_end(el);
+	flow_end(s->flow, s->flow->for_init_symtab, el);
 
 	free(lbl_test);
 }

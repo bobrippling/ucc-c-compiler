@@ -40,7 +40,7 @@ void gen_stmt_while(stmt *s)
 	out_push_lbl(s->lbl_continue, 0);
 	out_jmp();
 
-	flow_end(endlbls);
+	flow_end(s->flow, s->symtab, endlbls);
 	out_label(s->lbl_break);
 }
 

@@ -55,12 +55,12 @@ void flow_gen(stmt_flow *flow, symtable *stab, const char *endlbls[2])
 	}
 }
 
-void flow_end(const char *endlbls[2])
+void flow_end(stmt_flow *flow, symtable *stab, const char *endlbls[2])
 {
-	int i;
-	for(i = 0; i < 2; i++)
-		if(endlbls[i])
-			out_label_noop(endlbls[i]);
+	gen_block_decls_end(stab, endlbls[0]);
+
+	if(flow && stab != flow->for_init_symtab)
+		gen_block_decls_end(flow->for_init_symtab, endlbls[1]);
 }
 
 void fold_stmt_if(stmt *s)
@@ -92,7 +92,7 @@ void gen_stmt_if(stmt *s)
 		gen_stmt(s->rhs);
 	out_label(lbl_fi);
 
-	flow_end(el);
+	flow_end(s->flow, s->symtab, el);
 
 	free(lbl_else);
 	free(lbl_fi);
