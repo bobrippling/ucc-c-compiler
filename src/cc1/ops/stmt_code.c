@@ -190,7 +190,25 @@ void gen_block_decls(symtable *stab, const char **dbg_end_lbl)
 
 void gen_block_decls_end(symtable *stab, const char *endlbl)
 {
-	(void)stab;
+	decl **di;
+
+	for(di = stab->decls; di && *di; di++){
+		decl *d = *di;
+		attribute *cleanup = attribute_present(d, attr_cleanup);
+		if(!cleanup)
+			continue;
+
+		if(d->sym){
+			type *fty = cleanup->bits.cleanup->ref;
+
+			ICW("FIXME: currently this is code-gen'd just after a jump");
+
+			out_push_lbl(cleanup->bits.cleanup->spel_asm, 1);
+			out_push_sym(d->sym);
+			out_call(/*nargs:*/1, type_called(fty, NULL), fty);
+			out_pop(); /* pop func ret */
+		}
+	}
 
 	if(endlbl)
 		out_label_noop(endlbl);
