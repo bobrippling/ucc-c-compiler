@@ -452,6 +452,12 @@ static void fold_decl_add_sym(decl *d, symtable *stab)
 
 		d->sym = sym_new(d, ty);
 	}
+
+	if(attribute_present(d, attr_cleanup)
+	&& (d->sym->type != sym_local || type_is(d->ref, type_func)))
+	{
+		warn_at(&d->where, "cleanup attribute only applies to local variables");
+	}
 }
 
 static void fold_decl_func(decl *d, symtable *stab)
