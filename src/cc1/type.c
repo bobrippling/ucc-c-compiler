@@ -375,6 +375,7 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 
 	int need_paren;
 	enum type_qualifier q;
+	type *prev_skipped;
 
 	if(!r){
 		/* reached the bottom/end - spel */
@@ -392,7 +393,11 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 	 *
 	 * .tmp looks right, down the chain, .ref looks left, up the chain
 	 */
-	need_paren = r->ref && IS_PTR(r->type) && !IS_PTR(r->ref->type);
+	need_paren = r->ref
+		&& IS_PTR(r->type)
+		&& (prev_skipped = type_skip_all(r->ref))->type != type_btype
+		&& !IS_PTR(prev_skipped->type);
+
 	q = qual_none;
 
 	if(need_paren){
