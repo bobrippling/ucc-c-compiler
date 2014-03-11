@@ -371,7 +371,7 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
 #define ADD_SPC() do{ if(*need_spc) BUF_ADD(" "); *need_spc = 0; }while(0)
-#define LOOSE_BINDING(ty) ((ty) == type_ptr || (ty) == type_block)
+#define IS_PTR(ty) ((ty) == type_ptr || (ty) == type_block)
 
 	int need_paren;
 	enum type_qualifier q;
@@ -386,9 +386,14 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 		return;
 	}
 
+	/* int (**fn())[2]
+	 * btype -> array -> ptr -> ptr -> func
+	 *                ^ parens
+	 *
+	 * .tmp looks right, down the chain, .ref looks left, up the chain
+	 */
+	need_paren = r->ref && IS_PTR(r->type) && !IS_PTR(r->ref->type);
 	q = qual_none;
-	need_paren = LOOSE_BINDING(r->type)
-		&& (r->tmp ? !LOOSE_BINDING(r->tmp->type) : 1);
 
 	if(need_paren){
 		ADD_SPC();
@@ -503,17 +508,7 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 
 	if(need_paren)
 		BUF_ADD(")");
-#undef LOOSE_BINDING
-}
-
-static type *type_set_parent(type *r, type *parent)
-{
-	if(!r)
-		return parent;
-
-	r->tmp = parent;
-
-	return type_set_parent(r->ref, r);
+#undef IS_PTR
 }
 
 static
@@ -582,6 +577,16 @@ type *type_add_type_str(type *r,
 	return NULL;
 }
 #undef BUF_ADD
+
+static type *type_set_parent(type *r, type *parent)
+{
+	if(!r)
+		return parent;
+
+	r->tmp = parent;
+
+	return type_set_parent(r->ref, r);
+}
 
 static
 const char *type_to_str_r_spel_aka(
