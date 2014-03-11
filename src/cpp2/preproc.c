@@ -53,6 +53,11 @@ static void preproc_out_info(void)
 		printf("# %d \"%s\"\n", file_stack[file_stack_idx].line_no, file_stack[file_stack_idx].fname);
 }
 
+int preproc_in_include()
+{
+	return file_stack_idx > 0;
+}
+
 void preproc_push(FILE *f, const char *fname)
 {
 	if(file_stack_idx >= 0)

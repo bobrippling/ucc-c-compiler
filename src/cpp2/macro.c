@@ -28,7 +28,7 @@ macro *macro_find(const char *sp)
 	return NULL;
 }
 
-macro *macro_add(const char *nam, const char *val)
+macro *macro_add(const char *nam, const char *val, int depth)
 {
 	macro *m;
 
@@ -56,16 +56,22 @@ macro *macro_add(const char *nam, const char *val)
 	}
 
 	where_current(&m->where);
+	if(m->where.line_str){
+		/* keep a hold for after preproc */
+		m->where.line_str = ustrdup(m->where.line_str);
+	}
 
 	m->val = val ? ustrdup(val) : NULL;
 	m->type = MACRO;
+	m->include_depth = depth;
 
 	return m;
 }
 
-macro *macro_add_func(const char *nam, const char *val, char **args, int variadic)
+macro *macro_add_func(const char *nam, const char *val,
+		char **args, int variadic, int depth)
 {
-	macro *m  = macro_add(nam, val);
+	macro *m  = macro_add(nam, val, depth);
 	if(m->args)
 		dynarray_free(char **, &m->args, free);
 	m->args = args;
@@ -123,4 +129,19 @@ void macros_stats(void)
 {
 	ITER_MACROS(m)
 		printf("%s %d\n", m->nam, m->use_dump);
+}
+
+void macros_warn_unused(void)
+{
+	ITER_MACROS(m){
+		if(m->use_dump == 0
+		&& m->nam[0] != '_'
+		&& m->include_depth == 0)
+		{
+			current_line--;
+			preproc_backtrace();
+			warn_at(&m->where, "unused macro \"%s\"", m->nam);
+			current_line++;
+		}
+	}
 }
