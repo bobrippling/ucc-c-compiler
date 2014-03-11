@@ -128,7 +128,7 @@ for_fin:
 			val = tokens_join(tokens + i);
 		}
 
-		macro_add_func(name, val, args, variadic);
+		macro_add_func(name, val, args, variadic, preproc_in_include());
 
 		free(val);
 
@@ -144,7 +144,7 @@ for_fin:
 
 		val = tokens_join(tokens + 1);
 
-		macro_add(name, val);
+		macro_add(name, val, preproc_in_include());
 
 		free(val);
 	}
