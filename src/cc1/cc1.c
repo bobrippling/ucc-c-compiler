@@ -549,6 +549,21 @@ usage:
 
 	cc1_type_nav = type_nav_init();
 
+	/* type print debugging without the pesky type_where:s */
+	type_array_of(
+			type_ptr_to(
+				type_array_of(
+					type_nav_btype(cc1_type_nav, type_int),
+					expr_new_val(2))),
+			expr_new_val(2));
+
+	type_ptr_to(
+			type_array_of(
+				type_ptr_to(
+					type_nav_btype(cc1_type_nav, type_int)),
+				expr_new_val(2)));
+	/* end type debugging */
+
 	tokenise_set_input(next_line, fname);
 
 	where_cc1_current(&loc_start);
