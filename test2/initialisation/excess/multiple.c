@@ -20,11 +20,11 @@ struct A x_2[2] = {
 };
 
 int y_[2][2] = {
-	1, 2, 3, 4, 5 // CHECK: warning: excess initialiser for 'int ([2])[2]'
+	1, 2, 3, 4, 5 // CHECK: warning: excess initialiser for 'int[2][2]'
 };
 
 int y_2[2][2] = {
-	1, 2, 3, 4, 5, 6 // CHECK: warning: excess initialiser for 'int ([2])[2]'
+	1, 2, 3, 4, 5, 6 // CHECK: warning: excess initialiser for 'int[2][2]'
 };
 
 int y_fine[][2] = {

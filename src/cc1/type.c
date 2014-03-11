@@ -371,9 +371,11 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 #define BUF_ADD(...) \
 	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
 #define ADD_SPC() do{ if(*need_spc) BUF_ADD(" "); *need_spc = 0; }while(0)
+#define IS_PTR(ty) ((ty) == type_ptr || (ty) == type_block)
 
 	int need_paren;
 	enum type_qualifier q;
+	type *prev_skipped;
 
 	if(!r){
 		/* reached the bottom/end - spel */
@@ -385,22 +387,18 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 		return;
 	}
 
-	q = qual_none;
-	switch(r->ref->type){
-		case type_btype:
-		case type_tdef: /* just starting */
-		case type_cast: /* no need */
-		case type_attr:
-		case type_where:
-		case type_ptr:
-		case type_block:
-			need_paren = 0;
-			break;
+	/* int (**fn())[2]
+	 * btype -> array -> ptr -> ptr -> func
+	 *                ^ parens
+	 *
+	 * .tmp looks right, down the chain, .ref looks left, up the chain
+	 */
+	need_paren = r->ref
+		&& IS_PTR(r->type)
+		&& (prev_skipped = type_skip_all(r->ref))->type != type_btype
+		&& !IS_PTR(prev_skipped->type);
 
-		case type_func:
-		case type_array:
-			need_paren = r->tmp && r->type != r->tmp->type;
-	}
+	q = qual_none;
 
 	if(need_paren){
 		ADD_SPC();
@@ -515,16 +513,7 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 
 	if(need_paren)
 		BUF_ADD(")");
-}
-
-static type *type_set_parent(type *r, type *parent)
-{
-	if(!r)
-		return parent;
-
-	r->tmp = parent;
-
-	return type_set_parent(r->ref, r);
+#undef IS_PTR
 }
 
 static
@@ -593,6 +582,16 @@ type *type_add_type_str(type *r,
 	return NULL;
 }
 #undef BUF_ADD
+
+static type *type_set_parent(type *r, type *parent)
+{
+	if(!r)
+		return parent;
+
+	r->tmp = parent;
+
+	return type_set_parent(r->ref, r);
+}
 
 static
 const char *type_to_str_r_spel_aka(
