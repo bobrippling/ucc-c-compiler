@@ -197,6 +197,7 @@ void fold_expr_if(expr *e, symtable *stab)
 void gen_expr_if(expr *e)
 {
 	char *lblfin;
+	char vphi_buf[OUT_VPHI_SZ];
 
 	lblfin = out_label_code("ifexp_fi");
 
@@ -209,14 +210,23 @@ void gen_expr_if(expr *e)
 
 		gen_expr(e->lhs);
 
+		/* hack for the phi jump until basic blocks are in */
+		out_dup();
+		out_flush_volatile();
+
+		out_phi_pop_to(&vphi_buf);
+
 		out_push_lbl(lblfin, 0);
+		/* the out_dup() is flushed here - hack side effect */
 		out_jmp();
 
-		out_label(lblelse);
+		out_label_noop(lblelse);
 		free(lblelse);
 
 	}else{
 		out_dup();
+		out_dup(); /* similar hack to above */
+		out_phi_pop_to(&vphi_buf);
 
 		out_jtrue(lblfin);
 	}
@@ -224,6 +234,7 @@ void gen_expr_if(expr *e)
 	out_pop();
 
 	gen_expr(e->rhs);
+	out_phi_join(&vphi_buf);
 	out_label(lblfin);
 
 	free(lblfin);
