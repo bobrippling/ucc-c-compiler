@@ -1,7 +1,7 @@
 include ../src_config.mk
 
 # mkstemp
-CFLAGS = -D_POSIX_C_SOURCE=200112L
+CFLAGS += -D_XOPEN_SOURCE=500
 
 OBJ = ucc.o ucc_ext.o ucc_lib.o str.o \
 			../util/alloc.o ../util/dynarray.o ../util/platform.o

@@ -804,8 +804,8 @@ static void op_shortcircuit(expr *e)
 	gen_expr(e->rhs);
 	out_normalise();
 
-	out_label(bail);
 	out_phi_join(&vphi_buf);
+	out_label(bail);
 	free(bail);
 }
 

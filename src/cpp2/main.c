@@ -164,7 +164,7 @@ static void macro_add_limits(void)
 {
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
-#define MACRO_ADD_LIM(m) macro_add("__" #m "__", QUOTE(__ ## m ## __))
+#define MACRO_ADD_LIM(m) macro_add("__" #m "__", QUOTE(__ ## m ## __), 0)
 	MACRO_ADD_LIM(SCHAR_MAX);
 	MACRO_ADD_LIM(SHRT_MAX);
 	MACRO_ADD_LIM(INT_MAX);
@@ -193,39 +193,39 @@ int main(int argc, char **argv)
 	macro_add_limits();
 
 	for(i = 0; initial_defs[i].nam; i++)
-		macro_add(initial_defs[i].nam, initial_defs[i].val);
+		macro_add(initial_defs[i].nam, initial_defs[i].val, 0);
 
 	switch(platform_type()){
 		case PLATFORM_x86_64:
-			macro_add("__LP64__", "1");
-			macro_add("__x86_64__", "1");
+			macro_add("__LP64__", "1", 0);
+			macro_add("__x86_64__", "1", 0);
 			/* TODO: __i386__ for 32 bit */
 			break;
 
 		case PLATFORM_mipsel_32:
-			macro_add("__MIPS__", "1");
+			macro_add("__MIPS__", "1", 0);
 	}
 
 	switch(platform_sys()){
-#define MAP(t, s) case t: macro_add(s, "1"); break
+#define MAP(t, s) case t: macro_add(s, "1", 0); break
 		MAP(PLATFORM_LINUX,   "__linux__");
 		MAP(PLATFORM_FREEBSD, "__FreeBSD__");
 #undef MAP
 
 		case PLATFORM_DARWIN:
-			macro_add("__DARWIN__", "1");
-			macro_add("__MACH__", "1"); /* TODO: proper detection for these */
-			macro_add("__APPLE__", "1");
+			macro_add("__DARWIN__", "1", 0);
+			macro_add("__MACH__", "1", 0); /* TODO: proper detection for these */
+			macro_add("__APPLE__", "1", 0);
 			break;
 
 		case PLATFORM_CYGWIN:
-			macro_add("__CYGWIN__", "1");
+			macro_add("__CYGWIN__", "1", 0);
 			platform_win32 = 1;
 			break;
 	}
 
 	macro_add("__WCHAR_TYPE__",
-			platform_win32 ? "short" : "int");
+			platform_win32 ? "short" : "int", 0);
 
 	current_fname = FNAME_CMDLINE;
 
@@ -382,17 +382,17 @@ defaul:
 
 	current_fname = FNAME_BUILTIN;
 
-	macro_add("__STDC_HOSTED__",  freestanding ? "0" : "1");
+	macro_add("__STDC_HOSTED__",  freestanding ? "0" : "1", 0);
 	switch(std){
 		case STD_C89:
 		case STD_C90:
 			/* no */
 			break;
 		case STD_C99:
-			macro_add("__STDC_VERSION__", "199901L");
+			macro_add("__STDC_VERSION__", "199901L", 0);
 			break;
 		case STD_C11:
-			macro_add("__STDC_VERSION__", "201112L");
+			macro_add("__STDC_VERSION__", "201112L", 0);
 	}
 
 	if(i < argc){
@@ -430,6 +430,9 @@ defaul:
 	current_fname = infname;
 
 	preprocess();
+
+	if(wmode & WUNUSED)
+		macros_warn_unused();
 
 	switch(dump){
 		case NONE:

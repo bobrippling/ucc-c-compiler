@@ -137,8 +137,11 @@ void out_phi_pop_to(void *vvphi)
 	/* put the current value into the phi-save area */
 	memcpy_safe(vphi, vtop);
 
-	if(vphi->type == V_REG)
+	if(vphi->type == V_REG){
 		v_reserve_reg(&vphi->bits.regoff.reg); /* XXX: watch me */
+		if(fopt_mode & FOPT_VERBOSE_ASM)
+			out_comment("phi register %d", vphi->bits.regoff.reg.idx);
+	}
 
 	out_pop();
 }
@@ -156,6 +159,9 @@ void out_phi_join(void *vvphi)
 
 	if(!vreg_eq(&vtop->bits.regoff.reg, &vphi->bits.regoff.reg)){
 		/* _must_ match vphi, since it's already been generated */
+		if(fopt_mode & FOPT_VERBOSE_ASM)
+			out_comment("joining to phi register %d", vphi->bits.regoff.reg.idx);
+
 		impl_reg_cp(vtop, &vphi->bits.regoff.reg);
 		memcpy_safe(vtop, vphi);
 	}
