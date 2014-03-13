@@ -37,8 +37,8 @@ static void cleanup_check(decl *d, attribute *cleanup)
 		return;
 	}
 
-	targ = args->arglist[0]->ref;
-	expected = type_ptr_to(d->ref);
+	expected = args->arglist[0]->ref;
+	targ = type_ptr_to(d->ref);
 	if(!(type_cmp(targ, expected, 0) & TYPE_EQUAL_ANY)){
 		char targ_buf[TYPE_STATIC_BUFSIZ];
 		char expected_buf[TYPE_STATIC_BUFSIZ];
