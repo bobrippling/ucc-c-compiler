@@ -19,16 +19,6 @@
 
 #include "type_is.h"
 
-static enum type_qualifier type_cast_get_qual(type *t)
-{
-	t = type_skip_non_casts(t);
-	if(t->type != type_cast)
-		return qual_none;
-	if(t->bits.cast.is_signed_cast)
-		return qual_none;
-	return t->bits.cast.qual;
-}
-
 static int type_qual_cmp_1(
 		enum type_qualifier a,
 		enum type_qualifier b,
@@ -208,8 +198,8 @@ static enum type_cmp type_cmp_r(
 	}
 
 	if(ret & TYPE_EQUAL_ANY){
-		enum type_qualifier a_qual = type_cast_get_qual(orig_a);
-		enum type_qualifier b_qual = type_cast_get_qual(orig_b);
+		enum type_qualifier a_qual = type_qual(orig_a);
+		enum type_qualifier b_qual = type_qual(orig_b);
 
 		if(a_qual && b_qual){
 			switch(type_qual_cmp(a_qual, b_qual)){

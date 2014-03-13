@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "../util/where.h"
 #include "../util/util.h"
@@ -331,15 +332,38 @@ const char *type_primitive_to_str(const enum type_primitive p)
 	return NULL;
 }
 
+const char *type_cmp_to_str(enum type_cmp cmp)
+{
+	switch(cmp){
+		CASE_STR_PREFIX(TYPE, EQUAL);
+		CASE_STR_PREFIX(TYPE, EQUAL_TYPEDEF);
+		CASE_STR_PREFIX(TYPE, QUAL_ADD);
+		CASE_STR_PREFIX(TYPE, QUAL_SUB);
+		CASE_STR_PREFIX(TYPE, QUAL_POINTED_ADD);
+		CASE_STR_PREFIX(TYPE, QUAL_POINTED_SUB);
+		CASE_STR_PREFIX(TYPE, QUAL_NESTED_CHANGE);
+		CASE_STR_PREFIX(TYPE, CONVERTIBLE_IMPLICIT);
+		CASE_STR_PREFIX(TYPE, CONVERTIBLE_EXPLICIT);
+		CASE_STR_PREFIX(TYPE, NOT_EQUAL);
+	}
+	return NULL;
+}
+
 const char *type_qual_to_str(const enum type_qualifier qual, int trailing_space)
 {
 	static char buf[32];
+
 	/* trailing space is purposeful */
-	snprintf(buf, sizeof buf, "%s%s%s%s",
-		qual & qual_const    ? "const"    : "",
-		qual & qual_volatile ? "volatile" : "",
-		qual & qual_restrict ? "restrict" : "",
-		qual && trailing_space ? " " : "");
+	snprintf(buf, sizeof buf, "%s%s%s",
+		qual & qual_const    ? "const "    : "",
+		qual & qual_volatile ? "volatile " : "",
+		qual & qual_restrict ? "restrict " : "");
+
+	if(!trailing_space){
+		char *last = strrchr(buf, ' ');
+		if(last)
+			*last = '\0';
+	}
+
 	return buf;
 }
-

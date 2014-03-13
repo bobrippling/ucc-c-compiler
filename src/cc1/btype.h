@@ -21,6 +21,8 @@ enum type_cmp
 };
 #define TYPE_EQUAL_ANY (TYPE_EQUAL | TYPE_EQUAL_TYPEDEF)
 
+const char *type_cmp_to_str(enum type_cmp);
+
 enum type_primitive
 {
 	type_void,
