@@ -245,6 +245,23 @@ static void btype_set_store(
 	*pstore_set = 1;
 }
 
+static type *parse_btype_end(
+		type *btype, enum type_qualifier qual, int is_noreturn,
+		attribute *attr, symtable *scope, where *w)
+{
+	parse_add_attr(&attr, scope); /* int/struct-A __attr__ */
+
+	btype = type_qualify(btype, qual);
+
+	if(is_noreturn)
+		attribute_append(&attr, attribute_new(attr_noreturn));
+
+	btype = type_attributed(btype, attr);
+	RELEASE(attr);
+
+	return type_at_where(btype, w);
+}
+
 static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
 		int newdecl_context, symtable *scope)
@@ -369,6 +386,9 @@ static type *parse_btype(
 			const char *str;
 			type *tref;
 			int is_qual;
+			where w;
+
+			where_cc1_current(&w);
 
 			EAT(curtok);
 
@@ -391,11 +411,6 @@ static type *parse_btype(
 			if(signed_set || primitive_mode != NONE)
 				die_at(NULL, "primitive/signed/unsigned with %s", str);
 
-			/* fine... although a _Noreturn function returning a sue
-			 * is pretty daft... */
-			if(is_noreturn)
-				tref = type_attributed(tref, attribute_new(attr_noreturn));
-
 			/*
 			 * struct A { ... } const x;
 			 * accept qualifiers and storage for the type, not decl
@@ -409,7 +424,8 @@ static type *parse_btype(
 			}
 
 			/* *store is assigned elsewhere */
-			return type_qualify(tref, qual);
+			/* a _Noreturn function returning a sue is pretty daft... */
+			return parse_btype_end(tref, qual, is_noreturn, attr, scope, &w);
 
 		}else if(accept(token_typeof)){
 			if(primitive_mode != NONE)
@@ -586,16 +602,7 @@ static type *parse_btype(
 			die_at(NULL, "typedefs can't be aligned");
 		}
 
-		r = type_qualify(r, qual);
-
-		if(is_noreturn)
-			attribute_append(&attr, attribute_new(attr_noreturn));
-
-		parse_add_attr(&attr, scope); /* int/struct-A __attr__ */
-		r = type_attributed(r, attr);
-		RELEASE(attr);
-
-		return type_at_where(r, &w);
+		return parse_btype_end(r, qual, is_noreturn, attr, scope, &w);
 	}else{
 		return NULL;
 	}
