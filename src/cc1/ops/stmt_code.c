@@ -203,7 +203,7 @@ void gen_block_decls_end(symtable *stab, const char *endlbl)
 
 			ICW("FIXME: currently this is code-gen'd just after a jump");
 
-			out_push_lbl(cleanup->bits.cleanup->spel_asm, 1);
+			out_push_lbl(decl_asm_spel(cleanup->bits.cleanup), 1);
 			out_push_sym(d->sym);
 			out_call(/*nargs:*/1, type_called(fty, NULL), fty);
 			out_pop(); /* pop func ret */
