@@ -16,7 +16,7 @@ void fold_stmt_default(stmt *s)
 
 void gen_stmt_default(stmt *s, out_ctx *octx)
 {
-	out_blk *default_blk = out_blk_new(octx, "default");
+	out_blk *default_blk = out_blk_new("default");
 	out_current_blk(octx, default_blk);
 	gen_stmt(s->lhs, octx);
 }

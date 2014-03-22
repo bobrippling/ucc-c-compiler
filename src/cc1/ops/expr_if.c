@@ -196,9 +196,9 @@ void fold_expr_if(expr *e, symtable *stab)
 
 out_val *gen_expr_if(expr *e, out_ctx *octx)
 {
-	out_blk *landing = out_blk_new(octx, "if_end"),
-	        *blk_lhs = out_blk_new(octx, "if_lhs"),
-	        *blk_rhs = out_blk_new(octx, "if_rhs");
+	out_blk *landing = out_blk_new("if_end"),
+	        *blk_lhs = out_blk_new("if_lhs"),
+	        *blk_rhs = out_blk_new("if_rhs");
 	out_val *cond = gen_expr(e->expr, octx);
 
 	out_ctrl_branch(cond, blk_lhs, blk_rhs);

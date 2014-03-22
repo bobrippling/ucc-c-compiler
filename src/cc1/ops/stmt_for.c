@@ -32,9 +32,9 @@ void fold_stmt_for(stmt *s)
 void gen_stmt_for(stmt *s, out_ctx *octx)
 {
 	const char *el[2];
-	out_blk *blk_test = out_blk_new(octx, "for_test"),
-	        *blk_body = out_blk_new(octx, "for_body"),
-	        *blk_end = out_blk_new(octx, "for_end");
+	out_blk *blk_test = out_blk_new("for_test"),
+	        *blk_body = out_blk_new("for_body"),
+	        *blk_end = out_blk_new("for_end");
 
 	flow_gen(s->flow, s->flow->for_init_symtab, el);
 

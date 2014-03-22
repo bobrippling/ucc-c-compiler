@@ -35,7 +35,7 @@ void fold_stmt_case_range(stmt *s)
 
 void gen_stmt_case_range(stmt *s, out_ctx *octx)
 {
-	out_blk *case_blk = out_blk_new(octx, "case_range");
+	out_blk *case_blk = out_blk_new("case_range");
 
 	out_current_blk(octx, case_blk);
 

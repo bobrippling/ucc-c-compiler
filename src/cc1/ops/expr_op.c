@@ -798,9 +798,9 @@ static out_val *op_shortcircuit(expr *e, out_ctx *octx)
 
 	lhs = out_normalise(octx, gen_expr(e->lhs, octx));
 
-	blk_rhs = out_blk_new(octx, "shortcircuit_a");
-	blk_empty = out_blk_new(octx, "shortcircuit_b");
-	landing = out_blk_new(octx, "shortcircuit_landing");
+	blk_rhs = out_blk_new("shortcircuit_a");
+	blk_empty = out_blk_new("shortcircuit_b");
+	landing = out_blk_new("shortcircuit_landing");
 
 	out_ctrl_branch(lhs, blk_rhs, blk_empty);
 
@@ -851,8 +851,8 @@ out_val *gen_expr_op(expr *e, out_ctx *octx)
 	&& type_is_integral(e->tree_type)
 	&& type_is_signed(e->tree_type))
 	{
-		out_blk *land = out_blk_new(octx, "trapv_end");
-		out_blk *blk_undef = out_blk_new(octx, "travp_bad");
+		out_blk *land = out_blk_new("trapv_end");
+		out_blk *blk_undef = out_blk_new("travp_bad");
 
 		out_ctrl_branch(
 				out_new_overflow(octx),

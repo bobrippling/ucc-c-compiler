@@ -202,9 +202,9 @@ static out_val *va_arg_gen_read(
 		decl *const mem_reg_save_area,
 		decl *const mem_overflow_arg_area)
 {
-	out_blk *blk_reg = out_blk_new(octx, "va_reg");
-	out_blk *blk_stack = out_blk_new(octx, "va_stack");
-	out_blk *blk_fin = out_blk_new(octx, "va_fin");
+	out_blk *blk_reg = out_blk_new("va_reg");
+	out_blk *blk_stack = out_blk_new("va_stack");
+	out_blk *blk_fin = out_blk_new("va_fin");
 
 	/* FIXME: this needs to reference x86_64::N_CALL_REGS_{I,F} */
 	const int fp = type_is_floating(ty);
