@@ -39,11 +39,10 @@ out_val *gen_expr_str(expr *e, out_ctx *octx)
 
 	stringlit_use(strl);
 
-	out_push_lbl(strl->lbl, 1);
-	out_set_lvalue();
+	return out_new_lbl(octx, strl->lbl, 1);
 }
 
-static void lea_expr_str(expr *e)
+static out_val *lea_expr_str(expr *e, out_ctx *octx)
 {
 	/* looks the same - a lea, but the type is different
 	 * gen_expr_str :: char *
@@ -51,7 +50,7 @@ static void lea_expr_str(expr *e)
 	 *
 	 * just like char x[] :: x vs &x
 	 */
-	gen_expr_str(e);
+	return gen_expr_str(e, octx);
 }
 
 out_val *gen_expr_str_str(expr *e, out_ctx *octx)
@@ -69,6 +68,8 @@ out_val *gen_expr_str_str(expr *e, out_ctx *octx)
 
 	gen_str_indent--;
 	fputc('\n', f);
+
+	UNUSED_OCTX();
 }
 
 static void const_expr_string(expr *e, consty *k)
@@ -113,4 +114,6 @@ out_val *gen_expr_style_str(expr *e, out_ctx *octx)
 	literal_print(gen_file(),
 			e->bits.strlit.lit_at.lit->str,
 			e->bits.strlit.lit_at.lit->len);
+
+	UNUSED_OCTX();
 }

@@ -59,39 +59,34 @@ out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
 	/* int += float
 	 * lea int, cast up to float, add, cast down to int, store
 	 */
-	lea_expr(e->bits.compound_upcast ? expr_cast_child(e->lhs) : e->lhs);
+	out_val *saved_post = NULL, *addr_lhs, *rhs, *lhs, *result;
 
-	if(e->assign_is_post){
-		out_dup();
-		out_deref();
-		out_flush_volatile();
-		out_swap();
-		out_comment("saved for compound op");
-	}
+	addr_lhs = lea_expr(
+			e->bits.compound_upcast ? expr_cast_child(e->lhs) : e->lhs,
+			octx);
 
-	out_dup();
+	if(e->assign_is_post)
+		saved_post = out_deref(octx, addr_lhs);
+
 	/* delay the dereference until after generating rhs.
 	 * this is fine, += etc aren't sequence points
 	 */
 
-	gen_expr(e->rhs);
+	rhs = gen_expr(e->rhs, octx);
 
 	/* here's the delayed dereference */
-	out_swap();
-	out_deref();
+	lhs = out_deref(octx, addr_lhs);
 	if(e->bits.compound_upcast)
-		out_cast(e->lhs->tree_type, /*normalise_bool:*/1);
-	out_swap();
+		lhs = out_cast(octx, lhs, e->lhs->tree_type, /*normalise_bool:*/1);
 
-	out_op(e->op);
+	result = out_op(octx, e->op, lhs, rhs);
 
 	if(e->bits.compound_upcast) /* need to cast back down to store */
-		out_cast(e->tree_type, /*normalise_bool:*/1);
+		result = out_cast(octx, result, e->tree_type, /*normalise_bool:*/1);
 
-	out_store();
+	out_store(octx, addr_lhs, result);
 
-	if(e->assign_is_post)
-		out_pop();
+	return result;
 }
 
 out_val *gen_expr_str_assign_compound(expr *e, out_ctx *octx)
@@ -108,6 +103,8 @@ out_val *gen_expr_str_assign_compound(expr *e, out_ctx *octx)
 	gen_str_indent++;
 	print_expr(e->rhs);
 	gen_str_indent--;
+
+	UNUSED_OCTX();
 }
 
 void mutate_expr_assign_compound(expr *e)
@@ -128,7 +125,8 @@ expr *expr_new_assign_compound(expr *to, expr *from, enum op_type op)
 
 out_val *gen_expr_style_assign_compound(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs->lhs);
+	gen_expr(e->lhs->lhs, octx);
 	stylef(" %s= ", op_to_str(e->op));
-	gen_expr(e->rhs);
+	gen_expr(e->rhs, octx);
+	return NULL;
 }

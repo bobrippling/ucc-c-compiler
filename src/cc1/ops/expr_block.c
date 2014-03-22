@@ -94,7 +94,7 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 
 out_val *gen_expr_block(expr *e, out_ctx *octx)
 {
-	out_push_sym(e->bits.block.sym);
+	return out_new_sym(octx, e->bits.block.sym);
 }
 
 out_val *gen_expr_str_block(expr *e, out_ctx *octx)
@@ -103,12 +103,14 @@ out_val *gen_expr_str_block(expr *e, out_ctx *octx)
 	gen_str_indent++;
 	print_stmt(e->code);
 	gen_str_indent--;
+	UNUSED_OCTX();
 }
 
 out_val *gen_expr_style_block(expr *e, out_ctx *octx)
 {
 	stylef("^%s", type_to_str(e->tree_type));
-	gen_stmt(e->code);
+	gen_stmt(e->code, octx);
+	return NULL;
 }
 
 void mutate_expr_block(expr *e)
