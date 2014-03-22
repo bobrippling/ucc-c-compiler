@@ -607,34 +607,6 @@ static type *parse_btype(
 	}
 }
 
-static int parse_curtok_is_type(symtable *scope)
-{
-	if(curtok_is_type_qual()
-	|| curtok_is_decl_store()
-	|| curtok_is_type_primitive())
-		return 1;
-
-	switch(curtok){
-		case token_signed:
-		case token_unsigned:
-		case token_struct:
-		case token_union:
-		case token_enum:
-		case token_typeof:
-		case token_attribute:
-		case token___builtin_va_list:
-			return 1;
-
-		case token_identifier:
-			return typedef_visible(scope, token_current_spel_peek());
-
-		default:
-			break;
-	}
-
-	return 0;
-}
-
 static decl *parse_arg_decl(symtable *scope)
 {
 	/* argument decls can default to int */
@@ -811,7 +783,7 @@ static type_parsed *parsed_type_nest(
 		 * we don't look for open parens - they're used for nexting, e.g.
 		 * int ((*p)(void));
 		 */
-		if(parse_curtok_is_type(scope) || curtok == token_close_paren){
+		if(parse_at_decl(scope) || curtok == token_close_paren){
 			/* int() or char(short) - func decl */
 			uneat(token_open_paren);
 			/* parse_...func will grab this as funcargs instead */

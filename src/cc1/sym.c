@@ -129,12 +129,6 @@ sym *symtab_search(symtable *tab, const char *sp)
 	return d->sym;
 }
 
-int typedef_visible(symtable *stab, const char *spel)
-{
-	decl *d = symtab_search_d(stab, spel, NULL);
-	return d && (d->store & STORE_MASK_STORE) == store_typedef;
-}
-
 const char *sym_to_str(enum sym_type t)
 {
 	switch(t){
