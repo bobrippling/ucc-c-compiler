@@ -23,7 +23,7 @@ void fold_stmt_while(stmt *s)
 	fold_stmt(s->lhs);
 }
 
-void gen_stmt_while(stmt *s)
+void gen_stmt_while(stmt *s, out_ctx *octx)
 {
 	const char *endlbls[2];
 

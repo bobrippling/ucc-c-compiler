@@ -6,13 +6,10 @@
 #include "../sym.h"
 #include "../op.h"
 
-typedef struct out_ctx out_ctx;
+#include "forwards.h"
 
 out_ctx *out_ctx_new(void);
 void out_ctx_end(out_ctx *);
-
-typedef struct out_blk out_blk;
-typedef struct out_val out_val;
 
 /* value creation */
 out_val *out_new_num(out_ctx *, type *t, const numeric *n)
@@ -67,15 +64,16 @@ out_val *out_call(out_ctx *,
 
 
 /* control flow */
-out_blk *out_blk_new(out_ctx *, const char *desc);
+out_blk *out_blk_new(const char *desc);
 void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
 
 void out_ctrl_end_undefined(out_ctx *);
 void out_ctrl_end_ret(out_ctx *, out_val *, type *) ucc_nonnull((1));
 
-void out_ctrl_transfer(
-		out_blk *from, out_blk *to,
-		out_val *phi_arg /* optional */);
+void out_ctrl_transfer(out_blk *to, out_val *phi_arg /* optional */);
+
+/* goto *<exp> */
+void out_ctrl_transfer_exp(out_ctx *, out_val *addr);
 
 void out_ctrl_branch(
 		out_val *cond,
@@ -86,7 +84,7 @@ out_val *out_ctrl_merge(out_ctx *, out_blk *, out_blk *); /* maybe ret null */
 
 /* function setup */
 void out_func_prologue(
-		out_ctx *,
+		out_ctx *, const char *sp,
 		type *rf,
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[], int *local_offset);

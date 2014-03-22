@@ -72,7 +72,7 @@ void fold_stmt_if(stmt *s)
 		fold_stmt(s->rhs);
 }
 
-void gen_stmt_if(stmt *s)
+void gen_stmt_if(stmt *s, out_ctx *octx)
 {
 	char *lbl_else = out_label_code("else");
 	char *lbl_fi   = out_label_code("fi");

@@ -25,14 +25,18 @@ void fold_stmt_goto(stmt *s)
 	}
 }
 
-void gen_stmt_goto(stmt *s)
+void gen_stmt_goto(stmt *s, out_ctx *octx)
 {
-	if(s->expr)
-		gen_expr(s->expr);
-	else
-		out_push_lbl(s->bits.lbl.label->mangled, 0);
+	if(s->expr){
+		out_val *target = gen_expr(s->expr, octx);
 
-	out_jmp();
+		out_ctrl_transfer_exp(octx, target);
+
+	}else{
+		out_blk *target = s->bits.lbl.label->bblock;
+
+		out_ctrl_transfer(target, NULL);
+	}
 }
 
 void style_stmt_goto(stmt *s)

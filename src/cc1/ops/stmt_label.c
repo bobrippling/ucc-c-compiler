@@ -28,7 +28,7 @@ void fold_stmt_label(stmt *s)
 	fold_stmt(s->lhs); /* compound */
 }
 
-void gen_stmt_label(stmt *s)
+void gen_stmt_label(stmt *s, out_ctx *octx)
 {
 	out_label(s->bits.lbl.label->mangled);
 	gen_stmt(s->lhs); /* the code-part of the compound statement */

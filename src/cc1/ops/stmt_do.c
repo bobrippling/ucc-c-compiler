@@ -14,29 +14,27 @@ void fold_stmt_do(stmt *s)
 	fold_stmt_while(s);
 }
 
-void gen_stmt_do(stmt *s)
+void gen_stmt_do(stmt *s, out_ctx *octx)
 {
-	char *begin = out_label_flow("do_start");
+	out_blk *begin = out_blk_new(octx, "do_start");
+	out_blk *end = out_blk_new(octx, "do_end");
+	out_val *cond;
 
-	out_label(begin);
-	gen_stmt(s->lhs);
+	out_current_blk(octx, begin);
+	gen_stmt(s->lhs, octx);
 
-	out_label(s->lbl_continue);
-	gen_expr(s->expr);
+	cond = gen_expr(s->expr, octx);
+	out_ctrl_branch(cond, begin, end);
 
-	out_jtrue(begin);
-
-	out_label(s->lbl_break);
-
-	free(begin);
+	out_current_blk(octx, end);
 }
 
-void style_stmt_do(stmt *s)
+void style_stmt_do(stmt *s, out_ctx *octx)
 {
 	stylef("do");
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 	stylef("while(");
-	gen_expr(s->expr);
+	gen_expr(s->expr, octx);
 	stylef(");");
 }
 

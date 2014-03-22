@@ -19,74 +19,70 @@ void stmt_for_got_decls(stmt *s)
 
 void fold_stmt_for(stmt *s)
 {
-	s->lbl_break    = out_label_flow("for_start");
-	s->lbl_continue = out_label_flow("for_contiune");
-
-	if(s->flow->for_while)
+	if(s->flow->for_while){
 		fold_check_expr(
 				s->flow->for_while,
 				FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
 				"for-while");
+	}
 
 	fold_stmt(s->lhs);
 }
 
-void gen_stmt_for(stmt *s)
+void gen_stmt_for(stmt *s, out_ctx *octx)
 {
-	char *lbl_test = out_label_flow("for_test");
 	const char *el[2];
+	out_blk *blk_test = out_blk_new(octx, "for_test"),
+	        *blk_body = out_blk_new(octx, "for_body"),
+	        *blk_end = out_blk_new(octx, "for_end");
 
 	flow_gen(s->flow, s->flow->for_init_symtab, el);
 
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){
-		gen_expr(s->flow->for_init);
+		gen_expr(s->flow->for_init, octx);
 
-		out_pop();
 		out_comment("for-init");
 	}
 
-	out_label(lbl_test);
 	if(s->flow->for_while){
-		gen_expr(s->flow->for_while);
-		out_jfalse(s->lbl_break);
+		out_val *for_cond;
+
+		out_current_blk(octx, blk_test);
+		for_cond = gen_expr(s->flow->for_while, octx);
+
+		out_ctrl_branch(for_cond, blk_body, blk_end);
 	}
 
-	gen_stmt(s->lhs);
-	out_label(s->lbl_continue);
-	if(s->flow->for_inc){
-		gen_expr(s->flow->for_inc);
+	out_current_blk(octx, blk_body);
+	{
+		gen_stmt(s->lhs, octx);
 
-		out_pop();
-		out_comment("unused for inc");
+		if(s->flow->for_inc)
+			gen_expr(s->flow->for_inc, octx);
 	}
 
-	out_push_lbl(lbl_test, 0);
-	out_jmp();
-
-	out_label(s->lbl_break);
+	out_current_blk(octx, blk_end);
 	flow_end(el);
-
-	free(lbl_test);
 }
 
-void style_stmt_for(stmt *s)
+void style_stmt_for(stmt *s, out_ctx *octx)
 {
 	stylef("for(");
 	if(s->flow->for_init)
-		gen_expr(s->flow->for_init);
+		gen_expr(s->flow->for_init, octx);
 
 	stylef("; ");
 	if(s->flow->for_while)
-		gen_expr(s->flow->for_while);
+		gen_expr(s->flow->for_while, octx);
 
 	stylef("; ");
 	if(s->flow->for_inc)
-		gen_expr(s->flow->for_inc);
+		gen_expr(s->flow->for_inc, octx);
 
 	stylef(")\n");
 
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 }
 
 struct walk_info

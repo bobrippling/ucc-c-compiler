@@ -212,7 +212,7 @@ void fold_stmt_switch(stmt *s)
 	}
 }
 
-void gen_stmt_switch(stmt *s)
+void gen_stmt_switch(stmt *s, out_ctx *octx)
 {
 	struct switch_case *iter, *pdefault;
 

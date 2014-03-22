@@ -11,7 +11,7 @@ void fold_stmt_noop(stmt *s)
 	(void)s;
 }
 
-void gen_stmt_noop(stmt *s)
+void gen_stmt_noop(stmt *s, out_ctx *octx)
 {
 	(void)s;
 	out_comment("noop");

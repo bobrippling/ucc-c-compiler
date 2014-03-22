@@ -25,8 +25,6 @@
 #include "gen_style.h"
 #include "out/dbg.h"
 
-char *curfunc_lblfin; /* extern */
-
 out_val *gen_expr(expr *e, out_ctx *octx)
 {
 	consty k;
@@ -121,9 +119,7 @@ void gen_asm_global(decl *d, out_ctx *octx)
 
 		sp = decl_asm_spel(d);
 
-		out_label(sp);
-
-		out_func_prologue(octx, d->ref,
+		out_func_prologue(octx, sp, d->ref,
 				d->bits.func.code->symtab->auto_total_size,
 				nargs,
 				is_vari = type_is_variadic_func(d->ref),
@@ -131,11 +127,7 @@ void gen_asm_global(decl *d, out_ctx *octx)
 
 		assign_arg_offsets(arg_symtab->decls, offsets);
 
-		curfunc_lblfin = out_label_code(sp);
-
 		gen_stmt(d->bits.func.code, octx);
-
-		out_label(curfunc_lblfin);
 
 		out_dbg_where(&d->bits.func.code->where_cbrace);
 
@@ -143,11 +135,10 @@ void gen_asm_global(decl *d, out_ctx *octx)
 
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
-			out_label(end);
+			out_dbg_label(end);
 			free(end);
 		}
 
-		free(curfunc_lblfin);
 		free(offsets);
 
 	}else{

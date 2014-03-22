@@ -12,7 +12,7 @@ void fold_stmt_continue(stmt *t)
 	fold_stmt_break_continue(t, t->parent ? t->parent->lbl_continue : NULL);
 }
 
-void gen_stmt_continue(stmt *s)
+void gen_stmt_continue(stmt *s, out_ctx *octx)
 {
 	out_push_lbl(s->parent->lbl_continue, 0);
 	out_jmp();

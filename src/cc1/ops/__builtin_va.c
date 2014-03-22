@@ -275,7 +275,7 @@ static out_val *va_arg_gen_read(
 				out_deref(octx, membptr),
 				gp_off_plus); /* reg_save_area + gp_o */
 
-		out_ctrl_transfer(blk_reg, blk_fin, reg_save_area_value);
+		out_ctrl_transfer(blk_fin, reg_save_area_value);
 	}
 
 	/* stack code */
@@ -312,7 +312,7 @@ static out_val *va_arg_gen_read(
 						type_nav_btype(cc1_type_nav, type_int),
 						ws)));
 
-		out_ctrl_transfer(blk_stack, blk_fin, overflow_val);
+		out_ctrl_transfer(blk_fin, overflow_val);
 	}
 
 	merged_ptr = out_ctrl_merge(octx, blk_reg, blk_stack);

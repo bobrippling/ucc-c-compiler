@@ -31,7 +31,7 @@ struct stmt
 
 	/* specific data */
 	int val;
-	char *lbl_break, *lbl_continue;
+	out_blk *blk_break, *blk_continue;
 
 	int freestanding;     /* if this is freestanding, non-freestanding expressions inside are allowed */
 	int kills_below_code; /* break, return, etc - for checking dead code */

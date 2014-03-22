@@ -808,11 +808,11 @@ static out_val *op_shortcircuit(expr *e, out_ctx *octx)
 	{
 		out_val *rhs = out_normalise(octx, gen_expr(e->rhs, octx));
 
-		out_ctrl_transfer(blk_rhs, landing, rhs);
+		out_ctrl_transfer(landing, rhs);
 	}
 
 	out_current_blk(octx, blk_empty);
-	out_ctrl_transfer(blk_empty, landing, lhs);
+	out_ctrl_transfer(landing, lhs);
 
 	out_current_blk(octx, landing);
 	return out_ctrl_merge(octx, blk_empty, blk_rhs);

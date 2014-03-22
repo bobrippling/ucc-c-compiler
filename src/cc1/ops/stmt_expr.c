@@ -25,36 +25,14 @@ void fold_stmt_expr(stmt *s)
 	}
 }
 
-void gen_stmt_expr(stmt *s)
+void gen_stmt_expr(stmt *s, out_ctx *octx)
 {
-	int pre_vcount = out_vcount();
-	char *sp;
-
-	gen_expr(s->expr);
-
-	if((fopt_mode & FOPT_ENABLE_ASM) == 0
-	|| !s->expr
-	|| expr_kind(s->expr, funcall)
-	|| !(sp = s->expr->bits.ident.spel)
-	|| strcmp(sp, ASM_INLINE_FNAME))
-	{
-		if(s->expr_no_pop)
-			pre_vcount++;
-		else
-			out_pop(); /* cancel the implicit push from gen_expr() above */
-
-		out_comment("end of %s-stmt", s->f_str());
-
-		UCC_ASSERT(out_vcount() == pre_vcount,
-				"vcount changed over %s statement (%d -> %d)",
-				s->expr->f_str(),
-				out_vcount(), pre_vcount);
-	}
+	gen_expr(s->expr, octx);
 }
 
-void style_stmt_expr(stmt *s)
+void style_stmt_expr(stmt *s, out_ctx *octx)
 {
-	gen_expr(s->expr);
+	gen_expr(s->expr, octx);
 	stylef(";\n");
 }
 

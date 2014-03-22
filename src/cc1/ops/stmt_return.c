@@ -64,7 +64,7 @@ void fold_stmt_return(stmt *s)
 	}
 }
 
-void gen_stmt_return(stmt *s)
+void gen_stmt_return(stmt *s, out_ctx *octx)
 {
 	if(s->expr){
 		gen_expr(s->expr);
