@@ -5,6 +5,7 @@ struct decl;
 
 type *type_skip_all(type *r);
 type *type_skip_non_tdefs(type *);
+type *type_skip_non_attr(type *);
 type *type_skip_non_casts(type *);
 type *type_skip_wheres(type *);
 type *type_skip_non_wheres(type *);
@@ -26,6 +27,7 @@ struct funcargs *type_funcargs(type *r);
 unsigned type_array_len(type *r);
 type *type_next(type *r);
 
+int type_is_autotype(type *);
 int type_is_bool(type *);
 int type_is_callable(type *);
 int type_is_complete(type *);

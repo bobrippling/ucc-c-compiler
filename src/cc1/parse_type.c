@@ -1069,6 +1069,11 @@ static void parse_add_asm(decl *d)
 	}
 }
 
+static void parse_decl_fold_type(decl *d, symtable *scope)
+{
+	fold_type_w_attr(d->ref, NULL, type_loc(d->ref), scope, d->attr);
+}
+
 static decl *parse_decl_stored_aligned(
 		type *btype, enum decl_mode mode,
 		enum decl_storage store, struct decl_align *align,
@@ -1076,12 +1081,20 @@ static decl *parse_decl_stored_aligned(
 {
 	decl *d = decl_new();
 	where w_eq;
+	int is_autotype = type_is_autotype(btype);
 
-	d->ref = parse_type_declarator(mode, d, btype, scope);
+	if(is_autotype){
+		d->spel = token_current_spel();
+		EAT(token_identifier);
 
-	if(add_to_scope){
-		dynarray_add(&add_to_scope->decls, d);
-		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), scope, d->attr);
+	}else{
+		/* allow extra specifiers */
+		d->ref = parse_type_declarator(mode, d, btype, scope);
+
+		if(add_to_scope){
+			dynarray_add(&add_to_scope->decls, d);
+			parse_decl_fold_type(d, scope);
+		}
 	}
 
 	/* only check if it's not a function, otherwise it could be
@@ -1091,7 +1104,7 @@ static decl *parse_decl_stored_aligned(
 	 * }
 	 */
 
-	if(!type_is(d->ref, type_func)){
+	if(is_autotype || !type_is(d->ref, type_func)){
 		/* parse __asm__ naming before attributes, as per gcc and clang */
 		parse_add_asm(d);
 		parse_add_attr(&d->attr, scope); /* int spel __attr__ */
@@ -1100,6 +1113,45 @@ static decl *parse_decl_stored_aligned(
 			d->bits.var.init = parse_init(scope);
 			/* top-level inits have their .where on the '=' token */
 			memcpy_safe(&d->bits.var.init->where, &w_eq);
+
+			if(is_autotype){
+				decl_init *init = d->bits.var.init;
+
+				UCC_ASSERT(!d->ref, "already have decl type?");
+
+				if(init->type != decl_init_scalar){
+					warn_at_print_error(&d->where, "bad initialiser for __auto_type");
+				}else{
+					attribute *attr = NULL;
+					type *attr_node;
+
+					/* gcc decays "" to char* */
+					FOLD_EXPR(init->bits.expr, scope);
+
+					attr_node = type_skip_non_attr(btype);
+					if(attr_node && attr_node->type == type_attr)
+						attr = attr_node->bits.attr;
+
+					/* need to preserve __attribute__ and qualifiers
+					 * storage and alignment are kept on the decl */
+					d->ref = type_attributed(
+							type_qualify(
+								init->bits.expr->tree_type,
+								type_qual(type_at_where(btype, &init->where))),
+							attr);
+
+					parse_decl_fold_type(d, scope);
+				}
+			}
+
+		}else if(is_autotype){
+			warn_at_print_error(&d->where, "__auto_type without initialiser");
+			UCC_ASSERT(!d->ref, "already have decl type?");
+		}
+
+		if(!d->ref){
+			parse_had_error = 1;
+			d->ref = type_nav_btype(cc1_type_nav, type_int);
 		}
 	}
 
