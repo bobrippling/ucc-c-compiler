@@ -1,9 +1,11 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
 #include "../util/where.h"
 #include "../util/alloc.h"
+#include "../util/warn.h"
 
 #include "cc1_where.h"
 #include "sue.h"
@@ -141,6 +143,7 @@ const char *attribute_to_str(attribute *da)
 		CASE_STR_PREFIX(attr, packed);
 		CASE_STR_PREFIX(attr, sentinel);
 		CASE_STR_PREFIX(attr, aligned);
+		CASE_STR_PREFIX(attr, ucc_debug);
 
 		case attr_call_conv:
 			switch(da->bits.conv){
@@ -226,6 +229,7 @@ int attribute_equal(attribute *a, attribute *b)
 				case attr_noreturn:
 				case attr_noderef:
 				case attr_packed:
+				case attr_ucc_debug:
 					/* equal */
 					break;
 			}
@@ -233,4 +237,15 @@ int attribute_equal(attribute *a, attribute *b)
 
 		/* both null? */
 		return a == b;
+}
+
+void attribute_debug_check(struct attribute *attr)
+{
+	for(; attr; attr = attr->next){
+		if(attr->type == attr_ucc_debug && !attr->bits.ucc_debugged){
+			attr->bits.ucc_debugged = 1;
+
+			warn_at(&attr->where, "debug attribute handled");
+		}
+	}
 }
