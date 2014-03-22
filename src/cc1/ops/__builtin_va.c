@@ -194,22 +194,24 @@ expr *parse_va_start(const char *ident, symtable *scope)
 	return fcall;
 }
 
-static void va_arg_gen_read(
+static out_val *va_arg_gen_read(
 		expr *const e,
+		out_ctx *const octx,
 		type *const ty,
 		decl *const offset_decl, /* varies - float or integral */
 		decl *const mem_reg_save_area,
 		decl *const mem_overflow_arg_area)
 {
-	char *lbl_stack = out_label_code("va_else");
-	char *lbl_fin   = out_label_code("va_fin");
+	out_blk *blk_reg = out_blk_new(octx, "va_reg");
+	out_blk *blk_stack = out_blk_new(octx, "va_stack");
+	out_blk *blk_fin = out_blk_new(octx, "va_fin");
 
 	/* FIXME: this needs to reference x86_64::N_CALL_REGS_{I,F} */
 	const int fp = type_is_floating(ty);
 	const unsigned max_reg_args_sz = 6 * 8 + (fp ? 16 * 16 : 0);
 	const unsigned ws = platform_word_size();
-	const unsigned increment = fp ? 2 * ws : ws;
 	out_val *valist, *voffset, *gpoff_addr, *gpoff_val, *cond;
+	out_val *merged_ptr;
 
 	valist = gen_expr(e->lhs, octx);
 	valist = out_change_type(
@@ -231,107 +233,96 @@ static void va_arg_gen_read(
 	cond = out_op(octx,
 			op_lt,
 			gpoff_val,
-			out_push_l(
+			out_new_l(
+				octx,
 				type_nav_btype(cc1_type_nav, type_int),
 				max_reg_args_sz));
 
-	out_ctrl_branch(cond, lbl_stack);
+	out_ctrl_branch(cond, blk_reg, blk_stack);
+	/* now inserting into blk_reg */
+	{
+		const unsigned increment = fp ? 2 * ws : ws;
+		out_val *gp_off_plus, *membptr;
+		out_val *reg_save_area_value;
 
-	/* register code */
-	out_dup(); /* va, &gp_o, &gp_o */
-	out_deref(); /* va, &gp_o, gp_o */
+		/* increment either 8 for an integral, or 16 for a float argument
+		 * since xmm0 are 128-bit registers, aka 16 byte
+		 */
+		gp_off_plus =
+			out_op(octx,
+					op_plus,
+					gpoff_val,
+					out_new_l(octx,
+						type_nav_btype(cc1_type_nav, type_int),
+						increment));
 
-	/* increment either 8 for an integral, or 16 for a float argument
-	 * since xmm0 are 128-bit registers, aka 16 byte
-	 */
-	out_push_l(type_nav_btype(cc1_type_nav, type_int), increment); /* pws */
-	out_op(op_plus); /* va, &gp_o, gp_o+ws */
+		out_store(octx, gpoff_addr, gp_off_plus);
 
-	out_store(); /* va, gp_o+ws */
-	out_push_l(type_nav_btype(cc1_type_nav, type_int), increment); /* pws */
-	out_op(op_minus); /* va, gp_o */
-	out_change_type(type_nav_btype(cc1_type_nav, type_long));
+		membptr =
+			out_change_type(
+					octx,
+					out_op(
+						octx, op_plus,
+						valist,
+						out_new_l(
+							octx,
+							type_nav_btype(cc1_type_nav, type_long),
+							mem_reg_save_area->bits.var.struct_offset)),
+					type_ptr_to(type_nav_btype(cc1_type_nav, type_long)));
 
-	out_swap(); /* gp_o, va */
-	out_push_l(
-			type_nav_btype(cc1_type_nav, type_long),
-			mem_reg_save_area->bits.var.struct_offset);
+		reg_save_area_value = out_op(
+				octx, op_plus,
+				out_deref(octx, membptr),
+				gp_off_plus); /* reg_save_area + gp_o */
 
-	out_op(op_plus); /* gp_o, &reg_save_area */
-	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_long)));
-	out_deref();
-	out_swap();
-	out_op(op_plus); /* reg_save_area + gp_o */
-
-	out_push_lbl(lbl_fin, 0);
-	out_jmp();
+		out_ctrl_transfer(blk_reg, blk_fin, reg_save_area_value);
+	}
 
 	/* stack code */
-	out_label(lbl_stack);
+	out_current_blk(octx, blk_stack);
+	{
+		out_val *overflow_val;
+		out_val *overflow_addr =
+			out_op(
+					octx, op_plus,
+					out_change_type(
+						octx,
+						valist,
+						type_ptr_to(type_nav_btype(cc1_type_nav, type_void))),
+					out_new_l(
+						octx,
+						type_nav_btype(cc1_type_nav, type_long),
+						mem_overflow_arg_area->bits.var.struct_offset));
 
-	/* prepare for joining later */
-	out_phi_pop_to(&vphi_buf);
+		overflow_val = out_deref(octx, overflow_addr);
 
-	gen_expr(e->lhs);
-	/* va */
-	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
-	out_push_l(
-			type_nav_btype(cc1_type_nav, type_long),
-			mem_overflow_arg_area->bits.var.struct_offset);
+		out_store(
+				octx,
+				overflow_addr,
+				out_op(
+					octx, op_plus,
+					out_deref(
+						octx,
+						out_change_type(
+							octx,
+							overflow_addr,
+							type_ptr_to(type_nav_btype(cc1_type_nav, type_int)))),
+					out_new_l(
+						octx,
+						type_nav_btype(cc1_type_nav, type_int),
+						ws)));
 
-	out_op(op_plus);
-	/* &overflow_a */
+		out_ctrl_transfer(blk_stack, blk_fin, overflow_val);
+	}
 
-	/*out_set_lvalue(); * overflow entry in the struct is an lvalue */
-
-	out_dup(), out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_long))), out_deref();
-	/* &overflow_a, overflow_a */
-
-	/* XXX: pws will need changing if we jump directly to stack, e.g. passing a struct */
-	out_push_l(type_nav_btype(cc1_type_nav, type_long), ws);
-	out_op(op_plus);
-
-	out_store();
-
-	out_push_l(type_nav_btype(cc1_type_nav, type_long), ws);
-	out_op(op_minus);
-
-	/* ensure we match the other block's final result before the merge */
-	out_phi_join(vphi_buf);
-
-	/* "merge" */
-	out_label(lbl_fin);
+	merged_ptr = out_ctrl_merge(blk_reg, blk_stack);
 
 	/* now have a pointer to the right memory address */
-	out_change_type(type_ptr_to(ty));
-	out_deref();
-
-	/*
-	 * this works by using phi magic - we end up with something like this:
-	 *
-	 *   <reg calc>
-	 *   // pointer in rbx
-	 *   jmp fin
-	 * else:
-	 *   <stack calc>
-	 *   // pointer in rax
-	 *   <phi-merge with previous block>
-	 * fin:
-	 *   ...
-	 *
-	 * This is because the two parts of the if above are disjoint, one may
-	 * leave its result in eax, one in ebx. We need basic blocks and phi:s to
-	 * solve this properly.
-	 *
-	 * This problem exists in other code, such as &&-gen, but since we pop
-	 * and push immediately, it doesn't manifest itself.
-	 */
-
-	free(lbl_stack);
-	free(lbl_fin);
+	merged_ptr = out_change_type(octx, merged_ptr, type_ptr_to(ty));
+	return out_deref(octx, merged_ptr);
 }
 
-static void builtin_gen_va_arg(expr *e)
+static out_val *builtin_gen_va_arg(expr *e, out_ctx *octx)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -467,8 +458,8 @@ stack:
 			VA_DECL(reg_save_area);
 			VA_DECL(overflow_arg_area);
 
-			va_arg_gen_read(
-					e,
+			return va_arg_gen_read(
+					e, octx,
 					ty,
 					fp ? mem_fp_offset : mem_gp_offset,
 					mem_reg_save_area,
@@ -527,10 +518,10 @@ expr *parse_va_arg(const char *ident, symtable *scope)
 	return fcall;
 }
 
-static void builtin_gen_va_end(expr *e)
+static out_val *builtin_gen_va_end(expr *e, out_ctx *octx)
 {
 	(void)e;
-	out_push_noop();
+	return out_new_noop(octx);
 }
 
 static void fold_va_end(expr *e, symtable *stab)
@@ -555,9 +546,9 @@ expr *parse_va_end(const char *ident, symtable *scope)
 	return fcall;
 }
 
-static void builtin_gen_va_copy(expr *e)
+static out_val *builtin_gen_va_copy(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs);
+	return gen_expr(e->lhs, octx);
 }
 
 static void fold_va_copy(expr *e, symtable *stab)
