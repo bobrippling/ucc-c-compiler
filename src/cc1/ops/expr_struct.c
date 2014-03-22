@@ -122,14 +122,25 @@ err:
 
 static out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 {
+	out_val *struct_exp, *off;
+
 	ASSERT_NOT_DOT();
 
-	gen_expr(e->lhs);
-
 	/* cast for void* arithmetic */
-	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
-	out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t), struct_offset(e)); /* integral offset */
-	out_op(op_plus);
+
+	struct_exp = out_change_type(
+			octx,
+			gen_expr(e->lhs, octx),
+			type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
+
+	off =
+		out_op(
+				octx, op_plus,
+				struct_exp,
+				out_new_l(
+					octx,
+					type_nav_btype(cc1_type_nav, type_intptr_t),
+					struct_offset(e)));
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
 		out_comment("struct member %s", e->bits.struct_mem.d->spel);
@@ -138,26 +149,26 @@ static out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 	{
 		decl *d = e->bits.struct_mem.d;
 
-		out_change_type(type_ptr_to(d->ref));
+		off = out_change_type(octx, off, type_ptr_to(d->ref));
 
 		/* set if we're a bitfield - out_deref() and out_store()
 		 * i.e. read + write then handle this
 		 */
 		if(d->bits.var.field_width){
 			unsigned w = const_fold_val_i(d->bits.var.field_width);
-			out_set_bitfield(d->bits.var.struct_offset_bitfield, w);
+			out_set_bitfield(octx, off, d->bits.var.struct_offset_bitfield, w);
 			out_comment("struct bitfield lea");
 		}
 	}
+
+	return off;
 }
 
 out_val *gen_expr_struct(expr *e, out_ctx *octx)
 {
 	ASSERT_NOT_DOT();
 
-	gen_expr_struct_lea(e);
-
-	out_deref();
+	return out_deref(octx, gen_expr_struct_lea(e, octx));
 }
 
 out_val *gen_expr_str_struct(expr *e, out_ctx *octx)
@@ -175,6 +186,8 @@ out_val *gen_expr_str_struct(expr *e, out_ctx *octx)
 	gen_str_indent++;
 	print_expr(e->lhs);
 	gen_str_indent--;
+
+	UNUSED_OCTX();
 }
 
 static void fold_const_expr_struct(expr *e, consty *k)
@@ -244,6 +257,7 @@ expr *expr_new_struct_mem(expr *sub, int dot, decl *d)
 
 out_val *gen_expr_style_struct(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs);
+	gen_expr(e->lhs, octx);
 	stylef("->%s", e->bits.struct_mem.d->spel);
+	return NULL;
 }

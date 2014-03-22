@@ -38,13 +38,15 @@ void fold_expr_stmt(expr *e, symtable *stab)
 
 out_val *gen_expr_stmt(expr *e, out_ctx *octx)
 {
-	gen_stmt(e->code, octx);
-	{
-		int n = dynarray_count(e->code->bits.code.stmts);
-		if(n > 0 || stmt_kind(e->code->bits.code.stmts[n-1], expr))
-	}
+	size_t n;
+	gen_stmt_code_m1(e->code, 1, octx);
 
-	out_comment("end of ({...})");
+	n = dynarray_count(e->code->bits.code.stmts);
+
+	if(n > 0 && stmt_kind(e->code->bits.code.stmts[n-1], expr))
+		return gen_expr(e->code->bits.code.stmts[n - 1]->expr, octx);
+
+	return out_new_noop(octx);
 }
 
 out_val *gen_expr_str_stmt(expr *e, out_ctx *octx)
@@ -53,6 +55,7 @@ out_val *gen_expr_str_stmt(expr *e, out_ctx *octx)
 	gen_str_indent++;
 	print_stmt(e->code);
 	gen_str_indent--;
+	UNUSED_OCTX();
 }
 
 void mutate_expr_stmt(expr *e)
@@ -70,6 +73,7 @@ expr *expr_new_stmt(stmt *code)
 out_val *gen_expr_style_stmt(expr *e, out_ctx *octx)
 {
 	stylef("({\n");
-	gen_stmt(e->code);
+	gen_stmt(e->code, octx);
 	stylef("\n})");
+	return NULL;
 }

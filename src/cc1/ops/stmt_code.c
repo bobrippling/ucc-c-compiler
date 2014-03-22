@@ -90,7 +90,6 @@ void fold_stmt_code(stmt *s)
 	int warned = 0;
 
 	/* local struct layout-ing */
-	/* we fold decls ourselves, to get their inits */
 	symtab_fold_sues(s->symtab);
 
 	for(siter = s->bits.code.stmts; siter && *siter; siter++){
@@ -146,7 +145,11 @@ void gen_block_decls(symtable *stab, const char **dbg_end_lbl)
 	}
 }
 
-void gen_stmt_code(stmt *s)
+/* this is done for lea_expr_stmt(), i.e.
+ * struct A x = ({ struct A y; y.i = 1; y; });
+ * so we can lea the final expr
+ */
+void gen_stmt_code_m1(stmt *s, int m1)
 {
 	stmt **titer;
 	const char *endlbl;
@@ -154,11 +157,19 @@ void gen_stmt_code(stmt *s)
 	/* stmt_for/if/while/do needs to do this too */
 	gen_block_decls(s->symtab, &endlbl);
 
-	for(titer = s->bits.code.stmts; titer && *titer; titer++)
+	for(titer = s->bits.code.stmts; titer && *titer; titer++){
+		if(m1 && !titer[1])
+			break;
 		gen_stmt(*titer);
+	}
 
 	if(endlbl)
 		out_label_noop(endlbl);
+}
+
+void gen_stmt_code(stmt *s)
+{
+	gen_stmt_code_m1(s, 0);
 }
 
 void style_stmt_code(stmt *s)

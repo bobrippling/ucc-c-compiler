@@ -8,9 +8,9 @@ const char *str_expr__Generic()
 	return "_Generic";
 }
 
-static void generic_lea(expr *e)
+static out_val *generic_lea(expr *e, out_ctx *octx)
 {
-	lea_expr(e->bits.generic.chosen->e);
+	return lea_expr(e->bits.generic.chosen->e, octx);
 }
 
 void fold_expr__Generic(expr *e, symtable *stab)
@@ -101,7 +101,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 out_val *gen_expr__Generic(expr *e, out_ctx *octx)
 {
-	gen_expr(e->bits.generic.chosen->e);
+	return gen_expr(e->bits.generic.chosen->e, octx);
 }
 
 out_val *gen_expr_str__Generic(expr *e, out_ctx *octx)
@@ -136,6 +136,8 @@ out_val *gen_expr_str__Generic(expr *e, out_ctx *octx)
 		gen_str_indent--;
 	}
 	gen_str_indent--;
+
+	UNUSED_OCTX();
 }
 
 static void const_expr__Generic(expr *e, consty *k)
@@ -164,7 +166,7 @@ out_val *gen_expr_style__Generic(expr *e, out_ctx *octx)
 	struct generic_lbl **i;
 
 	stylef("_Generic(");
-	gen_expr(e->expr);
+	gen_expr(e->expr, octx);
 
 	for(i = e->bits.generic.list; i && *i; i++){
 		struct generic_lbl *l = *i;
@@ -172,6 +174,8 @@ out_val *gen_expr_style__Generic(expr *e, out_ctx *octx)
 		idt_printf("%s: ",
 				l->t ? type_to_str(l->t) : "default");
 
-		gen_expr(l->e);
+		gen_expr(l->e, octx);
 	}
+
+	return NULL;
 }
