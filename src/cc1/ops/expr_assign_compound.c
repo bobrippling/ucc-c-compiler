@@ -54,7 +54,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	/* type check is done in op_required_promotion() */
 }
 
-void gen_expr_assign_compound(expr *e)
+out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
 {
 	/* int += float
 	 * lea int, cast up to float, add, cast down to int, store
@@ -94,7 +94,7 @@ void gen_expr_assign_compound(expr *e)
 		out_pop();
 }
 
-void gen_expr_str_assign_compound(expr *e)
+out_val *gen_expr_str_assign_compound(expr *e, out_ctx *octx)
 {
 	idt_printf("compound %s%s-assignment expr:\n",
 			e->assign_is_post ? "post-" : "",
@@ -126,7 +126,7 @@ expr *expr_new_assign_compound(expr *to, expr *from, enum op_type op)
 	return e;
 }
 
-void gen_expr_style_assign_compound(expr *e)
+out_val *gen_expr_style_assign_compound(expr *e, out_ctx *octx)
 {
 	gen_expr(e->lhs->lhs);
 	stylef(" %s= ", op_to_str(e->op));

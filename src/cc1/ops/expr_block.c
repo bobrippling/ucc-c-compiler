@@ -92,12 +92,12 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 	fold_func_is_passable(df, type_called(df->ref, NULL), 1);
 }
 
-void gen_expr_block(expr *e)
+out_val *gen_expr_block(expr *e, out_ctx *octx)
 {
 	out_push_sym(e->bits.block.sym);
 }
 
-void gen_expr_str_block(expr *e)
+out_val *gen_expr_str_block(expr *e, out_ctx *octx)
 {
 	idt_printf("block, type: %s, code:\n", type_to_str(e->tree_type));
 	gen_str_indent++;
@@ -105,7 +105,7 @@ void gen_expr_str_block(expr *e)
 	gen_str_indent--;
 }
 
-void gen_expr_style_block(expr *e)
+out_val *gen_expr_style_block(expr *e, out_ctx *octx)
 {
 	stylef("^%s", type_to_str(e->tree_type));
 	gen_stmt(e->code);

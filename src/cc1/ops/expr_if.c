@@ -194,7 +194,7 @@ void fold_expr_if(expr *e, symtable *stab)
 }
 
 
-void gen_expr_if(expr *e)
+out_val *gen_expr_if(expr *e, out_ctx *octx)
 {
 	char *lblfin;
 	char vphi_buf[OUT_VPHI_SZ];
@@ -240,7 +240,7 @@ void gen_expr_if(expr *e)
 	free(lblfin);
 }
 
-void gen_expr_str_if(expr *e)
+out_val *gen_expr_str_if(expr *e, out_ctx *octx)
 {
 	idt_printf("if expression:\n");
 	gen_str_indent++;
@@ -276,7 +276,7 @@ expr *expr_new_if(expr *test)
 	return e;
 }
 
-void gen_expr_style_if(expr *e)
+out_val *gen_expr_style_if(expr *e, out_ctx *octx)
 {
 	gen_expr(e->expr);
 	stylef(" ? ");

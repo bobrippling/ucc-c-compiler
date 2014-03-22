@@ -36,7 +36,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */
 }
 
-void gen_expr_stmt(expr *e)
+out_val *gen_expr_stmt(expr *e, out_ctx *octx)
 {
 	gen_stmt(e->code);
 	/* last stmt is told to leave its result on the stack
@@ -53,7 +53,7 @@ void gen_expr_stmt(expr *e)
 	out_comment("end of ({...})");
 }
 
-void gen_expr_str_stmt(expr *e)
+out_val *gen_expr_str_stmt(expr *e, out_ctx *octx)
 {
 	idt_printf("statement:\n");
 	gen_str_indent++;
@@ -73,7 +73,7 @@ expr *expr_new_stmt(stmt *code)
 	return e;
 }
 
-void gen_expr_style_stmt(expr *e)
+out_val *gen_expr_style_stmt(expr *e, out_ctx *octx)
 {
 	stylef("({\n");
 	gen_stmt(e->code);

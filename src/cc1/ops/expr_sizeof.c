@@ -111,7 +111,7 @@ static void const_expr_sizeof(expr *e, consty *k)
 	k->type = CONST_NUM;
 }
 
-void gen_expr_sizeof(expr *e)
+out_val *gen_expr_sizeof(expr *e, out_ctx *octx)
 {
 	type *r = SIZEOF_WHAT(e);
 
@@ -120,7 +120,7 @@ void gen_expr_sizeof(expr *e)
 	out_comment("sizeof %s%s", e->expr ? "" : "type ", type_to_str(r));
 }
 
-void gen_expr_str_sizeof(expr *e)
+out_val *gen_expr_str_sizeof(expr *e, out_ctx *octx)
 {
 	if(e->expr){
 		idt_printf("sizeof expr:\n");
@@ -154,7 +154,7 @@ expr *expr_new_sizeof_expr(expr *sizeof_this, enum what_of what_of)
 	return e;
 }
 
-void gen_expr_style_sizeof(expr *e)
+out_val *gen_expr_style_sizeof(expr *e, out_ctx *octx)
 {
 	stylef("%s(", sizeof_what(e->what_of));
 

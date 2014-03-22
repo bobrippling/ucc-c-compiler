@@ -776,7 +776,7 @@ void fold_expr_op(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_str_op(expr *e)
+out_val *gen_expr_str_op(expr *e, out_ctx *octx)
 {
 	idt_printf("op: %s\n", op_to_str(e->op));
 	gen_str_indent++;
@@ -809,7 +809,7 @@ static void op_shortcircuit(expr *e)
 	free(bail);
 }
 
-void gen_expr_op(expr *e)
+out_val *gen_expr_op(expr *e, out_ctx *octx)
 {
 	switch(e->op){
 		case op_orsc:
@@ -871,7 +871,7 @@ expr *expr_new_op2(enum op_type o, expr *l, expr *r)
 	return e;
 }
 
-void gen_expr_style_op(expr *e)
+out_val *gen_expr_style_op(expr *e, out_ctx *octx)
 {
 	if(e->rhs){
 		gen_expr(e->lhs);

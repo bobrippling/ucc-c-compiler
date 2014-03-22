@@ -131,7 +131,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_assign(expr *e)
+out_val *gen_expr_assign(expr *e, out_ctx *octx)
 {
 	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
 
@@ -148,7 +148,7 @@ void gen_expr_assign(expr *e)
 	}
 }
 
-void gen_expr_str_assign(expr *e)
+out_val *gen_expr_str_assign(expr *e, out_ctx *octx)
 {
 	idt_printf("assignment, expr:\n");
 	idt_printf("assign to:\n");
@@ -183,7 +183,7 @@ expr *expr_new_assign_init(expr *to, expr *from)
 	return e;
 }
 
-void gen_expr_style_assign(expr *e)
+out_val *gen_expr_style_assign(expr *e, out_ctx *octx)
 {
 	gen_expr(e->lhs);
 	stylef(" = ");

@@ -318,7 +318,7 @@ invalid:
 		e->freestanding = 0; /* needs use */
 }
 
-void gen_expr_funcall(expr *e)
+out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 {
 	if(0){
 		out_comment("start manual __asm__");
@@ -352,7 +352,7 @@ void gen_expr_funcall(expr *e)
 	}
 }
 
-void gen_expr_str_funcall(expr *e)
+out_val *gen_expr_str_funcall(expr *e, out_ctx *octx)
 {
 	expr **iter;
 
@@ -396,7 +396,7 @@ expr *expr_new_funcall()
 	return e;
 }
 
-void gen_expr_style_funcall(expr *e)
+out_val *gen_expr_style_funcall(expr *e, out_ctx *octx)
 {
 	stylef("(");
 	gen_expr(e->expr);

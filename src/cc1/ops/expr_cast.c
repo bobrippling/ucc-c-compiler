@@ -391,7 +391,7 @@ void fold_expr_cast(expr *e, symtable *stab)
 	fold_expr_cast_descend(e, stab, 1);
 }
 
-void gen_expr_cast(expr *e)
+out_val *gen_expr_cast(expr *e, out_ctx *octx)
 {
 	gen_expr(expr_cast_child(e));
 
@@ -439,7 +439,7 @@ void gen_expr_cast(expr *e)
 	}
 }
 
-void gen_expr_str_cast(expr *e)
+out_val *gen_expr_str_cast(expr *e, out_ctx *octx)
 {
 	idt_printf("%scast expr:\n", IS_RVAL_CAST(e) ? "rvalue-" : "");
 	gen_str_indent++;
@@ -481,7 +481,7 @@ expr *expr_new_cast_decay(expr *sub, type *to)
 	return e;
 }
 
-void gen_expr_style_cast(expr *e)
+out_val *gen_expr_style_cast(expr *e, out_ctx *octx)
 {
 	stylef("(%s)", type_to_str(e->bits.cast.tref));
 	gen_expr(expr_cast_child(e));

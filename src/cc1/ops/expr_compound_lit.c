@@ -60,7 +60,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	}
 }
 
-static void gen_expr_compound_lit_code(expr *e)
+static out_val *gen_expr_compound_lit_code(expr *e, out_ctx *octx)
 {
 	if(!e->expr_comp_lit_cgen){
 		e->expr_comp_lit_cgen = 1;
@@ -72,7 +72,7 @@ static void gen_expr_compound_lit_code(expr *e)
 	}
 }
 
-void gen_expr_compound_lit(expr *e)
+out_val *gen_expr_compound_lit(expr *e, out_ctx *octx)
 {
 	/* allow (int){2}, but not (struct...){...} */
 	fold_check_expr(e, FOLD_CHK_NO_ST_UN, "compound literal");
@@ -106,7 +106,7 @@ static void const_expr_compound_lit(expr *e, consty *k)
 	}
 }
 
-void gen_expr_str_compound_lit(expr *e)
+out_val *gen_expr_str_compound_lit(expr *e, out_ctx *octx)
 {
 	decl *const d = e->bits.complit.decl;
 
@@ -136,7 +136,7 @@ void gen_expr_str_compound_lit(expr *e)
 	e->op = 0;
 }
 
-void gen_expr_style_compound_lit(expr *e)
+out_val *gen_expr_style_compound_lit(expr *e, out_ctx *octx)
 {
 	stylef("(%s)", type_to_str(e->bits.complit.decl->ref));
 	gen_style_dinit(e->bits.complit.decl->bits.var.init);

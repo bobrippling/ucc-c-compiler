@@ -45,7 +45,7 @@ void fold_expr_comma(expr *e, symtable *stab)
 	e->freestanding = e->rhs->freestanding;
 }
 
-void gen_expr_comma(expr *e)
+out_val *gen_expr_comma(expr *e, out_ctx *octx)
 {
 	gen_expr(e->lhs);
 	out_pop();
@@ -53,7 +53,7 @@ void gen_expr_comma(expr *e)
 	gen_expr(e->rhs);
 }
 
-void gen_expr_str_comma(expr *e)
+out_val *gen_expr_str_comma(expr *e, out_ctx *octx)
 {
 	idt_printf("comma expression\n");
 	idt_printf("comma lhs:\n");
@@ -78,7 +78,7 @@ void mutate_expr_comma(expr *e)
 	e->f_const_fold = fold_const_expr_comma;
 }
 
-void gen_expr_style_comma(expr *e)
+out_val *gen_expr_style_comma(expr *e, out_ctx *octx)
 {
 	gen_expr(e->lhs);
 	stylef(", ");
