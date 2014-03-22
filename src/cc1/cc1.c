@@ -133,6 +133,7 @@ struct
 	{ 'f',  "unsigned-char",      ~FOPT_SIGNED_CHAR },
 	{ 'f',  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
 	{ 'f',  "dump-type-tree", FOPT_DUMP_TYPE_TREE },
+	{ 'f',  "asm", FOPT_EXT_KEYWORDS },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 
@@ -549,7 +550,9 @@ usage:
 
 	cc1_type_nav = type_nav_init();
 
-	tokenise_set_mode(cc1_std >= STD_C99 ? KW_C99 : 0);
+	tokenise_set_mode(
+			(fopt_mode & FOPT_EXT_KEYWORDS ? KW_EXT : 0) |
+			(cc1_std >= STD_C99 ? KW_C99 : 0));
 
 	tokenise_set_input(next_line, fname);
 

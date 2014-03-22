@@ -79,6 +79,7 @@ enum fopt
 	FOPT_SIGNED_CHAR           = 1 << 17,
 	FOPT_CAST_W_BUILTIN_TYPES  = 1 << 18,
 	FOPT_DUMP_TYPE_TREE        = 1 << 19,
+	FOPT_EXT_KEYWORDS          = 1 << 20, /* -fasm */
 };
 
 enum mopt
