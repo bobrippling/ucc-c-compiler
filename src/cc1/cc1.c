@@ -406,8 +406,15 @@ int main(int argc, char **argv)
 			}
 
 		}else if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
-			if(std_from_str(argv[i], &cc1_std))
+			int gnu;
+
+			if(std_from_str(argv[i], &cc1_std, &gnu))
 				ccdie(0, "-std argument \"%s\" not recognised", argv[i]);
+
+			if(gnu)
+				fopt_mode |= FOPT_EXT_KEYWORDS;
+			else
+				fopt_mode &= ~FOPT_EXT_KEYWORDS;
 
 		}else if(!strcmp(argv[i], "-w")){
 			warn_mode = WARN_NONE;
