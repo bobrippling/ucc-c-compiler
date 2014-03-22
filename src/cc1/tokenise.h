@@ -123,6 +123,18 @@ void tokenise_set_input(
 		tokenise_line_f *,
 		const char *nam);
 
+enum keyword_mode
+{
+	KW_ALL = 1 << 0,
+
+	/* enabled in C99 and above (inline, restrict) */
+	KW_C99 = 1 << 1,
+
+	/* enabled with -fasm or -std=gnu* (asm(), typeof()) */
+	KW_EXT = 1 << 2,
+};
+void tokenise_set_mode(enum keyword_mode);
+
 void nexttoken(void);
 
 char *token_current_spel(void);

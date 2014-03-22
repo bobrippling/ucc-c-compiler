@@ -549,6 +549,8 @@ usage:
 
 	cc1_type_nav = type_nav_init();
 
+	tokenise_set_mode(cc1_std >= STD_C99 ? KW_C99 : 0);
+
 	tokenise_set_input(next_line, fname);
 
 	where_cc1_current(&loc_start);
