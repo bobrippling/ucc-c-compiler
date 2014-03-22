@@ -21,17 +21,11 @@
 #include "impl.h"
 #include "lbl.h"
 
-typedef char chk[OUT_VPHI_SZ == sizeof(struct vstack) ? 1 : -1];
-
 static int calc_ptr_step(type *t);
 
 /*
  * This entire stack-output idea was inspired by tinycc, and improved somewhat
  */
-
-#define N_VSTACK 1024
-static struct vstack vstack[N_VSTACK];
-struct vstack *vtop = NULL;
 
 /*
  * stack layout is:

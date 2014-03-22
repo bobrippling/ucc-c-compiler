@@ -9,13 +9,16 @@
 #include "sym.h"
 #include "decl.h"
 #include "const.h"
+#include "out/out.h"
+#include "../util/compiler.h"
 
 typedef void func_fold(struct expr *, struct symtable *);
-typedef void func_gen(struct expr *);
-typedef void func_gen_lea(struct expr *);
 typedef void func_const(struct expr *, consty *);
 typedef const char *func_str(void);
 typedef void func_mutate_expr(struct expr *);
+
+typedef ucc_wur out_val *func_gen(struct expr *, out_ctx *);
+typedef ucc_wur out_val *func_gen_lea(struct expr *, out_ctx *);
 
 typedef struct expr expr;
 struct expr

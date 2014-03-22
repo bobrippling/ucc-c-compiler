@@ -158,7 +158,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
-static void builtin_gen_va_start(expr *e)
+static out_val *builtin_gen_va_start(expr *e, out_ctx *octx)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -177,9 +177,9 @@ static void builtin_gen_va_start(expr *e)
 	out_store();
 #else
 	out_comment("va_start() begin");
-	gen_stmt(e->bits.variadic_setup);
-	out_push_noop();
+	gen_stmt(e->bits.variadic_setup, octx);
 	out_comment("va_start() end");
+	return NULL;
 #endif
 }
 
@@ -203,33 +203,39 @@ static void va_arg_gen_read(
 {
 	char *lbl_stack = out_label_code("va_else");
 	char *lbl_fin   = out_label_code("va_fin");
-	char vphi_buf[OUT_VPHI_SZ];
 
 	/* FIXME: this needs to reference x86_64::N_CALL_REGS_{I,F} */
 	const int fp = type_is_floating(ty);
 	const unsigned max_reg_args_sz = 6 * 8 + (fp ? 16 * 16 : 0);
 	const unsigned ws = platform_word_size();
 	const unsigned increment = fp ? 2 * ws : ws;
+	out_val *valist, *voffset, *gpoff_addr, *gpoff_val, *cond;
 
-	gen_expr(e->lhs); /* va_list */
-	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
-	out_dup(); /* va, va */
+	valist = gen_expr(e->lhs, octx);
+	valist = out_change_type(
+			octx, valist,
+			type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 
-	out_push_l(
+	voffset = out_new_l(
+			octx,
 			type_nav_btype(cc1_type_nav, type_long),
 			offset_decl->bits.var.struct_offset);
 
-	out_op(op_plus); /* va, &va.gp_offset */
+	gpoff_addr = out_op(octx, op_plus, valist, voffset);
 
-	/*out_set_lvalue(); * val.gp_offset is an lvalue */
+	gpoff_addr = out_change_type(octx, gpoff_addr,
+			type_ptr_to(type_nav_btype(cc1_type_nav, type_int)));
 
-	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_int)));
-	out_dup(); /* va, &gp_o, &gp_o */
+	gpoff_val = out_deref(octx, gpoff_addr);
 
-	out_deref(); /* va, &gp_o, gp_o */
-	out_push_l(type_nav_btype(cc1_type_nav, type_int), max_reg_args_sz);
-	out_op(op_lt); /* va, &gp_o, <cond> */
-	out_jfalse(lbl_stack);
+	cond = out_op(octx,
+			op_lt,
+			gpoff_val,
+			out_push_l(
+				type_nav_btype(cc1_type_nav, type_int),
+				max_reg_args_sz));
+
+	out_ctrl_branch(cond, lbl_stack);
 
 	/* register code */
 	out_dup(); /* va, &gp_o, &gp_o */

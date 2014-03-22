@@ -9,8 +9,8 @@ void gen_asm_extern(decl *d);
 void gen_asm(symtable_global *globs,
 		const char *fname, const char *compdir);
 
-void gen_expr(expr *e);
-void lea_expr(expr *e);
-void gen_stmt(stmt *t);
+out_val *gen_expr(expr *e, out_ctx *);
+out_val *lea_expr(expr *e, out_ctx *);
+void gen_stmt(stmt *t, out_ctx *);
 
 #endif

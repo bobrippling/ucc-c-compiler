@@ -27,7 +27,7 @@
 
 char *curfunc_lblfin; /* extern */
 
-void gen_expr(expr *e)
+out_val *gen_expr(expr *e, out_ctx *octx)
 {
 	consty k;
 
@@ -41,16 +41,18 @@ void gen_expr(expr *e)
 
 	if(k.type == CONST_NUM){
 		/* -O0 skips this? */
-		if(cc1_backend == BACKEND_ASM)
-			out_push_num(e->tree_type, &k.bits.num);
-		else
+		if(cc1_backend == BACKEND_ASM){
+			return out_new_num(octx, e->tree_type, &k.bits.num);
+		}else{
 			stylef("%" NUMERIC_FMT_D, k.bits.num.val.i);
+			return NULL;
+		}
 	}else{
-		e->f_gen(e);
+		return e->f_gen(e, octx);
 	}
 }
 
-void lea_expr(expr *e)
+out_val *lea_expr(expr *e, out_ctx *octx)
 {
 	char buf[WHERE_BUF_SIZ];
 
@@ -60,10 +62,10 @@ void lea_expr(expr *e)
 
 	out_dbg_where(&e->where);
 
-	e->f_lea(e);
+	return e->f_lea(e, octx);
 }
 
-void gen_stmt(stmt *t)
+void gen_stmt(stmt *t, out_ctx *octx)
 {
 	out_dbg_where(&t->where);
 

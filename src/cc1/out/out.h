@@ -1,72 +1,106 @@
 #ifndef OUT_H
 #define OUT_H
 
-#define OUT_VPHI_SZ 64 /* sizeof(struct vstack) */
-
 #include "../type.h"
 #include "../num.h"
 #include "../sym.h"
 #include "../op.h"
 
-void out_pop(void);
-void out_pop_func_ret(type *) ucc_nonnull((1));
+typedef struct out_ctx out_ctx;
 
-void out_phi_pop_to(void *); /* put the current value into a phi-save area */
-void out_phi_join(void *);   /* join vtop and the phi-save area */
+out_ctx *out_ctx_new(void);
 
-void out_push_num(type *t, const numeric *n) ucc_nonnull((1));
-void out_push_l(type *, long) ucc_nonnull((1));
-void out_push_zero(type *) ucc_nonnull((1));
-void out_push_lbl(const char *s, int pic);
-void out_push_noop(void);
+typedef struct out_blk out_blk;
+typedef struct out_val out_val;
 
-void out_dup(void); /* duplicate top of stack */
-void out_pulltop(int i); /* pull the nth stack entry to the top */
-void out_normalise(void); /* change to 0 or 1 */
+/* value creation */
+out_val *out_new_num(out_ctx *, type *t, const numeric *n)
+	ucc_nonnull((1)) ucc_wur;
 
-void out_push_sym(sym *);
-void out_push_sym_val(sym *);
-void out_store(void); /* store stack[1] into *stack[0] */
+out_val *out_new_l(out_ctx *, type *, long) ucc_nonnull((1))
+	ucc_wur;
 
-void out_set_bitfield(unsigned off, unsigned nbits);
+out_val *out_new_zero(out_ctx *, type *) ucc_nonnull((1))
+	ucc_wur;
 
-void out_op(      enum op_type); /* binary ops and comparisons */
-void out_op_unary(enum op_type); /* unary ops */
-void out_deref(void);
-void out_swap(void);
-void out_flush_volatile(void);
+out_val *out_new_lbl(out_ctx *, const char *s, int pic)
+	ucc_wur;
 
-void out_cast(type *to, int normalise_bool) ucc_nonnull((1));
-void out_change_type(type *) ucc_nonnull((1));
-void out_set_lvalue(void);
+out_val *out_new_noop(out_ctx *) ucc_wur;
 
-void out_call(int nargs, type *rt, type *f) ucc_nonnull((2, 3));
+out_val *out_new_sym(out_ctx *, sym *) ucc_wur;
+out_val *out_new_sym_val(out_ctx *, sym *) ucc_wur;
 
-void out_jmp(void); /* jmp to *pop() */
-void out_jtrue( const char *);
-void out_jfalse(const char *);
+out_val *out_new_overflow(out_ctx *) ucc_wur;
 
-void out_func_prologue(
+out_val *out_new_frame_ptr(out_ctx *, int nframes) ucc_wur;
+out_val *out_new_reg_save_ptr(out_ctx *) ucc_wur;
+out_val *out_new_nan(out_ctx *, type *ty) ucc_wur;
+
+out_val *out_normalise(out_ctx *, out_val *) ucc_wur;
+
+
+/* value use */
+void out_set_bitfield(out_ctx *, out_val *, unsigned off, unsigned nbits);
+
+void out_store(out_ctx *, out_val *dest, out_val *val);
+
+
+/* operators/comparisons */
+out_val *out_op(out_ctx *, enum op_type, out_val *lhs, out_val *rhs);
+out_val *out_op_unary(out_ctx *, enum op_type, out_val *);
+
+out_val *out_deref(out_ctx *, out_val *) ucc_wur;
+
+out_val *out_cast(out_ctx *, out_val *, type *to, int normalise_bool)
+	ucc_nonnull((1)) ucc_wur;
+
+out_val *out_change_type(out_ctx *, out_val *, type *)
+	ucc_nonnull((1)) ucc_wur;
+
+/* functions */
+out_val *out_call(out_ctx *,
+		out_val *fn, out_val **args,
+		type *fnty)
+		ucc_nonnull((2, 3));
+
+
+/* control flow */
+out_blk *out_blk_new(out_ctx *, const char *desc);
+void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
+
+void out_ctrl_end_undefined(out_ctx *);
+void out_ctrl_end_ret(out_ctx *, out_val *, type *) ucc_nonnull((1));
+
+void out_ctrl_transfer(
+		out_blk *from, out_blk *to,
+		out_val *phi_arg /* optional */);
+
+void out_ctrl_branch(
+		out_val *cond,
+		out_blk *if_true, out_blk *if_false);
+
+out_val *out_ctrl_merge(out_blk *, out_blk *); /* maybe ret null */
+
+
+/* function setup */
+out_blk *out_func_prologue(
 		type *rf,
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[], int *local_offset);
 
 void out_func_epilogue(type *);
 
+/* commenting */
 void out_comment(const char *, ...) ucc_printflike(1, 2);
 #ifdef OUT_ASM_H
-void out_comment_sec(enum section_type, const char *, ...) ucc_printflike(2, 3);
+void out_comment_sec(enum section_type, const char *, ...)
+	ucc_printflike(2, 3);
 #endif
 
-void out_assert_vtop_null(void);
+
+/* debugging */
 void out_dump(void);
-void out_undefined(void);
-void out_push_overflow(void);
 
-void out_push_frame_ptr(int nframes);
-void out_push_reg_save_ptr(void);
-void out_push_nan(type *ty);
-
-int out_vcount(void);
 
 #endif
