@@ -32,21 +32,10 @@ struct statement
 {
 	const char *str;
 	enum token tok;
+
+
+
 } statements[] = {
-#ifdef BRITISH
-	{ "perchance", token_if      },
-	{ "otherwise", token_else    },
-
-	{ "what_about",        token_switch  },
-	{ "perhaps",           token_case    },
-	{ "on_the_off_chance", token_default },
-
-	{ "splendid",    token_break    },
-	{ "goodday",     token_return   },
-	{ "as_you_were", token_continue },
-
-	{ "tallyho",     token_goto     },
-#else
 	KEYWORD(if),
 	KEYWORD(else),
 
@@ -59,7 +48,6 @@ struct statement
 	KEYWORD(continue),
 
 	KEYWORD(goto),
-#endif
 
 	KEYWORD(do),
 	KEYWORD(while),
