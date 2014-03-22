@@ -9,6 +9,7 @@
 typedef struct out_ctx out_ctx;
 
 out_ctx *out_ctx_new(void);
+void out_ctx_end(out_ctx *);
 
 typedef struct out_blk out_blk;
 typedef struct out_val out_val;
@@ -84,12 +85,13 @@ out_val *out_ctrl_merge(out_blk *, out_blk *); /* maybe ret null */
 
 
 /* function setup */
-out_blk *out_func_prologue(
+void out_func_prologue(
+		out_ctx *,
 		type *rf,
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[], int *local_offset);
 
-void out_func_epilogue(type *);
+void out_func_epilogue(out_ctx *, type *);
 
 /* commenting */
 void out_comment(const char *, ...) ucc_printflike(1, 2);

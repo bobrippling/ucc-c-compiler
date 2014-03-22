@@ -26,7 +26,7 @@ void gen_style_dinit(decl_init *di)
 {
 	switch(di->type){
 		case decl_init_scalar:
-			gen_expr(di->bits.expr);
+			gen_expr(di->bits.expr, NULL);
 			break;
 
 		case decl_init_copy:
@@ -64,7 +64,7 @@ void gen_style_decl(decl *d)
 	stylef("%s", decl_to_str(d));
 
 	if(type_is(d->ref, type_func)){
-		gen_stmt(d->bits.func.code);
+		gen_stmt(d->bits.func.code, NULL);
 		return;
 	}
 

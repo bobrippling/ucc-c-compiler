@@ -69,7 +69,7 @@ void gen_stmt(stmt *t, out_ctx *octx)
 {
 	out_dbg_where(&t->where);
 
-	t->f_gen(t);
+	t->f_gen(t, octx);
 }
 
 static void assign_arg_offsets(decl **decls, int const offsets[])
@@ -88,7 +88,7 @@ static void assign_arg_offsets(decl **decls, int const offsets[])
 	}
 }
 
-void gen_asm_global(decl *d)
+void gen_asm_global(decl *d, out_ctx *octx)
 {
 	attribute *sec;
 
@@ -123,7 +123,7 @@ void gen_asm_global(decl *d)
 
 		out_label(sp);
 
-		out_func_prologue(d->ref,
+		out_func_prologue(octx, d->ref,
 				d->bits.func.code->symtab->auto_total_size,
 				nargs,
 				is_vari = type_is_variadic_func(d->ref),
@@ -133,13 +133,13 @@ void gen_asm_global(decl *d)
 
 		curfunc_lblfin = out_label_code(sp);
 
-		gen_stmt(d->bits.func.code);
+		gen_stmt(d->bits.func.code, octx);
 
 		out_label(curfunc_lblfin);
 
 		out_dbg_where(&d->bits.func.code->where_cbrace);
 
-		out_func_epilogue(d->ref);
+		out_func_epilogue(octx, d->ref);
 
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
@@ -174,6 +174,7 @@ void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 {
 	decl **diter;
 	struct symtable_gasm **iasm = globs->gasms;
+	out_ctx *octx = out_ctx_new();
 
 	for(diter = globs->stab.decls; diter && *diter; diter++){
 		decl *d = *diter;
@@ -233,9 +234,7 @@ void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 
 		if((d->store & STORE_MASK_STORE) != store_static)
 			asm_predeclare_global(d);
-		gen_asm_global(d);
-
-		UCC_ASSERT(out_vcount() == 0, "non empty vstack after global gen");
+		gen_asm_global(d, octx);
 	}
 
 	for(; iasm && *iasm; ++iasm)
@@ -245,4 +244,6 @@ void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 
 	if(cc1_gdebug && globs->stab.decls)
 		out_dbginfo(globs, fname, compdir);
+
+	out_ctx_end(octx);
 }

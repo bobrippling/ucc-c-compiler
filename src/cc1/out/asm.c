@@ -8,6 +8,13 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 
+#include "../type.h"
+#include "../decl.h"
+#include "../strings.h"
+
+#include "asm.h"
+#include "out.h"
+
 #include "../cc1.h"
 #include "../sym.h"
 #include "../expr.h"
@@ -20,9 +27,6 @@
 #include "../decl_init.h"
 #include "../pack.h"
 #include "../str.h"
-
-#include "asm.h"
-#include "out.h"
 
 #define ASSERT_SCALAR(di)                  \
 	UCC_ASSERT(di->type == decl_init_scalar, \

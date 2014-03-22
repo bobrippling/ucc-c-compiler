@@ -2,9 +2,10 @@
 #define STMT_H
 
 #include "sym.h"
+#include "out/out.h"
 
 typedef void        func_fold_stmt(struct stmt *);
-typedef void        func_gen_stmt(struct stmt *);
+typedef void        func_gen_stmt(struct stmt *, struct out_ctx *);
 typedef const char *func_str_stmt(void);
 
 /* non-critical */

@@ -53,11 +53,6 @@ static int stack_sz, stack_local_offset, stack_variadic_offset;
 /* we won't reserve it more than 255 times */
 static unsigned char reserved_regs[MAX(N_SCRATCH_REGS_I, N_SCRATCH_REGS_F)];
 
-int out_vcount(void)
-{
-	return vtop ? 1 + (int)(vtop - vstack) : 0;
-}
-
 int v_stack_sz()
 {
 	return stack_sz;
