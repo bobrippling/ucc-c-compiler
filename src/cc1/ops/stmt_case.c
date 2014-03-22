@@ -17,15 +17,13 @@ void fold_stmt_case(stmt *t)
 	fold_check_expr(t->expr, FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I, "case");
 	val = const_fold_val_i(t->expr);
 
-	t->bits.case_lbl = out_label_case(CASE_CASE, val);
-	fold_stmt_and_add_to_curswitch(t, &t->bits.case_lbl);
+	t->bits.case_blk = out_blk_new("case");
+	fold_stmt_and_add_to_curswitch(t, &t->bits.case_blk);
 }
 
 void gen_stmt_case(stmt *s, out_ctx *octx)
 {
-	out_blk *case_blk = out_blk_new("case");
-
-	out_current_blk(octx, case_blk);
+	out_current_blk(octx, s->bits.case_blk);
 	gen_stmt(s->lhs, octx);
 }
 

@@ -138,7 +138,7 @@ static void fold_switch_enum(
 	free(marks);
 }
 
-void fold_stmt_and_add_to_curswitch(stmt *cse, char **lbl)
+void fold_stmt_and_add_to_curswitch(stmt *cse, out_blk **bblock)
 {
 	stmt *sw = cse->parent;
 	struct switch_case *this_case;
@@ -148,7 +148,7 @@ void fold_stmt_and_add_to_curswitch(stmt *cse, char **lbl)
 	if(!sw)
 		die_at(&cse->where, "%s not inside switch", cse->f_str());
 
-	if(*lbl){
+	if(*bblock){
 		/* promote to the controlling statement */
 		fold_insert_casts(sw->expr->tree_type, &cse->expr, cse->symtab);
 
@@ -171,11 +171,11 @@ void fold_stmt_and_add_to_curswitch(stmt *cse, char **lbl)
 
 			return;
 		}
-		*lbl = out_label_case(CASE_DEF, 0);
+		*bblock = out_blk_new("default");
 	}
 
 	this_case->code = cse;
-	this_case->lbl = *lbl;
+	this_case->blk = *bblock;
 
 	/* we are compound, copy some attributes */
 	cse->kills_below_code = cse->lhs->kills_below_code;
@@ -184,8 +184,6 @@ void fold_stmt_and_add_to_curswitch(stmt *cse, char **lbl)
 
 void fold_stmt_switch(stmt *s)
 {
-	s->lbl_break = out_label_flow("switch");
-
 	FOLD_EXPR(s->expr, s->symtab);
 
 	fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch");
@@ -215,72 +213,74 @@ void fold_stmt_switch(stmt *s)
 void gen_stmt_switch(stmt *s, out_ctx *octx)
 {
 	struct switch_case *iter, *pdefault;
+	out_blk *blk_switch_end = out_blk_new("switch_fin");
+	out_val *cmp_with;
 
-	gen_expr(s->expr);
-
-	out_comment("switch on this");
+	cmp_with = gen_expr(s->expr, octx);
 
 	for(iter = s->bits.switch_.cases; iter && iter->code; iter++){
 		stmt *cse = iter->code;
 		numeric iv;
+		out_blk *blk_cancel = out_blk_new("case_next");
 
 		const_fold_integral(cse->expr, &iv);
 
 		if(stmt_kind(cse, case_range)){
-			char *skip = out_label_code("range_skip");
 			numeric max;
+			out_val *this_case[2];
+			out_blk *blk_test2 = out_blk_new("range_true");
 
 			/* TODO: proper signed/unsiged format - out_op() */
 			const_fold_integral(cse->expr2, &max);
 
-			out_dup();
-			out_push_num(cse->expr->tree_type, &iv);
+			this_case[0] = out_new_num(octx, cse->expr->tree_type, &iv);
 
-			out_op(op_lt);
-			out_jtrue(skip);
+			out_ctrl_branch(
+					out_op(octx, op_lt, cmp_with, this_case[0]),
+					blk_cancel,
+					blk_test2);
 
-			out_dup();
-			out_push_num(cse->expr2->tree_type, &max);
-			out_op(op_gt);
+			out_current_blk(octx, blk_test2);
+			this_case[1] = out_new_num(octx, cse->expr2->tree_type, &max);
 
-			out_jfalse(iter->lbl);
-
-			out_label(skip);
-			free(skip);
+			out_ctrl_branch(
+					out_op(octx, op_gt, cmp_with, this_case[1]),
+					blk_cancel,
+					iter->blk);
 
 		}else{
-			out_dup();
-			out_push_num(cse->expr->tree_type, &iv);
+			out_val *this_case = out_new_num(octx, cse->expr->tree_type, &iv);
 
-			out_op(op_eq);
-
-			out_jtrue(iter->lbl);
+			out_ctrl_branch(
+				out_op(octx, op_eq, this_case, cmp_with),
+				blk_cancel,
+				iter->blk);
 		}
-	}
 
-	out_pop(); /* free the value we switched on asap */
+		out_current_blk(octx, blk_cancel);
+		/* implicitly linked to next */
+	}
 
 	pdefault = &s->bits.switch_.default_case;
 
-	out_push_lbl(pdefault->code
-			? pdefault->lbl
-			: s->lbl_break, 0);
+	/* no matches - branch to default/end */
+	out_ctrl_transfer(
+			pdefault->code ? pdefault->blk : blk_switch_end,
+			NULL);
 
-	out_jmp();
-
-	/* out-stack must be empty from here on */
-
-	gen_stmt(s->lhs); /* the actual code inside the switch */
-
-	out_label(s->lbl_break);
+	{
+		out_blk *body = out_blk_new("switch_body");
+		out_current_blk(octx, body);
+		gen_stmt(s->lhs, octx); /* the actual code inside the switch */
+	}
 }
 
-void style_stmt_switch(stmt *s)
+void style_stmt_switch(stmt *s, out_ctx *octx)
 {
 	stylef("switch(");
-	gen_expr(s->expr);
+	gen_expr(s->expr, octx);
 	stylef(")");
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 }
 
 static int switch_passable(stmt *s)

@@ -48,7 +48,7 @@ struct stmt
 		} lbl;
 
 		/* for a case/default */
-		char *case_lbl;
+		out_blk *case_blk;
 
 		/* for a code block */
 		struct
@@ -63,7 +63,7 @@ struct stmt
 			struct switch_case
 			{
 				stmt *code;
-				char *lbl;
+				out_blk *blk;
 			} *cases, default_case;
 		} switch_;
 	} bits;

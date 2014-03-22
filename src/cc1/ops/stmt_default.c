@@ -11,13 +11,12 @@ const char *str_stmt_default()
 
 void fold_stmt_default(stmt *s)
 {
-	fold_stmt_and_add_to_curswitch(s, &s->bits.case_lbl);
+	fold_stmt_and_add_to_curswitch(s, &s->bits.case_blk);
 }
 
 void gen_stmt_default(stmt *s, out_ctx *octx)
 {
-	out_blk *default_blk = out_blk_new("default");
-	out_current_blk(octx, default_blk);
+	out_current_blk(octx, s->bits.case_blk);
 	gen_stmt(s->lhs, octx);
 }
 
