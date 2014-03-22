@@ -1,6 +1,6 @@
 // RUN: %check -e %s
 
-typeof(__auto_type) b; // CHECK: error: __auto_type not wanted here
+__typeof(__auto_type) b; // CHECK: error: __auto_type not wanted here
 
 main()
 {

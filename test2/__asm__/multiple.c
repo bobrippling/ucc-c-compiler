@@ -5,7 +5,7 @@ int f(int i){ return i + 1; }
 
 main()
 {
-	asm("movl $0, %edi\n"
+	__asm("movl $0, %edi\n"
 			"call f\n"
 			"ret\n");
 	abort();

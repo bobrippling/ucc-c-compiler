@@ -1,3 +1,3 @@
 // RUN: %ucc -fsyntax-only %s
 
-int x asm("y") __attribute__((unused));
+int x __asm("y") __attribute__((unused));

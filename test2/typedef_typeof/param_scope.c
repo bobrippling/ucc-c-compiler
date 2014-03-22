@@ -2,7 +2,7 @@
 main()
 {
 	int x;
-	void f(typeof(x) *);
+	void f(__typeof(x) *);
 
 	f(&x);
 }

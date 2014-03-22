@@ -3,10 +3,10 @@
 #define IF_TY_EQ(ty, a, b)          \
 	_Static_assert(                    \
 			__builtin_types_compatible_p(  \
-				ty, typeof(0 ? (a)0 : (b)0)),  \
+				ty, __typeof(0 ? (a)0 : (b)0)),  \
 			"")
 
-#define IF_EXPR_EQ(ty, a, b) IF_TY_EQ(ty, typeof(a), typeof(b))
+#define IF_EXPR_EQ(ty, a, b) IF_TY_EQ(ty, __typeof(a), __typeof(b))
 
 typedef struct A A;
 typedef struct B B;

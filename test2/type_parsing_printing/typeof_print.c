@@ -2,5 +2,5 @@
 
 main()
 {
-	typeof(5) a;
+	__typeof(5) a;
 }

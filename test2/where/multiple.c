@@ -71,7 +71,7 @@ f(5 + 2);
 // CARETS:
 //  ^ note:
 
-f(    sizeof(typeof(int)));
+f(    sizeof(__typeof(int)));
 // CARETS:
 //    ^ note:
 }
