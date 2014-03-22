@@ -2,7 +2,7 @@ include ../src_config.mk
 include ../../config.mk
 
 OBJ = platform.o util.o alloc.o dynarray.o dynmap.o where.o str.o \
-			std.o escape.o
+			std.o escape.o warn.o
 SRC = $(OBJ:.o=.c)
 
 BUILD_CC = ${CC} ${CFLAGS} -c -o $@ $<
@@ -24,6 +24,8 @@ str.o: str.c
 std.o: std.c
 	${BUILD_CC}
 escape.o: escape.c
+	${BUILD_CC}
+warn.o: warn.c
 	${BUILD_CC}
 
 dynarray.o: dynarray.c

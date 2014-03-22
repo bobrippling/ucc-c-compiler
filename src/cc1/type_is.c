@@ -95,6 +95,11 @@ type *type_skip_non_wheres(type *t)
 	return type_skip(t, STOP_AT_WHERE);
 }
 
+type *type_skip_non_attr(type *t)
+{
+	return type_skip(t, STOP_AT_ATTR);
+}
+
 decl *type_is_tdef(type *t)
 {
 	t = type_skip_non_tdefs(t);
@@ -111,6 +116,9 @@ type *type_next(type *r)
 		return NULL;
 
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_btype:
 			return NULL;
 
@@ -274,6 +282,9 @@ int type_is_complete(type *r)
 	r = type_skip_all(r);
 
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_btype:
 		{
 			const btype *t = r->bits.type;
@@ -413,6 +424,9 @@ type *type_decay(type *const ty)
 
 	for(test = ty; test; test = type_next_1(test)){
 		switch(test->type){
+			case type_auto:
+				ICE("__auto_type");
+
 			case type_where:
 				if(!loc)
 					loc = &test->bits.where;
@@ -504,6 +518,7 @@ enum type_qualifier type_qual(const type *r)
 					return qual_const;
 			}
 
+		case type_auto:
 		case type_func:
 		case type_array:
 			return qual_none;
@@ -609,6 +624,12 @@ int type_is_promotable(type *r, type **pto)
 int type_is_variadic_func(type *r)
 {
 	return (r = type_is(r, type_func)) && r->bits.func.args->variadic;
+}
+
+int type_is_autotype(type *t)
+{
+	t = type_skip_all(t);
+	return t && t->type == type_auto;
 }
 
 type *type_is_decayed_array(type *r)

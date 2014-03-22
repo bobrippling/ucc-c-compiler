@@ -234,12 +234,19 @@ void fold_type_w_attr(
 	attribute *this_attr = NULL;
 	enum type_qualifier q_to_check = qual_none;
 
+	/* must be above the .folded check,
+	 * since we use the same attribute node for
+	 * several attr_ucc_debug instances */
+	attribute_debug_check(attr);
+
 	if(!r || r->folded)
 		return;
-
 	r->folded = 1;
 
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_array:
 			if(r->bits.array.size){
 				consty k;

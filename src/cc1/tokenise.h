@@ -22,6 +22,7 @@ enum token
 	token__Generic,
 	token_sizeof,
 	token_typeof,
+	token___auto_type,
 	token__Static_assert,
 
 	token_asm,

@@ -186,6 +186,7 @@ EMPTY(attr_enum_bitmask)
 EMPTY(attr_noreturn)
 EMPTY(attr_noderef)
 EMPTY(attr_packed)
+EMPTY(attr_ucc_debug)
 
 #undef EMPTY
 
@@ -218,6 +219,7 @@ static struct
 	ATTR(packed),
 	ATTR(sentinel),
 	ATTR(aligned),
+	{ "__ucc_debug", parse_attr_ucc_debug },
 
 	ATTR(cdecl),
 	ATTR(stdcall),
