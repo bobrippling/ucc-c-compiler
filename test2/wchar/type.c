@@ -2,7 +2,7 @@
 #define TYPE_CHECK(ch, ty, s)     \
 _Static_assert(                   \
 		__builtin_types_compatible_p( \
-			typeof(ch), ty),            \
+			__typeof(ch), ty),            \
 		"sizeof "s" constant != int")
 
 TYPE_CHECK( 'a', int, "char");

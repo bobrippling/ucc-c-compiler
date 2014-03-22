@@ -10,6 +10,7 @@ enum c_std
 	STD_C11,
 };
 
-int std_from_str(const char *, enum c_std *);
+/* returns 0 on success */
+int std_from_str(const char *, enum c_std *, int *gnu);
 
 #endif

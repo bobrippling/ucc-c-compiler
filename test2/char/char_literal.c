@@ -2,6 +2,6 @@
 
 _Static_assert(
 		__builtin_types_compatible_p(
-			typeof(*""),
+			__typeof(*""),
 			char),
 		"yo");

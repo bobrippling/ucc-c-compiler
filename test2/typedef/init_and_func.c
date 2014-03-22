@@ -9,7 +9,7 @@ typedef char c = 3; // CHECK: error: initialised typedef
 
 main()
 {
-	int *p = (typeof(*p))0; // CHECK: !/warn/
+	int *p = (__typeof(*p))0; // CHECK: !/warn/
 
 	for(int _Alignas(long) x = 0; x; x++); // CHECK: !/warn/
 
