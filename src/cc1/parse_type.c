@@ -206,11 +206,17 @@ int parse_at_decl(symtable *scope)
 
 		case token___extension__:
 		{
-			/* check for __extension__ <type> */
 			int r;
-			EAT(curtok);
+
+			/* check for __extension__ <type> */
+			while(accept(token___extension__));
+
 			r = parse_at_decl(scope);
+
+			/* only place one back on the token stack,
+			 * since that's what it's limited to */
 			uneat(token___extension__);
+
 			return r;
 		}
 
@@ -266,7 +272,7 @@ static type *parse_btype(
 		TYPEOF
 	} primitive_mode = NONE;
 
-	accept(token___extension__);
+	while(accept(token___extension__));
 
 	for(;;){
 		decl *tdef_decl_test;
