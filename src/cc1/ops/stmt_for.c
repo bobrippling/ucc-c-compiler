@@ -36,7 +36,7 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 	        *blk_body = out_blk_new("for_body"),
 	        *blk_end = out_blk_new("for_end");
 
-	flow_gen(s->flow, s->flow->for_init_symtab, el);
+	flow_gen(s->flow, s->flow->for_init_symtab, el, octx);
 
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){

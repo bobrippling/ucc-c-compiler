@@ -30,14 +30,14 @@ void fold_stmt_label(stmt *s)
 
 void gen_stmt_label(stmt *s, out_ctx *octx)
 {
-	out_label(s->bits.lbl.label->mangled);
-	gen_stmt(s->lhs); /* the code-part of the compound statement */
+	out_current_blk(octx, s->bits.lbl.label->bblock);
+	gen_stmt(s->lhs, octx); /* the code-part of the compound statement */
 }
 
-void style_stmt_label(stmt *s)
+void style_stmt_label(stmt *s, out_ctx *octx)
 {
 	stylef("\n%s: ", s->bits.lbl.spel);
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 }
 
 int label_passable(stmt *s)

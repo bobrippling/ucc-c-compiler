@@ -63,7 +63,8 @@ void fold_expr_addr(expr *e, symtable *stab)
 out_val *gen_expr_addr(expr *e, out_ctx *octx)
 {
 	if(e->bits.lbl.spel){
-		return out_new_lbl(octx, e->bits.lbl.label->mangled, 1); /* GNU &&lbl */
+		/* GNU &&lbl */
+		return out_new_blk_addr(octx, e->bits.lbl.label->bblock);
 
 	}else{
 		/* special case - can't lea_expr() functions because they

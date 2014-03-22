@@ -66,19 +66,15 @@ void fold_stmt_return(stmt *s)
 
 void gen_stmt_return(stmt *s, out_ctx *octx)
 {
-	if(s->expr){
-		gen_expr(s->expr);
-		out_pop_func_ret(s->expr->tree_type);
-		out_comment("return");
-	}
-	out_push_lbl(curfunc_lblfin, 0);
-	out_jmp();
+	out_ctrl_end_ret(
+			octx, s->expr ? gen_expr(s->expr, octx) : NULL, s->expr->tree_type);
+
 }
 
-void style_stmt_return(stmt *s)
+void style_stmt_return(stmt *s, out_ctx *octx)
 {
 	stylef("return ");
-	gen_expr(s->expr);
+	gen_expr(s->expr, octx);
 	stylef(";");
 }
 

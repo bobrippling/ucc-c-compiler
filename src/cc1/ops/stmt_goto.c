@@ -39,13 +39,13 @@ void gen_stmt_goto(stmt *s, out_ctx *octx)
 	}
 }
 
-void style_stmt_goto(stmt *s)
+void style_stmt_goto(stmt *s, out_ctx *octx)
 {
 	stylef("goto ");
 
 	if(s->expr){
 		stylef("*");
-		gen_expr(s->expr);
+		gen_expr(s->expr, octx);
 	}else{
 		stylef("%s", s->bits.lbl.spel);
 	}

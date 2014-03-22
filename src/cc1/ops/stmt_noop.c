@@ -14,12 +14,13 @@ void fold_stmt_noop(stmt *s)
 void gen_stmt_noop(stmt *s, out_ctx *octx)
 {
 	(void)s;
-	out_comment("noop");
+	(void)octx;
 }
 
-void style_stmt_noop(stmt *s)
+void style_stmt_noop(stmt *s, out_ctx *octx)
 {
 	(void)s;
+	(void)octx;
 	stylef(";");
 }
 

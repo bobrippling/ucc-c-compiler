@@ -5,6 +5,7 @@
 #include "stmt_for.h"
 #include "../out/lbl.h"
 #include "../fold_sym.h"
+#include "../out/dbg.h"
 
 const char *str_stmt_if()
 {
@@ -40,17 +41,19 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 	}
 }
 
-void flow_gen(stmt_flow *flow, symtable *stab, const char *endlbls[2])
+void flow_gen(
+		stmt_flow *flow, symtable *stab,
+		const char *endlbls[2], out_ctx *octx)
 {
-	gen_block_decls(stab, &endlbls[0]);
+	gen_block_decls(stab, &endlbls[0], octx);
 	endlbls[1] = NULL;
 
 	if(flow){
 		if(stab != flow->for_init_symtab)
-			gen_block_decls(flow->for_init_symtab, &endlbls[1]);
+			gen_block_decls(flow->for_init_symtab, &endlbls[1], octx);
 
 		if(flow->init_blk)
-			gen_stmt(flow->init_blk);
+			gen_stmt(flow->init_blk, octx);
 		/* also generates decls on the flow->inits statement */
 	}
 }
@@ -60,7 +63,7 @@ void flow_end(const char *endlbls[2])
 	int i;
 	for(i = 0; i < 2; i++)
 		if(endlbls[i])
-			out_label_noop(endlbls[i]);
+			out_dbg_label(endlbls[i]);
 }
 
 void fold_stmt_if(stmt *s)
@@ -74,40 +77,44 @@ void fold_stmt_if(stmt *s)
 
 void gen_stmt_if(stmt *s, out_ctx *octx)
 {
-	char *lbl_else = out_label_code("else");
-	char *lbl_fi   = out_label_code("fi");
+	out_blk *blk_true = out_blk_new("if_true");
+	out_blk *blk_false = out_blk_new("if_false");
+	out_blk *blk_fi = out_blk_new("fi");
 	const char *el[2];
+	out_val *cond;
 
-	flow_gen(s->flow, s->symtab, el);
-	gen_expr(s->expr);
+	flow_gen(s->flow, s->symtab, el, octx);
+	cond = gen_expr(s->expr, octx);
 
-	out_jfalse(lbl_else);
+	out_ctrl_branch(cond, blk_true, blk_false);
 
-	gen_stmt(s->lhs);
-	out_push_lbl(lbl_fi, 0);
-	out_jmp();
+	out_current_blk(octx, blk_true);
+	{
+		gen_stmt(s->lhs, octx);
+		out_ctrl_transfer(blk_fi, NULL);
+	}
 
-	out_label(lbl_else);
-	if(s->rhs)
-		gen_stmt(s->rhs);
-	out_label(lbl_fi);
+	out_current_blk(octx, blk_false);
+	{
+		if(s->rhs)
+			gen_stmt(s->rhs, octx);
+		out_ctrl_transfer(blk_fi, NULL);
+	}
 
+	out_current_blk(octx, blk_fi);
 	flow_end(el);
-
-	free(lbl_else);
-	free(lbl_fi);
 }
 
-void style_stmt_if(stmt *s)
+void style_stmt_if(stmt *s, out_ctx *octx)
 {
 	stylef("if(");
-	gen_expr(s->expr);
+	gen_expr(s->expr, octx);
 	stylef(")\n");
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 
 	if(s->rhs){
 		stylef("else\n");
-		gen_stmt(s->rhs);
+		gen_stmt(s->rhs, octx);
 	}
 }
 

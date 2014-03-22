@@ -1230,7 +1230,7 @@ ops/stmt_if.o: ops/stmt_if.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/stmt_if.h ops/stmt_for.h \
- ops/../out/lbl.h ops/../fold_sym.h
+ ops/../out/lbl.h ops/../fold_sym.h ops/../out/dbg.h
 ops/stmt_label.o: ops/stmt_label.c ops/ops.h ops/../../util/util.h \
  ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
  ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \

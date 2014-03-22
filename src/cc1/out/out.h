@@ -24,6 +24,8 @@ out_val *out_new_zero(out_ctx *, type *) ucc_nonnull((1))
 out_val *out_new_lbl(out_ctx *, const char *s, int pic)
 	ucc_wur;
 
+out_val *out_new_blk_addr(out_ctx *, out_blk *) ucc_wur;
+
 out_val *out_new_noop(out_ctx *) ucc_wur;
 
 out_val *out_new_sym(out_ctx *, sym *) ucc_wur;
