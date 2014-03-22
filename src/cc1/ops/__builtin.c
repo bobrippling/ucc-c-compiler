@@ -239,6 +239,7 @@ static out_val *builtin_gen_memset(expr *e, out_ctx *octx)
 	v_ptr = lea_expr(e->lhs, octx);
 
 	v_ptr = out_change_type(octx, v_ptr, type_ptr_to(tzero));
+	out_val_retain(v_ptr);
 
 #ifdef MEMSET_VERBOSE
 	out_comment("memset(%s, %d, %lu), using ptr<%s>, %lu steps",
@@ -257,7 +258,10 @@ static out_val *builtin_gen_memset(expr *e, out_ctx *octx)
 
 		/* p++ (copied pointer) */
 		v_inc = out_new_l(octx, type_nav_btype(cc1_type_nav, type_intptr_t), 1);
+
+		out_val_release(v_ptr);
 		v_ptr = out_op(octx, op_plus, v_ptr, v_inc);
+		out_val_retain(v_ptr);
 
 		if(rem){
 			/* need to zero a little more */
@@ -268,9 +272,12 @@ static out_val *builtin_gen_memset(expr *e, out_ctx *octx)
 		}
 	}
 
+	out_val_release(v_ptr);
+
 	return out_op(
 			octx, op_minus,
-			v_ptr, out_new_l(octx, e->tree_type, e->bits.builtin_memset.len));
+			v_ptr,
+			out_new_l(octx, e->tree_type, e->bits.builtin_memset.len));
 }
 
 expr *builtin_new_memset(expr *p, int ch, size_t len)

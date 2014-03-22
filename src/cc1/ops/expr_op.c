@@ -796,11 +796,12 @@ static out_val *op_shortcircuit(expr *e, out_ctx *octx)
 	out_blk *blk_rhs, *blk_empty, *landing;
 	out_val *lhs;
 
-	lhs = out_normalise(octx, gen_expr(e->lhs, octx));
-
 	blk_rhs = out_blk_new("shortcircuit_a");
 	blk_empty = out_blk_new("shortcircuit_b");
 	landing = out_blk_new("shortcircuit_landing");
+
+	lhs = out_normalise(octx, gen_expr(e->lhs, octx));
+	out_val_retain(lhs);
 
 	out_ctrl_branch(lhs, blk_rhs, blk_empty);
 
@@ -812,6 +813,7 @@ static out_val *op_shortcircuit(expr *e, out_ctx *octx)
 	}
 
 	out_current_blk(octx, blk_empty);
+	out_val_release(lhs);
 	out_ctrl_transfer(landing, lhs);
 
 	out_current_blk(octx, landing);
@@ -839,8 +841,10 @@ out_val *gen_expr_op(expr *e, out_ctx *octx)
 	if(!e->rhs)
 		return out_op_unary(octx, e->op, lhs);
 
+	out_val_retain(lhs);
 	rhs = gen_expr(e->rhs, octx);
 
+	out_val_release(lhs);
 	eval = out_op(octx, e->op, lhs, rhs);
 
 	/* make sure we get the pointer, for example 2+(int *)p

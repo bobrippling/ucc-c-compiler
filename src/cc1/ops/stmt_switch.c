@@ -217,6 +217,7 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 	out_val *cmp_with;
 
 	cmp_with = gen_expr(s->expr, octx);
+	out_val_retain(cmp_with);
 
 	for(iter = s->bits.switch_.cases; iter && iter->code; iter++){
 		stmt *cse = iter->code;
@@ -260,6 +261,8 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 		out_current_blk(octx, blk_cancel);
 		/* implicitly linked to next */
 	}
+
+	out_val_release(cmp_with);
 
 	pdefault = &s->bits.switch_.default_case;
 

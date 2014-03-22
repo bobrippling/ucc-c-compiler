@@ -141,10 +141,12 @@ out_val *gen_expr_assign(expr *e, out_ctx *octx)
 		out_val *val, *store;
 
 		val = gen_expr(e->rhs, octx);
+		out_val_retain(val);
 		store = lea_expr(e->lhs, octx);
 
 		out_store(octx, store, val);
 
+		out_val_release(val);
 		return val;
 	}
 }

@@ -210,35 +210,42 @@ static out_val *va_arg_gen_read(
 	const int fp = type_is_floating(ty);
 	const unsigned max_reg_args_sz = 6 * 8 + (fp ? 16 * 16 : 0);
 	const unsigned ws = platform_word_size();
-	out_val *valist, *voffset, *gpoff_addr, *gpoff_val, *cond;
-	out_val *merged_ptr;
+	out_val *valist, *gpoff_addr, *gpoff_val;
 
 	valist = gen_expr(e->lhs, octx);
 	valist = out_change_type(
 			octx, valist,
 			type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
+	out_val_retain(valist);
 
-	voffset = out_new_l(
-			octx,
-			type_nav_btype(cc1_type_nav, type_long),
-			offset_decl->bits.var.struct_offset);
+	gpoff_addr = out_op(
+			octx, op_plus,
+			valist,
+			out_new_l(
+				octx,
+				type_nav_btype(cc1_type_nav, type_long),
+				offset_decl->bits.var.struct_offset));
 
-	gpoff_addr = out_op(octx, op_plus, valist, voffset);
 
 	gpoff_addr = out_change_type(octx, gpoff_addr,
 			type_ptr_to(type_nav_btype(cc1_type_nav, type_int)));
+	out_val_retain(gpoff_addr);
 
 	gpoff_val = out_deref(octx, gpoff_addr);
+	out_val_retain(gpoff_val);
 
-	cond = out_op(octx,
-			op_lt,
-			gpoff_val,
-			out_new_l(
-				octx,
-				type_nav_btype(cc1_type_nav, type_int),
-				max_reg_args_sz));
 
-	out_ctrl_branch(cond, blk_reg, blk_stack);
+	out_ctrl_branch(
+			out_op(octx,
+				op_lt,
+				gpoff_val,
+				out_new_l(
+					octx,
+					type_nav_btype(cc1_type_nav, type_int),
+					max_reg_args_sz)),
+			blk_reg,
+			blk_stack);
+
 	/* now inserting into blk_reg */
 	{
 		const unsigned increment = fp ? 2 * ws : ws;
@@ -255,8 +262,10 @@ static out_val *va_arg_gen_read(
 					out_new_l(octx,
 						type_nav_btype(cc1_type_nav, type_int),
 						increment));
+		out_val_release(gpoff_val);
 
 		out_store(octx, gpoff_addr, gp_off_plus);
+		out_val_release(gpoff_addr);
 
 		membptr =
 			out_change_type(
@@ -294,7 +303,12 @@ static out_val *va_arg_gen_read(
 						type_nav_btype(cc1_type_nav, type_long),
 						mem_overflow_arg_area->bits.var.struct_offset));
 
+		out_val_release(valist);
+
+		out_val_retain(overflow_addr);
+
 		overflow_val = out_deref(octx, overflow_addr);
+		out_val_retain(overflow_val);
 
 		out_store(
 				octx,
@@ -312,14 +326,18 @@ static out_val *va_arg_gen_read(
 						type_nav_btype(cc1_type_nav, type_int),
 						ws)));
 
+		out_val_release(overflow_addr);
+		out_val_release(overflow_val);
 		out_ctrl_transfer(blk_fin, overflow_val);
 	}
 
-	merged_ptr = out_ctrl_merge(octx, blk_reg, blk_stack);
-
-	/* now have a pointer to the right memory address */
-	merged_ptr = out_change_type(octx, merged_ptr, type_ptr_to(ty));
-	return out_deref(octx, merged_ptr);
+	return out_deref(
+			octx,
+			out_change_type(
+				octx,
+				/* now have a pointer to the right memory address: */
+				out_ctrl_merge(octx, blk_reg, blk_stack),
+				type_ptr_to(ty)));
 }
 
 static out_val *builtin_gen_va_arg(expr *e, out_ctx *octx)

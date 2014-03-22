@@ -133,6 +133,8 @@ static out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 			gen_expr(e->lhs, octx),
 			type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 
+	out_val_retain(struct_exp);
+
 	off =
 		out_op(
 				octx, op_plus,
@@ -141,6 +143,8 @@ static out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 					octx,
 					type_nav_btype(cc1_type_nav, type_intptr_t),
 					struct_offset(e)));
+
+	out_val_release(struct_exp);
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
 		out_comment("struct member %s", e->bits.struct_mem.d->spel);
