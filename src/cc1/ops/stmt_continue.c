@@ -9,19 +9,19 @@ const char *str_stmt_continue()
 
 void fold_stmt_continue(stmt *t)
 {
-	fold_stmt_break_continue(t, t->parent ? t->parent->lbl_continue : NULL);
+	fold_stmt_break_continue(t, t->parent);
 }
 
 void gen_stmt_continue(stmt *s, out_ctx *octx)
 {
-	out_push_lbl(s->parent->lbl_continue, 0);
-	out_jmp();
+	(void)octx;
+	out_ctrl_transfer(s->parent->blk_continue, NULL);
 }
 
-void style_stmt_continue(stmt *s)
+void style_stmt_continue(stmt *s, out_ctx *octx)
 {
 	stylef("continue;");
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 }
 
 void init_stmt_continue(stmt *s)
