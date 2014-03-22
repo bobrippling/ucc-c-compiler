@@ -18,7 +18,7 @@ struct type_nav
 {
 	type **btypes; /* indexed by type_primitive */
 	dynmap *suetypes; /* sue => type */
-	type *tva_list;
+	type *tva_list, *tauto;
 };
 
 struct type_tree
@@ -421,6 +421,14 @@ type *type_nav_btype(struct type_nav *root, enum type_primitive p)
 	}
 
 	return root->btypes[p];
+}
+
+type *type_nav_auto(struct type_nav *root)
+{
+	if(!root->tauto)
+		root->tauto = type_new(type_auto, NULL);
+
+	return root->tauto;
 }
 
 type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *sue)

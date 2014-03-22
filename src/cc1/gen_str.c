@@ -156,6 +156,9 @@ static void print_type_eng(type *ref)
 	print_type_eng(ref->ref);
 
 	switch(ref->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_cast:
 			if(ref->bits.cast.is_signed_cast)
 				fprintf(cc1_out, "%s ", ref->bits.cast.signed_true ? "signed" : "unsigned");

@@ -199,6 +199,7 @@ int parse_at_decl(symtable *scope)
 		case token_union:
 		case token_enum:
 		case token_typeof:
+		case token___auto_type:
 		case token___builtin_va_list:
 		case token_attribute:
 		case token__Alignas:
@@ -253,7 +254,7 @@ static void btype_set_store(
 
 static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
-		int newdecl_context, symtable *scope)
+		int newdecl_context, symtable *scope, int allow_autotype)
 {
 	/* *store and *palign should be initialised */
 	expr *tdef_typeof = NULL;
@@ -269,7 +270,8 @@ static type *parse_btype(
 		PRIMITIVE_MAYBE_MORE,
 		PRIMITIVE_NO_MORE,
 		TYPEDEF,
-		TYPEOF
+		TYPEOF,
+		AUTOTYPE
 	} primitive_mode = NONE;
 
 	while(accept(token___extension__));
@@ -338,9 +340,14 @@ static type *parse_btype(
 					break;
 				case TYPEDEF:
 				case TYPEOF:
+				case AUTOTYPE:
 					die_at(NULL, "type primitive (%s) with %s",
 							type_primitive_to_str(primitive),
-							primitive_mode == TYPEDEF ? "typedef-instance" : "typeof");
+							primitive_mode == TYPEDEF
+							? "typedef-instance"
+							: primitive_mode == TYPEOF
+							? "typeof"
+							: "__auto_type");
 			}
 
 			EAT(curtok);
@@ -395,7 +402,7 @@ static type *parse_btype(
 			}
 
 			if(signed_set || primitive_mode != NONE)
-				die_at(NULL, "primitive/signed/unsigned with %s", str);
+				die_at(NULL, "previous specifier with %s", str);
 
 			/* fine... although a _Noreturn function returning a sue
 			 * is pretty daft... */
@@ -419,14 +426,14 @@ static type *parse_btype(
 
 		}else if(accept(token_typeof)){
 			if(primitive_mode != NONE)
-				die_at(NULL, "typeof specifier after primitive");
+				die_at(NULL, "typeof specifier after previous specifier");
 
 			tdef_typeof = parse_expr_sizeof_typeof_alignof(what_typeof, scope);
 			primitive_mode = TYPEOF;
 
 		}else if(accept(token___builtin_va_list)){
 			if(primitive_mode != NONE)
-				die_at(NULL, "can't combine previous primitive with va_list");
+				die_at(NULL, "can't combine previous specifier with va_list");
 
 			primitive_mode = PRIMITIVE_NO_MORE;
 			is_va_list = 1;
@@ -492,6 +499,15 @@ static type *parse_btype(
 
 			EAT(token_close_paren);
 
+		}else if(accept(token___auto_type)){
+			if(primitive_mode != NONE){
+				warn_at_print_error(NULL,
+						"can't combine __auto_type with previous type specifiers");
+				parse_had_error = 1;
+				continue;
+			}
+			primitive_mode = AUTOTYPE;
+
 		}else{
 			break;
 		}
@@ -556,6 +572,16 @@ static type *parse_btype(
 			r = type_nav_va_list(cc1_type_nav, scope);
 
 		}else switch(primitive_mode){
+			case AUTOTYPE:
+				UCC_ASSERT(!tdef_typeof, "typedef with __auto_type?");
+				if(signed_set){
+					warn_at_print_error(NULL,
+							"__auto_type given with previous type specifiers");
+					parse_had_error = 1;
+				}
+				r = type_nav_auto(cc1_type_nav);
+				break;
+
 			case TYPEDEF:
 			case TYPEOF:
 				UCC_ASSERT(tdef_typeof, "no tdef_typeof for typedef/typeof");
@@ -979,7 +1005,7 @@ static type *parse_type_declarator(
 
 type *parse_type(int newdecl, symtable *scope)
 {
-	type *btype = parse_btype(NULL, NULL, newdecl, scope);
+	type *btype = parse_btype(NULL, NULL, newdecl, scope, 0);
 
 	return btype ? parse_type_declarator(0, NULL, btype, scope) : NULL;
 }
@@ -1095,7 +1121,7 @@ decl *parse_decl(
 	type *r = parse_btype(
 			mode & DECL_ALLOW_STORE ? &store : NULL,
 			/*align:*/NULL,
-			newdecl, scope);
+			newdecl, scope, 1);
 	decl *d;
 
 	if(!r){
@@ -1462,7 +1488,7 @@ int parse_decl_group(
 	this_ref = parse_btype(
 			mode & DECL_MULTI_ALLOW_STORE ? &store : NULL,
 			mode & DECL_MULTI_ALLOW_ALIGNAS ? &align : NULL,
-			newdecl, in_scope);
+			newdecl, in_scope, 1);
 
 	if(!this_ref){
 		if(!parse_at_decl_spec() || !(mode & DECL_MULTI_CAN_DEFAULT))

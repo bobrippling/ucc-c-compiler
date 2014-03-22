@@ -110,6 +110,7 @@ struct statement
 	KEYWORD(__extension__),
 
 	KEYWORD__ALL(typeof),
+	KEYWORD(__auto_type),
 
 	KEYWORD__(attribute, token_attribute),
 };

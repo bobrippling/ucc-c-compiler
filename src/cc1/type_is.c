@@ -111,6 +111,9 @@ type *type_next(type *r)
 		return NULL;
 
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_btype:
 			return NULL;
 
@@ -274,6 +277,9 @@ int type_is_complete(type *r)
 	r = type_skip_all(r);
 
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_btype:
 		{
 			const btype *t = r->bits.type;
@@ -413,6 +419,9 @@ type *type_decay(type *const ty)
 
 	for(test = ty; test; test = type_next_1(test)){
 		switch(test->type){
+			case type_auto:
+				ICE("__auto_type");
+
 			case type_where:
 				if(!loc)
 					loc = &test->bits.where;
@@ -496,6 +505,9 @@ enum type_qualifier type_qual(const type *r)
 		return qual_none;
 
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_btype:
 			if(r->bits.type->primitive == type_struct
 			|| r->bits.type->primitive == type_union)

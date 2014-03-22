@@ -101,6 +101,9 @@ static enum type_cmp type_cmp_r(
 	}
 
 	switch(a->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_btype:
 			subchk = 0;
 			ret = btype_cmp(a->bits.type, b->bits.type);
@@ -264,6 +267,9 @@ integral_t type_max(type *r, where *from)
 unsigned type_size(type *r, where *from)
 {
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_btype:
 			return btype_size(r->bits.type, from);
 
@@ -438,6 +444,9 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 	type_add_str(r->tmp, spel, need_spc, bufp, sz);
 
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_tdef:
 			/* tdef "aka: %s" handled elsewhere */
 		case type_attr:
@@ -655,6 +664,7 @@ const char *type_kind_to_str(enum type_kind k)
 		CASE_STR_PREFIX(type, cast);
 		CASE_STR_PREFIX(type, attr);
 		CASE_STR_PREFIX(type, where);
+		CASE_STR_PREFIX(type, auto);
 	}
 	ucc_unreach(NULL);
 }

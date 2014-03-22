@@ -57,6 +57,9 @@ attribute *type_attr_present(type *r, enum attribute_type t)
 		attribute *da;
 
 		switch(r->type){
+			case type_auto:
+				assert(0 && "__auto_type");
+
 			case type_btype:
 			{
 				struct_union_enum_st *sue = r->bits.type->sue;

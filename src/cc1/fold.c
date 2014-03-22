@@ -240,6 +240,9 @@ void fold_type_w_attr(
 	r->folded = 1;
 
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_array:
 			if(r->bits.array.size){
 				consty k;
