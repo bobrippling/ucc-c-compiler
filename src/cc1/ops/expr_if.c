@@ -196,48 +196,29 @@ void fold_expr_if(expr *e, symtable *stab)
 
 out_val *gen_expr_if(expr *e, out_ctx *octx)
 {
-	char *lblfin;
-	char vphi_buf[OUT_VPHI_SZ];
+	out_blk *landing = out_blk_new(octx, "if_end"),
+	        *blk_lhs = out_blk_new(octx, "if_lhs"),
+	        *blk_rhs = out_blk_new(octx, "if_rhs");
+	out_val *cond = gen_expr(e->expr, octx);
 
-	lblfin = out_label_code("ifexp_fi");
+	out_ctrl_branch(cond, blk_lhs, blk_rhs);
 
-	gen_expr(e->expr);
 
-	if(e->lhs){
-		char *lblelse = out_label_code("ifexp_else");
-
-		out_jfalse(lblelse);
-
-		gen_expr(e->lhs);
-
-		/* hack for the phi jump until basic blocks are in */
-		out_dup();
-		out_flush_volatile();
-
-		out_phi_pop_to(&vphi_buf);
-
-		out_push_lbl(lblfin, 0);
-		/* the out_dup() is flushed here - hack side effect */
-		out_jmp();
-
-		out_label_noop(lblelse);
-		free(lblelse);
-
-	}else{
-		out_dup();
-		out_dup(); /* similar hack to above */
-		out_phi_pop_to(&vphi_buf);
-
-		out_jtrue(lblfin);
+	out_current_blk(octx, blk_lhs);
+	{
+		out_ctrl_transfer(
+				blk_lhs,
+				landing,
+				e->lhs ? gen_expr(e->lhs, octx) : cond);
 	}
 
-	out_pop();
+	out_current_blk(octx, blk_rhs);
+	{
+		out_ctrl_transfer(blk_rhs, landing, gen_expr(e->rhs, octx));
+	}
 
-	gen_expr(e->rhs);
-	out_phi_join(&vphi_buf);
-	out_label(lblfin);
-
-	free(lblfin);
+	out_current_blk(octx, landing);
+	return out_ctrl_merge(octx, blk_lhs, blk_rhs);
 }
 
 out_val *gen_expr_str_if(expr *e, out_ctx *octx)
@@ -262,6 +243,8 @@ out_val *gen_expr_str_if(expr *e, out_ctx *octx)
 #undef SUB_PRINT
 
 	gen_str_indent--;
+
+	UNUSED_OCTX();
 }
 
 void mutate_expr_if(expr *e)
@@ -278,10 +261,11 @@ expr *expr_new_if(expr *test)
 
 out_val *gen_expr_style_if(expr *e, out_ctx *octx)
 {
-	gen_expr(e->expr);
+	gen_expr(e->expr, octx);
 	stylef(" ? ");
 	if(e->lhs)
-		gen_expr(e->lhs);
+		gen_expr(e->lhs, octx);
 	stylef(" : ");
-	gen_expr(e->rhs);
+	gen_expr(e->rhs, octx);
+	return NULL;
 }

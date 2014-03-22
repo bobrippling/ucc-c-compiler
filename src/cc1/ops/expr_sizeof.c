@@ -113,11 +113,7 @@ static void const_expr_sizeof(expr *e, consty *k)
 
 out_val *gen_expr_sizeof(expr *e, out_ctx *octx)
 {
-	type *r = SIZEOF_WHAT(e);
-
-	out_push_l(e->tree_type, SIZEOF_SIZE(e));
-
-	out_comment("sizeof %s%s", e->expr ? "" : "type ", type_to_str(r));
+	return out_new_l(octx, e->tree_type, SIZEOF_SIZE(e));
 }
 
 out_val *gen_expr_str_sizeof(expr *e, out_ctx *octx)
@@ -131,6 +127,8 @@ out_val *gen_expr_str_sizeof(expr *e, out_ctx *octx)
 
 	if(e->what_of == what_sizeof)
 		idt_printf("size = %d\n", SIZEOF_SIZE(e));
+
+	UNUSED_OCTX();
 }
 
 void mutate_expr_sizeof(expr *e)
@@ -159,9 +157,11 @@ out_val *gen_expr_style_sizeof(expr *e, out_ctx *octx)
 	stylef("%s(", sizeof_what(e->what_of));
 
 	if(e->expr)
-		gen_expr(e->expr);
+		gen_expr(e->expr, octx);
 	else
 		stylef("%s", type_to_str(e->bits.size_of.of_type));
 
 	stylef(")");
+
+	UNUSED_OCTX();
 }

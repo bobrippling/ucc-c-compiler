@@ -38,16 +38,10 @@ void fold_expr_stmt(expr *e, symtable *stab)
 
 out_val *gen_expr_stmt(expr *e, out_ctx *octx)
 {
-	gen_stmt(e->code);
-	/* last stmt is told to leave its result on the stack
-	 *
-	 * if the last stmt isn't an expression, we put something
-	 * on the stack for it
-	 */
+	gen_stmt(e->code, octx);
 	{
 		int n = dynarray_count(e->code->bits.code.stmts);
-		if(n == 0 || !stmt_kind(e->code->bits.code.stmts[n-1], expr))
-			out_push_noop();
+		if(n > 0 || stmt_kind(e->code->bits.code.stmts[n-1], expr))
 	}
 
 	out_comment("end of ({...})");

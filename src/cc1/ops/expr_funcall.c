@@ -320,6 +320,8 @@ invalid:
 
 out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 {
+	out_val *fn_ret;
+
 	if(0){
 		out_comment("start manual __asm__");
 		ICE("same");
@@ -330,8 +332,9 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 	}else{
 		/* continue with normal funcall */
 		int nargs = 0;
+		out_val *fn, **args = NULL;
 
-		gen_expr(e->expr);
+		fn = gen_expr(e->expr, octx);
 
 		if(e->funcargs){
 			expr **aiter;
@@ -340,16 +343,22 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 
 			for(aiter--; aiter >= e->funcargs; aiter--){
 				expr *earg = *aiter;
+				out_val *arg;
 
 				/* should be of size int or larger (for integral types)
 				 * or double (for floating types)
 				 */
-				gen_expr(earg);
+				arg = gen_expr(earg, octx);
+				dynarray_add(&args, arg);
 			}
 		}
 
-		out_call(nargs, e->tree_type, e->expr->tree_type);
+		fn_ret = out_call(octx, fn, args, e->expr->tree_type);
+
+		dynarray_free(out_val **, &args, NULL);
 	}
+
+	return fn_ret;
 }
 
 out_val *gen_expr_str_funcall(expr *e, out_ctx *octx)
@@ -376,6 +385,8 @@ out_val *gen_expr_str_funcall(expr *e, out_ctx *octx)
 	}else{
 		idt_printf("no args\n");
 	}
+
+	UNUSED_OCTX();
 }
 
 void mutate_expr_funcall(expr *e)
@@ -399,15 +410,17 @@ expr *expr_new_funcall()
 out_val *gen_expr_style_funcall(expr *e, out_ctx *octx)
 {
 	stylef("(");
-	gen_expr(e->expr);
+	gen_expr(e->expr, octx);
 	stylef(")(");
 	if(e->funcargs){
 		expr **i;
 		for(i = e->funcargs; i && *i; i++){
-			gen_expr(*i);
+			gen_expr(*i, octx);
 			if(i[1])
 				stylef(", ");
 		}
 	}
 	stylef(")");
+
+	return NULL;
 }

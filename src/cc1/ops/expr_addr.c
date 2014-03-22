@@ -63,7 +63,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 out_val *gen_expr_addr(expr *e, out_ctx *octx)
 {
 	if(e->bits.lbl.spel){
-		out_push_lbl(e->bits.lbl.label->mangled, 1); /* GNU &&lbl */
+		return out_new_lbl(octx, e->bits.lbl.label->mangled, 1); /* GNU &&lbl */
 
 	}else{
 		/* special case - can't lea_expr() functions because they
@@ -77,9 +77,9 @@ out_val *gen_expr_addr(expr *e, out_ctx *octx)
 					"&[not-identifier], got %s",
 					sub->f_str());
 
-			out_push_sym(sub->bits.ident.sym);
+			return out_new_sym(octx, sub->bits.ident.sym);
 		}else{
-			lea_expr(sub);
+			return lea_expr(sub, octx);
 		}
 	}
 }
@@ -94,6 +94,7 @@ out_val *gen_expr_str_addr(expr *e, out_ctx *octx)
 		print_expr(e->lhs);
 		gen_str_indent--;
 	}
+	UNUSED_OCTX();
 }
 
 static void const_expr_addr(expr *e, consty *k)
@@ -149,7 +150,9 @@ void mutate_expr_addr(expr *e)
 
 out_val *gen_expr_style_addr(expr *e, out_ctx *octx)
 {
+	out_val *r;
 	stylef("&(");
-	gen_expr(e->lhs);
+	r = gen_expr(e->lhs, octx);
 	stylef(")");
+	return r;
 }

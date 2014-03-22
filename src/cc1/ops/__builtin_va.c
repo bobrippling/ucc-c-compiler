@@ -315,7 +315,7 @@ static out_val *va_arg_gen_read(
 		out_ctrl_transfer(blk_stack, blk_fin, overflow_val);
 	}
 
-	merged_ptr = out_ctrl_merge(blk_reg, blk_stack);
+	merged_ptr = out_ctrl_merge(octx, blk_reg, blk_stack);
 
 	/* now have a pointer to the right memory address */
 	merged_ptr = out_change_type(octx, merged_ptr, type_ptr_to(ty));

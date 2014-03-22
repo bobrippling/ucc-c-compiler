@@ -47,10 +47,8 @@ void fold_expr_comma(expr *e, symtable *stab)
 
 out_val *gen_expr_comma(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs);
-	out_pop();
-	out_comment("unused comma expr");
-	gen_expr(e->rhs);
+	gen_expr(e->lhs, octx);
+	return gen_expr(e->rhs, octx);
 }
 
 out_val *gen_expr_str_comma(expr *e, out_ctx *octx)
@@ -64,6 +62,7 @@ out_val *gen_expr_str_comma(expr *e, out_ctx *octx)
 	gen_str_indent++;
 	print_expr(e->rhs);
 	gen_str_indent--;
+	UNUSED_OCTX();
 }
 
 expr *expr_new_comma2(expr *lhs, expr *rhs)
@@ -80,7 +79,7 @@ void mutate_expr_comma(expr *e)
 
 out_val *gen_expr_style_comma(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs);
+	gen_expr(e->lhs, octx);
 	stylef(", ");
-	gen_expr(e->rhs);
+	return gen_expr(e->rhs, octx);
 }

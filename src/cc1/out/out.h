@@ -81,7 +81,7 @@ void out_ctrl_branch(
 		out_val *cond,
 		out_blk *if_true, out_blk *if_false);
 
-out_val *out_ctrl_merge(out_blk *, out_blk *); /* maybe ret null */
+out_val *out_ctrl_merge(out_ctx *, out_blk *, out_blk *); /* maybe ret null */
 
 
 /* function setup */
