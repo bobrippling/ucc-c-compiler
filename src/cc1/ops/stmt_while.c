@@ -35,14 +35,14 @@ void gen_stmt_while(stmt *s, out_ctx *octx)
 		flow_gen(s->flow, s->symtab, endlbls, octx);
 		cond = gen_expr(s->expr, octx);
 
-		out_ctrl_branch(cond, blk_body, s->blk_break);
+		out_ctrl_branch(octx, cond, blk_body, s->blk_break);
 	}
 
 	out_current_blk(octx, blk_body);
 	{
 		gen_stmt(s->lhs, octx);
 
-		out_ctrl_transfer(s->blk_continue, NULL);
+		out_ctrl_transfer(octx, s->blk_continue, NULL);
 	}
 
 	out_current_blk(octx, s->blk_break);

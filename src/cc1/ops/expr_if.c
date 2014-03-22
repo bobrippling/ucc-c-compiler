@@ -201,18 +201,18 @@ out_val *gen_expr_if(expr *e, out_ctx *octx)
 	        *blk_rhs = out_blk_new("if_rhs");
 	out_val *cond = gen_expr(e->expr, octx);
 
-	out_ctrl_branch(cond, blk_lhs, blk_rhs);
+	out_ctrl_branch(octx, cond, blk_lhs, blk_rhs);
 
 
 	out_current_blk(octx, blk_lhs);
 	{
-		out_ctrl_transfer(landing,
+		out_ctrl_transfer(octx, landing,
 				e->lhs ? gen_expr(e->lhs, octx) : cond);
 	}
 
 	out_current_blk(octx, blk_rhs);
 	{
-		out_ctrl_transfer(landing, gen_expr(e->rhs, octx));
+		out_ctrl_transfer(octx, landing, gen_expr(e->rhs, octx));
 	}
 
 	out_current_blk(octx, landing);

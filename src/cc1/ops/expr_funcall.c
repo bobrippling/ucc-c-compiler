@@ -332,10 +332,10 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 	}else{
 		/* continue with normal funcall */
 		int nargs = 0;
-		out_val *fn, **args = NULL;
+		out_val *fn, **args = NULL, **i;
 
 		fn = gen_expr(e->expr, octx);
-		out_val_retain(fn);
+		out_val_retain(octx, fn);
 
 		if(e->funcargs){
 			expr **aiter;
@@ -350,17 +350,20 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 				 * or double (for floating types)
 				 */
 				arg = gen_expr(earg, octx);
-				out_val_retain(arg);
+				out_val_retain(octx, arg);
 				dynarray_add(&args, arg);
 			}
 		}
 
 		fn_ret = out_call(octx, fn, args, e->expr->tree_type);
 
-		dynarray_free(out_val **, &args, &out_val_release);
+		for(i = args; i && *i; i++)
+			out_val_release(octx, *i);
+
+		dynarray_free(out_val **, &args, NULL);
 	}
 
-	out_val_release(fn_ret);
+	out_val_release(octx, fn_ret);
 	return fn_ret;
 }
 

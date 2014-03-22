@@ -1,36 +1,32 @@
 #ifndef IMPL_H
 #define IMPL_H
 
-void impl_store(struct vstack *from, struct vstack *to);
-void impl_load(struct vstack *from, const struct vreg *reg);
-void impl_load_iv(struct vstack *from);
-void impl_load_fp(struct vstack *from);
+void impl_store(out_ctx *, out_val *dest, out_val *val);
+void impl_load(struct out_val *from, const struct vreg *reg);
+void impl_load_iv(struct out_val *from);
+void impl_load_fp(struct out_val *from);
 
-void impl_reg_cp(struct vstack *from, const struct vreg *r);
-void impl_reg_swp(struct vstack *a, struct vstack *b);
+void impl_reg_cp(struct out_val *from, const struct vreg *r);
+void impl_reg_swp(struct out_val *a, struct out_val *b);
 
-void impl_op(enum op_type);
-void impl_op_unary(enum op_type);
-void impl_deref(
-		struct vstack *vp,
-		const struct vreg *to,
-		type *tpointed_to);
+out_val *impl_op(out_ctx *octx, enum op_type, out_val *l, out_val *r);
+out_val *impl_op_unary(out_ctx *octx, enum op_type, out_val *);
 
-void impl_jmp(void);
-void impl_jcond(int true, const char *lbl);
+out_val *impl_deref(out_ctx *octx, out_val *vp);
 
-void impl_i2f(struct vstack *, type *t_i, type *t_f);
-void impl_f2i(struct vstack *, type *t_f, type *t_i);
-void impl_f2f(struct vstack *, type *from, type *to);
-void impl_cast_load(
-		struct vstack *vp,
+void impl_branch(out_val *, out_blk *bt, out_blk *bf);
+
+out_val *impl_i2f(out_ctx *octx, struct out_val *, type *t_i, type *t_f);
+out_val *impl_f2i(out_ctx *octx, struct out_val *, type *t_f, type *t_i);
+out_val *impl_f2f(out_ctx *octx, struct out_val *, type *from, type *to);
+out_val *impl_cast_load(out_ctx *octx, struct out_val *vp,
 		type *small, type *big,
 		int is_signed);
 
 void impl_change_type(type *t);
 
-void impl_call(const int nargs, type *r_ret, type *r_func);
-void impl_pop_func_ret(type *r);
+out_val *impl_call(out_ctx *octx, out_val *fn, out_val **args, type *fnty);
+void impl_return(out_ctx *, out_val *, type *);
 
 void impl_func_prologue_save_fp(void);
 void impl_func_prologue_save_call_regs(
@@ -40,7 +36,7 @@ void impl_func_prologue_save_call_regs(
 void impl_func_prologue_save_variadic(type *rf);
 void impl_func_epilogue(type *);
 
-void impl_undefined(void);
+void impl_undefined(out_ctx *octx);
 void impl_set_overflow(void);
 void impl_set_nan(type *);
 

@@ -217,7 +217,7 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 	out_val *cmp_with;
 
 	cmp_with = gen_expr(s->expr, octx);
-	out_val_retain(cmp_with);
+	out_val_retain(octx, cmp_with);
 
 	for(iter = s->bits.switch_.cases; iter && iter->code; iter++){
 		stmt *cse = iter->code;
@@ -236,7 +236,7 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 
 			this_case[0] = out_new_num(octx, cse->expr->tree_type, &iv);
 
-			out_ctrl_branch(
+			out_ctrl_branch(octx,
 					out_op(octx, op_lt, cmp_with, this_case[0]),
 					blk_cancel,
 					blk_test2);
@@ -244,7 +244,7 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 			out_current_blk(octx, blk_test2);
 			this_case[1] = out_new_num(octx, cse->expr2->tree_type, &max);
 
-			out_ctrl_branch(
+			out_ctrl_branch(octx,
 					out_op(octx, op_gt, cmp_with, this_case[1]),
 					blk_cancel,
 					iter->blk);
@@ -252,7 +252,7 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 		}else{
 			out_val *this_case = out_new_num(octx, cse->expr->tree_type, &iv);
 
-			out_ctrl_branch(
+			out_ctrl_branch(octx,
 				out_op(octx, op_eq, this_case, cmp_with),
 				blk_cancel,
 				iter->blk);
@@ -262,12 +262,12 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 		/* implicitly linked to next */
 	}
 
-	out_val_release(cmp_with);
+	out_val_release(octx, cmp_with);
 
 	pdefault = &s->bits.switch_.default_case;
 
 	/* no matches - branch to default/end */
-	out_ctrl_transfer(
+	out_ctrl_transfer(octx,
 			pdefault->code ? pdefault->blk : blk_switch_end,
 			NULL);
 

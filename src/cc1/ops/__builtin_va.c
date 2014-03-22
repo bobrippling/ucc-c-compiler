@@ -216,7 +216,7 @@ static out_val *va_arg_gen_read(
 	valist = out_change_type(
 			octx, valist,
 			type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
-	out_val_retain(valist);
+	out_val_retain(octx, valist);
 
 	gpoff_addr = out_op(
 			octx, op_plus,
@@ -229,13 +229,14 @@ static out_val *va_arg_gen_read(
 
 	gpoff_addr = out_change_type(octx, gpoff_addr,
 			type_ptr_to(type_nav_btype(cc1_type_nav, type_int)));
-	out_val_retain(gpoff_addr);
+	out_val_retain(octx, gpoff_addr);
 
 	gpoff_val = out_deref(octx, gpoff_addr);
-	out_val_retain(gpoff_val);
+	out_val_retain(octx, gpoff_val);
 
 
 	out_ctrl_branch(
+			octx,
 			out_op(octx,
 				op_lt,
 				gpoff_val,
@@ -262,10 +263,10 @@ static out_val *va_arg_gen_read(
 					out_new_l(octx,
 						type_nav_btype(cc1_type_nav, type_int),
 						increment));
-		out_val_release(gpoff_val);
+		out_val_release(octx, gpoff_val);
 
 		out_store(octx, gpoff_addr, gp_off_plus);
-		out_val_release(gpoff_addr);
+		out_val_release(octx, gpoff_addr);
 
 		membptr =
 			out_change_type(
@@ -284,7 +285,7 @@ static out_val *va_arg_gen_read(
 				out_deref(octx, membptr),
 				gp_off_plus); /* reg_save_area + gp_o */
 
-		out_ctrl_transfer(blk_fin, reg_save_area_value);
+		out_ctrl_transfer(octx, blk_fin, reg_save_area_value);
 	}
 
 	/* stack code */
@@ -303,12 +304,12 @@ static out_val *va_arg_gen_read(
 						type_nav_btype(cc1_type_nav, type_long),
 						mem_overflow_arg_area->bits.var.struct_offset));
 
-		out_val_release(valist);
+		out_val_release(octx, valist);
 
-		out_val_retain(overflow_addr);
+		out_val_retain(octx, overflow_addr);
 
 		overflow_val = out_deref(octx, overflow_addr);
-		out_val_retain(overflow_val);
+		out_val_retain(octx, overflow_val);
 
 		out_store(
 				octx,
@@ -326,9 +327,9 @@ static out_val *va_arg_gen_read(
 						type_nav_btype(cc1_type_nav, type_int),
 						ws)));
 
-		out_val_release(overflow_addr);
-		out_val_release(overflow_val);
-		out_ctrl_transfer(blk_fin, overflow_val);
+		out_val_release(octx, overflow_addr);
+		out_val_release(octx, overflow_val);
+		out_ctrl_transfer(octx, blk_fin, overflow_val);
 	}
 
 	return out_deref(

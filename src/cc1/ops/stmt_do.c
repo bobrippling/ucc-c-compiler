@@ -24,7 +24,7 @@ void gen_stmt_do(stmt *s, out_ctx *octx)
 	gen_stmt(s->lhs, octx);
 
 	cond = gen_expr(s->expr, octx);
-	out_ctrl_branch(cond, begin, end);
+	out_ctrl_branch(octx, cond, begin, end);
 
 	out_current_blk(octx, end);
 }

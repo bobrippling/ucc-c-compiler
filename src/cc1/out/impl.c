@@ -7,7 +7,7 @@
 #include "../op.h"
 #include "../macros.h"
 
-#include "vstack.h"
+#include "val.h"
 #include "asm.h"
 #include "impl.h"
 #include "write.h"
@@ -57,9 +57,4 @@ const char *flag_cmp_to_str(enum flag_cmp cmp)
 		CASE_STR_PREFIX(flag, no_overflow);
 	}
 	return NULL;
-}
-
-int vreg_eq(const struct vreg *a, const struct vreg *b)
-{
-	return a->idx == b->idx && a->is_float == b->is_float;
 }

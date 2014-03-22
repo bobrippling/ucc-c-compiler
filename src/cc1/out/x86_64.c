@@ -14,7 +14,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 
-#include "vstack.h"
+#include "val.h"
 #include "asm.h"
 #include "impl.h"
 #include "../cc1.h"
@@ -199,6 +199,7 @@ static const char *x86_reg_str(const struct vreg *reg, type *r)
 	}
 }
 
+#if 0
 static const char *reg_str(struct vstack *reg)
 {
 	return x86_reg_str(&reg->bits.regoff.reg, reg->t);
@@ -1759,3 +1760,4 @@ void impl_set_nan(type *ty)
 	/* vtop->t should be set */
 	impl_load_fp(vtop);
 }
+#endif

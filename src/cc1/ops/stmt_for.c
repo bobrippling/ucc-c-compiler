@@ -51,7 +51,7 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 		out_current_blk(octx, blk_test);
 		for_cond = gen_expr(s->flow->for_while, octx);
 
-		out_ctrl_branch(for_cond, blk_body, blk_end);
+		out_ctrl_branch(octx, for_cond, blk_body, blk_end);
 	}
 
 	out_current_blk(octx, blk_body);

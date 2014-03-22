@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "../../util/util.h"
 #include "../../util/alloc.h"
@@ -17,15 +18,36 @@
 
 #include "asm.h"
 #include "out.h"
-#include "vstack.h"
+#include "val.h"
 #include "impl.h"
 #include "lbl.h"
 
-static int calc_ptr_step(type *t);
+struct out_ctx
+{
+	out_blk *current_blk;
 
-/*
- * This entire stack-output idea was inspired by tinycc, and improved somewhat
- */
+	int stack_sz, stack_local_offset, stack_variadic_offset;
+
+	/* we won't reserve it more than 255 times */
+	unsigned char reserved_regs[MAX(N_SCRATCH_REGS_I, N_SCRATCH_REGS_F)];
+};
+
+struct out_blk
+{
+	out_ctx *octx;
+	const char *desc;
+	out_val *phi_val;
+
+	struct
+	{
+		enum { BLK_NEXT_BLOCK, BLK_NEXT_EXPR } type;
+		union
+		{
+			out_blk *blk;
+			out_val *exp;
+		} bits;
+	} next;
+};
 
 /*
  * stack layout is:
@@ -48,198 +70,15 @@ static int calc_ptr_step(type *t);
  * all call/variadic regs must be at increasing memory addresses for
  * variadic logic is in impl_func_prologue_save_variadic
  */
-static int stack_sz, stack_local_offset, stack_variadic_offset;
 
-/* we won't reserve it more than 255 times */
-static unsigned char reserved_regs[MAX(N_SCRATCH_REGS_I, N_SCRATCH_REGS_F)];
-
-int v_stack_sz()
+#if 0
+int v_unused_reg(out_ctx *octx, int stack_as_backup, int fp, struct vreg *out)
 {
-	return stack_sz;
-}
-
-void vpush(type *t)
-{
-	if(!vtop){
-		vtop = vstack;
-	}else{
-		UCC_ASSERT(vtop < vstack + N_VSTACK - 1,
-				"vstack overflow, vtop=%p, vstack=%p, diff %d",
-				(void *)vtop, (void *)vstack, out_vcount());
-
-		if(vtop->type == V_FLAG)
-			v_to_reg(vtop);
-
-		vtop++;
-	}
-
-	v_clear(vtop, t);
-}
-
-static void
-ucc_nonnull()
-v_push_reg(int r, type *ty)
-{
-	struct vreg reg = VREG_INIT(r, 0);
-	vpush(ty);
-	v_set_reg(vtop, &reg);
-}
-
-static void v_push_sp(void)
-{
-	v_push_reg(REG_SP, type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
-}
-
-void v_clear(struct vstack *vp, type *t)
-{
-	memset(vp, 0, sizeof *vp);
-	vp->t = t;
-}
-
-void v_set_flag(
-		struct vstack *vp,
-		enum flag_cmp c, enum flag_mod mods)
-{
-	v_clear(vp, type_nav_btype(cc1_type_nav, type__Bool));
-
-	vp->type = V_FLAG;
-	vp->bits.flag.cmp = c;
-	vp->bits.flag.mods = mods;
-}
-
-void vpop(void)
-{
-	UCC_ASSERT(vtop, "NULL vtop for vpop");
-
-	if(vtop == vstack){
-		vtop = NULL;
-	}else{
-		UCC_ASSERT(vtop < vstack + N_VSTACK - 1, "vstack underflow");
-		vtop--;
-	}
-}
-
-void out_phi_pop_to(void *vvphi)
-{
-	struct vstack *const vphi = vvphi;
-
-	/* put the current value into the phi-save area */
-	memcpy_safe(vphi, vtop);
-
-	if(vphi->type == V_REG){
-		v_reserve_reg(&vphi->bits.regoff.reg); /* XXX: watch me */
-		if(fopt_mode & FOPT_VERBOSE_ASM)
-			out_comment("phi register %d", vphi->bits.regoff.reg.idx);
-	}
-
-	out_pop();
-}
-
-void out_phi_join(void *vvphi)
-{
-	struct vstack *const vphi = vvphi;
-
-	if(vphi->type == V_REG)
-		v_unreserve_reg(&vphi->bits.regoff.reg); /* XXX: voila */
-
-	/* join vtop and the current phi-save area */
-	v_to_reg(vtop);
-	v_to_reg(vphi);
-
-	if(!vreg_eq(&vtop->bits.regoff.reg, &vphi->bits.regoff.reg)){
-		/* _must_ match vphi, since it's already been generated */
-		if(fopt_mode & FOPT_VERBOSE_ASM)
-			out_comment("joining to phi register %d", vphi->bits.regoff.reg.idx);
-
-		impl_reg_cp(vtop, &vphi->bits.regoff.reg);
-		memcpy_safe(vtop, vphi);
-	}
-}
-
-static int v_reg_is_const(struct vreg *r)
-{
-	return !r->is_float && r->idx == REG_BP;
-}
-
-static void v_flush_volatile_reg(struct vstack *vp)
-{
-	if(vp->type == V_REG && vp->bits.regoff.offset){
-		/* prevent sub-calls attempting to reflush this offset register */
-		const long off = vp->bits.regoff.offset;
-		vp->bits.regoff.offset = 0;
-
-		UCC_ASSERT(!vp->bits.regoff.reg.is_float,
-				"flush volatile float?");
-
-		if(v_reg_is_const(&vp->bits.regoff.reg)){
-			/* move to an unused register */
-			struct vreg r;
-			v_unused_reg(1, vp->bits.regoff.reg.is_float, &r);
-			impl_reg_cp(vp, &r);
-			v_set_reg(vp, &r);
-			/* vstack updated, add to the register */
-		}
-
-		/* offset using the same type the register currently is */
-		v_push_reg(vp->bits.regoff.reg.idx, vp->t);
-		/* make it nice - abs() */
-		out_push_l(vp->t, abs(off));
-		impl_op(off > 0 ? op_plus : op_minus);
-		vpop();
-	}
-}
-
-static void v_flush_volatile(struct vstack *vp)
-{
-	if(!vp)
-		return;
-
-	v_to_reg(vp);
-
-	/* need to flush offset regs */
-	v_flush_volatile_reg(vp);
-}
-
-void out_flush_volatile(void)
-{
-	v_flush_volatile(vtop);
-}
-
-void out_assert_vtop_null(void)
-{
-	UCC_ASSERT(!vtop, "vtop not null (%d entries)", out_vcount());
-}
-
-void vswap(void)
-{
-	struct vstack tmp;
-	memcpy_safe(&tmp, vtop);
-	memcpy_safe(vtop, &vtop[-1]);
-	memcpy_safe(&vtop[-1], &tmp);
-}
-
-void out_dump(void)
-{
-	unsigned i;
-
-	for(i = 0; &vstack[i] <= vtop; i++)
-		out_comment("vstack[%d] = { .type=%d, .t=%s, .reg.idx = %d }",
-				i, vstack[i].type, type_to_str(vstack[i].t),
-				vstack[i].bits.regoff.reg.idx);
-}
-
-void out_swap(void)
-{
-	vswap();
-}
-
-int v_unused_reg(int stack_as_backup, int fp, struct vreg *out)
-{
-	static unsigned char used[sizeof(reserved_regs)];
+	unsigned char used[sizeof(octx->reserved_regs)];
 	struct vstack *it, *first;
 	int i;
 
-	memcpy(used, reserved_regs, sizeof used);
+	memcpy(used, octx->reserved_regs, sizeof used);
 	first = NULL;
 
 	for(it = vstack; it <= vtop; it++){
@@ -437,102 +276,6 @@ void v_freeup_regp(struct vstack *vp)
 	}else{
 		v_save_reg(vp);
 	}
-}
-
-static void v_stack_adj(unsigned amt, int sub)
-{
-	v_push_sp();
-	out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t), amt);
-	out_op(sub ? op_minus : op_plus);
-	out_flush_volatile();
-	out_pop();
-}
-
-static unsigned v_alloc_stack2(
-		const unsigned sz_initial, int noop, const char *desc)
-{
-	unsigned sz_rounded = sz_initial;
-
-	if(sz_initial){
-		/* must be a multiple of mstack_align.
-		 * assume stack_sz is aligned, and just
-		 * align what we add to it
-		 */
-		sz_rounded = pack_to_align(sz_initial, cc1_mstack_align);
-
-		/* if it changed, we need to realign the stack */
-		if(!noop || sz_rounded != sz_initial){
-			unsigned to_alloc;
-
-			if(!noop){
-				to_alloc = sz_rounded; /* the whole hog */
-			}else{
-				/* the extra we need to align by */
-				to_alloc = sz_rounded - sz_initial;
-			}
-
-			if(fopt_mode & FOPT_VERBOSE_ASM){
-				out_comment("stack alignment for %s (%u -> %u)",
-						desc, stack_sz, stack_sz + sz_rounded);
-				out_comment("alloc_n by %u (-> %u), padding with %u",
-						sz_initial, stack_sz + sz_initial,
-						sz_rounded - sz_initial);
-			}
-
-			v_stack_adj(to_alloc, 1);
-		}
-
-		stack_sz += sz_rounded;
-	}
-
-	return sz_rounded;
-}
-
-unsigned v_alloc_stack_n(unsigned sz, const char *desc)
-{
-	return v_alloc_stack2(sz, 1, desc);
-}
-
-unsigned v_alloc_stack(unsigned sz, const char *desc)
-{
-	return v_alloc_stack2(sz, 0, desc);
-}
-
-unsigned v_stack_align(unsigned const align, int force_mask)
-{
-	if(force_mask || (stack_sz & (align - 1))){
-		type *const ty = type_nav_btype(cc1_type_nav, type_intptr_t);
-		const unsigned new_sz = pack_to_align(stack_sz, align);
-		const unsigned added = new_sz - stack_sz;
-
-		v_push_sp();
-		out_push_l(ty, added);
-		out_op(op_minus);
-		stack_sz = new_sz;
-
-		if(force_mask){
-			out_push_l(ty, align - 1);
-			out_op(op_and);
-		}
-		out_flush_volatile();
-		out_pop();
-		out_comment("stack aligned to %u bytes", align);
-		return added;
-	}
-	return 0;
-}
-
-void v_dealloc_stack(unsigned sz)
-{
-	/* callers should've snapshotted the stack previously
-	 * and be calling us with said snapshot value
-	 */
-	UCC_ASSERT((sz & (cc1_mstack_align - 1)) == 0,
-			"can't dealloc by a non-stack-align amount");
-
-	v_stack_adj(sz, 0);
-
-	stack_sz -= sz;
 }
 
 void v_save_reg(struct vstack *vp)
@@ -899,37 +642,6 @@ void v_store(struct vstack *val, struct vstack *store)
 	impl_store(val, store);
 }
 
-void out_normalise(void)
-{
-	switch(vtop->type){
-		case V_FLAG:
-			/* already normalised */
-			break;
-
-		case V_CONST_I:
-			vtop->bits.val_i = !!vtop->bits.val_i;
-			break;
-
-		case V_CONST_F:
-			vtop->bits.val_i = !!vtop->bits.val_f;
-			vtop->type = V_CONST_I;
-			break;
-
-		default:
-			v_to_reg(vtop);
-
-		case V_REG:
-			out_comment("normalise");
-
-			out_push_zero(vtop->t);
-			out_op(op_ne);
-			/* 0 -> `0 != 0` = 0
-			 * 1 -> `1 != 0` = 1
-			 * 5 -> `5 != 0` = 1
-			 */
-	}
-}
-
 void out_push_sym(sym *s)
 {
 	decl *const d = s->decl;
@@ -1164,12 +876,6 @@ pop_const:
 out:;
 }
 
-void out_set_bitfield(unsigned off, unsigned nbits)
-{
-	vtop->bitfield.off   = off;
-	vtop->bitfield.nbits = nbits;
-}
-
 static void bitfield_to_scalar(const struct vbitfield *bf)
 {
 	type *const ty = vtop->t;
@@ -1299,94 +1005,9 @@ void out_op_unary(enum op_type op)
 	impl_op_unary(op);
 }
 
-void out_cast(type *to, int normalise_bool)
-{
-	/* normalise before the cast, otherwise we do things like
-	 * 5.3 -> 5, then normalise 5, instead of 5.3 != 0.0
-	 */
-	if(normalise_bool && type_is_primitive(to, type__Bool))
-		out_normalise();
-
-	v_cast(vtop, to);
-}
-
-void v_cast(struct vstack *vp, type *to)
-{
-	type *const from = vp->t;
-	char fp[2];
-	fp[0] = type_is_floating(from);
-	fp[1] = type_is_floating(to);
-
-	if(fp[0] || fp[1]){
-		if(fp[0] && fp[1]){
-
-			if(type_primitive(from) != type_primitive(to))
-				impl_f2f(vp, from, to);
-			/* else no-op cast */
-
-		}else if(fp[0]){
-			/* float -> int */
-			UCC_ASSERT(type_is_integral(to),
-					"fp to %s?", type_to_str(to));
-
-			impl_f2i(vp, from, to);
-
-		}else{
-			/* int -> float */
-			UCC_ASSERT(type_is_integral(from),
-					"%s to fp?", type_to_str(from));
-
-			impl_i2f(vp, from, to);
-		}
-
-	}else{
-		/* casting integral vtop
-		 * don't bother if it's a constant,
-		 * just change the size */
-		if(vp->type != V_CONST_I){
-			int szfrom = asm_type_size(from),
-					szto   = asm_type_size(to);
-
-			if(szfrom != szto){
-				if(szto > szfrom){
-					/* we take from's signedness for our sign-extension,
-					 * e.g. uint64_t x = (int)0x8000_0000;
-					 * sign extends the int to an int64_t, then changes
-					 * the type
-					 */
-					impl_cast_load(vp, from, to,
-							type_is_signed(from));
-				}else{
-					char buf[TYPE_STATIC_BUFSIZ];
-
-					out_comment("truncate cast from %s to %s, size %d -> %d",
-							from ? type_to_str_r(buf, from) : "",
-							to   ? type_to_str(to) : "",
-							szfrom, szto);
-				}
-			}
-		}
-	}
-
-	vp->t = to;
-}
-
 void out_change_type(type *t)
 {
 	impl_change_type(t);
-}
-
-void out_call(int nargs, type *r_ret, type *r_func)
-{
-	const int fp = type_is_floating(r_ret);
-	struct vreg vr = VREG_INIT(fp ? REG_RET_F : REG_RET_I, fp);
-
-	impl_call(nargs, r_ret, r_func);
-
-	/* return type */
-	v_clear(vtop, r_ret);
-
-	v_set_reg(vtop, &vr);
 }
 
 void out_jmp(void)
@@ -1467,41 +1088,6 @@ void out_comment(const char *fmt, ...)
 	va_end(l);
 }
 
-void out_func_prologue(
-		type *rf,
-		int stack_res, int nargs, int variadic,
-		int arg_offsets[], int *local_offset)
-{
-	UCC_ASSERT(stack_sz == 0, "non-empty stack for new func");
-
-	impl_func_prologue_save_fp();
-
-	if(mopt_mode & MOPT_STACK_REALIGN)
-		v_stack_align(cc1_mstack_align, 1);
-
-	impl_func_prologue_save_call_regs(rf, nargs, arg_offsets);
-
-	if(variadic) /* save variadic call registers */
-		impl_func_prologue_save_variadic(rf);
-
-	/* setup "pointers" to the right place in the stack */
-	stack_variadic_offset = stack_sz - platform_word_size();
-	stack_local_offset = stack_sz;
-	*local_offset = stack_local_offset;
-
-	if(stack_res)
-		v_alloc_stack(stack_res, "local variables");
-}
-
-void out_func_epilogue(type *rf)
-{
-	if(fopt_mode & FOPT_VERBOSE_ASM)
-		out_comment("epilogue, stack_sz = %u", stack_sz);
-
-	impl_func_epilogue(rf);
-	stack_local_offset = stack_sz = 0;
-}
-
 void out_pop_func_ret(type *t)
 {
 	impl_pop_func_ret(t);
@@ -1556,4 +1142,175 @@ void out_push_nan(type *ty)
 			"non-float nan?");
 	vpush(ty);
 	impl_set_nan(ty);
+}
+#endif
+
+#include "out_ctrl.c"
+#include "out_new.c"
+#include "out_func.c"
+
+out_ctx *out_ctx_new(void)
+{
+	out_ctx *ctx = umalloc(sizeof *ctx);
+	return ctx;
+}
+
+void out_ctx_end(out_ctx *octx)
+{
+	/* TODO */
+	(void)octx;
+}
+
+out_blk *out_blk_new(const char *desc)
+{
+	out_blk *blk = umalloc(sizeof *blk);
+	blk->desc = desc;
+	return blk;
+}
+
+void out_comment(const char *fmt, ...)
+{
+	/* TODO */
+	(void)fmt;
+}
+
+out_val *out_cast(out_ctx *octx, out_val *val, type *to, int normalise_bool)
+{
+	type *const from = val->t;
+	char fp[2];
+
+	/* normalise before the cast, otherwise we do things like
+	 * 5.3 -> 5, then normalise 5, instead of 5.3 != 0.0
+	 */
+	if(normalise_bool && type_is_primitive(to, type__Bool))
+		val = out_normalise(octx, val);
+
+	fp[0] = type_is_floating(from);
+	fp[1] = type_is_floating(to);
+
+	if(fp[0] || fp[1]){
+		if(fp[0] && fp[1]){
+
+			if(type_primitive(from) != type_primitive(to))
+				val = impl_f2f(octx, val, from, to);
+			/* else no-op cast */
+
+		}else if(fp[0]){
+			/* float -> int */
+			UCC_ASSERT(type_is_integral(to),
+					"fp to %s?", type_to_str(to));
+
+			val = impl_f2i(octx, val, from, to);
+
+		}else{
+			/* int -> float */
+			UCC_ASSERT(type_is_integral(from),
+					"%s to fp?", type_to_str(from));
+
+			val = impl_i2f(octx, val, from, to);
+		}
+
+	}else{
+		/* casting integral vtop
+		 * don't bother if it's a constant,
+		 * just change the size */
+		if(val->type != V_CONST_I){
+			int szfrom = asm_type_size(from),
+					szto   = asm_type_size(to);
+
+			if(szfrom != szto){
+				if(szto > szfrom){
+					/* we take from's signedness for our sign-extension,
+					 * e.g. uint64_t x = (int)0x8000_0000;
+					 * sign extends the int to an int64_t, then changes
+					 * the type
+					 */
+					val = impl_cast_load(octx, val, from, to,
+							type_is_signed(from));
+				}else{
+					char buf[TYPE_STATIC_BUFSIZ];
+
+					out_comment("truncate cast from %s to %s, size %d -> %d",
+							from ? type_to_str_r(buf, from) : "",
+							to   ? type_to_str(to) : "",
+							szfrom, szto);
+				}
+			}
+		}
+	}
+
+	return val;
+}
+
+out_val *out_change_type(out_ctx *octx, out_val *val, type *ty)
+{
+	out_val *new = outval_new(octx, val);
+	new->t = ty;
+	return new;
+}
+
+out_val *out_deref(out_ctx *octx, out_val *target)
+{
+	return impl_deref(octx, target);
+}
+
+out_val *out_normalise(out_ctx *octx, out_val *unnormal)
+{
+	out_val *normalised = outval_new(octx, unnormal);
+
+	switch(unnormal->type){
+		case V_FLAG:
+			/* already normalised */
+			break;
+
+		case V_CONST_I:
+			normalised->bits.val_i = !!normalised->bits.val_i;
+			break;
+
+		case V_CONST_F:
+			normalised->bits.val_i = !!normalised->bits.val_f;
+			normalised->type = V_CONST_I;
+			break;
+
+		default:
+			v_to_reg(normalised);
+			/* fall */
+
+		case V_REG:
+		{
+			out_val *z = out_new_zero(octx, normalised->t);
+
+			normalised = out_op(octx, op_ne, z, unnormal);
+			/* 0 -> `0 != 0` = 0
+			 * 1 -> `1 != 0` = 1
+			 * 5 -> `5 != 0` = 1
+			 */
+		}
+	}
+
+	return normalised;
+}
+
+out_val *out_op(out_ctx *octx, enum op_type binop, out_val *lhs, out_val *rhs)
+{
+	return impl_op(octx, binop, lhs, rhs);
+}
+
+out_val *out_op_unary(out_ctx *octx, enum op_type uop, out_val *exp)
+{
+	return impl_op_unary(octx, uop, exp);
+}
+
+void out_set_bitfield(
+		out_ctx *octx, out_val *val,
+		unsigned off, unsigned nbits)
+{
+	(void)octx;
+	val->bitfield.off = off;
+	val->bitfield.nbits = nbits;
+}
+
+void out_store(out_ctx *octx, out_val *dest, out_val *val)
+{
+	impl_store(octx, dest, val);
 }

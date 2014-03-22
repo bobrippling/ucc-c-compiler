@@ -801,20 +801,20 @@ static out_val *op_shortcircuit(expr *e, out_ctx *octx)
 	landing = out_blk_new("shortcircuit_landing");
 
 	lhs = out_normalise(octx, gen_expr(e->lhs, octx));
-	out_val_retain(lhs);
+	out_val_retain(octx, lhs);
 
-	out_ctrl_branch(lhs, blk_rhs, blk_empty);
+	out_ctrl_branch(octx, lhs, blk_rhs, blk_empty);
 
 	out_current_blk(octx, blk_rhs);
 	{
 		out_val *rhs = out_normalise(octx, gen_expr(e->rhs, octx));
 
-		out_ctrl_transfer(landing, rhs);
+		out_ctrl_transfer(octx, landing, rhs);
 	}
 
 	out_current_blk(octx, blk_empty);
-	out_val_release(lhs);
-	out_ctrl_transfer(landing, lhs);
+	out_val_release(octx, lhs);
+	out_ctrl_transfer(octx, landing, lhs);
 
 	out_current_blk(octx, landing);
 	return out_ctrl_merge(octx, blk_empty, blk_rhs);
@@ -841,10 +841,10 @@ out_val *gen_expr_op(expr *e, out_ctx *octx)
 	if(!e->rhs)
 		return out_op_unary(octx, e->op, lhs);
 
-	out_val_retain(lhs);
+	out_val_retain(octx, lhs);
 	rhs = gen_expr(e->rhs, octx);
 
-	out_val_release(lhs);
+	out_val_release(octx, lhs);
 	eval = out_op(octx, e->op, lhs, rhs);
 
 	/* make sure we get the pointer, for example 2+(int *)p
@@ -858,7 +858,7 @@ out_val *gen_expr_op(expr *e, out_ctx *octx)
 		out_blk *land = out_blk_new("trapv_end");
 		out_blk *blk_undef = out_blk_new("travp_bad");
 
-		out_ctrl_branch(
+		out_ctrl_branch(octx,
 				out_new_overflow(octx),
 				blk_undef,
 				land);

@@ -86,19 +86,19 @@ void gen_stmt_if(stmt *s, out_ctx *octx)
 	flow_gen(s->flow, s->symtab, el, octx);
 	cond = gen_expr(s->expr, octx);
 
-	out_ctrl_branch(cond, blk_true, blk_false);
+	out_ctrl_branch(octx, cond, blk_true, blk_false);
 
 	out_current_blk(octx, blk_true);
 	{
 		gen_stmt(s->lhs, octx);
-		out_ctrl_transfer(blk_fi, NULL);
+		out_ctrl_transfer(octx, blk_fi, NULL);
 	}
 
 	out_current_blk(octx, blk_false);
 	{
 		if(s->rhs)
 			gen_stmt(s->rhs, octx);
-		out_ctrl_transfer(blk_fi, NULL);
+		out_ctrl_transfer(octx, blk_fi, NULL);
 	}
 
 	out_current_blk(octx, blk_fi);

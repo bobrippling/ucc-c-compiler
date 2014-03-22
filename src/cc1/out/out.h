@@ -78,12 +78,13 @@ void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
 void out_ctrl_end_undefined(out_ctx *);
 void out_ctrl_end_ret(out_ctx *, out_val *, type *) ucc_nonnull((1));
 
-void out_ctrl_transfer(out_blk *to, out_val *phi_arg /* optional */);
+void out_ctrl_transfer(out_ctx *, out_blk *to, out_val *phi_arg /* optional */);
 
 /* goto *<exp> */
 void out_ctrl_transfer_exp(out_ctx *, out_val *addr);
 
 void out_ctrl_branch(
+		out_ctx *octx,
 		out_val *cond,
 		out_blk *if_true, out_blk *if_false);
 
@@ -101,14 +102,5 @@ void out_func_epilogue(out_ctx *, type *);
 
 /* commenting */
 void out_comment(const char *, ...) ucc_printflike(1, 2);
-#ifdef OUT_ASM_H
-void out_comment_sec(enum section_type, const char *, ...)
-	ucc_printflike(2, 3);
-#endif
-
-
-/* debugging */
-void out_dump(void);
-
 
 #endif
