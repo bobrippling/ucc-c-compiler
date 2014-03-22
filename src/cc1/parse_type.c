@@ -256,6 +256,7 @@ static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
 		int newdecl_context, symtable *scope, int allow_autotype)
 {
+	where autotype_loc;
 	/* *store and *palign should be initialised */
 	expr *tdef_typeof = NULL;
 	attribute *attr = NULL;
@@ -499,9 +500,9 @@ static type *parse_btype(
 
 			EAT(token_close_paren);
 
-		}else if(accept(token___auto_type)){
+		}else if(accept_where(token___auto_type, &autotype_loc)){
 			if(primitive_mode != NONE){
-				warn_at_print_error(NULL,
+				warn_at_print_error(&autotype_loc,
 						"can't combine __auto_type with previous type specifiers");
 				parse_had_error = 1;
 				continue;
@@ -574,12 +575,25 @@ static type *parse_btype(
 		}else switch(primitive_mode){
 			case AUTOTYPE:
 				UCC_ASSERT(!tdef_typeof, "typedef with __auto_type?");
+
+				r = NULL;
 				if(signed_set){
-					warn_at_print_error(NULL,
+					warn_at_print_error(&autotype_loc,
 							"__auto_type given with previous type specifiers");
+
+				}else if(!allow_autotype){
+					warn_at_print_error(&autotype_loc, "__auto_type not wanted here");
+
+				}else{
+					r = type_nav_auto(cc1_type_nav);
+				}
+
+				if(!r){
+					/* error case */
+					r = type_nav_btype(cc1_type_nav, type_int);
 					parse_had_error = 1;
 				}
-				r = type_nav_auto(cc1_type_nav);
+
 				break;
 
 			case TYPEDEF:
