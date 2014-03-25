@@ -19,7 +19,9 @@ void impl_branch(out_val *, out_blk *bt, out_blk *bf);
 out_val *impl_i2f(out_ctx *octx, out_val *, type *t_i, type *t_f);
 out_val *impl_f2i(out_ctx *octx, out_val *, type *t_f, type *t_i);
 out_val *impl_f2f(out_ctx *octx, out_val *, type *from, type *to);
-out_val *impl_cast_load(out_ctx *octx, out_val *vp,
+
+out_val *impl_cast_load(
+		out_ctx *octx, out_val *vp,
 		type *small, type *big,
 		int is_signed);
 

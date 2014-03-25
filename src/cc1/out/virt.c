@@ -19,25 +19,10 @@
 #include "asm.h"
 #include "impl.h"
 
-enum vto
-{
-	TO_REG = 1 << 0,
-	TO_MEM = 1 << 1,
-	TO_CONST = 1 << 2,
-};
-
-
-static out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc);
-
-static out_val *v_unused_reg(
-		out_ctx *octx,
-		int stack_as_backup, int fp,
-		struct vreg *out);
-
 
 static out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
 {
-	out_val *store = v_new_sp3(octx, vp->t, stack_pos);
+	out_val *store = v_new_sp3(octx, vp, vp->t, stack_pos);
 
 	out_val_retain(octx, store);
 
@@ -89,7 +74,7 @@ static out_val *v_save_reg(out_ctx *octx, out_val *vp)
 			-octx->stack_sz);
 }
 
-static out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc)
+out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc)
 {
 	if(v_in(vp, loc))
 		return vp;
@@ -129,7 +114,7 @@ static out_val *v_freeup_regp(out_ctx *octx, out_val *vp)
 	}
 }
 
-static out_val *v_unused_reg(
+out_val *v_unused_reg(
 		out_ctx *octx,
 		int stack_as_backup, int fp,
 		struct vreg *out)
@@ -153,7 +138,7 @@ static out_val *v_unused_reg(
 		if(!used[i]){
 			impl_scratch_to_reg(i, out);
 			out->is_float = fp;
-			return v_new_reg(octx, out);
+			return v_new_reg(octx, NULL, out);
 		}
 
 	if(stack_as_backup){
@@ -163,7 +148,7 @@ static out_val *v_unused_reg(
 		/* no free regs, move `first` to the stack and claim its reg */
 		v_freeup_regp(octx, first);
 
-		return v_new_reg(octx, &freed);
+		return v_new_reg(octx, NULL, &freed);
 	}
 	return NULL;
 }
@@ -207,7 +192,7 @@ void v_stack_adj(out_ctx *octx, unsigned amt, int sub)
 				octx,
 				type_nav_btype(cc1_type_nav, type_intptr_t),
 				amt),
-			v_new_sp(octx));
+			v_new_sp(octx, NULL));
 }
 
 unsigned v_alloc_stack2(
@@ -267,7 +252,7 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 		type *const ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 		const unsigned new_sz = pack_to_align(octx->stack_sz, align);
 		const unsigned added = new_sz - octx->stack_sz;
-		out_val *sp = v_new_sp(octx);
+		out_val *sp = v_new_sp(octx, NULL);
 
 		sp = out_op(
 				octx, op_minus,

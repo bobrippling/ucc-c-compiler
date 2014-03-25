@@ -42,8 +42,8 @@ out_val *out_normalise(out_ctx *, out_val *) ucc_wur;
 
 /* by default, all values are temporaries
  * this will prevent them being overwritten */
-void out_val_retain(out_ctx *, out_val *);
-void out_val_release(out_ctx *, out_val *);
+out_val *out_val_retain(out_ctx *, out_val *);
+out_val *out_val_release(out_ctx *, out_val *);
 
 
 /* value use */

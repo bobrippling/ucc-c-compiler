@@ -14,57 +14,58 @@
 #include "impl.h"
 #include "out.h" /* retain/release prototypes */
 
-static out_val *v_new(out_ctx *octx)
+out_val *v_new_from(out_ctx *octx, out_val *from)
 {
-	out_val *v = umalloc(sizeof *v);
+	out_val *v;
+
 	(void)octx;
+
+	if(from && from->retains == 0)
+		return from;
+
+	v = umalloc(sizeof *v);
+	if(from)
+		memcpy_safe(v, from);
 	return v;
 }
 
-out_val *v_new_from(out_ctx *octx, out_val *from)
+out_val *v_new_reg(out_ctx *octx, out_val *from, const struct vreg *reg)
 {
-	if(from->retains == 0){
-		memset(from, 0, sizeof *from);
-		return from;
-	}
-	return v_new(octx);
-}
-
-out_val *v_new_reg(out_ctx *octx, const struct vreg *reg)
-{
-	out_val *v = v_new(octx);
+	out_val *v = v_new_from(octx, from);
 	v->type = V_REG;
 	memcpy_safe(&v->bits.regoff.reg, reg);
 	return v;
 }
 
-out_val *v_new_sp(out_ctx *octx)
+out_val *v_new_sp(out_ctx *octx, out_val *from)
 {
 	struct vreg r;
 
 	r.is_float = 0;
 	r.idx = REG_SP;
 
-	return v_new_reg(octx, &r);
+	return v_new_reg(octx, from, &r);
 }
 
-out_val *v_new_sp3(out_ctx *octx, type *ty, long stack_pos)
+out_val *v_new_sp3(out_ctx *octx, out_val *from, type *ty, long stack_pos)
 {
-	out_val *v = v_new_sp(octx);
+	out_val *v = v_new_sp(octx, from);
 	v->t = ty;
 	v->bits.regoff.offset = stack_pos;
 	return v;
 }
 
-void out_val_release(out_ctx *octx, out_val *v)
+out_val *out_val_release(out_ctx *octx, out_val *v)
 {
 	(void)octx;
 	assert(v->retains > 0 && "double release");
 	v->retains--;
+	return v;
 }
 
-void out_val_retain(out_ctx *octx, out_val *v)
+out_val *out_val_retain(out_ctx *octx, out_val *v)
 {
 	(void)octx;
 	v->retains++;
+	return v;
 }
