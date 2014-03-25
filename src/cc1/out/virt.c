@@ -1,13 +1,234 @@
-void v_stack_adj(unsigned amt, int sub)
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+
+#include "../../util/alloc.h"
+
+#include "../type.h"
+#include "../type_nav.h"
+#include "../pack.h"
+
+#include "../cc1.h" /* cc1_mstack_align */
+
+#include "val.h"
+#include "out.h"
+#include "virt.h"
+#include "ctx.h"
+#include "asm.h"
+#include "impl.h"
+
+enum vto
 {
-	v_push_sp();
-	out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t), amt);
-	out_op(sub ? op_minus : op_plus);
-	out_flush_volatile();
-	out_pop();
+	TO_REG = 1 << 0,
+	TO_MEM = 1 << 1,
+	TO_CONST = 1 << 2,
+};
+
+
+static void v_to(out_ctx *octx, out_val *vp, enum vto loc);
+
+
+static out_val *v_new(out_ctx *octx)
+{
+	out_val *v = umalloc(sizeof *v);
+	(void)octx;
+	return v;
+}
+
+static out_val *v_new_sp(out_ctx *octx)
+{
+	out_val *v = v_new(octx);
+
+	return v;
+}
+
+static out_val *v_new_sp3(out_ctx *octx, type *ty, long stack_pos)
+{
+	out_val *v = v_new(octx);
+
+	v->type = V_REG;
+	v->t = ty;
+	v->bits.regoff.reg.idx = REG_SP;
+	v->bits.regoff.reg.is_float = 0;
+	v->bits.regoff.offset = stack_pos;
+
+	return v;
+}
+
+static void v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
+{
+	out_val *store = v_new_sp3(octx, vp->t, stack_pos);
+
+	v_to(octx, vp, TO_CONST | TO_REG);
+
+	/* the following gen two instructions - subq and movq
+	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
+	 * -O1?
+	 */
+	out_store(octx, store, vp);
+}
+
+static int v_in(out_val *vp, enum vto to)
+{
+	switch(vp->type){
+		case V_FLAG:
+			break;
+
+		case V_CONST_I:
+		case V_CONST_F:
+			return !!(to & TO_CONST);
+
+		case V_REG:
+			return 0; /* needs further checks */
+
+		case V_LBL:
+			return !!(to & TO_MEM);
+	}
+
+	return 0;
+}
+
+static void v_to(out_ctx *octx, out_val *vp, enum vto loc)
+{
+	if(v_in(vp, loc))
+		return;
+
+	/* TO_CONST can't be done - it should already be const,
+	 * or another option should be chosen */
+
+	/* go for register first */
+	if(loc & TO_REG){
+		v_to_reg(vp);
+		return;
+	}
+
+	if(loc & TO_MEM){
+		out_val_retain(vp);
+		v_to_reg(vp);
+		v_save_reg(octx, vp);
+		out_val_release(vp);
+		return;
+	}
+
+	ICE("can't satisfy v_to 0x%x", loc);
+}
+
+static void v_save_reg(out_ctx *octx, out_val *vp)
+{
+	assert(vp->type == V_REG && "not reg");
+
+	out_comment("register spill:");
+
+	v_alloc_stack(octx, type_size(vp->t, NULL), "save reg");
+
+	v_to_stack_mem(
+			octx,
+			vp,
+			-v_stack_sz());
+
+	vp->type = V_REG_SAVE;
+}
+
+static void v_freeup_regp(out_val *vp)
+{
+	/* freeup this reg */
+	struct vreg r;
+	int found_reg;
+
+	UCC_ASSERT(vp->type == V_REG, "not reg");
+
+	/* attempt to save to a register first */
+	found_reg = (v_unused_reg(0, vp->bits.regoff.reg.is_float, &r) == 0);
+
+	if(found_reg){
+		impl_reg_cp(vp, &r);
+
+		v_clear(vp, vp->t);
+		v_set_reg(vp, &r);
+
+	}else{
+		v_save_reg(vp);
+	}
+}
+
+static int v_unused_reg(
+		out_ctx *octx,
+		int stack_as_backup, int fp,
+		struct vreg *out)
+{
+	unsigned char used[sizeof(octx->reserved_regs)];
+	out_val *it, *first;
+	int i;
+
+	memcpy(used, octx->reserved_regs, sizeof used);
+	first = NULL;
+
+	for(it = octx->val_head; it; it = it->next){
+		if(it->type == V_REG && it->bits.reg.is_float == fp){
+			if(!first)
+				first = it;
+			used[impl_reg_to_scratch(&it->bits.reg)] = 1;
+		}
+	}
+
+	for(i = 0; i < (fp ? N_SCRATCH_REGS_F : N_SCRATCH_REGS_I); i++)
+		if(!used[i]){
+			impl_scratch_to_reg(i, out);
+			out->is_float = fp;
+			return 0;
+		}
+
+	if(stack_as_backup){
+		/* first->bits is clobbered by the v_freeup_regp() call */
+		const struct vreg freed = first->bits.reg;
+
+		/* no free regs, move `first` to the stack and claim its reg */
+		v_freeup_regp(first);
+
+		memcpy_safe(out, &freed);
+		return 0;
+	}
+	return -1;
+}
+
+out_val *v_to_reg_given(out_val *from, const struct vreg *given)
+{
+	return impl_load(from, given);
+}
+
+out_val *v_to_reg_out(out_val *conv, struct vreg *out)
+{
+	if(conv->type != V_REG){
+		struct vreg chosen;
+		if(!out)
+			out = &chosen;
+
+		v_unused_reg(1, type_is_floating(conv->t), out);
+		v_to_reg_given(conv, out);
+	}else if(out){
+		memcpy_safe(out, &conv->bits.regoff.reg);
+	}
+}
+
+out_val *v_to_reg(out_val *conv)
+{
+	v_to_reg_out(conv, NULL);
+}
+
+void v_stack_adj(out_ctx *octx, unsigned amt, int sub)
+{
+	out_op(
+			octx, sub ? op_minus : op_plus,
+			out_new_l(
+				octx,
+				type_nav_btype(cc1_type_nav, type_intptr_t),
+				amt),
+			v_new_sp(octx));
 }
 
 unsigned v_alloc_stack2(
+		out_ctx *octx,
 		const unsigned sz_initial, int noop, const char *desc)
 {
 	unsigned sz_rounded = sz_initial;
@@ -32,64 +253,64 @@ unsigned v_alloc_stack2(
 
 			if(fopt_mode & FOPT_VERBOSE_ASM){
 				out_comment("stack alignment for %s (%u -> %u)",
-						desc, stack_sz, stack_sz + sz_rounded);
+						desc, octx->stack_sz, octx->stack_sz + sz_rounded);
 				out_comment("alloc_n by %u (-> %u), padding with %u",
-						sz_initial, stack_sz + sz_initial,
+						sz_initial, octx->stack_sz + sz_initial,
 						sz_rounded - sz_initial);
 			}
 
-			v_stack_adj(to_alloc, 1);
+			v_stack_adj(octx, to_alloc, 1);
 		}
 
-		stack_sz += sz_rounded;
+		octx->stack_sz += sz_rounded;
 	}
 
 	return sz_rounded;
 }
 
-unsigned v_alloc_stack_n(unsigned sz, const char *desc)
+unsigned v_alloc_stack_n(out_ctx *octx, unsigned sz, const char *desc)
 {
-	return v_alloc_stack2(sz, 1, desc);
+	return v_alloc_stack2(octx, sz, 1, desc);
 }
 
-unsigned v_alloc_stack(unsigned sz, const char *desc)
+unsigned v_alloc_stack(out_ctx *octx, unsigned sz, const char *desc)
 {
-	return v_alloc_stack2(sz, 0, desc);
+	return v_alloc_stack2(octx, sz, 0, desc);
 }
 
-unsigned v_stack_align(unsigned const align, int force_mask)
+unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 {
-	if(force_mask || (stack_sz & (align - 1))){
+	if(force_mask || (octx->stack_sz & (align - 1))){
 		type *const ty = type_nav_btype(cc1_type_nav, type_intptr_t);
-		const unsigned new_sz = pack_to_align(stack_sz, align);
-		const unsigned added = new_sz - stack_sz;
+		const unsigned new_sz = pack_to_align(octx->stack_sz, align);
+		const unsigned added = new_sz - octx->stack_sz;
+		out_val *sp = v_new_sp(octx);
 
-		v_push_sp();
-		out_push_l(ty, added);
-		out_op(op_minus);
-		stack_sz = new_sz;
+		sp = out_op(
+				octx, op_minus,
+				sp,
+				out_new_l(octx, ty, added));
+
+		octx->stack_sz = new_sz;
 
 		if(force_mask){
-			out_push_l(ty, align - 1);
-			out_op(op_and);
+			sp = out_op(octx, op_and, sp, out_new_l(octx, ty, align - 1));
 		}
-		out_flush_volatile();
-		out_pop();
 		out_comment("stack aligned to %u bytes", align);
 		return added;
 	}
 	return 0;
 }
 
-void v_dealloc_stack(unsigned sz)
+void v_dealloc_stack(out_ctx *octx, unsigned sz)
 {
 	/* callers should've snapshotted the stack previously
 	 * and be calling us with said snapshot value
 	 */
-	UCC_ASSERT((sz & (cc1_mstack_align - 1)) == 0,
-			"can't dealloc by a non-stack-align amount");
+	assert((sz & (cc1_mstack_align - 1)) == 0
+			&& "can't dealloc by a non-stack-align amount");
 
-	v_stack_adj(sz, 0);
+	v_stack_adj(octx, sz, 0);
 
-	stack_sz -= sz;
+	octx->stack_sz -= sz;
 }

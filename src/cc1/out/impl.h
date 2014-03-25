@@ -2,12 +2,12 @@
 #define IMPL_H
 
 void impl_store(out_ctx *, out_val *dest, out_val *val);
-void impl_load(struct out_val *from, const struct vreg *reg);
-void impl_load_iv(struct out_val *from);
-void impl_load_fp(struct out_val *from);
+out_val *impl_load(out_val *from, const struct vreg *reg);
+out_val *impl_load_iv(out_val *from);
+out_val *impl_load_fp(out_val *from);
 
-void impl_reg_cp(struct out_val *from, const struct vreg *r);
-void impl_reg_swp(struct out_val *a, struct out_val *b);
+void impl_reg_cp(out_val *from, const struct vreg *r);
+void impl_reg_swp(out_val *a, out_val *b);
 
 out_val *impl_op(out_ctx *octx, enum op_type, out_val *l, out_val *r);
 out_val *impl_op_unary(out_ctx *octx, enum op_type, out_val *);
@@ -16,10 +16,10 @@ out_val *impl_deref(out_ctx *octx, out_val *vp);
 
 void impl_branch(out_val *, out_blk *bt, out_blk *bf);
 
-out_val *impl_i2f(out_ctx *octx, struct out_val *, type *t_i, type *t_f);
-out_val *impl_f2i(out_ctx *octx, struct out_val *, type *t_f, type *t_i);
-out_val *impl_f2f(out_ctx *octx, struct out_val *, type *from, type *to);
-out_val *impl_cast_load(out_ctx *octx, struct out_val *vp,
+out_val *impl_i2f(out_ctx *octx, out_val *, type *t_i, type *t_f);
+out_val *impl_f2i(out_ctx *octx, out_val *, type *t_f, type *t_i);
+out_val *impl_f2f(out_ctx *octx, out_val *, type *from, type *to);
+out_val *impl_cast_load(out_ctx *octx, out_val *vp,
 		type *small, type *big,
 		int is_signed);
 

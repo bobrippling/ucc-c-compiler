@@ -7,7 +7,7 @@ out_val *out_call(out_ctx *octx,
 
 void out_func_epilogue(out_ctx *octx, type *ty)
 {
-	impl_func_epilogue(octx, ty);
+	impl_func_epilogue(octx);
 
 	octx->stack_local_offset = octx->stack_sz = 0;
 }

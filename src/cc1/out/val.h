@@ -8,7 +8,8 @@ struct out_val
 	enum out_val_store
 	{
 		V_CONST_I, /* constant integer */
-		V_REG, /* value in a register */
+
+		V_REG, /* value in a register, possibly offset */
 		V_LBL, /* value at a memory address */
 
 		V_CONST_F, /* constant float */
@@ -18,15 +19,22 @@ struct out_val
 
 	type *t;
 
+	struct out_val *next;
+
 	union
 	{
 		integral_t val_i;
 		floating_t val_f;
 
-		struct vreg
+		struct vreg_off
 		{
-			unsigned short idx, is_float;
-		} reg;
+			struct vreg
+			{
+				unsigned short idx;
+				unsigned char is_float;
+			} reg;
+			long offset;
+		} regoff;
 #define VREG_INIT(idx, fp) { idx, fp }
 
 		struct flag_opts
@@ -85,12 +93,6 @@ int  v_stack_sz(void);
 
 void v_to_rvalue(out_val *);
 
-enum vto
-{
-	TO_REG = 1 << 0,
-	TO_MEM = 1 << 1, /* TODO: allow offset(%reg) */
-	TO_CONST = 1 << 2,
-};
 void v_to(out_val *, enum vto);
 
 int vreg_eq(const struct vreg *, const struct vreg *);

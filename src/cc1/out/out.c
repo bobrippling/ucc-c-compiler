@@ -21,16 +21,8 @@
 #include "val.h"
 #include "impl.h"
 #include "lbl.h"
-
-struct out_ctx
-{
-	out_blk *current_blk;
-
-	int stack_sz, stack_local_offset, stack_variadic_offset;
-
-	/* we won't reserve it more than 255 times */
-	unsigned char reserved_regs[MAX(N_SCRATCH_REGS_I, N_SCRATCH_REGS_F)];
-};
+#include "virt.h"
+#include "ctx.h"
 
 struct out_blk
 {
@@ -72,43 +64,6 @@ struct out_blk
  */
 
 #if 0
-int v_unused_reg(out_ctx *octx, int stack_as_backup, int fp, struct vreg *out)
-{
-	unsigned char used[sizeof(octx->reserved_regs)];
-	struct vstack *it, *first;
-	int i;
-
-	memcpy(used, octx->reserved_regs, sizeof used);
-	first = NULL;
-
-	for(it = vstack; it <= vtop; it++){
-		if(it->type == V_REG && it->bits.regoff.reg.is_float == fp){
-			if(!first)
-				first = it;
-			used[impl_reg_to_scratch(&it->bits.regoff.reg)] = 1;
-		}
-	}
-
-	for(i = 0; i < (fp ? N_SCRATCH_REGS_F : N_SCRATCH_REGS_I); i++)
-		if(!used[i]){
-			impl_scratch_to_reg(i, out);
-			out->is_float = fp;
-			return 0;
-		}
-
-	if(stack_as_backup){
-		/* first->bits is clobbered by the v_freeup_regp() call */
-		const struct vreg freed = first->bits.regoff.reg;
-
-		/* no free regs, move `first` to the stack and claim its reg */
-		v_freeup_regp(first);
-
-		memcpy_safe(out, &freed);
-		return 0;
-	}
-	return -1;
-}
-
 void v_set_reg(struct vstack *vp, const struct vreg *r)
 {
 	vp->type = V_REG;
@@ -122,33 +77,6 @@ void v_set_reg_i(struct vstack *vp, int i)
 	v_set_reg(vp, &r);
 }
 
-void v_to_reg_given(struct vstack *from, const struct vreg *given)
-{
-	type *const save = from->t;
-
-	impl_load(from, given);
-	v_clear(from, save);
-	v_set_reg(from, given);
-}
-
-void v_to_reg_out(struct vstack *conv, struct vreg *out)
-{
-	if(conv->type != V_REG){
-		struct vreg chosen;
-		if(!out)
-			out = &chosen;
-
-		v_unused_reg(1, type_is_floating(conv->t), out);
-		v_to_reg_given(conv, out);
-	}else if(out){
-		memcpy_safe(out, &conv->bits.regoff.reg);
-	}
-}
-
-void v_to_reg(struct vstack *conv)
-{
-	v_to_reg_out(conv, NULL);
-}
 
 static void v_set_stack(
 		struct vstack *vp, type *ty,
@@ -162,22 +90,6 @@ static void v_set_stack(
 	vp->bits.regoff.offset = off;
 }
 
-void v_to_mem_given(struct vstack *vp, int stack_pos)
-{
-	struct vstack store = VSTACK_INIT(0);
-
-	v_to(vp, TO_CONST | TO_REG);
-
-	v_set_stack(&store, vp->t, stack_pos, /*lval:*/0);
-
-	/* the following gen two instructions - subq and movq
-	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
-	 * -O1?
-	 */
-	v_store(vp, &store);
-
-	memcpy_safe(vp, &store);
-}
 
 void v_to_mem(struct vstack *vp)
 {
@@ -196,52 +108,6 @@ void v_to_mem(struct vstack *vp)
 	}
 }
 
-static int v_in(struct vstack *vp, enum vto to)
-{
-	switch(vp->type){
-		case V_FLAG:
-			break;
-
-		case V_CONST_I:
-		case V_CONST_F:
-			return !!(to & TO_CONST);
-
-		case V_REG:
-		case V_REG_SAVE:
-			return 0; /* needs further checks */
-
-		case V_LBL:
-			if(!vp->is_lval)
-				return !!(to & TO_MEM);
-	}
-
-	return 0;
-}
-
-void v_to(struct vstack *vp, enum vto loc)
-{
-	if(v_in(vp, loc))
-		return;
-
-	/* TO_CONST can't be done - it should already be const,
-	 * or another option should be chosen */
-
-	/* go for register first */
-	if(loc & TO_REG){
-		v_to_reg(vp);
-		/* need to flush any offsets */
-		if(vp->bits.regoff.offset)
-			v_flush_volatile(vp);
-		return;
-	}
-
-	if(loc & TO_MEM){
-		v_to_mem(vp);
-		return;
-	}
-
-	ICE("can't satisfy v_to 0x%x", loc);
-}
 
 static struct vstack *v_find_reg(const struct vreg *reg)
 {
@@ -254,43 +120,6 @@ static struct vstack *v_find_reg(const struct vreg *reg)
 			return vp;
 
 	return NULL;
-}
-
-void v_freeup_regp(struct vstack *vp)
-{
-	/* freeup this reg */
-	struct vreg r;
-	int found_reg;
-
-	UCC_ASSERT(vp->type == V_REG, "not reg");
-
-	/* attempt to save to a register first */
-	found_reg = (v_unused_reg(0, vp->bits.regoff.reg.is_float, &r) == 0);
-
-	if(found_reg){
-		impl_reg_cp(vp, &r);
-
-		v_clear(vp, vp->t);
-		v_set_reg(vp, &r);
-
-	}else{
-		v_save_reg(vp);
-	}
-}
-
-void v_save_reg(struct vstack *vp)
-{
-	UCC_ASSERT(vp->type == V_REG, "not reg");
-
-	out_comment("register spill:");
-
-	v_alloc_stack(type_size(vp->t, NULL), "save reg");
-
-	v_to_mem_given(
-			vp,
-			-v_stack_sz());
-
-	vp->type = V_REG_SAVE;
 }
 
 void v_save_regs(int n_ignore, type *func_ty)
@@ -1144,10 +973,6 @@ void out_push_nan(type *ty)
 	impl_set_nan(ty);
 }
 #endif
-
-#include "out_ctrl.c"
-#include "out_new.c"
-#include "out_func.c"
 
 out_ctx *out_ctx_new(void)
 {
