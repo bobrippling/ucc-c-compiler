@@ -35,39 +35,6 @@ static out_val *v_unused_reg(
 		struct vreg *out);
 
 
-static out_val *v_new(out_ctx *octx)
-{
-	out_val *v = umalloc(sizeof *v);
-	(void)octx;
-	return v;
-}
-
-static out_val *v_new_reg(out_ctx *octx, const struct vreg *reg)
-{
-	out_val *v = v_new(octx);
-	v->type = V_REG;
-	memcpy_safe(&v->bits.regoff.reg, reg);
-	return v;
-}
-
-static out_val *v_new_sp(out_ctx *octx)
-{
-	struct vreg r;
-
-	r.is_float = 0;
-	r.idx = REG_SP;
-
-	return v_new_reg(octx, &r);
-}
-
-static out_val *v_new_sp3(out_ctx *octx, type *ty, long stack_pos)
-{
-	out_val *v = v_new_sp(octx);
-	v->t = ty;
-	v->bits.regoff.offset = stack_pos;
-	return v;
-}
-
 static out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
 {
 	out_val *store = v_new_sp3(octx, vp->t, stack_pos);

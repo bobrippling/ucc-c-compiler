@@ -1,3 +1,20 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <assert.h>
+
+#include "../type.h"
+
+#include "val.h"
+#include "out.h" /* this file defs */
+#include "asm.h"
+#include "impl.h"
+#include "ctx.h"
+#include "virt.h"
+
+#include "../cc1.h" /* mopt_mode */
+#include "../../util/platform.h"
+
 out_val *out_call(out_ctx *octx,
 		out_val *fn, out_val **args,
 		type *fnty)
@@ -7,7 +24,7 @@ out_val *out_call(out_ctx *octx,
 
 void out_func_epilogue(out_ctx *octx, type *ty)
 {
-	impl_func_epilogue(octx);
+	impl_func_epilogue(octx, ty);
 
 	octx->stack_local_offset = octx->stack_sz = 0;
 }
@@ -18,7 +35,7 @@ void out_func_prologue(
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[], int *local_offset)
 {
-	UCC_ASSERT(octx->stack_sz == 0, "non-empty stack for new func");
+	assert(octx->stack_sz == 0 && "non-empty stack for new func");
 
 	impl_func_prologue_save_fp();
 
@@ -31,10 +48,10 @@ void out_func_prologue(
 		impl_func_prologue_save_variadic(rf);
 
 	/* setup "pointers" to the right place in the stack */
-	stack_variadic_offset = stack_sz - platform_word_size();
-	stack_local_offset = stack_sz;
-	*local_offset = stack_local_offset;
+	octx->stack_variadic_offset = octx->stack_sz - platform_word_size();
+	octx->stack_local_offset = octx->stack_sz;
+	*local_offset = octx->stack_local_offset;
 
 	if(stack_res)
-		v_alloc_stack(stack_res, "local variables");
+		v_alloc_stack(octx, stack_res, "local variables");
 }

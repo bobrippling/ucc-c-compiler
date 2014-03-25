@@ -1,3 +1,17 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <assert.h>
+
+#include "forwards.h"
+#include "blk.h"
+
+#include "out.h" /* this file defs */
+#include "asm.h"
+#include "val.h"
+#include "impl.h"
+#include "ctx.h"
+
 static void register_block(out_ctx *octx, out_blk *blk)
 {
 	blk->octx = octx;

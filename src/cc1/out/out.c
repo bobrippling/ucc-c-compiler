@@ -23,23 +23,8 @@
 #include "lbl.h"
 #include "virt.h"
 #include "ctx.h"
-
-struct out_blk
-{
-	out_ctx *octx;
-	const char *desc;
-	out_val *phi_val;
-
-	struct
-	{
-		enum { BLK_NEXT_BLOCK, BLK_NEXT_EXPR } type;
-		union
-		{
-			out_blk *blk;
-			out_val *exp;
-		} bits;
-	} next;
-};
+#include "blk.h"
+#include "dbg.h"
 
 /*
  * stack layout is:
@@ -899,15 +884,6 @@ static void out_comment_vsec(
 	impl_comment(sec, fmt, l);
 }
 
-void out_comment_sec(enum section_type sec, const char *fmt, ...)
-{
-	va_list l;
-
-	va_start(l, fmt);
-	out_comment_vsec(sec, fmt, l);
-	va_end(l);
-}
-
 void out_comment(const char *fmt, ...)
 {
 	va_list l;
@@ -915,6 +891,11 @@ void out_comment(const char *fmt, ...)
 	va_start(l, fmt);
 	out_comment_vsec(SECTION_TEXT, fmt, l);
 	va_end(l);
+}
+
+void out_dbg_label(const char *lbl)
+{
+	out_label_noop(lbl);
 }
 
 void out_pop_func_ret(type *t)
@@ -1069,7 +1050,7 @@ out_val *out_cast(out_ctx *octx, out_val *val, type *to, int normalise_bool)
 
 out_val *out_change_type(out_ctx *octx, out_val *val, type *ty)
 {
-	out_val *new = outval_new(octx, val);
+	out_val *new = v_new_from(octx, val);
 	new->t = ty;
 	return new;
 }
@@ -1081,7 +1062,7 @@ out_val *out_deref(out_ctx *octx, out_val *target)
 
 out_val *out_normalise(out_ctx *octx, out_val *unnormal)
 {
-	out_val *normalised = outval_new(octx, unnormal);
+	out_val *normalised = v_new_from(octx, unnormal);
 
 	switch(unnormal->type){
 		case V_FLAG:
@@ -1098,7 +1079,7 @@ out_val *out_normalise(out_ctx *octx, out_val *unnormal)
 			break;
 
 		default:
-			v_to_reg(normalised);
+			v_to_reg(octx, normalised);
 			/* fall */
 
 		case V_REG:

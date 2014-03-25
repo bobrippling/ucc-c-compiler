@@ -34,7 +34,7 @@ void impl_func_prologue_save_call_regs(
 		int arg_offsets[/*nargs*/]);
 
 void impl_func_prologue_save_variadic(type *rf);
-void impl_func_epilogue(type *);
+void impl_func_epilogue(out_ctx *, type *);
 
 void impl_undefined(out_ctx *octx);
 void impl_set_overflow(void);

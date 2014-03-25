@@ -5,7 +5,7 @@ CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
 
 ARCH_OBJ = out/${UCC_CPU}.o
 
-CFLAGS  += -Wno-missing-field-initializers
+CFLAGS  += -Wno-missing-field-initializers ${CPPFLAGS}
 LDFLAGS += -lm
 
 OBJ = \
@@ -22,7 +22,7 @@ OBJ = \
 	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o \
 	gen_asm.o gen_str.o gen_style.o \
 	out/out.o out/asm.o out/lbl.o out/impl.o out/write.o out/dbg.o out/leb.o \
-	out/virt.o \
+	out/virt.o out/ctrl.o out/func.o out/new.o out/val.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
 	ops/expr_funcall.o ops/expr_identifier.o ops/expr_if.o ops/expr_op.o \
 	ops/expr_sizeof.o ops/expr_val.o ops/expr_stmt.o ops/expr__Generic.o \
@@ -54,18 +54,6 @@ tags: ${SRC}
 ../util/dynmap.o:
 	@echo util must be built from util/
 	false
-
-# files that need target info
-out/mipsel_32.o: out/mipsel_32.c
-	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
-out/x86_64.o: out/x86_64.c
-	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
-out/out.o: out/out.c out/impl.h
-	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
-out/impl.o: out/impl.c out/impl.h
-	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
-out/virt.o: out/virt.c
-	${CC} ${CFLAGS} ${CPPFLAGS} -c -o $@ $<
 
 # extra deps
 out/impl.h: out/x86_64.h out/mipsel_32.h

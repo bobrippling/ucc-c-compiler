@@ -67,7 +67,11 @@ struct out_val
 	} bitfield; /* !!width iif bitfield */
 };
 
-out_val *outval_new(out_ctx *, out_val *from);
+out_val *v_new_from(out_ctx *octx, out_val *from);
+out_val *v_new_sp(out_ctx *octx);
+out_val *v_new_sp3(out_ctx *octx, type *ty, long stack_pos);
+out_val *v_new_reg(out_ctx *octx, const struct vreg *reg);
+
 
 #if 0
 void v_clear(out_val *vp, type *);
