@@ -10,6 +10,7 @@ struct out_val
 		V_CONST_I, /* constant integer */
 
 		V_REG, /* value in a register, possibly offset */
+		V_REG_SAVE, /* value in memory pointed to by register */
 		V_LBL, /* value at a memory address */
 
 		V_CONST_F, /* constant float */

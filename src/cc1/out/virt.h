@@ -15,7 +15,7 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask);
 void v_dealloc_stack(out_ctx *octx, unsigned sz);
 
 out_val *v_to_reg_given(out_val *from, const struct vreg *given);
-out_val *v_to_reg_out(out_val *conv, struct vreg *out);
-out_val *v_to_reg(out_val *conv);
+out_val *v_to_reg_out(out_ctx *octx, out_val *conv, struct vreg *out);
+out_val *v_to_reg(out_ctx *octx, out_val *conv);
 
 #endif
