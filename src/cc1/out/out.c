@@ -1027,7 +1027,7 @@ out_val *out_normalise(out_ctx *octx, out_val *unnormal)
 			break;
 
 		default:
-			v_to_reg(octx, normalised);
+			normalised = v_to_reg(octx, normalised);
 			/* fall */
 
 		case V_REG:

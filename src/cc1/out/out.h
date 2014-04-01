@@ -51,6 +51,7 @@ void out_set_bitfield(out_ctx *, out_val *, unsigned off, unsigned nbits);
 
 void out_store(out_ctx *, out_val *dest, out_val *val);
 
+void out_flush_volatile(out_ctx *, out_val *);
 
 /* operators/comparisons */
 out_val *out_op(out_ctx *, enum op_type, out_val *lhs, out_val *rhs);

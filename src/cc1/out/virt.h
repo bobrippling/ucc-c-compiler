@@ -28,14 +28,15 @@ enum vto
 	TO_MEM = 1 << 1,
 	TO_CONST = 1 << 2,
 };
-out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc);
+out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc) ucc_wur;
 
-out_val *v_to_reg_given(out_val *from, const struct vreg *given);
-out_val *v_to_reg_out(out_ctx *octx, out_val *conv, struct vreg *out);
-out_val *v_to_reg(out_ctx *octx, out_val *conv);
+out_val *v_to_reg_given(out_val *from, const struct vreg *given) ucc_wur;
+out_val *v_to_reg_out(out_ctx *octx, out_val *conv, struct vreg *out) ucc_wur;
+out_val *v_to_reg(out_ctx *octx, out_val *conv) ucc_wur;
 
-out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos);
+out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos) ucc_wur;
 
+/* register saving */
 void v_freeup_reg(const struct vreg *r);
 void v_save_regs(int n_ignore, type *func_ty);
 

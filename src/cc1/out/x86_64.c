@@ -895,7 +895,7 @@ void impl_reg_swp(out_val *a, out_val *b)
 }
 #endif
 
-out_val *impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *r)
+out_val *impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *to_reg)
 {
 	char buf_v[VSTACK_STR_SZ];
 	const char *regstr;
@@ -903,19 +903,19 @@ out_val *impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *r)
 	UCC_ASSERT(from->type == V_REG,
 			"reg_cp on non register type 0x%x", from->type);
 
-	if(!from->bits.regoff.offset && vreg_eq(&from->bits.regoff.reg, r))
+	if(!from->bits.regoff.offset && vreg_eq(&from->bits.regoff.reg, to_reg))
 		return from;
 
-	v_to(octx, from, TO_REG); /* force offset normalisation */
+	from = v_to(octx, from, TO_REG); /* force offset normalisation */
 
-	regstr = x86_reg_str(r, from->t);
+	regstr = x86_reg_str(to_reg, from->t);
 
 	out_asm("mov%s %s, %%%s",
 			x86_suffix(from->t),
 			vstack_str_r(buf_v, from, 0),
 			regstr);
 
-	return v_new_reg(octx, from, r);
+	return v_new_reg(octx, from, to_reg);
 }
 
 #if 0
@@ -1195,8 +1195,8 @@ void impl_op(enum op_type op)
 	{
 		char buf[VSTACK_STR_SZ];
 
-		v_to(vtop,     TO_REG | TO_CONST | TO_MEM);
-		v_to(vtop - 1, TO_REG | TO_CONST | TO_MEM);
+		l = v_to(octx, l, TO_REG | TO_CONST | TO_MEM);
+		r = v_to(octx, r, TO_REG | TO_CONST | TO_MEM);
 
 		/* vtop[-1] is a constant - needs to be in a reg */
 		if(vtop[-1].type != V_REG){
@@ -1431,7 +1431,7 @@ static out_val *x86_xchg_fi(
 	in_reg = out_val_retain(octx, v_unused_reg(octx, 1, to_float, &r));
 
 	/* cvt*2* [mem|reg], xmm* */
-	v_to(octx, vp, TO_REG | TO_MEM);
+	vp = v_to(octx, vp, TO_REG | TO_MEM);
 
 	/* need to promote vp to int for cvtsi2ss */
 	if(type_size(ty_int, NULL) < type_primitive_size(type_int)){
@@ -1506,7 +1506,7 @@ static const char *x86_call_jmp_target(
 		case V_REG_SAVE: /* load, then jmp */
 		case V_REG: /* jmp *%rax */
 			/* TODO: v_to_reg_given() ? */
-			v_to_reg(octx, vp);
+			vp = v_to_reg(octx, vp);
 
 			UCC_ASSERT(!vp->bits.regoff.reg.is_float, "jmp float?");
 
@@ -1763,12 +1763,14 @@ out_val *impl_call(
 
 			/* only the register arguments - glibc's printf of x86_64 linux
 			 * segfaults if this is 9 or greater */
-			v_to_reg_given(
-					out_new_l(
-						octx,
-						type_nav_btype(cc1_type_nav, type_nchar),
-						MIN(nfloats, N_CALL_REGS_F)),
-					&r);
+			out_flush_volatile(
+					octx,
+					v_to_reg_given(
+						out_new_l(
+							octx,
+							type_nav_btype(cc1_type_nav, type_nchar),
+							MIN(nfloats, N_CALL_REGS_F)),
+						&r));
 		}
 
 		out_asm("callq %s", jtarget);

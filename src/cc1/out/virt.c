@@ -28,7 +28,7 @@ out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
 
 	out_val_retain(octx, store);
 
-	v_to(octx, vp, TO_CONST | TO_REG);
+	vp = v_to(octx, vp, TO_CONST | TO_REG);
 
 	/* the following gen two instructions - subq and movq
 	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
@@ -118,6 +118,7 @@ static out_val *v_freeup_regp(out_ctx *octx, out_val *vp)
 
 void v_freeup_reg(const struct vreg *r)
 {
+	(void)r;
 	TODO();
 #if 0
 	out_val *val = v_find_reg(r);
@@ -199,6 +200,8 @@ out_val *v_to_reg(out_ctx *octx, out_val *conv)
 
 void v_save_regs(int n_ignore, type *func_ty)
 {
+	(void)n_ignore;
+	(void)func_ty;
 #if 0
 	struct vstack *p;
 	int n;
