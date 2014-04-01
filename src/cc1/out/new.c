@@ -82,22 +82,23 @@ out_val *out_new_reg_save_ptr(out_ctx *octx)
 
 out_val *out_new_sym(out_ctx *octx, sym *sym)
 {
-	out_val *v = v_new_from(octx, NULL);
-	v->t = sym->decl->ref;
+	type *ty = type_ptr_to(sym->decl->ref);
 
 	switch(sym->type){
 		case sym_global:
+		{
+			out_val *v = v_new_from(octx, NULL, ty);
 			v->type = V_LBL;
 			v->bits.lbl.str = decl_asm_spel(sym->decl);
 			v->bits.lbl.pic = 1;
 			v->bits.lbl.offset = 0;
-			break;
-		default:
-			TODO();
-			v = NULL;
+			return v;
+		}
+		case sym_arg:
+			return v_new_sp3(octx, NULL, ty, sym->loc.arg_offset);
 	}
 
-	return v;
+	assert(0);
 }
 
 out_val *out_new_sym_val(out_ctx *octx, sym *sym)
