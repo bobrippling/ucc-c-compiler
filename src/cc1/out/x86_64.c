@@ -327,12 +327,10 @@ static void x86_call_regs(
 		*par = ent->call_regs;
 }
 
-#if 0
 static int x86_func_nargs(type *rf)
 {
 	return dynarray_count(type_funcargs(rf)->arglist);
 }
-#endif
 
 #if 0
 int impl_reg_is_callee_save(const struct vreg *r, type *fr)
@@ -364,7 +362,6 @@ unsigned impl_n_call_regs(type *rf)
 }
 #endif
 
-#if 0
 void impl_func_prologue_save_fp(void)
 {
 	out_asm("pushq %%rbp");
@@ -372,22 +369,9 @@ void impl_func_prologue_save_fp(void)
 	/* a v_alloc_stack_n() is done later to align,
 	 * but not interfere with argument locations */
 }
-#endif
 
-#if 0
-static void reg_to_stack(
-		const struct vreg *vr,
-		type *ty, long where)
-{
-	vpush(ty);
-	v_set_reg(vtop, vr);
-	v_to_mem_given(vtop, -where);
-	vpop();
-}
-#endif
-
-#if 0
 void impl_func_prologue_save_call_regs(
+		out_ctx *octx,
 		type *rf, unsigned nargs,
 		int arg_offsets[/*nargs*/])
 {
@@ -421,7 +405,7 @@ void impl_func_prologue_save_call_regs(
 		if(n_call_f){
 			unsigned i_arg, i_stk, i_arg_stk, i_i, i_f;
 
-			v_alloc_stack(
+			v_alloc_stack(octx,
 					(n_call_f + n_call_i) * platform_word_size(),
 					"save call regs float+integral");
 
@@ -450,7 +434,7 @@ void impl_func_prologue_save_call_regs(
 				{
 					int const off = ++i_stk * ws;
 
-					reg_to_stack(rp, ty, off);
+					v_reg_to_stack(octx, rp, ty, off);
 
 					arg_offsets[i_arg] = -off;
 				}
@@ -476,16 +460,14 @@ pass_via_stack:
 			}
 
 			/* this aligns the stack too */
-			v_alloc_stack_n(
+			v_alloc_stack_n(octx,
 					n_call_i * platform_word_size(),
 					"save call regs push-version");
 		}
 	}
 }
-#endif
 
-#if 0
-void impl_func_prologue_save_variadic(type *rf)
+void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 {
 	const unsigned pws = platform_word_size();
 
@@ -505,11 +487,11 @@ void impl_func_prologue_save_variadic(type *rf)
 	funcargs_ty_calc(type_funcargs(rf), &n_int_args, &n_fp_args);
 
 	/* space for all call regs */
-	v_alloc_stack(
+	v_alloc_stack(octx,
 			(N_CALL_REGS_I + N_CALL_REGS_F * 2) * platform_word_size(),
 			"stack call arguments");
 
-	stk_top = v_stack_sz();
+	stk_top = octx->stack_sz;
 
 	/* go backwards, as we want registers pushed in reverse
 	 * so we can iterate positively.
@@ -525,11 +507,12 @@ void impl_func_prologue_save_variadic(type *rf)
 		vr.idx = call_regs[i].idx;
 
 		/* integral args are at the lowest address */
-		reg_to_stack(&vr, ty_integral,
+		v_reg_to_stack(octx, &vr, ty_integral,
 				stk_top - i * pws);
 	}
 
 	{
+#ifdef VA_SHORTCIRCUIT
 		char *vfin = out_label_code("va_skip_float");
 		type *const ty_ch = type_nav_btype(cc1_type_nav, type_nchar);
 
@@ -539,6 +522,7 @@ void impl_func_prologue_save_variadic(type *rf)
 		out_push_zero(ty_ch);
 		out_op(op_eq);
 		out_jtrue(vfin);
+#endif
 
 		for(i = 0; i < N_CALL_REGS_F; i++){
 			struct vreg vr;
@@ -547,23 +531,23 @@ void impl_func_prologue_save_variadic(type *rf)
 			vr.idx = i;
 
 			/* we go above the integral regs */
-			reg_to_stack(&vr, ty_dbl,
+			v_reg_to_stack(octx, &vr, ty_dbl,
 					stk_top - (i * 2 + n_call_regs) * pws);
 		}
 
+#ifdef VA_SHORTCIRCUIT
 		out_label(vfin);
 		free(vfin);
+#endif
 	}
 }
-#endif
 
-#if 0
-void impl_func_epilogue(type *rf)
+void impl_func_epilogue(out_ctx *octx, type *rf)
 {
 	out_asm("leaveq");
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
-		out_comment("stack at %u bytes", v_stack_sz());
+		out_comment("stack at %u bytes", octx->stack_sz);
 
 	/* callee cleanup */
 	if(!x86_caller_cleanup(rf)){
@@ -574,7 +558,6 @@ void impl_func_epilogue(type *rf)
 		out_asm("retq");
 	}
 }
-#endif
 
 #if 0
 void impl_pop_func_ret(type *ty)

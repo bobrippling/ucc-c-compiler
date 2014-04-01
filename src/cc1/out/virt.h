@@ -36,6 +36,12 @@ out_val *v_to_reg(out_ctx *octx, out_val *conv) ucc_wur;
 
 out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos) ucc_wur;
 
+void v_reg_to_stack(
+		out_ctx *octx,
+		const struct vreg *vr,
+		type *ty, long where);
+
+
 /* register saving */
 void v_freeup_reg(const struct vreg *r);
 void v_save_regs(int n_ignore, type *func_ty);

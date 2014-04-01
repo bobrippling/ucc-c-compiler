@@ -41,6 +41,17 @@ out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
 	return store;
 }
 
+void v_reg_to_stack(
+		out_ctx *octx,
+		const struct vreg *vr,
+		type *ty, long where)
+{
+	out_val *reg = v_new_reg(octx, NULL, vr);
+	reg->t = ty;
+	out_flush_volatile(octx,
+			v_to_stack_mem(octx, reg, -where));
+}
+
 static int v_in(out_val *vp, enum vto to)
 {
 	switch(vp->type){

@@ -42,10 +42,10 @@ void out_func_prologue(
 	if(mopt_mode & MOPT_STACK_REALIGN)
 		v_stack_align(octx, cc1_mstack_align, 1);
 
-	impl_func_prologue_save_call_regs(rf, nargs, arg_offsets);
+	impl_func_prologue_save_call_regs(octx, rf, nargs, arg_offsets);
 
 	if(variadic) /* save variadic call registers */
-		impl_func_prologue_save_variadic(rf);
+		impl_func_prologue_save_variadic(octx, rf);
 
 	/* setup "pointers" to the right place in the stack */
 	octx->stack_variadic_offset = octx->stack_sz - platform_word_size();
