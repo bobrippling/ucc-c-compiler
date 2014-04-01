@@ -86,6 +86,7 @@ out_val *out_new_sym(out_ctx *octx, sym *sym)
 
 	switch(sym->type){
 		case sym_global:
+label:
 		{
 			out_val *v = v_new_from(octx, NULL, ty);
 			v->type = V_LBL;
@@ -94,8 +95,26 @@ out_val *out_new_sym(out_ctx *octx, sym *sym)
 			v->bits.lbl.offset = 0;
 			return v;
 		}
+
 		case sym_arg:
 			return v_new_sp3(octx, NULL, ty, sym->loc.arg_offset);
+
+		case sym_local:
+		{
+			decl *d = sym->decl;
+
+			if(type_is(d->ref, type_func))
+				goto label;
+
+			if((d->store & STORE_MASK_STORE) == store_register && d->spel_asm){
+				fprintf(stderr, "TODO: %s asm(\"%s\")", decl_to_str(d), d->spel_asm);
+				assert(0);
+			}
+
+			/* sym offsetting takes into account the stack growth direction */
+			return v_new_sp3(octx, NULL, ty,
+					-(long)(sym->loc.stack_pos + octx->stack_local_offset));
+		}
 	}
 
 	assert(0);
