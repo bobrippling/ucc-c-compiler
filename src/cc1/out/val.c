@@ -69,3 +69,8 @@ out_val *out_val_retain(out_ctx *octx, out_val *v)
 	v->retains++;
 	return v;
 }
+
+int vreg_eq(const struct vreg *a, const struct vreg *b)
+{
+	return a->idx == b->idx && a->is_float == b->is_float;
+}
