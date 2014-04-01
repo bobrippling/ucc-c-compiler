@@ -51,8 +51,7 @@ void v_reg_to_stack(
 		const struct vreg *vr,
 		type *ty, long where)
 {
-	out_val *reg = v_new_reg(octx, NULL, vr);
-	reg->t = ty;
+	out_val *reg = v_new_reg(octx, NULL, ty, vr);
 	out_flush_volatile(octx,
 			v_to_stack_mem(octx, reg, -where));
 }
@@ -68,7 +67,7 @@ static int v_in(out_val *vp, enum vto to)
 			return !!(to & TO_CONST);
 
 		case V_REG:
-			return 0; /* needs further checks */
+			return (to & TO_REG) && vp->bits.regoff.offset == 0;
 
 		case V_REG_SAVE:
 		case V_LBL:
@@ -168,7 +167,7 @@ out_val *v_unused_reg(
 		if(!used[i]){
 			impl_scratch_to_reg(i, out);
 			out->is_float = fp;
-			return v_new_reg(octx, NULL, out);
+			return v_new_reg(octx, NULL, type_nav_voidptr(cc1_type_nav), out);
 		}
 
 	if(stack_as_backup){
@@ -178,7 +177,7 @@ out_val *v_unused_reg(
 		/* no free regs, move `first` to the stack and claim its reg */
 		v_freeup_regp(octx, first);
 
-		return v_new_reg(octx, NULL, &freed);
+		return v_new_reg(octx, NULL, type_nav_voidptr(cc1_type_nav), &freed);
 	}
 	return NULL;
 }

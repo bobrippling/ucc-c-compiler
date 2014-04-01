@@ -6,6 +6,7 @@
 #include "../../util/alloc.h"
 
 #include "../type.h"
+#include "../type_nav.h"
 
 #include "val.h"
 
@@ -14,18 +15,24 @@
 #include "impl.h"
 #include "out.h" /* retain/release prototypes */
 
-out_val *v_new_from(out_ctx *octx, out_val *from)
+#include "../cc1.h" /* cc1_type_nav */
+
+out_val *v_new_from(out_ctx *octx, out_val *from, type *ty)
 {
 	out_val *v;
 
 	(void)octx;
 
-	if(from && from->retains == 0)
+	if(from && from->retains == 0){
+		memset(from, 0, sizeof *from);
+		from->t = ty;
 		return from;
+	}
 
 	v = umalloc(sizeof *v);
 	if(from)
 		memcpy_safe(v, from);
+	v->t = ty;
 	return v;
 }
 
@@ -33,16 +40,20 @@ out_val *v_new_flag(
 		out_ctx *octx, out_val *from,
 		enum flag_cmp cmp, enum flag_mod mod)
 {
-	out_val *v = v_new_from(octx, from);
+	out_val *v = v_new_from(octx, from,
+			type_nav_btype(cc1_type_nav, type__Bool));
+
 	v->type = V_FLAG;
 	v->bits.flag.cmp = cmp;
 	v->bits.flag.mods = mod;
 	return v;
 }
 
-out_val *v_new_reg(out_ctx *octx, out_val *from, const struct vreg *reg)
+out_val *v_new_reg(
+		out_ctx *octx, out_val *from,
+		type *ty, const struct vreg *reg)
 {
-	out_val *v = v_new_from(octx, from);
+	out_val *v = v_new_from(octx, from, ty);
 	v->type = V_REG;
 	memcpy_safe(&v->bits.regoff.reg, reg);
 	return v;
@@ -55,7 +66,7 @@ out_val *v_new_sp(out_ctx *octx, out_val *from)
 	r.is_float = 0;
 	r.idx = REG_SP;
 
-	return v_new_reg(octx, from, &r);
+	return v_new_reg(octx, from, type_nav_voidptr(cc1_type_nav), &r);
 }
 
 out_val *v_new_sp3(out_ctx *octx, out_val *from, type *ty, long stack_pos)

@@ -793,7 +793,7 @@ lea:
 			ICE("trying to load fp constant - should've been labelled");
 	}
 
-	return v_new_reg(octx, from, reg);
+	return v_new_reg(octx, from, type_pointed_to(from->t), reg);
 }
 
 void impl_store(out_ctx *octx, out_val *to, out_val *from)
@@ -874,7 +874,7 @@ out_val *impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *to_reg)
 			vstack_str_r(buf_v, from, 0),
 			regstr);
 
-	return v_new_reg(octx, from, to_reg);
+	return v_new_reg(octx, from, from->t, to_reg);
 }
 
 out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
@@ -940,7 +940,7 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 					vstack_str_r(b1, l, 0),
 					vstack_str_r(b2, r, 0));
 
-			return v_new_from(octx, r);
+			return v_new_from(octx, r, l->t);
 		}
 	}
 
@@ -1207,7 +1207,7 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 						vstack_str(r, 0));
 		}
 
-		return v_new_from(octx, r);
+		return v_new_from(octx, r, l->t);
 	}
 }
 
@@ -1228,7 +1228,7 @@ out_val *impl_deref(out_ctx *octx, out_val *vp, const struct vreg *reg)
 			vstack_str_r(ptr, vp, 1),
 			x86_reg_str(reg, tpointed_to));
 
-	return v_new_reg(octx, vp, reg);
+	return v_new_reg(octx, vp, tpointed_to, reg);
 }
 
 out_val *impl_op_unary(out_ctx *octx, enum op_type op, out_val *val)
@@ -1270,7 +1270,7 @@ out_val *impl_op_unary(out_ctx *octx, enum op_type op, out_val *val)
 			x86_suffix(val->t),
 			vstack_str(val, 0));
 
-	return v_new_from(octx, val);
+	return v_new_from(octx, val, val->t);
 }
 
 #if 0
@@ -1416,7 +1416,7 @@ static out_val *x86_xchg_fi(
 			to_float ? "si" : fp_s,
 			to_float ? fp_s : "si");
 
-	return v_new_reg(octx, vp, &r);
+	return v_new_reg(octx, vp, tto, &r);
 }
 
 out_val *impl_i2f(out_ctx *octx, out_val *vp, type *t_i, type *t_f)
@@ -1439,7 +1439,7 @@ out_val *impl_f2f(out_ctx *octx, out_val *vp, type *from, type *to)
 			x86_suffix(from),
 			x86_suffix(to));
 
-	return v_new_reg(octx, vp, &r);
+	return v_new_reg(octx, vp, to, &r);
 }
 
 static const char *x86_call_jmp_target(
@@ -1748,10 +1748,11 @@ out_val *impl_call(
 	free(float_arg);
 
 	{
-		const int fp = type_is_floating(type_called(fnty, NULL));
+		type *retty = type_called(fnty, NULL);
+		const int fp = type_is_floating(retty);
 		struct vreg rr = VREG_INIT(fp ? REG_RET_F : REG_RET_I, fp);
 
-		return v_new_reg(octx, fn, &rr);
+		return v_new_reg(octx, fn, retty, &rr);
 	}
 }
 

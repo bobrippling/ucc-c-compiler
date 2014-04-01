@@ -69,15 +69,19 @@ struct out_val
 
 int vreg_eq(const struct vreg *, const struct vreg *);
 
-out_val *v_new_from(out_ctx *octx, out_val *from);
+out_val *v_new_from(out_ctx *octx, out_val *from, type *);
 
 out_val *v_new_flag(
 		out_ctx *octx, out_val *from,
 		enum flag_cmp, enum flag_mod);
 
-out_val *v_new_sp(out_ctx *octx, out_val *from);
-out_val *v_new_sp3(out_ctx *octx, out_val *from, type *ty, long stack_pos);
-out_val *v_new_reg(out_ctx *octx, out_val *from, const struct vreg *reg);
+out_val *v_new_sp(out_ctx *octx, out_val *from /* void* */);
+
+out_val *v_new_sp3(out_ctx *octx, out_val *from, type *ty,
+		long stack_pos);
+
+out_val *v_new_reg(out_ctx *octx, out_val *from, type *ty,
+		const struct vreg *reg);
 
 
 #if 0

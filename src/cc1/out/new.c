@@ -1,10 +1,14 @@
 #include <stdlib.h>
+#include <assert.h>
 
 #include "../type.h"
+#include "../type_nav.h"
+#include "../type_is.h"
 #include "../sym.h"
 
 #include "out.h" /* this file defs */
 #include "val.h"
+#include "ctx.h"
 
 #include <stdio.h>
 #define TODO() fprintf(stderr, "TODO: %s\n", __func__)
@@ -23,8 +27,7 @@ out_val *out_new_frame_ptr(out_ctx *octx, int nframes)
 
 out_val *out_new_num(out_ctx *octx, type *ty, const numeric *n)
 {
-	out_val *v = v_new_from(octx, NULL);
-	v->t = ty;
+	out_val *v = v_new_from(octx, NULL, ty);
 
 	if(n->suffix & VAL_FLOATING){
 		v->type = V_CONST_F;

@@ -454,6 +454,11 @@ type *type_nav_va_list(struct type_nav *root, symtable *symtab)
 	return root->tva_list;
 }
 
+type *type_nav_voidptr(struct type_nav *root)
+{
+    return type_ptr_to(type_nav_btype(root, type_void));
+}
+
 static void type_dump_t(type *t, FILE *f, int indent)
 {
 	int i;
