@@ -811,11 +811,6 @@ void out_comment(const char *fmt, ...)
 	va_end(l);
 }
 
-void out_dbg_label(const char *lbl)
-{
-	out_label_noop(lbl);
-}
-
 void out_pop_func_ret(type *t)
 {
 	impl_pop_func_ret(t);
@@ -872,6 +867,11 @@ void out_push_nan(type *ty)
 	impl_set_nan(ty);
 }
 #endif
+
+void out_dbg_label(const char *lbl)
+{
+	impl_lbl(lbl);
+}
 
 out_ctx *out_ctx_new(void)
 {
