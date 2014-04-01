@@ -51,6 +51,11 @@ out_val *v_new_from(out_ctx *octx, out_val *from, type *ty)
 {
 	out_val *v;
 
+	if(from && from->retains == 0){
+		v_clear(from, ty);
+		return from;
+	}
+
 	v = v_old_or_new_val(octx);
 	v->t = ty;
 
