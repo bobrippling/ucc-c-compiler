@@ -44,6 +44,7 @@ out_val *out_normalise(out_ctx *, out_val *) ucc_wur;
  * this will prevent them being overwritten */
 out_val *out_val_retain(out_ctx *, out_val *);
 out_val *out_val_release(out_ctx *, out_val *);
+#define out_val_consume(oc, v) out_val_release((oc), (v))
 
 
 /* value use */

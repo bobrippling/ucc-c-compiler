@@ -754,8 +754,7 @@ out_val *impl_load(out_ctx *octx, out_val *from, const struct vreg *reg)
 
 		case V_REG_SAVE:
 			/* v_reg_save loads are actually pointers to T */
-			impl_deref(octx, from, reg);
-			break;
+			return impl_deref(octx, from, reg);
 
 		case V_REG:
 			if(from->bits.regoff.offset)
@@ -806,6 +805,7 @@ void impl_store(out_ctx *octx, out_val *to, out_val *from)
 	{
 		/* setting a register from a flag - easy */
 		impl_load(octx, from, &to->bits.regoff.reg);
+		out_val_consume(octx, to);
 		return;
 	}
 
@@ -832,6 +832,9 @@ void impl_store(out_ctx *octx, out_val *to, out_val *from)
 			x86_suffix(from->t),
 			vstack_str_r(vbuf, from, 0),
 			vstack_str(to, 1));
+
+	out_val_consume(octx, from);
+	out_val_consume(octx, to);
 }
 
 #if 0
@@ -895,6 +898,9 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 					vstack_str_r(b1, l, 0),
 					vstack_str_r(b2, r, 0));
 
+			out_val_consume(octx, l);
+			out_val_consume(octx, r);
+
 			/* not flag_mod_signed - we want seta, not setgt */
 			return v_new_flag(
 					octx, min_retained,
@@ -940,6 +946,7 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 					vstack_str_r(b1, l, 0),
 					vstack_str_r(b2, r, 0));
 
+			out_val_consume(octx, l);
 			return v_new_from(octx, r, l->t);
 		}
 	}
@@ -1146,6 +1153,9 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 				cmp = v_inv_cmp(cmp, /*invert_eq:*/0);
 			}
 
+			out_val_consume(octx, l);
+			out_val_consume(octx, r);
+
 			return v_new_flag(
 					octx, min_retained,
 					cmp, is_signed ? flag_mod_signed : 0);
@@ -1207,6 +1217,7 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 						vstack_str(r, 0));
 		}
 
+		out_val_consume(octx, l);
 		return v_new_from(octx, r, l->t);
 	}
 }
@@ -1218,7 +1229,14 @@ out_val *impl_deref(out_ctx *octx, out_val *vp, const struct vreg *reg)
 	struct vreg backup_reg;
 
 	if(!reg){
-		v_unused_reg(octx, 1, type_is_floating(tpointed_to), &backup_reg);
+		out_flush_volatile(
+				octx,
+				v_unused_reg(
+					octx,
+					1,
+					type_is_floating(tpointed_to),
+					&backup_reg));
+
 		reg = &backup_reg;
 	}
 
@@ -1334,6 +1352,7 @@ out_val *impl_cast_load(
 		 */
 
 		reg_val = v_unused_reg(octx, 1, 0, &r);
+		out_val_consume(octx, vp);
 
 		if(!is_signed && *suffix_big == 'q' && *suffix_small == 'l'){
 			out_comment("movzlq:");
@@ -1433,7 +1452,7 @@ out_val *impl_f2f(out_ctx *octx, out_val *vp, type *from, type *to)
 {
 	struct vreg r;
 
-	v_unused_reg(octx, 1, 1, &r);
+	out_val_consume(octx, v_unused_reg(octx, 1, 1, &r));
 
 	x86_fp_conv(vp, &r, to, NULL,
 			x86_suffix(from),
@@ -1443,49 +1462,49 @@ out_val *impl_f2f(out_ctx *octx, out_val *vp, type *from, type *to)
 }
 
 static const char *x86_call_jmp_target(
-		out_ctx *octx, out_val *vp,
+		out_ctx *octx, out_val **pvp,
 		int prevent_rax)
 {
 	static char buf[VSTACK_STR_SZ + 2];
 
-	switch(vp->type){
+	switch((*pvp)->type){
 		case V_LBL:
-			if(vp->bits.lbl.offset){
+			if((*pvp)->bits.lbl.offset){
 				snprintf(buf, sizeof buf, "%s + %ld",
-						vp->bits.lbl.str, vp->bits.lbl.offset);
+						(*pvp)->bits.lbl.str, (*pvp)->bits.lbl.offset);
 				return buf;
 			}
-			return vp->bits.lbl.str;
+			return (*pvp)->bits.lbl.str;
 
 		case V_CONST_F:
 		case V_FLAG:
 			ICE("jmp flag/float?");
 
 		case V_CONST_I:   /* jmp *5 */
-			snprintf(buf, sizeof buf, "*%s", vstack_str(vp, 1));
+			snprintf(buf, sizeof buf, "*%s", vstack_str((*pvp), 1));
 			return buf;
 
 		case V_REG_SAVE: /* load, then jmp */
 		case V_REG: /* jmp *%rax */
 			/* TODO: v_to_reg_given() ? */
-			vp = v_to_reg(octx, vp);
+			*pvp = v_to_reg(octx, *pvp);
 
-			UCC_ASSERT(!vp->bits.regoff.reg.is_float, "jmp float?");
+			UCC_ASSERT(!(*pvp)->bits.regoff.reg.is_float, "jmp float?");
 
-			if(prevent_rax && vp->bits.regoff.reg.idx == X86_64_REG_RAX){
+			if(prevent_rax && (*pvp)->bits.regoff.reg.idx == X86_64_REG_RAX){
 				struct vreg r;
 
 				v_unused_reg(octx, 1, 0, &r);
-				impl_reg_cp(octx, vp, &r);
-				memcpy_safe(&vp->bits.regoff.reg, &r);
+				impl_reg_cp(octx, *pvp, &r);
+				memcpy_safe(&(*pvp)->bits.regoff.reg, &r);
 			}
 
 			snprintf(buf, sizeof buf, "*%%%s",
-					x86_reg_str(&vp->bits.regoff.reg, NULL));
+					x86_reg_str(&(*pvp)->bits.regoff.reg, NULL));
 			return buf;
 	}
 
-	ICE("invalid jmp target type 0x%x", vp->type);
+	ICE("invalid jmp target type 0x%x", (*pvp)->type);
 	return NULL;
 }
 
@@ -1714,7 +1733,7 @@ out_val *impl_call(
 			|| (!args->arglist && !args->args_void);
 
 		/* jtarget must be assigned before "movb $0, %al" */
-		const char *jtarget = x86_call_jmp_target(octx, fn, need_float_count);
+		const char *jtarget = x86_call_jmp_target(octx, &fn, need_float_count);
 
 		/* if x(...) or x() */
 		if(need_float_count){
@@ -1744,6 +1763,9 @@ out_val *impl_call(
 		v_dealloc_stack(octx, arg_stack);
 	if(align_stack)
 		v_dealloc_stack(octx, align_stack);
+
+	for(i = 0; i < nargs; i++)
+		out_val_consume(octx, local_args[i]);
 
 	free(float_arg);
 
