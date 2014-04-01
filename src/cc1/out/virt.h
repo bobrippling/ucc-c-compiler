@@ -30,7 +30,10 @@ enum vto
 };
 out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc) ucc_wur;
 
-out_val *v_to_reg_given(out_val *from, const struct vreg *given) ucc_wur;
+out_val *v_to_reg_given(
+		out_ctx *octx, out_val *from,
+		const struct vreg *given) ucc_wur;
+
 out_val *v_to_reg_out(out_ctx *octx, out_val *conv, struct vreg *out) ucc_wur;
 out_val *v_to_reg(out_ctx *octx, out_val *conv) ucc_wur;
 

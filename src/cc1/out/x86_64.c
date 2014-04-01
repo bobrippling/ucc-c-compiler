@@ -577,7 +577,6 @@ void impl_pop_func_ret(type *ty)
 }
 #endif
 
-#if 0
 static const char *x86_cmp(struct flag_opts *flag)
 {
 	switch(flag->cmp){
@@ -601,7 +600,6 @@ static const char *x86_cmp(struct flag_opts *flag)
 	}
 	return NULL;
 }
-#endif
 
 #if 0
 void impl_load_iv(out_val *vp)
@@ -687,7 +685,6 @@ void impl_load_fp(out_val *from)
 }
 #endif
 
-#if 0
 static int x86_need_fp_parity_p(
 		struct flag_opts const *fopt, int *par_default)
 {
@@ -719,35 +716,29 @@ static int x86_need_fp_parity_p(
 			return 1;
 	}
 }
-#endif
 
-#if 0
-void impl_load(out_val *from, const struct vreg *reg)
+out_val *impl_load(out_ctx *octx, out_val *from, const struct vreg *reg)
 {
-	/* load - convert vstack to a register - if it's a pointer,
-	 * the register is a pointer. for a dereference, call impl_deref()
-	 */
-
 	if(from->type == V_REG
-	&& vreg_eq(reg, &from->bits.regoff.reg)
-	&& !from->is_lval)
-		return;
+	&& vreg_eq(reg, &from->bits.regoff.reg))
+	{
+		return from;
+	}
 
 	switch(from->type){
 		case V_FLAG:
 		{
-			out_val vtmp_val = VSTACK_INIT(V_CONST_I);
+			out_val *vtmp_val;
 			char *parity = NULL;
 			int parity_default = 0;
-
-			vtmp_val.t = from->t;
 
 			/* check float/orderedness */
 			if(x86_need_fp_parity_p(&from->bits.flag, &parity_default))
 				parity = out_label_code("parity");
 
-			vtmp_val.bits.val_i = parity_default;
-			impl_load(&vtmp_val, reg);
+			vtmp_val = out_new_l(octx, from->t, parity_default);
+
+			impl_load(octx, vtmp_val, reg);
 
 			if(parity)
 				out_asm("jp %s", parity);
@@ -769,11 +760,8 @@ void impl_load(out_val *from, const struct vreg *reg)
 		}
 
 		case V_REG_SAVE:
-			if(from->is_lval)
-				goto lea;
-
 			/* v_reg_save loads are actually pointers to T */
-			impl_deref(from, reg, from->t);
+			impl_deref(octx, from, reg);
 			break;
 
 		case V_REG:
@@ -811,8 +799,9 @@ lea:
 		case V_CONST_F:
 			ICE("trying to load fp constant - should've been labelled");
 	}
+
+	return v_new_reg(octx, from, reg);
 }
-#endif
 
 #if 0
 void impl_store(out_val *from, out_val *to)
@@ -1235,21 +1224,24 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 	}
 }
 
-out_val *impl_deref(out_ctx *octx, out_val *vp)
+out_val *impl_deref(out_ctx *octx, out_val *vp, const struct vreg *reg)
 {
 	char ptr[VSTACK_STR_SZ];
 	type *tpointed_to = type_pointed_to(vp->t);
-	struct vreg reg;
+	struct vreg backup_reg;
 
-	v_unused_reg(octx, 1, type_is_floating(tpointed_to), &reg);
+	if(!reg){
+		v_unused_reg(octx, 1, type_is_floating(tpointed_to), &backup_reg);
+		reg = &backup_reg;
+	}
 
 	/* loaded the pointer, now we apply the deref change */
 	out_asm("mov%s %s, %%%s",
 			x86_suffix(tpointed_to),
 			vstack_str_r(ptr, vp, 1),
-			x86_reg_str(&reg, tpointed_to));
+			x86_reg_str(reg, tpointed_to));
 
-	return v_new_reg(octx, vp, &reg);
+	return v_new_reg(octx, vp, reg);
 }
 
 out_val *impl_op_unary(out_ctx *octx, enum op_type op, out_val *val)
@@ -1707,7 +1699,7 @@ out_val *impl_call(
 			if(vp->type != V_REG || !vreg_eq(rp, &vp->bits.regoff.reg)){
 				/* need to free it up, as v_to_reg_given doesn't clobber check */
 				v_freeup_reg(rp);
-				local_args[i] = v_to_reg_given(local_args[i], rp);
+				local_args[i] = v_to_reg_given(octx, local_args[i], rp);
 			}
 		}
 		/* else already pushed */
@@ -1749,6 +1741,7 @@ out_val *impl_call(
 			out_flush_volatile(
 					octx,
 					v_to_reg_given(
+						octx,
 						out_new_l(
 							octx,
 							type_nav_btype(cc1_type_nav, type_nchar),

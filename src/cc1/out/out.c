@@ -975,7 +975,7 @@ out_val *out_change_type(out_ctx *octx, out_val *val, type *ty)
 
 out_val *out_deref(out_ctx *octx, out_val *target)
 {
-	return impl_deref(octx, target);
+	return impl_deref(octx, target, NULL);
 }
 
 out_val *out_normalise(out_ctx *octx, out_val *unnormal)

@@ -2,7 +2,7 @@
 #define IMPL_H
 
 void impl_store(out_ctx *, out_val *dest, out_val *val);
-out_val *impl_load(out_val *from, const struct vreg *reg);
+out_val *impl_load(out_ctx *octx, out_val *from, const struct vreg *reg);
 out_val *impl_load_iv(out_val *from);
 out_val *impl_load_fp(out_val *from);
 
@@ -12,7 +12,9 @@ void impl_reg_swp(out_val *a, out_val *b);
 out_val *impl_op(out_ctx *octx, enum op_type, out_val *l, out_val *r);
 out_val *impl_op_unary(out_ctx *octx, enum op_type, out_val *);
 
-out_val *impl_deref(out_ctx *octx, out_val *vp);
+out_val *impl_deref(
+		out_ctx *octx, out_val *vp,
+		/*maybe null:*/const struct vreg *reg);
 
 void impl_branch(out_val *, out_blk *bt, out_blk *bf);
 

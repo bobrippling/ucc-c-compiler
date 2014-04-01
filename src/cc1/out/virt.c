@@ -178,9 +178,11 @@ out_val *v_unused_reg(
 	return NULL;
 }
 
-out_val *v_to_reg_given(out_val *from, const struct vreg *given)
+out_val *v_to_reg_given(
+		out_ctx *octx, out_val *from,
+		const struct vreg *given)
 {
-	return impl_load(from, given);
+	return impl_load(octx, from, given);
 }
 
 out_val *v_to_reg_out(out_ctx *octx, out_val *conv, struct vreg *out)
@@ -194,7 +196,7 @@ out_val *v_to_reg_out(out_ctx *octx, out_val *conv, struct vreg *out)
 		v_unused_reg(octx, 1, type_is_floating(conv->t), out);
 
 		/* load into register */
-		return v_to_reg_given(conv, out);
+		return v_to_reg_given(octx, conv, out);
 
 	}else{
 		if(out)
