@@ -5,7 +5,7 @@ struct out_ctx
 {
 	out_blk *current_blk;
 
-	out_val *val_head;
+	out_val *val_head, *val_tail;
 
 	int stack_sz, stack_local_offset, stack_variadic_offset;
 
