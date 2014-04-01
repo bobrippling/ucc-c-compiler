@@ -799,8 +799,7 @@ lea:
 	return v_new_reg(octx, from, reg);
 }
 
-#if 0
-void impl_store(out_val *from, out_val *to)
+void impl_store(out_ctx *octx, out_val *to, out_val *from)
 {
 	char vbuf[VSTACK_STR_SZ];
 
@@ -809,11 +808,11 @@ void impl_store(out_val *from, out_val *to)
 	&& to->type == V_REG)
 	{
 		/* setting a register from a flag - easy */
-		impl_load(from, &to->bits.regoff.reg);
+		impl_load(octx, from, &to->bits.regoff.reg);
 		return;
 	}
 
-	v_to(from, TO_REG | TO_CONST);
+	from = v_to(octx, from, TO_REG | TO_CONST);
 
 	switch(to->type){
 		case V_FLAG:
@@ -821,13 +820,9 @@ void impl_store(out_val *from, out_val *to)
 			ICE("invalid store lvalue 0x%x", to->type);
 
 		case V_REG_SAVE:
-			if(to->is_lval){
-				/* store to lval, fine */
-			}else{
-				/* need to load the store value from memory
-				 * aka. double indir */
-				v_to_reg(to);
-			}
+			/* need to load the store value from memory
+			 * aka. double indir */
+			to = v_to_reg(octx, to);
 			break;
 
 		case V_REG:
@@ -841,7 +836,6 @@ void impl_store(out_val *from, out_val *to)
 			vstack_str_r(vbuf, from, 0),
 			vstack_str(to, 1));
 }
-#endif
 
 #if 0
 void impl_reg_swp(out_val *a, out_val *b)
