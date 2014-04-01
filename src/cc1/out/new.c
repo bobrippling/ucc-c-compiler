@@ -21,10 +21,30 @@ out_val *out_new_frame_ptr(out_ctx *octx, int nframes)
 	return 0;
 }
 
+out_val *out_new_num(out_ctx *octx, type *ty, const numeric *n)
+{
+	out_val *v = v_new_from(octx, NULL);
+	v->t = ty;
+
+	if(n->suffix & VAL_FLOATING){
+		v->type = V_CONST_F;
+		v->bits.val_f = n->val.f;
+	}else{
+		v->type = V_CONST_I;
+		v->bits.val_i = n->val.i;
+	}
+
+	return v;
+}
+
 out_val *out_new_l(out_ctx *octx, type *ty, long val)
 {
-	TODO();
-	return 0;
+	numeric n;
+
+	n.val.i = val;
+	n.suffix = 0;
+
+	return out_new_num(octx, ty, &n);
 }
 
 out_val *out_new_lbl(out_ctx *octx, const char *s, int pic)
@@ -40,12 +60,6 @@ out_val *out_new_nan(out_ctx *octx, type *ty)
 }
 
 out_val *out_new_noop(out_ctx *octx)
-{
-	TODO();
-	return 0;
-}
-
-out_val *out_new_num(out_ctx *octx, type *t, const numeric *n)
 {
 	TODO();
 	return 0;
