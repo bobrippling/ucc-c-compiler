@@ -1496,10 +1496,11 @@ void impl_jmp(void)
 }
 #endif
 
-#if 0
-void impl_jcond(int true, const char *lbl)
+void impl_branch(out_val *cond, out_blk *bt, out_blk *bf)
 {
-	switch(vtop->type){
+	ICE("TODO: branch");
+#if 0
+	switch(cond->type){
 		case V_FLAG:
 		{
 			const int inv = !true;
@@ -1562,8 +1563,8 @@ void impl_jcond(int true, const char *lbl)
 			impl_jcond(true, lbl);
 			break;
 	}
-}
 #endif
+}
 
 out_val *impl_call(
 		out_ctx *octx,
