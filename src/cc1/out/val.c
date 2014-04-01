@@ -29,6 +29,17 @@ out_val *v_new_from(out_ctx *octx, out_val *from)
 	return v;
 }
 
+out_val *v_new_flag(
+		out_ctx *octx, out_val *from,
+		enum flag_cmp cmp, enum flag_mod mod)
+{
+	out_val *v = v_new_from(octx, from);
+	v->type = V_FLAG;
+	v->bits.flag.cmp = cmp;
+	v->bits.flag.mods = mod;
+	return v;
+}
+
 out_val *v_new_reg(out_ctx *octx, out_val *from, const struct vreg *reg)
 {
 	out_val *v = v_new_from(octx, from);

@@ -22,6 +22,11 @@
 #define TODO() \
 	fprintf(stderr, "%s:%d: TODO: %s", __FILE__, __LINE__, __func__)
 
+void out_flush_volatile(out_ctx *octx, out_val *val)
+{
+	(void)v_to_reg(octx, val);
+}
+
 out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
 {
 	out_val *store = v_new_sp3(octx, vp, vp->t, stack_pos);
