@@ -27,7 +27,7 @@ out_val *out_new_frame_ptr(out_ctx *octx, int nframes)
 
 out_val *out_new_num(out_ctx *octx, type *ty, const numeric *n)
 {
-	out_val *v = v_new_from(octx, NULL, ty);
+	out_val *v = v_new(octx, ty);
 
 	if(n->suffix & VAL_FLOATING){
 		v->type = V_CONST_F;
@@ -88,7 +88,7 @@ out_val *out_new_sym(out_ctx *octx, sym *sym)
 		case sym_global:
 label:
 		{
-			out_val *v = v_new_from(octx, NULL, ty);
+			out_val *v = v_new(octx, ty);
 			v->type = V_LBL;
 			v->bits.lbl.str = decl_asm_spel(sym->decl);
 			v->bits.lbl.pic = 1;

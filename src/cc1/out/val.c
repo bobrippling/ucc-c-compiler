@@ -49,35 +49,38 @@ static void v_register(out_ctx *octx, out_val *v)
 		octx->val_tail = v;
 }
 
-static void v_clear(out_val *v, type *ty)
+static void v_init(out_val *v, type *ty)
 {
-	memset(v, 0, sizeof *v);
-	v->t = ty;
 	v->retains = 1;
+	v->t = ty;
 }
 
-static out_val *v_old_or_new_val(out_ctx *octx)
+out_val *v_new(out_ctx *octx, type *ty)
 {
 	out_val *v = umalloc(sizeof *v);
-	v_clear(v, NULL);
+
+	v_init(v, ty);
 	v_register(octx, v);
+
 	return v;
 }
 
 out_val *v_new_from(out_ctx *octx, out_val *from, type *ty)
 {
-	out_val *v;
+	if(!from)
+		return v_new(octx, ty);
 
-	if(from && from->retains == 0){
-		v_clear(from, ty);
-		return from;
-	}
-
-	v = v_old_or_new_val(octx);
-	v->t = ty;
 	out_val_consume(octx, from);
 
-	return v;
+	if(from->retains == 0){
+		v_init(from, ty);
+		return from;
+	}else{
+		out_val *v = v_new(octx, ty);
+		memcpy_safe(v, from);
+		v_init(v, ty);
+		return v;
+	}
 }
 
 out_val *v_new_flag(
@@ -125,7 +128,8 @@ out_val *out_val_release(out_ctx *octx, out_val *v)
 {
 	(void)octx;
 	assert(v->retains > 0 && "double release");
-	v->retains--;
+	if(--v->retains == 0)
+		return NULL;
 	return v;
 }
 

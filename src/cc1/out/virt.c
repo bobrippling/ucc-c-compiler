@@ -156,7 +156,10 @@ out_val *v_unused_reg(
 	first = NULL;
 
 	for(it = octx->val_head; it; it = it->next){
-		if(it->type == V_REG && it->bits.regoff.reg.is_float == fp){
+		if(it->retains
+		&& it->type == V_REG
+		&& it->bits.regoff.reg.is_float == fp)
+		{
 			if(!first)
 				first = it;
 			used[impl_reg_to_scratch(&it->bits.regoff.reg)] = 1;
