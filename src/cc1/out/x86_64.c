@@ -286,19 +286,15 @@ static const char *vstack_str(out_val *vs, int deref)
 	return vstack_str_r(buf, vs, deref);
 }
 
-#if 0
 int impl_reg_to_scratch(const struct vreg *r)
 {
 	return r->idx;
 }
-#endif
 
-#if 0
 void impl_scratch_to_reg(int scratch, struct vreg *r)
 {
 	r->idx = scratch;
 }
-#endif
 
 static const struct calling_conv_desc *x86_conv_lookup(type *fr)
 {
