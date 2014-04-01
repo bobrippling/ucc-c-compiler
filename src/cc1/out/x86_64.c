@@ -1269,12 +1269,11 @@ out_val *impl_deref(out_ctx *octx, out_val *vp)
 	return v_new_reg(octx, vp, &reg);
 }
 
-#if 0
-void impl_op_unary(enum op_type op)
+out_val *impl_op_unary(out_ctx *octx, enum op_type op, out_val *val)
 {
 	const char *opc;
 
-	v_to(vtop, TO_REG | TO_CONST | TO_MEM);
+	val = v_to(octx, val, TO_REG | TO_CONST | TO_MEM);
 
 	switch(op){
 		default:
@@ -1282,33 +1281,35 @@ void impl_op_unary(enum op_type op)
 
 		case op_plus:
 			/* noop */
-			return;
+			return val;
 
 		case op_minus:
-			if(type_is_floating(vtop->t)){
-				out_push_zero(vtop->t);
-				out_op(op_minus);
-				return;
+			if(type_is_floating(val->t)){
+				return out_op(
+						octx, op_minus,
+						out_new_zero(octx, val->t),
+						val);
 			}
 			opc = "neg";
 			break;
 
 		case op_bnot:
-			UCC_ASSERT(!type_is_floating(vtop->t), "~ on float");
+			UCC_ASSERT(!type_is_floating(val->t), "~ on float");
 			opc = "not";
 			break;
 
 		case op_not:
-			out_push_zero(vtop->t);
-			out_op(op_eq);
-			return;
+			return out_op(
+					octx, op_eq,
+					val, out_new_zero(octx, val->t));
 	}
 
 	out_asm("%s%s %s", opc,
-			x86_suffix(vtop->t),
-			vstack_str(vtop, 0));
+			x86_suffix(val->t),
+			vstack_str(val, 0));
+
+	return v_new_from(octx, val);
 }
-#endif
 
 #if 0
 void impl_change_type(type *t)
