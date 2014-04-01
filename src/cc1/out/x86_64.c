@@ -918,32 +918,32 @@ out_val *impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *to_reg)
 	return v_new_reg(octx, from, to_reg);
 }
 
-#if 0
-void impl_op(enum op_type op)
+out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 {
-#define OP(e, s) case op_ ## e: opc = s; break
 	const char *opc;
+	out_val *min_retained = l->retains < r->retains ? l : r;
 
-	if(type_is_floating(vtop->t)){
+	if(type_is_floating(l->t)){
 		if(op_is_comparison(op)){
 			/* ucomi%s reg_or_mem, reg */
 			char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
 
-			v_to(vtop, TO_REG | TO_MEM);
-			v_to_reg(&vtop[-1]);
+			l = v_to(octx, l, TO_REG | TO_MEM);
+			r = v_to_reg(octx, r);
 
 			out_asm("ucomi%s %s, %s",
-					x86_suffix(vtop->t),
-					vstack_str_r(b1, vtop, 0),
-					vstack_str_r(b2, &vtop[-1], 0));
+					x86_suffix(l->t),
+					vstack_str_r(b1, l, 0),
+					vstack_str_r(b2, r, 0));
 
-			vpop();
-			v_set_flag(vtop, op_to_flag(op), flag_mod_float);
 			/* not flag_mod_signed - we want seta, not setgt */
-			return;
+			return v_new_flag(
+					octx, min_retained,
+					op_to_flag(op), flag_mod_float);
 		}
 
 		switch(op){
+#define OP(e, s) case op_ ## e: opc = s; break
 			OP(multiply, "mul");
 			OP(divide,   "div");
 			OP(plus,     "add");
@@ -964,26 +964,24 @@ void impl_op(enum op_type op)
 		 * [should merge at some point - generic instructions etc]
 		 */
 
-		if(vtop->type != V_REG && op_is_commutative(op))
-			out_swap();
+		if(l->type != V_REG && op_is_commutative(op)){
+			out_val *tmp = l;
+			l = r, r = tmp;
+		}
 
 		/* memory or register */
-		v_to(vtop,      TO_REG);
-		v_to(&vtop[-1], TO_REG | TO_MEM);
+		l = v_to(octx, l, TO_REG);
+		r = v_to(octx, r, TO_REG | TO_MEM);
 
 		{
 			char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
 
 			out_asm("%s%s %s, %s",
-					opc, x86_suffix(vtop->t),
-					vstack_str_r(b1, &vtop[-1], 0),
-					vstack_str_r(b2, vtop, 0));
+					opc, x86_suffix(l->t),
+					vstack_str_r(b1, l, 0),
+					vstack_str_r(b2, r, 0));
 
-			/* result in vtop */
-			vswap();
-			vpop();
-
-			return;
+			return v_new_from(octx, r);
 		}
 	}
 
@@ -1003,6 +1001,8 @@ void impl_op(enum op_type op)
 		case op_shiftl:
 		case op_shiftr:
 		{
+			ICE("TODO: shift");
+#if 0
 			char bufv[VSTACK_STR_SZ], bufs[VSTACK_STR_SZ];
 			struct vreg rtmp;
 
@@ -1043,11 +1043,14 @@ void impl_op(enum op_type op)
 
 			vpop();
 			return;
+#endif
 		}
 
 		case op_modulus:
 		case op_divide:
 		{
+			ICE("TODO: div/mod");
+#if 0
 			/*
 			 * divides the 64 bit integer EDX:EAX
 			 * by the operand
@@ -1125,6 +1128,7 @@ void impl_op(enum op_type op)
 			v_clear(vtop, vtop->t);
 			v_set_reg_i(vtop, op == op_modulus ? X86_64_REG_RDX : X86_64_REG_RAX);
 			return;
+#endif
 		}
 
 		case op_eq:
@@ -1133,45 +1137,46 @@ void impl_op(enum op_type op)
 		case op_lt:
 		case op_ge:
 		case op_gt:
-			UCC_ASSERT(!type_is_floating(vtop->t),
+			UCC_ASSERT(!type_is_floating(l->t),
 					"float cmp should be handled above");
 		{
-			const int is_signed = type_is_signed(vtop->t);
+			const int is_signed = type_is_signed(l->t);
 			char buf[VSTACK_STR_SZ];
 			int inv = 0;
 			out_val *vconst = NULL;
+			enum flag_cmp cmp;
 
-			v_to(vtop,     TO_REG | TO_CONST);
-			v_to(vtop - 1, TO_REG | TO_CONST);
+			l = v_to(octx, l, TO_REG | TO_CONST);
+			r = v_to(octx, r, TO_REG | TO_CONST);
 
-			if(vtop->type == V_CONST_I)
-				vconst = vtop;
-			else if(vtop[-1].type == V_CONST_I)
-				vconst = vtop - 1;
+			if(l->type == V_CONST_I)
+				vconst = l;
+			else if(r->type == V_CONST_I)
+				vconst = r;
 
 			/* if we have a CONST try a test instruction */
 			if((op == op_eq || op == op_ne)
 			&& vconst && vconst->bits.val_i == 0)
 			{
-				out_val *vother = vconst == vtop ? vtop - 1 : vtop;
+				out_val *vother = vconst == l ? r : l;
 				const char *vstr = vstack_str(vother, 0); /* reg */
 				out_asm("test%s %s, %s", x86_suffix(vother->t), vstr, vstr);
 			}else{
 				/* if we have a const, it must be the first arg */
-				if(vtop[-1].type == V_CONST_I){
-					vswap();
+				if(r->type == V_CONST_I){
+					out_val *tmp = l;
+					l = r, r = tmp;
 					inv = 1;
 				}
 
 				out_asm("cmp%s %s, %s",
-						x86_suffix(vtop[-1].t), /* pick the non-const one (for type-ing) */
-						vstack_str(       vtop, 0),
-						vstack_str_r(buf, vtop - 1, 0));
+						x86_suffix(l->t), /* pick the non-const one (for type-ing) */
+						vstack_str(l, 0),
+						vstack_str_r(buf, r, 0));
 			}
 
-			vpop();
+			cmp = op_to_flag(op);
 
-			v_set_flag(vtop, op_to_flag(op), is_signed ? flag_mod_signed : 0);
 			if(inv){
 				/* invert >, >=, < and <=, but not == and !=, aka
 				 * the commutative operators.
@@ -1179,9 +1184,12 @@ void impl_op(enum op_type op)
 				 * i.e. 5 == 2 is the same as 2 == 5, but
 				 *      5 >= 2 is not the same as 2 >= 5
 				 */
-				v_inv_cmp(&vtop->bits.flag, /*invert_eq:*/0);
+				cmp = v_inv_cmp(cmp, /*invert_eq:*/0);
 			}
-			return;
+
+			return v_new_flag(
+					octx, min_retained,
+					cmp, is_signed ? flag_mod_signed : 0);
 		}
 
 		case op_orsc:
@@ -1198,31 +1206,24 @@ void impl_op(enum op_type op)
 		l = v_to(octx, l, TO_REG | TO_CONST | TO_MEM);
 		r = v_to(octx, r, TO_REG | TO_CONST | TO_MEM);
 
-		/* vtop[-1] is a constant - needs to be in a reg */
-		if(vtop[-1].type != V_REG){
+		/* rhs is a constant - needs to be in a reg */
+		if(r->type != V_REG){
 			/* if the op is commutative, swap */
-			if(op_is_commutative(op))
-				out_swap();
-			else
-				v_to_reg(vtop - 1);
+			if(op_is_commutative(op)){
+				out_val *tmp = l;
+				l = r, r = tmp;
+			}else{
+				r = v_to_reg(octx, r);
+			}
 		}
 
 		/* if neither are registers, v_to_reg one */
-		if(vtop->type != V_REG
-		&& vtop[-1].type != V_REG)
-		{
-			/* -1 is where the op is going (see end of this block) */
-			v_to_reg(vtop - 1);
-		}
-
-		/* TODO: -O1
-		 * if the op is commutative and we have REG_RET,
-		 * make it the result reg
-		 */
+		if(l->type != V_REG && r->type != V_REG)
+			l = v_to_reg(octx, l);
 
 #define IS_RBP(vp) ((vp)->type == V_REG \
 		&& (vp)->bits.regoff.reg.idx == X86_64_REG_RBP)
-		if(IS_RBP(&vtop[-1]) || IS_RBP(vtop))
+		if(IS_RBP(l) || IS_RBP(r))
 			ICE("adjusting base pointer in op");
 #undef IS_RBP
 
@@ -1230,28 +1231,26 @@ void impl_op(enum op_type op)
 			case op_plus:
 			case op_minus:
 				/* use inc/dec if possible */
-				if(vtop->type == V_CONST_I
-				&& vtop->bits.val_i == 1
-				&& vtop[-1].type == V_REG)
+				if(l->type == V_CONST_I
+				&& l->bits.val_i == 1
+				&& r->type == V_REG)
 				{
 					out_asm("%s%s %s",
 							op == op_plus ? "inc" : "dec",
-							x86_suffix(vtop[-1].t),
-							vstack_str(&vtop[-1], 0));
+							x86_suffix(r->t),
+							vstack_str(r, 0));
 					break;
 				}
 			default:
 				out_asm("%s%s %s, %s", opc,
-						x86_suffix(vtop->t),
-						vstack_str_r(buf, &vtop[ 0], 0),
-						vstack_str(       &vtop[-1], 0));
+						x86_suffix(l->t),
+						vstack_str_r(buf, l, 0),
+						vstack_str(r, 0));
 		}
 
-		/* remove first operand - result is then in vtop (already in a reg) */
-		vpop();
+		return v_new_from(octx, r);
 	}
 }
-#endif
 
 out_val *impl_deref(out_ctx *octx, out_val *vp)
 {

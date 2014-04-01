@@ -40,4 +40,7 @@ out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos) ucc_wur;
 void v_freeup_reg(const struct vreg *r);
 void v_save_regs(int n_ignore, type *func_ty);
 
+/* util */
+enum flag_cmp v_inv_cmp(enum flag_cmp cmp, int invert_eq);
+
 #endif

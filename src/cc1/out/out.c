@@ -136,36 +136,6 @@ void v_freeup_regs(const struct vreg *a, const struct vreg *b)
 	v_unreserve_reg(b);
 }
 
-void v_inv_cmp(struct flag_opts *flag, int invert_eq)
-{
-	switch(flag->cmp){
-#define OPPOSITE2(from, to)    \
-		case flag_ ## from:        \
-			flag->cmp = flag_ ## to; \
-			return
-
-#define OPPOSITE(from, to) \
-		OPPOSITE2(from, to);   \
-		OPPOSITE2(to, from)
-
-		OPPOSITE(le, gt);
-		OPPOSITE(lt, ge);
-		OPPOSITE(overflow, no_overflow);
-
-		/*OPPOSITE(z, nz);
-		OPPOSITE(nz, z);*/
-#undef OPPOSITE
-#undef OPPOSITE2
-
-		case flag_eq:
-		case flag_ne:
-			if(invert_eq)
-				flag->cmp = (flag->cmp == flag_eq ? flag_ne : flag_eq);
-			return;
-	}
-	ICE("invalid op");
-}
-
 void out_pop(void)
 {
 	vpop();

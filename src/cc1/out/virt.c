@@ -342,3 +342,32 @@ void v_dealloc_stack(out_ctx *octx, unsigned sz)
 
 	octx->stack_sz -= sz;
 }
+
+enum flag_cmp v_inv_cmp(enum flag_cmp cmp, int invert_eq)
+{
+	switch(cmp){
+#define OPPOSITE2(from, to)    \
+		case flag_ ## from:        \
+			return flag_ ## to; \
+
+#define OPPOSITE(from, to) \
+		OPPOSITE2(from, to);   \
+		OPPOSITE2(to, from)
+
+		OPPOSITE(le, gt);
+		OPPOSITE(lt, ge);
+		OPPOSITE(overflow, no_overflow);
+
+		/*OPPOSITE(z, nz);
+		OPPOSITE(nz, z);*/
+#undef OPPOSITE
+#undef OPPOSITE2
+
+		case flag_eq:
+		case flag_ne:
+			if(invert_eq)
+				return (cmp == flag_eq ? flag_ne : flag_eq);
+			return cmp;
+	}
+	assert(0 && "invalid op");
+}
