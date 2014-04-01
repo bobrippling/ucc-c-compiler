@@ -34,7 +34,7 @@ out_val *impl_call(
 		out_val *fn, out_val **args,
 		type *fnty);
 
-void impl_return(out_ctx *, out_val *, type *);
+void impl_return(out_ctx *, out_val *, type *retty);
 
 void impl_func_prologue_save_fp(void);
 void impl_func_prologue_save_call_regs(

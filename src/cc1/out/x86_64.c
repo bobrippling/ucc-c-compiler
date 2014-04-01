@@ -555,23 +555,20 @@ void impl_func_epilogue(out_ctx *octx, type *rf)
 	}
 }
 
-#if 0
-void impl_pop_func_ret(type *ty)
+void impl_return(out_ctx *octx, out_val *val, type *retty)
 {
 	struct vreg r;
 
-	/* FIXME: merge with mips */
-
 	r.idx =
-		(r.is_float = type_is_floating(ty))
+		(r.is_float = type_is_floating(retty))
 		? REG_RET_F
 		: REG_RET_I;
 
+	r.is_float = 0;
+
 	/* v_to_reg since we don't handle lea/load ourselves */
-	v_to_reg_given(vtop, &r);
-	vpop();
+	out_flush_volatile(octx, v_to_reg_given(octx, val, &r));
 }
-#endif
 
 static const char *x86_cmp(struct flag_opts *flag)
 {
