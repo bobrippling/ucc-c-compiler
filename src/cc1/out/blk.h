@@ -11,7 +11,12 @@ struct out_blk
 
 	struct
 	{
-		enum { BLK_NEXT_BLOCK, BLK_NEXT_EXPR } type;
+		enum
+		{
+			BLK_NEXT_NONE,
+			BLK_NEXT_BLOCK,
+			BLK_NEXT_EXPR
+		} type;
 		union
 		{
 			out_blk *blk;

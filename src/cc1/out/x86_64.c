@@ -25,7 +25,9 @@
 #include "lbl.h"
 #include "write.h"
 #include "virt.h"
+
 #include "ctx.h"
+#include "blk.h"
 
 /* Darwin's `as' can only create movq:s with
  * immediate operands whose highest bit is bit
@@ -1787,12 +1789,12 @@ out_val *impl_call(
 	}
 }
 
-#if 0
-void impl_undefined(void)
+void impl_undefined(out_ctx *octx)
 {
 	out_asm("ud2");
+	octx->current_blk->next.type = BLK_NEXT_NONE;
+	octx->current_blk = NULL;
 }
-#endif
 
 #if 0
 void impl_set_overflow(void)
