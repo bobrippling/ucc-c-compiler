@@ -8,6 +8,8 @@
 #include "../type.h"
 #include "../type_nav.h"
 
+#include "../macros.h"
+
 #include "val.h"
 #include "ctx.h"
 
@@ -17,6 +19,19 @@
 #include "out.h" /* retain/release prototypes */
 
 #include "../cc1.h" /* cc1_type_nav */
+
+const char *v_store_to_str(enum out_val_store store)
+{
+	switch(store){
+		CASE_STR(V_CONST_I);
+		CASE_STR(V_REG);
+		CASE_STR(V_REG_SAVE);
+		CASE_STR(V_LBL);
+		CASE_STR(V_CONST_F);
+		CASE_STR(V_FLAG);
+	}
+	return NULL;
+}
 
 static void v_register(out_ctx *octx, out_val *v)
 {

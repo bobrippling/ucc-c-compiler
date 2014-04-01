@@ -67,6 +67,8 @@ struct out_val
 	} bitfield; /* !!width iif bitfield */
 };
 
+const char *v_store_to_str(enum out_val_store);
+
 int vreg_eq(const struct vreg *, const struct vreg *);
 
 out_val *v_new_from(out_ctx *octx, out_val *from, type *);
