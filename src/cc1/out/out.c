@@ -107,58 +107,6 @@ static struct vstack *v_find_reg(const struct vreg *reg)
 	return NULL;
 }
 
-void v_save_regs(int n_ignore, type *func_ty)
-{
-	struct vstack *p;
-	int n;
-
-	if(!vtop)
-		return;
-
-	/* see if we have fewer vstack entries than n_ignore */
-	n = 1 + (vtop - vstack);
-
-	if(n_ignore >= n)
-		return;
-
-	/* save all registers,
-	 * except callee save regs unless we need to
-	 */
-	for(p = vstack; p < vtop - n_ignore; p++){
-		int save = 1;
-		if(p->type == V_REG){
-			if(v_reg_is_const(&p->bits.regoff.reg))
-			{
-				/* don't save stack references */
-				if(fopt_mode & FOPT_VERBOSE_ASM)
-					out_comment("not saving const-reg %d", p->bits.regoff.reg.idx);
-				save = 0;
-
-			}else if(func_ty
-			&& impl_reg_is_callee_save(&p->bits.regoff.reg, func_ty))
-			{
-				/* only comment for non-const regs */
-				out_comment("not saving reg %d - callee save",
-						p->bits.regoff.reg.idx);
-
-				save = 0;
-			}else{
-				out_comment("saving register %d", p->bits.regoff.reg.idx);
-			}
-		}
-		if(save)
-			v_to_mem(p);
-	}
-}
-
-void v_freeup_reg(const struct vreg *r, int allowable_stack)
-{
-	struct vstack *vp = v_find_reg(r);
-
-	if(vp && vp < &vtop[-allowable_stack + 1])
-		v_freeup_regp(vp);
-}
-
 static void v_alter_reservation(const struct vreg *r, int n)
 {
 	int i = impl_reg_to_scratch(r);

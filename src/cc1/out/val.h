@@ -67,6 +67,8 @@ struct out_val
 	} bitfield; /* !!width iif bitfield */
 };
 
+int vreg_eq(const struct vreg *, const struct vreg *);
+
 out_val *v_new_from(out_ctx *octx, out_val *from);
 
 out_val *v_new_sp(out_ctx *octx, out_val *from);
@@ -100,8 +102,6 @@ int  v_stack_sz(void);
 void v_to_rvalue(out_val *);
 
 void v_to(out_val *, enum vto);
-
-int vreg_eq(const struct vreg *, const struct vreg *);
 
 /* returns 0 on success, -1 if no regs free */
 int  v_unused_reg(int stack_as_backup, int fp, struct vreg *);

@@ -19,8 +19,10 @@
 #include "asm.h"
 #include "impl.h"
 
+#define TODO() \
+	fprintf(stderr, "%s:%d: TODO: %s", __FILE__, __LINE__, __func__)
 
-static out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
+out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
 {
 	out_val *store = v_new_sp3(octx, vp, vp->t, stack_pos);
 
@@ -114,6 +116,17 @@ static out_val *v_freeup_regp(out_ctx *octx, out_val *vp)
 	}
 }
 
+void v_freeup_reg(const struct vreg *r)
+{
+	TODO();
+#if 0
+	out_val *val = v_find_reg(r);
+
+	if(vp && vp < &vtop[-allowable_stack + 1])
+		v_freeup_regp(vp);
+#endif
+}
+
 out_val *v_unused_reg(
 		out_ctx *octx,
 		int stack_as_backup, int fp,
@@ -182,6 +195,50 @@ out_val *v_to_reg_out(out_ctx *octx, out_val *conv, struct vreg *out)
 out_val *v_to_reg(out_ctx *octx, out_val *conv)
 {
 	return v_to_reg_out(octx, conv, NULL);
+}
+
+void v_save_regs(int n_ignore, type *func_ty)
+{
+#if 0
+	struct vstack *p;
+	int n;
+
+	/* see if we have fewer vstack entries than n_ignore */
+	n = 1 + (vtop - vstack);
+
+	if(n_ignore >= n)
+		return;
+
+	/* save all registers,
+	 * except callee save regs unless we need to
+	 */
+	for(p = vstack; p < vtop - n_ignore; p++){
+		int save = 1;
+		if(p->type == V_REG){
+			if(v_reg_is_const(&p->bits.regoff.reg))
+			{
+				/* don't save stack references */
+				if(fopt_mode & FOPT_VERBOSE_ASM)
+					out_comment("not saving const-reg %d", p->bits.regoff.reg.idx);
+				save = 0;
+
+			}else if(func_ty
+			&& impl_reg_is_callee_save(&p->bits.regoff.reg, func_ty))
+			{
+				/* only comment for non-const regs */
+				out_comment("not saving reg %d - callee save",
+						p->bits.regoff.reg.idx);
+
+				save = 0;
+			}else{
+				out_comment("saving register %d", p->bits.regoff.reg.idx);
+			}
+		}
+		if(save)
+			v_to_mem(p);
+	}
+#endif
+	TODO();
 }
 
 void v_stack_adj(out_ctx *octx, unsigned amt, int sub)

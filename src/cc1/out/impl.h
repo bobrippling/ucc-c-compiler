@@ -6,7 +6,7 @@ out_val *impl_load(out_val *from, const struct vreg *reg);
 out_val *impl_load_iv(out_val *from);
 out_val *impl_load_fp(out_val *from);
 
-void impl_reg_cp(out_val *from, const struct vreg *r);
+out_val *impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *r);
 void impl_reg_swp(out_val *a, out_val *b);
 
 out_val *impl_op(out_ctx *octx, enum op_type, out_val *l, out_val *r);
@@ -27,7 +27,11 @@ out_val *impl_cast_load(
 
 void impl_change_type(type *t);
 
-out_val *impl_call(out_ctx *octx, out_val *fn, out_val **args, type *fnty);
+out_val *impl_call(
+		out_ctx *octx,
+		out_val *fn, out_val **args,
+		type *fnty);
+
 void impl_return(out_ctx *, out_val *, type *);
 
 void impl_func_prologue_save_fp(void);

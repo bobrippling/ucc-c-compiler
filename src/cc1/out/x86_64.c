@@ -25,6 +25,7 @@
 #include "lbl.h"
 #include "write.h"
 #include "virt.h"
+#include "ctx.h"
 
 /* Darwin's `as' can only create movq:s with
  * immediate operands whose highest bit is bit
@@ -277,13 +278,11 @@ static const char *vstack_str_r(
 	return buf;
 }
 
-#if 0
 static const char *vstack_str(out_val *vs, int deref)
 {
 	static char buf[VSTACK_STR_SZ];
 	return vstack_str_r(buf, vs, deref);
 }
-#endif
 
 #if 0
 int impl_reg_to_scratch(const struct vreg *r)
@@ -299,16 +298,13 @@ void impl_scratch_to_reg(int scratch, struct vreg *r)
 }
 #endif
 
-#if 0
 static const struct calling_conv_desc *x86_conv_lookup(type *fr)
 {
 	funcargs *fa = type_funcargs(fr);
 
 	return &calling_convs[fa->conv];
 }
-#endif
 
-#if 0
 static int x86_caller_cleanup(type *fr)
 {
 	const int cr_clean = x86_conv_lookup(fr)->caller_cleanup;
@@ -318,9 +314,7 @@ static int x86_caller_cleanup(type *fr)
 
 	return cr_clean;
 }
-#endif
 
-#if 0
 static void x86_call_regs(
 		type *fr, unsigned *pn,
 		const struct vreg **par)
@@ -330,7 +324,6 @@ static void x86_call_regs(
 	if(par)
 		*par = ent->call_regs;
 }
-#endif
 
 #if 0
 static int x86_func_nargs(type *rf)
@@ -900,8 +893,7 @@ void impl_reg_swp(out_val *a, out_val *b)
 }
 #endif
 
-#if 0
-void impl_reg_cp(out_val *from, const struct vreg *r)
+out_val *impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *r)
 {
 	char buf_v[VSTACK_STR_SZ];
 	const char *regstr;
@@ -910,9 +902,9 @@ void impl_reg_cp(out_val *from, const struct vreg *r)
 			"reg_cp on non register type 0x%x", from->type);
 
 	if(!from->bits.regoff.offset && vreg_eq(&from->bits.regoff.reg, r))
-		return;
+		return from;
 
-	v_to(from, TO_REG); /* force offset normalisation */
+	v_to(octx, from, TO_REG); /* force offset normalisation */
 
 	regstr = x86_reg_str(r, from->t);
 
@@ -920,8 +912,9 @@ void impl_reg_cp(out_val *from, const struct vreg *r)
 			x86_suffix(from->t),
 			vstack_str_r(buf_v, from, 0),
 			regstr);
+
+	return v_new_reg(octx, from, r);
 }
-#endif
 
 #if 0
 void impl_op(enum op_type op)
@@ -1472,20 +1465,22 @@ out_val *impl_f2i(out_ctx *octx, out_val *vp, type *t_f, type *t_i)
 	return x86_xchg_fi(octx, vp, t_f, t_i);
 }
 
-out_val *impl_f2f(out_val *vp, type *from, type *to)
+out_val *impl_f2f(out_ctx *octx, out_val *vp, type *from, type *to)
 {
 	struct vreg r;
 
-	v_unused_reg(1, 1, &r);
+	v_unused_reg(octx, 1, 1, &r);
+
 	x86_fp_conv(vp, &r, to, NULL,
 			x86_suffix(from),
 			x86_suffix(to));
 
-	v_set_reg(vp, &r);
+	return v_new_reg(octx, vp, &r);
 }
 
-#if 0
-static const char *x86_call_jmp_target(out_val *vp, int prevent_rax)
+static const char *x86_call_jmp_target(
+		out_ctx *octx, out_val *vp,
+		int prevent_rax)
 {
 	static char buf[VSTACK_STR_SZ + 2];
 
@@ -1493,7 +1488,7 @@ static const char *x86_call_jmp_target(out_val *vp, int prevent_rax)
 		case V_LBL:
 			if(vp->bits.lbl.offset){
 				snprintf(buf, sizeof buf, "%s + %ld",
-						vtop->bits.lbl.str, vtop->bits.lbl.offset);
+						vp->bits.lbl.str, vp->bits.lbl.offset);
 				return buf;
 			}
 			return vp->bits.lbl.str;
@@ -1509,25 +1504,26 @@ static const char *x86_call_jmp_target(out_val *vp, int prevent_rax)
 		case V_REG_SAVE: /* load, then jmp */
 		case V_REG: /* jmp *%rax */
 			/* TODO: v_to_reg_given() ? */
-			v_to_reg(vp);
+			v_to_reg(octx, vp);
 
 			UCC_ASSERT(!vp->bits.regoff.reg.is_float, "jmp float?");
 
 			if(prevent_rax && vp->bits.regoff.reg.idx == X86_64_REG_RAX){
 				struct vreg r;
-				v_unused_reg(1, 0, &r);
-				impl_reg_cp(vp, &r);
+
+				v_unused_reg(octx, 1, 0, &r);
+				impl_reg_cp(octx, vp, &r);
 				memcpy_safe(&vp->bits.regoff.reg, &r);
 			}
 
-			snprintf(buf, sizeof buf, "*%%%s", reg_str(vp));
+			snprintf(buf, sizeof buf, "*%%%s",
+					x86_reg_str(&vp->bits.regoff.reg, NULL));
 			return buf;
 	}
 
 	ICE("invalid jmp target type 0x%x", vp->type);
 	return NULL;
 }
-#endif
 
 #if 0
 void impl_jmp(void)
@@ -1605,10 +1601,15 @@ void impl_jcond(int true, const char *lbl)
 }
 #endif
 
-void impl_call(const int nargs, type *r_ret, type *r_func)
+out_val *impl_call(
+		out_ctx *octx,
+		out_val *fn, out_val **args,
+		type *fnty)
 {
 	const unsigned pws = platform_word_size();
+	const unsigned nargs = dynarray_count(args);
 	char *const float_arg = umalloc(nargs);
+	out_val **local_args = NULL;
 
 	const struct vreg *call_iregs;
 	unsigned n_call_iregs;
@@ -1616,11 +1617,11 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 	unsigned nfloats = 0, nints = 0;
 	unsigned arg_stack = 0, align_stack = 0;
 	unsigned stk_snapshot = 0;
-	int i;
+	unsigned i;
 
-	x86_call_regs(r_func, &n_call_iregs, &call_iregs);
+	dynarray_add_array(&local_args, args);
 
-	(void)r_ret;
+	x86_call_regs(fnty, &n_call_iregs, &call_iregs);
 
 	/* pre-scan of arguments - eliminate flags
 	 * (should only be one, since we can only have one flag at a time)
@@ -1628,12 +1629,10 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 	 * also count floats and ints
 	 */
 	for(i = 0; i < nargs; i++){
-		out_val *const vp = &vtop[-i];
+		if(local_args[i]->type == V_FLAG)
+			local_args[i] = v_to_reg(octx, local_args[i]);
 
-		if(vp->type == V_FLAG)
-			v_to_reg(&vtop[-i]);
-
-		if((float_arg[i] = type_is_floating(vp->t)))
+		if((float_arg[i] = type_is_floating(local_args[i]->t)))
 			nfloats++;
 		else
 			nints++;
@@ -1648,24 +1647,25 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 		arg_stack += nfloats - N_CALL_REGS_F;
 
 	/* need to save regs before pushes/call */
-	v_save_regs(nargs, r_func);
+	v_save_regs(nargs, fnty);
 
 	if(arg_stack > 0){
 		out_comment("stack space for %d arguments", arg_stack);
 		/* this aligns the stack-ptr and returns arg_stack padded */
-		arg_stack = v_alloc_stack(arg_stack * pws,
+		arg_stack = v_alloc_stack(
+				octx, arg_stack * pws,
 				"call argument space");
 	}
 
 	/* align the stack to 16-byte, for sse insns */
-	align_stack = v_stack_align(16, 0);
+	align_stack = v_stack_align(octx, 16, 0);
 
 	if(arg_stack > 0){
 		unsigned nfloats = 0, nints = 0; /* shadow */
 
 		unsigned stack_pos;
 		/* must be called after v_alloc_stack() */
-		stk_snapshot = stack_pos = v_stack_sz();
+		stk_snapshot = stack_pos = octx->stack_sz;
 		out_comment("-- stack snapshot (%u) --", stk_snapshot);
 
 		/* save in order */
@@ -1675,10 +1675,7 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 				: nints++ >= n_call_iregs;
 
 			if(stack_this){
-				out_val *const vp = &vtop[-i];
-
-				/* v_to_mem* does v_to_reg first if needed */
-				v_to_mem_given(vp, -stack_pos);
+				local_args[i] = v_to_stack_mem(octx, local_args[i], -stack_pos);
 
 				/* XXX: we ensure any registers used ^ are freed
 				 * by using the stack snapshot - the STACK_SAVE
@@ -1695,7 +1692,7 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 
 	nints = nfloats = 0;
 	for(i = 0; i < nargs; i++){
-		out_val *const vp = &vtop[-i];
+		out_val *const vp = local_args[i];
 		const int is_float = type_is_floating(vp->t);
 
 		const struct vreg *rp = NULL;
@@ -1724,8 +1721,8 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 			/* only bother if it's not already in the register */
 			if(vp->type != V_REG || !vreg_eq(rp, &vp->bits.regoff.reg)){
 				/* need to free it up, as v_to_reg_given doesn't clobber check */
-				v_freeup_reg(rp, 0);
-				v_to_reg_given(vp, rp);
+				v_freeup_reg(rp);
+				local_args[i] = v_to_reg_given(local_args[i], rp);
 			}
 		}
 		/* else already pushed */
@@ -1740,19 +1737,19 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 		 * since we save all non-call registers before we
 		 * start anything.
 		 */
-		unsigned chg = v_stack_sz() - stk_snapshot;
+		unsigned chg = octx->stack_sz - stk_snapshot;
 		out_comment("-- restore snapshot (%u) --", chg);
-		v_dealloc_stack(chg);
+		v_dealloc_stack(octx, chg);
 	}
 
-	for(i = 0; i < nargs; i++)
-		vpop();
-
 	{
-		funcargs *args = type_funcargs(r_func);
-		int need_float_count = args->variadic || (!args->arglist && !args->args_void);
+		funcargs *args = type_funcargs(fnty);
+		int need_float_count =
+			args->variadic
+			|| (!args->arglist && !args->args_void);
+
 		/* jtarget must be assigned before "movb $0, %al" */
-		const char *jtarget = x86_call_jmp_target(vtop, need_float_count);
+		const char *jtarget = x86_call_jmp_target(octx, fn, need_float_count);
 
 		/* if x(...) or x() */
 		if(need_float_count){
@@ -1764,20 +1761,30 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 
 			/* only the register arguments - glibc's printf of x86_64 linux
 			 * segfaults if this is 9 or greater */
-			out_push_l(type_nav_btype(cc1_type_nav, type_nchar), MIN(nfloats, N_CALL_REGS_F));
-			v_to_reg_given(vtop, &r);
-			vpop();
+			v_to_reg_given(
+					out_new_l(
+						octx,
+						type_nav_btype(cc1_type_nav, type_nchar),
+						MIN(nfloats, N_CALL_REGS_F)),
+					&r);
 		}
 
 		out_asm("callq %s", jtarget);
 	}
 
-	if(arg_stack && x86_caller_cleanup(r_func))
-		v_dealloc_stack(arg_stack);
+	if(arg_stack && x86_caller_cleanup(fnty))
+		v_dealloc_stack(octx, arg_stack);
 	if(align_stack)
-		v_dealloc_stack(align_stack);
+		v_dealloc_stack(octx, align_stack);
 
 	free(float_arg);
+
+	{
+		const int fp = type_is_floating(type_called(fnty, NULL));
+		struct vreg rr = VREG_INIT(fp ? REG_RET_F : REG_RET_I, fp);
+
+		return v_new_reg(octx, fn, &rr);
+	}
 }
 
 #if 0
