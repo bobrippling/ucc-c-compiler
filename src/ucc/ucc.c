@@ -476,6 +476,7 @@ arg_asm:
 
 				case 'l':
 				case 'L':
+				case 's':
 arg_ld:
 					ADD_ARG(mode_link);
 					continue;
