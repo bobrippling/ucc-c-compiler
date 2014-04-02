@@ -349,6 +349,11 @@ int impl_reg_is_callee_save(const struct vreg *r, type *fr)
 }
 #endif
 
+int impl_reg_frame_const(const struct vreg *r)
+{
+	return !r->is_float && r->idx == X86_64_REG_RBP;
+}
+
 #if 0
 unsigned impl_n_call_regs(type *rf)
 {
@@ -947,7 +952,7 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 					vstack_str_r(b2, r, 0));
 
 			out_val_consume(octx, l);
-			return v_new_from(octx, r, l->t);
+			return v_new_or_dup(octx, r, l->t);
 		}
 	}
 
@@ -1190,11 +1195,8 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 		if(l->type != V_REG && r->type != V_REG)
 			l = v_to_reg(octx, l);
 
-#define IS_RBP(vp) ((vp)->type == V_REG \
-		&& (vp)->bits.regoff.reg.idx == X86_64_REG_RBP)
-		if(IS_RBP(l) || IS_RBP(r))
+		if(v_is_const_reg(l) || v_is_const_reg(r))
 			ICE("adjusting base pointer in op");
-#undef IS_RBP
 
 		switch(op){
 			case op_plus:
@@ -1218,7 +1220,7 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 		}
 
 		out_val_consume(octx, l);
-		return v_new_from(octx, r, l->t);
+		return v_new_reg(octx, r, l->t, &r->bits.regoff.reg);
 	}
 }
 
@@ -1288,7 +1290,7 @@ out_val *impl_op_unary(out_ctx *octx, enum op_type op, out_val *val)
 			x86_suffix(val->t),
 			vstack_str(val, 0));
 
-	return v_new_from(octx, val, val->t);
+	return v_new_or_dup(octx, val, val->t);
 }
 
 #if 0

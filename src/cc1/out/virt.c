@@ -27,6 +27,12 @@ void out_flush_volatile(out_ctx *octx, out_val *val)
 	(void)v_to_reg(octx, val);
 }
 
+int v_is_const_reg(out_val *v)
+{
+	return v->type == V_REG
+		&& impl_reg_frame_const(&v->bits.regoff.reg);
+}
+
 out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
 {
 	out_val *store = v_new_sp3(octx, vp, vp->t, stack_pos);

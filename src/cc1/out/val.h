@@ -73,7 +73,7 @@ int vreg_eq(const struct vreg *, const struct vreg *);
 
 out_val *v_new(out_ctx *octx, type *);
 
-out_val *v_new_from(out_ctx *octx, out_val *from, type *) ucc_nonnull();
+out_val *v_new_or_dup(out_ctx *octx, out_val *from, type *ty);
 
 out_val *v_new_flag(
 		out_ctx *octx, out_val *from,

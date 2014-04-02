@@ -49,6 +49,8 @@ void v_reg_to_stack(
 void v_freeup_reg(const struct vreg *r);
 void v_save_regs(int n_ignore, type *func_ty);
 
+int v_is_const_reg(out_val *);
+
 /* util */
 enum flag_cmp v_inv_cmp(enum flag_cmp cmp, int invert_eq);
 

@@ -12,6 +12,7 @@
 
 #include "val.h"
 #include "ctx.h"
+#include "virt.h"
 
 #include "../op.h"
 #include "asm.h"
@@ -65,29 +66,69 @@ out_val *v_new(out_ctx *octx, type *ty)
 	return v;
 }
 
-out_val *v_new_from(out_ctx *octx, out_val *from, type *ty)
+static out_val *v_dup(out_ctx *octx, out_val *from, type *ty)
+{
+	switch(from->type){
+		case V_CONST_I:
+		case V_CONST_F:
+		case V_LBL:
+copy:
+		{
+			out_val *v = v_new(octx, ty);
+			memcpy_safe(v, from);
+			v->t = ty;
+			return v;
+		}
+
+		case V_FLAG:
+		{
+			assert(0 && "yo");
+			from = v_to_reg(octx, from);
+		}
+
+		case V_REG_SAVE:
+		case V_REG:
+			if(impl_reg_frame_const(&from->bits.regoff.reg))
+				goto copy;
+			/* copy to a new register */
+		{
+			struct vreg r;
+
+			out_val_consume(
+					octx,
+					v_unused_reg(
+						octx, /*stack backup:*/1,
+						from->bits.regoff.reg.is_float, &r));
+
+			/* dup */
+			return impl_reg_cp(octx, from, &r);
+		}
+	}
+
+	assert(0);
+}
+
+out_val *v_new_or_dup(out_ctx *octx, out_val *from, type *ty)
 {
 	if(!from)
 		return v_new(octx, ty);
 
-	out_val_consume(octx, from);
+	if(from->retains > 1)
+		return v_dup(octx, from, ty);
 
-	if(from->retains == 0){
-		v_init(from, ty);
-		return from;
-	}else{
-		out_val *v = v_new(octx, ty);
-		memcpy_safe(v, from);
-		v_init(v, ty);
-		return v;
-	}
+	out_val_consume(octx, from);
+	assert(from->retains == 0);
+
+	memset(from, 0, sizeof *from);
+	v_init(from, ty);
+	return from;
 }
 
 out_val *v_new_flag(
 		out_ctx *octx, out_val *from,
 		enum flag_cmp cmp, enum flag_mod mod)
 {
-	out_val *v = v_new_from(octx, from,
+	out_val *v = v_new_or_dup(octx, from,
 			type_nav_btype(cc1_type_nav, type__Bool));
 
 	v->type = V_FLAG;
@@ -100,9 +141,11 @@ out_val *v_new_reg(
 		out_ctx *octx, out_val *from,
 		type *ty, const struct vreg *reg)
 {
-	out_val *v = v_new_from(octx, from, ty);
+	/* reg may alias from->bits... */
+	const struct vreg savedreg = *reg;
+	out_val *v = v_new_or_dup(octx, from, ty);
 	v->type = V_REG;
-	memcpy_safe(&v->bits.regoff.reg, reg);
+	memcpy_safe(&v->bits.regoff.reg, &savedreg);
 	return v;
 }
 
