@@ -97,7 +97,7 @@ label:
 		}
 
 		case sym_arg:
-			return v_new_sp3(octx, NULL, ty, sym->loc.arg_offset);
+			return v_new_bp3(octx, NULL, ty, sym->loc.arg_offset);
 
 		case sym_local:
 		{
@@ -112,7 +112,7 @@ label:
 			}
 
 			/* sym offsetting takes into account the stack growth direction */
-			return v_new_sp3(octx, NULL, ty,
+			return v_new_bp3(octx, NULL, ty,
 					-(long)(sym->loc.stack_pos + octx->stack_local_offset));
 		}
 	}

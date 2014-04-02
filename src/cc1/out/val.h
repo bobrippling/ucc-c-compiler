@@ -83,6 +83,8 @@ out_val *v_new_sp(out_ctx *octx, out_val *from /* void* */);
 
 out_val *v_new_sp3(out_ctx *octx, out_val *from, type *ty,
 		long stack_pos);
+out_val *v_new_bp3(out_ctx *octx, out_val *from, type *ty,
+		long stack_pos);
 
 out_val *v_new_reg(out_ctx *octx, out_val *from, type *ty,
 		const struct vreg *reg);

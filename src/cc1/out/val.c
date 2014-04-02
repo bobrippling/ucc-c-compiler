@@ -165,6 +165,13 @@ out_val *v_new_sp3(out_ctx *octx, out_val *from, type *ty, long stack_pos)
 	return v;
 }
 
+out_val *v_new_bp3(out_ctx *octx, out_val *from, type *ty, long stack_pos)
+{
+	out_val *v = v_new_sp3(octx, from, ty, stack_pos);
+	v->bits.regoff.reg.idx = REG_BP;
+	return v;
+}
+
 out_val *out_val_release(out_ctx *octx, out_val *v)
 {
 	(void)octx;
