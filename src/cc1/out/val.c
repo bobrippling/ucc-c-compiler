@@ -141,6 +141,7 @@ out_val *v_new_reg(
 	const struct vreg savedreg = *reg;
 	out_val *v = v_dup_or_reuse(octx, from, ty);
 	v->type = V_REG;
+	v->bits.regoff.offset = 0;
 	memcpy_safe(&v->bits.regoff.reg, &savedreg);
 	return v;
 }
