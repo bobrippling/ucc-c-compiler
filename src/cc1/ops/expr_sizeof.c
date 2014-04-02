@@ -157,7 +157,7 @@ out_val *gen_expr_style_sizeof(expr *e, out_ctx *octx)
 	stylef("%s(", sizeof_what(e->what_of));
 
 	if(e->expr)
-		gen_expr(e->expr, octx);
+		IGNORE_PRINTGEN(gen_expr(e->expr, octx));
 	else
 		stylef("%s", type_to_str(e->bits.size_of.of_type));
 

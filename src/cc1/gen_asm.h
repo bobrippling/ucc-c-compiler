@@ -13,4 +13,8 @@ out_val *gen_expr(expr *e, out_ctx *) ucc_wur;
 out_val *lea_expr(expr *e, out_ctx *) ucc_wur;
 void gen_stmt(stmt *t, out_ctx *);
 
+/* temporary until the f_gen() logic from expr is pulled out
+ * into asm, print and style backends */
+void IGNORE_PRINTGEN(out_val *v);
+
 #endif

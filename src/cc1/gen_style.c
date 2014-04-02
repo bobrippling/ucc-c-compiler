@@ -26,7 +26,7 @@ void gen_style_dinit(decl_init *di)
 {
 	switch(di->type){
 		case decl_init_scalar:
-			gen_expr(di->bits.expr, NULL);
+			IGNORE_PRINTGEN(gen_expr(di->bits.expr, NULL));
 			break;
 
 		case decl_init_copy:

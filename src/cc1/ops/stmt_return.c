@@ -74,7 +74,7 @@ void gen_stmt_return(stmt *s, out_ctx *octx)
 void style_stmt_return(stmt *s, out_ctx *octx)
 {
 	stylef("return ");
-	gen_expr(s->expr, octx);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(";");
 }
 

@@ -125,8 +125,8 @@ expr *expr_new_assign_compound(expr *to, expr *from, enum op_type op)
 
 out_val *gen_expr_style_assign_compound(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs->lhs, octx);
+	IGNORE_PRINTGEN(gen_expr(e->lhs->lhs, octx));
 	stylef(" %s= ", op_to_str(e->op));
-	gen_expr(e->rhs, octx);
+	IGNORE_PRINTGEN(gen_expr(e->rhs, octx));
 	return NULL;
 }

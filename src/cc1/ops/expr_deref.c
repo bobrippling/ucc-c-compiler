@@ -109,7 +109,7 @@ expr *expr_new_deref(expr *of)
 out_val *gen_expr_style_deref(expr *e, out_ctx *octx)
 {
 	stylef("*(");
-	gen_expr(expr_deref_what(e), octx);
+	IGNORE_PRINTGEN(gen_expr(expr_deref_what(e), octx));
 	stylef(")");
 	return NULL;
 }

@@ -188,7 +188,7 @@ expr *expr_new_assign_init(expr *to, expr *from)
 
 out_val *gen_expr_style_assign(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs, octx);
+	IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef(" = ");
 	return gen_expr(e->rhs, octx);
 }

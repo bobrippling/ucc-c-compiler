@@ -261,7 +261,7 @@ expr *expr_new_struct_mem(expr *sub, int dot, decl *d)
 
 out_val *gen_expr_style_struct(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs, octx);
+	IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef("->%s", e->bits.struct_mem.d->spel);
 	return NULL;
 }

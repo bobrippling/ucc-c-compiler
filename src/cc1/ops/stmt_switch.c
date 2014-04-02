@@ -281,7 +281,7 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 void style_stmt_switch(stmt *s, out_ctx *octx)
 {
 	stylef("switch(");
-	gen_expr(s->expr, octx);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(")");
 	gen_stmt(s->lhs, octx);
 }

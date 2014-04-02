@@ -494,6 +494,6 @@ expr *expr_new_cast_decay(expr *sub, type *to)
 out_val *gen_expr_style_cast(expr *e, out_ctx *octx)
 {
 	stylef("(%s)", type_to_str(e->bits.cast.tref));
-	gen_expr(expr_cast_child(e), octx);
+	IGNORE_PRINTGEN(gen_expr(expr_cast_child(e), octx));
 	return NULL;
 }

@@ -45,7 +45,7 @@ void style_stmt_goto(stmt *s, out_ctx *octx)
 
 	if(s->expr){
 		stylef("*");
-		gen_expr(s->expr, octx);
+		IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	}else{
 		stylef("%s", s->bits.lbl.spel);
 	}

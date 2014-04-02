@@ -259,11 +259,11 @@ expr *expr_new_if(expr *test)
 
 out_val *gen_expr_style_if(expr *e, out_ctx *octx)
 {
-	gen_expr(e->expr, octx);
+	IGNORE_PRINTGEN(gen_expr(e->expr, octx));
 	stylef(" ? ");
 	if(e->lhs)
-		gen_expr(e->lhs, octx);
+		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef(" : ");
-	gen_expr(e->rhs, octx);
+	IGNORE_PRINTGEN(gen_expr(e->rhs, octx));
 	return NULL;
 }

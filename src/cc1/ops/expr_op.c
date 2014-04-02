@@ -894,12 +894,12 @@ expr *expr_new_op2(enum op_type o, expr *l, expr *r)
 out_val *gen_expr_style_op(expr *e, out_ctx *octx)
 {
 	if(e->rhs){
-		gen_expr(e->lhs, octx);
+		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 		stylef(" %s ", op_to_str(e->op));
-		gen_expr(e->rhs, octx);
+		IGNORE_PRINTGEN(gen_expr(e->rhs, octx));
 	}else{
 		stylef("%s ", op_to_str(e->op));
-		gen_expr(e->lhs, octx);
+		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	}
 	return NULL;
 }

@@ -38,7 +38,7 @@ void gen_stmt_expr(stmt *s, out_ctx *octx)
 
 void style_stmt_expr(stmt *s, out_ctx *octx)
 {
-	gen_expr(s->expr, octx);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(";\n");
 }
 

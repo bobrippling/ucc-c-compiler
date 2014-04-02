@@ -34,7 +34,7 @@ void style_stmt_do(stmt *s, out_ctx *octx)
 	stylef("do");
 	gen_stmt(s->lhs, octx);
 	stylef("while(");
-	gen_expr(s->expr, octx);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(");");
 }
 

@@ -25,6 +25,11 @@
 #include "gen_style.h"
 #include "out/dbg.h"
 
+void IGNORE_PRINTGEN(out_val *v)
+{
+	(void)v;
+}
+
 out_val *gen_expr(expr *e, out_ctx *octx)
 {
 	consty k;

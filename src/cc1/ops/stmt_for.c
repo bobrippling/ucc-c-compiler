@@ -70,15 +70,15 @@ void style_stmt_for(stmt *s, out_ctx *octx)
 {
 	stylef("for(");
 	if(s->flow->for_init)
-		gen_expr(s->flow->for_init, octx);
+		IGNORE_PRINTGEN(gen_expr(s->flow->for_init, octx));
 
 	stylef("; ");
 	if(s->flow->for_while)
-		gen_expr(s->flow->for_while, octx);
+		IGNORE_PRINTGEN(gen_expr(s->flow->for_while, octx));
 
 	stylef("; ");
 	if(s->flow->for_inc)
-		gen_expr(s->flow->for_inc, octx);
+		IGNORE_PRINTGEN(gen_expr(s->flow->for_inc, octx));
 
 	stylef(")\n");
 

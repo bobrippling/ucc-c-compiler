@@ -108,7 +108,7 @@ void gen_stmt_if(stmt *s, out_ctx *octx)
 void style_stmt_if(stmt *s, out_ctx *octx)
 {
 	stylef("if(");
-	gen_expr(s->expr, octx);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(")\n");
 	gen_stmt(s->lhs, octx);
 

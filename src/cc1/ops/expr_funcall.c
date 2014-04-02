@@ -416,12 +416,12 @@ expr *expr_new_funcall()
 out_val *gen_expr_style_funcall(expr *e, out_ctx *octx)
 {
 	stylef("(");
-	gen_expr(e->expr, octx);
+	IGNORE_PRINTGEN(gen_expr(e->expr, octx));
 	stylef(")(");
 	if(e->funcargs){
 		expr **i;
 		for(i = e->funcargs; i && *i; i++){
-			gen_expr(*i, octx);
+			IGNORE_PRINTGEN(gen_expr(*i, octx));
 			if(i[1])
 				stylef(", ");
 		}

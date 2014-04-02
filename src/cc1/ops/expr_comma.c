@@ -79,7 +79,7 @@ void mutate_expr_comma(expr *e)
 
 out_val *gen_expr_style_comma(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs, octx);
+	IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef(", ");
 	return gen_expr(e->rhs, octx);
 }
