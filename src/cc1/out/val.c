@@ -116,12 +116,8 @@ out_val *v_dup_or_reuse(out_ctx *octx, out_val *from, type *ty)
 	if(from->retains > 1)
 		return v_dup(octx, from, ty);
 
-	out_val_consume(octx, from);
-	assert(from->retains == 0);
-
-	memset(from, 0, sizeof *from);
-	v_init(from, ty);
-	return from;
+	assert(from->retains == 1);
+	return from; /* reuse */
 }
 
 out_val *v_new_flag(
