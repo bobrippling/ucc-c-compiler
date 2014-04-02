@@ -108,7 +108,7 @@ copy:
 	assert(0);
 }
 
-out_val *v_new_or_dup(out_ctx *octx, out_val *from, type *ty)
+out_val *v_dup_or_reuse(out_ctx *octx, out_val *from, type *ty)
 {
 	if(!from)
 		return v_new(octx, ty);
@@ -128,7 +128,7 @@ out_val *v_new_flag(
 		out_ctx *octx, out_val *from,
 		enum flag_cmp cmp, enum flag_mod mod)
 {
-	out_val *v = v_new_or_dup(octx, from,
+	out_val *v = v_dup_or_reuse(octx, from,
 			type_nav_btype(cc1_type_nav, type__Bool));
 
 	v->type = V_FLAG;
@@ -143,7 +143,7 @@ out_val *v_new_reg(
 {
 	/* reg may alias from->bits... */
 	const struct vreg savedreg = *reg;
-	out_val *v = v_new_or_dup(octx, from, ty);
+	out_val *v = v_dup_or_reuse(octx, from, ty);
 	v->type = V_REG;
 	memcpy_safe(&v->bits.regoff.reg, &savedreg);
 	return v;

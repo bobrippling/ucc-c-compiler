@@ -968,7 +968,7 @@ out_val *out_cast(out_ctx *octx, out_val *val, type *to, int normalise_bool)
 
 out_val *out_change_type(out_ctx *octx, out_val *val, type *ty)
 {
-	return v_new_or_dup(octx, val, ty);
+	return v_dup_or_reuse(octx, val, ty);
 }
 
 out_val *out_deref(out_ctx *octx, out_val *target)
@@ -978,7 +978,7 @@ out_val *out_deref(out_ctx *octx, out_val *target)
 
 out_val *out_normalise(out_ctx *octx, out_val *unnormal)
 {
-	out_val *normalised = v_new_or_dup(octx, unnormal, unnormal->t);
+	out_val *normalised = v_dup_or_reuse(octx, unnormal, unnormal->t);
 
 	switch(unnormal->type){
 		case V_FLAG:
