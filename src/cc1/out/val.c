@@ -101,7 +101,7 @@ copy:
 						from->bits.regoff.reg.is_float, &r));
 
 			/* dup */
-			return impl_reg_cp(octx, from, &r);
+			return out_change_type(octx, impl_reg_cp(octx, from, &r), ty);
 		}
 	}
 
@@ -117,6 +117,7 @@ out_val *v_dup_or_reuse(out_ctx *octx, out_val *from, type *ty)
 		return v_dup(octx, from, ty);
 
 	assert(from->retains == 1);
+	from->t = ty;
 	return from; /* reuse */
 }
 
