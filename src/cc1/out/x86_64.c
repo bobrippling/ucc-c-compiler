@@ -1220,7 +1220,7 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 		}
 
 		out_val_consume(octx, l);
-		return v_new_reg(octx, r, l->t, &r->bits.regoff.reg);
+		return v_new_reg(octx, r, r->t, &r->bits.regoff.reg);
 	}
 }
 
