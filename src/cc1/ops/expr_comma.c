@@ -47,7 +47,7 @@ void fold_expr_comma(expr *e, symtable *stab)
 
 out_val *gen_expr_comma(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs, octx);
+	out_flush_volatile(octx, gen_expr(e->lhs, octx));
 	return gen_expr(e->rhs, octx);
 }
 

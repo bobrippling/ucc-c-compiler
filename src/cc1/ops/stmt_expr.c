@@ -27,7 +27,7 @@ void fold_stmt_expr(stmt *s)
 
 void gen_stmt_expr(stmt *s, out_ctx *octx)
 {
-	gen_expr(s->expr, octx);
+	out_flush_volatile(octx, gen_expr(s->expr, octx));
 }
 
 void style_stmt_expr(stmt *s, out_ctx *octx)

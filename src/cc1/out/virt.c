@@ -24,7 +24,7 @@
 
 void out_flush_volatile(out_ctx *octx, out_val *val)
 {
-	(void)v_to_reg(octx, val);
+	out_val_consume(octx, v_to_reg(octx, val));
 }
 
 int v_is_const_reg(out_val *v)
