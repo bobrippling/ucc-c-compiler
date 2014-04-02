@@ -879,6 +879,17 @@ out_ctx *out_ctx_new(void)
 	return ctx;
 }
 
+size_t out_expr_stack(out_ctx *octx)
+{
+	out_val *v;
+	size_t retains = 0;
+
+	for(v = octx->val_head; v; v = v->next)
+		retains += v->retains;
+
+	return retains;
+}
+
 void out_ctx_end(out_ctx *octx)
 {
 	/* TODO */

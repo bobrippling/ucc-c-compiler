@@ -11,6 +11,8 @@
 out_ctx *out_ctx_new(void);
 void out_ctx_end(out_ctx *);
 
+size_t out_expr_stack(out_ctx *);
+
 /* value creation */
 out_val *out_new_num(out_ctx *, type *t, const numeric *n)
 	ucc_nonnull((1)) ucc_wur;

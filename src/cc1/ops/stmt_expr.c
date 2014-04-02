@@ -27,7 +27,13 @@ void fold_stmt_expr(stmt *s)
 
 void gen_stmt_expr(stmt *s, out_ctx *octx)
 {
+	size_t exprstack = out_expr_stack(octx);
+
 	out_flush_volatile(octx, gen_expr(s->expr, octx));
+
+	UCC_ASSERT(exprstack == out_expr_stack(octx),
+			"values still retained after %s expr",
+			s->expr->f_str());
 }
 
 void style_stmt_expr(stmt *s, out_ctx *octx)
