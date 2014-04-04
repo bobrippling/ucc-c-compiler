@@ -717,6 +717,8 @@ static int x86_need_fp_parity_p(
 
 out_val *impl_load(out_ctx *octx, out_val *from, const struct vreg *reg)
 {
+	type *new_ty = NULL;
+
 	if(from->type == V_REG
 	&& vreg_eq(reg, &from->bits.regoff.reg))
 	{
@@ -741,8 +743,9 @@ out_val *impl_load(out_ctx *octx, out_val *from, const struct vreg *reg)
 			if(parity)
 				out_asm("jp %s", parity);
 
-			/* XXX: memleak */
-			from->t = type_nav_btype(cc1_type_nav, type_nchar); /* force set%s to set the low byte */
+			/* force set%s to set the low byte */
+			from->t = type_nav_btype(cc1_type_nav, type_nchar);
+			new_ty = from->t;
 
 			/* actual cmp */
 			out_asm("set%s %%%s",
@@ -771,6 +774,8 @@ out_val *impl_load(out_ctx *octx, out_val *from, const struct vreg *reg)
 					x86_suffix(from->t),
 					vstack_str(from, 0),
 					x86_reg_str(reg, from->t));
+
+			new_ty = from->t;
 			break;
 
 lea:
@@ -790,6 +795,8 @@ lea:
 					x86_suffix(suff_ty),
 					vstack_str(from, 1),
 					x86_reg_str(reg, chosen_ty));
+
+			new_ty = type_pointed_to(from->t);
 			break;
 		}
 
@@ -797,7 +804,7 @@ lea:
 			ICE("trying to load fp constant - should've been labelled");
 	}
 
-	return v_new_reg(octx, from, type_pointed_to(from->t), reg);
+	return v_new_reg(octx, from, new_ty, reg);
 }
 
 void impl_store(out_ctx *octx, out_val *to, out_val *from)
