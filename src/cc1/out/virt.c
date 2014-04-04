@@ -20,7 +20,7 @@
 #include "impl.h"
 
 #define TODO() \
-	fprintf(stderr, "%s:%d: TODO: %s", __FILE__, __LINE__, __func__)
+	fprintf(stderr, "%s:%d: TODO: %s\n", __FILE__, __LINE__, __func__)
 
 void out_flush_volatile(out_ctx *octx, out_val *val)
 {
