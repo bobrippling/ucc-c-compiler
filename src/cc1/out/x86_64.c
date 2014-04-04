@@ -328,7 +328,6 @@ static int x86_func_nargs(type *rf)
 	return dynarray_count(type_funcargs(rf)->arglist);
 }
 
-#if 0
 int impl_reg_is_callee_save(const struct vreg *r, type *fr)
 {
 	const struct calling_conv_desc *ent;
@@ -347,7 +346,6 @@ int impl_reg_is_callee_save(const struct vreg *r, type *fr)
 
 	return 0;
 }
-#endif
 
 int impl_reg_frame_const(const struct vreg *r)
 {
@@ -1637,7 +1635,7 @@ out_val *impl_call(
 		arg_stack += nfloats - N_CALL_REGS_F;
 
 	/* need to save regs before pushes/call */
-	v_save_regs(nargs, fnty);
+	v_save_regs(octx, fnty, local_args);
 
 	if(arg_stack > 0){
 		out_comment("stack space for %d arguments", arg_stack);

@@ -241,50 +241,39 @@ out_val *v_to_reg(out_ctx *octx, out_val *conv)
 	return v_to_reg_out(octx, conv, NULL);
 }
 
-void v_save_regs(int n_ignore, type *func_ty)
+void v_save_regs(out_ctx *octx, type *func_ty, out_val *ignores[])
 {
-	(void)n_ignore;
-	(void)func_ty;
-#if 0
-	struct vstack *p;
-	int n;
-
-	/* see if we have fewer vstack entries than n_ignore */
-	n = 1 + (vtop - vstack);
-
-	if(n_ignore >= n)
-		return;
-
 	/* save all registers,
 	 * except callee save regs unless we need to
 	 */
-	for(p = vstack; p < vtop - n_ignore; p++){
+	out_val *v;
+
+	for(v = octx->val_head; v; v = v->next){
 		int save = 1;
-		if(p->type == V_REG){
-			if(v_reg_is_const(&p->bits.regoff.reg))
-			{
+
+		if(v->type == V_REG){
+			if(impl_reg_frame_const(&v->bits.regoff.reg)){
 				/* don't save stack references */
 				if(fopt_mode & FOPT_VERBOSE_ASM)
-					out_comment("not saving const-reg %d", p->bits.regoff.reg.idx);
+					out_comment("not saving const-reg %d", v->bits.regoff.reg.idx);
 				save = 0;
 
 			}else if(func_ty
-			&& impl_reg_is_callee_save(&p->bits.regoff.reg, func_ty))
+			&& impl_reg_is_callee_save(&v->bits.regoff.reg, func_ty))
 			{
 				/* only comment for non-const regs */
 				out_comment("not saving reg %d - callee save",
-						p->bits.regoff.reg.idx);
+						v->bits.regoff.reg.idx);
 
 				save = 0;
 			}else{
-				out_comment("saving register %d", p->bits.regoff.reg.idx);
+				out_comment("saving register %d", v->bits.regoff.reg.idx);
 			}
 		}
+
 		if(save)
-			v_to_mem(p);
+			v_to(octx, v, TO_MEM);
 	}
-#endif
-	TODO();
 }
 
 void v_stack_adj(out_ctx *octx, unsigned amt, int sub)
