@@ -16,7 +16,7 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask);
 void v_dealloc_stack(out_ctx *octx, unsigned sz);
 
 /* register allocation */
-out_val *v_unused_reg(
+int v_unused_reg(
 		out_ctx *octx,
 		int stack_as_backup, int fp,
 		struct vreg *out);
@@ -46,7 +46,7 @@ void v_reg_to_stack(
 
 
 /* register saving */
-void v_freeup_reg(const struct vreg *r);
+void v_freeup_reg(out_ctx *, const struct vreg *r);
 void v_save_regs(int n_ignore, type *func_ty);
 
 int v_is_const_reg(out_val *);

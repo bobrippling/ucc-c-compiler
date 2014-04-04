@@ -94,11 +94,9 @@ copy:
 		{
 			struct vreg r;
 
-			out_val_consume(
-					octx,
-					v_unused_reg(
+			v_unused_reg(
 						octx, /*stack backup:*/1,
-						from->bits.regoff.reg.is_float, &r));
+						from->bits.regoff.reg.is_float, &r);
 
 			/* dup */
 			return out_change_type(octx, impl_reg_cp(octx, from, &r), ty);

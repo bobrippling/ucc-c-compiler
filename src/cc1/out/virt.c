@@ -83,18 +83,23 @@ static int v_in(out_val *vp, enum vto to)
 	return 0;
 }
 
-static out_val *v_save_reg(out_ctx *octx, out_val *vp)
+static void v_save_reg(out_ctx *octx, out_val *vp)
 {
+	out_val *stacked;
+
 	assert(vp->type == V_REG && "not reg");
 
 	out_comment("register spill:");
 
 	v_alloc_stack(octx, type_size(vp->t, NULL), "save reg");
 
-	return v_to_stack_mem(
+	stacked = v_to_stack_mem(
 			octx,
 			vp,
 			-octx->stack_sz);
+
+	memcpy_safe(vp, stacked);
+	out_val_release(octx, stacked);
 }
 
 out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc)
@@ -111,45 +116,58 @@ out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc)
 	}
 
 	if(loc & TO_MEM){
-		return v_save_reg(octx, v_to_reg(octx, vp));
+		vp = v_to_reg(octx, vp);
+		v_save_reg(octx, vp);
+		return vp;
 	}
 
 	assert(0 && "can't satisfy v_to");
 }
 
-static out_val *v_freeup_regp(out_ctx *octx, out_val *vp)
+static void v_freeup_regp(out_ctx *octx, out_val *vp)
 {
-	/* freeup this reg */
 	struct vreg r;
-	out_val *free_reg;
+	int got_reg;
 
 	assert(vp->type == V_REG && "not reg");
 
 	/* attempt to save to a register first */
-	free_reg = v_unused_reg(octx, 0, vp->bits.regoff.reg.is_float, &r);
+	got_reg = v_unused_reg(octx, 0, vp->bits.regoff.reg.is_float, &r);
 
-	if(free_reg){
-		return free_reg;
+	if(got_reg){
+		/* move 'vp' into the fresh reg */
+		impl_reg_cp(octx, vp, &r);
+
+		/* change vp's register to 'r', so that vp's original register is free */
+		vp->bits.regoff.reg = r;
+
 	}else{
-		/* no free registers, save this one
-		 * and return its stack repr */
-		return v_save_reg(octx, vp);
+		/* no free registers, save this one to the stack and mutate vp */
+		v_save_reg(octx, vp);
+		/* vp is now a stack value */
 	}
 }
 
-void v_freeup_reg(const struct vreg *r)
+static out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
 {
-	(void)r;
-	TODO();
-#if 0
-	out_val *val = v_find_reg(r);
+	out_val *i;
 
-	if(vp && vp < &vtop[-allowable_stack + 1])
-		v_freeup_regp(vp);
-#endif
+	for(i = octx->val_head; i; i = i->next)
+		if(i->type == V_REG && vreg_eq(&i->bits.regoff.reg, reg))
+			return i;
+
+	return NULL;
 }
 
-out_val *v_unused_reg(
+void v_freeup_reg(out_ctx *octx, const struct vreg *r)
+{
+	out_val *v = v_find_reg(octx, r);
+
+	if(v)
+		v_freeup_regp(octx, v);
+}
+
+int v_unused_reg(
 		out_ctx *octx,
 		int stack_as_backup, int fp,
 		struct vreg *out)
@@ -176,19 +194,18 @@ out_val *v_unused_reg(
 		if(!used[i]){
 			impl_scratch_to_reg(i, out);
 			out->is_float = fp;
-			return v_new_reg(octx, NULL, type_nav_voidptr(cc1_type_nav), out);
+			return 1;
 		}
 
 	if(stack_as_backup){
-		/* first->bits is clobbered by the v_freeup_regp() call */
-		const struct vreg freed = first->bits.regoff.reg;
-
 		/* no free regs, move `first` to the stack and claim its reg */
+		*out = first->bits.regoff.reg;
+
 		v_freeup_regp(octx, first);
 
-		return v_new_reg(octx, NULL, type_nav_voidptr(cc1_type_nav), &freed);
+		return 1;
 	}
-	return NULL;
+	return 0;
 }
 
 out_val *v_to_reg_given(

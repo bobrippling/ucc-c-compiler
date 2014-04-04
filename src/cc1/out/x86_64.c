@@ -1231,13 +1231,11 @@ out_val *impl_deref(out_ctx *octx, out_val *vp, const struct vreg *reg)
 	struct vreg backup_reg;
 
 	if(!reg){
-		out_flush_volatile(
+		v_unused_reg(
 				octx,
-				v_unused_reg(
-					octx,
-					1,
-					type_is_floating(tpointed_to),
-					&backup_reg));
+				1,
+				type_is_floating(tpointed_to),
+				&backup_reg);
 
 		reg = &backup_reg;
 	}
@@ -1345,7 +1343,6 @@ out_val *impl_cast_load(
 		const char *suffix_big = x86_suffix(big),
 		           *suffix_small = x86_suffix(small);
 		struct vreg r;
-		out_val *reg_val;
 
 		/* mov[zs][bwl][wlq]
 		 * avoid movzx - it's ambiguous
@@ -1353,8 +1350,8 @@ out_val *impl_cast_load(
 		 * special case: movzlq is invalid, we use movl %r, %r instead
 		 */
 
-		reg_val = v_unused_reg(octx, 1, 0, &r);
-		out_val_consume(octx, vp);
+		v_unused_reg(octx, 1, 0, &r);
+		vp = v_new_reg(octx, vp, vp->t, &r);
 
 		if(!is_signed && *suffix_big == 'q' && *suffix_small == 'l'){
 			out_comment("movzlq:");
@@ -1371,7 +1368,7 @@ out_val *impl_cast_load(
 					x86_reg_str(&r, big));
 		}
 
-		return reg_val;
+		return vp;
 	}
 }
 
@@ -1411,7 +1408,8 @@ static out_val *x86_xchg_fi(
 
 	fp_s = x86_suffix(ty_fp);
 
-	in_reg = out_val_retain(octx, v_unused_reg(octx, 1, to_float, &r));
+	v_unused_reg(octx, 1, to_float, &r);
+	in_reg = v_new_reg(octx, NULL, tfrom, &r);
 
 	/* cvt*2* [mem|reg], xmm* */
 	vp = v_to(octx, vp, TO_REG | TO_MEM);
@@ -1454,7 +1452,7 @@ out_val *impl_f2f(out_ctx *octx, out_val *vp, type *from, type *to)
 {
 	struct vreg r;
 
-	out_val_consume(octx, v_unused_reg(octx, 1, 1, &r));
+	v_unused_reg(octx, 1, 1, &r);
 
 	x86_fp_conv(vp, &r, to, NULL,
 			x86_suffix(from),
@@ -1707,7 +1705,7 @@ out_val *impl_call(
 			/* only bother if it's not already in the register */
 			if(vp->type != V_REG || !vreg_eq(rp, &vp->bits.regoff.reg)){
 				/* need to free it up, as v_to_reg_given doesn't clobber check */
-				v_freeup_reg(rp);
+				v_freeup_reg(octx, rp);
 				local_args[i] = v_to_reg_given(octx, local_args[i], rp);
 			}
 		}

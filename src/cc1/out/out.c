@@ -94,19 +94,6 @@ void v_to_mem(struct vstack *vp)
 }
 
 
-static struct vstack *v_find_reg(const struct vreg *reg)
-{
-	struct vstack *vp;
-	if(!vtop)
-		return NULL;
-
-	for(vp = vstack; vp <= vtop; vp++)
-		if(vp->type == V_REG && vreg_eq(&vp->bits.regoff.reg, reg))
-			return vp;
-
-	return NULL;
-}
-
 static void v_alter_reservation(const struct vreg *r, int n)
 {
 	int i = impl_reg_to_scratch(r);
