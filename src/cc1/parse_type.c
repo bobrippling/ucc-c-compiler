@@ -892,6 +892,13 @@ static type_parsed *parsed_type_array(
 			EAT(token_close_square);
 
 			FOLD_EXPR(size, scope);
+
+			if(!type_is_integral(size->tree_type)){
+				die_at(&size->where,
+						"array type isn't integral (%s)",
+						type_to_str(size->tree_type));
+			}
+
 			const_fold(size, &k);
 
 			if(k.type != CONST_NUM)
