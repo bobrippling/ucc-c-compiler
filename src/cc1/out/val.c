@@ -99,7 +99,10 @@ copy:
 						from->bits.regoff.reg.is_float, &r);
 
 			/* dup */
-			return out_change_type(octx, impl_reg_cp(octx, from, &r), ty);
+			impl_reg_cp(octx, from, &r);
+			from->bits.regoff.reg = r;
+
+			return out_change_type(octx, from, ty);
 		}
 	}
 

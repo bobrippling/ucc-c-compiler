@@ -869,7 +869,7 @@ void impl_reg_swp(out_val *a, out_val *b)
 }
 #endif
 
-out_val *impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *to_reg)
+void impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *to_reg)
 {
 	char buf_v[VSTACK_STR_SZ];
 	const char *regstr;
@@ -878,9 +878,10 @@ out_val *impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *to_reg)
 			"reg_cp on non register type 0x%x", from->type);
 
 	if(!from->bits.regoff.offset && vreg_eq(&from->bits.regoff.reg, to_reg))
-		return from;
+		return;
 
-	from = v_to(octx, from, TO_REG); /* force offset normalisation */
+	/* force offset normalisation */
+	from = v_to(octx, from, TO_REG);
 
 	regstr = x86_reg_str(to_reg, from->t);
 
@@ -888,8 +889,6 @@ out_val *impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *to_reg)
 			x86_suffix(from->t),
 			vstack_str_r(buf_v, from, 0),
 			regstr);
-
-	return v_new_reg(octx, from, from->t, to_reg);
 }
 
 out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
