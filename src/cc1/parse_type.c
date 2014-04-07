@@ -1452,9 +1452,27 @@ static int warn_for_unused_typename(
 	return 1;
 }
 
+static void check_star_modifier(symtable *arg_symtab)
+{
+	decl **i;
+
+	for(i = arg_symtab->decls; i && *i; i++){
+		decl *d = *i;
+		type *vla = type_is_decayed_array(d->ref);
+
+		if(vla && vla->bits.array.is_vla == VLA_STAR){
+			warn_at_print_error(&d->where,
+					"star modifier can only appear on prototypes");
+			fold_had_error = 1;
+		}
+	}
+}
+
 static void parse_post_func(decl *d, symtable *in_scope)
 {
 	int need_func = 0;
+	type *func_r;
+	symtable *arg_symtab;
 
 	/* special case - support asm directly after a function
 	 * no parse ambiguity - asm can only appear at the end of a decl,
@@ -1488,21 +1506,21 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		}
 	}
 
+	func_r = type_is(d->ref, type_func);
+	arg_symtab = func_r->bits.func.arg_scope;
+
 	/* clang-style allows __attribute__ and then a function block */
 	if(need_func || curtok == token_open_block){
-		type *func_r = type_is(d->ref, type_func);
-		symtable *arg_symtab;
-
 		/* need to set scope to include function argumen
 		 * e.g. f(struct A { ... })
 		 */
 		UCC_ASSERT(func_r, "function expected");
 
-		arg_symtab = func_r->bits.func.arg_scope;
 		arg_symtab->in_func = d;
 
 		fold_decl(d, arg_symtab->parent, NULL);
 
+		check_star_modifier(arg_symtab);
 
 		d->bits.func.code = parse_stmt_block(arg_symtab, NULL);
 
