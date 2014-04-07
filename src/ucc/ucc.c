@@ -476,7 +476,6 @@ arg_asm:
 
 				case 'l':
 				case 'L':
-				case 's':
 arg_ld:
 					ADD_ARG(mode_link);
 					continue;
@@ -543,6 +542,9 @@ arg_ld:
 
 word:
 				default:
+					if(!strcmp(argv[i], "-s"))
+						goto arg_ld;
+
 					if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
 						ADD_ARG(mode_compile);
 						ADD_ARG(mode_preproc);
