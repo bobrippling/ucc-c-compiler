@@ -324,15 +324,8 @@ int type_is_complete(type *r)
 
 int type_is_variably_modified(type *r)
 {
-	/* vlas not implemented yet */
-#if 0
-	if(type_is_array(r)){
-		/* ... */
-	}
-#else
-	(void)r;
-#endif
-	return 0;
+	type *test = type_is(r, type_array);
+	return test && test->bits.array.is_vla;
 }
 
 int type_is_incomplete_array(type *r)
