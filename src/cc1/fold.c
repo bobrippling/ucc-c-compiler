@@ -272,6 +272,7 @@ void fold_type_w_attr(
 			break;
 
 		case type_func:
+			/* necessary for struct-scope checks when there's no {} body */
 			r->bits.func.arg_scope->are_params = 1;
 
 			symtab_fold_sues(r->bits.func.arg_scope);
