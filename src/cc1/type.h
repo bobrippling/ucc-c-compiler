@@ -51,6 +51,7 @@ struct type
 		{
 			unsigned is_static : 1;
 			unsigned decayed : 1; /* old size may be NULL - track here */
+			unsigned is_vla : 1;
 			struct expr *size;
 			/* when we decay
 			 * f(int x[2]) -> f(int *x)

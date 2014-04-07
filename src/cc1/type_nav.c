@@ -145,6 +145,26 @@ type *type_array_of(type *to, struct expr *new_sz)
 	return type_array_of_static(to, new_sz, 0);
 }
 
+type *type_vla_of(type *of, struct expr *vlasz)
+{
+	type *vla;
+	struct ctx_array ctx;
+
+	ctx.is_static = 0;
+	ctx.sz = vlasz;
+	ctx.sz_i = 0;
+
+	/* vla - not equal to any other type */
+	vla = type_uptree_find_or_new(
+			of, type_array,
+			NULL, init_array,
+			&ctx);
+
+	vla->bits.array.is_vla = 1;
+
+	return vla;
+}
+
 struct ctx_func
 {
 	funcargs *args;

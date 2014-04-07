@@ -27,6 +27,7 @@ type *type_block_of(type *);
 
 type *type_array_of(type *, struct expr *sz);
 type *type_array_of_static(type *, struct expr *sz, int is_static);
+type *type_vla_of(type *, struct expr *sz);
 
 type *type_func_of(type *, struct funcargs *args, struct symtable *arg_scope);
 type *type_called(type *, struct funcargs **pfuncargs);

@@ -794,7 +794,7 @@ struct type_parsed
 		{
 			expr *size;
 			enum type_qualifier qual;
-			int is_static;
+			unsigned is_static : 1, is_vla : 1;
 		} array;
 	} bits;
 
@@ -868,7 +868,7 @@ static type_parsed *parsed_type_array(
 	while(accept(token_open_square)){
 		expr *size;
 		enum type_qualifier q = qual_none;
-		int is_static = 0;
+		int is_static = 0, is_vla = 0;
 
 		/* parse int x[restrict|static ...] */
 		for(;;){
@@ -904,9 +904,8 @@ static type_parsed *parsed_type_array(
 			const_fold(size, &k);
 
 			if(k.type != CONST_NUM)
-				die_at(NULL, "not a constant for array size");
-
-			if(!K_INTEGRAL(k.bits.num))
+				is_vla = 1;
+			else if(!K_INTEGRAL(k.bits.num))
 				die_at(NULL, "not an integral array size");
 		}
 
@@ -917,6 +916,7 @@ static type_parsed *parsed_type_array(
 		r->bits.array.size = size;
 		r->bits.array.qual = q;
 		r->bits.array.is_static = is_static;
+		r->bits.array.is_vla = is_vla;
 	}
 
 	return r;
@@ -1009,10 +1009,21 @@ static type *parse_type_declarator(
 				break;
 			case PARSED_ARRAY:
 				qual = i->bits.ptr.qual;
-				ty = type_array_of_static(
+				if(i->bits.array.is_vla){
+					if(i->bits.array.is_static){
+						warn_at_print_error(NULL,
+								"'static' can't be used with a star-modified array");
+						fold_had_error = 1;
+					}
+
+					ty = type_vla_of(ty, i->bits.array.size);
+
+				}else{
+					ty = type_array_of_static(
 							ty,
 							i->bits.array.size,
 							i->bits.array.is_static);
+				}
 				break;
 			case PARSED_FUNC:
 				ty = type_func_of(
