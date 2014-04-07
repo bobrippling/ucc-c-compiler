@@ -687,6 +687,8 @@ funcargs *parse_func_arglist(symtable *scope)
 			/* x(void); */
 			funcargs_empty(args);
 			args->args_void = 1; /* (void) vs () */
+
+			/* argdecl isn't leaked - it remains in scope, but nameless */
 			goto fin;
 		}
 
