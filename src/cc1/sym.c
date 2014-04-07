@@ -79,12 +79,6 @@ symtable_global *symtab_global(symtable *stab)
 	return (symtable_global *)symtab_root(stab);
 }
 
-void symtab_add_params(symtable *stab, decl **params)
-{
-	UCC_ASSERT(stab->are_params, "add params to a non-param symtable");
-	dynarray_add_array(&stab->decls, params);
-}
-
 int symtab_nested_internal(symtable *parent, symtable *nest)
 {
 	while(nest && nest->internal_nest){

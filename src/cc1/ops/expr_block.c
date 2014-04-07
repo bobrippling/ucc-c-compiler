@@ -29,7 +29,6 @@ void expr_block_got_params(
 	df->spel = out_label_block("globl");
 	df->block_expr = e;
 
-	symtab_add_params(symtab, args->arglist);
 	fold_funcargs(args, symtab, NULL);
 
 	symtab->in_func = df;

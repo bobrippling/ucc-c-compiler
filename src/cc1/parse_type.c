@@ -693,6 +693,10 @@ funcargs *parse_func_arglist(symtable *scope)
 		for(;;){
 			dynarray_add(&args->arglist, argdecl);
 
+			/* add to scope */
+			symtab_add_to_scope(scope, argdecl);
+			fold_decl(argdecl, scope, NULL);
+
 			if(curtok == token_close_paren)
 				break;
 
@@ -721,6 +725,8 @@ fin:;
 
 			d->spel = token_current_spel();
 			dynarray_add(&args->arglist, d);
+
+			symtab_add_to_scope(scope, d);
 
 			EAT(token_identifier);
 
@@ -1092,7 +1098,7 @@ static decl *parse_decl_stored_aligned(
 		d->ref = parse_type_declarator(mode, d, btype, scope);
 
 		if(add_to_scope){
-			dynarray_add(&add_to_scope->decls, d);
+			symtab_add_to_scope(add_to_scope, d);
 			parse_decl_fold_type(d, scope);
 		}
 	}
@@ -1459,7 +1465,6 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		arg_symtab = func_r->bits.func.arg_scope;
 		arg_symtab->in_func = d;
 
-		symtab_add_params(arg_symtab, func_r->bits.func.args->arglist);
 		fold_decl(d, arg_symtab->parent, NULL);
 
 
@@ -1607,7 +1612,7 @@ int parse_decl_group(
 		if(d->spel)
 			link_to_previous_decl(d, in_scope);
 		if(add_to_scope)
-			dynarray_add(&add_to_scope->decls, d);
+			symtab_add_to_scope(add_to_scope, d);
 		if(pdecls)
 			dynarray_add(pdecls, d);
 
