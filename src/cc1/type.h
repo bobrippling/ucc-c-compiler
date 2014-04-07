@@ -51,7 +51,11 @@ struct type
 		{
 			unsigned is_static : 1;
 			unsigned decayed : 1; /* old size may be NULL - track here */
-			unsigned is_vla : 1;
+			unsigned is_vla : 2;
+			enum
+			{
+				VLA = 1, VLA_STAR = 2
+			};
 			struct expr *size;
 			/* when we decay
 			 * f(int x[2]) -> f(int *x)

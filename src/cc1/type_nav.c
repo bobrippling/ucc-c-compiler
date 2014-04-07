@@ -145,7 +145,7 @@ type *type_array_of(type *to, struct expr *new_sz)
 	return type_array_of_static(to, new_sz, 0);
 }
 
-type *type_vla_of(type *of, struct expr *vlasz)
+type *type_vla_of(type *of, struct expr *vlasz, int vlatype)
 {
 	type *vla;
 	struct ctx_array ctx;
@@ -160,7 +160,7 @@ type *type_vla_of(type *of, struct expr *vlasz)
 			NULL, init_array,
 			&ctx);
 
-	vla->bits.array.is_vla = 1;
+	vla->bits.array.is_vla = vlatype;
 
 	return vla;
 }

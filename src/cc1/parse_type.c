@@ -794,7 +794,7 @@ struct type_parsed
 		{
 			expr *size;
 			enum type_qualifier qual;
-			unsigned is_static : 1, is_vla : 1;
+			unsigned is_static : 1, is_vla : 2;
 		} array;
 	} bits;
 
@@ -866,7 +866,7 @@ static type_parsed *parsed_type_array(
 	type_parsed *r = parsed_type_nest(mode, dfor, base, scope);
 
 	while(accept(token_open_square)){
-		expr *size;
+		expr *size = NULL;
 		enum type_qualifier q = qual_none;
 		int is_static = 0, is_vla = 0;
 
@@ -883,30 +883,43 @@ static type_parsed *parsed_type_array(
 		}
 
 		if(accept(token_close_square)){
-			/* take size as zero */
-			size = NULL;
+			/* null size */
 		}else{
 			/* fold.c checks for const-ness */
 			/* grammar says it's a conditional here, hence no-comma */
 			consty k;
+			int is_star = 0;
 
-			size = PARSE_EXPR_NO_COMMA(scope);
-			EAT(token_close_square);
-
-			FOLD_EXPR(size, scope);
-
-			if(!type_is_integral(size->tree_type)){
-				die_at(&size->where,
-						"array type isn't integral (%s)",
-						type_to_str(size->tree_type));
+			/* look for [*] */
+			if(accept(token_multiply)){
+				if(accept(token_close_square)){
+					is_star = 1;
+				}else{
+					uneat(token_multiply);
+				}
 			}
 
-			const_fold(size, &k);
+			if(!is_star){
+				size = PARSE_EXPR_NO_COMMA(scope);
+				EAT(token_close_square);
 
-			if(k.type != CONST_NUM)
-				is_vla = 1;
-			else if(!K_INTEGRAL(k.bits.num))
-				die_at(NULL, "not an integral array size");
+				FOLD_EXPR(size, scope);
+
+				if(!type_is_integral(size->tree_type)){
+					die_at(&size->where,
+							"array type isn't integral (%s)",
+							type_to_str(size->tree_type));
+				}
+
+				const_fold(size, &k);
+
+				if(k.type != CONST_NUM)
+					is_vla = VLA;
+				else if(!K_INTEGRAL(k.bits.num))
+					die_at(NULL, "not an integral array size");
+			}else{
+				is_vla = VLA_STAR;
+			}
 		}
 
 		if(is_static > 1)
@@ -1009,6 +1022,7 @@ static type *parse_type_declarator(
 				break;
 			case PARSED_ARRAY:
 				qual = i->bits.ptr.qual;
+
 				if(i->bits.array.is_vla){
 					if(i->bits.array.is_static){
 						warn_at_print_error(NULL,
@@ -1016,7 +1030,9 @@ static type *parse_type_declarator(
 						fold_had_error = 1;
 					}
 
-					ty = type_vla_of(ty, i->bits.array.size);
+					ty = type_vla_of(
+							ty, i->bits.array.size,
+							i->bits.array.is_vla);
 
 				}else{
 					ty = type_array_of_static(
