@@ -129,24 +129,29 @@ static expr *parse_expr_identifier(void)
 
 static expr *parse_block(symtable *const scope)
 {
-	symtable *arg_symtab = symtab_new(
-			symtab_root(scope),
-			where_cc1_current(NULL));
+	symtable *arg_symtab;
+	/* not created yet - only create arg_symtab if we need to
+	 * argument symtables are exactly one nested level from
+	 * global scope, so we don't create one here and then add
+	 * another on later */
 
 	funcargs *args;
 	type *rt;
 	expr *blk;
 
-	arg_symtab->are_params = 1;
-
 	EAT(token_xor);
 
-	rt = parse_type(0, arg_symtab);
+	rt = parse_type(0, scope);
 
 	if(rt){
 		if(type_is(rt, type_func)){
 			/* got ^int (args...) */
+			type *func = type_is(rt, type_func);
+
 			rt = type_func_call(rt, &args);
+
+			arg_symtab = func->bits.func.arg_scope;
+
 		}else{
 			/* ^int {...} */
 			goto def_args;
@@ -154,13 +159,23 @@ static expr *parse_block(symtable *const scope)
 
 	}else if(accept(token_open_paren)){
 		/* ^(args...) */
+		arg_symtab = symtab_new(
+				symtab_root(scope),
+				where_cc1_current(NULL));
+
+		arg_symtab->are_params = 1;
 		args = parse_func_arglist(arg_symtab);
+
 		EAT(token_close_paren);
 	}else{
 		/* ^{...} */
 def_args:
 		args = funcargs_new();
 		args->args_void = 1;
+
+		arg_symtab = symtab_new(
+				symtab_root(scope),
+				where_cc1_current(NULL));
 	}
 
 	blk = expr_new_block(rt, args);
