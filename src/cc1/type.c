@@ -490,20 +490,20 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 					spc = 1;
 				}
 
-#if 0
-				if(r->bits.array.qual){
-					BUF_ADD(
-							"%s%s",
-							spc ? " " : "",
-							type_qual_to_str(r->bits.array.qual, 0));
-					spc = 1;
+				switch(r->bits.array.is_vla){
+					case 0:
+						BUF_ADD(
+								"%s%" NUMERIC_FMT_D,
+								spc ? " " : "",
+								const_fold_val_i(r->bits.array.size));
+						break;
+					case VLA:
+						BUF_ADD("vla");
+						break;
+					case VLA_STAR:
+						BUF_ADD("*");
+						break;
 				}
-#endif
-
-				BUF_ADD(
-						"%s%" NUMERIC_FMT_D,
-						spc ? " " : "",
-						const_fold_val_i(r->bits.array.size));
 			}
 			BUF_ADD("]");
 
