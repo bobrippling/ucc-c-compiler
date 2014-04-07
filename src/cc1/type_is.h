@@ -40,7 +40,6 @@ int type_is_nonfptr(type *);
 int type_is_nonvoid_ptr(type *);
 int type_is_promotable(type *, type **pto); /* e.g. char, short, float -> int, int, double */
 int type_is_signed(type *);
-int type_is_variably_modified(type *);
 int type_is_variadic_func(type *);
 int type_is_void(type *);
 int type_is_void_ptr(type *);
@@ -57,5 +56,6 @@ type *type_is_primitive(type *, enum type_primitive);
 type *type_is_ptr(type *); /* returns r->ref iff ptr */
 type *type_is_ptr_or_block(type *);
 type *type_is_scalar(type *);
+type *type_is_variably_modified(type *);
 
 #endif

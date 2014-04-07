@@ -322,10 +322,10 @@ int type_is_complete(type *r)
 	return 1;
 }
 
-int type_is_variably_modified(type *r)
+type *type_is_variably_modified(type *ty)
 {
-	type *test = type_is(r, type_array);
-	return test && test->bits.array.is_vla;
+	type *test = type_is(ty, type_array);
+	return test && test->bits.array.is_vla ? test : NULL;
 }
 
 int type_is_incomplete_array(type *r)
@@ -627,8 +627,7 @@ int type_is_autotype(type *t)
 
 type *type_is_decayed_array(type *r)
 {
-	if((r = type_is(r, type_ptr)) && r->bits.ptr.decayed)
-		return r;
-
+	if((r = type_is(r, type_ptr)))
+		return r->bits.ptr.decayed_from;
 	return NULL;
 }
