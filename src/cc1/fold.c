@@ -253,21 +253,26 @@ void fold_type_w_attr(
 				where *array_loc = &r->bits.array.size->where;
 
 				FOLD_EXPR(r->bits.array.size, stab);
-				const_fold(r->bits.array.size, &k);
 
-				UCC_ASSERT(k.type == CONST_NUM,
-						"not a constant for array size");
+				if(r->bits.array.is_vla){
+					warn_at(&r->bits.array.size->where, "VLA");
+				}else{
+					const_fold(r->bits.array.size, &k);
 
-				UCC_ASSERT(K_INTEGRAL(k.bits.num),
-						"integral array should be checked during parse");
+					UCC_ASSERT(k.type == CONST_NUM,
+							"not a constant for array size");
 
-				if((sintegral_t)k.bits.num.val.i < 0)
-					die_at(array_loc, "negative array size");
-				/* allow zero length arrays */
-				else if(k.nonstandard_const)
-					warn_at(&k.nonstandard_const->where,
-							"%s-expr is a non-standard constant expression (for array size)",
-							k.nonstandard_const->f_str()); /* TODO: VLA here */
+					UCC_ASSERT(K_INTEGRAL(k.bits.num),
+							"integral array should be checked during parse");
+
+					if((sintegral_t)k.bits.num.val.i < 0)
+						die_at(array_loc, "negative array size");
+					/* allow zero length arrays */
+					else if(k.nonstandard_const)
+						warn_at(&k.nonstandard_const->where,
+								"%s-expr is a non-standard constant expression (for array size)",
+								k.nonstandard_const->f_str()); /* TODO: VLA here */
+				}
 			}
 			break;
 

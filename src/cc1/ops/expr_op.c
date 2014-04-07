@@ -451,15 +451,19 @@ type *op_promote_types(
 	return resolved;
 }
 
-static expr *expr_is_array_cast(expr *e)
+static expr *expr_is_nonvla_casted_array(expr *e)
 {
 	expr *array = e;
+	type *test;
 
 	if(expr_kind(array, cast))
 		array = array->expr;
 
-	if(type_is(array->tree_type, type_array))
+	if((test = type_is(array->tree_type, type_array))
+	&& !test->bits.array.is_vla)
+	{
 		return array;
+	}
 
 	return NULL;
 }
@@ -474,11 +478,11 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 	if(e->op != op_plus && e->op != op_minus)
 		return 0;
 
-	array = expr_is_array_cast(e->lhs);
+	array = expr_is_nonvla_casted_array(e->lhs);
 	if(array)
 		lhs = 1;
 	else
-		array = expr_is_array_cast(e->rhs);
+		array = expr_is_nonvla_casted_array(e->rhs);
 
 	if(array && !type_is_incomplete_array(array->tree_type)){
 		consty k;

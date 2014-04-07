@@ -263,10 +263,15 @@ static void init_decayed_array(type *ty, void *ctx)
 type *type_decayed_ptr_to(type *pointee, type *array_from)
 {
 	struct ctx_array ctx;
+	expr *size_expr;
+
+	size_expr = array_from->bits.array.is_vla
+		? NULL
+		: array_from->bits.array.size;
 
 	ctx_array_init(
 			&ctx,
-			array_from->bits.array.size,
+			size_expr,
 			array_from->bits.array.is_static);
 
 	return type_uptree_find_or_new(
