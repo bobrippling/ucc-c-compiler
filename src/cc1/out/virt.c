@@ -244,38 +244,65 @@ out_val *v_to_reg(out_ctx *octx, out_val *conv)
 	return v_to_reg_out(octx, conv, NULL);
 }
 
+static int val_present(out_val *v, out_val **ignores)
+{
+	out_val **i;
+	for(i = ignores; i && *i; i++)
+		if(v == *i)
+			return 1;
+	return 0;
+}
+
 void v_save_regs(out_ctx *octx, type *func_ty, out_val *ignores[])
 {
-	/* save all registers,
-	 * except callee save regs unless we need to
-	 */
-	out_val *v;
+	/* save all registers except callee save */
+	out_val_list *l;
 
-	for(v = octx->val_head; v; v = v->next){
-		int save = 1;
+	/* go backwards in case the list is added to */
+	for(l = octx->val_tail; l; l = l->prev){
+		out_val *v = &l->val;
+		int save = 0;
 
-		if(v->type == V_REG){
-			if(impl_reg_frame_const(&v->bits.regoff.reg)){
-				/* don't save stack references */
-				if(fopt_mode & FOPT_VERBOSE_ASM)
-					out_comment("not saving const-reg %d", v->bits.regoff.reg.idx);
+		if(v->retains == 0)
+			continue;
+
+		switch(v->type){
+			case V_REG_SAVE:
+			case V_REG:
+				if(val_present(v, ignores)){
+					/* don't save */
+				}else if(impl_reg_frame_const(&v->bits.regoff.reg)){
+					/* don't save stack references */
+					if(fopt_mode & FOPT_VERBOSE_ASM)
+						out_comment("not saving const-reg %d", v->bits.regoff.reg.idx);
+
+				}else if(func_ty
+				&& impl_reg_is_callee_save(&v->bits.regoff.reg, func_ty))
+				{
+					/* only comment for non-const regs */
+					out_comment("not saving reg %d - callee save",
+							v->bits.regoff.reg.idx);
+
+				}else{
+					out_comment("saving register %d", v->bits.regoff.reg.idx);
+					save = 1;
+				}
+				break;
+
+			case V_CONST_I:
+			case V_CONST_F:
+			case V_LBL:
 				save = 0;
+				break;
 
-			}else if(func_ty
-			&& impl_reg_is_callee_save(&v->bits.regoff.reg, func_ty))
-			{
-				/* only comment for non-const regs */
-				out_comment("not saving reg %d - callee save",
-						v->bits.regoff.reg.idx);
-
-				save = 0;
-			}else{
-				out_comment("saving register %d", v->bits.regoff.reg.idx);
-			}
+			case V_FLAG:
+				assert(v->retains == 1 && "v_save_regs(): retained v");
+				v = v_to_reg(octx, v);
+				save = 1;
 		}
 
 		if(save)
-			v_to(octx, v, TO_MEM);
+			v_save_reg(octx, v);
 	}
 }
 
