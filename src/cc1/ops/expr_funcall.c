@@ -331,7 +331,6 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 		out_comment("end manual __asm__");
 	}else{
 		/* continue with normal funcall */
-		int nargs = 0;
 		out_val *fn, **args = NULL, **i;
 
 		fn = gen_expr(e->expr, octx);
@@ -340,9 +339,7 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 		if(e->funcargs){
 			expr **aiter;
 
-			for(aiter = e->funcargs; *aiter; aiter++, nargs++);
-
-			for(aiter--; aiter >= e->funcargs; aiter--){
+			for(aiter = e->funcargs; *aiter; aiter++){
 				expr *earg = *aiter;
 				out_val *arg;
 
