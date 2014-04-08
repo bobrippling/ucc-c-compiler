@@ -121,8 +121,11 @@ out_val *v_dup_or_reuse(out_ctx *octx, out_val *from, type *ty)
 	if(!from)
 		return v_new(octx, ty);
 
-	if(from->retains > 1)
-		return v_dup(octx, from, ty);
+	if(from->retains > 1){
+		out_val *r = v_dup(octx, from, ty);
+		out_val_consume(octx, from);
+		return r;
+	}
 
 	assert(from->retains == 1);
 	from->t = ty;
