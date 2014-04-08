@@ -53,6 +53,7 @@ void impl_set_nan(type *);
 int  impl_reg_to_scratch(const struct vreg *);
 void impl_scratch_to_reg(int scratch, struct vreg *);
 int impl_reg_frame_const(const struct vreg *);
+int impl_reg_savable(const struct vreg *);
 
 /* callee save register bools */
 int impl_reg_is_callee_save(const struct vreg *r, type *fr);

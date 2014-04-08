@@ -352,6 +352,18 @@ int impl_reg_frame_const(const struct vreg *r)
 	return !r->is_float && r->idx == X86_64_REG_RBP;
 }
 
+int impl_reg_savable(const struct vreg *r)
+{
+	if(r->is_float)
+		return 1;
+	switch(r->idx){
+		case X86_64_REG_RBP:
+		case X86_64_REG_RSP:
+			return 0;
+	}
+	return 1;
+}
+
 #if 0
 unsigned impl_n_call_regs(type *rf)
 {

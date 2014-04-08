@@ -271,7 +271,7 @@ void v_save_regs(out_ctx *octx, type *func_ty, out_val *ignores[])
 			case V_REG:
 				if(val_present(v, ignores)){
 					/* don't save */
-				}else if(impl_reg_frame_const(&v->bits.regoff.reg)){
+				}else if(!impl_reg_savable(&v->bits.regoff.reg)){
 					/* don't save stack references */
 					if(fopt_mode & FOPT_VERBOSE_ASM)
 						out_comment("not saving const-reg %d", v->bits.regoff.reg.idx);
