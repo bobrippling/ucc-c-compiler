@@ -1774,7 +1774,7 @@ out_val *impl_call(
 	free(float_arg);
 
 	{
-		type *retty = type_called(fnty, NULL);
+		type *retty = type_called(type_is_ptr(fnty), NULL);
 		const int fp = type_is_floating(retty);
 		struct vreg rr = VREG_INIT(fp ? REG_RET_F : REG_RET_I, fp);
 
