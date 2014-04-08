@@ -77,7 +77,7 @@ static out_val *v_dup(out_ctx *octx, out_val *from, type *ty)
 copy:
 		{
 			out_val *v = v_new(octx, ty);
-			memcpy_safe(v, from);
+			out_val_overwrite(v, from);
 			v->t = ty;
 			return v;
 		}
@@ -90,21 +90,26 @@ copy:
 
 		case V_REG_SAVE:
 		case V_REG:
-			if(impl_reg_frame_const(&from->bits.regoff.reg))
-				goto copy;
-			/* copy to a new register */
 		{
 			struct vreg r;
+			out_val *new;
 
+			if(impl_reg_frame_const(&from->bits.regoff.reg))
+				goto copy;
+
+			/* copy to a new register */
 			v_unused_reg(
 						octx, /*stack backup:*/1,
 						from->bits.regoff.reg.is_float, &r);
 
 			/* dup */
 			impl_reg_cp(octx, from, &r);
-			from->bits.regoff.reg = r;
 
-			return out_change_type(octx, from, ty);
+			new = v_new(octx, ty);
+			new->bits.regoff.reg = r;
+			new->bits.regoff.offset = from->bits.regoff.offset;
+
+			return new;
 		}
 	}
 
@@ -189,6 +194,14 @@ out_val *out_val_retain(out_ctx *octx, out_val *v)
 	(void)octx;
 	v->retains++;
 	return v;
+}
+
+void out_val_overwrite(out_val *d, out_val *s)
+{
+	/* don't copy .retains */
+	d->type = s->type;
+	d->bitfield = s->bitfield;
+	d->bits = s->bits;
 }
 
 int vreg_eq(const struct vreg *a, const struct vreg *b)

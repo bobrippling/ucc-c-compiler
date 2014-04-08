@@ -355,7 +355,9 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 			}
 		}
 
+		/* consumes fn, but we held it too: */
 		fn_ret = out_call(octx, fn, args, e->expr->tree_type);
+		out_val_release(octx, fn);
 
 		for(i = args; i && *i; i++)
 			out_val_release(octx, *i);
@@ -363,7 +365,6 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 		dynarray_free(out_val **, &args, NULL);
 	}
 
-	out_val_release(octx, fn_ret);
 	return fn_ret;
 }
 

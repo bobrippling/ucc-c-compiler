@@ -87,6 +87,7 @@ out_val *v_new_bp3(out_ctx *octx, out_val *from, type *ty,
 out_val *v_new_reg(out_ctx *octx, out_val *from, type *ty,
 		const struct vreg *reg);
 
+void out_val_overwrite(out_val *d, out_val *s);
 
 #if 0
 void v_clear(out_val *vp, type *);

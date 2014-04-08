@@ -35,19 +35,13 @@ int v_is_const_reg(out_val *v)
 
 out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
 {
-	out_val *store = v_new_sp3(octx, vp, vp->t, stack_pos);
-
-	out_val_retain(octx, store);
+	out_val *store = v_new_sp3(octx, NULL, vp->t, stack_pos);
 
 	vp = v_to(octx, vp, TO_CONST | TO_REG);
 
-	/* the following gen two instructions - subq and movq
-	 * instead/TODO: impl_save_reg(vp) -> "pushq %%rax"
-	 * -O1?
-	 */
-	out_store(octx, store, vp);
+	out_val_retain(octx, store);
 
-	out_val_release(octx, store);
+	out_store(octx, store, vp);
 
 	return store;
 }
@@ -93,13 +87,18 @@ static void v_save_reg(out_ctx *octx, out_val *vp)
 
 	v_alloc_stack(octx, type_size(vp->t, NULL), "save reg");
 
+	out_val_retain(octx, vp);
+
 	stacked = v_to_stack_mem(
-			octx,
-			vp,
+			octx, vp,
 			-octx->stack_sz);
 
-	memcpy_safe(vp, stacked);
-	out_val_release(octx, stacked);
+	if(vp != stacked){
+		out_val_overwrite(vp, stacked);
+		out_val_release(octx, stacked);
+	}else{
+		out_val_release(octx, vp);
+	}
 }
 
 out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc)
