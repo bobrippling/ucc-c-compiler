@@ -34,20 +34,21 @@ const char *v_store_to_str(enum out_val_store store)
 	return NULL;
 }
 
-static void v_register(out_ctx *octx, out_val *v)
+static void v_register(out_ctx *octx, out_val_list *l)
 {
-	assert(!v->next);
+	if(octx->val_head)
+		assert(!octx->val_head->prev);
 
 	/* double link */
-	v->next = octx->val_head;
+	l->next = octx->val_head;
 	if(octx->val_head)
-		octx->val_head->prev = v;
+		octx->val_head->prev = l;
 
 	/* store in val_head */
-	octx->val_head = v;
+	octx->val_head = l;
 
 	if(!octx->val_tail)
-		octx->val_tail = v;
+		octx->val_tail = l->next;
 }
 
 static void v_init(out_val *v, type *ty)
@@ -58,10 +59,11 @@ static void v_init(out_val *v, type *ty)
 
 out_val *v_new(out_ctx *octx, type *ty)
 {
-	out_val *v = umalloc(sizeof *v);
+	out_val_list *l = umalloc(sizeof *l);
+	out_val *v = &l->val;
 
 	v_init(v, ty);
-	v_register(octx, v);
+	v_register(octx, l);
 
 	return v;
 }

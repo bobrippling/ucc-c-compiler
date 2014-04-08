@@ -868,11 +868,11 @@ out_ctx *out_ctx_new(void)
 
 size_t out_expr_stack(out_ctx *octx)
 {
-	out_val *v;
+	out_val_list *l;
 	size_t retains = 0;
 
-	for(v = octx->val_head; v; v = v->next)
-		retains += v->retains;
+	for(l = octx->val_head; l; l = l->next)
+		retains += l->val.retains;
 
 	return retains;
 }

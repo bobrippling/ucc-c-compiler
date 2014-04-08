@@ -20,8 +20,6 @@ struct out_val
 
 	type *t;
 
-	struct out_val *next, *prev;
-
 	union
 	{
 		integral_t val_i;

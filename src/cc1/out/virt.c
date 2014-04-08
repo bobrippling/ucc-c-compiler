@@ -150,11 +150,13 @@ static void v_freeup_regp(out_ctx *octx, out_val *vp)
 
 static out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
 {
-	out_val *i;
+	out_val_list *i;
 
-	for(i = octx->val_head; i; i = i->next)
-		if(i->type == V_REG && vreg_eq(&i->bits.regoff.reg, reg))
-			return i;
+	for(i = octx->val_head; i; i = i->next){
+		out_val *v = &i->val;
+		if(v->type == V_REG && vreg_eq(&v->bits.regoff.reg, reg))
+			return v;
+	}
 
 	return NULL;
 }
@@ -173,20 +175,22 @@ int v_unused_reg(
 		struct vreg *out)
 {
 	unsigned char used[sizeof(octx->reserved_regs)];
-	out_val *it, *first;
+	out_val_list *it;
+	out_val *first;
 	int i;
 
 	memcpy(used, octx->reserved_regs, sizeof used);
 	first = NULL;
 
 	for(it = octx->val_head; it; it = it->next){
-		if(it->retains
-		&& it->type == V_REG
-		&& it->bits.regoff.reg.is_float == fp)
+		out_val *this = &it->val;
+		if(this->retains
+		&& this->type == V_REG
+		&& this->bits.regoff.reg.is_float == fp)
 		{
 			if(!first)
-				first = it;
-			used[impl_reg_to_scratch(&it->bits.regoff.reg)] = 1;
+				first = this;
+			used[impl_reg_to_scratch(&this->bits.regoff.reg)] = 1;
 		}
 	}
 

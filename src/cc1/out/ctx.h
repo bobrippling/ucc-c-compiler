@@ -1,11 +1,17 @@
 #ifndef CTX_H
 #define CTX_H
 
+typedef struct out_val_list out_val_list;
+
 struct out_ctx
 {
 	out_blk *current_blk;
 
-	out_val *val_head, *val_tail;
+	struct out_val_list
+	{
+		out_val val;
+		struct out_val_list *next, *prev;
+	} *val_head, *val_tail;
 
 	int stack_sz, stack_local_offset, stack_variadic_offset;
 
