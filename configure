@@ -19,6 +19,7 @@ CTAGS       = ${TAG_CMD}
 #define UCC_INC     "${UCC_INC}"
 
 #define NEED_DSYM $NEED_DSYM
+#define CAN_PIPE $CAN_PIPE
 
 #define UCC_CPPFLAGS "${UCC_CPPFLAGS}"
 #define UCC_CFLAGS   "${UCC_CFLAGS}"
@@ -223,6 +224,15 @@ then
 fi
 
 UCC_LDFLAGS="$UCC_LDFLAGS $UCC_DYN"
+
+CAN_PIPE=1
+astest=/tmp/ucc.as.test.$$
+echo '.long 1' | "$UCC_AS" -o $astest.out
+if [ $? -ne 0 ]
+then CAN_PIPE=0
+fi
+rm -f $astest $astest.out
+
 
 case "$unam" in
 	Darwin)
