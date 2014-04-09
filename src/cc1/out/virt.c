@@ -39,11 +39,11 @@ out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
 
 	vp = v_to(octx, vp, TO_CONST | TO_REG);
 
-	out_val_retain(octx, store);
+	out_val_retain(octx, vp);
 
 	out_store(octx, store, vp);
 
-	return store;
+	return vp;
 }
 
 void v_reg_to_stack(
@@ -77,28 +77,17 @@ static int v_in(out_val *vp, enum vto to)
 	return 0;
 }
 
-static void v_save_reg(out_ctx *octx, out_val *vp)
+static out_val *v_save_reg(out_ctx *octx, out_val *vp)
 {
-	out_val *stacked;
-
 	assert(vp->type == V_REG && "not reg");
 
 	out_comment("register spill:");
 
 	v_alloc_stack(octx, type_size(vp->t, NULL), "save reg");
 
-	out_val_retain(octx, vp);
-
-	stacked = v_to_stack_mem(
+	return v_to_stack_mem(
 			octx, vp,
 			-octx->stack_sz);
-
-	if(vp != stacked){
-		out_val_overwrite(vp, stacked);
-		out_val_release(octx, stacked);
-	}else{
-		out_val_release(octx, vp);
-	}
 }
 
 out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc)
@@ -116,14 +105,13 @@ out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc)
 
 	if(loc & TO_MEM){
 		vp = v_to_reg(octx, vp);
-		v_save_reg(octx, vp);
-		return vp;
+		return v_save_reg(octx, vp);
 	}
 
 	assert(0 && "can't satisfy v_to");
 }
 
-static void v_freeup_regp(out_ctx *octx, out_val *vp)
+static ucc_wur out_val *v_freeup_regp(out_ctx *octx, out_val *vp)
 {
 	struct vreg r;
 	int got_reg;
@@ -140,9 +128,11 @@ static void v_freeup_regp(out_ctx *octx, out_val *vp)
 		/* change vp's register to 'r', so that vp's original register is free */
 		vp->bits.regoff.reg = r;
 
+		return vp;
+
 	}else{
 		/* no free registers, save this one to the stack and mutate vp */
-		v_save_reg(octx, vp);
+		return v_save_reg(octx, vp);
 		/* vp is now a stack value */
 	}
 }
@@ -165,7 +155,7 @@ void v_freeup_reg(out_ctx *octx, const struct vreg *r)
 	out_val *v = v_find_reg(octx, r);
 
 	if(v)
-		v_freeup_regp(octx, v);
+		out_val_consume(octx, v_freeup_regp(octx, v));
 }
 
 int v_unused_reg(
@@ -204,7 +194,7 @@ int v_unused_reg(
 		/* no free regs, move `first` to the stack and claim its reg */
 		*out = first->bits.regoff.reg;
 
-		v_freeup_regp(octx, first);
+		out_val_consume(octx, v_freeup_regp(octx, first));
 
 		return 1;
 	}
