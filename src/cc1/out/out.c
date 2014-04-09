@@ -877,6 +877,23 @@ size_t out_expr_stack(out_ctx *octx)
 	return retains;
 }
 
+void out_expr_stack_assert(out_ctx *octx, size_t prev)
+{
+	size_t now = out_expr_stack(octx);
+
+	if(now != prev){
+		ICW("values still retained (%ld)", (long)(now - prev));
+
+		for(out_val_list *l = octx->val_head; l; l = l->next){
+			if(l->val.retains)
+				fprintf(stderr, "retained %s { %d %d }\n",
+						v_store_to_str(l->val.type),
+						l->val.bits.regoff.reg.is_float,
+						l->val.bits.regoff.reg.idx);
+		}
+	}
+}
+
 void out_ctx_end(out_ctx *octx)
 {
 	/* TODO */
