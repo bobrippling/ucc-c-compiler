@@ -24,6 +24,7 @@
 #include "fold_sue.h"
 #include "format_chk.h"
 #include "type_is.h"
+#include "type_nav.h"
 
 int fold_had_error;
 
@@ -439,6 +440,12 @@ static void fold_func_attr(decl *d)
 
 	if((da = attribute_present(d, attr_format)))
 		format_check_decl(d, da);
+
+	if(type_is_void(type_called(d->ref, NULL))
+	&& (da = attribute_present(d, attr_warn_unused)))
+	{
+		warn_at(&d->where, "warn_unused attribute on function returning void");
+	}
 }
 
 static void fold_decl_add_sym(decl *d, symtable *stab)
