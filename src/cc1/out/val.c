@@ -128,6 +128,8 @@ out_val *v_dup_or_reuse(out_ctx *octx, out_val *from, type *ty)
 	}
 
 	assert(from->retains == 1);
+	memset(from, 0, sizeof *from);
+	from->retains = 1;
 	from->t = ty;
 	return from; /* reuse */
 }
