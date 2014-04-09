@@ -376,6 +376,7 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 		if(force_mask){
 			sp = out_op(octx, op_and, sp, out_new_l(octx, ty, align - 1));
 		}
+		out_val_release(octx, sp);
 		out_comment("stack aligned to %u bytes", align);
 		return added;
 	}
