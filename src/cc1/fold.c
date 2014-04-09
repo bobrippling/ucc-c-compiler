@@ -471,10 +471,8 @@ static void fold_decl_func(decl *d, symtable *stab)
 	 *   register int  *f();
 	 */
 	switch(d->store & STORE_MASK_STORE){
-		case store_typedef:
-			if(!d->bits.func.code)
-				break;
-
+		/* typedef handled elsewhere, since
+		 * we may fold before we have .func.code */
 		case store_register:
 		case store_auto:
 			fold_had_error = 1;
@@ -674,6 +672,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	 * an argument list/type::func: f(struct A { int i, j; } *p, ...)
 	 */
 	int just_init = 0;
+#define first_fold (!just_init)
 	switch(d->fold_state){
 		case DECL_FOLD_EXCEPT_INIT:
 			just_init = 1;
@@ -684,7 +683,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	}
 	d->fold_state = DECL_FOLD_EXCEPT_INIT;
 
-	if(!just_init){
+	if(first_fold){
 		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), stab, d->attr);
 
 		if(d->spel)
@@ -692,9 +691,10 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	}
 
 	if(type_is(d->ref, type_func)){
-		fold_decl_func(d, stab);
+		if(first_fold)
+			fold_decl_func(d, stab);
 	}else{
-		if(d->bits.var.field_width)
+		if(first_fold && d->bits.var.field_width)
 			fold_decl_var_fieldwidth(d, stab);
 
 		if(pinit_code
@@ -706,7 +706,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	}
 
 	/* name static decls */
-	if(!just_init
+	if(first_fold
 	&& stab->parent
 	&& (d->store & STORE_MASK_STORE) == store_static
 	&& d->spel
@@ -720,6 +720,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 				in_fn->spel,
 				d->spel);
 	}
+#undef first_fold
 }
 
 void fold_decl_global_init(decl *d, symtable *stab)

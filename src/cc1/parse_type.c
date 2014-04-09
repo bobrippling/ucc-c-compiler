@@ -1483,6 +1483,11 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		 * f(){...}, then we don't have args_void, but implicitly we do
 		 */
 		type_funcargs(d->ref)->args_void_implicit = 1;
+
+		if(d->store & store_typedef){
+			warn_at_print_error(&d->where, "typedef storage on function");
+			fold_had_error = 1;
+		}
 	}
 }
 
