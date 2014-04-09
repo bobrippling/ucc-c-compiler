@@ -886,10 +886,11 @@ void out_expr_stack_assert(out_ctx *octx, size_t prev)
 
 		for(out_val_list *l = octx->val_head; l; l = l->next){
 			if(l->val.retains)
-				fprintf(stderr, "retained %s { %d %d }\n",
+				fprintf(stderr, "retained %s { %d %d } %p\n",
 						v_store_to_str(l->val.type),
 						l->val.bits.regoff.reg.is_float,
-						l->val.bits.regoff.reg.idx);
+						l->val.bits.regoff.reg.idx,
+						&l->val);
 		}
 	}
 }
