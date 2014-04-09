@@ -806,7 +806,8 @@ lea:
 					vstack_str(from, 1),
 					x86_reg_str(reg, chosen_ty));
 
-			new_ty = type_pointed_to(from->t);
+			if(from->type == V_LBL)
+				new_ty = type_pointed_to(from->t);
 			break;
 		}
 
