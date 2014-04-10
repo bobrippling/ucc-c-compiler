@@ -58,26 +58,26 @@ void out_store(out_ctx *, out_val *dest, out_val *val);
 void out_flush_volatile(out_ctx *, out_val *);
 
 /* operators/comparisons */
-out_val *out_op(out_ctx *, enum op_type, out_val *lhs, out_val *rhs);
-out_val *out_op_unary(out_ctx *, enum op_type, out_val *);
+ucc_wur out_val *out_op(out_ctx *, enum op_type, out_val *lhs, out_val *rhs);
+ucc_wur out_val *out_op_unary(out_ctx *, enum op_type, out_val *);
 
-out_val *out_deref(out_ctx *, out_val *) ucc_wur;
+ucc_wur out_val *out_deref(out_ctx *, out_val *) ucc_wur;
 
-out_val *out_cast(out_ctx *, out_val *, type *to, int normalise_bool)
+ucc_wur out_val *out_cast(out_ctx *, out_val *, type *to, int normalise_bool)
 	ucc_nonnull((1)) ucc_wur;
 
-out_val *out_change_type(out_ctx *, out_val *, type *)
+ucc_wur out_val *out_change_type(out_ctx *, out_val *, type *)
 	ucc_nonnull((1)) ucc_wur;
 
 /* functions */
-out_val *out_call(out_ctx *,
+ucc_wur out_val *out_call(out_ctx *,
 		out_val *fn, out_val **args,
 		type *fnty)
 		ucc_nonnull((2, 3));
 
 
 /* control flow */
-out_blk *out_blk_new(const char *desc);
+ucc_wur out_blk *out_blk_new(const char *desc);
 void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
 
 void out_ctrl_end_undefined(out_ctx *);
@@ -93,7 +93,8 @@ void out_ctrl_branch(
 		out_val *cond,
 		out_blk *if_true, out_blk *if_false);
 
-out_val *out_ctrl_merge(out_ctx *, out_blk *, out_blk *); /* maybe ret null */
+/* maybe ret null */
+ucc_wur out_val *out_ctrl_merge(out_ctx *, out_blk *, out_blk *);
 
 
 /* function setup */
