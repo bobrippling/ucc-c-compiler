@@ -14,6 +14,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../funcargs.h"
+#include "../defs.h"
 
 #include "../cc1.h"
 
@@ -917,8 +918,8 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 
 			out_asm("ucomi%s %s, %s",
 					x86_suffix(l->t),
-					vstack_str_r(b1, l, 0),
-					vstack_str_r(b2, r, 0));
+					vstack_str_r(b1, r, 0),
+					vstack_str_r(b2, l, 0));
 
 			if(l != min_retained) out_val_consume(octx, l);
 			if(r != min_retained) out_val_consume(octx, r);
@@ -965,8 +966,8 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 
 			out_asm("%s%s %s, %s",
 					opc, x86_suffix(l->t),
-					vstack_str_r(b1, l, 0),
-					vstack_str_r(b2, r, 0));
+					vstack_str_r(b1, r, 0),
+					vstack_str_r(b2, l, 0));
 
 			out_val_consume(octx, l);
 			return v_dup_or_reuse(octx, r, l->t);
@@ -1159,8 +1160,8 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 
 				out_asm("cmp%s %s, %s",
 						x86_suffix(l->t), /* pick the non-const one (for type-ing) */
-						vstack_str(l, 0),
-						vstack_str_r(buf, r, 0));
+						vstack_str(r, 0),
+						vstack_str_r(buf, l, 0));
 			}
 
 			cmp = op_to_flag(op);
@@ -1194,23 +1195,60 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 	{
 		char buf[VSTACK_STR_SZ];
 
-		l = v_to(octx, l, TO_REG | TO_CONST | TO_MEM);
-		r = v_to(octx, r, TO_REG | TO_CONST | TO_MEM);
+		/* RHS    LHS
+		 * r/m += r/imm;
+		 * r   += m/imm;
+		 *
+		 * echo {r,m}/{r,imm}
+		 * echo r/{m,imm}
+		 */
+		static const struct
+		{
+			enum out_val_store l, r;
+		} ops[] = {
+			/* try in order of most 'difficult' -> least */
+			{ V_REG, V_CONST_I },
+			{ V_LBL, V_CONST_I },
+			{ V_REG_SAVE, V_CONST_I },
 
-		/* rhs is a constant - needs to be in a reg */
-		if(r->type != V_REG){
-			/* if the op is commutative, swap */
-			if(op_is_commutative(op)){
-				out_val *tmp = l;
-				l = r, r = tmp;
-			}else{
-				r = v_to_reg(octx, r);
+			{ V_REG, V_LBL },
+			{ V_LBL, V_REG },
+
+			{ V_REG_SAVE, V_REG },
+			{ V_REG, V_REG_SAVE },
+
+			{ V_REG, V_REG },
+		};
+		static const int ops_n = sizeof(ops) / sizeof(ops[0]);
+		int i, need_swap = 0, satisfied = 0;
+
+		for(i = 0; i < ops_n; i++){
+			if(l->type == ops[i].l
+			&& r->type == ops[i].r)
+			{
+				satisfied = 1;
+				break;
+			}
+
+			if(op_is_commutative(op)
+			&& r->type == ops[i].l
+			&& l->type == ops[i].r)
+			{
+				need_swap = satisfied = 1;
+				break;
 			}
 		}
 
-		/* if neither are registers, v_to_reg one */
-		if(l->type != V_REG && r->type != V_REG)
-			l = v_to_reg(octx, l);
+		if(need_swap){
+			SWAP(out_val *, l, r);
+		}else if(!satisfied){
+			/* try to keep rhs as const */
+			l = v_to(octx, l, TO_REG | TO_MEM);
+			r = v_to(octx, r, TO_REG | TO_MEM | TO_CONST);
+
+			if(V_IS_MEM(l->type) && V_IS_MEM(r->type))
+				r = v_to_reg(octx, r);
+		}
 
 		if(v_is_const_reg(l) || v_is_const_reg(r))
 			ICE("adjusting base pointer in op");
@@ -1232,8 +1270,8 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 			default:
 				out_asm("%s%s %s, %s", opc,
 						x86_suffix(l->t),
-						vstack_str_r(buf, l, 0),
-						vstack_str(r, 0));
+						vstack_str_r(buf, r, 0),
+						vstack_str(l, 0));
 		}
 
 		out_val_consume(octx, l);

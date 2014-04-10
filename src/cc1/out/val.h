@@ -15,6 +15,7 @@ struct out_val
 
 		V_CONST_F, /* constant float */
 		V_FLAG, /* cpu flag */
+#define V_IS_MEM(ty) ((ty) == V_REG_SAVE || (ty) == V_LBL)
 	} type;
 	unsigned retains;
 
