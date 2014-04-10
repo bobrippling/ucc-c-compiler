@@ -298,13 +298,15 @@ void v_save_regs(out_ctx *octx, type *func_ty, out_val *ignores[])
 
 void v_stack_adj(out_ctx *octx, unsigned amt, int sub)
 {
-	out_op(
-			octx, sub ? op_minus : op_plus,
-			out_new_l(
-				octx,
-				type_nav_btype(cc1_type_nav, type_intptr_t),
-				amt),
-			v_new_sp(octx, NULL));
+	out_val_consume(
+			octx,
+			out_op(
+				octx, sub ? op_minus : op_plus,
+				out_new_l(
+					octx,
+					type_nav_btype(cc1_type_nav, type_intptr_t),
+					amt),
+				v_new_sp(octx, NULL)));
 }
 
 unsigned v_alloc_stack2(
@@ -366,6 +368,8 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 		const unsigned added = new_sz - octx->stack_sz;
 		out_val *sp = v_new_sp(octx, NULL);
 
+		assert(sp->retains == 1);
+
 		sp = out_op(
 				octx, op_minus,
 				sp,
@@ -377,6 +381,7 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 			sp = out_op(octx, op_and, sp, out_new_l(octx, ty, align - 1));
 		}
 		out_val_release(octx, sp);
+		assert(sp->retains == 0);
 		out_comment("stack aligned to %u bytes", align);
 		return added;
 	}
