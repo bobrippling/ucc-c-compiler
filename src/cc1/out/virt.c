@@ -77,7 +77,7 @@ static int v_in(out_val *vp, enum vto to)
 	return 0;
 }
 
-static out_val *v_save_reg(out_ctx *octx, out_val *vp)
+static ucc_wur out_val *v_save_reg(out_ctx *octx, out_val *vp)
 {
 	assert(vp->type == V_REG && "not reg");
 
@@ -291,8 +291,11 @@ void v_save_regs(out_ctx *octx, type *func_ty, out_val *ignores[])
 				save = 1;
 		}
 
-		if(save)
-			v_save_reg(octx, v);
+		if(save){
+			out_val *new = v_save_reg(octx, v);
+			out_val_overwrite(v, new);
+			out_val_release(octx, new);
+		}
 	}
 }
 
