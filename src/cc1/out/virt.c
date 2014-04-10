@@ -39,11 +39,11 @@ out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
 
 	vp = v_to(octx, vp, TO_CONST | TO_REG);
 
-	out_val_retain(octx, vp);
+	out_val_retain(octx, store);
 
 	out_store(octx, store, vp);
 
-	return vp;
+	return store;
 }
 
 void v_reg_to_stack(
