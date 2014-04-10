@@ -920,8 +920,8 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 					vstack_str_r(b1, l, 0),
 					vstack_str_r(b2, r, 0));
 
-			out_val_consume(octx, l);
-			out_val_consume(octx, r);
+			if(l != min_retained) out_val_consume(octx, l);
+			if(r != min_retained) out_val_consume(octx, r);
 
 			/* not flag_mod_signed - we want seta, not setgt */
 			return v_new_flag(
@@ -1175,8 +1175,8 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 				cmp = v_inv_cmp(cmp, /*invert_eq:*/0);
 			}
 
-			out_val_consume(octx, l);
-			out_val_consume(octx, r);
+			if(l != min_retained) out_val_consume(octx, l);
+			if(r != min_retained) out_val_consume(octx, r);
 
 			return v_new_flag(
 					octx, min_retained,
