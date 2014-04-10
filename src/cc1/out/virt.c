@@ -302,11 +302,11 @@ void v_stack_adj(out_ctx *octx, unsigned amt, int sub)
 			octx,
 			out_op(
 				octx, sub ? op_minus : op_plus,
+				v_new_sp(octx, NULL),
 				out_new_l(
 					octx,
 					type_nav_btype(cc1_type_nav, type_intptr_t),
-					amt),
-				v_new_sp(octx, NULL)));
+					amt)));
 }
 
 unsigned v_alloc_stack2(
