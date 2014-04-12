@@ -179,7 +179,7 @@ iter_lines(
 				$missing_warning = 1;
 				warn "$check->{line}"
 				. ($check->{above} ? " ^" : "")
-				. ": check $match "
+				. ": check \"$match\" "
 				. ($rev ? "" : "not ")
 				. "found"
 				. "\n"
