@@ -32,5 +32,26 @@ int main()
 		DIE();
 	}
 
+	if(strcmp(canonicalise_path(ustrdup("../")), "../"))
+		DIE();
+
+	if(strcmp(canonicalise_path(ustrdup("..")), ".."))
+		DIE();
+
+	if(strcmp(canonicalise_path(ustrdup("./..")), ".."))
+		DIE();
+
+	if(strcmp(canonicalise_path(ustrdup("../..")), "../.."))
+		DIE();
+
+	if(strcmp(canonicalise_path(ustrdup("./../../")), "../../"))
+		DIE();
+
+	if(strcmp(canonicalise_path(ustrdup("../../hi")), "../../hi"))
+		DIE();
+
+	if(strcmp(canonicalise_path(ustrdup("hi/../../")), "../"))
+		DIE();
+
 	return 0;
 }
