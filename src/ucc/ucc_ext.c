@@ -170,10 +170,13 @@ static void runner(int local, char *path, char **args)
 			if(wait(&status) == -1)
 				die("wait()");
 
-			if(WIFEXITED(status) && (i = WEXITSTATUS(status)) != 0)
+			if(WIFEXITED(status) && (i = WEXITSTATUS(status)) != 0){
 				die("%s returned %d", path, i);
-			else if(WIFSIGNALED(status))
-				die("%s caught signal %d", path, WTERMSIG(status));
+			}else if(WIFSIGNALED(status)){
+				fprintf(stderr, "%s caught signal %d\n", path, WTERMSIG(status));
+				/* exit with abort status */
+				exit(134);
+			}
 		}
 	}
 }
