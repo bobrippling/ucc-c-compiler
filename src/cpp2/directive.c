@@ -9,6 +9,7 @@
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
+#include "../util/path.h"
 
 #include "directive.h"
 #include "tokenise.h"
@@ -268,6 +269,8 @@ static void handle_include(token **tokens)
 	}
 
 	/* successfully opened */
+	canonicalise_path(final_path);
+
 	if(!is_lib)
 		deps_add(final_path);
 

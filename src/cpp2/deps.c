@@ -4,6 +4,7 @@
 
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
+#include "../util/path.h"
 
 #include "deps.h"
 
