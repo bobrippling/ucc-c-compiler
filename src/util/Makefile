@@ -7,7 +7,7 @@ SRC = $(OBJ:.o=.c)
 
 BUILD_CC = ${CC} ${CFLAGS} -c -o $@ $<
 
-all: ${OBJ}
+all: ${OBJ} check
 
 alloc.o: alloc.c
 	${BUILD_CC}
@@ -37,13 +37,20 @@ dynmap.o: dynmap.c
 
 deps: Makefile.dep
 
+OBJ_TEST = test.o path.o dynarray.o alloc.o
+test: ${OBJ_TEST}
+	${CC} -o $@ ${OBJ_TEST}
+
+check: test
+	./test
+
 Makefile.deps:
 	cc -MM ${SRC} > $@
 
 clean:
 	rm -f *.o
 
-.PHONY: all clean
+.PHONY: all clean check
 
 platform.o: platform.c ../../config.mk
 
