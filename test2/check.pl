@@ -152,13 +152,13 @@ iter_lines(
 			my $rev = 0;
 
 			my($search, $is_regex);
-			if($match =~ m#^(!)?/(.*)/$#){
+			if($match =~ m#^ *(!)? */(.*)/$#){
 				$rev = defined $1;
 				$search = $2;
 				$is_regex = 1;
-			}elsif($match =~ m#^ *(.*) *$#){
-				$rev = 0;
-				$search = $1;
+			}elsif($match =~ m#^ *(!)? *(.*) *$#){
+				$rev = defined $1;
+				$search = $2;
 				$is_regex = 0;
 			}else{
 				die2 "invalid CHECK (line $check->{line}): '$match'"
