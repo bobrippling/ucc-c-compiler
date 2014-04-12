@@ -106,7 +106,7 @@ fold.o: fold.c defs.h ../util/util.h ../util/warn.h ../util/where.h \
  ops/expr_val.h ops/expr_stmt.h ops/expr_deref.h ops/expr_struct.h \
  ops/expr_compound_lit.h ops/expr_string.h funcargs.h fold_sym.h \
  ../util/platform.h ../util/alloc.h ../util/dynarray.h sue.h decl_init.h \
- pack.h out/lbl.h fold_sue.h format_chk.h type_is.h
+ pack.h out/lbl.h fold_sue.h format_chk.h type_is.h type_nav.h
 fold_sue.o: fold_sue.c ../util/util.h ../util/warn.h ../util/where.h \
  ../util/compiler.h ../util/where.h cc1.h ../util/std.h fold.h decl.h \
  type.h num.h btype.h attribute.h retain.h sym.h ../util/dynmap.h \
