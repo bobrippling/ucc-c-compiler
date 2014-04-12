@@ -20,7 +20,7 @@ cpp: ${OBJ}
 clean:
 	rm -f *.o cpp
 
-.PHONY: clean
+.PHONY: clean deps
 
 deps: Makefile.dep
 
