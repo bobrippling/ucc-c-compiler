@@ -384,8 +384,7 @@ void fold_type_w_attr(
 
 		case type_block:
 			if(!type_is(r->ref, type_func)){
-				fold_had_error = 1;
-				warn_at_print_error(loc,
+				die_at(loc,
 						"invalid block pointer - function required (got %s)",
 						type_to_str(r->ref));
 			}
