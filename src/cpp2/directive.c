@@ -19,6 +19,7 @@
 #include "str.h"
 #include "eval.h"
 #include "expr.h"
+#include "deps.h"
 
 #define SINGLE_TOKEN(...) \
 	tokens = tokens_skip_whitespace(tokens);                        \
@@ -265,6 +266,10 @@ static void handle_include(token **tokens)
 					"\"<"[is_lib], fname, "\">"[is_lib]);
 		}
 	}
+
+	/* successfully opened */
+	if(!is_lib)
+		deps_add(final_path);
 
 	preproc_push(f, final_path);
 	dirname_push(udirname(final_path));

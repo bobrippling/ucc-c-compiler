@@ -19,6 +19,7 @@
 #include "preproc.h"
 #include "include.h"
 #include "directive.h"
+#include "deps.h"
 
 #define FNAME_BUILTIN "<builtin>"
 #define FNAME_CMDLINE "<command-line>"
@@ -180,7 +181,7 @@ int main(int argc, char **argv)
 {
 	char *infname, *outfname;
 	int ret = 0;
-	enum { NONE, MACROS, STATS } dump = NONE;
+	enum { NONE, MACROS, STATS, DEPS } dump = NONE;
 	int i;
 	int platform_win32 = 0;
 	int freestanding = 0;
@@ -267,8 +268,8 @@ int main(int argc, char **argv)
 
 			case 'M':
 				if(!strcmp(argv[i] + 2, "M")){
-					fprintf(stderr, "TODO\n");
-					return 1;
+					dump = DEPS;
+					no_output = 1;
 				}else{
 					goto usage;
 				}
@@ -443,6 +444,9 @@ defaul:
 			break;
 		case STATS:
 			macros_stats();
+			break;
+		case DEPS:
+			deps_dump(infname);
 			break;
 	}
 
