@@ -35,6 +35,7 @@ struct
 	enum mode assume;
 	int nostdlib;
 	int nostartfiles;
+	int pipe;
 } gopts;
 
 
@@ -549,6 +550,8 @@ word:
 						ADD_ARG(mode_compile);
 						ADD_ARG(mode_preproc);
 					}
+					else if(!strcmp(argv[i], "-pipe"))
+						gopts.pipe = 1;
 					else if(!strcmp(argv[i], "-nostdlib"))
 						gopts.nostdlib = 1;
 					else if(!strcmp(argv[i], "-nostartfiles"))
