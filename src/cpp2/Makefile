@@ -10,6 +10,7 @@ OBJ = preproc.o main.o macro.o str.o \
       ../util/platform.o             \
       ../util/where.o ../util/str.o  \
       ../util/dynarray.o             \
+      ../util/dynmap.o               \
       ../util/std.o                  \
       ../util/escape.o               \
       ../util/warn.o                 \

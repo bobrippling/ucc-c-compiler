@@ -2,17 +2,26 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "../util/dynarray.h"
+#include "../util/dynmap.h"
 #include "../util/alloc.h"
 #include "../util/path.h"
 
 #include "deps.h"
 
-static char **deps;
+static dynmap *depset;
 
 void deps_add(const char *d)
 {
-	dynarray_add(&deps, ustrdup(d));
+	if(dynmap_exists(char *, depset, (char *)d))
+		return;
+
+	if(!depset)
+		depset = dynmap_new((dynmap_cmp_f *)strcmp);
+
+	dynmap_set(
+			char *, void *,
+			depset,
+			/* not lost: */ustrdup(d), NULL);
 }
 
 void deps_dump(const char *file)
@@ -20,7 +29,8 @@ void deps_dump(const char *file)
 	/* replace ext if present, otherwise tac ".o" on */
 	const char *basename = strrchr(file, '/');
 	const char *ext;
-	char *obj, **i;
+	char *obj;
+	size_t i;
 
 	if(!basename)
 		basename = file;
@@ -42,10 +52,9 @@ void deps_dump(const char *file)
 	}
 
 	printf("%s: %s", obj, file);
-
-	for(i = deps; i && *i; i++)
-		printf(" %s", *i);
-	putchar('\n');
-
 	free(obj);
+
+	for(i = 0; (obj = dynmap_key(char *, depset, i)); i++)
+		printf(" %s", obj);
+	putchar('\n');
 }
