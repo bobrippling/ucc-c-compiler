@@ -219,7 +219,7 @@ type *op_required_promotion(
 		/* cast _to_ the floating type */
 		type *res = floating_lhs ? (*prhs = tlhs) : (*plhs = trhs);
 
-		resolved = op_is_comparison(op)
+		resolved = op_returns_bool(op)
 			? type_nav_btype(cc1_type_nav, BOOLEAN_TYPE)
 			: res;
 
