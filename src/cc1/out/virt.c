@@ -43,6 +43,9 @@ out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
 
 	out_store(octx, store, vp);
 
+	store->type = V_REG_SPILT;
+	store->t = type_ptr_to(store->t);
+
 	return store;
 }
 
