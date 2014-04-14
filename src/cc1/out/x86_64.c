@@ -250,7 +250,7 @@ static const char *vstack_str_r(
 		}
 
 		case V_REG:
-		case V_REG_SAVE:
+		case V_REG_SPILT:
 		{
 			long off = vs->bits.regoff.offset;
 			const char *rstr = x86_reg_str(
@@ -771,8 +771,8 @@ out_val *impl_load(out_ctx *octx, out_val *from, const struct vreg *reg)
 			break;
 		}
 
-		case V_REG_SAVE:
-			/* v_reg_save loads are actually pointers to T */
+		case V_REG_SPILT:
+			/* actually a pointer to T */
 			return impl_deref(octx, from, reg);
 
 		case V_REG:
@@ -840,7 +840,7 @@ void impl_store(out_ctx *octx, out_val *to, out_val *from)
 		case V_CONST_F:
 			ICE("invalid store lvalue 0x%x", to->type);
 
-		case V_REG_SAVE:
+		case V_REG_SPILT:
 			/* need to load the store value from memory
 			 * aka. double indir */
 			to = v_to_reg(octx, to);
@@ -1209,13 +1209,13 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 			/* try in order of most 'difficult' -> least */
 			{ V_REG, V_CONST_I },
 			{ V_LBL, V_CONST_I },
-			{ V_REG_SAVE, V_CONST_I },
+			{ V_REG_SPILT, V_CONST_I },
 
 			{ V_REG, V_LBL },
 			{ V_LBL, V_REG },
 
-			{ V_REG_SAVE, V_REG },
-			{ V_REG, V_REG_SAVE },
+			{ V_REG_SPILT, V_REG },
+			{ V_REG, V_REG_SPILT },
 
 			{ V_REG, V_REG },
 		};
@@ -1385,7 +1385,7 @@ out_val *impl_cast_load(
 			vstack_str_r(buf_small, vp, 1);
 			break;
 
-		case V_REG_SAVE:
+		case V_REG_SPILT:
 		case V_FLAG:
 			vp = v_to_reg(octx, vp);
 		case V_REG:
@@ -1442,7 +1442,7 @@ static void x86_fp_conv(
 			 * see if we need to do 64 or 32 bit
 			 */
 			int_ty ? type_size(int_ty, NULL) == 8 ? "q" : "l" : "",
-			vstack_str_r(vbuf, vp, vp->type == V_REG_SAVE),
+			vstack_str_r(vbuf, vp, vp->type == V_REG_SPILT),
 			x86_reg_str(r, tto));
 }
 
@@ -1539,7 +1539,7 @@ static const char *x86_call_jmp_target(
 			snprintf(buf, sizeof buf, "*%s", vstack_str((*pvp), 1));
 			return buf;
 
-		case V_REG_SAVE: /* load, then jmp */
+		case V_REG_SPILT: /* load, then jmp */
 		case V_REG: /* jmp *%rax */
 			/* TODO: v_to_reg_given() ? */
 			*pvp = v_to_reg(octx, *pvp);

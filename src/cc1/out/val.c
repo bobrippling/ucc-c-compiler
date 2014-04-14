@@ -26,7 +26,7 @@ const char *v_store_to_str(enum out_val_store store)
 	switch(store){
 		CASE_STR(V_CONST_I);
 		CASE_STR(V_REG);
-		CASE_STR(V_REG_SAVE);
+		CASE_STR(V_REG_SPILT);
 		CASE_STR(V_LBL);
 		CASE_STR(V_CONST_F);
 		CASE_STR(V_FLAG);
@@ -88,7 +88,7 @@ copy:
 			from = v_to_reg(octx, from);
 		}
 
-		case V_REG_SAVE:
+		case V_REG_SPILT:
 		case V_REG:
 		{
 			struct vreg r;

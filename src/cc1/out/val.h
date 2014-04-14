@@ -10,12 +10,12 @@ struct out_val
 		V_CONST_I, /* constant integer */
 
 		V_REG, /* value in a register, possibly offset */
-		V_REG_SAVE, /* value in memory pointed to by register */
+		V_REG_SPILT, /* value in memory pointed to by register */
 		V_LBL, /* value at a memory address */
 
 		V_CONST_F, /* constant float */
 		V_FLAG, /* cpu flag */
-#define V_IS_MEM(ty) ((ty) == V_REG_SAVE || (ty) == V_LBL)
+#define V_IS_MEM(ty) ((ty) == V_REG_SPILT || (ty) == V_LBL)
 	} type;
 	unsigned retains;
 

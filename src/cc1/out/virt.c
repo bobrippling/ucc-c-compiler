@@ -69,7 +69,7 @@ static int v_in(out_val *vp, enum vto to)
 		case V_REG:
 			return (to & TO_REG) && vp->bits.regoff.offset == 0;
 
-		case V_REG_SAVE:
+		case V_REG_SPILT:
 		case V_LBL:
 			return !!(to & TO_MEM);
 	}
@@ -257,7 +257,7 @@ void v_save_regs(out_ctx *octx, type *func_ty, out_val *ignores[])
 			continue;
 
 		switch(v->type){
-			case V_REG_SAVE:
+			case V_REG_SPILT:
 			case V_REG:
 				if(val_present(v, ignores)){
 					/* don't save */
