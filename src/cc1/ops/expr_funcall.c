@@ -179,7 +179,8 @@ static void check_arg_counts(
 		if(count_decl != count_arg
 		&& (args_from_decl->variadic ? count_arg < count_decl : 1))
 		{
-			die_at(loc, "too %s arguments to function %s (got %d, need %d)",
+			(args_from_decl->args_old_proto ? warn_at : die_at)(
+					loc, "too %s arguments to function %s (got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
 					sp, count_arg, count_decl);
 		}
@@ -220,18 +221,10 @@ static void check_arg_voidness_and_nonnulls(
 }
 
 static void check_arg_types(
-		funcargs *args_from_decl, unsigned count_decl,
+		funcargs *args_from_decl,
 		expr **exprargs, symtable *stab,
-		where *loc, char *sp)
+		char *sp)
 {
-	unsigned count_arg  = dynarray_count(exprargs);
-
-	if(count_decl != count_arg && (args_from_decl->variadic ? count_arg < count_decl : 1)){
-		die_at(loc, "too %s arguments to function %s (got %d, need %d)",
-				count_arg > count_decl ? "many" : "few",
-				sp, count_arg, count_decl);
-	}
-
 	if(exprargs){
 		int i;
 		char buf[64];
@@ -304,12 +297,8 @@ void fold_expr_funcall(expr *e, symtable *stab)
 				e->funcargs, sp);
 	}
 
-	if(args_from_decl->arglist || args_from_decl->args_void){
-		check_arg_types(
-				args_from_decl, count_decl,
-				e->funcargs, stab,
-				&e->where, sp);
-	}
+	if(args_from_decl->arglist || args_from_decl->args_void)
+		check_arg_types(args_from_decl, e->funcargs, stab, sp);
 
 	if(e->funcargs)
 		default_promote_args(e->funcargs, count_decl, stab);

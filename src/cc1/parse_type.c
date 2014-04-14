@@ -663,8 +663,12 @@ funcargs *parse_func_arglist(symtable *scope)
 {
 	funcargs *args = funcargs_new();
 
-	if(curtok == token_close_paren)
+	if(curtok == token_close_paren){
+		args->args_old_proto = 1;
+		cc1_warn_at(NULL, 0, WARN_IMPLICIT_OLD_FUNC,
+				"old-style function declaration (needs \"(void)\")");
 		goto empty_func;
+	}
 
 	/* we allow default-to-int here, but need to make
 	 * sure we also handle old functions.
@@ -1228,7 +1232,8 @@ decl *parse_decl(
 static int is_old_func(decl *d)
 {
 	type *r = type_is(d->ref, type_func);
-	return r && r->bits.func.args->args_old_proto;
+	/* don't treat int f(); as an old function */
+	return r && r->bits.func.args->args_old_proto && r->bits.func.args->arglist;
 }
 
 static void check_and_replace_old_func(decl *d, decl **old_args)

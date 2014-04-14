@@ -165,6 +165,7 @@ enum warning warn_mode = ~(
 		| WARN_PAD
 		| WARN_TENATIVE_INIT
 		| WARN_SHADOW_GLOBAL
+		| WARN_IMPLICIT_OLD_FUNC
 		);
 
 enum fopt fopt_mode = FOPT_CONST_FOLD

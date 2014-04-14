@@ -41,6 +41,8 @@ enum warning
 	WARN_SHADOW_LOCAL             = 1 << 28,
 	WARN_SHADOW_GLOBAL            = 1 << 29,
 
+	WARN_IMPLICIT_OLD_FUNC        = 1 << 30, /* int f(); */
+
 	/* TODO */
 	/*
 	WARN_FORMAT                   = 1 << 23,
