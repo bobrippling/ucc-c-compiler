@@ -48,9 +48,9 @@
  * variadic logic is in impl_func_prologue_save_variadic
  */
 
-void out_dbg_label(const char *lbl)
+void out_dbg_label(out_ctx *octx, const char *lbl)
 {
-	impl_lbl(lbl);
+	impl_lbl(octx, lbl);
 }
 
 out_ctx *out_ctx_new(void)

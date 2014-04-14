@@ -44,7 +44,7 @@ struct out_blk
 };
 
 void blk_terminate_condjmp(
-		out_ctx *, out_blk *,
+		out_ctx *,
 		char *condinsn, out_blk *condto,
 		char *uncondjmp, out_blk *uncondto);
 

@@ -124,7 +124,7 @@ void gen_block_decls(
 		stab->lbl_begin = out_label_code("dbg_begin");
 		stab->lbl_end = out_label_code("dbg_end");
 
-		out_dbg_label(stab->lbl_begin);
+		out_dbg_label(octx, stab->lbl_begin);
 		*dbg_end_lbl = stab->lbl_end;
 	}else{
 		*dbg_end_lbl = NULL;
@@ -166,7 +166,7 @@ void gen_stmt_code_m1(stmt *s, int m1, out_ctx *octx)
 	}
 
 	if(endlbl)
-		out_dbg_label(endlbl);
+		out_dbg_label(octx, endlbl);
 }
 
 void gen_stmt_code(stmt *s, out_ctx *octx)

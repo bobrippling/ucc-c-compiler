@@ -16,7 +16,7 @@ out_val *impl_deref(
 		out_ctx *octx, out_val *vp,
 		/*maybe null:*/const struct vreg *reg);
 
-void impl_branch(out_val *, out_blk *bt, out_blk *bf);
+void impl_branch(out_ctx *, out_val *, out_blk *bt, out_blk *bf);
 
 out_val *impl_i2f(out_ctx *octx, out_val *, type *t_i, type *t_f);
 out_val *impl_f2i(out_ctx *octx, out_val *, type *t_f, type *t_i);
@@ -36,7 +36,7 @@ out_val *impl_call(
 
 void impl_return(out_ctx *, out_val *, type *retty);
 
-void impl_func_prologue_save_fp(void);
+void impl_func_prologue_save_fp(out_ctx *octx);
 void impl_func_prologue_save_call_regs(
 		out_ctx *,
 		type *rf, unsigned nargs,
@@ -58,8 +58,8 @@ int impl_reg_savable(const struct vreg *);
 /* callee save register bools */
 int impl_reg_is_callee_save(const struct vreg *r, type *fr);
 
-void impl_comment(enum section_type, const char *fmt, va_list l);
-void impl_lbl(const char *lbl);
+void impl_comment(out_ctx *, enum section_type, const char *fmt, va_list l);
+void impl_lbl(out_ctx *, const char *lbl);
 
 enum flag_cmp op_to_flag(enum op_type op);
 const char *flag_cmp_to_str(enum flag_cmp);

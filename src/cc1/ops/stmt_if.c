@@ -58,12 +58,12 @@ void flow_gen(
 	}
 }
 
-void flow_end(const char *endlbls[2])
+void flow_end(const char *endlbls[2], out_ctx *octx)
 {
 	int i;
 	for(i = 0; i < 2; i++)
 		if(endlbls[i])
-			out_dbg_label(endlbls[i]);
+			out_dbg_label(octx, endlbls[i]);
 }
 
 void fold_stmt_if(stmt *s)
@@ -102,7 +102,7 @@ void gen_stmt_if(stmt *s, out_ctx *octx)
 	}
 
 	out_current_blk(octx, blk_fi);
-	flow_end(el);
+	flow_end(el, octx);
 }
 
 void style_stmt_if(stmt *s, out_ctx *octx)

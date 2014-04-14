@@ -14,16 +14,17 @@
 #include "../cc1.h" /* cc_out */
 #include "../str.h" /* str_add_escape */
 
-static void out_dbg_flush(void);
+static void out_dbg_flush(out_ctx *);
 
 
 void out_asmv(
+		out_ctx *octx,
 		enum section_type sec, enum p_opts opts,
 		const char *fmt, va_list l)
 {
 	FILE *f = cc_out[sec];
 
-	out_dbg_flush();
+	out_dbg_flush(octx);
 
 	if((opts & P_NO_INDENT) == 0)
 		fputc('\t', f);
@@ -34,21 +35,22 @@ void out_asmv(
 		fputc('\n', f);
 }
 
-void out_asm(const char *fmt, ...)
+void out_asm(out_ctx *octx, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(SECTION_TEXT, 0, fmt, l);
+	out_asmv(octx, SECTION_TEXT, 0, fmt, l);
 	va_end(l);
 }
 
 void out_asm2(
+		out_ctx *octx,
 		enum section_type sec, enum p_opts opts,
 		const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(sec, opts, fmt, l);
+	out_asmv(octx, sec, opts, fmt, l);
 	va_end(l);
 }
 
@@ -83,7 +85,7 @@ int dbg_add_file(const char *nam, int *new)
 	return i;
 }
 
-static void out_dbg_flush()
+static void out_dbg_flush(out_ctx *octx)
 {
 	/* .file <fileidx> "<name>"
 	 * .loc <fileidx> <line> <col>
@@ -104,11 +106,11 @@ static void out_dbg_flush()
 	/* TODO: escape w->fname */
 	if(new){
 		char *esc = str_add_escape(dbg_where.fname, strlen(dbg_where.fname));
-		out_asm(".file %d \"%s\"", idx, esc);
+		out_asm(octx, ".file %d \"%s\"", idx, esc);
 		free(esc);
 	}
 
-	out_asm(".loc %d %d %d",
+	out_asm(octx, ".loc %d %d %d",
 			idx,
 			dbg_where.line,
 			dbg_where.chr,

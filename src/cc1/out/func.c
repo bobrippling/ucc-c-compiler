@@ -37,9 +37,9 @@ void out_func_prologue(
 {
 	assert(octx->stack_sz == 0 && "non-empty stack for new func");
 
-	impl_lbl(sp);
+	impl_lbl(octx, sp);
 
-	impl_func_prologue_save_fp();
+	impl_func_prologue_save_fp(octx);
 
 	if(mopt_mode & MOPT_STACK_REALIGN)
 		v_stack_align(octx, cc1_mstack_align, 1);

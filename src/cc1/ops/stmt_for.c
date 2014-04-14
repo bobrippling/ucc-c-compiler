@@ -63,7 +63,7 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 	}
 
 	out_current_blk(octx, blk_end);
-	flow_end(el);
+	flow_end(el, octx);
 }
 
 void style_stmt_for(stmt *s, out_ctx *octx)
