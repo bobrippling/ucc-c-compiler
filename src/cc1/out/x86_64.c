@@ -365,15 +365,6 @@ int impl_reg_savable(const struct vreg *r)
 	return 1;
 }
 
-#if 0
-unsigned impl_n_call_regs(type *rf)
-{
-	unsigned n;
-	x86_call_regs(rf, &n, NULL);
-	return n;
-}
-#endif
-
 void impl_func_prologue_save_fp(void)
 {
 	out_asm("pushq %%rbp");
@@ -861,26 +852,6 @@ void impl_store(out_ctx *octx, out_val *to, out_val *from)
 	out_val_consume(octx, to);
 }
 
-#if 0
-void impl_reg_swp(out_val *a, out_val *b)
-{
-	struct vreg tmp;
-
-	UCC_ASSERT(
-			a->type == b->type
-			&& a->type == V_REG,
-			"%s without regs (%d and %d)", __func__,
-			a->type, b->type);
-
-	out_asm("xchg %%%s, %%%s",
-			reg_str(a), reg_str(b));
-
-	tmp = a->bits.regoff.reg;
-	a->bits.regoff.reg = b->bits.regoff.reg;
-	b->bits.regoff.reg = tmp;
-}
-#endif
-
 void impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *to_reg)
 {
 	char buf_v[VSTACK_STR_SZ];
@@ -1345,24 +1316,6 @@ out_val *impl_op_unary(out_ctx *octx, enum op_type op, out_val *val)
 
 	return v_dup_or_reuse(octx, val, val->t);
 }
-
-#if 0
-void impl_change_type(type *t)
-{
-	vtop->t = t;
-
-	/* we can't change type for large integer values,
-	 * they need truncating
-	 */
-	if(vtop->type == V_CONST_I){
-		UCC_ASSERT(
-				integral_high_bit_ABS(vtop->bits.val_i, vtop->t) < AS_MAX_MOV_BIT,
-				"can't %s for large constant %" NUMERIC_FMT_X,
-				__func__,
-				vtop->bits.val_i);
-	}
-}
-#endif
 
 out_val *impl_cast_load(
 		out_ctx *octx, out_val *vp,
