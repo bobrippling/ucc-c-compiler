@@ -7,7 +7,8 @@ DIRS =                        \
 	other/                      \
 	structs/                    \
 	type_parsing/               \
-	cpp-depgen/
+	cpp-depgen/                 \
+	cpp-depwrap/
 
 MAKEFILES = ${DIRS:/=/Makefile}
 
