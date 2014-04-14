@@ -6,7 +6,8 @@ DIRS =                        \
 	inline/                     \
 	other/                      \
 	structs/                    \
-	type_parsing/
+	type_parsing/               \
+	cpp-depgen/
 
 MAKEFILES = ${DIRS:/=/Makefile}
 
