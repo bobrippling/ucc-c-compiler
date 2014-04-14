@@ -62,15 +62,15 @@ char *dynarray_nochk_pop(void ***par)
 {
 	void **ar = *par;
 	void *r;
-	int i;
+	int n;
 
-	i = dynarray_nochk_count(ar) - 1;
-	r = ar[i];
-	ar[i] = NULL;
+	n = dynarray_nochk_count(ar);
+	UCC_ASSERT(n > 0, "dynarray_nochk_pop(): empty array");
 
-	UCC_ASSERT(r, "dynarray_nochk_pop(): empty array");
+	r = ar[n - 1];
+	ar[n - 1] = NULL;
 
-	if(i == 0){
+	if(n == 1){
 		free(ar);
 		*par = NULL;
 	}

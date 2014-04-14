@@ -68,12 +68,20 @@ dynmap_nochk_get(dynmap *map, void *key)
 	return NULL;
 }
 
+int dynmap_nochk_exists(dynmap *map, void *key)
+{
+	if(!map)
+		return 0;
+
+	return !!dynmap_nochk_pair(map, key);
+}
+
 void
 dynmap_nochk_set(dynmap *map, void *key, void *val)
 {
 	pair *p;
 
-	assert(key && val && "null key/val");
+	assert(key && "null dynmap key");
 
 	p = dynmap_nochk_pair(map, key);
 

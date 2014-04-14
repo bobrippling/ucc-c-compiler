@@ -457,6 +457,9 @@ int main(int argc, char **argv)
 				case 'P':
 arg_cpp:
 					ADD_ARG(mode_preproc);
+					if(!strcmp(argv[i] + 1, "MM"))
+						mode = mode_preproc; /* cc -MM *.c stops after preproc */
+
 					if(found){
 						if(!arg[2]){
 							/* allow a space, e.g. "-D" "arg" */
