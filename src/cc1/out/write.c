@@ -3,13 +3,20 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "../../util/dynarray.h"
 #include "../../util/where.h"
 #include "../../util/alloc.h"
+
+#include "../type.h"
+#include "../num.h"
 
 #include "asm.h"
 #include "write.h"
 #include "dbg.h"
 #include "lbl.h"
+#include "val.h"
+#include "ctx.h"
+#include "blk.h"
 
 #include "../cc1.h" /* cc_out */
 #include "../str.h" /* str_add_escape */
@@ -22,17 +29,27 @@ void out_asmv(
 		enum section_type sec, enum p_opts opts,
 		const char *fmt, va_list l)
 {
-	FILE *f = cc_out[sec];
+	char *insn;
 
 	out_dbg_flush(octx);
 
-	if((opts & P_NO_INDENT) == 0)
-		fputc('\t', f);
+	insn = ustrvprintf(fmt, l);
 
-	vfprintf(f, fmt, l);
+	if((opts & P_NO_INDENT) == 0
+	|| (opts & P_NO_NL) == 0)
+	{
+		char *new = ustrprintf(
+				"%s%s%s",
+				(opts & P_NO_INDENT) == 0 ? "\t" : "",
+				insn,
+				(opts & P_NO_NL) == 0 ? "\n" : "");
 
-	if((opts & P_NO_NL) == 0)
-		fputc('\n', f);
+		free(insn);
+
+		insn = new;
+	}
+
+	dynarray_add(&octx->current_blk->insns, insn);
 }
 
 void out_asm(out_ctx *octx, const char *fmt, ...)

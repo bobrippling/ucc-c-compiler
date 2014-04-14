@@ -8,6 +8,8 @@ struct out_blk
 	out_ctx *octx;
 	const char *desc;
 
+	char **insns;
+
 	char *lbl;
 	out_val *phi_val;
 
