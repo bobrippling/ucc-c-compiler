@@ -73,7 +73,7 @@ dynmap_nochk_set(dynmap *map, void *key, void *val)
 {
 	pair *p;
 
-	assert(key && val && "null key/val");
+	assert(key && "null dynmap key");
 
 	p = dynmap_nochk_pair(map, key);
 
