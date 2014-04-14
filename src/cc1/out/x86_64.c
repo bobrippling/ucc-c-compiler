@@ -1527,6 +1527,17 @@ void impl_jmp(void)
 void impl_branch(out_ctx *octx, out_val *cond, out_blk *bt, out_blk *bf)
 {
 	switch(cond->type){
+		case V_REG:
+		{
+			out_asm(octx, "cmp $0, %s ### for example", vstack_str(cond, 0));
+
+			char *cmp0 = ustrprintf("je %s", bt->lbl);
+			char *els = ustrprintf("jmp %s", bf->lbl);
+
+			blk_terminate_condjmp(octx, cmp0, bt, els, bf);
+			break;
+		}
+
 		case V_FLAG:
 		{
 			char *cmpjmp = ustrprintf(

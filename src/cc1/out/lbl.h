@@ -16,6 +16,8 @@ enum out_label_store
 	STORE_FLOAT
 };
 
+char *out_label_bblock(unsigned long n);
+
 char *out_label_code(const char *fmt);
 char *out_label_data_store(enum out_label_store ty);
 char *out_label_static_local(const char *funcsp, const char *spel);

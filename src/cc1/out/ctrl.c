@@ -57,10 +57,13 @@ void out_current_blk(out_ctx *octx, out_blk *new_blk)
 
 	register_block(octx, new_blk);
 
-	assert(!cur->next.bits.blk);
+	if(cur && cur->next.type == BLK_NEXT_NONE){
+		/* implicit continue to next block */
+		assert(!cur->next.bits.blk);
 
-	cur->next.type = BLK_NEXT_BLOCK;
-	cur->next.bits.blk = new_blk;
+		cur->next.type = BLK_NEXT_BLOCK;
+		cur->next.bits.blk = new_blk;
+	}
 
 	octx->current_blk = new_blk;
 }

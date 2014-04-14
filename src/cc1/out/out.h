@@ -77,7 +77,7 @@ ucc_wur out_val *out_call(out_ctx *,
 
 
 /* control flow */
-ucc_wur out_blk *out_blk_new(const char *desc);
+ucc_wur out_blk *out_blk_new(out_ctx *, const char *desc);
 void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
 
 void out_ctrl_end_undefined(out_ctx *);

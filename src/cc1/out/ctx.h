@@ -13,6 +13,8 @@ struct out_ctx
 		struct out_val_list *next, *prev;
 	} *val_head, *val_tail;
 
+	unsigned long nblks; /* used for unique label gen. */
+
 	int stack_sz, stack_local_offset, stack_variadic_offset;
 
 	/* we won't reserve it more than 255 times

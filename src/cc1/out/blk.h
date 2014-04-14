@@ -13,6 +13,8 @@ struct out_blk
 	char *lbl;
 	out_val *phi_val;
 
+	int flushed;
+
 	struct
 	{
 		enum
@@ -44,6 +46,8 @@ struct out_blk
 		} bits;
 	} next;
 };
+
+void blk_flushall(out_ctx *octx);
 
 void blk_terminate_condjmp(
 		out_ctx *,

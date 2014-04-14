@@ -17,36 +17,6 @@
 #include "../cc1.h" /* mopt_mode */
 #include "../../util/platform.h"
 
-static void flush_block(out_blk *blk, FILE *f)
-{
-	char **i;
-
-	for(i = blk->insns; i && *i; i++)
-		fprintf(f, "%s", *i);
-
-	switch(blk->next.type){
-		case BLK_NEXT_NONE:
-			break;
-		case BLK_NEXT_BLOCK:
-			flush_block(blk->next.bits.blk, f);
-			break;
-		case BLK_NEXT_EXPR:
-			break;
-		case BLK_NEXT_COND:
-			/* place true jumps first */
-			fprintf(f, "%s", blk->next.bits.cond.if_1.insn);
-			flush_block(blk->next.bits.cond.if_1.blk, f);
-			fprintf(f, "%s", blk->next.bits.cond.if_0.insn);
-			flush_block(blk->next.bits.cond.if_0.blk, f);
-			break;
-	}
-}
-
-static void flush_blocks(out_ctx *octx)
-{
-	flush_block(octx->first_blk, cc_out[SECTION_TEXT]);
-}
-
 out_val *out_call(out_ctx *octx,
 		out_val *fn, out_val **args,
 		type *fnty)
@@ -60,7 +30,7 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 
 	out_dbg_label(octx, end_dbg_lbl);
 
-	flush_blocks(octx);
+	blk_flushall(octx);
 
 	octx->current_blk = NULL;
 
