@@ -106,6 +106,7 @@ copy:
 			impl_reg_cp(octx, from, &r);
 
 			new = v_new(octx, ty);
+			new->type = from->type;
 			new->bits.regoff.reg = r;
 			new->bits.regoff.offset = from->bits.regoff.offset;
 
