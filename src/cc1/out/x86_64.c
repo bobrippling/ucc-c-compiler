@@ -1523,23 +1523,25 @@ void impl_jmp(void)
 }
 #endif
 
-void impl_branch(out_val *cond, out_blk *bt, out_blk *bf)
+void impl_branch(out_ctx *octx, out_val *cond, out_blk *bt, out_blk *bf)
 {
-	ICE("TODO: branch");
-#if 0
 	switch(cond->type){
 		case V_FLAG:
 		{
-			const int inv = !true;
-			int parity_chk, parity_rev = 0;
-			char *bb_lbl = NULL;
+			char *cmpjmp = ustrprintf(
+					"j%s %s", x86_cmp(&vtop->bits.flag),
+					bt->lbl);
+			char *ucmpjmp = ustrprintf("jmp %s", bf->lbl);
 
-			if(inv)
-				v_inv_cmp(&vtop->bits.flag, 1);
+			blk_terminate_condjmp(
+					octx->current_blk,
+					cmpjmp, bt,
+					ucmpjmp, bf);
+			break;
+#if 0
+			int parity_chk, parity_rev = 0;
 
 			parity_chk = x86_need_fp_parity_p(&vtop->bits.flag, &parity_rev);
-
-			parity_rev ^= inv;
 
 			if(parity_chk){
 				/* nan means false, unless parity_rev */
@@ -1565,8 +1567,12 @@ void impl_branch(out_val *cond, out_blk *bt, out_blk *bf)
 				free(bb_lbl);
 			}
 			break;
+#endif
 		}
 
+		default:
+			ICE("TODO branch %s", v_store_to_str(cond->type));
+#if 0
 		case V_CONST_F:
 			ICE("jcond float");
 		case V_CONST_I:
@@ -1589,8 +1595,8 @@ void impl_branch(out_val *cond, out_blk *bt, out_blk *bf)
 					"normalise remained as a register");
 			impl_jcond(true, lbl);
 			break;
-	}
 #endif
+	}
 }
 
 out_val *impl_call(
