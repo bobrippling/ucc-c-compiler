@@ -136,11 +136,9 @@ void gen_asm_global(decl *d, out_ctx *octx)
 
 		out_dbg_where(&d->bits.func.code->where_cbrace);
 
-		out_func_epilogue(octx, d->ref);
-
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
-			out_dbg_label(octx, end);
+			out_func_epilogue(octx, d->ref, end);
 			free(end);
 		}
 

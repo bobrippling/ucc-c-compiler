@@ -104,7 +104,7 @@ void out_func_prologue(
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[], int *local_offset);
 
-void out_func_epilogue(out_ctx *, type *);
+void out_func_epilogue(out_ctx *, type *, char *end_dbg_lbl);
 
 /* commenting */
 void out_comment(const char *, ...) ucc_printflike(1, 2);

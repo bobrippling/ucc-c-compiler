@@ -5,7 +5,7 @@ typedef struct out_val_list out_val_list;
 
 struct out_ctx
 {
-	out_blk *current_blk;
+	out_blk *first_blk, *current_blk;
 
 	struct out_val_list
 	{

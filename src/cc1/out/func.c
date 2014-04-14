@@ -11,9 +11,41 @@
 #include "impl.h"
 #include "ctx.h"
 #include "virt.h"
+#include "blk.h"
+#include "dbg.h"
 
 #include "../cc1.h" /* mopt_mode */
 #include "../../util/platform.h"
+
+static void flush_block(out_blk *blk, FILE *f)
+{
+	char **i;
+
+	for(i = blk->insns; i && *i; i++)
+		fprintf(f, "%s", *i);
+
+	switch(blk->next.type){
+		case BLK_NEXT_NONE:
+			break;
+		case BLK_NEXT_BLOCK:
+			flush_block(blk->next.bits.blk, f);
+			break;
+		case BLK_NEXT_EXPR:
+			break;
+		case BLK_NEXT_COND:
+			/* place true jumps first */
+			fprintf(f, "%s", blk->next.bits.cond.if_1.insn);
+			flush_block(blk->next.bits.cond.if_1.blk, f);
+			fprintf(f, "%s", blk->next.bits.cond.if_0.insn);
+			flush_block(blk->next.bits.cond.if_0.blk, f);
+			break;
+	}
+}
+
+static void flush_blocks(out_ctx *octx)
+{
+	flush_block(octx->first_blk, cc_out[SECTION_TEXT]);
+}
 
 out_val *out_call(out_ctx *octx,
 		out_val *fn, out_val **args,
@@ -22,9 +54,15 @@ out_val *out_call(out_ctx *octx,
 	return impl_call(octx, fn, args, fnty);
 }
 
-void out_func_epilogue(out_ctx *octx, type *ty)
+void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 {
 	impl_func_epilogue(octx, ty);
+
+	out_dbg_label(octx, end_dbg_lbl);
+
+	flush_blocks(octx);
+
+	octx->current_blk = NULL;
 
 	octx->stack_local_offset = octx->stack_sz = 0;
 }
@@ -36,6 +74,9 @@ void out_func_prologue(
 		int arg_offsets[], int *local_offset)
 {
 	assert(octx->stack_sz == 0 && "non-empty stack for new func");
+
+	assert(!octx->current_blk);
+	octx->first_blk = octx->current_blk = out_blk_new(sp);
 
 	impl_lbl(octx, sp);
 

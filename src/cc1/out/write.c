@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "../../util/dynarray.h"
 #include "../../util/where.h"
@@ -49,6 +50,7 @@ void out_asmv(
 		insn = new;
 	}
 
+	assert(octx->current_blk);
 	dynarray_add(&octx->current_blk->insns, insn);
 }
 
