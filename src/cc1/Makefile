@@ -70,8 +70,8 @@ out/impl.h: out/x86_64.h out/mipsel_32.h
 deps: Makefile.dep
 
 Makefile.dep:
-	cc ${CPPFLAGS} -MM *.c > $@
-	cc ${CPPFLAGS} -MM ops/*.c | sed 's#^\([^ ]\)#ops/\1#' >> $@
-	cc ${CPPFLAGS} -MM out/*.c | sed 's#^\([^ ]\)#out/\1#' >> $@
+	${CC} ${CPPFLAGS} -MM *.c > $@
+	${CC} ${CPPFLAGS} -MM ops/*.c | sed 's#^\([^ ]\)#ops/\1#' >> $@
+	${CC} ${CPPFLAGS} -MM out/*.c | sed 's#^\([^ ]\)#out/\1#' >> $@
 
 include Makefile.dep

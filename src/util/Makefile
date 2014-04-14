@@ -45,7 +45,7 @@ check: test
 	./test
 
 Makefile.deps:
-	cc -MM ${SRC} > $@
+	${CC} -MM ${SRC} > $@
 
 clean:
 	rm -f *.o
