@@ -319,7 +319,6 @@ int main(int argc, char **argv)
 						/* list #defines */
 						dump = argv[i][2] == 'M' ? MACROS : STATS;
 						no_output = 1;
-						option_line_info = 0;
 						break;
 					default:
 						goto usage;
