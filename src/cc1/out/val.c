@@ -206,6 +206,7 @@ void out_val_overwrite(out_val *d, out_val *s)
 {
 	/* don't copy .retains */
 	d->type = s->type;
+	d->t = s->t;
 	d->bitfield = s->bitfield;
 	d->bits = s->bits;
 }
