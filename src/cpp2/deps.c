@@ -8,6 +8,8 @@
 
 #include "deps.h"
 
+#define LINE_MAX 75
+
 static dynmap *depset;
 
 void deps_add(const char *d)
@@ -30,7 +32,7 @@ void deps_dump(const char *file)
 	const char *basename = strrchr(file, '/');
 	const char *ext;
 	char *obj;
-	size_t i;
+	size_t i, len;
 
 	if(!basename)
 		basename = file;
@@ -52,9 +54,19 @@ void deps_dump(const char *file)
 	}
 
 	printf("%s: %s", obj, file);
+	len = strlen(obj) + strlen(file) + 2;
 	free(obj);
 
-	for(i = 0; (obj = dynmap_key(char *, depset, i)); i++)
+	for(i = 0; (obj = dynmap_key(char *, depset, i)); i++){
+		size_t this_len = 1 + strlen(obj);
+
+		len += this_len;
+		if(len >= LINE_MAX){
+			printf(" \\\n");
+			len = this_len;
+		}
+
 		printf(" %s", obj);
+	}
 	putchar('\n');
 }
