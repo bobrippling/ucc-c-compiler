@@ -83,7 +83,7 @@ void out_expr_stack_assert(out_ctx *octx, size_t prev)
 						v_store_to_str(l->val.type),
 						l->val.bits.regoff.reg.is_float,
 						l->val.bits.regoff.reg.idx,
-						&l->val);
+						(void *)&l->val);
 		}
 	}
 }
