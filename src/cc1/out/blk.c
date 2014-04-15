@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stddef.h>
+#include <stdarg.h>
 #include <assert.h>
 
 #include "../type.h"
@@ -9,6 +10,7 @@
 #include "ctx.h"
 
 #include "blk.h"
+#include "impl_jmp.h"
 
 #include "asm.h" /* cc_out */
 
@@ -20,6 +22,8 @@ static void flush_block(out_blk *blk, FILE *f)
 		return;
 	blk->flushed = 1;
 
+	fprintf(f, "%s:\n", blk->lbl);
+
 	for(i = blk->insns; i && *i; i++)
 		fprintf(f, "%s", *i);
 
@@ -29,13 +33,20 @@ static void flush_block(out_blk *blk, FILE *f)
 			break;
 
 		case BLK_NEXT_BLOCK:
+			impl_jmp(f, blk->next.bits.blk->lbl);
+
 			flush_block(blk->next.bits.blk, f);
 			break;
 
 		case BLK_NEXT_COND:
 			/* place true jumps first */
-			flush_block(blk->next.bits.cond.if_1.blk, f);
-			flush_block(blk->next.bits.cond.if_0.blk, f);
+			fprintf(f, "%s ### LINK %s or %s\n",
+					blk->next.bits.cond.insn,
+					blk->next.bits.cond.if_1_blk->lbl,
+					blk->next.bits.cond.if_0_blk->lbl);
+
+			flush_block(blk->next.bits.cond.if_1_blk, f);
+			flush_block(blk->next.bits.cond.if_0_blk, f);
 			break;
 	}
 }
@@ -46,9 +57,8 @@ void blk_flushall(out_ctx *octx)
 }
 
 void blk_terminate_condjmp(
-		out_ctx *octx,
-		char *condinsn, out_blk *condto,
-		char *uncondjmp, out_blk *uncondto)
+		out_ctx *octx, char *condinsn,
+		out_blk *condto, out_blk *uncondto)
 {
 	out_blk *current = octx->current_blk;
 
@@ -56,10 +66,9 @@ void blk_terminate_condjmp(
 
 	current->next.type = BLK_NEXT_COND;
 
-	current->next.bits.cond.if_0.insn = condinsn;
-	current->next.bits.cond.if_0.blk = condto;
-	current->next.bits.cond.if_1.insn = uncondjmp;
-	current->next.bits.cond.if_1.blk = uncondto;
+	current->next.bits.cond.insn = condinsn;
+	current->next.bits.cond.if_0_blk = condto;
+	current->next.bits.cond.if_1_blk = uncondto;
 
 	octx->current_blk = NULL;
 }

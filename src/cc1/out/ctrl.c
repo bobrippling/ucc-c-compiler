@@ -55,6 +55,9 @@ void out_current_blk(out_ctx *octx, out_blk *new_blk)
 {
 	out_blk *cur = octx->current_blk;
 
+	if(new_blk == cur)
+		return;
+
 	register_block(octx, new_blk);
 
 	if(cur && cur->next.type == BLK_NEXT_NONE){

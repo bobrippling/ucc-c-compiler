@@ -21,6 +21,7 @@
 #include "val.h"
 #include "asm.h"
 #include "impl.h"
+#include "impl_jmp.h"
 #include "common.h"
 #include "out.h"
 #include "lbl.h"
@@ -1517,12 +1518,10 @@ static const char *x86_call_jmp_target(
 	return NULL;
 }
 
-#if 0
-void impl_jmp(void)
+void impl_jmp(FILE *f, const char *lbl)
 {
-	out_asm(octx, "jmp %s", x86_call_jmp_target(vtop, 0));
+	fprintf(f, "\tjmp %s\n", lbl);
 }
-#endif
 
 void impl_branch(out_ctx *octx, out_val *cond, out_blk *bt, out_blk *bf)
 {
@@ -1531,24 +1530,19 @@ void impl_branch(out_ctx *octx, out_val *cond, out_blk *bt, out_blk *bf)
 		{
 			out_asm(octx, "cmp $0, %s ### for example", vstack_str(cond, 0));
 
-			char *cmp0 = ustrprintf("je %s", bt->lbl);
-			char *els = ustrprintf("jmp %s", bf->lbl);
+			char *cmp0 = ustrprintf("\tje %s", bt->lbl);
 
-			blk_terminate_condjmp(octx, cmp0, bt, els, bf);
+			blk_terminate_condjmp(octx, cmp0, bt, bf);
 			break;
 		}
 
 		case V_FLAG:
 		{
 			char *cmpjmp = ustrprintf(
-					"j%s %s", x86_cmp(&cond->bits.flag),
+					"\tj%s %s", x86_cmp(&cond->bits.flag),
 					bt->lbl);
-			char *ucmpjmp = ustrprintf("jmp %s", bf->lbl);
 
-			blk_terminate_condjmp(
-					octx,
-					cmpjmp, bt,
-					ucmpjmp, bf);
+			blk_terminate_condjmp(octx, cmpjmp, bt, bf);
 			break;
 #if 0
 			int parity_chk, parity_rev = 0;

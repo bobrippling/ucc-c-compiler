@@ -37,11 +37,8 @@ struct out_blk
 			/* cond */
 			struct
 			{
-				struct
-				{
-					char *insn;
-					out_blk *blk;
-				} if_1, if_0;
+				char *insn;
+				out_blk *if_0_blk, *if_1_blk;
 			} cond;
 		} bits;
 	} next;
@@ -50,9 +47,8 @@ struct out_blk
 void blk_flushall(out_ctx *octx);
 
 void blk_terminate_condjmp(
-		out_ctx *,
-		char *condinsn, out_blk *condto,
-		char *uncondjmp, out_blk *uncondto);
+		out_ctx *octx, char *condinsn,
+		out_blk *bpass, out_blk *bfail);
 
 void blk_terminate_jmp(out_blk *, char *jmpinsn);
 
