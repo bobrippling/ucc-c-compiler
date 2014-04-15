@@ -138,7 +138,7 @@ static void fold_switch_enum(
 	free(marks);
 }
 
-void fold_stmt_and_add_to_curswitch(stmt *cse, out_blk **bblock)
+void fold_stmt_and_add_to_curswitch(stmt *cse)
 {
 	stmt *sw = cse->parent;
 	struct switch_case *this_case;
@@ -148,7 +148,7 @@ void fold_stmt_and_add_to_curswitch(stmt *cse, out_blk **bblock)
 	if(!sw)
 		die_at(&cse->where, "%s not inside switch", cse->f_str());
 
-	if(*bblock){
+	if(cse->expr){
 		/* promote to the controlling statement */
 		fold_insert_casts(sw->expr->tree_type, &cse->expr, cse->symtab);
 
@@ -171,11 +171,9 @@ void fold_stmt_and_add_to_curswitch(stmt *cse, out_blk **bblock)
 
 			return;
 		}
-		*bblock = out_blk_new("default");
 	}
 
 	this_case->code = cse;
-	this_case->blk = *bblock;
 
 	/* we are compound, copy some attributes */
 	cse->kills_below_code = cse->lhs->kills_below_code;
@@ -213,7 +211,7 @@ void fold_stmt_switch(stmt *s)
 void gen_stmt_switch(stmt *s, out_ctx *octx)
 {
 	struct switch_case *iter, *pdefault;
-	out_blk *blk_switch_end = out_blk_new("switch_fin");
+	out_blk *blk_switch_end = out_blk_new(octx, "switch_fin");
 	out_val *cmp_with;
 
 	cmp_with = gen_expr(s->expr, octx);
@@ -222,14 +220,14 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 	for(iter = s->bits.switch_.cases; iter && iter->code; iter++){
 		stmt *cse = iter->code;
 		numeric iv;
-		out_blk *blk_cancel = out_blk_new("case_next");
+		out_blk *blk_cancel = out_blk_new(octx, "case_next");
 
 		const_fold_integral(cse->expr, &iv);
 
 		if(stmt_kind(cse, case_range)){
 			numeric max;
 			out_val *this_case[2];
-			out_blk *blk_test2 = out_blk_new("range_true");
+			out_blk *blk_test2 = out_blk_new(octx, "range_true");
 
 			/* TODO: proper signed/unsiged format - out_op() */
 			const_fold_integral(cse->expr2, &max);
@@ -272,7 +270,7 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 			NULL);
 
 	{
-		out_blk *body = out_blk_new("switch_body");
+		out_blk *body = out_blk_new(octx, "switch_body");
 		out_current_blk(octx, body);
 		gen_stmt(s->lhs, octx); /* the actual code inside the switch */
 	}

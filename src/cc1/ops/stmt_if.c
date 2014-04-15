@@ -77,9 +77,9 @@ void fold_stmt_if(stmt *s)
 
 void gen_stmt_if(stmt *s, out_ctx *octx)
 {
-	out_blk *blk_true = out_blk_new("if_true");
-	out_blk *blk_false = out_blk_new("if_false");
-	out_blk *blk_fi = out_blk_new("fi");
+	out_blk *blk_true = out_blk_new(octx, "if_true");
+	out_blk *blk_false = out_blk_new(octx, "if_false");
+	out_blk *blk_fi = out_blk_new(octx, "fi");
 	const char *el[2];
 	out_val *cond;
 

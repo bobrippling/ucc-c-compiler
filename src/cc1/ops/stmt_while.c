@@ -12,9 +12,6 @@ const char *str_stmt_while()
 
 void fold_stmt_while(stmt *s)
 {
-	s->blk_break = out_blk_new("while_break");
-	s->blk_continue = out_blk_new("while_cont");
-
 	fold_check_expr(
 			s->expr,
 			FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
@@ -26,7 +23,10 @@ void fold_stmt_while(stmt *s)
 void gen_stmt_while(stmt *s, out_ctx *octx)
 {
 	const char *endlbls[2];
-	out_blk *blk_body = out_blk_new("while_body");
+	out_blk *blk_body = out_blk_new(octx, "while_body");
+
+	s->blk_break = out_blk_new(octx, "while_break");
+	s->blk_continue = out_blk_new(octx, "while_cont");
 
 	out_current_blk(octx, s->blk_continue);
 	{

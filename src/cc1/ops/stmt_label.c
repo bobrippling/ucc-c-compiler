@@ -30,7 +30,11 @@ void fold_stmt_label(stmt *s)
 
 void gen_stmt_label(stmt *s, out_ctx *octx)
 {
-	out_current_blk(octx, s->bits.lbl.label->bblock);
+	label *l = s->bits.lbl.label;
+
+	l->bblock = out_blk_new(octx, "label");
+
+	out_current_blk(octx, l->bblock);
 	gen_stmt(s->lhs, octx); /* the code-part of the compound statement */
 }
 

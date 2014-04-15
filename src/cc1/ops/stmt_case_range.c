@@ -29,12 +29,12 @@ void fold_stmt_case_range(stmt *s)
 	if(lv >= rv)
 		die_at(&s->where, "case range equal or inverse");
 
-	s->bits.case_blk = out_blk_new("case_range");
-	fold_stmt_and_add_to_curswitch(s, &s->bits.case_blk);
+	fold_stmt_and_add_to_curswitch(s);
 }
 
 void gen_stmt_case_range(stmt *s, out_ctx *octx)
 {
+	s->bits.case_blk = out_blk_new(octx, "case_range");
 	out_current_blk(octx, s->bits.case_blk);
 
 	gen_stmt(s->lhs, octx);
