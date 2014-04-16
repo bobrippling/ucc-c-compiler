@@ -66,7 +66,11 @@ void blk_terminate_condjmp(
 {
 	out_blk *current = octx->current_blk;
 
-	assert(current->next.type == BLK_NEXT_NONE);
+	if(current->next.type != BLK_NEXT_NONE){
+		fprintf(stderr,
+				"%s:%d overwriting a block's next?\n",
+				__FILE__, __LINE__);
+	}
 
 	current->next.type = BLK_NEXT_COND;
 
