@@ -1528,11 +1528,13 @@ void impl_branch(out_ctx *octx, out_val *cond, out_blk *bt, out_blk *bf)
 	switch(cond->type){
 		case V_REG:
 		{
-			out_asm(octx, "cmp $0, %s ### for example", vstack_str(cond, 0));
+			const char *rstr = vstack_str(cond, 0);
+			char *cmp;
 
-			char *cmp0 = ustrprintf("\tje %s", bt->lbl);
+			out_asm(octx, "test %s, %s", rstr, rstr);
+			cmp = ustrprintf("jz %s", bf->lbl);
 
-			blk_terminate_condjmp(octx, cmp0, bt, bf);
+			blk_terminate_condjmp(octx, cmp, bf, bt);
 			break;
 		}
 
