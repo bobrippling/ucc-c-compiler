@@ -53,5 +53,11 @@ int main()
 	if(strcmp(canonicalise_path(ustrdup("hi/../../")), "../"))
 		DIE();
 
+	char *got = canonicalise_path(ustrdup("../../hi/../..//../"));
+	if(strcmp(got, "../../../../")){
+		fprintf(stderr, "got='%s'\n", got);
+		DIE();
+	}
+
 	return 0;
 }
