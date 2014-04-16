@@ -21,6 +21,8 @@ struct out_blk
 		{
 			BLK_NEXT_NONE,
 			BLK_NEXT_BLOCK,
+			BLK_NEXT_BLOCK_UPSCOPE,
+			/* ^ same as block, semantically different */
 			BLK_NEXT_EXPR,
 			BLK_NEXT_COND
 		} type;

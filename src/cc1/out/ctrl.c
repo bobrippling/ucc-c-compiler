@@ -74,8 +74,23 @@ void out_current_blk(out_ctx *octx, out_blk *new_blk)
 void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 		out_val *phi_arg /* optional */)
 {
-	octx->current_blk->phi_val = phi_arg;
+	out_blk *const from = octx->current_blk;
+
+	from->phi_val = phi_arg;
+
 	out_current_blk(octx, to);
+
+	if(!phi_arg && from->next.type == BLK_NEXT_BLOCK){
+		/* it's a scope return, e.g.
+		 * if(cond){
+		 *     <BB1>;
+		 * }else{
+		 *     <BB2>;
+		 * }
+		 * <BB3>; // ctrl transfer to here
+		 */
+		from->next.type = BLK_NEXT_BLOCK_UPSCOPE;
+	}
 }
 
 void out_ctrl_transfer_exp(out_ctx *octx, out_val *addr)

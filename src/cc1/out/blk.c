@@ -40,13 +40,17 @@ static void flush_block(out_blk *blk, FILE *f)
 
 		case BLK_NEXT_COND:
 			/* place true jumps first */
-			fprintf(f, "%s ### LINK %s or %s\n",
-					blk->next.bits.cond.insn,
-					blk->next.bits.cond.if_1_blk->lbl,
-					blk->next.bits.cond.if_0_blk->lbl);
-
+			fprintf(f, "\t%s\n", blk->next.bits.cond.insn);
+			/* put the if_1 block after so we don't need a jump */
 			flush_block(blk->next.bits.cond.if_1_blk, f);
+			/* TODO: jump to next block */
 			flush_block(blk->next.bits.cond.if_0_blk, f);
+			/* TODO: jump to next block */
+			/* TODO: emit next block */
+			break;
+
+		case BLK_NEXT_BLOCK_UPSCOPE:
+			fprintf(f, "\t# jump to %s, upscope\n", blk->next.bits.blk->lbl);
 			break;
 	}
 }
