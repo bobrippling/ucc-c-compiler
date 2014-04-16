@@ -22,7 +22,7 @@ static void flush_block(out_blk *blk, FILE *f)
 		return;
 	blk->flushed = 1;
 
-	fprintf(f, "%s:\n", blk->lbl);
+	fprintf(f, "%s: # %s\n", blk->lbl, blk->desc);
 
 	for(i = blk->insns; i && *i; i++)
 		fprintf(f, "%s", *i);
