@@ -5,45 +5,44 @@
 
 struct out_blk
 {
+	/* all blocks: */
 	out_ctx *octx;
 	const char *desc;
-
-	char **insns;
-
 	char *lbl;
+	char **insns;
+	out_blk *preds[2];
+
+#define BLK_IS_MERGE(b) (b->preds[0] && b->preds[1])
+
+	unsigned flushed;
+	enum
+	{
+		BLK_TERMINAL, /* a ->nothing */
+		BLK_NEXT_BLOCK, /* a ->b */
+		BLK_NEXT_EXPR, /* a ->`expr` */
+		BLK_COND, /* a ? ->b : ->c */
+	} type;
+
+	/* phi terminators: */
 	out_val *phi_val;
 
-	int flushed;
-
-	struct
+	union
 	{
-		enum
+		/* nothing */
+
+		/* ucond jump */
+		out_blk *next;
+
+		/* expr jump */
+		out_val *exp;
+
+		/* cond */
+		struct blk_cond
 		{
-			BLK_NEXT_NONE,
-			BLK_NEXT_BLOCK,
-			BLK_NEXT_BLOCK_UPSCOPE,
-			/* ^ same as block, semantically different */
-			BLK_NEXT_EXPR,
-			BLK_NEXT_COND
-		} type;
-		union
-		{
-			/* nothing */
-
-			/* ucond jump */
-			out_blk *blk;
-
-			/* expr jump */
-			out_val *exp;
-
-			/* cond */
-			struct
-			{
-				char *insn;
-				out_blk *if_0_blk, *if_1_blk;
-			} cond;
-		} bits;
-	} next;
+			char *insn;
+			out_blk *if_0_blk, *if_1_blk;
+		} cond;
+	} bits;
 };
 
 void blk_flushall(out_ctx *octx);

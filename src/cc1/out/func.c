@@ -29,10 +29,11 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 	impl_func_epilogue(octx, ty);
 
 	out_dbg_label(octx, end_dbg_lbl);
+	octx->current_blk = NULL;
 
 	blk_flushall(octx);
 
-	octx->current_blk = NULL;
+	/* TODO: flush/free octx->first_blk */
 
 	octx->stack_local_offset = octx->stack_sz = 0;
 }

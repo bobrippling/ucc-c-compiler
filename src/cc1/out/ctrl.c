@@ -60,37 +60,30 @@ void out_current_blk(out_ctx *octx, out_blk *new_blk)
 
 	register_block(octx, new_blk);
 
-	if(cur && cur->next.type == BLK_NEXT_NONE){
-		/* implicit continue to next block */
-		assert(!cur->next.bits.blk);
-
-		cur->next.type = BLK_NEXT_BLOCK;
-		cur->next.bits.blk = new_blk;
-	}
-
 	octx->current_blk = new_blk;
 }
 
 void out_ctrl_transfer(out_ctx *octx, out_blk *to,
-		out_val *phi_arg /* optional */)
+		out_val *phi /* optional */)
 {
 	out_blk *const from = octx->current_blk;
 
-	from->phi_val = phi_arg;
+	assert(from);
+
+	from->phi_val = phi;
+
+	if(to->preds[0]){
+		assert(!to->preds[1] && "too many block preds");
+		to->preds[1] = from;
+	}else{
+		to->preds[0] = from;
+	}
+
+	assert(from->type == BLK_TERMINAL);
+	from->type = BLK_NEXT_BLOCK;
+	from->bits.next = to;
 
 	out_current_blk(octx, to);
-
-	if(!phi_arg && from->next.type == BLK_NEXT_BLOCK){
-		/* it's a scope return, e.g.
-		 * if(cond){
-		 *     <BB1>;
-		 * }else{
-		 *     <BB2>;
-		 * }
-		 * <BB3>; // ctrl transfer to here
-		 */
-		from->next.type = BLK_NEXT_BLOCK_UPSCOPE;
-	}
 }
 
 void out_ctrl_transfer_exp(out_ctx *octx, out_val *addr)
@@ -98,6 +91,6 @@ void out_ctrl_transfer_exp(out_ctx *octx, out_val *addr)
 	out_blk *cur = octx->current_blk;
 	octx->current_blk = NULL;
 
-	cur->next.type = BLK_NEXT_EXPR;
-	cur->next.bits.exp = addr;
+	cur->type = BLK_NEXT_EXPR;
+	cur->bits.exp = addr;
 }
