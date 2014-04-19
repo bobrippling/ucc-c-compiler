@@ -26,6 +26,7 @@ void out_ctrl_branch(
 	register_block(octx, if_false);
 
 	impl_branch(octx, cond, if_true, if_false);
+	out_val_consume(octx, cond);
 
 	out_current_blk(octx, if_true);
 }
