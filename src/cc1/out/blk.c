@@ -14,8 +14,31 @@
 
 #include "asm.h" /* cc_out */
 
+#ifdef BLK_DEBUG
+struct A
+{
+	out_blk *blk;
+	FILE *f;
+};
+
+static void done(struct A *b)
+{
+	fprintf(b->f, "EXIT %s\n", b->blk->lbl);
+}
+
+static void start(struct A *b)
+{
+	fprintf(b->f, "ENTR %s\n", b->blk->lbl);
+}
+#endif
+
 static void flush_block(out_blk *blk, FILE *f)
 {
+#ifdef BLK_DEBUG
+	struct A x __attribute((cleanup(done))) = {
+		.blk = blk, .f = f
+	};
+#endif
 	char **i;
 
 	if(BLK_IS_MERGE(blk)){
