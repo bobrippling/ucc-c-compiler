@@ -1229,14 +1229,14 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 			case op_plus:
 			case op_minus:
 				/* use inc/dec if possible */
-				if(l->type == V_CONST_I
-				&& l->bits.val_i == 1
-				&& r->type == V_REG)
+				if(r->type == V_CONST_I
+				&& r->bits.val_i == 1
+				&& l->type == V_REG)
 				{
 					out_asm(octx, "%s%s %s",
 							op == op_plus ? "inc" : "dec",
 							x86_suffix(r->t),
-							vstack_str(r, 0));
+							vstack_str(l, 0));
 					break;
 				}
 			default:
