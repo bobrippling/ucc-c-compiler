@@ -1240,14 +1240,16 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 					break;
 				}
 			default:
+				/* NOTE: lhs and rhs are switched for AT&T syntax,
+				 * we still use lhs for the v_dup_or_reuse() below */
 				out_asm(octx, "%s%s %s, %s", opc,
 						x86_suffix(l->t),
 						vstack_str_r(buf, r, 0),
 						vstack_str(l, 0));
 		}
 
-		out_val_consume(octx, l);
-		return v_new_reg(octx, r, r->t, &r->bits.regoff.reg);
+		out_val_consume(octx, r);
+		return v_dup_or_reuse(octx, l, l->t);
 	}
 }
 
