@@ -27,11 +27,23 @@ void fold_stmt_expr(stmt *s)
 
 void gen_stmt_expr(stmt *s, out_ctx *octx)
 {
-	size_t exprstack = out_expr_stack(octx);
+	size_t prev = out_expr_stack(octx);
+	size_t now;
+
+	out_dump_retained(octx);
 
 	out_flush_volatile(octx, gen_expr(s->expr, octx));
 
-	out_expr_stack_assert(octx, exprstack);
+	now = out_expr_stack(octx);
+
+	if(now != prev){
+		ICW("values still retained (%ld <-- %ld - %ld) after %s",
+				(long)(now - prev),
+				now, prev,
+				s->expr->f_str());
+
+		out_dump_retained(octx);
+	}
 }
 
 void style_stmt_expr(stmt *s, out_ctx *octx)

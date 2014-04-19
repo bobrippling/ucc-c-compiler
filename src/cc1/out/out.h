@@ -12,7 +12,7 @@ out_ctx *out_ctx_new(void);
 void out_ctx_end(out_ctx *);
 
 size_t out_expr_stack(out_ctx *);
-void out_expr_stack_assert(out_ctx *octx, size_t prev);
+void out_dump_retained(out_ctx *octx);
 
 /* value creation */
 out_val *out_new_num(out_ctx *, type *t, const numeric *n)
