@@ -1409,7 +1409,6 @@ static out_val *x86_xchg_fi(
 	int to_float;
 	const char *fp_s;
 	type *ty_fp, *ty_int;
-	out_val *in_reg;
 
 	if((to_float = type_is_floating(tto)))
 		ty_fp = tto, ty_int = tfrom;
@@ -1419,7 +1418,6 @@ static out_val *x86_xchg_fi(
 	fp_s = x86_suffix(ty_fp);
 
 	v_unused_reg(octx, 1, to_float, &r);
-	in_reg = v_new_reg(octx, NULL, tfrom, &r);
 
 	/* cvt*2* [mem|reg], xmm* */
 	vp = v_to(octx, vp, TO_REG | TO_MEM);

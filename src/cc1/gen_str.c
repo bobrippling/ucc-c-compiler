@@ -21,6 +21,7 @@
 #include "decl_init.h"
 #include "funcargs.h"
 #include "out/asm.h" /* cc*_out */
+#include "gen_asm.h" /* IGNORE_PRINTGEN */
 
 #define ENGLISH_PRINT_ARGLIST
 
@@ -381,7 +382,7 @@ void print_expr(expr *e)
 	}
 	gen_str_indent++;
 	if(e->f_gen)
-		e->f_gen(e, NULL);
+		IGNORE_PRINTGEN(e->f_gen(e, NULL));
 	else
 		idt_printf("builtin/%s::%s\n", e->f_str(), e->expr->bits.ident.spel);
 	gen_str_indent--;

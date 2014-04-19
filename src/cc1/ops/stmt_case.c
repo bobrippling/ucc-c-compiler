@@ -11,11 +11,8 @@ const char *str_stmt_case()
 
 void fold_stmt_case(stmt *t)
 {
-	integral_t val;
-
 	FOLD_EXPR(t->expr, t->symtab);
 	fold_check_expr(t->expr, FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I, "case");
-	val = const_fold_val_i(t->expr);
 
 	fold_stmt_and_add_to_curswitch(t);
 }
