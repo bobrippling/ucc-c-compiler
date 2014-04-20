@@ -47,9 +47,7 @@ void out_func_prologue(
 	assert(octx->stack_sz == 0 && "non-empty stack for new func");
 
 	assert(!octx->current_blk);
-	octx->first_blk = octx->current_blk = out_blk_new(octx, sp);
-
-	impl_lbl(octx, sp);
+	octx->first_blk = octx->current_blk = out_blk_new_lbl(octx, sp);
 
 	impl_func_prologue_save_fp(octx);
 

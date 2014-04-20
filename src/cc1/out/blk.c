@@ -3,11 +3,15 @@
 #include <stdarg.h>
 #include <assert.h>
 
+#include "../../util/alloc.h"
+
 #include "../type.h"
 #include "../num.h"
 
 #include "val.h"
 #include "ctx.h"
+#include "out.h" /* out_blk_new() */
+#include "lbl.h"
 
 #include "blk.h"
 #include "impl_jmp.h"
@@ -106,4 +110,20 @@ void blk_terminate_condjmp(
 	current->bits.cond.if_1_blk = uncondto;
 
 	octx->current_blk = NULL;
+}
+
+out_blk *out_blk_new_lbl(out_ctx *octx, const char *lbl)
+{
+	out_blk *blk = umalloc(sizeof *blk);
+	blk->desc = lbl;
+	blk->lbl = ustrdup(lbl);
+	return blk;
+}
+
+out_blk *out_blk_new(out_ctx *octx, const char *desc)
+{
+	out_blk *blk = umalloc(sizeof *blk);
+	blk->desc = desc;
+	blk->lbl = out_label_bblock(octx->nblks++);
+	return blk;
 }

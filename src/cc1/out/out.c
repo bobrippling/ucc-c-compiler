@@ -89,14 +89,6 @@ void out_ctx_end(out_ctx *octx)
 	(void)octx;
 }
 
-out_blk *out_blk_new(out_ctx *octx, const char *desc)
-{
-	out_blk *blk = umalloc(sizeof *blk);
-	blk->desc = desc;
-	blk->lbl = out_label_bblock(octx->nblks++);
-	return blk;
-}
-
 void out_comment(const char *fmt, ...)
 {
 	/* TODO */
