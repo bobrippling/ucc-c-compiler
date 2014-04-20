@@ -39,6 +39,18 @@ static void start(struct A *b)
 static int should_flush(out_blk *blk, int mutate)
 {
 	if(BLK_IS_MERGE(blk)){
+		int is_loopback = blk->preds[0] == blk
+		               || blk->preds[1] == blk;
+
+		if(is_loopback){
+			int flush_now = !blk->flushed;
+
+			if(mutate && flush_now)
+				blk->flushed = 1;
+
+			return flush_now;
+		}
+
 		assert(blk->flushed < 2);
 
 		if(mutate)
