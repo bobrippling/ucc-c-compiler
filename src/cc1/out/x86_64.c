@@ -563,7 +563,7 @@ void impl_func_epilogue(out_ctx *octx, type *rf)
 	}
 }
 
-void impl_return(out_ctx *octx, out_val *val, type *retty)
+void impl_to_retreg(out_ctx *octx, out_val *val, type *retty)
 {
 	struct vreg r;
 
