@@ -33,9 +33,9 @@ void gen_stmt_goto(stmt *s, out_ctx *octx)
 		out_ctrl_transfer_exp(octx, target);
 
 	}else{
-		out_blk *target = s->bits.lbl.label->bblock;
+		label_makeblk(s->bits.lbl.label, octx);
 
-		out_ctrl_transfer(octx, target, NULL);
+		out_ctrl_transfer(octx, s->bits.lbl.label->bblock, NULL);
 	}
 }
 

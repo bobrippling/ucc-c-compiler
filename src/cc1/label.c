@@ -16,3 +16,10 @@ label *label_new(where *w, char *fn, char *id, int complete)
 	l->complete = complete;
 	return l;
 }
+
+void label_makeblk(label *l, out_ctx *octx)
+{
+	if(l->bblock)
+		return;
+	l->bblock = out_blk_new(octx, l->spel);
+}

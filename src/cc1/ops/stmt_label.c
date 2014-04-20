@@ -32,7 +32,7 @@ void gen_stmt_label(stmt *s, out_ctx *octx)
 {
 	label *l = s->bits.lbl.label;
 
-	l->bblock = out_blk_new(octx, "label");
+	label_makeblk(l, octx);
 
 	out_current_blk(octx, l->bblock);
 	gen_stmt(s->lhs, octx); /* the code-part of the compound statement */
