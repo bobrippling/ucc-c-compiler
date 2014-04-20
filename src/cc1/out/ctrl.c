@@ -91,7 +91,7 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 	from->type = BLK_NEXT_BLOCK;
 	from->bits.next = to;
 
-	out_current_blk(octx, to);
+	octx->current_blk = NULL;
 }
 
 void out_ctrl_transfer_exp(out_ctx *octx, out_val *addr)
