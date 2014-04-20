@@ -70,7 +70,12 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 {
 	out_blk *const from = octx->current_blk;
 
-	assert(from);
+	if(!from){
+		/* we're transferring from unreachable code, ignore */
+		if(phi)
+			out_val_consume(octx, phi);
+		return;
+	}
 
 	from->phi_val = phi;
 
