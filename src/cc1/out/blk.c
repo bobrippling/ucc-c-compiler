@@ -36,6 +36,32 @@ static void start(struct A *b)
 }
 #endif
 
+static int should_flush(out_blk *blk, int mutate)
+{
+	if(BLK_IS_MERGE(blk)){
+		assert(blk->flushed < 2);
+
+		if(mutate)
+			blk->flushed++;
+
+		return blk->flushed == 2;
+	}else{
+		assert(!blk->flushed);
+		if(mutate)
+			blk->flushed = 1;
+		return 1;
+	}
+}
+
+static void blk_jmpnext(FILE *f, out_blk *to)
+{
+	if(should_flush(to, 0)){
+		fprintf(f, "\t# implicit jump to next line\n");
+		return; /* don't bother, fall through to it */
+	}
+	impl_jmp(f, to->lbl);
+}
+
 static void flush_block(out_blk *blk, FILE *f)
 {
 #ifdef BLK_DEBUG
@@ -45,20 +71,8 @@ static void flush_block(out_blk *blk, FILE *f)
 #endif
 	char **i;
 
-	if(BLK_IS_MERGE(blk)){
-		assert(blk->flushed < 2);
-		blk->flushed++;
-
-		if(blk->flushed == 2){
-			fprintf(f, "\t# last merge entry for %s + %s\n",
-					blk->preds[0]->lbl, blk->preds[1]->lbl);
-		}else{
-			return;
-		}
-	}else{
-		assert(!blk->flushed);
-		blk->flushed = 1;
-	}
+	if(!should_flush(blk, 1))
+		return;
 
 	fprintf(f, "%s: # %s\n", blk->lbl, blk->desc);
 
@@ -71,7 +85,7 @@ static void flush_block(out_blk *blk, FILE *f)
 			break;
 
 		case BLK_NEXT_BLOCK:
-			impl_jmp(f, blk->bits.next->lbl);
+			blk_jmpnext(f, blk->bits.next);
 			flush_block(blk->bits.next, f);
 			break;
 
