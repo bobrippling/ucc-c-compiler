@@ -17,6 +17,7 @@ struct out_blk
 	unsigned flushed;
 	enum
 	{
+		BLK_UNINIT,
 		BLK_TERMINAL, /* a ->nothing */
 		BLK_NEXT_BLOCK, /* a ->b */
 		BLK_NEXT_EXPR, /* a ->`expr` */

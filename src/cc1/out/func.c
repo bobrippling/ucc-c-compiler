@@ -26,7 +26,7 @@ out_val *out_call(out_ctx *octx,
 
 void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 {
-	if(octx->current_blk)
+	if(octx->current_blk && octx->current_blk->type == BLK_UNINIT)
 		out_ctrl_transfer(octx, octx->epilogue_blk, NULL);
 
 	out_current_blk(octx, octx->epilogue_blk);

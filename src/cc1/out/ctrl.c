@@ -87,7 +87,7 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 		to->preds[0] = from;
 	}
 
-	assert(from->type == BLK_TERMINAL);
+	assert(from->type == BLK_UNINIT);
 	from->type = BLK_NEXT_BLOCK;
 	from->bits.next = to;
 

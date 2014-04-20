@@ -80,6 +80,8 @@ static void flush_block(out_blk *blk, FILE *f)
 		fprintf(f, "%s", *i);
 
 	switch(blk->type){
+		case BLK_UNINIT:
+			assert(0 && "uninitialised block type");
 		case BLK_TERMINAL:
 		case BLK_NEXT_EXPR:
 			break;
@@ -111,11 +113,7 @@ void blk_terminate_condjmp(
 {
 	out_blk *current = octx->current_blk;
 
-	if(current->type != BLK_TERMINAL){
-		fprintf(stderr,
-				"%s:%d overwriting a block's next?\n",
-				__FILE__, __LINE__);
-	}
+	assert(current->type == BLK_UNINIT && "overwriting .next?");
 
 	current->type = BLK_COND;
 
