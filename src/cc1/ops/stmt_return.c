@@ -67,8 +67,9 @@ void fold_stmt_return(stmt *s)
 void gen_stmt_return(stmt *s, out_ctx *octx)
 {
 	out_ctrl_end_ret(
-			octx, s->expr ? gen_expr(s->expr, octx) : NULL, s->expr->tree_type);
-
+			octx,
+			s->expr ? gen_expr(s->expr, octx) : NULL,
+			s->expr ? s->expr->tree_type : NULL);
 }
 
 void style_stmt_return(stmt *s, out_ctx *octx)
