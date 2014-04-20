@@ -33,7 +33,8 @@ void out_ctrl_branch(
 
 void out_ctrl_end_ret(out_ctx *octx, out_val *ret, type *ty)
 {
-	impl_to_retreg(octx, ret, ty);
+	if(ret)
+		impl_to_retreg(octx, ret, ty);
 	out_ctrl_transfer(octx, octx->epilogue_blk, NULL);
 	octx->current_blk = NULL;
 }
