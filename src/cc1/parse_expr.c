@@ -50,9 +50,9 @@ expr *parse_expr_sizeof_typeof_alignof(
 				e = expr_new_sizeof_type(r, what_of);
 
 		}else{
-			/* parse a full one, since we're in brackets */
-			e = expr_new_sizeof_expr(parse_expr_exp(scope), what_of);
-			EAT(token_close_paren);
+			/* not a type - treat the open paren as part of the expression */
+			uneat(token_open_paren);
+			e = expr_new_sizeof_expr(parse_expr_unary(scope), what_of);
 		}
 
 	}else{
