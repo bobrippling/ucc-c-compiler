@@ -1685,7 +1685,7 @@ void impl_call(const int nargs, type *r_ret, type *r_func)
 
 	{
 		funcargs *args = type_funcargs(r_func);
-		int need_float_count = args->variadic || (!args->arglist && !args->args_void);
+		int need_float_count = args->variadic || FUNCARGS_EMPTY_NOVOID(args);
 		/* jtarget must be assigned before "movb $0, %al" */
 		const char *jtarget = x86_call_jmp_target(vtop, need_float_count);
 

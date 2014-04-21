@@ -173,7 +173,7 @@ static void check_arg_counts(
 		where *loc, char *sp)
 {
 	/* this block is purely count checking */
-	if(args_from_decl->arglist || args_from_decl->args_void){
+	if(!FUNCARGS_EMPTY_NOVOID(args_from_decl)){
 		const unsigned count_arg  = dynarray_count(exprargs);
 
 		if(count_decl != count_arg
@@ -297,7 +297,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 				e->funcargs, sp);
 	}
 
-	if(args_from_decl->arglist || args_from_decl->args_void)
+	if(!FUNCARGS_EMPTY_NOVOID(args_from_decl))
 		check_arg_types(args_from_decl, e->funcargs, stab, sp);
 
 	if(e->funcargs)
