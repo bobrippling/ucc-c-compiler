@@ -1,7 +1,8 @@
-// RUN: %check -e %s
+// RUN: %ocheck 2 %s
+// RUN: %check %s
 
 f(hello); // CHECK: warning: old-style function declaration
-// CHECK: ^note: previous definition
+// int hello
 
 g(a) // CHECK: warning: old-style function declaration
 {
@@ -14,8 +15,7 @@ main()
 }
 
 f(a) // CHECK: warning: old-style function declaration
-	// CHECK: ^error: mismatching definitions of "f"
-	char *a;
+	int a; // matches with int hello
 {
 	return a ? 1 : 0;
 }

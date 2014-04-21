@@ -49,8 +49,9 @@ enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 		return FUNCARGS_IMPLICIT_CONV;
 	}
 
-	if(args_to->args_old_proto || args_from->args_old_proto)
-		return FUNCARGS_IMPLICIT_CONV;
+	/* still do prototype checks for old_proto functions */
+	/*if(args_to->args_old_proto || args_from->args_old_proto)
+		return FUNCARGS_IMPLICIT_CONV;*/
 
 	if(!(args_to->variadic ? count_to <= count_from : count_to == count_from))
 		return FUNCARGS_MISMATCH_COUNT;
