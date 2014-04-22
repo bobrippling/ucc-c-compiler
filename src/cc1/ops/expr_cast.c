@@ -127,18 +127,25 @@ static integral_t convert_integral_to_integral_warn(
 	 * or conversion is unsigned -> signed and in < signed-max
 	 */
 
-	const unsigned sz_in = type_size(tin, w);
+	const unsigned sz_out = type_size(tout, w);
 	const int signed_in = type_is_signed(tin);
 	const int signed_out = type_is_signed(tout);
 	sintegral_t to_iv_sign_ext;
-	integral_t to_iv = integral_truncate(in, sz_in, &to_iv_sign_ext);
+	integral_t to_iv = integral_truncate(in, sz_out, &to_iv_sign_ext);
 	integral_t ret;
 
-	/* need to sign extend if signed */
-	if(signed_in || signed_out)
-		ret = (integral_t)to_iv_sign_ext;
-	else
+	if(!signed_out && signed_in){
+		/* e.g. "(unsigned)-1". Pick to_iv, i.e. the unsigned truncated repr
+		 * this assumes that signed ints on the host machine we're run on
+		 * are 2's complement, i.e. truncated a negative gives us all 1s,
+		 * which we truncate */
 		ret = to_iv;
+	}else if(signed_in){
+		/* signed to signed */
+		ret = (integral_t)to_iv_sign_ext;
+	}else{
+		ret = to_iv;
+	}
 
 	if(do_warn){
 		if(ret != in){
