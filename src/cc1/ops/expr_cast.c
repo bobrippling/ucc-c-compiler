@@ -168,7 +168,12 @@ static integral_t convert_integral_to_integral_warn(
 
 		/* need to ensure sign extension */
 		if(ret & (1ULL << (sz_in_bits - 1))){
+			const unsigned sz_out_bits = CHAR_BIT * sz_out;
+
 			ret |= -1ULL << sz_in_bits;
+
+			/* need to unmask any top bits, e.g. int instead of long long */
+			ret &= -1ULL >> sz_out_bits;
 		}
 
 	}else if(signed_in){
