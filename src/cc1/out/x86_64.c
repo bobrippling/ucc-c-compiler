@@ -1297,13 +1297,10 @@ void impl_cast_load(struct vstack *vp, type *small, type *big, int is_signed)
 	switch(vp->type){
 		case V_CONST_F:
 			ICE("cast load float");
+
 		case V_CONST_I:
 		case V_LBL:
-			/* something like movslq -8(%rbp), %rax */
-			vstack_str_r(buf_small, vp, 1);
-			break;
-
-		case V_REG_SAVE:
+		case V_REG_SAVE: /* could do something like movslq -8(%rbp), %rax */
 		case V_FLAG:
 			v_to_reg(vp);
 		case V_REG:
