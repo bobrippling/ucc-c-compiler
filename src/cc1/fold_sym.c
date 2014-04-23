@@ -190,10 +190,18 @@ struct ident_loc
 	 ? (il)->bits.decl->spel \
 	 : (il)->bits.spel)
 
+static int strcmp_or_null(const char *a, const char *b)
+{
+	if(a && b)
+		return strcmp(a, b);
+
+	return 1;
+}
+
 static int ident_loc_cmp(const void *a, const void *b)
 {
 	const struct ident_loc *ia = a, *ib = b;
-	int r = strcmp(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
+	int r = strcmp_or_null(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
 
 	/* sort according to spel, then according to func-code
 	 * so it makes checking redefinitions easier, e.g.
@@ -342,7 +350,7 @@ void symtab_fold_decls(symtable *tab)
 			 * and multiple declarations at global scope,
 			 * but not definitions
 			 */
-			if(!strcmp(IDENT_LOC_SPEL(a), IDENT_LOC_SPEL(b))){
+			if(!strcmp_or_null(IDENT_LOC_SPEL(a), IDENT_LOC_SPEL(b))){
 				switch(a->has_decl + b->has_decl){
 					case 0:
 						/* both enum-membs, mismatch */
