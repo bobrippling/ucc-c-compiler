@@ -1124,6 +1124,10 @@ void impl_op(enum op_type op)
 					inv = 1;
 				}
 
+				/* still a const? */
+				if(vtop[-1].type == V_CONST_I)
+					v_to_reg(&vtop[-1]);
+
 				out_asm("cmp%s %s, %s",
 						x86_suffix(vtop[-1].t), /* pick the non-const one (for type-ing) */
 						vstack_str(       vtop, 0),
