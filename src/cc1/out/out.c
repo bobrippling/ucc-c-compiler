@@ -1353,30 +1353,27 @@ void v_cast(struct vstack *vp, type *to)
 		}
 
 	}else{
-		/* casting integral vtop
-		 * don't bother if it's a constant,
-		 * just change the size */
-		if(vp->type != V_CONST_I){
-			int szfrom = asm_type_size(from),
-					szto   = asm_type_size(to);
+		/* even if vtop is V_CONST_I, we still
+		 * want runtime code for sign extension */
+		int szfrom = asm_type_size(from),
+		    szto   = asm_type_size(to);
 
-			if(szfrom != szto){
-				if(szto > szfrom){
-					/* we take from's signedness for our sign-extension,
-					 * e.g. uint64_t x = (int)0x8000_0000;
-					 * sign extends the int to an int64_t, then changes
-					 * the type
-					 */
-					impl_cast_load(vp, from, to,
-							type_is_signed(from));
-				}else{
-					char buf[TYPE_STATIC_BUFSIZ];
+		if(szfrom != szto){
+			if(szto > szfrom){
+				/* we take from's signedness for our sign-extension,
+				 * e.g. uint64_t x = (int)0x8000_0000;
+				 * sign extends the int to an int64_t, then changes
+				 * the type
+				 */
+				impl_cast_load(vp, from, to,
+						type_is_signed(from));
+			}else{
+				char buf[TYPE_STATIC_BUFSIZ];
 
-					out_comment("truncate cast from %s to %s, size %d -> %d",
-							from ? type_to_str_r(buf, from) : "",
-							to   ? type_to_str(to) : "",
-							szfrom, szto);
-				}
+				out_comment("truncate cast from %s to %s, size %d -> %d",
+						from ? type_to_str_r(buf, from) : "",
+						to   ? type_to_str(to) : "",
+						szfrom, szto);
 			}
 		}
 	}
