@@ -1092,7 +1092,9 @@ pop_const:
 		}
 
 		/* constant folding */
-		if(((t_const == vtop ? &vtop[-1] : vtop)->type) == V_CONST_I){
+		if(fopt_mode & FOPT_CONST_FOLD
+		&& ((t_const == vtop ? &vtop[-1] : vtop)->type) == V_CONST_I)
+		{
 			const char *err = NULL;
 			const integral_t eval = const_op_exec(
 					vtop[-1].bits.val_i, &vtop->bits.val_i,
