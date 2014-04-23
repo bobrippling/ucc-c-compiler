@@ -159,6 +159,7 @@ static integral_t convert_integral_to_integral_warn(
 
 	if(!signed_out && signed_in){
 		const unsigned sz_in_bits = CHAR_BIT * type_size(tin, w);
+		const unsigned sz_out_bits = CHAR_BIT * sz_out;
 
 		/* e.g. "(unsigned)-1". Pick to_iv, i.e. the unsigned truncated repr
 		 * this assumes that signed ints on the host machine we're run on
@@ -167,9 +168,9 @@ static integral_t convert_integral_to_integral_warn(
 		ret = to_iv;
 
 		/* need to ensure sign extension */
-		if(ret & (1ULL << (sz_in_bits - 1))){
-			const unsigned sz_out_bits = CHAR_BIT * sz_out;
-
+		if(ret & (1ULL << (sz_in_bits - 1))
+		&& sz_in_bits != sz_out_bits)
+		{
 			ret |= -1ULL << sz_in_bits;
 
 			/* need to unmask any top bits, e.g. int instead of long long */
