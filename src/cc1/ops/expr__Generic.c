@@ -18,20 +18,26 @@ static void generic_lea(expr *e)
 void fold_expr__Generic(expr *e, symtable *stab)
 {
 	struct generic_lbl **i, *def;
+	type *expr_ty;
 
 	def = NULL;
 
 	FOLD_EXPR(e->expr, stab);
+	/* strip top level qualifiers */
+	expr_ty = type_skip_all(e->expr->tree_type);
 
 	for(i = e->bits.generic.list; i && *i; i++){
 		struct generic_lbl **j, *l = *i;
 
 		fold_expr_no_decay(l->e, stab);
 
+		/* duplicate default checked below */
 		for(j = i + 1; *j; j++){
 			type *m = (*j)->t;
 
-			/* duplicate default checked below */
+			/* here we check for purely equal, e.g.
+			 * _Generic(..., int: x, const int: y)
+			 * is valid */
 			if(m && (type_cmp(m, l->t, 0) & TYPE_EQUAL_ANY)){
 				fold_had_error = 1;
 				warn_at_print_error(
@@ -79,12 +85,19 @@ void fold_expr__Generic(expr *e, symtable *stab)
 				continue;
 			}
 
-			if(type_cmp(e->expr->tree_type, l->t, 0) & TYPE_EQUAL_ANY){
-				if(e->bits.generic.chosen){
-					assert(fold_had_error);
-					continue;
-				}
-				e->bits.generic.chosen = l;
+			switch(type_cmp(expr_ty, l->t, 0)){
+				case TYPE_QUAL_ADD: /* expr=int matching const int is fine */
+				case TYPE_EQUAL:
+				case TYPE_EQUAL_TYPEDEF:
+					if(e->bits.generic.chosen){
+						assert(fold_had_error);
+						continue;
+					}
+					e->bits.generic.chosen = l;
+					break;
+
+				default:
+					break;
 			}
 		}else{
 			if(def){
