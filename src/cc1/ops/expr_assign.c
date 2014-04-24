@@ -48,7 +48,8 @@ void bitfield_trunc_check(decl *mem, expr *from)
 void expr_must_lvalue(expr *e)
 {
 	if(!expr_is_lval(e)){
-		die_at(&e->where, "assignment to %s/%s - not an lvalue",
+		fold_had_error = 1;
+		warn_at_print_error(&e->where, "assignment to %s/%s - not an lvalue",
 				type_to_str(e->tree_type),
 				e->f_str());
 	}
