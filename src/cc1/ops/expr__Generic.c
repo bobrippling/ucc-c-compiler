@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "ops.h"
 #include "expr__Generic.h"
 #include "../type_is.h"
@@ -31,9 +33,14 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			type *m = (*j)->t;
 
 			/* duplicate default checked below */
-			if(m && (type_cmp(m, l->t, 0) & TYPE_EQUAL_ANY))
-				die_at(&(*j)->e->where, "duplicate type in _Generic: %s",
+			if(m && (type_cmp(m, l->t, 0) & TYPE_EQUAL_ANY)){
+				fold_had_error = 1;
+				warn_at_print_error(
+						&(*j)->e->where,
+						"duplicate type in _Generic: %s",
 						type_to_str(l->t));
+				continue;
+			}
 		}
 
 
@@ -66,28 +73,43 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			}
 
 			if(sprob){
-				die_at(&l->e->where, "%s type '%s' in _Generic",
+				fold_had_error = 1;
+				warn_at_print_error(
+						&l->e->where, "%s type '%s' in _Generic",
 						sprob, type_to_str(l->t));
+				continue;
 			}
 
 			if(type_cmp(e->expr->tree_type, l->t, 0) & TYPE_EQUAL_ANY){
-				UCC_ASSERT(!e->bits.generic.chosen,
-						"already chosen expr for _Generic");
+				if(e->bits.generic.chosen){
+					assert(fold_had_error);
+					continue;
+				}
 				e->bits.generic.chosen = l;
 			}
 		}else{
-			if(def)
-				die_at(&def->e->where, "second default for _Generic");
+			if(def){
+				fold_had_error = 1;
+				warn_at_print_error(&def->e->where,
+						"second default for _Generic");
+				continue;
+			}
 			def = l;
 		}
 	}
 
 
 	if(!e->bits.generic.chosen){
-		if(def)
+		if(def){
 			e->bits.generic.chosen = def;
-		else
-			die_at(&e->where, "no type satisfying %s", type_to_str(e->expr->tree_type));
+		}else{
+			fold_had_error = 1;
+			warn_at_print_error(&e->where,
+					"no type satisfying %s",
+					type_to_str(e->expr->tree_type));
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
+		}
 	}
 
 	if(expr_is_lval(e->bits.generic.chosen->e))
@@ -141,7 +163,11 @@ void gen_expr_str__Generic(expr *e)
 static void const_expr__Generic(expr *e, consty *k)
 {
 	/* we're const if our chosen expr is */
-	UCC_ASSERT(e->bits.generic.chosen, "_Generic const check before fold");
+	if(!e->bits.generic.chosen){
+		UCC_ASSERT(fold_had_error, "_Generic const check before fold");
+		k->type = CONST_NO;
+		return;
+	}
 
 	const_fold(e->bits.generic.chosen->e, k);
 }
