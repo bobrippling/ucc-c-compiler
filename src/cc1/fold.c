@@ -391,6 +391,8 @@ void fold_type_w_attr(
 				 * the element type is so-qualified, not the array type. If the
 				 * specification of a function type includes any type qualifiers, the
 				 * behavior is undefined)
+				 *
+				 * Array types are handled by type_qualify()
 				 */
 				warn_at(loc, "qualifier on function type '%s'", type_to_str(r->ref));
 			}
