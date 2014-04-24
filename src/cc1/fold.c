@@ -382,6 +382,20 @@ void fold_type_w_attr(
 			}
 			break;
 
+		case type_cast:
+			if(!r->bits.cast.is_signed_cast
+			&& type_is(r->ref, type_func))
+			{
+				/* C11 6.7.3.9
+				 * If the specification of an array type includes any type qualifiers,
+				 * the element type is so-qualified, not the array type. If the
+				 * specification of a function type includes any type qualifiers, the
+				 * behavior is undefined)
+				 */
+				warn_at(loc, "qualifier on function type '%s'", type_to_str(r->ref));
+			}
+			break;
+
 		case type_block:
 			if(!type_is(r->ref, type_func)){
 				die_at(loc,
