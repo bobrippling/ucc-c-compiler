@@ -181,7 +181,8 @@ static integral_t convert_integral_to_integral_warn(
 		/* signed to signed */
 		ret = (integral_t)to_iv_sign_ext;
 	}else{
-		ret = to_iv;
+		/* unsigned to unsigned */
+		ret = to_iv_sign_ext;
 	}
 
 	if(do_warn){
@@ -193,7 +194,7 @@ static integral_t convert_integral_to_integral_warn(
 
 		}else if(signed_out && !signed_in && (sintegral_t)ret < 0){
 			signed_unsigned_warn_at(w,
-					"implicit cast to negative changes value from %llA to %llB",
+					"implicit cast negates value, %llA to %llB",
 					signed_in, signed_out,
 					in, (sintegral_t)to_iv_sign_ext);
 
