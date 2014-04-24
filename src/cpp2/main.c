@@ -43,6 +43,10 @@ static const struct
 	TYPE(PTRDIFF, unsigned long),
 	TYPE(WINT, unsigned),
 
+	{ "__ORDER_LITTLE_ENDIAN__", "1234" },
+	{ "__ORDER_BIG_ENDIAN__",    "4321" },
+	{ "__ORDER_PDP_ENDIAN__",    "3412" },
+
 	/* non-standard */
 	{ "__BLOCKS__",     "1"  },
 
@@ -207,6 +211,11 @@ int main(int argc, char **argv)
 		case PLATFORM_mipsel_32:
 			macro_add("__MIPS__", "1", 0);
 	}
+
+	if(platform_bigendian())
+		macro_add("__BYTE_ORDER__", "__ORDER_BIG_ENDIAN__", 0);
+	else
+		macro_add("__BYTE_ORDER__", "__ORDER_LITTLE_ENDIAN__", 0);
 
 	switch(platform_sys()){
 #define MAP(t, s) case t: macro_add(s, "1", 0); break
