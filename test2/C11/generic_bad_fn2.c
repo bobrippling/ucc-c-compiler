@@ -1,5 +1,7 @@
-// RUN: %check -e %s
+// RUN: %ocheck 0 %s
 
 f();
 
-i =  _Generic(f, int (*)(): 0); // CHECK: error: no type satisfying
+i =  _Generic(f, int (*)(): 0);
+
+main(){ return i; }
