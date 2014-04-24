@@ -21,8 +21,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 	def = NULL;
 
-	/* we use the non-decayed type */
-	fold_expr_no_decay(e->expr, stab);
+	FOLD_EXPR(e->expr, stab);
 
 	for(i = e->bits.generic.list; i && *i; i++){
 		struct generic_lbl **j, *l = *i;
