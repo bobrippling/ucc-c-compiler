@@ -1124,6 +1124,10 @@ void impl_op(enum op_type op)
 					inv = 1;
 				}
 
+				/* still a const? */
+				if(vtop[-1].type == V_CONST_I)
+					v_to_reg(&vtop[-1]);
+
 				out_asm("cmp%s %s, %s",
 						x86_suffix(vtop[-1].t), /* pick the non-const one (for type-ing) */
 						vstack_str(       vtop, 0),
@@ -1293,13 +1297,10 @@ void impl_cast_load(struct vstack *vp, type *small, type *big, int is_signed)
 	switch(vp->type){
 		case V_CONST_F:
 			ICE("cast load float");
+
 		case V_CONST_I:
 		case V_LBL:
-			/* something like movslq -8(%rbp), %rax */
-			vstack_str_r(buf_small, vp, 1);
-			break;
-
-		case V_REG_SAVE:
+		case V_REG_SAVE: /* could do something like movslq -8(%rbp), %rax */
 		case V_FLAG:
 			v_to_reg(vp);
 		case V_REG:

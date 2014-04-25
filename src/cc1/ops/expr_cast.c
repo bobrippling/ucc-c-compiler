@@ -97,6 +97,29 @@ static void fold_cast_num(expr *const e, numeric *const num)
 #undef pv
 }
 
+static void signed_unsigned_warn_at(
+		where *w,
+		const char *infmt,
+		int signed_in, int signed_out,
+		integral_t a, integral_t b)
+{
+	char *fmt = ustrdup(infmt);
+	char *p = fmt;
+
+	for(;;){
+		p = strchr(p, '%');
+		if(!p)
+			break;
+		p += 3;
+		if(*p == 'A' || *p == 'B'){
+			*p = (*p == 'A' ? signed_in : signed_out) ? 'd' : 'u';
+		}
+	}
+
+	warn_at(w, fmt, a, b);
+	free(fmt);
+}
+
 static integral_t convert_integral_to_integral_warn(
 		const integral_t in, type *tin,
 		type *tout,
@@ -127,28 +150,52 @@ static integral_t convert_integral_to_integral_warn(
 	 * or conversion is unsigned -> signed and in < signed-max
 	 */
 
-	const unsigned sz_in = type_size(tin, w);
+	const unsigned sz_out = type_size(tout, w);
 	const int signed_in = type_is_signed(tin);
 	const int signed_out = type_is_signed(tout);
 	sintegral_t to_iv_sign_ext;
-	integral_t to_iv = integral_truncate(in, sz_in, &to_iv_sign_ext);
+	integral_t to_iv = integral_truncate(in, sz_out, &to_iv_sign_ext);
 	integral_t ret;
 
-	/* need to sign extend if signed */
-	if(signed_in || signed_out)
-		ret = (integral_t)to_iv_sign_ext;
-	else
+	if(!signed_out && signed_in){
+		const unsigned sz_in_bits = CHAR_BIT * type_size(tin, w);
+		const unsigned sz_out_bits = CHAR_BIT * sz_out;
+
+		/* e.g. "(unsigned)-1". Pick to_iv, i.e. the unsigned truncated repr
+		 * this assumes that signed ints on the host machine we're run on
+		 * are 2's complement, i.e. truncated a negative gives us all 1s,
+		 * which we truncate */
 		ret = to_iv;
+
+		/* need to ensure sign extension */
+		if(ret & (1ULL << (sz_in_bits - 1))
+		&& sz_in_bits != sz_out_bits)
+		{
+			ret |= -1ULL << sz_in_bits;
+
+			/* need to unmask any top bits, e.g. int instead of long long */
+			ret &= -1ULL >> sz_out_bits;
+		}
+
+	}else if(signed_in){
+		/* signed to signed */
+		ret = (integral_t)to_iv_sign_ext;
+	}else{
+		/* unsigned to unsigned */
+		ret = to_iv_sign_ext;
+	}
 
 	if(do_warn){
 		if(ret != in){
-			warn_at(w,
-					"implicit cast changes value from %lld to %lld",
-					in, ret);
+			signed_unsigned_warn_at(w,
+					"implicit cast changes value from %llA to %llB",
+					signed_in, signed_out,
+					in, signed_out ? to_iv_sign_ext : ret);
 
 		}else if(signed_out && !signed_in && (sintegral_t)ret < 0){
-			warn_at(w,
-					"implicit cast to negative changes value from %llu to %lld",
+			signed_unsigned_warn_at(w,
+					"implicit cast negates value, %llA to %llB",
+					signed_in, signed_out,
 					in, (sintegral_t)to_iv_sign_ext);
 
 		}else if(signed_out ? (sintegral_t)ret > 0 : 1){
@@ -157,8 +204,9 @@ static integral_t convert_integral_to_integral_warn(
 			int out_high = integral_high_bit(type_max(tout, w), tout);
 
 			if(in_high > out_high){
-				warn_at(w,
-						"implicit cast truncates value from %lld to %lld",
+				signed_unsigned_warn_at(w,
+						"implicit cast truncates value from %llA to %llB",
+						signed_in, signed_out,
 						in, ret & ((1ULL << (out_high + 1)) - 1));
 			}
 		}

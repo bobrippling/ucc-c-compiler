@@ -1,9 +1,8 @@
-// RUN: %check %s
 // RUN: %ocheck 0 %s
 
 int main()
 {
-	unsigned x = (unsigned char)-5; // CHECK: warning: implicit cast changes value from -5 to 251
+	unsigned x = (unsigned char)-5;
 
 	if(x != 251)
 		abort();
