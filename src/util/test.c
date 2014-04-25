@@ -12,7 +12,7 @@
 void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 {
 	(void)fmt;
-	fprintf(stderr, "ice: %s:%d: %s\n", f, line, fn);
+	fprintf(stderr, "%s:%d: ice: %s\n", f, line, fn);
 	exit(1);
 }
 
