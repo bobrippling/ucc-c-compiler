@@ -325,7 +325,7 @@ ptr_relation:
 								type_to_str(next));
 					}
 					/* TODO: note: type declared at resolved->where */
-				}else if(type_is_func_or_block(next)){
+				}else if(type_is(next, type_func)){
 					warn_at(w, "arithmetic on function pointer '%s'",
 							type_to_str(resolved));
 				}
