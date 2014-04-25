@@ -269,8 +269,22 @@ static void init_qual(type *t, void *ctx)
 
 type *type_qualify(type *unqualified, enum type_qualifier qual)
 {
+	type *ar_ty;
+
 	if(!qual)
 		return unqualified;
+
+	if((ar_ty = type_is(unqualified, type_array))){
+		/* const -> array -> int
+		 * becomes
+		 * array -> const -> int
+		 *
+		 * C11 6.7.3.9 */
+
+		return type_array_of(
+				type_qualify(ar_ty->ref, qual),
+				ar_ty->bits.array.size);
+	}
 
 	return type_uptree_find_or_new(
 			unqualified, type_cast,
