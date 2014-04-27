@@ -56,7 +56,7 @@ char *canonicalise_path(char *path)
 		 * overwriting the next entry */
 
 		size_t len = strlen(*i);
-		memcpy(dest, *i, len);
+		memmove(dest, *i, len);
 		dest += len;
 		*dest++ = '/';
 	}
