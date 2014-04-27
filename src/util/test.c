@@ -9,6 +9,8 @@
 
 #define DIE() ice(__FILE__, __LINE__, __func__, NULL)
 
+static int ec;
+
 void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 {
 	(void)fmt;
@@ -16,48 +18,37 @@ void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 	exit(1);
 }
 
+static void test_canon(char *in, char *exp, int ln)
+{
+	char *dup = ustrdup(in);
+	if(strcmp(canonicalise_path(dup), exp)){
+		fprintf(stderr, "%s:%d: canon(\"%s\") = \"%s\", expected \"%s\"\n",
+				__FILE__, ln, in, dup, exp);
+		ec = 1;
+	}
+	free(dup);
+}
+#define TEST_CANON(in, exp) test_canon(in, exp, __LINE__)
+
 int main()
 {
-	if(strcmp(
-			canonicalise_path(ustrdup("./hello///there//..//tim/./file.")),
-			"hello/tim/file."))
-	{
-		DIE();
-	}
+	TEST_CANON(
+				"./hello///there//..//tim/./file.",
+				"hello/tim/file.");
 
-	if(strcmp(
-			canonicalise_path(ustrdup("./hello///there//..//tim/./file../.dir/")),
-			"hello/tim/file../.dir/"))
-	{
-		DIE();
-	}
+	TEST_CANON(
+				"./hello///there//..//tim/./file../.dir/",
+				"hello/tim/file../.dir/");
 
-	if(strcmp(canonicalise_path(ustrdup("../")), "../"))
-		DIE();
+	TEST_CANON("../", "../");
+	TEST_CANON("..", "..");
+	TEST_CANON("./..", "..");
+	TEST_CANON("../..", "../..");
+	TEST_CANON("./../../", "../../");
+	TEST_CANON("../../hi", "../../hi");
+	TEST_CANON("hi/../../", "../");
 
-	if(strcmp(canonicalise_path(ustrdup("..")), ".."))
-		DIE();
+	TEST_CANON("../../hi/../..//../", "../../../../");
 
-	if(strcmp(canonicalise_path(ustrdup("./..")), ".."))
-		DIE();
-
-	if(strcmp(canonicalise_path(ustrdup("../..")), "../.."))
-		DIE();
-
-	if(strcmp(canonicalise_path(ustrdup("./../../")), "../../"))
-		DIE();
-
-	if(strcmp(canonicalise_path(ustrdup("../../hi")), "../../hi"))
-		DIE();
-
-	if(strcmp(canonicalise_path(ustrdup("hi/../../")), "../"))
-		DIE();
-
-	char *got = canonicalise_path(ustrdup("../../hi/../..//../"));
-	if(strcmp(got, "../../../../")){
-		fprintf(stderr, "got='%s'\n", got);
-		DIE();
-	}
-
-	return 0;
+	return ec;
 }
