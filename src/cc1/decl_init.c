@@ -114,7 +114,10 @@ int decl_init_is_const(
 		}
 
 		case decl_init_copy:
-			return 1;
+		{
+			struct init_cpy *cpy = *dinit->bits.range_copy;
+			return decl_init_is_const(cpy->range_init, stab, nonstd);
+		}
 	}
 
 	ICE("bad decl init");

@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "ops.h"
 #include "expr_block.h"
 #include "../out/lbl.h"
@@ -91,6 +93,17 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 	fold_func_is_passable(df, type_called(df->ref, NULL), 1);
 }
 
+static void const_expr_block(expr *e, consty *k)
+{
+	/* all blocks are const currently, since they're not capturing,
+	 * just static function references */
+	CONST_FOLD_LEAF(k);
+
+	k->type = CONST_ADDR;
+	k->bits.addr.is_lbl = 1;
+	k->bits.addr.bits.lbl = decl_asm_spel(e->bits.block.sym->decl);
+}
+
 void gen_expr_block(expr *e)
 {
 	out_push_sym(e->bits.block.sym);
@@ -112,7 +125,7 @@ void gen_expr_style_block(expr *e)
 
 void mutate_expr_block(expr *e)
 {
-	(void)e;
+	e->f_const_fold = const_expr_block;
 }
 
 expr *expr_new_block(type *rt, funcargs *args)
