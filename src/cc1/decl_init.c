@@ -20,28 +20,6 @@
 #include "decl_init.h"
 #include "type_is.h"
 
-#ifdef DEBUG_DECL_INIT
-static int init_debug_depth;
-
-ucc_printflike(1, 2) void INIT_DEBUG(const char *fmt, ...)
-{
-	va_list l;
-	int i;
-
-	for(i = init_debug_depth; i > 0; i--)
-		fputs("  ", stderr);
-
-	va_start(l, fmt);
-	vfprintf(stderr, fmt, l);
-	va_end(l);
-}
-
-#  define INIT_DEBUG_DEPTH(op) init_debug_depth op
-#else
-#  define INIT_DEBUG_DEPTH(op)
-#  define INIT_DEBUG(...)
-#endif
-
 typedef struct
 {
 	decl_init **pos;
