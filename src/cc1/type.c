@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "../util/where.h"
 #include "../util/util.h"
@@ -322,6 +323,23 @@ unsigned type_align(type *r, where *from)
 {
 	struct_union_enum_st *sue;
 	type *test;
+	attribute *align;
+
+	align = type_attr_present(r, attr_aligned);
+
+	if(align){
+		if(align->bits.align){
+			consty k;
+
+			const_fold(align->bits.align, &k);
+
+			assert(k.type == CONST_NUM && K_INTEGRAL(k.bits.num));
+
+			return k.bits.num.val.i;
+		}
+
+		return platform_align_max();
+	}
 
 	if((sue = type_is_s_or_u(r)))
 		/* safe - can't have an instance without a ->sue */
