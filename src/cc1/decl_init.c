@@ -338,13 +338,14 @@ static decl_init **decl_init_brace_up_array2(
 		type *next_type, const int limit,
 		const int allow_struct_copy)
 {
-	unsigned n = dynarray_count(current), i = 0, j = 0;
+	unsigned n = dynarray_count(current), i = 0;
 	decl_init *this;
 
 	(void)allow_struct_copy;
 
 	while((this = *iter->pos)){
 		desig *des;
+		unsigned j = i;
 
 		if((des = this->desig)){
 			consty k[2];
@@ -493,8 +494,10 @@ static decl_init **decl_init_brace_up_array2(
 			}
 		}
 
-		i++;
-		j++;
+		/* [0 ... 5] leaves the current index as 6
+		 *  ^i    ^j
+		 */
+		i = j + 1;
 	}
 
 	return current;
