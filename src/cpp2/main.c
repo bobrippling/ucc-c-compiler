@@ -238,6 +238,8 @@ int main(int argc, char **argv)
 	macro_add("__WCHAR_TYPE__",
 			platform_win32 ? "short" : "int", 0);
 
+	macro_add_sprintf("__BIGGEST_ALIGNMENT__", "%u", platform_align_max());
+
 	current_fname = FNAME_CMDLINE;
 
 	for(i = 1; i < argc && *argv[i] == '-'; i++){

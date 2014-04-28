@@ -28,7 +28,7 @@ macro *macro_find(const char *sp)
 	return NULL;
 }
 
-macro *macro_add(const char *nam, const char *val, int depth)
+static macro *macro_add_nodup(const char *nam, char *val, int depth)
 {
 	macro *m;
 
@@ -61,11 +61,16 @@ macro *macro_add(const char *nam, const char *val, int depth)
 		m->where.line_str = ustrdup(m->where.line_str);
 	}
 
-	m->val = val ? ustrdup(val) : NULL;
+	m->val = val;
 	m->type = MACRO;
 	m->include_depth = depth;
 
 	return m;
+}
+
+macro *macro_add(const char *nam, const char *val, int depth)
+{
+	return macro_add_nodup(nam, val ? ustrdup(val) : NULL, depth);
 }
 
 macro *macro_add_func(const char *nam, const char *val,
@@ -77,6 +82,18 @@ macro *macro_add_func(const char *nam, const char *val,
 	m->args = args;
 	m->type = variadic ? VARIADIC : FUNC;
 	return m;
+}
+
+macro *macro_add_sprintf(const char *nam, const char *fmt, ...)
+{
+	va_list l;
+	char *buf;
+
+	va_start(l, fmt);
+	buf = ustrvprintf(fmt, l);
+	va_end(l);
+
+	return macro_add_nodup(nam, buf, 0);
 }
 
 int macro_remove(const char *nam)
