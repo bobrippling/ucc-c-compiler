@@ -272,6 +272,13 @@ static void dwarf_release_children(struct DIE *parent)
 	free(ar);
 }
 
+static unsigned DIE_hash(struct DIE *d)
+{
+	unsigned addr = (unsigned)(unsigned long)d;
+
+	return d->tag << 20 | addr;
+}
+
 static void dwarf_die_new_at(struct DIE *d, enum dwarf_tag tag)
 {
 	RETAIN_INIT(d, &dwarf_die_free_r);
@@ -496,7 +503,7 @@ static void dwarf_add_tydie(
 		struct DIE_compile_unit *cu, type *ty, struct DIE *tydie)
 {
 	if(!cu->types_to_dies)
-		cu->types_to_dies = dynmap_new(/*refeq:*/NULL);
+		cu->types_to_dies = dynmap_new(/*refeq:*/NULL, (dynmap_hash_f *)DIE_hash);
 
 	dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, RETAIN(tydie));
 }

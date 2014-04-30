@@ -707,3 +707,53 @@ type_str_type(type *r)
 			return type_str_no;
 	}
 }
+
+unsigned type_hash(const type *t)
+{
+	unsigned hash = t->type << 20 | (unsigned)(unsigned long)t;
+
+	switch(t->type){
+		case type_auto:
+			ICE("auto type");
+
+		case type_btype:
+			hash |= t->bits.type->primitive;
+			break;
+
+		case type_tdef:
+			hash |= type_hash(t->bits.tdef.type_of->tree_type);
+			break;
+
+		case type_ptr:
+		case type_array:
+			hash |= type_hash(t->bits.ptr.size->tree_type);
+			break;
+
+		case type_block:
+		case type_where:
+			/* nothing */
+			break;
+
+		case type_func:
+		{
+			decl **i;
+
+			for(i = t->bits.func.args->arglist; i && *i; i++)
+				hash |= type_hash((*i)->ref);
+
+			break;
+		}
+
+		case type_cast:
+			hash |= t->bits.cast.is_signed_cast
+				| t->bits.cast.signed_true << 2
+				| t->bits.cast.qual << 4;
+			break;
+
+		case type_attr:
+			hash |= t->bits.attr->type;
+			break;
+	}
+
+	return hash;
+}

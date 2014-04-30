@@ -32,7 +32,7 @@ stringlit *strings_lookup(
 	struct string_key key = { s, wide };
 
 	if(!*plit_tbl)
-		*plit_tbl = dynmap_new(strings_key_eq);
+		*plit_tbl = dynmap_new(strings_key_eq, dynmap_strhash);
 	lit_tbl = *plit_tbl;
 
 	lit = dynmap_get(struct string_key *, stringlit *, lit_tbl, &key);
