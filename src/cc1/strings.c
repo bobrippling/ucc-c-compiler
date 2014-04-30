@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "strings.h"
 
@@ -24,6 +25,13 @@ static int strings_key_eq(void *a, void *b)
 	return strcmp(ka->str, kb->str);
 }
 
+static unsigned strings_hash(const void *p)
+{
+	const struct string_key *k = p;
+
+	return dynmap_strhash(k->str);
+}
+
 stringlit *strings_lookup(
 		dynmap **plit_tbl, char *s, size_t len, int wide)
 {
@@ -32,13 +40,14 @@ stringlit *strings_lookup(
 	struct string_key key = { s, wide };
 
 	if(!*plit_tbl)
-		*plit_tbl = dynmap_new(strings_key_eq, dynmap_strhash);
+		*plit_tbl = dynmap_new(strings_key_eq, strings_hash);
 	lit_tbl = *plit_tbl;
 
 	lit = dynmap_get(struct string_key *, stringlit *, lit_tbl, &key);
 
 	if(!lit){
 		struct string_key *alloc_key;
+		stringlit *prev;
 
 		lit = umalloc(sizeof *lit);
 		lit->str = s;
@@ -47,7 +56,8 @@ stringlit *strings_lookup(
 
 		alloc_key = umalloc(sizeof *alloc_key);
 		*alloc_key = key;
-		dynmap_set(struct string_key *, stringlit *, lit_tbl, alloc_key, lit);
+		prev = dynmap_set(struct string_key *, stringlit *, lit_tbl, alloc_key, lit);
+		assert(!prev);
 	}
 
 	return lit;

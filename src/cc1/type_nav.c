@@ -447,7 +447,7 @@ type *type_nav_auto(struct type_nav *root)
 
 type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *sue)
 {
-	type *ent;
+	type *ent, *prev;
 	btype *bt;
 
 	if(!root->suetypes)
@@ -463,7 +463,8 @@ type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *sue)
 	bt->sue = sue;
 	ent = type_new_btype(bt);
 
-	dynmap_set(struct_union_enum_st *, type *, root->suetypes, sue, ent);
+	prev = dynmap_set(struct_union_enum_st *, type *, root->suetypes, sue, ent);
+	assert(!prev);
 
 	return ent;
 }

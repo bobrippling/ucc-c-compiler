@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../../util/where.h"
 #include "../../util/platform.h"
@@ -502,10 +503,13 @@ static void dwarf_set_DW_AT_type(
 static void dwarf_add_tydie(
 		struct DIE_compile_unit *cu, type *ty, struct DIE *tydie)
 {
+	struct DIE *prev;
+
 	if(!cu->types_to_dies)
 		cu->types_to_dies = dynmap_new(/*refeq:*/NULL, (dynmap_hash_f *)DIE_hash);
 
-	dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, RETAIN(tydie));
+	prev = dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, RETAIN(tydie));
+	dwarf_release(prev);
 }
 
 static struct DIE *dwarf_type_die(

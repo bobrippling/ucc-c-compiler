@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "sym.h"
@@ -143,11 +144,15 @@ static void label_init(symtable **stab)
 
 void symtab_label_add(symtable *stab, label *lbl)
 {
+	label *prev;
+
 	label_init(&stab);
 
-	dynmap_set(char *, label *,
+	prev = dynmap_set(char *, label *,
 			symtab_func_root(stab)->labels,
 			lbl->spel, lbl);
+
+	assert(!prev);
 }
 
 label *symtab_label_find_or_new(symtable *stab, char *spel, where *w)
