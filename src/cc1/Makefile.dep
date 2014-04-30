@@ -1405,11 +1405,12 @@ out/asm.o: out/asm.c out/../../util/util.h out/../../util/warn.h \
  out/../ops/stmt_continue.h out/../type_is.h out/../sue.h out/../const.h \
  out/../gen_asm.h out/../decl_init.h out/../pack.h out/../str.h
 out/blk.o: out/blk.c out/../../util/alloc.h out/../../util/compiler.h \
+ out/../../util/dynarray.h out/../../util/dyn.h out/../../util/dynmap.h \
  out/../type.h out/../num.h out/../btype.h out/../../util/where.h \
  out/../num.h out/val.h out/forwards.h out/ctx.h out/out.h out/../sym.h \
  out/../decl.h out/../type.h out/../attribute.h out/../retain.h \
- out/../../util/dynmap.h out/../../util/dyn.h out/../op.h out/lbl.h \
- out/blk.h out/impl_jmp.h out/asm.h
+ out/../../util/dynmap.h out/../op.h out/lbl.h out/blk.h out/impl_jmp.h \
+ out/asm.h
 out/ctrl.o: out/ctrl.c out/forwards.h out/blk.h out/out.h out/../type.h \
  out/../num.h out/../btype.h out/../../util/where.h \
  out/../../util/compiler.h out/../num.h out/../sym.h out/../decl.h \

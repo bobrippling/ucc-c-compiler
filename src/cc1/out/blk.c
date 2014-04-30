@@ -4,6 +4,8 @@
 #include <assert.h>
 
 #include "../../util/alloc.h"
+#include "../../util/dynarray.h"
+#include "../../util/dynmap.h"
 
 #include "../type.h"
 #include "../num.h"
@@ -18,78 +20,49 @@
 
 #include "asm.h" /* cc_out */
 
-#ifdef BLK_DEBUG
-struct A
+struct flush_state
 {
-	out_blk *blk;
 	FILE *f;
+	dynmap *pending; /* out_blk* => NULL */
 };
 
-static void done(struct A *b)
+static char present, done;
+
+static void bfs_add(dynmap *pending, out_blk *blk)
 {
-	fprintf(b->f, "EXIT %s\n", b->blk->lbl);
+	char *v = dynmap_get(out_blk *, char *, pending, blk);
+	if(!v)
+		(void)dynmap_set(out_blk *, char *, pending, blk, &present);
+	else if(v == &present)
+		(void)dynmap_set(out_blk *, char *, pending, blk, &done);
+	else
+		; /* already handled this, don't flush again */
 }
 
-static void start(struct A *b)
+static void bfs_rm(dynmap *pending, out_blk *blk)
 {
-	fprintf(b->f, "ENTR %s\n", b->blk->lbl);
-}
-#endif
-
-static int should_flush(out_blk *blk, int mutate)
-{
-	if(BLK_IS_MERGE(blk)){
-		int is_loopback = blk->preds[0] == blk
-		               || blk->preds[1] == blk;
-
-		if(is_loopback){
-			int flush_now = !blk->flushed;
-
-			if(mutate && flush_now)
-				blk->flushed = 1;
-
-			return flush_now;
-		}
-
-		assert(blk->flushed < 2);
-
-		if(mutate)
-			blk->flushed++;
-
-		return blk->flushed == 2;
-	}else{
-		assert(!blk->flushed);
-		if(mutate)
-			blk->flushed = 1;
-		return 1;
-	}
+	(void)dynmap_set(out_blk *, char *, pending, blk, &done);
 }
 
 static void blk_jmpnext(FILE *f, out_blk *to)
 {
-	if(should_flush(to, 0)){
+	/*if(should_flush(to, 0)){
 		fprintf(f, "\t# implicit jump to next line\n");
-		return; /* don't bother, fall through to it */
-	}
+		return; * don't bother, fall through to it *
+	}*/
 	impl_jmp(f, to->lbl);
 }
 
-static void flush_block(out_blk *blk, FILE *f)
+static void flush_block(out_blk *blk, struct flush_state *st)
 {
-#ifdef BLK_DEBUG
-	struct A x __attribute((cleanup(done))) = {
-		.blk = blk, .f = f
-	};
-#endif
 	char **i;
 
-	if(!should_flush(blk, 1))
-		return;
+	bfs_rm(st->pending, blk);
 
-	fprintf(f, "%s: # %s\n", blk->lbl, blk->desc);
+	fprintf(st->f, "%s: # %s\n", blk->lbl, blk->desc);
 
 	for(i = blk->insns; i && *i; i++)
-		fprintf(f, "%s", *i);
+		fprintf(st->f, "%s", *i);
 
 	switch(blk->type){
 		case BLK_UNINIT:
@@ -99,24 +72,52 @@ static void flush_block(out_blk *blk, FILE *f)
 			break;
 
 		case BLK_NEXT_BLOCK:
-			blk_jmpnext(f, blk->bits.next);
-			flush_block(blk->bits.next, f);
+			blk_jmpnext(st->f, blk->bits.next);
+			bfs_add(st->pending, blk->bits.next);
 			break;
 
 		case BLK_COND:
-			/* place true jumps first */
-			fprintf(f, "\t%s\n", blk->bits.cond.insn);
-			/* put the if_1 block after so we don't need a jump */
-			flush_block(blk->bits.cond.if_1_blk, f);
-			flush_block(blk->bits.cond.if_0_blk, f);
-			/* flushing if_1 and if_0 flushes their merge block and so on */
+			fprintf(st->f, "\t%s\n", blk->bits.cond.insn);
+			blk_jmpnext(st->f, blk->bits.cond.if_1_blk);
+
+			bfs_add(st->pending, blk->bits.cond.if_1_blk);
+			bfs_add(st->pending, blk->bits.cond.if_0_blk);
 			break;
 	}
 }
 
+static unsigned blk_hash(const void *v)
+{
+	const out_blk *b = v;
+
+	return b->type
+		^ (unsigned)(unsigned long)b->desc
+		^ dynarray_count(b->insns);
+}
+
 void blk_flushall(out_ctx *octx)
 {
-	flush_block(octx->first_blk, cc_out[SECTION_TEXT]);
+	struct flush_state st = { 0 };
+	out_blk *current;
+	size_t i;
+
+	st.pending = dynmap_new(/*refeq:*/NULL, blk_hash);
+
+	st.f = cc_out[SECTION_TEXT];
+	bfs_add(st.pending, octx->first_blk);
+
+	for(i = 0; (current = dynmap_key(out_blk *, st.pending, i)); ){
+		char *p = dynmap_get(out_blk *, char *, st.pending, current);
+
+		if(p == &present){
+			flush_block(current, &st);
+			i = 0;
+		}else{
+			i++;
+		}
+	}
+
+	dynmap_free(st.pending);
 }
 
 void blk_terminate_condjmp(
