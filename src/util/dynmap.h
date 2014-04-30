@@ -4,12 +4,13 @@
 typedef struct dynmap dynmap;
 /* 0 for match, non-zero for mismatch */
 typedef int dynmap_cmp_f(void *, void *);
+typedef unsigned dynmap_hash_f(const void *);
 
-dynmap *dynmap_new(dynmap_cmp_f);
+dynmap *dynmap_new(dynmap_cmp_f, dynmap_hash_f);
 void    dynmap_free(dynmap *);
 
 void *dynmap_nochk_get(dynmap *, void *key);
-void  dynmap_nochk_set(dynmap *, void *key, void *val);
+void *dynmap_nochk_set(dynmap *, void *key, void *val);
 
 /* keys may be null, so: */
 int dynmap_nochk_exists(dynmap *, void *key);
@@ -17,6 +18,9 @@ int dynmap_nochk_exists(dynmap *, void *key);
 void *dynmap_nochk_key(dynmap *map, int i);
 
 void *dynmap_nochk_value(dynmap *map, int i);
+
+/* handy */
+dynmap_hash_f dynmap_strhash;
 
 #include "dyn.h"
 
@@ -27,7 +31,7 @@ void *dynmap_nochk_value(dynmap *map, int i);
 #define dynmap_set(type_k, type_v, map, key, value)   \
 	(UCC_TYPECHECK(type_k, key),                        \
 	 UCC_TYPECHECK(type_v, value),                      \
-	 dynmap_nochk_set(map, (void *)key, (void *)value))
+	 (type_v)dynmap_nochk_set(map, (void *)key, (void *)value))
 
 #define dynmap_key(type_k, map, idx)   \
 	 ((type_k)dynmap_nochk_key(map, idx))

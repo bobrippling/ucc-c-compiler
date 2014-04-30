@@ -5,50 +5,66 @@
 #include "dynmap.h"
 #include "alloc.h"
 
+#define HASH_TBL_CNT 256
+
 typedef struct pair pair;
 
 struct dynmap
 {
 	dynmap_cmp_f *cmp;
+	dynmap_hash_f *hash;
 	struct pair
 	{
 		void *key, *value;
 		pair *next;
-	} *pairs, *last_pair;
-	/* last_pair keeps the keys in the order they are added */
+	} pairs[HASH_TBL_CNT];
 };
 
+unsigned dynmap_strhash(const void *v)
+{
+	const char *s = v;
+	unsigned hash = 5381;
+
+	for(; *s; s++)
+		hash = ((hash << 5) + hash) + *s;
+
+	return hash;
+}
+
 dynmap *
-dynmap_new(dynmap_cmp_f cmp)
+dynmap_new(dynmap_cmp_f cmp, dynmap_hash_f hash)
 {
 	dynmap *m = umalloc(sizeof *m);
 	m->cmp = cmp;
+	m->hash = hash;
 	return m;
 }
 
 void
 dynmap_free(dynmap *map)
 {
-	pair *p, *q;
-
-	if(!map)
-		return;
-
-	for(p = map->pairs; p; q = p->next, free(p), p = q);
-
 	free(map);
 }
 
 static pair *
-dynmap_nochk_pair(dynmap *map, void *key)
+dynmap_nochk_pair(dynmap *map, void *key, unsigned *phash)
 {
-	pair *i;
+	pair *p;
+	unsigned hash;
 
 	assert(key && "null key");
 
-	for(i = map->pairs; i; i = i->next)
-		if(map->cmp ? !map->cmp(i->key, key) : i->key == key)
-			return i;
+	hash = map->hash(key);
+	if(phash)
+		*phash = hash;
+
+	for(p = &map->pairs[hash % HASH_TBL_CNT];
+	    p && p->key;
+	    p = p->next)
+	{
+		if(map->cmp ? !map->cmp(p->key, key) : p->key == key)
+			return p;
+	}
 
 	return NULL;
 }
@@ -61,7 +77,7 @@ dynmap_nochk_get(dynmap *map, void *key)
 	if(!map)
 		return NULL;
 
-	i = dynmap_nochk_pair(map, key);
+	i = dynmap_nochk_pair(map, key, NULL);
 	if(i)
 		return i->value;
 
@@ -73,45 +89,61 @@ int dynmap_nochk_exists(dynmap *map, void *key)
 	if(!map)
 		return 0;
 
-	return !!dynmap_nochk_pair(map, key);
+	return !!dynmap_nochk_pair(map, key, NULL);
 }
 
-void
+void *
 dynmap_nochk_set(dynmap *map, void *key, void *val)
 {
 	pair *p;
+	unsigned hash;
 
 	assert(key && "null dynmap key");
 
-	p = dynmap_nochk_pair(map, key);
+	p = dynmap_nochk_pair(map, key, &hash);
 
 	if(p){
+		void *old = p->value;
 		p->value = val;
+		return old;
 	}else{
-		p = umalloc(sizeof *p);
+		p = &map->pairs[hash % HASH_TBL_CNT];
+		if(p->key){
+			while(p->next)
+				p = p->next;
+
+			p->next = umalloc(sizeof *p);
+			p = p->next;
+		}
+
 		p->key   = key;
 		p->value = val;
 
-		if(map->last_pair)
-			map->last_pair->next = p;
-		else
-			map->pairs = p;
-
-		map->last_pair = p;
+		return NULL; /* no old value */
 	}
 }
 
 static pair *
-dynmap_nochk_idx(dynmap *map, int i)
+dynmap_nochk_idx(dynmap *map, int at)
 {
-	pair *p;
+	int i;
 
 	if(!map)
 		return NULL;
 
-	for(p = map->pairs; p && i > 0; p = p->next, i--);
+	for(i = 0; i < HASH_TBL_CNT; i++){
+		pair *p;
 
-	return p;
+		for(p = &map->pairs[i]; p; p = p->next){
+			if(p->key){
+				if(at == 0)
+					return p;
+				at--;
+			}
+		}
+	}
+
+	return NULL;
 }
 
 void *
