@@ -1,9 +1,11 @@
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 #include <assert.h>
 
 #include "dynmap.h"
 #include "alloc.h"
+#include "compiler.h"
 
 #define HASH_TBL_CNT 256
 
@@ -158,4 +160,41 @@ dynmap_nochk_value(dynmap *map, int i)
 {
 	pair *p = dynmap_nochk_idx(map, i);
 	return p ? p->value : NULL;
+}
+
+void *dynmap_nochk_rm(dynmap *map, void *key)
+{
+	unsigned hash;
+	pair *p = dynmap_nochk_pair(map, key, &hash);
+	void *value;
+
+	if(!p)
+		return NULL;
+
+	value = p->value;
+
+	if(p == &map->pairs[hash % HASH_TBL_CNT]){
+		/* replace */
+		pair *ent = &map->pairs[hash % HASH_TBL_CNT];
+
+		if(p->next)
+			memcpy_safe(ent, p->next);
+		else
+			memset(ent, 0, sizeof *ent);
+
+	}else{
+		pair *i;
+
+		/* find the one before */
+		for(i = &map->pairs[hash % HASH_TBL_CNT];
+		    i->next != p;
+		    i = i->next)
+			;
+
+		/* unlink */
+		i->next = p->next;
+		free(p);
+	}
+
+	return value;
 }

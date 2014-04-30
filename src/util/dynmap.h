@@ -19,6 +19,8 @@ void *dynmap_nochk_key(dynmap *map, int i);
 
 void *dynmap_nochk_value(dynmap *map, int i);
 
+void *dynmap_nochk_rm(dynmap *, void *key);
+
 /* handy */
 dynmap_hash_f dynmap_strhash;
 
@@ -42,5 +44,9 @@ dynmap_hash_f dynmap_strhash;
 #define dynmap_exists(type_k, map, key)  \
 	(UCC_TYPECHECK(type_k, key),           \
 	 dynmap_nochk_exists(map, key))
+
+#define dynmap_rm(type_k, type_v, map, key) \
+	(UCC_TYPECHECK(type_k, key),              \
+	 (type_v)dynmap_nochk_rm(map, key))
 
 #endif
