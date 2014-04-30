@@ -8,6 +8,11 @@
 #include "compiler.h"
 
 #define HASH_TBL_CNT 256
+#define HASH_TBL_CNT_BITS 8 /* log2(HASH_TBL_CNT) */
+
+#ifndef CHAR_BIT
+#    define CHAR_BIT 8
+#endif
 
 typedef struct pair pair;
 
@@ -49,6 +54,16 @@ dynmap_free(dynmap *map)
 }
 
 static pair *
+dynmap_first_pair(dynmap *map, unsigned hash)
+{
+	/* squash all the bits together */
+	while(hash >= HASH_TBL_CNT)
+		hash = (hash >> HASH_TBL_CNT_BITS) ^ (hash & (HASH_TBL_CNT - 1));
+
+	return &map->pairs[hash];
+}
+
+static pair *
 dynmap_nochk_pair(dynmap *map, void *key, unsigned *phash)
 {
 	pair *p;
@@ -60,7 +75,7 @@ dynmap_nochk_pair(dynmap *map, void *key, unsigned *phash)
 	if(phash)
 		*phash = hash;
 
-	for(p = &map->pairs[hash % HASH_TBL_CNT];
+	for(p = dynmap_first_pair(map, hash);
 	    p && p->key;
 	    p = p->next)
 	{
@@ -109,7 +124,7 @@ dynmap_nochk_set(dynmap *map, void *key, void *val)
 		p->value = val;
 		return old;
 	}else{
-		p = &map->pairs[hash % HASH_TBL_CNT];
+		p = dynmap_first_pair(map, hash);
 		if(p->key){
 			while(p->next)
 				p = p->next;
@@ -166,6 +181,7 @@ void *dynmap_nochk_rm(dynmap *map, void *key)
 {
 	unsigned hash;
 	pair *p = dynmap_nochk_pair(map, key, &hash);
+	pair *first;
 	void *value;
 
 	if(!p)
@@ -173,22 +189,20 @@ void *dynmap_nochk_rm(dynmap *map, void *key)
 
 	value = p->value;
 
-	if(p == &map->pairs[hash % HASH_TBL_CNT]){
-		/* replace */
-		pair *ent = &map->pairs[hash % HASH_TBL_CNT];
+	first = dynmap_first_pair(map, hash);
 
-		if(p->next)
-			memcpy_safe(ent, p->next);
+	if(p == first){
+		/* replace */
+		if(first->next)
+			memcpy_safe(first, p->next);
 		else
-			memset(ent, 0, sizeof *ent);
+			memset(first, 0, sizeof *first);
 
 	}else{
 		pair *i;
 
 		/* find the one before */
-		for(i = &map->pairs[hash % HASH_TBL_CNT];
-		    i->next != p;
-		    i = i->next)
+		for(i = first; i->next != p; i = i->next)
 			;
 
 		/* unlink */
