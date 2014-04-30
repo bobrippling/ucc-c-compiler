@@ -1130,6 +1130,10 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 					inv = 1;
 				}
 
+				/* still a const? */
+				if(r->type == V_CONST_I)
+					r = v_to_reg(octx, r);
+
 				out_asm(octx, "cmp%s %s, %s",
 						x86_suffix(l->t), /* pick the non-const one (for type-ing) */
 						vstack_str(r, 0),
@@ -1337,11 +1341,7 @@ out_val *impl_cast_load(
 
 		case V_CONST_I:
 		case V_LBL:
-			/* something like movslq -8(%rbp), %rax */
-			vstack_str_r(buf_small, vp, 1);
-			break;
-
-		case V_REG_SPILT:
+		case V_REG_SPILT: /* could do something like movslq -8(%rbp), %rax */
 		case V_FLAG:
 			vp = v_to_reg(octx, vp);
 		case V_REG:
@@ -1752,8 +1752,7 @@ out_val *impl_call(
 		funcargs *args = type_funcargs(fnty);
 		int need_float_count =
 			args->variadic
-			|| (!args->arglist && !args->args_void);
-
+			|| FUNCARGS_EMPTY_NOVOID(args);
 		/* jtarget must be assigned before "movb $0, %al" */
 		const char *jtarget = x86_call_jmp_target(octx, &fn, need_float_count);
 

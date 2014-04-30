@@ -102,8 +102,7 @@ void gen_asm_global(decl *d, out_ctx *octx)
 	}
 
 	/* order of the if matters */
-	if(type_is_func_or_block(d->ref)){
-		/* check .func_code, since it could be a block */
+	if(type_is(d->ref, type_func)){
 		int nargs = 0, is_vari;
 		decl **aiter;
 		const char *sp;

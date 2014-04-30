@@ -157,6 +157,9 @@ static void print_type_eng(type *ref)
 	print_type_eng(ref->ref);
 
 	switch(ref->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_cast:
 			if(ref->bits.cast.is_signed_cast)
 				fprintf(cc1_out, "%s ", ref->bits.cast.signed_true ? "signed" : "unsigned");
@@ -357,9 +360,11 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 		gen_str_indent++;
 
-		for(iter = d->bits.func.code->symtab->decls; iter && *iter; iter++)
-			idt_printf("offset of %s = %d\n", (*iter)->spel,
-					(*iter)->sym->loc.stack_pos);
+		for(iter = d->bits.func.code->symtab->decls; iter && *iter; iter++){
+			sym *s = (*iter)->sym;
+			if(s)
+				idt_printf("offset of %s = %d\n", (*iter)->spel, s->loc.stack_pos);
+		}
 
 		idt_printf("function stack space %d\n",
 				d->bits.func.code->symtab->auto_total_size);

@@ -9,6 +9,8 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 
+#define BOOLEAN_TYPE type_int
+
 const char *str_expr_op()
 {
 	return "op";
@@ -217,7 +219,9 @@ type *op_required_promotion(
 		/* cast _to_ the floating type */
 		type *res = floating_lhs ? (*prhs = tlhs) : (*plhs = trhs);
 
-		resolved = op_is_comparison(op) ? type_nav_btype(cc1_type_nav, type__Bool) : res;
+		resolved = op_returns_bool(op)
+			? type_nav_btype(cc1_type_nav, BOOLEAN_TYPE)
+			: res;
 
 		goto fin;
 		/* else we pick the largest floating or integral type */
@@ -277,7 +281,7 @@ ptr_relation:
 					}
 				}
 
-				resolved = type_nav_btype(cc1_type_nav, type__Bool);
+				resolved = type_nav_btype(cc1_type_nav, BOOLEAN_TYPE);
 
 			}else{
 				die_at(w, "operation between two pointers must be relational or subtraction");
@@ -321,7 +325,7 @@ ptr_relation:
 								type_to_str(next));
 					}
 					/* TODO: note: type declared at resolved->where */
-				}else if(type_is_func_or_block(next)){
+				}else if(type_is(next, type_func)){
 					warn_at(w, "arithmetic on function pointer '%s'",
 							type_to_str(resolved));
 				}
@@ -370,7 +374,7 @@ ptr_relation:
 
 		}else if(op == op_andsc || op == op_orsc){
 			/* no promotion */
-			resolved = type_nav_btype(cc1_type_nav, type__Bool);
+			resolved = type_nav_btype(cc1_type_nav, BOOLEAN_TYPE);
 
 		}else{
 			const int l_unsigned = !type_is_signed(tlhs),
@@ -419,9 +423,9 @@ ptr_relation:
 				tlarger = *plhs = *prhs = type_sign(signed_t, 0);
 			}
 
-			/* if we have a _comparison_ (e.g. between enums), convert to _Bool */
+			/* if we have a _comparison_, convert to bool */
 			resolved = op_returns_bool(op)
-				? type_nav_btype(cc1_type_nav, type__Bool)
+				? type_nav_btype(cc1_type_nav, BOOLEAN_TYPE)
 				: tlarger;
 		}
 	}

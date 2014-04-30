@@ -24,6 +24,9 @@ struct funcargs
 	enum calling_conv conv;
 };
 
+#define FUNCARGS_EMPTY_NOVOID(fa) \
+		(!(fa)->arglist && !(fa)->args_void)
+
 enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from);
 
 

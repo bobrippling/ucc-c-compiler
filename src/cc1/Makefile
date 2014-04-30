@@ -11,7 +11,7 @@ LDFLAGS += -lm
 OBJ = \
 	../util/alloc.o ../util/util.o ../util/platform.o \
 	../util/dynarray.o ../util/dynmap.o ../util/where.o \
-	../util/str.o ../util/std.o ../util/escape.o \
+	../util/str.o ../util/std.o ../util/escape.o ../util/warn.o \
 	str.o num.o label.o strings.o \
 	cc1.o pass1.o \
 	decl.o attribute.o decl_init.o funcargs.o expr.o stmt.o \
@@ -61,8 +61,8 @@ out/impl.h: out/x86_64.h out/mipsel_32.h
 deps: Makefile.dep
 
 Makefile.dep:
-	cc ${CPPFLAGS} -MM *.c > $@
-	cc ${CPPFLAGS} -MM ops/*.c | sed 's#^\([^ ]\)#ops/\1#' >> $@
-	cc ${CPPFLAGS} -MM out/*.c | sed 's#^\([^ ]\)#out/\1#' >> $@
+	${CC} ${CPPFLAGS} -MM *.c > $@
+	${CC} ${CPPFLAGS} -MM ops/*.c | sed 's#^\([^ ]\)#ops/\1#' >> $@
+	${CC} ${CPPFLAGS} -MM out/*.c | sed 's#^\([^ ]\)#out/\1#' >> $@
 
 include Makefile.dep

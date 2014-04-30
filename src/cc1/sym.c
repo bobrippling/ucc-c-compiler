@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "sym.h"
@@ -79,12 +80,6 @@ symtable_global *symtab_global(symtable *stab)
 	return (symtable_global *)symtab_root(stab);
 }
 
-void symtab_add_params(symtable *stab, decl **params)
-{
-	UCC_ASSERT(stab->are_params, "add params to a non-param symtable");
-	dynarray_add_array(&stab->decls, params);
-}
-
 int symtab_nested_internal(symtable *parent, symtable *nest)
 {
 	while(nest && nest->internal_nest){
@@ -129,12 +124,6 @@ sym *symtab_search(symtable *tab, const char *sp)
 	return d->sym;
 }
 
-int typedef_visible(symtable *stab, const char *spel)
-{
-	decl *d = symtab_search_d(stab, spel, NULL);
-	return d && (d->store & STORE_MASK_STORE) == store_typedef;
-}
-
 const char *sym_to_str(enum sym_type t)
 {
 	switch(t){
@@ -150,16 +139,20 @@ static void label_init(symtable **stab)
 	*stab = symtab_func_root(*stab);
 	if((*stab)->labels)
 		return;
-	(*stab)->labels = dynmap_new((dynmap_cmp_f *)strcmp);
+	(*stab)->labels = dynmap_new((dynmap_cmp_f *)strcmp, dynmap_strhash);
 }
 
 void symtab_label_add(symtable *stab, label *lbl)
 {
+	label *prev;
+
 	label_init(&stab);
 
-	dynmap_set(char *, label *,
+	prev = dynmap_set(char *, label *,
 			symtab_func_root(stab)->labels,
 			lbl->spel, lbl);
+
+	assert(!prev);
 }
 
 label *symtab_label_find_or_new(symtable *stab, char *spel, where *w)

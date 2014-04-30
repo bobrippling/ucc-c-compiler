@@ -7,7 +7,7 @@ printv(const char *a, __builtin_va_list l)
 	while(a){
 		write(1, a, strlen(a));
 		write(1, "\n", 1);
-		a = __builtin_va_arg(l, typeof(a));
+		a = __builtin_va_arg(l, __typeof(a));
 	}
 	return 0;
 }

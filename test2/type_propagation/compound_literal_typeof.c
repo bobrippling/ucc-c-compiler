@@ -3,7 +3,7 @@
 
 main()
 {
-	typeof(int[]){1,2,3} a;
+	__typeof(int[]){1,2,3} a;
 
 	return sizeof a;
 }

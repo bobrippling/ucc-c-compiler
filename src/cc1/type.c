@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "../util/where.h"
 #include "../util/util.h"
@@ -101,6 +102,9 @@ static enum type_cmp type_cmp_r(
 	}
 
 	switch(a->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_btype:
 			subchk = 0;
 			ret = btype_cmp(a->bits.type, b->bits.type);
@@ -264,6 +268,9 @@ integral_t type_max(type *r, where *from)
 unsigned type_size(type *r, where *from)
 {
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_btype:
 			return btype_size(r->bits.type, from);
 
@@ -316,6 +323,23 @@ unsigned type_align(type *r, where *from)
 {
 	struct_union_enum_st *sue;
 	type *test;
+	attribute *align;
+
+	align = type_attr_present(r, attr_aligned);
+
+	if(align){
+		if(align->bits.align){
+			consty k;
+
+			const_fold(align->bits.align, &k);
+
+			assert(k.type == CONST_NUM && K_INTEGRAL(k.bits.num));
+
+			return k.bits.num.val.i;
+		}
+
+		return platform_align_max();
+	}
 
 	if((sue = type_is_s_or_u(r)))
 		/* safe - can't have an instance without a ->sue */
@@ -438,6 +462,9 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 	type_add_str(r->tmp, spel, need_spc, bufp, sz);
 
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_tdef:
 			/* tdef "aka: %s" handled elsewhere */
 		case type_attr:
@@ -655,6 +682,7 @@ const char *type_kind_to_str(enum type_kind k)
 		CASE_STR_PREFIX(type, cast);
 		CASE_STR_PREFIX(type, attr);
 		CASE_STR_PREFIX(type, where);
+		CASE_STR_PREFIX(type, auto);
 	}
 	ucc_unreach(NULL);
 }
@@ -678,4 +706,54 @@ type_str_type(type *r)
 		default:
 			return type_str_no;
 	}
+}
+
+unsigned type_hash(const type *t)
+{
+	unsigned hash = t->type << 20 | (unsigned)(unsigned long)t;
+
+	switch(t->type){
+		case type_auto:
+			ICE("auto type");
+
+		case type_btype:
+			hash |= t->bits.type->primitive;
+			break;
+
+		case type_tdef:
+			hash |= type_hash(t->bits.tdef.type_of->tree_type);
+			break;
+
+		case type_ptr:
+		case type_array:
+			hash |= type_hash(t->bits.ptr.size->tree_type);
+			break;
+
+		case type_block:
+		case type_where:
+			/* nothing */
+			break;
+
+		case type_func:
+		{
+			decl **i;
+
+			for(i = t->bits.func.args->arglist; i && *i; i++)
+				hash |= type_hash((*i)->ref);
+
+			break;
+		}
+
+		case type_cast:
+			hash |= t->bits.cast.is_signed_cast
+				| t->bits.cast.signed_true << 2
+				| t->bits.cast.qual << 4;
+			break;
+
+		case type_attr:
+			hash |= t->bits.attr->type;
+			break;
+	}
+
+	return hash;
 }

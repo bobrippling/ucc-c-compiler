@@ -22,6 +22,7 @@ struct type
 		type_block, /* block pointer to next ref (func) */
 		type_func,  /* function */
 		type_array, /* array of next ref, similar to pointer */
+		type_auto, /* to be inferred */
 		type_cast,  /* used for adding qualifiers */
 		type_attr,  /* __attribute__ */
 		type_where  /* .where */
@@ -123,5 +124,7 @@ integral_t type_max(type *r, where *from);
 
 where *type_loc(type *);
 int type_has_loc(type *);
+
+unsigned type_hash(const type *);
 
 #endif

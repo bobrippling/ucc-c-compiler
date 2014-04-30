@@ -24,6 +24,7 @@
 #include "fold_sue.h"
 #include "format_chk.h"
 #include "type_is.h"
+#include "type_nav.h"
 
 int fold_had_error;
 
@@ -234,12 +235,19 @@ void fold_type_w_attr(
 	attribute *this_attr = NULL;
 	enum type_qualifier q_to_check = qual_none;
 
+	/* must be above the .folded check,
+	 * since we use the same attribute node for
+	 * several attr_ucc_debug instances */
+	attribute_debug_check(attr);
+
 	if(!r || r->folded)
 		return;
-
 	r->folded = 1;
 
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_array:
 			if(r->bits.array.size){
 				consty k;
@@ -265,6 +273,7 @@ void fold_type_w_attr(
 			break;
 
 		case type_func:
+			/* necessary for struct-scope checks when there's no {} body */
 			r->bits.func.arg_scope->are_params = 1;
 
 			symtab_fold_sues(r->bits.func.arg_scope);
@@ -373,10 +382,25 @@ void fold_type_w_attr(
 			}
 			break;
 
+		case type_cast:
+			if(!r->bits.cast.is_signed_cast
+			&& type_is(r->ref, type_func))
+			{
+				/* C11 6.7.3.9
+				 * If the specification of an array type includes any type qualifiers,
+				 * the element type is so-qualified, not the array type. If the
+				 * specification of a function type includes any type qualifiers, the
+				 * behavior is undefined)
+				 *
+				 * Array types are handled by type_qualify()
+				 */
+				warn_at(loc, "qualifier on function type '%s'", type_to_str(r->ref));
+			}
+			break;
+
 		case type_block:
 			if(!type_is(r->ref, type_func)){
-				fold_had_error = 1;
-				warn_at_print_error(loc,
+				die_at(loc,
 						"invalid block pointer - function required (got %s)",
 						type_to_str(r->ref));
 			}
@@ -431,6 +455,12 @@ static void fold_func_attr(decl *d)
 
 	if((da = attribute_present(d, attr_format)))
 		format_check_decl(d, da);
+
+	if(type_is_void(type_called(d->ref, NULL))
+	&& (da = attribute_present(d, attr_warn_unused)))
+	{
+		warn_at(&d->where, "warn_unused attribute on function returning void");
+	}
 }
 
 static void fold_decl_add_sym(decl *d, symtable *stab)
@@ -463,10 +493,8 @@ static void fold_decl_func(decl *d, symtable *stab)
 	 *   register int  *f();
 	 */
 	switch(d->store & STORE_MASK_STORE){
-		case store_typedef:
-			if(!d->bits.func.code)
-				break;
-
+		/* typedef handled elsewhere, since
+		 * we may fold before we have .func.code */
 		case store_register:
 		case store_auto:
 			fold_had_error = 1;
@@ -666,6 +694,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	 * an argument list/type::func: f(struct A { int i, j; } *p, ...)
 	 */
 	int just_init = 0;
+#define first_fold (!just_init)
 	switch(d->fold_state){
 		case DECL_FOLD_EXCEPT_INIT:
 			just_init = 1;
@@ -676,7 +705,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	}
 	d->fold_state = DECL_FOLD_EXCEPT_INIT;
 
-	if(!just_init){
+	if(first_fold){
 		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), stab, d->attr);
 
 		if(d->spel)
@@ -684,9 +713,10 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	}
 
 	if(type_is(d->ref, type_func)){
-		fold_decl_func(d, stab);
+		if(first_fold)
+			fold_decl_func(d, stab);
 	}else{
-		if(d->bits.var.field_width)
+		if(first_fold && d->bits.var.field_width)
 			fold_decl_var_fieldwidth(d, stab);
 
 		if(pinit_code
@@ -698,7 +728,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	}
 
 	/* name static decls */
-	if(!just_init
+	if(first_fold
 	&& stab->parent
 	&& (d->store & STORE_MASK_STORE) == store_static
 	&& d->spel
@@ -712,6 +742,7 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 				in_fn->spel,
 				d->spel);
 	}
+#undef first_fold
 }
 
 void fold_decl_global_init(decl *d, symtable *stab)
