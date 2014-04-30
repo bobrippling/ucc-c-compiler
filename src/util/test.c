@@ -73,7 +73,7 @@ static int *new_int(int v)
 	return p;
 }
 
-static void test_dynmap(void)
+static void test_dynmap_normal(void)
 {
 	dynmap *map = dynmap_new((dynmap_cmp_f *)strcmp, dynmap_strhash);
 	int i;
@@ -130,6 +130,41 @@ static void test_dynmap(void)
 		free(dynmap_rm(char *, int *, map, key));
 
 	dynmap_free(map);
+}
+
+static unsigned eq_hash(const void *p)
+{
+	(void)p;
+	return 5;
+}
+
+static void test_dynmap_collision(void)
+{
+	dynmap *map = dynmap_new(/*ref*/NULL, eq_hash);
+	int i;
+	char *key;
+
+	(void)dynmap_set(char *, char *, map, (char *)"hi", (char *)"formal");
+	(void)dynmap_set(char *, char *, map, (char *)"yo", (char *)"informal");
+
+	for(i = 0; (key = dynmap_key(char *, map, i)); i++)
+		;
+
+	if(i != 2)
+		BAD("collision merged?");
+
+	if(strcmp(dynmap_get(char *, char *, map, (char *)"hi"), "formal"))
+		BAD("messed up dynmap entry");
+	if(strcmp(dynmap_get(char *, char *, map, (char *)"yo"), "informal"))
+		BAD("messed up dynmap entry");
+
+	dynmap_free(map);
+}
+
+static void test_dynmap(void)
+{
+	test_dynmap_normal();
+	test_dynmap_collision();
 }
 
 int main()
