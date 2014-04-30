@@ -80,11 +80,11 @@ static void test_dynmap(void)
 	char *key;
 	int *removed;
 
-	dynmap_set(char *, int *, map, (char *)"one", new_int(1));
-	dynmap_set(char *, int *, map, (char *)"two", new_int(2));
-	dynmap_set(char *, int *, map, (char *)"three", new_int(3));
-	dynmap_set(char *, int *, map, (char *)"hi", new_int(5));
-	dynmap_set(char *, int *, map, (char *)"hi", new_int(7));
+	free(dynmap_set(char *, int *, map, (char *)"one", new_int(1)));
+	free(dynmap_set(char *, int *, map, (char *)"two", new_int(2)));
+	free(dynmap_set(char *, int *, map, (char *)"three", new_int(3)));
+	free(dynmap_set(char *, int *, map, (char *)"hi", new_int(5)));
+	free(dynmap_set(char *, int *, map, (char *)"hi", new_int(7)));
 
 	for(i = 0; (key = dynmap_key(char *, map, i)); i++){
 		int *val_ith = dynmap_value(int *, map, i);
@@ -125,6 +125,11 @@ static void test_dynmap(void)
 		;
 	if(i != 3) /* count */
 		BAD("bad count (%d)", i);
+
+	while((key = dynmap_key(char *, map, 0)))
+		free(dynmap_rm(char *, int *, map, key));
+
+	dynmap_free(map);
 }
 
 int main()
