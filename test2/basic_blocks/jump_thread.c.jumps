@@ -1,0 +1,5 @@
+f: # f
+.Lblk.1: # b
+.Lblk.2: # a
+.Lblk.3: # c
+	jmp .Lblk.1
