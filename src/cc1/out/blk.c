@@ -24,6 +24,9 @@ struct flush_state
 {
 	FILE *f;
 	dynmap *pending; /* out_blk* => NULL */
+
+	/* for jump threading - the block we jump to if not immediately flushing */
+	out_blk *jmpto;
 };
 
 static char present, done;
@@ -44,13 +47,10 @@ static void bfs_rm(dynmap *pending, out_blk *blk)
 	(void)dynmap_set(out_blk *, char *, pending, blk, &done);
 }
 
-static void blk_jmpnext(FILE *f, out_blk *to)
+static void blk_jmpnext(out_blk *to, struct flush_state *st)
 {
-	/*if(should_flush(to, 0)){
-		fprintf(f, "\t# implicit jump to next line\n");
-		return; * don't bother, fall through to it *
-	}*/
-	impl_jmp(f, to->lbl);
+	assert(!st->jmpto);
+	st->jmpto = to;
 }
 
 static void flush_block(out_blk *blk, struct flush_state *st)
@@ -58,6 +58,17 @@ static void flush_block(out_blk *blk, struct flush_state *st)
 	char **i;
 
 	bfs_rm(st->pending, blk);
+
+	/* before any instructions, if we have a pending jmpto and
+	 * we aren't the target branch, we need to cut off the last
+	 * block with a jump to said jmpto */
+	if(st->jmpto){
+		if(st->jmpto != blk)
+			impl_jmp(st->f, st->jmpto->lbl);
+		else
+			fprintf(st->f, "\t# implicit jump to next line\n");
+		st->jmpto = NULL;
+	}
 
 	fprintf(st->f, "%s: # %s\n", blk->lbl, blk->desc);
 
@@ -72,13 +83,13 @@ static void flush_block(out_blk *blk, struct flush_state *st)
 			break;
 
 		case BLK_NEXT_BLOCK:
-			blk_jmpnext(st->f, blk->bits.next);
+			blk_jmpnext(blk->bits.next, st);
 			bfs_add(st->pending, blk->bits.next);
 			break;
 
 		case BLK_COND:
 			fprintf(st->f, "\t%s\n", blk->bits.cond.insn);
-			blk_jmpnext(st->f, blk->bits.cond.if_1_blk);
+			blk_jmpnext(blk->bits.cond.if_1_blk, st);
 
 			bfs_add(st->pending, blk->bits.cond.if_1_blk);
 			bfs_add(st->pending, blk->bits.cond.if_0_blk);
@@ -116,6 +127,9 @@ void blk_flushall(out_ctx *octx)
 			i++;
 		}
 	}
+
+	if(st.jmpto)
+		impl_jmp(st.f, st.jmpto->lbl);
 
 	dynmap_free(st.pending);
 }
