@@ -1653,7 +1653,7 @@ out_val *impl_call(
 		arg_stack += nfloats - N_CALL_REGS_F;
 
 	/* need to save regs before pushes/call */
-	v_save_regs(octx, fnty, local_args);
+	v_save_regs(octx, fnty, local_args, fn);
 
 	if(arg_stack > 0){
 		out_comment("stack space for %d arguments", arg_stack);

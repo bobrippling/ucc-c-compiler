@@ -246,9 +246,12 @@ static int val_present(out_val *v, out_val **ignores)
 	return 0;
 }
 
-void v_save_regs(out_ctx *octx, type *func_ty, out_val *ignores[])
+void v_save_regs(
+		out_ctx *octx, type *func_ty,
+		out_val *ignores[], out_val *fnval)
 {
-	/* save all registers except callee save */
+	/* save all registers except callee save,
+	 * and the call-expr reg, if present */
 	out_val_list *l;
 
 	/* go backwards in case the list is added to */
@@ -262,7 +265,7 @@ void v_save_regs(out_ctx *octx, type *func_ty, out_val *ignores[])
 		switch(v->type){
 			case V_REG_SPILT:
 			case V_REG:
-				if(val_present(v, ignores)){
+				if(v == fnval || val_present(v, ignores)){
 					/* don't save */
 				}else if(!impl_reg_savable(&v->bits.regoff.reg)){
 					/* don't save stack references */
@@ -295,7 +298,12 @@ void v_save_regs(out_ctx *octx, type *func_ty, out_val *ignores[])
 		}
 
 		if(save){
-			out_val *new = v_save_reg(octx, v);
+			out_val *new;
+
+			assert(v->retains == 1 && "v_save_regs(): too heavily retained v");
+
+			new = v_save_reg(octx, v);
+
 			out_val_overwrite(v, new);
 			out_val_release(octx, new);
 		}

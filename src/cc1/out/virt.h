@@ -49,7 +49,9 @@ void v_reg_to_stack(
 void v_freeup_reg(out_ctx *, const struct vreg *r);
 
 /* func_ty may be null, ignores is null-terminated */
-void v_save_regs(out_ctx *, type *func_ty, out_val *ignores[]);
+void v_save_regs(
+		out_ctx *, type *func_ty,
+		out_val *ignores[], out_val *fnval);
 
 int v_is_const_reg(out_val *);
 
