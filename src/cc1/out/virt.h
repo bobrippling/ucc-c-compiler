@@ -55,6 +55,10 @@ void v_save_regs(
 
 int v_is_const_reg(out_val *);
 
+
+void v_reserve_reg(out_ctx *, const struct vreg *);
+void v_unreserve_reg(out_ctx *, const struct vreg *);
+
 /* util */
 enum flag_cmp v_inv_cmp(enum flag_cmp cmp, int invert_eq);
 

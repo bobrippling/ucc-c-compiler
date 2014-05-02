@@ -310,6 +310,18 @@ void v_save_regs(
 	}
 }
 
+void v_reserve_reg(out_ctx *octx, const struct vreg *r)
+{
+	assert(!r->is_float);
+	octx->reserved_regs[impl_reg_to_scratch(r)]++;
+}
+
+void v_unreserve_reg(out_ctx *octx, const struct vreg *r)
+{
+	assert(!r->is_float);
+	octx->reserved_regs[impl_reg_to_scratch(r)]--;
+}
+
 void v_stack_adj(out_ctx *octx, unsigned amt, int sub)
 {
 	out_val_consume(

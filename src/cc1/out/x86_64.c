@@ -876,6 +876,53 @@ void impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *to_reg)
 			regstr);
 }
 
+static out_val *x86_idiv(
+		out_ctx *octx, enum op_type op,
+		out_val *l, out_val *r)
+{
+	/*
+	 * divide the 64 bit integer edx:eax
+	 * by the operand
+	 * quotient  -> eax
+	 * remainder -> edx
+	 */
+	const struct vreg rdx = { X86_64_REG_RDX, 0 };
+	const struct vreg rax = { X86_64_REG_RAX, 0 };
+	struct vreg result;
+
+	v_freeup_reg(octx, &rax);
+	v_reserve_reg(octx, &rax);
+	v_freeup_reg(octx, &rdx);
+	v_reserve_reg(octx, &rdx);
+
+	/* need to move 'l' into eax
+	 * then sign extended later - cqto */
+	l = v_to_reg_given(octx, l, &rax);
+
+	/* idiv takes either a reg or memory address */
+	r = v_to(octx, r, TO_REG | TO_MEM);
+
+	assert(r->type != V_REG
+			|| r->bits.regoff.reg.idx != X86_64_REG_RDX);
+
+	out_asm(octx, "cqto");
+	out_asm(octx, "idiv%s %s",
+			x86_suffix(r->t),
+			vstack_str(r, 0));
+
+	v_unreserve_reg(octx, &rax);
+	v_unreserve_reg(octx, &rdx);
+
+	out_val_release(octx, r);
+
+	/* this is fine - we always use int-sized arithmetic or higher
+	 * (otherwise in the char case, we would need ah:al) */
+	result.idx = (op == op_modulus ? X86_64_REG_RDX : X86_64_REG_RAX);
+	result.is_float = 0;
+
+	return v_new_reg(octx, l, l->t, &result);
+}
+
 out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 {
 	const char *opc;
@@ -1010,88 +1057,7 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 
 		case op_modulus:
 		case op_divide:
-		{
-			ICE("TODO: div/mod");
-#if 0
-			/*
-			 * divides the 64 bit integer EDX:EAX
-			 * by the operand
-			 * quotient  -> eax
-			 * remainder -> edx
-			 */
-			struct vreg rtmp[2], rdiv;
-
-			/*
-			 * if we are using reg_[ad] elsewhere
-			 * and they aren't queued for this idiv
-			 * then save them, so we can use them
-			 * for idiv
-			 */
-
-			/*
-			 * Must freeup the lower
-			 */
-			memset(rtmp, 0, sizeof rtmp);
-			rtmp[0].idx = X86_64_REG_RAX;
-			rtmp[1].idx = X86_64_REG_RDX;
-			v_freeup_regs(&rtmp[0], &rtmp[1]);
-
-			v_reserve_reg(&rtmp[1]); /* prevent rdx being used in the division */
-
-			v_to_reg_out(&vtop[-1], &rdiv); /* TODO: similar to above - v_to_reg_preferred */
-
-			if(rdiv.idx != X86_64_REG_RAX){
-				/* we already have rax in use by vtop, swap the values */
-				if(vtop->type == V_REG
-				&& vtop->bits.regoff.reg.idx == X86_64_REG_RAX)
-				{
-					impl_reg_swp(vtop, &vtop[-1]);
-				}else{
-					v_freeup_reg(&rtmp[0], 2);
-					impl_reg_cp(&vtop[-1], &rtmp[0]);
-					vtop[-1].bits.regoff.reg.idx = X86_64_REG_RAX;
-				}
-
-				rdiv.idx = vtop[-1].bits.regoff.reg.idx;
-			}
-
-			UCC_ASSERT(rdiv.idx == X86_64_REG_RAX,
-					"register A not chosen for idiv (%s)", x86_intreg_str(rdiv.idx, NULL));
-
-			/* idiv takes either a reg or memory address */
-			switch(vtop->type){
-				default:
-					v_to_reg(vtop);
-					/* fall */
-
-				case V_REG:
-					if(vtop->bits.regoff.reg.idx == X86_64_REG_RDX){
-						/* prevent rdx in division operand */
-						struct vreg r;
-						v_unused_reg(1, 0, &r);
-						impl_reg_cp(vtop, &r);
-						memcpy_safe(&vtop->bits.regoff.reg, &r);
-					}
-
-					out_asm(octx, "cqto");
-					out_asm(octx, "idiv%s %s",
-							x86_suffix(vtop->t),
-							vstack_str(vtop, 0));
-			}
-
-			v_unreserve_reg(&rtmp[1]); /* free rdx */
-
-			vpop();
-
-			/* this is fine - we always use int-sized arithmetic or higher
-			 * (in the char case, we would need ah:al
-			 */
-
-			v_clear(vtop, vtop->t);
-			v_set_reg_i(vtop, op == op_modulus ? X86_64_REG_RDX : X86_64_REG_RAX);
-			return;
-#endif
-		}
+			return x86_idiv(octx, op, l, r);
 
 		case op_eq:
 		case op_ne:
