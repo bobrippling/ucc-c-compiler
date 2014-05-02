@@ -131,7 +131,7 @@ static ucc_wur out_val *v_freeup_regp(out_ctx *octx, out_val *vp)
 		/* change vp's register to 'r', so that vp's original register is free */
 		vp->bits.regoff.reg = r;
 
-		return vp;
+		return out_val_retain(octx, vp);
 
 	}else{
 		/* no free registers, save this one to the stack and mutate vp */
