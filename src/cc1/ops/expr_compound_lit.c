@@ -130,8 +130,10 @@ void gen_expr_str_compound_lit(expr *e)
 		gen_str_indent--;
 
 		idt_printf("}\n");
-		idt_printf("init code:\n");
-		print_stmt(e->code);
+		if(e->code){
+			idt_printf("init code:\n");
+			print_stmt(e->code);
+		}
 	}
 	e->op = 0;
 }
