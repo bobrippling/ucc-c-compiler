@@ -1380,6 +1380,8 @@ out_val *impl_cast_load(
 					x86_reg_str(&r, big));
 		}
 
+		vp->t = big;
+
 		return vp;
 	}
 }
