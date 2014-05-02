@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "../../util/util.h"
 #include "../../util/alloc.h"
@@ -1728,6 +1729,9 @@ out_val *impl_call(
 			if(vp->type != V_REG || !vreg_eq(rp, &vp->bits.regoff.reg)){
 				/* need to free it up, as v_to_reg_given doesn't clobber check */
 				v_freeup_reg(octx, rp);
+
+				assert(local_args[i]->retains == 1 && "too heavily retained arg");
+
 				local_args[i] = v_to_reg_given(octx, local_args[i], rp);
 			}
 		}

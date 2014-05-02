@@ -338,10 +338,9 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 		out_comment("end manual __asm__");
 	}else{
 		/* continue with normal funcall */
-		out_val *fn, **args = NULL, **iarg;
+		out_val *fn, **args = NULL;
 
 		fn = gen_expr(e->expr, octx);
-		out_val_retain(octx, fn);
 
 		if(e->funcargs){
 			expr **aiter;
@@ -354,17 +353,12 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 				 * or double (for floating types)
 				 */
 				arg = gen_expr(earg, octx);
-				out_val_retain(octx, arg);
 				dynarray_add(&args, arg);
 			}
 		}
 
 		/* consumes fn and args */
 		fn_ret = out_call(octx, fn, args, e->expr->tree_type);
-		/* consumes fn and args, but we held them too: */
-		out_val_release(octx, fn);
-		for(iarg = args; iarg && *iarg; iarg++)
-			out_val_release(octx, *iarg);
 
 		dynarray_free(out_val **, &args, NULL);
 	}
