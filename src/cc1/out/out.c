@@ -8,7 +8,6 @@
 #include "../../util/alloc.h"
 
 #include "../../util/platform.h"
-#include "../cc1.h"
 #include "../pack.h"
 #include "../defs.h"
 #include "../opt.h"
@@ -205,16 +204,6 @@ out_val *out_normalise(out_ctx *octx, out_val *unnormal)
 	}
 
 	return normalised;
-}
-
-out_val *out_op(out_ctx *octx, enum op_type binop, out_val *lhs, out_val *rhs)
-{
-	return impl_op(octx, binop, lhs, rhs);
-}
-
-out_val *out_op_unary(out_ctx *octx, enum op_type uop, out_val *exp)
-{
-	return impl_op_unary(octx, uop, exp);
 }
 
 void out_set_bitfield(
