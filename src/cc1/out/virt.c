@@ -211,6 +211,20 @@ out_val *v_to_reg_given(
 	return impl_load(octx, from, given);
 }
 
+out_val *v_to_reg_given_freeup(
+		out_ctx *octx, out_val *from,
+		const struct vreg *given)
+{
+	if(from->type == V_REG
+	&& vreg_eq(&from->bits.regoff.reg, given))
+	{
+		return from;
+	}
+
+	v_freeup_reg(octx, given);
+	return v_to_reg_given(octx, from, given);
+}
+
 out_val *v_to_reg_out(out_ctx *octx, out_val *conv, struct vreg *out)
 {
 	if(conv->type != V_REG){

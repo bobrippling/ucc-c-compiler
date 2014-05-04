@@ -890,27 +890,26 @@ static out_val *x86_idiv(
 	const struct vreg rax = { X86_64_REG_RAX, 0 };
 	struct vreg result;
 
-	v_freeup_reg(octx, &rax);
-	v_reserve_reg(octx, &rax);
+	/* freeup rdx. rax is freed as below: */
 	v_freeup_reg(octx, &rdx);
 	v_reserve_reg(octx, &rdx);
+	{
+		/* need to move 'l' into eax
+		 * then sign extended later - cqto */
+		l = v_to_reg_given_freeup(octx, l, &rax);
 
-	/* need to move 'l' into eax
-	 * then sign extended later - cqto */
-	l = v_to_reg_given(octx, l, &rax);
+		/* idiv takes either a reg or memory address */
+		r = v_to(octx, r, TO_REG | TO_MEM);
 
-	/* idiv takes either a reg or memory address */
-	r = v_to(octx, r, TO_REG | TO_MEM);
+		assert(r->type != V_REG
+				|| r->bits.regoff.reg.idx != X86_64_REG_RDX);
 
-	assert(r->type != V_REG
-			|| r->bits.regoff.reg.idx != X86_64_REG_RDX);
+		out_asm(octx, "cqto");
+		out_asm(octx, "idiv%s %s",
+				x86_suffix(r->t),
+				vstack_str(r, 0));
 
-	out_asm(octx, "cqto");
-	out_asm(octx, "idiv%s %s",
-			x86_suffix(r->t),
-			vstack_str(r, 0));
-
-	v_unreserve_reg(octx, &rax);
+	}
 	v_unreserve_reg(octx, &rdx);
 
 	out_val_release(octx, r);
