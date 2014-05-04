@@ -411,7 +411,10 @@ static void handle_endif(token **tokens)
 
 static void handle_pragma(token **tokens)
 {
-	(void)tokens;
+	/* pass to cc1 */
+	char *out = tokens_join(tokens);
+	printf("#pragma %s\n", out);
+	free(out);
 }
 
 static int handle_line_directive(char *line)
