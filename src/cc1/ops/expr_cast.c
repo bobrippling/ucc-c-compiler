@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "../../util/alloc.h"
@@ -268,6 +269,35 @@ static void cast_addr(expr *e, consty *k)
 		check_addr_int_cast(k, l);
 }
 
+static void const_intify(consty *k)
+{
+	switch(k->type){
+		case CONST_STRK:
+		case CONST_NO:
+			assert(0);
+		case CONST_NUM:
+			break;
+
+		case CONST_NEED_ADDR:
+		case CONST_ADDR:
+		{
+			integral_t memaddr;
+
+			/* can't do (int)&x */
+			assert(!k->bits.addr.is_lbl);
+			assert(!k->offset);
+
+			memaddr = k->bits.addr.bits.memaddr;
+
+			CONST_FOLD_LEAF(k);
+
+			k->type = CONST_NUM;
+			k->bits.num.val.i = memaddr;
+			break;
+		}
+	}
+}
+
 static void fold_const_expr_cast(expr *e, consty *k)
 {
 	int to_fp;
@@ -285,11 +315,11 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		return;
 
 	switch(k->type){
+		case CONST_NO:
+			return;
+
 		case CONST_NUM:
 			fold_cast_num(e, &k->bits.num);
-			break;
-
-		case CONST_NO:
 			break;
 
 		case CONST_NEED_ADDR:
@@ -311,13 +341,15 @@ static void fold_const_expr_cast(expr *e, consty *k)
 			break;
 	}
 
-	/* if casting from pointer to int, it's not a constant
-	 * but we treat it as such, as an extension */
 	if(type_is_ptr(e->expr->tree_type)
-	&& !type_is_ptr(e->tree_type)
-	&& !k->nonstandard_const)
+	&& !type_is_ptr(e->tree_type))
 	{
-		k->nonstandard_const = e;
+		/* casting from pointer to int */
+		const_intify(k);
+
+		/* not a constant but we treat it as such, as an extension */
+		if(!k->nonstandard_const)
+			k->nonstandard_const = e;
 	}
 }
 
