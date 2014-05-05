@@ -231,12 +231,35 @@ static void handle_line_file_directive(char *fnam, int lno)
 	push_fname(fnam, lno);
 }
 
+static void parse_pragma(char *l)
+{
+	if(!strncmp(l, "STDC", 4)){
+		warn_at(NULL, "unhandled STDC pragma");
+		return;
+	}
+
+	if(strncmp(l, "ucc", 3))
+		return;
+
+	l = str_spc_skip(l + 3);
+
+	warn_at(NULL, "unknown pragma '%s'", l);
+}
+
 static void parse_line_directive(char *l)
 {
 	int lno;
 	char *ep;
 
 	l = str_spc_skip(l + 1);
+
+	if(!strncmp(l, "pragma", 6)){
+		l = str_spc_skip(l + 6);
+		parse_pragma(l);
+		return;
+	}
+
+	/* # line */
 	if(!strncmp(l, "line", 4))
 		l += 4;
 
