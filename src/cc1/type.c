@@ -380,11 +380,32 @@ int type_has_loc(type *t)
 	return t && t->type == type_where;
 }
 
-static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz)
-{
 #define BUF_ADD(...) \
-	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
+	do{ int n = snprintf(*bufp, *sz, __VA_ARGS__); *bufp += n, *sz -= n; }while(0)
 #define ADD_SPC() do{ if(*need_spc) BUF_ADD(" "); *need_spc = 0; }while(0)
+static void type_add_funcargs(
+		funcargs *args,
+		int *need_spc,
+		char **bufp, int *sz)
+{
+	const char *comma = "";
+	decl **i;
+
+	ADD_SPC();
+	BUF_ADD("(");
+	for(i = args->arglist; i && *i; i++){
+		char tmp_buf[DECL_STATIC_BUFSIZ];
+		BUF_ADD("%s%s", comma, decl_to_str_r(tmp_buf, *i));
+		comma = ", ";
+	}
+	BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
+}
+
+static void type_add_str(
+		type *r, char *spel,
+		int *need_spc,
+		char **bufp, int *sz)
+{
 #define IS_PTR(ty) ((ty) == type_ptr || (ty) == type_block)
 
 	int need_paren;
@@ -477,21 +498,9 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 			break;
 
 		case type_func:
-		{
-			const char *comma = "";
-			decl **i;
-			funcargs *args = r->bits.func.args;
-
-			ADD_SPC();
-			BUF_ADD("(");
-			for(i = args->arglist; i && *i; i++){
-				char tmp_buf[DECL_STATIC_BUFSIZ];
-				BUF_ADD("%s%s", comma, decl_to_str_r(tmp_buf, *i));
-				comma = ", ";
-			}
-			BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
+			type_add_funcargs(r->bits.func.args, need_spc, bufp, sz);
 			break;
-		}
+
 		case type_ptr:
 #ifdef SHOW_DECAYED_ARRAYS
 			if(!r->bits.ptr.size)
@@ -540,7 +549,7 @@ const char *type_to_str_r_spel_aka(
 
 static
 type *type_add_type_str(type *r,
-		char **bufp, int sz,
+		char **bufp, int *sz,
 		const int aka)
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
@@ -618,8 +627,11 @@ const char *type_to_str_r_spel_aka(
 	char *bufp = buf;
 	int spc = 1;
 	type *skipped;
+	int sz = TYPE_STATIC_BUFSIZ;
 
-	skipped = type_add_type_str(r, &bufp, TYPE_STATIC_BUFSIZ, aka);
+	skipped = type_add_type_str(r, &bufp, &sz, aka);
+
+	assert(sz == (TYPE_STATIC_BUFSIZ - (bufp - buf)));
 
 	if(skipped)
 		r = skipped;
@@ -628,7 +640,7 @@ const char *type_to_str_r_spel_aka(
 	r = type_set_parent(r, NULL);
 	/* use r->tmp, since r is type_t{ype,def} */
 	type_add_str(r->tmp, spel, &spc,
-			&bufp, TYPE_STATIC_BUFSIZ - (bufp - buf));
+			&bufp, &sz);
 
 	/* trim trailing space */
 	if(bufp > buf && bufp[-1] == ' ')
