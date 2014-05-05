@@ -28,6 +28,35 @@ do{                                  \
 	i *= step;                         \
 }while(0)
 
+static void const_shortcircuit(
+		expr *e,
+		consty *k,
+		int sum_const,
+		const consty *lhs,
+		const consty *rhs)
+{
+	/* allow 1 || f() */
+	const consty *kside = CONST_AT_COMPILE_TIME(lhs->type) ? lhs : rhs;
+	int is_true = !!kside->bits.num.val.i;
+
+	if(e->op == (is_true ? op_orsc : op_andsc)){
+		memcpy(k, kside, sizeof *k);
+
+		/* to be more conformant we set nonstandard_const on: a() && 0
+		 * i.e. ordering:
+		 * good:   0 && a()
+		 * good:   1 || b()
+		 * bad:  a() && 0
+		 * bad:  b() || 1
+		 */
+
+		/* one side isn't const */
+		/* ... and the lhs isn't const */
+		if(sum_const < 2 && kside != lhs)
+			k->nonstandard_const = e;
+	}
+}
+
 static void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
@@ -144,27 +173,8 @@ static void fold_const_expr_op(expr *e, consty *k)
 	&& (sum_const = CONST_AT_COMPILE_TIME(lhs.type)
 	              + CONST_AT_COMPILE_TIME(rhs.type)) > 0)
 	{
+		const_shortcircuit(e, k, sum_const, &lhs, &rhs);
 
-		/* allow 1 || f() */
-		consty *kside = CONST_AT_COMPILE_TIME(lhs.type) ? &lhs : &rhs;
-		int is_true = !!kside->bits.num.val.i;
-
-		if(e->op == (is_true ? op_orsc : op_andsc)){
-			memcpy(k, kside, sizeof *k);
-
-			/* to be more conformant we set nonstandard_const on: a() && 0
-			 * i.e. ordering:
-			 * good:   0 && a()
-			 * good:   1 || b()
-			 * bad:  a() && 0
-			 * bad:  b() || 1
-			 */
-			if(sum_const < 2  /* one side isn't const */
-			&& kside != &lhs) /* the lhs isn't const */
-			{
-				k->nonstandard_const = e;
-			}
-		}
 	}else if(lhs.type == CONST_STRK || rhs.type == CONST_STRK){
 		ICE("TODO");
 	}
