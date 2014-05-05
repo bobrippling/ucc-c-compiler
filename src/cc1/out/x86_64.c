@@ -922,6 +922,43 @@ static out_val *x86_idiv(
 	return v_new_reg(octx, l, l->t, &result);
 }
 
+static out_val *x86_shift(
+		out_ctx *octx, enum op_type op,
+		out_val *l, out_val *r)
+{
+	char bufv[VSTACK_STR_SZ], bufs[VSTACK_STR_SZ];
+
+	/* sh[lr] [r/m], [c/r]
+	 * where            ^ must be %cl
+	 */
+	if(r->type != V_CONST_I){
+		struct vreg cl;
+
+		cl.is_float = 0;
+		cl.idx = X86_64_REG_RCX;
+
+		r = v_to_reg_given_freeup(octx, r, &cl);
+	}
+
+	/* force %cl: */
+	r->t = type_nav_btype(cc1_type_nav, type_nchar);
+
+	l = v_to(octx, l, TO_MEM | TO_REG);
+
+	vstack_str_r(bufv, l, 0);
+	vstack_str_r(bufs, r, 0);
+
+	out_asm(octx, "%s%s %s, %s",
+			op == op_shiftl
+				? "shl"
+				: type_is_signed(l->t) ? "sar" : "shr",
+			x86_suffix(l->t),
+			bufs, bufv);
+
+	out_val_consume(octx, r);
+	return v_dup_or_reuse(octx, l, l->t);
+}
+
 out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 {
 	const char *opc;
@@ -1008,51 +1045,7 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 
 		case op_shiftl:
 		case op_shiftr:
-		{
-			ICE("TODO: shift");
-#if 0
-			char bufv[VSTACK_STR_SZ], bufs[VSTACK_STR_SZ];
-			struct vreg rtmp;
-
-			/* value to shift must be a register */
-			v_to_reg(&vtop[-1]);
-
-			rtmp.is_float = 0, rtmp.idx = X86_64_REG_RCX;
-			v_freeup_reg(&rtmp, 2); /* shift by rcx... x86 sigh */
-
-			switch(vtop->type){
-				default:
-					v_to_reg(vtop); /* TODO: v_to_reg_preferred(vtop, X86_64_REG_RCX) */
-
-				case V_REG:
-					vtop->t = type_nav_btype(cc1_type_nav, type_nchar);
-
-					rtmp.is_float = 0, rtmp.idx = X86_64_REG_RCX;
-					if(!vreg_eq(&vtop->bits.regoff.reg, &rtmp)){
-						impl_reg_cp(vtop, &rtmp);
-						memcpy_safe(&vtop->bits.regoff.reg, &rtmp);
-					}
-					break;
-
-				case V_CONST_F:
-					ICE("float shift");
-				case V_CONST_I:
-					break;
-			}
-
-			vstack_str_r(bufs, vtop, 0);
-			vstack_str_r(bufv, &vtop[-1], 0);
-
-			out_asm(octx, "%s%s %s, %s",
-					op == op_shiftl      ? "shl" :
-					type_is_signed(vtop[-1].t) ? "sar" : "shr",
-					x86_suffix(vtop[-1].t),
-					bufs, bufv);
-
-			vpop();
-			return;
-#endif
-		}
+			return x86_shift(octx, op, l, r);
 
 		case op_modulus:
 		case op_divide:
