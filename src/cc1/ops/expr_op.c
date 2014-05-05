@@ -28,6 +28,146 @@ do{                                  \
 	i *= step;                         \
 }while(0)
 
+static void const_op_num_fp(
+		expr *e, consty *k,
+		const consty *lhs, const consty *rhs)
+{
+	/* float const-op */
+	floating_t fp_r;
+
+	assert(lhs->type == CONST_NUM && rhs->type == CONST_NUM);
+
+	fp_r = const_op_exec_fp(
+			lhs->bits.num.val.f,
+			e->rhs ? &rhs->bits.num.val.f : 0,
+			e->op);
+
+	k->type = CONST_NUM;
+
+	/* both relational and normal ops between floats are not constant */
+	if(!k->nonstandard_const)
+		k->nonstandard_const = e;
+
+	if(op_returns_bool(e->op)){
+		k->bits.num.val.i = fp_r; /* convert to bool */
+
+	}else{
+		const btype *ty = type_get_type(e->tree_type);
+
+		UCC_ASSERT(ty, "no float type for float op?");
+
+		k->bits.num.val.f = fp_r;
+
+		switch(ty->primitive){
+			case type_float:   k->bits.num.suffix = VAL_FLOAT;   break;
+			case type_double:  k->bits.num.suffix = VAL_DOUBLE;  break;
+			case type_ldouble: k->bits.num.suffix = VAL_LDOUBLE; break;
+			default: ICE("bad float");
+		}
+	}
+}
+
+static void const_op_num_int(
+		expr *e, consty *k,
+		const consty *lhs, const consty *rhs)
+{
+	const char *err = NULL;
+	int is_signed, adj_offset = 0;
+	integral_t int_r;
+	sintegral_t l;
+	integral_t r;
+
+	if(rhs->type != CONST_NUM){
+		const consty *tmp = lhs;
+		lhs = rhs;
+		rhs = tmp;
+	}
+	assert(rhs->type == CONST_NUM);
+	r = rhs->bits.num.val.i;
+
+	/* the op is signed if an operand is, not the result,
+	 * e.g. u_a < u_b produces a bool (signed) */
+	is_signed = type_is_signed(e->lhs->tree_type) ||
+		(e->rhs ? type_is_signed(e->rhs->tree_type) : 0);
+
+	/* if we have an address, should be lhs */
+	switch(lhs->type){
+		case CONST_NUM:
+			/* normal const folding */
+			l = lhs->bits.num.val.i;
+			break;
+
+		case CONST_ADDR:
+			if(lhs->bits.addr.is_lbl){
+		case CONST_STRK:
+				adj_offset = 1;
+				l = lhs->offset;
+			}else{
+				l = lhs->bits.addr.bits.memaddr;
+			}
+			break;
+
+		default:
+			assert(0);
+	}
+
+#if 0
+	/* pre-address multiply */
+	if(op == + or -){ ...
+		if(lhs_addr){
+			addr_multiply(lhs.offset, e->rhs->tree_type);
+		}else if(rhs_addr){
+			if(lhs_addr)
+				addr_multiply(lhs.offset, e->rhs->tree_type);
+			else
+				addr_multiply(lhs.bits.num.val.i, e->rhs->tree_type);
+		}
+	}
+#endif
+
+	int_r = const_op_exec(l, &r, e->op, is_signed, &err);
+
+	if(err){
+		warn_at(&e->where, "%s", err);
+		k->type = CONST_NO;
+	}else{
+		if(op_returns_bool(e->op)){
+			CONST_FOLD_LEAF(k);
+			k->type = CONST_NUM;
+			k->bits.num.val.i = int_r;
+		}else{
+			memcpy_safe(k, lhs);
+			if(adj_offset){
+				k->offset = int_r;
+			}else{
+				assert(k->type == CONST_ADDR && !k->bits.addr.is_lbl);
+				k->bits.addr.bits.memaddr = int_r;
+			}
+		}
+	}
+}
+
+static void const_op_num(
+		expr *e, consty *k,
+		const consty *lhs, const consty *rhs)
+{
+	int fp[2] = {
+		type_is_floating(e->lhs->tree_type)
+	};
+
+	if(e->rhs){
+		fp[1] = type_is_floating(e->rhs->tree_type);
+
+		UCC_ASSERT(!(fp[0] ^ fp[1]),
+				"one float and one non-float?");
+	}
+
+	if(fp[0])
+		const_op_num_fp(e, k, lhs, rhs);
+	else
+		const_op_num_int(e, k, lhs, rhs);
+}
+
 static void const_shortcircuit(
 		expr *e,
 		consty *k,
@@ -61,7 +201,6 @@ static void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
 	int sum_const;
-	int lhs_addr, rhs_addr, lhs_val, rhs_val;
 
 	memset(k, 0, sizeof *k);
 
@@ -73,110 +212,14 @@ static void fold_const_expr_op(expr *e, consty *k)
 		rhs.type = CONST_NUM;
 	}
 
-	/* allow one CONST_{ADDR,STRK} and one CONST_VAL for an offset const */
-	lhs_addr = (lhs.type == CONST_ADDR);
-	rhs_addr = (rhs.type == CONST_ADDR);
-	lhs_val = (lhs.type == CONST_NUM);
-	rhs_val = (rhs.type == CONST_NUM);
-
-	if((lhs_addr || lhs_val) && (rhs_addr || rhs_val)){
-		int fp[2] = {
-			type_is_floating(e->lhs->tree_type)
-		};
-
-		if(e->rhs){
-			fp[1] = type_is_floating(e->rhs->tree_type);
-
-			UCC_ASSERT(!(fp[0] ^ fp[1]),
-					"one float and one non-float?");
-		}
-
-		assert(lhs_addr + rhs_addr < 2 && "can't add two addresses");
-
-		if(fp[0]){
-			/* float const-op */
-			floating_t fp_r;
-
-			assert(lhs_addr + rhs_addr == 0);
-
-			fp_r = const_op_exec_fp(
-					lhs.bits.num.val.f,
-					e->rhs ? &rhs.bits.num.val.f : 0,
-					e->op);
-
-			k->type = CONST_NUM;
-
-			/* both relational and normal */
-			if(!k->nonstandard_const)
-				k->nonstandard_const = e;
-
-			if(op_returns_bool(e->op)){
-				k->bits.num.val.i = fp_r; /* convert to bool */
-
-			}else{
-				const btype *ty = type_get_type(e->tree_type);
-
-				UCC_ASSERT(ty, "no float type for float op?");
-
-				k->bits.num.val.f = fp_r;
-
-				switch(ty->primitive){
-					case type_float:   k->bits.num.suffix = VAL_FLOAT;   break;
-					case type_double:  k->bits.num.suffix = VAL_DOUBLE;  break;
-					case type_ldouble: k->bits.num.suffix = VAL_LDOUBLE; break;
-					default: ICE("bad float");
-				}
-			}
-
-		}else{
-			const char *err = NULL;
-			integral_t int_r;
-			/* the op is signed if an operand is, not the result,
-			 * e.g. u_a < u_b produces a bool (signed) */
-			int is_signed = type_is_signed(e->lhs->tree_type) ||
-				(e->rhs ? type_is_signed(e->rhs->tree_type) : 0);
-
-			/* pre-address multiply */
-#if 0
-			if(op == + or -){ ...
-				if(lhs_addr){
-					addr_multiply(lhs.offset, e->rhs->tree_type);
-				}else if(rhs_addr){
-					if(lhs_addr)
-						addr_multiply(lhs.offset, e->rhs->tree_type);
-					else
-						addr_multiply(lhs.bits.num.val.i, e->rhs->tree_type);
-				}
-			}
-#endif
-
-			int_r = const_op_exec(
-					lhs_addr
-						? lhs.bits.addr.bits.memaddr
-						: lhs.bits.num.val.i,
-					e->rhs
-						? rhs_addr
-							? &rhs.bits.addr.bits.memaddr
-							: &rhs.bits.num.val.i
-						: NULL,
-					e->op, is_signed, &err);
-
-			if(err){
-				warn_at(&e->where, "%s", err);
-			}else{
-				k->type = CONST_NUM;
-				k->bits.num.val.i = int_r;
-			}
-		}
+	if(lhs.type == CONST_NUM || rhs.type == CONST_NUM){
+		const_op_num(e, k, &lhs, &rhs);
 
 	}else if((e->op == op_andsc || e->op == op_orsc)
 	&& (sum_const = CONST_AT_COMPILE_TIME(lhs.type)
 	              + CONST_AT_COMPILE_TIME(rhs.type)) > 0)
 	{
 		const_shortcircuit(e, k, sum_const, &lhs, &rhs);
-
-	}else if(lhs.type == CONST_STRK || rhs.type == CONST_STRK){
-		ICE("TODO");
 	}
 
 	if(!k->nonstandard_const
