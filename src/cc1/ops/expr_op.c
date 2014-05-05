@@ -133,7 +133,21 @@ static void const_op_num_int(
 
 		case 0:
 		{
-			integral_t int_r = const_op_exec(
+			integral_t int_r;
+			type *ptr;
+			int ptr_r = 0;
+
+			/* need to apply pointer arithmetic if +/- */
+			if((e->op == op_plus || e->op == op_minus)
+			&& ((ptr = type_is_ptr(e->lhs->tree_type))
+			|| (ptr_r = 1, ptr = type_is_ptr(e->rhs->tree_type))))
+			{
+				unsigned step = type_size(ptr, &e->where);
+
+				*(ptr_r ? &l.bits.i : &r.bits.i) *= step;
+			}
+
+			int_r = const_op_exec(
 					l.bits.i, &r.bits.i,
 					e->op, is_signed, &err);
 
