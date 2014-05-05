@@ -1483,6 +1483,20 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		 * f(){...}, then we don't have args_void, but implicitly we do
 		 */
 		type_funcargs(d->ref)->args_void_implicit = 1;
+
+		if((d->store & STORE_MASK_STORE) != store_static){
+			extern char *ucc_namespace;
+
+			if(ucc_namespace && strncmp(
+						d->spel,
+						ucc_namespace,
+						strlen(ucc_namespace)))
+			{
+				warn_at(&d->where,
+						"non-static function not in \"%s\" namespace",
+						ucc_namespace);
+			}
+		}
 	}
 }
 

@@ -145,6 +145,8 @@ size_t currentstringlen = 0;
 int   currentstringwide = 0;
 where currentstringwhere;
 
+char *ucc_namespace;
+
 /* where the parser is, and where the last parsed token was */
 static struct loc loc_now;
 struct loc loc_tok;
@@ -243,7 +245,12 @@ static void parse_pragma(char *l)
 
 	l = str_spc_skip(l + 3);
 
-	warn_at(NULL, "unknown pragma '%s'", l);
+	if(!strncmp(l, "namespace ", 10)){
+		free(ucc_namespace);
+		ucc_namespace = ustrdup(l + 10);
+	}else{
+		warn_at(NULL, "unknown pragma '%s'", l);
+	}
 }
 
 static void parse_line_directive(char *l)
