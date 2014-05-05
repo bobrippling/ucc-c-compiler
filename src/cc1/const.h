@@ -25,7 +25,7 @@ typedef struct consty
 		CONST_STRK,     /* string constant */
 		CONST_NEED_ADDR, /* a.x, b->y, p where p is global int p */
 	} type;
-	long offset; /* offset for addr/strk */
+	sintegral_t offset; /* offset for addr/strk */
 	union
 	{
 		numeric num;        /* CONST_VAL_* */

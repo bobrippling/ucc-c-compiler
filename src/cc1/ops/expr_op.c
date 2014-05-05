@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "../defs.h"
 #include "ops.h"
@@ -16,30 +17,22 @@ const char *str_expr_op()
 	return "op";
 }
 
-static void const_offset(consty *r, consty *val, consty *addr,
-		type *addr_type, enum op_type op)
-{
-	unsigned step = type_size(type_next(addr_type), NULL);
-	int change;
-
-	UCC_ASSERT(K_INTEGRAL(val->bits.num),
-			"fp + address?");
-
-	memcpy_safe(r, addr);
-
-	change = val->bits.num.val.i * step;
-
-	if(op == op_minus)
-		change = -change;
-
-	/* may already have an offset, hence += */
-	r->offset += change;
-}
+#define addr_multiply(i, addr_type)  \
+do{                                  \
+	type *next = type_next(addr_type); \
+	sintegral_t step = 1;              \
+                                     \
+	if(next)                           \
+		step = type_size(next, NULL);    \
+                                     \
+	i *= step;                         \
+}while(0)
 
 static void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
 	int sum_const;
+	int lhs_addr, rhs_addr, lhs_val, rhs_val;
 
 	memset(k, 0, sizeof *k);
 
@@ -51,7 +44,13 @@ static void fold_const_expr_op(expr *e, consty *k)
 		rhs.type = CONST_NUM;
 	}
 
-	if(lhs.type == CONST_NUM && rhs.type == CONST_NUM){
+	/* allow one CONST_{ADDR,STRK} and one CONST_VAL for an offset const */
+	lhs_addr = (lhs.type == CONST_ADDR);
+	rhs_addr = (rhs.type == CONST_ADDR);
+	lhs_val = (lhs.type == CONST_NUM);
+	rhs_val = (rhs.type == CONST_NUM);
+
+	if((lhs_addr || lhs_val) && (rhs_addr || rhs_val)){
 		int fp[2] = {
 			type_is_floating(e->lhs->tree_type)
 		};
@@ -63,9 +62,15 @@ static void fold_const_expr_op(expr *e, consty *k)
 					"one float and one non-float?");
 		}
 
+		assert(lhs_addr + rhs_addr < 2 && "can't add two addresses");
+
 		if(fp[0]){
 			/* float const-op */
-			floating_t r = const_op_exec_fp(
+			floating_t fp_r;
+
+			assert(lhs_addr + rhs_addr == 0);
+
+			fp_r = const_op_exec_fp(
 					lhs.bits.num.val.f,
 					e->rhs ? &rhs.bits.num.val.f : 0,
 					e->op);
@@ -77,14 +82,14 @@ static void fold_const_expr_op(expr *e, consty *k)
 				k->nonstandard_const = e;
 
 			if(op_returns_bool(e->op)){
-				k->bits.num.val.i = r; /* convert to bool */
+				k->bits.num.val.i = fp_r; /* convert to bool */
 
 			}else{
 				const btype *ty = type_get_type(e->tree_type);
 
 				UCC_ASSERT(ty, "no float type for float op?");
 
-				k->bits.num.val.f = r;
+				k->bits.num.val.f = fp_r;
 
 				switch(ty->primitive){
 					case type_float:   k->bits.num.suffix = VAL_FLOAT;   break;
@@ -96,22 +101,42 @@ static void fold_const_expr_op(expr *e, consty *k)
 
 		}else{
 			const char *err = NULL;
-			integral_t r;
+			integral_t int_r;
 			/* the op is signed if an operand is, not the result,
 			 * e.g. u_a < u_b produces a bool (signed) */
 			int is_signed = type_is_signed(e->lhs->tree_type) ||
 				(e->rhs ? type_is_signed(e->rhs->tree_type) : 0);
 
-			r = const_op_exec(
-					lhs.bits.num.val.i,
-					e->rhs ? &rhs.bits.num.val.i : NULL,
+			/* pre-address multiply */
+#if 0
+			if(op == + or -){ ...
+				if(lhs_addr){
+					addr_multiply(lhs.offset, e->rhs->tree_type);
+				}else if(rhs_addr){
+					if(lhs_addr)
+						addr_multiply(lhs.offset, e->rhs->tree_type);
+					else
+						addr_multiply(lhs.bits.num.val.i, e->rhs->tree_type);
+				}
+			}
+#endif
+
+			int_r = const_op_exec(
+					lhs_addr
+						? lhs.bits.addr.bits.memaddr
+						: lhs.bits.num.val.i,
+					e->rhs
+						? rhs_addr
+							? &rhs.bits.addr.bits.memaddr
+							: &rhs.bits.num.val.i
+						: NULL,
 					e->op, is_signed, &err);
 
 			if(err){
 				warn_at(&e->where, "%s", err);
 			}else{
 				k->type = CONST_NUM;
-				k->bits.num.val.i = r;
+				k->bits.num.val.i = int_r;
 			}
 		}
 
@@ -140,18 +165,8 @@ static void fold_const_expr_op(expr *e, consty *k)
 				k->nonstandard_const = e;
 			}
 		}
-
-	}else if(e->op == op_plus || e->op == op_minus){
-		/* allow one CONST_{ADDR,STRK} and one CONST_VAL for an offset const */
-		int lhs_addr = lhs.type == CONST_ADDR || lhs.type == CONST_STRK;
-		int rhs_addr = rhs.type == CONST_ADDR || rhs.type == CONST_STRK;
-
-		/* this is safe - fold() checks that we can't add floats to addresses */
-
-		/**/if(lhs_addr && rhs.type == CONST_NUM)
-			const_offset(k, &rhs, &lhs, e->lhs->tree_type, e->op);
-		else if(rhs_addr && lhs.type == CONST_NUM)
-			const_offset(k, &lhs, &rhs, e->rhs->tree_type, e->op);
+	}else if(lhs.type == CONST_STRK || rhs.type == CONST_STRK){
+		ICE("TODO");
 	}
 
 	if(!k->nonstandard_const
