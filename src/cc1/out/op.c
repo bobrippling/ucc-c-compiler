@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <assert.h>
+#include <math.h>
 
 #include "../type.h"
 #include "../type_is.h"
@@ -180,6 +181,33 @@ static void apply_ptr_step(
 	}
 }
 
+static void try_shift_conv(
+		out_ctx *octx,
+		enum op_type *binop,
+		out_val **lhs, out_val **rhs)
+{
+	if(*binop == op_divide && (*rhs)->type == V_CONST_I){
+		integral_t k = (*rhs)->bits.val_i;
+		if((k & (k - 1)) == 0){
+			/* power of two, can shift */
+			*binop = op_shiftr;
+
+			*rhs = v_dup_or_reuse(octx, *rhs, (*rhs)->t);
+			(*rhs)->bits.val_i = log2(k);
+		}
+	}else if(*binop == op_multiply){
+		out_val **vconst = (*lhs)->type == V_CONST_I ? lhs : rhs;
+		integral_t k = (*vconst)->bits.val_i;
+
+		if((k & (k - 1)) == 0){
+			*binop = op_shiftl;
+
+			*vconst = v_dup_or_reuse(octx, *vconst, (*vconst)->t);
+			(*vconst)->bits.val_i = log2(k);
+		}
+	}
+}
+
 out_val *out_op(out_ctx *octx, enum op_type binop, out_val *lhs, out_val *rhs)
 {
 	int div = 0;
@@ -217,8 +245,19 @@ out_val *out_op(out_ctx *octx, enum op_type binop, out_val *lhs, out_val *rhs)
 		}
 	}
 
-	if(binop == op_plus || binop == op_minus)
-		apply_ptr_step(octx, &lhs, &rhs, &div);
+	switch(binop){
+		case op_plus:
+		case op_minus:
+			apply_ptr_step(octx, &lhs, &rhs, &div);
+			break;
+		case op_multiply:
+		case op_divide:
+			if(vconst)
+				try_shift_conv(octx, &binop, &lhs, &rhs);
+			break;
+		default:
+			break;
+	}
 
 	result = impl_op(octx, binop, lhs, rhs);
 
