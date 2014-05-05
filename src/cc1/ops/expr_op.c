@@ -67,83 +67,90 @@ static void const_op_num_fp(
 	}
 }
 
+typedef struct
+{
+	int is_lbl;
+	union
+	{
+		integral_t i;
+		const char *lbl;
+	} bits;
+} collapsed_consty;
+
+static void collapse_const(collapsed_consty *out, const consty *in)
+{
+	switch(in->type){
+		case CONST_NO:
+			assert(0);
+
+		case CONST_NUM:
+			out->is_lbl = 0;
+			out->bits.i = in->bits.num.val.i;
+			break;
+
+		case CONST_STRK:
+			out->is_lbl = 1;
+			out->bits.lbl = in->bits.str->lit->lbl;
+			break;
+
+		case CONST_NEED_ADDR:
+		case CONST_ADDR:
+			if(in->bits.addr.is_lbl){
+				out->is_lbl = 1;
+				out->bits.lbl = in->bits.addr.bits.lbl;
+			}else{
+				out->is_lbl = 0;
+				out->bits.i = in->bits.addr.bits.memaddr;
+			}
+			break;
+	}
+}
+
 static void const_op_num_int(
 		expr *e, consty *k,
 		const consty *lhs, const consty *rhs)
 {
 	const char *err = NULL;
-	int is_signed, adj_offset = 0;
-	integral_t int_r;
-	sintegral_t l;
-	integral_t r;
-
-	if(rhs->type != CONST_NUM){
-		const consty *tmp = lhs;
-		lhs = rhs;
-		rhs = tmp;
-	}
-	assert(rhs->type == CONST_NUM);
-	r = rhs->bits.num.val.i;
+	int is_signed;
+	collapsed_consty l, r;
 
 	/* the op is signed if an operand is, not the result,
 	 * e.g. u_a < u_b produces a bool (signed) */
 	is_signed = type_is_signed(e->lhs->tree_type) ||
 		(e->rhs ? type_is_signed(e->rhs->tree_type) : 0);
 
-	/* if we have an address, should be lhs */
-	switch(lhs->type){
-		case CONST_NUM:
-			/* normal const folding */
-			l = lhs->bits.num.val.i;
-			break;
+	collapse_const(&l, lhs);
+	collapse_const(&r, rhs);
 
-		case CONST_ADDR:
-			if(lhs->bits.addr.is_lbl){
-		case CONST_STRK:
-				adj_offset = 1;
-				l = lhs->offset;
-			}else{
-				l = lhs->bits.addr.bits.memaddr;
-			}
-			break;
-
+	CONST_FOLD_LEAF(k);
+	switch(l.is_lbl + r.is_lbl){
 		default:
 			assert(0);
-	}
 
-#if 0
-	/* pre-address multiply */
-	if(op == + or -){ ...
-		if(lhs_addr){
-			addr_multiply(lhs.offset, e->rhs->tree_type);
-		}else if(rhs_addr){
-			if(lhs_addr)
-				addr_multiply(lhs.offset, e->rhs->tree_type);
-			else
-				addr_multiply(lhs.bits.num.val.i, e->rhs->tree_type);
-		}
-	}
-#endif
+		case 1:
+			k->type = CONST_NO;
+			break;
 
-	int_r = const_op_exec(l, &r, e->op, is_signed, &err);
+		case 0:
+		{
+			integral_t int_r = const_op_exec(
+					l.bits.i, &r.bits.i,
+					e->op, is_signed, &err);
 
-	if(err){
-		warn_at(&e->where, "%s", err);
-		k->type = CONST_NO;
-	}else{
-		if(op_returns_bool(e->op)){
-			CONST_FOLD_LEAF(k);
-			k->type = CONST_NUM;
-			k->bits.num.val.i = int_r;
-		}else{
-			memcpy_safe(k, lhs);
-			if(adj_offset){
-				k->offset = int_r;
+			if(err){
+				warn_at(&e->where, "%s", err);
+				k->type = CONST_NO;
 			}else{
-				assert(k->type == CONST_ADDR && !k->bits.addr.is_lbl);
-				k->bits.addr.bits.memaddr = int_r;
+				k->type = CONST_NUM;
+				k->bits.num.val.i = int_r;
 			}
+			break;
 		}
+
+		case 2:
+			k->type = CONST_NUM;
+			k->bits.num.val.i = !strcmp(l.bits.lbl, r.bits.lbl);
+			break;
 	}
 }
 
@@ -212,14 +219,13 @@ static void fold_const_expr_op(expr *e, consty *k)
 		rhs.type = CONST_NUM;
 	}
 
-	if(lhs.type == CONST_NUM || rhs.type == CONST_NUM){
-		const_op_num(e, k, &lhs, &rhs);
-
-	}else if((e->op == op_andsc || e->op == op_orsc)
+	if((e->op == op_andsc || e->op == op_orsc)
 	&& (sum_const = CONST_AT_COMPILE_TIME(lhs.type)
 	              + CONST_AT_COMPILE_TIME(rhs.type)) > 0)
 	{
 		const_shortcircuit(e, k, sum_const, &lhs, &rhs);
+	}else{
+		const_op_num(e, k, &lhs, &rhs);
 	}
 
 	if(!k->nonstandard_const
