@@ -50,10 +50,16 @@ out_val *out_new_l(out_ctx *octx, type *ty, long val)
 	return out_new_num(octx, ty, &n);
 }
 
-out_val *out_new_lbl(out_ctx *octx, const char *s, int pic)
+out_val *out_new_lbl(out_ctx *octx, type *ty, const char *s, int pic)
 {
-	TODO();
-	return 0;
+	out_val *v = v_new(octx, ty);
+
+	v->type = V_LBL;
+	v->bits.lbl.str = s;
+	v->bits.lbl.pic = pic;
+	v->bits.lbl.offset = 0;
+
+	return v;
 }
 
 out_val *out_new_nan(out_ctx *octx, type *ty)
@@ -87,14 +93,7 @@ out_val *out_new_sym(out_ctx *octx, sym *sym)
 	switch(sym->type){
 		case sym_global:
 label:
-		{
-			out_val *v = v_new(octx, ty);
-			v->type = V_LBL;
-			v->bits.lbl.str = decl_asm_spel(sym->decl);
-			v->bits.lbl.pic = 1;
-			v->bits.lbl.offset = 0;
-			return v;
-		}
+			return out_new_lbl(octx, sym->decl->ref, decl_asm_spel(sym->decl), 1);
 
 		case sym_arg:
 			return v_new_bp3(octx, NULL, ty, sym->loc.arg_offset);

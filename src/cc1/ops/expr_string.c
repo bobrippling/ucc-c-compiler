@@ -39,7 +39,7 @@ out_val *gen_expr_str(expr *e, out_ctx *octx)
 
 	stringlit_use(strl);
 
-	return out_new_lbl(octx, strl->lbl, 1);
+	return out_new_lbl(octx, type_decay(e->tree_type), strl->lbl, 1);
 }
 
 static out_val *lea_expr_str(expr *e, out_ctx *octx)
