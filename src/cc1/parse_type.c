@@ -996,6 +996,57 @@ static type_parsed *parsed_type_ptr(
 	}
 }
 
+static type *check_trailing_return(decl *dfor, type *ty)
+{
+	type *functy;
+
+	if(!dfor
+	|| (dfor->store & STORE_MASK_STORE) != store_auto)
+	{
+		return ty;
+	}
+
+	functy = type_is(ty, type_func);
+	if(!functy)
+		return ty;
+
+	{
+		funcargs *args;
+		type *called;
+		const btype *btype;
+
+		called = type_called(functy, &args);
+		btype = type_get_type(called);
+
+		/* auto int / auto */
+		if(btype && btype->primitive == type_int){
+			if(accept(token_ptr)){
+				/* TODO: attributes? */
+				args->retains++;
+
+				/* parse with funcarg scope, so things like
+				 * f(int a) -> __typeof(a)
+				 * work
+				 */
+				ty = type_func_of(
+						parse_type(1, functy->bits.func.arg_scope),
+						args,
+						functy->bits.func.arg_scope);
+
+				if(!ty)
+					die_at(NULL, "type expected for -> trailing return");
+
+				dfor->store &= STORE_MASK_EXTRA;
+			}else{
+				parse_had_error = 1;
+				warn_at_print_error(NULL, "'->' expected for trailing return type");
+			}
+		}
+	}
+
+	return ty;
+}
+
 static type *parse_type_declarator(
 		enum decl_mode mode, decl *dfor, type *base, symtable *scope)
 {
@@ -1033,7 +1084,7 @@ static type *parse_type_declarator(
 				i->attr);
 	}
 
-	return ty;
+	return check_trailing_return(dfor, ty);
 }
 
 type *parse_type(int newdecl, symtable *scope)
@@ -1101,6 +1152,8 @@ static decl *parse_decl_stored_aligned(
 	decl *d = decl_new();
 	where w_eq;
 	int is_autotype = type_is_autotype(btype);
+
+	d->store = store; /* set early for parse_type_declarator() */
 
 	if(is_autotype){
 		d->spel = token_current_spel();
@@ -1173,8 +1226,6 @@ static decl *parse_decl_stored_aligned(
 			d->ref = type_nav_btype(cc1_type_nav, type_int);
 		}
 	}
-
-	d->store = store;
 
 	if(!type_is(d->ref, type_func))
 		d->bits.var.align = align;

@@ -22,6 +22,8 @@ struct funcargs
 	decl **arglist;
 	int variadic;
 	enum calling_conv conv;
+
+	unsigned retains;
 };
 
 #define FUNCARGS_EMPTY_NOVOID(fa) \
