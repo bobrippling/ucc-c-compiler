@@ -129,6 +129,7 @@ static void const_op_num_int(
 
 		case 1:
 			k->type = CONST_NO;
+			ICE("TODO");
 			break;
 
 		case 0:
@@ -163,6 +164,7 @@ static void const_op_num_int(
 
 		case 2:
 			k->type = CONST_NUM;
+			ICE("TODO: %s", op_to_str(e->op));
 			k->bits.num.val.i = !strcmp(l.bits.lbl, r.bits.lbl);
 			break;
 	}
