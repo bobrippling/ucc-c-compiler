@@ -15,6 +15,7 @@
 #include "cc1.h"
 #include "cc1_where.h"
 #include "btype.h"
+#include "tokconv.h"
 
 #ifndef CHAR_BIT
 #  define CHAR_BIT 8
@@ -233,15 +234,17 @@ static void handle_line_file_directive(char *fnam, int lno)
 	push_fname(fnam, lno);
 }
 
-static void parse_pragma(char *l)
+static void parse_pragma(char *l, where *loc)
 {
 	if(!strncmp(l, "STDC", 4)){
-		warn_at(NULL, "unhandled STDC pragma");
+		warn_at(loc, "unhandled STDC pragma");
 		return;
 	}
 
-	if(strncmp(l, "ucc", 3))
+	if(strncmp(l, "ucc", 3)){
+		warn_at(loc, "unknown pragma '%s'", l);
 		return;
+	}
 
 	l = str_spc_skip(l + 3);
 
@@ -249,7 +252,7 @@ static void parse_pragma(char *l)
 		free(ucc_namespace);
 		ucc_namespace = ustrdup(l + 10);
 	}else{
-		warn_at(NULL, "unknown pragma '%s'", l);
+		warn_at(loc, "unknown ucc pragma '%s'", l);
 	}
 }
 
@@ -262,7 +265,7 @@ static void parse_line_directive(char *l)
 
 	if(!strncmp(l, "pragma", 6)){
 		l = str_spc_skip(l + 6);
-		parse_pragma(l);
+		parse_pragma(l, NULL);
 		return;
 	}
 
@@ -833,6 +836,28 @@ void nexttoken()
 				return;
 			}
 
+		if(!strncmp("_Pragma", start, len)){
+			char *prag;
+			int wide;
+			where loc;
+
+			nexttoken();
+			EAT(token_open_paren);
+			token_get_current_str(&prag, NULL, &wide, &loc);
+			nexttoken();
+			EAT(token_close_paren);
+
+			if(prag){
+				parse_pragma(prag, &loc);
+				free(prag);
+
+			}else{
+				warn_at_print_error(&loc, "string expected for _Pragma");
+				parse_had_error = 1;
+			}
+
+			return;
+		}
 
 		/* not found, wap into currentspelling */
 		free(currentspelling);
