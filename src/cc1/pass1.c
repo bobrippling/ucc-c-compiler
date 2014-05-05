@@ -82,6 +82,12 @@ void parse_and_fold(symtable_global *globals)
 		cont |= parse_add_gasms(&last_gasms);
 		dynarray_add_array(&globals->gasms, last_gasms);
 
+		if(curtok == token_semicolon){
+			warn_at(NULL, "extra ';' at global scope");
+			EAT(token_semicolon);
+			cont = 1;
+		}
+
 		if(!cont)
 			break;
 	}
