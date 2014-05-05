@@ -89,7 +89,7 @@ static void const_expr_deref(expr *e, consty *k)
 			/* fall */
 		}
 		case CONST_ADDR:
-			k->type = CONST_ADDR_OR_NEED_TREF(from->tree_type);
+			k->type = CONST_ADDR_OR_NEED_TYPE(from->tree_type);
 			/* *(int [10])a -> still need_addr */
 		default:
 			break;
