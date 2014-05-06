@@ -35,11 +35,11 @@ static void const_op_num_fp(
 	/* float const-op */
 	floating_t fp_r;
 
-	assert(lhs->type == CONST_NUM && rhs->type == CONST_NUM);
+	assert(lhs->type == CONST_NUM && (!rhs || rhs->type == CONST_NUM));
 
 	fp_r = const_op_exec_fp(
 			lhs->bits.num.val.f,
-			e->rhs ? &rhs->bits.num.val.f : 0,
+			rhs ? &rhs->bits.num.val.f : NULL,
 			e->op);
 
 	k->type = CONST_NUM;
@@ -120,7 +120,10 @@ static void const_op_num_int(
 		(e->rhs ? type_is_signed(e->rhs->tree_type) : 0);
 
 	collapse_const(&l, lhs);
-	collapse_const(&r, rhs);
+	if(rhs)
+		collapse_const(&r, rhs);
+	else
+		memset(&r, 0, sizeof r);
 
 	CONST_FOLD_LEAF(k);
 	switch(l.is_lbl + r.is_lbl){
@@ -139,7 +142,8 @@ static void const_op_num_int(
 			int ptr_r = 0;
 
 			/* need to apply pointer arithmetic if +/- */
-			if((e->op == op_plus || e->op == op_minus)
+			if(rhs
+			&& (e->op == op_plus || e->op == op_minus)
 			&& ((ptr = type_is_ptr(e->lhs->tree_type))
 			|| (ptr_r = 1, ptr = type_is_ptr(e->rhs->tree_type))))
 			{
@@ -200,7 +204,7 @@ static void const_op_num(
 		type_is_floating(e->lhs->tree_type)
 	};
 
-	if(e->rhs){
+	if(rhs){
 		fp[1] = type_is_floating(e->rhs->tree_type);
 
 		UCC_ASSERT(!(fp[0] ^ fp[1]),
@@ -275,7 +279,7 @@ static void fold_const_expr_op(expr *e, consty *k)
 		return;
 	}
 
-	const_op_num(e, k, &lhs, &rhs);
+	const_op_num(e, k, &lhs, e->rhs ? &rhs : NULL);
 
 	if(!k->nonstandard_const
 	&& lhs.type != CONST_NO /* otherwise it's uninitialised */
