@@ -163,9 +163,31 @@ static void const_op_num_int(
 		}
 
 		case 2:
-			k->type = CONST_NUM;
-			ICE("TODO: %s", op_to_str(e->op));
-			k->bits.num.val.i = !strcmp(l.bits.lbl, r.bits.lbl);
+			switch(e->op){
+				case op_not:
+					assert(0 && "binary not?");
+				case op_unknown:
+					assert(0);
+				default:
+					k->type = CONST_NO;
+					break;
+
+				case op_orsc:
+				case op_andsc:
+					k->type = CONST_NUM;
+					k->bits.num.val.i = 1;
+					break;
+
+				case op_eq:
+				case op_ne:
+				{
+					int same = !strcmp(l.bits.lbl, r.bits.lbl);
+					k->type = CONST_NUM;
+
+					k->bits.num.val.i = ((e->op == op_eq) == same);
+					break;
+				}
+			}
 			break;
 	}
 }
