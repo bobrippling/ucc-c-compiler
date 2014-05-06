@@ -316,7 +316,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 	switch(k->type){
 		case CONST_NO:
-			return;
+			break;
 
 		case CONST_NUM:
 			fold_cast_num(e, &k->bits.num);
@@ -340,6 +340,10 @@ static void fold_const_expr_cast(expr *e, consty *k)
 			cast_addr(e, k);
 			break;
 	}
+
+	/* may be mutated above */
+	if(k->type == CONST_NO)
+		return;
 
 	if(type_is_ptr(e->expr->tree_type)
 	&& !type_is_ptr(e->tree_type))
