@@ -3,26 +3,26 @@
 #include "dynarray.h"
 #include "path.h"
 
-static void canon_add(char ***pents, char *ent, int *last_was_dotdot)
+static void canon_add(char ***pents, char *ent)
 {
+	if(!strcmp(ent, "."))
+		return; /* skip */
+
 	if(!strcmp(ent, "..")){
-		if(*last_was_dotdot){
-			/* ../.. - can't change, fall through to add */
-		}else if(*pents){
-			dynarray_pop(char *, pents);
-			return;
+		if(*pents){
+			unsigned n = dynarray_count(*pents);
+			if(!strcmp((*pents)[n - 1], "..")){
+				/* ../.. - can't change, fall through to add */
+			}else{
+				dynarray_pop(char *, pents);
+				return;
+			}
 		}else{
 			/* the first is ".." */
 		}
-		*last_was_dotdot = 1;
-	}else{
-		*last_was_dotdot = 0;
 	}
 
-	if(!strcmp(ent, "."))
-		; /* skip */
-	else
-		dynarray_add(pents, ent);
+	dynarray_add(pents, ent);
 }
 
 char *canonicalise_path(char *path)
@@ -34,18 +34,17 @@ char *canonicalise_path(char *path)
 	char *p, *last = path, *dest;
 	char **i;
 	int trailing_slash = 0;
-	int dotdot = 0;
 
 	for(p = path; *p; p++){
 		if(*p == '/'){
 			*p = '\0';
 			if(p > last)
-				canon_add(&ents, last, &dotdot);
+				canon_add(&ents, last);
 			last = p + 1;
 		}
 	}
 	if(p > last)
-		canon_add(&ents, last, &dotdot);
+		canon_add(&ents, last);
 	else
 		trailing_slash = 1;
 
@@ -56,7 +55,7 @@ char *canonicalise_path(char *path)
 		 * overwriting the next entry */
 
 		size_t len = strlen(*i);
-		memcpy(dest, *i, len);
+		memmove(dest, *i, len);
 		dest += len;
 		*dest++ = '/';
 	}

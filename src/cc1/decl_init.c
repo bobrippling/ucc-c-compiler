@@ -20,28 +20,6 @@
 #include "decl_init.h"
 #include "type_is.h"
 
-#ifdef DEBUG_DECL_INIT
-static int init_debug_depth;
-
-ucc_printflike(1, 2) void INIT_DEBUG(const char *fmt, ...)
-{
-	va_list l;
-	int i;
-
-	for(i = init_debug_depth; i > 0; i--)
-		fputs("  ", stderr);
-
-	va_start(l, fmt);
-	vfprintf(stderr, fmt, l);
-	va_end(l);
-}
-
-#  define INIT_DEBUG_DEPTH(op) init_debug_depth op
-#else
-#  define INIT_DEBUG_DEPTH(op)
-#  define INIT_DEBUG(...)
-#endif
-
 typedef struct
 {
 	decl_init **pos;
@@ -114,7 +92,10 @@ int decl_init_is_const(
 		}
 
 		case decl_init_copy:
-			return 1;
+		{
+			struct init_cpy *cpy = *dinit->bits.range_copy;
+			return decl_init_is_const(cpy->range_init, stab, nonstd);
+		}
 	}
 
 	ICE("bad decl init");
@@ -357,13 +338,14 @@ static decl_init **decl_init_brace_up_array2(
 		type *next_type, const int limit,
 		const int allow_struct_copy)
 {
-	unsigned n = dynarray_count(current), i = 0, j = 0;
+	unsigned n = dynarray_count(current), i = 0;
 	decl_init *this;
 
 	(void)allow_struct_copy;
 
 	while((this = *iter->pos)){
 		desig *des;
+		unsigned j = i;
 
 		if((des = this->desig)){
 			consty k[2];
@@ -512,8 +494,10 @@ static decl_init **decl_init_brace_up_array2(
 			}
 		}
 
-		i++;
-		j++;
+		/* [0 ... 5] leaves the current index as 6
+		 *  ^i    ^j
+		 */
+		i = j + 1;
 	}
 
 	return current;

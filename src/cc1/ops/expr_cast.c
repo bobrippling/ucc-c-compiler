@@ -191,7 +191,7 @@ static integral_t convert_integral_to_integral_warn(
 			signed_unsigned_warn_at(w,
 					"implicit cast changes value from %llA to %llB",
 					signed_in, signed_out,
-					in, signed_out ? to_iv_sign_ext : ret);
+					in, signed_out ? (integral_t)to_iv_sign_ext : ret);
 
 		}else if(signed_out && !signed_in && (sintegral_t)ret < 0){
 			signed_unsigned_warn_at(w,

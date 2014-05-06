@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "../util/where.h"
 #include "../util/util.h"
@@ -322,6 +323,23 @@ unsigned type_align(type *r, where *from)
 {
 	struct_union_enum_st *sue;
 	type *test;
+	attribute *align;
+
+	align = type_attr_present(r, attr_aligned);
+
+	if(align){
+		if(align->bits.align){
+			consty k;
+
+			const_fold(align->bits.align, &k);
+
+			assert(k.type == CONST_NUM && K_INTEGRAL(k.bits.num));
+
+			return k.bits.num.val.i;
+		}
+
+		return platform_align_max();
+	}
 
 	if((sue = type_is_s_or_u(r)))
 		/* safe - can't have an instance without a ->sue */
@@ -362,11 +380,32 @@ int type_has_loc(type *t)
 	return t && t->type == type_where;
 }
 
-static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz)
-{
 #define BUF_ADD(...) \
-	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
+	do{ int n = snprintf(*bufp, *sz, __VA_ARGS__); *bufp += n, *sz -= n; }while(0)
 #define ADD_SPC() do{ if(*need_spc) BUF_ADD(" "); *need_spc = 0; }while(0)
+static void type_add_funcargs(
+		funcargs *args,
+		int *need_spc,
+		char **bufp, int *sz)
+{
+	const char *comma = "";
+	decl **i;
+
+	ADD_SPC();
+	BUF_ADD("(");
+	for(i = args->arglist; i && *i; i++){
+		char tmp_buf[DECL_STATIC_BUFSIZ];
+		BUF_ADD("%s%s", comma, decl_to_str_r(tmp_buf, *i));
+		comma = ", ";
+	}
+	BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
+}
+
+static void type_add_str(
+		type *r, char *spel,
+		int *need_spc,
+		char **bufp, int *sz)
+{
 #define IS_PTR(ty) ((ty) == type_ptr || (ty) == type_block)
 
 	int need_paren;
@@ -459,21 +498,9 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 			break;
 
 		case type_func:
-		{
-			const char *comma = "";
-			decl **i;
-			funcargs *args = r->bits.func.args;
-
-			ADD_SPC();
-			BUF_ADD("(");
-			for(i = args->arglist; i && *i; i++){
-				char tmp_buf[DECL_STATIC_BUFSIZ];
-				BUF_ADD("%s%s", comma, decl_to_str_r(tmp_buf, *i));
-				comma = ", ";
-			}
-			BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
+			type_add_funcargs(r->bits.func.args, need_spc, bufp, sz);
 			break;
-		}
+
 		case type_ptr:
 #ifdef SHOW_DECAYED_ARRAYS
 			if(!r->bits.ptr.size)
@@ -522,7 +549,7 @@ const char *type_to_str_r_spel_aka(
 
 static
 type *type_add_type_str(type *r,
-		char **bufp, int sz,
+		char **bufp, int *sz,
 		const int aka)
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
@@ -600,8 +627,11 @@ const char *type_to_str_r_spel_aka(
 	char *bufp = buf;
 	int spc = 1;
 	type *skipped;
+	int sz = TYPE_STATIC_BUFSIZ;
 
-	skipped = type_add_type_str(r, &bufp, TYPE_STATIC_BUFSIZ, aka);
+	skipped = type_add_type_str(r, &bufp, &sz, aka);
+
+	assert(sz == (TYPE_STATIC_BUFSIZ - (bufp - buf)));
 
 	if(skipped)
 		r = skipped;
@@ -610,7 +640,7 @@ const char *type_to_str_r_spel_aka(
 	r = type_set_parent(r, NULL);
 	/* use r->tmp, since r is type_t{ype,def} */
 	type_add_str(r->tmp, spel, &spc,
-			&bufp, TYPE_STATIC_BUFSIZ - (bufp - buf));
+			&bufp, &sz);
 
 	/* trim trailing space */
 	if(bufp > buf && bufp[-1] == ' ')
@@ -688,4 +718,54 @@ type_str_type(type *r)
 		default:
 			return type_str_no;
 	}
+}
+
+unsigned type_hash(const type *t)
+{
+	unsigned hash = t->type << 20 | (unsigned)(unsigned long)t;
+
+	switch(t->type){
+		case type_auto:
+			ICE("auto type");
+
+		case type_btype:
+			hash |= t->bits.type->primitive;
+			break;
+
+		case type_tdef:
+			hash |= type_hash(t->bits.tdef.type_of->tree_type);
+			break;
+
+		case type_ptr:
+		case type_array:
+			hash |= type_hash(t->bits.ptr.size->tree_type);
+			break;
+
+		case type_block:
+		case type_where:
+			/* nothing */
+			break;
+
+		case type_func:
+		{
+			decl **i;
+
+			for(i = t->bits.func.args->arglist; i && *i; i++)
+				hash |= type_hash((*i)->ref);
+
+			break;
+		}
+
+		case type_cast:
+			hash |= t->bits.cast.is_signed_cast
+				| t->bits.cast.signed_true << 2
+				| t->bits.cast.qual << 4;
+			break;
+
+		case type_attr:
+			hash |= t->bits.attr->type;
+			break;
+	}
+
+	return hash;
 }

@@ -1489,7 +1489,7 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		 */
 		type_funcargs(d->ref)->args_void_implicit = 1;
 
-		if(d->store & store_typedef){
+		if((d->store & STORE_MASK_STORE) == store_typedef){
 			warn_at_print_error(&d->where, "typedef storage on function");
 			fold_had_error = 1;
 		}
