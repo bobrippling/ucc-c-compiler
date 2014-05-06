@@ -976,11 +976,6 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 					"testing a non-boolean expression (%s), in %s",
 					type_to_str(e->tree_type), desc);
 		}
-
-		if(expr_kind(e, addr)){
-			cc1_warn_at(&e->where, 0, WARN_TEST_BOOL/*FIXME*/,
-					"an address is always true");
-		}
 	}
 
 	if(chk & FOLD_CHK_CONST_I){
