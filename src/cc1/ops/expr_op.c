@@ -131,8 +131,36 @@ static void const_op_num_int(
 			assert(0);
 
 		case 1:
-			k->type = CONST_NO;
-			ICE("TODO");
+			/* label and num - only + and -, or comparison */
+
+			/* make lhs the address */
+			if(rhs && lhs->type == CONST_NUM){
+				const consty *tmp = lhs;
+				lhs = rhs;
+				rhs = tmp;
+			}
+
+			switch(e->op){
+				case op_not:
+					/* !&lbl */
+					k->type = CONST_NUM;
+					k->bits.num.val.i = 0;
+					break;
+
+				default:
+					/* ~&lbl, 5 == &lbl, 6 > &lbl etc */
+					k->type = CONST_NO;
+					break;
+
+				case op_plus:
+				case op_minus:
+					memcpy_safe(k, lhs);
+					if(e->op == op_plus)
+						k->offset += r.bits.i;
+					else if(e->op == op_minus)
+						k->offset -= r.bits.i;
+					break;
+			}
 			break;
 
 		case 0:
