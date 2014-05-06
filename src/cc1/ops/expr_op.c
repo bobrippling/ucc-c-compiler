@@ -214,38 +214,46 @@ static void const_op_num(
 }
 
 static void const_shortcircuit(
-		expr *e,
-		consty *k,
-		int sum_const,
+		expr *e, consty *k,
 		const consty *lhs,
 		const consty *rhs)
 {
-	/* allow 1 || f() */
-	const consty *kside = CONST_AT_COMPILE_TIME(lhs->type) ? lhs : rhs;
-	int is_true = !!kside->bits.num.val.i;
+	collapsed_consty clhs;
+	int truth;
 
-	if(e->op == (is_true ? op_orsc : op_andsc)){
-		memcpy(k, kside, sizeof *k);
+	if(lhs->type == CONST_NO)
+		return;
+	assert(rhs->type == CONST_NO);
 
-		/* to be more conformant we set nonstandard_const on: a() && 0
-		 * i.e. ordering:
-		 * good:   0 && a()
-		 * good:   1 || b()
-		 * bad:  a() && 0
-		 * bad:  b() || 1
-		 */
+	collapse_const(&clhs, lhs);
+	truth = clhs.is_lbl ? 1 : clhs.bits.i;
 
-		/* one side isn't const */
-		/* ... and the lhs isn't const */
-		if(sum_const < 2 && kside != lhs)
-			k->nonstandard_const = e;
+	if(e->op == op_andsc){
+		if(truth){
+			/* &lbl && [not-constant] */
+		}else{
+			/* 0 && [not-constant] */
+			CONST_FOLD_LEAF(k);
+			k->type = CONST_NUM;
+			k->bits.num.val.i = 0;
+		}
+	}else if(e->op == op_orsc){
+		if(truth){
+			/* &lbl || [not-constant] */
+			CONST_FOLD_LEAF(k);
+			k->type = CONST_NUM;
+			k->bits.num.val.i = 1;
+		}else{
+			/* 0 || [not-constant] */
+		}
+	}else{
+		assert(0);
 	}
 }
 
 static void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
-	int sum_const;
 
 	memset(k, 0, sizeof *k);
 
@@ -257,14 +265,17 @@ static void fold_const_expr_op(expr *e, consty *k)
 		rhs.type = CONST_NUM;
 	}
 
-	if((e->op == op_andsc || e->op == op_orsc)
-	&& (sum_const = CONST_AT_COMPILE_TIME(lhs.type)
-	              + CONST_AT_COMPILE_TIME(rhs.type)) > 0)
+	if(!CONST_AT_COMPILE_TIME(lhs.type) /* catch need_addr */
+	|| !CONST_AT_COMPILE_TIME(rhs.type))
 	{
-		const_shortcircuit(e, k, sum_const, &lhs, &rhs);
-	}else{
-		const_op_num(e, k, &lhs, &rhs);
+		/* allow shortcircuit */
+		k->type = CONST_NO;
+		if(e->op == op_andsc || e->op == op_orsc)
+			const_shortcircuit(e, k, &lhs, &rhs);
+		return;
 	}
+
+	const_op_num(e, k, &lhs, &rhs);
 
 	if(!k->nonstandard_const
 	&& lhs.type != CONST_NO /* otherwise it's uninitialised */
