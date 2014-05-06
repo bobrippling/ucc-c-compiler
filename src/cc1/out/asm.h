@@ -45,6 +45,7 @@ void asm_declare_decl_init(enum section_type, decl *); /* x: .qword ... */
 
 void asm_predeclare_extern(decl *d);
 void asm_predeclare_global(decl *d);
+void asm_predeclare_weak(decl *d);
 #endif
 
 /* in impl */

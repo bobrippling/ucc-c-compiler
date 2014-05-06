@@ -173,6 +173,7 @@ void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 	struct symtable_gasm **iasm = globs->gasms;
 
 	for(diter = globs->stab.decls; diter && *diter; diter++){
+		int emitted_type = 0;
 		decl *d = *diter;
 
 		while(iasm && d == (*iasm)->before){
@@ -199,6 +200,11 @@ void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 				break;
 		}
 
+		if(attribute_present(d, attr_weak)){
+			asm_predeclare_weak(d);
+			emitted_type = 1;
+		}
+
 		if(type_is(d->ref, type_func)){
 			if(d->store & store_inline){
 				/*
@@ -210,25 +216,28 @@ void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 				 */
 				if((d->store & STORE_MASK_STORE) == store_default){
 					/* inline only - emit an extern for it anyway */
-					asm_predeclare_extern(d);
+					if(!emitted_type)
+						asm_predeclare_extern(d);
 					continue;
 				}
 			}
 
 			if(!d->bits.func.code){
-				asm_predeclare_extern(d);
+				if(!emitted_type)
+					asm_predeclare_extern(d);
 				continue;
 			}
 		}else{
 			/* variable - if there's no init,
 			 * it's tenative and not output */
 			if(!d->bits.var.init){
-				asm_predeclare_extern(d);
+				if(!emitted_type)
+					asm_predeclare_extern(d);
 				continue;
 			}
 		}
 
-		if((d->store & STORE_MASK_STORE) != store_static)
+		if(!emitted_type && (d->store & STORE_MASK_STORE) != store_static)
 			asm_predeclare_global(d);
 		gen_asm_global(d);
 
