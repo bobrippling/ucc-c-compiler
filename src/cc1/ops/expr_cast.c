@@ -284,10 +284,12 @@ static void const_intify(consty *k)
 			integral_t memaddr;
 
 			/* can't do (int)&x */
-			assert(!k->bits.addr.is_lbl);
-			assert(!k->offset);
+			if(k->bits.addr.is_lbl){
+				k->type = CONST_NO;
+				return;
+			}
 
-			memaddr = k->bits.addr.bits.memaddr;
+			memaddr = k->bits.addr.bits.memaddr + k->offset;
 
 			CONST_FOLD_LEAF(k);
 
@@ -349,7 +351,8 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	&& !type_is_ptr(e->tree_type))
 	{
 		/* casting from pointer to int */
-		const_intify(k);
+		if(type_size(e->tree_type, &e->where) < platform_word_size())
+			const_intify(k); /* smaller than word size, force to int */
 
 		/* not a constant but we treat it as such, as an extension */
 		if(!k->nonstandard_const)
