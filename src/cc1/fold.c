@@ -709,10 +709,22 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	d->fold_state = DECL_FOLD_EXCEPT_INIT;
 
 	if(first_fold){
+		attribute *attr;
+
 		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), stab, d->attr);
 
 		if(d->spel)
 			fold_decl_add_sym(d, stab);
+
+		if(((d->store & STORE_MASK_STORE) != store_typedef)
+		/* __attribute__((weak)) is allowed on typedefs */
+		&& (attr = attribute_present(d, attr_weak))
+		&& decl_linkage(d) != linkage_external)
+		{
+			warn_at_print_error(&d->where,
+					"weak attribute on declaration without external linkage");
+			fold_had_error = 1;
+		}
 	}
 
 	if(type_is(d->ref, type_func)){
