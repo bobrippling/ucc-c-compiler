@@ -3,7 +3,7 @@
 
 extern char *curfunc_lblfin;
 
-void gen_asm_global(decl *d);
+void gen_asm_global_w_store(decl *d, int emit_tenatives);
 
 void gen_asm(symtable_global *globs,
 		const char *fname, const char *compdir);

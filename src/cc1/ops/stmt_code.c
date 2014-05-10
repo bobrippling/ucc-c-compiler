@@ -141,7 +141,7 @@ void gen_block_decls(symtable *stab, const char **dbg_end_lbl)
 			/* if it's a string, go,
 			 * if it's the most-unnested func. prototype, go */
 			if(!func || !d->proto)
-				gen_asm_global(d);
+				gen_asm_global_w_store(d, 1);
 		}
 	}
 }
