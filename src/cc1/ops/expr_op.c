@@ -112,34 +112,51 @@ static void const_op_num_int(
 {
 	const char *err = NULL;
 	int is_signed;
-	collapsed_consty l, r;
+	collapsed_consty collapsed_l, collapsed_r;
+	collapsed_consty *l = &collapsed_l, *r = &collapsed_r;
 
 	/* the op is signed if an operand is, not the result,
 	 * e.g. u_a < u_b produces a bool (signed) */
 	is_signed = type_is_signed(e->lhs->tree_type) ||
 		(e->rhs ? type_is_signed(e->rhs->tree_type) : 0);
 
-	collapse_const(&l, lhs);
-	if(rhs)
-		collapse_const(&r, rhs);
-	else
-		memset(&r, 0, sizeof r);
+	collapse_const(l, lhs);
+	if(rhs){
+		type *ptr;
+		int ptr_r = 0;
+
+		collapse_const(r, rhs);
+
+		/* make lhs the address */
+		if(lhs->type == CONST_NUM){
+			const consty *tmp1 = lhs;
+			collapsed_consty *tmp2 = l;
+
+			lhs = rhs, rhs = tmp1;
+			l = r, r = tmp2;
+		}
+
+		/* need to apply pointer arithmetic if +/- */
+		if(!r->is_lbl
+		&& (e->op == op_plus || e->op == op_minus)
+		&& ((ptr = type_is_ptr(e->lhs->tree_type))
+			|| (ptr_r = 1, ptr = type_is_ptr(e->rhs->tree_type))))
+		{
+			unsigned step = type_size(ptr, &e->where);
+
+			*(ptr_r ? &l->bits.i : &r->bits.i) *= step;
+		}
+	}else{
+		memset(r, 0, sizeof *r);
+	}
 
 	CONST_FOLD_LEAF(k);
-	switch(l.is_lbl + r.is_lbl){
+	switch(l->is_lbl + r->is_lbl){
 		default:
 			assert(0);
 
 		case 1:
 			/* label and num - only + and -, or comparison */
-
-			/* make lhs the address */
-			if(rhs && lhs->type == CONST_NUM){
-				const consty *tmp = lhs;
-				lhs = rhs;
-				rhs = tmp;
-			}
-
 			switch(e->op){
 				case op_not:
 					/* !&lbl */
@@ -168,9 +185,9 @@ static void const_op_num_int(
 					assert(rhs && "unary +/- on label?");
 					memcpy_safe(k, lhs);
 					if(e->op == op_plus)
-						k->offset += r.bits.i;
+						k->offset += r->bits.i;
 					else if(e->op == op_minus)
-						k->offset -= r.bits.i;
+						k->offset -= r->bits.i;
 					break;
 			}
 			break;
@@ -178,22 +195,9 @@ static void const_op_num_int(
 		case 0:
 		{
 			integral_t int_r;
-			type *ptr;
-			int ptr_r = 0;
-
-			/* need to apply pointer arithmetic if +/- */
-			if(rhs
-			&& (e->op == op_plus || e->op == op_minus)
-			&& ((ptr = type_is_ptr(e->lhs->tree_type))
-			|| (ptr_r = 1, ptr = type_is_ptr(e->rhs->tree_type))))
-			{
-				unsigned step = type_size(ptr, &e->where);
-
-				*(ptr_r ? &l.bits.i : &r.bits.i) *= step;
-			}
 
 			int_r = const_op_exec(
-					l.bits.i, rhs ? &r.bits.i : NULL,
+					l->bits.i, rhs ? &r->bits.i : NULL,
 					e->op, is_signed, &err);
 
 			if(err){
@@ -225,7 +229,7 @@ static void const_op_num_int(
 				case op_eq:
 				case op_ne:
 				{
-					int same = !strcmp(l.bits.lbl, r.bits.lbl);
+					int same = !strcmp(l->bits.lbl, r->bits.lbl);
 					k->type = CONST_NUM;
 
 					k->bits.num.val.i = ((e->op == op_eq) == same);
