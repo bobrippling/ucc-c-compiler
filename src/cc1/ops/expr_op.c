@@ -165,6 +165,7 @@ static void const_op_num_int(
 
 				case op_plus:
 				case op_minus:
+					assert(rhs && "unary +/- on label?");
 					memcpy_safe(k, lhs);
 					if(e->op == op_plus)
 						k->offset += r.bits.i;
@@ -192,7 +193,7 @@ static void const_op_num_int(
 			}
 
 			int_r = const_op_exec(
-					l.bits.i, &r.bits.i,
+					l.bits.i, rhs ? &r.bits.i : NULL,
 					e->op, is_signed, &err);
 
 			if(err){
