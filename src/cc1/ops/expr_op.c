@@ -182,7 +182,12 @@ static void const_op_num_int(
 
 				case op_plus:
 				case op_minus:
-					assert(rhs && "unary +/- on label?");
+					if(!rhs){
+						/* unary +/- on label */
+						k->type = CONST_NO;
+						break;
+					}
+
 					memcpy_safe(k, num_side == &l ? rhs : lhs);
 					if(e->op == op_plus)
 						k->offset += num_side->bits.i;
