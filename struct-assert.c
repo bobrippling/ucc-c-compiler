@@ -30,10 +30,9 @@ int glob;
 
 /* &glob == &glob isn't an integer constant expression,
  * but is an address constant expression, so may be used
- * in an initialiser */
+ * in an initialiser. as an extension we allow it as an
+ * integer constant expression */
 _Static_assert(&glob == &glob, ""); // !cosnt
-
-int x = &glob > &glob; // CHECK: !/warn/
 
 _Static_assert(&glob != 0, "");
 
