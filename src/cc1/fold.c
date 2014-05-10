@@ -758,8 +758,11 @@ void fold_decl_global_init(decl *d, symtable *stab)
 
 	type = stab->parent ? "static" : "global";
 	if(!decl_init_is_const(d->bits.var.init, stab, &nonstd)){
-		die_at(&d->bits.var.init->where, "%s %s initialiser not constant",
+		warn_at_print_error(&d->bits.var.init->where,
+				"%s %s initialiser not constant",
 				type, decl_init_to_str(d->bits.var.init->type));
+
+		fold_had_error = 1;
 	}else if(nonstd){
 		char wbuf[WHERE_BUF_SIZ];
 
