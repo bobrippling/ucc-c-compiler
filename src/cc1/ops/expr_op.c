@@ -147,6 +147,17 @@ static void const_op_num_int(
 					k->bits.num.val.i = 0;
 					break;
 
+				case op_eq:
+				case op_ne:
+					assert(rhs && rhs->type == CONST_NUM);
+					if(rhs->bits.num.val.i == 0){
+						/* &x == 0, etc */
+						k->type = CONST_NUM;
+						k->bits.num.val.i = (e->op != op_eq);
+						break;
+					}
+					/* fall */
+
 				default:
 					/* ~&lbl, 5 == &lbl, 6 > &lbl etc */
 					k->type = CONST_NO;
