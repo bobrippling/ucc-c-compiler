@@ -1,3 +1,4 @@
+// TEST: target !darwin
 // RUN: %ocheck 0 %s
 
 __attribute__((weak))

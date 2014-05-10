@@ -1,3 +1,5 @@
+// TEST: target !darwin
+
 // RUN: %ucc -S -o %t %s
 // RUN: grep '\.weak _*f' %t
 // RUN: grep '\.weak _*g' %t
