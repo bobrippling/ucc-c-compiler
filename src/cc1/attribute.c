@@ -143,6 +143,7 @@ const char *attribute_to_str(attribute *da)
 		CASE_STR_PREFIX(attr, packed);
 		CASE_STR_PREFIX(attr, sentinel);
 		CASE_STR_PREFIX(attr, aligned);
+		CASE_STR_PREFIX(attr, weak);
 		CASE_STR_PREFIX(attr, ucc_debug);
 
 		case attr_call_conv:
@@ -229,6 +230,7 @@ int attribute_equal(attribute *a, attribute *b)
 				case attr_noreturn:
 				case attr_noderef:
 				case attr_packed:
+				case attr_weak:
 				case attr_ucc_debug:
 					/* equal */
 					break;

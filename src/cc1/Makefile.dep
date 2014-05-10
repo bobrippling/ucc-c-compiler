@@ -1322,8 +1322,9 @@ out/asm.o: out/asm.c out/../../util/util.h out/../../util/warn.h \
  out/../ops/stmt_label.h out/../ops/stmt_noop.h out/../ops/stmt_return.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../type_is.h out/../sue.h out/../const.h \
- out/../gen_asm.h out/../decl_init.h out/../pack.h out/../str.h out/asm.h \
- out/out.h out/../type.h out/../num.h out/../op.h
+ out/../gen_asm.h out/../decl_init.h out/../pack.h out/../str.h \
+ out/../../as_cfg.h out/asm.h out/out.h out/../type.h out/../num.h \
+ out/../op.h
 out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
  out/../../util/platform.h out/../../util/util.h out/../../util/warn.h \
  out/../../util/where.h out/../../util/dynarray.h out/../../util/dyn.h \
