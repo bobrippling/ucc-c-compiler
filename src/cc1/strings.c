@@ -53,6 +53,8 @@ stringlit *strings_lookup(
 		lit->str = s;
 		lit->len = len;
 		lit->wide = wide;
+		/* create the label immediately - used in const folding */
+		lit->lbl = out_label_data_store(wide ? STORE_P_WCHAR : STORE_P_CHAR);
 
 		alloc_key = umalloc(sizeof *alloc_key);
 		*alloc_key = key;
@@ -65,8 +67,7 @@ stringlit *strings_lookup(
 
 void stringlit_use(stringlit *s)
 {
-	if(s->use_cnt++ == 0)
-		s->lbl = out_label_data_store(s->wide ? STORE_P_WCHAR : STORE_P_CHAR);
+	s->use_cnt++;
 }
 
 int stringlit_empty(const stringlit *str)

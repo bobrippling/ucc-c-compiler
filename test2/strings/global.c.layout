@@ -7,9 +7,9 @@ x:
 .zero 1
 
 p:
-.quad str.1
+.quad str.2
 
-str.1:
+str.2:
 .byte 121
 .byte 111
 .zero 1

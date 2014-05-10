@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "../../util/alloc.h"
@@ -215,6 +216,90 @@ static integral_t convert_integral_to_integral_warn(
 	return ret;
 }
 
+static void check_addr_int_cast(consty *k, int l)
+{
+	/* shouldn't fit, check if it will */
+	switch(k->type){
+		default:
+			ICE("bad switch");
+
+		case CONST_STRK:
+			/* no idea where it will be in memory,
+			 * can't fit into a smaller type */
+			k->type = CONST_NO; /* e.g. (int)&a */
+			break;
+
+		case CONST_NEED_ADDR:
+		case CONST_ADDR:
+			if(k->bits.addr.is_lbl){
+				k->type = CONST_NO; /* similar to strk case */
+			}else{
+				integral_t new = k->bits.addr.bits.memaddr;
+				const int pws = platform_word_size();
+
+				/* mask out bits so we have it truncated to `l' */
+				if(l < pws){
+					new = integral_truncate(new, l, NULL);
+
+					if(k->bits.addr.bits.memaddr != new)
+						/* can't cast without losing value - not const */
+						k->type = CONST_NO;
+
+				}else{
+					/* what are you doing... */
+					k->type = CONST_NO;
+				}
+			}
+	}
+}
+
+static void cast_addr(expr *e, consty *k)
+{
+	int l, r;
+
+	/* allow if we're casting to a same-size type */
+	l = type_size(e->tree_type, &e->where);
+
+	if(type_decayable(expr_cast_child(e)->tree_type))
+		r = platform_word_size(); /* func-ptr or array->ptr */
+	else
+		r = type_size(expr_cast_child(e)->tree_type, &expr_cast_child(e)->where);
+
+	if(l < r)
+		check_addr_int_cast(k, l);
+}
+
+static void const_intify(consty *k)
+{
+	switch(k->type){
+		case CONST_STRK:
+		case CONST_NO:
+			assert(0);
+		case CONST_NUM:
+			break;
+
+		case CONST_NEED_ADDR:
+		case CONST_ADDR:
+		{
+			integral_t memaddr;
+
+			/* can't do (int)&x */
+			if(k->bits.addr.is_lbl){
+				k->type = CONST_NO;
+				return;
+			}
+
+			memaddr = k->bits.addr.bits.memaddr + k->offset;
+
+			CONST_FOLD_LEAF(k);
+
+			k->type = CONST_NUM;
+			k->bits.num.val.i = memaddr;
+			break;
+		}
+	}
+}
+
 static void fold_const_expr_cast(expr *e, consty *k)
 {
 	int to_fp;
@@ -232,11 +317,11 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		return;
 
 	switch(k->type){
-		case CONST_NUM:
-			fold_cast_num(e, &k->bits.num);
+		case CONST_NO:
 			break;
 
-		case CONST_NO:
+		case CONST_NUM:
+			fold_cast_num(e, &k->bits.num);
 			break;
 
 		case CONST_NEED_ADDR:
@@ -248,69 +333,30 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 		case CONST_ADDR:
 		case CONST_STRK:
-		{
-			int l, r;
-
 			if(to_fp){
 				/* had an error - reported in fold() */
 				k->type = CONST_NO;
 				return;
 			}
 
-			/* allow if we're casting to a same-size type */
-			l = type_size(e->tree_type, &e->where);
-
-			if(type_decayable(expr_cast_child(e)->tree_type))
-				r = platform_word_size(); /* func-ptr or array->ptr */
-			else
-				r = type_size(expr_cast_child(e)->tree_type, &expr_cast_child(e)->where);
-
-			if(l < r){
-				/* shouldn't fit, check if it will */
-				switch(k->type){
-					default:
-						ICE("bad switch");
-
-					case CONST_STRK:
-						/* no idea where it will be in memory,
-						 * can't fit into a smaller type */
-						k->type = CONST_NO; /* e.g. (int)&a */
-						break;
-
-					case CONST_NEED_ADDR:
-					case CONST_ADDR:
-						if(k->bits.addr.is_lbl){
-							k->type = CONST_NO; /* similar to strk case */
-						}else{
-							integral_t new = k->bits.addr.bits.memaddr;
-							const int pws = platform_word_size();
-
-							/* mask out bits so we have it truncated to `l' */
-							if(l < pws){
-								new = integral_truncate(new, l, NULL);
-
-								if(k->bits.addr.bits.memaddr != new)
-									/* can't cast without losing value - not const */
-									k->type = CONST_NO;
-
-							}else{
-								/* what are you doing... */
-								k->type = CONST_NO;
-							}
-						}
-				}
-			}
+			cast_addr(e, k);
 			break;
-		}
 	}
 
-	/* if casting from pointer to int, it's not a constant
-	 * but we treat it as such, as an extension */
+	/* may be mutated above */
+	if(k->type == CONST_NO)
+		return;
+
 	if(type_is_ptr(e->expr->tree_type)
-	&& !type_is_ptr(e->tree_type)
-	&& !k->nonstandard_const)
+	&& !type_is_ptr(e->tree_type))
 	{
-		k->nonstandard_const = e;
+		/* casting from pointer to int */
+		if(type_size(e->tree_type, &e->where) < platform_word_size())
+			const_intify(k); /* smaller than word size, force to int */
+
+		/* not a constant but we treat it as such, as an extension */
+		if(!k->nonstandard_const)
+			k->nonstandard_const = e;
 	}
 }
 

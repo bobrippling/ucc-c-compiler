@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "../defs.h"
 #include "ops.h"
@@ -16,30 +17,297 @@ const char *str_expr_op()
 	return "op";
 }
 
-static void const_offset(consty *r, consty *val, consty *addr,
-		type *addr_type, enum op_type op)
+#define addr_multiply(i, addr_type)  \
+do{                                  \
+	type *next = type_next(addr_type); \
+	sintegral_t step = 1;              \
+                                     \
+	if(next)                           \
+		step = type_size(next, NULL);    \
+                                     \
+	i *= step;                         \
+}while(0)
+
+static void const_op_num_fp(
+		expr *e, consty *k,
+		const consty *lhs, const consty *rhs)
 {
-	unsigned step = type_size(type_next(addr_type), NULL);
-	int change;
+	/* float const-op */
+	floating_t fp_r;
 
-	UCC_ASSERT(K_INTEGRAL(val->bits.num),
-			"fp + address?");
+	assert(lhs->type == CONST_NUM && (!rhs || rhs->type == CONST_NUM));
 
-	memcpy_safe(r, addr);
+	fp_r = const_op_exec_fp(
+			lhs->bits.num.val.f,
+			rhs ? &rhs->bits.num.val.f : NULL,
+			e->op);
 
-	change = val->bits.num.val.i * step;
+	k->type = CONST_NUM;
 
-	if(op == op_minus)
-		change = -change;
+	/* both relational and normal ops between floats are not constant */
+	if(!k->nonstandard_const)
+		k->nonstandard_const = e;
 
-	/* may already have an offset, hence += */
-	r->offset += change;
+	if(op_returns_bool(e->op)){
+		k->bits.num.val.i = fp_r; /* convert to bool */
+
+	}else{
+		const btype *ty = type_get_type(e->tree_type);
+
+		UCC_ASSERT(ty, "no float type for float op?");
+
+		k->bits.num.val.f = fp_r;
+
+		switch(ty->primitive){
+			case type_float:   k->bits.num.suffix = VAL_FLOAT;   break;
+			case type_double:  k->bits.num.suffix = VAL_DOUBLE;  break;
+			case type_ldouble: k->bits.num.suffix = VAL_LDOUBLE; break;
+			default: ICE("bad float");
+		}
+	}
+}
+
+typedef struct
+{
+	int is_lbl;
+	union
+	{
+		integral_t i;
+		const char *lbl;
+	} bits;
+} collapsed_consty;
+
+static void collapse_const(collapsed_consty *out, const consty *in)
+{
+	switch(in->type){
+		case CONST_NO:
+			assert(0);
+
+		case CONST_NUM:
+			out->is_lbl = 0;
+			out->bits.i = in->bits.num.val.i;
+			break;
+
+		case CONST_STRK:
+			out->is_lbl = 1;
+			out->bits.lbl = in->bits.str->lit->lbl;
+			break;
+
+		case CONST_NEED_ADDR:
+		case CONST_ADDR:
+			if(in->bits.addr.is_lbl){
+				out->is_lbl = 1;
+				out->bits.lbl = in->bits.addr.bits.lbl;
+			}else{
+				out->is_lbl = 0;
+				out->bits.i = in->bits.addr.bits.memaddr;
+			}
+			break;
+	}
+}
+
+static void const_op_num_int(
+		expr *e, consty *k,
+		const consty *lhs, const consty *rhs)
+{
+	const char *err = NULL;
+	int is_signed;
+	collapsed_consty l, r;
+
+	/* the op is signed if an operand is, not the result,
+	 * e.g. u_a < u_b produces a bool (signed) */
+	is_signed = type_is_signed(e->lhs->tree_type) ||
+		(e->rhs ? type_is_signed(e->rhs->tree_type) : 0);
+
+	collapse_const(&l, lhs);
+	if(rhs){
+		type *ptr;
+		int ptr_r = 0;
+
+		collapse_const(&r, rhs);
+
+		/* need to apply pointer arithmetic */
+		if(l.is_lbl + r.is_lbl < 2 /* at least one side is a number */
+		&& (e->op == op_plus || e->op == op_minus) /* +/- */
+		&& ((ptr = type_is_ptr(e->lhs->tree_type))
+			|| (ptr_r = 1, ptr = type_is_ptr(e->rhs->tree_type))))
+		{
+			unsigned step = type_size(ptr, &e->where);
+
+			assert(!(ptr_r ? &l : &r)->is_lbl);
+
+			*(ptr_r ? &l.bits.i : &r.bits.i) *= step;
+		}
+	}else{
+		memset(&r, 0, sizeof r);
+	}
+
+	CONST_FOLD_LEAF(k);
+	switch(l.is_lbl + r.is_lbl){
+		default:
+			assert(0);
+
+		case 1:
+		{
+			collapsed_consty *num_side = NULL;
+			if(lhs->type == CONST_NUM)
+				num_side = &l;
+			else if(rhs)
+				num_side = &r;
+
+			/* label and num - only + and -, or comparison */
+			switch(e->op){
+				case op_not:
+					/* !&lbl */
+					assert(!rhs);
+					k->type = CONST_NUM;
+					k->bits.num.val.i = 0;
+					break;
+
+				case op_eq:
+				case op_ne:
+					assert(num_side && "binary two labels shouldn't be here");
+					if(num_side->bits.i == 0){
+						/* &x == 0, etc */
+						k->type = CONST_NUM;
+						k->bits.num.val.i = (e->op != op_eq);
+						break;
+					}
+					/* fall */
+
+				default:
+					/* ~&lbl, 5 == &lbl, 6 > &lbl etc */
+					k->type = CONST_NO;
+					break;
+
+				case op_plus:
+				case op_minus:
+					if(!rhs){
+						/* unary +/- on label */
+						k->type = CONST_NO;
+						break;
+					}
+
+					memcpy_safe(k, num_side == &l ? rhs : lhs);
+					if(e->op == op_plus)
+						k->offset += num_side->bits.i;
+					else if(e->op == op_minus)
+						k->offset -= num_side->bits.i;
+					break;
+			}
+			break;
+		}
+
+		case 0:
+		{
+			integral_t int_r;
+
+			int_r = const_op_exec(
+					l.bits.i, rhs ? &r.bits.i : NULL,
+					e->op, is_signed, &err);
+
+			if(err){
+				warn_at(&e->where, "%s", err);
+				k->type = CONST_NO;
+			}else{
+				k->type = CONST_NUM;
+				k->bits.num.val.i = int_r;
+			}
+			break;
+		}
+
+		case 2:
+			switch(e->op){
+				case op_not:
+					assert(0 && "binary not?");
+				case op_unknown:
+					assert(0);
+				default:
+					k->type = CONST_NO;
+					break;
+
+				case op_orsc:
+				case op_andsc:
+					k->type = CONST_NUM;
+					k->bits.num.val.i = 1;
+					break;
+
+				case op_eq:
+				case op_ne:
+				{
+					int same = !strcmp(l.bits.lbl, r.bits.lbl);
+					k->type = CONST_NUM;
+
+					k->bits.num.val.i = ((e->op == op_eq) == same);
+					break;
+				}
+			}
+			break;
+	}
+}
+
+static void const_op_num(
+		expr *e, consty *k,
+		const consty *lhs, const consty *rhs)
+{
+	int fp[2] = {
+		type_is_floating(e->lhs->tree_type)
+	};
+
+	if(rhs){
+		fp[1] = type_is_floating(e->rhs->tree_type);
+
+		UCC_ASSERT(!(fp[0] ^ fp[1]),
+				"one float and one non-float?");
+	}
+
+	if(fp[0])
+		const_op_num_fp(e, k, lhs, rhs);
+	else
+		const_op_num_int(e, k, lhs, rhs);
+}
+
+static void const_shortcircuit(
+		expr *e, consty *k,
+		const consty *lhs,
+		const consty *rhs)
+{
+	collapsed_consty clhs;
+	int truth;
+
+	if(lhs->type == CONST_NO)
+		return;
+	assert(rhs->type == CONST_NO);
+
+	collapse_const(&clhs, lhs);
+	truth = clhs.is_lbl ? 1 : clhs.bits.i;
+
+	if(e->op == op_andsc){
+		if(truth){
+			/* &lbl && [not-constant] */
+		}else{
+			/* 0 && [not-constant] */
+			CONST_FOLD_LEAF(k);
+			k->type = CONST_NUM;
+			k->bits.num.val.i = 0;
+		}
+	}else if(e->op == op_orsc){
+		if(truth){
+			/* &lbl || [not-constant] */
+			CONST_FOLD_LEAF(k);
+			k->type = CONST_NUM;
+			k->bits.num.val.i = 1;
+		}else{
+			/* 0 || [not-constant] */
+		}
+	}else{
+		assert(0);
+	}
 }
 
 static void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
-	int sum_const;
 
 	memset(k, 0, sizeof *k);
 
@@ -51,108 +319,17 @@ static void fold_const_expr_op(expr *e, consty *k)
 		rhs.type = CONST_NUM;
 	}
 
-	if(lhs.type == CONST_NUM && rhs.type == CONST_NUM){
-		int fp[2] = {
-			type_is_floating(e->lhs->tree_type)
-		};
-
-		if(e->rhs){
-			fp[1] = type_is_floating(e->rhs->tree_type);
-
-			UCC_ASSERT(!(fp[0] ^ fp[1]),
-					"one float and one non-float?");
-		}
-
-		if(fp[0]){
-			/* float const-op */
-			floating_t r = const_op_exec_fp(
-					lhs.bits.num.val.f,
-					e->rhs ? &rhs.bits.num.val.f : 0,
-					e->op);
-
-			k->type = CONST_NUM;
-
-			/* both relational and normal */
-			if(!k->nonstandard_const)
-				k->nonstandard_const = e;
-
-			if(op_returns_bool(e->op)){
-				k->bits.num.val.i = r; /* convert to bool */
-
-			}else{
-				const btype *ty = type_get_type(e->tree_type);
-
-				UCC_ASSERT(ty, "no float type for float op?");
-
-				k->bits.num.val.f = r;
-
-				switch(ty->primitive){
-					case type_float:   k->bits.num.suffix = VAL_FLOAT;   break;
-					case type_double:  k->bits.num.suffix = VAL_DOUBLE;  break;
-					case type_ldouble: k->bits.num.suffix = VAL_LDOUBLE; break;
-					default: ICE("bad float");
-				}
-			}
-
-		}else{
-			const char *err = NULL;
-			integral_t r;
-			/* the op is signed if an operand is, not the result,
-			 * e.g. u_a < u_b produces a bool (signed) */
-			int is_signed = type_is_signed(e->lhs->tree_type) ||
-				(e->rhs ? type_is_signed(e->rhs->tree_type) : 0);
-
-			r = const_op_exec(
-					lhs.bits.num.val.i,
-					e->rhs ? &rhs.bits.num.val.i : NULL,
-					e->op, is_signed, &err);
-
-			if(err){
-				warn_at(&e->where, "%s", err);
-			}else{
-				k->type = CONST_NUM;
-				k->bits.num.val.i = r;
-			}
-		}
-
-	}else if((e->op == op_andsc || e->op == op_orsc)
-	&& (sum_const = CONST_AT_COMPILE_TIME(lhs.type)
-	              + CONST_AT_COMPILE_TIME(rhs.type)) > 0)
+	if(!CONST_AT_COMPILE_TIME(lhs.type) /* catch need_addr */
+	|| !CONST_AT_COMPILE_TIME(rhs.type))
 	{
-
-		/* allow 1 || f() */
-		consty *kside = CONST_AT_COMPILE_TIME(lhs.type) ? &lhs : &rhs;
-		int is_true = !!kside->bits.num.val.i;
-
-		if(e->op == (is_true ? op_orsc : op_andsc)){
-			memcpy(k, kside, sizeof *k);
-
-			/* to be more conformant we set nonstandard_const on: a() && 0
-			 * i.e. ordering:
-			 * good:   0 && a()
-			 * good:   1 || b()
-			 * bad:  a() && 0
-			 * bad:  b() || 1
-			 */
-			if(sum_const < 2  /* one side isn't const */
-			&& kside != &lhs) /* the lhs isn't const */
-			{
-				k->nonstandard_const = e;
-			}
-		}
-
-	}else if(e->op == op_plus || e->op == op_minus){
-		/* allow one CONST_{ADDR,STRK} and one CONST_VAL for an offset const */
-		int lhs_addr = lhs.type == CONST_ADDR || lhs.type == CONST_STRK;
-		int rhs_addr = rhs.type == CONST_ADDR || rhs.type == CONST_STRK;
-
-		/* this is safe - fold() checks that we can't add floats to addresses */
-
-		/**/if(lhs_addr && rhs.type == CONST_NUM)
-			const_offset(k, &rhs, &lhs, e->lhs->tree_type, e->op);
-		else if(rhs_addr && lhs.type == CONST_NUM)
-			const_offset(k, &lhs, &rhs, e->rhs->tree_type, e->op);
+		/* allow shortcircuit */
+		k->type = CONST_NO;
+		if(e->op == op_andsc || e->op == op_orsc)
+			const_shortcircuit(e, k, &lhs, &rhs);
+		return;
 	}
+
+	const_op_num(e, k, &lhs, e->rhs ? &rhs : NULL);
 
 	if(!k->nonstandard_const
 	&& lhs.type != CONST_NO /* otherwise it's uninitialised */
