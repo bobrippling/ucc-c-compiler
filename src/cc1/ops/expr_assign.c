@@ -2,6 +2,7 @@
 #include "expr_assign.h"
 #include "__builtin.h"
 #include "../type_is.h"
+#include "../type_nav.h"
 
 const char *str_expr_assign()
 {
@@ -86,8 +87,12 @@ void fold_expr_assign(expr *e, symtable *stab)
 	if(lhs_sym)
 		lhs_sym->nreads--; /* cancel the read that fold_ident thinks it got */
 
-	if(type_is_primitive(e->rhs->tree_type, type_void))
-		die_at(&e->where, "assignment from void expression");
+	if(type_is_primitive(e->rhs->tree_type, type_void)){
+		fold_had_error = 1;
+		warn_at_print_error(&e->where, "assignment from void expression");
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	expr_must_lvalue(e->lhs);
 
