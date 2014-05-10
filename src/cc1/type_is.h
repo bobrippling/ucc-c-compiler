@@ -27,6 +27,7 @@ struct funcargs *type_funcargs(type *r);
 unsigned type_array_len(type *r);
 type *type_next(type *r);
 
+int type_is_arith(type *);
 int type_is_autotype(type *);
 int type_is_bool(type *);
 int type_is_callable(type *);

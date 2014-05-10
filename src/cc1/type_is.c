@@ -276,6 +276,14 @@ int type_is_integral(type *r)
 	return 0;
 }
 
+int type_is_arith(type *t)
+{
+	t = type_is(t, type_btype);
+	if(!t)
+		return 0;
+	return type_is_integral(t) || type_is_floating(t);
+}
+
 int type_is_complete(type *r)
 {
 	/* decl is "void" or incomplete-struct or array[] */
