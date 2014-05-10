@@ -80,18 +80,22 @@ static void const_expr_deref(expr *e, consty *k)
 			}
 			break;
 		}
+		case CONST_NEED_ADDR:
+			k->type = CONST_NO;
+			break;
+
 		case CONST_NUM:
 		{
 			integral_t num = k->bits.num.val.i;
 			CONST_FOLD_LEAF(k);
 			k->bits.addr.is_lbl = 0;
 			k->bits.addr.bits.memaddr = num;
-			/* fall */
-		}
+		} /* fall */
 		case CONST_ADDR:
-			k->type = CONST_ADDR_OR_NEED_TYPE(from->tree_type);
 			/* *(int [10])a -> still need_addr */
-		default:
+			k->type = CONST_ADDR_OR_NEED_TYPE(e->tree_type);
+			break;
+		case CONST_NO:
 			break;
 	}
 }
