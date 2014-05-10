@@ -5,6 +5,7 @@
 #include <ctype.h>
 
 #include "../util/util.h"
+#include "../util/alloc.h"
 
 #include "parse_attr.h"
 
@@ -252,6 +253,7 @@ static void parse_attr_bracket_chomp(int had_open_paren)
 
 static attribute *parse_attr_single(const char *ident, symtable *scope)
 {
+	symtable_global *glob;
 	int i;
 
 	for(i = 0; attrs[i].ident; i++){
@@ -263,10 +265,19 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 		}
 	}
 
-	warn_at(NULL, "ignoring unrecognised attribute \"%s\"", ident);
+	glob = symtab_global(scope);
+	if(!dynmap_exists(char *, glob->unrecog_attrs, (char *)ident)){
+		char *dup = ustrdup(ident);
+
+		if(!glob->unrecog_attrs)
+			glob->unrecog_attrs = dynmap_new((dynmap_cmp_f *)strcmp, dynmap_strhash);
+
+		dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
+
+		warn_at(NULL, "ignoring unrecognised attribute \"%s\"", ident);
+	}
 
 	/* if there are brackets, eat them all */
-
 	parse_attr_bracket_chomp(0);
 
 	return NULL;

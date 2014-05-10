@@ -82,6 +82,7 @@ struct symtable_global
 	symtable stab; /* ABI compatible with struct symtable */
 	symtable_gasm **gasms;
 	dynmap *literals;
+	dynmap *unrecog_attrs;
 };
 
 sym *sym_new(decl *d, enum sym_type t);
