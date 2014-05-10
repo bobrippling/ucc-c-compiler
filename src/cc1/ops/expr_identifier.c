@@ -27,9 +27,7 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 		decl *const d = sym->decl;
 
 		/* only a constant if global/static/extern */
-		if((sym->type == sym_global || decl_store_static_or_extern(d->store))
-		&& !attribute_present(d, attr_weak))
-		{
+		if(decl_store_duration_is_static(d) && !attribute_present(d, attr_weak)){
 			CONST_FOLD_LEAF(k);
 
 			k->type = CONST_ADDR_OR_NEED(d);
@@ -104,7 +102,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 
 	if(sym->type == sym_local
-	&& !decl_store_static_or_extern(sym->decl->store)
+	&& !decl_store_duration_is_static(sym->decl)
 	&& !type_is(sym->decl->ref, type_array)
 	&& !type_is(sym->decl->ref, type_func)
 	&& !type_is_s_or_u(sym->decl->ref)

@@ -474,11 +474,14 @@ static void fold_decl_add_sym(decl *d, symtable *stab)
 	}else{
 		enum sym_type ty;
 
-		if(stab->are_params)
+		if(stab->are_params){
 			ty = sym_arg;
-		else
+		}else{
+			/* no decl_store_duration_is_static() checks here:
+			 * we haven't given it a sym yet */
 			ty = !stab->parent || decl_store_static_or_extern(d->store)
 				? sym_global : sym_local;
+		}
 
 		d->sym = sym_new(d, ty);
 	}

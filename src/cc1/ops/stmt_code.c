@@ -43,8 +43,8 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 		{
 			char buf[WHERE_BUF_SIZ];
 			int both_func = is_func && type_is(found->ref, type_func);
-			int both_extern = decl_store_duration_extern(d, stab)
-				&& decl_store_duration_extern(found, above_scope);
+			int both_extern = decl_linkage(d) == linkage_external
+				&& decl_linkage(found) == linkage_external;
 
 			/* allow functions redefined as decls and vice versa */
 			if((both_func || both_extern)
@@ -136,7 +136,7 @@ void gen_block_decls(symtable *stab, const char **dbg_end_lbl)
 
 		/* we may need a '.extern fn...' for prototypes... */
 		if((func = !!type_is(d->ref, type_func))
-		|| decl_store_static_or_extern(d->store))
+		|| decl_store_duration_is_static(d))
 		{
 			/* if it's a string, go,
 			 * if it's the most-unnested func. prototype, go */
