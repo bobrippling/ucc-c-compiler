@@ -1,3 +1,5 @@
+// RUN: %ocheck 0 %s
+
 // test cmp, addition and (int & ptr) subtraction
 
 // equal, 1
@@ -18,4 +20,6 @@ main()
 	if(add != 20) abort();
 	if(dif != 8) abort();
 	if(sub != 8) abort();
+
+	return 0;
 }
