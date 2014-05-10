@@ -21,6 +21,8 @@
 #include "../pack.h"
 #include "../str.h"
 
+#include "../../as_cfg.h" /* weak directive */
+
 #include "asm.h"
 #include "out.h"
 
@@ -489,7 +491,7 @@ void asm_predeclare_global(decl *d)
 
 void asm_predeclare_weak(decl *d)
 {
-	asm_predecl("weak", d);
+	asm_predecl(ASM_WEAK_DIRECTIVE, d);
 }
 
 void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
