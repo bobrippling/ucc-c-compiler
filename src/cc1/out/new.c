@@ -93,7 +93,7 @@ out_val *out_new_sym(out_ctx *octx, sym *sym)
 	switch(sym->type){
 		case sym_global:
 label:
-			return out_new_lbl(octx, sym->decl->ref, decl_asm_spel(sym->decl), 1);
+			return out_new_lbl(octx, ty, decl_asm_spel(sym->decl), 1);
 
 		case sym_arg:
 			return v_new_bp3(octx, NULL, ty, sym->loc.arg_offset);
