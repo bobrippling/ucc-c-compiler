@@ -208,6 +208,16 @@ static void try_shift_conv(
 	}
 }
 
+static out_val *consume_one(
+		out_ctx *octx,
+		out_val *const ret,
+		out_val *const a,
+		out_val *const b)
+{
+	out_val_consume(octx, ret == a ? b : a);
+	return ret;
+}
+
 out_val *out_op(out_ctx *octx, enum op_type binop, out_val *lhs, out_val *rhs)
 {
 	int div = 0;
@@ -219,10 +229,10 @@ out_val *out_op(out_ctx *octx, enum op_type binop, out_val *lhs, out_val *rhs)
 
 	/* check for adding or subtracting to stack */
 	if(vconst && vmem && try_mem_offset(binop, vconst, vmem, rhs))
-		return vmem;
+		return consume_one(octx, vmem, lhs, rhs);
 
 	if(vconst && const_is_noop(binop, vconst, vconst == lhs))
-		return vconst == lhs ? rhs : lhs;
+		return consume_one(octx, vconst == lhs ? rhs : lhs, lhs, rhs);
 
 	/* constant folding */
 	if(vconst){
@@ -241,7 +251,7 @@ out_val *out_op(out_ctx *octx, enum op_type binop, out_val *lhs, out_val *rhs)
 
 			consted = try_const_fold(octx, binop, lhs, rhs);
 			if(consted)
-				return consted;
+				return consume_one(octx, consted, lhs, rhs);
 		}
 	}
 
