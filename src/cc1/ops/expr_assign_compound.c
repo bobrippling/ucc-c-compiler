@@ -65,8 +65,12 @@ out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
 			e->bits.compound_upcast ? expr_cast_child(e->lhs) : e->lhs,
 			octx);
 
-	if(e->assign_is_post)
-		saved_post = out_deref(octx, addr_lhs);
+	out_val_retain(octx, addr_lhs); /* 2 */
+
+	if(e->assign_is_post){
+		out_val_retain(octx, addr_lhs); /* 3 */
+		saved_post = out_deref(octx, addr_lhs); /* addr_lhs=2, saved_post=1 */
+	}
 
 	/* delay the dereference until after generating rhs.
 	 * this is fine, += etc aren't sequence points
@@ -75,7 +79,7 @@ out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
 	rhs = gen_expr(e->rhs, octx);
 
 	/* here's the delayed dereference */
-	lhs = out_deref(octx, addr_lhs);
+	lhs = out_deref(octx, addr_lhs); /* addr_lhs=1 */
 	if(e->bits.compound_upcast)
 		lhs = out_cast(octx, lhs, e->lhs->tree_type, /*normalise_bool:*/1);
 
@@ -84,9 +88,13 @@ out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
 	if(e->bits.compound_upcast) /* need to cast back down to store */
 		result = out_cast(octx, result, e->tree_type, /*normalise_bool:*/1);
 
+	if(!saved_post)
+		out_val_retain(octx, result);
 	out_store(octx, addr_lhs, result);
 
-	return result;
+	if(!saved_post)
+		return result;
+	return saved_post;
 }
 
 out_val *gen_expr_str_assign_compound(expr *e, out_ctx *octx)
