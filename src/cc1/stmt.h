@@ -59,12 +59,7 @@ struct stmt
 		/* switch */
 		struct
 		{
-			size_t ncases;
-			struct switch_case
-			{
-				stmt *code;
-				out_blk *blk;
-			} *cases, default_case;
+			stmt **cases, *default_case;
 		} switch_;
 	} bits;
 

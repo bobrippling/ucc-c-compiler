@@ -16,7 +16,6 @@ void fold_stmt_default(stmt *s)
 
 void gen_stmt_default(stmt *s, out_ctx *octx)
 {
-	s->bits.case_blk = out_blk_new(octx, "default");
 	out_current_blk(octx, s->bits.case_blk);
 	gen_stmt(s->lhs, octx);
 }
