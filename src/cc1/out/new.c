@@ -11,7 +11,7 @@
 #include "ctx.h"
 
 #include <stdio.h>
-#define TODO() fprintf(stderr, "TODO: %s\n", __func__)
+#define TODO() assert(0 && "TODO")
 
 out_val *out_new_blk_addr(out_ctx *octx, out_blk *blk)
 {
