@@ -145,12 +145,12 @@ static void apply_ptr_step(
 
 	if(l_ptr ^ r_ptr){
 		/* ptr +/- int, adjust the non-ptr by sizeof *ptr */
-		out_val *incdec = *(l_ptr ? rhs : lhs);
-		incdec = v_dup_or_reuse(octx, incdec, incdec->t);
+		out_val **incdec = (l_ptr ? rhs : lhs);
+		*incdec = v_dup_or_reuse(octx, *incdec, (*incdec)->t);
 
-		switch(incdec->type){
+		switch((*incdec)->type){
 			case V_CONST_I:
-				incdec->bits.val_i *= ptr_step;
+				(*incdec)->bits.val_i *= ptr_step;
 				break;
 
 			case V_CONST_F:
@@ -159,7 +159,7 @@ static void apply_ptr_step(
 			case V_LBL:
 			case V_FLAG:
 			case V_REG_SPILT:
-				incdec = v_to_reg(octx, incdec);
+				*incdec = v_to_reg(octx, *incdec);
 
 			case V_REG:
 			{
@@ -169,8 +169,8 @@ static void apply_ptr_step(
 						ptr_step);
 				out_val *mult;
 
-				mult = out_op(octx, op_multiply, incdec, n);
-				incdec = mult;
+				mult = out_op(octx, op_multiply, *incdec, n);
+				*incdec = mult;
 				break;
 			}
 		}
