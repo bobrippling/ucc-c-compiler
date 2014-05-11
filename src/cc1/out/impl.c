@@ -12,13 +12,11 @@
 #include "impl.h"
 #include "write.h"
 
-void impl_comment(
-		out_ctx *octx, enum section_type sec,
-		const char *fmt, va_list l)
+void impl_comment(out_ctx *octx, const char *fmt, va_list l)
 {
-	out_asm2(octx, sec, P_NO_NL, "/* ");
-	out_asmv(octx, sec, P_NO_INDENT | P_NO_NL, fmt, l);
-	out_asm2(octx, sec, P_NO_INDENT, " */");
+	out_asm2(octx, SECTION_TEXT, P_NO_NL, "/* ");
+	out_asmv(octx, SECTION_TEXT, P_NO_INDENT | P_NO_NL, fmt, l);
+	out_asm2(octx, SECTION_TEXT, P_NO_INDENT, " */");
 }
 
 void impl_lbl(out_ctx *octx, const char *lbl)

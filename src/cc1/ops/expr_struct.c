@@ -147,7 +147,7 @@ static out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 	out_val_release(octx, struct_exp);
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
-		out_comment("struct member %s", e->bits.struct_mem.d->spel);
+		out_comment(octx, "struct member %s", e->bits.struct_mem.d->spel);
 
 
 	{
@@ -161,7 +161,7 @@ static out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 		if(d->bits.var.field_width){
 			unsigned w = const_fold_val_i(d->bits.var.field_width);
 			out_set_bitfield(octx, off, d->bits.var.struct_offset_bitfield, w);
-			out_comment("struct bitfield lea");
+			out_comment(octx, "struct bitfield lea");
 		}
 	}
 

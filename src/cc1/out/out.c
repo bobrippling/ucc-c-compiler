@@ -89,10 +89,12 @@ void out_ctx_end(out_ctx *octx)
 	(void)octx;
 }
 
-void out_comment(const char *fmt, ...)
+void out_comment(out_ctx *octx, const char *fmt, ...)
 {
-	/* TODO */
-	(void)fmt;
+	va_list l;
+	va_start(l, fmt);
+	impl_comment(octx, fmt, l);
+	va_end(l);
 }
 
 out_val *out_cast(out_ctx *octx, out_val *val, type *to, int normalise_bool)
@@ -149,7 +151,7 @@ out_val *out_cast(out_ctx *octx, out_val *val, type *to, int normalise_bool)
 			}else{
 				char buf[TYPE_STATIC_BUFSIZ];
 
-				out_comment("truncate cast from %s to %s, size %d -> %d",
+				out_comment(octx, "truncate cast from %s to %s, size %d -> %d",
 						from ? type_to_str_r(buf, from) : "",
 						to   ? type_to_str(to) : "",
 						szfrom, szto);

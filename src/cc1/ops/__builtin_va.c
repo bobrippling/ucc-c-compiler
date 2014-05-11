@@ -176,9 +176,9 @@ static out_val *builtin_gen_va_start(expr *e, out_ctx *octx)
 	out_push_zero(type_new_INTPTR_T());
 	out_store();
 #else
-	out_comment("va_start() begin");
+	out_comment(octx, "va_start() begin");
 	gen_stmt(e->bits.variadic_setup, octx);
-	out_comment("va_start() end");
+	out_comment(octx, "va_start() end");
 	return NULL;
 #endif
 }

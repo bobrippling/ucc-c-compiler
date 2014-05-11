@@ -602,7 +602,7 @@ static void fold_reg_save_area(expr *e, symtable *stab)
 static out_val *gen_reg_save_area(expr *e, out_ctx *octx)
 {
 	(void)e;
-	out_comment("stack local offset:");
+	out_comment(octx, "stack local offset:");
 	return out_new_reg_save_ptr(octx);
 }
 

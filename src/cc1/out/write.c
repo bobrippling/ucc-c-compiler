@@ -32,6 +32,11 @@ void out_asmv(
 {
 	char *insn;
 
+	if(sec != SECTION_TEXT){
+		fprintf(stderr, "%s:%d: TODO: out_asmv() with section 0x%x",
+				__FILE__, __LINE__, sec);
+	}
+
 	out_dbg_flush(octx);
 
 	insn = ustrvprintf(fmt, l);

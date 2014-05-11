@@ -454,7 +454,7 @@ out_val *gen_expr_cast(expr *e, out_ctx *octx)
 		/* return if cast-to-void */
 		if(type_is_void(tto)){
 			casted = out_change_type(octx, casted, tto);
-			out_comment("cast to void");
+			out_comment(octx, "cast to void");
 			return casted;
 		}
 

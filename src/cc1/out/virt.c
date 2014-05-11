@@ -84,7 +84,7 @@ static ucc_wur out_val *v_save_reg(out_ctx *octx, out_val *vp)
 {
 	assert(vp->type == V_REG && "not reg");
 
-	out_comment("register spill:");
+	out_comment(octx, "register spill:");
 
 	v_alloc_stack(octx, type_size(vp->t, NULL), "save reg");
 
@@ -284,17 +284,17 @@ void v_save_regs(
 				}else if(!impl_reg_savable(&v->bits.regoff.reg)){
 					/* don't save stack references */
 					if(fopt_mode & FOPT_VERBOSE_ASM)
-						out_comment("not saving const-reg %d", v->bits.regoff.reg.idx);
+						out_comment(octx, "not saving const-reg %d", v->bits.regoff.reg.idx);
 
 				}else if(func_ty
 				&& impl_reg_is_callee_save(&v->bits.regoff.reg, func_ty))
 				{
 					/* only comment for non-const regs */
-					out_comment("not saving reg %d - callee save",
+					out_comment(octx, "not saving reg %d - callee save",
 							v->bits.regoff.reg.idx);
 
 				}else{
-					out_comment("saving register %d", v->bits.regoff.reg.idx);
+					out_comment(octx, "saving register %d", v->bits.regoff.reg.idx);
 					save = 1;
 				}
 				break;
@@ -374,9 +374,9 @@ unsigned v_alloc_stack2(
 			}
 
 			if(fopt_mode & FOPT_VERBOSE_ASM){
-				out_comment("stack alignment for %s (%u -> %u)",
+				out_comment(octx, "stack alignment for %s (%u -> %u)",
 						desc, octx->stack_sz, octx->stack_sz + sz_rounded);
-				out_comment("alloc_n by %u (-> %u), padding with %u",
+				out_comment(octx, "alloc_n by %u (-> %u), padding with %u",
 						sz_initial, octx->stack_sz + sz_initial,
 						sz_rounded - sz_initial);
 			}
@@ -422,7 +422,7 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 		}
 		out_val_release(octx, sp);
 		assert(sp->retains == 0);
-		out_comment("stack aligned to %u bytes", align);
+		out_comment(octx, "stack aligned to %u bytes", align);
 		return added;
 	}
 	return 0;

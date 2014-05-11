@@ -552,7 +552,7 @@ void impl_func_epilogue(out_ctx *octx, type *rf)
 	out_asm(octx, "leaveq");
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
-		out_comment("stack at %u bytes", octx->stack_sz);
+		out_comment(octx, "stack at %u bytes", octx->stack_sz);
 
 	/* callee cleanup */
 	if(!x86_caller_cleanup(rf)){
@@ -1328,7 +1328,7 @@ out_val *impl_cast_load(
 		vp = v_new_reg(octx, vp, vp->t, &r);
 
 		if(!is_signed && *suffix_big == 'q' && *suffix_small == 'l'){
-			out_comment("movzlq:");
+			out_comment(octx, "movzlq:");
 			out_asm(octx, "movl %s, %%%s",
 					buf_small,
 					x86_reg_str(&r, small));
@@ -1399,7 +1399,7 @@ static out_val *x86_xchg_fi(
 			vp = out_cast(octx, vp, ty, 0);
 		}else{
 			char buf[TYPE_STATIC_BUFSIZ];
-			out_comment("%s to %s - truncated",
+			out_comment(octx, "%s to %s - truncated",
 					type_to_str(tfrom),
 					type_to_str_r(buf, tto));
 		}
@@ -1552,7 +1552,7 @@ void impl_branch(out_ctx *octx, out_val *cond, out_blk *bt, out_blk *bf)
 			if(true == !!vtop->bits.val_i)
 				out_asm(octx, "jmp %s", lbl);
 
-			out_comment(
+			out_comment(octx,
 					"constant jmp condition %" NUMERIC_FMT_D " %staken",
 					vtop->bits.val_i, vtop->bits.val_i ? "" : "not ");
 
@@ -1621,7 +1621,7 @@ out_val *impl_call(
 	v_save_regs(octx, fnty, local_args, fn);
 
 	if(arg_stack > 0){
-		out_comment("stack space for %d arguments", arg_stack);
+		out_comment(octx, "stack space for %d arguments", arg_stack);
 		/* this aligns the stack-ptr and returns arg_stack padded */
 		arg_stack = v_alloc_stack(
 				octx, arg_stack * pws,
@@ -1637,7 +1637,7 @@ out_val *impl_call(
 		unsigned stack_pos;
 		/* must be called after v_alloc_stack() */
 		stk_snapshot = stack_pos = octx->stack_sz;
-		out_comment("-- stack snapshot (%u) --", stk_snapshot);
+		out_comment(octx, "-- stack snapshot (%u) --", stk_snapshot);
 
 		/* save in order */
 		for(i = 0; i < nargs; i++){
@@ -1712,7 +1712,7 @@ out_val *impl_call(
 		 * start anything.
 		 */
 		unsigned chg = octx->stack_sz - stk_snapshot;
-		out_comment("-- restore snapshot (%u) --", chg);
+		out_comment(octx, "-- restore snapshot (%u) --", chg);
 		v_dealloc_stack(octx, chg);
 	}
 

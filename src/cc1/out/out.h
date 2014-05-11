@@ -107,6 +107,6 @@ void out_func_prologue(
 void out_func_epilogue(out_ctx *, type *, char *end_dbg_lbl);
 
 /* commenting */
-void out_comment(const char *, ...) ucc_printflike(1, 2);
+void out_comment(out_ctx *, const char *, ...) ucc_printflike(2, 3);
 
 #endif

@@ -75,7 +75,9 @@ void gen_stmt(stmt *t, out_ctx *octx)
 	t->f_gen(t, octx);
 }
 
-static void assign_arg_offsets(decl **decls, int const offsets[])
+static void assign_arg_offsets(
+		out_ctx *octx,
+		decl **decls, int const offsets[])
 {
 	unsigned i, j;
 
@@ -84,7 +86,7 @@ static void assign_arg_offsets(decl **decls, int const offsets[])
 
 		if(s && s->type == sym_arg){
 			if(fopt_mode & FOPT_VERBOSE_ASM)
-				out_comment("%s @ offset %d", s->decl->spel, offsets[j]);
+				out_comment(octx, "%s @ offset %d", s->decl->spel, offsets[j]);
 
 			s->loc.arg_offset = offsets[j++];
 		}
@@ -129,7 +131,7 @@ void gen_asm_global(decl *d, out_ctx *octx)
 				is_vari = type_is_variadic_func(d->ref),
 				offsets, &d->bits.func.var_offset);
 
-		assign_arg_offsets(arg_symtab->decls, offsets);
+		assign_arg_offsets(octx, arg_symtab->decls, offsets);
 
 		gen_stmt(d->bits.func.code, octx);
 

@@ -42,7 +42,7 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 	if(s->flow->for_init){
 		out_flush_volatile(octx, gen_expr(s->flow->for_init, octx));
 
-		out_comment("for-init");
+		out_comment(octx, "for-init");
 	}
 
 	if(s->flow->for_while){

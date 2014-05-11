@@ -330,12 +330,12 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 	out_val *fn_ret;
 
 	if(0){
-		out_comment("start manual __asm__");
+		out_comment(octx, "start manual __asm__");
 		ICE("same");
 #if 0
 		fprintf(cc_out[SECTION_TEXT], "%s\n", e->funcargs[0]->data_store->data.str);
 #endif
-		out_comment("end manual __asm__");
+		out_comment(octx, "end manual __asm__");
 	}else{
 		/* continue with normal funcall */
 		out_val *fn, **args = NULL;
