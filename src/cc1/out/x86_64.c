@@ -1534,7 +1534,7 @@ void impl_branch(out_ctx *octx, out_val *cond, out_blk *bt, out_blk *bf)
 		case V_FLAG:
 		{
 			char *cmpjmp = ustrprintf(
-					"\tj%s %s", x86_cmp(&cond->bits.flag),
+					"j%s %s", x86_cmp(&cond->bits.flag),
 					bt->lbl);
 
 			blk_terminate_condjmp(octx, cmpjmp, bt, bf);
