@@ -126,6 +126,5 @@ out_val *out_new_sym_val(out_ctx *octx, sym *sym)
 
 out_val *out_new_zero(out_ctx *octx, type *ty)
 {
-	TODO();
-	return 0;
+	return out_new_l(octx, ty, 0);
 }
