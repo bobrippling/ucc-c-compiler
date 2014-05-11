@@ -742,7 +742,7 @@ out_val *impl_load(out_ctx *octx, out_val *from, const struct vreg *reg)
 
 			vtmp_val = out_new_l(octx, from->t, parity_default);
 
-			impl_load(octx, vtmp_val, reg);
+			vtmp_val = impl_load(octx, vtmp_val, reg);
 
 			if(parity)
 				out_asm(octx, "jp %s", parity);
@@ -821,8 +821,9 @@ void impl_store(out_ctx *octx, out_val *to, out_val *from)
 	&& to->type == V_REG)
 	{
 		/* setting a register from a flag - easy */
-		impl_load(octx, from, &to->bits.regoff.reg);
+		from = impl_load(octx, from, &to->bits.regoff.reg);
 		out_val_consume(octx, to);
+		out_val_consume(octx, from);
 		return;
 	}
 
