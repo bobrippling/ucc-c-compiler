@@ -634,10 +634,8 @@ void impl_load_iv(out_val *vp)
 }
 #endif
 
-#if 0
-void impl_load_fp(out_val *from)
+static out_val *x86_load_fp(out_ctx *octx, out_val *from)
 {
-	/* if it's an int-const, we can load without a label */
 	switch(from->type){
 		case V_CONST_I:
 			/* CONST_I shouldn't be entered,
@@ -645,18 +643,21 @@ void impl_load_fp(out_val *from)
 			ICE("load int into float?");
 
 		case V_CONST_F:
+			/* if it's an int-const, we can load without a label */
 			if(from->bits.val_f == (integral_t)from->bits.val_f
 			&& fopt_mode & FOPT_INTEGRAL_FLOAT_LOAD)
 			{
 				type *const ty_fp = from->t;
+
+				from = v_dup_or_reuse(octx, from, from->t);
 
 				from->type = V_CONST_I;
 				from->bits.val_i = from->bits.val_f;
 				/* TODO: use just an int if we can get away with it */
 				from->t = type_nav_btype(cc1_type_nav, type_llong);
 
-				out_cast(ty_fp, /*normalise_bool:*/1);
-				break;
+				from = out_cast(octx, from, ty_fp, /*normalise_bool:*/1);
+				return from;
 			}
 			/* fall */
 
@@ -669,23 +670,23 @@ void impl_load_fp(out_val *from)
 			asm_nam_begin3(SECTION_DATA, lbl, type_align(from->t, NULL));
 			asm_out_fp(SECTION_DATA, from->t, from->bits.val_f);
 
-			v_clear(from, from->t);
+			from = v_dup_or_reuse(octx, from, from->t);
+
+			v_unused_reg(octx,
+					1, type_is_floating(from->t),
+					&r);
+
 			from->type = V_LBL;
 			from->bits.lbl.str = lbl;
 			from->bits.lbl.pic = 1;
-
-			/* impl_load since we don't want a lea */
-			v_unused_reg(1, 1, &r);
-			impl_load(from, &r);
-
-			v_set_reg(from, &r);
+			from->bits.lbl.offset = 0;
 
 			free(lbl);
-			break;
+			return from;
 		}
 	}
+	/* unreachable */
 }
-#endif
 
 static int x86_need_fp_parity_p(
 		struct flag_opts const *fopt, int *par_default)
@@ -800,13 +801,15 @@ lea:
 					vstack_str(from, 1),
 					x86_reg_str(reg, chosen_ty));
 
-			if(from->type == V_LBL)
+			if(from->type == V_LBL && !fp)
 				new_ty = type_pointed_to(from->t);
 			break;
 		}
 
 		case V_CONST_F:
-			ICE("trying to load fp constant - should've been labelled");
+			from = x86_load_fp(octx, from);
+			if(from->type != V_REG)
+				from = impl_load(octx, from, reg);
 	}
 
 	return v_new_reg(octx, from, new_ty, reg);
