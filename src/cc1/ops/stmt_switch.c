@@ -245,8 +245,8 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 			out_val_retain(octx, cmp_with);
 			out_ctrl_branch(octx,
 					out_op(octx, op_gt, cmp_with, this_case[1]),
-					blk_cancel,
-					cse->bits.case_blk);
+					cse->bits.case_blk,
+					blk_cancel);
 
 		}else{
 			out_val *this_case = out_new_num(octx, cse->expr->tree_type, &iv);
@@ -254,8 +254,8 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 			out_val_retain(octx, cmp_with);
 			out_ctrl_branch(octx,
 				out_op(octx, op_eq, this_case, cmp_with),
-				blk_cancel,
-				cse->bits.case_blk);
+				cse->bits.case_blk,
+				blk_cancel);
 		}
 
 		out_current_blk(octx, blk_cancel);
