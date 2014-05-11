@@ -29,6 +29,7 @@ void gen_stmt_expr(stmt *s, out_ctx *octx)
 {
 	size_t prev = out_expr_stack(octx);
 	size_t now;
+	char wbuf[WHERE_BUF_SIZ];
 
 	out_dump_retained(octx);
 
@@ -37,10 +38,11 @@ void gen_stmt_expr(stmt *s, out_ctx *octx)
 	now = out_expr_stack(octx);
 
 	if(now != prev){
-		ICW("values still retained (%ld <-- %ld - %ld) after %s",
+		ICW("values still retained (%ld <-- %ld - %ld) after %s @ %s",
 				(long)(now - prev),
 				now, prev,
-				s->expr->f_str());
+				s->expr->f_str(),
+				where_str_r(wbuf, &s->where));
 
 		out_dump_retained(octx);
 	}

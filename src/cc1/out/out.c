@@ -74,7 +74,8 @@ void out_dump_retained(out_ctx *octx)
 	out_val_list *l;
 	for(l = octx->val_head; l; l = l->next){
 		if(l->val.retains)
-			fprintf(stderr, "retained %s { %d %d } %p\n",
+			fprintf(stderr, "retained(%d) %s { %d %d } %p\n",
+					l->val.retains,
 					v_store_to_str(l->val.type),
 					l->val.bits.regoff.reg.is_float,
 					l->val.bits.regoff.reg.idx,
