@@ -10,6 +10,17 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 
+/*
+ * usual arithmetic conversions:
+ *   mul, div, mod,
+ *   plus, minus,
+ *   lt, gt le, ge, eq, ne,
+ *   and, xor, or
+ *
+ * integer promotions:
+ *   + - ~ << >>
+ */
+
 #define BOOLEAN_TYPE type_int
 
 const char *str_expr_op()
