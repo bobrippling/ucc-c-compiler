@@ -157,6 +157,7 @@ out_val *out_cast(out_ctx *octx, out_val *val, type *to, int normalise_bool)
 		}
 	}
 
+	val->t = to;
 	return val;
 }
 
