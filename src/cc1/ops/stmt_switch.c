@@ -262,6 +262,8 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 	out_val_release(octx, cmp_with);
 
 	pdefault = s->bits.switch_.default_case;
+	if(pdefault)
+		pdefault->bits.case_blk = out_blk_new(octx, "default");
 
 	/* no matches - branch to default/end */
 	out_ctrl_transfer(octx,
