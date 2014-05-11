@@ -603,36 +603,50 @@ static const char *x86_cmp(struct flag_opts *flag)
 	return NULL;
 }
 
-#if 0
-void impl_load_iv(out_val *vp)
+static out_val *x86_load_iv(
+		out_ctx *octx, out_val *from,
+		const struct vreg *reg /* may be null */)
 {
-	const int high_bit = integral_high_bit_ABS(vp->bits.val_i, vp->t);
+	const int high_bit = integral_high_bit_ABS(from->bits.val_i, from->t);
+	struct vreg r;
+
+	assert(from->type == V_CONST_I);
 
 	if(high_bit >= AS_MAX_MOV_BIT){
 		char buf[INTEGRAL_BUF_SIZ];
-		struct vreg r;
-		v_unused_reg(1, 0, &r);
+
+		if(!reg){
+			reg = &r;
+			v_unused_reg(octx, 1, 0, &r);
+		}
 
 		/* TODO: 64-bit registers in general on 32-bit */
 		UCC_ASSERT(!IS_32_BIT(), "TODO: 32-bit 64-literal loads");
 
 		if(high_bit > 31 /* not necessarily AS_MAX_MOV_BIT */){
 			/* must be loading a long */
-			if(type_size(vp->t, NULL) != 8){
+			if(type_size(from->t, NULL) != 8){
 				/* FIXME: enums don't auto-size currently */
 				ICW("loading 64-bit literal (%lld) for non-8-byte type? (%s)",
-						vp->bits.val_i, type_to_str(vp->t));
+						from->bits.val_i, type_to_str(from->t));
 			}
 		}
 
-		integral_str(buf, sizeof buf, vp->bits.val_i, NULL);
+		integral_str(buf, sizeof buf, from->bits.val_i, NULL);
 
-		out_asm("movabsq $%s, %%%s", buf, x86_reg_str(&r, NULL));
+		out_asm(octx, "movabsq $%s, %%%s", buf, x86_reg_str(reg, NULL));
+	}else{
+		if(!reg)
+			return from; /* V_CONST_I is fine */
 
-		v_set_reg(vp, &r);
+		out_asm(octx, "mov%s %s, %%%s",
+				x86_suffix(from->t),
+				vstack_str(from, 0),
+				x86_reg_str(reg, from->t));
 	}
+
+	return v_new_reg(octx, from, from->t, reg);
 }
-#endif
 
 static out_val *x86_load_fp(out_ctx *octx, out_val *from)
 {
@@ -772,14 +786,13 @@ out_val *impl_load(out_ctx *octx, out_val *from, const struct vreg *reg)
 		case V_REG:
 			if(from->bits.regoff.offset)
 				goto lea;
-			/* fall */
+
+			impl_reg_cp(octx, from, reg);
+			new_ty = from->t;
+			break;
 
 		case V_CONST_I:
-			out_asm(octx, "mov%s %s, %%%s",
-					x86_suffix(from->t),
-					vstack_str(from, 0),
-					x86_reg_str(reg, from->t));
-
+			from = x86_load_iv(octx, from, reg);
 			new_ty = from->t;
 			break;
 
@@ -801,6 +814,8 @@ lea:
 					vstack_str(from, 1),
 					x86_reg_str(reg, chosen_ty));
 
+			/* 'from' is now in a reg */
+
 			if(from->type == V_LBL && !fp)
 				new_ty = type_pointed_to(from->t);
 			break;
@@ -813,6 +828,13 @@ lea:
 	}
 
 	return v_new_reg(octx, from, new_ty, reg);
+}
+
+static out_val *x86_check_iv(out_ctx *octx, out_val *from)
+{
+	if(from->type == V_CONST_I)
+		from = x86_load_iv(octx, from, NULL);
+	return from;
 }
 
 void impl_store(out_ctx *octx, out_val *to, out_val *from)
@@ -831,6 +853,7 @@ void impl_store(out_ctx *octx, out_val *to, out_val *from)
 	}
 
 	from = v_to(octx, from, TO_REG | TO_CONST);
+	from = x86_check_iv(octx, from);
 
 	switch(to->type){
 		case V_FLAG:
@@ -845,6 +868,8 @@ void impl_store(out_ctx *octx, out_val *to, out_val *from)
 
 		case V_REG:
 		case V_LBL:
+			break;
+
 		case V_CONST_I:
 			break;
 	}
@@ -967,6 +992,9 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 {
 	const char *opc;
 	out_val *min_retained = l->retains < r->retains ? l : r;
+
+	l = x86_check_iv(octx, l);
+	r = x86_check_iv(octx, r);
 
 	if(type_is_floating(l->t)){
 		if(op_is_comparison(op)){
