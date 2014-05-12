@@ -10,7 +10,9 @@ struct out_blk
 	const char *desc;
 	char *lbl;
 	char **insns;
-	out_blk *preds[2];
+
+	unsigned pred_count;
+	out_blk *merge_preds[2];
 
 #define BLK_IS_MERGE(b) (b->preds[0] && b->preds[1])
 

@@ -47,7 +47,8 @@ void out_ctrl_end_undefined(out_ctx *octx)
 
 out_val *out_ctrl_merge(out_ctx *octx, out_blk *from_a, out_blk *from_b)
 {
-	/* maybe ret null */
+	/* maybe ret null
+	 * here we set merge_preds */
 	(void)octx;
 	(void)from_a;
 	(void)from_b;
@@ -80,12 +81,7 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 
 	from->phi_val = phi;
 
-	if(to->preds[0]){
-		assert(!to->preds[1] && "too many block preds");
-		to->preds[1] = from;
-	}else{
-		to->preds[0] = from;
-	}
+	to->pred_count++;
 
 	assert(from->type == BLK_UNINIT);
 	from->type = BLK_NEXT_BLOCK;
