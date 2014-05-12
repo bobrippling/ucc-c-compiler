@@ -210,6 +210,8 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 	out_blk *blk_switch_end = out_blk_new(octx, "switch_fin");
 	out_val *cmp_with;
 
+	s->blk_break = blk_switch_end;
+
 	cmp_with = gen_expr(s->expr, octx);
 
 	for(iter = s->bits.switch_.cases; iter && *iter; iter++){
