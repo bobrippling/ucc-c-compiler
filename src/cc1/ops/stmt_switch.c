@@ -279,6 +279,8 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 		out_blk *body = out_blk_new(octx, "switch_body");
 		out_current_blk(octx, body);
 		gen_stmt(s->lhs, octx); /* the actual code inside the switch */
+		out_ctrl_transfer(octx, blk_switch_end, NULL);
+		out_current_blk(octx, blk_switch_end);
 	}
 }
 
