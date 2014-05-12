@@ -1115,15 +1115,15 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 				out_asm(octx, "test%s %s, %s", x86_suffix(vother->t), vstr, vstr);
 			}else{
 				/* if we have a const, it must be the first arg */
-				if(r->type == V_CONST_I){
+				if(l->type == V_CONST_I){
 					out_val *tmp = l;
 					l = r, r = tmp;
 					inv = 1;
 				}
 
 				/* still a const? */
-				if(r->type == V_CONST_I)
-					r = v_to_reg(octx, r);
+				if(l->type == V_CONST_I)
+					l = v_to_reg(octx, l);
 
 				out_asm(octx, "cmp%s %s, %s",
 						x86_suffix(l->t), /* pick the non-const one (for type-ing) */
