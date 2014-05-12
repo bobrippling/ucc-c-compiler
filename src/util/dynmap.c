@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
@@ -211,4 +212,20 @@ void *dynmap_nochk_rm(dynmap *map, void *key)
 	}
 
 	return value;
+}
+
+void dynmap_dump(dynmap *map)
+{
+	int i;
+	for(i = 0; i < HASH_TBL_CNT; i++){
+		pair *p;
+		int j;
+		for(j = 0, p = &map->pairs[i];
+		    p && p->key;
+		    p = p->next, j++)
+		{
+			fprintf(stderr, "map[%d][%d] = { %p, %p }\n",
+					i, j, p->key, p->value);
+		}
+	}
 }
