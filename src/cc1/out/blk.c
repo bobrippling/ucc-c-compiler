@@ -37,14 +37,16 @@ static void bfs_add(dynmap *pending, out_blk *blk)
 	if(!v)
 		(void)dynmap_set(out_blk *, char *, pending, blk, &present);
 	else if(v == &present)
-		(void)dynmap_set(out_blk *, char *, pending, blk, &done);
+		; /* still present, haven't handled yet */
 	else
 		; /* already handled this, don't flush again */
 }
 
 static void bfs_rm(dynmap *pending, out_blk *blk)
 {
-	(void)dynmap_set(out_blk *, char *, pending, blk, &done);
+	char *old = dynmap_set(out_blk *, char *, pending, blk, &done);
+	(void)old;
+	assert(old == &present);
 }
 
 static void blk_jmpnext(out_blk *to, struct flush_state *st)
