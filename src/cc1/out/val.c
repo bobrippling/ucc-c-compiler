@@ -84,8 +84,10 @@ copy:
 
 		case V_FLAG:
 		{
-			assert(0 && "yo");
-			from = v_to_reg(octx, from);
+			out_val *dup = v_to_reg(octx, from);
+			out_val_overwrite(from, dup); /* replace flag */
+			/* fall */
+			from = dup;
 		}
 
 		case V_REG_SPILT:
