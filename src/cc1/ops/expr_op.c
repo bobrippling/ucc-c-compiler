@@ -817,7 +817,6 @@ static out_val *op_shortcircuit(expr *e, out_ctx *octx)
 	}
 
 	out_current_blk(octx, blk_empty);
-	out_val_release(octx, lhs);
 	out_ctrl_transfer(octx, landing, lhs);
 
 	out_current_blk(octx, landing);
