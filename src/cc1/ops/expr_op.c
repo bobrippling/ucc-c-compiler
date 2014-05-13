@@ -804,23 +804,35 @@ static out_val *op_shortcircuit(expr *e, out_ctx *octx)
 	blk_empty = out_blk_new(octx, "shortcircuit_b");
 	landing = out_blk_new(octx, "shortcircuit_landing");
 
-	lhs = out_normalise(octx, gen_expr(e->lhs, octx));
-	out_val_retain(octx, lhs);
+	lhs = gen_expr(e->lhs, octx);
+	lhs = out_normalise(octx, lhs);
 
-	out_ctrl_branch(octx, lhs, blk_rhs, blk_empty);
+	out_val_retain(octx, lhs); /* for blk_empty */
+	out_ctrl_branch(
+			octx,
+			lhs,
+			e->op == op_andsc ? blk_rhs : blk_empty,
+			e->op == op_andsc ? blk_empty : blk_rhs);
 
 	out_current_blk(octx, blk_rhs);
 	{
-		out_val *rhs = out_normalise(octx, gen_expr(e->rhs, octx));
+		out_val *rhs = gen_expr(e->rhs, octx);
+		rhs = out_normalise(octx, rhs);
 
 		out_ctrl_transfer(octx, landing, rhs);
 	}
 
 	out_current_blk(octx, blk_empty);
-	out_ctrl_transfer(octx, landing, lhs);
+	{
+		out_ctrl_transfer(octx, landing, lhs);
+	}
 
 	out_current_blk(octx, landing);
-	return out_ctrl_merge(octx, blk_empty, blk_rhs);
+	{
+		out_val *merged = out_ctrl_merge(octx, blk_empty, blk_rhs);
+
+		return merged;
+	}
 }
 
 out_val *gen_expr_op(expr *e, out_ctx *octx)
