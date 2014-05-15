@@ -319,7 +319,10 @@ void v_save_regs(
 			new = v_save_reg(octx, v);
 
 			out_val_overwrite(v, new);
+			/* transfer retain-ness to 'v' from 'new' */
 			out_val_release(octx, new);
+			assert(v->retains == 0);
+			v->retains = 1;
 		}
 	}
 }
