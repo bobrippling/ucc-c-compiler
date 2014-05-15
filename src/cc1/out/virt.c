@@ -35,7 +35,7 @@ int v_is_const_reg(out_val *v)
 
 out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
 {
-	out_val *store = v_new_sp3(octx, NULL, vp->t, stack_pos);
+	out_val *store = v_new_bp3(octx, NULL, vp->t, stack_pos);
 
 	vp = v_to(octx, vp, TO_CONST | TO_REG);
 
