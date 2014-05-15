@@ -31,8 +31,6 @@ void gen_stmt_expr(stmt *s, out_ctx *octx)
 	size_t now;
 	char wbuf[WHERE_BUF_SIZ];
 
-	out_dump_retained(octx);
-
 	out_flush_volatile(octx, gen_expr(s->expr, octx));
 
 	now = out_expr_stack(octx);
@@ -44,7 +42,7 @@ void gen_stmt_expr(stmt *s, out_ctx *octx)
 				s->expr->f_str(),
 				where_str_r(wbuf, &s->where));
 
-		out_dump_retained(octx);
+		out_dump_retained(octx, s->f_str());
 	}
 }
 

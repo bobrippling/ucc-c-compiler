@@ -77,17 +77,26 @@ size_t out_expr_stack(out_ctx *octx)
 	return retains;
 }
 
-void out_dump_retained(out_ctx *octx)
+void out_dump_retained(out_ctx *octx, const char *desc)
 {
 	out_val_list *l;
+	int done_desc = 0;
+
 	for(l = octx->val_head; l; l = l->next){
-		if(l->val.retains)
-			fprintf(stderr, "retained(%d) %s { %d %d } %p\n",
-					l->val.retains,
-					v_store_to_str(l->val.type),
-					l->val.bits.regoff.reg.is_float,
-					l->val.bits.regoff.reg.idx,
-					(void *)&l->val);
+		if(l->val.retains == 0)
+			continue;
+
+		if(!done_desc){
+			fprintf(stderr, "leaks after %s:\n", desc);
+			done_desc = 1;
+		}
+
+		fprintf(stderr, "retained(%d) %s { %d %d } %p\n",
+				l->val.retains,
+				v_store_to_str(l->val.type),
+				l->val.bits.regoff.reg.is_float,
+				l->val.bits.regoff.reg.idx,
+				(void *)&l->val);
 	}
 }
 

@@ -135,6 +135,8 @@ void gen_asm_global(decl *d, out_ctx *octx)
 
 		gen_stmt(d->bits.func.code, octx);
 
+		out_dump_retained(octx, d->spel);
+
 		out_dbg_where(&d->bits.func.code->where_cbrace);
 
 		{
