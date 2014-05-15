@@ -28,6 +28,8 @@ void gen_stmt_while(stmt *s, out_ctx *octx)
 	s->blk_break = out_blk_new(octx, "while_break");
 	s->blk_continue = out_blk_new(octx, "while_cont");
 
+	out_ctrl_transfer(octx, s->blk_continue, NULL);
+
 	out_current_blk(octx, s->blk_continue);
 	{
 		out_val *cond;
