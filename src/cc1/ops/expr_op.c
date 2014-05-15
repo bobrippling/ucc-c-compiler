@@ -862,10 +862,8 @@ out_val *gen_expr_op(expr *e, out_ctx *octx)
 	if(!e->rhs)
 		return out_op_unary(octx, e->op, lhs);
 
-	out_val_retain(octx, lhs);
 	rhs = gen_expr(e->rhs, octx);
 
-	out_val_release(octx, lhs);
 	eval = out_op(octx, e->op, lhs, rhs);
 
 	/* make sure we get the pointer, for example 2+(int *)p
