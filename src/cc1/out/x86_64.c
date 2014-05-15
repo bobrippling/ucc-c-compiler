@@ -757,7 +757,8 @@ out_val *impl_load(out_ctx *octx, out_val *from, const struct vreg *reg)
 
 			vtmp_val = out_new_l(octx, from->t, parity_default);
 
-			vtmp_val = impl_load(octx, vtmp_val, reg);
+			/* movl $0, %eax */
+			out_flush_volatile(octx, impl_load(octx, vtmp_val, reg));
 
 			if(parity)
 				out_asm(octx, "jp %s", parity);
