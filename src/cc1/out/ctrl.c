@@ -79,6 +79,8 @@ void out_current_blk(out_ctx *octx, out_blk *new_blk)
 {
 	out_blk *cur = octx->current_blk;
 
+	octx->last_used_blk = new_blk;
+
 	if(new_blk == cur)
 		return;
 

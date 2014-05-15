@@ -61,7 +61,6 @@ int impl_reg_savable(const struct vreg *);
 int impl_reg_is_callee_save(const struct vreg *r, type *fr);
 
 void impl_comment(out_ctx *, const char *fmt, va_list l);
-void impl_lbl(out_ctx *, const char *lbl);
 
 enum flag_cmp op_to_flag(enum op_type op);
 const char *flag_cmp_to_str(enum flag_cmp);

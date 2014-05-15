@@ -6,6 +6,7 @@
 
 #include "../../util/util.h"
 #include "../../util/alloc.h"
+#include "../../util/dynarray.h"
 
 #include "../../util/platform.h"
 #include "../pack.h"
@@ -24,6 +25,7 @@
 #include "ctx.h"
 #include "blk.h"
 #include "dbg.h"
+#include "write.h"
 
 /*
  * stack layout is:
@@ -49,7 +51,13 @@
 
 void out_dbg_label(out_ctx *octx, const char *lbl)
 {
-	impl_lbl(octx, lbl);
+	out_blk *blk = octx->current_blk;
+	if(!blk){
+		assert(octx->last_used_blk);
+		blk = octx->last_used_blk;
+	}
+	out_dbg_flush(octx);
+	dynarray_add(&blk->insns, ustrprintf("%s:", lbl));
 }
 
 out_ctx *out_ctx_new(void)

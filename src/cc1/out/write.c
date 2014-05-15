@@ -22,9 +22,6 @@
 #include "../cc1.h" /* cc_out */
 #include "../str.h" /* str_add_escape */
 
-static void out_dbg_flush(out_ctx *);
-
-
 void out_asmv(
 		out_ctx *octx,
 		enum section_type sec, enum p_opts opts,
@@ -109,7 +106,7 @@ int dbg_add_file(const char *nam, int *new)
 	return i;
 }
 
-static void out_dbg_flush(out_ctx *octx)
+void out_dbg_flush(out_ctx *octx)
 {
 	/* .file <fileidx> "<name>"
 	 * .loc <fileidx> <line> <col>

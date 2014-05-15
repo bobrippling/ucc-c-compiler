@@ -19,11 +19,6 @@ void impl_comment(out_ctx *octx, const char *fmt, va_list l)
 	out_asm2(octx, SECTION_TEXT, P_NO_INDENT, " */");
 }
 
-void impl_lbl(out_ctx *octx, const char *lbl)
-{
-	out_asm2(octx, SECTION_TEXT, P_NO_INDENT, "%s:", lbl);
-}
-
 enum flag_cmp op_to_flag(enum op_type op)
 {
 	switch(op){
