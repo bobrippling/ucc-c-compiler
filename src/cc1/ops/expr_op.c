@@ -807,7 +807,6 @@ static out_val *op_shortcircuit(expr *e, out_ctx *octx)
 	lhs = gen_expr(e->lhs, octx);
 	lhs = out_normalise(octx, lhs);
 
-	out_val_retain(octx, lhs); /* for blk_empty */
 	out_ctrl_branch(
 			octx,
 			lhs,
@@ -824,7 +823,14 @@ static out_val *op_shortcircuit(expr *e, out_ctx *octx)
 
 	out_current_blk(octx, blk_empty);
 	{
-		out_ctrl_transfer(octx, landing, lhs);
+		out_ctrl_transfer(
+				octx,
+				landing,
+				out_new_l(
+					octx,
+					type_nav_btype(cc1_type_nav, BOOLEAN_TYPE),
+					e->op == op_orsc ? 1 : 0));
+
 	}
 
 	out_current_blk(octx, landing);
