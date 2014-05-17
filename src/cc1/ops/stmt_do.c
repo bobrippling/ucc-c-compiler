@@ -16,17 +16,28 @@ void fold_stmt_do(stmt *s)
 
 void gen_stmt_do(stmt *s, out_ctx *octx)
 {
-	out_blk *begin = out_blk_new(octx, "do_start");
-	out_blk *end = out_blk_new(octx, "do_end");
 	out_val *cond;
+	out_blk *begin;
+
+	begin = out_blk_new(octx, "do_begin");
+	s->blk_continue = out_blk_new(octx, "do_test");
+	s->blk_break = out_blk_new(octx, "do_end");
+
+	out_ctrl_transfer(octx, begin, NULL);
 
 	out_current_blk(octx, begin);
-	gen_stmt(s->lhs, octx);
+	{
+		gen_stmt(s->lhs, octx);
+		out_ctrl_transfer(octx, s->blk_continue, NULL);
+	}
 
-	cond = gen_expr(s->expr, octx);
-	out_ctrl_branch(octx, cond, begin, end);
+	out_current_blk(octx, s->blk_continue);
+	{
+		cond = gen_expr(s->expr, octx);
+		out_ctrl_branch(octx, cond, begin, s->blk_break);
+	}
 
-	out_current_blk(octx, end);
+	out_current_blk(octx, s->blk_break);
 }
 
 void style_stmt_do(stmt *s, out_ctx *octx)
