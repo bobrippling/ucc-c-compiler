@@ -60,7 +60,7 @@ static out_val *lea_assign_lhs(expr *e, out_ctx *octx)
 	/* generate our assignment, then lea
 	 * our lhs, i.e. the struct identifier
 	 * we're assigning to */
-	out_flush_volatile(octx, gen_expr(e, octx));
+	out_val_consume(octx, gen_expr(e, octx));
 	return lea_expr(e->lhs, octx);
 }
 

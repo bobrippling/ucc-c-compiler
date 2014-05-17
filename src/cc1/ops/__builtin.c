@@ -640,7 +640,7 @@ static void fold_expect(expr *e, symtable *stab)
 static out_val *builtin_gen_expect(expr *e, out_ctx *octx)
 {
 	/* not needed if it's const, but gcc and clang do this */
-	out_flush_volatile(octx,
+	out_val_consume(octx,
 			gen_expr(e->funcargs[1], octx));
 
 	return gen_expr(e->funcargs[0], octx);

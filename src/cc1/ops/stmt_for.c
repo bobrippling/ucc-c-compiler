@@ -40,7 +40,7 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){
-		out_flush_volatile(octx, gen_expr(s->flow->for_init, octx));
+		out_val_consume(octx, gen_expr(s->flow->for_init, octx));
 
 		out_comment(octx, "for-init");
 	}
@@ -59,7 +59,7 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 		gen_stmt(s->lhs, octx);
 
 		if(s->flow->for_inc)
-			out_flush_volatile(octx, gen_expr(s->flow->for_inc, octx));
+			out_val_consume(octx, gen_expr(s->flow->for_inc, octx));
 	}
 
 	out_current_blk(octx, blk_end);

@@ -31,7 +31,7 @@ void gen_stmt_expr(stmt *s, out_ctx *octx)
 	size_t now;
 	char wbuf[WHERE_BUF_SIZ];
 
-	out_flush_volatile(octx, gen_expr(s->expr, octx));
+	out_val_consume(octx, gen_expr(s->expr, octx));
 
 	now = out_expr_stack(octx);
 
