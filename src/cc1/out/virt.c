@@ -55,7 +55,10 @@ void v_reg_to_stack(
 		type *ty, long where)
 {
 	out_val *reg = v_new_reg(octx, NULL, ty, vr);
-	out_flush_volatile(octx,
+
+	/* value has been stored -
+	 * don't need to flush the pointer we get returned */
+	out_val_release(octx,
 			v_to_stack_mem(octx, reg, -where));
 }
 
