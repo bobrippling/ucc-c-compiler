@@ -187,6 +187,16 @@ out_val *out_change_type(out_ctx *octx, out_val *val, type *ty)
 
 out_val *out_deref(out_ctx *octx, out_val *target)
 {
+	type *tnext = type_pointed_to(target->t);
+
+	/* if the pointed-to object is not an lvalue, don't deref */
+	if(type_is(tnext, type_array)
+	|| type_is(type_is_ptr(tnext), type_func))
+	{
+		/* noop */
+		return v_dup_or_reuse(octx, target, tnext);
+	}
+
 	return impl_deref(octx, target, NULL);
 }
 
