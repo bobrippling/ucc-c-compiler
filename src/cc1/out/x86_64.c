@@ -885,11 +885,22 @@ void impl_store(out_ctx *octx, out_val *to, out_val *from)
 	out_val_consume(octx, to);
 }
 
+static void x86_reg_cp(
+		out_ctx *octx,
+		const struct vreg *to,
+		const struct vreg *from,
+		type *typ)
+{
+	assert(!impl_reg_frame_const(to));
+
+	out_asm(octx, "mov%s %%%s, %%%s",
+			x86_suffix(typ),
+			x86_reg_str(from, typ),
+			x86_reg_str(to, typ));
+}
+
 void impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *to_reg)
 {
-	char buf_v[VSTACK_STR_SZ];
-	const char *regstr;
-
 	UCC_ASSERT(from->type == V_REG,
 			"reg_cp on non register type 0x%x", from->type);
 
@@ -899,12 +910,7 @@ void impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *to_reg)
 	/* force offset normalisation */
 	from = v_to(octx, from, TO_REG);
 
-	regstr = x86_reg_str(to_reg, from->t);
-
-	out_asm(octx, "mov%s %s, %%%s",
-			x86_suffix(from->t),
-			vstack_str_r(buf_v, from, 0),
-			regstr);
+	x86_reg_cp(octx, to_reg, &from->bits.regoff.reg, from->t);
 }
 
 static out_val *x86_idiv(
@@ -1219,8 +1225,17 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 				r = v_to_reg(octx, r);
 		}
 
-		if(v_is_const_reg(l) || v_is_const_reg(r))
-			ICE("adjusting base pointer in op");
+		if(v_is_const_reg(l)){
+			/* ^ only check 'l' - 'r' is an rvalue and not changed */
+			struct vreg new_reg, old_reg;
+
+			memcpy_safe(&old_reg, &l->bits.regoff.reg);
+
+			v_unused_reg(octx, 1, 0, &new_reg);
+			l = v_new_reg(octx, l, l->t, &new_reg);
+
+			x86_reg_cp(octx, &new_reg, &old_reg, l->t);
+		}
 
 		switch(op){
 			case op_plus:
