@@ -278,7 +278,7 @@ static out_val *va_arg_gen_read(
 							octx,
 							type_nav_btype(cc1_type_nav, type_long),
 							mem_reg_save_area->bits.var.struct_offset)),
-					type_ptr_to(type_nav_btype(cc1_type_nav, type_long)));
+					type_ptr_to(type_nav_btype(cc1_type_nav, type_int)));
 
 		reg_save_area_value = out_op(
 				octx, op_plus,
