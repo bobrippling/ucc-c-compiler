@@ -216,8 +216,8 @@ static out_val *va_arg_gen_read(
 	valist = out_change_type(
 			octx, valist,
 			type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
-	out_val_retain(octx, valist);
 
+	out_val_retain(octx, valist);
 	gpoff_addr = out_op(
 			octx, op_plus,
 			valist,
@@ -229,12 +229,12 @@ static out_val *va_arg_gen_read(
 
 	gpoff_addr = out_change_type(octx, gpoff_addr,
 			type_ptr_to(type_nav_btype(cc1_type_nav, type_int)));
+
 	out_val_retain(octx, gpoff_addr);
-
 	gpoff_val = out_deref(octx, gpoff_addr);
+
+
 	out_val_retain(octx, gpoff_val);
-
-
 	out_ctrl_branch(
 			octx,
 			out_op(octx,
@@ -263,11 +263,11 @@ static out_val *va_arg_gen_read(
 					out_new_l(octx,
 						type_nav_btype(cc1_type_nav, type_int),
 						increment));
-		out_val_release(octx, gpoff_val);
 
+		out_val_retain(octx, gp_off_plus);
 		out_store(octx, gpoff_addr, gp_off_plus);
-		out_val_release(octx, gpoff_addr);
 
+		out_val_retain(octx, valist);
 		membptr =
 			out_change_type(
 					octx,
@@ -304,13 +304,10 @@ static out_val *va_arg_gen_read(
 						type_nav_btype(cc1_type_nav, type_long),
 						mem_overflow_arg_area->bits.var.struct_offset));
 
-		out_val_release(octx, valist);
+		out_val_retain(octx, overflow_addr);
+		overflow_val = out_deref(octx, overflow_addr);
 
 		out_val_retain(octx, overflow_addr);
-
-		overflow_val = out_deref(octx, overflow_addr);
-		out_val_retain(octx, overflow_val);
-
 		out_store(
 				octx,
 				overflow_addr,
@@ -327,8 +324,6 @@ static out_val *va_arg_gen_read(
 						type_nav_btype(cc1_type_nav, type_int),
 						ws)));
 
-		out_val_release(octx, overflow_addr);
-		out_val_release(octx, overflow_val);
 		out_ctrl_transfer(octx, blk_fin, overflow_val);
 	}
 
