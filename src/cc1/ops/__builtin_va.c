@@ -327,6 +327,7 @@ static out_val *va_arg_gen_read(
 		out_ctrl_transfer(octx, blk_fin, overflow_val);
 	}
 
+	out_current_blk(octx, blk_fin);
 	return out_deref(
 			octx,
 			out_change_type(
