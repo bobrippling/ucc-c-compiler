@@ -57,7 +57,7 @@ void out_dbg_label(out_ctx *octx, const char *lbl)
 		blk = octx->last_used_blk;
 	}
 	out_dbg_flush(octx);
-	dynarray_add(&blk->insns, ustrprintf("%s:", lbl));
+	dynarray_add(&blk->insns, ustrprintf("%s:\n", lbl));
 }
 
 out_ctx *out_ctx_new(void)
