@@ -179,7 +179,7 @@ static out_val *builtin_gen_va_start(expr *e, out_ctx *octx)
 	out_comment(octx, "va_start() begin");
 	gen_stmt(e->bits.variadic_setup, octx);
 	out_comment(octx, "va_start() end");
-	return NULL;
+	return out_new_noop(octx);
 #endif
 }
 
