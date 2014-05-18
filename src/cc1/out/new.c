@@ -19,10 +19,25 @@ out_val *out_new_blk_addr(out_ctx *octx, out_blk *blk)
 	return 0;
 }
 
+static out_val *out_new_bp_off(out_ctx *octx, long off)
+{
+	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+	return v_new_bp3(octx, NULL, voidp, off);
+}
+
 out_val *out_new_frame_ptr(out_ctx *octx, int nframes)
 {
+	if(nframes == 0)
+		return out_new_bp_off(octx, 0);
+
+	fprintf(stderr, "nframes=%d\n", nframes);
 	TODO();
 	return 0;
+}
+
+out_val *out_new_reg_save_ptr(out_ctx *octx)
+{
+	return out_new_bp_off(octx, -octx->stack_variadic_offset);
 }
 
 out_val *out_new_num(out_ctx *octx, type *ty, const numeric *n)
@@ -70,17 +85,14 @@ out_val *out_new_nan(out_ctx *octx, type *ty)
 
 out_val *out_new_noop(out_ctx *octx)
 {
-	TODO();
-	return 0;
+	out_val *v = v_new(octx,
+			type_nav_btype(cc1_type_nav, type_void));
+
+	v->type = V_CONST_I;
+	return v;
 }
 
 out_val *out_new_overflow(out_ctx *octx)
-{
-	TODO();
-	return 0;
-}
-
-out_val *out_new_reg_save_ptr(out_ctx *octx)
 {
 	TODO();
 	return 0;
