@@ -259,7 +259,7 @@ static const char *vstack_str_r(
 					&vs->bits.regoff.reg, deref ? NULL : vs->t);
 
 			if(off){
-				UCC_ASSERT(deref,
+				UCC_ASSERT(1||deref,
 						"can't add to a register in %s",
 						__func__);
 
