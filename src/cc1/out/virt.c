@@ -106,7 +106,7 @@ out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc)
 
 	/* go for register first */
 	if(loc & TO_REG){
-		return v_to_reg(octx, vp);
+		return v_reg_apply_offset(octx, v_to_reg(octx, vp));
 	}
 
 	if(loc & TO_MEM){
