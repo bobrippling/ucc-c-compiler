@@ -27,7 +27,7 @@ static out_val *out_new_bp_off(out_ctx *octx, long off)
 
 out_val *out_new_frame_ptr(out_ctx *octx, int nframes)
 {
-	if(nframes == 0)
+	if(nframes <= 1)
 		return out_new_bp_off(octx, 0);
 
 	fprintf(stderr, "nframes=%d\n", nframes);
