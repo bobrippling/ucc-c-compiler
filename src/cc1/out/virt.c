@@ -254,11 +254,12 @@ out_val *v_to_reg(out_ctx *octx, out_val *conv)
 	return v_to_reg_out(octx, conv, NULL);
 }
 
-out_val *v_reg_apply_offset(out_ctx *octx, out_val *vreg)
+out_val *v_reg_apply_offset(out_ctx *octx, out_val *const orig)
 {
+	out_val *vreg;
 	long off;
 
-	switch(vreg->type){
+	switch(orig->type){
 		case V_REG:
 		case V_REG_SPILT:
 			break;
@@ -267,12 +268,15 @@ out_val *v_reg_apply_offset(out_ctx *octx, out_val *vreg)
 	}
 
 	/* offset normalise */
-	off = vreg->bits.regoff.offset;
+	off = orig->bits.regoff.offset;
 	if(!off)
-		return vreg;
+		return orig;
 
-	vreg = v_dup_or_reuse(octx, vreg, vreg->t);
-
+	orig->bits.regoff.offset = 0;
+	{
+		vreg = v_dup_or_reuse(octx, orig, orig->t);
+	}
+	orig->bits.regoff.offset = off;
 	vreg->bits.regoff.offset = 0;
 
 	/* use impl_op as it doesn't do reg offsetting */
