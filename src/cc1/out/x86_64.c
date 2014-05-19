@@ -856,6 +856,8 @@ void impl_store(out_ctx *octx, out_val *to, out_val *from)
 
 	from = v_to(octx, from, TO_REG | TO_CONST);
 	from = x86_check_iv(octx, from);
+	if(from->type == V_REG)
+		from = v_reg_apply_offset(octx, from);
 
 	switch(to->type){
 		case V_FLAG:
