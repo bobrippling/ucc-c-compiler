@@ -50,7 +50,8 @@ static void fill_if_type(
 	}
 }
 
-static int try_mem_offset(
+static out_val *try_mem_offset(
+		out_ctx *octx,
 		enum op_type binop,
 		out_val *vconst, out_val *vregp_or_lbl,
 		out_val *rhs)
@@ -60,6 +61,9 @@ static int try_mem_offset(
 	&& (vregp_or_lbl->type != V_LBL || (fopt_mode & FOPT_SYMBOL_ARITH)))
 	{
 		long *p;
+
+		vregp_or_lbl = v_dup_or_reuse(octx, vregp_or_lbl, vregp_or_lbl->t);
+
 		switch(vregp_or_lbl->type){
 			case V_LBL:
 				p = &vregp_or_lbl->bits.lbl.offset;
@@ -77,10 +81,12 @@ static int try_mem_offset(
 			vconst->bits.val_i *
 			calc_ptr_step(vregp_or_lbl->t);
 
-		return 1;
+		out_val_consume(octx, vconst);
+
+		return vregp_or_lbl;
 	}
 
-	return 0;
+	return NULL;
 }
 
 static int const_is_noop(enum op_type binop, out_val *vconst, int is_lhs)
@@ -232,10 +238,10 @@ out_val *out_op(out_ctx *octx, enum op_type binop, out_val *lhs, out_val *rhs)
 	fill_if_type(rhs, &vconst, &vregp_or_lbl);
 
 	/* check for adding or subtracting to stack */
-	if(vconst && vregp_or_lbl
-	&& try_mem_offset(binop, vconst, vregp_or_lbl, rhs))
-	{
-		return consume_one(octx, vregp_or_lbl, lhs, rhs);
+	if(vconst && vregp_or_lbl){
+		result = try_mem_offset(octx, binop, vconst, vregp_or_lbl, rhs);
+		if(result)
+			return result;
 	}
 
 	if(vconst && const_is_noop(binop, vconst, vconst == lhs))
