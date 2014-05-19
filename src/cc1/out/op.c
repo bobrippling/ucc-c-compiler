@@ -30,16 +30,19 @@ static int calc_ptr_step(type *t)
 	return type_size(type_next(t), NULL);
 }
 
-static void fill_if_type(out_val *v, out_val **vconst, out_val **vmem)
+static void fill_if_type(
+		out_val *v,
+		out_val **vconst,
+		out_val **vregp_or_lbl)
 {
 	switch(v->type){
 		case V_CONST_I:
 			*vconst = v;
 			break;
 
-		case V_REG_SPILT:
 		case V_LBL:
-			*vmem = v;
+		case V_REG:
+			*vregp_or_lbl = v;
 			break;
 
 		default:
@@ -48,21 +51,22 @@ static void fill_if_type(out_val *v, out_val **vconst, out_val **vmem)
 }
 
 static int try_mem_offset(
-		enum op_type binop, out_val *vconst, out_val *vmem, out_val *rhs)
+		enum op_type binop,
+		out_val *vconst, out_val *vregp_or_lbl,
+		out_val *rhs)
 {
 	/* if it's a minus, we enforce an order */
 	if((binop == op_plus || (binop == op_minus && vconst == rhs))
-	&& (vmem->type != V_LBL || (fopt_mode & FOPT_SYMBOL_ARITH)))
+	&& (vregp_or_lbl->type != V_LBL || (fopt_mode & FOPT_SYMBOL_ARITH)))
 	{
 		long *p;
-		switch(vmem->type){
+		switch(vregp_or_lbl->type){
 			case V_LBL:
-				p = &vmem->bits.lbl.offset;
+				p = &vregp_or_lbl->bits.lbl.offset;
 				break;
 
-			case V_REG_SPILT:
 			case V_REG:
-				p = &vmem->bits.regoff.offset;
+				p = &vregp_or_lbl->bits.regoff.offset;
 				break;
 
 			default:
@@ -71,7 +75,7 @@ static int try_mem_offset(
 
 		*p += (binop == op_minus ? -1 : 1) *
 			vconst->bits.val_i *
-			calc_ptr_step(vmem->t);
+			calc_ptr_step(vregp_or_lbl->t);
 
 		return 1;
 	}
@@ -221,15 +225,18 @@ static out_val *consume_one(
 out_val *out_op(out_ctx *octx, enum op_type binop, out_val *lhs, out_val *rhs)
 {
 	int div = 0;
-	out_val *vconst = NULL, *vmem = NULL;
+	out_val *vconst = NULL, *vregp_or_lbl = NULL;
 	out_val *result;
 
-	fill_if_type(lhs, &vconst, &vmem);
-	fill_if_type(rhs, &vconst, &vmem);
+	fill_if_type(lhs, &vconst, &vregp_or_lbl);
+	fill_if_type(rhs, &vconst, &vregp_or_lbl);
 
 	/* check for adding or subtracting to stack */
-	if(vconst && vmem && try_mem_offset(binop, vconst, vmem, rhs))
-		return consume_one(octx, vmem, lhs, rhs);
+	if(vconst && vregp_or_lbl
+	&& try_mem_offset(binop, vconst, vregp_or_lbl, rhs))
+	{
+		return consume_one(octx, vregp_or_lbl, lhs, rhs);
+	}
 
 	if(vconst && const_is_noop(binop, vconst, vconst == lhs))
 		return consume_one(octx, vconst == lhs ? rhs : lhs, lhs, rhs);
