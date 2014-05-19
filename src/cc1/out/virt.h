@@ -40,6 +40,7 @@ out_val *v_to_reg_given_freeup(
 
 out_val *v_to_reg_out(out_ctx *octx, out_val *conv, struct vreg *out) ucc_wur;
 out_val *v_to_reg(out_ctx *octx, out_val *conv) ucc_wur;
+out_val *v_reg_apply_offset(out_ctx *octx, out_val *vreg) ucc_wur;
 
 out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos) ucc_wur;
 

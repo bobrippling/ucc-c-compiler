@@ -24,7 +24,7 @@
 
 void out_flush_volatile(out_ctx *octx, out_val *val)
 {
-	out_val_consume(octx, v_to_reg(octx, val));
+	out_val_consume(octx, v_reg_apply_offset(octx, v_to_reg(octx, val)));
 }
 
 int v_is_const_reg(out_val *v)
@@ -252,6 +252,33 @@ out_val *v_to_reg_out(out_ctx *octx, out_val *conv, struct vreg *out)
 out_val *v_to_reg(out_ctx *octx, out_val *conv)
 {
 	return v_to_reg_out(octx, conv, NULL);
+}
+
+out_val *v_reg_apply_offset(out_ctx *octx, out_val *vreg)
+{
+	long off;
+
+	switch(vreg->type){
+		case V_REG:
+		case V_REG_SPILT:
+			break;
+		default:
+			assert(0 && "not a reg");
+	}
+
+	/* offset normalise */
+	off = vreg->bits.regoff.offset;
+	if(!off)
+		return vreg;
+
+	vreg = v_dup_or_reuse(octx, vreg, vreg->t);
+
+	vreg->bits.regoff.offset = 0;
+
+	/* use impl_op as it doesn't do reg offsetting */
+	return impl_op(octx, op_plus,
+			vreg,
+			out_new_l(octx, vreg->t, off));
 }
 
 static int val_present(out_val *v, out_val **ignores)
