@@ -780,7 +780,7 @@ void fold_expr_op(expr *e, symtable *stab)
 	}
 }
 
-out_val *gen_expr_str_op(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_op(expr *e, out_ctx *octx)
 {
 	idt_printf("op: %s\n", op_to_str(e->op));
 	gen_str_indent++;
@@ -795,10 +795,10 @@ out_val *gen_expr_str_op(expr *e, out_ctx *octx)
 	UNUSED_OCTX();
 }
 
-static out_val *op_shortcircuit(expr *e, out_ctx *octx)
+static const out_val *op_shortcircuit(expr *e, out_ctx *octx)
 {
 	out_blk *blk_rhs, *blk_empty, *landing;
-	out_val *lhs;
+	const out_val *lhs;
 
 	blk_rhs = out_blk_new(octx, "shortcircuit_a");
 	blk_empty = out_blk_new(octx, "shortcircuit_b");
@@ -815,7 +815,7 @@ static out_val *op_shortcircuit(expr *e, out_ctx *octx)
 
 	out_current_blk(octx, blk_rhs);
 	{
-		out_val *rhs = gen_expr(e->rhs, octx);
+		const out_val *rhs = gen_expr(e->rhs, octx);
 		rhs = out_normalise(octx, rhs);
 
 		out_ctrl_transfer(octx, landing, rhs);
@@ -835,15 +835,15 @@ static out_val *op_shortcircuit(expr *e, out_ctx *octx)
 
 	out_current_blk(octx, landing);
 	{
-		out_val *merged = out_ctrl_merge(octx, blk_empty, blk_rhs);
+		const out_val *merged = out_ctrl_merge(octx, blk_empty, blk_rhs);
 
 		return merged;
 	}
 }
 
-out_val *gen_expr_op(expr *e, out_ctx *octx)
+const out_val *gen_expr_op(expr *e, out_ctx *octx)
 {
-	out_val *lhs, *rhs, *eval;
+	const out_val *lhs, *rhs, *eval;
 
 	switch(e->op){
 		case op_orsc:
@@ -910,7 +910,7 @@ expr *expr_new_op2(enum op_type o, expr *l, expr *r)
 	return e;
 }
 
-out_val *gen_expr_style_op(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_op(expr *e, out_ctx *octx)
 {
 	if(e->rhs){
 		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));

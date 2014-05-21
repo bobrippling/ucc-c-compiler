@@ -46,7 +46,7 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 	}
 }
 
-static out_val *gen_expr_identifier_lea(expr *e, out_ctx *octx)
+static const out_val *gen_expr_identifier_lea(expr *e, out_ctx *octx)
 {
 	return out_new_sym(octx, e->bits.ident.sym);
 }
@@ -123,13 +123,13 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	sym->nreads++;
 }
 
-out_val *gen_expr_str_identifier(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_identifier(expr *e, out_ctx *octx)
 {
 	idt_printf("identifier: \"%s\" (sym %p)\n", e->bits.ident.spel, (void *)e->bits.ident.sym);
 	UNUSED_OCTX();
 }
 
-out_val *gen_expr_identifier(expr *e, out_ctx *octx)
+const out_val *gen_expr_identifier(expr *e, out_ctx *octx)
 {
 	sym *sym = e->bits.ident.sym;
 
@@ -155,7 +155,7 @@ expr *expr_new_identifier(char *sp)
 	return e;
 }
 
-out_val *gen_expr_style_identifier(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_identifier(expr *e, out_ctx *octx)
 {
 	stylef("%s", e->bits.ident.spel);
 	UNUSED_OCTX();

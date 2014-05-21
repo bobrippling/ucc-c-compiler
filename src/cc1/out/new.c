@@ -133,7 +133,7 @@ label:
 
 out_val *out_new_sym_val(out_ctx *octx, sym *sym)
 {
-	return out_deref(octx, out_new_sym(octx, sym));
+	return (out_val *)out_deref(octx, out_new_sym(octx, sym));
 }
 
 out_val *out_new_zero(out_ctx *octx, type *ty)

@@ -208,7 +208,7 @@ static const char *x86_reg_str(const struct vreg *reg, type *r)
 }
 
 static const char *vstack_str_r(
-		char buf[VSTACK_STR_SZ], out_val *vs, const int deref)
+		char buf[VSTACK_STR_SZ], const out_val *vs, const int deref)
 {
 	switch(vs->type){
 		case V_CONST_I:
@@ -283,7 +283,7 @@ static const char *vstack_str_r(
 	return buf;
 }
 
-static const char *vstack_str(out_val *vs, int deref)
+static const char *vstack_str(const out_val *vs, int deref)
 {
 	static char buf[VSTACK_STR_SZ];
 	return vstack_str_r(buf, vs, deref);
@@ -564,7 +564,7 @@ void impl_func_epilogue(out_ctx *octx, type *rf)
 	}
 }
 
-void impl_to_retreg(out_ctx *octx, out_val *val, type *retty)
+void impl_to_retreg(out_ctx *octx, const out_val *val, type *retty)
 {
 	struct vreg r;
 
@@ -579,7 +579,7 @@ void impl_to_retreg(out_ctx *octx, out_val *val, type *retty)
 	out_flush_volatile(octx, v_to_reg_given(octx, val, &r));
 }
 
-static const char *x86_cmp(struct flag_opts *flag)
+static const char *x86_cmp(const struct flag_opts *flag)
 {
 	switch(flag->cmp){
 #define OP(e, s, u)  \
@@ -603,8 +603,8 @@ static const char *x86_cmp(struct flag_opts *flag)
 	return NULL;
 }
 
-static out_val *x86_load_iv(
-		out_ctx *octx, out_val *from,
+static const out_val *x86_load_iv(
+		out_ctx *octx, const out_val *from,
 		const struct vreg *reg /* may be null */)
 {
 	const int high_bit = integral_high_bit_ABS(from->bits.val_i, from->t);
@@ -648,7 +648,7 @@ static out_val *x86_load_iv(
 	return v_new_reg(octx, from, from->t, reg);
 }
 
-static out_val *x86_load_fp(out_ctx *octx, out_val *from)
+static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 {
 	switch(from->type){
 		case V_CONST_I:
@@ -662,16 +662,16 @@ static out_val *x86_load_fp(out_ctx *octx, out_val *from)
 			&& fopt_mode & FOPT_INTEGRAL_FLOAT_LOAD)
 			{
 				type *const ty_fp = from->t;
+				out_val *mut = v_dup_or_reuse(octx, from, from->t);
 
-				from = v_dup_or_reuse(octx, from, from->t);
+				from = mut;
 
-				from->type = V_CONST_I;
-				from->bits.val_i = from->bits.val_f;
+				mut->type = V_CONST_I;
+				mut->bits.val_i = from->bits.val_f;
 				/* TODO: use just an int if we can get away with it */
-				from->t = type_nav_btype(cc1_type_nav, type_llong);
+				mut->t = type_nav_btype(cc1_type_nav, type_llong);
 
-				from = out_cast(octx, from, ty_fp, /*normalise_bool:*/1);
-				return from;
+				return out_cast(octx, mut, ty_fp, /*normalise_bool:*/1);
 			}
 			/* fall */
 
@@ -680,20 +680,21 @@ static out_val *x86_load_fp(out_ctx *octx, out_val *from)
 			/* save to a label */
 			char *lbl = out_label_data_store(STORE_FLOAT);
 			struct vreg r;
+			out_val *mut;
 
 			asm_nam_begin3(SECTION_DATA, lbl, type_align(from->t, NULL));
 			asm_out_fp(SECTION_DATA, from->t, from->bits.val_f);
 
-			from = v_dup_or_reuse(octx, from, from->t);
+			from = mut = v_dup_or_reuse(octx, from, from->t);
 
 			v_unused_reg(octx,
 					1, type_is_floating(from->t),
 					&r);
 
-			from->type = V_LBL;
-			from->bits.lbl.str = lbl;
-			from->bits.lbl.pic = 1;
-			from->bits.lbl.offset = 0;
+			mut->type = V_LBL;
+			mut->bits.lbl.str = lbl;
+			mut->bits.lbl.pic = 1;
+			mut->bits.lbl.offset = 0;
 
 			free(lbl);
 			return from;
@@ -734,7 +735,10 @@ static int x86_need_fp_parity_p(
 	}
 }
 
-out_val *impl_load(out_ctx *octx, out_val *from, const struct vreg *reg)
+const out_val *impl_load(
+		out_ctx *octx,
+		const out_val *from,
+		const struct vreg *reg)
 {
 	type *new_ty = NULL;
 
@@ -747,7 +751,7 @@ out_val *impl_load(out_ctx *octx, out_val *from, const struct vreg *reg)
 	switch(from->type){
 		case V_FLAG:
 		{
-			out_val *vtmp_val;
+			const out_val *vtmp_val;
 			char *parity = NULL;
 			int parity_default = 0;
 
@@ -764,13 +768,12 @@ out_val *impl_load(out_ctx *octx, out_val *from, const struct vreg *reg)
 				out_asm(octx, "jp %s", parity);
 
 			/* force set%s to set the low byte */
-			from->t = type_nav_btype(cc1_type_nav, type_nchar);
-			new_ty = from->t;
+			new_ty = type_nav_btype(cc1_type_nav, type_nchar);
 
 			/* actual cmp */
 			out_asm(octx, "set%s %%%s",
 					x86_cmp(&from->bits.flag),
-					x86_reg_str(reg, from->t));
+					x86_reg_str(reg, new_ty));
 
 			if(parity){
 				/* don't use out_label - this does a vstack flush */
@@ -832,14 +835,14 @@ lea:
 	return v_new_reg(octx, from, new_ty, reg);
 }
 
-static out_val *x86_check_iv(out_ctx *octx, out_val *from)
+static const out_val *x86_check_iv(out_ctx *octx, const out_val *from)
 {
 	if(from->type == V_CONST_I)
 		from = x86_load_iv(octx, from, NULL);
 	return from;
 }
 
-void impl_store(out_ctx *octx, out_val *to, out_val *from)
+void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 {
 	char vbuf[VSTACK_STR_SZ];
 
@@ -899,7 +902,7 @@ static void x86_reg_cp(
 			x86_reg_str(to, typ));
 }
 
-void impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *to_reg)
+void impl_reg_cp(out_ctx *octx, const out_val *from, const struct vreg *to_reg)
 {
 	UCC_ASSERT(from->type == V_REG,
 			"reg_cp on non register type 0x%x", from->type);
@@ -913,9 +916,9 @@ void impl_reg_cp(out_ctx *octx, out_val *from, const struct vreg *to_reg)
 	x86_reg_cp(octx, to_reg, &from->bits.regoff.reg, from->t);
 }
 
-static out_val *x86_idiv(
+static const out_val *x86_idiv(
 		out_ctx *octx, enum op_type op,
-		out_val *l, out_val *r)
+		const out_val *l, const out_val *r)
 {
 	/*
 	 * divide the 64 bit integer edx:eax
@@ -959,11 +962,12 @@ static out_val *x86_idiv(
 	return v_new_reg(octx, l, l->t, &result);
 }
 
-static out_val *x86_shift(
+static const out_val *x86_shift(
 		out_ctx *octx, enum op_type op,
-		out_val *l, out_val *r)
+		const out_val *l, const out_val *r)
 {
 	char bufv[VSTACK_STR_SZ], bufs[VSTACK_STR_SZ];
+	type *nchar;
 
 	/* sh[lr] [r/m], [c/r]
 	 * where            ^ must be %cl
@@ -978,7 +982,9 @@ static out_val *x86_shift(
 	}
 
 	/* force %cl: */
-	r->t = type_nav_btype(cc1_type_nav, type_nchar);
+	nchar = type_nav_btype(cc1_type_nav, type_nchar);
+	if(type_cmp(r->t, nchar, 0))
+		r = v_dup_or_reuse(octx, r, nchar); /* change type */
 
 	l = v_to(octx, l, TO_MEM | TO_REG);
 
@@ -996,10 +1002,10 @@ static out_val *x86_shift(
 	return v_dup_or_reuse(octx, l, l->t);
 }
 
-out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
+const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const out_val *r)
 {
 	const char *opc;
-	out_val *min_retained = l->retains < r->retains ? l : r;
+	const out_val *min_retained = l->retains < r->retains ? l : r;
 
 	l = x86_check_iv(octx, l);
 	r = x86_check_iv(octx, r);
@@ -1049,7 +1055,7 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 		 */
 
 		if(l->type != V_REG && op_is_commutative(op)){
-			out_val *tmp = l;
+			const out_val *tmp = l;
 			l = r, r = tmp;
 		}
 
@@ -1103,7 +1109,7 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 			const int is_signed = type_is_signed(l->t);
 			char buf[VSTACK_STR_SZ];
 			int inv = 0;
-			out_val *vconst = NULL;
+			const out_val *vconst = NULL;
 			enum flag_cmp cmp;
 
 			l = v_to(octx, l, TO_REG | TO_CONST);
@@ -1118,13 +1124,13 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 			if((op == op_eq || op == op_ne)
 			&& vconst && vconst->bits.val_i == 0)
 			{
-				out_val *vother = vconst == l ? r : l;
+				const out_val *vother = vconst == l ? r : l;
 				const char *vstr = vstack_str(vother, 0); /* reg */
 				out_asm(octx, "test%s %s, %s", x86_suffix(vother->t), vstr, vstr);
 			}else{
 				/* if we have a const, it must be the first arg */
 				if(l->type == V_CONST_I){
-					out_val *tmp = l;
+					const out_val *tmp = l;
 					l = r, r = tmp;
 					inv = 1;
 				}
@@ -1215,7 +1221,7 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 		}
 
 		if(need_swap){
-			SWAP(out_val *, l, r);
+			SWAP(const out_val *, l, r);
 		}else if(!satisfied){
 			/* try to keep rhs as const */
 			l = v_to(octx, l, TO_REG | TO_MEM);
@@ -1265,7 +1271,7 @@ out_val *impl_op(out_ctx *octx, enum op_type op, out_val *l, out_val *r)
 	}
 }
 
-out_val *impl_deref(out_ctx *octx, out_val *vp, const struct vreg *reg)
+const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *reg)
 {
 	char ptr[VSTACK_STR_SZ];
 	type *tpointed_to = type_pointed_to(vp->t);
@@ -1290,7 +1296,7 @@ out_val *impl_deref(out_ctx *octx, out_val *vp, const struct vreg *reg)
 	return v_new_reg(octx, vp, tpointed_to, reg);
 }
 
-out_val *impl_op_unary(out_ctx *octx, enum op_type op, out_val *val)
+const out_val *impl_op_unary(out_ctx *octx, enum op_type op, const out_val *val)
 {
 	const char *opc;
 
@@ -1332,8 +1338,8 @@ out_val *impl_op_unary(out_ctx *octx, enum op_type op, out_val *val)
 	return v_dup_or_reuse(octx, val, val->t);
 }
 
-out_val *impl_cast_load(
-		out_ctx *octx, out_val *vp,
+const out_val *impl_cast_load(
+		out_ctx *octx, const out_val *vp,
 		type *small, type *big,
 		int is_signed)
 {
@@ -1362,6 +1368,7 @@ out_val *impl_cast_load(
 		const char *suffix_big = x86_suffix(big),
 		           *suffix_small = x86_suffix(small);
 		struct vreg r;
+		out_val *vp_mut;
 
 		/* mov[zs][bwl][wlq]
 		 * avoid movzx - it's ambiguous
@@ -1370,7 +1377,7 @@ out_val *impl_cast_load(
 		 */
 
 		v_unused_reg(octx, 1, 0, &r);
-		vp = v_new_reg(octx, vp, vp->t, &r);
+		vp = vp_mut = v_new_reg(octx, vp, vp->t, &r);
 
 		if(!is_signed && *suffix_big == 'q' && *suffix_small == 'l'){
 			out_comment(octx, "movzlq:");
@@ -1387,7 +1394,7 @@ out_val *impl_cast_load(
 					x86_reg_str(&r, big));
 		}
 
-		vp->t = big;
+		vp_mut->t = big;
 
 		return vp;
 	}
@@ -1395,7 +1402,7 @@ out_val *impl_cast_load(
 
 static void x86_fp_conv(
 		out_ctx *octx,
-		out_val *vp,
+		const out_val *vp,
 		struct vreg *r, type *tto,
 		type *int_ty,
 		const char *sfrom, const char *sto)
@@ -1413,8 +1420,8 @@ static void x86_fp_conv(
 			x86_reg_str(r, tto));
 }
 
-static out_val *x86_xchg_fi(
-		out_ctx *octx, out_val *vp,
+static const out_val *x86_xchg_fi(
+		out_ctx *octx, const out_val *vp,
 		type *tfrom, type *tto)
 {
 	struct vreg r;
@@ -1458,17 +1465,17 @@ static out_val *x86_xchg_fi(
 	return v_new_reg(octx, vp, tto, &r);
 }
 
-out_val *impl_i2f(out_ctx *octx, out_val *vp, type *t_i, type *t_f)
+const out_val *impl_i2f(out_ctx *octx, const out_val *vp, type *t_i, type *t_f)
 {
 	return x86_xchg_fi(octx, vp, t_i, t_f);
 }
 
-out_val *impl_f2i(out_ctx *octx, out_val *vp, type *t_f, type *t_i)
+const out_val *impl_f2i(out_ctx *octx, const out_val *vp, type *t_f, type *t_i)
 {
 	return x86_xchg_fi(octx, vp, t_f, t_i);
 }
 
-out_val *impl_f2f(out_ctx *octx, out_val *vp, type *from, type *to)
+const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *from, type *to)
 {
 	struct vreg r;
 
@@ -1482,7 +1489,7 @@ out_val *impl_f2f(out_ctx *octx, out_val *vp, type *from, type *to)
 }
 
 static const char *x86_call_jmp_target(
-		out_ctx *octx, out_val **pvp,
+		out_ctx *octx, const out_val **pvp,
 		int prevent_rax)
 {
 	static char buf[VSTACK_STR_SZ + 2];
@@ -1516,7 +1523,9 @@ static const char *x86_call_jmp_target(
 
 				v_unused_reg(octx, 1, 0, &r);
 				impl_reg_cp(octx, *pvp, &r);
-				memcpy_safe(&(*pvp)->bits.regoff.reg, &r);
+
+				assert((*pvp)->retains == 1);
+				memcpy_safe(&((out_val *)*pvp)->bits.regoff.reg, &r);
 			}
 
 			snprintf(buf, sizeof buf, "*%%%s",
@@ -1533,7 +1542,7 @@ void impl_jmp(FILE *f, const char *lbl)
 	fprintf(f, "\tjmp %s\n", lbl);
 }
 
-void impl_branch(out_ctx *octx, out_val *cond, out_blk *bt, out_blk *bf)
+void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 {
 	switch(cond->type){
 		case V_REG:
@@ -1617,15 +1626,15 @@ void impl_branch(out_ctx *octx, out_val *cond, out_blk *bt, out_blk *bf)
 	}
 }
 
-out_val *impl_call(
+const out_val *impl_call(
 		out_ctx *octx,
-		out_val *fn, out_val **args,
+		const out_val *fn, const out_val **args,
 		type *fnty)
 {
 	const unsigned pws = platform_word_size();
 	const unsigned nargs = dynarray_count(args);
 	char *const float_arg = umalloc(nargs);
-	out_val **local_args = NULL;
+	const out_val **local_args = NULL;
 
 	const struct vreg *call_iregs;
 	unsigned n_call_iregs;
@@ -1708,7 +1717,7 @@ out_val *impl_call(
 
 	nints = nfloats = 0;
 	for(i = 0; i < nargs; i++){
-		out_val *const vp = local_args[i];
+		const out_val *const vp = local_args[i];
 		const int is_float = type_is_floating(vp->t);
 
 		const struct vreg *rp = NULL;
@@ -1800,7 +1809,7 @@ out_val *impl_call(
 
 	for(i = 0; i < nargs; i++)
 		out_val_consume(octx, local_args[i]);
-	dynarray_free(out_val **, &local_args, NULL);
+	dynarray_free(const out_val **, &local_args, NULL);
 
 	free(float_arg);
 

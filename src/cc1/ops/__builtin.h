@@ -11,7 +11,7 @@ expr *builtin_new_frame_address(int depth);
 expr *builtin_parse(const char *sp, symtable *scope);
 expr *parse_any_args(symtable *scope);
 
-out_val *builtin_gen_print(expr *e, out_ctx *octx);
+const out_val *builtin_gen_print(expr *e, out_ctx *octx);
 #define BUILTIN_SET_GEN(exp, target)      \
 	exp->f_gen = cc1_backend == BACKEND_ASM \
 		? (target)                            \

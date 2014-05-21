@@ -12,7 +12,7 @@
 	 (e)->bits.struct_mem.extra_off                     \
 	 )
 
-static out_val *gen_expr_struct_lea(expr *e, out_ctx *octx);
+static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx);
 
 const char *str_expr_struct()
 {
@@ -120,9 +120,9 @@ err:
 			type_qual(e->lhs->tree_type));
 }
 
-static out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
+static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 {
-	out_val *struct_exp, *off;
+	const out_val *struct_exp, *off;
 
 	ASSERT_NOT_DOT();
 
@@ -156,7 +156,10 @@ static out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 		 */
 		if(d->bits.var.field_width){
 			unsigned w = const_fold_val_i(d->bits.var.field_width);
-			out_set_bitfield(octx, off, d->bits.var.struct_offset_bitfield, w);
+
+			off = out_set_bitfield(
+					octx, off, d->bits.var.struct_offset_bitfield, w);
+
 			out_comment(octx, "struct bitfield lea");
 		}
 	}
@@ -164,14 +167,14 @@ static out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 	return off;
 }
 
-out_val *gen_expr_struct(expr *e, out_ctx *octx)
+const out_val *gen_expr_struct(expr *e, out_ctx *octx)
 {
 	ASSERT_NOT_DOT();
 
 	return out_deref(octx, gen_expr_struct_lea(e, octx));
 }
 
-out_val *gen_expr_str_struct(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_struct(expr *e, out_ctx *octx)
 {
 	decl *mem = e->bits.struct_mem.d;
 
@@ -255,7 +258,7 @@ expr *expr_new_struct_mem(expr *sub, int dot, decl *d)
 	return e;
 }
 
-out_val *gen_expr_style_struct(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_struct(expr *e, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef("->%s", e->bits.struct_mem.d->spel);

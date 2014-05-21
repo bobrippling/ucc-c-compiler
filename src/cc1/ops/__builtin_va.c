@@ -158,7 +158,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
-static out_val *builtin_gen_va_start(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_va_start(expr *e, out_ctx *octx)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -194,7 +194,7 @@ expr *parse_va_start(const char *ident, symtable *scope)
 	return fcall;
 }
 
-static out_val *va_arg_gen_read(
+static const out_val *va_arg_gen_read(
 		expr *const e,
 		out_ctx *const octx,
 		type *const ty,
@@ -210,7 +210,7 @@ static out_val *va_arg_gen_read(
 	const int fp = type_is_floating(ty);
 	const unsigned max_reg_args_sz = 6 * 8 + (fp ? 16 * 16 : 0);
 	const unsigned ws = platform_word_size();
-	out_val *valist, *gpoff_addr, *gpoff_val;
+	const out_val *valist, *gpoff_addr, *gpoff_val;
 	const int VALIST_OFFSET_TYPE = type_uint;
 
 	valist = gen_expr(e->lhs, octx);
@@ -251,8 +251,8 @@ static out_val *va_arg_gen_read(
 	/* now inserting into blk_reg */
 	{
 		const unsigned increment = fp ? 2 * ws : ws;
-		out_val *gp_off_plus, *membptr;
-		out_val *reg_save_area_value;
+		const out_val *gp_off_plus, *membptr;
+		const out_val *reg_save_area_value;
 
 		/* increment either 8 for an integral, or 16 for a float argument
 		 * since xmm0 are 128-bit registers, aka 16 byte
@@ -292,8 +292,8 @@ static out_val *va_arg_gen_read(
 	/* stack code */
 	out_current_blk(octx, blk_stack);
 	{
-		out_val *overflow_val;
-		out_val *overflow_addr =
+		const out_val *overflow_val;
+		const out_val *overflow_addr =
 			out_op(
 					octx, op_plus,
 					out_change_type(
@@ -338,7 +338,7 @@ static out_val *va_arg_gen_read(
 				type_ptr_to(ty)));
 }
 
-static out_val *builtin_gen_va_arg(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_va_arg(expr *e, out_ctx *octx)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -534,7 +534,7 @@ expr *parse_va_arg(const char *ident, symtable *scope)
 	return fcall;
 }
 
-static out_val *builtin_gen_va_end(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_va_end(expr *e, out_ctx *octx)
 {
 	(void)e;
 	return out_new_noop(octx);
@@ -562,7 +562,7 @@ expr *parse_va_end(const char *ident, symtable *scope)
 	return fcall;
 }
 
-static out_val *builtin_gen_va_copy(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_va_copy(expr *e, out_ctx *octx)
 {
 	return gen_expr(e->lhs, octx);
 }

@@ -40,38 +40,39 @@ out_val *out_new_frame_ptr(out_ctx *, int nframes) ucc_wur;
 out_val *out_new_reg_save_ptr(out_ctx *) ucc_wur;
 out_val *out_new_nan(out_ctx *, type *ty) ucc_wur;
 
-out_val *out_normalise(out_ctx *, out_val *) ucc_wur;
+const out_val *out_normalise(out_ctx *, const out_val *) ucc_wur;
 
 
 /* by default, all values are temporaries
  * this will prevent them being overwritten */
-out_val *out_val_retain(out_ctx *, out_val *);
-out_val *out_val_release(out_ctx *, out_val *);
+const out_val *out_val_retain(out_ctx *, const out_val *);
+const out_val *out_val_release(out_ctx *, const out_val *);
 #define out_val_consume(oc, v) out_val_release((oc), (v))
 
 
 /* value use */
-void out_set_bitfield(out_ctx *, out_val *, unsigned off, unsigned nbits);
+const out_val *out_set_bitfield(out_ctx *, const out_val *, unsigned off, unsigned nbits)
+	ucc_wur;
 
-void out_store(out_ctx *, out_val *dest, out_val *val);
+void out_store(out_ctx *, const out_val *dest, const out_val *val);
 
-void out_flush_volatile(out_ctx *, out_val *);
+void out_flush_volatile(out_ctx *, const out_val *);
 
 /* operators/comparisons */
-ucc_wur out_val *out_op(out_ctx *, enum op_type, out_val *lhs, out_val *rhs);
-ucc_wur out_val *out_op_unary(out_ctx *, enum op_type, out_val *);
+ucc_wur const out_val *out_op(out_ctx *, enum op_type, const out_val *lhs, const out_val *rhs);
+ucc_wur const out_val *out_op_unary(out_ctx *, enum op_type, const out_val *);
 
-ucc_wur out_val *out_deref(out_ctx *, out_val *) ucc_wur;
+ucc_wur const out_val *out_deref(out_ctx *, const out_val *) ucc_wur;
 
-ucc_wur out_val *out_cast(out_ctx *, out_val *, type *to, int normalise_bool)
+ucc_wur const out_val *out_cast(out_ctx *, const out_val *, type *to, int normalise_bool)
 	ucc_nonnull((1)) ucc_wur;
 
-ucc_wur out_val *out_change_type(out_ctx *, out_val *, type *)
+ucc_wur const out_val *out_change_type(out_ctx *, const out_val *, type *)
 	ucc_nonnull((1)) ucc_wur;
 
 /* functions */
-ucc_wur out_val *out_call(out_ctx *,
-		out_val *fn, out_val **args,
+ucc_wur const out_val *out_call(out_ctx *,
+		const out_val *fn, const out_val **args,
 		type *fnty)
 		ucc_nonnull((2, 3));
 
@@ -81,20 +82,20 @@ ucc_wur out_blk *out_blk_new(out_ctx *, const char *desc);
 void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
 
 void out_ctrl_end_undefined(out_ctx *);
-void out_ctrl_end_ret(out_ctx *, out_val *, type *) ucc_nonnull((1));
+void out_ctrl_end_ret(out_ctx *, const out_val *, type *) ucc_nonnull((1));
 
-void out_ctrl_transfer(out_ctx *, out_blk *to, out_val *phi_arg /* optional */);
+void out_ctrl_transfer(out_ctx *, out_blk *to, const out_val *phi_arg /* optional */);
 
 /* goto *<exp> */
-void out_ctrl_transfer_exp(out_ctx *, out_val *addr);
+void out_ctrl_transfer_exp(out_ctx *, const out_val *addr);
 
 void out_ctrl_branch(
 		out_ctx *octx,
-		out_val *cond,
+		const out_val *cond,
 		out_blk *if_true, out_blk *if_false);
 
 /* maybe ret null */
-ucc_wur out_val *out_ctrl_merge(out_ctx *, out_blk *, out_blk *);
+ucc_wur const out_val *out_ctrl_merge(out_ctx *, out_blk *, out_blk *);
 
 
 /* function setup */

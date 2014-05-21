@@ -55,7 +55,7 @@ void expr_must_lvalue(expr *e)
 	}
 }
 
-static out_val *lea_assign_lhs(expr *e, out_ctx *octx)
+static const out_val *lea_assign_lhs(expr *e, out_ctx *octx)
 {
 	/* generate our assignment, then lea
 	 * our lhs, i.e. the struct identifier
@@ -131,7 +131,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	}
 }
 
-out_val *gen_expr_assign(expr *e, out_ctx *octx)
+const out_val *gen_expr_assign(expr *e, out_ctx *octx)
 {
 	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
 
@@ -139,7 +139,7 @@ out_val *gen_expr_assign(expr *e, out_ctx *octx)
 		/* memcpy */
 		return gen_expr(e->expr, octx);
 	}else{
-		out_val *val, *store;
+		const out_val *val, *store;
 
 		val = gen_expr(e->rhs, octx);
 		out_val_retain(octx, val);
@@ -151,7 +151,7 @@ out_val *gen_expr_assign(expr *e, out_ctx *octx)
 	}
 }
 
-out_val *gen_expr_str_assign(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_assign(expr *e, out_ctx *octx)
 {
 	idt_printf("assignment, expr:\n");
 	idt_printf("assign to:\n");
@@ -187,7 +187,7 @@ expr *expr_new_assign_init(expr *to, expr *from)
 	return e;
 }
 
-out_val *gen_expr_style_assign(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_assign(expr *e, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef(" = ");

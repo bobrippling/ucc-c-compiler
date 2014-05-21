@@ -81,7 +81,7 @@ void gen_stmt_if(stmt *s, out_ctx *octx)
 	out_blk *blk_false = out_blk_new(octx, "if_false");
 	out_blk *blk_fi = out_blk_new(octx, "fi");
 	const char *el[2];
-	out_val *cond;
+	const out_val *cond;
 
 	flow_gen(s->flow, s->symtab, el, octx);
 	cond = gen_expr(s->expr, octx);

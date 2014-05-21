@@ -28,21 +28,21 @@ enum vto
 	TO_MEM = 1 << 1,
 	TO_CONST = 1 << 2,
 };
-out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc) ucc_wur;
+const out_val *v_to(out_ctx *octx, const out_val *vp, enum vto loc) ucc_wur;
 
-out_val *v_to_reg_given(
-		out_ctx *octx, out_val *from,
+const out_val *v_to_reg_given(
+		out_ctx *octx, const out_val *from,
 		const struct vreg *given) ucc_wur;
 
-out_val *v_to_reg_given_freeup(
-		out_ctx *octx, out_val *from,
+const out_val *v_to_reg_given_freeup(
+		out_ctx *octx, const out_val *from,
 		const struct vreg *given);
 
-out_val *v_to_reg_out(out_ctx *octx, out_val *conv, struct vreg *out) ucc_wur;
-out_val *v_to_reg(out_ctx *octx, out_val *conv) ucc_wur;
-out_val *v_reg_apply_offset(out_ctx *octx, out_val *vreg) ucc_wur;
+const out_val *v_to_reg_out(out_ctx *octx, const out_val *conv, struct vreg *out) ucc_wur;
+const out_val *v_to_reg(out_ctx *octx, const out_val *conv) ucc_wur;
+const out_val *v_reg_apply_offset(out_ctx *octx, const out_val *vreg) ucc_wur;
 
-out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos) ucc_wur;
+const out_val *v_to_stack_mem(out_ctx *octx, const out_val *vp, long stack_pos) ucc_wur;
 
 void v_reg_to_stack(
 		out_ctx *octx,
@@ -56,9 +56,9 @@ void v_freeup_reg(out_ctx *, const struct vreg *r);
 /* func_ty may be null, ignores is null-terminated */
 void v_save_regs(
 		out_ctx *, type *func_ty,
-		out_val *ignores[], out_val *fnval);
+		const out_val *ignores[], const out_val *fnval);
 
-int v_is_const_reg(out_val *);
+int v_is_const_reg(const out_val *);
 
 
 void v_reserve_reg(out_ctx *, const struct vreg *);

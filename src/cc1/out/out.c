@@ -114,7 +114,7 @@ void out_comment(out_ctx *octx, const char *fmt, ...)
 	va_end(l);
 }
 
-out_val *out_cast(out_ctx *octx, out_val *val, type *to, int normalise_bool)
+const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normalise_bool)
 {
 	type *const from = val->t;
 	char fp[2];
@@ -176,16 +176,15 @@ out_val *out_cast(out_ctx *octx, out_val *val, type *to, int normalise_bool)
 		}
 	}
 
-	val->t = to;
-	return val;
+	return v_dup_or_reuse(octx, val, to);
 }
 
-out_val *out_change_type(out_ctx *octx, out_val *val, type *ty)
+const out_val *out_change_type(out_ctx *octx, const out_val *val, type *ty)
 {
 	return v_dup_or_reuse(octx, val, ty);
 }
 
-out_val *out_deref(out_ctx *octx, out_val *target)
+const out_val *out_deref(out_ctx *octx, const out_val *target)
 {
 	type *tnext = type_pointed_to(target->t);
 
@@ -200,9 +199,10 @@ out_val *out_deref(out_ctx *octx, out_val *target)
 	return impl_deref(octx, target, NULL);
 }
 
-out_val *out_normalise(out_ctx *octx, out_val *unnormal)
+const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 {
-	out_val *normalised = v_dup_or_reuse(octx, unnormal, unnormal->t);
+	out_val *const normalised = v_dup_or_reuse(octx, unnormal, unnormal->t);
+	const out_val *ret = normalised;
 
 	switch(unnormal->type){
 		case V_FLAG:
@@ -219,14 +219,14 @@ out_val *out_normalise(out_ctx *octx, out_val *unnormal)
 			break;
 
 		default:
-			normalised = v_to_reg(octx, normalised);
+			ret = v_to_reg(octx, normalised);
 			/* fall */
 
 		case V_REG:
 		{
-			out_val *z = out_new_zero(octx, normalised->t);
+			const out_val *z = out_new_zero(octx, normalised->t);
 
-			normalised = out_op(octx, op_ne, z, unnormal);
+			ret = out_op(octx, op_ne, z, unnormal);
 			/* 0 -> `0 != 0` = 0
 			 * 1 -> `1 != 0` = 1
 			 * 5 -> `5 != 0` = 1
@@ -234,19 +234,22 @@ out_val *out_normalise(out_ctx *octx, out_val *unnormal)
 		}
 	}
 
-	return normalised;
+	return ret;
 }
 
-void out_set_bitfield(
-		out_ctx *octx, out_val *val,
+const out_val *out_set_bitfield(
+		out_ctx *octx, const out_val *val,
 		unsigned off, unsigned nbits)
 {
-	(void)octx;
-	val->bitfield.off = off;
-	val->bitfield.nbits = nbits;
+	out_val *mut = v_dup_or_reuse(octx, val, val->t);
+
+	mut->bitfield.off = off;
+	mut->bitfield.nbits = nbits;
+
+	return mut;
 }
 
-void out_store(out_ctx *octx, out_val *dest, out_val *val)
+void out_store(out_ctx *octx, const out_val *dest, const out_val *val)
 {
 	impl_store(octx, dest, val);
 }

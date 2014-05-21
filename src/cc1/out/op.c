@@ -31,9 +31,9 @@ static int calc_ptr_step(type *t)
 }
 
 static void fill_if_type(
-		out_val *v,
-		out_val **vconst,
-		out_val **vregp_or_lbl)
+		const out_val *v,
+		const out_val **vconst,
+		const out_val **vregp_or_lbl)
 {
 	switch(v->type){
 		case V_CONST_I:
@@ -53,24 +53,24 @@ static void fill_if_type(
 static out_val *try_mem_offset(
 		out_ctx *octx,
 		enum op_type binop,
-		out_val *vconst, out_val *vregp_or_lbl,
-		out_val *rhs)
+		const out_val *vconst, const out_val *vregp_or_lbl,
+		const out_val *rhs)
 {
 	/* if it's a minus, we enforce an order */
 	if((binop == op_plus || (binop == op_minus && vconst == rhs))
 	&& (vregp_or_lbl->type != V_LBL || (fopt_mode & FOPT_SYMBOL_ARITH)))
 	{
+		out_val *mut_vregp_or_lbl = v_dup_or_reuse(
+				octx, vregp_or_lbl, vregp_or_lbl->t);
 		long *p;
 
-		vregp_or_lbl = v_dup_or_reuse(octx, vregp_or_lbl, vregp_or_lbl->t);
-
-		switch(vregp_or_lbl->type){
+		switch(mut_vregp_or_lbl->type){
 			case V_LBL:
-				p = &vregp_or_lbl->bits.lbl.offset;
+				p = &mut_vregp_or_lbl->bits.lbl.offset;
 				break;
 
 			case V_REG:
-				p = &vregp_or_lbl->bits.regoff.offset;
+				p = &mut_vregp_or_lbl->bits.regoff.offset;
 				break;
 
 			default:
@@ -79,17 +79,17 @@ static out_val *try_mem_offset(
 
 		*p += (binop == op_minus ? -1 : 1) *
 			vconst->bits.val_i *
-			calc_ptr_step(vregp_or_lbl->t);
+			calc_ptr_step(mut_vregp_or_lbl->t);
 
 		out_val_consume(octx, vconst);
 
-		return vregp_or_lbl;
+		return mut_vregp_or_lbl;
 	}
 
 	return NULL;
 }
 
-static int const_is_noop(enum op_type binop, out_val *vconst, int is_lhs)
+static int const_is_noop(enum op_type binop, const out_val *vconst, int is_lhs)
 {
 	switch(binop){
 		case op_plus:
@@ -121,7 +121,7 @@ static int const_is_noop(enum op_type binop, out_val *vconst, int is_lhs)
 static out_val *try_const_fold(
 		out_ctx *octx,
 		enum op_type binop,
-		out_val *lhs, out_val *rhs)
+		const out_val *lhs, const out_val *rhs)
 {
 	const char *err = NULL;
 	const integral_t eval = const_op_exec(
@@ -141,7 +141,7 @@ static out_val *try_const_fold(
 
 static void apply_ptr_step(
 		out_ctx *octx,
-		out_val **lhs, out_val **rhs,
+		const out_val **lhs, const out_val **rhs,
 		int *div_out)
 {
 	int l_ptr = !!type_is((*lhs)->t, type_ptr);
@@ -155,12 +155,14 @@ static void apply_ptr_step(
 
 	if(l_ptr ^ r_ptr){
 		/* ptr +/- int, adjust the non-ptr by sizeof *ptr */
-		out_val **incdec = (l_ptr ? rhs : lhs);
-		*incdec = v_dup_or_reuse(octx, *incdec, (*incdec)->t);
+		const out_val **incdec = (l_ptr ? rhs : lhs);
+		out_val *mut_incdec;
 
-		switch((*incdec)->type){
+		*incdec = mut_incdec = v_dup_or_reuse(octx, *incdec, (*incdec)->t);
+
+		switch(mut_incdec->type){
 			case V_CONST_I:
-				(*incdec)->bits.val_i *= ptr_step;
+				mut_incdec->bits.val_i *= ptr_step;
 				break;
 
 			case V_CONST_F:
@@ -169,7 +171,8 @@ static void apply_ptr_step(
 			case V_LBL:
 			case V_FLAG:
 			case V_REG_SPILT:
-				*incdec = v_to_reg(octx, *incdec);
+				assert(mut_incdec->retains == 1);
+				*incdec = (out_val *)v_to_reg(octx, *incdec);
 
 			case V_REG:
 			{
@@ -177,10 +180,8 @@ static void apply_ptr_step(
 						octx,
 						type_nav_btype(cc1_type_nav, type_intptr_t),
 						ptr_step);
-				out_val *mult;
 
-				mult = out_op(octx, op_multiply, *incdec, n);
-				*incdec = mult;
+				*incdec = (out_val *)out_op(octx, op_multiply, *incdec, n);
 				break;
 			}
 		}
@@ -194,45 +195,51 @@ static void apply_ptr_step(
 static void try_shift_conv(
 		out_ctx *octx,
 		enum op_type *binop,
-		out_val **lhs, out_val **rhs)
+		const out_val **lhs, const out_val **rhs)
 {
 	if(*binop == op_divide && (*rhs)->type == V_CONST_I){
 		integral_t k = (*rhs)->bits.val_i;
 		if((k & (k - 1)) == 0){
 			/* power of two, can shift */
+			out_val *mut;
+
 			*binop = op_shiftr;
 
-			*rhs = v_dup_or_reuse(octx, *rhs, (*rhs)->t);
-			(*rhs)->bits.val_i = log2(k);
+			*rhs = mut = v_dup_or_reuse(octx, *rhs, (*rhs)->t);
+			mut->bits.val_i = log2(k);
 		}
 	}else if(*binop == op_multiply){
-		out_val **vconst = (*lhs)->type == V_CONST_I ? lhs : rhs;
+		const out_val **vconst = (*lhs)->type == V_CONST_I ? lhs : rhs;
 		integral_t k = (*vconst)->bits.val_i;
 
 		if((k & (k - 1)) == 0){
+			out_val *mut;
+
 			*binop = op_shiftl;
 
-			*vconst = v_dup_or_reuse(octx, *vconst, (*vconst)->t);
-			(*vconst)->bits.val_i = log2(k);
+			*vconst = mut = v_dup_or_reuse(octx, *vconst, (*vconst)->t);
+			mut->bits.val_i = log2(k);
 		}
 	}
 }
 
-static out_val *consume_one(
+static const out_val *consume_one(
 		out_ctx *octx,
-		out_val *const ret,
-		out_val *const a,
-		out_val *const b)
+		const out_val *const ret,
+		const out_val *const a,
+		const out_val *const b)
 {
 	out_val_consume(octx, ret == a ? b : a);
 	return ret;
 }
 
-out_val *out_op(out_ctx *octx, enum op_type binop, out_val *lhs, out_val *rhs)
+const out_val *out_op(
+		out_ctx *octx, enum op_type binop,
+		const out_val *lhs, const out_val *rhs)
 {
 	int div = 0;
-	out_val *vconst = NULL, *vregp_or_lbl = NULL;
-	out_val *result;
+	const out_val *vconst = NULL, *vregp_or_lbl = NULL;
+	const out_val *result;
 
 	fill_if_type(lhs, &vconst, &vregp_or_lbl);
 	fill_if_type(rhs, &vconst, &vregp_or_lbl);
@@ -249,7 +256,7 @@ out_val *out_op(out_ctx *octx, enum op_type binop, out_val *lhs, out_val *rhs)
 
 	/* constant folding */
 	if(vconst){
-		out_val *oconst = (vconst == lhs ? rhs : lhs);
+		const out_val *oconst = (vconst == lhs ? rhs : lhs);
 
 		if(oconst->type == V_CONST_I){
 			int step_l = calc_ptr_step(lhs->t);
@@ -297,7 +304,7 @@ out_val *out_op(out_ctx *octx, enum op_type binop, out_val *lhs, out_val *rhs)
 	return result;
 }
 
-out_val *out_op_unary(out_ctx *octx, enum op_type uop, out_val *val)
+const out_val *out_op_unary(out_ctx *octx, enum op_type uop, const out_val *val)
 {
 	switch(uop){
 		case op_plus:

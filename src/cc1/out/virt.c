@@ -19,21 +19,23 @@
 #include "asm.h"
 #include "impl.h"
 
+#define REMOVE_CONST(t, exp) ((t)(exp))
+
 #define TODO() \
 	fprintf(stderr, "%s:%d: TODO: %s\n", __FILE__, __LINE__, __func__)
 
-void out_flush_volatile(out_ctx *octx, out_val *val)
+void out_flush_volatile(out_ctx *octx, const out_val *val)
 {
 	out_val_consume(octx, v_reg_apply_offset(octx, v_to_reg(octx, val)));
 }
 
-int v_is_const_reg(out_val *v)
+int v_is_const_reg(const out_val *v)
 {
 	return v->type == V_REG
 		&& impl_reg_frame_const(&v->bits.regoff.reg);
 }
 
-out_val *v_to_stack_mem(out_ctx *octx, out_val *vp, long stack_pos)
+const out_val *v_to_stack_mem(out_ctx *octx, const out_val *vp, long stack_pos)
 {
 	out_val *store = v_new_bp3(octx, NULL, vp->t, stack_pos);
 
@@ -54,7 +56,7 @@ void v_reg_to_stack(
 		const struct vreg *vr,
 		type *ty, long where)
 {
-	out_val *reg = v_new_reg(octx, NULL, ty, vr);
+	const out_val *reg = v_new_reg(octx, NULL, ty, vr);
 
 	/* value has been stored -
 	 * don't need to flush the pointer we get returned */
@@ -62,7 +64,7 @@ void v_reg_to_stack(
 			v_to_stack_mem(octx, reg, -where));
 }
 
-static int v_in(out_val *vp, enum vto to)
+static int v_in(const out_val *vp, enum vto to)
 {
 	switch(vp->type){
 		case V_FLAG:
@@ -83,7 +85,7 @@ static int v_in(out_val *vp, enum vto to)
 	return 0;
 }
 
-static ucc_wur out_val *v_save_reg(out_ctx *octx, out_val *vp)
+static ucc_wur const out_val *v_save_reg(out_ctx *octx, const out_val *vp)
 {
 	assert(vp->type == V_REG && "not reg");
 
@@ -96,10 +98,10 @@ static ucc_wur out_val *v_save_reg(out_ctx *octx, out_val *vp)
 			-octx->stack_sz);
 }
 
-out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc)
+const out_val *v_to(out_ctx *octx, const out_val *vp, enum vto loc)
 {
 	if(v_in(vp, loc))
-		return vp;
+		return REMOVE_CONST(out_val *, vp);
 
 	/* TO_CONST can't be done - it should already be const,
 	 * or another option should be chosen */
@@ -117,7 +119,7 @@ out_val *v_to(out_ctx *octx, out_val *vp, enum vto loc)
 	assert(0 && "can't satisfy v_to");
 }
 
-static ucc_wur out_val *v_freeup_regp(out_ctx *octx, out_val *vp)
+static ucc_wur const out_val *v_freeup_regp(out_ctx *octx, const out_val *vp)
 {
 	struct vreg r;
 	int got_reg;
@@ -132,7 +134,7 @@ static ucc_wur out_val *v_freeup_regp(out_ctx *octx, out_val *vp)
 		impl_reg_cp(octx, vp, &r);
 
 		/* change vp's register to 'r', so that vp's original register is free */
-		vp->bits.regoff.reg = r;
+		REMOVE_CONST(out_val *, vp)->bits.regoff.reg = r;
 
 		return out_val_retain(octx, vp);
 
@@ -143,12 +145,12 @@ static ucc_wur out_val *v_freeup_regp(out_ctx *octx, out_val *vp)
 	}
 }
 
-static out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
+static const out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
 {
 	out_val_list *i;
 
 	for(i = octx->val_head; i; i = i->next){
-		out_val *v = &i->val;
+		const out_val *v = &i->val;
 		if(v->type == V_REG && vreg_eq(&v->bits.regoff.reg, reg))
 			return v;
 	}
@@ -158,7 +160,7 @@ static out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
 
 void v_freeup_reg(out_ctx *octx, const struct vreg *r)
 {
-	out_val *v = v_find_reg(octx, r);
+	const out_val *v = v_find_reg(octx, r);
 
 	if(v)
 		out_val_consume(octx, v_freeup_regp(octx, v));
@@ -171,14 +173,14 @@ int v_unused_reg(
 {
 	unsigned char used[sizeof(octx->reserved_regs)];
 	out_val_list *it;
-	out_val *first;
+	const out_val *first;
 	int i;
 
 	memcpy(used, octx->reserved_regs, sizeof used);
 	first = NULL;
 
 	for(it = octx->val_head; it; it = it->next){
-		out_val *this = &it->val;
+		const out_val *this = &it->val;
 		if(this->retains
 		&& this->type == V_REG
 		&& this->bits.regoff.reg.is_float == fp)
@@ -207,15 +209,15 @@ int v_unused_reg(
 	return 0;
 }
 
-out_val *v_to_reg_given(
-		out_ctx *octx, out_val *from,
+const out_val *v_to_reg_given(
+		out_ctx *octx, const out_val *from,
 		const struct vreg *given)
 {
 	return impl_load(octx, from, given);
 }
 
-out_val *v_to_reg_given_freeup(
-		out_ctx *octx, out_val *from,
+const out_val *v_to_reg_given_freeup(
+		out_ctx *octx, const out_val *from,
 		const struct vreg *given)
 {
 	if(from->type == V_REG
@@ -228,7 +230,7 @@ out_val *v_to_reg_given_freeup(
 	return v_to_reg_given(octx, from, given);
 }
 
-out_val *v_to_reg_out(out_ctx *octx, out_val *conv, struct vreg *out)
+const out_val *v_to_reg_out(out_ctx *octx, const out_val *conv, struct vreg *out)
 {
 	if(conv->type != V_REG){
 		struct vreg chosen;
@@ -249,14 +251,14 @@ out_val *v_to_reg_out(out_ctx *octx, out_val *conv, struct vreg *out)
 	}
 }
 
-out_val *v_to_reg(out_ctx *octx, out_val *conv)
+const out_val *v_to_reg(out_ctx *octx, const out_val *conv)
 {
 	return v_to_reg_out(octx, conv, NULL);
 }
 
-out_val *v_reg_apply_offset(out_ctx *octx, out_val *const orig)
+const out_val *v_reg_apply_offset(out_ctx *octx, const out_val *const orig)
 {
-	out_val *vreg;
+	const out_val *vreg;
 	long off;
 
 	switch(orig->type){
@@ -272,12 +274,12 @@ out_val *v_reg_apply_offset(out_ctx *octx, out_val *const orig)
 	if(!off)
 		return orig;
 
-	orig->bits.regoff.offset = 0;
+	REMOVE_CONST(out_val *, orig)->bits.regoff.offset = 0;
 	{
 		vreg = v_dup_or_reuse(octx, orig, orig->t);
 	}
-	orig->bits.regoff.offset = off;
-	vreg->bits.regoff.offset = 0;
+	REMOVE_CONST(out_val *, orig)->bits.regoff.offset = off;
+	REMOVE_CONST(out_val *, vreg)->bits.regoff.offset = 0;
 
 	/* use impl_op as it doesn't do reg offsetting */
 	return impl_op(octx, op_plus,
@@ -285,9 +287,9 @@ out_val *v_reg_apply_offset(out_ctx *octx, out_val *const orig)
 			out_new_l(octx, vreg->t, off));
 }
 
-static int val_present(out_val *v, out_val **ignores)
+static int val_present(const out_val *v, const out_val **ignores)
 {
-	out_val **i;
+	const out_val **i;
 	for(i = ignores; i && *i; i++)
 		if(v == *i)
 			return 1;
@@ -296,7 +298,7 @@ static int val_present(out_val *v, out_val **ignores)
 
 void v_save_regs(
 		out_ctx *octx, type *func_ty,
-		out_val *ignores[], out_val *fnval)
+		const out_val *ignores[], const out_val *fnval)
 {
 	/* save all registers except callee save,
 	 * and the call-expr reg, if present */
@@ -341,12 +343,12 @@ void v_save_regs(
 
 			case V_FLAG:
 				assert(v->retains == 1 && "v_save_regs(): retained v");
-				v = v_to_reg(octx, v);
+				v = REMOVE_CONST(out_val *, v_to_reg(octx, v));
 				save = 1;
 		}
 
 		if(save){
-			out_val *new;
+			const out_val *new;
 
 			assert(v->retains == 1 && "v_save_regs(): too heavily retained v");
 
@@ -443,7 +445,7 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 		type *const ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 		const unsigned new_sz = pack_to_align(octx->stack_sz, align);
 		const unsigned added = new_sz - octx->stack_sz;
-		out_val *sp = v_new_sp(octx, NULL);
+		const out_val *sp = v_new_sp(octx, NULL);
 
 		assert(sp->retains == 1);
 

@@ -32,7 +32,7 @@ void gen_stmt_while(stmt *s, out_ctx *octx)
 
 	out_current_blk(octx, s->blk_continue);
 	{
-		out_val *cond;
+		const out_val *cond;
 
 		flow_gen(s->flow, s->symtab, endlbls, octx);
 		cond = gen_expr(s->expr, octx);

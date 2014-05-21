@@ -27,7 +27,7 @@ struct out_blk
 	} type;
 
 	/* phi terminators: */
-	out_val *phi_val;
+	const out_val *phi_val;
 
 	union
 	{
@@ -37,7 +37,7 @@ struct out_blk
 		out_blk *next;
 
 		/* expr jump */
-		out_val *exp;
+		const out_val *exp;
 
 		/* cond */
 		struct blk_cond

@@ -17,8 +17,8 @@ typedef void func_const(struct expr *, consty *);
 typedef const char *func_str(void);
 typedef void func_mutate_expr(struct expr *);
 
-typedef ucc_wur out_val *func_gen(struct expr *, out_ctx *);
-typedef ucc_wur out_val *func_gen_lea(struct expr *, out_ctx *);
+typedef ucc_wur const out_val *func_gen(struct expr *, out_ctx *);
+typedef ucc_wur const out_val *func_gen_lea(struct expr *, out_ctx *);
 
 #define UNUSED_OCTX() (void)octx; return NULL
 

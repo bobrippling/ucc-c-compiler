@@ -134,7 +134,7 @@ expr *builtin_parse(const char *sp, symtable *scope)
 	return NULL;
 }
 
-out_val *builtin_gen_print(expr *e, out_ctx *octx)
+const out_val *builtin_gen_print(expr *e, out_ctx *octx)
 {
 	/*const enum pdeclargs dflags =
 		  PDECL_INDENT
@@ -182,7 +182,7 @@ static void wur_builtin(expr *e)
 	e->freestanding = 0; /* needs use */
 }
 
-static out_val *builtin_gen_undefined(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_undefined(expr *e, out_ctx *octx)
 {
 	(void)e;
 	out_ctrl_end_undefined(octx);
@@ -215,7 +215,7 @@ static void fold_memset(expr *e, symtable *stab)
 	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
 
-static out_val *builtin_gen_memset(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_memset(expr *e, out_ctx *octx)
 {
 	size_t n, rem;
 	unsigned i;
@@ -224,7 +224,7 @@ static out_val *builtin_gen_memset(expr *e, out_ctx *octx)
 			e->bits.builtin_memset.len);
 
 	type *textra, *textrap;
-	out_val *v_ptr;
+	const out_val *v_ptr;
 
 	if(!tzero)
 		tzero = type_nav_btype(cc1_type_nav, type_nchar);
@@ -250,8 +250,8 @@ static out_val *builtin_gen_memset(expr *e, out_ctx *octx)
 #endif
 
 	for(i = 0; i < n; i++){
-		out_val *v_zero = out_new_zero(octx, tzero);
-		out_val *v_inc;
+		const out_val *v_zero = out_new_zero(octx, tzero);
+		const out_val *v_inc;
 
 		/* *p = 0 */
 		out_store(octx, v_ptr, v_zero);
@@ -331,7 +331,7 @@ static decl *decl_new_tref(char *sp, type *ref)
 
 static void builtin_memcpy_single(
 		out_ctx *octx,
-		out_val **dst, out_val **src)
+		const out_val **dst, const out_val **src)
 {
 	type *t1 = type_nav_btype(cc1_type_nav, type_intptr_t);
 
@@ -341,7 +341,7 @@ static void builtin_memcpy_single(
 	*src = out_op(octx, op_plus, *src, out_new_l(octx, t1, 1));
 }
 
-static out_val *builtin_gen_memcpy(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_memcpy(expr *e, out_ctx *octx)
 {
 #ifdef BUILTIN_USE_LIBC
 	/* TODO - also with memset */
@@ -363,7 +363,7 @@ static out_val *builtin_gen_memcpy(expr *e, out_ctx *octx)
 	size_t i = e->bits.num.val.i;
 	type *tptr;
 	unsigned tptr_sz;
-	out_val *dest, *src;
+	const out_val *dest, *src;
 
 	dest = lea_expr(e->lhs, octx);
 	src = lea_expr(e->rhs, octx);
@@ -561,7 +561,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static out_val *builtin_gen_frame_address(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_frame_address(expr *e, out_ctx *octx)
 {
 	const int depth = e->bits.num.val.i;
 
@@ -599,7 +599,7 @@ static void fold_reg_save_area(expr *e, symtable *stab)
 	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar));
 }
 
-static out_val *gen_reg_save_area(expr *e, out_ctx *octx)
+static const out_val *gen_reg_save_area(expr *e, out_ctx *octx)
 {
 	(void)e;
 	out_comment(octx, "stack local offset:");
@@ -637,7 +637,7 @@ static void fold_expect(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static out_val *builtin_gen_expect(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_expect(expr *e, out_ctx *octx)
 {
 	/* not needed if it's const, but gcc and clang do this */
 	out_val_consume(octx,
@@ -667,7 +667,7 @@ static expr *parse_expect(const char *ident, symtable *scope)
 
 #define CHOOSE_EXPR_CHOSEN(e) ((e)->funcargs[(e)->bits.num.val.i ? 1 : 2])
 
-static out_val *choose_expr_lea(expr *e, out_ctx *octx)
+static const out_val *choose_expr_lea(expr *e, out_ctx *octx)
 {
 	return lea_expr(CHOOSE_EXPR_CHOSEN(e), octx);
 }
@@ -710,7 +710,7 @@ static void const_choose_expr(expr *e, consty *k)
 	const_fold(CHOOSE_EXPR_CHOSEN(e), k);
 }
 
-static out_val *gen_choose_expr(expr *e, out_ctx *octx)
+static const out_val *gen_choose_expr(expr *e, out_ctx *octx)
 {
 	/* forward to the chosen expr */
 	return gen_expr(CHOOSE_EXPR_CHOSEN(e), octx);
@@ -809,7 +809,7 @@ need_char_p:
 	wur_builtin(e);
 }
 
-static out_val *builtin_gen_nan(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_nan(expr *e, out_ctx *octx)
 {
 	return out_new_nan(octx, e->tree_type);
 }

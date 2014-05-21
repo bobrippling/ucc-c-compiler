@@ -148,12 +148,12 @@ chosen:
 	(void)stab;
 }
 
-out_val *gen_expr_val(expr *e, out_ctx *octx)
+const out_val *gen_expr_val(expr *e, out_ctx *octx)
 {
 	return out_new_num(octx, e->tree_type, &e->bits.num);
 }
 
-out_val *gen_expr_str_val(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_val(expr *e, out_ctx *octx)
 {
 	idt_printf("val.i: 0x%lx\n", (unsigned long)e->bits.num.val.i);
 	UNUSED_OCTX();
@@ -185,7 +185,7 @@ expr *expr_new_numeric(numeric *num)
 	return e;
 }
 
-out_val *gen_expr_style_val(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_val(expr *e, out_ctx *octx)
 {
 	if(K_FLOATING(e->bits.num))
 		stylef("%" NUMERIC_FMT_LD, e->bits.num.val.f);

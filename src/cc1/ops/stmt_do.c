@@ -16,7 +16,7 @@ void fold_stmt_do(stmt *s)
 
 void gen_stmt_do(stmt *s, out_ctx *octx)
 {
-	out_val *cond;
+	const out_val *cond;
 	out_blk *begin;
 
 	begin = out_blk_new(octx, "do_begin");

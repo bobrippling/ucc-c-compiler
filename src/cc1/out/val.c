@@ -68,7 +68,7 @@ out_val *v_new(out_ctx *octx, type *ty)
 	return v;
 }
 
-static out_val *v_dup(out_ctx *octx, out_val *from, type *ty)
+static out_val *v_dup(out_ctx *octx, const out_val *from, type *ty)
 {
 	switch(from->type){
 		case V_CONST_I:
@@ -84,8 +84,8 @@ copy:
 
 		case V_FLAG:
 		{
-			out_val *dup = v_to_reg(octx, from);
-			out_val_overwrite(from, dup); /* replace flag */
+			const out_val *dup = v_to_reg(octx, from);
+			out_val_overwrite((out_val *)from, dup); /* replace flag */
 			/* fall */
 			from = dup;
 		}
@@ -119,8 +119,10 @@ copy:
 	assert(0);
 }
 
-static out_val *v_reuse(out_ctx *octx, out_val *from, type *ty)
+static out_val *v_reuse(out_ctx *octx, const out_val *from, type *ty)
 {
+	out_val *mut;
+
 	if(!from || from->retains > 1){
 		if(from)
 			out_val_consume(octx, from);
@@ -129,11 +131,13 @@ static out_val *v_reuse(out_ctx *octx, out_val *from, type *ty)
 	}
 
 	assert(from->retains == 1);
-	from->t = ty;
-	return from; /* reuse */
+	mut = (out_val *)from;
+
+	mut->t = ty;
+	return mut; /* reuse */
 }
 
-out_val *v_dup_or_reuse(out_ctx *octx, out_val *from, type *ty)
+out_val *v_dup_or_reuse(out_ctx *octx, const out_val *from, type *ty)
 {
 	assert(from);
 
@@ -147,7 +151,7 @@ out_val *v_dup_or_reuse(out_ctx *octx, out_val *from, type *ty)
 }
 
 out_val *v_new_flag(
-		out_ctx *octx, out_val *from,
+		out_ctx *octx, const out_val *from,
 		enum flag_cmp cmp, enum flag_mod mod)
 {
 	out_val *v = v_reuse(octx, from,
@@ -160,7 +164,7 @@ out_val *v_new_flag(
 }
 
 out_val *v_new_reg(
-		out_ctx *octx, out_val *from,
+		out_ctx *octx, const out_val *from,
 		type *ty, const struct vreg *reg)
 {
 	/* reg may alias from->bits... */
@@ -172,7 +176,7 @@ out_val *v_new_reg(
 	return v;
 }
 
-out_val *v_new_sp(out_ctx *octx, out_val *from)
+out_val *v_new_sp(out_ctx *octx, const out_val *from)
 {
 	struct vreg r;
 
@@ -182,7 +186,9 @@ out_val *v_new_sp(out_ctx *octx, out_val *from)
 	return v_new_reg(octx, from, type_nav_voidptr(cc1_type_nav), &r);
 }
 
-out_val *v_new_sp3(out_ctx *octx, out_val *from, type *ty, long stack_pos)
+out_val *v_new_sp3(
+		out_ctx *octx, const out_val *from,
+		type *ty, long stack_pos)
 {
 	out_val *v = v_new_sp(octx, from);
 	v->t = ty;
@@ -190,30 +196,33 @@ out_val *v_new_sp3(out_ctx *octx, out_val *from, type *ty, long stack_pos)
 	return v;
 }
 
-out_val *v_new_bp3(out_ctx *octx, out_val *from, type *ty, long stack_pos)
+out_val *v_new_bp3(
+		out_ctx *octx, const out_val *from,
+		type *ty, long stack_pos)
 {
 	out_val *v = v_new_sp3(octx, from, ty, stack_pos);
 	v->bits.regoff.reg.idx = REG_BP;
 	return v;
 }
 
-out_val *out_val_release(out_ctx *octx, out_val *v)
+const out_val *out_val_release(out_ctx *octx, const out_val *v)
 {
+	out_val *mut = (out_val *)v;
 	(void)octx;
-	assert(v->retains > 0 && "double release");
-	if(--v->retains == 0)
+	assert(mut->retains > 0 && "double release");
+	if(--mut->retains == 0)
 		return NULL;
-	return v;
+	return mut;
 }
 
-out_val *out_val_retain(out_ctx *octx, out_val *v)
+const out_val *out_val_retain(out_ctx *octx, const out_val *v)
 {
 	(void)octx;
-	v->retains++;
+	((out_val *)v)->retains++;
 	return v;
 }
 
-void out_val_overwrite(out_val *d, out_val *s)
+void out_val_overwrite(out_val *d, const out_val *s)
 {
 	/* don't copy .retains */
 	d->type = s->type;

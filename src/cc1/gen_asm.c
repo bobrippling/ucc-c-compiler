@@ -25,12 +25,12 @@
 #include "gen_style.h"
 #include "out/dbg.h"
 
-void IGNORE_PRINTGEN(out_val *v)
+void IGNORE_PRINTGEN(const out_val *v)
 {
 	(void)v;
 }
 
-out_val *gen_expr(expr *e, out_ctx *octx)
+const out_val *gen_expr(expr *e, out_ctx *octx)
 {
 	consty k;
 
@@ -55,7 +55,7 @@ out_val *gen_expr(expr *e, out_ctx *octx)
 	}
 }
 
-out_val *lea_expr(expr *e, out_ctx *octx)
+const out_val *lea_expr(expr *e, out_ctx *octx)
 {
 	char buf[WHERE_BUF_SIZ];
 

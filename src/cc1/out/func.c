@@ -17,8 +17,8 @@
 #include "../cc1.h" /* mopt_mode */
 #include "../../util/platform.h"
 
-out_val *out_call(out_ctx *octx,
-		out_val *fn, out_val **args,
+const out_val *out_call(out_ctx *octx,
+		const out_val *fn, const out_val **args,
 		type *fnty)
 {
 	return impl_call(octx, fn, args, fnty);

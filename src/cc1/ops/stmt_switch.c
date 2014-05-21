@@ -208,7 +208,7 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 {
 	stmt **iter, *pdefault;
 	out_blk *blk_switch_end = out_blk_new(octx, "switch_fin");
-	out_val *cmp_with;
+	const out_val *cmp_with;
 
 	s->blk_break = blk_switch_end;
 
@@ -227,7 +227,7 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 
 		if(stmt_kind(cse, case_range)){
 			numeric max;
-			out_val *this_case[2];
+			const out_val *this_case[2];
 			out_blk *blk_test2 = out_blk_new(octx, "range_true");
 
 			/* TODO: proper signed/unsiged format - out_op() */
@@ -251,7 +251,7 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 					blk_cancel);
 
 		}else{
-			out_val *this_case = out_new_num(octx, cse->expr->tree_type, &iv);
+			const out_val *this_case = out_new_num(octx, cse->expr->tree_type, &iv);
 
 			out_val_retain(octx, cmp_with);
 			out_ctrl_branch(octx,

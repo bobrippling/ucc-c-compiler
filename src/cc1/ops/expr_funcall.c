@@ -325,9 +325,9 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		e->freestanding = 0; /* needs use */
 }
 
-out_val *gen_expr_funcall(expr *e, out_ctx *octx)
+const out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 {
-	out_val *fn_ret;
+	const out_val *fn_ret;
 
 	if(0){
 		out_comment(octx, "start manual __asm__");
@@ -338,7 +338,7 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 		out_comment(octx, "end manual __asm__");
 	}else{
 		/* continue with normal funcall */
-		out_val *fn, **args = NULL;
+		const out_val *fn, **args = NULL;
 
 		fn = gen_expr(e->expr, octx);
 
@@ -347,7 +347,7 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 
 			for(aiter = e->funcargs; *aiter; aiter++){
 				expr *earg = *aiter;
-				out_val *arg;
+				const out_val *arg;
 
 				/* should be of size int or larger (for integral types)
 				 * or double (for floating types)
@@ -360,13 +360,13 @@ out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 		/* consumes fn and args */
 		fn_ret = out_call(octx, fn, args, e->expr->tree_type);
 
-		dynarray_free(out_val **, &args, NULL);
+		dynarray_free(const out_val **, &args, NULL);
 	}
 
 	return fn_ret;
 }
 
-out_val *gen_expr_str_funcall(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_funcall(expr *e, out_ctx *octx)
 {
 	expr **iter;
 
@@ -412,7 +412,7 @@ expr *expr_new_funcall()
 	return e;
 }
 
-out_val *gen_expr_style_funcall(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_funcall(expr *e, out_ctx *octx)
 {
 	stylef("(");
 	IGNORE_PRINTGEN(gen_expr(e->expr, octx));

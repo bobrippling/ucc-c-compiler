@@ -46,7 +46,7 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 	}
 
 	if(s->flow->for_while){
-		out_val *for_cond;
+		const out_val *for_cond;
 
 		out_current_blk(octx, blk_test);
 		for_cond = gen_expr(s->flow->for_while, octx);

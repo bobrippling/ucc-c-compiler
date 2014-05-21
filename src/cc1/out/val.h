@@ -72,22 +72,22 @@ int vreg_eq(const struct vreg *, const struct vreg *);
 
 out_val *v_new(out_ctx *octx, type *);
 
-out_val *v_dup_or_reuse(out_ctx *octx, out_val *from, type *ty);
+out_val *v_dup_or_reuse(out_ctx *octx, const out_val *from, type *ty);
 
 out_val *v_new_flag(
-		out_ctx *octx, out_val *from,
+		out_ctx *octx, const out_val *from,
 		enum flag_cmp, enum flag_mod);
 
-out_val *v_new_sp(out_ctx *octx, out_val *from /* void* */);
+out_val *v_new_sp(out_ctx *octx, const out_val *from /* void* */);
 
-out_val *v_new_sp3(out_ctx *octx, out_val *from, type *ty,
+out_val *v_new_sp3(out_ctx *octx, const out_val *from, type *ty,
 		long stack_pos);
-out_val *v_new_bp3(out_ctx *octx, out_val *from, type *ty,
+out_val *v_new_bp3(out_ctx *octx, const out_val *from, type *ty,
 		long stack_pos);
 
-out_val *v_new_reg(out_ctx *octx, out_val *from, type *ty,
+out_val *v_new_reg(out_ctx *octx, const out_val *from, type *ty,
 		const struct vreg *reg);
 
-void out_val_overwrite(out_val *d, out_val *s);
+void out_val_overwrite(out_val *d, const out_val *s);
 
 #endif

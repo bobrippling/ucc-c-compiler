@@ -10,7 +10,7 @@ const char *str_expr__Generic()
 	return "_Generic";
 }
 
-static out_val *generic_lea(expr *e, out_ctx *octx)
+static const out_val *generic_lea(expr *e, out_ctx *octx)
 {
 	return lea_expr(e->bits.generic.chosen->e, octx);
 }
@@ -133,12 +133,12 @@ void fold_expr__Generic(expr *e, symtable *stab)
 	memcpy_safe(&e->where, &e->bits.generic.chosen->e->where);
 }
 
-out_val *gen_expr__Generic(expr *e, out_ctx *octx)
+const out_val *gen_expr__Generic(expr *e, out_ctx *octx)
 {
 	return gen_expr(e->bits.generic.chosen->e, octx);
 }
 
-out_val *gen_expr_str__Generic(expr *e, out_ctx *octx)
+const out_val *gen_expr_str__Generic(expr *e, out_ctx *octx)
 {
 	struct generic_lbl **i;
 
@@ -199,7 +199,7 @@ expr *expr_new__Generic(expr *test, struct generic_lbl **lbls)
 	return e;
 }
 
-out_val *gen_expr_style__Generic(expr *e, out_ctx *octx)
+const out_val *gen_expr_style__Generic(expr *e, out_ctx *octx)
 {
 	struct generic_lbl **i;
 
