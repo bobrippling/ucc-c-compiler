@@ -904,6 +904,9 @@ static void x86_reg_cp(
 
 void impl_reg_cp(out_ctx *octx, const out_val *from, const struct vreg *to_reg)
 {
+	out_val *mut_from;
+	long off;
+
 	UCC_ASSERT(from->type == V_REG,
 			"reg_cp on non register type 0x%x", from->type);
 
@@ -911,7 +914,11 @@ void impl_reg_cp(out_ctx *octx, const out_val *from, const struct vreg *to_reg)
 		return;
 
 	/* force offset normalisation */
-	from = v_to(octx, from, TO_REG);
+	mut_from = (out_val *)from; /* fine - we aren't technically changing it */
+	if((off = from->bits.regoff.offset)){
+		mut_from->bits.regoff.offset = 0;
+		from = mut_from = (out_val *)impl_op(octx, op_plus, from, out_new_l(octx, from->t, off));
+	}
 
 	x86_reg_cp(octx, to_reg, &from->bits.regoff.reg, from->t);
 }
