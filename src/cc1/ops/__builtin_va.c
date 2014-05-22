@@ -212,11 +212,10 @@ static const out_val *va_arg_gen_read(
 	const unsigned ws = platform_word_size();
 	const out_val *valist, *gpoff_addr, *gpoff_val;
 	const int VALIST_OFFSET_TYPE = type_uint;
+	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 
 	valist = gen_expr(e->lhs, octx);
-	valist = out_change_type(
-			octx, valist,
-			type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
+	valist = out_change_type(octx, valist, voidp);
 
 	out_val_retain(octx, valist);
 	gpoff_addr = out_op(
@@ -279,12 +278,15 @@ static const out_val *va_arg_gen_read(
 							octx,
 							type_nav_btype(cc1_type_nav, type_long),
 							mem_reg_save_area->bits.var.struct_offset)),
-					type_ptr_to(type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE)));
+					type_ptr_to(voidp)); /* void *reg_save_area */
 
 		reg_save_area_value = out_op(
 				octx, op_plus,
 				out_deref(octx, membptr),
-				gp_off_plus); /* reg_save_area + gp_o */
+				out_change_type(
+					octx,
+					gp_off_plus, /* promote from unsigned to intptr_t */
+					type_ptr_to(type_nav_btype(cc1_type_nav, type_intptr_t))));
 
 		out_ctrl_transfer(octx, blk_fin, reg_save_area_value);
 	}
