@@ -256,6 +256,7 @@ static const out_val *va_arg_gen_read(
 		/* increment either 8 for an integral, or 16 for a float argument
 		 * since xmm0 are 128-bit registers, aka 16 byte
 		 */
+		out_val_retain(octx, gpoff_val);
 		gp_off_plus =
 			out_op(octx,
 					op_plus,
@@ -264,7 +265,6 @@ static const out_val *va_arg_gen_read(
 						type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE),
 						increment));
 
-		out_val_retain(octx, gp_off_plus);
 		out_store(octx, gpoff_addr, gp_off_plus);
 
 		out_val_retain(octx, valist);
@@ -285,7 +285,7 @@ static const out_val *va_arg_gen_read(
 				out_deref(octx, membptr),
 				out_change_type(
 					octx,
-					gp_off_plus, /* promote from unsigned to intptr_t */
+					gpoff_val, /* promote from unsigned to intptr_t */
 					type_ptr_to(type_nav_btype(cc1_type_nav, type_intptr_t))));
 
 		out_ctrl_transfer(octx, blk_fin, reg_save_area_value);
