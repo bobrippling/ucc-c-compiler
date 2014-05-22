@@ -1195,6 +1195,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			enum out_val_store l, r;
 		} ops[] = {
 			/* try in order of most 'difficult' -> least */
+			/* XXX: currently implicit here that V_REG means w/no offset */
 			{ V_REG, V_CONST_I },
 			{ V_LBL, V_CONST_I },
 			{ V_REG_SPILT, V_CONST_I },
@@ -1210,17 +1211,18 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		static const int ops_n = sizeof(ops) / sizeof(ops[0]);
 		int i, need_swap = 0, satisfied = 0;
 
+#define OP_MATCH(vp, op) (   \
+		vp->type == ops[i].op && \
+		(vp->type != V_REG || !vp->bits.regoff.offset))
+
 		for(i = 0; i < ops_n; i++){
-			if(l->type == ops[i].l
-			&& r->type == ops[i].r)
-			{
+			if(OP_MATCH(l, l) && OP_MATCH(r, r)){
 				satisfied = 1;
 				break;
 			}
 
 			if(op_is_commutative(op)
-			&& r->type == ops[i].l
-			&& l->type == ops[i].r)
+			&& OP_MATCH(r, l) && OP_MATCH(l, r))
 			{
 				need_swap = satisfied = 1;
 				break;
