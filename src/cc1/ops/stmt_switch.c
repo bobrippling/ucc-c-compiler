@@ -273,13 +273,13 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 	/* no matches - branch to default/end */
 	out_ctrl_transfer(octx,
 			pdefault ? pdefault->bits.case_blk : blk_switch_end,
-			NULL);
+			NULL, NULL);
 
 	{
 		out_blk *body = out_blk_new(octx, "switch_body");
 		out_current_blk(octx, body);
 		gen_stmt(s->lhs, octx); /* the actual code inside the switch */
-		out_ctrl_transfer(octx, blk_switch_end, NULL);
+		out_ctrl_transfer(octx, blk_switch_end, NULL, NULL);
 		out_current_blk(octx, blk_switch_end);
 	}
 }

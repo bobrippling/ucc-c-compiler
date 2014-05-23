@@ -818,7 +818,7 @@ static const out_val *op_shortcircuit(expr *e, out_ctx *octx)
 		const out_val *rhs = gen_expr(e->rhs, octx);
 		rhs = out_normalise(octx, rhs);
 
-		out_ctrl_transfer(octx, landing, rhs);
+		out_ctrl_transfer(octx, landing, rhs, &blk_rhs);
 	}
 
 	out_current_blk(octx, blk_empty);
@@ -829,7 +829,8 @@ static const out_val *op_shortcircuit(expr *e, out_ctx *octx)
 				out_new_l(
 					octx,
 					type_nav_btype(cc1_type_nav, BOOLEAN_TYPE),
-					e->op == op_orsc ? 1 : 0));
+					e->op == op_orsc ? 1 : 0),
+				&blk_empty);
 
 	}
 

@@ -209,12 +209,14 @@ const out_val *gen_expr_if(expr *e, out_ctx *octx)
 	out_current_blk(octx, blk_lhs);
 	{
 		out_ctrl_transfer(octx, landing,
-				e->lhs ? gen_expr(e->lhs, octx) : cond);
+				e->lhs ? gen_expr(e->lhs, octx) : cond,
+				&blk_lhs);
 	}
 
 	out_current_blk(octx, blk_rhs);
 	{
-		out_ctrl_transfer(octx, landing, gen_expr(e->rhs, octx));
+		out_ctrl_transfer(octx, landing,
+				gen_expr(e->rhs, octx), &blk_rhs);
 	}
 
 	out_current_blk(octx, landing);

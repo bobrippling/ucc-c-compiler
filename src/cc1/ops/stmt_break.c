@@ -24,7 +24,7 @@ void fold_stmt_break(stmt *t)
 void gen_stmt_break(stmt *s, out_ctx *octx)
 {
 	(void)octx;
-	out_ctrl_transfer(octx, s->parent->blk_break, NULL);
+	out_ctrl_transfer(octx, s->parent->blk_break, NULL, NULL);
 }
 
 void style_stmt_break(stmt *s, out_ctx *octx)

@@ -15,7 +15,7 @@ void fold_stmt_continue(stmt *t)
 void gen_stmt_continue(stmt *s, out_ctx *octx)
 {
 	(void)octx;
-	out_ctrl_transfer(octx, s->parent->blk_continue, NULL);
+	out_ctrl_transfer(octx, s->parent->blk_continue, NULL, NULL);
 }
 
 void style_stmt_continue(stmt *s, out_ctx *octx)

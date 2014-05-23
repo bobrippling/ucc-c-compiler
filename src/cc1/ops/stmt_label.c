@@ -35,7 +35,7 @@ void gen_stmt_label(stmt *s, out_ctx *octx)
 	label_makeblk(l, octx);
 
 	/* explicit fall through */
-	out_ctrl_transfer(octx, l->bblock, NULL);
+	out_ctrl_transfer(octx, l->bblock, NULL, NULL);
 	out_current_blk(octx, l->bblock);
 	gen_stmt(s->lhs, octx); /* the code-part of the compound statement */
 }

@@ -36,7 +36,7 @@ void out_ctrl_end_ret(out_ctx *octx, const out_val *ret, type *ty)
 {
 	if(ret)
 		impl_to_retreg(octx, ret, ty);
-	out_ctrl_transfer(octx, octx->epilogue_blk, NULL);
+	out_ctrl_transfer(octx, octx->epilogue_blk, NULL, NULL);
 	octx->current_blk = NULL;
 }
 
@@ -89,9 +89,14 @@ void out_current_blk(out_ctx *octx, out_blk *new_blk)
 }
 
 void out_ctrl_transfer(out_ctx *octx, out_blk *to,
-		const out_val *phi /* optional */)
+		const out_val *phi /* optional */, out_blk **mergee)
 {
 	out_blk *const from = octx->current_blk;
+
+	assert(!!phi == !!mergee);
+
+	if(mergee)
+		*mergee = from;
 
 	if(!from){
 		/* we're transferring from unreachable code, ignore */
@@ -100,6 +105,7 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 		return;
 	}
 
+	assert(!from->phi_val);
 	from->phi_val = phi;
 
 	to->pred_count++;

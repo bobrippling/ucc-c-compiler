@@ -288,7 +288,7 @@ static const out_val *va_arg_gen_read(
 					gpoff_val, /* promote from unsigned to intptr_t */
 					type_ptr_to(type_nav_btype(cc1_type_nav, type_intptr_t))));
 
-		out_ctrl_transfer(octx, blk_fin, reg_save_area_value);
+		out_ctrl_transfer(octx, blk_fin, reg_save_area_value, &blk_reg);
 	}
 
 	/* stack code */
@@ -327,7 +327,7 @@ static const out_val *va_arg_gen_read(
 						type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE),
 						ws)));
 
-		out_ctrl_transfer(octx, blk_fin, overflow_val);
+		out_ctrl_transfer(octx, blk_fin, overflow_val, &blk_stack);
 	}
 
 	out_current_blk(octx, blk_fin);

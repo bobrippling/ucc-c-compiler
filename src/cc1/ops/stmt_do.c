@@ -23,12 +23,12 @@ void gen_stmt_do(stmt *s, out_ctx *octx)
 	s->blk_continue = out_blk_new(octx, "do_test");
 	s->blk_break = out_blk_new(octx, "do_end");
 
-	out_ctrl_transfer(octx, begin, NULL);
+	out_ctrl_transfer(octx, begin, NULL, NULL);
 
 	out_current_blk(octx, begin);
 	{
 		gen_stmt(s->lhs, octx);
-		out_ctrl_transfer(octx, s->blk_continue, NULL);
+		out_ctrl_transfer(octx, s->blk_continue, NULL, NULL);
 	}
 
 	out_current_blk(octx, s->blk_continue);
