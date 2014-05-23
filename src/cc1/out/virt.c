@@ -131,7 +131,7 @@ static ucc_wur const out_val *v_freeup_regp(out_ctx *octx, const out_val *vp)
 
 	if(got_reg){
 		/* move 'vp' into the fresh reg */
-		impl_reg_cp(octx, vp, &r);
+		impl_reg_cp_no_off(octx, vp, &r);
 
 		/* change vp's register to 'r', so that vp's original register is free */
 		REMOVE_CONST(out_val *, vp)->bits.regoff.reg = r;

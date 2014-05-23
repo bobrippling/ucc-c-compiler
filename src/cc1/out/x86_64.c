@@ -792,7 +792,7 @@ const out_val *impl_load(
 			if(from->bits.regoff.offset)
 				goto lea;
 
-			impl_reg_cp(octx, from, reg);
+			impl_reg_cp_no_off(octx, from, reg);
 			new_ty = from->t;
 			break;
 
@@ -902,24 +902,16 @@ static void x86_reg_cp(
 			x86_reg_str(to, typ));
 }
 
-void impl_reg_cp(out_ctx *octx, const out_val *from, const struct vreg *to_reg)
+void impl_reg_cp_no_off(
+		out_ctx *octx, const out_val *from, const struct vreg *to_reg)
 {
-	out_val *mut_from;
-	long off;
-
 	UCC_ASSERT(from->type == V_REG,
 			"reg_cp on non register type 0x%x", from->type);
 
 	if(!from->bits.regoff.offset && vreg_eq(&from->bits.regoff.reg, to_reg))
 		return;
 
-	/* force offset normalisation */
-	mut_from = (out_val *)from; /* fine - we aren't technically changing it */
-	if((off = from->bits.regoff.offset)){
-		mut_from->bits.regoff.offset = 0;
-		from = mut_from = (out_val *)impl_op(octx, op_plus, from, out_new_l(octx, from->t, off));
-	}
-
+	/* offset normalisation isn't handled here - caller's responsibility */
 	x86_reg_cp(octx, to_reg, &from->bits.regoff.reg, from->t);
 }
 
@@ -1530,8 +1522,10 @@ static const char *x86_call_jmp_target(
 			if(prevent_rax && (*pvp)->bits.regoff.reg.idx == X86_64_REG_RAX){
 				struct vreg r;
 
+				*pvp = v_reg_apply_offset(octx, *pvp);
+
 				v_unused_reg(octx, 1, 0, &r);
-				impl_reg_cp(octx, *pvp, &r);
+				impl_reg_cp_no_off(octx, *pvp, &r);
 
 				assert((*pvp)->retains == 1);
 				memcpy_safe(&((out_val *)*pvp)->bits.regoff.reg, &r);
