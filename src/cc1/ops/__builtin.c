@@ -186,7 +186,7 @@ static const out_val *builtin_gen_undefined(expr *e, out_ctx *octx)
 {
 	(void)e;
 	out_ctrl_end_undefined(octx);
-	return NULL; /*void*/
+	return out_new_noop(octx);
 }
 
 expr *parse_any_args(symtable *scope)
