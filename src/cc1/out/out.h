@@ -88,6 +88,8 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 		/* optional: */
 		const out_val *phi, out_blk **mergee);
 
+void out_ctrl_transfer_make_current(out_ctx *octx, out_blk *to);
+
 /* goto *<exp> */
 void out_ctrl_transfer_exp(out_ctx *, const out_val *addr);
 

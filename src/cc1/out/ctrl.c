@@ -117,6 +117,12 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 	octx->current_blk = NULL;
 }
 
+void out_ctrl_transfer_make_current(out_ctx *octx, out_blk *to)
+{
+	out_ctrl_transfer(octx, to, NULL, NULL);
+	out_current_blk(octx, to);
+}
+
 void out_ctrl_transfer_exp(out_ctx *octx, const out_val *addr)
 {
 	out_blk *cur = octx->current_blk;

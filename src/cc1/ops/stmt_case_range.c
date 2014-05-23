@@ -34,8 +34,7 @@ void fold_stmt_case_range(stmt *s)
 
 void gen_stmt_case_range(stmt *s, out_ctx *octx)
 {
-	out_current_blk(octx, s->bits.case_blk);
-
+	out_ctrl_transfer_make_current(octx, s->bits.case_blk);
 	gen_stmt(s->lhs, octx);
 }
 
