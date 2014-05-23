@@ -151,6 +151,10 @@ static const out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
 
 	for(i = octx->val_head; i; i = i->next){
 		const out_val *v = &i->val;
+
+		if(!v->retains)
+			continue;
+
 		if(v->type == V_REG && vreg_eq(&v->bits.regoff.reg, reg))
 			return v;
 	}
