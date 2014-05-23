@@ -57,5 +57,6 @@ void blk_terminate_condjmp(
 		out_blk *bpass, out_blk *bfail);
 
 void blk_terminate_jmp(out_blk *, char *jmpinsn);
+void blk_terminate_undef(out_blk *);
 
 #endif

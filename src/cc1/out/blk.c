@@ -153,6 +153,11 @@ void blk_terminate_condjmp(
 	octx->current_blk = NULL;
 }
 
+void blk_terminate_undef(out_blk *b)
+{
+	b->type = BLK_TERMINAL;
+}
+
 out_blk *out_blk_new_lbl(out_ctx *octx, const char *lbl)
 {
 	out_blk *blk = umalloc(sizeof *blk);

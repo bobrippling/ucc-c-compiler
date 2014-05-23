@@ -1828,8 +1828,7 @@ const out_val *impl_call(
 void impl_undefined(out_ctx *octx)
 {
 	out_asm(octx, "ud2");
-	octx->current_blk->type = BLK_TERMINAL;
-	octx->current_blk = NULL;
+	blk_terminate_undef(octx->current_blk);
 }
 
 #if 0
