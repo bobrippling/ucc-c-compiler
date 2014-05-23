@@ -59,4 +59,7 @@ void blk_terminate_condjmp(
 void blk_terminate_jmp(out_blk *, char *jmpinsn);
 void blk_terminate_undef(out_blk *);
 
+#define blk_add_insn(blk, insn) \
+	dynarray_add(&(blk)->insns, (insn))
+
 #endif

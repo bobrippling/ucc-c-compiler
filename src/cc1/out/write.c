@@ -34,7 +34,9 @@ void out_asmv(
 				__FILE__, __LINE__, sec);
 	}
 
-	out_dbg_flush(octx);
+	assert(octx->current_blk);
+
+	out_dbg_flush(octx->current_blk);
 
 	insn = ustrvprintf(fmt, l);
 
@@ -52,7 +54,6 @@ void out_asmv(
 		insn = new;
 	}
 
-	assert(octx->current_blk);
 	dynarray_add(&octx->current_blk->insns, insn);
 }
 
@@ -106,7 +107,7 @@ int dbg_add_file(const char *nam, int *new)
 	return i;
 }
 
-void out_dbg_flush(out_ctx *octx)
+void out_dbg_flush(out_blk *blk)
 {
 	/* .file <fileidx> "<name>"
 	 * .loc <fileidx> <line> <col>
@@ -127,15 +128,17 @@ void out_dbg_flush(out_ctx *octx)
 	/* TODO: escape w->fname */
 	if(new){
 		char *esc = str_add_escape(dbg_where.fname, strlen(dbg_where.fname));
-		out_asm(octx, ".file %d \"%s\"", idx, esc);
+		blk_add_insn(blk, ustrprintf(".file %d \"%s\"\n", idx, esc));
 		free(esc);
 	}
 
-	out_asm(octx, ".loc %d %d %d",
-			idx,
-			dbg_where.line,
-			dbg_where.chr,
-			dbg_where.fname);
+	blk_add_insn(
+			blk,
+			ustrprintf(".loc %d %d %d\n",
+				idx,
+				dbg_where.line,
+				dbg_where.chr,
+				dbg_where.fname));
 }
 
 void out_dbg_where(where *w)
