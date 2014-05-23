@@ -201,8 +201,10 @@ const out_val *gen_expr_if(expr *e, out_ctx *octx)
 	        *blk_rhs = out_blk_new(octx, "if_rhs");
 	const out_val *cond = gen_expr(e->expr, octx);
 
-	out_ctrl_branch(octx, cond, blk_lhs, blk_rhs);
+	if(!e->lhs)
+		out_val_retain(octx, cond);
 
+	out_ctrl_branch(octx, cond, blk_lhs, blk_rhs);
 
 	out_current_blk(octx, blk_lhs);
 	{
