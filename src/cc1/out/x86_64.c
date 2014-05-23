@@ -1550,8 +1550,11 @@ void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 	switch(cond->type){
 		case V_REG:
 		{
-			const char *rstr = vstack_str(cond, 0);
+			const char *rstr;
 			char *cmp;
+
+			cond = v_reg_apply_offset(octx, cond);
+			rstr = vstack_str(cond, 0);
 
 			out_asm(octx, "test %s, %s", rstr, rstr);
 			cmp = ustrprintf("jz %s", bf->lbl);
