@@ -754,12 +754,13 @@ const out_val *impl_load(
 			const out_val *vtmp_val;
 			char *parity = NULL;
 			int parity_default = 0;
+			type *int_ty = type_nav_btype(cc1_type_nav, type_int);
 
 			/* check float/orderedness */
 			if(x86_need_fp_parity_p(&from->bits.flag, &parity_default))
 				parity = out_label_code("parity");
 
-			vtmp_val = out_new_l(octx, from->t, parity_default);
+			vtmp_val = out_new_l(octx, int_ty, parity_default);
 
 			/* movl $0, %eax */
 			out_flush_volatile(octx, impl_load(octx, vtmp_val, reg));
