@@ -62,7 +62,6 @@ const out_val *out_ctrl_merge(out_ctx *octx, out_blk *from_a, out_blk *from_b)
 	{
 		const out_val *regged = v_to_reg_out(octx, from_a->phi_val, &merge_reg);
 		out_flush_volatile(octx, regged);
-		out_comment(octx, "FLUSH TO REG %d", merge_reg.idx);
 	}
 	out_current_blk(octx, from_b);
 	{
