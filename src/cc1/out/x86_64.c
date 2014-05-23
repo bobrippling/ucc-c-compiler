@@ -1600,32 +1600,27 @@ void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 #endif
 		}
 
-		default:
-			ICE("TODO branch %s", v_store_to_str(cond->type));
-#if 0
 		case V_CONST_F:
 			ICE("jcond float");
+
 		case V_CONST_I:
-			if(true == !!vtop->bits.val_i)
-				out_asm(octx, "jmp %s", lbl);
-
 			out_comment(octx,
-					"constant jmp condition %" NUMERIC_FMT_D " %staken",
-					vtop->bits.val_i, vtop->bits.val_i ? "" : "not ");
+					"constant jmp condition %staken",
+					cond->bits.val_i ? "" : "not ");
 
+			out_ctrl_transfer(octx, cond->bits.val_i ? bt : bf, NULL, NULL);
 			break;
 
 		case V_LBL:
-		case V_REG_SAVE:
-			v_to_reg(vtop);
+		case V_REG_SPILT:
+			cond = v_to_reg(octx, cond);
 
-		case V_REG:
-			out_normalise();
-			UCC_ASSERT(vtop->type != V_REG,
-					"normalise remained as a register");
-			impl_jcond(true, lbl);
+			UCC_ASSERT(cond->type != V_REG_SPILT,
+					"normalise remained as spilt reg");
+
+			cond = out_normalise(octx, cond);
+			impl_branch(octx, cond, bt, bf);
 			break;
-#endif
 	}
 }
 
