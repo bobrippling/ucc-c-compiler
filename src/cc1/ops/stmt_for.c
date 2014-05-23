@@ -48,7 +48,7 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 	if(s->flow->for_while){
 		const out_val *for_cond;
 
-		out_current_blk(octx, blk_test);
+		out_ctrl_transfer_make_current(octx, blk_test);
 		for_cond = gen_expr(s->flow->for_while, octx);
 
 		out_ctrl_branch(octx, for_cond, blk_body, blk_end);
@@ -60,6 +60,8 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 
 		if(s->flow->for_inc)
 			out_val_consume(octx, gen_expr(s->flow->for_inc, octx));
+
+		out_ctrl_transfer(octx, blk_test, NULL, NULL);
 	}
 
 	out_current_blk(octx, blk_end);
