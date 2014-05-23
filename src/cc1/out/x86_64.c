@@ -237,16 +237,18 @@ static const char *vstack_str_r(
 		case V_LBL:
 		{
 			const int pic = fopt_mode & FOPT_PIC && vs->bits.lbl.pic;
+			const char *pre = deref ? "" : "$";
+			const char *picstr = pic && deref ? "(%rip)" : "";
 
 			if(vs->bits.lbl.offset){
-				SNPRINTF(buf, VSTACK_STR_SZ, "%s+%ld%s",
+				SNPRINTF(buf, VSTACK_STR_SZ, "%s%s+%ld%s",
+						pre,
 						vs->bits.lbl.str,
 						vs->bits.lbl.offset,
-						pic ? "(%rip)" : "");
+						picstr);
 			}else{
-				SNPRINTF(buf, VSTACK_STR_SZ, "%s%s",
-						vs->bits.lbl.str,
-						pic ? "(%rip)" : "");
+				SNPRINTF(buf, VSTACK_STR_SZ, "%s%s%s",
+						pre, vs->bits.lbl.str, picstr);
 			}
 			break;
 		}
