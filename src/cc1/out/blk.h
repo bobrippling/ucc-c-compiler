@@ -11,12 +11,10 @@ struct out_blk
 	char *lbl;
 	char **insns;
 
-	unsigned pred_count;
 	out_blk *merge_preds[2];
 
 #define BLK_IS_MERGE(b) (b->preds[0] && b->preds[1])
 
-	unsigned flushed;
 	enum
 	{
 		BLK_UNINIT,

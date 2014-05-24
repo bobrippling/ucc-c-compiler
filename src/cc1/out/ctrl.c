@@ -108,8 +108,6 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 	assert(!from->phi_val);
 	from->phi_val = phi;
 
-	to->pred_count++;
-
 	assert(from->type == BLK_UNINIT);
 	from->type = BLK_NEXT_BLOCK;
 	from->bits.next = to;
