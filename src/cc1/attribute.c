@@ -53,6 +53,7 @@ attribute *attribute_copy(attribute *attr)
 
 		case attr_format:
 		case attr_unused:
+		case attr_used:
 		case attr_warn_unused:
 		case attr_enum_bitmask:
 		case attr_noreturn:
@@ -178,6 +179,7 @@ const char *attribute_to_str(attribute *da)
 	switch(da->type){
 		CASE_STR_PREFIX(attr, format);
 		CASE_STR_PREFIX(attr, unused);
+		CASE_STR_PREFIX(attr, used);
 		CASE_STR_PREFIX(attr, warn_unused);
 		CASE_STR_PREFIX(attr, section);
 		CASE_STR_PREFIX(attr, enum_bitmask);
@@ -278,6 +280,7 @@ int attribute_equal(attribute *a, attribute *b)
 					break;
 
 				case attr_unused:
+				case attr_used:
 				case attr_warn_unused:
 				case attr_enum_bitmask:
 				case attr_noreturn:

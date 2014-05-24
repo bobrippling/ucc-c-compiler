@@ -106,6 +106,7 @@ void         decl_free(decl *);
 
 unsigned decl_size(decl *);
 unsigned decl_align(decl *);
+#define decl_check_size(d) decl_size(d)
 
 enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts);
 unsigned decl_hash(const decl *);

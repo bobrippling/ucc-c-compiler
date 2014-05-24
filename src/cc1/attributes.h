@@ -8,6 +8,7 @@
 #define ATTRIBUTES    \
 		NAME(format, 0)         \
 		NAME(unused, 0)         \
+		NAME(used, 0)           \
 		NAME(warn_unused, 0)    \
 		NAME(section, 0)        \
 		NAME(enum_bitmask, 0)   \

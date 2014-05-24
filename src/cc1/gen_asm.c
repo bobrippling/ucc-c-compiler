@@ -366,9 +366,25 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		case store_typedef:
 			return;
 
+		case store_static:
+			if(d->spel
+			&& d->sym && !d->sym->nreads && !d->sym->nwrites
+			&& !attribute_present(d, attr_used))
+			{
+				int is_fn = !!type_is(d->ref, type_func);
+
+				/* only emit warnings for variables and bodied-functions */
+				if(!is_fn || d->bits.func.code){
+					warn_at(&d->where, "unused static %s '%s'",
+							is_fn ? "function" : "variable",
+							d->spel);
+				}
+				return;
+			}
+			break;
+
 		case store_extern:
 		case store_default:
-		case store_static:
 			break;
 	}
 

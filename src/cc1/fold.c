@@ -630,8 +630,7 @@ void fold_decl_add_sym(decl *d, symtable *stab)
 	}else if(d->proto){
 		decl *proto;
 
-		for(proto = d; proto->proto; proto = proto->proto)
-			assert(!proto->sym);
+		for(proto = d; proto->proto; proto = proto->proto);
 
 		d->sym = proto->sym;
 

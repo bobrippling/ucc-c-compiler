@@ -104,6 +104,11 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 		if((attr = attribute_present(d, attr_cleanup)))
 			cleanup_check(d, attr);
 
+		if((d->store & STORE_MASK_STORE) == store_static){
+			/* unlike global arrays, locals must have a size */
+			decl_check_size(d);
+		}
+
 		if((is_func = !!type_is(d->ref, type_func))){
 			chk_shadow = 1;
 		}else if(cc1_warning.shadow_local

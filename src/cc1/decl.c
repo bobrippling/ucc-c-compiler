@@ -307,6 +307,9 @@ int decl_unused_and_internal(decl *d)
 	decl *i;
 	int used = 0;
 
+	if(attribute_present(d, attr_used))
+		return 0;
+
 	for(i = d; i; i = i->proto){
 		if(i->used){
 			used = 1;

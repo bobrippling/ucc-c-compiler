@@ -29,7 +29,7 @@ struct sym
 	type *owning_func; /* only for sym_arg */
 
 	/* static analysis */
-	int nreads, nwrites;
+	unsigned nreads, nwrites;
 };
 
 typedef struct static_assert static_assert;

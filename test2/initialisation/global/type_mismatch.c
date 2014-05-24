@@ -4,5 +4,5 @@ int *p = 5;
 
 f()
 {
-	static int *p = 5;
+	static __attribute((used)) int *p = 5;
 }
