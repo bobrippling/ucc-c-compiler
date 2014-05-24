@@ -147,7 +147,7 @@ static expr *optional_parened_expr(symtable *scope)
 		if(accept(token_close_paren))
 			goto out;
 
-		e = PARSE_EXPR_NO_COMMA(scope);
+		e = PARSE_EXPR_NO_COMMA(scope, 0);
 
 		EAT(token_close_paren);
 

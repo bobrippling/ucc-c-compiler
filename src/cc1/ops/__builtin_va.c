@@ -505,7 +505,7 @@ expr *parse_va_arg(const char *ident, symtable *scope)
 {
 	/* va_arg(list, type) */
 	expr *fcall = expr_new_funcall();
-	expr *list = PARSE_EXPR_NO_COMMA(scope);
+	expr *list = PARSE_EXPR_NO_COMMA(scope, 0);
 	type *ty;
 
 	(void)ident;

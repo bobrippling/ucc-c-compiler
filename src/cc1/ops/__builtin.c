@@ -190,7 +190,7 @@ expr *parse_any_args(symtable *scope)
 {
 	expr *fcall = expr_new_funcall();
 
-	fcall->funcargs = parse_funcargs(scope);
+	fcall->funcargs = parse_funcargs(scope, 0);
 	return fcall;
 }
 
