@@ -1632,7 +1632,7 @@ const out_val *impl_call(
 	unsigned n_call_iregs;
 
 	unsigned nfloats = 0, nints = 0;
-	unsigned arg_stack = 0, align_stack = 0;
+	unsigned arg_stack = 0;
 	unsigned stk_snapshot = 0;
 	unsigned i;
 
@@ -1673,9 +1673,6 @@ const out_val *impl_call(
 				octx, arg_stack * pws,
 				"call argument space");
 	}
-
-	/* align the stack to 16-byte, for sse insns */
-	align_stack = v_stack_align(octx, 16, 0);
 
 	if(arg_stack > 0){
 		unsigned nfloats = 0, nints = 0; /* shadow */
@@ -1796,8 +1793,6 @@ const out_val *impl_call(
 
 	if(arg_stack && x86_caller_cleanup(fnty))
 		v_dealloc_stack(octx, arg_stack);
-	if(align_stack)
-		v_dealloc_stack(octx, align_stack);
 
 	for(i = 0; i < nargs; i++)
 		out_val_consume(octx, local_args[i]);
