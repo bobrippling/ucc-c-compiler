@@ -4,11 +4,19 @@
 #include "../../util/compiler.h"
 
 void impl_store(out_ctx *, const out_val *dest, const out_val *val);
-ucc_wur const out_val *impl_load(out_ctx *octx, const out_val *from, const struct vreg *reg);
+
+ucc_wur const out_val *impl_load(
+		out_ctx *octx, const out_val *from,
+		const struct vreg *reg)
+	ucc_nonnull();
+
 ucc_wur const out_val *impl_load_iv(const out_val *from);
 ucc_wur const out_val *impl_load_fp(const out_val *from);
 
-void impl_reg_cp_no_off(out_ctx *octx, const out_val *from, const struct vreg *to_reg);
+void impl_reg_cp_no_off(
+		out_ctx *octx, const out_val *from, const struct vreg *to_reg)
+	ucc_nonnull();
+
 void impl_reg_swp(const out_val *a, const out_val *b);
 
 ucc_wur const out_val *impl_op(out_ctx *octx, enum op_type, const out_val *l, const out_val *r);
@@ -16,7 +24,8 @@ ucc_wur const out_val *impl_op_unary(out_ctx *octx, enum op_type, const out_val 
 
 ucc_wur const out_val *impl_deref(
 		out_ctx *octx, const out_val *vp,
-		/*maybe null:*/const struct vreg *reg);
+		const struct vreg *reg)
+	ucc_nonnull();
 
 void impl_branch(out_ctx *, const out_val *, out_blk *bt, out_blk *bf);
 

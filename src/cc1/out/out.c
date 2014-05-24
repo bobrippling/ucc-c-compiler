@@ -187,6 +187,7 @@ const out_val *out_change_type(out_ctx *octx, const out_val *val, type *ty)
 const out_val *out_deref(out_ctx *octx, const out_val *target)
 {
 	type *tnext = type_pointed_to(target->t);
+	struct vreg reg;
 
 	/* if the pointed-to object is not an lvalue, don't deref */
 	if(type_is(tnext, type_array)
@@ -196,7 +197,12 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 		return v_dup_or_reuse(octx, target, tnext);
 	}
 
-	return impl_deref(octx, target, NULL);
+	v_unused_reg(
+			octx, 1,
+			type_is_floating(tnext),
+			&reg);
+
+	return impl_deref(octx, target, &reg);
 }
 
 const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)

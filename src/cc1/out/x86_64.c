@@ -1277,24 +1277,12 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *reg)
 {
-	char ptr[VSTACK_STR_SZ];
 	type *tpointed_to = type_pointed_to(vp->t);
-	struct vreg backup_reg;
-
-	if(!reg){
-		v_unused_reg(
-				octx,
-				1,
-				type_is_floating(tpointed_to),
-				&backup_reg);
-
-		reg = &backup_reg;
-	}
 
 	/* loaded the pointer, now we apply the deref change */
 	out_asm(octx, "mov%s %s, %%%s",
 			x86_suffix(tpointed_to),
-			vstack_str_r(ptr, vp, 1),
+			vstack_str(vp, 1),
 			x86_reg_str(reg, tpointed_to));
 
 	return v_new_reg(octx, vp, tpointed_to, reg);
