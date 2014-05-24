@@ -1102,6 +1102,8 @@ static decl *parse_decl_stored_aligned(
 	where w_eq;
 	int is_autotype = type_is_autotype(btype);
 
+	d->store = store;
+
 	if(is_autotype){
 		d->spel = token_current_spel();
 		EAT(token_identifier);
@@ -1177,8 +1179,6 @@ static decl *parse_decl_stored_aligned(
 			d->ref = type_nav_btype(cc1_type_nav, type_int);
 		}
 	}
-
-	d->store = store;
 
 	if(!type_is(d->ref, type_func))
 		d->bits.var.align = align;
