@@ -627,6 +627,14 @@ void fold_decl_add_sym(decl *d, symtable *stab)
 	/* must be before fold*, since sym lookups are done */
 	if(d->sym){
 		/* ignore */
+	}else if(d->proto){
+		decl *proto;
+
+		for(proto = d; proto->proto; proto = proto->proto)
+			assert(!proto->sym);
+
+		d->sym = proto->sym;
+
 	}else{
 		enum sym_type ty;
 
