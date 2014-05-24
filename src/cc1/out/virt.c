@@ -409,11 +409,11 @@ unsigned v_alloc_stack2(
 		if(!noop || sz_rounded != sz_initial){
 			unsigned to_alloc;
 
-			if(!noop){
-				to_alloc = sz_rounded; /* the whole hog */
-			}else{
+			if(noop){
 				/* the extra we need to align by */
 				to_alloc = sz_rounded - sz_initial;
+			}else{
+				to_alloc = sz_rounded; /* the whole hog */
 			}
 
 			if(fopt_mode & FOPT_VERBOSE_ASM){
@@ -424,7 +424,7 @@ unsigned v_alloc_stack2(
 						sz_rounded - sz_initial);
 			}
 
-			v_stack_adj(octx, to_alloc, 1);
+			/* no actual stack adjustments here - done purely in prologue */
 		}
 
 		octx->stack_sz += sz_rounded;

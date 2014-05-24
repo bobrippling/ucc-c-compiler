@@ -36,6 +36,12 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 		assert(octx->current_blk->type == BLK_UNINIT);
 		octx->current_blk->type = BLK_TERMINAL;
 	}
+
+	/* space for spills */
+	out_current_blk(octx, octx->first_blk);
+	{
+		v_stack_adj(octx, octx->stack_sz, /*sub:*/1);
+	}
 	octx->current_blk = NULL;
 
 	blk_flushall(octx, end_dbg_lbl);
@@ -51,6 +57,8 @@ void out_func_prologue(
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[], int *local_offset)
 {
+	out_blk *post_prologue = out_blk_new(octx, "post_prologue");
+
 	assert(octx->stack_sz == 0 && "non-empty stack for new func");
 
 	assert(!octx->current_blk);
@@ -76,4 +84,8 @@ void out_func_prologue(
 
 	if(stack_res)
 		v_alloc_stack(octx, stack_res, "local variables");
+
+	/* keep the end of the prologue block clear for a stack pointer adjustment,
+	 * in case any spills are needed */
+	out_ctrl_transfer_make_current(octx, post_prologue);
 }
