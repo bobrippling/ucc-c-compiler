@@ -46,7 +46,8 @@ expr *parse_expr_sizeof_typeof_alignof(
 				e = expr_new_sizeof_expr(
 							expr_new_compound_lit(
 								r,
-								parse_init(scope, static_ctx)),
+								parse_init(scope, static_ctx),
+								static_ctx),
 							what_of);
 			else
 				e = expr_new_sizeof_type(r, what_of);
@@ -239,7 +240,8 @@ static expr *parse_expr_primary(symtable *scope, int static_ctx)
 					if(curtok == token_open_block){
 						/* C99 compound lit. */
 						e = expr_new_compound_lit(
-								r, parse_init(scope, static_ctx));
+								r, parse_init(scope, static_ctx),
+								static_ctx);
 
 					}else{
 						/* another cast */
