@@ -108,7 +108,7 @@ static unsigned blk_hash(const void *v)
 		^ dynarray_count(b->insns);
 }
 
-void blk_flushall(out_ctx *octx)
+void blk_flushall(out_ctx *octx, char *end_dbg_lbl)
 {
 	struct flush_state st = { 0 };
 	out_blk *current;
@@ -132,6 +132,8 @@ void blk_flushall(out_ctx *octx)
 
 	if(st.jmpto)
 		impl_jmp(st.f, st.jmpto->lbl);
+
+	fprintf(st.f, "%s:\n", end_dbg_lbl);
 
 	dynmap_free(st.pending);
 }

@@ -32,14 +32,13 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 	out_current_blk(octx, octx->epilogue_blk);
 	{
 		impl_func_epilogue(octx, ty);
-		out_dbg_label(octx, end_dbg_lbl);
 		/* terminate here without an insn */
 		assert(octx->current_blk->type == BLK_UNINIT);
 		octx->current_blk->type = BLK_TERMINAL;
 	}
 	octx->current_blk = NULL;
 
-	blk_flushall(octx);
+	blk_flushall(octx, end_dbg_lbl);
 
 	/* TODO: flush/free octx->first_blk */
 

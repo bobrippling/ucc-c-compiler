@@ -48,7 +48,7 @@ struct out_blk
 
 out_blk *out_blk_new_lbl(out_ctx *, const char *lbl);
 
-void blk_flushall(out_ctx *octx);
+void blk_flushall(out_ctx *octx, char *end_dbg_lbl);
 
 void blk_terminate_condjmp(
 		out_ctx *octx, char *condinsn,
