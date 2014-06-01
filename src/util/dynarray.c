@@ -58,7 +58,7 @@ void *dynarray_nochk_padinsert(
 	}
 }
 
-char *dynarray_nochk_pop(void ***par)
+void *dynarray_nochk_pop(void ***par)
 {
 	void **ar = *par;
 	void *r;

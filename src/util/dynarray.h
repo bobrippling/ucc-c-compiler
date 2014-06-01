@@ -3,7 +3,7 @@
 
 void  dynarray_nochk_add(    void ***, void *);
 void  dynarray_nochk_prepend(void ***, void *);
-char *dynarray_nochk_pop(    void ***);
+void *dynarray_nochk_pop(    void ***);
 void  dynarray_nochk_rm(     void **,  void *);
 int   dynarray_nochk_count(  void **);
 void  dynarray_nochk_free(   void ***par, void (*f)(void *));
