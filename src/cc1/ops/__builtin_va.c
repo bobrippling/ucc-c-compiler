@@ -213,6 +213,8 @@ static const out_val *va_arg_gen_read(
 	const out_val *valist, *gpoff_addr, *gpoff_val;
 	const int VALIST_OFFSET_TYPE = type_uint;
 	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+	type *valist_off_ty = type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE);
+	type *ty_long = type_nav_btype(cc1_type_nav, type_long);
 
 	valist = gen_expr(e->lhs, octx);
 	valist = out_change_type(octx, valist, voidp);
@@ -222,13 +224,12 @@ static const out_val *va_arg_gen_read(
 			octx, op_plus,
 			valist,
 			out_new_l(
-				octx,
-				type_nav_btype(cc1_type_nav, type_long),
+				octx, ty_long,
 				offset_decl->bits.var.struct_offset));
 
 
 	gpoff_addr = out_change_type(octx, gpoff_addr,
-			type_ptr_to(type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE)));
+			type_ptr_to(valist_off_ty));
 
 	out_val_retain(octx, gpoff_addr);
 	gpoff_val = out_deref(octx, gpoff_addr);
@@ -240,10 +241,7 @@ static const out_val *va_arg_gen_read(
 			out_op(octx,
 				op_lt,
 				gpoff_val,
-				out_new_l(
-					octx,
-					type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE),
-					max_reg_args_sz)),
+				out_new_l(octx, valist_off_ty, max_reg_args_sz)),
 			blk_reg,
 			blk_stack);
 
@@ -261,9 +259,7 @@ static const out_val *va_arg_gen_read(
 			out_op(octx,
 					op_plus,
 					gpoff_val,
-					out_new_l(octx,
-						type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE),
-						increment));
+					out_new_l(octx, valist_off_ty, increment));
 
 		out_store(octx, gpoff_addr, gp_off_plus);
 
@@ -275,8 +271,7 @@ static const out_val *va_arg_gen_read(
 						octx, op_plus,
 						valist,
 						out_new_l(
-							octx,
-							type_nav_btype(cc1_type_nav, type_long),
+							octx, ty_long,
 							mem_reg_save_area->bits.var.struct_offset)),
 					type_ptr_to(voidp)); /* void *reg_save_area */
 
@@ -285,8 +280,8 @@ static const out_val *va_arg_gen_read(
 				out_deref(octx, membptr),
 				out_change_type(
 					octx,
-					gpoff_val, /* promote from unsigned to intptr_t */
-					type_ptr_to(type_nav_btype(cc1_type_nav, type_intptr_t))));
+					gpoff_val, /* promote from unsigned to long/intptr_t */
+					type_ptr_to(ty_long)));
 
 		out_ctrl_transfer(octx, blk_fin, reg_save_area_value, &blk_reg);
 	}
@@ -302,12 +297,9 @@ static const out_val *va_arg_gen_read(
 						octx, op_plus,
 						out_change_type(octx, valist, voidp),
 						out_new_l(
-							octx,
-							type_nav_btype(cc1_type_nav, type_long),
+							octx, ty_long,
 							mem_overflow_arg_area->bits.var.struct_offset)),
-					type_ptr_to(
-						type_ptr_to(
-							type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE))));
+					type_ptr_to(type_ptr_to(valist_off_ty)));
 
 		out_val_retain(octx, overflow_addr);
 
@@ -320,10 +312,7 @@ static const out_val *va_arg_gen_read(
 				out_op(
 					octx, op_plus,
 					out_change_type(octx, out_deref(octx, overflow_addr), voidp),
-					out_new_l(
-						octx,
-						type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE),
-						ws)));
+					out_new_l(octx, valist_off_ty, ws)));
 
 		out_ctrl_transfer(octx, blk_fin, overflow_val, &blk_stack);
 	}
