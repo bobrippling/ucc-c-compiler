@@ -1042,6 +1042,7 @@ static type *parse_type_declarator(
 {
 	type *t = parse_type_declarator_to_type(mode, dfor, base, scope);
 	type *ttrail;
+	type *fnty;
 	where ptr_loc;
 
 	if(!*try_trail || !accept_where(token_ptr, &ptr_loc)){
@@ -1049,8 +1050,13 @@ static type *parse_type_declarator(
 		return t;
 	}
 
-	/* TODO: in function scope */
+	/* try to parse trail using topmost function's scope */
+	fnty = type_is(t, type_func);
+	if(fnty)
+		scope = fnty->bits.func.arg_scope;
+
 	ttrail = parse_type(/*newdecl:*/1, scope);
+
 	if(!ttrail){
 		warn_at_print_error(&ptr_loc, "trailing return type expected");
 		parse_had_error = 1;
