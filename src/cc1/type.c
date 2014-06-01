@@ -485,6 +485,11 @@ static void type_add_str(
 		return;
 	}
 
+	if(stop_at && r->tmp == stop_at){
+		type_add_str(r->tmp, spel, need_spc, bufp, sz, stop_at);
+		return;
+	}
+
 	type_add_str_pre(r, &need_paren, need_spc, bufp, sz);
 
 	type_add_str(r->tmp, spel, need_spc, bufp, sz, stop_at);
@@ -574,12 +579,10 @@ type *type_add_type_str(type *r,
 		char buf[BTYPE_STATIC_BUFSIZ];
 		decl *d = ty->bits.tdef.decl;
 		type *of;
-		type *next = NULL;
 
 		if(d){
 			BUF_ADD("%s", d->spel);
 			of = d->ref;
-			next = type_next(of);
 
 		}else{
 			expr *const e = ty->bits.tdef.type_of;
@@ -593,7 +596,6 @@ type *type_add_type_str(type *r,
 
 			/* don't show aka for typeof types - it's there already */
 			of = is_type ? NULL : e->tree_type;
-			next = type_next(e->tree_type);
 		}
 
 		if(aka && of){
@@ -606,7 +608,7 @@ type *type_add_type_str(type *r,
 					: type_to_str_r_spel_aka(buf, of, NULL, 0));
 		}
 
-		return next;
+		return ty;
 
 	}else{
 		BUF_ADD("%s", btype_to_str(ty->bits.type));
@@ -633,21 +635,17 @@ const char *type_to_str_r_spel_aka(
 {
 	char *bufp = buf;
 	int spc = 1;
-	type *skipped;
+	type *stop_at;
 	int sz = TYPE_STATIC_BUFSIZ;
 
-	skipped = type_add_type_str(r, &bufp, &sz, aka);
+	stop_at = type_add_type_str(r, &bufp, &sz, aka);
 
 	assert(sz == (TYPE_STATIC_BUFSIZ - (bufp - buf)));
-
-	if(skipped)
-		r = skipped;
 
 	/* print in reverse order */
 	r = type_set_parent(r, NULL);
 	/* use r->tmp, since r is type_t{ype,def} */
-	type_add_str(r->tmp, spel, &spc,
-			&bufp, &sz);
+	type_add_str(r->tmp, spel, &spc, &bufp, &sz, stop_at);
 
 	/* trim trailing space */
 	if(bufp > buf && bufp[-1] == ' ')
