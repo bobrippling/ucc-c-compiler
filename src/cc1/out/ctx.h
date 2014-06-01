@@ -17,9 +17,11 @@ struct out_ctx
 	unsigned long nblks; /* used for unique label gen. */
 
 	/* fixed: */
-	int stack_local_offset, stack_variadic_offset, stack_sz_initial;
+	int stack_sz_initial;
+	int stack_local_offset, stack_variadic_offset;
 	/* vary: */
 	int var_stack_sz, max_stack_sz;
+	int stack_n_alloc; /* just the alloc_n() part */
 
 	int in_prologue;
 

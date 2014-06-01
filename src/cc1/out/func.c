@@ -41,10 +41,17 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 	out_current_blk(octx, octx->first_blk);
 	{
 		if(fopt_mode & FOPT_VERBOSE_ASM){
-			out_comment(octx, "spill space %u",
-					octx->max_stack_sz - octx->stack_sz_initial);
+			out_comment(octx, "spill space %u, alloc_n space %u",
+					octx->max_stack_sz - octx->stack_sz_initial,
+					octx->stack_n_alloc);
 		}
-		v_stack_adj(octx, octx->max_stack_sz, /*sub:*/1);
+
+		/* must have more or equal stack to the alloc_n, because alloc_n will
+		 * always add to {var,max}_stack_sz with possible padding,
+		 * and that same value (minus padding) to stack_n_alloc */
+		assert(octx->max_stack_sz >= octx->stack_n_alloc);
+
+		v_stack_adj(octx, octx->max_stack_sz - octx->stack_n_alloc, /*sub:*/1);
 	}
 	octx->current_blk = NULL;
 
@@ -55,7 +62,8 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 	octx->stack_local_offset =
 		octx->stack_sz_initial =
 		octx->var_stack_sz =
-		octx->max_stack_sz = 0;
+		octx->max_stack_sz =
+		octx->stack_n_alloc = 0;
 }
 
 void out_func_prologue(

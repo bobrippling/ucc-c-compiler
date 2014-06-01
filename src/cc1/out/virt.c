@@ -437,6 +437,9 @@ unsigned v_alloc_stack2(
 		}
 
 		octx_set_stack_sz(octx, octx->var_stack_sz + sz_rounded);
+
+		if(noop)
+			octx->stack_n_alloc += sz_initial;
 	}
 
 	return sz_rounded;
