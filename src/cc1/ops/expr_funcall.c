@@ -288,13 +288,6 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		return;
 	}
 
-	if(expr_kind(e->expr, deref)
-	&& type_is(type_is_ptr(expr_deref_what(e->expr)->tree_type), type_func))
-	{
-		/* (*pf)() */
-		e->expr = expr_deref_what(e->expr);
-	}
-
 	e->tree_type = type_func_call(func_ty, &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
