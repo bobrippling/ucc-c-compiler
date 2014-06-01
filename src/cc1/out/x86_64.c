@@ -1235,6 +1235,11 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				r = v_to_reg(octx, r);
 		}
 
+		if(fopt_mode & FOPT_PIC){
+			l = v_to(octx, l, TO_REG);
+			r = v_to(octx, r, TO_REG | TO_CONST);
+		}
+
 		if(v_is_const_reg(l)){
 			/* ^ only check 'l' - 'r' is an rvalue and not changed */
 			struct vreg new_reg, old_reg;
