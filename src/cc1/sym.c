@@ -90,6 +90,21 @@ int symtab_nested_internal(symtable *parent, symtable *nest)
 	return 0;
 }
 
+int symtable_is_parent(symtable *parent, symtable *nest)
+{
+	/* go up first - distinct parent */
+	for(nest = nest->parent; nest; nest = nest->parent){
+		if(nest->internal_nest){
+			nest = nest->parent;
+			fprintf(stderr, "YO!\n");
+			continue;
+		}
+		if(nest == parent)
+			return 1;
+	}
+	return 0;
+}
+
 decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
 {
 	decl **const decls = tab->decls;

@@ -101,14 +101,6 @@ static symtable *expr_get_sym_scope(expr *e, symtable *scope)
 	return NULL;
 }
 
-static int symtable_contains(symtable *start, symtable *find)
-{
-	for(; find; find = find->parent)
-		if(find == start)
-			return 1;
-	return 0;
-}
-
 static void assign_lifetime_check(
 		where *w,
 		expr *lhs, expr *rhs,
@@ -133,7 +125,7 @@ static void assign_lifetime_check(
 	if(!scope_rhs)
 		return;
 
-	if(symtable_contains(scope_lhs, scope_rhs))
+	if(symtable_is_parent(scope_lhs, scope_rhs))
 		warn_at(w, "assigning address of '%s' to more-scoped pointer",
 				rhs->bits.ident.spel);
 }

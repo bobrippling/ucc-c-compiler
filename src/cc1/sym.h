@@ -100,6 +100,7 @@ symtable *symtab_func_root(symtable *stab);
 symtable_global *symtab_global(symtable *);
 
 int symtab_nested_internal(symtable *parent, symtable *nest);
+int symtable_is_parent(symtable *parent, symtable *nest);
 
 #define symtab_add_to_scope(scope, d) \
 	dynarray_add(&(scope)->decls, (d))
