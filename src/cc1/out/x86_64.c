@@ -1794,8 +1794,10 @@ const out_val *impl_call(
 		out_asm(octx, "callq %s", jtarget);
 	}
 
-	if(arg_stack && x86_caller_cleanup(fnty))
-		v_dealloc_stack(octx, arg_stack);
+	if(arg_stack && x86_caller_cleanup(fnty)){
+		/* cleanup done implicitly on epilogue */
+		/*v_dealloc_stack(octx, arg_stack);*/
+	}
 
 	for(i = 0; i < nargs; i++)
 		out_val_consume(octx, local_args[i]);
