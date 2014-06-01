@@ -89,7 +89,8 @@ static ucc_wur const out_val *v_save_reg(out_ctx *octx, const out_val *vp)
 {
 	assert(vp->type == V_REG && "not reg");
 
-	out_comment(octx, "register spill:");
+	out_comment(octx, "spill @ stack=%u, max=%u",
+			octx->var_stack_sz, octx->max_stack_sz);
 
 	v_alloc_stack(octx, type_size(vp->t, NULL), "save reg");
 
