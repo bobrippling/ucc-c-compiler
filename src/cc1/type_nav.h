@@ -17,6 +17,8 @@ type *type_nav_btype(struct type_nav *root, enum type_primitive p);
 type *type_nav_auto(struct type_nav *root); /* returns placeholder */
 type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *);
 
+type *type_nav_changeauto(type *ontop, type *trailing);
+
 type *type_nav_va_list(struct type_nav *root, symtable *symtab);
 type *type_decay(type *);
 

@@ -1089,9 +1089,34 @@ static type *parse_type_declarator(
 
 type *parse_type(int newdecl, symtable *scope)
 {
-	type *btype = parse_btype(NULL, NULL, newdecl, scope, 0);
+	type *btype = NULL, *parsed, *ttrail;
+	int try_trail = 0;
 
-	return btype ? parse_type_declarator(0, NULL, btype, scope) : NULL;
+	if(accept(token_auto)){
+		if(!parse_at_decl(scope)){
+			warn_at(NULL, "parsing auto");
+			btype = type_nav_btype(cc1_type_nav, type_int);
+			try_trail = 1;
+		}else{
+			warn_at(NULL, "not auto");
+			uneat(token_auto);
+		}
+	}
+
+	if(!btype)
+		btype = parse_btype(NULL, NULL, newdecl, scope, 0);
+
+	if(!btype)
+		return NULL;
+
+	parsed = parse_type_declarator(0, NULL, btype, scope);
+	if(!try_trail || !accept(token_ptr))
+		return parsed;
+
+	/* TODO: in function scope */
+	ttrail = parse_type(newdecl, scope);
+
+	return type_nav_changeauto(parsed, ttrail);
 }
 
 type **parse_type_list(symtable *scope)

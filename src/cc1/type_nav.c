@@ -477,6 +477,51 @@ type *type_nav_va_list(struct type_nav *root, symtable *symtab)
 	return root->tva_list;
 }
 
+type *type_nav_changeauto(type *const ontop, type *trailing)
+{
+	type *base;
+
+	if(!ontop || ontop->type == type_btype)
+		return trailing; /* replace auto with proper trailing type */
+
+	base = type_nav_changeauto(type_next_1(ontop), trailing);
+
+	switch(ontop->type){
+		case type_btype:
+		case type_auto:
+			assert(0);
+
+		case type_ptr:
+			return type_ptr_to(base);
+
+		case type_block:
+			return type_block_of(base);
+
+		case type_array:
+		{
+			return type_array_of_static(
+					base,
+					ontop->bits.array.size,
+					ontop->bits.array.is_static);
+		}
+
+		case type_func:
+		{
+			return type_func_of(
+					base, type_funcargs(ontop),
+					ontop->bits.func.arg_scope);
+		}
+
+		case type_tdef:
+		case type_cast:
+		case type_attr:
+		case type_where:
+			return base; /* TODO: skip for now, change to add where, etc */
+	}
+
+	assert(0);
+}
+
 static void type_dump_t(type *t, FILE *f, int indent)
 {
 	int i;
