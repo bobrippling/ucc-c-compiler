@@ -34,7 +34,7 @@ sym *sym_new_stab(symtable *stab, decl *d, enum sym_type t)
 
 void symtab_rm_parent(symtable *child)
 {
-	dynarray_rm(child->parent->children, child);
+	dynarray_rm(&child->parent->children, child);
 	child->parent = NULL;
 }
 

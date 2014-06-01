@@ -104,7 +104,7 @@ int macro_remove(const char *nam)
 		free(m->nam);
 		free(m->val);
 		dynarray_free(char **, &m->args, free);
-		dynarray_rm(macros, m);
+		dynarray_rm(&macros, m);
 		free(m);
 		return 1;
 	}
