@@ -95,7 +95,7 @@ static ucc_wur const out_val *v_save_reg(out_ctx *octx, const out_val *vp)
 
 	return v_to_stack_mem(
 			octx, vp,
-			-octx->stack_sz);
+			-octx->var_stack_sz);
 }
 
 const out_val *v_to(out_ctx *octx, const out_val *vp, enum vto loc)
@@ -392,6 +392,14 @@ void v_stack_adj(out_ctx *octx, unsigned amt, int sub)
 					amt)));
 }
 
+static void octx_set_stack_sz(out_ctx *octx, unsigned new)
+{
+	octx->var_stack_sz = new;
+
+	if(octx->var_stack_sz > octx->max_stack_sz)
+		octx->max_stack_sz = octx->var_stack_sz;
+}
+
 unsigned v_alloc_stack2(
 		out_ctx *octx,
 		const unsigned sz_initial, int noop, const char *desc)
@@ -418,16 +426,16 @@ unsigned v_alloc_stack2(
 
 			if(fopt_mode & FOPT_VERBOSE_ASM){
 				out_comment(octx, "stack alignment for %s (%u -> %u)",
-						desc, octx->stack_sz, octx->stack_sz + sz_rounded);
+						desc, octx->var_stack_sz, octx->var_stack_sz + sz_rounded);
 				out_comment(octx, "alloc_n by %u (-> %u), padding with %u",
-						sz_initial, octx->stack_sz + sz_initial,
+						sz_initial, octx->var_stack_sz + sz_initial,
 						sz_rounded - sz_initial);
 			}
 
 			/* no actual stack adjustments here - done purely in prologue */
 		}
 
-		octx->stack_sz += sz_rounded;
+		octx_set_stack_sz(octx, octx->var_stack_sz + sz_rounded);
 	}
 
 	return sz_rounded;
@@ -445,10 +453,10 @@ unsigned v_alloc_stack(out_ctx *octx, unsigned sz, const char *desc)
 
 unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 {
-	if(force_mask || (octx->stack_sz & (align - 1))){
+	if(force_mask || (octx->var_stack_sz & (align - 1))){
 		type *const ty = type_nav_btype(cc1_type_nav, type_intptr_t);
-		const unsigned new_sz = pack_to_align(octx->stack_sz, align);
-		const unsigned added = new_sz - octx->stack_sz;
+		const unsigned new_sz = pack_to_align(octx->var_stack_sz, align);
+		const unsigned added = new_sz - octx->var_stack_sz;
 		const out_val *sp = v_new_sp(octx, NULL);
 
 		assert(sp->retains == 1);
@@ -458,7 +466,7 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 				sp,
 				out_new_l(octx, ty, added));
 
-		octx->stack_sz = new_sz;
+		octx_set_stack_sz(octx, new_sz);
 
 		if(force_mask){
 			sp = out_op(octx, op_and, sp, out_new_l(octx, ty, align - 1));
@@ -481,7 +489,7 @@ void v_dealloc_stack(out_ctx *octx, unsigned sz)
 
 	v_stack_adj(octx, sz, 0);
 
-	octx->stack_sz -= sz;
+	octx->var_stack_sz -= sz;
 }
 
 enum flag_cmp v_inv_cmp(enum flag_cmp cmp, int invert_eq)

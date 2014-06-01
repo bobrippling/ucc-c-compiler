@@ -498,7 +498,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 			(N_CALL_REGS_I + N_CALL_REGS_F * 2) * platform_word_size(),
 			"stack call arguments");
 
-	stk_top = octx->stack_sz;
+	stk_top = octx->var_stack_sz;
 
 	/* go backwards, as we want registers pushed in reverse
 	 * so we can iterate positively.
@@ -554,7 +554,7 @@ void impl_func_epilogue(out_ctx *octx, type *rf)
 	out_asm(octx, "leaveq");
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
-		out_comment(octx, "stack at %u bytes", octx->stack_sz);
+		out_comment(octx, "stack at %u bytes", octx->max_stack_sz);
 
 	/* callee cleanup */
 	if(!x86_caller_cleanup(rf)){
@@ -1682,7 +1682,7 @@ const out_val *impl_call(
 
 		unsigned stack_pos;
 		/* must be called after v_alloc_stack() */
-		stk_snapshot = stack_pos = octx->stack_sz;
+		stk_snapshot = stack_pos = octx->var_stack_sz;
 		out_comment(octx, "-- stack snapshot (%u) --", stk_snapshot);
 
 		/* save in order */
@@ -1757,7 +1757,7 @@ const out_val *impl_call(
 		 * since we save all non-call registers before we
 		 * start anything.
 		 */
-		unsigned chg = octx->stack_sz - stk_snapshot;
+		unsigned chg = octx->var_stack_sz - stk_snapshot;
 		out_comment(octx, "-- restore snapshot (%u) --", chg);
 		v_dealloc_stack(octx, chg);
 	}

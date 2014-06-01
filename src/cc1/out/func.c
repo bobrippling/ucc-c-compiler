@@ -42,9 +42,9 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 	{
 		if(fopt_mode & FOPT_VERBOSE_ASM){
 			out_comment(octx, "spill space %u",
-					octx->stack_sz - octx->stack_local_offset);
+					octx->max_stack_sz - octx->stack_local_offset);
 		}
-		v_stack_adj(octx, octx->stack_sz, /*sub:*/1);
+		v_stack_adj(octx, octx->max_stack_sz, /*sub:*/1);
 	}
 	octx->current_blk = NULL;
 
@@ -52,7 +52,9 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 
 	/* TODO: flush/free octx->first_blk */
 
-	octx->stack_local_offset = octx->stack_sz = 0;
+	octx->stack_local_offset =
+		octx->var_stack_sz =
+		octx->max_stack_sz = 0;
 }
 
 void out_func_prologue(
@@ -63,7 +65,7 @@ void out_func_prologue(
 {
 	out_blk *post_prologue = out_blk_new(octx, "post_prologue");
 
-	assert(octx->stack_sz == 0 && "non-empty stack for new func");
+	assert(octx->var_stack_sz == 0 && "non-empty stack for new func");
 
 	assert(!octx->current_blk);
 	octx->first_blk = out_blk_new_lbl(octx, sp);
@@ -82,8 +84,8 @@ void out_func_prologue(
 		impl_func_prologue_save_variadic(octx, rf);
 
 	/* setup "pointers" to the right place in the stack */
-	octx->stack_variadic_offset = octx->stack_sz - platform_word_size();
-	octx->stack_local_offset = octx->stack_sz;
+	octx->stack_variadic_offset = octx->var_stack_sz - platform_word_size();
+	octx->stack_local_offset = octx->var_stack_sz;
 	*local_offset = octx->stack_local_offset;
 
 	if(stack_res)

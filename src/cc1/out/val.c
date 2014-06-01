@@ -205,13 +205,36 @@ out_val *v_new_bp3(
 	return v;
 }
 
+static void try_stack_reclaim(out_ctx *octx)
+{
+	/* if we have no out_vals on the stack,
+	 * we can reclaim stack-spill space.
+	 * this is a simple algorithm for reclaiming */
+	out_val_list *iter;
+
+	/* only reclaim if we have an empty val list */
+	for(iter = octx->val_head; iter; iter = iter->next)
+		if(iter->val.retains > 0)
+			return;
+
+	unsigned reclaim = octx->var_stack_sz - octx->stack_local_offset;
+	if(reclaim){
+		if(fopt_mode & FOPT_VERBOSE_ASM)
+			out_comment(octx, "reclaim %u", reclaim);
+
+		octx->var_stack_sz = octx->stack_local_offset;
+	}
+}
+
 const out_val *out_val_release(out_ctx *octx, const out_val *v)
 {
 	out_val *mut = (out_val *)v;
-	(void)octx;
 	assert(mut->retains > 0 && "double release");
-	if(--mut->retains == 0)
+	if(--mut->retains == 0){
+		try_stack_reclaim(octx);
+
 		return NULL;
+	}
 	return mut;
 }
 
