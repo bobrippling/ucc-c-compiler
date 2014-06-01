@@ -553,19 +553,19 @@ type *type_add_type_str(type *r,
 		const int aka)
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
-	const type *rt;
+	type *ty;
 
 	**bufp = '\0';
-	for(rt = r;
-			rt && rt->type != type_btype && rt->type != type_tdef;
-			rt = rt->ref);
+	for(ty = r;
+			ty && ty->type != type_btype && ty->type != type_tdef;
+			ty = ty->ref);
 
-	if(!rt)
+	if(!ty)
 		return NULL;
 
-	if(rt->type == type_tdef){
+	if(ty->type == type_tdef){
 		char buf[BTYPE_STATIC_BUFSIZ];
-		decl *d = rt->bits.tdef.decl;
+		decl *d = ty->bits.tdef.decl;
 		type *of;
 		type *next = NULL;
 
@@ -575,7 +575,7 @@ type *type_add_type_str(type *r,
 			next = type_next(of);
 
 		}else{
-			expr *const e = rt->bits.tdef.type_of;
+			expr *const e = ty->bits.tdef.type_of;
 			int const is_type = !e->expr;
 
 			BUF_ADD("typeof(%s%s)",
@@ -602,7 +602,7 @@ type *type_add_type_str(type *r,
 		return next;
 
 	}else{
-		BUF_ADD("%s", btype_to_str(rt->bits.type));
+		BUF_ADD("%s", btype_to_str(ty->bits.type));
 	}
 
 	return NULL;
