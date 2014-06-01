@@ -68,31 +68,35 @@ void out_func_prologue(
 
 	assert(octx->var_stack_sz == 0 && "non-empty stack for new func");
 
-	assert(!octx->current_blk);
-	octx->first_blk = out_blk_new_lbl(octx, sp);
-	octx->epilogue_blk = out_blk_new(octx, "epilogue");
+	octx->in_prologue = 1;
+	{
+		assert(!octx->current_blk);
+		octx->first_blk = out_blk_new_lbl(octx, sp);
+		octx->epilogue_blk = out_blk_new(octx, "epilogue");
 
-	out_current_blk(octx, octx->first_blk);
+		out_current_blk(octx, octx->first_blk);
 
-	impl_func_prologue_save_fp(octx);
+		impl_func_prologue_save_fp(octx);
 
-	if(mopt_mode & MOPT_STACK_REALIGN)
-		v_stack_align(octx, cc1_mstack_align, 1);
+		if(mopt_mode & MOPT_STACK_REALIGN)
+			v_stack_align(octx, cc1_mstack_align, 1);
 
-	impl_func_prologue_save_call_regs(octx, rf, nargs, arg_offsets);
+		impl_func_prologue_save_call_regs(octx, rf, nargs, arg_offsets);
 
-	if(variadic) /* save variadic call registers */
-		impl_func_prologue_save_variadic(octx, rf);
+		if(variadic) /* save variadic call registers */
+			impl_func_prologue_save_variadic(octx, rf);
 
-	/* setup "pointers" to the right place in the stack */
-	octx->stack_variadic_offset = octx->var_stack_sz - platform_word_size();
-	octx->stack_local_offset = octx->var_stack_sz;
-	*local_offset = octx->stack_local_offset;
+		/* setup "pointers" to the right place in the stack */
+		octx->stack_variadic_offset = octx->var_stack_sz - platform_word_size();
+		octx->stack_local_offset = octx->var_stack_sz;
+		*local_offset = octx->stack_local_offset;
 
-	if(stack_res)
-		v_alloc_stack(octx, stack_res, "local variables");
+		if(stack_res)
+			v_alloc_stack(octx, stack_res, "local variables");
 
-	octx->stack_sz_initial = octx->var_stack_sz;
+		octx->stack_sz_initial = octx->var_stack_sz;
+	}
+	octx->in_prologue = 0;
 
 	/* keep the end of the prologue block clear for a stack pointer adjustment,
 	 * in case any spills are needed */

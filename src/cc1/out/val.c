@@ -212,6 +212,9 @@ static void try_stack_reclaim(out_ctx *octx)
 	 * this is a simple algorithm for reclaiming */
 	out_val_list *iter;
 
+	if(octx->in_prologue)
+		return;
+
 	/* only reclaim if we have an empty val list */
 	for(iter = octx->val_head; iter; iter = iter->next)
 		if(iter->val.retains > 0)

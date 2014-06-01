@@ -21,6 +21,8 @@ struct out_ctx
 	/* vary: */
 	int var_stack_sz, max_stack_sz;
 
+	int in_prologue;
+
 	/* we won't reserve it more than 255 times
 	 * XXX: FIXME: hardcoded 20
 	 */
