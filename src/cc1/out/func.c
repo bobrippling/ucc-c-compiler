@@ -40,6 +40,10 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 	/* space for spills */
 	out_current_blk(octx, octx->first_blk);
 	{
+		if(fopt_mode & FOPT_VERBOSE_ASM){
+			out_comment(octx, "spill space %u",
+					octx->stack_sz - octx->stack_local_offset);
+		}
 		v_stack_adj(octx, octx->stack_sz, /*sub:*/1);
 	}
 	octx->current_blk = NULL;
