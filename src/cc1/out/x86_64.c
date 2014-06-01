@@ -823,9 +823,7 @@ lea:
 					x86_reg_str(reg, chosen_ty));
 
 			/* 'from' is now in a reg */
-
-			if(from->type == V_LBL && !fp)
-				new_ty = type_pointed_to(from->t);
+			new_ty = from->t;
 			break;
 		}
 
