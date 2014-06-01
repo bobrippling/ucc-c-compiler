@@ -42,7 +42,7 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 	{
 		if(fopt_mode & FOPT_VERBOSE_ASM){
 			out_comment(octx, "spill space %u",
-					octx->max_stack_sz - octx->stack_local_offset);
+					octx->max_stack_sz - octx->stack_sz_initial);
 		}
 		v_stack_adj(octx, octx->max_stack_sz, /*sub:*/1);
 	}
@@ -53,6 +53,7 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 	/* TODO: flush/free octx->first_blk */
 
 	octx->stack_local_offset =
+		octx->stack_sz_initial =
 		octx->var_stack_sz =
 		octx->max_stack_sz = 0;
 }
@@ -90,6 +91,8 @@ void out_func_prologue(
 
 	if(stack_res)
 		v_alloc_stack(octx, stack_res, "local variables");
+
+	octx->stack_sz_initial = octx->var_stack_sz;
 
 	/* keep the end of the prologue block clear for a stack pointer adjustment,
 	 * in case any spills are needed */
