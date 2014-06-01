@@ -296,18 +296,21 @@ static const out_val *va_arg_gen_read(
 	{
 		const out_val *overflow_val;
 		const out_val *overflow_addr =
-			out_op(
-					octx, op_plus,
-					out_change_type(
-						octx,
-						valist,
-						type_ptr_to(type_nav_btype(cc1_type_nav, type_void))),
-					out_new_l(
-						octx,
-						type_nav_btype(cc1_type_nav, type_long),
-						mem_overflow_arg_area->bits.var.struct_offset));
+			out_change_type(
+					octx,
+					out_op(
+						octx, op_plus,
+						out_change_type(octx, valist, voidp),
+						out_new_l(
+							octx,
+							type_nav_btype(cc1_type_nav, type_long),
+							mem_overflow_arg_area->bits.var.struct_offset)),
+					type_ptr_to(
+						type_ptr_to(
+							type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE))));
 
 		out_val_retain(octx, overflow_addr);
+
 		overflow_val = out_deref(octx, overflow_addr);
 
 		out_val_retain(octx, overflow_addr);
@@ -316,12 +319,7 @@ static const out_val *va_arg_gen_read(
 				overflow_addr,
 				out_op(
 					octx, op_plus,
-					out_deref(
-						octx,
-						out_change_type(
-							octx,
-							overflow_addr,
-							type_ptr_to(type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE)))),
+					out_change_type(octx, out_deref(octx, overflow_addr), voidp),
 					out_new_l(
 						octx,
 						type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE),
