@@ -996,7 +996,7 @@ static type_parsed *parsed_type_ptr(
 	}
 }
 
-static type *parse_type_declarator(
+static type *parse_type_declarator_to_type(
 		enum decl_mode mode, decl *dfor, type *base, symtable *scope)
 {
 	type_parsed *parsed = parsed_type_declarator(mode, dfor, NULL, scope);
@@ -1036,18 +1036,40 @@ static type *parse_type_declarator(
 	return ty;
 }
 
+static type *parse_type_declarator(
+		enum decl_mode mode, decl *dfor, type *base, symtable *scope,
+		int *try_trail)
+{
+	type *t = parse_type_declarator_to_type(mode, dfor, base, scope);
+	type *ttrail;
+	where ptr_loc;
+
+	if(!*try_trail || !accept_where(token_ptr, &ptr_loc)){
+		*try_trail = 0;
+		return t;
+	}
+
+	/* TODO: in function scope */
+	ttrail = parse_type(/*newdecl:*/1, scope);
+	if(!ttrail){
+		warn_at_print_error(&ptr_loc, "trailing return type expected");
+		parse_had_error = 1;
+		return t;
+	}
+
+	return type_nav_changeauto(t, ttrail);
+}
+
 type *parse_type(int newdecl, symtable *scope)
 {
-	type *btype = NULL, *parsed, *ttrail;
+	type *btype = NULL;
 	int try_trail = 0;
 
 	if(accept(token_auto)){
 		if(!parse_at_decl(scope)){
-			warn_at(NULL, "parsing auto");
 			btype = type_nav_btype(cc1_type_nav, type_int);
 			try_trail = 1;
 		}else{
-			warn_at(NULL, "not auto");
 			uneat(token_auto);
 		}
 	}
@@ -1058,14 +1080,7 @@ type *parse_type(int newdecl, symtable *scope)
 	if(!btype)
 		return NULL;
 
-	parsed = parse_type_declarator(0, NULL, btype, scope);
-	if(!try_trail || !accept(token_ptr))
-		return parsed;
-
-	/* TODO: in function scope */
-	ttrail = parse_type(newdecl, scope);
-
-	return type_nav_changeauto(parsed, ttrail);
+	return parse_type_declarator(0, NULL, btype, scope, &try_trail);
 }
 
 type **parse_type_list(symtable *scope)
@@ -1135,7 +1150,23 @@ static decl *parse_decl_stored_aligned(
 
 	}else{
 		/* allow extra specifiers */
-		d->ref = parse_type_declarator(mode, d, btype, scope);
+		int try_trail = 0;
+
+		if((store & STORE_MASK_STORE) == store_auto){
+			const struct btype *bt = type_get_type(btype);
+			/* auto, defaulted to int? */
+			if(bt && bt->primitive == type_int){
+				/* if there are no more specs/quals... */
+				try_trail = !parse_at_decl(scope);
+			}
+		}
+
+		d->ref = parse_type_declarator(mode, d, btype, scope, &try_trail);
+
+		if(try_trail){
+			/* got trailing type - remove auto store */
+			d->store = store_default | (d->store & STORE_MASK_EXTRA);
+		}
 
 		if(add_to_scope){
 			symtab_add_to_scope(add_to_scope, d);
