@@ -401,26 +401,14 @@ static void type_add_funcargs(
 	BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
 }
 
-static void type_add_str(
-		type *r, char *spel,
-		int *need_spc,
+#define IS_PTR(ty) ((ty) == type_ptr || (ty) == type_block)
+static void type_add_str_pre(
+		type *r,
+		int *need_paren, int *need_spc,
 		char **bufp, int *sz)
 {
-#define IS_PTR(ty) ((ty) == type_ptr || (ty) == type_block)
-
-	int need_paren;
-	enum type_qualifier q;
 	type *prev_skipped;
-
-	if(!r){
-		/* reached the bottom/end - spel */
-		if(spel){
-			ADD_SPC();
-			BUF_ADD("%s", spel);
-			*need_spc = 0;
-		}
-		return;
-	}
+	enum type_qualifier q = qual_none;
 
 	/* int (**fn())[2]
 	 * btype -> array -> ptr -> ptr -> func
@@ -428,14 +416,12 @@ static void type_add_str(
 	 *
 	 * .tmp looks right, down the chain, .ref looks left, up the chain
 	 */
-	need_paren = r->ref
+	*need_paren = r->ref
 		&& IS_PTR(r->type)
 		&& (prev_skipped = type_skip_all(r->ref))->type != type_btype
 		&& !IS_PTR(prev_skipped->type);
 
-	q = qual_none;
-
-	if(need_paren){
+	if(*need_paren){
 		ADD_SPC();
 		BUF_ADD("(");
 	}
@@ -479,8 +465,29 @@ static void type_add_str(
 		 *          ^
 		 */
 	}
+}
 
-	type_add_str(r->tmp, spel, need_spc, bufp, sz);
+static void type_add_str(
+		type *r, char *spel,
+		int *need_spc,
+		char **bufp, int *sz,
+		type *stop_at)
+{
+	int need_paren;
+
+	if(!r){
+		/* reached the bottom/end - spel */
+		if(spel){
+			ADD_SPC();
+			BUF_ADD("%s", spel);
+			*need_spc = 0;
+		}
+		return;
+	}
+
+	type_add_str_pre(r, &need_paren, need_spc, bufp, sz);
+
+	type_add_str(r->tmp, spel, need_spc, bufp, sz, stop_at);
 
 	switch(r->type){
 		case type_auto:
