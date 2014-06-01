@@ -1,8 +1,7 @@
 f(int a)
 {
-	void *x;
-
-	x = g(a);
+	void *x = 0;
+	(void)x;
 
 	if(a){
 		return 0;
