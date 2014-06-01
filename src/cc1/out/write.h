@@ -3,6 +3,7 @@
 
 #include "../../util/compiler.h"
 #include "forwards.h"
+#include "dbg.h"
 
 enum p_opts
 {
@@ -24,8 +25,10 @@ void out_asm2(
 		enum p_opts opts,
 		const char *fmt, ...) ucc_printflike(4, 5);
 
-void out_dbg_flush(out_blk *);
+void out_dbg_flush(out_ctx *, out_blk *);
 
-int dbg_add_file(const char *nam, int *new);
+int dbg_add_file(
+		struct out_dbg_filelist **files,
+		const char *nam, int *new);
 
 #endif

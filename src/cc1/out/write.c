@@ -36,7 +36,7 @@ void out_asmv(
 
 	assert(octx->current_blk);
 
-	out_dbg_flush(octx->current_blk);
+	out_dbg_flush(octx, octx->current_blk);
 
 	insn = ustrvprintf(fmt, l);
 
@@ -78,25 +78,15 @@ void out_asm2(
 
 /* -- dbg -- */
 
-static struct file_idx
+int dbg_add_file(struct out_dbg_filelist **files, const char *nam, int *new)
 {
-	const char *fname;
-	struct file_idx *next;
-} *file_head = NULL;
-
-static where dbg_where;
-
-static int last_file = -1, last_line = -1;
-
-int dbg_add_file(const char *nam, int *new)
-{
-	struct file_idx **p;
+	struct out_dbg_filelist **p;
 	int i = 1; /* indexes start at 1 */
 
 	if(new)
 		*new = 0;
 
-	for(p = &file_head; *p; p = &(*p)->next, i++)
+	for(p = files; *p; p = &(*p)->next, i++)
 		if(!strcmp(nam, (*p)->fname))
 			return i;
 
@@ -107,27 +97,29 @@ int dbg_add_file(const char *nam, int *new)
 	return i;
 }
 
-void out_dbg_flush(out_blk *blk)
+void out_dbg_flush(out_ctx *octx, out_blk *blk)
 {
 	/* .file <fileidx> "<name>"
 	 * .loc <fileidx> <line> <col>
 	 */
 	int idx, new;
 
-	if(!dbg_where.fname || !cc1_gdebug)
+	if(!octx->dbg.where.fname || !cc1_gdebug)
 		return;
 
-	idx = dbg_add_file(dbg_where.fname, &new);
+	idx = dbg_add_file(&octx->dbg.file_head, octx->dbg.where.fname, &new);
 
-	if(last_file == idx && last_line == dbg_where.line)
+	if(octx->dbg.last_file == idx && octx->dbg.last_line == octx->dbg.where.line)
 		return;
 	/* XXX: prevents recursion as well as collapsing multiples */
-	last_file = idx;
-	last_line = dbg_where.line;
+	octx->dbg.last_file = idx;
+	octx->dbg.last_line = octx->dbg.where.line;
 
 	/* TODO: escape w->fname */
 	if(new){
-		char *esc = str_add_escape(dbg_where.fname, strlen(dbg_where.fname));
+		char *esc = str_add_escape(
+				octx->dbg.where.fname, strlen(octx->dbg.where.fname));
+
 		blk_add_insn(blk, ustrprintf(".file %d \"%s\"\n", idx, esc));
 		free(esc);
 	}
@@ -136,12 +128,12 @@ void out_dbg_flush(out_blk *blk)
 			blk,
 			ustrprintf(".loc %d %d %d\n",
 				idx,
-				dbg_where.line,
-				dbg_where.chr,
-				dbg_where.fname));
+				octx->dbg.where.line,
+				octx->dbg.where.chr,
+				octx->dbg.where.fname));
 }
 
-void out_dbg_where(where *w)
+void out_dbg_where(out_ctx *octx, where *w)
 {
-	memcpy_safe(&dbg_where, w);
+	memcpy_safe(&octx->dbg.where, w);
 }

@@ -217,6 +217,7 @@ struct DIE
 struct DIE_compile_unit
 {
 	struct DIE die;
+	struct out_dbg_filelist **pfilelist;
 	dynmap *types_to_dies;
 };
 
@@ -817,10 +818,13 @@ static struct DIE **dwarf_formal_params(
 }
 
 static struct DIE_compile_unit *dwarf_cu(
-		const char *fname, const char *compdir)
+		const char *fname, const char *compdir,
+		struct out_dbg_filelist **pfilelist)
 {
 	struct DIE_compile_unit *cu = umalloc(sizeof *cu);
 	form_data_t attrv;
+
+	cu->pfilelist = pfilelist;
 
 	dwarf_die_new_at(&cu->die, DW_TAG_compile_unit);
 
@@ -903,7 +907,7 @@ static void dwarf_attr_decl(
 
 	dwarf_attr(in, DW_AT_decl_file,
 			DW_FORM_ULEB,
-			((attrv = dbg_add_file(d->where.fname, NULL)), &attrv));
+			((attrv = dbg_add_file(cu->pfilelist, d->where.fname, NULL)), &attrv));
 
 	dwarf_attr(in, DW_AT_decl_line,
 			DW_FORM_ULEB, ((attrv = d->where.line), &attrv));
@@ -1374,6 +1378,7 @@ static unsigned long dwarf_offset_die(
 }
 
 void out_dbginfo(symtable_global *globs,
+		struct out_dbg_filelist **pfilelist,
 		const char *fname,
 		const char *compdir)
 {
@@ -1383,7 +1388,7 @@ void out_dbginfo(symtable_global *globs,
 	long info_offset = dwarf_info_header(cc_out[SECTION_DBG_INFO]);
 	unsigned long abbrev = 0;
 
-	compile_unit = dwarf_cu(fname, compdir);
+	compile_unit = dwarf_cu(fname, compdir, pfilelist);
 
 	{
 		decl **diter;

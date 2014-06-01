@@ -24,6 +24,8 @@
 #include "out/asm.h"
 #include "gen_style.h"
 #include "out/dbg.h"
+#include "out/val.h"
+#include "out/ctx.h"
 
 void IGNORE_PRINTGEN(const out_val *v)
 {
@@ -40,7 +42,7 @@ const out_val *gen_expr(expr *e, out_ctx *octx)
 	else
 		k.type = CONST_NO;
 
-	out_dbg_where(&e->where);
+	out_dbg_where(octx, &e->where);
 
 	if(k.type == CONST_NUM){
 		/* -O0 skips this? */
@@ -63,14 +65,14 @@ const out_val *lea_expr(expr *e, out_ctx *octx)
 			"invalid store expression expr-%s @ %s (no f_lea())",
 			e->f_str(), where_str_r(buf, &e->where));
 
-	out_dbg_where(&e->where);
+	out_dbg_where(octx, &e->where);
 
 	return e->f_lea(e, octx);
 }
 
 void gen_stmt(stmt *t, out_ctx *octx)
 {
-	out_dbg_where(&t->where);
+	out_dbg_where(octx, &t->where);
 
 	t->f_gen(t, octx);
 }
@@ -114,7 +116,7 @@ void gen_asm_global(decl *d, out_ctx *octx)
 		if(!d->bits.func.code)
 			return;
 
-		out_dbg_where(&d->where);
+		out_dbg_where(octx, &d->where);
 
 		arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
 		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++)
@@ -137,7 +139,7 @@ void gen_asm_global(decl *d, out_ctx *octx)
 
 		out_dump_retained(octx, d->spel);
 
-		out_dbg_where(&d->bits.func.code->where_cbrace);
+		out_dbg_where(octx, &d->bits.func.code->where_cbrace);
 
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
@@ -240,7 +242,7 @@ void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 	gen_stringlits(globs->literals);
 
 	if(cc1_gdebug && globs->stab.decls)
-		out_dbginfo(globs, fname, compdir);
+		out_dbginfo(globs, &octx->dbg.file_head, fname, compdir);
 
 	out_ctx_end(octx);
 }

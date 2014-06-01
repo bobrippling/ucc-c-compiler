@@ -29,6 +29,14 @@ struct out_ctx
 	 * XXX: FIXME: hardcoded 20
 	 */
 	unsigned char reserved_regs[20];
+
+	struct
+	{
+		struct out_dbg_filelist *file_head;
+
+		where where;
+		int last_file, last_line;
+	} dbg;
 };
 
 #endif

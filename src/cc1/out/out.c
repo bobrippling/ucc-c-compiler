@@ -56,13 +56,14 @@ void out_dbg_label(out_ctx *octx, const char *lbl)
 		assert(octx->last_used_blk);
 		blk = octx->last_used_blk;
 	}
-	out_dbg_flush(blk);
+	out_dbg_flush(octx, blk);
 	blk_add_insn(blk, ustrprintf("%s:\n", lbl));
 }
 
 out_ctx *out_ctx_new(void)
 {
 	out_ctx *ctx = umalloc(sizeof *ctx);
+	ctx->dbg.last_file = ctx->dbg.last_line = -1;
 	return ctx;
 }
 

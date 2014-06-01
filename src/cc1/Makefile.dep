@@ -192,7 +192,8 @@ gen_asm.o: gen_asm.c ../util/util.h ../util/warn.h ../util/where.h \
  ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h type_is.h \
- gen_asm.h out/lbl.h out/asm.h gen_style.h decl_init.h out/dbg.h
+ gen_asm.h out/lbl.h out/asm.h gen_style.h decl_init.h out/dbg.h \
+ out/val.h out/ctx.h
 gen_c.o: gen_c.c
 gen_str.o: gen_str.c ../util/util.h ../util/warn.h ../util/where.h \
  ../util/compiler.h ../util/platform.h ../util/dynarray.h ../util/dyn.h \
@@ -1456,7 +1457,7 @@ out/impl.o: out/impl.c out/../../util/util.h out/../../util/warn.h \
  out/../type.h out/../num.h out/../btype.h out/../../util/where.h \
  out/../attribute.h out/../retain.h out/../op.h out/../macros.h out/val.h \
  out/forwards.h out/asm.h out/impl.h out/../../util/compiler.h \
- out/x86_64.h out/write.h
+ out/x86_64.h out/write.h out/dbg.h
 out/lbl.o: out/lbl.c out/../../util/alloc.h out/../../util/compiler.h \
  out/../../util/util.h out/../../util/warn.h out/../../util/where.h \
  out/common.h out/lbl.h out/../../as_cfg.h
@@ -1581,4 +1582,4 @@ out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/warn.h \
  out/../funcargs.h out/../defs.h out/../cc1.h out/../../util/std.h \
  out/val.h out/forwards.h out/asm.h out/impl.h out/../../util/compiler.h \
  out/x86_64.h out/impl_jmp.h out/common.h out/out.h out/lbl.h out/write.h \
- out/virt.h out/ctx.h out/blk.h
+ out/dbg.h out/virt.h out/ctx.h out/blk.h
