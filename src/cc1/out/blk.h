@@ -11,9 +11,13 @@ struct out_blk
 	char *lbl;
 	char **insns;
 
-	out_blk *merge_preds[2];
+	out_blk **merge_preds;
+	int flush_in_prog;
 
-#define BLK_IS_MERGE(b) (b->preds[0] && b->preds[1])
+#define BLK_IS_MERGE(b) ( \
+		b->merge_preds        \
+		&& b->merge_preds[0]  \
+		&& b->merge_preds[1])
 
 	enum
 	{
