@@ -191,6 +191,8 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 	const struct vreg *reg = &reg_store;
 	int is_fp;
 
+	assert(type_is_complete(tnext));
+
 	/* if the pointed-to object is not an lvalue, don't deref */
 	if(type_is(tnext, type_array)
 	|| type_is(tnext, type_func))
