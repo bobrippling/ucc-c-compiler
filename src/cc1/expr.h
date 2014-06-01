@@ -88,6 +88,7 @@ struct expr
 		{
 			sym *sym;
 			decl *decl;
+			int static_ctx;
 		} complit;
 
 		struct

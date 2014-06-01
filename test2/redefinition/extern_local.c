@@ -16,6 +16,11 @@ g()
 	}
 }
 
+h()
+{
+	static int good; // CHECK: !/error/
+}
+
 main()
 {
 	/* section 6.1.2.2 */

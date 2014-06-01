@@ -28,6 +28,7 @@ unsigned type_array_len(type *r);
 type *type_next(type *r);
 type *type_next_1(type *r);
 
+int type_is_arith(type *);
 int type_is_autotype(type *);
 int type_is_bool(type *);
 int type_is_callable(type *);

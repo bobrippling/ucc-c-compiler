@@ -21,6 +21,8 @@
 #include "../pack.h"
 #include "../str.h"
 
+#include "../../as_cfg.h" /* weak directive */
+
 #include "asm.h"
 #include "out.h"
 
@@ -468,6 +470,11 @@ static void asm_reserve_bytes(enum section_type sec, unsigned nbytes)
 	asm_declare_pad(sec, nbytes, "object space");
 }
 
+static void asm_predecl(const char *type, decl *d)
+{
+	asm_out_section(SECTION_TEXT, ".%s %s\n", type, decl_asm_spel(d));
+}
+
 void asm_predeclare_extern(decl *d)
 {
 	(void)d;
@@ -479,8 +486,12 @@ void asm_predeclare_extern(decl *d)
 
 void asm_predeclare_global(decl *d)
 {
-	/* FIXME: section cleanup - along with __attribute__((section("..."))) */
-	asm_out_section(SECTION_TEXT, ".globl %s\n", decl_asm_spel(d));
+	asm_predecl("globl", d);
+}
+
+void asm_predeclare_weak(decl *d)
+{
+	asm_predecl(ASM_WEAK_DIRECTIVE, d);
 }
 
 void asm_declare_stringlit(enum section_type sec, const stringlit *lit)

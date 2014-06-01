@@ -328,8 +328,13 @@ void symtab_fold_decls(symtable *tab)
 		}
 	}
 
-	/* add args */
-	if(tab->parent && tab->parent->are_params)
+	/* bring args into scope if the parent symtable is an argument symtable
+	 * and we are the the first symtable of a function.
+	 * the second condition is necessary to prevent importing arguments for:
+	 * int f(int a, void cb(int a))
+	 *                      ^ don't want to import the parent 'a' here
+	 */
+	if(tab->parent && tab->parent->are_params && tab->parent->in_func)
 		for(diter = tab->parent->decls; diter && *diter; diter++)
 			NEW_DECL(*diter);
 

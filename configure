@@ -37,6 +37,9 @@ CTAGS       = ${TAG_CMD}
 		SECTION_DBG_INFO="__DWARF,__debug_info,regular,debug"
 		SECTION_DBG_LINE="__DWARF,__debug_line,regular,debug"
 		DWARF_INDIRECT_SECTION_LINKS=1
+
+		ASM_WEAK_DIRECTIVE='weak_reference'
+		# Darwin also needs "-flat_namespace -undefined suppress"
 	else
 		SECTION_TEXT=".text"
 		SECTION_DATA=".data"
@@ -45,6 +48,7 @@ CTAGS       = ${TAG_CMD}
 		SECTION_DBG_INFO=".debug_info"
 		SECTION_DBG_LINE=".debug_line"
 		DWARF_INDIRECT_SECTION_LINKS=0
+		ASM_WEAK_DIRECTIVE='weak'
 	fi
 
 	cat > src/as_cfg.h <<!
@@ -57,6 +61,7 @@ CTAGS       = ${TAG_CMD}
 #define UCC_M32      ${UCC_M32}
 #define DWARF_INDIRECT_SECTION_LINKS $DWARF_INDIRECT_SECTION_LINKS
 #define ASM_PLBL_PRE "$ASM_PLBL"
+#define ASM_WEAK_DIRECTIVE "$ASM_WEAK_DIRECTIVE"
 !
 
 	if ! which perl > /dev/null

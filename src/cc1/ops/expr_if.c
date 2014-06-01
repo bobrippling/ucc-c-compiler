@@ -99,7 +99,7 @@ void fold_expr_if(expr *e, symtable *stab)
 	tt_l = (e->lhs ? e->lhs : e->expr)->tree_type;
 	tt_r = e->rhs->tree_type;
 
-	if(type_is_integral(tt_l) && type_is_integral(tt_r)){
+	if(type_is_arith(tt_l) && type_is_arith(tt_r)){
 		expr **middle_op = e->lhs ? &e->lhs : &e->expr;
 
 		expr_check_sign("?:", *middle_op, e->rhs, &e->where);

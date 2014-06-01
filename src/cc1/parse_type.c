@@ -79,7 +79,7 @@ static type *parse_type_sue(
 				parse_add_attr(&en_attr, scope);
 
 				if(accept(token_assign))
-					e = PARSE_EXPR_NO_COMMA(scope); /* no commas */
+					e = PARSE_EXPR_NO_COMMA(scope, 0); /* no commas */
 				else
 					e = NULL;
 
@@ -495,7 +495,7 @@ static type *parse_btype(
 				da->bits.align_ty = as_ty;
 			}else{
 				da->as_int = 1;
-				da->bits.align_intk = parse_expr_exp(scope);
+				da->bits.align_intk = parse_expr_exp(scope, 0);
 			}
 
 			EAT(token_close_paren);
@@ -894,7 +894,7 @@ static type_parsed *parsed_type_array(
 			/* grammar says it's a conditional here, hence no-comma */
 			consty k;
 
-			size = PARSE_EXPR_NO_COMMA(scope);
+			size = PARSE_EXPR_NO_COMMA(scope, 0);
 			EAT(token_close_square);
 
 			FOLD_EXPR(size, scope);
@@ -1187,7 +1187,11 @@ static decl *parse_decl_stored_aligned(
 		parse_add_attr(&d->attr, scope); /* int spel __attr__ */
 
 		if(d->spel && accept_where(token_assign, &w_eq)){
-			d->bits.var.init = parse_init(scope);
+			int static_ctx = !scope->parent ||
+				(store & STORE_MASK_STORE) == store_static;
+
+			d->bits.var.init = parse_init(scope, static_ctx);
+
 			/* top-level inits have their .where on the '=' token */
 			memcpy_safe(&d->bits.var.init->where, &w_eq);
 
@@ -1545,7 +1549,7 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		 */
 		type_funcargs(d->ref)->args_void_implicit = 1;
 
-		if(d->store & store_typedef){
+		if((d->store & STORE_MASK_STORE) == store_typedef){
 			warn_at_print_error(&d->where, "typedef storage on function");
 			fold_had_error = 1;
 		}
@@ -1656,7 +1660,7 @@ int parse_decl_group(
 		&& accept(token_colon))
 		{
 			/* normal decl, check field spec */
-			d->bits.var.field_width = PARSE_EXPR_NO_COMMA(in_scope);
+			d->bits.var.field_width = PARSE_EXPR_NO_COMMA(in_scope, 0);
 			had_field_width = 1;
 		}
 

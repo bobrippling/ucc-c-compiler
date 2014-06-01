@@ -25,7 +25,7 @@ typedef struct consty
 		CONST_STRK,     /* string constant */
 		CONST_NEED_ADDR, /* a.x, b->y, p where p is global int p */
 	} type;
-	long offset; /* offset for addr/strk */
+	sintegral_t offset; /* offset for addr/strk */
 	union
 	{
 		numeric num;        /* CONST_VAL_* */
@@ -44,13 +44,13 @@ typedef struct consty
 } consty;
 #define CONST_AT_COMPILE_TIME(t) (t != CONST_NO && t != CONST_NEED_ADDR)
 
-#define CONST_ADDR_OR_NEED_TREF(r)  \
+#define CONST_ADDR_OR_NEED_TYPE(r)  \
 	(  type_is_array(r)           \
 	|| type_is_decayed_array(r)   \
 	|| type_is(r, type_func)  \
 		? CONST_ADDR : CONST_NEED_ADDR)
 
-#define CONST_ADDR_OR_NEED(d) CONST_ADDR_OR_NEED_TREF((d)->ref)
+#define CONST_ADDR_OR_NEED(d) CONST_ADDR_OR_NEED_TYPE((d)->ref)
 
 #define K_FLOATING(num) !!((num).suffix & VAL_FLOATING)
 #define K_INTEGRAL(num) !K_FLOATING(num)

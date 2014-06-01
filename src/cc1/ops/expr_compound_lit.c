@@ -1,4 +1,5 @@
 #include <string.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "expr_compound_lit.h"
@@ -15,6 +16,15 @@ const char *str_expr_compound_lit(void)
 void fold_expr_compound_lit(expr *e, symtable *stab)
 {
 	decl *d = e->bits.complit.decl;
+	int static_ctx = e->bits.complit.static_ctx; /* global or static */
+
+	/* if(!stab->parent) assert(static_ctx);
+	 *
+	 * except things like sizeof() just pass 0 for static_ctx,
+	 * as it doesn't matter, we're not code-gen'd
+	 */
+	if(!stab->parent)
+		static_ctx = 1;
 
 	if(e->code)
 		return; /* being called from fold_gen_init_assignment_base */
@@ -22,13 +32,13 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	/* must be set before the recursive fold_gen_init_assignment_base */
 	e->tree_type = d->ref;
 
-	if(!stab->parent){
-		d->spel = out_label_data_store(STORE_COMP_LIT);
+	if(static_ctx){
+		d->spel_asm = out_label_data_store(STORE_COMP_LIT);
 		d->store = store_static;
 	}
 
 	e->bits.complit.sym = sym_new_stab(
-			stab, d, stab->parent ? sym_local : sym_global);
+			stab, d, static_ctx ? sym_global : sym_local);
 
 	/* fold the initialiser */
 	UCC_ASSERT(d->bits.var.init, "no init for comp.literal");
@@ -41,7 +51,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	 */
 	e->tree_type = d->ref;
 
-	if(stab->parent){
+	if(!static_ctx){
 		/* create the code for assignemnts
 		 *
 		 * - we must create a nested scope,
@@ -161,9 +171,10 @@ static decl *compound_lit_decl(type *t, decl_init *init)
 	return d;
 }
 
-expr *expr_new_compound_lit(type *t, decl_init *init)
+expr *expr_new_compound_lit(type *t, decl_init *init, int static_ctx)
 {
 	expr *e = expr_new_wrapper(compound_lit);
 	e->bits.complit.decl = compound_lit_decl(t, init);
+	e->bits.complit.static_ctx = static_ctx;
 	return e;
 }

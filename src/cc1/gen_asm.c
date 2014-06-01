@@ -86,7 +86,7 @@ static void assign_arg_offsets(decl **decls, int const offsets[])
 	}
 }
 
-void gen_asm_global(decl *d)
+static void gen_asm_global(decl *d)
 {
 	attribute *sec;
 
@@ -167,6 +167,74 @@ static void gen_stringlits(dynmap *litmap)
 			asm_declare_stringlit(SECTION_DATA, lit);
 }
 
+void gen_asm_global_w_store(decl *d, int emit_tenatives)
+{
+	int emitted_type = 0;
+
+	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+		case store_inline:
+		case store_auto:
+		case store_register:
+			ICE("%s storage on global %s",
+					decl_store_to_str(d->store),
+					decl_to_str(d));
+
+		case store_typedef:
+			return;
+
+		case store_extern:
+		case store_default:
+		case store_static:
+			break;
+	}
+
+	if(attribute_present(d, attr_weak)){
+		asm_predeclare_weak(d);
+		emitted_type = 1;
+	}
+
+	if(type_is(d->ref, type_func)){
+		if(d->store & store_inline){
+			/*
+			 * inline semantics
+			 *
+			 * "" = inline only
+			 * "static" = code emitted, decl is static
+			 * "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
+			 */
+			if((d->store & STORE_MASK_STORE) == store_default){
+				/* inline only - emit an extern for it anyway */
+				if(!emitted_type)
+					asm_predeclare_extern(d);
+				return;
+			}
+		}
+
+		if(!d->bits.func.code){
+			if(!emitted_type)
+				asm_predeclare_extern(d);
+			return;
+		}
+	}else{
+		/* variable - if there's no init,
+		 * it's tenative and not output
+		 *
+		 * unless we're told to emit tenatives, e.g. local scope
+		 */
+		if(!emit_tenatives && !d->bits.var.init){
+			if(!emitted_type)
+				asm_predeclare_extern(d);
+			return;
+		}
+	}
+
+	if(!emitted_type && (d->store & STORE_MASK_STORE) != store_static)
+		asm_predeclare_global(d);
+	gen_asm_global(d);
+
+	UCC_ASSERT(emit_tenatives || out_vcount() == 0, "non empty vstack after global gen");
+}
+
 void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 {
 	decl **diter;
@@ -182,57 +250,7 @@ void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 				iasm = NULL;
 		}
 
-		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
-			case store_inline:
-			case store_auto:
-			case store_register:
-				ICE("%s storage on global %s",
-						decl_store_to_str(d->store),
-						decl_to_str(d));
-
-			case store_typedef:
-				continue;
-
-			case store_extern:
-			case store_default:
-			case store_static:
-				break;
-		}
-
-		if(type_is(d->ref, type_func)){
-			if(d->store & store_inline){
-				/*
-				 * inline semantics
-				 *
-				 * "" = inline only
-				 * "static" = code emitted, decl is static
-				 * "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
-				 */
-				if((d->store & STORE_MASK_STORE) == store_default){
-					/* inline only - emit an extern for it anyway */
-					asm_predeclare_extern(d);
-					continue;
-				}
-			}
-
-			if(!d->bits.func.code){
-				asm_predeclare_extern(d);
-				continue;
-			}
-		}else{
-			/* variable - if there's no init,
-			 * it's tenative and not output */
-			if(!d->bits.var.init){
-				asm_predeclare_extern(d);
-				continue;
-			}
-		}
-
-		if((d->store & STORE_MASK_STORE) != store_static)
-			asm_predeclare_global(d);
-		gen_asm_global(d);
-
-		UCC_ASSERT(out_vcount() == 0, "non empty vstack after global gen");
+		gen_asm_global_w_store(d, 0);
 	}
 
 	for(; iasm && *iasm; ++iasm)

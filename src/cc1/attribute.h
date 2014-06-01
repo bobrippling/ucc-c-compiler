@@ -25,6 +25,7 @@ struct attribute
 		attr_packed,
 		attr_sentinel,
 		attr_aligned,
+		attr_weak,
 		attr_ucc_debug, /* logs out a message when handled */
 		attr_LAST
 		/*

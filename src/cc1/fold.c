@@ -474,11 +474,14 @@ static void fold_decl_add_sym(decl *d, symtable *stab)
 	}else{
 		enum sym_type ty;
 
-		if(stab->are_params)
+		if(stab->are_params){
 			ty = sym_arg;
-		else
+		}else{
+			/* no decl_store_duration_is_static() checks here:
+			 * we haven't given it a sym yet */
 			ty = !stab->parent || decl_store_static_or_extern(d->store)
 				? sym_global : sym_local;
+		}
 
 		d->sym = sym_new(d, ty);
 	}
@@ -706,10 +709,22 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 	d->fold_state = DECL_FOLD_EXCEPT_INIT;
 
 	if(first_fold){
+		attribute *attr;
+
 		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), stab, d->attr);
 
 		if(d->spel)
 			fold_decl_add_sym(d, stab);
+
+		if(((d->store & STORE_MASK_STORE) != store_typedef)
+		/* __attribute__((weak)) is allowed on typedefs */
+		&& (attr = attribute_present(d, attr_weak))
+		&& decl_linkage(d) != linkage_external)
+		{
+			warn_at_print_error(&d->where,
+					"weak attribute on declaration without external linkage");
+			fold_had_error = 1;
+		}
 	}
 
 	if(type_is(d->ref, type_func)){
@@ -758,8 +773,11 @@ void fold_decl_global_init(decl *d, symtable *stab)
 
 	type = stab->parent ? "static" : "global";
 	if(!decl_init_is_const(d->bits.var.init, stab, &nonstd)){
-		die_at(&d->bits.var.init->where, "%s %s initialiser not constant",
+		warn_at_print_error(&d->bits.var.init->where,
+				"%s %s initialiser not constant",
 				type, decl_init_to_str(d->bits.var.init->type));
+
+		fold_had_error = 1;
 	}else if(nonstd){
 		char wbuf[WHERE_BUF_SIZ];
 
@@ -972,11 +990,6 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 			cc1_warn_at(&e->where, 0, WARN_TEST_BOOL,
 					"testing a non-boolean expression (%s), in %s",
 					type_to_str(e->tree_type), desc);
-		}
-
-		if(expr_kind(e, addr)){
-			cc1_warn_at(&e->where, 0, WARN_TEST_BOOL/*FIXME*/,
-					"an address is always true");
 		}
 	}
 
