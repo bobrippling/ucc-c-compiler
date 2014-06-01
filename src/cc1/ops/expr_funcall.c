@@ -166,7 +166,7 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **psp)
 	e->expr->tree_type = func_ty;
 }
 
-static void check_arg_counts(
+static int check_arg_counts(
 		funcargs *args_from_decl,
 		unsigned count_decl,
 		expr **exprargs,
@@ -179,14 +179,23 @@ static void check_arg_counts(
 		if(count_decl != count_arg
 		&& (args_from_decl->variadic ? count_arg < count_decl : 1))
 		{
-			(args_from_decl->args_old_proto ? warn_at : die_at)(
-					loc, "too %s arguments to function %s (got %d, need %d)",
+			int warn = args_from_decl->args_old_proto;
+			(warn ? warn_at : warn_at_print_error)(
+					loc, "too %s arguments to function %s%s(got %d, need %d)",
 					count_arg > count_decl ? "many" : "few",
-					sp, count_arg, count_decl);
+					sp ? sp : "",
+					sp ? " " : "",
+					count_arg, count_decl);
+
+			if(!warn){
+				fold_had_error = 1;
+				return 1;
+			}
 		}
 	}else if(args_from_decl->args_void_implicit && exprargs){
 		warn_at(loc, "too many arguments to implicitly (void)-function");
 	}
+	return 0;
 }
 
 static void check_arg_voidness_and_nonnulls(
@@ -270,8 +279,13 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	func_ty = e->expr->tree_type;
 
 	if(!type_is_callable(func_ty)){
-		die_at(&e->expr->where, "%s-expression (type '%s') not callable",
+		warn_at_print_error(&e->expr->where, "%s-expression (type '%s') not callable",
 				e->expr->f_str(), type_to_str(func_ty));
+
+		fold_had_error = 1;
+
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
 	}
 
 	if(expr_kind(e->expr, deref)
@@ -288,7 +302,8 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 	count_decl = dynarray_count(args_from_decl->arglist);
 
-	check_arg_counts(args_from_decl, count_decl, e->funcargs, &e->where, sp);
+	if(check_arg_counts(args_from_decl, count_decl, e->funcargs, &e->where, sp))
+		return;
 
 	if(e->funcargs){
 		check_arg_voidness_and_nonnulls(
