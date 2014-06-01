@@ -1760,7 +1760,7 @@ const out_val *impl_call(
 		 */
 		unsigned chg = octx->var_stack_sz - stk_snapshot;
 		out_comment(octx, "-- restore snapshot (%u) --", chg);
-		v_dealloc_stack(octx, chg);
+		v_stack_adj(octx, chg, /*sub:*/0);
 	}
 
 	{
@@ -1795,9 +1795,11 @@ const out_val *impl_call(
 		out_asm(octx, "callq %s", jtarget);
 	}
 
-	if(arg_stack && x86_caller_cleanup(fnty)){
-		/* cleanup done implicitly on epilogue */
-		/*v_dealloc_stack(octx, arg_stack);*/
+	if(arg_stack && !x86_caller_cleanup(fnty)){
+		/* callee cleanup - the callee will have popped
+		 * args from the stack, so we need a stack alloc
+		 * to restore what we expect */
+		v_stack_adj(octx, arg_stack, /*sub:*/1);
 	}
 
 	for(i = 0; i < nargs; i++)

@@ -480,19 +480,6 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 	return 0;
 }
 
-void v_dealloc_stack(out_ctx *octx, unsigned sz)
-{
-	/* callers should've snapshotted the stack previously
-	 * and be calling us with said snapshot value
-	 */
-	assert((sz & (cc1_mstack_align - 1)) == 0
-			&& "can't dealloc by a non-stack-align amount");
-
-	v_stack_adj(octx, sz, 0);
-
-	octx->var_stack_sz -= sz;
-}
-
 enum flag_cmp v_inv_cmp(enum flag_cmp cmp, int invert_eq)
 {
 	switch(cmp){

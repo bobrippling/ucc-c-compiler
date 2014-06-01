@@ -13,8 +13,6 @@ unsigned v_alloc_stack(out_ctx *octx, unsigned sz, const char *desc);
 
 unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask);
 
-void v_dealloc_stack(out_ctx *octx, unsigned sz);
-
 /* register allocation */
 int v_unused_reg(
 		out_ctx *octx,
