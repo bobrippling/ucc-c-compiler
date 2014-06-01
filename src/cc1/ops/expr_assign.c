@@ -75,6 +75,69 @@ void expr_assign_const_check(expr *e, where *w)
 	}
 }
 
+static sym *expr_get_sym(expr *e)
+{
+	if(!expr_kind(e, identifier))
+		return NULL;
+	return e->bits.ident.sym;
+}
+
+static symtable *expr_get_sym_scope(expr *e, symtable *scope)
+{
+	sym *s;
+	s = expr_get_sym(e);
+	if(!s)
+		return NULL;
+
+	for(; scope; scope = scope->parent){
+		decl **i;
+		for(i = scope->decls; i && *i; i++){
+			decl *d = *i;
+			if(d->sym == s)
+				return scope;
+		}
+	}
+
+	return NULL;
+}
+
+static int symtable_contains(symtable *start, symtable *find)
+{
+	for(; find; find = find->parent)
+		if(find == start)
+			return 1;
+	return 0;
+}
+
+static void assign_lifetime_check(
+		where *w,
+		expr *lhs, expr *rhs,
+		symtable *scope)
+{
+	/* if lhs is an identifier and rhs is expr_addr of an identifier... */
+	symtable *scope_lhs;
+	symtable *scope_rhs;
+
+	scope_lhs = expr_get_sym_scope(expr_skip_casts(lhs), scope);
+	if(!scope_lhs)
+		return;
+
+	rhs = expr_skip_casts(rhs);
+	if(!expr_kind(rhs, addr))
+		return;
+	rhs = rhs->lhs;
+	if(!rhs)
+		return;
+
+	scope_rhs = expr_get_sym_scope(rhs, scope);
+	if(!scope_rhs)
+		return;
+
+	if(symtable_contains(scope_lhs, scope_rhs))
+		warn_at(w, "assigning address of '%s' to more-scoped pointer",
+				rhs->bits.ident.spel);
+}
+
 void fold_expr_assign(expr *e, symtable *stab)
 {
 	sym *lhs_sym = NULL;
@@ -107,6 +170,9 @@ void fold_expr_assign(expr *e, symtable *stab)
 	fold_type_chk_and_cast(
 			e->lhs->tree_type, &e->rhs,
 			stab, &e->where, "assignment");
+
+	if(warn_mode & WARN_SLOWCHECKS)
+		assign_lifetime_check(&e->where, e->lhs, e->rhs, stab);
 
 	/* the only way to get a value into a bitfield (aside from memcpy / indirection) is via this
 	 * hence we're fine doing the truncation check here

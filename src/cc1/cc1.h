@@ -43,6 +43,8 @@ enum warning
 
 	WARN_IMPLICIT_OLD_FUNC        = 1 << 30, /* int f(); */
 
+	WARN_SLOWCHECKS               = 1 << 31, /* pointer scope leak */
+
 	/* TODO */
 	/*
 	WARN_FORMAT                   = 1 << 23,

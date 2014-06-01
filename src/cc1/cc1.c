@@ -40,6 +40,7 @@ struct
 	{ 'W',  "all",             ~0 },
 	{ 'W',  "extra",            0 },
 	{ 'W',  "everything",      ~0 },
+	{ 'W',  "slow",            WARN_SLOWCHECKS },
 
 
 	{ 'W',  "mismatch-arg",    WARN_ARG_MISMATCH                      },
@@ -166,6 +167,7 @@ enum warning warn_mode = ~(
 		| WARN_TENATIVE_INIT
 		| WARN_SHADOW_GLOBAL
 		| WARN_IMPLICIT_OLD_FUNC
+		| WARN_SLOWCHECKS
 		);
 
 enum fopt fopt_mode = FOPT_CONST_FOLD
