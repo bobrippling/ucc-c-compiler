@@ -26,6 +26,7 @@
 #include "blk.h"
 #include "dbg.h"
 #include "write.h"
+#include "bitfield.h"
 
 /*
  * stack layout is:
@@ -191,6 +192,8 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 	struct vreg reg_store;
 	const struct vreg *reg = &reg_store;
 	int is_fp;
+	struct vbitfield bf = target->bitfield;
+	const out_val *dval;
 
 	assert(type_is_complete(tnext));
 
@@ -219,7 +222,11 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 		v_unused_reg(octx, 1, is_fp, &reg_store);
 	}
 
-	return impl_deref(octx, target, reg);
+	dval = impl_deref(octx, target, reg);
+	if(bf.nbits)
+		dval = out_bitfield_to_scalar(octx, &bf, dval);
+
+	return dval;
 }
 
 const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
@@ -274,5 +281,10 @@ const out_val *out_set_bitfield(
 
 void out_store(out_ctx *octx, const out_val *dest, const out_val *val)
 {
+	if(dest->bitfield.nbits){
+		out_val_retain(octx, dest);
+		val = out_bitfield_scalar_merge(octx, &dest->bitfield, val, dest);
+	}
+
 	impl_store(octx, dest, val);
 }
