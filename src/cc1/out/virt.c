@@ -416,15 +416,6 @@ unsigned v_alloc_stack2(
 
 		/* if it changed, we need to realign the stack */
 		if(!noop || sz_rounded != sz_initial){
-			unsigned to_alloc;
-
-			if(noop){
-				/* the extra we need to align by */
-				to_alloc = sz_rounded - sz_initial;
-			}else{
-				to_alloc = sz_rounded; /* the whole hog */
-			}
-
 			if(fopt_mode & FOPT_VERBOSE_ASM){
 				out_comment(octx, "stack alignment for %s (%u -> %u)",
 						desc, octx->var_stack_sz, octx->var_stack_sz + sz_rounded);
