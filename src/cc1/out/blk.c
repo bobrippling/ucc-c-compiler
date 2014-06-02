@@ -132,6 +132,7 @@ void blk_terminate_undef(out_blk *b)
 out_blk *out_blk_new_lbl(out_ctx *octx, const char *lbl)
 {
 	out_blk *blk = umalloc(sizeof *blk);
+	(void)octx;
 	blk->desc = lbl;
 	blk->lbl = ustrdup(lbl);
 	return blk;
