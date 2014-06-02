@@ -1559,42 +1559,24 @@ void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 
 		case V_FLAG:
 		{
-			char *cmpjmp = ustrprintf(
-					"j%s %s", x86_cmp(&cond->bits.flag),
-					bt->lbl);
+			char *cmpjmp;
+			int parity_chk, parity_rev;
 
-			blk_terminate_condjmp(octx, cmpjmp, bt, bf);
-			break;
-#if 0
-			int parity_chk, parity_rev = 0;
-
-			parity_chk = x86_need_fp_parity_p(&vtop->bits.flag, &parity_rev);
+			parity_chk = x86_need_fp_parity_p(&cond->bits.flag, &parity_rev);
 
 			if(parity_chk){
 				/* nan means false, unless parity_rev */
-				/* this is slightly hacky - need basic block
-				 * support to do this properly - impl_jcond
-				 * should give two labels
-				 */
-				if(!parity_rev){
-					/* skip */
-					bb_lbl = out_label_code("jmp_parity");
-					out_asm(octx, "jp %s", lbl);
-				}
+				cmpjmp = ustrprintf(
+						"j%s %s\n"
+						"\tj%sp %s\n",
+						x86_cmp(&cond->bits.flag), bt->lbl,
+						parity_rev ? "n" : "", bt->lbl);
+			}else{
+				cmpjmp = ustrprintf("j%s %s\n", x86_cmp(&cond->bits.flag), bt->lbl);
 			}
 
-			out_asm(octx, "j%s %s", x86_cmp(&vtop->bits.flag), lbl);
-
-			if(parity_chk && parity_rev){
-				/* jump not taken, try parity */
-				out_asm(octx, "jp %s", lbl);
-			}
-			if(bb_lbl){
-				impl_lbl(bb_lbl);
-				free(bb_lbl);
-			}
+			blk_terminate_condjmp(octx, cmpjmp, bt, bf);
 			break;
-#endif
 		}
 
 		case V_CONST_F:
