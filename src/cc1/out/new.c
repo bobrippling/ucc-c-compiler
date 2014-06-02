@@ -1,4 +1,6 @@
+#include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <assert.h>
 
 #include "../type.h"
@@ -9,14 +11,13 @@
 #include "out.h" /* this file defs */
 #include "val.h"
 #include "ctx.h"
-
-#include <stdio.h>
-#define TODO() assert(0 && "TODO")
+#include "blk.h"
+#include "impl.h"
 
 out_val *out_new_blk_addr(out_ctx *octx, out_blk *blk)
 {
-	TODO();
-	return 0;
+	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+	return out_new_lbl(octx, voidp, blk->lbl, 0);
 }
 
 static out_val *out_new_bp_off(out_ctx *octx, long off)
@@ -27,12 +28,19 @@ static out_val *out_new_bp_off(out_ctx *octx, long off)
 
 out_val *out_new_frame_ptr(out_ctx *octx, int nframes)
 {
-	if(nframes <= 1)
-		return out_new_bp_off(octx, 0);
+	type *voidp;
+	out_val *fp = out_new_bp_off(octx, 0);
 
-	fprintf(stderr, "nframes=%d\n", nframes);
-	TODO();
-	return 0;
+	while(nframes > 1){
+		if(!voidp)
+			voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+
+		fp = (out_val *)out_change_type(octx, out_deref(octx, fp), voidp);
+
+		assert(fp->retains == 1);
+	}
+
+	return fp;
 }
 
 out_val *out_new_reg_save_ptr(out_ctx *octx)
@@ -79,8 +87,11 @@ out_val *out_new_lbl(out_ctx *octx, type *ty, const char *s, int pic)
 
 out_val *out_new_nan(out_ctx *octx, type *ty)
 {
-	TODO();
-	return 0;
+	out_val *v = v_new(octx, ty);
+
+	impl_set_nan(octx, v);
+
+	return v;
 }
 
 out_val *out_new_noop(out_ctx *octx)
@@ -92,10 +103,9 @@ out_val *out_new_noop(out_ctx *octx)
 	return v;
 }
 
-out_val *out_new_overflow(out_ctx *octx)
+const out_val *out_new_overflow(out_ctx *octx, const out_val *eval)
 {
-	TODO();
-	return 0;
+	return impl_test_overflow(octx, eval);
 }
 
 out_val *out_new_sym(out_ctx *octx, sym *sym)

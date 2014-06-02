@@ -1823,18 +1823,21 @@ void impl_undefined(out_ctx *octx)
 	blk_terminate_undef(octx->current_blk);
 }
 
-#if 0
-void impl_set_overflow(void)
+const out_val *impl_test_overflow(out_ctx *octx, const out_val *eval)
 {
-	v_set_flag(vtop, flag_overflow, 0);
+	return v_new_flag(octx, eval, flag_overflow, /*mod:*/0);
 }
-#endif
 
-#if 0
-void impl_set_nan(type *ty)
+void impl_set_nan(out_ctx *octx, out_val *v)
 {
+	type *ty = v->t;
+
+	(void)octx;
+
 	UCC_ASSERT(type_is_floating(ty),
-			"%s for non %s", __func__, type_to_str(ty));
+			"%s for %s", __func__, type_to_str(ty));
+
+	assert(v->retains == 1);
 
 	switch(type_size(ty, NULL)){
 		case 4:
@@ -1844,7 +1847,7 @@ void impl_set_nan(type *ty)
 				unsigned l;
 				float f;
 			} u = { 0x7fc00000u };
-			vtop->bits.val_f = u.f;
+			v->bits.val_f = u.f;
 			break;
 		}
 		case 8:
@@ -1854,15 +1857,13 @@ void impl_set_nan(type *ty)
 				unsigned long l;
 				double d;
 			} u = { 0x7ff8000000000000u };
-			vtop->bits.val_f = u.d;
+			v->bits.val_f = u.d;
 			break;
 		}
 		default:
 			ICE("TODO: long double nan");
 	}
 
-	vtop->type = V_CONST_F;
-	/* vtop->t should be set */
-	impl_load_fp(vtop);
+	v->type = V_CONST_F;
+	/*impl_load_fp(v);*/
 }
-#endif

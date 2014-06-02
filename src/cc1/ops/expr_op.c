@@ -878,8 +878,9 @@ const out_val *gen_expr_op(expr *e, out_ctx *octx)
 		out_blk *land = out_blk_new(octx, "trapv_end");
 		out_blk *blk_undef = out_blk_new(octx, "travp_bad");
 
+		out_val_retain(octx, eval);
 		out_ctrl_branch(octx,
-				out_new_overflow(octx),
+				out_new_overflow(octx, eval),
 				blk_undef,
 				land);
 

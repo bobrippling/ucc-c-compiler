@@ -57,8 +57,8 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf);
 void impl_func_epilogue(out_ctx *, type *);
 
 void impl_undefined(out_ctx *octx);
-void impl_set_overflow(void);
-void impl_set_nan(type *);
+const out_val *impl_test_overflow(out_ctx *, const out_val *);
+void impl_set_nan(out_ctx *, out_val *);
 
 /* scratch register indexing */
 int  impl_reg_to_scratch(const struct vreg *);
