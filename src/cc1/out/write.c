@@ -29,12 +29,13 @@ void out_asmv(
 {
 	char *insn;
 
+	if(!octx->current_blk)
+		return;
+
 	if(sec != SECTION_TEXT){
 		fprintf(stderr, "%s:%d: TODO: out_asmv() with section 0x%x",
 				__FILE__, __LINE__, sec);
 	}
-
-	assert(octx->current_blk);
 
 	out_dbg_flush(octx, octx->current_blk);
 
