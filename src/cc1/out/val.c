@@ -102,7 +102,8 @@ copy:
 			/* copy to a new register */
 			v_unused_reg(
 						octx, /*stack backup:*/1,
-						from->bits.regoff.reg.is_float, &r);
+						from->bits.regoff.reg.is_float, &r,
+						NULL);
 
 			/* dup */
 			impl_reg_cp_no_off(octx, from, &r);

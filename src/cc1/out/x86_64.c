@@ -619,7 +619,7 @@ static const out_val *x86_load_iv(
 
 		if(!reg){
 			reg = &r;
-			v_unused_reg(octx, 1, 0, &r);
+			v_unused_reg(octx, 1, 0, &r, /*from isn't a reg:*/NULL);
 		}
 
 		/* TODO: 64-bit registers in general on 32-bit */
@@ -691,7 +691,8 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 
 			v_unused_reg(octx,
 					1, type_is_floating(from->t),
-					&r);
+					&r,
+					from);
 
 			mut->type = V_LBL;
 			mut->bits.lbl.str = lbl;
@@ -896,6 +897,9 @@ static void x86_reg_cp(
 		type *typ)
 {
 	assert(!impl_reg_frame_const(to));
+
+	if(vreg_eq(to, from))
+		return;
 
 	out_asm(octx, "mov%s %%%s, %%%s",
 			x86_suffix(typ),
@@ -1244,7 +1248,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 			memcpy_safe(&old_reg, &l->bits.regoff.reg);
 
-			v_unused_reg(octx, 1, 0, &new_reg);
+			v_unused_reg(octx, 1, 0, &new_reg, l);
 			l = v_new_reg(octx, l, l->t, &new_reg);
 
 			x86_reg_cp(octx, &new_reg, &old_reg, l->t);
@@ -1371,7 +1375,7 @@ const out_val *impl_cast_load(
 		 * special case: movzlq is invalid, we use movl %r, %r instead
 		 */
 
-		v_unused_reg(octx, 1, 0, &r);
+		v_unused_reg(octx, 1, 0, &r, vp);
 		vp = vp_mut = v_new_reg(octx, vp, vp->t, &r);
 
 		if(!is_signed && *suffix_big == 'q' && *suffix_small == 'l'){
@@ -1431,7 +1435,7 @@ static const out_val *x86_xchg_fi(
 
 	fp_s = x86_suffix(ty_fp);
 
-	v_unused_reg(octx, 1, to_float, &r);
+	v_unused_reg(octx, 1, to_float, &r, vp);
 
 	/* cvt*2* [mem|reg], xmm* */
 	vp = v_to(octx, vp, TO_REG | TO_MEM);
@@ -1474,7 +1478,7 @@ const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *from, type *to)
 {
 	struct vreg r;
 
-	v_unused_reg(octx, 1, 1, &r);
+	v_unused_reg(octx, 1, 1, &r, vp);
 
 	x86_fp_conv(octx, vp, &r, to, NULL,
 			x86_suffix(from),
@@ -1518,7 +1522,7 @@ static const char *x86_call_jmp_target(
 
 				*pvp = v_reg_apply_offset(octx, *pvp);
 
-				v_unused_reg(octx, 1, 0, &r);
+				v_unused_reg(octx, 1, 0, &r, *pvp);
 				impl_reg_cp_no_off(octx, *pvp, &r);
 
 				assert((*pvp)->retains == 1);

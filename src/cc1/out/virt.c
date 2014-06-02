@@ -128,7 +128,7 @@ static ucc_wur const out_val *v_freeup_regp(out_ctx *octx, const out_val *vp)
 	assert(vp->type == V_REG && "not reg");
 
 	/* attempt to save to a register first */
-	got_reg = v_unused_reg(octx, 0, vp->bits.regoff.reg.is_float, &r);
+	got_reg = v_unused_reg(octx, 0, vp->bits.regoff.reg.is_float, &r, NULL);
 
 	if(got_reg){
 		/* move 'vp' into the fresh reg */
@@ -174,12 +174,25 @@ void v_freeup_reg(out_ctx *octx, const struct vreg *r)
 int v_unused_reg(
 		out_ctx *octx,
 		int stack_as_backup, int fp,
-		struct vreg *out)
+		struct vreg *out,
+		out_val const *to_replace)
 {
 	unsigned char used[sizeof(octx->reserved_regs)];
 	out_val_list *it;
 	const out_val *first;
 	int i;
+
+	/* if the value is in a register, we only need a new register
+	 * if we have other references to it */
+	if(to_replace
+	&& to_replace->retains == 1
+	&& to_replace->type == V_REG
+	&& to_replace->bits.regoff.reg.is_float == fp
+	&& !impl_reg_frame_const(&to_replace->bits.regoff.reg))
+	{
+		memcpy_safe(out, &to_replace->bits.regoff.reg);
+		return 1;
+	}
 
 	memcpy(used, octx->reserved_regs, sizeof used);
 	first = NULL;
@@ -243,7 +256,7 @@ const out_val *v_to_reg_out(out_ctx *octx, const out_val *conv, struct vreg *out
 			out = &chosen;
 
 		/* get a register */
-		v_unused_reg(octx, 1, type_is_floating(conv->t), out);
+		v_unused_reg(octx, 1, type_is_floating(conv->t), out, NULL);
 
 		/* load into register */
 		return v_to_reg_given(octx, conv, out);

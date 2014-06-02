@@ -17,7 +17,8 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask);
 int v_unused_reg(
 		out_ctx *octx,
 		int stack_as_backup, int fp,
-		struct vreg *out);
+		struct vreg *out,
+		out_val const *to_replace);
 
 /* v_to_* */
 enum vto

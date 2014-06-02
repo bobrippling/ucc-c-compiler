@@ -207,20 +207,7 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 
 	is_fp = type_is_floating(tnext);
 
-	/* if the pointer is in a register, we only need a new register
-	 * if we have other references to 'target' */
-	if(!is_fp
-	&& target->retains == 1
-	&& target->type == V_REG
-	&& !impl_reg_frame_const(&target->bits.regoff.reg))
-	{
-		reg = &target->bits.regoff.reg;
-
-	}else{
-		assert(target->retains > 0);
-
-		v_unused_reg(octx, 1, is_fp, &reg_store);
-	}
+	v_unused_reg(octx, 1, is_fp, &reg_store, target);
 
 	dval = impl_deref(octx, target, reg);
 	if(bf.nbits)
