@@ -54,6 +54,9 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 		out_ctrl_branch(octx, for_cond, blk_body, blk_end);
 	}
 
+	s->blk_continue = blk_test;
+	s->blk_break = blk_end;
+
 	out_current_blk(octx, blk_body);
 	{
 		gen_stmt(s->lhs, octx);
