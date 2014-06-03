@@ -268,7 +268,7 @@ const out_val *out_op(
 			if(step_l == 1 && step_r == 1){
 				consted = try_const_fold(octx, binop, lhs, rhs);
 				if(consted)
-					return consume_one(octx, consted, lhs, rhs);
+					return consted;
 			}
 		}
 	}
