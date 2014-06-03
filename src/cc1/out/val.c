@@ -84,10 +84,15 @@ copy:
 
 		case V_FLAG:
 		{
-			const out_val *dup = v_to_reg(octx, from);
+			const out_val *dup;
+
+			out_val_retain(octx, from);
+			dup = v_to_reg(octx, from);
+
 			out_val_overwrite((out_val *)from, dup); /* replace flag */
+			out_val_release(octx, dup);
+
 			/* fall */
-			from = dup;
 		}
 
 		case V_REG_SPILT:
