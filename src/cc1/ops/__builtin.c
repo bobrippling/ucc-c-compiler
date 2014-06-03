@@ -332,6 +332,8 @@ static void builtin_memcpy_single(
 {
 	type *t1 = type_nav_btype(cc1_type_nav, type_intptr_t);
 
+	out_val_retain(octx, *dst);
+	out_val_retain(octx, *src);
 	out_store(octx, *dst, out_deref(octx, *src));
 
 	*dst = out_op(octx, op_plus, *dst, out_new_l(octx, t1, 1));
@@ -386,6 +388,7 @@ static const out_val *builtin_gen_memcpy(expr *e, out_ctx *octx)
 		}
 	}
 
+	out_val_release(octx, src);
 	return out_op(
 			octx, op_minus,
 			dest, out_new_l(octx, e->tree_type, e->bits.num.val.i));
