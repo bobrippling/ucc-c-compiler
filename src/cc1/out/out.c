@@ -218,10 +218,9 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 
 const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 {
-	out_val *const normalised = v_dup_or_reuse(octx, unnormal, unnormal->t);
-	const out_val *ret = normalised;
+	out_val *normalised = v_dup_or_reuse(octx, unnormal, unnormal->t);
 
-	switch(unnormal->type){
+	switch(normalised->type){
 		case V_FLAG:
 			/* already normalised */
 			break;
@@ -236,14 +235,14 @@ const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 			break;
 
 		default:
-			ret = v_to_reg(octx, normalised);
+			normalised = (out_val *)v_to_reg(octx, normalised);
 			/* fall */
 
 		case V_REG:
 		{
 			const out_val *z = out_new_zero(octx, normalised->t);
 
-			ret = out_op(octx, op_ne, z, unnormal);
+			normalised = (out_val *)out_op(octx, op_ne, z, normalised);
 			/* 0 -> `0 != 0` = 0
 			 * 1 -> `1 != 0` = 1
 			 * 5 -> `5 != 0` = 1
@@ -251,7 +250,7 @@ const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 		}
 	}
 
-	return ret;
+	return normalised;
 }
 
 const out_val *out_set_bitfield(
