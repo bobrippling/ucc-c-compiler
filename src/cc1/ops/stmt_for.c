@@ -45,13 +45,15 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 		out_comment(octx, "for-init");
 	}
 
+	out_ctrl_transfer_make_current(octx, blk_test);
 	if(s->flow->for_while){
 		const out_val *for_cond;
 
-		out_ctrl_transfer_make_current(octx, blk_test);
 		for_cond = gen_expr(s->flow->for_while, octx);
 
 		out_ctrl_branch(octx, for_cond, blk_body, blk_end);
+	}else{
+		out_ctrl_transfer(octx, blk_body, NULL, NULL);
 	}
 
 	s->blk_continue = blk_test;
