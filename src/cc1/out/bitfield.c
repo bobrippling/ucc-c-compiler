@@ -62,7 +62,7 @@ const out_val *out_bitfield_scalar_merge(out_ctx *octx,
 
 	struct vbitfield bf = *in_bf;
 	/* we get the lvalue type - change to pointer */
-	type *const ty = pword->t, *ty_ptr = type_ptr_to(ty);
+	type *const ty = scalar->t, *ty_ptr = type_ptr_to(ty);
 	unsigned long mask_leading_1s, mask_back_0s, mask_rm;
 	out_val *mut_pword;
 	const out_val *scratch;
