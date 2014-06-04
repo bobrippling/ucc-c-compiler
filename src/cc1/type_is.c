@@ -168,8 +168,13 @@ type *type_is_ptr(type *r)
 type *type_is_ptr_or_block(type *r)
 {
 	type *t = type_is_ptr(r);
+	if(t)
+		return t;
 
-	return t ? t : type_is(r, type_block);
+	r = type_is(r, type_block);
+	if(r)
+		return type_next(r);
+	return NULL;
 }
 
 type *type_is_array(type *r)
