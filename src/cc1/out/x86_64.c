@@ -837,10 +837,18 @@ lea:
 	return v_new_reg(octx, from, new_ty, reg);
 }
 
-static const out_val *x86_check_iv(out_ctx *octx, const out_val *from)
+static const out_val *x86_check_ivfp(out_ctx *octx, const out_val *from)
 {
-	if(from->type == V_CONST_I)
-		from = x86_load_iv(octx, from, NULL);
+	switch(from->type){
+		case V_CONST_I:
+			from = x86_load_iv(octx, from, NULL);
+			break;
+		case V_CONST_F:
+			from = x86_load_fp(octx, from);
+			break;
+		default:
+			break;
+	}
 	return from;
 }
 
@@ -866,7 +874,7 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 	}
 
 	from = v_to(octx, from, TO_REG | TO_CONST);
-	from = x86_check_iv(octx, from);
+	from = x86_check_ivfp(octx, from);
 
 	switch(to->type){
 		case V_FLAG:
@@ -1017,8 +1025,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	const char *opc;
 	const out_val *min_retained = l->retains < r->retains ? l : r;
 
-	l = x86_check_iv(octx, l);
-	r = x86_check_iv(octx, r);
+	l = x86_check_ivfp(octx, l);
+	r = x86_check_ivfp(octx, r);
 
 	if(type_is_floating(l->t)){
 		if(op_is_comparison(op)){
