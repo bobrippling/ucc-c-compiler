@@ -10,14 +10,9 @@ ucc_wur const out_val *impl_load(
 		const struct vreg *reg)
 	ucc_nonnull();
 
-ucc_wur const out_val *impl_load_iv(const out_val *from);
-ucc_wur const out_val *impl_load_fp(const out_val *from);
-
 void impl_reg_cp_no_off(
 		out_ctx *octx, const out_val *from, const struct vreg *to_reg)
 	ucc_nonnull();
-
-void impl_reg_swp(const out_val *a, const out_val *b);
 
 ucc_wur const out_val *impl_op(out_ctx *octx, enum op_type, const out_val *l, const out_val *r);
 ucc_wur const out_val *impl_op_unary(out_ctx *octx, enum op_type, const out_val *);
