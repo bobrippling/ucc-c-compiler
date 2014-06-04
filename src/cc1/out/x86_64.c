@@ -1284,7 +1284,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *reg)
 {
-	type *tpointed_to = type_pointed_to(vp->t);
+	type *tpointed_to = vp->type == V_REG_SPILT ? vp->t : type_pointed_to(vp->t);
 
 	/* loaded the pointer, now we apply the deref change */
 	out_asm(octx, "mov%s %s, %%%s",
