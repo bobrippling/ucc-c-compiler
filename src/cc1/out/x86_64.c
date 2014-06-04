@@ -699,7 +699,6 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			mut->bits.lbl.pic = 1;
 			mut->bits.lbl.offset = 0;
 
-			free(lbl);
 			return from;
 		}
 	}
