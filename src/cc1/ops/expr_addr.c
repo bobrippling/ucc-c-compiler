@@ -64,6 +64,8 @@ const out_val *gen_expr_addr(expr *e, out_ctx *octx)
 {
 	if(e->bits.lbl.spel){
 		/* GNU &&lbl */
+		label_makeblk(e->bits.lbl.label, octx);
+
 		return out_new_blk_addr(octx, e->bits.lbl.label->bblock);
 
 	}else{

@@ -1543,6 +1543,13 @@ void impl_jmp(FILE *f, const char *lbl)
 	fprintf(f, "\tjmp %s\n", lbl);
 }
 
+void impl_jmp_expr(out_ctx *octx, const out_val *v)
+{
+	const char *jmp = x86_call_jmp_target(octx, &v, 0);
+	out_asm(octx, "jmp %s", jmp);
+	out_val_consume(octx, v);
+}
+
 void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 {
 	switch(cond->type){

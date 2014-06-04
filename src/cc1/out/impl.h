@@ -28,6 +28,7 @@ ucc_wur const out_val *impl_deref(
 	ucc_nonnull();
 
 void impl_branch(out_ctx *, const out_val *, out_blk *bt, out_blk *bf);
+void impl_jmp_expr(out_ctx *, const out_val *);
 
 ucc_wur const out_val *impl_i2f(out_ctx *octx, const out_val *, type *t_i, type *t_f);
 ucc_wur const out_val *impl_f2i(out_ctx *octx, const out_val *, type *t_f, type *t_i);

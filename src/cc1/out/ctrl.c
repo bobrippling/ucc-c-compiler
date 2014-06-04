@@ -126,9 +126,12 @@ void out_ctrl_transfer_make_current(out_ctx *octx, out_blk *to)
 
 void out_ctrl_transfer_exp(out_ctx *octx, const out_val *addr)
 {
-	out_blk *cur = octx->current_blk;
-	octx->current_blk = NULL;
+	assert(addr->retains == 1); /* don't want this changing under us */
 
-	cur->type = BLK_NEXT_EXPR;
-	cur->bits.exp = addr;
+	impl_jmp_expr(octx, addr); /* must jump now, while we have octx */
+
+	octx->current_blk->type = BLK_NEXT_EXPR;
+	octx->current_blk->bits.exp = addr;
+
+	octx->current_blk = NULL;
 }
