@@ -1522,7 +1522,7 @@ static const char *x86_call_jmp_target(
 
 				*pvp = v_reg_apply_offset(octx, *pvp);
 
-				v_unused_reg(octx, 1, 0, &r, *pvp);
+				v_unused_reg(octx, 1, 0, &r, /*don't want rax:*/NULL);
 				impl_reg_cp_no_off(octx, *pvp, &r);
 
 				assert((*pvp)->retains == 1);
