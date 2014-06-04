@@ -1572,11 +1572,11 @@ void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 				/* nan means false, unless parity_rev */
 				cmpjmp = ustrprintf(
 						"j%s %s\n"
-						"\tj%sp %s\n",
+						"\tj%sp %s",
 						x86_cmp(&cond->bits.flag), bt->lbl,
 						parity_rev ? "n" : "", bt->lbl);
 			}else{
-				cmpjmp = ustrprintf("j%s %s\n", x86_cmp(&cond->bits.flag), bt->lbl);
+				cmpjmp = ustrprintf("j%s %s", x86_cmp(&cond->bits.flag), bt->lbl);
 			}
 
 			blk_terminate_condjmp(octx, cmpjmp, bt, bf);
