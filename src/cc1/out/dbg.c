@@ -1009,7 +1009,9 @@ static void dwarf_symtable_scope(
 						break;
 
 					case sym_arg:
-						ICE("sym_arg in function");
+						/* ignore arguments in local scope:
+						 * may be entering a block's code scope */
+						break;
 				}
 
 				dwarf_attr(var, DW_AT_location, DW_FORM_block1, locn);
