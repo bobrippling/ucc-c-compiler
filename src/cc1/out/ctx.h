@@ -7,6 +7,7 @@ struct out_ctx
 {
 	out_blk *first_blk, *current_blk, *epilogue_blk;
 	out_blk *last_used_blk; /* for appending debug labels */
+	out_blk **mustgen; /* goto *lbl; where lbl is otherwise unreachable */
 
 	struct out_val_list
 	{

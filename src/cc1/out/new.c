@@ -3,6 +3,8 @@
 #include <stdarg.h>
 #include <assert.h>
 
+#include "../../util/dynarray.h"
+
 #include "../type.h"
 #include "../type_nav.h"
 #include "../type_is.h"
@@ -17,6 +19,7 @@
 out_val *out_new_blk_addr(out_ctx *octx, out_blk *blk)
 {
 	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+	dynarray_add(&octx->mustgen, blk);
 	return out_new_lbl(octx, voidp, blk->lbl, 1);
 }
 

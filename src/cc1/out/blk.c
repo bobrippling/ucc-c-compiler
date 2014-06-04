@@ -97,9 +97,13 @@ static void bfs_block(out_blk *blk, struct flush_state *st)
 void blk_flushall(out_ctx *octx, char *end_dbg_lbl)
 {
 	struct flush_state st = { 0 };
+	out_blk **must_i;
 
 	st.f = cc_out[SECTION_TEXT];
 	bfs_block(octx->first_blk, &st);
+
+	for(must_i = octx->mustgen; must_i && *must_i; must_i++)
+		bfs_block(*must_i, &st);
 
 	if(st.jmpto)
 		impl_jmp(st.f, st.jmpto->lbl);
