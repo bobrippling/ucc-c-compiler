@@ -852,10 +852,16 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 	if(from->type == V_FLAG
 	&& to->type == V_REG)
 	{
-		/* setting a register from a flag - easy */
-		from = impl_load(octx, from, &to->bits.regoff.reg);
-		out_val_consume(octx, to);
-		out_val_consume(octx, from);
+		/* the register we're storing into is an lvalue */
+		struct vreg evalreg;
+
+		/* setne %evalreg */
+		v_unused_reg(octx, 1, 0, &evalreg, NULL);
+		from = impl_load(octx, from, &evalreg);
+
+		/* mov %evalreg, (from) */
+		impl_store(octx, to, from);
+
 		return;
 	}
 
