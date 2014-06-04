@@ -1,6 +1,7 @@
 It's a compiler!
 
-It doesn't use system include files nor libraries yet, just some simple ones in lib/
+Partial support for system include files - barring a preprocessor bug.
+System libraries are fully supported, including ABI compatability with things like va_list.
 
 
 Requirements
@@ -31,10 +32,9 @@ All programs compiled by ucc are statically linked.
 Major C-Features Todo
 =============
 
-Floating point numbers (experimental/float)
 C99 VLAs (experimental/vla)
 By-value argument passing and function return for:
-	- structure/union types
+	- structure/union types (feature/1st-class-structs)
 	- long-double types
 	- long long types on 32-bit archs
 
