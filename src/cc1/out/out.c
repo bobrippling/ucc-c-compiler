@@ -195,8 +195,6 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 	struct vbitfield bf = target->bitfield;
 	const out_val *dval;
 
-	assert(type_is_complete(tnext));
-
 	/* if the pointed-to object is not an lvalue, don't deref */
 	if(type_is(tnext, type_array)
 	|| type_is(tnext, type_func))
