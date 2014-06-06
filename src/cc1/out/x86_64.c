@@ -1606,19 +1606,32 @@ void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 		case V_FLAG:
 		{
 			char *cmpjmp;
-			int parity_chk, parity_rev;
+			int parity_chk, flip_parity_ret;
 
-			parity_chk = x86_need_fp_parity_p(&cond->bits.flag, &parity_rev);
+			parity_chk = x86_need_fp_parity_p(&cond->bits.flag, &flip_parity_ret);
 
 			if(parity_chk){
-				/* nan means false, unless parity_rev */
+				/* nan means false, unless flip_parity_ret */
+				char *parity_insn, *cmp_insn;
+
+				cmp_insn = ustrprintf(
+						"j%s %s",
+						x86_cmp(&cond->bits.flag),
+						bt->lbl);
+
+				parity_insn = ustrprintf("jp %s",
+						flip_parity_ret ? bt->lbl : bf->lbl);
+
 				cmpjmp = ustrprintf(
-						"j%s %s\n"
-						"\tj%sp %s",
-						x86_cmp(&cond->bits.flag), bt->lbl,
-						parity_rev ? "n" : "", bt->lbl);
+						"%s\n\t%s",
+						parity_insn,
+						cmp_insn);
+
+				free(cmp_insn);
+				free(parity_insn);
 			}else{
 				cmpjmp = ustrprintf("j%s %s", x86_cmp(&cond->bits.flag), bt->lbl);
+				/* fall thru to false block */
 			}
 
 			blk_terminate_condjmp(octx, cmpjmp, bt, bf);
