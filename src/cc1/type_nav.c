@@ -355,7 +355,7 @@ type *type_called(type *functy, struct funcargs **pfuncargs)
 	return functy->ref;
 }
 
-type *type_pointed_to(type *const ty_ptr)
+type *type_dereference_decay(type *const ty_ptr)
 {
 	type *const pointee = type_is_ptr(ty_ptr);
 	assert(pointee);

@@ -23,7 +23,7 @@ type *type_decay(type *);
 
 type *type_ptr_to(type *);
 type *type_decayed_ptr_to(type *, type *array_from);
-type *type_pointed_to(type *); /* just pointers */
+type *type_dereference_decay(type *); /* int * -> int, int (*)() -> int (*)() */
 type *type_block_of(type *);
 
 type *type_array_of(type *, struct expr *sz);

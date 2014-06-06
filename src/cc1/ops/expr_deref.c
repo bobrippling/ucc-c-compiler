@@ -34,7 +34,7 @@ void fold_expr_deref(expr *e, symtable *stab)
 
 	fold_check_bounds(ptr, 0);
 
-	e->tree_type = type_pointed_to(ptr->tree_type);
+	e->tree_type = type_dereference_decay(ptr->tree_type);
 }
 
 static const out_val *gen_expr_deref_lea(expr *e, out_ctx *octx)

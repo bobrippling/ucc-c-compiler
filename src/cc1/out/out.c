@@ -194,7 +194,7 @@ const out_val *out_change_type(out_ctx *octx, const out_val *val, type *ty)
 
 const out_val *out_deref(out_ctx *octx, const out_val *target)
 {
-	type *tnext = type_pointed_to(target->t);
+	type *tnext = type_dereference_decay(target->t);
 	struct vreg reg_store;
 	const struct vreg *reg = &reg_store;
 	int is_fp;
