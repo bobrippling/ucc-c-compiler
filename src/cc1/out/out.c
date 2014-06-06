@@ -194,7 +194,7 @@ const out_val *out_change_type(out_ctx *octx, const out_val *val, type *ty)
 
 const out_val *out_deref(out_ctx *octx, const out_val *target)
 {
-	type *tnext = type_dereference_decay(target->t);
+	type *tnext = type_is_ptr(target->t);
 	struct vreg reg_store;
 	const struct vreg *reg = &reg_store;
 	int is_fp;
@@ -206,7 +206,8 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 	|| type_is(tnext, type_func))
 	{
 		/* noop */
-		return v_dup_or_reuse(octx, target, tnext);
+		return v_dup_or_reuse(octx, target,
+				type_dereference_decay(target->t));
 	}
 
 	is_fp = type_is_floating(tnext);
