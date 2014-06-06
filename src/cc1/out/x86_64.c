@@ -745,8 +745,6 @@ const out_val *impl_load(
 		const out_val *from,
 		const struct vreg *reg)
 {
-	type *new_ty = NULL;
-
 	if(from->type == V_REG
 	&& vreg_eq(reg, &from->bits.regoff.reg))
 	{
@@ -760,6 +758,7 @@ const out_val *impl_load(
 			char *parity = NULL;
 			int parity_default = 0;
 			type *int_ty = type_nav_btype(cc1_type_nav, type_int);
+			type *char_ty = type_nav_btype(cc1_type_nav, type_nchar);
 
 			/* check float/orderedness */
 			if(x86_need_fp_parity_p(&from->bits.flag, &parity_default))
@@ -787,6 +786,17 @@ const out_val *impl_load(
 				ICE("TODO: parity");
 				free(parity);
 			}
+
+			if(type_size(from->t, NULL) != type_size(char_ty, NULL)){
+				/* need to promote, since we forced char type */
+				type *tto = from->t;
+
+				/* 'from' is currently in a char type */
+				from = v_new_reg(octx, from, char_ty, reg);
+
+				/* convert to the type we had passed in */
+				from = out_cast(octx, from, tto, 1);
+			}
 			break;
 		}
 
@@ -799,12 +809,10 @@ const out_val *impl_load(
 				goto lea;
 
 			impl_reg_cp_no_off(octx, from, reg);
-			new_ty = from->t;
 			break;
 
 		case V_CONST_I:
 			from = x86_load_iv(octx, from, reg);
-			new_ty = from->t;
 			break;
 
 lea:
@@ -826,7 +834,6 @@ lea:
 					x86_reg_str(reg, chosen_ty));
 
 			/* 'from' is now in a reg */
-			new_ty = from->t;
 			break;
 		}
 
@@ -836,7 +843,7 @@ lea:
 				from = impl_load(octx, from, reg);
 	}
 
-	return v_new_reg(octx, from, new_ty, reg);
+	return v_new_reg(octx, from, from->t, reg);
 }
 
 static const out_val *x86_check_ivfp(out_ctx *octx, const out_val *from)
