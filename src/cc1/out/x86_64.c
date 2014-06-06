@@ -710,10 +710,12 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 }
 
 static int x86_need_fp_parity_p(
-		struct flag_opts const *fopt, int *par_default)
+		struct flag_opts const *fopt, int *flip_result)
 {
 	if(!(fopt->mods & flag_mod_float))
 		return 0;
+
+	*flip_result = 0;
 
 	/*
 	 * for x86, we check the parity flag, if set we have a nan.
@@ -734,7 +736,7 @@ static int x86_need_fp_parity_p(
 			return 0;
 
 		case flag_ne:
-			*par_default = 1; /* a != a is true if a == nan */
+			*flip_result = 1; /* a != a is true if a == nan */
 			/* fall */
 		default:
 			return 1;
@@ -758,13 +760,13 @@ const out_val *impl_load(
 			type *int_ty = type_nav_btype(cc1_type_nav, type_int);
 			type *char_ty = type_nav_btype(cc1_type_nav, type_nchar);
 			const char *rstr;
-			int parity_default = 0;
+			int flip_parity_ret;
 			int chk_parity;
 
 			rstr = x86_reg_str(reg, char_ty);
 
 			/* check float/orderedness */
-			chk_parity = x86_need_fp_parity_p(&from->bits.flag, &parity_default);
+			chk_parity = x86_need_fp_parity_p(&from->bits.flag, &flip_parity_ret);
 
 			/* movl $0, %eax */
 			out_flush_volatile(octx,
@@ -787,11 +789,11 @@ const out_val *impl_load(
 				parity_rstr = x86_reg_str(&parity_reg, char_ty);
 
 				out_asm(octx, "set%sp %%%s",
-						parity_default ? "" : "n",
+						flip_parity_ret ? "" : "n",
 						parity_rstr);
 
 				out_asm(octx, "%sb %%%s, %%%s",
-						parity_default ? "or" : "and",
+						flip_parity_ret ? "or" : "and",
 						parity_rstr, rstr);
 
 				out_asm(octx, "andb $1, %%%s", rstr);
