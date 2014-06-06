@@ -613,6 +613,7 @@ static const out_val *x86_load_iv(
 	struct vreg r;
 
 	assert(from->type == V_CONST_I);
+	assert(!type_is_floating(from->t));
 
 	if(high_bit >= AS_MAX_MOV_BIT){
 		char buf[INTEGRAL_BUF_SIZ];
