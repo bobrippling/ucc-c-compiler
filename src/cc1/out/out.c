@@ -124,8 +124,14 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 	/* normalise before the cast, otherwise we do things like
 	 * 5.3 -> 5, then normalise 5, instead of 5.3 != 0.0
 	 */
-	if(normalise_bool && type_is_primitive(to, type__Bool))
+	if(normalise_bool && type_is_primitive(to, type__Bool)){
 		val = out_normalise(octx, val);
+
+		if(type_cmp(val->t, to, 0) & TYPE_EQUAL_ANY){
+			out_comment(octx, "out_cast done via normalise");
+			return val;
+		}
+	}
 
 	fp[0] = type_is_floating(from);
 	fp[1] = type_is_floating(to);
