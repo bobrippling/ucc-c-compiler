@@ -570,12 +570,8 @@ void impl_to_retreg(out_ctx *octx, const out_val *val, type *retty)
 {
 	struct vreg r;
 
-	r.idx =
-		(r.is_float = type_is_floating(retty))
-		? REG_RET_F
-		: REG_RET_I;
-
-	r.is_float = 0;
+	r.is_float = type_is_floating(retty);
+	r.idx = r.is_float ? REG_RET_F : REG_RET_I;
 
 	/* v_to_reg since we don't handle lea/load ourselves */
 	out_flush_volatile(octx, v_to_reg_given(octx, val, &r));
