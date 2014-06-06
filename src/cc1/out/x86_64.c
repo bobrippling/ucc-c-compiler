@@ -1718,6 +1718,10 @@ const out_val *impl_call(
 				"call argument space");
 	}
 
+	/* 16 byte for SSE - special case here as mstack_align may be less */
+	if(!IS_32_BIT())
+		v_stack_align(octx, 16, 0);
+
 	if(arg_stack > 0){
 		unsigned nfloats = 0, nints = 0; /* shadow */
 
