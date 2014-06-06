@@ -755,37 +755,46 @@ const out_val *impl_load(
 	switch(from->type){
 		case V_FLAG:
 		{
-			const out_val *vtmp_val;
-			char *parity = NULL;
-			int parity_default = 0;
 			type *int_ty = type_nav_btype(cc1_type_nav, type_int);
 			type *char_ty = type_nav_btype(cc1_type_nav, type_nchar);
+			const char *rstr;
+			int parity_default = 0;
+			int chk_parity;
+
+			rstr = x86_reg_str(reg, char_ty);
 
 			/* check float/orderedness */
-			if(x86_need_fp_parity_p(&from->bits.flag, &parity_default))
-				parity = out_label_code("parity");
-
-			vtmp_val = out_new_l(octx, int_ty, parity_default);
+			chk_parity = x86_need_fp_parity_p(&from->bits.flag, &parity_default);
 
 			/* movl $0, %eax */
-			out_flush_volatile(octx, impl_load(octx, vtmp_val, reg));
-
-			if(parity)
-				out_asm(octx, "jp %s", parity);
-
-			/* force set%s to set the low byte */
-			new_ty = type_nav_btype(cc1_type_nav, type_nchar);
+			out_flush_volatile(octx,
+					impl_load(
+						octx,
+						out_new_l(octx, int_ty, 0),
+						reg));
 
 			/* actual cmp */
-			out_asm(octx, "set%s %%%s",
-					x86_cmp(&from->bits.flag),
-					x86_reg_str(reg, new_ty));
+			out_asm(octx, "set%s %%%s", x86_cmp(&from->bits.flag), rstr);
 
-			if(parity){
-				/* don't use out_label - this does a vstack flush */
-				/*impl_lbl(octx, parity);*/
-				ICE("TODO: parity");
-				free(parity);
+			if(chk_parity){
+				struct vreg parity_reg;
+				const char *parity_rstr;
+
+				v_reserve_reg(octx, reg);
+				v_unused_reg(octx, 1, 0, &parity_reg, NULL);
+				v_unreserve_reg(octx, reg);
+
+				parity_rstr = x86_reg_str(&parity_reg, char_ty);
+
+				out_asm(octx, "set%sp %%%s",
+						parity_default ? "" : "n",
+						parity_rstr);
+
+				out_asm(octx, "%sb %%%s, %%%s",
+						parity_default ? "or" : "and",
+						parity_rstr, rstr);
+
+				out_asm(octx, "andb $1, %%%s", rstr);
 			}
 
 			if(type_size(from->t, NULL) != type_size(char_ty, NULL)){
