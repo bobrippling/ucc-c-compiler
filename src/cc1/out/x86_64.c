@@ -1106,8 +1106,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 					vstack_str_r(b1, r, 0),
 					vstack_str_r(b2, l, 0));
 
-			out_val_consume(octx, l);
-			return v_dup_or_reuse(octx, r, l->t);
+			out_val_consume(octx, r);
+			return v_dup_or_reuse(octx, l, l->t);
 		}
 	}
 
