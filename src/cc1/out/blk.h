@@ -6,7 +6,6 @@
 struct out_blk
 {
 	/* all blocks: */
-	out_ctx *octx;
 	const char *desc;
 	char *lbl;
 	char **insns;

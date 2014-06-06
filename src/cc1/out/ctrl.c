@@ -15,19 +15,11 @@
 #include "ctx.h"
 #include "virt.h"
 
-static void register_block(out_ctx *octx, out_blk *blk)
-{
-	blk->octx = octx;
-}
-
 void out_ctrl_branch(
 		out_ctx *octx,
 		const out_val *cond,
 		out_blk *if_true, out_blk *if_false)
 {
-	register_block(octx, if_true);
-	register_block(octx, if_false);
-
 	impl_branch(octx, cond, if_true, if_false);
 	out_val_consume(octx, cond);
 
@@ -83,8 +75,6 @@ void out_current_blk(out_ctx *octx, out_blk *new_blk)
 
 	if(new_blk == cur)
 		return;
-
-	register_block(octx, new_blk);
 
 	octx->current_blk = new_blk;
 }
