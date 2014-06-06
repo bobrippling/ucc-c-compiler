@@ -31,16 +31,17 @@ static out_val *out_new_bp_off(out_ctx *octx, long off)
 
 out_val *out_new_frame_ptr(out_ctx *octx, int nframes)
 {
-	type *voidp;
+	type *voidpp = NULL;
 	out_val *fp = out_new_bp_off(octx, 0);
 
-	while(nframes > 1){
-		if(!voidp)
-			voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
-
-		fp = (out_val *)out_change_type(octx, out_deref(octx, fp), voidp);
+	for(; nframes > 1; nframes--){
+		if(!voidpp){
+			voidpp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+			voidpp = type_ptr_to(voidpp);
+		}
 
 		assert(fp->retains == 1);
+		fp = (out_val *)out_deref(octx, out_change_type(octx, fp, voidpp));
 	}
 
 	return fp;
