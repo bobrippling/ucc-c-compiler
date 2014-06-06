@@ -117,6 +117,11 @@ void blk_terminate_condjmp(
 {
 	out_blk *current = octx->current_blk;
 
+	if(!current){
+		free(condinsn);
+		return;
+	}
+
 	assert(current->type == BLK_UNINIT && "overwriting .next?");
 
 	current->type = BLK_COND;
@@ -130,7 +135,8 @@ void blk_terminate_condjmp(
 
 void blk_terminate_undef(out_blk *b)
 {
-	b->type = BLK_TERMINAL;
+	if(b)
+		b->type = BLK_TERMINAL;
 }
 
 out_blk *out_blk_new_lbl(out_ctx *octx, const char *lbl)

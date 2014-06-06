@@ -120,8 +120,10 @@ void out_ctrl_transfer_exp(out_ctx *octx, const out_val *addr)
 
 	impl_jmp_expr(octx, addr); /* must jump now, while we have octx */
 
-	octx->current_blk->type = BLK_NEXT_EXPR;
-	octx->current_blk->bits.exp = addr;
+	if(octx->current_blk){
+		octx->current_blk->type = BLK_NEXT_EXPR;
+		octx->current_blk->bits.exp = addr;
+	}
 
 	octx->current_blk = NULL;
 }
