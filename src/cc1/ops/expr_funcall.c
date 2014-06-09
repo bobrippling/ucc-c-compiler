@@ -266,6 +266,36 @@ static void default_promote_args(
 		expr_promote_default(&args[i], stab);
 }
 
+static void memcpy_call_check(expr *e)
+{
+	expr *call = expr_skip_casts(e->expr);
+	expr *e_sz;
+	type *t_dest, *t_sz;
+
+	if(!expr_kind(call, identifier))
+		return;
+
+	if(strcmp(call->bits.ident.spel, "memcpy"))
+		return;
+
+	if(dynarray_count(e->funcargs) != 3)
+		return;
+
+	e_sz = e->funcargs[2];
+
+	if(!expr_kind(e_sz, sizeof))
+		return;
+
+	t_dest = expr_skip_impcasts(e->funcargs[0])->tree_type;
+	t_sz = expr_sizeof_type(e->funcargs[0]);
+
+	/* memcpy( T*, ..., sizeof T* ) should be memcpy(T*, ..., sizeof T) */
+	if(type_cmp(t_dest, t_sz, 0) & TYPE_EQUAL_ANY){
+		warn_at(&e->where,
+				"destination argument to memcpy and sizeof don't differ in type");
+	}
+}
+
 void fold_expr_funcall(expr *e, symtable *stab)
 {
 	type *func_ty;
@@ -326,6 +356,8 @@ void fold_expr_funcall(expr *e, symtable *stab)
 				&e->where, e,
 				e->funcargs, args_from_decl->variadic,
 				count_decl, stab);
+
+		memcpy_call_check(e);
 	}
 
 	/* check the subexp tree type to get the funcall attributes */

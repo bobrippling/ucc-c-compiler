@@ -12,6 +12,11 @@
 
 #define sizeof_this tref
 
+type *expr_sizeof_type(expr *e)
+{
+	return SIZEOF_WHAT(e);
+}
+
 static const char *sizeof_what(enum what_of wo)
 {
 	switch(wo){

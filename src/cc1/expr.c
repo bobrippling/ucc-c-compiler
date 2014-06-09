@@ -142,3 +142,10 @@ expr *expr_skip_casts(expr *e)
 		e = e->expr;
 	return e;
 }
+
+expr *expr_skip_impcasts(expr *e)
+{
+	while(expr_kind(e, cast) && e->expr_cast_implicit)
+		e = e->expr;
+	return e;
+}
