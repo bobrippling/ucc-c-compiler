@@ -1079,7 +1079,7 @@ static void parse_add_asm(decl *d)
 
 		/* only allow [0-9A-Za-z_.] */
 		for(p = rename; *p; p++)
-			if(!isalnum(*p) && *p != '_' && *p != '.'){
+			if(!isalnum(*p) && *p != '_' && *p != '.' && *p != '$'){
 				warn_at(NULL, "asm name contains character 0x%x", *p);
 				break;
 			}
