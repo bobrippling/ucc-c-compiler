@@ -24,6 +24,14 @@
 #define TODO() \
 	fprintf(stderr, "%s:%d: TODO: %s\n", __FILE__, __LINE__, __func__)
 
+unsigned char *v_alloc_reg_reserve(out_ctx *octx, int *p)
+{
+	int n = N_SCRATCH_REGS_I + N_SCRATCH_REGS_F;
+	if(p)
+		*p = n;
+	return umalloc(n * sizeof *octx->reserved_regs);
+}
+
 void out_flush_volatile(out_ctx *octx, const out_val *val)
 {
 	out_val_consume(octx, v_reg_apply_offset(octx, v_to_reg(octx, val)));
@@ -186,10 +194,11 @@ int v_unused_reg(
 		struct vreg *out,
 		out_val const *to_replace)
 {
-	unsigned char used[sizeof(octx->reserved_regs)];
+	unsigned char *used;
+	int nused;
 	out_val_list *it;
 	const out_val *first;
-	int i;
+	int i, begin, end;
 
 	/* if the value is in a register, we only need a new register
 	 * if we have other references to it */
@@ -203,33 +212,53 @@ int v_unused_reg(
 		return 1;
 	}
 
-	memcpy(used, octx->reserved_regs, sizeof used);
+	used = v_alloc_reg_reserve(octx, &nused);
+	memcpy(used, octx->reserved_regs, nused * sizeof *used);
+
+	begin = fp ? N_SCRATCH_REGS_I : 0;
+	end = fp ? nused : N_SCRATCH_REGS_I;
+	{
+		int obegin = fp ? 0 : N_SCRATCH_REGS_I;
+		int oend = fp ? N_SCRATCH_REGS_I : nused;
+		for(i = obegin; i < oend; i++)
+			used[i] = 1;
+	}
+
 	first = NULL;
 
 	for(it = octx->val_head; it; it = it->next){
 		const out_val *this = &it->val;
 		if(this->retains
 		&& this->type == V_REG
-		&& this->bits.regoff.reg.is_float == fp)
+		&& impl_reg_is_scratch(&this->bits.regoff.reg))
 		{
 			if(!first)
 				first = this;
-			used[impl_reg_to_scratch(&this->bits.regoff.reg)] = 1;
+			used[impl_reg_to_idx(&this->bits.regoff.reg)] = 1;
 		}
 	}
 
-	for(i = 0; i < (fp ? N_SCRATCH_REGS_F : N_SCRATCH_REGS_I); i++)
+	for(i = begin; i < end; i++){
 		if(!used[i]){
-			impl_scratch_to_reg(i, out);
 			out->is_float = fp;
+			impl_scratch_to_reg(i, out);
+
+			free(used);
 			return 1;
 		}
+	}
+
+	free(used), used = NULL;
 
 	if(stack_as_backup){
+		const out_val *freed;
+
 		/* no free regs, move `first` to the stack and claim its reg */
 		*out = first->bits.regoff.reg;
 
-		out_val_consume(octx, v_freeup_regp(octx, first));
+		freed = v_freeup_regp(octx, first);
+
+		out_val_consume(octx, freed);
 
 		return 1;
 	}
@@ -392,14 +421,12 @@ void v_save_regs(
 
 void v_reserve_reg(out_ctx *octx, const struct vreg *r)
 {
-	assert(!r->is_float);
-	octx->reserved_regs[impl_reg_to_scratch(r)]++;
+	octx->reserved_regs[impl_reg_to_idx(r)]++;
 }
 
 void v_unreserve_reg(out_ctx *octx, const struct vreg *r)
 {
-	assert(!r->is_float);
-	octx->reserved_regs[impl_reg_to_scratch(r)]--;
+	octx->reserved_regs[impl_reg_to_idx(r)]--;
 }
 
 void v_stack_adj(out_ctx *octx, unsigned amt, int sub)

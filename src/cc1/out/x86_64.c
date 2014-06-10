@@ -291,14 +291,14 @@ static const char *vstack_str(const out_val *vs, int deref)
 	return vstack_str_r(buf, vs, deref);
 }
 
-int impl_reg_to_scratch(const struct vreg *r)
+int impl_reg_to_idx(const struct vreg *r)
 {
-	return r->idx;
+	return r->idx + (r->is_float ? N_SCRATCH_REGS_I : 0);
 }
 
 void impl_scratch_to_reg(int scratch, struct vreg *r)
 {
-	r->idx = scratch;
+	r->idx = scratch - (r->is_float ? N_SCRATCH_REGS_I : 0);
 }
 
 static const struct calling_conv_desc *x86_conv_lookup(type *fr)
@@ -355,6 +355,11 @@ int impl_reg_is_callee_save(const struct vreg *r, type *fr)
 int impl_reg_frame_const(const struct vreg *r)
 {
 	return !r->is_float && r->idx == X86_64_REG_RBP;
+}
+
+int impl_reg_is_scratch(const struct vreg *r)
+{
+	return r->is_float || r->idx <= X86_64_REG_R15;
 }
 
 int impl_reg_savable(const struct vreg *r)

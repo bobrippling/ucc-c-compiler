@@ -57,9 +57,10 @@ const out_val *impl_test_overflow(out_ctx *, const out_val *);
 void impl_set_nan(out_ctx *, out_val *);
 
 /* scratch register indexing */
-int  impl_reg_to_scratch(const struct vreg *);
+int  impl_reg_to_idx(const struct vreg *);
 void impl_scratch_to_reg(int scratch, struct vreg *);
 int impl_reg_frame_const(const struct vreg *);
+int impl_reg_is_scratch(const struct vreg *);
 int impl_reg_savable(const struct vreg *);
 
 /* callee save register bools */

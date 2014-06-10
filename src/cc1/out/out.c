@@ -64,7 +64,11 @@ void out_dbg_label(out_ctx *octx, const char *lbl)
 out_ctx *out_ctx_new(void)
 {
 	out_ctx *ctx = umalloc(sizeof *ctx);
+
 	ctx->dbg.last_file = ctx->dbg.last_line = -1;
+
+	ctx->reserved_regs = v_alloc_reg_reserve(ctx, NULL);
+
 	return ctx;
 }
 

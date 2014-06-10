@@ -1,6 +1,8 @@
 #ifndef VIRT_H
 #define VIRT_H
 
+unsigned char *v_alloc_reg_reserve(out_ctx *octx, int *n);
+
 /* stack */
 void v_stack_adj(out_ctx *octx, unsigned amt, int sub);
 

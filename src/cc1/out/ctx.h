@@ -26,10 +26,8 @@ struct out_ctx
 
 	int in_prologue;
 
-	/* we won't reserve it more than 255 times
-	 * XXX: FIXME: hardcoded 20
-	 */
-	unsigned char reserved_regs[20];
+	/* we won't reserve it more than 255 times */
+	unsigned char *reserved_regs;
 
 	struct
 	{
