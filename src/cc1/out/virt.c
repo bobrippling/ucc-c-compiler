@@ -93,9 +93,19 @@ static ucc_wur const out_val *v_save_reg(out_ctx *octx, const out_val *vp)
 
 	v_alloc_stack(octx, type_size(vp->t, NULL), "save reg");
 
-	return v_to_stack_mem(
-			octx, vp,
-			-octx->var_stack_sz);
+	out_val_retain(octx, vp);
+
+	{
+		const out_val *spilt = v_to_stack_mem(
+				octx, vp,
+				-octx->var_stack_sz);
+
+		out_val_overwrite((out_val *)vp, spilt);
+
+		out_val_release(octx, spilt);
+	}
+
+	return vp;
 }
 
 const out_val *v_to(out_ctx *octx, const out_val *vp, enum vto loc)
