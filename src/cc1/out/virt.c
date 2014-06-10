@@ -144,8 +144,12 @@ static ucc_wur const out_val *v_freeup_regp(out_ctx *octx, const out_val *vp)
 
 	assert(vp->type == V_REG && "not reg");
 
+	v_reserve_reg(octx, &vp->bits.regoff.reg);
+
 	/* attempt to save to a register first */
 	got_reg = v_unused_reg(octx, 0, vp->bits.regoff.reg.is_float, &r, NULL);
+
+	v_unreserve_reg(octx, &vp->bits.regoff.reg);
 
 	if(got_reg){
 		/* move 'vp' into the fresh reg */
