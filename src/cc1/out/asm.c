@@ -520,12 +520,18 @@ void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
 	fputc('\n', f);
 }
 
-void asm_declare_decl_init(enum section_type sec, decl *d)
+void asm_declare_decl_init(decl *d)
 {
+	enum section_type sec;
+
 	if((d->store & STORE_MASK_STORE) == store_extern){
 		asm_predeclare_extern(d);
+		return;
+	}
 
-	}else if(d->bits.var.init && !decl_init_is_zero(d->bits.var.init)){
+	sec = type_is_const(d->ref) ? SECTION_RODATA : SECTION_DATA;
+
+	if(d->bits.var.init && !decl_init_is_zero(d->bits.var.init)){
 		asm_nam_begin(sec, d);
 		asm_declare_init(sec, d->bits.var.init, d->ref);
 		asm_out_section(sec, "\n");

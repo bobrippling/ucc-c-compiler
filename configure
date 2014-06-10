@@ -33,6 +33,7 @@ CTAGS       = ${TAG_CMD}
 		SECTION_TEXT="__TEXT,__text"
 		SECTION_DATA="__DATA,__data"
 		SECTION_BSS="__BSS,__bss"
+		SECTION_RODATA="__TEXT,__const"
 		SECTION_DBG_ABBREV="__DWARF,__debug_abbrev,regular,debug"
 		SECTION_DBG_INFO="__DWARF,__debug_info,regular,debug"
 		SECTION_DBG_LINE="__DWARF,__debug_line,regular,debug"
@@ -44,6 +45,7 @@ CTAGS       = ${TAG_CMD}
 		SECTION_TEXT=".text"
 		SECTION_DATA=".data"
 		SECTION_BSS=".bss"
+		SECTION_RODATA=".rodata"
 		SECTION_DBG_ABBREV=".debug_abbrev"
 		SECTION_DBG_INFO=".debug_info"
 		SECTION_DBG_LINE=".debug_line"
@@ -55,6 +57,7 @@ CTAGS       = ${TAG_CMD}
 #define SECTION_NAME_TEXT $SECTION_TEXT
 #define SECTION_NAME_DATA $SECTION_DATA
 #define SECTION_NAME_BSS  $SECTION_BSS
+#define SECTION_NAME_RODATA $SECTION_RODATA
 #define SECTION_NAME_DBG_ABBREV $SECTION_DBG_ABBREV
 #define SECTION_NAME_DBG_INFO $SECTION_DBG_INFO
 #define SECTION_NAME_DBG_LINE $SECTION_DBG_LINE

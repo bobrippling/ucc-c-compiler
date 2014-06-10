@@ -149,7 +149,7 @@ static void gen_asm_global(decl *d)
 
 	}else{
 		/* asm takes care of .bss vs .data, etc */
-		asm_declare_decl_init(SECTION_DATA, d);
+		asm_declare_decl_init(d);
 	}
 }
 
