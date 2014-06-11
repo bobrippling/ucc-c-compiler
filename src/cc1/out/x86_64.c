@@ -1517,6 +1517,7 @@ const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *from, type *to)
 	struct vreg r;
 
 	v_unused_reg(octx, 1, 1, &r, vp);
+	assert(r.is_float);
 
 	x86_fp_conv(octx, vp, &r, to, NULL,
 			x86_suffix(from),

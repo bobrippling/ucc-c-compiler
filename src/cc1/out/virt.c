@@ -194,7 +194,7 @@ void v_freeup_reg(out_ctx *octx, const struct vreg *r)
 
 int v_unused_reg(
 		out_ctx *octx,
-		int stack_as_backup, int fp,
+		int stack_as_backup, const int fp,
 		struct vreg *out,
 		out_val const *to_replace)
 {
@@ -234,6 +234,7 @@ int v_unused_reg(
 		const out_val *this = &it->val;
 		if(this->retains
 		&& this->type == V_REG
+		&& this->bits.regoff.reg.is_float == fp
 		&& impl_reg_is_scratch(&this->bits.regoff.reg))
 		{
 			if(!first)
@@ -244,6 +245,8 @@ int v_unused_reg(
 
 	for(i = begin; i < end; i++){
 		if(!used[i]){
+			/* `i' should be in the `fp' range, since we're going
+			 * from `begin' to `end' */
 			out->is_float = fp;
 			impl_scratch_to_reg(i, out);
 
