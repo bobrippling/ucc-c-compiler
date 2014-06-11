@@ -162,7 +162,7 @@ static ucc_wur const out_val *v_freeup_regp(out_ctx *octx, const out_val *vp)
 
 	}else{
 		/* no free registers, save this one to the stack and mutate vp */
-		return v_save_reg(octx, vp);
+		return out_val_retain(octx, v_save_reg(octx, vp));
 		/* vp is now a stack value */
 	}
 }
