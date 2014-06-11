@@ -1790,7 +1790,10 @@ const out_val *impl_call(
 				/* need to free it up, as v_to_reg_given doesn't clobber check */
 				v_freeup_reg(octx, rp);
 
-				assert(local_args[i]->retains == 1 && "too heavily retained arg");
+				UCC_ASSERT(local_args[i]->retains == 1,
+						"incorrectly retained arg %d: %d",
+						i, local_args[i]->retains);
+
 
 				local_args[i] = v_to_reg_given(octx, local_args[i], rp);
 			}
