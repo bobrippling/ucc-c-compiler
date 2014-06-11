@@ -72,7 +72,8 @@ const out_val *lea_expr(expr *e, out_ctx *octx)
 
 void gen_stmt(stmt *t, out_ctx *octx)
 {
-	out_dbg_where(octx, &t->where);
+	if(octx) /* for other backends */
+		out_dbg_where(octx, &t->where);
 
 	t->f_gen(t, octx);
 }
