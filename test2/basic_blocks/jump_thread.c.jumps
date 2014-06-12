@@ -1,5 +1,9 @@
-f: # f
-.Lblk.1: # b
-.Lblk.2: # a
-.Lblk.3: # c
-	jmp .Lblk.1
+f:
+	jmp Lblk.2
+Lblk.0:
+Lblk.3:
+	jmp Lblk.2
+Lblk.4:
+	jmp Lblk.3
+Lblk.2:
+	jmp Lblk.4

@@ -17,11 +17,15 @@ ucc_out="$1".S
 trap "rm -f '$tmp' '$ucc_out'" EXIT
 
 asfilter(){
-	sed 's/ *#.*//; s/\.Lblk/Lblk/g; /^[ 	]*$/d'
+	sed 's/ *#.*//; s/\.Lblk/Lblk/g; /^[ 	]*$/d; s/^_//'
+}
+
+jmpfilter(){
+	asfilter | grep -i 'jmp\|[a-z0-9.]*: *$' | sed '/Lsection/d; /Lfuncend_/d'
 }
 
 asfilter <"$1".jumps >"$tmp"
 
 $UCC -S -o "$ucc_out" "$1" 2>/dev/null
 
-<$ucc_out asfilter | grep '^\(\.Lblk\|[a-z]\+\)\|jmp ' | diff -u - "$tmp"
+jmpfilter <$ucc_out | diff -u - "$tmp"
