@@ -19,6 +19,8 @@
 
 #include "asm.h" /* cc_out */
 
+#define JMP_THREAD_LIM 10
+
 struct flush_state
 {
 	FILE *f;
@@ -33,6 +35,22 @@ static void blk_jmpnext(out_blk *to, struct flush_state *st)
 	st->jmpto = to;
 }
 
+static void blk_jmpthread(struct flush_state *st)
+{
+	int lim = 0;
+	out_blk *to = st->jmpto;
+
+	while(!to->insns && to->type == BLK_NEXT_BLOCK && lim < JMP_THREAD_LIM){
+			to = to->bits.next;
+			lim++; /* prevent circulars */
+	}
+
+	if(lim)
+		fprintf(st->f, "\t# jump threaded through %d blocks\n", lim);
+
+	impl_jmp(st->f, to->lbl);
+}
+
 static void blk_codegen(out_blk *blk, struct flush_state *st)
 {
 	char **i;
@@ -42,7 +60,7 @@ static void blk_codegen(out_blk *blk, struct flush_state *st)
 	 * block with a jump to said jmpto */
 	if(st->jmpto){
 		if(st->jmpto != blk)
-			impl_jmp(st->f, st->jmpto->lbl);
+			blk_jmpthread(st);
 		else
 			fprintf(st->f, "\t# implicit jump to next line\n");
 		st->jmpto = NULL;

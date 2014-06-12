@@ -1,9 +1,9 @@
 f:
-	jmp Lblk.2
-Lblk.0:
-Lblk.3:
-	jmp Lblk.2
-Lblk.4:
-	jmp Lblk.3
-Lblk.2:
-	jmp Lblk.4
+.Lblk.0: # post_prologue
+	jmp .Lblk.3
+.Lblk.3: # a
+	# implicit jump to next line
+.Lblk.4: # c
+	# implicit jump to next line
+.Lblk.2: # b
+	jmp .Lblk.3
