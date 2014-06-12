@@ -57,8 +57,6 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 
 	blk_flushall(octx, end_dbg_lbl);
 
-	/* TODO: flush/free octx->first_blk */
-
 	octx->stack_local_offset =
 		octx->stack_sz_initial =
 		octx->var_stack_sz =

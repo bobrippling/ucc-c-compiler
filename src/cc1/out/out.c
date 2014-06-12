@@ -106,12 +106,6 @@ void out_dump_retained(out_ctx *octx, const char *desc)
 	}
 }
 
-void out_ctx_end(out_ctx *octx)
-{
-	/* TODO */
-	(void)octx;
-}
-
 void out_comment(out_ctx *octx, const char *fmt, ...)
 {
 	va_list l;

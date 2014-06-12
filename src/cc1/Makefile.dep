@@ -1460,6 +1460,12 @@ out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
  out/../type.h out/../type_is.h out/../retain.h out/asm.h out/../defs.h \
  out/../../as_cfg.h out/leb.h out/lbl.h out/dbg.h out/write.h \
  out/../../util/compiler.h out/forwards.h
+out/free.o: out/free.c out/../../util/dynmap.h out/../../util/dyn.h \
+ out/../../util/dynarray.h out/../type.h out/../num.h out/../btype.h \
+ out/../../util/where.h out/../../util/compiler.h out/forwards.h \
+ out/val.h out/blk.h out/ctx.h out/out.h out/../num.h out/../sym.h \
+ out/../decl.h out/../type.h out/../attribute.h out/../retain.h \
+ out/../../util/dynmap.h out/../op.h
 out/func.o: out/func.c out/../type.h out/../num.h out/../btype.h \
  out/../../util/where.h out/../../util/compiler.h out/val.h \
  out/forwards.h out/out.h out/../num.h out/../sym.h out/../decl.h \
