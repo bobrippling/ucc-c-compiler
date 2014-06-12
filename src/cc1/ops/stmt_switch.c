@@ -247,8 +247,8 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 			out_val_retain(octx, cmp_with);
 			out_ctrl_branch(octx,
 					out_op(octx, op_gt, cmp_with, this_case[1]),
-					cse->bits.case_blk,
-					blk_cancel);
+					blk_cancel,
+					cse->bits.case_blk);
 
 		}else{
 			const out_val *this_case = out_new_num(octx, cse->expr->tree_type, &iv);
