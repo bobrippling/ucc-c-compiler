@@ -99,14 +99,18 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 	if(mergee)
 		*mergee = from;
 
+	/* always add a merge_pred - this means we can generate
+	 * terminating branches before their merge block, even though
+	 * they don't merge to it (instead of generating them after ret)
+	 */
+	dynarray_add(&to->merge_preds, from ? from : octx->last_used_blk);
+
 	if(!from){
 		/* we're transferring from unreachable code, ignore */
 		if(phi)
 			out_val_consume(octx, phi);
 		return;
 	}
-
-	dynarray_add(&to->merge_preds, from);
 
 	assert(!from->phi_val);
 	from->phi_val = phi;

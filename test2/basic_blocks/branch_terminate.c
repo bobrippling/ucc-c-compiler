@@ -1,3 +1,5 @@
+// RUN: %jmpcheck %s
+
 main()
 {
 	int x;

@@ -17,7 +17,7 @@ ucc_out="$1".S
 trap "rm -f '$tmp' '$ucc_out'" EXIT
 
 asfilter(){
-	sed 's/ *#.*//'
+	sed 's/ *#.*//; s/\.Lblk/Lblk/g; /^[ 	]*$/d'
 }
 
 asfilter <"$1".jumps >"$tmp"
