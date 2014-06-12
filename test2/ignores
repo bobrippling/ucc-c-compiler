@@ -16,3 +16,7 @@ type_propagation/tgmath.c
 calling_conv/callee_save.c
 calling_conv/fptr.c
 mangling/calling_conv.c
+
+# waiting for __asm("eax") etc
+registers/nospace.c
+stack/register.c
