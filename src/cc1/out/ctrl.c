@@ -53,7 +53,17 @@ const out_val *out_ctrl_merge(out_ctx *octx, out_blk *from_a, out_blk *from_b)
 	/* need them both in a register */
 	out_current_blk(octx, from_a);
 	{
-		const out_val *regged = v_to_reg_out(octx, from_a->phi_val, &merge_reg);
+		/* apply_offset - prevent merge_reg being a base pointer */
+		const out_val *regged =
+			v_reg_apply_offset(octx,
+					v_to_reg_out(
+						octx,
+						from_a->phi_val,
+						&merge_reg));
+
+		/* apply_offset may move to another reg */
+		memcpy_safe(&merge_reg, &regged->bits.regoff.reg);
+
 		out_flush_volatile(octx, regged);
 	}
 	out_current_blk(octx, from_b);
