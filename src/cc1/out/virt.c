@@ -21,9 +21,6 @@
 
 #define REMOVE_CONST(t, exp) ((t)(exp))
 
-#define TODO() \
-	fprintf(stderr, "%s:%d: TODO: %s\n", __FILE__, __LINE__, __func__)
-
 unsigned char *v_alloc_reg_reserve(out_ctx *octx, int *p)
 {
 	int n = N_SCRATCH_REGS_I + N_SCRATCH_REGS_F;
