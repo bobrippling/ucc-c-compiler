@@ -9,7 +9,6 @@ decl_parsing/vla_proto.c
 
 # waiting for long double
 float/long_double/ll_to_ld.c
-literals/all_constants.c
 type_propagation/tgmath.c
 
 # waiting for calling convention __asm helpers
