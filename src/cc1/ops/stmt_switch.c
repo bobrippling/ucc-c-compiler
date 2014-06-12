@@ -164,7 +164,7 @@ void fold_stmt_and_add_to_curswitch(stmt *cse)
 			die_at(&cse->where,
 					"duplicate default statement\n"
 					"%s: note: other default here",
-					where_str_r(buf, &cse->where));
+					where_str_r(buf, &sw->bits.switch_.default_case->where));
 
 			return;
 		}
