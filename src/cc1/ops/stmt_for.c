@@ -34,7 +34,8 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 	const char *el[2];
 	out_blk *blk_test = out_blk_new(octx, "for_test"),
 	        *blk_body = out_blk_new(octx, "for_body"),
-	        *blk_end = out_blk_new(octx, "for_end");
+	        *blk_end = out_blk_new(octx, "for_end"),
+	        *blk_inc = out_blk_new(octx, "for_inc");
 
 	flow_gen(s->flow, s->flow->for_init_symtab, el, octx);
 
@@ -56,16 +57,19 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 		out_ctrl_transfer(octx, blk_body, NULL, NULL);
 	}
 
-	s->blk_continue = blk_test;
+	s->blk_continue = blk_inc;
 	s->blk_break = blk_end;
 
 	out_current_blk(octx, blk_body);
 	{
 		gen_stmt(s->lhs, octx);
+		out_ctrl_transfer(octx, blk_inc, NULL, NULL);
+	}
 
+	out_current_blk(octx, blk_inc);
+	{
 		if(s->flow->for_inc)
 			out_val_consume(octx, gen_expr(s->flow->for_inc, octx));
-
 		out_ctrl_transfer(octx, blk_test, NULL, NULL);
 	}
 
