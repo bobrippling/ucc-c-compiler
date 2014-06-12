@@ -1,3 +1,5 @@
+// RUN: %ucc -g %s -o %t
+
 f(int a)
 {
 	void *x = 0;
@@ -10,4 +12,9 @@ f(int a)
 	}
 
 	/* no debug emitted here */
+}
+
+main()
+{
+	f(0);
 }
