@@ -107,7 +107,7 @@ out_val *out_new_noop(out_ctx *octx)
 	return v;
 }
 
-const out_val *out_new_overflow(out_ctx *octx, const out_val *eval)
+const out_val *out_new_overflow(out_ctx *octx, const out_val **eval)
 {
 	return impl_test_overflow(octx, eval);
 }

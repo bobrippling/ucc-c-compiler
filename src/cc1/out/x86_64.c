@@ -1875,9 +1875,13 @@ void impl_undefined(out_ctx *octx)
 	blk_terminate_undef(octx->current_blk);
 }
 
-const out_val *impl_test_overflow(out_ctx *octx, const out_val *eval)
+const out_val *impl_test_overflow(out_ctx *octx, const out_val **eval)
 {
-	return v_new_flag(octx, eval, flag_overflow, /*mod:*/0);
+	/* whenever creating a V_FLAG we need to ensure instructions are flushed */
+	*eval = v_reg_apply_offset(octx, v_to_reg(octx, *eval));
+
+	out_val_retain(octx, *eval);
+	return v_new_flag(octx, *eval, flag_overflow, /*mod:*/0);
 }
 
 void impl_set_nan(out_ctx *octx, out_val *v)
