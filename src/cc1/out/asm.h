@@ -32,6 +32,8 @@ void asm_out_sectionv(enum section_type t, const char *fmt, va_list l);
 
 void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align);
 
+void out_comment_sec(enum section_type sec, const char *fmt, ...);
+
 #ifdef TYPE_H
 void asm_out_fp(enum section_type sec, type *ty, floating_t f);
 void asm_out_fp(enum section_type sec, type *ty, floating_t f);

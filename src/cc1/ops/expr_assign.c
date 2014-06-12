@@ -56,14 +56,13 @@ void expr_must_lvalue(expr *e)
 	}
 }
 
-static void lea_assign_lhs(expr *e)
+static const out_val *lea_assign_lhs(expr *e, out_ctx *octx)
 {
 	/* generate our assignment, then lea
 	 * our lhs, i.e. the struct identifier
 	 * we're assigning to */
-	gen_expr(e);
-	out_pop();
-	lea_expr(e->lhs);
+	out_val_consume(octx, gen_expr(e, octx));
+	return lea_expr(e->lhs, octx);
 }
 
 void expr_assign_const_check(expr *e, where *w)
@@ -137,24 +136,27 @@ void fold_expr_assign(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_assign(expr *e)
+const out_val *gen_expr_assign(expr *e, out_ctx *octx)
 {
 	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
 
 	if(type_is_s_or_u(e->tree_type)){
 		/* memcpy */
-		gen_expr(e->expr);
+		return gen_expr(e->expr, octx);
 	}else{
-		/* optimisation: do this first, since rhs might also be a store */
-		gen_expr(e->rhs);
-		lea_expr(e->lhs);
-		out_swap();
+		const out_val *val, *store;
 
-		out_store();
+		val = gen_expr(e->rhs, octx);
+		out_val_retain(octx, val);
+		store = lea_expr(e->lhs, octx);
+
+		out_store(octx, store, val);
+
+		return val;
 	}
 }
 
-void gen_expr_str_assign(expr *e)
+const out_val *gen_expr_str_assign(expr *e, out_ctx *octx)
 {
 	idt_printf("assignment, expr:\n");
 	idt_printf("assign to:\n");
@@ -165,6 +167,7 @@ void gen_expr_str_assign(expr *e)
 	gen_str_indent++;
 	print_expr(e->rhs);
 	gen_str_indent--;
+	UNUSED_OCTX();
 }
 
 void mutate_expr_assign(expr *e)
@@ -189,9 +192,9 @@ expr *expr_new_assign_init(expr *to, expr *from)
 	return e;
 }
 
-void gen_expr_style_assign(expr *e)
+const out_val *gen_expr_style_assign(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs);
+	IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef(" = ");
-	gen_expr(e->rhs);
+	return gen_expr(e->rhs, octx);
 }

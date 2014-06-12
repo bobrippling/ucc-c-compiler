@@ -14,7 +14,7 @@ static void canon_add(char ***pents, char *ent)
 			if(!strcmp((*pents)[n - 1], "..")){
 				/* ../.. - can't change, fall through to add */
 			}else{
-				dynarray_pop(char *, pents);
+				(void)dynarray_pop(char *, pents);
 				return;
 			}
 		}else{

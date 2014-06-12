@@ -333,41 +333,48 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		e->freestanding = 0; /* needs use */
 }
 
-void gen_expr_funcall(expr *e)
+const out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 {
+	const out_val *fn_ret;
+
 	if(0){
-		out_comment("start manual __asm__");
+		out_comment(octx, "start manual __asm__");
 		ICE("same");
 #if 0
 		fprintf(cc_out[SECTION_TEXT], "%s\n", e->funcargs[0]->data_store->data.str);
 #endif
-		out_comment("end manual __asm__");
+		out_comment(octx, "end manual __asm__");
 	}else{
 		/* continue with normal funcall */
-		int nargs = 0;
+		const out_val *fn, **args = NULL;
 
-		gen_expr(e->expr);
+		fn = gen_expr(e->expr, octx);
 
 		if(e->funcargs){
 			expr **aiter;
 
-			for(aiter = e->funcargs; *aiter; aiter++, nargs++);
-
-			for(aiter--; aiter >= e->funcargs; aiter--){
+			for(aiter = e->funcargs; *aiter; aiter++){
 				expr *earg = *aiter;
+				const out_val *arg;
 
 				/* should be of size int or larger (for integral types)
 				 * or double (for floating types)
 				 */
-				gen_expr(earg);
+				arg = gen_expr(earg, octx);
+				dynarray_add(&args, arg);
 			}
 		}
 
-		out_call(nargs, e->tree_type, e->expr->tree_type);
+		/* consumes fn and args */
+		fn_ret = out_call(octx, fn, args, e->expr->tree_type);
+
+		dynarray_free(const out_val **, &args, NULL);
 	}
+
+	return fn_ret;
 }
 
-void gen_expr_str_funcall(expr *e)
+const out_val *gen_expr_str_funcall(expr *e, out_ctx *octx)
 {
 	expr **iter;
 
@@ -391,6 +398,8 @@ void gen_expr_str_funcall(expr *e)
 	}else{
 		idt_printf("no args\n");
 	}
+
+	UNUSED_OCTX();
 }
 
 void mutate_expr_funcall(expr *e)
@@ -411,18 +420,20 @@ expr *expr_new_funcall()
 	return e;
 }
 
-void gen_expr_style_funcall(expr *e)
+const out_val *gen_expr_style_funcall(expr *e, out_ctx *octx)
 {
 	stylef("(");
-	gen_expr(e->expr);
+	IGNORE_PRINTGEN(gen_expr(e->expr, octx));
 	stylef(")(");
 	if(e->funcargs){
 		expr **i;
 		for(i = e->funcargs; i && *i; i++){
-			gen_expr(*i);
+			IGNORE_PRINTGEN(gen_expr(*i, octx));
 			if(i[1])
 				stylef(", ");
 		}
 	}
 	stylef(")");
+
+	return NULL;
 }

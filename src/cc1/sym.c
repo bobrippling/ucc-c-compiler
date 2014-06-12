@@ -34,7 +34,7 @@ sym *sym_new_stab(symtable *stab, decl *d, enum sym_type t)
 
 void symtab_rm_parent(symtable *child)
 {
-	dynarray_rm(child->parent->children, child);
+	dynarray_rm(&child->parent->children, child);
 	child->parent = NULL;
 }
 
@@ -168,7 +168,7 @@ label *symtab_label_find_or_new(symtable *stab, char *spel, where *w)
 
 	if(!lbl){
 		/* forward decl */
-		lbl = label_new(w, symtab_func(stab)->spel, spel, 0);
+		lbl = label_new(w, spel, 0);
 		symtab_label_add(stab, lbl);
 	}
 

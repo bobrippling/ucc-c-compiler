@@ -21,6 +21,8 @@ void *dynmap_nochk_value(dynmap *map, int i);
 
 void *dynmap_nochk_rm(dynmap *, void *key);
 
+void dynmap_dump(dynmap *);
+
 /* handy */
 dynmap_hash_f dynmap_strhash;
 

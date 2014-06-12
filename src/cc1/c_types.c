@@ -38,8 +38,8 @@ type *c_types_make_va_list(symtable *symtab)
 	      ustrdup(sp)))
 
 
-	ADD_SCALAR(sue_members, type_int, "gp_offset");
-	ADD_SCALAR(sue_members, type_int, "fp_offset");
+	ADD_SCALAR(sue_members, type_uint, "gp_offset");
+	ADD_SCALAR(sue_members, type_uint, "fp_offset");
 	ADD_DECL(sue_members, decl_new_ty_sp(void_ptr, "overflow_arg_area"));
 	ADD_DECL(sue_members, decl_new_ty_sp(void_ptr, "reg_save_area"));
 

@@ -968,7 +968,7 @@ void fold_expr_op(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_str_op(expr *e)
+const out_val *gen_expr_str_op(expr *e, out_ctx *octx)
 {
 	idt_printf("op: %s\n", op_to_str(e->op));
 	gen_str_indent++;
@@ -979,69 +979,105 @@ void gen_expr_str_op(expr *e)
 #undef PRINT_IF
 
 	gen_str_indent--;
+
+	UNUSED_OCTX();
 }
 
-static void op_shortcircuit(expr *e)
+static const out_val *op_shortcircuit(expr *e, out_ctx *octx)
 {
-	char *bail = out_label_code("shortcircuit_bail");
-	char vphi_buf[OUT_VPHI_SZ];
+	out_blk *blk_rhs, *blk_empty, *landing;
+	const out_val *lhs;
 
-	gen_expr(e->lhs);
-	out_normalise();
+	blk_rhs = out_blk_new(octx, "shortcircuit_a");
+	blk_empty = out_blk_new(octx, "shortcircuit_b");
+	landing = out_blk_new(octx, "shortcircuit_landing");
 
-	out_dup();
-	(e->op == op_andsc ? out_jfalse : out_jtrue)(bail);
-	out_phi_pop_to(&vphi_buf);
+	lhs = gen_expr(e->lhs, octx);
+	lhs = out_normalise(octx, lhs);
 
-	gen_expr(e->rhs);
-	out_normalise();
+	out_ctrl_branch(
+			octx,
+			lhs,
+			e->op == op_andsc ? blk_rhs : blk_empty,
+			e->op == op_andsc ? blk_empty : blk_rhs);
 
-	out_phi_join(&vphi_buf);
-	out_label(bail);
-	free(bail);
+	out_current_blk(octx, blk_rhs);
+	{
+		const out_val *rhs = gen_expr(e->rhs, octx);
+		rhs = out_normalise(octx, rhs);
+
+		out_ctrl_transfer(octx, landing, rhs, &blk_rhs);
+	}
+
+	out_current_blk(octx, blk_empty);
+	{
+		out_ctrl_transfer(
+				octx,
+				landing,
+				out_new_l(
+					octx,
+					type_nav_btype(cc1_type_nav, BOOLEAN_TYPE),
+					e->op == op_orsc ? 1 : 0),
+				&blk_empty);
+
+	}
+
+	out_current_blk(octx, landing);
+	{
+		const out_val *merged = out_ctrl_merge(octx, blk_empty, blk_rhs);
+
+		return merged;
+	}
 }
 
-void gen_expr_op(expr *e)
+const out_val *gen_expr_op(expr *e, out_ctx *octx)
 {
+	const out_val *lhs, *rhs, *eval;
+
 	switch(e->op){
 		case op_orsc:
 		case op_andsc:
-			op_shortcircuit(e);
-			break;
+			return op_shortcircuit(e, octx);
 
 		case op_unknown:
 			ICE("asm_operate: unknown operator got through");
 
 		default:
-			gen_expr(e->lhs);
-
-			if(e->rhs){
-				gen_expr(e->rhs);
-
-				out_op(e->op);
-
-				/* make sure we get the pointer, for example 2+(int *)p
-				 * or the int, e.g. (int *)a && (int *)b -> int */
-				out_change_type(e->tree_type);
-
-				/* need to flush the op */
-				out_flush_volatile();
-
-				if(fopt_mode & FOPT_TRAPV
-				&& type_is_integral(e->tree_type)
-				&& type_is_signed(e->tree_type))
-				{
-					char *skip = out_label_code("trapv");
-					out_push_overflow();
-					out_jfalse(skip);
-					out_undefined();
-					out_label(skip);
-					free(skip);
-				}
-			}else{
-				out_op_unary(e->op);
-			}
+			break;
 	}
+
+	lhs = gen_expr(e->lhs, octx);
+
+	if(!e->rhs)
+		return out_op_unary(octx, e->op, lhs);
+
+	rhs = gen_expr(e->rhs, octx);
+
+	eval = out_op(octx, e->op, lhs, rhs);
+
+	/* make sure we get the pointer, for example 2+(int *)p
+	 * or the int, e.g. (int *)a && (int *)b -> int */
+	eval = out_change_type(octx, eval, e->tree_type);
+
+	if(fopt_mode & FOPT_TRAPV
+	&& type_is_integral(e->tree_type)
+	&& type_is_signed(e->tree_type))
+	{
+		out_blk *land = out_blk_new(octx, "trapv_end");
+		out_blk *blk_undef = out_blk_new(octx, "travp_bad");
+
+		out_ctrl_branch(octx,
+				out_new_overflow(octx, &eval),
+				blk_undef,
+				land);
+
+		out_current_blk(octx, blk_undef);
+		out_ctrl_end_undefined(octx);
+
+		out_current_blk(octx, land);
+	}
+
+	return eval;
 }
 
 void mutate_expr_op(expr *e)
@@ -1063,14 +1099,15 @@ expr *expr_new_op2(enum op_type o, expr *l, expr *r)
 	return e;
 }
 
-void gen_expr_style_op(expr *e)
+const out_val *gen_expr_style_op(expr *e, out_ctx *octx)
 {
 	if(e->rhs){
-		gen_expr(e->lhs);
+		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 		stylef(" %s ", op_to_str(e->op));
-		gen_expr(e->rhs);
+		IGNORE_PRINTGEN(gen_expr(e->rhs, octx));
 	}else{
 		stylef("%s ", op_to_str(e->op));
-		gen_expr(e->lhs);
+		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	}
+	return NULL;
 }

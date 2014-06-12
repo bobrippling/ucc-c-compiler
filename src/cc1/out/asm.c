@@ -8,6 +8,13 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 
+#include "../type.h"
+#include "../decl.h"
+#include "../strings.h"
+
+#include "asm.h"
+#include "out.h"
+
 #include "../cc1.h"
 #include "../sym.h"
 #include "../expr.h"
@@ -22,9 +29,6 @@
 #include "../str.h"
 
 #include "../../as_cfg.h" /* weak directive */
-
-#include "asm.h"
-#include "out.h"
 
 #define ASSERT_SCALAR(di)                  \
 	UCC_ASSERT(di->type == decl_init_scalar, \
@@ -162,8 +166,7 @@ void asm_out_fp(enum section_type sec, type *ty, floating_t f)
 			{
 				union { float f; unsigned u; } u;
 				u.f = f;
-				asm_out_section(sec, ".long %u\n", u.u);
-				out_comment_sec(sec, "float %f", u.f);
+				asm_out_section(sec, ".long %u # float %f\n", u.u, u.f);
 				break;
 			}
 
@@ -171,8 +174,7 @@ void asm_out_fp(enum section_type sec, type *ty, floating_t f)
 			{
 				union { double d; unsigned long ul; } u;
 				u.d = f;
-				asm_out_section(sec, ".quad %lu\n", u.ul);
-				out_comment_sec(sec, "double %f", u.d);
+				asm_out_section(sec, ".quad %lu # double %f\n", u.ul, u.d);
 				break;
 			}
 		case type_ldouble:

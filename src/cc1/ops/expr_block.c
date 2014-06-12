@@ -104,23 +104,25 @@ static void const_expr_block(expr *e, consty *k)
 	k->bits.addr.bits.lbl = decl_asm_spel(e->bits.block.sym->decl);
 }
 
-void gen_expr_block(expr *e)
+const out_val *gen_expr_block(expr *e, out_ctx *octx)
 {
-	out_push_sym(e->bits.block.sym);
+	return out_new_sym(octx, e->bits.block.sym);
 }
 
-void gen_expr_str_block(expr *e)
+const out_val *gen_expr_str_block(expr *e, out_ctx *octx)
 {
 	idt_printf("block, type: %s, code:\n", type_to_str(e->tree_type));
 	gen_str_indent++;
 	print_stmt(e->code);
 	gen_str_indent--;
+	UNUSED_OCTX();
 }
 
-void gen_expr_style_block(expr *e)
+const out_val *gen_expr_style_block(expr *e, out_ctx *octx)
 {
 	stylef("^%s", type_to_str(e->tree_type));
-	gen_stmt(e->code);
+	gen_stmt(e->code, octx);
+	return NULL;
 }
 
 void mutate_expr_block(expr *e)

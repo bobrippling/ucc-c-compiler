@@ -8,6 +8,7 @@
 #include "../fold_sym.h"
 #include "../out/lbl.h"
 #include "../type_is.h"
+#include "../out/dbg.h"
 
 const char *str_stmt_code()
 {
@@ -90,7 +91,6 @@ void fold_stmt_code(stmt *s)
 	int warned = 0;
 
 	/* local struct layout-ing */
-	/* we fold decls ourselves, to get their inits */
 	symtab_fold_sues(s->symtab);
 
 	for(siter = s->bits.code.stmts; siter && *siter; siter++){
@@ -115,7 +115,8 @@ void fold_stmt_code(stmt *s)
 	}
 }
 
-void gen_block_decls(symtable *stab, const char **dbg_end_lbl)
+void gen_block_decls(
+		symtable *stab, const char **dbg_end_lbl, out_ctx *octx)
 {
 	decl **diter;
 
@@ -123,7 +124,7 @@ void gen_block_decls(symtable *stab, const char **dbg_end_lbl)
 		stab->lbl_begin = out_label_code("dbg_begin");
 		stab->lbl_end = out_label_code("dbg_end");
 
-		out_label_noop(stab->lbl_begin);
+		out_dbg_label(octx, stab->lbl_begin);
 		*dbg_end_lbl = stab->lbl_end;
 	}else{
 		*dbg_end_lbl = NULL;
@@ -141,27 +142,39 @@ void gen_block_decls(symtable *stab, const char **dbg_end_lbl)
 			/* if it's a string, go,
 			 * if it's the most-unnested func. prototype, go */
 			if(!func || !d->proto)
-				gen_asm_global_w_store(d, 1);
+				gen_asm_global_w_store(d, 1, octx);
 		}
 	}
 }
 
-void gen_stmt_code(stmt *s)
+/* this is done for lea_expr_stmt(), i.e.
+ * struct A x = ({ struct A y; y.i = 1; y; });
+ * so we can lea the final expr
+ */
+void gen_stmt_code_m1(stmt *s, int m1, out_ctx *octx)
 {
 	stmt **titer;
 	const char *endlbl;
 
 	/* stmt_for/if/while/do needs to do this too */
-	gen_block_decls(s->symtab, &endlbl);
+	gen_block_decls(s->symtab, &endlbl, octx);
 
-	for(titer = s->bits.code.stmts; titer && *titer; titer++)
-		gen_stmt(*titer);
+	for(titer = s->bits.code.stmts; titer && *titer; titer++){
+		if(m1 && !titer[1])
+			break;
+		gen_stmt(*titer, octx);
+	}
 
 	if(endlbl)
-		out_label_noop(endlbl);
+		out_dbg_label(octx, endlbl);
 }
 
-void style_stmt_code(stmt *s)
+void gen_stmt_code(stmt *s, out_ctx *octx)
+{
+	gen_stmt_code_m1(s, 0, octx);
+}
+
+void style_stmt_code(stmt *s, out_ctx *octx)
 {
 	stmt **i_s;
 	decl **i_d;
@@ -172,7 +185,7 @@ void style_stmt_code(stmt *s)
 		gen_style_decl(*i_d);
 
 	for(i_s = s->bits.code.stmts; i_s && *i_s; i_s++)
-		gen_stmt(*i_s);
+		gen_stmt(*i_s, octx);
 
 	stylef("\n}\n");
 }

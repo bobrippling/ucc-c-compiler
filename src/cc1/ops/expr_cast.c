@@ -360,10 +360,10 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	}
 }
 
-static void lea_expr_cast(expr *e)
+static const out_val *lea_expr_cast(expr *e, out_ctx *octx)
 {
 	expr *c = expr_cast_child(e);
-	c->f_lea(c);
+	return c->f_lea(c, octx);
 }
 
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
@@ -485,9 +485,9 @@ void fold_expr_cast(expr *e, symtable *stab)
 	fold_expr_cast_descend(e, stab, 1);
 }
 
-void gen_expr_cast(expr *e)
+const out_val *gen_expr_cast(expr *e, out_ctx *octx)
 {
-	gen_expr(expr_cast_child(e));
+	const out_val *casted = gen_expr(expr_cast_child(e), octx);
 
 	if(IS_RVAL_CAST(e)){
 		/*out_to_rvalue();*/
@@ -499,9 +499,9 @@ void gen_expr_cast(expr *e)
 
 		/* return if cast-to-void */
 		if(type_is_void(tto)){
-			out_change_type(tto);
-			out_comment("cast to void");
-			return;
+			casted = out_change_type(octx, casted, tto);
+			out_comment(octx, "cast to void");
+			return casted;
 		}
 
 		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
@@ -519,26 +519,36 @@ void gen_expr_cast(expr *e)
 						type_to_str_r(buf, tto),
 						mem->struct_offset);*/
 
-					out_change_type(type_ptr_to(
+					casted = out_change_type(
+							octx,
+							casted,
+							type_ptr_to(
 								type_nav_btype(cc1_type_nav, type_void)));
 
-					out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t),
-							mem->bits.var.struct_offset);
-					out_op(op_plus);
+					casted = out_op(
+							octx, op_plus,
+							casted,
+							out_new_l(
+								octx,
+								type_nav_btype(cc1_type_nav, type_intptr_t),
+								mem->bits.var.struct_offset));
 				}
 			}
 		}
 
-		out_cast(tto, /*normalise_bool:*/1);
+		casted = out_cast(octx, casted, tto, /*normalise_bool:*/1);
 	}
+
+	return casted;
 }
 
-void gen_expr_str_cast(expr *e)
+const out_val *gen_expr_str_cast(expr *e, out_ctx *octx)
 {
 	idt_printf("%scast expr:\n", IS_RVAL_CAST(e) ? "rvalue-" : "");
 	gen_str_indent++;
 	print_expr(expr_cast_child(e));
 	gen_str_indent--;
+	UNUSED_OCTX();
 }
 
 void mutate_expr_cast(expr *e)
@@ -575,8 +585,9 @@ expr *expr_new_cast_decay(expr *sub, type *to)
 	return e;
 }
 
-void gen_expr_style_cast(expr *e)
+const out_val *gen_expr_style_cast(expr *e, out_ctx *octx)
 {
 	stylef("(%s)", type_to_str(e->bits.cast.tref));
-	gen_expr(expr_cast_child(e));
+	IGNORE_PRINTGEN(gen_expr(expr_cast_child(e), octx));
+	return NULL;
 }

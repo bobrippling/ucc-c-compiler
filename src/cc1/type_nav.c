@@ -355,7 +355,7 @@ type *type_called(type *functy, struct funcargs **pfuncargs)
 	return functy->ref;
 }
 
-type *type_pointed_to(type *const ty_ptr)
+type *type_dereference_decay(type *const ty_ptr)
 {
 	type *const pointee = type_is_ptr(ty_ptr);
 	assert(pointee);
@@ -475,6 +475,11 @@ type *type_nav_va_list(struct type_nav *root, symtable *symtab)
 		root->tva_list = c_types_make_va_list(symtab);
 
 	return root->tva_list;
+}
+
+type *type_nav_voidptr(struct type_nav *root)
+{
+    return type_ptr_to(type_nav_btype(root, type_void));
 }
 
 static void type_dump_t(type *t, FILE *f, int indent)
