@@ -5,6 +5,8 @@
 #include "expr_if.h"
 #include "../sue.h"
 #include "../out/lbl.h"
+#include "../type_is.h"
+#include "../type_nav.h"
 
 const char *str_expr_if()
 {
@@ -60,7 +62,7 @@ static void fold_const_expr_if(expr *e, consty *k)
 void fold_expr_if(expr *e, symtable *stab)
 {
 	consty konst;
-	type_ref *tt_l, *tt_r;
+	type *tt_l, *tt_r;
 
 	FOLD_EXPR(e->expr, stab);
 	const_fold(e->expr, &konst);
@@ -97,7 +99,7 @@ void fold_expr_if(expr *e, symtable *stab)
 	tt_l = (e->lhs ? e->lhs : e->expr)->tree_type;
 	tt_r = e->rhs->tree_type;
 
-	if(type_ref_is_integral(tt_l) && type_ref_is_integral(tt_r)){
+	if(type_is_arith(tt_l) && type_is_arith(tt_r)){
 		expr **middle_op = e->lhs ? &e->lhs : &e->expr;
 
 		expr_check_sign("?:", *middle_op, e->rhs, &e->where);
@@ -106,52 +108,84 @@ void fold_expr_if(expr *e, symtable *stab)
 				op_unknown,
 				middle_op, &e->rhs, &e->where, stab);
 
-	}else if(type_ref_is_void(tt_l) || type_ref_is_void(tt_r)){
-		e->tree_type = type_ref_new_type(type_new_primitive(type_void));
-
-	}else if(type_ref_cmp(tt_l, tt_r, 0) == TYPE_EQUAL){
-		/* pointer to 'compatible' type */
-		e->tree_type = type_ref_new_cast(tt_l,
-				type_ref_qual(tt_l) | type_ref_qual(tt_r));
+	}else if(type_is_void(tt_l) || type_is_void(tt_r)){
+		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 
 	}else{
-		/* brace yourself. */
-		int l_ptr_null = expr_is_null_ptr(
-				e->lhs ? e->lhs : e->expr, NULL_STRICT_VOID_PTR);
+		switch(type_cmp(tt_l, tt_r, 0)){
+			case TYPE_EQUAL:
+			case TYPE_EQUAL_TYPEDEF:
+				/* pointer to 'compatible' type */
+				e->tree_type = type_qualify(tt_l,
+						type_qual(tt_l) | type_qual(tt_r));
+				break;
 
-		int r_ptr_null = expr_is_null_ptr(e->rhs, NULL_STRICT_VOID_PTR);
+			case TYPE_QUAL_POINTED_ADD:
+			case TYPE_QUAL_POINTED_SUB:
+			{
+				/* difference in nested qualifiers - combine from both */
+				e->tree_type =
+					type_ptr_to(
+							type_qualify(
+								type_next(tt_l),
+								type_qual(type_next(tt_r))));
+				break;
+			}
 
-		int l_complete = !l_ptr_null && type_ref_is_complete(tt_l);
-		int r_complete = !r_ptr_null && type_ref_is_complete(tt_r);
+			case TYPE_QUAL_ADD:
+			case TYPE_QUAL_SUB:
+			{
+				/* difference only in qualifiers - combine from both */
+				e->tree_type = type_qualify(
+						type_unqualify(tt_l),
+						type_qual(tt_l) | type_qual(tt_r));
+				break;
+			}
 
-		if((l_complete && r_ptr_null) || (r_complete && l_ptr_null)){
-			e->tree_type = l_ptr_null ? tt_r : tt_l;
+			default:
+			{
+				/* brace yourself. */
+				int l_ptr_null = expr_is_null_ptr(
+						e->lhs ? e->lhs : e->expr, NULL_STRICT_INT);
 
-		}else{
-			int l_ptr = l_ptr_null || type_ref_is(tt_l, type_ref_ptr);
-			int r_ptr = r_ptr_null || type_ref_is(tt_r, type_ref_ptr);
+				int r_ptr_null = expr_is_null_ptr(e->rhs, NULL_STRICT_INT);
 
-			if(l_ptr || r_ptr){
-				fold_type_chk_warn(
-						tt_l, tt_r, &e->where, "?: pointer type mismatch");
+				int l_complete = !l_ptr_null && type_is_complete(tt_l);
+				int r_complete = !r_ptr_null && type_is_complete(tt_r);
 
-				/* void * */
-				e->tree_type = type_ref_new_ptr(type_ref_cached_VOID(), qual_none);
+				if((l_complete && r_ptr_null) || (r_complete && l_ptr_null)){
+					e->tree_type = l_ptr_null ? tt_r : tt_l;
 
-				{
-					enum type_qualifier q = type_ref_qual(tt_l) | type_ref_qual(tt_r);
+				}else{
+					int l_strict_ptr = !!type_is(tt_l, type_ptr);
+					int r_strict_ptr = !!type_is(tt_r, type_ptr);
+					int l_ptr = l_ptr_null || l_strict_ptr;
+					int r_ptr = r_ptr_null || r_strict_ptr;
 
-					if(q)
-						e->tree_type = type_ref_new_cast(e->tree_type, q);
+					if(l_ptr || r_ptr){
+						enum type_qualifier qual_both
+							= (l_strict_ptr ? type_qual(type_next(tt_l)) : qual_none)
+							|
+							(r_strict_ptr ? type_qual(type_next(tt_r)) : qual_none);
+
+						fold_type_chk_warn(
+								tt_l, tt_r, &e->where, "?: pointer type mismatch");
+
+						/* qualified void * */
+						e->tree_type = type_ptr_to(
+								type_qualify(
+									type_nav_btype(cc1_type_nav, type_void),
+									qual_both));
+
+					}else{
+						char buf[TYPE_STATIC_BUFSIZ];
+
+						warn_at(&e->where, "conditional type mismatch (%s vs %s)",
+								type_to_str(tt_l), type_to_str_r(buf, tt_r));
+
+						e->tree_type = type_nav_btype(cc1_type_nav, type_void);
+					}
 				}
-
-			}else{
-				char buf[TYPE_REF_STATIC_BUFSIZ];
-
-				warn_at(&e->where, "conditional type mismatch (%s vs %s)",
-						type_ref_to_str(tt_l), type_ref_to_str_r(buf, tt_r));
-
-				e->tree_type = type_ref_cached_VOID();
 			}
 		}
 	}
@@ -160,42 +194,36 @@ void fold_expr_if(expr *e, symtable *stab)
 }
 
 
-void gen_expr_if(expr *e)
+const out_val *gen_expr_if(expr *e, out_ctx *octx)
 {
-	char *lblfin;
+	out_blk *landing = out_blk_new(octx, "if_end"),
+	        *blk_lhs = out_blk_new(octx, "if_lhs"),
+	        *blk_rhs = out_blk_new(octx, "if_rhs");
+	const out_val *cond = gen_expr(e->expr, octx);
 
-	lblfin = out_label_code("ifexp_fi");
+	if(!e->lhs)
+		out_val_retain(octx, cond);
 
-	gen_expr(e->expr);
+	out_ctrl_branch(octx, cond, blk_lhs, blk_rhs);
 
-	if(e->lhs){
-		char *lblelse = out_label_code("ifexp_else");
-
-		out_jfalse(lblelse);
-
-		gen_expr(e->lhs);
-
-		out_push_lbl(lblfin, 0);
-		out_jmp();
-
-		out_label(lblelse);
-		free(lblelse);
-
-	}else{
-		out_dup();
-
-		out_jtrue(lblfin);
+	out_current_blk(octx, blk_lhs);
+	{
+		out_ctrl_transfer(octx, landing,
+				e->lhs ? gen_expr(e->lhs, octx) : cond,
+				&blk_lhs);
 	}
 
-	out_pop();
+	out_current_blk(octx, blk_rhs);
+	{
+		out_ctrl_transfer(octx, landing,
+				gen_expr(e->rhs, octx), &blk_rhs);
+	}
 
-	gen_expr(e->rhs);
-	out_label(lblfin);
-
-	free(lblfin);
+	out_current_blk(octx, landing);
+	return out_ctrl_merge(octx, blk_lhs, blk_rhs);
 }
 
-void gen_expr_str_if(expr *e)
+const out_val *gen_expr_str_if(expr *e, out_ctx *octx)
 {
 	idt_printf("if expression:\n");
 	gen_str_indent++;
@@ -217,6 +245,8 @@ void gen_expr_str_if(expr *e)
 #undef SUB_PRINT
 
 	gen_str_indent--;
+
+	UNUSED_OCTX();
 }
 
 void mutate_expr_if(expr *e)
@@ -231,12 +261,13 @@ expr *expr_new_if(expr *test)
 	return e;
 }
 
-void gen_expr_style_if(expr *e)
+const out_val *gen_expr_style_if(expr *e, out_ctx *octx)
 {
-	gen_expr(e->expr);
+	IGNORE_PRINTGEN(gen_expr(e->expr, octx));
 	stylef(" ? ");
 	if(e->lhs)
-		gen_expr(e->lhs);
+		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef(" : ");
-	gen_expr(e->rhs);
+	IGNORE_PRINTGEN(gen_expr(e->rhs, octx));
+	return NULL;
 }

@@ -3,11 +3,16 @@
 
 #include "../../util/util.h"
 
+#include "../type.h"
+#include "../op.h"
+#include "../num.h"
+
+#include "forwards.h"
+#include "val.h"
+
 #include "armv7.h"
 
-#include "../data_structs.h"
 #include "asm.h"
-#include "vstack.h"
 
 #include "impl.h"
 #include "out.h"

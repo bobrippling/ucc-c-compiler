@@ -4,6 +4,8 @@
 #include "expr_sizeof.h"
 #include "../sue.h"
 #include "../out/asm.h"
+#include "../type_is.h"
+#include "../type_nav.h"
 
 #define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->bits.size_of.of_type)
 #define SIZEOF_SIZE(e)  (e)->bits.size_of.sz
@@ -31,12 +33,12 @@ const char *str_expr_sizeof()
 
 void fold_expr_sizeof(expr *e, symtable *stab)
 {
-	type_ref *chosen;
+	type *chosen;
 
 	if(e->expr)
 		fold_expr_no_decay(e->expr, stab);
 	else
-		fold_type_ref(e->bits.size_of.of_type, NULL, stab);
+		fold_type(e->bits.size_of.of_type, stab);
 
 	chosen = SIZEOF_WHAT(e);
 
@@ -55,13 +57,13 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 		case what_sizeof:
 		{
 			/* check for sizeof array parameter */
-			if(type_ref_is_decayed_array(chosen)){
-				char ar_buf[TYPE_REF_STATIC_BUFSIZ];
+			if(type_is_decayed_array(chosen)){
+				char ar_buf[TYPE_STATIC_BUFSIZ];
 
 				warn_at(&e->where,
 						"array-argument evaluates to sizeof(%s), not sizeof(%s)",
-						type_ref_to_str(chosen),
-						type_ref_to_str_r_show_decayed(ar_buf, chosen));
+						type_to_str(chosen),
+						type_to_str_r_show_decayed(ar_buf, chosen));
 			}
 		} /* fall */
 
@@ -70,11 +72,11 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 			struct_union_enum_st *sue;
 			int set = 0; /* need this, since .bits can't be relied upon to be 0 */
 
-			if(!type_ref_is_complete(chosen))
-				die_at(&e->where, "sizeof incomplete type %s", type_ref_to_str(chosen));
+			if(!type_is_complete(chosen))
+				die_at(&e->where, "sizeof incomplete type %s", type_to_str(chosen));
 
-			if((sue = type_ref_is_s_or_u(chosen)) && !sue_complete(sue))
-				die_at(&e->where, "sizeof %s", type_ref_to_str(chosen));
+			if((sue = type_is_s_or_u(chosen)) && !sue_complete(sue))
+				die_at(&e->where, "sizeof %s", type_to_str(chosen));
 
 			if(e->what_of == what_alignof && e->expr){
 				decl *d = NULL;
@@ -90,11 +92,11 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 			if(!set)
 				SIZEOF_SIZE(e) = (e->what_of == what_sizeof
-						? type_ref_size : type_ref_align)(
+						? type_size : type_align)(
 							SIZEOF_WHAT(e), &e->where);
 
 			/* size_t */
-			e->tree_type = type_ref_new_type(type_new_primitive(type_ulong));
+			e->tree_type = type_nav_btype(cc1_type_nav, type_ulong);
 			break;
 		}
 	}
@@ -109,26 +111,24 @@ static void const_expr_sizeof(expr *e, consty *k)
 	k->type = CONST_NUM;
 }
 
-void gen_expr_sizeof(expr *e)
+const out_val *gen_expr_sizeof(expr *e, out_ctx *octx)
 {
-	type_ref *r = SIZEOF_WHAT(e);
-
-	out_push_l(e->tree_type, SIZEOF_SIZE(e));
-
-	out_comment("sizeof %s%s", e->expr ? "" : "type ", type_ref_to_str(r));
+	return out_new_l(octx, e->tree_type, SIZEOF_SIZE(e));
 }
 
-void gen_expr_str_sizeof(expr *e)
+const out_val *gen_expr_str_sizeof(expr *e, out_ctx *octx)
 {
 	if(e->expr){
 		idt_printf("sizeof expr:\n");
 		print_expr(e->expr);
 	}else{
-		idt_printf("sizeof %s\n", type_ref_to_str(e->bits.size_of.of_type));
+		idt_printf("sizeof %s\n", type_to_str(e->bits.size_of.of_type));
 	}
 
 	if(e->what_of == what_sizeof)
 		idt_printf("size = %d\n", SIZEOF_SIZE(e));
+
+	UNUSED_OCTX();
 }
 
 void mutate_expr_sizeof(expr *e)
@@ -136,7 +136,7 @@ void mutate_expr_sizeof(expr *e)
 	e->f_const_fold = const_expr_sizeof;
 }
 
-expr *expr_new_sizeof_type(type_ref *t, enum what_of what_of)
+expr *expr_new_sizeof_type(type *t, enum what_of what_of)
 {
 	expr *e = expr_new_wrapper(sizeof);
 	e->bits.size_of.of_type = t;
@@ -152,14 +152,16 @@ expr *expr_new_sizeof_expr(expr *sizeof_this, enum what_of what_of)
 	return e;
 }
 
-void gen_expr_style_sizeof(expr *e)
+const out_val *gen_expr_style_sizeof(expr *e, out_ctx *octx)
 {
 	stylef("%s(", sizeof_what(e->what_of));
 
 	if(e->expr)
-		gen_expr(e->expr);
+		IGNORE_PRINTGEN(gen_expr(e->expr, octx));
 	else
-		stylef("%s", type_ref_to_str(e->bits.size_of.of_type));
+		stylef("%s", type_to_str(e->bits.size_of.of_type));
 
 	stylef(")");
+
+	UNUSED_OCTX();
 }

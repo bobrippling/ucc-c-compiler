@@ -1,2 +1,2 @@
-noop: monolith.c, just_pad.c, empty_field.c
+noop: just_pad.c
 compile-error: enum_redecl.c

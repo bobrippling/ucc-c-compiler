@@ -1,0 +1,115 @@
+blks:
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_2
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_1
+	.quad globl.block_3
+
+fs:
+	.long 0
+
+gs:
+	.long 0
+
+f:
+g:
+globl.block_1:
+globl.block_2:
+globl.block_3:
+main:

@@ -19,5 +19,5 @@ main()
 
 	ap->bp = &a.b;
 
-	return a.bp == &ap->b;
+	return a.bp == &ap->b ? 0 : 1;
 }

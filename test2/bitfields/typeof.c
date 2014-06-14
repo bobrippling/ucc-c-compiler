@@ -4,5 +4,5 @@ main()
 {
 	struct { int i : 3; } a;
 
-	typeof(a.i) b; // CHECK: /error: bitfield in typeof/
+	__typeof(a.i) b; // CHECK: /error: bitfield in typeof/
 }

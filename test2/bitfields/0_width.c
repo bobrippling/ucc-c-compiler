@@ -17,12 +17,18 @@ main()
 {
 	struct A a;
 
+	memset(&a, 0, sizeof a);
+
 	a.x = 3;
 	a.y = 5;
 
 	chk(a.x, a.y);
 
-	// should be packed like ints
+	/* should be packed like ints
+	 * note that this relies on the memset() above,
+	 * as bitfields don't take part in initialisation,
+	 * even = { 0 }.
+	 */
 	chk(0[(int *)&a], 1[(int *)&a]);
 
 	return 0;

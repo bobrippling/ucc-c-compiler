@@ -148,10 +148,16 @@ for my $f (@test_files){
 	if($rc & 127){
 		die "test caught signal " . ($rc & 127) . "\n";
 	}
+	$rc >>= 8; # exit code
 
 	my $desc;
-	if($rc){
+	my $failed = 0;
+
+	if($rc == 1){
 		$desc = 'fail';
+		$failed = 1;
+	}elsif($rc == 2){
+		$desc = 'skip';
 	}else{
 		$desc = 'pass';
 	}
@@ -162,7 +168,7 @@ for my $f (@test_files){
 	. ($ignored ? ' (fail expected)' : '')
 	. ": $f";
 
-	if(!!$ignored != !!$rc){
+	if($failed != $ignored){
 		print "\n";
 
 		$ec = 1;

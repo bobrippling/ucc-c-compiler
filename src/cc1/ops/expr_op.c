@@ -1,42 +1,324 @@
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "../defs.h"
 #include "ops.h"
 #include "expr_op.h"
 #include "../out/lbl.h"
 #include "../out/asm.h"
-#include "../type_ref_is.h"
+#include "../type_is.h"
+#include "../type_nav.h"
+
+/*
+ * usual arithmetic conversions:
+ *   mul, div, mod,
+ *   plus, minus,
+ *   lt, gt le, ge, eq, ne,
+ *   and, xor, or
+ *
+ * integer promotions:
+ *   + - ~ << >>
+ */
+
+#define BOOLEAN_TYPE type_int
 
 const char *str_expr_op()
 {
 	return "op";
 }
 
-static void const_offset(consty *r, consty *val, consty *addr,
-		type_ref *addr_type, enum op_type op)
+#define addr_multiply(i, addr_type)  \
+do{                                  \
+	type *next = type_next(addr_type); \
+	sintegral_t step = 1;              \
+                                     \
+	if(next)                           \
+		step = type_size(next, NULL);    \
+                                     \
+	i *= step;                         \
+}while(0)
+
+static void const_op_num_fp(
+		expr *e, consty *k,
+		const consty *lhs, const consty *rhs)
 {
-	unsigned step = type_ref_size(type_ref_next(addr_type), NULL);
-	int change;
+	/* float const-op */
+	floating_t fp_r;
 
-	UCC_ASSERT(K_INTEGRAL(val->bits.num),
-			"fp + address?");
+	assert(lhs->type == CONST_NUM && (!rhs || rhs->type == CONST_NUM));
 
-	memcpy_safe(r, addr);
+	fp_r = const_op_exec_fp(
+			lhs->bits.num.val.f,
+			rhs ? &rhs->bits.num.val.f : NULL,
+			e->op);
 
-	change = val->bits.num.val.i * step;
+	k->type = CONST_NUM;
 
-	if(op == op_minus)
-		change = -change;
+	/* both relational and normal ops between floats are not constant */
+	if(!k->nonstandard_const)
+		k->nonstandard_const = e;
 
-	/* may already have an offset, hence += */
-	r->offset += change;
+	if(op_returns_bool(e->op)){
+		k->bits.num.val.i = fp_r; /* convert to bool */
+
+	}else{
+		const btype *ty = type_get_type(e->tree_type);
+
+		UCC_ASSERT(ty, "no float type for float op?");
+
+		k->bits.num.val.f = fp_r;
+
+		switch(ty->primitive){
+			case type_float:   k->bits.num.suffix = VAL_FLOAT;   break;
+			case type_double:  k->bits.num.suffix = VAL_DOUBLE;  break;
+			case type_ldouble: k->bits.num.suffix = VAL_LDOUBLE; break;
+			default: ICE("bad float");
+		}
+	}
+}
+
+typedef struct
+{
+	int is_lbl;
+	union
+	{
+		integral_t i;
+		const char *lbl;
+	} bits;
+} collapsed_consty;
+
+static void collapse_const(collapsed_consty *out, const consty *in)
+{
+	switch(in->type){
+		case CONST_NO:
+			assert(0);
+
+		case CONST_NUM:
+			out->is_lbl = 0;
+			out->bits.i = in->bits.num.val.i;
+			break;
+
+		case CONST_STRK:
+			out->is_lbl = 1;
+			out->bits.lbl = in->bits.str->lit->lbl;
+			break;
+
+		case CONST_NEED_ADDR:
+		case CONST_ADDR:
+			if(in->bits.addr.is_lbl){
+				out->is_lbl = 1;
+				out->bits.lbl = in->bits.addr.bits.lbl;
+			}else{
+				out->is_lbl = 0;
+				out->bits.i = in->bits.addr.bits.memaddr;
+			}
+			break;
+	}
+}
+
+static void const_op_num_int(
+		expr *e, consty *k,
+		const consty *lhs, const consty *rhs)
+{
+	const char *err = NULL;
+	int is_signed;
+	collapsed_consty l, r;
+
+	/* the op is signed if an operand is, not the result,
+	 * e.g. u_a < u_b produces a bool (signed) */
+	is_signed = type_is_signed(e->lhs->tree_type) ||
+		(e->rhs ? type_is_signed(e->rhs->tree_type) : 0);
+
+	collapse_const(&l, lhs);
+	if(rhs){
+		type *ptr;
+		int ptr_r = 0;
+
+		collapse_const(&r, rhs);
+
+		/* need to apply pointer arithmetic */
+		if(l.is_lbl + r.is_lbl < 2 /* at least one side is a number */
+		&& (e->op == op_plus || e->op == op_minus) /* +/- */
+		&& ((ptr = type_is_ptr(e->lhs->tree_type))
+			|| (ptr_r = 1, ptr = type_is_ptr(e->rhs->tree_type))))
+		{
+			unsigned step = type_size(ptr, &e->where);
+
+			assert(!(ptr_r ? &l : &r)->is_lbl);
+
+			*(ptr_r ? &l.bits.i : &r.bits.i) *= step;
+		}
+	}else{
+		memset(&r, 0, sizeof r);
+	}
+
+	CONST_FOLD_LEAF(k);
+	switch(l.is_lbl + r.is_lbl){
+		default:
+			assert(0);
+
+		case 1:
+		{
+			collapsed_consty *num_side = NULL;
+			if(lhs->type == CONST_NUM)
+				num_side = &l;
+			else if(rhs)
+				num_side = &r;
+
+			/* label and num - only + and -, or comparison */
+			switch(e->op){
+				case op_not:
+					/* !&lbl */
+					assert(!rhs);
+					k->type = CONST_NUM;
+					k->bits.num.val.i = 0;
+					break;
+
+				case op_eq:
+				case op_ne:
+					assert(num_side && "binary two labels shouldn't be here");
+					if(num_side->bits.i == 0){
+						/* &x == 0, etc */
+						k->type = CONST_NUM;
+						k->bits.num.val.i = (e->op != op_eq);
+						break;
+					}
+					/* fall */
+
+				default:
+					/* ~&lbl, 5 == &lbl, 6 > &lbl etc */
+					k->type = CONST_NO;
+					break;
+
+				case op_plus:
+				case op_minus:
+					if(!rhs){
+						/* unary +/- on label */
+						k->type = CONST_NO;
+						break;
+					}
+
+					memcpy_safe(k, num_side == &l ? rhs : lhs);
+					if(e->op == op_plus)
+						k->offset += num_side->bits.i;
+					else if(e->op == op_minus)
+						k->offset -= num_side->bits.i;
+					break;
+			}
+			break;
+		}
+
+		case 0:
+		{
+			integral_t int_r;
+
+			int_r = const_op_exec(
+					l.bits.i, rhs ? &r.bits.i : NULL,
+					e->op, is_signed, &err);
+
+			if(err){
+				warn_at(&e->where, "%s", err);
+				k->type = CONST_NO;
+			}else{
+				k->type = CONST_NUM;
+				k->bits.num.val.i = int_r;
+			}
+			break;
+		}
+
+		case 2:
+			switch(e->op){
+				case op_not:
+					assert(0 && "binary not?");
+				case op_unknown:
+					assert(0);
+				default:
+					k->type = CONST_NO;
+					break;
+
+				case op_orsc:
+				case op_andsc:
+					k->type = CONST_NUM;
+					k->bits.num.val.i = 1;
+					break;
+
+				case op_eq:
+				case op_ne:
+				{
+					int same = !strcmp(l.bits.lbl, r.bits.lbl);
+					k->type = CONST_NUM;
+
+					k->bits.num.val.i = ((e->op == op_eq) == same);
+					break;
+				}
+			}
+			break;
+	}
+}
+
+static void const_op_num(
+		expr *e, consty *k,
+		const consty *lhs, const consty *rhs)
+{
+	int fp[2] = {
+		type_is_floating(e->lhs->tree_type)
+	};
+
+	if(rhs){
+		fp[1] = type_is_floating(e->rhs->tree_type);
+
+		UCC_ASSERT(!(fp[0] ^ fp[1]),
+				"one float and one non-float?");
+	}
+
+	if(fp[0])
+		const_op_num_fp(e, k, lhs, rhs);
+	else
+		const_op_num_int(e, k, lhs, rhs);
+}
+
+static void const_shortcircuit(
+		expr *e, consty *k,
+		const consty *lhs,
+		const consty *rhs)
+{
+	collapsed_consty clhs;
+	int truth;
+
+	if(lhs->type == CONST_NO)
+		return;
+	assert(rhs->type == CONST_NO);
+
+	collapse_const(&clhs, lhs);
+	truth = clhs.is_lbl ? 1 : clhs.bits.i;
+
+	if(e->op == op_andsc){
+		if(truth){
+			/* &lbl && [not-constant] */
+		}else{
+			/* 0 && [not-constant] */
+			CONST_FOLD_LEAF(k);
+			k->type = CONST_NUM;
+			k->bits.num.val.i = 0;
+		}
+	}else if(e->op == op_orsc){
+		if(truth){
+			/* &lbl || [not-constant] */
+			CONST_FOLD_LEAF(k);
+			k->type = CONST_NUM;
+			k->bits.num.val.i = 1;
+		}else{
+			/* 0 || [not-constant] */
+		}
+	}else{
+		assert(0);
+	}
 }
 
 static void fold_const_expr_op(expr *e, consty *k)
 {
 	consty lhs, rhs;
-	int sum_const;
 
 	memset(k, 0, sizeof *k);
 
@@ -48,110 +330,22 @@ static void fold_const_expr_op(expr *e, consty *k)
 		rhs.type = CONST_NUM;
 	}
 
-	if(lhs.type == CONST_NUM && rhs.type == CONST_NUM){
-		int fp[2] = {
-			type_ref_is_floating(e->lhs->tree_type)
-		};
-
-		if(e->rhs){
-			fp[1] = type_ref_is_floating(e->rhs->tree_type);
-
-			UCC_ASSERT(!(fp[0] ^ fp[1]),
-					"one float and one non-float?");
-		}
-
-		if(fp[0]){
-			/* float const-op */
-			floating_t r = const_op_exec_fp(
-					lhs.bits.num.val.f,
-					e->rhs ? &rhs.bits.num.val.f : 0,
-					e->op);
-
-			k->type = CONST_NUM;
-
-			/* both relational and normal */
-			if(!k->nonstandard_const)
-				k->nonstandard_const = e;
-
-			if(op_returns_bool(e->op)){
-				k->bits.num.val.i = r; /* convert to bool */
-
-			}else{
-				const type *ty = type_ref_get_type(e->tree_type);
-
-				UCC_ASSERT(ty, "no float type for float op?");
-
-				k->bits.num.val.f = r;
-
-				switch(ty->primitive){
-					case type_float:   k->bits.num.suffix = VAL_FLOAT;   break;
-					case type_double:  k->bits.num.suffix = VAL_DOUBLE;  break;
-					case type_ldouble: k->bits.num.suffix = VAL_LDOUBLE; break;
-					default: ICE("bad float");
-				}
-			}
-
-		}else{
-			const char *err = NULL;
-			integral_t r;
-			/* the op is signed if an operand is, not the result,
-			 * e.g. u_a < u_b produces a bool (signed) */
-			int is_signed = type_ref_is_signed(e->lhs->tree_type) ||
-				(e->rhs ? type_ref_is_signed(e->rhs->tree_type) : 0);
-
-			r = const_op_exec(
-					lhs.bits.num.val.i,
-					e->rhs ? &rhs.bits.num.val.i : NULL,
-					e->op, is_signed, &err);
-
-			if(err){
-				warn_at(&e->where, "%s", err);
-			}else{
-				k->type = CONST_NUM;
-				k->bits.num.val.i = r;
-			}
-		}
-
-	}else if((e->op == op_andsc || e->op == op_orsc)
-	&& (sum_const = CONST_AT_COMPILE_TIME(lhs.type)
-	              + CONST_AT_COMPILE_TIME(rhs.type)) > 0)
+	if(!CONST_AT_COMPILE_TIME(lhs.type) /* catch need_addr */
+	|| !CONST_AT_COMPILE_TIME(rhs.type))
 	{
-
-		/* allow 1 || f() */
-		consty *kside = CONST_AT_COMPILE_TIME(lhs.type) ? &lhs : &rhs;
-		int is_true = !!kside->bits.num.val.i;
-
-		if(e->op == (is_true ? op_orsc : op_andsc)){
-			memcpy(k, kside, sizeof *k);
-
-			/* to be more conformant we set nonstandard_const on: a() && 0
-			 * i.e. ordering:
-			 * good:   0 && a()
-			 * good:   1 || b()
-			 * bad:  a() && 0
-			 * bad:  b() || 1
-			 */
-			if(sum_const < 2  /* one side isn't const */
-			&& kside != &lhs) /* the lhs isn't const */
-			{
-				k->nonstandard_const = e;
-			}
-		}
-
-	}else if(e->op == op_plus || e->op == op_minus){
-		/* allow one CONST_{ADDR,STRK} and one CONST_VAL for an offset const */
-		int lhs_addr = lhs.type == CONST_ADDR || lhs.type == CONST_STRK;
-		int rhs_addr = rhs.type == CONST_ADDR || rhs.type == CONST_STRK;
-
-		/* this is safe - fold() checks that we can't add floats to addresses */
-
-		/**/if(lhs_addr && rhs.type == CONST_NUM)
-			const_offset(k, &rhs, &lhs, e->lhs->tree_type, e->op);
-		else if(rhs_addr && lhs.type == CONST_NUM)
-			const_offset(k, &lhs, &rhs, e->rhs->tree_type, e->op);
+		/* allow shortcircuit */
+		k->type = CONST_NO;
+		if(e->op == op_andsc || e->op == op_orsc)
+			const_shortcircuit(e, k, &lhs, &rhs);
+		return;
 	}
 
-	if(!k->nonstandard_const){
+	const_op_num(e, k, &lhs, e->rhs ? &rhs : NULL);
+
+	if(!k->nonstandard_const
+	&& lhs.type != CONST_NO /* otherwise it's uninitialised */
+	&& rhs.type != CONST_NO)
+	{
 		k->nonstandard_const = lhs.nonstandard_const
 			? lhs.nonstandard_const : rhs.nonstandard_const;
 	}
@@ -160,15 +354,15 @@ static void fold_const_expr_op(expr *e, consty *k)
 static void expr_promote_if_smaller(expr **pe, symtable *stab, int do_float)
 {
 	expr *e = *pe;
-	type_ref *to;
+	type *to;
 
-	if(type_ref_is_floating(e->tree_type) && !do_float)
+	if(type_is_floating(e->tree_type) && !do_float)
 		return;
 
-	if(type_ref_is_promotable(e->tree_type, &to)){
+	if(type_is_promotable(e->tree_type, &to)){
 		expr *cast;
 
-		UCC_ASSERT(!type_ref_is(e->tree_type, type_ref_ptr),
+		UCC_ASSERT(!type_is(e->tree_type, type_ptr),
 				"invalid promotion for pointer");
 
 		/* if(type_primitive_size(e->tree_type->type->primitive) >= type_primitive_size(to))
@@ -195,25 +389,27 @@ void expr_promote_default(expr **pe, symtable *stab)
 	expr_promote_if_smaller(pe, stab, 1);
 }
 
-type_ref *op_required_promotion(
+type *op_required_promotion(
 		enum op_type op,
 		expr *lhs, expr *rhs,
 		where *w,
-		type_ref **plhs, type_ref **prhs)
+		type **plhs, type **prhs)
 {
-	type_ref *resolved = NULL;
-	type_ref *const tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
+	type *resolved = NULL;
+	type *const tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
 	int floating_lhs;
 
 	*plhs = *prhs = NULL;
 
-	if((floating_lhs = type_ref_is_floating(tlhs))
-			!= type_ref_is_floating(trhs))
+	if((floating_lhs = type_is_floating(tlhs))
+			!= type_is_floating(trhs))
 	{
 		/* cast _to_ the floating type */
-		type_ref *res = floating_lhs ? (*prhs = tlhs) : (*plhs = trhs);
+		type *res = floating_lhs ? (*prhs = tlhs) : (*plhs = trhs);
 
-		resolved = op_is_comparison(op) ? type_ref_cached_BOOL() : res;
+		resolved = op_returns_bool(op)
+			? type_nav_btype(cc1_type_nav, BOOLEAN_TYPE)
+			: res;
 
 		goto fin;
 		/* else we pick the largest floating or integral type */
@@ -230,30 +426,35 @@ type_ref *op_required_promotion(
 		must be + or -
 #endif
 
-	if(type_ref_is_void(tlhs) || type_ref_is_void(trhs))
+	if(type_is_void(tlhs) || type_is_void(trhs))
 		die_at(w, "use of void expression");
 
 	{
-		const int l_ptr = !!type_ref_is(tlhs, type_ref_ptr);
-		const int r_ptr = !!type_ref_is(trhs, type_ref_ptr);
+		const int l_ptr = !!type_is(tlhs, type_ptr);
+		const int r_ptr = !!type_is(trhs, type_ptr);
 
 		if(l_ptr && r_ptr){
-			char buf[TYPE_REF_STATIC_BUFSIZ];
+			char buf[TYPE_STATIC_BUFSIZ];
 
 			if(op == op_minus){
 				/* don't allow void * */
-				switch(type_ref_cmp(tlhs, trhs, 0)){
+				switch(type_cmp(tlhs, trhs, 0)){
 					case TYPE_CONVERTIBLE_IMPLICIT:
 					case TYPE_CONVERTIBLE_EXPLICIT:
 					case TYPE_NOT_EQUAL:
 						die_at(w, "subtraction of distinct pointer types %s and %s",
-								type_ref_to_str(tlhs), type_ref_to_str_r(buf, trhs));
-					case TYPE_QUAL_LOSS:
+								type_to_str(tlhs), type_to_str_r(buf, trhs));
+					case TYPE_QUAL_ADD:
+					case TYPE_QUAL_SUB:
+					case TYPE_QUAL_POINTED_ADD:
+					case TYPE_QUAL_POINTED_SUB:
+					case TYPE_QUAL_NESTED_CHANGE:
 					case TYPE_EQUAL:
+					case TYPE_EQUAL_TYPEDEF:
 						break;
 				}
 
-				resolved = type_ref_cached_INTPTR_T();
+				resolved = type_nav_btype(cc1_type_nav, type_intptr_t);
 
 			}else if(op_returns_bool(op)){
 ptr_relation:
@@ -264,11 +465,11 @@ ptr_relation:
 							: "comparison between pointer and integer"))
 					{
 						/* not equal - ptr vs int */
-						*(l_ptr ? prhs : plhs) = type_ref_cached_INTPTR_T();
+						*(l_ptr ? prhs : plhs) = type_nav_btype(cc1_type_nav, type_intptr_t);
 					}
 				}
 
-				resolved = type_ref_cached_BOOL();
+				resolved = type_nav_btype(cc1_type_nav, BOOLEAN_TYPE);
 
 			}else{
 				die_at(w, "operation between two pointers must be relational or subtraction");
@@ -298,23 +499,23 @@ ptr_relation:
 			resolved = l_ptr ? tlhs : trhs;
 
 			/* FIXME: promote to unsigned */
-			*(l_ptr ? prhs : plhs) = type_ref_cached_INTPTR_T();
+			*(l_ptr ? prhs : plhs) = type_nav_btype(cc1_type_nav, type_intptr_t);
 
 			/* + or -, check if we can */
 			{
-				type_ref *const next = type_ref_next(resolved);
+				type *const next = type_next(resolved);
 
-				if(!type_ref_is_complete(next)){
-					if(type_ref_is_void(next)){
+				if(!type_is_complete(next)){
+					if(type_is_void(next)){
 						warn_at(w, "arithmetic on void pointer");
 					}else{
 						die_at(w, "arithmetic on pointer to incomplete type %s",
-								type_ref_to_str(next));
+								type_to_str(next));
 					}
 					/* TODO: note: type declared at resolved->where */
-				}else if(type_ref_is_func_or_block(next)){
+				}else if(type_is(next, type_func)){
 					warn_at(w, "arithmetic on function pointer '%s'",
-							type_ref_to_str(resolved));
+							type_to_str(resolved));
 				}
 			}
 
@@ -344,7 +545,7 @@ ptr_relation:
 #endif
 
 	{
-		type_ref *tlarger = NULL;
+		type *tlarger = NULL;
 
 		if(op == op_shiftl || op == op_shiftr){
 			/* fine with any parameter sizes
@@ -353,7 +554,7 @@ ptr_relation:
 			 */
 
 			UCC_ASSERT(
-					type_ref_size(tlhs, &lhs->where)
+					type_size(tlhs, &lhs->where)
 						>= type_primitive_size(type_int),
 					"shift operand should have been promoted");
 
@@ -361,14 +562,14 @@ ptr_relation:
 
 		}else if(op == op_andsc || op == op_orsc){
 			/* no promotion */
-			resolved = type_ref_cached_BOOL();
+			resolved = type_nav_btype(cc1_type_nav, BOOLEAN_TYPE);
 
 		}else{
-			const int l_unsigned = !type_ref_is_signed(tlhs),
-			          r_unsigned = !type_ref_is_signed(trhs);
+			const int l_unsigned = !type_is_signed(tlhs),
+			          r_unsigned = !type_is_signed(trhs);
 
-			const int l_sz = type_ref_size(tlhs, &lhs->where),
-			          r_sz = type_ref_size(trhs, &rhs->where);
+			const int l_sz = type_size(tlhs, &lhs->where),
+			          r_sz = type_size(trhs, &rhs->where);
 
 			if(l_unsigned == r_unsigned){
 				if(l_sz != r_sz){
@@ -405,14 +606,14 @@ ptr_relation:
 
 			}else{
 				/* else convert both to (unsigned)signed_type */
-				type_ref *signed_t = l_unsigned ? trhs : tlhs;
+				type *signed_t = l_unsigned ? trhs : tlhs;
 
-				tlarger = *plhs = *prhs = type_ref_new_cast_signed(signed_t, 0);
+				tlarger = *plhs = *prhs = type_sign(signed_t, 0);
 			}
 
-			/* if we have a _comparison_ (e.g. between enums), convert to _Bool */
+			/* if we have a _comparison_, convert to bool */
 			resolved = op_returns_bool(op)
-				? type_ref_cached_BOOL()
+				? type_nav_btype(cc1_type_nav, BOOLEAN_TYPE)
 				: tlarger;
 		}
 	}
@@ -423,13 +624,13 @@ fin:
 	return resolved; /* XXX: memleak in some cases */
 }
 
-type_ref *op_promote_types(
+type *op_promote_types(
 		enum op_type op,
 		expr **plhs, expr **prhs,
 		where *w, symtable *stab)
 {
-	type_ref *tlhs, *trhs;
-	type_ref *resolved;
+	type *tlhs, *trhs;
+	type *resolved;
 
 	resolved = op_required_promotion(op, *plhs, *prhs, w, &tlhs, &trhs);
 
@@ -449,7 +650,7 @@ static expr *expr_is_array_cast(expr *e)
 	if(expr_kind(array, cast))
 		array = array->expr;
 
-	if(type_ref_is(array->tree_type, type_ref_array))
+	if(type_is(array->tree_type, type_array))
 		return array;
 
 	return NULL;
@@ -471,13 +672,13 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 	else
 		array = expr_is_array_cast(e->rhs);
 
-	if(array && !type_ref_is_incomplete_array(array->tree_type)){
+	if(array && !type_is_incomplete_array(array->tree_type)){
 		consty k;
 
 		const_fold(lhs ? e->rhs : e->lhs, &k);
 
 		if(k.type == CONST_NUM){
-			const size_t sz = type_ref_array_len(array->tree_type);
+			const size_t sz = type_array_len(array->tree_type);
 
 			UCC_ASSERT(K_INTEGRAL(k.bits.num),
 					"fp index?");
@@ -496,7 +697,8 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 				warn_at(&e->where,
 						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld\n"
 						"%s: note: array declared here",
-						idx.val.i, (long)sz, where_str_r(buf, &array->tree_type->where));
+						idx.val.i, (long)sz,
+						where_str_r(buf, type_loc(array->tree_type)));
 				return 1;
 			}
 #undef idx
@@ -514,8 +716,8 @@ static int op_unsigned_cmp_check(expr *e)
 		case op_ge:
 		case op_lt:
 		case op_le:
-			if((lhs = !type_ref_is_signed(e->lhs->tree_type))
-			||        !type_ref_is_signed(e->rhs->tree_type))
+			if((lhs = !type_is_signed(e->lhs->tree_type))
+			||        !type_is_signed(e->rhs->tree_type))
 			{
 				consty k;
 
@@ -606,14 +808,14 @@ static int op_shift_check(expr *e)
 		case op_shiftl:
 		case op_shiftr:
 		{
-			const unsigned ty_sz = CHAR_BIT * type_ref_size(e->lhs->tree_type, &e->lhs->where);
+			const unsigned ty_sz = CHAR_BIT * type_size(e->lhs->tree_type, &e->lhs->where);
 			int undefined = 0;
 			consty lhs, rhs;
 
 			const_fold(e->lhs, &lhs);
 			const_fold(e->rhs, &rhs);
 
-			if(type_ref_is_signed(e->rhs->tree_type)
+			if(type_is_signed(e->rhs->tree_type)
 			&& (sintegral_t)rhs.bits.num.val.i < 0)
 			{
 				warn_at(&e->rhs->where, "shift count is negative (%"
@@ -622,7 +824,7 @@ static int op_shift_check(expr *e)
 				undefined = 1;
 			}else if(rhs.bits.num.val.i >= ty_sz){
 				warn_at(&e->rhs->where, "shift count >= width of %s (%u)",
-						type_ref_to_str(e->lhs->tree_type), ty_sz);
+						type_to_str(e->lhs->tree_type), ty_sz);
 
 				undefined = 1;
 			}
@@ -651,21 +853,21 @@ static int op_shift_check(expr *e)
 
 static int op_float_check(expr *e)
 {
-	type_ref *tl = e->lhs->tree_type,
+	type *tl = e->lhs->tree_type,
 	         *tr = e->rhs->tree_type;
 
-	if((type_ref_is_floating(tl) || type_ref_is_floating(tr))
+	if((type_is_floating(tl) || type_is_floating(tr))
 	&& !op_can_float(e->op))
 	{
-		char buf[TYPE_REF_STATIC_BUFSIZ];
+		char buf[TYPE_STATIC_BUFSIZ];
 
 		/* TODO: factor to a error-continuing function */
 		fold_had_error = 1;
 		warn_at_print_error(&e->where,
 				"binary %s between '%s' and '%s'",
 				op_to_str(e->op),
-				type_ref_to_str_r(buf, tl),
-				type_ref_to_str(       tr));
+				type_to_str_r(buf, tl),
+				type_to_str(       tr));
 
 		return 1;
 	}
@@ -684,8 +886,8 @@ void expr_check_sign(const char *desc,
 	/* don't bother for literals */
 	if(kl.type != CONST_NUM
 	&& kr.type != CONST_NUM
-	&& type_ref_is_scalar(lhs->tree_type) && type_ref_is_scalar(rhs->tree_type)
-	&& type_ref_is_signed(lhs->tree_type) != type_ref_is_signed(rhs->tree_type))
+	&& type_is_scalar(lhs->tree_type) && type_is_scalar(rhs->tree_type)
+	&& type_is_signed(lhs->tree_type) != type_is_signed(rhs->tree_type))
 	{
 		warn_at(w, "signed and unsigned types in '%s'", desc);
 	}
@@ -705,7 +907,7 @@ void fold_expr_op(expr *e, symtable *stab)
 
 		if(op_float_check(e)){
 			/* short circuit - TODO: error expr */
-			e->tree_type = type_ref_cached_INT();
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
 			return;
 		}
 
@@ -748,7 +950,7 @@ void fold_expr_op(expr *e, symtable *stab)
 						FOLD_CHK_NO_ST_UN,
 						op_to_str(e->op));
 
-				e->tree_type = type_ref_cached_INT();
+				e->tree_type = type_nav_btype(cc1_type_nav, type_int);
 				break;
 
 			case op_plus:
@@ -766,7 +968,7 @@ void fold_expr_op(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_str_op(expr *e)
+const out_val *gen_expr_str_op(expr *e, out_ctx *octx)
 {
 	idt_printf("op: %s\n", op_to_str(e->op));
 	gen_str_indent++;
@@ -777,69 +979,105 @@ void gen_expr_str_op(expr *e)
 #undef PRINT_IF
 
 	gen_str_indent--;
+
+	UNUSED_OCTX();
 }
 
-static void op_shortcircuit(expr *e)
+static const out_val *op_shortcircuit(expr *e, out_ctx *octx)
 {
-	char *bail = out_label_code("shortcircuit_bail");
-	char vphi_buf[OUT_VPHI_SZ];
+	out_blk *blk_rhs, *blk_empty, *landing;
+	const out_val *lhs;
 
-	gen_expr(e->lhs);
-	out_normalise();
+	blk_rhs = out_blk_new(octx, "shortcircuit_a");
+	blk_empty = out_blk_new(octx, "shortcircuit_b");
+	landing = out_blk_new(octx, "shortcircuit_landing");
 
-	out_dup();
-	(e->op == op_andsc ? out_jfalse : out_jtrue)(bail);
-	out_phi_pop_to(&vphi_buf);
+	lhs = gen_expr(e->lhs, octx);
+	lhs = out_normalise(octx, lhs);
 
-	gen_expr(e->rhs);
-	out_normalise();
+	out_ctrl_branch(
+			octx,
+			lhs,
+			e->op == op_andsc ? blk_rhs : blk_empty,
+			e->op == op_andsc ? blk_empty : blk_rhs);
 
-	out_label(bail);
-	out_phi_join(&vphi_buf);
-	free(bail);
+	out_current_blk(octx, blk_rhs);
+	{
+		const out_val *rhs = gen_expr(e->rhs, octx);
+		rhs = out_normalise(octx, rhs);
+
+		out_ctrl_transfer(octx, landing, rhs, &blk_rhs);
+	}
+
+	out_current_blk(octx, blk_empty);
+	{
+		out_ctrl_transfer(
+				octx,
+				landing,
+				out_new_l(
+					octx,
+					type_nav_btype(cc1_type_nav, BOOLEAN_TYPE),
+					e->op == op_orsc ? 1 : 0),
+				&blk_empty);
+
+	}
+
+	out_current_blk(octx, landing);
+	{
+		const out_val *merged = out_ctrl_merge(octx, blk_empty, blk_rhs);
+
+		return merged;
+	}
 }
 
-void gen_expr_op(expr *e)
+const out_val *gen_expr_op(expr *e, out_ctx *octx)
 {
+	const out_val *lhs, *rhs, *eval;
+
 	switch(e->op){
 		case op_orsc:
 		case op_andsc:
-			op_shortcircuit(e);
-			break;
+			return op_shortcircuit(e, octx);
 
 		case op_unknown:
 			ICE("asm_operate: unknown operator got through");
 
 		default:
-			gen_expr(e->lhs);
-
-			if(e->rhs){
-				gen_expr(e->rhs);
-
-				out_op(e->op);
-
-				/* make sure we get the pointer, for example 2+(int *)p
-				 * or the int, e.g. (int *)a && (int *)b -> int */
-				out_change_type(e->tree_type);
-
-				/* need to flush the op */
-				out_flush_volatile();
-
-				if(fopt_mode & FOPT_TRAPV
-				&& type_ref_is_integral(e->tree_type)
-				&& type_ref_is_signed(e->tree_type))
-				{
-					char *skip = out_label_code("trapv");
-					out_push_overflow();
-					out_jfalse(skip);
-					out_undefined();
-					out_label(skip);
-					free(skip);
-				}
-			}else{
-				out_op_unary(e->op);
-			}
+			break;
 	}
+
+	lhs = gen_expr(e->lhs, octx);
+
+	if(!e->rhs)
+		return out_op_unary(octx, e->op, lhs);
+
+	rhs = gen_expr(e->rhs, octx);
+
+	eval = out_op(octx, e->op, lhs, rhs);
+
+	/* make sure we get the pointer, for example 2+(int *)p
+	 * or the int, e.g. (int *)a && (int *)b -> int */
+	eval = out_change_type(octx, eval, e->tree_type);
+
+	if(fopt_mode & FOPT_TRAPV
+	&& type_is_integral(e->tree_type)
+	&& type_is_signed(e->tree_type))
+	{
+		out_blk *land = out_blk_new(octx, "trapv_end");
+		out_blk *blk_undef = out_blk_new(octx, "travp_bad");
+
+		out_ctrl_branch(octx,
+				out_new_overflow(octx, &eval),
+				blk_undef,
+				land);
+
+		out_current_blk(octx, blk_undef);
+		out_ctrl_end_undefined(octx);
+
+		out_current_blk(octx, land);
+	}
+
+	return eval;
 }
 
 void mutate_expr_op(expr *e)
@@ -861,14 +1099,15 @@ expr *expr_new_op2(enum op_type o, expr *l, expr *r)
 	return e;
 }
 
-void gen_expr_style_op(expr *e)
+const out_val *gen_expr_style_op(expr *e, out_ctx *octx)
 {
 	if(e->rhs){
-		gen_expr(e->lhs);
+		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 		stylef(" %s ", op_to_str(e->op));
-		gen_expr(e->rhs);
+		IGNORE_PRINTGEN(gen_expr(e->rhs, octx));
 	}else{
 		stylef("%s ", op_to_str(e->op));
-		gen_expr(e->lhs);
+		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	}
+	return NULL;
 }

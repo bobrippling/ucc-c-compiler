@@ -3,7 +3,6 @@
 
 #include "../../util/util.h"
 
-#include "../data_structs.h"
 
 #include "../cc1.h"
 #include "../out/out.h"

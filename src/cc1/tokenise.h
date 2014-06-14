@@ -1,7 +1,7 @@
-#ifndef token_ise_h
-#define token_ise_h
+#ifndef TOKENISE_H
+#define TOKENISE_H
 
-extern numeric currentval;
+#include "num.h"
 
 enum token
 {
@@ -22,10 +22,12 @@ enum token
 	token__Generic,
 	token_sizeof,
 	token_typeof,
+	token___auto_type,
 	token__Static_assert,
 
 	token_asm,
 	token_attribute,
+	token___extension__,
 
 	token_identifier,
 	token_integer,     /* aka [1-9] */
@@ -121,11 +123,27 @@ void tokenise_set_input(
 		tokenise_line_f *,
 		const char *nam);
 
+enum keyword_mode
+{
+	KW_ALL = 1 << 0,
+
+	/* enabled in C99 and above (inline, restrict) */
+	KW_C99 = 1 << 1,
+
+	/* enabled with -fasm or -std=gnu* (asm(), typeof()) */
+	KW_EXT = 1 << 2,
+};
+void tokenise_set_mode(enum keyword_mode);
+
 void nexttoken(void);
 
 char *token_current_spel(void);
 char *token_current_spel_peek(void);
 
 int tok_at_label(void);
+
+extern numeric currentval;
+extern enum token curtok;
+extern int parse_had_error;
 
 #endif
