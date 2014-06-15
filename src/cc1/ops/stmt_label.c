@@ -15,6 +15,8 @@ void fold_stmt_label(stmt *s)
 
 	/* update its where */
 	l->pw = &s->where;
+	/* update its scope */
+	l->scope = s->symtab;
 
 	if(l->complete)
 		die_at(&s->where, "duplicate label '%s'", s->bits.lbl.spel);

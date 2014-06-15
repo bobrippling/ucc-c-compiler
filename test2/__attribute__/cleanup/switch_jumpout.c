@@ -1,4 +1,6 @@
 int *pr;
+int skipped;
+
 clean(int *p)
 {
 	*pr = *p;
@@ -8,6 +10,9 @@ setup(int *r)
 {
 	pr = r;
 }
+
+g(){ return 5; }
+h(){ return 12; }
 
 f(int a)
 {
@@ -36,8 +41,24 @@ f(int a)
 		}
 	}
 
-	skipped();
+	skipped = 1;
 
 end:
 	return r;
+}
+
+main()
+{
+	if(f(0) != 5 || skipped)
+		abort();
+	if(f(1) != 10 || skipped)
+		abort();
+	if(f(2) != 0 || skipped)
+		abort();
+	if(f(3) != 12 || skipped)
+		abort();
+	if(f(20) != 6 || !skipped)
+		abort();
+
+	return 0;
 }
