@@ -14,6 +14,7 @@
 #include "val.h"
 #include "asm.h"
 #include "impl.h"
+#include "impl_jmp.h"
 #include "virt.h"
 #include "write.h"
 #include "out.h"
@@ -89,6 +90,28 @@ static void arm_jmp(out_ctx *octx, const out_val *target, const char *pre)
 		case V_LBL:
 			out_asm(octx, "%s %s", pre, target->bits.lbl.str);
 	}
+}
+
+void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
+{
+	UNUSED_ARG(octx);
+	UNUSED_ARG(cond);
+	UNUSED_ARG(bt);
+	UNUSED_ARG(bf);
+	ICW("TODO");
+}
+
+void impl_jmp_expr(out_ctx *octx, const out_val *v)
+{
+	v = v_reg_apply_offset(octx, v_to_reg(octx, v));
+
+	out_asm(octx, "bx %s", arm_reg_to_str(v->bits.regoff.reg.idx));
+	out_val_consume(octx, v);
+}
+
+void impl_jmp(FILE *f, const char *lbl)
+{
+	fprintf(f, "\tb %s\n", lbl);
 }
 
 const out_val *impl_call(
