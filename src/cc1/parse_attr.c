@@ -175,6 +175,34 @@ static attribute *parse_attr_aligned(symtable *scope)
 	return da;
 }
 
+static attribute *parse_attr_cleanup(symtable *scope)
+{
+	decl *d;
+	char *sp;
+	where ident_loc;
+	attribute *attr;
+
+	EAT(token_open_paren);
+
+	if(curtok != token_identifier)
+		die_at(NULL, "identifier expected for cleanup function");
+
+	where_cc1_current(&ident_loc);
+	sp = token_current_spel();
+	EAT(token_identifier);
+
+	d = symtab_search_d(scope, sp, NULL);
+	if(!d)
+		die_at(&ident_loc, "function '%s' not found", sp);
+
+	attr = attribute_new(attr_cleanup);
+	attr->bits.cleanup = d;
+
+	EAT(token_close_paren);
+
+	return attr;
+}
+
 #define EMPTY(t)                      \
 static attribute *parse_ ## t()       \
 {                                     \
@@ -222,6 +250,7 @@ static struct
 	ATTR(sentinel),
 	ATTR(aligned),
 	ATTR(weak),
+	ATTR(cleanup),
 	{ "__ucc_debug", parse_attr_ucc_debug },
 
 	ATTR(cdecl),

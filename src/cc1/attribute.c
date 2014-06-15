@@ -144,6 +144,7 @@ const char *attribute_to_str(attribute *da)
 		CASE_STR_PREFIX(attr, sentinel);
 		CASE_STR_PREFIX(attr, aligned);
 		CASE_STR_PREFIX(attr, weak);
+		CASE_STR_PREFIX(attr, cleanup);
 		CASE_STR_PREFIX(attr, ucc_debug);
 
 		case attr_call_conv:
@@ -196,6 +197,11 @@ int attribute_equal(attribute *a, attribute *b)
 						return 0;
 					}
 					break;
+
+				case attr_cleanup:
+					/* since a cleanup must be a global function,
+					 * we can just strcmp */
+					return !strcmp(a->bits.cleanup->spel, b->bits.cleanup->spel);
 
 				case attr_section:
 					if(strcmp(a->bits.section, b->bits.section))

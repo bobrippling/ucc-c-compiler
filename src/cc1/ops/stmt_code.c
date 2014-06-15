@@ -8,11 +8,51 @@
 #include "../fold_sym.h"
 #include "../out/lbl.h"
 #include "../type_is.h"
+#include "../type_nav.h"
 #include "../out/dbg.h"
 
 const char *str_stmt_code()
 {
 	return "code";
+}
+
+static void cleanup_check(decl *d, attribute *cleanup)
+{
+	decl *fn = cleanup->bits.cleanup;
+	funcargs *args;
+	int nargs;
+	type *targ, *expected;
+
+	/* fn can return anything, but must take a single argument */
+	if(!type_is(fn->ref, type_func)){
+		fold_had_error = 1;
+		warn_at_print_error(&cleanup->where, "cleanup is not a function");
+		return;
+	}
+
+	type_called(fn->ref, &args);
+	if((nargs = dynarray_count(args->arglist)) != 1){
+		fold_had_error = 1;
+		warn_at_print_error(&cleanup->where,
+				"cleanup needs one argument (not %d)", nargs);
+		return;
+	}
+
+	expected = args->arglist[0]->ref;
+	targ = type_ptr_to(d->ref);
+	if(!(type_cmp(targ, expected, 0) & TYPE_EQUAL_ANY)
+	&& !type_is_void_ptr(expected))
+	{
+		char targ_buf[TYPE_STATIC_BUFSIZ];
+		char expected_buf[TYPE_STATIC_BUFSIZ];
+
+		fold_had_error = 1;
+		warn_at_print_error(&cleanup->where,
+				"type '%s' passed - cleanup needs '%s'",
+				type_to_str_r(targ_buf, targ),
+				type_to_str_r(expected_buf, expected));
+		return;
+	}
 }
 
 void fold_shadow_dup_check_block_decls(symtable *stab)
@@ -30,8 +70,12 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 		decl *found;
 		symtable *above_scope;
 		int chk_shadow = 0, is_func = 0;
+		attribute *attr;
 
 		fold_decl(d, stab, NULL);
+
+		if((attr = attribute_present(d, attr_cleanup)))
+			cleanup_check(d, attr);
 
 		if((is_func = !!type_is(d->ref, type_func)))
 			chk_shadow = 1;
@@ -147,6 +191,68 @@ void gen_block_decls(
 	}
 }
 
+static void gen_scope_destructors(symtable *scope, out_ctx *octx)
+{
+	decl **di;
+	for(di = scope->decls; di && *di; di++){
+		decl *d = *di;
+		attribute *cleanup = attribute_present(d, attr_cleanup);
+		if(!cleanup)
+			continue;
+
+		if(d->sym){
+			type *fty = cleanup->bits.cleanup->ref;
+			const out_val *args[2];
+
+			out_dbg_where(octx, &d->where);
+
+			args[0] = out_new_sym(octx, d->sym);
+			args[1] = NULL;
+
+			out_flush_volatile(octx,
+					out_call(
+						octx,
+						out_new_lbl(octx, NULL, decl_asm_spel(cleanup->bits.cleanup), 1),
+						args,
+						type_ptr_to(fty)));
+		}
+	}
+}
+
+#define SYMTAB_PARENT_WALK(it, begin) \
+	for(it = begin; it; it = it->parent)
+
+void gen_scope_leave(symtable *const s_from, symtable *const s_to, out_ctx *octx)
+{
+	symtable *s_iter;
+
+	if(!s_to){ /* e.g. return */
+		gen_scope_destructors(s_from, octx);
+		return;
+	}
+
+	SYMTAB_PARENT_WALK(s_iter, s_to)
+		s_iter->mark = 1;
+
+	SYMTAB_PARENT_WALK(s_iter, s_from){
+		/* walk up until we hit a mark - that's our target scope
+		 * generate destructors along the way
+		 */
+		if(s_iter->mark)
+			break;
+
+		gen_scope_destructors(s_iter, octx);
+	}
+
+	SYMTAB_PARENT_WALK(s_iter, s_to)
+		s_iter->mark = 0;
+}
+
+void gen_scope_leave_parent(symtable *s_from, out_ctx *octx)
+{
+	gen_scope_leave(s_from, s_from->parent, octx);
+}
+
 /* this is done for lea_expr_stmt(), i.e.
  * struct A x = ({ struct A y; y.i = 1; y; });
  * so we can lea the final expr
@@ -164,6 +270,8 @@ void gen_stmt_code_m1(stmt *s, int m1, out_ctx *octx)
 			break;
 		gen_stmt(*titer, octx);
 	}
+
+	gen_scope_leave_parent(s->symtab, octx);
 
 	if(endlbl)
 		out_dbg_label(octx, endlbl);

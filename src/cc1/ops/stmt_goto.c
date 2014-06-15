@@ -28,11 +28,15 @@ void fold_stmt_goto(stmt *s)
 void gen_stmt_goto(stmt *s, out_ctx *octx)
 {
 	if(s->expr){
+		/* no idea whether we're leaving scope - don't do anything */
+
 		const out_val *target = gen_expr(s->expr, octx);
 
 		out_ctrl_transfer_exp(octx, target);
 
 	}else{
+		gen_scope_leave(s->symtab, s->bits.lbl.label->scope, octx);
+
 		label_makeblk(s->bits.lbl.label, octx);
 
 		out_ctrl_transfer(octx, s->bits.lbl.label->bblock, NULL, NULL);
