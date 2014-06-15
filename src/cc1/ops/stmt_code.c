@@ -202,10 +202,12 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 
 		if(d->sym){
 			type *fty = cleanup->bits.cleanup->ref;
-			const out_val *args[] = {
-				out_new_sym(octx, d->sym),
-				NULL
-			};
+			const out_val *args[2];
+
+			out_dbg_where(octx, &d->where);
+
+			args[0] = out_new_sym(octx, d->sym);
+			args[1] = NULL;
 
 			out_flush_volatile(octx,
 					out_call(
