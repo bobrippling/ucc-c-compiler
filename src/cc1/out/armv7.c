@@ -2,20 +2,25 @@
 #include <stdarg.h>
 
 #include "../../util/util.h"
+#include "../../util/dynarray.h"
 
 #include "../type.h"
+#include "../type_nav.h"
+#include "../type_is.h"
 #include "../op.h"
 #include "../num.h"
 
 #include "forwards.h"
 #include "val.h"
+#include "asm.h"
+#include "impl.h"
+#include "virt.h"
+#include "write.h"
+#include "out.h"
 
 #include "armv7.h"
 
-#include "asm.h"
-
-#include "impl.h"
-#include "out.h"
+#define UNUSED_ARG(a) (void)a
 
 const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 1, "byte" },
@@ -50,147 +55,183 @@ static const char *arm_reg_to_str(int i)
 	return rnames[i];
 }
 
-static void arm_jmp(const char *pre)
+static void arm_jmp(out_ctx *octx, const out_val *target, const char *pre)
 {
-	switch(vtop->type){
+	switch(target->type){
 		case V_CONST_F:
 			ICE("call float");
 
 		case V_FLAG:
-		case V_REG_SAVE:
+		case V_REG_SPILT:
 		case V_CONST_I:
-			v_to_reg(vtop);
+			target = v_to_reg(octx, target);
 		case V_REG:
-			out_asm("%sx %s", pre, arm_reg_to_str(vtop->bits.regoff.reg.idx));
+			out_asm(octx, "%sx %s", pre, arm_reg_to_str(target->bits.regoff.reg.idx));
 			break;
 
 		case V_LBL:
-			out_asm("%s %s", pre, vtop->bits.lbl.str);
+			out_asm(octx, "%s %s", pre, target->bits.lbl.str);
 	}
 }
 
-void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
+const out_val *impl_call(
+		out_ctx *octx,
+		const out_val *fn, const out_val **args,
+		type *fnty)
 {
+	const int nargs = dynarray_count(args);
 	int i;
 
-	(void)r_ret;
-	(void)r_func;
+	(void)fnty;
 
 	for(i = 0; i < nargs; i++){
 		struct vreg call_reg = VREG_INIT(i, 0);
 
-		v_freeup_reg(&call_reg, 0);
-		v_to_reg_given(vtop, &call_reg);
-		v_reserve_reg(&call_reg);
-		vpop();
+		v_freeup_reg(octx, &call_reg);
+
+		out_flush_volatile(octx,
+				v_to_reg_given(octx, args[i], &call_reg));
+
+		v_reserve_reg(octx, &call_reg);
 	}
 
-	arm_jmp("bl");
+	arm_jmp(octx, fn, "bl");
 
 	for(i = 0; i < nargs; i++){
 		struct vreg call_reg = VREG_INIT(i, 0);
-		v_unreserve_reg(&call_reg);
+		v_unreserve_reg(octx, &call_reg);
+	}
+
+	{
+		struct vreg retreg = VREG_INIT(REG_RET_I, 0);
+
+		return v_new_reg(octx, fn, type_called(fn->t, NULL), &retreg);
 	}
 }
 
-void impl_jmp(void)
-{
-	arm_jmp("b");
-}
-
-void impl_jcond(int true, const char *lbl)
-{
-	(void)true;
-	(void)lbl;
-	ICW("TODO: impl_jcond");
-}
-
-void impl_cast_load(
-		struct vstack *vp,
-		type_ref *small, type_ref *big,
+const out_val *impl_cast_load(
+		out_ctx *octx, const out_val *vp,
+		type *small, type *big,
 		int is_signed)
 {
-	out_asm("TODO: cast load");
+	UNUSED_ARG(octx);
+	UNUSED_ARG(vp);
+	UNUSED_ARG(small);
+	UNUSED_ARG(big);
+	UNUSED_ARG(is_signed);
+	out_asm(octx, "TODO: cast load");
+	return vp;
 }
 
-void impl_change_type(type_ref *t)
+const out_val *impl_deref(
+		out_ctx *octx, const out_val *vp, const struct vreg *reg)
 {
-	vtop->t = t;
-}
+	// TODO: merge with x86
+	type *tpointed_to = vp->type == V_REG_SPILT
+		? vp->t
+		: type_dereference_decay(vp->t);
 
-void impl_deref(
-		struct vstack *vp,
-		const struct vreg *to,
-		type_ref *tpointed_to)
-{
-	v_to_reg(vp);
-	out_asm("mov %s, [%s]",
-			arm_reg_to_str(to->idx),
+	vp = v_to_reg(octx, vp);
+	out_asm(octx, "mov %s, [%s]",
+			arm_reg_to_str(reg->idx),
 			arm_reg_to_str(vp->bits.regoff.reg.idx));
+
+	return v_new_reg(octx, vp, tpointed_to, reg);
 }
 
-void impl_i2f(struct vstack *vp, type_ref *t_i, type_ref *t_f)
-{ ICW("TODO"); }
-
-void impl_f2i(struct vstack *vp, type_ref *t_f, type_ref *t_i)
-{ ICW("TODO"); }
-
-void impl_f2f(struct vstack *vp, type_ref *from, type_ref *to)
-{ ICW("TODO"); }
-
-void impl_func_prologue_save_fp(void)
+const out_val *impl_i2f(out_ctx *octx, const out_val *vp, type *t_i, type *t_f)
 {
-	out_asm("push { fp, lr }");
-	out_asm("mov fp, sp");
+	UNUSED_ARG(octx);
+	UNUSED_ARG(vp);
+	UNUSED_ARG(t_i);
+	UNUSED_ARG(t_f);
+	ICW("TODO");
+	return NULL;
+}
+
+const out_val *impl_f2i(out_ctx *octx, const out_val *vp, type *t_f, type *t_i)
+{
+	UNUSED_ARG(octx);
+	UNUSED_ARG(vp);
+	UNUSED_ARG(t_i);
+	UNUSED_ARG(t_f);
+	ICW("TODO");
+	return NULL;
+}
+
+const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *from, type *to)
+{
+	UNUSED_ARG(octx);
+	UNUSED_ARG(vp);
+	UNUSED_ARG(from);
+	UNUSED_ARG(to);
+	ICW("TODO");
+	return NULL;
+}
+
+void impl_func_prologue_save_fp(out_ctx *octx)
+{
+	out_asm(octx, "push { fp, lr }");
+	out_asm(octx, "mov fp, sp");
 }
 
 void impl_func_prologue_save_call_regs(
-		type_ref *rf, unsigned nargs,
+		out_ctx *octx,
+		type *rf, unsigned nargs,
 		int arg_offsets[/*nargs*/])
 {
 	unsigned i;
 
+	UNUSED_ARG(rf);
+
 	for(i = 0; i < nargs; i++){
-		out_asm("push { %s }", arm_reg_to_str(i));
+		out_asm(octx, "push { %s }", arm_reg_to_str(i));
 
 		arg_offsets[i] = i * 4;
 	}
 }
 
-void impl_func_prologue_save_variadic(type_ref *rf)
-{ ICW("TODO"); }
-
-void impl_func_epilogue(type_ref *ty)
+void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 {
-	out_asm("mov sp, fp");
-	out_asm("pop { fp, pc }");
+	UNUSED_ARG(octx);
+	UNUSED_ARG(rf);
+	ICW("TODO");
 }
 
-void impl_load(struct vstack *from, const struct vreg *reg)
+void impl_func_epilogue(out_ctx *octx, type *ty)
 {
-	switch(vtop->type){
+	UNUSED_ARG(ty);
+	out_asm(octx, "mov sp, fp");
+	out_asm(octx, "pop { fp, pc }");
+}
+
+const out_val *impl_load(
+		out_ctx *octx, const out_val *from,
+		const struct vreg *reg)
+{
+	switch(from->type){
 		case V_CONST_I:
 			/* TODO: >16 bit numbers? */
-			out_asm("mov %s, #%d",
+			out_asm(octx, "mov %s, #%d",
 					arm_reg_to_str(reg->idx),
 					(int)from->bits.val_i);
 			break;
 
-		case V_REG_SAVE:
-			out_asm("mov %s, [%s]",
+		case V_REG_SPILT:
+			out_asm(octx, "mov %s, [%s]",
 					arm_reg_to_str(reg->idx),
 					arm_reg_to_str(reg->idx));
 			break;
 		case V_REG:
 			if(reg->idx == from->bits.regoff.reg.idx)
 				break;
-			out_asm("mov %s, %s",
+			out_asm(octx, "mov %s, %s",
 					arm_reg_to_str(reg->idx),
 					arm_reg_to_str(from->bits.regoff.reg.idx));
 			break;
 
 		case V_LBL:
-			out_asm("ldr %s, =%s",
+			out_asm(octx, "ldr %s, =%s",
 					arm_reg_to_str(reg->idx),
 					from->bits.lbl.str);
 			break;
@@ -202,34 +243,37 @@ void impl_load(struct vstack *from, const struct vreg *reg)
 		case V_FLAG:
 			ICW("TODO: setCOND");
 	}
+
+	return v_new_reg(octx, from, from->t, reg);
 }
 
-void impl_store(struct vstack *from, struct vstack *to)
+void impl_store(out_ctx *octx, const out_val *from, const out_val *to)
 {
-	struct vreg *reg;
-	v_to(from, TO_REG);
+	const struct vreg *reg;
+
+	from = v_to(octx, from, TO_REG);
 	reg = &from->bits.regoff.reg;
 
 	switch(to->type){
 		case V_CONST_I:
-			out_asm("str %s, #%d",
+			out_asm(octx, "str %s, #%d",
 					arm_reg_to_str(reg->idx),
 					(int)to->bits.val_i);
 			break;
 
-		case V_REG_SAVE:
-			out_asm("str %s, [%s]",
+		case V_REG_SPILT:
+			out_asm(octx, "str %s, [%s]",
 					arm_reg_to_str(reg->idx),
 					arm_reg_to_str(to->bits.regoff.reg.idx));
 			break;
 		case V_REG:
-			out_asm("str %s, %s",
+			out_asm(octx, "str %s, %s",
 					arm_reg_to_str(reg->idx),
 					arm_reg_to_str(to->bits.regoff.reg.idx));
 			break;
 
 		case V_LBL:
-			out_asm("str %s, =%s",
+			out_asm(octx, "str %s, =%s",
 					arm_reg_to_str(reg->idx),
 					to->bits.lbl.str);
 			break;
@@ -243,16 +287,7 @@ void impl_store(struct vstack *from, struct vstack *to)
 	}
 }
 
-void impl_load_fp(struct vstack *from)
-{ ICW("TODO"); }
-
-void impl_load_iv(struct vstack *from)
-{
-	v_to_reg(from);
-	impl_load(from, &vtop->bits.regoff.reg);
-}
-
-void impl_op(enum op_type op)
+const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const out_val *r)
 {
 	const char *opc;
 
@@ -267,20 +302,20 @@ void impl_op(enum op_type op)
 		case op_and: opc = "and"; goto op; //
 op:
 		{
+			// TODO: similar to x86
 			const char *rA, *rB;
 
-			/* can clobber vtop[0] and vtop[-1] */
-			v_to_reg(vtop);
-			v_to_reg(vtop-1);
+			l = v_to_reg(octx, l);
+			r = v_to_reg(octx, r);
 
-			rA = arm_reg_to_str(vtop->bits.regoff.reg.idx);
-			rB = arm_reg_to_str(vtop[-1].bits.regoff.reg.idx);
+			rA = arm_reg_to_str(l->bits.regoff.reg.idx);
+			rB = arm_reg_to_str(r->bits.regoff.reg.idx);
 
 			/* put the result in vtop-1's reg */
-			out_asm("%s %s, %s, %s", opc, rB, rA, rB);
+			out_asm(octx, "%s %s, %s, %s", opc, rB, rA, rB);
 
-			vpop();
-			return;
+			out_val_consume(octx, r);
+			return v_dup_or_reuse(octx, l, l->t);
 		}
 
 		case op_orsc:
@@ -310,9 +345,11 @@ op:
 		case op_unknown:
 			ICE("unknown op");
 	}
+
+	return l;
 }
 
-void impl_op_unary(enum op_type op)
+const out_val *impl_op_unary(out_ctx *octx, enum op_type op, const out_val *val)
 {
 	switch(op){
 		default:
@@ -320,52 +357,50 @@ void impl_op_unary(enum op_type op)
 
 		case op_plus:
 			/* noop */
-			return;
+			return val;
 
 		case op_minus:
 			/* TODO: factor out */
-			out_push_zero(vtop->t);
-			out_op(op_minus);
-			return;
+			return out_op(octx, op_minus, out_new_zero(octx, val->t), val);
 
 		case op_bnot:
-			UCC_ASSERT(!type_ref_is_floating(vtop->t), "~float");
+			UCC_ASSERT(!type_is_floating(val->t), "~float");
 
-			v_to_reg(vtop);
+			val = v_to_reg(octx, val);
 
-			out_asm("mvn %s, %s",
-					arm_reg_to_str(vtop->bits.regoff.reg.idx),
-					arm_reg_to_str(vtop->bits.regoff.reg.idx));
-			return;
+			out_asm(octx, "mvn %s, %s",
+					arm_reg_to_str(val->bits.regoff.reg.idx),
+					arm_reg_to_str(val->bits.regoff.reg.idx));
+
+			return v_dup_or_reuse(octx, val, val->t);
 
 		case op_not:
-			out_push_zero(vtop->t);
-			out_op(op_eq);
-			return;
+			return out_op(octx, op_eq, out_new_zero(octx, val->t), val);
 	}
 }
 
-void impl_pop_func_ret(type_ref *ty)
+void impl_to_retreg(out_ctx *octx, const out_val *val, type *retty)
 {
 	struct vreg reg = VREG_INIT(REG_RET_I, 0);
 
-	UCC_ASSERT(!type_ref_is_floating(ty), "TODO: float return");
+	UCC_ASSERT(!type_is_floating(retty), "TODO: float return");
 
-	v_to_reg(vtop);
-	impl_reg_cp(vtop, &reg);
-	vpop();
+	val = v_to_reg(octx, val);
+	impl_reg_cp_no_off(octx, val, &reg);
+	out_val_consume(octx, val);
 }
 
-void impl_reg_cp(struct vstack *from, const struct vreg *r)
+void impl_reg_cp_no_off(
+		out_ctx *octx, const out_val *from, const struct vreg *to_reg)
 {
 	UCC_ASSERT(from->type == V_REG, "reg cp non reg?");
 
-	out_asm("mov %s, %s",
-			arm_reg_to_str(r->idx),
+	out_asm(octx, "mov %s, %s",
+			arm_reg_to_str(to_reg->idx),
 			arm_reg_to_str(from->bits.regoff.reg.idx));
 }
 
-int impl_reg_is_callee_save(const struct vreg *r, type_ref *fr)
+int impl_reg_is_callee_save(const struct vreg *r, type *fr)
 {
 	(void)r;
 	(void)fr;
@@ -379,7 +414,7 @@ int impl_reg_is_scratch(const struct vreg *reg)
 		|| ARM_REG_R12 == reg->idx;
 }
 
-int impl_reg_to_scratch(const struct vreg *reg)
+int impl_reg_to_idx(const struct vreg *reg)
 {
 	if(/*ARM_REG_R0 <= reg->idx &&*/ reg->idx < ARM_REG_R3)
 		return reg->idx;
@@ -398,11 +433,23 @@ void impl_scratch_to_reg(int scratch, struct vreg *reg)
 		reg->idx = scratch;
 }
 
-void impl_set_nan(type_ref *t)
-{ ICE("TODO"); }
+void impl_set_nan(out_ctx *octx, out_val *val)
+{
+	UNUSED_ARG(octx);
+	UNUSED_ARG(val);
+	ICE("TODO");
+}
 
-void impl_set_overflow(void)
-{ ICE("TODO"); }
+const out_val *impl_test_overflow(
+		out_ctx *octx, const out_val **val)
+{
+	UNUSED_ARG(octx);
+	UNUSED_ARG(val);
+	ICE("TODO");
+}
 
-void impl_undefined(void)
-{ ICE("TODO"); }
+void impl_undefined(out_ctx *octx)
+{
+	UNUSED_ARG(octx);
+	ICE("TODO");
+}
