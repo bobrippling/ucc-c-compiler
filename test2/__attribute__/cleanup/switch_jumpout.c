@@ -1,3 +1,4 @@
+// RUN: %ocheck 0 %s
 int *pr;
 int skipped;
 

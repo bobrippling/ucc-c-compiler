@@ -1,3 +1,5 @@
+// RUN: %check -e %s
+
 int printf(char *, ...);
 clean_cp(char **);
 clean_ip(int **);

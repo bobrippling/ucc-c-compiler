@@ -1,4 +1,5 @@
 // RUN: %ocheck 3 %s
+// RUN: %check %s
 
 int x;
 
@@ -16,7 +17,6 @@ main()
 		cleanup int x; // CHECK: !/warn/
 		cleanup char **p; // CHECK: !/warn/
 
-		(void)a;
 		(void)x;
 		(void)p;
 	}
