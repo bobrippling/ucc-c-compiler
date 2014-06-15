@@ -55,6 +55,23 @@ static const char *arm_reg_to_str(int i)
 	return rnames[i];
 }
 
+int impl_reg_frame_const(const struct vreg *r)
+{
+	return !r->is_float && r->idx == REG_BP;
+}
+
+int impl_reg_savable(const struct vreg *r)
+{
+	if(r->is_float)
+		return 1;
+	switch(r->idx){
+		case REG_BP:
+		case REG_SP:
+			return 0;
+	}
+	return 1;
+}
+
 static void arm_jmp(out_ctx *octx, const out_val *target, const char *pre)
 {
 	switch(target->type){
