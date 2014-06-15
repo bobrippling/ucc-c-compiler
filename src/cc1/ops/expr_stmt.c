@@ -3,7 +3,7 @@
 #include "../../util/dynarray.h"
 #include "../type_nav.h"
 
-static void expr_stmt_lea(expr *);
+static const out_val *expr_stmt_lea(expr *, out_ctx *);
 
 const char *str_expr_stmt()
 {
@@ -45,44 +45,36 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */
 }
 
-static void expr_stmt_maybe_push(expr *e)
+const out_val *gen_expr_stmt(expr *e, out_ctx *octx)
 {
-	/* last stmt is told to leave its result on the stack
-	 *
-	 * if the last stmt isn't an expression, we put something
-	 * on the stack for it
-	 */
-	int n = dynarray_count(e->code->bits.code.stmts);
-	if(n == 0 || !stmt_kind(e->code->bits.code.stmts[n-1], expr))
-		out_push_noop();
+	size_t n;
+	gen_stmt_code_m1(e->code, 1, octx);
+
+	n = dynarray_count(e->code->bits.code.stmts);
+
+	if(n > 0 && stmt_kind(e->code->bits.code.stmts[n-1], expr))
+		return gen_expr(e->code->bits.code.stmts[n - 1]->expr, octx);
+
+	return out_new_noop(octx);
 }
 
-void gen_expr_stmt(expr *e)
-{
-	gen_stmt(e->code);
-
-	expr_stmt_maybe_push(e);
-
-	out_comment("end of ({...})");
-}
-
-static void expr_stmt_lea(expr *e)
+static const out_val *expr_stmt_lea(expr *e, out_ctx *octx)
 {
 	size_t n;
 
-	gen_stmt_code_m1(e->code, 1);
-	/* vstack hasn't changed, no implicit pops done for ^ */
+	gen_stmt_code_m1(e->code, 1, octx);
 
 	n = dynarray_count(e->code->bits.code.stmts);
-	lea_expr(e->code->bits.code.stmts[n - 1]->expr);
+	return lea_expr(e->code->bits.code.stmts[n - 1]->expr, octx);
 }
 
-void gen_expr_str_stmt(expr *e)
+const out_val *gen_expr_str_stmt(expr *e, out_ctx *octx)
 {
 	idt_printf("statement:\n");
 	gen_str_indent++;
 	print_stmt(e->code);
 	gen_str_indent--;
+	UNUSED_OCTX();
 }
 
 void mutate_expr_stmt(expr *e)
@@ -97,9 +89,10 @@ expr *expr_new_stmt(stmt *code)
 	return e;
 }
 
-void gen_expr_style_stmt(expr *e)
+const out_val *gen_expr_style_stmt(expr *e, out_ctx *octx)
 {
 	stylef("({\n");
-	gen_stmt(e->code);
+	gen_stmt(e->code, octx);
 	stylef("\n})");
+	return NULL;
 }

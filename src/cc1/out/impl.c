@@ -7,23 +7,20 @@
 #include "../decl.h"
 #include "../op.h"
 #include "../type_nav.h"
+#include "../macros.h"
 
-#include "vstack.h"
+#include "val.h"
 #include "asm.h"
 #include "impl.h"
 #include "write.h"
 #include "out.h"
+#include "virt.h"
 
-void impl_comment(enum section_type sec, const char *fmt, va_list l)
+void impl_comment(out_ctx *octx, const char *fmt, va_list l)
 {
-	out_asm2(sec, P_NO_NL, "/* ");
-	out_asmv(sec, P_NO_INDENT | P_NO_NL, fmt, l);
-	out_asm2(sec, P_NO_INDENT, " */");
-}
-
-void impl_lbl(const char *lbl)
-{
-	out_asm2(SECTION_TEXT, P_NO_INDENT, "%s:", lbl);
+	out_asm2(octx, SECTION_TEXT, P_NO_NL, "/* ");
+	out_asmv(octx, SECTION_TEXT, P_NO_INDENT | P_NO_NL, fmt, l);
+	out_asm2(octx, SECTION_TEXT, P_NO_INDENT, " */");
 }
 
 enum flag_cmp op_to_flag(enum op_type op)
@@ -46,14 +43,26 @@ enum flag_cmp op_to_flag(enum op_type op)
 	return -1;
 }
 
-int vreg_eq(const struct vreg *a, const struct vreg *b)
+const char *flag_cmp_to_str(enum flag_cmp cmp)
 {
-	return a->idx == b->idx && a->is_float == b->is_float;
+	switch(cmp){
+		CASE_STR_PREFIX(flag, eq);
+		CASE_STR_PREFIX(flag, ne);
+		CASE_STR_PREFIX(flag, le);
+		CASE_STR_PREFIX(flag, lt);
+		CASE_STR_PREFIX(flag, ge);
+		CASE_STR_PREFIX(flag, gt);
+		CASE_STR_PREFIX(flag, overflow);
+		CASE_STR_PREFIX(flag, no_overflow);
+	}
+	return NULL;
 }
 
 static void impl_overlay_mem_reg(
+		out_ctx *octx,
 		unsigned memsz, unsigned nregs,
-		struct vreg regs[], int mem2reg)
+		struct vreg regs[], int mem2reg,
+		const out_val *ptr)
 {
 	const unsigned pws = platform_word_size();
 	struct vreg *cur_reg = regs;
@@ -63,7 +72,8 @@ static void impl_overlay_mem_reg(
 			nregs * pws >= memsz,
 			"not enough registers for memory overlay");
 
-	out_comment("overlay, %s2%s(%u)",
+	out_comment(octx,
+			"overlay, %s2%s(%u)",
 			mem2reg ? "mem" : "reg",
 			mem2reg ? "reg" : "mem",
 			memsz);
@@ -71,7 +81,7 @@ static void impl_overlay_mem_reg(
 	if(!mem2reg){
 		/* reserve all registers so we don't accidentally wipe before the spill */
 		for(reg_i = 0; reg_i < nregs; reg_i++)
-			v_reserve_reg(&regs[reg_i]);
+			v_reserve_reg(octx, &regs[reg_i]);
 	}
 
 	for(;; cur_reg++, reg_i++){
@@ -93,26 +103,24 @@ static void impl_overlay_mem_reg(
 
 		UCC_ASSERT(this_sz <= memsz, "reading/writing too much memory");
 
-		out_dup(); /* vv */
-		out_change_type(type_ptr_to(this_ty));
+		ptr = out_change_type(octx, ptr, type_ptr_to(this_ty));
+
+		out_val_retain(octx, ptr);
 
 		if(mem2reg){
-			out_deref(); /* vA */
+			const out_val *fetched;
+
+			fetched = out_deref(octx, ptr);
 
 			/* move to register */
 			UCC_ASSERT(reg_i < nregs, "reg oob");
-			v_freeup_reg(cur_reg, 0);
-			v_to_reg_given(vtop, cur_reg);
-			v_reserve_reg(cur_reg); /* prevent changes */
-
-			/* forget about the register, as far as the vstack is concerned */
-			out_pop(); /* v */
+			v_freeup_reg(octx, cur_reg);
+			out_flush_volatile(octx, v_to_reg_given(octx, fetched, cur_reg));
+			v_reserve_reg(octx, cur_reg); /* prevent changes */
 		}else{
-			vpush(this_ty); /* vvR */
-			v_set_reg(vtop, cur_reg);
-			out_store(); /* vv */
+			const out_val *vreg = v_new_reg(octx, NULL, this_ty, cur_reg);
 
-			out_pop(); /* v */
+			out_store(octx, ptr, vreg);
 		}
 
 		memsz -= this_sz;
@@ -122,30 +130,40 @@ static void impl_overlay_mem_reg(
 			break;
 
 		/* increment our memory pointer */
-		out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_uchar)));
+		ptr = out_change_type(
+				octx,
+				ptr,
+				type_ptr_to(type_nav_btype(cc1_type_nav, type_uchar)));
 
-		out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t), pws);
-		/* v8 */
-
-		out_op(op_plus);
-		/* {v+8} */
+		ptr = out_op(octx, op_plus,
+				ptr,
+				out_new_l(
+					octx,
+					type_nav_btype(cc1_type_nav, type_intptr_t),
+					pws));
 	}
+
+	out_val_release(octx, ptr);
 
 	/* done, unreserve all registers */
 	for(reg_i = 0; reg_i < nregs; reg_i++)
-		v_unreserve_reg(&regs[reg_i]);
+		v_unreserve_reg(octx, &regs[reg_i]);
 }
 
 void impl_overlay_mem2regs(
+		out_ctx *octx,
 		unsigned memsz, unsigned nregs,
-		struct vreg regs[])
+		struct vreg regs[],
+		const out_val *ptr)
 {
-	impl_overlay_mem_reg(memsz, nregs, regs, 1);
+	impl_overlay_mem_reg(octx, memsz, nregs, regs, 1, ptr);
 }
 
 void impl_overlay_regs2mem(
+		out_ctx *octx,
 		unsigned memsz, unsigned nregs,
-		struct vreg regs[])
+		struct vreg regs[],
+		const out_val *ptr)
 {
-	impl_overlay_mem_reg(memsz, nregs, regs, 0);
+	impl_overlay_mem_reg(octx, memsz, nregs, regs, 0, ptr);
 }

@@ -5,4 +5,6 @@ func_gen         gen_expr_str_compound_lit;
 func_mutate_expr mutate_expr_compound_lit;
 func_gen         gen_expr_style_compound_lit;
 
-expr *expr_new_compound_lit(type *t, struct decl_init *init);
+expr *expr_new_compound_lit(
+		type *t, struct decl_init *init,
+		int static_ctx);

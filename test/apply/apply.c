@@ -21,7 +21,7 @@ void* apply(void* func, void** args, size_t argc) {
 	void* result;
 	char* codemem = mmap(0, len,
 			PROT_READ | PROT_WRITE | PROT_EXEC,
-			MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+			MAP_PRIVATE | MAP_ANON/*YMOUS*/, -1, 0);
 	if (!codemem) {
 		return NULL;
 	}

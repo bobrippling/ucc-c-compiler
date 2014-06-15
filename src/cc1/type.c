@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "../util/where.h"
 #include "../util/util.h"
@@ -18,16 +19,6 @@
 #include "defs.h"
 
 #include "type_is.h"
-
-static enum type_qualifier type_cast_get_qual(type *t)
-{
-	t = type_skip_non_casts(t);
-	if(t->type != type_cast)
-		return qual_none;
-	if(t->bits.cast.is_signed_cast)
-		return qual_none;
-	return t->bits.cast.qual;
-}
 
 static int type_qual_cmp_1(
 		enum type_qualifier a,
@@ -111,6 +102,9 @@ static enum type_cmp type_cmp_r(
 	}
 
 	switch(a->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_btype:
 			subchk = 0;
 			ret = btype_cmp(a->bits.type, b->bits.type);
@@ -208,8 +202,8 @@ static enum type_cmp type_cmp_r(
 	}
 
 	if(ret & TYPE_EQUAL_ANY){
-		enum type_qualifier a_qual = type_cast_get_qual(orig_a);
-		enum type_qualifier b_qual = type_cast_get_qual(orig_b);
+		enum type_qualifier a_qual = type_qual(orig_a);
+		enum type_qualifier b_qual = type_qual(orig_b);
 
 		if(a_qual && b_qual){
 			switch(type_qual_cmp(a_qual, b_qual)){
@@ -274,6 +268,9 @@ integral_t type_max(type *r, where *from)
 unsigned type_size(type *r, where *from)
 {
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_btype:
 			return btype_size(r->bits.type, from);
 
@@ -326,6 +323,23 @@ unsigned type_align(type *r, where *from)
 {
 	struct_union_enum_st *sue;
 	type *test;
+	attribute *align;
+
+	align = type_attr_present(r, attr_aligned);
+
+	if(align){
+		if(align->bits.align){
+			consty k;
+
+			const_fold(align->bits.align, &k);
+
+			assert(k.type == CONST_NUM && K_INTEGRAL(k.bits.num));
+
+			return k.bits.num.val.i;
+		}
+
+		return platform_align_max();
+	}
 
 	if((sue = type_is_s_or_u(r)))
 		/* safe - can't have an instance without a ->sue */
@@ -366,43 +380,48 @@ int type_has_loc(type *t)
 	return t && t->type == type_where;
 }
 
-static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz)
-{
 #define BUF_ADD(...) \
-	do{ int n = snprintf(*bufp, sz, __VA_ARGS__); *bufp += n, sz -= n; }while(0)
+	do{ int n = snprintf(*bufp, *sz, __VA_ARGS__); *bufp += n, *sz -= n; }while(0)
 #define ADD_SPC() do{ if(*need_spc) BUF_ADD(" "); *need_spc = 0; }while(0)
+static void type_add_funcargs(
+		funcargs *args,
+		int *need_spc,
+		char **bufp, int *sz)
+{
+	const char *comma = "";
+	decl **i;
 
-	int need_paren;
-	enum type_qualifier q;
-
-	if(!r){
-		/* reached the bottom/end - spel */
-		if(spel){
-			ADD_SPC();
-			BUF_ADD("%s", spel);
-			*need_spc = 0;
-		}
-		return;
+	ADD_SPC();
+	BUF_ADD("(");
+	for(i = args->arglist; i && *i; i++){
+		char tmp_buf[DECL_STATIC_BUFSIZ];
+		BUF_ADD("%s%s", comma, decl_to_str_r(tmp_buf, *i));
+		comma = ", ";
 	}
+	BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
+}
 
-	q = qual_none;
-	switch(r->ref->type){
-		case type_btype:
-		case type_tdef: /* just starting */
-		case type_cast: /* no need */
-		case type_attr:
-		case type_where:
-		case type_ptr:
-		case type_block:
-			need_paren = 0;
-			break;
+#define IS_PTR(ty) ((ty) == type_ptr || (ty) == type_block)
+static void type_add_str_pre(
+		type *r,
+		int *need_paren, int *need_spc,
+		char **bufp, int *sz)
+{
+	type *prev_skipped;
+	enum type_qualifier q = qual_none;
 
-		case type_func:
-		case type_array:
-			need_paren = r->tmp && r->type != r->tmp->type;
-	}
+	/* int (**fn())[2]
+	 * btype -> array -> ptr -> ptr -> func
+	 *                ^ parens
+	 *
+	 * .tmp looks right, down the chain, .ref looks left, up the chain
+	 */
+	*need_paren = r->ref
+		&& IS_PTR(r->type)
+		&& (prev_skipped = type_skip_all(r->ref))->type != type_btype
+		&& !IS_PTR(prev_skipped->type);
 
-	if(need_paren){
+	if(*need_paren){
 		ADD_SPC();
 		BUF_ADD("(");
 	}
@@ -446,10 +465,39 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 		 *          ^
 		 */
 	}
+}
 
-	type_add_str(r->tmp, spel, need_spc, bufp, sz);
+static void type_add_str(
+		type *r, char *spel,
+		int *need_spc,
+		char **bufp, int *sz,
+		type *stop_at)
+{
+	int need_paren;
+
+	if(!r){
+		/* reached the bottom/end - spel */
+		if(spel){
+			ADD_SPC();
+			BUF_ADD("%s", spel);
+			*need_spc = 0;
+		}
+		return;
+	}
+
+	if(stop_at && r->tmp == stop_at){
+		type_add_str(r->tmp, spel, need_spc, bufp, sz, stop_at);
+		return;
+	}
+
+	type_add_str_pre(r, &need_paren, need_spc, bufp, sz);
+
+	type_add_str(r->tmp, spel, need_spc, bufp, sz, stop_at);
 
 	switch(r->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_tdef:
 			/* tdef "aka: %s" handled elsewhere */
 		case type_attr:
@@ -462,21 +510,9 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 			break;
 
 		case type_func:
-		{
-			const char *comma = "";
-			decl **i;
-			funcargs *args = r->bits.func.args;
-
-			ADD_SPC();
-			BUF_ADD("(");
-			for(i = args->arglist; i && *i; i++){
-				char tmp_buf[DECL_STATIC_BUFSIZ];
-				BUF_ADD("%s%s", comma, decl_to_str_r(tmp_buf, *i));
-				comma = ", ";
-			}
-			BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
+			type_add_funcargs(r->bits.func.args, need_spc, bufp, sz);
 			break;
-		}
+
 		case type_ptr:
 #ifdef SHOW_DECAYED_ARRAYS
 			if(!r->bits.ptr.size)
@@ -515,16 +551,7 @@ static void type_add_str(type *r, char *spel, int *need_spc, char **bufp, int sz
 
 	if(need_paren)
 		BUF_ADD(")");
-}
-
-static type *type_set_parent(type *r, type *parent)
-{
-	if(!r)
-		return parent;
-
-	r->tmp = parent;
-
-	return type_set_parent(r->ref, r);
+#undef IS_PTR
 }
 
 static
@@ -533,22 +560,24 @@ const char *type_to_str_r_spel_aka(
 		char *spel, const int aka);
 
 static
-void type_add_type_str(type *r,
-		char **bufp, int sz,
+type *type_add_type_str(type *r,
+		char **bufp, int *sz,
 		const int aka)
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
-	const type *rt;
+	type *ty;
 
 	**bufp = '\0';
-	for(rt = r; rt && rt->type != type_btype && rt->type != type_tdef; rt = rt->ref);
+	for(ty = r;
+			ty && ty->type != type_btype && ty->type != type_tdef;
+			ty = ty->ref);
 
-	if(!rt)
-		return;
+	if(!ty)
+		return NULL;
 
-	if(rt->type == type_tdef){
+	if(ty->type == type_tdef){
 		char buf[BTYPE_STATIC_BUFSIZ];
-		decl *d = rt->bits.tdef.decl;
+		decl *d = ty->bits.tdef.decl;
 		type *of;
 
 		if(d){
@@ -556,7 +585,7 @@ void type_add_type_str(type *r,
 			of = d->ref;
 
 		}else{
-			expr *const e = rt->bits.tdef.type_of;
+			expr *const e = ty->bits.tdef.type_of;
 			int const is_type = !e->expr;
 
 			BUF_ADD("typeof(%s%s)",
@@ -579,11 +608,25 @@ void type_add_type_str(type *r,
 					: type_to_str_r_spel_aka(buf, of, NULL, 0));
 		}
 
+		return ty;
+
 	}else{
-		BUF_ADD("%s", btype_to_str(rt->bits.type));
+		BUF_ADD("%s", btype_to_str(ty->bits.type));
 	}
+
+	return NULL;
 }
 #undef BUF_ADD
+
+static type *type_set_parent(type *r, type *parent)
+{
+	if(!r)
+		return parent;
+
+	r->tmp = parent;
+
+	return type_set_parent(r->ref, r);
+}
 
 static
 const char *type_to_str_r_spel_aka(
@@ -592,14 +635,17 @@ const char *type_to_str_r_spel_aka(
 {
 	char *bufp = buf;
 	int spc = 1;
+	type *stop_at;
+	int sz = TYPE_STATIC_BUFSIZ;
 
-	type_add_type_str(r, &bufp, TYPE_STATIC_BUFSIZ, aka);
+	stop_at = type_add_type_str(r, &bufp, &sz, aka);
+
+	assert(sz == (TYPE_STATIC_BUFSIZ - (bufp - buf)));
 
 	/* print in reverse order */
 	r = type_set_parent(r, NULL);
 	/* use r->tmp, since r is type_t{ype,def} */
-	type_add_str(r->tmp, spel, &spc,
-			&bufp, TYPE_STATIC_BUFSIZ - (bufp - buf));
+	type_add_str(r->tmp, spel, &spc, &bufp, &sz, stop_at);
 
 	/* trim trailing space */
 	if(bufp > buf && bufp[-1] == ' ')
@@ -653,6 +699,7 @@ const char *type_kind_to_str(enum type_kind k)
 		CASE_STR_PREFIX(type, cast);
 		CASE_STR_PREFIX(type, attr);
 		CASE_STR_PREFIX(type, where);
+		CASE_STR_PREFIX(type, auto);
 	}
 	ucc_unreach(NULL);
 }
@@ -676,4 +723,54 @@ type_str_type(type *r)
 		default:
 			return type_str_no;
 	}
+}
+
+unsigned type_hash(const type *t)
+{
+	unsigned hash = t->type << 20 | (unsigned)(unsigned long)t;
+
+	switch(t->type){
+		case type_auto:
+			ICE("auto type");
+
+		case type_btype:
+			hash |= t->bits.type->primitive;
+			break;
+
+		case type_tdef:
+			hash |= type_hash(t->bits.tdef.type_of->tree_type);
+			break;
+
+		case type_ptr:
+		case type_array:
+			hash |= type_hash(t->bits.ptr.size->tree_type);
+			break;
+
+		case type_block:
+		case type_where:
+			/* nothing */
+			break;
+
+		case type_func:
+		{
+			decl **i;
+
+			for(i = t->bits.func.args->arglist; i && *i; i++)
+				hash |= type_hash((*i)->ref);
+
+			break;
+		}
+
+		case type_cast:
+			hash |= t->bits.cast.is_signed_cast
+				| t->bits.cast.signed_true << 2
+				| t->bits.cast.qual << 4;
+			break;
+
+		case type_attr:
+			hash |= t->bits.attr->type;
+			break;
+	}
+
+	return hash;
 }

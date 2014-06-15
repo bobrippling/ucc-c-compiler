@@ -3,13 +3,13 @@
 #define TY_ASSERT(n, ty)            \
 	_Static_assert(                   \
 			__builtin_types_compatible_p( \
-				typeof(n), ty),             \
+				__typeof(n), ty),             \
 			#n "'s type isn't " #ty)
 
 #define TY_ASSERT2(n, ty_a, ty_b)                       \
 	_Static_assert(                                       \
-			   __builtin_types_compatible_p(typeof(n), ty_a)  \
-			|| __builtin_types_compatible_p(typeof(n), ty_b), \
+			   __builtin_types_compatible_p(__typeof(n), ty_a)  \
+			|| __builtin_types_compatible_p(__typeof(n), ty_b), \
 			#n "'s type isn't " #ty_a " or " #ty_b)
 
 // automatic promotions

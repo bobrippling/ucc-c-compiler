@@ -1,4 +1,11 @@
-#include <assert.h>
+assert(int ln, _Bool b)
+{
+	if(!b){
+		printf("%d\n", ln);
+		abort();
+	}
+}
+#define assert(x) assert(__LINE__, x)
 
 main()
 {

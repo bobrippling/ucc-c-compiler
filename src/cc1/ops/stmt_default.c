@@ -11,26 +11,19 @@ const char *str_stmt_default()
 
 void fold_stmt_default(stmt *s)
 {
-	char *lbl = out_label_case(CASE_DEF, 0);
-
-	s->expr = expr_new_identifier(lbl);
-	memcpy_safe(&s->expr->where, &s->where);
-
-	s->expr->expr_is_default = 1;
-
 	fold_stmt_and_add_to_curswitch(s);
 }
 
-void gen_stmt_default(stmt *s)
+void gen_stmt_default(stmt *s, out_ctx *octx)
 {
-	out_label(s->expr->bits.ident.spel);
-	gen_stmt(s->lhs);
+	out_ctrl_transfer_make_current(octx, s->bits.case_blk);
+	gen_stmt(s->lhs, octx);
 }
 
-void style_stmt_default(stmt *s)
+void style_stmt_default(stmt *s, out_ctx *octx)
 {
 	stylef("\ndefault: ");
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 }
 
 void init_stmt_default(stmt *s)

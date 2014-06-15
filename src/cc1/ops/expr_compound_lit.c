@@ -1,4 +1,5 @@
 #include <string.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "expr_compound_lit.h"
@@ -15,6 +16,15 @@ const char *str_expr_compound_lit(void)
 void fold_expr_compound_lit(expr *e, symtable *stab)
 {
 	decl *d = e->bits.complit.decl;
+	int static_ctx = e->bits.complit.static_ctx; /* global or static */
+
+	/* if(!stab->parent) assert(static_ctx);
+	 *
+	 * except things like sizeof() just pass 0 for static_ctx,
+	 * as it doesn't matter, we're not code-gen'd
+	 */
+	if(!stab->parent)
+		static_ctx = 1;
 
 	if(e->code)
 		return; /* being called from fold_gen_init_assignment_base */
@@ -22,13 +32,13 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	/* must be set before the recursive fold_gen_init_assignment_base */
 	e->tree_type = d->ref;
 
-	if(!stab->parent){
-		d->spel = out_label_data_store(STORE_COMP_LIT);
+	if(static_ctx){
+		d->spel_asm = out_label_data_store(STORE_COMP_LIT);
 		d->store = store_static;
 	}
 
 	e->bits.complit.sym = sym_new_stab(
-			stab, d, stab->parent ? sym_local : sym_global);
+			stab, d, static_ctx ? sym_global : sym_local);
 
 	/* fold the initialiser */
 	UCC_ASSERT(d->bits.var.init, "no init for comp.literal");
@@ -41,7 +51,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	 */
 	e->tree_type = d->ref;
 
-	if(stab->parent){
+	if(!static_ctx){
 		/* create the code for assignemnts
 		 *
 		 * - we must create a nested scope,
@@ -60,7 +70,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	}
 }
 
-static void gen_expr_compound_lit_code(expr *e)
+static void gen_expr_compound_lit_code(expr *e, out_ctx *octx)
 {
 	if(!e->expr_comp_lit_cgen){
 		e->expr_comp_lit_cgen = 1;
@@ -68,22 +78,25 @@ static void gen_expr_compound_lit_code(expr *e)
 		UCC_ASSERT(e->code->symtab->parent,
 				"global compound initialiser tried for code");
 
-		gen_stmt(e->code);
+		gen_stmt(e->code, octx);
 	}
 }
 
-void gen_expr_compound_lit(expr *e)
+const out_val *gen_expr_compound_lit(expr *e, out_ctx *octx)
 {
-	gen_expr_compound_lit_code(e);
+	/* allow (int){2}, but not (struct...){...} */
+	fold_check_expr(e, FOLD_CHK_NO_ST_UN, "compound literal");
 
-	out_push_sym_val(e->bits.complit.sym);
+	gen_expr_compound_lit_code(e, octx);
+
+	return out_new_sym_val(octx, e->bits.complit.sym);
 }
 
-static void lea_expr_compound_lit(expr *e)
+static const out_val *lea_expr_compound_lit(expr *e, out_ctx *octx)
 {
-	gen_expr_compound_lit_code(e);
+	gen_expr_compound_lit_code(e, octx);
 
-	out_push_sym(e->bits.complit.sym);
+	return out_new_sym(octx, e->bits.complit.sym);
 }
 
 static void const_expr_compound_lit(expr *e, consty *k)
@@ -103,12 +116,12 @@ static void const_expr_compound_lit(expr *e, consty *k)
 	}
 }
 
-void gen_expr_str_compound_lit(expr *e)
+const out_val *gen_expr_str_compound_lit(expr *e, out_ctx *octx)
 {
 	decl *const d = e->bits.complit.decl;
 
 	if(e->op)
-		return;
+		return NULL;
 
 	e->op = 1;
 	{
@@ -127,16 +140,21 @@ void gen_expr_str_compound_lit(expr *e)
 		gen_str_indent--;
 
 		idt_printf("}\n");
-		idt_printf("init code:\n");
-		print_stmt(e->code);
+		if(e->code){
+			idt_printf("init code:\n");
+			print_stmt(e->code);
+		}
 	}
 	e->op = 0;
+
+	UNUSED_OCTX();
 }
 
-void gen_expr_style_compound_lit(expr *e)
+const out_val *gen_expr_style_compound_lit(expr *e, out_ctx *octx)
 {
 	stylef("(%s)", type_to_str(e->bits.complit.decl->ref));
 	gen_style_dinit(e->bits.complit.decl->bits.var.init);
+	UNUSED_OCTX();
 }
 
 void mutate_expr_compound_lit(expr *e)
@@ -156,9 +174,10 @@ static decl *compound_lit_decl(type *t, decl_init *init)
 	return d;
 }
 
-expr *expr_new_compound_lit(type *t, decl_init *init)
+expr *expr_new_compound_lit(type *t, decl_init *init, int static_ctx)
 {
 	expr *e = expr_new_wrapper(compound_lit);
 	e->bits.complit.decl = compound_lit_decl(t, init);
+	e->bits.complit.static_ctx = static_ctx;
 	return e;
 }

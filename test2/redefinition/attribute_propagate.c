@@ -1,7 +1,7 @@
 // RUN: %ucc -S -o- %s | grep 'hi:'
 // RUN: %check %s
 
-int f() asm("hi");
+int f() __asm("hi");
 
 int f() __attribute((warn_unused_result));
 

@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../../util/where.h"
 #include "../../util/platform.h"
@@ -216,6 +217,7 @@ struct DIE
 struct DIE_compile_unit
 {
 	struct DIE die;
+	struct out_dbg_filelist **pfilelist;
 	dynmap *types_to_dies;
 };
 
@@ -270,6 +272,13 @@ static void dwarf_release_children(struct DIE *parent)
 		dwarf_release(*i);
 
 	free(ar);
+}
+
+static unsigned DIE_hash(struct DIE *d)
+{
+	unsigned addr = (unsigned)(unsigned long)d;
+
+	return d->tag << 20 | addr;
 }
 
 static void dwarf_die_new_at(struct DIE *d, enum dwarf_tag tag)
@@ -495,10 +504,13 @@ static void dwarf_set_DW_AT_type(
 static void dwarf_add_tydie(
 		struct DIE_compile_unit *cu, type *ty, struct DIE *tydie)
 {
-	if(!cu->types_to_dies)
-		cu->types_to_dies = dynmap_new(/*refeq:*/NULL);
+	struct DIE *prev;
 
-	dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, RETAIN(tydie));
+	if(!cu->types_to_dies)
+		cu->types_to_dies = dynmap_new(/*refeq:*/NULL, (dynmap_hash_f *)DIE_hash);
+
+	prev = dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, RETAIN(tydie));
+	dwarf_release(prev);
 }
 
 static struct DIE *dwarf_type_die(
@@ -515,6 +527,9 @@ static struct DIE *dwarf_type_die(
 	}
 
 	switch(ty->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_btype:
 		{
 			struct_union_enum_st *sue = ty->bits.type->sue;
@@ -803,10 +818,13 @@ static struct DIE **dwarf_formal_params(
 }
 
 static struct DIE_compile_unit *dwarf_cu(
-		const char *fname, const char *compdir)
+		const char *fname, const char *compdir,
+		struct out_dbg_filelist **pfilelist)
 {
 	struct DIE_compile_unit *cu = umalloc(sizeof *cu);
 	form_data_t attrv;
+
+	cu->pfilelist = pfilelist;
 
 	dwarf_die_new_at(&cu->die, DW_TAG_compile_unit);
 
@@ -889,7 +907,7 @@ static void dwarf_attr_decl(
 
 	dwarf_attr(in, DW_AT_decl_file,
 			DW_FORM_ULEB,
-			((attrv = dbg_add_file(d->where.fname, NULL)), &attrv));
+			((attrv = dbg_add_file(cu->pfilelist, d->where.fname, NULL)), &attrv));
 
 	dwarf_attr(in, DW_AT_decl_line,
 			DW_FORM_ULEB, ((attrv = d->where.line), &attrv));
@@ -991,7 +1009,9 @@ static void dwarf_symtable_scope(
 						break;
 
 					case sym_arg:
-						ICE("sym_arg in function");
+						/* ignore arguments in local scope:
+						 * may be entering a block's code scope */
+						break;
 				}
 
 				dwarf_attr(var, DW_AT_location, DW_FORM_block1, locn);
@@ -1360,6 +1380,7 @@ static unsigned long dwarf_offset_die(
 }
 
 void out_dbginfo(symtable_global *globs,
+		struct out_dbg_filelist **pfilelist,
 		const char *fname,
 		const char *compdir)
 {
@@ -1369,7 +1390,7 @@ void out_dbginfo(symtable_global *globs,
 	long info_offset = dwarf_info_header(cc_out[SECTION_DBG_INFO]);
 	unsigned long abbrev = 0;
 
-	compile_unit = dwarf_cu(fname, compdir);
+	compile_unit = dwarf_cu(fname, compdir, pfilelist);
 
 	{
 		decl **diter;

@@ -79,7 +79,7 @@ static type *parse_type_sue(
 				parse_add_attr(&en_attr, scope);
 
 				if(accept(token_assign))
-					e = PARSE_EXPR_NO_COMMA(scope); /* no commas */
+					e = PARSE_EXPR_NO_COMMA(scope, 0); /* no commas */
 				else
 					e = NULL;
 
@@ -199,10 +199,27 @@ int parse_at_decl(symtable *scope)
 		case token_union:
 		case token_enum:
 		case token_typeof:
+		case token___auto_type:
 		case token___builtin_va_list:
 		case token_attribute:
 		case token__Alignas:
 			return 1;
+
+		case token___extension__:
+		{
+			int r;
+
+			/* check for __extension__ <type> */
+			while(accept(token___extension__));
+
+			r = parse_at_decl(scope);
+
+			/* only place one back on the token stack,
+			 * since that's what it's limited to */
+			uneat(token___extension__);
+
+			return r;
+		}
 
 		case token_identifier:
 			return !!parse_at_tdef(scope);
@@ -237,8 +254,9 @@ static void btype_set_store(
 
 static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
-		int newdecl_context, symtable *scope)
+		int newdecl_context, symtable *scope, int allow_autotype)
 {
+	where autotype_loc;
 	/* *store and *palign should be initialised */
 	expr *tdef_typeof = NULL;
 	attribute *attr = NULL;
@@ -253,8 +271,11 @@ static type *parse_btype(
 		PRIMITIVE_MAYBE_MORE,
 		PRIMITIVE_NO_MORE,
 		TYPEDEF,
-		TYPEOF
+		TYPEOF,
+		AUTOTYPE
 	} primitive_mode = NONE;
+
+	while(accept(token___extension__));
 
 	for(;;){
 		decl *tdef_decl_test;
@@ -320,9 +341,14 @@ static type *parse_btype(
 					break;
 				case TYPEDEF:
 				case TYPEOF:
+				case AUTOTYPE:
 					die_at(NULL, "type primitive (%s) with %s",
 							type_primitive_to_str(primitive),
-							primitive_mode == TYPEDEF ? "typedef-instance" : "typeof");
+							primitive_mode == TYPEDEF
+							? "typedef-instance"
+							: primitive_mode == TYPEOF
+							? "typeof"
+							: "__auto_type");
 			}
 
 			EAT(curtok);
@@ -377,7 +403,7 @@ static type *parse_btype(
 			}
 
 			if(signed_set || primitive_mode != NONE)
-				die_at(NULL, "primitive/signed/unsigned with %s", str);
+				die_at(NULL, "previous specifier with %s", str);
 
 			/* fine... although a _Noreturn function returning a sue
 			 * is pretty daft... */
@@ -401,14 +427,14 @@ static type *parse_btype(
 
 		}else if(accept(token_typeof)){
 			if(primitive_mode != NONE)
-				die_at(NULL, "typeof specifier after primitive");
+				die_at(NULL, "typeof specifier after previous specifier");
 
 			tdef_typeof = parse_expr_sizeof_typeof_alignof(what_typeof, scope);
 			primitive_mode = TYPEOF;
 
 		}else if(accept(token___builtin_va_list)){
 			if(primitive_mode != NONE)
-				die_at(NULL, "can't combine previous primitive with va_list");
+				die_at(NULL, "can't combine previous specifier with va_list");
 
 			primitive_mode = PRIMITIVE_NO_MORE;
 			is_va_list = 1;
@@ -469,10 +495,19 @@ static type *parse_btype(
 				da->bits.align_ty = as_ty;
 			}else{
 				da->as_int = 1;
-				da->bits.align_intk = parse_expr_exp(scope);
+				da->bits.align_intk = parse_expr_exp(scope, 0);
 			}
 
 			EAT(token_close_paren);
+
+		}else if(accept_where(token___auto_type, &autotype_loc)){
+			if(primitive_mode != NONE){
+				warn_at_print_error(&autotype_loc,
+						"can't combine __auto_type with previous type specifiers");
+				parse_had_error = 1;
+				continue;
+			}
+			primitive_mode = AUTOTYPE;
 
 		}else{
 			break;
@@ -538,6 +573,29 @@ static type *parse_btype(
 			r = type_nav_va_list(cc1_type_nav, scope);
 
 		}else switch(primitive_mode){
+			case AUTOTYPE:
+				UCC_ASSERT(!tdef_typeof, "typedef with __auto_type?");
+
+				r = NULL;
+				if(signed_set){
+					warn_at_print_error(&autotype_loc,
+							"__auto_type given with previous type specifiers");
+
+				}else if(!allow_autotype){
+					warn_at_print_error(&autotype_loc, "__auto_type not wanted here");
+
+				}else{
+					r = type_nav_auto(cc1_type_nav);
+				}
+
+				if(!r){
+					/* error case */
+					r = type_nav_btype(cc1_type_nav, type_int);
+					parse_had_error = 1;
+				}
+
+				break;
+
 			case TYPEDEF:
 			case TYPEOF:
 				UCC_ASSERT(tdef_typeof, "no tdef_typeof for typedef/typeof");
@@ -589,34 +647,6 @@ static type *parse_btype(
 	}
 }
 
-static int parse_curtok_is_type(symtable *scope)
-{
-	if(curtok_is_type_qual()
-	|| curtok_is_decl_store()
-	|| curtok_is_type_primitive())
-		return 1;
-
-	switch(curtok){
-		case token_signed:
-		case token_unsigned:
-		case token_struct:
-		case token_union:
-		case token_enum:
-		case token_typeof:
-		case token_attribute:
-		case token___builtin_va_list:
-			return 1;
-
-		case token_identifier:
-			return typedef_visible(scope, token_current_spel_peek());
-
-		default:
-			break;
-	}
-
-	return 0;
-}
-
 static decl *parse_arg_decl(symtable *scope)
 {
 	/* argument decls can default to int */
@@ -633,8 +663,12 @@ funcargs *parse_func_arglist(symtable *scope)
 {
 	funcargs *args = funcargs_new();
 
-	if(curtok == token_close_paren)
+	if(curtok == token_close_paren){
+		args->args_old_proto = 1;
+		cc1_warn_at(NULL, 0, WARN_IMPLICIT_OLD_FUNC,
+				"old-style function declaration (needs \"(void)\")");
 		goto empty_func;
+	}
 
 	/* we allow default-to-int here, but need to make
 	 * sure we also handle old functions.
@@ -657,11 +691,17 @@ funcargs *parse_func_arglist(symtable *scope)
 			/* x(void); */
 			funcargs_empty(args);
 			args->args_void = 1; /* (void) vs () */
+
+			/* argdecl isn't leaked - it remains in scope, but nameless */
 			goto fin;
 		}
 
 		for(;;){
 			dynarray_add(&args->arglist, argdecl);
+
+			/* add to scope */
+			symtab_add_to_scope(scope, argdecl);
+			fold_decl(argdecl, scope, NULL);
 
 			if(curtok == token_close_paren)
 				break;
@@ -691,6 +731,8 @@ fin:;
 
 			d->spel = token_current_spel();
 			dynarray_add(&args->arglist, d);
+
+			symtab_add_to_scope(scope, d);
 
 			EAT(token_identifier);
 
@@ -793,7 +835,7 @@ static type_parsed *parsed_type_nest(
 		 * we don't look for open parens - they're used for nexting, e.g.
 		 * int ((*p)(void));
 		 */
-		if(parse_curtok_is_type(scope) || curtok == token_close_paren){
+		if(parse_at_decl(scope) || curtok == token_close_paren){
 			/* int() or char(short) - func decl */
 			uneat(token_open_paren);
 			/* parse_...func will grab this as funcargs instead */
@@ -852,10 +894,17 @@ static type_parsed *parsed_type_array(
 			/* grammar says it's a conditional here, hence no-comma */
 			consty k;
 
-			size = PARSE_EXPR_NO_COMMA(scope);
+			size = PARSE_EXPR_NO_COMMA(scope, 0);
 			EAT(token_close_square);
 
 			FOLD_EXPR(size, scope);
+
+			if(!type_is_integral(size->tree_type)){
+				die_at(&size->where,
+						"array type isn't integral (%s)",
+						type_to_str(size->tree_type));
+			}
+
 			const_fold(size, &k);
 
 			if(k.type != CONST_NUM)
@@ -989,7 +1038,7 @@ static type *parse_type_declarator(
 
 type *parse_type(int newdecl, symtable *scope)
 {
-	type *btype = parse_btype(NULL, NULL, newdecl, scope);
+	type *btype = parse_btype(NULL, NULL, newdecl, scope, 0);
 
 	return btype ? parse_type_declarator(0, NULL, btype, scope) : NULL;
 }
@@ -1030,13 +1079,18 @@ static void parse_add_asm(decl *d)
 
 		/* only allow [0-9A-Za-z_.] */
 		for(p = rename; *p; p++)
-			if(!isalnum(*p) && *p != '_' && *p != '.'){
+			if(!isalnum(*p) && *p != '_' && *p != '.' && *p != '$'){
 				warn_at(NULL, "asm name contains character 0x%x", *p);
 				break;
 			}
 
 		d->spel_asm = rename;
 	}
+}
+
+static void parse_decl_fold_type(decl *d, symtable *scope)
+{
+	fold_type_w_attr(d->ref, NULL, type_loc(d->ref), scope, d->attr);
 }
 
 static decl *parse_decl_stored_aligned(
@@ -1046,12 +1100,22 @@ static decl *parse_decl_stored_aligned(
 {
 	decl *d = decl_new();
 	where w_eq;
+	int is_autotype = type_is_autotype(btype);
 
-	d->ref = parse_type_declarator(mode, d, btype, scope);
+	d->store = store;
 
-	if(add_to_scope){
-		dynarray_add(&add_to_scope->decls, d);
-		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), scope, d->attr);
+	if(is_autotype){
+		d->spel = token_current_spel();
+		EAT(token_identifier);
+
+	}else{
+		/* allow extra specifiers */
+		d->ref = parse_type_declarator(mode, d, btype, scope);
+
+		if(add_to_scope){
+			symtab_add_to_scope(add_to_scope, d);
+			parse_decl_fold_type(d, scope);
+		}
 	}
 
 	/* only check if it's not a function, otherwise it could be
@@ -1061,19 +1125,60 @@ static decl *parse_decl_stored_aligned(
 	 * }
 	 */
 
-	if(!type_is(d->ref, type_func)){
+	if(is_autotype || !type_is(d->ref, type_func)){
 		/* parse __asm__ naming before attributes, as per gcc and clang */
 		parse_add_asm(d);
 		parse_add_attr(&d->attr, scope); /* int spel __attr__ */
 
 		if(d->spel && accept_where(token_assign, &w_eq)){
-			d->bits.var.init = parse_init(scope);
+			int static_ctx = !scope->parent ||
+				(store & STORE_MASK_STORE) == store_static;
+
+			d->bits.var.init = parse_init(scope, static_ctx);
+
 			/* top-level inits have their .where on the '=' token */
 			memcpy_safe(&d->bits.var.init->where, &w_eq);
+
+			if(is_autotype){
+				decl_init *init = d->bits.var.init;
+
+				UCC_ASSERT(!d->ref, "already have decl type?");
+
+				if(init->type != decl_init_scalar){
+					warn_at_print_error(&d->where, "bad initialiser for __auto_type");
+				}else{
+					attribute *attr = NULL;
+					type *attr_node;
+
+					/* gcc decays "" to char* */
+					FOLD_EXPR(init->bits.expr, scope);
+
+					attr_node = type_skip_non_attr(btype);
+					if(attr_node && attr_node->type == type_attr)
+						attr = attr_node->bits.attr;
+
+					/* need to preserve __attribute__ and qualifiers
+					 * storage and alignment are kept on the decl */
+					d->ref = type_attributed(
+							type_qualify(
+								init->bits.expr->tree_type,
+								type_qual(type_at_where(btype, &init->where))),
+							attr);
+
+					parse_decl_fold_type(d, scope);
+				}
+			}
+
+		}else if(is_autotype){
+			warn_at_print_error(&d->where, "__auto_type without initialiser");
+			UCC_ASSERT(!d->ref, "already have decl type?");
+		}
+
+		if(!d->ref){
+			parse_had_error = 1;
+			d->ref = type_nav_btype(cc1_type_nav, type_int);
 		}
 	}
-
-	d->store = store;
 
 	if(!type_is(d->ref, type_func))
 		d->bits.var.align = align;
@@ -1105,7 +1210,7 @@ decl *parse_decl(
 	type *r = parse_btype(
 			mode & DECL_ALLOW_STORE ? &store : NULL,
 			/*align:*/NULL,
-			newdecl, scope);
+			newdecl, scope, 1);
 	decl *d;
 
 	if(!r){
@@ -1131,7 +1236,8 @@ decl *parse_decl(
 static int is_old_func(decl *d)
 {
 	type *r = type_is(d->ref, type_func);
-	return r && r->bits.func.args->args_old_proto;
+	/* don't treat int f(); as an old function */
+	return r && r->bits.func.args->args_old_proto && r->bits.func.args->arglist;
 }
 
 static void check_and_replace_old_func(decl *d, decl **old_args)
@@ -1199,7 +1305,27 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 		 *
 		 * any declarations after this aren't warned about
 		 * (since d_prev is different), but one warning is fine
+		 *
+		 * special case: we allow changing a pure inline function
+		 * to extern- or static-inline.
 		 */
+		if(d_prev->store & store_inline
+		&& decl_store_static_or_extern(d_this->store))
+		{
+			/* check we aren't changing anything
+			 * errors are caught later on in the decl folding stage */
+			if(!decl_store_static_or_extern(d_prev->store)){
+				/* keep previous inline, obtain this extern/static */
+				d_prev->store =
+					(d_prev->store & STORE_MASK_EXTRA)
+					| (d_this->store & STORE_MASK_STORE);
+			}
+
+			if(!d_this->spel_asm)
+				return;
+			/* else we want the warning below */
+		}
+
 		warn_at(&d_this->where,
 				"declaration of \"%s\" after definition is ignored\n"
 				"%s: note: definition here",
@@ -1316,8 +1442,11 @@ static void parse_post_func(decl *d, symtable *in_scope)
 	 * no parse ambiguity - asm can only appear at the end of a decl,
 	 * before __attribute__
 	 */
-	if(curtok == token_asm)
+	if(curtok == token_asm){
 		parse_add_asm(d);
+
+		parse_add_attr(&d->attr, in_scope);
+	}
 
 	if(is_old_func(d)){
 		decl **old_args = NULL;
@@ -1354,7 +1483,6 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		arg_symtab = func_r->bits.func.arg_scope;
 		arg_symtab->in_func = d;
 
-		symtab_add_params(arg_symtab, func_r->bits.func.args->arglist);
 		fold_decl(d, arg_symtab->parent, NULL);
 
 
@@ -1364,6 +1492,11 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		 * f(){...}, then we don't have args_void, but implicitly we do
 		 */
 		type_funcargs(d->ref)->args_void_implicit = 1;
+
+		if((d->store & STORE_MASK_STORE) == store_typedef){
+			warn_at_print_error(&d->where, "typedef storage on function");
+			fold_had_error = 1;
+		}
 	}
 }
 
@@ -1449,7 +1582,7 @@ int parse_decl_group(
 	this_ref = parse_btype(
 			mode & DECL_MULTI_ALLOW_STORE ? &store : NULL,
 			mode & DECL_MULTI_ALLOW_ALIGNAS ? &align : NULL,
-			newdecl, in_scope);
+			newdecl, in_scope, 1);
 
 	if(!this_ref){
 		if(!parse_at_decl_spec() || !(mode & DECL_MULTI_CAN_DEFAULT))
@@ -1471,7 +1604,7 @@ int parse_decl_group(
 		&& accept(token_colon))
 		{
 			/* normal decl, check field spec */
-			d->bits.var.field_width = PARSE_EXPR_NO_COMMA(in_scope);
+			d->bits.var.field_width = PARSE_EXPR_NO_COMMA(in_scope, 0);
 			had_field_width = 1;
 		}
 
@@ -1502,7 +1635,7 @@ int parse_decl_group(
 		if(d->spel)
 			link_to_previous_decl(d, in_scope);
 		if(add_to_scope)
-			dynarray_add(&add_to_scope->decls, d);
+			symtab_add_to_scope(add_to_scope, d);
 		if(pdecls)
 			dynarray_add(pdecls, d);
 

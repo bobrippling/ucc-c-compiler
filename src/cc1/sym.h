@@ -82,6 +82,7 @@ struct symtable_global
 	symtable stab; /* ABI compatible with struct symtable */
 	symtable_gasm **gasms;
 	dynmap *literals;
+	dynmap *unrecog_attrs;
 };
 
 sym *sym_new(decl *d, enum sym_type t);
@@ -93,8 +94,6 @@ symtable *symtab_new(symtable *parent, where *w);
 void      symtab_set_parent(symtable *child, symtable *parent);
 void      symtab_rm_parent( symtable *child);
 
-void symtab_add_params(symtable *, decl **);
-
 symtable *symtab_root(symtable *child);
 symtable *symtab_func_root(symtable *stab);
 #define symtab_func(st) symtab_func_root(st)->in_func
@@ -102,9 +101,11 @@ symtable_global *symtab_global(symtable *);
 
 int symtab_nested_internal(symtable *parent, symtable *nest);
 
+#define symtab_add_to_scope(scope, d) \
+	dynarray_add(&(scope)->decls, (d))
+
 sym  *symtab_search(symtable *, const char *);
 decl *symtab_search_d(symtable *, const char *, symtable **pin);
-int   typedef_visible(symtable *stab, const char *spel);
 
 const char *sym_to_str(enum sym_type);
 

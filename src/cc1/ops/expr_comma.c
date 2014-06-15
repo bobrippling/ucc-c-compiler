@@ -23,11 +23,10 @@ static void fold_const_expr_comma(expr *e, consty *k)
 		k->type = CONST_NO;
 }
 
-static void comma_lea(expr *e)
+static const out_val *comma_lea(expr *e, out_ctx *octx)
 {
-	gen_maybe_struct_expr(e->lhs);
-	out_pop();
-	lea_expr(e->rhs);
+	out_val_consume(octx, gen_maybe_struct_expr(e->lhs, octx));
+	return lea_expr(e->rhs, octx);
 }
 
 void fold_expr_comma(expr *e, symtable *stab)
@@ -57,17 +56,15 @@ void fold_expr_comma(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_comma(expr *e)
+const out_val *gen_expr_comma(expr *e, out_ctx *octx)
 {
 	/* attempt lea, don't want full struct dereference */
-	gen_maybe_struct_expr(e->lhs);
+	out_val_consume(octx, gen_maybe_struct_expr(e->lhs, octx));
 
-	out_pop();
-	out_comment("unused comma expr");
-	gen_expr(e->rhs);
+	return gen_expr(e->rhs, octx);
 }
 
-void gen_expr_str_comma(expr *e)
+const out_val *gen_expr_str_comma(expr *e, out_ctx *octx)
 {
 	idt_printf("comma expression\n");
 	idt_printf("comma lhs:\n");
@@ -78,6 +75,7 @@ void gen_expr_str_comma(expr *e)
 	gen_str_indent++;
 	print_expr(e->rhs);
 	gen_str_indent--;
+	UNUSED_OCTX();
 }
 
 expr *expr_new_comma2(expr *lhs, expr *rhs)
@@ -92,9 +90,9 @@ void mutate_expr_comma(expr *e)
 	e->f_const_fold = fold_const_expr_comma;
 }
 
-void gen_expr_style_comma(expr *e)
+const out_val *gen_expr_style_comma(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs);
+	IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef(", ");
-	gen_expr(e->rhs);
+	return gen_expr(e->rhs, octx);
 }

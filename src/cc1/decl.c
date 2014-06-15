@@ -197,6 +197,37 @@ int decl_store_static_or_extern(enum decl_storage s)
 	}
 }
 
+enum linkage decl_linkage(decl *d)
+{
+	/* global scoped or extern */
+	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+		case store_extern: return linkage_external;
+		case store_static: return linkage_internal;
+
+		case store_register:
+		case store_auto:
+		case store_typedef:
+			return linkage_none;
+
+		case store_inline:
+			ICE("bad store");
+
+		case store_default:
+			break;
+	}
+
+	/* either global non-static or local */
+	return d->sym && d->sym->type == sym_global
+		? linkage_external
+		: linkage_none;
+}
+
+int decl_store_duration_is_static(decl *d)
+{
+	return decl_store_static_or_extern(d->store)
+		|| (d->sym && d->sym->type == sym_global);
+}
+
 const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
 {
 	char *bufp = buf;

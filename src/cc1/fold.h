@@ -27,8 +27,6 @@ void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
 
 void fold_funcargs(funcargs *fargs, symtable *stab, attribute *);
 
-void fold_stmt_and_add_to_curswitch(stmt *t);
-
 /* cast insertion */
 void fold_insert_casts(type *tlhs, expr **prhs, symtable *stab);
 
@@ -67,8 +65,6 @@ sym *fold_inc_writes_if_sym(expr *e, symtable *stab);
 int fold_passable(stmt *s);
 int fold_passable_yes(stmt *s);
 int fold_passable_no( stmt *s);
-
-void fold_stmt_and_add_to_curswitch(stmt *);
 
 extern int fold_had_error;
 

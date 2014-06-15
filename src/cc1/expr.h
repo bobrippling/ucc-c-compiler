@@ -9,13 +9,18 @@
 #include "sym.h"
 #include "decl.h"
 #include "const.h"
+#include "out/out.h"
+#include "../util/compiler.h"
 
 typedef void func_fold(struct expr *, struct symtable *);
-typedef void func_gen(struct expr *);
-typedef void func_gen_lea(struct expr *);
 typedef void func_const(struct expr *, consty *);
 typedef const char *func_str(void);
 typedef void func_mutate_expr(struct expr *);
+
+typedef ucc_wur const out_val *func_gen(struct expr *, out_ctx *);
+typedef ucc_wur const out_val *func_gen_lea(struct expr *, out_ctx *);
+
+#define UNUSED_OCTX() (void)octx; return NULL
 
 typedef struct expr expr;
 struct expr
@@ -45,7 +50,6 @@ struct expr
 	/* do we return the altered value or the old one? */
 	int assign_is_post;
 	int assign_is_init;
-#define expr_is_default    assign_is_post
 #define expr_cast_implicit assign_is_post
 #define expr_is_st_dot     assign_is_post
 #define expr_addr_implicit assign_is_post
@@ -91,6 +95,7 @@ struct expr
 		{
 			sym *sym;
 			decl *decl;
+			int static_ctx;
 		} complit;
 
 		struct

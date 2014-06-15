@@ -3,8 +3,8 @@
 
 void  dynarray_nochk_add(    void ***, void *);
 void  dynarray_nochk_prepend(void ***, void *);
-char *dynarray_nochk_pop(    void ***);
-void  dynarray_nochk_rm(     void **,  void *);
+void *dynarray_nochk_pop(    void ***);
+void  dynarray_nochk_rm(     void ***,  void *);
 int   dynarray_nochk_count(  void **);
 void  dynarray_nochk_free(   void ***par, void (*f)(void *));
 void  dynarray_nochk_add_array(void ***, void **);
@@ -35,8 +35,8 @@ void *dynarray_nochk_padinsert(void ***par,
 
 
 #define dynarray_rm(ar, p)            \
-	(UCC_TYPECHECK(__typeof(p) *, ar),  \
-	dynarray_nochk_rm((void **)ar, p))
+	(UCC_TYPECHECK(__typeof(p) **, ar), \
+	dynarray_nochk_rm((void ***)ar, p))
 
 
 #define dynarray_free(ty, ar, fn)     \

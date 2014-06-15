@@ -195,6 +195,9 @@ char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  character);
 		CASE_STR_PREFIX(token,  string);
 
+		CASE_STR_PREFIX(token,  __extension__);
+		CASE_STR_PREFIX(token,  __auto_type);
+
 		case token_floater:
 			return "float";
 
@@ -303,6 +306,8 @@ char *curtok_to_identifier(int *alloc)
 		case token_enum:
 		case token___builtin_va_list:
 		case token_attribute:
+		case token___extension__:
+		case token___auto_type:
 			/* we can stringify these */
 			*alloc = 0;
 			return token_to_str(curtok);

@@ -133,6 +133,7 @@ struct
 	{ 'f',  "unsigned-char",      ~FOPT_SIGNED_CHAR },
 	{ 'f',  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
 	{ 'f',  "dump-type-tree", FOPT_DUMP_TYPE_TREE },
+	{ 'f',  "asm", FOPT_EXT_KEYWORDS },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 
@@ -164,6 +165,7 @@ enum warning warn_mode = ~(
 		| WARN_PAD
 		| WARN_TENATIVE_INIT
 		| WARN_SHADOW_GLOBAL
+		| WARN_IMPLICIT_OLD_FUNC
 		);
 
 enum fopt fopt_mode = FOPT_CONST_FOLD
@@ -195,6 +197,7 @@ struct section sections[NUM_SECTIONS] = {
 	{ "text", QUOTE(SECTION_NAME_TEXT) },
 	{ "data", QUOTE(SECTION_NAME_DATA) },
 	{ "bss",  QUOTE(SECTION_NAME_BSS) },
+	{ "rodata", QUOTE(SECTION_NAME_RODATA) },
 	{ "dbg_abrv", QUOTE(SECTION_NAME_DBG_ABBREV) },
 	{ "dbg_info", QUOTE(SECTION_NAME_DBG_INFO) },
 	{ "dbg_line", QUOTE(SECTION_NAME_DBG_LINE) },
@@ -405,8 +408,15 @@ int main(int argc, char **argv)
 			}
 
 		}else if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
-			if(std_from_str(argv[i], &cc1_std))
+			int gnu;
+
+			if(std_from_str(argv[i], &cc1_std, &gnu))
 				ccdie(0, "-std argument \"%s\" not recognised", argv[i]);
+
+			if(gnu)
+				fopt_mode |= FOPT_EXT_KEYWORDS;
+			else
+				fopt_mode &= ~FOPT_EXT_KEYWORDS;
 
 		}else if(!strcmp(argv[i], "-w")){
 			warn_mode = WARN_NONE;
@@ -548,6 +558,10 @@ usage:
 	show_current_line = fopt_mode & FOPT_SHOW_LINE;
 
 	cc1_type_nav = type_nav_init();
+
+	tokenise_set_mode(
+			(fopt_mode & FOPT_EXT_KEYWORDS ? KW_EXT : 0) |
+			(cc1_std >= STD_C99 ? KW_C99 : 0));
 
 	tokenise_set_input(next_line, fname);
 

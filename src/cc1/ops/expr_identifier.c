@@ -27,17 +27,11 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 		decl *const d = sym->decl;
 
 		/* only a constant if global/static/extern */
-		if(sym->type == sym_global || decl_store_static_or_extern(d->store)){
+		if(decl_store_duration_is_static(d) && !attribute_present(d, attr_weak)){
 			CONST_FOLD_LEAF(k);
 
 			k->type = CONST_ADDR_OR_NEED(d);
 
-			/*
-			 * don't use e->spel
-			 * static int i;
-			 * int x;
-			 * x = i; // e->spel is "i". sym->decl->spel is "func_name.static_i"
-			 */
 			k->bits.addr.bits.lbl = decl_asm_spel(sym->decl);
 
 			k->bits.addr.is_lbl = 1;
@@ -46,9 +40,9 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 	}
 }
 
-static void gen_expr_identifier_lea(expr *e)
+static const out_val *gen_expr_identifier_lea(expr *e, out_ctx *octx)
 {
-	out_push_sym(e->bits.ident.sym);
+	return out_new_sym(octx, e->bits.ident.sym);
 }
 
 void fold_expr_identifier(expr *e, symtable *stab)
@@ -108,7 +102,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 
 	if(sym->type == sym_local
-	&& !decl_store_static_or_extern(sym->decl->store)
+	&& !decl_store_duration_is_static(sym->decl)
 	&& !type_is(sym->decl->ref, type_array)
 	&& !type_is(sym->decl->ref, type_func)
 	&& !type_is_s_or_u(sym->decl->ref)
@@ -123,21 +117,22 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	sym->nreads++;
 }
 
-void gen_expr_str_identifier(expr *e)
+const out_val *gen_expr_str_identifier(expr *e, out_ctx *octx)
 {
 	idt_printf("identifier: \"%s\" (sym %p)\n", e->bits.ident.spel, (void *)e->bits.ident.sym);
+	UNUSED_OCTX();
 }
 
-void gen_expr_identifier(expr *e)
+const out_val *gen_expr_identifier(expr *e, out_ctx *octx)
 {
 	sym *sym = e->bits.ident.sym;
 
 	if(type_is(sym->decl->ref, type_func)){
 		UCC_ASSERT(sym->type != sym_arg, "function as argument?");
 
-		out_push_sym(sym);
+		return out_new_sym(octx, sym);
 	}else{
-		out_push_sym_val(sym);
+		return out_new_sym_val(octx, sym);
 	}
 }
 
@@ -154,7 +149,8 @@ expr *expr_new_identifier(char *sp)
 	return e;
 }
 
-void gen_expr_style_identifier(expr *e)
+const out_val *gen_expr_style_identifier(expr *e, out_ctx *octx)
 {
 	stylef("%s", e->bits.ident.spel);
+	UNUSED_OCTX();
 }

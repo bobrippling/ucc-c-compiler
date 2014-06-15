@@ -51,7 +51,7 @@ main()
 	struct A *p = make(1, 2, 3, 4, 5, 0);
 	if(p->length != 5)
 		abort();
-	if(memcmp(p->vals, (typeof(p->vals)){ 1, 2, 3, 4, 5 }, 5 * sizeof *p->vals))
+	if(memcmp(p->vals, (__typeof(p->vals)){ 1, 2, 3, 4, 5 }, 5 * sizeof *p->vals))
 		abort();
 
 	return 0;

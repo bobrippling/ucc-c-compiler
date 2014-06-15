@@ -275,7 +275,14 @@ void format_check_decl(decl *d, attribute *da)
 	fargs = r_func->bits.func.args;
 
 	if(!fargs->variadic){
-		warn_at(&da->where, "variadic function required for format attribute");
+		/* if the index is zero, we ignore it, e.g.
+		 * vprintf(char *, va_list) __attribute((format(printf, 1, 0)));
+		 *                                                         ^
+		 *
+		 * (-1, not zero, since we subtract one for format indexes)
+		 */
+		if(da->bits.format.var_idx >= 0)
+			warn_at(&da->where, "variadic function required for format attribute");
 		goto invalid;
 	}
 

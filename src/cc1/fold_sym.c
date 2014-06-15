@@ -112,10 +112,11 @@ void symtab_check_static_asserts(symtable *stab)
 					"static assert: not an integer constant expression (%s)",
 					sa->e->f_str());
 
-		if(!k.bits.num.val.i)
-			die_at(&sa->e->where, "static assertion failure: %s", sa->s);
+		if(!k.bits.num.val.i){
+			warn_at_print_error(&sa->e->where, "static assertion failure: %s", sa->s);
+			fold_had_error = 1;
 
-		if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
+		}else if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
 			fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
 					where_str(&sa->e->where), sa->e->f_str(), sa->s);
 		}
@@ -189,18 +190,39 @@ struct ident_loc
 	 ? (il)->bits.decl->spel \
 	 : (il)->bits.spel)
 
+static int strcmp_or_null(const char *a, const char *b)
+{
+	if(a && b)
+		return strcmp(a, b);
+
+	return 1;
+}
+
 static int ident_loc_cmp(const void *a, const void *b)
 {
 	const struct ident_loc *ia = a, *ib = b;
-	int r = strcmp(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
+	int r = strcmp_or_null(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
 
 	/* sort according to spel, then according to func-code
 	 * so it makes checking redefinitions easier, e.g.
 	 * f(){} f(); f(){}
+	 * also sort f() before f(args) so we can check
+	 * for arg mismatches
 	 */
 	if(r == 0 && ia->has_decl && ib->has_decl){
-		r = !!DECL_HAS_FUNC_CODE(ia->bits.decl)
-			- !!DECL_HAS_FUNC_CODE(ib->bits.decl);
+		type *a_fn = type_is(ia->bits.decl->ref, type_func);
+		type *b_fn = type_is(ib->bits.decl->ref, type_func);
+
+		r = !!(a_fn && ia->bits.decl->bits.func.code)
+			- !!(b_fn && ib->bits.decl->bits.func.code);
+
+		if(r == 0){
+			/* sort by proto */
+			if(a_fn && b_fn){
+				r = !!FUNCARGS_EMPTY_NOVOID(a_fn->bits.func.args)
+				  - !!FUNCARGS_EMPTY_NOVOID(b_fn->bits.func.args);
+			}
+		}
 	}
 
 	return r;
@@ -275,6 +297,15 @@ void symtab_fold_decls(symtable *tab)
 					}
 			}
 		}
+
+		if(type_is_func_or_block(d->ref)
+		&& d->store & store_inline
+		&& (d->store & STORE_MASK_STORE) == store_default)
+		{
+			warn_at(&d->where,
+					"pure inline function will not have code emitted "
+					"(missing \"static\" or \"extern\")");
+		}
 	}
 
 	/* add enums */
@@ -297,8 +328,13 @@ void symtab_fold_decls(symtable *tab)
 		}
 	}
 
-	/* add args */
-	if(tab->parent && tab->parent->are_params)
+	/* bring args into scope if the parent symtable is an argument symtable
+	 * and we are the the first symtable of a function.
+	 * the second condition is necessary to prevent importing arguments for:
+	 * int f(int a, void cb(int a))
+	 *                      ^ don't want to import the parent 'a' here
+	 */
+	if(tab->parent && tab->parent->are_params && tab->parent->in_func)
 		for(diter = tab->parent->decls; diter && *diter; diter++)
 			NEW_DECL(*diter);
 
@@ -319,7 +355,7 @@ void symtab_fold_decls(symtable *tab)
 			 * and multiple declarations at global scope,
 			 * but not definitions
 			 */
-			if(!strcmp(IDENT_LOC_SPEL(a), IDENT_LOC_SPEL(b))){
+			if(!strcmp_or_null(IDENT_LOC_SPEL(a), IDENT_LOC_SPEL(b))){
 				switch(a->has_decl + b->has_decl){
 					case 0:
 						/* both enum-membs, mismatch */
@@ -351,12 +387,23 @@ void symtab_fold_decls(symtable *tab)
 							case TYPE_QUAL_POINTED_ADD:
 							case TYPE_QUAL_POINTED_SUB:
 							case TYPE_QUAL_NESTED_CHANGE:
-								/* must be an exact match */
-							case TYPE_CONVERTIBLE_IMPLICIT:
 							case TYPE_CONVERTIBLE_EXPLICIT:
-								/* allow static/non-static redecl for non-functions */
-								if(a_func || (da->store & STORE_MASK_STORE) != store_static)
+								/* must be an exact match */
+								clash = "mismatching";
+								break;
+							case TYPE_CONVERTIBLE_IMPLICIT:
+								if(a_func){
+									/* allow 'a' to be static and 'b' to not be */
+									if((da->store & STORE_MASK_STORE) == store_static
+									&& (db->store & STORE_MASK_STORE) != store_static)
+									{
+										/* fine */
+									}else{
+										clash = "mismatching";
+									}
+								}else{
 									clash = "mismatching";
+								}
 								break;
 
 							case TYPE_EQUAL_TYPEDEF:
@@ -382,13 +429,23 @@ void symtab_fold_decls(symtable *tab)
 									}else{
 										/* fine - both extern */
 									}
-								}else if(a_func
-								&& DECL_HAS_FUNC_CODE(da)
-								&& DECL_HAS_FUNC_CODE(db))
-								{
-									clash = "duplicate";
-								}else if((da->store & STORE_MASK_STORE) == store_typedef){
-									warn_c11_retypedef(da, db);
+								}else{
+									if(a_func){
+										if(DECL_HAS_FUNC_CODE(da) && DECL_HAS_FUNC_CODE(db)){
+											clash = "duplicate";
+										}
+									}else{
+										/* variables at global scope - check static redef */
+										if(((da->store & STORE_MASK_STORE) == store_static)
+										 !=((db->store & STORE_MASK_STORE) == store_static))
+										{
+											clash = "mismatching";
+										}
+									}
+
+									if(!clash && (da->store & STORE_MASK_STORE) == store_typedef){
+										warn_c11_retypedef(da, db);
+									}
 								}
 								break;
 						}
