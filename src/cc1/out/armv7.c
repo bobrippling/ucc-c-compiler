@@ -354,8 +354,9 @@ op:
 			/* put the result in vtop-1's reg */
 			out_asm(octx, "%s %s, %s, %s", opc, rB, rA, rB);
 
-			out_val_consume(octx, r);
-			return v_dup_or_reuse(octx, l, l->t);
+			/* return 'r' since we use it's register as the result */
+			out_val_consume(octx, l);
+			return v_dup_or_reuse(octx, r, r->t);
 		}
 
 		case op_orsc:
