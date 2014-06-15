@@ -42,6 +42,7 @@ struct symtable
 	where where;
 
 	int auto_total_size;
+	unsigned mark : 1; /* used for scope checking */
 	unsigned folded : 1, laidout : 1;
 	unsigned internal_nest : 1, are_params : 1;
 	/*

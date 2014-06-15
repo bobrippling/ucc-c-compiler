@@ -155,21 +155,21 @@ void symtab_label_add(symtable *stab, label *lbl)
 	assert(!prev);
 }
 
-label *symtab_label_find_or_new(symtable *stab, char *spel, where *w)
+label *symtab_label_find_or_new(symtable *const stab, char *spel, where *w)
 {
+	symtable *root;
 	label *lbl;
 
-	stab = symtab_func_root(stab);
+	root = symtab_func_root(stab);
 
-	lbl = stab->labels
-		? dynmap_get(char *, label *,
-		    stab->labels, spel)
+	lbl = root->labels
+		? dynmap_get(char *, label *, root->labels, spel)
 		: NULL;
 
 	if(!lbl){
 		/* forward decl */
-		lbl = label_new(w, spel, 0);
-		symtab_label_add(stab, lbl);
+		lbl = label_new(w, spel, 0, stab);
+		symtab_label_add(root, lbl);
 	}
 
 	return lbl;

@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "stmt_if.h"
@@ -60,10 +61,14 @@ void flow_gen(
 
 void flow_end(stmt_flow *flow, symtable *stab, out_ctx *octx)
 {
-	gen_block_decls_end(stab, octx);
+	/* generate the braced scope first, then the for-control-variable's */
+	gen_scope_leave_parent(stab, octx);
 
-	if(flow && stab != flow->for_init_symtab)
-		gen_block_decls_end(flow->for_init_symtab, octx);
+	if(flow && stab != flow->for_init_symtab){
+		assert(stab->parent == flow->for_init_symtab);
+
+		gen_scope_leave_parent(flow->for_init_symtab, octx);
+	}
 }
 
 void fold_stmt_if(stmt *s)

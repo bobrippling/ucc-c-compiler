@@ -66,6 +66,8 @@ void fold_stmt_return(stmt *s)
 
 void gen_stmt_return(stmt *s, out_ctx *octx)
 {
+	gen_scope_leave_parent(s->symtab, octx);
+
 	out_ctrl_end_ret(
 			octx,
 			s->expr ? gen_expr(s->expr, octx) : NULL,

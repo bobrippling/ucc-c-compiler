@@ -191,11 +191,10 @@ void gen_block_decls(
 	}
 }
 
-void gen_block_decls_end(symtable *stab, out_ctx *octx)
+static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 {
 	decl **di;
-
-	for(di = stab->decls; di && *di; di++){
+	for(di = scope->decls; di && *di; di++){
 		decl *d = *di;
 		attribute *cleanup = attribute_present(d, attr_cleanup);
 		if(!cleanup)
@@ -208,8 +207,6 @@ void gen_block_decls_end(symtable *stab, out_ctx *octx)
 				NULL
 			};
 
-			ICW("FIXME: currently this is code-gen'd just after a jump");
-
 			out_flush_volatile(octx,
 					out_call(
 						octx,
@@ -218,6 +215,40 @@ void gen_block_decls_end(symtable *stab, out_ctx *octx)
 						type_ptr_to(fty)));
 		}
 	}
+}
+
+#define SYMTAB_PARENT_WALK(it, begin) \
+	for(it = begin; it; it = it->parent)
+
+void gen_scope_leave(symtable *const s_from, symtable *const s_to, out_ctx *octx)
+{
+	symtable *s_iter;
+
+	if(!s_to){ /* e.g. return */
+		gen_scope_destructors(s_from, octx);
+		return;
+	}
+
+	SYMTAB_PARENT_WALK(s_iter, s_to)
+		s_iter->mark = 1;
+
+	SYMTAB_PARENT_WALK(s_iter, s_from){
+		/* walk up until we hit a mark - that's our target scope
+		 * generate destructors along the way
+		 */
+		if(s_iter->mark)
+			break;
+
+		gen_scope_destructors(s_iter, octx);
+	}
+
+	SYMTAB_PARENT_WALK(s_iter, s_to)
+		s_iter->mark = 0;
+}
+
+void gen_scope_leave_parent(symtable *s_from, out_ctx *octx)
+{
+	gen_scope_leave(s_from, s_from->parent, octx);
 }
 
 /* this is done for lea_expr_stmt(), i.e.
@@ -238,7 +269,7 @@ void gen_stmt_code_m1(stmt *s, int m1, out_ctx *octx)
 		gen_stmt(*titer, octx);
 	}
 
-	gen_block_decls_end(s->symtab, octx);
+	gen_scope_leave_parent(s->symtab, octx);
 
 	if(endlbl)
 		out_dbg_label(octx, endlbl);
