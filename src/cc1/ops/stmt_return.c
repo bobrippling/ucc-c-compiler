@@ -66,10 +66,12 @@ void fold_stmt_return(stmt *s)
 
 void gen_stmt_return(stmt *s, out_ctx *octx)
 {
-	out_ctrl_end_ret(
-			octx,
-			s->expr ? gen_maybe_struct_expr(s->expr, octx) : NULL,
-			s->expr ? s->expr->tree_type : NULL);
+	/* need to generate the ret expr before the scope leave code */
+	const out_val *ret_exp = s->expr ? gen_maybe_struct_expr(s->expr, octx) : NULL;
+
+	gen_scope_leave(s->symtab, symtab_root(s->symtab), octx);
+
+	out_ctrl_end_ret(octx, ret_exp, s->expr ? s->expr->tree_type : NULL);
 }
 
 void style_stmt_return(stmt *s, out_ctx *octx)

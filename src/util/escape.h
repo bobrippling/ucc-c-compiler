@@ -28,7 +28,7 @@ long read_quoted_char(
 		int *multichar) ucc_nonnull();
 
 /* we're in the quote, single or double */
-long read_char_single(char *start, char **end) ucc_nonnull();
+long read_char_single(char *start, char **end, unsigned off) ucc_nonnull();
 
 #define isoct(x) ('0' <= (x) && (x) < '8')
 

@@ -60,7 +60,7 @@ ucc_wur const out_val *impl_test_overflow(
 /* scratch register indexing */
 int  impl_reg_to_idx(const struct vreg *);
 void impl_scratch_to_reg(int scratch, struct vreg *);
-int impl_reg_frame_const(const struct vreg *);
+int impl_reg_frame_const(const struct vreg *, int sp);
 int impl_reg_is_scratch(const struct vreg *);
 int impl_reg_savable(const struct vreg *);
 

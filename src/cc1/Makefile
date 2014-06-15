@@ -47,7 +47,7 @@ clean:
 	rm -f *.o cc1 ops/*.o out/*.o
 
 tags: ${SRC}
-	${CTAGS}
+	ctags -R .
 
 .PHONY: clean deps
 

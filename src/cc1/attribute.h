@@ -26,6 +26,7 @@ struct attribute
 		attr_sentinel,
 		attr_aligned,
 		attr_weak,
+		attr_cleanup,
 		attr_ucc_debug, /* logs out a message when handled */
 		attr_LAST
 		/*
@@ -60,6 +61,7 @@ struct attribute
 		} conv;
 		unsigned long nonnull_args; /* limits to sizeof(long)*8 args, i.e. 64 */
 		struct expr *align, *sentinel;
+		struct decl *cleanup;
 		int ucc_debugged;
 	} bits;
 

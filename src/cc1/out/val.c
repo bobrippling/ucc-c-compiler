@@ -101,7 +101,8 @@ copy:
 			struct vreg r;
 			out_val *new;
 
-			if(impl_reg_frame_const(&from->bits.regoff.reg))
+			/* if it's a frame constant we can just use the same register */
+			if(impl_reg_frame_const(&from->bits.regoff.reg, 0))
 				goto copy;
 
 			/* copy to a new register */

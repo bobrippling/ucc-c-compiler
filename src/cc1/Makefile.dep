@@ -1061,7 +1061,8 @@ ops/stmt_code.o: ops/stmt_code.c ops/ops.h ops/../../util/util.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/stmt_code.h ops/../decl_init.h \
  ops/../../util/dynarray.h ops/../../util/dyn.h ops/../fold_sym.h \
- ops/../out/lbl.h ops/../type_is.h ops/../out/dbg.h
+ ops/../out/lbl.h ops/../type_is.h ops/../type_nav.h ops/../btype.h \
+ ops/../sue.h ops/../out/dbg.h
 ops/stmt_continue.o: ops/stmt_continue.c ops/ops.h ops/../../util/util.h \
  ops/../../util/warn.h ops/../../util/where.h ops/../../util/compiler.h \
  ops/../cc1.h ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \

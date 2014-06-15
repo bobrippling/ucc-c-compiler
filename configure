@@ -9,7 +9,6 @@ UCC_LD      = ${UCC_LD}
 UCC_ARCH    = ${UCC_ARCH}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
 UCC_CPU     = ${UCC_CPU}
-CTAGS       = ${TAG_CMD}
 !
 
 	cat > src/ucc/cfg.h <<!
@@ -133,8 +132,6 @@ unam="$(uname -s)"
 # TODO: option to use local ./lib path
 UCC_INC="-I/usr/include"
 
-TAG_CMD='ctags -R .'
-
 # defaults for an OS
 case "$unam" in
 	Linux)
@@ -172,8 +169,6 @@ case "$unam" in
 		ASM_PLBL=L
 		NEED_DSYM=1
 		leading_underscore
-
-		TAG_CMD='ctags -dt $$(find . -iname "*.[ch]")'
 		;;
 
 	CYGWIN_NT-*)

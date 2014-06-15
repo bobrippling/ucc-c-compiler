@@ -39,7 +39,7 @@ static const char *const colour_strs[] = {
 
 
 int warning_count = 0;
-int warning_length = 72 + 8;
+int warning_length = 80;
 
 void warn_colour(int on, int err)
 {
@@ -64,7 +64,7 @@ static void warn_show_line_part(char *line, int pos, unsigned wlen)
 
 	int warning_length_normalise = INT_MAX;
 	if(warning_length > 0){
-		warning_length_normalise = warning_length - 8;
+		warning_length_normalise = warning_length - 10;
 		if(warning_length_normalise <= 0)
 			warning_length_normalise = 1;
 
