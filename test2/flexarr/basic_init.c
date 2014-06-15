@@ -17,6 +17,6 @@ main()
 	};
 
 	_Static_assert(
-			__builtin_types_compatible_p(typeof(y), struct A),
+			__builtin_types_compatible_p(__typeof(y), struct A),
 			"completed array?");
 }

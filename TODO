@@ -1,10 +1,3 @@
-Testing
-#######
-
-%output_check anchors regex by default
-
-update bugs/
-
 General
 #######
 
@@ -27,26 +20,14 @@ cc1
 -fno-builtin
 default to external memset calls, -ffreestanding to use builtin on
 
-cc1.h - remove unused warnings
+rewrite the warning system - enum is not enough
 
 -fcommon: .comm nam,sz,align
 
 out/gen-optimisations:
-	constant folding
 	rearrangement of 1+f()+1 to f() + 1 + 1 - avoid pre-call reg saves
-	out/* - constant offset for symbols - x+61(%rsp), etc
 
 X-Macros instead of switches for enums
-
-const-fold: change interface and checking of ->val.iv.val to more explicit code
-
-__alignof__/_Alignof, _Alignas(type/const-expr):
-	same as sizeof except:
-		doubles: { linux32 => 4, win32 => 8, linux64 => 8 }
-		longs + doubles + ptrs change as their sizeof changes (x86 vs x64)
-	for structs/unions, it is the alignment of the largest type
-
-phi/basic-block backend gen
 
 __attribute__((pure))
 - function with no side effects (e.g. strlen())
@@ -55,29 +36,14 @@ __attribute__((fastcall)), cdecl, etc
 - see Windows name mangling - https://en.wikipedia.org/wiki/Name_mangling
 [this is in the experimental/calling_conv branch]
 
-extensions:
-	namespace [str] { ... }
-	__attribute__((overloadable)) - clang
-
-warn on more C99 uses in -std=c(89|90)|ansi:
-	e.g. compound literals, _Generic, _Static_assert, etc
-
-
 cpp
 ###
-
-[fixes in feature/cpp/* branches]
-
--Wunused-macros
-	-D macros, builtin and header macros aren't warned about
 
 fix dir-relative file opening (for #include <>):
 	cc -E dir/x.c
 	doesn't work, but
 	cd dir; cc -E x.c
 	does
-
-cc -MM *.c
 
 macros over multiple lines
 	#define a(x, y) x + y
@@ -86,8 +52,7 @@ macros over multiple lines
 		2
 	)
 
+Testing
+#######
 
-lib
-###
-
-stdio buffers, etc
+update bugs/

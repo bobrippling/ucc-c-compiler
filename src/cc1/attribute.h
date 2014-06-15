@@ -25,7 +25,9 @@ struct attribute
 		attr_packed,
 		attr_sentinel,
 		attr_aligned,
+		attr_weak,
 		attr_cleanup,
+		attr_ucc_debug, /* logs out a message when handled */
 		attr_LAST
 		/*
 		 * TODO: warning
@@ -60,6 +62,7 @@ struct attribute
 		unsigned long nonnull_args; /* limits to sizeof(long)*8 args, i.e. 64 */
 		struct expr *align, *sentinel;
 		struct decl *cleanup;
+		int ucc_debugged;
 	} bits;
 
 	attribute *next;
@@ -77,5 +80,6 @@ attribute *expr_attr_present(struct expr *, enum attribute_type);
 int attribute_equal(attribute *, attribute *);
 
 void attribute_free(struct attribute *a);
+void attribute_debug_check(struct attribute *attr);
 
 #endif

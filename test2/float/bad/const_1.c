@@ -1,2 +1,2 @@
 // RUN: %check -e %s
-int b[2.3]; // CHECK: /error: not an integral array size/
+int b[2.3]; // CHECK: error: array type isn't integral (double)

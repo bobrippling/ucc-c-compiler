@@ -1,5 +1,7 @@
 // RUN: %ocheck 0 %s    -fcast-with-builtin-types
 // RUN: %ocheck 0 %s -fno-cast-with-builtin-types
+// RUN: %ocheck 0 %s    -fcast-with-builtin-types -fno-const-fold
+// RUN: %ocheck 0 %s -fno-cast-with-builtin-types -fno-const-fold
 
 typedef unsigned long long uint64_t;
 

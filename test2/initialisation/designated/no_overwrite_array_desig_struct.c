@@ -20,11 +20,11 @@ static const struct
 	[2][2] = { "3/5/13", 100, RED,   CHANGE_DOWN, },
 };
 
-//typeof(*data) p = &data;
+//__typeof(*data) p = &data;
 
 f(int x, int y)
 {
-	typeof(**ent1) *p = &ent1[x][y];
+	__typeof(**ent1) *p = &ent1[x][y];
 
 	return !!p->date;
 }

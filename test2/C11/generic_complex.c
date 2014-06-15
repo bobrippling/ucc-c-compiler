@@ -7,6 +7,6 @@ union f;
 main()
 {
 	return _Generic(
-				*(typeof((*(struct A { int (*i)(union f); } *)0).i))0
+				*(__typeof((*(struct A { int (*i)(union f); } *)0).i))0
 				, char: 5, int (*)(S_OR_U f): 1);
 }

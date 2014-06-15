@@ -85,7 +85,10 @@ integral_t integral_truncate_bits(
 		integral_t val, unsigned bits,
 		sintegral_t *signed_iv)
 {
-	integral_t pos_mask = ~(~0ULL << bits);
+	integral_t pos_mask = bits < INTEGRAL_BITS
+		? ~(-1ULL << bits)
+		: -1ULL;
+
 	integral_t truncated = val & pos_mask;
 
 	if(fopt_mode & FOPT_CAST_W_BUILTIN_TYPES){

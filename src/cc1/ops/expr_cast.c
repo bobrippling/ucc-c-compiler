@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "../../util/alloc.h"
@@ -97,6 +98,29 @@ static void fold_cast_num(expr *const e, numeric *const num)
 #undef pv
 }
 
+static void signed_unsigned_warn_at(
+		where *w,
+		const char *infmt,
+		int signed_in, int signed_out,
+		integral_t a, integral_t b)
+{
+	char *fmt = ustrdup(infmt);
+	char *p = fmt;
+
+	for(;;){
+		p = strchr(p, '%');
+		if(!p)
+			break;
+		p += 3;
+		if(*p == 'A' || *p == 'B'){
+			*p = (*p == 'A' ? signed_in : signed_out) ? 'd' : 'u';
+		}
+	}
+
+	warn_at(w, fmt, a, b);
+	free(fmt);
+}
+
 static integral_t convert_integral_to_integral_warn(
 		const integral_t in, type *tin,
 		type *tout,
@@ -127,28 +151,52 @@ static integral_t convert_integral_to_integral_warn(
 	 * or conversion is unsigned -> signed and in < signed-max
 	 */
 
-	const unsigned sz_in = type_size(tin, w);
+	const unsigned sz_out = type_size(tout, w);
 	const int signed_in = type_is_signed(tin);
 	const int signed_out = type_is_signed(tout);
 	sintegral_t to_iv_sign_ext;
-	integral_t to_iv = integral_truncate(in, sz_in, &to_iv_sign_ext);
+	integral_t to_iv = integral_truncate(in, sz_out, &to_iv_sign_ext);
 	integral_t ret;
 
-	/* need to sign extend if signed */
-	if(signed_in || signed_out)
-		ret = (integral_t)to_iv_sign_ext;
-	else
+	if(!signed_out && signed_in){
+		const unsigned sz_in_bits = CHAR_BIT * type_size(tin, w);
+		const unsigned sz_out_bits = CHAR_BIT * sz_out;
+
+		/* e.g. "(unsigned)-1". Pick to_iv, i.e. the unsigned truncated repr
+		 * this assumes that signed ints on the host machine we're run on
+		 * are 2's complement, i.e. truncated a negative gives us all 1s,
+		 * which we truncate */
 		ret = to_iv;
+
+		/* need to ensure sign extension */
+		if(ret & (1ULL << (sz_in_bits - 1))
+		&& sz_in_bits != sz_out_bits)
+		{
+			ret |= -1ULL << sz_in_bits;
+
+			/* need to unmask any top bits, e.g. int instead of long long */
+			ret &= -1ULL >> sz_out_bits;
+		}
+
+	}else if(signed_in){
+		/* signed to signed */
+		ret = (integral_t)to_iv_sign_ext;
+	}else{
+		/* unsigned to unsigned */
+		ret = to_iv_sign_ext;
+	}
 
 	if(do_warn){
 		if(ret != in){
-			warn_at(w,
-					"implicit cast changes value from %lld to %lld",
-					in, ret);
+			signed_unsigned_warn_at(w,
+					"implicit cast changes value from %llA to %llB",
+					signed_in, signed_out,
+					in, signed_out ? (integral_t)to_iv_sign_ext : ret);
 
 		}else if(signed_out && !signed_in && (sintegral_t)ret < 0){
-			warn_at(w,
-					"implicit cast to negative changes value from %llu to %lld",
+			signed_unsigned_warn_at(w,
+					"implicit cast negates value, %llA to %llB",
+					signed_in, signed_out,
 					in, (sintegral_t)to_iv_sign_ext);
 
 		}else if(signed_out ? (sintegral_t)ret > 0 : 1){
@@ -157,14 +205,99 @@ static integral_t convert_integral_to_integral_warn(
 			int out_high = integral_high_bit(type_max(tout, w), tout);
 
 			if(in_high > out_high){
-				warn_at(w,
-						"implicit cast truncates value from %lld to %lld",
+				signed_unsigned_warn_at(w,
+						"implicit cast truncates value from %llA to %llB",
+						signed_in, signed_out,
 						in, ret & ((1ULL << (out_high + 1)) - 1));
 			}
 		}
 	}
 
 	return ret;
+}
+
+static void check_addr_int_cast(consty *k, int l)
+{
+	/* shouldn't fit, check if it will */
+	switch(k->type){
+		default:
+			ICE("bad switch");
+
+		case CONST_STRK:
+			/* no idea where it will be in memory,
+			 * can't fit into a smaller type */
+			k->type = CONST_NO; /* e.g. (int)&a */
+			break;
+
+		case CONST_NEED_ADDR:
+		case CONST_ADDR:
+			if(k->bits.addr.is_lbl){
+				k->type = CONST_NO; /* similar to strk case */
+			}else{
+				integral_t new = k->bits.addr.bits.memaddr;
+				const int pws = platform_word_size();
+
+				/* mask out bits so we have it truncated to `l' */
+				if(l < pws){
+					new = integral_truncate(new, l, NULL);
+
+					if(k->bits.addr.bits.memaddr != new)
+						/* can't cast without losing value - not const */
+						k->type = CONST_NO;
+
+				}else{
+					/* what are you doing... */
+					k->type = CONST_NO;
+				}
+			}
+	}
+}
+
+static void cast_addr(expr *e, consty *k)
+{
+	int l, r;
+
+	/* allow if we're casting to a same-size type */
+	l = type_size(e->tree_type, &e->where);
+
+	if(type_decayable(expr_cast_child(e)->tree_type))
+		r = platform_word_size(); /* func-ptr or array->ptr */
+	else
+		r = type_size(expr_cast_child(e)->tree_type, &expr_cast_child(e)->where);
+
+	if(l < r)
+		check_addr_int_cast(k, l);
+}
+
+static void const_intify(consty *k)
+{
+	switch(k->type){
+		case CONST_STRK:
+		case CONST_NO:
+			assert(0);
+		case CONST_NUM:
+			break;
+
+		case CONST_NEED_ADDR:
+		case CONST_ADDR:
+		{
+			integral_t memaddr;
+
+			/* can't do (int)&x */
+			if(k->bits.addr.is_lbl){
+				k->type = CONST_NO;
+				return;
+			}
+
+			memaddr = k->bits.addr.bits.memaddr + k->offset;
+
+			CONST_FOLD_LEAF(k);
+
+			k->type = CONST_NUM;
+			k->bits.num.val.i = memaddr;
+			break;
+		}
+	}
 }
 
 static void fold_const_expr_cast(expr *e, consty *k)
@@ -184,11 +317,11 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		return;
 
 	switch(k->type){
-		case CONST_NUM:
-			fold_cast_num(e, &k->bits.num);
+		case CONST_NO:
 			break;
 
-		case CONST_NO:
+		case CONST_NUM:
+			fold_cast_num(e, &k->bits.num);
 			break;
 
 		case CONST_NEED_ADDR:
@@ -200,76 +333,37 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 		case CONST_ADDR:
 		case CONST_STRK:
-		{
-			int l, r;
-
 			if(to_fp){
 				/* had an error - reported in fold() */
 				k->type = CONST_NO;
 				return;
 			}
 
-			/* allow if we're casting to a same-size type */
-			l = type_size(e->tree_type, &e->where);
-
-			if(type_decayable(expr_cast_child(e)->tree_type))
-				r = platform_word_size(); /* func-ptr or array->ptr */
-			else
-				r = type_size(expr_cast_child(e)->tree_type, &expr_cast_child(e)->where);
-
-			if(l < r){
-				/* shouldn't fit, check if it will */
-				switch(k->type){
-					default:
-						ICE("bad switch");
-
-					case CONST_STRK:
-						/* no idea where it will be in memory,
-						 * can't fit into a smaller type */
-						k->type = CONST_NO; /* e.g. (int)&a */
-						break;
-
-					case CONST_NEED_ADDR:
-					case CONST_ADDR:
-						if(k->bits.addr.is_lbl){
-							k->type = CONST_NO; /* similar to strk case */
-						}else{
-							integral_t new = k->bits.addr.bits.memaddr;
-							const int pws = platform_word_size();
-
-							/* mask out bits so we have it truncated to `l' */
-							if(l < pws){
-								new = integral_truncate(new, l, NULL);
-
-								if(k->bits.addr.bits.memaddr != new)
-									/* can't cast without losing value - not const */
-									k->type = CONST_NO;
-
-							}else{
-								/* what are you doing... */
-								k->type = CONST_NO;
-							}
-						}
-				}
-			}
+			cast_addr(e, k);
 			break;
-		}
 	}
 
-	/* if casting from pointer to int, it's not a constant
-	 * but we treat it as such, as an extension */
+	/* may be mutated above */
+	if(k->type == CONST_NO)
+		return;
+
 	if(type_is_ptr(e->expr->tree_type)
-	&& !type_is_ptr(e->tree_type)
-	&& !k->nonstandard_const)
+	&& !type_is_ptr(e->tree_type))
 	{
-		k->nonstandard_const = e;
+		/* casting from pointer to int */
+		if(type_size(e->tree_type, &e->where) < platform_word_size())
+			const_intify(k); /* smaller than word size, force to int */
+
+		/* not a constant but we treat it as such, as an extension */
+		if(!k->nonstandard_const)
+			k->nonstandard_const = e;
 	}
 }
 
-static void lea_expr_cast(expr *e)
+static const out_val *lea_expr_cast(expr *e, out_ctx *octx)
 {
 	expr *c = expr_cast_child(e);
-	c->f_lea(c);
+	return c->f_lea(c, octx);
 }
 
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
@@ -391,9 +485,9 @@ void fold_expr_cast(expr *e, symtable *stab)
 	fold_expr_cast_descend(e, stab, 1);
 }
 
-void gen_expr_cast(expr *e)
+const out_val *gen_expr_cast(expr *e, out_ctx *octx)
 {
-	gen_expr(expr_cast_child(e));
+	const out_val *casted = gen_expr(expr_cast_child(e), octx);
 
 	if(IS_RVAL_CAST(e)){
 		/*out_to_rvalue();*/
@@ -405,9 +499,9 @@ void gen_expr_cast(expr *e)
 
 		/* return if cast-to-void */
 		if(type_is_void(tto)){
-			out_change_type(tto);
-			out_comment("cast to void");
-			return;
+			casted = out_change_type(octx, casted, tto);
+			out_comment(octx, "cast to void");
+			return casted;
 		}
 
 		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
@@ -425,26 +519,36 @@ void gen_expr_cast(expr *e)
 						type_to_str_r(buf, tto),
 						mem->struct_offset);*/
 
-					out_change_type(type_ptr_to(
+					casted = out_change_type(
+							octx,
+							casted,
+							type_ptr_to(
 								type_nav_btype(cc1_type_nav, type_void)));
 
-					out_push_l(type_nav_btype(cc1_type_nav, type_intptr_t),
-							mem->bits.var.struct_offset);
-					out_op(op_plus);
+					casted = out_op(
+							octx, op_plus,
+							casted,
+							out_new_l(
+								octx,
+								type_nav_btype(cc1_type_nav, type_intptr_t),
+								mem->bits.var.struct_offset));
 				}
 			}
 		}
 
-		out_cast(tto, /*normalise_bool:*/1);
+		casted = out_cast(octx, casted, tto, /*normalise_bool:*/1);
 	}
+
+	return casted;
 }
 
-void gen_expr_str_cast(expr *e)
+const out_val *gen_expr_str_cast(expr *e, out_ctx *octx)
 {
 	idt_printf("%scast expr:\n", IS_RVAL_CAST(e) ? "rvalue-" : "");
 	gen_str_indent++;
 	print_expr(expr_cast_child(e));
 	gen_str_indent--;
+	UNUSED_OCTX();
 }
 
 void mutate_expr_cast(expr *e)
@@ -481,8 +585,9 @@ expr *expr_new_cast_decay(expr *sub, type *to)
 	return e;
 }
 
-void gen_expr_style_cast(expr *e)
+const out_val *gen_expr_style_cast(expr *e, out_ctx *octx)
 {
 	stylef("(%s)", type_to_str(e->bits.cast.tref));
-	gen_expr(expr_cast_child(e));
+	IGNORE_PRINTGEN(gen_expr(expr_cast_child(e), octx));
+	return NULL;
 }

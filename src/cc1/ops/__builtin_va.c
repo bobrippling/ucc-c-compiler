@@ -158,7 +158,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
-static void builtin_gen_va_start(expr *e)
+static const out_val *builtin_gen_va_start(expr *e, out_ctx *octx)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -176,10 +176,10 @@ static void builtin_gen_va_start(expr *e)
 	out_push_zero(type_new_INTPTR_T());
 	out_store();
 #else
-	out_comment("va_start() begin");
-	gen_stmt(e->bits.variadic_setup);
-	out_push_noop();
-	out_comment("va_start() end");
+	out_comment(octx, "va_start() begin");
+	gen_stmt(e->bits.variadic_setup, octx);
+	out_comment(octx, "va_start() end");
+	return out_new_noop(octx);
 #endif
 }
 
@@ -194,138 +194,140 @@ expr *parse_va_start(const char *ident, symtable *scope)
 	return fcall;
 }
 
-static void va_arg_gen_read(
+static const out_val *va_arg_gen_read(
 		expr *const e,
+		out_ctx *const octx,
 		type *const ty,
 		decl *const offset_decl, /* varies - float or integral */
 		decl *const mem_reg_save_area,
 		decl *const mem_overflow_arg_area)
 {
-	char *lbl_stack = out_label_code("va_else");
-	char *lbl_fin   = out_label_code("va_fin");
-	char vphi_buf[OUT_VPHI_SZ];
+	out_blk *blk_reg = out_blk_new(octx, "va_reg");
+	out_blk *blk_stack = out_blk_new(octx, "va_stack");
+	out_blk *blk_fin = out_blk_new(octx, "va_fin");
 
 	/* FIXME: this needs to reference x86_64::N_CALL_REGS_{I,F} */
 	const int fp = type_is_floating(ty);
 	const unsigned max_reg_args_sz = 6 * 8 + (fp ? 16 * 16 : 0);
 	const unsigned ws = platform_word_size();
-	const unsigned increment = fp ? 2 * ws : ws;
+	const out_val *valist, *gpoff_addr, *gpoff_val;
+	const int VALIST_OFFSET_TYPE = type_uint;
+	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+	type *valist_off_ty = type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE);
+	type *ty_long = type_nav_btype(cc1_type_nav, type_long);
 
-	gen_expr(e->lhs); /* va_list */
-	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
-	out_dup(); /* va, va */
+	valist = gen_expr(e->lhs, octx);
+	valist = out_change_type(octx, valist, voidp);
 
-	out_push_l(
-			type_nav_btype(cc1_type_nav, type_long),
-			offset_decl->bits.var.struct_offset);
+	out_val_retain(octx, valist);
+	gpoff_addr = out_op(
+			octx, op_plus,
+			valist,
+			out_new_l(
+				octx, ty_long,
+				offset_decl->bits.var.struct_offset));
 
-	out_op(op_plus); /* va, &va.gp_offset */
 
-	/*out_set_lvalue(); * val.gp_offset is an lvalue */
+	gpoff_addr = out_change_type(octx, gpoff_addr,
+			type_ptr_to(valist_off_ty));
 
-	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_int)));
-	out_dup(); /* va, &gp_o, &gp_o */
+	out_val_retain(octx, gpoff_addr);
+	gpoff_val = out_deref(octx, gpoff_addr);
 
-	out_deref(); /* va, &gp_o, gp_o */
-	out_push_l(type_nav_btype(cc1_type_nav, type_int), max_reg_args_sz);
-	out_op(op_lt); /* va, &gp_o, <cond> */
-	out_jfalse(lbl_stack);
 
-	/* register code */
-	out_dup(); /* va, &gp_o, &gp_o */
-	out_deref(); /* va, &gp_o, gp_o */
+	out_val_retain(octx, gpoff_val);
+	out_ctrl_branch(
+			octx,
+			out_op(octx,
+				op_lt,
+				gpoff_val,
+				out_new_l(octx, valist_off_ty, max_reg_args_sz)),
+			blk_reg,
+			blk_stack);
 
-	/* increment either 8 for an integral, or 16 for a float argument
-	 * since xmm0 are 128-bit registers, aka 16 byte
-	 */
-	out_push_l(type_nav_btype(cc1_type_nav, type_int), increment); /* pws */
-	out_op(op_plus); /* va, &gp_o, gp_o+ws */
+	/* now inserting into blk_reg */
+	{
+		const unsigned increment = fp ? 2 * ws : ws;
+		const out_val *gp_off_plus, *membptr;
+		const out_val *reg_save_area_value;
 
-	out_store(); /* va, gp_o+ws */
-	out_push_l(type_nav_btype(cc1_type_nav, type_int), increment); /* pws */
-	out_op(op_minus); /* va, gp_o */
-	out_change_type(type_nav_btype(cc1_type_nav, type_long));
+		/* increment either 8 for an integral, or 16 for a float argument
+		 * since xmm0 are 128-bit registers, aka 16 byte
+		 */
+		out_val_retain(octx, gpoff_val);
+		gp_off_plus =
+			out_op(octx,
+					op_plus,
+					gpoff_val,
+					out_new_l(octx, valist_off_ty, increment));
 
-	out_swap(); /* gp_o, va */
-	out_push_l(
-			type_nav_btype(cc1_type_nav, type_long),
-			mem_reg_save_area->bits.var.struct_offset);
+		out_store(octx, gpoff_addr, gp_off_plus);
 
-	out_op(op_plus); /* gp_o, &reg_save_area */
-	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_long)));
-	out_deref();
-	out_swap();
-	out_op(op_plus); /* reg_save_area + gp_o */
+		out_val_retain(octx, valist);
+		membptr =
+			out_change_type(
+					octx,
+					out_op(
+						octx, op_plus,
+						valist,
+						out_new_l(
+							octx, ty_long,
+							mem_reg_save_area->bits.var.struct_offset)),
+					type_ptr_to(voidp)); /* void *reg_save_area */
 
-	out_push_lbl(lbl_fin, 0);
-	out_jmp();
+		reg_save_area_value = out_op(
+				octx, op_plus,
+				out_deref(octx, membptr),
+				out_change_type(
+					octx,
+					gpoff_val, /* promote from unsigned to long/intptr_t */
+					type_ptr_to(ty_long)));
+
+		out_ctrl_transfer(octx, blk_fin, reg_save_area_value, &blk_reg);
+	}
 
 	/* stack code */
-	out_label(lbl_stack);
+	out_current_blk(octx, blk_stack);
+	{
+		const out_val *overflow_val;
+		const out_val *overflow_addr =
+			out_change_type(
+					octx,
+					out_op(
+						octx, op_plus,
+						out_change_type(octx, valist, voidp),
+						out_new_l(
+							octx, ty_long,
+							mem_overflow_arg_area->bits.var.struct_offset)),
+					type_ptr_to(type_ptr_to(valist_off_ty)));
 
-	/* prepare for joining later */
-	out_phi_pop_to(&vphi_buf);
+		out_val_retain(octx, overflow_addr);
 
-	gen_expr(e->lhs);
-	/* va */
-	out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
-	out_push_l(
-			type_nav_btype(cc1_type_nav, type_long),
-			mem_overflow_arg_area->bits.var.struct_offset);
+		overflow_val = out_deref(octx, overflow_addr);
 
-	out_op(op_plus);
-	/* &overflow_a */
+		out_val_retain(octx, overflow_addr);
+		out_store(
+				octx,
+				overflow_addr,
+				out_op(
+					octx, op_plus,
+					out_change_type(octx, out_deref(octx, overflow_addr), voidp),
+					out_new_l(octx, valist_off_ty, ws)));
 
-	/*out_set_lvalue(); * overflow entry in the struct is an lvalue */
+		out_ctrl_transfer(octx, blk_fin, overflow_val, &blk_stack);
+	}
 
-	out_dup(), out_change_type(type_ptr_to(type_nav_btype(cc1_type_nav, type_long))), out_deref();
-	/* &overflow_a, overflow_a */
-
-	/* XXX: pws will need changing if we jump directly to stack, e.g. passing a struct */
-	out_push_l(type_nav_btype(cc1_type_nav, type_long), ws);
-	out_op(op_plus);
-
-	out_store();
-
-	out_push_l(type_nav_btype(cc1_type_nav, type_long), ws);
-	out_op(op_minus);
-
-	/* ensure we match the other block's final result before the merge */
-	out_phi_join(vphi_buf);
-
-	/* "merge" */
-	out_label(lbl_fin);
-
-	/* now have a pointer to the right memory address */
-	out_change_type(type_ptr_to(ty));
-	out_deref();
-
-	/*
-	 * this works by using phi magic - we end up with something like this:
-	 *
-	 *   <reg calc>
-	 *   // pointer in rbx
-	 *   jmp fin
-	 * else:
-	 *   <stack calc>
-	 *   // pointer in rax
-	 *   <phi-merge with previous block>
-	 * fin:
-	 *   ...
-	 *
-	 * This is because the two parts of the if above are disjoint, one may
-	 * leave its result in eax, one in ebx. We need basic blocks and phi:s to
-	 * solve this properly.
-	 *
-	 * This problem exists in other code, such as &&-gen, but since we pop
-	 * and push immediately, it doesn't manifest itself.
-	 */
-
-	free(lbl_stack);
-	free(lbl_fin);
+	out_current_blk(octx, blk_fin);
+	return out_deref(
+			octx,
+			out_change_type(
+				octx,
+				/* now have a pointer to the right memory address: */
+				out_ctrl_merge(octx, blk_reg, blk_stack),
+				type_ptr_to(ty)));
 }
 
-static void builtin_gen_va_arg(expr *e)
+static const out_val *builtin_gen_va_arg(expr *e, out_ctx *octx)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -461,8 +463,8 @@ stack:
 			VA_DECL(reg_save_area);
 			VA_DECL(overflow_arg_area);
 
-			va_arg_gen_read(
-					e,
+			return va_arg_gen_read(
+					e, octx,
 					ty,
 					fp ? mem_fp_offset : mem_gp_offset,
 					mem_reg_save_area,
@@ -505,7 +507,7 @@ expr *parse_va_arg(const char *ident, symtable *scope)
 {
 	/* va_arg(list, type) */
 	expr *fcall = expr_new_funcall();
-	expr *list = PARSE_EXPR_NO_COMMA(scope);
+	expr *list = PARSE_EXPR_NO_COMMA(scope, 0);
 	type *ty;
 
 	(void)ident;
@@ -521,10 +523,10 @@ expr *parse_va_arg(const char *ident, symtable *scope)
 	return fcall;
 }
 
-static void builtin_gen_va_end(expr *e)
+static const out_val *builtin_gen_va_end(expr *e, out_ctx *octx)
 {
 	(void)e;
-	out_push_noop();
+	return out_new_noop(octx);
 }
 
 static void fold_va_end(expr *e, symtable *stab)
@@ -549,9 +551,9 @@ expr *parse_va_end(const char *ident, symtable *scope)
 	return fcall;
 }
 
-static void builtin_gen_va_copy(expr *e)
+static const out_val *builtin_gen_va_copy(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs);
+	return gen_expr(e->lhs, octx);
 }
 
 static void fold_va_copy(expr *e, symtable *stab)

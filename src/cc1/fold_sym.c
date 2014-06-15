@@ -190,18 +190,39 @@ struct ident_loc
 	 ? (il)->bits.decl->spel \
 	 : (il)->bits.spel)
 
+static int strcmp_or_null(const char *a, const char *b)
+{
+	if(a && b)
+		return strcmp(a, b);
+
+	return 1;
+}
+
 static int ident_loc_cmp(const void *a, const void *b)
 {
 	const struct ident_loc *ia = a, *ib = b;
-	int r = strcmp(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
+	int r = strcmp_or_null(IDENT_LOC_SPEL(ia), IDENT_LOC_SPEL(ib));
 
 	/* sort according to spel, then according to func-code
 	 * so it makes checking redefinitions easier, e.g.
 	 * f(){} f(); f(){}
+	 * also sort f() before f(args) so we can check
+	 * for arg mismatches
 	 */
 	if(r == 0 && ia->has_decl && ib->has_decl){
-		r = !!DECL_HAS_FUNC_CODE(ia->bits.decl)
-			- !!DECL_HAS_FUNC_CODE(ib->bits.decl);
+		type *a_fn = type_is(ia->bits.decl->ref, type_func);
+		type *b_fn = type_is(ib->bits.decl->ref, type_func);
+
+		r = !!(a_fn && ia->bits.decl->bits.func.code)
+			- !!(b_fn && ib->bits.decl->bits.func.code);
+
+		if(r == 0){
+			/* sort by proto */
+			if(a_fn && b_fn){
+				r = !!FUNCARGS_EMPTY_NOVOID(a_fn->bits.func.args)
+				  - !!FUNCARGS_EMPTY_NOVOID(b_fn->bits.func.args);
+			}
+		}
 	}
 
 	return r;
@@ -307,8 +328,13 @@ void symtab_fold_decls(symtable *tab)
 		}
 	}
 
-	/* add args */
-	if(tab->parent && tab->parent->are_params)
+	/* bring args into scope if the parent symtable is an argument symtable
+	 * and we are the the first symtable of a function.
+	 * the second condition is necessary to prevent importing arguments for:
+	 * int f(int a, void cb(int a))
+	 *                      ^ don't want to import the parent 'a' here
+	 */
+	if(tab->parent && tab->parent->are_params && tab->parent->in_func)
 		for(diter = tab->parent->decls; diter && *diter; diter++)
 			NEW_DECL(*diter);
 
@@ -329,7 +355,7 @@ void symtab_fold_decls(symtable *tab)
 			 * and multiple declarations at global scope,
 			 * but not definitions
 			 */
-			if(!strcmp(IDENT_LOC_SPEL(a), IDENT_LOC_SPEL(b))){
+			if(!strcmp_or_null(IDENT_LOC_SPEL(a), IDENT_LOC_SPEL(b))){
 				switch(a->has_decl + b->has_decl){
 					case 0:
 						/* both enum-membs, mismatch */

@@ -16,9 +16,14 @@ typedef struct
 	int include_depth;
 } macro;
 
-macro *macro_add(     const char *nam, const char *val, int inc_depth);
+macro *macro_add(const char *nam, const char *val, int inc_depth);
 macro *macro_add_func(const char *nam, const char *val,
 		char **args, int variadic, int inc_depth);
+
+macro *macro_add_sprintf(
+		const char *nam,
+		const char *fmt, ...)
+	ucc_printflike(2, 3);
 
 macro *macro_find(const char *sp);
 int    macro_remove(const char *nam);

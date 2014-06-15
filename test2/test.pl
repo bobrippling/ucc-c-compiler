@@ -1,4 +1,7 @@
 #!/usr/bin/perl
+
+# exit codes: 0 = pass, 1 = fail, 2 = skipped
+
 use warnings;
 
 my $timeout = 2;
@@ -65,11 +68,12 @@ my %vars = (
 	'layout_check' => './layout_check.sh',
 	'caret_check' => './caret_check.pl',
 	'debug_check' => './debug_check.pl',
+	'jmpcheck' => './jmpcheck.sh',
 );
 
 if($verbose){
 	my @verbose_support = (
-		'check', 'ocheck', 'debug_check'
+		'check', 'ocheck', 'debug_check', 'layout_check'
 	);
 
 	$vars{$_} .=  " -v" for @verbose_support;
@@ -80,6 +84,24 @@ my $ran = 0;
 my $want_check = 0;
 my $had_check = 0;
 
+
+my @platforms = (
+	'linux',
+	'freebsd',
+	'darwin',
+	'cygwin_nt-.*',
+);
+sub platform_valid_check
+{
+	my $p = lc shift;
+	for(@platforms){
+		return if $p =~ /$_/;
+	}
+	die "platform '$p' not recognised";
+}
+chomp(my $platform = lc `uname -s`);
+platform_valid_check $platform;
+
 # export for sub-programs
 $ENV{UCC} = $ucc;
 
@@ -88,6 +110,27 @@ while(<F>){
 	chomp;
 
 	if(my($command, $sh) = m{// *([A-Z]+): *(.*)}){
+		if($command eq 'TEST'){
+			# target [!] platform
+			if($sh =~ /^target *(!?) *([a-zA-Z0-9_-]+)$/){
+				my($not, $platform_req) = ($1, $2);
+
+				$not = length $not;
+
+				platform_valid_check $platform_req;
+
+				my $platform_eq = $platform_req eq $platform;
+
+				if($platform_eq == $not){
+					warn "skipping $file: not on platform '$platform_req'\n";
+					exit 2;
+				}
+
+			}else{
+				die "unrecognised TEST command '$sh'";
+			}
+		}
+
 		if($command eq 'RUN'){
 			$ran++;
 
@@ -122,7 +165,8 @@ if($ran){
 
 sub die2
 {
-	die "$0: @_\n";
+	warn "$0: @_\n";
+	exit 1;
 }
 
 sub apply_vars

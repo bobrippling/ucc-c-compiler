@@ -6,4 +6,4 @@ struct A
 	int i, j;
 } ent1[3];
 
-typeof(ent1) ent2;
+__typeof(ent1) ent2;

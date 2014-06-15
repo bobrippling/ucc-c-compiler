@@ -8,6 +8,13 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 
+#include "../type.h"
+#include "../decl.h"
+#include "../strings.h"
+
+#include "asm.h"
+#include "out.h"
+
 #include "../cc1.h"
 #include "../sym.h"
 #include "../expr.h"
@@ -21,8 +28,7 @@
 #include "../pack.h"
 #include "../str.h"
 
-#include "asm.h"
-#include "out.h"
+#include "../../as_cfg.h" /* weak directive */
 
 #define ASSERT_SCALAR(di)                  \
 	UCC_ASSERT(di->type == decl_init_scalar, \
@@ -160,8 +166,7 @@ void asm_out_fp(enum section_type sec, type *ty, floating_t f)
 			{
 				union { float f; unsigned u; } u;
 				u.f = f;
-				asm_out_section(sec, ".long %u\n", u.u);
-				out_comment_sec(sec, "float %f", u.f);
+				asm_out_section(sec, ".long %u # float %f\n", u.u, u.f);
 				break;
 			}
 
@@ -169,8 +174,7 @@ void asm_out_fp(enum section_type sec, type *ty, floating_t f)
 			{
 				union { double d; unsigned long ul; } u;
 				u.d = f;
-				asm_out_section(sec, ".quad %lu\n", u.ul);
-				out_comment_sec(sec, "double %f", u.d);
+				asm_out_section(sec, ".quad %lu # double %f\n", u.ul, u.d);
 				break;
 			}
 		case type_ldouble:
@@ -468,6 +472,11 @@ static void asm_reserve_bytes(enum section_type sec, unsigned nbytes)
 	asm_declare_pad(sec, nbytes, "object space");
 }
 
+static void asm_predecl(const char *type, decl *d)
+{
+	asm_out_section(SECTION_TEXT, ".%s %s\n", type, decl_asm_spel(d));
+}
+
 void asm_predeclare_extern(decl *d)
 {
 	(void)d;
@@ -479,8 +488,12 @@ void asm_predeclare_extern(decl *d)
 
 void asm_predeclare_global(decl *d)
 {
-	/* FIXME: section cleanup - along with __attribute__((section("..."))) */
-	asm_out_section(SECTION_TEXT, ".globl %s\n", decl_asm_spel(d));
+	asm_predecl("globl", d);
+}
+
+void asm_predeclare_weak(decl *d)
+{
+	asm_predecl(ASM_WEAK_DIRECTIVE, d);
 }
 
 void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
@@ -509,12 +522,18 @@ void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
 	fputc('\n', f);
 }
 
-void asm_declare_decl_init(enum section_type sec, decl *d)
+void asm_declare_decl_init(decl *d)
 {
+	enum section_type sec;
+
 	if((d->store & STORE_MASK_STORE) == store_extern){
 		asm_predeclare_extern(d);
+		return;
+	}
 
-	}else if(d->bits.var.init && !decl_init_is_zero(d->bits.var.init)){
+	sec = type_is_const(d->ref) ? SECTION_RODATA : SECTION_DATA;
+
+	if(d->bits.var.init && !decl_init_is_zero(d->bits.var.init)){
 		asm_nam_begin(sec, d);
 		asm_declare_init(sec, d->bits.var.init, d->ref);
 		asm_out_section(sec, "\n");

@@ -5,7 +5,7 @@ main()
 
 	_Static_assert(
 			__builtin_types_compatible_p(
-				typeof(ki),
+				__typeof(ki),
 				const int),
 			"yo");
 }

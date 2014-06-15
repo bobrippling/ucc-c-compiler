@@ -74,15 +74,15 @@ static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 
 		if(accept(token_comma)){
 			/* if(int i = 5, i > f()){ ... } */
-			t->expr = parse_expr_exp(ctx->scope);
+			t->expr = parse_expr_exp(ctx->scope, 0);
 		}else{
 			/* if(int i = 5) -> if(i) */
 			t->expr = expr_new_identifier(d->spel);
 		}
 	}else{
-		t->expr = parse_expr_exp(t->symtab);
+		t->expr = parse_expr_exp(t->symtab, 0);
 	}
-	fold_expr(t->expr, t->symtab);
+	FOLD_EXPR(t->expr, t->symtab);
 
 	EAT(token_close_paren);
 }
@@ -135,7 +135,7 @@ static stmt *parse_do(const struct stmt_ctx *const ctx)
 
 	EAT(token_while);
 	EAT(token_open_paren);
-	t->expr = parse_expr_exp(subctx.scope);
+	t->expr = parse_expr_exp(subctx.scope, 0);
 	fold_expr(t->expr, ctx->scope);
 	EAT(token_close_paren);
 	EAT(token_semicolon);
@@ -191,7 +191,7 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 
 			stmt_for_got_decls(s);
 		}else{
-			sf->for_init = parse_expr_exp(subctx.scope);
+			sf->for_init = parse_expr_exp(subctx.scope, 0);
 
 			flow_fold(s->flow, &s->symtab);
 			subctx.scope = s->symtab;
@@ -204,13 +204,13 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 	}
 
 	if(!accept(token_semicolon)){
-		sf->for_while = parse_expr_exp(subctx.scope);
+		sf->for_while = parse_expr_exp(subctx.scope, 0);
 		FOLD_EXPR(sf->for_while, subctx.scope);
 		EAT(token_semicolon);
 	}
 
 	if(!accept(token_close_paren)){
-		sf->for_inc = parse_expr_exp(subctx.scope);
+		sf->for_inc = parse_expr_exp(subctx.scope, 0);
 		FOLD_EXPR(sf->for_inc, subctx.scope);
 		EAT(token_close_paren);
 	}
@@ -228,7 +228,7 @@ void parse_static_assert(symtable *scope)
 		sa->scope = scope;
 
 		EAT(token_open_paren);
-		sa->e = PARSE_EXPR_NO_COMMA(scope);
+		sa->e = PARSE_EXPR_NO_COMMA(scope, 0);
 		EAT(token_comma);
 
 		token_get_current_str(&sa->s, NULL, NULL, NULL);
@@ -482,7 +482,7 @@ stmt *parse_stmt(const struct stmt_ctx *ctx)
 				t = stmt_new_wrapper(return, ctx->scope);
 
 				if(curtok != token_semicolon){
-					t->expr = parse_expr_exp(ctx->scope);
+					t->expr = parse_expr_exp(ctx->scope, 0);
 					fold_expr(t->expr, ctx->scope);
 				}
 			}else{
@@ -492,7 +492,7 @@ stmt *parse_stmt(const struct stmt_ctx *ctx)
 
 				if(accept(token_multiply)){
 					/* computed goto */
-					t->expr = parse_expr_exp(ctx->scope);
+					t->expr = parse_expr_exp(ctx->scope, 0);
 				}else if(curtok == token_identifier){
 					t->bits.lbl.spel = token_current_spel();
 					EAT(token_identifier);
@@ -548,12 +548,12 @@ flow:
 			where_cc1_current(&cse_loc);
 
 			EAT(token_case);
-			a = parse_expr_exp(ctx->scope);
+			a = parse_expr_exp(ctx->scope, 0);
 			if(accept(token_elipsis)){
 				t = stmt_new_wrapper(case_range, ctx->scope);
 				t->parent = ctx->switch_target;
 				t->expr  = a;
-				t->expr2 = parse_expr_exp(ctx->scope);
+				t->expr2 = parse_expr_exp(ctx->scope, 0);
 			}else{
 				t = stmt_new_wrapper(case, ctx->scope);
 				t->expr = a;
@@ -569,7 +569,7 @@ flow:
 			if(curtok == token_identifier && tok_at_label()){
 				t = parse_label(ctx);
 			}else{
-				t = expr_to_stmt(parse_expr_exp(ctx->scope), ctx->scope);
+				t = expr_to_stmt(parse_expr_exp(ctx->scope, 0), ctx->scope);
 				fold_stmt(t);
 				EAT(token_semicolon);
 			}

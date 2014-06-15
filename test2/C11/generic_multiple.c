@@ -1,6 +1,6 @@
 /* TODO: signed char */
 // RUN: %ucc -o %t %s
-// RUN: %t | %output_check "size_t is 'unsigned long int'" "ptrdiff_t is 'long int'" "intmax_t is 'long long int'" "character constant is 'int'" "0x7FFFFFFF is 'int'" "0xFFFFFFFF is 'unsigned int'" "0x7FFFFFFFU is 'unsigned int'" "array of int is 'other'"
+// RUN: %t | %output_check "size_t is 'unsigned long int'" "ptrdiff_t is 'long int'" "intmax_t is 'long long int'" "character constant is 'int'" "0x7FFFFFFF is 'int'" "0xFFFFFFFF is 'unsigned int'" "0x7FFFFFFFU is 'unsigned int'" "array of int is 'pointer to int'"
 
 /* Get the name of a type */
 #define typename(x) _Generic((x),                                                 \
@@ -33,7 +33,7 @@ void test_typename(void)
 	printf("0x7FFFFFFF is '%s'\n",         typename(0x7FFFFFFF));
 	printf("0xFFFFFFFF is '%s'\n",         typename(0xFFFFFFFF));
 	printf("0x7FFFFFFFU is '%s'\n",        typename(0x7FFFFFFFU));
-	printf("array of int is '%s'\n",       typename(ai)); // XXX: should be 'other'
+	printf("array of int is '%s'\n",       typename(ai));
 }
 
 main()

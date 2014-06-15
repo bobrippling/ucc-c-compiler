@@ -25,23 +25,27 @@ void fold_stmt_goto(stmt *s)
 	}
 }
 
-void gen_stmt_goto(stmt *s)
+void gen_stmt_goto(stmt *s, out_ctx *octx)
 {
-	if(s->expr)
-		gen_expr(s->expr);
-	else
-		out_push_lbl(s->bits.lbl.label->mangled, 0);
+	if(s->expr){
+		const out_val *target = gen_expr(s->expr, octx);
 
-	out_jmp();
+		out_ctrl_transfer_exp(octx, target);
+
+	}else{
+		label_makeblk(s->bits.lbl.label, octx);
+
+		out_ctrl_transfer(octx, s->bits.lbl.label->bblock, NULL, NULL);
+	}
 }
 
-void style_stmt_goto(stmt *s)
+void style_stmt_goto(stmt *s, out_ctx *octx)
 {
 	stylef("goto ");
 
 	if(s->expr){
 		stylef("*");
-		gen_expr(s->expr);
+		IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	}else{
 		stylef("%s", s->bits.lbl.spel);
 	}

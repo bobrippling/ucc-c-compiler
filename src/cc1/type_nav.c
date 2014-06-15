@@ -18,7 +18,7 @@ struct type_nav
 {
 	type **btypes; /* indexed by type_primitive */
 	dynmap *suetypes; /* sue => type */
-	type *tva_list;
+	type *tva_list, *tauto;
 };
 
 struct type_tree
@@ -269,8 +269,22 @@ static void init_qual(type *t, void *ctx)
 
 type *type_qualify(type *unqualified, enum type_qualifier qual)
 {
+	type *ar_ty;
+
 	if(!qual)
 		return unqualified;
+
+	if((ar_ty = type_is(unqualified, type_array))){
+		/* const -> array -> int
+		 * becomes
+		 * array -> const -> int
+		 *
+		 * C11 6.7.3.9 */
+
+		return type_array_of(
+				type_qualify(ar_ty->ref, qual),
+				ar_ty->bits.array.size);
+	}
 
 	return type_uptree_find_or_new(
 			unqualified, type_cast,
@@ -341,7 +355,7 @@ type *type_called(type *functy, struct funcargs **pfuncargs)
 	return functy->ref;
 }
 
-type *type_pointed_to(type *const ty_ptr)
+type *type_dereference_decay(type *const ty_ptr)
 {
 	type *const pointee = type_is_ptr(ty_ptr);
 	assert(pointee);
@@ -423,13 +437,21 @@ type *type_nav_btype(struct type_nav *root, enum type_primitive p)
 	return root->btypes[p];
 }
 
+type *type_nav_auto(struct type_nav *root)
+{
+	if(!root->tauto)
+		root->tauto = type_new(type_auto, NULL);
+
+	return root->tauto;
+}
+
 type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *sue)
 {
-	type *ent;
+	type *ent, *prev;
 	btype *bt;
 
 	if(!root->suetypes)
-		root->suetypes = dynmap_new(/*refeq:*/NULL);
+		root->suetypes = dynmap_new(/*refeq:*/NULL, (dynmap_hash_f *)type_hash);
 
 	ent = dynmap_get(struct_union_enum_st *, type *, root->suetypes, sue);
 
@@ -441,7 +463,8 @@ type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *sue)
 	bt->sue = sue;
 	ent = type_new_btype(bt);
 
-	dynmap_set(struct_union_enum_st *, type *, root->suetypes, sue, ent);
+	prev = dynmap_set(struct_union_enum_st *, type *, root->suetypes, sue, ent);
+	assert(!prev);
 
 	return ent;
 }
@@ -452,6 +475,11 @@ type *type_nav_va_list(struct type_nav *root, symtable *symtab)
 		root->tva_list = c_types_make_va_list(symtab);
 
 	return root->tva_list;
+}
+
+type *type_nav_voidptr(struct type_nav *root)
+{
+    return type_ptr_to(type_nav_btype(root, type_void));
 }
 
 static void type_dump_t(type *t, FILE *f, int indent)

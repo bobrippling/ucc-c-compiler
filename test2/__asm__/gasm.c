@@ -2,11 +2,11 @@
 // RUN: %ocheck 2 %t
 // RUN: %asmcheck %s
 
-asm(".globl a");
-asm("a: .long 2");
+__asm(".globl a");
+__asm("a: .long 2");
 
 main()
 {
-	extern int q asm("a");
+	extern int q __asm("a");
 	return q;
 }

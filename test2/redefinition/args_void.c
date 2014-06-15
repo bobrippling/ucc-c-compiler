@@ -1,4 +1,4 @@
-// RUN: %check -e %s
+// RUN: %check %s
 
 any(); // any args, can't determine
 one();
@@ -22,5 +22,5 @@ main()
 	any(5);  // CHECK: !/warn/
 	one(1);  // CHECK: !/warn/
 	any2(2); // CHECK: /warning: too many arguments to implicitly \(void\)-function/
-	one(1, 2); // CHECK: /error: too many arguments/
+	one(1, 2); // CHECK: /warning: too many arguments/
 }

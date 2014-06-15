@@ -2,7 +2,7 @@
 f()
 {
 	int x[2];
-	if(_Generic(x, int *: 1, int[2]: 3) != 3)
+	if(_Generic(x, int *: 1, int[2]: 3) != 1)
 		abort();
 }
 
