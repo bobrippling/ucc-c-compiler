@@ -352,9 +352,18 @@ int impl_reg_is_callee_save(const struct vreg *r, type *fr)
 	return 0;
 }
 
-int impl_reg_frame_const(const struct vreg *r)
+int impl_reg_frame_const(const struct vreg *r, int sp)
 {
-	return !r->is_float && r->idx == X86_64_REG_RBP;
+	if(r->is_float)
+		return 0;
+	switch(r->idx){
+		case X86_64_REG_RBP:
+			return 1;
+		case X86_64_REG_RSP:
+			if(sp)
+				return 1;
+	}
+	return 0;
 }
 
 int impl_reg_is_scratch(const struct vreg *r)
@@ -932,7 +941,7 @@ static void x86_reg_cp(
 		const struct vreg *from,
 		type *typ)
 {
-	assert(!impl_reg_frame_const(to));
+	assert(!impl_reg_frame_const(to, 1));
 
 	if(vreg_eq(to, from))
 		return;

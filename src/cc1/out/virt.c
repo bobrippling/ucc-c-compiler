@@ -37,7 +37,7 @@ void out_flush_volatile(out_ctx *octx, const out_val *val)
 int v_is_const_reg(const out_val *v)
 {
 	return v->type == V_REG
-		&& impl_reg_frame_const(&v->bits.regoff.reg);
+		&& impl_reg_frame_const(&v->bits.regoff.reg, 0);
 }
 
 const out_val *v_to_stack_mem(out_ctx *octx, const out_val *vp, long stack_pos)
@@ -207,7 +207,7 @@ int v_unused_reg(
 	&& to_replace->retains == 1
 	&& to_replace->type == V_REG
 	&& to_replace->bits.regoff.reg.is_float == fp
-	&& !impl_reg_frame_const(&to_replace->bits.regoff.reg))
+	&& !impl_reg_frame_const(&to_replace->bits.regoff.reg, /*sp*/1))
 	{
 		memcpy_safe(out, &to_replace->bits.regoff.reg);
 		return 1;
