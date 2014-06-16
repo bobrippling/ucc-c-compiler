@@ -2060,7 +2060,7 @@ const out_val *impl_call(
 		out_comment(octx, "stret pointer @ %u-%u for struct, size %u",
 				stret_pos, stret_pos - stret_stack, stret_stack);
 
-		stret_ptr = v_new_sp3(octx, NULL, voidp, -(long)stret_pos);
+		stret_ptr = v_new_bp3(octx, NULL, voidp, -(long)stret_pos);
 
 		v_freeup_reg(octx, stret_reg);
 		out_flush_volatile(octx, v_to_reg_given(octx, stret_ptr, stret_reg));
