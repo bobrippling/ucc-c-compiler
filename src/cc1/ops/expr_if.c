@@ -113,16 +113,6 @@ void fold_expr_if(expr *e, symtable *stab)
 	}else if(type_is_void(tt_l) || type_is_void(tt_r)){
 		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 
-	}else if(type_cmp(tt_l, tt_r, 0) & TYPE_EQUAL_ANY){
-		/* pointer to 'compatible' type */
-		e->tree_type = type_qualify(tt_l,
-				type_qual(tt_l) | type_qual(tt_r));
-
-		if(type_is_s_or_u(tt_l)){
-			e->f_lea = lea_expr_if;
-			e->lvalue_internal = 1;
-		}
-
 	}else{
 		switch(type_cmp(tt_l, tt_r, 0)){
 			case TYPE_EQUAL:
@@ -130,6 +120,11 @@ void fold_expr_if(expr *e, symtable *stab)
 				/* pointer to 'compatible' type */
 				e->tree_type = type_qualify(tt_l,
 						type_qual(tt_l) | type_qual(tt_r));
+
+				if(type_is_s_or_u(tt_l)){
+					e->f_lea = lea_expr_if;
+					e->lvalue_internal = 1;
+				}
 				break;
 
 			case TYPE_QUAL_POINTED_ADD:
