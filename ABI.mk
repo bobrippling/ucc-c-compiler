@@ -1,6 +1,10 @@
 CFLAGS = -std=c99 -g
+LDFLAGS = -g
+
+XCCFLAGS = ${CFLAGS} -fcall-used-rbx
 
 UCC = ./ucc
+XCC = ${CC}
 LD = ${CC}
 
 TARGETS = $T.ucc_i.xcc_c $T.ucc_i.ucc_c $T.xcc_i.xcc_c $T.xcc_i.ucc_c
@@ -30,18 +34,18 @@ clean: tcheck
 	rm -f ${TARGETS}
 
 %.ucc_i.xcc_c: %.ucc_i.o %.xcc_c.o
-	${LD} -o $@ $^
+	${LD} ${LDFLAGS} -o $@ $^
 %.xcc_i.ucc_c: %.xcc_i.o %.ucc_c.o
-	${LD} -o $@ $^
+	${LD} ${LDFLAGS} -o $@ $^
 %.ucc_i.ucc_c: %.ucc_i.o %.ucc_c.o
-	${LD} -o $@ $^
+	${LD} ${LDFLAGS} -o $@ $^
 %.xcc_i.xcc_c: %.xcc_i.o %.xcc_c.o
-	${LD} -o $@ $^
+	${LD} ${LDFLAGS} -o $@ $^
 
 %.xcc_c.o: %.c
-	${CC} ${CFLAGS} -c -o $@ $<
+	${XCC} ${XCCFLAGS} -c -o $@ $<
 %.xcc_i.o: %.c
-	${CC} ${CFLAGS} -c -D${MACRO} -o $@ $<
+	${XCC} ${XCCFLAGS} -c -D${MACRO} -o $@ $<
 %.ucc_c.o: %.c
 	${UCC} ${CFLAGS} -c -o $@ $<
 %.ucc_i.o: %.c
