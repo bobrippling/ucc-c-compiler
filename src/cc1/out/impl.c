@@ -68,6 +68,11 @@ static void impl_overlay_mem_reg(
 	struct vreg *cur_reg = regs;
 	unsigned reg_i = 0;
 
+	if(memsz == 0){
+		out_val_release(octx, ptr);
+		return;
+	}
+
 	UCC_ASSERT(
 			nregs * pws >= memsz,
 			"not enough registers for memory overlay");
