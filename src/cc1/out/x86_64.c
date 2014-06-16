@@ -2180,8 +2180,6 @@ const out_val *impl_call(
 			/* spill from registers to the stack */
 			impl_overlay_regs2mem(octx, stret_stack, 2, regpair, retval_stret);
 		}
-
-		v_stack_adj(octx, stret_stack, /*sub:*/0);
 	}
 
 	/* return type */
