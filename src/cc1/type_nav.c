@@ -270,8 +270,14 @@ static void init_qual(type *t, void *ctx)
 type *type_qualify(type *unqualified, enum type_qualifier qual)
 {
 	type *ar_ty;
+	enum type_qualifier existing;
 
 	if(!qual)
+		return unqualified;
+
+	/* if nothing new, no-op */
+	existing = type_qual(unqualified);
+	if((qual & ~existing) == existing)
 		return unqualified;
 
 	if((ar_ty = type_is(unqualified, type_array))){
