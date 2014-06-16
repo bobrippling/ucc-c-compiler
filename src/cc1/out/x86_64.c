@@ -341,9 +341,7 @@ static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
 			const unsigned bits = const_fold_val_i(
 					mem->bits.var.field_width);
 
-			/* XXX: 0 width? up current_size_bits to a 8-bit boundary? */
 			current_size_bits += bits;
-			ICW("TODO: field width");
 
 		}else{
 			current_size_bits += CHAR_BIT * type_size(ty, NULL);
