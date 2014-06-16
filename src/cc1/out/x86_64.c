@@ -2174,7 +2174,7 @@ const out_val *impl_call(
 
 			x86_overlay_regpair(regpair, retty);
 
-			retval_stret = v_new_sp3(octx, NULL, voidp, -(long)stret_pos);
+			retval_stret = v_new_bp3(octx, NULL, voidp, -(long)stret_pos);
 			out_val_retain(octx, retval_stret);
 
 			/* spill from registers to the stack */
