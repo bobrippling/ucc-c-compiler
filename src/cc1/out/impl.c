@@ -115,7 +115,12 @@ static void impl_overlay_mem_reg(
 		if(mem2reg){
 			const out_val *fetched;
 
-			fetched = out_deref(octx, ptr);
+			/* can use impl_deref, as we have a register already,
+			 * and know that the memory is an lvalue and not a bitfield
+			 *
+			 * this means we can load straight into the desired register
+			 */
+			fetched = impl_deref(octx, ptr, cur_reg);
 
 			UCC_ASSERT(reg_i < nregs, "reg oob");
 
