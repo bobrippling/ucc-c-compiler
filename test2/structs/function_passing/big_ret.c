@@ -1,19 +1,18 @@
+// RUN: %ocheck 6 %s
+
 struct A
 {
-	int a, b, c;
+	long a, b, c;
 };
 
-struct A f(void)
-#ifdef IMPL
+struct A f()
 {
 	return (struct A){ 1, 2, 3 };
 }
-#else
-;
 
 main()
 {
 	struct A a = f();
+
 	return a.a + a.b + a.c;
 }
-#endif
