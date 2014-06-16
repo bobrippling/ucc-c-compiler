@@ -117,11 +117,16 @@ static void impl_overlay_mem_reg(
 
 			fetched = out_deref(octx, ptr);
 
-			/* move to register */
 			UCC_ASSERT(reg_i < nregs, "reg oob");
-			v_freeup_reg(octx, cur_reg);
-			out_flush_volatile(octx, v_to_reg_given(octx, fetched, cur_reg));
+
+			if(fetched->type != V_REG || !vreg_eq(&fetched->bits.regoff.reg, cur_reg)){
+				/* move to register */
+				v_freeup_reg(octx, cur_reg);
+				fetched = v_to_reg_given(octx, fetched, cur_reg);
+			}
+			out_flush_volatile(octx, fetched);
 			v_reserve_reg(octx, cur_reg); /* prevent changes */
+
 		}else{
 			const out_val *vreg = v_new_reg(octx, NULL, this_ty, cur_reg);
 
