@@ -87,7 +87,7 @@ void fold_expr_if(expr *e, symtable *stab)
 	/*
 
 	Arithmetic                             Arithmetic                           Arithmetic type after usual arithmetic conversions
-	// Structure or union type                Compatible structure or union type   Structure or union type with all the qualifiers on both operands
+	Structure or union type                Compatible structure or union type   Structure or union type with all the qualifiers on both operands
 	void                                   void                                 void
 	Pointer to compatible type             Pointer to compatible type           Pointer to type with all the qualifiers specified for the type
 	Pointer to type                        NULL pointer (the constant 0)        Pointer to type
@@ -101,6 +101,8 @@ void fold_expr_if(expr *e, symtable *stab)
 	tt_l = (e->lhs ? e->lhs : e->expr)->tree_type;
 	tt_r = e->rhs->tree_type;
 
+
+	/* C11 6.5.15 */
 	if(type_is_arith(tt_l) && type_is_arith(tt_r)){
 		expr **middle_op = e->lhs ? &e->lhs : &e->expr;
 
@@ -113,85 +115,82 @@ void fold_expr_if(expr *e, symtable *stab)
 	}else if(type_is_void(tt_l) || type_is_void(tt_r)){
 		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 
-	}else{
-		switch(type_cmp(tt_l, tt_r, 0)){
-			case TYPE_EQUAL:
-			case TYPE_EQUAL_TYPEDEF:
-				/* pointer to 'compatible' type */
-				e->tree_type = type_qualify(tt_l,
-						type_qual(tt_l) | type_qual(tt_r));
+	}else switch(type_cmp(tt_l, tt_r, 0)){
+		case TYPE_EQUAL:
+		case TYPE_EQUAL_TYPEDEF:
+			/* pointer to 'compatible' type */
+			e->tree_type = type_qualify(tt_l,
+					type_qual(tt_l) | type_qual(tt_r));
 
-				if(type_is_s_or_u(tt_l)){
-					e->f_lea = lea_expr_if;
-					e->lvalue_internal = 1;
-				}
-				break;
+			if(type_is_s_or_u(tt_l)){
+				e->f_lea = lea_expr_if;
+				e->lvalue_internal = 1;
+			}
+			break;
 
-			case TYPE_QUAL_POINTED_ADD:
-			case TYPE_QUAL_POINTED_SUB:
-			{
-				/* difference in nested qualifiers - combine from both */
-				e->tree_type =
-					type_ptr_to(
+		case TYPE_QUAL_POINTED_ADD:
+		case TYPE_QUAL_POINTED_SUB:
+		{
+			/* difference in nested qualifiers - combine from both */
+			e->tree_type =
+				type_ptr_to(
+						type_qualify(
+							type_next(tt_l),
+							type_qual(type_next(tt_r))));
+			break;
+		}
+
+		case TYPE_QUAL_ADD:
+		case TYPE_QUAL_SUB:
+		{
+			/* difference only in qualifiers - combine from both */
+			e->tree_type = type_qualify(
+					type_unqualify(tt_l),
+					type_qual(tt_l) | type_qual(tt_r));
+			break;
+		}
+
+		default:
+		{
+			int l_ptr_null = expr_is_null_ptr(
+					e->lhs ? e->lhs : e->expr, NULL_STRICT_INT);
+
+			int r_ptr_null = expr_is_null_ptr(e->rhs, NULL_STRICT_INT);
+
+			int l_complete = !l_ptr_null && type_is_complete(tt_l);
+			int r_complete = !r_ptr_null && type_is_complete(tt_r);
+
+			if((l_complete && r_ptr_null) || (r_complete && l_ptr_null)){
+				e->tree_type = l_ptr_null ? tt_r : tt_l;
+
+			}else{
+				int l_strict_ptr = !!type_is(tt_l, type_ptr);
+				int r_strict_ptr = !!type_is(tt_r, type_ptr);
+				int l_ptr = l_ptr_null || l_strict_ptr;
+				int r_ptr = r_ptr_null || r_strict_ptr;
+
+				if(l_ptr || r_ptr){
+					enum type_qualifier qual_both
+						= (l_strict_ptr ? type_qual(type_next(tt_l)) : qual_none)
+						|
+						(r_strict_ptr ? type_qual(type_next(tt_r)) : qual_none);
+
+					fold_type_chk_warn(
+							tt_l, tt_r, &e->where, "?: pointer type mismatch");
+
+					/* qualified void * */
+					e->tree_type = type_ptr_to(
 							type_qualify(
-								type_next(tt_l),
-								type_qual(type_next(tt_r))));
-				break;
-			}
-
-			case TYPE_QUAL_ADD:
-			case TYPE_QUAL_SUB:
-			{
-				/* difference only in qualifiers - combine from both */
-				e->tree_type = type_qualify(
-						type_unqualify(tt_l),
-						type_qual(tt_l) | type_qual(tt_r));
-				break;
-			}
-
-			default:
-			{
-				/* brace yourself. */
-				int l_ptr_null = expr_is_null_ptr(
-						e->lhs ? e->lhs : e->expr, NULL_STRICT_INT);
-
-				int r_ptr_null = expr_is_null_ptr(e->rhs, NULL_STRICT_INT);
-
-				int l_complete = !l_ptr_null && type_is_complete(tt_l);
-				int r_complete = !r_ptr_null && type_is_complete(tt_r);
-
-				if((l_complete && r_ptr_null) || (r_complete && l_ptr_null)){
-					e->tree_type = l_ptr_null ? tt_r : tt_l;
+								type_nav_btype(cc1_type_nav, type_void),
+								qual_both));
 
 				}else{
-					int l_strict_ptr = !!type_is(tt_l, type_ptr);
-					int r_strict_ptr = !!type_is(tt_r, type_ptr);
-					int l_ptr = l_ptr_null || l_strict_ptr;
-					int r_ptr = r_ptr_null || r_strict_ptr;
+					char buf[TYPE_STATIC_BUFSIZ];
 
-					if(l_ptr || r_ptr){
-						enum type_qualifier qual_both
-							= (l_strict_ptr ? type_qual(type_next(tt_l)) : qual_none)
-							|
-							(r_strict_ptr ? type_qual(type_next(tt_r)) : qual_none);
+					warn_at(&e->where, "conditional type mismatch (%s vs %s)",
+							type_to_str(tt_l), type_to_str_r(buf, tt_r));
 
-						fold_type_chk_warn(
-								tt_l, tt_r, &e->where, "?: pointer type mismatch");
-
-						/* qualified void * */
-						e->tree_type = type_ptr_to(
-								type_qualify(
-									type_nav_btype(cc1_type_nav, type_void),
-									qual_both));
-
-					}else{
-						char buf[TYPE_STATIC_BUFSIZ];
-
-						warn_at(&e->where, "conditional type mismatch (%s vs %s)",
-								type_to_str(tt_l), type_to_str_r(buf, tt_r));
-
-						e->tree_type = type_nav_btype(cc1_type_nav, type_void);
-					}
+					e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 				}
 			}
 		}
