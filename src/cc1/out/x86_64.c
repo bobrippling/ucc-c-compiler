@@ -243,18 +243,20 @@ static enum stret x86_stret(type *ty, unsigned *stack_space)
 
 	sz = type_size(ty, NULL);
 
-	/* rdx:rax? */
-	if(sz > 2 * platform_word_size())
-		return stret_memcpy;
-
 	/* We unconditionally want to spill rdx:rax to the stack on return.
 	 * This could be optimised in the future
 	 * (in a similar vein as long long on x86/32-bit)
 	 * so that we can handle vtops with structure/union type
 	 * and multiple registers.
+	 *
+	 * Hence, space needed for both reg and memcpy returns
 	 */
 	if(stack_space)
 		*stack_space = sz;
+
+	/* rdx:rax? */
+	if(sz > 2 * platform_word_size())
+		return stret_memcpy;
 
 	return stret_regs;
 }
