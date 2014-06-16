@@ -350,7 +350,7 @@ static const out_val *builtin_gen_memcpy(expr *e, out_ctx *octx)
 	dest = lea_expr(e->lhs, octx);
 	src = lea_expr(e->rhs, octx);
 
-	return out_memcpy(octx, src, dest, e->bits.num.val.i);
+	return out_memcpy(octx, dest, src, e->bits.num.val.i);
 #endif
 }
 
