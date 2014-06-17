@@ -51,7 +51,7 @@ if(system($ucc, '-g', '-c', '-o', $out, $in)){
 
 my @dumpers = (
 	{ exe => 'gdb', input => "q\n" },
-	{ exe => 'lldb', input => "q\n" },
+	#{ exe => 'lldb', input => "q\n" },
 	{ exe => 'objdump', args => ['-W'] },
 	{ exe => 'dwarfdump' },
 );
