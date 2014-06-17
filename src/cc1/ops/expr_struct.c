@@ -89,6 +89,9 @@ err:
 		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
 	}/* else already have the member */
 
+	if(cc1_std < STD_C99 && !expr_is_lval(e->lhs))
+		e->f_lea = NULL;
+
 	/* pull qualifiers from the struct to the member */
 	e->tree_type = type_qualify(
 			e->bits.struct_mem.d->ref,

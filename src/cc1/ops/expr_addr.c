@@ -16,9 +16,7 @@ const char *str_expr_addr()
 
 int expr_is_addressable(expr *e)
 {
-	return expr_is_lval(e)
-		|| type_is(e->tree_type, type_array)
-		|| type_is(e->tree_type, type_func);
+	return expr_is_lval(e) || type_is(e->tree_type, type_func);
 }
 
 void fold_expr_addr(expr *e, symtable *stab)
