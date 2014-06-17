@@ -230,7 +230,8 @@ static const out_val *gen_expr_if_via(
 	out_current_blk(octx, blk_rhs);
 	{
 		out_ctrl_transfer(octx, landing,
-				gen_expr(e->rhs, octx), &blk_rhs);
+				fn(e->rhs, octx),
+				&blk_rhs);
 	}
 
 	out_current_blk(octx, landing);
