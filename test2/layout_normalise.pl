@@ -58,8 +58,11 @@ while(<>){
 		if($is_private){
 			if(!$check_sections){
 				$emit = 0;
-			}elsif($lbl !~ /^[ \t]*\.?Lsection_/){
+			}elsif($lbl !~ /^([ \t]*)\.?(Lsection_.*)/){
 				$emit = 0;
+			}else{
+				# remove the . from .Lsect..
+				$lbl = $1 . $2;
 			}
 		}
 
