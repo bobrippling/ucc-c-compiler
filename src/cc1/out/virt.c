@@ -125,24 +125,39 @@ static ucc_wur const out_val *v_save_reg(
 	assert(vp->type == V_REG && "not reg");
 
 	if(fnty){
-		unsigned ncallee_saves;
-		const int *callee_saves;
-
 		/* try callee save */
-		callee_saves = impl_callee_save_regs(fnty, &ncallee_saves);
-		if(ncallee_saves){
-			struct vreg cs_reg;
-			int found;
+		struct vreg cs_reg;
+		int found;
 
-			found = v_unused_reg2(
-					octx, /*stack*/0, type_is_floating(vp->t),
-					&cs_reg, NULL, impl_reg_is_callee_save);
+		found = v_unused_reg2(
+				octx, /*stack*/0, type_is_floating(vp->t),
+				&cs_reg, NULL, impl_reg_is_callee_save);
 
-			if(found){
-				impl_reg_cp_no_off(octx, vp, &cs_reg);
-				memcpy_safe(&((out_val *)vp)->bits.regoff.reg, &cs_reg);
-				return out_val_retain(octx, vp);
+		if(found){
+			struct vreg *p;
+			int found = 0;
+
+			impl_reg_cp_no_off(octx, vp, &cs_reg);
+			memcpy_safe(&((out_val *)vp)->bits.regoff.reg, &cs_reg);
+
+			for(p = octx->used_callee_saved; p && p->is_float != 2; p++){
+				if(vreg_eq(p, &cs_reg)){
+					found = 1;
+					break;
+				}
 			}
+
+			if(!found){
+				size_t current = p ? p - octx->used_callee_saved + 1 : 0;
+
+				octx->used_callee_saved = urealloc1(
+						octx->used_callee_saved, current + 2);
+
+				memcpy_safe(&octx->used_callee_saved[current], &cs_reg);
+				octx->used_callee_saved[current + 1].is_float = 2;
+			}
+
+			return vp;
 		}
 	}
 
@@ -472,6 +487,7 @@ void v_save_regs(
 				v->retains = 1;
 			}else{
 				/* moved to callee save reg */
+				assert(new->retains == 1);
 			}
 		}
 	}

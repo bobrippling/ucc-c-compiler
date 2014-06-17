@@ -4,6 +4,8 @@
 #include <assert.h>
 
 #include "../type.h"
+#include "../type_nav.h"
+#include "../type_is.h"
 
 #include "val.h"
 #include "out.h" /* this file defs */
@@ -24,10 +26,69 @@ const out_val *out_call(out_ctx *octx,
 	return impl_call(octx, fn, args, fnty);
 }
 
+static void callee_save_or_restore_1(
+		out_ctx *octx, out_blk *in_blk,
+		struct vreg *cs, long stack_pos,
+		type *voidpp, int reg2mem)
+{
+	out_current_blk(octx, in_blk);
+	{
+		const out_val *stk = v_new_bp3(octx, NULL, voidpp, -stack_pos);
+
+		if(reg2mem){
+			const out_val *reg = v_new_reg(octx, NULL, type_is_ptr(voidpp), cs);
+			out_store(octx, stk, reg);
+		}else{
+			out_flush_volatile(octx, impl_deref(octx, stk, cs));
+		}
+	}
+}
+
+static void callee_save_or_restore(
+		out_ctx *octx, out_blk *spill_blk)
+{
+	struct vreg *i;
+	long stack_n = 0;
+	out_blk *restore_blk;
+	unsigned voidpsz;
+	type *voidp, *voidpp;
+
+	voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+	voidpp = type_ptr_to(voidp);
+	voidpsz = type_size(voidp, NULL);
+
+	for(i = octx->used_callee_saved; i && i->is_float != 2; i++)
+		stack_n += voidpsz;
+
+	if(!stack_n)
+		return;
+
+	v_alloc_stack(octx, stack_n, "callee-save");
+
+	restore_blk = octx->epilogue_blk;
+
+	for(i = octx->used_callee_saved; i && i->is_float != 2; i++){
+		callee_save_or_restore_1(octx, spill_blk, i, stack_n, voidpp, 1);
+		callee_save_or_restore_1(octx, restore_blk, i, stack_n, voidpp, 0);
+
+		stack_n -= voidpsz;
+	}
+}
+
 void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 {
+	out_blk *call_save_spill_blk = NULL;
+
 	if(octx->current_blk && octx->current_blk->type == BLK_UNINIT)
 		out_ctrl_transfer(octx, octx->epilogue_blk, NULL, NULL);
+
+	/* must generate callee saves/restores before the
+	 * epilogue or prologue blocks */
+	if(octx->used_callee_saved){
+		call_save_spill_blk = out_blk_new(octx, "call_save");
+
+		callee_save_or_restore(octx, call_save_spill_blk);
+	}
 
 	out_current_blk(octx, octx->epilogue_blk);
 	{
@@ -52,10 +113,18 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 		assert(octx->max_stack_sz >= octx->stack_n_alloc);
 
 		v_stack_adj(octx, octx->max_stack_sz - octx->stack_n_alloc, /*sub:*/1);
+
+		if(call_save_spill_blk){
+			out_ctrl_transfer(octx, call_save_spill_blk, NULL, NULL);
+			out_current_blk(octx, call_save_spill_blk);
+		}
+		out_ctrl_transfer(octx, octx->second_blk, NULL, NULL);
 	}
 	octx->current_blk = NULL;
 
 	blk_flushall(octx, end_dbg_lbl);
+
+	free(octx->used_callee_saved), octx->used_callee_saved = NULL;
 
 	octx->stack_local_offset =
 		octx->stack_sz_initial =
@@ -108,5 +177,6 @@ void out_func_prologue(
 
 	/* keep the end of the prologue block clear for a stack pointer adjustment,
 	 * in case any spills are needed */
-	out_ctrl_transfer_make_current(octx, post_prologue);
+	octx->second_blk = post_prologue;
+	out_current_blk(octx, post_prologue);
 }

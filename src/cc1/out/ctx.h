@@ -5,7 +5,7 @@ typedef struct out_val_list out_val_list;
 
 struct out_ctx
 {
-	out_blk *first_blk, *current_blk, *epilogue_blk;
+	out_blk *first_blk, *second_blk, *current_blk, *epilogue_blk;
 	out_blk *last_used_blk; /* for appending debug labels */
 	out_blk **mustgen; /* goto *lbl; where lbl is otherwise unreachable */
 
@@ -30,6 +30,9 @@ struct out_ctx
 
 	/* we won't reserve it more than 255 times */
 	unsigned char *reserved_regs;
+
+	/* mark callee save regs, to preserve at prologue */
+	struct vreg *used_callee_saved;
 
 	struct
 	{
