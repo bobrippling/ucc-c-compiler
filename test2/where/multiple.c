@@ -30,7 +30,7 @@ int func()
 void q();
 (void)(1 ? f_name : q);
 // CARETS:
-//       ^ note:
+//       ^ conditional type mismatch
 }
 
 main()

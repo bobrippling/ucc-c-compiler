@@ -74,8 +74,8 @@ static void try_pointer_propagate(
 		type *const tt_l, type *const tt_r)
 {
 	/* 6.5.15 p6 */
-	int l_ptr = !!type_is_ptr(tt_l);
-	int r_ptr = !!type_is_ptr(tt_r);
+	int l_ptr = !!type_is_ptr_or_block(tt_l);
+	int r_ptr = !!type_is_ptr_or_block(tt_r);
 
 	/* if both the second and third operands are pointers */
 	if(l_ptr && r_ptr){
