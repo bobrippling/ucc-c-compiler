@@ -241,7 +241,8 @@ static void check_arg_types(
 		for(i = 0; ; i++){
 			decl *decl_arg = args_from_decl->arglist[i];
 
-			if(!decl_arg)
+			/* exprargs[i] may be NULL - old style function */
+			if(!decl_arg || !exprargs[i])
 				break;
 
 			ARG_BUF(buf, i, sp);
