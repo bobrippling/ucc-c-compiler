@@ -1984,10 +1984,16 @@ const out_val *impl_call(
 	}
 
 	for(i = 0; i < nargs; i++){
+		const out_val *arg;
+
 		if(!type_is_s_or_u(local_args[i]->t))
 			continue;
 
-		ICW("struct arg");
+		arg = v_to_reg(octx, local_args[i]);
+
+		impl_overlay_regs2mem();
+
+		local_args[i] = arg;
 	}
 
 
