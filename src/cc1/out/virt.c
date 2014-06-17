@@ -21,6 +21,13 @@
 
 #define REMOVE_CONST(t, exp) ((t)(exp))
 
+static int v_unused_reg2(
+		out_ctx *octx,
+		int stack_as_backup, const int fp,
+		struct vreg *out,
+		out_val const *to_replace,
+		int regtest(type *, const struct vreg *));
+
 unsigned char *v_alloc_reg_reserve(out_ctx *octx, int *p)
 {
 	int n = N_SCRATCH_REGS_I + N_SCRATCH_REGS_F;
@@ -89,28 +96,57 @@ static int v_in(const out_val *vp, enum vto to)
 	return 0;
 }
 
-static ucc_wur const out_val *v_save_reg(out_ctx *octx, const out_val *vp)
+static ucc_wur const out_val *v_spill_reg(
+		out_ctx *octx, const out_val *v_reg)
 {
-	assert(vp->type == V_REG && "not reg");
-
 	out_comment(octx, "spill @ stack=%u, max=%u",
 			octx->var_stack_sz, octx->max_stack_sz);
 
-	v_alloc_stack(octx, type_size(vp->t, NULL), "save reg");
+	v_alloc_stack(octx, type_size(v_reg->t, NULL), "save reg");
 
-	out_val_retain(octx, vp);
+	out_val_retain(octx, v_reg);
 
 	{
 		const out_val *spilt = v_to_stack_mem(
-				octx, vp,
+				octx, v_reg,
 				-octx->var_stack_sz);
 
-		out_val_overwrite((out_val *)vp, spilt);
+		out_val_overwrite((out_val *)v_reg, spilt);
 
 		out_val_release(octx, spilt);
 	}
 
-	return vp;
+	return v_reg;
+}
+
+static ucc_wur const out_val *v_save_reg(
+		out_ctx *octx, const out_val *vp, type *fnty)
+{
+	assert(vp->type == V_REG && "not reg");
+
+	if(fnty){
+		unsigned ncallee_saves;
+		const int *callee_saves;
+
+		/* try callee save */
+		callee_saves = impl_callee_save_regs(fnty, &ncallee_saves);
+		if(ncallee_saves){
+			struct vreg cs_reg;
+			int found;
+
+			found = v_unused_reg2(
+					octx, /*stack*/0, type_is_floating(vp->t),
+					&cs_reg, NULL, impl_reg_is_callee_save);
+
+			if(found){
+				impl_reg_cp_no_off(octx, vp, &cs_reg);
+				memcpy_safe(&((out_val *)vp)->bits.regoff.reg, &cs_reg);
+				return out_val_retain(octx, vp);
+			}
+		}
+	}
+
+	return v_spill_reg(octx, vp);
 }
 
 const out_val *v_to(out_ctx *octx, const out_val *vp, enum vto loc)
@@ -128,7 +164,7 @@ const out_val *v_to(out_ctx *octx, const out_val *vp, enum vto loc)
 
 	if(loc & TO_MEM){
 		vp = v_to_reg(octx, vp);
-		return v_save_reg(octx, vp);
+		return v_save_reg(octx, vp, NULL);
 	}
 
 	assert(0 && "can't satisfy v_to");
@@ -159,7 +195,7 @@ static ucc_wur const out_val *v_freeup_regp(out_ctx *octx, const out_val *vp)
 
 	}else{
 		/* no free registers, save this one to the stack and mutate vp */
-		return out_val_retain(octx, v_save_reg(octx, vp));
+		return out_val_retain(octx, v_save_reg(octx, vp, octx->current_fnty));
 		/* vp is now a stack value */
 	}
 }
@@ -189,11 +225,12 @@ void v_freeup_reg(out_ctx *octx, const struct vreg *r)
 		out_val_consume(octx, v_freeup_regp(octx, v));
 }
 
-int v_unused_reg(
+static int v_unused_reg2(
 		out_ctx *octx,
 		int stack_as_backup, const int fp,
 		struct vreg *out,
-		out_val const *to_replace)
+		out_val const *to_replace,
+		int regtest(type *, const struct vreg *))
 {
 	unsigned char *used;
 	int nused;
@@ -232,7 +269,7 @@ int v_unused_reg(
 		if(this->retains
 		&& this->type == V_REG
 		&& this->bits.regoff.reg.is_float == fp
-		&& impl_reg_is_scratch(octx->current_fnty, &this->bits.regoff.reg))
+		&& regtest(octx->current_fnty, &this->bits.regoff.reg))
 		{
 			if(!first)
 				first = this;
@@ -247,7 +284,7 @@ int v_unused_reg(
 			out->is_float = fp;
 			impl_scratch_to_reg(i, out);
 
-			if(impl_reg_is_scratch(octx->current_fnty, out)){
+			if(regtest(octx->current_fnty, out)){
 				free(used);
 				return 1;
 			}
@@ -269,6 +306,17 @@ int v_unused_reg(
 		return 1;
 	}
 	return 0;
+}
+
+int v_unused_reg(
+		out_ctx *octx,
+		int stack_as_backup, const int fp,
+		struct vreg *out,
+		out_val const *to_replace)
+{
+	return v_unused_reg2(
+			octx, stack_as_backup, fp, out, to_replace,
+			impl_reg_is_scratch);
 }
 
 const out_val *v_to_reg_given(
@@ -414,13 +462,17 @@ void v_save_regs(
 
 			assert(v->retains == 1 && "v_save_regs(): too heavily retained v");
 
-			new = v_save_reg(octx, v);
+			new = v_save_reg(octx, v, func_ty);
 
-			out_val_overwrite(v, new);
-			/* transfer retain-ness to 'v' from 'new' */
-			out_val_release(octx, new);
-			assert(v->retains == 0);
-			v->retains = 1;
+			if(new != v){
+				out_val_overwrite(v, new);
+				/* transfer retain-ness to 'v' from 'new' */
+				out_val_release(octx, new);
+				assert(v->retains == 0);
+				v->retains = 1;
+			}else{
+				/* moved to callee save reg */
+			}
 		}
 	}
 }
