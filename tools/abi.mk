@@ -14,7 +14,7 @@ MACRO = IMPL
 .PHONY: T tcheck clean
 
 T: tcheck
-	make -f ABI.mk ${TARGETS}
+	make -f abi.mk ${TARGETS}
 
 run: T
 	for t in ${TARGETS}; \
