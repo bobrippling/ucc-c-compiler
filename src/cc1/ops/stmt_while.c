@@ -49,7 +49,7 @@ void gen_stmt_while(stmt *s, out_ctx *octx)
 
 	out_current_blk(octx, s->blk_break);
 	{
-		flow_end(s->flow, s->symtab, octx);
+		flow_end(s->flow, s->symtab, endlbls, octx);
 	}
 }
 
