@@ -12,7 +12,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	fold_inc_writes_if_sym(lvalue, stab);
 
-	fold_expr_no_decay(e->lhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
 	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, "compound assignment");

@@ -16,7 +16,7 @@ const char *str_expr_addr()
 
 int expr_is_addressable(expr *e)
 {
-	return expr_is_lval(e) || type_is(e->tree_type, type_func);
+	return expr_is_lval(e, 1) || type_is(e->tree_type, type_func);
 }
 
 void fold_expr_addr(expr *e, symtable *stab)
@@ -37,7 +37,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		/* if it's an identifier, act as a read */
 		fold_inc_writes_if_sym(e->lhs, stab);
 
-		fold_expr_no_decay(e->lhs, stab);
+		fold_expr_nodecay(e->lhs, stab);
 
 		/* can address: lvalues, arrays and functions */
 		if(!expr_is_addressable(e->lhs)){

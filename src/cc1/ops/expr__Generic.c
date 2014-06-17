@@ -29,7 +29,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 	for(i = e->bits.generic.list; i && *i; i++){
 		struct generic_lbl **j, *l = *i;
 
-		fold_expr_no_decay(l->e, stab);
+		fold_expr_nodecay(l->e, stab);
 
 		/* duplicate default checked below */
 		for(j = i + 1; *j; j++){
@@ -124,7 +124,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		}
 	}
 
-	if(expr_is_lval(e->bits.generic.chosen->e))
+	if(expr_is_lval(e->bits.generic.chosen->e, 1))
 		e->f_lea = generic_lea;
 
 	e->tree_type = e->bits.generic.chosen->e->tree_type;

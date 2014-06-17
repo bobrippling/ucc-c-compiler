@@ -924,7 +924,7 @@ static decl_init *is_char_init(
 		decl_init *chosen = this->type == decl_init_scalar
 			? this : this->bits.ar.inits[0];
 
-		fold_expr_no_decay(chosen->bits.expr, stab);
+		fold_expr_nodecay(chosen->bits.expr, stab);
 
 		ty_expr = type_str_type(chosen->bits.expr->tree_type);
 		ty_decl = type_str_type(ty);
@@ -1052,7 +1052,7 @@ static decl_init *decl_init_brace_up_start(
 		|| type_is_s_or_u(tfor)))
 	{
 		expr *e;
-		fold_expr_no_decay(e = init->bits.expr, stab);
+		fold_expr_nodecay(e = init->bits.expr, stab);
 
 		if(!(type_cmp(e->tree_type, tfor, 0) & TYPE_EQUAL_ANY)){
 			/* allow special case of char [] with "..." */

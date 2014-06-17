@@ -201,7 +201,7 @@ expr *parse_any_args(symtable *scope)
 
 static void fold_memset(expr *e, symtable *stab)
 {
-	fold_expr_no_decay(e->lhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
 
 	if(!expr_is_addressable(e->lhs))
 		ICE("can't memset %s - not addressable", e->lhs->f_str());
@@ -310,8 +310,8 @@ static expr *parse_memset(void)
 
 static void fold_memcpy(expr *e, symtable *stab)
 {
-	fold_expr_no_decay(e->lhs, stab);
-	fold_expr_no_decay(e->rhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
+	fold_expr_nodecay(e->rhs, stab);
 
 	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
@@ -642,7 +642,7 @@ static void fold_choose_expr(expr *e, symtable *stab)
 				BUILTIN_SPEL(e->expr));
 
 	for(i = 0; i < 3; i++)
-		fold_expr_no_decay(e->funcargs[i], stab);
+		fold_expr_nodecay(e->funcargs[i], stab);
 
 	const_fold(e->funcargs[0], &k);
 	if(k.type != CONST_NUM){
@@ -659,7 +659,7 @@ static void fold_choose_expr(expr *e, symtable *stab)
 
 	wur_builtin(e);
 
-	if(expr_is_lval(c))
+	if(expr_is_lval(c, 1))
 		e->f_lea = choose_expr_lea;
 }
 

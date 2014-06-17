@@ -105,7 +105,7 @@ int expr_is_null_ptr(expr *e, enum null_strictness ty)
 	return b && const_expr_and_zero(e);
 }
 
-int expr_is_lval(expr *e)
+int expr_is_lval(expr *e, int allow_array)
 {
 	if(!e->f_lea || e->lvalue_internal)
 		return 0;
@@ -117,7 +117,7 @@ int expr_is_lval(expr *e)
 	if(expr_kind(e, assign) && type_is_s_or_u(e->tree_type))
 		return 0;
 
-	if(type_is_array(e->tree_type))
+	if(!allow_array && type_is_array(e->tree_type))
 		return 0;
 
 	return 1;

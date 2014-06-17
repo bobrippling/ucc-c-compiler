@@ -48,7 +48,7 @@ void bitfield_trunc_check(decl *mem, expr *from)
 
 void expr_must_lvalue(expr *e)
 {
-	if(!expr_is_lval(e)){
+	if(!expr_is_lval(e, 0)){
 		fold_had_error = 1;
 		warn_at_print_error(&e->where, "assignment to %s/%s - not an lvalue",
 				type_to_str(e->tree_type),
@@ -80,7 +80,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	lhs_sym = fold_inc_writes_if_sym(e->lhs, stab);
 
-	fold_expr_no_decay(e->lhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
 	if(lhs_sym)

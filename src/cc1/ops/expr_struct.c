@@ -27,7 +27,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	struct_union_enum_st *sue;
 	char *spel;
 
-	fold_expr_no_decay(e->lhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
 	/* don't fold the rhs - just a member name */
 
 	if(e->rhs){
@@ -89,7 +89,7 @@ err:
 		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
 	}/* else already have the member */
 
-	if(cc1_std < STD_C99 && !expr_is_lval(e->lhs))
+	if(cc1_std < STD_C99 && !expr_is_lval(e->lhs, 1))
 		e->f_lea = NULL;
 
 	/* pull qualifiers from the struct to the member */

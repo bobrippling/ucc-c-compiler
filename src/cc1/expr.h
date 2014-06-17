@@ -115,18 +115,7 @@ struct expr
 
 		type *va_arg_type;
 
-		struct
-		{
-			type *tref; /* from cast */
-			int is_decay;
-			/* cast type:
-			 * tref == NULL
-			 *   ? lval-to-rval
-			 *   : is_decay
-			 *     ? decay
-			 *     : normal
-			 */
-		} cast;
+		type *cast_to;
 
 		struct
 		{
@@ -227,8 +216,7 @@ expr *expr_new_decl_init(decl *d, struct decl_init *di);
 
 expr *expr_new_identifier(char *sp);
 expr *expr_new_cast(expr *, type *cast_to, int implicit);
-expr *expr_new_cast_rval(expr *);
-expr *expr_new_cast_decay(expr *, type *cast_to);
+expr *expr_new_cast_lval_decay(expr *);
 
 expr *expr_new_identifier(char *sp);
 expr *expr_new_val(int val);
@@ -263,7 +251,7 @@ enum null_strictness
 
 int expr_is_null_ptr(expr *, enum null_strictness);
 
-int expr_is_lval(expr *);
+int expr_is_lval(expr *, int allow_array);
 
 void expr_set_const(expr *, consty *);
 

@@ -36,7 +36,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	type *chosen;
 
 	if(e->expr)
-		fold_expr_no_decay(e->expr, stab);
+		fold_expr_nodecay(e->expr, stab);
 	else
 		fold_type(e->bits.size_of.of_type, stab);
 
