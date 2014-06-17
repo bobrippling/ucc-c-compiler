@@ -66,11 +66,13 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 
 void out_func_prologue(
 		out_ctx *octx, const char *sp,
-		type *rf,
+		type *fnty,
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[], int *local_offset)
 {
 	out_blk *post_prologue = out_blk_new(octx, "post_prologue");
+
+	octx->current_fnty = fnty;
 
 	assert(octx->var_stack_sz == 0 && "non-empty stack for new func");
 
@@ -87,10 +89,10 @@ void out_func_prologue(
 		if(mopt_mode & MOPT_STACK_REALIGN)
 			v_stack_align(octx, cc1_mstack_align, 1);
 
-		impl_func_prologue_save_call_regs(octx, rf, nargs, arg_offsets);
+		impl_func_prologue_save_call_regs(octx, fnty, nargs, arg_offsets);
 
 		if(variadic) /* save variadic call registers */
-			impl_func_prologue_save_variadic(octx, rf);
+			impl_func_prologue_save_variadic(octx, fnty);
 
 		/* setup "pointers" to the right place in the stack */
 		octx->stack_variadic_offset = octx->var_stack_sz - platform_word_size();

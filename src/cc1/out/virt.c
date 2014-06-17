@@ -232,7 +232,7 @@ int v_unused_reg(
 		if(this->retains
 		&& this->type == V_REG
 		&& this->bits.regoff.reg.is_float == fp
-		&& impl_reg_is_scratch(&this->bits.regoff.reg))
+		&& impl_reg_is_scratch(octx->current_fnty, &this->bits.regoff.reg))
 		{
 			if(!first)
 				first = this;
@@ -247,8 +247,10 @@ int v_unused_reg(
 			out->is_float = fp;
 			impl_scratch_to_reg(i, out);
 
-			free(used);
-			return 1;
+			if(impl_reg_is_scratch(octx->current_fnty, out)){
+				free(used);
+				return 1;
+			}
 		}
 	}
 
@@ -383,7 +385,7 @@ void v_save_regs(
 						out_comment(octx, "not saving const-reg %d", v->bits.regoff.reg.idx);
 
 				}else if(func_ty
-				&& impl_reg_is_callee_save(&v->bits.regoff.reg, func_ty))
+				&& impl_reg_is_callee_save(octx->current_fnty, &v->bits.regoff.reg))
 				{
 					/* only comment for non-const regs */
 					out_comment(octx, "not saving reg %d - callee save",

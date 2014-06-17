@@ -15,6 +15,8 @@ struct out_ctx
 		struct out_val_list *next, *prev;
 	} *val_head, *val_tail;
 
+	type *current_fnty;
+
 	unsigned long nblks; /* used for unique label gen. */
 
 	/* fixed: */

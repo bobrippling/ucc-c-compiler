@@ -333,23 +333,12 @@ static int x86_func_nargs(type *rf)
 	return dynarray_count(type_funcargs(rf)->arglist);
 }
 
-int impl_reg_is_callee_save(const struct vreg *r, type *fr)
+const int *impl_callee_save_regs(type *fnty, unsigned *pn)
 {
-	const struct calling_conv_desc *ent;
-	unsigned i;
+	const struct calling_conv_desc *ent = x86_conv_lookup(fnty);
 
-	if(r->is_float)
-		return 0;
-
-	ent = x86_conv_lookup(fr);
-	for(i = 0; i < ent->n_callee_save_regs; i++)
-		if(ent->callee_save_regs[i] == r->idx){
-			ICW("TODO: callee-save register saving");
-			break;
-			return 1;
-		}
-
-	return 0;
+	*pn = ent->n_callee_save_regs;
+	return ent->callee_save_regs;
 }
 
 int impl_reg_frame_const(const struct vreg *r, int sp)
@@ -366,9 +355,9 @@ int impl_reg_frame_const(const struct vreg *r, int sp)
 	return 0;
 }
 
-int impl_reg_is_scratch(const struct vreg *r)
+int impl_reg_is_scratch(type *fnty, const struct vreg *r)
 {
-	return r->is_float || r->idx <= X86_64_REG_R15;
+	return r->is_float || !impl_reg_is_callee_save(fnty, r);
 }
 
 int impl_reg_savable(const struct vreg *r)
