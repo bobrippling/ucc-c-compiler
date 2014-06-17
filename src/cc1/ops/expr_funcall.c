@@ -217,7 +217,7 @@ static void check_arg_voidness_and_nonnulls(
 
 		ARG_BUF(buf, i, sp);
 
-		fold_check_expr(arg, FOLD_CHK_NO_ST_UN, buf);
+		fold_check_expr(arg, 0, buf);
 
 		if(i < count_decl && (nonnulls & (1 << i))
 		&& type_is_ptr(args_from_decl->arglist[i]->ref)
@@ -362,9 +362,14 @@ const out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 				const out_val *arg;
 
 				/* should be of size int or larger (for integral types)
-				 * or double (for floating types)
-				 */
-				arg = gen_expr(earg, octx);
+				 * or double (for floating types) */
+				arg = gen_maybe_struct_expr(earg, octx);
+
+				/* force struct lvalues to have struct type,
+				 * so the backend can handle them */
+				if(type_is_s_or_u(earg->tree_type))
+					arg = out_change_type(octx, arg, earg->tree_type);
+
 				dynarray_add(&args, arg);
 			}
 		}

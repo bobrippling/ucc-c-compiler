@@ -1969,9 +1969,8 @@ const out_val *impl_call(
 
 	x86_call_regs(fnty, &n_call_iregs, &call_iregs);
 
-	/* pre-scan of arguments - eliminate flags
-	 * (should only be one, since we can only have one flag at a time)
-	 *
+	/* pre-scan of arguments - eliminate flags, emplace structs
+	 * (should only be one flag)
 	 * also count floats and ints
 	 */
 	for(i = 0; i < nargs; i++){
@@ -1983,6 +1982,14 @@ const out_val *impl_call(
 		else
 			nints++;
 	}
+
+	for(i = 0; i < nargs; i++){
+		if(!type_is_s_or_u(local_args[i]->t))
+			continue;
+
+		ICW("struct arg");
+	}
+
 
 	/* hidden stret argument */
 	switch((stret_kind = x86_stret(retty, &stret_stack))){
