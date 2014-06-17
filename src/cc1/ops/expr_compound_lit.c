@@ -18,6 +18,9 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	decl *d = e->bits.complit.decl;
 	int static_ctx = e->bits.complit.static_ctx; /* global or static */
 
+	if(cc1_std < STD_C99)
+		warn_at(&e->where, "compound literals are a C99 feature");
+
 	/* if(!stab->parent) assert(static_ctx);
 	 *
 	 * except things like sizeof() just pass 0 for static_ctx,
