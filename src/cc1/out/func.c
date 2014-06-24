@@ -121,6 +121,7 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 		out_ctrl_transfer(octx, octx->second_blk, NULL, NULL);
 	}
 	octx->current_blk = NULL;
+	octx->second_blk = NULL;
 
 	blk_flushall(octx, end_dbg_lbl);
 
