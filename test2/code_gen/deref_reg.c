@@ -1,5 +1,5 @@
-// RUN: %ucc -DFIRST  -S -o- %s | grep -F 'movl (%%rax), %%eax'
-// RUN: %ucc -DSECOND -S -o- %s | grep -F 'movl 4(%%rcx), %%ecx'
+// RUN: %archgen %s 'x86,x86_64:movl (%%rax), %%eax' -DFIRST
+// RUN: %archgen %s 'x86,x86_64:movl 4(%%rcx), %%ecx' -DSECOND
 
 #ifdef FIRST
 
