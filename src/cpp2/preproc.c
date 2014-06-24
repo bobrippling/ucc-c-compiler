@@ -49,8 +49,13 @@ void preproc_backtrace()
 static void preproc_out_info(void)
 {
 	/* output PP info */
-	if(option_line_info)
+	if(!no_output && option_line_info)
 		printf("# %d \"%s\"\n", file_stack[file_stack_idx].line_no, file_stack[file_stack_idx].fname);
+}
+
+int preproc_in_include()
+{
+	return file_stack_idx > 0;
 }
 
 void preproc_push(FILE *f, const char *fname)

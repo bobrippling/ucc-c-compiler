@@ -11,7 +11,7 @@ test1()
 		int i, j;
 	} a;
 
-	f(&a); // CHECK: /warning: mismatching argument/
+	f(&a); // CHECK: /warning: mismatching types, argument/
 }
 
 struct A

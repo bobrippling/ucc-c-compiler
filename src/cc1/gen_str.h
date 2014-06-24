@@ -15,9 +15,10 @@ enum pdeclargs
 
 void idt_printf(const char *fmt, ...) ucc_printflike(1, 2);
 void idt_print(void);
+FILE *gen_file(void);
 
 void print_decl(decl *d, enum pdeclargs);
-void print_type_ref(type_ref *ref, decl *d);
+void print_type(type *ref, decl *d);
 
 void print_stmt(stmt *t);
 void print_expr(expr *e);

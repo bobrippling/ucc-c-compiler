@@ -1,4 +1,22 @@
-decl_init *parse_initialisation(void)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+
+#include "../util/where.h"
+#include "../util/alloc.h"
+#include "../util/util.h"
+#include "../util/dynarray.h"
+
+#include "sym.h"
+#include "cc1.h"
+
+#include "parse_init.h"
+#include "parse_expr.h"
+
+#include "tokenise.h"
+#include "tokconv.h"
+
+decl_init *parse_init(symtable *scope, int static_ctx)
 {
 	decl_init *di;
 
@@ -30,10 +48,10 @@ decl_init *parse_initialisation(void)
 
 					}else if(accept(token_open_square)){
 						d->type = desig_ar;
-						d->bits.range[0] = parse_expr_exp();
+						d->bits.range[0] = parse_expr_exp(scope, static_ctx);
 
 						if(accept(token_elipsis))
-							d->bits.range[1] = parse_expr_exp();
+							d->bits.range[1] = parse_expr_exp(scope, static_ctx);
 
 						EAT(token_close_square);
 
@@ -45,7 +63,7 @@ decl_init *parse_initialisation(void)
 				EAT(token_assign);
 			}
 
-			sub = parse_initialisation();
+			sub = parse_init(scope, static_ctx);
 			sub->desig = desig;
 
 			dynarray_add(&exps, sub);
@@ -63,7 +81,7 @@ decl_init *parse_initialisation(void)
 
 	}else{
 		di = decl_init_new(decl_init_scalar);
-		di->bits.expr = parse_expr_no_comma();
+		di->bits.expr = PARSE_EXPR_NO_COMMA(scope, static_ctx);
 		memcpy_safe(&di->where, &di->bits.expr->where);
 
 #ifdef DEBUG_DECL_INIT

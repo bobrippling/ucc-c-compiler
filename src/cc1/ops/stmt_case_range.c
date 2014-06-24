@@ -11,38 +11,40 @@ const char *str_stmt_case_range()
 
 void fold_stmt_case_range(stmt *s)
 {
-	intval_t lv, rv;
+	integral_t lv, rv;
 
 	FOLD_EXPR(s->expr,  s->symtab);
 	FOLD_EXPR(s->expr2, s->symtab);
 
-	fold_need_expr(s->expr,  "case", 0);
-	fold_need_expr(s->expr2, "case", 0);
+	fold_check_expr(s->expr,
+			FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
+			"case-range");
+	lv = const_fold_val_i(s->expr);
 
-	lv = const_fold_val(s->expr);
-	rv = const_fold_val(s->expr2);
+	fold_check_expr(s->expr2,
+			FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
+			"case-range");
+	rv = const_fold_val_i(s->expr2);
 
 	if(lv >= rv)
 		die_at(&s->where, "case range equal or inverse");
 
-	s->expr->bits.ident.spel = out_label_case(CASE_RANGE, lv);
-
 	fold_stmt_and_add_to_curswitch(s);
 }
 
-void gen_stmt_case_range(stmt *s)
+void gen_stmt_case_range(stmt *s, out_ctx *octx)
 {
-	out_label(s->expr->bits.ident.spel);
-	gen_stmt(s->lhs);
+	out_ctrl_transfer_make_current(octx, s->bits.case_blk);
+	gen_stmt(s->lhs, octx);
 }
 
-void style_stmt_case_range(stmt *s)
+void style_stmt_case_range(stmt *s, out_ctx *octx)
 {
 	stylef("\ncase %ld ... %ld: ",
-			(long)const_fold_val(s->expr),
-			(long)const_fold_val(s->expr2));
+			(long)const_fold_val_i(s->expr),
+			(long)const_fold_val_i(s->expr2));
 
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 }
 
 void init_stmt_case_range(stmt *s)

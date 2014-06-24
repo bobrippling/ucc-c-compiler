@@ -17,12 +17,15 @@ enum platform_sys
 
 enum platform     platform_type(void);
 enum platform_sys platform_sys( void);
+int platform_32bit(void);
 
-#ifndef ucc_const
-#  define ucc_const
-#endif
+#include "compiler.h"
+
 unsigned platform_word_size(void) ucc_const;
 
 unsigned platform_align_max(void) ucc_const;
+
+/* no big endian support */
+#define platform_bigendian() 0
 
 #endif

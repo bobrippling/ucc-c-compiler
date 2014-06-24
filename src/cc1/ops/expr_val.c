@@ -5,20 +5,11 @@
 #include "ops.h"
 #include "expr_val.h"
 #include "../out/asm.h"
+#include "../type_nav.h"
 
 const char *str_expr_val()
 {
 	return "val";
-}
-
-int val_highest_bit(unsigned long long v)
-{
-	int i;
-	/* XXX: assumption about sizeof v */
-	for(i = 63; i >= 0; i--)
-		if(v & (1ULL << i))
-			return i;
-	return -1;
 }
 
 /*
@@ -48,22 +39,37 @@ oct/hex (ll|LL) suffix -> long long int, unsigned long long int
 
 void fold_expr_val(expr *e, symtable *stab)
 {
-	intval *const iv = &e->bits.iv;
+	numeric *const num = &e->bits.num;
 
-	int is_signed = !(iv->suffix & VAL_UNSIGNED);
-	const int can_change_sign = is_signed && (iv->suffix & VAL_NON_DECIMAL);
+	int is_signed = !(num->suffix & VAL_UNSIGNED);
+	const int can_change_sign = is_signed && (num->suffix & VAL_NON_DECIMAL);
 
 	const int long_max_bit = 63; /* TODO */
-	const int highest_bit = val_highest_bit(iv->val);
+	const int highest_bit = integral_high_bit(num->val.i, e->tree_type);
 	enum type_primitive p =
-		iv->suffix & VAL_LLONG ? type_llong :
-		iv->suffix & VAL_LONG  ? type_long  : type_int;
+		num->suffix & VAL_LLONG ? type_llong :
+		num->suffix & VAL_LONG  ? type_long  : type_int;
 
-	/*fprintf(stderr, "----\n0x%" INTVAL_FMT_X
+	/*fprintf(stderr, "----\n0x%" NUMERIC_FMT_X
 	      ", highest bit = %d. suff = 0x%x\n",
-	      iv->val, highest_bit, iv->suffix);*/
+	      num->val.i, highest_bit, num->suffix);*/
 
-	if(iv->val == 0){
+	/* just bail for floats for now, apart from truncating it */
+	if(num->suffix & VAL_FLOATING){
+		is_signed = 1;
+		/**/ if(num->suffix & VAL_FLOAT)
+			p = type_float, num->val.f = (float)num->val.f;
+		else if(num->suffix & VAL_DOUBLE)
+			p = type_double, num->val.f = (double)num->val.f;
+		else if(num->suffix & VAL_LDOUBLE)
+			p = type_ldouble, num->val.f = (long double)num->val.f;
+		else
+			ICE("floating?");
+
+		goto chosen;
+	}
+
+	if(num->val.i == 0){
 		assert(highest_bit == -1);
 		goto chosen;
 	}else{
@@ -134,28 +140,30 @@ chosen:
 			is_signed ? "" : "un",
 			type_primitive_to_str(p)); */
 
-	EOF_WHERE(&e->where,
-		e->tree_type = type_ref_new_type(type_new_primitive_signed(p, is_signed));
-	);
+	if(!is_signed)
+		p = TYPE_PRIMITIVE_TO_UNSIGNED(p);
+
+	e->tree_type = type_nav_btype(cc1_type_nav, p);
 
 	(void)stab;
 }
 
-void gen_expr_val(expr *e)
+const out_val *gen_expr_val(expr *e, out_ctx *octx)
 {
-	out_push_iv(e->tree_type, &e->bits.iv);
+	return out_new_num(octx, e->tree_type, &e->bits.num);
 }
 
-void gen_expr_str_val(expr *e)
+const out_val *gen_expr_str_val(expr *e, out_ctx *octx)
 {
-	idt_printf("val: 0x%lx\n", (unsigned long)e->bits.iv.val);
+	idt_printf("val.i: 0x%lx\n", (unsigned long)e->bits.num.val.i);
+	UNUSED_OCTX();
 }
 
 static void const_expr_val(expr *e, consty *k)
 {
 	CONST_FOLD_LEAF(k);
-	memcpy_safe(&k->bits.iv, &e->bits.iv);
-	k->type = CONST_VAL; /* obviously vals are const */
+	memcpy_safe(&k->bits.num, &e->bits.num);
+	k->type = CONST_NUM; /* obviously vals are const */
 }
 
 void mutate_expr_val(expr *e)
@@ -166,11 +174,22 @@ void mutate_expr_val(expr *e)
 expr *expr_new_val(int val)
 {
 	expr *e = expr_new_wrapper(val);
-	e->bits.iv.val = val;
+	e->bits.num.val.i = val;
 	return e;
 }
 
-void gen_expr_style_val(expr *e)
+expr *expr_new_numeric(numeric *num)
 {
-	stylef("%" INTVAL_FMT_D, e->bits.iv.val);
+	expr *e = expr_new_val(0);
+	memcpy_safe(&e->bits.num, num);
+	return e;
+}
+
+const out_val *gen_expr_style_val(expr *e, out_ctx *octx)
+{
+	if(K_FLOATING(e->bits.num))
+		stylef("%" NUMERIC_FMT_LD, e->bits.num.val.f);
+	else
+		stylef("%" NUMERIC_FMT_D, e->bits.num.val.i);
+	UNUSED_OCTX();
 }

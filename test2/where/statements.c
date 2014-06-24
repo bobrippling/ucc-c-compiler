@@ -6,22 +6,18 @@ int a = 0, *b = (void *)0, c = 0;
 
 a = b;
 // CARETS:
-//^ type mismatch
+//^ note:
 
 if(a = c);
 // CARETS:
-//   ^ testing an assignment
+//   ^ assignment in
 while(a = c);
 // CARETS:
-//      ^ testing an assignment
+//      ^ assignment in
 do ; while(a = c);
 // CARETS:
-//           ^ testing an assignment
+//           ^ assignment in
 for(;a = c;);
 // CARETS:
-//     ^ testing an assignment
-
-return _Generic(0, char: 5);
-// CARETS:
-//     ^ no type satisfying
+//     ^ assignment in
 }

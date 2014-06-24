@@ -4,5 +4,6 @@ main()
 	{
 	} a;
 
-	assert(0 == sizeof a);
+	if(0 != sizeof a)
+		abort();
 }

@@ -1,33 +1,51 @@
+#include <assert.h>
+
 #include "ops.h"
 #include "expr__Generic.h"
+#include "../type_is.h"
+#include "../type_nav.h"
 
 const char *str_expr__Generic()
 {
 	return "_Generic";
 }
 
+static const out_val *generic_lea(expr *e, out_ctx *octx)
+{
+	return lea_expr(e->bits.generic.chosen->e, octx);
+}
+
 void fold_expr__Generic(expr *e, symtable *stab)
 {
 	struct generic_lbl **i, *def;
+	type *expr_ty;
 
 	def = NULL;
 
-	/* we use the non-decayed type */
-	FOLD_EXPR_NO_DECAY(e->expr, stab);
+	FOLD_EXPR(e->expr, stab);
+	/* strip top level qualifiers */
+	expr_ty = type_skip_all(e->expr->tree_type);
 
 	for(i = e->bits.generic.list; i && *i; i++){
-		const int flags = DECL_CMP_EXACT_MATCH;
 		struct generic_lbl **j, *l = *i;
 
-		FOLD_EXPR_NO_DECAY(l->e, stab);
+		fold_expr_no_decay(l->e, stab);
 
+		/* duplicate default checked below */
 		for(j = i + 1; *j; j++){
-			type_ref *m = (*j)->t;
+			type *m = (*j)->t;
 
-			/* duplicate default checked below */
-			if(m && type_ref_equal(m, l->t, flags))
-				die_at(&m->where, "duplicate type in _Generic: %s",
-						type_ref_to_str(l->t));
+			/* here we check for purely equal, e.g.
+			 * _Generic(..., int: x, const int: y)
+			 * is valid */
+			if(m && (type_cmp(m, l->t, 0) & TYPE_EQUAL_ANY)){
+				fold_had_error = 1;
+				warn_at_print_error(
+						&(*j)->e->where,
+						"duplicate type in _Generic: %s",
+						type_to_str(l->t));
+				continue;
+			}
 		}
 
 
@@ -35,13 +53,13 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			enum { OKAY, INCOMPLETE, VARIABLE, FUNC } prob = OKAY;
 			const char *sprob;
 
-			fold_type_ref(l->t, NULL, stab);
+			fold_type(l->t, stab);
 
-			if(!type_ref_is_complete(l->t))
+			if(!type_is_complete(l->t))
 				prob = INCOMPLETE;
-			else if(type_ref_is_variably_modified(l->t))
+			else if(type_is_variably_modified(l->t))
 				prob = VARIABLE;
-			else if(type_ref_is_func_or_block(l->t))
+			else if(type_is_func_or_block(l->t))
 				prob = FUNC;
 
 			switch(prob){
@@ -60,39 +78,67 @@ void fold_expr__Generic(expr *e, symtable *stab)
 			}
 
 			if(sprob){
-				die_at(&l->e->where, "%s type '%s' in _Generic",
-						sprob, type_ref_to_str(l->t));
+				fold_had_error = 1;
+				warn_at_print_error(
+						&l->e->where, "%s type '%s' in _Generic",
+						sprob, type_to_str(l->t));
+				continue;
 			}
 
-			if(type_ref_equal(e->expr->tree_type, l->t, flags)){
-				UCC_ASSERT(!e->bits.generic.chosen,
-						"already chosen expr for _Generic");
-				e->bits.generic.chosen = l;
+			switch(type_cmp(expr_ty, l->t, 0)){
+				case TYPE_QUAL_ADD: /* expr=int matching const int is fine */
+				case TYPE_EQUAL:
+				case TYPE_EQUAL_TYPEDEF:
+					if(e->bits.generic.chosen){
+						assert(fold_had_error);
+						continue;
+					}
+					e->bits.generic.chosen = l;
+					break;
+
+				default:
+					break;
 			}
 		}else{
-			if(def)
-				die_at(&def->e->where, "second default for _Generic");
+			if(def){
+				fold_had_error = 1;
+				warn_at_print_error(&def->e->where,
+						"second default for _Generic");
+				continue;
+			}
 			def = l;
 		}
 	}
 
 
 	if(!e->bits.generic.chosen){
-		if(def)
+		if(def){
 			e->bits.generic.chosen = def;
-		else
-			die_at(&e->where, "no type satisfying %s", type_ref_to_str(e->expr->tree_type));
+		}else{
+			fold_had_error = 1;
+			warn_at_print_error(&e->where,
+					"no type satisfying %s",
+					type_to_str(e->expr->tree_type));
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
+		}
 	}
 
+	if(expr_is_lval(e->bits.generic.chosen->e))
+		e->f_lea = generic_lea;
+
 	e->tree_type = e->bits.generic.chosen->e->tree_type;
+
+	/* direct our location to the sub-expression */
+	memcpy_safe(&e->where, &e->bits.generic.chosen->e->where);
 }
 
-void gen_expr__Generic(expr *e)
+const out_val *gen_expr__Generic(expr *e, out_ctx *octx)
 {
-	gen_expr(e->bits.generic.chosen->e);
+	return gen_expr(e->bits.generic.chosen->e, octx);
 }
 
-void gen_expr_str__Generic(expr *e)
+const out_val *gen_expr_str__Generic(expr *e, out_ctx *octx)
 {
 	struct generic_lbl **i;
 
@@ -112,9 +158,9 @@ void gen_expr_str__Generic(expr *e)
 		if(l->t){
 			idt_printf("type: ");
 			gen_str_indent++;
-			print_type_ref(l->t, NULL);
+			print_type(l->t, NULL);
 			gen_str_indent--;
-			fprintf(cc1_out, "\n");
+			fprintf(gen_file(), "\n");
 		}else{
 			idt_printf("default:\n");
 		}
@@ -124,12 +170,18 @@ void gen_expr_str__Generic(expr *e)
 		gen_str_indent--;
 	}
 	gen_str_indent--;
+
+	UNUSED_OCTX();
 }
 
 static void const_expr__Generic(expr *e, consty *k)
 {
 	/* we're const if our chosen expr is */
-	UCC_ASSERT(e->bits.generic.chosen, "_Generic const check before fold");
+	if(!e->bits.generic.chosen){
+		UCC_ASSERT(fold_had_error, "_Generic const check before fold");
+		k->type = CONST_NO;
+		return;
+	}
 
 	const_fold(e->bits.generic.chosen->e, k);
 }
@@ -147,19 +199,21 @@ expr *expr_new__Generic(expr *test, struct generic_lbl **lbls)
 	return e;
 }
 
-void gen_expr_style__Generic(expr *e)
+const out_val *gen_expr_style__Generic(expr *e, out_ctx *octx)
 {
 	struct generic_lbl **i;
 
 	stylef("_Generic(");
-	gen_expr(e->expr);
+	IGNORE_PRINTGEN(gen_expr(e->expr, octx));
 
 	for(i = e->bits.generic.list; i && *i; i++){
 		struct generic_lbl *l = *i;
 
 		idt_printf("%s: ",
-				l->t ? type_ref_to_str(l->t) : "default");
+				l->t ? type_to_str(l->t) : "default");
 
-		gen_expr(l->e);
+		IGNORE_PRINTGEN(gen_expr(l->e, octx));
 	}
+
+	return NULL;
 }

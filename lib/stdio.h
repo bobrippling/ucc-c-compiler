@@ -31,7 +31,8 @@ typedef int      __stdio_seek(void *,       fpos_t, int);
 typedef int     __stdio_close(void *);
 
 /* func interface */
-FILE *funopen(const void *cookie, __stdio_read *, __stdio_write *, __stdio_seek *, __stdio_close *);
+FILE *funopen(void *cookie,
+		__stdio_read *, __stdio_write *, __stdio_seek *, __stdio_close *);
 FILE *fropen(void *cookie, __stdio_read  *);
 FILE *fwopen(void *cookie, __stdio_write *);
 

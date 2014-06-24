@@ -11,6 +11,11 @@ struct A
 	int vals[];
 };
 
+typedef unsigned long size_t;
+extern void *malloc(size_t);
+int memcmp(void const *, void const *, size_t);
+void abort(void);
+
 struct A a = { 2, { 1, 2 } };
 
 struct A *make(int first, ...)
@@ -46,7 +51,7 @@ main()
 	struct A *p = make(1, 2, 3, 4, 5, 0);
 	if(p->length != 5)
 		abort();
-	if(memcmp(p->vals, (typeof(p->vals)){ 1, 2, 3, 4, 5 }, 5 * sizeof *p->vals))
+	if(memcmp(p->vals, (__typeof(p->vals)){ 1, 2, 3, 4, 5 }, 5 * sizeof *p->vals))
 		abort();
 
 	return 0;

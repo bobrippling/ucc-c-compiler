@@ -12,72 +12,92 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	fold_inc_writes_if_sym(lvalue, stab);
 
-	FOLD_EXPR_NO_DECAY(e->lhs, stab);
+	fold_expr_no_decay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
+
+	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, "compound assignment");
+	fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, "compound assignment");
 
 	/* skip the addr we inserted */
 	expr_must_lvalue(lvalue);
 
-	if(type_ref_is_const(lvalue->tree_type))
-		die_at(&e->where, "can't modify const expression %s", lvalue->f_str());
+	expr_assign_const_check(lvalue, &e->where);
 
 	fold_check_restrict(lvalue, e->rhs, "compound assignment", &e->where);
 
 	UCC_ASSERT(op_can_compound(e->op), "non-compound op in compound expr");
 
 	{
-		type_ref *tlhs, *trhs;
-		type_ref *resolved = op_required_promotion(e->op, lvalue, e->rhs, &e->where, &tlhs, &trhs);
+		type *tlhs, *trhs;
+		type *resolved = op_required_promotion(e->op, lvalue, e->rhs, &e->where, &tlhs, &trhs);
 
 		if(tlhs){
-			/* can't cast the lvalue - we must cast the rhs to the correct size  */
+			/* must cast the lvalue, then down cast once the operation is done
+			 * special handling for expr_kind(e->lhs, cast) is done in the gen-code
+			 */
+			fold_insert_casts(tlhs, &e->lhs, stab);
 
-			if(tlhs != lvalue->tree_type)
-				type_ref_free_1(tlhs);
-
-			fold_insert_casts(lvalue->tree_type, &e->rhs, stab, &e->where, op_to_str(e->op));
+			/* casts may be inserted anyway, and don't want to rely on
+			 * .implicit_cast stuff */
+			e->bits.compound_upcast = 1;
 
 		}else if(trhs){
-			fold_insert_casts(trhs, &e->rhs, stab, &e->where, op_to_str(e->op));
+			fold_insert_casts(trhs, &e->rhs, stab);
 		}
 
 		e->tree_type = lvalue->tree_type;
 
-		fold_disallow_st_un(e, "compound assignment");
-
 		(void)resolved;
-		/*type_ref_free_1(resolved); XXX: memleak */
+		/*type_free_1(resolved); XXX: memleak */
 	}
 
 	/* type check is done in op_required_promotion() */
 }
 
-void gen_expr_assign_compound(expr *e)
+const out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
 {
-	lea_expr(e->lhs);
+	/* int += float
+	 * lea int, cast up to float, add, cast down to int, store
+	 */
+	const out_val *saved_post = NULL, *addr_lhs, *rhs, *lhs, *result;
+
+	addr_lhs = lea_expr(
+			e->bits.compound_upcast ? expr_cast_child(e->lhs) : e->lhs,
+			octx);
+
+	out_val_retain(octx, addr_lhs); /* 2 */
 
 	if(e->assign_is_post){
-		out_dup();
-		out_deref();
-		out_flush_volatile();
-		out_swap();
-		out_comment("saved for compound op");
+		out_val_retain(octx, addr_lhs); /* 3 */
+		saved_post = out_deref(octx, addr_lhs); /* addr_lhs=2, saved_post=1 */
 	}
 
-	out_dup();
-	out_deref();
+	/* delay the dereference until after generating rhs.
+	 * this is fine, += etc aren't sequence points
+	 */
 
-	gen_expr(e->rhs);
+	rhs = gen_expr(e->rhs, octx);
 
-	out_op(e->op);
+	/* here's the delayed dereference */
+	lhs = out_deref(octx, addr_lhs); /* addr_lhs=1 */
+	if(e->bits.compound_upcast)
+		lhs = out_cast(octx, lhs, e->lhs->tree_type, /*normalise_bool:*/1);
 
-	out_store();
+	result = out_op(octx, e->op, lhs, rhs);
 
-	if(e->assign_is_post)
-		out_pop();
+	if(e->bits.compound_upcast) /* need to cast back down to store */
+		result = out_cast(octx, result, e->tree_type, /*normalise_bool:*/1);
+
+	if(!saved_post)
+		out_val_retain(octx, result);
+	out_store(octx, addr_lhs, result);
+
+	if(!saved_post)
+		return result;
+	return saved_post;
 }
 
-void gen_expr_str_assign_compound(expr *e)
+const out_val *gen_expr_str_assign_compound(expr *e, out_ctx *octx)
 {
 	idt_printf("compound %s%s-assignment expr:\n",
 			e->assign_is_post ? "post-" : "",
@@ -91,6 +111,8 @@ void gen_expr_str_assign_compound(expr *e)
 	gen_str_indent++;
 	print_expr(e->rhs);
 	gen_str_indent--;
+
+	UNUSED_OCTX();
 }
 
 void mutate_expr_assign_compound(expr *e)
@@ -109,9 +131,10 @@ expr *expr_new_assign_compound(expr *to, expr *from, enum op_type op)
 	return e;
 }
 
-void gen_expr_style_assign_compound(expr *e)
+const out_val *gen_expr_style_assign_compound(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs->lhs);
+	IGNORE_PRINTGEN(gen_expr(e->lhs->lhs, octx));
 	stylef(" %s= ", op_to_str(e->op));
-	gen_expr(e->rhs);
+	IGNORE_PRINTGEN(gen_expr(e->rhs, octx));
+	return NULL;
 }

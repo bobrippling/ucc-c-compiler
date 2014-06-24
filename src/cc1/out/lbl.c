@@ -15,6 +15,13 @@ static int label_last    = 1,
 					 block_last    = 1,
 					 static_last   = 1;
 
+char *out_label_bblock(unsigned long n)
+{
+	char *buf = umalloc(16);
+	SNPRINTF(buf, 16, ASM_PLBL_PRE "blk.%lu", (unsigned long)n);
+	return buf;
+}
+
 char *out_label_block(const char *funcsp)
 {
 	int len;
@@ -49,6 +56,7 @@ char *out_label_data_store(enum out_label_store ty)
 		case STORE_P_CHAR: pre = "str"; break;
 		case STORE_P_WCHAR: pre = "wstr"; break;
 		case STORE_COMP_LIT: pre = "data"; break;
+		case STORE_FLOAT: pre = "float"; break;
 	}
 	SNPRINTF(ret, 16, "%s.%d", pre, str_last++);
 	return ret;
@@ -107,4 +115,9 @@ char *out_label_flow(const char *fmt)
 	char *ret = umalloc(len);
 	SNPRINTF(ret, len, ASM_PLBL_PRE "flow_%s_%d", fmt, flow_last++);
 	return ret;
+}
+
+char *out_dbg_func_end(const char *fn)
+{
+	return ustrprintf(ASM_PLBL_PRE "funcend_%s", fn);
 }

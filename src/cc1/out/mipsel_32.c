@@ -6,8 +6,7 @@
 #include "../../util/util.h"
 #include "../../util/alloc.h"
 #include "../../util/platform.h"
-#include "../data_structs.h"
-#include "vstack.h"
+/*#include "vstack.h"*/
 #include "impl.h"
 #include "../cc1.h"
 #include "asm.h"
@@ -33,6 +32,8 @@
 				}                              \
 			}                                \
 	}while(0)
+
+#define N_CALL_REGS 4 /* FIXME: todo: stack args */
 
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
@@ -102,18 +103,24 @@ int impl_scratch_to_reg(int i)
 	return MIPS_REG_TMP_0 + i;
 }
 
-void impl_func_prologue(int nargs)
+int impl_n_call_regs(type *fr)
 {
-	static int pws;
-	int i;
+	(void)fr;
+	return N_CALL_REGS;
+}
 
-	if(!pws)
-		pws = platform_word_size();
-
+void impl_func_prologue_save_fp(void)
+{
 	out_asm("addi  $sp, $sp, -8"); /* space for saved ret and fp */
 	out_asm("sw    $ra, 4($sp)");  /* save ret */
 	out_asm("sw    $fp,  ($sp)");  /* save fp */
 	out_asm("move  $fp, $sp");     /* new frame */
+}
+
+void impl_func_prologue_save_call_regs(type *rf, int nargs)
+{
+	const unsigned pws = platform_word_size();
+	int i;
 
 	UCC_ASSERT(nargs <= N_CALL_REGS, "TODO: more than 4 args"); /* FIXME */
 
@@ -129,12 +136,14 @@ void impl_func_prologue(int nargs)
 	}
 }
 
-void impl_func_save_variadic(int nargs)
+int impl_func_prologue_save_variadic(type *rf, int nargs)
 {
+	(void)rf;
 	ICW("variadic function prologue on MIPS");
+	return 0; /* FIXME */
 }
 
-void impl_func_epilogue(void)
+void impl_func_epilogue(type *fr)
 {
 	out_asm("move $sp, $fp");
 	out_asm("lw $fp,  ($sp)");
@@ -167,15 +176,15 @@ void impl_lea(struct vstack *from, int reg)
 	}
 }
 
-static const char *mips_type_ch(type_ref *ty, int chk_sig)
+static const char *mips_type_ch(type *ty, int chk_sig)
 {
 	int sz, sig;
 
 	if(!ty)
 		return "w";
 
-	sz = type_ref_size(ty, NULL);
-	sig = chk_sig ? type_ref_is_signed(ty) : 1;
+	sz = type_size(ty, NULL);
+	sig = chk_sig ? type_is_signed(ty) : 1;
 
 	switch(sz){
 		case 1:
@@ -210,8 +219,8 @@ void impl_load(struct vstack *from, int reg)
 			if(from->bits.val == 0)
 				out_asm("move $%s, $%s", rstr, sym_regs[MIPS_REG_ZERO]);
 			else
-				out_asm("li%s $%s, %d",
-						type_ref_is_signed(from->t) ? "" : "u",
+				out_asm("li%s $%s, %ld",
+						type_is_signed(from->t) ? "" : "u",
 						rstr, from->bits.val);
 			break;
 
@@ -251,7 +260,7 @@ void impl_store(struct vstack *from, struct vstack *to)
 			break;
 
 		case CONST:
-			out_asm("s%s $%s, %d",
+			out_asm("s%s $%s, %ld",
 					ty_ch, rstr,
 					to->bits.val);
 			break;
@@ -309,13 +318,13 @@ void impl_op(enum op_type op)
 	v_to_reg_const(vtop);
 	if(vtop->type == CONST){
 		immediate = "i";
-		snprintf(r_vtop, sizeof r_vtop, "%d", vtop->bits.val);
+		snprintf(r_vtop, sizeof r_vtop, "%ld", vtop->bits.val);
 	}else{
 		immediate = "";
 		reg_str_r(r_vtop, vtop);
 	}
 
-	ssigned = type_ref_is_signed(vtop->t) ? "" : "u";
+	ssigned = type_is_signed(vtop->t) ? "" : "u";
 
 	switch(op){
 #define OP(ty) case op_ ## ty: cmp = #ty; goto cmp
@@ -414,11 +423,11 @@ void impl_op_unary(enum op_type op)
 	}
 }
 
-void impl_cast_load(type_ref *small, type_ref *big, int is_signed)
+void impl_cast_load(type *small, type *big, int is_signed)
 {
 	if(vtop->type != REG){
 		out_comment("// mips cast to %s - loading to register",
-				type_ref_to_str(big));
+				type_to_str(big));
 		v_to_reg(vtop);
 	}
 }
@@ -442,7 +451,7 @@ void impl_jcond(int true, const char *lbl)
 		case CONST:
 			if(true == !!vtop->bits.val){ /* FIXME: factor */
 				out_asm("b %s", lbl);
-				out_comment("// constant jmp condition %d", vtop->bits.val);
+				out_comment("// constant jmp condition %ld", vtop->bits.val);
 			}
 			break;
 
@@ -462,7 +471,7 @@ void impl_jcond(int true, const char *lbl)
 	}
 }
 
-void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
+void impl_call(const int nargs, type *r_ret, type *r_func)
 {
 	int i;
 
@@ -488,7 +497,7 @@ void impl_call(const int nargs, type_ref *r_ret, type_ref *r_func)
 	}
 }
 
-void impl_pop_func_ret(type_ref *r)
+void impl_pop_func_ret(type *r)
 {
 	(void)r;
 	v_to_reg2(vtop, REG_RET);
@@ -497,13 +506,13 @@ void impl_pop_func_ret(type_ref *r)
 
 void impl_undefined(void)
 {
-	type_ref *char_ptr = type_ref_new_ptr(
-				type_ref_new_type(
+	type *char_ptr = type_new_ptr(
+				type_new_type(
 					type_new_primitive(type_char)),
 				qual_none);
 
-	out_push_i(char_ptr, 0);
-	out_push_i(char_ptr, 0);
+	out_push_zero(char_ptr);
+	out_push_zero(char_ptr);
 	out_store(); /* *(char *)0 = 0 */
 	out_pop();
 

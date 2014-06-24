@@ -4,5 +4,5 @@ main()
 {
 	struct { int i : 3; } a;
 
-	return sizeof a.i; // CHECK: /error: sizeof applied to a bit-field/
+	return sizeof a.i; // CHECK: /error: bitfield in sizeof/
 }

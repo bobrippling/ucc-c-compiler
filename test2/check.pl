@@ -40,7 +40,11 @@ my $nchecks = 0;
 # read warnings in
 
 for my $w (parse_warnings((<STDIN>))){
-	push @{$lines[$w->{line} - 1]->{warnings}}, $w;
+	my $ln = $w->{line};
+
+	if($ln > 0){
+		push @{$lines[$ln - 1]->{warnings}}, $w;
+	}
 }
 
 # ---------------------------
@@ -148,13 +152,13 @@ iter_lines(
 			my $rev = 0;
 
 			my($search, $is_regex);
-			if($match =~ m#^(!)?/(.*)/$#){
+			if($match =~ m#^ *(!)? */(.*)/$#){
 				$rev = defined $1;
 				$search = $2;
 				$is_regex = 1;
-			}elsif($match =~ m#^ *(.*) *$#){
-				$rev = 0;
-				$search = $1;
+			}elsif($match =~ m#^ *(!)? *(.*) *$#){
+				$rev = defined $1;
+				$search = $2;
 				$is_regex = 0;
 			}else{
 				die2 "invalid CHECK (line $check->{line}): '$match'"
@@ -173,10 +177,12 @@ iter_lines(
 
 			if($found == $rev){
 				$missing_warning = 1;
-				warn "check $match "
+				warn "$check->{line}"
+				. ($check->{above} ? " ^" : "")
+				. ": check \"$match\" "
 				. ($rev ? "" : "not ")
-				. "found in warnings on line $check->{line}"
-				. ($check->{above} ? " ^" : "") . "\n"
+				. "found"
+				. "\n"
 			}
 		}
 	}

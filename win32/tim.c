@@ -1,8 +1,9 @@
-enum { MB_OK = 0 };
+enum { MB_OK, MB_OK_CANCEL };
 
-// force the calling convention to be stack-only
 // note that it's callee cleanup - need to hand edit for this
-extern int _MessageBoxA(long, ...);
+extern __attribute__((stdcall)) int
+_MessageBoxA(int, char *, char *, int)
+;//asm("_MessageBoxA@16");
 
 main()
 {
@@ -17,7 +18,8 @@ main()
 	for(i = 0; i < 10; i++){
 		buf[3] = i + '0';
 
-		_MessageBoxA(0, buf, "Caption", MB_OK);
+		// this currently calls the _cdecl impl, so we aren't doing stack clean that we should
+		_MessageBoxA(0, buf, "Caption", MB_YES_CANCEL);
 	}
 
 	return 5;

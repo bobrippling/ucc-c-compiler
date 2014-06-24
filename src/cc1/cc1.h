@@ -4,15 +4,6 @@
 #include "../util/std.h"
 
 /*#define FANCY_STACK_INIT 1*/
-#define ASM_INLINE_FNAME "__asm__"
-
-enum section_type
-{
-	SECTION_TEXT,
-	SECTION_DATA,
-	SECTION_BSS,
-	NUM_SECTIONS
-};
 
 enum warning
 {
@@ -50,6 +41,8 @@ enum warning
 	WARN_SHADOW_LOCAL             = 1 << 28,
 	WARN_SHADOW_GLOBAL            = 1 << 29,
 
+	WARN_IMPLICIT_OLD_FUNC        = 1 << 30, /* int f(); */
+
 	/* TODO */
 	/*
 	WARN_FORMAT                   = 1 << 23,
@@ -82,7 +75,21 @@ enum fopt
 	FOPT_TRACK_INITIAL_FNAM    = 1 << 11,
 	FOPT_FREESTANDING          = 1 << 12,
 	FOPT_SHOW_STATIC_ASSERTS   = 1 << 13,
+	FOPT_VERBOSE_ASM           = 1 << 14,
+	FOPT_INTEGRAL_FLOAT_LOAD   = 1 << 15,
+	FOPT_SYMBOL_ARITH          = 1 << 16,
+	FOPT_SIGNED_CHAR           = 1 << 17,
+	FOPT_CAST_W_BUILTIN_TYPES  = 1 << 18,
+	FOPT_DUMP_TYPE_TREE        = 1 << 19,
+	FOPT_EXT_KEYWORDS          = 1 << 20, /* -fasm */
 };
+
+enum mopt
+{
+	MOPT_32            = 1 << 0,
+	MOPT_STACK_REALIGN = 1 << 1,
+};
+#define IS_32_BIT() (!!(mopt_mode & MOPT_32))
 
 enum cc1_backend
 {
@@ -92,6 +99,7 @@ enum cc1_backend
 };
 
 extern enum fopt fopt_mode;
+extern enum mopt mopt_mode;
 extern enum cc1_backend cc1_backend;
 extern enum warning warn_mode;
 
@@ -101,13 +109,11 @@ extern enum c_std cc1_std;
 void cc1_warn_atv(struct where *where, int die, enum warning w, const char *fmt, va_list l);
 void cc1_warn_at( struct where *where, int die, enum warning w, const char *fmt, ...) ucc_printflike(4, 5);
 
-extern FILE *cc_out[NUM_SECTIONS];
-extern FILE *cc1_out;
-
 extern int cc1_error_limit;
 
-extern int cc1_m32; /* 32bit mode or 64? */
 extern int cc1_mstack_align; /* 2^n */
 extern int cc1_gdebug; /* -g */
+
+extern char *cc1_first_fname;
 
 #endif

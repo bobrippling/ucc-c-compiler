@@ -1,0 +1,4 @@
+ent1:
+.long 1, 0
+.long 2, 7
+.long 8, 9

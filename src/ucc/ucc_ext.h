@@ -11,6 +11,7 @@ void preproc( char *in,    char *out, char **args);
 void compile( char *in,    char *out, char **args);
 void assemble(char *in,    char *out, char **args);
 void link_all(char **objs, char *out, char **args);
+void dsym(char *exe);
 
 void ucc_ext_cmds_show(int);
 void ucc_ext_cmds_noop(int);

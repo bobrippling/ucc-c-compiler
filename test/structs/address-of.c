@@ -15,5 +15,5 @@ main()
 
 	printf("%p, %p\n", pa, pb);
 
-	return *pb;
+	return *pb == 5 ? 0 : 1;
 }

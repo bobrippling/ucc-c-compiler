@@ -26,7 +26,7 @@ done <<!
 ??- ~
 !
 
-t=/tmp/$$.trigrp
+t="$UCC_TESTDIR"/$$.trigrp
 cat >$t <<!
 ??=define YO 5
 YO

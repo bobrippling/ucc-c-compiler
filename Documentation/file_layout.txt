@@ -1,0 +1,17 @@
+File Layout
+-----------
+
+src/: Compiler source files
+	cpp2/: Preprocessor
+	cc1/: The parser and code generator
+	util/: Common code
+	cc.c: The cc wrapper program
+
+lib/: Include files and library object location
+	Contains partial C standard lib
+
+cc1 File Layout
+---------------
+
+ops/: expression/statment class specifics
+out/: stack -> asm code generator

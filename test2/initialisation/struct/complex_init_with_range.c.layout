@@ -1,0 +1,102 @@
+ent1:
+# i
+	.long	2
+
+# buf + pad
+	.byte 7, 7, 0
+	.space 1
+
+# sub_b[0 ... 2]
+	.space	12
+	.space	12
+	.space	12
+
+# sub_b[3 ... 5]
+	.long	1
+	.space 8
+	.long	1
+	.space 8
+	.long	1
+	.space 8
+
+# sub_b[6 ... 10]
+	.space	12
+	.space	12
+	.space	12
+	.space	12
+
+# repeat for 3
+	.long	2
+	.byte 7, 7, 0
+	.space 1
+	.space 12
+	.space 12
+	.space 12
+	.long	1
+	.space 8
+	.long	1
+	.space 8
+	.long	1
+	.space 8
+	.space 12
+	.space 12
+	.space 12
+	.space 12
+	.long	2
+	.byte 7, 7, 0
+	.space 1
+	.space 12
+	.space 12
+	.space 12
+	.long	1
+	.space 8
+	.long	1
+	.space 8
+	.long	1
+	.space 8
+	.space 12
+	.space 12
+	.space 12
+	.space 12
+	.long	2
+	.byte 7, 7, 0
+	.space 1
+	.space 12
+	.space 12
+	.space 12
+	.long	1
+	.space 8
+	.long	1
+	.space 8
+	.long	1
+	.space 8
+	.space 12
+	.space 12
+	.space 12
+	.space 12
+
+# ent1[4 ... 7]
+	.space	128
+	.space	128
+	.space	128
+	.space	128
+
+# ent1[8]
+	.long	0
+	.space 3
+	.space 1
+
+	.space 12
+	.space 12
+	.space 12
+
+	.long	0
+	.long	2
+	.long	3
+
+	.space	12
+	.space	12
+	.space	12
+	.space	12
+	.space	12
+	.space	12

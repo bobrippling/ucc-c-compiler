@@ -5,7 +5,6 @@
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
-#include "../data_structs.h"
 #include "../expr.h"
 #include "__builtin.h"
 #include "__builtin_va.h"
@@ -23,15 +22,11 @@
 
 #include "../tokenise.h"
 #include "../tokconv.h"
-#include "../parse.h"
 #include "../parse_type.h"
+#include "../type_is.h"
+#include "../type_nav.h"
 
-static unsigned current_func_args_cnt(symtable *stab)
-{
-	return dynarray_count(
-			(decl **)type_ref_funcargs(
-				symtab_func(stab)->ref)->arglist);
-}
+#include "../parse_expr.h"
 
 static void va_type_check(expr *va_l, expr *in, symtable *stab)
 {
@@ -40,23 +35,25 @@ static void va_type_check(expr *va_l, expr *in, symtable *stab)
 	 * aka
 	 * f(__builtin_va_list *l) [the array has decayed]
 	 */
+	enum type_cmp cmp;
+
 	if(!symtab_func(stab))
 		die_at(&in->where, "%s() outside a function",
 				BUILTIN_SPEL(in));
 
-	if(!type_ref_equal(va_l->tree_type,
-				type_ref_cached_VA_LIST_decayed(),
-				DECL_CMP_EXACT_MATCH))
-	{
+	cmp = type_cmp(va_l->tree_type,
+			type_decay(type_nav_va_list(cc1_type_nav, stab)), 0);
+
+	if(!(cmp & TYPE_EQUAL_ANY)){
 		die_at(&va_l->where,
 				"first argument to %s should be a va_list (not %s)",
-				BUILTIN_SPEL(in), type_ref_to_str(va_l->tree_type));
+				BUILTIN_SPEL(in), type_to_str(va_l->tree_type));
 	}
 }
 
 static void va_ensure_variadic(expr *e, symtable *stab)
 {
-	funcargs *args = type_ref_funcargs(symtab_func(stab)->ref);
+	funcargs *args = type_funcargs(symtab_func(stab)->ref);
 
 	if(!args->variadic)
 		die_at(&e->where, "%s in non-variadic function", BUILTIN_SPEL(e->expr));
@@ -64,7 +61,6 @@ static void va_ensure_variadic(expr *e, symtable *stab)
 
 static void fold_va_start(expr *e, symtable *stab)
 {
-	int n_args;
 	expr *va_l;
 
 	if(dynarray_count(e->funcargs) != 2)
@@ -86,66 +82,83 @@ static void fold_va_start(expr *e, symtable *stab)
 		sym *second = NULL;
 		decl **args = symtab_func_root(stab)->decls;
 		sym *arg = args[dynarray_count(args) - 1]->sym;
+		expr *last_exp = expr_skip_casts(e->funcargs[1]);
 
-		if(expr_kind(e->funcargs[1], identifier))
-			second = e->funcargs[1]->bits.ident.sym;
-
+		if(expr_kind(last_exp, identifier))
+			second = last_exp->bits.ident.sym;
 
 		if(second != arg)
-			warn_at(&e->funcargs[1]->where,
+			warn_at(&last_exp->where,
 					"second parameter to va_start "
 					"isn't last named argument");
 	}
 
-	n_args = current_func_args_cnt(stab);
-
 #ifndef UCC_VA_ABI
 	{
-		stmt *assigns = stmt_new_wrapper(code, symtab_new(stab));
+		stmt *assigns = stmt_set_where(
+				stmt_new_wrapper(code, symtab_new(stab, &e->where)),
+				&e->where);
 		expr *assign;
 
-#define ADD_ASSIGN(memb, exp)               \
-		assign = expr_new_assign(               \
-				expr_new_struct(                    \
-					va_l, 0 /* ->  since it's [1] */, \
-					expr_new_identifier(memb)),       \
-				exp);                               \
-		                                        \
-		dynarray_add(&assigns->codes,           \
-				expr_to_stmt(assign, stab))
+#define W(exp) expr_set_where((exp), &e->where)
 
-#define ADD_ASSIGN_VAL(memb, val) ADD_ASSIGN(memb, expr_new_val(val))
+#define ADD_ASSIGN(memb, exp)                     \
+		assign = W(expr_new_assign(                   \
+		        W(expr_new_struct(                    \
+		          va_l, 0 /* ->  since it's [1] */,   \
+		            W(expr_new_identifier(memb)))),   \
+		        exp));                                \
+                                                  \
+		      dynarray_add(&assigns->bits.code.stmts, \
+		        stmt_set_where(                       \
+		          expr_to_stmt(assign, stab),         \
+		          &e->where))
+
+#define ADD_ASSIGN_VAL(memb, val) ADD_ASSIGN(memb, W(expr_new_val(val)))
 
 		const int ws = platform_word_size();
-		const int n_args_pws = n_args * ws;
+		struct
+		{
+			unsigned gp, fp;
+		} nargs = { 0, 0 };
+		funcargs *const fa = type_funcargs(symtab_func(stab)->ref);
+
+		funcargs_ty_calc(fa, &nargs.gp, &nargs.fp);
 
 		/* need to set the offsets to act as if we've skipped over
 		 * n call regs, since we may already have some arguments used
 		 */
-		ADD_ASSIGN_VAL("gp_offset", n_args_pws);
-		ADD_ASSIGN_VAL("fp_offset", 0); /* TODO: when we have float support */
+		ADD_ASSIGN_VAL("gp_offset", nargs.gp * ws);
+		ADD_ASSIGN_VAL("fp_offset", (6 + nargs.fp) * ws);
+		/* FIXME: x86_64::N_CALL_REGS_I reference above */
 
 		/* adjust to take the skip into account */
 		ADD_ASSIGN("reg_save_area",
-				expr_new_op2(op_minus,
-					builtin_new_reg_save_area(), /* void arith - need _pws */
-					expr_new_val(n_args_pws)));
+				W(expr_new_op2(op_minus,
+					W(builtin_new_reg_save_area()),
+					/* void arith - need _pws
+					 * total arg count * ws */
+					W(expr_new_val((nargs.gp + nargs.fp) * ws)))));
 
 		ADD_ASSIGN("overflow_arg_area",
-				expr_new_op2(op_plus,
-					builtin_new_frame_address(0), /* *2 to step over saved-rbp and saved-ret */
-					expr_new_val(ws * 2)));
+				W(expr_new_op2(op_plus,
+					W(builtin_new_frame_address(0)),
+					/* *2 to step over saved-rbp and saved-ret */
+					W(expr_new_val(ws * 2)))));
 
 
 		fold_stmt(assigns);
 		e->bits.variadic_setup = assigns;
 	}
+#undef ADD_ASSIGN
+#undef ADD_ASSIGN_VAL
+#undef W
 #endif
 
-	e->tree_type = type_ref_cached_VOID();
+	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
-static void builtin_gen_va_start(expr *e)
+static const out_val *builtin_gen_va_start(expr *e, out_ctx *octx)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -160,27 +173,161 @@ static void builtin_gen_va_start(expr *e)
 	 *   0L
 	 */
 	lea_expr(e->funcargs[0], stab);
-	out_push_i(type_ref_new_INTPTR_T(), 0);
+	out_push_zero(type_new_INTPTR_T());
 	out_store();
 #else
-	out_comment("va_start() begin");
-	gen_stmt(e->bits.variadic_setup);
-	out_push_noop();
-	out_comment("va_start() end");
+	out_comment(octx, "va_start() begin");
+	gen_stmt(e->bits.variadic_setup, octx);
+	out_comment(octx, "va_start() end");
+	return out_new_noop(octx);
 #endif
 }
 
-expr *parse_va_start(void)
+expr *parse_va_start(const char *ident, symtable *scope)
 {
 	/* va_start(__builtin_va_list &, identifier)
 	 * second argument may be any expression - we don't use it
 	 */
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
+	(void)ident;
 	expr_mutate_builtin_gen(fcall, va_start);
 	return fcall;
 }
 
-static void builtin_gen_va_arg(expr *e)
+static const out_val *va_arg_gen_read(
+		expr *const e,
+		out_ctx *const octx,
+		type *const ty,
+		decl *const offset_decl, /* varies - float or integral */
+		decl *const mem_reg_save_area,
+		decl *const mem_overflow_arg_area)
+{
+	out_blk *blk_reg = out_blk_new(octx, "va_reg");
+	out_blk *blk_stack = out_blk_new(octx, "va_stack");
+	out_blk *blk_fin = out_blk_new(octx, "va_fin");
+
+	/* FIXME: this needs to reference x86_64::N_CALL_REGS_{I,F} */
+	const int fp = type_is_floating(ty);
+	const unsigned max_reg_args_sz = 6 * 8 + (fp ? 16 * 16 : 0);
+	const unsigned ws = platform_word_size();
+	const out_val *valist, *gpoff_addr, *gpoff_val;
+	const int VALIST_OFFSET_TYPE = type_uint;
+	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+	type *valist_off_ty = type_nav_btype(cc1_type_nav, VALIST_OFFSET_TYPE);
+	type *ty_long = type_nav_btype(cc1_type_nav, type_long);
+
+	valist = gen_expr(e->lhs, octx);
+	valist = out_change_type(octx, valist, voidp);
+
+	out_val_retain(octx, valist);
+	gpoff_addr = out_op(
+			octx, op_plus,
+			valist,
+			out_new_l(
+				octx, ty_long,
+				offset_decl->bits.var.struct_offset));
+
+
+	gpoff_addr = out_change_type(octx, gpoff_addr,
+			type_ptr_to(valist_off_ty));
+
+	out_val_retain(octx, gpoff_addr);
+	gpoff_val = out_deref(octx, gpoff_addr);
+
+
+	out_val_retain(octx, gpoff_val);
+	out_ctrl_branch(
+			octx,
+			out_op(octx,
+				op_lt,
+				gpoff_val,
+				out_new_l(octx, valist_off_ty, max_reg_args_sz)),
+			blk_reg,
+			blk_stack);
+
+	/* now inserting into blk_reg */
+	{
+		const unsigned increment = fp ? 2 * ws : ws;
+		const out_val *gp_off_plus, *membptr;
+		const out_val *reg_save_area_value;
+
+		/* increment either 8 for an integral, or 16 for a float argument
+		 * since xmm0 are 128-bit registers, aka 16 byte
+		 */
+		out_val_retain(octx, gpoff_val);
+		gp_off_plus =
+			out_op(octx,
+					op_plus,
+					gpoff_val,
+					out_new_l(octx, valist_off_ty, increment));
+
+		out_store(octx, gpoff_addr, gp_off_plus);
+
+		out_val_retain(octx, valist);
+		membptr =
+			out_change_type(
+					octx,
+					out_op(
+						octx, op_plus,
+						valist,
+						out_new_l(
+							octx, ty_long,
+							mem_reg_save_area->bits.var.struct_offset)),
+					type_ptr_to(voidp)); /* void *reg_save_area */
+
+		reg_save_area_value = out_op(
+				octx, op_plus,
+				out_deref(octx, membptr),
+				out_change_type(
+					octx,
+					gpoff_val, /* promote from unsigned to long/intptr_t */
+					type_ptr_to(ty_long)));
+
+		out_ctrl_transfer(octx, blk_fin, reg_save_area_value, &blk_reg);
+	}
+
+	/* stack code */
+	out_current_blk(octx, blk_stack);
+	{
+		const out_val *overflow_val;
+		const out_val *overflow_addr =
+			out_change_type(
+					octx,
+					out_op(
+						octx, op_plus,
+						out_change_type(octx, valist, voidp),
+						out_new_l(
+							octx, ty_long,
+							mem_overflow_arg_area->bits.var.struct_offset)),
+					type_ptr_to(type_ptr_to(valist_off_ty)));
+
+		out_val_retain(octx, overflow_addr);
+
+		overflow_val = out_deref(octx, overflow_addr);
+
+		out_val_retain(octx, overflow_addr);
+		out_store(
+				octx,
+				overflow_addr,
+				out_op(
+					octx, op_plus,
+					out_change_type(octx, out_deref(octx, overflow_addr), voidp),
+					out_new_l(octx, valist_off_ty, ws)));
+
+		out_ctrl_transfer(octx, blk_fin, overflow_val, &blk_stack);
+	}
+
+	out_current_blk(octx, blk_fin);
+	return out_deref(
+			octx,
+			out_change_type(
+				octx,
+				/* now have a pointer to the right memory address: */
+				out_ctrl_merge(octx, blk_reg, blk_stack),
+				type_ptr_to(ty)));
+}
+
+static const out_val *builtin_gen_va_arg(expr *e, out_ctx *octx)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -211,11 +358,12 @@ static void builtin_gen_va_arg(expr *e)
 	out_dup();
 	/* &va, &va */
 
-	out_change_type(type_ref_new_LONG_PTR());
+	out_change_type(type_new_LONG_PTR());
 	out_deref();
 	/* &va, va */
 
-	out_push_i(type_ref_new_LONG(), out_n_call_regs() - nargs);
+	/* out_n_call_regs() has been revoked - UCC ABI is obsolete */
+	out_push_l(type_new_LONG(), out_n_call_regs() - nargs);
 	out_op(op_lt);
 	/* &va, (<) */
 
@@ -226,8 +374,8 @@ static void builtin_gen_va_arg(expr *e)
 	 * - multiply by pws is implicit - void *
 	 */
 	out_push_frame_ptr(0);
-	out_change_type(type_ref_new_LONG_PTR());
-	out_push_i(type_ref_new_INTPTR_T(), nargs);
+	out_change_type(type_new_LONG_PTR());
+	out_push_l(type_new_INTPTR_T(), nargs);
 	out_op(op_minus);
 	/* &va, va_ptr */
 
@@ -236,13 +384,13 @@ static void builtin_gen_va_arg(expr *e)
 
 	/* va_ptr, &va */
 	out_dup();
-	out_change_type(type_ref_new_LONG_PTR());
+	out_change_type(type_new_LONG_PTR());
 	/* va_ptr, (long *)&va, (int *)&va */
 
 	out_deref();
 	/* va_ptr, &va, va */
 
-	out_push_i(type_ref_new_INTPTR_T(), 1);
+	out_push_l(type_new_INTPTR_T(), 1);
 	out_op(op_plus); /* val[0]++ */
 	/* va_ptr, &va, (va+1) */
 	out_store();
@@ -253,7 +401,7 @@ static void builtin_gen_va_arg(expr *e)
 	/* va_ptr - va - 1 = va_ptr_arg-1 */
 
 	EOF_WHERE(&e->where,
-		out_change_type(type_ref_new_ptr(e->tree_type, qual_none));
+		out_change_type(type_new_ptr(e->tree_type, qual_none));
 	);
 	out_deref();
 	/* *va_arg() */
@@ -276,148 +424,51 @@ static void builtin_gen_va_arg(expr *e)
 	out_push_lbl("__va_arg", 1);
 
 	/* generate a call to abi.c's __va_arg */
-	out_push_i(type_ref_new_LONG(), type_ref_size(e->bits.tref, NULL));
+	out_push_l(type_new_LONG(), type_size(e->bits.tref, NULL));
 	/* 0 - abi.c's gen_reg. this is temporary until we have builtin_va_arg proper */
-	out_push_i(type_ref_new_INT(), 0);
+	out_push_zero(type_new_INT());
 	gen_expr(e->lhs);
 
 	extern void *funcargs_new(); /* XXX: temporary hack for the call */
 
-	out_call(3, type_ref_new_ptr(e->bits.tref, qual_none),
-			type_ref_new_func(type_ref_new_VOID(), funcargs_new()));
+	out_call(3, type_new_ptr(e->bits.tref, qual_none),
+			type_new_func(type_new_VOID(), funcargs_new()));
 
 	out_deref(); /* __va_arg returns a pointer to the stack location of the argument */
 #else
 	{
-		type_ref *const ty = e->bits.tref;
+		type *const ty = e->bits.va_arg_type;
 
-		if(type_ref_is_floating(ty)){
-			const type *typ = type_ref_get_type(ty);
-
-			if(typ->primitive == type_ldouble)
-				goto stack;
-
-			ICW("TODO: floating point");
-
-		}else if(type_ref_is_s_or_u(ty)){
+		if(type_is_s_or_u(ty)){
 			ICE("TODO: s/u/e va_arg");
 stack:
 			ICE("TODO: stack __builtin_va_arg()");
 
 		}else{
-			/* register */
-			char *lbl_stack = out_label_code("va_else");
-			char *lbl_fin   = out_label_code("va_fin");
-			char vphi_buf[OUT_VPHI_SZ];
+			const btype *typ = type_get_type(ty);
+			const int fp = typ && type_floating(typ->primitive);
+			struct_union_enum_st *sue_va;
 
-			struct_union_enum_st *sue_va = type_ref_next(type_ref_cached_VA_LIST())->bits.type->sue;
+			if(typ && typ->primitive == type_ldouble)
+				goto stack;
+
+			sue_va = type_next(
+						type_nav_va_list(cc1_type_nav, NULL)
+					)->bits.type->sue;
 
 #define VA_DECL(nam) \
 			decl *mem_ ## nam = struct_union_member_find(sue_va, #nam, NULL, NULL)
 			VA_DECL(gp_offset);
+			VA_DECL(fp_offset);
 			VA_DECL(reg_save_area);
 			VA_DECL(overflow_arg_area);
 
-			gen_expr(e->lhs); /* va_list */
-			out_change_type(type_ref_cached_VOID_PTR());
-			out_dup(); /* va, va */
-
-			out_push_i(type_ref_cached_LONG(), mem_gp_offset->struct_offset);
-			out_op(op_plus); /* va, &va.gp_offset */
-
-			out_change_type(type_ref_cached_INT_PTR());
-			out_dup(); /* va, &gp_o, &gp_o */
-
-			out_deref(); /* va, &gp_o, gp_o */
-			out_push_i(type_ref_cached_INT(), 6 * 8); /* N_CALL_REGS * pws */
-			out_op(op_lt); /* va, &gp_o, <cond> */
-			out_jfalse(lbl_stack);
-
-			/* register code */
-			out_dup(); /* va, &gp_o, &gp_o */
-			out_deref(); /* va, &gp_o, gp_o */
-
-			out_push_i(type_ref_cached_INT(), 8); /* pws */
-			out_op(op_plus); /* va, &gp_o, gp_o+8 */
-
-			out_store(); /* va, gp_o+8 */
-			out_push_i(type_ref_cached_INT(), 8); /* pws */
-			out_op(op_minus); /* va, gp_o */
-			out_change_type(type_ref_cached_LONG());
-
-			out_swap(); /* gp_o, va */
-			out_push_i(type_ref_cached_LONG(), mem_reg_save_area->struct_offset);
-			out_op(op_plus); /* gp_o, &reg_save_area */
-			out_change_type(type_ref_cached_LONG_PTR());
-			out_deref();
-			out_swap();
-			out_op(op_plus); /* reg_save_area + gp_o */
-
-			out_push_lbl(lbl_fin, 0);
-			out_jmp();
-
-			/* stack code */
-			out_label(lbl_stack);
-
-			/* prepare for joining later */
-			out_phi_pop_to(&vphi_buf);
-
-			gen_expr(e->lhs);
-			/* va */
-			out_change_type(type_ref_cached_VOID_PTR());
-			out_push_i(type_ref_cached_LONG(), mem_overflow_arg_area->struct_offset);
-			out_op(op_plus);
-			/* &overflow_a */
-
-			out_dup(), out_change_type(type_ref_cached_LONG_PTR()), out_deref();
-			/* &overflow_a, overflow_a */
-
-			/* XXX: 8 = pws, but will need changing if we jump directly to stack, e.g. passing a struct */
-			out_push_i(type_ref_cached_LONG(), 8);
-			out_op(op_plus);
-
-			out_store();
-
-			out_push_i(type_ref_cached_LONG(), 8);
-			out_op(op_minus);
-
-			/* ensure we match the other block's final result before the merge */
-			out_phi_join(vphi_buf);
-
-			/* "merge" */
-			out_label(lbl_fin);
-
-			/* now have a pointer to the right memory address */
-			{
-				type_ref *r_tmp = type_ref_new_ptr(ty, qual_none);
-				out_change_type(r_tmp);
-				out_deref();
-				type_ref_free_1(r_tmp);
-			}
-
-			/*
-			 * this works by using phi magic - we end up with something like this:
-			 *
-			 *   <reg calc>
-			 *   // pointer in rbx
-			 *   jmp fin
-			 * else:
-			 *   <stack calc>
-			 *   // pointer in rax
-			 *   <phi-merge with previous block>
-			 * fin:
-			 *   ...
-			 *
-			 * This is because the two parts of the if above are disjoint, one may
-			 * leave its result in eax, one in ebx. We need basic blocks and phi:s to
-			 * solve this properly.
-			 *
-			 * This problem exists in other code, such as &&-gen, but since we pop
-			 * and push immediately, it doesn't manifest itself.
-			 */
-
-			free(lbl_stack);
-			free(lbl_fin);
+			return va_arg_gen_read(
+					e, octx,
+					ty,
+					fp ? mem_fp_offset : mem_gp_offset,
+					mem_reg_save_area,
+					mem_overflow_arg_area);
 		}
 	}
 
@@ -426,49 +477,56 @@ stack:
 
 static void fold_va_arg(expr *e, symtable *stab)
 {
-	type_ref *const ty = e->bits.tref;
+	type *const ty = e->bits.va_arg_type;
+	type *to;
 
 	FOLD_EXPR(e->lhs, stab);
-	fold_type_ref(ty, NULL, stab);
+	fold_type(ty, stab);
 
 	va_type_check(e->lhs, e->expr, stab);
 
-	if(type_ref_size(ty, &e->lhs->where) < type_primitive_size(type_int)){
+	if(type_is_promotable(ty, &to)){
+		char tbuf[TYPE_STATIC_BUFSIZ];
+
 		warn_at(&e->where,
-				"va_arg(..., %s) has undefined behaviour - promote to int",
-				type_ref_to_str(ty));
+				"va_arg(..., %s) has undefined behaviour - promote to %s",
+				type_to_str(ty), type_to_str_r(tbuf, to));
 	}
 
 	e->tree_type = ty;
 
 #ifdef UCC_VA_ABI
 	/* finally store the number of arguments to this function */
-	e->bits.n = current_func_args_cnt();
+	e->bits.n = dynarray_count(
+			type_funcargs(
+				curdecl_func->ref)->arglist)
 #endif
 }
 
-expr *parse_va_arg(void)
+expr *parse_va_arg(const char *ident, symtable *scope)
 {
 	/* va_arg(list, type) */
 	expr *fcall = expr_new_funcall();
-	expr *list = parse_expr_no_comma();
-	type_ref *ty;
+	expr *list = PARSE_EXPR_NO_COMMA(scope, 0);
+	type *ty;
+
+	(void)ident;
 
 	EAT(token_comma);
-	ty = parse_type(0);
+	ty = parse_type(0, scope);
 
 	fcall->lhs = list;
-	fcall->bits.tref = ty;
+	fcall->bits.va_arg_type = ty;
 
 	expr_mutate_builtin_gen(fcall, va_arg);
 
 	return fcall;
 }
 
-static void builtin_gen_va_end(expr *e)
+static const out_val *builtin_gen_va_end(expr *e, out_ctx *octx)
 {
 	(void)e;
-	out_push_noop();
+	return out_new_noop(octx);
 }
 
 static void fold_va_end(expr *e, symtable *stab)
@@ -481,19 +539,21 @@ static void fold_va_end(expr *e, symtable *stab)
 
 	/*va_ensure_variadic(e, stab); - va_end can be anywhere */
 
-	e->tree_type = type_ref_cached_VOID();
+	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
-expr *parse_va_end(void)
+expr *parse_va_end(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
+
+	(void)ident;
 	expr_mutate_builtin_gen(fcall, va_end);
 	return fcall;
 }
 
-static void builtin_gen_va_copy(expr *e)
+static const out_val *builtin_gen_va_copy(expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs);
+	return gen_expr(e->lhs, octx);
 }
 
 static void fold_va_copy(expr *e, symtable *stab)
@@ -512,16 +572,17 @@ static void fold_va_copy(expr *e, symtable *stab)
 	e->lhs = builtin_new_memcpy(
 			expr_new_deref(e->funcargs[0]),
 			expr_new_deref(e->funcargs[1]),
-			type_ref_size(type_ref_cached_VA_LIST(), &e->where));
+			type_size(type_nav_va_list(cc1_type_nav, stab), &e->where));
 
 	FOLD_EXPR(e->lhs, stab);
 
-	e->tree_type = type_ref_cached_VOID();
+	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
-expr *parse_va_copy(void)
+expr *parse_va_copy(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
+	(void)ident;
 	expr_mutate_builtin_gen(fcall, va_copy);
 	return fcall;
 }

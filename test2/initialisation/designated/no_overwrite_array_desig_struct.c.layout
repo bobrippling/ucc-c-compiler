@@ -1,0 +1,63 @@
+f:
+main:
+
+ent1:
+	.quad str.1
+	.long 500
+	.long 0
+	.long 0
+	.space 4
+
+	.space 24
+	.space 24
+
+	.quad str.2
+	.long 600
+	.long 1
+	.long 1
+	.space 4
+
+	.quad str.3
+	.long 200
+	.long 1
+	.long 1
+	.space 4
+
+	.space 24
+
+	.quad str.4
+	.long 400
+	.long 2
+	.long 2
+	.space 4
+
+	.quad str.5
+	.long 200
+	.long 2
+	.long 2
+	.space 4
+
+	.quad str.6
+	.long 100
+	.long 2
+	.long 2
+	.space 4
+
+"3/2/13"
+"3/6/13"
+"3/3/13"
+"3/4/13"
+"3/5/13"
+
+str.1:
+.byte 51, 47, 49, 47, 49, 51, 0
+str.2:
+.byte 51, 47, 50, 47, 49, 51, 0
+str.3:
+.byte 51, 47, 54, 47, 49, 51, 0
+str.4:
+.byte 51, 47, 51, 47, 49, 51, 0
+str.5:
+.byte 51, 47, 52, 47, 49, 51, 0
+str.6:
+.byte 51, 47, 53, 47, 49, 51, 0

@@ -1,9 +1,17 @@
 #ifndef SYM_H
 #define SYM_H
 
+#include "decl.h"
+#include "../util/dynmap.h"
+
+typedef struct sym sym;
 struct sym
 {
-	int offset; /* stack offset / arg index */
+	union
+	{
+		int arg_offset;
+		unsigned stack_pos;
+	} loc;
 
 	enum sym_type
 	{
@@ -12,39 +20,46 @@ struct sym
 		sym_arg
 	} type;
 
-	decl *decl, *func;
+	decl *decl;
+	type *owning_func; /* only for sym_arg */
 
 	/* static analysis */
 	int nreads, nwrites;
 };
 
 typedef struct static_assert static_assert;
-
 struct static_assert
 {
-	expr *e;
+	struct expr *e;
 	char *s;
-	symtable *scope;
+	struct symtable *scope;
 	int checked;
 };
 
+typedef struct symtable symtable;
 struct symtable
 {
+	where where;
+
 	int auto_total_size;
+	unsigned mark : 1; /* used for scope checking */
 	unsigned folded : 1, laidout : 1;
 	unsigned internal_nest : 1, are_params : 1;
-	decl *in_func; /* for r/w checks on args and return-type checks */
 	/*
 	 * { int i; 5; int j; }
 	 * j's symtab is internally represented like:
 	 * { int i; 5; { int j; } }
 	 *
-	 * this marks if it is so, for duplicate checking
+	 * internal_nest marks if it is so, for duplicate checking
 	 */
+
+	decl *in_func; /* for r/w checks on args and return-type checks */
+
+	char *lbl_begin, *lbl_end; /* for debug - lexical block */
 
 	symtable *parent, **children;
 
-	struct_union_enum_st **sues;
+	struct struct_union_enum_st **sues;
 
 	/* identifiers and typedefs */
 	decl **decls;
@@ -62,23 +77,23 @@ struct symtable_gasm
 	char *asm_str;
 };
 
+typedef struct symtable_global symtable_global;
 struct symtable_global
 {
 	symtable stab; /* ABI compatible with struct symtable */
 	symtable_gasm **gasms;
 	dynmap *literals;
+	dynmap *unrecog_attrs;
 };
 
 sym *sym_new(decl *d, enum sym_type t);
 sym *sym_new_stab(symtable *, decl *d, enum sym_type t);
 
-symtable_global *symtabg_new(void);
+symtable_global *symtabg_new(where *);
 
-symtable *symtab_new(symtable *parent);
+symtable *symtab_new(symtable *parent, where *w);
 void      symtab_set_parent(symtable *child, symtable *parent);
 void      symtab_rm_parent( symtable *child);
-
-void symtab_add_params(symtable *, decl **);
 
 symtable *symtab_root(symtable *child);
 symtable *symtab_func_root(symtable *stab);
@@ -87,9 +102,11 @@ symtable_global *symtab_global(symtable *);
 
 int symtab_nested_internal(symtable *parent, symtable *nest);
 
+#define symtab_add_to_scope(scope, d) \
+	dynarray_add(&(scope)->decls, (d))
+
 sym  *symtab_search(symtable *, const char *);
 decl *symtab_search_d(symtable *, const char *, symtable **pin);
-int   typedef_visible(symtable *stab, const char *spel);
 
 const char *sym_to_str(enum sym_type);
 

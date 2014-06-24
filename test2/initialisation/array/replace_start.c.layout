@@ -1,0 +1,10 @@
+ent1:
+.byte 1
+.byte 5
+.byte 5
+.byte 5
+.byte 5
+.byte 5
+.byte 5
+.byte 5
+.byte 5

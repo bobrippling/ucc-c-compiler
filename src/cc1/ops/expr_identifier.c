@@ -4,6 +4,8 @@
 #include "../out/asm.h"
 #include "../sue.h"
 #include "expr_addr.h"
+#include "../type_is.h"
+#include "../type_nav.h"
 
 const char *str_expr_identifier()
 {
@@ -25,23 +27,22 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 		decl *const d = sym->decl;
 
 		/* only a constant if global/static/extern */
-		if(sym->type == sym_global || decl_store_static_or_extern(d->store)){
+		if(decl_store_duration_is_static(d) && !attribute_present(d, attr_weak)){
 			CONST_FOLD_LEAF(k);
 
 			k->type = CONST_ADDR_OR_NEED(d);
 
-			/*
-			 * don't use e->spel
-			 * static int i;
-			 * int x;
-			 * x = i; // e->spel is "i". sym->decl->spel is "func_name.static_i"
-			 */
 			k->bits.addr.bits.lbl = decl_asm_spel(sym->decl);
 
 			k->bits.addr.is_lbl = 1;
 			k->offset = 0;
 		}
 	}
+}
+
+static const out_val *gen_expr_identifier_lea(expr *e, out_ctx *octx)
+{
+	return out_new_sym(octx, e->bits.ident.sym);
 }
 
 void fold_expr_identifier(expr *e, symtable *stab)
@@ -66,7 +67,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 				sp = in_fn->spel;
 			}
 
-			expr_mutate_str(e, sp, strlen(sp) + 1, /*wide:*/0, &e->where);
+			expr_mutate_str(e, sp, strlen(sp) + 1, /*wide:*/0, &e->where, stab);
 			/* +1 - take the null byte */
 			e->bits.strlit.is_func = 1;
 
@@ -83,24 +84,30 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 			expr_mutate_wrapper(e, val);
 
-			e->bits.iv = m->val->bits.iv;
+			e->bits.num = m->val->bits.num;
 			FOLD_EXPR(e, stab);
 
-			e->tree_type = type_ref_new_type(
-					type_new_primitive_sue(type_enum, sue));
+			e->tree_type = type_nav_suetype(cc1_type_nav, sue);
 		}
 		return;
 	}
 
 	e->tree_type = sym->decl->ref;
 
+	/* set if lvalue - expr_is_lval() checks for arrays */
+	e->f_lea =
+		type_is(e->tree_type, type_func)
+		? NULL
+		: gen_expr_identifier_lea;
+
+
 	if(sym->type == sym_local
-	&& !decl_store_static_or_extern(sym->decl->store)
-	&& !DECL_IS_ARRAY(sym->decl)
-	&& !DECL_IS_S_OR_U(sym->decl)
-	&& !DECL_IS_FUNC(sym->decl)
+	&& !decl_store_duration_is_static(sym->decl)
+	&& !type_is(sym->decl->ref, type_array)
+	&& !type_is(sym->decl->ref, type_func)
+	&& !type_is_s_or_u(sym->decl->ref)
 	&& sym->nwrites == 0
-	&& !sym->decl->init)
+	&& !sym->decl->bits.var.init)
 	{
 		cc1_warn_at(&e->where, 0, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", sp);
 		sym->nwrites = 1; /* silence future warnings */
@@ -108,34 +115,29 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 	/* this is cancelled by expr_assign in the case we fold for an assignment to us */
 	sym->nreads++;
-
-	if(!sym->func)
-		sym->func = in_fn;
 }
 
-void gen_expr_str_identifier(expr *e)
+const out_val *gen_expr_str_identifier(expr *e, out_ctx *octx)
 {
 	idt_printf("identifier: \"%s\" (sym %p)\n", e->bits.ident.spel, (void *)e->bits.ident.sym);
+	UNUSED_OCTX();
 }
 
-void gen_expr_identifier(expr *e)
+const out_val *gen_expr_identifier(expr *e, out_ctx *octx)
 {
 	sym *sym = e->bits.ident.sym;
 
-	if(DECL_IS_FUNC(sym->decl))
-		out_push_sym(sym);
-	else
-		out_push_sym_val(sym);
-}
+	if(type_is(sym->decl->ref, type_func)){
+		UCC_ASSERT(sym->type != sym_arg, "function as argument?");
 
-static void gen_expr_identifier_lea(expr *e)
-{
-	out_push_sym(e->bits.ident.sym);
+		return out_new_sym(octx, sym);
+	}else{
+		return out_new_sym_val(octx, sym);
+	}
 }
 
 void mutate_expr_identifier(expr *e)
 {
-	e->f_lea         = gen_expr_identifier_lea;
 	e->f_const_fold  = fold_const_expr_identifier;
 }
 
@@ -147,7 +149,8 @@ expr *expr_new_identifier(char *sp)
 	return e;
 }
 
-void gen_expr_style_identifier(expr *e)
+const out_val *gen_expr_style_identifier(expr *e, out_ctx *octx)
 {
 	stylef("%s", e->bits.ident.spel);
+	UNUSED_OCTX();
 }

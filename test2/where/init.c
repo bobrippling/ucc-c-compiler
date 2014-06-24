@@ -2,9 +2,11 @@
 
 int i = (void *)0;
 // CARETS:
-//    ^ mismatching
+//    ^ note: cast expr
+//      ^ note: 'int' vs
 
 // not a top-level init:
 int x[] = { (void *)0, 2 };
 // CARETS:
-//          ^ mismatching
+//      ^ note: cast expr
+//          ^ note: 'int' vs

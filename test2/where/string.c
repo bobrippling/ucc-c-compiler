@@ -11,6 +11,6 @@ static struct
 main()
 {
 	int f(int);
-	f("hello" "there" // CHECK: /warning: mismatching argument/
+	f("hello" "there" // CHECK: /warning: mismatching types/
 	 ); // CHECK: !/warn/
 }

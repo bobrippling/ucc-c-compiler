@@ -11,9 +11,9 @@ func_gen     gen_expr_style_op;
 #  define ucc_wur
 #endif
 
-type_ref *op_required_promotion(enum op_type op, expr *lhs, expr *rhs, where *w, type_ref **plhs, type_ref **prhs) ucc_wur;
-type_ref *op_promote_types(enum op_type op, const char *desc, expr **plhs, expr **prhs, where *w, symtable *stab) ucc_wur;
-void expr_promote_int_if_smaller(expr **pe, symtable *stab);
+type *op_required_promotion(enum op_type op, expr *lhs, expr *rhs, where *w, type **plhs, type **prhs) ucc_wur;
+type *op_promote_types(enum op_type op, expr **plhs, expr **prhs, where *w, symtable *stab) ucc_wur;
+void expr_promote_default(expr **pe, symtable *stab);
 
 /* called from op code and deref code
  * op code checks for 0 to len-1,
@@ -23,3 +23,6 @@ void expr_promote_int_if_smaller(expr **pe, symtable *stab);
  * returns 1 if a warning was printed, 0 otherwise
  */
 int fold_check_bounds(expr *e, int chk_one_past_end);
+
+void expr_check_sign(const char *desc,
+		expr *lhs, expr *rhs, where *w);

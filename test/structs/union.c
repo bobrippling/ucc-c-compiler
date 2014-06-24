@@ -24,5 +24,5 @@ main()
 
 	assert(x.hello == 5);
 
-	return *(int *)((void *)&x.st.st_second - sizeof(int));
+	return *(int *)((void *)&x.st.st_second - sizeof(int)) == 5 ? 0 : 1;
 }

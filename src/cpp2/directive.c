@@ -9,6 +9,7 @@
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
+#include "../util/path.h"
 
 #include "directive.h"
 #include "tokenise.h"
@@ -19,6 +20,7 @@
 #include "str.h"
 #include "eval.h"
 #include "expr.h"
+#include "deps.h"
 
 #define SINGLE_TOKEN(...) \
 	tokens = tokens_skip_whitespace(tokens);                        \
@@ -135,7 +137,7 @@ for_fin:
 			val = tokens_join(tokens + i);
 		}
 
-		macro_add_func(name, val, args, variadic);
+		macro_add_func(name, val, args, variadic, preproc_in_include());
 
 		free(val);
 
@@ -151,7 +153,7 @@ for_fin:
 
 		val = tokens_join(tokens + 1);
 
-		macro_add(name, val);
+		macro_add(name, val, preproc_in_include());
 
 		free(val);
 	}
@@ -272,6 +274,12 @@ static void handle_include(token **tokens)
 					"\"<"[is_lib], fname, "\">"[is_lib]);
 		}
 	}
+
+	/* successfully opened */
+	canonicalise_path(final_path);
+
+	if(!is_lib)
+		deps_add(final_path);
 
 	preproc_push(f, final_path);
 	dirname_push(udirname(final_path));

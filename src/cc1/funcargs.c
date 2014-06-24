@@ -5,18 +5,20 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
-#include "data_structs.h"
 #include "decl.h"
 #include "funcargs.h"
 #include "cc1.h"
 #include "fold.h"
+#include "type_is.h"
 
-void funcargs_free(funcargs *args, int free_decls, int free_refs)
+#include "cc1_where.h"
+
+void funcargs_free(funcargs *args, int free_decls)
 {
 	if(free_decls && args){
 		int i;
 		for(i = 0; args->arglist[i]; i++)
-			decl_free(args->arglist[i], free_refs);
+			decl_free(args->arglist[i]);
 	}
 	free(args);
 }
@@ -26,59 +28,61 @@ void funcargs_empty(funcargs *func)
 	if(func->arglist){
 		UCC_ASSERT(!func->arglist[1], "empty_args called when it shouldn't be");
 
-		decl_free(func->arglist[0], 1);
+		decl_free(func->arglist[0]);
 		free(func->arglist);
 		func->arglist = NULL;
 	}
 	func->args_void = 0;
 }
 
-enum funcargs_cmp funcargs_equal(
-		funcargs *args_to, funcargs *args_from,
-		int exact, const char *fspel)
+enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 {
-	const int count_to = dynarray_count(args_to->arglist);
-	const int count_from = dynarray_count(args_from->arglist);
+	int count_to;
+	int count_from;
 
-	if((count_to   == 0 && !args_to->args_void)
-	|| (count_from == 0 && !args_from->args_void)){
+	if(args_to == args_from)
+		return FUNCARGS_EXACT_EQUAL;
+
+	if(FUNCARGS_EMPTY_NOVOID(args_to)
+	|| FUNCARGS_EMPTY_NOVOID(args_from))
+	{
 		/* a() or b() */
-		return FUNCARGS_ARE_EQUAL;
+		return FUNCARGS_IMPLICIT_CONV;
 	}
 
-	if(args_to->args_old_proto || args_from->args_old_proto)
-		return 1;
+	count_to = dynarray_count(args_to->arglist);
+	count_from = dynarray_count(args_from->arglist);
+
+	/* still do prototype checks for old_proto functions */
+	/*if(args_to->args_old_proto || args_from->args_old_proto)
+		return FUNCARGS_IMPLICIT_CONV;*/
 
 	if(!(args_to->variadic ? count_to <= count_from : count_to == count_from))
-		return FUNCARGS_ARE_MISMATCH_COUNT;
+		return FUNCARGS_MISMATCH_COUNT;
 
 	if(count_to){
-		const enum decl_cmp flag = exact ? DECL_CMP_EXACT_MATCH : 0;
-
-		int i;
+		unsigned i;
 
 		for(i = 0; args_to->arglist[i]; i++){
-			/* FIXME: this is not an output function */
-			char buf[DECL_STATIC_BUFSIZ];
+			switch(type_cmp(args_to->arglist[i]->ref, args_from->arglist[i]->ref, 0)){
+				case TYPE_EQUAL:
+				case TYPE_QUAL_ADD: /* f(const int) and f(int) */
+				case TYPE_QUAL_SUB: /* f(int) and f(const int) */
+				case TYPE_EQUAL_TYPEDEF:
+					break;
 
-			int eq = fold_type_ref_equal(
-					args_to->arglist[i]->ref,
-					args_from->arglist[i]->ref,
-					&args_from->where, WARN_ARG_MISMATCH, flag,
-					"mismatching argument %d %s%s%s(%s <-- %s)",
-					i,
-					fspel ? "to " : "between declarations ",
-					fspel ? fspel : "",
-					fspel ? " " : "",
-					decl_to_str_r(buf, args_to->arglist[i]),
-					decl_to_str(       args_from->arglist[i]));
-
-			if(!eq)
-				return FUNCARGS_ARE_MISMATCH_TYPES;
+				case TYPE_QUAL_POINTED_ADD:
+				case TYPE_QUAL_POINTED_SUB:
+				case TYPE_QUAL_NESTED_CHANGE:
+				case TYPE_CONVERTIBLE_EXPLICIT:
+				case TYPE_CONVERTIBLE_IMPLICIT:
+				case TYPE_NOT_EQUAL:
+					return FUNCARGS_MISMATCH_TYPES;
+			}
 		}
 	}
 
-	return FUNCARGS_ARE_EQUAL;
+	return FUNCARGS_EXACT_EQUAL;
 }
 
 funcargs *funcargs_new()
@@ -86,4 +90,17 @@ funcargs *funcargs_new()
 	funcargs *r = umalloc(sizeof *funcargs_new());
 	where_cc1_current(&r->where);
 	return r;
+}
+
+void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)
+{
+	decl **di;
+
+	*n_int = *n_fp = 0;
+
+	for(di = fa->arglist; di && *di; di++)
+		if(type_is_floating((*di)->ref))
+			++*n_fp;
+		else
+			++*n_int;
 }

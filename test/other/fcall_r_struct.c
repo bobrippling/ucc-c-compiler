@@ -1,6 +1,6 @@
 struct Tim { int i, j; } *p()
 {
-	__typeof *p() *r = malloc(sizeof *r);
+	__typeof(*p()) *r = malloc(sizeof *r);
 	r->i = 5;
 	r->j = 2;
 	return r;
@@ -8,5 +8,7 @@ struct Tim { int i, j; } *p()
 
 main()
 {
-	assert(p()->j == 2);
+	if(p()->j != 2)
+		abort();
+	return 0;
 }

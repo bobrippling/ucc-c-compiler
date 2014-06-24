@@ -8,8 +8,8 @@ func_gen     gen_expr_str_assign;
 func_mutate_expr mutate_expr_assign;
 func_gen     gen_expr_style_assign;
 
-int expr_is_lvalue(expr *e);
 void expr_must_lvalue(expr *e);
 void bitfield_trunc_check(decl *mem, expr *from);
+void expr_assign_const_check(expr *e, where *w);
 
 #endif

@@ -1,11 +1,11 @@
 #include "../../../src/as_cfg.h"
 #include "defs.h"
-.section SECTION_BSS
+.section SECTION_NAME_BSS
 	.globl SYMBL(errno)
 SYMBL(errno):
 	.long 0
 
-.section SECTION_TEXT
+.section SECTION_NAME_TEXT
 	.globl SYMBL(__syscall)
 SYMBL(__syscall):
 	pushq %rbp

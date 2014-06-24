@@ -1,5 +1,6 @@
-// RUN: %ucc -o %t %s
-// RUN: %t | %output_check a a a B
+// RUN: %ocheck 0 %s
+
+total;
 
 int dispatch(int(char));
 
@@ -10,12 +11,12 @@ int dispatch(int x(char))
 
 pc(char c)
 {
-	printf("%c\n", c);
+	total += c;
 }
 
 main()
 {
-	int (^x)(char) = ^int(char tim){printf("%c\n", tim);};
+	int (^x)(char) = ^int(char tim){ total += tim; return 0; };
 	int (^(*y))(char) = &x;
 	void (^z)(void) = 0;
 
@@ -24,4 +25,9 @@ main()
 	(0 ? x : *y)('a');
 
 	dispatch(pc);
+
+	if(total != 357)
+		abort();
+
+	return 0;
 }

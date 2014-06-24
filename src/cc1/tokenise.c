@@ -7,113 +7,108 @@
 #include <limits.h>
 
 #include "../util/util.h"
-#include "data_structs.h"
 #include "tokenise.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
 #include "../util/escape.h"
 #include "str.h"
 #include "cc1.h"
+#include "cc1_where.h"
+#include "btype.h"
 
 #ifndef CHAR_BIT
 #  define CHAR_BIT 8
 #endif
 
-#define KEYWORD(x) { #x, token_ ## x }
+#define KEYWORD(mode, x) { #x, token_ ## x, mode }
 
-#define KEYWORD__(x, t) \
-	{ "__" #x,      t },  \
-	{ "__" #x "__", t }
+/* __ keywords are always enabled */
+#define KEYWORD__(x, t)       \
+	{ "__" #x,      t, KW_ALL }, \
+	{ "__" #x "__", t, KW_ALL }
 
-#define KEYWORD__ALL(x) KEYWORD(x), KEYWORD__(x, token_ ## x)
+#define KEYWORD__ALL(mode, x) \
+	KEYWORD(mode, x),           \
+	KEYWORD__(x, token_ ## x)
 
-struct statement
+struct keyword
 {
 	const char *str;
 	enum token tok;
-} statements[] = {
-#ifdef BRITISH
-	{ "perchance", token_if      },
-	{ "otherwise", token_else    },
+	enum keyword_mode mode;
 
-	{ "what_about",        token_switch  },
-	{ "perhaps",           token_case    },
-	{ "on_the_off_chance", token_default },
+} keywords[] = {
+	KEYWORD(KW_ALL, if),
+	KEYWORD(KW_ALL, else),
 
-	{ "splendid",    token_break    },
-	{ "goodday",     token_return   },
-	{ "as_you_were", token_continue },
+	KEYWORD(KW_ALL, switch),
+	KEYWORD(KW_ALL, case),
+	KEYWORD(KW_ALL, default),
 
-	{ "tallyho",     token_goto     },
-#else
-	KEYWORD(if),
-	KEYWORD(else),
+	KEYWORD(KW_ALL, break),
+	KEYWORD(KW_ALL, return),
+	KEYWORD(KW_ALL, continue),
 
-	KEYWORD(switch),
-	KEYWORD(case),
-	KEYWORD(default),
+	KEYWORD(KW_ALL, goto),
 
-	KEYWORD(break),
-	KEYWORD(return),
-	KEYWORD(continue),
+	KEYWORD(KW_ALL, do),
+	KEYWORD(KW_ALL, while),
+	KEYWORD(KW_ALL, for),
 
-	KEYWORD(goto),
-#endif
+	KEYWORD(KW_ALL, void),
+	KEYWORD(KW_ALL, char),
+	KEYWORD(KW_ALL, int),
+	KEYWORD(KW_ALL, short),
+	KEYWORD(KW_ALL, long),
+	KEYWORD(KW_ALL, float),
+	KEYWORD(KW_ALL, double),
 
-	KEYWORD(do),
-	KEYWORD(while),
-	KEYWORD(for),
+	KEYWORD(KW_ALL, auto),
+	KEYWORD(KW_ALL, static),
+	KEYWORD(KW_ALL, extern),
+	KEYWORD(KW_ALL, register),
 
-	KEYWORD__ALL(asm),
+	KEYWORD__ALL(KW_EXT, asm),
+	KEYWORD__ALL(KW_EXT | KW_C99, inline),
 
-	KEYWORD(void),
-	KEYWORD(char),
-	KEYWORD(int),
-	KEYWORD(short),
-	KEYWORD(long),
-	KEYWORD(float),
-	KEYWORD(double),
-	KEYWORD(_Bool),
+	KEYWORD__ALL(KW_ALL, const),
+	KEYWORD__ALL(KW_ALL, volatile),
+	KEYWORD__ALL(KW_C99, restrict),
 
-	KEYWORD(auto),
-	KEYWORD(static),
-	KEYWORD(extern),
-	KEYWORD(register),
+	KEYWORD__ALL(KW_ALL, signed),
+	KEYWORD__ALL(KW_ALL, unsigned),
 
-	KEYWORD__ALL(inline),
-	KEYWORD(_Noreturn),
+	KEYWORD(KW_ALL, typedef),
+	KEYWORD(KW_ALL, struct),
+	KEYWORD(KW_ALL, union),
+	KEYWORD(KW_ALL, enum),
 
-	KEYWORD__ALL(const),
-	KEYWORD__ALL(volatile),
-	KEYWORD__ALL(restrict),
+	KEYWORD(KW_ALL, _Bool), /* reserved namespace - fine for C89 */
+	KEYWORD(KW_ALL, _Noreturn),
 
-	KEYWORD__ALL(signed),
-	KEYWORD__ALL(unsigned),
-
-	KEYWORD(typedef),
-	KEYWORD(struct),
-	KEYWORD(union),
-	KEYWORD(enum),
-
-	KEYWORD(_Alignof),
+	KEYWORD(KW_ALL, _Alignof),
 	KEYWORD__(alignof, token__Alignof),
-	KEYWORD(_Alignas),
+	KEYWORD(KW_ALL, _Alignas),
 	KEYWORD__(alignas, token__Alignas),
 
-	{ "__builtin_va_list", token___builtin_va_list },
+	KEYWORD(KW_ALL, sizeof),
+	KEYWORD__ALL(KW_EXT, typeof),
+	KEYWORD(KW_ALL, _Generic),
+	KEYWORD(KW_ALL, _Static_assert),
 
-	KEYWORD(sizeof),
-	KEYWORD(_Generic),
-	KEYWORD(_Static_assert),
+	KEYWORD(KW_ALL, __builtin_va_list),
+	KEYWORD(KW_ALL, __auto_type),
 
-	KEYWORD__ALL(typeof),
-
+	KEYWORD(KW_ALL, __extension__),
 	KEYWORD__(attribute, token_attribute),
+
+	{ NULL, 0, 0 },
 };
 
 static tokenise_line_f *in_func;
 int buffereof = 0;
 static int parse_finished = 0;
+static enum keyword_mode keyword_mode = KW_ALL;
 
 #define FNAME_STACK_N 32
 static struct fnam_stack
@@ -139,8 +134,9 @@ static struct line_list
 
 /* -- */
 enum token curtok, curtok_uneat;
+int parse_had_error;
 
-intval currentval = { 0, 0 }; /* an integer literal */
+numeric currentval = { { 0 } }; /* an integer literal */
 
 char *currentspelling = NULL; /* e.g. name of a variable */
 
@@ -165,30 +161,19 @@ int current_line_str_used = 0;
 #define SET_CURRENT_LINE_STR(new) SET_CURRENT(line_str, new)
 
 
-void where_cc1_current(struct where *w)
+struct where *where_cc1_current(struct where *w)
 {
-	if(parse_finished){
-eof_w:
-		if(eof_where){
-			memcpy(w, eof_where, sizeof *w);
-		}else if(current_fname){
-			/* still parsing, at EOF */
-			goto final;
-		}else{
-			ICE("where_new() after buffer eof");
-		}
+	static struct where here;
 
-	}else{
-final:
-		/* XXX: current_chr positions at the end of the current token */
-		where_current(w);
+	if(!w) w = &here;
 
-		if(!w->fname)
-			goto eof_w;
+	/* XXX: current_chr positions at the end of the current token */
+	where_current(w);
 
-		current_fname_used = 1;
-		current_line_str_used = 1;
-	}
+	current_fname_used = 1;
+	current_line_str_used = 1;
+
+	return w;
 }
 
 void where_cc1_adj_identifier(where *w, const char *sp)
@@ -228,6 +213,9 @@ static void handle_line_file_directive(char *fnam, int lno)
 	/* logic for knowing when to pop and when to push */
 	int i;
 
+	if(!cc1_first_fname)
+		cc1_first_fname = ustrdup(fnam);
+
 	for(i = current_fname_stack_cnt - 1; i >= 0; i--){
 		struct fnam_stack *stk = &current_fname_stack[i];
 
@@ -241,6 +229,47 @@ static void handle_line_file_directive(char *fnam, int lno)
 	}
 
 	push_fname(fnam, lno);
+}
+
+static void parse_line_directive(char *l)
+{
+	int lno;
+	char *ep;
+
+	l = str_spc_skip(l + 1);
+	if(!strncmp(l, "line", 4))
+		l += 4;
+
+	lno = strtol(l, &ep, 0);
+	if(ep == l)
+		die("couldn't parse number for #line directive (%s)", ep);
+
+	if(lno < 0)
+		die("negative #line directive argument");
+
+	loc_now.line = lno - 1; /* inc'd below */
+
+	ep = str_spc_skip(ep);
+
+	switch(*ep){
+		case '"':
+			{
+				char *p = str_quotefin(++ep);
+				if(!p)
+					die("no terminating quote to #line directive (%s)", l);
+				handle_line_file_directive(ustrdup2(ep, p), lno);
+				/*l = str_spc_skip(p + 1);
+					if(*l)
+					die("characters after #line?");
+					- gcc puts characters after the string */
+				break;
+			}
+		case '\0':
+			break;
+
+		default:
+			die("expected '\"' or nothing after #line directive (%s)", ep);
+	}
 }
 
 void include_bt(FILE *f)
@@ -281,44 +310,7 @@ static ucc_wur char *tokenise_read_line()
 
 		/* format is # line? [0-9] "filename" ([0-9])* */
 		if(!in_comment && *l == '#'){
-			int lno;
-			char *ep;
-
-			l = str_spc_skip(l + 1);
-			if(!strncmp(l, "line", 4))
-				l += 4;
-
-			lno = strtol(l, &ep, 0);
-			if(ep == l)
-				die("couldn't parse number for #line directive (%s)", ep);
-
-			if(lno < 0)
-				die("negative #line directive argument");
-
-			loc_now.line = lno - 1; /* inc'd below */
-
-			ep = str_spc_skip(ep);
-
-			switch(*ep){
-				case '"':
-				{
-					char *p = str_quotefin(++ep);
-					if(!p)
-						die("no terminating quote to #line directive (%s)", l);
-					handle_line_file_directive(ustrdup2(ep, p), lno);
-					/*l = str_spc_skip(p + 1);
-					if(*l)
-						die("characters after #line?");
-						- gcc puts characters after the string */
-					break;
-				}
-				case '\0':
-					break;
-
-				default:
-					die("expected '\"' or nothing after #line directive (%s)", ep);
-			}
-
+			parse_line_directive(l);
 			return tokenise_read_line();
 		}
 
@@ -364,6 +356,11 @@ void tokenise_set_input(tokenise_line_f *func, const char *nam)
 	nexttoken();
 }
 
+void tokenise_set_mode(enum keyword_mode m)
+{
+	keyword_mode = m | KW_ALL;
+}
+
 char *token_current_spel()
 {
 	char *ret = currentspelling;
@@ -376,32 +373,27 @@ char *token_current_spel_peek(void)
 	return currentspelling;
 }
 
-char *tok_at_label(where *w)
+int tok_at_label(void)
 {
 	/* [a-z]+:
 	 * need to cater for newlines
 	 */
-	char *p;
+	char *p = bufferpos;
 
 	if(curtok != token_identifier)
-		return NULL;
+		return 0;
 
-	/* look for a colon */
-	for(p = bufferpos; *p; p++){
+	/* if we're on a #line, ignore */
+	if(*bufferpos == '#'){
+		parse_line_directive(bufferpos);
+
+	}else for(; *p; p++){
 		if(*p == ':'){
-			char *ret;
 
-			where_cc1_current(w);
-
-			bufferpos = p + 1;
-			ret = token_current_spel();
-
-			nexttoken();
-
-			return ret;
+			return 1;
 
 		}else if(!isspace(*p)){
-			return NULL;
+			return 0;
 		}
 	}
 
@@ -418,9 +410,9 @@ char *tok_at_label(where *w)
 			p = buffer + poff;
 			memcpy(p, new, newlen + 1);
 			bufferpos = p;
-			return tok_at_label(w);
+			return tok_at_label();
 		}
-		return NULL;
+		return 0;
 	}
 }
 
@@ -461,7 +453,7 @@ static int peeknextchar()
 	return *bufferpos;
 }
 
-static void read_number(enum base mode)
+static void read_number(const enum base mode)
 {
 	char *end;
 	int of; /*verflow*/
@@ -473,11 +465,11 @@ static void read_number(enum base mode)
 		case DEC: currentval.suffix = 0; break;
 	}
 
-	currentval.val = char_seq_to_ullong(bufferpos, &end, mode, 0, &of);
+	currentval.val.i = char_seq_to_ullong(bufferpos, &end, mode, 0, &of);
 
 	if(of){
 		/* force unsigned long long ULLONG_MAX */
-		currentval.val = INTVAL_T_MAX;
+		currentval.val.i = NUMERIC_T_MAX;
 		currentval.suffix = VAL_LLONG | VAL_UNSIGNED;
 	}
 
@@ -492,7 +484,7 @@ static void read_number(enum base mode)
 	/* accept either 'U' 'L' or 'LL' as atomic parts (i.e. not LUL) */
 	/* fine using nextchar() since we peeknextchar() first */
 	{
-		enum intval_suffix suff = 0;
+		enum numeric_suffix suff = 0;
 		char c;
 
 		for(;;) switch((c = peeknextchar())){
@@ -657,7 +649,8 @@ static void cc1_read_quoted_char(const int is_wide)
 			warn_at(NULL, "multi-char constant");
 	}
 
-	currentval.val = ch;
+	currentval.val.i = ch;
+	currentval.suffix = 0;
 	curtok = is_wide ? token_integer : token_character;
 }
 
@@ -683,10 +676,14 @@ void nexttoken()
 		}
 	}
 
-	if(isdigit(c)){
+	if(isdigit(c) || (c == '.' && isdigit(peeknextchar()))){
+		char *const num_start = bufferpos - 1;
 		enum base mode;
 
 		if(c == '0'){
+			/* note the '0' */
+			loc_now.chr++;
+
 			switch(tolower(c = peeknextchar())){
 				case 'x':
 					mode = HEX;
@@ -704,6 +701,7 @@ void nexttoken()
 							mode = DEC; /* just zero */
 
 						bufferpos--; /* have the zero */
+						loc_now.chr--;
 					}else{
 						mode = OCT;
 					}
@@ -714,7 +712,8 @@ void nexttoken()
 			bufferpos--; /* rewind */
 		}
 
-		read_number(mode);
+		if(c != '.')
+			read_number(mode);
 
 #if 0
 		if(tolower(peeknextchar()) == 'e'){
@@ -732,24 +731,23 @@ void nexttoken()
 		}
 #endif
 
-		if(peeknextchar() == '.'){
-			/* double or float */
-			int parts[2];
-			nextchar();
+		if(c == '.' || peeknextchar() == '.'){
+			/* floating point */
 
-			parts[0] = currentval.val;
-			read_number(DEC);
-			parts[1] = currentval.val;
+			currentval.val.f = strtold(num_start, &bufferpos);
 
-			if(peeknextchar() == 'f'){
+			if(toupper(peeknextchar()) == 'F'){
+				currentval.suffix = VAL_FLOAT;
 				nextchar();
-				/* FIXME: set currentval.suffix instead of token_{int,float,double} ? */
-				curtok = token_float;
+			}else if(toupper(peeknextchar()) == 'L'){
+				currentval.suffix = VAL_LDOUBLE;
+				nextchar();
 			}else{
-				curtok = token_double;
+				currentval.suffix = VAL_DOUBLE;
 			}
 
-			ICE("TODO: float/double repr (%d.%d)", parts[0], parts[1]);
+			curtok = token_floater;
+
 		}else{
 			curtok = token_integer;
 		}
@@ -785,8 +783,9 @@ void nexttoken()
 	}
 
 	if(isalpha(c) || c == '_' || c == '$'){
-		unsigned int len = 1, i;
+		unsigned int len = 1;
 		char *const start = bufferpos - 1; /* regrab the char we switched on */
+		struct keyword *k;
 
 		do{ /* allow numbers */
 			c = peeknextchar();
@@ -798,9 +797,9 @@ void nexttoken()
 		}while(1);
 
 		/* check for a built in statement - while, if, etc */
-		for(i = 0; i < sizeof(statements) / sizeof(statements[0]); i++)
-			if(strlen(statements[i].str) == len && !strncmp(statements[i].str, start, len)){
-				curtok = statements[i].tok;
+		for(k = keywords; k->str; k++)
+			if(k->mode & keyword_mode && strlen(k->str) == len && !strncmp(k->str, start, len)){
+				curtok = k->tok;
 				return;
 			}
 

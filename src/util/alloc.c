@@ -11,7 +11,15 @@ void *umalloc(size_t l)
 {
 	void *p = calloc(1, l);
 	if(!p)
-		die("calloc %ld bytes:", (long)l);
+		ICE("calloc %ld bytes:", (long)l);
+	return p;
+}
+
+void *ucalloc(size_t n, size_t sz)
+{
+	void *p = calloc(n, sz);
+	if(!p)
+		ICE("calloc(%ld, %ld):", n, sz);
 	return p;
 }
 
@@ -21,7 +29,7 @@ void *urealloc(void *p, size_t new, size_t old)
 	size_t diff = new - old;
 
 	if(!r)
-		die("realloc %p by %ld bytes:", p, (long)diff);
+		ICE("realloc %p by %ld bytes:", p, (long)diff);
 
 	/* if grown, zero the new space */
 	if(diff > 0)
@@ -34,7 +42,7 @@ void *urealloc1(void *p, size_t l)
 {
 	char *r = realloc(p, l);
 	if(!r)
-		die("realloc %p by %ld bytes:", p, (long)l);
+		ICE("realloc %p by %ld bytes:", p, (long)l);
 	return r;
 }
 
@@ -43,6 +51,11 @@ char *ustrdup(const char *s)
 	char *r = umalloc(strlen(s) + 1);
 	strcpy(r, s);
 	return r;
+}
+
+char *ustrdup_or_null(const char *s)
+{
+	return s ? ustrdup(s) : NULL;
 }
 
 char *ustrdup2(const char *a, const char *b)

@@ -14,29 +14,38 @@ void fold_stmt_do(stmt *s)
 	fold_stmt_while(s);
 }
 
-void gen_stmt_do(stmt *s)
+void gen_stmt_do(stmt *s, out_ctx *octx)
 {
-	char *begin = out_label_flow("do_start");
+	const out_val *cond;
+	out_blk *begin;
 
-	out_label(begin);
-	gen_stmt(s->lhs);
+	begin = out_blk_new(octx, "do_begin");
+	s->blk_continue = out_blk_new(octx, "do_test");
+	s->blk_break = out_blk_new(octx, "do_end");
 
-	out_label(s->lbl_continue);
-	gen_expr(s->expr);
+	out_ctrl_transfer(octx, begin, NULL, NULL);
 
-	out_jtrue(begin);
+	out_current_blk(octx, begin);
+	{
+		gen_stmt(s->lhs, octx);
+		out_ctrl_transfer(octx, s->blk_continue, NULL, NULL);
+	}
 
-	out_label(s->lbl_break);
+	out_current_blk(octx, s->blk_continue);
+	{
+		cond = gen_expr(s->expr, octx);
+		out_ctrl_branch(octx, cond, begin, s->blk_break);
+	}
 
-	free(begin);
+	out_current_blk(octx, s->blk_break);
 }
 
-void style_stmt_do(stmt *s)
+void style_stmt_do(stmt *s, out_ctx *octx)
 {
 	stylef("do");
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 	stylef("while(");
-	gen_expr(s->expr);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(");");
 }
 
