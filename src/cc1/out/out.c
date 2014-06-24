@@ -119,6 +119,19 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 	type *const from = val->t;
 	char fp[2];
 
+	switch(val->type){
+		case V_REG:
+		case V_REG_SPILT:
+			if(val->bits.regoff.offset
+			&& type_size(val->t, NULL) != type_size(to, NULL))
+			{
+				/* must apply the offset in the current type */
+				val = v_reg_apply_offset(octx, val);
+			}
+		default:
+			break;
+	}
+
 	/* normalise before the cast, otherwise we do things like
 	 * 5.3 -> 5, then normalise 5, instead of 5.3 != 0.0
 	 */

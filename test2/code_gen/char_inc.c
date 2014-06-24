@@ -8,10 +8,10 @@ main()
 
 	char c = 3;
 
-	c += (int)1; // this should generate addl, not addb
+	c += (int)2; // this should generate addl, not addb
 	// i.e. integer promotion rules (for compound assign)
 
-	if(c != 4)
+	if(c != 5)
 		abort();
 
 	return 0;
