@@ -64,6 +64,9 @@ static void test_canon_all(void)
 	TEST_CANON("hi/../../", "../");
 
 	TEST_CANON("../../hi/../..//../", "../../../../");
+
+	TEST_CANON("/usr/include/hi", "/usr/include/hi");
+	TEST_CANON("///usr/include/hi", "/usr/include/hi");
 }
 
 static int *new_int(int v)
