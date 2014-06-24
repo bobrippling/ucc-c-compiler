@@ -1,5 +1,5 @@
 // RUN: %ucc -DFIRST  -S -o- %s | grep -F 'movl (%%rax), %%eax'
-// RUN: %ucc -DSECOND -S -o- %s | grep -F 'movl 4(%%rbx), %%ebx'
+// RUN: %ucc -DSECOND -S -o- %s | grep -F 'movl 4(%%rcx), %%ecx'
 
 #ifdef FIRST
 
