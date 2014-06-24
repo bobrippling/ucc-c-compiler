@@ -127,27 +127,27 @@ static ucc_wur const out_val *v_save_reg(
 	if(fnty){
 		/* try callee save */
 		struct vreg cs_reg;
-		int found;
+		int got_reg;
 
-		found = v_unused_reg2(
+		got_reg = v_unused_reg2(
 				octx, /*stack*/0, type_is_floating(vp->t),
 				&cs_reg, NULL, impl_reg_is_callee_save);
 
-		if(found){
+		if(got_reg){
 			struct vreg *p;
-			int found = 0;
+			int already_used = 0;
 
 			impl_reg_cp_no_off(octx, vp, &cs_reg);
 			memcpy_safe(&((out_val *)vp)->bits.regoff.reg, &cs_reg);
 
 			for(p = octx->used_callee_saved; p && p->is_float != 2; p++){
 				if(vreg_eq(p, &cs_reg)){
-					found = 1;
+					already_used = 1;
 					break;
 				}
 			}
 
-			if(!found){
+			if(!already_used){
 				size_t current = p ? p - octx->used_callee_saved + 1 : 0;
 
 				octx->used_callee_saved = urealloc1(
