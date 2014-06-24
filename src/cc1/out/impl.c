@@ -53,3 +53,19 @@ const char *flag_cmp_to_str(enum flag_cmp cmp)
 	}
 	return NULL;
 }
+
+int impl_reg_is_callee_save(type *fnty, const struct vreg *r)
+{
+	unsigned i, n;
+	const int *csaves;
+
+	if(r->is_float)
+		return 0;
+
+	csaves = impl_callee_save_regs(fnty, &n);
+
+	for(i = 0; i < n; i++)
+		if(r->idx == csaves[i])
+			return 1;
+	return 0;
+}

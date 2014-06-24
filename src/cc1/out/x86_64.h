@@ -30,7 +30,7 @@
 #define X86_64_REG_XMM6 6
 #define X86_64_REG_XMM7 7
 
-#define N_SCRATCH_REGS_I  14 /* ax-dx, di-si, r8-r15 */
+#define N_SCRATCH_REGS_I  14 /* best-case. ax-dx, di-si, r8-r15 */
 #define N_CALL_REGS_I     6
 #define N_SCRATCH_REGS_F  8 /* xmm0-xmm7 */
 #define N_CALL_REGS_F     8 /* xmm0-xmm7 */

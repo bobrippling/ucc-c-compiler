@@ -504,39 +504,43 @@ const out_val *gen_expr_cast(expr *e, out_ctx *octx)
 			return casted;
 		}
 
-		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
-			/* allow b to be an anonymous member of a */
-			struct_union_enum_st *a_sue = type_is_s_or_u(type_is_ptr(tto)),
-													 *b_sue = type_is_s_or_u(type_is_ptr(tfrom));
+		if(e->bits.cast.is_decay){
+			casted = out_change_type(octx, casted, e->tree_type);
+		}else{
+			if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
+				/* allow b to be an anonymous member of a */
+				struct_union_enum_st *a_sue = type_is_s_or_u(type_is_ptr(tto)),
+														 *b_sue = type_is_s_or_u(type_is_ptr(tfrom));
 
-			if(a_sue && b_sue && a_sue != b_sue){
-				decl *mem = struct_union_member_find_sue(b_sue, a_sue);
+				if(a_sue && b_sue && a_sue != b_sue){
+					decl *mem = struct_union_member_find_sue(b_sue, a_sue);
 
-				if(mem){
-					/*char buf[TYPE_STATIC_BUFSIZ];
-						fprintf(stderr, "CAST %s -> %s, adj by %d\n",
-						type_to_str(tfrom),
-						type_to_str_r(buf, tto),
-						mem->struct_offset);*/
+					if(mem){
+						/*char buf[TYPE_STATIC_BUFSIZ];
+							fprintf(stderr, "CAST %s -> %s, adj by %d\n",
+							type_to_str(tfrom),
+							type_to_str_r(buf, tto),
+							mem->struct_offset);*/
 
-					casted = out_change_type(
-							octx,
-							casted,
-							type_ptr_to(
-								type_nav_btype(cc1_type_nav, type_void)));
-
-					casted = out_op(
-							octx, op_plus,
-							casted,
-							out_new_l(
+						casted = out_change_type(
 								octx,
-								type_nav_btype(cc1_type_nav, type_intptr_t),
-								mem->bits.var.struct_offset));
+								casted,
+								type_ptr_to(
+									type_nav_btype(cc1_type_nav, type_void)));
+
+						casted = out_op(
+								octx, op_plus,
+								casted,
+								out_new_l(
+									octx,
+									type_nav_btype(cc1_type_nav, type_intptr_t),
+									mem->bits.var.struct_offset));
+					}
 				}
 			}
-		}
 
-		casted = out_cast(octx, casted, tto, /*normalise_bool:*/1);
+			casted = out_cast(octx, casted, tto, /*normalise_bool:*/1);
+		}
 	}
 
 	return casted;

@@ -58,14 +58,15 @@ ucc_wur const out_val *impl_test_overflow(
 		out_ctx *, const out_val **);
 
 /* scratch register indexing */
-int  impl_reg_to_idx(const struct vreg *);
+int impl_reg_to_idx(const struct vreg *);
 void impl_scratch_to_reg(int scratch, struct vreg *);
 int impl_reg_frame_const(const struct vreg *, int sp);
-int impl_reg_is_scratch(const struct vreg *);
 int impl_reg_savable(const struct vreg *);
 
 /* callee save register bools */
-int impl_reg_is_callee_save(const struct vreg *r, type *fr);
+int impl_reg_is_scratch(type *fnty, const struct vreg *);
+int impl_reg_is_callee_save(type *fnty, const struct vreg *r);
+const int *impl_callee_save_regs(type *fnty, unsigned *pn);
 
 void impl_comment(out_ctx *, const char *fmt, va_list l);
 

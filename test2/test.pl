@@ -69,6 +69,7 @@ my %vars = (
 	'caret_check' => './caret_check.pl',
 	'debug_check' => './debug_check.pl',
 	'jmpcheck' => './jmpcheck.sh',
+	'archgen' => './archgen.pl',
 );
 
 if($verbose){
