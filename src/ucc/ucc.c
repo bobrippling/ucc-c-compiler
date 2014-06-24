@@ -634,8 +634,18 @@ input:	dynarray_add(&inputs, argv[i]);
 	}
 
 	/* default include paths */
-	if(stdinc)
-		add_cfg_args(&args[mode_preproc], UCC_INC);
+	if(stdinc){
+		char *const dup = ustrdup(UCC_INC);
+		char *p;
+
+		for(p = strtok(dup, ":"); p; p = strtok(NULL, ":")){
+			char *inc = ustrprintf("-I%s", p);
+			dynarray_add(&args[mode_preproc], inc);
+		}
+
+		free(dup);
+	}
+
 	/* custom incldue paths */
 	if(includes)
 		dynarray_add_tmparray(&args[mode_preproc], includes);
