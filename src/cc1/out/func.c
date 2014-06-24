@@ -65,6 +65,7 @@ static void callee_save_or_restore(
 
 	v_alloc_stack(octx, stack_n, "callee-save");
 
+	stack_n = octx->var_stack_sz; /* may be different - variadic functions */
 	restore_blk = octx->epilogue_blk;
 
 	for(i = octx->used_callee_saved; i && i->is_float != 2; i++){
