@@ -322,7 +322,7 @@ int main(int argc, char **argv)
 				break;
 
 			case 'd':
-				if(argv[i][3])
+				if(argv[i][2] && argv[i][3])
 					goto defaul;
 				switch(argv[i][2]){
 					case 'M':
