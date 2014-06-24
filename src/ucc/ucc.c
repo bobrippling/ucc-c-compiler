@@ -646,7 +646,7 @@ input:	dynarray_add(&inputs, argv[i]);
 		free(dup);
 	}
 
-	/* custom incldue paths */
+	/* custom include paths */
 	if(includes)
 		dynarray_add_tmparray(&args[mode_preproc], includes);
 
