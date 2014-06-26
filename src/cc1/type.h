@@ -64,6 +64,7 @@ struct type
 
 		struct
 		{
+			/* if null, this is just a normal pointer */
 			struct type *decayed_from;
 		} ptr;
 

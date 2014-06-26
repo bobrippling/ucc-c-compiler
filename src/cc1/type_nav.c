@@ -248,7 +248,7 @@ type *type_ptr_to(type *pointee)
 
 static int eq_decayed_array(type *candidate, void *ctx)
 {
-	if(!candidate->bits.ptr.decayed)
+	if(!candidate->bits.ptr.decayed_from)
 		return 0;
 
 	return eq_array(candidate, ctx);
@@ -257,7 +257,7 @@ static int eq_decayed_array(type *candidate, void *ctx)
 static void init_decayed_array(type *ty, void *ctx)
 {
 	init_array(ty, ctx);
-	ty->bits.ptr.decayed = 1;
+	ty->bits.ptr.decayed_from = NULL; /* TODO */
 }
 
 type *type_decayed_ptr_to(type *pointee, type *array_from)
