@@ -255,7 +255,11 @@ void fold_type_w_attr(
 				FOLD_EXPR(r->bits.array.size, stab);
 
 				if(r->bits.array.is_vla){
-					warn_at(&r->bits.array.size->where, "VLA");
+					if(cc1_std < STD_C99){
+						warn_at(
+								&r->bits.array.size->where,
+								"variable length array is a C99 feature");
+					}
 				}else{
 					const_fold(r->bits.array.size, &k);
 
