@@ -33,3 +33,10 @@ const out_val *out_alloca_push(
 	}
 	return alloca_stack_adj(octx, op_minus, sz);
 }
+
+void out_alloca_pop(out_ctx *octx, const out_val *sz)
+{
+	out_flush_volatile(
+			octx,
+			alloca_stack_adj(octx, op_plus, sz));
+}
