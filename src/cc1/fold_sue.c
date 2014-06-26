@@ -131,6 +131,21 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 			fold_decl(d, stab, NULL);
 
+			if(type_is_variably_modified(d->ref)){
+				/* C99 6.7.6.2
+				 * ... all identifiers declared with a VM type have to be ordinary
+				 * identifiers and cannot, therefore, be members of structures or
+				 * unions
+				 * */
+				fold_had_error = 1;
+				warn_at_print_error(
+						&d->where,
+						"member has variably modifed type '%s'",
+						type_to_str(d->ref));
+
+				continue;
+			}
+
 			if(!d->spel){
 				/* if the decl doesn't have a name, it's
 				 * a useless decl, unless it's an anon struct/union
