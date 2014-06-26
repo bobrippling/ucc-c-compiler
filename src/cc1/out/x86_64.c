@@ -1740,7 +1740,7 @@ const out_val *impl_call(
 
 			if(stack_this){
 				local_args[i] = v_to_stack_mem(octx,
-						local_args[i], -(long)stack_pos);
+						local_args[i], stack_pos);
 
 				/* XXX: we ensure any registers used ^ are freed
 				 * by using the stack snapshot - the STACK_SAVE

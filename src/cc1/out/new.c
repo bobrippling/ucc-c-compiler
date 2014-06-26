@@ -26,7 +26,7 @@ out_val *out_new_blk_addr(out_ctx *octx, out_blk *blk)
 static out_val *out_new_bp_off(out_ctx *octx, long off)
 {
 	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
-	return v_new_bp3(octx, NULL, voidp, off);
+	return v_new_bp3_below(octx, NULL, voidp, off);
 }
 
 out_val *out_new_frame_ptr(out_ctx *octx, int nframes)
@@ -49,7 +49,7 @@ out_val *out_new_frame_ptr(out_ctx *octx, int nframes)
 
 out_val *out_new_reg_save_ptr(out_ctx *octx)
 {
-	return out_new_bp_off(octx, -octx->stack_variadic_offset);
+	return out_new_bp_off(octx, octx->stack_variadic_offset);
 }
 
 out_val *out_new_num(out_ctx *octx, type *ty, const numeric *n)
@@ -122,7 +122,7 @@ label:
 			return out_new_lbl(octx, ty, decl_asm_spel(sym->decl), 1);
 
 		case sym_arg:
-			return v_new_bp3(octx, NULL, ty, sym->loc.arg_offset);
+			return v_new_bp3_above(octx, NULL, ty, sym->loc.arg_offset);
 
 		case sym_local:
 		{
@@ -137,8 +137,8 @@ label:
 			}
 
 			/* sym offsetting takes into account the stack growth direction */
-			return v_new_bp3(octx, NULL, ty,
-					-(long)(sym->loc.stack_pos + octx->stack_local_offset));
+			return v_new_bp3_below(octx, NULL, ty,
+					sym->loc.stack_pos + octx->stack_local_offset);
 		}
 	}
 

@@ -33,7 +33,7 @@ static void callee_save_or_restore_1(
 {
 	out_current_blk(octx, in_blk);
 	{
-		const out_val *stk = v_new_bp3(octx, NULL, voidpp, -stack_pos);
+		const out_val *stk = v_new_bp3_below(octx, NULL, voidpp, stack_pos);
 
 		if(reg2mem){
 			const out_val *reg = v_new_reg(octx, NULL, type_is_ptr(voidpp), cs);

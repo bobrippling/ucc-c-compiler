@@ -49,7 +49,7 @@ int v_is_const_reg(const out_val *v)
 
 const out_val *v_to_stack_mem(out_ctx *octx, const out_val *vp, long stack_pos)
 {
-	out_val *store = v_new_bp3(octx, NULL, vp->t, stack_pos);
+	out_val *store = v_new_bp3_below(octx, NULL, vp->t, stack_pos);
 
 	vp = v_to(octx, vp, TO_CONST | TO_REG);
 
@@ -72,7 +72,7 @@ void v_reg_to_stack(
 	/* value has been stored -
 	 * don't need to flush the pointer we get returned */
 	out_val_release(octx,
-			v_to_stack_mem(octx, reg, -where));
+			v_to_stack_mem(octx, reg, where));
 }
 
 static int v_in(const out_val *vp, enum vto to)
@@ -109,7 +109,7 @@ static ucc_wur const out_val *v_spill_reg(
 	{
 		const out_val *spilt = v_to_stack_mem(
 				octx, v_reg,
-				-octx->var_stack_sz);
+				octx->var_stack_sz);
 
 		out_val_overwrite((out_val *)v_reg, spilt);
 

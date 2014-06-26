@@ -203,13 +203,27 @@ out_val *v_new_sp3(
 	return v;
 }
 
-out_val *v_new_bp3(
+static out_val *v_new_bp3(
 		out_ctx *octx, const out_val *from,
 		type *ty, long stack_pos)
 {
 	out_val *v = v_new_sp3(octx, from, ty, stack_pos);
 	v->bits.regoff.reg.idx = REG_BP;
 	return v;
+}
+
+out_val *v_new_bp3_above(
+		out_ctx *octx, const out_val *from,
+		type *ty, long stack_pos)
+{
+	return v_new_bp3(octx, from, ty, stack_pos);
+}
+
+out_val *v_new_bp3_below(
+		out_ctx *octx, const out_val *from,
+		type *ty, long stack_pos)
+{
+	return v_new_bp3(octx, from, ty, -stack_pos);
 }
 
 static void try_stack_reclaim(out_ctx *octx)
