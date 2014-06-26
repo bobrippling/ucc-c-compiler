@@ -148,7 +148,7 @@ static ucc_wur const out_val *v_save_reg(
 			}
 
 			if(!already_used){
-				size_t current = p ? p - octx->used_callee_saved + 1 : 0;
+				size_t current = p ? p - octx->used_callee_saved : 0;
 
 				octx->used_callee_saved = urealloc1(
 						octx->used_callee_saved,
