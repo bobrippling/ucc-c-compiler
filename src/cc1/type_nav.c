@@ -119,7 +119,7 @@ static int eq_array(type *candidate, void *ctx)
 		return 1;
 	}
 
-	if(!candidate->bits.array.size)
+	if(!candidate->bits.array.size || !c->sz)
 		return 0;
 
 	return c->sz_i == const_fold_val_i(candidate->bits.array.size);
