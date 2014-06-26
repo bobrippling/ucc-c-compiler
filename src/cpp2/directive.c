@@ -43,9 +43,10 @@ enum if_elif_state
 #define N_IFSTACK 64
 static struct
 {
+	where loc;
 	enum if_elif_state if_chosen;
 	char noop;
-} if_stack[N_IFSTACK] = {{ 0, 0 }};
+} if_stack[N_IFSTACK];
 
 static int if_idx = 0;
 static int noop = 0;
@@ -292,6 +293,8 @@ static void if_push(int is_true)
 {
 	if_stack[if_idx].noop      = noop;
 	if_stack[if_idx].if_chosen = if_elif_chosen;
+	where_current(&if_stack[if_idx].loc);
+	if_stack[if_idx].loc.line--;
 
 	if_idx++;
 
@@ -542,6 +545,11 @@ void parse_internal_directive(char *line)
 
 void parse_end_validate()
 {
-	if(if_idx)
-		CPP_DIE("endif expected");
+	if(if_idx){
+		char buf[WHERE_BUF_SIZ];
+
+		CPP_DIE("endif expected\n"
+				"%s: note: to match this",
+				where_str_r(buf, &if_stack[if_idx - 1].loc));
+	}
 }
