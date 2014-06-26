@@ -494,6 +494,8 @@ usage:
 				"  -dM: debug output\n"
 				"  -dS: print macro usage stats\n"
 				"  -MM: generate Makefile dependencies\n"
+				"  -C: don't discard comments, except in macros\n"
+				"  -CC: don't discard comments, even in macros\n"
 				"  -trigraphs: enable trigraphs\n"
 				"  -digraphs: enable digraphs\n"
 				, stderr);
