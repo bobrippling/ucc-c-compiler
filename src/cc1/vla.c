@@ -99,3 +99,15 @@ void vla_alloc(decl *d, out_ctx *octx)
 			v_new_bp3_below(octx, NULL, ptrsizety, locns.ptr),
 			v_ptr);
 }
+
+const out_val *vla_address(decl *d, out_ctx *octx)
+{
+	type *ptr_to_vla_ty = type_ptr_to(type_ptr_to(d->ref));
+
+	const out_val *read_ptr = out_deref(octx,
+			v_new_bp3_below(octx,
+				NULL, ptr_to_vla_ty,
+				d->sym->loc.stack_pos + platform_word_size()));
+
+	return read_ptr;
+}
