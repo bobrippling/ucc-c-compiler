@@ -219,6 +219,13 @@ static void try_shift_conv(
 
 			*vconst = mut = v_dup_or_reuse(octx, *vconst, (*vconst)->t);
 			mut->bits.val_i = log2(k);
+
+			if(vconst == lhs){
+				/* need to swap as shift expects the constant to be rhs */
+				const out_val *tmp = *lhs;
+				*lhs = *rhs;
+				*rhs = tmp;
+			}
 		}
 	}
 }
