@@ -997,12 +997,18 @@ static void dwarf_symtable_scope(
 
 				switch(d->sym->type){
 					case sym_local:
-						locn_ents[0].type = BLOCK_HEADER;
-						locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
+						if(type_is_variably_modified(d->ref)){
+							ICE("TODO: debug info for vla access");
+							locn_ents[0].type = BLOCK_HEADER;
 
-						locn_ents[1].type = BLOCK_LEB128_S;
-						locn_ents[1].bits.v = -(long)(
-								d->sym->loc.stack_pos + var_offset);
+						}else{
+							locn_ents[0].type = BLOCK_HEADER;
+							locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
+
+							locn_ents[1].type = BLOCK_LEB128_S;
+							locn_ents[1].bits.v = -(long)(
+									d->sym->loc.stack_pos + var_offset);
+						}
 						break;
 
 					case sym_global:
