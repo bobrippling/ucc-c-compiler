@@ -602,7 +602,8 @@ static struct DIE *dwarf_type_die(
 
 			szdie = dwarf_die_new(DW_TAG_subrange_type);
 			if(have_sz){
-				form_data_t sz = const_fold_val_i(ty->bits.array.size);
+				form_data_t sz = ty->bits.array.is_vla
+					? 0 : const_fold_val_i(ty->bits.array.size);
 
 				/*dwarf_attr(szdie, DW_AT_lower_bound, DW_FORM_data4, 0);*/
 
