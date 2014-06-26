@@ -19,7 +19,7 @@ OBJ = \
 	tokconv.o tokenise.o \
 	parse_expr.o parse_stmt.o parse_type.o parse_attr.o parse_init.o \
 	fold.o fold_sym.o fold_sue.o const.o format_chk.o \
-	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o \
+	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o vla.o \
 	gen_asm.o gen_str.o gen_style.o \
 	out/out.o out/asm.o out/lbl.o out/impl.o out/write.o out/dbg.o out/leb.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \

@@ -21,6 +21,7 @@
 #include "const.h"
 #include "label.h"
 #include "type_is.h"
+#include "vla.h"
 
 
 #define RW_TEST(decl, var)                      \
@@ -482,23 +483,29 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 						case store_register:
 						case store_default:
 						case store_auto:
+						{
+							unsigned siz;
+							unsigned align;
+
 							if(type_is_variably_modified(s->decl->ref)){
-								ICW("TODO: space for vla");
+								siz = vla_space();
+								align = platform_word_size();
 							}else{
-								unsigned siz = decl_size(s->decl);
-								unsigned align = decl_align(s->decl);
-
-								/* align greater than size - we increase
-								 * size so it can be aligned to `align'
-								 */
-								if(align > siz)
-									siz = pack_to_align(siz, align);
-
-								/* packing takes care of everything */
-								pack_next(&current, NULL, siz, align);
-								s->loc.stack_pos = current;
+								siz = decl_size(s->decl);
+								align = decl_align(s->decl);
 							}
+
+							/* align greater than size - we increase
+							 * size so it can be aligned to `align'
+							 */
+							if(align > siz)
+								siz = pack_to_align(siz, align);
+
+							/* packing takes care of everything */
+							pack_next(&current, NULL, siz, align);
+							s->loc.stack_pos = current;
 							break;
+						}
 
 						case store_static:
 						case store_extern:
