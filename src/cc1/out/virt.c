@@ -151,7 +151,8 @@ static ucc_wur const out_val *v_save_reg(
 				size_t current = p ? p - octx->used_callee_saved + 1 : 0;
 
 				octx->used_callee_saved = urealloc1(
-						octx->used_callee_saved, current + 2);
+						octx->used_callee_saved,
+						(current + 2) * sizeof *octx->used_callee_saved);
 
 				memcpy_safe(&octx->used_callee_saved[current], &cs_reg);
 				octx->used_callee_saved[current + 1].is_float = 2;
