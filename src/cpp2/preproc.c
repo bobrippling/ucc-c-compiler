@@ -16,7 +16,13 @@
 
 #define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
 
-static int strip_in_block = 0;
+static enum
+{
+	NOT_IN_BLOCK,
+	IN_BLOCK_BEGIN,
+	IN_BLOCK_END,
+	IN_BLOCK_FULL
+} strip_in_block = NOT_IN_BLOCK;
 
 struct
 {
@@ -263,12 +269,17 @@ static char *strip_comment(char *line)
 	const int is_directive = *str_spc_skip(line) == '#';
 	char *s;
 
+	if(strip_in_block == IN_BLOCK_BEGIN)
+		strip_in_block = IN_BLOCK_FULL;
+	else if(strip_in_block == IN_BLOCK_END)
+		strip_in_block = NOT_IN_BLOCK;
+
 	for(s = line; *s; s++){
-		if(strip_in_block){
+		if(strip_in_block == IN_BLOCK_FULL || strip_in_block == IN_BLOCK_BEGIN){
 			const int clear_comments = (strip_comments == STRIP_ALL);
 
 			if(*s == '*' && s[1] == '/'){
-				strip_in_block = 0;
+				strip_in_block = IN_BLOCK_END;
 				if(clear_comments)
 					*s++ = ' ';
 			}
@@ -315,7 +326,7 @@ strip_1line:
 				}
 				break;
 			}else if(s[1] == '*'){
-				strip_in_block = 1;
+				strip_in_block = IN_BLOCK_BEGIN;
 
 				switch(strip_comments){
 					case STRIP_EXCEPT_DIRECTIVE:
@@ -371,8 +382,14 @@ void preprocess(void)
 			line = expand_digraphs(line);
 
 		line = strip_comment(line);
-		if(!strip_in_block)
-			line = filter_macros(line);
+		switch(strip_in_block){
+			case NOT_IN_BLOCK:
+			case IN_BLOCK_BEGIN:
+			case IN_BLOCK_END:
+				line = filter_macros(line);
+			case IN_BLOCK_FULL: /* no thanks */
+				break;
+		}
 
 		debug_pop_line();
 
@@ -383,8 +400,14 @@ void preprocess(void)
 		}
 	}
 
-	if(strip_in_block)
-		CPP_DIE("no terminating block comment");
+	switch(strip_in_block){
+		case NOT_IN_BLOCK:
+		case IN_BLOCK_END:
+			break;
+		case IN_BLOCK_BEGIN:
+		case IN_BLOCK_FULL:
+			CPP_DIE("no terminating block comment");
+	}
 
 	parse_end_validate();
 }
