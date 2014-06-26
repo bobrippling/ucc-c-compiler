@@ -715,22 +715,6 @@ void nexttoken()
 		if(c != '.')
 			read_number(mode);
 
-#if 0
-		if(tolower(peeknextchar()) == 'e'){
-			/* 5e2 */
-			int n = currentval.val;
-
-			if(!isdigit(peeknextchar())){
-				curtok = token_unknown;
-				return;
-			}
-			read_number();
-
-			currentval.val = n * pow(10, currentval.val);
-			/* cv = n * 10 ^ cv */
-		}
-#endif
-
 		if(c == '.' || peeknextchar() == '.'){
 			/* floating point */
 
@@ -749,6 +733,22 @@ void nexttoken()
 			curtok = token_floater;
 
 		}else{
+			/* handle integral XeY */
+			if(tolower(peeknextchar()) == 'e'){
+				numeric mantissa = currentval;
+
+				nextchar();
+
+				if(!isdigit(peeknextchar())){
+					curtok = token_unknown;
+					return;
+				}
+				read_number(DEC);
+
+				mantissa.val.i *= pow(10, currentval.val.i);
+				currentval = mantissa;
+			}
+
 			curtok = token_integer;
 		}
 
