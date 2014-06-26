@@ -1141,6 +1141,12 @@ static decl *parse_decl_stored_aligned(
 			int static_ctx = !scope->parent ||
 				(store & STORE_MASK_STORE) == store_static;
 
+			if(!is_autotype){
+				/* need to add its symbol early,
+				 * in case it's mentioned in the init */
+				fold_decl_add_sym(d, add_to_scope);
+			}
+
 			d->bits.var.init = parse_init(scope, static_ctx);
 
 			/* top-level inits have their .where on the '=' token */
@@ -1148,6 +1154,9 @@ static decl *parse_decl_stored_aligned(
 
 			if(is_autotype){
 				decl_init *init = d->bits.var.init;
+
+				/* delayed add-to-scope */
+				symtab_add_to_scope(add_to_scope, d);
 
 				UCC_ASSERT(!d->ref, "already have decl type?");
 
@@ -1517,7 +1526,7 @@ static void link_to_previous_decl(decl *d, symtable *in_scope)
 	 * This also means any use of d will have the most up to date
 	 * attribute information about it
 	 */
-	decl *d_prev = symtab_search_d(in_scope, d->spel, NULL);
+	decl *d_prev = symtab_search_d_exclude(in_scope, d->spel, NULL, d);
 
 	if(d_prev){
 		/* link the proto chain for __attribute__ checking,
@@ -1608,7 +1617,7 @@ int parse_decl_group(
 		d = parse_decl_stored_aligned(
 				this_ref, parse_flag,
 				store, align,
-				in_scope, NULL);
+				in_scope, add_to_scope);
 
 		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH)
 		&& accept(token_colon))
@@ -1641,11 +1650,8 @@ int parse_decl_group(
 			done = 1;
 		}
 
-		/* must link to previous before adding to scope */
 		if(d->spel)
 			link_to_previous_decl(d, in_scope);
-		if(add_to_scope)
-			symtab_add_to_scope(add_to_scope, d);
 		if(pdecls)
 			dynarray_add(pdecls, d);
 

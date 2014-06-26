@@ -13,6 +13,8 @@ void fold_decl_global_init(decl *d, symtable *stab);
 
 void fold_merge_tenatives(symtable *stab);
 
+void fold_decl_add_sym(decl *d, symtable *stab);
+
 void fold_decl(decl *d, symtable *stab, stmt **pinit_code);
 void fold_global_func(decl *);
 void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab);

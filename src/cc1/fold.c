@@ -463,14 +463,11 @@ static void fold_func_attr(decl *d)
 	}
 }
 
-static void fold_decl_add_sym(decl *d, symtable *stab)
+void fold_decl_add_sym(decl *d, symtable *stab)
 {
 	/* must be before fold*, since sym lookups are done */
 	if(d->sym){
-		/* arg */
-		UCC_ASSERT(d->sym->type != sym_local || !d->spel /* anon sym, e.g. strk */,
-				"sym (type %d) \"%s\" given symbol too early",
-				d->sym->type, d->spel);
+		/* ignore */
 	}else{
 		enum sym_type ty;
 
