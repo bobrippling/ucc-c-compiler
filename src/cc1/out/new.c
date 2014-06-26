@@ -112,7 +112,7 @@ const out_val *out_new_overflow(out_ctx *octx, const out_val **eval)
 	return impl_test_overflow(octx, eval);
 }
 
-out_val *out_new_sym(out_ctx *octx, sym *sym)
+const out_val *out_new_sym(out_ctx *octx, sym *sym)
 {
 	type *ty = type_ptr_to(sym->decl->ref);
 
@@ -145,9 +145,9 @@ label:
 	assert(0);
 }
 
-out_val *out_new_sym_val(out_ctx *octx, sym *sym)
+const out_val *out_new_sym_val(out_ctx *octx, sym *sym)
 {
-	return (out_val *)out_deref(octx, out_new_sym(octx, sym));
+	return out_deref(octx, out_new_sym(octx, sym));
 }
 
 out_val *out_new_zero(out_ctx *octx, type *ty)

@@ -32,8 +32,8 @@ out_val *out_new_blk_addr(out_ctx *, out_blk *) ucc_wur;
 
 out_val *out_new_noop(out_ctx *) ucc_wur;
 
-out_val *out_new_sym(out_ctx *, sym *) ucc_wur;
-out_val *out_new_sym_val(out_ctx *, sym *) ucc_wur;
+const out_val *out_new_sym(out_ctx *, sym *) ucc_wur;
+const out_val *out_new_sym_val(out_ctx *, sym *) ucc_wur;
 
 /* modifies expr/val and returns the overflow check expr/val */
 const out_val *out_new_overflow(out_ctx *, const out_val **) ucc_wur;
