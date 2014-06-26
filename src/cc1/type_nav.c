@@ -54,7 +54,20 @@ static type *type_new_btype(const btype *b)
 	return t;
 }
 
-static type *type_uptree_find_or_new(
+static int eq_true(type *t, void *ctx)
+{
+	(void)t; (void)ctx;
+	return 1;
+}
+
+static int eq_false(type *t, void *ctx)
+{
+	(void)t; (void)ctx;
+	return 0;
+}
+
+static ucc_nonnull((1, 3))
+type *type_uptree_find_or_new(
 		type *to, enum type_kind idx,
 		int (*eq)(type *, void *),
 		void (*init)(type *, void *),
@@ -71,7 +84,7 @@ static type *type_uptree_find_or_new(
 		type *candidate = (*ent)->t;
 		assert(candidate->type == idx);
 
-		if(!eq || eq(candidate, ctx))
+		if(eq(candidate, ctx))
 			return candidate;
 	}
 
@@ -154,10 +167,10 @@ type *type_vla_of(type *of, struct expr *vlasz, int vlatype)
 	ctx.sz = vlasz;
 	ctx.sz_i = 0;
 
-	/* vla - not equal to any other type */
 	vla = type_uptree_find_or_new(
 			of, type_array,
-			NULL, init_array,
+			/* vla - not equal to any other type */
+			eq_false, init_array,
 			&ctx);
 
 	vla->bits.array.is_vla = vlatype;
@@ -209,7 +222,9 @@ type *type_block_of(type *fn)
 {
 	return type_uptree_find_or_new(
 			fn, type_block,
-			NULL, NULL, NULL);
+			/*if there's an uptree, we'll take it:*/eq_true,
+			/*(since this is block pointer, not the block function type)*/
+			NULL, NULL);
 }
 
 static int eq_attr(type *candidate, void *ctx)
@@ -243,7 +258,8 @@ type *type_ptr_to(type *pointee)
 {
 	return type_uptree_find_or_new(
 			pointee, type_ptr,
-			NULL, NULL, NULL);
+			/*if there's an uptree, we'll take it:*/eq_true,
+			NULL, NULL);
 }
 
 struct ctx_decayed_array
