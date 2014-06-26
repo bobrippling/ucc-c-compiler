@@ -11,6 +11,9 @@ decl_parsing/vla_proto.c
 float/long_double/ll_to_ld.c
 type_propagation/tgmath.c
 
+# waiting for cpp
+cpp/if/comment_endif.c
+
 # waiting for calling convention __asm helpers
 calling_conv/fptr.c
 mangling/calling_conv.c
