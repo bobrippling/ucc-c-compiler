@@ -10,6 +10,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../out/dbg.h"
+#include "../vla.h"
 
 const char *str_stmt_code()
 {
@@ -174,7 +175,7 @@ void gen_block_decls(
 		*dbg_end_lbl = NULL;
 	}
 
-	/* declare strings, extern functions and blocks */
+	/* declare strings, extern functions, blocks and vlas */
 	for(diter = stab->decls; diter && *diter; diter++){
 		decl *d = *diter;
 		int func;
@@ -187,6 +188,10 @@ void gen_block_decls(
 			 * if it's the most-unnested func. prototype, go */
 			if(!func || !d->proto)
 				gen_asm_global_w_store(d, 1, octx);
+		}
+		else if(type_is_variably_modified(d->ref))
+		{
+			vla_alloc(d, octx);
 		}
 	}
 }

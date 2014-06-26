@@ -397,7 +397,16 @@ type_nav.o: type_nav.c ../util/alloc.h ../util/compiler.h cc1_where.h \
  ops/expr_sizeof.h ops/expr_val.h ops/expr_stmt.h ops/expr_deref.h \
  ops/expr_struct.h ops/expr_compound_lit.h ops/expr_string.h type_is.h \
  funcargs.h c_types.h
-vla.o: vla.c ../util/platform.h ../util/compiler.h vla.h
+vla.o: vla.c ../util/platform.h ../util/compiler.h decl.h type.h num.h \
+ btype.h ../util/where.h attribute.h retain.h type_is.h type_nav.h sue.h \
+ expr.h strings.h ../util/dynmap.h ../util/dyn.h op.h sym.h const.h \
+ out/out.h out/../type.h out/../num.h out/../sym.h out/../op.h \
+ out/forwards.h ../util/compiler.h ops/expr_addr.h ops/expr_assign.h \
+ ops/expr_assign_compound.h ops/expr_cast.h ops/expr_comma.h \
+ ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \
+ ops/expr_sizeof.h ops/expr_val.h ops/expr_stmt.h ops/expr_deref.h \
+ ops/expr_struct.h ops/expr_compound_lit.h ops/expr_string.h gen_asm.h \
+ out/val.h vla.h
 ops/__builtin.o: ops/__builtin.c ops/../../util/util.h ops/../../util/warn.h \
  ops/../../util/where.h ops/../../util/compiler.h \
  ops/../../util/dynarray.h ops/../../util/dyn.h ops/../../util/alloc.h \
@@ -1062,7 +1071,7 @@ ops/stmt_code.o: ops/stmt_code.c ops/ops.h ops/../../util/util.h \
  ops/../decl_init.h ops/../gen_asm.h ops/stmt_code.h ops/../decl_init.h \
  ops/../../util/dynarray.h ops/../../util/dyn.h ops/../fold_sym.h \
  ops/../out/lbl.h ops/../type_is.h ops/../type_nav.h ops/../btype.h \
- ops/../sue.h ops/../out/dbg.h
+ ops/../sue.h ops/../out/dbg.h ops/../vla.h
 ops/stmt_continue.o: ops/stmt_continue.c ops/ops.h ops/../../util/util.h \
  ops/../../util/warn.h ops/../../util/where.h ops/../../util/compiler.h \
  ops/../cc1.h ops/../../util/std.h ops/../out/out.h ops/../out/../type.h \
@@ -1384,6 +1393,11 @@ ops/stmt_while.o: ops/stmt_while.c ops/ops.h ops/../../util/util.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/stmt_while.h ops/stmt_if.h \
  ops/../out/lbl.h
+out/alloca.o: out/alloca.c out/out.h out/../type.h out/../num.h \
+ out/../btype.h out/../../util/where.h out/../../util/compiler.h \
+ out/../num.h out/../sym.h out/../decl.h out/../type.h out/../attribute.h \
+ out/../retain.h out/../../util/dynmap.h out/../../util/dyn.h out/../op.h \
+ out/forwards.h out/val.h
 out/asm.o: out/asm.c out/../../util/util.h out/../../util/warn.h \
  out/../../util/where.h out/../../util/compiler.h \
  out/../../util/platform.h out/../../util/alloc.h \

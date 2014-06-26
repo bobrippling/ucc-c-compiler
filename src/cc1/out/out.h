@@ -113,6 +113,11 @@ void out_func_prologue(
 
 void out_func_epilogue(out_ctx *, type *, char *end_dbg_lbl);
 
+
+/* returns a pointer to allocated storage: */
+const out_val *out_alloca_push(out_ctx *, const out_val *sz, unsigned align);
+
+
 /* commenting */
 void out_comment(out_ctx *, const char *, ...) ucc_printflike(2, 3);
 
