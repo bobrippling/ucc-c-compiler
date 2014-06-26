@@ -99,7 +99,7 @@ void fold_expr_if(expr *e, symtable *stab)
 	tt_l = (e->lhs ? e->lhs : e->expr)->tree_type;
 	tt_r = e->rhs->tree_type;
 
-	if(type_is_integral(tt_l) && type_is_integral(tt_r)){
+	if(type_is_arith(tt_l) && type_is_arith(tt_r)){
 		expr **middle_op = e->lhs ? &e->lhs : &e->expr;
 
 		expr_check_sign("?:", *middle_op, e->rhs, &e->where);
@@ -194,53 +194,36 @@ void fold_expr_if(expr *e, symtable *stab)
 }
 
 
-void gen_expr_if(expr *e)
+const out_val *gen_expr_if(expr *e, out_ctx *octx)
 {
-	char *lblfin;
-	char vphi_buf[OUT_VPHI_SZ];
+	out_blk *landing = out_blk_new(octx, "if_end"),
+	        *blk_lhs = out_blk_new(octx, "if_lhs"),
+	        *blk_rhs = out_blk_new(octx, "if_rhs");
+	const out_val *cond = gen_expr(e->expr, octx);
 
-	lblfin = out_label_code("ifexp_fi");
+	if(!e->lhs)
+		out_val_retain(octx, cond);
 
-	gen_expr(e->expr);
+	out_ctrl_branch(octx, cond, blk_lhs, blk_rhs);
 
-	if(e->lhs){
-		char *lblelse = out_label_code("ifexp_else");
-
-		out_jfalse(lblelse);
-
-		gen_expr(e->lhs);
-
-		/* hack for the phi jump until basic blocks are in */
-		out_dup();
-		out_flush_volatile();
-
-		out_phi_pop_to(&vphi_buf);
-
-		out_push_lbl(lblfin, 0);
-		/* the out_dup() is flushed here - hack side effect */
-		out_jmp();
-
-		out_label_noop(lblelse);
-		free(lblelse);
-
-	}else{
-		out_dup();
-		out_dup(); /* similar hack to above */
-		out_phi_pop_to(&vphi_buf);
-
-		out_jtrue(lblfin);
+	out_current_blk(octx, blk_lhs);
+	{
+		out_ctrl_transfer(octx, landing,
+				e->lhs ? gen_expr(e->lhs, octx) : cond,
+				&blk_lhs);
 	}
 
-	out_pop();
+	out_current_blk(octx, blk_rhs);
+	{
+		out_ctrl_transfer(octx, landing,
+				gen_expr(e->rhs, octx), &blk_rhs);
+	}
 
-	gen_expr(e->rhs);
-	out_phi_join(&vphi_buf);
-	out_label(lblfin);
-
-	free(lblfin);
+	out_current_blk(octx, landing);
+	return out_ctrl_merge(octx, blk_lhs, blk_rhs);
 }
 
-void gen_expr_str_if(expr *e)
+const out_val *gen_expr_str_if(expr *e, out_ctx *octx)
 {
 	idt_printf("if expression:\n");
 	gen_str_indent++;
@@ -262,6 +245,8 @@ void gen_expr_str_if(expr *e)
 #undef SUB_PRINT
 
 	gen_str_indent--;
+
+	UNUSED_OCTX();
 }
 
 void mutate_expr_if(expr *e)
@@ -276,12 +261,13 @@ expr *expr_new_if(expr *test)
 	return e;
 }
 
-void gen_expr_style_if(expr *e)
+const out_val *gen_expr_style_if(expr *e, out_ctx *octx)
 {
-	gen_expr(e->expr);
+	IGNORE_PRINTGEN(gen_expr(e->expr, octx));
 	stylef(" ? ");
 	if(e->lhs)
-		gen_expr(e->lhs);
+		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef(" : ");
-	gen_expr(e->rhs);
+	IGNORE_PRINTGEN(gen_expr(e->rhs, octx));
+	return NULL;
 }

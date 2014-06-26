@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "sym.h"
@@ -33,7 +34,7 @@ sym *sym_new_stab(symtable *stab, decl *d, enum sym_type t)
 
 void symtab_rm_parent(symtable *child)
 {
-	dynarray_rm(child->parent->children, child);
+	dynarray_rm(&child->parent->children, child);
 	child->parent = NULL;
 }
 
@@ -138,33 +139,37 @@ static void label_init(symtable **stab)
 	*stab = symtab_func_root(*stab);
 	if((*stab)->labels)
 		return;
-	(*stab)->labels = dynmap_new((dynmap_cmp_f *)strcmp);
+	(*stab)->labels = dynmap_new((dynmap_cmp_f *)strcmp, dynmap_strhash);
 }
 
 void symtab_label_add(symtable *stab, label *lbl)
 {
+	label *prev;
+
 	label_init(&stab);
 
-	dynmap_set(char *, label *,
+	prev = dynmap_set(char *, label *,
 			symtab_func_root(stab)->labels,
 			lbl->spel, lbl);
+
+	assert(!prev);
 }
 
-label *symtab_label_find_or_new(symtable *stab, char *spel, where *w)
+label *symtab_label_find_or_new(symtable *const stab, char *spel, where *w)
 {
+	symtable *root;
 	label *lbl;
 
-	stab = symtab_func_root(stab);
+	root = symtab_func_root(stab);
 
-	lbl = stab->labels
-		? dynmap_get(char *, label *,
-		    stab->labels, spel)
+	lbl = root->labels
+		? dynmap_get(char *, label *, root->labels, spel)
 		: NULL;
 
 	if(!lbl){
 		/* forward decl */
-		lbl = label_new(w, symtab_func(stab)->spel, spel, 0);
-		symtab_label_add(stab, lbl);
+		lbl = label_new(w, spel, 0, stab);
+		symtab_label_add(root, lbl);
 	}
 
 	return lbl;

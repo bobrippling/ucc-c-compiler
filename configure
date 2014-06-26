@@ -9,7 +9,6 @@ UCC_LD      = ${UCC_LD}
 UCC_ARCH    = ${UCC_ARCH}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
 UCC_CPU     = ${UCC_CPU}
-CTAGS       = ${TAG_CMD}
 !
 
 	cat > src/ucc/cfg.h <<!
@@ -33,30 +32,38 @@ CTAGS       = ${TAG_CMD}
 		SECTION_TEXT="__TEXT,__text"
 		SECTION_DATA="__DATA,__data"
 		SECTION_BSS="__BSS,__bss"
+		SECTION_RODATA="__TEXT,__const"
 		SECTION_DBG_ABBREV="__DWARF,__debug_abbrev,regular,debug"
 		SECTION_DBG_INFO="__DWARF,__debug_info,regular,debug"
 		SECTION_DBG_LINE="__DWARF,__debug_line,regular,debug"
 		DWARF_INDIRECT_SECTION_LINKS=1
+
+		ASM_WEAK_DIRECTIVE='weak_reference'
+		# Darwin also needs "-flat_namespace -undefined suppress"
 	else
 		SECTION_TEXT=".text"
 		SECTION_DATA=".data"
 		SECTION_BSS=".bss"
+		SECTION_RODATA=".rodata"
 		SECTION_DBG_ABBREV=".debug_abbrev"
 		SECTION_DBG_INFO=".debug_info"
 		SECTION_DBG_LINE=".debug_line"
 		DWARF_INDIRECT_SECTION_LINKS=0
+		ASM_WEAK_DIRECTIVE='weak'
 	fi
 
 	cat > src/as_cfg.h <<!
 #define SECTION_NAME_TEXT $SECTION_TEXT
 #define SECTION_NAME_DATA $SECTION_DATA
 #define SECTION_NAME_BSS  $SECTION_BSS
+#define SECTION_NAME_RODATA $SECTION_RODATA
 #define SECTION_NAME_DBG_ABBREV $SECTION_DBG_ABBREV
 #define SECTION_NAME_DBG_INFO $SECTION_DBG_INFO
 #define SECTION_NAME_DBG_LINE $SECTION_DBG_LINE
 #define UCC_M32      ${UCC_M32}
 #define DWARF_INDIRECT_SECTION_LINKS $DWARF_INDIRECT_SECTION_LINKS
 #define ASM_PLBL_PRE "$ASM_PLBL"
+#define ASM_WEAK_DIRECTIVE "$ASM_WEAK_DIRECTIVE"
 !
 
 	if ! which perl > /dev/null
@@ -102,7 +109,7 @@ try_set(){
 	shift
 	for ent in $@
 	do
-		if test -f "$ent"
+		if test -e "$ent"
 		then eval "$var=\"\$$var:$ent\""
 		fi
 	done
@@ -123,9 +130,7 @@ unam="$(uname -s)"
 
 # setup include paths
 # TODO: option to use local ./lib path
-UCC_INC="-I/usr/include"
-
-TAG_CMD='ctags -R .'
+UCC_INC="/usr/include"
 
 # defaults for an OS
 case "$unam" in
@@ -164,8 +169,6 @@ case "$unam" in
 		ASM_PLBL=L
 		NEED_DSYM=1
 		leading_underscore
-
-		TAG_CMD='ctags -dt $$(find . -iname "*.[ch]")'
 		;;
 
 	CYGWIN_NT-*)
@@ -202,7 +205,7 @@ do
 			fi
 			;;
 		--with-ucc-lib)
-			UCC_INC="-Ilib/"
+			UCC_INC="lib/"
 			UCC_CRT="lib/crt.a"
 			UCC_STDLIB="lib/libc.a"
 			UCC_DYN=''

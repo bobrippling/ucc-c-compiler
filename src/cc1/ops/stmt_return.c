@@ -64,21 +64,20 @@ void fold_stmt_return(stmt *s)
 	}
 }
 
-void gen_stmt_return(stmt *s)
+void gen_stmt_return(stmt *s, out_ctx *octx)
 {
-	if(s->expr){
-		gen_expr(s->expr);
-		out_pop_func_ret(s->expr->tree_type);
-		out_comment("return");
-	}
-	out_push_lbl(curfunc_lblfin, 0);
-	out_jmp();
+	/* need to generate the ret expr before the scope leave code */
+	const out_val *ret_exp = s->expr ? gen_expr(s->expr, octx) : NULL;
+
+	gen_scope_leave(s->symtab, symtab_root(s->symtab), octx);
+
+	out_ctrl_end_ret(octx, ret_exp, s->expr ? s->expr->tree_type : NULL);
 }
 
-void style_stmt_return(stmt *s)
+void style_stmt_return(stmt *s, out_ctx *octx)
 {
 	stylef("return ");
-	gen_expr(s->expr);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(";");
 }
 

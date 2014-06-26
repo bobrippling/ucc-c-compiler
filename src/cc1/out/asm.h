@@ -6,6 +6,7 @@ enum section_type
 	SECTION_TEXT,
 	SECTION_DATA,
 	SECTION_BSS,
+	SECTION_RODATA,
 	SECTION_DBG_ABBREV,
 	SECTION_DBG_INFO,
 	SECTION_DBG_LINE,
@@ -31,6 +32,8 @@ void asm_out_sectionv(enum section_type t, const char *fmt, va_list l);
 
 void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align);
 
+void out_comment_sec(enum section_type sec, const char *fmt, ...);
+
 #ifdef TYPE_H
 void asm_out_fp(enum section_type sec, type *ty, floating_t f);
 void asm_out_fp(enum section_type sec, type *ty, floating_t f);
@@ -41,10 +44,11 @@ void asm_declare_stringlit(enum section_type, const stringlit *);
 #endif
 
 #ifdef DECL_H
-void asm_declare_decl_init(enum section_type, decl *); /* x: .qword ... */
+void asm_declare_decl_init(decl *); /* x: .qword ... */
 
 void asm_predeclare_extern(decl *d);
 void asm_predeclare_global(decl *d);
+void asm_predeclare_weak(decl *d);
 #endif
 
 /* in impl */

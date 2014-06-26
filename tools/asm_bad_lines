@@ -1,0 +1,15 @@
+#!/bin/sh
+
+if [ $# -ne 1 ]
+then
+	echo "Usage: $0 file.s" >&2
+	exit 1
+fi
+
+sed -n -e "$(
+	as -o /dev/null "$1" 2>&1 \
+		| sed 's/'"$1"':\([0-9]*\).*/\1p;/' \
+		| tr -d '\n'
+	)" "$1" \
+		| sort \
+		| uniq

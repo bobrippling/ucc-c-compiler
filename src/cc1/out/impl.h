@@ -1,58 +1,74 @@
 #ifndef IMPL_H
 #define IMPL_H
 
-void impl_store(struct vstack *from, struct vstack *to);
-void impl_load(struct vstack *from, const struct vreg *reg);
-void impl_load_iv(struct vstack *from);
-void impl_load_fp(struct vstack *from);
+#include "../../util/compiler.h"
 
-void impl_reg_cp(struct vstack *from, const struct vreg *r);
-void impl_reg_swp(struct vstack *a, struct vstack *b);
+void impl_store(out_ctx *, const out_val *dest, const out_val *val);
 
-void impl_op(enum op_type);
-void impl_op_unary(enum op_type);
-void impl_deref(
-		struct vstack *vp,
-		const struct vreg *to,
-		type *tpointed_to);
+ucc_wur const out_val *impl_load(
+		out_ctx *octx, const out_val *from,
+		const struct vreg *reg)
+	ucc_nonnull();
 
-void impl_jmp(void);
-void impl_jcond(int true, const char *lbl);
+void impl_reg_cp_no_off(
+		out_ctx *octx, const out_val *from, const struct vreg *to_reg)
+	ucc_nonnull();
 
-void impl_i2f(struct vstack *, type *t_i, type *t_f);
-void impl_f2i(struct vstack *, type *t_f, type *t_i);
-void impl_f2f(struct vstack *, type *from, type *to);
-void impl_cast_load(
-		struct vstack *vp,
+ucc_wur const out_val *impl_op(out_ctx *octx, enum op_type, const out_val *l, const out_val *r);
+ucc_wur const out_val *impl_op_unary(out_ctx *octx, enum op_type, const out_val *);
+
+ucc_wur const out_val *impl_deref(
+		out_ctx *octx, const out_val *vp,
+		const struct vreg *reg)
+	ucc_nonnull();
+
+void impl_branch(out_ctx *, const out_val *, out_blk *bt, out_blk *bf);
+void impl_jmp_expr(out_ctx *, const out_val *);
+
+ucc_wur const out_val *impl_i2f(out_ctx *octx, const out_val *, type *t_i, type *t_f);
+ucc_wur const out_val *impl_f2i(out_ctx *octx, const out_val *, type *t_f, type *t_i);
+ucc_wur const out_val *impl_f2f(out_ctx *octx, const out_val *, type *from, type *to);
+
+ucc_wur const out_val *impl_cast_load(
+		out_ctx *octx, const out_val *vp,
 		type *small, type *big,
 		int is_signed);
 
 void impl_change_type(type *t);
 
-void impl_call(const int nargs, type *r_ret, type *r_func);
-void impl_pop_func_ret(type *r);
+ucc_wur const out_val *impl_call(
+		out_ctx *octx,
+		const out_val *fn, const out_val **args,
+		type *fnty);
 
-void impl_func_prologue_save_fp(void);
+void impl_to_retreg(out_ctx *, const out_val *, type *retty);
+
+void impl_func_prologue_save_fp(out_ctx *octx);
 void impl_func_prologue_save_call_regs(
+		out_ctx *,
 		type *rf, unsigned nargs,
 		int arg_offsets[/*nargs*/]);
 
-void impl_func_prologue_save_variadic(type *rf);
-void impl_func_epilogue(type *);
+void impl_func_prologue_save_variadic(out_ctx *octx, type *rf);
+void impl_func_epilogue(out_ctx *, type *);
 
-void impl_undefined(void);
-void impl_set_overflow(void);
-void impl_set_nan(type *);
+void impl_undefined(out_ctx *octx);
+void impl_set_nan(out_ctx *, out_val *);
+ucc_wur const out_val *impl_test_overflow(
+		out_ctx *, const out_val **);
 
 /* scratch register indexing */
-int  impl_reg_to_scratch(const struct vreg *);
+int impl_reg_to_idx(const struct vreg *);
 void impl_scratch_to_reg(int scratch, struct vreg *);
+int impl_reg_frame_const(const struct vreg *, int sp);
+int impl_reg_savable(const struct vreg *);
 
 /* callee save register bools */
-int impl_reg_is_callee_save(const struct vreg *r, type *fr);
+int impl_reg_is_scratch(type *fnty, const struct vreg *);
+int impl_reg_is_callee_save(type *fnty, const struct vreg *r);
+const int *impl_callee_save_regs(type *fnty, unsigned *pn);
 
-void impl_comment(enum section_type, const char *fmt, va_list l);
-void impl_lbl(const char *lbl);
+void impl_comment(out_ctx *, const char *fmt, va_list l);
 
 enum flag_cmp op_to_flag(enum op_type op);
 const char *flag_cmp_to_str(enum flag_cmp);

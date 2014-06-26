@@ -7,21 +7,16 @@
 #include "../op.h"
 #include "../macros.h"
 
-#include "vstack.h"
+#include "val.h"
 #include "asm.h"
 #include "impl.h"
 #include "write.h"
 
-void impl_comment(enum section_type sec, const char *fmt, va_list l)
+void impl_comment(out_ctx *octx, const char *fmt, va_list l)
 {
-	out_asm2(sec, P_NO_NL, "/* ");
-	out_asmv(sec, P_NO_INDENT | P_NO_NL, fmt, l);
-	out_asm2(sec, P_NO_INDENT, " */");
-}
-
-void impl_lbl(const char *lbl)
-{
-	out_asm2(SECTION_TEXT, P_NO_INDENT, "%s:", lbl);
+	out_asm2(octx, SECTION_TEXT, P_NO_NL, "/* ");
+	out_asmv(octx, SECTION_TEXT, P_NO_INDENT | P_NO_NL, fmt, l);
+	out_asm2(octx, SECTION_TEXT, P_NO_INDENT, " */");
 }
 
 enum flag_cmp op_to_flag(enum op_type op)
@@ -59,7 +54,18 @@ const char *flag_cmp_to_str(enum flag_cmp cmp)
 	return NULL;
 }
 
-int vreg_eq(const struct vreg *a, const struct vreg *b)
+int impl_reg_is_callee_save(type *fnty, const struct vreg *r)
 {
-	return a->idx == b->idx && a->is_float == b->is_float;
+	unsigned i, n;
+	const int *csaves;
+
+	if(r->is_float)
+		return 0;
+
+	csaves = impl_callee_save_regs(fnty, &n);
+
+	for(i = 0; i < n; i++)
+		if(r->idx == csaves[i])
+			return 1;
+	return 0;
 }

@@ -7,9 +7,10 @@
 #include "../../util/alloc.h"
 #include "../out/lbl.h"
 #include "../type_is.h"
+#include "../../util/dynarray.h"
 
 #define ITER_SWITCH(sw, iter) \
-	for(iter = sw->bits.switch_.cases; iter && iter->code; iter++)
+	for(iter = sw->bits.switch_.cases; iter && *iter; iter++)
 
 const char *str_stmt_switch()
 {
@@ -25,15 +26,19 @@ static void fold_switch_dups(stmt *sw)
 	{
 		numeric start, end;
 		stmt *cse;
-	} *const vals = malloc(sw->bits.switch_.ncases * sizeof *vals);
-
-
-	struct switch_case *titer;
+	} *vals;
+	size_t n = dynarray_count(sw->bits.switch_.cases);
 	size_t i = 0;
+	stmt **titer;
+
+	if(n == 0)
+		return;
+
+	vals = malloc(n * sizeof *vals);
 
 	/* gather all switch values */
 	ITER_SWITCH(sw, titer){
-		stmt *cse = titer->code;
+		stmt *cse = *titer;
 
 		vals[i].cse = cse;
 
@@ -48,10 +53,10 @@ static void fold_switch_dups(stmt *sw)
 	}
 
 	/* sort vals for comparison */
-	qsort(vals, sw->bits.switch_.ncases,
+	qsort(vals, n,
 			sizeof(*vals), (qsort_f)numeric_cmp); /* struct layout guarantees this */
 
-	for(i = 1; i < sw->bits.switch_.ncases; i++){
+	for(i = 1; i < n; i++){
 		const long last_prev  = vals[i-1].end.val.i;
 		const long first_this = vals[i].start.val.i;
 
@@ -76,12 +81,12 @@ static void fold_switch_dups(stmt *sw)
 static void fold_switch_enum(
 		stmt *sw, struct_union_enum_st *enum_sue)
 {
-	struct switch_case *iter;
+	stmt **iter;
 	char *marks;
 	int nents;
 	int midx;
 
-	if(sw->bits.switch_.default_case.code)
+	if(sw->bits.switch_.default_case)
 		return;
 
 	nents = enum_nentries(enum_sue);
@@ -93,7 +98,7 @@ static void fold_switch_enum(
 
 	/* for each case/default/case_range... */
 	ITER_SWITCH(sw, iter){
-		stmt *cse = iter->code;
+		stmt *cse = *iter;
 		integral_t v, w;
 
 		fold_check_expr(cse->expr,
@@ -138,44 +143,33 @@ static void fold_switch_enum(
 	free(marks);
 }
 
-void fold_stmt_and_add_to_curswitch(stmt *cse, char **lbl)
+void fold_stmt_and_add_to_curswitch(stmt *cse)
 {
 	stmt *sw = cse->parent;
-	struct switch_case *this_case;
 
 	fold_stmt(cse->lhs); /* compound */
 
 	if(!sw)
 		die_at(&cse->where, "%s not inside switch", cse->f_str());
 
-	if(*lbl){
+	if(cse->expr){
 		/* promote to the controlling statement */
 		fold_insert_casts(sw->expr->tree_type, &cse->expr, cse->symtab);
 
-		sw->bits.switch_.ncases++;
-		sw->bits.switch_.cases = urealloc(
-				sw->bits.switch_.cases,
-				sizeof(sw->bits.switch_.cases[0]) * (1 + sw->bits.switch_.ncases),
-				sizeof(sw->bits.switch_.cases[0]) * sw->bits.switch_.ncases);
-
-		this_case = &sw->bits.switch_.cases[sw->bits.switch_.ncases - 1];
+		dynarray_add(&sw->bits.switch_.cases, cse);
 	}else{
-		this_case = &sw->bits.switch_.default_case;
-		if(this_case->code){
+		if(sw->bits.switch_.default_case){
 			char buf[WHERE_BUF_SIZ];
 
 			die_at(&cse->where,
 					"duplicate default statement\n"
 					"%s: note: other default here",
-					where_str_r(buf, &this_case->code->where));
+					where_str_r(buf, &sw->bits.switch_.default_case->where));
 
 			return;
 		}
-		*lbl = out_label_case(CASE_DEF, 0);
+		sw->bits.switch_.default_case = cse;
 	}
-
-	this_case->code = cse;
-	this_case->lbl = *lbl;
 
 	/* we are compound, copy some attributes */
 	cse->kills_below_code = cse->lhs->kills_below_code;
@@ -184,8 +178,6 @@ void fold_stmt_and_add_to_curswitch(stmt *cse, char **lbl)
 
 void fold_stmt_switch(stmt *s)
 {
-	s->lbl_break = out_label_flow("switch");
-
 	FOLD_EXPR(s->expr, s->symtab);
 
 	fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch");
@@ -212,75 +204,92 @@ void fold_stmt_switch(stmt *s)
 	}
 }
 
-void gen_stmt_switch(stmt *s)
+void gen_stmt_switch(stmt *s, out_ctx *octx)
 {
-	struct switch_case *iter, *pdefault;
+	stmt **iter, *pdefault;
+	out_blk *blk_switch_end = out_blk_new(octx, "switch_fin");
+	const out_val *cmp_with;
 
-	gen_expr(s->expr);
+	s->blk_break = blk_switch_end;
 
-	out_comment("switch on this");
+	cmp_with = gen_expr(s->expr, octx);
 
-	for(iter = s->bits.switch_.cases; iter && iter->code; iter++){
-		stmt *cse = iter->code;
+	for(iter = s->bits.switch_.cases; iter && *iter; iter++){
+		stmt *cse = *iter;
 		numeric iv;
+		out_blk *blk_cancel = out_blk_new(octx, "case_next");
 
 		const_fold_integral(cse->expr, &iv);
 
+		/* create the case blocks here,
+		 * since we need the jumps before we code-gen them */
+		cse->bits.case_blk = out_blk_new(octx, "case");
+
 		if(stmt_kind(cse, case_range)){
-			char *skip = out_label_code("range_skip");
 			numeric max;
+			const out_val *this_case[2];
+			out_blk *blk_test2 = out_blk_new(octx, "range_true");
 
 			/* TODO: proper signed/unsiged format - out_op() */
 			const_fold_integral(cse->expr2, &max);
 
-			out_dup();
-			out_push_num(cse->expr->tree_type, &iv);
+			this_case[0] = out_new_num(octx, cse->expr->tree_type, &iv);
 
-			out_op(op_lt);
-			out_jtrue(skip);
+			out_val_retain(octx, cmp_with);
+			out_ctrl_branch(octx,
+					out_op(octx, op_lt, cmp_with, this_case[0]),
+					blk_cancel,
+					blk_test2);
 
-			out_dup();
-			out_push_num(cse->expr2->tree_type, &max);
-			out_op(op_gt);
+			out_current_blk(octx, blk_test2);
+			this_case[1] = out_new_num(octx, cse->expr2->tree_type, &max);
 
-			out_jfalse(iter->lbl);
-
-			out_label(skip);
-			free(skip);
+			out_val_retain(octx, cmp_with);
+			out_ctrl_branch(octx,
+					out_op(octx, op_gt, cmp_with, this_case[1]),
+					blk_cancel,
+					cse->bits.case_blk);
 
 		}else{
-			out_dup();
-			out_push_num(cse->expr->tree_type, &iv);
+			const out_val *this_case = out_new_num(octx, cse->expr->tree_type, &iv);
 
-			out_op(op_eq);
-
-			out_jtrue(iter->lbl);
+			out_val_retain(octx, cmp_with);
+			out_ctrl_branch(octx,
+				out_op(octx, op_eq, this_case, cmp_with),
+				cse->bits.case_blk,
+				blk_cancel);
 		}
+
+		out_current_blk(octx, blk_cancel);
+		/* implicitly linked to next */
 	}
 
-	out_pop(); /* free the value we switched on asap */
+	out_val_release(octx, cmp_with);
 
-	pdefault = &s->bits.switch_.default_case;
+	pdefault = s->bits.switch_.default_case;
+	if(pdefault)
+		pdefault->bits.case_blk = out_blk_new(octx, "default");
 
-	out_push_lbl(pdefault->code
-			? pdefault->lbl
-			: s->lbl_break, 0);
+	/* no matches - branch to default/end */
+	out_ctrl_transfer(octx,
+			pdefault ? pdefault->bits.case_blk : blk_switch_end,
+			NULL, NULL);
 
-	out_jmp();
-
-	/* out-stack must be empty from here on */
-
-	gen_stmt(s->lhs); /* the actual code inside the switch */
-
-	out_label(s->lbl_break);
+	{
+		out_blk *body = out_blk_new(octx, "switch_body");
+		out_current_blk(octx, body);
+		gen_stmt(s->lhs, octx); /* the actual code inside the switch */
+		out_ctrl_transfer(octx, blk_switch_end, NULL, NULL);
+		out_current_blk(octx, blk_switch_end);
+	}
 }
 
-void style_stmt_switch(stmt *s)
+void style_stmt_switch(stmt *s, out_ctx *octx)
 {
 	stylef("switch(");
-	gen_expr(s->expr);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(")");
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 }
 
 static int switch_passable(stmt *s)

@@ -42,6 +42,7 @@ struct symtable
 	where where;
 
 	int auto_total_size;
+	unsigned mark : 1; /* used for scope checking */
 	unsigned folded : 1, laidout : 1;
 	unsigned internal_nest : 1, are_params : 1;
 	/*
@@ -82,6 +83,7 @@ struct symtable_global
 	symtable stab; /* ABI compatible with struct symtable */
 	symtable_gasm **gasms;
 	dynmap *literals;
+	dynmap *unrecog_attrs;
 };
 
 sym *sym_new(decl *d, enum sym_type t);

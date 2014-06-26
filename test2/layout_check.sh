@@ -12,8 +12,13 @@ then
 	shift
 fi
 
+sec=
 if [ "$1" = '--help' ]
 then usage
+elif [ "$1" = '--sections' ]
+then
+	sec="$1"
+	shift
 fi
 
 rmfiles(){
@@ -65,7 +70,7 @@ rmfiles="$rmfiles $a $b"
 
 set -e
 
-./layout_normalise.pl "$1" | ./layout_sort.pl > $a
-./layout_normalise.pl "$2" | ./layout_sort.pl > $b
+./layout_normalise.pl $sec "$1" | ./layout_sort.pl > $a
+./layout_normalise.pl $sec "$2" | ./layout_sort.pl > $b
 
 diff -u $b $a

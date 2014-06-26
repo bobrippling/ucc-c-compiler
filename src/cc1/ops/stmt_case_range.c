@@ -29,23 +29,22 @@ void fold_stmt_case_range(stmt *s)
 	if(lv >= rv)
 		die_at(&s->where, "case range equal or inverse");
 
-	s->bits.case_lbl = out_label_case(CASE_RANGE, lv);
-	fold_stmt_and_add_to_curswitch(s, &s->bits.case_lbl);
+	fold_stmt_and_add_to_curswitch(s);
 }
 
-void gen_stmt_case_range(stmt *s)
+void gen_stmt_case_range(stmt *s, out_ctx *octx)
 {
-	out_label(s->bits.case_lbl);
-	gen_stmt(s->lhs);
+	out_ctrl_transfer_make_current(octx, s->bits.case_blk);
+	gen_stmt(s->lhs, octx);
 }
 
-void style_stmt_case_range(stmt *s)
+void style_stmt_case_range(stmt *s, out_ctx *octx)
 {
 	stylef("\ncase %ld ... %ld: ",
 			(long)const_fold_val_i(s->expr),
 			(long)const_fold_val_i(s->expr2));
 
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 }
 
 void init_stmt_case_range(stmt *s)

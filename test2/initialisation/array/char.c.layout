@@ -2,9 +2,9 @@ abc:
 .byte 97, 98, 99, 0
 
 p:
-.quad str.1
+.quad str.2
 
-str.1:
+str.2:
 .byte 104, 105, 0
 
 s:

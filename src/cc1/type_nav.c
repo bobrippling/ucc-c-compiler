@@ -246,23 +246,32 @@ type *type_ptr_to(type *pointee)
 			NULL, NULL, NULL);
 }
 
+struct ctx_decayed_array
+{
+	struct ctx_array array;
+	type *decayed_from;
+};
+
 static int eq_decayed_array(type *candidate, void *ctx)
 {
+	struct ctx_decayed_array *actx = ctx;
+
 	if(!candidate->bits.ptr.decayed_from)
 		return 0;
 
-	return eq_array(candidate, ctx);
+	return eq_array(candidate, &actx->array);
 }
 
 static void init_decayed_array(type *ty, void *ctx)
 {
+	struct ctx_decayed_array *actx = ctx;
 	init_array(ty, ctx);
-	ty->bits.ptr.decayed_from = NULL; /* TODO */
+	ty->bits.ptr.decayed_from = actx->decayed_from;
 }
 
 type *type_decayed_ptr_to(type *pointee, type *array_from)
 {
-	struct ctx_array ctx;
+	struct ctx_decayed_array ctx;
 	expr *size_expr;
 
 	size_expr = array_from->bits.array.is_vla
@@ -270,9 +279,11 @@ type *type_decayed_ptr_to(type *pointee, type *array_from)
 		: array_from->bits.array.size;
 
 	ctx_array_init(
-			&ctx,
+			&ctx.array,
 			size_expr,
 			array_from->bits.array.is_static);
+
+	ctx.decayed_from = array_from;
 
 	return type_uptree_find_or_new(
 			pointee, type_ptr,
@@ -294,8 +305,22 @@ static void init_qual(type *t, void *ctx)
 
 type *type_qualify(type *unqualified, enum type_qualifier qual)
 {
+	type *ar_ty;
+
 	if(!qual)
 		return unqualified;
+
+	if((ar_ty = type_is(unqualified, type_array))){
+		/* const -> array -> int
+		 * becomes
+		 * array -> const -> int
+		 *
+		 * C11 6.7.3.9 */
+
+		return type_array_of(
+				type_qualify(ar_ty->ref, qual),
+				ar_ty->bits.array.size);
+	}
 
 	return type_uptree_find_or_new(
 			unqualified, type_cast,
@@ -366,7 +391,7 @@ type *type_called(type *functy, struct funcargs **pfuncargs)
 	return functy->ref;
 }
 
-type *type_pointed_to(type *const ty_ptr)
+type *type_dereference_decay(type *const ty_ptr)
 {
 	type *const pointee = type_is_ptr(ty_ptr);
 	assert(pointee);
@@ -458,11 +483,11 @@ type *type_nav_auto(struct type_nav *root)
 
 type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *sue)
 {
-	type *ent;
+	type *ent, *prev;
 	btype *bt;
 
 	if(!root->suetypes)
-		root->suetypes = dynmap_new(/*refeq:*/NULL);
+		root->suetypes = dynmap_new(/*refeq:*/NULL, (dynmap_hash_f *)type_hash);
 
 	ent = dynmap_get(struct_union_enum_st *, type *, root->suetypes, sue);
 
@@ -474,7 +499,8 @@ type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *sue)
 	bt->sue = sue;
 	ent = type_new_btype(bt);
 
-	dynmap_set(struct_union_enum_st *, type *, root->suetypes, sue, ent);
+	prev = dynmap_set(struct_union_enum_st *, type *, root->suetypes, sue, ent);
+	assert(!prev);
 
 	return ent;
 }
@@ -485,6 +511,11 @@ type *type_nav_va_list(struct type_nav *root, symtable *symtab)
 		root->tva_list = c_types_make_va_list(symtab);
 
 	return root->tva_list;
+}
+
+type *type_nav_voidptr(struct type_nav *root)
+{
+    return type_ptr_to(type_nav_btype(root, type_void));
 }
 
 static void type_dump_t(type *t, FILE *f, int indent)

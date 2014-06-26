@@ -18,3 +18,7 @@ unsigned long long ull = 8;
 float f = 1.2f;
 double d = 3.4f;
 //long double ld;
+
+main()
+{
+}

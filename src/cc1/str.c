@@ -24,7 +24,7 @@ void escape_string(char *old_str, size_t *plen)
 		if(old_str[i] == '\\'){
 			char *end;
 
-      add = read_char_single(old_str + i, &end);
+      add = read_char_single(old_str + i, &end, i);
 
 			UCC_ASSERT(end, "bad escape?");
 

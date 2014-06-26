@@ -36,6 +36,8 @@ extern struct loc loc_tok;
 void debug_push_line(char *);
 void debug_pop_line(void);
 
+void trace(const char *, ...);
+
 extern enum wmode
 {
 	WTRADITIONAL = 1 << 0,

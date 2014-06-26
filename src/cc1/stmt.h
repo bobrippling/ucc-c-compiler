@@ -2,9 +2,10 @@
 #define STMT_H
 
 #include "sym.h"
+#include "out/out.h"
 
 typedef void        func_fold_stmt(struct stmt *);
-typedef void        func_gen_stmt(struct stmt *);
+typedef void        func_gen_stmt(struct stmt *, struct out_ctx *);
 typedef const char *func_str_stmt(void);
 
 /* non-critical */
@@ -30,7 +31,7 @@ struct stmt
 
 	/* specific data */
 	int val;
-	char *lbl_break, *lbl_continue;
+	out_blk *blk_break, *blk_continue;
 
 	int freestanding;     /* if this is freestanding, non-freestanding expressions inside are allowed */
 	int kills_below_code; /* break, return, etc - for checking dead code */
@@ -47,7 +48,7 @@ struct stmt
 		} lbl;
 
 		/* for a case/default */
-		char *case_lbl;
+		out_blk *case_blk;
 
 		/* for a code block */
 		struct
@@ -58,12 +59,7 @@ struct stmt
 		/* switch */
 		struct
 		{
-			size_t ncases;
-			struct switch_case
-			{
-				stmt *code;
-				char *lbl;
-			} *cases, default_case;
+			stmt **cases, *default_case;
 		} switch_;
 	} bits;
 

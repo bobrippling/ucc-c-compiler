@@ -10,3 +10,4 @@ str.o: str.c str.h
 std.o: std.c std.h
 escape.o: escape.c escape.h compiler.h util.h warn.h where.h str.h
 warn.o: warn.c warn.h where.h compiler.h alloc.h
+path.o: path.c dynarray.h dyn.h path.h

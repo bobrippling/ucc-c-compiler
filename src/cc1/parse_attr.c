@@ -5,6 +5,7 @@
 #include <ctype.h>
 
 #include "../util/util.h"
+#include "../util/alloc.h"
 
 #include "parse_attr.h"
 
@@ -146,7 +147,7 @@ static expr *optional_parened_expr(symtable *scope)
 		if(accept(token_close_paren))
 			goto out;
 
-		e = PARSE_EXPR_NO_COMMA(scope);
+		e = PARSE_EXPR_NO_COMMA(scope, 0);
 
 		EAT(token_close_paren);
 
@@ -174,6 +175,34 @@ static attribute *parse_attr_aligned(symtable *scope)
 	return da;
 }
 
+static attribute *parse_attr_cleanup(symtable *scope)
+{
+	decl *d;
+	char *sp;
+	where ident_loc;
+	attribute *attr;
+
+	EAT(token_open_paren);
+
+	if(curtok != token_identifier)
+		die_at(NULL, "identifier expected for cleanup function");
+
+	where_cc1_current(&ident_loc);
+	sp = token_current_spel();
+	EAT(token_identifier);
+
+	d = symtab_search_d(scope, sp, NULL);
+	if(!d)
+		die_at(&ident_loc, "function '%s' not found", sp);
+
+	attr = attribute_new(attr_cleanup);
+	attr->bits.cleanup = d;
+
+	EAT(token_close_paren);
+
+	return attr;
+}
+
 #define EMPTY(t)                      \
 static attribute *parse_ ## t()       \
 {                                     \
@@ -186,6 +215,7 @@ EMPTY(attr_enum_bitmask)
 EMPTY(attr_noreturn)
 EMPTY(attr_noderef)
 EMPTY(attr_packed)
+EMPTY(attr_weak)
 EMPTY(attr_ucc_debug)
 
 #undef EMPTY
@@ -219,6 +249,8 @@ static struct
 	ATTR(packed),
 	ATTR(sentinel),
 	ATTR(aligned),
+	ATTR(weak),
+	ATTR(cleanup),
 	{ "__ucc_debug", parse_attr_ucc_debug },
 
 	ATTR(cdecl),
@@ -250,6 +282,7 @@ static void parse_attr_bracket_chomp(int had_open_paren)
 
 static attribute *parse_attr_single(const char *ident, symtable *scope)
 {
+	symtable_global *glob;
 	int i;
 
 	for(i = 0; attrs[i].ident; i++){
@@ -261,10 +294,19 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 		}
 	}
 
-	warn_at(NULL, "ignoring unrecognised attribute \"%s\"", ident);
+	glob = symtab_global(scope);
+	if(!dynmap_exists(char *, glob->unrecog_attrs, (char *)ident)){
+		char *dup = ustrdup(ident);
+
+		if(!glob->unrecog_attrs)
+			glob->unrecog_attrs = dynmap_new((dynmap_cmp_f *)strcmp, dynmap_strhash);
+
+		dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
+
+		warn_at(NULL, "ignoring unrecognised attribute \"%s\"", ident);
+	}
 
 	/* if there are brackets, eat them all */
-
 	parse_attr_bracket_chomp(0);
 
 	return NULL;

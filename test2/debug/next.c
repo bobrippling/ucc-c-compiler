@@ -10,3 +10,7 @@ struct A a = {
 	.next = &a,
 	.i = 3,
 };
+
+main()
+{
+}

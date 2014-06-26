@@ -19,6 +19,7 @@
 #include "preproc.h"
 #include "include.h"
 #include "directive.h"
+#include "deps.h"
 
 #define FNAME_BUILTIN "<builtin>"
 #define FNAME_CMDLINE "<command-line>"
@@ -41,6 +42,10 @@ static const struct
 	TYPE(SIZE, unsigned long),
 	TYPE(PTRDIFF, unsigned long),
 	TYPE(WINT, unsigned),
+
+	{ "__ORDER_LITTLE_ENDIAN__", "1234" },
+	{ "__ORDER_BIG_ENDIAN__",    "4321" },
+	{ "__ORDER_PDP_ENDIAN__",    "3412" },
 
 	/* non-standard */
 	{ "__BLOCKS__",     "1"  },
@@ -71,6 +76,7 @@ char **cd_stack = NULL;
 
 int option_line_info = 1;
 int option_trigraphs = 0, option_digraphs = 0;
+static int option_trace = 0;
 
 enum wmode wmode =
 	  WWHITESPACE
@@ -103,6 +109,17 @@ static const struct
 };
 
 #define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)
+
+void trace(const char *fmt, ...)
+{
+	va_list l;
+	if(!option_trace)
+		return;
+
+	va_start(l, fmt);
+	vfprintf(stderr, fmt, l);
+	va_end(l);
+}
 
 void debug_push_line(char *s)
 {
@@ -180,7 +197,7 @@ int main(int argc, char **argv)
 {
 	char *infname, *outfname;
 	int ret = 0;
-	enum { NONE, MACROS, STATS } dump = NONE;
+	enum { NONE, MACROS, STATS, DEPS } dump = NONE;
 	int i;
 	int platform_win32 = 0;
 	int freestanding = 0;
@@ -207,6 +224,11 @@ int main(int argc, char **argv)
 			macro_add("__MIPS__", "1", 0);
 	}
 
+	if(platform_bigendian())
+		macro_add("__BYTE_ORDER__", "__ORDER_BIG_ENDIAN__", 0);
+	else
+		macro_add("__BYTE_ORDER__", "__ORDER_LITTLE_ENDIAN__", 0);
+
 	switch(platform_sys()){
 #define MAP(t, s) case t: macro_add(s, "1", 0); break
 		MAP(PLATFORM_LINUX,   "__linux__");
@@ -227,6 +249,8 @@ int main(int argc, char **argv)
 
 	macro_add("__WCHAR_TYPE__",
 			platform_win32 ? "short" : "int", 0);
+
+	macro_add_sprintf("__BIGGEST_ALIGNMENT__", "%u", platform_align_max());
 
 	current_fname = FNAME_CMDLINE;
 
@@ -267,8 +291,8 @@ int main(int argc, char **argv)
 
 			case 'M':
 				if(!strcmp(argv[i] + 2, "M")){
-					fprintf(stderr, "TODO\n");
-					return 1;
+					dump = DEPS;
+					no_output = 1;
 				}else{
 					goto usage;
 				}
@@ -310,7 +334,7 @@ int main(int argc, char **argv)
 				break;
 
 			case 'd':
-				if(argv[i][3])
+				if(argv[i][2] && argv[i][3])
 					goto defaul;
 				switch(argv[i][2]){
 					case 'M':
@@ -318,7 +342,9 @@ int main(int argc, char **argv)
 						/* list #defines */
 						dump = argv[i][2] == 'M' ? MACROS : STATS;
 						no_output = 1;
-						option_line_info = 0;
+						break;
+					case '\0':
+						option_trace = 1;
 						break;
 					default:
 						goto usage;
@@ -443,6 +469,9 @@ defaul:
 			break;
 		case STATS:
 			macros_stats();
+			break;
+		case DEPS:
+			deps_dump(infname);
 			break;
 	}
 

@@ -168,8 +168,13 @@ type *type_is_ptr(type *r)
 type *type_is_ptr_or_block(type *r)
 {
 	type *t = type_is_ptr(r);
+	if(t)
+		return t;
 
-	return t ? t : type_is(r, type_block);
+	r = type_is(r, type_block);
+	if(r)
+		return type_next(r);
+	return NULL;
 }
 
 type *type_is_array(type *r)
@@ -274,6 +279,14 @@ int type_is_integral(type *r)
 	}
 
 	return 0;
+}
+
+int type_is_arith(type *t)
+{
+	t = type_is(t, type_btype);
+	if(!t)
+		return 0;
+	return type_is_integral(t) || type_is_floating(t);
 }
 
 int type_is_complete(type *r)

@@ -20,6 +20,12 @@ my %sizes_r = map { $sizes{$_} => $_ } keys %sizes;
 my @parts; # { size, value } or { lbl }
 my $any = 0;
 
+my $check_sections = 0;
+if(@ARGV && $ARGV[0] eq '--sections'){
+	$check_sections = 1;
+	shift;
+}
+
 while(<>){
 	s/#.*//;
 	if(/^[ \t]*\.(byte|word|long|quad|zero|space)[ \t]+(.*)/){
@@ -46,7 +52,21 @@ while(<>){
 		(my $lbl = $1) =~ s/^_//;
 
 		# ignore private labels
-		if($lbl !~ /^[ \t]*\.?L/){
+		my $is_private = ($lbl =~ /^[ \t]*\.?L/);
+		my $emit = 1;
+
+		if($is_private){
+			if(!$check_sections){
+				$emit = 0;
+			}elsif($lbl !~ /^([ \t]*)\.?(Lsection_.*)/){
+				$emit = 0;
+			}else{
+				# remove the . from .Lsect..
+				$lbl = $1 . $2;
+			}
+		}
+
+		if($emit){
 			emit({ lbl => $lbl });
 			$any = 1;
 		}
@@ -57,7 +77,7 @@ while(<>){
 	}
 }
 
-die "$0: no __asm found in input\n" unless $any;
+die "$0: no asm found in input\n" unless $any;
 
 sub flush;
 sub emit2;

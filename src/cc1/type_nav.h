@@ -18,11 +18,12 @@ type *type_nav_auto(struct type_nav *root); /* returns placeholder */
 type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *);
 
 type *type_nav_va_list(struct type_nav *root, symtable *symtab);
+type *type_nav_voidptr(struct type_nav *root);
 type *type_decay(type *);
 
 type *type_ptr_to(type *);
 type *type_decayed_ptr_to(type *, type *array_from);
-type *type_pointed_to(type *); /* just pointers */
+type *type_dereference_decay(type *); /* int * -> int, int (*)() -> int (*)() */
 type *type_block_of(type *);
 
 type *type_array_of(type *, struct expr *sz);

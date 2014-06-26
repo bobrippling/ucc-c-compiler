@@ -3,6 +3,7 @@
 
 #include "decl_init.h"
 
-decl_init *parse_init(symtable *); /* expr or {{...}} */
+/* expr or {{...}} */
+decl_init *parse_init(symtable *, int static_ctx);
 
 #endif

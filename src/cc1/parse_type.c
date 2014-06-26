@@ -79,7 +79,7 @@ static type *parse_type_sue(
 				parse_add_attr(&en_attr, scope);
 
 				if(accept(token_assign))
-					e = PARSE_EXPR_NO_COMMA(scope); /* no commas */
+					e = PARSE_EXPR_NO_COMMA(scope, 0); /* no commas */
 				else
 					e = NULL;
 
@@ -252,6 +252,23 @@ static void btype_set_store(
 	*pstore_set = 1;
 }
 
+static type *parse_btype_end(
+		type *btype, enum type_qualifier qual, int is_noreturn,
+		attribute *attr, symtable *scope, where *w)
+{
+	parse_add_attr(&attr, scope); /* int/struct-A __attr__ */
+
+	btype = type_qualify(btype, qual);
+
+	if(is_noreturn)
+		attribute_append(&attr, attribute_new(attr_noreturn));
+
+	btype = type_attributed(btype, attr);
+	RELEASE(attr);
+
+	return type_at_where(btype, w);
+}
+
 static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
 		int newdecl_context, symtable *scope, int allow_autotype)
@@ -383,6 +400,9 @@ static type *parse_btype(
 			const char *str;
 			type *tref;
 			int is_qual;
+			where w;
+
+			where_cc1_current(&w);
 
 			EAT(curtok);
 
@@ -405,11 +425,6 @@ static type *parse_btype(
 			if(signed_set || primitive_mode != NONE)
 				die_at(NULL, "previous specifier with %s", str);
 
-			/* fine... although a _Noreturn function returning a sue
-			 * is pretty daft... */
-			if(is_noreturn)
-				tref = type_attributed(tref, attribute_new(attr_noreturn));
-
 			/*
 			 * struct A { ... } const x;
 			 * accept qualifiers and storage for the type, not decl
@@ -423,7 +438,8 @@ static type *parse_btype(
 			}
 
 			/* *store is assigned elsewhere */
-			return type_qualify(tref, qual);
+			/* a _Noreturn function returning a sue is pretty daft... */
+			return parse_btype_end(tref, qual, is_noreturn, attr, scope, &w);
 
 		}else if(accept(token_typeof)){
 			if(primitive_mode != NONE)
@@ -495,7 +511,7 @@ static type *parse_btype(
 				da->bits.align_ty = as_ty;
 			}else{
 				da->as_int = 1;
-				da->bits.align_intk = parse_expr_exp(scope);
+				da->bits.align_intk = parse_expr_exp(scope, 0);
 			}
 
 			EAT(token_close_paren);
@@ -632,16 +648,7 @@ static type *parse_btype(
 			die_at(NULL, "typedefs can't be aligned");
 		}
 
-		r = type_qualify(r, qual);
-
-		if(is_noreturn)
-			attribute_append(&attr, attribute_new(attr_noreturn));
-
-		parse_add_attr(&attr, scope); /* int/struct-A __attr__ */
-		r = type_attributed(r, attr);
-		RELEASE(attr);
-
-		return type_at_where(r, &w);
+		return parse_btype_end(r, qual, is_noreturn, attr, scope, &w);
 	}else{
 		return NULL;
 	}
@@ -663,8 +670,12 @@ funcargs *parse_func_arglist(symtable *scope)
 {
 	funcargs *args = funcargs_new();
 
-	if(curtok == token_close_paren)
+	if(curtok == token_close_paren){
+		args->args_old_proto = 1;
+		cc1_warn_at(NULL, 0, WARN_IMPLICIT_OLD_FUNC,
+				"old-style function declaration (needs \"(void)\")");
 		goto empty_func;
+	}
 
 	/* we allow default-to-int here, but need to make
 	 * sure we also handle old functions.
@@ -900,7 +911,7 @@ static type_parsed *parsed_type_array(
 			}
 
 			if(!is_star){
-				size = PARSE_EXPR_NO_COMMA(scope);
+				size = PARSE_EXPR_NO_COMMA(scope, 0);
 				EAT(token_close_square);
 
 				FOLD_EXPR(size, scope);
@@ -1102,7 +1113,7 @@ static void parse_add_asm(decl *d)
 
 		/* only allow [0-9A-Za-z_.] */
 		for(p = rename; *p; p++)
-			if(!isalnum(*p) && *p != '_' && *p != '.'){
+			if(!isalnum(*p) && *p != '_' && *p != '.' && *p != '$'){
 				warn_at(NULL, "asm name contains character 0x%x", *p);
 				break;
 			}
@@ -1124,6 +1135,8 @@ static decl *parse_decl_stored_aligned(
 	decl *d = decl_new();
 	where w_eq;
 	int is_autotype = type_is_autotype(btype);
+
+	d->store = store;
 
 	if(is_autotype){
 		d->spel = token_current_spel();
@@ -1152,7 +1165,11 @@ static decl *parse_decl_stored_aligned(
 		parse_add_attr(&d->attr, scope); /* int spel __attr__ */
 
 		if(d->spel && accept_where(token_assign, &w_eq)){
-			d->bits.var.init = parse_init(scope);
+			int static_ctx = !scope->parent ||
+				(store & STORE_MASK_STORE) == store_static;
+
+			d->bits.var.init = parse_init(scope, static_ctx);
+
 			/* top-level inits have their .where on the '=' token */
 			memcpy_safe(&d->bits.var.init->where, &w_eq);
 
@@ -1196,8 +1213,6 @@ static decl *parse_decl_stored_aligned(
 			d->ref = type_nav_btype(cc1_type_nav, type_int);
 		}
 	}
-
-	d->store = store;
 
 	if(!type_is(d->ref, type_func))
 		d->bits.var.align = align;
@@ -1255,7 +1270,8 @@ decl *parse_decl(
 static int is_old_func(decl *d)
 {
 	type *r = type_is(d->ref, type_func);
-	return r && r->bits.func.args->args_old_proto;
+	/* don't treat int f(); as an old function */
+	return r && r->bits.func.args->args_old_proto && r->bits.func.args->arglist;
 }
 
 static void check_and_replace_old_func(decl *d, decl **old_args)
@@ -1528,6 +1544,11 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		 * f(){...}, then we don't have args_void, but implicitly we do
 		 */
 		type_funcargs(d->ref)->args_void_implicit = 1;
+
+		if((d->store & STORE_MASK_STORE) == store_typedef){
+			warn_at_print_error(&d->where, "typedef storage on function");
+			fold_had_error = 1;
+		}
 	}
 }
 
@@ -1605,6 +1626,7 @@ int parse_decl_group(
 	struct decl_align *align = NULL;
 	type *this_ref;
 	decl *last = NULL;
+	int at_plain_ident;
 
 	UCC_ASSERT(add_to_scope || pdecls, "what shall I do?");
 
@@ -1625,8 +1647,10 @@ int parse_decl_group(
 	do{
 		int had_field_width = 0;
 		int done = 0;
+		decl *d;
+		at_plain_ident = (curtok == token_identifier);
 
-		decl *d = parse_decl_stored_aligned(
+		d = parse_decl_stored_aligned(
 				this_ref, parse_flag,
 				store, align,
 				in_scope, NULL);
@@ -1635,7 +1659,7 @@ int parse_decl_group(
 		&& accept(token_colon))
 		{
 			/* normal decl, check field spec */
-			d->bits.var.field_width = PARSE_EXPR_NO_COMMA(in_scope);
+			d->bits.var.field_width = PARSE_EXPR_NO_COMMA(in_scope, 0);
 			had_field_width = 1;
 		}
 
@@ -1690,7 +1714,7 @@ int parse_decl_group(
 	if(last && (!type_is(last->ref, type_func) || !last->bits.func.code)){
 		/* end of type, if we have an identifier,
 		 * '(' or '*', it's an unknown type name */
-		if(parse_at_decl_spec())
+		if(at_plain_ident && parse_at_decl_spec())
 			die_at(&last->where, "unknown type name '%s'", last->spel);
 		/* else die here: */
 		EAT(token_semicolon);

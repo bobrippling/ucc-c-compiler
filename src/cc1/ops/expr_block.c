@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "ops.h"
 #include "expr_block.h"
 #include "../out/lbl.h"
@@ -91,28 +93,41 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 	fold_func_is_passable(df, type_called(df->ref, NULL), 1);
 }
 
-void gen_expr_block(expr *e)
+static void const_expr_block(expr *e, consty *k)
 {
-	out_push_sym(e->bits.block.sym);
+	/* all blocks are const currently, since they're not capturing,
+	 * just static function references */
+	CONST_FOLD_LEAF(k);
+
+	k->type = CONST_ADDR;
+	k->bits.addr.is_lbl = 1;
+	k->bits.addr.bits.lbl = decl_asm_spel(e->bits.block.sym->decl);
 }
 
-void gen_expr_str_block(expr *e)
+const out_val *gen_expr_block(expr *e, out_ctx *octx)
+{
+	return out_new_sym(octx, e->bits.block.sym);
+}
+
+const out_val *gen_expr_str_block(expr *e, out_ctx *octx)
 {
 	idt_printf("block, type: %s, code:\n", type_to_str(e->tree_type));
 	gen_str_indent++;
 	print_stmt(e->code);
 	gen_str_indent--;
+	UNUSED_OCTX();
 }
 
-void gen_expr_style_block(expr *e)
+const out_val *gen_expr_style_block(expr *e, out_ctx *octx)
 {
 	stylef("^%s", type_to_str(e->tree_type));
-	gen_stmt(e->code);
+	gen_stmt(e->code, octx);
+	return NULL;
 }
 
 void mutate_expr_block(expr *e)
 {
-	(void)e;
+	e->f_const_fold = const_expr_block;
 }
 
 expr *expr_new_block(type *rt, funcargs *args)

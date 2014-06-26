@@ -136,4 +136,6 @@ integral_t type_max(type *r, where *from);
 where *type_loc(type *);
 int type_has_loc(type *);
 
+unsigned type_hash(const type *);
+
 #endif
