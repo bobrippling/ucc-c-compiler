@@ -1581,6 +1581,7 @@ int parse_decl_group(
 	struct decl_align *align = NULL;
 	type *this_ref;
 	decl *last = NULL;
+	int at_plain_ident;
 
 	UCC_ASSERT(add_to_scope || pdecls, "what shall I do?");
 
@@ -1601,8 +1602,10 @@ int parse_decl_group(
 	do{
 		int had_field_width = 0;
 		int done = 0;
+		decl *d;
+		at_plain_ident = (curtok == token_identifier);
 
-		decl *d = parse_decl_stored_aligned(
+		d = parse_decl_stored_aligned(
 				this_ref, parse_flag,
 				store, align,
 				in_scope, NULL);
@@ -1666,7 +1669,7 @@ int parse_decl_group(
 	if(last && (!type_is(last->ref, type_func) || !last->bits.func.code)){
 		/* end of type, if we have an identifier,
 		 * '(' or '*', it's an unknown type name */
-		if(parse_at_decl_spec())
+		if(at_plain_ident && parse_at_decl_spec())
 			die_at(&last->where, "unknown type name '%s'", last->spel);
 		/* else die here: */
 		EAT(token_semicolon);
