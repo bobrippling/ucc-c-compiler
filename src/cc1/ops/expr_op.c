@@ -509,8 +509,10 @@ ptr_relation:
 					if(type_is_void(next)){
 						warn_at(w, "arithmetic on void pointer");
 					}else{
-						die_at(w, "arithmetic on pointer to incomplete type %s",
+						warn_at_print_error(w,
+								"arithmetic on pointer to incomplete type %s",
 								type_to_str(next));
+						fold_had_error = 1;
 					}
 					/* TODO: note: type declared at resolved->where */
 				}else if(type_is(next, type_func)){
