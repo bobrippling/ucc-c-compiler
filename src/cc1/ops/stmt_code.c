@@ -201,25 +201,26 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 	decl **di;
 	for(di = scope->decls; di && *di; di++){
 		decl *d = *di;
-		attribute *cleanup = attribute_present(d, attr_cleanup);
-		if(!cleanup)
-			continue;
 
 		if(d->sym){
-			type *fty = cleanup->bits.cleanup->ref;
-			const out_val *args[2];
+			attribute *cleanup = attribute_present(d, attr_cleanup);
 
-			out_dbg_where(octx, &d->where);
+			if(cleanup){
+				const out_val *args[2];
+				type *fty = cleanup->bits.cleanup->ref;
 
-			args[0] = out_new_sym(octx, d->sym);
-			args[1] = NULL;
+				out_dbg_where(octx, &d->where);
 
-			out_flush_volatile(octx,
-					out_call(
-						octx,
-						out_new_lbl(octx, NULL, decl_asm_spel(cleanup->bits.cleanup), 1),
-						args,
-						type_ptr_to(fty)));
+				args[0] = out_new_sym(octx, d->sym);
+				args[1] = NULL;
+
+				out_flush_volatile(octx,
+						out_call(
+							octx,
+							out_new_lbl(octx, NULL, decl_asm_spel(cleanup->bits.cleanup), 1),
+							args,
+							type_ptr_to(fty)));
+			}
 		}
 	}
 }
