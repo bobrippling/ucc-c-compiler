@@ -69,14 +69,10 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 		case what_alignof:
 		{
-			struct_union_enum_st *sue;
 			int set = 0; /* need this, since .bits can't be relied upon to be 0 */
 
 			if(!type_is_complete(chosen))
 				die_at(&e->where, "sizeof incomplete type %s", type_to_str(chosen));
-
-			if((sue = type_is_s_or_u(chosen)) && !sue_complete(sue))
-				die_at(&e->where, "sizeof %s", type_to_str(chosen));
 
 			if(e->what_of == what_alignof && e->expr){
 				decl *d = NULL;
