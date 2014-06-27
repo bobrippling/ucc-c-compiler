@@ -110,6 +110,9 @@ struct ctx_array
 static int eq_array(type *candidate, void *ctx)
 {
 	struct ctx_array *c = ctx;
+	consty k;
+
+	assert(candidate->type == type_array);
 
 	if(candidate->bits.array.is_static != c->is_static)
 		return 0;
@@ -122,7 +125,14 @@ static int eq_array(type *candidate, void *ctx)
 	if(!candidate->bits.array.size || !c->sz)
 		return 0;
 
-	return c->sz_i == const_fold_val_i(candidate->bits.array.size);
+	const_fold(candidate->bits.array.size, &k);
+	if(k.type == CONST_NUM){
+		assert(K_INTEGRAL(k.bits.num));
+		return c->sz_i == k.bits.num.val.i;
+	}else{
+		/* vla - just check expression equivalence */
+		return candidate->bits.array.size == c->sz;
+	}
 }
 
 static void init_array(type *ty, void *ctx)
@@ -136,9 +146,16 @@ static void ctx_array_init(
 		struct ctx_array *ctx,
 		expr *sz, int is_static)
 {
-	ctx->sz_i = sz ? const_fold_val_i(sz) : 0;
+	ctx->sz_i = 0;
 	ctx->sz = sz;
 	ctx->is_static = is_static;
+
+	if(sz){
+		consty k;
+		const_fold(sz, &k);
+		if(K_INTEGRAL(k.bits.num))
+			ctx->sz_i = k.bits.num.val.i;
+	}
 }
 
 type *type_array_of_static(type *to, struct expr *new_sz, int is_static)
@@ -275,28 +292,24 @@ static int eq_decayed_array(type *candidate, void *ctx)
 	if(!candidate->bits.ptr.decayed_from)
 		return 0;
 
-	return eq_array(candidate, &actx->array);
+	return eq_array(candidate->bits.ptr.decayed_from, &actx->array);
 }
 
 static void init_decayed_array(type *ty, void *ctx)
 {
 	struct ctx_decayed_array *actx = ctx;
-	init_array(ty, ctx);
+	/* don't init array - ty is a pointer */
+	assert(ty->type == type_ptr);
 	ty->bits.ptr.decayed_from = actx->decayed_from;
 }
 
 type *type_decayed_ptr_to(type *pointee, type *array_from)
 {
 	struct ctx_decayed_array ctx;
-	expr *size_expr;
-
-	size_expr = array_from->bits.array.is_vla
-		? NULL
-		: array_from->bits.array.size;
 
 	ctx_array_init(
 			&ctx.array,
-			size_expr,
+			array_from->bits.array.size,
 			array_from->bits.array.is_static);
 
 	ctx.decayed_from = array_from;
