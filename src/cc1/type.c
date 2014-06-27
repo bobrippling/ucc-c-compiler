@@ -116,11 +116,18 @@ static enum type_cmp type_cmp_r(
 			          b_complete = !!b->bits.array.size;
 
 			if(a_complete && b_complete){
-				const integral_t av = const_fold_val_i(a->bits.array.size),
-				                 bv = const_fold_val_i(b->bits.array.size);
+				if(a->bits.array.is_vla || b->bits.array.is_vla){
+					if(a->bits.array.size != b->bits.array.size)
+						return TYPE_NOT_EQUAL;
 
-				if(av != bv)
-					return TYPE_NOT_EQUAL;
+				}else{
+					integral_t av = const_fold_val_i(a->bits.array.size);
+					integral_t bv = const_fold_val_i(b->bits.array.size);
+
+					if(av != bv)
+						return TYPE_NOT_EQUAL;
+				}
+
 			}else if(a_complete != b_complete){
 				if((opts & TYPE_CMP_ALLOW_TENATIVE_ARRAY) == 0)
 					return TYPE_NOT_EQUAL;
