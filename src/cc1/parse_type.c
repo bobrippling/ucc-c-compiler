@@ -1468,18 +1468,33 @@ static int warn_for_unused_typename(
 	return 1;
 }
 
+static int check_star_modifier_1(type *t, where *w)
+{
+	if(t->bits.array.is_vla == VLA_STAR){
+		warn_at_print_error(w,
+				"star modifier can only appear on prototypes");
+		fold_had_error = 1;
+		return 1;
+	}
+	return 0;
+}
+
 static void check_star_modifier(symtable *arg_symtab)
 {
 	decl **i;
 
 	for(i = arg_symtab->decls; i && *i; i++){
 		decl *d = *i;
-		type *vla = type_is_decayed_array(d->ref);
+		type *t = type_is_decayed_array(d->ref);
 
-		if(vla && vla->bits.array.is_vla == VLA_STAR){
-			warn_at_print_error(&d->where,
-					"star modifier can only appear on prototypes");
-			fold_had_error = 1;
+		if(t && check_star_modifier_1(t, &d->where))
+			continue;
+
+		for(t = d->ref; t; t = type_next(t)){
+			if(t->type == type_array){
+				if(check_star_modifier_1(t, &d->where))
+					break;
+			}
 		}
 	}
 }

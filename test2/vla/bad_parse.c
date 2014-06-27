@@ -6,3 +6,9 @@ void bad2(char buf[*]) // CHECK: error: star modifier can only appear on prototy
 {
 	(void)buf;
 }
+
+// check nested star
+void bad3(char (*buf)[*]) // CHECK: error: star modifier can only appear on prototypes
+{
+	(void)buf;
+}
