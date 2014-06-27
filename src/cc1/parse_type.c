@@ -1051,6 +1051,8 @@ static type *parse_type_declarator(
 							i->bits.array.size,
 							i->bits.array.is_static);
 				}
+				assert(ty->type == type_array);
+				assert(ty->bits.array.is_vla == i->bits.array.is_vla);
 				break;
 			case PARSED_FUNC:
 				ty = type_func_of(
@@ -1470,6 +1472,7 @@ static int warn_for_unused_typename(
 
 static int check_star_modifier_1(type *t, where *w)
 {
+	assert(t->type == type_array);
 	if(t->bits.array.is_vla == VLA_STAR){
 		warn_at_print_error(w,
 				"star modifier can only appear on prototypes");

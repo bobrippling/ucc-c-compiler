@@ -105,6 +105,7 @@ struct ctx_array
 	expr *sz;
 	integral_t sz_i;
 	int is_static;
+	int is_vla;
 };
 
 static int eq_array(type *candidate, void *ctx)
@@ -115,6 +116,9 @@ static int eq_array(type *candidate, void *ctx)
 	assert(candidate->type == type_array);
 
 	if(candidate->bits.array.is_static != c->is_static)
+		return 0;
+
+	if(candidate->bits.array.is_vla != c->is_vla)
 		return 0;
 
 	if(candidate->bits.array.size == c->sz){
@@ -140,15 +144,18 @@ static void init_array(type *ty, void *ctx)
 	struct ctx_array *c = ctx;
 	ty->bits.array.size = c->sz;
 	ty->bits.array.is_static = c->is_static;
+	ty->bits.array.is_vla = c->is_vla;
 }
 
 static void ctx_array_init(
 		struct ctx_array *ctx,
-		expr *sz, int is_static)
+		expr *sz,
+		int is_static, int is_vla)
 {
 	ctx->sz_i = 0;
 	ctx->sz = sz;
 	ctx->is_static = is_static;
+	ctx->is_vla = is_vla;
 
 	if(sz){
 		consty k;
@@ -162,7 +169,7 @@ type *type_array_of_static(type *to, struct expr *new_sz, int is_static)
 {
 	struct ctx_array ctx;
 
-	ctx_array_init(&ctx, new_sz, is_static);
+	ctx_array_init(&ctx, new_sz, is_static, 0);
 
 	return type_uptree_find_or_new(
 			to, type_array,
@@ -180,17 +187,13 @@ type *type_vla_of(type *of, struct expr *vlasz, int vlatype)
 	type *vla;
 	struct ctx_array ctx;
 
-	ctx.is_static = 0;
-	ctx.sz = vlasz;
-	ctx.sz_i = 0;
+	ctx_array_init(&ctx, vlasz, 0, vlatype);
 
 	vla = type_uptree_find_or_new(
 			of, type_array,
 			/* vla - not equal to any other type */
 			eq_false, init_array,
 			&ctx);
-
-	vla->bits.array.is_vla = vlatype;
 
 	return vla;
 }
@@ -310,7 +313,8 @@ type *type_decayed_ptr_to(type *pointee, type *array_from)
 	ctx_array_init(
 			&ctx.array,
 			array_from->bits.array.size,
-			array_from->bits.array.is_static);
+			array_from->bits.array.is_static,
+			array_from->bits.array.is_vla);
 
 	ctx.decayed_from = array_from;
 
