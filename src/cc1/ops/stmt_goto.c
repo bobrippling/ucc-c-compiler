@@ -22,6 +22,8 @@ void fold_stmt_goto(stmt *s)
 		 symtab_label_find_or_new(
 			 s->symtab, s->bits.lbl.spel, &s->where))
 			->uses++;
+
+		fold_check_scope_entry(&s->where, s->symtab, s->bits.lbl.label->scope);
 	}
 }
 

@@ -238,6 +238,31 @@ static void mark_symtabs(symtable *const s_from, int m)
 		s_iter->mark = m;
 }
 
+void fold_check_scope_entry(where *w,
+		symtable *const s_from, symtable *const s_to)
+{
+	symtable *s_iter;
+
+	mark_symtabs(s_from, 1);
+
+	SYMTAB_PARENT_WALK(s_iter, s_to){
+		decl **i;
+		for(i = s_iter->decls; i && *i; i++){
+			decl *d = *i;
+			if(type_is_variably_modified(d->ref)){
+				char buf[WHERE_BUF_SIZ];
+
+				fold_had_error = 1;
+				warn_at_print_error(w,
+						"goto enters scope of variably modified variable\n"
+						"%s: note: variable \"%s\"", where_str_r(buf, &d->where), d->spel);
+			}
+		}
+	}
+
+	mark_symtabs(s_from, 0);
+}
+
 void gen_scope_leave(symtable *const s_from, symtable *const s_to, out_ctx *octx)
 {
 	symtable *s_iter;
