@@ -19,7 +19,7 @@ unsigned vla_space()
 	return platform_word_size() * 2;
 }
 
-static const out_val *vla_gen_size(
+static const out_val *vla_gen_size_ty(
 		type *t, out_ctx *octx,
 		type *const arith_ty)
 {
@@ -37,7 +37,7 @@ static const out_val *vla_gen_size(
 		case type_array:
 			if(t->bits.array.is_vla){
 				return out_op(octx, op_multiply,
-						vla_gen_size(type_next(t), octx, arith_ty),
+						vla_gen_size_ty(type_next(t), octx, arith_ty),
 						gen_expr(t->bits.array.size, octx));
 
 			}else if(t->bits.array.size){
@@ -60,12 +60,17 @@ static const out_val *vla_gen_size(
 		case type_cast:
 		case type_attr:
 		case type_where:
-			return vla_gen_size(type_skip_all(t), octx, arith_ty);
+			return vla_gen_size_ty(type_skip_all(t), octx, arith_ty);
 	}
 
 	return out_op(octx, op_multiply,
 			out_new_l(octx, arith_ty, mul),
-			vla_gen_size(type_next(t), octx, arith_ty));
+			vla_gen_size_ty(type_next(t), octx, arith_ty));
+}
+
+const out_val *vla_gen_size(type *t, out_ctx *octx)
+{
+	return vla_gen_size_ty(t, octx, type_nav_btype(cc1_type_nav, type_long));
 }
 
 void vla_alloc(decl *d, out_ctx *octx)
@@ -85,7 +90,7 @@ void vla_alloc(decl *d, out_ctx *octx)
 	locns.sz = s->loc.stack_pos;
 	locns.ptr = locns.sz + platform_word_size();
 
-	v_sz = vla_gen_size(d->ref, octx, sizety);
+	v_sz = vla_gen_size_ty(d->ref, octx, sizety);
 
 	v_sz = out_cast(octx, v_sz, sizety, 0);
 

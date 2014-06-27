@@ -6,6 +6,7 @@
 #include "../out/asm.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../vla.h"
 
 #define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->bits.size_of.of_type)
 #define SIZEOF_SIZE(e)  (e)->bits.size_of.sz
@@ -86,10 +87,14 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 					SIZEOF_SIZE(e) = decl_align(d), set = 1;
 			}
 
-			if(!set)
-				SIZEOF_SIZE(e) = (e->what_of == what_sizeof
-						? type_size : type_align)(
-							SIZEOF_WHAT(e), &e->where);
+			if(!set){
+				type *ty = SIZEOF_WHAT(e);
+
+				if(!type_is_variably_modified(ty)){
+					SIZEOF_SIZE(e) = (e->what_of == what_sizeof
+							? type_size : type_align)(ty, &e->where);
+				}
+			}
 
 			/* size_t */
 			e->tree_type = type_nav_btype(cc1_type_nav, type_ulong);
@@ -101,6 +106,12 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 static void const_expr_sizeof(expr *e, consty *k)
 {
 	UCC_ASSERT(e->tree_type, "const_fold on sizeof before fold");
+
+	if(type_is_variably_modified(SIZEOF_WHAT(e))){
+		k->type = CONST_NO;
+		return;
+	}
+
 	CONST_FOLD_LEAF(k);
 	k->bits.num.val.i = SIZEOF_SIZE(e);
 	k->bits.num.suffix = VAL_UNSIGNED | VAL_LONG;
@@ -109,6 +120,11 @@ static void const_expr_sizeof(expr *e, consty *k)
 
 const out_val *gen_expr_sizeof(expr *e, out_ctx *octx)
 {
+	type *ty = SIZEOF_WHAT(e);
+
+	if(type_is_variably_modified(ty))
+		return vla_gen_size(ty, octx);
+
 	return out_new_l(octx, e->tree_type, SIZEOF_SIZE(e));
 }
 
