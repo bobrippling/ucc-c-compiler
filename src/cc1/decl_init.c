@@ -1102,13 +1102,20 @@ void decl_init_brace_up_fold(
 {
 	assert(!type_is(d->ref, type_func));
 	if(!d->bits.var.init_normalised){
+		d->bits.var.init_normalised = 1;
+
+		if(type_is_variably_modified(d->ref)){
+			warn_at_print_error(
+					&d->where,
+					"cannot initialise variable length array");
+			fold_had_error = 1;
+			return;
+		}
 
 		d->bits.var.init = decl_init_brace_up_start(
 				d->bits.var.init,
 				&d->ref,
 				stab, allow_initial_struct_copy);
-
-		d->bits.var.init_normalised = 1;
 	}
 }
 
@@ -1249,6 +1256,9 @@ zero_init:
 				/* it's fine if there's nothing for it */
 				if(n > 0)
 					die_at(&init->where, "non-static initialisation of flexible array");
+			}else if(type_is_variably_modified(tfor)){
+				/* error already emitted */
+				return;
 			}else{
 				n = type_array_len(tfor);
 			}
