@@ -1,31 +1,41 @@
-extern int printf(const char *, ...) __attribute((format(printf, 1, 2)));
+void abort(void);
 
-g()
+g() { return 3; }
+h() { return 2; }
+
+void init(int a, int b, int (*p)[a])
 {
-	printf("g()!\n");
-	return 3;
+	for(int i = 0; i < a; i++)
+		for(int j = 0; j < b; j++)
+			p[i][j] = i + j;
 }
 
-h()
+f(int n)
 {
-	printf("h()!\n");
-	return 2;
-}
+	int ar[n * g()][h()];
 
-void show(int (*p)[*])
-{
-	printf("%p\n", p);
-}
+	if(sizeof ar != h() * g() * sizeof(int))
+		abort();
 
-void f(int n)
-{
-	int ar[n * g()][h()]; // 4 * 2 * 3 * n = 24 * n
-	// 24 * 3 = 72
+	if(sizeof *ar != h() * sizeof(int))
+		abort();
 
-	show(ar);
+	init(sizeof ar / sizeof *ar, sizeof *ar, ar);
+
+	for(int i = 0; i < (int)(sizeof ar / sizeof *ar); i++)
+		for(int j = 0; j < (int)(sizeof *ar / sizeof **ar); j++)
+			if(ar[i][j] != i + j)
+				abort();
+
+	return sizeof ar;
 }
 
 main()
 {
-	f(3); // 3 * 4 = 12
+	int sz = f(3);
+
+	if(sz != 72)
+		abort();
+
+	return 0;
 }
