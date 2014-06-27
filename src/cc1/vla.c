@@ -109,14 +109,23 @@ void vla_alloc(decl *d, out_ctx *octx)
 			v_ptr);
 }
 
+static const out_val *read_vla_part(out_ctx *octx, type *ty, long off)
+{
+	return out_deref(octx, v_new_bp3_below(octx, NULL, ty, off));
+}
+
 const out_val *vla_address(decl *d, out_ctx *octx)
 {
 	type *ptr_to_vla_ty = type_ptr_to(type_ptr_to(d->ref));
 
-	const out_val *read_ptr = out_deref(octx,
-			v_new_bp3_below(octx,
-				NULL, ptr_to_vla_ty,
-				d->sym->loc.stack_pos + platform_word_size()));
+	return read_vla_part(octx, ptr_to_vla_ty,
+			d->sym->loc.stack_pos + platform_word_size());
+}
 
-	return read_ptr;
+const out_val *vla_size(decl *d, out_ctx *octx)
+{
+	type *sizety = type_nav_btype(cc1_type_nav, type_long);
+	type *ptr_to_sz = type_ptr_to(sizety);
+
+	return read_vla_part(octx, ptr_to_sz, d->sym->loc.stack_pos);
 }
