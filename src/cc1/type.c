@@ -117,8 +117,8 @@ static enum type_cmp type_cmp_r(
 
 			if(a_complete && b_complete){
 				if(a->bits.array.is_vla || b->bits.array.is_vla){
-					if(a->bits.array.size != b->bits.array.size)
-						return TYPE_NOT_EQUAL;
+					/* fine, pretend they're equal even if different expressions */
+					ret = TYPE_EQUAL_TYPEDEF;
 
 				}else{
 					integral_t av = const_fold_val_i(a->bits.array.size);
