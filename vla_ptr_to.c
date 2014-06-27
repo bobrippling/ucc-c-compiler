@@ -9,3 +9,18 @@ f()
 
 	return n;
 }
+
+/* bad: */
+g()
+{
+	int n = 5, m = 6;
+	int (*a)[n];
+	int (*b)[m];
+
+	return a - b; // different types???
+}
+
+main()
+{
+	return f();
+}
