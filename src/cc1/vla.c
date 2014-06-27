@@ -36,9 +36,13 @@ static const out_val *vla_gen_size_ty(
 
 		case type_array:
 			if(t->bits.array.is_vla){
-				return out_op(octx, op_multiply,
-						vla_gen_size_ty(type_next(t), octx, arith_ty),
-						gen_expr(t->bits.array.size, octx));
+				return out_op(
+						octx, op_multiply,
+						vla_gen_size_ty(
+							type_next(t), octx, arith_ty),
+						out_cast(
+							octx, gen_expr(t->bits.array.size, octx),
+							arith_ty, 0));
 
 			}else if(t->bits.array.size){
 				mul = const_fold_val_i(t->bits.array.size);
