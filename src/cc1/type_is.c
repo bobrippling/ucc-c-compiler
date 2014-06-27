@@ -335,10 +335,17 @@ int type_is_complete(type *r)
 	return 1;
 }
 
-type *type_is_variably_modified(type *ty)
+int type_is_variably_modified(type *ty)
 {
-	type *test = type_is(ty, type_array);
-	return test && test->bits.array.is_vla ? test : NULL;
+	/* need to check all the way down to the btype */
+	for(; ty; ty = type_next(ty)){
+		type *test = type_is(ty, type_array);
+
+		if(test && test->bits.array.is_vla)
+			return 1;
+	}
+
+	return 0;
 }
 
 int type_is_incomplete_array(type *r)
