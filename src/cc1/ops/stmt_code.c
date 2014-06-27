@@ -231,6 +231,13 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 #define SYMTAB_PARENT_WALK(it, begin) \
 	for(it = begin; it; it = it->parent)
 
+static void mark_symtabs(symtable *const s_from, int m)
+{
+	symtable *s_iter;
+	SYMTAB_PARENT_WALK(s_iter, s_from)
+		s_iter->mark = m;
+}
+
 void gen_scope_leave(symtable *const s_from, symtable *const s_to, out_ctx *octx)
 {
 	symtable *s_iter;
@@ -240,8 +247,7 @@ void gen_scope_leave(symtable *const s_from, symtable *const s_to, out_ctx *octx
 		return;
 	}
 
-	SYMTAB_PARENT_WALK(s_iter, s_to)
-		s_iter->mark = 1;
+	mark_symtabs(s_to, 1);
 
 	SYMTAB_PARENT_WALK(s_iter, s_from){
 		/* walk up until we hit a mark - that's our target scope
@@ -253,8 +259,7 @@ void gen_scope_leave(symtable *const s_from, symtable *const s_to, out_ctx *octx
 		gen_scope_destructors(s_iter, octx);
 	}
 
-	SYMTAB_PARENT_WALK(s_iter, s_to)
-		s_iter->mark = 0;
+	mark_symtabs(s_to, 0);
 }
 
 void gen_scope_leave_parent(symtable *s_from, out_ctx *octx)
