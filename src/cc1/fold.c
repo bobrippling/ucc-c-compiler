@@ -537,6 +537,8 @@ static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
 {
 #define inits (*pinit_code)
 	attribute *attrib = NULL;
+	int is_static_duration = !stab->parent
+		|| (d->store & STORE_MASK_STORE) == store_static;
 
 	if((d->store & STORE_MASK_EXTRA) == store_inline)
 		warn_at(&d->where, "inline on non-function");
@@ -605,14 +607,16 @@ static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
 		d->bits.var.align->resolved = max_al;
 	}
 
+	if(is_static_duration && type_is_variably_modified(d->ref)){
+		warn_at_print_error(
+				&d->where,
+				"static-duration variable length array");
+		fold_had_error = 1;
+		return;
+	}
+
 	if(d->bits.var.init){
-		int is_static_init = !stab->parent;
-
 		switch(d->store & STORE_MASK_STORE){
-			case store_static:
-				is_static_init = 1;
-				break;
-
 			case store_typedef:
 				fold_had_error = 1;
 				warn_at_print_error(&d->where, "initialised typedef");
@@ -634,7 +638,7 @@ static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
 		 */
 		if(d->spel){
 			/* this creates the below s->inits array */
-			if(is_static_init){
+			if(is_static_duration){
 				fold_decl_global_init(d, stab);
 
 			}else if(pinit_code){

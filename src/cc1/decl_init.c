@@ -1339,6 +1339,11 @@ void decl_default_init(decl *d, symtable *stab)
 
 	UCC_ASSERT(!d->bits.var.init, "already initialised?");
 
+	if(type_is_variably_modified(d->ref)){
+		/* error emitted elsewhere */
+		return;
+	}
+
 	d->bits.var.init = decl_init_new_w(decl_init_brace, &d->where);
 	decl_init_brace_up_fold(d, stab, 1);
 }
