@@ -45,7 +45,7 @@ static int parse_add_gasms(symtable_gasm ***plast_gasms)
 	return r;
 }
 
-void parse_and_fold(symtable_global *globals)
+int parse_and_fold(symtable_global *globals)
 {
 	symtable_gasm **last_gasms = NULL;
 
@@ -98,8 +98,7 @@ void parse_and_fold(symtable_global *globals)
 
 	dynarray_free(symtable_gasm **, &last_gasms, NULL);
 
-	if(parse_had_error || fold_had_error)
-		exit(1);
-
 	UCC_ASSERT(!globals->stab.parent, "scope leak during parse");
+
+	return parse_had_error || fold_had_error;
 }

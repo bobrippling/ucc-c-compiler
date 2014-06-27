@@ -354,11 +354,52 @@ static char *next_line()
 	return s;
 }
 
+static void gen_backend(symtable_global *globs, const char *fname)
+{
+	void (*gf)(symtable_global *) = NULL;
+
+	switch(cc1_backend){
+		case BACKEND_STYLE:
+			gf = gen_style;
+			if(0){
+				case BACKEND_PRINT:
+					gf = gen_str;
+			}
+			gf(globs);
+			break;
+
+		case BACKEND_ASM:
+			{
+				char buf[4096];
+				char *compdir;
+
+				compdir = getcwd(NULL, 0);
+				if(!compdir){
+					/* no auto-malloc */
+					compdir = getcwd(buf, sizeof(buf)-1);
+					/* PATH_MAX may not include the  ^ nul byte */
+					if(!compdir)
+						die("getcwd():");
+				}
+
+				gen_asm(globs,
+						cc1_first_fname ? cc1_first_fname : fname,
+						compdir);
+
+				if(compdir != buf)
+					free(compdir);
+				break;
+			}
+	}
+
+	io_fin(gf == NULL, fname);
+}
+
 int main(int argc, char **argv)
 {
+	int parsed_folded;
 	where loc_start;
 	static symtable_global *globs;
-	void (*gf)(symtable_global *) = NULL;
 	const char *fname;
 	int i;
 	int werror = 0;
@@ -568,7 +609,7 @@ usage:
 	where_cc1_current(&loc_start);
 	globs = symtabg_new(&loc_start);
 
-	parse_and_fold(globs);
+	parsed_folded = parse_and_fold(globs);
 
 	if(infile != stdin)
 		fclose(infile), infile = NULL;
@@ -576,45 +617,11 @@ usage:
 	if(werror && warning_count)
 		ccdie(0, "%s: Treating warnings as errors", *argv);
 
-	switch(cc1_backend){
-		case BACKEND_STYLE:
-			gf = gen_style;
-			if(0){
-		case BACKEND_PRINT:
-				gf = gen_str;
-			}
-			gf(globs);
-			break;
-
-		case BACKEND_ASM:
-		{
-			char buf[4096];
-			char *compdir;
-
-			compdir = getcwd(NULL, 0);
-			if(!compdir){
-				/* no auto-malloc */
-				compdir = getcwd(buf, sizeof(buf)-1);
-				/* PATH_MAX may not include the  ^ nul byte */
-				if(!compdir)
-					die("getcwd():");
-			}
-
-			gen_asm(globs,
-					cc1_first_fname ? cc1_first_fname : fname,
-					compdir);
-
-			if(compdir != buf)
-				free(compdir);
-			break;
-		}
-	}
-
-
-	io_fin(gf == NULL, fname);
+	if(parsed_folded == 0)
+		gen_backend(globs, fname);
 
 	if(fopt_mode & FOPT_DUMP_TYPE_TREE)
 		type_nav_dump(cc1_type_nav);
 
-	return 0;
+	return parsed_folded;
 }
