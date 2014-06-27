@@ -335,6 +335,13 @@ int type_is_complete(type *r)
 	return 1;
 }
 
+int type_is_vla(type *ty)
+{
+	/* top level only */
+	ty = type_is(ty, type_array);
+	return ty && ty->bits.array.is_vla;
+}
+
 int type_is_variably_modified(type *ty)
 {
 	/* need to check all the way down to the btype */
