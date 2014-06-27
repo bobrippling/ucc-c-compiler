@@ -1,4 +1,5 @@
 #include <string.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "expr_sizeof.h"
@@ -71,11 +72,12 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 		case what_alignof:
 		{
 			int set = 0; /* need this, since .bits can't be relied upon to be 0 */
+			int vla = type_is_variably_modified(chosen);
 
 			if(!type_is_complete(chosen))
 				die_at(&e->where, "sizeof incomplete type %s", type_to_str(chosen));
 
-			if(e->what_of == what_alignof && e->expr){
+			if((e->what_of == what_alignof || vla) && e->expr){
 				decl *d = NULL;
 
 				if(expr_kind(e->expr, identifier))
@@ -83,16 +85,21 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 				else if(expr_kind(e->expr, struct))
 					d = e->expr->bits.struct_mem.d;
 
-				if(d)
-					SIZEOF_SIZE(e) = decl_align(d), set = 1;
+				if(d){
+					if(e->what_of == what_alignof){
+						SIZEOF_SIZE(e) = decl_align(d);
+					}else{
+						assert(vla);
+						e->bits.size_of.vm = d;
+					}
+					set = 1;
+				}
 			}
 
 			if(!set){
-				type *ty = SIZEOF_WHAT(e);
-
-				if(!type_is_variably_modified(ty)){
+				if(!vla){
 					SIZEOF_SIZE(e) = (e->what_of == what_sizeof
-							? type_size : type_align)(ty, &e->where);
+							? type_size : type_align)(chosen, &e->where);
 				}
 			}
 
@@ -122,8 +129,13 @@ const out_val *gen_expr_sizeof(expr *e, out_ctx *octx)
 {
 	type *ty = SIZEOF_WHAT(e);
 
-	if(type_is_variably_modified(ty))
+	if(type_is_variably_modified(ty)){
+		/* try to read existing size - can't if sizeof(int[n]), etc */
+		if(e->bits.size_of.vm)
+			return vla_size(e->bits.size_of.vm, octx);
+
 		return vla_gen_size(ty, octx);
+	}
 
 	return out_new_l(octx, e->tree_type, SIZEOF_SIZE(e));
 }
@@ -146,6 +158,7 @@ const out_val *gen_expr_str_sizeof(expr *e, out_ctx *octx)
 void mutate_expr_sizeof(expr *e)
 {
 	e->f_const_fold = const_expr_sizeof;
+	e->bits.size_of.vm = NULL;
 }
 
 expr *expr_new_sizeof_type(type *t, enum what_of what_of)
