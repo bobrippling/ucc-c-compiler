@@ -1247,7 +1247,7 @@ static int is_old_func(decl *d)
 	return r && r->bits.func.args->args_old_proto && r->bits.func.args->arglist;
 }
 
-static void check_and_replace_old_func(decl *d, decl **old_args)
+static void check_and_replace_old_func(decl *d, decl **old_args, symtable *scope)
 {
 	/* check then replace old args */
 	int n_proto_decls, n_old_args;
@@ -1297,6 +1297,14 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 		if(!found)
 			die_at(&old_args[i]->where, "no such parameter '%s'", old_args[i]->spel);
 	}
+
+	/* need to re-decay funcargs, etc.
+	 * f(i)
+	 *   int i[];
+	 * { ... }
+	 * will decay the implicit "int i", but now it's been replaced with "int i[]"
+	 */
+	fold_funcargs(dfuncargs, scope, NULL);
 }
 
 static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
@@ -1467,7 +1475,7 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		}
 
 		if(old_args){
-			check_and_replace_old_func(d, old_args);
+			check_and_replace_old_func(d, old_args, in_scope);
 
 			dynarray_free(decl **, &old_args, NULL);
 
