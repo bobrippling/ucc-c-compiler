@@ -49,6 +49,7 @@ int type_is_void_ptr(type *);
 struct decl *type_is_tdef(type *);
 struct struct_union_enum_st *type_is_s_or_u(type *);
 struct struct_union_enum_st *type_is_s_or_u_or_e(type *);
+struct struct_union_enum_st *type_is_enum(type *);
 
 type *type_is(type *, enum type_kind);
 type *type_is_array(type *); /* returns r->ref iff array */

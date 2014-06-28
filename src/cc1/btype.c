@@ -58,6 +58,9 @@ enum type_cmp btype_cmp(const btype *a, const btype *b)
 		case type_enum:
 			if(a->sue == b->sue)
 				return TYPE_EQUAL;
+			/* enums members _are_ ints */
+			if(b->primitive == type_int)
+				return TYPE_EQUAL;
 			break; /* convertible check */
 
 		default:
@@ -123,7 +126,7 @@ int btype_is_signed(const btype *t)
 
 unsigned btype_size(const btype *t, where *from)
 {
-	if(t->sue)
+	if(t->sue && t->primitive != type_int)
 		return sue_size(t->sue, from);
 
 	return type_primitive_size(t->primitive);
@@ -215,7 +218,6 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_uint:
 			return UCC_SZ_INT;
 
-		case type_enum:
 		case type_float:
 			return 4;
 
@@ -238,9 +240,10 @@ unsigned type_primitive_size(enum type_primitive tp)
 			ICW("TODO: long double");
 			return IS_32_BIT() ? 12 : 16;
 
+		case type_enum:
 		case type_union:
 		case type_struct:
-			ICE("s/u size");
+			ICE("s/u/e size");
 
 		case type_unknown:
 			break;

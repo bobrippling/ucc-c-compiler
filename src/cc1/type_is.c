@@ -374,7 +374,15 @@ struct_union_enum_st *type_is_s_or_u_or_e(type *r)
 	if(!test)
 		return NULL;
 
+	/* see comment in type_is_enum() */
 	return test->bits.type->sue; /* NULL if not s/u/e */
+}
+
+struct_union_enum_st *type_is_enum(type *t)
+{
+	/* this depends heavily on type_is_s_or_u_or_e returning regardless of .primitive */
+	struct_union_enum_st *sue = type_is_s_or_u_or_e(t);
+	return sue && sue->primitive == type_enum ? sue : NULL;
 }
 
 struct_union_enum_st *type_is_s_or_u(type *r)
@@ -623,7 +631,7 @@ int type_is_promotable(type *r, type **pto)
 			sz_double = type_primitive_size(type_double);
 		}
 
-		rsz = type_primitive_size(r->bits.type->primitive);
+		rsz = type_size(r, type_loc(r)); /* may be enum-int */
 
 		if(rsz < (fp ? sz_double : sz_int)){
 			*pto = type_nav_btype(cc1_type_nav, fp ? type_double : type_int);

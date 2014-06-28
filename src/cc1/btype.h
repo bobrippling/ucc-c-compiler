@@ -70,6 +70,7 @@ struct btype
 	enum type_primitive primitive;
 
 	/* NULL unless this is a struct, union or enum */
+	/* special case - if we're an int, this may refer to the enum the int came from */
 	struct struct_union_enum_st *sue;
 };
 
