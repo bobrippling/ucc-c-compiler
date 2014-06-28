@@ -1,4 +1,3 @@
-// RUN: %ucc -c -o /dev/null %s
-// RUN: [ `%ucc -S -o /dev/null %s 2>&1 | wc -l` -eq 0 ]
+// RUN: %check %s
 extern a();
-int x = 0 && a(); // no warning
+int x = 0 && a(); // CHECK: !/warn/
