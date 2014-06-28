@@ -45,6 +45,13 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 			break;
 		}
 		case IDENT_ENUM:
+			if(e->bits.ident.bits.enum_mem->val == (void *)-1){
+				/* part-way through processing an enum, we reference one in the
+				 * future that hasn't had its value set. invalid, error caught later
+				 */
+				return;
+			}
+
 			const_fold(e->bits.ident.bits.enum_mem->val, k);
 			break;
 	}
