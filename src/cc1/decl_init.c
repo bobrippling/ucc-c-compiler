@@ -1089,6 +1089,8 @@ static decl_init *decl_init_brace_up_start(
 				expr_new_val(dynarray_count(ret->bits.ar.inits)),
 				&init->where);
 
+		FOLD_EXPR(sz, stab); /* otherwise tree_type isn't set */
+
 		UCC_ASSERT(ret->type == decl_init_brace, "unbraced array");
 		*ptfor = type_complete_array(tfor, sz);
 	}
