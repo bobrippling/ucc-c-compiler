@@ -11,6 +11,8 @@ main()
 {
 	int *p = (__typeof(*p))0; // CHECK: !/warn/
 
+	(void)p;
+
 	for(int _Alignas(long) x = 0; x; x++); // CHECK: !/warn/
 
 	return f(); // CHECK: !/warn/

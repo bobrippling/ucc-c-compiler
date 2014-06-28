@@ -79,8 +79,12 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 			enum_member_search(&m, &sue, stab, sp);
 
-			if(!m)
-				die_at(&e->where, "undeclared identifier \"%s\"", sp);
+			if(!m){
+				warn_at_print_error(&e->where, "undeclared identifier \"%s\"", sp);
+				fold_had_error = 1;
+				e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+				return;
+			}
 
 			expr_mutate_wrapper(e, val);
 
