@@ -87,7 +87,7 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 
 			fold_check_expr(e,
 					FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
-					"enum constant");
+					"enum member");
 
 			v = const_fold_val_i(e);
 			m->val = e;
