@@ -743,7 +743,8 @@ unsigned type_hash(const type *t)
 
 		case type_ptr:
 		case type_array:
-			hash |= type_hash(t->bits.ptr.size->tree_type);
+			if(t->bits.ptr.size)
+				hash |= type_hash(t->bits.ptr.size->tree_type);
 			break;
 
 		case type_block:
