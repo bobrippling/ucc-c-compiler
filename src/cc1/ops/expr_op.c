@@ -587,13 +587,14 @@ ptr_relation:
 			const int l_sz = type_size(tlhs, &lhs->where),
 			          r_sz = type_size(trhs, &rhs->where);
 
+			/* want to warn regardless of checks - for enums */
+			fold_type_chk_warn(
+					tlhs, trhs,
+					w, op_to_str(op));
+
 			if(l_unsigned == r_unsigned){
 				if(l_sz != r_sz){
 					const int l_larger = l_sz > r_sz;
-
-					fold_type_chk_warn(
-							tlhs, trhs,
-							w, op_to_str(op));
 
 					*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
 
