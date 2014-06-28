@@ -3,10 +3,11 @@
 #include <string.h>
 
 #include "../util/util.h"
-#include "data_structs.h"
+#include "../util/util.h"
+
 #include "const.h"
 #include "sym.h"
-#include "../util/util.h"
+#include "expr.h"
 #include "cc1.h"
 
 void const_fold(expr *e, consty *k)
@@ -117,11 +118,11 @@ integral_t const_op_exec(
 	typedef  integral_t U;
 
 	/* FIXME: casts based on lval.type */
-#define S_OP(o) (S)lval o (S)*rval
-#define U_OP(o) (U)lval o (U)*rval
+#define S_OP(o) ((S)lval o (S)*rval)
+#define U_OP(o) ((U)lval o (U)*rval)
 
 #define OP(  a, b) case a: return S_OP(b)
-#define OP_U(a, b) case a: return is_signed ? S_OP(b) : U_OP(b)
+#define OP_U(a, b) case a: return is_signed ? (U)S_OP(b) : (U)U_OP(b)
 
 	switch(op){
 		OP(op_multiply,   *);
@@ -133,13 +134,14 @@ integral_t const_op_exec(
 		OP_U(op_ge,       >=);
 		OP_U(op_gt,       >);
 
+		OP_U(op_shiftl,   <<);
+		OP_U(op_shiftr,   >>);
+
 		OP(op_xor,        ^);
 		OP(op_or,         |);
 		OP(op_and,        &);
 		OP(op_orsc,       ||);
 		OP(op_andsc,      &&);
-		OP(op_shiftl,     <<);
-		OP(op_shiftr,     >>);
 
 		case op_modulus:
 		case op_divide:

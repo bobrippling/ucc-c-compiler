@@ -9,6 +9,7 @@
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
+#include "../util/path.h"
 
 #include "directive.h"
 #include "tokenise.h"
@@ -19,6 +20,7 @@
 #include "str.h"
 #include "eval.h"
 #include "expr.h"
+#include "deps.h"
 
 #define SINGLE_TOKEN(...) \
 	tokens = tokens_skip_whitespace(tokens);                        \
@@ -31,16 +33,24 @@
 
 #define NOOP_RET() if(parse_should_noop()) return
 
+enum if_elif_state
+{
+	NO_TRUTH,
+	GOT_TRUTH,
+	LAST_ELSE
+};
 
 #define N_IFSTACK 64
 static struct
 {
-	char noop, if_chosen;
-} if_stack[N_IFSTACK] = {{ 0, 0 }};
+	where loc;
+	enum if_elif_state if_chosen;
+	char noop;
+} if_stack[N_IFSTACK];
 
 static int if_idx = 0;
 static int noop = 0;
-static int if_elif_chosen = 0;
+static enum if_elif_state if_elif_chosen = NO_TRUTH;
 
 
 int parse_should_noop(void)
@@ -128,7 +138,7 @@ for_fin:
 			val = tokens_join(tokens + i);
 		}
 
-		macro_add_func(name, val, args, variadic);
+		macro_add_func(name, val, args, variadic, preproc_in_include());
 
 		free(val);
 
@@ -144,7 +154,7 @@ for_fin:
 
 		val = tokens_join(tokens + 1);
 
-		macro_add(name, val);
+		macro_add(name, val, preproc_in_include());
 
 		free(val);
 	}
@@ -266,6 +276,12 @@ static void handle_include(token **tokens)
 		}
 	}
 
+	/* successfully opened */
+	canonicalise_path(final_path);
+
+	if(!is_lib)
+		deps_add(final_path);
+
 	preproc_push(f, final_path);
 	dirname_push(udirname(final_path));
 	free(final_path);
@@ -277,6 +293,8 @@ static void if_push(int is_true)
 {
 	if_stack[if_idx].noop      = noop;
 	if_stack[if_idx].if_chosen = if_elif_chosen;
+	where_current(&if_stack[if_idx].loc);
+	if_stack[if_idx].loc.line--;
 
 	if_idx++;
 
@@ -285,7 +303,7 @@ static void if_push(int is_true)
 
 	noop = !is_true;
 	/* we've found a true #if/#ifdef/#ifndef ? */
-	if_elif_chosen = is_true;
+	if_elif_chosen = is_true ? GOT_TRUTH : NO_TRUTH;
 }
 
 static void if_pop(void)
@@ -382,11 +400,16 @@ static void handle_elif(token **tokens)
 {
 	got_else("elif");
 
-	if(if_elif_chosen){
-		noop = 1;
-	}else{
-		if_elif_chosen = if_eval(tokens, "elif");
-		noop = !if_elif_chosen;
+	switch(if_elif_chosen){
+		case GOT_TRUTH:
+			noop = 1;
+			break;
+		case NO_TRUTH:
+			if_elif_chosen = if_eval(tokens, "elif");
+			noop = !if_elif_chosen;
+			break;
+		case LAST_ELSE:
+			CPP_DIE("#else already encountered (now at #elif)");
 	}
 }
 
@@ -396,7 +419,17 @@ static void handle_else(token **tokens)
 
 	got_else("else");
 
-	noop = if_elif_chosen;
+	switch(if_elif_chosen){
+		case GOT_TRUTH:
+			noop = 1;
+			break;
+		case NO_TRUTH:
+			noop = 0;
+			break;
+		case LAST_ELSE:
+			CPP_DIE("#else already encountered (now at #else)");
+	}
+	if_elif_chosen = LAST_ELSE;
 }
 
 static void handle_endif(token **tokens)
@@ -512,6 +545,11 @@ void parse_internal_directive(char *line)
 
 void parse_end_validate()
 {
-	if(if_idx)
-		CPP_DIE("endif expected");
+	if(if_idx){
+		char buf[WHERE_BUF_SIZ];
+
+		CPP_DIE("endif expected\n"
+				"%s: note: to match this",
+				where_str_r(buf, &if_stack[if_idx - 1].loc));
+	}
 }

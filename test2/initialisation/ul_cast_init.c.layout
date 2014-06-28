@@ -1,0 +1,4 @@
+ent1:
+.long 0
+ent2:
+.quad ent1

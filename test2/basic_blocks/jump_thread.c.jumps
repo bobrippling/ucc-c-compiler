@@ -1,0 +1,9 @@
+f:
+.Lblk.0: # post_prologue
+	jmp .Lblk.3
+.Lblk.3: # a
+	# implicit jump to next line
+.Lblk.4: # c
+	# implicit jump to next line
+.Lblk.2: # b
+	jmp .Lblk.3

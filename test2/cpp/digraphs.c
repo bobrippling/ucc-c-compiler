@@ -23,7 +23,7 @@ done <<!
 !
 
 cpp_test(){
-	t=/tmp/$$.digrp
+	t="$UCC_TESTDIR"/$$.digrp
 	cat >$t
 
 	if ! ucc -xc -E $t | grep "$1" > /dev/null

@@ -1,8 +1,13 @@
 #ifndef DECL_INIT_H
 #define DECL_INIT_H
 
-typedef struct desig desig;
+struct symtable;
+struct decl;
+struct type;
+struct stmt;
 
+typedef struct desig desig;
+typedef struct decl_init decl_init;
 struct decl_init
 {
 	where where;
@@ -16,14 +21,14 @@ struct decl_init
 
 	union
 	{
-		expr *expr;
+		struct expr *expr;
 		struct
 		{
 			decl_init **inits;
 			struct init_cpy
 			{
 				decl_init *range_init;
-				expr *first_instance;
+				struct expr *first_instance;
 			} **range_inits;
 
 			/* see decl_init.doc */
@@ -43,7 +48,7 @@ struct decl_init
 		enum { desig_ar, desig_struct } type;
 		union
 		{
-			expr *range[2];
+			struct expr *range[2];
 			char *member;
 		} bits;
 		struct desig *next; /* [0].a.b[1] */
@@ -60,19 +65,22 @@ const char *decl_init_to_str(enum decl_init_type);
  * *nonstd is set if nonstd isn't NULL
  */
 int decl_init_is_const(
-		decl_init *dinit, symtable *stab, expr **nonstd);
+		decl_init *dinit, struct symtable *stab, struct expr **nonstd);
 
 int decl_init_is_zero(decl_init *dinit);
 
-void decl_init_brace_up_fold(decl *d, symtable *); /* normalises braces */
+/* normalises braces */
+void decl_init_brace_up_fold(
+		struct decl *d, struct symtable *stab,
+		const int allow_initial_struct_copy);
 
 /* used for default initialising tenatives */
-void decl_default_init(decl *d, symtable *stab);
+void decl_default_init(struct decl *d, struct symtable *stab);
 
 /* creates assignment exprs - only used for local inits */
 void decl_init_create_assignments_base(
 		decl_init *init,
-		type_ref *tfor, expr *base,
-		stmt *code);
+		struct type *tfor, struct expr *base,
+		struct stmt *code);
 
 #endif

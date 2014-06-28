@@ -15,6 +15,14 @@ void *umalloc(size_t l)
 	return p;
 }
 
+void *ucalloc(size_t n, size_t sz)
+{
+	void *p = calloc(n, sz);
+	if(!p)
+		ICE("calloc(%ld, %ld):", n, sz);
+	return p;
+}
+
 void *urealloc(void *p, size_t new, size_t old)
 {
 	void *r = realloc(p, new);
@@ -43,6 +51,11 @@ char *ustrdup(const char *s)
 	char *r = umalloc(strlen(s) + 1);
 	strcpy(r, s);
 	return r;
+}
+
+char *ustrdup_or_null(const char *s)
+{
+	return s ? ustrdup(s) : NULL;
 }
 
 char *ustrdup2(const char *a, const char *b)

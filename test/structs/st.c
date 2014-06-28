@@ -23,5 +23,5 @@ main()
 
 	ap->bp->b_2 = 3;
 
-	return a.b.b_2;
+	return a.b.b_2 == 3 ? 0 : 1;
 }

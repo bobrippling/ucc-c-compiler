@@ -24,4 +24,6 @@ stringlit *strings_lookup(
 
 void stringlit_use(stringlit *);
 
+int stringlit_empty(const stringlit *);
+
 #endif

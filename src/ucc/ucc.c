@@ -4,10 +4,13 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <assert.h>
+#include <unistd.h>
 
 /* umask */
 #include <sys/types.h>
 #include <sys/stat.h>
+
+#include "cfg.h"
 
 #include "ucc.h"
 #include "ucc_ext.h"
@@ -17,7 +20,6 @@
 #include "../util/util.h"
 #include "../util/platform.h"
 #include "str.h"
-#include "cfg.h"
 
 enum mode
 {
@@ -36,26 +38,30 @@ struct
 } gopts;
 
 
+#define FILE_UNINIT -2
 struct cc_file
 {
-	char *in;
+	struct fd_name_pair
+	{
+		char *fname;
+		int fd;
+	} in;
 
-	char *preproc,
-			 *compile,
-			 *assemb;
+	struct fd_name_pair preproc, compile, assemb;
 
-	char *out;
+	struct fd_name_pair out;
 
 	int preproc_asm;
 };
 #define FILE_IN_MODE(f)        \
-((f)->preproc ? mode_preproc : \
- (f)->compile ? mode_compile : \
- (f)->assemb  ? mode_assemb  : \
+((f)->preproc.fname ? mode_preproc : \
+ (f)->compile.fname ? mode_compile : \
+ (f)->assemb.fname  ? mode_assemb  : \
  mode_link)
 
 static char **remove_these;
 static int unlink_tmps = 1;
+static int gdebug = 0, generated_temp_obj = 0;
 const char *argv0;
 char *wrapper;
 
@@ -70,28 +76,40 @@ static void unlink_files(void)
 	free(remove_these);
 }
 
-static char *tmpfilenam()
+static void tmpfilenam(struct fd_name_pair *pair)
 {
-	char *r = tmpnam(NULL);
+	char *tmppath;
+	char *tmpdir = getenv("TMPDIR");
+	int fd;
 
-	if(!r)
-		die("tmpfile():");
+#ifdef P_tmpdir
+	if(!tmpdir)
+		tmpdir = ustrdup(P_tmpdir);
+#endif
+	if(!tmpdir)
+		tmpdir = ustrdup("/tmp");
 
-	r = ustrdup(r);
+	tmppath = ustrprintf("%s/ucc.XXXXXX", tmpdir);
+	fd = mkstemp(tmppath);
+
+	if(fd == -1)
+		die("mkstemp():");
 
 	if(!remove_these) /* only register once */
 		atexit(unlink_files);
 
-	dynarray_add(&remove_these, r);
+	dynarray_add(&remove_these, tmppath);
 
-	return r;
+	pair->fname = tmppath;
+	pair->fd = fd;
 }
 
 static void create_file(struct cc_file *file, enum mode mode, char *in)
 {
 	char *ext;
 
-	file->in = in;
+	file->in.fname = in;
+	file->in.fd = FILE_UNINIT;
 
 	if(!strcmp(in, "-"))
 		goto preproc;
@@ -107,9 +125,9 @@ static void create_file(struct cc_file *file, enum mode mode, char *in)
 			goto assume_obj;
 	}
 
-#define ASSIGN(x)                \
-			if(!file->x){              \
-				file->x = tmpfilenam();  \
+#define FILL_WITH_TMP(x)         \
+			if(!file->x.fname){        \
+				tmpfilenam(&file->x);    \
 				if(mode == mode_ ## x){  \
 					file->out = file->x;   \
 					return;                \
@@ -121,18 +139,21 @@ static void create_file(struct cc_file *file, enum mode mode, char *in)
 		switch(ext[1]){
 preproc:
 			case 'c':
-				ASSIGN(preproc);
+				FILL_WITH_TMP(preproc);
 compile:
 			case 'i':
-				ASSIGN(compile);
+				FILL_WITH_TMP(compile);
 				goto after_compile;
 assemb:
 			case 'S':
 				file->preproc_asm = 1;
-				ASSIGN(preproc); /* preprocess .S assembly files by default */
+				FILL_WITH_TMP(preproc); /* preprocess .S assembly files by default */
 after_compile:
 			case 's':
-				ASSIGN(assemb);
+				if(NEED_DSYM && !file->assemb.fname)
+					generated_temp_obj = 1;
+
+				FILL_WITH_TMP(assemb);
 				file->out = file->assemb;
 				break;
 
@@ -150,33 +171,33 @@ after_compile:
 
 static void gen_obj_file(struct cc_file *file, char **args[4], enum mode mode)
 {
-	char *in = file->in;
+	char *in = file->in.fname;
 
-	if(file->preproc){
+	if(file->preproc.fname){
 		/* if we're preprocessing, but not cc1'ing, but we are as'ing,
 		 * it's an assembly language file */
 		if(file->preproc_asm)
 			dynarray_add(&args[mode_preproc], ustrdup("-D__ASSEMBLER__=1"));
 
-		preproc(in, file->preproc, args[mode_preproc]);
+		preproc(in, file->preproc.fname, args[mode_preproc]);
 
-		in = file->preproc;
+		in = file->preproc.fname;
 	}
 
 	if(mode == mode_preproc)
 		return;
 
-	if(file->compile){
-		compile(in, file->compile, args[mode_compile]);
+	if(file->compile.fname){
+		compile(in, file->compile.fname, args[mode_compile]);
 
-		in = file->compile;
+		in = file->compile.fname;
 	}
 
 	if(mode == mode_compile)
 		return;
 
-	if(file->assemb){
-		assemble(in, file->assemb, args[mode_assemb]);
+	if(file->assemb.fname){
+		assemble(in, file->assemb.fname, args[mode_assemb]);
 	}
 }
 
@@ -191,20 +212,20 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 
 		if(mode < FILE_IN_MODE(&files[i])){
 			fprintf(stderr, "input \"%s\" unused with -%c present\n",
-					files[i].in, mode_ch);
+					files[i].in.fname, mode_ch);
 			continue;
 		}
 
 		if(output){
 			if(mode == mode_preproc){
 				/* append to current */
-				if(files[i].preproc)
-					cat(files[i].preproc, output, i);
+				if(files[i].preproc.fname)
+					cat(files[i].preproc.fname, output, i);
 				continue;
 			}else if(mode == mode_compile && !strcmp(output, "-")){
 				/* -S -o- */
-				if(files[i].compile)
-					cat(files[i].compile, NULL, 0);
+				if(files[i].compile.fname)
+					cat(files[i].compile.fname, NULL, 0);
 				continue;
 			}
 
@@ -215,15 +236,15 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 					die("mode_link for multiple files");
 
 				case mode_preproc:
-					if(files[i].preproc)
-						cat(files[i].preproc, NULL, 0);
+					if(files[i].preproc.fname)
+						cat(files[i].preproc.fname, NULL, 0);
 					continue;
 
 				case mode_compile:
 				case mode_assemb:
 				{
 					int len;
-					new = ustrdup(files[i].in);
+					new = ustrdup(files[i].in.fname);
 					len = strlen(new);
 					if(len > 2 && new[len - 2] == '.')
 						new[len - 1] = mode == mode_compile ? 's' : 'o';
@@ -233,7 +254,7 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 			}
 		}
 
-		rename_or_move(files[i].out, new);
+		rename_or_move(files[i].out.fname, new);
 
 		free(new);
 	}
@@ -263,7 +284,7 @@ static void process_files(enum mode mode, char **inputs, char *output, char **ar
 
 		gen_obj_file(&files[i], args, mode);
 
-		dynarray_add(&links, ustrdup(files[i].out));
+		dynarray_add(&links, ustrdup(files[i].out.fname));
 	}
 
 	if(mode == mode_link){
@@ -275,15 +296,27 @@ static void process_files(enum mode mode, char **inputs, char *output, char **ar
 			/* ld_crt_args() refers to static memory */
 			dynarray_add_array(&links, ld_stdlib_args());
 
-		link_all(links, output ? output : "a.out", args[mode_link]);
+		if(!output)
+			output = "a.out";
+
+		link_all(links, output, args[mode_link]);
+
+		if(NEED_DSYM && gdebug && generated_temp_obj){
+			/* only need dsym if we use temporary .o files */
+			dsym(output);
+		}
 	}else{
 		rename_files(files, ninputs, output, mode);
 	}
 
 	dynarray_free(char **, &links, free);
 
-	/*for(i = 0; i < ninputs; i++)
-		free_file(&files[i]);*/
+	for(i = 0; i < ninputs; i++){
+		close(files[i].in.fd);
+		close(files[i].preproc.fd);
+		close(files[i].compile.fd);
+		close(files[i].assemb.fd);
+	}
 
 	free(files);
 }
@@ -424,6 +457,9 @@ int main(int argc, char **argv)
 				case 'P':
 arg_cpp:
 					ADD_ARG(mode_preproc);
+					if(!strcmp(argv[i] + 1, "MM"))
+						mode = mode_preproc; /* cc -MM *.c stops after preproc */
+
 					if(found){
 						if(!arg[2]){
 							/* allow a space, e.g. "-D" "arg" */
@@ -467,7 +503,8 @@ arg_ld:
 					if(argv[i][2])
 						die("-g... unexpected");
 					ADD_ARG(mode_compile);
-					ADD_ARG(mode_assemb);
+					gdebug = 1;
+					/* don't pass to the assembler */
 					continue;
 
 				case 'M':
@@ -508,6 +545,9 @@ arg_ld:
 
 word:
 				default:
+					if(!strcmp(argv[i], "-s"))
+						goto arg_ld;
+
 					if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
 						ADD_ARG(mode_compile);
 						ADD_ARG(mode_preproc);
@@ -594,9 +634,19 @@ input:	dynarray_add(&inputs, argv[i]);
 	}
 
 	/* default include paths */
-	if(stdinc)
-		add_cfg_args(&args[mode_preproc], UCC_INC);
-	/* custom incldue paths */
+	if(stdinc){
+		char *const dup = ustrdup(UCC_INC);
+		char *p;
+
+		for(p = strtok(dup, ":"); p; p = strtok(NULL, ":")){
+			char *inc = ustrprintf("-I%s", p);
+			dynarray_add(&args[mode_preproc], inc);
+		}
+
+		free(dup);
+	}
+
+	/* custom include paths */
 	if(includes)
 		dynarray_add_tmparray(&args[mode_preproc], includes);
 

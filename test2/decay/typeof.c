@@ -1,9 +1,11 @@
-// RUN: %ucc %s
-// RUN: [ `%ucc -S -o- %s | grep 'subq' | awk '{print $2}' | grep -o '[0-9]\+'` -ge 48 ]
+// RUN: %ucc -fsyntax-only %s
 
 main()
 {
 	int a[4];
-	typeof(a) b;
-	typeof(int[4]) c;
+	__typeof(a) b;
+	__typeof(int[4]) c;
+
+	_Static_assert(sizeof(a) + sizeof(b) + sizeof(c) == 3 * 4 * sizeof(int),
+			"array not propagated in __typeof()");
 }

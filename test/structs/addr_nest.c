@@ -11,5 +11,5 @@ main()
 
 	st.sub.b = 5;
 
-	return (&(&st)->sub)->b;
+	return (&(&st)->sub)->b == 5 ? 0 : 1;
 }

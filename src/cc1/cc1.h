@@ -4,7 +4,6 @@
 #include "../util/std.h"
 
 /*#define FANCY_STACK_INIT 1*/
-#define ASM_INLINE_FNAME "__asm__"
 
 enum warning
 {
@@ -41,6 +40,8 @@ enum warning
 
 	WARN_SHADOW_LOCAL             = 1 << 28,
 	WARN_SHADOW_GLOBAL            = 1 << 29,
+
+	WARN_IMPLICIT_OLD_FUNC        = 1 << 30, /* int f(); */
 
 	/* TODO */
 	/*
@@ -79,6 +80,8 @@ enum fopt
 	FOPT_SYMBOL_ARITH          = 1 << 16,
 	FOPT_SIGNED_CHAR           = 1 << 17,
 	FOPT_CAST_W_BUILTIN_TYPES  = 1 << 18,
+	FOPT_DUMP_TYPE_TREE        = 1 << 19,
+	FOPT_EXT_KEYWORDS          = 1 << 20, /* -fasm */
 };
 
 enum mopt
@@ -110,5 +113,7 @@ extern int cc1_error_limit;
 
 extern int cc1_mstack_align; /* 2^n */
 extern int cc1_gdebug; /* -g */
+
+extern char *cc1_first_fname;
 
 #endif

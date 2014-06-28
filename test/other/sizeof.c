@@ -1,5 +1,15 @@
-#include <sys/types.h>
-#include <assert.h>
+#ifndef __WORDSIZE
+#  define __WORDSIZE 8
+#endif
+
+assert(int ln, _Bool b)
+{
+	if(!b){
+		printf(__FILE__ ":%d\n", ln);
+		abort();
+	}
+}
+#define assert(x) assert(__LINE__, x)
 
 main()
 {
@@ -11,15 +21,15 @@ main()
 
 	assert(sizeof array - 1 == 4);
 
-	assert(sizeof(void)   == 1);
+	//assert(sizeof(void)   == 1);
 	assert(sizeof(void *) == 8);
-	assert(sizeof(void *) == __WORDSIZE / 8);
+	//assert(sizeof(void *) == __WORDSIZE / 8);
 
 	/*sizeof int;*/
-	assert(sizeof(int) == 8);
+	assert(sizeof(int) == 4);
 
-	assert(sizeof i    == 8);
-	assert(sizeof(i)   == 8);
+	assert(sizeof i    == 4);
+	assert(sizeof(i)   == 4);
 
 	assert(sizeof p    == 8);
 	assert(sizeof(p)   == 8);

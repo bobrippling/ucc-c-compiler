@@ -1,23 +1,14 @@
 DIRS =                        \
-	arrays/                     \
-	anywhere_decl/              \
-	assignment/                 \
-	blocks/                     \
-	builtin/                    \
-	decl_parsing/               \
+	apply/                      \
 	initialisation/array/       \
 	initialisation/scalar/      \
 	initialisation/structs/     \
 	inline/                     \
-	lib/                        \
-	lvalue/                     \
-	messing                     \
 	other/                      \
-	pointers/                   \
-	stack_save/                 \
 	structs/                    \
 	type_parsing/               \
-	types/
+	cpp-depgen/                 \
+	cpp-depwrap/
 
 MAKEFILES = ${DIRS:/=/Makefile}
 

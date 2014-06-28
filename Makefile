@@ -1,6 +1,8 @@
-all: configure
-	make -C src
+all: src
 	make -C lib
+
+src: configure
+	make -C src
 
 deps:
 	make -Csrc deps
@@ -19,13 +21,13 @@ cleantest:
 	make -Ctest clean
 # no need to clean test2
 
-test: all
-	make -Ctest test
-	cd test2; sh all.sh
+check: all
+	cd test2; ./run_tests -q -i ignores .
+	# test/ pending
 
 ALL_SRC = $(shell find . -iname '*.[ch]')
 
 tags: ${ALL_SRC}
 	ctags -R .
 
-.PHONY: all clean cleanall configure
+.PHONY: all clean cleanall configure src
