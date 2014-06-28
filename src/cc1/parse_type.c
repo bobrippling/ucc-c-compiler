@@ -1436,6 +1436,10 @@ static int warn_for_unused_typename(
 
 		default:
 			break;
+	}else if(type_is(d->ref, type_func)){
+		warn_at_print_error(&d->where, "unnamed function declaration");
+		fold_had_error = 1;
+		return 1;
 	}
 
 	/* C 6.7/2:
