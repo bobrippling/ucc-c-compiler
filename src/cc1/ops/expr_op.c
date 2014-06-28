@@ -286,9 +286,12 @@ static void const_shortcircuit(
 	collapsed_consty clhs;
 	int truth;
 
-	if(lhs->type == CONST_NO)
+	if(!CONST_AT_COMPILE_TIME(lhs->type))
 		return;
-	assert(rhs->type == CONST_NO);
+
+	/* if we've got here, previous attempts at const-ing failed,
+	 * so we should have a non-constant rhs */
+  assert(!CONST_AT_COMPILE_TIME(rhs->type));
 
 	collapse_const(&clhs, lhs);
 	truth = clhs.is_lbl ? 1 : clhs.bits.i;
