@@ -78,7 +78,7 @@ static int *new_int(int v)
 
 static void test_dynmap_normal(void)
 {
-	dynmap *map = dynmap_new((dynmap_cmp_f *)strcmp, dynmap_strhash);
+	dynmap *map = dynmap_new(char *, strcmp, dynmap_strhash);
 	int i;
 	char *key;
 	int *removed;
@@ -135,7 +135,7 @@ static void test_dynmap_normal(void)
 	dynmap_free(map);
 }
 
-static unsigned eq_hash(const void *p)
+static unsigned eq_hash(const char *p)
 {
 	(void)p;
 	return 5;
@@ -143,7 +143,7 @@ static unsigned eq_hash(const void *p)
 
 static void test_dynmap_collision(void)
 {
-	dynmap *map = dynmap_new(/*ref*/NULL, eq_hash);
+	dynmap *map = dynmap_new(char *, /*ref*/NULL, eq_hash);
 	int i;
 	char *key;
 

@@ -126,5 +126,6 @@ where *type_loc(type *);
 int type_has_loc(type *);
 
 unsigned type_hash(const type *);
+unsigned sue_hash(const struct struct_union_enum_st *);
 
 #endif

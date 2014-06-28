@@ -725,6 +725,14 @@ type_str_type(type *r)
 	}
 }
 
+unsigned sue_hash(const struct_union_enum_st *sue)
+{
+	if(!sue)
+		return 5;
+
+	return sue->primitive;
+}
+
 unsigned type_hash(const type *t)
 {
 	unsigned hash = t->type << 20 | (unsigned)(unsigned long)t;
@@ -734,7 +742,7 @@ unsigned type_hash(const type *t)
 			ICE("auto type");
 
 		case type_btype:
-			hash |= t->bits.type->primitive;
+			hash |= t->bits.type->primitive | sue_hash(t->bits.type->sue);
 			break;
 
 		case type_tdef:

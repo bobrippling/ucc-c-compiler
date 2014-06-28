@@ -450,8 +450,10 @@ type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *sue)
 	type *ent, *prev;
 	btype *bt;
 
-	if(!root->suetypes)
-		root->suetypes = dynmap_new(/*refeq:*/NULL, (dynmap_hash_f *)type_hash);
+	if(!root->suetypes){
+		root->suetypes = dynmap_new(
+				struct_union_enum_st *, /*refeq:*/NULL, sue_hash);
+	}
 
 	ent = dynmap_get(struct_union_enum_st *, type *, root->suetypes, sue);
 

@@ -139,7 +139,7 @@ static void label_init(symtable **stab)
 	*stab = symtab_func_root(*stab);
 	if((*stab)->labels)
 		return;
-	(*stab)->labels = dynmap_new((dynmap_cmp_f *)strcmp, dynmap_strhash);
+	(*stab)->labels = dynmap_new(char *, strcmp, dynmap_strhash);
 }
 
 void symtab_label_add(symtable *stab, label *lbl)

@@ -299,7 +299,7 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 		char *dup = ustrdup(ident);
 
 		if(!glob->unrecog_attrs)
-			glob->unrecog_attrs = dynmap_new((dynmap_cmp_f *)strcmp, dynmap_strhash);
+			glob->unrecog_attrs = dynmap_new(char *, strcmp, dynmap_strhash);
 
 		dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
 

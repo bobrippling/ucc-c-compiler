@@ -11,10 +11,8 @@
 #include "ctx.h"
 #include "out.h"
 
-static unsigned blk_hash(const void *v)
+static unsigned blk_hash(const out_blk *b)
 {
-	const out_blk *b = v;
-
 	return b->type
 		^ (unsigned)(unsigned long)b->desc
 		^ dynarray_count(b->insns);
@@ -71,7 +69,7 @@ static void out_wipe_blks(out_ctx *octx)
 	if(!octx->first_blk)
 		return;
 
-	uniq_blks = dynmap_new(NULL, blk_hash);
+	uniq_blks = dynmap_new(out_blk *, NULL, blk_hash);
 
 	for(bi = octx->mustgen; bi && *bi; bi++)
 		out_blk_uniq(*bi, uniq_blks);
