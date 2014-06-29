@@ -28,10 +28,6 @@ void fold_expr_deref(expr *e, symtable *stab)
 	if(expr_attr_present(ptr, attr_noderef))
 		warn_at(&ptr->where, "dereference of noderef expression");
 
-	/* check for *&x */
-	if(expr_kind(ptr, addr) && !ptr->expr_addr_implicit)
-		warn_at(&ptr->where, "possible optimisation for *& expression");
-
 	fold_check_bounds(ptr, 0);
 
 	e->tree_type = type_dereference_decay(ptr->tree_type);
