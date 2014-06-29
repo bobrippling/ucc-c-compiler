@@ -788,6 +788,7 @@ static struct DIE **dwarf_formal_params(
 			struct dwarf_block_ent *locn_data = umalloc(2 * sizeof *locn_data);
 
 			locn_data[0].type = BLOCK_HEADER;
+			/* FIXME: omit for -fomit-frame-ptr ones... or %rdi, etc? */
 			locn_data[0].bits.v =  DW_OP_breg6; /* rbp */
 			locn_data[1].type = BLOCK_LEB128_S;
 			locn_data[1].bits.v = d->sym->loc.arg_offset;

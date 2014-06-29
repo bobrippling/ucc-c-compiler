@@ -190,6 +190,8 @@ out_val *v_new_sp(out_ctx *octx, const out_val *from)
 	r.is_float = 0;
 	r.idx = REG_SP;
 
+	octx->used_stack = 1;
+
 	return v_new_reg(octx, from, type_nav_voidptr(cc1_type_nav), &r);
 }
 

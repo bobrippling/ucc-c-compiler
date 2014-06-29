@@ -79,6 +79,7 @@ static void callee_save_or_restore(
 void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 {
 	out_blk *call_save_spill_blk = NULL;
+	out_blk *to_flush;
 
 	if(octx->current_blk && octx->current_blk->type == BLK_UNINIT)
 		out_ctrl_transfer(octx, octx->epilogue_blk, NULL, NULL);
@@ -93,38 +94,47 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 
 	out_current_blk(octx, octx->epilogue_blk);
 	{
-		impl_func_epilogue(octx, ty);
+		impl_func_epilogue(octx, ty, octx->used_stack);
 		/* terminate here without an insn */
 		assert(octx->current_blk->type == BLK_UNINIT);
 		octx->current_blk->type = BLK_TERMINAL;
 	}
 
 	/* space for spills */
-	out_current_blk(octx, octx->first_blk);
-	{
-		if(fopt_mode & FOPT_VERBOSE_ASM){
-			out_comment(octx, "spill space %u, alloc_n space %u",
-					octx->max_stack_sz - octx->stack_sz_initial,
-					octx->stack_n_alloc);
+	if(octx->used_stack){
+		to_flush = octx->first_blk;
+		out_current_blk(octx, octx->first_blk);
+		{
+			if(fopt_mode & FOPT_VERBOSE_ASM){
+				out_comment(octx, "spill space %u, alloc_n space %u",
+						octx->max_stack_sz - octx->stack_sz_initial,
+						octx->stack_n_alloc);
+			}
+
+			/* must have more or equal stack to the alloc_n, because alloc_n will
+			 * always add to {var,max}_stack_sz with possible padding,
+			 * and that same value (minus padding) to stack_n_alloc */
+			assert(octx->max_stack_sz >= octx->stack_n_alloc);
+
+			v_stack_adj(octx, octx->max_stack_sz - octx->stack_n_alloc, /*sub:*/1);
+
+			if(call_save_spill_blk){
+				out_ctrl_transfer(octx, call_save_spill_blk, NULL, NULL);
+				out_current_blk(octx, call_save_spill_blk);
+			}
+			out_ctrl_transfer(octx, octx->second_blk, NULL, NULL);
 		}
+	}else{
+		to_flush = octx->second_blk;
 
-		/* must have more or equal stack to the alloc_n, because alloc_n will
-		 * always add to {var,max}_stack_sz with possible padding,
-		 * and that same value (minus padding) to stack_n_alloc */
-		assert(octx->max_stack_sz >= octx->stack_n_alloc);
-
-		v_stack_adj(octx, octx->max_stack_sz - octx->stack_n_alloc, /*sub:*/1);
-
-		if(call_save_spill_blk){
-			out_ctrl_transfer(octx, call_save_spill_blk, NULL, NULL);
-			out_current_blk(octx, call_save_spill_blk);
-		}
-		out_ctrl_transfer(octx, octx->second_blk, NULL, NULL);
+		/* need to attach the label to second_blk */
+		free(to_flush->lbl);
+		to_flush->lbl = octx->first_blk->lbl;
+		octx->first_blk->lbl = NULL;
 	}
 	octx->current_blk = NULL;
-	octx->second_blk = NULL;
 
-	blk_flushall(octx, end_dbg_lbl);
+	blk_flushall(octx, to_flush, end_dbg_lbl);
 
 	free(octx->used_callee_saved), octx->used_callee_saved = NULL;
 
@@ -176,6 +186,8 @@ void out_func_prologue(
 		octx->stack_sz_initial = octx->var_stack_sz;
 	}
 	octx->in_prologue = 0;
+
+	octx->used_stack = 0;
 
 	/* keep the end of the prologue block clear for a stack pointer adjustment,
 	 * in case any spills are needed */
