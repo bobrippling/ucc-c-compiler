@@ -1107,7 +1107,8 @@ void fold_merge_tenatives(symtable *stab)
 	decl **const globs = stab->decls;
 
 	int i;
-	/* go in reverse */
+	/* go in reverse - check the last declared decl so we
+	 * can go up the proto-chain */
 	for(i = dynarray_count(globs) - 1; i >= 0; i--){
 		decl *d = globs[i];
 		decl *init = NULL;
@@ -1128,6 +1129,7 @@ void fold_merge_tenatives(symtable *stab)
 		/* check for a single init between all prototypes */
 		for(; d; d = d->proto){
 			d->proto_flag = 1;
+			/* look for an explicit init */
 			if(!type_is(d->ref, type_func) && d->bits.var.init){
 				if(init){
 					char wbuf[WHERE_BUF_SIZ];
@@ -1136,7 +1138,10 @@ void fold_merge_tenatives(symtable *stab)
 							where_str_r(wbuf, &d->where));
 				}
 				init = d;
-			}else if(type_is(d->ref, type_array) && type_is_complete(d->ref)){
+			}else if(!init /* no explicit init - complete array? */
+			&& type_is(d->ref, type_array)
+			&& type_is_complete(d->ref))
+			{
 				init = d;
 				decl_default_init(d, stab);
 			}
