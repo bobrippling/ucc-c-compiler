@@ -56,7 +56,8 @@ static void const_op_num_fp(
 	k->type = CONST_NUM;
 
 	/* both relational and normal ops between floats are not constant */
-	if(!k->nonstandard_const)
+	/* except -, which is taken as part of the floating point constant */
+	if(e->op != op_minus && !k->nonstandard_const)
 		k->nonstandard_const = e;
 
 	if(op_returns_bool(e->op)){
