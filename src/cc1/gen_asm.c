@@ -27,6 +27,9 @@
 #include "out/val.h"
 #include "out/ctx.h"
 
+#include "type_nav.h"
+#include "funcargs.h"
+
 void IGNORE_PRINTGEN(const out_val *v)
 {
 	(void)v;
@@ -135,6 +138,23 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 				offsets, &d->bits.func.var_offset);
 
 		assign_arg_offsets(octx, arg_symtab->decls, offsets);
+
+		if(cc1_profileg){
+			type *voidty = type_nav_btype(cc1_type_nav, type_void);
+			funcargs *args = funcargs_new();
+			args->args_void = 1;
+
+			out_flush_volatile(octx,
+					out_call(octx,
+						out_new_lbl(octx,
+							type_ptr_to(voidty),
+							"mcount", 0),
+						NULL,
+						type_ptr_to(
+							type_func_of(
+								voidty, args,
+								symtab_root(arg_symtab)))));
+		}
 
 		gen_stmt(d->bits.func.code, octx);
 

@@ -562,6 +562,8 @@ word:
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
 						ucc_ext_cmds_show(1);
+					else if(!strcmp(argv[i], "-pg"))
+						ADD_ARG(mode_compile);
 					else if(!strcmp(argv[i], "-wrapper")){
 						/* -wrapper echo,-n etc */
 						wrapper = argv[++i];

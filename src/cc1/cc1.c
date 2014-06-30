@@ -184,6 +184,7 @@ enum mopt mopt_mode = 0;
 
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
 int cc1_gdebug;
+int cc1_profileg;
 
 enum c_std cc1_std = STD_C99;
 
@@ -526,8 +527,12 @@ unrecognised:
 			else
 				mopt_mode &= ~MOPT_32;
 
+		}else if(!strcmp(argv[i], "-pg")){
+			cc1_profileg = 1;
+
 		}else if(!fname){
 			fname = argv[i];
+
 		}else{
 usage:
 			ccdie(1, "Usage: %s [-W[no-]warning] [-f[no-]option] [-X backend] [-m[32|64]] [-o output] file", *argv);

@@ -113,6 +113,7 @@ extern int cc1_error_limit;
 
 extern int cc1_mstack_align; /* 2^n */
 extern int cc1_gdebug; /* -g */
+extern int cc1_profileg; /* -pg */
 
 extern char *cc1_first_fname;
 
