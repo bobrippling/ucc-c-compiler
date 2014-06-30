@@ -143,6 +143,7 @@ case "$unam" in
 
 		machine_path="$UCC_CPU-$unam_lc-gnu"
 
+		# TODO: gcrt1.o for -pg
 		try_set UCC_CRT /usr/lib/"${machine_path}"/crt1.o
 		try_set UCC_CRT /usr/lib/"${machine_path}"/crti.o
 		try_set UCC_CRT /usr/lib/"${machine_path}"/crtn.o
