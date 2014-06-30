@@ -76,7 +76,7 @@ ucc_wur const out_val *out_change_type(out_ctx *, const out_val *, type *)
 ucc_wur const out_val *out_call(out_ctx *,
 		const out_val *fn, const out_val **args,
 		type *fnty)
-		ucc_nonnull((2, 3));
+		ucc_nonnull((1, 2, 4));
 
 
 /* control flow */
