@@ -1,4 +1,4 @@
-CFLAGS = -g -Wall -Wextra -pedantic -std=c99 \
+CFLAGS = -g -pg -O2 -Wall -Wextra -pedantic -std=c99 \
          -Wno-char-subscripts -Wno-format-extra-args \
 				 -Wmissing-prototypes -Wno-missing-braces
 
