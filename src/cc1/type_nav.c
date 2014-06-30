@@ -166,7 +166,7 @@ static int eq_func(type *ty, void *ctx)
 		return 0;
 
 	if(funcargs_cmp(ty->bits.func.args, c->args) == FUNCARGS_EXACT_EQUAL){
-		funcargs_free(ctx, 0);
+		funcargs_free(c->args, 0);
 		return 1;
 	}
 	return 0;
