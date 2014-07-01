@@ -221,13 +221,18 @@ static void const_op_num_int(
 				warn_at(&e->where, "%s", err);
 				k->type = CONST_NO;
 			}else{
+				const btype *bt;
+
 				k->type = CONST_NUM;
 				k->bits.num.val.i = int_r;
 
 				if(!is_signed)
 					k->bits.num.suffix = VAL_UNSIGNED;
 
-				switch(type_get_type(e->tree_type)->primitive){
+				/* if no btype, we may be something like:
+				 * (int *)0 + 3 */
+				bt = type_get_type(e->tree_type);
+				switch(bt ? bt->primitive : type_unknown){
 					case type_long:
 						k->bits.num.suffix |= VAL_LONG;
 						break;
