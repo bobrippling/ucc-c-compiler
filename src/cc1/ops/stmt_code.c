@@ -191,7 +191,7 @@ void gen_block_decls(
 		}
 		else if(type_is_variably_modified(d->ref))
 		{
-			vla_alloc(d, octx);
+			vla_alloc_decl(d, octx);
 		}
 	}
 }

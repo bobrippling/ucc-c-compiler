@@ -514,7 +514,7 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 							unsigned align;
 
 							if(type_is_variably_modified(s->decl->ref)){
-								siz = vla_space();
+								siz = vla_decl_space(s->decl);
 								align = platform_word_size();
 							}else{
 								siz = decl_size(s->decl);

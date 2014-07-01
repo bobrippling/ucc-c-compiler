@@ -13,15 +13,45 @@
 
 #include "vla.h"
 
-unsigned vla_space()
+/*
+ * a decl that has a VM type may be referred to more than once,
+ * so we need to stash the sizes of its VMs on the stack so we don't
+ * evaluate the expressions multiple times, e.g.
+ *
+ *     int vla[i];
+ *     i = 5;
+ *     return sizeof vla;
+ *
+ * or
+ *
+ *     short vla[f()][g()];
+ *     return sizeof(vla) + sizeof(vla[0]);
+ *
+ * compare this to:
+ *
+ *     return sizeof(int [f()])
+ *
+ * there isn't any way to refer the the anonymous type twice,
+ * so for this we can just generate the expression directly
+ */
+
+unsigned vla_decl_space(decl *d)
 {
-	/*  T *ptr; size_t size;   */
-	return platform_word_size() * 2;
+	const unsigned pws = platform_word_size();
+	type *t;
+	unsigned sz = pws; /* T *ptr */
+
+	for(t = d->ref; t; t = type_next(t))
+		if(type_is_vla(t))
+			sz += pws;
+
+	return sz;
 }
 
 static const out_val *vla_gen_size_ty(
 		type *t, out_ctx *octx,
-		type *const arith_ty)
+		type *const arith_ty,
+		long stack_off, int gen_exprs)
 {
 	int mul;
 
@@ -36,19 +66,45 @@ static const out_val *vla_gen_size_ty(
 
 		case type_array:
 			if(t->bits.array.is_vla){
-				return out_op(
+				type *ptrsizety = type_ptr_to(arith_ty);
+				const out_val *sz;
+				const out_val *this_sz;
+				long new_stack_off = stack_off == -1
+					? -1
+					: stack_off - platform_word_size();
+
+				if(gen_exprs){
+					this_sz = out_cast(
+							octx, gen_expr(t->bits.array.size, octx),
+							arith_ty, 0);
+				}else{
+					assert(stack_off != -1);
+
+					this_sz = out_deref(octx,
+							v_new_bp3_below(octx, NULL, ptrsizety, stack_off));
+				}
+
+				sz = out_op(
 						octx, op_multiply,
 						vla_gen_size_ty(
-							type_next(t), octx, arith_ty),
-						out_cast(
-							octx, gen_expr(t->bits.array.size, octx),
-							arith_ty, 0));
+							type_next(t), octx, arith_ty, new_stack_off, gen_exprs),
+						this_sz);
+
+				if(stack_off != -1){
+					out_val_retain(octx, sz);
+					out_store(octx,
+							v_new_bp3_below(octx, NULL, ptrsizety, stack_off),
+							sz);
+				}
+
+				return sz;
 
 			}else if(t->bits.array.size){
 				mul = const_fold_val_i(t->bits.array.size);
 			}else{
 				assert(0 && "empty array?");
 			}
+
 			break;
 
 		case type_func:
@@ -64,31 +120,26 @@ static const out_val *vla_gen_size_ty(
 		case type_cast:
 		case type_attr:
 		case type_where:
-			return vla_gen_size_ty(type_skip_all(t), octx, arith_ty);
+			return vla_gen_size_ty(type_skip_all(t), octx,
+					arith_ty, stack_off, gen_exprs);
 	}
 
 	return out_op(octx, op_multiply,
 			out_new_l(octx, arith_ty, mul),
-			vla_gen_size_ty(type_next(t), octx, arith_ty));
+			vla_gen_size_ty(type_next(t), octx, arith_ty, stack_off, gen_exprs));
 }
 
 const out_val *vla_gen_size(type *t, out_ctx *octx)
 {
-	return vla_gen_size_ty(t, octx, type_nav_btype(cc1_type_nav, type_long));
+	return vla_gen_size_ty(
+			t, octx,
+			type_nav_btype(cc1_type_nav, type_long),
+			-1, 1);
 }
 
-long vla_ptr_offset(long start)
-{
-	return start + platform_word_size();
-}
-
-void vla_alloc(decl *d, out_ctx *octx)
+void vla_alloc_decl(decl *d, out_ctx *octx)
 {
 	sym *s = d->sym;
-	struct
-	{
-		long sz, ptr;
-	} locns;
 	const out_val *v_sz;
 	const out_val *v_ptr;
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
@@ -96,41 +147,31 @@ void vla_alloc(decl *d, out_ctx *octx)
 
 	assert(s && "no sym for vla");
 
-	locns.sz = s->loc.stack_pos;
-	locns.ptr = vla_ptr_offset(locns.sz);
-
-	v_sz = vla_gen_size_ty(d->ref, octx, sizety);
+	v_sz = vla_gen_size_ty(d->ref, octx, sizety,
+			platform_word_size() + d->sym->loc.stack_pos,
+			1);
 
 	v_sz = out_cast(octx, v_sz, sizety, 0);
 
-	out_val_retain(octx, v_sz);
-	out_store(octx,
-			v_new_bp3_below(octx, NULL, ptrsizety, locns.sz),
-			v_sz);
-
 	v_ptr = out_alloca_push(octx, v_sz, type_align(d->ref, NULL));
 	out_store(octx,
-			v_new_bp3_below(octx, NULL, ptrsizety, locns.ptr),
+			v_new_bp3_below(octx, NULL, ptrsizety, d->sym->loc.stack_pos),
 			v_ptr);
-}
-
-static const out_val *read_vla_part(out_ctx *octx, type *ty, long off)
-{
-	return out_deref(octx, v_new_bp3_below(octx, NULL, ty, off));
 }
 
 const out_val *vla_address(decl *d, out_ctx *octx)
 {
 	type *ptr_to_vla_ty = type_ptr_to(type_ptr_to(d->ref));
 
-	return read_vla_part(octx, ptr_to_vla_ty,
-			vla_ptr_offset(d->sym->loc.stack_pos));
+	return out_deref(octx,
+			v_new_bp3_below(octx, NULL, ptr_to_vla_ty, d->sym->loc.stack_pos));
 }
 
 const out_val *vla_size(decl *d, out_ctx *octx)
 {
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
-	type *ptr_to_sz = type_ptr_to(sizety);
 
-	return read_vla_part(octx, ptr_to_sz, d->sym->loc.stack_pos);
+	return vla_gen_size_ty(d->ref, octx, sizety,
+			platform_word_size() + d->sym->loc.stack_pos,
+			/*gen_exprs:*/0);
 }

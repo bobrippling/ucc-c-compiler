@@ -1005,8 +1005,7 @@ static void dwarf_symtable_scope(
 
 						locn_ents[1].type = BLOCK_LEB128_S;
 						locn_ents[1].bits.v = -(long)(
-								d->sym->loc.stack_pos + var_offset
-								+ (vla ? vla_ptr_offset(0) : 0));
+								d->sym->loc.stack_pos + var_offset);
 
 						if(vla){
 							locn_ents[2].type = BLOCK_LEB128_S;
