@@ -72,6 +72,11 @@ out_ctx *out_ctx_new(void)
 	return ctx;
 }
 
+void **out_user_ctx(out_ctx *octx)
+{
+	return &octx->userctx;
+}
+
 size_t out_expr_stack(out_ctx *octx)
 {
 	out_val_list *l;
