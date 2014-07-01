@@ -77,7 +77,7 @@ const out_val *vla_gen_size(type *t, out_ctx *octx)
 	return vla_gen_size_ty(t, octx, type_nav_btype(cc1_type_nav, type_long));
 }
 
-static long vla_ptr_offset(long start)
+long vla_ptr_offset(long start)
 {
 	return start + platform_word_size();
 }

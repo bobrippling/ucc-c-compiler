@@ -22,6 +22,7 @@
 #include "../funcargs.h"
 #include "../type_is.h"
 #include "../retain.h"
+#include "../vla.h"
 
 #include "asm.h" /* cc_out[] */
 
@@ -95,7 +96,8 @@
 #define DW_OPS               \
 	X(DW_OP_plus_uconst, 0x23) \
 	X(DW_OP_addr, 0x3)         \
-	X(DW_OP_breg6, 0x76)
+	X(DW_OP_breg6, 0x76)       \
+	X(DW_OP_deref, 0x6)
 
 enum dwarf_tag
 {
@@ -988,26 +990,27 @@ static void dwarf_symtable_scope(
 			if(d->sym){
 				struct dwarf_block_ent *locn_ents;
 				struct dwarf_block *locn;
+				const int vla = type_is_variably_modified(d->ref);
 
 				locn = umalloc(sizeof *locn);
-				locn_ents = umalloc(2 * sizeof *locn_ents);
+				locn->cnt = 2 + vla;
 
-				locn->cnt = 2;
+				locn_ents = umalloc(locn->cnt * sizeof *locn_ents);
 				locn->ents = locn_ents;
 
 				switch(d->sym->type){
 					case sym_local:
-						if(type_is_variably_modified(d->ref)){
-							ICE("TODO: debug info for vla access");
-							locn_ents[0].type = BLOCK_HEADER;
+						locn_ents[0].type = BLOCK_HEADER;
+						locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
 
-						}else{
-							locn_ents[0].type = BLOCK_HEADER;
-							locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
+						locn_ents[1].type = BLOCK_LEB128_S;
+						locn_ents[1].bits.v = -(long)(
+								d->sym->loc.stack_pos + var_offset
+								+ (vla ? vla_ptr_offset(0) : 0));
 
-							locn_ents[1].type = BLOCK_LEB128_S;
-							locn_ents[1].bits.v = -(long)(
-									d->sym->loc.stack_pos + var_offset);
+						if(vla){
+							locn_ents[2].type = BLOCK_LEB128_S;
+							locn_ents[2].bits.v = DW_OP_deref;
 						}
 						break;
 
