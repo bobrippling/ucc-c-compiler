@@ -23,6 +23,11 @@ const out_val *out_call(out_ctx *octx,
 		const out_val *fn, const out_val **args,
 		type *fnty)
 {
+	/* must generate a prologue/epilogue if we aren't a leaf function,
+	 * since the stack must be aligned correctly for a call
+	 * (i.e. at least a pushq %rbp to bring it up to 16) */
+	octx->used_stack = 1;
+
 	return impl_call(octx, fn, args, fnty);
 }
 
