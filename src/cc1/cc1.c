@@ -14,13 +14,14 @@
 #include "tokenise.h"
 #include "cc1.h"
 #include "fold.h"
+#include "out/asm.h" /* NUM_SECTIONS */
+#include "out/dbg.h" /* dbg_out_filelist() */
 #include "gen_asm.h"
 #include "gen_str.h"
 #include "gen_style.h"
 #include "sym.h"
 #include "fold_sym.h"
 #include "ops/__builtin.h"
-#include "out/asm.h" /* NUM_SECTIONS */
 #include "opt.h"
 #include "pass1.h"
 #include "type_nav.h"
@@ -590,6 +591,7 @@ usage:
 		{
 			char buf[4096];
 			char *compdir;
+			struct out_dbg_filelist *filelist;
 
 			compdir = getcwd(NULL, 0);
 			if(!compdir){
@@ -602,7 +604,13 @@ usage:
 
 			gen_asm(globs,
 					cc1_first_fname ? cc1_first_fname : fname,
-					compdir);
+					compdir,
+					&filelist);
+
+			/* filelist needs to be output first */
+			if(filelist && cc1_gdebug)
+				dbg_out_filelist(filelist, cc1_out);
+
 
 			if(compdir != buf)
 				free(compdir);

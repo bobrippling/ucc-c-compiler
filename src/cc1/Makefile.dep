@@ -47,9 +47,9 @@ cc1.o: cc1.c ../util/util.h ../util/warn.h ../util/where.h \
  ops/expr_comma.h ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h \
  ops/expr_op.h ops/expr_sizeof.h ops/expr_val.h ops/expr_stmt.h \
  ops/expr_deref.h ops/expr_struct.h ops/expr_compound_lit.h \
- ops/expr_string.h funcargs.h gen_asm.h gen_str.h gen_style.h decl_init.h \
- fold_sym.h ops/__builtin.h ops/../expr.h out/asm.h opt.h pass1.h \
- type_nav.h sue.h cc1_where.h ../as_cfg.h
+ ops/expr_string.h funcargs.h out/asm.h out/dbg.h gen_asm.h gen_str.h \
+ gen_style.h decl_init.h fold_sym.h ops/__builtin.h ops/../expr.h opt.h \
+ pass1.h type_nav.h sue.h cc1_where.h ../as_cfg.h
 const.o: const.c ../util/util.h ../util/warn.h ../util/where.h \
  ../util/compiler.h const.h num.h strings.h ../util/dynmap.h \
  ../util/dyn.h op.h sym.h decl.h type.h btype.h ../util/where.h \
@@ -192,7 +192,7 @@ gen_asm.o: gen_asm.c ../util/util.h ../util/warn.h ../util/where.h \
  ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h type_is.h \
- gen_asm.h out/lbl.h out/asm.h gen_style.h decl_init.h out/dbg.h \
+ out/dbg.h gen_asm.h out/lbl.h out/asm.h gen_style.h decl_init.h \
  out/val.h out/ctx.h
 gen_c.o: gen_c.c
 gen_str.o: gen_str.c ../util/util.h ../util/warn.h ../util/where.h \
