@@ -77,6 +77,11 @@ const out_val *vla_gen_size(type *t, out_ctx *octx)
 	return vla_gen_size_ty(t, octx, type_nav_btype(cc1_type_nav, type_long));
 }
 
+static long vla_ptr_offset(long start)
+{
+	return start + platform_word_size();
+}
+
 void vla_alloc(decl *d, out_ctx *octx)
 {
 	sym *s = d->sym;
@@ -92,7 +97,7 @@ void vla_alloc(decl *d, out_ctx *octx)
 	assert(s && "no sym for vla");
 
 	locns.sz = s->loc.stack_pos;
-	locns.ptr = locns.sz + platform_word_size();
+	locns.ptr = vla_ptr_offset(locns.sz);
 
 	v_sz = vla_gen_size_ty(d->ref, octx, sizety);
 
@@ -119,7 +124,7 @@ const out_val *vla_address(decl *d, out_ctx *octx)
 	type *ptr_to_vla_ty = type_ptr_to(type_ptr_to(d->ref));
 
 	return read_vla_part(octx, ptr_to_vla_ty,
-			d->sym->loc.stack_pos + platform_word_size());
+			vla_ptr_offset(d->sym->loc.stack_pos));
 }
 
 const out_val *vla_size(decl *d, out_ctx *octx)
