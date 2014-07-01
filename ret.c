@@ -3,7 +3,7 @@ f()
 	return 5;
 }
 
-g(int i)
+g(int i) // TODO: debug info indicates i is in %rdi
 {
 	return 6;
 }
