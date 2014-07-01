@@ -434,6 +434,18 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				return;
 			}
 
+			{
+				struct_union_enum_st *ea, *eb;
+				if((ea = type_is_enum(tlhs))
+				&& (eb = type_is_enum(trhs))
+				&& ea != eb)
+				{
+					warn_at(&e->where,
+							"implicit conversion from 'enum %s' to 'enum %s'",
+							eb->spel, ea->spel);
+				}
+			}
+
 			size_lhs = type_size(tlhs, &e->where);
 			size_rhs = type_size(trhs, &expr_cast_child(e)->where);
 			if(size_lhs < size_rhs){

@@ -374,7 +374,15 @@ struct_union_enum_st *type_is_s_or_u_or_e(type *r)
 	if(!test)
 		return NULL;
 
+	/* see comment in type_is_enum() */
 	return test->bits.type->sue; /* NULL if not s/u/e */
+}
+
+struct_union_enum_st *type_is_enum(type *t)
+{
+	/* this depends heavily on type_is_s_or_u_or_e returning regardless of .primitive */
+	struct_union_enum_st *sue = type_is_s_or_u_or_e(t);
+	return sue && sue->primitive == type_enum ? sue : NULL;
 }
 
 struct_union_enum_st *type_is_s_or_u(type *r)
@@ -611,11 +619,12 @@ unsigned type_array_len(type *r)
 	return const_fold_val_i(r->bits.array.size);
 }
 
-int type_is_promotable(type *r, type **pto)
+int type_is_promotable(type *const t, type **pto)
 {
-	if((r = type_is_primitive(r, type_unknown))){
+	type *test;
+	if((test = type_is_primitive(t, type_unknown))){
 		static unsigned sz_int, sz_double;
-		const int fp = type_floating(r->bits.type->primitive);
+		const int fp = type_floating(test->bits.type->primitive);
 		unsigned rsz;
 
 		if(!sz_int){
@@ -623,7 +632,7 @@ int type_is_promotable(type *r, type **pto)
 			sz_double = type_primitive_size(type_double);
 		}
 
-		rsz = type_primitive_size(r->bits.type->primitive);
+		rsz = type_size(test, type_loc(t)); /* may be enum-int */
 
 		if(rsz < (fp ? sz_double : sz_int)){
 			*pto = type_nav_btype(cc1_type_nav, fp ? type_double : type_int);

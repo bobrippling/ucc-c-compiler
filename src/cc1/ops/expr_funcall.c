@@ -132,13 +132,13 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **psp)
 
 	if(e->expr->in_parens
 	|| !expr_kind(e->expr, identifier)
-	|| !((*psp) = e->expr->bits.ident.spel))
+	|| !((*psp) = e->expr->bits.ident.bits.ident.spel))
 	{
 		return;
 	}
 
 	/* check for implicit function */
-	if((e->expr->bits.ident.sym = symtab_search(stab, *psp)))
+	if((e->expr->bits.ident.bits.ident.sym = symtab_search(stab, *psp)))
 		return;
 
 	args = funcargs_new();
@@ -156,13 +156,13 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **psp)
 
 	df = decl_new();
 	df->ref = func_ty;
-	df->spel = e->expr->bits.ident.spel;
+	df->spel = e->expr->bits.ident.bits.ident.spel;
 
 	fold_decl(df, stab, NULL); /* update calling conv, for e.g. */
 
 	df->sym->type = sym_global;
 
-	e->expr->bits.ident.sym = df->sym;
+	e->expr->bits.ident.bits.ident.sym = df->sym;
 	e->expr->tree_type = func_ty;
 }
 
@@ -232,7 +232,7 @@ static void check_arg_voidness_and_nonnulls(
 static void check_arg_types(
 		funcargs *args_from_decl,
 		expr **exprargs, symtable *stab,
-		char *sp)
+		char *sp, where *const exprloc)
 {
 	if(exprargs){
 		int i;
@@ -241,9 +241,22 @@ static void check_arg_types(
 		for(i = 0; ; i++){
 			decl *decl_arg = args_from_decl->arglist[i];
 
-			/* exprargs[i] may be NULL - old style function */
-			if(!decl_arg || !exprargs[i])
+			if(!decl_arg)
 				break;
+
+			if(!type_is_complete(decl_arg->ref)){
+				char wbuf[WHERE_BUF_SIZ];
+				warn_at_print_error(&decl_arg->where,
+						"incomplete parameter type '%s'\n"
+						"%s: note: in call here",
+						type_to_str(decl_arg->ref),
+						where_str_r(wbuf, exprloc));
+				fold_had_error = 1;
+			}
+
+			/* exprargs[i] may be NULL - old style function */
+			if(!exprargs[i])
+				continue;
 
 			ARG_BUF(buf, i, sp);
 
@@ -307,7 +320,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	}
 
 	if(!FUNCARGS_EMPTY_NOVOID(args_from_decl))
-		check_arg_types(args_from_decl, e->funcargs, stab, sp);
+		check_arg_types(args_from_decl, e->funcargs, stab, sp, &e->where);
 
 	if(e->funcargs)
 		default_promote_args(e->funcargs, count_decl, stab);

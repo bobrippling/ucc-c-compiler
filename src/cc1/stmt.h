@@ -30,6 +30,7 @@ struct stmt
 	struct stmt_flow *flow; /* for, switch (do and while are simple enough for ->[lr]hs) */
 
 	/* specific data */
+#define stmt_is_default val
 	int val;
 	out_blk *blk_break, *blk_continue;
 

@@ -118,7 +118,7 @@ attribute *expr_attr_present(expr *e, enum attribute_type t)
 	}
 
 	if(expr_kind(e, identifier)){
-		sym *s = e->bits.ident.sym;
+		sym *s = e->bits.ident.bits.ident.sym;
 		if(s){
 			da = attribute_present(s->decl, t);
 			if(da)

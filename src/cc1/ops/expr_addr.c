@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "expr_addr.h"
@@ -48,7 +49,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		}
 
 		if(expr_kind(e->lhs, identifier)){
-			decl *d = e->lhs->bits.ident.sym->decl;
+			decl *d = e->lhs->bits.ident.bits.ident.sym->decl;
 
 			if((d->store & STORE_MASK_STORE) == store_register)
 				die_at(&e->lhs->where, "can't take the address of register");
@@ -80,7 +81,9 @@ const out_val *gen_expr_addr(expr *e, out_ctx *octx)
 					"&[not-identifier], got %s",
 					sub->f_str());
 
-			return out_new_sym(octx, sub->bits.ident.sym);
+			assert(sub->bits.ident.type == IDENT_NORM);
+
+			return out_new_sym(octx, sub->bits.ident.bits.ident.sym);
 		}else{
 			return lea_expr(sub, octx);
 		}

@@ -110,7 +110,6 @@ const char *type_to_str_r(char buf[TYPE_STATIC_BUFSIZ], type *r);
 
 const char *type_to_str(type *r);
 
-
 /* char[] and char *, etc */
 enum type_str_type
 {
@@ -127,5 +126,8 @@ int type_has_loc(type *);
 
 unsigned type_hash(const type *);
 unsigned sue_hash(const struct struct_union_enum_st *);
+
+/* returns the largest type to hold a type of size 'sz' */
+enum type_primitive type_primitive_not_less_than_size(unsigned sz);
 
 #endif

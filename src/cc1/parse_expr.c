@@ -121,13 +121,16 @@ static expr *parse_expr__Generic(symtable *scope, int static_ctx)
 static expr *parse_expr_identifier(void)
 {
 	expr *e;
+	char *sp;
 
 	if(curtok != token_identifier)
 		die_at(NULL, "identifier expected, got %s (%s:%d)",
 				token_to_str(curtok), __FILE__, __LINE__);
 
-	e = expr_new_identifier(token_current_spel());
-	where_cc1_adj_identifier(&e->where, e->bits.ident.spel);
+	sp = token_current_spel();
+
+	e = expr_new_identifier(sp);
+	where_cc1_adj_identifier(&e->where, sp);
 	EAT(token_identifier);
 	return e;
 }
@@ -304,10 +307,11 @@ static expr *parse_expr_postfix(symtable *scope, int static_ctx)
 
 		}else if(accept_where(token_open_paren, &w)){
 			expr *fcall = NULL;
+			const char *sp;
 
 			/* check for specialised builtin parsing */
-			if(expr_kind(e, identifier))
-				fcall = builtin_parse(e->bits.ident.spel, scope);
+			if(expr_kind(e, identifier) && (sp = expr_ident_spel(e)))
+				fcall = builtin_parse(sp, scope);
 
 			if(!fcall){
 				fcall = expr_new_funcall();

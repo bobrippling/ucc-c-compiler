@@ -39,6 +39,27 @@ void fold_insert_casts(type *tlhs, expr **prhs, symtable *stab)
 	fold_expr_cast_descend(*prhs, stab, 0);
 }
 
+static int check_enum_cmp(
+		type *lhs, type *rhs,
+		where *w, const char *desc)
+{
+	struct_union_enum_st *sl, *sr;
+
+	if(!(sl = type_is_enum(lhs)))
+		return 0;
+	if(!(sr = type_is_enum(rhs)))
+		return 0;
+	if(sl == sr)
+		return 0;
+
+	warn_at(w, "enum type mismatch in %s\n"
+			"%s: note: 'enum %s' vs 'enum %s'",
+			desc, where_str(w),
+			sl->spel, sr->spel);
+
+	return 1;
+}
+
 int fold_type_chk_warn(
 		type *lhs, type *rhs,
 		where *w, const char *desc)
@@ -52,6 +73,9 @@ int fold_type_chk_warn(
 			 *  - they match but we need the _Bool cast */
 			return 1;
 		case TYPE_EQUAL:
+			/* for enum types, we still want the cast, for warnings' sake */
+			if(check_enum_cmp(lhs, rhs, w, desc))
+				return 1;
 		case TYPE_QUAL_ADD: /* const int <- int */
 		case TYPE_QUAL_SUB: /* int <- const int */
 		case TYPE_QUAL_POINTED_ADD: /* const char * <- char * */
@@ -134,7 +158,7 @@ void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w)
 sym *fold_inc_writes_if_sym(expr *e, symtable *stab)
 {
 	if(expr_kind(e, identifier)){
-		sym *sym = symtab_search(stab, e->bits.ident.spel);
+		sym *sym = symtab_search(stab, e->bits.ident.bits.ident.spel);
 
 		if(sym){
 			sym->nwrites++;
@@ -463,6 +487,23 @@ static void fold_func_attr(decl *d)
 	}
 }
 
+static void fold_check_enum_bitfield(
+		struct_union_enum_st *en,
+		unsigned bitwidth, decl *d)
+{
+	sue_member **i;
+
+	for(i = en->members; i && *i; i++){
+		enum_member *mem = (*i)->enum_member;
+
+		integral_t val = const_fold_val_i(mem->val);
+
+		if(integral_truncate_bits(val, bitwidth, NULL) != val)
+			warn_at(&mem->where, "enumerator %s (%lld) too large for its type (%s)",
+					mem->spel, val, d->spel);
+	}
+}
+
 static void fold_decl_add_sym(decl *d, symtable *stab)
 {
 	/* must be before fold*, since sym lookups are done */
@@ -692,6 +733,12 @@ static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
 	if(k.bits.num.val.i == 1 && type_is_signed(d->ref))
 		warn_at(&d->where, "1-bit signed field \"%s\" takes values -1 and 0",
 				decl_to_str(d));
+
+	{
+		struct_union_enum_st *e;
+		if((e = type_is_enum(d->ref)))
+			fold_check_enum_bitfield(e, k.bits.num.val.i, d);
+	}
 }
 
 void fold_decl(decl *d, symtable *stab, stmt **pinit_code)

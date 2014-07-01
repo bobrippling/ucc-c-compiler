@@ -140,6 +140,11 @@ chosen:
 			is_signed ? "" : "un",
 			type_primitive_to_str(p)); */
 
+	if(is_signed)
+		num->suffix &= ~VAL_UNSIGNED;
+	else
+		num->suffix |= VAL_UNSIGNED;
+
 	if(!is_signed)
 		p = TYPE_PRIMITIVE_TO_UNSIGNED(p);
 

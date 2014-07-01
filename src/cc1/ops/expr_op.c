@@ -222,8 +222,26 @@ static void const_op_num_int(
 				warn_at(&e->where, "%s", err);
 				k->type = CONST_NO;
 			}else{
+				const btype *bt;
+
 				k->type = CONST_NUM;
 				k->bits.num.val.i = int_r;
+
+				if(!is_signed)
+					k->bits.num.suffix = VAL_UNSIGNED;
+
+				/* if no btype, we may be something like:
+				 * (int *)0 + 3 */
+				bt = type_get_type(e->tree_type);
+				switch(bt ? bt->primitive : type_unknown){
+					case type_long:
+						k->bits.num.suffix |= VAL_LONG;
+						break;
+					case type_llong:
+						k->bits.num.suffix |= VAL_LLONG;
+					default:
+						break;
+				}
 			}
 			break;
 		}
@@ -575,13 +593,14 @@ ptr_relation:
 			const int l_sz = type_size(tlhs, &lhs->where),
 			          r_sz = type_size(trhs, &rhs->where);
 
+			/* want to warn regardless of checks - for enums */
+			fold_type_chk_warn(
+					tlhs, trhs,
+					w, op_to_str(op));
+
 			if(l_unsigned == r_unsigned){
 				if(l_sz != r_sz){
 					const int l_larger = l_sz > r_sz;
-
-					fold_type_chk_warn(
-							tlhs, trhs,
-							w, op_to_str(op));
 
 					*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
 

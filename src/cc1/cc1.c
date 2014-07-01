@@ -11,6 +11,8 @@
 
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "../util/math.h"
+
 #include "tokenise.h"
 #include "cc1.h"
 #include "fold.h"
@@ -376,7 +378,7 @@ int main(int argc, char **argv)
 	fname = NULL;
 
 	/* defaults */
-	cc1_mstack_align = log2f(platform_word_size());
+	cc1_mstack_align = log2i(platform_word_size());
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-X")){
@@ -539,7 +541,7 @@ usage:
 		const unsigned new = powf(2, cc1_mstack_align);
 		if(new < platform_word_size())
 			ccdie(0, "stack alignment must be >= platform word size (2^%d)",
-					(int)log2f(platform_word_size()));
+					log2i(platform_word_size()));
 
 		cc1_mstack_align = new;
 	}

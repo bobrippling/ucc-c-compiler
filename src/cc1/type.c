@@ -783,3 +783,18 @@ unsigned type_hash(const type *t)
 
 	return hash;
 }
+
+enum type_primitive type_primitive_not_less_than_size(unsigned sz)
+{
+	static const enum type_primitive prims[] = {
+		type_long, type_int, type_short, type_nchar
+	};
+
+	unsigned i;
+
+	for(i = 0; i < sizeof(prims)/sizeof(*prims); i++)
+		if(sz >= type_primitive_size(prims[i]))
+			return prims[i];
+
+	return type_unknown;
+}

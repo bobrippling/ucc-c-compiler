@@ -17,6 +17,7 @@
 struct type_nav
 {
 	type **btypes; /* indexed by type_primitive */
+	dynmap *enumints; /* int types covering an enum, sue => type */
 	dynmap *suetypes; /* sue => type */
 	type *tva_list, *tauto;
 };
@@ -369,16 +370,38 @@ type *type_dereference_decay(type *const ty_ptr)
 
 type *type_nav_MAX_FOR(struct type_nav *root, unsigned sz)
 {
-	enum type_primitive prims[] = {
-		type_llong, type_long, type_int, type_short, type_nchar
-	};
-	unsigned i;
-
-	for(i = 0; i < sizeof(prims)/sizeof(*prims); i++)
-		if(sz >= type_primitive_size(prims[i]))
-			return type_nav_btype(root, prims[i]);
-
+	enum type_primitive p = type_primitive_not_less_than_size(sz);
+	if(p != type_unknown)
+		return type_nav_btype(root, p);
 	assert(0 && "no type max");
+}
+
+type *type_nav_int_enum(struct type_nav *root, struct_union_enum_st *enu)
+{
+	type *ent, *prev;
+	btype *bt;
+
+	assert(enu->primitive == type_enum && "enum?");
+
+	if(!root->enumints){
+		root->enumints = dynmap_new(
+				struct_union_enum_st *, /*refeq:*/NULL, sue_hash);
+	}
+
+	ent = dynmap_get(struct_union_enum_st *, type *, root->enumints, enu);
+
+	if(ent)
+		return ent;
+
+	bt = umalloc(sizeof *bt);
+	bt->primitive = type_int;
+	bt->sue = enu;
+	ent = type_new_btype(bt);
+
+	prev = dynmap_set(struct_union_enum_st *, type *, root->enumints, enu, ent);
+	assert(!prev);
+
+	return ent;
 }
 
 type *type_unqualify(type *t)

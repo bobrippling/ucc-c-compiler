@@ -196,10 +196,10 @@ void fold_stmt_switch(stmt *s)
 
 	/* check for an enum */
 	{
-		struct_union_enum_st *sue = type_is_s_or_u_or_e(
+		struct_union_enum_st *sue = type_is_enum(
 					s->expr->tree_type);
 
-		if(sue && sue->primitive == type_enum)
+		if(sue)
 			fold_switch_enum(s, sue);
 	}
 }

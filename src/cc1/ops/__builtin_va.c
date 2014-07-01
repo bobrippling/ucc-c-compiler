@@ -85,7 +85,7 @@ static void fold_va_start(expr *e, symtable *stab)
 		expr *last_exp = expr_skip_casts(e->funcargs[1]);
 
 		if(expr_kind(last_exp, identifier))
-			second = last_exp->bits.ident.sym;
+			second = last_exp->bits.ident.bits.ident.sym;
 
 		if(second != arg)
 			warn_at(&last_exp->where,

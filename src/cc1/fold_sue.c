@@ -6,6 +6,7 @@
 
 #include "../util/util.h"
 #include "../util/where.h"
+#include "../util/limits.h"
 
 #include "cc1.h"
 #include "fold.h"
@@ -17,6 +18,7 @@
 
 #include "fold_sue.h"
 #include "type_is.h"
+#include "type_nav.h"
 
 static void struct_pack(
 		decl *d, unsigned *poffset, unsigned sz, unsigned align)
@@ -67,6 +69,7 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 	for(i = en->members; i && *i; i++){
 		enum_member *m = (*i)->enum_member;
 		expr *e = m->val;
+		integral_t v;
 
 		/* -1 because we can't do dynarray_add(..., 0) */
 		if(e == (expr *)-1){
@@ -75,26 +78,56 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 					expr_new_val(defval),
 					&en->where);
 
-			if(has_bitmask)
-				defval <<= 1;
-			else
-				defval++;
+			v = defval;
 
 		}else{
-			integral_t v;
+			numeric n;
+			int oob;
+			int negative;
 
-			FOLD_EXPR(e, stab);
+			m->val = FOLD_EXPR(e, stab);
 
 			fold_check_expr(e,
 					FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
 					"enum member");
 
-			v = const_fold_val_i(e);
-			m->val = e;
+			const_fold_integral(e, &n);
 
-			defval = has_bitmask ? v << 1 : v + 1;
+			v = n.val.i;
+			if(n.suffix & VAL_UNSIGNED)
+				negative = 0;
+			else
+				negative = (sintegral_t)v < 0;
+
+			/* enum constants must have type representable in 'int' */
+			if(negative)
+				oob = (sintegral_t)v < UCC_INT_MIN || (sintegral_t)v > UCC_INT_MAX;
+			else
+				oob = v > UCC_INT_MAX; /* int max - stick to int, not uint */
+
+			if(oob){
+				warn_at_print_error(&m->where,
+						negative
+						? "enumerator value %" NUMERIC_FMT_D " out of 'int' range"
+						: "enumerator value %" NUMERIC_FMT_U " out of 'int' range",
+						integral_truncate(v, type_primitive_size(type_int), NULL));
+				fold_had_error = 1;
+			}
 		}
+
+		/* overflow here is a violation */
+		if(v == UCC_INT_MAX && i[1] && i[1]->enum_member->val == (expr *)-1){
+			m = i[1]->enum_member;
+			warn_at_print_error(&m->where, "overflow for enum member %s::%s",
+					en->spel, m->spel);
+			fold_had_error = 1;
+		}
+
+		defval = has_bitmask ? v << 1 : v + 1;
 	}
+
+	en->size = type_primitive_size(type_int);
+	en->align = type_align(type_nav_btype(cc1_type_nav, type_int), NULL);
 }
 
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)
@@ -127,7 +160,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
 			unsigned align, sz;
-			struct_union_enum_st *sub_sue = type_is_s_or_u_or_e(d->ref);
+			struct_union_enum_st *sub_sue = type_is_s_or_u(d->ref);
 
 			fold_decl(d, stab, NULL);
 
@@ -138,7 +171,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				 */
 				if(d->bits.var.field_width){
 					/* fine */
-				}else if(sub_sue && !type_is_ptr(d->ref)){
+				}else if(sub_sue){
 					/* anon */
 					char *prob = NULL;
 					int ignore = 0;
@@ -178,16 +211,12 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				submemb_const = 1;
 
 			if(sub_sue){
-				if(sub_sue != sue){
+				if(sub_sue && sub_sue != sue){
 					fold_sue(sub_sue, stab);
 
 					if(sub_sue->contains_const)
 						submemb_const = 1;
 				}
-
-				if(type_is(d->ref, type_ptr)
-				|| sub_sue->primitive == type_enum)
-					goto normal;
 
 				/* should've been caught by incompleteness checks */
 				UCC_ASSERT(sub_sue != sue, "nested %s", sue_str(sue));
@@ -261,7 +290,6 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				}
 
 			}else{
-normal:
 				align = decl_align(d);
 				if(type_is_incomplete_array(d->ref)){
 					if(i[1])
