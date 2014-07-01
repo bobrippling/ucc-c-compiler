@@ -1,4 +1,6 @@
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "dynarray.h"
 #include "path.h"
@@ -65,4 +67,21 @@ char *canonicalise_path(char *path)
 	dynarray_free(char **, &ents, NULL);
 
 	return path;
+}
+
+const char *ucc_tmpdir(void)
+{
+	static char *tmpdir;
+	if(tmpdir) return tmpdir;
+
+	tmpdir = getenv("TMPDIR");
+	if(tmpdir) return tmpdir;
+
+#ifdef P_tmpdir
+	tmpdir = ustrdup(P_tmpdir);
+	if(tmpdir) return tmpdir;
+#endif
+
+	tmpdir = "/tmp";
+	return tmpdir;
 }

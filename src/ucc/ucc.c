@@ -19,6 +19,7 @@
 #include "../util/dynarray.h"
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "../util/path.h"
 #include "str.h"
 
 enum mode
@@ -78,16 +79,9 @@ static void unlink_files(void)
 
 static void tmpfilenam(struct fd_name_pair *pair)
 {
+	const char *tmpdir = ucc_tmpdir();
 	char *tmppath;
-	char *tmpdir = getenv("TMPDIR");
 	int fd;
-
-#ifdef P_tmpdir
-	if(!tmpdir)
-		tmpdir = ustrdup(P_tmpdir);
-#endif
-	if(!tmpdir)
-		tmpdir = ustrdup("/tmp");
 
 	tmppath = ustrprintf("%s/ucc.XXXXXX", tmpdir);
 	fd = mkstemp(tmppath);
