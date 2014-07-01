@@ -440,9 +440,9 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				&& (eb = type_is_enum(trhs))
 				&& ea != eb)
 				{
-					char buf[TYPE_STATIC_BUFSIZ];
-					warn_at(&e->where, "implicit conversion from '%s' to '%s'",
-							type_to_str_r(buf, trhs), type_to_str(tlhs));
+					warn_at(&e->where,
+							"implicit conversion from 'enum %s' to 'enum %s'",
+							eb->spel, ea->spel);
 				}
 			}
 
