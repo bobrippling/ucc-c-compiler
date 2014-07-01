@@ -291,11 +291,6 @@ static const char *vstack_str(const out_val *vs, int deref)
 	return vstack_str_r(buf, vs, deref);
 }
 
-int impl_reg_is_scratch(const struct vreg *r)
-{
-	return /*X86_64_REG_RAX <= r->idx && */ r->idx <= X86_64_REG_R15;
-}
-
 int impl_reg_to_idx(const struct vreg *r)
 {
 	return r->idx + (r->is_float ? N_SCRATCH_REGS_I : 0);
