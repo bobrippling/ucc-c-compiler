@@ -6,7 +6,7 @@ CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
 ARCH_OBJ = out/${UCC_CPU}.o
 
 CFLAGS  += -Wno-missing-field-initializers -Wno-empty-body ${CPPFLAGS}
-LDFLAGS += -lm
+LDFLAGS += -lm -static
 
 OBJ = \
 	../util/alloc.o ../util/util.o ../util/platform.o ../util/path.o \

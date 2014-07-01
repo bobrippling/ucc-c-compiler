@@ -39,7 +39,7 @@ deps: Makefile.dep
 
 OBJ_TEST = test.o path.o dynarray.o alloc.o dynmap.o
 test: ${OBJ_TEST}
-	${CC} -o $@ ${OBJ_TEST}
+	${CC} -o $@ ${OBJ_TEST} -static
 
 check: test
 	./test
