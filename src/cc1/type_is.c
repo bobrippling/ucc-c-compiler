@@ -619,11 +619,12 @@ unsigned type_array_len(type *r)
 	return const_fold_val_i(r->bits.array.size);
 }
 
-int type_is_promotable(type *r, type **pto)
+int type_is_promotable(type *const t, type **pto)
 {
-	if((r = type_is_primitive(r, type_unknown))){
+	type *test;
+	if((test = type_is_primitive(t, type_unknown))){
 		static unsigned sz_int, sz_double;
-		const int fp = type_floating(r->bits.type->primitive);
+		const int fp = type_floating(test->bits.type->primitive);
 		unsigned rsz;
 
 		if(!sz_int){
@@ -631,7 +632,7 @@ int type_is_promotable(type *r, type **pto)
 			sz_double = type_primitive_size(type_double);
 		}
 
-		rsz = type_size(r, type_loc(r)); /* may be enum-int */
+		rsz = type_size(test, type_loc(t)); /* may be enum-int */
 
 		if(rsz < (fp ? sz_double : sz_int)){
 			*pto = type_nav_btype(cc1_type_nav, fp ? type_double : type_int);
