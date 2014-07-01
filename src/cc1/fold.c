@@ -39,21 +39,25 @@ void fold_insert_casts(type *tlhs, expr **prhs, symtable *stab)
 	fold_expr_cast_descend(*prhs, stab, 0);
 }
 
-static void check_enum_cmp(
+static int check_enum_cmp(
 		type *lhs, type *rhs,
 		where *w, const char *desc)
 {
 	struct_union_enum_st *sl, *sr;
 
 	if(!(sl = type_is_enum(lhs)))
-		return;
+		return 0;
 	if(!(sr = type_is_enum(rhs)))
-		return;
+		return 0;
+	if(sl == sr)
+		return 0;
 
 	warn_at(w, "enum type mismatch in %s\n"
 			"%s: note: 'enum %s' vs 'enum %s'",
 			desc, where_str(w),
 			sl->spel, sr->spel);
+
+	return 1;
 }
 
 int fold_type_chk_warn(
@@ -70,7 +74,8 @@ int fold_type_chk_warn(
 			return 1;
 		case TYPE_EQUAL:
 			/* for enum types, we still want the cast, for warnings' sake */
-			check_enum_cmp(lhs, rhs, w, desc);
+			if(check_enum_cmp(lhs, rhs, w, desc))
+				return 1;
 		case TYPE_QUAL_ADD: /* const int <- int */
 		case TYPE_QUAL_SUB: /* int <- const int */
 		case TYPE_QUAL_POINTED_ADD: /* const char * <- char * */
