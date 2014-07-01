@@ -20,7 +20,6 @@
 #include "blk.h"
 
 #include "../cc1.h" /* cc_out */
-#include "../str.h" /* str_add_escape */
 
 void out_asmv(
 		out_ctx *octx,
@@ -79,20 +78,15 @@ void out_asm2(
 
 /* -- dbg -- */
 
-int dbg_add_file(struct out_dbg_filelist **files, const char *nam, int *new)
+int dbg_add_file(struct out_dbg_filelist **files, const char *nam)
 {
 	struct out_dbg_filelist **p;
 	int i = 1; /* indexes start at 1 */
-
-	if(new)
-		*new = 0;
 
 	for(p = files; *p; p = &(*p)->next, i++)
 		if(!strcmp(nam, (*p)->fname))
 			return i;
 
-	if(new)
-		*new = 1;
 	*p = umalloc(sizeof **p);
 	(*p)->fname = nam;
 	return i;
@@ -103,27 +97,19 @@ void out_dbg_flush(out_ctx *octx, out_blk *blk)
 	/* .file <fileidx> "<name>"
 	 * .loc <fileidx> <line> <col>
 	 */
-	int idx, new;
+	int idx;
 
 	if(!octx->dbg.where.fname || !cc1_gdebug)
 		return;
 
-	idx = dbg_add_file(&octx->dbg.file_head, octx->dbg.where.fname, &new);
+	/* .file is output later */
+	idx = dbg_add_file(&octx->dbg.file_head, octx->dbg.where.fname);
 
 	if(octx->dbg.last_file == idx && octx->dbg.last_line == octx->dbg.where.line)
 		return;
 	/* XXX: prevents recursion as well as collapsing multiples */
 	octx->dbg.last_file = idx;
 	octx->dbg.last_line = octx->dbg.where.line;
-
-	/* TODO: escape w->fname */
-	if(new){
-		char *esc = str_add_escape(
-				octx->dbg.where.fname, strlen(octx->dbg.where.fname));
-
-		blk_add_insn(blk, ustrprintf(".file %d \"%s\"\n", idx, esc));
-		free(esc);
-	}
 
 	blk_add_insn(
 			blk,

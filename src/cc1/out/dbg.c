@@ -901,7 +901,7 @@ static void dwarf_attr_decl(
 
 	dwarf_attr(in, DW_AT_decl_file,
 			DW_FORM_ULEB,
-			((attrv = dbg_add_file(cu->pfilelist, d->where.fname, NULL)), &attrv));
+			((attrv = dbg_add_file(cu->pfilelist, d->where.fname)), &attrv));
 
 	dwarf_attr(in, DW_AT_decl_line,
 			DW_FORM_ULEB, ((attrv = d->where.line), &attrv));
@@ -1372,6 +1372,21 @@ static unsigned long dwarf_offset_die(
 
 	return off;
 }
+
+void dbg_out_filelist(
+		struct out_dbg_filelist *head, FILE *f)
+{
+	struct out_dbg_filelist *i;
+	unsigned idx;
+
+	for(i = head, idx = 1; i; i = i->next, idx++){
+		char *esc = str_add_escape(i->fname, strlen(i->fname));
+
+		fprintf(f, ".file %u \"%s\"\n", idx, esc);
+		free(esc);
+	}
+}
+
 
 void out_dbginfo(symtable_global *globs,
 		struct out_dbg_filelist **pfilelist,

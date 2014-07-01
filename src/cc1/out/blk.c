@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdarg.h>
+#include <string.h>
 #include <assert.h>
 
 #include "../../util/alloc.h"
@@ -8,11 +9,13 @@
 
 #include "../type.h"
 #include "../num.h"
+#include "../str.h" /* str_add_escape */
 
 #include "val.h"
 #include "ctx.h"
 #include "out.h" /* out_blk_new() */
 #include "lbl.h"
+#include "dbg.h"
 
 #include "blk.h"
 #include "impl_jmp.h"

@@ -1427,10 +1427,10 @@ out/bitfield.o: out/bitfield.c out/../type.h out/../num.h out/../btype.h \
 out/blk.o: out/blk.c out/../../util/alloc.h out/../../util/compiler.h \
  out/../../util/dynarray.h out/../../util/dyn.h out/../type.h \
  out/../num.h out/../btype.h out/../../util/where.h out/../num.h \
- out/val.h out/forwards.h out/ctx.h out/out.h out/../sym.h out/../decl.h \
- out/../type.h out/../attribute.h out/../retain.h out/../../util/dynmap.h \
- out/../op.h out/lbl.h out/blk.h out/impl_jmp.h out/asm.h out/../cc1.h \
- out/../../util/std.h
+ out/../str.h out/val.h out/forwards.h out/ctx.h out/out.h out/../sym.h \
+ out/../decl.h out/../type.h out/../attribute.h out/../retain.h \
+ out/../../util/dynmap.h out/../op.h out/lbl.h out/dbg.h out/blk.h \
+ out/impl_jmp.h out/asm.h out/../cc1.h out/../../util/std.h
 out/ctrl.o: out/ctrl.c out/../../util/dynarray.h out/../../util/dyn.h \
  out/forwards.h out/blk.h out/out.h out/../type.h out/../num.h \
  out/../btype.h out/../../util/where.h out/../../util/compiler.h \
@@ -1597,7 +1597,7 @@ out/write.o: out/write.c out/../../util/dynarray.h out/../../util/dyn.h \
  out/../type.h out/../num.h out/../btype.h out/../../util/where.h \
  out/../num.h out/asm.h out/write.h out/../../util/compiler.h \
  out/forwards.h out/dbg.h out/lbl.h out/val.h out/ctx.h out/blk.h \
- out/../cc1.h out/../../util/std.h out/../str.h
+ out/../cc1.h out/../../util/std.h
 out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/warn.h \
  out/../../util/where.h out/../../util/compiler.h out/../../util/alloc.h \
  out/../../util/dynarray.h out/../../util/dyn.h out/../../util/platform.h \

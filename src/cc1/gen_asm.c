@@ -257,6 +257,9 @@ void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 		gen_asm_global_w_store(d, 0, octx);
 	}
 
+	if(cc1_gdebug)
+		dbg_out_filelist(octx->dbg.file_head, cc_out[SECTION_TEXT]);
+
 	for(; iasm && *iasm; ++iasm)
 		gen_gasm((*iasm)->asm_str);
 
