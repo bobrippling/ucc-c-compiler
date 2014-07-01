@@ -9,7 +9,7 @@ CFLAGS  += -Wno-missing-field-initializers -Wno-empty-body ${CPPFLAGS}
 LDFLAGS += -lm
 
 OBJ = \
-	../util/alloc.o ../util/util.o ../util/platform.o \
+	../util/alloc.o ../util/util.o ../util/platform.o ../util/path.o \
 	../util/dynarray.o ../util/dynmap.o ../util/where.o \
 	../util/str.o ../util/std.o ../util/escape.o ../util/warn.o \
 	str.o num.o label.o strings.o \

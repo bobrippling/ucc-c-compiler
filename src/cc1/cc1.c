@@ -11,6 +11,7 @@
 
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "../util/path.h"
 #include "tokenise.h"
 #include "cc1.h"
 #include "fold.h"
@@ -276,12 +277,13 @@ static void io_cleanup(void)
 static void io_setup(void)
 {
 	int i;
+	const char *tmpdir = ucc_tmpdir();
 
 	if(!cc1_out)
 		cc1_out = stdout;
 
 	for(i = 0; i < NUM_SECTIONS; i++){
-		snprintf(fnames[i], sizeof fnames[i], "/tmp/cc1_%d%d", getpid(), i);
+		snprintf(fnames[i], sizeof fnames[i], "%s.cc1_%d%d", tmpdir, getpid(), i);
 
 		cc_out[i] = fopen(fnames[i], "w+"); /* need to seek */
 		if(!cc_out[i])
