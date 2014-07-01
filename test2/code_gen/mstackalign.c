@@ -4,4 +4,5 @@
 // - could be called from 4-byte stack aligned code
 f()
 {
+	g(); // needed to force prologue/epilogue
 }
