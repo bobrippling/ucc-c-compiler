@@ -71,7 +71,7 @@ static const out_val *vla_gen_size_ty(
 				const out_val *this_sz;
 				long new_stack_off = stack_off == -1
 					? -1
-					: stack_off - platform_word_size();
+					: stack_off + platform_word_size();
 
 				if(gen_exprs){
 					this_sz = out_cast(
