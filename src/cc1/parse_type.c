@@ -110,9 +110,7 @@ static type *parse_type_sue(
 					| DECL_MULTI_NAMELESS
 					| DECL_MULTI_ALLOW_ALIGNAS,
 					/*newdecl_context:*/0,
-					scope,
-					NULL, &dmembers,
-					/*pinit_code:*/NULL))
+					scope, NULL, &dmembers))
 			{
 			}
 
@@ -622,7 +620,7 @@ static type *parse_btype(
 				}
 
 				if(tdef_decl) /* typedef only */
-					fold_decl(tdef_decl, scope, NULL);
+					fold_decl(tdef_decl, scope);
 				fold_expr_no_decay(tdef_typeof, scope);
 
 				r = type_tdef_of(tdef_typeof, tdef_decl);
@@ -658,7 +656,7 @@ static decl *parse_arg_decl(symtable *scope)
 {
 	/* argument decls can default to int */
 	const enum decl_mode flags = DECL_CAN_DEFAULT | DECL_ALLOW_STORE;
-	decl *argdecl = parse_decl(flags, 0, scope, NULL, NULL);
+	decl *argdecl = parse_decl(flags, 0, scope, NULL);
 
 	if(!argdecl)
 		die_at(NULL, "type expected (got %s)", token_to_str(curtok));
@@ -708,7 +706,7 @@ funcargs *parse_func_arglist(symtable *scope)
 
 			/* add to scope */
 			symtab_add_to_scope(scope, argdecl);
-			fold_decl(argdecl, scope, NULL);
+			fold_decl(argdecl, scope);
 
 			if(curtok == token_close_paren)
 				break;
@@ -1239,8 +1237,7 @@ static type *default_type(void)
 
 decl *parse_decl(
 		enum decl_mode mode, int newdecl,
-		symtable *scope, symtable *add_to_scope,
-		stmt **pinit_code)
+		symtable *scope, symtable *add_to_scope)
 {
 	enum decl_storage store = store_default;
 	type *r = parse_btype(
@@ -1264,7 +1261,7 @@ decl *parse_decl(
 			store, NULL /* align */,
 			scope, add_to_scope);
 
-	fold_decl(d, scope, pinit_code);
+	fold_decl(d, scope);
 
 	return d;
 }
@@ -1526,8 +1523,7 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		while(parse_decl_group(
 				0, /*newdecl_context:*/0,
 				in_scope,
-				NULL, &old_args,
-				/*pinit_code:*/NULL))
+				NULL, &old_args))
 		{
 		}
 
@@ -1554,7 +1550,7 @@ static void parse_post_func(decl *d, symtable *in_scope)
 
 		arg_symtab->in_func = d;
 
-		fold_decl(d, arg_symtab->parent, NULL);
+		fold_decl(d, arg_symtab->parent);
 
 		check_star_modifier(arg_symtab);
 
@@ -1636,8 +1632,7 @@ int parse_decl_group(
 		const enum decl_multi_mode mode,
 		int newdecl,
 		symtable *in_scope,
-		symtable *add_to_scope, decl ***pdecls,
-		stmt **pinit_code)
+		symtable *add_to_scope, decl ***pdecls)
 {
 	const enum decl_mode parse_flag =
 		(mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0);
@@ -1723,7 +1718,7 @@ int parse_decl_group(
 		warn_for_unaccessible_sue(d, mode);
 
 		/* must fold _after_ we get the bitfield, etc */
-		fold_decl(d, in_scope, pinit_code);
+		fold_decl(d, in_scope);
 
 		last = d;
 		if(done)

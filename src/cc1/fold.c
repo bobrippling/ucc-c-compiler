@@ -345,7 +345,7 @@ void fold_type_w_attr(
 			fold_expr_no_decay(p_expr, stab);
 
 			if(r->bits.tdef.decl)
-				fold_decl(r->bits.tdef.decl, stab, NULL);
+				fold_decl(r->bits.tdef.decl, stab);
 
 			thisparent = parent;
 			break;
@@ -533,9 +533,8 @@ static void fold_decl_func(decl *d, symtable *stab)
 	fold_func_attr(d);
 }
 
-static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
+static void fold_decl_var(decl *d, symtable *stab)
 {
-#define inits (*pinit_code)
 	attribute *attrib = NULL;
 	int is_static_duration = !stab->parent
 		|| (d->store & STORE_MASK_STORE) == store_static;
@@ -641,7 +640,7 @@ static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
 			if(is_static_duration){
 				fold_decl_global_init(d, stab);
 
-			}else if(pinit_code){
+			}else if(!d->bits.var.init.expr){
 				decl_init_brace_up_fold(d, stab, /*struct_copy:*/1);
 
 				decl_init_create_assignments_base(
@@ -658,7 +657,6 @@ static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
 			}
 		}
 	}
-#undef inits
 }
 
 static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
@@ -704,7 +702,7 @@ static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
 				decl_to_str(d));
 }
 
-void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
+void fold_decl(decl *d, symtable *stab)
 {
 	/* this is called from wherever we can define a
 	 * struct/union/enum,
@@ -751,11 +749,9 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		if(first_fold && d->bits.var.field_width)
 			fold_decl_var_fieldwidth(d, stab);
 
-		if(pinit_code
-		|| /* globals never have pinit_code: */ !stab->parent)
-		{
+		if(d->fold_state == DECL_FOLD_EXCEPT_INIT){
 			d->fold_state = DECL_FOLD_INIT;
-			fold_decl_var(d, stab, pinit_code);
+			fold_decl_var(d, stab);
 		}
 	}
 
@@ -954,7 +950,7 @@ void fold_decl_global(decl *d, symtable *stab)
 					type_is(d->ref, type_func) ? "function" : "variable");
 	}
 
-	fold_decl(d, stab, NULL);
+	fold_decl(d, stab);
 
 	if(type_is(d->ref, type_func))
 		fold_global_func(d);
@@ -1047,7 +1043,7 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 			/* fold before for array checks, etc */
 			if(is_var && d->bits.var.init.dinit)
 				die_at(&d->where, "parameter '%s' is initialised", d->spel);
-			fold_decl(d, stab, NULL);
+			fold_decl(d, stab);
 
 			if(type_is_void(d->ref)){
 				/* allow if it's the first, only and unnamed */

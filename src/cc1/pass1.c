@@ -61,8 +61,7 @@ int parse_and_fold(symtable_global *globals)
 				| DECL_MULTI_ALLOW_ALIGNAS,
 				/*newdecl:*/1,
 				&globals->stab,
-				&globals->stab, &new,
-				/* init blk: */NULL);
+				&globals->stab, &new);
 
 		/* global struct layout-ing */
 		symtab_fold_sues(&globals->stab);

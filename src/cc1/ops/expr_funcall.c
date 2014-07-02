@@ -165,7 +165,7 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **psp)
 	df->ref = func_ty;
 	df->spel = e->expr->bits.ident.spel;
 
-	fold_decl(df, stab, NULL); /* update calling conv, for e.g. */
+	fold_decl(df, stab); /* update calling conv, for e.g. */
 
 	df->sym->type = sym_global;
 

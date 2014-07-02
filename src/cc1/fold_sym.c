@@ -281,7 +281,7 @@ void symtab_fold_decls(symtable *tab)
 	for(diter = tab->decls; diter && *diter; diter++){
 		decl *d = *diter;
 
-		fold_decl(d, tab, NULL);
+		fold_decl(d, tab);
 
 		if(d->spel)
 			NEW_DECL(d);

@@ -73,7 +73,7 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 		int chk_shadow = 0, is_func = 0;
 		attribute *attr;
 
-		fold_decl(d, stab, NULL);
+		fold_decl(d, stab);
 
 		if((attr = attribute_present(d, attr_cleanup)))
 			cleanup_check(d, attr);
