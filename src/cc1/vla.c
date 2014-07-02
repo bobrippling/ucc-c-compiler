@@ -91,10 +91,21 @@ static const out_val *vla_gen_size_ty(
 						this_sz);
 
 				if(stack_off != -1){
+					void **pvlamap;
+					dynmap *vlamap;
+
 					out_val_retain(octx, sz);
 					out_store(octx,
 							v_new_bp3_below(octx, NULL, ptrsizety, stack_off),
 							sz);
+
+					vlamap = *(pvlamap = out_user_ctx(octx));
+					if(!vlamap){
+						/* type * => long */
+						vlamap = *pvlamap = dynmap_new(NULL, (dynmap_hash_f *)type_hash);
+					}
+
+					(void)dynmap_set(type *, long, vlamap, t, stack_off);
 				}
 
 				return sz;
@@ -129,7 +140,7 @@ static const out_val *vla_gen_size_ty(
 			vla_gen_size_ty(type_next(t), octx, arith_ty, stack_off, gen_exprs));
 }
 
-const out_val *vla_gen_size(type *t, out_ctx *octx)
+static const out_val *vla_gen_size(type *t, out_ctx *octx)
 {
 	return vla_gen_size_ty(
 			t, octx,
@@ -167,11 +178,20 @@ const out_val *vla_address(decl *d, out_ctx *octx)
 			v_new_bp3_below(octx, NULL, ptr_to_vla_ty, d->sym->loc.stack_pos));
 }
 
-const out_val *vla_size(decl *d, out_ctx *octx)
+const out_val *vla_size(type *const qual_t, out_ctx *octx)
 {
-	type *sizety = type_nav_btype(cc1_type_nav, type_long);
+	type *t = type_skip_all(qual_t);
+	type *ptrsizety = type_ptr_to(type_nav_btype(cc1_type_nav, type_long));
+	dynmap *vlamap = *out_user_ctx(octx);
 
-	return vla_gen_size_ty(d->ref, octx, sizety,
-			platform_word_size() + d->sym->loc.stack_pos,
-			/*gen_exprs:*/0);
+	if(vlamap){
+		long stack_off = dynmap_get(type *, long, vlamap, t);
+
+		if(stack_off){
+			return out_deref(octx,
+					v_new_bp3_below(octx, NULL, ptrsizety, stack_off));
+		}
+	}
+	/* no cached size */
+	return vla_gen_size(qual_t, octx);
 }

@@ -129,13 +129,8 @@ const out_val *gen_expr_sizeof(expr *e, out_ctx *octx)
 {
 	type *ty = SIZEOF_WHAT(e);
 
-	if(type_is_variably_modified(ty)){
-		/* try to read existing size - can't if sizeof(int[n]), etc */
-		if(e->bits.size_of.vm)
-			return vla_size(e->bits.size_of.vm, octx);
-
-		return vla_gen_size(ty, octx);
-	}
+	if(type_is_variably_modified(ty))
+		return vla_size(ty, octx);
 
 	return out_new_l(octx, e->tree_type, SIZEOF_SIZE(e));
 }
