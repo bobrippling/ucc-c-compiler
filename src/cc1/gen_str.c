@@ -339,9 +339,12 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(mode & PDECL_NEWLINE)
 		fputc('\n', cc1_out);
 
-	if(!type_is(d->ref, type_func) && d->bits.var.init && mode & PDECL_PINIT){
+	if(!type_is(d->ref, type_func)
+	&& d->bits.var.init.dinit
+	&& mode & PDECL_PINIT)
+	{
 		gen_str_indent++;
-		print_decl_init(d->bits.var.init);
+		print_decl_init(d->bits.var.init.dinit);
 		gen_str_indent--;
 	}
 

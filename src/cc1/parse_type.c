@@ -1170,13 +1170,13 @@ static decl *parse_decl_stored_aligned(
 			int static_ctx = !scope->parent ||
 				(store & STORE_MASK_STORE) == store_static;
 
-			d->bits.var.init = parse_init(scope, static_ctx);
+			d->bits.var.init.dinit = parse_init(scope, static_ctx);
 
 			/* top-level inits have their .where on the '=' token */
-			memcpy_safe(&d->bits.var.init->where, &w_eq);
+			memcpy_safe(&d->bits.var.init.dinit->where, &w_eq);
 
 			if(is_autotype){
-				decl_init *init = d->bits.var.init;
+				decl_init *init = d->bits.var.init.dinit;
 
 				UCC_ASSERT(!d->ref, "already have decl type?");
 
@@ -1300,7 +1300,9 @@ static void check_and_replace_old_func(decl *d, decl **old_args)
 	for(i = 0; i < n_old_args; i++){
 		int j, found = 0;
 
-		if(!type_is(old_args[i]->ref, type_func) && old_args[i]->bits.var.init){
+		if(!type_is(old_args[i]->ref, type_func)
+		&& old_args[i]->bits.var.init.dinit)
+		{
 			die_at(&old_args[i]->where,
 					"parameter \"%s\" is initialised",
 					old_args[i]->spel);

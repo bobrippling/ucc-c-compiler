@@ -107,7 +107,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	&& !type_is(sym->decl->ref, type_func)
 	&& !type_is_s_or_u(sym->decl->ref)
 	&& sym->nwrites == 0
-	&& !sym->decl->bits.var.init)
+	&& !sym->decl->bits.var.init.dinit)
 	{
 		cc1_warn_at(&e->where, 0, WARN_READ_BEFORE_WRITE, "\"%s\" uninitialised on read", sp);
 		sym->nwrites = 1; /* silence future warnings */

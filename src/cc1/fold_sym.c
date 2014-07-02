@@ -151,8 +151,12 @@ void symtab_check_rw(symtable *tab)
 						case store_auto:
 						case store_static:
 							/* static analysis on sym */
-							if(!has_unused_attr && !type_is(d->ref, type_func) && !d->bits.var.init)
+							if(!has_unused_attr
+							&& !type_is(d->ref, type_func)
+							&& !d->bits.var.init.dinit)
+							{
 								RW_WARN(WRITTEN, d, nwrites, "written to");
+							}
 							break;
 						case store_extern:
 						case store_typedef:

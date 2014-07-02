@@ -226,7 +226,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		 *
 		 * unless we're told to emit tenatives, e.g. local scope
 		 */
-		if(!emit_tenatives && !d->bits.var.init){
+		if(!emit_tenatives && !d->bits.var.init.dinit){
 			if(!emitted_type)
 				asm_predeclare_extern(d);
 			return;

@@ -81,6 +81,6 @@ void decl_default_init(struct decl *d, struct symtable *stab);
 void decl_init_create_assignments_base(
 		decl_init *init,
 		struct type *tfor, struct expr *base,
-		struct stmt *code);
+		struct expr **pinit);
 
 #endif

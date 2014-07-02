@@ -193,6 +193,11 @@ void gen_block_decls(
 		{
 			vla_alloc_decl(d, octx);
 		}
+		else if(d->bits.var.init.dinit)
+		{
+			out_val_consume(octx,
+					gen_expr(d->bits.var.init.expr, octx));
+		}
 	}
 }
 

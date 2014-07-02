@@ -319,7 +319,7 @@ static stmt *parse_stmt_and_decls(
 			got_decls = 1;
 
 			if(init_blk)
-				dynarray_add(&code_stmt->bits.code.stmts, init_blk);
+				dynarray_add(&code_stmt->bits.code.inits, init_blk);
 		}else{
 			UCC_ASSERT(!init_blk, "inits but no decls?");
 			break;

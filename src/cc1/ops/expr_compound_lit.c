@@ -44,7 +44,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 			stab, d, static_ctx ? sym_global : sym_local);
 
 	/* fold the initialiser */
-	UCC_ASSERT(d->bits.var.init, "no init for comp.literal");
+	UCC_ASSERT(d->bits.var.init.dinit, "no init for comp.literal");
 
 	decl_init_brace_up_fold(d, stab, /*initial struct copy:*/0);
 
@@ -62,12 +62,11 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		 *   be generated twice - once for the scope we're nested in (stab),
 		 *   and again on our call to gen_stmt() in our gen function
 		 */
-		e->code = stmt_set_where(
-				stmt_new_wrapper(code, symtab_new(stab, &e->where)),
-				&e->where);
-		decl_init_create_assignments_base(d->bits.var.init, d->ref, e, e->code);
+		decl_init_create_assignments_base(d->bits.var.init.dinit,
+				d->ref, e, &d->bits.var.init.expr);
 
-		fold_stmt_code(e->code);
+		fold_expr(d->bits.var.init.expr, stab);
+
 	}else{
 		fold_decl_global_init(d, stab);
 	}
@@ -107,7 +106,7 @@ static void const_expr_compound_lit(expr *e, consty *k)
 	decl *d = e->bits.complit.decl;
 	expr *nonstd = NULL;
 
-	if(decl_init_is_const(d->bits.var.init, NULL, &nonstd)){
+	if(decl_init_is_const(d->bits.var.init.dinit, NULL, &nonstd)){
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR_OR_NEED(d);
 		k->bits.addr.is_lbl = 1;
@@ -156,7 +155,7 @@ const out_val *gen_expr_str_compound_lit(expr *e, out_ctx *octx)
 const out_val *gen_expr_style_compound_lit(expr *e, out_ctx *octx)
 {
 	stylef("(%s)", type_to_str(e->bits.complit.decl->ref));
-	gen_style_dinit(e->bits.complit.decl->bits.var.init);
+	gen_style_dinit(e->bits.complit.decl->bits.var.init.dinit);
 	UNUSED_OCTX();
 }
 
@@ -172,7 +171,7 @@ static decl *compound_lit_decl(type *t, decl_init *init)
 	decl *d = decl_new();
 
 	d->ref = t;
-	d->bits.var.init = init;
+	d->bits.var.init.dinit = init;
 
 	return d;
 }
