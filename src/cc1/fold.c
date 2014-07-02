@@ -995,8 +995,12 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 		}
 	}
 
-	if(!e->in_parens && expr_kind(e, assign))
+	if(!(chk & FOLD_CHK_NOWARN_ASSIGN)
+	&& !e->in_parens
+	&& expr_kind(e, assign))
+	{
 		cc1_warn_at(&e->where, 0,WARN_TEST_ASSIGN, "assignment in %s", desc);
+	}
 
 	if(chk & FOLD_CHK_BOOL){
 		if(!type_is_bool(e->tree_type)){
