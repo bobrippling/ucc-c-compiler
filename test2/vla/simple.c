@@ -1,3 +1,5 @@
+// RUN: %ucc -c %s -o %t
+
 int f(int x, int y[*]);
 void g(int (*y)[*]);
 
