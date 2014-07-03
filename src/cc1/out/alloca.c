@@ -1,8 +1,13 @@
 #include <stddef.h>
+#include <stdarg.h>
 
 #include "out.h"
 #include "val.h"
 #include "../type_nav.h"
+
+/* v_to_reg_given */
+#include "virt.h"
+#include "impl.h"
 
 /* cc1_mstack_align */
 #include <stdarg.h>
@@ -48,9 +53,12 @@ const out_val *out_alloca_push(
 			out_new_l(octx, arith_ty, ~((long)align - 1)));
 }
 
-void out_alloca_pop(out_ctx *octx, const out_val *sz)
+void out_alloca_pop(out_ctx *octx, const out_val *ptr)
 {
-	out_flush_volatile(
-			octx,
-			alloca_stack_adj(octx, op_plus, sz));
+	struct vreg sp;
+
+	sp.idx = REG_SP;
+	sp.is_float = 0;
+
+	out_flush_volatile(octx, v_to_reg_given(octx, ptr, &sp));
 }
