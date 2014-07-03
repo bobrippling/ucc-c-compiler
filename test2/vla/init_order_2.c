@@ -1,3 +1,5 @@
+// RUN: %ocheck 6 %s
+
 main()
 {
 	int i = 5;
