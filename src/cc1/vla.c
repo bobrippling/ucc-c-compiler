@@ -39,7 +39,7 @@ unsigned vla_decl_space(decl *d)
 {
 	const unsigned pws = platform_word_size();
 	type *t;
-	unsigned sz = pws; /* T *ptr */
+	unsigned sz = pws * 2; /* T *ptr; void *orig_sp; */
 
 	for(t = d->ref; t; t = type_next(t))
 		if(type_is_vla(t))
@@ -155,11 +155,19 @@ void vla_alloc_decl(decl *d, out_ctx *octx)
 	const out_val *v_ptr;
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
 	type *ptrsizety = type_ptr_to(sizety);
+	const unsigned pws = platform_word_size();
 
 	assert(s && "no sym for vla");
 
+	/* save the stack pointer */
+	out_store(octx,
+			v_new_bp3_below(octx, NULL,
+				ptrsizety, d->sym->loc.stack_pos - pws),
+			v_new_sp3(octx, NULL, sizety, 0));
+
 	v_sz = vla_gen_size_ty(d->ref, octx, sizety,
-			platform_word_size() + d->sym->loc.stack_pos,
+			/* 2 * platform_word_size - once for vla pointer, once for saved $sp */
+			d->sym->loc.stack_pos - 2 * pws,
 			1);
 
 	v_sz = out_cast(octx, v_sz, sizety, 0);
