@@ -575,10 +575,13 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 	if(force_mask || (octx->var_stack_sz & (align - 1))){
 		type *const ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 		const unsigned new_sz = pack_to_align(octx->var_stack_sz, align);
-		const unsigned added = new_sz - octx->var_stack_sz;
+		unsigned added = new_sz - octx->var_stack_sz;
 		const out_val *sp = v_new_sp(octx, NULL);
 
 		assert(sp->retains == 1);
+
+		if(force_mask && added == 0)
+			added = align;
 
 		sp = out_op(
 				octx, op_minus,
