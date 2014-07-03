@@ -470,7 +470,14 @@ arg_cpp:
 					}
 					continue;
 				case 'I':
-					dynarray_add(&includes, ustrdup(arg));
+					if(arg[2]){
+						dynarray_add(&includes, ustrdup(arg));
+					}else{
+						if(!argv[++i])
+							die("-I needs an argument");
+
+						dynarray_add(&includes, ustrprintf("-I%s", argv[i]));
+					}
 					continue;
 
 arg_asm:
