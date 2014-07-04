@@ -229,7 +229,7 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 							type_ptr_to(fty)));
 			}
 
-			if(type_is_variably_modified(d->ref))
+			if(type_is_vla(d->ref))
 				out_alloca_pop(octx, vla_saved_ptr(d, octx));
 		}
 	}
