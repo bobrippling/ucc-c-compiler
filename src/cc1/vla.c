@@ -39,7 +39,12 @@ unsigned vla_decl_space(decl *d)
 {
 	const unsigned pws = platform_word_size();
 	type *t;
-	unsigned sz = pws * 2; /* T *ptr; void *orig_sp; */
+	unsigned sz;
+
+	if(type_is_vla(d->ref))
+		sz = pws * 2; /* T *ptr; void *orig_sp; */
+	else
+		sz = pws; /* T *ptr; - no stack res, no orig_sp */
 
 	for(t = d->ref; t; t = type_next(t))
 		if(type_is_vla(t))
@@ -156,31 +161,38 @@ void vla_alloc_decl(decl *d, out_ctx *octx)
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
 	type *ptrsizety = type_ptr_to(sizety);
 	const unsigned pws = platform_word_size();
+	const int is_vla = type_is_vla(d->ref);
 
 	assert(s && "no sym for vla");
 
-	/* save the stack pointer */
-	out_comment(octx, "save stack for %s", decl_to_str(d));
-	out_store(octx,
-			v_new_bp3_below(octx, NULL,
-				ptrsizety, d->sym->loc.stack_pos + pws),
-			v_new_sp3(octx, NULL, sizety, 0));
+	if(is_vla){
+		/* save the stack pointer */
+		out_comment(octx, "save stack for %s", decl_to_str(d));
+		out_store(octx,
+				v_new_bp3_below(octx, NULL,
+					ptrsizety, d->sym->loc.stack_pos + pws),
+				v_new_sp3(octx, NULL, sizety, 0));
+	}
 
 	out_comment(octx, "gen size for %s", decl_to_str(d));
 	v_sz = vla_gen_size_ty(d->ref, octx, sizety,
 			/* 2 * platform_word_size - once for vla pointer, once for saved $sp */
-			d->sym->loc.stack_pos + 2 * pws,
+			d->sym->loc.stack_pos + (1 + is_vla) * pws,
 			1);
 
-	v_sz = out_cast(octx, v_sz, sizety, 0);
+	if(is_vla){
+		v_sz = out_cast(octx, v_sz, sizety, 0);
 
-	out_comment(octx, "alloca for %s", decl_to_str(d));
-	v_ptr = out_alloca_push(octx, v_sz, type_align(d->ref, NULL));
+		out_comment(octx, "alloca for %s", decl_to_str(d));
+		v_ptr = out_alloca_push(octx, v_sz, type_align(d->ref, NULL));
 
-	out_comment(octx, "save ptr for %s", decl_to_str(d));
-	out_store(octx,
-			v_new_bp3_below(octx, NULL, ptrsizety, d->sym->loc.stack_pos),
-			v_ptr);
+		out_comment(octx, "save ptr for %s", decl_to_str(d));
+		out_store(octx,
+				v_new_bp3_below(octx, NULL, ptrsizety, d->sym->loc.stack_pos),
+				v_ptr);
+	}else{
+		out_val_consume(octx, v_sz);
+	}
 }
 
 static const out_val *vla_read(decl *d, out_ctx *octx, long offset)
