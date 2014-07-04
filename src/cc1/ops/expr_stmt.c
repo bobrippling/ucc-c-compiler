@@ -34,7 +34,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 				FOLD_CHK_ALLOW_VOID,
 				"({ ... }) statement");
 
-		if(expr_is_lval(last_expr, 1)){
+		if(expr_is_lval(last_expr)){
 			e->f_lea = expr_stmt_lea;
 			e->lvalue_internal = 1;
 		}

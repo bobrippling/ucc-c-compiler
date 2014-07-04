@@ -102,9 +102,16 @@ static void const_expr_deref(expr *e, consty *k)
 	}
 }
 
+static int expr_deref_islval(expr *e)
+{
+	(void)e;
+	return 1;
+}
+
 void mutate_expr_deref(expr *e)
 {
 	e->f_const_fold = const_expr_deref;
+	e->f_islval = expr_deref_islval;
 
 	/* unconditionally an lvalue */
 	e->f_lea = gen_expr_deref_lea;

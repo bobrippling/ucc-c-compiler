@@ -89,7 +89,7 @@ err:
 		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
 	}/* else already have the member */
 
-	if(cc1_std < STD_C99 && !expr_is_lval(e->lhs, 1))
+	if(cc1_std < STD_C99 && !expr_is_lval(e->lhs))
 		e->f_lea = NULL;
 
 	/* pull qualifiers from the struct to the member */
@@ -202,10 +202,16 @@ static void fold_const_expr_struct(expr *e, consty *k)
 	}
 }
 
+static int expr_struct_is_lval(expr *e)
+{
+	return expr_is_lval(e->lhs);
+}
+
 void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
 	e->f_lea = gen_expr_struct_lea;
+	e->f_islval = expr_struct_is_lval;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;

@@ -159,7 +159,7 @@ expr *fold_expr_lval2rval(expr *e, symtable *stab)
 {
 	fold_expr_nodecay(e, stab);
 
-	if(expr_is_lval(e, 1) || type_is(e->tree_type, type_func)){
+	if(expr_is_lval(e) || type_is(e->tree_type, type_func)){
 		e = expr_set_where(
 				expr_new_cast_lval_decay(e),
 				&e->where);

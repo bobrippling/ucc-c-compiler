@@ -659,7 +659,7 @@ static void fold_choose_expr(expr *e, symtable *stab)
 
 	wur_builtin(e);
 
-	if(expr_is_lval(c, 1))
+	if(expr_is_lval(c))
 		e->f_lea = choose_expr_lea;
 }
 
