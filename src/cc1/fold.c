@@ -523,6 +523,11 @@ static void fold_decl_func(decl *d, symtable *stab)
 			break;
 	}
 
+	if(type_is_variably_modified(d->ref)){
+		warn_at_print_error(&d->where, "function with variably modified type");
+		fold_had_error = 1;
+	}
+
 	if(stab->parent){
 		if(d->bits.func.code)
 			die_at(&d->bits.func.code->where, "nested function %s", d->spel);
