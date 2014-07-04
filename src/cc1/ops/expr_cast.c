@@ -498,6 +498,7 @@ const out_val *gen_expr_cast(expr *e, out_ctx *octx)
 
 	if(IS_LVAL_DECAY(e)){
 		/*out_to_rvalue();*/
+		casted = out_change_type(octx, casted, e->tree_type);
 	}else{
 		type *tfrom = expr_cast_child(e)->tree_type;
 
