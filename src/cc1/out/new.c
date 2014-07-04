@@ -137,7 +137,7 @@ label:
 				assert(0);
 			}
 
-			if(type_is_variably_modified(d->ref))
+			if(type_is_vla(d->ref))
 				return vla_address(d, octx);
 
 			/* sym offsetting takes into account the stack growth direction */
