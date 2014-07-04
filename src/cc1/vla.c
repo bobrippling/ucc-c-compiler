@@ -160,19 +160,24 @@ void vla_alloc_decl(decl *d, out_ctx *octx)
 	assert(s && "no sym for vla");
 
 	/* save the stack pointer */
+	out_comment(octx, "save stack for %s", decl_to_str(d));
 	out_store(octx,
 			v_new_bp3_below(octx, NULL,
-				ptrsizety, d->sym->loc.stack_pos - pws),
+				ptrsizety, d->sym->loc.stack_pos + pws),
 			v_new_sp3(octx, NULL, sizety, 0));
 
+	out_comment(octx, "gen size for %s", decl_to_str(d));
 	v_sz = vla_gen_size_ty(d->ref, octx, sizety,
 			/* 2 * platform_word_size - once for vla pointer, once for saved $sp */
-			d->sym->loc.stack_pos - 2 * pws,
+			d->sym->loc.stack_pos + 2 * pws,
 			1);
 
 	v_sz = out_cast(octx, v_sz, sizety, 0);
 
+	out_comment(octx, "alloca for %s", decl_to_str(d));
 	v_ptr = out_alloca_push(octx, v_sz, type_align(d->ref, NULL));
+
+	out_comment(octx, "save ptr for %s", decl_to_str(d));
 	out_store(octx,
 			v_new_bp3_below(octx, NULL, ptrsizety, d->sym->loc.stack_pos),
 			v_ptr);
@@ -184,16 +189,18 @@ static const out_val *vla_read(decl *d, out_ctx *octx, long offset)
 
 	return out_deref(octx,
 			v_new_bp3_below(octx, NULL, ptr_to_vla_ty,
-				d->sym->loc.stack_pos - offset));
+				d->sym->loc.stack_pos + offset));
 }
 
 const out_val *vla_address(decl *d, out_ctx *octx)
 {
+	out_comment(octx, "vla address (%s)", decl_to_str(d));
 	return vla_read(d, octx, 0);
 }
 
 const out_val *vla_saved_ptr(decl *d, out_ctx *octx)
 {
+	out_comment(octx, "vla saved stack ptr (%s)", decl_to_str(d));
 	return vla_read(d, octx, platform_word_size());
 }
 
@@ -207,10 +214,12 @@ const out_val *vla_size(type *const qual_t, out_ctx *octx)
 		long stack_off = dynmap_get(type *, long, vlamap, t);
 
 		if(stack_off){
+			out_comment(octx, "vla saved size for %s", type_to_str(qual_t));
 			return out_deref(octx,
 					v_new_bp3_below(octx, NULL, ptrsizety, stack_off));
 		}
 	}
 	/* no cached size */
+	out_comment(octx, "vla gen size (%s)", type_to_str(qual_t));
 	return vla_gen_size(qual_t, octx);
 }
