@@ -536,6 +536,7 @@ static void fold_decl_func(decl *d, symtable *stab)
 static void fold_decl_var(decl *d, symtable *stab)
 {
 	attribute *attrib = NULL;
+	int vla;
 	int is_static_duration = !stab->parent
 		|| (d->store & STORE_MASK_STORE) == store_static;
 
@@ -606,12 +607,22 @@ static void fold_decl_var(decl *d, symtable *stab)
 		d->bits.var.align->resolved = max_al;
 	}
 
-	if(is_static_duration && type_is_variably_modified(d->ref)){
-		warn_at_print_error(
-				&d->where,
-				"static-duration variable length array");
-		fold_had_error = 1;
-		return;
+	if((is_static_duration || (d->store & STORE_MASK_STORE) == store_extern)
+	&& type_is_variably_modified_vla(d->ref, &vla))
+	{
+		/* allow static VMs in local scope */
+		int ok = (d->store & STORE_MASK_STORE) == store_static
+			&& !vla && stab->parent;
+
+		if(!ok){
+			warn_at_print_error(
+					&d->where,
+					"%s variabl%s",
+					is_static_duration ? "static-duration" : "extern-linkage",
+					vla ? "e length array" : "y modified type");
+			fold_had_error = 1;
+			return;
+		}
 	}
 
 	if(d->bits.var.init.dinit){

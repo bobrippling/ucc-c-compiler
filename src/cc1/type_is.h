@@ -45,6 +45,7 @@ int type_is_variadic_func(type *);
 int type_is_void(type *);
 int type_is_void_ptr(type *);
 int type_is_variably_modified(type *);
+int type_is_variably_modified_vla(type *, int *vla);
 int type_is_vla(type *);
 
 struct decl *type_is_tdef(type *);

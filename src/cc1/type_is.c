@@ -343,17 +343,30 @@ int type_is_vla(type *ty)
 	return ty && ty->bits.array.is_vla;
 }
 
-int type_is_variably_modified(type *ty)
+int type_is_variably_modified_vla(type *const ty, int *vla)
 {
-	/* need to check all the way down to the btype */
-	for(; ty; ty = type_next(ty)){
-		type *test = type_is(ty, type_array);
+	type *ti;
 
-		if(test && test->bits.array.is_vla)
+	if(vla)
+		*vla = 0;
+
+	/* need to check all the way down to the btype */
+	for(ti = ty; ti; ti = type_next(ti)){
+		type *test = type_is(ti, type_array);
+
+		if(test && test->bits.array.is_vla){
+			if(vla && ti == ty)
+				*vla = 1;
 			return 1;
+		}
 	}
 
 	return 0;
+}
+
+int type_is_variably_modified(type *ty)
+{
+	return type_is_variably_modified_vla(ty, NULL);
 }
 
 int type_is_incomplete_array(type *r)
