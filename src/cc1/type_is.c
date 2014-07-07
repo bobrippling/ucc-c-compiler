@@ -317,7 +317,8 @@ int type_is_complete(type *r)
 		}
 
 		case type_array:
-			return r->bits.array.size && type_is_complete(r->ref);
+			return (r->bits.array.is_vla || r->bits.array.size)
+				&& type_is_complete(r->ref);
 
 		case type_func:
 		case type_ptr:
