@@ -142,7 +142,7 @@ static out_val *try_const_fold(
 static void apply_ptr_step(
 		out_ctx *octx,
 		const out_val **lhs, const out_val **rhs,
-		int *div_out)
+		const out_val **div_out)
 {
 	int l_ptr = !!type_is((*lhs)->t, type_ptr);
 	int r_ptr = !!type_is((*rhs)->t, type_ptr);
@@ -188,7 +188,9 @@ static void apply_ptr_step(
 
 	}else if(l_ptr && r_ptr){
 		/* difference - divide afterwards */
-		*div_out = ptr_step;
+		*div_out = out_new_l(octx,
+					type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
+					ptr_step);
 	}
 }
 
@@ -244,7 +246,7 @@ const out_val *out_op(
 		out_ctx *octx, enum op_type binop,
 		const out_val *lhs, const out_val *rhs)
 {
-	int div = 0;
+	const out_val *div = NULL;
 	const out_val *vconst = NULL, *vregp_or_lbl = NULL;
 	const out_val *result;
 
@@ -296,15 +298,8 @@ const out_val *out_op(
 
 	result = impl_op(octx, binop, lhs, rhs);
 
-	if(div){
-		result = out_op(
-				octx, op_divide,
-				result,
-				out_new_l(
-					octx,
-					type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
-					div));
-	}
+	if(div)
+		result = out_op(octx, op_divide, result, div);
 
 	return result;
 }
