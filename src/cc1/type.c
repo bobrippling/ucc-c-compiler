@@ -111,31 +111,28 @@ static enum type_cmp type_cmp_r(
 			break;
 
 		case type_array:
-		{
-			const int a_complete = !!a->bits.array.size,
-			          b_complete = !!b->bits.array.size;
+			if(a->bits.array.is_vla || b->bits.array.is_vla){
+				/* fine, pretend they're equal even if different expressions */
+				ret = TYPE_EQUAL_TYPEDEF;
 
-			if(a_complete && b_complete){
-				if(a->bits.array.is_vla || b->bits.array.is_vla){
-					/* fine, pretend they're equal even if different expressions */
-					ret = TYPE_EQUAL_TYPEDEF;
+			}else{
+				const int a_has_sz = !!a->bits.array.size;
+				const int b_has_sz = !!b->bits.array.size;
 
-				}else{
+				if(a_has_sz && b_has_sz){
 					integral_t av = const_fold_val_i(a->bits.array.size);
 					integral_t bv = const_fold_val_i(b->bits.array.size);
 
 					if(av != bv)
 						return TYPE_NOT_EQUAL;
+				}else if(a_has_sz != b_has_sz){
+					if((opts & TYPE_CMP_ALLOW_TENATIVE_ARRAY) == 0)
+						return TYPE_NOT_EQUAL;
 				}
-
-			}else if(a_complete != b_complete){
-				if((opts & TYPE_CMP_ALLOW_TENATIVE_ARRAY) == 0)
-					return TYPE_NOT_EQUAL;
 			}
 
 			/* next */
 			break;
-		}
 
 		case type_block:
 		case type_ptr:
