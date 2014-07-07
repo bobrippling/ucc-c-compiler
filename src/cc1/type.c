@@ -528,31 +528,31 @@ static void type_add_str(
 			/* fall */
 		case type_array:
 			BUF_ADD("[");
-			if(r->bits.array.size){
-				int spc = 0;
+			switch(r->bits.array.is_vla){
+				case 0:
+				{
+					int spc = 0;
+					if(r->bits.array.is_static){
+						BUF_ADD("static");
+						spc = 1;
+					}
 
-				if(r->bits.array.is_static){
-					BUF_ADD("static");
-					spc = 1;
-				}
-
-				switch(r->bits.array.is_vla){
-					case 0:
+					if(r->bits.array.size){
 						BUF_ADD(
 								"%s%" NUMERIC_FMT_D,
 								spc ? " " : "",
 								const_fold_val_i(r->bits.array.size));
-						break;
-					case VLA:
-						BUF_ADD("vla");
-						break;
-					case VLA_STAR:
-						BUF_ADD("*");
-						break;
+					}
+					break;
 				}
+				case VLA:
+					BUF_ADD("vla");
+					break;
+				case VLA_STAR:
+					BUF_ADD("*");
+					break;
 			}
 			BUF_ADD("]");
-
 			break;
 	}
 
