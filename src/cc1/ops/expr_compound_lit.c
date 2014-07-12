@@ -73,13 +73,12 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 static void gen_expr_compound_lit_code(expr *e, out_ctx *octx)
 {
 	if(!e->expr_comp_lit_cgen){
+		expr *initexp = e->bits.complit.decl->bits.var.init.expr;
+
 		e->expr_comp_lit_cgen = 1;
 
-		out_val_consume(
-				octx,
-				gen_expr(
-					e->bits.complit.decl->bits.var.init.expr,
-					octx));
+		if(initexp)
+			out_val_consume(octx, gen_expr(initexp, octx));
 	}
 }
 

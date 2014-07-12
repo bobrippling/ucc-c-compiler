@@ -200,7 +200,8 @@ void gen_block_decls(
 			 * e.g. int (*p)[n] = 0; */
 		}
 
-		if(d->bits.var.init.dinit
+		/* check .expr, since empty structs .expr == NULL */
+		if(d->bits.var.init.expr
 		&& /*anonymous decls are initialised elsewhere:*/d->spel)
 		/*(anonymous decls are like those from compound literals)*/
 		{
