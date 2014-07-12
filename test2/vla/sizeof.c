@@ -16,10 +16,10 @@ g(int x)
 
 main()
 {
-	if(f(3) != 6)
+	if(f(3) != 3 * sizeof(short))
 		abort();
 
-	if(g(3) != 38)
+	if(g(3) != 3 * sizeof(short) + sizeof(long) * 4)
 		abort();
 	
 	return 0;
