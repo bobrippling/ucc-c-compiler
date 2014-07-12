@@ -912,18 +912,20 @@ static type_parsed *parsed_type_array(
 			FOLD_EXPR(size, scope);
 
 			if(!type_is_integral(size->tree_type)){
-				die_at(&size->where,
+				parse_had_error = 1;
+				warn_at_print_error(&size->where,
 						"array type isn't integral (%s)",
 						type_to_str(size->tree_type));
+				size = NULL;
+			}else{
+				const_fold(size, &k);
+
+				if(k.type != CONST_NUM)
+					die_at(NULL, "not a constant for array size");
+
+				if(!K_INTEGRAL(k.bits.num))
+					die_at(NULL, "not an integral array size");
 			}
-
-			const_fold(size, &k);
-
-			if(k.type != CONST_NUM)
-				die_at(NULL, "not a constant for array size");
-
-			if(!K_INTEGRAL(k.bits.num))
-				die_at(NULL, "not an integral array size");
 		}
 
 		if(is_static > 1)

@@ -494,7 +494,9 @@ ptr_relation:
 				resolved = type_nav_btype(cc1_type_nav, BOOLEAN_TYPE);
 
 			}else{
-				die_at(w, "operation between two pointers must be relational or subtraction");
+				fold_had_error = 1;
+				warn_at_print_error(w, "operation between two pointers must be relational or subtraction");
+				resolved = type_nav_btype(cc1_type_nav, BOOLEAN_TYPE);
 			}
 
 			goto fin;
