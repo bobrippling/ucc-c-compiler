@@ -77,6 +77,28 @@ static const out_val *vla_cached_size(type *const qual_t, out_ctx *octx)
 	return NULL;
 }
 
+static void vla_cache_size(
+		type *const qual_t, out_ctx *octx,
+		type *const arith_ty,
+		const out_val *sz, long stack_off)
+{
+	type *ptrsizety = type_ptr_to(arith_ty);
+	void **pvlamap;
+	dynmap *vlamap;
+
+	out_store(octx,
+			v_new_bp3_below(octx, NULL, ptrsizety, stack_off),
+			sz);
+
+	vlamap = *(pvlamap = out_user_ctx(octx));
+	if(!vlamap){
+		/* type * => long */
+		vlamap = *pvlamap = dynmap_new(NULL, (dynmap_hash_f *)type_hash);
+	}
+
+	(void)dynmap_set(type *, long, vlamap, qual_t, stack_off);
+}
+
 static const out_val *vla_gen_size_ty(
 		type *t, out_ctx *octx,
 		type *const arith_ty,
@@ -95,7 +117,6 @@ static const out_val *vla_gen_size_ty(
 
 		case type_array:
 			if(t->bits.array.is_vla){
-				type *ptrsizety = type_ptr_to(arith_ty);
 				const out_val *sz;
 				long new_stack_off = stack_off == -1
 					? -1
@@ -114,21 +135,8 @@ static const out_val *vla_gen_size_ty(
 							arith_ty, 0));
 
 				if(stack_off != -1){
-					void **pvlamap;
-					dynmap *vlamap;
-
 					out_val_retain(octx, sz);
-					out_store(octx,
-							v_new_bp3_below(octx, NULL, ptrsizety, stack_off),
-							sz);
-
-					vlamap = *(pvlamap = out_user_ctx(octx));
-					if(!vlamap){
-						/* type * => long */
-						vlamap = *pvlamap = dynmap_new(NULL, (dynmap_hash_f *)type_hash);
-					}
-
-					(void)dynmap_set(type *, long, vlamap, t, stack_off);
+					vla_cache_size(t, octx, arith_ty, sz, stack_off);
 				}
 
 				return sz;
