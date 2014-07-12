@@ -97,30 +97,25 @@ static const out_val *vla_gen_size_ty(
 			if(t->bits.array.is_vla){
 				type *ptrsizety = type_ptr_to(arith_ty);
 				const out_val *sz;
-				const out_val *this_sz;
-				int used_cached;
 				long new_stack_off = stack_off == -1
 					? -1
 					: stack_off - platform_word_size();
 
-				this_sz = vla_cached_size(t, octx);
-				used_cached = !!this_sz;
+				sz = vla_cached_size(t, octx);
+				if(sz)
+					return sz;
 
-				if(!this_sz){
-					assert(gen_exprs);
-
-					this_sz = out_cast(
-							octx, gen_expr(t->bits.array.size, octx),
-							arith_ty, 0);
-				}
+				assert(gen_exprs);
 
 				sz = out_op(
 						octx, op_multiply,
 						vla_gen_size_ty(
 							type_next(t), octx, arith_ty, new_stack_off, gen_exprs),
-						this_sz);
+						out_cast(
+							octx, gen_expr(t->bits.array.size, octx),
+							arith_ty, 0));
 
-				if(!used_cached && stack_off != -1){
+				if(stack_off != -1){
 					void **pvlamap;
 					dynmap *vlamap;
 
