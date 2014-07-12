@@ -20,7 +20,10 @@ void out_ctrl_branch(
 		const out_val *cond,
 		out_blk *if_true, out_blk *if_false)
 {
-	impl_branch(octx, cond, if_true, if_false);
+	impl_branch(octx,
+			cond, if_true, if_false,
+			!!(cond->flags & VAL_FLAG_LIKELY));
+
 	out_val_consume(octx, cond);
 
 	out_current_blk(octx, if_true);

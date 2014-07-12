@@ -1587,7 +1587,10 @@ void impl_jmp_expr(out_ctx *octx, const out_val *v)
 	out_val_consume(octx, v);
 }
 
-void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
+void impl_branch(
+		out_ctx *octx, const out_val *cond,
+		out_blk *bt, out_blk *bf,
+		int unlikely)
 {
 	switch(cond->type){
 		case V_REG:
@@ -1601,7 +1604,7 @@ void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 			out_asm(octx, "test %s, %s", rstr, rstr);
 			cmp = ustrprintf("jz %s", bf->lbl);
 
-			blk_terminate_condjmp(octx, cmp, bf, bt);
+			blk_terminate_condjmp(octx, cmp, bf, bt, unlikely);
 			break;
 		}
 
@@ -1636,7 +1639,7 @@ void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 				/* fall thru to false block */
 			}
 
-			blk_terminate_condjmp(octx, cmpjmp, bt, bf);
+			blk_terminate_condjmp(octx, cmpjmp, bt, bf, unlikely);
 			break;
 		}
 
@@ -1659,7 +1662,7 @@ void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 					"normalise remained as spilt reg");
 
 			cond = out_normalise(octx, cond);
-			impl_branch(octx, cond, bt, bf);
+			impl_branch(octx, cond, bt, bf, unlikely);
 			break;
 	}
 }

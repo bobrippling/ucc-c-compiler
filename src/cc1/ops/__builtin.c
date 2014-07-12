@@ -639,11 +639,19 @@ static void fold_expect(expr *e, symtable *stab)
 
 static const out_val *builtin_gen_expect(expr *e, out_ctx *octx)
 {
-	/* not needed if it's const, but gcc and clang do this */
-	out_val_consume(octx,
-			gen_expr(e->funcargs[1], octx));
+	const out_val *eval;
+	consty k;
 
-	return gen_expr(e->funcargs[0], octx);
+	/* not needed if it's const, but gcc and clang do this */
+	out_val_consume(octx, gen_expr(e->funcargs[1], octx));
+
+	eval = gen_expr(e->funcargs[0], octx);
+
+	const_fold(e->funcargs[1], &k);
+	if(k.type == CONST_NUM)
+		eval = out_annotate_likely(octx, eval, !!k.bits.num.val.i);
+
+	return eval;
 }
 
 static void const_expect(expr *e, consty *k)

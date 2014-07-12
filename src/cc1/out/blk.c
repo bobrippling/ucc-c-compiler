@@ -105,10 +105,18 @@ static void bfs_block(out_blk *blk, struct flush_state *st)
 		case BLK_COND:
 			blk_codegen(blk, st);
 			fprintf(st->f, "\t%s\n", blk->bits.cond.insn);
+
+			/* we always jump to the true block if the conditional failed */
 			blk_jmpnext(blk->bits.cond.if_1_blk, st);
 
-			bfs_block(blk->bits.cond.if_1_blk, st);
-			bfs_block(blk->bits.cond.if_0_blk, st);
+			/* if it's unlikely, we want the false block already in the pipeline */
+			if(blk->bits.cond.unlikely){
+				bfs_block(blk->bits.cond.if_0_blk, st);
+				bfs_block(blk->bits.cond.if_1_blk, st);
+			}else{
+				bfs_block(blk->bits.cond.if_1_blk, st);
+				bfs_block(blk->bits.cond.if_0_blk, st);
+			}
 			break;
 	}
 }
@@ -132,7 +140,8 @@ void blk_flushall(out_ctx *octx, char *end_dbg_lbl)
 
 void blk_terminate_condjmp(
 		out_ctx *octx, char *condinsn,
-		out_blk *condto, out_blk *uncondto)
+		out_blk *condto, out_blk *uncondto,
+		int unlikely)
 {
 	out_blk *current = octx->current_blk;
 
@@ -148,6 +157,7 @@ void blk_terminate_condjmp(
 	current->bits.cond.insn = condinsn;
 	current->bits.cond.if_0_blk = condto;
 	current->bits.cond.if_1_blk = uncondto;
+	current->bits.cond.unlikely = unlikely;
 
 	octx->current_blk = NULL;
 }

@@ -278,6 +278,16 @@ void out_val_overwrite(out_val *d, const out_val *s)
 	d->bits = s->bits;
 }
 
+const out_val *out_annotate_likely(
+		out_ctx *octx, const out_val *val, int unlikely)
+{
+	out_val *mut = v_dup_or_reuse(octx, val, val->t);
+
+	mut->flags |= unlikely ? VAL_FLAG_UNLIKELY : VAL_FLAG_LIKELY;
+
+	return mut;
+}
+
 int vreg_eq(const struct vreg *a, const struct vreg *b)
 {
 	return a->idx == b->idx && a->is_float == b->is_float;

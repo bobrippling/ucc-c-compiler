@@ -60,6 +60,9 @@ void out_store(out_ctx *, const out_val *dest, const out_val *val);
 
 void out_flush_volatile(out_ctx *, const out_val *);
 
+ucc_wur const out_val *out_annotate_likely(
+		out_ctx *, const out_val *, int unlikely);
+
 /* operators/comparisons */
 ucc_wur const out_val *out_op(out_ctx *, enum op_type, const out_val *lhs, const out_val *rhs);
 ucc_wur const out_val *out_op_unary(out_ctx *, enum op_type, const out_val *);

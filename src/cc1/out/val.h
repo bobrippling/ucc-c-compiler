@@ -62,8 +62,15 @@ struct out_val
 
 	struct vbitfield
 	{
-		unsigned off, nbits;
+		unsigned short off, nbits;
 	} bitfield; /* !!width iif bitfield */
+	unsigned char flags;
+};
+
+enum
+{
+	VAL_FLAG_LIKELY = 1 << 0,
+	VAL_FLAG_UNLIKELY = 1 << 1,
 };
 
 const char *v_store_to_str(enum out_val_store);
