@@ -100,7 +100,6 @@ static void assign_arg_offsets(
 static void allocate_vla_args(
 		out_ctx *octx, symtable *arg_symtab, unsigned const auto_space)
 {
-	const unsigned pws = platform_word_size();
 	unsigned current_off = auto_space;
 	decl **i;
 
@@ -134,7 +133,7 @@ static void allocate_vla_args(
 
 		orig_off = d->sym->loc.arg_offset;
 
-		current_off += pws;
+		current_off += vla_decl_space(d);
 		d->sym->loc.arg_offset = -(int)current_off - octx->stack_local_offset;
 
 		out_comment(octx, "move vla argument %s (%d -> %d)",
