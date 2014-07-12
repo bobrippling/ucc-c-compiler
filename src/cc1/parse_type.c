@@ -35,6 +35,11 @@
 
 /*#define PARSE_DECL_VERBOSE*/
 
+static decl *parse_decl_stored_aligned(
+		type *btype, enum decl_mode mode,
+		enum decl_storage store, struct decl_align *align,
+		symtable *scope, symtable *add_to_scope);
+
 /* newdecl_context:
  * struct B { int b; };
  * {
@@ -656,7 +661,19 @@ static decl *parse_arg_decl(symtable *scope)
 {
 	/* argument decls can default to int */
 	const enum decl_mode flags = DECL_CAN_DEFAULT | DECL_ALLOW_STORE;
-	decl *argdecl = parse_decl(flags, 0, scope, NULL);
+	decl *argdecl;
+	type *btype = parse_btype(
+			NULL, /*align:*/NULL, /*newdecl:*/0, scope, /*auto:*/0);
+
+	if(!btype)
+		return NULL;
+
+	/* don't use parse_decl() - we don't want it folding yet,
+	 * things like inits are caught later */
+	argdecl = parse_decl_stored_aligned(
+			btype, flags,
+			store_default, /*align:*/NULL,
+			scope, NULL);
 
 	if(!argdecl)
 		die_at(NULL, "type expected (got %s)", token_to_str(curtok));
