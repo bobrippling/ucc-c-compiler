@@ -56,6 +56,27 @@ unsigned vla_decl_space(decl *d)
 	return sz;
 }
 
+static const out_val *vla_cached_size(type *const qual_t, out_ctx *octx)
+{
+	type *t = type_skip_all(qual_t);
+	dynmap *vlamap = *out_user_ctx(octx);
+
+	if(vlamap){
+		long stack_off = dynmap_get(type *, long, vlamap, t);
+
+		if(stack_off){
+			type *ptrsizety = type_ptr_to(type_nav_btype(cc1_type_nav, type_long));
+
+			out_comment(octx, "vla saved size for %s", type_to_str(qual_t));
+
+			return out_deref(octx,
+					v_new_bp3_below(octx, NULL, ptrsizety, stack_off));
+		}
+	}
+
+	return NULL;
+}
+
 static const out_val *vla_gen_size_ty(
 		type *t, out_ctx *octx,
 		type *const arith_ty,
@@ -77,19 +98,20 @@ static const out_val *vla_gen_size_ty(
 				type *ptrsizety = type_ptr_to(arith_ty);
 				const out_val *sz;
 				const out_val *this_sz;
+				int used_cached;
 				long new_stack_off = stack_off == -1
 					? -1
 					: stack_off - platform_word_size();
 
-				if(gen_exprs){
+				this_sz = vla_cached_size(t, octx);
+				used_cached = !!this_sz;
+
+				if(!this_sz){
+					assert(gen_exprs);
+
 					this_sz = out_cast(
 							octx, gen_expr(t->bits.array.size, octx),
 							arith_ty, 0);
-				}else{
-					assert(stack_off != -1);
-
-					this_sz = out_deref(octx,
-							v_new_bp3_below(octx, NULL, ptrsizety, stack_off));
 				}
 
 				sz = out_op(
@@ -98,7 +120,7 @@ static const out_val *vla_gen_size_ty(
 							type_next(t), octx, arith_ty, new_stack_off, gen_exprs),
 						this_sz);
 
-				if(stack_off != -1){
+				if(!used_cached && stack_off != -1){
 					void **pvlamap;
 					dynmap *vlamap;
 
@@ -158,8 +180,13 @@ static const out_val *vla_gen_size(type *t, out_ctx *octx)
 
 void vla_typedef_alloc(decl *d, out_ctx *octx)
 {
-	/* TODO: adjust offset */
-	out_val_consume(octx, vla_gen_size(d->ref, octx));
+	type *sizety = type_nav_btype(cc1_type_nav, type_long);
+	unsigned stack_off = d->sym->loc.stack_pos + octx->stack_local_offset;
+
+	out_val_consume(octx,
+			vla_gen_size_ty(
+				d->ref, octx, sizety,
+				stack_off, 1));
 }
 
 void vla_alloc_decl(decl *d, out_ctx *octx)
@@ -228,20 +255,11 @@ const out_val *vla_saved_ptr(decl *d, out_ctx *octx)
 
 const out_val *vla_size(type *const qual_t, out_ctx *octx)
 {
-	type *t = type_skip_all(qual_t);
-	type *ptrsizety = type_ptr_to(type_nav_btype(cc1_type_nav, type_long));
-	dynmap *vlamap = *out_user_ctx(octx);
+	const out_val *cached_sz = vla_cached_size(qual_t, octx);
 
-	if(vlamap){
-		long stack_off = dynmap_get(type *, long, vlamap, t);
+	if(cached_sz)
+		return cached_sz;
 
-		if(stack_off){
-			out_comment(octx, "vla saved size for %s", type_to_str(qual_t));
-			return out_deref(octx,
-					v_new_bp3_below(octx, NULL, ptrsizety, stack_off));
-		}
-	}
-	/* no cached size */
 	out_comment(octx, "vla gen size (%s)", type_to_str(qual_t));
 	return vla_gen_size(qual_t, octx);
 }
