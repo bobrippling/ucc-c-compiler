@@ -258,6 +258,10 @@ void fold_check_scope_entry(where *w,
 
 	SYMTAB_PARENT_WALK(s_iter, s_to){
 		decl **i;
+
+		if(s_iter->mark)
+			break;
+
 		for(i = s_iter->decls; i && *i; i++){
 			decl *d = *i;
 			if(type_is_variably_modified(d->ref)){

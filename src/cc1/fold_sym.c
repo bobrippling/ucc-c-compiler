@@ -579,10 +579,19 @@ void symtab_chk_labels(symtable *stab)
 		for(i = 0;
 		    (l = dynmap_value(label *, stab->labels, i));
 		    i++)
+		{
+			stmt **si;
+
 			if(!l->complete)
 				die_at(l->pw, "label '%s' undefined", l->spel);
 			else if(!l->uses && !l->unused)
 				warn_at(l->pw, "unused label '%s'", l->spel);
+
+			for(si = l->jumpers; si && *si; si++){
+				stmt *s = *si;
+				fold_check_scope_entry(&s->where, s->symtab, l->scope);
+			}
+		}
 	}
 }
 

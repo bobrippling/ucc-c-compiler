@@ -9,6 +9,7 @@ struct label
 	char *spel;
 	out_blk *bblock;
 	symtable *scope;
+	struct stmt **jumpers; /* gotos that target us */
 	unsigned uses;
 	unsigned complete : 1, unused : 1;
 };
