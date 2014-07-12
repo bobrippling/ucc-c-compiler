@@ -10,6 +10,7 @@
 
 #include "out/out.h"
 #include "out/val.h"
+#include "out/ctx.h"
 
 #include "vla.h"
 
@@ -162,6 +163,7 @@ void vla_alloc_decl(decl *d, out_ctx *octx)
 	type *ptrsizety = type_ptr_to(sizety);
 	const unsigned pws = platform_word_size();
 	const int is_vla = type_is_vla(d->ref);
+	const unsigned stack_off = d->sym->loc.stack_pos + octx->stack_local_offset;
 
 	assert(s && "no sym for vla");
 
@@ -170,14 +172,14 @@ void vla_alloc_decl(decl *d, out_ctx *octx)
 		out_comment(octx, "save stack for %s", decl_to_str(d));
 		out_store(octx,
 				v_new_bp3_below(octx, NULL,
-					ptrsizety, d->sym->loc.stack_pos - pws),
+					ptrsizety, stack_off - pws),
 				v_new_sp3(octx, NULL, sizety, 0));
 	}
 
 	out_comment(octx, "gen size for %s", decl_to_str(d));
 	v_sz = vla_gen_size_ty(d->ref, octx, sizety,
 			/* 2 * platform_word_size - once for vla pointer, once for saved $sp */
-			d->sym->loc.stack_pos - (1 + is_vla) * pws,
+			stack_off - (1 + is_vla) * pws,
 			1);
 
 	if(is_vla){
@@ -188,7 +190,7 @@ void vla_alloc_decl(decl *d, out_ctx *octx)
 
 		out_comment(octx, "save ptr for %s", decl_to_str(d));
 		out_store(octx,
-				v_new_bp3_below(octx, NULL, ptrsizety, d->sym->loc.stack_pos),
+				v_new_bp3_below(octx, NULL, ptrsizety, stack_off),
 				v_ptr);
 	}else{
 		out_val_consume(octx, v_sz);
@@ -201,7 +203,7 @@ static const out_val *vla_read(decl *d, out_ctx *octx, long offset)
 
 	return out_deref(octx,
 			v_new_bp3_below(octx, NULL, ptr_to_vla_ty,
-				d->sym->loc.stack_pos - offset));
+				octx->stack_local_offset + d->sym->loc.stack_pos - offset));
 }
 
 const out_val *vla_address(decl *d, out_ctx *octx)
