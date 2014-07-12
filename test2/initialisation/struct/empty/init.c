@@ -3,9 +3,9 @@
 
 struct A
 {
-}; // CHEKC: /warning: empty struct/
+}; // CHECK: /warning: empty struct/
 
-struct Containter
+struct Container
 {
 	struct A a;
 };
@@ -25,7 +25,7 @@ main()
 	struct A a = { 5 }; // CHECK: /warning: missing {} initialiser for empty struct/
 	struct A b = {};
 
-	struct Containter c = {{}};
+	struct Container c = {{}};
 
 	c.a = (struct A){};
 }
