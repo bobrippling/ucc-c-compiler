@@ -110,9 +110,6 @@ static void allocate_vla_args(
 		type *decayed;
 		int orig_off;
 
-		if(!type_is_variably_modified(d->ref))
-			continue;
-
 		/* generate side-effects even if it's decayed, e.g.
 		 * f(int p[E1][E2])
 		 * ->
@@ -125,6 +122,9 @@ static void allocate_vla_args(
 		{
 			out_val_consume(octx, gen_expr(decayed->bits.array.size, octx));
 		}
+
+		if(!type_is_variably_modified(d->ref))
+			continue;
 
 		/* this array argument is a VLA and needs more size than
 		 * just its pointer. we move it to a place on the stack where

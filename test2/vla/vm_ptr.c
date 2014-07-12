@@ -1,6 +1,10 @@
-g()
+// RUN: %ocheck 0 %s
+
+gs;
+
+g(void)
 {
-	printf("g()\n");
+	gs++;
 	return 3;
 }
 
@@ -25,5 +29,11 @@ main()
 
 	int (*p)[] = f(a);
 
-	return (*p)[1]; // 4
+	if((*p)[1] != 4)
+		abort();
+
+	if(gs != 3)
+		abort();
+
+	return 0;
 }
