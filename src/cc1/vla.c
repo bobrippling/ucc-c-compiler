@@ -42,13 +42,13 @@ unsigned vla_decl_space(decl *d)
 	type *t;
 	unsigned sz;
 
-	if(type_is_vla(d->ref))
+	if(type_is_vla(d->ref, VLA_ANY_DIMENSION))
 		sz = pws * 2; /* T *ptr; void *orig_sp; */
 	else
 		sz = pws; /* T *ptr; - no stack res, no orig_sp */
 
 	for(t = d->ref; t; t = type_next(t))
-		if(type_is_vla(t))
+		if(type_is_vla(t, VLA_TOP_DIMENSION))
 			sz += pws;
 
 	return sz;
@@ -162,7 +162,7 @@ void vla_alloc_decl(decl *d, out_ctx *octx)
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
 	type *ptrsizety = type_ptr_to(sizety);
 	const unsigned pws = platform_word_size();
-	const int is_vla = !!type_is_vla(d->ref);
+	const int is_vla = !!type_is_vla(d->ref, VLA_ANY_DIMENSION);
 	const unsigned stack_off = d->sym->loc.stack_pos + octx->stack_local_offset;
 
 	assert(s && "no sym for vla");

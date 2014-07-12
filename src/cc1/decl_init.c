@@ -1104,7 +1104,7 @@ void decl_init_brace_up_fold(
 	if(!d->bits.var.init_normalised){
 		d->bits.var.init_normalised = 1;
 
-		if(type_is_vla(d->ref)){
+		if(type_is_vla(d->ref, VLA_ANY_DIMENSION)){
 			warn_at_print_error(
 					&d->where,
 					"cannot initialise variable length array");

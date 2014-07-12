@@ -336,11 +336,20 @@ int type_is_complete(type *r)
 	return 1;
 }
 
-type *type_is_vla(type *ty)
+type *type_is_vla(type *ty, enum vla_kind kind)
 {
-	/* top level only */
-	ty = type_is(ty, type_array);
-	return ty && ty->bits.array.is_vla ? ty : NULL;
+	for(ty = type_is(ty, type_array);
+	    ty;
+	    ty = ty->ref)
+	{
+		if(ty->bits.array.is_vla)
+			return ty;
+
+		if(kind == VLA_TOP_DIMENSION)
+			break;
+	}
+
+	return NULL;
 }
 
 int type_is_variably_modified_vla(type *const ty, int *vla)

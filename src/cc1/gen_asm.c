@@ -118,7 +118,7 @@ static void allocate_vla_args(
 		 * we still want E1 generated
 		 */
 		if((decayed = type_is_decayed_array(d->ref))
-		&& (decayed = type_is_vla(decayed)))
+		&& (decayed = type_is_vla(decayed, VLA_TOP_DIMENSION)))
 		{
 			out_val_consume(octx, gen_expr(decayed->bits.array.size, octx));
 		}

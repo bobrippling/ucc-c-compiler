@@ -30,7 +30,7 @@ static int calc_ptr_step(type *t)
 		return 1;
 
 	tnext = type_next(t);
-	if(type_is_vla(tnext))
+	if(type_is_vla(tnext, VLA_ANY_DIMENSION))
 		return -1;
 	return type_size(tnext, NULL);
 }
