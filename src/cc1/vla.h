@@ -6,6 +6,7 @@ unsigned vla_decl_space(decl *);
 
 /* allocate and initialise space for a decl and all it sub-type sizes */
 void vla_alloc_decl(decl *, out_ctx *);
+void vla_typedef_alloc(decl *d, out_ctx *octx);
 
 /* get the address of the vla pointer */
 const out_val *vla_address(decl *, out_ctx *);

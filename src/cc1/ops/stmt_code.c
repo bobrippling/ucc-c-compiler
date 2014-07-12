@@ -192,7 +192,10 @@ void gen_block_decls(
 		}
 
 		if(type_is_variably_modified(d->ref)){
-			vla_alloc_decl(d, octx);
+			if((d->store & STORE_MASK_STORE) == store_typedef)
+				vla_typedef_alloc(d, octx);
+			else
+				vla_alloc_decl(d, octx);
 			/* may be VM - fall through to the init
 			 * e.g. int (*p)[n] = 0; */
 		}

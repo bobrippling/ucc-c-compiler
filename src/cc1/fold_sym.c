@@ -505,10 +505,15 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 					break;
 
 				case sym_local: /* warn on unused args and locals */
+				{
+					int is_typedef = 0;
+
 					if(type_is(d->ref, type_func))
 						continue;
 
 					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+						case store_typedef: /* VLAs */
+							is_typedef = 1;
 							/* for now, we allocate stack space for register vars */
 						case store_register:
 						case store_default:
@@ -520,6 +525,8 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 							if(type_is_variably_modified(s->decl->ref)){
 								siz = vla_decl_space(s->decl);
 								align = platform_word_size();
+							}else if(is_typedef){
+								break;
 							}else{
 								siz = decl_size(s->decl);
 								align = decl_align(s->decl);
@@ -539,11 +546,12 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 
 						case store_static:
 						case store_extern:
-						case store_typedef:
 							break;
 						case store_inline:
 							ICE("%s store", decl_store_to_str(d->store));
 					}
+					break;
+				}
 				case sym_global:
 					break;
 			}

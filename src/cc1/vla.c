@@ -42,7 +42,9 @@ unsigned vla_decl_space(decl *d)
 	type *t;
 	unsigned sz;
 
-	if(type_is_vla(d->ref, VLA_ANY_DIMENSION))
+	if((d->store & STORE_MASK_STORE) == store_typedef)
+		sz = 0; /* just the sizes */
+	else if(type_is_vla(d->ref, VLA_ANY_DIMENSION))
 		sz = pws * 2; /* T *ptr; void *orig_sp; */
 	else
 		sz = pws; /* T *ptr; - no stack res, no orig_sp */
@@ -152,6 +154,12 @@ static const out_val *vla_gen_size(type *t, out_ctx *octx)
 			t, octx,
 			type_nav_btype(cc1_type_nav, type_long),
 			-1, 1);
+}
+
+void vla_typedef_alloc(decl *d, out_ctx *octx)
+{
+	/* TODO: adjust offset */
+	out_val_consume(octx, vla_gen_size(d->ref, octx));
 }
 
 void vla_alloc_decl(decl *d, out_ctx *octx)
