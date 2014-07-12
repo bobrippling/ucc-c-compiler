@@ -589,7 +589,7 @@ void symtab_chk_labels(symtable *stab)
 
 			for(si = l->jumpers; si && *si; si++){
 				stmt *s = *si;
-				fold_check_scope_entry(&s->where, s->symtab, l->scope);
+				fold_check_scope_entry(&s->where, "goto enters", s->symtab, l->scope);
 			}
 		}
 	}

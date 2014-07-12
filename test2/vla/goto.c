@@ -3,7 +3,7 @@
 main()
 {
 	int n = 5;
-	goto a; // CHECK: error: goto enters scope of variably modified variable
+	goto a; // CHECK: error: goto enters scope of variably modified declaration
 begin:
 	{
 		int (*abc)[n]; // CHECK: note: variable "abc"
@@ -11,7 +11,7 @@ begin:
 a:;
 	}
 
-	goto b; // CHECK: error: goto enters scope of variably modified variable
+	goto b; // CHECK: error: goto enters scope of variably modified declaration
 begin2:
 	{
 		int xyz[n]; // CHECK: note: variable "xyz"

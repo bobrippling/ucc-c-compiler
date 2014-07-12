@@ -249,7 +249,7 @@ static void mark_symtabs(symtable *const s_from, int m)
 		s_iter->mark = m;
 }
 
-void fold_check_scope_entry(where *w,
+void fold_check_scope_entry(where *w, const char *desc,
 		symtable *const s_from, symtable *const s_to)
 {
 	symtable *s_iter;
@@ -269,8 +269,9 @@ void fold_check_scope_entry(where *w,
 
 				fold_had_error = 1;
 				warn_at_print_error(w,
-						"goto enters scope of variably modified variable\n"
-						"%s: note: variable \"%s\"", where_str_r(buf, &d->where), d->spel);
+						"%s scope of variably modified declaration\n"
+						"%s: note: variable \"%s\"",
+						desc, where_str_r(buf, &d->where), d->spel);
 			}
 		}
 	}
