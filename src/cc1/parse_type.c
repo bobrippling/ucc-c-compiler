@@ -661,9 +661,10 @@ static decl *parse_arg_decl(symtable *scope)
 {
 	/* argument decls can default to int */
 	const enum decl_mode flags = DECL_CAN_DEFAULT | DECL_ALLOW_STORE;
+	enum decl_storage store = store_default;
 	decl *argdecl;
 	type *btype = parse_btype(
-			NULL, /*align:*/NULL, /*newdecl:*/0, scope, /*auto:*/0);
+			&store, /*align:*/NULL, /*newdecl:*/0, scope, /*auto:*/0);
 
 	if(!btype)
 		return NULL;
@@ -672,7 +673,8 @@ static decl *parse_arg_decl(symtable *scope)
 	 * things like inits are caught later */
 	argdecl = parse_decl_stored_aligned(
 			btype, flags,
-			store_default, /*align:*/NULL,
+			store /* register is a valid argument store */,
+			/*align:*/NULL,
 			scope, NULL);
 
 	if(!argdecl)
