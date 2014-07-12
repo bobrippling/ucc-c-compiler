@@ -215,7 +215,7 @@ static void apply_ptr_step(
 	}else if(l_ptr && r_ptr){
 		/* difference - divide afterwards */
 		if(ptr_step == -1){
-			*div_out = vla_size((*lhs)->t, octx);
+			*div_out = vla_size(type_next((*lhs)->t), octx);
 		}else{
 			*div_out = out_new_l(octx,
 					type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
