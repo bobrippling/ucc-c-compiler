@@ -135,6 +135,35 @@ const out_val *gen_expr_sizeof(expr *e, out_ctx *octx)
 		/* if it's an expression, we want eval, e.g.
 		 *   short ar[1][f()];
 		 *   return sizeof ar[g()]; // want f() and g()
+		 *
+		 * C11 6.5.3.4 p2
+		 * The sizeof operator yields the size (in bytes) of its operand, which may
+		 * be an expression or the parenthesized name of a type. The size is
+		 * determined from the type of the operand. The result is an integer.
+		 *
+		 * ###
+		 * If the type of the operand is a variable length array type, the operand
+		 * is evaluated;
+		 * ###
+		 *
+		 * otherwise, the operand is not evaluated and the result is an integer
+		 * constant.
+		 *
+		 *
+		 * C11 6.7.6.2 p5
+		 *
+		 * If the size is an expression that is not an integer constant expression:
+		 * if it occurs in a declaration at function prototype scope, it is treated
+		 * as if it were replaced by *; otherwise, each time it is evaluated it
+		 * shall have a value greater than zero. The size of each instance of a
+		 * variable length array type does not change during its lifetime. Where a
+		 * size expression is part of the operand of a sizeof operator and changing
+		 * the value of the size expression would not affect the result of the
+		 * operator, it is unspecified whether or not the size expression is
+		 * evaluated.
+		 *
+		 * - currently we always evaluate it, the backend may discard things
+		 * like integer constants
 		 */
 		if(e->expr)
 			out_val_consume(octx, gen_expr(e->expr, octx));
