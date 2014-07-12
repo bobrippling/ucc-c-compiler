@@ -131,8 +131,16 @@ const out_val *gen_expr_sizeof(expr *e, out_ctx *octx)
 {
 	type *ty = SIZEOF_WHAT(e);
 
-	if(NEED_RUNTIME_SIZEOF(ty))
+	if(NEED_RUNTIME_SIZEOF(ty)){
+		/* if it's an expression, we want eval, e.g.
+		 *   short ar[1][f()];
+		 *   return sizeof ar[g()]; // want f() and g()
+		 */
+		if(e->expr)
+			out_val_consume(octx, gen_expr(e->expr, octx));
+
 		return vla_size(ty, octx);
+	}
 
 	return out_new_l(octx, e->tree_type, SIZEOF_SIZE(e));
 }
