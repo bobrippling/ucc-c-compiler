@@ -162,7 +162,7 @@ void vla_alloc_decl(decl *d, out_ctx *octx)
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
 	type *ptrsizety = type_ptr_to(sizety);
 	const unsigned pws = platform_word_size();
-	const int is_vla = type_is_vla(d->ref);
+	const int is_vla = !!type_is_vla(d->ref);
 	const unsigned stack_off = d->sym->loc.stack_pos + octx->stack_local_offset;
 
 	assert(s && "no sym for vla");

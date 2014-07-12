@@ -46,7 +46,6 @@ int type_is_void(type *);
 int type_is_void_ptr(type *);
 int type_is_variably_modified(type *);
 int type_is_variably_modified_vla(type *, int *vla);
-int type_is_vla(type *);
 
 struct decl *type_is_tdef(type *);
 struct struct_union_enum_st *type_is_s_or_u(type *);
@@ -60,5 +59,6 @@ type *type_is_primitive(type *, enum type_primitive);
 type *type_is_ptr(type *); /* returns r->ref iff ptr */
 type *type_is_ptr_or_block(type *);
 type *type_is_scalar(type *);
+type *type_is_vla(type *);
 
 #endif

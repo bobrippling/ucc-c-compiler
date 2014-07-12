@@ -17,6 +17,7 @@
 #include "const.h"
 #include "expr.h"
 #include "stmt.h"
+#include "vla.h"
 #include "type_is.h"
 #include "gen_asm.h"
 #include "out/out.h"
@@ -96,6 +97,57 @@ static void assign_arg_offsets(
 	}
 }
 
+static void allocate_vla_args(
+		out_ctx *octx, symtable *arg_symtab, unsigned const auto_space)
+{
+	const unsigned pws = platform_word_size();
+	unsigned current_off = auto_space;
+	decl **i;
+
+	for(i = arg_symtab->decls; i && *i; i++){
+		const out_val *dest, *src;
+		decl *d = *i;
+		type *decayed;
+		int orig_off;
+
+		if(!type_is_variably_modified(d->ref))
+			continue;
+
+		/* generate side-effects even if it's decayed, e.g.
+		 * f(int p[E1][E2])
+		 * ->
+		 * f(int (*p)[E2])
+		 *
+		 * we still want E1 generated
+		 */
+		if((decayed = type_is_decayed_array(d->ref))
+		&& (decayed = type_is_vla(decayed)))
+		{
+			out_val_consume(octx, gen_expr(decayed->bits.array.size, octx));
+		}
+
+		/* this array argument is a VLA and needs more size than
+		 * just its pointer. we move it to a place on the stack where
+		 * we have more space. debug output is unaffected, since we
+		 * don't touch the original pointer value, which is all it needs */
+		src = out_new_sym_val(octx, d->sym);
+
+		orig_off = d->sym->loc.arg_offset;
+
+		current_off += pws;
+		d->sym->loc.arg_offset = -(int)current_off - octx->stack_local_offset;
+
+		out_comment(octx, "move vla argument %s (%d -> %d)",
+				d->spel, orig_off, d->sym->loc.arg_offset);
+
+		dest = out_new_sym(octx, d->sym);
+		out_store(octx, dest, src);
+
+
+		vla_alloc_decl(d, octx);
+	}
+}
+
 static void gen_asm_global(decl *d, out_ctx *octx)
 {
 	attribute *sec;
@@ -113,6 +165,8 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		const char *sp;
 		int *offsets;
 		symtable *arg_symtab;
+		unsigned arg_vla_space = 0;
+		unsigned auto_space;
 
 		if(!d->bits.func.code)
 			return;
@@ -120,21 +174,32 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		out_dbg_where(octx, &d->where);
 
 		arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
-		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++)
-			if((*aiter)->sym->type == sym_arg)
+		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++){
+			decl *d = *aiter;
+
+			if(d->sym->type == sym_arg){
 				nargs++;
+
+				if(type_is_variably_modified(d->ref))
+					arg_vla_space += vla_decl_space(d);
+			}
+		}
 
 		offsets = nargs ? umalloc(nargs * sizeof *offsets) : NULL;
 
 		sp = decl_asm_spel(d);
 
+		auto_space = d->bits.func.code->symtab->auto_total_size;
+
 		out_func_prologue(octx, sp, d->ref,
-				d->bits.func.code->symtab->auto_total_size,
+				auto_space + arg_vla_space,
 				nargs,
 				is_vari = type_is_variadic_func(d->ref),
 				offsets, &d->bits.func.var_offset);
 
 		assign_arg_offsets(octx, arg_symtab->decls, offsets);
+
+		allocate_vla_args(octx, arg_symtab, auto_space);
 
 		gen_stmt(d->bits.func.code, octx);
 

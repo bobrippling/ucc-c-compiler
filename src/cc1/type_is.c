@@ -336,11 +336,11 @@ int type_is_complete(type *r)
 	return 1;
 }
 
-int type_is_vla(type *ty)
+type *type_is_vla(type *ty)
 {
 	/* top level only */
 	ty = type_is(ty, type_array);
-	return ty && ty->bits.array.is_vla;
+	return ty && ty->bits.array.is_vla ? ty : NULL;
 }
 
 int type_is_variably_modified_vla(type *const ty, int *vla)
