@@ -25,7 +25,7 @@ e=/tmp/check.$$
 
 trap "rm -f $e" EXIT
 
-$ucc -o/dev/null -c $@ 2>$e
+$ucc -o/dev/null -c "$@" 2>$e
 r=$?
 
 # check for abort
