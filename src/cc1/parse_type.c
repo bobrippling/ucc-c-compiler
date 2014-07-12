@@ -40,6 +40,8 @@ static decl *parse_decl_stored_aligned(
 		enum decl_storage store, struct decl_align *align,
 		symtable *scope, symtable *add_to_scope);
 
+static type *default_type(void);
+
 /* newdecl_context:
  * struct B { int b; };
  * {
@@ -667,7 +669,7 @@ static decl *parse_arg_decl(symtable *scope)
 			&store, /*align:*/NULL, /*newdecl:*/0, scope, /*auto:*/0);
 
 	if(!btype)
-		return NULL;
+		btype = default_type();
 
 	/* don't use parse_decl() - we don't want it folding yet,
 	 * things like inits are caught later */
