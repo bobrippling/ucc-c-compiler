@@ -3,6 +3,7 @@
 
 #include "../util/where.h"
 #include "../util/alloc.h"
+#include "../util/dynarray.h"
 
 #include "sym.h"
 
@@ -25,4 +26,10 @@ void label_makeblk(label *l, out_ctx *octx)
 	if(l->bblock)
 		return;
 	l->bblock = out_blk_new(octx, l->spel);
+}
+
+void label_free(label *l)
+{
+	dynarray_free(struct stmt *, l->jumpers, NULL);
+	free(l);
 }

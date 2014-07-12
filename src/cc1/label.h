@@ -17,5 +17,6 @@ typedef struct label label;
 
 label *label_new(where *, char *id, int complete, symtable *scope);
 void label_makeblk(label *, out_ctx *);
+void label_free(label *);
 
 #endif
