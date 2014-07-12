@@ -76,7 +76,7 @@ static const out_val *vla_gen_size_ty(
 				const out_val *this_sz;
 				long new_stack_off = stack_off == -1
 					? -1
-					: stack_off + platform_word_size();
+					: stack_off - platform_word_size();
 
 				if(gen_exprs){
 					this_sz = out_cast(
@@ -170,14 +170,14 @@ void vla_alloc_decl(decl *d, out_ctx *octx)
 		out_comment(octx, "save stack for %s", decl_to_str(d));
 		out_store(octx,
 				v_new_bp3_below(octx, NULL,
-					ptrsizety, d->sym->loc.stack_pos + pws),
+					ptrsizety, d->sym->loc.stack_pos - pws),
 				v_new_sp3(octx, NULL, sizety, 0));
 	}
 
 	out_comment(octx, "gen size for %s", decl_to_str(d));
 	v_sz = vla_gen_size_ty(d->ref, octx, sizety,
 			/* 2 * platform_word_size - once for vla pointer, once for saved $sp */
-			d->sym->loc.stack_pos + (1 + is_vla) * pws,
+			d->sym->loc.stack_pos - (1 + is_vla) * pws,
 			1);
 
 	if(is_vla){
@@ -201,7 +201,7 @@ static const out_val *vla_read(decl *d, out_ctx *octx, long offset)
 
 	return out_deref(octx,
 			v_new_bp3_below(octx, NULL, ptr_to_vla_ty,
-				d->sym->loc.stack_pos + offset));
+				d->sym->loc.stack_pos - offset));
 }
 
 const out_val *vla_address(decl *d, out_ctx *octx)
