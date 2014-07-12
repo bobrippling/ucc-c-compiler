@@ -1,5 +1,13 @@
 // RUN: %check -e %s
 
+f(int n)
+{
+	goto a; // CHECK: error: goto enters scope of variably modified declaration
+	char buf[n]; // CHECK: note: variable "buf"
+a:
+	;
+}
+
 main()
 {
 	int n = 5;
