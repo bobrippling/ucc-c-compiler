@@ -670,19 +670,11 @@ const char *type_to_str_r(char buf[TYPE_STATIC_BUFSIZ], type *r)
 
 const char *type_to_str_r_show_decayed(char buf[TYPE_STATIC_BUFSIZ], struct type *r)
 {
-	const char *s;
-	enum type_kind restore;
-
 	r = type_skip_all(r);
-	restore = r->type;
-	if(r->type == type_ptr)
-		r->type = type_array;
+	if(r->type == type_ptr && r->bits.ptr.decayed_from)
+		r = r->bits.ptr.decayed_from;
 
-	s = type_to_str_r(buf, r);
-
-	r->type = restore;
-
-	return s;
+	return type_to_str_r(buf, r);
 }
 
 const char *type_to_str(type *r)
