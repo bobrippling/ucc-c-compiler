@@ -15,7 +15,7 @@
 
 extern int n;
 int A[n]; // CHECK: error: static-duration variable length array
-extern int (*p2)[n]; // CHECK: error: global scope variably modified type
+extern int (*p2)[n]; // CHECK: error: static-duration variably modified type
 
 fn(int m)
 {
