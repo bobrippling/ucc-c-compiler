@@ -80,7 +80,7 @@ static const out_val *vla_cached_size(type *const qual_t, out_ctx *octx)
 static const out_val *vla_gen_size_ty(
 		type *t, out_ctx *octx,
 		type *const arith_ty,
-		long stack_off, int gen_exprs)
+		long stack_off)
 {
 	int mul;
 
@@ -105,12 +105,10 @@ static const out_val *vla_gen_size_ty(
 				if(sz)
 					return sz;
 
-				assert(gen_exprs);
-
 				sz = out_op(
 						octx, op_multiply,
 						vla_gen_size_ty(
-							type_next(t), octx, arith_ty, new_stack_off, gen_exprs),
+							type_next(t), octx, arith_ty, new_stack_off),
 						out_cast(
 							octx, gen_expr(t->bits.array.size, octx),
 							arith_ty, 0));
@@ -158,12 +156,12 @@ static const out_val *vla_gen_size_ty(
 		case type_attr:
 		case type_where:
 			return vla_gen_size_ty(type_skip_all(t), octx,
-					arith_ty, stack_off, gen_exprs);
+					arith_ty, stack_off);
 	}
 
 	return out_op(octx, op_multiply,
 			out_new_l(octx, arith_ty, mul),
-			vla_gen_size_ty(type_next(t), octx, arith_ty, stack_off, gen_exprs));
+			vla_gen_size_ty(type_next(t), octx, arith_ty, stack_off));
 }
 
 static const out_val *vla_gen_size(type *t, out_ctx *octx)
@@ -171,7 +169,7 @@ static const out_val *vla_gen_size(type *t, out_ctx *octx)
 	return vla_gen_size_ty(
 			t, octx,
 			type_nav_btype(cc1_type_nav, type_long),
-			-1, 1);
+			-1);
 }
 
 void vla_typedef_alloc(decl *d, out_ctx *octx)
@@ -182,7 +180,7 @@ void vla_typedef_alloc(decl *d, out_ctx *octx)
 	out_val_consume(octx,
 			vla_gen_size_ty(
 				d->ref, octx, sizety,
-				stack_off, 1));
+				stack_off));
 }
 
 void vla_alloc_decl(decl *d, out_ctx *octx)
@@ -210,8 +208,7 @@ void vla_alloc_decl(decl *d, out_ctx *octx)
 	out_comment(octx, "gen size for %s", decl_to_str(d));
 	v_sz = vla_gen_size_ty(d->ref, octx, sizety,
 			/* 2 * platform_word_size - once for vla pointer, once for saved $sp */
-			stack_off - (1 + is_vla) * pws,
-			1);
+			stack_off - (1 + is_vla) * pws);
 
 	if(is_vla){
 		v_sz = out_cast(octx, v_sz, sizety, 0);
