@@ -274,12 +274,32 @@ type *type_attributed(type *ty, attribute *attr)
 	return attributed;
 }
 
+struct ctx_ptr
+{
+	type *decayed_from;
+};
+
+static int eq_ptr(type *candidate, void *vctx)
+{
+	struct ctx_ptr *ctx = vctx;
+
+	return candidate->bits.ptr.decayed_from == ctx->decayed_from;
+}
+
+static void init_ptr(type *ty, void *vctx)
+{
+	struct ctx_ptr *ctx = vctx;
+
+	ty->bits.ptr.decayed_from = ctx->decayed_from;
+}
+
 type *type_ptr_to(type *pointee)
 {
+	struct ctx_ptr ctx = { NULL };
+
 	return type_uptree_find_or_new(
 			pointee, type_ptr,
-			/*if there's an uptree, we'll take it:*/eq_true,
-			NULL, NULL);
+			eq_ptr, init_ptr, &ctx);
 }
 
 struct ctx_decayed_array
