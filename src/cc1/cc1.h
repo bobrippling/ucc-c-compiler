@@ -82,6 +82,7 @@ enum fopt
 	FOPT_CAST_W_BUILTIN_TYPES  = 1 << 18,
 	FOPT_DUMP_TYPE_TREE        = 1 << 19,
 	FOPT_EXT_KEYWORDS          = 1 << 20, /* -fasm */
+	FOPT_FOLD_CONST_VLAS       = 1 << 21,
 };
 
 enum mopt

@@ -134,6 +134,7 @@ struct
 	{ 'f',  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
 	{ 'f',  "dump-type-tree", FOPT_DUMP_TYPE_TREE },
 	{ 'f',  "asm", FOPT_EXT_KEYWORDS },
+	{ 'f',  "fold-const-vlas", FOPT_FOLD_CONST_VLAS },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 
@@ -172,11 +173,12 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SHOW_LINE
                     | FOPT_PIC
                     | FOPT_BUILTIN
-										| FOPT_TRACK_INITIAL_FNAM
-										| FOPT_INTEGRAL_FLOAT_LOAD
-										| FOPT_SYMBOL_ARITH
-										| FOPT_SIGNED_CHAR
-                    | FOPT_CAST_W_BUILTIN_TYPES;
+                    | FOPT_TRACK_INITIAL_FNAM
+                    | FOPT_INTEGRAL_FLOAT_LOAD
+                    | FOPT_SYMBOL_ARITH
+                    | FOPT_SIGNED_CHAR
+                    | FOPT_CAST_W_BUILTIN_TYPES
+                    | FOPT_FOLD_CONST_VLAS;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 

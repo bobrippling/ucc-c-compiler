@@ -276,7 +276,7 @@ void fold_type_w_attr(
 					else if(k.nonstandard_const)
 						warn_at(&k.nonstandard_const->where,
 								"%s-expr is a non-standard constant expression (for array size)",
-								k.nonstandard_const->f_str()); /* TODO: VLA here */
+								k.nonstandard_const->f_str());
 				}
 			}
 			break;

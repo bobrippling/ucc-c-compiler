@@ -922,10 +922,18 @@ static type_parsed *parsed_type_array(
 
 				const_fold(size, &k);
 
-				if(k.type != CONST_NUM)
+				/* if it's not a constant number, or it is, but it's non-standard
+				 * (and we don't have the fold-const-vlas setting), then treat
+				 * as a vla */
+				if(k.type != CONST_NUM
+				|| (k.nonstandard_const && !(fopt_mode & FOPT_FOLD_CONST_VLAS)))
+				{
 					is_vla = VLA;
+				}
 				else if(!K_INTEGRAL(k.bits.num))
+				{
 					die_at(NULL, "not an integral array size");
+				}
 			}else{
 				is_vla = VLA_STAR;
 			}
