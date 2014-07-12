@@ -8,6 +8,8 @@
 #include "../decl_init.h"
 #include "../type_is.h"
 
+#define COMP_LIT_INITIALISED(e) (e)->bits.complit.decl->bits.var.init.expr
+
 const char *str_expr_compound_lit(void)
 {
 	return "compound-lit";
@@ -29,7 +31,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	if(!stab->parent)
 		static_ctx = 1;
 
-	if(e->code)
+	if(COMP_LIT_INITIALISED(e))
 		return; /* being called from fold_gen_init_assignment_base */
 
 	/* must be set before the recursive fold_gen_init_assignment_base */
@@ -77,10 +79,11 @@ static void gen_expr_compound_lit_code(expr *e, out_ctx *octx)
 	if(!e->expr_comp_lit_cgen){
 		e->expr_comp_lit_cgen = 1;
 
-		UCC_ASSERT(e->code->symtab->parent,
-				"global compound initialiser tried for code");
-
-		gen_stmt(e->code, octx);
+		out_val_consume(
+				octx,
+				gen_expr(
+					e->bits.complit.decl->bits.var.init.expr,
+					octx));
 	}
 }
 
