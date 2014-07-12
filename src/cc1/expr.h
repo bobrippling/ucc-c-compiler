@@ -142,6 +142,7 @@ struct expr
 		{
 			unsigned sz;
 			type *of_type;
+			decl *vm;
 		} size_of;
 
 		struct

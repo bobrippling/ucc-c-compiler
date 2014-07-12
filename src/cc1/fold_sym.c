@@ -21,6 +21,7 @@
 #include "const.h"
 #include "label.h"
 #include "type_is.h"
+#include "vla.h"
 
 
 #define RW_TEST(decl, var)                      \
@@ -150,8 +151,12 @@ void symtab_check_rw(symtable *tab)
 						case store_auto:
 						case store_static:
 							/* static analysis on sym */
-							if(!has_unused_attr && !type_is(d->ref, type_func) && !d->bits.var.init)
+							if(!has_unused_attr
+							&& !type_is(d->ref, type_func)
+							&& !d->bits.var.init.dinit)
+							{
 								RW_WARN(WRITTEN, d, nwrites, "written to");
+							}
 							break;
 						case store_extern:
 						case store_typedef:
@@ -276,7 +281,7 @@ void symtab_fold_decls(symtable *tab)
 	for(diter = tab->decls; diter && *diter; diter++){
 		decl *d = *diter;
 
-		fold_decl(d, tab, NULL);
+		fold_decl(d, tab);
 
 		if(d->spel)
 			NEW_DECL(d);
@@ -500,17 +505,32 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 					break;
 
 				case sym_local: /* warn on unused args and locals */
+				{
+					int is_typedef = 0;
+
 					if(type_is(d->ref, type_func))
 						continue;
 
 					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+						case store_typedef: /* VLAs */
+							is_typedef = 1;
 							/* for now, we allocate stack space for register vars */
 						case store_register:
 						case store_default:
 						case store_auto:
 						{
-							unsigned siz = decl_size(s->decl);
-							unsigned align = decl_align(s->decl);
+							unsigned siz;
+							unsigned align;
+
+							if(type_is_variably_modified(s->decl->ref)){
+								siz = vla_decl_space(s->decl);
+								align = platform_word_size();
+							}else if(is_typedef){
+								break;
+							}else{
+								siz = decl_size(s->decl);
+								align = decl_align(s->decl);
+							}
 
 							/* align greater than size - we increase
 							 * size so it can be aligned to `align'
@@ -526,11 +546,12 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 
 						case store_static:
 						case store_extern:
-						case store_typedef:
 							break;
 						case store_inline:
 							ICE("%s store", decl_store_to_str(d->store));
 					}
+					break;
+				}
 				case sym_global:
 					break;
 			}
@@ -566,10 +587,19 @@ void symtab_chk_labels(symtable *stab)
 		for(i = 0;
 		    (l = dynmap_value(label *, stab->labels, i));
 		    i++)
+		{
+			stmt **si;
+
 			if(!l->complete)
 				die_at(l->pw, "label '%s' undefined", l->spel);
 			else if(!l->uses && !l->unused)
 				warn_at(l->pw, "unused label '%s'", l->spel);
+
+			for(si = l->jumpers; si && *si; si++){
+				stmt *s = *si;
+				fold_check_scope_entry(&s->where, "goto enters", s->symtab, l->scope);
+			}
+		}
 	}
 }
 

@@ -278,21 +278,30 @@ void fold_type_w_attr(
 				where *array_loc = &r->bits.array.size->where;
 
 				FOLD_EXPR(r->bits.array.size, stab);
-				const_fold(r->bits.array.size, &k);
 
-				UCC_ASSERT(k.type == CONST_NUM,
-						"not a constant for array size");
+				if(r->bits.array.is_vla){
+					if(cc1_std < STD_C99){
+						warn_at(
+								&r->bits.array.size->where,
+								"variable length array is a C99 feature");
+					}
+				}else{
+					const_fold(r->bits.array.size, &k);
 
-				UCC_ASSERT(K_INTEGRAL(k.bits.num),
-						"integral array should be checked during parse");
+					UCC_ASSERT(k.type == CONST_NUM,
+							"not a constant for array size");
 
-				if((sintegral_t)k.bits.num.val.i < 0)
-					die_at(array_loc, "negative array size");
-				/* allow zero length arrays */
-				else if(k.nonstandard_const)
-					warn_at(&k.nonstandard_const->where,
-							"%s-expr is a non-standard constant expression (for array size)",
-							k.nonstandard_const->f_str()); /* TODO: VLA here */
+					UCC_ASSERT(K_INTEGRAL(k.bits.num),
+							"integral array should be checked during parse");
+
+					if((sintegral_t)k.bits.num.val.i < 0)
+						die_at(array_loc, "negative array size");
+					/* allow zero length arrays */
+					else if(k.nonstandard_const)
+						warn_at(&k.nonstandard_const->where,
+								"%s-expr is a non-standard constant expression (for array size)",
+								k.nonstandard_const->f_str());
+				}
 			}
 			break;
 
@@ -360,7 +369,7 @@ void fold_type_w_attr(
 			fold_expr_no_decay(p_expr, stab);
 
 			if(r->bits.tdef.decl)
-				fold_decl(r->bits.tdef.decl, stab, NULL);
+				fold_decl(r->bits.tdef.decl, stab);
 
 			thisparent = parent;
 			break;
@@ -555,6 +564,11 @@ static void fold_decl_func(decl *d, symtable *stab)
 			break;
 	}
 
+	if(type_is_variably_modified(d->ref)){
+		warn_at_print_error(&d->where, "function with variably modified type");
+		fold_had_error = 1;
+	}
+
 	if(stab->parent){
 		if(d->bits.func.code)
 			die_at(&d->bits.func.code->where, "nested function %s", d->spel);
@@ -565,10 +579,12 @@ static void fold_decl_func(decl *d, symtable *stab)
 	fold_func_attr(d);
 }
 
-static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
+static void fold_decl_var(decl *d, symtable *stab)
 {
-#define inits (*pinit_code)
 	attribute *attrib = NULL;
+	int vla;
+	int is_static_duration = !stab->parent
+		|| (d->store & STORE_MASK_STORE) == store_static;
 
 	if((d->store & STORE_MASK_EXTRA) == store_inline)
 		warn_at(&d->where, "inline on non-function");
@@ -637,14 +653,26 @@ static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
 		d->bits.var.align->resolved = max_al;
 	}
 
-	if(d->bits.var.init){
-		int is_static_init = !stab->parent;
+	if((is_static_duration || (d->store & STORE_MASK_STORE) == store_extern)
+	&& type_is_variably_modified_vla(d->ref, &vla))
+	{
+		/* allow static VMs in local scope */
+		int ok = (d->store & STORE_MASK_STORE) == store_static
+			&& !vla && stab->parent;
 
+		if(!ok){
+			warn_at_print_error(
+					&d->where,
+					"%s variabl%s",
+					is_static_duration ? "static-duration" : "extern-linkage",
+					vla ? "e length array" : "y modified type");
+			fold_had_error = 1;
+			return;
+		}
+	}
+
+	if(d->bits.var.init.dinit){
 		switch(d->store & STORE_MASK_STORE){
-			case store_static:
-				is_static_init = 1;
-				break;
-
 			case store_typedef:
 				fold_had_error = 1;
 				warn_at_print_error(&d->where, "initialised typedef");
@@ -666,30 +694,24 @@ static void fold_decl_var(decl *d, symtable *stab, stmt **pinit_code)
 		 */
 		if(d->spel){
 			/* this creates the below s->inits array */
-			if(is_static_init){
+			if(is_static_duration){
 				fold_decl_global_init(d, stab);
 
-			}else if(pinit_code){
-				if(!inits){
-					inits = stmt_set_where(
-							stmt_new_wrapper(code, symtab_new(stab, &d->where)),
-							&d->where);
-				}
+			}else if(!d->bits.var.init.expr){
+				decl_init_brace_up_fold(d, stab, /*struct_copy:*/1);
 
-				decl_init_brace_up_fold(d, inits->symtab, /*struct_copy:*/1);
-				decl_init_create_assignments_base(
-						d->bits.var.init, d->ref,
+				decl_init_create_assignments_base_and_fold(
+						d,
 						expr_set_where(
 							expr_new_identifier(d->spel),
 							&d->where),
-						inits);
-				/* folded elsewhere */
+						stab);
+
 			}else{
 				ICE("fold_decl(%s) with no pinit_code?", d->spel);
 			}
 		}
 	}
-#undef inits
 }
 
 static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
@@ -741,7 +763,7 @@ static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
 	}
 }
 
-void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
+void fold_decl(decl *d, symtable *stab)
 {
 	/* this is called from wherever we can define a
 	 * struct/union/enum,
@@ -788,11 +810,9 @@ void fold_decl(decl *d, symtable *stab, stmt **pinit_code)
 		if(first_fold && d->bits.var.field_width)
 			fold_decl_var_fieldwidth(d, stab);
 
-		if(pinit_code
-		|| /* globals never have pinit_code: */ !stab->parent)
-		{
+		if(d->fold_state == DECL_FOLD_EXCEPT_INIT){
 			d->fold_state = DECL_FOLD_INIT;
-			fold_decl_var(d, stab, pinit_code);
+			fold_decl_var(d, stab);
 		}
 	}
 
@@ -819,26 +839,26 @@ void fold_decl_global_init(decl *d, symtable *stab)
 	expr *nonstd = NULL;
 	const char *type;
 
-	if(!type_is(d->ref, type_func) && !d->bits.var.init)
+	if(!type_is(d->ref, type_func) && !d->bits.var.init.dinit)
 		return;
 
 	/* this completes the array, if any */
 	decl_init_brace_up_fold(d, stab, /*struct_copy:*/1);
 
 	type = stab->parent ? "static" : "global";
-	if(!decl_init_is_const(d->bits.var.init, stab, &nonstd)){
-		warn_at_print_error(&d->bits.var.init->where,
+	if(!decl_init_is_const(d->bits.var.init.dinit, stab, &nonstd)){
+		warn_at_print_error(&d->bits.var.init.dinit->where,
 				"%s %s initialiser not constant",
-				type, decl_init_to_str(d->bits.var.init->type));
+				type, decl_init_to_str(d->bits.var.init.dinit->type));
 
 		fold_had_error = 1;
 	}else if(nonstd){
 		char wbuf[WHERE_BUF_SIZ];
 
-		warn_at(&d->bits.var.init->where,
+		warn_at(&d->bits.var.init.dinit->where,
 				"%s %s initialiser contains non-standard constant expression\n"
 				"%s: note: %s expression here",
-				type, decl_init_to_str(d->bits.var.init->type),
+				type, decl_init_to_str(d->bits.var.init.dinit->type),
 				where_str_r(wbuf, &nonstd->where),
 				nonstd->f_str());
 	}
@@ -991,7 +1011,7 @@ void fold_decl_global(decl *d, symtable *stab)
 					type_is(d->ref, type_func) ? "function" : "variable");
 	}
 
-	fold_decl(d, stab, NULL);
+	fold_decl(d, stab);
 
 	if(type_is(d->ref, type_func))
 		fold_global_func(d);
@@ -1036,8 +1056,12 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 		}
 	}
 
-	if(!e->in_parens && expr_kind(e, assign))
+	if(!(chk & FOLD_CHK_NOWARN_ASSIGN)
+	&& !e->in_parens
+	&& expr_kind(e, assign))
+	{
 		cc1_warn_at(&e->where, 0,WARN_TEST_ASSIGN, "assignment in %s", desc);
+	}
 
 	if(chk & FOLD_CHK_BOOL){
 		if(!type_is_bool(e->tree_type)){
@@ -1082,9 +1106,9 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 			const int is_var = !type_is(d->ref, type_func);
 
 			/* fold before for array checks, etc */
-			if(is_var && d->bits.var.init)
+			if(is_var && d->bits.var.init.dinit)
 				die_at(&d->where, "parameter '%s' is initialised", d->spel);
-			fold_decl(d, stab, NULL);
+			fold_decl(d, stab);
 
 			if(type_is_void(d->ref)){
 				/* allow if it's the first, only and unnamed */
@@ -1177,7 +1201,7 @@ void fold_merge_tenatives(symtable *stab)
 		for(; d; d = d->proto){
 			d->proto_flag = 1;
 			/* look for an explicit init */
-			if(!type_is(d->ref, type_func) && d->bits.var.init){
+			if(!type_is(d->ref, type_func) && d->bits.var.init.dinit){
 				if(init){
 					char wbuf[WHERE_BUF_SIZ];
 					die_at(&init->where, "multiple definitions of \"%s\"\n"

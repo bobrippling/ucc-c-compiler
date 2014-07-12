@@ -1104,13 +1104,20 @@ void decl_init_brace_up_fold(
 {
 	assert(!type_is(d->ref, type_func));
 	if(!d->bits.var.init_normalised){
+		d->bits.var.init_normalised = 1;
 
-		d->bits.var.init = decl_init_brace_up_start(
-				d->bits.var.init,
+		if(type_is_vla(d->ref, VLA_ANY_DIMENSION)){
+			warn_at_print_error(
+					&d->where,
+					"cannot initialise variable length array");
+			fold_had_error = 1;
+			return;
+		}
+
+		d->bits.var.init.dinit = decl_init_brace_up_start(
+				d->bits.var.init.dinit,
 				&d->ref,
 				stab, allow_initial_struct_copy);
-
-		d->bits.var.init_normalised = 1;
 	}
 }
 
@@ -1138,8 +1145,16 @@ static expr *sue_base_for_init_assignment(
 			w);
 }
 
+static void expr_init_add(expr **pinit, expr *new)
+{
+	if(*pinit)
+		*pinit = expr_new_comma2(*pinit, new);
+	else
+		*pinit = new;
+}
+
 static void decl_init_create_assignment_from_copy(
-		decl_init *di, stmt *code,
+		decl_init *di, expr **pinit,
 		type *next_type, expr *new_base)
 {
 	/* TODO: ideally when the backend is sufficiently optimised
@@ -1156,21 +1171,20 @@ static void decl_init_create_assignment_from_copy(
 		expr *memcp = builtin_new_memcpy(
 				new_base, last_base, type_size(next_type, &di->where));
 
-		dynarray_add(&code->bits.code.stmts,
-				expr_to_stmt(memcp, code->symtab));
+		expr_init_add(pinit, memcp);
 	}else{
 		/* the initial assignment from the range_copy */
 		icpy->first_instance = new_base;
 
 		decl_init_create_assignments_base(icpy->range_init,
-				next_type, new_base, code);
+				next_type, new_base, pinit);
 	}
 }
 
 void decl_init_create_assignments_base(
 		decl_init *init,
 		type *tfor, expr *base,
-		stmt *code)
+		expr **pinit)
 {
 	if(!init){
 		expr *zero;
@@ -1194,21 +1208,16 @@ zero_init:
 
 		memcpy_safe(&zero->where, &base->where);
 
-		dynarray_add(
-				&code->bits.code.stmts,
-				expr_to_stmt(zero, code->symtab));
+		expr_init_add(pinit, zero);
 		return;
 	}
 
 	switch(init->type){
 		case decl_init_scalar:
-			dynarray_add(
-					&code->bits.code.stmts,
-					expr_to_stmt(
-						expr_set_where(
-							expr_new_assign_init(base, init->bits.expr),
-							&base->where),
-						code->symtab));
+			expr_init_add(pinit,
+					expr_set_where(
+						expr_new_assign_init(base, init->bits.expr),
+						&base->where));
 			break;
 
 		case decl_init_copy:
@@ -1229,12 +1238,9 @@ zero_init:
 				expr *e = init->bits.ar.inits[0]->bits.expr;
 
 				if(type_is_s_or_u(e->tree_type) == sue){
-					dynarray_add(
-							&code->bits.code.stmts,
-							expr_to_stmt(
-								builtin_new_memcpy(
-									base, e, type_size(e->tree_type, &e->where)),
-								code->symtab));
+					expr_init_add(pinit,
+							builtin_new_memcpy(
+								base, e, type_size(e->tree_type, &e->where)));
 					return;
 				}
 			}
@@ -1251,6 +1257,9 @@ zero_init:
 				/* it's fine if there's nothing for it */
 				if(n > 0)
 					die_at(&init->where, "non-static initialisation of flexible array");
+			}else if(type_is_variably_modified(tfor)){
+				/* error already emitted */
+				return;
 			}else{
 				n = type_array_len(tfor);
 			}
@@ -1273,7 +1282,7 @@ zero_init:
 							*i,
 							smem->ref,
 							sue_base,
-							code);
+							pinit);
 				}else{
 					/* zero init union - make sure we get all of it */
 					goto zero_init;
@@ -1313,24 +1322,40 @@ zero_init:
 
 					if(di && di != DYNARRAY_NULL && di->type == decl_init_copy){
 						decl_init_create_assignment_from_copy(
-								di, code, next_type, new_base);
+								di, pinit, next_type, new_base);
 						continue;
 					}
 				}
 
-				decl_init_create_assignments_base(di, next_type, new_base, code);
+				decl_init_create_assignments_base(di, next_type, new_base, pinit);
 			}
 			break;
 		}
 	}
 }
 
+void decl_init_create_assignments_base_and_fold(
+		decl *d, expr *e, symtable *scope)
+{
+	decl_init_create_assignments_base(d->bits.var.init.dinit,
+			d->ref, e, &d->bits.var.init.expr);
+
+	if(d->bits.var.init.expr)
+		fold_expr(d->bits.var.init.expr, scope);
+	/* else had error */
+}
+
 void decl_default_init(decl *d, symtable *stab)
 {
 	assert(!type_is(d->ref, type_func));
 
-	UCC_ASSERT(!d->bits.var.init, "already initialised?");
+	UCC_ASSERT(!d->bits.var.init.dinit, "already initialised?");
 
-	d->bits.var.init = decl_init_new_w(decl_init_brace, &d->where);
+	if(type_is_variably_modified(d->ref)){
+		/* error emitted elsewhere */
+		return;
+	}
+
+	d->bits.var.init.dinit = decl_init_new_w(decl_init_brace, &d->where);
 	decl_init_brace_up_fold(d, stab, 1);
 }

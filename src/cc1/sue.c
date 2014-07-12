@@ -246,7 +246,7 @@ new_type:
 			for(i = 0; decls && decls[i]; i++){
 				decl *d2, *d = decls[i]->struct_member;
 
-				if(d->bits.var.init)
+				if(d->bits.var.init.dinit)
 					die_at(&d->where, "%s member %s is initialised",
 							sue_str(sue), d->spel);
 

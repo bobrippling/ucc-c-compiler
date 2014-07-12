@@ -85,7 +85,7 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 		expr_block_set_ty(df, type_nav_btype(cc1_type_nav, type_void), scope_stab);
 
 	/* said decl: */
-	fold_decl(df, sym_root, /*pinitcode:*/NULL);
+	fold_decl(df, sym_root);
 
 	/* block pointer to the function */
 	e->tree_type = type_block_of(df->ref);

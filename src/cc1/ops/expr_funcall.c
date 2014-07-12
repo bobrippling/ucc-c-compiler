@@ -1,6 +1,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
@@ -89,7 +90,11 @@ static void static_array_check(
 	type *ty_decl = decl_is_decayed_array(arg_decl);
 	consty k_decl;
 
-	if(!ty_decl || !ty_decl->bits.ptr.is_static)
+	if(!ty_decl)
+		return;
+
+	assert(ty_decl->type == type_array);
+	if(!ty_decl->bits.array.is_static)
 		return;
 
 	/* want to check any pointer type */
@@ -98,17 +103,19 @@ static void static_array_check(
 		return;
 	}
 
-	if(!ty_decl->bits.ptr.size)
+	if(!ty_decl->bits.array.size)
 		return;
 
-	const_fold(ty_decl->bits.ptr.size, &k_decl);
+	const_fold(ty_decl->bits.array.size, &k_decl);
 
 	if((ty_expr = type_is_decayed_array(ty_expr))){
-		/* ty_expr is the type_ptr, decayed from array */
-		if(ty_expr->bits.ptr.size){
+
+		assert(ty_expr->type == type_array);
+
+		if(ty_expr->bits.array.size){
 			consty k_arg;
 
-			const_fold(ty_expr->bits.ptr.size, &k_arg);
+			const_fold(ty_expr->bits.array.size, &k_arg);
 
 			if(k_decl.type == CONST_NUM
 			&& K_INTEGRAL(k_arg.bits.num)
@@ -158,7 +165,7 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **psp)
 	df->ref = func_ty;
 	df->spel = e->expr->bits.ident.bits.ident.spel;
 
-	fold_decl(df, stab, NULL); /* update calling conv, for e.g. */
+	fold_decl(df, stab); /* update calling conv, for e.g. */
 
 	df->sym->type = sym_global;
 

@@ -6,6 +6,11 @@
 
 typedef struct type type;
 
+enum
+{
+	VLA = 1, VLA_STAR = 2
+};
+
 struct type
 {
 	type *ref, *tmp; /* tmp used for things like printing */
@@ -46,17 +51,23 @@ struct type
 			struct decl *decl;
 		} tdef;
 
-		/* type_{ptr,array} */
+		/* type_array */
 		struct
 		{
 			unsigned is_static : 1;
-			unsigned decayed : 1; /* old size may be NULL - track here */
+			unsigned is_vla : 2;
 			struct expr *size;
 			/* when we decay
 			 * f(int x[2]) -> f(int *x)
 			 * we save the size + is_static
 			 */
-		} ptr, array;
+		} array;
+
+		struct
+		{
+			/* if null, this is just a normal pointer */
+			struct type *decayed_from;
+		} ptr;
 
 		/* type_cast */
 		struct

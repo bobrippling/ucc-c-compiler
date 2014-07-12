@@ -20,11 +20,11 @@ OBJ = \
 	tokconv.o tokenise.o \
 	parse_expr.o parse_stmt.o parse_type.o parse_attr.o parse_init.o \
 	fold.o fold_sym.o fold_sue.o const.o format_chk.o \
-	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o \
+	sym.o sue.o ops/__builtin.o ops/__builtin_va.o pack.o vla.o \
 	gen_asm.o gen_str.o gen_style.o \
 	out/out.o out/asm.o out/lbl.o out/impl.o out/write.o out/dbg.o out/leb.o \
 	out/virt.o out/ctrl.o out/func.o out/new.o out/val.o out/blk.o out/op.o \
-	out/bitfield.o out/free.o \
+	out/bitfield.o out/free.o out/alloca.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
 	ops/expr_funcall.o ops/expr_identifier.o ops/expr_if.o ops/expr_op.o \
 	ops/expr_sizeof.o ops/expr_val.o ops/expr_stmt.o ops/expr__Generic.o \

@@ -9,6 +9,7 @@
 #include "../type_nav.h"
 #include "../type_is.h"
 #include "../sym.h"
+#include "../vla.h"
 
 #include "out.h" /* this file defs */
 #include "val.h"
@@ -135,6 +136,9 @@ label:
 				fprintf(stderr, "TODO: %s asm(\"%s\")", decl_to_str(d), d->spel_asm);
 				assert(0);
 			}
+
+			if(type_is_vla(d->ref, VLA_ANY_DIMENSION))
+				return vla_address(d, octx);
 
 			/* sym offsetting takes into account the stack growth direction */
 			return v_new_bp3_below(octx, NULL, ty,

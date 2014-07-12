@@ -28,13 +28,13 @@ void fold_expr_comma(expr *e, symtable *stab)
 	FOLD_EXPR(e->lhs, stab);
 	fold_check_expr(
 			e->lhs,
-			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
 			"comma-expr");
 
 	FOLD_EXPR(e->rhs, stab);
 	fold_check_expr(
 			e->rhs,
-			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
 			"comma-expr");
 
 	e->tree_type = e->rhs->tree_type;

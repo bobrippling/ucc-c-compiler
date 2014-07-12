@@ -35,10 +35,10 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 					die_at(&d->where, "%s variable in statement-initialisation",
 							decl_store_to_str(d->store));
 			}
-		}
 
-		if(flow->init_blk)
-			fold_stmt(flow->init_blk);
+			if(d->bits.var.init.expr)
+				fold_expr(d->bits.var.init.expr, *pstab);
+		}
 	}
 }
 
@@ -49,14 +49,8 @@ void flow_gen(
 	gen_block_decls(stab, &endlbls[0], octx);
 	endlbls[1] = NULL;
 
-	if(flow){
-		if(stab != flow->for_init_symtab)
-			gen_block_decls(flow->for_init_symtab, &endlbls[1], octx);
-
-		if(flow->init_blk)
-			gen_stmt(flow->init_blk, octx);
-		/* also generates decls on the flow->inits statement */
-	}
+	if(flow && stab != flow->for_init_symtab)
+		gen_block_decls(flow->for_init_symtab, &endlbls[1], octx);
 }
 
 void flow_end(

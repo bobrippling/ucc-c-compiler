@@ -111,24 +111,28 @@ static enum type_cmp type_cmp_r(
 			break;
 
 		case type_array:
-		{
-			const int a_complete = !!a->bits.array.size,
-			          b_complete = !!b->bits.array.size;
+			if(a->bits.array.is_vla || b->bits.array.is_vla){
+				/* fine, pretend they're equal even if different expressions */
+				ret = TYPE_EQUAL_TYPEDEF;
 
-			if(a_complete && b_complete){
-				const integral_t av = const_fold_val_i(a->bits.array.size),
-				                 bv = const_fold_val_i(b->bits.array.size);
+			}else{
+				const int a_has_sz = !!a->bits.array.size;
+				const int b_has_sz = !!b->bits.array.size;
 
-				if(av != bv)
-					return TYPE_NOT_EQUAL;
-			}else if(a_complete != b_complete){
-				if((opts & TYPE_CMP_ALLOW_TENATIVE_ARRAY) == 0)
-					return TYPE_NOT_EQUAL;
+				if(a_has_sz && b_has_sz){
+					integral_t av = const_fold_val_i(a->bits.array.size);
+					integral_t bv = const_fold_val_i(b->bits.array.size);
+
+					if(av != bv)
+						return TYPE_NOT_EQUAL;
+				}else if(a_has_sz != b_has_sz){
+					if((opts & TYPE_CMP_ALLOW_TENATIVE_ARRAY) == 0)
+						return TYPE_NOT_EQUAL;
+				}
 			}
 
 			/* next */
 			break;
-		}
 
 		case type_block:
 		case type_ptr:
@@ -521,31 +525,31 @@ static void type_add_str(
 			/* fall */
 		case type_array:
 			BUF_ADD("[");
-			if(r->bits.array.size){
-				int spc = 0;
+			switch(r->bits.array.is_vla){
+				case 0:
+				{
+					int spc = 0;
+					if(r->bits.array.is_static){
+						BUF_ADD("static");
+						spc = 1;
+					}
 
-				if(r->bits.array.is_static){
-					BUF_ADD("static");
-					spc = 1;
+					if(r->bits.array.size){
+						BUF_ADD(
+								"%s%" NUMERIC_FMT_D,
+								spc ? " " : "",
+								const_fold_val_i(r->bits.array.size));
+					}
+					break;
 				}
-
-#if 0
-				if(r->bits.array.qual){
-					BUF_ADD(
-							"%s%s",
-							spc ? " " : "",
-							type_qual_to_str(r->bits.array.qual, 0));
-					spc = 1;
-				}
-#endif
-
-				BUF_ADD(
-						"%s%" NUMERIC_FMT_D,
-						spc ? " " : "",
-						const_fold_val_i(r->bits.array.size));
+				case VLA:
+					BUF_ADD("vla");
+					break;
+				case VLA_STAR:
+					BUF_ADD("*");
+					break;
 			}
 			BUF_ADD("]");
-
 			break;
 	}
 
@@ -666,19 +670,11 @@ const char *type_to_str_r(char buf[TYPE_STATIC_BUFSIZ], type *r)
 
 const char *type_to_str_r_show_decayed(char buf[TYPE_STATIC_BUFSIZ], struct type *r)
 {
-	const char *s;
-	enum type_kind restore;
-
 	r = type_skip_all(r);
-	restore = r->type;
-	if(r->type == type_ptr)
-		r->type = type_array;
+	if(r->type == type_ptr && r->bits.ptr.decayed_from)
+		r = r->bits.ptr.decayed_from;
 
-	s = type_to_str_r(buf, r);
-
-	r->type = restore;
-
-	return s;
+	return type_to_str_r(buf, r);
 }
 
 const char *type_to_str(type *r)
@@ -750,9 +746,15 @@ unsigned type_hash(const type *t)
 			break;
 
 		case type_ptr:
+			if(t->bits.ptr.decayed_from)
+				hash |= type_hash(t->bits.ptr.decayed_from);
+			break;
+
 		case type_array:
-			if(t->bits.ptr.size)
-				hash |= type_hash(t->bits.ptr.size->tree_type);
+			if(t->bits.array.size)
+				hash |= type_hash(t->bits.array.size->tree_type);
+			hash |= 1 << t->bits.array.is_static;
+			hash |= 1 << t->bits.array.is_vla;
 			break;
 
 		case type_block:

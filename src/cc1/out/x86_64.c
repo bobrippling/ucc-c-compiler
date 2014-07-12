@@ -930,7 +930,7 @@ static void x86_reg_cp(
 		const struct vreg *from,
 		type *typ)
 {
-	assert(!impl_reg_frame_const(to, 1));
+	assert(!impl_reg_frame_const(to, /*disallow sp: alloca_pop needs this*/0));
 
 	if(vreg_eq(to, from))
 		return;

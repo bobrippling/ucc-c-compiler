@@ -176,6 +176,17 @@ void fold_stmt_and_add_to_curswitch(stmt *cse)
 	/* TODO: copy ->freestanding? */
 }
 
+static void fold_switch_scopechecks(stmt *sw)
+{
+	stmt **iter;
+
+	ITER_SWITCH(sw, iter){
+		stmt *to = *iter;
+
+		fold_check_scope_entry(&to->where, "case inside", sw->symtab, to->symtab);
+	}
+}
+
 void fold_stmt_switch(stmt *s)
 {
 	FOLD_EXPR(s->expr, s->symtab);
@@ -193,6 +204,8 @@ void fold_stmt_switch(stmt *s)
 
 	/* check for dups */
 	fold_switch_dups(s);
+
+	fold_switch_scopechecks(s);
 
 	/* check for an enum */
 	{

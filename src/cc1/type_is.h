@@ -41,10 +41,11 @@ int type_is_nonfptr(type *);
 int type_is_nonvoid_ptr(type *);
 int type_is_promotable(type *, type **pto); /* e.g. char, short, float -> int, int, double */
 int type_is_signed(type *);
-int type_is_variably_modified(type *);
 int type_is_variadic_func(type *);
 int type_is_void(type *);
 int type_is_void_ptr(type *);
+int type_is_variably_modified(type *);
+int type_is_variably_modified_vla(type *, int *vla);
 
 struct decl *type_is_tdef(type *);
 struct struct_union_enum_st *type_is_s_or_u(type *);
@@ -59,5 +60,12 @@ type *type_is_primitive(type *, enum type_primitive);
 type *type_is_ptr(type *); /* returns r->ref iff ptr */
 type *type_is_ptr_or_block(type *);
 type *type_is_scalar(type *);
+
+enum vla_kind
+{
+	VLA_ANY_DIMENSION,
+	VLA_TOP_DIMENSION
+};
+type *type_is_vla(type *, enum vla_kind);
 
 #endif

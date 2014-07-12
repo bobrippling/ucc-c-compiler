@@ -35,6 +35,13 @@
 
 /*#define PARSE_DECL_VERBOSE*/
 
+static decl *parse_decl_stored_aligned(
+		type *btype, enum decl_mode mode,
+		enum decl_storage store, struct decl_align *align,
+		symtable *scope, symtable *add_to_scope);
+
+static type *default_type(void);
+
 /* newdecl_context:
  * struct B { int b; };
  * {
@@ -114,9 +121,7 @@ static type *parse_type_sue(
 					| DECL_MULTI_NAMELESS
 					| DECL_MULTI_ALLOW_ALIGNAS,
 					/*newdecl_context:*/0,
-					scope,
-					NULL, &dmembers,
-					/*pinit_code:*/NULL))
+					scope, NULL, &dmembers))
 			{
 			}
 
@@ -627,7 +632,7 @@ static type *parse_btype(
 				}
 
 				if(tdef_decl) /* typedef only */
-					fold_decl(tdef_decl, scope, NULL);
+					fold_decl(tdef_decl, scope);
 				fold_expr_no_decay(tdef_typeof, scope);
 
 				r = type_tdef_of(tdef_typeof, tdef_decl);
@@ -663,7 +668,21 @@ static decl *parse_arg_decl(symtable *scope)
 {
 	/* argument decls can default to int */
 	const enum decl_mode flags = DECL_CAN_DEFAULT | DECL_ALLOW_STORE;
-	decl *argdecl = parse_decl(flags, 0, scope, NULL, NULL);
+	enum decl_storage store = store_default;
+	decl *argdecl;
+	type *btype = parse_btype(
+			&store, /*align:*/NULL, /*newdecl:*/0, scope, /*auto:*/0);
+
+	if(!btype)
+		btype = default_type();
+
+	/* don't use parse_decl() - we don't want it folding yet,
+	 * things like inits are caught later */
+	argdecl = parse_decl_stored_aligned(
+			btype, flags,
+			store /* register is a valid argument store */,
+			/*align:*/NULL,
+			scope, NULL);
 
 	if(!argdecl)
 		die_at(NULL, "type expected (got %s)", token_to_str(curtok));
@@ -713,7 +732,7 @@ funcargs *parse_func_arglist(symtable *scope)
 
 			/* add to scope */
 			symtab_add_to_scope(scope, argdecl);
-			fold_decl(argdecl, scope, NULL);
+			fold_decl(argdecl, scope);
 
 			if(curtok == token_close_paren)
 				break;
@@ -810,7 +829,7 @@ struct type_parsed
 		{
 			expr *size;
 			enum type_qualifier qual;
-			int is_static;
+			unsigned is_static : 1, is_vla : 2;
 		} array;
 	} bits;
 
@@ -882,9 +901,9 @@ static type_parsed *parsed_type_array(
 	type_parsed *r = parsed_type_nest(mode, dfor, base, scope);
 
 	while(accept(token_open_square)){
-		expr *size;
+		expr *size = NULL;
 		enum type_qualifier q = qual_none;
-		int is_static = 0;
+		int is_static = 0, is_vla = 0;
 
 		/* parse int x[restrict|static ...] */
 		for(;;){
@@ -899,32 +918,52 @@ static type_parsed *parsed_type_array(
 		}
 
 		if(accept(token_close_square)){
-			/* take size as zero */
-			size = NULL;
+			/* null size */
 		}else{
 			/* fold.c checks for const-ness */
 			/* grammar says it's a conditional here, hence no-comma */
-			consty k;
+			int is_star = 0;
 
-			size = PARSE_EXPR_NO_COMMA(scope, 0);
-			EAT(token_close_square);
+			/* look for [*] */
+			if(accept(token_multiply)){
+				if(accept(token_close_square)){
+					is_star = 1;
+				}else{
+					uneat(token_multiply);
+				}
+			}
 
-			FOLD_EXPR(size, scope);
+			if(!is_star){
+				size = PARSE_EXPR_NO_COMMA(scope, 0);
+				EAT(token_close_square);
 
-			if(!type_is_integral(size->tree_type)){
-				parse_had_error = 1;
-				warn_at_print_error(&size->where,
-						"array type isn't integral (%s)",
-						type_to_str(size->tree_type));
-				size = NULL;
+				FOLD_EXPR(size, scope);
+
+				if(!type_is_integral(size->tree_type)){
+					parse_had_error = 1;
+					warn_at_print_error(&size->where,
+							"array type isn't integral (%s)",
+							type_to_str(size->tree_type));
+					size = NULL;
+				}else{
+					consty k;
+					const_fold(size, &k);
+
+					/* if it's not a constant number, or it is, but it's non-standard
+					 * (and we don't have the fold-const-vlas setting), then treat
+					 * as a vla */
+					if(k.type != CONST_NUM
+					|| (k.nonstandard_const && !(fopt_mode & FOPT_FOLD_CONST_VLAS)))
+					{
+						is_vla = VLA;
+					}
+					else if(!K_INTEGRAL(k.bits.num))
+					{
+						die_at(NULL, "not an integral array size");
+					}
+				}
 			}else{
-				const_fold(size, &k);
-
-				if(k.type != CONST_NUM)
-					die_at(NULL, "not a constant for array size");
-
-				if(!K_INTEGRAL(k.bits.num))
-					die_at(NULL, "not an integral array size");
+				is_vla = VLA_STAR;
 			}
 		}
 
@@ -935,6 +974,7 @@ static type_parsed *parsed_type_array(
 		r->bits.array.size = size;
 		r->bits.array.qual = q;
 		r->bits.array.is_static = is_static;
+		r->bits.array.is_vla = is_vla;
 	}
 
 	return r;
@@ -1027,10 +1067,26 @@ static type *parse_type_declarator(
 				break;
 			case PARSED_ARRAY:
 				qual = i->bits.ptr.qual;
-				ty = type_array_of_static(
+
+				if(i->bits.array.is_vla){
+					if(i->bits.array.is_static){
+						warn_at_print_error(NULL,
+								"'static' can't be used with a star-modified array");
+						fold_had_error = 1;
+					}
+
+					ty = type_vla_of(
+							ty, i->bits.array.size,
+							i->bits.array.is_vla);
+
+				}else{
+					ty = type_array_of_static(
 							ty,
 							i->bits.array.size,
 							i->bits.array.is_static);
+				}
+				assert(ty->type == type_array);
+				assert(ty->bits.array.is_vla == i->bits.array.is_vla);
 				break;
 			case PARSED_FUNC:
 				ty = type_func_of(
@@ -1148,13 +1204,13 @@ static decl *parse_decl_stored_aligned(
 			int static_ctx = !scope->parent ||
 				(store & STORE_MASK_STORE) == store_static;
 
-			d->bits.var.init = parse_init(scope, static_ctx);
+			d->bits.var.init.dinit = parse_init(scope, static_ctx);
 
 			/* top-level inits have their .where on the '=' token */
-			memcpy_safe(&d->bits.var.init->where, &w_eq);
+			memcpy_safe(&d->bits.var.init.dinit->where, &w_eq);
 
 			if(is_autotype){
-				decl_init *init = d->bits.var.init;
+				decl_init *init = d->bits.var.init.dinit;
 
 				UCC_ASSERT(!d->ref, "already have decl type?");
 
@@ -1217,8 +1273,7 @@ static type *default_type(void)
 
 decl *parse_decl(
 		enum decl_mode mode, int newdecl,
-		symtable *scope, symtable *add_to_scope,
-		stmt **pinit_code)
+		symtable *scope, symtable *add_to_scope)
 {
 	enum decl_storage store = store_default;
 	type *r = parse_btype(
@@ -1242,7 +1297,7 @@ decl *parse_decl(
 			store, NULL /* align */,
 			scope, add_to_scope);
 
-	fold_decl(d, scope, pinit_code);
+	fold_decl(d, scope);
 
 	return d;
 }
@@ -1278,7 +1333,9 @@ static void check_and_replace_old_func(decl *d, decl **old_args, symtable *scope
 	for(i = 0; i < n_old_args; i++){
 		int j, found = 0;
 
-		if(!type_is(old_args[i]->ref, type_func) && old_args[i]->bits.var.init){
+		if(!type_is(old_args[i]->ref, type_func)
+		&& old_args[i]->bits.var.init.dinit)
+		{
 			die_at(&old_args[i]->where,
 					"parameter \"%s\" is initialised",
 					old_args[i]->spel);
@@ -1460,9 +1517,43 @@ static int warn_for_unused_typename(
 	return 1;
 }
 
+static int check_star_modifier_1(type *t, where *w)
+{
+	assert(t->type == type_array);
+	if(t->bits.array.is_vla == VLA_STAR){
+		warn_at_print_error(w,
+				"star modifier can only appear on prototypes");
+		fold_had_error = 1;
+		return 1;
+	}
+	return 0;
+}
+
+static void check_star_modifier(symtable *arg_symtab)
+{
+	decl **i;
+
+	for(i = arg_symtab->decls; i && *i; i++){
+		decl *d = *i;
+		type *t = type_is_decayed_array(d->ref);
+
+		if(t && check_star_modifier_1(t, &d->where))
+			continue;
+
+		for(t = d->ref; t; t = type_next(t)){
+			if(t->type == type_array){
+				if(check_star_modifier_1(t, &d->where))
+					break;
+			}
+		}
+	}
+}
+
 static void parse_post_func(decl *d, symtable *in_scope)
 {
 	int need_func = 0;
+	type *func_r;
+	symtable *arg_symtab;
 
 	/* special case - support asm directly after a function
 	 * no parse ambiguity - asm can only appear at the end of a decl,
@@ -1480,8 +1571,7 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		while(parse_decl_group(
 				0, /*newdecl_context:*/0,
 				in_scope,
-				NULL, &old_args,
-				/*pinit_code:*/NULL))
+				NULL, &old_args))
 		{
 		}
 
@@ -1496,21 +1586,21 @@ static void parse_post_func(decl *d, symtable *in_scope)
 		}
 	}
 
+	func_r = type_is(d->ref, type_func);
+	arg_symtab = func_r->bits.func.arg_scope;
+
 	/* clang-style allows __attribute__ and then a function block */
 	if(need_func || curtok == token_open_block){
-		type *func_r = type_is(d->ref, type_func);
-		symtable *arg_symtab;
-
 		/* need to set scope to include function argumen
 		 * e.g. f(struct A { ... })
 		 */
 		UCC_ASSERT(func_r, "function expected");
 
-		arg_symtab = func_r->bits.func.arg_scope;
 		arg_symtab->in_func = d;
 
-		fold_decl(d, arg_symtab->parent, NULL);
+		fold_decl(d, arg_symtab->parent);
 
+		check_star_modifier(arg_symtab);
 
 		d->bits.func.code = parse_stmt_block(arg_symtab, NULL);
 
@@ -1590,8 +1680,7 @@ int parse_decl_group(
 		const enum decl_multi_mode mode,
 		int newdecl,
 		symtable *in_scope,
-		symtable *add_to_scope, decl ***pdecls,
-		stmt **pinit_code)
+		symtable *add_to_scope, decl ***pdecls)
 {
 	const enum decl_mode parse_flag =
 		(mode & DECL_MULTI_CAN_DEFAULT ? DECL_CAN_DEFAULT : 0);
@@ -1677,7 +1766,7 @@ int parse_decl_group(
 		warn_for_unaccessible_sue(d, mode);
 
 		/* must fold _after_ we get the bitfield, etc */
-		fold_decl(d, in_scope, pinit_code);
+		fold_decl(d, in_scope);
 
 		last = d;
 		if(done)

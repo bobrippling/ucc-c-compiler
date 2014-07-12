@@ -317,7 +317,8 @@ int type_is_complete(type *r)
 		}
 
 		case type_array:
-			return r->bits.array.size && type_is_complete(r->ref);
+			return (r->bits.array.is_vla || r->bits.array.size)
+				&& type_is_complete(r->ref);
 
 		case type_func:
 		case type_ptr:
@@ -335,17 +336,46 @@ int type_is_complete(type *r)
 	return 1;
 }
 
-int type_is_variably_modified(type *r)
+type *type_is_vla(type *ty, enum vla_kind kind)
 {
-	/* vlas not implemented yet */
-#if 0
-	if(type_is_array(r)){
-		/* ... */
+	for(ty = type_is(ty, type_array);
+	    ty;
+	    ty = ty->ref)
+	{
+		if(ty->bits.array.is_vla)
+			return ty;
+
+		if(kind == VLA_TOP_DIMENSION)
+			break;
 	}
-#else
-	(void)r;
-#endif
+
+	return NULL;
+}
+
+int type_is_variably_modified_vla(type *const ty, int *vla)
+{
+	type *ti;
+
+	if(vla)
+		*vla = 0;
+
+	/* need to check all the way down to the btype */
+	for(ti = ty; ti; ti = type_next(ti)){
+		type *test = type_is(ti, type_array);
+
+		if(test && test->bits.array.is_vla){
+			if(vla && ti == ty)
+				*vla = 1;
+			return 1;
+		}
+	}
+
 	return 0;
+}
+
+int type_is_variably_modified(type *ty)
+{
+	return type_is_variably_modified_vla(ty, NULL);
 }
 
 int type_is_incomplete_array(type *r)
@@ -656,8 +686,7 @@ int type_is_autotype(type *t)
 
 type *type_is_decayed_array(type *r)
 {
-	if((r = type_is(r, type_ptr)) && r->bits.ptr.decayed)
-		return r;
-
+	if((r = type_is(r, type_ptr)))
+		return r->bits.ptr.decayed_from;
 	return NULL;
 }

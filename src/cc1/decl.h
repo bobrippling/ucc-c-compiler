@@ -18,6 +18,12 @@ enum decl_storage
 #define STORE_MASK_STORE 0x00007 /* include all below 4 */
 #define STORE_MASK_EXTRA 0xfff38 /* exclude  ^ */
 
+struct decl_init_expr
+{
+	struct decl_init *dinit;
+	struct expr *expr;
+};
+
 typedef struct decl decl;
 struct decl
 {
@@ -54,7 +60,7 @@ struct decl
 			int init_normalised;
 
 			/* initialiser - converted to an assignment for non-globals */
-			struct decl_init *init;
+			struct decl_init_expr init;
 		} var;
 		struct
 		{
