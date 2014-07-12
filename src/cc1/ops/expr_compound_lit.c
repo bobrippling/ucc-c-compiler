@@ -67,7 +67,9 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		decl_init_create_assignments_base(d->bits.var.init.dinit,
 				d->ref, e, &d->bits.var.init.expr);
 
-		fold_expr(d->bits.var.init.expr, stab);
+		if(d->bits.var.init.expr)
+			fold_expr(d->bits.var.init.expr, stab);
+		/* else had error */
 
 	}else{
 		fold_decl_global_init(d, stab);
