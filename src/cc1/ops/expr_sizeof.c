@@ -12,6 +12,8 @@
 #define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->bits.size_of.of_type)
 #define SIZEOF_SIZE(e)  (e)->bits.size_of.sz
 
+#define NEED_RUNTIME_SIZEOF(ty) !!type_is_vla((ty), VLA_ANY_DIMENSION)
+
 #define sizeof_this tref
 
 static const char *sizeof_what(enum what_of wo)
@@ -72,7 +74,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 		case what_alignof:
 		{
 			int set = 0; /* need this, since .bits can't be relied upon to be 0 */
-			int vla = type_is_variably_modified(chosen);
+			int vla = NEED_RUNTIME_SIZEOF(chosen);
 
 			if(!type_is_complete(chosen))
 				die_at(&e->where, "sizeof incomplete type %s", type_to_str(chosen));
@@ -114,7 +116,7 @@ static void const_expr_sizeof(expr *e, consty *k)
 {
 	UCC_ASSERT(e->tree_type, "const_fold on sizeof before fold");
 
-	if(type_is_variably_modified(SIZEOF_WHAT(e))){
+	if(NEED_RUNTIME_SIZEOF(SIZEOF_WHAT(e))){
 		k->type = CONST_NO;
 		return;
 	}
@@ -129,7 +131,7 @@ const out_val *gen_expr_sizeof(expr *e, out_ctx *octx)
 {
 	type *ty = SIZEOF_WHAT(e);
 
-	if(type_is_variably_modified(ty))
+	if(NEED_RUNTIME_SIZEOF(ty))
 		return vla_size(ty, octx);
 
 	return out_new_l(octx, e->tree_type, SIZEOF_SIZE(e));
