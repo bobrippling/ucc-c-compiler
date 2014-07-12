@@ -143,7 +143,8 @@ static const out_val *vla_gen_size_ty(
 			}else if(t->bits.array.size){
 				mul = const_fold_val_i(t->bits.array.size);
 			}else{
-				assert(0 && "empty array?");
+				/* int (*p)[][E]; // is valid, just can't ptr-arith on it */
+				mul = 0;
 			}
 
 			break;
