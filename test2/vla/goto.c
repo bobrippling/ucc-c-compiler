@@ -7,7 +7,7 @@ main()
 begin:
 	{
 		int (*abc)[n]; // CHECK: note: variable "abc"
-		goto begin2;
+		goto begin2; // CHECK: !/error/
 a:;
 	}
 
@@ -15,10 +15,10 @@ a:;
 begin2:
 	{
 		int xyz[n]; // CHECK: note: variable "xyz"
-		goto end;
+		goto end; // CHECK: !/error/
 b:;
 	}
 
-	goto begin;
+	goto begin; // CHECK: !/error/
 end:;
 }
