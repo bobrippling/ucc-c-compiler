@@ -64,13 +64,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		 *   be generated twice - once for the scope we're nested in (stab),
 		 *   and again on our call to gen_stmt() in our gen function
 		 */
-		decl_init_create_assignments_base(d->bits.var.init.dinit,
-				d->ref, e, &d->bits.var.init.expr);
-
-		if(d->bits.var.init.expr)
-			fold_expr(d->bits.var.init.expr, stab);
-		/* else had error */
-
+		decl_init_create_assignments_base_and_fold(d, e, stab);
 	}else{
 		fold_decl_global_init(d, stab);
 	}

@@ -659,14 +659,12 @@ static void fold_decl_var(decl *d, symtable *stab)
 			}else if(!d->bits.var.init.expr){
 				decl_init_brace_up_fold(d, stab, /*struct_copy:*/1);
 
-				decl_init_create_assignments_base(
-						d->bits.var.init.dinit, d->ref,
+				decl_init_create_assignments_base_and_fold(
+						d,
 						expr_set_where(
 							expr_new_identifier(d->spel),
 							&d->where),
-						&d->bits.var.init.expr);
-
-				fold_expr(d->bits.var.init.expr, stab);
+						stab);
 
 			}else{
 				ICE("fold_decl(%s) with no pinit_code?", d->spel);

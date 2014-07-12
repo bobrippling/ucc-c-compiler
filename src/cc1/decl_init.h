@@ -83,4 +83,7 @@ void decl_init_create_assignments_base(
 		struct type *tfor, struct expr *base,
 		struct expr **pinit);
 
+void decl_init_create_assignments_base_and_fold(
+		struct decl *d, struct expr *base, struct symtable *scope);
+
 #endif

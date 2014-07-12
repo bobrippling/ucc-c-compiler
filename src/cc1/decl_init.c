@@ -1332,6 +1332,17 @@ zero_init:
 	}
 }
 
+void decl_init_create_assignments_base_and_fold(
+		decl *d, expr *e, symtable *scope)
+{
+	decl_init_create_assignments_base(d->bits.var.init.dinit,
+			d->ref, e, &d->bits.var.init.expr);
+
+	if(d->bits.var.init.expr)
+		fold_expr(d->bits.var.init.expr, scope);
+	/* else had error */
+}
+
 void decl_default_init(decl *d, symtable *stab)
 {
 	assert(!type_is(d->ref, type_func));
