@@ -188,12 +188,16 @@ void gen_block_decls(
 			 * if it's the most-unnested func. prototype, go */
 			if(!func || !d->proto)
 				gen_asm_global_w_store(d, 1, octx);
+			continue;
 		}
-		else if(type_is_variably_modified(d->ref))
-		{
+
+		if(type_is_variably_modified(d->ref)){
 			vla_alloc_decl(d, octx);
+			/* may be VM - fall through to the init
+			 * e.g. int (*p)[n] = 0; */
 		}
-		else if(d->bits.var.init.dinit
+
+		if(d->bits.var.init.dinit
 		&& /*anonymous decls are initialised elsewhere:*/d->spel)
 		/*(anonymous decls are like those from compound literals)*/
 		{
