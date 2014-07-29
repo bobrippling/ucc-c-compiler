@@ -269,7 +269,8 @@ enum regtype
 };
 
 static void x86_overlay_regpair_1(
-		struct vreg regs[], enum regtype chosentype, int *regpair_idx)
+		struct vreg regs[], enum regtype chosentype, int *regpair_idx,
+		const struct vreg from_intregs[])
 {
 	switch(chosentype){
 		case NONE:
@@ -278,8 +279,8 @@ static void x86_overlay_regpair_1(
 
 			regs[*regpair_idx].idx =
 				(*regpair_idx == 0 || regs[0].is_float)
-				? X86_64_REG_RAX
-				: X86_64_REG_RDX;
+				? from_intregs[0].idx
+				: from_intregs[1].idx;
 			break;
 
 		case FLOAT:
@@ -295,7 +296,9 @@ static void x86_overlay_regpair_1(
 	++*regpair_idx;
 }
 
-static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
+static void x86_overlay_regpair(
+		struct vreg out_regpair[ucc_static_param 2], type *retty,
+		const struct vreg int_regpair[ucc_static_param 2])
 {
 	/* if we have two floats at either 0-1 or 2-3, then we can do
 	 * a xmm0:rax or rax:xmm0 return. Otherwise we fallback to rdx:rax overlay
@@ -353,9 +356,10 @@ static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
 
 			/* hit one eightbyte, decide how we pass this group */
 			x86_overlay_regpair_1(
-					regpair,
+					out_regpair,
 					current_type,
-					&regpair_idx);
+					&regpair_idx,
+					int_regpair);
 
 			current_type = NONE;
 			current_size_bits = 0;
@@ -364,10 +368,28 @@ static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
 
 	if(regpair_idx < 2){
 		x86_overlay_regpair_1(
-				regpair,
+				out_regpair,
 				current_type,
-				&regpair_idx);
+				&regpair_idx,
+				int_regpair);
 	}
+}
+
+static void x86_overlay_regpair_ret(
+		struct vreg out_regpair[ucc_static_param 2], type *retty)
+{
+	struct vreg int_retregs[] = {
+		{ X86_64_REG_RAX, 0 },
+		{ X86_64_REG_RDX, 0 },
+	};
+
+	x86_overlay_regpair(out_regpair, retty, int_retregs);
+}
+
+static void x86_overlay_regpair_args(
+		struct vreg out_regpair[ucc_static_param 2],
+		type *arg_suty, unsigned *reg_idx)
+{
 }
 
 static const out_val *x86_stret_ptr(out_ctx *octx)
@@ -822,7 +844,7 @@ static void x86_func_ret_regs(
 	const unsigned sz = type_size(called, NULL);
 	struct vreg regs[2];
 
-	x86_overlay_regpair(regs, called);
+	x86_overlay_regpair_ret(regs, called);
 
 	/* read from the stack to registers */
 	impl_overlay_mem2regs(octx, sz, 2, regs, from);
@@ -1959,7 +1981,7 @@ static const out_val *spill_struct_to_stack(
 }
 
 static const out_val *spill_struct_to_regs(
-		out_ctx *octx, const out_val *struct_ptr, unsigned *reg_idx)
+		out_ctx *octx, const out_val *struct_ptr, unsigned *callreg_idx)
 {
 	unsigned su_sz = type_size(struct_ptr->t, NULL);
 	struct vreg regpair[2];
@@ -1967,7 +1989,7 @@ static const out_val *spill_struct_to_regs(
 	if(su_sz > 2 * platform_word_size())
 		return struct_ptr; /* already spilt to stack */
 
-	x86_overlay_regpair(regpair, struct_ptr->t);
+	x86_overlay_regpair_args(regpair, struct_ptr->t, callreg_idx);
 
 	struct_ptr = v_to_reg(octx, struct_ptr);
 
@@ -2229,7 +2251,7 @@ const out_val *impl_call(
 			 * but we must spill the regs out */
 			struct vreg regpair[2];
 
-			x86_overlay_regpair(regpair, retty);
+			x86_overlay_regpair_ret(regpair, retty);
 
 			retval_stret = v_new_bp3(octx, NULL, voidp, -(long)stret_pos);
 			out_val_retain(octx, retval_stret);
