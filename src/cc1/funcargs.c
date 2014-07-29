@@ -10,6 +10,7 @@
 #include "cc1.h"
 #include "fold.h"
 #include "type_is.h"
+#include "sue.h"
 
 #include "cc1_where.h"
 
@@ -92,15 +93,29 @@ funcargs *funcargs_new()
 	return r;
 }
 
-void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)
+static void decl_ty_calc(
+		decl **decls,
+		unsigned *n_int, unsigned *n_fp)
 {
 	decl **di;
 
+	for(di = decls; di && *di; di++){
+		type *ty = (*di)->ref;
+		struct_union_enum_st *su;
+
+		if(type_is_floating(ty)){
+			++*n_fp;
+		}else if((su = type_is_s_or_u(ty))){
+			decl_ty_calc((decl **)su->members, n_int, n_fp);
+		}else{
+			++*n_int;
+		}
+	}
+}
+
+void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)
+{
 	*n_int = *n_fp = 0;
 
-	for(di = fa->arglist; di && *di; di++)
-		if(type_is_floating((*di)->ref))
-			++*n_fp;
-		else
-			++*n_int;
+	decl_ty_calc(fa->arglist, n_int, n_fp);
 }
