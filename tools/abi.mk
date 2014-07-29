@@ -1,7 +1,7 @@
 CFLAGS = -std=c99 -g
 LDFLAGS = -g
 
-XCCFLAGS = ${CFLAGS} -fcall-used-rbx
+XCCFLAGS = ${CFLAGS}
 
 UCC = ./ucc
 XCC = ${CC}
