@@ -1942,6 +1942,32 @@ void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 	}
 }
 
+static const out_val *spill_struct_to_stack(
+		out_ctx *octx, const out_val *struct_ptr)
+{
+	unsigned su_sz = type_size(struct_ptr->t, NULL);
+
+	(void)octx;
+
+	if(su_sz < 2 * platform_word_size())
+		return struct_ptr; /* spill to registers - done later */
+
+	/* copy to stack */
+
+	return struct_ptr;
+}
+
+static const out_val *spill_struct_to_regs(
+		out_ctx *octx, const out_val *struct_ptr)
+{
+	unsigned su_sz = type_size(struct_ptr->t, NULL);
+	const out_val *arg;
+
+	if(su_sz > 2 * platform_word_size())
+		return struct_ptr; /* already spilt to stack */
+
+}
+
 const out_val *impl_call(
 		out_ctx *octx,
 		const out_val *fn, const out_val **args,
@@ -1984,16 +2010,10 @@ const out_val *impl_call(
 	}
 
 	for(i = 0; i < nargs; i++){
-		const out_val *arg;
-
 		if(!type_is_s_or_u(local_args[i]->t))
 			continue;
 
-		arg = v_to_reg(octx, local_args[i]);
-
-		impl_overlay_regs2mem();
-
-		local_args[i] = arg;
+		local_args[i] = spill_struct_to_stack(octx, local_args[i]);
 	}
 
 
@@ -2120,6 +2140,13 @@ const out_val *impl_call(
 			}
 		}
 		/* else already pushed */
+	}
+
+	for(i = 0; i < nargs; i++){
+		if(!type_is_s_or_u(local_args[i]->t))
+			continue;
+
+		local_args[i] = spill_struct_to_regs(octx, local_args[i]);
 	}
 
 	if(stk_snapshot){
