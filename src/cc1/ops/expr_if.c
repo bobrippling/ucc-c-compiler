@@ -136,13 +136,14 @@ static void try_pointer_propagate(
 
 void fold_expr_if(expr *e, symtable *stab)
 {
+	const char *desc = "?:";
 	consty konst;
 	type *tt_l, *tt_r;
 
 	FOLD_EXPR(e->expr, stab);
 	const_fold(e->expr, &konst);
 
-	fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, "if-expr");
+	fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, desc);
 
 	if(e->lhs){
 		FOLD_EXPR(e->lhs, stab);
@@ -181,11 +182,11 @@ void fold_expr_if(expr *e, symtable *stab)
 		/* 6.5.15 p4 */
 		expr **middle_op = e->lhs ? &e->lhs : &e->expr;
 
-		expr_check_sign("?:", *middle_op, e->rhs, &e->where);
+		expr_check_sign(desc, *middle_op, e->rhs, &e->where);
 
 		e->tree_type = op_promote_types(
 				op_unknown,
-				middle_op, &e->rhs, &e->where, stab);
+				middle_op, &e->rhs, &e->where, stab, desc);
 
 	}else if(type_is_void(tt_l) || type_is_void(tt_r)){
 		e->tree_type = type_nav_btype(cc1_type_nav, type_void);

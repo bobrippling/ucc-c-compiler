@@ -29,7 +29,9 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	{
 		type *tlhs, *trhs;
-		type *resolved = op_required_promotion(e->bits.compoundop.op, lvalue, e->rhs, &e->where, &tlhs, &trhs);
+		type *resolved = op_required_promotion(
+				e->bits.compoundop.op, lvalue, e->rhs, &e->where,
+				&tlhs, &trhs, op_to_str(e->bits.compoundop.op));
 
 		if(tlhs){
 			/* must cast the lvalue, then down cast once the operation is done

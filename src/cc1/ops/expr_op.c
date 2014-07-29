@@ -393,7 +393,8 @@ type *op_required_promotion(
 		enum op_type op,
 		expr *lhs, expr *rhs,
 		where *w,
-		type **plhs, type **prhs)
+		type **plhs, type **prhs,
+		const char *op_desc)
 {
 	type *resolved = NULL;
 	type *const tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
@@ -577,7 +578,7 @@ ptr_relation:
 
 					fold_type_chk_warn(
 							tlhs, trhs,
-							w, op_to_str(op));
+							w, op_desc);
 
 					*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
 
@@ -627,12 +628,15 @@ fin:
 type *op_promote_types(
 		enum op_type op,
 		expr **plhs, expr **prhs,
-		where *w, symtable *stab)
+		where *w, symtable *stab,
+		const char *op_desc)
 {
 	type *tlhs, *trhs;
 	type *resolved;
 
-	resolved = op_required_promotion(op, *plhs, *prhs, w, &tlhs, &trhs);
+	resolved = op_required_promotion(
+			op, *plhs, *prhs, w,
+			&tlhs, &trhs, op_desc);
 
 	if(tlhs)
 		fold_insert_casts(tlhs, plhs, stab);
@@ -895,15 +899,19 @@ void expr_check_sign(const char *desc,
 
 void fold_expr_op(expr *e, symtable *stab)
 {
+	const char *op_desc = e->bits.op.array_notation
+		? "subscript"
+		: op_to_str(e->bits.op.op);
+
 	UCC_ASSERT(e->bits.op.op != op_unknown, "unknown op in expression at %s",
 			where_str(&e->where));
 
 	FOLD_EXPR(e->lhs, stab);
-	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_to_str(e->bits.op.op));
+	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_desc);
 
 	if(e->rhs){
 		FOLD_EXPR(e->rhs, stab);
-		fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_to_str(e->bits.op.op));
+		fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_desc);
 
 		if(op_float_check(e)){
 			/* short circuit - TODO: error expr */
@@ -918,14 +926,14 @@ void fold_expr_op(expr *e, symtable *stab)
 		/* must check signs before casting */
 		if(op_is_comparison(e->bits.op.op)){
 			expr_check_sign(
-					op_to_str(e->bits.op.op),
+					op_desc,
 					e->lhs,
 					e->rhs,
 					&e->where);
 		}
 
 		e->tree_type = op_promote_types(e->bits.op.op,
-				&e->lhs, &e->rhs, &e->where, stab);
+				&e->lhs, &e->rhs, &e->where, stab, op_desc);
 
 		(void)(
 				fold_check_bounds(e, 1) ||
@@ -938,17 +946,18 @@ void fold_expr_op(expr *e, symtable *stab)
 		/* (except unary-not) can only have operations on integers,
 		 * promote to signed int
 		 */
+		const char *op_desc = op_to_str(e->bits.op.op);
 
 		expr_promote_int_if_smaller(&e->lhs, stab);
 
 		switch(e->bits.op.op){
 			default:
-				ICE("bad unary op %s", op_to_str(e->bits.op.op));
+				ICE("bad unary op %s", op_desc);
 
 			case op_not:
 				fold_check_expr(e->lhs,
 						FOLD_CHK_NO_ST_UN,
-						op_to_str(e->bits.op.op));
+						op_desc);
 
 				e->tree_type = type_nav_btype(cc1_type_nav, type_int);
 				break;
@@ -960,7 +969,7 @@ void fold_expr_op(expr *e, symtable *stab)
 						e->lhs,
 						(e->bits.op.op == op_bnot ? FOLD_CHK_INTEGRAL : 0)
 							| FOLD_CHK_NO_ST_UN,
-						op_to_str(e->bits.op.op));
+						op_desc);
 
 				e->tree_type = e->lhs->tree_type;
 				break;

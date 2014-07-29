@@ -11,8 +11,21 @@ func_gen     gen_expr_style_op;
 #  define ucc_wur
 #endif
 
-type *op_required_promotion(enum op_type op, expr *lhs, expr *rhs, where *w, type **plhs, type **prhs) ucc_wur;
-type *op_promote_types(enum op_type op, expr **plhs, expr **prhs, where *w, symtable *stab) ucc_wur;
+type *op_required_promotion(
+		enum op_type op,
+		expr *lhs, expr *rhs,
+		where *w,
+		type **plhs, type **prhs,
+		const char *op_desc)
+	ucc_wur;
+
+type *op_promote_types(
+		enum op_type op,
+		expr **plhs, expr **prhs,
+		where *w, symtable *stab,
+		const char *op_desc)
+	ucc_wur;
+
 void expr_promote_default(expr **pe, symtable *stab);
 
 /* called from op code and deref code
