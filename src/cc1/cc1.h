@@ -102,7 +102,9 @@ extern enum cc1_backend cc1_backend;
 extern struct cc1_warning cc1_warning;
 
 extern enum c_std cc1_std;
-#define C99_LONGLONG() if(cc1_std < STD_C99) warn_at(NULL, "long long is a C99 feature")
+#define C99_LONGLONG() \
+	if(cc1_std < STD_C99) \
+		cc1_warn_at(NULL, long_long, "long long is a C99 feature")
 
 void cc1_warn_at(struct where *where, const char *fmt, ...) ucc_printflike(2, 3);
 #define cc1_warn_at(loc, warn, ...) do{ \
