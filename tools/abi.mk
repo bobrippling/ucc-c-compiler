@@ -7,6 +7,8 @@ UCC = ./ucc
 XCC = ${CC}
 LD = ${CC}
 
+UCC_DEP = ./src/cc1/cc1
+
 TARGETS = $T.ucc_i.xcc_c $T.ucc_i.ucc_c $T.xcc_i.xcc_c $T.xcc_i.ucc_c
 
 MACRO = IMPL
@@ -42,11 +44,11 @@ clean: tcheck
 %.xcc_i.xcc_c: %.xcc_i.o %.xcc_c.o
 	${LD} ${LDFLAGS} -o $@ $^
 
-%.xcc_c.o: %.c
+%.xcc_c.o: %.c ${UCC_DEP}
 	${XCC} ${XCCFLAGS} -c -o $@ $<
-%.xcc_i.o: %.c
+%.xcc_i.o: %.c ${UCC_DEP}
 	${XCC} ${XCCFLAGS} -c -D${MACRO} -o $@ $<
-%.ucc_c.o: %.c
+%.ucc_c.o: %.c ${UCC_DEP}
 	${UCC} ${CFLAGS} -c -o $@ $<
-%.ucc_i.o: %.c
+%.ucc_i.o: %.c ${UCC_DEP}
 	${UCC} ${CFLAGS} -c -D${MACRO} -o $@ $<
