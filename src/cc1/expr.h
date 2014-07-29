@@ -46,8 +46,6 @@ struct expr
 		consty k;
 	} const_eval;
 
-	enum op_type op;
-
 	/* flags */
 	/* do we return the altered value or the old one? */
 	int assign_is_post;
@@ -70,10 +68,19 @@ struct expr
 	{
 		numeric num;
 
+		struct
+		{
+			enum op_type op;
+		} op;
+
+		struct
+		{
+			enum op_type op;
+			int upcast;
+		} compoundop;
+
 		/* __builtin_va_start */
 		int n;
-
-		int compound_upcast;
 
 		struct
 		{
