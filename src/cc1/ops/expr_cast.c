@@ -453,7 +453,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 				strcpy(buf, type_to_str(trhs));
 
-				cc1_warn_at(&e->where, 0, WARN_LOSS_PRECISION,
+				cc1_warn_at(&e->where, loss_precision,
 						"possible loss of precision %s, size %d <-- %s, size %d",
 						type_to_str(tlhs), size_lhs,
 						buf, size_rhs);

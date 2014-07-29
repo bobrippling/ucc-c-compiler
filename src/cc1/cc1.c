@@ -29,88 +29,96 @@
 
 #include "../as_cfg.h"
 
+struct cc1_warning cc1_warning;
+
+static struct warn_str
+{
+	const char *arg;
+	unsigned char *offsets[3];
+} warns[] = {
+	{ "mismatch-arg", &cc1_warning.arg_mismatch },
+	{ "array-comma", &cc1_warning.array_comma },
+	{ "return-type", &cc1_warning.return_type },
+
+	{
+		"mismatch-assign",
+		&cc1_warning.assign_mismatch,
+		&cc1_warning.compare_mismatch,
+		&cc1_warning.return_type
+	},
+
+	{ "sign-compare", &cc1_warning.sign_compare },
+	{ "extern-assume", &cc1_warning.extern_assume },
+
+	{ "implicit-int", &cc1_warning.implicit_int },
+	{ "implicit-func", &cc1_warning.implicit_func },
+	{ "implicit", &cc1_warning.implicit_func, &cc1_warning.implicit_int },
+
+	{ "switch-enum", &cc1_warning.switch_enum },
+	{ "enum-compare", &cc1_warning.enum_cmp },
+
+	{ "incomplete-use", &cc1_warning.incomplete_use },
+
+	{ "unused-expr", &cc1_warning.unused_expr },
+
+	{ "test-in-assign", &cc1_warning.test_assign },
+	{ "test-bool", &cc1_warning.test_bool },
+
+	{ "dead-code", &cc1_warning.dead_code },
+
+	{ "predecl-enum", &cc1_warning.predecl_enum, },
+
+
+	{ "mixed-code-decls", &cc1_warning.mixed_code_decls },
+
+	{ "loss-of-precision", &cc1_warning.loss_precision },
+
+	{ "pad", &cc1_warning.pad },
+
+	{ "tenative-init", &cc1_warning.tenative_init },
+
+	{ "shadow-local", &cc1_warning.shadow_local },
+	{ "shadow-global", &cc1_warning.shadow_global },
+	{ "shadow", &cc1_warning.shadow_global, &cc1_warning.shadow_local },
+
+	{ "cast-qual", &cc1_warning.cast_qual },
+
+	{ "unused-parameter", &cc1_warning.unused_param },
+	{ "unused-variable", &cc1_warning.unused_var },
+	{ "unused-value", &cc1_warning.unused_val },
+	{
+		"unused",
+		&cc1_warning.unused_param,
+		&cc1_warning.unused_var,
+		&cc1_warning.unused_val
+	},
+
+	/* TODO */
+	{ "uninitialised", &cc1_warning.uninitialised },
+
+	/* TODO */
+	{ "array-bounds", &cc1_warning.array_bounds },
+
+	/* TODO */
+	{ "shadow", &cc1_warning.shadow },
+
+	/* TODO */
+	{ "format", &cc1_warning.format },
+
+	/* TODO */
+	{ "pointer-arith", &cc1_warning.ptr_arith }, /* void *x; x++; */
+	{ "int-ptr-cast", &cc1_warning.int_to_ptr },
+
+	{ NULL, NULL }
+};
+
+
 static struct
 {
 	char type;
 	const char *arg;
 	int mask;
-} args[] = {
-	/* TODO - wall picks sensible, extra = more, everything = ~0 */
-	{ 'W',  "all",             ~0 },
-	{ 'W',  "extra",            0 },
-	{ 'W',  "everything",      ~0 },
-
-
-	{ 'W',  "mismatch-arg",    WARN_ARG_MISMATCH                      },
-	{ 'W',  "array-comma",     WARN_ARRAY_COMMA                       },
-	{ 'W',  "mismatch-assign", WARN_ASSIGN_MISMATCH | WARN_COMPARE_MISMATCH | WARN_RETURN_TYPE },
-	{ 'W',  "return-type",     WARN_RETURN_TYPE                       },
-
-	{ 'W',  "sign-compare",    WARN_SIGN_COMPARE                      },
-	{ 'W',  "extern-assume",   WARN_EXTERN_ASSUME                     },
-
-	{ 'W',  "implicit-int",    WARN_IMPLICIT_INT                      },
-	{ 'W',  "implicit-func",   WARN_IMPLICIT_FUNC                     },
-	{ 'W',  "implicit",        WARN_IMPLICIT_FUNC | WARN_IMPLICIT_INT },
-
-	{ 'W',  "switch-enum",     WARN_SWITCH_ENUM                       },
-	{ 'W',  "enum-compare",    WARN_ENUM_CMP                          },
-
-	{ 'W',  "incomplete-use",  WARN_INCOMPLETE_USE                    },
-
-	{ 'W',  "unused-expr",     WARN_UNUSED_EXPR                       },
-
-	{ 'W',  "test-in-assign",  WARN_TEST_ASSIGN                       },
-	{ 'W',  "test-bool",       WARN_TEST_BOOL                         },
-
-	{ 'W',  "dead-code",       WARN_DEAD_CODE                         },
-
-	{ 'W',  "predecl-enum",    WARN_PREDECL_ENUM,                     },
-
-
-	{ 'W', "mixed-code-decls", WARN_MIXED_CODE_DECLS                  },
-
-	{ 'W', "loss-of-precision", WARN_LOSS_PRECISION                   },
-
-	{ 'W', "pad",               WARN_PAD },
-
-	{ 'W', "tenative-init",     WARN_TENATIVE_INIT },
-
-	{ 'W', "shadow-local",      WARN_SHADOW_LOCAL },
-	{ 'W', "shadow-global",     WARN_SHADOW_GLOBAL },
-	{ 'W', "shadow",            WARN_SHADOW_GLOBAL | WARN_SHADOW_LOCAL },
-
-	/* TODO: W_QUAL (ops/expr_cast) */
-
-#if 0
-	/* TODO */
-	{ 'W',  "unused-parameter", WARN_UNUSED_PARAM },
-	{ 'W',  "unused-variable",  WARN_UNUSED_VAR   },
-	{ 'W',  "unused-value",     WARN_UNUSED_VAL   },
-	{ 'W',  "unused",           WARN_UNUSED_PARAM | WARN_UNUSED_VAR | WARN_UNUSED_VAL },
-
-	/* TODO */
-	{ 'W',  "uninitialised",    WARN_UNINITIALISED },
-
-	/* TODO */
-	{ 'W',  "array-bounds",     WARN_ARRAY_BOUNDS },
-
-	/* TODO */
-	{ 'W',  "shadow",           WARN_SHADOW },
-
-	/* TODO */
-	{ 'W',  "format",           WARN_FORMAT },
-
-	/* TODO */
-	{ 'W',  "pointer-arith",    WARN_PTR_ARITH  }, /* void *x; x++; */
-	{ 'W',  "int-ptr-cast",     WARN_INT_TO_PTR },
-#endif
-
-	{ 'W',  "optimisation",     WARN_OPT_POSSIBLE },
-
-
-/* --- options --- */
-
+} fopts[] = {
 	{ 'f',  "enable-asm",    FOPT_ENABLE_ASM      },
 	{ 'f',  "const-fold",    FOPT_CONST_FOLD      },
 	{ 'f',  "english",       FOPT_ENGLISH         },
@@ -157,17 +165,6 @@ static char fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 char *cc1_first_fname;
 
-enum warning warn_mode = ~(
-		  WARN_VOID_ARITH
-		| WARN_IMPLICIT_INT
-		| WARN_LOSS_PRECISION
-		| WARN_SIGN_COMPARE
-		| WARN_PAD
-		| WARN_TENATIVE_INIT
-		| WARN_SHADOW_GLOBAL
-		| WARN_IMPLICIT_OLD_FUNC
-		);
-
 enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SHOW_LINE
                     | FOPT_PIC
@@ -209,7 +206,6 @@ static FILE *infile;
 /* compile time check for enum <-> int compat */
 #define COMP_CHECK(pre, test) \
 struct unused_ ## pre { char check[test ? -1 : 1]; }
-COMP_CHECK(a, sizeof warn_mode != sizeof(int));
 COMP_CHECK(b, sizeof fopt_mode != sizeof(int));
 
 
@@ -231,8 +227,8 @@ static void ccdie(int verbose, const char *fmt, ...)
 
 	if(verbose){
 		fputs("warnings + options:\n", stderr);
-		for(i = 0; args[i].arg; i++)
-			fprintf(stderr, "  -%c%s\n", args[i].type, args[i].arg);
+		for(i = 0; fopts[i].arg; i++)
+			fprintf(stderr, "  -%c%s\n", fopts[i].type, fopts[i].arg);
 		for(i = 0; val_args[i].arg; i++)
 			fprintf(stderr, "  -%c%s=value\n", val_args[i].pref, val_args[i].arg);
 	}
@@ -240,23 +236,13 @@ static void ccdie(int verbose, const char *fmt, ...)
 	exit(1);
 }
 
-void cc1_warn_atv(struct where *where, int die, enum warning w, const char *fmt, va_list l)
-{
-	if(!die && (w & warn_mode) == 0)
-		return;
-
-	vwarn(where, die, fmt, l);
-
-	if(die)
-		exit(1);
-}
-
-void cc1_warn_at(struct where *where, int die, enum warning w, const char *fmt, ...)
+#undef cc1_warn_at
+void cc1_warn_at(struct where *where, const char *fmt, ...)
 {
 	va_list l;
 
 	va_start(l, fmt);
-	cc1_warn_atv(where, die, w, fmt, l);
+	vwarn(where, 0, fmt, l);
 	va_end(l);
 }
 
@@ -396,6 +382,42 @@ static void gen_backend(symtable_global *globs, const char *fname)
 	io_fin(gf == NULL, fname);
 }
 
+static void warnings_set(int to)
+{
+	memset(&cc1_warning, to, sizeof cc1_warning);
+}
+
+static void warning_init(void)
+{
+	warnings_set(1);
+
+	cc1_warning.void_arith =
+	cc1_warning.implicit_int =
+	cc1_warning.loss_precision =
+	cc1_warning.sign_compare =
+	cc1_warning.pad =
+	cc1_warning.tenative_init =
+	cc1_warning.shadow_global =
+	cc1_warning.implicit_old_func = 0;
+}
+
+static void warning_on(const char *warn, int to)
+{
+	struct warn_str *p;
+	for(p = warns; p->arg; p++){
+		if(!strcmp(warn, p->arg)){
+			unsigned i;
+			for(i = 0; i < sizeof(p->offsets)/sizeof(p->offsets[0]); i++){
+				if(!p->offsets[i])
+					break;
+
+				*p->offsets[i] = to;
+			}
+			break;
+		}
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int parsed_folded;
@@ -415,6 +437,7 @@ int main(int argc, char **argv)
 
 	/* defaults */
 	cc1_mstack_align = log2i(platform_word_size());
+	warning_init();
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-X")){
@@ -457,7 +480,7 @@ int main(int argc, char **argv)
 				fopt_mode &= ~FOPT_EXT_KEYWORDS;
 
 		}else if(!strcmp(argv[i], "-w")){
-			warn_mode = WARN_NONE;
+			warnings_set(0);
 
 		}else if(!strcmp(argv[i], "-Werror")){
 			werror = 1;
@@ -507,9 +530,6 @@ int main(int argc, char **argv)
 			}
 
 			switch(arg_ty){
-				case 'W':
-					mask = (int *)&warn_mode;
-					break;
 				case 'f':
 					mask = (int *)&fopt_mode;
 					break;
@@ -518,28 +538,29 @@ int main(int argc, char **argv)
 					break;
 				default:
 					ucc_unreach(1);
+
+				case 'W':
+					warning_on(arg, !rev);
+					continue;
 			}
 
-			for(j = 0; args[j].arg; j++)
-				if(args[j].type == arg_ty && !strcmp(arg, args[j].arg)){
+			for(j = 0; fopts[j].arg; j++)
+				if(fopts[j].type == arg_ty && !strcmp(arg, fopts[j].arg)){
 					/* if the mask isn't a single bit, treat it as
 					 * an unmask, e.g. -funsigned-char unmasks FOPT_SIGNED_CHAR
-					 *
-					 * special case where we don't - warnings
 					 */
-					const int unmask = args[j].type != 'W'
-						&& args[j].mask & (args[j].mask - 1);
+					const int unmask = fopts[j].mask & (fopts[j].mask - 1);
 
 					if(rev){
 						if(unmask)
-							*mask |= ~args[j].mask;
+							*mask |= ~fopts[j].mask;
 						else
-							*mask &= ~args[j].mask;
+							*mask &= ~fopts[j].mask;
 					}else{
 						if(unmask)
-							*mask &= args[j].mask;
+							*mask &= fopts[j].mask;
 						else
-							*mask |= args[j].mask;
+							*mask |= fopts[j].mask;
 					}
 					found = 1;
 					break;

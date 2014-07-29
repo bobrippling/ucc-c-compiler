@@ -3,57 +3,54 @@
 
 #include "../util/std.h"
 
-
-enum warning
+struct cc1_warning
 {
-	WARN_NONE                     = 0,
-	WARN_ARG_MISMATCH             = 1 << 0,
-	WARN_ARRAY_COMMA              = 1 << 1,
-	WARN_ASSIGN_MISMATCH          = 1 << 2,
-	WARN_COMPARE_MISMATCH         = 1 << 3,
-	WARN_RETURN_TYPE              = 1 << 4,
-	WARN_SIGN_COMPARE             = 1 << 5,
-	WARN_EXTERN_ASSUME            = 1 << 6,
-	WARN_IMPLICIT_FUNC            = 1 << 7,
-	WARN_IMPLICIT_INT             = 1 << 8,
-	WARN_VOID_ARITH               = 1 << 9,
-	WARN_MIXED_CODE_DECLS         = 1 << 10,
-	WARN_TEST_BOOL                = 1 << 11,
-	WARN_LOSS_PRECISION           = 1 << 12,
+	unsigned char arg_mismatch;
+	unsigned char array_comma;
+	unsigned char assign_mismatch;
+	unsigned char compare_mismatch;
+	unsigned char return_type;
+	unsigned char sign_compare;
+	unsigned char extern_assume;
+	unsigned char implicit_func;
+	unsigned char implicit_int;
+	unsigned char void_arith;
+	unsigned char mixed_code_decls;
+	unsigned char test_bool;
+	unsigned char loss_precision;
 
-	WARN_OPT_POSSIBLE             = 1 << 13,
-	WARN_SWITCH_ENUM              = 1 << 14,
-	WARN_ENUM_CMP                 = 1 << 15,
-	WARN_INCOMPLETE_USE           = 1 << 16,
-	WARN_UNUSED_EXPR              = 1 << 17,
-	WARN_TEST_ASSIGN              = 1 << 18,
-	WARN_READ_BEFORE_WRITE        = 1 << 19,
-	WARN_SYM_NEVER_WRITTEN        = 1 << 20,
-	WARN_SYM_NEVER_READ           = 1 << 21,
-	WARN_DEAD_CODE                = 1 << 22,
-	WARN_PREDECL_ENUM             = 1 << 23,
-	WARN_OMITTED_PARAM_TYPES      = 1 << 24,
-	WARN_RETURN_UNDEF             = 1 << 25,
-	WARN_PAD                      = 1 << 26,
-	WARN_TENATIVE_INIT            = 1 << 27,
+	unsigned char opt_possible;
+	unsigned char switch_enum;
+	unsigned char enum_cmp;
+	unsigned char incomplete_use;
+	unsigned char unused_expr;
+	unsigned char test_assign;
+	unsigned char read_before_write;
+	unsigned char sym_never_written;
+	unsigned char sym_never_read;
+	unsigned char dead_code;
+	unsigned char predecl_enum;
+	unsigned char omitted_param_types;
+	unsigned char return_undef;
+	unsigned char pad;
+	unsigned char tenative_init;
 
-	WARN_SHADOW_LOCAL             = 1 << 28,
-	WARN_SHADOW_GLOBAL            = 1 << 29,
+	unsigned char shadow_local;
+	unsigned char shadow_global;
 
-	WARN_IMPLICIT_OLD_FUNC        = 1 << 30, /* int f(); */
+	unsigned char implicit_old_func;
 
-	/* TODO */
-	/*
-	WARN_FORMAT                   = 1 << 23,
-	WARN_INT_TO_PTR               = 1 << 24,
-	WARN_PTR_ARITH                = 1 << 25,
-	WARN_SHADOW                   = 1 << 26,
-	WARN_UNINITIALISED            = 1 << 27,
-	WARN_UNUSED_PARAM             = 1 << 28,
-	WARN_UNUSED_VAL               = 1 << 29,
-	WARN_UNUSED_VAR               = 1 << 30,
-	WARN_ARRAY_BOUNDS             = 1 << 31,
-	*/
+	unsigned char format;
+	unsigned char int_to_ptr;
+	unsigned char ptr_arith;
+	unsigned char shadow;
+	unsigned char uninitialised;
+	unsigned char unused_param;
+	unsigned char unused_val;
+	unsigned char unused_var;
+	unsigned char array_bounds;
+
+	unsigned char cast_qual;
 };
 
 enum fopt
@@ -101,13 +98,17 @@ enum cc1_backend
 extern enum fopt fopt_mode;
 extern enum mopt mopt_mode;
 extern enum cc1_backend cc1_backend;
-extern enum warning warn_mode;
+
+extern struct cc1_warning cc1_warning;
 
 extern enum c_std cc1_std;
 #define C99_LONGLONG() if(cc1_std < STD_C99) warn_at(NULL, "long long is a C99 feature")
 
-void cc1_warn_atv(struct where *where, int die, enum warning w, const char *fmt, va_list l);
-void cc1_warn_at( struct where *where, int die, enum warning w, const char *fmt, ...) ucc_printflike(4, 5);
+void cc1_warn_at(struct where *where, const char *fmt, ...) ucc_printflike(2, 3);
+#define cc1_warn_at(loc, warn, ...) do{ \
+		if(cc1_warning.warn) \
+			cc1_warn_at(loc, __VA_ARGS__); \
+	}while(0)
 
 extern int cc1_error_limit;
 

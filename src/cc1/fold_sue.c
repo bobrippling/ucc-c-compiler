@@ -335,7 +335,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				{
 					int pad = d->bits.var.struct_offset - prev_offset;
 					if(pad){
-						cc1_warn_at(&d->where, 0, WARN_PAD,
+						cc1_warn_at(&d->where, pad,
 								"padding '%s' with %d bytes to align '%s'",
 								sue->spel, pad, decl_to_str(d));
 					}

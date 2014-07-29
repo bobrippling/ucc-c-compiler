@@ -362,7 +362,7 @@ static stmt *parse_stmt_and_decls(
 					static int warned = 0;
 					if(!warned){
 						warned = 1;
-						cc1_warn_at(&nest->where, 0, WARN_MIXED_CODE_DECLS,
+						cc1_warn_at(&nest->where, mixed_code_decls,
 								"mixed code and declarations");
 					}
 				}

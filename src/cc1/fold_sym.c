@@ -34,8 +34,8 @@
             && !type_is_s_or_u(decl->ref)
 
 #define RW_SHOW(decl, w, str)          \
-          cc1_warn_at(&decl->where, 0, \
-              WARN_SYM_NEVER_ ## w,    \
+          cc1_warn_at(&decl->where, \
+              sym_never_ ## w,    \
               "\"%s\" never " str,     \
               decl->spel);             \
 
@@ -155,7 +155,7 @@ void symtab_check_rw(symtable *tab)
 							&& !type_is(d->ref, type_func)
 							&& !d->bits.var.init.dinit)
 							{
-								RW_WARN(WRITTEN, d, nwrites, "written to");
+								RW_WARN(written, d, nwrites, "written to");
 							}
 							break;
 						case store_extern:
@@ -167,7 +167,7 @@ void symtab_check_rw(symtable *tab)
 
 				if(unused){
 					if(!has_unused_attr && (d->store & STORE_MASK_STORE) != store_extern)
-						RW_SHOW(d, READ, "read");
+						RW_SHOW(d, read, "read");
 				}else if(has_unused_attr){
 					warn_at(&d->where,
 							"\"%s\" declared unused, but is used", d->spel);

@@ -80,7 +80,7 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 
 		if((is_func = !!type_is(d->ref, type_func)))
 			chk_shadow = 1;
-		else if(warn_mode & (WARN_SHADOW_LOCAL | WARN_SHADOW_GLOBAL))
+		else if(cc1_warning.shadow_local || cc1_warning.shadow_global)
 			chk_shadow = 1;
 
 		if(chk_shadow
@@ -114,8 +114,9 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 				 * if it has a parent, we found it in local scope, so check the local mask
 				 * and vice versa
 				 */
-				if(warn_mode & (
-					above_scope->parent ? WARN_SHADOW_LOCAL : WARN_SHADOW_GLOBAL))
+				if(above_scope->parent
+						? cc1_warning.shadow_local
+						: cc1_warning.shadow_global)
 				{
 					const char *ty = above_scope->parent ? "local" : "global";
 
@@ -153,7 +154,7 @@ void fold_stmt_code(stmt *s)
 		&& !stmt_kind(siter[1], case)
 		&& !stmt_kind(siter[1], default)
 		){
-			cc1_warn_at(&siter[1]->where, 0, WARN_DEAD_CODE,
+			cc1_warn_at(&siter[1]->where, dead_code,
 					"dead code after %s (%s)", st->f_str(), siter[1]->f_str());
 			warned = 1;
 		}

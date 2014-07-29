@@ -20,7 +20,7 @@ void fold_stmt_expr(stmt *s)
 	&& !s->expr->freestanding
 	&& !type_is_void(s->expr->tree_type))
 	{
-		cc1_warn_at(&s->expr->where, 0, WARN_UNUSED_EXPR,
+		cc1_warn_at(&s->expr->where, unused_expr,
 				"unused expression (%s)", expr_skip_casts(s->expr)->f_str());
 	}
 }

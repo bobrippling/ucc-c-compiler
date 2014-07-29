@@ -135,7 +135,7 @@ static void fold_switch_enum(
 
 	for(midx = 0; midx < nents; midx++)
 		if(!marks[midx])
-			cc1_warn_at(&sw->where, 0, WARN_SWITCH_ENUM,
+			cc1_warn_at(&sw->where, switch_enum,
 					"enum %s::%s not handled in switch",
 					enum_sue->anon ? "" : enum_sue->spel,
 					enum_sue->members[midx]->enum_member->spel);

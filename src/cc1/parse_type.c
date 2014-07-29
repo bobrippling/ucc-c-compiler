@@ -696,7 +696,7 @@ funcargs *parse_func_arglist(symtable *scope)
 
 	if(curtok == token_close_paren){
 		args->args_old_proto = 1;
-		cc1_warn_at(NULL, 0, WARN_IMPLICIT_OLD_FUNC,
+		cc1_warn_at(NULL, implicit_old_func,
 				"old-style function declaration (needs \"(void)\")");
 		goto empty_func;
 	}
@@ -773,7 +773,7 @@ fin:;
 			EAT_OR_DIE(token_comma);
 		}while(1);
 
-		cc1_warn_at(NULL, 0, WARN_OMITTED_PARAM_TYPES,
+		cc1_warn_at(NULL, omitted_param_types,
 				"old-style function declaration");
 		args->args_old_proto = 1;
 	}
@@ -1266,7 +1266,7 @@ static void prevent_typedef(enum decl_storage store)
 
 static type *default_type(void)
 {
-	cc1_warn_at(NULL, 0, WARN_IMPLICIT_INT, "defaulting type to int");
+	cc1_warn_at(NULL, implicit_int, "defaulting type to int");
 
 	return type_nav_btype(cc1_type_nav, type_int);
 }

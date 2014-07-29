@@ -867,7 +867,7 @@ void fold_decl_global_init(decl *d, symtable *stab)
 
 static void warn_passable_func(decl *d)
 {
-	cc1_warn_at(&d->where, 0, WARN_RETURN_UNDEF,
+	cc1_warn_at(&d->where, return_undef,
 			"control reaches end of non-void function %s",
 			d->spel);
 }
@@ -883,7 +883,7 @@ int fold_func_is_passable(decl *func_decl, type *func_ret, int warn)
 
 	if(attribute_present(func_decl, attr_noreturn)){
 		if(!type_is_void(func_ret)){
-			cc1_warn_at(&func_decl->where, 0, WARN_RETURN_UNDEF,
+			cc1_warn_at(&func_decl->where, return_undef,
 					"function \"%s\" marked no-return has a non-void return value",
 					func_decl->spel);
 		}
@@ -908,7 +908,7 @@ int fold_func_is_passable(decl *func_decl, type *func_ret, int warn)
 		}
 
 		if(the_return.extra){
-			cc1_warn_at(the_return.where, 0, WARN_RETURN_UNDEF,
+			cc1_warn_at(the_return.where, return_undef,
 					"function \"%s\" marked no-return %sreturns",
 					func_decl->spel, the_return.extra);
 		}
@@ -1060,12 +1060,12 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 	&& !e->in_parens
 	&& expr_kind(e, assign))
 	{
-		cc1_warn_at(&e->where, 0,WARN_TEST_ASSIGN, "assignment in %s", desc);
+		cc1_warn_at(&e->where,test_assign, "assignment in %s", desc);
 	}
 
 	if(chk & FOLD_CHK_BOOL){
 		if(!type_is_bool(e->tree_type)){
-			cc1_warn_at(&e->where, 0, WARN_TEST_BOOL,
+			cc1_warn_at(&e->where, test_bool,
 					"testing a non-boolean expression (%s), in %s",
 					type_to_str(e->tree_type), desc);
 		}
@@ -1228,7 +1228,7 @@ void fold_merge_tenatives(symtable *stab)
 						"tenative array definition assumed to have one element");
 			}
 
-			cc1_warn_at(&d->where, 0, WARN_TENATIVE_INIT,
+			cc1_warn_at(&d->where, tenative_init,
 					"default-initialising tenative definition of \"%s\"",
 					d->spel);
 		}

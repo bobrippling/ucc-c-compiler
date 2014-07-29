@@ -155,7 +155,7 @@ void vwarn(struct where *w, int err, const char *fmt, va_list l)
 
 	warning_count++;
 
-	if(fmt[strlen(fmt)-1] == ':'){
+	if(*fmt && fmt[strlen(fmt)-1] == ':'){
 		fputc(' ', stderr);
 		perror(NULL);
 	}else{

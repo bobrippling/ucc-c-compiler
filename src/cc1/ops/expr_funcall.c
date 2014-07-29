@@ -158,7 +158,7 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **psp)
 			args,
 			symtab_new(stab, &e->where) /*new symtable for args*/);
 
-	cc1_warn_at(&e->expr->where, 0, WARN_IMPLICIT_FUNC,
+	cc1_warn_at(&e->expr->where, implicit_func,
 			"implicit declaration of function \"%s\"", *psp);
 
 	df = decl_new();
