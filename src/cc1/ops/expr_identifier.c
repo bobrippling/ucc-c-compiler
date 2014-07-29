@@ -139,6 +139,7 @@ const out_val *gen_expr_identifier(expr *e, out_ctx *octx)
 void mutate_expr_identifier(expr *e)
 {
 	e->f_const_fold  = fold_const_expr_identifier;
+	e->f_islval = expr_is_lval_always;
 }
 
 expr *expr_new_identifier(char *sp)

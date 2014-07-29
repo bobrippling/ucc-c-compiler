@@ -28,7 +28,8 @@
 
 #include "../parse_expr.h"
 
-static void va_type_check(expr *va_l, expr *in, symtable *stab)
+static void va_type_check(
+		expr *va_l, expr *in, symtable *stab, int expect_decay)
 {
 	/* we need to check decayed, since we may have
 	 * f(va_list l)
@@ -36,13 +37,16 @@ static void va_type_check(expr *va_l, expr *in, symtable *stab)
 	 * f(__builtin_va_list *l) [the array has decayed]
 	 */
 	enum type_cmp cmp;
+	type *va_list_ty = type_nav_va_list(cc1_type_nav, stab);
 
 	if(!symtab_func(stab))
 		die_at(&in->where, "%s() outside a function",
 				BUILTIN_SPEL(in));
 
-	cmp = type_cmp(va_l->tree_type,
-			type_decay(type_nav_va_list(cc1_type_nav, stab)), 0);
+	if(expect_decay)
+		va_list_ty = type_decay(va_list_ty);
+
+	cmp = type_cmp(va_l->tree_type, va_list_ty, 0);
 
 	if(!(cmp & TYPE_EQUAL_ANY)){
 		die_at(&va_l->where,
@@ -69,11 +73,11 @@ static void fold_va_start(expr *e, symtable *stab)
 	va_l = e->funcargs[0];
 	fold_inc_writes_if_sym(va_l, stab);
 
-	FOLD_EXPR(e->funcargs[0], stab);
+	fold_expr_nodecay(e->funcargs[0], stab); /* prevent lval2rval */
 	FOLD_EXPR(e->funcargs[1], stab);
 
 	va_l = e->funcargs[0];
-	va_type_check(va_l, e->expr, stab);
+	va_type_check(va_l, e->expr, stab, 0);
 
 	va_ensure_variadic(e, stab);
 
@@ -483,7 +487,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 	FOLD_EXPR(e->lhs, stab);
 	fold_type(ty, stab);
 
-	va_type_check(e->lhs, e->expr, stab);
+	va_type_check(e->lhs, e->expr, stab, 1);
 
 	if(type_is_promotable(ty, &to)){
 		char tbuf[TYPE_STATIC_BUFSIZ];
@@ -535,7 +539,7 @@ static void fold_va_end(expr *e, symtable *stab)
 		die_at(&e->where, "%s requires one argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);
-	va_type_check(e->funcargs[0], e->expr, stab);
+	va_type_check(e->funcargs[0], e->expr, stab, 1);
 
 	/*va_ensure_variadic(e, stab); - va_end can be anywhere */
 
@@ -565,7 +569,7 @@ static void fold_va_copy(expr *e, symtable *stab)
 
 	for(i = 0; i < 2; i++){
 		FOLD_EXPR(e->funcargs[i], stab);
-		va_type_check(e->funcargs[i], e->expr, stab);
+		va_type_check(e->funcargs[i], e->expr, stab, 1);
 	}
 
 	/* (*a) = (*b) */

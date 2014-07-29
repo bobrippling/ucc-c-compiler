@@ -27,7 +27,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	struct_union_enum_st *sue;
 	char *spel;
 
-	fold_expr_no_decay(e->lhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
 	/* don't fold the rhs - just a member name */
 
 	if(e->rhs){
@@ -88,6 +88,9 @@ err:
 
 		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
 	}/* else already have the member */
+
+	if(!expr_is_lval(e->lhs))
+		e->f_lea = NULL;
 
 	/* pull qualifiers from the struct to the member */
 	e->tree_type = type_qualify(
@@ -199,10 +202,16 @@ static void fold_const_expr_struct(expr *e, consty *k)
 	}
 }
 
+static int expr_struct_is_lval(expr *e)
+{
+	return expr_is_lval(e->lhs);
+}
+
 void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
 	e->f_lea = gen_expr_struct_lea;
+	e->f_islval = expr_struct_is_lval;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;

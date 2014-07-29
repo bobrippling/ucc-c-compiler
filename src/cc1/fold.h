@@ -52,10 +52,11 @@ enum fold_chk
 void fold_check_expr(expr *e, enum fold_chk, const char *desc);
 
 /* expression + statement folding */
-expr *fold_expr_decay(expr *e, symtable *stab) ucc_wur;
-void fold_expr(expr *e, symtable *stab);
-#define FOLD_EXPR(e, stab) ((e) = fold_expr_decay((e), (stab)))
-#define fold_expr_no_decay fold_expr
+/*   decay */
+expr *fold_expr_lval2rval(expr *e, symtable *stab) ucc_wur;
+#define FOLD_EXPR(e, stab) ((e) = fold_expr_lval2rval((e), (stab)))
+/*   normal fold */
+void fold_expr_nodecay(expr *e, symtable *stab);
 
 void fold_stmt(stmt *t);
 

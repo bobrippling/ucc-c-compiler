@@ -16,9 +16,7 @@ const char *str_expr_addr()
 
 int expr_is_addressable(expr *e)
 {
-	return expr_is_lval(e)
-		|| type_is(e->tree_type, type_array)
-		|| type_is(e->tree_type, type_func);
+	return expr_is_lval(e) || type_is(e->tree_type, type_func);
 }
 
 void fold_expr_addr(expr *e, symtable *stab)
@@ -39,12 +37,16 @@ void fold_expr_addr(expr *e, symtable *stab)
 		/* if it's an identifier, act as a read */
 		fold_inc_writes_if_sym(e->lhs, stab);
 
-		fold_expr_no_decay(e->lhs, stab);
+		fold_expr_nodecay(e->lhs, stab);
+
+		e->tree_type = type_ptr_to(e->lhs->tree_type);
 
 		/* can address: lvalues, arrays and functions */
 		if(!expr_is_addressable(e->lhs)){
-			die_at(&e->where, "can't take the address of %s (%s)",
+			warn_at_print_error(&e->where, "can't take the address of %s (%s)",
 					e->lhs->f_str(), type_to_str(e->lhs->tree_type));
+			fold_had_error = 1;
+			return;
 		}
 
 		if(expr_kind(e->lhs, identifier)){
@@ -55,8 +57,6 @@ void fold_expr_addr(expr *e, symtable *stab)
 		}
 
 		fold_check_expr(e->lhs, FOLD_CHK_NO_BITFIELD, "address-of");
-
-		e->tree_type = type_ptr_to(e->lhs->tree_type);
 	}
 }
 

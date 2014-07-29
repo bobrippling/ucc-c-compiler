@@ -13,8 +13,8 @@
 #include "../type_nav.h"
 
 #define IMPLICIT_STR(e) ((e)->expr_cast_implicit ? "implicit " : "")
-#define IS_RVAL_CAST(e)  (!(e)->bits.cast.tref)
-#define IS_DECAY_CAST(e) ((e)->bits.cast.tref && e->bits.cast.is_decay)
+
+#define IS_LVAL_DECAY(e) (!(e)->bits.cast_to)
 
 static integral_t convert_integral_to_integral_warn(
 		const integral_t in, type *tin,
@@ -313,7 +313,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 	const_fold(expr_cast_child(e), k);
 
-	if(IS_RVAL_CAST(e))
+	if(IS_LVAL_DECAY(e))
 		return;
 
 	switch(k->type){
@@ -374,9 +374,9 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	if(descend)
 		FOLD_EXPR(expr_cast_child(e), stab);
 
-	if(IS_RVAL_CAST(e)){
-		/* remove cv-qualifiers */
-		e->tree_type = type_unqualify(expr_cast_child(e)->tree_type);
+	if(IS_LVAL_DECAY(e)){
+		/* implicitly removes cv-qualifiers */
+		e->tree_type = type_decay(expr_cast_child(e)->tree_type);
 
 		/* rval cast can have a lea */
 		if(expr_cast_child(e)->f_lea)
@@ -384,102 +384,102 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 	}else{
 		/* casts remove restrict qualifiers */
-		enum type_qualifier q = type_qual(e->bits.cast.tref);
+		enum type_qualifier q = type_qual(e->bits.cast_to);
+		int size_lhs, size_rhs;
 
-		e->tree_type = type_qualify(e->bits.cast.tref, q & ~qual_restrict);
+		e->tree_type = type_qualify(e->bits.cast_to, q & ~qual_restrict);
 
 		fold_type(e->tree_type, stab); /* struct lookup, etc */
 
 		tlhs = e->tree_type;
 		trhs = expr_cast_child(e)->tree_type;
 
-		if(!IS_DECAY_CAST(e)){
-			int size_lhs, size_rhs;
+		if(type_is_void(tlhs))
+			return; /* fine */
 
-			if(type_is_void(tlhs))
-				return; /* fine */
+		fold_check_expr(expr_cast_child(e),
+				FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+				"cast-expr");
 
-			fold_check_expr(expr_cast_child(e),
-					FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
-					"cast-expr");
+		fold_check_expr(expr_cast_child(e),
+				FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_ST_UN, "cast");
 
-			fold_check_expr(expr_cast_child(e),
-					FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_ST_UN, "cast");
+		fold_check_expr(e,
+				FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_ST_UN, "cast-target");
 
-			fold_check_expr(e,
-					FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_ST_UN, "cast-target");
+		if(!type_is_complete(tlhs)){
+			die_at(&e->where, "%scast to incomplete type %s",
+					IMPLICIT_STR(e),
+					type_to_str(tlhs));
+		}
 
-			if(!type_is_complete(tlhs)){
-				die_at(&e->where, "%scast to incomplete type %s",
+		if((flag = !!type_is(tlhs, type_func))
+		|| type_is(tlhs, type_array))
+		{
+			warn_at_print_error(&e->where, "%scast to %s type '%s'",
+					IMPLICIT_STR(e),
+					flag ? "function" : "array",
+					type_to_str(tlhs));
+
+			fold_had_error = 1;
+			return;
+		}
+
+		if(((flag = !!type_is_ptr(tlhs)) && type_is_floating(trhs))
+		||           (type_is_ptr(trhs)  && type_is_floating(tlhs)))
+		{
+			/* TODO: factor to a error-continuing function */
+			fold_had_error = 1;
+			warn_at_print_error(&e->where,
+					"%scast %s pointer %s floating type",
+					IMPLICIT_STR(e),
+					flag ? "to" : "from",
+					flag ? "from" : "to");
+			return;
+		}
+
+		size_lhs = type_size(tlhs, &e->where);
+		size_rhs = type_size(trhs, &expr_cast_child(e)->where);
+		if(size_lhs < size_rhs){
+			char buf[DECL_STATIC_BUFSIZ];
+
+			strcpy(buf, type_to_str(trhs));
+
+			cc1_warn_at(&e->where, 0, WARN_LOSS_PRECISION,
+					"possible loss of precision %s, size %d <-- %s, size %d",
+					type_to_str(tlhs), size_lhs,
+					buf, size_rhs);
+		}
+
+		if((flag = (type_is_fptr(tlhs) && type_is_nonfptr(trhs)))
+		||         (type_is_fptr(trhs) && type_is_nonfptr(tlhs)))
+		{
+			/* allow cast from NULL to func ptr */
+			if(!expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_VOID_PTR)){
+				char buf[TYPE_STATIC_BUFSIZ];
+
+				warn_at(&e->where, "%scast from %spointer to %spointer\n"
+						"%s <- %s",
 						IMPLICIT_STR(e),
-						type_to_str(tlhs));
+						flag ? "" : "function-", flag ? "function-" : "",
+						type_to_str(tlhs), type_to_str_r(buf, trhs));
 			}
-
-			if((flag = !!type_is(tlhs, type_func))
-			|| type_is(tlhs, type_array))
-			{
-				die_at(&e->where, "%scast to %s type '%s'",
-						IMPLICIT_STR(e),
-						flag ? "function" : "array",
-						type_to_str(tlhs));
-			}
-
-			if(((flag = !!type_is_ptr(tlhs)) && type_is_floating(trhs))
-			||           (type_is_ptr(trhs)  && type_is_floating(tlhs)))
-			{
-				/* TODO: factor to a error-continuing function */
-				fold_had_error = 1;
-				warn_at_print_error(&e->where,
-						"%scast %s pointer %s floating type",
-						IMPLICIT_STR(e),
-						flag ? "to" : "from",
-						flag ? "from" : "to");
-				return;
-			}
-
-			size_lhs = type_size(tlhs, &e->where);
-			size_rhs = type_size(trhs, &expr_cast_child(e)->where);
-			if(size_lhs < size_rhs){
-				char buf[DECL_STATIC_BUFSIZ];
-
-				strcpy(buf, type_to_str(trhs));
-
-				cc1_warn_at(&e->where, 0, WARN_LOSS_PRECISION,
-						"possible loss of precision %s, size %d <-- %s, size %d",
-						type_to_str(tlhs), size_lhs,
-						buf, size_rhs);
-			}
-
-			if((flag = (type_is_fptr(tlhs) && type_is_nonfptr(trhs)))
-			||         (type_is_fptr(trhs) && type_is_nonfptr(tlhs)))
-			{
-				/* allow cast from NULL to func ptr */
-				if(!expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_VOID_PTR)){
-					char buf[TYPE_STATIC_BUFSIZ];
-
-					warn_at(&e->where, "%scast from %spointer to %spointer\n"
-							"%s <- %s",
-							IMPLICIT_STR(e),
-							flag ? "" : "function-", flag ? "function-" : "",
-							type_to_str(tlhs), type_to_str_r(buf, trhs));
-				}
-			}
+		}
 
 #ifdef W_QUAL
-			if(decl_is_ptr(tlhs) && decl_is_ptr(trhs) && (tlhs->type->qual | trhs->type->qual) != tlhs->type->qual){
-				const enum type_qualifier away = trhs->type->qual & ~tlhs->type->qual;
-				char *buf = type_qual_to_str(away);
-				char *p;
+		if(decl_is_ptr(tlhs) && decl_is_ptr(trhs) && (tlhs->type->qual | trhs->type->qual) != tlhs->type->qual){
+			const enum type_qualifier away = trhs->type->qual & ~tlhs->type->qual;
+			char *buf = type_qual_to_str(away);
+			char *p;
 
-				p = &buf[strlen(buf)-1];
-				if(p >= buf && *p == ' ')
-					*p = '\0';
+			p = &buf[strlen(buf)-1];
+			if(p >= buf && *p == ' ')
+				*p = '\0';
 
-				warn_at(&e->where, "%scast removes qualifiers (%s)",
-						IMPLICIT_STR(e), buf);
-			}
-#endif
+			warn_at(&e->where, "%scast removes qualifiers (%s)",
+					IMPLICIT_STR(e), buf);
 		}
+#endif
 	}
 }
 
@@ -494,13 +494,15 @@ const out_val *gen_expr_cast(expr *e, out_ctx *octx)
 	const int cast_to_void = type_is_void(tto);
 	const out_val *casted;
 
-	/* avoid a struct dereference for (void) <struct> */
-	casted = (cast_to_void ? gen_maybe_struct_expr : gen_expr)(
-			expr_cast_child(e),
-			octx);
+	/* avoid a struct dereference for (void) <struct> and lval-to-rval struct */
+	casted = (cast_to_void || IS_LVAL_DECAY(e)
+			? gen_maybe_struct_expr : gen_expr)(
+				expr_cast_child(e),
+				octx);
 
-	if(IS_RVAL_CAST(e)){
+	if(IS_LVAL_DECAY(e)){
 		/*out_to_rvalue();*/
+		casted = out_change_type(octx, casted, e->tree_type);
 	}else{
 		type *tfrom = expr_cast_child(e)->tree_type;
 
@@ -553,7 +555,7 @@ const out_val *gen_expr_cast(expr *e, out_ctx *octx)
 
 const out_val *gen_expr_str_cast(expr *e, out_ctx *octx)
 {
-	idt_printf("%scast expr:\n", IS_RVAL_CAST(e) ? "rvalue-" : "");
+	idt_printf("%scast expr:\n", IS_LVAL_DECAY(e) ? "lvalue-decay-" : "");
 	gen_str_indent++;
 	print_expr(expr_cast_child(e));
 	gen_str_indent--;
@@ -568,35 +570,26 @@ void mutate_expr_cast(expr *e)
 expr *expr_new_cast(expr *what, type *to, int implicit)
 {
 	expr *e = expr_new_wrapper(cast);
-	e->bits.cast.tref = to;
+	e->bits.cast_to = to;
 	e->expr_cast_implicit = implicit;
 	expr_cast_child(e) = what;
 	return e;
 }
 
-expr *expr_new_cast_rval(expr *sub)
+expr *expr_new_cast_lval_decay(expr *sub)
 {
 	expr *e = expr_new_wrapper(cast);
-	/* mark as rvalue cast */
-	e->bits.cast.tref = NULL;
-	e->bits.cast.is_decay = 0;
-	expr_cast_child(e) = sub;
-	return e;
-}
 
-expr *expr_new_cast_decay(expr *sub, type *to)
-{
-	expr *e = expr_new_wrapper(cast);
-	/* mark as decay */
-	e->bits.cast.tref = to;
-	e->bits.cast.is_decay = 1;
+	e->bits.cast_to = NULL; /* indicate lval2rval */
+
 	expr_cast_child(e) = sub;
 	return e;
 }
 
 const out_val *gen_expr_style_cast(expr *e, out_ctx *octx)
 {
-	stylef("(%s)", type_to_str(e->bits.cast.tref));
+	if(e->bits.cast_to)
+		stylef("(%s)", type_to_str(e->bits.cast_to));
 	IGNORE_PRINTGEN(gen_expr(expr_cast_child(e), octx));
 	return NULL;
 }

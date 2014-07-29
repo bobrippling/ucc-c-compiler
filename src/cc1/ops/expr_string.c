@@ -83,6 +83,7 @@ static void const_expr_string(expr *e, consty *k)
 void mutate_expr_str(expr *e)
 {
 	e->f_const_fold = const_expr_string;
+	e->f_islval = expr_is_lval_always;
 	e->f_lea = lea_expr_str;
 }
 
