@@ -71,6 +71,7 @@ struct expr
 		struct
 		{
 			enum op_type op;
+			int array_notation; /* a[b] */
 		} op;
 
 		struct

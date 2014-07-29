@@ -1102,9 +1102,22 @@ expr *expr_new_op2(enum op_type o, expr *l, expr *r)
 const out_val *gen_expr_style_op(expr *e, out_ctx *octx)
 {
 	if(e->rhs){
+		const char *post;
+		char middle[16];
+
+		if(e->bits.op.array_notation){
+			strcpy(middle, "[");
+			post = "]";
+		}else{
+			snprintf(middle, sizeof middle, " %s ", op_to_str(e->bits.op.op));
+			post = "";
+		}
+
 		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
-		stylef(" %s ", op_to_str(e->bits.op.op));
+		stylef("%s", middle);
 		IGNORE_PRINTGEN(gen_expr(e->rhs, octx));
+		stylef("%s", post);
+
 	}else{
 		stylef("%s ", op_to_str(e->bits.op.op));
 		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
