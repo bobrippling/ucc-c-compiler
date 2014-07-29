@@ -491,10 +491,11 @@ const out_val *gen_expr_cast(expr *e, out_ctx *octx)
 	const int cast_to_void = type_is_void(tto);
 	const out_val *casted;
 
-	/* avoid a struct dereference for (void) <struct> */
-	casted = (cast_to_void ? gen_maybe_struct_expr : gen_expr)(
-			expr_cast_child(e),
-			octx);
+	/* avoid a struct dereference for (void) <struct> and lval-to-rval struct */
+	casted = (cast_to_void || IS_LVAL_DECAY(e)
+			? gen_maybe_struct_expr : gen_expr)(
+				expr_cast_child(e),
+				octx);
 
 	if(IS_LVAL_DECAY(e)){
 		/*out_to_rvalue();*/
