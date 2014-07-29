@@ -416,10 +416,13 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		if((flag = !!type_is(tlhs, type_func))
 		|| type_is(tlhs, type_array))
 		{
-			die_at(&e->where, "%scast to %s type '%s'",
+			warn_at_print_error(&e->where, "%scast to %s type '%s'",
 					IMPLICIT_STR(e),
 					flag ? "function" : "array",
 					type_to_str(tlhs));
+
+			fold_had_error = 1;
+			return;
 		}
 
 		if(((flag = !!type_is_ptr(tlhs)) && type_is_floating(trhs))
