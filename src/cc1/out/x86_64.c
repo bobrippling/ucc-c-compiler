@@ -1959,14 +1959,22 @@ static const out_val *spill_struct_to_stack(
 }
 
 static const out_val *spill_struct_to_regs(
-		out_ctx *octx, const out_val *struct_ptr)
+		out_ctx *octx, const out_val *struct_ptr, unsigned *reg_idx)
 {
 	unsigned su_sz = type_size(struct_ptr->t, NULL);
-	const out_val *arg;
+	struct vreg regpair[2];
 
 	if(su_sz > 2 * platform_word_size())
 		return struct_ptr; /* already spilt to stack */
 
+	x86_overlay_regpair(regpair, struct_ptr->t);
+
+	struct_ptr = v_to_reg(octx, struct_ptr);
+
+	out_val_retain(octx, struct_ptr);
+	impl_overlay_mem2regs(octx, su_sz, 2, regpair, struct_ptr);
+
+	return struct_ptr;
 }
 
 const out_val *impl_call(
@@ -2107,6 +2115,9 @@ const out_val *impl_call(
 		const struct vreg *rp = NULL;
 		struct vreg r;
 
+		if(type_is_s_or_u(vp->t))
+			continue;
+
 		if(is_float){
 			if(nfloats < N_CALL_REGS_F){
 				/* NOTE: don't need to use call_regs_float,
@@ -2147,7 +2158,12 @@ const out_val *impl_call(
 		if(!type_is_s_or_u(local_args[i]->t))
 			continue;
 
-		local_args[i] = spill_struct_to_regs(octx, local_args[i]);
+		if(nints >= n_call_iregs){
+			/* rest are spilt to the stack */
+			ICE("TODO: not enough regs - spill structs to stack");
+		}else{
+			local_args[i] = spill_struct_to_regs(octx, local_args[i], &nints);
+		}
 	}
 
 	if(stk_snapshot){
