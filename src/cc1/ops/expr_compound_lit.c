@@ -161,6 +161,7 @@ void mutate_expr_compound_lit(expr *e)
 {
 	/* unconditionally an lvalue */
 	e->f_lea = lea_expr_compound_lit;
+	e->f_islval = expr_is_lval_always;
 	e->f_const_fold = const_expr_compound_lit;
 }
 
