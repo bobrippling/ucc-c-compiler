@@ -637,6 +637,7 @@ void impl_func_prologue_save_call_regs(
 
 		unsigned n_call_i, n_call_f;
 		const struct vreg *call_regs;
+		unsigned i_arg, i_stk, i_arg_stk, i_i, i_f;
 
 		n_call_f = N_CALL_REGS_F;
 		x86_call_regs(rf, &n_call_i, &call_regs);
@@ -653,73 +654,43 @@ void impl_func_prologue_save_call_regs(
 			n_call_f = MIN(n_call_f, fp_cnt);
 		}
 
-		/* two cases
-		 * - for all integral arguments, we can just push them
-		 * - if we have floats, we must mov them to the stack
-		 * each argument takes a full word for now - subject to change
-		 * (e.g. long double, struct/union args, etc)
-		 */
-		if(n_call_f){
-			unsigned i_arg, i_stk, i_arg_stk, i_i, i_f;
+		v_alloc_stack(octx,
+				(n_call_f + n_call_i) * platform_word_size(),
+				"save call regs float+integral");
 
-			v_alloc_stack(octx,
-					(n_call_f + n_call_i) * platform_word_size(),
-					"save call regs float+integral");
+		for(i_arg = i_i = i_f = i_stk = i_arg_stk = 0;
+		    i_arg < nargs;
+		    i_arg++)
+		{
+			type *const ty = fa->arglist[i_arg]->ref;
+			const struct vreg *rp;
+			struct vreg vr;
 
-			for(i_arg = i_i = i_f = i_stk = i_arg_stk = 0;
-					i_arg < nargs;
-					i_arg++)
+			if(type_is_floating(ty)){
+				if(i_f >= n_call_f)
+					goto pass_via_stack;
+
+				rp = &vr;
+				vr.is_float = 1;
+				vr.idx = i_f++;
+			}else{
+				if(i_i >= n_call_i)
+					goto pass_via_stack;
+
+				rp = &call_regs[i_i++];
+			}
+
 			{
-				type *const ty = fa->arglist[i_arg]->ref;
-				const struct vreg *rp;
-				struct vreg vr;
+				int const off = ++i_stk * ws;
 
-				if(type_is_floating(ty)){
-					if(i_f >= n_call_f)
-						goto pass_via_stack;
+				v_reg_to_stack(octx, rp, ty, off);
 
-					rp = &vr;
-					vr.is_float = 1;
-					vr.idx = i_f++;
-				}else{
-					if(i_i >= n_call_i)
-						goto pass_via_stack;
+				set_arg_offset(arg_offsets, i_arg, is_stret, -off);
+			}
 
-					rp = &call_regs[i_i++];
-				}
-
-				{
-					int const off = ++i_stk * ws;
-
-					v_reg_to_stack(octx, rp, ty, off);
-
-					set_arg_offset(arg_offsets, i_arg, is_stret, -off);
-				}
-
-				continue;
+			continue;
 pass_via_stack:
-				set_arg_offset(arg_offsets, i_arg, is_stret, (i_arg_stk++ + 2) * ws);
-			}
-		}else{
-			unsigned i;
-			for(i = 0; i < nargs; i++){
-				if(i < n_call_i){
-					out_asm(octx, "push%s %%%s",
-							x86_suffix(NULL),
-							x86_reg_str(&call_regs[i], NULL));
-
-					/* +1 to step over saved rbp */
-					set_arg_offset(arg_offsets, i, is_stret, -(i + 1) * ws);
-				}else{
-					/* +2 to step back over saved rbp and saved rip */
-					set_arg_offset(arg_offsets, i, is_stret, (i - n_call_i + 2) * ws);
-				}
-			}
-
-			/* this aligns the stack too */
-			v_alloc_stack_n(octx,
-					n_call_i * platform_word_size(),
-					"save call regs push-version");
+			set_arg_offset(arg_offsets, i_arg, is_stret, (i_arg_stk++ + 2) * ws);
 		}
 	}
 }
