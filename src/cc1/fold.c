@@ -157,9 +157,30 @@ void fold_expr_nodecay(expr *e, symtable *stab)
 
 expr *fold_expr_lval2rval(expr *e, symtable *stab)
 {
+	/*
+	 * C89:
+	 *
+	 * "Except when it is the operand of the sizeof operator ... an lvalue that
+	 * has type "array of type" is converted to an expression that has type
+	 * "pointer to type" that points to the initial member of the array object
+	 * and is not an lvalue.
+	 *
+	 * C99 (6.3.2.1p3):
+	 *
+	 * "Except when it is the operand of the sizeof operator ... an expression
+	 * that has type "array of type" is converted to an expression with type
+	 * "pointer to type" that points to the initial element of the array object
+	 * and is not an lvalue."
+	 */
+	int should_decay;
+
 	fold_expr_nodecay(e, stab);
 
-	if(expr_is_lval(e) || type_is(e->tree_type, type_func)){
+	should_decay =
+		(cc1_std >= STD_C99 && type_decayable(e->tree_type))
+		|| expr_is_lval(e);
+
+	if(should_decay || type_is(e->tree_type, type_func)){
 		e = expr_set_where(
 				expr_new_cast_lval_decay(e),
 				&e->where);
