@@ -1943,7 +1943,7 @@ void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 }
 
 static const out_val *spill_struct_to_stack(
-		out_ctx *octx, const out_val *struct_ptr)
+		out_ctx *octx, const out_val *struct_ptr, unsigned *arg_stack)
 {
 	unsigned su_sz = type_size(struct_ptr->t, NULL);
 
@@ -1953,6 +1953,7 @@ static const out_val *spill_struct_to_stack(
 		return struct_ptr; /* spill to registers - done later */
 
 	/* copy to stack */
+	arg_stack += su_sz;
 
 	return struct_ptr;
 }
@@ -2013,7 +2014,7 @@ const out_val *impl_call(
 		if(!type_is_s_or_u(local_args[i]->t))
 			continue;
 
-		local_args[i] = spill_struct_to_stack(octx, local_args[i]);
+		local_args[i] = spill_struct_to_stack(octx, local_args[i], &arg_stack);
 	}
 
 
@@ -2031,11 +2032,11 @@ const out_val *impl_call(
 
 	/* do we need to do any stacking? */
 	if(nints > n_call_iregs)
-		arg_stack += nints - n_call_iregs;
+		arg_stack += pws * (nints - n_call_iregs);
 
 
 	if(nfloats > N_CALL_REGS_F)
-		arg_stack += nfloats - N_CALL_REGS_F;
+		arg_stack += pws * (nfloats - N_CALL_REGS_F);
 
 	/* need to save regs before pushes/call */
 	v_save_regs(octx, fnty, local_args, fn);
@@ -2044,7 +2045,7 @@ const out_val *impl_call(
 		out_comment(octx, "stack space for %d arguments", arg_stack);
 		/* this aligns the stack-ptr and returns arg_stack padded */
 		arg_stack = v_alloc_stack(
-				octx, arg_stack * pws,
+				octx, arg_stack,
 				"call argument space");
 	}
 
