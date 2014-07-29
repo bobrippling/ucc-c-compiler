@@ -23,16 +23,13 @@
 #include "fold_sym.h"
 #include "ops/__builtin.h"
 #include "out/asm.h" /* NUM_SECTIONS */
-#include "opt.h"
 #include "pass1.h"
 #include "type_nav.h"
 #include "cc1_where.h"
 
 #include "../as_cfg.h"
 
-struct opt_flags cc1_opts;
-
-struct
+static struct
 {
 	char type;
 	const char *arg;
@@ -143,7 +140,7 @@ struct
 	{ 0,  NULL, 0 }
 };
 
-struct
+static struct
 {
 	char pref;
 	const char *arg;
@@ -156,7 +153,7 @@ struct
 };
 
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
-char  fnames[NUM_SECTIONS][32]; /* duh */
+static char fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 char *cc1_first_fname;
 
@@ -193,7 +190,7 @@ enum c_std cc1_std = STD_C99;
 
 int cc1_error_limit = 16;
 
-int caught_sig = 0;
+static int caught_sig = 0;
 
 int show_current_line;
 
@@ -407,10 +404,6 @@ int main(int argc, char **argv)
 	const char *fname;
 	int i;
 	int werror = 0;
-
-	/* TODO: -O[0-3] parsing and
-	 * -fremain-stack, etc */
-	cc1_opts.opt_remain_stack = 1;
 
 	/*signal(SIGINT , sigh);*/
 	signal(SIGQUIT, sigh);

@@ -3,7 +3,6 @@
 
 #include "../util/std.h"
 
-/*#define FANCY_STACK_INIT 1*/
 
 enum warning
 {
