@@ -147,12 +147,14 @@ const out_val *gen_expr_assign(expr *e, out_ctx *octx)
 		const out_val *val, *store;
 
 		val = gen_expr(e->rhs, octx);
-		out_val_retain(octx, val);
 		store = lea_expr(e->lhs, octx);
+		out_val_retain(octx, store);
 
 		out_store(octx, store, val);
 
-		return val;
+		/* re-read from the store,
+		 * e.g. if the value has undergone bitfield truncation */
+		return out_deref(octx, store);
 	}
 }
 
