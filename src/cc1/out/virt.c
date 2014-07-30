@@ -476,7 +476,8 @@ void v_save_regs(
 		if(save){
 			const out_val *new;
 
-			assert(v->retains == 1 && "v_save_regs(): too heavily retained v");
+			/* other out_val:s can be as heavily retained as they want,
+			 * we still change the underlying val without any effect */
 
 			new = v_save_reg(octx, v, func_ty);
 
@@ -484,11 +485,9 @@ void v_save_regs(
 				out_val_overwrite(v, new);
 				/* transfer retain-ness to 'v' from 'new' */
 				out_val_release(octx, new);
-				assert(v->retains == 0);
-				v->retains = 1;
+				out_val_retain(octx, v);
 			}else{
 				/* moved to callee save reg */
-				assert(new->retains == 1);
 			}
 		}
 	}
