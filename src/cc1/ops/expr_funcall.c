@@ -283,8 +283,15 @@ static void default_promote_args(
 {
 	/* each unspecified arg needs default promotion, (if smaller) */
 	unsigned i;
-	for(i = count_decl; args[i]; i++)
-		expr_promote_default(&args[i], stab);
+
+	/* must walk up from zero, since args[count_decl] may be OOB,
+	 * in the case of an old style function:
+	 * f(i, j){ ... }
+	 * f(1);
+	 */
+	for(i = 0; args[i]; i++)
+		if(i >= count_decl)
+			expr_promote_default(&args[i], stab);
 }
 
 void fold_expr_funcall(expr *e, symtable *stab)
