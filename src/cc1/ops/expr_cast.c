@@ -175,7 +175,11 @@ static integral_t convert_integral_to_integral_warn(
 			ret |= -1ULL << sz_in_bits;
 
 			/* need to unmask any top bits, e.g. int instead of long long */
-			ret &= -1ULL >> sz_out_bits;
+			if(sz_out_bits >= CHAR_BIT * sizeof(ret)){
+				/* shift would be a no-op (technically UB) */
+			}else{
+				ret &= -1ULL >> sz_out_bits;
+			}
 		}
 
 	}else if(signed_in){
