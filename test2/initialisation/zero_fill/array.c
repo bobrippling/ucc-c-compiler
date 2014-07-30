@@ -1,6 +1,16 @@
-// RUN: [ `%ucc %s -S -o- | grep 'mov.*[01]' | wc -l` -eq 4 ]
+// RUN: %ocheck 0 %s
 
-f()
+main()
 {
 	int x[4] = { 1 };
+
+	if(x[0] != 1
+	|| x[1]
+	|| x[2]
+	|| x[3])
+	{
+		abort();
+	}
+
+	return 0;
 }

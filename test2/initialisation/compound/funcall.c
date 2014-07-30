@@ -1,8 +1,17 @@
-// RUN: [ `%ucc %s -S -o- | grep 'mov.*[123456789]' | wc -l` -eq 9 ]
+// RUN: %ocheck 0 %s
 
-void f(char *);
+void f(char *p)
+{
+	static const char expected[] = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+
+	for(int i = 0; i < 9; i++)
+		if(expected[i] != p[i])
+			abort();
+}
 
 main()
 {
 	f((char[]){1, 2, 3, 4, 5, 6, 7, 8, 9});
+
+	return 0;
 }
