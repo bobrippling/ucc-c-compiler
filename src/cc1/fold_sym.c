@@ -303,10 +303,7 @@ void symtab_fold_decls(symtable *tab)
 			}
 		}
 
-		if(type_is_func_or_block(d->ref)
-		&& d->store & store_inline
-		&& (d->store & STORE_MASK_STORE) == store_default)
-		{
+		if(type_is_func_or_block(d->ref) && DECL_PURE_INLINE(d)){
 			warn_at(&d->where,
 					"pure inline function will not have code emitted "
 					"(missing \"static\" or \"extern\")");

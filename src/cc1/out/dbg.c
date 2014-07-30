@@ -1035,6 +1035,11 @@ static void dwarf_symtable_scope(
 		dwarf_symtable_scope(cu, lexblk, *si, var_offset);
 }
 
+static int func_code_emitted(decl *d)
+{
+	return d->bits.func.code && !DECL_PURE_INLINE(d);
+}
+
 static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 {
 	struct DIE *subprog = dwarf_die_new(DW_TAG_subprogram);
@@ -1048,7 +1053,7 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 			d, type_func_call(d->ref, NULL),
 			/*show_extern:*/1);
 
-	if(d->bits.func.code){
+	if(func_code_emitted(d)){
 		dwarf_attr(subprog, DW_AT_low_pc, DW_FORM_addr, ustrdup(asmsp));
 		dwarf_attr(subprog, DW_AT_high_pc, DW_FORM_addr, out_dbg_func_end(asmsp));
 
