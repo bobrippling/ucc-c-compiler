@@ -601,6 +601,8 @@ static const char *x86_cmp(const struct flag_opts *flag)
 		/*case flag_z:  return "z";
 		case flag_nz: return "nz";*/
 	}
+
+	assert(0 && "unreachable - unknown cmp");
 	return NULL;
 }
 

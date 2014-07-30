@@ -99,4 +99,6 @@ out_val *v_new_reg(out_ctx *octx, const out_val *from, type *ty,
 
 void out_val_overwrite(out_val *d, const out_val *s);
 
+void v_decay_flags(out_ctx *octx);
+
 #endif

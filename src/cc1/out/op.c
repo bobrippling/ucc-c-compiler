@@ -280,6 +280,8 @@ const out_val *out_op(
 	const out_val *vconst = NULL, *vregp_or_lbl = NULL;
 	const out_val *result;
 
+	v_decay_flags(octx); /* an op instruction may change cpu flags */
+
 	fill_if_type(lhs, &vconst, &vregp_or_lbl);
 	fill_if_type(rhs, &vconst, &vregp_or_lbl);
 

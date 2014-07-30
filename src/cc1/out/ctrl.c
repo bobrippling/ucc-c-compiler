@@ -20,6 +20,8 @@ void out_ctrl_branch(
 		const out_val *cond,
 		out_blk *if_true, out_blk *if_false)
 {
+	v_decay_flags(octx);
+
 	impl_branch(octx,
 			cond, if_true, if_false,
 			!!(cond->flags & VAL_FLAG_LIKELY));
@@ -82,6 +84,8 @@ const out_val *out_ctrl_merge(out_ctx *octx, out_blk *from_a, out_blk *from_b)
 
 void out_current_blk(out_ctx *octx, out_blk *new_blk)
 {
+	v_decay_flags(octx);
+
 	octx->last_used_blk = new_blk;
 
 	octx->current_blk = new_blk;
@@ -91,6 +95,8 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 		const out_val *phi /* optional */, out_blk **mergee)
 {
 	out_blk *from = octx->current_blk;
+
+	v_decay_flags(octx);
 
 	assert(!!phi == !!mergee);
 
@@ -129,6 +135,8 @@ void out_ctrl_transfer_make_current(out_ctx *octx, out_blk *to)
 void out_ctrl_transfer_exp(out_ctx *octx, const out_val *addr)
 {
 	assert(addr->retains == 1); /* don't want this changing under us */
+
+	v_decay_flags(octx);
 
 	impl_jmp_expr(octx, addr); /* must jump now, while we have octx */
 

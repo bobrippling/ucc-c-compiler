@@ -147,6 +147,8 @@ void out_func_prologue(
 
 	assert(octx->var_stack_sz == 0 && "non-empty stack for new func");
 
+	octx->check_flags = 1;
+
 	octx->in_prologue = 1;
 	{
 		assert(!octx->current_blk);

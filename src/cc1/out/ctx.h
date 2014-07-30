@@ -29,6 +29,7 @@ struct out_ctx
 	int stack_n_alloc; /* just the alloc_n() part */
 
 	int in_prologue;
+	int check_flags;
 
 	/* we won't reserve it more than 255 times */
 	unsigned char *reserved_regs;

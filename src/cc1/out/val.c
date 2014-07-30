@@ -68,6 +68,38 @@ out_val *v_new(out_ctx *octx, type *ty)
 	return v;
 }
 
+static void v_decay_flag(out_ctx *octx, const out_val *flag)
+{
+	const out_val *regged = v_to_reg(octx, flag);
+
+	if(regged == flag)
+		return;
+
+	out_val_overwrite((out_val *)flag, regged);
+	out_val_release(octx, regged);
+	out_val_retain(octx, flag);
+}
+
+void v_decay_flags(out_ctx *octx)
+{
+	if(!octx->check_flags)
+		return;
+	octx->check_flags = 0;
+	{
+		out_val_list *iter;
+
+		for(iter = octx->val_head; iter; iter = iter->next){
+			out_val *v = &iter->val;
+
+			if(v->retains > 0 && v->type == V_FLAG){
+				out_comment(octx, "saving flag");
+				v_decay_flag(octx, v);
+			}
+		}
+	}
+	octx->check_flags = 1;
+}
+
 static out_val *v_dup(out_ctx *octx, const out_val *from, type *ty)
 {
 	switch(from->type){
