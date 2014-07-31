@@ -31,6 +31,11 @@
 
 struct cc1_warning cc1_warning;
 
+enum warning_special
+{
+	W_ALL, W_EXTRA, W_EVERYTHING
+};
+
 static struct warn_str
 {
 	const char *arg;
@@ -503,7 +508,7 @@ static void warnings_set(int to)
 	memset(&cc1_warning, to, sizeof cc1_warning);
 }
 
-static void warning_init(void)
+static void warning_all(void)
 {
 	warnings_set(1);
 
@@ -519,9 +524,46 @@ static void warning_init(void)
 		0;
 }
 
+static void warning_init(void)
+{
+	/* default to -Wall */
+	warning_all();
+}
+
+static void warning_special(enum warning_special type)
+{
+	switch(type){
+		case W_EVERYTHING:
+			warnings_set(1);
+			break;
+		case W_ALL:
+			warning_all();
+			break;
+		case W_EXTRA:
+			warning_all();
+			cc1_warning.implicit_int =
+			cc1_warning.loss_precision =
+			cc1_warning.sign_compare =
+			cc1_warning.tenative_init =
+			cc1_warning.shadow_global = 1;
+			break;
+	}
+}
+
 static void warning_on(const char *warn, int to)
 {
 	struct warn_str *p;
+
+#define SPECIAL(str, w)   \
+	if(!strcmp(warn, str)){ \
+		warning_special(w);   \
+		return;               \
+	}
+
+	SPECIAL("all", W_ALL)
+	SPECIAL("extra", W_EXTRA)
+	SPECIAL("everything", W_EVERYTHING)
+
 	for(p = warns; p->arg; p++){
 		if(!strcmp(warn, p->arg)){
 			unsigned i;
