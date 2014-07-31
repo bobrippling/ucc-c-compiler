@@ -22,6 +22,7 @@
  */
 
 #define BOOLEAN_TYPE type_int
+#define SHOW_CONST_OP 0
 
 const char *str_expr_op()
 {
@@ -217,6 +218,21 @@ static void const_op_num_int(
 			int_r = const_op_exec(
 					l.bits.i, rhs ? &r.bits.i : NULL,
 					e->op, is_signed, &err);
+
+			if(SHOW_CONST_OP){
+				if(rhs){
+					fprintf(stderr,
+							"const op: (%s) %lld %s %lld = %lld, is_signed=%d\n",
+							type_to_str(e->tree_type),
+							l.bits.i, op_to_str(e->op), r.bits.i,
+							int_r, is_signed);
+				}else{
+					fprintf(stderr,
+							"const op: (%s) %s %lld = %lld, is_signed=%d\n",
+							type_to_str(e->tree_type),
+							op_to_str(e->op), l.bits.i, int_r, is_signed);
+				}
+			}
 
 			if(err){
 				cc1_warn_at(&e->where, constop_bad, "%s", err);
