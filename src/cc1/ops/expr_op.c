@@ -1095,7 +1095,7 @@ static const out_val *op_shortcircuit(expr *e, out_ctx *octx)
 
 const out_val *gen_expr_op(expr *e, out_ctx *octx)
 {
-	const out_val *lhs, *rhs, *eval;
+	const out_val *lhs, *eval;
 
 	switch(e->op){
 		case op_orsc:
@@ -1111,16 +1111,17 @@ const out_val *gen_expr_op(expr *e, out_ctx *octx)
 
 	lhs = gen_expr(e->lhs, octx);
 
-	if(!e->rhs)
-		return out_op_unary(octx, e->op, lhs);
+	if(!e->rhs){
+		eval = out_op_unary(octx, e->op, lhs);
+	}else{
+		const out_val *rhs = gen_expr(e->rhs, octx);
 
-	rhs = gen_expr(e->rhs, octx);
+		eval = out_op(octx, e->op, lhs, rhs);
 
-	eval = out_op(octx, e->op, lhs, rhs);
-
-	/* make sure we get the pointer, for example 2+(int *)p
-	 * or the int, e.g. (int *)a && (int *)b -> int */
-	eval = out_change_type(octx, eval, e->tree_type);
+		/* make sure we get the pointer, for example 2+(int *)p
+		 * or the int, e.g. (int *)a && (int *)b -> int */
+		eval = out_change_type(octx, eval, e->tree_type);
+	}
 
 	if(fopt_mode & FOPT_TRAPV
 	&& type_is_integral(e->tree_type)
