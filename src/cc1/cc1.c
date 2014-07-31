@@ -531,9 +531,11 @@ static void warning_on(const char *warn, int to)
 
 				*p->offsets[i] = to;
 			}
-			break;
+			return;
 		}
 	}
+
+	fprintf(stderr, "Unknown warning option \"-W%s\"\n", warn);
 }
 
 int main(int argc, char **argv)
