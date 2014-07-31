@@ -118,12 +118,13 @@ integral_t const_op_exec(
 	typedef sintegral_t S;
 	typedef  integral_t U;
 	const int is_signed = type_is_signed(arithty);
+	U result;
 
 #define S_OP(o) ((S)lval o (S)*rval)
 #define U_OP(o) ((U)lval o (U)*rval)
 
-#define OP(  a, b) case a: return S_OP(b)
-#define OP_U(a, b) case a: return is_signed ? (U)S_OP(b) : (U)U_OP(b)
+#define OP(  a, b) case a: result = S_OP(b); break
+#define OP_U(a, b) case a: result = is_signed ? (U)S_OP(b) : (U)U_OP(b); break
 
 	switch(op){
 		OP(op_multiply,   *);
@@ -146,52 +147,49 @@ integral_t const_op_exec(
 
 		case op_modulus:
 		case op_divide:
-			if(*rval)
-				return op == op_divide ? lval / *rval : lval % *rval;
-
-			*error = "division by zero";
-			return 0;
+			if(*rval){
+				result = op == op_divide ? lval / *rval : lval % *rval;
+			}else{
+				*error = "division by zero";
+				result = 0;
+			}
+			break;
 
 		case op_plus:
-		{
-			integral_t r = lval + (rval ? *rval : 0);
+			result = lval + (rval ? *rval : 0);
 
 			if(!is_signed){
 				/* need to apply proper wrap-around */
 				integral_t max = type_max(arithty, NULL);
 
-				if(r > max){
+				if(result > max){
 					ICE("NEED WRAP");
 				}
 			}
-
-			return r;
-		}
+			break;
 
 		case op_minus:
-		{
-			integral_t r = rval ? lval - *rval : -lval;
+			result = rval ? lval - *rval : -lval;
 
 			if(!is_signed){
 				/* need to apply proper wrap-around */
 				integral_t max = type_max(arithty, NULL);
 
-				if(r > max){
-					r = max - (NUMERIC_T_MAX - r);
+				if(result > max){
+					result = max - (NUMERIC_T_MAX - result);
 				}
 			}
+			break;
 
-			return r;
-		}
-
-		case op_not:  return !lval;
-		case op_bnot: return ~lval;
+		case op_not:  result = !lval; break;
+		case op_bnot: result = ~lval; break;
 
 		case op_unknown:
+			ICE("unhandled type");
 			break;
 	}
 
-	ICE("unhandled type");
+	return result;
 }
 
 floating_t const_op_exec_fp(
