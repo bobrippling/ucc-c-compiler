@@ -64,6 +64,7 @@ static int unlink_tmps = 1;
 static int gdebug = 0, generated_temp_obj = 0;
 const char *argv0;
 char *wrapper;
+int fsystem_cpp;
 
 static void unlink_files(void)
 {
@@ -442,6 +443,10 @@ int main(int argc, char **argv)
 					}
 					else if(!strncmp(argv[i], "-fmessage-length=", 17)){
 						ADD_ARG(mode_preproc);
+					}
+					else if(!strcmp(argv[i], "-fsystem-cpp")){
+						fsystem_cpp = 1;
+						continue;
 					}
 
 				case 'w':
