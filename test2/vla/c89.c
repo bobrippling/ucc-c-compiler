@@ -1,4 +1,4 @@
-// RUN: %check %s -std=c89
+// RUN: %check %s -std=c89 -Wvla
 
 f(int x)
 {
