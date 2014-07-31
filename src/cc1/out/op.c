@@ -296,7 +296,7 @@ const out_val *out_op(
 		return consume_one(octx, vconst == lhs ? rhs : lhs, lhs, rhs);
 
 	/* constant folding */
-	if(vconst){
+	if(vconst && (fopt_mode & FOPT_CONST_FOLD)){
 		const out_val *oconst = (vconst == lhs ? rhs : lhs);
 
 		if(oconst->type == V_CONST_I){
