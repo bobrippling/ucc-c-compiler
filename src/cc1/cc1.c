@@ -94,8 +94,8 @@ static struct warn_str
 
 	{ "uninitialised", &cc1_warning.uninitialised },
 
-	/* TODO */
-	{ "int-ptr-cast", &cc1_warning.int_to_ptr },
+	{ "int-ptr-conversion", &cc1_warning.int_ptr_conv },
+	{ "ptr-int-conversion", &cc1_warning.int_ptr_conv },
 
 	{ "arith-funcptr", &cc1_warning.arith_fnptr },
 	{ "arith-voidptr", &cc1_warning.arith_voidp },

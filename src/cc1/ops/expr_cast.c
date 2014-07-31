@@ -395,6 +395,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 		if(!IS_DECAY_CAST(e)){
 			int size_lhs, size_rhs;
+			int ptr_lhs, ptr_rhs;
 
 			fold_check_expr(expr_cast_child(e),
 					FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
@@ -421,21 +422,24 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 						type_to_str(tlhs));
 			}
 
-			if(((flag = !!type_is_ptr(tlhs)) && type_is_floating(trhs))
-			||           (type_is_ptr(trhs)  && type_is_floating(tlhs)))
+			ptr_lhs = !!type_is_ptr(tlhs);
+			ptr_rhs = !!type_is_ptr(trhs);
+
+			if((ptr_lhs && type_is_floating(trhs))
+			|| (ptr_rhs && type_is_floating(tlhs)))
 			{
-				/* TODO: factor to a error-continuing function */
 				fold_had_error = 1;
 				warn_at_print_error(&e->where,
 						"%scast %s pointer %s floating type",
 						IMPLICIT_STR(e),
-						flag ? "to" : "from",
-						flag ? "from" : "to");
+						ptr_lhs ? "to" : "from",
+						ptr_lhs ? "from" : "to");
 				return;
 			}
 
-			{
+			if(e->expr_cast_implicit){
 				struct_union_enum_st *ea, *eb;
+
 				if((ea = type_is_enum(tlhs))
 				&& (eb = type_is_enum(trhs))
 				&& ea != eb)
@@ -444,6 +448,12 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 							enum_mismatch,
 							"implicit conversion from 'enum %s' to 'enum %s'",
 							eb->spel, ea->spel);
+				}
+
+				if(ptr_lhs ^ ptr_rhs){
+					cc1_warn_at(&e->where,
+							int_ptr_conv,
+							"implicit conversion between pointer and integer");
 				}
 			}
 
