@@ -987,14 +987,19 @@ void fold_expr_op(expr *e, symtable *stab)
 			case op_plus:
 			case op_minus:
 			case op_bnot:
-				fold_check_expr(
-						e->lhs,
-						(e->op == op_bnot ? FOLD_CHK_INTEGRAL : 0)
-							| FOLD_CHK_NO_ST_UN,
-						op_to_str(e->op));
+			{
+				enum fold_chk chk = FOLD_CHK_NO_ST_UN;
+
+				if(e->op == op_bnot)
+					chk |= FOLD_CHK_INTEGRAL;
+				else
+					chk |= FOLD_CHK_ARITHMETIC;
+
+				fold_check_expr(e->lhs, chk, op_to_str(e->op));
 
 				e->tree_type = e->lhs->tree_type;
 				break;
+			}
 		}
 	}
 }

@@ -1049,10 +1049,19 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 		}
 	}
 
-	if(chk & FOLD_CHK_INTEGRAL){
-		if(type_is_floating(e->tree_type)){
-			die_at(&e->where, "%s requires an integral expression (not \"%s\")",
-					desc, type_to_str(e->tree_type));
+	if(chk & (FOLD_CHK_ARITHMETIC | FOLD_CHK_INTEGRAL)){
+		int (*chkfn)(type *) = chk & FOLD_CHK_ARITHMETIC
+				? type_is_arith : type_is_integral;
+
+		if(!chkfn(e->tree_type)){
+			fold_had_error = 1;
+			warn_at_print_error(&e->where,
+					"%s requires an %s type (not \"%s\")",
+					desc,
+					chk & FOLD_CHK_ARITHMETIC
+						? "arithmetic"
+						: "integral",
+					type_to_str(e->tree_type));
 		}
 	}
 
