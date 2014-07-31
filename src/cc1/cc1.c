@@ -126,7 +126,7 @@ static struct warn_str
 	{ "attr-section-badchar", &cc1_warning.attr_section_badchar },
 	{ "attr-sentinel", &cc1_warning.attr_sentinel },
 	{ "attr-sentinel-nonvariadic", &cc1_warning.attr_sentinel_nonvariadic },
-	{ "attr-unknown", &cc1_warning.attr_unknown },
+	{ "attr-unknown-on-label", &cc1_warning.lbl_attr_unknown },
 	{ "attr-unused-used", &cc1_warning.attr_unused_used },
 	{ "attr-unused-voidfn", &cc1_warning.attr_unused_voidfn },
 
@@ -178,7 +178,7 @@ static struct warn_str
 	{ "init-override", &cc1_warning.init_override },
 
 
-	{ "unknown-attribute", &cc1_warning.lbl_attr_unknown },
+	{ "unknown-attribute", &cc1_warning.attr_unknown },
 	{ "unused-label", &cc1_warning.lbl_unused },
 
 	{ "long-long", &cc1_warning.long_long },
