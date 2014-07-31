@@ -269,7 +269,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 						if(!realign_next){
 							/* bitfield overflow - repad */
 							cc1_warn_at(&d->where,
-									bitfield_multifields,
+									bitfield_boundary,
 									"bitfield overflow (%d + %d > %d) - "
 									"moved to next boundary", bitfield.current_off, bits,
 									bf_cur_lim);

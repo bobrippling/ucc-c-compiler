@@ -68,7 +68,6 @@ static struct warn_str
 
 	{ "predecl-enum", &cc1_warning.predecl_enum, },
 
-
 	{ "mixed-code-decls", &cc1_warning.mixed_code_decls },
 
 	{ "loss-of-precision", &cc1_warning.loss_precision },
@@ -106,8 +105,135 @@ static struct warn_str
 	{ "format", &cc1_warning.format },
 
 	/* TODO */
-	{ "pointer-arith", &cc1_warning.ptr_arith }, /* void *x; x++; */
 	{ "int-ptr-cast", &cc1_warning.int_to_ptr },
+
+	{ "arith-funcptr", &cc1_warning.arith_fnptr },
+	{ "arith-voidptr", &cc1_warning.arith_voidp },
+
+	{ "array-oob", &cc1_warning.array_oob },
+	{ "asm-badchar", &cc1_warning.asm_badchar },
+
+	{ "attr-badcleanup", &cc1_warning.attr_badcleanup },
+	{ "attr-format-baddecl", &cc1_warning.attr_format_baddecl },
+	{ "attr-format-unknown", &cc1_warning.attr_format_unknown },
+	{ "attr-noderef", &cc1_warning.attr_noderef },
+	{ "attr-nonnull", &cc1_warning.attr_nonnull },
+	{ "attr-nonnull-bad", &cc1_warning.attr_nonnull_bad },
+	{ "attr-nonnull-noargs", &cc1_warning.attr_nonnull_noargs },
+	{ "attr-nonnull-nonptr", &cc1_warning.attr_nonnull_nonptr },
+	{ "attr-nonnull-oob", &cc1_warning.attr_nonnull_oob },
+	{ "attr-printf-bad", &cc1_warning.attr_printf_bad },
+	{ "attr-printf-toomany", &cc1_warning.attr_printf_toomany },
+	{ "attr-printf-unknown", &cc1_warning.attr_printf_unknown },
+	{ "attr-section-badchar", &cc1_warning.attr_section_badchar },
+	{ "attr-sentinel", &cc1_warning.attr_sentinel },
+	{ "attr-sentinel-nonvariadic", &cc1_warning.attr_sentinel_nonvariadic },
+	{ "attr-unknown", &cc1_warning.attr_unknown },
+	{ "attr-unused-used", &cc1_warning.attr_unused_used },
+	{ "attr-unused-voidfn", &cc1_warning.attr_unused_voidfn },
+
+	{ "qualified-fntype", &cc1_warning.bad_funcqual },
+	{ "inline-non-function", &cc1_warning.bad_inline },
+	{ "restrict-non-ptr", &cc1_warning.bad_restrict },
+
+	{ "bitfield-boundary", &cc1_warning.bitfield_boundary },
+	{ "bitfield-onebit-int", &cc1_warning.bitfield_onebit_int },
+	{ "bitfield-trunc", &cc1_warning.bitfield_trunc },
+
+	{ "builtin-expect-nonconst", &cc1_warning.builtin_expect_nonconst },
+	{ "builtin-memset-bad", &cc1_warning.builtin_memset_bad },
+	{ "builtin-va_arg-undefined", &cc1_warning.builtin_va_arg },
+	{ "builtin-va_start-2nd-param", &cc1_warning.builtin_va_start },
+
+	{ "c89-compound-literal", &cc1_warning.c89_compound_literal },
+	{ "c89-for-init", &cc1_warning.c89_for_init },
+	{ "c89-init-constexpr", &cc1_warning.c89_init_constexpr },
+	{ "c89-trailing-comma", &cc1_warning.c89_parse_trailingcomma },
+
+	{ "constant-large-unsigned", &cc1_warning.constant_large_unsigned },
+
+	{ "div-zero", &cc1_warning.constop_bad },
+	{ "declaration-noop", &cc1_warning.decl_nodecl },
+	{ "empty-struct", &cc1_warning.empty_struct },
+
+	{ "enum-mismatch", &cc1_warning.enum_mismatch },
+	{ "enum-switch-bitmask", &cc1_warning.enum_switch_bitmask },
+	{ "enum-switch-imposter", &cc1_warning.enum_switch_imposter },
+
+	{ "excess-init", &cc1_warning.excess_init },
+	{ "extern-init", &cc1_warning.extern_init },
+
+	{ "embedded-flexarr", &cc1_warning.flexarr_embed },
+	{ "flexarr-single-member", &cc1_warning.flexarr_only },
+	{ "flexarr-init", &cc1_warning.flexarr_init },
+
+	{ "call-argcount", &cc1_warning.funcall_argcount },
+
+	{ "ignored-late-decl", &cc1_warning.ignored_late_decl },
+
+	{ "implicit-old-func", &cc1_warning.implicit_old_func },
+
+	{ "init-missing-braces", &cc1_warning.init_missing_braces },
+	{ "init-missing-struct", &cc1_warning.init_missing_struct },
+	{ "init-obj-discard", &cc1_warning.init_obj_discard },
+	{ "init-overlong-string", &cc1_warning.init_overlong_strliteral },
+	{ "init-override", &cc1_warning.init_override },
+
+
+	{ "unknown-attribute", &cc1_warning.lbl_attr_unknown },
+	{ "unused-label", &cc1_warning.lbl_unused },
+
+	{ "long-long", &cc1_warning.long_long },
+
+	{ "mismatch-conditional", &cc1_warning.mismatch_conditional },
+	{ "mismatch-ptr", &cc1_warning.mismatch_ptr },
+	{ "mismatching-types", &cc1_warning.mismatching_types },
+
+	{ "missing-empty-struct-brace-init", &cc1_warning.missing_empty_struct_brace_init },
+
+	{ "multichar", &cc1_warning.multichar },
+	{ "multichar-too-large", &cc1_warning.multichar_toolarge },
+
+	{ "nonstandard-array-size", &cc1_warning.nonstd_arraysz },
+	{ "nonstandard-init", &cc1_warning.nonstd_init },
+
+	{ "omitted-param-types", &cc1_warning.omitted_param_types },
+	{ "undefined-shift", &cc1_warning.op_shift_bad },
+	{ "overlarge-enumerator", &cc1_warning.overlarge_enumerator },
+
+	{ "operator-precedence", &cc1_warning.parse_precedence },
+	{ "visibility", &cc1_warning.private_struct },
+
+	{ "pure-inline", &cc1_warning.pure_inline },
+	{ "restrict-ptrs", &cc1_warning.restrict_ptrs },
+	{ "return-undef", &cc1_warning.return_undef },
+	{ "signed-unsigned", &cc1_warning.signed_unsigned },
+	{ "sizeof-decayed", &cc1_warning.sizeof_decayed },
+	{ "static-array-size", &cc1_warning.static_array_bad },
+	{ "str-contain-nul", &cc1_warning.str_contain_nul },
+
+	{ "struct-noinstance-anon", &cc1_warning.struct_noinstance_anon },
+	{ "struct-noinstance-qualified", &cc1_warning.struct_noinstance_qualified },
+
+	{ "read-before-write", &cc1_warning.sym_read_before_write },
+	{ "sym-never-read", &cc1_warning.sym_never_read },
+	{ "sym-never-written", &cc1_warning.sym_never_written },
+
+	{ "tautologic-unsigned-op", &cc1_warning.tautologic_unsigned },
+	{ "tenative-array", &cc1_warning.tenative_array_1elem },
+
+	{ "typedef-function-impl", &cc1_warning.typedef_fnimpl },
+	{ "typedef-redefinition", &cc1_warning.typedef_redef },
+
+	{ "undef-string-comparison", &cc1_warning.undef_strlitcmp },
+
+	{ "unnamed-struct-memb", &cc1_warning.unnamed_struct_memb },
+	{ "unused-comma", &cc1_warning.unused_comma },
+
+	{ "vla", &cc1_warning.vla },
+
+	{ "__func__init", &cc1_warning.x__func__init },
+	{ "__func__outside-fn", &cc1_warning.x__func__outsidefn },
 
 	{ NULL, NULL }
 };
@@ -391,14 +517,16 @@ static void warning_init(void)
 {
 	warnings_set(1);
 
-	cc1_warning.void_arith =
 	cc1_warning.implicit_int =
 	cc1_warning.loss_precision =
 	cc1_warning.sign_compare =
 	cc1_warning.pad =
 	cc1_warning.tenative_init =
 	cc1_warning.shadow_global =
-	cc1_warning.implicit_old_func = 0;
+	cc1_warning.implicit_old_func =
+	cc1_warning.bitfield_boundary =
+	cc1_warning.vla =
+		0;
 }
 
 static void warning_on(const char *warn, int to)

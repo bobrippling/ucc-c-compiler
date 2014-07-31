@@ -221,7 +221,7 @@ static void override_warn(
 	char buf[WHERE_BUF_SIZ];
 
 	cc1_warn_at(new,
-			override_init,
+			init_override,
 			"overriding %sinitialisation of \"%s\"\n"
 			"%s: prior initialisation here",
 			whole ? "entire " : "",
@@ -668,7 +668,7 @@ static decl_init **decl_init_brace_up_sue2(
 			}
 
 			if(type_is_incomplete_array(d_mem->ref)){
-				cc1_warn_at(&this->where, init_flexarray,
+				cc1_warn_at(&this->where, flexarr_init,
 						"initialisation of flexible array (GNU)");
 			}
 
