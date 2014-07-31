@@ -217,7 +217,7 @@ static void const_op_num_int(
 
 			int_r = const_op_exec(
 					l.bits.i, rhs ? &r.bits.i : NULL,
-					e->op, is_signed, &err);
+					e->op, e->tree_type, &err);
 
 			if(SHOW_CONST_OP){
 				if(rhs){

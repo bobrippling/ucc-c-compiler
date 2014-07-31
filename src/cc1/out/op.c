@@ -135,7 +135,7 @@ static out_val *try_const_fold(
 	const char *err = NULL;
 	const integral_t eval = const_op_exec(
 			lhs->bits.val_i, &rhs->bits.val_i,
-			binop, type_is_signed(lhs->t),
+			binop, lhs->t,
 			&err);
 
 	if(!err){

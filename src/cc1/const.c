@@ -9,6 +9,7 @@
 #include "sym.h"
 #include "expr.h"
 #include "cc1.h"
+#include "type_is.h"
 
 void const_fold(expr *e, consty *k)
 {
@@ -111,13 +112,13 @@ long const_expr_value(expr *e)
 
 integral_t const_op_exec(
 		integral_t lval, const integral_t *rval, /* rval is optional */
-		enum op_type op, int is_signed,
+		enum op_type op, type *arithty,
 		const char **error)
 {
 	typedef sintegral_t S;
 	typedef  integral_t U;
+	const int is_signed = type_is_signed(arithty);
 
-	/* FIXME: casts based on lval.type */
 #define S_OP(o) ((S)lval o (S)*rval)
 #define U_OP(o) ((U)lval o (U)*rval)
 
@@ -152,10 +153,36 @@ integral_t const_op_exec(
 			return 0;
 
 		case op_plus:
-			return lval + (rval ? *rval : 0);
+		{
+			integral_t r = lval + (rval ? *rval : 0);
+
+			if(!is_signed){
+				/* need to apply proper wrap-around */
+				integral_t max = type_max(arithty, NULL);
+
+				if(r > max){
+					ICE("NEED WRAP");
+				}
+			}
+
+			return r;
+		}
 
 		case op_minus:
-			return rval ? lval - *rval : -lval;
+		{
+			integral_t r = rval ? lval - *rval : -lval;
+
+			if(!is_signed){
+				/* need to apply proper wrap-around */
+				integral_t max = type_max(arithty, NULL);
+
+				if(r > max){
+					r = max - (NUMERIC_T_MAX - r);
+				}
+			}
+
+			return r;
+		}
 
 		case op_not:  return !lval;
 		case op_bnot: return ~lval;
