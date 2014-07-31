@@ -29,7 +29,7 @@ struct
 	FILE *file;
 	char *fname;
 	int line_no;
-} file_stack[8] = { { NULL, NULL, 0 } };
+} file_stack[64] = { { NULL, NULL, 0 } };
 
 int file_stack_idx = -1;
 
