@@ -265,8 +265,9 @@ enum type_cmp type_cmp(type *a, type *b, enum type_cmp_opts opts)
 integral_t type_max(type *r, where *from)
 {
 	unsigned sz = type_size(r, from);
+	int is_signed = type_is_signed(r);
 
-	return 1ULL << (sz * CHAR_BIT - 1);
+	return 1ULL << (sz * CHAR_BIT - is_signed);
 }
 
 unsigned type_size(type *r, where *from)
