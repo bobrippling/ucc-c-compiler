@@ -36,7 +36,8 @@ static attribute *func_attr_present(expr *e, enum attribute_type t)
 static void sentinel_check(where *w, expr *e, expr **args,
 		const int variadic, const int nstdargs, symtable *stab)
 {
-#define ATTR_WARN_RET(w, ...) do{ warn_at(w, __VA_ARGS__); return; }while(0)
+#define ATTR_WARN_RET(w, ...) \
+	do{ cc1_warn_at(w, attr_sentinel, __VA_ARGS__); return; }while(0)
 
 	attribute *attr = func_attr_present(e, attr_sentinel);
 	int i, nvs;
@@ -99,7 +100,9 @@ static void static_array_check(
 
 	/* want to check any pointer type */
 	if(expr_is_null_ptr(arg_expr, NULL_STRICT_ANY_PTR)){
-		warn_at(&arg_expr->where, "passing null-pointer where array expected");
+		cc1_warn_at(&arg_expr->where,
+				attr_nonnull,
+				"passing null-pointer where array expected");
 		return;
 	}
 
@@ -121,7 +124,8 @@ static void static_array_check(
 			&& K_INTEGRAL(k_arg.bits.num)
 			&& k_arg.bits.num.val.i < k_decl.bits.num.val.i)
 			{
-				warn_at(&arg_expr->where,
+				cc1_warn_at(&arg_expr->where,
+						static_array_bad,
 						"array of size %" NUMERIC_FMT_D
 						" passed where size %" NUMERIC_FMT_D " needed",
 						k_arg.bits.num.val.i, k_decl.bits.num.val.i);
@@ -158,7 +162,7 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **psp)
 			args,
 			symtab_new(stab, &e->where) /*new symtable for args*/);
 
-	cc1_warn_at(&e->expr->where, 0, WARN_IMPLICIT_FUNC,
+	cc1_warn_at(&e->expr->where, implicit_func,
 			"implicit declaration of function \"%s\"", *psp);
 
 	df = decl_new();
@@ -187,12 +191,21 @@ static int check_arg_counts(
 		&& (args_from_decl->variadic ? count_arg < count_decl : 1))
 		{
 			int warn = args_from_decl->args_old_proto;
-			(warn ? warn_at : warn_at_print_error)(
-					loc, "too %s arguments to function %s%s(got %d, need %d)",
-					count_arg > count_decl ? "many" : "few",
-					sp ? sp : "",
-					sp ? " " : "",
-					count_arg, count_decl);
+
+#define common_warning                                         \
+					"too %s arguments to function %s%s(got %d, need %d)",\
+					count_arg > count_decl ? "many" : "few",             \
+					sp ? sp : "",                                        \
+					sp ? " " : "",                                       \
+					count_arg, count_decl
+
+			if(warn){
+				cc1_warn_at(loc, funcall_argcount, common_warning);
+			}else{
+				die_at(loc, common_warning);
+			}
+
+#undef common_warning
 
 			if(!warn){
 				fold_had_error = 1;
@@ -200,7 +213,8 @@ static int check_arg_counts(
 			}
 		}
 	}else if(args_from_decl->args_void_implicit && exprargs){
-		warn_at(loc, "too many arguments to implicitly (void)-function");
+		cc1_warn_at(loc, funcall_argcount,
+				"too many arguments to implicitly (void)-function");
 	}
 	return 0;
 }
@@ -230,7 +244,9 @@ static void check_arg_voidness_and_nonnulls(
 		&& type_is_ptr(args_from_decl->arglist[i]->ref)
 		&& expr_is_null_ptr(arg, NULL_STRICT_INT))
 		{
-			warn_at(&arg->where, "null passed where non-null required (arg %d)",
+			cc1_warn_at(&arg->where,
+					attr_nonnull,
+					"null passed where non-null required (arg %d)",
 					i + 1);
 		}
 	}

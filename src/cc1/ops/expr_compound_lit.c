@@ -21,7 +21,8 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	int static_ctx = e->bits.complit.static_ctx; /* global or static */
 
 	if(cc1_std < STD_C99)
-		warn_at(&e->where, "compound literals are a C99 feature");
+		cc1_warn_at(&e->where, c89_compound_literal,
+				"compound literals are a C99 feature");
 
 	/* if(!stab->parent) assert(static_ctx);
 	 *

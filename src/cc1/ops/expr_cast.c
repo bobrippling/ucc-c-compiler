@@ -117,7 +117,7 @@ static void signed_unsigned_warn_at(
 		}
 	}
 
-	warn_at(w, fmt, a, b);
+	cc1_warn_at(w, signed_unsigned, fmt, a, b);
 	free(fmt);
 }
 
@@ -399,6 +399,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 		if(!IS_DECAY_CAST(e)){
 			int size_lhs, size_rhs;
+			int ptr_lhs, ptr_rhs;
 
 			fold_check_expr(expr_cast_child(e),
 					FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
@@ -425,28 +426,44 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 						type_to_str(tlhs));
 			}
 
-			if(((flag = !!type_is_ptr(tlhs)) && type_is_floating(trhs))
-			||           (type_is_ptr(trhs)  && type_is_floating(tlhs)))
+			ptr_lhs = !!type_is_ptr(tlhs);
+			ptr_rhs = !!type_is_ptr(trhs);
+
+			if((ptr_lhs && type_is_floating(trhs))
+			|| (ptr_rhs && type_is_floating(tlhs)))
 			{
-				/* TODO: factor to a error-continuing function */
 				fold_had_error = 1;
 				warn_at_print_error(&e->where,
 						"%scast %s pointer %s floating type",
 						IMPLICIT_STR(e),
-						flag ? "to" : "from",
-						flag ? "from" : "to");
+						ptr_lhs ? "to" : "from",
+						ptr_lhs ? "from" : "to");
 				return;
 			}
 
-			{
+			if(e->expr_cast_implicit){
 				struct_union_enum_st *ea, *eb;
+
 				if((ea = type_is_enum(tlhs))
 				&& (eb = type_is_enum(trhs))
 				&& ea != eb)
 				{
-					warn_at(&e->where,
+					cc1_warn_at(&e->where,
+							enum_mismatch,
 							"implicit conversion from 'enum %s' to 'enum %s'",
 							eb->spel, ea->spel);
+				}
+
+				if(ptr_lhs ^ ptr_rhs){
+					if(ptr_lhs && expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_INT)){
+						/* no warning if 0 --> ptr */
+					}else if(ptr_rhs && type_is_bool(e->tree_type)){
+						/* no warning for ptr --> bool */
+					}else{
+						cc1_warn_at(&e->where,
+								int_ptr_conv,
+								"implicit conversion between pointer and integer");
+					}
 				}
 			}
 
@@ -457,7 +474,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 				strcpy(buf, type_to_str(trhs));
 
-				cc1_warn_at(&e->where, 0, WARN_LOSS_PRECISION,
+				cc1_warn_at(&e->where, loss_precision,
 						"possible loss of precision %s, size %d <-- %s, size %d",
 						type_to_str(tlhs), size_lhs,
 						buf, size_rhs);
@@ -470,7 +487,9 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				if(!expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_VOID_PTR)){
 					char buf[TYPE_STATIC_BUFSIZ];
 
-					warn_at(&e->where, "%scast from %spointer to %spointer\n"
+					cc1_warn_at(&e->where,
+							mismatch_ptr,
+							"%scast from %spointer to %spointer\n"
 							"%s <- %s",
 							IMPLICIT_STR(e),
 							flag ? "" : "function-", flag ? "function-" : "",
@@ -488,7 +507,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				if(p >= buf && *p == ' ')
 					*p = '\0';
 
-				warn_at(&e->where, "%scast removes qualifiers (%s)",
+				cc1_warn_at(&e->where, qual_drop, "%scast removes qualifiers (%s)",
 						IMPLICIT_STR(e), buf);
 			}
 #endif

@@ -1,4 +1,4 @@
-// RUN: %check %s -Wall
+// RUN: %check %s -Weverything
 
 f(a, b) // CHECK: warning: old-style function declaration
 	int a, b; // here we can get information for a warning below; f()

@@ -88,7 +88,8 @@ static void fold_va_start(expr *e, symtable *stab)
 			second = last_exp->bits.ident.bits.ident.sym;
 
 		if(second != arg)
-			warn_at(&last_exp->where,
+			cc1_warn_at(&last_exp->where,
+					builtin_va_start,
 					"second parameter to va_start "
 					"isn't last named argument");
 	}
@@ -488,7 +489,8 @@ static void fold_va_arg(expr *e, symtable *stab)
 	if(type_is_promotable(ty, &to)){
 		char tbuf[TYPE_STATIC_BUFSIZ];
 
-		warn_at(&e->where,
+		cc1_warn_at(&e->where,
+				builtin_va_arg,
 				"va_arg(..., %s) has undefined behaviour - promote to %s",
 				type_to_str(ty), type_to_str_r(tbuf, to));
 	}

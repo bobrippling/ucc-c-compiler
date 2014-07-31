@@ -13,6 +13,7 @@
 #include "tokconv.h"
 
 #include "cc1_where.h"
+#include "warn.h"
 
 #include "parse_expr.h"
 
@@ -44,7 +45,8 @@ static attribute *parse_attr_format(symtable *scope)
 	}else if(CHECK("scanf")){
 		fmt = attr_fmt_scanf;
 	}else{
-		warn_at(NULL, "unknown format func \"%s\"", func);
+		cc1_warn_at(NULL, attr_format_unknown,
+				"unknown format func \"%s\"", func);
 		parse_attr_bracket_chomp(1);
 		return NULL;
 	}
@@ -85,7 +87,8 @@ static attribute *parse_attr_section()
 	for(i = 0; i < len; i++)
 		if(!isprint(func[i])){
 			if(i < len - 1 || func[i] != '\0')
-				warn_at(NULL, "character 0x%x detected in section", func[i]);
+				cc1_warn_at(NULL, attr_section_badchar,
+						"character 0x%x detected in section", func[i]);
 			break;
 		}
 
@@ -114,7 +117,9 @@ static attribute *parse_attr_nonnull()
 				int n = currentval.val.i;
 				if(n <= 0){
 					/* shouldn't ever be negative */
-					warn_at(NULL, "%s nonnull argument ignored", n < 0 ? "negative" : "zero");
+					cc1_warn_at(NULL,
+							attr_nonnull_bad,
+							"%s nonnull argument ignored", n < 0 ? "negative" : "zero");
 					had_error = 1;
 				}else{
 					/* implicitly disallow functions with >32 args */
@@ -303,7 +308,8 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 
 		dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
 
-		warn_at(NULL, "ignoring unrecognised attribute \"%s\"", ident);
+		cc1_warn_at(NULL, attr_unknown,
+				"ignoring unrecognised attribute \"%s\"", ident);
 	}
 
 	/* if there are brackets, eat them all */

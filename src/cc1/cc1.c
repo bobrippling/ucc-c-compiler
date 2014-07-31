@@ -29,88 +29,219 @@
 
 #include "../as_cfg.h"
 
+#define countof(ar) sizeof(ar)/sizeof((ar)[0])
+
+struct cc1_warning cc1_warning;
+
+enum warning_special
+{
+	W_ALL, W_EXTRA, W_EVERYTHING
+};
+
+static struct warn_str
+{
+	const char *arg;
+	unsigned char *offsets[3];
+} warns[] = {
+	{ "mismatch-arg", &cc1_warning.arg_mismatch },
+	{ "array-comma", &cc1_warning.array_comma },
+	{ "return-type", &cc1_warning.return_type },
+
+	{
+		"mismatch-assign",
+		&cc1_warning.assign_mismatch,
+		&cc1_warning.compare_mismatch,
+		&cc1_warning.return_type
+	},
+
+	{ "sign-compare", &cc1_warning.sign_compare },
+	{ "extern-assume", &cc1_warning.extern_assume },
+
+	{ "implicit-int", &cc1_warning.implicit_int },
+	{ "implicit-func", &cc1_warning.implicit_func },
+	{ "implicit", &cc1_warning.implicit_func, &cc1_warning.implicit_int },
+
+	{ "switch-enum", &cc1_warning.switch_enum },
+	{ "enum-compare", &cc1_warning.enum_cmp },
+
+	{ "incomplete-use", &cc1_warning.incomplete_use },
+
+	{ "unused-expr", &cc1_warning.unused_expr },
+
+	{ "test-in-assign", &cc1_warning.test_assign },
+	{ "test-bool", &cc1_warning.test_bool },
+
+	{ "dead-code", &cc1_warning.dead_code },
+
+	{ "predecl-enum", &cc1_warning.predecl_enum, },
+
+	{ "mixed-code-decls", &cc1_warning.mixed_code_decls },
+
+	{ "loss-of-precision", &cc1_warning.loss_precision },
+
+	{ "pad", &cc1_warning.pad },
+
+	{ "tenative-init", &cc1_warning.tenative_init },
+
+	{ "shadow-local", &cc1_warning.shadow_local },
+	{ "shadow-global", &cc1_warning.shadow_global },
+	{ "shadow", &cc1_warning.shadow_global, &cc1_warning.shadow_local },
+
+	{ "cast-qual", &cc1_warning.cast_qual },
+
+	{ "unused-parameter", &cc1_warning.unused_param },
+	{ "unused-variable", &cc1_warning.unused_var },
+	{ "unused-value", &cc1_warning.unused_val },
+	{
+		"unused",
+		&cc1_warning.unused_param,
+		&cc1_warning.unused_var,
+		&cc1_warning.unused_val
+	},
+
+	{ "uninitialised", &cc1_warning.uninitialised },
+
+	{ "int-ptr-conversion", &cc1_warning.int_ptr_conv },
+	{ "ptr-int-conversion", &cc1_warning.int_ptr_conv },
+
+	{ "arith-funcptr", &cc1_warning.arith_fnptr },
+	{ "arith-voidptr", &cc1_warning.arith_voidp },
+
+	{ "array-bounds", &cc1_warning.array_oob },
+	{ "asm-badchar", &cc1_warning.asm_badchar },
+
+	{ "attr-badcleanup", &cc1_warning.attr_badcleanup },
+	{ "format", &cc1_warning.format },
+	{ "attr-format-baddecl", &cc1_warning.attr_format_baddecl },
+	{ "attr-format-unknown", &cc1_warning.attr_format_unknown },
+	{ "attr-noderef", &cc1_warning.attr_noderef },
+	{ "attr-nonnull", &cc1_warning.attr_nonnull },
+	{ "attr-nonnull-bad", &cc1_warning.attr_nonnull_bad },
+	{ "attr-nonnull-noargs", &cc1_warning.attr_nonnull_noargs },
+	{ "attr-nonnull-nonptr", &cc1_warning.attr_nonnull_nonptr },
+	{ "attr-nonnull-oob", &cc1_warning.attr_nonnull_oob },
+	{ "attr-printf-bad", &cc1_warning.attr_printf_bad },
+	{ "attr-printf-toomany", &cc1_warning.attr_printf_toomany },
+	{ "attr-printf-unknown", &cc1_warning.attr_printf_unknown },
+	{ "attr-section-badchar", &cc1_warning.attr_section_badchar },
+	{ "attr-sentinel", &cc1_warning.attr_sentinel },
+	{ "attr-sentinel-nonvariadic", &cc1_warning.attr_sentinel_nonvariadic },
+	{ "attr-unknown", &cc1_warning.attr_unknown },
+	{ "attr-unused-used", &cc1_warning.attr_unused_used },
+	{ "attr-unused-voidfn", &cc1_warning.attr_unused_voidfn },
+
+	{ "qualified-fntype", &cc1_warning.bad_funcqual },
+	{ "inline-non-function", &cc1_warning.bad_inline },
+	{ "restrict-non-ptr", &cc1_warning.bad_restrict },
+
+	{ "bitfield-boundary", &cc1_warning.bitfield_boundary },
+	{ "bitfield-onebit-int", &cc1_warning.bitfield_onebit_int },
+	{ "bitfield-trunc", &cc1_warning.bitfield_trunc },
+
+	{ "builtin-expect-nonconst", &cc1_warning.builtin_expect_nonconst },
+	{ "builtin-memset-bad", &cc1_warning.builtin_memset_bad },
+	{ "builtin-va_arg-undefined", &cc1_warning.builtin_va_arg },
+	{ "builtin-va_start-2nd-param", &cc1_warning.builtin_va_start },
+
+	{ "c89-compound-literal", &cc1_warning.c89_compound_literal },
+	{ "c89-for-init", &cc1_warning.c89_for_init },
+	{ "c89-init-constexpr", &cc1_warning.c89_init_constexpr },
+	{ "c89-trailing-comma", &cc1_warning.c89_parse_trailingcomma },
+
+	{ "constant-large-unsigned", &cc1_warning.constant_large_unsigned },
+
+	{ "div-zero", &cc1_warning.constop_bad },
+	{ "declaration-noop", &cc1_warning.decl_nodecl },
+	{ "empty-struct", &cc1_warning.empty_struct },
+
+	{ "enum-mismatch", &cc1_warning.enum_mismatch },
+	{ "enum-switch-bitmask", &cc1_warning.enum_switch_bitmask },
+	{ "enum-switch-imposter", &cc1_warning.enum_switch_imposter },
+
+	{ "excess-init", &cc1_warning.excess_init },
+	{ "extern-init", &cc1_warning.extern_init },
+
+	{ "embedded-flexarr", &cc1_warning.flexarr_embed },
+	{ "flexarr-single-member", &cc1_warning.flexarr_only },
+	{ "flexarr-init", &cc1_warning.flexarr_init },
+
+	{ "call-argcount", &cc1_warning.funcall_argcount },
+
+	{ "ignored-late-decl", &cc1_warning.ignored_late_decl },
+
+	{ "implicit-old-func", &cc1_warning.implicit_old_func },
+
+	{ "init-missing-braces", &cc1_warning.init_missing_braces },
+	{ "init-missing-struct", &cc1_warning.init_missing_struct },
+	{ "init-obj-discard", &cc1_warning.init_obj_discard },
+	{ "init-overlong-string", &cc1_warning.init_overlong_strliteral },
+	{ "init-override", &cc1_warning.init_override },
+
+
+	{ "unknown-attribute", &cc1_warning.lbl_attr_unknown },
+	{ "unused-label", &cc1_warning.lbl_unused },
+
+	{ "long-long", &cc1_warning.long_long },
+
+	{ "mismatch-conditional", &cc1_warning.mismatch_conditional },
+	{ "mismatch-ptr", &cc1_warning.mismatch_ptr },
+	{ "mismatching-types", &cc1_warning.mismatching_types },
+
+	{ "missing-empty-struct-brace-init", &cc1_warning.missing_empty_struct_brace_init },
+
+	{ "multichar", &cc1_warning.multichar },
+	{ "multichar-too-large", &cc1_warning.multichar_toolarge },
+
+	{ "nonstandard-array-size", &cc1_warning.nonstd_arraysz },
+	{ "nonstandard-init", &cc1_warning.nonstd_init },
+
+	{ "omitted-param-types", &cc1_warning.omitted_param_types },
+	{ "undefined-shift", &cc1_warning.op_shift_bad },
+	{ "overlarge-enumerator", &cc1_warning.overlarge_enumerator },
+
+	{ "operator-precedence", &cc1_warning.parse_precedence },
+	{ "visibility", &cc1_warning.private_struct },
+
+	{ "pure-inline", &cc1_warning.pure_inline },
+	{ "restrict-ptrs", &cc1_warning.restrict_ptrs },
+	{ "return-undef", &cc1_warning.return_undef },
+	{ "signed-unsigned", &cc1_warning.signed_unsigned },
+	{ "sizeof-decayed", &cc1_warning.sizeof_decayed },
+	{ "static-array-size", &cc1_warning.static_array_bad },
+	{ "str-contain-nul", &cc1_warning.str_contain_nul },
+
+	{ "struct-noinstance-anon", &cc1_warning.struct_noinstance_anon },
+	{ "struct-noinstance-qualified", &cc1_warning.struct_noinstance_qualified },
+
+	{ "sym-never-read", &cc1_warning.sym_never_read },
+	{ "sym-never-written", &cc1_warning.sym_never_written },
+
+	{ "tautologic-unsigned-op", &cc1_warning.tautologic_unsigned },
+	{ "tenative-array", &cc1_warning.tenative_array_1elem },
+
+	{ "typedef-function-impl", &cc1_warning.typedef_fnimpl },
+	{ "typedef-redefinition", &cc1_warning.typedef_redef },
+
+	{ "undef-string-comparison", &cc1_warning.undef_strlitcmp },
+
+	{ "unnamed-struct-memb", &cc1_warning.unnamed_struct_memb },
+	{ "unused-comma", &cc1_warning.unused_comma },
+
+	{ "vla", &cc1_warning.vla },
+
+	{ "__func__init", &cc1_warning.x__func__init },
+	{ "__func__outside-fn", &cc1_warning.x__func__outsidefn },
+
+	{ NULL, NULL }
+};
+
+
 static struct
 {
 	char type;
 	const char *arg;
 	int mask;
-} args[] = {
-	/* TODO - wall picks sensible, extra = more, everything = ~0 */
-	{ 'W',  "all",             ~0 },
-	{ 'W',  "extra",            0 },
-	{ 'W',  "everything",      ~0 },
-
-
-	{ 'W',  "mismatch-arg",    WARN_ARG_MISMATCH                      },
-	{ 'W',  "array-comma",     WARN_ARRAY_COMMA                       },
-	{ 'W',  "mismatch-assign", WARN_ASSIGN_MISMATCH | WARN_COMPARE_MISMATCH | WARN_RETURN_TYPE },
-	{ 'W',  "return-type",     WARN_RETURN_TYPE                       },
-
-	{ 'W',  "sign-compare",    WARN_SIGN_COMPARE                      },
-	{ 'W',  "extern-assume",   WARN_EXTERN_ASSUME                     },
-
-	{ 'W',  "implicit-int",    WARN_IMPLICIT_INT                      },
-	{ 'W',  "implicit-func",   WARN_IMPLICIT_FUNC                     },
-	{ 'W',  "implicit",        WARN_IMPLICIT_FUNC | WARN_IMPLICIT_INT },
-
-	{ 'W',  "switch-enum",     WARN_SWITCH_ENUM                       },
-	{ 'W',  "enum-compare",    WARN_ENUM_CMP                          },
-
-	{ 'W',  "incomplete-use",  WARN_INCOMPLETE_USE                    },
-
-	{ 'W',  "unused-expr",     WARN_UNUSED_EXPR                       },
-
-	{ 'W',  "test-in-assign",  WARN_TEST_ASSIGN                       },
-	{ 'W',  "test-bool",       WARN_TEST_BOOL                         },
-
-	{ 'W',  "dead-code",       WARN_DEAD_CODE                         },
-
-	{ 'W',  "predecl-enum",    WARN_PREDECL_ENUM,                     },
-
-
-	{ 'W', "mixed-code-decls", WARN_MIXED_CODE_DECLS                  },
-
-	{ 'W', "loss-of-precision", WARN_LOSS_PRECISION                   },
-
-	{ 'W', "pad",               WARN_PAD },
-
-	{ 'W', "tenative-init",     WARN_TENATIVE_INIT },
-
-	{ 'W', "shadow-local",      WARN_SHADOW_LOCAL },
-	{ 'W', "shadow-global",     WARN_SHADOW_GLOBAL },
-	{ 'W', "shadow",            WARN_SHADOW_GLOBAL | WARN_SHADOW_LOCAL },
-
-	/* TODO: W_QUAL (ops/expr_cast) */
-
-#if 0
-	/* TODO */
-	{ 'W',  "unused-parameter", WARN_UNUSED_PARAM },
-	{ 'W',  "unused-variable",  WARN_UNUSED_VAR   },
-	{ 'W',  "unused-value",     WARN_UNUSED_VAL   },
-	{ 'W',  "unused",           WARN_UNUSED_PARAM | WARN_UNUSED_VAR | WARN_UNUSED_VAL },
-
-	/* TODO */
-	{ 'W',  "uninitialised",    WARN_UNINITIALISED },
-
-	/* TODO */
-	{ 'W',  "array-bounds",     WARN_ARRAY_BOUNDS },
-
-	/* TODO */
-	{ 'W',  "shadow",           WARN_SHADOW },
-
-	/* TODO */
-	{ 'W',  "format",           WARN_FORMAT },
-
-	/* TODO */
-	{ 'W',  "pointer-arith",    WARN_PTR_ARITH  }, /* void *x; x++; */
-	{ 'W',  "int-ptr-cast",     WARN_INT_TO_PTR },
-#endif
-
-	{ 'W',  "optimisation",     WARN_OPT_POSSIBLE },
-
-
-/* --- options --- */
-
+} fopts[] = {
 	{ 'f',  "enable-asm",    FOPT_ENABLE_ASM      },
 	{ 'f',  "const-fold",    FOPT_CONST_FOLD      },
 	{ 'f',  "english",       FOPT_ENGLISH         },
@@ -134,6 +265,7 @@ static struct
 	{ 'f',  "dump-type-tree", FOPT_DUMP_TYPE_TREE },
 	{ 'f',  "asm", FOPT_EXT_KEYWORDS },
 	{ 'f',  "fold-const-vlas", FOPT_FOLD_CONST_VLAS },
+	{ 'f',  "show-warning-option", FOPT_SHOW_WARNING_OPTION },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 
@@ -156,17 +288,6 @@ FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 static char fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 char *cc1_first_fname;
-
-enum warning warn_mode = ~(
-		  WARN_VOID_ARITH
-		| WARN_IMPLICIT_INT
-		| WARN_LOSS_PRECISION
-		| WARN_SIGN_COMPARE
-		| WARN_PAD
-		| WARN_TENATIVE_INIT
-		| WARN_SHADOW_GLOBAL
-		| WARN_IMPLICIT_OLD_FUNC
-		);
 
 enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SHOW_LINE
@@ -209,7 +330,6 @@ static FILE *infile;
 /* compile time check for enum <-> int compat */
 #define COMP_CHECK(pre, test) \
 struct unused_ ## pre { char check[test ? -1 : 1]; }
-COMP_CHECK(a, sizeof warn_mode != sizeof(int));
 COMP_CHECK(b, sizeof fopt_mode != sizeof(int));
 
 
@@ -231,8 +351,8 @@ static void ccdie(int verbose, const char *fmt, ...)
 
 	if(verbose){
 		fputs("warnings + options:\n", stderr);
-		for(i = 0; args[i].arg; i++)
-			fprintf(stderr, "  -%c%s\n", args[i].type, args[i].arg);
+		for(i = 0; fopts[i].arg; i++)
+			fprintf(stderr, "  -%c%s\n", fopts[i].type, fopts[i].arg);
 		for(i = 0; val_args[i].arg; i++)
 			fprintf(stderr, "  -%c%s=value\n", val_args[i].pref, val_args[i].arg);
 	}
@@ -240,24 +360,34 @@ static void ccdie(int verbose, const char *fmt, ...)
 	exit(1);
 }
 
-void cc1_warn_atv(struct where *where, int die, enum warning w, const char *fmt, va_list l)
+static void show_warn_option(unsigned char *pwarn)
 {
-	if(!die && (w & warn_mode) == 0)
-		return;
+	struct warn_str *p;
 
-	vwarn(where, die, fmt, l);
-
-	if(die)
-		exit(1);
+	for(p = warns; p->arg; p++){
+		unsigned i;
+		for(i = 0; i < countof(p->offsets) && p->offsets[i]; i++){
+			if(pwarn == p->offsets[i]){
+				fprintf(stderr, "[-W%s]\n", p->arg);
+				break;
+			}
+		}
+	}
 }
 
-void cc1_warn_at(struct where *where, int die, enum warning w, const char *fmt, ...)
+#undef cc1_warn_at
+void cc1_warn_at(
+		struct where *where, unsigned char *pwarn,
+		const char *fmt, ...)
 {
 	va_list l;
 
 	va_start(l, fmt);
-	cc1_warn_atv(where, die, w, fmt, l);
+	vwarn(where, 0, fmt, l);
 	va_end(l);
+
+	if(fopt_mode & FOPT_SHOW_WARNING_OPTION)
+		show_warn_option(pwarn);
 }
 
 static void io_cleanup(void)
@@ -396,6 +526,83 @@ static void gen_backend(symtable_global *globs, const char *fname)
 	io_fin(gf == NULL, fname);
 }
 
+static void warnings_set(int to)
+{
+	memset(&cc1_warning, to, sizeof cc1_warning);
+}
+
+static void warning_all(void)
+{
+	warnings_set(1);
+
+	cc1_warning.implicit_int =
+	cc1_warning.loss_precision =
+	cc1_warning.sign_compare =
+	cc1_warning.pad =
+	cc1_warning.tenative_init =
+	cc1_warning.shadow_global =
+	cc1_warning.implicit_old_func =
+	cc1_warning.bitfield_boundary =
+	cc1_warning.vla =
+		0;
+}
+
+static void warning_init(void)
+{
+	/* default to -Wall */
+	warning_all();
+}
+
+static void warning_special(enum warning_special type)
+{
+	switch(type){
+		case W_EVERYTHING:
+			warnings_set(1);
+			break;
+		case W_ALL:
+			warning_all();
+			break;
+		case W_EXTRA:
+			warning_all();
+			cc1_warning.implicit_int =
+			cc1_warning.loss_precision =
+			cc1_warning.sign_compare =
+			cc1_warning.tenative_init =
+			cc1_warning.shadow_global = 1;
+			break;
+	}
+}
+
+static void warning_on(const char *warn, int to)
+{
+	struct warn_str *p;
+
+#define SPECIAL(str, w)   \
+	if(!strcmp(warn, str)){ \
+		warning_special(w);   \
+		return;               \
+	}
+
+	SPECIAL("all", W_ALL)
+	SPECIAL("extra", W_EXTRA)
+	SPECIAL("everything", W_EVERYTHING)
+
+	for(p = warns; p->arg; p++){
+		if(!strcmp(warn, p->arg)){
+			unsigned i;
+			for(i = 0; i < countof(p->offsets); i++){
+				if(!p->offsets[i])
+					break;
+
+				*p->offsets[i] = to;
+			}
+			return;
+		}
+	}
+
+	fprintf(stderr, "Unknown warning option \"-W%s\"\n", warn);
+}
+
 int main(int argc, char **argv)
 {
 	int parsed_folded;
@@ -415,6 +622,7 @@ int main(int argc, char **argv)
 
 	/* defaults */
 	cc1_mstack_align = log2i(platform_word_size());
+	warning_init();
 
 	for(i = 1; i < argc; i++){
 		if(!strcmp(argv[i], "-X")){
@@ -457,7 +665,7 @@ int main(int argc, char **argv)
 				fopt_mode &= ~FOPT_EXT_KEYWORDS;
 
 		}else if(!strcmp(argv[i], "-w")){
-			warn_mode = WARN_NONE;
+			warnings_set(0);
 
 		}else if(!strcmp(argv[i], "-Werror")){
 			werror = 1;
@@ -507,9 +715,6 @@ int main(int argc, char **argv)
 			}
 
 			switch(arg_ty){
-				case 'W':
-					mask = (int *)&warn_mode;
-					break;
 				case 'f':
 					mask = (int *)&fopt_mode;
 					break;
@@ -518,28 +723,29 @@ int main(int argc, char **argv)
 					break;
 				default:
 					ucc_unreach(1);
+
+				case 'W':
+					warning_on(arg, !rev);
+					continue;
 			}
 
-			for(j = 0; args[j].arg; j++)
-				if(args[j].type == arg_ty && !strcmp(arg, args[j].arg)){
+			for(j = 0; fopts[j].arg; j++)
+				if(fopts[j].type == arg_ty && !strcmp(arg, fopts[j].arg)){
 					/* if the mask isn't a single bit, treat it as
 					 * an unmask, e.g. -funsigned-char unmasks FOPT_SIGNED_CHAR
-					 *
-					 * special case where we don't - warnings
 					 */
-					const int unmask = args[j].type != 'W'
-						&& args[j].mask & (args[j].mask - 1);
+					const int unmask = fopts[j].mask & (fopts[j].mask - 1);
 
 					if(rev){
 						if(unmask)
-							*mask |= ~args[j].mask;
+							*mask |= ~fopts[j].mask;
 						else
-							*mask &= ~args[j].mask;
+							*mask &= ~fopts[j].mask;
 					}else{
 						if(unmask)
-							*mask &= args[j].mask;
+							*mask &= fopts[j].mask;
 						else
-							*mask |= args[j].mask;
+							*mask |= fopts[j].mask;
 					}
 					found = 1;
 					break;

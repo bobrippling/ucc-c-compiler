@@ -220,7 +220,8 @@ static void override_warn(
 {
 	char buf[WHERE_BUF_SIZ];
 
-	warn_at(new,
+	cc1_warn_at(new,
+			init_override,
 			"overriding %sinitialisation of \"%s\"\n"
 			"%s: prior initialisation here",
 			whole ? "entire " : "",
@@ -230,7 +231,7 @@ static void override_warn(
 
 static void excess_init(where *w, type *ty)
 {
-	warn_at(w, "excess initialiser for '%s'", type_to_str(ty));
+	cc1_warn_at(w, excess_init, "excess initialiser for '%s'", type_to_str(ty));
 }
 
 static decl_init *decl_init_brace_up_scalar(
@@ -290,7 +291,8 @@ static decl_init *decl_init_brace_up_scalar(
 			const_fold(e, &k);
 
 			if(!CONST_AT_COMPILE_TIME(k.type))
-				warn_at(&first_init->bits.expr->where,
+				cc1_warn_at(&first_init->bits.expr->where,
+						c89_init_constexpr,
 						"initialiser is not a constant expression");
 		}
 	}
@@ -545,7 +547,8 @@ static decl_init **decl_init_brace_up_sue2(
 	&& (this->type != decl_init_brace
 		|| dynarray_count(this->bits.ar.inits) != 0))
 	{
-		warn_at(&this->where, "missing {} initialiser for empty %s",
+		cc1_warn_at(&this->where, missing_empty_struct_brace_init,
+				"missing {} initialiser for empty %s",
 				sue_str(sue), sue->spel);
 	}
 
@@ -652,7 +655,8 @@ static decl_init **decl_init_brace_up_sue2(
 				{
 					char wb[WHERE_BUF_SIZ];
 
-					warn_at(&this->where,
+					cc1_warn_at(&this->where,
+							init_obj_discard,
 							"designating into object discards entire previous initialisation\n"
 							"%s: note: previous initialisation",
 							where_str_r(wb, &replacing->where));
@@ -664,7 +668,8 @@ static decl_init **decl_init_brace_up_sue2(
 			}
 
 			if(type_is_incomplete_array(d_mem->ref)){
-				warn_at(&this->where, "initialisation of flexible array (GNU)");
+				cc1_warn_at(&this->where, flexarr_init,
+						"initialisation of flexible array (GNU)");
 			}
 
 			if(!braced_sub){
@@ -732,7 +737,8 @@ static decl_init **decl_init_brace_up_sue2(
 		}else if(diff > 0){
 			where *loc = ITER_WHERE(iter, last_loc ? last_loc : &sue->where);
 
-			warn_at(loc,
+			cc1_warn_at(loc,
+					init_missing_struct,
 					"%u missing initialiser%s for '%s %s'\n"
 					"%s: note: starting at \"%s\"",
 					diff, diff == 1 ? "" : "s",
@@ -887,7 +893,8 @@ static decl_init *decl_init_brace_up_aggregate(
 		/* only warn if it's not designated
 		 * and it's not a struct copy */
 		if(!was_desig && !decl_init_is_struct_copy(r)){
-			warn_at(loc,
+			cc1_warn_at(loc,
+					init_missing_braces,
 					"missing braces for initialisation of sub-object '%s'",
 					type_to_str(tfor));
 		}
@@ -975,7 +982,8 @@ static decl_init *decl_init_brace_up_array_chk_char(
 					 * i.e. allow char[2] = "hi" <-- '\0' excluded
 					 */
 					if(k.bits.str->lit->len - 1 > (unsigned)limit){
-						warn_at(&k.bits.str->where,
+						cc1_warn_at(&k.bits.str->where,
+								init_overlong_strliteral,
 								"string literal too long for '%s'",
 								type_to_str(next_type));
 					}
@@ -1072,7 +1080,8 @@ static decl_init *decl_init_brace_up_start(
 			}else{
 				e = expr_skip_casts(e);
 				if(expr_kind(e, str) && e->bits.strlit.is_func){
-					warn_at(&init->where,
+					cc1_warn_at(&init->where,
+							x__func__init,
 							"initialisation of %s from __func__ is an extension",
 							type_to_str(tfor));
 				}

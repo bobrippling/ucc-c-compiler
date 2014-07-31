@@ -201,7 +201,8 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 					}
 
 					if(prob){
-						warn_at(&d->where,
+						cc1_warn_at(&d->where,
+								unnamed_struct_memb,
 								"unnamed member '%s' %s",
 								decl_to_str(d), prob);
 						if(ignore){
@@ -236,8 +237,11 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				/* should've been caught by incompleteness checks */
 				UCC_ASSERT(sub_sue != sue, "nested %s", sue_str(sue));
 
-				if(sub_sue->flexarr && i[1])
-					warn_at(&d->where, "embedded struct with flex-array not final member");
+				if(sub_sue->flexarr && i[1]){
+					cc1_warn_at(&d->where,
+							flexarr_embed,
+							"embedded struct with flex-array not final member");
+				}
 
 				sz = sue_size(sub_sue, &d->where);
 				align = sub_sue->align;
@@ -264,7 +268,9 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 					if(realign_next || bitfield.current_off){
 						if(!realign_next){
 							/* bitfield overflow - repad */
-							warn_at(&d->where, "bitfield overflow (%d + %d > %d) - "
+							cc1_warn_at(&d->where,
+									bitfield_boundary,
+									"bitfield overflow (%d + %d > %d) - "
 									"moved to next boundary", bitfield.current_off, bits,
 									bf_cur_lim);
 						}else{
@@ -312,7 +318,8 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 					else if(sue->primitive != type_struct)
 						die_at(&d->where, "flexible array in a %s", sue_str(sue));
 					else if(i == sue->members) /* nothing currently */
-						warn_at(&d->where, "struct with just a flex-array is an extension");
+						cc1_warn_at(&d->where, flexarr_only,
+								"struct with just a flex-array is an extension");
 
 					sue->flexarr = 1;
 					sz = 0; /* not counted in struct size */
@@ -335,7 +342,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				{
 					int pad = d->bits.var.struct_offset - prev_offset;
 					if(pad){
-						cc1_warn_at(&d->where, 0, WARN_PAD,
+						cc1_warn_at(&d->where, pad,
 								"padding '%s' with %d bytes to align '%s'",
 								sue->spel, pad, decl_to_str(d));
 					}

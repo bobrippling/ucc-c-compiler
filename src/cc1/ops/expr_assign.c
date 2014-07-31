@@ -38,7 +38,8 @@ void bitfield_trunc_check(decl *mem, expr *from)
 		{
 			sintegral_t kexp_to = kexp & ~(-1UL << k.bits.num.val.i);
 
-			warn_at(&from->where,
+			cc1_warn_at(&from->where,
+					bitfield_trunc,
 					"truncation in store to bitfield alters value: "
 					"%" NUMERIC_FMT_D " -> %" NUMERIC_FMT_D,
 					kexp, kexp_to);

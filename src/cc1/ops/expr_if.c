@@ -180,7 +180,9 @@ void fold_expr_if(expr *e, symtable *stab)
 					}else{
 						char buf[TYPE_STATIC_BUFSIZ];
 
-						warn_at(&e->where, "conditional type mismatch (%s vs %s)",
+						cc1_warn_at(&e->where,
+								mismatch_conditional,
+								"conditional type mismatch (%s vs %s)",
 								type_to_str(tt_l), type_to_str_r(buf, tt_r));
 
 						e->tree_type = type_nav_btype(cc1_type_nav, type_void);

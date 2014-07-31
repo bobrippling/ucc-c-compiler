@@ -72,7 +72,8 @@ decl_init *parse_init(symtable *scope, int static_ctx)
 				break;
 
 			if(curtok == token_close_block && cc1_std < STD_C99)
-				warn_at(NULL, "trailing comma in initialiser");
+				cc1_warn_at(NULL, c89_parse_trailingcomma,
+						"trailing comma in initialiser");
 		}
 
 		di->bits.ar.inits = exps;
