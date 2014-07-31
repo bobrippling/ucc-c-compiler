@@ -31,6 +31,7 @@ enum fopt
 	FOPT_DUMP_TYPE_TREE        = 1 << 19,
 	FOPT_EXT_KEYWORDS          = 1 << 20, /* -fasm */
 	FOPT_FOLD_CONST_VLAS       = 1 << 21,
+	FOPT_SHOW_WARNING_OPTION   = 1 << 22,
 };
 
 enum mopt

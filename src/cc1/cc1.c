@@ -29,6 +29,8 @@
 
 #include "../as_cfg.h"
 
+#define countof(ar) sizeof(ar)/sizeof((ar)[0])
+
 struct cc1_warning cc1_warning;
 
 enum warning_special
@@ -263,6 +265,7 @@ static struct
 	{ 'f',  "dump-type-tree", FOPT_DUMP_TYPE_TREE },
 	{ 'f',  "asm", FOPT_EXT_KEYWORDS },
 	{ 'f',  "fold-const-vlas", FOPT_FOLD_CONST_VLAS },
+	{ 'f',  "show-warning-option", FOPT_SHOW_WARNING_OPTION },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 
@@ -357,14 +360,34 @@ static void ccdie(int verbose, const char *fmt, ...)
 	exit(1);
 }
 
+static void show_warn_option(unsigned char *pwarn)
+{
+	struct warn_str *p;
+
+	for(p = warns; p->arg; p++){
+		unsigned i;
+		for(i = 0; i < countof(p->offsets) && p->offsets[i]; i++){
+			if(pwarn == p->offsets[i]){
+				fprintf(stderr, "[-W%s]\n", p->arg);
+				break;
+			}
+		}
+	}
+}
+
 #undef cc1_warn_at
-void cc1_warn_at(struct where *where, const char *fmt, ...)
+void cc1_warn_at(
+		struct where *where, unsigned char *pwarn,
+		const char *fmt, ...)
 {
 	va_list l;
 
 	va_start(l, fmt);
 	vwarn(where, 0, fmt, l);
 	va_end(l);
+
+	if(fopt_mode & FOPT_SHOW_WARNING_OPTION)
+		show_warn_option(pwarn);
 }
 
 static void io_cleanup(void)
@@ -567,7 +590,7 @@ static void warning_on(const char *warn, int to)
 	for(p = warns; p->arg; p++){
 		if(!strcmp(warn, p->arg)){
 			unsigned i;
-			for(i = 0; i < sizeof(p->offsets)/sizeof(p->offsets[0]); i++){
+			for(i = 0; i < countof(p->offsets); i++){
 				if(!p->offsets[i])
 					break;
 
