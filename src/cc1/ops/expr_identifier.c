@@ -132,7 +132,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	&& sym->nwrites == 0
 	&& !sym->decl->bits.var.init.dinit)
 	{
-		cc1_warn_at(&e->where, sym_read_before_write,
+		cc1_warn_at(&e->where, uninitialised,
 				"\"%s\" uninitialised on read", sp);
 		sym->nwrites = 1; /* silence future warnings */
 	}

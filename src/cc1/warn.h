@@ -6,7 +6,6 @@ struct cc1_warning
 	unsigned char arg_mismatch;
 	unsigned char arith_fnptr;
 	unsigned char arith_voidp;
-	unsigned char array_bounds;
 	unsigned char array_comma;
 	unsigned char array_oob;
 	unsigned char asm_badchar;
@@ -97,7 +96,6 @@ struct cc1_warning
 	unsigned char restrict_ptrs;
 	unsigned char return_type;
 	unsigned char return_undef;
-	unsigned char shadow;
 	unsigned char shadow_global;
 	unsigned char shadow_local;
 	unsigned char sign_compare;
@@ -110,7 +108,6 @@ struct cc1_warning
 	unsigned char switch_enum;
 	unsigned char sym_never_read;
 	unsigned char sym_never_written;
-	unsigned char sym_read_before_write;
 	unsigned char tautologic_unsigned;
 	unsigned char tenative_array_1elem;
 	unsigned char tenative_init;

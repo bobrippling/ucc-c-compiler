@@ -92,17 +92,7 @@ static struct warn_str
 		&cc1_warning.unused_val
 	},
 
-	/* TODO */
 	{ "uninitialised", &cc1_warning.uninitialised },
-
-	/* TODO */
-	{ "array-bounds", &cc1_warning.array_bounds },
-
-	/* TODO */
-	{ "shadow", &cc1_warning.shadow },
-
-	/* TODO */
-	{ "format", &cc1_warning.format },
 
 	/* TODO */
 	{ "int-ptr-cast", &cc1_warning.int_to_ptr },
@@ -110,10 +100,11 @@ static struct warn_str
 	{ "arith-funcptr", &cc1_warning.arith_fnptr },
 	{ "arith-voidptr", &cc1_warning.arith_voidp },
 
-	{ "array-oob", &cc1_warning.array_oob },
+	{ "array-bounds", &cc1_warning.array_oob },
 	{ "asm-badchar", &cc1_warning.asm_badchar },
 
 	{ "attr-badcleanup", &cc1_warning.attr_badcleanup },
+	{ "format", &cc1_warning.format },
 	{ "attr-format-baddecl", &cc1_warning.attr_format_baddecl },
 	{ "attr-format-unknown", &cc1_warning.attr_format_unknown },
 	{ "attr-noderef", &cc1_warning.attr_noderef },
@@ -215,7 +206,6 @@ static struct warn_str
 	{ "struct-noinstance-anon", &cc1_warning.struct_noinstance_anon },
 	{ "struct-noinstance-qualified", &cc1_warning.struct_noinstance_qualified },
 
-	{ "read-before-write", &cc1_warning.sym_read_before_write },
 	{ "sym-never-read", &cc1_warning.sym_never_read },
 	{ "sym-never-written", &cc1_warning.sym_never_written },
 

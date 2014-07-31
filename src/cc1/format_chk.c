@@ -271,6 +271,9 @@ void format_check_decl(decl *d, attribute *da)
 	funcargs *fargs;
 	int fmt_idx, var_idx, nargs;
 
+	if(!cc1_warning.format)
+		return;
+
 	if(da->bits.format.validity != fmt_unchecked){
 		/* i.e. checked */
 		return;
