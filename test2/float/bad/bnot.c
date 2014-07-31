@@ -2,5 +2,5 @@
 
 f()
 {
-	~1.0f; // CHECK: error: ~ requires an integral expression (not "float")
+	~1.0f; // CHECK: error: ~ requires an integral type (not "float")
 }
