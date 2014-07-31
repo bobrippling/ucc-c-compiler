@@ -157,28 +157,10 @@ integral_t const_op_exec(
 
 		case op_plus:
 			result = lval + (rval ? *rval : 0);
-
-			if(!is_signed){
-				/* need to apply proper wrap-around */
-				integral_t max = type_max(arithty, NULL);
-
-				if(result > max){
-					ICE("NEED WRAP");
-				}
-			}
 			break;
 
 		case op_minus:
 			result = rval ? lval - *rval : -lval;
-
-			if(!is_signed){
-				/* need to apply proper wrap-around */
-				integral_t max = type_max(arithty, NULL);
-
-				if(result > max){
-					result = max - (NUMERIC_T_MAX - result);
-				}
-			}
 			break;
 
 		case op_not:  result = !lval; break;
@@ -187,6 +169,26 @@ integral_t const_op_exec(
 		case op_unknown:
 			ICE("unhandled type");
 			break;
+	}
+
+	if(!is_signed){
+		/* need to apply proper wrap-around */
+		integral_t max = type_max(arithty, NULL);
+
+		if(max == NUMERIC_T_MAX){
+			/* handling integral_t:s, already done */
+		}else if(result > max){
+			if(op_increases(op)){
+				/* result = 256 -> 256 - (255 + 1) -> 0 */
+
+				result = result - (max + 1);
+			}else{
+				/* (assuming integral_t max = 65536)
+				 * result = 65536 -> 65536 - 65536 + 256 -> 256 */
+
+				result = result - NUMERIC_T_MAX + max;
+			}
+		}
 	}
 
 	return result;
