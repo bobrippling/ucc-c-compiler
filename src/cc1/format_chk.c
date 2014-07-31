@@ -13,6 +13,7 @@
 #include "const.h"
 #include "funcargs.h"
 #include "type_is.h"
+#include "warn.h"
 
 #include "format_chk.h"
 
@@ -73,7 +74,8 @@ ptr:
 			break;
 
 		default:
-			warn_at(w, "unknown conversion character 0x%x", fmt);
+			cc1_warn_at(w, attr_printf_unknown,
+					"unknown conversion character 0x%x", fmt);
 			return;
 	}
 
@@ -81,7 +83,8 @@ ptr:
 		strcpy(expected, "'long'");
 
 	if(*expected){
-		warn_at(w, "format %%%s%c expects %s argument (got %s)",
+		cc1_warn_at(w, attr_printf_bad,
+				"format %%%s%c expects %s argument (got %s)",
 				attr & printf_attr_long ? "l" : "", fmt,
 				expected, type_to_str(t_in));
 	}
@@ -104,7 +107,7 @@ static void format_check_printf_str(
 			if(i == len){
 				where strloc = *w;
 				strloc.chr += i + 1; /* +1 since we start on the '(' */
-				warn_at(&strloc, "incomplete format specifier");
+				cc1_warn_at(&strloc, attr_printf_bad, "incomplete format specifier");
 				return;
 			}
 
@@ -140,7 +143,8 @@ recheck:
 				e = args[var_idx + n_arg++];
 
 				if(!e){
-					warn_at(w, "too few arguments for format (%%%c)", fmt[i]);
+					cc1_warn_at(w, attr_printf_bad,
+							"too few arguments for format (%%%c)", fmt[i]);
 					break;
 				}
 
@@ -155,7 +159,7 @@ recheck:
 	}
 
 	if(var_idx != -1 && (!fmt[i] || i == len) && args[var_idx + n_arg])
-		warn_at(w, "too many arguments for format");
+		cc1_warn_at(w, attr_printf_toomany, "too many arguments for format");
 }
 
 static void format_check_printf(
@@ -191,7 +195,8 @@ static void format_check_printf(
 
 		case CONST_ADDR:
 not_string:
-			warn_at(&str_arg->where, "format argument isn't a string constant");
+			cc1_warn_at(&str_arg->where, attr_printf_bad,
+					"format argument isn't a string constant");
 			return;
 
 		case CONST_STRK:
@@ -206,7 +211,8 @@ not_string:
 		if(len <= 0)
 			;
 		else if(k.offset >= len)
-			warn_at(&str_arg->where, "undefined printf-format argument");
+			cc1_warn_at(&str_arg->where, attr_printf_bad,
+					"undefined printf-format argument");
 		else
 			format_check_printf_str(args, fmt + k.offset, len, var_idx, w);
 	}
@@ -281,8 +287,10 @@ void format_check_decl(decl *d, attribute *da)
 		 *
 		 * (-1, not zero, since we subtract one for format indexes)
 		 */
-		if(da->bits.format.var_idx >= 0)
-			warn_at(&da->where, "variadic function required for format attribute");
+		if(da->bits.format.var_idx >= 0){
+			cc1_warn_at(&da->where, attr_printf_bad,
+					"variadic function required for format attribute");
+		}
 		goto invalid;
 	}
 
@@ -292,7 +300,9 @@ void format_check_decl(decl *d, attribute *da)
 
 	/* format string index must be < nargs */
 	if(fmt_idx >= nargs){
-		warn_at(&da->where, "format argument out of bounds (%d >= %d)",
+		cc1_warn_at(&da->where,
+				attr_format_baddecl,
+				"format argument out of bounds (%d >= %d)",
 				fmt_idx, nargs);
 		goto invalid;
 	}
@@ -300,7 +310,9 @@ void format_check_decl(decl *d, attribute *da)
 	if(var_idx != -1){
 		/* variadic index must be nargs */
 		if(var_idx != nargs){
-			warn_at(&da->where, "variadic argument out of bounds (should be %d)",
+			cc1_warn_at(&da->where,
+					attr_printf_bad,
+					"variadic argument out of bounds (should be %d)",
 					nargs + 1); /* +1 to get to the "..." index as 1-based */
 			goto invalid;
 		}
@@ -309,7 +321,8 @@ void format_check_decl(decl *d, attribute *da)
 	}
 
 	if(type_str_type(fargs->arglist[fmt_idx]->ref) != type_str_char){
-		warn_at(&da->where, "format argument not a string type");
+		cc1_warn_at(&da->where, attr_printf_bad,
+				"format argument not a string type");
 		goto invalid;
 	}
 

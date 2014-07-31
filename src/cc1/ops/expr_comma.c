@@ -40,7 +40,8 @@ void fold_expr_comma(expr *e, symtable *stab)
 	e->tree_type = e->rhs->tree_type;
 
 	if(!e->lhs->freestanding && !type_is_void(e->lhs->tree_type))
-		warn_at(&e->lhs->where, "left hand side of comma is unused");
+		cc1_warn_at(&e->lhs->where, unused_comma,
+				"left hand side of comma is unused");
 
 	e->freestanding = e->rhs->freestanding;
 }

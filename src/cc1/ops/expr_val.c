@@ -125,7 +125,9 @@ void fold_expr_val(expr *e, symtable *stab)
 		/* we get here if we're forcing it to ull,
 		 * not if the user says, so we can warn unconditionally */
 		if(is_signed){
-			warn_at(&e->where, "integer constant is so large it is unsigned");
+			cc1_warn_at(&e->where,
+					constant_large_unsigned,
+					"integer constant is so large it is unsigned");
 			is_signed = 0;
 		}
 		p = type_llong;

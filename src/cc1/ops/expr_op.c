@@ -219,7 +219,7 @@ static void const_op_num_int(
 					e->op, is_signed, &err);
 
 			if(err){
-				warn_at(&e->where, "%s", err);
+				cc1_warn_at(&e->where, constop_bad, "%s", err);
 				k->type = CONST_NO;
 			}else{
 				const btype *bt;
@@ -531,7 +531,7 @@ ptr_relation:
 
 				if(!type_is_complete(next)){
 					if(type_is_void(next)){
-						warn_at(w, "arithmetic on void pointer");
+						cc1_warn_at(w, arith_voidp, "arithmetic on void pointer");
 					}else{
 						warn_at_print_error(w,
 								"arithmetic on pointer to incomplete type %s",
@@ -540,7 +540,7 @@ ptr_relation:
 					}
 					/* TODO: note: type declared at resolved->where */
 				}else if(type_is(next, type_func)){
-					warn_at(w, "arithmetic on function pointer '%s'",
+					cc1_warn_at(w, arith_fnptr, "arithmetic on function pointer '%s'",
 							type_to_str(resolved));
 				}
 			}
@@ -725,7 +725,8 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 				/* XXX: note */
 				char buf[WHERE_BUF_SIZ];
 
-				warn_at(&e->where,
+				cc1_warn_at(&e->where,
+						array_oob,
 						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld\n"
 						"%s: note: array declared here",
 						idx.val.i, (long)sz,
@@ -758,7 +759,8 @@ static int op_unsigned_cmp_check(expr *e)
 					const int v = k.bits.num.val.i;
 
 					if(v <= 0){
-						warn_at(&e->where,
+						cc1_warn_at(&e->where,
+								tautologic_unsigned,
 								"comparison of unsigned expression %s %d is always %s",
 								op_to_str(e->op), v,
 								e->op == op_lt || e->op == op_le ? "false" : "true");
@@ -784,7 +786,8 @@ static int msg_if_precedence(expr *sub, where *w,
 	&& (test ? (*test)(sub->op) : 1))
 	{
 		/* ==, !=, <, ... */
-		warn_at(w, "%s has higher precedence than %s",
+		cc1_warn_at(w, parse_precedence,
+				"%s has higher precedence than %s",
 				op_to_str(sub->op), op_to_str(binary));
 		return 1;
 	}
@@ -826,7 +829,9 @@ static int str_cmp_check(expr *e)
 		const_fold(e->rhs, &kr);
 
 		if(kl.type == CONST_STRK || kr.type == CONST_STRK){
-			warn_at(&e->rhs->where, "comparison with string literal is undefined");
+			cc1_warn_at(&e->rhs->where,
+					undef_strlitcmp,
+					"comparison with string literal is undefined");
 			return 1;
 		}
 	}
@@ -849,12 +854,16 @@ static int op_shift_check(expr *e)
 			if(type_is_signed(e->rhs->tree_type)
 			&& (sintegral_t)rhs.bits.num.val.i < 0)
 			{
-				warn_at(&e->rhs->where, "shift count is negative (%"
+				cc1_warn_at(&e->rhs->where,
+						op_shift_bad,
+						"shift count is negative (%"
 						NUMERIC_FMT_D ")", (sintegral_t)rhs.bits.num.val.i);
 
 				undefined = 1;
 			}else if(rhs.bits.num.val.i >= ty_sz){
-				warn_at(&e->rhs->where, "shift count >= width of %s (%u)",
+				cc1_warn_at(&e->rhs->where,
+						op_shift_bad,
+						"shift count >= width of %s (%u)",
 						type_to_str(e->lhs->tree_type), ty_sz);
 
 				undefined = 1;
@@ -920,7 +929,9 @@ void expr_check_sign(const char *desc,
 	&& type_is_scalar(lhs->tree_type) && type_is_scalar(rhs->tree_type)
 	&& type_is_signed(lhs->tree_type) != type_is_signed(rhs->tree_type))
 	{
-		warn_at(w, "signed and unsigned types in '%s'", desc);
+		cc1_warn_at(w,
+				signed_unsigned,
+				"signed and unsigned types in '%s'", desc);
 	}
 }
 

@@ -644,9 +644,9 @@ static void cc1_read_quoted_char(const int is_wide)
 
 	if(multichar){
 		if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
-			warn_at(NULL, "multi-char constant too large");
+			cc1_warn_at(NULL, multichar_toolarge, "multi-char constant too large");
 		else
-			warn_at(NULL, "multi-char constant");
+			cc1_warn_at(NULL, multichar, "multi-char constant");
 	}
 
 	currentval.val.i = ch;

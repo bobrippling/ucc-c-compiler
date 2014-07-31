@@ -117,7 +117,7 @@ static void signed_unsigned_warn_at(
 		}
 	}
 
-	warn_at(w, fmt, a, b);
+	cc1_warn_at(w, signed_unsigned, fmt, a, b);
 	free(fmt);
 }
 
@@ -440,7 +440,8 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				&& (eb = type_is_enum(trhs))
 				&& ea != eb)
 				{
-					warn_at(&e->where,
+					cc1_warn_at(&e->where,
+							enum_mismatch,
 							"implicit conversion from 'enum %s' to 'enum %s'",
 							eb->spel, ea->spel);
 				}
@@ -466,7 +467,9 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				if(!expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_VOID_PTR)){
 					char buf[TYPE_STATIC_BUFSIZ];
 
-					warn_at(&e->where, "%scast from %spointer to %spointer\n"
+					cc1_warn_at(&e->where,
+							mismatch_ptr,
+							"%scast from %spointer to %spointer\n"
 							"%s <- %s",
 							IMPLICIT_STR(e),
 							flag ? "" : "function-", flag ? "function-" : "",
@@ -484,7 +487,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				if(p >= buf && *p == ' ')
 					*p = '\0';
 
-				warn_at(&e->where, "%scast removes qualifiers (%s)",
+				cc1_warn_at(&e->where, qual_drop, "%scast removes qualifiers (%s)",
 						IMPLICIT_STR(e), buf);
 			}
 #endif

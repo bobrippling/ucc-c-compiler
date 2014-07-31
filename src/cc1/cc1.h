@@ -3,55 +3,7 @@
 
 #include "../util/std.h"
 
-struct cc1_warning
-{
-	unsigned char arg_mismatch;
-	unsigned char array_comma;
-	unsigned char assign_mismatch;
-	unsigned char compare_mismatch;
-	unsigned char return_type;
-	unsigned char sign_compare;
-	unsigned char extern_assume;
-	unsigned char implicit_func;
-	unsigned char implicit_int;
-	unsigned char void_arith;
-	unsigned char mixed_code_decls;
-	unsigned char test_bool;
-	unsigned char loss_precision;
-
-	unsigned char opt_possible;
-	unsigned char switch_enum;
-	unsigned char enum_cmp;
-	unsigned char incomplete_use;
-	unsigned char unused_expr;
-	unsigned char test_assign;
-	unsigned char read_before_write;
-	unsigned char sym_never_written;
-	unsigned char sym_never_read;
-	unsigned char dead_code;
-	unsigned char predecl_enum;
-	unsigned char omitted_param_types;
-	unsigned char return_undef;
-	unsigned char pad;
-	unsigned char tenative_init;
-
-	unsigned char shadow_local;
-	unsigned char shadow_global;
-
-	unsigned char implicit_old_func;
-
-	unsigned char format;
-	unsigned char int_to_ptr;
-	unsigned char ptr_arith;
-	unsigned char shadow;
-	unsigned char uninitialised;
-	unsigned char unused_param;
-	unsigned char unused_val;
-	unsigned char unused_var;
-	unsigned char array_bounds;
-
-	unsigned char cast_qual;
-};
+#include "warn.h"
 
 enum fopt
 {
@@ -99,18 +51,10 @@ extern enum fopt fopt_mode;
 extern enum mopt mopt_mode;
 extern enum cc1_backend cc1_backend;
 
-extern struct cc1_warning cc1_warning;
-
 extern enum c_std cc1_std;
 #define C99_LONGLONG() \
 	if(cc1_std < STD_C99) \
 		cc1_warn_at(NULL, long_long, "long long is a C99 feature")
-
-void cc1_warn_at(struct where *where, const char *fmt, ...) ucc_printflike(2, 3);
-#define cc1_warn_at(loc, warn, ...) do{ \
-		if(cc1_warning.warn) \
-			cc1_warn_at(loc, __VA_ARGS__); \
-	}while(0)
 
 extern int cc1_error_limit;
 

@@ -169,7 +169,8 @@ void symtab_check_rw(symtable *tab)
 					if(!has_unused_attr && (d->store & STORE_MASK_STORE) != store_extern)
 						RW_SHOW(d, read, "read");
 				}else if(has_unused_attr){
-					warn_at(&d->where,
+					cc1_warn_at(&d->where,
+							attr_unused_used,
 							"\"%s\" declared unused, but is used", d->spel);
 				}
 			}
@@ -239,7 +240,8 @@ static void warn_c11_retypedef(decl *a, decl *b)
 	if(cc1_std < STD_C11){
 		char buf[WHERE_BUF_SIZ];
 
-		warn_at(&b->where,
+		cc1_warn_at(&b->where,
+				typedef_redef,
 				"typedef '%s' redefinition is a C11 extension\n"
 				"%s: note: other definition here",
 				a->spel, where_str_r(buf, &a->where));
@@ -307,7 +309,8 @@ void symtab_fold_decls(symtable *tab)
 		&& d->store & store_inline
 		&& (d->store & STORE_MASK_STORE) == store_default)
 		{
-			warn_at(&d->where,
+			cc1_warn_at(&d->where,
+					pure_inline,
 					"pure inline function will not have code emitted "
 					"(missing \"static\" or \"extern\")");
 		}
@@ -593,7 +596,7 @@ void symtab_chk_labels(symtable *stab)
 			if(!l->complete)
 				die_at(l->pw, "label '%s' undefined", l->spel);
 			else if(!l->uses && !l->unused)
-				warn_at(l->pw, "unused label '%s'", l->spel);
+				cc1_warn_at(l->pw, lbl_unused, "unused label '%s'", l->spel);
 
 			for(si = l->jumpers; si && *si; si++){
 				stmt *s = *si;

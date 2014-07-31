@@ -78,7 +78,9 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			char *sp;
 
 			if(!in_fn){
-				warn_at(&e->where, "__func__ is not defined outside of functions");
+				cc1_warn_at(&e->where,
+						x__func__outsidefn,
+						"__func__ is not defined outside of functions");
 
 				sp = "";
 			}else{

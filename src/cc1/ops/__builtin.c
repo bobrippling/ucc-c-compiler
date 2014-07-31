@@ -207,10 +207,10 @@ static void fold_memset(expr *e, symtable *stab)
 		ICE("can't memset %s - not addressable", e->lhs->f_str());
 
 	if(e->bits.builtin_memset.len == 0)
-		warn_at(&e->where, "zero size memset");
+		cc1_warn_at(&e->where, builtin_memset_bad, "zero size memset");
 
 	if((unsigned)e->bits.builtin_memset.ch > 255)
-		warn_at(&e->where, "memset with value > UCHAR_MAX");
+		cc1_warn_at(&e->where, builtin_memset_bad, "memset with value > UCHAR_MAX");
 
 	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
@@ -631,7 +631,9 @@ static void fold_expect(expr *e, symtable *stab)
 
 	const_fold(e->funcargs[1], &k);
 	if(k.type != CONST_NUM)
-		warn_at(&e->where, "%s second argument isn't a constant value", BUILTIN_SPEL(e->expr));
+		cc1_warn_at(&e->where, builtin_expect_nonconst,
+				"%s second argument isn't a constant value",
+				BUILTIN_SPEL(e->expr));
 
 	e->tree_type = e->funcargs[0]->tree_type;
 	wur_builtin(e);

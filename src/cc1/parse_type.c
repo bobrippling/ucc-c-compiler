@@ -102,7 +102,8 @@ static type *parse_type_sue(
 
 				if(curtok != token_identifier){
 					if(cc1_std < STD_C99)
-						warn_at(NULL, "trailing comma in enum definition");
+						cc1_warn_at(NULL, c89_parse_trailingcomma,
+								"trailing comma in enum definition");
 					break;
 				}
 			}
@@ -126,7 +127,7 @@ static type *parse_type_sue(
 			}
 
 			if(!dmembers){
-				warn_at(NULL, "empty %s", sue_str_type(prim));
+				cc1_warn_at(NULL, empty_struct, "empty %s", sue_str_type(prim));
 			}else{
 				for(i = dmembers; *i; i++)
 					dynarray_add(&members,
@@ -1150,7 +1151,7 @@ static void parse_add_asm(decl *d)
 		/* only allow [0-9A-Za-z_.] */
 		for(p = rename; *p; p++)
 			if(!isalnum(*p) && *p != '_' && *p != '.' && *p != '$'){
-				warn_at(NULL, "asm name contains character 0x%x", *p);
+				cc1_warn_at(NULL, asm_badchar, "asm name contains character 0x%x", *p);
 				break;
 			}
 
@@ -1405,7 +1406,8 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 			/* else we want the warning below */
 		}
 
-		warn_at(&d_this->where,
+		cc1_warn_at(&d_this->where,
+				ignored_late_decl,
 				"declaration of \"%s\" after definition is ignored\n"
 				"%s: note: definition here",
 				d_this->spel,
@@ -1464,12 +1466,16 @@ static void warn_for_unaccessible_sue(
 		return;
 
 	if(sue->anon)
-		warn_at(NULL, "anonymous %s with no instances", sue_str(sue));
+		cc1_warn_at(NULL,
+				struct_noinstance_anon,
+				"anonymous %s with no instances", sue_str(sue));
 
 	/* check for storage/qual on no-instance */
 	qual = type_qual(d->ref);
 	if(qual || d->store != store_default){
-		warn_at(NULL, "ignoring %s%s%son no-instance %s",
+		cc1_warn_at(NULL,
+				struct_noinstance_qualified,
+				"ignoring %s%s%son no-instance %s",
 				d->store != store_default ? decl_store_to_str(d->store) : "",
 				d->store != store_default ? " " : "",
 				type_qual_to_str(qual, 1),
@@ -1512,7 +1518,7 @@ static int warn_for_unused_typename(
 	 *
 	 * allow nameless as an extension
 	 */
-	warn_at(&d->where, "declaration doesn't declare anything");
+	cc1_warn_at(&d->where, decl_nodecl, "declaration doesn't declare anything");
 
 	return 1;
 }

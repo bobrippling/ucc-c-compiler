@@ -94,7 +94,8 @@ static void fold_switch_enum(
 
 	/* warn if we switch on an enum bitmask */
 	if(expr_attr_present(sw->expr, attr_enum_bitmask))
-		warn_at(&sw->where, "switch on enum with enum_bitmask attribute");
+		cc1_warn_at(&sw->where, enum_switch_bitmask,
+				"switch on enum with enum_bitmask attribute");
 
 	/* for each case/default/case_range... */
 	ITER_SWITCH(sw, iter){
@@ -128,7 +129,9 @@ static void fold_switch_enum(
 			}
 
 			if(!found)
-				warn_at(&cse->where, "'case %ld' not a member of enum %s",
+				cc1_warn_at(&cse->where,
+						enum_switch_imposter,
+						"'case %ld' not a member of enum %s",
 						(long)v, enum_sue->spel);
 		}
 	}

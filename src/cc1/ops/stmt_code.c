@@ -120,6 +120,7 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 				{
 					const char *ty = above_scope->parent ? "local" : "global";
 
+					/* unconditional warning - checked above */
 					warn_at(&d->where,
 							"declaration of \"%s\" shadows %s declaration\n"
 							"%s: note: %s declaration here",
