@@ -984,7 +984,16 @@ static const out_val *x86_idiv(
 		assert(r->type != V_REG
 				|| r->bits.regoff.reg.idx != X86_64_REG_RDX);
 
-		out_asm(octx, "cqto");
+		if(type_is_signed(r->t)){
+			out_asm(octx, "cqto");
+		}else{
+			/* unsigned - don't sign extend into rdx:
+			 * mov $0, %rdx */
+			out_flush_volatile(
+					octx, v_to_reg_given(
+						octx, out_new_zero(octx, r->t), &rdx));
+		}
+
 		out_asm(octx, "idiv%s %s",
 				x86_suffix(r->t),
 				vstack_str(r, 0));
