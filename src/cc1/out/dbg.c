@@ -501,6 +501,8 @@ static void dwarf_add_tydie(
 {
 	struct DIE *prev;
 
+	ty = type_skip_non_tdefs(ty);
+
 	if(!cu->types_to_dies){
 		cu->types_to_dies = dynmap_new(
 				type *,
@@ -520,7 +522,9 @@ static struct DIE *dwarf_type_die(
 	struct DIE *tydie;
 
 	if(cu->types_to_dies){
-		tydie = dynmap_get(type *, struct DIE *, cu->types_to_dies, ty);
+		type *skipped_ty = type_skip_non_tdefs(ty);
+
+		tydie = dynmap_get(type *, struct DIE *, cu->types_to_dies, skipped_ty);
 		if(tydie)
 			return tydie;
 	}
