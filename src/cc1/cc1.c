@@ -12,6 +12,7 @@
 #include "../util/util.h"
 #include "../util/platform.h"
 #include "../util/math.h"
+#include "../util/dynarray.h"
 
 #include "tokenise.h"
 #include "cc1.h"
@@ -37,6 +38,8 @@ enum warning_special
 {
 	W_ALL, W_EXTRA, W_EVERYTHING
 };
+
+static const char **system_includes;
 
 static struct warn_str
 {
@@ -375,12 +378,30 @@ static void show_warn_option(unsigned char *pwarn)
 	}
 }
 
+static int loc_in_sysheader(where *w)
+{
+	const char **i;
+	for(i = system_includes; i && *i; i++)
+		if(!strncmp(w->fname, *i, strlen(*i)))
+			return 1;
+
+	return 0;
+}
+
 #undef cc1_warn_at
 void cc1_warn_at(
 		struct where *where, unsigned char *pwarn,
 		const char *fmt, ...)
 {
 	va_list l;
+	struct where backup;
+
+	if(!where)
+		where = where_cc1_current(&backup);
+
+	/* don't emit warnings from system headers */
+	if(loc_in_sysheader(where))
+		return;
 
 	va_start(l, fmt);
 	vwarn(where, 0, fmt, l);
@@ -770,6 +791,9 @@ unrecognised:
 			else
 				mopt_mode &= ~MOPT_32;
 
+		}else if(!strncmp(argv[i], "-I", 2)){
+			dynarray_add(&system_includes, (const char *)argv[i] + 2);
+
 		}else if(!fname){
 			fname = argv[i];
 		}else{
@@ -825,6 +849,8 @@ usage:
 
 	if(fopt_mode & FOPT_DUMP_TYPE_TREE)
 		type_nav_dump(cc1_type_nav);
+
+	dynarray_free(const char **, &system_includes, NULL);
 
 	return parsed_folded;
 }

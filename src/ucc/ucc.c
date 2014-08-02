@@ -653,6 +653,10 @@ input:	dynarray_add(&inputs, argv[i]);
 		for(p = strtok(dup, ":"); p; p = strtok(NULL, ":")){
 			char *inc = ustrprintf("-I%s", p);
 			dynarray_add(&args[mode_preproc], inc);
+
+			/* cc1 needs include paths so it knows system headers
+			 * (for warning suppression) */
+			dynarray_add(&args[mode_compile], ustrdup(inc));
 		}
 
 		free(dup);
