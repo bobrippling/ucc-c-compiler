@@ -262,6 +262,13 @@ enum type_cmp type_cmp(type *a, type *b, enum type_cmp_opts opts)
 	return cmp;
 }
 
+int type_eq(type *a, type *b)
+{
+	enum type_cmp cmp = type_cmp(a, b, 0);
+
+	return cmp & TYPE_EQUAL_ANY ? 0 : 1;
+}
+
 integral_t type_max(type *r, where *from)
 {
 	unsigned sz = type_size(r, from);
@@ -729,7 +736,8 @@ unsigned sue_hash(const struct_union_enum_st *sue)
 	return sue->primitive;
 }
 
-unsigned type_hash(const type *t)
+static unsigned type_hash2(
+		const type *t, unsigned nest_hash(const type *))
 {
 	unsigned hash = t->type << 20 | (unsigned)(unsigned long)t;
 
@@ -742,17 +750,17 @@ unsigned type_hash(const type *t)
 			break;
 
 		case type_tdef:
-			hash |= type_hash(t->bits.tdef.type_of->tree_type);
+			hash |= nest_hash(t->bits.tdef.type_of->tree_type);
 			break;
 
 		case type_ptr:
 			if(t->bits.ptr.decayed_from)
-				hash |= type_hash(t->bits.ptr.decayed_from);
+				hash |= nest_hash(t->bits.ptr.decayed_from);
 			break;
 
 		case type_array:
 			if(t->bits.array.size)
-				hash |= type_hash(t->bits.array.size->tree_type);
+				hash |= nest_hash(t->bits.array.size->tree_type);
 			hash |= 1 << t->bits.array.is_static;
 			hash |= 1 << t->bits.array.is_vla;
 			break;
@@ -767,7 +775,7 @@ unsigned type_hash(const type *t)
 			decl **i;
 
 			for(i = t->bits.func.args->arglist; i && *i; i++)
-				hash |= type_hash((*i)->ref);
+				hash |= nest_hash((*i)->ref);
 
 			break;
 		}
@@ -784,6 +792,16 @@ unsigned type_hash(const type *t)
 	}
 
 	return hash;
+}
+
+unsigned type_hash(const type *t)
+{
+	return type_hash2(t, type_hash);
+}
+
+unsigned type_hash_skip(const type *t)
+{
+	return type_hash2(type_skip_all((type *)t), type_hash_skip);
 }
 
 enum type_primitive type_primitive_not_less_than_size(unsigned sz)
