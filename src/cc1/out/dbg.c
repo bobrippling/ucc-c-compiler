@@ -502,6 +502,8 @@ static void dwarf_set_DW_AT_type(
 		dwarf_attr(in, DW_AT_type, DW_FORM_ref4, RETAIN(tydie));
 }
 
+/* this should only be called from dwarf_tydie_new() to ensure
+ * there is exactly one type die per type */
 static void dwarf_add_tydie(
 		struct DIE_compile_unit *cu, type *ty, struct DIE *tydie)
 {
@@ -690,9 +692,13 @@ static struct DIE *dwarf_type_die(
 	return tydie;
 }
 
-static struct DIE *dwarf_sue_header(struct_union_enum_st *sue, int dwarf_tag)
+static struct DIE *dwarf_sue_header(
+		struct DIE_compile_unit *cu,
+		struct_union_enum_st *sue,
+		enum dwarf_tag dwarf_tag,
+		type *suety)
 {
-	struct DIE *suedie = dwarf_die_new(dwarf_tag);
+	struct DIE *suedie = dwarf_tydie_new(cu, suety, dwarf_tag);
 
 	if(!sue->anon)
 		dwarf_attr(suedie, DW_AT_name, DW_FORM_string, sue->spel);
@@ -722,7 +728,7 @@ static struct DIE *dwarf_suetype(
 		{
 			sue_member **i;
 
-			suedie = dwarf_sue_header(sue, DW_TAG_enumeration_type);
+			suedie = dwarf_sue_header(cu, sue, DW_TAG_enumeration_type, suety);
 
 			/* enumerators */
 			for(i = sue->members; i && *i; i++){
@@ -749,16 +755,12 @@ static struct DIE *dwarf_suetype(
 			sue_member **si;
 
 			suedie = dwarf_sue_header(
+					cu,
 					sue,
 					sue->primitive == type_struct
 					? DW_TAG_structure_type
-					: DW_TAG_union_type);
-
-			/* add our type here, so if we have:
-			 * struct A { struct A *next; };
-			 * the next field's type lookup will find us,
-			 * rather than infinitly recursing */
-			dwarf_add_tydie(cu, suety, suedie);
+					: DW_TAG_union_type,
+					suety);
 
 			/* members */
 			for(si = sue->members; si && *si; si++){
