@@ -565,6 +565,10 @@ static struct DIE *dwarf_type_die(
 
 				tydie = dwarf_die_new(DW_TAG_typedef);
 
+				/* we map the actual typedef type onto the tydie,
+				 * not the type the typedef uses */
+				dwarf_add_tydie(cu, /*not: d->ref, but:*/ty, tydie);
+
 				dwarf_attr(tydie, DW_AT_name, DW_FORM_string, d->spel);
 
 				dwarf_set_DW_AT_type(tydie, cu, parent, d->ref);
@@ -582,6 +586,8 @@ static struct DIE *dwarf_type_die(
 			form_data_t sz = platform_word_size();
 
 			tydie = dwarf_die_new(DW_TAG_pointer_type);
+
+			dwarf_add_tydie(cu, ty, tydie);
 
 			dwarf_attr(tydie, DW_AT_byte_size,
 					DW_FORM_data4, &sz);
