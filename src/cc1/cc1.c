@@ -378,7 +378,7 @@ static void show_warn_option(unsigned char *pwarn)
 	}
 }
 
-static int loc_in_sysheader(where *w)
+int where_in_sysheader(where *w)
 {
 	const char **i;
 	for(i = system_includes; i && *i; i++)
@@ -400,7 +400,7 @@ void cc1_warn_at(
 		where = where_cc1_current(&backup);
 
 	/* don't emit warnings from system headers */
-	if(loc_in_sysheader(where))
+	if(where_in_sysheader(where))
 		return;
 
 	va_start(l, fmt);
