@@ -524,6 +524,30 @@ static void dwarf_add_tydie(
 	dwarf_release(prev);
 }
 
+static struct DIE *dwarf_tydie_new(
+		struct DIE_compile_unit *cu,
+		type *ty,
+		enum dwarf_tag tag)
+{
+	struct DIE *tydie = dwarf_die_new(tag);
+
+	if(!tydie)
+		return NULL; /* void */
+
+	/* register immediately, so subsequent type lookups find
+	 * this tydie, and don't create a new one.
+	 *
+	 * otherwise, we end up with two type dies floating around,
+	 * which means one will replace the other in the type map
+	 * (types_to_dies), meaning if there are any references to
+	 * the ejected die, they'll try to use it even though it won't
+	 * have its location set, causing all sorts of problems.
+	 */
+	dwarf_add_tydie(cu, ty, tydie);
+
+	return tydie;
+}
+
 static struct DIE *dwarf_type_die(
 		struct DIE_compile_unit *cu,
 		struct DIE *parent, type *ty)
@@ -563,11 +587,12 @@ static struct DIE *dwarf_type_die(
 			if(ty->bits.tdef.decl){
 				decl *d = ty->bits.tdef.decl;
 
-				tydie = dwarf_die_new(DW_TAG_typedef);
-
 				/* we map the actual typedef type onto the tydie,
 				 * not the type the typedef uses */
-				dwarf_add_tydie(cu, /*not: d->ref, but:*/ty, tydie);
+				tydie = dwarf_tydie_new(
+						cu,
+						/*not: d->ref, but:*/ty,
+						DW_TAG_typedef);
 
 				dwarf_attr(tydie, DW_AT_name, DW_FORM_string, d->spel);
 
@@ -585,9 +610,7 @@ static struct DIE *dwarf_type_die(
 		{
 			form_data_t sz = platform_word_size();
 
-			tydie = dwarf_die_new(DW_TAG_pointer_type);
-
-			dwarf_add_tydie(cu, ty, tydie);
+			tydie = dwarf_tydie_new(cu, ty, DW_TAG_pointer_type);
 
 			dwarf_attr(tydie, DW_AT_byte_size,
 					DW_FORM_data4, &sz);
