@@ -299,17 +299,20 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 		}
 	}
 
-	glob = symtab_global(scope);
-	if(!dynmap_exists(char *, glob->unrecog_attrs, (char *)ident)){
-		char *dup = ustrdup(ident);
+	/* unrecognised - only do the warning (and map checking) if non system-header */
+	if(!where_in_sysheader(where_cc1_current(NULL))){
+		glob = symtab_global(scope);
+		if(!dynmap_exists(char *, glob->unrecog_attrs, (char *)ident)){
+			char *dup = ustrdup(ident);
 
-		if(!glob->unrecog_attrs)
-			glob->unrecog_attrs = dynmap_new(char *, strcmp, dynmap_strhash);
+			if(!glob->unrecog_attrs)
+				glob->unrecog_attrs = dynmap_new(char *, strcmp, dynmap_strhash);
 
-		dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
+			dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
 
-		cc1_warn_at(NULL, attr_unknown,
-				"ignoring unrecognised attribute \"%s\"", ident);
+			cc1_warn_at(NULL, attr_unknown,
+					"ignoring unrecognised attribute \"%s\"", ident);
+		}
 	}
 
 	/* if there are brackets, eat them all */

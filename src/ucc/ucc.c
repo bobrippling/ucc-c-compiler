@@ -368,6 +368,7 @@ int main(int argc, char **argv)
 	char **args[4] = { 0 };
 	char *output = NULL;
 	char *backend = NULL;
+	const char **isystems = NULL;
 	struct
 	{
 		char optn;
@@ -586,6 +587,12 @@ word:
 						ADD_ARG(mode_preproc);
 					else if(!strcmp(argv[i], "--no-rm"))
 						unlink_tmps = 0;
+					else if(!strcmp(argv[i], "-isystem")){
+						const char *sysinc = argv[++i];
+						if(!sysinc)
+							goto missing_arg;
+						dynarray_add(&isystems, sysinc);
+					}
 					else
 						break;
 
@@ -653,9 +660,24 @@ input:	dynarray_add(&inputs, argv[i]);
 		for(p = strtok(dup, ":"); p; p = strtok(NULL, ":")){
 			char *inc = ustrprintf("-I%s", p);
 			dynarray_add(&args[mode_preproc], inc);
+
+			/* cc1 needs include paths so it knows system headers
+			 * (for warning suppression) */
+			dynarray_add(&args[mode_compile], ustrdup(inc));
 		}
 
 		free(dup);
+	}
+	if(isystems){
+		const char **i;
+		for(i = isystems; *i; i++){
+			/* cpp doesn't care if it's system or not */
+			dynarray_add(&args[mode_preproc], ustrprintf("-I%s", *i));
+			/* cc1 only wants system - can use -I too */
+			dynarray_add(&args[mode_compile], ustrprintf("-I%s", *i));
+		}
+
+		dynarray_free(const char **, &isystems, NULL);
 	}
 
 	/* custom include paths */
