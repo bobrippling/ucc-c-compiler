@@ -792,6 +792,7 @@ unrecognised:
 				mopt_mode &= ~MOPT_32;
 
 		}else if(!strncmp(argv[i], "-I", 2)){
+			/* these are system headers only - we don't get the full set */
 			dynarray_add(&system_includes, (const char *)argv[i] + 2);
 
 		}else if(!fname){
