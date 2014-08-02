@@ -504,8 +504,8 @@ static void dwarf_add_tydie(
 	if(!cu->types_to_dies){
 		cu->types_to_dies = dynmap_new(
 				type *,
-				type_eq, /* necessary since we use type_hash_skip() */
-				type_hash_skip); /* attr/where aren't emitted */
+				type_eq_nontdef, /* necessary since we use type_hash_skip() */
+				type_hash_skip_nontdefs); /* attr/where aren't emitted */
 	}
 
 	prev = dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, RETAIN(tydie));

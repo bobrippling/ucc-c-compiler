@@ -103,7 +103,7 @@ type_cmp(
 		type *, type *,
 		enum type_cmp_opts);
 
-int type_eq(type *, type *);
+int type_eq_nontdef(type *, type *);
 
 unsigned type_size(type *r, where *from);
 unsigned type_align(type *r, where *from);
@@ -138,7 +138,7 @@ where *type_loc(type *);
 int type_has_loc(type *);
 
 unsigned type_hash(const type *);
-unsigned type_hash_skip(const type *);
+unsigned type_hash_skip_nontdefs(const type *);
 unsigned sue_hash(const struct struct_union_enum_st *);
 
 /* returns the largest type to hold a type of size 'sz' */

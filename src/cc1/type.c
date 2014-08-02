@@ -262,11 +262,11 @@ enum type_cmp type_cmp(type *a, type *b, enum type_cmp_opts opts)
 	return cmp;
 }
 
-int type_eq(type *a, type *b)
+int type_eq_nontdef(type *a, type *b)
 {
 	enum type_cmp cmp = type_cmp(a, b, 0);
 
-	return cmp & TYPE_EQUAL_ANY ? 0 : 1;
+	return cmp == TYPE_EQUAL ? 0 : 1;
 }
 
 integral_t type_max(type *r, where *from)
@@ -751,6 +751,7 @@ static unsigned type_hash2(
 
 		case type_tdef:
 			hash |= nest_hash(t->bits.tdef.type_of->tree_type);
+			hash |= 1 << 3;
 			break;
 
 		case type_ptr:
@@ -799,9 +800,11 @@ unsigned type_hash(const type *t)
 	return type_hash2(t, type_hash);
 }
 
-unsigned type_hash_skip(const type *t)
+unsigned type_hash_skip_nontdefs(const type *t)
 {
-	return type_hash2(type_skip_all((type *)t), type_hash_skip);
+	return type_hash2(
+			type_skip_non_tdefs((type *)t),
+			type_hash_skip_nontdefs);
 }
 
 enum type_primitive type_primitive_not_less_than_size(unsigned sz)
