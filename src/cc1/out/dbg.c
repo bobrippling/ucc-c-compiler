@@ -500,6 +500,7 @@ static void dwarf_add_tydie(
 		struct DIE_compile_unit *cu, type *ty, struct DIE *tydie)
 {
 	struct DIE *prev;
+	int replaced_another;
 
 	ty = type_skip_non_tdefs(ty);
 
@@ -511,6 +512,15 @@ static void dwarf_add_tydie(
 	}
 
 	prev = dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, RETAIN(tydie));
+
+	replaced_another = (prev && prev != tydie);
+
+	/* prev should either be tydie (previously added) or null
+	 * since if we have added the same type twice then we've got two different
+	 * DIEs floating around that represent the same type
+	 */
+	UCC_ASSERT(!replaced_another, "replaced an unrelated type die in the map");
+
 	dwarf_release(prev);
 }
 
