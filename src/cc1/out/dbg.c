@@ -256,6 +256,11 @@ static struct DIE *dwarf_type_die(
 		struct DIE_compile_unit *cu,
 		struct DIE *parent, type *ty);
 
+static struct DIE *dwarf_tydie_new(
+		struct DIE_compile_unit *cu,
+		type *ty,
+		enum dwarf_tag tag);
+
 static void dwarf_die_free_r(struct DIE *die);
 
 static void dwarf_release(struct DIE *die)
@@ -421,8 +426,9 @@ static void dwarf_attr(
 	}
 }
 
-static struct DIE *dwarf_basetype(enum type_primitive prim)
+static struct DIE *dwarf_basetype(struct DIE_compile_unit *cu, type *ty)
 {
+	const enum type_primitive prim = ty->bits.type->primitive;
 	form_data_t enc;
 	struct DIE *tydie;
 
@@ -469,7 +475,7 @@ static struct DIE *dwarf_basetype(enum type_primitive prim)
 			ICE("bad type");
 	}
 
-	tydie = dwarf_die_new(DW_TAG_base_type);
+	tydie = dwarf_tydie_new(cu, ty, DW_TAG_base_type);
 
 	dwarf_attr(tydie, DW_AT_name,
 			DW_FORM_string,
@@ -496,16 +502,58 @@ static void dwarf_set_DW_AT_type(
 		dwarf_attr(in, DW_AT_type, DW_FORM_ref4, RETAIN(tydie));
 }
 
+/* this should only be called from dwarf_tydie_new() to ensure
+ * there is exactly one type die per type */
 static void dwarf_add_tydie(
 		struct DIE_compile_unit *cu, type *ty, struct DIE *tydie)
 {
 	struct DIE *prev;
+	int replaced_another;
 
-	if(!cu->types_to_dies)
-		cu->types_to_dies = dynmap_new(type *, /*refeq:*/NULL, type_hash);
+	ty = type_skip_non_tdefs(ty);
+
+	if(!cu->types_to_dies){
+		cu->types_to_dies = dynmap_new(
+				type *,
+				type_eq_nontdef, /* necessary since we use type_hash_skip() */
+				type_hash_skip_nontdefs); /* attr/where aren't emitted */
+	}
 
 	prev = dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, RETAIN(tydie));
+
+	replaced_another = (prev && prev != tydie);
+
+	/* prev should either be tydie (previously added) or null
+	 * since if we have added the same type twice then we've got two different
+	 * DIEs floating around that represent the same type
+	 */
+	UCC_ASSERT(!replaced_another, "replaced an unrelated type die in the map");
+
 	dwarf_release(prev);
+}
+
+static struct DIE *dwarf_tydie_new(
+		struct DIE_compile_unit *cu,
+		type *ty,
+		enum dwarf_tag tag)
+{
+	struct DIE *tydie = dwarf_die_new(tag);
+
+	if(!tydie)
+		return NULL; /* void */
+
+	/* register immediately, so subsequent type lookups find
+	 * this tydie, and don't create a new one.
+	 *
+	 * otherwise, we end up with two type dies floating around,
+	 * which means one will replace the other in the type map
+	 * (types_to_dies), meaning if there are any references to
+	 * the ejected die, they'll try to use it even though it won't
+	 * have its location set, causing all sorts of problems.
+	 */
+	dwarf_add_tydie(cu, ty, tydie);
+
+	return tydie;
 }
 
 static struct DIE *dwarf_type_die(
@@ -516,7 +564,9 @@ static struct DIE *dwarf_type_die(
 	struct DIE *tydie;
 
 	if(cu->types_to_dies){
-		tydie = dynmap_get(type *, struct DIE *, cu->types_to_dies, ty);
+		type *skipped_ty = type_skip_non_tdefs(ty);
+
+		tydie = dynmap_get(type *, struct DIE *, cu->types_to_dies, skipped_ty);
 		if(tydie)
 			return tydie;
 	}
@@ -536,7 +586,7 @@ static struct DIE *dwarf_type_die(
 				if(ty->bits.type->primitive == type_void)
 					return NULL;
 
-				tydie = dwarf_basetype(ty->bits.type->primitive);
+				tydie = dwarf_basetype(cu, ty);
 			}
 			break;
 		}
@@ -545,7 +595,12 @@ static struct DIE *dwarf_type_die(
 			if(ty->bits.tdef.decl){
 				decl *d = ty->bits.tdef.decl;
 
-				tydie = dwarf_die_new(DW_TAG_typedef);
+				/* we map the actual typedef type onto the tydie,
+				 * not the type the typedef uses */
+				tydie = dwarf_tydie_new(
+						cu,
+						/*not: d->ref, but:*/ty,
+						DW_TAG_typedef);
 
 				dwarf_attr(tydie, DW_AT_name, DW_FORM_string, d->spel);
 
@@ -563,7 +618,7 @@ static struct DIE *dwarf_type_die(
 		{
 			form_data_t sz = platform_word_size();
 
-			tydie = dwarf_die_new(DW_TAG_pointer_type);
+			tydie = dwarf_tydie_new(cu, ty, DW_TAG_pointer_type);
 
 			dwarf_attr(tydie, DW_AT_byte_size,
 					DW_FORM_data4, &sz);
@@ -576,7 +631,7 @@ static struct DIE *dwarf_type_die(
 		{
 			long flag = 1;
 
-			tydie = dwarf_die_new(DW_TAG_subroutine_type);
+			tydie = dwarf_tydie_new(cu, ty, DW_TAG_subroutine_type);
 
 			dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 
@@ -591,7 +646,7 @@ static struct DIE *dwarf_type_die(
 			int have_sz = !!ty->bits.array.size;
 			struct DIE *szdie;
 
-			tydie = dwarf_die_new(DW_TAG_array_type);
+			tydie = dwarf_tydie_new(cu, ty, DW_TAG_array_type);
 
 			dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 
@@ -620,7 +675,7 @@ static struct DIE *dwarf_type_die(
 				/* skip */
 				tydie = dwarf_type_die(cu, parent, ty->ref);
 			}else{
-				tydie = dwarf_die_new(DW_TAG_const_type);
+				tydie = dwarf_tydie_new(cu, ty, DW_TAG_const_type);
 				dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 			}
 			break;
@@ -633,15 +688,17 @@ static struct DIE *dwarf_type_die(
 			break;
 	}
 
-	if(tydie) /* may be btype/void */
-		dwarf_add_tydie(cu, ty, tydie);
 
 	return tydie;
 }
 
-static struct DIE *dwarf_sue_header(struct_union_enum_st *sue, int dwarf_tag)
+static struct DIE *dwarf_sue_header(
+		struct DIE_compile_unit *cu,
+		struct_union_enum_st *sue,
+		enum dwarf_tag dwarf_tag,
+		type *suety)
 {
-	struct DIE *suedie = dwarf_die_new(dwarf_tag);
+	struct DIE *suedie = dwarf_tydie_new(cu, suety, dwarf_tag);
 
 	if(!sue->anon)
 		dwarf_attr(suedie, DW_AT_name, DW_FORM_string, sue->spel);
@@ -671,7 +728,7 @@ static struct DIE *dwarf_suetype(
 		{
 			sue_member **i;
 
-			suedie = dwarf_sue_header(sue, DW_TAG_enumeration_type);
+			suedie = dwarf_sue_header(cu, sue, DW_TAG_enumeration_type, suety);
 
 			/* enumerators */
 			for(i = sue->members; i && *i; i++){
@@ -698,16 +755,12 @@ static struct DIE *dwarf_suetype(
 			sue_member **si;
 
 			suedie = dwarf_sue_header(
+					cu,
 					sue,
 					sue->primitive == type_struct
 					? DW_TAG_structure_type
-					: DW_TAG_union_type);
-
-			/* add our type here, so if we have:
-			 * struct A { struct A *next; };
-			 * the next field's type lookup will find us,
-			 * rather than infinitly recursing */
-			dwarf_add_tydie(cu, suety, suedie);
+					: DW_TAG_union_type,
+					suety);
 
 			/* members */
 			for(si = sue->members; si && *si; si++){
