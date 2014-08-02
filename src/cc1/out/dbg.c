@@ -256,6 +256,11 @@ static struct DIE *dwarf_type_die(
 		struct DIE_compile_unit *cu,
 		struct DIE *parent, type *ty);
 
+static struct DIE *dwarf_tydie_new(
+		struct DIE_compile_unit *cu,
+		type *ty,
+		enum dwarf_tag tag);
+
 static void dwarf_die_free_r(struct DIE *die);
 
 static void dwarf_release(struct DIE *die)
@@ -421,8 +426,9 @@ static void dwarf_attr(
 	}
 }
 
-static struct DIE *dwarf_basetype(enum type_primitive prim)
+static struct DIE *dwarf_basetype(struct DIE_compile_unit *cu, type *ty)
 {
+	const enum type_primitive prim = ty->bits.type->primitive;
 	form_data_t enc;
 	struct DIE *tydie;
 
@@ -469,7 +475,7 @@ static struct DIE *dwarf_basetype(enum type_primitive prim)
 			ICE("bad type");
 	}
 
-	tydie = dwarf_die_new(DW_TAG_base_type);
+	tydie = dwarf_tydie_new(cu, ty, DW_TAG_base_type);
 
 	dwarf_attr(tydie, DW_AT_name,
 			DW_FORM_string,
@@ -578,7 +584,7 @@ static struct DIE *dwarf_type_die(
 				if(ty->bits.type->primitive == type_void)
 					return NULL;
 
-				tydie = dwarf_basetype(ty->bits.type->primitive);
+				tydie = dwarf_basetype(cu, ty);
 			}
 			break;
 		}
@@ -623,7 +629,7 @@ static struct DIE *dwarf_type_die(
 		{
 			long flag = 1;
 
-			tydie = dwarf_die_new(DW_TAG_subroutine_type);
+			tydie = dwarf_tydie_new(cu, ty, DW_TAG_subroutine_type);
 
 			dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 
@@ -638,7 +644,7 @@ static struct DIE *dwarf_type_die(
 			int have_sz = !!ty->bits.array.size;
 			struct DIE *szdie;
 
-			tydie = dwarf_die_new(DW_TAG_array_type);
+			tydie = dwarf_tydie_new(cu, ty, DW_TAG_array_type);
 
 			dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 
@@ -667,7 +673,7 @@ static struct DIE *dwarf_type_die(
 				/* skip */
 				tydie = dwarf_type_die(cu, parent, ty->ref);
 			}else{
-				tydie = dwarf_die_new(DW_TAG_const_type);
+				tydie = dwarf_tydie_new(cu, ty, DW_TAG_const_type);
 				dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 			}
 			break;
@@ -680,8 +686,6 @@ static struct DIE *dwarf_type_die(
 			break;
 	}
 
-	if(tydie) /* may be btype/void */
-		dwarf_add_tydie(cu, ty, tydie);
 
 	return tydie;
 }
