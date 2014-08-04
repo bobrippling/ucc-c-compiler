@@ -109,7 +109,7 @@ ptr:
 
 		default:
 			cc1_warn_at(loc_str, attr_printf_unknown,
-					"unknown conversion character 0x%x", fmt);
+					"unknown conversion character '%c' (0x%x)", fmt, fmt);
 			return;
 	}
 
