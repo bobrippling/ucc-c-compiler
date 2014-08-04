@@ -360,11 +360,9 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 	/* attr */
 	{
-		type *r = e->expr->tree_type;
+		type *fnty = e->expr->tree_type;
 
-		format_check_call(
-				&e->where, r,
-				e->funcargs, args_from_decl->variadic);
+		format_check_call(fnty, e->funcargs, args_from_decl->variadic);
 
 		sentinel_check(
 				&e->where, e,

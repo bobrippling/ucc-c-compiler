@@ -178,7 +178,8 @@ static void format_check_printf_arg(
 static void format_check_printf_str(
 		expr **args,
 		const char *fmt, const int len,
-		const int var_idx, where *parenloc)
+		const int var_idx,
+		where *quote_loc)
 {
 	expr **current_arg = args;
 	int i;
@@ -188,8 +189,8 @@ static void format_check_printf_str(
 
 	for(i = 0; i < len && fmt[i];){
 		if(fmt[i++] == '%'){
-			where strloc = *parenloc;
-			strloc.chr += i + 1; /* +1 since we start on the '(' */
+			where strloc = *quote_loc;
+			strloc.chr += i + 1; /* +1 since we start on the '"' */
 
 			if(i == len){
 				cc1_warn_at(&strloc, attr_printf_bad, "incomplete format specifier");
@@ -237,8 +238,7 @@ static void format_check_printf_str(
 static void format_check_printf(
 		expr *str_arg,
 		expr **args,
-		unsigned var_idx,
-		where *w)
+		unsigned var_idx)
 {
 	stringlit *fmt_str;
 	consty k;
@@ -253,9 +253,10 @@ static void format_check_printf(
 
 				format_check_printf(
 						str_arg->lhs ? str_arg->lhs : str_arg->expr,
-						args, var_idx, w);
+						args, var_idx);
 
-				format_check_printf(str_arg->rhs, args, var_idx, w);
+				format_check_printf(str_arg->rhs, args, var_idx);
+
 				return;
 			}
 			goto not_string;
@@ -286,15 +287,15 @@ not_string:
 			cc1_warn_at(&str_arg->where, attr_printf_bad,
 					"undefined printf-format argument");
 		else
-			format_check_printf_str(args, fmt + k.offset, len, var_idx, w);
+			format_check_printf_str(args, fmt + k.offset, len,
+					var_idx, &str_arg->where);
 	}
 }
 
 void format_check_call(
-		where *w, type *ref,
-		expr **args, const int variadic)
+		type *fnty, expr **args, const int variadic)
 {
-	attribute *attr = type_attr_present(ref, attr_format);
+	attribute *attr = type_attr_present(fnty, attr_format);
 	int n, fmt_idx, var_idx;
 
 	if(!attr || !variadic)
@@ -328,7 +329,7 @@ void format_check_call(
 
 	switch(attr->bits.format.fmt_func){
 		case attr_fmt_printf:
-			format_check_printf(args[fmt_idx], args, var_idx, w);
+			format_check_printf(args[fmt_idx], args, var_idx);
 			break;
 
 		case attr_fmt_scanf:
