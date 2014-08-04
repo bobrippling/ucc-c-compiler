@@ -124,7 +124,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		}
 	}
 
-	if(expr_is_lval(e->bits.generic.chosen->e))
+	if(e->bits.generic.chosen->e->f_lea)
 		e->f_lea = generic_lea;
 
 	e->tree_type = e->bits.generic.chosen->e->tree_type;
