@@ -116,7 +116,9 @@ void out_func_prologue(
 		int stack_res, int nargs, int variadic,
 		int arg_offsets[], int *local_offset);
 
-void out_func_epilogue(out_ctx *, type *, char *end_dbg_lbl);
+void out_func_epilogue(
+		out_ctx *, type *, char *end_dbg_lbl,
+		int *out_usedstack);
 
 
 /* returns a pointer to allocated storage: */

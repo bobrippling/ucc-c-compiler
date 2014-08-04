@@ -51,7 +51,7 @@ void impl_func_prologue_save_call_regs(
 		int arg_offsets[/*nargs*/]);
 
 void impl_func_prologue_save_variadic(out_ctx *octx, type *rf);
-void impl_func_epilogue(out_ctx *, type *);
+void impl_func_epilogue(out_ctx *, type *, int clean_stack);
 
 void impl_undefined(out_ctx *octx);
 void impl_set_nan(out_ctx *, out_val *);

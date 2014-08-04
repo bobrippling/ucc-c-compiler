@@ -17,6 +17,8 @@
 #include "tokenise.h"
 #include "cc1.h"
 #include "fold.h"
+#include "out/asm.h" /* NUM_SECTIONS */
+#include "out/dbg.h" /* dbg_out_filelist() */
 #include "gen_asm.h"
 #include "gen_str.h"
 #include "gen_style.h"
@@ -517,34 +519,41 @@ static void gen_backend(symtable_global *globs, const char *fname)
 		case BACKEND_STYLE:
 			gf = gen_style;
 			if(0){
-				case BACKEND_PRINT:
-					gf = gen_str;
+		case BACKEND_PRINT:
+				gf = gen_str;
 			}
 			gf(globs);
 			break;
 
 		case BACKEND_ASM:
-			{
-				char buf[4096];
-				char *compdir;
+		{
+			char buf[4096];
+			char *compdir;
+			struct out_dbg_filelist *filelist;
 
-				compdir = getcwd(NULL, 0);
-				if(!compdir){
-					/* no auto-malloc */
-					compdir = getcwd(buf, sizeof(buf)-1);
-					/* PATH_MAX may not include the  ^ nul byte */
-					if(!compdir)
-						die("getcwd():");
-				}
-
-				gen_asm(globs,
-						cc1_first_fname ? cc1_first_fname : fname,
-						compdir);
-
-				if(compdir != buf)
-					free(compdir);
-				break;
+			compdir = getcwd(NULL, 0);
+			if(!compdir){
+				/* no auto-malloc */
+				compdir = getcwd(buf, sizeof(buf)-1);
+				/* PATH_MAX may not include the  ^ nul byte */
+				if(!compdir)
+					die("getcwd():");
 			}
+
+			gen_asm(globs,
+					cc1_first_fname ? cc1_first_fname : fname,
+					compdir,
+					&filelist);
+
+			/* filelist needs to be output first */
+			if(filelist && cc1_gdebug)
+				dbg_out_filelist(filelist, cc1_out);
+
+
+			if(compdir != buf)
+				free(compdir);
+			break;
+		}
 	}
 
 	io_fin(gf == NULL, fname);
