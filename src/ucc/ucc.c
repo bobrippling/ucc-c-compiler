@@ -585,7 +585,7 @@ word:
 						ADD_ARG(mode_preproc);
 					else if(!strcmp(argv[i], "-digraphs"))
 						ADD_ARG(mode_preproc);
-					else if(!strcmp(argv[i], "--no-rm"))
+					else if(!strcmp(argv[i], "-save-temps"))
 						unlink_tmps = 0;
 					else if(!strcmp(argv[i], "-isystem")){
 						const char *sysinc = argv[++i];
