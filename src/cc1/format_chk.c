@@ -43,7 +43,7 @@ static void warn_printf_attr(char fmt, where *w, enum printf_attr attr)
 }
 
 static void format_check_printf_1(char fmt, type *const t_in,
-		where *w, enum printf_attr attr)
+		where *loc_expr, where *loc_str, enum printf_attr attr)
 {
 	char expected[BTYPE_STATIC_BUFSIZ];
 
@@ -62,7 +62,7 @@ ptr:
 				snprintf(expected, sizeof expected,
 						"'%s *'", type_primitive_to_str(prim));
 			}else if(attr){
-				warn_printf_attr(fmt, w, attr);
+				warn_printf_attr(fmt, loc_str, attr);
 			}
 			break;
 
@@ -104,17 +104,17 @@ ptr:
 			if(!type_is_floating(t_in))
 				strcpy(expected, "'double'");
 			else if(attr)
-				warn_printf_attr(fmt, w, attr);
+				warn_printf_attr(fmt, loc_str, attr);
 			break;
 
 		default:
-			cc1_warn_at(w, attr_printf_unknown,
+			cc1_warn_at(loc_str, attr_printf_unknown,
 					"unknown conversion character 0x%x", fmt);
 			return;
 	}
 
 	if(*expected){
-		cc1_warn_at(w, attr_printf_bad,
+		cc1_warn_at(loc_expr, attr_printf_bad,
 				"format %%%s%c expects %s argument (got %s)",
 				attr & printf_attr_long ? "l" : "", fmt,
 				expected, type_to_str(t_in));
@@ -157,16 +157,17 @@ static enum printf_attr printf_modifiers(
 static void format_check_printf_str(
 		expr **args,
 		const char *fmt, const int len,
-		int var_idx, where *w)
+		int var_idx, where *parenloc)
 {
 	int n_arg = 0;
 	int i;
 
 	for(i = 0; i < len && fmt[i];){
 		if(fmt[i++] == '%'){
+			where strloc = *parenloc;
+			strloc.chr += i + 1; /* +1 since we start on the '(' */
+
 			if(i == len){
-				where strloc = *w;
-				strloc.chr += i + 1; /* +1 since we start on the '(' */
 				cc1_warn_at(&strloc, attr_printf_bad, "incomplete format specifier");
 				return;
 			}
@@ -182,12 +183,15 @@ static void format_check_printf_str(
 				enum printf_attr attr = printf_modifiers(fmt, &i);
 
 				if(!e){
-					cc1_warn_at(w, attr_printf_bad,
+					cc1_warn_at(parenloc, attr_printf_bad,
 							"too few arguments for format (%%%c)", fmt[i]);
 					break;
 				}
 
-				format_check_printf_1(fmt[i], e->tree_type, &e->where, attr);
+				/* place us on the format char */
+				strloc.chr++;
+
+				format_check_printf_1(fmt[i], e->tree_type, &e->where, &strloc, attr);
 			}
 
 			/*if(fmt[i] == '*'){
@@ -197,8 +201,10 @@ static void format_check_printf_str(
 		}
 	}
 
-	if(var_idx != -1 && (!fmt[i] || i == len) && args[var_idx + n_arg])
-		cc1_warn_at(w, attr_printf_toomany, "too many arguments for format");
+	if(var_idx != -1 && (!fmt[i] || i == len) && args[var_idx + n_arg]){
+		cc1_warn_at(&args[var_idx + n_arg]->where, attr_printf_toomany,
+				"too many arguments for format");
+	}
 }
 
 static void format_check_printf(
