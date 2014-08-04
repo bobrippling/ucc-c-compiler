@@ -271,6 +271,8 @@ static struct
 	{ 'f',  "show-warning-option", FOPT_SHOW_WARNING_OPTION },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
+	{ 'm',  "32", MOPT_32 },
+	{ 'm',  "64", ~MOPT_32 },
 
 	{ 0,  NULL, 0 }
 };
@@ -777,19 +779,6 @@ unrecognised:
 				fprintf(stderr, "\"%s\" unrecognised\n", argv[i]);
 				goto usage;
 			}
-
-		}else if(!strncmp(argv[i], "-m", 2)){
-			int n;
-
-			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
-				fprintf(stderr, "-m needs either 32 or 64\n");
-				goto usage;
-			}
-
-			if(n == 32)
-				mopt_mode |= MOPT_32;
-			else
-				mopt_mode &= ~MOPT_32;
 
 		}else if(!strncmp(argv[i], "-I", 2)){
 			/* these are system headers only - we don't get the full set */
