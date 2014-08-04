@@ -50,7 +50,7 @@ void fold_expr_comma(expr *e, symtable *stab)
 
 	e->freestanding = e->rhs->freestanding;
 
-	if(expr_is_lval(e->rhs)){
+	if(e->rhs->f_lea){
 		e->f_lea = comma_lea;
 		e->lvalue_internal = 1;
 	}
