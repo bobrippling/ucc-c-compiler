@@ -19,13 +19,32 @@
 
 enum printf_attr
 {
-	printf_attr_long = 1 << 0
+	printf_attr_long = 1 << 0,
+	printf_attr_llong = 1 << 1,
+	printf_attr_size_t = 1 << 2
 };
+
+static const char *printf_attr_to_str(enum printf_attr attr)
+{
+	if(attr & printf_attr_size_t)
+		return "z";
+	if(attr & printf_attr_llong)
+		return "ll";
+	if(attr & printf_attr_long)
+		return "l";
+	return NULL;
+}
+
+static void warn_printf_attr(char fmt, where *w, enum printf_attr attr)
+{
+	cc1_warn_at(w, attr_printf_bad,
+			"unexpected printf modifier '%s' for %%%c",
+			printf_attr_to_str(attr), fmt);
+}
 
 static void format_check_printf_1(char fmt, type *const t_in,
 		where *w, enum printf_attr attr)
 {
-	int allow_long = 0;
 	char expected[BTYPE_STATIC_BUFSIZ];
 
 	expected[0] = '\0';
@@ -42,6 +61,8 @@ ptr:
 			if(!tt){
 				snprintf(expected, sizeof expected,
 						"'%s *'", type_primitive_to_str(prim));
+			}else if(attr){
+				warn_printf_attr(fmt, w, attr);
 			}
 			break;
 
@@ -54,11 +75,22 @@ ptr:
 		case 'c':
 		case 'd':
 		case 'i':
-			allow_long = 1;
-			if(!type_is_integral(t_in))
+			if(!type_is_integral(t_in)){
 				strcpy(expected, "integral");
-			if((attr & printf_attr_long) && !type_is_primitive(t_in, type_long))
-				strcpy(expected, "'long'");
+				break;
+			}
+#define ATTR_CHECK(suff, str)                   \
+			if((attr & printf_attr_##suff)            \
+			&& !type_is_primitive(t_in, type_##suff)) \
+			{                                         \
+				strcpy(expected, str);                  \
+			}
+
+			ATTR_CHECK(llong, "'long long'")
+			else
+			ATTR_CHECK(long, "'long'")
+			else
+			ATTR_CHECK(long, "'size_t'")
 			break;
 
 		case 'e':
@@ -71,6 +103,8 @@ ptr:
 		case 'A':
 			if(!type_is_floating(t_in))
 				strcpy(expected, "'double'");
+			else if(attr)
+				warn_printf_attr(fmt, w, attr);
 			break;
 
 		default:
@@ -79,14 +113,44 @@ ptr:
 			return;
 	}
 
-	if(!*expected && !allow_long && attr & printf_attr_long)
-		strcpy(expected, "'long'");
-
 	if(*expected){
 		cc1_warn_at(w, attr_printf_bad,
 				"format %%%s%c expects %s argument (got %s)",
 				attr & printf_attr_long ? "l" : "", fmt,
 				expected, type_to_str(t_in));
+	}
+}
+
+static enum printf_attr printf_modifiers(
+		const char *fmt, int *index)
+{
+	enum printf_attr attr = 0;
+
+	for(;;) switch(fmt[*index]){
+		case 'l':
+			if(attr & printf_attr_long)
+				attr |= printf_attr_llong;
+			else
+				attr |= printf_attr_long;
+
+		case '1': case '2': case '3':
+		case '4': case '5': case '6':
+		case '7': case '8': case '9':
+
+		case '0': case '#': case '-':
+		case ' ': case '+': case '.':
+
+		case 'h': case 'L':
+			++*index;
+			break;
+
+		case 'z':
+			attr |= printf_attr_size_t;
+			++*index;
+			break;
+
+		default:
+			return attr;
 	}
 }
 
@@ -100,10 +164,6 @@ static void format_check_printf_str(
 
 	for(i = 0; i < len && fmt[i];){
 		if(fmt[i++] == '%'){
-			int fin;
-			enum printf_attr attr;
-			expr *e;
-
 			if(i == len){
 				where strloc = *w;
 				strloc.chr += i + 1; /* +1 since we start on the '(' */
@@ -116,31 +176,10 @@ static void format_check_printf_str(
 				continue;
 			}
 
-recheck:
-			attr = 0;
-			fin = 0;
-			do switch(fmt[i]){
-				 case 'l':
-					/* TODO: multiple check.. */
-					attr |= printf_attr_long;
-
-				case '1': case '2': case '3':
-				case '4': case '5': case '6':
-				case '7': case '8': case '9':
-
-				case '0': case '#': case '-':
-				case ' ': case '+': case '.':
-
-				case 'h': case 'L':
-					i++;
-					break;
-				default:
-					fin = 1;
-			}while(!fin);
-
-			/* don't check for format(printf, $x, 0) */
+			/* don't check for format(printf, ..., 0) */
 			if(var_idx != -1){
-				e = args[var_idx + n_arg++];
+				expr *e = args[var_idx + n_arg++];
+				enum printf_attr attr = printf_modifiers(fmt, &i);
 
 				if(!e){
 					cc1_warn_at(w, attr_printf_bad,
@@ -151,10 +190,10 @@ recheck:
 				format_check_printf_1(fmt[i], e->tree_type, &e->where, attr);
 			}
 
-			if(fmt[i] == '*'){
+			/*if(fmt[i] == '*'){
 				i++;
 				goto recheck;
-			}
+			}*/
 		}
 	}
 
