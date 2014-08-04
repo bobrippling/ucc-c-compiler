@@ -555,6 +555,25 @@ static void warnings_set(int to)
 	memset(&cc1_warning, to, sizeof cc1_warning);
 }
 
+static void warning_pedantic(int set)
+{
+	/* warn about extensions */
+	cc1_warning.gnu_expr_stmt =
+	cc1_warning.gnu_typeof =
+	cc1_warning.gnu_attribute =
+	cc1_warning.gnu_init_array_range =
+	cc1_warning.gnu_case_range =
+
+	cc1_warning.nonstd_arraysz =
+	cc1_warning.nonstd_init =
+
+	cc1_warning.x__func__init =
+	cc1_warning.typedef_fnimpl =
+	cc1_warning.flexarr_only =
+	cc1_warning.decl_nodecl =
+		set;
+}
+
 static void warning_all(void)
 {
 	warnings_set(1);
@@ -575,6 +594,7 @@ static void warning_init(void)
 {
 	/* default to -Wall */
 	warning_all();
+	warning_pedantic(0);
 }
 
 static void warning_special(enum warning_special type)
@@ -693,6 +713,9 @@ int main(int argc, char **argv)
 
 		}else if(!strcmp(argv[i], "-Werror")){
 			werror = 1;
+
+		}else if(!strcmp(argv[i], "-pedantic")){
+			warning_pedantic(1);
 
 		}else if(argv[i][0] == '-'
 		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){

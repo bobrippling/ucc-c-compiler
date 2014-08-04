@@ -61,6 +61,11 @@ struct cc1_warning
 	unsigned char flexarr_only;
 	unsigned char format;
 	unsigned char funcall_argcount;
+	unsigned char gnu_expr_stmt;
+	unsigned char gnu_typeof;
+	unsigned char gnu_attribute;
+	unsigned char gnu_init_array_range;
+	unsigned char gnu_case_range;
 	unsigned char ignored_late_decl;
 	unsigned char implicit_func;
 	unsigned char implicit_int;

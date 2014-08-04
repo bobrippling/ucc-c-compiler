@@ -1,4 +1,4 @@
-// RUN: %check %s -Wall
+// RUN: %check %s -Wuncalled-macro
 // RUN: %ocheck 1 %s
 
 #define f(x) x+1

@@ -171,6 +171,7 @@ static type *parse_type_sue(
 void parse_add_attr(attribute **append, symtable *scope)
 {
 	while(accept(token_attribute)){
+		cc1_warn_at(NULL, gnu_attribute, "use of GNU __attribute__");
 		EAT(token_open_paren);
 		EAT(token_open_paren);
 
@@ -455,6 +456,8 @@ static type *parse_btype(
 		}else if(accept(token_typeof)){
 			if(primitive_mode != NONE)
 				die_at(NULL, "typeof specifier after previous specifier");
+
+			cc1_warn_at(NULL, gnu_typeof, "use of GNU typeof()");
 
 			tdef_typeof = parse_expr_sizeof_typeof_alignof(what_typeof, scope);
 			primitive_mode = TYPEOF;

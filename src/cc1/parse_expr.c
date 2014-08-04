@@ -9,6 +9,7 @@
 #include "parse_expr.h"
 #include "parse_stmt.h"
 #include "cc1_where.h"
+#include "warn.h"
 
 #include "tokenise.h"
 #include "tokconv.h"
@@ -256,7 +257,10 @@ static expr *parse_expr_primary(symtable *scope, int static_ctx)
 
 				}else if(curtok == token_open_block){
 					/* ({ ... }) */
+					cc1_warn_at(NULL, gnu_expr_stmt, "use of GNU expression-statement");
+
 					e = expr_new_stmt(parse_stmt_block(scope, NULL));
+
 				}else{
 					/* mark as being inside parens, for if((x = 5)) checking */
 					e = parse_expr_exp(scope, static_ctx);

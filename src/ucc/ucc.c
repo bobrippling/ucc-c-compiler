@@ -565,6 +565,8 @@ word:
 						ADD_ARG(mode_compile);
 						ADD_ARG(mode_preproc);
 					}
+					else if(!strcmp(argv[i], "-pedantic"))
+						ADD_ARG(mode_compile);
 					else if(!strcmp(argv[i], "-nostdlib"))
 						gopts.nostdlib = 1;
 					else if(!strcmp(argv[i], "-nostartfiles"))
