@@ -81,7 +81,9 @@ static void callee_save_or_restore(
 	}
 }
 
-void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
+void out_func_epilogue(
+		out_ctx *octx, type *ty, char *end_dbg_lbl,
+		int *out_usedstack)
 {
 	out_blk *call_save_spill_blk = NULL;
 	out_blk *to_flush;
@@ -104,6 +106,8 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 		assert(octx->current_blk->type == BLK_UNINIT);
 		octx->current_blk->type = BLK_TERMINAL;
 	}
+
+	*out_usedstack = octx->used_stack;
 
 	/* space for spills */
 	if(octx->used_stack){

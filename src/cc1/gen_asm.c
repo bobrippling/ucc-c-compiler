@@ -144,7 +144,9 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
-			out_func_epilogue(octx, d->ref, end);
+			int stack_used;
+			out_func_epilogue(octx, d->ref, end, &stack_used);
+			arg_symtab->stack_used = stack_used;
 			free(end);
 		}
 

@@ -1,9 +1,11 @@
+// RUN: %ucc -g %s -o %t
+
 f()
 {
 	return 5;
 }
 
-g(int i) // TODO: debug info indicates i is in %rdi
+g(int i)
 {
 	return 6;
 }

@@ -52,6 +52,7 @@ struct symtable
 	 *
 	 * internal_nest marks if it is so, for duplicate checking
 	 */
+	unsigned stack_used : 1; /* function symtab - used stack? */
 
 	decl *in_func; /* for r/w checks on args and return-type checks */
 

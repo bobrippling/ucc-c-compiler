@@ -248,7 +248,7 @@ static struct DIE *dwarf_suetype(
 		type *suety);
 
 static struct DIE **dwarf_formal_params(
-		struct DIE_compile_unit *cu, funcargs *args);
+		struct DIE_compile_unit *cu, funcargs *args, int show_arg_locns);
 
 static struct DIE *dwarf_type_die(
 		struct DIE_compile_unit *cu,
@@ -580,7 +580,8 @@ static struct DIE *dwarf_type_die(
 
 			dwarf_attr(tydie, DW_AT_prototyped, DW_FORM_flag, &flag);
 
-			dwarf_children(tydie, dwarf_formal_params(cu, ty->bits.func.args));
+			dwarf_children(tydie,
+					dwarf_formal_params(cu, ty->bits.func.args, /*args_in_regs:*/1));
 			break;
 		}
 
@@ -771,7 +772,7 @@ static struct DIE *dwarf_suetype(
 }
 
 static struct DIE **dwarf_formal_params(
-		struct DIE_compile_unit *cu, funcargs *args)
+		struct DIE_compile_unit *cu, funcargs *args, int args_in_regs)
 {
 	struct DIE **dieargs = NULL;
 	size_t i;
@@ -784,18 +785,20 @@ static struct DIE **dwarf_formal_params(
 		dwarf_set_DW_AT_type(param, cu, NULL, d->ref);
 
 		if(d->spel){
-			struct dwarf_block *locn = umalloc(sizeof *locn);
-			struct dwarf_block_ent *locn_data = umalloc(2 * sizeof *locn_data);
+			if(!args_in_regs){
+				struct dwarf_block *locn = umalloc(sizeof *locn);;
+				struct dwarf_block_ent *locn_data = umalloc(2 * sizeof *locn_data);
 
-			locn_data[0].type = BLOCK_HEADER;
-			/* FIXME: omit for -fomit-frame-ptr ones... or %rdi, etc? */
-			locn_data[0].bits.v =  DW_OP_breg6; /* rbp */
-			locn_data[1].type = BLOCK_LEB128_S;
-			locn_data[1].bits.v = d->sym->loc.arg_offset;
+				locn_data[0].type = BLOCK_HEADER;
+				locn_data[0].bits.v = DW_OP_breg6; /* rbp */
+				locn_data[1].type = BLOCK_LEB128_S;
+				locn_data[1].bits.v = d->sym->loc.arg_offset;
 
-			locn->cnt = 2;
-			locn->ents = locn_data;
-			dwarf_attr(param, DW_AT_location, DW_FORM_block1, locn);
+				locn->cnt = 2;
+				locn->ents = locn_data;
+
+				dwarf_attr(param, DW_AT_location, DW_FORM_block1, locn);
+			}
 
 			dwarf_attr(param, DW_AT_name, DW_FORM_string, d->spel);
 		}
@@ -1041,10 +1044,13 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 			/*show_extern:*/1);
 
 	if(d->bits.func.code){
+		symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
+
 		dwarf_attr(subprog, DW_AT_low_pc, DW_FORM_addr, ustrdup(asmsp));
 		dwarf_attr(subprog, DW_AT_high_pc, DW_FORM_addr, out_dbg_func_end(asmsp));
 
-		dwarf_children(subprog, dwarf_formal_params(cu, args));
+		dwarf_children(subprog,
+				dwarf_formal_params(cu, args, !arg_symtab->stack_used));
 
 		dwarf_symtable_scope(cu, subprog,
 				d->bits.func.code->symtab,
