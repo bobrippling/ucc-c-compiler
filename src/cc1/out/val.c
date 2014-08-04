@@ -80,7 +80,7 @@ static void v_decay_flag(out_ctx *octx, const out_val *flag)
 	out_val_retain(octx, flag);
 }
 
-void v_decay_flags(out_ctx *octx)
+void v_decay_flags_except(out_ctx *octx, const out_val *except[])
 {
 	if(!octx->check_flags)
 		return;
@@ -92,12 +92,35 @@ void v_decay_flags(out_ctx *octx)
 			out_val *v = &iter->val;
 
 			if(v->retains > 0 && v->type == V_FLAG){
-				out_comment(octx, "saving flag");
-				v_decay_flag(octx, v);
+				const out_val **vi;
+				int found = 0;
+
+				for(vi = except; vi && *vi; vi++){
+					if(v == *vi){
+						found = 1;
+						break;
+					}
+				}
+
+				if(!found){
+					out_comment(octx, "saving flag");
+					v_decay_flag(octx, v);
+				}
 			}
 		}
 	}
 	octx->check_flags = 1;
+}
+
+void v_decay_flags_except1(out_ctx *octx, const out_val *except)
+{
+	const out_val *ar[] = { except, NULL };
+	v_decay_flags_except(octx, ar);
+}
+
+void v_decay_flags(out_ctx *octx)
+{
+	v_decay_flags_except(octx, NULL);
 }
 
 static out_val *v_dup(out_ctx *octx, const out_val *from, type *ty)

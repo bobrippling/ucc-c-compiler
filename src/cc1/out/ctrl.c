@@ -20,7 +20,7 @@ void out_ctrl_branch(
 		const out_val *cond,
 		out_blk *if_true, out_blk *if_false)
 {
-	v_decay_flags(octx);
+	v_decay_flags_except1(octx, cond);
 
 	impl_branch(octx,
 			cond, if_true, if_false,
@@ -136,7 +136,7 @@ void out_ctrl_transfer_exp(out_ctx *octx, const out_val *addr)
 {
 	assert(addr->retains == 1); /* don't want this changing under us */
 
-	v_decay_flags(octx);
+	v_decay_flags_except1(octx, addr);
 
 	impl_jmp_expr(octx, addr); /* must jump now, while we have octx */
 
