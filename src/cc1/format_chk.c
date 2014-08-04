@@ -154,13 +154,37 @@ static enum printf_attr printf_modifiers(
 	}
 }
 
+static void format_check_printf_arg(
+		char fmt,
+		where *strloc,
+		expr ***current_arg, enum printf_attr attr)
+{
+	expr *e = **current_arg;
+
+	if(!e){
+		cc1_warn_at(strloc, attr_printf_bad,
+				"too few arguments for format (%%%c)", fmt);
+		return;
+	}
+
+	/* place us on the format char */
+	strloc->chr++;
+
+	format_check_printf_1(fmt, e->tree_type, &e->where, strloc, attr);
+
+	++*current_arg;
+}
+
 static void format_check_printf_str(
 		expr **args,
 		const char *fmt, const int len,
-		int var_idx, where *parenloc)
+		const int var_idx, where *parenloc)
 {
-	int n_arg = 0;
+	expr **current_arg = args;
 	int i;
+
+	for(i = var_idx; *current_arg && i > 0; i--)
+		current_arg++;
 
 	for(i = 0; i < len && fmt[i];){
 		if(fmt[i++] == '%'){
@@ -179,30 +203,33 @@ static void format_check_printf_str(
 
 			/* don't check for format(printf, ..., 0) */
 			if(var_idx != -1){
-				expr *e = args[var_idx + n_arg++];
 				enum printf_attr attr = printf_modifiers(fmt, &i);
 
-				if(!e){
-					cc1_warn_at(parenloc, attr_printf_bad,
-							"too few arguments for format (%%%c)", fmt[i]);
-					break;
-				}
-
-				/* place us on the format char */
-				strloc.chr++;
-
-				format_check_printf_1(fmt[i], e->tree_type, &e->where, &strloc, attr);
+				format_check_printf_arg(
+						fmt[i],
+						&strloc,
+						&current_arg,
+						attr);
+				i++;
 			}
 
-			/*if(fmt[i] == '*'){
+			if(fmt[i] == '*'){
+				if(var_idx != -1){
+					enum printf_attr attr = printf_modifiers(fmt, &i);
+
+					format_check_printf_arg(
+							fmt[i],
+							&strloc,
+							&current_arg,
+							attr);
+				}
 				i++;
-				goto recheck;
-			}*/
+			}
 		}
 	}
 
-	if(var_idx != -1 && (!fmt[i] || i == len) && args[var_idx + n_arg]){
-		cc1_warn_at(&args[var_idx + n_arg]->where, attr_printf_toomany,
+	if(var_idx != -1 && (!fmt[i] || i == len) && *current_arg){
+		cc1_warn_at(&(*current_arg)->where, attr_printf_toomany,
 				"too many arguments for format");
 	}
 }
