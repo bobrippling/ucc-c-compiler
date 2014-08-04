@@ -1091,6 +1091,12 @@ static type *parse_type_declarator(
 				}
 				assert(ty->type == type_array);
 				assert(ty->bits.array.is_vla == i->bits.array.is_vla);
+
+				if(i->bits.array.is_static && i->prev){
+					fold_had_error = 1;
+					warn_at_print_error(&i->where,
+							"static in non outermost array type");
+				}
 				break;
 			case PARSED_FUNC:
 				ty = type_func_of(
