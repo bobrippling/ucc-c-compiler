@@ -94,6 +94,7 @@ struct cc1_warning
 	unsigned char op_shift_bad;
 	unsigned char overlarge_enumerator;
 	unsigned char pad;
+	unsigned char parse_extra_semi;
 	unsigned char parse_precedence;
 	unsigned char predecl_enum;
 	unsigned char private_struct;
