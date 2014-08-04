@@ -202,7 +202,8 @@ static struct warn_str
 
 	{ "omitted-param-types", &cc1_warning.omitted_param_types },
 	{ "undefined-shift", &cc1_warning.op_shift_bad },
-	{ "overlarge-enumerator", &cc1_warning.overlarge_enumerator },
+	{ "overlarge-enumerator-bitfield", &cc1_warning.overlarge_enumerator_bitfield },
+	{ "overlarge-enumerator-int", &cc1_warning.overlarge_enumerator_int },
 
 	{ "operator-precedence", &cc1_warning.parse_precedence },
 	{ "visibility", &cc1_warning.private_struct },
@@ -580,6 +581,7 @@ static void warning_pedantic(int set)
 	cc1_warning.typedef_fnimpl =
 	cc1_warning.flexarr_only =
 	cc1_warning.decl_nodecl =
+	cc1_warning.overlarge_enumerator_int =
 		set;
 }
 

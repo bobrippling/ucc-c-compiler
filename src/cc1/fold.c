@@ -526,7 +526,7 @@ static void fold_check_enum_bitfield(
 
 		if(integral_truncate_bits(val, bitwidth, NULL) != val)
 			cc1_warn_at(&mem->where,
-					overlarge_enumerator,
+					overlarge_enumerator_bitfield,
 					"enumerator %s (%lld) too large for its type (%s)",
 					mem->spel, val, d->spel);
 	}

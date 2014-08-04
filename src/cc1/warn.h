@@ -92,7 +92,8 @@ struct cc1_warning
 	unsigned char nonstd_init;
 	unsigned char omitted_param_types;
 	unsigned char op_shift_bad;
-	unsigned char overlarge_enumerator;
+	unsigned char overlarge_enumerator_bitfield;
+	unsigned char overlarge_enumerator_int;
 	unsigned char pad;
 	unsigned char parse_extra_semi;
 	unsigned char parse_precedence;
