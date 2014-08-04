@@ -57,6 +57,7 @@ type *type_is_array(type *); /* returns r->ref iff array */
 type *type_is_decayed_array(type *);
 type *type_is_func_or_block(type *);
 type *type_is_primitive(type *, enum type_primitive);
+type *type_is_primitive_anysign(type *ty, enum type_primitive);
 type *type_is_ptr(type *); /* returns r->ref iff ptr */
 type *type_is_ptr_or_block(type *);
 type *type_is_scalar(type *);
