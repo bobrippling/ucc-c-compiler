@@ -267,6 +267,7 @@ static struct
 	{ 'f',  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
 	{ 'f',  "dump-type-tree", FOPT_DUMP_TYPE_TREE },
 	{ 'f',  "asm", FOPT_EXT_KEYWORDS },
+	{ 'f',  "gnu-keywords", FOPT_EXT_KEYWORDS },
 	{ 'f',  "fold-const-vlas", FOPT_FOLD_CONST_VLAS },
 	{ 'f',  "show-warning-option", FOPT_SHOW_WARNING_OPTION },
 
