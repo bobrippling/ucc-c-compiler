@@ -159,6 +159,25 @@ type *type_is_primitive(type *r, enum type_primitive p)
 	return NULL;
 }
 
+type *type_is_primitive_anysign(type *ty, enum type_primitive p)
+{
+	enum type_primitive a, b;
+
+	ty = type_is(ty, type_btype);
+
+	if(!ty)
+		return NULL;
+
+	if(p == type_unknown)
+		return ty;
+
+	a = type_primitive_is_signed(p) ? TYPE_PRIMITIVE_TO_UNSIGNED(p) : p;
+	b = ty->bits.type->primitive;
+	b = type_primitive_is_signed(b) ? TYPE_PRIMITIVE_TO_UNSIGNED(b) : b;
+
+	return a == b ? ty : NULL;
+}
+
 type *type_is_ptr(type *r)
 {
 	r = type_is(r, type_ptr);
