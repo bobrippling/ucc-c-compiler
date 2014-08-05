@@ -50,6 +50,7 @@ int parse_and_fold(symtable_global *globals)
 	symtable_gasm **last_gasms = NULL;
 
 	while(curtok != token_eof){
+		where semi;
 		decl **new = NULL;
 		decl **di;
 		int cont;
@@ -80,6 +81,9 @@ int parse_and_fold(symtable_global *globals)
 
 		cont |= parse_add_gasms(&last_gasms);
 		dynarray_add_array(&globals->gasms, last_gasms);
+
+		while(accept_where(token_semicolon, &semi))
+			cc1_warn_at(NULL, parse_extra_semi, "extra ';' at global scope");
 
 		if(!cont)
 			break;

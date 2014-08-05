@@ -1,4 +1,4 @@
-// RUN: %check -e %s
+// RUN: %check -e %s -pedantic
 
 #define INT_MAX 2147483647
 
@@ -12,7 +12,7 @@ enum fine
 enum exceed
 {
 	A = INT_MAX,     // CHECK: !/warn|err/
-	B = INT_MAX + 1, // CHECK: error: enumerator value 2147483648 out of 'int' range
+	B = INT_MAX + 1, // CHECK: warning: enumerator value 2147483648 out of 'int' range
 };
 
 enum exceed_implicit

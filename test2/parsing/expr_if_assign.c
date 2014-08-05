@@ -7,5 +7,5 @@ f(int a, int b, int dir)
 		int x, y;
 	} c = { };
 
-	a & b ? c.x += dir : c.y += dir; // CHECK: error: assignment to int/if - not an lvalue
+	a & b ? c.x += dir : c.y += dir; // CHECK: error: compound assignment to int - not an lvalue
 }

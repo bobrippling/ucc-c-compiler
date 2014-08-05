@@ -364,6 +364,10 @@ static decl_init **decl_init_brace_up_array2(
 			const_fold(des->bits.range[0], &k[0]);
 
 			if(des->bits.range[1]){
+				cc1_warn_at(&des->bits.range[1]->where,
+						gnu_init_array_range,
+						"use of GNU array-range initialiser");
+
 				FOLD_EXPR(des->bits.range[1], stab);
 				const_fold(des->bits.range[1], &k[1]);
 			}else{

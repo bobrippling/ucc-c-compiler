@@ -25,7 +25,7 @@ while(@ARGV && $ARGV[0] !~ /^-/){
 	shift;
 }
 
-die "no matches"
+die "no matches given"
 unless @matches;
 
 my @flags = @ARGV;

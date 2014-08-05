@@ -28,8 +28,8 @@ struct out_ctx
 	int var_stack_sz, max_stack_sz;
 	int stack_n_alloc; /* just the alloc_n() part */
 
-	int in_prologue;
-	int check_flags;
+	unsigned check_flags : 1; /* decay flags? */
+	unsigned in_prologue : 1, used_stack : 1;
 
 	/* we won't reserve it more than 255 times */
 	unsigned char *reserved_regs;

@@ -19,12 +19,12 @@
 #include "stmt.h"
 #include "vla.h"
 #include "type_is.h"
+#include "out/dbg.h"
 #include "gen_asm.h"
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
 #include "gen_style.h"
-#include "out/dbg.h"
 #include "out/val.h"
 #include "out/ctx.h"
 
@@ -208,7 +208,9 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
-			out_func_epilogue(octx, d->ref, end);
+			int stack_used;
+			out_func_epilogue(octx, d->ref, end, &stack_used);
+			arg_symtab->stack_used = stack_used;
 			free(end);
 		}
 
@@ -302,11 +304,16 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 	gen_asm_global(d, octx);
 }
 
-void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
+void gen_asm(
+		symtable_global *globs,
+		const char *fname, const char *compdir,
+		struct out_dbg_filelist **pfilelist)
 {
 	decl **diter;
 	struct symtable_gasm **iasm = globs->gasms;
 	out_ctx *octx = out_ctx_new();
+
+	*pfilelist = NULL;
 
 	for(diter = globs->stab.decls; diter && *diter; diter++){
 		decl *d = *diter;
@@ -326,8 +333,10 @@ void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 
 	gen_stringlits(globs->literals);
 
-	if(cc1_gdebug && globs->stab.decls)
+	if(cc1_gdebug && globs->stab.decls){
+		*pfilelist = octx->dbg.file_head;
 		out_dbginfo(globs, &octx->dbg.file_head, fname, compdir);
+	}
 
 	out_ctx_end(octx);
 }

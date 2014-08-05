@@ -77,12 +77,16 @@ static void out_wipe_blks(out_ctx *octx)
 	out_blk_uniq(octx->epilogue_blk, uniq_blks);
 	out_blk_uniq(octx->first_blk, uniq_blks);
 
+	/* add in case we don't flow from .first_blk: */
+	out_blk_uniq(octx->second_blk, uniq_blks);
+
 	for(i = 0; (b = dynmap_key(out_blk *, uniq_blks, i)); i++)
 		blk_free(b);
 
 	dynmap_free(uniq_blks);
 
 	octx->first_blk =
+	octx->second_blk =
 	octx->current_blk =
 	octx->epilogue_blk =
 	octx->last_used_blk = NULL;

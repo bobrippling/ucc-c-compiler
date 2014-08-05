@@ -4,5 +4,5 @@ main()
 {
 	int x[2];
 
-	x = 3; // CHECK: error: assignment to int[2]/identifier - not an lvalue
+	x = 3; // CHECK: error: assignment to int[2] - not an lvalue
 }

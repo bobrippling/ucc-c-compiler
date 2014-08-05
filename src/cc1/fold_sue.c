@@ -106,12 +106,12 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 				oob = v > UCC_INT_MAX; /* int max - stick to int, not uint */
 
 			if(oob){
-				warn_at_print_error(&m->where,
+				cc1_warn_at(&m->where,
+						overlarge_enumerator_int,
 						negative
 						? "enumerator value %" NUMERIC_FMT_D " out of 'int' range"
 						: "enumerator value %" NUMERIC_FMT_U " out of 'int' range",
-						integral_truncate(v, type_primitive_size(type_int), NULL));
-				fold_had_error = 1;
+						v);
 			}
 		}
 

@@ -1,4 +1,4 @@
-// RUN: %check -e %s
+// RUN: %check -e %s -pedantic
 
 int; // CHECK: warning: declaration doesn't declare anything
 // CHECK: ^!/error/

@@ -12,10 +12,13 @@
 #include "../util/util.h"
 #include "../util/platform.h"
 #include "../util/math.h"
+#include "../util/dynarray.h"
 
 #include "tokenise.h"
 #include "cc1.h"
 #include "fold.h"
+#include "out/asm.h" /* NUM_SECTIONS */
+#include "out/dbg.h" /* dbg_out_filelist() */
 #include "gen_asm.h"
 #include "gen_str.h"
 #include "gen_style.h"
@@ -37,6 +40,8 @@ enum warning_special
 {
 	W_ALL, W_EXTRA, W_EVERYTHING
 };
+
+static const char **system_includes;
 
 static struct warn_str
 {
@@ -126,7 +131,7 @@ static struct warn_str
 	{ "attr-section-badchar", &cc1_warning.attr_section_badchar },
 	{ "attr-sentinel", &cc1_warning.attr_sentinel },
 	{ "attr-sentinel-nonvariadic", &cc1_warning.attr_sentinel_nonvariadic },
-	{ "attr-unknown", &cc1_warning.attr_unknown },
+	{ "attr-unknown-on-label", &cc1_warning.lbl_attr_unknown },
 	{ "attr-unused-used", &cc1_warning.attr_unused_used },
 	{ "attr-unused-voidfn", &cc1_warning.attr_unused_voidfn },
 
@@ -178,7 +183,7 @@ static struct warn_str
 	{ "init-override", &cc1_warning.init_override },
 
 
-	{ "unknown-attribute", &cc1_warning.lbl_attr_unknown },
+	{ "unknown-attribute", &cc1_warning.attr_unknown },
 	{ "unused-label", &cc1_warning.lbl_unused },
 
 	{ "long-long", &cc1_warning.long_long },
@@ -197,7 +202,8 @@ static struct warn_str
 
 	{ "omitted-param-types", &cc1_warning.omitted_param_types },
 	{ "undefined-shift", &cc1_warning.op_shift_bad },
-	{ "overlarge-enumerator", &cc1_warning.overlarge_enumerator },
+	{ "overlarge-enumerator-bitfield", &cc1_warning.overlarge_enumerator_bitfield },
+	{ "overlarge-enumerator-int", &cc1_warning.overlarge_enumerator_int },
 
 	{ "operator-precedence", &cc1_warning.parse_precedence },
 	{ "visibility", &cc1_warning.private_struct },
@@ -264,10 +270,13 @@ static struct
 	{ 'f',  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
 	{ 'f',  "dump-type-tree", FOPT_DUMP_TYPE_TREE },
 	{ 'f',  "asm", FOPT_EXT_KEYWORDS },
+	{ 'f',  "gnu-keywords", FOPT_EXT_KEYWORDS },
 	{ 'f',  "fold-const-vlas", FOPT_FOLD_CONST_VLAS },
 	{ 'f',  "show-warning-option", FOPT_SHOW_WARNING_OPTION },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
+	{ 'm',  "32", MOPT_32 },
+	{ 'm',  "64", ~MOPT_32 },
 
 	{ 0,  NULL, 0 }
 };
@@ -375,12 +384,30 @@ static void show_warn_option(unsigned char *pwarn)
 	}
 }
 
+int where_in_sysheader(where *w)
+{
+	const char **i;
+	for(i = system_includes; i && *i; i++)
+		if(!strncmp(w->fname, *i, strlen(*i)))
+			return 1;
+
+	return 0;
+}
+
 #undef cc1_warn_at
 void cc1_warn_at(
 		struct where *where, unsigned char *pwarn,
 		const char *fmt, ...)
 {
 	va_list l;
+	struct where backup;
+
+	if(!where)
+		where = where_cc1_current(&backup);
+
+	/* don't emit warnings from system headers */
+	if(where_in_sysheader(where))
+		return;
 
 	va_start(l, fmt);
 	vwarn(where, 0, fmt, l);
@@ -493,34 +520,41 @@ static void gen_backend(symtable_global *globs, const char *fname)
 		case BACKEND_STYLE:
 			gf = gen_style;
 			if(0){
-				case BACKEND_PRINT:
-					gf = gen_str;
+		case BACKEND_PRINT:
+				gf = gen_str;
 			}
 			gf(globs);
 			break;
 
 		case BACKEND_ASM:
-			{
-				char buf[4096];
-				char *compdir;
+		{
+			char buf[4096];
+			char *compdir;
+			struct out_dbg_filelist *filelist;
 
-				compdir = getcwd(NULL, 0);
-				if(!compdir){
-					/* no auto-malloc */
-					compdir = getcwd(buf, sizeof(buf)-1);
-					/* PATH_MAX may not include the  ^ nul byte */
-					if(!compdir)
-						die("getcwd():");
-				}
-
-				gen_asm(globs,
-						cc1_first_fname ? cc1_first_fname : fname,
-						compdir);
-
-				if(compdir != buf)
-					free(compdir);
-				break;
+			compdir = getcwd(NULL, 0);
+			if(!compdir){
+				/* no auto-malloc */
+				compdir = getcwd(buf, sizeof(buf)-1);
+				/* PATH_MAX may not include the  ^ nul byte */
+				if(!compdir)
+					die("getcwd():");
 			}
+
+			gen_asm(globs,
+					cc1_first_fname ? cc1_first_fname : fname,
+					compdir,
+					&filelist);
+
+			/* filelist needs to be output first */
+			if(filelist && cc1_gdebug)
+				dbg_out_filelist(filelist, cc1_out);
+
+
+			if(compdir != buf)
+				free(compdir);
+			break;
+		}
 	}
 
 	io_fin(gf == NULL, fname);
@@ -529,6 +563,26 @@ static void gen_backend(symtable_global *globs, const char *fname)
 static void warnings_set(int to)
 {
 	memset(&cc1_warning, to, sizeof cc1_warning);
+}
+
+static void warning_pedantic(int set)
+{
+	/* warn about extensions */
+	cc1_warning.gnu_expr_stmt =
+	cc1_warning.gnu_typeof =
+	cc1_warning.gnu_attribute =
+	cc1_warning.gnu_init_array_range =
+	cc1_warning.gnu_case_range =
+
+	cc1_warning.nonstd_arraysz =
+	cc1_warning.nonstd_init =
+
+	cc1_warning.x__func__init =
+	cc1_warning.typedef_fnimpl =
+	cc1_warning.flexarr_only =
+	cc1_warning.decl_nodecl =
+	cc1_warning.overlarge_enumerator_int =
+		set;
 }
 
 static void warning_all(void)
@@ -551,6 +605,7 @@ static void warning_init(void)
 {
 	/* default to -Wall */
 	warning_all();
+	warning_pedantic(0);
 }
 
 static void warning_special(enum warning_special type)
@@ -670,6 +725,9 @@ int main(int argc, char **argv)
 		}else if(!strcmp(argv[i], "-Werror")){
 			werror = 1;
 
+		}else if(!strcmp(argv[i], "-pedantic")){
+			warning_pedantic(1);
+
 		}else if(argv[i][0] == '-'
 		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
 			const char arg_ty = argv[i][1];
@@ -757,18 +815,9 @@ unrecognised:
 				goto usage;
 			}
 
-		}else if(!strncmp(argv[i], "-m", 2)){
-			int n;
-
-			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
-				fprintf(stderr, "-m needs either 32 or 64\n");
-				goto usage;
-			}
-
-			if(n == 32)
-				mopt_mode |= MOPT_32;
-			else
-				mopt_mode &= ~MOPT_32;
+		}else if(!strncmp(argv[i], "-I", 2)){
+			/* these are system headers only - we don't get the full set */
+			dynarray_add(&system_includes, (const char *)argv[i] + 2);
 
 		}else if(!fname){
 			fname = argv[i];
@@ -825,6 +874,8 @@ usage:
 
 	if(fopt_mode & FOPT_DUMP_TYPE_TREE)
 		type_nav_dump(cc1_type_nav);
+
+	dynarray_free(const char **, &system_includes, NULL);
 
 	return parsed_folded;
 }

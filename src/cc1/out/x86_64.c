@@ -552,9 +552,10 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	}
 }
 
-void impl_func_epilogue(out_ctx *octx, type *rf)
+void impl_func_epilogue(out_ctx *octx, type *rf, int clean_stack)
 {
-	out_asm(octx, "leaveq");
+	if(clean_stack)
+		out_asm(octx, "leaveq");
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
 		out_comment(octx, "stack at %u bytes", octx->max_stack_sz);

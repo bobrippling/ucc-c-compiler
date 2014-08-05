@@ -47,13 +47,12 @@ void bitfield_trunc_check(decl *mem, expr *from)
 	}
 }
 
-void expr_must_lvalue(expr *e)
+void expr_must_lvalue(expr *e, const char *desc)
 {
 	if(!expr_is_lval(e)){
 		fold_had_error = 1;
-		warn_at_print_error(&e->where, "assignment to %s/%s - not an lvalue",
-				type_to_str(e->tree_type),
-				e->f_str());
+		warn_at_print_error(&e->where, "%s to %s - not an lvalue",
+				desc, type_to_str(e->tree_type));
 	}
 }
 
@@ -94,7 +93,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 		return;
 	}
 
-	expr_must_lvalue(e->lhs);
+	expr_must_lvalue(e->lhs, "assignment");
 
 	if(!e->assign_is_init)
 		expr_assign_const_check(e->lhs, &e->where);

@@ -61,6 +61,11 @@ struct cc1_warning
 	unsigned char flexarr_only;
 	unsigned char format;
 	unsigned char funcall_argcount;
+	unsigned char gnu_expr_stmt;
+	unsigned char gnu_typeof;
+	unsigned char gnu_attribute;
+	unsigned char gnu_init_array_range;
+	unsigned char gnu_case_range;
 	unsigned char ignored_late_decl;
 	unsigned char implicit_func;
 	unsigned char implicit_int;
@@ -87,8 +92,10 @@ struct cc1_warning
 	unsigned char nonstd_init;
 	unsigned char omitted_param_types;
 	unsigned char op_shift_bad;
-	unsigned char overlarge_enumerator;
+	unsigned char overlarge_enumerator_bitfield;
+	unsigned char overlarge_enumerator_int;
 	unsigned char pad;
+	unsigned char parse_extra_semi;
 	unsigned char parse_precedence;
 	unsigned char predecl_enum;
 	unsigned char private_struct;
