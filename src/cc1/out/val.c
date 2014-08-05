@@ -68,6 +68,61 @@ out_val *v_new(out_ctx *octx, type *ty)
 	return v;
 }
 
+static void v_decay_flag(out_ctx *octx, const out_val *flag)
+{
+	const out_val *regged = v_to_reg(octx, flag);
+
+	if(regged == flag)
+		return;
+
+	out_val_overwrite((out_val *)flag, regged);
+	out_val_release(octx, regged);
+	out_val_retain(octx, flag);
+}
+
+void v_decay_flags_except(out_ctx *octx, const out_val *except[])
+{
+	if(!octx->check_flags)
+		return;
+	octx->check_flags = 0;
+	{
+		out_val_list *iter;
+
+		for(iter = octx->val_head; iter; iter = iter->next){
+			out_val *v = &iter->val;
+
+			if(v->retains > 0 && v->type == V_FLAG){
+				const out_val **vi;
+				int found = 0;
+
+				for(vi = except; vi && *vi; vi++){
+					if(v == *vi){
+						found = 1;
+						break;
+					}
+				}
+
+				if(!found){
+					out_comment(octx, "saving flag");
+					v_decay_flag(octx, v);
+				}
+			}
+		}
+	}
+	octx->check_flags = 1;
+}
+
+void v_decay_flags_except1(out_ctx *octx, const out_val *except)
+{
+	const out_val *ar[] = { except, NULL };
+	v_decay_flags_except(octx, ar);
+}
+
+void v_decay_flags(out_ctx *octx)
+{
+	v_decay_flags_except(octx, NULL);
+}
+
 static out_val *v_dup(out_ctx *octx, const out_val *from, type *ty)
 {
 	switch(from->type){
@@ -190,6 +245,8 @@ out_val *v_new_sp(out_ctx *octx, const out_val *from)
 	r.is_float = 0;
 	r.idx = REG_SP;
 
+	octx->used_stack = 1;
+
 	return v_new_reg(octx, from, type_nav_voidptr(cc1_type_nav), &r);
 }
 
@@ -276,6 +333,16 @@ void out_val_overwrite(out_val *d, const out_val *s)
 	d->t = s->t;
 	d->bitfield = s->bitfield;
 	d->bits = s->bits;
+}
+
+const out_val *out_annotate_likely(
+		out_ctx *octx, const out_val *val, int unlikely)
+{
+	out_val *mut = v_dup_or_reuse(octx, val, val->t);
+
+	mut->flags |= unlikely ? VAL_FLAG_UNLIKELY : VAL_FLAG_LIKELY;
+
+	return mut;
 }
 
 int vreg_eq(const struct vreg *a, const struct vreg *b)

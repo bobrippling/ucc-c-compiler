@@ -17,13 +17,14 @@
 #include "const.h"
 #include "expr.h"
 #include "stmt.h"
+#include "vla.h"
 #include "type_is.h"
+#include "out/dbg.h"
 #include "gen_asm.h"
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
 #include "gen_style.h"
-#include "out/dbg.h"
 #include "out/val.h"
 #include "out/ctx.h"
 
@@ -99,6 +100,56 @@ static void assign_arg_offsets(
 	}
 }
 
+static void allocate_vla_args(
+		out_ctx *octx, symtable *arg_symtab, unsigned const auto_space)
+{
+	unsigned current_off = auto_space;
+	decl **i;
+
+	for(i = arg_symtab->decls; i && *i; i++){
+		const out_val *dest, *src;
+		decl *d = *i;
+		type *decayed;
+		int orig_off;
+
+		/* generate side-effects even if it's decayed, e.g.
+		 * f(int p[E1][E2])
+		 * ->
+		 * f(int (*p)[E2])
+		 *
+		 * we still want E1 generated
+		 */
+		if((decayed = type_is_decayed_array(d->ref))
+		&& (decayed = type_is_vla(decayed, VLA_TOP_DIMENSION)))
+		{
+			out_val_consume(octx, gen_expr(decayed->bits.array.size, octx));
+		}
+
+		if(!type_is_variably_modified(d->ref))
+			continue;
+
+		/* this array argument is a VLA and needs more size than
+		 * just its pointer. we move it to a place on the stack where
+		 * we have more space. debug output is unaffected, since we
+		 * don't touch the original pointer value, which is all it needs */
+		src = out_new_sym_val(octx, d->sym);
+
+		orig_off = d->sym->loc.arg_offset;
+
+		current_off += vla_decl_space(d);
+		d->sym->loc.arg_offset = -(int)current_off - octx->stack_local_offset;
+
+		out_comment(octx, "move vla argument %s (%d -> %d)",
+				d->spel, orig_off, d->sym->loc.arg_offset);
+
+		dest = out_new_sym(octx, d->sym);
+		out_store(octx, dest, src);
+
+
+		vla_alloc_decl(d, octx);
+	}
+}
+
 static void gen_asm_global(decl *d, out_ctx *octx)
 {
 	attribute *sec;
@@ -116,6 +167,8 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		const char *sp;
 		int *offsets;
 		symtable *arg_symtab;
+		unsigned arg_vla_space = 0;
+		unsigned auto_space;
 
 		if(!d->bits.func.code)
 			return;
@@ -123,16 +176,25 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		out_dbg_where(octx, &d->where);
 
 		arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
-		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++)
-			if((*aiter)->sym->type == sym_arg)
+		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++){
+			decl *d = *aiter;
+
+			if(d->sym->type == sym_arg){
 				nargs++;
+
+				if(type_is_variably_modified(d->ref))
+					arg_vla_space += vla_decl_space(d);
+			}
+		}
 
 		offsets = nargs ? umalloc(nargs * sizeof *offsets) : NULL;
 
 		sp = decl_asm_spel(d);
 
+		auto_space = d->bits.func.code->symtab->auto_total_size;
+
 		out_func_prologue(octx, sp, d->ref,
-				d->bits.func.code->symtab->auto_total_size,
+				auto_space + arg_vla_space,
 				nargs,
 				is_vari = type_is_variadic_func(d->ref),
 				offsets, &d->bits.func.var_offset);
@@ -156,6 +218,8 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 								symtab_root(arg_symtab)))));
 		}
 
+		allocate_vla_args(octx, arg_symtab, auto_space);
+
 		gen_stmt(d->bits.func.code, octx);
 
 		out_dump_retained(octx, d->spel);
@@ -164,7 +228,9 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
-			out_func_epilogue(octx, d->ref, end);
+			int stack_used;
+			out_func_epilogue(octx, d->ref, end, &stack_used);
+			arg_symtab->stack_used = stack_used;
 			free(end);
 		}
 
@@ -246,7 +312,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		 *
 		 * unless we're told to emit tenatives, e.g. local scope
 		 */
-		if(!emit_tenatives && !d->bits.var.init){
+		if(!emit_tenatives && !d->bits.var.init.dinit){
 			if(!emitted_type)
 				asm_predeclare_extern(d);
 			return;
@@ -258,11 +324,16 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 	gen_asm_global(d, octx);
 }
 
-void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
+void gen_asm(
+		symtable_global *globs,
+		const char *fname, const char *compdir,
+		struct out_dbg_filelist **pfilelist)
 {
 	decl **diter;
 	struct symtable_gasm **iasm = globs->gasms;
 	out_ctx *octx = out_ctx_new();
+
+	*pfilelist = NULL;
 
 	for(diter = globs->stab.decls; diter && *diter; diter++){
 		decl *d = *diter;
@@ -282,8 +353,10 @@ void gen_asm(symtable_global *globs, const char *fname, const char *compdir)
 
 	gen_stringlits(globs->literals);
 
-	if(cc1_gdebug && globs->stab.decls)
+	if(cc1_gdebug && globs->stab.decls){
+		*pfilelist = octx->dbg.file_head;
 		out_dbginfo(globs, &octx->dbg.file_head, fname, compdir);
+	}
 
 	out_ctx_end(octx);
 }

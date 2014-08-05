@@ -29,6 +29,8 @@ void fold_stmt_case_range(stmt *s)
 	if(lv >= rv)
 		die_at(&s->where, "case range equal or inverse");
 
+	cc1_warn_at(&s->where, gnu_case_range, "use of GNU case-range");
+
 	fold_stmt_and_add_to_curswitch(s);
 }
 

@@ -28,19 +28,20 @@ void fold_expr_comma(expr *e, symtable *stab)
 	FOLD_EXPR(e->lhs, stab);
 	fold_check_expr(
 			e->lhs,
-			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
 			"comma-expr");
 
 	FOLD_EXPR(e->rhs, stab);
 	fold_check_expr(
 			e->rhs,
-			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
+			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
 			"comma-expr");
 
 	e->tree_type = e->rhs->tree_type;
 
 	if(!e->lhs->freestanding && !type_is_void(e->lhs->tree_type))
-		warn_at(&e->lhs->where, "left hand side of comma is unused");
+		cc1_warn_at(&e->lhs->where, unused_comma,
+				"left hand side of comma is unused");
 
 	e->freestanding = e->rhs->freestanding;
 }

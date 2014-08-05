@@ -62,8 +62,15 @@ struct out_val
 
 	struct vbitfield
 	{
-		unsigned off, nbits;
+		unsigned short off, nbits;
 	} bitfield; /* !!width iif bitfield */
+	unsigned char flags;
+};
+
+enum
+{
+	VAL_FLAG_LIKELY = 1 << 0,
+	VAL_FLAG_UNLIKELY = 1 << 1,
 };
 
 const char *v_store_to_str(enum out_val_store);
@@ -91,5 +98,9 @@ out_val *v_new_reg(out_ctx *octx, const out_val *from, type *ty,
 		const struct vreg *reg);
 
 void out_val_overwrite(out_val *d, const out_val *s);
+
+void v_decay_flags_except(out_ctx *octx, const out_val *except[]);
+void v_decay_flags_except1(out_ctx *octx, const out_val *except);
+void v_decay_flags(out_ctx *octx);
 
 #endif

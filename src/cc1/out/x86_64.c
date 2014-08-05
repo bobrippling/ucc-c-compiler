@@ -552,9 +552,10 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	}
 }
 
-void impl_func_epilogue(out_ctx *octx, type *rf)
+void impl_func_epilogue(out_ctx *octx, type *rf, int clean_stack)
 {
-	out_asm(octx, "leaveq");
+	if(clean_stack)
+		out_asm(octx, "leaveq");
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
 		out_comment(octx, "stack at %u bytes", octx->max_stack_sz);
@@ -601,6 +602,8 @@ static const char *x86_cmp(const struct flag_opts *flag)
 		/*case flag_z:  return "z";
 		case flag_nz: return "nz";*/
 	}
+
+	assert(0 && "unreachable - unknown cmp");
 	return NULL;
 }
 
@@ -930,7 +933,7 @@ static void x86_reg_cp(
 		const struct vreg *from,
 		type *typ)
 {
-	assert(!impl_reg_frame_const(to, 1));
+	assert(!impl_reg_frame_const(to, /*disallow sp: alloca_pop needs this*/0));
 
 	if(vreg_eq(to, from))
 		return;
@@ -982,7 +985,16 @@ static const out_val *x86_idiv(
 		assert(r->type != V_REG
 				|| r->bits.regoff.reg.idx != X86_64_REG_RDX);
 
-		out_asm(octx, "cqto");
+		if(type_is_signed(r->t)){
+			out_asm(octx, "cqto");
+		}else{
+			/* unsigned - don't sign extend into rdx:
+			 * mov $0, %rdx */
+			out_flush_volatile(
+					octx, v_to_reg_given(
+						octx, out_new_zero(octx, r->t), &rdx));
+		}
+
 		out_asm(octx, "idiv%s %s",
 				x86_suffix(r->t),
 				vstack_str(r, 0));
@@ -1587,7 +1599,10 @@ void impl_jmp_expr(out_ctx *octx, const out_val *v)
 	out_val_consume(octx, v);
 }
 
-void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
+void impl_branch(
+		out_ctx *octx, const out_val *cond,
+		out_blk *bt, out_blk *bf,
+		int unlikely)
 {
 	switch(cond->type){
 		case V_REG:
@@ -1601,7 +1616,7 @@ void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 			out_asm(octx, "test %s, %s", rstr, rstr);
 			cmp = ustrprintf("jz %s", bf->lbl);
 
-			blk_terminate_condjmp(octx, cmp, bf, bt);
+			blk_terminate_condjmp(octx, cmp, bf, bt, unlikely);
 			break;
 		}
 
@@ -1636,7 +1651,7 @@ void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 				/* fall thru to false block */
 			}
 
-			blk_terminate_condjmp(octx, cmpjmp, bt, bf);
+			blk_terminate_condjmp(octx, cmpjmp, bt, bf, unlikely);
 			break;
 		}
 
@@ -1659,7 +1674,7 @@ void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
 					"normalise remained as spilt reg");
 
 			cond = out_normalise(octx, cond);
-			impl_branch(octx, cond, bt, bf);
+			impl_branch(octx, cond, bt, bf, unlikely);
 			break;
 	}
 }

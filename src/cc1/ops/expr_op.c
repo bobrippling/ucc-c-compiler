@@ -22,6 +22,7 @@
  */
 
 #define BOOLEAN_TYPE type_int
+#define SHOW_CONST_OP 0
 
 const char *str_expr_op()
 {
@@ -216,14 +217,47 @@ static void const_op_num_int(
 
 			int_r = const_op_exec(
 					l.bits.i, rhs ? &r.bits.i : NULL,
-					e->op, is_signed, &err);
+					e->op, e->tree_type, &err);
+
+			if(SHOW_CONST_OP){
+				if(rhs){
+					fprintf(stderr,
+							"const op: (%s) %lld %s %lld = %lld, is_signed=%d\n",
+							type_to_str(e->tree_type),
+							l.bits.i, op_to_str(e->op), r.bits.i,
+							int_r, is_signed);
+				}else{
+					fprintf(stderr,
+							"const op: (%s) %s %lld = %lld, is_signed=%d\n",
+							type_to_str(e->tree_type),
+							op_to_str(e->op), l.bits.i, int_r, is_signed);
+				}
+			}
 
 			if(err){
-				warn_at(&e->where, "%s", err);
+				cc1_warn_at(&e->where, constop_bad, "%s", err);
 				k->type = CONST_NO;
 			}else{
+				const btype *bt;
+
 				k->type = CONST_NUM;
 				k->bits.num.val.i = int_r;
+
+				if(!is_signed)
+					k->bits.num.suffix = VAL_UNSIGNED;
+
+				/* if no btype, we may be something like:
+				 * (int *)0 + 3 */
+				bt = type_get_type(e->tree_type);
+				switch(bt ? bt->primitive : type_unknown){
+					case type_long:
+						k->bits.num.suffix |= VAL_LONG;
+						break;
+					case type_llong:
+						k->bits.num.suffix |= VAL_LLONG;
+					default:
+						break;
+				}
 			}
 			break;
 		}
@@ -476,7 +510,9 @@ ptr_relation:
 				resolved = type_nav_btype(cc1_type_nav, BOOLEAN_TYPE);
 
 			}else{
-				die_at(w, "operation between two pointers must be relational or subtraction");
+				fold_had_error = 1;
+				warn_at_print_error(w, "operation between two pointers must be relational or subtraction");
+				resolved = type_nav_btype(cc1_type_nav, BOOLEAN_TYPE);
 			}
 
 			goto fin;
@@ -511,14 +547,16 @@ ptr_relation:
 
 				if(!type_is_complete(next)){
 					if(type_is_void(next)){
-						warn_at(w, "arithmetic on void pointer");
+						cc1_warn_at(w, arith_voidp, "arithmetic on void pointer");
 					}else{
-						die_at(w, "arithmetic on pointer to incomplete type %s",
+						warn_at_print_error(w,
+								"arithmetic on pointer to incomplete type %s",
 								type_to_str(next));
+						fold_had_error = 1;
 					}
 					/* TODO: note: type declared at resolved->where */
 				}else if(type_is(next, type_func)){
-					warn_at(w, "arithmetic on function pointer '%s'",
+					cc1_warn_at(w, arith_fnptr, "arithmetic on function pointer '%s'",
 							type_to_str(resolved));
 				}
 			}
@@ -575,13 +613,14 @@ ptr_relation:
 			const int l_sz = type_size(tlhs, &lhs->where),
 			          r_sz = type_size(trhs, &rhs->where);
 
+			/* want to warn regardless of checks - for enums */
+			fold_type_chk_warn(
+					tlhs, trhs,
+					w, op_to_str(op));
+
 			if(l_unsigned == r_unsigned){
 				if(l_sz != r_sz){
 					const int l_larger = l_sz > r_sz;
-
-					fold_type_chk_warn(
-							tlhs, trhs,
-							w, op_to_str(op));
 
 					*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
 
@@ -647,15 +686,19 @@ type *op_promote_types(
 	return resolved;
 }
 
-static expr *expr_is_array_cast(expr *e)
+static expr *expr_is_nonvla_casted_array(expr *e)
 {
 	expr *array = e;
+	type *test;
 
 	if(expr_kind(array, cast))
 		array = array->expr;
 
-	if(type_is(array->tree_type, type_array))
+	if((test = type_is(array->tree_type, type_array))
+	&& !test->bits.array.is_vla)
+	{
 		return array;
+	}
 
 	return NULL;
 }
@@ -670,11 +713,11 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 	if(e->op != op_plus && e->op != op_minus)
 		return 0;
 
-	array = expr_is_array_cast(e->lhs);
+	array = expr_is_nonvla_casted_array(e->lhs);
 	if(array)
 		lhs = 1;
 	else
-		array = expr_is_array_cast(e->rhs);
+		array = expr_is_nonvla_casted_array(e->rhs);
 
 	if(array && !type_is_incomplete_array(array->tree_type)){
 		consty k;
@@ -698,7 +741,8 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 				/* XXX: note */
 				char buf[WHERE_BUF_SIZ];
 
-				warn_at(&e->where,
+				cc1_warn_at(&e->where,
+						array_oob,
 						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld\n"
 						"%s: note: array declared here",
 						idx.val.i, (long)sz,
@@ -731,7 +775,8 @@ static int op_unsigned_cmp_check(expr *e)
 					const int v = k.bits.num.val.i;
 
 					if(v <= 0){
-						warn_at(&e->where,
+						cc1_warn_at(&e->where,
+								tautologic_unsigned,
 								"comparison of unsigned expression %s %d is always %s",
 								op_to_str(e->op), v,
 								e->op == op_lt || e->op == op_le ? "false" : "true");
@@ -757,7 +802,8 @@ static int msg_if_precedence(expr *sub, where *w,
 	&& (test ? (*test)(sub->op) : 1))
 	{
 		/* ==, !=, <, ... */
-		warn_at(w, "%s has higher precedence than %s",
+		cc1_warn_at(w, parse_precedence,
+				"%s has higher precedence than %s",
 				op_to_str(sub->op), op_to_str(binary));
 		return 1;
 	}
@@ -799,7 +845,9 @@ static int str_cmp_check(expr *e)
 		const_fold(e->rhs, &kr);
 
 		if(kl.type == CONST_STRK || kr.type == CONST_STRK){
-			warn_at(&e->rhs->where, "comparison with string literal is undefined");
+			cc1_warn_at(&e->rhs->where,
+					undef_strlitcmp,
+					"comparison with string literal is undefined");
 			return 1;
 		}
 	}
@@ -822,12 +870,16 @@ static int op_shift_check(expr *e)
 			if(type_is_signed(e->rhs->tree_type)
 			&& (sintegral_t)rhs.bits.num.val.i < 0)
 			{
-				warn_at(&e->rhs->where, "shift count is negative (%"
+				cc1_warn_at(&e->rhs->where,
+						op_shift_bad,
+						"shift count is negative (%"
 						NUMERIC_FMT_D ")", (sintegral_t)rhs.bits.num.val.i);
 
 				undefined = 1;
 			}else if(rhs.bits.num.val.i >= ty_sz){
-				warn_at(&e->rhs->where, "shift count >= width of %s (%u)",
+				cc1_warn_at(&e->rhs->where,
+						op_shift_bad,
+						"shift count >= width of %s (%u)",
 						type_to_str(e->lhs->tree_type), ty_sz);
 
 				undefined = 1;
@@ -893,7 +945,9 @@ void expr_check_sign(const char *desc,
 	&& type_is_scalar(lhs->tree_type) && type_is_scalar(rhs->tree_type)
 	&& type_is_signed(lhs->tree_type) != type_is_signed(rhs->tree_type))
 	{
-		warn_at(w, "signed and unsigned types in '%s'", desc);
+		cc1_warn_at(w,
+				signed_unsigned,
+				"signed and unsigned types in '%s'", desc);
 	}
 }
 
@@ -960,14 +1014,19 @@ void fold_expr_op(expr *e, symtable *stab)
 			case op_plus:
 			case op_minus:
 			case op_bnot:
-				fold_check_expr(
-						e->lhs,
-						(e->op == op_bnot ? FOLD_CHK_INTEGRAL : 0)
-							| FOLD_CHK_NO_ST_UN,
-						op_to_str(e->op));
+			{
+				enum fold_chk chk = FOLD_CHK_NO_ST_UN;
+
+				if(e->op == op_bnot)
+					chk |= FOLD_CHK_INTEGRAL;
+				else
+					chk |= FOLD_CHK_ARITHMETIC;
+
+				fold_check_expr(e->lhs, chk, op_to_str(e->op));
 
 				e->tree_type = e->lhs->tree_type;
 				break;
+			}
 		}
 	}
 }
@@ -1034,9 +1093,33 @@ static const out_val *op_shortcircuit(expr *e, out_ctx *octx)
 	}
 }
 
+void gen_op_trapv(type *evaltt, const out_val **eval, out_ctx *octx)
+{
+	if((fopt_mode & FOPT_TRAPV) == 0)
+		return;
+
+	if(!type_is_integral(evaltt) || !type_is_signed(evaltt))
+		return;
+
+	{
+		out_blk *land = out_blk_new(octx, "trapv_end");
+		out_blk *blk_undef = out_blk_new(octx, "travp_bad");
+
+		out_ctrl_branch(octx,
+				out_new_overflow(octx, eval),
+				blk_undef,
+				land);
+
+		out_current_blk(octx, blk_undef);
+		out_ctrl_end_undefined(octx);
+
+		out_current_blk(octx, land);
+	}
+}
+
 const out_val *gen_expr_op(expr *e, out_ctx *octx)
 {
-	const out_val *lhs, *rhs, *eval;
+	const out_val *lhs, *eval;
 
 	switch(e->op){
 		case op_orsc:
@@ -1052,34 +1135,19 @@ const out_val *gen_expr_op(expr *e, out_ctx *octx)
 
 	lhs = gen_expr(e->lhs, octx);
 
-	if(!e->rhs)
-		return out_op_unary(octx, e->op, lhs);
+	if(!e->rhs){
+		eval = out_op_unary(octx, e->op, lhs);
+	}else{
+		const out_val *rhs = gen_expr(e->rhs, octx);
 
-	rhs = gen_expr(e->rhs, octx);
+		eval = out_op(octx, e->op, lhs, rhs);
 
-	eval = out_op(octx, e->op, lhs, rhs);
-
-	/* make sure we get the pointer, for example 2+(int *)p
-	 * or the int, e.g. (int *)a && (int *)b -> int */
-	eval = out_change_type(octx, eval, e->tree_type);
-
-	if(fopt_mode & FOPT_TRAPV
-	&& type_is_integral(e->tree_type)
-	&& type_is_signed(e->tree_type))
-	{
-		out_blk *land = out_blk_new(octx, "trapv_end");
-		out_blk *blk_undef = out_blk_new(octx, "travp_bad");
-
-		out_ctrl_branch(octx,
-				out_new_overflow(octx, &eval),
-				blk_undef,
-				land);
-
-		out_current_blk(octx, blk_undef);
-		out_ctrl_end_undefined(octx);
-
-		out_current_blk(octx, land);
+		/* make sure we get the pointer, for example 2+(int *)p
+		 * or the int, e.g. (int *)a && (int *)b -> int */
+		eval = out_change_type(octx, eval, e->tree_type);
 	}
+
+	gen_op_trapv(e->tree_type, &eval, octx);
 
 	return eval;
 }

@@ -35,7 +35,8 @@ static const struct
 	{ "__STDC_NO_ATOMICS__" , "1" }, /* _Atomic */
 	{ "__STDC_NO_THREADS__" , "1" }, /* _Thread_local */
 	{ "__STDC_NO_COMPLEX__", "1" }, /* _Complex */
-	{ "__STDC_NO_VLA__", "1" }, /* vlas */
+
+	/*{ "__STDC_NO_VLA__", "1" }, vla are implemented */
 
 #define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
 
@@ -94,7 +95,6 @@ static const struct
 	const char *warn, *desc;
 	enum wmode or_mask;
 } warns[] = {
-	{ "all", "turn on all warnings", ~0U },
 	{ "traditional", "warn about # in the first column", WTRADITIONAL },
 	{ "undef", "warn about undefined macros in #if and #undef", WUNDEF_IN_IF | WUNDEF_NDEF },
 	{ "undef-in-if", "warn about undefined macros in #if/elif", WUNDEF_IN_IF },

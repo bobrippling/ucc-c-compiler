@@ -1,7 +1,21 @@
-// RUN: [ `%ucc %s -S -o- | grep 'mov.*[1234]' | wc -l` -eq 4 ]
-// RUN: %ucc %s -S -o- | grep 5; [ $? -ne 0 ]
+// RUN: %ocheck 0 %s
+
+f()
+{
+	abort();
+}
 
 main()
 {
-	int (*p)[] = (int[][2]){ 1, 2, { 3, 4, 5 } };
+	int (*p)[2] = (int[][2]){ 1, 2, { 3, 4, f() } };
+
+	if(p[0][0] != 1
+	|| p[0][1] != 2
+	|| p[1][0] != 3
+	|| p[1][1] != 4)
+	{
+		abort();
+	}
+
+	return 0;
 }

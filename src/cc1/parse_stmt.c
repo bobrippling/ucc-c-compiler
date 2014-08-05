@@ -58,8 +58,7 @@ static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 
 		d = parse_decl(
 				DECL_SPEL_NEED, 0,
-				init_scope, init_scope,
-				&t->flow->init_blk);
+				init_scope, init_scope);
 
 		UCC_ASSERT(d, "at decl, but no decl?");
 
@@ -183,11 +182,11 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 				DECL_MULTI_ALLOW_ALIGNAS | DECL_MULTI_ALLOW_STORE,
 				/*newdecl context:*/1,
 				subctx.scope, subctx.scope,
-				NULL, /*pinit_code:*/&sf->init_blk);
+				NULL);
 
 		if(got_decls){
 			if(cc1_std < STD_C99)
-				warn_at(NULL, "use of C99 for-init");
+				cc1_warn_at(NULL, c89_for_init, "use of C99 for-init");
 
 			stmt_for_got_decls(s);
 		}else{
@@ -280,7 +279,8 @@ static stmt *parse_label(const struct stmt_ctx *ctx)
 		if(ai->type == attr_unused)
 			lblstmt->bits.lbl.unused = 1;
 		else
-			warn_at(&ai->where,
+			cc1_warn_at(&ai->where,
+					lbl_attr_unknown,
 					"ignoring attribute \"%s\" on label",
 					attribute_to_str(ai));
 
@@ -304,24 +304,17 @@ static stmt *parse_stmt_and_decls(
 	parse_static_assert(subctx.scope);
 
 	while(1){
-		stmt *init_blk = NULL;
-
 		int new_group = parse_decl_group(
 				DECL_MULTI_ACCEPT_FUNC_DECL
 				| DECL_MULTI_ALLOW_STORE
 				| DECL_MULTI_ALLOW_ALIGNAS,
 				/*newdecl_context:*/1,
 				subctx.scope,
-				subctx.scope, NULL,
-				&init_blk);
+				subctx.scope, NULL);
 
 		if(new_group){
 			got_decls = 1;
-
-			if(init_blk)
-				dynarray_add(&code_stmt->bits.code.stmts, init_blk);
 		}else{
-			UCC_ASSERT(!init_blk, "inits but no decls?");
 			break;
 		}
 	}
@@ -370,7 +363,7 @@ static stmt *parse_stmt_and_decls(
 					static int warned = 0;
 					if(!warned){
 						warned = 1;
-						cc1_warn_at(&nest->where, 0, WARN_MIXED_CODE_DECLS,
+						cc1_warn_at(&nest->where, mixed_code_decls,
 								"mixed code and declarations");
 					}
 				}

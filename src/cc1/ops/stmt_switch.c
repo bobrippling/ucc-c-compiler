@@ -94,7 +94,8 @@ static void fold_switch_enum(
 
 	/* warn if we switch on an enum bitmask */
 	if(expr_attr_present(sw->expr, attr_enum_bitmask))
-		warn_at(&sw->where, "switch on enum with enum_bitmask attribute");
+		cc1_warn_at(&sw->where, enum_switch_bitmask,
+				"switch on enum with enum_bitmask attribute");
 
 	/* for each case/default/case_range... */
 	ITER_SWITCH(sw, iter){
@@ -128,14 +129,16 @@ static void fold_switch_enum(
 			}
 
 			if(!found)
-				warn_at(&cse->where, "'case %ld' not a member of enum %s",
+				cc1_warn_at(&cse->where,
+						enum_switch_imposter,
+						"'case %ld' not a member of enum %s",
 						(long)v, enum_sue->spel);
 		}
 	}
 
 	for(midx = 0; midx < nents; midx++)
 		if(!marks[midx])
-			cc1_warn_at(&sw->where, 0, WARN_SWITCH_ENUM,
+			cc1_warn_at(&sw->where, switch_enum,
 					"enum %s::%s not handled in switch",
 					enum_sue->anon ? "" : enum_sue->spel,
 					enum_sue->members[midx]->enum_member->spel);
@@ -176,6 +179,17 @@ void fold_stmt_and_add_to_curswitch(stmt *cse)
 	/* TODO: copy ->freestanding? */
 }
 
+static void fold_switch_scopechecks(stmt *sw)
+{
+	stmt **iter;
+
+	ITER_SWITCH(sw, iter){
+		stmt *to = *iter;
+
+		fold_check_scope_entry(&to->where, "case inside", sw->symtab, to->symtab);
+	}
+}
+
 void fold_stmt_switch(stmt *s)
 {
 	FOLD_EXPR(s->expr, s->symtab);
@@ -194,12 +208,14 @@ void fold_stmt_switch(stmt *s)
 	/* check for dups */
 	fold_switch_dups(s);
 
+	fold_switch_scopechecks(s);
+
 	/* check for an enum */
 	{
-		struct_union_enum_st *sue = type_is_s_or_u_or_e(
+		struct_union_enum_st *sue = type_is_enum(
 					s->expr->tree_type);
 
-		if(sue && sue->primitive == type_enum)
+		if(sue)
 			fold_switch_enum(s, sue);
 	}
 }

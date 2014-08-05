@@ -45,17 +45,19 @@ struct out_blk
 		{
 			char *insn;
 			out_blk *if_0_blk, *if_1_blk;
+			char unlikely;
 		} cond;
 	} bits;
 };
 
 out_blk *out_blk_new_lbl(out_ctx *, const char *lbl);
 
-void blk_flushall(out_ctx *octx, char *end_dbg_lbl);
+void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl);
 
 void blk_terminate_condjmp(
 		out_ctx *octx, char *condinsn,
-		out_blk *bpass, out_blk *bfail);
+		out_blk *bpass, out_blk *bfail,
+		int unlikely);
 
 void blk_terminate_jmp(out_blk *, char *jmpinsn);
 void blk_terminate_undef(out_blk *);

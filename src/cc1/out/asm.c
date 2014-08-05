@@ -533,9 +533,9 @@ void asm_declare_decl_init(decl *d)
 
 	sec = type_is_const(d->ref) ? SECTION_RODATA : SECTION_DATA;
 
-	if(d->bits.var.init && !decl_init_is_zero(d->bits.var.init)){
+	if(d->bits.var.init.dinit && !decl_init_is_zero(d->bits.var.init.dinit)){
 		asm_nam_begin(sec, d);
-		asm_declare_init(sec, d->bits.var.init, d->ref);
+		asm_declare_init(sec, d->bits.var.init.dinit, d->ref);
 		asm_out_section(sec, "\n");
 
 	}else{

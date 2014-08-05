@@ -58,6 +58,9 @@ enum type_cmp btype_cmp(const btype *a, const btype *b)
 		case type_enum:
 			if(a->sue == b->sue)
 				return TYPE_EQUAL;
+			/* enums members _are_ ints */
+			if(b->primitive == type_int)
+				return TYPE_EQUAL;
 			break; /* convertible check */
 
 		default:
@@ -123,7 +126,7 @@ int btype_is_signed(const btype *t)
 
 unsigned btype_size(const btype *t, where *from)
 {
-	if(t->sue)
+	if(t->sue && t->primitive != type_int)
 		return sue_size(t->sue, from);
 
 	return type_primitive_size(t->primitive);
@@ -162,34 +165,30 @@ const char *btype_to_str(const btype *t)
 	static char buf[BTYPE_STATIC_BUFSIZ];
 	char *bufp = buf;
 
-	if(t->sue){
-		snprintf(bufp, BUF_SIZE, "%s %s",
-				sue_str(t->sue),
-				t->sue->spel);
+	switch(t->primitive){
+		case type_void:
+		case type__Bool:
+		case type_nchar: case type_schar: case type_uchar:
+		case type_short: case type_ushort:
+		case type_int:   case type_uint:
+		case type_long:  case type_ulong:
+		case type_float:
+		case type_double:
+		case type_llong: case type_ullong:
+		case type_ldouble:
+			snprintf(bufp, BUF_SIZE, "%s",
+					type_primitive_to_str(t->primitive));
+			break;
 
-	}else{
-		switch(t->primitive){
-			case type_void:
-			case type__Bool:
-			case type_nchar: case type_schar: case type_uchar:
-			case type_short: case type_ushort:
-			case type_int:   case type_uint:
-			case type_long:  case type_ulong:
-			case type_float:
-			case type_double:
-			case type_llong: case type_ullong:
-			case type_ldouble:
-				snprintf(bufp, BUF_SIZE, "%s",
-						type_primitive_to_str(t->primitive));
-				break;
+		case type_unknown:
+			ICE("unknown type primitive");
 
-			case type_unknown:
-				ICE("unknown type primitive");
-			case type_enum:
-			case type_struct:
-			case type_union:
-				ICE("struct/union/enum without ->sue");
-		}
+		case type_enum:
+		case type_struct:
+		case type_union:
+			snprintf(bufp, BUF_SIZE, "%s %s",
+					sue_str(t->sue),
+					t->sue->spel);
 	}
 
 	return buf;
@@ -215,7 +214,6 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_uint:
 			return UCC_SZ_INT;
 
-		case type_enum:
 		case type_float:
 			return 4;
 
@@ -238,9 +236,10 @@ unsigned type_primitive_size(enum type_primitive tp)
 			ICW("TODO: long double");
 			return IS_32_BIT() ? 12 : 16;
 
+		case type_enum:
 		case type_union:
 		case type_struct:
-			ICE("s/u size");
+			ICE("s/u/e size");
 
 		case type_unknown:
 			break;

@@ -18,4 +18,6 @@ void out_dbginfo(symtable_global *globs,
 		const char *compdir);
 #endif
 
+void dbg_out_filelist(struct out_dbg_filelist *head, FILE *f);
+
 #endif

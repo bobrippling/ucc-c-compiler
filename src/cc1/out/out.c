@@ -11,7 +11,6 @@
 #include "../../util/platform.h"
 #include "../pack.h"
 #include "../defs.h"
-#include "../opt.h"
 #include "../const.h"
 #include "../type_nav.h"
 #include "../type_is.h"
@@ -70,6 +69,11 @@ out_ctx *out_ctx_new(void)
 	ctx->reserved_regs = v_alloc_reg_reserve(ctx, NULL);
 
 	return ctx;
+}
+
+void **out_user_ctx(out_ctx *octx)
+{
+	return &octx->userctx;
 }
 
 size_t out_expr_stack(out_ctx *octx)

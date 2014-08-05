@@ -476,7 +476,8 @@ void v_save_regs(
 		if(save){
 			const out_val *new;
 
-			assert(v->retains == 1 && "v_save_regs(): too heavily retained v");
+			/* other out_val:s can be as heavily retained as they want,
+			 * we still change the underlying val without any effect */
 
 			new = v_save_reg(octx, v, func_ty);
 
@@ -484,11 +485,9 @@ void v_save_regs(
 				out_val_overwrite(v, new);
 				/* transfer retain-ness to 'v' from 'new' */
 				out_val_release(octx, new);
-				assert(v->retains == 0);
-				v->retains = 1;
+				out_val_retain(octx, v);
 			}else{
 				/* moved to callee save reg */
-				assert(new->retains == 1);
 			}
 		}
 	}
@@ -575,10 +574,13 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 	if(force_mask || (octx->var_stack_sz & (align - 1))){
 		type *const ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 		const unsigned new_sz = pack_to_align(octx->var_stack_sz, align);
-		const unsigned added = new_sz - octx->var_stack_sz;
+		unsigned added = new_sz - octx->var_stack_sz;
 		const out_val *sp = v_new_sp(octx, NULL);
 
 		assert(sp->retains == 1);
+
+		if(force_mask && added == 0)
+			added = align;
 
 		sp = out_op(
 				octx, op_minus,

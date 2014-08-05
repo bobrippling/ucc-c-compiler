@@ -2,6 +2,7 @@
 #define NUM_H
 
 #include <stdint.h>
+#include <limits.h>
 
 typedef struct numeric numeric;
 

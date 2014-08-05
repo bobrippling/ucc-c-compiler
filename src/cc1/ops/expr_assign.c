@@ -38,7 +38,8 @@ void bitfield_trunc_check(decl *mem, expr *from)
 		{
 			sintegral_t kexp_to = kexp & ~(-1UL << k.bits.num.val.i);
 
-			warn_at(&from->where,
+			cc1_warn_at(&from->where,
+					bitfield_trunc,
 					"truncation in store to bitfield alters value: "
 					"%" NUMERIC_FMT_D " -> %" NUMERIC_FMT_D,
 					kexp, kexp_to);
@@ -46,13 +47,12 @@ void bitfield_trunc_check(decl *mem, expr *from)
 	}
 }
 
-void expr_must_lvalue(expr *e)
+void expr_must_lvalue(expr *e, const char *desc)
 {
 	if(!expr_is_lval(e)){
 		fold_had_error = 1;
-		warn_at_print_error(&e->where, "assignment to %s/%s - not an lvalue",
-				type_to_str(e->tree_type),
-				e->f_str());
+		warn_at_print_error(&e->where, "%s to %s - not an lvalue",
+				desc, type_to_str(e->tree_type));
 	}
 }
 
@@ -93,7 +93,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 		return;
 	}
 
-	expr_must_lvalue(e->lhs);
+	expr_must_lvalue(e->lhs, "assignment");
 
 	if(!e->assign_is_init)
 		expr_assign_const_check(e->lhs, &e->where);
@@ -147,12 +147,14 @@ const out_val *gen_expr_assign(expr *e, out_ctx *octx)
 		const out_val *val, *store;
 
 		val = gen_expr(e->rhs, octx);
-		out_val_retain(octx, val);
 		store = lea_expr(e->lhs, octx);
+		out_val_retain(octx, store);
 
 		out_store(octx, store, val);
 
-		return val;
+		/* re-read from the store,
+		 * e.g. if the value has undergone bitfield truncation */
+		return out_deref(octx, store);
 	}
 }
 

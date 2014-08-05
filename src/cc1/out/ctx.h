@@ -9,6 +9,8 @@ struct out_ctx
 	out_blk *last_used_blk; /* for appending debug labels */
 	out_blk **mustgen; /* goto *lbl; where lbl is otherwise unreachable */
 
+	void *userctx;
+
 	struct out_val_list
 	{
 		out_val val;
@@ -26,7 +28,8 @@ struct out_ctx
 	int var_stack_sz, max_stack_sz;
 	int stack_n_alloc; /* just the alloc_n() part */
 
-	int in_prologue;
+	unsigned check_flags : 1; /* decay flags? */
+	unsigned in_prologue : 1, used_stack : 1;
 
 	/* we won't reserve it more than 255 times */
 	unsigned char *reserved_regs;

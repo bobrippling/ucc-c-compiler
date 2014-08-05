@@ -339,9 +339,12 @@ void print_decl(decl *d, enum pdeclargs mode)
 	if(mode & PDECL_NEWLINE)
 		fputc('\n', cc1_out);
 
-	if(!type_is(d->ref, type_func) && d->bits.var.init && mode & PDECL_PINIT){
+	if(!type_is(d->ref, type_func)
+	&& d->bits.var.init.dinit
+	&& mode & PDECL_PINIT)
+	{
 		gen_str_indent++;
-		print_decl_init(d->bits.var.init);
+		print_decl_init(d->bits.var.init.dinit);
 		gen_str_indent--;
 	}
 
@@ -389,7 +392,8 @@ void print_expr(expr *e)
 	if(e->f_gen)
 		IGNORE_PRINTGEN(e->f_gen(e, NULL));
 	else
-		idt_printf("builtin/%s::%s\n", e->f_str(), e->expr->bits.ident.spel);
+		idt_printf("builtin/%s::%s\n", e->f_str(),
+				e->expr->bits.ident.bits.ident.spel);
 	gen_str_indent--;
 }
 
@@ -444,7 +448,8 @@ static void print_enum(struct_union_enum_st *et)
 	for(mi = et->members; *mi; mi++){
 		enum_member *m = (*mi)->enum_member;
 
-		idt_printf("member %s = %" NUMERIC_FMT_D "\n", m->spel, (integral_t)m->val->bits.num.val.i);
+		idt_printf("member %s = %" NUMERIC_FMT_D "\n",
+				m->spel, const_fold_val_i(m->val));
 	}
 	gen_str_indent--;
 }

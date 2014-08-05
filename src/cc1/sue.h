@@ -75,7 +75,7 @@ struct_union_enum_st *sue_find_this_scope(
 struct_union_enum_st *sue_decl(
 		struct symtable *stab, char *spel,
 		sue_member **members, enum type_primitive prim,
-		int got_membs, int is_declaration);
+		int got_membs, int is_declaration, where *);
 
 sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 
@@ -91,7 +91,6 @@ void enum_member_search(enum_member **, struct_union_enum_st **,
 /* struct/union specific */
 unsigned sue_size(struct_union_enum_st *, where *w);
 unsigned sue_align(struct_union_enum_st *, where *w);
-int sue_enum_size(struct_union_enum_st *st);
 
 void sue_incomplete_chk(struct_union_enum_st *st, where *w);
 

@@ -26,7 +26,8 @@ void fold_expr_deref(expr *e, symtable *stab)
 	}
 
 	if(expr_attr_present(ptr, attr_noderef))
-		warn_at(&ptr->where, "dereference of noderef expression");
+		cc1_warn_at(&ptr->where, attr_noderef,
+				"dereference of noderef expression");
 
 	fold_check_bounds(ptr, 0);
 

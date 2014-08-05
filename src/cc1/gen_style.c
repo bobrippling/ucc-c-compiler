@@ -68,9 +68,9 @@ void gen_style_decl(decl *d)
 		return;
 	}
 
-	if(d->bits.var.init){
+	if(d->bits.var.init.dinit){
 		stylef(" = ");
-		gen_style_dinit(d->bits.var.init);
+		gen_style_dinit(d->bits.var.init.dinit);
 	}
 	stylef(";\n");
 }

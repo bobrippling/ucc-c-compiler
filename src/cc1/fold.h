@@ -13,7 +13,9 @@ void fold_decl_global_init(decl *d, symtable *stab);
 
 void fold_merge_tenatives(symtable *stab);
 
-void fold_decl(decl *d, symtable *stab, stmt **pinit_code);
+void fold_decl_add_sym(decl *d, symtable *stab);
+
+void fold_decl(decl *d, symtable *stab);
 void fold_global_func(decl *);
 void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab);
 int fold_func_is_passable(decl *, type *, int warn);
@@ -48,6 +50,8 @@ enum fold_chk
 	FOLD_CHK_INTEGRAL    = 1 << 3, /* e.g. switch(...) */
 	FOLD_CHK_ALLOW_VOID  = 1 << 4,
 	FOLD_CHK_CONST_I     = 1 << 5, /* e.g. case (...): */
+	FOLD_CHK_NOWARN_ASSIGN = 1 << 6, /* if(a = b){ ... } */
+	FOLD_CHK_ARITHMETIC = 1 << 7,
 };
 void fold_check_expr(expr *e, enum fold_chk, const char *desc);
 

@@ -39,7 +39,7 @@ void fold_stmt_return(stmt *s)
 					s->symtab, &s->where, "return type");
 
 			if(void_func){
-				cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
+				cc1_warn_at(&s->where, return_type,
 						"return with a value in void function %s", in_func->spel);
 			}
 		}else{
@@ -52,7 +52,7 @@ void fold_stmt_return(stmt *s)
 			/* in a void block */
 			void_func = 1;
 		}else if(!void_func){
-			cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
+			cc1_warn_at(&s->where, return_type,
 					"empty return in non-void function %s", in_func->spel);
 		}
 	}

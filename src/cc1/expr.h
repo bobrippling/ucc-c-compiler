@@ -79,8 +79,20 @@ struct expr
 
 		struct
 		{
-			sym *sym;
-			char *spel;
+			enum
+			{
+				IDENT_NORM,
+				IDENT_ENUM
+			} type;
+			union
+			{
+				struct
+				{
+					sym *sym;
+					char *spel;
+				} ident;
+				struct enum_member *enum_mem;
+			} bits;
 		} ident;
 
 		struct
@@ -130,6 +142,7 @@ struct expr
 		{
 			unsigned sz;
 			type *of_type;
+			decl *vm;
 		} size_of;
 
 		struct

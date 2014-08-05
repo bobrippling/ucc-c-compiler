@@ -9,7 +9,6 @@ General
 Major C Features
 ################
 
-C99 VLAs - experimental/vla branch
 C99 _Complex types
 C11 _Thread_local / gcc __thread
 C11 _Atomic

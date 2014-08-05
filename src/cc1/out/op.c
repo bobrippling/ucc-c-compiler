@@ -16,9 +16,11 @@
 
 #include "../const.h"
 #include "../cc1.h" /* fopt_mode */
+#include "../vla.h"
 
 static int calc_ptr_step(type *t)
 {
+	type *tnext;
 	/* we are calculating the sizeof *t */
 
 	if(type_is_primitive(type_is_ptr(t), type_void))
@@ -27,7 +29,10 @@ static int calc_ptr_step(type *t)
 	if(type_is_primitive(t, type_unknown))
 		return 1;
 
-	return type_size(type_next(t), NULL);
+	tnext = type_next(t);
+	if(type_is_vla(tnext, VLA_ANY_DIMENSION))
+		return -1;
+	return type_size(tnext, NULL);
 }
 
 static void fill_if_type(
@@ -63,6 +68,7 @@ static out_val *try_mem_offset(
 		out_val *mut_vregp_or_lbl = v_dup_or_reuse(
 				octx, vregp_or_lbl, vregp_or_lbl->t);
 		long *p;
+		int step;
 
 		switch(mut_vregp_or_lbl->type){
 			case V_LBL:
@@ -77,9 +83,12 @@ static out_val *try_mem_offset(
 				assert(0);
 		}
 
+		step = calc_ptr_step(mut_vregp_or_lbl->t);
+		if(step == -1)
+			return NULL;
+
 		*p += (binop == op_minus ? -1 : 1) *
-			vconst->bits.val_i *
-			calc_ptr_step(mut_vregp_or_lbl->t);
+			vconst->bits.val_i * step;
 
 		out_val_consume(octx, vconst);
 
@@ -126,7 +135,7 @@ static out_val *try_const_fold(
 	const char *err = NULL;
 	const integral_t eval = const_op_exec(
 			lhs->bits.val_i, &rhs->bits.val_i,
-			binop, type_is_signed(lhs->t),
+			binop, lhs->t,
 			&err);
 
 	if(!err){
@@ -142,7 +151,7 @@ static out_val *try_const_fold(
 static void apply_ptr_step(
 		out_ctx *octx,
 		const out_val **lhs, const out_val **rhs,
-		int *div_out)
+		const out_val **div_out)
 {
 	int l_ptr = !!type_is((*lhs)->t, type_ptr);
 	int r_ptr = !!type_is((*rhs)->t, type_ptr);
@@ -162,7 +171,17 @@ static void apply_ptr_step(
 
 		switch(mut_incdec->type){
 			case V_CONST_I:
-				mut_incdec->bits.val_i *= ptr_step;
+				if(ptr_step == -1){
+					*incdec = out_op(octx, op_multiply,
+							*incdec,
+							vla_size(
+								type_next((l_ptr ? *lhs : *rhs)->t),
+								octx));
+
+					mut_incdec = NULL; /* safety */
+				}else{
+					mut_incdec->bits.val_i *= ptr_step;
+				}
 				break;
 
 			case V_CONST_F:
@@ -176,10 +195,17 @@ static void apply_ptr_step(
 
 			case V_REG:
 			{
-				out_val *n = out_new_l(
+				const out_val *n;
+				if(ptr_step == -1){
+					n = vla_size(
+							type_next((l_ptr ? *lhs : *rhs)->t),
+							octx);
+				}else{
+					n = out_new_l(
 						octx,
 						type_nav_btype(cc1_type_nav, type_intptr_t),
 						ptr_step);
+				}
 
 				*incdec = (out_val *)out_op(octx, op_multiply, *incdec, n);
 				break;
@@ -188,7 +214,13 @@ static void apply_ptr_step(
 
 	}else if(l_ptr && r_ptr){
 		/* difference - divide afterwards */
-		*div_out = ptr_step;
+		if(ptr_step == -1){
+			*div_out = vla_size(type_next((*lhs)->t), octx);
+		}else{
+			*div_out = out_new_l(octx,
+					type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
+					ptr_step);
+		}
 	}
 }
 
@@ -244,9 +276,12 @@ const out_val *out_op(
 		out_ctx *octx, enum op_type binop,
 		const out_val *lhs, const out_val *rhs)
 {
-	int div = 0;
+	const out_val *div = NULL;
 	const out_val *vconst = NULL, *vregp_or_lbl = NULL;
 	const out_val *result;
+	const out_val *decay_except[] = { lhs, rhs, NULL };
+
+	v_decay_flags_except(octx, decay_except); /* an op instruction may change cpu flags */
 
 	fill_if_type(lhs, &vconst, &vregp_or_lbl);
 	fill_if_type(rhs, &vconst, &vregp_or_lbl);
@@ -262,7 +297,7 @@ const out_val *out_op(
 		return consume_one(octx, vconst == lhs ? rhs : lhs, lhs, rhs);
 
 	/* constant folding */
-	if(vconst){
+	if(vconst && (fopt_mode & FOPT_CONST_FOLD)){
 		const out_val *oconst = (vconst == lhs ? rhs : lhs);
 
 		if(oconst->type == V_CONST_I){
@@ -287,7 +322,7 @@ const out_val *out_op(
 			break;
 		case op_multiply:
 		case op_divide:
-			if(vconst)
+			if(vconst && (fopt_mode & FOPT_TRAPV) == 0)
 				try_shift_conv(octx, &binop, &lhs, &rhs);
 			break;
 		default:
@@ -296,15 +331,8 @@ const out_val *out_op(
 
 	result = impl_op(octx, binop, lhs, rhs);
 
-	if(div){
-		result = out_op(
-				octx, op_divide,
-				result,
-				out_new_l(
-					octx,
-					type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
-					div));
-	}
+	if(div)
+		result = out_op(octx, op_divide, result, div);
 
 	return result;
 }

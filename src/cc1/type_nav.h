@@ -16,6 +16,7 @@ struct type_nav *type_nav_init(void);
 type *type_nav_btype(struct type_nav *root, enum type_primitive p);
 type *type_nav_auto(struct type_nav *root); /* returns placeholder */
 type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *);
+type *type_nav_int_enum(struct type_nav *root, struct_union_enum_st *);
 
 type *type_nav_va_list(struct type_nav *root, symtable *symtab);
 type *type_nav_voidptr(struct type_nav *root);
@@ -28,6 +29,7 @@ type *type_block_of(type *);
 
 type *type_array_of(type *, struct expr *sz);
 type *type_array_of_static(type *, struct expr *sz, int is_static);
+type *type_vla_of(type *, struct expr *sz, int vlatype);
 
 type *type_func_of(type *, struct funcargs *args, struct symtable *arg_scope);
 type *type_called(type *, struct funcargs **pfuncargs);
