@@ -385,10 +385,10 @@ where *type_loc(type *t)
 	return &fallback;
 }
 
-int type_has_loc(type *t)
+where *type_has_loc(type *t)
 {
 	t = type_skip_non_wheres(t);
-	return t && t->type == type_where;
+	return t && t->type == type_where ? &t->bits.where : NULL;
 }
 
 #define BUF_ADD(...) \

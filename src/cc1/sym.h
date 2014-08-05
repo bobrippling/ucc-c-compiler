@@ -108,6 +108,8 @@ int symtab_nested_internal(symtable *parent, symtable *nest);
 
 sym  *symtab_search(symtable *, const char *);
 decl *symtab_search_d(symtable *, const char *, symtable **pin);
+decl *symtab_search_d_exclude(
+		symtable *, const char *, symtable **pin, decl *exclude);
 
 const char *sym_to_str(enum sym_type);
 

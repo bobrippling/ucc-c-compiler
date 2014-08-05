@@ -1113,6 +1113,8 @@ static type *parse_type_declarator(
 				i->attr);
 	}
 
+	if(dfor)
+		ty = type_at_where(ty, &dfor->where);
 	return ty;
 }
 
@@ -1168,9 +1170,13 @@ static void parse_add_asm(decl *d)
 	}
 }
 
-static void parse_decl_fold_type(decl *d, symtable *scope)
+static void parsed_decl(decl *d, symtable *scope)
 {
-	fold_type_w_attr(d->ref, NULL, type_loc(d->ref), scope, d->attr);
+	where *loc = type_has_loc(d->ref);
+	if(!loc)
+		loc = &d->where;
+
+	fold_type_w_attr(d->ref, NULL, loc, scope, d->attr);
 }
 
 static decl *parse_decl_stored_aligned(
@@ -1192,10 +1198,8 @@ static decl *parse_decl_stored_aligned(
 		/* allow extra specifiers */
 		d->ref = parse_type_declarator(mode, d, btype, scope);
 
-		if(add_to_scope){
+		if(add_to_scope)
 			symtab_add_to_scope(add_to_scope, d);
-			parse_decl_fold_type(d, scope);
-		}
 	}
 
 	/* only check if it's not a function, otherwise it could be
@@ -1210,9 +1214,18 @@ static decl *parse_decl_stored_aligned(
 		parse_add_asm(d);
 		parse_add_attr(&d->attr, scope); /* int spel __attr__ */
 
+		/* now we have attributes, etc... */
+		parsed_decl(d, scope);
+
 		if(d->spel && accept_where(token_assign, &w_eq)){
 			int static_ctx = !scope->parent ||
 				(store & STORE_MASK_STORE) == store_static;
+
+			if(!is_autotype && add_to_scope){
+				/* need to add its symbol early,
+				 * in case it's mentioned in the init */
+				fold_decl_add_sym(d, add_to_scope);
+			}
 
 			d->bits.var.init.dinit = parse_init(scope, static_ctx);
 
@@ -1221,6 +1234,9 @@ static decl *parse_decl_stored_aligned(
 
 			if(is_autotype){
 				decl_init *init = d->bits.var.init.dinit;
+
+				/* delayed add-to-scope */
+				symtab_add_to_scope(add_to_scope, d);
 
 				UCC_ASSERT(!d->ref, "already have decl type?");
 
@@ -1245,7 +1261,7 @@ static decl *parse_decl_stored_aligned(
 								type_qual(type_at_where(btype, &init->where))),
 							attr);
 
-					parse_decl_fold_type(d, scope);
+					parsed_decl(d, scope);
 				}
 			}
 
@@ -1641,7 +1657,7 @@ static void link_to_previous_decl(decl *d, symtable *in_scope)
 	 * This also means any use of d will have the most up to date
 	 * attribute information about it
 	 */
-	decl *d_prev = symtab_search_d(in_scope, d->spel, NULL);
+	decl *d_prev = symtab_search_d_exclude(in_scope, d->spel, NULL, d);
 
 	if(d_prev){
 		/* link the proto chain for __attribute__ checking,
@@ -1731,7 +1747,7 @@ int parse_decl_group(
 		d = parse_decl_stored_aligned(
 				this_ref, parse_flag,
 				store, align,
-				in_scope, NULL);
+				in_scope, add_to_scope);
 
 		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH)
 		&& accept(token_colon))
@@ -1764,11 +1780,8 @@ int parse_decl_group(
 			done = 1;
 		}
 
-		/* must link to previous before adding to scope */
 		if(d->spel)
 			link_to_previous_decl(d, in_scope);
-		if(add_to_scope)
-			symtab_add_to_scope(add_to_scope, d);
 		if(pdecls)
 			dynarray_add(pdecls, d);
 
