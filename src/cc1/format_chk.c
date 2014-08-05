@@ -331,7 +331,12 @@ void format_check_call(
 
 	switch(attr->bits.format.fmt_func){
 		case attr_fmt_printf:
-			format_check_printf(args[fmt_idx], args, var_idx);
+			if(cc1_warning.attr_printf_bad
+			|| cc1_warning.attr_printf_toomany
+			|| cc1_warning.attr_printf_unknown)
+			{
+				format_check_printf(args[fmt_idx], args, var_idx);
+			}
 			break;
 
 		case attr_fmt_scanf:
@@ -345,9 +350,6 @@ void format_check_decl(decl *d, attribute *da)
 	type *r_func;
 	funcargs *fargs;
 	int fmt_idx, var_idx, nargs;
-
-	if(!cc1_warning.format)
-		return;
 
 	if(da->bits.format.validity != fmt_unchecked){
 		/* i.e. checked */

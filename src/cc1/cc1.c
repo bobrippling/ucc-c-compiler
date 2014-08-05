@@ -116,18 +116,23 @@ static struct warn_str
 	{ "asm-badchar", &cc1_warning.asm_badchar },
 
 	{ "attr-badcleanup", &cc1_warning.attr_badcleanup },
-	{ "format", &cc1_warning.format },
-	{ "attr-format-baddecl", &cc1_warning.attr_format_baddecl },
-	{ "attr-format-unknown", &cc1_warning.attr_format_unknown },
+
+	{ "attr-printf-bad", &cc1_warning.attr_printf_bad },
+	{ "attr-printf-toomany", &cc1_warning.attr_printf_toomany },
+	{ "attr-printf-unknown", &cc1_warning.attr_printf_unknown },
+	{
+		"format",
+		&cc1_warning.attr_printf_bad,
+		&cc1_warning.attr_printf_toomany,
+		&cc1_warning.attr_printf_unknown
+	},
+
 	{ "attr-noderef", &cc1_warning.attr_noderef },
 	{ "attr-nonnull", &cc1_warning.attr_nonnull },
 	{ "attr-nonnull-bad", &cc1_warning.attr_nonnull_bad },
 	{ "attr-nonnull-noargs", &cc1_warning.attr_nonnull_noargs },
 	{ "attr-nonnull-nonptr", &cc1_warning.attr_nonnull_nonptr },
 	{ "attr-nonnull-oob", &cc1_warning.attr_nonnull_oob },
-	{ "attr-printf-bad", &cc1_warning.attr_printf_bad },
-	{ "attr-printf-toomany", &cc1_warning.attr_printf_toomany },
-	{ "attr-printf-unknown", &cc1_warning.attr_printf_unknown },
 	{ "attr-section-badchar", &cc1_warning.attr_section_badchar },
 	{ "attr-sentinel", &cc1_warning.attr_sentinel },
 	{ "attr-sentinel-nonvariadic", &cc1_warning.attr_sentinel_nonvariadic },
