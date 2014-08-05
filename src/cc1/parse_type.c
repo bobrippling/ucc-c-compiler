@@ -1040,6 +1040,8 @@ static type *parse_type_declarator(
 				i->attr);
 	}
 
+	if(dfor)
+		ty = type_at_where(ty, &dfor->where);
 	return ty;
 }
 
@@ -1097,7 +1099,11 @@ static void parse_add_asm(decl *d)
 
 static void parsed_decl(decl *d, symtable *scope)
 {
-	fold_type_w_attr(d->ref, NULL, type_loc(d->ref), scope, d->attr);
+	where *loc = type_has_loc(d->ref);
+	if(!loc)
+		loc = &d->where;
+
+	fold_type_w_attr(d->ref, NULL, loc, scope, d->attr);
 }
 
 static decl *parse_decl_stored_aligned(
