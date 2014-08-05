@@ -302,7 +302,9 @@ void format_check_call(
 		return;
 	switch(attr->bits.format.validity){
 		case fmt_unchecked:
-			ICW("unchecked __attribute__((format...))");
+			/*ICW("unchecked __attribute__((format...))");*/
+			/* printf checking is disabled/warning is off - return */
+			/* fall */
 		case fmt_invalid:
 			return;
 		case fmt_valid:
