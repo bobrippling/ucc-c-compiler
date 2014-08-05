@@ -81,7 +81,7 @@ size_t out_expr_stack(out_ctx *octx)
 	out_val_list *l;
 	size_t retains = 0;
 
-	for(l = octx->val_head; l; l = l->next)
+	OCTX_ITER_VALS(octx, l)
 		retains += l->val.retains;
 
 	return retains;
@@ -92,7 +92,7 @@ void out_dump_retained(out_ctx *octx, const char *desc)
 	out_val_list *l;
 	int done_desc = 0;
 
-	for(l = octx->val_head; l; l = l->next){
+	OCTX_ITER_VALS(octx, l){
 		if(l->val.retains == 0)
 			continue;
 

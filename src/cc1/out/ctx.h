@@ -46,4 +46,7 @@ struct out_ctx
 	} dbg;
 };
 
+#define OCTX_ITER_VALS(octx, i) \
+	for(i = octx->val_head; i; i = i->next)
+
 #endif
