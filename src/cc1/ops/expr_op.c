@@ -22,6 +22,7 @@
  */
 
 #define BOOLEAN_TYPE type_int
+#define SHOW_CONST_OP 0
 
 const char *str_expr_op()
 {
@@ -216,7 +217,22 @@ static void const_op_num_int(
 
 			int_r = const_op_exec(
 					l.bits.i, rhs ? &r.bits.i : NULL,
-					e->op, is_signed, &err);
+					e->op, e->tree_type, &err);
+
+			if(SHOW_CONST_OP){
+				if(rhs){
+					fprintf(stderr,
+							"const op: (%s) %lld %s %lld = %lld, is_signed=%d\n",
+							type_to_str(e->tree_type),
+							l.bits.i, op_to_str(e->op), r.bits.i,
+							int_r, is_signed);
+				}else{
+					fprintf(stderr,
+							"const op: (%s) %s %lld = %lld, is_signed=%d\n",
+							type_to_str(e->tree_type),
+							op_to_str(e->op), l.bits.i, int_r, is_signed);
+				}
+			}
 
 			if(err){
 				cc1_warn_at(&e->where, constop_bad, "%s", err);
@@ -1077,9 +1093,33 @@ static const out_val *op_shortcircuit(expr *e, out_ctx *octx)
 	}
 }
 
+void gen_op_trapv(type *evaltt, const out_val **eval, out_ctx *octx)
+{
+	if((fopt_mode & FOPT_TRAPV) == 0)
+		return;
+
+	if(!type_is_integral(evaltt) || !type_is_signed(evaltt))
+		return;
+
+	{
+		out_blk *land = out_blk_new(octx, "trapv_end");
+		out_blk *blk_undef = out_blk_new(octx, "travp_bad");
+
+		out_ctrl_branch(octx,
+				out_new_overflow(octx, eval),
+				blk_undef,
+				land);
+
+		out_current_blk(octx, blk_undef);
+		out_ctrl_end_undefined(octx);
+
+		out_current_blk(octx, land);
+	}
+}
+
 const out_val *gen_expr_op(expr *e, out_ctx *octx)
 {
-	const out_val *lhs, *rhs, *eval;
+	const out_val *lhs, *eval;
 
 	switch(e->op){
 		case op_orsc:
@@ -1095,34 +1135,19 @@ const out_val *gen_expr_op(expr *e, out_ctx *octx)
 
 	lhs = gen_expr(e->lhs, octx);
 
-	if(!e->rhs)
-		return out_op_unary(octx, e->op, lhs);
+	if(!e->rhs){
+		eval = out_op_unary(octx, e->op, lhs);
+	}else{
+		const out_val *rhs = gen_expr(e->rhs, octx);
 
-	rhs = gen_expr(e->rhs, octx);
+		eval = out_op(octx, e->op, lhs, rhs);
 
-	eval = out_op(octx, e->op, lhs, rhs);
-
-	/* make sure we get the pointer, for example 2+(int *)p
-	 * or the int, e.g. (int *)a && (int *)b -> int */
-	eval = out_change_type(octx, eval, e->tree_type);
-
-	if(fopt_mode & FOPT_TRAPV
-	&& type_is_integral(e->tree_type)
-	&& type_is_signed(e->tree_type))
-	{
-		out_blk *land = out_blk_new(octx, "trapv_end");
-		out_blk *blk_undef = out_blk_new(octx, "travp_bad");
-
-		out_ctrl_branch(octx,
-				out_new_overflow(octx, &eval),
-				blk_undef,
-				land);
-
-		out_current_blk(octx, blk_undef);
-		out_ctrl_end_undefined(octx);
-
-		out_current_blk(octx, land);
+		/* make sure we get the pointer, for example 2+(int *)p
+		 * or the int, e.g. (int *)a && (int *)b -> int */
+		eval = out_change_type(octx, eval, e->tree_type);
 	}
+
+	gen_op_trapv(e->tree_type, &eval, octx);
 
 	return eval;
 }

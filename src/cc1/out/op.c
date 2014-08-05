@@ -135,7 +135,7 @@ static out_val *try_const_fold(
 	const char *err = NULL;
 	const integral_t eval = const_op_exec(
 			lhs->bits.val_i, &rhs->bits.val_i,
-			binop, type_is_signed(lhs->t),
+			binop, lhs->t,
 			&err);
 
 	if(!err){
@@ -297,7 +297,7 @@ const out_val *out_op(
 		return consume_one(octx, vconst == lhs ? rhs : lhs, lhs, rhs);
 
 	/* constant folding */
-	if(vconst){
+	if(vconst && (fopt_mode & FOPT_CONST_FOLD)){
 		const out_val *oconst = (vconst == lhs ? rhs : lhs);
 
 		if(oconst->type == V_CONST_I){
@@ -322,7 +322,7 @@ const out_val *out_op(
 			break;
 		case op_multiply:
 		case op_divide:
-			if(vconst)
+			if(vconst && (fopt_mode & FOPT_TRAPV) == 0)
 				try_shift_conv(octx, &binop, &lhs, &rhs);
 			break;
 		default:

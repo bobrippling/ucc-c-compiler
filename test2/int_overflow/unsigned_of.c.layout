@@ -1,0 +1,11 @@
+int_max:
+	.long 4294967295
+
+int_min:
+	.long 0
+
+ull_max:
+	.quad 18446744073709551615
+
+ull_min:
+	.quad 0

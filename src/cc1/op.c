@@ -133,3 +133,42 @@ int op_returns_bool(enum op_type o)
 {
 	return o == op_not || op_is_comparison(o) || op_is_shortcircuit(o);
 }
+
+int op_increases(enum op_type o)
+{
+	switch(o){
+		case op_unknown:
+			break;
+
+		case op_multiply:
+		case op_plus:
+		case op_or:
+		case op_shiftl:
+			return 1;
+
+			/* decrease */
+		case op_divide:
+		case op_modulus:
+		case op_minus:
+		case op_shiftr:
+		case op_and:
+			return 0;
+
+			/* neither */
+		case op_xor:
+		case op_orsc:
+		case op_andsc:
+		case op_not:
+		case op_bnot:
+		case op_eq:
+		case op_ne:
+		case op_le:
+		case op_lt:
+		case op_ge:
+		case op_gt:
+			return 0;
+	}
+
+	assert(0);
+	return 0;
+}
