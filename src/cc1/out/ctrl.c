@@ -50,10 +50,14 @@ const out_val *out_ctrl_merge(out_ctx *octx, out_blk *from_a, out_blk *from_b)
 	out_blk *const saved_current_blk = octx->current_blk;
 	type *ty;
 	struct vreg merge_reg;
+	unsigned sz_a, sz_b;
 
 	assert(from_a->phi_val && from_b->phi_val);
 
 	ty = from_a->phi_val->t;
+
+	sz_a = type_size(from_a->phi_val->t, NULL);
+	sz_b = type_size(from_b->phi_val->t, NULL);
 
 	/* need them both in a register */
 	out_current_blk(octx, from_a);
@@ -66,6 +70,12 @@ const out_val *out_ctrl_merge(out_ctx *octx, out_blk *from_a, out_blk *from_b)
 						from_a->phi_val,
 						&merge_reg));
 
+		/* if we have mismatching sizes, we need to cast one side up,
+		 * so that we fill out all parts of the smaller size'd register,
+		 */
+		if(sz_a < sz_b)
+			regged = out_cast(octx, regged, from_b->phi_val->t, 0);
+
 		/* apply_offset may move to another reg */
 		memcpy_safe(&merge_reg, &regged->bits.regoff.reg);
 
@@ -74,6 +84,8 @@ const out_val *out_ctrl_merge(out_ctx *octx, out_blk *from_a, out_blk *from_b)
 	out_current_blk(octx, from_b);
 	{
 		const out_val *regged = v_to_reg_given(octx, from_b->phi_val, &merge_reg);
+		if(sz_b < sz_a)
+			regged = out_cast(octx, regged, from_a->phi_val->t, 0);
 		out_flush_volatile(octx, regged);
 	}
 
