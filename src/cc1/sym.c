@@ -127,7 +127,7 @@ sym *symtab_search(symtable *tab, const char *sp)
 	if(!d)
 		return NULL;
 
-	UCC_ASSERT(d->sym, "no symbol for decl");
+	/* if it doesn't have a symbol, we haven't finished parsing yet */
 	return d->sym;
 }
 
