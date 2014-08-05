@@ -15,7 +15,7 @@ struct out_ctx
 	{
 		out_val val;
 		struct out_val_list *next, *prev;
-	} *val_head, *val_tail;
+	} *val_head, *val_tail; /* TODO: change to realloced array - check performance */
 
 	type *current_fnty;
 
