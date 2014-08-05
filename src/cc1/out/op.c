@@ -322,7 +322,7 @@ const out_val *out_op(
 			break;
 		case op_multiply:
 		case op_divide:
-			if(vconst)
+			if(vconst && (fopt_mode & FOPT_TRAPV) == 0)
 				try_shift_conv(octx, &binop, &lhs, &rhs);
 			break;
 		default:
