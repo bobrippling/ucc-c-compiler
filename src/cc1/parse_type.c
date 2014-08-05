@@ -1095,7 +1095,7 @@ static void parse_add_asm(decl *d)
 	}
 }
 
-static void parse_decl_fold_type(decl *d, symtable *scope)
+static void parsed_decl(decl *d, symtable *scope)
 {
 	fold_type_w_attr(d->ref, NULL, type_loc(d->ref), scope, d->attr);
 }
@@ -1119,10 +1119,8 @@ static decl *parse_decl_stored_aligned(
 		/* allow extra specifiers */
 		d->ref = parse_type_declarator(mode, d, btype, scope);
 
-		if(add_to_scope){
+		if(add_to_scope)
 			symtab_add_to_scope(add_to_scope, d);
-			parse_decl_fold_type(d, scope);
-		}
 	}
 
 	/* only check if it's not a function, otherwise it could be
@@ -1136,6 +1134,9 @@ static decl *parse_decl_stored_aligned(
 		/* parse __asm__ naming before attributes, as per gcc and clang */
 		parse_add_asm(d);
 		parse_add_attr(&d->attr, scope); /* int spel __attr__ */
+
+		/* now we have attributes, etc... */
+		parsed_decl(d, scope);
 
 		if(d->spel && accept_where(token_assign, &w_eq)){
 			int static_ctx = !scope->parent ||
@@ -1181,7 +1182,7 @@ static decl *parse_decl_stored_aligned(
 								type_qual(type_at_where(btype, &init->where))),
 							attr);
 
-					parse_decl_fold_type(d, scope);
+					parsed_decl(d, scope);
 				}
 			}
 
