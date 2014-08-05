@@ -1093,6 +1093,30 @@ static const out_val *op_shortcircuit(expr *e, out_ctx *octx)
 	}
 }
 
+void gen_op_trapv(type *evaltt, const out_val **eval, out_ctx *octx)
+{
+	if((fopt_mode & FOPT_TRAPV) == 0)
+		return;
+
+	if(!type_is_integral(evaltt) || !type_is_signed(evaltt))
+		return;
+
+	{
+		out_blk *land = out_blk_new(octx, "trapv_end");
+		out_blk *blk_undef = out_blk_new(octx, "travp_bad");
+
+		out_ctrl_branch(octx,
+				out_new_overflow(octx, eval),
+				blk_undef,
+				land);
+
+		out_current_blk(octx, blk_undef);
+		out_ctrl_end_undefined(octx);
+
+		out_current_blk(octx, land);
+	}
+}
+
 const out_val *gen_expr_op(expr *e, out_ctx *octx)
 {
 	const out_val *lhs, *eval;
@@ -1123,23 +1147,7 @@ const out_val *gen_expr_op(expr *e, out_ctx *octx)
 		eval = out_change_type(octx, eval, e->tree_type);
 	}
 
-	if(fopt_mode & FOPT_TRAPV
-	&& type_is_integral(e->tree_type)
-	&& type_is_signed(e->tree_type))
-	{
-		out_blk *land = out_blk_new(octx, "trapv_end");
-		out_blk *blk_undef = out_blk_new(octx, "travp_bad");
-
-		out_ctrl_branch(octx,
-				out_new_overflow(octx, &eval),
-				blk_undef,
-				land);
-
-		out_current_blk(octx, blk_undef);
-		out_ctrl_end_undefined(octx);
-
-		out_current_blk(octx, land);
-	}
+	gen_op_trapv(e->tree_type, &eval, octx);
 
 	return eval;
 }
