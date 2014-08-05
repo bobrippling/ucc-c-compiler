@@ -1148,7 +1148,7 @@ static decl *parse_decl_stored_aligned(
 			int static_ctx = !scope->parent ||
 				(store & STORE_MASK_STORE) == store_static;
 
-			if(!is_autotype){
+			if(!is_autotype && add_to_scope){
 				/* need to add its symbol early,
 				 * in case it's mentioned in the init */
 				fold_decl_add_sym(d, add_to_scope);
