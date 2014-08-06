@@ -74,6 +74,9 @@ static decl *expr_to_declref(expr *e, out_ctx *octx)
 		else
 			CANT_INLINE("not normal identifier", "enum");
 
+	}else if(expr_kind(e, block)){
+		return e->bits.block.sym->decl;
+
 	}else{
 		CANT_INLINE("not identifier", e->f_str());
 	}

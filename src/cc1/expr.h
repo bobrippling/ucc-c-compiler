@@ -224,6 +224,7 @@ expr *expr_new_decl_init(decl *d, struct decl_init *di);
 #include "ops/expr_struct.h"
 #include "ops/expr_compound_lit.h"
 #include "ops/expr_string.h"
+#include "ops/expr_block.h"
 
 /* XXX: memleak */
 #define expr_free(x) do{                 \
