@@ -484,8 +484,10 @@ type *type_nav_changeauto(type *const ontop, type *trailing)
 	if(!ontop || ontop->type == type_btype)
 		return trailing; /* replace auto with proper trailing type */
 
+	/* use recursion to pop non-btypes on top of trailing */
 	base = type_nav_changeauto(type_next_1(ontop), trailing);
 
+	/* pop our type on top of trailing */
 	switch(ontop->type){
 		case type_btype:
 		case type_auto:
@@ -514,9 +516,13 @@ type *type_nav_changeauto(type *const ontop, type *trailing)
 
 		case type_tdef:
 		case type_cast:
-		case type_attr:
+			return base;
+
 		case type_where:
-			return base; /* TODO: skip for now, change to add where, etc */
+			return type_at_where(base, &ontop->bits.where);
+
+		case type_attr:
+			return type_attributed(base, ontop->bits.attr);
 	}
 
 	assert(0);
