@@ -58,30 +58,39 @@ static const out_val *gen_inline_func(
 	return out_new_zero(octx, type_nav_btype(cc1_type_nav, type_int));
 }
 
-const out_val *try_gen_inline_func(
-		expr *call_expr,
-		const out_val *fn, const out_val **args,
-		out_ctx *octx)
-{
 #define CANT_INLINE(reason, nam) do{ \
 		if(fopt_mode & FOPT_VERBOSE_ASM) \
 			out_comment(octx, "can't inline %s: %s", nam, reason); \
 		return NULL; \
 	}while(0)
 
+static decl *expr_to_declref(expr *e, out_ctx *octx)
+{
+	e = expr_skip_casts(e);
+
+	if(expr_kind(e, identifier)){
+		if(e->bits.ident.type == IDENT_NORM)
+			return e->bits.ident.bits.ident.sym->decl;
+		else
+			CANT_INLINE("not normal identifier", "enum");
+
+	}else{
+		CANT_INLINE("not identifier", e->f_str());
+	}
+}
+
+const out_val *try_gen_inline_func(
+		expr *call_expr,
+		const out_val *fn, const out_val **args,
+		out_ctx *octx)
+{
 	decl *decl_fn;
-	expr *ident;
 	stmt *fn_code;
 	symtable *arg_symtab;
 	decl **diter;
 
-	ident = expr_skip_casts(call_expr);
-	if(!expr_kind(ident, identifier))
-		CANT_INLINE("not identifier", ident->f_str());
-	if(ident->bits.ident.type != IDENT_NORM)
-		CANT_INLINE("not normal identifier", "enum");
+	decl_fn = expr_to_declref(call_expr, octx);
 
-	decl_fn = ident->bits.ident.bits.ident.sym->decl;
 	if(!(fn_code = decl_fn->bits.func.code))
 		CANT_INLINE("can't see func code", decl_fn->spel);
 
