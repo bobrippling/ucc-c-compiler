@@ -181,3 +181,8 @@ label *symtab_label_find_or_new(symtable *const stab, char *spel, where *w)
 
 	return lbl;
 }
+
+unsigned sym_hash(const sym *sym)
+{
+	return sym->type ^ (unsigned)(intptr_t)sym;
+}

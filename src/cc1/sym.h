@@ -119,4 +119,6 @@ const char *sym_to_str(enum sym_type);
 struct label *symtab_label_find_or_new(symtable *, char *, where *);
 void symtab_label_add(symtable *, struct label *);
 
+unsigned sym_hash(const sym *);
+
 #endif

@@ -1,0 +1,5 @@
+heuristic to decide whether to inline
+handle special arguments - vla? (needs extra stack space etc, see gen_asm.c)
+handle local variables in inlined function - needs extra stack space
+handle return in inlined function - we want the value from it
+	need to phi-merge all the returns
