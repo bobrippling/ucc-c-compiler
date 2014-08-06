@@ -1072,11 +1072,14 @@ type *parse_type(int newdecl, symtable *scope)
 	int try_trail = 0;
 
 	if(accept(token_auto)){
-		if(!parse_at_decl(scope)){
+		/* auto <non-ident> is fine, but
+		 * auto int, or auto myident
+		 * needs to be interpreted as in C */
+		if(parse_at_decl(scope)){
+			uneat(token_auto);
+		}else{
 			btype = type_nav_btype(cc1_type_nav, type_int);
 			try_trail = 1;
-		}else{
-			uneat(token_auto);
 		}
 	}
 
