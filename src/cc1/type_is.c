@@ -16,7 +16,7 @@
 
 #include "type_is.h"
 
-static type *type_next_1(type *r)
+type *type_next_1(type *r)
 {
 	if(r->type == type_tdef){
 		/* typedef - jump to its typeof */

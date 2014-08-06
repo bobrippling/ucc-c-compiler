@@ -1054,7 +1054,7 @@ static type_parsed *parsed_type_ptr(
 	}
 }
 
-static type *parse_type_declarator(
+static type *parse_type_declarator_to_type(
 		enum decl_mode mode, decl *dfor, type *base, symtable *scope)
 {
 	type_parsed *parsed = parsed_type_declarator(mode, dfor, NULL, scope);
@@ -1118,11 +1118,60 @@ static type *parse_type_declarator(
 	return ty;
 }
 
+static type *parse_type_declarator(
+		enum decl_mode mode, decl *dfor, type *base, symtable *scope,
+		int *try_trail)
+{
+	type *t = parse_type_declarator_to_type(mode, dfor, base, scope);
+	type *ttrail;
+	type *fnty;
+	where ptr_loc;
+
+	if(!*try_trail || !accept_where(token_ptr, &ptr_loc)){
+		*try_trail = 0;
+		return t;
+	}
+
+	/* try to parse trail using topmost function's scope */
+	fnty = type_is(t, type_func);
+	if(fnty)
+		scope = fnty->bits.func.arg_scope;
+
+	ttrail = parse_type(/*newdecl:*/1, scope);
+
+	if(!ttrail){
+		warn_at_print_error(&ptr_loc, "trailing return type expected");
+		parse_had_error = 1;
+		return t;
+	}
+
+	return type_nav_changeauto(t, ttrail);
+}
+
 type *parse_type(int newdecl, symtable *scope)
 {
-	type *btype = parse_btype(NULL, NULL, newdecl, scope, 0);
+	type *btype = NULL;
+	int try_trail = 0;
 
-	return btype ? parse_type_declarator(0, NULL, btype, scope) : NULL;
+	if(accept(token_auto)){
+		/* auto <non-ident> is fine, but
+		 * auto int, or auto myident
+		 * needs to be interpreted as in C */
+		if(parse_at_decl(scope)){
+			uneat(token_auto);
+		}else{
+			btype = type_nav_btype(cc1_type_nav, type_int);
+			try_trail = 1;
+		}
+	}
+
+	if(!btype)
+		btype = parse_btype(NULL, NULL, newdecl, scope, 0);
+
+	if(!btype)
+		return NULL;
+
+	return parse_type_declarator(0, NULL, btype, scope, &try_trail);
 }
 
 type **parse_type_list(symtable *scope)
@@ -1188,7 +1237,7 @@ static decl *parse_decl_stored_aligned(
 	where w_eq;
 	int is_autotype = type_is_autotype(btype);
 
-	d->store = store;
+	d->store = store; /* set early for parse_type_declarator() */
 
 	if(is_autotype){
 		d->spel = token_current_spel();
@@ -1196,7 +1245,23 @@ static decl *parse_decl_stored_aligned(
 
 	}else{
 		/* allow extra specifiers */
-		d->ref = parse_type_declarator(mode, d, btype, scope);
+		int try_trail = 0;
+
+		if((store & STORE_MASK_STORE) == store_auto){
+			const struct btype *bt = type_get_type(btype);
+			/* auto, defaulted to int? */
+			if(bt && bt->primitive == type_int){
+				/* if there are no more specs/quals... */
+				try_trail = !parse_at_decl(scope);
+			}
+		}
+
+		d->ref = parse_type_declarator(mode, d, btype, scope, &try_trail);
+
+		if(try_trail){
+			/* got trailing type - remove auto store */
+			d->store = store_default | (d->store & STORE_MASK_EXTRA);
+		}
 
 		if(add_to_scope)
 			symtab_add_to_scope(add_to_scope, d);
