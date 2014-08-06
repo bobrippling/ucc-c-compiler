@@ -27,6 +27,7 @@
 #include "gen_style.h"
 #include "out/val.h"
 #include "out/ctx.h"
+#include "cc1_out_ctx.h"
 
 void IGNORE_PRINTGEN(const out_val *v)
 {
@@ -348,5 +349,6 @@ void gen_asm(
 		out_dbginfo(globs, &octx->dbg.file_head, fname, compdir);
 	}
 
+	cc1_out_ctx_free(octx);
 	out_ctx_end(octx);
 }
