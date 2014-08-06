@@ -12,6 +12,7 @@
 #include "out/val.h"
 #include "out/ctx.h"
 
+#include "cc1_out_ctx.h"
 #include "vla.h"
 
 /*
@@ -59,9 +60,10 @@ unsigned vla_decl_space(decl *d)
 static const out_val *vla_cached_size(type *const qual_t, out_ctx *octx)
 {
 	type *t = type_skip_all(qual_t);
-	dynmap *vlamap = *out_user_ctx(octx);
+	struct cc1_out_ctx **cc1_octx = cc1_out_ctx(octx);
+	dynmap *vlamap;
 
-	if(vlamap){
+	if(*cc1_octx && (vlamap = (*cc1_octx)->vlamap)){
 		long stack_off = dynmap_get(type *, long, vlamap, t);
 
 		if(stack_off){
@@ -83,14 +85,16 @@ static void vla_cache_size(
 		const out_val *sz, long stack_off)
 {
 	type *ptrsizety = type_ptr_to(arith_ty);
-	void **pvlamap;
-	dynmap *vlamap;
+	dynmap **pvlamap, *vlamap;
+	struct cc1_out_ctx *cc1_octx;
 
 	out_store(octx,
 			v_new_bp3_below(octx, NULL, ptrsizety, stack_off),
 			sz);
 
-	vlamap = *(pvlamap = out_user_ctx(octx));
+	cc1_octx = cc1_out_ctx_or_new(octx);
+
+	vlamap = *(pvlamap = &cc1_octx->vlamap);
 	if(!vlamap){
 		/* type * => long */
 		vlamap = *pvlamap = dynmap_new(type *, NULL, type_hash);
