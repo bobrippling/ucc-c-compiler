@@ -628,8 +628,11 @@ type *type_nav_changeauto(type *const ontop, type *trailing)
 
 		case type_func:
 		{
+			funcargs *args = type_funcargs(ontop);
+			args->retains++;
+
 			return type_func_of(
-					base, type_funcargs(ontop),
+					base, args,
 					ontop->bits.func.arg_scope);
 		}
 
