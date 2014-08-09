@@ -3,6 +3,8 @@ handle special arguments - vla? (needs extra stack space etc, see gen_asm.c)
 handle local variables in inlined function - needs extra stack space
 
 __attribute((always_inline, noinline))
--f[no-]inline
+-f[no-]inline (and -finline-functions as compatability)
+
+-fshow-inlines - show when a function is inlined
 
 debug locations / [inlined] flag
