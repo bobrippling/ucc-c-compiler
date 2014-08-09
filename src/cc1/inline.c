@@ -1,7 +1,10 @@
+#include <stdio.h>
+#include <stdarg.h>
 #include <stddef.h>
 #include <assert.h>
 
 #include "../util/dynarray.h"
+#include "../util/warn.h"
 
 #include "expr.h"
 #include "stmt.h"
@@ -105,7 +108,7 @@ void inline_ret_add(out_ctx *octx, const out_val *v)
 #define CANT_INLINE(reason, nam) do{ \
 		if(fopt_mode & FOPT_VERBOSE_ASM) \
 			out_comment(octx, "can't inline %s: %s", nam, reason); \
-		return NULL; \
+		goto noinline; \
 	}while(0)
 
 static decl *expr_to_declref(expr *e, out_ctx *octx)
@@ -124,6 +127,9 @@ static decl *expr_to_declref(expr *e, out_ctx *octx)
 	}else{
 		CANT_INLINE("not identifier", e->f_str());
 	}
+
+noinline:
+	return NULL;
 }
 
 static int heuristic_should_inline(
@@ -148,6 +154,11 @@ static int heuristic_should_inline(
 	return 1;
 }
 
+int can_inline_func(expr *call_expr)
+{
+
+}
+
 const out_val *try_gen_inline_func(
 		expr *call_expr,
 		const out_val *fn, const out_val **args,
@@ -161,9 +172,17 @@ const out_val *try_gen_inline_func(
 	const out_val *inlined_ret;
 
 	decl_fn = expr_to_declref(call_expr, octx);
+	if(!decl_fn)
+		goto noinline;
 
 	if(!(fn_code = decl_fn->bits.func.code))
 		CANT_INLINE("can't see func code", decl_fn->spel);
+
+	if(attribute_present(decl_fn, attr_noinline)){
+		/* jumping to noinline means __attribute((noinline, always_inline))
+		 * will always cause an error */
+		CANT_INLINE("noinline attribute", decl_fn->spel);
+	}
 
 	arg_symtab = DECL_FUNC_ARG_SYMTAB(decl_fn);
 
@@ -195,4 +214,15 @@ const out_val *try_gen_inline_func(
 
 	return inlined_ret;
 #undef CANT_INLINE
+noinline:
+	if(attribute_present(decl_fn, attr_always_inline)){
+		char buf[WHERE_BUF_SIZ];
+
+		warn_at_print_error(&decl_fn->where,
+				"can't inline always_inline function\n"
+				"%s: note: called from here",
+				where_str_r(buf, &call_expr->where));
+	}
+
+	return NULL;
 }

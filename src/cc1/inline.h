@@ -8,6 +8,8 @@ const out_val *try_gen_inline_func(
 		const out_val *fn, const out_val **args,
 		out_ctx *octx);
 
+int can_inline_func(expr *call_expr); // do this?
+
 void inline_ret_add(out_ctx *octx, const out_val *v);
 
 #define INLINE_DEPTH_MAX 5
