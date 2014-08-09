@@ -128,6 +128,7 @@ typedef void stmt_walk_enter(stmt *current, int *stop, int *descend, void *);
 typedef void stmt_walk_leave(stmt *current, void *);
 
 stmt_walk_enter stmt_walk_first_return; /* completes after the first return statement is found */
+stmt_walk_enter stmts_count;
 
 void stmt_walk(stmt *base, stmt_walk_enter, stmt_walk_leave, void *data);
 

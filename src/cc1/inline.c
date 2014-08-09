@@ -126,6 +126,28 @@ static decl *expr_to_declref(expr *e, out_ctx *octx)
 	}
 }
 
+static int heuristic_should_inline(
+		decl *fndecl, stmt *fncode, symtable *symtab)
+{
+	unsigned nstmts = 0;
+
+	/* if it's marked inline, inline it
+	 * if there's more than X stack space, deny
+	 * if there's too many statements, deny
+	 */
+	if(fndecl->store & store_inline)
+		return 1;
+
+	if(symtab->auto_total_size > INLINE_MAX_STACK_BYTES)
+		return 0;
+
+	stmt_walk(fncode, stmts_count, NULL, &nstmts);
+	if(nstmts > INLINE_MAX_STMTS)
+		return 0;
+
+	return 1;
+}
+
 const out_val *try_gen_inline_func(
 		expr *call_expr,
 		const out_val *fn, const out_val **args,
@@ -157,6 +179,9 @@ const out_val *try_gen_inline_func(
 	cc1_octx = cc1_out_ctx_or_new(octx);
 	if(cc1_octx->inline_.depth >= INLINE_DEPTH_MAX)
 		CANT_INLINE("inline depth", decl_fn->spel);
+
+	if(!heuristic_should_inline(decl_fn, fn_code, arg_symtab->children[0]))
+		CANT_INLINE("heuristic denied", decl_fn->spel);
 
 	cc1_octx->inline_.depth++;
 	{

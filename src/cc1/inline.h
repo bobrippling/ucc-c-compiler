@@ -11,5 +11,7 @@ const out_val *try_gen_inline_func(
 void inline_ret_add(out_ctx *octx, const out_val *v);
 
 #define INLINE_DEPTH_MAX 5
+#define INLINE_MAX_STACK_BYTES 256
+#define INLINE_MAX_STMTS 10
 
 #endif

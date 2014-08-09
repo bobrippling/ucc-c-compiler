@@ -111,6 +111,14 @@ void stmt_walk_first_return(stmt *current, int *stop, int *descend, void *extra)
 	}
 }
 
+void stmts_count(stmt *current, int *stop, int *descend, void *extra)
+{
+	(void)descend;
+	(void)stop;
+	(void)current;
+	++*(int *)extra;
+}
+
 void stmt_walk(stmt *base, stmt_walk_enter enter, stmt_walk_leave leave, void *data)
 {
 	int stop = 0;
