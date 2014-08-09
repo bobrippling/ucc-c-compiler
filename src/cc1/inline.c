@@ -27,7 +27,9 @@ static void inline_vars_pop(
 static const out_val *merge_inline_rets(
 		struct cc1_inline *inline_, out_ctx *octx)
 {
-	return out_ctrl_merge_n(octx, inline_->rets);
+	if(inline_->rets)
+		return out_ctrl_merge_n(octx, inline_->rets);
+	return out_new_noop(octx);
 }
 
 static const out_val *gen_inline_func(
