@@ -321,7 +321,7 @@ void gen_scope_leave_parent(symtable *s_from, out_ctx *octx)
  * struct A x = ({ struct A y; y.i = 1; y; });
  * so we can lea the final expr
  */
-void gen_stmt_code_m1(stmt *s, int m1, out_ctx *octx)
+void gen_stmt_code_m1(const stmt *s, int m1, out_ctx *octx)
 {
 	stmt **titer;
 	const char *endlbl;
@@ -341,12 +341,12 @@ void gen_stmt_code_m1(stmt *s, int m1, out_ctx *octx)
 		out_dbg_label(octx, endlbl);
 }
 
-void gen_stmt_code(stmt *s, out_ctx *octx)
+void gen_stmt_code(const stmt *s, out_ctx *octx)
 {
 	gen_stmt_code_m1(s, 0, octx);
 }
 
-void style_stmt_code(stmt *s, out_ctx *octx)
+void style_stmt_code(const stmt *s, out_ctx *octx)
 {
 	stmt **i_s;
 	decl **i_d;

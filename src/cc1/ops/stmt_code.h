@@ -10,4 +10,4 @@ void fold_check_scope_entry(where *, const char *desc,
 
 void fold_shadow_dup_check_block_decls(symtable *stab);
 
-void gen_stmt_code_m1(stmt *s, int m1, out_ctx *);
+void gen_stmt_code_m1(const stmt *s, int m1, out_ctx *);

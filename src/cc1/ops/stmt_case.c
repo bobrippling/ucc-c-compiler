@@ -17,13 +17,13 @@ void fold_stmt_case(stmt *t)
 	fold_stmt_and_add_to_curswitch(t);
 }
 
-void gen_stmt_case(stmt *s, out_ctx *octx)
+void gen_stmt_case(const stmt *s, out_ctx *octx)
 {
 	out_ctrl_transfer_make_current(octx, s->bits.case_blk);
 	gen_stmt(s->lhs, octx);
 }
 
-void style_stmt_case(stmt *s, out_ctx *octx)
+void style_stmt_case(const stmt *s, out_ctx *octx)
 {
 	stylef("\ncase %ld: ", (long)const_fold_val_i(s->expr));
 	gen_stmt(s->lhs, octx);

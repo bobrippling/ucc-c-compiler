@@ -25,7 +25,7 @@ void fold_stmt_expr(stmt *s)
 	}
 }
 
-void gen_stmt_expr(stmt *s, out_ctx *octx)
+void gen_stmt_expr(const stmt *s, out_ctx *octx)
 {
 	size_t prev = out_expr_stack(octx);
 	size_t now;
@@ -46,7 +46,7 @@ void gen_stmt_expr(stmt *s, out_ctx *octx)
 	}
 }
 
-void style_stmt_expr(stmt *s, out_ctx *octx)
+void style_stmt_expr(const stmt *s, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(";\n");

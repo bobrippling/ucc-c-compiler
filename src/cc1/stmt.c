@@ -117,3 +117,10 @@ void stmt_walk(stmt *base, stmt_walk_enter enter, stmt_walk_leave leave, void *d
 
 	stmt_walk2(base, enter, leave, data, &stop);
 }
+
+void stmt_init_blks(const stmt *ks, out_blk *con, out_blk *bbreak)
+{
+	stmt *s = (stmt *)ks;
+	s->blk_continue = con;
+	s->blk_break = bbreak;
+}

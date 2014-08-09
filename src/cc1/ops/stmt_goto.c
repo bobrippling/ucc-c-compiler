@@ -29,7 +29,7 @@ void fold_stmt_goto(stmt *s)
 	}
 }
 
-void gen_stmt_goto(stmt *s, out_ctx *octx)
+void gen_stmt_goto(const stmt *s, out_ctx *octx)
 {
 	if(s->expr){
 		/* no idea whether we're leaving scope - don't do anything */
@@ -47,7 +47,7 @@ void gen_stmt_goto(stmt *s, out_ctx *octx)
 	}
 }
 
-void style_stmt_goto(stmt *s, out_ctx *octx)
+void style_stmt_goto(const stmt *s, out_ctx *octx)
 {
 	stylef("goto ");
 

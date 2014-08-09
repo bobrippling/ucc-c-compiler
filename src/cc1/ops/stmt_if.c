@@ -82,7 +82,7 @@ void fold_stmt_if(stmt *s)
 		fold_stmt(s->rhs);
 }
 
-void gen_stmt_if(stmt *s, out_ctx *octx)
+void gen_stmt_if(const stmt *s, out_ctx *octx)
 {
 	out_blk *blk_true = out_blk_new(octx, "if_true");
 	out_blk *blk_false = out_blk_new(octx, "if_false");
@@ -112,7 +112,7 @@ void gen_stmt_if(stmt *s, out_ctx *octx)
 	flow_end(s->flow, s->symtab, el, octx);
 }
 
-void style_stmt_if(stmt *s, out_ctx *octx)
+void style_stmt_if(const stmt *s, out_ctx *octx)
 {
 	stylef("if(");
 	IGNORE_PRINTGEN(gen_expr(s->expr, octx));

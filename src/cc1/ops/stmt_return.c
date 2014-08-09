@@ -67,7 +67,7 @@ void fold_stmt_return(stmt *s)
 	}
 }
 
-void gen_stmt_return(stmt *s, out_ctx *octx)
+void gen_stmt_return(const stmt *s, out_ctx *octx)
 {
 	struct cc1_out_ctx **pcc1_octx, *cc1_octx;
 
@@ -83,7 +83,7 @@ void gen_stmt_return(stmt *s, out_ctx *octx)
 		out_ctrl_end_ret(octx, ret_exp, s->expr ? s->expr->tree_type : NULL);
 }
 
-void style_stmt_return(stmt *s, out_ctx *octx)
+void style_stmt_return(const stmt *s, out_ctx *octx)
 {
 	stylef("return ");
 	IGNORE_PRINTGEN(gen_expr(s->expr, octx));

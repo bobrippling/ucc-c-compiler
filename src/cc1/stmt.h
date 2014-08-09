@@ -133,4 +133,6 @@ void stmt_walk(stmt *base, stmt_walk_enter, stmt_walk_leave, void *data);
 
 stmt *stmt_set_where(stmt *, where const *);
 
+void stmt_init_blks(const stmt *ks, out_blk *con, out_blk *bbreak);
+
 #endif
