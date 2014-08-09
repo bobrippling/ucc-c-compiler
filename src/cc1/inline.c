@@ -8,11 +8,27 @@
 #include "gen_asm.h"
 #include "cc1.h" /* fopt_mode */
 
-#include "type_nav.h" /* temporary - for out_new_int(0) */
-
 #include "inline.h"
 
 #include "cc1_out_ctx.h"
+
+static void inline_vars_push(
+		struct cc1_inline *new, struct cc1_inline *save)
+{
+	memcpy_safe(save, new);
+}
+
+static void inline_vars_pop(
+		struct cc1_inline *current, struct cc1_inline *saved)
+{
+	memcpy_safe(current, saved);
+}
+
+static const out_val *merge_inline_rets(
+		struct cc1_inline *inline_, out_ctx *octx)
+{
+	return out_ctrl_merge_n(octx, inline_->rets);
+}
 
 static const out_val *gen_inline_func(
 		symtable *arg_symtab,
@@ -20,11 +36,16 @@ static const out_val *gen_inline_func(
 		struct cc1_out_ctx *cc1_octx,
 		out_ctx *octx)
 {
+	struct cc1_inline saved;
 	decl **diter;
 	size_t i;
+	const out_val *merged_ret;
 
 	if(!cc1_octx->sym_inline_map)
 		cc1_octx->sym_inline_map = dynmap_new(sym *, NULL, sym_hash);
+
+	inline_vars_push(&cc1_octx->inline_, &saved);
+	cc1_octx->inline_.phi = out_blk_new(octx, "inline_phi");
 
 	/* got a handle on the code, map the identifiers to our argument
 	 * expression/values, and generate */
@@ -54,8 +75,27 @@ static const out_val *gen_inline_func(
 		out_val_release(octx, arg);
 	}
 
-	/* FIXME: placeholder until return is sorted: */
-	return out_new_zero(octx, type_nav_btype(cc1_type_nav, type_int));
+	out_ctrl_transfer_make_current(octx, cc1_octx->inline_.phi);
+
+	/* TODO: free() */
+	merged_ret = merge_inline_rets(&cc1_octx->inline_, octx);
+	inline_vars_pop(&cc1_octx->inline_, &saved);
+
+	return merged_ret;
+}
+
+void inline_ret_add(out_ctx *octx, const out_val *v)
+{
+	out_blk *mergee = NULL;
+	struct cc1_out_ctx *cc1_octx = cc1_out_ctx_or_new(octx);
+
+	out_ctrl_transfer(
+			octx,
+			cc1_octx->inline_.phi,
+			v, v ? &mergee : NULL);
+
+	if(mergee)
+		dynarray_add(&cc1_octx->inline_.rets, mergee);
 }
 
 #define CANT_INLINE(reason, nam) do{ \
@@ -111,10 +151,10 @@ const out_val *try_gen_inline_func(
 	/* TODO: ^ name the above sym/decl */
 
 	cc1_octx = cc1_out_ctx_or_new(octx);
-	if(cc1_octx->inline_depth >= INLINE_DEPTH_MAX)
+	if(cc1_octx->inline_.depth >= INLINE_DEPTH_MAX)
 		CANT_INLINE("inline depth", decl_fn->spel);
 
-	cc1_octx->inline_depth++;
+	cc1_octx->inline_.depth++;
 	{
 		/* we don't use the call expr/value */
 		out_val_consume(octx, fn);
@@ -122,7 +162,7 @@ const out_val *try_gen_inline_func(
 		inlined_ret = gen_inline_func(
 				arg_symtab, fn_code, args, cc1_octx, octx);
 	}
-	cc1_octx->inline_depth--;
+	cc1_octx->inline_.depth--;
 
 	return inlined_ret;
 #undef CANT_INLINE

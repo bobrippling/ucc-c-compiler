@@ -252,8 +252,8 @@ inline.o: inline.c ../util/dynarray.h ../util/dyn.h expr.h strings.h \
  ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
  ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
  ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h \
- gen_asm.h cc1.h ../util/std.h warn.h type_nav.h sue.h inline.h \
- out/forwards.h cc1_out_ctx.h
+ gen_asm.h cc1.h ../util/std.h warn.h inline.h out/forwards.h \
+ cc1_out_ctx.h
 label.o: label.c ../util/where.h ../util/compiler.h ../util/alloc.h \
  ../util/dynarray.h ../util/dyn.h sym.h decl.h type.h num.h btype.h \
  attribute.h retain.h ../util/dynmap.h label.h out/forwards.h out/out.h \
@@ -1388,7 +1388,8 @@ ops/stmt_return.o: ops/stmt_return.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_block.h ops/../funcargs.h ops/../const.h \
  ops/../gen_str.h ops/../gen_style.h ops/../decl_init.h ops/../gen_asm.h \
  ops/stmt_return.h ops/expr_block.h ops/../funcargs.h ops/../type_is.h \
- ops/../type_nav.h ops/../btype.h ops/../sue.h
+ ops/../type_nav.h ops/../btype.h ops/../sue.h ops/../cc1_out_ctx.h \
+ ops/../out/forwards.h ops/../inline.h
 ops/stmt_switch.o: ops/stmt_switch.c ops/ops.h ops/../../util/util.h \
  ops/../../util/warn.h ops/../../util/where.h ops/../../util/compiler.h \
  ops/../cc1.h ops/../../util/std.h ops/../warn.h ops/../out/out.h \

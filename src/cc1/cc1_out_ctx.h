@@ -7,7 +7,12 @@ struct cc1_out_ctx
 {
 	struct dynmap *vlamap;
 	struct dynmap *sym_inline_map;
-	unsigned inline_depth;
+
+	struct cc1_inline
+	{
+		struct out_blk *phi, **rets;
+		unsigned depth;
+	} inline_;
 };
 
 #define cc1_out_ctx(octx) ((struct cc1_out_ctx **)out_user_ctx(octx))

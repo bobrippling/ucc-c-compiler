@@ -6,6 +6,9 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 
+#include "../cc1_out_ctx.h"
+#include "../inline.h"
+
 const char *str_stmt_return()
 {
 	return "return";
@@ -66,12 +69,18 @@ void fold_stmt_return(stmt *s)
 
 void gen_stmt_return(stmt *s, out_ctx *octx)
 {
+	struct cc1_out_ctx **pcc1_octx, *cc1_octx;
+
 	/* need to generate the ret expr before the scope leave code */
 	const out_val *ret_exp = s->expr ? gen_expr(s->expr, octx) : NULL;
 
 	gen_scope_leave(s->symtab, symtab_root(s->symtab), octx);
 
-	out_ctrl_end_ret(octx, ret_exp, s->expr ? s->expr->tree_type : NULL);
+	pcc1_octx = cc1_out_ctx(octx);
+	if((cc1_octx = *pcc1_octx) && cc1_octx->inline_.depth)
+		inline_ret_add(octx, ret_exp);
+	else
+		out_ctrl_end_ret(octx, ret_exp, s->expr ? s->expr->tree_type : NULL);
 }
 
 void style_stmt_return(stmt *s, out_ctx *octx)

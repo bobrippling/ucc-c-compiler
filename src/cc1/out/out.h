@@ -108,6 +108,7 @@ void out_ctrl_branch(
 /* maybe ret null */
 ucc_wur const out_val *out_ctrl_merge(out_ctx *, out_blk *, out_blk *);
 
+ucc_wur const out_val *out_ctrl_merge_n(out_ctx *, out_blk **rets);
 
 /* function setup */
 void out_func_prologue(
