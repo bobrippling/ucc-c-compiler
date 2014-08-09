@@ -21,6 +21,9 @@ static void inline_vars_push(
 static void inline_vars_pop(
 		struct cc1_inline *current, struct cc1_inline *saved)
 {
+	/* block memory management is handled by the out/backend
+	 * we just free our array of them */
+	dynarray_free(out_blk **, &current->rets, NULL);
 	memcpy_safe(current, saved);
 }
 
@@ -79,7 +82,6 @@ static const out_val *gen_inline_func(
 
 	out_ctrl_transfer_make_current(octx, cc1_octx->inline_.phi);
 
-	/* TODO: free() */
 	merged_ret = merge_inline_rets(&cc1_octx->inline_, octx);
 	inline_vars_pop(&cc1_octx->inline_, &saved);
 
