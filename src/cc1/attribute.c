@@ -145,6 +145,8 @@ const char *attribute_to_str(attribute *da)
 		CASE_STR_PREFIX(attr, aligned);
 		CASE_STR_PREFIX(attr, weak);
 		CASE_STR_PREFIX(attr, cleanup);
+		CASE_STR_PREFIX(attr, always_inline);
+		CASE_STR_PREFIX(attr, noinline);
 		CASE_STR_PREFIX(attr, ucc_debug);
 
 		case attr_call_conv:
@@ -238,6 +240,8 @@ int attribute_equal(attribute *a, attribute *b)
 				case attr_packed:
 				case attr_weak:
 				case attr_ucc_debug:
+				case attr_always_inline:
+				case attr_noinline:
 					/* equal */
 					break;
 			}

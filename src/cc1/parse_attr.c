@@ -221,6 +221,8 @@ EMPTY(attr_noreturn)
 EMPTY(attr_noderef)
 EMPTY(attr_packed)
 EMPTY(attr_weak)
+EMPTY(attr_always_inline)
+EMPTY(attr_noinline)
 EMPTY(attr_ucc_debug)
 
 #undef EMPTY
@@ -256,6 +258,8 @@ static struct
 	ATTR(aligned),
 	ATTR(weak),
 	ATTR(cleanup),
+	ATTR(always_inline),
+	ATTR(noinline),
 	{ "__ucc_debug", parse_attr_ucc_debug },
 
 	ATTR(cdecl),
