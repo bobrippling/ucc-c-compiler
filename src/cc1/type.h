@@ -105,8 +105,8 @@ type_cmp(
 
 int type_eq_nontdef(type *, type *);
 
-unsigned type_size(type *r, where *from);
-unsigned type_align(type *r, where *from);
+unsigned type_size(type *r, where const *from);
+unsigned type_align(type *r, where const *from);
 
 const char *type_kind_to_str(enum type_kind);
 

@@ -80,8 +80,8 @@ int btype_is_signed(const btype *);
 
 #define BTYPE_STATIC_BUFSIZ 128
 const char *btype_to_str(const btype *t);
-unsigned btype_size( const btype *, where *from);
-unsigned btype_align(const btype *, where *from);
+unsigned btype_size( const btype *, where const *from);
+unsigned btype_align(const btype *, where const *from);
 
 const char *type_primitive_to_str(const enum type_primitive);
 const char *type_qual_to_str(     const enum type_qualifier, int trailing_space);

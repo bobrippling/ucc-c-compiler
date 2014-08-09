@@ -53,7 +53,7 @@ int enum_nentries(struct_union_enum_st *e)
 	return dynarray_count(e->members);
 }
 
-void sue_incomplete_chk(struct_union_enum_st *st, where *w)
+void sue_incomplete_chk(struct_union_enum_st *st, const where *w)
 {
 	if(!sue_complete(st)){
 		char buf[WHERE_BUF_SIZ];
@@ -67,14 +67,14 @@ void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 		UCC_ASSERT(st->size > 0, "zero-sized enum");
 }
 
-unsigned sue_size(struct_union_enum_st *st, where *w)
+unsigned sue_size(struct_union_enum_st *st, const where *w)
 {
 	sue_incomplete_chk(st, w);
 
 	return st->size; /* can be zero */
 }
 
-unsigned sue_align(struct_union_enum_st *st, where *w)
+unsigned sue_align(struct_union_enum_st *st, const where *w)
 {
 	sue_incomplete_chk(st, w);
 

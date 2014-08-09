@@ -12,7 +12,7 @@
 	 (e)->bits.struct_mem.extra_off                     \
 	 )
 
-static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx);
+static const out_val *gen_expr_struct_lea(const expr *e, out_ctx *octx);
 
 const char *str_expr_struct()
 {
@@ -120,7 +120,7 @@ err:
 			type_qual(e->lhs->tree_type));
 }
 
-static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
+static const out_val *gen_expr_struct_lea(const expr *e, out_ctx *octx)
 {
 	const out_val *struct_exp, *off;
 
@@ -167,14 +167,14 @@ static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 	return off;
 }
 
-const out_val *gen_expr_struct(expr *e, out_ctx *octx)
+const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 {
 	ASSERT_NOT_DOT();
 
 	return out_deref(octx, gen_expr_struct_lea(e, octx));
 }
 
-const out_val *gen_expr_str_struct(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_struct(const expr *e, out_ctx *octx)
 {
 	decl *mem = e->bits.struct_mem.d;
 
@@ -258,7 +258,7 @@ expr *expr_new_struct_mem(expr *sub, int dot, decl *d)
 	return e;
 }
 
-const out_val *gen_expr_style_struct(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_struct(const expr *e, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef("->%s", e->bits.struct_mem.d->spel);

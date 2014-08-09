@@ -389,7 +389,7 @@ static void show_warn_option(unsigned char *pwarn)
 	}
 }
 
-int where_in_sysheader(where *w)
+int where_in_sysheader(const where *w)
 {
 	const char **i;
 	for(i = system_includes; i && *i; i++)
@@ -401,7 +401,7 @@ int where_in_sysheader(where *w)
 
 #undef cc1_warn_at
 void cc1_warn_at(
-		struct where *where, unsigned char *pwarn,
+		const struct where *where, unsigned char *pwarn,
 		const char *fmt, ...)
 {
 	va_list l;

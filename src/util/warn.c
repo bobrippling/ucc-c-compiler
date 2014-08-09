@@ -142,7 +142,7 @@ static void warn_show_line(const struct where *w)
 	}
 }
 
-void vwarn(struct where *w, int err, const char *fmt, va_list l)
+void vwarn(const struct where *w, int err, const char *fmt, va_list l)
 {
 	include_bt(stderr);
 
@@ -167,7 +167,7 @@ void vwarn(struct where *w, int err, const char *fmt, va_list l)
 	warn_show_line(w);
 }
 
-void warn_at_print_error(struct where *w, const char *fmt, ...)
+void warn_at_print_error(const struct where *w, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
@@ -176,13 +176,13 @@ void warn_at_print_error(struct where *w, const char *fmt, ...)
 }
 
 
-void vdie(struct where *w, const char *fmt, va_list l)
+void vdie(const struct where *w, const char *fmt, va_list l)
 {
 	vwarn(w, 1, fmt, l);
 	exit(1);
 }
 
-void warn_at(struct where *w, const char *fmt, ...)
+void warn_at(const struct where *w, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
@@ -190,7 +190,7 @@ void warn_at(struct where *w, const char *fmt, ...)
 	va_end(l);
 }
 
-void die_at(struct where *w, const char *fmt, ...)
+void die_at(const struct where *w, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);

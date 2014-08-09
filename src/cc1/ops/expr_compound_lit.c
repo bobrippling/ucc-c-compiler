@@ -71,19 +71,19 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	}
 }
 
-static void gen_expr_compound_lit_code(expr *e, out_ctx *octx)
+static void gen_expr_compound_lit_code(const expr *e, out_ctx *octx)
 {
 	if(!e->expr_comp_lit_cgen){
 		expr *initexp = e->bits.complit.decl->bits.var.init.expr;
 
-		e->expr_comp_lit_cgen = 1;
+		((expr *)e)->expr_comp_lit_cgen = 1;
 
 		if(initexp)
 			out_val_consume(octx, gen_expr(initexp, octx));
 	}
 }
 
-const out_val *gen_expr_compound_lit(expr *e, out_ctx *octx)
+const out_val *gen_expr_compound_lit(const expr *e, out_ctx *octx)
 {
 	/* allow (int){2}, but not (struct...){...} */
 	fold_check_expr(e, FOLD_CHK_NO_ST_UN, "compound literal");
@@ -93,7 +93,7 @@ const out_val *gen_expr_compound_lit(expr *e, out_ctx *octx)
 	return out_new_sym_val(octx, e->bits.complit.sym);
 }
 
-static const out_val *lea_expr_compound_lit(expr *e, out_ctx *octx)
+static const out_val *lea_expr_compound_lit(const expr *e, out_ctx *octx)
 {
 	gen_expr_compound_lit_code(e, octx);
 
@@ -117,14 +117,14 @@ static void const_expr_compound_lit(expr *e, consty *k)
 	}
 }
 
-const out_val *gen_expr_str_compound_lit(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_compound_lit(const expr *e, out_ctx *octx)
 {
 	decl *const d = e->bits.complit.decl;
 
 	if(e->op)
 		return NULL;
 
-	e->op = 1;
+	((expr *)e)->op = 1;
 	{
 		idt_printf("(%s){\n", decl_to_str(d));
 
@@ -146,12 +146,12 @@ const out_val *gen_expr_str_compound_lit(expr *e, out_ctx *octx)
 			print_stmt(e->code);
 		}
 	}
-	e->op = 0;
+	((expr *)e)->op = 0;
 
 	UNUSED_OCTX();
 }
 
-const out_val *gen_expr_style_compound_lit(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_compound_lit(const expr *e, out_ctx *octx)
 {
 	stylef("(%s)", type_to_str(e->bits.complit.decl->ref));
 	gen_style_dinit(e->bits.complit.decl->bits.var.init.dinit);

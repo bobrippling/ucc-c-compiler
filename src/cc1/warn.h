@@ -137,7 +137,7 @@ struct cc1_warning
 extern struct cc1_warning cc1_warning;
 
 void cc1_warn_at(
-		struct where *where,
+		const struct where *where,
 		unsigned char *pwarn,
 		const char *fmt, ...)
 	ucc_printflike(3, 4);

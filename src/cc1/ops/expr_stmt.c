@@ -36,7 +36,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */
 }
 
-const out_val *gen_expr_stmt(expr *e, out_ctx *octx)
+const out_val *gen_expr_stmt(const expr *e, out_ctx *octx)
 {
 	size_t n;
 	gen_stmt_code_m1(e->code, 1, octx);
@@ -49,7 +49,7 @@ const out_val *gen_expr_stmt(expr *e, out_ctx *octx)
 	return out_new_noop(octx);
 }
 
-const out_val *gen_expr_str_stmt(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_stmt(const expr *e, out_ctx *octx)
 {
 	idt_printf("statement:\n");
 	gen_str_indent++;
@@ -70,7 +70,7 @@ expr *expr_new_stmt(stmt *code)
 	return e;
 }
 
-const out_val *gen_expr_style_stmt(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_stmt(const expr *e, out_ctx *octx)
 {
 	stylef("({\n");
 	gen_stmt(e->code, octx);

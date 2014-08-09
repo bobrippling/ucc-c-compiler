@@ -196,7 +196,7 @@ void fold_expr_if(expr *e, symtable *stab)
 }
 
 
-const out_val *gen_expr_if(expr *e, out_ctx *octx)
+const out_val *gen_expr_if(const expr *e, out_ctx *octx)
 {
 	out_blk *landing = out_blk_new(octx, "if_end"),
 	        *blk_lhs = out_blk_new(octx, "if_lhs"),
@@ -225,7 +225,7 @@ const out_val *gen_expr_if(expr *e, out_ctx *octx)
 	return out_ctrl_merge(octx, blk_lhs, blk_rhs);
 }
 
-const out_val *gen_expr_str_if(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_if(const expr *e, out_ctx *octx)
 {
 	idt_printf("if expression:\n");
 	gen_str_indent++;
@@ -263,7 +263,7 @@ expr *expr_new_if(expr *test)
 	return e;
 }
 
-const out_val *gen_expr_style_if(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_if(const expr *e, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(e->expr, octx));
 	stylef(" ? ");

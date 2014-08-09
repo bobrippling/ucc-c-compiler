@@ -283,7 +283,7 @@ integral_t type_max(type *r, where *from)
 	return max;
 }
 
-unsigned type_size(type *r, where *from)
+unsigned type_size(type *r, const where *from)
 {
 	switch(r->type){
 		case type_auto:
@@ -337,7 +337,7 @@ unsigned type_size(type *r, where *from)
 	ucc_unreach(0);
 }
 
-unsigned type_align(type *r, where *from)
+unsigned type_align(type *r, const where *from)
 {
 	struct_union_enum_st *sue;
 	type *test;

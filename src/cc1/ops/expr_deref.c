@@ -34,20 +34,20 @@ void fold_expr_deref(expr *e, symtable *stab)
 	e->tree_type = type_dereference_decay(ptr->tree_type);
 }
 
-static const out_val *gen_expr_deref_lea(expr *e, out_ctx *octx)
+static const out_val *gen_expr_deref_lea(const expr *e, out_ctx *octx)
 {
 	/* a dereference */
 	return gen_expr(expr_deref_what(e), octx); /* skip over the *() bit */
 }
 
-const out_val *gen_expr_deref(expr *e, out_ctx *octx)
+const out_val *gen_expr_deref(const expr *e, out_ctx *octx)
 {
 	return out_deref(
 			octx,
 			gen_expr_deref_lea(e, octx));
 }
 
-const out_val *gen_expr_str_deref(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_deref(const expr *e, out_ctx *octx)
 {
 	idt_printf("deref, size: %s\n", type_to_str(e->tree_type));
 	gen_str_indent++;
@@ -114,7 +114,7 @@ expr *expr_new_deref(expr *of)
 	return e;
 }
 
-const out_val *gen_expr_style_deref(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_deref(const expr *e, out_ctx *octx)
 {
 	stylef("*(");
 	IGNORE_PRINTGEN(gen_expr(expr_deref_what(e), octx));

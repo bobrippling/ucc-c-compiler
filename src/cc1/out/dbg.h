@@ -8,7 +8,7 @@ struct out_dbg_filelist
 };
 
 /* debug output */
-void out_dbg_where(out_ctx *octx, where *w);
+void out_dbg_where(out_ctx *octx, const where *w);
 void out_dbg_label(out_ctx *octx, const char *lbl);
 
 #ifdef SYM_H

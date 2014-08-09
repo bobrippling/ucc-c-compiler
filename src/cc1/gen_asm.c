@@ -34,13 +34,13 @@ void IGNORE_PRINTGEN(const out_val *v)
 	(void)v;
 }
 
-const out_val *gen_expr(expr *e, out_ctx *octx)
+const out_val *gen_expr(const expr *e, out_ctx *octx)
 {
 	consty k;
 
 	/* always const_fold functions, i.e. builtins */
 	if(expr_kind(e, funcall) || fopt_mode & FOPT_CONST_FOLD)
-		const_fold(e, &k);
+		const_fold((expr *)e, &k);
 	else
 		k.type = CONST_NO;
 
@@ -59,7 +59,7 @@ const out_val *gen_expr(expr *e, out_ctx *octx)
 	}
 }
 
-const out_val *lea_expr(expr *e, out_ctx *octx)
+const out_val *lea_expr(const expr *e, out_ctx *octx)
 {
 	char buf[WHERE_BUF_SIZ];
 
@@ -72,7 +72,7 @@ const out_val *lea_expr(expr *e, out_ctx *octx)
 	return e->f_lea(e, octx);
 }
 
-void gen_stmt(stmt *t, out_ctx *octx)
+void gen_stmt(const stmt *t, out_ctx *octx)
 {
 	if(octx) /* for other backends */
 		out_dbg_where(octx, &t->where);
