@@ -8,4 +8,6 @@ const out_val *try_gen_inline_func(
 		const out_val *fn, const out_val **args,
 		out_ctx *octx);
 
+#define INLINE_DEPTH_MAX 5
+
 #endif

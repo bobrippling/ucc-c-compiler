@@ -17,9 +17,9 @@
 static const out_val *gen_inline_func(
 		symtable *arg_symtab,
 		stmt *func_code, const out_val **args,
+		struct cc1_out_ctx *cc1_octx,
 		out_ctx *octx)
 {
-	struct cc1_out_ctx *cc1_octx = cc1_out_ctx_or_new(octx);
 	decl **diter;
 	size_t i;
 
@@ -87,10 +87,12 @@ const out_val *try_gen_inline_func(
 		const out_val *fn, const out_val **args,
 		out_ctx *octx)
 {
+	struct cc1_out_ctx *cc1_octx;
 	decl *decl_fn;
 	stmt *fn_code;
 	symtable *arg_symtab;
 	decl **diter;
+	const out_val *inlined_ret;
 
 	decl_fn = expr_to_declref(call_expr, octx);
 
@@ -108,9 +110,20 @@ const out_val *try_gen_inline_func(
 			CANT_INLINE("sym written or addressed", decl_fn->spel);
 	/* TODO: ^ name the above sym/decl */
 
-	/* we don't use the call expr/value */
-	out_val_consume(octx, fn);
+	cc1_octx = cc1_out_ctx_or_new(octx);
+	if(cc1_octx->inline_depth >= INLINE_DEPTH_MAX)
+		CANT_INLINE("inline depth", decl_fn->spel);
 
-	return gen_inline_func(arg_symtab, fn_code, args, octx);
+	cc1_octx->inline_depth++;
+	{
+		/* we don't use the call expr/value */
+		out_val_consume(octx, fn);
+
+		inlined_ret = gen_inline_func(
+				arg_symtab, fn_code, args, cc1_octx, octx);
+	}
+	cc1_octx->inline_depth--;
+
+	return inlined_ret;
 #undef CANT_INLINE
 }
