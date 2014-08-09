@@ -57,6 +57,11 @@ const out_val *out_ctrl_merge_n(out_ctx *octx, out_blk **rets)
 		unsigned sz;
 	} max = { NULL, 0 };
 
+	/* optimisation: if we only have one (e.g. single inline ret),
+	 * then we can just returns its phi */
+	if(!rets[1])
+		return rets[0]->phi_val;
+
 	/* get the largest size */
 	for(blk_iter = rets; *blk_iter; blk_iter++){
 		const out_val *phi = (*blk_iter)->phi_val;
