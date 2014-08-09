@@ -4,3 +4,5 @@ handle local variables in inlined function - needs extra stack space
 
 __attribute((always_inline, noinline))
 -f[no-]inline
+
+debug locations / [inlined] flag
