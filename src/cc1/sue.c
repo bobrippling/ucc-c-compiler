@@ -280,7 +280,7 @@ new_type:
 
 	if(new){
 		if(!pre_parse && prim == type_enum && !sue->got_membs)
-			cc1_warn_at(NULL, predecl_enum,
+			cc1_warn_at(w, predecl_enum,
 					"forward-declaration of enum %s", sue->spel);
 
 		if(stab)
