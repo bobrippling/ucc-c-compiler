@@ -6,6 +6,7 @@
 #include "../type.h"
 #include "../type_nav.h"
 #include "../type_is.h"
+#include "../pack.h"
 
 #include "val.h"
 #include "out.h" /* this file defs */
@@ -114,6 +115,8 @@ void out_func_epilogue(
 		to_flush = octx->first_blk;
 		out_current_blk(octx, octx->first_blk);
 		{
+			unsigned stack_amt;
+
 			if(fopt_mode & FOPT_VERBOSE_ASM){
 				out_comment(octx, "spill space %u, alloc_n space %u",
 						octx->max_stack_sz - octx->stack_sz_initial,
@@ -125,7 +128,11 @@ void out_func_epilogue(
 			 * and that same value (minus padding) to stack_n_alloc */
 			assert(octx->max_stack_sz >= octx->stack_n_alloc);
 
-			v_stack_adj(octx, octx->max_stack_sz - octx->stack_n_alloc, /*sub:*/1);
+			stack_amt = octx->max_stack_sz - octx->stack_n_alloc;
+			if(octx->max_align)
+				stack_amt = pack_to_align(stack_amt, octx->max_align);
+
+			v_stack_adj(octx, stack_amt, /*sub:*/1);
 
 			if(call_save_spill_blk){
 				out_ctrl_transfer(octx, call_save_spill_blk, NULL, NULL);

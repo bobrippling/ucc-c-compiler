@@ -27,6 +27,7 @@ struct out_ctx
 	/* vary: */
 	int var_stack_sz, max_stack_sz;
 	int stack_n_alloc; /* just the alloc_n() part */
+	unsigned max_align;
 
 	unsigned check_flags : 1; /* decay flags? */
 	unsigned in_prologue : 1, used_stack : 1;

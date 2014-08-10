@@ -600,6 +600,13 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 	return 0;
 }
 
+void v_need_stackalign(out_ctx *octx, unsigned align)
+{
+	/* aligning the stack isn't sufficient here - if the stack is adjusted after,
+	 * it might not be at a 16-byte alignment */
+	octx->max_align = MAX(octx->max_align, align);
+}
+
 enum flag_cmp v_inv_cmp(enum flag_cmp cmp, int invert_eq)
 {
 	switch(cmp){
