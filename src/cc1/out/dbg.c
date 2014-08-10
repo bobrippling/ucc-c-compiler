@@ -1294,6 +1294,8 @@ addr:
 				UCC_ASSERT(a->bits.type_die->locn,
 						"unset DIE/%s location",
 						die_tag_to_str(a->bits.type_die->tag));
+				UCC_ASSERT(a->bits.type_die->locn != die->locn,
+						"subDIE has same location");
 
 				dwarf_printf(&state->info, LONG, "%lu", a->bits.type_die->locn);
 				break;
