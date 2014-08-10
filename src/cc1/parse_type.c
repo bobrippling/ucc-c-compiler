@@ -49,12 +49,13 @@ static type *default_type(void);
  * };
  */
 static type *parse_type_sue(
-		enum type_primitive prim,
-		int newdecl_context,
-		symtable *scope)
+		enum type_primitive const prim,
+		int const newdecl_context,
+		symtable *const scope)
 {
 	int is_complete = 0;
 	char *spel = NULL;
+	struct_union_enum_st *predecl_sue = NULL;
 	sue_member **members = NULL;
 	attribute *this_sue_attr = NULL;
 	where sue_loc;
@@ -76,6 +77,14 @@ static type *parse_type_sue(
 	parse_add_attr(&this_sue_attr, scope);
 
 	if(accept(token_open_block)){
+		/* sue is now in scope, but incomplete */
+		if(spel){
+			predecl_sue = sue_decl(
+					scope, ustrdup(spel), /*members:*/ NULL, prim,
+					/*is_complete:*/0, /*isdef:*/0, /*pre-parse:*/1,
+					&sue_loc);
+		}
+
 		if(prim == type_enum){
 			for(;;){
 				where w;
@@ -149,11 +158,16 @@ static type *parse_type_sue(
 		 *
 		 * it's a straight declaration if we have a ';'
 		 */
+		const int isdef = (newdecl_context && curtok == token_semicolon) || is_complete;
 		struct_union_enum_st *sue = sue_decl(
 				scope, spel,
 				members, prim, is_complete,
-				/* isdef = */newdecl_context && curtok == token_semicolon,
+				isdef, /*pre_parse:*/0,
 				&sue_loc);
+
+		UCC_ASSERT(isdef || !predecl_sue || predecl_sue == sue,
+				"predecl_sue(%s) != sue(%s) (isdef=%d)",
+				predecl_sue->spel, sue->spel, isdef);
 
 		parse_add_attr(&this_sue_attr, scope); /* struct A { ... } __attr__ */
 

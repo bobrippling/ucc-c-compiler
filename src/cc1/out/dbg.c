@@ -35,6 +35,10 @@
 #include "dbg.h"
 #include "write.h" /* dbg_add_file */
 
+#define DEBUG_TYPE_SKIP type_skip_non_tdefs_consts
+#define DEBUG_TYPE_HASH type_hash_skip_nontdefs_consts
+
+
 #define DW_TAGS                        \
 	X(DW_TAG_compile_unit, 0x11)         \
 	X(DW_TAG_subprogram, 0x2e)           \
@@ -498,6 +502,10 @@ static void dwarf_set_DW_AT_type(
 		type *ty)
 {
 	struct DIE *tydie = dwarf_type_die(cu, parent, ty);
+
+	if(ty->type == type_btype && ty->bits.type->primitive == type_void)
+		assert(!tydie);
+
 	if(tydie)
 		dwarf_attr(in, DW_AT_type, DW_FORM_ref4, RETAIN(tydie));
 }
@@ -510,13 +518,13 @@ static void dwarf_add_tydie(
 	struct DIE *prev;
 	int replaced_another;
 
-	ty = type_skip_non_tdefs(ty);
+	ty = DEBUG_TYPE_SKIP(ty);
 
 	if(!cu->types_to_dies){
 		cu->types_to_dies = dynmap_new(
 				type *,
 				type_eq_nontdef, /* necessary since we use type_hash_skip() */
-				type_hash_skip_nontdefs); /* attr/where aren't emitted */
+				DEBUG_TYPE_HASH); /* attr/where aren't emitted */
 	}
 
 	prev = dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, RETAIN(tydie));
@@ -564,7 +572,7 @@ static struct DIE *dwarf_type_die(
 	struct DIE *tydie;
 
 	if(cu->types_to_dies){
-		type *skipped_ty = type_skip_non_tdefs(ty);
+		type *skipped_ty = DEBUG_TYPE_SKIP(ty);
 
 		tydie = dynmap_get(type *, struct DIE *, cu->types_to_dies, skipped_ty);
 		if(tydie)
@@ -1294,6 +1302,8 @@ addr:
 				UCC_ASSERT(a->bits.type_die->locn,
 						"unset DIE/%s location",
 						die_tag_to_str(a->bits.type_die->tag));
+				UCC_ASSERT(a->bits.type_die->locn != die->locn,
+						"subDIE has same location");
 
 				dwarf_printf(&state->info, LONG, "%lu", a->bits.type_die->locn);
 				break;

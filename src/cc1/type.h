@@ -138,7 +138,7 @@ where *type_loc(type *);
 where *type_has_loc(type *);
 
 unsigned type_hash(const type *);
-unsigned type_hash_skip_nontdefs(const type *);
+unsigned type_hash_skip_nontdefs_consts(const type *);
 unsigned sue_hash(const struct struct_union_enum_st *);
 
 /* returns the largest type to hold a type of size 'sz' */
