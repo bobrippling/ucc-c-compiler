@@ -81,7 +81,7 @@ static type *parse_type_sue(
 		if(spel){
 			predecl_sue = sue_decl(
 					scope, ustrdup(spel), /*members:*/ NULL, prim,
-					/*is_complete:*/0, /*isdef:*/0,
+					/*is_complete:*/0, /*isdef:*/0, /*pre-parse:*/1,
 					&sue_loc);
 		}
 
@@ -162,7 +162,7 @@ static type *parse_type_sue(
 		struct_union_enum_st *sue = sue_decl(
 				scope, spel,
 				members, prim, is_complete,
-				isdef,
+				isdef, /*pre_parse:*/0,
 				&sue_loc);
 
 		UCC_ASSERT(isdef || !predecl_sue || predecl_sue == sue,
