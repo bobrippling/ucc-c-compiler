@@ -1,3 +1,5 @@
+// RUN: %debug_check %s
+
 typedef void V;
 
 V *p;
