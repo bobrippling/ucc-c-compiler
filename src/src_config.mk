@@ -1,6 +1,9 @@
-CFLAGS = -g -pg -O2 -Wall -Wextra -pedantic -std=c99 \
+CFLAGS = -g -pg -Wall -Wextra -pedantic -std=c99 \
          -Wno-char-subscripts -Wno-format-extra-args \
-				 -Wmissing-prototypes -Wno-missing-braces
+				 -Wmissing-prototypes -Wno-missing-braces \
+				 -pg -O2 -fprofile-arcs -ftest-coverage
+
+LDFLAGS = -lgcov
 
 #-Wconversion          \
 #-Wshadow              \
