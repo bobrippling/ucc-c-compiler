@@ -37,8 +37,9 @@ enum type_skippage
 {
 	STOP_AT_TDEF = 1 << 0,
 	STOP_AT_CAST = 1 << 1,
-	STOP_AT_ATTR = 1 << 2,
-	STOP_AT_WHERE = 1 << 3,
+	STOP_AT_QUAL_CASTS = 1 << 2,
+	STOP_AT_ATTR = 1 << 3,
+	STOP_AT_WHERE = 1 << 4,
 };
 static type *type_skip(type *t, enum type_skippage skippage)
 {
@@ -50,6 +51,8 @@ static type *type_skip(type *t, enum type_skippage skippage)
 				break;
 			case type_cast:
 				if(skippage & STOP_AT_CAST)
+					goto fin;
+				if(skippage & STOP_AT_QUAL_CASTS && !t->bits.cast.is_signed_cast)
 					goto fin;
 				break;
 			case type_attr:
@@ -88,6 +91,11 @@ type *type_skip_non_casts(type *t)
 type *type_skip_wheres(type *t)
 {
 	return type_skip(t, ~0 & ~STOP_AT_WHERE);
+}
+
+type *type_skip_non_tdefs_consts(type *t)
+{
+	return type_skip(t, STOP_AT_TDEF | STOP_AT_QUAL_CASTS);
 }
 
 type *type_skip_non_wheres(type *t)
