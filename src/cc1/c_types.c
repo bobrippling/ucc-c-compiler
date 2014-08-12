@@ -48,7 +48,10 @@ type *c_types_make_va_list(symtable *symtab)
 		type *va_list_struct = type_nav_suetype(
 				cc1_type_nav,
 				sue_decl(NULL, ustrdup("__va_list_struct"),
-					sue_members, type_struct, 1, 1, NULL));
+					sue_members, type_struct,
+					/*got-membs:*/1,
+					/*is_decl:*/1,
+					/*pre-parse:*/0, NULL));
 
 
 		type *builtin_ar = type_array_of(

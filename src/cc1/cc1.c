@@ -415,7 +415,7 @@ void cc1_warn_at(
 		return;
 
 	va_start(l, fmt);
-	vwarn(where, 0, fmt, l);
+	vwarn(where, VWARN_WARN, fmt, l);
 	va_end(l);
 
 	if(fopt_mode & FOPT_SHOW_WARNING_OPTION)

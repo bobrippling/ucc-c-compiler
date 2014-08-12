@@ -807,11 +807,11 @@ unsigned type_hash(const type *t)
 	return type_hash2(t, type_hash);
 }
 
-unsigned type_hash_skip_nontdefs(const type *t)
+unsigned type_hash_skip_nontdefs_consts(const type *t)
 {
 	return type_hash2(
-			type_skip_non_tdefs((type *)t),
-			type_hash_skip_nontdefs);
+			type_skip_non_tdefs_consts((type *)t),
+			type_hash_skip_nontdefs_consts);
 }
 
 enum type_primitive type_primitive_not_less_than_size(unsigned sz)

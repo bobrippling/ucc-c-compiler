@@ -145,7 +145,7 @@ sue_member *sue_member_from_decl(decl *d)
 struct_union_enum_st *sue_decl(
 		symtable *stab, char *spel,
 		sue_member **members, enum type_primitive prim,
-		int got_membs, int is_declaration, where *w)
+		int got_membs, int is_declaration, int pre_parse, where *w)
 {
 	struct_union_enum_st *sue;
 	int new = 0;
@@ -279,8 +279,8 @@ new_type:
 	}
 
 	if(new){
-		if(prim == type_enum && !sue->got_membs)
-			cc1_warn_at(NULL, predecl_enum,
+		if(!pre_parse && prim == type_enum && !sue->got_membs)
+			cc1_warn_at(w, predecl_enum,
 					"forward-declaration of enum %s", sue->spel);
 
 		if(stab)

@@ -9,6 +9,7 @@ type *type_skip_non_attr(type *);
 type *type_skip_non_casts(type *);
 type *type_skip_wheres(type *);
 type *type_skip_non_wheres(type *);
+type *type_skip_non_tdefs_consts(type *);
 
 const btype *type_get_type(type *r);
 
@@ -26,6 +27,7 @@ struct funcargs *type_funcargs(type *r);
 
 unsigned type_array_len(type *r);
 type *type_next(type *r);
+type *type_next_1(type *r);
 
 int type_is_arith(type *);
 int type_is_autotype(type *);

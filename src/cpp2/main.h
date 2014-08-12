@@ -53,6 +53,7 @@ extern enum wmode
 	WFINALESCAPE = 1 << 10, /* backslash-esc at eof */
 	WMULTICHAR   = 1 << 11, /* duh */
 	WQUOTE       = 1 << 12, /* dodgy quoting */
+	WHASHWARNING = 1 << 13, /* #warning */
 } wmode;
 
 extern enum comment_strip

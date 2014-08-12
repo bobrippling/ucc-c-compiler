@@ -18,6 +18,8 @@ type *type_nav_auto(struct type_nav *root); /* returns placeholder */
 type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *);
 type *type_nav_int_enum(struct type_nav *root, struct_union_enum_st *);
 
+type *type_nav_changeauto(type *ontop, type *trailing);
+
 type *type_nav_va_list(struct type_nav *root, symtable *symtab);
 type *type_nav_voidptr(struct type_nav *root);
 type *type_decay(type *);

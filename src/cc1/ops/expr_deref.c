@@ -66,6 +66,15 @@ static void const_expr_deref(expr *e, consty *k)
 		case CONST_STRK:
 		{
 			stringlit *sv = k->bits.str->lit;
+
+			/* check type we're supposed to be dereferencing as,
+			 * should be char *
+			 */
+			if(!type_is_primitive_anysign(type_is_ptr(from->tree_type), type_nchar)){
+				k->type = CONST_NO;
+				break;
+			}
+
 			if(k->offset < 0 || (unsigned)k->offset >= sv->len){
 				k->type = CONST_NO;
 			}else{

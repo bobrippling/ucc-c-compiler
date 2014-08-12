@@ -596,6 +596,60 @@ type *type_nav_voidptr(struct type_nav *root)
     return type_ptr_to(type_nav_btype(root, type_void));
 }
 
+type *type_nav_changeauto(type *const ontop, type *trailing)
+{
+	type *base;
+
+	if(!ontop || ontop->type == type_btype)
+		return trailing; /* replace auto with proper trailing type */
+
+	/* use recursion to pop non-btypes on top of trailing */
+	base = type_nav_changeauto(type_next_1(ontop), trailing);
+
+	/* pop our type on top of trailing */
+	switch(ontop->type){
+		case type_btype:
+		case type_auto:
+			assert(0);
+
+		case type_ptr:
+			return type_ptr_to(base);
+
+		case type_block:
+			return type_block_of(base);
+
+		case type_array:
+		{
+			return type_array_of_static(
+					base,
+					ontop->bits.array.size,
+					ontop->bits.array.is_static);
+		}
+
+		case type_func:
+		{
+			funcargs *args = type_funcargs(ontop);
+			args->retains++;
+
+			return type_func_of(
+					base, args,
+					ontop->bits.func.arg_scope);
+		}
+
+		case type_tdef:
+		case type_cast:
+			return base;
+
+		case type_where:
+			return type_at_where(base, &ontop->bits.where);
+
+		case type_attr:
+			return type_attributed(base, ontop->bits.attr);
+	}
+
+	assert(0);
+}
+
 static void type_dump_t(type *t, FILE *f, int indent)
 {
 	int i;

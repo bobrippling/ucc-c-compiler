@@ -178,6 +178,9 @@ static void handle_error_warning(token **tokens, int err)
 	where w;
 	char *s;
 
+	if(!err && (wmode & WHASHWARNING) == 0)
+		return;
+
 	s = tokens_join(tokens);
 
 	preproc_backtrace();

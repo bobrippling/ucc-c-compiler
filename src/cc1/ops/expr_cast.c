@@ -260,14 +260,15 @@ static void check_addr_int_cast(consty *k, int l)
 static void cast_addr(expr *e, consty *k)
 {
 	int l, r;
+	type *subtt = expr_cast_child(e)->tree_type;
 
 	/* allow if we're casting to a same-size type */
 	l = type_size(e->tree_type, &e->where);
 
-	if(type_decayable(expr_cast_child(e)->tree_type))
+	if(type_decayable(subtt))
 		r = platform_word_size(); /* func-ptr or array->ptr */
 	else
-		r = type_size(expr_cast_child(e)->tree_type, &expr_cast_child(e)->where);
+		r = type_size(subtt, &expr_cast_child(e)->where);
 
 	if(l < r)
 		check_addr_int_cast(k, l);

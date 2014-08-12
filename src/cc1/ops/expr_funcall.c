@@ -203,7 +203,7 @@ static int check_arg_counts(
 			if(warn){
 				cc1_warn_at(loc, funcall_argcount, common_warning);
 			}else{
-				die_at(loc, common_warning);
+				warn_at_print_error(loc, common_warning);
 			}
 
 #undef common_warning
