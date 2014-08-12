@@ -109,13 +109,7 @@ void inline_ret_add(out_ctx *octx, const out_val *v)
 		dynarray_add(&cc1_octx->inline_.rets, mergee);
 }
 
-#define CANT_INLINE(reason, nam) do{ \
-		if(fopt_mode & FOPT_VERBOSE_ASM) \
-			out_comment(octx, "can't inline %s: %s", nam, reason); \
-		goto noinline; \
-	}while(0)
-
-static decl *expr_to_declref(expr *e, out_ctx *octx)
+static decl *expr_to_declref(expr *e, const char **why)
 {
 	e = expr_skip_casts(e);
 
@@ -123,16 +117,15 @@ static decl *expr_to_declref(expr *e, out_ctx *octx)
 		if(e->bits.ident.type == IDENT_NORM)
 			return e->bits.ident.bits.ident.sym->decl;
 		else
-			CANT_INLINE("not normal identifier", "enum");
+			*why = "not normal identifier";
 
 	}else if(expr_kind(e, block)){
 		return e->bits.block.sym->decl;
 
 	}else{
-		CANT_INLINE("not identifier", e->f_str());
+		*why = "not an identifier or block";
 	}
 
-noinline:
 	return NULL;
 }
 
@@ -158,9 +151,78 @@ static int heuristic_should_inline(
 	return 1;
 }
 
-int can_inline_func(expr *call_expr)
+struct inline_outs
 {
+	decl *fndecl;
+	symtable *arg_symtab;
+	stmt *fncode;
+	struct cc1_out_ctx *cc1_octx;
+};
 
+static int check_and_ret_inline(
+		expr *call_expr, const char **why, out_ctx *octx,
+		struct inline_outs *iouts, int nargs)
+{
+	decl **diter;
+
+	iouts->fndecl = expr_to_declref(call_expr, why);
+	if(!iouts->fndecl)
+		return 0;
+
+	if(!(iouts->fncode = iouts->fndecl->bits.func.code)){
+		*why = "can't see function";
+		return 0;
+	}
+
+	if(attribute_present(iouts->fndecl, attr_noinline)){
+		/* jumping to noinline means __attribute((noinline, always_inline))
+		 * will always cause an error */
+		*why = "has noinline attribute";
+		return 0;
+	}
+
+	iouts->arg_symtab = DECL_FUNC_ARG_SYMTAB(iouts->fndecl);
+
+	/* can't do functions where the argument count != param count */
+	if(nargs != dynarray_count(iouts->arg_symtab->decls)){
+		*why = "variadic or unspec arg function";
+		return 0;
+	}
+
+	for(diter = iouts->arg_symtab->decls; diter && *diter; diter++){
+		if((*diter)->sym->nwrites){
+			*why = "argument written or addressed";
+			return 0;
+		}
+	}
+
+	if(octx){
+		struct cc1_out_ctx *cc1_octx = cc1_out_ctx_or_new(octx);
+		iouts->cc1_octx = cc1_octx;
+		if(cc1_octx->inline_.depth >= INLINE_DEPTH_MAX){
+			*why = "recursion depth";
+			return 0;
+		}
+	}
+
+	if(!attribute_present(iouts->fndecl, attr_always_inline)
+	&& !heuristic_should_inline(iouts->fndecl,
+		iouts->fncode, iouts->arg_symtab->children[0]))
+	{
+		*why = "heuristic denied";
+		return 0;
+	}
+
+	return 1;
+}
+
+int inline_func_possible(expr *call_expr, int nargs, const char **why)
+{
+	struct inline_outs iouts = { 0 };
+
+	return check_and_ret_inline(
+			call_expr, why, NULL,
+			&iouts, nargs);
 }
 
 const out_val *inline_func_try_gen(
@@ -168,65 +230,39 @@ const out_val *inline_func_try_gen(
 		const out_val *fn, const out_val **args,
 		out_ctx *octx)
 {
-	struct cc1_out_ctx *cc1_octx;
-	decl *decl_fn;
-	stmt *fn_code;
-	symtable *arg_symtab;
-	decl **diter;
 	const out_val *inlined_ret;
 
-	decl_fn = expr_to_declref(call_expr, octx);
-	if(!decl_fn)
-		goto noinline;
+	int can_inline;
+	const char *why;
 
-	if(!(fn_code = decl_fn->bits.func.code))
-		CANT_INLINE("can't see func code", decl_fn->spel);
+	struct inline_outs iouts = { 0 };
 
-	if(attribute_present(decl_fn, attr_noinline)){
-		/* jumping to noinline means __attribute((noinline, always_inline))
-		 * will always cause an error */
-		CANT_INLINE("noinline attribute", decl_fn->spel);
+	can_inline = check_and_ret_inline(
+			call_expr, &why, octx,
+			&iouts, dynarray_count(args));
+
+	if(!can_inline){
+		out_comment(octx, "can't inline call: %s", why);
+
+		if(attribute_present(iouts.fndecl, attr_always_inline))
+			warn_at(&call_expr->where, "couldn't always_inline call: %s", why);
+
+		return NULL;
 	}
 
-	arg_symtab = DECL_FUNC_ARG_SYMTAB(decl_fn);
-
-	/* can't do functions where the argument count != param count */
-	if(dynarray_count(args) != dynarray_count(arg_symtab->decls))
-		CANT_INLINE("variadic or unspec arg function", decl_fn->spel);
-
-	for(diter = arg_symtab->decls; diter && *diter; diter++)
-		if((*diter)->sym->nwrites)
-			CANT_INLINE("sym written or addressed", decl_fn->spel);
-	/* TODO: ^ name the above sym/decl */
-
-	cc1_octx = cc1_out_ctx_or_new(octx);
-	if(cc1_octx->inline_.depth >= INLINE_DEPTH_MAX)
-		CANT_INLINE("inline depth", decl_fn->spel);
-
-	if(!heuristic_should_inline(decl_fn, fn_code, arg_symtab->children[0]))
-		CANT_INLINE("heuristic denied", decl_fn->spel);
-
-	cc1_octx->inline_.depth++;
+	iouts.cc1_octx->inline_.depth++;
 	{
 		/* we don't use the call expr/value */
 		out_val_consume(octx, fn);
 
 		inlined_ret = gen_inline_func(
-				arg_symtab, fn_code, args, cc1_octx, octx);
+				iouts.arg_symtab,
+				iouts.fncode,
+				args,
+				iouts.cc1_octx,
+				octx);
 	}
-	cc1_octx->inline_.depth--;
+	iouts.cc1_octx->inline_.depth--;
 
 	return inlined_ret;
-#undef CANT_INLINE
-noinline:
-	if(attribute_present(decl_fn, attr_always_inline)){
-		char buf[WHERE_BUF_SIZ];
-
-		warn_at_print_error(&decl_fn->where,
-				"can't inline always_inline function\n"
-				"%s: note: called from here",
-				where_str_r(buf, &call_expr->where));
-	}
-
-	return NULL;
 }

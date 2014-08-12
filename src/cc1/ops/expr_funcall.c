@@ -311,6 +311,26 @@ static void default_promote_args(
 			expr_promote_default(&args[i], stab);
 }
 
+static void check_func_inline_attr(expr *callexpr, expr **args)
+{
+	int forceinline = !!expr_attr_present(callexpr, attr_always_inline);
+	int noinline = !!expr_attr_present(callexpr, attr_noinline);
+	const char *why;
+
+	if(forceinline && noinline){
+		warn_at_print_error(&callexpr->where,
+				"can't always_inline noinline function");
+		fold_had_error = 1;
+
+	}else if(forceinline
+	&& !inline_func_possible(callexpr, dynarray_count(args), &why))
+	{
+		warn_at_print_error(&callexpr->where,
+				"can't always_inline function: %s", why);
+		fold_had_error = 1;
+	}
+}
+
 void fold_expr_funcall(expr *e, symtable *stab)
 {
 	type *func_ty;
@@ -370,6 +390,8 @@ void fold_expr_funcall(expr *e, symtable *stab)
 				e->funcargs, args_from_decl->variadic,
 				count_decl, stab);
 	}
+
+	check_func_inline_attr(e->expr, e->funcargs);
 
 	/* check the subexp tree type to get the funcall attributes */
 	if(func_attr_present(e, attr_warn_unused))
