@@ -1,3 +1,5 @@
+// RUN: %inline_check %s
+
 inline int f(int i)
 {
 	return 3 + i;
