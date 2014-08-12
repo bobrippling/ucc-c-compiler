@@ -393,6 +393,13 @@ int main(int argc, char **argv)
 				break;
 			}
 
+			case 'w':
+				if(!argv[i][2]){
+					wmode = 0;
+					break;
+				}
+				/* fall */
+
 
 			default:
 defaul:
