@@ -15,6 +15,10 @@
 
 #include "cc1_out_ctx.h"
 
+#define INLINE_DEPTH_MAX 5
+#define INLINE_MAX_STACK_BYTES 256
+#define INLINE_MAX_STMTS 10
+
 static void inline_vars_push(
 		struct cc1_inline *new, struct cc1_inline *save)
 {
