@@ -33,6 +33,7 @@ enum fopt
 	FOPT_FOLD_CONST_VLAS       = 1 << 21,
 	FOPT_SHOW_WARNING_OPTION   = 1 << 22,
 	FOPT_SHOW_INLINED          = 1 << 23,
+	FOPT_INLINE_FUNCTIONS      = 1 << 24,
 };
 
 enum mopt

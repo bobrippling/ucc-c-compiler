@@ -114,6 +114,11 @@ static int heuristic_should_inline(
 {
 	unsigned nstmts = 0;
 
+	/* as with clang and gcc, -fno-inline-functions affects just the heuristic
+	 * __attribute((always_inline)) overrides it */
+	if((fopt_mode & FOPT_INLINE_FUNCTIONS) == 0)
+		return 0;
+
 	/* if it's marked inline, inline it
 	 * if there's more than X stack space, deny
 	 * if there's too many statements, deny
