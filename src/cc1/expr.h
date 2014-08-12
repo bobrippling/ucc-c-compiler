@@ -285,4 +285,6 @@ expr *expr_new_array_idx(expr *base, int i);
 
 expr *expr_skip_casts(expr *);
 
+decl *expr_to_declref(expr *e, const char **whynot);
+
 #endif
