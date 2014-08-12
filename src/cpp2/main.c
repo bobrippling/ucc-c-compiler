@@ -86,7 +86,8 @@ enum wmode wmode =
 	| WPASTE
 	| WFINALESCAPE
 	| WMULTICHAR
-	| WQUOTE;
+	| WQUOTE
+	| WHASHWARNING;
 
 enum comment_strip strip_comments = STRIP_ALL;
 
@@ -106,6 +107,7 @@ static const struct
 	{ "empty-arg", "warn on empty argument to single-arg macro", WEMPTY_ARG },
 	{ "paste", "warn when pasting doesn't make a token", WPASTE },
 	{ "uncalled-macro", "warn when a function-macro is mentioned without ()", WUNCALLED_FN },
+	{ "#warning", "emit #warnings", WHASHWARNING },
 };
 
 #define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)
