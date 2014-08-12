@@ -222,7 +222,8 @@ const out_val *inline_func_try_gen(
 			&iouts, dynarray_count(args));
 
 	if(!can_inline){
-		out_comment(octx, "can't inline call: %s", why);
+		if(fopt_mode & FOPT_VERBOSE_ASM)
+			out_comment(octx, "can't inline call: %s", why);
 
 		if(attribute_present(iouts.fndecl, attr_always_inline))
 			warn_at(&call_expr->where, "couldn't always_inline call: %s", why);
