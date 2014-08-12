@@ -409,7 +409,7 @@ const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 		}
 
 		/* consumes fn and args */
-		fn_ret = try_gen_inline_func(e->expr, fn, args, octx);
+		fn_ret = inline_func_try_gen(e->expr, fn, args, octx);
 		if(!fn_ret)
 			fn_ret = out_call(octx, fn, args, e->expr->tree_type);
 

@@ -159,7 +159,7 @@ int can_inline_func(expr *call_expr)
 
 }
 
-const out_val *try_gen_inline_func(
+const out_val *inline_func_try_gen(
 		expr *call_expr,
 		const out_val *fn, const out_val **args,
 		out_ctx *octx)
