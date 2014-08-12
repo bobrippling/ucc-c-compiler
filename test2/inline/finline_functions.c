@@ -1,4 +1,4 @@
-// RUN: %inline_check %s -fno-inline-functions
+// RUN: %check %s -fshow-inlined -fno-inline-functions
 
 __attribute((always_inline))
 int f()
@@ -8,5 +8,5 @@ int f()
 
 main()
 {
-	return f(); // should be inlined despite the compiler argument
+	return f(); // CHECK: note: function inlined
 }

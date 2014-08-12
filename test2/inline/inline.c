@@ -1,4 +1,4 @@
-// RUN: %inline_check %s
+// RUN: %check %s -fshow-inlined
 
 inline int f(int i)
 {
@@ -7,12 +7,12 @@ inline int f(int i)
 
 char *g(int x)
 {
-	return "hello" + x;
+	return "hello" + f(x); // CHECK: note: function inlined
 }
 
 int main()
 {
-	printf("%s\n", g(1));
+	printf("%s\n", g(1)); // CHECK: note: function inlined
 
-	return f(2);
+	return f(2); // CHECK: note: function inlined
 }

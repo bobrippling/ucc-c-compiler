@@ -1,4 +1,4 @@
-// RUN: %inline_check %s
+// RUN: %check %s -fshow-inlined
 // RUN: %ocheck 3 %s
 
 static void f(int const *p)
@@ -9,6 +9,6 @@ static void f(int const *p)
 int main()
 {
 	int i;
-	f(&i);
+	f(&i); // CHECK: note: function inlined
 	return i;
 }

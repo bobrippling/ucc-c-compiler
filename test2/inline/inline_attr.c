@@ -1,4 +1,4 @@
-// RUN: %inline_check %s
+// RUN: %check %s -fshow-inlined
 
 __attribute((always_inline))
 void f()
@@ -8,11 +8,11 @@ void f()
 __attribute((noinline))
 int g()
 {
-	f();
+	f(); // CHECK: note: function inlined
 	return 5;
 }
 
 main()
 {
-	return g();
+	return g(); // CHECK: !/function inlined/
 }

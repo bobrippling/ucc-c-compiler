@@ -1,4 +1,4 @@
-// RUN: %archgen %s 'x86_64,x86:movl $13, %eax'
+// RUN: %archgen %s 'x86_64,x86:movl $13, %%eax'
 
 g(i)
 {

@@ -1,5 +1,5 @@
 // RUN: %ucc -o %t %s
-// RUN: %inline_check %s
+// RUN: %check %s -fshow-inlined
 
 f(int);
 

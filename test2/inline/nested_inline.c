@@ -1,4 +1,4 @@
-// RUN: %inline_check %s
+// RUN: %check %s -fshow-inlined
 // RUN: %ocheck 20 %s
 
 f(int i)
@@ -8,10 +8,10 @@ f(int i)
 
 g(int i)
 {
-	return 2 * f(i);
+	return 2 * f(i); // CHECK: note: function inlined
 }
 
 main()
 {
-	return g(7);
+	return g(7); // CHECK: note: function inlined
 }
