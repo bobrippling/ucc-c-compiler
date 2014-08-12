@@ -278,6 +278,7 @@ static struct
 	{ 'f',  "gnu-keywords", FOPT_EXT_KEYWORDS },
 	{ 'f',  "fold-const-vlas", FOPT_FOLD_CONST_VLAS },
 	{ 'f',  "show-warning-option", FOPT_SHOW_WARNING_OPTION },
+	{ 'f',  "show-inlined", FOPT_SHOW_INLINED },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 	{ 'm',  "32", MOPT_32 },

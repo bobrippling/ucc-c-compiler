@@ -434,6 +434,8 @@ const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 		fn_ret = inline_func_try_gen(e->expr, fn, args, octx);
 		if(!fn_ret)
 			fn_ret = out_call(octx, fn, args, e->expr->tree_type);
+		else if(fopt_mode & FOPT_SHOW_INLINED)
+			note_at(&e->expr->where, "function inlined");
 
 		dynarray_free(const out_val **, &args, NULL);
 	}
