@@ -163,104 +163,84 @@ struct inline_outs
 	struct cc1_out_ctx *cc1_octx;
 };
 
-static int check_and_ret_inline(
-		expr *call_expr, const char **why, out_ctx *octx,
+ucc_nonnull()
+static const char *check_and_ret_inline(
+		expr *call_expr, out_ctx *octx,
 		struct inline_outs *iouts, int nargs)
 {
 	decl **diter;
 	funcargs *fargs;
+	const char *why;
+	struct cc1_out_ctx *cc1_octx;
 
-	iouts->fndecl = expr_to_declref(call_expr, why);
+	iouts->fndecl = expr_to_declref(call_expr, &why);
 	if(!iouts->fndecl)
-		return 0;
+		return why;
+
+	iouts->fndecl = decl_impl(iouts->fndecl);
 
 	if(!(iouts->fncode = iouts->fndecl->bits.func.code)){
-		*why = "can't see function";
-		return 0;
+		/* see if the decl was later completed */
+		return "can't see function code";
 	}
 
 	if(attribute_present(iouts->fndecl, attr_noinline)){
 		/* jumping to noinline means __attribute((noinline, always_inline))
 		 * will always cause an error */
-		*why = "has noinline attribute";
-		return 0;
+		return "function has noinline attribute";
 	}
 
 	iouts->arg_symtab = DECL_FUNC_ARG_SYMTAB(iouts->fndecl);
 	fargs = type_funcargs(iouts->fndecl->ref);
 
 	if(fargs->variadic){
-		*why = "variadic function";
-		return 0;
+		return "call to variadic function";
 	}
 
 	/* can't do functions where the argument count != param count */
 	if(funcargs_is_old_func(fargs)
 	|| nargs != dynarray_count(iouts->arg_symtab->decls))
 	{
-		*why = "unspecified argument count function";
-		return 0;
+		return "call to function with unspecified arguments";
 	}
 
 	for(diter = iouts->arg_symtab->decls; diter && *diter; diter++){
 		if((*diter)->sym->nwrites){
-			*why = "argument written or addressed";
-			return 0;
+			return "argument written or addressed";
 		}
 	}
 
-	if(octx){
-		struct cc1_out_ctx *cc1_octx = cc1_out_ctx_or_new(octx);
-		iouts->cc1_octx = cc1_octx;
-		if(cc1_octx->inline_.depth >= INLINE_DEPTH_MAX){
-			*why = "recursion depth";
-			return 0;
-		}
+	cc1_octx = cc1_out_ctx_or_new(octx);
+	iouts->cc1_octx = cc1_octx;
+	if(cc1_octx->inline_.depth >= INLINE_DEPTH_MAX){
+		return "recursion too deep";
 	}
 
 	if(!attribute_present(iouts->fndecl, attr_always_inline)
 	&& !heuristic_should_inline(iouts->fndecl,
 		iouts->fncode, iouts->arg_symtab->children[0]))
 	{
-		*why = "heuristic denied";
-		return 0;
+		return "heuristic denied";
 	}
 
-	return 1;
-}
-
-int inline_func_possible(expr *call_expr, int nargs, const char **why)
-{
-	struct inline_outs iouts = { 0 };
-
-	return check_and_ret_inline(
-			call_expr, why, NULL,
-			&iouts, nargs);
+	return NULL;
 }
 
 const out_val *inline_func_try_gen(
 		expr *call_expr,
 		const out_val *fn, const out_val **args,
-		out_ctx *octx)
+		out_ctx *octx, const char **whynot)
 {
 	const out_val *inlined_ret;
-
-	int can_inline;
-	const char *why;
-
 	struct inline_outs iouts = { 0 };
 
-	can_inline = check_and_ret_inline(
-			call_expr, &why, octx,
+	*whynot = check_and_ret_inline(
+			call_expr, octx,
 			&iouts, dynarray_count(args));
 
-	if(!can_inline){
+	if(*whynot){
 		if(fopt_mode & FOPT_VERBOSE_ASM)
-			out_comment(octx, "can't inline call: %s", why);
-
-		if(attribute_present(iouts.fndecl, attr_always_inline))
-			warn_at(&call_expr->where, "couldn't always_inline call: %s", why);
-
+			out_comment(octx, "can't inline call: %s", *whynot);
 		return NULL;
 	}
 

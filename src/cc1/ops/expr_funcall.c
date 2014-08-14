@@ -311,26 +311,6 @@ static void default_promote_args(
 			expr_promote_default(&args[i], stab);
 }
 
-static void check_func_inline_attr(expr *callexpr, expr **args)
-{
-	int forceinline = !!expr_attr_present(callexpr, attr_always_inline);
-	int noinline = !!expr_attr_present(callexpr, attr_noinline);
-	const char *why;
-
-	if(forceinline && noinline){
-		warn_at_print_error(&callexpr->where,
-				"can't always_inline noinline function");
-		fold_had_error = 1;
-
-	}else if(forceinline
-	&& !inline_func_possible(callexpr, dynarray_count(args), &why))
-	{
-		warn_at_print_error(&callexpr->where,
-				"can't always_inline function: %s", why);
-		fold_had_error = 1;
-	}
-}
-
 void fold_expr_funcall(expr *e, symtable *stab)
 {
 	type *func_ty;
@@ -391,8 +371,6 @@ void fold_expr_funcall(expr *e, symtable *stab)
 				count_decl, stab);
 	}
 
-	check_func_inline_attr(e->expr, e->funcargs);
-
 	/* check the subexp tree type to get the funcall attributes */
 	if(func_attr_present(e, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
@@ -412,6 +390,7 @@ const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 	}else{
 		/* continue with normal funcall */
 		const out_val *fn, **args = NULL;
+		const char *whynot;
 
 		fn = gen_expr(e->expr, octx);
 
@@ -431,11 +410,21 @@ const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 		}
 
 		/* consumes fn and args */
-		fn_ret = inline_func_try_gen(e->expr, fn, args, octx);
-		if(!fn_ret)
+		fn_ret = inline_func_try_gen(e->expr, fn, args, octx, &whynot);
+		if(fn_ret){
+			if(fopt_mode & FOPT_SHOW_INLINED)
+				note_at(&e->expr->where, "function inlined");
+
+		}else{
+			if(expr_attr_present(e->expr, attr_always_inline)){
+				warn_at_print_error(&e->expr->where,
+						"couldn't always_inline call: %s", whynot);
+
+				gen_had_error = 1;
+			}
+
 			fn_ret = out_call(octx, fn, args, e->expr->tree_type);
-		else if(fopt_mode & FOPT_SHOW_INLINED)
-			note_at(&e->expr->where, "function inlined");
+		}
 
 		dynarray_free(const out_val **, &args, NULL);
 	}

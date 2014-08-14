@@ -668,7 +668,7 @@ static void warning_on(const char *warn, int to)
 
 int main(int argc, char **argv)
 {
-	int parsed_folded;
+	int failure;
 	where loc_start;
 	static symtable_global *globs;
 	const char *fname;
@@ -869,7 +869,7 @@ usage:
 	where_cc1_current(&loc_start);
 	globs = symtabg_new(&loc_start);
 
-	parsed_folded = parse_and_fold(globs);
+	failure = parse_and_fold(globs);
 
 	if(infile != stdin)
 		fclose(infile), infile = NULL;
@@ -877,13 +877,16 @@ usage:
 	if(werror && warning_count)
 		ccdie(0, "%s: Treating warnings as errors", *argv);
 
-	if(parsed_folded == 0)
+	if(failure == 0){
 		gen_backend(globs, fname);
+		if(gen_had_error)
+			failure = 1;
+	}
 
 	if(fopt_mode & FOPT_DUMP_TYPE_TREE)
 		type_nav_dump(cc1_type_nav);
 
 	dynarray_free(const char **, &system_includes, NULL);
 
-	return parsed_folded;
+	return failure;
 }
