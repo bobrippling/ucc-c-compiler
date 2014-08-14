@@ -1823,9 +1823,13 @@ const out_val *impl_call(
 				/* need to free it up, as v_to_reg_given doesn't clobber check */
 				v_freeup_reg(octx, rp);
 
+#if 0
+				/* argument retainedness doesn't matter here -
+				 * local arguments and autos are held onto */
 				UCC_ASSERT(local_args[i]->retains == 1,
 						"incorrectly retained arg %d: %d",
 						i, local_args[i]->retains);
+#endif
 
 
 				local_args[i] = v_to_reg_given(octx, local_args[i], rp);
