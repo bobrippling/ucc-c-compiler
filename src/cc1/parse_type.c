@@ -1411,7 +1411,7 @@ static int is_old_func(decl *d)
 {
 	type *r = type_is(d->ref, type_func);
 	/* don't treat int f(); as an old function */
-	return r && r->bits.func.args->args_old_proto && r->bits.func.args->arglist;
+	return r && funcargs_is_old_func(r->bits.func.args);
 }
 
 static void check_and_replace_old_func(decl *d, decl **old_args, symtable *scope)

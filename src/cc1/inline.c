@@ -11,6 +11,10 @@
 #include "gen_asm.h"
 #include "cc1.h" /* fopt_mode */
 
+/* old-func detection */
+#include "funcargs.h"
+#include "type_is.h"
+
 #include "inline.h"
 
 #include "cc1_out_ctx.h"
@@ -152,6 +156,7 @@ static int check_and_ret_inline(
 		struct inline_outs *iouts, int nargs)
 {
 	decl **diter;
+	funcargs *fargs;
 
 	iouts->fndecl = expr_to_declref(call_expr, why);
 	if(!iouts->fndecl)
@@ -170,10 +175,18 @@ static int check_and_ret_inline(
 	}
 
 	iouts->arg_symtab = DECL_FUNC_ARG_SYMTAB(iouts->fndecl);
+	fargs = type_funcargs(iouts->fndecl->ref);
+
+	if(fargs->variadic){
+		*why = "variadic function";
+		return 0;
+	}
 
 	/* can't do functions where the argument count != param count */
-	if(nargs != dynarray_count(iouts->arg_symtab->decls)){
-		*why = "variadic or unspec arg function";
+	if(funcargs_is_old_func(fargs)
+	|| nargs != dynarray_count(iouts->arg_symtab->decls))
+	{
+		*why = "unspecified argument count function";
 		return 0;
 	}
 
