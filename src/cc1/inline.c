@@ -5,6 +5,7 @@
 
 #include "../util/dynarray.h"
 #include "../util/warn.h"
+#include "../util/alloc.h"
 
 #include "expr.h"
 #include "stmt.h"
@@ -59,6 +60,8 @@ static const out_val *gen_inline_func(
 	decl **diter;
 	size_t i;
 	const out_val *merged_ret;
+	const size_t nargs = dynarray_count(args);
+	const out_val **pushed_vals = umalloc(nargs * sizeof *pushed_vals);
 
 	if(!cc1_octx->sym_inline_map)
 		cc1_octx->sym_inline_map = dynmap_new(sym *, NULL, sym_hash);
@@ -79,20 +82,29 @@ static const out_val *gen_inline_func(
 				cc1_octx->sym_inline_map,
 				s, args[i]);
 
-		assert(!prev);
+		/* if we're doign a (mutually-)recursive inline, we're replacing the
+		 * _exact_ symbol by a new value. we need to push/pop it */
+		pushed_vals[i] = prev;
 	}
 
 	gen_stmt(func_code, octx);
 
-	for(diter = arg_symtab->decls; diter && *diter; diter++){
+	for(i = 0, diter = arg_symtab->decls; diter && *diter; i++, diter++){
 		sym *s = (*diter)->sym;
 		const out_val *arg;
 
-		arg = dynmap_rm(sym *, const out_val *,
-				cc1_octx->sym_inline_map, s);
+		if(pushed_vals[i]){
+			arg = dynmap_set(sym *, const out_val *,
+					cc1_octx->sym_inline_map, s, pushed_vals[i]);
+		}else{
+			arg = dynmap_rm(sym *, const out_val *,
+					cc1_octx->sym_inline_map, s);
+		}
 
 		out_val_release(octx, arg);
 	}
+
+	free(pushed_vals), pushed_vals = NULL;
 
 	out_ctrl_transfer_make_current(octx, cc1_octx->inline_.phi);
 
