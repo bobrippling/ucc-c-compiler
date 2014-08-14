@@ -69,7 +69,7 @@ static void callee_save_or_restore(
 	if(!stack_n)
 		return;
 
-	v_alloc_stack(octx, stack_n, "callee-save");
+	v_aalloc(octx, stack_n, "callee-save");
 
 	stack_n = octx->var_stack_sz; /* may be different - variadic functions */
 	restore_blk = octx->epilogue_blk;
@@ -128,6 +128,7 @@ void out_func_epilogue(
 			 * and that same value (minus padding) to stack_n_alloc */
 			assert(octx->max_stack_sz >= octx->stack_n_alloc);
 
+			/* TODO: fix align */
 			stack_amt = octx->max_stack_sz - octx->stack_n_alloc;
 			if(octx->max_align)
 				stack_amt = pack_to_align(stack_amt, octx->max_align);
@@ -186,7 +187,7 @@ void out_func_prologue(
 		impl_func_prologue_save_fp(octx);
 
 		if(mopt_mode & MOPT_STACK_REALIGN)
-			v_stack_align(octx, cc1_mstack_align, 1);
+			v_stack_realign(octx, cc1_mstack_align, 1);
 
 		impl_func_prologue_save_call_regs(octx, fnty, nargs, arg_offsets);
 

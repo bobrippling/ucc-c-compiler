@@ -414,8 +414,9 @@ void impl_func_prologue_save_call_regs(
 		 */
 		if(n_call_f){
 			unsigned i_arg, i_stk, i_arg_stk, i_i, i_f;
+			v_stackt spill_start;
 
-			v_alloc_stack(octx,
+			spill_start = v_aalloc(octx,
 					(n_call_f + n_call_i) * platform_word_size(),
 					"save call regs float+integral");
 
@@ -470,7 +471,7 @@ pass_via_stack:
 			}
 
 			/* this aligns the stack too */
-			v_alloc_stack_n(octx,
+			v_aalloc_noop(octx,
 					n_call_i * platform_word_size(),
 					"save call regs push-version");
 		}
@@ -1737,7 +1738,7 @@ const out_val *impl_call(
 
 	/* 16 byte for SSE - special case here as mstack_align may be less */
 	if(!IS_32_BIT())
-		v_need_stackalign(octx, 16);
+		v_stack_needalign(octx, 16);
 
 	if(arg_stack > 0){
 		unsigned nfloats = 0, nints = 0; /* shadow */
