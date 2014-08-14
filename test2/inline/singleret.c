@@ -1,11 +1,11 @@
 // RUN: %archgen %s 'x86_64,x86:movl $13, %%eax'
 
-g(i)
+g(int i)
 {
 	return i + 1;
 }
 
-f(i)
+f(int i)
 {
 	return g(i) + 2;
 }
