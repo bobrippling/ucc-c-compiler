@@ -1897,6 +1897,7 @@ static void link_to_previous_decl(decl *d, symtable *in_scope)
 			 !!type_is(d_prev->ref, type_func));
 
 		d->proto = d_prev;
+		d_prev->impl = d; /* for inlining */
 
 		switch(are_functions){
 			case 2:

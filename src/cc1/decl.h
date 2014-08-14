@@ -77,6 +77,7 @@ struct decl
 	} fold_state;
 	int proto_flag;
 	struct decl *proto;
+	struct decl *impl;
 
 	struct sym *sym;
 
