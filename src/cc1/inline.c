@@ -23,6 +23,9 @@ static void inline_vars_push(
 		struct cc1_inline *new, struct cc1_inline *save)
 {
 	memcpy_safe(save, new);
+	new->phi = NULL;
+	new->rets = NULL;
+	/* keep depth */
 }
 
 static void inline_vars_pop(
