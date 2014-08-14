@@ -8,5 +8,5 @@ int f()
 
 int main()
 {
-	return f(); // CHECK: error: can't always_inline noinline function
+	return f(); // CHECK: error: couldn't always_inline call: function has noinline attribute
 }
