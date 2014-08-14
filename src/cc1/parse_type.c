@@ -1744,6 +1744,7 @@ static void link_to_previous_decl(decl *d, symtable *in_scope)
 		 * '.extern fn' code gen easing
 		 */
 		d->proto = d_prev;
+		d_prev->impl = d; /* for inlining */
 
 		if(type_is(d->ref, type_func) && type_is(d_prev->ref, type_func))
 			decl_pull_to_func(d, d_prev);

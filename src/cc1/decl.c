@@ -245,3 +245,9 @@ const char *decl_to_str(decl *d)
 	static char buf[DECL_STATIC_BUFSIZ];
 	return decl_to_str_r(buf, d);
 }
+
+decl *decl_impl(decl *d)
+{
+	for(; d->impl; d = d->impl);
+	return d;
+}
