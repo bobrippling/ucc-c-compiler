@@ -1,19 +1,23 @@
-// RUN: %ucc -o %t %s
-// RUN: %check %s -fshow-inlined
+// RUN: %check -e %s -fshow-inlined
 
-f(int);
+#define ai __attribute((always_inline))
 
-g(int i)
+ai f(int);
+
+ai g(int i)
 {
-	return 2 + f(i); // this should fail to inline eventually
+	// this should fail to inline eventually
+	return 2 + f(i); // CHECK: note: function inlined
+// CHECK: ^error: couldn't always_inline call: recursion too deep
 }
 
-f(int i)
+ai f(int i)
 {
-	return 1 + g(i);
+	return 1 + g(i); // CHECK: note: function inlined
+// CHECK: ^error: couldn't always_inline call: recursion too deep
 }
 
 main()
 {
-	return f(2);
+	return f(2); // CHECK: note: function inlined
 }
