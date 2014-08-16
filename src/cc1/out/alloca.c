@@ -9,6 +9,9 @@
 #include "virt.h"
 #include "impl.h"
 
+/* octx->var_stack_sz - out_alloca_push_fixed() */
+#include "ctx.h"
+
 /* cc1_mstack_align */
 #include <stdarg.h>
 #include "../cc1.h"
@@ -61,4 +64,10 @@ void out_alloca_pop(out_ctx *octx, const out_val *ptr)
 	sp.is_float = 0;
 
 	out_flush_volatile(octx, v_to_reg_given(octx, ptr, &sp));
+}
+
+unsigned out_alloca_fixed(out_ctx *octx, unsigned sz)
+{
+	v_alloc_stack(octx, sz, "inline variable");
+	return octx->var_stack_sz;
 }

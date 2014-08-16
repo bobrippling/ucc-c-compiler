@@ -12,6 +12,10 @@
 #include "../out/dbg.h"
 #include "../vla.h"
 
+/* out_alloca_fixed() */
+#include "../out/out.h"
+#include "../cc1_out_ctx.h"
+
 const char *str_stmt_code()
 {
 	return "code";
@@ -166,6 +170,8 @@ void gen_block_decls(
 		symtable *stab, const char **dbg_end_lbl, out_ctx *octx)
 {
 	decl **diter;
+	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
+	const int inlining = cc1_octx && cc1_octx->inline_.depth > 0;
 
 	if(cc1_gdebug && !stab->lbl_begin){
 		stab->lbl_begin = out_label_code("dbg_begin");
@@ -191,6 +197,15 @@ void gen_block_decls(
 			if(!func || !d->proto)
 				gen_asm_global_w_store(d, 1, octx);
 			continue;
+		}
+
+		/* normal decls, being inlined */
+		if(inlining && d->sym && d->sym->type == sym_local){
+			unsigned siz, align;
+			fold_sym_pack_decl(d, &siz, &align);
+
+			if(siz)
+				d->sym->loc.stack_pos = out_alloca_fixed(octx, siz);
 		}
 
 		if(type_is_variably_modified(d->ref)){

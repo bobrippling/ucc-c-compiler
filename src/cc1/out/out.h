@@ -126,6 +126,11 @@ void out_func_epilogue(
 const out_val *out_alloca_push(out_ctx *, const out_val *sz, unsigned align);
 void out_alloca_pop(out_ctx *octx, const out_val *sz);
 
+/* similar to above, but fixed storage - this just changes the initial
+ * stack space alloc. Provided for function inlining.
+ * Returns stack offset */
+unsigned out_alloca_fixed(out_ctx *, unsigned sz);
+
 
 /* commenting */
 void out_comment(out_ctx *, const char *, ...) ucc_printflike(2, 3);

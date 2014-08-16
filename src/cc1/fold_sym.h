@@ -16,4 +16,6 @@ unsigned symtab_layout_decls(
 
 void symtab_check_static_asserts(symtable *);
 
+void fold_sym_pack_decl(decl *d, unsigned *sz, unsigned *align);
+
 #endif

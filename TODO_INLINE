@@ -1,3 +1,2 @@
 handle special arguments - vla? (needs extra stack space etc, see gen_asm.c)
-handle local variables in inlined function - needs extra stack space
 debug locations / [inlined] flag

@@ -1,3 +1,5 @@
+// RUN: %ocheck 12 %s
+
 f(int x)
 {
 	int counts[] = { x-1, x, x+1 };
@@ -13,5 +15,6 @@ main()
 {
 	int stash[] = { 1, 2 };
 
+	// 1 + 9 + 2
 	return stash[0] + f(3) + stash[1];
 }

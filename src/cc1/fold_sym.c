@@ -475,6 +475,19 @@ void symtab_fold_decls(symtable *tab)
 #undef IS_LOCAL_SCOPE
 }
 
+void fold_sym_pack_decl(decl *d, unsigned *sz, unsigned *align)
+{
+	if(type_is_variably_modified(d->ref)){
+		*sz = vla_decl_space(d);
+		*align = platform_word_size();
+	}else if((d->store & STORE_MASK_STORE) == store_typedef){
+		*sz = *align = 0;
+	}else{
+		*sz = decl_size(d);
+		*align = decl_align(d);
+	}
+}
+
 unsigned symtab_layout_decls(symtable *tab, unsigned current)
 {
 	const unsigned this_start = current;
@@ -506,14 +519,11 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 
 				case sym_local: /* warn on unused args and locals */
 				{
-					int is_typedef = 0;
-
 					if(type_is(d->ref, type_func))
 						continue;
 
 					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 						case store_typedef: /* VLAs */
-							is_typedef = 1;
 							/* for now, we allocate stack space for register vars */
 						case store_register:
 						case store_default:
@@ -522,15 +532,9 @@ unsigned symtab_layout_decls(symtable *tab, unsigned current)
 							unsigned siz;
 							unsigned align;
 
-							if(type_is_variably_modified(s->decl->ref)){
-								siz = vla_decl_space(s->decl);
-								align = platform_word_size();
-							}else if(is_typedef){
+							fold_sym_pack_decl(s->decl, &siz, &align);
+							if(siz == 0) /* typedef */
 								break;
-							}else{
-								siz = decl_size(s->decl);
-								align = decl_align(s->decl);
-							}
 
 							/* align greater than size - we increase
 							 * size so it can be aligned to `align'
