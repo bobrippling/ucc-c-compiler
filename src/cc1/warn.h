@@ -108,6 +108,7 @@ struct cc1_warning
 	unsigned char signed_unsigned;
 	unsigned char sizeof_decayed;
 	unsigned char static_array_bad;
+	unsigned char static_local_in_inline;
 	unsigned char str_contain_nul;
 	unsigned char struct_noinstance_anon;
 	unsigned char struct_noinstance_qualified;

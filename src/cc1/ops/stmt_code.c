@@ -140,9 +140,27 @@ void fold_stmt_code(stmt *s)
 {
 	stmt **siter;
 	int warned = 0;
+	enum decl_storage func_store;
 
 	/* local struct layout-ing */
 	symtab_fold_sues(s->symtab);
+
+	func_store = symtab_func(s->symtab)->store;
+	if(func_store & store_inline
+	&& (func_store & STORE_MASK_STORE) == store_default)
+	{
+		decl **diter;
+		for(diter = s->symtab->decls; diter && *diter; diter++){
+			decl *d = *diter;
+
+			if((d->store & STORE_MASK_STORE) == store_static
+			&& !type_is_const(d->ref))
+			{
+				cc1_warn_at(&d->where, static_local_in_inline,
+						"mutable static variable in pure-inline function - may differ per file");
+			}
+		}
+	}
 
 	for(siter = s->bits.code.stmts; siter && *siter; siter++){
 		stmt *const st = *siter;

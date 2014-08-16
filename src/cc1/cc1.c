@@ -219,6 +219,7 @@ static struct warn_str
 	{ "signed-unsigned", &cc1_warning.signed_unsigned },
 	{ "sizeof-decayed", &cc1_warning.sizeof_decayed },
 	{ "static-array-size", &cc1_warning.static_array_bad },
+	{ "static-local-in-inline", &cc1_warning.static_local_in_inline },
 	{ "str-contain-nul", &cc1_warning.str_contain_nul },
 
 	{ "struct-noinstance-anon", &cc1_warning.struct_noinstance_anon },
