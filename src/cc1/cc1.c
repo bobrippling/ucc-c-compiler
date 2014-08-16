@@ -606,6 +606,7 @@ static void warning_all(void)
 	cc1_warning.implicit_old_func =
 	cc1_warning.bitfield_boundary =
 	cc1_warning.vla =
+	cc1_warning.pure_inline =
 		0;
 }
 
