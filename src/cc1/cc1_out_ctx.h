@@ -8,6 +8,8 @@ struct cc1_out_ctx
 	struct dynmap *vlamap;
 	struct dynmap *sym_inline_map;
 
+	struct dynmap *generated_decls; /* decl* => NULL */
+
 	struct cc1_inline
 	{
 		struct out_blk *phi, **rets;

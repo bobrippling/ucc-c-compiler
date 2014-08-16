@@ -243,7 +243,18 @@ static void gen_stringlits(dynmap *litmap)
 
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
+	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
+
+	/* in map? */
+	if(cc1_octx && dynmap_exists(decl *, cc1_octx->generated_decls, d))
+		return;
+
+	/* add to map */
+	cc1_octx = cc1_out_ctx_or_new(octx);
+	if(!cc1_octx->generated_decls)
+		cc1_octx->generated_decls = dynmap_new(decl *, /*ref*/NULL, decl_hash);
+	(void)dynmap_set(decl *, int *, cc1_octx->generated_decls, d, (int *)NULL);
 
 	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		case store_inline:

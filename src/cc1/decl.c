@@ -172,6 +172,18 @@ enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts)
 	return cmp;
 }
 
+unsigned decl_hash(const decl *d)
+{
+	unsigned hash = type_hash(d->ref);
+
+	hash ^= d->store;
+
+	if(d->spel)
+		hash ^= dynmap_strhash(d->spel);
+
+	return hash;
+}
+
 int decl_conv_array_func_to_ptr(decl *d)
 {
 	type *old = d->ref;

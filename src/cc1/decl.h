@@ -101,6 +101,7 @@ unsigned decl_size(decl *);
 unsigned decl_align(decl *);
 
 enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts);
+unsigned decl_hash(const decl *);
 int   decl_store_static_or_extern(enum decl_storage);
 
 enum linkage
