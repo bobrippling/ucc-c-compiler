@@ -1,39 +1,41 @@
 #include <stdlib.h>
 
+#include "../../util/dynarray.h"
+
 #include "ops.h"
 #include "stmt_asm.h"
-#include "../out/__asm.h"
+#include "../__asm.h"
 
 const char *str_stmt_asm()
 {
 	return "asm";
 }
 
-static void check_constraint(asm_inout *io, symtable *stab, int output)
+static void check_constraint(asm_param *param, symtable *stab)
 {
-	if(output)
-		fold_inc_writes_if_sym(io->exp, stab);
+	if(param->is_output){
+		fold_inc_writes_if_sym(param->exp, stab);
+		fold_expr_no_decay(param->exp, stab);
 
-	if(output)
-		fold_expr_no_decay (io->exp, stab);
-	else
-		FOLD_EXPR(io->exp, stab);
+	}else{
+		FOLD_EXPR(param->exp, stab);
+	}
 
-	out_constraint_check(&io->exp->where, io->constraints, output);
+	out_asm_constraint_check(&param->exp->where, param->constraints);
 }
 
 void fold_stmt_asm(stmt *s)
 {
-	asm_inout **it;
+	asm_param **it;
 	int n_inouts = 0;
 
-	for(it = s->bits.asm_args->ios; it && *it; it++, n_inouts++){
-		asm_inout *io = *it;
+	for(it = s->bits.asm_args->params; it && *it; it++, n_inouts++){
+		asm_param *param = *it;
 
-		check_constraint(io, s->symtab, io->is_output);
+		check_constraint(param, s->symtab);
 
-		if(io->is_output && !expr_is_lval(io->exp))
-			die_at(&io->exp->where, "asm output not an lvalue");
+		if(param->is_output && !expr_is_lval(param->exp))
+			die_at(&param->exp->where, "asm output not an lvalue");
 	}
 
 	/* validate asm string - s->bits.asm_args->cmd */
@@ -64,24 +66,35 @@ void fold_stmt_asm(stmt *s)
 	}
 }
 
-void gen_stmt_asm(stmt *s)
+void gen_stmt_asm(stmt *s, out_ctx *octx)
 {
-	asm_inout **ios;
-	int npops = 0;
+	const out_val **inputs, **outputs;
+	asm_param **params;
 
-	for(ios = s->bits.asm_args->ios; ios && *ios; ios++, npops++){
-		asm_inout *io = *ios;
+	inputs = outputs = NULL;
 
-		(io->is_output ? lea_expr : gen_expr)(io->exp);
+	for(params = s->bits.asm_args->params; params && *params; params++){
+		asm_param *param = *params;
+		const out_val *p;
+
+		if(param->is_output){
+			p = lea_expr(param->exp, octx);
+			dynarray_add(&outputs, p);
+		}else{
+			p = gen_expr(param->exp, octx);
+			dynarray_add(&inputs, p);
+		}
 	}
 
-	out_comment("### begin asm(%s) from %s",
+	out_comment(octx, "### begin asm(%s) from %s",
 			s->bits.asm_args->extended ? ":::" : "",
 			where_str(&s->where));
 
-	out_asm_inline(s->bits.asm_args, &s->where);
+	out_asm_inline(octx, s->bits.asm_args->cmd,
+			outputs, inputs,
+			s->bits.asm_args->clobbers);
 
-	out_comment("### end asm()");
+	out_comment(octx, "### end asm()");
 }
 
 void init_stmt_asm(stmt *s)
@@ -89,22 +102,22 @@ void init_stmt_asm(stmt *s)
 	s->f_passable = fold_passable_yes;
 }
 
-static void style_asm_bits(asm_inout *io)
+static void style_asm_bits(asm_param *param)
 {
-	stylef("\"%s\" (", io->constraints);
-	gen_expr(io->exp);
+	stylef("\"%s\" (", param->constraints);
+	IGNORE_PRINTGEN(gen_expr(param->exp, NULL));
 	stylef(")");
 }
 
-static void style_asm_ios(asm_inout **i, int outputs)
+static void style_asm_params(asm_param **i, int outputs)
 {
 	int comma = 0;
 
 	stylef(" : ");
 	for(; i && *i; i++){
-		asm_inout *io = *i;
+		asm_param *param = *i;
 
-		if(io->is_output == outputs){
+		if(param->is_output == outputs){
 			if(comma){
 				stylef(", ");
 				comma = 0;
@@ -116,16 +129,18 @@ static void style_asm_ios(asm_inout **i, int outputs)
 	}
 }
 
-void style_stmt_asm(stmt *s)
+void style_stmt_asm(stmt *s, out_ctx *octx)
 {
+	(void)octx;
+
 	stylef(
 			"asm%s(\"%s\"",
 			s->bits.asm_args->is_volatile ? " volatile" : "",
 			s->bits.asm_args->cmd);
 
 	if(s->bits.asm_args->extended){
-		style_asm_ios(s->bits.asm_args->ios, 1);
-		style_asm_ios(s->bits.asm_args->ios, 0);
+		style_asm_params(s->bits.asm_args->params, 1);
+		style_asm_params(s->bits.asm_args->params, 0);
 	}
 
 	stylef(")\n");

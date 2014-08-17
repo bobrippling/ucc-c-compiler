@@ -18,6 +18,9 @@
 #  define ucc_wur
 #  define ucc_nonnull(a)
 #  define ucc_static_param
+#  define ucc_const
 #endif
+
+#define memcpy_safe(a, b) (*(a) = *(b))
 
 #endif

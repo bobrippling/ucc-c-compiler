@@ -3,11 +3,8 @@
 
 #include "../../util/util.h"
 
-#include "../data_structs.h"
 #include "../expr.h"
-#include "../tree.h"
 #include "../stmt.h"
-#include "__asm.h"
 
 void out_constraint_check(where *w, const char *constraint, int output)
 {

@@ -1,6 +1,6 @@
-// RUN: %ucc %s -S; [ $? -ne 0 ]
+// RUN: %check -e %s
 
 main()
 {
-	int (*restrict f)(void);
+	int (*restrict f)(void); // CHECK: error: restrict qualified function pointer
 }

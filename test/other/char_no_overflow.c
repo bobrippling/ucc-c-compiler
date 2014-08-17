@@ -13,5 +13,6 @@ main()
 
 	b->i = 5;
 
-	assert(b->i == 5 && c == 'a');
+	if(!(b->i == 5 && c == 'a'))
+		abort();
 }

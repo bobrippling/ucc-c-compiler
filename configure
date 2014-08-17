@@ -17,6 +17,8 @@ UCC_CPU     = ${UCC_CPU}
 #define UCC_ARCH    "${UCC_ARCH}"
 #define UCC_INC     "${UCC_INC}"
 
+#define NEED_DSYM $NEED_DSYM
+
 #define UCC_CPPFLAGS "${UCC_CPPFLAGS}"
 #define UCC_CFLAGS   "${UCC_CFLAGS}"
 #define UCC_LDFLAGS  "${UCC_LDFLAGS}"
@@ -30,18 +32,38 @@ UCC_CPU     = ${UCC_CPU}
 		SECTION_TEXT="__TEXT,__text"
 		SECTION_DATA="__DATA,__data"
 		SECTION_BSS="__BSS,__bss"
+		SECTION_RODATA="__TEXT,__const"
+		SECTION_DBG_ABBREV="__DWARF,__debug_abbrev,regular,debug"
+		SECTION_DBG_INFO="__DWARF,__debug_info,regular,debug"
+		SECTION_DBG_LINE="__DWARF,__debug_line,regular,debug"
+		DWARF_INDIRECT_SECTION_LINKS=1
+
+		ASM_WEAK_DIRECTIVE='weak_reference'
+		# Darwin also needs "-flat_namespace -undefined suppress"
 	else
 		SECTION_TEXT=".text"
 		SECTION_DATA=".data"
 		SECTION_BSS=".bss"
+		SECTION_RODATA=".rodata"
+		SECTION_DBG_ABBREV=".debug_abbrev"
+		SECTION_DBG_INFO=".debug_info"
+		SECTION_DBG_LINE=".debug_line"
+		DWARF_INDIRECT_SECTION_LINKS=0
+		ASM_WEAK_DIRECTIVE='weak'
 	fi
 
 	cat > src/as_cfg.h <<!
 #define SECTION_NAME_TEXT $SECTION_TEXT
 #define SECTION_NAME_DATA $SECTION_DATA
 #define SECTION_NAME_BSS  $SECTION_BSS
+#define SECTION_NAME_RODATA $SECTION_RODATA
+#define SECTION_NAME_DBG_ABBREV $SECTION_DBG_ABBREV
+#define SECTION_NAME_DBG_INFO $SECTION_DBG_INFO
+#define SECTION_NAME_DBG_LINE $SECTION_DBG_LINE
 #define UCC_M32      ${UCC_M32}
+#define DWARF_INDIRECT_SECTION_LINKS $DWARF_INDIRECT_SECTION_LINKS
 #define ASM_PLBL_PRE "$ASM_PLBL"
+#define ASM_WEAK_DIRECTIVE "$ASM_WEAK_DIRECTIVE"
 !
 
 	if ! which perl > /dev/null
@@ -82,6 +104,17 @@ leading_underscore(){
 	UCC_CFLAGS="-fleading-underscore $UCC_CFLAGS"
 }
 
+try_set(){
+	var="$1"
+	shift
+	for ent in $@
+	do
+		if test -e "$ent"
+		then eval "$var=\"\$$var:$ent\""
+		fi
+	done
+}
+
 UCC_AS=as
 UCC_LD=ld
 
@@ -91,30 +124,34 @@ UCC_CFLAGS=''
 UCC_CPU=x86_64
 UCC_M32=0
 ASM_PLBL=.L
+NEED_DSYM=0
 
 unam="$(uname -s)"
 
 # setup include paths
 # TODO: option to use local ./lib path
-UCC_INC="-I/usr/include"
+UCC_INC="/usr/include"
 
 # defaults for an OS
 case "$unam" in
 	Linux)
 		# assume gcc
 		unam_lc="$(echo "$unam" | tr A-Z a-z)"
-		# FIXME: gcc specific + version specific
-		UCC_INC="$UCC_INC -I/usr/include/$UCC_CPU-$unam_lc-gnu -I/usr/lib/gcc/$UCC_CPU-$unam_lc-gnu/4.7.2/include"
 
-		UCC_LDFLAGS="$UCC_LDFLAGS"
 		UCC_DYN="-dynamic-linker /lib64/ld-linux-x86-64.so.2"
 		UCC_STDLIB="-lc"
 
-		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crt1.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crti.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtbegin.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/gcc/x86_64-linux-gnu/4.6/crtend.o"
-		UCC_CRT="$UCC_CRT:/usr/lib/x86_64-linux-gnu/crtn.o"
+		machine_path="$UCC_CPU-$unam_lc-gnu"
+
+		try_set UCC_CRT /usr/lib/"${machine_path}"/crt1.o
+		try_set UCC_CRT /usr/lib/"${machine_path}"/crti.o
+		try_set UCC_CRT /usr/lib/"${machine_path}"/crtn.o
+
+		gcc_inc=$(echo /usr/lib/gcc/$machine_path/*/ | tr ' ' '\n' | sort | tail -1)
+		echo "Borrowing gcc-$(basename "$gcc_inc")'s include/"
+
+		try_set UCC_INC "/usr/include/$machine_path"
+		try_set UCC_INC "$gcc_inc/include"
 		;;
 
 
@@ -130,6 +167,7 @@ case "$unam" in
 		UCC_CRT='-lcrt1.o'
 		UCC_LDFLAGS='-macosx_version_min 10.5'
 		ASM_PLBL=L
+		NEED_DSYM=1
 		leading_underscore
 		;;
 
@@ -167,7 +205,7 @@ do
 			fi
 			;;
 		--with-ucc-lib)
-			UCC_INC="-Ilib/"
+			UCC_INC="lib/"
 			UCC_CRT="lib/crt.a"
 			UCC_STDLIB="lib/libc.a"
 			UCC_DYN=''

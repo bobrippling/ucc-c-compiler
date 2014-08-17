@@ -1,0 +1,8 @@
+x:
+	.long 0
+	.long 0
+	.long 500
+y:
+	.long 0
+	.long 0
+	.long 6

@@ -2,6 +2,7 @@
 
 #include "ops.h"
 #include "stmt_expr.h"
+#include "../type_is.h"
 
 const char *str_stmt_expr()
 {
@@ -10,34 +11,44 @@ const char *str_stmt_expr()
 
 void fold_stmt_expr(stmt *s)
 {
+	int folded = !s->expr->tree_type;
+
 	FOLD_EXPR(s->expr, s->symtab);
-	if(!s->freestanding && !s->expr->freestanding && !type_ref_is_void(s->expr->tree_type))
-		cc1_warn_at(&s->expr->where, 0, WARN_UNUSED_EXPR,
-				"unused expression (%s)", s->expr->f_str());
+
+	if(!folded
+	&& !s->freestanding
+	&& !s->expr->freestanding
+	&& !type_is_void(s->expr->tree_type))
+	{
+		cc1_warn_at(&s->expr->where, unused_expr,
+				"unused expression (%s)", expr_skip_casts(s->expr)->f_str());
+	}
 }
 
-void gen_stmt_expr(stmt *s)
+void gen_stmt_expr(stmt *s, out_ctx *octx)
 {
-	int pre_vcount = out_vcount();
+	size_t prev = out_expr_stack(octx);
+	size_t now;
+	char wbuf[WHERE_BUF_SIZ];
 
-	gen_expr(s->expr);
+	out_val_consume(octx, gen_expr(s->expr, octx));
 
-	if(s->expr_no_pop)
-		pre_vcount++;
-	else
-		out_pop(); /* cancel the implicit push from gen_expr() above */
+	now = out_expr_stack(octx);
 
-	out_comment("end of %s-stmt", s->f_str());
+	if(now != prev){
+		ICW("values still retained (%ld <-- %ld - %ld) after %s @ %s",
+				(long)(now - prev),
+				now, prev,
+				s->expr->f_str(),
+				where_str_r(wbuf, &s->where));
 
-	UCC_ASSERT(out_vcount() == pre_vcount,
-			"vcount changed over %s statement (%d -> %d)",
-			s->expr->f_str(),
-			out_vcount(), pre_vcount);
+		out_dump_retained(octx, s->f_str());
+	}
 }
 
-void style_stmt_expr(stmt *s)
+void style_stmt_expr(stmt *s, out_ctx *octx)
 {
-	gen_expr(s->expr);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(";\n");
 }
 

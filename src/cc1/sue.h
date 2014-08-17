@@ -1,24 +1,29 @@
 #ifndef STRUCT_ENUM_H
 #define STRUCT_ENUM_H
 
+#include "btype.h"
+
+struct symtable;
+
 typedef struct enum_member
 {
 	where where;
 	char *spel;
-	expr *val; /* (expr *)-1 if not given */
-	decl_attr *attr; /* enum { ABC __attribute(()) [ = ... ] }; */
+	struct expr *val; /* (expr *)-1 if not given */
+	struct attribute *attr; /* enum { ABC __attribute(()) [ = ... ] }; */
 } enum_member;
 
 typedef union sue_member
 {
-	decl        *struct_member;
+	struct decl        *struct_member;
 	enum_member *enum_member;
 } sue_member;
 
+typedef struct struct_union_enum_st struct_union_enum_st;
 struct struct_union_enum_st
 {
 	where where;
-	decl_attr *attr;
+	struct attribute *attr;
 	enum type_primitive primitive; /* struct or enum or union */
 
 	char *spel; /* "<anon ...>" if anon */
@@ -50,12 +55,13 @@ struct struct_union_enum_st
 #define sue_complete(sue) (\
 		(sue)->got_membs && (sue)->foldprog == SUE_FOLDED_FULLY)
 
-sue_member *sue_member_from_decl(decl *);
+sue_member *sue_member_from_decl(struct decl *);
 
 struct_union_enum_st *sue_find_descend(
-		symtable *stab, const char *spel, int *descended);
+		struct symtable *stab, const char *spel, int *descended);
 
-struct_union_enum_st *sue_find_this_scope(symtable *, const char *spel);
+struct_union_enum_st *sue_find_this_scope(
+		struct symtable *, const char *spel);
 
 /* we need to know if the struct is a definition at this point,
  * e.g.
@@ -67,33 +73,36 @@ struct_union_enum_st *sue_find_this_scope(symtable *, const char *spel);
  * }
  */
 struct_union_enum_st *sue_decl(
-		symtable *stab, char *spel,
+		struct symtable *stab, char *spel,
 		sue_member **members, enum type_primitive prim,
-		int got_membs, int is_declaration);
+		int got_membs, int is_declaration, int pre_parse,
+		where *);
 
 sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 
 /* enum specific */
-void enum_vals_add(sue_member ***, where *, char *, expr *, decl_attr *);
+void enum_vals_add(sue_member ***, where *, char *,
+		struct expr *, struct attribute *);
+
 int  enum_nentries(struct_union_enum_st *);
 
-void enum_member_search(enum_member **, struct_union_enum_st **, symtable *, const char *spel);
+void enum_member_search(enum_member **, struct_union_enum_st **,
+		struct symtable *, const char *spel);
 
 /* struct/union specific */
 unsigned sue_size(struct_union_enum_st *, where *w);
 unsigned sue_align(struct_union_enum_st *, where *w);
-int sue_enum_size(struct_union_enum_st *st);
 
 void sue_incomplete_chk(struct_union_enum_st *st, where *w);
 
-decl *struct_union_member_find(struct_union_enum_st *,
+struct decl *struct_union_member_find(struct_union_enum_st *,
 		const char *spel, unsigned *extra_off,
 		struct_union_enum_st **pin);
-decl *struct_union_member_find_sue(struct_union_enum_st *, struct_union_enum_st *);
+struct decl *struct_union_member_find_sue(struct_union_enum_st *, struct_union_enum_st *);
 
 unsigned struct_union_member_offset(struct_union_enum_st *, const char *);
 
-decl *struct_union_member_at_idx(struct_union_enum_st *, int idx); /* NULL if out of bounds */
-int   struct_union_member_idx(struct_union_enum_st *, decl *);
+struct decl *struct_union_member_at_idx(struct_union_enum_st *, int idx); /* NULL if out of bounds */
+int   struct_union_member_idx(struct_union_enum_st *, struct decl *);
 
 #endif

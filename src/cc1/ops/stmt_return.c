@@ -3,6 +3,8 @@
 
 #include "expr_block.h"
 #include "../funcargs.h"
+#include "../type_is.h"
+#include "../type_nav.h"
 
 const char *str_stmt_return()
 {
@@ -12,15 +14,15 @@ const char *str_stmt_return()
 void fold_stmt_return(stmt *s)
 {
 	decl *in_func = symtab_func(s->symtab);
-	type_ref *ret_ty;
+	type *ret_ty;
 	int void_func;
 
 	if(!in_func)
 		die_at(&s->where, "return outside a function");
 
 	if(in_func->ref){
-		ret_ty = type_ref_func_call(in_func->ref, NULL);
-		void_func = type_ref_is_void(ret_ty);
+		ret_ty = type_called(in_func->ref, NULL);
+		void_func = type_is_void(ret_ty);
 	}else{
 		/* we're the first return stmt in a block */
 		ret_ty = NULL;
@@ -37,7 +39,7 @@ void fold_stmt_return(stmt *s)
 					s->symtab, &s->where, "return type");
 
 			if(void_func){
-				cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
+				cc1_warn_at(&s->where, return_type,
 						"return with a value in void function %s", in_func->spel);
 			}
 		}else{
@@ -50,33 +52,32 @@ void fold_stmt_return(stmt *s)
 			/* in a void block */
 			void_func = 1;
 		}else if(!void_func){
-			cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
+			cc1_warn_at(&s->where, return_type,
 					"empty return in non-void function %s", in_func->spel);
 		}
 	}
 
 	if(!ret_ty){
 		/* first return of a block */
-		ret_ty = s->expr ? s->expr->tree_type : type_ref_cached_VOID();
-		expr_block_set_ty(in_func, ret_ty);
+		ret_ty = s->expr ? s->expr->tree_type : type_nav_btype(cc1_type_nav, type_void);
+		expr_block_set_ty(in_func, ret_ty, s->symtab);
 	}
 }
 
-void gen_stmt_return(stmt *s)
+void gen_stmt_return(stmt *s, out_ctx *octx)
 {
-	if(s->expr){
-		gen_expr(s->expr);
-		out_pop_func_ret(s->expr->tree_type);
-		out_comment("return");
-	}
-	out_push_lbl(curfunc_lblfin, 0);
-	out_jmp();
+	/* need to generate the ret expr before the scope leave code */
+	const out_val *ret_exp = s->expr ? gen_expr(s->expr, octx) : NULL;
+
+	gen_scope_leave(s->symtab, symtab_root(s->symtab), octx);
+
+	out_ctrl_end_ret(octx, ret_exp, s->expr ? s->expr->tree_type : NULL);
 }
 
-void style_stmt_return(stmt *s)
+void style_stmt_return(stmt *s, out_ctx *octx)
 {
 	stylef("return ");
-	gen_expr(s->expr);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(";");
 }
 

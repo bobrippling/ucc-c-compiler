@@ -6,9 +6,12 @@
 #include "../util/alloc.h"
 #include "../util/util.h"
 #include "../util/dynarray.h"
-#include "data_structs.h"
 #include "sue.h"
 #include "cc1.h"
+#include "cc1_where.h"
+#include "expr.h"
+#include "decl.h"
+#include "type_is.h"
 
 static void sue_set_spel(struct_union_enum_st *sue, char *spel)
 {
@@ -27,7 +30,7 @@ void enum_vals_add(
 		sue_member ***pmembers,
 		where *w,
 		char *sp, expr *e,
-		decl_attr *attr)
+		attribute *attr)
 {
 	enum_member *emem = umalloc(sizeof *emem);
 	sue_member *mem = umalloc(sizeof *mem);
@@ -37,7 +40,7 @@ void enum_vals_add(
 
 	emem->spel = sp;
 	emem->val  = e;
-	emem->attr = attr;
+	emem->attr = RETAIN(attr);
 	memcpy_safe(&emem->where, w);
 
 	mem->enum_member = emem;
@@ -50,11 +53,6 @@ int enum_nentries(struct_union_enum_st *e)
 	return dynarray_count(e->members);
 }
 
-int sue_enum_size(struct_union_enum_st *st)
-{
-	return st->size = type_primitive_size(type_int);
-}
-
 void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 {
 	if(!sue_complete(st)){
@@ -65,14 +63,13 @@ void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 	}
 
 	UCC_ASSERT(st->foldprog == SUE_FOLDED_FULLY, "sizeof unfolded sue");
+	if(st->primitive == type_enum)
+		UCC_ASSERT(st->size > 0, "zero-sized enum");
 }
 
 unsigned sue_size(struct_union_enum_st *st, where *w)
 {
 	sue_incomplete_chk(st, w);
-
-	if(st->primitive == type_enum)
-		return sue_enum_size(st);
 
 	return st->size; /* can be zero */
 }
@@ -80,9 +77,6 @@ unsigned sue_size(struct_union_enum_st *st, where *w)
 unsigned sue_align(struct_union_enum_st *st, where *w)
 {
 	sue_incomplete_chk(st, w);
-
-	if(st->primitive == type_enum)
-		return sue_enum_size(st);
 
 	return st->align;
 }
@@ -125,7 +119,7 @@ static void sue_get_decls(sue_member **mems, sue_member ***pds)
 			dynarray_add(pds, *mems);
 		}else{
 			/* either an anonymous struct/union OR a bitfield */
-			struct_union_enum_st *sub = type_ref_is_s_or_u(d->ref);
+			struct_union_enum_st *sub = type_is_s_or_u(d->ref);
 
 			if(sub)
 				sue_get_decls(sub->members, pds);
@@ -151,13 +145,13 @@ sue_member *sue_member_from_decl(decl *d)
 struct_union_enum_st *sue_decl(
 		symtable *stab, char *spel,
 		sue_member **members, enum type_primitive prim,
-		int got_membs, int is_declaration)
+		int got_membs, int is_declaration, int pre_parse, where *w)
 {
 	struct_union_enum_st *sue;
 	int new = 0;
 	int descended;
 
-	if(spel && (sue = sue_find_descend(stab, spel, &descended))){
+	if(spel && stab && (sue = sue_find_descend(stab, spel, &descended))){
 		char wbuf[WHERE_BUF_SIZ];
 
 		/* redef checks */
@@ -227,7 +221,10 @@ new_type:
 
 		new = 1;
 
-		where_cc1_current(&sue->where);
+		if(w)
+			memcpy_safe(&sue->where, w);
+		else
+			where_cc1_current(&sue->where);
 	}
 
 	if(members){
@@ -249,7 +246,7 @@ new_type:
 			for(i = 0; decls && decls[i]; i++){
 				decl *d2, *d = decls[i]->struct_member;
 
-				if(d->init)
+				if(d->bits.var.init.dinit)
 					die_at(&d->where, "%s member %s is initialised",
 							sue_str(sue), d->spel);
 
@@ -282,11 +279,12 @@ new_type:
 	}
 
 	if(new){
-		if(prim == type_enum && !sue->got_membs)
-			cc1_warn_at(NULL, 0, WARN_PREDECL_ENUM,
+		if(!pre_parse && prim == type_enum && !sue->got_membs)
+			cc1_warn_at(w, predecl_enum,
 					"forward-declaration of enum %s", sue->spel);
 
-		dynarray_add(&stab->sues, sue);
+		if(stab)
+			dynarray_add(&stab->sues, sue);
 	}
 
 	return sue;
@@ -331,7 +329,7 @@ static void *sue_member_find(
 				if(!strcmp(sp, spel))
 					return d;
 
-			}else if((sub = type_ref_is_s_or_u(d->ref))){
+			}else if((sub = type_is_s_or_u(d->ref))){
 				/* C11 anonymous struct/union */
 				decl *dsub = NULL;
 				decl *tdef;
@@ -342,7 +340,7 @@ static void *sue_member_find(
 					continue;
 
 				if((fopt_mode & FOPT_PLAN9_EXTENSIONS)
-				&& (tdef = type_ref_is_tdef(d->ref))
+				&& (tdef = type_is_tdef(d->ref))
 				&& !strcmp(tdef->spel, spel))
 				{
 					dsub = tdef;
@@ -354,7 +352,7 @@ static void *sue_member_find(
 				if(dsub){
 					if(pin)
 						*pin = sub;
-					*extra_off += d->struct_offset;
+					*extra_off += d->bits.var.struct_offset;
 					return dsub;
 				}
 			}
@@ -398,7 +396,7 @@ decl *struct_union_member_find_sue(struct_union_enum_st *in, struct_union_enum_s
 
 	for(i = in->members; i && *i; i++){
 		decl *d = (*i)->struct_member;
-		struct_union_enum_st *s = type_ref_is_s_or_u(d->ref);
+		struct_union_enum_st *s = type_is_s_or_u(d->ref);
 
 		if(s == needle)
 			return d;

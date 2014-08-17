@@ -1,10 +1,10 @@
 // RUN: %ucc -S -o- %s
 
-asm("hi");
+__asm("hi");
 main()
 {
-	return ({extern timmay asm("yo"); timmay;});
+	return ({extern timmay __asm("yo"); timmay;});
 }
 
-x asm("yo");
-asm(".globl x\\nhai");
+x __asm("yo");
+__asm(".globl x\\nhai");

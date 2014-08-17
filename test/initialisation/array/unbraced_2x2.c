@@ -5,5 +5,8 @@ main()
 		3, 4
 	};
 
-	return x[1][0]; // 3
+	if(x[1][0] != 3)
+		abort();
+
+	return 0;
 }

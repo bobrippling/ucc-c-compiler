@@ -14,5 +14,8 @@ main()
 		CLOSE,
 	};
 
-	return x[1][1][2]; // 3
+	if(x[1][1][2] != 3)
+		abort();
+
+	return 0;
 }

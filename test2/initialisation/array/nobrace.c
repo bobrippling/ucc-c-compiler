@@ -1,5 +1,4 @@
-// RUN: %ucc -c %s
-// RUN: [ `%ucc %s -S -o- | grep 'mov.*[1234]' | wc -l` -eq 4 ]
+// RUN: %ocheck 0 %s
 
 main()
 {
@@ -7,4 +6,14 @@ main()
 		1, 2,
 		3, 4
 	};
+
+	if(y[0][0] != 1
+	|| y[0][1] != 2
+	|| y[1][0] != 3
+	|| y[1][1] != 4)
+	{
+		abort();
+	}
+
+	return 0;
 }

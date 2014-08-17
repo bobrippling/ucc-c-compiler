@@ -1,11 +1,32 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+#include <string.h>
+#include <ctype.h>
+
+#include "../util/util.h"
+#include "../util/alloc.h"
+
+#include "parse_attr.h"
+
+#include "tokenise.h"
+#include "tokconv.h"
+
+#include "cc1_where.h"
+#include "warn.h"
+
+#include "parse_expr.h"
+
 static void parse_attr_bracket_chomp(int had_open_paren);
 
-static decl_attr *parse_attr_format(void)
+static attribute *parse_attr_format(symtable *scope)
 {
 	/* __attribute__((format (printf, fmtarg, firstvararg))) */
-	decl_attr *da;
+	attribute *da;
 	char *func;
 	enum fmt_type fmt;
+
+	(void)scope;
 
 	EAT(token_open_paren);
 
@@ -24,12 +45,13 @@ static decl_attr *parse_attr_format(void)
 	}else if(CHECK("scanf")){
 		fmt = attr_fmt_scanf;
 	}else{
-		warn_at(NULL, "unknown format func \"%s\"", func);
+		cc1_warn_at(NULL, attr_format_unknown,
+				"unknown format func \"%s\"", func);
 		parse_attr_bracket_chomp(1);
 		return NULL;
 	}
 
-	da = decl_attr_new(attr_format);
+	da = attribute_new(attr_format);
 	da->bits.format.fmt_func = fmt;
 
 	EAT(token_comma);
@@ -47,10 +69,10 @@ static decl_attr *parse_attr_format(void)
 	return da;
 }
 
-static decl_attr *parse_attr_section()
+static attribute *parse_attr_section()
 {
 	/* __attribute__((section ("sectionname"))) */
-	decl_attr *da;
+	attribute *da;
 	char *func;
 	size_t len, i;
 
@@ -65,11 +87,12 @@ static decl_attr *parse_attr_section()
 	for(i = 0; i < len; i++)
 		if(!isprint(func[i])){
 			if(i < len - 1 || func[i] != '\0')
-				warn_at(NULL, "character 0x%x detected in section", func[i]);
+				cc1_warn_at(NULL, attr_section_badchar,
+						"character 0x%x detected in section", func[i]);
 			break;
 		}
 
-	da = decl_attr_new(attr_section);
+	da = attribute_new(attr_section);
 
 	da->bits.section = func;
 
@@ -78,13 +101,13 @@ static decl_attr *parse_attr_section()
 	return da;
 }
 
-static decl_attr *parse_attr_nonnull()
+static attribute *parse_attr_nonnull()
 {
 	/* __attribute__((nonnull(1, 2, 3, 4...)))
 	 * or
 	 * __attribute__((nonnull)) - all args
 	 */
-	decl_attr *da = decl_attr_new(attr_nonnull);
+	attribute *da = attribute_new(attr_nonnull);
 	unsigned long l = 0;
 	int had_error = 0;
 
@@ -94,7 +117,9 @@ static decl_attr *parse_attr_nonnull()
 				int n = currentval.val.i;
 				if(n <= 0){
 					/* shouldn't ever be negative */
-					warn_at(NULL, "%s nonnull argument ignored", n < 0 ? "negative" : "zero");
+					cc1_warn_at(NULL,
+							attr_nonnull_bad,
+							"%s nonnull argument ignored", n < 0 ? "negative" : "zero");
 					had_error = 1;
 				}else{
 					/* implicitly disallow functions with >32 args */
@@ -119,7 +144,7 @@ static decl_attr *parse_attr_nonnull()
 	return da;
 }
 
-static expr *optional_parened_expr(void)
+static expr *optional_parened_expr(symtable *scope)
 {
 	if(accept(token_open_paren)){
 		expr *e;
@@ -127,7 +152,7 @@ static expr *optional_parened_expr(void)
 		if(accept(token_close_paren))
 			goto out;
 
-		e = parse_expr_no_comma();
+		e = PARSE_EXPR_NO_COMMA(scope, 0);
 
 		EAT(token_close_paren);
 
@@ -137,28 +162,56 @@ out:
 	return NULL;
 }
 
-static decl_attr *parse_attr_sentinel()
+static attribute *parse_attr_sentinel(symtable *scope)
 {
-	decl_attr *da = decl_attr_new(attr_sentinel);
+	attribute *da = attribute_new(attr_sentinel);
 
-  da->bits.sentinel = optional_parened_expr();
+  da->bits.sentinel = optional_parened_expr(scope);
 
 	return da;
 }
 
-static decl_attr *parse_attr_aligned()
+static attribute *parse_attr_aligned(symtable *scope)
 {
-	decl_attr *da = decl_attr_new(attr_aligned);
+	attribute *da = attribute_new(attr_aligned);
 
-  da->bits.align = optional_parened_expr();
+  da->bits.align = optional_parened_expr(scope);
 
 	return da;
+}
+
+static attribute *parse_attr_cleanup(symtable *scope)
+{
+	decl *d;
+	char *sp;
+	where ident_loc;
+	attribute *attr;
+
+	EAT(token_open_paren);
+
+	if(curtok != token_identifier)
+		die_at(NULL, "identifier expected for cleanup function");
+
+	where_cc1_current(&ident_loc);
+	sp = token_current_spel();
+	EAT(token_identifier);
+
+	d = symtab_search_d(scope, sp, NULL);
+	if(!d)
+		die_at(&ident_loc, "function '%s' not found", sp);
+
+	attr = attribute_new(attr_cleanup);
+	attr->bits.cleanup = d;
+
+	EAT(token_close_paren);
+
+	return attr;
 }
 
 #define EMPTY(t)                      \
-static decl_attr *parse_ ## t()       \
+static attribute *parse_ ## t()       \
 {                                     \
-	return decl_attr_new(t);            \
+	return attribute_new(t);            \
 }
 
 EMPTY(attr_unused)
@@ -167,13 +220,15 @@ EMPTY(attr_enum_bitmask)
 EMPTY(attr_noreturn)
 EMPTY(attr_noderef)
 EMPTY(attr_packed)
+EMPTY(attr_weak)
+EMPTY(attr_ucc_debug)
 
 #undef EMPTY
 
 #define CALL_CONV(n)                            \
-static decl_attr *parse_attr_## n()             \
+static attribute *parse_attr_## n()             \
 {                                               \
-	decl_attr *a = decl_attr_new(attr_call_conv); \
+	attribute *a = attribute_new(attr_call_conv); \
 	a->bits.conv = conv_ ## n;                    \
 	return a;                                     \
 }
@@ -185,7 +240,7 @@ CALL_CONV(fastcall)
 static struct
 {
 	const char *ident;
-	decl_attr *(*parser)(void);
+	attribute *(*parser)(symtable *);
 } attrs[] = {
 #define ATTR(x) { #x, parse_attr_ ## x }
 	ATTR(format),
@@ -199,6 +254,9 @@ static struct
 	ATTR(packed),
 	ATTR(sentinel),
 	ATTR(aligned),
+	ATTR(weak),
+	ATTR(cleanup),
+	{ "__ucc_debug", parse_attr_ucc_debug },
 
 	ATTR(cdecl),
 	ATTR(stdcall),
@@ -227,8 +285,9 @@ static void parse_attr_bracket_chomp(int had_open_paren)
 	}
 }
 
-static decl_attr *parse_attr_single(const char *ident)
+static attribute *parse_attr_single(const char *ident, symtable *scope)
 {
+	symtable_global *glob;
 	int i;
 
 	for(i = 0; attrs[i].ident; i++){
@@ -236,25 +295,38 @@ static decl_attr *parse_attr_single(const char *ident)
 		if(!strcmp(attrs[i].ident, ident)
 		|| (snprintf(buf, sizeof buf, "__%s__", attrs[i].ident), !strcmp(buf, ident)))
 		{
-			return attrs[i].parser();
+			return attrs[i].parser(scope);
 		}
 	}
 
-	warn_at(NULL, "ignoring unrecognised attribute \"%s\"", ident);
+	/* unrecognised - only do the warning (and map checking) if non system-header */
+	if(!where_in_sysheader(where_cc1_current(NULL))){
+		glob = symtab_global(scope);
+		if(!dynmap_exists(char *, glob->unrecog_attrs, (char *)ident)){
+			char *dup = ustrdup(ident);
+
+			if(!glob->unrecog_attrs)
+				glob->unrecog_attrs = dynmap_new(char *, strcmp, dynmap_strhash);
+
+			dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
+
+			cc1_warn_at(NULL, attr_unknown,
+					"ignoring unrecognised attribute \"%s\"", ident);
+		}
+	}
 
 	/* if there are brackets, eat them all */
-
 	parse_attr_bracket_chomp(0);
 
 	return NULL;
 }
 
-static decl_attr *parse_attr(void)
+attribute *parse_attr(symtable *scope)
 {
-	decl_attr *attr = NULL, **next = &attr;
+	attribute *attr = NULL, **next = &attr;
 
 	for(;;){
-		decl_attr *this;
+		attribute *this;
 		where w;
 		int alloc;
 		char *ident = curtok_to_identifier(&alloc);
@@ -273,7 +345,7 @@ static decl_attr *parse_attr(void)
 
 		EAT(curtok);
 
-		if((this = *next = parse_attr_single(ident))){
+		if((this = *next = parse_attr_single(ident, scope))){
 			memcpy_safe(&this->where, &w);
 			next = &(*next)->next;
 		}

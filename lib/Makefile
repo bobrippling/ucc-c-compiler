@@ -4,7 +4,7 @@ CRT    = crt.a
 OBJ_LIBC = syscall.o begin.o                              \
            alloca.o                                       \
            stdio.o stdlib.o string.o unistd.o signal.o    \
-           assert.o ctype.o dirent.o                      \
+           assert.o ctype.o dirent.o stdarg.o             \
            sys/fcntl.o sys/wait.o sys/mman.o sys/socket.o \
            sys/utsname.o sys/select.o sys/time.o          \
            arpa/inet.o
@@ -14,8 +14,9 @@ OBJ_CRT  = crt.o
 LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp2/cpp
 
 CPPFLAGS = -nostdinc
+CFLAGS = -g
 
-BUILD_CMD = ${UCC_CC} ${CPPFLAGS} -c -o $@ $<
+BUILD_CMD = ${UCC_CC} ${CPPFLAGS} ${CFLAGS} -c -o $@ $<
 
 include ../config.mk
 
@@ -54,6 +55,8 @@ ctype.o: ctype.c
 	${BUILD_CMD}
 dirent.o: dirent.c
 	${BUILD_CMD}
+stdarg.o: stdarg.c
+	${BUILD_CMD}
 
 alloca.o: ${ARCH_DIR}/alloca.S
 	${BUILD_CMD}
@@ -85,23 +88,28 @@ clean:
 .PHONY: all clean
 
 
-
 assert.o: assert.c stdio.h stdarg.h sys/types.h macros.h stdlib.h \
- assert.h
+ ucc_attr.h assert.h
+begin.o: begin.c unistd.h macros.h sys/types.h sys/time.h ucc_attr.h \
+ stdlib.h
 ctype.o: ctype.c ctype.h stdlib.h sys/types.h macros.h ucc_attr.h
 dirent.o: dirent.c dirent.h sys/types.h sys/fcntl.h unistd.h macros.h \
- stdlib.h ucc_attr.h
-signal.o: signal.c signal.h unistd.h macros.h sys/types.h sys/signal.h \
- syscalls.h syscalls_64.h
-stdio.o: stdio.c unistd.h macros.h sys/types.h stdio.h stdarg.h string.h \
- errno.h stdlib.h sys/fcntl.h assert.h ctype.h ucc_attr.h
-stdlib.o: stdlib.c stdlib.h sys/types.h macros.h unistd.h syscalls.h \
- syscalls_64.h signal.h sys/signal.h string.h assert.h errno.h ucc_attr.h \
- sys/mman.h sys/types.h
-string.o: string.c string.h macros.h sys/types.h limits.h \
- string_strerrs.h
-unistd.o: unistd.c unistd.h macros.h sys/types.h syscalls.h syscalls_64.h
-ucc.o: ucc.c ucc.h
+ sys/time.h ucc_attr.h stdlib.h errno.h
+signal.o: signal.c signal.h unistd.h macros.h sys/types.h sys/time.h \
+ ucc_attr.h sys/signal.h syscalls.h syscalls_64.h
+stdarg.o: stdarg.c stdarg.h sys/types.h
+stdio.o: stdio.c unistd.h macros.h sys/types.h sys/time.h ucc_attr.h \
+ stdio.h stdarg.h string.h errno.h stdlib.h sys/fcntl.h assert.h ctype.h \
+ limits.h
+stdlib.o: stdlib.c stdlib.h sys/types.h macros.h ucc_attr.h unistd.h \
+ sys/time.h syscalls.h syscalls_64.h signal.h sys/signal.h string.h \
+ assert.h errno.h sys/mman.h sys/types.h
+string.o: string.c string.h macros.h sys/types.h limits.h stdlib.h \
+ ucc_attr.h string_strerrs.h
+ucc.o: ucc.c stdio.h stdarg.h sys/types.h macros.h stdlib.h ucc_attr.h \
+ ucc.h
+unistd.o: unistd.c unistd.h macros.h sys/types.h sys/time.h ucc_attr.h \
+ syscalls.h syscalls_64.h sys/select.h sys/types.h sys/time.h
 
 arpa/inet.o: arpa/inet.c arpa/inet.h
 

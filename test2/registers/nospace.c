@@ -2,7 +2,7 @@
 // we don't do register assignment atm
 main()
 {
-	register int i asm("edi");
+	register int i __asm("edi");
 
 	return i;
 }

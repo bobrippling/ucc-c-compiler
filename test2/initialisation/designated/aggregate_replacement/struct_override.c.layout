@@ -1,0 +1,9 @@
+ent1:
+.byte 113, 98, 99, 0, 0, 0
+.byte 0, 0
+.long 1
+
+ent2:
+.byte 113, 0, 0, 0, 0, 0
+.byte 0, 0
+.long 0

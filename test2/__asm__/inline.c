@@ -3,5 +3,5 @@
 
 main()
 {
-	asm("movl $3, %eax");
+	__asm("movl $3, %eax");
 }

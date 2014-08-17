@@ -25,8 +25,16 @@ e=/tmp/check.$$
 
 trap "rm -f $e" EXIT
 
-$ucc -o/dev/null -c $@ 2>$e
+$ucc -o/dev/null -c "$@" 2>$e
 r=$?
+
+# check for abort
+if [ $r -eq 134 ]
+then
+	echo >&2 "abort: ucc on $@"
+	exit 1
+fi
+
 if [ $r -ne 0 ]
 then r=1
 fi

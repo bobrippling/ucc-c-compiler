@@ -14,6 +14,8 @@
 
 #define PRINTF_ENABLE_PADDING
 
+typedef __cleaned_va_list cleaned_va_list;
+
 struct __FILE
 {
 	int fd;
@@ -500,43 +502,33 @@ int vprintf(const char *fmt, va_list l)
 
 int dprintf(int fd, const char *fmt, ...)
 {
-	va_list l;
-	int r;
-	FILE f;
-
-	memset(&f, 0, sizeof f);
-	f.fd = fd;
-	f.status = file_status_fine;
+	cleaned_va_list l;
 
 	va_start(l, fmt);
-	r = vfprintf(&f, fmt, l);
-	va_end(l);
 
-	return r;
+	return vfprintf(
+			&(FILE){
+				.fd = fd,
+				.status = file_status_fine,
+			},
+			fmt,
+			l);
 }
 
 int fprintf(FILE *file, const char *fmt, ...)
 {
-	va_list l;
-	int r;
+	cleaned_va_list l;
 
 	va_start(l, fmt);
-	r = vfprintf(file, fmt, l);
-	va_end(l);
-
-	return r;
+	return vfprintf(file, fmt, l);
 }
 
 int printf(const char *fmt, ...)
 {
-	va_list l;
-	int r;
+	cleaned_va_list l;
 
 	va_start(l, fmt);
-	r = vfprintf(stdout, fmt, l);
-	va_end(l);
-
-	return r;
+	return vfprintf(stdout, fmt, l);
 }
 
 int fputs(const char *s, FILE *f)
@@ -572,7 +564,7 @@ char *fgets(char *s, int l, FILE *f)
 
 	/* FIXME: read only one line at a time */
 
-	s[MIN(l, r)] = '\0';
+	s[MIN((unsigned)l, r)] = '\0';
 
 	return s;
 }

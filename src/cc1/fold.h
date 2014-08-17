@@ -1,34 +1,43 @@
 #ifndef FOLD_H
 #define FOLD_H
 
+#include "decl.h"
+#include "sym.h"
+#include "stmt.h"
+#include "expr.h"
+#include "funcargs.h"
+
 /* basic folding */
 void fold_decl_global(decl *d, symtable *stab);
 void fold_decl_global_init(decl *d, symtable *stab);
 
 void fold_merge_tenatives(symtable *stab);
 
-void fold_decl(decl *d, symtable *stab, stmt **pinit_code);
-void fold_global_func(decl *);
-void fold_func_code(decl *, symtable *);
-void fold_func_passable(decl *, type_ref *);
+void fold_decl_add_sym(decl *d, symtable *stab);
 
-void fold_type_ref(type_ref *r, type_ref *parent, symtable *stab);
+void fold_decl(decl *d, symtable *stab);
+void fold_global_func(decl *);
+void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab);
+int fold_func_is_passable(decl *, type *, int warn);
+
+void fold_type(type *t, symtable *stab);
+void fold_type_w_attr(
+		type *, type *parent, where *,
+		symtable *stab, attribute *attr);
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
 
-void fold_funcargs(funcargs *fargs, symtable *stab, type_ref *from);
-
-void fold_stmt_and_add_to_curswitch(stmt *t);
+void fold_funcargs(funcargs *fargs, symtable *stab, attribute *);
 
 /* cast insertion */
-void fold_insert_casts(type_ref *tlhs, expr **prhs, symtable *stab);
+void fold_insert_casts(type *tlhs, expr **prhs, symtable *stab);
 
 int fold_type_chk_warn(
-		type_ref *lhs, type_ref *rhs,
+		type *lhs, type *rhs,
 		where *w, const char *desc);
 
 void fold_type_chk_and_cast(
-		type_ref *lhs, expr **prhs,
+		type *lhs, expr **prhs,
 		symtable *stab, where *w,
 		const char *desc);
 
@@ -41,6 +50,8 @@ enum fold_chk
 	FOLD_CHK_INTEGRAL    = 1 << 3, /* e.g. switch(...) */
 	FOLD_CHK_ALLOW_VOID  = 1 << 4,
 	FOLD_CHK_CONST_I     = 1 << 5, /* e.g. case (...): */
+	FOLD_CHK_NOWARN_ASSIGN = 1 << 6, /* if(a = b){ ... } */
+	FOLD_CHK_ARITHMETIC = 1 << 7,
 };
 void fold_check_expr(expr *e, enum fold_chk, const char *desc);
 
@@ -58,13 +69,6 @@ sym *fold_inc_writes_if_sym(expr *e, symtable *stab);
 int fold_passable(stmt *s);
 int fold_passable_yes(stmt *s);
 int fold_passable_no( stmt *s);
-
-void fold_stmt_and_add_to_curswitch(stmt *);
-
-#ifdef SYMTAB_DEBUG
-#  define PRINT_STAB(st, cur) print_stab(st->symtab, cur, &st->where)
-void print_stab(symtable *st, int current, where *w);
-#endif
 
 extern int fold_had_error;
 

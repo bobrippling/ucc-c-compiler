@@ -1,0 +1,16 @@
+ent1:
+.zero 12
+.long 1
+.long 2
+.zero 8
+.long 3
+.long 1
+.long 2
+.long 2
+.zero 4
+ent2:
+.zero 12
+.long 1
+ent3:
+.zero 12
+.long 1
