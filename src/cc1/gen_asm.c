@@ -28,6 +28,8 @@
 #include "out/val.h"
 #include "out/ctx.h"
 
+int gen_had_error;
+
 void IGNORE_PRINTGEN(const out_val *v)
 {
 	(void)v;
