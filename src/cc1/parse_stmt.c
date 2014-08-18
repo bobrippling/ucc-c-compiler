@@ -548,7 +548,7 @@ static stmt *parse_asm(symtable *scope)
 		if(accept(token_colon)){
 			asm_param **outputs = parse_asm_inout(scope, 0);
 			if(outputs)
-				dynarray_add_array(&bits->params, outputs);
+				dynarray_add_tmparray(&bits->params, outputs);
 		}
 
 		/* clobber list */
