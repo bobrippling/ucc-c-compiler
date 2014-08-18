@@ -67,6 +67,7 @@ enum constraint_x86
 	CONSTRAINT_REG_any = 'r',
 	CONSTRAINT_REG_abcd = 'q',
 	CONSTRAINT_REG_float = 'f',
+	CONSTRAINT_any = 'g',
 	CONSTRAINT_preclobber = '&',
 	CONSTRAINT_write_only = '='
 };
@@ -86,34 +87,37 @@ void out_asm_constraint_check(where *w, const char *constraint, int is_output)
 		reg_chosen = mem_chosen = write_only = const_chosen = 0;
 
 		while(*constraint)
-			switch(*constraint++){
-				case 'a':
-				case 'b':
-				case 'c':
-				case 'd':
-				case 'S':
-				case 'D':
-				case 'f':
-				case 'q':
-				case 'r':
+			switch((enum constraint_x86)*constraint++){
+				case CONSTRAINT_REG_a:
+				case CONSTRAINT_REG_b:
+				case CONSTRAINT_REG_c:
+				case CONSTRAINT_REG_d:
+				case CONSTRAINT_REG_S:
+				case CONSTRAINT_REG_D:
+				case CONSTRAINT_REG_float:
+				case CONSTRAINT_REG_abcd:
+				case CONSTRAINT_REG_any:
 					reg_chosen++;
 					break;
 
-				case 'm':
+				case CONSTRAINT_memory:
 					mem_chosen = 1;
 					break;
 
-				case 'n':
+				case CONSTRAINT_int:
 					const_chosen = 1;
 					break;
 
-				case 'g':
+				case CONSTRAINT_any:
 					/* any */
 					ICE("TODO: any constraint");
 					break;
 
-				case '=':
+				case CONSTRAINT_write_only:
 					write_only = 1;
+					break;
+
+				case CONSTRAINT_preclobber:
 					break;
 			}
 
