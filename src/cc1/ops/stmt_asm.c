@@ -75,6 +75,10 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 	struct constrained_val *inputs = NULL, *outputs = NULL;
 	size_t n_inputs = 0, n_outputs = 0;
 
+	out_comment(octx, "### begin asm(%s) from %s",
+			s->bits.asm_args->extended ? ":::" : "",
+			where_str(&s->where));
+
 	for(params = s->bits.asm_args->params; params && *params; params++){
 		asm_param *param = *params;
 		struct constrained_val *new;
@@ -91,10 +95,6 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 		new->val = p;
 		new->constraint = param->constraints;
 	}
-
-	out_comment(octx, "### begin asm(%s) from %s",
-			s->bits.asm_args->extended ? ":::" : "",
-			where_str(&s->where));
 
 	if(s->bits.asm_args->extended)
 		out_inline_asm_extended(octx, s->bits.asm_args->cmd,
