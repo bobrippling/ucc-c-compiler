@@ -319,7 +319,7 @@ static void constrain_val(
 		out_ctx *octx,
 		struct chosen_constraint *constraint,
 		struct constrained_val *cval,
-		where *const loc)
+		struct out_asm_error *error)
 {
 	/* pick one */
 	populate_constraint(constraint, cval->constraint);
@@ -335,7 +335,7 @@ static void constrain_val(
 
 		case C_CONST:
 			if(cval->val->type != V_CONST_I)
-				die_at(loc, "can't meet const constraint");
+				error->str = ustrdup("can't meet const constraint");
 			break;
 
 		case C_REG:
@@ -367,7 +367,7 @@ void out_inline_asm_extended(
 		struct constrained_val *outputs, const size_t noutputs,
 		struct constrained_val *inputs, const size_t ninputs,
 		char **clobbers,
-		where *const loc)
+		struct out_asm_error *error)
 {
 	char *written_insn = NULL;
 	size_t insn_len = 0;
@@ -408,7 +408,7 @@ void out_inline_asm_extended(
 				 * for the asm. if we can't, hard error */
 				constraint = &constraints.inputs[this_index];
 
-				constrain_val(octx, constraint, &inputs[this_index], loc);
+				constrain_val(octx, constraint, &inputs[this_index], error);
 
 				val_str = impl_val_str(inputs[this_index].val, /*deref*/0);
 				oplen = strlen(val_str);

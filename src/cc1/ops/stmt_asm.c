@@ -69,6 +69,17 @@ void fold_stmt_asm(stmt *s)
 	}
 }
 
+static expr *err_operand_to_expr(
+		asm_param **params, struct constrained_val *cval)
+{
+	for(; params && *params; params++){
+		asm_param *param = *params;
+		if(param->constraints == cval->constraint)
+			return param->exp;
+	}
+	return NULL;
+}
+
 void gen_stmt_asm(stmt *s, out_ctx *octx)
 {
 	asm_param **params;
@@ -97,10 +108,28 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 	}
 
 	if(s->bits.asm_args->extended){
+		struct out_asm_error error = { 0 };
+
 		out_inline_asm_extended(octx,
 				s->bits.asm_args->cmd,
 				outputs, n_outputs, inputs, n_inputs,
-				s->bits.asm_args->clobbers, &s->where);
+				s->bits.asm_args->clobbers, &error);
+
+		if(error.str){
+			where *loc = &s->where;
+
+			if(error.operand){
+				expr *err_expr = err_operand_to_expr(
+						s->bits.asm_args->params, error.operand);
+
+				if(err_expr)
+					loc = &err_expr->where;
+			}
+
+			warn_at_print_error(loc, "%s", error.str);
+			gen_had_error = 1;
+		}
+
 	}else{
 		out_inline_asm(octx, s->bits.asm_args->cmd);
 	}
