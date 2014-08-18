@@ -216,7 +216,7 @@ static ucc_wur const out_val *v_freeup_regp(out_ctx *octx, const out_val *vp)
 	}
 }
 
-static const out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
+const out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
 {
 	out_val_list *i;
 

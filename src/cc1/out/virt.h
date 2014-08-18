@@ -53,6 +53,7 @@ void v_reg_to_stack(
 
 /* register saving */
 void v_freeup_reg(out_ctx *, const struct vreg *r);
+const out_val *v_find_reg(out_ctx *octx, const struct vreg *reg);
 
 /* func_ty may be null, ignores is null-terminated */
 void v_save_regs(

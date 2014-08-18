@@ -344,16 +344,34 @@ static void constrain_val(
 				if(cval->val->type == V_REG){
 					/* satisfied */
 				}else{
-					v_unused_reg(octx, /*spill*/1, /*fp*/0,
+					int got_reg = v_unused_reg(octx, /*spill*/0, /*fp*/0,
 							&constraint->bits.reg, cval->val);
 
-					cval->val = v_to_reg_given_freeup(
+					if(!got_reg){
+						error->str = ustrprintf(
+								"not enough registers to meet constraint \"%s\"",
+								cval->constraint);
+
+						error->operand = cval;
+					}
+
+					cval->val = v_to_reg_given(
 							octx, cval->val, &constraint->bits.reg);
 				}
 			}else{
 				if(cval->val->type != V_REG
 				|| cval->val->bits.regoff.reg.idx != constraint->bits.reg.idx)
 				{
+					const out_val *usedreg = v_find_reg(octx, &constraint->bits.reg);
+
+					if(usedreg){
+						error->str = ustrprintf(
+								"no free registers for constraint \"%s\"",
+								cval->constraint);
+
+						error->operand = cval;
+					}
+
 					cval->val = v_to_reg_given_freeup(
 							octx, cval->val, &constraint->bits.reg);
 				}
