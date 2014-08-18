@@ -70,8 +70,11 @@ enum constraint_x86
 	CONSTRAINT_REG_abcd = 'q',
 	CONSTRAINT_REG_float = 'f',
 	CONSTRAINT_any = 'g',
+
+	/* modifiers */
 	CONSTRAINT_preclobber = '&',
-	CONSTRAINT_write_only = '='
+	CONSTRAINT_write_only = '=',
+	CONSTRAINT_readwrite = '+'
 };
 
 void out_asm_constraint_check(where *w, const char *constraint, int is_output)
