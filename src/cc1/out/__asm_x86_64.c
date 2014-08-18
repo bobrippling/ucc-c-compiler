@@ -362,11 +362,15 @@ void out_inline_asm_extended(
 			}
 
 			this_index = strtol(p, &end, 0);
-			if(*end)
+			if(end == p)
 				ICE("not an int - should've been caught");
+			p = end - 1; /* ready for ++ */
 
 			if(this_index >= noutputs){
 				struct chosen_constraint *constraint;
+				const char *val_str;
+				char *op;
+				size_t oplen;
 
 				this_index -= noutputs;
 				assert(this_index < ninputs);
@@ -375,8 +379,14 @@ void out_inline_asm_extended(
 				 * for the asm. if we can't, hard error */
 				constraint = &constraints.inputs[this_index];
 
-				/* consumes inputs[...] */
-				constrain_oval(constraint, &inputs[this_index]);
+				constrain_val(constraint, &inputs[this_index]);
+
+				val_str = impl_val_str(inputs[this_index].val, /*deref*/0);
+				oplen = strlen(val_str);
+
+				op = dynvec_add_n(&written_insn, &insn_len, oplen);
+
+				memcpy(op, val_str, oplen);
 
 			}else{
 				const out_val *output = outputs[this_index].val;
@@ -404,7 +414,7 @@ void out_inline_asm_extended(
 	*(char *)dynvec_add(&written_insn, &insn_len) = '\0';
 
 	out_comment(octx, "### actual inline");
-	out_asm(octx, "\t%s\n", written_insn ? written_insn : "");
+	out_asm(octx, "%s", written_insn ? written_insn : "");
 	out_comment(octx, "### assignments to outputs");
 
 	free(written_insn), written_insn = NULL;
