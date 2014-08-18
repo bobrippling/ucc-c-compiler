@@ -21,6 +21,8 @@
 #include "asm.h" /* section_type, for write.c: */
 #include "write.h"
 
+#include "virt.h" /* v_to* */
+
 #include "x86_64.h" /* CC1_IMPL_FNAME */
 
 #include "__asm.h"
@@ -52,7 +54,7 @@ http://www.ibiblio.org/gferg/ldp/GCC-Inline-Assembly-HOWTO.html#s4
 
 #endif
 
-enum
+enum constraint_x86
 {
 	CONSTRAINT_REG_a = 'a',
 	CONSTRAINT_REG_b = 'b',
@@ -232,114 +234,118 @@ bad:
 }
 
 static void populate_constraint(
-		const char *constraint, struct chosen_constraint *con)
+		struct chosen_constraint *constraint,
+		const char *str)
 {
-#if 0
 	int reg = -1, mem = 0, is_const = 0;
 
-	while(*constraint)
-		switch(*constraint++){
+	while(*str){
+		switch((enum constraint_x86)*str++){
 #define CHOOSE(c, i) case c: reg = i; break
-			CHOOSE('a', X86_64_REG_RAX);
-			CHOOSE('b', X86_64_REG_RBX);
-			CHOOSE('c', X86_64_REG_RCX);
-			CHOOSE('d', X86_64_REG_RDX);
+			CHOOSE(CONSTRAINT_REG_a, X86_64_REG_RAX);
+			CHOOSE(CONSTRAINT_REG_b, X86_64_REG_RBX);
+			CHOOSE(CONSTRAINT_REG_c, X86_64_REG_RCX);
+			CHOOSE(CONSTRAINT_REG_d, X86_64_REG_RDX);
+			CHOOSE(CONSTRAINT_REG_S, X86_64_REG_RSI);
+			CHOOSE(CONSTRAINT_REG_D, X86_64_REG_RDI);
 #undef CHOOSE
 
-			case 'f': ICE("TODO: fp reg constraint");
+			case CONSTRAINT_REG_float:
+				ICE("TODO: fp reg constraint");
 
-			case 'S': reg = X86_64_REG_RSI; break;
-			case 'D': reg = X86_64_REG_RDI; break;
-
-			case 'q': /* currently the same as 'r' */
-			case 'r':
+			case CONSTRAINT_REG_abcd:
+				ICE("TODO: a/b/c/d reg");
+			case CONSTRAINT_REG_any:
 				reg = -1;
 				break;
 
-			case 'm':
+			case CONSTRAINT_memory:
 				mem = 1;
 				break;
-			case 'n':
+			case CONSTRAINT_int:
 				is_const = 1;
 				break;
 
+			case CONSTRAINT_write_only:
+				break; /* handled already */
+			case CONSTRAINT_preclobber:
+
 			default:
 			{
-				const char c = constraint[-1];
+				const char c = str[-1];
 				if('0' <= c && c <= '9')
 					ICE("TODO: digit/match constraint");
+				else
+					ICE("TODO: handle constraint '%c'", str[-1]);
 			}
 		}
-
+	}
 
 	if(mem){
-		con->type = C_MEM;
+		constraint->type = C_MEM;
 
 	}else if(is_const){
-		con->type = C_CONST;
+		constraint->type = C_CONST;
 
 	}else{
-		con->type = C_REG;
-		con->bits.reg.is_float = 0;
-		con->bits.reg.idx	= reg;
+		constraint->type = C_REG;
+		constraint->bits.reg.is_float = 0;
+		constraint->bits.reg.idx	= reg;
 	}
-#endif
 }
 
-static void constrain_oval(
+static void constrain_val(
+		out_ctx *octx,
 		struct chosen_constraint *constraint,
-		struct constrained_val *cval)
+		struct constrained_val *cval,
+		where *const loc)
 {
-#if 0
 	/* pick one */
-	populate_constraint(io->constraints, cc);
+	populate_constraint(constraint, cval->constraint);
 
-	if(already_set){
-		if(!CONSTRAINT_EQ_OUT_STORE(cc->type, vp->type))
-			die_at(err_w, "couldn't satisfy mismatching constraints");
+	/* fill it with the right values */
+	switch(constraint->type){
+		case C_MEM:
+			cval->val = v_to(octx, cval->val, TO_MEM);
+			//constraint->bits.stack = vp->bits.regoff.offset;
+			break;
 
-	}else{
-		/* fill it with the right values */
-		switch(cc->type){
-			case C_MEM:
-				/* vp into memory */
-				v_to_mem(vp);
-				cc->bits.stack = vp->bits.regoff.offset;
-				break;
+		case C_CONST:
+			if(cval->val->type != V_CONST_I)
+				die_at(loc, "can't meet const constraint");
+			//constraint->bits.k = vp->bits.val_i;
+			break;
 
-			case C_CONST:
-				if(vp->type != V_CONST_I)
-					die_at(&io->exp->where, "invalid operand for const-constraint");
-				cc->bits.k = vp->bits.val_i;
-				break;
+		case C_REG:
+			if(constraint->bits.reg.idx == (unsigned short)-1){
+				/* any reg */
+				if(cval->val->type == V_REG){
+					/* satisfied */
+				}else{
+					v_unused_reg(octx, /*spill*/1, /*fp*/0,
+							&constraint->bits.reg, cval->val);
 
-			case C_REG:
-				if(cc->bits.reg.idx == (short unsigned)-1){
-					if(vp->type == V_REG){
-						cc->bits.reg = vp->bits.regoff.reg;
-					}else{
-						v_unused_reg(1, 0, &cc->bits.reg);
-
-						v_freeup_reg(&cc->bits.reg, 1);
-						v_to_reg(vp); /* TODO: v_to_reg_preferred */
-					}
+					cval->val = v_to_reg_given_freeup(
+							octx, cval->val, &constraint->bits.reg);
 				}
-
-				if(vp->bits.regoff.reg.idx != cc->bits.reg.idx){
-					impl_reg_cp(vp, &cc->bits.reg);
-					vp->bits.regoff.reg = cc->bits.reg;
+			}else{
+				if(cval->val->type != V_REG
+				|| cval->val->bits.regoff.reg.idx != constraint->bits.reg.idx)
+				{
+					cval->val = v_to_reg_given_freeup(
+							octx, cval->val, &constraint->bits.reg);
 				}
-				break;
-		}
+			}
+			break;
 	}
-#endif
 }
 
 void out_inline_asm_extended(
 		out_ctx *octx, const char *insn,
 		struct constrained_val *outputs, const size_t noutputs,
 		struct constrained_val *inputs, const size_t ninputs,
-		char **clobbers)
+		char **clobbers,
+		where *const loc)
 {
 	char *written_insn = NULL;
 	size_t insn_len = 0;
@@ -380,7 +386,7 @@ void out_inline_asm_extended(
 				 * for the asm. if we can't, hard error */
 				constraint = &constraints.inputs[this_index];
 
-				constrain_val(constraint, &inputs[this_index]);
+				constrain_val(octx, constraint, &inputs[this_index], loc);
 
 				val_str = impl_val_str(inputs[this_index].val, /*deref*/0);
 				oplen = strlen(val_str);

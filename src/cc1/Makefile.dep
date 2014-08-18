@@ -1499,7 +1499,7 @@ out/__asm_x86_64.o: out/__asm_x86_64.c out/../../util/util.h \
  out/out.h out/../sym.h out/../decl.h out/../type.h out/../attribute.h \
  out/../retain.h out/../../util/dynmap.h out/../op.h out/forwards.h \
  out/__asm.h out/val.h out/impl.h out/../../util/compiler.h out/x86_64.h \
- out/asm.h out/write.h out/dbg.h
+ out/asm.h out/write.h out/dbg.h out/virt.h
 out/alloca.o: out/alloca.c out/out.h out/../type.h out/../num.h \
  out/../btype.h out/../../util/where.h out/../../util/compiler.h \
  out/../num.h out/../sym.h out/../decl.h out/../type.h out/../attribute.h \

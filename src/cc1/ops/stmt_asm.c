@@ -100,7 +100,7 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 		out_inline_asm_extended(octx,
 				s->bits.asm_args->cmd,
 				outputs, n_outputs, inputs, n_inputs,
-				s->bits.asm_args->clobbers);
+				s->bits.asm_args->clobbers, &s->where);
 	}else{
 		out_inline_asm(octx, s->bits.asm_args->cmd);
 	}
