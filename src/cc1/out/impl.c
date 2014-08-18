@@ -69,3 +69,9 @@ int impl_reg_is_callee_save(type *fnty, const struct vreg *r)
 			return 1;
 	return 0;
 }
+
+const char *impl_val_str(const out_val *vs, int deref)
+{
+	static char buf[VAL_STR_SZ];
+	return impl_val_str_r(buf, vs, deref);
+}
