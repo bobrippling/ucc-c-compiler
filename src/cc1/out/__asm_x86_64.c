@@ -161,10 +161,6 @@ struct chosen_constraint
 	} bits;
 };
 
-#define CONSTRAINT_EQ_OUT_STORE(cc, oo) (            \
-	((cc) == C_REG && (oo) == V_REG) ||                \
-	((cc) == C_MEM && (oo) == V_REG_SAVE))
-
 static void constrain_output(
 		const out_val *val, const struct chosen_constraint *cc)
 {
