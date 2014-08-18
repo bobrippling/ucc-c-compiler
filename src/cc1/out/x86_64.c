@@ -46,8 +46,6 @@
 
 #define REG_STR_SZ 8
 
-#define VSTACK_STR_SZ 128
-
 const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 1, "byte" },
 	{ 2, "word" },
@@ -207,8 +205,8 @@ static const char *x86_reg_str(const struct vreg *reg, type *r)
 	}
 }
 
-static const char *vstack_str_r(
-		char buf[VSTACK_STR_SZ], const out_val *vs, const int deref)
+const char *impl_val_str_r(
+		char buf[VAL_STR_SZ], const out_val *vs, const int deref)
 {
 	switch(vs->type){
 		case V_CONST_I:
@@ -223,7 +221,7 @@ static const char *vstack_str_r(
 			if(deref == 0)
 				*p++ = '$';
 
-			integral_str(p, VSTACK_STR_SZ - (deref == 0 ? 1 : 0),
+			integral_str(p, VAL_STR_SZ - (deref == 0 ? 1 : 0),
 					vs->bits.val_i, vs->t);
 			break;
 		}
@@ -241,13 +239,13 @@ static const char *vstack_str_r(
 			const char *picstr = pic && deref ? "(%rip)" : "";
 
 			if(vs->bits.lbl.offset){
-				SNPRINTF(buf, VSTACK_STR_SZ, "%s%s+%ld%s",
+				SNPRINTF(buf, VAL_STR_SZ, "%s%s+%ld%s",
 						pre,
 						vs->bits.lbl.str,
 						vs->bits.lbl.offset,
 						picstr);
 			}else{
-				SNPRINTF(buf, VSTACK_STR_SZ, "%s%s%s",
+				SNPRINTF(buf, VAL_STR_SZ, "%s%s%s",
 						pre, vs->bits.lbl.str, picstr);
 			}
 			break;
@@ -265,13 +263,13 @@ static const char *vstack_str_r(
 						"can't add to a register in %s",
 						__func__);
 
-				SNPRINTF(buf, VSTACK_STR_SZ,
+				SNPRINTF(buf, VAL_STR_SZ,
 						"%s" NUM_FMT "(%%%s)",
 						off < 0 ? "-" : "",
 						abs(off),
 						rstr);
 			}else{
-				SNPRINTF(buf, VSTACK_STR_SZ,
+				SNPRINTF(buf, VAL_STR_SZ,
 						"%s%%%s%s",
 						deref ? "(" : "",
 						rstr,
@@ -283,12 +281,6 @@ static const char *vstack_str_r(
 	}
 
 	return buf;
-}
-
-static const char *vstack_str(const out_val *vs, int deref)
-{
-	static char buf[VSTACK_STR_SZ];
-	return vstack_str_r(buf, vs, deref);
 }
 
 int impl_reg_to_idx(const struct vreg *r)
@@ -646,7 +638,7 @@ static const out_val *x86_load_iv(
 
 		out_asm(octx, "mov%s %s, %%%s",
 				x86_suffix(from->t),
-				vstack_str(from, 0),
+				impl_val_str(from, 0),
 				x86_reg_str(reg, from->t));
 	}
 
@@ -844,7 +836,7 @@ lea:
 			out_asm(octx, "%s%s %s, %%%s",
 					fp ? "mov" : "lea",
 					x86_suffix(suff_ty),
-					vstack_str(from, 1),
+					impl_val_str(from, 1),
 					x86_reg_str(reg, chosen_ty));
 
 			/* 'from' is now in a reg */
@@ -877,7 +869,7 @@ static const out_val *x86_check_ivfp(out_ctx *octx, const out_val *from)
 
 void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 {
-	char vbuf[VSTACK_STR_SZ];
+	char vbuf[VAL_STR_SZ];
 
 	/* from must be either a reg, value or flag */
 	if(from->type == V_FLAG
@@ -920,8 +912,8 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 
 	out_asm(octx, "mov%s %s, %s",
 			x86_suffix(from->t),
-			vstack_str_r(vbuf, from, 0),
-			vstack_str(to, 1));
+			impl_val_str_r(vbuf, from, 0),
+			impl_val_str(to, 1));
 
 	out_val_consume(octx, from);
 	out_val_consume(octx, to);
@@ -997,7 +989,7 @@ static const out_val *x86_idiv(
 
 		out_asm(octx, "idiv%s %s",
 				x86_suffix(r->t),
-				vstack_str(r, 0));
+				impl_val_str(r, 0));
 
 	}
 	v_unreserve_reg(octx, &rdx);
@@ -1016,7 +1008,7 @@ static const out_val *x86_shift(
 		out_ctx *octx, enum op_type op,
 		const out_val *l, const out_val *r)
 {
-	char bufv[VSTACK_STR_SZ], bufs[VSTACK_STR_SZ];
+	char bufv[VAL_STR_SZ], bufs[VAL_STR_SZ];
 	type *nchar;
 
 	/* sh[lr] [r/m], [c/r]
@@ -1038,8 +1030,8 @@ static const out_val *x86_shift(
 
 	l = v_to(octx, l, TO_MEM | TO_REG);
 
-	vstack_str_r(bufv, l, 0);
-	vstack_str_r(bufs, r, 0);
+	impl_val_str_r(bufv, l, 0);
+	impl_val_str_r(bufs, r, 0);
 
 	out_asm(octx, "%s%s %s, %s",
 			op == op_shiftl
@@ -1063,15 +1055,15 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	if(type_is_floating(l->t)){
 		if(op_is_comparison(op)){
 			/* ucomi%s reg_or_mem, reg */
-			char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
+			char b1[VAL_STR_SZ], b2[VAL_STR_SZ];
 
 			l = v_to(octx, l, TO_REG | TO_MEM);
 			r = v_to_reg(octx, r);
 
 			out_asm(octx, "ucomi%s %s, %s",
 					x86_suffix(l->t),
-					vstack_str_r(b1, r, 0),
-					vstack_str_r(b2, l, 0));
+					impl_val_str_r(b1, r, 0),
+					impl_val_str_r(b2, l, 0));
 
 			if(l != min_retained) out_val_consume(octx, l);
 			if(r != min_retained) out_val_consume(octx, r);
@@ -1114,12 +1106,12 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		r = v_to(octx, r, TO_REG | TO_MEM);
 
 		{
-			char b1[VSTACK_STR_SZ], b2[VSTACK_STR_SZ];
+			char b1[VAL_STR_SZ], b2[VAL_STR_SZ];
 
 			out_asm(octx, "%s%s %s, %s",
 					opc, x86_suffix(l->t),
-					vstack_str_r(b1, r, 0),
-					vstack_str_r(b2, l, 0));
+					impl_val_str_r(b1, r, 0),
+					impl_val_str_r(b2, l, 0));
 
 			out_val_consume(octx, r);
 			return v_dup_or_reuse(octx, l, l->t);
@@ -1157,7 +1149,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 					"float cmp should be handled above");
 		{
 			const int is_signed = type_is_signed(l->t);
-			char buf[VSTACK_STR_SZ];
+			char buf[VAL_STR_SZ];
 			int inv = 0;
 			const out_val *vconst = NULL;
 			enum flag_cmp cmp;
@@ -1175,7 +1167,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			&& vconst && vconst->bits.val_i == 0)
 			{
 				const out_val *vother = vconst == l ? r : l;
-				const char *vstr = vstack_str(vother, 0); /* reg */
+				const char *vstr = impl_val_str(vother, 0); /* reg */
 				out_asm(octx, "test%s %s, %s", x86_suffix(vother->t), vstr, vstr);
 			}else{
 				/* if we have a const, it must be the first arg */
@@ -1191,8 +1183,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 				out_asm(octx, "cmp%s %s, %s",
 						x86_suffix(l->t), /* pick the non-const one (for type-ing) */
-						vstack_str(r, 0),
-						vstack_str_r(buf, l, 0));
+						impl_val_str(r, 0),
+						impl_val_str_r(buf, l, 0));
 			}
 
 			cmp = op_to_flag(op);
@@ -1224,7 +1216,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	}
 
 	{
-		char buf[VSTACK_STR_SZ];
+		char buf[VAL_STR_SZ];
 
 		/* RHS    LHS
 		 * r/m += r/imm;
@@ -1311,7 +1303,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 					out_asm(octx, "%s%s %s",
 							op == op_plus ? "inc" : "dec",
 							x86_suffix(r->t),
-							vstack_str(l, 0));
+							impl_val_str(l, 0));
 					break;
 				}
 			default:
@@ -1319,8 +1311,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				 * we still use lhs for the v_dup_or_reuse() below */
 				out_asm(octx, "%s%s %s, %s", opc,
 						x86_suffix(l->t),
-						vstack_str_r(buf, r, 0),
-						vstack_str(l, 0));
+						impl_val_str_r(buf, r, 0),
+						impl_val_str(l, 0));
 		}
 
 		out_val_consume(octx, r);
@@ -1337,7 +1329,7 @@ const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *r
 	/* loaded the pointer, now we apply the deref change */
 	out_asm(octx, "mov%s %s, %%%s",
 			x86_suffix(tpointed_to),
-			vstack_str(vp, 1),
+			impl_val_str(vp, 1),
 			x86_reg_str(reg, tpointed_to));
 
 	return v_new_reg(octx, vp, tpointed_to, reg);
@@ -1380,7 +1372,7 @@ const out_val *impl_op_unary(out_ctx *octx, enum op_type op, const out_val *val)
 
 	out_asm(octx, "%s%s %s", opc,
 			x86_suffix(val->t),
-			vstack_str(val, 0));
+			impl_val_str(val, 0));
 
 	return v_dup_or_reuse(octx, val, val->t);
 }
@@ -1391,7 +1383,7 @@ const out_val *impl_cast_load(
 		int is_signed)
 {
 	/* we are always up-casting here, i.e. int -> long */
-	char buf_small[VSTACK_STR_SZ];
+	char buf_small[VAL_STR_SZ];
 
 	UCC_ASSERT(!type_is_floating(small) && !type_is_floating(big),
 			"we don't cast-load floats");
@@ -1454,7 +1446,7 @@ static void x86_fp_conv(
 		type *int_ty,
 		const char *sfrom, const char *sto)
 {
-	char vbuf[VSTACK_STR_SZ];
+	char vbuf[VAL_STR_SZ];
 
 	out_asm(octx, "cvt%s2%s%s %s, %%%s",
 			/*truncate ? "t" : "",*/
@@ -1463,7 +1455,7 @@ static void x86_fp_conv(
 			 * see if we need to do 64 or 32 bit
 			 */
 			int_ty ? type_size(int_ty, NULL) == 8 ? "q" : "l" : "",
-			vstack_str_r(vbuf, vp, vp->type == V_REG_SPILT),
+			impl_val_str_r(vbuf, vp, vp->type == V_REG_SPILT),
 			x86_reg_str(r, tto));
 }
 
@@ -1540,7 +1532,7 @@ static const char *x86_call_jmp_target(
 		out_ctx *octx, const out_val **pvp,
 		int prevent_rax)
 {
-	static char buf[VSTACK_STR_SZ + 2];
+	static char buf[VAL_STR_SZ + 2];
 
 	switch((*pvp)->type){
 		case V_LBL:
@@ -1556,7 +1548,7 @@ static const char *x86_call_jmp_target(
 			ICE("jmp flag/float?");
 
 		case V_CONST_I:   /* jmp *5 */
-			snprintf(buf, sizeof buf, "*%s", vstack_str((*pvp), 1));
+			snprintf(buf, sizeof buf, "*%s", impl_val_str((*pvp), 1));
 			return buf;
 
 		case V_REG_SPILT: /* load, then jmp */
@@ -1611,7 +1603,7 @@ void impl_branch(
 			char *cmp;
 
 			cond = v_reg_apply_offset(octx, cond);
-			rstr = vstack_str(cond, 0);
+			rstr = impl_val_str(cond, 0);
 
 			out_asm(octx, "test %s, %s", rstr, rstr);
 			cmp = ustrprintf("jz %s", bf->lbl);

@@ -74,6 +74,13 @@ void impl_comment(out_ctx *, const char *fmt, va_list l);
 enum flag_cmp op_to_flag(enum op_type op);
 const char *flag_cmp_to_str(enum flag_cmp);
 
+
+/* needed for inline asm code gen */
+const char *impl_val_str(const out_val *vs, int deref);
+
+const char *impl_val_str_r(
+		char buf[], const out_val *vs, const int deref);
+
 /* can't do this for gen_deps.sh */
 #ifdef CC1_IMPL_FNAME
 #  include CC1_IMPL_FNAME
