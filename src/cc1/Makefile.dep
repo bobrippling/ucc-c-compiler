@@ -994,13 +994,13 @@ ops/expr_val.o: ops/expr_val.c ops/ops.h ops/../../util/util.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/expr_val.h ops/../out/asm.h \
  ops/../type_nav.h ops/../btype.h ops/../sue.h
-ops/stmt_asm.o: ops/stmt_asm.c ops/../../util/dynarray.h ops/../../util/dyn.h \
- ops/ops.h ops/../../util/util.h ops/../../util/warn.h \
- ops/../../util/where.h ops/../../util/compiler.h ops/../cc1.h \
- ops/../../util/std.h ops/../warn.h ops/../out/out.h ops/../out/../type.h \
- ops/../out/../num.h ops/../out/../btype.h ops/../out/../../util/where.h \
- ops/../out/../num.h ops/../out/../sym.h ops/../out/../decl.h \
- ops/../out/../type.h ops/../out/../attribute.h ops/../out/../retain.h \
+ops/stmt_asm.o: ops/stmt_asm.c ops/../../util/dynvec.h ops/ops.h \
+ ops/../../util/util.h ops/../../util/warn.h ops/../../util/where.h \
+ ops/../../util/compiler.h ops/../cc1.h ops/../../util/std.h \
+ ops/../warn.h ops/../out/out.h ops/../out/../type.h ops/../out/../num.h \
+ ops/../out/../btype.h ops/../out/../../util/where.h ops/../out/../num.h \
+ ops/../out/../sym.h ops/../out/../decl.h ops/../out/../type.h \
+ ops/../out/../attribute.h ops/../out/../retain.h \
  ops/../out/../../util/dynmap.h ops/../out/../../util/dyn.h \
  ops/../out/../op.h ops/../out/forwards.h ops/../out/__asm.h \
  ops/../fold.h ops/../decl.h ops/../sym.h ops/../stmt.h ops/../out/out.h \
@@ -1493,12 +1493,13 @@ out/__asm_mipsel_32.o: out/__asm_mipsel_32.c out/../../util/util.h \
  out/../ops/stmt_continue.h out/../ops/stmt_asm.h
 out/__asm_x86_64.o: out/__asm_x86_64.c out/../../util/util.h \
  out/../../util/warn.h out/../../util/where.h out/../../util/compiler.h \
- out/../../util/dynarray.h out/../../util/dyn.h out/../../util/dynmap.h \
- out/../../util/alloc.h out/../type.h out/../num.h out/../btype.h \
- out/../../util/where.h out/../num.h out/out.h out/../sym.h out/../decl.h \
- out/../type.h out/../attribute.h out/../retain.h out/../../util/dynmap.h \
- out/../op.h out/forwards.h out/__asm.h out/val.h out/impl.h \
- out/../../util/compiler.h out/x86_64.h
+ out/../../util/dynarray.h out/../../util/dyn.h out/../../util/dynvec.h \
+ out/../../util/dynmap.h out/../../util/alloc.h out/../type.h \
+ out/../num.h out/../btype.h out/../../util/where.h out/../num.h \
+ out/out.h out/../sym.h out/../decl.h out/../type.h out/../attribute.h \
+ out/../retain.h out/../../util/dynmap.h out/../op.h out/forwards.h \
+ out/__asm.h out/val.h out/impl.h out/../../util/compiler.h out/x86_64.h \
+ out/asm.h out/write.h out/dbg.h
 out/alloca.o: out/alloca.c out/out.h out/../type.h out/../num.h \
  out/../btype.h out/../../util/where.h out/../../util/compiler.h \
  out/../num.h out/../sym.h out/../decl.h out/../type.h out/../attribute.h \

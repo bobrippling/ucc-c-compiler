@@ -5,12 +5,19 @@
 void out_asm_constraint_check(
 		where *w, const char *constraint, int is_output);
 
+struct constrained_val
+{
+	const out_val *val;
+	const char *constraint;
+};
 
 /* output the constraint cmd, with %0 replaced, etc */
-void out_asm_inline(
+void out_inline_asm_extended(
 		out_ctx *, const char *insn,
-		const out_val **inputs,
-		const out_val **outputs,
+		struct constrained_val *inputs,
+		struct constrained_val *outputs,
 		char **clobbers);
+
+void out_inline_asm(out_ctx *, const char *insn);
 
 #endif

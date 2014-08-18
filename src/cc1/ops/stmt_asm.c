@@ -1,6 +1,6 @@
 #include <stdlib.h>
 
-#include "../../util/dynarray.h"
+#include "../../util/dynvec.h"
 
 #include "ops.h"
 #include "stmt_asm.h"
@@ -21,7 +21,10 @@ static void check_constraint(asm_param *param, symtable *stab)
 		FOLD_EXPR(param->exp, stab);
 	}
 
-	out_asm_constraint_check(&param->exp->where, param->constraints);
+	out_asm_constraint_check(
+			&param->exp->where,
+			param->constraints,
+			param->is_output);
 }
 
 void fold_stmt_asm(stmt *s)
@@ -68,31 +71,37 @@ void fold_stmt_asm(stmt *s)
 
 void gen_stmt_asm(stmt *s, out_ctx *octx)
 {
-	const out_val **inputs, **outputs;
 	asm_param **params;
-
-	inputs = outputs = NULL;
+	struct constrained_val *inputs = NULL, *outputs = NULL;
+	size_t n_inputs = 0, n_outputs = 0;
 
 	for(params = s->bits.asm_args->params; params && *params; params++){
 		asm_param *param = *params;
+		struct constrained_val *new;
 		const out_val *p;
 
 		if(param->is_output){
 			p = lea_expr(param->exp, octx);
-			dynarray_add(&outputs, p);
+			new = dynvec_add(&outputs, &n_outputs);
 		}else{
 			p = gen_expr(param->exp, octx);
-			dynarray_add(&inputs, p);
+			new = dynvec_add(&inputs, &n_inputs);
 		}
+
+		new->val = p;
+		new->constraint = param->constraints;
 	}
 
 	out_comment(octx, "### begin asm(%s) from %s",
 			s->bits.asm_args->extended ? ":::" : "",
 			where_str(&s->where));
 
-	out_asm_inline(octx, s->bits.asm_args->cmd,
-			outputs, inputs,
-			s->bits.asm_args->clobbers);
+	if(s->bits.asm_args->extended)
+		out_inline_asm_extended(octx, s->bits.asm_args->cmd,
+				outputs, inputs,
+				s->bits.asm_args->clobbers);
+	else
+		out_inline_asm(octx, s->bits.asm_args->cmd);
 
 	out_comment(octx, "### end asm()");
 }

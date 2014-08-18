@@ -3,9 +3,11 @@
 #include <stdarg.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
+#include "../../util/dynvec.h"
 #include "../../util/dynmap.h"
 #include "../../util/alloc.h"
 
@@ -16,6 +18,8 @@
 
 #include "val.h"
 #include "impl.h"
+#include "asm.h" /* section_type, for write.c: */
+#include "write.h"
 
 #include "x86_64.h" /* CC1_IMPL_FNAME */
 
@@ -161,9 +165,10 @@ struct chosen_constraint
 	((cc) == C_REG && (oo) == V_REG) ||                \
 	((cc) == C_MEM && (oo) == V_REG_SAVE))
 
-#if 0
-static void out_unconstrain(const int lval_vp_offset, struct chosen_constraint *cc)
+static void constrain_output(
+		const out_val *val, const struct chosen_constraint *cc)
 {
+#if 0
 	/* pop from register/memory to vp */
 	struct vstack *vp = &vtop[-lval_vp_offset];
 
@@ -227,10 +232,13 @@ static void out_unconstrain(const int lval_vp_offset, struct chosen_constraint *
 bad:
 			ICE("bad unconstraint type C_CONST");
 	}
+#endif
 }
 
-static void populate_constraint(const char *constraint, struct chosen_constraint *con)
+static void populate_constraint(
+		const char *constraint, struct chosen_constraint *con)
 {
+#if 0
 	int reg = -1, mem = 0, is_const = 0;
 
 	while(*constraint)
@@ -279,15 +287,14 @@ static void populate_constraint(const char *constraint, struct chosen_constraint
 		con->bits.reg.is_float = 0;
 		con->bits.reg.idx	= reg;
 	}
+#endif
 }
 
-static void out_constrain(
-		asm_inout *io,
-		struct vstack *vp,
-		struct chosen_constraint *cc,
-		const int already_set,
-		where *const err_w)
+static void constrain_oval(
+		struct chosen_constraint *constraint,
+		struct constrained_val *cval)
 {
+#if 0
 	/* pick one */
 	populate_constraint(io->constraints, cc);
 
@@ -329,25 +336,17 @@ static void out_constrain(
 				break;
 		}
 	}
-}
-
-static void buf_add(char **pbuf, const char *s)
-{
-	char *buf = *pbuf;
-	const int len = (buf ? strlen(buf) : 0);
-
-	*pbuf = buf = urealloc1(buf, len + strlen(s) + 1);
-
-	strcpy(buf + len, s);
-}
 #endif
+}
 
-static void out_asm_extended(
+void out_inline_asm_extended(
 		out_ctx *octx, const char *insn,
-		const out_val **inputs,
-		const out_val **outputs,
+		struct constrained_val *inputs,
+		struct constrained_val *outputs,
 		char **clobbers)
 {
+	char *written_insn = NULL;
+	size_t insn_len = 0;
 	struct
 	{
 		struct chosen_constraint *inputs, *outputs;
@@ -355,10 +354,9 @@ static void out_asm_extended(
 	const size_t ninputs = dynarray_count(inputs);
 	const size_t noutputs = dynarray_count(outputs);
 	const char *p;
-	char *built_insn = umalloc(1);
 
-	constraint.inputs = umalloc(ninputs * sizeof *constraint.inputs);
-	constraint.outputs = umalloc(noutputs * sizeof *constraint.outputs);
+	constraints.inputs = umalloc(ninputs * sizeof *constraints.inputs);
+	constraints.outputs = umalloc(noutputs * sizeof *constraints.outputs);
 
 	for(p = insn; *p; p++){
 		if(*p == '%' && *++p != '%'){
@@ -374,77 +372,69 @@ static void out_asm_extended(
 				ICE("not an int - should've been caught");
 
 			if(this_index >= noutputs){
+				struct chosen_constraint *constraint;
+
 				this_index -= noutputs;
 				assert(this_index < ninputs);
 
 				/* get this input into the memory/register/constant
 				 * for the asm. if we can't, hard error */
+				constraint = &constraints.inputs[this_index];
 
-				/* XXX: TODO */
-				out_constrain(
-						io, vp,
-						&constraints[this_index],
-						constraint_set[this_index]++,
-						err_w);
+				/* consumes inputs[...] */
+				constrain_oval(constraint, &inputs[this_index]);
 
 			}else{
-				const out_val *output = outputs[this_index];
+				const out_val *output = outputs[this_index].val;
 
 				/* attempt to get the lvalue referenced by 'output'
 				 * into a memory/register/constant for this constraint.
 				 * if not, we move it there afterwards */
 
 				/* XXX: TODO */
+				ICE("TODO: output");
+				/*
 				out_constrain(
 						io, vp,
 						&constraints[this_index],
 						constraint_set[this_index]++,
 						err_w);
+				*/
 			}
+
+		}else{
+			*(char *)dynvec_add(&written_insn, &insn_len) = *p;
 		}
 	}
 
-	out_comment("### actual inline");
-	fprintf(out, "\t%s\n", asm_cmd ? asm_cmd : "");
-	out_comment("### assignments to outputs");
+	*(char *)dynvec_add(&written_insn, &insn_len) = '\0';
 
-	/* don't care about the values we pulled now */
-	while(n_output_derefs > 0)
-		out_pop(), n_output_derefs--;
+	out_comment(octx, "### actual inline");
+	out_asm(octx, "\t%s\n", written_insn ? written_insn : "");
+	out_comment(octx, "### assignments to outputs");
+
+	free(written_insn), written_insn = NULL;
 
 	/* store to the output pointers */
 	{
-		int i;
+		size_t i;
+		for(i = 0; i < noutputs; i++){
+			const struct chosen_constraint *constraint = &constraints.outputs[i];
+			const out_val *val = outputs[i].val;
 
-		for(i = 0; cmd->ios[i]; i++){
-			asm_inout *io = cmd->ios[i];
+			fprintf(stderr, "found output, index %ld, "
+					"constraint %s, exists in TYPE=%d, bits=%d\n",
+					(long)i, outputs[i].constraint,
+					val->type, val->bits.regoff.reg.idx);
 
-			if(io->is_output){
-				fprintf(stderr, "found output, index %d, expr %s, constraint %s, exists in TYPE=%d, bits=%d\n",
-						i, cmd->ios[i]->exp->f_str(), cmd->ios[i]->constraints,
-						constraints[i].type, constraints[i].bits.reg.idx);
-
-				out_unconstrain(IO_IDX_TO_VTOP_IDX(i), &constraints[i]);
-			}
+			constrain_output(val, constraint);
 		}
 	}
 
-	/* cleanup */
-	while(n_ios > 0)
-		out_pop(), n_ios--;
-
-	free(constraints);
+	ICW("TODO: free");
 }
 
-void out_asm_inline(
-		out_ctx *octx, const char *insn,
-		const out_val **inputs,
-		const out_val **outputs,
-		char **clobbers)
+void out_inline_asm(out_ctx *octx, const char *insn)
 {
-	if(cmd->extended){
-		out_asm_extended(octx, insn, inputs, outputs, clobbers);
-	}else{
-		out_asm(octx, "%s\n", cmd->cmd);
-	}
+	out_asm(octx, "%s\n", insn);
 }
