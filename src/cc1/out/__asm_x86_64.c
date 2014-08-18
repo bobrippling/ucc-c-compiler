@@ -109,8 +109,6 @@ void out_asm_constraint_check(where *w, const char *constraint, int is_output)
 					break;
 
 				case CONSTRAINT_any:
-					/* any */
-					ICE("TODO: any constraint");
 					break;
 
 				case CONSTRAINT_write_only:
@@ -157,6 +155,7 @@ struct chosen_constraint
 		C_REG,
 		C_MEM,
 		C_CONST,
+		C_ANY
 	} type;
 
 	union
@@ -241,11 +240,13 @@ static void populate_constraint(
 		struct chosen_constraint *constraint,
 		const char *str)
 {
-	int reg = -1, mem = 0, is_const = 0;
+	int reg = -1, mem = 0, is_const = 0, any = 0;
 
 	while(*str){
+		int found = 0;
+
 		switch((enum constraint_x86)*str++){
-#define CHOOSE(c, i) case c: reg = i; break
+#define CHOOSE(c, i) case c: reg = i; found = 1; break
 			CHOOSE(CONSTRAINT_REG_a, X86_64_REG_RAX);
 			CHOOSE(CONSTRAINT_REG_b, X86_64_REG_RBX);
 			CHOOSE(CONSTRAINT_REG_c, X86_64_REG_RCX);
@@ -261,31 +262,42 @@ static void populate_constraint(
 				ICE("TODO: a/b/c/d reg");
 			case CONSTRAINT_REG_any:
 				reg = -1;
+				found = 1;
 				break;
 
 			case CONSTRAINT_memory:
-				mem = 1;
+				found = mem = 1;
 				break;
 			case CONSTRAINT_int:
-				is_const = 1;
+				found = is_const = 1;
+				break;
+
+			case CONSTRAINT_preclobber:
+				found = 1;
 				break;
 
 			case CONSTRAINT_write_only:
+				found = 1;
 				break; /* handled already */
-			case CONSTRAINT_preclobber:
 
-			default:
-			{
-				const char c = str[-1];
-				if('0' <= c && c <= '9')
-					ICE("TODO: digit/match constraint");
-				else
-					ICE("TODO: handle constraint '%c'", str[-1]);
-			}
+			case CONSTRAINT_any:
+				any = found = 1;
+				break;
+		}
+
+		if(!found){
+			const char c = str[-1];
+			if('0' <= c && c <= '9')
+				ICE("TODO: digit/match constraint");
+			else
+				ICE("TODO: handle constraint '%c'", str[-1]);
 		}
 	}
 
-	if(mem){
+	if(any){
+		constraint->type = C_ANY;
+
+	}else if(mem){
 		constraint->type = C_MEM;
 
 	}else if(is_const){
@@ -309,6 +321,9 @@ static void constrain_val(
 
 	/* fill it with the right values */
 	switch(constraint->type){
+		case C_ANY:
+			break;
+
 		case C_MEM:
 			cval->val = v_to(octx, cval->val, TO_MEM);
 			//constraint->bits.stack = vp->bits.regoff.offset;
