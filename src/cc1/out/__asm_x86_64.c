@@ -167,8 +167,6 @@ struct chosen_constraint
 	union
 	{
 		struct vreg reg;
-		unsigned long stack;
-		unsigned long k;
 	} bits;
 };
 
@@ -333,13 +331,11 @@ static void constrain_val(
 
 		case C_MEM:
 			cval->val = v_to(octx, cval->val, TO_MEM);
-			//constraint->bits.stack = vp->bits.regoff.offset;
 			break;
 
 		case C_CONST:
 			if(cval->val->type != V_CONST_I)
 				die_at(loc, "can't meet const constraint");
-			//constraint->bits.k = vp->bits.val_i;
 			break;
 
 		case C_REG:
