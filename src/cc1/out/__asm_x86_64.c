@@ -337,8 +337,8 @@ static void constrain_oval(
 
 void out_inline_asm_extended(
 		out_ctx *octx, const char *insn,
-		struct constrained_val *inputs,
-		struct constrained_val *outputs,
+		struct constrained_val *outputs, const size_t noutputs,
+		struct constrained_val *inputs, const size_t ninputs,
 		char **clobbers)
 {
 	char *written_insn = NULL;
@@ -347,8 +347,6 @@ void out_inline_asm_extended(
 	{
 		struct chosen_constraint *inputs, *outputs;
 	} constraints;
-	const size_t ninputs = dynarray_count(inputs);
-	const size_t noutputs = dynarray_count(outputs);
 	const char *p;
 
 	constraints.inputs = umalloc(ninputs * sizeof *constraints.inputs);

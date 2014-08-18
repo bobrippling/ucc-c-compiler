@@ -96,12 +96,14 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 		new->constraint = param->constraints;
 	}
 
-	if(s->bits.asm_args->extended)
-		out_inline_asm_extended(octx, s->bits.asm_args->cmd,
-				outputs, inputs,
+	if(s->bits.asm_args->extended){
+		out_inline_asm_extended(octx,
+				s->bits.asm_args->cmd,
+				outputs, n_outputs, inputs, n_inputs,
 				s->bits.asm_args->clobbers);
-	else
+	}else{
 		out_inline_asm(octx, s->bits.asm_args->cmd);
+	}
 
 	out_comment(octx, "### end asm()");
 }
