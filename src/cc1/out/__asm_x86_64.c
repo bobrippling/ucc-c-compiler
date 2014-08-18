@@ -172,6 +172,12 @@ struct chosen_constraint
 	union
 	{
 		struct vreg reg;
+		enum constraint_const
+		{
+			CONST_NO,
+			CONST_INT,
+			CONST_ADDR
+		} const_ty;
 	} bits;
 };
 
@@ -249,7 +255,8 @@ static void populate_constraint(
 		struct chosen_constraint *constraint,
 		const char *str)
 {
-	int reg = -1, mem = 0, is_const = 0, any = 0;
+	int reg = -1, mem = 0, any = 0;
+	enum constraint_const const_ty = CONST_NO;
 
 	while(*str){
 		int found = 0;
@@ -277,9 +284,13 @@ static void populate_constraint(
 			case CONSTRAINT_memory:
 				found = mem = 1;
 				break;
-			case CONSTRAINT_int:
 			case CONSTRAINT_int_asm:
-				found = is_const = 1;
+				found = 1;
+				const_ty = CONST_ADDR;
+				break;
+			case CONSTRAINT_int:
+				found = 1;
+				const_ty = CONST_INT;
 				break;
 
 			case CONSTRAINT_preclobber:
@@ -310,8 +321,9 @@ static void populate_constraint(
 	}else if(mem){
 		constraint->type = C_MEM;
 
-	}else if(is_const){
+	}else if(const_ty){
 		constraint->type = C_CONST;
+		constraint->bits.const_ty = const_ty;
 
 	}else{
 		constraint->type = C_REG;
@@ -339,8 +351,20 @@ static void constrain_val(
 			break;
 
 		case C_CONST:
-			if(cval->val->type != V_CONST_I)
-				error->str = ustrdup("can't meet const constraint");
+			switch(constraint->bits.const_ty){
+				case CONST_NO:
+					assert(0);
+				case CONST_ADDR:
+					/* link-time address or constant int */
+					if(cval->val->type == V_LBL)
+						break;
+					/* fall */
+				case CONST_INT:
+					if(cval->val->type == V_CONST_I)
+						break;
+					error->str = ustrdup("can't meet const constraint");
+					break;
+			}
 			break;
 
 		case C_REG:
