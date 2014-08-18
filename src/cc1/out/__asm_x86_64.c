@@ -81,76 +81,81 @@ void out_asm_constraint_check(where *w, const char *constraint, int is_output)
 {
 	const char *const orig = constraint;
 	/* currently x86 specific */
-	size_t first_not = strspn(constraint, "gabcdSDmirqf&=");
 
-	if(first_not != strlen(constraint))
-		die_at(w, "invalid constraint \"%c\"", constraint[first_not]);
+	char reg_chosen, mem_chosen, write_only, const_chosen;
 
-	{
-		char reg_chosen, mem_chosen, write_only, const_chosen;
+	reg_chosen = mem_chosen = write_only = const_chosen = 0;
 
-		reg_chosen = mem_chosen = write_only = const_chosen = 0;
-
-		while(*constraint)
-			switch((enum constraint_x86)*constraint++){
-				case CONSTRAINT_REG_a:
-				case CONSTRAINT_REG_b:
-				case CONSTRAINT_REG_c:
-				case CONSTRAINT_REG_d:
-				case CONSTRAINT_REG_S:
-				case CONSTRAINT_REG_D:
-				case CONSTRAINT_REG_float:
-				case CONSTRAINT_REG_abcd:
-				case CONSTRAINT_REG_any:
-					reg_chosen++;
-					break;
-
-				case CONSTRAINT_memory:
-					mem_chosen = 1;
-					break;
-
-				case CONSTRAINT_int:
-				case CONSTRAINT_int_asm:
-					const_chosen = 1;
-					break;
-
-				case CONSTRAINT_any:
-					break;
-
-				case CONSTRAINT_write_only:
-					write_only = 1;
-					break;
-
-				case CONSTRAINT_preclobber:
-					break;
-			}
-
-#define BAD_CONSTRAINT(err) \
-		die_at(w, "bad constraint \"%s\": " err, orig)
-
-		if(is_output != write_only)
-			die_at(w, "%s output constraint", is_output ? "missing" : "unwanted");
-
-		if(is_output && const_chosen)
-			BAD_CONSTRAINT("can't output to a constant");
-
-		/* TODO below: allow multiple options for a constraint */
-		if(reg_chosen > 1)
-			BAD_CONSTRAINT("too many registers");
-
-		switch(reg_chosen + mem_chosen + const_chosen){
-			case 0:
-				if(is_output)
-					BAD_CONSTRAINT("constraint specifies none of memory/register/const");
-				/* fall */
-
-			case 1:
-				/* fine - exactly one */
+	while(*constraint){
+		int found = 0;
+		switch((enum constraint_x86)*constraint++){
+			case CONSTRAINT_REG_a:
+			case CONSTRAINT_REG_b:
+			case CONSTRAINT_REG_c:
+			case CONSTRAINT_REG_d:
+			case CONSTRAINT_REG_S:
+			case CONSTRAINT_REG_D:
+			case CONSTRAINT_REG_float:
+			case CONSTRAINT_REG_abcd:
+			case CONSTRAINT_REG_any:
+				reg_chosen++;
+				found = 1;
 				break;
 
-			default:
-				BAD_CONSTRAINT("constraint specifies memory/register/const combination");
+			case CONSTRAINT_memory:
+				mem_chosen = 1;
+				found = 1;
+				break;
+
+			case CONSTRAINT_int:
+			case CONSTRAINT_int_asm:
+				const_chosen = 1;
+				found = 1;
+				break;
+
+			case CONSTRAINT_any:
+				found = 1;
+				break;
+
+			case CONSTRAINT_write_only:
+				write_only = 1;
+				found = 1;
+				break;
+
+			case CONSTRAINT_preclobber:
+				found = 1;
+				break;
 		}
+
+		if(!found && !isspace(constraint[-1]))
+			die_at(w, "invalid constraint character '%c'", constraint[-1]);
+	}
+
+#define BAD_CONSTRAINT(err) \
+	die_at(w, "bad constraint \"%s\": " err, orig)
+
+	if(is_output != write_only)
+		die_at(w, "%s output constraint", is_output ? "missing" : "unwanted");
+
+	if(is_output && const_chosen)
+		BAD_CONSTRAINT("can't output to a constant");
+
+	/* TODO below: allow multiple options for a constraint */
+	if(reg_chosen > 1)
+		BAD_CONSTRAINT("too many registers");
+
+	switch(reg_chosen + mem_chosen + const_chosen){
+		case 0:
+			if(is_output)
+				BAD_CONSTRAINT("constraint specifies none of memory/register/const");
+			/* fall */
+
+		case 1:
+			/* fine - exactly one */
+			break;
+
+		default:
+			BAD_CONSTRAINT("constraint specifies memory/register/const combination");
 	}
 }
 
