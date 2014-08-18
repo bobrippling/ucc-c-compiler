@@ -64,7 +64,8 @@ enum constraint_x86
 	CONSTRAINT_REG_S = 'S',
 	CONSTRAINT_REG_D = 'D',
 	CONSTRAINT_memory = 'm',
-	CONSTRAINT_int = 'i',
+	CONSTRAINT_int = 'n',
+	CONSTRAINT_int_asm = 'i',
 	CONSTRAINT_REG_any = 'r',
 	CONSTRAINT_REG_abcd = 'q',
 	CONSTRAINT_REG_float = 'f',
@@ -106,6 +107,7 @@ void out_asm_constraint_check(where *w, const char *constraint, int is_output)
 					break;
 
 				case CONSTRAINT_int:
+				case CONSTRAINT_int_asm:
 					const_chosen = 1;
 					break;
 
@@ -270,6 +272,7 @@ static void populate_constraint(
 				found = mem = 1;
 				break;
 			case CONSTRAINT_int:
+			case CONSTRAINT_int_asm:
 				found = is_const = 1;
 				break;
 
