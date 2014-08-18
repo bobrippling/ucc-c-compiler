@@ -417,6 +417,10 @@ void out_inline_asm_extended(
 	out_asm(octx, "%s", written_insn ? written_insn : "");
 	out_comment(octx, "### assignments to outputs");
 
+	/* consume inputs */
+	for(i = 0; i < ninputs; i++)
+		out_val_release(octx, inputs[i].val);
+
 	free(written_insn), written_insn = NULL;
 
 	/* store to the output pointers */
