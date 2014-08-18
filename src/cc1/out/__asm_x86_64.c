@@ -348,6 +348,7 @@ void out_inline_asm_extended(
 		struct chosen_constraint *inputs, *outputs;
 	} constraints;
 	const char *p;
+	size_t i;
 
 	constraints.inputs = umalloc(ninputs * sizeof *constraints.inputs);
 	constraints.outputs = umalloc(noutputs * sizeof *constraints.outputs);
@@ -424,19 +425,16 @@ void out_inline_asm_extended(
 	free(written_insn), written_insn = NULL;
 
 	/* store to the output pointers */
-	{
-		size_t i;
-		for(i = 0; i < noutputs; i++){
-			const struct chosen_constraint *constraint = &constraints.outputs[i];
-			const out_val *val = outputs[i].val;
+	for(i = 0; i < noutputs; i++){
+		const struct chosen_constraint *constraint = &constraints.outputs[i];
+		const out_val *val = outputs[i].val;
 
-			fprintf(stderr, "found output, index %ld, "
-					"constraint %s, exists in TYPE=%d, bits=%d\n",
-					(long)i, outputs[i].constraint,
-					val->type, val->bits.regoff.reg.idx);
+		fprintf(stderr, "found output, index %ld, "
+				"constraint %s, exists in TYPE=%d, bits=%d\n",
+				(long)i, outputs[i].constraint,
+				val->type, val->bits.regoff.reg.idx);
 
-			constrain_output(val, constraint);
-		}
+		constrain_output(val, constraint);
 	}
 
 	ICW("TODO: free");
