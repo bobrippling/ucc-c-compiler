@@ -4,6 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
+#include <ctype.h>
 
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
@@ -285,7 +286,7 @@ static void populate_constraint(
 				break;
 		}
 
-		if(!found){
+		if(!found && !isspace(str[-1])){
 			const char c = str[-1];
 			if('0' <= c && c <= '9')
 				ICE("TODO: digit/match constraint");
