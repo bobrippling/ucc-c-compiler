@@ -144,19 +144,8 @@ void out_asm_constraint_check(where *w, const char *constraint, int is_output)
 	if(reg_chosen > 1)
 		BAD_CONSTRAINT("too many registers");
 
-	switch(reg_chosen + mem_chosen + const_chosen){
-		case 0:
-			if(is_output)
-				BAD_CONSTRAINT("constraint specifies none of memory/register/const");
-			/* fall */
-
-		case 1:
-			/* fine - exactly one */
-			break;
-
-		default:
-			BAD_CONSTRAINT("constraint specifies memory/register/const combination");
-	}
+	if(is_output && reg_chosen + mem_chosen + const_chosen == 0)
+		BAD_CONSTRAINT("constraint specifies none of memory/register/const");
 }
 
 struct chosen_constraint
@@ -332,15 +321,32 @@ static void populate_constraint(
 	}
 }
 
+static void constrain_values(
+		struct constrained_val *outputs, const size_t noutputs,
+		struct chosen_constraint *outputs,
+		struct constrained_val *inputs, const size_t ninputs,
+		struct chosen_constraint *inputs)
+{
+	/* pre-scan - if any is just a fixed register we have to allocate it */
+	constrain_prescan_fixedreg(
+			outputs, oconstraints,
+			regs, REG_USED_OUT, 0, error);
+	if(error->str) return;
+
+	constrain_prescan_fixedreg(
+			inputs, iconstraints,
+			regs, REG_USED_IN, outputs->n, error);
+	if(error->str) return;
+
+	/* TODO: constrain the rest */
+}
+
 static void constrain_val(
 		out_ctx *octx,
 		struct chosen_constraint *constraint,
 		struct constrained_val *cval,
 		struct out_asm_error *error)
 {
-	/* pick one */
-	populate_constraint(constraint, cval->constraint);
-
 	/* fill it with the right values */
 	switch(constraint->type){
 		case C_ANY:
@@ -427,6 +433,10 @@ void out_inline_asm_extended(
 
 	constraints.inputs = umalloc(ninputs * sizeof *constraints.inputs);
 	constraints.outputs = umalloc(noutputs * sizeof *constraints.outputs);
+
+	constrain_values(
+			outputs, noutputs, constraints.outputs,
+			inputs, ninputs, constraints.inputs);
 
 	for(p = insn; *p; p++){
 		if(*p == '%' && *++p != '%'){
