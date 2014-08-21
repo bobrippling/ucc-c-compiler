@@ -289,6 +289,7 @@ static int constrain_isjustfixed(const char *constraint, int *regidx)
 
 static void constrain_prescan_fixedreg(
 		struct constrained_val *cvals, const size_t ncvals,
+		struct chosen_constraint *chosens,
 		struct regarray *regs, const int mask,
 		const size_t start_idx,
 		struct out_asm_error *error)
@@ -310,6 +311,8 @@ static void constrain_prescan_fixedreg(
 			}
 
 			*regallocp |= mask;
+			chosens[i].type = C_REG;
+			chosens[i].bits.reg.idx = regidx;
 		}
 	}
 }
@@ -323,9 +326,14 @@ static void constrain_values(
 		struct out_asm_error *error)
 {
 	/* pre-scan - if any is just a fixed register we have to allocate it */
-	constrain_prescan_fixedreg(outputs, noutputs, regs, REG_USED_OUT, 0, error);
+	constrain_prescan_fixedreg(
+			outputs, noutputs, oconstraints,
+			regs, REG_USED_OUT, 0, error);
 	if(error->str) return;
-	constrain_prescan_fixedreg(inputs, ninputs, regs, REG_USED_IN, noutputs, error);
+
+	constrain_prescan_fixedreg(
+			inputs, ninputs, iconstraints,
+			regs, REG_USED_IN, noutputs, error);
 	if(error->str) return;
 
 	/* TODO: constrain the rest */
