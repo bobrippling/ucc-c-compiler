@@ -1330,7 +1330,7 @@ static decl *parse_decl_stored_aligned(
 
 					attr_node = type_skip_non_attr(btype);
 					if(attr_node && attr_node->type == type_attr)
-						attr = attr_node->bits.attr;
+						attr = RETAIN(attr_node->bits.attr);
 
 					/* need to preserve __attribute__ and qualifiers
 					 * storage and alignment are kept on the decl */
