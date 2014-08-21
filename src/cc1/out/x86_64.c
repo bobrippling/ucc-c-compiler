@@ -171,30 +171,39 @@ static const char *x86_fpreg_str(unsigned i)
 	return fp_regnames[i];
 }
 
-const char *const *impl_regnames(int integer)
+int impl_regname_index(const char *rnam)
 {
 	/* can't reuse x86_intreg_str() since we need the high byte registers */
-	static const char *const int_regnames[] = {
-#define REG(x) #x "h",  #x "l",  #x "x", "e"#x"x", "r"#x"x"
+	static const char *const regnames[][5] = {
+#define REG(x) { #x "h",  #x "l",  #x "x", "e"#x"x", "r"#x"x" }
 		REG(a), REG(b), REG(c), REG(d),
 #undef REG
 
 		/* no way of accessing this high byte */
-		"dil", /* ? */ "di", "edi", "rdi",
-		"sil", /* ? */ "si", "esi", "rsi",
+		{ "dil", "", "di", "edi", "rdi" },
+		{ "sil", "", "si", "esi", "rsi" },
 
 		/* r[8 - 15] -> r8b, r8w, r8d,  r8 */
-#define REG(x)   "r" #x "b",  "r" #x "w", "r" #x "d", "r" #x
+#define REG(x) { "r" #x "b",  "r" #x "w", "r" #x "d", "r" #x }
 		REG(8),  REG(9),  REG(10), REG(11),
 		REG(12), REG(13), REG(14), REG(15),
 #undef REG
 
-		"bpl", "bp", "ebp", "rbp",
-		"spl", "sp", "esp", "rsp",
-		NULL
-	};
+		{ "bpl", "", "bp", "ebp", "rbp" },
+		{ "spl", "", "sp", "esp", "rsp" },
 
-	return integer ? int_regnames : fp_regnames;
+		{ 0 }
+	};
+	int i;
+
+	for(i = 0; regnames[i][0]; i++){
+		int j;
+		for(j = 0; j < 5; j++)
+			if(!strcmp(regnames[i][j], rnam))
+				return i;
+	}
+
+	return -1;
 }
 
 static const char *x86_suffix(type *ty)

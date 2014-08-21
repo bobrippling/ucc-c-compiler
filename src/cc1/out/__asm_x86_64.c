@@ -415,11 +415,22 @@ static void constrain_val(
 	}
 }
 
-static void spill_clobbers(
-		out_ctx *octx, char **clobbers, struct out_asm_error *error)
+enum
 {
-	const char *const *regnames = impl_regnames(/*int*/1);
+	REG_USED_IN  = 1 << 0,
+	REG_USED_OUT = 1 << 1,
+};
+struct regarray
+{
+	unsigned char *arr;
+	int n;
+};
 
+static void parse_clobbers(
+		char **clobbers,
+		struct regarray *const regs,
+		struct out_asm_error *error)
+{
 	for(; *clobbers; clobbers++){
 		const char *clob = *clobbers;
 
@@ -430,17 +441,16 @@ static void spill_clobbers(
 			/* same for V_FLAG:s */
 		}else{
 			/* same for registers - just do a validity check on the string */
-			const char *const *regi;
-			for(regi = regnames; *regi; regi++)
-				if(!strcmp(*regi, clob))
-					break;
+			int regi = impl_regname_index(clob);
 
-			if(!*regi){
+			if(regi == -1){
 				error->str = ustrprintf(
 						"unknown entry in clobber: \"%s\"",
 						clob);
 				break;
 			}
+
+			regs->arr[regi] |= REG_USED_IN | REG_USED_OUT;
 		}
 	}
 }
@@ -460,16 +470,18 @@ void out_inline_asm_extended(
 	} constraints;
 	const char *p;
 	size_t i;
+	struct regarray regs;
 
 	constraints.inputs = umalloc(ninputs * sizeof *constraints.inputs);
 	constraints.outputs = umalloc(noutputs * sizeof *constraints.outputs);
 
+	regs.arr = v_alloc_reg_reserve(octx, &regs.n);
+
 	/* first, spill all the clobber registers,
 	 * then we can have a valid list of registers active at asm() time
 	 */
-	spill_clobbers(octx, clobbers, error);
-	if(error->str)
-		return;
+	parse_clobbers(clobbers, &regs, error);
+	if(error->str) goto out;
 
 	constrain_values(
 			outputs, noutputs, constraints.outputs,
@@ -559,7 +571,9 @@ void out_inline_asm_extended(
 		constrain_output(val, constraint);
 	}
 
+out:
 	ICW("TODO: free");
+	free(regs.arr);
 }
 
 void out_inline_asm(out_ctx *octx, const char *insn)

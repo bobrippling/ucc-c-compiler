@@ -65,7 +65,7 @@ int impl_reg_frame_const(const struct vreg *, int sp);
 int impl_reg_savable(const struct vreg *);
 
 /* for __asm__ */
-const char *const *impl_regnames(int integer);
+int impl_regname_index(const char *);
 
 /* callee save register bools */
 int impl_reg_is_scratch(type *fnty, const struct vreg *);
