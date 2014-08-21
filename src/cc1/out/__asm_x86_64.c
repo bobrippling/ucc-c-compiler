@@ -29,6 +29,18 @@
 #include "__asm.h"
 
 
+
+enum
+{
+	REG_USED_IN  = 1 << 0,
+	REG_USED_OUT = 1 << 1,
+};
+struct regarray
+{
+	unsigned char *arr;
+	int n;
+};
+
 #if 0
 +---+--------------------+
 | r |    Register(s)     |
@@ -61,8 +73,9 @@ enum constraint_x86
 	CONSTRAINT_REG_b = 'b',
 	CONSTRAINT_REG_c = 'c',
 	CONSTRAINT_REG_d = 'd',
-	CONSTRAINT_REG_S = 'S',
 	CONSTRAINT_REG_D = 'D',
+	CONSTRAINT_REG_S = 'S',
+
 	CONSTRAINT_memory = 'm',
 	CONSTRAINT_int = 'n',
 	CONSTRAINT_int_asm = 'i',
@@ -321,21 +334,75 @@ static void populate_constraint(
 	}
 }
 
+static int constrain_isjustfixed(const char *constraint, int *regidx)
+{
+	const char *p;
+	for(p = constraint; *p; p++){
+
+		switch((enum constraint_x86)*p){
+			case CONSTRAINT_REG_a: *regidx = X86_64_REG_RAX; return 1;
+			case CONSTRAINT_REG_b: *regidx = X86_64_REG_RBX; return 1;
+			case CONSTRAINT_REG_c: *regidx = X86_64_REG_RCX; return 1;
+			case CONSTRAINT_REG_d: *regidx = X86_64_REG_RDX; return 1;
+			case CONSTRAINT_REG_S: *regidx = X86_64_REG_RSI; return 1;
+			case CONSTRAINT_REG_D: *regidx = X86_64_REG_RDI; return 1;
+			case CONSTRAINT_memory:
+			case CONSTRAINT_int:
+			case CONSTRAINT_int_asm:
+			case CONSTRAINT_REG_any:
+			case CONSTRAINT_REG_abcd:
+			case CONSTRAINT_REG_float:
+			case CONSTRAINT_any:
+				return 0;
+			case CONSTRAINT_readwrite:
+			case CONSTRAINT_write_only:
+			case CONSTRAINT_preclobber:
+				/* no change */
+				continue;
+		}
+	}
+	return 0;
+}
+
+static void constrain_prescan_fixedreg(
+		struct constrained_val *cvals, const size_t ncvals,
+		struct regarray *regs, const int mask,
+		const size_t start_idx,
+		struct out_asm_error *error)
+{
+	size_t i;
+	for(i = 0; i < ncvals; i++){
+		int regidx;
+
+		if(constrain_isjustfixed(cvals[i].constraint, &regidx)){
+			unsigned char *regallocp = &regs->arr[regidx];
+
+			if(*regallocp & mask){
+				/* already chosen - can't set again */
+				error->str = ustrprintf(
+						"constraint %ld (%s) overrides previous %s register",
+						(long)start_idx + i, cvals[i].constraint,
+						mask == REG_USED_OUT ? "output" : "input");
+				return;
+			}
+
+			*regallocp |= mask;
+		}
+	}
+}
+
 static void constrain_values(
 		struct constrained_val *outputs, const size_t noutputs,
-		struct chosen_constraint *outputs,
 		struct constrained_val *inputs, const size_t ninputs,
-		struct chosen_constraint *inputs)
+		struct chosen_constraint *oconstraints,
+		struct chosen_constraint *iconstraints,
+		struct regarray *regs,
+		struct out_asm_error *error)
 {
 	/* pre-scan - if any is just a fixed register we have to allocate it */
-	constrain_prescan_fixedreg(
-			outputs, oconstraints,
-			regs, REG_USED_OUT, 0, error);
+	constrain_prescan_fixedreg(outputs, noutputs, regs, REG_USED_OUT, 0, error);
 	if(error->str) return;
-
-	constrain_prescan_fixedreg(
-			inputs, iconstraints,
-			regs, REG_USED_IN, outputs->n, error);
+	constrain_prescan_fixedreg(inputs, ninputs, regs, REG_USED_IN, noutputs, error);
 	if(error->str) return;
 
 	/* TODO: constrain the rest */
@@ -415,17 +482,6 @@ static void constrain_val(
 	}
 }
 
-enum
-{
-	REG_USED_IN  = 1 << 0,
-	REG_USED_OUT = 1 << 1,
-};
-struct regarray
-{
-	unsigned char *arr;
-	int n;
-};
-
 static void parse_clobbers(
 		char **clobbers,
 		struct regarray *const regs,
@@ -484,8 +540,10 @@ void out_inline_asm_extended(
 	if(error->str) goto out;
 
 	constrain_values(
-			outputs, noutputs, constraints.outputs,
-			inputs, ninputs, constraints.inputs);
+			outputs, noutputs, inputs, ninputs,
+			constraints.outputs, constraints.inputs,
+			&regs, error);
+	if(error->str) goto out;
 
 	for(p = insn; *p; p++){
 		if(*p == '%' && *++p != '%'){
