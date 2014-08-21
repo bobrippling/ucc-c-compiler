@@ -598,13 +598,6 @@ enum type_qualifier type_qual(const type *r)
 
 	switch(r->type){
 		case type_btype:
-			if(r->bits.type->primitive == type_struct
-			|| r->bits.type->primitive == type_union)
-			{
-				if(r->bits.type->sue->contains_const)
-					return qual_const;
-			}
-
 		case type_auto:
 		case type_func:
 		case type_array:
