@@ -159,16 +159,42 @@ static const char *x86_intreg_str(unsigned reg, type *r)
 	return rnames[reg][asm_table_lookup(r)];
 }
 
+static const char *const fp_regnames[] = {
+	"xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", NULL
+};
+
 static const char *x86_fpreg_str(unsigned i)
 {
-	static const char *nams[] = {
-		"xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7"
-	};
-
-	UCC_ASSERT(i < sizeof nams/sizeof(*nams),
+	UCC_ASSERT(i < sizeof fp_regnames/sizeof(*fp_regnames) - 1,
 			"bad fp reg index %d", i);
 
-	return nams[i];
+	return fp_regnames[i];
+}
+
+const char *const *impl_regnames(int integer)
+{
+	/* can't reuse x86_intreg_str() since we need the high byte registers */
+	static const char *const int_regnames[] = {
+#define REG(x) #x "h",  #x "l",  #x "x", "e"#x"x", "r"#x"x"
+		REG(a), REG(b), REG(c), REG(d),
+#undef REG
+
+		/* no way of accessing this high byte */
+		"dil", /* ? */ "di", "edi", "rdi",
+		"sil", /* ? */ "si", "esi", "rsi",
+
+		/* r[8 - 15] -> r8b, r8w, r8d,  r8 */
+#define REG(x)   "r" #x "b",  "r" #x "w", "r" #x "d", "r" #x
+		REG(8),  REG(9),  REG(10), REG(11),
+		REG(12), REG(13), REG(14), REG(15),
+#undef REG
+
+		"bpl", "bp", "ebp", "rbp",
+		"spl", "sp", "esp", "rsp",
+		NULL
+	};
+
+	return integer ? int_regnames : fp_regnames;
 }
 
 static const char *x86_suffix(type *ty)

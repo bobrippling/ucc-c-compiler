@@ -415,6 +415,36 @@ static void constrain_val(
 	}
 }
 
+static void spill_clobbers(
+		out_ctx *octx, char **clobbers, struct out_asm_error *error)
+{
+	const char *const *regnames = impl_regnames(/*int*/1);
+
+	for(; *clobbers; clobbers++){
+		const char *clob = *clobbers;
+
+		if(!strcmp(clob, "memory")){
+			/* we don't currently cache memory in registers across
+			 * statements - no-op */
+		}else if(!strcmp(clob, "cc")){
+			/* same for V_FLAG:s */
+		}else{
+			/* same for registers - just do a validity check on the string */
+			const char *const *regi;
+			for(regi = regnames; *regi; regi++)
+				if(!strcmp(*regi, clob))
+					break;
+
+			if(!*regi){
+				error->str = ustrprintf(
+						"unknown entry in clobber: \"%s\"",
+						clob);
+				break;
+			}
+		}
+	}
+}
+
 void out_inline_asm_extended(
 		out_ctx *octx, const char *insn,
 		struct constrained_val *outputs, const size_t noutputs,
@@ -433,6 +463,13 @@ void out_inline_asm_extended(
 
 	constraints.inputs = umalloc(ninputs * sizeof *constraints.inputs);
 	constraints.outputs = umalloc(noutputs * sizeof *constraints.outputs);
+
+	/* first, spill all the clobber registers,
+	 * then we can have a valid list of registers active at asm() time
+	 */
+	spill_clobbers(octx, clobbers, error);
+	if(error->str)
+		return;
 
 	constrain_values(
 			outputs, noutputs, constraints.outputs,
