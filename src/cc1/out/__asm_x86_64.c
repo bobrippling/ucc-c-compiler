@@ -138,6 +138,10 @@ void out_asm_constraint_check(where *w, const char *constraint, int is_output)
 			case CONSTRAINT_preclobber:
 				found = 1;
 				break;
+
+			case CONSTRAINT_readwrite:
+				/* fine */
+				break;
 		}
 
 		if(!found && !isspace(constraint[-1]))
