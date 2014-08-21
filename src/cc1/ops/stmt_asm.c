@@ -109,10 +109,13 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 
 	if(s->bits.asm_args->extended){
 		struct out_asm_error error = { 0 };
+		struct constrained_val_array
+			ocvals = { outputs, n_outputs },
+			icvals = { inputs, n_inputs };
 
 		out_inline_asm_extended(octx,
 				s->bits.asm_args->cmd,
-				outputs, n_outputs, inputs, n_inputs,
+				&ocvals, &icvals,
 				s->bits.asm_args->clobbers, &error);
 
 		if(error.str){

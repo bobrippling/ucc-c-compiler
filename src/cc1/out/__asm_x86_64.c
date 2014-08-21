@@ -288,24 +288,24 @@ static int constrain_isjustfixed(const char *constraint, int *regidx)
 }
 
 static void constrain_prescan_fixedreg(
-		struct constrained_val *cvals, const size_t ncvals,
+		struct constrained_val_array *cvals,
 		struct chosen_constraint *chosens,
 		struct regarray *regs, const int mask,
 		const size_t start_idx,
 		struct out_asm_error *error)
 {
 	size_t i;
-	for(i = 0; i < ncvals; i++){
+	for(i = 0; i < cvals->n; i++){
 		int regidx;
 
-		if(constrain_isjustfixed(cvals[i].constraint, &regidx)){
+		if(constrain_isjustfixed(cvals->arr[i].constraint, &regidx)){
 			unsigned char *regallocp = &regs->arr[regidx];
 
 			if(*regallocp & mask){
 				/* already chosen - can't set again */
 				error->str = ustrprintf(
 						"constraint %ld (%s) overrides previous %s register",
-						(long)start_idx + i, cvals[i].constraint,
+						(long)start_idx + i, cvals->arr[i].constraint,
 						mask == REG_USED_OUT ? "output" : "input");
 				return;
 			}
@@ -318,8 +318,8 @@ static void constrain_prescan_fixedreg(
 }
 
 static void constrain_values(
-		struct constrained_val *outputs, const size_t noutputs,
-		struct constrained_val *inputs, const size_t ninputs,
+		struct constrained_val_array *outputs,
+		struct constrained_val_array *inputs,
 		struct chosen_constraint *oconstraints,
 		struct chosen_constraint *iconstraints,
 		struct regarray *regs,
@@ -327,13 +327,13 @@ static void constrain_values(
 {
 	/* pre-scan - if any is just a fixed register we have to allocate it */
 	constrain_prescan_fixedreg(
-			outputs, noutputs, oconstraints,
+			outputs, oconstraints,
 			regs, REG_USED_OUT, 0, error);
 	if(error->str) return;
 
 	constrain_prescan_fixedreg(
-			inputs, ninputs, iconstraints,
-			regs, REG_USED_IN, noutputs, error);
+			inputs, iconstraints,
+			regs, REG_USED_IN, outputs->n, error);
 	if(error->str) return;
 
 	/* TODO: constrain the rest */
@@ -444,8 +444,8 @@ static void parse_clobbers(
 
 void out_inline_asm_extended(
 		out_ctx *octx, const char *insn,
-		struct constrained_val *outputs, const size_t noutputs,
-		struct constrained_val *inputs, const size_t ninputs,
+		struct constrained_val_array *outputs,
+		struct constrained_val_array *inputs,
 		char **clobbers,
 		struct out_asm_error *error)
 {
@@ -459,8 +459,8 @@ void out_inline_asm_extended(
 	size_t i;
 	struct regarray regs;
 
-	constraints.inputs = umalloc(ninputs * sizeof *constraints.inputs);
-	constraints.outputs = umalloc(noutputs * sizeof *constraints.outputs);
+	constraints.inputs = umalloc(inputs->n * sizeof *constraints.inputs);
+	constraints.outputs = umalloc(outputs->n * sizeof *constraints.outputs);
 
 	regs.arr = v_alloc_reg_reserve(octx, &regs.n);
 
@@ -471,7 +471,7 @@ void out_inline_asm_extended(
 	if(error->str) goto out;
 
 	constrain_values(
-			outputs, noutputs, inputs, ninputs,
+			outputs, inputs,
 			constraints.outputs, constraints.inputs,
 			&regs, error);
 	if(error->str) goto out;
@@ -490,22 +490,22 @@ void out_inline_asm_extended(
 				ICE("not an int - should've been caught");
 			p = end - 1; /* ready for ++ */
 
-			if(this_index >= noutputs){
+			if(this_index >= outputs->n){
 				struct chosen_constraint *constraint;
 				const char *val_str;
 				char *op;
 				size_t oplen;
 
-				this_index -= noutputs;
-				assert(this_index < ninputs);
+				this_index -= outputs->n;
+				assert(this_index < inputs->n);
 
 				/* get this input into the memory/register/constant
 				 * for the asm. if we can't, hard error */
 				constraint = &constraints.inputs[this_index];
 
-				constrain_val(octx, constraint, &inputs[this_index], error);
+				constrain_val(octx, constraint, &inputs->arr[this_index], error);
 
-				val_str = impl_val_str(inputs[this_index].val, /*deref*/0);
+				val_str = impl_val_str(inputs->arr[this_index].val, /*deref*/0);
 				oplen = strlen(val_str);
 
 				op = dynvec_add_n(&written_insn, &insn_len, oplen);
@@ -513,7 +513,7 @@ void out_inline_asm_extended(
 				memcpy(op, val_str, oplen);
 
 			}else{
-				const out_val *output = outputs[this_index].val;
+				const out_val *output = outputs->arr[this_index].val;
 
 				/* attempt to get the lvalue referenced by 'output'
 				 * into a memory/register/constant for this constraint.
@@ -542,19 +542,19 @@ void out_inline_asm_extended(
 	out_comment(octx, "### assignments to outputs");
 
 	/* consume inputs */
-	for(i = 0; i < ninputs; i++)
-		out_val_release(octx, inputs[i].val);
+	for(i = 0; i < inputs->n; i++)
+		out_val_release(octx, inputs->arr[i].val);
 
 	free(written_insn), written_insn = NULL;
 
 	/* store to the output pointers */
-	for(i = 0; i < noutputs; i++){
+	for(i = 0; i < outputs->n; i++){
 		const struct chosen_constraint *constraint = &constraints.outputs[i];
-		const out_val *val = outputs[i].val;
+		const out_val *val = outputs->arr[i].val;
 
 		fprintf(stderr, "found output, index %ld, "
 				"constraint %s, exists in TYPE=%d, bits=%d\n",
-				(long)i, outputs[i].constraint,
+				(long)i, outputs->arr[i].constraint,
 				val->type, val->bits.regoff.reg.idx);
 
 		constrain_output(val, constraint);
