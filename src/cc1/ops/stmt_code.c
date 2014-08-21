@@ -216,8 +216,16 @@ void gen_block_decls(
 static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 {
 	decl **di;
-	for(di = scope->decls; di && *di; di++){
-		decl *d = *di;
+
+	if(!scope->decls)
+		return;
+
+	for(di = scope->decls; *di; di++);
+	do{
+		decl *d;
+
+		di--;
+		d = *di;
 
 		if(d->sym){
 			attribute *cleanup = attribute_present(d, attr_cleanup);
@@ -245,7 +253,7 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 				out_alloca_pop(octx, vla_saved_ptr(d, octx));
 			}
 		}
-	}
+	}while(di != scope->decls);
 }
 
 #define SYMTAB_PARENT_WALK(it, begin) \
