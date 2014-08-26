@@ -123,8 +123,24 @@ enum constraint_x86
 	/* TODO: o, V, E, F, X
 	 * TODO: matching: 0-9 */
 };
-#define CONSTRAINT_TO_MASK(ch) (1 << ((ch) - 'a' + MODIFIER_COUNT))
-#define BITIDX_TO_CONSTRAINT(i) ((i) - MODIFIER_COUNT + 'a')
+enum constraint_mask
+{
+	/* start after modifier mask */
+	CONSTRAINT_MASK_REG_a = 1 << 3,
+	CONSTRAINT_MASK_REG_b = 1 << 4,
+	CONSTRAINT_MASK_REG_c = 1 << 5,
+	CONSTRAINT_MASK_REG_d = 1 << 6,
+	CONSTRAINT_MASK_REG_D = 1 << 7,
+	CONSTRAINT_MASK_REG_S = 1 << 8,
+
+	CONSTRAINT_MASK_memory = 1 << 9,
+	CONSTRAINT_MASK_int = 1 << 10,
+	CONSTRAINT_MASK_int_asm = 1 << 11,
+	CONSTRAINT_MASK_REG_any = 1 << 12,
+	CONSTRAINT_MASK_REG_abcd = 1 << 13,
+	CONSTRAINT_MASK_REG_float = 1 << 14,
+	CONSTRAINT_MASK_any = 1 << 15,
+};
 
 #define CONSTRAINT_ITER(i) \
 	for(i = MODIFIER_COUNT; i < 'z' - 'a' + MODIFIER_COUNT; i++)
@@ -158,7 +174,7 @@ void out_asm_calculate_constraint(
 	} rw = RW_UNKNOWN;
 	const char *iter = constraint;
 	int has_write;
-	unsigned finalmask = 0;
+	enum constraint_mask finalmask = 0;
 
 	/* + or = must be first */
 	/* & is an early-output, e.g.:
@@ -200,22 +216,25 @@ done_mods:;
 		int found = 0;
 
 		switch((enum constraint_x86)*iter){
-			case CONSTRAINT_REG_a:
-			case CONSTRAINT_REG_b:
-			case CONSTRAINT_REG_c:
-			case CONSTRAINT_REG_d:
-			case CONSTRAINT_REG_S:
-			case CONSTRAINT_REG_D:
-			case CONSTRAINT_REG_float:
-			case CONSTRAINT_REG_abcd:
-			case CONSTRAINT_REG_any:
-			case CONSTRAINT_memory:
-			case CONSTRAINT_int:
-			case CONSTRAINT_int_asm:
-			case CONSTRAINT_any:
-				finalmask |= CONSTRAINT_TO_MASK(*iter);
-				found = 1;
-				break;
+#define MAP(post)                              \
+			case CONSTRAINT_ ## post:                \
+				found = 1;                             \
+				finalmask |= CONSTRAINT_MASK_ ## post; \
+				break
+			MAP(REG_a);
+			MAP(REG_b);
+			MAP(REG_c);
+			MAP(REG_d);
+			MAP(REG_S);
+			MAP(REG_D);
+			MAP(REG_float);
+			MAP(REG_abcd);
+			MAP(REG_any);
+			MAP(memory);
+			MAP(int);
+			MAP(int_asm);
+			MAP(any);
+#undef MAP
 		}
 		if(!found && isspace(*iter))
 			found = 1;
@@ -263,49 +282,50 @@ static void constrain_output(
 	out_store(octx, out_lval, out_temporary);
 }
 
-static int prioritise_ch(char ch)
+static int prioritise_mask(enum constraint_mask mask)
 {
-	switch(ch){
+	switch(mask){
 		default:
 			return -1;
 
-		case CONSTRAINT_REG_a:
-		case CONSTRAINT_REG_b:
-		case CONSTRAINT_REG_c:
-		case CONSTRAINT_REG_d:
-		case CONSTRAINT_REG_D:
-		case CONSTRAINT_REG_S:
+		case CONSTRAINT_MASK_REG_a:
+		case CONSTRAINT_MASK_REG_b:
+		case CONSTRAINT_MASK_REG_c:
+		case CONSTRAINT_MASK_REG_d:
+		case CONSTRAINT_MASK_REG_D:
+		case CONSTRAINT_MASK_REG_S:
 			return PRIORITY_FIXED_REG;
 
-		case CONSTRAINT_REG_abcd:
+		case CONSTRAINT_MASK_REG_abcd:
 			return PRIORITY_FIXED_CHOOSE_REG;
 
-		case CONSTRAINT_memory:
+		case CONSTRAINT_MASK_memory:
 			return PRIORITY_MEM;
 
-		case CONSTRAINT_int:
-		case CONSTRAINT_int_asm:
+		case CONSTRAINT_MASK_int:
+		case CONSTRAINT_MASK_int_asm:
 			return PRIORITY_INT;
 
-		case CONSTRAINT_REG_any:
+		case CONSTRAINT_MASK_REG_any:
 			return PRIORITY_REG;
 
-		case CONSTRAINT_REG_float:
+		case CONSTRAINT_MASK_REG_float:
 			ICE("TODO: float");
 
-		case CONSTRAINT_any:
+		case CONSTRAINT_MASK_any:
 			return PRIORITY_ANY;
 	}
 }
 
-static int prioritise(const unsigned constraint_mask)
+static int prioritise(const enum constraint_mask in_mask)
 {
 	int priority = PRIORITY_ANY;
 	int i;
 
 	CONSTRAINT_ITER(i){
-		if(constraint_mask & (1 << i)){
-			int pri = prioritise_ch(BITIDX_TO_CONSTRAINT(i));
+		enum constraint_mask onebit = 1 << i;
+		if(in_mask & onebit){
+			int pri = prioritise_mask(onebit);
 			if(pri == -1)
 				continue;
 			if(pri < priority)
@@ -335,7 +355,7 @@ static void assign_constraint(
 {
 	int regmask = (is_output ? REG_USED_OUT : REG_USED_IN);
 	int retry_count;
-	unsigned constraint_mask = cval->calculated_constraint;
+	enum constraint_mask whole_constraint = cval->calculated_constraint;
 
 	if(cval->calculated_constraint & MODIFIER_MASK_preclob)
 		regmask |= REG_USED_IN;
@@ -343,7 +363,7 @@ static void assign_constraint(
 	for(retry_count = 0;; retry_count++){
 		const int min_priority = priority + retry_count;
 		int i;
-		int constraint_attempt = -1;
+		enum constraint_mask constraint_attempt = -1;
 
 		if(min_priority > PRIORITY_ANY){
 			error->operand = cval;
@@ -358,29 +378,23 @@ static void assign_constraint(
 		/* find the constraint with the lowest priority that we
 		 * haven't already tried */
 		CONSTRAINT_ITER(i){
-			unsigned mask = 1 << i;
+			enum constraint_mask onebit = 1 << i;
 
-			if(constraint_mask & mask){
-				const int ch = BITIDX_TO_CONSTRAINT(i);
-				const int this_pri = prioritise_ch(ch);
-
-				CONSTRAINT_DEBUG("  constraint mask has '%c'\n", ch);
+			if(whole_constraint & onebit){
+				const int this_pri = prioritise_mask(onebit);
 
 				if(this_pri <= min_priority){
 					/* found one, try it */
-					constraint_attempt = ch;
+					constraint_attempt = onebit;
 
 					/* don't try again later */
-					constraint_mask &= ~mask;
-
-					CONSTRAINT_DEBUG("    found %c (priority %d)\n",
-							ch, min_priority);
+					whole_constraint &= ~onebit;
 					break;
 				}
 			}
 		}
 
-		if(constraint_attempt == -1)
+		if((int)constraint_attempt == -1)
 			continue;
 
 		CONSTRAINT_DEBUG("trying constraint '%c'\n", constraint_attempt);
@@ -388,12 +402,12 @@ static void assign_constraint(
 		switch(constraint_attempt){
 				int chosen_reg;
 
-			case CONSTRAINT_REG_a: chosen_reg = X86_64_REG_RAX; goto reg;
-			case CONSTRAINT_REG_b: chosen_reg = X86_64_REG_RBX; goto reg;
-			case CONSTRAINT_REG_c: chosen_reg = X86_64_REG_RCX; goto reg;
-			case CONSTRAINT_REG_d: chosen_reg = X86_64_REG_RDX; goto reg;
-			case CONSTRAINT_REG_D: chosen_reg = X86_64_REG_RDI; goto reg;
-			case CONSTRAINT_REG_S: chosen_reg = X86_64_REG_RSI; goto reg;
+			case CONSTRAINT_MASK_REG_a: chosen_reg = X86_64_REG_RAX; goto reg;
+			case CONSTRAINT_MASK_REG_b: chosen_reg = X86_64_REG_RBX; goto reg;
+			case CONSTRAINT_MASK_REG_c: chosen_reg = X86_64_REG_RCX; goto reg;
+			case CONSTRAINT_MASK_REG_d: chosen_reg = X86_64_REG_RDX; goto reg;
+			case CONSTRAINT_MASK_REG_D: chosen_reg = X86_64_REG_RDI; goto reg;
+			case CONSTRAINT_MASK_REG_S: chosen_reg = X86_64_REG_RSI; goto reg;
 	reg:
 			{
 				if(regs->arr[chosen_reg] & regmask)
@@ -406,10 +420,10 @@ static void assign_constraint(
 				break;
 			}
 
-			case CONSTRAINT_REG_any:
-			case CONSTRAINT_REG_abcd:
+			case CONSTRAINT_MASK_REG_any:
+			case CONSTRAINT_MASK_REG_abcd:
 			{
-				const int lim = (constraint_attempt == CONSTRAINT_REG_abcd
+				const int lim = (constraint_attempt == CONSTRAINT_MASK_REG_abcd
 						? X86_64_REG_RDX + 1
 						: regs->n);
 				int i;
@@ -430,11 +444,11 @@ static void assign_constraint(
 				break;
 			}
 
-			case CONSTRAINT_memory:
+			case CONSTRAINT_MASK_memory:
 				cc->type = C_MEM;
 				break;
 
-			case CONSTRAINT_int_asm:
+			case CONSTRAINT_MASK_int_asm:
 				/* link-time address or constant int */
 				switch(cval->val->type){
 					case V_LBL:
@@ -444,17 +458,17 @@ static void assign_constraint(
 						continue; /* try again */
 				}
 				if(0){
-			case CONSTRAINT_int:
+			case CONSTRAINT_MASK_int:
 					if(cval->val->type != V_CONST_I)
 						continue; /* try again */
 				}
 				cc->type = C_CONST;
 				break;
 
-			case CONSTRAINT_REG_float:
+			case CONSTRAINT_MASK_REG_float:
 				ICE("TODO: float");
 
-			case CONSTRAINT_any:
+			case CONSTRAINT_MASK_any:
 				cc->type = C_ANY;
 				break;
 		}
