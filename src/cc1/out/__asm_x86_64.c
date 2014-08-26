@@ -13,6 +13,7 @@
 #include "../../util/alloc.h"
 
 #include "../type.h"
+#include "../type_nav.h"
 #include "../num.h"
 
 #include "out.h" /* our (umbrella) header */
@@ -21,6 +22,7 @@
 #include "impl.h"
 #include "asm.h" /* section_type, for write.c: */
 #include "write.h"
+#include "ctx.h" /* var_stack_sz */
 
 #include "virt.h" /* v_to* */
 
@@ -251,6 +253,14 @@ done_mods:;
 	}
 
 	cval->calculated_constraint = finalmask;
+}
+
+static void constrain_output(
+		out_ctx *octx,
+		const out_val *out_lval,
+		const out_val *out_temporary)
+{
+	out_store(octx, out_lval, out_temporary);
 }
 
 static int prioritise_ch(char ch)
@@ -526,7 +536,30 @@ static void calculate_constraints(
 	assign_constraints(entries, nentries, regs, error);
 }
 
-static void constrain_val(
+static int asm_get_reg(
+		out_ctx *octx,
+		struct vreg *regp, const out_val *from,
+		struct out_asm_error *error)
+{
+	int got_reg = v_unused_reg(octx, /*spill*/0, /*fp*/0, regp, from);
+
+	if(!got_reg)
+		error->str = ustrdup("not enough registers to meet constraint");
+
+	return !got_reg;
+}
+
+static void asm_try_getreg(
+		out_ctx *octx, struct vreg const *regp,
+		struct out_asm_error *error)
+{
+	const out_val *usedreg = v_find_reg(octx, regp);
+
+	if(usedreg)
+		error->str = ustrdup("register already in use");
+}
+
+static void constrain_input_val(
 		out_ctx *octx,
 		struct chosen_constraint *constraint,
 		struct constrained_val *cval,
@@ -550,14 +583,8 @@ static void constrain_val(
 				if(cval->val->type == V_REG){
 					/* satisfied */
 				}else{
-					int got_reg = v_unused_reg(octx, /*spill*/0, /*fp*/0,
-							&constraint->bits.reg, cval->val);
-
-					if(!got_reg){
-						error->operand = cval;
-						error->str = ustrdup("not enough registers to meet constraint");
+					if(asm_get_reg(octx, &constraint->bits.reg, cval->val, error))
 						return;
-					}
 
 					cval->val = v_to_reg_given(
 							octx, cval->val, &constraint->bits.reg);
@@ -566,19 +593,96 @@ static void constrain_val(
 				if(cval->val->type != V_REG
 				|| cval->val->bits.regoff.reg.idx != constraint->bits.reg.idx)
 				{
-					const out_val *usedreg = v_find_reg(octx, &constraint->bits.reg);
+					asm_try_getreg(octx, &constraint->bits.reg, error);
 
-					if(usedreg){
-						error->operand = cval;
-						error->str = ustrdup("no free registers for constraint");
-						return;
-					}
+					if(error->str) return;
 
 					cval->val = v_to_reg_given_freeup(
 							octx, cval->val, &constraint->bits.reg);
 				}
 			}
 			break;
+	}
+}
+
+static const out_val *temporary_for_output(
+		out_ctx *octx,
+		struct chosen_constraint *constraint,
+		struct constrained_val *cval,
+		struct out_asm_error *error)
+{
+	/* if the output already references the lvalue and matches the constraint,
+	 * we can leave it.
+	 *
+	 * otherwise we construct an out_val that matches the constraint and use
+	 * that as a temporary, then assign to the output afterwards
+	 */
+	switch(constraint->type){
+		case C_ANY:
+			return NULL;
+
+		case C_REG:
+			if(constraint->bits.reg.idx == (unsigned short)-1){
+				struct vreg reg;
+
+				if(cval->val->type == V_REG)
+					return NULL; /* matched */
+
+				if(asm_get_reg(octx, &reg, NULL, error)){
+					/* error set */
+					return NULL;
+				}
+
+				return v_new_reg(octx, NULL,
+						type_dereference_decay(cval->val->t),
+						&reg);
+
+			}else{
+				if(cval->val->type == V_REG
+				&& vreg_eq(&cval->val->bits.regoff.reg, &constraint->bits.reg))
+				{
+					return NULL; /* matched */
+				}
+
+				return v_new_reg(octx, NULL,
+						type_dereference_decay(cval->val->t),
+						&constraint->bits.reg);
+			}
+			assert(0);
+
+		case C_MEM:
+		{
+			out_val *mutreg;
+			long stack_off;
+
+			switch(cval->val->type){
+				case V_REG:
+					break;
+				case V_LBL:
+				case V_REG_SPILT:
+					return NULL; /* matched */
+				default:
+					break;
+			}
+
+			v_alloc_stack(octx, type_size(cval->val->t, NULL), "asm output temporary");
+			stack_off = octx->var_stack_sz;
+
+			mutreg = v_new_bp3_below(octx, NULL,
+					type_dereference_decay(cval->val->t),
+					stack_off);
+
+			mutreg->type = V_REG_SPILT;
+
+			return mutreg;
+		}
+
+		case C_CONST:
+			if(cval->val->type != V_CONST_I){
+				error->str = ustrdup("operand not a constant");
+				error->operand = cval;
+			}
+			return NULL;
 	}
 }
 
@@ -627,6 +731,7 @@ static void constrain_values(out_ctx *octx,
 		struct constrained_val_array *inputs,
 		struct chosen_constraint *coutputs,
 		struct chosen_constraint *cinputs,
+		const out_val *output_temporaries[],
 		struct out_asm_error *error)
 {
 	size_t const total = outputs->n + inputs->n;
@@ -643,7 +748,7 @@ static void constrain_values(out_ctx *octx,
 			 * for the asm. if we can't, hard error */
 			constraint = &cinputs[input_i];
 
-			constrain_val(octx, constraint, &inputs->arr[input_i], error);
+			constrain_input_val(octx, constraint, &inputs->arr[input_i], error);
 
 			if(error->str){
 				error->operand = &inputs->arr[input_i];
@@ -651,15 +756,31 @@ static void constrain_values(out_ctx *octx,
 			}
 
 		}else{
-			ICE("TODO");
+			const out_val *out_temporary;
 
-			(void)coutputs;
+			/* attempt to get the lvalue referenced by 'output'
+			 * into a memory/register/constant for this constraint.
+			 * if not, we move it there afterwards */
+			out_temporary = temporary_for_output(
+					octx,
+					&coutputs[i],
+					&outputs->arr[i],
+					error);
+
+			if(error->str){
+				error->operand = &outputs->arr[i];
+				return;
+			}
+
+			output_temporaries[i] = out_temporary;
+			/* TODO: if this is a '+' / readwrite, dereference it beforehand? */
 		}
 	}
 }
 
 static char *format_insn(const char *format,
 		struct constrained_val_array *outputs,
+		const out_val *output_temporaries[],
 		struct constrained_val_array *inputs)
 {
 	char *written_insn = NULL;
@@ -689,7 +810,10 @@ static char *format_insn(const char *format,
 
 				oval = inputs->arr[this_index].val;
 			}else{
-				oval = outputs->arr[this_index].val;
+				if((oval = output_temporaries[this_index]))
+					;
+				else
+					oval = outputs->arr[this_index].val;
 			}
 
 
@@ -730,11 +854,14 @@ void out_inline_asm_extended(
 		struct chosen_constraint *inputs, *outputs;
 	} constraints;
 	struct regarray regs;
+	const out_val **output_temporaries;
 	char *insn;
 	size_t i;
 
 	constraints.inputs = umalloc(inputs->n * sizeof *constraints.inputs);
 	constraints.outputs = umalloc(outputs->n * sizeof *constraints.outputs);
+
+	output_temporaries = umalloc(outputs->n * sizeof *output_temporaries);
 
 	regs.arr = v_alloc_reg_reserve(octx, &regs.n);
 
@@ -754,10 +881,11 @@ void out_inline_asm_extended(
 			outputs, inputs,
 			constraints.outputs,
 			constraints.inputs,
+			output_temporaries,
 			error);
 	if(error->str) goto error;
 
-	insn = format_insn(format, outputs, inputs);
+	insn = format_insn(format, outputs, output_temporaries, inputs);
 
 	out_comment(octx, "### actual inline");
 	out_asm(octx, "%s", insn ? insn : "");
@@ -773,12 +901,15 @@ void out_inline_asm_extended(
 	for(i = 0; i < outputs->n; i++){
 		const out_val *val = outputs->arr[i].val;
 
-		(void)val;
-		/* TODO: constraint outputs */
+		if(output_temporaries[i])
+			constrain_output(octx, val, output_temporaries[i]);
+		else
+			out_val_release(octx, val);
 	}
 
 out:
 	ICW("TODO: free");
+	free(output_temporaries);
 	free(regs.arr);
 	return;
 error:
