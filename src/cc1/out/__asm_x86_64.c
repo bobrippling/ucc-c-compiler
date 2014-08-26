@@ -758,6 +758,8 @@ void out_inline_asm_extended(
 
 				constrain_val(octx, constraint, &inputs->arr[this_index], error);
 
+				if(error->str) goto error;
+
 				deref = (inputs->arr[this_index].val->type == V_REG_SPILT);
 
 				val_str = impl_val_str(inputs->arr[this_index].val, deref);
