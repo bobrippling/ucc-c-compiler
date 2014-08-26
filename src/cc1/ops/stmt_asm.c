@@ -20,11 +20,6 @@ static void check_constraint(asm_param *param, symtable *stab)
 	}else{
 		FOLD_EXPR(param->exp, stab);
 	}
-
-	out_asm_constraint_check(
-			&param->exp->where,
-			param->constraints,
-			param->is_output);
 }
 
 void fold_stmt_asm(stmt *s)
@@ -70,21 +65,48 @@ void fold_stmt_asm(stmt *s)
 }
 
 static expr *err_operand_to_expr(
-		asm_param **params, struct constrained_val *cval)
+		asm_param **params, struct constrained_val *cval,
+		struct constrained_val_array *outputs,
+		struct constrained_val_array *inputs)
 {
-	for(; params && *params; params++){
-		asm_param *param = *params;
-		if(param->constraints == cval->constraint)
-			return param->exp;
-	}
+	size_t o, i;
+
+	for(o = 0; o < outputs->n; o++)
+		if(&outputs->arr[o] == cval)
+			return params[o]->exp;
+
+	for(i = 0; i < inputs->n; i++)
+		if(&inputs->arr[i] == cval)
+			return params[o + i]->exp;
+
 	return NULL;
+}
+
+static void show_asm_error(
+		stmt *s, struct out_asm_error *error,
+		struct constrained_val_array *outputs,
+		struct constrained_val_array *inputs)
+{
+	where *loc = &s->where;
+
+	if(error->operand){
+		expr *err_expr = err_operand_to_expr(
+				s->bits.asm_args->params, error->operand,
+				outputs, inputs);
+
+		if(err_expr)
+			loc = &err_expr->where;
+	}
+
+	warn_at_print_error(loc, "%s", error->str);
+	gen_had_error = 1;
 }
 
 void gen_stmt_asm(stmt *s, out_ctx *octx)
 {
 	asm_param **params;
-	struct constrained_val *inputs = NULL, *outputs = NULL;
-	size_t n_inputs = 0, n_outputs = 0;
+	struct out_asm_error error = { 0 };
+	struct constrained_val_array outputs = { 0 }, inputs = { 0 };
 
 	out_comment(octx, "### begin asm(%s) from %s",
 			s->bits.asm_args->extended ? ":::" : "",
@@ -93,46 +115,37 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 	for(params = s->bits.asm_args->params; params && *params; params++){
 		asm_param *param = *params;
 		struct constrained_val *new;
-		const out_val *p;
+		const out_val *generated;
 
 		if(param->is_output){
-			p = lea_expr(param->exp, octx);
-			new = dynvec_add(&outputs, &n_outputs);
+			generated = lea_expr(param->exp, octx);
+			new = dynvec_add(&outputs.arr, &outputs.n);
 		}else{
-			p = gen_expr(param->exp, octx);
-			new = dynvec_add(&inputs, &n_inputs);
+			generated = gen_expr(param->exp, octx);
+			new = dynvec_add(&inputs.arr, &inputs.n);
 		}
 
-		new->val = p;
-		new->constraint = param->constraints;
+		new->val = generated;
+
+		out_asm_calculate_constraint(
+				new, param->constraints,
+				param->is_output, &error);
+
+		if(error.str){
+			show_asm_error(s, &error, &outputs, &inputs);
+
+			return;
+		}
 	}
 
 	if(s->bits.asm_args->extended){
-		struct out_asm_error error = { 0 };
-		struct constrained_val_array
-			ocvals = { outputs, n_outputs },
-			icvals = { inputs, n_inputs };
-
 		out_inline_asm_extended(octx,
 				s->bits.asm_args->cmd,
-				&ocvals, &icvals,
+				&outputs, &inputs,
 				s->bits.asm_args->clobbers, &error);
 
-		if(error.str){
-			where *loc = &s->where;
-
-			if(error.operand){
-				expr *err_expr = err_operand_to_expr(
-						s->bits.asm_args->params, error.operand);
-
-				if(err_expr)
-					loc = &err_expr->where;
-			}
-
-			warn_at_print_error(loc, "%s", error.str);
-			gen_had_error = 1;
-		}
-
+		if(error.str)
+			show_asm_error(s, &error, &outputs, &inputs);
 	}else{
 		out_inline_asm(octx, s->bits.asm_args->cmd);
 	}

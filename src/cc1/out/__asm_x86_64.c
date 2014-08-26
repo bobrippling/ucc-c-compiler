@@ -29,6 +29,7 @@
 #include "__asm.h"
 
 
+#define CONSTRAINT_DEBUG(...)
 
 enum
 {
@@ -48,10 +49,11 @@ struct constrained_pri_val
 	int is_output;
 	enum
 	{
+		/* order matters */
+		PRIORITY_INT,
 		PRIORITY_FIXED_REG,
 		PRIORITY_FIXED_CHOOSE_REG,
 		PRIORITY_REG,
-		PRIORITY_INT,
 		PRIORITY_MEM,
 		PRIORITY_ANY
 	} pri;
@@ -100,24 +102,85 @@ enum constraint_x86
 	CONSTRAINT_REG_float = 'f',
 	CONSTRAINT_any = 'g',
 
-	/* modifiers */
-	CONSTRAINT_preclobber = '&',
-	CONSTRAINT_write_only = '=',
-	CONSTRAINT_readwrite = '+'
+	/* TODO: o, V, E, F, X
+	 * TODO: matching: 0-9 */
+};
+#define CONSTRAINT_TO_MASK(ch) (1 << ((ch) - 'a' + MODIFIER_COUNT))
+#define BITIDX_TO_CONSTRAINT(i) ((i) - MODIFIER_COUNT + 'a')
+
+#define CONSTRAINT_ITER(i) for(i = 0; i < 'z' - 'a'; i++)
+
+enum modifier
+{
+	MODIFIER_preclobber = '&',
+	MODIFIER_write_only = '=',
+	MODIFIER_readwrite = '+',
+	MODIFIER_COUNT = 3
+};
+enum modifier_mask
+{
+	MODIFIER_MASK_preclob = 1 << 0,
+	MODIFIER_MASK_write_only = 1 << 1,
+	MODIFIER_MASK_rw = 1 << 2
 };
 
-void out_asm_constraint_check(where *w, const char *constraint, int is_output)
+void out_asm_calculate_constraint(
+		struct constrained_val *cval,
+		const char *const constraint,
+		const int is_output,
+		struct out_asm_error *error)
 {
-	const char *const orig = constraint;
-	/* currently x86 specific */
+	enum
+	{
+		RW_UNKNOWN = 0,
+		RW_WRITEONLY = 1 << 0,
+		RW_READWRITE = 1 << 1,
+		RW_PRECLOB = 1 << 2
+	} rw = RW_UNKNOWN;
+	const char *iter = constraint;
+	int done = 0;
+	int has_write;
+	unsigned finalmask = 0;
 
-	char reg_chosen, mem_chosen, write_only, const_chosen;
+	/* + or = must be first */
+	/* & is an early-output, e.g.:
+	 *
+	 * asm("mov %[input1], %[output1]"
+	 *     "mov %[input2], %[output2]"
+	 *     : [output1] "=&"(...)
+	 *       [output2] "= "(...)
+	 *     : [input1]  "xyz"(...)
+	 *       [input2]  "xyz"(...))
+	 */
 
-	reg_chosen = mem_chosen = write_only = const_chosen = 0;
+	for(; *iter && !done; iter++){
+		switch((enum modifier)*iter){
+			case MODIFIER_write_only:
+				rw |= RW_WRITEONLY;
+				finalmask |= MODIFIER_MASK_write_only;
+				break;
 
-	while(*constraint){
+			case MODIFIER_preclobber:
+				/* mark register as being written */
+				rw |= RW_PRECLOB;
+				finalmask |= MODIFIER_MASK_preclob;
+				break;
+
+			case MODIFIER_readwrite:
+				/* read and write */
+				rw |= RW_READWRITE;
+				finalmask |= MODIFIER_MASK_rw;
+				break;
+
+			default:
+				done = 1;
+		}
+	}
+
+	for(; *iter; iter++){
 		int found = 0;
-		switch((enum constraint_x86)*constraint++){
+
+		switch((enum constraint_x86)*iter){
 			case CONSTRAINT_REG_a:
 			case CONSTRAINT_REG_b:
 			case CONSTRAINT_REG_c:
@@ -127,58 +190,50 @@ void out_asm_constraint_check(where *w, const char *constraint, int is_output)
 			case CONSTRAINT_REG_float:
 			case CONSTRAINT_REG_abcd:
 			case CONSTRAINT_REG_any:
-				reg_chosen++;
-				found = 1;
-				break;
-
 			case CONSTRAINT_memory:
-				mem_chosen = 1;
-				found = 1;
-				break;
-
 			case CONSTRAINT_int:
 			case CONSTRAINT_int_asm:
-				const_chosen = 1;
-				found = 1;
-				break;
-
 			case CONSTRAINT_any:
+				finalmask |= CONSTRAINT_TO_MASK(*iter);
 				found = 1;
-				break;
-
-			case CONSTRAINT_write_only:
-				write_only = 1;
-				found = 1;
-				break;
-
-			case CONSTRAINT_preclobber:
-				found = 1;
-				break;
-
-			case CONSTRAINT_readwrite:
-				/* fine */
 				break;
 		}
+		if(!found && isspace(*iter))
+			found = 1;
 
-		if(!found && !isspace(constraint[-1]))
-			die_at(w, "invalid constraint character '%c'", constraint[-1]);
+		if(!found){
+			error->operand = cval;
+			error->str = ustrprintf("unknown constraint character '%c'", *iter);
+			return;
+		}
 	}
 
-#define BAD_CONSTRAINT(err) \
-	die_at(w, "bad constraint \"%s\": " err, orig)
+	if(rw & (rw - 1)){
+		/* not a power of two - multiple modifiers */
+		error->operand = cval;
+		error->str = ustrprintf(
+				"multiple modifiers for constraint \"%s\"", constraint);
+		return;
+	}
 
-	if(is_output != write_only)
-		die_at(w, "%s output constraint", is_output ? "missing" : "unwanted");
+	has_write = !!(rw & (RW_WRITEONLY | RW_READWRITE));
 
-	if(is_output && const_chosen)
-		BAD_CONSTRAINT("can't output to a constant");
+	if(is_output != has_write){
+		error->operand = cval;
+		error->str = ustrprintf("%s operand %s %c/%c in constraint",
+				is_output ? "output" : "input",
+				is_output ? "missing" : "has",
+				MODIFIER_write_only, MODIFIER_readwrite);
+	}
 
-	/* TODO below: allow multiple options for a constraint */
-	if(reg_chosen > 1)
-		BAD_CONSTRAINT("too many registers");
+	if(!is_output && (rw & RW_PRECLOB)){
+		error->operand = cval;
+		error->str = ustrprintf(
+				"constraint modifier '%c' on input",
+				MODIFIER_preclobber);
+	}
 
-	if(is_output && reg_chosen + mem_chosen + const_chosen == 0)
-		BAD_CONSTRAINT("constraint specifies none of memory/register/const");
+	cval->calculated_constraint = finalmask;
 }
 
 struct chosen_constraint
@@ -194,12 +249,6 @@ struct chosen_constraint
 	union
 	{
 		struct vreg reg;
-		enum constraint_const
-		{
-			CONST_NO,
-			CONST_INT,
-			CONST_ADDR
-		} const_ty;
 	} bits;
 };
 
@@ -273,9 +322,9 @@ bad:
 #endif
 }
 
-static int prioritise_1(char c)
+static int prioritise_ch(char ch)
 {
-	switch(c){
+	switch(ch){
 		default:
 			return -1;
 
@@ -308,16 +357,19 @@ static int prioritise_1(char c)
 	}
 }
 
-static int prioritise(const char *s)
+static int prioritise(const unsigned constraint_mask)
 {
 	int priority = PRIORITY_ANY;
+	int i;
 
-	for(; *s; s++){
-		int pri = prioritise_1(*s);
-		if(pri == -1)
-			continue;
-		if(pri < priority)
-			priority = pri;
+	CONSTRAINT_ITER(i){
+		if(constraint_mask & (1 << i)){
+			int pri = prioritise_ch(BITIDX_TO_CONSTRAINT(i));
+			if(pri == -1)
+				continue;
+			if(pri < priority)
+				priority = pri;
+		}
 	}
 
 	return priority;
@@ -339,85 +391,134 @@ static void assign_constraint(
 		struct regarray *regs,
 		struct out_asm_error *error)
 {
-	const int regmask = (is_output ? REG_USED_OUT : REG_USED_IN);
-	const char *p;
+	int regmask = (is_output ? REG_USED_OUT : REG_USED_IN);
+	int retry_count;
+	unsigned constraint_mask = cval->calculated_constraint;
 
-	for(p = cval->constraint; *p; p++)
-		if(prioritise_1(*p) == priority)
-			break;
+	if(cval->calculated_constraint & MODIFIER_MASK_preclob)
+		regmask |= REG_USED_IN;
 
-	switch(*p){
-			int chosen_reg;
-		case '\0':
-		default:
-			assert(0);
+	for(retry_count = 0;; retry_count++){
+		const int min_priority = priority + retry_count;
+		int i;
+		int constraint_attempt = -1;
 
-		case CONSTRAINT_REG_a: chosen_reg = X86_64_REG_RAX; goto reg;
-		case CONSTRAINT_REG_b: chosen_reg = X86_64_REG_RBX; goto reg;
-		case CONSTRAINT_REG_c: chosen_reg = X86_64_REG_RCX; goto reg;
-		case CONSTRAINT_REG_d: chosen_reg = X86_64_REG_RDX; goto reg;
-		case CONSTRAINT_REG_D: chosen_reg = X86_64_REG_RDI; goto reg;
-		case CONSTRAINT_REG_S: chosen_reg = X86_64_REG_RSI; goto reg;
-reg:
-		{
-			if(regs->arr[chosen_reg] & regmask){
-				error->str = ustrprintf(
-						"%s constraint (%s) not satisfiable - register in use",
-						is_output ? "output" : "input",
-						cval->constraint);
-				return;
-			}
-
-			regs->arr[chosen_reg] |= regmask;
-			cc->type = C_REG;
-			cc->bits.reg.idx = chosen_reg;
-			cc->bits.reg.is_float = 0;
-			break;
+		if(min_priority > PRIORITY_ANY){
+			error->operand = cval;
+			error->str = ustrprintf(
+					"%s constraint unsatisfiable",
+					is_output ? "output" : "input");
+			return;
 		}
 
-		case CONSTRAINT_REG_any:
-		case CONSTRAINT_REG_abcd:
-		{
-			const int lim = (*p == CONSTRAINT_any ? regs->n : X86_64_REG_RDX + 1);
-			int i;
+		CONSTRAINT_DEBUG("min_priority=%d\n", min_priority);
 
-			/* pick the first one - prioritised so this is fine */
-			for(i = 0; i < lim; i++){
-				if((regs->arr[i] & regmask) == 0){
-					regs->arr[i] |= regmask;
-					cc->type = C_REG;
-					cc->bits.reg.idx = i;
-					cc->bits.reg.is_float = 0;
+		/* find the constraint with the lowest priority that we
+		 * haven't already tried */
+		CONSTRAINT_ITER(i){
+			unsigned mask = 1 << i;
+
+			if(constraint_mask & mask){
+				const int ch = BITIDX_TO_CONSTRAINT(i);
+				const int this_pri = prioritise_ch(ch);
+
+				CONSTRAINT_DEBUG("  constraint mask has '%c'\n", ch);
+
+				if(this_pri <= min_priority){
+					/* found one, try it */
+					constraint_attempt = ch;
+
+					/* don't try again later */
+					constraint_mask &= ~mask;
+
+					CONSTRAINT_DEBUG("    found %c (priority %d)\n",
+							ch, min_priority);
 					break;
 				}
 			}
-
-			if(i == lim){
-				error->str = ustrprintf(
-						"%s constraint (%s) not satisfiable - no registers available",
-						is_output ? "output" : "input",
-						cval->constraint);
-				return;
-			}
-			break;
 		}
 
-		case CONSTRAINT_memory:
-			cc->type = C_MEM;
-			break;
+		if(constraint_attempt == -1)
+			continue;
 
-		case CONSTRAINT_int:
-		case CONSTRAINT_int_asm:
-			cc->type = C_CONST;
-			cc->bits.const_ty = (*p == CONSTRAINT_int ? CONST_INT : CONST_ADDR);
-			break;
+		CONSTRAINT_DEBUG("trying constraint '%c'\n", constraint_attempt);
 
-		case CONSTRAINT_REG_float:
-			ICE("TODO: float");
+		switch(constraint_attempt){
+				int chosen_reg;
 
-		case CONSTRAINT_any:
-			cc->type = C_ANY;
-			break;
+			case CONSTRAINT_REG_a: chosen_reg = X86_64_REG_RAX; goto reg;
+			case CONSTRAINT_REG_b: chosen_reg = X86_64_REG_RBX; goto reg;
+			case CONSTRAINT_REG_c: chosen_reg = X86_64_REG_RCX; goto reg;
+			case CONSTRAINT_REG_d: chosen_reg = X86_64_REG_RDX; goto reg;
+			case CONSTRAINT_REG_D: chosen_reg = X86_64_REG_RDI; goto reg;
+			case CONSTRAINT_REG_S: chosen_reg = X86_64_REG_RSI; goto reg;
+	reg:
+			{
+				if(regs->arr[chosen_reg] & regmask)
+					continue; /* try again */
+
+				regs->arr[chosen_reg] |= regmask;
+				cc->type = C_REG;
+				cc->bits.reg.idx = chosen_reg;
+				cc->bits.reg.is_float = 0;
+				break;
+			}
+
+			case CONSTRAINT_REG_any:
+			case CONSTRAINT_REG_abcd:
+			{
+				const int lim = (constraint_attempt == CONSTRAINT_any
+						? regs->n
+						: X86_64_REG_RDX + 1);
+				int i;
+
+				/* pick the first one - prioritised so this is fine */
+				for(i = 0; i < lim; i++){
+					if((regs->arr[i] & regmask) == 0){
+						regs->arr[i] |= regmask;
+						cc->type = C_REG;
+						cc->bits.reg.idx = i;
+						cc->bits.reg.is_float = 0;
+						break;
+					}
+				}
+
+				if(i == lim)
+					continue; /* try again */
+				break;
+			}
+
+			case CONSTRAINT_memory:
+				cc->type = C_MEM;
+				break;
+
+			case CONSTRAINT_int_asm:
+				/* link-time address or constant int */
+				switch(cval->val->type){
+					case V_LBL:
+					case V_CONST_I:
+						break; /* fall */
+					default:
+						continue; /* try again */
+				}
+				if(0){
+			case CONSTRAINT_int:
+					if(cval->val->type != V_CONST_I)
+						continue; /* try again */
+				}
+				cc->type = C_CONST;
+				break;
+
+			case CONSTRAINT_REG_float:
+				ICE("TODO: float");
+
+			case CONSTRAINT_any:
+				cc->type = C_ANY;
+				break;
+		}
+
+		/* constraint met */
+		break;
 	}
 }
 
@@ -470,7 +571,7 @@ static void constrain_values(
 
 		p->cval = from_val;
 		p->cchosen = from_cc;
-		p->pri = prioritise(from_val->constraint);
+		p->pri = prioritise(from_val->calculated_constraint);
 	}
 
 	/* order them */
@@ -496,20 +597,6 @@ static void constrain_val(
 			break;
 
 		case C_CONST:
-			switch(constraint->bits.const_ty){
-				case CONST_NO:
-					assert(0);
-				case CONST_ADDR:
-					/* link-time address or constant int */
-					if(cval->val->type == V_LBL)
-						break;
-					/* fall */
-				case CONST_INT:
-					if(cval->val->type == V_CONST_I)
-						break;
-					error->str = ustrdup("can't meet const constraint");
-					break;
-			}
 			break;
 
 		case C_REG:
@@ -522,11 +609,9 @@ static void constrain_val(
 							&constraint->bits.reg, cval->val);
 
 					if(!got_reg){
-						error->str = ustrprintf(
-								"not enough registers to meet constraint \"%s\"",
-								cval->constraint);
-
 						error->operand = cval;
+						error->str = ustrdup("not enough registers to meet constraint");
+						return;
 					}
 
 					cval->val = v_to_reg_given(
@@ -539,11 +624,9 @@ static void constrain_val(
 					const out_val *usedreg = v_find_reg(octx, &constraint->bits.reg);
 
 					if(usedreg){
-						error->str = ustrprintf(
-								"no free registers for constraint \"%s\"",
-								cval->constraint);
-
 						error->operand = cval;
+						error->str = ustrdup("no free registers for constraint");
+						return;
 					}
 
 					cval->val = v_to_reg_given_freeup(
@@ -696,10 +779,12 @@ void out_inline_asm_extended(
 		const struct chosen_constraint *constraint = &constraints.outputs[i];
 		const out_val *val = outputs->arr[i].val;
 
+		/*
 		fprintf(stderr, "found output, index %ld, "
 				"constraint %s, exists in TYPE=%d, bits=%d\n",
 				(long)i, outputs->arr[i].constraint,
 				val->type, val->bits.regoff.reg.idx);
+		*/
 
 		constrain_output(val, constraint);
 	}
