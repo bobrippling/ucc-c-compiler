@@ -684,6 +684,8 @@ static const out_val *temporary_for_output(
 			}
 			return NULL;
 	}
+
+	assert(0);
 }
 
 static void parse_clobbers(
