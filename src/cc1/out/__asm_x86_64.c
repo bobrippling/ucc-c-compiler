@@ -671,6 +671,13 @@ static void parse_clobbers(
 	}
 }
 
+static void free_outvals(out_ctx *octx, struct constrained_val_array *vals)
+{
+	size_t i;
+	for(i = 0; i < vals->n; i++)
+		out_val_release(octx, vals->arr[i].val);
+}
+
 void out_inline_asm_extended(
 		out_ctx *octx, const char *insn,
 		struct constrained_val_array *outputs,
@@ -697,13 +704,13 @@ void out_inline_asm_extended(
 	 * then we can have a valid list of registers active at asm() time
 	 */
 	parse_clobbers(clobbers, &regs, error);
-	if(error->str) goto out;
+	if(error->str) goto error;
 
 	constrain_values(
 			outputs, inputs,
 			constraints.outputs, constraints.inputs,
 			&regs, error);
-	if(error->str) goto out;
+	if(error->str) goto error;
 
 	for(p = insn; *p; p++){
 		if(*p == '%' && *++p != '%'){
@@ -798,6 +805,11 @@ void out_inline_asm_extended(
 out:
 	ICW("TODO: free");
 	free(regs.arr);
+	return;
+error:
+	free_outvals(octx, outputs);
+	free_outvals(octx, inputs);
+	goto out;
 }
 
 void out_inline_asm(out_ctx *octx, const char *insn)
