@@ -474,9 +474,10 @@ static asm_param **parse_asm_inout(symtable *scope, int is_output)
 			EAT(token_close_square);
 		}
 
-		token_get_current_str(
-				&io->constraints,
-				/* wide, len, where: */NULL, NULL, NULL);
+		if(curtok == token_string)
+			token_get_current_str(&io->constraints, NULL, NULL, NULL);
+		else
+			io->constraints = "";
 
 		EAT(token_string);
 
