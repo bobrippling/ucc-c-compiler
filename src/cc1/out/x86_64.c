@@ -199,10 +199,16 @@ int impl_regname_index(const char *rnam)
 	if(*rnam == '%')
 		rnam++;
 
+	for(i = 0; ; i++){
 		int j;
-		for(j = 0; j < 5; j++)
+		for(j = 0; j < 5; j++){
+			const char *entry = regnames[i][j];
+			if(!entry)
+				return -1;
+
 			if(!strcmp(regnames[i][j], rnam))
 				return i;
+		}
 	}
 
 	return -1;
