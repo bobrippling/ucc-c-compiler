@@ -255,6 +255,8 @@ struct chosen_constraint
 static void constrain_output(
 		const out_val *val, const struct chosen_constraint *cc)
 {
+	(void)val;
+	(void)cc;
 #if 0
 	/* pop from register/memory to vp */
 	struct vstack *vp = &vtop[-lval_vp_offset];
@@ -741,6 +743,8 @@ void out_inline_asm_extended(
 
 			}else{
 				const out_val *output = outputs->arr[this_index].val;
+
+				(void)output;
 
 				/* attempt to get the lvalue referenced by 'output'
 				 * into a memory/register/constant for this constraint.
