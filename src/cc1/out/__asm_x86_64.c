@@ -108,7 +108,8 @@ enum constraint_x86
 #define CONSTRAINT_TO_MASK(ch) (1 << ((ch) - 'a' + MODIFIER_COUNT))
 #define BITIDX_TO_CONSTRAINT(i) ((i) - MODIFIER_COUNT + 'a')
 
-#define CONSTRAINT_ITER(i) for(i = 0; i < 'z' - 'a'; i++)
+#define CONSTRAINT_ITER(i) \
+	for(i = MODIFIER_COUNT; i < 'z' - 'a' + MODIFIER_COUNT; i++)
 
 enum modifier
 {
