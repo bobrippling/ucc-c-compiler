@@ -759,6 +759,8 @@ void out_inline_asm_extended(
 						constraint_set[this_index]++,
 						err_w);
 				*/
+
+				/* TODO: if this is a '+' / readwrite, dereference it beforehand */
 			}
 
 		}else{
