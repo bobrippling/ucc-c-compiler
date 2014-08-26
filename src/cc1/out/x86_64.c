@@ -196,7 +196,9 @@ int impl_regname_index(const char *rnam)
 	};
 	int i;
 
-	for(i = 0; regnames[i][0]; i++){
+	if(*rnam == '%')
+		rnam++;
+
 		int j;
 		for(j = 0; j < 5; j++)
 			if(!strcmp(regnames[i][j], rnam))
