@@ -746,6 +746,7 @@ void out_inline_asm_extended(
 				const char *val_str;
 				char *op;
 				size_t oplen;
+				int deref;
 
 				this_index -= outputs->n;
 				assert(this_index < inputs->n);
@@ -756,7 +757,9 @@ void out_inline_asm_extended(
 
 				constrain_val(octx, constraint, &inputs->arr[this_index], error);
 
-				val_str = impl_val_str(inputs->arr[this_index].val, /*deref*/0);
+				deref = (inputs->arr[this_index].val->type == V_REG_SPILT);
+
+				val_str = impl_val_str(inputs->arr[this_index].val, deref);
 				oplen = strlen(val_str);
 
 				op = dynvec_add_n(&written_insn, &insn_len, oplen);
