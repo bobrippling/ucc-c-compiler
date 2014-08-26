@@ -146,8 +146,11 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 				new, param->constraints,
 				param->is_output, &error);
 
-		if(show_asm_error(s, &error, &outputs, &inputs))
+		if(show_asm_error(s, &error, &outputs, &inputs)){
+			asm_free_valarray(octx, &outputs);
+			asm_free_valarray(octx, &inputs);
 			return;
+		}
 	}
 
 	if(s->bits.asm_args->extended){

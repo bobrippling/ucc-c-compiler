@@ -686,7 +686,8 @@ static void parse_clobbers(
 	}
 }
 
-static void free_outvals(out_ctx *octx, struct constrained_val_array *vals)
+void asm_free_valarray(
+		out_ctx *octx, struct constrained_val_array *vals)
 {
 	size_t i;
 	for(i = 0; i < vals->n; i++)
@@ -825,8 +826,8 @@ out:
 	free(regs.arr);
 	return;
 error:
-	free_outvals(octx, outputs);
-	free_outvals(octx, inputs);
+	asm_free_valarray(octx, outputs);
+	asm_free_valarray(octx, inputs);
 	goto out;
 }
 
