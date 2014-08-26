@@ -139,7 +139,6 @@ void out_asm_calculate_constraint(
 		RW_PRECLOB = 1 << 2
 	} rw = RW_UNKNOWN;
 	const char *iter = constraint;
-	int done = 0;
 	int has_write;
 	unsigned finalmask = 0;
 
@@ -154,7 +153,7 @@ void out_asm_calculate_constraint(
 	 *       [input2]  "xyz"(...))
 	 */
 
-	for(; *iter && !done; iter++){
+	for(; *iter; iter++){
 		switch((enum modifier)*iter){
 			case MODIFIER_write_only:
 				rw |= RW_WRITEONLY;
@@ -174,9 +173,10 @@ void out_asm_calculate_constraint(
 				break;
 
 			default:
-				done = 1;
+				goto done_mods;
 		}
 	}
+done_mods:;
 
 	for(; *iter; iter++){
 		int found = 0;
