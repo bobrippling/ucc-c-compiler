@@ -152,9 +152,7 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 		if(show_asm_error(s, &error, &outputs, &inputs)){
 			/* error - out_inline_asm...() hasn't released.
 			 * we need to release and free */
-			free_release_valarray(octx, &outputs);
-			free_release_valarray(octx, &inputs);
-			return;
+			goto err;
 		}
 	}
 
@@ -164,7 +162,10 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 				&outputs, &inputs,
 				s->bits.asm_args->clobbers, &error);
 
-		show_asm_error(s, &error, &outputs, &inputs);
+		if(show_asm_error(s, &error, &outputs, &inputs)){
+			/* as above */
+			goto err;
+		}
 	}else{
 		out_inline_asm(octx, s->bits.asm_args->cmd);
 	}
@@ -174,6 +175,10 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 	free(inputs.arr);
 
 	out_comment(octx, "### end asm()");
+	return;
+err:
+	free_release_valarray(octx, &outputs);
+	free_release_valarray(octx, &inputs);
 }
 
 void init_stmt_asm(stmt *s)
