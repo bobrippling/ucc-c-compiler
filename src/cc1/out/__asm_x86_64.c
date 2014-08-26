@@ -41,6 +41,22 @@ struct regarray
 	int n;
 };
 
+struct constrained_pri_val
+{
+	struct constrained_val *cval;
+	struct chosen_constraint *cchosen;
+	int is_output;
+	enum
+	{
+		PRIORITY_FIXED_REG,
+		PRIORITY_FIXED_CHOOSE_REG,
+		PRIORITY_REG,
+		PRIORITY_INT,
+		PRIORITY_MEM,
+		PRIORITY_ANY
+	} pri;
+};
+
 #if 0
 +---+--------------------+
 | r |    Register(s)     |
@@ -257,63 +273,170 @@ bad:
 #endif
 }
 
-static int constrain_isjustfixed(const char *constraint, int *regidx)
+static int prioritise_1(char c)
 {
-	const char *p;
-	for(p = constraint; *p; p++){
+	switch(c){
+		default:
+			return -1;
 
-		switch((enum constraint_x86)*p){
-			case CONSTRAINT_REG_a: *regidx = X86_64_REG_RAX; return 1;
-			case CONSTRAINT_REG_b: *regidx = X86_64_REG_RBX; return 1;
-			case CONSTRAINT_REG_c: *regidx = X86_64_REG_RCX; return 1;
-			case CONSTRAINT_REG_d: *regidx = X86_64_REG_RDX; return 1;
-			case CONSTRAINT_REG_S: *regidx = X86_64_REG_RSI; return 1;
-			case CONSTRAINT_REG_D: *regidx = X86_64_REG_RDI; return 1;
-			case CONSTRAINT_memory:
-			case CONSTRAINT_int:
-			case CONSTRAINT_int_asm:
-			case CONSTRAINT_REG_any:
-			case CONSTRAINT_REG_abcd:
-			case CONSTRAINT_REG_float:
-			case CONSTRAINT_any:
-				return 0;
-			case CONSTRAINT_readwrite:
-			case CONSTRAINT_write_only:
-			case CONSTRAINT_preclobber:
-				/* no change */
-				continue;
-		}
+		case CONSTRAINT_REG_a:
+		case CONSTRAINT_REG_b:
+		case CONSTRAINT_REG_c:
+		case CONSTRAINT_REG_d:
+		case CONSTRAINT_REG_D:
+		case CONSTRAINT_REG_S:
+			return PRIORITY_FIXED_REG;
+
+		case CONSTRAINT_REG_abcd:
+			return PRIORITY_FIXED_CHOOSE_REG;
+
+		case CONSTRAINT_memory:
+			return PRIORITY_MEM;
+
+		case CONSTRAINT_int:
+		case CONSTRAINT_int_asm:
+			return PRIORITY_INT;
+
+		case CONSTRAINT_REG_any:
+			return PRIORITY_REG;
+
+		case CONSTRAINT_REG_float:
+			ICE("TODO: float");
+
+		case CONSTRAINT_any:
+			return PRIORITY_ANY;
 	}
-	return 0;
 }
 
-static void constrain_prescan_fixedreg(
-		struct constrained_val_array *cvals,
-		struct chosen_constraint *chosens,
-		struct regarray *regs, const int mask,
-		const size_t start_idx,
+static int prioritise(const char *s)
+{
+	int priority = PRIORITY_ANY;
+
+	for(; *s; s++){
+		int pri = prioritise_1(*s);
+		if(pri == -1)
+			continue;
+		if(pri < priority)
+			priority = pri;
+	}
+
+	return priority;
+}
+
+static int constrained_pri_val_cmp(const void *va, const void *vb)
+{
+	const struct constrained_pri_val *pa = va;
+	const struct constrained_pri_val *pb = vb;
+
+	return pa->pri < pb->pri;
+}
+
+static void assign_constraint(
+		struct constrained_val *cval,
+		struct chosen_constraint *cc,
+		const int priority,
+		const int is_output,
+		struct regarray *regs,
 		struct out_asm_error *error)
 {
-	size_t i;
-	for(i = 0; i < cvals->n; i++){
-		int regidx;
+	const int regmask = (is_output ? REG_USED_OUT : REG_USED_IN);
+	const char *p;
 
-		if(constrain_isjustfixed(cvals->arr[i].constraint, &regidx)){
-			unsigned char *regallocp = &regs->arr[regidx];
+	for(p = cval->constraint; *p; p++)
+		if(prioritise_1(*p) == priority)
+			break;
 
-			if(*regallocp & mask){
-				/* already chosen - can't set again */
+	switch(*p){
+			int chosen_reg;
+		case '\0':
+		default:
+			assert(0);
+
+		case CONSTRAINT_REG_a: chosen_reg = X86_64_REG_RAX; goto reg;
+		case CONSTRAINT_REG_b: chosen_reg = X86_64_REG_RBX; goto reg;
+		case CONSTRAINT_REG_c: chosen_reg = X86_64_REG_RCX; goto reg;
+		case CONSTRAINT_REG_d: chosen_reg = X86_64_REG_RDX; goto reg;
+		case CONSTRAINT_REG_D: chosen_reg = X86_64_REG_RDI; goto reg;
+		case CONSTRAINT_REG_S: chosen_reg = X86_64_REG_RSI; goto reg;
+reg:
+		{
+			if(regs->arr[chosen_reg] & regmask){
 				error->str = ustrprintf(
-						"constraint %ld (%s) overrides previous %s register",
-						(long)start_idx + i, cvals->arr[i].constraint,
-						mask == REG_USED_OUT ? "output" : "input");
+						"%s constraint (%s) not satisfiable - register in use",
+						is_output ? "output" : "input",
+						cval->constraint);
 				return;
 			}
 
-			*regallocp |= mask;
-			chosens[i].type = C_REG;
-			chosens[i].bits.reg.idx = regidx;
+			regs->arr[chosen_reg] |= regmask;
+			cc->type = C_REG;
+			cc->bits.reg.idx = chosen_reg;
+			cc->bits.reg.is_float = 0;
+			break;
 		}
+
+		case CONSTRAINT_REG_any:
+		case CONSTRAINT_REG_abcd:
+		{
+			const int lim = (*p == CONSTRAINT_any ? regs->n : X86_64_REG_RDX + 1);
+			int i;
+
+			/* pick the first one - prioritised so this is fine */
+			for(i = 0; i < lim; i++){
+				if((regs->arr[i] & regmask) == 0){
+					regs->arr[i] |= regmask;
+					cc->type = C_REG;
+					cc->bits.reg.idx = i;
+					cc->bits.reg.is_float = 0;
+					break;
+				}
+			}
+
+			if(i == lim){
+				error->str = ustrprintf(
+						"%s constraint (%s) not satisfiable - no registers available",
+						is_output ? "output" : "input",
+						cval->constraint);
+				return;
+			}
+			break;
+		}
+
+		case CONSTRAINT_memory:
+			cc->type = C_MEM;
+			break;
+
+		case CONSTRAINT_int:
+		case CONSTRAINT_int_asm:
+			cc->type = C_CONST;
+			cc->bits.const_ty = (*p == CONSTRAINT_int ? CONST_INT : CONST_ADDR);
+			break;
+
+		case CONSTRAINT_REG_float:
+			ICE("TODO: float");
+
+		case CONSTRAINT_any:
+			cc->type = C_ANY;
+			break;
+	}
+}
+
+static void assign_constraints(
+		struct constrained_pri_val *entries, size_t nentries,
+		struct regarray *regs, struct out_asm_error *error)
+{
+	size_t i;
+	for(i = 0; i < nentries; i++){
+		struct constrained_val *cval = entries[i].cval;
+		struct chosen_constraint *cc = entries[i].cchosen;
+
+		/* pick the highest satisfiable constraint */
+		assign_constraint(cval, cc,
+				entries[i].pri, entries[i].is_output,
+				regs, error);
+
+		if(error->str)
+			break;
 	}
 }
 
@@ -325,18 +448,36 @@ static void constrain_values(
 		struct regarray *regs,
 		struct out_asm_error *error)
 {
-	/* pre-scan - if any is just a fixed register we have to allocate it */
-	constrain_prescan_fixedreg(
-			outputs, oconstraints,
-			regs, REG_USED_OUT, 0, error);
-	if(error->str) return;
+	size_t const nentries = outputs->n + inputs->n;
+	struct constrained_pri_val *entries;
+	size_t i;
 
-	constrain_prescan_fixedreg(
-			inputs, iconstraints,
-			regs, REG_USED_IN, outputs->n, error);
-	if(error->str) return;
+	entries = umalloc(nentries * sizeof *entries);
+	for(i = 0; i < nentries; i++){
+		struct constrained_pri_val *p = &entries[i];
+		struct constrained_val *from_val;
+		struct chosen_constraint *from_cc;
 
-	/* TODO: constrain the rest */
+		if(i >= outputs->n){
+			from_val = &inputs->arr[i - outputs->n];
+			from_cc = &iconstraints[i - outputs->n];
+			p->is_output = 0;
+		}else{
+			from_val = &outputs->arr[i];
+			from_cc = &oconstraints[i];
+			p->is_output = 1;
+		}
+
+		p->cval = from_val;
+		p->cchosen = from_cc;
+		p->pri = prioritise(from_val->constraint);
+	}
+
+	/* order them */
+	qsort(entries, nentries, sizeof *entries, constrained_pri_val_cmp);
+
+	/* assign values */
+	assign_constraints(entries, nentries, regs, error);
 }
 
 static void constrain_val(
