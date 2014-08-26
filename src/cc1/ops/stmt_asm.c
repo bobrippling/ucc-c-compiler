@@ -100,6 +100,8 @@ static void show_asm_error(
 
 	warn_at_print_error(loc, "%s", error->str);
 	gen_had_error = 1;
+
+	free(error->str), error->str = NULL;
 }
 
 void gen_stmt_asm(stmt *s, out_ctx *octx)
