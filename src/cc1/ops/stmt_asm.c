@@ -86,12 +86,13 @@ static expr *err_operand_to_expr(
 	return NULL;
 }
 
-static void show_asm_error(
+static int show_asm_error(
 		stmt *s, struct out_asm_error *error,
 		struct constrained_val_array *outputs,
 		struct constrained_val_array *inputs)
 {
 	where *loc = &s->where;
+	int err = 0;
 
 	if(error->operand){
 		expr *err_expr = err_operand_to_expr(
@@ -102,10 +103,18 @@ static void show_asm_error(
 			loc = &err_expr->where;
 	}
 
-	warn_at_print_error(loc, "%s", error->str);
-	gen_had_error = 1;
+	if(error->str){
+		warn_at_print_error(loc, "%s", error->str);
+		gen_had_error = 1;
+		free(error->str), error->str = NULL;
+		err = 1;
 
-	free(error->str), error->str = NULL;
+	}else if(error->warning){
+		warn_at(loc, "%s", error->warning);
+		free(error->warning), error->warning = NULL;
+	}
+
+	return err;
 }
 
 void gen_stmt_asm(stmt *s, out_ctx *octx)
@@ -137,11 +146,8 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 				new, param->constraints,
 				param->is_output, &error);
 
-		if(error.str){
-			show_asm_error(s, &error, &outputs, &inputs);
-
+		if(show_asm_error(s, &error, &outputs, &inputs))
 			return;
-		}
 	}
 
 	if(s->bits.asm_args->extended){
@@ -150,8 +156,7 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 				&outputs, &inputs,
 				s->bits.asm_args->clobbers, &error);
 
-		if(error.str)
-			show_asm_error(s, &error, &outputs, &inputs);
+		show_asm_error(s, &error, &outputs, &inputs);
 	}else{
 		out_inline_asm(octx, s->bits.asm_args->cmd);
 	}

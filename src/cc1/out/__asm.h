@@ -17,6 +17,7 @@ struct out_asm_error
 {
 	char *str;
 	struct constrained_val *operand;
+	char *warning;
 };
 
 /* constraint init */

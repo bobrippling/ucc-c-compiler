@@ -493,6 +493,20 @@ static void assign_constraint(
 
 			case CONSTRAINT_memory:
 				cc->type = C_MEM;
+				switch(cval->val->type){
+					case V_LBL:
+					case V_REG_SPILT:
+						break;
+					case V_REG:
+					case V_CONST_I:
+					case V_CONST_F:
+					case V_FLAG:
+						if(!error->warning){
+							error->operand = cval;
+							error->warning = ustrprintf(
+									"operand will need to be spilt to memory");
+						}
+				}
 				break;
 
 			case CONSTRAINT_int_asm:
