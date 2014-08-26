@@ -408,9 +408,9 @@ static void assign_constraint(
 			case CONSTRAINT_REG_any:
 			case CONSTRAINT_REG_abcd:
 			{
-				const int lim = (constraint_attempt == CONSTRAINT_any
-						? regs->n
-						: X86_64_REG_RDX + 1);
+				const int lim = (constraint_attempt == CONSTRAINT_REG_abcd
+						? X86_64_REG_RDX + 1
+						: regs->n);
 				int i;
 
 				/* pick the first one - prioritised so this is fine */
