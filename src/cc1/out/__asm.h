@@ -13,7 +13,7 @@ struct constrained_val_array
 	size_t n;
 };
 
-void asm_free_valarray(
+void out_asm_release_valarray(
 		out_ctx *octx, struct constrained_val_array *vals);
 
 struct out_asm_error

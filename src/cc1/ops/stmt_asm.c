@@ -117,6 +117,13 @@ static int show_asm_error(
 	return err;
 }
 
+static void free_release_valarray(
+		out_ctx *octx, struct constrained_val_array *container)
+{
+	out_asm_release_valarray(octx, container);
+	free(container->arr);
+}
+
 void gen_stmt_asm(stmt *s, out_ctx *octx)
 {
 	asm_param **params;
@@ -147,8 +154,10 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 				param->is_output, &error);
 
 		if(show_asm_error(s, &error, &outputs, &inputs)){
-			asm_free_valarray(octx, &outputs);
-			asm_free_valarray(octx, &inputs);
+			/* error - out_inline_asm...() hasn't released.
+			 * we need to release and free */
+			free_release_valarray(octx, &outputs);
+			free_release_valarray(octx, &inputs);
 			return;
 		}
 	}
@@ -163,6 +172,10 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 	}else{
 		out_inline_asm(octx, s->bits.asm_args->cmd);
 	}
+
+	/* success - out_inline_asm...() has released. we just free */
+	free(outputs.arr);
+	free(inputs.arr);
 
 	out_comment(octx, "### end asm()");
 }

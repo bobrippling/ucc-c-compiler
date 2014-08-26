@@ -534,6 +534,8 @@ static void calculate_constraints(
 
 	/* assign values */
 	assign_constraints(entries, nentries, regs, error);
+
+	free(entries);
 }
 
 static int asm_get_reg(
@@ -720,7 +722,7 @@ static void parse_clobbers(
 	}
 }
 
-void asm_free_valarray(
+void out_asm_release_valarray(
 		out_ctx *octx, struct constrained_val_array *vals)
 {
 	size_t i;
@@ -894,8 +896,7 @@ void out_inline_asm_extended(
 	out_comment(octx, "### assignments to outputs");
 
 	/* consume inputs */
-	for(i = 0; i < inputs->n; i++)
-		out_val_release(octx, inputs->arr[i].val);
+	out_asm_release_valarray(octx, inputs);
 
 	free(insn), insn = NULL;
 
@@ -909,15 +910,18 @@ void out_inline_asm_extended(
 			out_val_release(octx, val);
 	}
 
-out:
-	ICW("TODO: free");
+	if(0){
+error:
+		/* release temporaries */
+		for(i = 0; i < outputs->n; i++)
+			if(output_temporaries[i])
+				out_val_release(octx, output_temporaries[i]);
+	}
+
 	free(output_temporaries);
 	free(regs.arr);
-	return;
-error:
-	asm_free_valarray(octx, outputs);
-	asm_free_valarray(octx, inputs);
-	goto out;
+	free(constraints.inputs);
+	free(constraints.outputs);
 }
 
 void out_inline_asm(out_ctx *octx, const char *insn)
