@@ -32,8 +32,12 @@ void fold_stmt_asm(stmt *s)
 
 		check_constraint(param, s->symtab);
 
-		if(param->is_output && !expr_is_lval(param->exp))
-			die_at(&param->exp->where, "asm output not an lvalue");
+		if(param->is_output){
+			if(!expr_is_lval(param->exp))
+				die_at(&param->exp->where, "asm output not an lvalue");
+
+			fold_inc_writes_if_sym(param->exp, s->symtab);
+		}
 	}
 
 	/* validate asm string - s->bits.asm_args->cmd */
