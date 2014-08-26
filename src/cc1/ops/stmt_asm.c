@@ -160,7 +160,8 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 		out_inline_asm_extended(octx,
 				s->bits.asm_args->cmd,
 				&outputs, &inputs,
-				s->bits.asm_args->clobbers, &error);
+				s->bits.asm_args->clobbers, &s->where,
+				&error);
 
 		if(show_asm_error(s, &error, &outputs, &inputs)){
 			/* as above */

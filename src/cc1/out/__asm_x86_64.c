@@ -15,6 +15,7 @@
 #include "../type.h"
 #include "../type_nav.h"
 #include "../num.h"
+#include "../str.h" /* str_add_escape() */
 
 #include "out.h" /* our (umbrella) header */
 
@@ -852,6 +853,7 @@ void out_inline_asm_extended(
 		struct constrained_val_array *outputs,
 		struct constrained_val_array *inputs,
 		char **clobbers,
+		where const *loc,
 		struct out_asm_error *error)
 {
 	struct
@@ -860,6 +862,7 @@ void out_inline_asm_extended(
 	} constraints;
 	struct regarray regs;
 	const out_val **output_temporaries;
+	char *escaped_fname;
 	char *insn;
 	size_t i;
 
@@ -893,7 +896,14 @@ void out_inline_asm_extended(
 	insn = format_insn(format, outputs, output_temporaries, inputs);
 
 	out_comment(octx, "### actual inline");
+
+	/* location information */
+	escaped_fname = str_add_escape(loc->fname, strlen(loc->fname));
+	out_asm2(octx, SECTION_TEXT, P_NO_INDENT, "# %d \"%s\"", loc->line, escaped_fname);
+	free(escaped_fname), escaped_fname = NULL;
+
 	out_asm(octx, "%s", insn ? insn : "");
+	out_asm2(octx, SECTION_TEXT, P_NO_INDENT, "# 0 \"\"");
 	out_comment(octx, "### assignments to outputs");
 
 	/* consume inputs */
