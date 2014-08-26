@@ -92,7 +92,9 @@ static int show_asm_error(
 		struct constrained_val_array *inputs)
 {
 	where *loc = &s->where;
-	int err = 0;
+
+	if(!error->str)
+		return 0;
 
 	if(error->operand){
 		expr *err_expr = err_operand_to_expr(
@@ -103,18 +105,12 @@ static int show_asm_error(
 			loc = &err_expr->where;
 	}
 
-	if(error->str){
-		warn_at_print_error(loc, "%s", error->str);
-		gen_had_error = 1;
-		free(error->str), error->str = NULL;
-		err = 1;
+	warn_at_print_error(loc, "%s", error->str);
+	gen_had_error = 1;
 
-	}else if(error->warning){
-		warn_at(loc, "%s", error->warning);
-		free(error->warning), error->warning = NULL;
-	}
+	free(error->str), error->str = NULL;
 
-	return err;
+	return 1;
 }
 
 static void free_release_valarray(
