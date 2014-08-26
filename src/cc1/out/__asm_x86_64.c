@@ -418,6 +418,9 @@ static void parse_clobbers(
 		struct regarray *const regs,
 		struct out_asm_error *error)
 {
+	if(!clobbers)
+		return;
+
 	for(; *clobbers; clobbers++){
 		const char *clob = *clobbers;
 
