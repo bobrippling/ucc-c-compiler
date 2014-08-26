@@ -321,7 +321,8 @@ static int constrained_pri_val_cmp(const void *va, const void *vb)
 	const struct constrained_pri_val *pa = va;
 	const struct constrained_pri_val *pb = vb;
 
-	return pa->pri < pb->pri;
+	/* we want 'a' before 'b', smallest first */
+	return pa->pri - pb->pri;
 }
 
 static void assign_constraint(
