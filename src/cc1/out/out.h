@@ -129,6 +129,4 @@ void out_alloca_pop(out_ctx *octx, const out_val *sz);
 /* commenting */
 void out_comment(out_ctx *, const char *, ...) ucc_printflike(2, 3);
 
-#include "__asm.h"
-
 #endif

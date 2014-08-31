@@ -5,6 +5,7 @@
 #include "ops.h"
 #include "stmt_asm.h"
 #include "../__asm.h"
+#include "../out/__asm.h"
 
 const char *str_stmt_asm()
 {
