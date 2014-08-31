@@ -148,7 +148,16 @@ integral_t const_op_exec(
 		case op_modulus:
 		case op_divide:
 			if(*rval){
-				result = op == op_divide ? lval / *rval : lval % *rval;
+				if(is_signed){
+					/* need sign-extended division */
+					result = (op == op_divide
+							? (sintegral_t)lval / (sintegral_t)*rval
+							: (sintegral_t)lval % (sintegral_t)*rval);
+				}else{
+					result = op == op_divide
+						? lval / *rval
+						: lval % *rval;
+				}
 			}else{
 				*error = "division by zero";
 				result = 0;
