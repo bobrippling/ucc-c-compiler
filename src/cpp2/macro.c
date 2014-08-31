@@ -42,7 +42,7 @@ static macro *macro_add_nodup(const char *nam, char *val, int depth)
 		if(strcmp(val, m->val)){
 			char buf[WHERE_BUF_SIZ];
 
-			CPP_WARN(WREDEF, "cpp: warning: redefining \"%s\"\n"
+			CPP_WARN(WREDEF, "redefining \"%s\"\n"
 					"%s: note: previous definition here",
 					nam, where_str_r(buf, &m->where));
 		}
