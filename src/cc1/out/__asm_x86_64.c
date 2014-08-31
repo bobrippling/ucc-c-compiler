@@ -160,8 +160,7 @@ enum modifier_mask
 	MODIFIER_MASK_rw = 1 << 2
 };
 
-void out_asm_calculate_constraint(
-		struct constrained_val *cval,
+unsigned out_asm_calculate_constraint(
 		const char *const constraint,
 		const int is_output,
 		struct out_asm_error *error)
@@ -241,9 +240,8 @@ done_mods:;
 			found = 1;
 
 		if(!found){
-			error->operand = cval;
 			error->str = ustrprintf("unknown constraint character '%c'", *iter);
-			return;
+			return 0;
 		}
 	}
 
@@ -256,16 +254,14 @@ done_mods:;
 
 	if(rw & (rw - 1)){
 		/* not a power of two - multiple modifiers */
-		error->operand = cval;
 		error->str = ustrprintf(
 				"multiple modifiers for constraint \"%s\"", constraint);
-		return;
+		return 0;
 	}
 
 	has_write = !!(rw & (RW_WRITEONLY | RW_READWRITE));
 
 	if(is_output != has_write){
-		error->operand = cval;
 		error->str = ustrprintf("%s operand %s %c/%c in constraint",
 				is_output ? "output" : "input",
 				is_output ? "missing" : "has",
@@ -273,13 +269,12 @@ done_mods:;
 	}
 
 	if(!is_output && (rw & RW_PRECLOB)){
-		error->operand = cval;
 		error->str = ustrprintf(
 				"constraint modifier '%c' on input",
 				MODIFIER_preclobber);
 	}
 
-	cval->calculated_constraint = finalmask;
+	return finalmask;
 }
 
 static void constrain_output(
@@ -580,9 +575,7 @@ static void constrain_input_val(
 
 static const out_val *temporary_for_output(
 		out_ctx *octx,
-		struct chosen_constraint *constraint,
-		struct constrained_val *cval,
-		struct out_asm_error *error)
+		struct chosen_constraint *constraint, type *ty)
 {
 	/* if the output already references the lvalue and matches the constraint,
 	 * we can leave it.
@@ -591,9 +584,6 @@ static const out_val *temporary_for_output(
 	 * that as a temporary, then assign to the output afterwards
 	 */
 	switch(constraint->type){
-		case C_ANY:
-			return NULL;
-
 		case C_REG:
 			/* need to use a temporary - a register can't match an lvalue
 			 * e.g.
@@ -601,15 +591,15 @@ static const out_val *temporary_for_output(
 			 * can't use a register non-temporary here as we'd need to say
 			 * mov $5, (%rax) which doesn't match the "r" constraint.
 			 */
-			return v_new_reg(octx, NULL,
-					type_dereference_decay(cval->val->t),
-					&constraint->bits.reg);
+			return v_new_reg(octx, NULL, ty, &constraint->bits.reg);
 
+		case C_ANY: /* XXX: suboptimal */
 		case C_MEM:
 		{
 			out_val *mutreg;
 			long stack_off;
 
+#if 0
 			switch(cval->val->type){
 				case V_REG:
 					break;
@@ -619,13 +609,13 @@ static const out_val *temporary_for_output(
 				default:
 					break;
 			}
+#endif
 
-			v_alloc_stack(octx, type_size(cval->val->t, NULL), "asm output temporary");
+			v_alloc_stack(octx, type_size(ty, NULL), "asm output temporary");
 			stack_off = octx->var_stack_sz;
 
 			mutreg = v_new_bp3_below(octx, NULL,
-					type_dereference_decay(cval->val->t),
-					stack_off);
+					ty, stack_off);
 
 			mutreg->type = V_REG_SPILT;
 
@@ -676,7 +666,8 @@ void out_asm_release_valarray(
 {
 	size_t i;
 	for(i = 0; i < vals->n; i++)
-		out_val_release(octx, vals->arr[i].val);
+		if(vals->arr[i].val)
+			out_val_release(octx, vals->arr[i].val);
 }
 
 static void constrain_values(out_ctx *octx,
@@ -711,19 +702,8 @@ static void constrain_values(out_ctx *octx,
 		}else{
 			const out_val *out_temporary;
 
-			/* attempt to get the lvalue referenced by 'output'
-			 * into a memory/register/constant for this constraint.
-			 * if not, we move it there afterwards */
 			out_temporary = temporary_for_output(
-					octx,
-					&coutputs[i],
-					&outputs->arr[i],
-					error);
-
-			if(error->str){
-				error->operand = &outputs->arr[i];
-				return;
-			}
+					octx, &coutputs[i], outputs->arr[i].ty);
 
 			output_temporaries[i] = out_temporary;
 			/* TODO: if this is a '+' / readwrite, dereference it beforehand? */
@@ -798,29 +778,24 @@ static char *format_insn(const char *format,
 	return written_insn;
 }
 
-void out_inline_asm_extended(
+void out_inline_asm_ext_begin(
 		out_ctx *octx, const char *format,
 		struct constrained_val_array *outputs,
 		struct constrained_val_array *inputs,
 		char **clobbers,
 		where const *loc,
-		out_blk *output_gen_blk,
-		struct out_asm_error *error)
+		struct out_asm_error *error,
+		struct inline_asm_state *st)
 {
-	struct
-	{
-		struct chosen_constraint *inputs, *outputs;
-	} constraints;
+	size_t i;
 	struct regarray regs;
-	const out_val **output_temporaries;
 	char *escaped_fname;
 	char *insn;
-	size_t i;
 
-	constraints.inputs = umalloc(inputs->n * sizeof *constraints.inputs);
-	constraints.outputs = umalloc(outputs->n * sizeof *constraints.outputs);
+	st->constraints.inputs = umalloc(inputs->n * sizeof *st->constraints.inputs);
+	st->constraints.outputs = umalloc(outputs->n * sizeof *st->constraints.outputs);
 
-	output_temporaries = umalloc(outputs->n * sizeof *output_temporaries);
+	st->output_temporaries = umalloc(outputs->n * sizeof *st->output_temporaries);
 
 	regs.arr = v_alloc_reg_reserve(octx, &regs.n);
 
@@ -832,19 +807,19 @@ void out_inline_asm_extended(
 
 	calculate_constraints(
 			outputs, inputs,
-			constraints.outputs, constraints.inputs,
+			st->constraints.outputs, st->constraints.inputs,
 			&regs, error);
 	if(error->str) goto error;
 
 	constrain_values(octx,
 			outputs, inputs,
-			constraints.outputs,
-			constraints.inputs,
-			output_temporaries,
+			st->constraints.outputs,
+			st->constraints.inputs,
+			st->output_temporaries,
 			error);
 	if(error->str) goto error;
 
-	insn = format_insn(format, outputs, output_temporaries, inputs);
+	insn = format_insn(format, outputs, st->output_temporaries, inputs);
 
 	out_comment(octx, "### actual inline");
 
@@ -861,7 +836,23 @@ void out_inline_asm_extended(
 
 	free(insn), insn = NULL;
 
-	out_ctrl_transfer_make_current(octx, output_gen_blk);
+	if(0){
+error:
+		/* release temporaries */
+		for(i = 0; i < outputs->n; i++)
+			if(st->output_temporaries[i])
+				out_val_release(octx, st->output_temporaries[i]);
+	}
+
+	free(regs.arr);
+}
+
+void out_inline_asm_ext_end(
+		out_ctx *octx,
+		struct constrained_val_array *outputs,
+		struct inline_asm_state *st)
+{
+	size_t i;
 
 	out_comment(octx, "### assignments to outputs");
 
@@ -869,24 +860,15 @@ void out_inline_asm_extended(
 	for(i = 0; i < outputs->n; i++){
 		const out_val *val = outputs->arr[i].val;
 
-		if(output_temporaries[i])
-			constrain_output(octx, val, output_temporaries[i]);
+		if(st->output_temporaries[i])
+			constrain_output(octx, val, st->output_temporaries[i]);
 		else
 			out_val_release(octx, val);
 	}
 
-	if(0){
-error:
-		/* release temporaries */
-		for(i = 0; i < outputs->n; i++)
-			if(output_temporaries[i])
-				out_val_release(octx, output_temporaries[i]);
-	}
-
-	free(output_temporaries);
-	free(regs.arr);
-	free(constraints.inputs);
-	free(constraints.outputs);
+	free(st->output_temporaries);
+	free(st->constraints.inputs);
+	free(st->constraints.outputs);
 }
 
 void out_inline_asm(out_ctx *octx, const char *insn)

@@ -4,6 +4,7 @@
 struct constrained_val
 {
 	const out_val *val;
+	type *ty;
 	unsigned calculated_constraint;
 };
 
@@ -23,20 +24,33 @@ struct out_asm_error
 };
 
 /* constraint init */
-void out_asm_calculate_constraint(
-		struct constrained_val *cval,
+unsigned out_asm_calculate_constraint(
 		const char *constraint,
 		const int is_output,
 		struct out_asm_error *error);
 
+struct inline_asm_state
+{
+	struct
+	{
+		struct chosen_constraint *inputs, *outputs;
+	} constraints;
+	const out_val **output_temporaries;
+};
+
 /* output the constraint cmd, with %0 replaced, etc */
-void out_inline_asm_extended(
+void out_inline_asm_ext_begin(
 		out_ctx *, const char *insn,
 		struct constrained_val_array *outputs,
 		struct constrained_val_array *inputs,
 		char **clobbers, const where *,
-		out_blk *output_gen_blk,
-		struct out_asm_error *error);
+		struct out_asm_error *error,
+		struct inline_asm_state *state);
+
+void out_inline_asm_ext_end(
+		out_ctx *,
+		struct constrained_val_array *outputs,
+		struct inline_asm_state *state);
 
 void out_inline_asm(out_ctx *, const char *insn);
 

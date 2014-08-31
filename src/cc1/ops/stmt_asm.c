@@ -126,22 +126,6 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 	asm_param **params;
 	struct out_asm_error error = { 0 };
 	struct constrained_val_array outputs = { 0 }, inputs = { 0 };
-	out_blk *blk_prologue, *blk_epilogue;
-
-	if(s->bits.asm_args->extended){
-		blk_prologue = out_blk_new(octx, "asm_prologue");
-		blk_epilogue = out_blk_new(octx, "asm_epilogue");
-
-		out_ctrl_transfer(octx, blk_prologue, NULL, NULL);
-
-		out_current_blk(octx, blk_epilogue);
-		out_comment(octx, "generate output exprs");
-
-		out_current_blk(octx, blk_prologue);
-
-	}else{
-		blk_prologue = blk_epilogue = NULL;
-	}
 
 	out_comment(octx, "### begin asm(%s) from %s",
 			s->bits.asm_args->extended ? ":::" : "",
@@ -153,20 +137,18 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 		const out_val *generated;
 
 		if(param->is_output){
-			out_current_blk(octx, blk_epilogue);
-			generated = lea_expr(param->exp, octx);
+			generated = NULL;
 			new = dynvec_add(&outputs.arr, &outputs.n);
 		}else{
-			out_current_blk(octx, blk_prologue);
 			generated = gen_expr(param->exp, octx);
 			new = dynvec_add(&inputs.arr, &inputs.n);
 		}
 
+		new->ty = param->exp->tree_type;
 		new->val = generated;
-
-		out_asm_calculate_constraint(
-				new, param->constraints,
-				param->is_output, &error);
+		error.operand = new;
+		new->calculated_constraint = out_asm_calculate_constraint(
+				param->constraints, param->is_output, &error);
 
 		if(show_asm_error(s, &error, &outputs, &inputs)){
 			/* error - out_inline_asm...() hasn't released.
@@ -176,15 +158,28 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 	}
 
 	if(s->bits.asm_args->extended){
-		out_current_blk(octx, blk_prologue);
+		size_t i;
+		struct inline_asm_state state;
 
-		out_inline_asm_extended(octx,
+		out_inline_asm_ext_begin(octx,
 				s->bits.asm_args->cmd,
 				&outputs, &inputs,
 				s->bits.asm_args->clobbers,
 				&s->where,
-				blk_epilogue,
-				&error);
+				&error,
+				&state);
+
+		for(params = s->bits.asm_args->params, i = 0;
+				params && *params;
+				params++, i++)
+		{
+			asm_param *param = *params;
+			if(!param->is_output)
+				continue;
+			outputs.arr[i].val = lea_expr(param->exp, octx);
+		}
+
+		out_inline_asm_ext_end(octx, &outputs, &state);
 
 		if(show_asm_error(s, &error, &outputs, &inputs)){
 			/* as above */
