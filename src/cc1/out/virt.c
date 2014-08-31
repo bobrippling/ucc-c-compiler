@@ -134,29 +134,10 @@ static ucc_wur const out_val *v_save_reg(
 				&cs_reg, NULL, impl_reg_is_callee_save);
 
 		if(got_reg){
-			struct vreg *p;
-			int already_used = 0;
-
 			impl_reg_cp_no_off(octx, vp, &cs_reg);
 			memcpy_safe(&((out_val *)vp)->bits.regoff.reg, &cs_reg);
 
-			for(p = octx->used_callee_saved; p && p->is_float != 2; p++){
-				if(vreg_eq(p, &cs_reg)){
-					already_used = 1;
-					break;
-				}
-			}
-
-			if(!already_used){
-				size_t current = p ? p - octx->used_callee_saved : 0;
-
-				octx->used_callee_saved = urealloc1(
-						octx->used_callee_saved,
-						(current + 2) * sizeof *octx->used_callee_saved);
-
-				memcpy_safe(&octx->used_callee_saved[current], &cs_reg);
-				octx->used_callee_saved[current + 1].is_float = 2;
-			}
+			impl_use_callee_save(octx, &cs_reg);
 
 			return vp;
 		}

@@ -2,6 +2,7 @@
 #include <stdarg.h>
 
 #include "../../util/util.h"
+#include "../../util/alloc.h"
 
 #include "../decl.h"
 #include "../op.h"
@@ -11,6 +12,7 @@
 #include "asm.h"
 #include "impl.h"
 #include "write.h"
+#include "ctx.h"
 
 void impl_comment(out_ctx *octx, const char *fmt, va_list l)
 {
@@ -74,4 +76,23 @@ const char *impl_val_str(const out_val *vs, int deref)
 {
 	static char buf[VAL_STR_SZ];
 	return impl_val_str_r(buf, vs, deref);
+}
+
+void impl_use_callee_save(out_ctx *octx, const struct vreg *cs_reg)
+{
+	size_t current;
+	struct vreg *p;
+
+	for(p = octx->used_callee_saved; p && p->is_float != 2; p++)
+		if(vreg_eq(p, cs_reg))
+			return;
+
+	current = p ? p - octx->used_callee_saved : 0;
+
+	octx->used_callee_saved = urealloc1(
+			octx->used_callee_saved,
+			(current + 2) * sizeof *octx->used_callee_saved);
+
+	memcpy_safe(&octx->used_callee_saved[current], cs_reg);
+	octx->used_callee_saved[current + 1].is_float = 2;
 }

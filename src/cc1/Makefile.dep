@@ -1625,11 +1625,11 @@ out/func.o: out/func.c out/../type.h out/../num.h out/../btype.h \
  out/dbg.h out/../cc1.h out/../../util/std.h out/../warn.h \
  out/../../util/platform.h
 out/impl.o: out/impl.c out/../../util/util.h out/../../util/warn.h \
- out/../../util/where.h out/../../util/compiler.h out/../decl.h \
- out/../type.h out/../num.h out/../btype.h out/../../util/where.h \
- out/../attribute.h out/../retain.h out/../op.h out/../macros.h out/val.h \
- out/forwards.h out/asm.h out/impl.h out/../../util/compiler.h \
- out/x86_64.h out/write.h out/dbg.h
+ out/../../util/where.h out/../../util/compiler.h out/../../util/alloc.h \
+ out/../decl.h out/../type.h out/../num.h out/../btype.h \
+ out/../../util/where.h out/../attribute.h out/../retain.h out/../op.h \
+ out/../macros.h out/val.h out/forwards.h out/asm.h out/impl.h \
+ out/../../util/compiler.h out/x86_64.h out/write.h out/dbg.h out/ctx.h
 out/lbl.o: out/lbl.c out/../../util/alloc.h out/../../util/compiler.h \
  out/../../util/util.h out/../../util/warn.h out/../../util/where.h \
  out/common.h out/lbl.h out/../../as_cfg.h

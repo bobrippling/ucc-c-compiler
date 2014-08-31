@@ -72,6 +72,8 @@ int impl_reg_is_scratch(type *fnty, const struct vreg *);
 int impl_reg_is_callee_save(type *fnty, const struct vreg *r);
 const int *impl_callee_save_regs(type *fnty, unsigned *pn);
 
+void impl_use_callee_save(out_ctx *octx, const struct vreg *);
+
 void impl_comment(out_ctx *, const char *fmt, va_list l);
 
 enum flag_cmp op_to_flag(enum op_type op);
