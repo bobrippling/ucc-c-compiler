@@ -170,12 +170,15 @@ static char *expand_trigraphs(char *line)
 		{ 0, 0 }
 	};
 	int i;
+	char *anchor = line;
 
 	for(;;){
-		char *qmark = strstr(line, "??");
+		char *qmark = strstr(anchor, "??");
 
 		if(!qmark)
 			break;
+
+		anchor = qmark + 1;
 
 		for(i = 0; map[i].from; i++){
 			if(map[i].from == qmark[2]){
