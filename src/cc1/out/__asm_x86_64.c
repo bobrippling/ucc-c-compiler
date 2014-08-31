@@ -540,34 +540,10 @@ static void calculate_constraints(
 	free(entries);
 }
 
-static int asm_get_reg(
-		out_ctx *octx,
-		struct vreg *regp, const out_val *from,
-		struct out_asm_error *error)
-{
-	int got_reg = v_unused_reg(octx, /*spill*/0, /*fp*/0, regp, from);
-
-	if(!got_reg)
-		error->str = ustrdup("not enough registers to meet constraint");
-
-	return !got_reg;
-}
-
-static void asm_try_getreg(
-		out_ctx *octx, struct vreg const *regp,
-		struct out_asm_error *error)
-{
-	const out_val *usedreg = v_find_reg(octx, regp);
-
-	if(usedreg)
-		error->str = ustrdup("register already in use");
-}
-
 static void constrain_input_val(
 		out_ctx *octx,
 		struct chosen_constraint *constraint,
-		struct constrained_val *cval,
-		struct out_asm_error *error)
+		struct constrained_val *cval)
 {
 	/* fill it with the right values */
 	switch(constraint->type){
@@ -582,28 +558,14 @@ static void constrain_input_val(
 			break;
 
 		case C_REG:
-			if(constraint->bits.reg.idx == (unsigned short)-1){
-				/* any reg */
-				if(cval->val->type == V_REG){
-					/* satisfied */
-				}else{
-					if(asm_get_reg(octx, &constraint->bits.reg, cval->val, error))
-						return;
+			assert((int)constraint->bits.reg.idx >= 0);
 
-					cval->val = v_to_reg_given(
-							octx, cval->val, &constraint->bits.reg);
-				}
-			}else{
-				if(cval->val->type != V_REG
-				|| cval->val->bits.regoff.reg.idx != constraint->bits.reg.idx)
-				{
-					asm_try_getreg(octx, &constraint->bits.reg, error);
-
-					if(error->str) return;
-
-					cval->val = v_to_reg_given_freeup(
-							octx, cval->val, &constraint->bits.reg);
-				}
+			if(cval->val->type != V_REG
+			|| cval->val->bits.regoff.reg.idx != constraint->bits.reg.idx)
+			{
+				/* don't freeup register */
+				cval->val = v_to_reg_given(
+						octx, cval->val, &constraint->bits.reg);
 			}
 			break;
 	}
@@ -626,33 +588,15 @@ static const out_val *temporary_for_output(
 			return NULL;
 
 		case C_REG:
-			if(constraint->bits.reg.idx == (unsigned short)-1){
-				struct vreg reg;
-
-				if(cval->val->type == V_REG)
-					return NULL; /* matched */
-
-				if(asm_get_reg(octx, &reg, NULL, error)){
-					/* error set */
-					return NULL;
-				}
-
-				return v_new_reg(octx, NULL,
-						type_dereference_decay(cval->val->t),
-						&reg);
-
-			}else{
-				if(cval->val->type == V_REG
-				&& vreg_eq(&cval->val->bits.regoff.reg, &constraint->bits.reg))
-				{
-					return NULL; /* matched */
-				}
-
-				return v_new_reg(octx, NULL,
-						type_dereference_decay(cval->val->t),
-						&constraint->bits.reg);
+			if(cval->val->type == V_REG
+			&& vreg_eq(&cval->val->bits.regoff.reg, &constraint->bits.reg))
+			{
+				return NULL; /* matched */
 			}
-			assert(0);
+
+			return v_new_reg(octx, NULL,
+					type_dereference_decay(cval->val->t),
+					&constraint->bits.reg);
 
 		case C_MEM:
 		{
@@ -754,7 +698,7 @@ static void constrain_values(out_ctx *octx,
 			 * for the asm. if we can't, hard error */
 			constraint = &cinputs[input_i];
 
-			constrain_input_val(octx, constraint, &inputs->arr[input_i], error);
+			constrain_input_val(octx, constraint, &inputs->arr[input_i]);
 
 			if(error->str){
 				error->operand = &inputs->arr[input_i];
