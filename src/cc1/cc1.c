@@ -46,7 +46,7 @@ static const char **system_includes;
 static struct warn_str
 {
 	const char *arg;
-	unsigned char *offsets[5];
+	unsigned char *offsets[6];
 } warns[] = {
 	{ "mismatch-arg", &cc1_warning.arg_mismatch },
 	{ "array-comma", &cc1_warning.array_comma },
@@ -177,6 +177,7 @@ static struct warn_str
 
 	{
 		"gnu",
+		&cc1_warning.gnu_addr_lbl,
 		&cc1_warning.gnu_expr_stmt,
 		&cc1_warning.gnu_typeof,
 		&cc1_warning.gnu_attribute,
@@ -579,14 +580,21 @@ static void warnings_set(int to)
 	memset(&cc1_warning, to, sizeof cc1_warning);
 }
 
-static void warning_pedantic(int set)
+static void warning_gnu(int set)
 {
-	/* warn about extensions */
+	cc1_warning.gnu_addr_lbl =
 	cc1_warning.gnu_expr_stmt =
 	cc1_warning.gnu_typeof =
 	cc1_warning.gnu_attribute =
 	cc1_warning.gnu_init_array_range =
 	cc1_warning.gnu_case_range =
+		set;
+}
+
+static void warning_pedantic(int set)
+{
+	/* warn about extensions */
+	warning_gnu(set);
 
 	cc1_warning.nonstd_arraysz =
 	cc1_warning.nonstd_init =

@@ -60,6 +60,7 @@ struct cc1_warning
 	unsigned char flexarr_init;
 	unsigned char flexarr_only;
 	unsigned char funcall_argcount;
+	unsigned char gnu_addr_lbl;
 	unsigned char gnu_expr_stmt;
 	unsigned char gnu_typeof;
 	unsigned char gnu_attribute;
