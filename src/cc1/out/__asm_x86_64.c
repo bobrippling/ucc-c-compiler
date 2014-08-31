@@ -676,14 +676,16 @@ static void constrain_values(out_ctx *octx,
 		struct chosen_constraint *coutputs,
 		struct chosen_constraint *cinputs,
 		const out_val *output_temporaries[],
+		type *const fnty,
 		struct out_asm_error *error)
 {
 	size_t const total = outputs->n + inputs->n;
 	size_t i;
 
 	for(i = 0; i < total; i++){
+		struct chosen_constraint *constraint;
+
 		if(i >= outputs->n){
-			struct chosen_constraint *constraint;
 			size_t input_i = i - outputs->n;
 
 			assert(input_i < inputs->n);
@@ -702,11 +704,19 @@ static void constrain_values(out_ctx *octx,
 		}else{
 			const out_val *out_temporary;
 
+			constraint = &coutputs[i];
+
 			out_temporary = temporary_for_output(
-					octx, &coutputs[i], outputs->arr[i].ty);
+					octx, constraint, outputs->arr[i].ty);
 
 			output_temporaries[i] = out_temporary;
 			/* TODO: if this is a '+' / readwrite, dereference it beforehand? */
+		}
+
+		if(constraint->type == C_REG
+		&& impl_reg_is_callee_save(fnty, &constraint->bits.reg))
+		{
+			impl_use_callee_save(octx, &constraint->bits.reg);
 		}
 	}
 }
@@ -784,6 +794,7 @@ void out_inline_asm_ext_begin(
 		struct constrained_val_array *inputs,
 		char **clobbers,
 		where const *loc,
+		type *const fnty,
 		struct out_asm_error *error,
 		struct inline_asm_state *st)
 {
@@ -816,6 +827,7 @@ void out_inline_asm_ext_begin(
 			st->constraints.outputs,
 			st->constraints.inputs,
 			st->output_temporaries,
+			fnty,
 			error);
 	if(error->str) goto error;
 

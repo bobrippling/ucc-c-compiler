@@ -160,12 +160,14 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 	if(s->bits.asm_args->extended){
 		size_t i;
 		struct inline_asm_state state;
+		decl *fndecl = symtab_func(s->symtab);
 
 		out_inline_asm_ext_begin(octx,
 				s->bits.asm_args->cmd,
 				&outputs, &inputs,
 				s->bits.asm_args->clobbers,
 				&s->where,
+				fndecl->ref,
 				&error,
 				&state);
 

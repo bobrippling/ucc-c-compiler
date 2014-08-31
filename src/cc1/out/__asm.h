@@ -43,7 +43,9 @@ void out_inline_asm_ext_begin(
 		out_ctx *, const char *insn,
 		struct constrained_val_array *outputs,
 		struct constrained_val_array *inputs,
-		char **clobbers, const where *,
+		char **clobbers,
+		const where *,
+		type *fnty,
 		struct out_asm_error *error,
 		struct inline_asm_state *state);
 
