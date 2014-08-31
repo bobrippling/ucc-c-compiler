@@ -986,7 +986,29 @@ static const out_val *x86_idiv(
 				|| r->bits.regoff.reg.idx != X86_64_REG_RDX);
 
 		if(type_is_signed(r->t)){
-			out_asm(octx, "cqto");
+			const char *ext;
+			switch(type_size(r->t, NULL)){
+				default:
+					assert(0);
+
+				/* C frontends will only use case 4 and 8
+				 *
+				 * type     operand     div          quot     input
+				 * byte     r/m8        AL           AH       AX
+				 * word     r/m16       AX           DX       DX:AX
+				 * dword    r/m32       EAX          EDX      EDX:EAX
+				 */
+				case 1:
+				case 2:
+					assert(0 && "idiv with short/char?");
+				case 4:
+					ext = "cltd";
+					break;
+				case 8:
+					ext = "cqto";
+					break;
+			}
+			out_asm(octx, "%s", ext);
 		}else{
 			/* unsigned - don't sign extend into rdx:
 			 * mov $0, %rdx */
