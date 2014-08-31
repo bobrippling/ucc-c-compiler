@@ -52,20 +52,20 @@ for my $w (parse_warnings((<STDIN>))){
 
 $line = 1;
 for(chomp_all(lines(shift))){
-	if(m#// *CHECK: *(\^)? *(.*)#){
-		my($above, $check) = (length($1), $2);
+	if(m#// *CHECK: *(\^*)? *(.*)#){
+		my($above_count, $check) = (length($1), $2);
 		my $line_resolved = $line;
 
-		if(defined $above){
-			--$line_resolved
+		if(defined $above_count){
+			$line_resolved -= $above_count;
 		}else{
-			$above = 0
+			$above_count = 0
 		}
 
 		push @{$lines[$line_resolved - 1]->{checks}}, {
 			check => $check,
 			line => $line_resolved,
-			above => $above,
+			above_count => $above_count,
 		};
 		$nchecks++;
 	}
@@ -178,7 +178,7 @@ iter_lines(
 			if($found == $rev){
 				$missing_warning = 1;
 				warn "$check->{line}"
-				. ($check->{above} ? " ^" : "")
+				. ("^" x $check->{above_count})
 				. ": check \"$match\" "
 				. ($rev ? "" : "not ")
 				. "found"
