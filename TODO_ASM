@@ -3,3 +3,5 @@ http://www.limegreensocks.com/gcc/Extended-Asm.html#Extended-Asm
 
 matching constraints
 named constraints
+"+&" and "=&" constraints
+operand modifiers (and opcode suffixes - see __asm/operand_modifier.c)
