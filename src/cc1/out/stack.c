@@ -106,3 +106,13 @@ void v_need_stackalign(out_ctx *octx, unsigned align)
 	octx->max_align = MAX(octx->max_align, align);
 }
 
+const out_val *out_aalloc(out_ctx *octx, unsigned sz, unsigned align)
+{
+	/* align greater than size - we increase
+	 * size so it can be aligned to 'align' */
+	if(align > siz)
+		siz = pack_to_align(siz, align);
+
+	/* packing takes care of everything */
+	pack_next(&current, NULL, siz, align);
+}

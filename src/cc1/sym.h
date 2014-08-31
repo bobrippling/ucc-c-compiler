@@ -7,11 +7,7 @@
 typedef struct sym sym;
 struct sym
 {
-	union
-	{
-		int arg_offset;
-		unsigned stack_pos;
-	} loc;
+	const struct out_val *outval;
 
 	enum sym_type
 	{

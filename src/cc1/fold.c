@@ -964,9 +964,6 @@ void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab)
 
 	fold_stmt(code);
 
-	/* now decls are folded, layout both parameters and local variables */
-	symtab_layout_decls(arg_symtab, 0);
-
 	/* finally, check label coherence */
 	symtab_chk_labels(symtab_func_root(arg_symtab));
 }

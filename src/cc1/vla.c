@@ -183,7 +183,7 @@ static const out_val *vla_gen_size(type *t, out_ctx *octx)
 void vla_typedef_alloc(decl *d, out_ctx *octx)
 {
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
-	unsigned stack_off = d->sym->loc.stack_pos + octx->stack_local_offset;
+	unsigned stack_off = d->sym->outval + octx->stack_local_offset;
 
 	out_val_consume(octx,
 			vla_gen_size_ty(

@@ -133,7 +133,8 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 		orig_off = d->sym->loc.arg_offset;
 
 		vla_space = vla_decl_space(d);
-		d->sym->loc.arg_offset = v_aalloc(octx, vla_space, type_align(d->ref));
+		d->sym->outval = out_aalloc(
+				octx, vla_space, type_align(d->ref, NULL));
 
 		out_comment(octx, "move vla argument %s (%d -> %d)",
 				d->spel, orig_off, d->sym->loc.arg_offset);

@@ -162,6 +162,54 @@ void fold_stmt_code(stmt *s)
 	}
 }
 
+static void gen_auto_fixedsz_decl(decl *d, out_ctx *octx)
+{
+	sym *s = d->sym;
+	int is_typedef = 0;
+
+	if(!s || s->type != sym_local)
+		return;
+
+	assert(!type_is(d->ref, type_func));
+
+	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+		case store_register:
+		case store_default:
+		case store_auto:
+		{
+			unsigned siz;
+			unsigned align;
+
+			assert(!type_is_variably_modified(s->decl->ref));
+
+			siz = decl_size(s->decl);
+			align = decl_align(s->decl);
+
+			assert(!s->outval);
+			s->outval = out_aalloc(octx, siz, align);
+			break;
+		}
+
+		case store_typedef:
+		case store_static:
+		case store_extern:
+		case store_inline:
+			break;
+	}
+}
+
+static void gen_auto_decl(decl *d, out_ctx *octx)
+{
+	if(type_is_variably_modified(d->ref)){
+		if((d->store & STORE_MASK_STORE) == store_typedef)
+			vla_typedef_alloc(d, octx);
+		else
+			vla_alloc_decl(d, octx);
+	}else{
+		gen_auto_fixedsz_decl(d, octx);
+	}
+}
+
 void gen_block_decls(
 		symtable *stab, const char **dbg_end_lbl, out_ctx *octx)
 {
@@ -193,14 +241,7 @@ void gen_block_decls(
 			continue;
 		}
 
-		if(type_is_variably_modified(d->ref)){
-			if((d->store & STORE_MASK_STORE) == store_typedef)
-				vla_typedef_alloc(d, octx);
-			else
-				vla_alloc_decl(d, octx);
-			/* may be VM - fall through to the init
-			 * e.g. int (*p)[n] = 0; */
-		}
+		gen_auto_decl(d, octx);
 
 		/* check .expr, since empty structs .expr == NULL */
 		if(d->bits.var.init.expr
@@ -210,6 +251,21 @@ void gen_block_decls(
 			out_val_consume(octx,
 					gen_expr(d->bits.var.init.expr, octx));
 		}
+	}
+}
+
+static void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
+{
+	decl **diter;
+
+	for(diter = stab->decls; diter && *diter; diter++){
+		decl *d = *diter;
+
+		if(!d->sym || d->sym->type != sym_local)
+			continue;
+
+		assert(!type_is(d->ref, type_func));
+		out_adealloc(octx, s->outval);
 	}
 }
 
@@ -291,6 +347,8 @@ void fold_check_scope_entry(where *w, const char *desc,
 void gen_scope_leave(symtable *const s_from, symtable *const s_to, out_ctx *octx)
 {
 	symtable *s_iter;
+
+	gen_block_decls_dealloca(s_from, octx);
 
 	if(!s_to){ /* e.g. return */
 		gen_scope_destructors(s_from, octx);
