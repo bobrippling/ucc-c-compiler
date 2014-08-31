@@ -611,6 +611,8 @@ static void warning_all(void)
 {
 	warnings_set(1);
 
+	warning_gnu(0);
+
 	cc1_warning.implicit_int =
 	cc1_warning.loss_precision =
 	cc1_warning.sign_compare =
