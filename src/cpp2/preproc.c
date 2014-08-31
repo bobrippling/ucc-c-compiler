@@ -248,6 +248,11 @@ static char *splice_lines(int *peof)
 		for(i = last_backslash + 1; isspace(*i); i++);
 		if(*i == '\0')
 			splice = 1;
+
+		if(i > last_backslash + 1){
+			CPP_WARN(WBACKSLASH_SPACE_NEWLINE,
+					"backslash and newline separated by space");
+		}
 	}
 
 	if(splice){
