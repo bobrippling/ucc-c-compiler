@@ -38,6 +38,9 @@ static macro *macro_add_nodup(const char *nam, char *val, int depth)
 	m = macro_find(nam);
 
 	if(m){
+		if(!m->val)
+			CPP_DIE("redefining \"%s\"", m->nam);
+
 		/* only warn if they're different */
 		if(strcmp(val, m->val)){
 			char buf[WHERE_BUF_SIZ];
