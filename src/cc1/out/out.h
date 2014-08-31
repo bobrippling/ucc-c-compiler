@@ -113,7 +113,7 @@ ucc_wur const out_val *out_ctrl_merge(out_ctx *, out_blk *, out_blk *);
 void out_func_prologue(
 		out_ctx *, const char *sp,
 		type *fnty,
-		int stack_res, int nargs, int variadic,
+		int nargs, int variadic,
 		int arg_offsets[], int *local_offset);
 
 void out_func_epilogue(

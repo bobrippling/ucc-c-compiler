@@ -69,7 +69,7 @@ static void callee_save_or_restore(
 	if(!stack_n)
 		return;
 
-	v_aalloc(octx, stack_n, "callee-save");
+	v_aalloc(octx, stack_n, /*align*/voidpsz, "callee-save");
 
 	stack_n = octx->var_stack_sz; /* may be different - variadic functions */
 	restore_blk = octx->epilogue_blk;
@@ -165,7 +165,7 @@ void out_func_epilogue(
 void out_func_prologue(
 		out_ctx *octx, const char *sp,
 		type *fnty,
-		int stack_res, int nargs, int variadic,
+		int nargs, int variadic,
 		int arg_offsets[], int *local_offset)
 {
 	out_blk *post_prologue = out_blk_new(octx, "post_prologue");
@@ -198,9 +198,6 @@ void out_func_prologue(
 		octx->stack_variadic_offset = octx->var_stack_sz - platform_word_size();
 		octx->stack_local_offset = octx->var_stack_sz;
 		*local_offset = octx->stack_local_offset;
-
-		if(stack_res)
-			v_alloc_stack(octx, stack_res, "local variables");
 
 		octx->stack_sz_initial = octx->var_stack_sz;
 	}

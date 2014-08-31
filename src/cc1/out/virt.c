@@ -47,7 +47,7 @@ int v_is_const_reg(const out_val *v)
 		&& impl_reg_frame_const(&v->bits.regoff.reg, 0);
 }
 
-const out_val *v_to_stack_mem(out_ctx *octx, const out_val *vp, long stack_pos)
+const out_val *v_to_stack_mem(out_ctx *octx, const out_val *vp, v_stackt stack_pos)
 {
 	out_val *store = v_new_bp3_below(octx, NULL, vp->t, stack_pos);
 
@@ -65,7 +65,7 @@ const out_val *v_to_stack_mem(out_ctx *octx, const out_val *vp, long stack_pos)
 void v_reg_to_stack(
 		out_ctx *octx,
 		const struct vreg *vr,
-		type *ty, long where)
+		type *ty, v_stackt where)
 {
 	const out_val *reg = v_new_reg(octx, NULL, ty, vr);
 
@@ -104,7 +104,10 @@ static ucc_wur const out_val *v_spill_reg(
 	out_comment(octx, "spill @ stack=%u, max=%u",
 			octx->var_stack_sz, octx->max_stack_sz);
 
-	stack_pos = v_aalloc(octx, type_size(v_reg->t, NULL), "save reg");
+	stack_pos = v_aalloc(octx,
+			type_size(v_reg->t, NULL),
+			type_align(v_reg->t, NULL),
+			"save reg");
 
 	out_val_retain(octx, v_reg);
 

@@ -97,10 +97,8 @@ static void assign_arg_offsets(
 	}
 }
 
-static void allocate_vla_args(
-		out_ctx *octx, symtable *arg_symtab, unsigned const auto_space)
+static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 {
-	unsigned current_off = auto_space;
 	decl **i;
 
 	for(i = arg_symtab->decls; i && *i; i++){
@@ -108,6 +106,7 @@ static void allocate_vla_args(
 		decl *d = *i;
 		type *decayed;
 		int orig_off;
+		unsigned vla_space;
 
 		/* generate side-effects even if it's decayed, e.g.
 		 * f(int p[E1][E2])
@@ -133,8 +132,8 @@ static void allocate_vla_args(
 
 		orig_off = d->sym->loc.arg_offset;
 
-		current_off += vla_decl_space(d);
-		d->sym->loc.arg_offset = -(int)current_off - octx->stack_local_offset;
+		vla_space = vla_decl_space(d);
+		d->sym->loc.arg_offset = v_aalloc(octx, vla_space, type_align(d->ref));
 
 		out_comment(octx, "move vla argument %s (%d -> %d)",
 				d->spel, orig_off, d->sym->loc.arg_offset);
@@ -164,7 +163,6 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		const char *sp;
 		int *offsets;
 		symtable *arg_symtab;
-		unsigned arg_vla_space = 0;
 		unsigned auto_space;
 
 		if(!d->bits.func.code)
@@ -176,12 +174,8 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++){
 			decl *d = *aiter;
 
-			if(d->sym->type == sym_arg){
+			if(d->sym->type == sym_arg)
 				nargs++;
-
-				if(type_is_variably_modified(d->ref))
-					arg_vla_space += vla_decl_space(d);
-			}
 		}
 
 		offsets = nargs ? umalloc(nargs * sizeof *offsets) : NULL;
@@ -191,10 +185,17 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		auto_space = d->bits.func.code->symtab->auto_total_size;
 
 		out_func_prologue(octx, sp, d->ref,
-				auto_space + arg_vla_space,
 				nargs,
 				is_vari = type_is_variadic_func(d->ref),
 				offsets, &d->bits.func.var_offset);
+
+		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++){
+			decl *d = *aiter;
+
+			if(d->sym->type == sym_arg && type_is_variably_modified(d->ref)){
+				arg_vla_space += vla_decl_space(d);
+			}
+		}
 
 		assign_arg_offsets(octx, arg_symtab->decls, offsets);
 
