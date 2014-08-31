@@ -801,6 +801,7 @@ void out_inline_asm_extended(
 		struct constrained_val_array *inputs,
 		char **clobbers,
 		where const *loc,
+		out_blk *output_gen_blk,
 		struct out_asm_error *error)
 {
 	struct
@@ -851,12 +852,15 @@ void out_inline_asm_extended(
 
 	out_asm(octx, "%s", insn ? insn : "");
 	out_asm2(octx, SECTION_TEXT, P_NO_INDENT, "# 0 \"\"");
-	out_comment(octx, "### assignments to outputs");
 
 	/* consume inputs */
 	out_asm_release_valarray(octx, inputs);
 
 	free(insn), insn = NULL;
+
+	out_ctrl_transfer_make_current(octx, output_gen_blk);
+
+	out_comment(octx, "### assignments to outputs");
 
 	/* store to the output pointers */
 	for(i = 0; i < outputs->n; i++){

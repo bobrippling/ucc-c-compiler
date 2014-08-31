@@ -125,6 +125,22 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 	asm_param **params;
 	struct out_asm_error error = { 0 };
 	struct constrained_val_array outputs = { 0 }, inputs = { 0 };
+	out_blk *blk_prologue, *blk_epilogue;
+
+	if(s->bits.asm_args->extended){
+		blk_prologue = out_blk_new(octx, "asm_prologue");
+		blk_epilogue = out_blk_new(octx, "asm_epilogue");
+
+		out_ctrl_transfer(octx, blk_prologue, NULL, NULL);
+
+		out_current_blk(octx, blk_epilogue);
+		out_comment(octx, "generate output exprs");
+
+		out_current_blk(octx, blk_prologue);
+
+	}else{
+		blk_prologue = blk_epilogue = NULL;
+	}
 
 	out_comment(octx, "### begin asm(%s) from %s",
 			s->bits.asm_args->extended ? ":::" : "",
@@ -136,9 +152,11 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 		const out_val *generated;
 
 		if(param->is_output){
+			out_current_blk(octx, blk_epilogue);
 			generated = lea_expr(param->exp, octx);
 			new = dynvec_add(&outputs.arr, &outputs.n);
 		}else{
+			out_current_blk(octx, blk_prologue);
 			generated = gen_expr(param->exp, octx);
 			new = dynvec_add(&inputs.arr, &inputs.n);
 		}
@@ -157,10 +175,14 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 	}
 
 	if(s->bits.asm_args->extended){
+		out_current_blk(octx, blk_prologue);
+
 		out_inline_asm_extended(octx,
 				s->bits.asm_args->cmd,
 				&outputs, &inputs,
-				s->bits.asm_args->clobbers, &s->where,
+				s->bits.asm_args->clobbers,
+				&s->where,
+				blk_epilogue,
 				&error);
 
 		if(show_asm_error(s, &error, &outputs, &inputs)){

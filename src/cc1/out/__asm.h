@@ -35,6 +35,7 @@ void out_inline_asm_extended(
 		struct constrained_val_array *outputs,
 		struct constrained_val_array *inputs,
 		char **clobbers, const where *,
+		out_blk *output_gen_blk,
 		struct out_asm_error *error);
 
 void out_inline_asm(out_ctx *, const char *insn);
