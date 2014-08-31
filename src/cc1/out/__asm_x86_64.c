@@ -247,6 +247,13 @@ done_mods:;
 		}
 	}
 
+	if(is_output
+	&& finalmask & (CONSTRAINT_MASK_int | CONSTRAINT_MASK_int_asm))
+	{
+		error->str = ustrdup("'i' constraint in output");
+		return 0;
+	}
+
 	if(rw & (rw - 1)){
 		/* not a power of two - multiple modifiers */
 		error->operand = cval;
@@ -626,11 +633,7 @@ static const out_val *temporary_for_output(
 		}
 
 		case C_CONST:
-			if(cval->val->type != V_CONST_I){
-				error->str = ustrdup("operand not a constant");
-				error->operand = cval;
-			}
-			return NULL;
+			assert(0 && "can't output to int/const");
 	}
 
 	assert(0);
