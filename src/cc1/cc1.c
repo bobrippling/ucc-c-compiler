@@ -625,7 +625,6 @@ static void warning_special(enum warning_special type)
 		case W_EXTRA:
 			warning_all();
 			cc1_warning.implicit_int =
-			cc1_warning.loss_precision =
 			cc1_warning.sign_compare =
 			cc1_warning.tenative_init =
 			cc1_warning.shadow_global = 1;
