@@ -99,7 +99,7 @@ static type *parse_type_sue(
 				parse_add_attr(&en_attr, scope);
 
 				if(accept(token_assign))
-					e = PARSE_EXPR_NO_COMMA(scope, 0); /* no commas */
+					e = PARSE_EXPR_CONSTANT(scope, 0); /* no commas */
 				else
 					e = NULL;
 
@@ -952,7 +952,7 @@ static type_parsed *parsed_type_array(
 			}
 
 			if(!is_star){
-				size = PARSE_EXPR_NO_COMMA(scope, 0);
+				size = PARSE_EXPR_CONSTANT(scope, 0);
 				EAT(token_close_square);
 
 				FOLD_EXPR(size, scope);
@@ -1832,7 +1832,7 @@ int parse_decl_group(
 		&& accept(token_colon))
 		{
 			/* normal decl, check field spec */
-			d->bits.var.field_width = PARSE_EXPR_NO_COMMA(in_scope, 0);
+			d->bits.var.field_width = PARSE_EXPR_CONSTANT(in_scope, 0);
 			had_field_width = 1;
 		}
 
