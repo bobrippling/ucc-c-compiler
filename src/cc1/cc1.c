@@ -46,7 +46,7 @@ static const char **system_includes;
 static struct warn_str
 {
 	const char *arg;
-	unsigned char *offsets[3];
+	unsigned char *offsets[5];
 } warns[] = {
 	{ "mismatch-arg", &cc1_warning.arg_mismatch },
 	{ "array-comma", &cc1_warning.array_comma },
@@ -174,6 +174,15 @@ static struct warn_str
 	{ "embedded-flexarr", &cc1_warning.flexarr_embed },
 	{ "flexarr-single-member", &cc1_warning.flexarr_only },
 	{ "flexarr-init", &cc1_warning.flexarr_init },
+
+	{
+		"gnu",
+		&cc1_warning.gnu_expr_stmt,
+		&cc1_warning.gnu_typeof,
+		&cc1_warning.gnu_attribute,
+		&cc1_warning.gnu_init_array_range,
+		&cc1_warning.gnu_case_range
+	},
 
 	{ "call-argcount", &cc1_warning.funcall_argcount },
 
