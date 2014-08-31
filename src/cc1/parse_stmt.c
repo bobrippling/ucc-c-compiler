@@ -541,12 +541,12 @@ flow:
 			where_cc1_current(&cse_loc);
 
 			EAT(token_case);
-			a = parse_expr_exp(ctx->scope, 0);
+			a = PARSE_EXPR_CONSTANT(ctx->scope, 0);
 			if(accept(token_elipsis)){
 				t = stmt_new_wrapper(case_range, ctx->scope);
 				t->parent = ctx->switch_target;
 				t->expr  = a;
-				t->expr2 = parse_expr_exp(ctx->scope, 0);
+				t->expr2 = PARSE_EXPR_CONSTANT(ctx->scope, 0);
 			}else{
 				t = stmt_new_wrapper(case, ctx->scope);
 				t->expr = a;
