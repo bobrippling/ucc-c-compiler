@@ -169,6 +169,8 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 				&error,
 				&state);
 
+		out_comment(octx, "### assignments to outputs");
+
 		for(params = s->bits.asm_args->params, i = 0;
 				params && *params;
 				params++, i++)
@@ -177,9 +179,11 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 			if(!param->is_output)
 				continue;
 			outputs.arr[i].val = lea_expr(param->exp, octx);
+
+			out_inline_asm_ext_output(octx, i, &outputs.arr[i], &state);
 		}
 
-		out_inline_asm_ext_end(octx, &outputs, &state);
+		out_inline_asm_ext_end(&state);
 
 		if(show_asm_error(s, &error, &outputs, &inputs)){
 			/* as above */

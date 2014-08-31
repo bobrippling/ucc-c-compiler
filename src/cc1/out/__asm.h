@@ -47,10 +47,13 @@ void out_inline_asm_ext_begin(
 		struct out_asm_error *error,
 		struct inline_asm_state *state);
 
-void out_inline_asm_ext_end(
-		out_ctx *,
-		struct constrained_val_array *outputs,
-		struct inline_asm_state *state);
+void out_inline_asm_ext_output(
+		out_ctx *octx,
+		const size_t output_i,
+		struct constrained_val *output,
+		struct inline_asm_state *);
+
+void out_inline_asm_ext_end(struct inline_asm_state *);
 
 void out_inline_asm(out_ctx *, const char *insn);
 

@@ -847,25 +847,22 @@ error:
 	free(regs.arr);
 }
 
-void out_inline_asm_ext_end(
+void out_inline_asm_ext_output(
 		out_ctx *octx,
-		struct constrained_val_array *outputs,
+		const size_t i,
+		struct constrained_val *output,
 		struct inline_asm_state *st)
 {
-	size_t i;
+	const out_val *val = output->val;
 
-	out_comment(octx, "### assignments to outputs");
+	if(st->output_temporaries[i])
+		constrain_output(octx, val, st->output_temporaries[i]);
+	else
+		out_val_release(octx, val);
+}
 
-	/* store to the output pointers */
-	for(i = 0; i < outputs->n; i++){
-		const out_val *val = outputs->arr[i].val;
-
-		if(st->output_temporaries[i])
-			constrain_output(octx, val, st->output_temporaries[i]);
-		else
-			out_val_release(octx, val);
-	}
-
+void out_inline_asm_ext_end(struct inline_asm_state *st)
+{
 	free(st->output_temporaries);
 	free(st->constraints.inputs);
 	free(st->constraints.outputs);
