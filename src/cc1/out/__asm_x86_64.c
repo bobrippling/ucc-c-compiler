@@ -588,12 +588,12 @@ static const out_val *temporary_for_output(
 			return NULL;
 
 		case C_REG:
-			if(cval->val->type == V_REG
-			&& vreg_eq(&cval->val->bits.regoff.reg, &constraint->bits.reg))
-			{
-				return NULL; /* matched */
-			}
-
+			/* need to use a temporary - a register can't match an lvalue
+			 * e.g.
+			 * __asm("mov $5, %0" : "=r"(...));
+			 * can't use a register non-temporary here as we'd need to say
+			 * mov $5, (%rax) which doesn't match the "r" constraint.
+			 */
 			return v_new_reg(octx, NULL,
 					type_dereference_decay(cval->val->t),
 					&constraint->bits.reg);
@@ -742,6 +742,7 @@ static char *format_insn(const char *format,
 			size_t this_index;
 			char *end;
 			const out_val *oval;
+			int deref = 0;
 
 			if(*p == '['){
 				ICE("TODO: named constraint");
@@ -760,20 +761,22 @@ static char *format_insn(const char *format,
 
 				oval = inputs->arr[this_index].val;
 			}else{
-				if((oval = output_temporaries[this_index]))
-					;
-				else
+				if((oval = output_temporaries[this_index])){
+					/* fine */
+				}else{
 					oval = outputs->arr[this_index].val;
+					deref = 1;
+				}
 			}
 
+
+			if(!deref)
+				deref = (oval->type == V_REG_SPILT);
 
 			{
 				const char *val_str;
 				char *op;
 				size_t oplen;
-				int deref;
-
-				deref = (oval->type == V_REG_SPILT);
 
 				val_str = impl_val_str(oval, deref);
 				oplen = strlen(val_str);
