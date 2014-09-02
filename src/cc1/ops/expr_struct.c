@@ -28,8 +28,9 @@ void fold_expr_struct(expr *e, symtable *stab)
 	const int ptr_expect = !e->expr_is_st_dot;
 	struct_union_enum_st *sue;
 	char *spel;
+	enum type_qualifier struct_qual;
 
-	fold_expr_no_decay(e->lhs, stab);
+	FOLD_EXPR(e->lhs, stab);
 	/* don't fold the rhs - just a member name */
 
 	if(e->rhs){
@@ -114,10 +115,12 @@ err:
 		FOLD_EXPR(e->lhs, stab);
 	}
 
+	/* pointer to struct - skip the pointer type and pull the quals
+	 * off the struct type */
+	struct_qual = type_qual(type_dereference_decay(e->lhs->tree_type));
+
 	/* pull qualifiers from the struct to the member */
-	e->tree_type = type_qualify(
-			e->bits.struct_mem.d->ref,
-			type_qual(e->lhs->tree_type));
+	e->tree_type = type_qualify(e->bits.struct_mem.d->ref, struct_qual);
 }
 
 static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
