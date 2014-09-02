@@ -93,6 +93,11 @@ type *type_skip_wheres(type *t)
 	return type_skip(t, ~0 & ~STOP_AT_WHERE);
 }
 
+type *type_skip_tdefs(type *t)
+{
+	return type_skip(t, ~STOP_AT_TDEF & ~STOP_AT_WHERE & ~STOP_AT_ATTR);
+}
+
 type *type_skip_non_tdefs_consts(type *t)
 {
 	return type_skip(t, STOP_AT_TDEF | STOP_AT_QUAL_CASTS);
