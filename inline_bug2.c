@@ -9,9 +9,9 @@ int *find(int *begin, int *end, int n, int cmp(int, int))
 {
 	int *i;
 	for(i = begin; i != end; i++)
-		if(cmp(*begin, n))
+		if(cmp(*begin, n)) /* s/begin/i/ */
 			break;
-	return begin;
+	return begin; /* s/begin/i/ */
 }
 
 int main()
