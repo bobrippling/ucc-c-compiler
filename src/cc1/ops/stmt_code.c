@@ -167,16 +167,18 @@ void fold_stmt_code(stmt *s)
 static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 {
 	sym *s = d->sym;
+	const enum decl_storage store = (d->store & STORE_MASK_STORE);
 
 	if(!s || s->type != sym_local)
 		return;
 
 	assert(!type_is(d->ref, type_func));
 
-	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+	switch(store){
 		case store_register:
 		case store_default:
 		case store_auto:
+		case store_typedef:
 		{
 			unsigned siz;
 			unsigned align;
@@ -185,6 +187,9 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 			if(vm){
 				siz = vla_decl_space(s->decl);
 				align = platform_word_size();
+			}else if(store == store_typedef){
+				/* non-VM typedef - no space needed */
+				break;
 			}else{
 				siz = decl_size(s->decl);
 				align = decl_align(s->decl);
@@ -195,7 +200,6 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 			break;
 		}
 
-		case store_typedef:
 		case store_static:
 		case store_extern:
 		case store_inline:
