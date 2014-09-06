@@ -136,15 +136,15 @@ static const out_val *vla_gen_size_ty(
 				const out_val *sz;
 				const out_val *new_stack_ent = NULL;
 
+				sz = vla_cached_size(t, octx);
+				if(sz)
+					return sz;
+
 				if(stack_ent){
 					new_stack_ent = out_op(octx, op_plus,
 							stack_ent,
 							out_new_l(octx, arith_ty, platform_word_size()));
 				}
-
-				sz = vla_cached_size(t, octx);
-				if(sz)
-					return sz;
 
 				sz = out_op(
 						octx, op_multiply,
