@@ -217,11 +217,13 @@ void vla_decl_init(decl *d, out_ctx *octx)
 	const out_val *v_sz;
 	const out_val *v_ptr;
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
+	type *charp = type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar));
 	const unsigned pws = platform_word_size();
 	const int is_vla = !!type_is_vla(d->ref, VLA_ANY_DIMENSION);
 	const out_val *stack_ent;
 
-	stack_ent = d->sym->outval;
+	stack_ent = out_val_retain(octx, d->sym->outval);
+	stack_ent = out_change_type(octx, stack_ent, charp);
 
 	assert(s && "no sym for vla");
 
@@ -263,17 +265,22 @@ void vla_decl_init(decl *d, out_ctx *octx)
 	}else{
 		out_val_consume(octx, v_sz);
 	}
+
+	out_val_release(octx, stack_ent);
 }
 
-static const out_val *vla_read(decl *d, out_ctx *octx, long offset)
+static const out_val *vla_read(decl *d, out_ctx *octx, long offset, type *deref_ty)
 {
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
 	const out_val *stack_ent = d->sym->outval;
 
 	out_val_retain(octx, stack_ent);
+	stack_ent = out_change_type(octx, stack_ent, sizety);
 
 	stack_ent = out_op(octx, op_plus,
 			stack_ent, out_new_l(octx, sizety, offset));
+
+	stack_ent = out_change_type(octx, stack_ent, type_ptr_to(deref_ty));
 
 	return out_deref(octx, stack_ent);
 }
@@ -281,14 +288,14 @@ static const out_val *vla_read(decl *d, out_ctx *octx, long offset)
 const out_val *vla_address(decl *d, out_ctx *octx)
 {
 	out_comment(octx, "vla address (%s)", decl_to_str(d));
-	return vla_read(d, octx, 0);
+	return vla_read(d, octx, 0, type_ptr_to(d->ref));
 }
 
 const out_val *vla_saved_ptr(decl *d, out_ctx *octx)
 {
 	out_comment(octx, "vla saved stack ptr (%s)", decl_to_str(d));
 	return out_change_type(octx,
-			vla_read(d, octx, platform_word_size()),
+			vla_read(d, octx, platform_word_size(), type_nav_btype(cc1_type_nav, type_intptr_t)),
 			type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 }
 

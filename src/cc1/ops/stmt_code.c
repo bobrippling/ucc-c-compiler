@@ -180,8 +180,9 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 		{
 			unsigned siz;
 			unsigned align;
+			const int vm = type_is_variably_modified(s->decl->ref);
 
-			if(type_is_variably_modified(s->decl->ref)){
+			if(vm){
 				siz = vla_decl_space(s->decl);
 				align = platform_word_size();
 			}else{
