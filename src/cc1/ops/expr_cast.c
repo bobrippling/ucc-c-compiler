@@ -399,6 +399,8 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		trhs = expr_cast_child(e)->tree_type;
 
 		if(!IS_DECAY_CAST(e)){
+			const enum fold_chk check_flags
+				= FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN;
 			int size_lhs, size_rhs;
 			int ptr_lhs, ptr_rhs;
 			const char *desc;
@@ -408,15 +410,12 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			else
 				desc = "cast";
 
-			fold_check_expr(expr_cast_child(e),
-					FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
-					desc);
+
+			fold_check_expr(expr_cast_child(e), check_flags, desc);
 
 			if(type_is_void(tlhs))
 				return; /* fine */
-			fold_check_expr(e,
-					FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID,
-					desc);
+			fold_check_expr(e, check_flags, desc);
 
 			if(!type_is_complete(tlhs)){
 				die_at(&e->where, "%scast to incomplete type %s",
