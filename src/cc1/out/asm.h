@@ -7,6 +7,8 @@ enum section_type
 	SECTION_DATA,
 	SECTION_BSS,
 	SECTION_RODATA,
+	SECTION_CTORS,
+	SECTION_DTORS,
 	SECTION_DBG_ABBREV,
 	SECTION_DBG_INFO,
 	SECTION_DBG_LINE,
@@ -45,6 +47,9 @@ void asm_declare_stringlit(enum section_type, const stringlit *);
 
 #ifdef DECL_H
 void asm_declare_decl_init(decl *); /* x: .qword ... */
+
+void asm_declare_constructor(decl *d);
+void asm_declare_destructor(decl *d);
 
 void asm_predeclare_extern(decl *d);
 void asm_predeclare_global(decl *d);

@@ -782,6 +782,29 @@ static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
 	}
 }
 
+static void fold_decl_check_ctor_dtor(decl *d, symtable *stab)
+{
+	attribute *ctor, *dtor;
+
+	ctor = attribute_present(d, attr_constructor);
+	dtor = attribute_present(d, attr_destructor);
+
+	if(!ctor && !dtor)
+		return;
+
+	if(!type_is(d->ref, type_func)){
+		cc1_warn_at(&(ctor ? ctor : dtor)->where,
+				attr_ctor_dtor_bad,
+				"%s attribute on non-function",
+				ctor ? "constructor" : "destructor");
+	}else if(stab->parent){
+		cc1_warn_at(&(ctor ? ctor : dtor)->where,
+				attr_ctor_dtor_bad,
+				"%s attribute on non-global function",
+				ctor ? "constructor" : "destructor");
+	}
+}
+
 void fold_decl(decl *d, symtable *stab)
 {
 	/* this is called from wherever we can define a
@@ -820,6 +843,8 @@ void fold_decl(decl *d, symtable *stab)
 					"weak attribute on declaration without external linkage");
 			fold_had_error = 1;
 		}
+
+		fold_decl_check_ctor_dtor(d, stab);
 	}
 
 	if(type_is(d->ref, type_func)){

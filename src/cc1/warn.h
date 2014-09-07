@@ -11,6 +11,7 @@ struct cc1_warning
 	unsigned char asm_badchar;
 	unsigned char assign_mismatch;
 	unsigned char attr_badcleanup;
+	unsigned char attr_ctor_dtor_bad;
 	unsigned char attr_format_baddecl;
 	unsigned char attr_format_unknown;
 	unsigned char attr_noderef;

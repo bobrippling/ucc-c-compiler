@@ -117,6 +117,8 @@ static struct warn_str
 
 	{ "attr-badcleanup", &cc1_warning.attr_badcleanup },
 
+	{ "attr-bad-ctor-dtor", &cc1_warning.attr_ctor_dtor_bad },
+
 	{ "attr-printf-bad", &cc1_warning.attr_printf_bad },
 	{ "attr-printf-toomany", &cc1_warning.attr_printf_toomany },
 	{ "attr-printf-unknown", &cc1_warning.attr_printf_unknown },
@@ -344,6 +346,8 @@ struct section sections[NUM_SECTIONS] = {
 	{ "data", QUOTE(SECTION_NAME_DATA) },
 	{ "bss",  QUOTE(SECTION_NAME_BSS) },
 	{ "rodata", QUOTE(SECTION_NAME_RODATA) },
+	{ "ctors", QUOTE(SECTION_NAME_CTORS) },
+	{ "dtors", QUOTE(SECTION_NAME_DTORS) },
 	{ "dbg_abrv", QUOTE(SECTION_NAME_DBG_ABBREV) },
 	{ "dbg_info", QUOTE(SECTION_NAME_DBG_INFO) },
 	{ "dbg_line", QUOTE(SECTION_NAME_DBG_LINE) },

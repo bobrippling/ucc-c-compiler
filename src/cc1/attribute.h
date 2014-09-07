@@ -27,6 +27,8 @@ struct attribute
 		attr_aligned,
 		attr_weak,
 		attr_cleanup,
+		attr_constructor,
+		attr_destructor,
 		attr_ucc_debug, /* logs out a message when handled */
 		attr_LAST
 		/*
