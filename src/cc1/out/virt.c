@@ -95,7 +95,8 @@ static ucc_wur const out_val *v_spill_reg(
 {
 	const out_val *stack_pos = out_aalloc(octx,
 			type_size(v_reg->t, NULL),
-			type_align(v_reg->t, NULL));
+			type_align(v_reg->t, NULL),
+			v_reg->t);
 
 	out_val_retain(octx, v_reg);
 

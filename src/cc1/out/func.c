@@ -71,7 +71,7 @@ static void callee_save_or_restore(
 	if(!stack_n)
 		return;
 
-	stack_locn = out_aalloc(octx, stack_n, /*align*/voidpsz);
+	stack_locn = out_aalloc(octx, stack_n, /*align*/voidpsz, voidp);
 
 	restore_blk = octx->epilogue_blk;
 

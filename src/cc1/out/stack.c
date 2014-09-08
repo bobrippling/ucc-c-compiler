@@ -37,16 +37,18 @@ static void align_sz(unsigned *psz, unsigned align)
 		*psz = pack_to_align(*psz, align);
 }
 
-const out_val *out_aalloc(out_ctx *octx, unsigned sz, unsigned align)
+const out_val *out_aalloc(
+		out_ctx *octx, unsigned sz, unsigned align, type *in_ty)
 {
-	type *charp = type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar));
+	type *ty = type_ptr_to(in_ty
+		? in_ty : type_nav_btype(cc1_type_nav, type_nchar));
 
 	align_sz(&sz, align);
 
 	/* packing takes care of everything */
 	pack_next(&octx->cur_stack_sz, NULL, sz, align);
 
-	return v_new_bp3_below(octx, NULL, charp, octx->cur_stack_sz);
+	return v_new_bp3_below(octx, NULL, ty, octx->cur_stack_sz);
 }
 
 void out_adealloc(out_ctx *octx, const out_val **val)

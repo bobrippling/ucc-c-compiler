@@ -418,7 +418,7 @@ void impl_func_prologue_save_call_regs(
 			const out_val *stack_loc;
 			type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 
-			stack_loc = out_aalloc(octx, (n_call_f + n_call_i) * ws, ws);
+			stack_loc = out_aalloc(octx, (n_call_f + n_call_i) * ws, ws, arithty);
 
 			for(i_arg = i_i = i_f = i_stk = i_arg_stk = 0;
 					i_arg < nargs;
@@ -512,7 +512,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	/* space for all call regs */
 	stk_spill = out_aalloc(octx,
 			(N_CALL_REGS_I + N_CALL_REGS_F * 2) * pws,
-			pws);
+			pws, ty_integral);
 
 	/* go backwards, as we want registers pushed in reverse
 	 * so we can iterate positively.
@@ -1706,6 +1706,7 @@ const out_val *impl_call(
 		const out_val *fn, const out_val **args,
 		type *fnty)
 {
+	type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 	const unsigned pws = platform_word_size();
 	const unsigned nargs = dynarray_count(args);
 	char *const float_arg = umalloc(nargs);
@@ -1756,7 +1757,7 @@ const out_val *impl_call(
 	if(arg_stack.sz > 0){
 		out_comment(octx, "stack space for %lu arguments", arg_stack.sz);
 		/* this aligns the stack-ptr and returns arg_stack padded */
-		arg_stack.vptr = out_aalloc(octx, arg_stack.sz * pws, pws);
+		arg_stack.vptr = out_aalloc(octx, arg_stack.sz * pws, pws, arithty);
 	}
 
 	/* 16 byte for SSE - special case here as mstack_align may be less */
@@ -1764,7 +1765,6 @@ const out_val *impl_call(
 		v_stack_needalign(octx, 16);
 
 	if(arg_stack.sz > 0){
-		type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 		unsigned nfloats = 0, nints = 0; /* shadow */
 		const out_val *stack_iter;
 

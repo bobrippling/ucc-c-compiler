@@ -186,7 +186,7 @@ static void gen_auto_fixedsz_decl(decl *d, out_ctx *octx)
 			align = decl_align(s->decl);
 
 			assert(!s->outval);
-			s->outval = out_aalloc(octx, siz, align);
+			s->outval = out_aalloc(octx, siz, align, s->decl->ref);
 			break;
 		}
 
