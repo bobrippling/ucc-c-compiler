@@ -261,10 +261,9 @@ static void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 	for(diter = stab->decls; diter && *diter; diter++){
 		decl *d = *diter;
 
-		if(!d->sym || d->sym->type != sym_local)
+		if(!d->sym || d->sym->type != sym_local || type_is(d->ref, type_func))
 			continue;
 
-		assert(!type_is(d->ref, type_func));
 		out_adealloc(octx, &d->sym->outval);
 	}
 }
