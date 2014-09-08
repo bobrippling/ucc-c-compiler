@@ -141,6 +141,7 @@ label:
 		}
 
 		case sym_arg:
+			octx->used_stack = 1;
 			return out_val_retain(octx, sym->outval);
 	}
 
