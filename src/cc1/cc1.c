@@ -409,13 +409,15 @@ int where_in_sysheader(where *w)
 	return 0;
 }
 
-#undef cc1_warn_at
-void cc1_warn_at(
+void cc1_warn_at_w(
 		struct where *where, unsigned char *pwarn,
 		const char *fmt, ...)
 {
 	va_list l;
 	struct where backup;
+
+	if(!*pwarn)
+		return;
 
 	if(!where)
 		where = where_cc1_current(&backup);

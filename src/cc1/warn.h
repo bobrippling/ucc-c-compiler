@@ -137,15 +137,14 @@ struct cc1_warning
 
 extern struct cc1_warning cc1_warning;
 
-void cc1_warn_at(
+void cc1_warn_at_w(
 		struct where *where,
 		unsigned char *pwarn,
 		const char *fmt, ...)
 	ucc_printflike(3, 4);
 
 #define cc1_warn_at(loc, warn, ...) do{ \
-		if(cc1_warning.warn) \
-			cc1_warn_at(loc, &cc1_warning.warn, __VA_ARGS__); \
+		cc1_warn_at_w(loc, &cc1_warning.warn, __VA_ARGS__); \
 	}while(0)
 
 #endif
