@@ -1,7 +1,7 @@
 #ifndef OUT_STACK_H
 #define OUT_STACK_H
 
-typedef unsigned long v_stackt;
+#include "vstack_t.h"
 
 /* emit an actual stack insn */
 void v_stack_adj(out_ctx *octx, v_stackt amt, int sub);
@@ -11,8 +11,8 @@ void v_stack_needalign(out_ctx *octx, unsigned align);
 
 void v_stack_realign(out_ctx *octx, unsigned align, int force_mask);
 
-v_stackt v_aalloc(out_ctx *, unsigned sz, unsigned align, const char *);
-v_stackt v_aalloc_noop(out_ctx *, unsigned sz, unsigned align, const char *);
+ucc_wur v_stackt v_aalloc(out_ctx *, unsigned sz, unsigned align, const char *);
+ucc_wur v_stackt v_aalloc_noop(out_ctx *, unsigned sz, unsigned align, const char *);
 
 
 #if 0

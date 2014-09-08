@@ -1,3 +1,17 @@
+#include <stddef.h>
+
+#include "../type.h"
+#include "../type_nav.h"
+#include "../pack.h"
+
+#include "forwards.h"
+
+#include "val.h"
+#include "ctx.h"
+#include "blk.h"
+
+#include "out.h"
+
 #include "stack.h"
 
 void v_stack_adj(out_ctx *octx, v_stackt amt, int sub)
@@ -13,15 +27,15 @@ void v_stack_adj(out_ctx *octx, v_stackt amt, int sub)
 					amt)));
 }
 
+#if 0
 static void octx_set_stack_sz(out_ctx *octx, unsigned new)
 {
-	octx->var_stack_sz = new;
+	octx->cur_stack_sz = new;
 
-	if(octx->var_stack_sz > octx->max_stack_sz)
+	if(octx->cur_stack_sz > octx->max_stack_sz)
 		octx->max_stack_sz = octx->var_stack_sz;
 }
 
-#if 0
 unsigned v_alloc_stack2(
 		out_ctx *octx,
 		const unsigned sz_initial, int noop, const char *desc)
@@ -97,7 +111,6 @@ unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
 	}
 	return 0;
 }
-#endif
 
 void v_need_stackalign(out_ctx *octx, unsigned align)
 {
@@ -105,14 +118,15 @@ void v_need_stackalign(out_ctx *octx, unsigned align)
 	 * it might not be at a 16-byte alignment */
 	octx->max_align = MAX(octx->max_align, align);
 }
+#endif
 
 const out_val *out_aalloc(out_ctx *octx, unsigned sz, unsigned align)
 {
 	/* align greater than size - we increase
 	 * size so it can be aligned to 'align' */
-	if(align > siz)
-		siz = pack_to_align(siz, align);
+	if(align > sz)
+		sz = pack_to_align(sz, align);
 
 	/* packing takes care of everything */
-	pack_next(&current, NULL, siz, align);
+	pack_next(&octx->cur_stack_sz, NULL, sz, align);
 }

@@ -35,10 +35,11 @@ const out_val *v_reg_apply_offset(out_ctx *octx, const out_val *vreg) ucc_wur;
 
 const out_val *v_to_stack_mem(out_ctx *octx, const out_val *vp, v_stackt stack_pos) ucc_wur;
 
-void v_reg_to_stack(
+const out_val *v_reg_to_stack(
 		out_ctx *octx,
 		const struct vreg *vr,
-		type *ty, v_stackt where);
+		type *ty, v_stackt where)
+	ucc_wur;
 
 
 /* register saving */

@@ -298,12 +298,12 @@ static void try_stack_reclaim(out_ctx *octx)
 		if(iter->val.retains > 0)
 			return;
 
-	unsigned reclaim = octx->var_stack_sz - octx->stack_sz_initial;
+	unsigned reclaim = octx->cur_stack_sz - octx->stack_sz_initial;
 	if(reclaim){
 		if(fopt_mode & FOPT_VERBOSE_ASM)
 			out_comment(octx, "reclaim %u", reclaim);
 
-		octx->var_stack_sz = octx->stack_sz_initial;
+		octx->cur_stack_sz = octx->stack_sz_initial;
 	}
 }
 

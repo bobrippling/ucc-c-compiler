@@ -21,9 +21,9 @@
 #include "type_nav.h"
 
 static void struct_pack(
-		decl *d, unsigned *poffset, unsigned sz, unsigned align)
+		decl *d, unsigned long *poffset, unsigned sz, unsigned align)
 {
-	unsigned after_space;
+	unsigned long after_space;
 
 	pack_next(poffset, &after_space, sz, align);
 	/* offset is the end of the decl, after_space is the start */
@@ -32,7 +32,7 @@ static void struct_pack(
 }
 
 static void struct_pack_finish_bitfield(
-		unsigned *poffset, unsigned *pbitfield_current)
+		unsigned long *poffset, unsigned *pbitfield_current)
 {
 	/* gone from a bitfield to a normal field - pad by the overflow */
 	unsigned change = *pbitfield_current / CHAR_BIT;
@@ -143,7 +143,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		unsigned bf_cur_lim;
 		unsigned align_max = 1;
 		unsigned sz_max = 0;
-		unsigned offset = 0;
+		unsigned long offset = 0;
 		int realign_next = 0;
 		int submemb_const = 0;
 		struct

@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "stmt_code.h"
@@ -165,7 +166,6 @@ void fold_stmt_code(stmt *s)
 static void gen_auto_fixedsz_decl(decl *d, out_ctx *octx)
 {
 	sym *s = d->sym;
-	int is_typedef = 0;
 
 	if(!s || s->type != sym_local)
 		return;
@@ -265,7 +265,7 @@ static void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 			continue;
 
 		assert(!type_is(d->ref, type_func));
-		out_adealloc(octx, s->outval);
+		out_adealloc(octx, d->sym->outval);
 	}
 }
 

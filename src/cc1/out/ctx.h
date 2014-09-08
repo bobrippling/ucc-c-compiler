@@ -1,6 +1,8 @@
 #ifndef CTX_H
 #define CTX_H
 
+#include "vstack_t.h"
+
 typedef struct out_val_list out_val_list;
 
 struct out_ctx
@@ -22,11 +24,11 @@ struct out_ctx
 	unsigned long nblks; /* used for unique label gen. */
 
 	/* fixed: */
-	int stack_sz_initial;
-	int stack_local_offset, stack_variadic_offset;
+	v_stackt stack_sz_initial;
+	v_stackt stack_local_offset, stack_variadic_offset;
 	/* vary: */
-	int var_stack_sz, max_stack_sz;
-	int stack_n_alloc; /* just the alloc_n() part */
+	v_stackt cur_stack_sz;
+	v_stackt stack_n_alloc; /* just the alloc_n() part */
 	unsigned max_align;
 
 	unsigned check_flags : 1; /* decay flags? */

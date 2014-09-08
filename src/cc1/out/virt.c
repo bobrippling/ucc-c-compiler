@@ -62,7 +62,7 @@ const out_val *v_to_stack_mem(out_ctx *octx, const out_val *vp, v_stackt stack_p
 	return store;
 }
 
-void v_reg_to_stack(
+const out_val *v_reg_to_stack(
 		out_ctx *octx,
 		const struct vreg *vr,
 		type *ty, v_stackt where)
@@ -71,8 +71,7 @@ void v_reg_to_stack(
 
 	/* value has been stored -
 	 * don't need to flush the pointer we get returned */
-	out_val_release(octx,
-			v_to_stack_mem(octx, reg, where));
+	return v_to_stack_mem(octx, reg, where);
 }
 
 static int v_in(const out_val *vp, enum vto to)
@@ -100,9 +99,6 @@ static ucc_wur const out_val *v_spill_reg(
 		out_ctx *octx, const out_val *v_reg)
 {
 	v_stackt stack_pos;
-
-	out_comment(octx, "spill @ stack=%u, max=%u",
-			octx->var_stack_sz, octx->max_stack_sz);
 
 	stack_pos = v_aalloc(octx,
 			type_size(v_reg->t, NULL),

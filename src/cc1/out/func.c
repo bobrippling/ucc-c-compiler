@@ -34,12 +34,12 @@ const out_val *out_call(out_ctx *octx,
 
 static void callee_save_or_restore_1(
 		out_ctx *octx, out_blk *in_blk,
-		struct vreg *cs, long stack_pos,
+		struct vreg *cs, const out_val *stack_pos,
 		type *voidpp, int reg2mem)
 {
 	out_current_blk(octx, in_blk);
 	{
-		const out_val *stk = v_new_bp3_below(octx, NULL, voidpp, stack_pos);
+		const out_val *stk = out_val_retain(octx, stack_pos);
 
 		if(reg2mem){
 			const out_val *reg = v_new_reg(octx, NULL, type_is_ptr(voidpp), cs);
@@ -57,11 +57,13 @@ static void callee_save_or_restore(
 	long stack_n = 0;
 	out_blk *restore_blk;
 	unsigned voidpsz;
-	type *voidp, *voidpp;
+	type *voidp, *voidpp, *arithty;
+	const out_val *stack_locn;
 
 	voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 	voidpp = type_ptr_to(voidp);
 	voidpsz = type_size(voidp, NULL);
+	arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 
 	for(i = octx->used_callee_saved; i && i->is_float != 2; i++)
 		stack_n += voidpsz;
@@ -69,17 +71,19 @@ static void callee_save_or_restore(
 	if(!stack_n)
 		return;
 
-	v_aalloc(octx, stack_n, /*align*/voidpsz, "callee-save");
+	stack_locn = out_aalloc(octx, stack_n, /*align*/voidpsz);
 
-	stack_n = octx->var_stack_sz; /* may be different - variadic functions */
 	restore_blk = octx->epilogue_blk;
 
 	for(i = octx->used_callee_saved; i && i->is_float != 2; i++){
-		callee_save_or_restore_1(octx, spill_blk, i, stack_n, voidpp, 1);
-		callee_save_or_restore_1(octx, restore_blk, i, stack_n, voidpp, 0);
+		callee_save_or_restore_1(octx, spill_blk, i, stack_locn, voidpp, 1);
+		callee_save_or_restore_1(octx, restore_blk, i, stack_locn, voidpp, 0);
 
-		stack_n -= voidpsz;
+		stack_locn = out_op(octx, op_plus, stack_locn,
+				out_new_l(octx, arithty, voidpsz));
 	}
+
+	out_val_release(octx, stack_locn);
 }
 
 void out_func_epilogue(
@@ -115,21 +119,15 @@ void out_func_epilogue(
 		to_flush = octx->first_blk;
 		out_current_blk(octx, octx->first_blk);
 		{
-			unsigned stack_amt;
-
-			if(fopt_mode & FOPT_VERBOSE_ASM){
-				out_comment(octx, "spill space %u, alloc_n space %u",
-						octx->max_stack_sz - octx->stack_sz_initial,
-						octx->stack_n_alloc);
-			}
+			v_stackt stack_amt;
 
 			/* must have more or equal stack to the alloc_n, because alloc_n will
 			 * always add to {var,max}_stack_sz with possible padding,
 			 * and that same value (minus padding) to stack_n_alloc */
-			assert(octx->max_stack_sz >= octx->stack_n_alloc);
+			assert(octx->cur_stack_sz >= octx->stack_n_alloc);
 
 			/* TODO: fix align */
-			stack_amt = octx->max_stack_sz - octx->stack_n_alloc;
+			stack_amt = octx->cur_stack_sz - octx->stack_n_alloc;
 			if(octx->max_align)
 				stack_amt = pack_to_align(stack_amt, octx->max_align);
 
@@ -157,8 +155,7 @@ void out_func_epilogue(
 
 	octx->stack_local_offset =
 		octx->stack_sz_initial =
-		octx->var_stack_sz =
-		octx->max_stack_sz =
+		octx->cur_stack_sz =
 		octx->stack_n_alloc = 0;
 }
 
@@ -166,13 +163,13 @@ void out_func_prologue(
 		out_ctx *octx, const char *sp,
 		type *fnty,
 		int nargs, int variadic,
-		int arg_offsets[], int *local_offset)
+		const out_val *argvals[], int *local_offset)
 {
 	out_blk *post_prologue = out_blk_new(octx, "post_prologue");
 
 	octx->current_fnty = fnty;
 
-	assert(octx->var_stack_sz == 0 && "non-empty stack for new func");
+	assert(octx->cur_stack_sz == 0 && "non-empty stack for new func");
 
 	octx->check_flags = 1;
 
@@ -189,17 +186,17 @@ void out_func_prologue(
 		if(mopt_mode & MOPT_STACK_REALIGN)
 			v_stack_realign(octx, cc1_mstack_align, 1);
 
-		impl_func_prologue_save_call_regs(octx, fnty, nargs, arg_offsets);
+		impl_func_prologue_save_call_regs(octx, fnty, nargs, argvals);
 
 		if(variadic) /* save variadic call registers */
 			impl_func_prologue_save_variadic(octx, fnty);
 
 		/* setup "pointers" to the right place in the stack */
-		octx->stack_variadic_offset = octx->var_stack_sz - platform_word_size();
-		octx->stack_local_offset = octx->var_stack_sz;
+		octx->stack_variadic_offset = octx->cur_stack_sz - platform_word_size();
+		octx->stack_local_offset = octx->cur_stack_sz;
 		*local_offset = octx->stack_local_offset;
 
-		octx->stack_sz_initial = octx->var_stack_sz;
+		octx->stack_sz_initial = octx->cur_stack_sz;
 	}
 	octx->in_prologue = 0;
 

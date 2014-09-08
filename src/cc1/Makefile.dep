@@ -195,7 +195,7 @@ gen_asm.o: gen_asm.c ../util/util.h ../util/warn.h ../util/where.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h vla.h type_is.h \
  out/dbg.h gen_asm.h out/lbl.h out/asm.h gen_style.h decl_init.h \
- out/val.h out/ctx.h
+ out/val.h out/ctx.h out/vstack_t.h
 gen_c.o: gen_c.c
 gen_str.o: gen_str.c ../util/util.h ../util/warn.h ../util/where.h \
  ../util/compiler.h ../util/platform.h ../util/dynarray.h ../util/dyn.h \
@@ -410,7 +410,7 @@ vla.o: vla.c ../util/platform.h ../util/compiler.h decl.h type.h num.h \
  ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \
  ops/expr_sizeof.h ops/expr_val.h ops/expr_stmt.h ops/expr_deref.h \
  ops/expr_struct.h ops/expr_compound_lit.h ops/expr_string.h gen_asm.h \
- out/val.h out/ctx.h vla.h
+ out/val.h out/ctx.h out/vstack_t.h vla.h
 ops/__builtin.o: ops/__builtin.c ops/../../util/util.h ops/../../util/warn.h \
  ops/../../util/where.h ops/../../util/compiler.h \
  ops/../../util/dynarray.h ops/../../util/dyn.h ops/../../util/alloc.h \
@@ -1412,8 +1412,8 @@ out/alloca.o: out/alloca.c out/out.h out/../type.h out/../num.h \
  out/../ops/expr_sizeof.h out/../ops/expr_val.h out/../ops/expr_stmt.h \
  out/../ops/expr_deref.h out/../ops/expr_struct.h \
  out/../ops/expr_compound_lit.h out/../ops/expr_string.h out/virt.h \
- out/stack.h out/impl.h out/../../util/compiler.h out/x86_64.h \
- out/../cc1.h out/../../util/std.h out/../warn.h
+ out/stack.h out/vstack_t.h out/impl.h out/../../util/compiler.h \
+ out/x86_64.h out/../cc1.h out/../../util/std.h out/../warn.h
 out/asm.o: out/asm.c out/../../util/util.h out/../../util/warn.h \
  out/../../util/where.h out/../../util/compiler.h \
  out/../../util/platform.h out/../../util/alloc.h \
@@ -1458,17 +1458,18 @@ out/bitfield.o: out/bitfield.c out/../type.h out/../num.h out/../btype.h \
 out/blk.o: out/blk.c out/../../util/alloc.h out/../../util/compiler.h \
  out/../../util/dynarray.h out/../../util/dyn.h out/../type.h \
  out/../num.h out/../btype.h out/../../util/where.h out/../num.h \
- out/../str.h out/val.h out/forwards.h out/ctx.h out/out.h out/../sym.h \
- out/../decl.h out/../type.h out/../attribute.h out/../retain.h \
- out/../../util/dynmap.h out/../op.h out/lbl.h out/dbg.h out/blk.h \
- out/impl_jmp.h out/asm.h out/../cc1.h out/../../util/std.h out/../warn.h
+ out/../str.h out/val.h out/forwards.h out/ctx.h out/vstack_t.h out/out.h \
+ out/../sym.h out/../decl.h out/../type.h out/../attribute.h \
+ out/../retain.h out/../../util/dynmap.h out/../op.h out/lbl.h out/dbg.h \
+ out/blk.h out/impl_jmp.h out/asm.h out/../cc1.h out/../../util/std.h \
+ out/../warn.h
 out/ctrl.o: out/ctrl.c out/../../util/dynarray.h out/../../util/dyn.h \
  out/forwards.h out/blk.h out/out.h out/../type.h out/../num.h \
  out/../btype.h out/../../util/where.h out/../../util/compiler.h \
  out/../num.h out/../sym.h out/../decl.h out/../type.h out/../attribute.h \
  out/../retain.h out/../../util/dynmap.h out/../op.h out/asm.h out/val.h \
- out/impl.h out/../../util/compiler.h out/x86_64.h out/ctx.h out/virt.h \
- out/stack.h
+ out/impl.h out/../../util/compiler.h out/x86_64.h out/ctx.h \
+ out/vstack_t.h out/virt.h out/stack.h
 out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
  out/../../util/platform.h out/../../util/util.h out/../../util/warn.h \
  out/../../util/where.h out/../../util/dynarray.h out/../../util/dyn.h \
@@ -1498,9 +1499,9 @@ out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
 out/free.o: out/free.c out/../../util/dynmap.h out/../../util/dyn.h \
  out/../../util/dynarray.h out/../type.h out/../num.h out/../btype.h \
  out/../../util/where.h out/../../util/compiler.h out/forwards.h \
- out/val.h out/blk.h out/ctx.h out/out.h out/../num.h out/../sym.h \
- out/../decl.h out/../type.h out/../attribute.h out/../retain.h \
- out/../../util/dynmap.h out/../op.h
+ out/val.h out/blk.h out/ctx.h out/vstack_t.h out/out.h out/../num.h \
+ out/../sym.h out/../decl.h out/../type.h out/../attribute.h \
+ out/../retain.h out/../../util/dynmap.h out/../op.h
 out/func.o: out/func.c out/../type.h out/../num.h out/../btype.h \
  out/../../util/where.h out/../../util/compiler.h out/../type_nav.h \
  out/../sue.h out/../type.h out/../decl.h out/../attribute.h \
@@ -1516,9 +1517,9 @@ out/func.o: out/func.c out/../type.h out/../num.h out/../btype.h \
  out/../ops/expr_deref.h out/../ops/expr_struct.h \
  out/../ops/expr_compound_lit.h out/../ops/expr_string.h out/../type_is.h \
  out/../pack.h out/val.h out/forwards.h out/out.h out/asm.h out/impl.h \
- out/../../util/compiler.h out/x86_64.h out/ctx.h out/virt.h out/stack.h \
- out/blk.h out/dbg.h out/../cc1.h out/../../util/std.h out/../warn.h \
- out/../../util/platform.h
+ out/../../util/compiler.h out/x86_64.h out/ctx.h out/vstack_t.h \
+ out/virt.h out/stack.h out/blk.h out/dbg.h out/../cc1.h \
+ out/../../util/std.h out/../warn.h out/../../util/platform.h
 out/impl.o: out/impl.c out/../../util/util.h out/../../util/warn.h \
  out/../../util/where.h out/../../util/compiler.h out/../decl.h \
  out/../type.h out/../num.h out/../btype.h out/../../util/where.h \
@@ -1552,7 +1553,8 @@ out/new.o: out/new.c out/../../util/dynarray.h out/../../util/dyn.h \
  out/../ops/expr_deref.h out/../ops/expr_struct.h \
  out/../ops/expr_compound_lit.h out/../ops/expr_string.h out/../type_is.h \
  out/../sym.h out/../vla.h out/out.h out/val.h out/forwards.h out/ctx.h \
- out/blk.h out/impl.h out/../../util/compiler.h out/x86_64.h
+ out/vstack_t.h out/blk.h out/impl.h out/../../util/compiler.h \
+ out/x86_64.h
 out/op.o: out/op.c out/../type.h out/../num.h out/../btype.h \
  out/../../util/where.h out/../../util/compiler.h out/../type_is.h \
  out/../type_nav.h out/../sue.h out/../type.h out/../decl.h \
@@ -1568,8 +1570,8 @@ out/op.o: out/op.c out/../type.h out/../num.h out/../btype.h \
  out/../ops/expr_deref.h out/../ops/expr_struct.h \
  out/../ops/expr_compound_lit.h out/../ops/expr_string.h out/out.h \
  out/val.h out/forwards.h out/asm.h out/impl.h out/../../util/compiler.h \
- out/x86_64.h out/virt.h out/stack.h out/../const.h out/../cc1.h \
- out/../../util/std.h out/../warn.h out/../vla.h
+ out/x86_64.h out/virt.h out/stack.h out/vstack_t.h out/../const.h \
+ out/../cc1.h out/../../util/std.h out/../warn.h out/../vla.h
 out/out.o: out/out.c out/../../util/util.h out/../../util/warn.h \
  out/../../util/where.h out/../../util/compiler.h out/../../util/alloc.h \
  out/../../util/dynarray.h out/../../util/dyn.h out/../../util/platform.h \
@@ -1588,8 +1590,23 @@ out/out.o: out/out.c out/../../util/util.h out/../../util/warn.h \
  out/../ops/expr_compound_lit.h out/../ops/expr_string.h out/../type_is.h \
  out/asm.h out/out.h out/val.h out/forwards.h out/impl.h \
  out/../../util/compiler.h out/x86_64.h out/lbl.h out/virt.h out/stack.h \
- out/ctx.h out/blk.h out/dbg.h out/write.h out/bitfield.h
-out/stack.o: out/stack.c out/stack.h
+ out/vstack_t.h out/ctx.h out/blk.h out/dbg.h out/write.h out/bitfield.h
+out/stack.o: out/stack.c out/../type.h out/../num.h out/../btype.h \
+ out/../../util/where.h out/../../util/compiler.h out/../type_nav.h \
+ out/../sue.h out/../type.h out/../decl.h out/../attribute.h \
+ out/../retain.h out/../expr.h out/../strings.h out/../../util/dynmap.h \
+ out/../../util/dyn.h out/../op.h out/../sym.h out/../const.h \
+ out/../out/out.h out/../out/../type.h out/../out/../num.h \
+ out/../out/../sym.h out/../out/../op.h out/../out/forwards.h \
+ out/../../util/compiler.h out/../ops/expr_addr.h \
+ out/../ops/expr_assign.h out/../ops/expr_assign_compound.h \
+ out/../ops/expr_cast.h out/../ops/expr_comma.h out/../ops/expr_funcall.h \
+ out/../ops/expr_identifier.h out/../ops/expr_if.h out/../ops/expr_op.h \
+ out/../ops/expr_sizeof.h out/../ops/expr_val.h out/../ops/expr_stmt.h \
+ out/../ops/expr_deref.h out/../ops/expr_struct.h \
+ out/../ops/expr_compound_lit.h out/../ops/expr_string.h out/../pack.h \
+ out/forwards.h out/val.h out/ctx.h out/vstack_t.h out/blk.h out/out.h \
+ out/stack.h
 out/val.o: out/val.c out/../../util/alloc.h out/../../util/compiler.h \
  out/../type.h out/../num.h out/../btype.h out/../../util/where.h \
  out/../type_nav.h out/../sue.h out/../type.h out/../decl.h \
@@ -1604,9 +1621,9 @@ out/val.o: out/val.c out/../../util/alloc.h out/../../util/compiler.h \
  out/../ops/expr_sizeof.h out/../ops/expr_val.h out/../ops/expr_stmt.h \
  out/../ops/expr_deref.h out/../ops/expr_struct.h \
  out/../ops/expr_compound_lit.h out/../ops/expr_string.h out/../macros.h \
- out/val.h out/forwards.h out/ctx.h out/virt.h out/stack.h out/../op.h \
- out/asm.h out/impl.h out/../../util/compiler.h out/x86_64.h out/out.h \
- out/../cc1.h out/../../util/std.h out/../warn.h
+ out/val.h out/forwards.h out/ctx.h out/vstack_t.h out/virt.h out/stack.h \
+ out/../op.h out/asm.h out/impl.h out/../../util/compiler.h out/x86_64.h \
+ out/out.h out/../cc1.h out/../../util/std.h out/../warn.h
 out/virt.o: out/virt.c out/../../util/alloc.h out/../../util/compiler.h \
  out/../type.h out/../num.h out/../btype.h out/../../util/where.h \
  out/../type_nav.h out/../sue.h out/../type.h out/../decl.h \
@@ -1622,8 +1639,8 @@ out/virt.o: out/virt.c out/../../util/alloc.h out/../../util/compiler.h \
  out/../ops/expr_deref.h out/../ops/expr_struct.h \
  out/../ops/expr_compound_lit.h out/../ops/expr_string.h out/../type_is.h \
  out/../pack.h out/../cc1.h out/../../util/std.h out/../warn.h out/val.h \
- out/forwards.h out/out.h out/virt.h out/stack.h out/ctx.h out/asm.h \
- out/impl.h out/../../util/compiler.h out/x86_64.h
+ out/forwards.h out/out.h out/virt.h out/stack.h out/vstack_t.h out/ctx.h \
+ out/asm.h out/impl.h out/../../util/compiler.h out/x86_64.h
 out/vm.o: out/vm.c out/../../util/util.h out/../../util/warn.h \
  out/../../util/where.h out/../../util/compiler.h out/impl.h \
  out/../../util/compiler.h out/x86_64.h out/../cc1.h out/../../util/std.h \
@@ -1632,8 +1649,8 @@ out/write.o: out/write.c out/../../util/dynarray.h out/../../util/dyn.h \
  out/../../util/where.h out/../../util/compiler.h out/../../util/alloc.h \
  out/../type.h out/../num.h out/../btype.h out/../../util/where.h \
  out/../num.h out/asm.h out/write.h out/../../util/compiler.h \
- out/forwards.h out/dbg.h out/lbl.h out/val.h out/ctx.h out/blk.h \
- out/../cc1.h out/../../util/std.h out/../warn.h
+ out/forwards.h out/dbg.h out/lbl.h out/val.h out/ctx.h out/vstack_t.h \
+ out/blk.h out/../cc1.h out/../../util/std.h out/../warn.h
 out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/warn.h \
  out/../../util/where.h out/../../util/compiler.h out/../../util/alloc.h \
  out/../../util/dynarray.h out/../../util/dyn.h out/../../util/platform.h \
@@ -1654,4 +1671,4 @@ out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/warn.h \
  out/../warn.h out/val.h out/forwards.h out/asm.h out/impl.h \
  out/../../util/compiler.h out/x86_64.h out/impl_jmp.h out/common.h \
  out/out.h out/lbl.h out/write.h out/dbg.h out/virt.h out/stack.h \
- out/ctx.h out/blk.h
+ out/vstack_t.h out/ctx.h out/blk.h
