@@ -193,6 +193,7 @@ static struct warn_str
 
 	{ "init-missing-braces", &cc1_warning.init_missing_braces },
 	{ "init-missing-struct", &cc1_warning.init_missing_struct },
+	{ "init-missing-struct-zero", &cc1_warning.init_missing_struct_zero },
 	{ "init-obj-discard", &cc1_warning.init_obj_discard },
 	{ "init-overlong-string", &cc1_warning.init_overlong_strliteral },
 	{ "init-override", &cc1_warning.init_override },
@@ -624,6 +625,7 @@ static void warning_all(void)
 	cc1_warning.implicit_old_func =
 	cc1_warning.bitfield_boundary =
 	cc1_warning.vla =
+	cc1_warning.init_missing_struct_zero =
 		0;
 }
 

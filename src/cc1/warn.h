@@ -73,6 +73,7 @@ struct cc1_warning
 	unsigned char incomplete_use;
 	unsigned char init_missing_braces;
 	unsigned char init_missing_struct;
+	unsigned char init_missing_struct_zero;
 	unsigned char init_obj_discard;
 	unsigned char init_overlong_strliteral;
 	unsigned char init_override;

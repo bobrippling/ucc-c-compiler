@@ -513,6 +513,7 @@ static void maybe_warn_missing_init(
 		struct_union_enum_st *sue,
 		unsigned i, unsigned sue_nmem,
 		init_iter *iter,
+		decl_init **su_inits,
 		where *last_loc)
 {
 	unsigned diff = 0;
@@ -538,9 +539,14 @@ static void maybe_warn_missing_init(
 		/* don't warn for flexarr */
 	}else if(diff > 0){
 		where *loc = ITER_WHERE(iter, last_loc ? last_loc : &sue->where);
+		unsigned char *warningp = &cc1_warning.init_missing_struct;
 
-		cc1_warn_at(loc,
-				init_missing_struct,
+		/* special case "= { 0 }" */
+		if(i == 1 && decl_init_is_zero(su_inits[0]))
+			warningp = &cc1_warning.init_missing_struct_zero;
+
+		cc1_warn_at_w(loc,
+				warningp,
 				"%u missing initialiser%s for '%s %s'\n"
 				"%s: note: starting at \"%s\"",
 				diff, diff == 1 ? "" : "s",
@@ -756,7 +762,7 @@ static decl_init **decl_init_brace_up_sue2(
 	}
 
 	if(!had_desig)
-		maybe_warn_missing_init(sue, i, sue_nmem, iter, last_loc);
+		maybe_warn_missing_init(sue, i, sue_nmem, iter, current, last_loc);
 
 	return current;
 }
