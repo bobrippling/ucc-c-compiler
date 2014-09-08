@@ -28,6 +28,7 @@
 #include "lbl.h"
 #include "write.h"
 #include "virt.h"
+#include "macros.h"
 
 #include "ctx.h"
 #include "blk.h"

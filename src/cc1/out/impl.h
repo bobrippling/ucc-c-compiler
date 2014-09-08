@@ -81,9 +81,4 @@ const char *flag_cmp_to_str(enum flag_cmp);
 #  warning "no impl defined"
 #endif
 
-#ifndef MIN
-#  define MIN(x, y) ((x) < (y) ? (x) : (y))
-#  define MAX(x, y) ((x) > (y) ? (x) : (y))
-#endif
-
 #endif

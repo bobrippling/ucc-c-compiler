@@ -4,6 +4,8 @@
 #include "../type_nav.h"
 #include "../pack.h"
 
+#include "macros.h"
+
 #include "forwards.h"
 
 #include "val.h"
