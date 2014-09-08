@@ -119,22 +119,24 @@ void out_func_epilogue(
 		to_flush = octx->first_blk;
 		out_current_blk(octx, octx->first_blk);
 		{
-			v_stackt stack_amt;
+			v_stackt stack_adj;
 
 			/* must have more or equal stack to the alloc_n, because alloc_n will
 			 * always add to {var,max}_stack_sz with possible padding,
 			 * and that same value (minus padding) to stack_n_alloc */
 			assert(octx->cur_stack_sz >= octx->stack_n_alloc);
 
-			out_comment(octx, "cur_stack_sz=%lu stack_n_alloc=%lu",
-					octx->cur_stack_sz, octx->stack_n_alloc);
+			out_comment(octx, "cur_stack_sz=%lu stack_n_alloc=%lu max_align=%u",
+					octx->cur_stack_sz, octx->stack_n_alloc, octx->max_align);
 
-			/* TODO: fix align */
-			stack_amt = octx->cur_stack_sz - octx->stack_n_alloc;
-			if(octx->max_align)
-				stack_amt = pack_to_align(stack_amt, octx->max_align);
+			if(octx->max_align){
+				/* must align cur_stack_sz,
+				 * not the resultant after subtracting stack_n_alloc */
+				octx->cur_stack_sz = pack_to_align(octx->cur_stack_sz, octx->max_align);
+			}
+			stack_adj = octx->cur_stack_sz - octx->stack_n_alloc;
 
-			v_stack_adj(octx, stack_amt, /*sub:*/1);
+			v_stack_adj(octx, stack_adj, /*sub:*/1);
 
 			if(call_save_spill_blk){
 				out_ctrl_transfer(octx, call_save_spill_blk, NULL, NULL);
