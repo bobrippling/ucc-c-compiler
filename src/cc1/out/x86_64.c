@@ -415,11 +415,10 @@ void impl_func_prologue_save_call_regs(
 		 */
 		if(n_call_f){
 			unsigned i_arg, i_stk, i_arg_stk, i_i, i_f;
-			v_stackt spill_start;
+			const out_val *stack_loc;
+			type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 
-			spill_start = v_aalloc(octx,
-					(n_call_f + n_call_i) * ws, ws,
-					"save call regs float+integral");
+			stack_loc = out_aalloc(octx, (n_call_f + n_call_i) * ws, ws);
 
 			for(i_arg = i_i = i_f = i_stk = i_arg_stk = 0;
 					i_arg < nargs;
@@ -444,15 +443,24 @@ void impl_func_prologue_save_call_regs(
 				}
 
 				{
-					int const off = ++i_stk * ws;
+					const out_val *stack_ptr;
 
-					arg_vals[i_arg] = v_reg_to_stack(octx, rp, ty, off);
+					out_val_retain(octx, stack_loc);
+					stack_ptr = out_op(octx, op_plus, stack_loc,
+							out_new_l(octx, arithty, ws));
+
+					arg_vals[i_arg] = v_reg_to_stack_mem(octx, rp, stack_ptr);
 				}
 
 				continue;
 pass_via_stack:
 				arg_vals[i_arg] = v_new_bp3_below(octx, NULL, ty, (i_arg_stk++ + 2) * ws);
 			}
+
+
+			/* note: as soon as the stack collector is implemented,
+			 * this will break: */
+			out_adealloc(octx, stack_loc);
 		}else{
 			unsigned i;
 			for(i = 0; i < nargs; i++){
@@ -494,7 +502,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 
 	unsigned n_int_args, n_fp_args;
 
-	v_stackt stk_top;
+	const out_val *stk_spill;
 	unsigned i;
 
 	x86_call_regs(rf, &n_call_regs, &call_regs);
@@ -502,10 +510,9 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	funcargs_ty_calc(type_funcargs(rf), &n_int_args, &n_fp_args);
 
 	/* space for all call regs */
-	stk_top = v_aalloc(octx,
+	stk_spill = out_aalloc(octx,
 			(N_CALL_REGS_I + N_CALL_REGS_F * 2) * pws,
-			pws,
-			"stack call arguments");
+			pws);
 
 	/* go backwards, as we want registers pushed in reverse
 	 * so we can iterate positively.
@@ -516,13 +523,17 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	for(i = n_int_args; i < n_call_regs; i++){
 		/* intergral call regs go _below_ floating */
 		struct vreg vr;
+		const out_val *stk_ptr;
 
 		vr.is_float = 0;
 		vr.idx = call_regs[i].idx;
 
+		out_val_retain(octx, stk_spill);
+		stk_ptr = out_op(octx, op_plus, stk_spill,
+				out_new_l(octx, ty_integral, i * pws));
+
 		/* integral args are at the lowest address */
-		out_val_release(octx,
-				v_reg_to_stack(octx, &vr, ty_integral, stk_top - i * pws));
+		out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr));
 	}
 
 	{
@@ -540,15 +551,18 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 
 		for(i = 0; i < N_CALL_REGS_F; i++){
 			struct vreg vr;
+			const out_val *stk_ptr;
 
 			vr.is_float = 1;
 			vr.idx = i;
 
+			out_val_retain(octx, stk_spill);
+			stk_ptr = out_op(octx, op_plus, stk_spill,
+					out_new_l(octx, ty_dbl,
+						- (i * 2 + n_call_regs) * pws));
+
 			/* we go above the integral regs */
-			out_val_release(octx,
-					v_reg_to_stack(
-						octx, &vr, ty_dbl,
-						stk_top - (i * 2 + n_call_regs) * pws));
+			out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr));
 		}
 
 #ifdef VA_SHORTCIRCUIT
@@ -556,6 +570,8 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 		free(vfin);
 #endif
 	}
+
+	out_adealloc(octx, stk_spill);
 }
 
 void impl_func_epilogue(out_ctx *octx, type *rf, int clean_stack)
@@ -1698,9 +1714,13 @@ const out_val *impl_call(
 	const struct vreg *call_iregs;
 	unsigned n_call_iregs;
 
+	struct
+	{
+		v_stackt sz;
+		const out_val *vptr;
+	} arg_stack;
+
 	unsigned nfloats = 0, nints = 0;
-	v_stackt arg_stack = 0;
-	v_stackt stk_snapshot = 0;
 	unsigned i;
 
 	dynarray_add_array(&local_args, args);
@@ -1724,35 +1744,31 @@ const out_val *impl_call(
 
 	/* do we need to do any stacking? */
 	if(nints > n_call_iregs)
-		arg_stack += nints - n_call_iregs;
+		arg_stack.sz += nints - n_call_iregs;
 
 
 	if(nfloats > N_CALL_REGS_F)
-		arg_stack += nfloats - N_CALL_REGS_F;
+		arg_stack.sz += nfloats - N_CALL_REGS_F;
 
 	/* need to save regs before pushes/call */
 	v_save_regs(octx, fnty, local_args, fn);
 
-	if(arg_stack > 0){
-		out_comment(octx, "stack space for %lu arguments", arg_stack);
+	if(arg_stack.sz > 0){
+		out_comment(octx, "stack space for %lu arguments", arg_stack.sz);
 		/* this aligns the stack-ptr and returns arg_stack padded */
-		arg_stack = v_aalloc(
-				octx, arg_stack * pws,
-				pws,
-				"call argument space");
+		arg_stack.vptr = out_aalloc(octx, arg_stack.sz * pws, pws);
 	}
 
 	/* 16 byte for SSE - special case here as mstack_align may be less */
 	if(!IS_32_BIT())
 		v_stack_needalign(octx, 16);
 
-	if(arg_stack > 0){
+	if(arg_stack.sz > 0){
+		type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 		unsigned nfloats = 0, nints = 0; /* shadow */
+		const out_val *stack_iter;
 
-		unsigned stack_pos;
-		/* must be called after v_alloc_stack() */
-		stk_snapshot = stack_pos = octx->cur_stack_sz;
-		out_comment(octx, "-- stack snapshot (%lu) --", stk_snapshot);
+		stack_iter = out_val_retain(octx, arg_stack.vptr);
 
 		/* save in order */
 		for(i = 0; i < nargs; i++){
@@ -1761,18 +1777,10 @@ const out_val *impl_call(
 				: nints++ >= n_call_iregs;
 
 			if(stack_this){
-				local_args[i] = v_to_stack_mem(octx,
-						local_args[i], stack_pos);
+				local_args[i] = v_to_stack_mem(octx, local_args[i], stack_iter);
 
-				/* XXX: we ensure any registers used ^ are freed
-				 * by using the stack snapshot - the STACK_SAVE
-				 * space they take up isn't used after the call
-				 * and so we can mercilessly wipe it out just
-				 * before the call instruction.
-				 */
-
-				/* nth argument is higher in memory */
-				stack_pos -= pws;
+				stack_iter = out_op(octx, op_plus, stack_iter,
+						out_new_l(octx, arithty, pws));
 			}
 		}
 	}
@@ -1821,20 +1829,6 @@ const out_val *impl_call(
 		/* else already pushed */
 	}
 
-	if(stk_snapshot){
-		/* May have touched the stack in shifting around
-		 * registers above - need to clean up the stack here
-		 * for our call.
-		 *
-		 * Should just be able to add to the stack pointer,
-		 * since we save all non-call registers before we
-		 * start anything.
-		 */
-		unsigned long chg = octx->cur_stack_sz - stk_snapshot;
-		out_comment(octx, "-- restore snapshot (%lu) --", chg);
-		v_stack_adj(octx, chg, /*sub:*/0);
-	}
-
 	{
 		funcargs *args = type_funcargs(fnty);
 		int need_float_count =
@@ -1867,12 +1861,13 @@ const out_val *impl_call(
 		out_asm(octx, "callq %s", jtarget);
 	}
 
-	if(arg_stack && !x86_caller_cleanup(fnty)){
+	if(arg_stack.sz && !x86_caller_cleanup(fnty)){
 		/* callee cleanup - the callee will have popped
 		 * args from the stack, so we need a stack alloc
 		 * to restore what we expect */
-		v_stack_adj(octx, arg_stack, /*sub:*/1);
+		v_stack_adj(octx, arg_stack.sz, /*sub:*/1);
 	}
+	out_adealloc(octx, arg_stack.vptr);
 
 	for(i = 0; i < nargs; i++)
 		out_val_consume(octx, local_args[i]);

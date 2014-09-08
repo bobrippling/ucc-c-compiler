@@ -47,31 +47,26 @@ int v_is_const_reg(const out_val *v)
 		&& impl_reg_frame_const(&v->bits.regoff.reg, 0);
 }
 
-const out_val *v_to_stack_mem(out_ctx *octx, const out_val *vp, v_stackt stack_pos)
+const out_val *v_to_stack_mem(
+		out_ctx *octx, const out_val *val, const out_val *stk)
 {
-	out_val *store = v_new_bp3_below(octx, NULL, vp->t, stack_pos);
+	out_val *spilt = v_dup_or_reuse(octx, stk, stk->t);
 
-	vp = v_to(octx, vp, TO_CONST | TO_REG);
+	val = v_to(octx, val, TO_CONST | TO_REG);
 
-	out_val_retain(octx, store);
+	out_val_retain(octx, spilt);
+	out_store(octx, spilt, val);
 
-	out_store(octx, store, vp);
+	spilt->type = V_REG_SPILT;
 
-	store->type = V_REG_SPILT;
-
-	return store;
+	return spilt;
 }
 
-const out_val *v_reg_to_stack(
-		out_ctx *octx,
-		const struct vreg *vr,
-		type *ty, v_stackt where)
+const out_val *v_reg_to_stack_mem(
+		out_ctx *octx, struct vreg const *vr, const out_val *stk)
 {
-	const out_val *reg = v_new_reg(octx, NULL, ty, vr);
-
-	/* value has been stored -
-	 * don't need to flush the pointer we get returned */
-	return v_to_stack_mem(octx, reg, where);
+	const out_val *reg = v_new_reg(octx, NULL, stk->t, vr);
+	return v_to_stack_mem(octx, reg, stk);
 }
 
 static int v_in(const out_val *vp, enum vto to)
@@ -98,19 +93,15 @@ static int v_in(const out_val *vp, enum vto to)
 static ucc_wur const out_val *v_spill_reg(
 		out_ctx *octx, const out_val *v_reg)
 {
-	v_stackt stack_pos;
-
-	stack_pos = v_aalloc(octx,
+	const out_val *stack_pos = out_aalloc(octx,
 			type_size(v_reg->t, NULL),
-			type_align(v_reg->t, NULL),
-			"save reg");
+			type_align(v_reg->t, NULL));
 
 	out_val_retain(octx, v_reg);
 
 	{
 		const out_val *spilt = v_to_stack_mem(
-				octx, v_reg,
-				stack_pos);
+				octx, v_reg, stack_pos);
 
 		out_val_overwrite((out_val *)v_reg, spilt);
 
