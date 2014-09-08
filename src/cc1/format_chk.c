@@ -114,8 +114,14 @@ ptr:
 			break;
 
 		default:
-			cc1_warn_at(loc_str, attr_printf_unknown,
-					"unknown conversion character '%c' (0x%x)", fmt, fmt);
+			if(fmt){
+				cc1_warn_at(loc_str, attr_printf_unknown,
+						"unknown conversion character '%c' (0x%x)",
+						fmt, fmt);
+			}else{
+				cc1_warn_at(loc_str, attr_printf_bad,
+						"missing conversion character");
+			}
 			return;
 	}
 
