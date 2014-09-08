@@ -159,6 +159,7 @@ void out_func_epilogue(
 	octx->stack_local_offset =
 		octx->stack_sz_initial =
 		octx->cur_stack_sz =
+		octx->max_align =
 		octx->stack_n_alloc = 0;
 }
 
