@@ -7,7 +7,6 @@
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "../util/dynmap.h"
-#include "../util/platform.h"
 
 #include "cc1.h"
 #include "sym.h"

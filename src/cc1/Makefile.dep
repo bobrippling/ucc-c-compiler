@@ -139,15 +139,15 @@ fold_sue.o: fold_sue.c ../util/util.h ../util/warn.h ../util/where.h \
  sue.h pack.h defs.h fold_sue.h type_is.h type_nav.h
 fold_sym.o: fold_sym.c ../util/util.h ../util/warn.h ../util/where.h \
  ../util/compiler.h ../util/alloc.h ../util/dynarray.h ../util/dyn.h \
- ../util/dynmap.h ../util/platform.h cc1.h ../util/std.h warn.h sym.h \
- decl.h type.h num.h btype.h ../util/where.h attribute.h retain.h \
- fold_sym.h pack.h sue.h fold.h stmt.h out/out.h out/../type.h \
- out/../num.h out/../sym.h out/../op.h out/forwards.h ops/stmt_break.h \
- ops/stmt_case.h ops/stmt_case_range.h ops/stmt_code.h ops/stmt_default.h \
- ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h \
- ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
- ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h expr.h strings.h \
- op.h const.h ../util/compiler.h ops/expr_addr.h ops/expr_assign.h \
+ ../util/dynmap.h cc1.h ../util/std.h warn.h sym.h decl.h type.h num.h \
+ btype.h ../util/where.h attribute.h retain.h fold_sym.h pack.h sue.h \
+ fold.h stmt.h out/out.h out/../type.h out/../num.h out/../sym.h \
+ out/../op.h out/forwards.h ops/stmt_break.h ops/stmt_case.h \
+ ops/stmt_case_range.h ops/stmt_code.h ops/stmt_default.h ops/stmt_do.h \
+ ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h \
+ ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
+ ops/stmt_while.h ops/stmt_continue.h expr.h strings.h op.h const.h \
+ ../util/compiler.h ops/expr_addr.h ops/expr_assign.h \
  ops/expr_assign_compound.h ops/expr_cast.h ops/expr_comma.h \
  ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h ops/expr_op.h \
  ops/expr_sizeof.h ops/expr_val.h ops/expr_stmt.h ops/expr_deref.h \
@@ -1074,9 +1074,9 @@ ops/stmt_code.o: ops/stmt_code.c ops/ops.h ops/../../util/util.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h \
  ops/../funcargs.h ops/../const.h ops/../gen_str.h ops/../gen_style.h \
  ops/../decl_init.h ops/../gen_asm.h ops/stmt_code.h ops/../decl_init.h \
- ops/../../util/dynarray.h ops/../../util/dyn.h ops/../fold_sym.h \
- ops/../out/lbl.h ops/../type_is.h ops/../type_nav.h ops/../btype.h \
- ops/../sue.h ops/../out/dbg.h ops/../vla.h
+ ops/../../util/dynarray.h ops/../../util/dyn.h ops/../../util/platform.h \
+ ops/../fold_sym.h ops/../out/lbl.h ops/../type_is.h ops/../type_nav.h \
+ ops/../btype.h ops/../sue.h ops/../out/dbg.h ops/../vla.h
 ops/stmt_continue.o: ops/stmt_continue.c ops/ops.h ops/../../util/util.h \
  ops/../../util/warn.h ops/../../util/where.h ops/../../util/compiler.h \
  ops/../cc1.h ops/../../util/std.h ops/../warn.h ops/../out/out.h \

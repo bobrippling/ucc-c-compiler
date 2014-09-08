@@ -147,7 +147,7 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 		out_store(octx, dest, src);
 
 
-		vla_alloc_decl(d, octx);
+		vla_decl_init(d, octx);
 	}
 }
 

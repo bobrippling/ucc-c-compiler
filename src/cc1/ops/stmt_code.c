@@ -6,6 +6,7 @@
 #include "stmt_code.h"
 #include "../decl_init.h"
 #include "../../util/dynarray.h"
+#include "../../util/platform.h"
 #include "../fold_sym.h"
 #include "../out/lbl.h"
 #include "../type_is.h"
@@ -163,7 +164,7 @@ void fold_stmt_code(stmt *s)
 	}
 }
 
-static void gen_auto_fixedsz_decl(decl *d, out_ctx *octx)
+static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 {
 	sym *s = d->sym;
 
@@ -180,10 +181,13 @@ static void gen_auto_fixedsz_decl(decl *d, out_ctx *octx)
 			unsigned siz;
 			unsigned align;
 
-			assert(!type_is_variably_modified(s->decl->ref));
-
-			siz = decl_size(s->decl);
-			align = decl_align(s->decl);
+			if(type_is_variably_modified(s->decl->ref)){
+				siz = vla_decl_space(s->decl);
+				align = platform_word_size();
+			}else{
+				siz = decl_size(s->decl);
+				align = decl_align(s->decl);
+			}
 
 			assert(!s->outval);
 			s->outval = out_aalloc(octx, siz, align, s->decl->ref);
@@ -200,13 +204,13 @@ static void gen_auto_fixedsz_decl(decl *d, out_ctx *octx)
 
 static void gen_auto_decl(decl *d, out_ctx *octx)
 {
+	gen_auto_decl_alloc(d, octx);
+
 	if(type_is_variably_modified(d->ref)){
 		if((d->store & STORE_MASK_STORE) == store_typedef)
-			vla_typedef_alloc(d, octx);
+			vla_typedef_init(d, octx);
 		else
-			vla_alloc_decl(d, octx);
-	}else{
-		gen_auto_fixedsz_decl(d, octx);
+			vla_decl_init(d, octx);
 	}
 }
 

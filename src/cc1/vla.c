@@ -183,7 +183,7 @@ static const out_val *vla_gen_size(type *t, out_ctx *octx)
 			NULL);
 }
 
-void vla_typedef_alloc(decl *d, out_ctx *octx)
+void vla_typedef_init(decl *d, out_ctx *octx)
 {
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
 	const out_val *alloc_start = d->sym->outval;
@@ -194,7 +194,7 @@ void vla_typedef_alloc(decl *d, out_ctx *octx)
 				alloc_start));
 }
 
-void vla_alloc_decl(decl *d, out_ctx *octx)
+void vla_decl_init(decl *d, out_ctx *octx)
 {
 	sym *s = d->sym;
 	const out_val *v_sz;
