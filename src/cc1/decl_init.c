@@ -509,6 +509,51 @@ static decl_init **decl_init_brace_up_array2(
 	return current;
 }
 
+static void maybe_warn_missing_init(
+		struct_union_enum_st *sue,
+		unsigned i, unsigned sue_nmem,
+		init_iter *iter,
+		decl_init **su_inits,
+		where *last_loc)
+{
+	unsigned diff = 0;
+	unsigned si;
+	decl *last_memb = NULL;
+
+	if(sue->primitive != type_struct)
+		return;
+	if(i >= sue_nmem)
+		return;
+
+	for(si = i; si < sue_nmem; si++){
+		decl *ent = sue->members[si]->struct_member;
+
+		if(!DECL_IS_ANON_BITFIELD(ent)){
+			diff++;
+			if(!last_memb)
+				last_memb = sue->members[si]->struct_member;
+		}
+	}
+
+	if(diff == 1 && type_is_incomplete_array(last_memb->ref)){
+		/* don't warn for flexarr */
+	}else if(diff > 0){
+		where *loc = ITER_WHERE(iter, last_loc ? last_loc : &sue->where);
+		unsigned char *warningp = &cc1_warning.init_missing_struct;
+
+		/* special case "= { 0 }" */
+		if(i == 1 && decl_init_is_zero(su_inits[0]))
+			warningp = &cc1_warning.init_missing_struct_zero;
+
+		cc1_warn_at_w(loc,
+				warningp,
+				"%u missing initialiser%s for '%s %s'\n"
+				"%s: note: starting at \"%s\"",
+				diff, diff == 1 ? "" : "s",
+				sue_str(sue), sue->spel,
+				where_str(loc), last_memb->spel);
+	}
+}
 
 static decl_init **decl_init_brace_up_sue2(
 		decl_init **current, decl_init ***range_store,
@@ -716,40 +761,8 @@ static decl_init **decl_init_brace_up_sue2(
 		}
 	}
 
-	if(sue->primitive == type_struct
-	&& !had_desig /* don't warn for designated inits */
-	&& i < sue_nmem)
-	{
-		unsigned diff = 0;
-		unsigned si;
-		decl *last_memb = NULL;
-
-		for(si = i; si < sue_nmem; si++){
-			decl *ent = sue->members[si]->struct_member;
-
-			if(!DECL_IS_ANON_BITFIELD(ent)){
-				diff++;
-				if(!last_memb)
-					last_memb = sue->members[si]->struct_member;
-			}
-		}
-
-		if(diff == 1
-		&& type_is_incomplete_array(last_memb->ref))
-		{
-			/* don't warn for flexarr */
-		}else if(diff > 0){
-			where *loc = ITER_WHERE(iter, last_loc ? last_loc : &sue->where);
-
-			cc1_warn_at(loc,
-					init_missing_struct,
-					"%u missing initialiser%s for '%s %s'\n"
-					"%s: note: starting at \"%s\"",
-					diff, diff == 1 ? "" : "s",
-					sue_str(sue), sue->spel,
-					where_str(loc), last_memb->spel);
-		}
-	}
+	if(!had_desig)
+		maybe_warn_missing_init(sue, i, sue_nmem, iter, current, last_loc);
 
 	return current;
 }

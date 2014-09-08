@@ -997,6 +997,11 @@ static struct DIE *dwarf_global_variable(struct DIE_compile_unit *cu, decl *d)
 
 	if(!d->spel)
 		return NULL;
+	if((store == store_extern || store == store_default)
+	&& !d->bits.var.init.dinit)
+	{
+		return NULL;
+	}
 
 	vardie = dwarf_die_new(is_tdef ? DW_TAG_typedef : DW_TAG_variable);
 
@@ -1107,30 +1112,33 @@ static int func_code_emitted(decl *d)
 
 static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 {
-	struct DIE *subprog = dwarf_die_new(DW_TAG_subprogram);
-
-	funcargs *args = type_funcargs(d->ref);
-
+	struct DIE *subprog;
+	funcargs *args;
 	/* generate the DW_TAG_subprogram */
-	const char *asmsp = decl_asm_spel(d);
+	const char *asmsp;
+
+	if(!func_code_emitted(d))
+		return NULL;
+
+	subprog = dwarf_die_new(DW_TAG_subprogram);
+	asmsp = decl_asm_spel(d);
+	args = type_funcargs(d->ref);
 
 	dwarf_attr_decl(cu, subprog,
 			d, type_func_call(d->ref, NULL),
 			/*show_extern:*/1);
 
-	if(func_code_emitted(d)){
-		symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
+	symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
 
-		dwarf_attr(subprog, DW_AT_low_pc, DW_FORM_addr, ustrdup(asmsp));
-		dwarf_attr(subprog, DW_AT_high_pc, DW_FORM_addr, out_dbg_func_end(asmsp));
+	dwarf_attr(subprog, DW_AT_low_pc, DW_FORM_addr, ustrdup(asmsp));
+	dwarf_attr(subprog, DW_AT_high_pc, DW_FORM_addr, out_dbg_func_end(asmsp));
 
-		dwarf_children(subprog,
-				dwarf_formal_params(cu, args, !arg_symtab->stack_used));
+	dwarf_children(subprog,
+			dwarf_formal_params(cu, args, !arg_symtab->stack_used));
 
-		dwarf_symtable_scope(cu, subprog,
-				d->bits.func.code->symtab,
-				d->bits.func.var_offset);
-	}
+	dwarf_symtable_scope(cu, subprog,
+			d->bits.func.code->symtab,
+			d->bits.func.var_offset);
 
 	return subprog;
 }

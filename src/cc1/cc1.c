@@ -195,6 +195,7 @@ static struct warn_str
 
 	{ "init-missing-braces", &cc1_warning.init_missing_braces },
 	{ "init-missing-struct", &cc1_warning.init_missing_struct },
+	{ "init-missing-struct-zero", &cc1_warning.init_missing_struct_zero },
 	{ "init-obj-discard", &cc1_warning.init_obj_discard },
 	{ "init-overlong-string", &cc1_warning.init_overlong_strliteral },
 	{ "init-override", &cc1_warning.init_override },
@@ -413,13 +414,15 @@ int where_in_sysheader(where *w)
 	return 0;
 }
 
-#undef cc1_warn_at
-void cc1_warn_at(
+void cc1_warn_at_w(
 		struct where *where, unsigned char *pwarn,
 		const char *fmt, ...)
 {
 	va_list l;
 	struct where backup;
+
+	if(!*pwarn)
+		return;
 
 	if(!where)
 		where = where_cc1_current(&backup);
@@ -476,7 +479,15 @@ static void io_fin(int do_sections, const char *fname)
 
 	for(i = 0; i < NUM_SECTIONS; i++){
 		/* cat cc_out[i] to cc1_out, with section headers */
-		if(do_sections){
+		int emit_this_section = 1;
+
+		if(cc1_gdebug && (i == SECTION_TEXT || i == SECTION_DBG_LINE)){
+			/* need .text for debug to reference */
+		}else if(asm_section_empty(i)){
+			emit_this_section = 0;
+		}
+
+		if(do_sections && emit_this_section){
 			char buf[256];
 			long last = ftell(cc_out[i]);
 
@@ -626,6 +637,7 @@ static void warning_all(void)
 	cc1_warning.implicit_old_func =
 	cc1_warning.bitfield_boundary =
 	cc1_warning.vla =
+	cc1_warning.init_missing_struct_zero =
 		0;
 }
 

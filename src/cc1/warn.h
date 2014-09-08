@@ -74,6 +74,7 @@ struct cc1_warning
 	unsigned char incomplete_use;
 	unsigned char init_missing_braces;
 	unsigned char init_missing_struct;
+	unsigned char init_missing_struct_zero;
 	unsigned char init_obj_discard;
 	unsigned char init_overlong_strliteral;
 	unsigned char init_override;
@@ -138,15 +139,14 @@ struct cc1_warning
 
 extern struct cc1_warning cc1_warning;
 
-void cc1_warn_at(
+void cc1_warn_at_w(
 		struct where *where,
 		unsigned char *pwarn,
 		const char *fmt, ...)
 	ucc_printflike(3, 4);
 
 #define cc1_warn_at(loc, warn, ...) do{ \
-		if(cc1_warning.warn) \
-			cc1_warn_at(loc, &cc1_warning.warn, __VA_ARGS__); \
+		cc1_warn_at_w(loc, &cc1_warning.warn, __VA_ARGS__); \
 	}while(0)
 
 #endif

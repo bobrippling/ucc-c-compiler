@@ -32,6 +32,8 @@ extern FILE *cc1_out;
 void asm_out_section(enum section_type, const char *fmt, ...);
 void asm_out_sectionv(enum section_type t, const char *fmt, va_list l);
 
+int asm_section_empty(enum section_type);
+
 void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align);
 
 void out_comment_sec(enum section_type sec, const char *fmt, ...);
