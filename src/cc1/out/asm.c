@@ -505,7 +505,8 @@ static void asm_declare_ctor_dtor(decl *d, enum section_type sec)
 	type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 	const char *directive = asm_type_directive(intptr_ty);
 
-	asm_out_align(sec, type_align(intptr_ty, NULL));
+	if(asm_section_empty(sec))
+		asm_out_align(sec, type_align(intptr_ty, NULL));
 	asm_out_section(sec, ".%s %s\n", directive, decl_asm_spel(d));
 }
 
