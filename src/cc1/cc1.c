@@ -475,7 +475,7 @@ static void io_fin(int do_sections, const char *fname)
 
 	for(i = 0; i < NUM_SECTIONS; i++){
 		/* cat cc_out[i] to cc1_out, with section headers */
-		if(do_sections){
+		if(do_sections && !asm_section_empty(i)){
 			char buf[256];
 			long last = ftell(cc_out[i]);
 
