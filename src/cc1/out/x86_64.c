@@ -502,6 +502,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	unsigned n_call_regs;
 	const struct vreg *call_regs;
 
+	type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 	type *const ty_dbl = type_nav_btype(cc1_type_nav, type_double);
 	type *const ty_integral = type_nav_btype(cc1_type_nav, type_intptr_t);
 
@@ -534,7 +535,8 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 		vr.idx = call_regs[i].idx;
 
 		out_val_retain(octx, stk_spill);
-		stk_ptr = out_op(octx, op_plus, stk_spill,
+		stk_ptr = out_op(octx, op_plus,
+				out_change_type(octx, stk_spill, arithty),
 				out_new_l(octx, ty_integral, i * pws));
 
 		/* integral args are at the lowest address */
@@ -562,9 +564,11 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 			vr.idx = i;
 
 			out_val_retain(octx, stk_spill);
-			stk_ptr = out_op(octx, op_plus, stk_spill,
-					out_new_l(octx, ty_dbl,
-						- (i * 2 + n_call_regs) * pws));
+			stk_ptr = out_op(octx, op_plus,
+					out_change_type(octx, stk_spill, arithty),
+					out_new_l(octx, arithty, (i * 2 + n_call_regs) * pws));
+
+			stk_ptr = out_change_type(octx, stk_ptr, ty_dbl);
 
 			/* we go above the integral regs */
 			out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr));
