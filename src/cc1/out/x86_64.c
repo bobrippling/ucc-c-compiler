@@ -443,15 +443,16 @@ void impl_func_prologue_save_call_regs(
 				}
 
 				{
-					const out_val *stack_ptr;
-
+					stack_loc = out_change_type(octx, stack_loc, ty);
 					out_val_retain(octx, stack_loc);
-					stack_ptr = out_op(octx, op_plus, stack_loc,
-							out_new_l(octx, arithty, ws));
 
 					arg_vals[i_arg] = out_change_type(octx,
-							v_reg_to_stack_mem(octx, rp, stack_ptr),
+							v_reg_to_stack_mem(octx, rp, stack_loc),
 							type_ptr_to(ty));
+
+					stack_loc = out_op(octx, op_plus,
+							out_change_type(octx, stack_loc, arithty),
+							out_new_l(octx, arithty, ws));
 				}
 
 				continue;
