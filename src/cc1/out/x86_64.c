@@ -449,12 +449,15 @@ void impl_func_prologue_save_call_regs(
 					stack_ptr = out_op(octx, op_plus, stack_loc,
 							out_new_l(octx, arithty, ws));
 
-					arg_vals[i_arg] = v_reg_to_stack_mem(octx, rp, stack_ptr);
+					arg_vals[i_arg] = out_change_type(octx,
+							v_reg_to_stack_mem(octx, rp, stack_ptr),
+							type_ptr_to(ty));
 				}
 
 				continue;
 pass_via_stack:
-				arg_vals[i_arg] = v_new_bp3_below(octx, NULL, ty, (i_arg_stk++ + 2) * ws);
+				arg_vals[i_arg] = v_new_bp3_below(
+						octx, NULL, type_ptr_to(ty), (i_arg_stk++ + 2) * ws);
 			}
 
 
@@ -478,7 +481,8 @@ pass_via_stack:
 					off = (i - n_call_i + 2) * ws;
 				}
 
-				arg_vals[i] = v_new_bp3_above(octx, NULL, fa->arglist[i]->ref, off);
+				arg_vals[i] = v_new_bp3_above(octx, NULL,
+						type_ptr_to(fa->arglist[i]->ref), off);
 			}
 
 			/* this aligns the stack too */
