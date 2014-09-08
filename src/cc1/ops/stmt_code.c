@@ -265,7 +265,7 @@ static void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 			continue;
 
 		assert(!type_is(d->ref, type_func));
-		out_adealloc(octx, d->sym->outval);
+		out_adealloc(octx, &d->sym->outval);
 	}
 }
 

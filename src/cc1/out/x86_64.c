@@ -460,7 +460,7 @@ pass_via_stack:
 
 			/* note: as soon as the stack collector is implemented,
 			 * this will break: */
-			out_adealloc(octx, stack_loc);
+			out_adealloc(octx, &stack_loc);
 		}else{
 			unsigned i;
 			for(i = 0; i < nargs; i++){
@@ -571,7 +571,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 #endif
 	}
 
-	out_adealloc(octx, stk_spill);
+	out_adealloc(octx, &stk_spill);
 }
 
 void impl_func_epilogue(out_ctx *octx, type *rf, int clean_stack)
@@ -1867,7 +1867,7 @@ const out_val *impl_call(
 		 * to restore what we expect */
 		v_stack_adj(octx, arg_stack.sz, /*sub:*/1);
 	}
-	out_adealloc(octx, arg_stack.vptr);
+	out_adealloc(octx, &arg_stack.vptr);
 
 	for(i = 0; i < nargs; i++)
 		out_val_consume(octx, local_args[i]);

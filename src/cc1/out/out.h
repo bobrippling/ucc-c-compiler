@@ -126,7 +126,7 @@ const out_val *out_alloca_push(out_ctx *, const out_val *sz, unsigned align);
 void out_alloca_pop(out_ctx *octx, const out_val *sz);
 
 const out_val *out_aalloc(out_ctx *, unsigned sz, unsigned align);
-void out_adealloc(out_ctx *, const out_val *);
+void out_adealloc(out_ctx *, const out_val **);
 
 
 /* commenting */

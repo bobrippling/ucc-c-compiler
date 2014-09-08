@@ -49,10 +49,11 @@ const out_val *out_aalloc(out_ctx *octx, unsigned sz, unsigned align)
 	return v_new_bp3_below(octx, NULL, charp, octx->cur_stack_sz);
 }
 
-void out_adealloc(out_ctx *octx, const out_val *val)
+void out_adealloc(out_ctx *octx, const out_val **val)
 {
 	/* TODO: reclaim stack */
-	out_val_release(octx, val);
+	out_val_release(octx, *val);
+	*val = NULL;
 }
 
 void v_aalloc_noop(out_ctx *octx, unsigned sz, unsigned align, const char *why)
