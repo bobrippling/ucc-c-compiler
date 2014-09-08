@@ -475,7 +475,15 @@ static void io_fin(int do_sections, const char *fname)
 
 	for(i = 0; i < NUM_SECTIONS; i++){
 		/* cat cc_out[i] to cc1_out, with section headers */
-		if(do_sections){
+		int emit_this_section = 1;
+
+		if(cc1_gdebug && (i == SECTION_TEXT || i == SECTION_DBG_LINE)){
+			/* need .text for debug to reference */
+		}else if(asm_section_empty(i)){
+			emit_this_section = 0;
+		}
+
+		if(do_sections && emit_this_section){
 			char buf[256];
 			long last = ftell(cc_out[i]);
 

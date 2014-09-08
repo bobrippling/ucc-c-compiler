@@ -557,3 +557,8 @@ void asm_out_section(enum section_type t, const char *fmt, ...)
 	asm_out_sectionv(t, fmt, l);
 	va_end(l);
 }
+
+int asm_section_empty(enum section_type t)
+{
+	return ftell(cc_out[t]) == 0;
+}
