@@ -474,7 +474,7 @@ pass_via_stack:
 			}
 
 			/* this aligns the stack too */
-			(void)v_aalloc_noop(octx,
+			v_aalloc_noop(octx,
 					n_call_i * ws,
 					ws,
 					"save call regs push-version");

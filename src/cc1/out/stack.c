@@ -29,75 +29,44 @@ void v_stack_adj(out_ctx *octx, v_stackt amt, int sub)
 					amt)));
 }
 
-#if 0
-static void octx_set_stack_sz(out_ctx *octx, unsigned new)
+static void align_sz(unsigned *psz, unsigned align)
 {
-	octx->cur_stack_sz = new;
-
-	if(octx->cur_stack_sz > octx->max_stack_sz)
-		octx->max_stack_sz = octx->var_stack_sz;
+	/* align greater than size - we increase
+	 * size so it can be aligned to 'align' */
+	if(align > *psz)
+		*psz = pack_to_align(*psz, align);
 }
 
-unsigned v_alloc_stack2(
-		out_ctx *octx,
-		const unsigned sz_initial, int noop, const char *desc)
+const out_val *out_aalloc(out_ctx *octx, unsigned sz, unsigned align)
 {
-	unsigned sz_rounded = sz_initial;
+	type *charp = type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar));
 
-	if(sz_initial){
-		/* must be a multiple of mstack_align.
-		 * assume stack_sz is aligned, and just
-		 * align what we add to it
-		 */
-		sz_rounded = pack_to_align(sz_initial, cc1_mstack_align);
+	align_sz(&sz, align);
 
-		/* if it changed, we need to realign the stack */
-		if(!noop || sz_rounded != sz_initial){
-			if(fopt_mode & FOPT_VERBOSE_ASM){
-				out_comment(octx, "stack alignment for %s (%u -> %u)",
-						desc, octx->var_stack_sz, octx->var_stack_sz + sz_rounded);
-				out_comment(octx, "alloc_n by %u (-> %u), padding with %u",
-						sz_initial, octx->var_stack_sz + sz_initial,
-						sz_rounded - sz_initial);
-			}
+	/* packing takes care of everything */
+	pack_next(&octx->cur_stack_sz, NULL, sz, align);
 
-			/* no actual stack adjustments here - done purely in prologue */
-		}
-
-		octx_set_stack_sz(octx, octx->var_stack_sz + sz_rounded);
-
-		if(noop)
-			octx->stack_n_alloc += sz_initial;
-	}
-
-	return sz_rounded;
+	return v_new_bp3_below(octx, NULL, charp, octx->cur_stack_sz);
 }
 
-unsigned v_alloc_stack_n(out_ctx *octx, unsigned sz, const char *desc)
+void out_adealloc(out_ctx *octx, const out_val *val)
 {
-	return v_alloc_stack2(octx, sz, 1, desc);
+	/* TODO: reclaim stack */
+	out_val_release(octx, val);
 }
 
-unsigned v_alloc_stack(out_ctx *octx, unsigned sz, const char *desc)
+void v_aalloc_noop(out_ctx *octx, unsigned sz, unsigned align, const char *why)
 {
-	return v_alloc_stack2(octx, sz, 0, desc);
+	(void)why;
+
+	align_sz(&sz, align);
+
+	octx->cur_stack_sz += sz;
 }
 
-void v_need_stackalign(out_ctx *octx, unsigned align)
+void v_stack_needalign(out_ctx *octx, unsigned align)
 {
 	/* aligning the stack isn't sufficient here - if the stack is adjusted after,
 	 * it might not be at a 16-byte alignment */
 	octx->max_align = MAX(octx->max_align, align);
-}
-#endif
-
-const out_val *out_aalloc(out_ctx *octx, unsigned sz, unsigned align)
-{
-	/* align greater than size - we increase
-	 * size so it can be aligned to 'align' */
-	if(align > sz)
-		sz = pack_to_align(sz, align);
-
-	/* packing takes care of everything */
-	pack_next(&octx->cur_stack_sz, NULL, sz, align);
 }

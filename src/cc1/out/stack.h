@@ -10,17 +10,6 @@ void v_stack_adj(out_ctx *octx, v_stackt amt, int sub);
 void v_stack_needalign(out_ctx *octx, unsigned align);
 
 ucc_wur v_stackt v_aalloc(out_ctx *, unsigned sz, unsigned align, const char *);
-ucc_wur v_stackt v_aalloc_noop(out_ctx *, unsigned sz, unsigned align, const char *);
-
-
-#if 0
-unsigned v_alloc_stack2(out_ctx *octx,
-		const unsigned sz_initial, int noop, const char *desc);
-
-unsigned v_alloc_stack_n(out_ctx *octx, unsigned sz, const char *desc);
-
-unsigned v_alloc_stack(out_ctx *octx, unsigned sz, const char *desc);
-#endif
-
+void v_aalloc_noop(out_ctx *, unsigned sz, unsigned align, const char *);
 
 #endif
