@@ -481,7 +481,7 @@ pass_via_stack:
 					off = (i - n_call_i + 2) * ws;
 				}
 
-				arg_vals[i] = v_new_bp3_above(octx, NULL,
+				arg_vals[i] = v_new_bp3_below(octx, NULL,
 						type_ptr_to(fa->arglist[i]->ref), off);
 			}
 
