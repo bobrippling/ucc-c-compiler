@@ -208,6 +208,24 @@ static attribute *parse_attr_cleanup(symtable *scope)
 	return attr;
 }
 
+static attribute *parse_attr_ctor_dtor(
+		enum attribute_type ty, symtable *scope)
+{
+	attribute *ctor = attribute_new(ty);
+	ctor->bits.priority = optional_parened_expr(scope);
+	return ctor;
+}
+
+static attribute *parse_attr_constructor(symtable *scope)
+{
+	return parse_attr_ctor_dtor(attr_constructor, scope);
+}
+
+static attribute *parse_attr_destructor(symtable *scope)
+{
+	return parse_attr_ctor_dtor(attr_destructor, scope);
+}
+
 #define EMPTY(t)                      \
 static attribute *parse_ ## t()       \
 {                                     \
@@ -222,8 +240,6 @@ EMPTY(attr_noderef)
 EMPTY(attr_packed)
 EMPTY(attr_weak)
 EMPTY(attr_ucc_debug)
-EMPTY(attr_constructor)
-EMPTY(attr_destructor)
 
 #undef EMPTY
 

@@ -493,7 +493,32 @@ static int fold_align(int al, int min, int max, where *w)
 	return max;
 }
 
-static void fold_func_attr(decl *d)
+static void fold_ctor_dtor(
+		decl *d, symtable *stab, enum attribute_type ty, const char *desc)
+{
+	attribute *attr;
+
+	if(!(attr = attribute_present(d, ty)))
+		return;
+
+	if(attr->bits.priority){
+		consty k;
+
+		FOLD_EXPR(attr->bits.priority, stab);
+		const_fold(attr->bits.priority, &k);
+
+		if(!type_is_integral(attr->bits.priority->tree_type)
+		|| k.type != CONST_NUM
+		|| !K_INTEGRAL(k.bits.num))
+		{
+			warn_at_print_error(&attr->bits.priority->where,
+					"%s priority not integral", desc);
+			fold_had_error = 1;
+		}
+	}
+}
+
+static void fold_func_attr(decl *d, symtable *stab)
 {
 	funcargs *fa = type_funcargs(d->ref);
 	attribute *da;
@@ -511,6 +536,9 @@ static void fold_func_attr(decl *d)
 		cc1_warn_at(&d->where, attr_unused_voidfn,
 				"warn_unused attribute on function returning void");
 	}
+
+	fold_ctor_dtor(d, stab, attr_constructor, "constructor");
+	fold_ctor_dtor(d, stab, attr_destructor, "destructor");
 }
 
 static void fold_check_enum_bitfield(
@@ -594,7 +622,7 @@ static void fold_decl_func(decl *d, symtable *stab)
 			die_at(&d->where, "block-scoped function cannot have static storage");
 	}
 
-	fold_func_attr(d);
+	fold_func_attr(d, stab);
 }
 
 static void fold_decl_var(decl *d, symtable *stab)

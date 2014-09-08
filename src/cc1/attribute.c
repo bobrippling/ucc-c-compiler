@@ -220,6 +220,12 @@ int attribute_equal(attribute *a, attribute *b)
 						return 0;
 					break;
 
+				case attr_constructor:
+				case attr_destructor:
+					if(a->bits.priority != b->bits.priority)
+						return 0;
+					break;
+
 				case attr_sentinel:
 					/* lazy solution for now */
 					if(a->bits.sentinel != b->bits.sentinel)
@@ -239,8 +245,6 @@ int attribute_equal(attribute *a, attribute *b)
 				case attr_noderef:
 				case attr_packed:
 				case attr_weak:
-				case attr_constructor:
-				case attr_destructor:
 				case attr_ucc_debug:
 					/* equal */
 					break;
