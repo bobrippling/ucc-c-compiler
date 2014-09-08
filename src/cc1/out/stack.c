@@ -64,6 +64,7 @@ void v_aalloc_noop(out_ctx *octx, unsigned sz, unsigned align, const char *why)
 
 	align_sz(&sz, align);
 
+	octx->stack_n_alloc += sz;
 	octx->cur_stack_sz += sz;
 }
 
