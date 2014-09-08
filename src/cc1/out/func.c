@@ -126,6 +126,9 @@ void out_func_epilogue(
 			 * and that same value (minus padding) to stack_n_alloc */
 			assert(octx->cur_stack_sz >= octx->stack_n_alloc);
 
+			out_comment(octx, "cur_stack_sz=%lu stack_n_alloc=%lu",
+					octx->cur_stack_sz, octx->stack_n_alloc);
+
 			/* TODO: fix align */
 			stack_amt = octx->cur_stack_sz - octx->stack_n_alloc;
 			if(octx->max_align)
