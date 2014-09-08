@@ -200,6 +200,8 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		release_arg_vals(arg_symtab->decls, octx);
 
+		vla_cleanup(octx);
+
 		out_dump_retained(octx, d->spel);
 
 		out_dbg_where(octx, &d->bits.func.code->where_cbrace);

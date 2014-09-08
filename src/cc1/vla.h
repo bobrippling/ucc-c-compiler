@@ -23,4 +23,6 @@ const out_val *vla_saved_ptr(decl *, out_ctx *);
  */
 const out_val *vla_size(type *, out_ctx *);
 
+void vla_cleanup(out_ctx *);
+
 #endif

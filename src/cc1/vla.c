@@ -98,6 +98,23 @@ static void vla_cache_size(
 	(void)dynmap_set(type *, const out_val *, vlamap, qual_t, stack_ent);
 }
 
+void vla_cleanup(out_ctx *octx)
+{
+	void **pvlamap = out_user_ctx(octx);
+	dynmap *vlamap = *pvlamap;
+	size_t i;
+	const out_val *v;
+
+	if(!vlamap)
+		return;
+
+	for(i = 0; (v = dynmap_value(const out_val *, vlamap, i)); i++)
+		out_val_release(octx, v);
+
+	dynmap_free(vlamap);
+	*pvlamap = NULL;
+}
+
 static const out_val *vla_gen_size_ty(
 		type *t, out_ctx *octx,
 		type *const arith_ty,
