@@ -1718,7 +1718,7 @@ const out_val *impl_call(
 	{
 		v_stackt sz;
 		const out_val *vptr;
-	} arg_stack;
+	} arg_stack = { 0 };
 
 	unsigned nfloats = 0, nints = 0;
 	unsigned i;
@@ -1861,13 +1861,15 @@ const out_val *impl_call(
 		out_asm(octx, "callq %s", jtarget);
 	}
 
-	if(arg_stack.sz && !x86_caller_cleanup(fnty)){
-		/* callee cleanup - the callee will have popped
-		 * args from the stack, so we need a stack alloc
-		 * to restore what we expect */
-		v_stack_adj(octx, arg_stack.sz, /*sub:*/1);
+	if(arg_stack.sz){
+		if(!x86_caller_cleanup(fnty)){
+			/* callee cleanup - the callee will have popped
+			 * args from the stack, so we need a stack alloc
+			 * to restore what we expect */
+			v_stack_adj(octx, arg_stack.sz, /*sub:*/1);
+		}
+		out_adealloc(octx, &arg_stack.vptr);
 	}
-	out_adealloc(octx, &arg_stack.vptr);
 
 	for(i = 0; i < nargs; i++)
 		out_val_consume(octx, local_args[i]);
