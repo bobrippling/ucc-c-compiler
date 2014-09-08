@@ -348,8 +348,6 @@ void gen_scope_leave(symtable *const s_from, symtable *const s_to, out_ctx *octx
 {
 	symtable *s_iter;
 
-	gen_block_decls_dealloca(s_from, octx);
-
 	if(!s_to){ /* e.g. return */
 		gen_scope_destructors(s_from, octx);
 		return;
@@ -394,6 +392,8 @@ void gen_stmt_code_m1(stmt *s, int m1, out_ctx *octx)
 	}
 
 	gen_scope_leave_parent(s->symtab, octx);
+
+	gen_block_decls_dealloca(s->symtab, octx);
 
 	if(endlbl)
 		out_dbg_label(octx, endlbl);
