@@ -194,8 +194,12 @@ gen_asm.o: gen_asm.c ../util/util.h ../util/warn.h ../util/where.h \
  ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h \
  ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h \
  ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h vla.h type_is.h \
- out/dbg.h gen_asm.h out/lbl.h out/asm.h gen_style.h decl_init.h \
- out/val.h out/ctx.h
+ out/dbg.h gen_asm.h gen_asm_ctors.h out/lbl.h out/asm.h gen_style.h \
+ decl_init.h out/val.h out/ctx.h
+gen_asm_ctors.o: gen_asm_ctors.c ../util/dynarray.h ../util/dyn.h decl.h \
+ type.h num.h btype.h ../util/where.h ../util/compiler.h attribute.h \
+ retain.h const.h strings.h ../util/dynmap.h op.h out/asm.h \
+ gen_asm_ctors.h
 gen_c.o: gen_c.c
 gen_str.o: gen_str.c ../util/util.h ../util/warn.h ../util/where.h \
  ../util/compiler.h ../util/platform.h ../util/dynarray.h ../util/dyn.h \
