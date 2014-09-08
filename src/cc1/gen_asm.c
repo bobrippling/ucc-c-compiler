@@ -79,7 +79,7 @@ void gen_stmt(stmt *t, out_ctx *octx)
 	t->f_gen(t, octx);
 }
 
-static void assign_arg_offsets(decl **decls, const out_val *argvals[])
+static void assign_arg_vals(decl **decls, const out_val *argvals[])
 {
 	unsigned i, j;
 
@@ -88,6 +88,20 @@ static void assign_arg_offsets(decl **decls, const out_val *argvals[])
 
 		if(s && s->type == sym_arg)
 			s->outval = argvals[j++];
+	}
+}
+
+static void release_arg_vals(decl **decls, out_ctx *octx)
+{
+	unsigned i, j;
+
+	for(i = j = 0; decls && decls[i]; i++){
+		sym *s = decls[i]->sym;
+
+		if(s && s->type == sym_arg){
+			out_val_release(octx, s->outval);
+			s->outval = NULL;
+		}
 	}
 }
 
@@ -177,11 +191,14 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 				is_vari = type_is_variadic_func(d->ref),
 				argvals, &d->bits.func.var_offset);
 
-		assign_arg_offsets(arg_symtab->decls, argvals);
+		assign_arg_vals(arg_symtab->decls, argvals);
 
 		allocate_vla_args(octx, arg_symtab);
+		free(argvals), argvals = NULL;
 
 		gen_stmt(d->bits.func.code, octx);
+
+		release_arg_vals(arg_symtab->decls, octx);
 
 		out_dump_retained(octx, d->spel);
 
@@ -194,8 +211,6 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 			arg_symtab->stack_used = stack_used;
 			free(end);
 		}
-
-		free(argvals);
 
 		out_ctx_wipe(octx);
 
