@@ -159,6 +159,29 @@ void out_func_epilogue(
 		octx->stack_n_alloc = 0;
 }
 
+static void stack_realign(out_ctx *octx, unsigned align)
+{
+	type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
+	const unsigned new_sz = pack_to_align(octx->cur_stack_sz, align);
+	unsigned to_add = new_sz - octx->cur_stack_sz;
+	const out_val *sp = v_new_sp(octx, NULL);
+
+	if(to_add == 0)
+		to_add = align;
+
+	sp = out_op(octx, op_minus,
+			sp, out_new_l(octx, arithty, to_add));
+
+	sp = out_op(octx, op_and, sp, out_new_l(octx, arithty, align - 1));
+
+	out_val_release(octx, sp);
+	assert(sp->retains == 0);
+
+	out_comment(octx, "stack aligned to %u bytes", align);
+
+	octx->cur_stack_sz = new_sz;
+}
+
 void out_func_prologue(
 		out_ctx *octx, const char *sp,
 		type *fnty,
@@ -184,7 +207,7 @@ void out_func_prologue(
 		impl_func_prologue_save_fp(octx);
 
 		if(mopt_mode & MOPT_STACK_REALIGN)
-			v_stack_realign(octx, cc1_mstack_align, 1);
+			stack_realign(octx, cc1_mstack_align);
 
 		impl_func_prologue_save_call_regs(octx, fnty, nargs, argvals);
 

@@ -9,8 +9,6 @@ void v_stack_adj(out_ctx *octx, v_stackt amt, int sub);
 /* set stack alignment for current function */
 void v_stack_needalign(out_ctx *octx, unsigned align);
 
-void v_stack_realign(out_ctx *octx, unsigned align, int force_mask);
-
 ucc_wur v_stackt v_aalloc(out_ctx *, unsigned sz, unsigned align, const char *);
 ucc_wur v_stackt v_aalloc_noop(out_ctx *, unsigned sz, unsigned align, const char *);
 

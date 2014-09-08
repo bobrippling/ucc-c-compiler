@@ -83,37 +83,6 @@ unsigned v_alloc_stack(out_ctx *octx, unsigned sz, const char *desc)
 	return v_alloc_stack2(octx, sz, 0, desc);
 }
 
-unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
-{
-	if(force_mask || (octx->var_stack_sz & (align - 1))){
-		type *const ty = type_nav_btype(cc1_type_nav, type_intptr_t);
-		const unsigned new_sz = pack_to_align(octx->var_stack_sz, align);
-		unsigned added = new_sz - octx->var_stack_sz;
-		const out_val *sp = v_new_sp(octx, NULL);
-
-		assert(sp->retains == 1);
-
-		if(force_mask && added == 0)
-			added = align;
-
-		sp = out_op(
-				octx, op_minus,
-				sp,
-				out_new_l(octx, ty, added));
-
-		octx_set_stack_sz(octx, new_sz);
-
-		if(force_mask){
-			sp = out_op(octx, op_and, sp, out_new_l(octx, ty, align - 1));
-		}
-		out_val_release(octx, sp);
-		assert(sp->retains == 0);
-		out_comment(octx, "stack aligned to %u bytes", align);
-		return added;
-	}
-	return 0;
-}
-
 void v_need_stackalign(out_ctx *octx, unsigned align)
 {
 	/* aligning the stack isn't sufficient here - if the stack is adjusted after,
