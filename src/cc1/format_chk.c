@@ -79,18 +79,24 @@ ptr:
 				strcpy(expected, "integral");
 				break;
 			}
-#define ATTR_CHECK(suff, str)                   \
-			if((attr & printf_attr_##suff)            \
-			&& !type_is_primitive_anysign(t_in, type_##suff)) \
-			{                                         \
-				strcpy(expected, str);                  \
+
+			if(attr & printf_attr_size_t){
+				if(!type_is_primitive_anysign(t_in, type_intptr_t))
+					strcpy(expected, "'size_t/intptr_t'");
+				break;
+			}
+
+#define ATTR_CHECK(suff, str)                             \
+			if(attr & printf_attr_##suff){                      \
+				if(!type_is_primitive_anysign(t_in, type_##suff)) \
+					strcpy(expected, str);                          \
+				break;                                            \
 			}
 
 			ATTR_CHECK(llong, "'long long'")
-			else
 			ATTR_CHECK(long, "'long'")
-			else
-			ATTR_CHECK(long, "'size_t'")
+
+#undef ATTR_CHECK
 			break;
 
 		case 'e':
