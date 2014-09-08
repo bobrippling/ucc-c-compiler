@@ -122,8 +122,8 @@ ptr:
 	if(*expected){
 		cc1_warn_at(loc_expr, attr_printf_bad,
 				"format %%%s%c expects %s argument (got %s)",
-				attr & printf_attr_long ? "l" : "", fmt,
-				expected, type_to_str(t_in));
+				attr & printf_attr_llong ? "ll" : attr & printf_attr_long ? "l" : "",
+				fmt, expected, type_to_str(t_in));
 	}
 }
 
