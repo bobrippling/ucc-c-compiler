@@ -265,11 +265,6 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 	}
 
 	if(type_is(d->ref, type_func)){
-		if(attribute_present(d, attr_constructor))
-			asm_declare_constructor(d);
-		if(attribute_present(d, attr_destructor))
-			asm_declare_destructor(d);
-
 		if(d->store & store_inline){
 			/*
 			 * inline semantics
@@ -291,6 +286,13 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 				asm_predeclare_extern(d);
 			return;
 		}
+
+		/* only emit ctor/dtor references for implemented functions */
+		if(attribute_present(d, attr_constructor))
+			asm_declare_constructor(d);
+		if(attribute_present(d, attr_destructor))
+			asm_declare_destructor(d);
+
 	}else{
 		/* variable - if there's no init,
 		 * it's tenative and not output
