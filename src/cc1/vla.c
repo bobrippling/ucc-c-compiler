@@ -155,7 +155,13 @@ static const out_val *vla_gen_size_ty(
 			break;
 
 		case type_tdef:
-			assert(0 && "TODO tdef");
+		{
+			const out_val *cached = vla_cached_size(t, octx);
+			if(cached)
+				return cached;
+
+			return vla_gen_size_ty(type_next_1(t), octx, arith_ty, stack_off);
+		}
 
 		case type_auto:
 			assert(0 && "__auto_type in vla");
