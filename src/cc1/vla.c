@@ -85,8 +85,11 @@ static void vla_cache_size(
 	void **pvlamap;
 	dynmap *vlamap;
 
-	stack_ent = out_change_type(octx, stack_ent, ptrsizety);
+	/* keep the caller's retain */
 	out_val_retain(octx, stack_ent);
+
+	stack_ent = out_change_type(octx, stack_ent, ptrsizety);
+	out_val_retain(octx, stack_ent); /* retain for the vlamap */
 	out_store(octx, stack_ent, sz);
 
 	vlamap = *(pvlamap = out_user_ctx(octx));
