@@ -51,6 +51,7 @@ static struct warn_str
 	{ "mismatch-arg", &cc1_warning.arg_mismatch },
 	{ "array-comma", &cc1_warning.array_comma },
 	{ "return-type", &cc1_warning.return_type },
+	{ "return-void", &cc1_warning.return_void },
 
 	{
 		"mismatch-assign",
@@ -188,6 +189,8 @@ static struct warn_str
 	{ "call-argcount", &cc1_warning.funcall_argcount },
 
 	{ "ignored-late-decl", &cc1_warning.ignored_late_decl },
+
+	{ "ignored-qualifiers", &cc1_warning.ignored_qualifiers },
 
 	{ "implicit-old-func", &cc1_warning.implicit_old_func },
 
@@ -615,6 +618,8 @@ static void warning_pedantic(int set)
 	cc1_warning.flexarr_only =
 	cc1_warning.decl_nodecl =
 	cc1_warning.overlarge_enumerator_int =
+
+	cc1_warning.return_void =
 		set;
 }
 
