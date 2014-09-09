@@ -36,6 +36,10 @@ void fold_stmt_return(stmt *s)
 
 		void_return = type_is_void(s->expr->tree_type);
 
+		if(void_return)
+			cc1_warn_at(&s->where, return_void,
+					"void function returns void expression");
+
 		if(ret_ty){
 			if(void_return){
 				if(!void_func){

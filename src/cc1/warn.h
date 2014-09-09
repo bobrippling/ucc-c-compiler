@@ -104,6 +104,7 @@ struct cc1_warning
 	unsigned char restrict_ptrs;
 	unsigned char return_type;
 	unsigned char return_undef;
+	unsigned char return_void;
 	unsigned char shadow_global;
 	unsigned char shadow_local;
 	unsigned char sign_compare;

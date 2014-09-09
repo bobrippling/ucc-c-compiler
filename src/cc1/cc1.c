@@ -51,6 +51,7 @@ static struct warn_str
 	{ "mismatch-arg", &cc1_warning.arg_mismatch },
 	{ "array-comma", &cc1_warning.array_comma },
 	{ "return-type", &cc1_warning.return_type },
+	{ "return-void", &cc1_warning.return_void },
 
 	{
 		"mismatch-assign",
@@ -607,6 +608,8 @@ static void warning_pedantic(int set)
 	cc1_warning.flexarr_only =
 	cc1_warning.decl_nodecl =
 	cc1_warning.overlarge_enumerator_int =
+
+	cc1_warning.return_void =
 		set;
 }
 
