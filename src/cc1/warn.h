@@ -67,6 +67,7 @@ struct cc1_warning
 	unsigned char gnu_init_array_range;
 	unsigned char gnu_case_range;
 	unsigned char ignored_late_decl;
+	unsigned char ignored_qualifiers;
 	unsigned char implicit_func;
 	unsigned char implicit_int;
 	unsigned char implicit_old_func;

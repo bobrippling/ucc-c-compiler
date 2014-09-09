@@ -190,6 +190,8 @@ static struct warn_str
 
 	{ "ignored-late-decl", &cc1_warning.ignored_late_decl },
 
+	{ "ignored-qualifiers", &cc1_warning.ignored_qualifiers },
+
 	{ "implicit-old-func", &cc1_warning.implicit_old_func },
 
 	{ "init-missing-braces", &cc1_warning.init_missing_braces },
