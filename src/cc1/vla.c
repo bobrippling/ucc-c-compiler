@@ -127,6 +127,8 @@ static const out_val *vla_gen_size_ty(
 
 	switch(t->type){
 		case type_btype:
+			if(stack_ent)
+				out_val_release(octx, stack_ent);
 			return out_new_l(octx, arith_ty, type_size(t, NULL));
 
 		case type_ptr:
@@ -140,10 +142,15 @@ static const out_val *vla_gen_size_ty(
 				const out_val *new_stack_ent = NULL;
 
 				sz = vla_cached_size(t, octx);
-				if(sz)
+				if(sz){
+					if(stack_ent)
+						out_val_release(octx, stack_ent);
 					return sz;
+				}
 
 				if(stack_ent){
+					out_val_retain(octx, stack_ent);
+
 					new_stack_ent = out_op(octx, op_plus,
 							stack_ent,
 							out_new_l(octx, arith_ty, platform_word_size()));
@@ -160,6 +167,7 @@ static const out_val *vla_gen_size_ty(
 				if(stack_ent){
 					out_val_retain(octx, sz);
 					vla_cache_size(t, octx, arith_ty, sz, stack_ent);
+					out_val_release(octx, stack_ent);
 				}
 
 				return sz;

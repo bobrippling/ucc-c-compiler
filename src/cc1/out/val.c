@@ -322,6 +322,7 @@ const out_val *out_val_release(out_ctx *octx, const out_val *v)
 const out_val *out_val_retain(out_ctx *octx, const out_val *v)
 {
 	(void)octx;
+	assert(v->retains > 0);
 	((out_val *)v)->retains++;
 	return v;
 }
