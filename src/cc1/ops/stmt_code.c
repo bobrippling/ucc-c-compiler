@@ -263,7 +263,7 @@ void gen_block_decls(
 	}
 }
 
-static void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
+void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 {
 	decl **diter;
 

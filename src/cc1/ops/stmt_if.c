@@ -61,11 +61,14 @@ void flow_end(
 
 	/* generate the braced scope first, then the for-control-variable's */
 	gen_scope_leave_parent(stab, octx);
+	gen_block_decls_dealloca(stab, octx);
 
 	if(flow && stab != flow->for_init_symtab){
 		assert(stab->parent == flow->for_init_symtab);
 
 		gen_scope_leave_parent(flow->for_init_symtab, octx);
+
+		gen_block_decls_dealloca(flow->for_init_symtab, octx);
 	}
 
 	for(i = 0; i < 2; i++)
