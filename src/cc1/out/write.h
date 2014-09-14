@@ -2,6 +2,8 @@
 #define WRITE_H
 
 #include "../../util/compiler.h"
+#include "forwards.h"
+#include "dbg.h"
 
 enum p_opts
 {
@@ -10,16 +12,21 @@ enum p_opts
 };
 
 void out_asmv(
+		out_ctx *,
 		enum section_type sec,
 		enum p_opts opts,
 		const char *fmt, va_list l);
 
-void out_asm(const char *fmt, ...) ucc_printflike(1, 2);
+void out_asm(out_ctx *, const char *fmt, ...) ucc_printflike(2, 3);
 
-void out_asm2(enum section_type,
+void out_asm2(
+		out_ctx *,
+		enum section_type,
 		enum p_opts opts,
-		const char *fmt, ...) ucc_printflike(3, 4);
+		const char *fmt, ...) ucc_printflike(4, 5);
 
-int dbg_add_file(const char *nam, int *new);
+void out_dbg_flush(out_ctx *, out_blk *);
+
+int dbg_add_file(struct out_dbg_filelist **files, const char *nam);
 
 #endif

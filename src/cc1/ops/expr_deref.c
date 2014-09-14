@@ -26,35 +26,34 @@ void fold_expr_deref(expr *e, symtable *stab)
 	}
 
 	if(expr_attr_present(ptr, attr_noderef))
-		warn_at(&ptr->where, "dereference of noderef expression");
-
-	/* check for *&x */
-	if(expr_kind(ptr, addr) && !ptr->expr_addr_implicit)
-		warn_at(&ptr->where, "possible optimisation for *& expression");
+		cc1_warn_at(&ptr->where, attr_noderef,
+				"dereference of noderef expression");
 
 	fold_check_bounds(ptr, 0);
 
-	e->tree_type = type_pointed_to(ptr->tree_type);
+	e->tree_type = type_dereference_decay(ptr->tree_type);
 }
 
-static void gen_expr_deref_lea(expr *e)
+static const out_val *gen_expr_deref_lea(expr *e, out_ctx *octx)
 {
 	/* a dereference */
-	gen_expr(expr_deref_what(e)); /* skip over the *() bit */
+	return gen_expr(expr_deref_what(e), octx); /* skip over the *() bit */
 }
 
-void gen_expr_deref(expr *e)
+const out_val *gen_expr_deref(expr *e, out_ctx *octx)
 {
-	gen_expr_deref_lea(e);
-	out_deref();
+	return out_deref(
+			octx,
+			gen_expr_deref_lea(e, octx));
 }
 
-void gen_expr_str_deref(expr *e)
+const out_val *gen_expr_str_deref(expr *e, out_ctx *octx)
 {
 	idt_printf("deref, size: %s\n", type_to_str(e->tree_type));
 	gen_str_indent++;
 	print_expr(expr_deref_what(e));
 	gen_str_indent--;
+	UNUSED_OCTX();
 }
 
 static void const_expr_deref(expr *e, consty *k)
@@ -67,7 +66,16 @@ static void const_expr_deref(expr *e, consty *k)
 		case CONST_STRK:
 		{
 			stringlit *sv = k->bits.str->lit;
-			if(k->offset < 0 || (unsigned)k->offset > sv->len){
+
+			/* check type we're supposed to be dereferencing as,
+			 * should be char *
+			 */
+			if(!type_is_primitive_anysign(type_is_ptr(from->tree_type), type_nchar)){
+				k->type = CONST_NO;
+				break;
+			}
+
+			if(k->offset < 0 || (unsigned)k->offset >= sv->len){
 				k->type = CONST_NO;
 			}else{
 				long off = k->offset;
@@ -80,11 +88,22 @@ static void const_expr_deref(expr *e, consty *k)
 			}
 			break;
 		}
+		case CONST_NEED_ADDR:
+			k->type = CONST_NO;
+			break;
+
 		case CONST_NUM:
+		{
+			integral_t num = k->bits.num.val.i;
+			CONST_FOLD_LEAF(k);
+			k->bits.addr.is_lbl = 0;
+			k->bits.addr.bits.memaddr = num;
+		} /* fall */
 		case CONST_ADDR:
-			k->type = CONST_ADDR_OR_NEED_TREF(from->tree_type);
 			/* *(int [10])a -> still need_addr */
-		default:
+			k->type = CONST_ADDR_OR_NEED_TYPE(e->tree_type);
+			break;
+		case CONST_NO:
 			break;
 	}
 }
@@ -104,9 +123,10 @@ expr *expr_new_deref(expr *of)
 	return e;
 }
 
-void gen_expr_style_deref(expr *e)
+const out_val *gen_expr_style_deref(expr *e, out_ctx *octx)
 {
 	stylef("*(");
-	gen_expr(expr_deref_what(e));
+	IGNORE_PRINTGEN(gen_expr(expr_deref_what(e), octx));
 	stylef(")");
+	return NULL;
 }

@@ -1,10 +1,12 @@
 #include <stdlib.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "stmt_if.h"
 #include "stmt_for.h"
 #include "../out/lbl.h"
 #include "../fold_sym.h"
+#include "../out/dbg.h"
 
 const char *str_stmt_if()
 {
@@ -33,34 +35,42 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 					die_at(&d->where, "%s variable in statement-initialisation",
 							decl_store_to_str(d->store));
 			}
-		}
 
-		if(flow->init_blk)
-			fold_stmt(flow->init_blk);
+			if(d->bits.var.init.expr)
+				fold_expr(d->bits.var.init.expr, *pstab);
+		}
 	}
 }
 
-void flow_gen(stmt_flow *flow, symtable *stab, const char *endlbls[2])
+void flow_gen(
+		stmt_flow *flow, symtable *stab,
+		const char *endlbls[2], out_ctx *octx)
 {
-	gen_block_decls(stab, &endlbls[0]);
+	gen_block_decls(stab, &endlbls[0], octx);
 	endlbls[1] = NULL;
 
-	if(flow){
-		if(stab != flow->for_init_symtab)
-			gen_block_decls(flow->for_init_symtab, &endlbls[1]);
-
-		if(flow->init_blk)
-			gen_stmt(flow->init_blk);
-		/* also generates decls on the flow->inits statement */
-	}
+	if(flow && stab != flow->for_init_symtab)
+		gen_block_decls(flow->for_init_symtab, &endlbls[1], octx);
 }
 
-void flow_end(const char *endlbls[2])
+void flow_end(
+		stmt_flow *flow, symtable *stab,
+		const char *endlbls[2], out_ctx *octx)
 {
 	int i;
+
+	/* generate the braced scope first, then the for-control-variable's */
+	gen_scope_leave_parent(stab, octx);
+
+	if(flow && stab != flow->for_init_symtab){
+		assert(stab->parent == flow->for_init_symtab);
+
+		gen_scope_leave_parent(flow->for_init_symtab, octx);
+	}
+
 	for(i = 0; i < 2; i++)
 		if(endlbls[i])
-			out_label_noop(endlbls[i]);
+			out_dbg_label(octx, endlbls[i]);
 }
 
 void fold_stmt_if(stmt *s)
@@ -72,42 +82,46 @@ void fold_stmt_if(stmt *s)
 		fold_stmt(s->rhs);
 }
 
-void gen_stmt_if(stmt *s)
+void gen_stmt_if(stmt *s, out_ctx *octx)
 {
-	char *lbl_else = out_label_code("else");
-	char *lbl_fi   = out_label_code("fi");
+	out_blk *blk_true = out_blk_new(octx, "if_true");
+	out_blk *blk_false = out_blk_new(octx, "if_false");
+	out_blk *blk_fi = out_blk_new(octx, "fi");
 	const char *el[2];
+	const out_val *cond;
 
-	flow_gen(s->flow, s->symtab, el);
-	gen_expr(s->expr);
+	flow_gen(s->flow, s->symtab, el, octx);
+	cond = gen_expr(s->expr, octx);
 
-	out_jfalse(lbl_else);
+	out_ctrl_branch(octx, cond, blk_true, blk_false);
 
-	gen_stmt(s->lhs);
-	out_push_lbl(lbl_fi, 0);
-	out_jmp();
+	out_current_blk(octx, blk_true);
+	{
+		gen_stmt(s->lhs, octx);
+		out_ctrl_transfer(octx, blk_fi, NULL, NULL);
+	}
 
-	out_label(lbl_else);
-	if(s->rhs)
-		gen_stmt(s->rhs);
-	out_label(lbl_fi);
+	out_current_blk(octx, blk_false);
+	{
+		if(s->rhs)
+			gen_stmt(s->rhs, octx);
+		out_ctrl_transfer(octx, blk_fi, NULL, NULL);
+	}
 
-	flow_end(el);
-
-	free(lbl_else);
-	free(lbl_fi);
+	out_current_blk(octx, blk_fi);
+	flow_end(s->flow, s->symtab, el, octx);
 }
 
-void style_stmt_if(stmt *s)
+void style_stmt_if(stmt *s, out_ctx *octx)
 {
 	stylef("if(");
-	gen_expr(s->expr);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(")\n");
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 
 	if(s->rhs){
 		stylef("else\n");
-		gen_stmt(s->rhs);
+		gen_stmt(s->rhs, octx);
 	}
 }
 

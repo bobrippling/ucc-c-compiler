@@ -28,9 +28,9 @@ main()
 			fastcall(1, 2, 3, 4, 5, 6, 7, 8));
 
 	// check names are correct
-	asm("call _cdecl");
-	asm("call _stdcall@32");
-	asm("call @fastcall@32");
+	__asm("call _cdecl");
+	__asm("call _stdcall@32");
+	__asm("call @fastcall@32");
 
 	return 0;
 }

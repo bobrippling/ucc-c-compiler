@@ -2,120 +2,124 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
+#include "../../util/dynarray.h"
 #include "../../util/where.h"
 #include "../../util/alloc.h"
+
+#include "../type.h"
+#include "../num.h"
 
 #include "asm.h"
 #include "write.h"
 #include "dbg.h"
 #include "lbl.h"
+#include "val.h"
+#include "ctx.h"
+#include "blk.h"
 
 #include "../cc1.h" /* cc_out */
-#include "../str.h" /* str_add_escape */
-
-static void out_dbg_flush(void);
-
 
 void out_asmv(
+		out_ctx *octx,
 		enum section_type sec, enum p_opts opts,
 		const char *fmt, va_list l)
 {
-	FILE *f = cc_out[sec];
+	char *insn;
 
-	out_dbg_flush();
+	if(!octx->current_blk)
+		return;
 
-	if((opts & P_NO_INDENT) == 0)
-		fputc('\t', f);
+	if(sec != SECTION_TEXT){
+		fprintf(stderr, "%s:%d: TODO: out_asmv() with section 0x%x",
+				__FILE__, __LINE__, sec);
+	}
 
-	vfprintf(f, fmt, l);
+	out_dbg_flush(octx, octx->current_blk);
 
-	if((opts & P_NO_NL) == 0)
-		fputc('\n', f);
+	insn = ustrvprintf(fmt, l);
+
+	if((opts & P_NO_INDENT) == 0
+	|| (opts & P_NO_NL) == 0)
+	{
+		char *new = ustrprintf(
+				"%s%s%s",
+				(opts & P_NO_INDENT) == 0 ? "\t" : "",
+				insn,
+				(opts & P_NO_NL) == 0 ? "\n" : "");
+
+		free(insn);
+
+		insn = new;
+	}
+
+	dynarray_add(&octx->current_blk->insns, insn);
 }
 
-void out_asm(const char *fmt, ...)
+void out_asm(out_ctx *octx, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(SECTION_TEXT, 0, fmt, l);
+	out_asmv(octx, SECTION_TEXT, 0, fmt, l);
 	va_end(l);
 }
 
 void out_asm2(
+		out_ctx *octx,
 		enum section_type sec, enum p_opts opts,
 		const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(sec, opts, fmt, l);
+	out_asmv(octx, sec, opts, fmt, l);
 	va_end(l);
 }
 
 /* -- dbg -- */
 
-static struct file_idx
+int dbg_add_file(struct out_dbg_filelist **files, const char *nam)
 {
-	const char *fname;
-	struct file_idx *next;
-} *file_head = NULL;
-
-static where dbg_where;
-
-static int last_file = -1, last_line = -1;
-
-int dbg_add_file(const char *nam, int *new)
-{
-	struct file_idx **p;
+	struct out_dbg_filelist **p;
 	int i = 1; /* indexes start at 1 */
 
-	if(new)
-		*new = 0;
-
-	for(p = &file_head; *p; p = &(*p)->next, i++)
+	for(p = files; *p; p = &(*p)->next, i++)
 		if(!strcmp(nam, (*p)->fname))
 			return i;
 
-	if(new)
-		*new = 1;
 	*p = umalloc(sizeof **p);
 	(*p)->fname = nam;
 	return i;
 }
 
-static void out_dbg_flush()
+void out_dbg_flush(out_ctx *octx, out_blk *blk)
 {
 	/* .file <fileidx> "<name>"
 	 * .loc <fileidx> <line> <col>
 	 */
-	int idx, new;
+	int idx;
 
-	if(!dbg_where.fname || !cc1_gdebug)
+	if(!octx->dbg.where.fname || !cc1_gdebug)
 		return;
 
-	idx = dbg_add_file(dbg_where.fname, &new);
+	/* .file is output later */
+	idx = dbg_add_file(&octx->dbg.file_head, octx->dbg.where.fname);
 
-	if(last_file == idx && last_line == dbg_where.line)
+	if(octx->dbg.last_file == idx && octx->dbg.last_line == octx->dbg.where.line)
 		return;
 	/* XXX: prevents recursion as well as collapsing multiples */
-	last_file = idx;
-	last_line = dbg_where.line;
+	octx->dbg.last_file = idx;
+	octx->dbg.last_line = octx->dbg.where.line;
 
-	/* TODO: escape w->fname */
-	if(new){
-		char *esc = str_add_escape(dbg_where.fname, strlen(dbg_where.fname));
-		out_asm(".file %d \"%s\"", idx, esc);
-		free(esc);
-	}
-
-	out_asm(".loc %d %d %d",
-			idx,
-			dbg_where.line,
-			dbg_where.chr,
-			dbg_where.fname);
+	blk_add_insn(
+			blk,
+			ustrprintf(".loc %d %d %d\n",
+				idx,
+				octx->dbg.where.line,
+				octx->dbg.where.chr));
 }
 
-void out_dbg_where(where *w)
+void out_dbg_where(out_ctx *octx, where *w)
 {
-	memcpy_safe(&dbg_where, w);
+	memcpy_safe(&octx->dbg.where, w);
 }

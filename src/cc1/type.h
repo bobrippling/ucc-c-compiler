@@ -6,6 +6,11 @@
 
 typedef struct type type;
 
+enum
+{
+	VLA = 1, VLA_STAR = 2
+};
+
 struct type
 {
 	type *ref, *tmp; /* tmp used for things like printing */
@@ -22,6 +27,7 @@ struct type
 		type_block, /* block pointer to next ref (func) */
 		type_func,  /* function */
 		type_array, /* array of next ref, similar to pointer */
+		type_auto, /* to be inferred */
 		type_cast,  /* used for adding qualifiers */
 		type_attr,  /* __attribute__ */
 		type_where  /* .where */
@@ -45,17 +51,23 @@ struct type
 			struct decl *decl;
 		} tdef;
 
-		/* type_{ptr,array} */
+		/* type_array */
 		struct
 		{
 			unsigned is_static : 1;
-			unsigned decayed : 1; /* old size may be NULL - track here */
+			unsigned is_vla : 2;
 			struct expr *size;
 			/* when we decay
 			 * f(int x[2]) -> f(int *x)
 			 * we save the size + is_static
 			 */
-		} ptr, array;
+		} array;
+
+		struct
+		{
+			/* if null, this is just a normal pointer */
+			struct type *decayed_from;
+		} ptr;
 
 		/* type_cast */
 		struct
@@ -91,6 +103,8 @@ type_cmp(
 		type *, type *,
 		enum type_cmp_opts);
 
+int type_eq_nontdef(type *, type *);
+
 unsigned type_size(type *r, where *from);
 unsigned type_align(type *r, where *from);
 
@@ -109,7 +123,6 @@ const char *type_to_str_r(char buf[TYPE_STATIC_BUFSIZ], type *r);
 
 const char *type_to_str(type *r);
 
-
 /* char[] and char *, etc */
 enum type_str_type
 {
@@ -122,6 +135,13 @@ enum type_str_type type_str_type(type *);
 integral_t type_max(type *r, where *from);
 
 where *type_loc(type *);
-int type_has_loc(type *);
+where *type_has_loc(type *);
+
+unsigned type_hash(const type *);
+unsigned type_hash_skip_nontdefs_consts(const type *);
+unsigned sue_hash(const struct struct_union_enum_st *);
+
+/* returns the largest type to hold a type of size 'sz' */
+enum type_primitive type_primitive_not_less_than_size(unsigned sz);
 
 #endif

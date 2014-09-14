@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "strings.h"
 
@@ -15,13 +16,18 @@ struct string_key
 	int is_wide;
 };
 
-static int strings_key_eq(void *a, void *b)
+static int strings_key_eq(
+		const struct string_key *ka,
+		const struct string_key *kb)
 {
-	const struct string_key *ka = a, *kb = b;
-
 	if(ka->is_wide != kb->is_wide)
 		return 1;
 	return strcmp(ka->str, kb->str);
+}
+
+static unsigned strings_hash(const struct string_key *k)
+{
+	return dynmap_strhash(k->str);
 }
 
 stringlit *strings_lookup(
@@ -32,22 +38,26 @@ stringlit *strings_lookup(
 	struct string_key key = { s, wide };
 
 	if(!*plit_tbl)
-		*plit_tbl = dynmap_new(strings_key_eq);
+		*plit_tbl = dynmap_new(struct string_key *, strings_key_eq, strings_hash);
 	lit_tbl = *plit_tbl;
 
 	lit = dynmap_get(struct string_key *, stringlit *, lit_tbl, &key);
 
 	if(!lit){
 		struct string_key *alloc_key;
+		stringlit *prev;
 
 		lit = umalloc(sizeof *lit);
 		lit->str = s;
 		lit->len = len;
 		lit->wide = wide;
+		/* create the label immediately - used in const folding */
+		lit->lbl = out_label_data_store(wide ? STORE_P_WCHAR : STORE_P_CHAR);
 
 		alloc_key = umalloc(sizeof *alloc_key);
 		*alloc_key = key;
-		dynmap_set(struct string_key *, stringlit *, lit_tbl, alloc_key, lit);
+		prev = dynmap_set(struct string_key *, stringlit *, lit_tbl, alloc_key, lit);
+		assert(!prev);
 	}
 
 	return lit;
@@ -55,8 +65,7 @@ stringlit *strings_lookup(
 
 void stringlit_use(stringlit *s)
 {
-	if(s->use_cnt++ == 0)
-		s->lbl = out_label_data_store(s->wide ? STORE_P_WCHAR : STORE_P_CHAR);
+	s->use_cnt++;
 }
 
 int stringlit_empty(const stringlit *str)

@@ -9,6 +9,7 @@
 #include "sym.h"
 #include "expr.h"
 #include "cc1.h"
+#include "type_is.h"
 
 void const_fold(expr *e, consty *k)
 {
@@ -111,18 +112,19 @@ long const_expr_value(expr *e)
 
 integral_t const_op_exec(
 		integral_t lval, const integral_t *rval, /* rval is optional */
-		enum op_type op, int is_signed,
+		enum op_type op, type *arithty,
 		const char **error)
 {
 	typedef sintegral_t S;
 	typedef  integral_t U;
+	const int is_signed = type_is_signed(arithty);
+	U result;
 
-	/* FIXME: casts based on lval.type */
-#define S_OP(o) (S)lval o (S)*rval
-#define U_OP(o) (U)lval o (U)*rval
+#define S_OP(o) ((S)lval o (S)*rval)
+#define U_OP(o) ((U)lval o (U)*rval)
 
-#define OP(  a, b) case a: return S_OP(b)
-#define OP_U(a, b) case a: return is_signed ? S_OP(b) : U_OP(b)
+#define OP(  a, b) case a: result = S_OP(b); break
+#define OP_U(a, b) case a: result = is_signed ? (U)S_OP(b) : (U)U_OP(b); break
 
 	switch(op){
 		OP(op_multiply,   *);
@@ -134,36 +136,71 @@ integral_t const_op_exec(
 		OP_U(op_ge,       >=);
 		OP_U(op_gt,       >);
 
+		OP_U(op_shiftl,   <<);
+		OP_U(op_shiftr,   >>);
+
 		OP(op_xor,        ^);
 		OP(op_or,         |);
 		OP(op_and,        &);
 		OP(op_orsc,       ||);
 		OP(op_andsc,      &&);
-		OP(op_shiftl,     <<);
-		OP(op_shiftr,     >>);
 
 		case op_modulus:
 		case op_divide:
-			if(*rval)
-				return op == op_divide ? lval / *rval : lval % *rval;
-
-			*error = "division by zero";
-			return 0;
+			if(*rval){
+				if(is_signed){
+					/* need sign-extended division */
+					result = (op == op_divide
+							? (sintegral_t)lval / (sintegral_t)*rval
+							: (sintegral_t)lval % (sintegral_t)*rval);
+				}else{
+					result = op == op_divide
+						? lval / *rval
+						: lval % *rval;
+				}
+			}else{
+				*error = "division by zero";
+				result = 0;
+			}
+			break;
 
 		case op_plus:
-			return lval + (rval ? *rval : 0);
+			result = lval + (rval ? *rval : 0);
+			break;
 
 		case op_minus:
-			return rval ? lval - *rval : -lval;
+			result = rval ? lval - *rval : -lval;
+			break;
 
-		case op_not:  return !lval;
-		case op_bnot: return ~lval;
+		case op_not:  result = !lval; break;
+		case op_bnot: result = ~lval; break;
 
 		case op_unknown:
+			ICE("unhandled type");
 			break;
 	}
 
-	ICE("unhandled type");
+	if(!is_signed){
+		/* need to apply proper wrap-around */
+		integral_t max = type_max(arithty, NULL);
+
+		if(max == NUMERIC_T_MAX){
+			/* handling integral_t:s, already done */
+		}else if(result > max){
+			if(op_increases(op)){
+				/* result = 256 -> 256 - (255 + 1) -> 0 */
+
+				result = result - (max + 1);
+			}else{
+				/* (assuming integral_t max = 65536)
+				 * result = 65536 -> 65536 - 65536 + 256 -> 256 */
+
+				result = result - NUMERIC_T_MAX + max;
+			}
+		}
+	}
+
+	return result;
 }
 
 floating_t const_op_exec_fp(

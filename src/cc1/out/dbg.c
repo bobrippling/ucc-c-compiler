@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../../util/where.h"
 #include "../../util/platform.h"
@@ -21,6 +22,7 @@
 #include "../funcargs.h"
 #include "../type_is.h"
 #include "../retain.h"
+#include "../vla.h"
 
 #include "asm.h" /* cc_out[] */
 
@@ -32,6 +34,10 @@
 #include "lbl.h"
 #include "dbg.h"
 #include "write.h" /* dbg_add_file */
+
+#define DEBUG_TYPE_SKIP type_skip_non_tdefs_consts
+#define DEBUG_TYPE_HASH type_hash_skip_nontdefs_consts
+
 
 #define DW_TAGS                        \
 	X(DW_TAG_compile_unit, 0x11)         \
@@ -94,7 +100,8 @@
 #define DW_OPS               \
 	X(DW_OP_plus_uconst, 0x23) \
 	X(DW_OP_addr, 0x3)         \
-	X(DW_OP_breg6, 0x76)
+	X(DW_OP_breg6, 0x76)       \
+	X(DW_OP_deref, 0x6)
 
 enum dwarf_tag
 {
@@ -216,6 +223,7 @@ struct DIE
 struct DIE_compile_unit
 {
 	struct DIE die;
+	struct out_dbg_filelist **pfilelist;
 	dynmap *types_to_dies;
 };
 
@@ -246,11 +254,16 @@ static struct DIE *dwarf_suetype(
 		type *suety);
 
 static struct DIE **dwarf_formal_params(
-		struct DIE_compile_unit *cu, funcargs *args);
+		struct DIE_compile_unit *cu, funcargs *args, int show_arg_locns);
 
 static struct DIE *dwarf_type_die(
 		struct DIE_compile_unit *cu,
 		struct DIE *parent, type *ty);
+
+static struct DIE *dwarf_tydie_new(
+		struct DIE_compile_unit *cu,
+		type *ty,
+		enum dwarf_tag tag);
 
 static void dwarf_die_free_r(struct DIE *die);
 
@@ -417,8 +430,9 @@ static void dwarf_attr(
 	}
 }
 
-static struct DIE *dwarf_basetype(enum type_primitive prim)
+static struct DIE *dwarf_basetype(struct DIE_compile_unit *cu, type *ty)
 {
+	const enum type_primitive prim = ty->bits.type->primitive;
 	form_data_t enc;
 	struct DIE *tydie;
 
@@ -465,7 +479,7 @@ static struct DIE *dwarf_basetype(enum type_primitive prim)
 			ICE("bad type");
 	}
 
-	tydie = dwarf_die_new(DW_TAG_base_type);
+	tydie = dwarf_tydie_new(cu, ty, DW_TAG_base_type);
 
 	dwarf_attr(tydie, DW_AT_name,
 			DW_FORM_string,
@@ -488,17 +502,66 @@ static void dwarf_set_DW_AT_type(
 		type *ty)
 {
 	struct DIE *tydie = dwarf_type_die(cu, parent, ty);
+
+	if(ty->type == type_btype && ty->bits.type->primitive == type_void)
+		assert(!tydie);
+
 	if(tydie)
 		dwarf_attr(in, DW_AT_type, DW_FORM_ref4, RETAIN(tydie));
 }
 
+/* this should only be called from dwarf_tydie_new() to ensure
+ * there is exactly one type die per type */
 static void dwarf_add_tydie(
 		struct DIE_compile_unit *cu, type *ty, struct DIE *tydie)
 {
-	if(!cu->types_to_dies)
-		cu->types_to_dies = dynmap_new(/*refeq:*/NULL);
+	struct DIE *prev;
+	int replaced_another;
 
-	dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, RETAIN(tydie));
+	ty = DEBUG_TYPE_SKIP(ty);
+
+	if(!cu->types_to_dies){
+		cu->types_to_dies = dynmap_new(
+				type *,
+				type_eq_nontdef, /* necessary since we use type_hash_skip() */
+				DEBUG_TYPE_HASH); /* attr/where aren't emitted */
+	}
+
+	prev = dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, RETAIN(tydie));
+
+	replaced_another = (prev && prev != tydie);
+
+	/* prev should either be tydie (previously added) or null
+	 * since if we have added the same type twice then we've got two different
+	 * DIEs floating around that represent the same type
+	 */
+	UCC_ASSERT(!replaced_another, "replaced an unrelated type die in the map");
+
+	dwarf_release(prev);
+}
+
+static struct DIE *dwarf_tydie_new(
+		struct DIE_compile_unit *cu,
+		type *ty,
+		enum dwarf_tag tag)
+{
+	struct DIE *tydie = dwarf_die_new(tag);
+
+	if(!tydie)
+		return NULL; /* void */
+
+	/* register immediately, so subsequent type lookups find
+	 * this tydie, and don't create a new one.
+	 *
+	 * otherwise, we end up with two type dies floating around,
+	 * which means one will replace the other in the type map
+	 * (types_to_dies), meaning if there are any references to
+	 * the ejected die, they'll try to use it even though it won't
+	 * have its location set, causing all sorts of problems.
+	 */
+	dwarf_add_tydie(cu, ty, tydie);
+
+	return tydie;
 }
 
 static struct DIE *dwarf_type_die(
@@ -509,12 +572,17 @@ static struct DIE *dwarf_type_die(
 	struct DIE *tydie;
 
 	if(cu->types_to_dies){
-		tydie = dynmap_get(type *, struct DIE *, cu->types_to_dies, ty);
+		type *skipped_ty = DEBUG_TYPE_SKIP(ty);
+
+		tydie = dynmap_get(type *, struct DIE *, cu->types_to_dies, skipped_ty);
 		if(tydie)
 			return tydie;
 	}
 
 	switch(ty->type){
+		case type_auto:
+			ICE("__auto_type");
+
 		case type_btype:
 		{
 			struct_union_enum_st *sue = ty->bits.type->sue;
@@ -526,7 +594,7 @@ static struct DIE *dwarf_type_die(
 				if(ty->bits.type->primitive == type_void)
 					return NULL;
 
-				tydie = dwarf_basetype(ty->bits.type->primitive);
+				tydie = dwarf_basetype(cu, ty);
 			}
 			break;
 		}
@@ -535,7 +603,12 @@ static struct DIE *dwarf_type_die(
 			if(ty->bits.tdef.decl){
 				decl *d = ty->bits.tdef.decl;
 
-				tydie = dwarf_die_new(DW_TAG_typedef);
+				/* we map the actual typedef type onto the tydie,
+				 * not the type the typedef uses */
+				tydie = dwarf_tydie_new(
+						cu,
+						/*not: d->ref, but:*/ty,
+						DW_TAG_typedef);
 
 				dwarf_attr(tydie, DW_AT_name, DW_FORM_string, d->spel);
 
@@ -553,7 +626,7 @@ static struct DIE *dwarf_type_die(
 		{
 			form_data_t sz = platform_word_size();
 
-			tydie = dwarf_die_new(DW_TAG_pointer_type);
+			tydie = dwarf_tydie_new(cu, ty, DW_TAG_pointer_type);
 
 			dwarf_attr(tydie, DW_AT_byte_size,
 					DW_FORM_data4, &sz);
@@ -566,13 +639,14 @@ static struct DIE *dwarf_type_die(
 		{
 			long flag = 1;
 
-			tydie = dwarf_die_new(DW_TAG_subroutine_type);
+			tydie = dwarf_tydie_new(cu, ty, DW_TAG_subroutine_type);
 
 			dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 
 			dwarf_attr(tydie, DW_AT_prototyped, DW_FORM_flag, &flag);
 
-			dwarf_children(tydie, dwarf_formal_params(cu, ty->bits.func.args));
+			dwarf_children(tydie,
+					dwarf_formal_params(cu, ty->bits.func.args, /*args_in_regs:*/1));
 			break;
 		}
 
@@ -581,13 +655,14 @@ static struct DIE *dwarf_type_die(
 			int have_sz = !!ty->bits.array.size;
 			struct DIE *szdie;
 
-			tydie = dwarf_die_new(DW_TAG_array_type);
+			tydie = dwarf_tydie_new(cu, ty, DW_TAG_array_type);
 
 			dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 
 			szdie = dwarf_die_new(DW_TAG_subrange_type);
 			if(have_sz){
-				form_data_t sz = const_fold_val_i(ty->bits.array.size);
+				form_data_t sz = ty->bits.array.is_vla
+					? 0 : const_fold_val_i(ty->bits.array.size);
 
 				/*dwarf_attr(szdie, DW_AT_lower_bound, DW_FORM_data4, 0);*/
 
@@ -609,7 +684,7 @@ static struct DIE *dwarf_type_die(
 				/* skip */
 				tydie = dwarf_type_die(cu, parent, ty->ref);
 			}else{
-				tydie = dwarf_die_new(DW_TAG_const_type);
+				tydie = dwarf_tydie_new(cu, ty, DW_TAG_const_type);
 				dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 			}
 			break;
@@ -622,15 +697,17 @@ static struct DIE *dwarf_type_die(
 			break;
 	}
 
-	if(tydie) /* may be btype/void */
-		dwarf_add_tydie(cu, ty, tydie);
 
 	return tydie;
 }
 
-static struct DIE *dwarf_sue_header(struct_union_enum_st *sue, int dwarf_tag)
+static struct DIE *dwarf_sue_header(
+		struct DIE_compile_unit *cu,
+		struct_union_enum_st *sue,
+		enum dwarf_tag dwarf_tag,
+		type *suety)
 {
-	struct DIE *suedie = dwarf_die_new(dwarf_tag);
+	struct DIE *suedie = dwarf_tydie_new(cu, suety, dwarf_tag);
 
 	if(!sue->anon)
 		dwarf_attr(suedie, DW_AT_name, DW_FORM_string, sue->spel);
@@ -660,7 +737,7 @@ static struct DIE *dwarf_suetype(
 		{
 			sue_member **i;
 
-			suedie = dwarf_sue_header(sue, DW_TAG_enumeration_type);
+			suedie = dwarf_sue_header(cu, sue, DW_TAG_enumeration_type, suety);
 
 			/* enumerators */
 			for(i = sue->members; i && *i; i++){
@@ -687,16 +764,12 @@ static struct DIE *dwarf_suetype(
 			sue_member **si;
 
 			suedie = dwarf_sue_header(
+					cu,
 					sue,
 					sue->primitive == type_struct
 					? DW_TAG_structure_type
-					: DW_TAG_union_type);
-
-			/* add our type here, so if we have:
-			 * struct A { struct A *next; };
-			 * the next field's type lookup will find us,
-			 * rather than infinitly recursing */
-			dwarf_add_tydie(cu, suety, suedie);
+					: DW_TAG_union_type,
+					suety);
 
 			/* members */
 			for(si = sue->members; si && *si; si++){
@@ -763,7 +836,7 @@ static struct DIE *dwarf_suetype(
 }
 
 static struct DIE **dwarf_formal_params(
-		struct DIE_compile_unit *cu, funcargs *args)
+		struct DIE_compile_unit *cu, funcargs *args, int args_in_regs)
 {
 	struct DIE **dieargs = NULL;
 	size_t i;
@@ -776,17 +849,20 @@ static struct DIE **dwarf_formal_params(
 		dwarf_set_DW_AT_type(param, cu, NULL, d->ref);
 
 		if(d->spel){
-			struct dwarf_block *locn = umalloc(sizeof *locn);
-			struct dwarf_block_ent *locn_data = umalloc(2 * sizeof *locn_data);
+			if(!args_in_regs){
+				struct dwarf_block *locn = umalloc(sizeof *locn);;
+				struct dwarf_block_ent *locn_data = umalloc(2 * sizeof *locn_data);
 
-			locn_data[0].type = BLOCK_HEADER;
-			locn_data[0].bits.v =  DW_OP_breg6; /* rbp */
-			locn_data[1].type = BLOCK_LEB128_S;
-			locn_data[1].bits.v = d->sym->loc.arg_offset;
+				locn_data[0].type = BLOCK_HEADER;
+				locn_data[0].bits.v = DW_OP_breg6; /* rbp */
+				locn_data[1].type = BLOCK_LEB128_S;
+				locn_data[1].bits.v = d->sym->loc.arg_offset;
 
-			locn->cnt = 2;
-			locn->ents = locn_data;
-			dwarf_attr(param, DW_AT_location, DW_FORM_block1, locn);
+				locn->cnt = 2;
+				locn->ents = locn_data;
+
+				dwarf_attr(param, DW_AT_location, DW_FORM_block1, locn);
+			}
 
 			dwarf_attr(param, DW_AT_name, DW_FORM_string, d->spel);
 		}
@@ -803,10 +879,13 @@ static struct DIE **dwarf_formal_params(
 }
 
 static struct DIE_compile_unit *dwarf_cu(
-		const char *fname, const char *compdir)
+		const char *fname, const char *compdir,
+		struct out_dbg_filelist **pfilelist)
 {
 	struct DIE_compile_unit *cu = umalloc(sizeof *cu);
 	form_data_t attrv;
+
+	cu->pfilelist = pfilelist;
 
 	dwarf_die_new_at(&cu->die, DW_TAG_compile_unit);
 
@@ -889,7 +968,7 @@ static void dwarf_attr_decl(
 
 	dwarf_attr(in, DW_AT_decl_file,
 			DW_FORM_ULEB,
-			((attrv = dbg_add_file(d->where.fname, NULL)), &attrv));
+			((attrv = dbg_add_file(cu->pfilelist, d->where.fname)), &attrv));
 
 	dwarf_attr(in, DW_AT_decl_line,
 			DW_FORM_ULEB, ((attrv = d->where.line), &attrv));
@@ -918,6 +997,11 @@ static struct DIE *dwarf_global_variable(struct DIE_compile_unit *cu, decl *d)
 
 	if(!d->spel)
 		return NULL;
+	if((store == store_extern || store == store_default)
+	&& !d->bits.var.init.dinit)
+	{
+		return NULL;
+	}
 
 	vardie = dwarf_die_new(is_tdef ? DW_TAG_typedef : DW_TAG_variable);
 
@@ -969,11 +1053,12 @@ static void dwarf_symtable_scope(
 			if(d->sym){
 				struct dwarf_block_ent *locn_ents;
 				struct dwarf_block *locn;
+				const int vla = type_is_variably_modified(d->ref);
 
 				locn = umalloc(sizeof *locn);
-				locn_ents = umalloc(2 * sizeof *locn_ents);
+				locn->cnt = 2 + vla;
 
-				locn->cnt = 2;
+				locn_ents = umalloc(locn->cnt * sizeof *locn_ents);
 				locn->ents = locn_ents;
 
 				switch(d->sym->type){
@@ -984,6 +1069,11 @@ static void dwarf_symtable_scope(
 						locn_ents[1].type = BLOCK_LEB128_S;
 						locn_ents[1].bits.v = -(long)(
 								d->sym->loc.stack_pos + var_offset);
+
+						if(vla){
+							locn_ents[2].type = BLOCK_LEB128_S;
+							locn_ents[2].bits.v = DW_OP_deref;
+						}
 						break;
 
 					case sym_global:
@@ -991,7 +1081,9 @@ static void dwarf_symtable_scope(
 						break;
 
 					case sym_arg:
-						ICE("sym_arg in function");
+						/* ignore arguments in local scope:
+						 * may be entering a block's code scope */
+						break;
 				}
 
 				dwarf_attr(var, DW_AT_location, DW_FORM_block1, locn);
@@ -1013,29 +1105,40 @@ static void dwarf_symtable_scope(
 		dwarf_symtable_scope(cu, lexblk, *si, var_offset);
 }
 
+static int func_code_emitted(decl *d)
+{
+	return d->bits.func.code && !DECL_PURE_INLINE(d);
+}
+
 static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 {
-	struct DIE *subprog = dwarf_die_new(DW_TAG_subprogram);
-
-	funcargs *args = type_funcargs(d->ref);
-
+	struct DIE *subprog;
+	funcargs *args;
 	/* generate the DW_TAG_subprogram */
-	const char *asmsp = decl_asm_spel(d);
+	const char *asmsp;
+
+	if(!func_code_emitted(d))
+		return NULL;
+
+	subprog = dwarf_die_new(DW_TAG_subprogram);
+	asmsp = decl_asm_spel(d);
+	args = type_funcargs(d->ref);
 
 	dwarf_attr_decl(cu, subprog,
 			d, type_func_call(d->ref, NULL),
 			/*show_extern:*/1);
 
-	if(d->bits.func.code){
-		dwarf_attr(subprog, DW_AT_low_pc, DW_FORM_addr, ustrdup(asmsp));
-		dwarf_attr(subprog, DW_AT_high_pc, DW_FORM_addr, out_dbg_func_end(asmsp));
+	symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
 
-		dwarf_children(subprog, dwarf_formal_params(cu, args));
+	dwarf_attr(subprog, DW_AT_low_pc, DW_FORM_addr, ustrdup(asmsp));
+	dwarf_attr(subprog, DW_AT_high_pc, DW_FORM_addr, out_dbg_func_end(asmsp));
 
-		dwarf_symtable_scope(cu, subprog,
-				d->bits.func.code->symtab,
-				d->bits.func.var_offset);
-	}
+	dwarf_children(subprog,
+			dwarf_formal_params(cu, args, !arg_symtab->stack_used));
+
+	dwarf_symtable_scope(cu, subprog,
+			d->bits.func.code->symtab,
+			d->bits.func.var_offset);
 
 	return subprog;
 }
@@ -1207,6 +1310,8 @@ addr:
 				UCC_ASSERT(a->bits.type_die->locn,
 						"unset DIE/%s location",
 						die_tag_to_str(a->bits.type_die->tag));
+				UCC_ASSERT(a->bits.type_die->locn != die->locn,
+						"subDIE has same location");
 
 				dwarf_printf(&state->info, LONG, "%lu", a->bits.type_die->locn);
 				break;
@@ -1359,7 +1464,23 @@ static unsigned long dwarf_offset_die(
 	return off;
 }
 
+void dbg_out_filelist(
+		struct out_dbg_filelist *head, FILE *f)
+{
+	struct out_dbg_filelist *i;
+	unsigned idx;
+
+	for(i = head, idx = 1; i; i = i->next, idx++){
+		char *esc = str_add_escape(i->fname, strlen(i->fname));
+
+		fprintf(f, ".file %u \"%s\"\n", idx, esc);
+		free(esc);
+	}
+}
+
+
 void out_dbginfo(symtable_global *globs,
+		struct out_dbg_filelist **pfilelist,
 		const char *fname,
 		const char *compdir)
 {
@@ -1369,7 +1490,7 @@ void out_dbginfo(symtable_global *globs,
 	long info_offset = dwarf_info_header(cc_out[SECTION_DBG_INFO]);
 	unsigned long abbrev = 0;
 
-	compile_unit = dwarf_cu(fname, compdir);
+	compile_unit = dwarf_cu(fname, compdir, pfilelist);
 
 	{
 		decl **diter;

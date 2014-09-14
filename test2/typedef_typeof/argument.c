@@ -8,7 +8,7 @@ struct A
 	} *pt;
 };
 
-f(typeof(*((struct A *)0)->pt) *pt)
+f(__typeof(*((struct A *)0)->pt) *pt)
 {
 	return pt->y;
 }

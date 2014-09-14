@@ -32,7 +32,7 @@ try_set(){
 	shift
 	for ent in $@
 	do
-		if test -f "$ent"
+		if test -e "$ent"
 		then eval "$var=\"\$$var:$ent\""
 		fi
 	done
@@ -68,10 +68,6 @@ UCC_INC="-I/usr/include"
 # lib settings
 LIB_CFLAGS=
 
-# ctags
-TAG_CMD='ctags -R .'
-
-
 # arguments
 clean=0
 get_arg='echo "$arg" | cut -d= -f2'
@@ -95,7 +91,7 @@ do
 			fi
 			;;
 		--with-ucc-lib)
-			UCC_INC="-Ilib/"
+			UCC_INC="lib/"
 			UCC_CRT="lib/crt.a"
 			UCC_STDLIB="lib/libc.a"
 			UCC_DYN=''
@@ -178,7 +174,6 @@ case "$unam_os" in
 		ASM_PLBL=L
 		AS_MAX_INTMOV_BIT=30
 		NEED_DSYM=1
-		TAG_CMD='ctags -dt $$(find . -iname "*.[ch]")'
 
 		if [ "$UCC_ARCH" = x86 ]
 		then
@@ -225,7 +220,6 @@ UCC_LD      = ${UCC_LD}
 UCC_LDFLAGS = ${UCC_LDFLAGS}
 UCC_ARCH    = ${UCC_ARCH}
 UCC_SUBARCH = ${UCC_SUBARCH}
-CTAGS       = ${TAG_CMD}
 !
 
 # variables used by the ucc driver
@@ -259,24 +253,32 @@ then
 	SECTION_DBG_INFO="__DWARF,__debug_info,regular,debug"
 	SECTION_DBG_LINE="__DWARF,__debug_line,regular,debug"
 	DWARF_INDIRECT_SECTION_LINKS=0
+	DWARF_INDIRECT_SECTION_LINKS=1
+
+	ASM_WEAK_DIRECTIVE='weak_reference'
+	# Darwin also needs "-flat_namespace -undefined suppress"
 else
 	SECTION_TEXT=".text"
 	SECTION_DATA=".data"
 	SECTION_BSS=".bss"
 	SECTION_DBG_ABBREV=".debug_abbrev"
 	SECTION_DBG_INFO=".debug_info"
-	DWARF_INDIRECT_SECTION_LINKS=1
+	DWARF_INDIRECT_SECTION_LINKS=0
+	ASM_WEAK_DIRECTIVE='weak'
 fi
 
 cat > src/as_cfg.h <<!
 #define SECTION_NAME_TEXT $SECTION_TEXT
 #define SECTION_NAME_DATA $SECTION_DATA
 #define SECTION_NAME_BSS  $SECTION_BSS
+#define SECTION_NAME_RODATA $SECTION_RODATA
 #define SECTION_NAME_DBG_ABBREV $SECTION_DBG_ABBREV
 #define SECTION_NAME_DBG_INFO $SECTION_DBG_INFO
 #define SECTION_NAME_DBG_LINE $SECTION_DBG_LINE
 
 #define DWARF_INDIRECT_SECTION_LINKS $DWARF_INDIRECT_SECTION_LINKS
+
+#define ASM_WEAK_DIRECTIVE "$ASM_WEAK_DIRECTIVE"
 
 #define ASM_PLBL_PRE "$ASM_PLBL"
 /* Darwin's 'as' can only create movq:s with

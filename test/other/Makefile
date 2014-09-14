@@ -1,5 +1,7 @@
+.PHONY: test clean
+
 test:
-	sh ./test.sh
+	./test
 
 clean:
 	ls | grep '\.c$$' | sed 's/\.c$$//' | xargs rm -f

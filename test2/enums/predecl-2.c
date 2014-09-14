@@ -2,9 +2,9 @@
 
 enum A;
 
-f(enum A a); // CHECK: !/error/
+f(enum A a); // CHECK: error: incomplete parameter type 'enum A'
 
 main()
 {
-	f(2); // CHECK: /error: implicit cast to incomplete type enum A/
+	f(2); // CHECK: note: in call here
 }

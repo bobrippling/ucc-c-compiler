@@ -15,6 +15,9 @@
 
 void funcargs_free(funcargs *args, int free_decls)
 {
+	if(--args->retains > 0)
+		return;
+
 	if(free_decls && args){
 		int i;
 		for(i = 0; args->arglist[i]; i++)
@@ -37,20 +40,25 @@ void funcargs_empty(funcargs *func)
 
 enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 {
-	const int count_to = dynarray_count(args_to->arglist);
-	const int count_from = dynarray_count(args_from->arglist);
+	int count_to;
+	int count_from;
 
 	if(args_to == args_from)
 		return FUNCARGS_EXACT_EQUAL;
 
-	if((count_to   == 0 && !args_to->args_void)
-	|| (count_from == 0 && !args_from->args_void)){
+	if(FUNCARGS_EMPTY_NOVOID(args_to)
+	|| FUNCARGS_EMPTY_NOVOID(args_from))
+	{
 		/* a() or b() */
 		return FUNCARGS_IMPLICIT_CONV;
 	}
 
-	if(args_to->args_old_proto || args_from->args_old_proto)
-		return FUNCARGS_IMPLICIT_CONV;
+	count_to = dynarray_count(args_to->arglist);
+	count_from = dynarray_count(args_from->arglist);
+
+	/* still do prototype checks for old_proto functions */
+	/*if(args_to->args_old_proto || args_from->args_old_proto)
+		return FUNCARGS_IMPLICIT_CONV;*/
 
 	if(!(args_to->variadic ? count_to <= count_from : count_to == count_from))
 		return FUNCARGS_MISMATCH_COUNT;
@@ -84,6 +92,7 @@ funcargs *funcargs_new()
 {
 	funcargs *r = umalloc(sizeof *funcargs_new());
 	where_cc1_current(&r->where);
+	r->retains = 1;
 	return r;
 }
 

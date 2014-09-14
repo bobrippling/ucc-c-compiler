@@ -45,7 +45,8 @@ END
 
 my $ucc = $ENV{UCC} or die "no \$UCC";
 
-if(system($ucc, '-g', '-c', '-o', $out, $in)){
+# full link
+if(system($ucc, '-g', '-o', $out, $in)){
 	die "$0: compile failed";
 }
 

@@ -1,6 +1,6 @@
 int i;
 
-int x[] = {
+long x[] = {
 	&i
 };
 

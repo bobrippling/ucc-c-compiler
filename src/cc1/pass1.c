@@ -45,11 +45,12 @@ static int parse_add_gasms(symtable_gasm ***plast_gasms)
 	return r;
 }
 
-void parse_and_fold(symtable_global *globals)
+int parse_and_fold(symtable_global *globals)
 {
 	symtable_gasm **last_gasms = NULL;
 
 	while(curtok != token_eof){
+		where semi;
 		decl **new = NULL;
 		decl **di;
 		int cont;
@@ -61,8 +62,7 @@ void parse_and_fold(symtable_global *globals)
 				| DECL_MULTI_ALLOW_ALIGNAS,
 				/*newdecl:*/1,
 				&globals->stab,
-				&globals->stab, &new,
-				/* init blk: */NULL);
+				&globals->stab, &new);
 
 		/* global struct layout-ing */
 		symtab_fold_sues(&globals->stab);
@@ -82,6 +82,9 @@ void parse_and_fold(symtable_global *globals)
 		cont |= parse_add_gasms(&last_gasms);
 		dynarray_add_array(&globals->gasms, last_gasms);
 
+		while(accept_where(token_semicolon, &semi))
+			cc1_warn_at(NULL, parse_extra_semi, "extra ';' at global scope");
+
 		if(!cont)
 			break;
 	}
@@ -98,8 +101,7 @@ void parse_and_fold(symtable_global *globals)
 
 	dynarray_free(symtable_gasm **, &last_gasms, NULL);
 
-	if(parse_had_error || fold_had_error)
-		exit(1);
-
 	UCC_ASSERT(!globals->stab.parent, "scope leak during parse");
+
+	return parse_had_error || fold_had_error;
 }

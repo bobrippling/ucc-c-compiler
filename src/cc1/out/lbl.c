@@ -15,6 +15,13 @@ static int label_last    = 1,
 					 block_last    = 1,
 					 static_last   = 1;
 
+char *out_label_bblock(unsigned long n)
+{
+	char *buf = umalloc(16);
+	SNPRINTF(buf, 16, ASM_PLBL_PRE "blk.%lu", (unsigned long)n);
+	return buf;
+}
+
 char *out_label_block(const char *funcsp)
 {
 	int len;

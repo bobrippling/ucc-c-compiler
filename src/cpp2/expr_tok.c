@@ -81,6 +81,10 @@ end_ty:
 	}
 
 	tok_cur = *tok_pos++;
+	if(!tok_cur){
+		tok_pos--;
+		return;
+	}
 
 	/* check for double-char ops, e.g. <<, >=, etc */
 	switch(*tok_pos){

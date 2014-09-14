@@ -19,13 +19,27 @@ sub lines
 }
 
 my $verbose = 0;
+my $prefix = '';
 
-if(@ARGV and $ARGV[0] eq '-v'){
-	$verbose = 1;
-	shift;
+my $shifts = 0;
+for my $arg (@ARGV){
+	last unless $arg =~ /^-/;
+	if($arg eq '-v'){
+		$verbose = 1;
+		$shifts++;
+	}elsif($arg =~ /^--prefix=(.*)/){
+		$prefix = $1;
+		die "no prefix given" unless length $prefix;
+		$shifts++;
+	}else{
+		last;
+	}
+}
+for(; $shifts > 0; $shifts--){
+	shift @ARGV;
 }
 
-die "Usage: $0 [-v] file_with_checks.c\n" unless @ARGV == 1;
+die "Usage: $0 [--prefix=...] [-v] file_with_checks.c\n" unless @ARGV == 1;
 
 my @lines;
 my $line;
@@ -52,22 +66,32 @@ for my $w (parse_warnings((<STDIN>))){
 
 $line = 1;
 for(chomp_all(lines(shift))){
-	if(m#// *CHECK: *(\^)? *(.*)#){
-		my($above, $check) = (length($1), $2);
-		my $line_resolved = $line;
+	if(m#// *CHECK(-[^:]+)?: *(\^*)? *(.*)#){
+		my($pre, $above_count, $check) = ($1, length($2), $3);
+		my $valid = 1;
 
-		if(defined $above){
-			--$line_resolved
-		}else{
-			$above = 0
+		if(defined $pre){
+			$valid = 0 unless substr($pre, 1) eq $prefix;
+		}elsif(length $prefix){
+			$valid = 0;
 		}
 
-		push @{$lines[$line_resolved - 1]->{checks}}, {
-			check => $check,
-			line => $line_resolved,
-			above => $above,
-		};
-		$nchecks++;
+		if($valid){
+			my $line_resolved = $line;
+
+			if(defined $above_count){
+				$line_resolved -= $above_count;
+			}else{
+				$above_count = 0
+			}
+
+			push @{$lines[$line_resolved - 1]->{checks}}, {
+				check => $check,
+				line => $line_resolved,
+				above_count => $above_count,
+			};
+			$nchecks++;
+		}
 	}
 	$line++;
 }
@@ -152,13 +176,13 @@ iter_lines(
 			my $rev = 0;
 
 			my($search, $is_regex);
-			if($match =~ m#^(!)?/(.*)/$#){
+			if($match =~ m#^ *(!)? */(.*)/$#){
 				$rev = defined $1;
 				$search = $2;
 				$is_regex = 1;
-			}elsif($match =~ m#^ *(.*) *$#){
-				$rev = 0;
-				$search = $1;
+			}elsif($match =~ m#^ *(!)? *(.*) *$#){
+				$rev = defined $1;
+				$search = $2;
 				$is_regex = 0;
 			}else{
 				die2 "invalid CHECK (line $check->{line}): '$match'"
@@ -176,12 +200,14 @@ iter_lines(
 			}
 
 			if($found == $rev){
+				my $pre = ($prefix ? " (prefix '$prefix')" : "");
+
 				$missing_warning = 1;
 				warn "$check->{line}"
-				. ($check->{above} ? " ^" : "")
-				. ": check $match "
+				. ("^" x $check->{above_count})
+				. ": check \"$match\" "
 				. ($rev ? "" : "not ")
-				. "found"
+				. "found$pre"
 				. "\n"
 			}
 		}

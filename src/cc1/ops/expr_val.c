@@ -125,7 +125,9 @@ void fold_expr_val(expr *e, symtable *stab)
 		/* we get here if we're forcing it to ull,
 		 * not if the user says, so we can warn unconditionally */
 		if(is_signed){
-			warn_at(&e->where, "integer constant is so large it is unsigned");
+			cc1_warn_at(&e->where,
+					constant_large_unsigned,
+					"integer constant is so large it is unsigned");
 			is_signed = 0;
 		}
 		p = type_llong;
@@ -140,6 +142,11 @@ chosen:
 			is_signed ? "" : "un",
 			type_primitive_to_str(p)); */
 
+	if(is_signed)
+		num->suffix &= ~VAL_UNSIGNED;
+	else
+		num->suffix |= VAL_UNSIGNED;
+
 	if(!is_signed)
 		p = TYPE_PRIMITIVE_TO_UNSIGNED(p);
 
@@ -148,14 +155,15 @@ chosen:
 	(void)stab;
 }
 
-void gen_expr_val(expr *e)
+const out_val *gen_expr_val(expr *e, out_ctx *octx)
 {
-	out_push_num(e->tree_type, &e->bits.num);
+	return out_new_num(octx, e->tree_type, &e->bits.num);
 }
 
-void gen_expr_str_val(expr *e)
+const out_val *gen_expr_str_val(expr *e, out_ctx *octx)
 {
 	idt_printf("val.i: 0x%lx\n", (unsigned long)e->bits.num.val.i);
+	UNUSED_OCTX();
 }
 
 static void const_expr_val(expr *e, consty *k)
@@ -184,10 +192,11 @@ expr *expr_new_numeric(numeric *num)
 	return e;
 }
 
-void gen_expr_style_val(expr *e)
+const out_val *gen_expr_style_val(expr *e, out_ctx *octx)
 {
 	if(K_FLOATING(e->bits.num))
 		stylef("%" NUMERIC_FMT_LD, e->bits.num.val.f);
 	else
 		stylef("%" NUMERIC_FMT_D, e->bits.num.val.i);
+	UNUSED_OCTX();
 }

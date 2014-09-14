@@ -2,9 +2,10 @@
 #define STMT_H
 
 #include "sym.h"
+#include "out/out.h"
 
 typedef void        func_fold_stmt(struct stmt *);
-typedef void        func_gen_stmt(struct stmt *);
+typedef void        func_gen_stmt(struct stmt *, struct out_ctx *);
 typedef const char *func_str_stmt(void);
 
 /* non-critical */
@@ -29,8 +30,9 @@ struct stmt
 	struct stmt_flow *flow; /* for, switch (do and while are simple enough for ->[lr]hs) */
 
 	/* specific data */
+#define stmt_is_default val
 	int val;
-	char *lbl_break, *lbl_continue;
+	out_blk *blk_break, *blk_continue;
 
 	int freestanding;     /* if this is freestanding, non-freestanding expressions inside are allowed */
 	int kills_below_code; /* break, return, etc - for checking dead code */
@@ -38,6 +40,7 @@ struct stmt
 
 	struct
 	{
+		/* goto and labels */
 		struct
 		{
 			struct label *label;
@@ -45,11 +48,20 @@ struct stmt
 			int unused;
 		} lbl;
 
+		/* for a case/default */
+		out_blk *case_blk;
+
 		/* for a code block */
 		struct
 		{
 			stmt **stmts;
 		} code;
+
+		/* switch */
+		struct
+		{
+			stmt **cases, *default_case;
+		} switch_;
 	} bits;
 
 	symtable *symtab; /* block definitions, e.g. { int i... } */
@@ -62,7 +74,6 @@ typedef struct stmt_flow stmt_flow;
 struct stmt_flow
 {
 	symtable *for_init_symtab; /* for(int b;;){} - symtab for b */
-	stmt *init_blk;
 
 	/* for specific */
 	struct expr *for_init, *for_while, *for_inc;

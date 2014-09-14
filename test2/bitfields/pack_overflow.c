@@ -1,5 +1,5 @@
 // RUN: %ocheck 0 %s
-// RUN: %check %s
+// RUN: %check %s -Wbitfield-boundary
 
 main()
 {

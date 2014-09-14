@@ -20,41 +20,35 @@ void fold_stmt_expr(stmt *s)
 	&& !s->expr->freestanding
 	&& !type_is_void(s->expr->tree_type))
 	{
-		cc1_warn_at(&s->expr->where, 0, WARN_UNUSED_EXPR,
+		cc1_warn_at(&s->expr->where, unused_expr,
 				"unused expression (%s)", expr_skip_casts(s->expr)->f_str());
 	}
 }
 
-void gen_stmt_expr(stmt *s)
+void gen_stmt_expr(stmt *s, out_ctx *octx)
 {
-	int pre_vcount = out_vcount();
-	char *sp;
+	size_t prev = out_expr_stack(octx);
+	size_t now;
+	char wbuf[WHERE_BUF_SIZ];
 
-	gen_expr(s->expr);
+	out_val_consume(octx, gen_expr(s->expr, octx));
 
-	if((fopt_mode & FOPT_ENABLE_ASM) == 0
-	|| !s->expr
-	|| expr_kind(s->expr, funcall)
-	|| !(sp = s->expr->bits.ident.spel)
-	|| strcmp(sp, ASM_INLINE_FNAME))
-	{
-		if(s->expr_no_pop)
-			pre_vcount++;
-		else
-			out_pop(); /* cancel the implicit push from gen_expr() above */
+	now = out_expr_stack(octx);
 
-		out_comment("end of %s-stmt", s->f_str());
-
-		UCC_ASSERT(out_vcount() == pre_vcount,
-				"vcount changed over %s statement (%d -> %d)",
+	if(now != prev){
+		ICW("values still retained (%ld <-- %ld - %ld) after %s @ %s",
+				(long)(now - prev),
+				now, prev,
 				s->expr->f_str(),
-				out_vcount(), pre_vcount);
+				where_str_r(wbuf, &s->where));
+
+		out_dump_retained(octx, s->f_str());
 	}
 }
 
-void style_stmt_expr(stmt *s)
+void style_stmt_expr(stmt *s, out_ctx *octx)
 {
-	gen_expr(s->expr);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(";\n");
 }
 

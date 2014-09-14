@@ -3,7 +3,7 @@
 
 #include "../expr.h"
 
-#define BUILTIN_SPEL(e) (e)->bits.ident.spel
+#define BUILTIN_SPEL(e) (e)->bits.ident.bits.ident.spel
 
 expr *builtin_new_reg_save_area(void);
 expr *builtin_new_frame_address(int depth);
@@ -11,7 +11,7 @@ expr *builtin_new_frame_address(int depth);
 expr *builtin_parse(const char *sp, symtable *scope);
 expr *parse_any_args(symtable *scope);
 
-void builtin_gen_print(expr *);
+const out_val *builtin_gen_print(expr *e, out_ctx *octx);
 #define BUILTIN_SET_GEN(exp, target)      \
 	exp->f_gen = cc1_backend == BACKEND_ASM \
 		? (target)                            \

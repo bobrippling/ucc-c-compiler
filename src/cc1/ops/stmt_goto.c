@@ -1,5 +1,7 @@
 #include <stdlib.h>
 
+#include "../../util/dynarray.h"
+
 #include "ops.h"
 #include "stmt_goto.h"
 #include "../out/lbl.h"
@@ -22,26 +24,36 @@ void fold_stmt_goto(stmt *s)
 		 symtab_label_find_or_new(
 			 s->symtab, s->bits.lbl.spel, &s->where))
 			->uses++;
+
+		dynarray_add(&s->bits.lbl.label->jumpers, s);
 	}
 }
 
-void gen_stmt_goto(stmt *s)
+void gen_stmt_goto(stmt *s, out_ctx *octx)
 {
-	if(s->expr)
-		gen_expr(s->expr);
-	else
-		out_push_lbl(s->bits.lbl.label->mangled, 0);
+	if(s->expr){
+		/* no idea whether we're leaving scope - don't do anything */
 
-	out_jmp();
+		const out_val *target = gen_expr(s->expr, octx);
+
+		out_ctrl_transfer_exp(octx, target);
+
+	}else{
+		gen_scope_leave(s->symtab, s->bits.lbl.label->scope, octx);
+
+		label_makeblk(s->bits.lbl.label, octx);
+
+		out_ctrl_transfer(octx, s->bits.lbl.label->bblock, NULL, NULL);
+	}
 }
 
-void style_stmt_goto(stmt *s)
+void style_stmt_goto(stmt *s, out_ctx *octx)
 {
 	stylef("goto ");
 
 	if(s->expr){
 		stylef("*");
-		gen_expr(s->expr);
+		IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	}else{
 		stylef("%s", s->bits.lbl.spel);
 	}

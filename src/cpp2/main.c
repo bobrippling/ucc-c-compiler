@@ -19,6 +19,7 @@
 #include "preproc.h"
 #include "include.h"
 #include "directive.h"
+#include "deps.h"
 
 #define FNAME_BUILTIN "<builtin>"
 #define FNAME_CMDLINE "<command-line>"
@@ -31,15 +32,21 @@ static const struct
 	{ "__unix__",       "1"  },
 	{ "__STDC__",       "1"  },
 
-	/* _Atomic and _Thread_local aren't supported yet */
-	{ "__STDC_NO_ATOMICS__" , "1" },
-	{ "__STDC_NO_THREADS__" , "1" },
+	{ "__STDC_NO_ATOMICS__" , "1" }, /* _Atomic */
+	{ "__STDC_NO_THREADS__" , "1" }, /* _Thread_local */
+	{ "__STDC_NO_COMPLEX__", "1" }, /* _Complex */
+
+	/*{ "__STDC_NO_VLA__", "1" }, vla are implemented */
 
 #define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
 
 	TYPE(SIZE, unsigned long),
 	TYPE(PTRDIFF, unsigned long),
 	TYPE(WINT, unsigned),
+
+	{ "__ORDER_LITTLE_ENDIAN__", "1234" },
+	{ "__ORDER_BIG_ENDIAN__",    "4321" },
+	{ "__ORDER_PDP_ENDIAN__",    "3412" },
 
 	/* non-standard */
 	{ "__BLOCKS__",     "1"  },
@@ -70,6 +77,7 @@ char **cd_stack = NULL;
 
 int option_line_info = 1;
 int option_trigraphs = 0, option_digraphs = 0;
+static int option_trace = 0;
 
 enum wmode wmode =
 	  WWHITESPACE
@@ -78,7 +86,9 @@ enum wmode wmode =
 	| WPASTE
 	| WFINALESCAPE
 	| WMULTICHAR
-	| WQUOTE;
+	| WQUOTE
+	| WHASHWARNING
+	| WBACKSLASH_SPACE_NEWLINE;
 
 enum comment_strip strip_comments = STRIP_ALL;
 
@@ -87,7 +97,6 @@ static const struct
 	const char *warn, *desc;
 	enum wmode or_mask;
 } warns[] = {
-	{ "all", "turn on all warnings", ~0U },
 	{ "traditional", "warn about # in the first column", WTRADITIONAL },
 	{ "undef", "warn about undefined macros in #if and #undef", WUNDEF_IN_IF | WUNDEF_NDEF },
 	{ "undef-in-if", "warn about undefined macros in #if/elif", WUNDEF_IN_IF },
@@ -99,9 +108,29 @@ static const struct
 	{ "empty-arg", "warn on empty argument to single-arg macro", WEMPTY_ARG },
 	{ "paste", "warn when pasting doesn't make a token", WPASTE },
 	{ "uncalled-macro", "warn when a function-macro is mentioned without ()", WUNCALLED_FN },
+	{ "#warning", "emit #warnings", WHASHWARNING },
+	{ "backslash-newline-space", "space between backslash and newline", WBACKSLASH_SPACE_NEWLINE },
+
+	{ "everything", "everything", ~0 },
+
+	{
+		"all", "Most warnings", WREDEF | WWHITESPACE | WTRAILING | WPASTE |
+			WFINALESCAPE | WMULTICHAR | WHASHWARNING
+	},
 };
 
 #define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)
+
+void trace(const char *fmt, ...)
+{
+	va_list l;
+	if(!option_trace)
+		return;
+
+	va_start(l, fmt);
+	vfprintf(stderr, fmt, l);
+	va_end(l);
+}
 
 void debug_push_line(char *s)
 {
@@ -164,7 +193,7 @@ static void macro_add_limits(void)
 {
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
-#define MACRO_ADD_LIM(m) macro_add("__" #m "__", QUOTE(__ ## m ## __))
+#define MACRO_ADD_LIM(m) macro_add("__" #m "__", QUOTE(__ ## m ## __), 0)
 	MACRO_ADD_LIM(SCHAR_MAX);
 	MACRO_ADD_LIM(SHRT_MAX);
 	MACRO_ADD_LIM(INT_MAX);
@@ -179,7 +208,7 @@ int main(int argc, char **argv)
 {
 	char *infname, *outfname;
 	int ret = 0;
-	enum { NONE, MACROS, STATS } dump = NONE;
+	enum { NONE, MACROS, STATS, DEPS } dump = NONE;
 	int i;
 	int platform_win32 = 0;
 	int freestanding = 0;
@@ -193,28 +222,35 @@ int main(int argc, char **argv)
 	macro_add_limits();
 
 	for(i = 0; initial_defs[i].nam; i++)
-		macro_add(initial_defs[i].nam, initial_defs[i].val);
+		macro_add(initial_defs[i].nam, initial_defs[i].val, 0);
+
+	if(platform_bigendian())
+		macro_add("__BYTE_ORDER__", "__ORDER_BIG_ENDIAN__", 0);
+	else
+		macro_add("__BYTE_ORDER__", "__ORDER_LITTLE_ENDIAN__", 0);
 
 	switch(platform_os()){
-#define MAP(t, s) case t: macro_add(s, "1"); break
+#define MAP(t, s) case t: macro_add(s, "1", 0); break
 		MAP(PLATFORM_LINUX,   "__linux__");
 		MAP(PLATFORM_FREEBSD, "__FreeBSD__");
 #undef MAP
 
 		case PLATFORM_DARWIN:
-			macro_add("__DARWIN__", "1");
-			macro_add("__MACH__", "1"); /* TODO: proper detection for these */
-			macro_add("__APPLE__", "1");
+			macro_add("__DARWIN__", "1", 0);
+			macro_add("__MACH__", "1", 0); /* TODO: proper detection for these */
+			macro_add("__APPLE__", "1", 0);
 			break;
 
 		case PLATFORM_CYGWIN:
-			macro_add("__CYGWIN__", "1");
+			macro_add("__CYGWIN__", "1", 0);
 			platform_win32 = 1;
 			break;
 	}
 
 	macro_add("__WCHAR_TYPE__",
-			platform_win32 ? "short" : "int");
+			platform_win32 ? "short" : "int", 0);
+
+	macro_add_sprintf("__BIGGEST_ALIGNMENT__", "%u", platform_align_max());
 
 	current_fname = FNAME_CMDLINE;
 
@@ -255,8 +291,8 @@ int main(int argc, char **argv)
 
 			case 'M':
 				if(!strcmp(argv[i] + 2, "M")){
-					fprintf(stderr, "TODO\n");
-					return 1;
+					dump = DEPS;
+					no_output = 1;
 				}else{
 					goto usage;
 				}
@@ -298,7 +334,7 @@ int main(int argc, char **argv)
 				break;
 
 			case 'd':
-				if(argv[i][3])
+				if(argv[i][2] && argv[i][3])
 					goto defaul;
 				switch(argv[i][2]){
 					case 'M':
@@ -306,7 +342,9 @@ int main(int argc, char **argv)
 						/* list #defines */
 						dump = argv[i][2] == 'M' ? MACROS : STATS;
 						no_output = 1;
-						option_line_info = 0;
+						break;
+					case '\0':
+						option_trace = 1;
 						break;
 					default:
 						goto usage;
@@ -362,10 +400,17 @@ int main(int argc, char **argv)
 				break;
 			}
 
+			case 'w':
+				if(!argv[i][2]){
+					wmode = 0;
+					break;
+				}
+				/* fall */
+
 
 			default:
 defaul:
-				if(std_from_str(argv[i], &std) == 0){
+				if(std_from_str(argv[i], &std, NULL) == 0){
 					/* we have an std */
 				}else if(!strcmp(argv[i], "-trigraphs")){
 					option_trigraphs = 1;
@@ -383,28 +428,28 @@ defaul:
 	switch(platform_arch()){
 		case PLATFORM_x86:
 			if(platform_word_size() == 8){
-				macro_add("__LP64__", "1");
-				macro_add("__x86_64__", "1");
+				macro_add("__LP64__", "1", 0);
+				macro_add("__x86_64__", "1", 0);
 			}else{
-				macro_add("__i386__", "1");
+				macro_add("__i386__", "1", 0);
 			}
 			break;
 
 		case PLATFORM_MIPSEL:
-			macro_add("__MIPS__", "1");
+			macro_add("__MIPS__", "1", 0);
 	}
 
-	macro_add("__STDC_HOSTED__",  freestanding ? "0" : "1");
+	macro_add("__STDC_HOSTED__",  freestanding ? "0" : "1", 0);
 	switch(std){
 		case STD_C89:
 		case STD_C90:
 			/* no */
 			break;
 		case STD_C99:
-			macro_add("__STDC_VERSION__", "199901L");
+			macro_add("__STDC_VERSION__", "199901L", 0);
 			break;
 		case STD_C11:
-			macro_add("__STDC_VERSION__", "201112L");
+			macro_add("__STDC_VERSION__", "201112L", 0);
 	}
 
 	if(i < argc){
@@ -443,6 +488,9 @@ defaul:
 
 	preprocess();
 
+	if(wmode & WUNUSED)
+		macros_warn_unused();
+
 	switch(dump){
 		case NONE:
 			break;
@@ -451,6 +499,9 @@ defaul:
 			break;
 		case STATS:
 			macros_stats();
+			break;
+		case DEPS:
+			deps_dump(infname);
 			break;
 	}
 
@@ -473,6 +524,8 @@ usage:
 				"  -dM: debug output\n"
 				"  -dS: print macro usage stats\n"
 				"  -MM: generate Makefile dependencies\n"
+				"  -C: don't discard comments, except in macros\n"
+				"  -CC: don't discard comments, even in macros\n"
 				"  -trigraphs: enable trigraphs\n"
 				"  -digraphs: enable digraphs\n"
 				, stderr);

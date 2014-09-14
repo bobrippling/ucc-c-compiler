@@ -16,7 +16,7 @@
 #include "tokenise.h"
 #include "tokconv.h"
 
-decl_init *parse_init(symtable *scope)
+decl_init *parse_init(symtable *scope, int static_ctx)
 {
 	decl_init *di;
 
@@ -48,10 +48,10 @@ decl_init *parse_init(symtable *scope)
 
 					}else if(accept(token_open_square)){
 						d->type = desig_ar;
-						d->bits.range[0] = parse_expr_exp(scope);
+						d->bits.range[0] = parse_expr_exp(scope, static_ctx);
 
 						if(accept(token_elipsis))
-							d->bits.range[1] = parse_expr_exp(scope);
+							d->bits.range[1] = parse_expr_exp(scope, static_ctx);
 
 						EAT(token_close_square);
 
@@ -63,7 +63,7 @@ decl_init *parse_init(symtable *scope)
 				EAT(token_assign);
 			}
 
-			sub = parse_init(scope);
+			sub = parse_init(scope, static_ctx);
 			sub->desig = desig;
 
 			dynarray_add(&exps, sub);
@@ -72,7 +72,8 @@ decl_init *parse_init(symtable *scope)
 				break;
 
 			if(curtok == token_close_block && cc1_std < STD_C99)
-				warn_at(NULL, "trailing comma in initialiser");
+				cc1_warn_at(NULL, c89_parse_trailingcomma,
+						"trailing comma in initialiser");
 		}
 
 		di->bits.ar.inits = exps;
@@ -81,7 +82,7 @@ decl_init *parse_init(symtable *scope)
 
 	}else{
 		di = decl_init_new(decl_init_scalar);
-		di->bits.expr = PARSE_EXPR_NO_COMMA(scope);
+		di->bits.expr = PARSE_EXPR_NO_COMMA(scope, static_ctx);
 		memcpy_safe(&di->where, &di->bits.expr->where);
 
 #ifdef DEBUG_DECL_INIT

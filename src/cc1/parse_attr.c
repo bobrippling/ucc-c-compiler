@@ -5,6 +5,7 @@
 #include <ctype.h>
 
 #include "../util/util.h"
+#include "../util/alloc.h"
 
 #include "parse_attr.h"
 
@@ -12,6 +13,7 @@
 #include "tokconv.h"
 
 #include "cc1_where.h"
+#include "warn.h"
 
 #include "parse_expr.h"
 
@@ -43,7 +45,8 @@ static attribute *parse_attr_format(symtable *scope)
 	}else if(CHECK("scanf")){
 		fmt = attr_fmt_scanf;
 	}else{
-		warn_at(NULL, "unknown format func \"%s\"", func);
+		cc1_warn_at(NULL, attr_format_unknown,
+				"unknown format func \"%s\"", func);
 		parse_attr_bracket_chomp(1);
 		return NULL;
 	}
@@ -84,7 +87,8 @@ static attribute *parse_attr_section()
 	for(i = 0; i < len; i++)
 		if(!isprint(func[i])){
 			if(i < len - 1 || func[i] != '\0')
-				warn_at(NULL, "character 0x%x detected in section", func[i]);
+				cc1_warn_at(NULL, attr_section_badchar,
+						"character 0x%x detected in section", func[i]);
 			break;
 		}
 
@@ -113,7 +117,9 @@ static attribute *parse_attr_nonnull()
 				int n = currentval.val.i;
 				if(n <= 0){
 					/* shouldn't ever be negative */
-					warn_at(NULL, "%s nonnull argument ignored", n < 0 ? "negative" : "zero");
+					cc1_warn_at(NULL,
+							attr_nonnull_bad,
+							"%s nonnull argument ignored", n < 0 ? "negative" : "zero");
 					had_error = 1;
 				}else{
 					/* implicitly disallow functions with >32 args */
@@ -146,7 +152,7 @@ static expr *optional_parened_expr(symtable *scope)
 		if(accept(token_close_paren))
 			goto out;
 
-		e = PARSE_EXPR_NO_COMMA(scope);
+		e = PARSE_EXPR_NO_COMMA(scope, 0);
 
 		EAT(token_close_paren);
 
@@ -174,6 +180,34 @@ static attribute *parse_attr_aligned(symtable *scope)
 	return da;
 }
 
+static attribute *parse_attr_cleanup(symtable *scope)
+{
+	decl *d;
+	char *sp;
+	where ident_loc;
+	attribute *attr;
+
+	EAT(token_open_paren);
+
+	if(curtok != token_identifier)
+		die_at(NULL, "identifier expected for cleanup function");
+
+	where_cc1_current(&ident_loc);
+	sp = token_current_spel();
+	EAT(token_identifier);
+
+	d = symtab_search_d(scope, sp, NULL);
+	if(!d)
+		die_at(&ident_loc, "function '%s' not found", sp);
+
+	attr = attribute_new(attr_cleanup);
+	attr->bits.cleanup = d;
+
+	EAT(token_close_paren);
+
+	return attr;
+}
+
 #define EMPTY(t)                      \
 static attribute *parse_ ## t()       \
 {                                     \
@@ -186,6 +220,8 @@ EMPTY(attr_enum_bitmask)
 EMPTY(attr_noreturn)
 EMPTY(attr_noderef)
 EMPTY(attr_packed)
+EMPTY(attr_weak)
+EMPTY(attr_ucc_debug)
 
 #undef EMPTY
 
@@ -218,6 +254,9 @@ static struct
 	ATTR(packed),
 	ATTR(sentinel),
 	ATTR(aligned),
+	ATTR(weak),
+	ATTR(cleanup),
+	{ "__ucc_debug", parse_attr_ucc_debug },
 
 	ATTR(cdecl),
 	ATTR(stdcall),
@@ -248,6 +287,7 @@ static void parse_attr_bracket_chomp(int had_open_paren)
 
 static attribute *parse_attr_single(const char *ident, symtable *scope)
 {
+	symtable_global *glob;
 	int i;
 
 	for(i = 0; attrs[i].ident; i++){
@@ -259,10 +299,23 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 		}
 	}
 
-	warn_at(NULL, "ignoring unrecognised attribute \"%s\"", ident);
+	/* unrecognised - only do the warning (and map checking) if non system-header */
+	if(!where_in_sysheader(where_cc1_current(NULL))){
+		glob = symtab_global(scope);
+		if(!dynmap_exists(char *, glob->unrecog_attrs, (char *)ident)){
+			char *dup = ustrdup(ident);
+
+			if(!glob->unrecog_attrs)
+				glob->unrecog_attrs = dynmap_new(char *, strcmp, dynmap_strhash);
+
+			dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
+
+			cc1_warn_at(NULL, attr_unknown,
+					"ignoring unrecognised attribute \"%s\"", ident);
+		}
+	}
 
 	/* if there are brackets, eat them all */
-
 	parse_attr_bracket_chomp(0);
 
 	return NULL;

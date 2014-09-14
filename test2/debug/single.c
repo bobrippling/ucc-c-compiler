@@ -12,7 +12,9 @@ struct A *a(void)
 	return &yo;
 }
 
-pa(struct A *p);
+pa(struct A *p)
+{
+}
 
 int main(int argc, char **argv)
 {

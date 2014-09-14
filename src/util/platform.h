@@ -27,4 +27,7 @@ unsigned platform_align_max(void) ucc_const;
 
 void platform_set_word_size(unsigned);
 
+/* no big endian support */
+#define platform_bigendian() 0
+
 #endif

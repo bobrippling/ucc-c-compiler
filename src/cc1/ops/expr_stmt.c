@@ -36,29 +36,26 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */
 }
 
-void gen_expr_stmt(expr *e)
+const out_val *gen_expr_stmt(expr *e, out_ctx *octx)
 {
-	gen_stmt(e->code);
-	/* last stmt is told to leave its result on the stack
-	 *
-	 * if the last stmt isn't an expression, we put something
-	 * on the stack for it
-	 */
-	{
-		int n = dynarray_count(e->code->bits.code.stmts);
-		if(n == 0 || !stmt_kind(e->code->bits.code.stmts[n-1], expr))
-			out_push_noop();
-	}
+	size_t n;
+	gen_stmt_code_m1(e->code, 1, octx);
 
-	out_comment("end of ({...})");
+	n = dynarray_count(e->code->bits.code.stmts);
+
+	if(n > 0 && stmt_kind(e->code->bits.code.stmts[n-1], expr))
+		return gen_expr(e->code->bits.code.stmts[n - 1]->expr, octx);
+
+	return out_new_noop(octx);
 }
 
-void gen_expr_str_stmt(expr *e)
+const out_val *gen_expr_str_stmt(expr *e, out_ctx *octx)
 {
 	idt_printf("statement:\n");
 	gen_str_indent++;
 	print_stmt(e->code);
 	gen_str_indent--;
+	UNUSED_OCTX();
 }
 
 void mutate_expr_stmt(expr *e)
@@ -73,9 +70,10 @@ expr *expr_new_stmt(stmt *code)
 	return e;
 }
 
-void gen_expr_style_stmt(expr *e)
+const out_val *gen_expr_style_stmt(expr *e, out_ctx *octx)
 {
 	stylef("({\n");
-	gen_stmt(e->code);
+	gen_stmt(e->code, octx);
 	stylef("\n})");
+	return NULL;
 }

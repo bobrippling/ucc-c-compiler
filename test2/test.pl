@@ -1,5 +1,10 @@
 #!/usr/bin/perl
+
+# exit codes: 0 = pass, 1 = fail, 2 = skipped
+
 use warnings;
+
+my $timeout = 2;
 
 sub apply_vars;
 sub die2;
@@ -10,7 +15,7 @@ sub usage
 
 sub timeout
 {
-	my $r = system("./timeout", '1', @_);
+	my $r = system("./timeout", $timeout, @_);
 	return $r;
 }
 
@@ -31,6 +36,11 @@ for(@ARGV){
 		$ucc = $1;
 	}elsif($_ eq '-v'){
 		$verbose = 1;
+	}elsif(/--timeout=(.+)/){
+		$timeout = $1;
+		if($timeout !~ /^[0-9]+$/){
+			die "$0: timeout must be numeric\n";
+		}
 	}elsif($_ eq '--keep'){
 		$keep_temps = 1;
 	}elsif(!defined $file){
@@ -58,11 +68,13 @@ my %vars = (
 	'layout_check' => './layout_check.sh',
 	'caret_check' => './caret_check.pl',
 	'debug_check' => './debug_check.pl',
+	'jmpcheck' => './jmpcheck.sh',
+	'archgen' => './archgen.pl',
 );
 
 if($verbose){
 	my @verbose_support = (
-		'check', 'ocheck', 'debug_check'
+		'check', 'ocheck', 'debug_check', 'layout_check'
 	);
 
 	$vars{$_} .=  " -v" for @verbose_support;
@@ -73,6 +85,24 @@ my $ran = 0;
 my $want_check = 0;
 my $had_check = 0;
 
+
+my @platforms = (
+	'linux',
+	'freebsd',
+	'darwin',
+	'cygwin_nt-.*',
+);
+sub platform_valid_check
+{
+	my $p = lc shift;
+	for(@platforms){
+		return if $p =~ /$_/;
+	}
+	die "platform '$p' not recognised";
+}
+chomp(my $platform = lc `uname -s`);
+platform_valid_check $platform;
+
 # export for sub-programs
 $ENV{UCC} = $ucc;
 
@@ -81,6 +111,27 @@ while(<F>){
 	chomp;
 
 	if(my($command, $sh) = m{// *([A-Z]+): *(.*)}){
+		if($command eq 'TEST'){
+			# target [!] platform
+			if($sh =~ /^target *(!?) *([a-zA-Z0-9_-]+)$/){
+				my($not, $platform_req) = ($1, $2);
+
+				$not = length $not;
+
+				platform_valid_check $platform_req;
+
+				my $platform_eq = $platform_req eq $platform;
+
+				if($platform_eq == $not){
+					warn "skipping $file: not on platform '$platform_req'\n";
+					exit 2;
+				}
+
+			}else{
+				die "unrecognised TEST command '$sh'";
+			}
+		}
+
 		if($command eq 'RUN'){
 			$ran++;
 
@@ -115,7 +166,8 @@ if($ran){
 
 sub die2
 {
-	die "$0: @_\n";
+	warn "$0: @_\n";
+	exit 1;
 }
 
 sub apply_vars

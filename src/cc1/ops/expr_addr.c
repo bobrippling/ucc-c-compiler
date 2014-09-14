@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "expr_addr.h"
@@ -48,7 +49,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		}
 
 		if(expr_kind(e->lhs, identifier)){
-			decl *d = e->lhs->bits.ident.sym->decl;
+			decl *d = e->lhs->bits.ident.bits.ident.sym->decl;
 
 			if((d->store & STORE_MASK_STORE) == store_register)
 				die_at(&e->lhs->where, "can't take the address of register");
@@ -60,10 +61,13 @@ void fold_expr_addr(expr *e, symtable *stab)
 	}
 }
 
-void gen_expr_addr(expr *e)
+const out_val *gen_expr_addr(expr *e, out_ctx *octx)
 {
 	if(e->bits.lbl.spel){
-		out_push_lbl(e->bits.lbl.label->mangled, 1); /* GNU &&lbl */
+		/* GNU &&lbl */
+		label_makeblk(e->bits.lbl.label, octx);
+
+		return out_new_blk_addr(octx, e->bits.lbl.label->bblock);
 
 	}else{
 		/* special case - can't lea_expr() functions because they
@@ -77,14 +81,16 @@ void gen_expr_addr(expr *e)
 					"&[not-identifier], got %s",
 					sub->f_str());
 
-			out_push_sym(sub->bits.ident.sym);
+			assert(sub->bits.ident.type == IDENT_NORM);
+
+			return out_new_sym(octx, sub->bits.ident.bits.ident.sym);
 		}else{
-			lea_expr(sub);
+			return lea_expr(sub, octx);
 		}
 	}
 }
 
-void gen_expr_str_addr(expr *e)
+const out_val *gen_expr_str_addr(expr *e, out_ctx *octx)
 {
 	if(e->bits.lbl.spel){
 		idt_printf("address of label \"%s\"\n", e->bits.lbl.spel);
@@ -94,6 +100,7 @@ void gen_expr_str_addr(expr *e)
 		print_expr(e->lhs);
 		gen_str_indent--;
 	}
+	UNUSED_OCTX();
 }
 
 static void const_expr_addr(expr *e, consty *k)
@@ -147,9 +154,11 @@ void mutate_expr_addr(expr *e)
 	e->f_const_fold = const_expr_addr;
 }
 
-void gen_expr_style_addr(expr *e)
+const out_val *gen_expr_style_addr(expr *e, out_ctx *octx)
 {
+	const out_val *r;
 	stylef("&(");
-	gen_expr(e->lhs);
+	r = gen_expr(e->lhs, octx);
 	stylef(")");
+	return r;
 }
