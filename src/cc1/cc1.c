@@ -232,6 +232,7 @@ static struct warn_str
 	{ "return-undef", &cc1_warning.return_undef },
 	{ "signed-unsigned", &cc1_warning.signed_unsigned },
 	{ "sizeof-decayed", &cc1_warning.sizeof_decayed },
+	{ "sizeof-ptr-divide", &cc1_warning.sizeof_ptr_div },
 	{ "static-array-size", &cc1_warning.static_array_bad },
 	{ "str-contain-nul", &cc1_warning.str_contain_nul },
 

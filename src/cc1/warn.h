@@ -111,6 +111,7 @@ struct cc1_warning
 	unsigned char sign_compare;
 	unsigned char signed_unsigned;
 	unsigned char sizeof_decayed;
+	unsigned char sizeof_ptr_div;
 	unsigned char static_array_bad;
 	unsigned char str_contain_nul;
 	unsigned char struct_noinstance_anon;
