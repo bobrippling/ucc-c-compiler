@@ -1401,29 +1401,61 @@ static type *default_type(void)
 	return type_nav_btype(cc1_type_nav, type_int);
 }
 
+static void unused_attribute(decl *dfor, attribute *attr)
+{
+	char buf[64];
+	struct_union_enum_st *su;
+
+	if(!attr)
+		return;
+
+	assert(!dfor || !dfor->spel);
+
+	if(dfor && (su = type_is_s_or_u(dfor->ref))){
+		snprintf(buf, sizeof buf,
+				" (place attribute after '%s')",
+				su->primitive == type_struct ? "struct" : "union");
+	}
+
+
+	cc1_warn_at(&attr->where, ignored_attribute,
+			"attribute ignored - no declaration%s", buf);
+
+
+	RELEASE(attr);
+}
+
 decl *parse_decl(
 		enum decl_mode mode, int newdecl,
 		symtable *scope, symtable *add_to_scope)
 {
+	attribute *decl_attr = NULL;
 	enum decl_storage store = store_default;
-	type *r = parse_btype(
+	type *bt;
+	decl *d;
+
+	parse_add_attr(&decl_attr, scope);
+
+	bt = parse_btype(
 			mode & DECL_ALLOW_STORE ? &store : NULL,
 			/*align:*/NULL,
 			newdecl, scope, 1);
-	decl *d;
 
-	if(!r){
-		if((mode & DECL_CAN_DEFAULT) == 0)
+	if(!bt){
+		if((mode & DECL_CAN_DEFAULT) == 0){
+			unused_attribute(NULL, decl_attr);
 			return NULL;
+		}
 
-		r = default_type();
+		bt = default_type();
 
 	}else{
 		prevent_typedef(store);
 	}
 
 	d = parse_decl_stored_aligned(
-			r, mode,
+			type_attributed(bt, decl_attr),
+			mode,
 			store, NULL /* align */,
 			scope, add_to_scope);
 
@@ -1825,8 +1857,11 @@ int parse_decl_group(
 	type *this_ref;
 	decl *last = NULL;
 	int at_plain_ident;
+	attribute *decl_attr = NULL;
 
 	UCC_ASSERT(add_to_scope || pdecls, "what shall I do?");
+
+	parse_add_attr(&decl_attr, in_scope);
 
 	parse_static_assert(in_scope);
 
@@ -1836,8 +1871,10 @@ int parse_decl_group(
 			newdecl, in_scope, 1);
 
 	if(!this_ref){
-		if(!parse_at_decl_spec() || !(mode & DECL_MULTI_CAN_DEFAULT))
+		if(!parse_at_decl_spec() || !(mode & DECL_MULTI_CAN_DEFAULT)){
+			unused_attribute(NULL, decl_attr);
 			return 0;
+		}
 
 		this_ref = default_type();
 	}
@@ -1863,6 +1900,13 @@ int parse_decl_group(
 
 		/* need to parse __attribute__ before folding the type */
 		parse_decl_attr(d, in_scope);
+
+		RETAIN(decl_attr);
+		if(d->spel){
+			d->ref = type_attributed(d->ref, decl_attr);
+		}else{
+			unused_attribute(d, decl_attr);
+		}
 
 		fold_type_w_attr(d->ref, NULL, &d->where, in_scope, d->attr);
 
@@ -1914,6 +1958,8 @@ int parse_decl_group(
 		/* else die here: */
 		EAT(token_semicolon);
 	}
+
+	RELEASE(decl_attr);
 
 	return 1;
 }

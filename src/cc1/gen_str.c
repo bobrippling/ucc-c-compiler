@@ -329,8 +329,10 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 	if(mode & PDECL_SIZE && !type_is(d->ref, type_func)){
 		if(type_is_complete(d->ref)){
-			const int sz = decl_size(d);
-			fprintf(cc1_out, " size %d bytes. %d platform-word(s)", sz, sz / platform_word_size());
+			const unsigned sz = decl_size(d);
+			const unsigned align = decl_align(d);
+
+			fprintf(cc1_out, " size %u, align %u", sz, align);
 		}else{
 			fprintf(cc1_out, " incomplete decl");
 		}

@@ -188,6 +188,8 @@ static struct warn_str
 
 	{ "call-argcount", &cc1_warning.funcall_argcount },
 
+	{ "ignored-attributes", &cc1_warning.ignored_attribute },
+
 	{ "ignored-late-decl", &cc1_warning.ignored_late_decl },
 
 	{ "ignored-qualifiers", &cc1_warning.ignored_qualifiers },
