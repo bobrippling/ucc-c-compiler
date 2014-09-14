@@ -12,6 +12,8 @@
 #include "tokenise.h"
 #include "tokconv.h"
 
+#include "fold.h"
+
 #include "cc1_where.h"
 #include "warn.h"
 
@@ -153,6 +155,7 @@ static expr *optional_parened_expr(symtable *scope)
 			goto out;
 
 		e = PARSE_EXPR_NO_COMMA(scope, 0);
+		FOLD_EXPR(e, scope);
 
 		EAT(token_close_paren);
 
