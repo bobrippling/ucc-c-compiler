@@ -1280,6 +1280,9 @@ static decl *parse_decl_stored_aligned(
 
 	d->store = store; /* set early for parse_type_declarator() */
 
+	/* int __attr__ spel, __attr__ spel2, ... */
+	parse_add_attr(&d->attr, scope);
+
 	if(is_autotype){
 		d->spel = token_current_spel();
 		EAT(token_identifier);
