@@ -76,17 +76,21 @@ static void blk_codegen(out_blk *blk, struct flush_state *st)
 		fprintf(st->f, "%s", *i);
 }
 
-static void bfs_block(out_blk *blk, struct flush_state *st)
+static void bfs_block(out_blk *blk, struct flush_state *st, int const force)
 {
 	if(blk->flush_in_prog)
 		return;
 	blk->flush_in_prog = 1;
 
+	/* dead code elimination: */
+	if(!force && !blk->merge_preds)
+		return;
+
 	if(BLK_IS_MERGE(blk)){
 		out_blk **i;
 
 		for(i = blk->merge_preds; *i; i++){
-			bfs_block(*i, st);
+			bfs_block(*i, st, 0);
 		}
 	}
 
@@ -101,7 +105,7 @@ static void bfs_block(out_blk *blk, struct flush_state *st)
 
 			if(blk->type == BLK_NEXT_BLOCK){
 				blk_jmpnext(blk->bits.next, st);
-				bfs_block(blk->bits.next, st);
+				bfs_block(blk->bits.next, st, 0);
 			}
 			break;
 
@@ -114,11 +118,11 @@ static void bfs_block(out_blk *blk, struct flush_state *st)
 
 			/* if it's unlikely, we want the false block already in the pipeline */
 			if(blk->bits.cond.unlikely){
-				bfs_block(blk->bits.cond.if_0_blk, st);
-				bfs_block(blk->bits.cond.if_1_blk, st);
+				bfs_block(blk->bits.cond.if_0_blk, st, 0);
+				bfs_block(blk->bits.cond.if_1_blk, st, 0);
 			}else{
-				bfs_block(blk->bits.cond.if_1_blk, st);
-				bfs_block(blk->bits.cond.if_0_blk, st);
+				bfs_block(blk->bits.cond.if_1_blk, st, 0);
+				bfs_block(blk->bits.cond.if_0_blk, st, 0);
 			}
 			break;
 	}
@@ -130,10 +134,10 @@ void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl)
 	out_blk **must_i;
 
 	st.f = cc_out[SECTION_TEXT];
-	bfs_block(first, &st);
+	bfs_block(first, &st, 1);
 
 	for(must_i = octx->mustgen; must_i && *must_i; must_i++)
-		bfs_block(*must_i, &st);
+		bfs_block(*must_i, &st, 1);
 
 	if(st.jmpto)
 		impl_jmp(st.f, st.jmpto->lbl);
