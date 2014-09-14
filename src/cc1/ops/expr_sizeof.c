@@ -115,8 +115,6 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 static void const_expr_sizeof(expr *e, consty *k)
 {
-	UCC_ASSERT(e->tree_type, "const_fold on %s before fold", sizeof_what(e->what_of));
-
 	if(NEED_RUNTIME_SIZEOF(SIZEOF_WHAT(e))){
 		k->type = CONST_NO;
 		return;

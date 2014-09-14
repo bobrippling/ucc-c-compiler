@@ -13,6 +13,10 @@
 
 void const_fold(expr *e, consty *k)
 {
+	UCC_ASSERT(e->tree_type,
+			"const_fold on %s before fold",
+			e->f_str());
+
 	memset(k, 0, sizeof *k);
 	k->type = CONST_NO;
 
