@@ -1385,6 +1385,10 @@ static decl *parse_decl_stored_aligned(
 	else if(align)
 		ICE("align for function?");
 
+	/* copy all of d's attributes to the .ref, so that function
+	 * types get everything correctly. */
+	d->ref = type_attributed(d->ref, RETAIN(d->attr));
+
 	return d;
 }
 
