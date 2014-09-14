@@ -71,11 +71,6 @@ static type *parse_type_sue(
 		where_cc1_adj_identifier(&sue_loc, spel);
 	}
 
-	/* FIXME: struct A { int i; };
-	 * struct A __attr__((packed)) a; - affects all struct A instances */
-	/* int/struct-A __attr__ */
-	parse_add_attr(&this_sue_attr, scope);
-
 	if(accept(token_open_block)){
 		/* sue is now in scope, but incomplete */
 		if(spel){
