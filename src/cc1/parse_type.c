@@ -208,7 +208,7 @@ static decl *parse_at_tdef(symtable *scope)
 	return NULL;
 }
 
-int parse_at_decl(symtable *scope)
+int parse_at_decl(symtable *scope, int include_attribute)
 {
 	/* this is similar to parse_btype() initial test logic */
 	switch(curtok){
@@ -216,6 +216,9 @@ int parse_at_decl(symtable *scope)
 			return curtok_is_type_qual()
 				|| curtok_is_decl_store()
 				|| curtok_is_type_primitive();
+
+		case token_attribute:
+			return include_attribute;
 
 		case token_signed:
 		case token_unsigned:
@@ -227,7 +230,6 @@ int parse_at_decl(symtable *scope)
 		case token_typeof:
 		case token___auto_type:
 		case token___builtin_va_list:
-		case token_attribute:
 		case token__Alignas:
 			return 1;
 
@@ -238,7 +240,7 @@ int parse_at_decl(symtable *scope)
 			/* check for __extension__ <type> */
 			while(accept(token___extension__));
 
-			r = parse_at_decl(scope);
+			r = parse_at_decl(scope, include_attribute);
 
 			/* only place one back on the token stack,
 			 * since that's what it's limited to */
@@ -825,7 +827,8 @@ struct type_parsed
 	{
 		PARSED_PTR,
 		PARSED_FUNC,
-		PARSED_ARRAY
+		PARSED_ARRAY,
+		PARSED_ATTR
 	} type;
 
 	attribute *attr;
@@ -874,6 +877,7 @@ static type_parsed *parsed_type_nest(
 {
 	if(accept(token_open_paren)){
 		type_parsed *ret;
+		attribute *attr = NULL;
 
 		/*
 		 * we could be here:
@@ -883,16 +887,35 @@ static type_parsed *parsed_type_nest(
 		 *
 		 * we don't look for open parens - they're used for nexting, e.g.
 		 * int ((*p)(void));
+		 *
+		 * int (__attribute ...)
+		 *      ^ we either parse this as an anon-function type or an
+		 *      attributed function:
+		 *      int (__attribute(())); // int (int)
+		 *      int (__attribute(()) f)() // int f()
+		 *
+		 * if we're parsing a decl, we reject __attribute as an argument spec
 		 */
-		if(parse_at_decl(scope) || curtok == token_close_paren){
+		if(parse_at_decl(scope, !dfor) || curtok == token_close_paren){
 			/* int() or char(short) - func decl */
 			uneat(token_open_paren);
 			/* parse_...func will grab this as funcargs instead */
 			return base;
 		}
 
+		/* int (__attribute(()) f)() ... */
+		parse_add_attr(&attr, scope);
+
 		ret = parsed_type_declarator(mode, dfor, base, scope);
+
 		EAT(token_close_paren);
+
+		if(attr){
+			ret = type_parsed_new(PARSED_ATTR, ret);
+			ret->attr = attr;
+		}
+
+
 		return ret;
 
 	}else if(curtok == token_identifier){
@@ -1118,6 +1141,10 @@ static type *parse_type_declarator_to_type(
 						i->bits.func.arglist,
 						i->bits.func.scope);
 				break;
+
+			case PARSED_ATTR:
+				/* attribute applied below */
+				break;
 		}
 
 		ty = type_attributed(
@@ -1171,7 +1198,7 @@ type *parse_type(int newdecl, symtable *scope)
 		/* auto <non-ident> is fine, but
 		 * auto int, or auto myident
 		 * needs to be interpreted as in C */
-		if(parse_at_decl(scope)){
+		if(parse_at_decl(scope, 1)){
 			uneat(token_auto);
 		}else{
 			btype = type_nav_btype(cc1_type_nav, type_int);
@@ -1266,7 +1293,7 @@ static decl *parse_decl_stored_aligned(
 			/* auto, defaulted to int? */
 			if(bt && bt->primitive == type_int){
 				/* if there are no more specs/quals... */
-				try_trail = !parse_at_decl(scope);
+				try_trail = !parse_at_decl(scope, 1);
 			}
 		}
 
