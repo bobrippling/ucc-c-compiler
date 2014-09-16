@@ -220,6 +220,8 @@ void vla_typedef_init(decl *d, out_ctx *octx)
 			vla_gen_size_ty(
 				d->ref, octx, sizety,
 				alloc_start));
+
+	assert(alloc_start->retains > 0);
 }
 
 void vla_decl_init(decl *d, out_ctx *octx)
