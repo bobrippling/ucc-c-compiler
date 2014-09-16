@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -34,7 +35,20 @@ expr *parse_expr_sizeof_typeof_alignof(
 	where w;
 
 	where_cc1_current(&w);
-	w.chr -= what_of == what_alignof ? 7 : 6; /* go back over the *of */
+
+	switch(what_of){
+			enum token t;
+		case what_alignof:
+			t = token__Alignof;
+			if(0)
+		case what_typeof:
+			t = token_typeof;
+			if(0)
+		case what_sizeof:
+			t = token_sizeof;
+
+			w.chr -= strlen(token_to_str(t));
+	}
 
 	if(accept(token_open_paren)){
 		type *r = parse_type(0, scope);
