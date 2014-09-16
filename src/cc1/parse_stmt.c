@@ -46,7 +46,7 @@ static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 		ctx->scope = t->symtab = symtab_new(t->symtab, &here);
 	}
 
-  if(parse_at_decl(ctx->scope)){
+  if(parse_at_decl(ctx->scope, 1)){
 		decl *d;
 
 		/* if we are at a type, push a scope for it, for
@@ -347,7 +347,7 @@ static stmt *parse_stmt_and_decls(
 				this = parse_label(&subctx);
 			else if(curtok == token_close_block)
 				break;
-			else if((at_decl = parse_at_decl(subctx.scope)))
+			else if((at_decl = parse_at_decl(subctx.scope, 1)))
 				break;
 			else
 				this = parse_stmt(&subctx);
