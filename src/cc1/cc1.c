@@ -46,7 +46,7 @@ static const char **system_includes;
 static struct warn_str
 {
 	const char *arg;
-	unsigned char *offsets[6];
+	unsigned char *offsets[7];
 } warns[] = {
 	{ "mismatch-arg", &cc1_warning.arg_mismatch },
 	{ "array-comma", &cc1_warning.array_comma },
@@ -183,7 +183,8 @@ static struct warn_str
 		&cc1_warning.gnu_typeof,
 		&cc1_warning.gnu_attribute,
 		&cc1_warning.gnu_init_array_range,
-		&cc1_warning.gnu_case_range
+		&cc1_warning.gnu_case_range,
+		&cc1_warning.gnu_alignof_expr
 	},
 
 	{ "call-argcount", &cc1_warning.funcall_argcount },

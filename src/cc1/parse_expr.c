@@ -33,6 +33,7 @@ expr *parse_expr_sizeof_typeof_alignof(
 	const int static_ctx = /*doesn't matter:*/0;
 	expr *e;
 	where w;
+	int is_expr = 1;
 
 	where_cc1_current(&w);
 
@@ -57,15 +58,17 @@ expr *parse_expr_sizeof_typeof_alignof(
 			EAT(token_close_paren);
 
 			/* check for sizeof(int){...} */
-			if(curtok == token_open_block)
+			if(curtok == token_open_block){
 				e = expr_new_sizeof_expr(
 							expr_new_compound_lit(
 								r,
 								parse_init(scope, static_ctx),
 								static_ctx),
 							what_of);
-			else
+			}else{
 				e = expr_new_sizeof_type(r, what_of);
+				is_expr = 0;
+			}
 
 		}else{
 			/* not a type - treat the open paren as part of the expression */
@@ -84,7 +87,14 @@ expr *parse_expr_sizeof_typeof_alignof(
 		/* don't go any higher, sizeof a - 1, means sizeof(a) - 1 */
 	}
 
-	return expr_set_where_len(e, &w);
+	e = expr_set_where_len(e, &w);
+
+	if(what_of == what_alignof && is_expr){
+		cc1_warn_at(&e->where, gnu_alignof_expr,
+				"_Alignof applied to expression is a GNU extension");
+	}
+
+	return e;
 }
 
 static expr *parse_expr__Generic(symtable *scope, int static_ctx)
