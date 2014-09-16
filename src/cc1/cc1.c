@@ -598,13 +598,16 @@ static void warnings_set(int to)
 
 static void warning_gnu(int set)
 {
-	cc1_warning.gnu_addr_lbl =
-	cc1_warning.gnu_expr_stmt =
-	cc1_warning.gnu_typeof =
-	cc1_warning.gnu_attribute =
-	cc1_warning.gnu_init_array_range =
-	cc1_warning.gnu_case_range =
-		set;
+	struct warn_str *w;
+	for(w = warns; w->arg; w++){
+		if(!strcmp(w->arg, "gnu")){
+			unsigned i;
+			for(i = 0; i < countof(w->offsets); i++)
+				*w->offsets[i] = set;
+
+			break;
+		}
+	}
 }
 
 static void warning_pedantic(int set)
