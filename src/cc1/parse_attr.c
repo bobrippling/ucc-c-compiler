@@ -222,6 +222,7 @@ EMPTY(attr_noderef)
 EMPTY(attr_packed)
 EMPTY(attr_weak)
 EMPTY(attr_ucc_debug)
+EMPTY(attr_desig_init)
 
 #undef EMPTY
 
@@ -256,6 +257,7 @@ static struct
 	ATTR(aligned),
 	ATTR(weak),
 	ATTR(cleanup),
+	{ "designated_init", parse_attr_desig_init },
 	{ "__ucc_debug", parse_attr_ucc_debug },
 
 	ATTR(cdecl),

@@ -201,7 +201,7 @@ static struct warn_str
 	{ "init-obj-discard", &cc1_warning.init_obj_discard },
 	{ "init-overlong-string", &cc1_warning.init_overlong_strliteral },
 	{ "init-override", &cc1_warning.init_override },
-
+	{ "designated-init", &cc1_warning.init_undesignated },
 
 	{ "unknown-attribute", &cc1_warning.attr_unknown },
 	{ "unused-label", &cc1_warning.lbl_unused },

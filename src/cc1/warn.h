@@ -79,6 +79,7 @@ struct cc1_warning
 	unsigned char init_obj_discard;
 	unsigned char init_overlong_strliteral;
 	unsigned char init_override;
+	unsigned char init_undesignated;
 	unsigned char int_ptr_conv;
 	unsigned char lbl_attr_unknown;
 	unsigned char lbl_unused;

@@ -565,6 +565,7 @@ static decl_init **decl_init_brace_up_sue2(
 	unsigned n = dynarray_count(current), i;
 	unsigned sue_nmem;
 	int had_desig = 0;
+	where *first_non_desig = NULL;
 	where *last_loc = NULL;
 	decl_init *this;
 
@@ -669,6 +670,9 @@ static decl_init **decl_init_brace_up_sue2(
 
 			if(!found)
 				ICE("couldn't find member %s", des->bits.member);
+		}else{
+			if(!first_non_desig)
+				first_non_desig = ITER_WHERE(iter, NULL);
 		}
 
 		if(i < sue_nmem){
@@ -763,6 +767,20 @@ static decl_init **decl_init_brace_up_sue2(
 
 	if(!had_desig)
 		maybe_warn_missing_init(sue, i, sue_nmem, iter, current, last_loc);
+
+	if(first_non_desig){
+		attribute *desig_attr;
+
+		if((desig_attr = attr_present(sue->attr, attr_desig_init))){
+			char buf[WHERE_BUF_SIZ];
+
+			cc1_warn_at(first_non_desig, init_undesignated,
+				"positional initialisation of %s\n"
+				"%s: note: attribute here",
+				sue_str(sue),
+				where_str_r(buf, &desig_attr->where));
+		}
+	}
 
 	return current;
 }
