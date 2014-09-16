@@ -1,5 +1,5 @@
 // 9 * 9 =
-// RUN: %ocheck 45 %s
+// RUN: %ucc -o %t %s
 
 typedef struct
 {
