@@ -41,6 +41,8 @@ static void callee_save_or_restore_1(
 	{
 		const out_val *stk = out_val_retain(octx, stack_pos);
 
+		stk = out_change_type(octx, stk, voidpp);
+
 		if(reg2mem){
 			const out_val *reg = v_new_reg(octx, NULL, type_is_ptr(voidpp), cs);
 			out_store(octx, stk, reg);
@@ -72,6 +74,8 @@ static void callee_save_or_restore(
 		return;
 
 	stack_locn = out_aalloc(octx, stack_n, /*align*/voidpsz, voidp);
+
+	stack_locn = out_change_type(octx, stack_locn, voidp);
 
 	restore_blk = octx->epilogue_blk;
 
