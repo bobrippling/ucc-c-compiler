@@ -1020,7 +1020,7 @@ void fold_global_func(decl *func_decl)
 				dynarray_add(&func_decl->bits.func.code->bits.code.stmts, zret);
 				fold_stmt(zret);
 
-			}else{
+			}else if(!type_is_void(func_ret)){
 				warn_passable_func(func_decl);
 			}
 		}
