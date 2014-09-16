@@ -47,13 +47,17 @@ void bitfield_trunc_check(decl *mem, expr *from)
 	}
 }
 
-void expr_must_lvalue(expr *e, const char *desc)
+int expr_must_lvalue(expr *e, const char *desc)
 {
 	if(!expr_is_lval(e)){
 		fold_had_error = 1;
 		warn_at_print_error(&e->where, "%s to %s - not an lvalue",
 				desc, type_to_str(e->tree_type));
+
+		return 0;
 	}
+
+	return 1;
 }
 
 static const out_val *lea_assign_lhs(expr *e, out_ctx *octx)
