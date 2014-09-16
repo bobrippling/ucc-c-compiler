@@ -408,7 +408,8 @@ void gen_stmt_code_m1(stmt *s, int m1, out_ctx *octx)
 
 	gen_scope_leave_parent(s->symtab, octx);
 
-	gen_block_decls_dealloca(s->symtab, octx);
+	if(!m1)
+		gen_block_decls_dealloca(s->symtab, octx);
 
 	if(endlbl)
 		out_dbg_label(octx, endlbl);
