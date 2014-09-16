@@ -152,8 +152,10 @@ static const out_val *vla_gen_size_ty(
 					out_val_retain(octx, stack_ent);
 
 					new_stack_ent = out_op(octx, op_plus,
-							stack_ent,
+							out_change_type(octx, stack_ent, arith_ty),
 							out_new_l(octx, arith_ty, platform_word_size()));
+
+					new_stack_ent = out_change_type(octx, new_stack_ent, stack_ent->t);
 				}
 
 				sz = out_op(
