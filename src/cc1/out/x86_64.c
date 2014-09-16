@@ -1743,6 +1743,8 @@ const out_val *impl_call(
 	 * also count floats and ints
 	 */
 	for(i = 0; i < nargs; i++){
+		assert(local_args[i]->retains > 0);
+
 		if(local_args[i]->type == V_FLAG)
 			local_args[i] = v_to_reg(octx, local_args[i]);
 
@@ -1776,6 +1778,7 @@ const out_val *impl_call(
 	if(arg_stack.sz > 0){
 		unsigned nfloats = 0, nints = 0; /* shadow */
 		const out_val *stack_iter;
+		type *storety = type_ptr_to(arithty);
 
 		stack_iter = out_val_retain(octx, arg_stack.vptr);
 
@@ -1786,12 +1789,21 @@ const out_val *impl_call(
 				: nints++ >= n_call_iregs;
 
 			if(stack_this){
+				assert(stack_iter->retains > 0);
+
+				stack_iter = out_change_type(octx, stack_iter, storety);
+				out_val_retain(octx, stack_iter);
 				local_args[i] = v_to_stack_mem(octx, local_args[i], stack_iter);
 
-				stack_iter = out_op(octx, op_plus, stack_iter,
+				assert(local_args[i]->retains > 0);
+
+				stack_iter = out_op(octx, op_plus,
+						out_change_type(octx, stack_iter, arithty),
 						out_new_l(octx, arithty, pws));
 			}
 		}
+
+		out_val_release(octx, stack_iter);
 	}
 
 	nints = nfloats = 0;
