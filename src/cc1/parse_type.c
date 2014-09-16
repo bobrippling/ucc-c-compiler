@@ -177,9 +177,16 @@ static type *parse_type_sue(
 	}
 }
 
-void parse_add_attr(attribute **append, symtable *scope)
+static void parse_add_attr_out(
+		attribute **append, symtable *scope, int *got_kw)
 {
+	if(got_kw)
+		*got_kw = 0;
+
 	while(accept(token_attribute)){
+		if(got_kw)
+			*got_kw = 1;
+
 		cc1_warn_at(NULL, gnu_attribute, "use of GNU __attribute__");
 		EAT(token_open_paren);
 		EAT(token_open_paren);
@@ -190,6 +197,11 @@ void parse_add_attr(attribute **append, symtable *scope)
 		EAT(token_close_paren);
 		EAT(token_close_paren);
 	}
+}
+
+void parse_add_attr(attribute **append, symtable *scope)
+{
+	parse_add_attr_out(append, scope, NULL);
 }
 
 static decl *parse_at_tdef(symtable *scope)
@@ -292,9 +304,16 @@ static type *parse_btype_end(
 	return type_at_where(btype, w);
 }
 
+enum parse_btype_flags
+{
+	PARSE_BTYPE_AUTOTYPE = 1 << 0,
+	PARSE_BTYPE_DEFAULT_INT = 1 << 1
+};
+
 static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
-		int newdecl_context, symtable *scope, int allow_autotype)
+		int newdecl_context, symtable *scope,
+		enum parse_btype_flags flags)
 {
 	where autotype_loc;
 	/* *store and *palign should be initialised */
@@ -302,7 +321,8 @@ static type *parse_btype(
 	attribute *attr = NULL;
 	enum type_qualifier qual = qual_none;
 	enum type_primitive primitive = type_int;
-	int is_signed = 1, is_inline = 0, had_attr = 0, is_noreturn = 0, is_va_list = 0;
+	int may_default_type = !!(flags & PARSE_BTYPE_DEFAULT_INT);
+	int is_signed = 1, is_inline = 0, is_noreturn = 0, is_va_list = 0;
 	int store_set = 0, signed_set = 0;
 	decl *tdef_decl = NULL;
 	enum
@@ -511,7 +531,7 @@ static type *parse_btype(
 
 		}else if(curtok == token_attribute){
 			parse_add_attr(&attr, scope); /* __attr__ int ... */
-			had_attr = 1;
+			may_default_type = 1;
 			/*
 			 * can't depend on !!attr, since it is null when:
 			 * __attribute__(());
@@ -561,7 +581,7 @@ static type *parse_btype(
 	|| signed_set
 	|| tdef_typeof
 	|| is_inline
-	|| had_attr
+	|| may_default_type
 	|| is_noreturn
 	|| (palign && *palign))
 	{
@@ -622,7 +642,7 @@ static type *parse_btype(
 					warn_at_print_error(&autotype_loc,
 							"__auto_type given with previous type specifiers");
 
-				}else if(!allow_autotype){
+				}else if(!(flags & PARSE_BTYPE_AUTOTYPE)){
 					warn_at_print_error(&autotype_loc, "__auto_type not wanted here");
 
 				}else{
@@ -686,10 +706,10 @@ static decl *parse_arg_decl(symtable *scope)
 	enum decl_storage store = store_default;
 	decl *argdecl;
 	type *btype = parse_btype(
-			&store, /*align:*/NULL, /*newdecl:*/0, scope, /*auto:*/0);
+			&store, /*align:*/NULL, /*newdecl:*/0, scope,
+			PARSE_BTYPE_DEFAULT_INT);
 
-	if(!btype)
-		btype = default_type();
+	assert(btype);
 
 	/* don't use parse_decl() - we don't want it folding yet,
 	 * things like inits are caught later */
@@ -1437,13 +1457,17 @@ decl *parse_decl(
 	enum decl_storage store = store_default;
 	type *bt;
 	decl *d;
+	enum parse_btype_flags flags = PARSE_BTYPE_AUTOTYPE;
+	int got_attr;
 
-	parse_add_attr(&decl_attr, scope);
+	parse_add_attr_out(&decl_attr, scope, &got_attr);
+	if(got_attr)
+		flags |= PARSE_BTYPE_DEFAULT_INT;
 
 	bt = parse_btype(
 			mode & DECL_ALLOW_STORE ? &store : NULL,
 			/*align:*/NULL,
-			newdecl, scope, 1);
+			newdecl, scope, flags);
 
 	if(!bt){
 		if((mode & DECL_CAN_DEFAULT) == 0){
@@ -1862,17 +1886,21 @@ int parse_decl_group(
 	decl *last = NULL;
 	int at_plain_ident;
 	attribute *decl_attr = NULL;
+	enum parse_btype_flags flags = PARSE_BTYPE_AUTOTYPE;
+	int got_attr;
 
 	UCC_ASSERT(add_to_scope || pdecls, "what shall I do?");
 
-	parse_add_attr(&decl_attr, in_scope);
+	parse_add_attr_out(&decl_attr, in_scope, &got_attr);
+	if(got_attr)
+		flags |= PARSE_BTYPE_DEFAULT_INT;
 
 	parse_static_assert(in_scope);
 
 	this_ref = parse_btype(
 			mode & DECL_MULTI_ALLOW_STORE ? &store : NULL,
 			mode & DECL_MULTI_ALLOW_ALIGNAS ? &align : NULL,
-			newdecl, in_scope, 1);
+			newdecl, in_scope, flags);
 
 	if(!this_ref){
 		if(!parse_at_decl_spec() || !(mode & DECL_MULTI_CAN_DEFAULT)){
