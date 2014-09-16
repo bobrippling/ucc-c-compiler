@@ -148,6 +148,13 @@ static type *parse_type_sue(
 		die_at(NULL, "expected: %s definition or name", sue_str_type(prim));
 	}
 
+	/* struct A { ... } __attr__
+	 *
+	 * - struct is incomplete before this point, so we handle the
+	 *   attributes before sue_decl()
+	 */
+	parse_add_attr(&this_sue_attr, scope);
+
 	{
 		/* struct [tag] <name | '{' | ';'>
 		 *
@@ -163,8 +170,6 @@ static type *parse_type_sue(
 		UCC_ASSERT(isdef || !predecl_sue || predecl_sue == sue,
 				"predecl_sue(%s) != sue(%s) (isdef=%d)",
 				predecl_sue->spel, sue->spel, isdef);
-
-		parse_add_attr(&this_sue_attr, scope); /* struct A { ... } __attr__ */
 
 		/* sue may already exist */
 		attribute_append(&sue->attr, this_sue_attr);
