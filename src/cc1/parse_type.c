@@ -1749,7 +1749,7 @@ static void check_star_modifier(symtable *arg_symtab)
 	}
 }
 
-static void parse_post_func(decl *d, symtable *in_scope)
+static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 {
 	int need_func = 0;
 	type *func_r;
@@ -1760,6 +1760,11 @@ static void parse_post_func(decl *d, symtable *in_scope)
 	 * before __attribute__
 	 */
 	if(curtok == token_asm){
+		if(had_post_attr){
+			cc1_warn_at(NULL, gnu_gcc_compat,
+					"asm() after __attribute__ (GCC compat)");
+		}
+
 		parse_add_asm(d);
 
 		parse_add_attr(&d->attr, in_scope);
@@ -1853,7 +1858,7 @@ static void error_on_unwanted_func(
 		die_at(&d->where, "function declaration not wanted (%s)", d->spel);
 }
 
-static void parse_decl_attr(decl *d, symtable *scope)
+static int parse_decl_attr(decl *d, symtable *scope)
 {
 	/* special case - support GCC __attribute__
 	 * directly after a "new"/prototype function
@@ -1873,7 +1878,9 @@ static void parse_decl_attr(decl *d, symtable *scope)
 		parse_add_attr(&a, scope);
 		d->ref = type_attributed(d->ref, a);
 		RELEASE(a);
+		return 1;
 	}
+	return 0;
 }
 
 int parse_decl_group(
@@ -1919,6 +1926,7 @@ int parse_decl_group(
 	do{
 		int had_field_width = 0;
 		int done = 0;
+		int attr_post_decl;
 		decl *d;
 		at_plain_ident = (curtok == token_identifier);
 
@@ -1936,7 +1944,7 @@ int parse_decl_group(
 		}
 
 		/* need to parse __attribute__ before folding the type */
-		parse_decl_attr(d, in_scope);
+		attr_post_decl = parse_decl_attr(d, in_scope);
 
 		RETAIN(decl_attr);
 		if(d->spel){
@@ -1972,7 +1980,7 @@ int parse_decl_group(
 
 		/* now we have the function in scope we parse its code */
 		if(type_is(d->ref, type_func))
-			parse_post_func(d, in_scope);
+			parse_post_func(d, in_scope, attr_post_decl);
 
 		error_on_unwanted_func(d, mode);
 

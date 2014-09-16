@@ -186,6 +186,8 @@ static struct warn_str
 		&cc1_warning.gnu_case_range
 	},
 
+	{ "gcc-compat", &cc1_warning.gnu_gcc_compat },
+
 	{ "call-argcount", &cc1_warning.funcall_argcount },
 
 	{ "ignored-attributes", &cc1_warning.ignored_attribute },
