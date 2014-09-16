@@ -273,6 +273,13 @@ void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 		if(!d->sym || d->sym->type != sym_local || type_is(d->ref, type_func))
 			continue;
 
+		/* typedefs may or may not have a sym */
+		if((d->store & STORE_MASK_STORE) == store_typedef
+		&& !d->sym->outval)
+		{
+			continue;
+		}
+
 		out_adealloc(octx, &d->sym->outval);
 	}
 }
