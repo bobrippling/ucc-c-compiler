@@ -1797,15 +1797,15 @@ const out_val *impl_call(
 	/* need to save regs before pushes/call */
 	v_save_regs(octx, fnty, local_args, fn);
 
+	/* 16 byte for SSE - special case here as mstack_align may be less */
+	if(!IS_32_BIT())
+		v_stack_needalign(octx, 16);
+
 	if(arg_stack.sz > 0){
 		out_comment(octx, "stack space for %lu arguments", arg_stack.sz);
 		/* this aligns the stack-ptr and returns arg_stack padded */
 		arg_stack.vptr = out_aalloc(octx, arg_stack.sz * pws, pws, arithty);
 	}
-
-	/* 16 byte for SSE - special case here as mstack_align may be less */
-	if(!IS_32_BIT())
-		v_stack_needalign(octx, 16);
 
 	if(arg_stack.sz > 0){
 		unsigned nfloats = 0, nints = 0; /* shadow */
