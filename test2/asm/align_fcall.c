@@ -1,3 +1,5 @@
+// RUN: %ocheck 0 %s
+
 a(){}
 b(){}
 c(){}
@@ -6,6 +8,14 @@ d(){}
 f()
 {
 	return 3;
+}
+
+void check_printf(const char *a, int x, double y)
+{
+	if(x != 3)
+		abort();
+	if(y != 1)
+		abort();
 }
 
 /* Need sufficient nested-calls to get 3-callee save registers in action
@@ -18,5 +28,7 @@ f()
 main(int argc)
 {
 	int i = 5;
-	printf("%d %.1f\n", f(a(), b(), c(), d(), i), 1.0);
+	check_printf("%d %.1f\n", f(a(), b(), c(), d(), i), 1.0);
+
+	return 0;
 }
