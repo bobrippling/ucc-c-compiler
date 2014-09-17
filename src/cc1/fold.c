@@ -562,6 +562,21 @@ void fold_decl_add_sym(decl *d, symtable *stab)
 	}
 }
 
+static void fold_decl_func_retty(decl *d)
+{
+	type *retty = type_called(d->ref, NULL);
+
+	enum type_qualifier qual = type_qual(retty);
+
+	if(qual){
+		cc1_warn_at(&d->where, ignored_qualifiers,
+				type_is_void(type_skip_all(retty))
+				? "function has qualified void return type (%s)"
+				: "%s qualification on return type has no effect",
+				type_qual_to_str(qual, 0));
+	}
+}
+
 static void fold_decl_func(decl *d, symtable *stab)
 {
 	/* allow:
@@ -586,6 +601,8 @@ static void fold_decl_func(decl *d, symtable *stab)
 		warn_at_print_error(&d->where, "function with variably modified type");
 		fold_had_error = 1;
 	}
+
+	fold_decl_func_retty(d);
 
 	if(stab->parent){
 		if(d->bits.func.code)
@@ -1000,7 +1017,7 @@ void fold_global_func(decl *func_decl)
 				dynarray_add(&func_decl->bits.func.code->bits.code.stmts, zret);
 				fold_stmt(zret);
 
-			}else{
+			}else if(!type_is_void(func_ret)){
 				warn_passable_func(func_decl);
 			}
 		}

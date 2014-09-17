@@ -86,7 +86,9 @@ enum wmode wmode =
 	| WPASTE
 	| WFINALESCAPE
 	| WMULTICHAR
-	| WQUOTE;
+	| WQUOTE
+	| WHASHWARNING
+	| WBACKSLASH_SPACE_NEWLINE;
 
 enum comment_strip strip_comments = STRIP_ALL;
 
@@ -106,6 +108,15 @@ static const struct
 	{ "empty-arg", "warn on empty argument to single-arg macro", WEMPTY_ARG },
 	{ "paste", "warn when pasting doesn't make a token", WPASTE },
 	{ "uncalled-macro", "warn when a function-macro is mentioned without ()", WUNCALLED_FN },
+	{ "#warning", "emit #warnings", WHASHWARNING },
+	{ "backslash-newline-space", "space between backslash and newline", WBACKSLASH_SPACE_NEWLINE },
+
+	{ "everything", "everything", ~0 },
+
+	{
+		"all", "Most warnings", WREDEF | WWHITESPACE | WTRAILING | WPASTE |
+			WFINALESCAPE | WMULTICHAR | WHASHWARNING
+	},
 };
 
 #define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)
@@ -390,6 +401,13 @@ int main(int argc, char **argv)
 				/* if not found, we ignore - it was intended for cc1 */
 				break;
 			}
+
+			case 'w':
+				if(!argv[i][2]){
+					wmode = 0;
+					break;
+				}
+				/* fall */
 
 
 			default:

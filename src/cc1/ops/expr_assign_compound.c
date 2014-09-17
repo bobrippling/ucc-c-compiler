@@ -19,7 +19,11 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, "compound assignment");
 
 	/* skip the addr we inserted */
-	expr_must_lvalue(lvalue, "compound assignment");
+	if(!expr_must_lvalue(lvalue, "compound assignment")){
+		/* prevent ICE from type_size(vla), etc */
+		e->tree_type = lvalue->tree_type;
+		return;
+	}
 
 	expr_assign_const_check(lvalue, &e->where);
 

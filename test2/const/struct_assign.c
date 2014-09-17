@@ -21,12 +21,11 @@ struct B
 f(struct A *p)
 {
 	struct A x;
-	x = *p; // CHECK: /error: can't modify const expression/
+	x = *p; // CHECK: error: can't assign struct - contains const member
 }
 
 g(struct B *p)
 {
 	struct B x;
-	x = *p; // CHECK-todo: /error: can't modify const expression/
-	// ^this won't fire because we exit on the first error currently
+	x = *p; // CHECK: error: can't assign struct - contains const member
 }

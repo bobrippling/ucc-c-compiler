@@ -78,6 +78,8 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 					expr_new_val(defval),
 					&en->where);
 
+			FOLD_EXPR(m->val, stab);
+
 			v = defval;
 
 		}else{

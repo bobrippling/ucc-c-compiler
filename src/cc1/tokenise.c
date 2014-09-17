@@ -688,10 +688,12 @@ void nexttoken()
 				case 'x':
 					mode = HEX;
 					nextchar();
+					c = peeknextchar();
 					break;
 				case 'b':
 					mode = BIN;
 					nextchar();
+					c = peeknextchar();
 					break;
 				default:
 					if(!isoct(c)){

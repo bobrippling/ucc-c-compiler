@@ -431,28 +431,37 @@ int main(int argc, char **argv)
 
 					/* also add to cpp */
 					ADD_ARG(mode_preproc);
+					ADD_ARG(mode_compile);
+					continue;
 				}
 
 				case 'f':
+					/* fopts for ucc: */
 					if(!strcmp(arg, "-fsyntax-only")){
 						syntax_only = 1;
 						continue;
 					}
-					else if(!strcmp(argv[i], "-ffreestanding")){
-						/* preproc gets this too */
-						ADD_ARG(mode_preproc);
-					}
-					else if(!strncmp(argv[i], "-fmessage-length=", 17)){
-						ADD_ARG(mode_preproc);
-					}
-					else if(!strcmp(argv[i], "-fsystem-cpp")){
+					if(!strcmp(argv[i], "-fsystem-cpp")){
 						fsystem_cpp = 1;
 						continue;
 					}
 
+					/* pull out some that cpp wants too: */
+					if(!strcmp(argv[i], "-ffreestanding")
+					|| !strncmp(argv[i], "-fmessage-length=", 17))
+					{
+						/* preproc gets this too */
+						ADD_ARG(mode_preproc);
+					}
+
+					/* pass the rest onto cc1 */
+					ADD_ARG(mode_compile);
+					continue;
+
 				case 'w':
-					if(argv[i][1] == 'w' && argv[i][2])
-						goto word;
+					if(argv[i][2])
+						goto word; /* -wabc... */
+					ADD_ARG(mode_preproc); /* -w */
 				case 'm':
 					ADD_ARG(mode_compile);
 					continue;

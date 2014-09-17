@@ -47,6 +47,12 @@ static decl_init *decl_init_brace_up_aggregate(
 		aggregate_brace_f *,
 		void *arg1, int arg2, int allow_struct_copy);
 
+static void decl_init_create_assignments_base(
+		decl_init *init,
+		type *tfor, expr *base,
+		expr **pinit,
+		symtable *stab);
+
 /* null init are const/zero, flag-init is const/zero if prev. is const/zero,
  * which will be checked elsewhere */
 #define DINIT_NULL_CHECK(di) \
@@ -252,6 +258,9 @@ static decl_init *decl_init_brace_up_scalar(
 		/* default init for everything */
 		first_init->bits.expr = expr_set_where(
 				expr_new_val(0), w);
+
+		FOLD_EXPR(first_init->bits.expr, stab);
+
 		return first_init;
 	}
 
@@ -509,6 +518,51 @@ static decl_init **decl_init_brace_up_array2(
 	return current;
 }
 
+static void maybe_warn_missing_init(
+		struct_union_enum_st *sue,
+		unsigned i, unsigned sue_nmem,
+		init_iter *iter,
+		decl_init **su_inits,
+		where *last_loc)
+{
+	unsigned diff = 0;
+	unsigned si;
+	decl *last_memb = NULL;
+
+	if(sue->primitive != type_struct)
+		return;
+	if(i >= sue_nmem)
+		return;
+
+	for(si = i; si < sue_nmem; si++){
+		decl *ent = sue->members[si]->struct_member;
+
+		if(!DECL_IS_ANON_BITFIELD(ent)){
+			diff++;
+			if(!last_memb)
+				last_memb = sue->members[si]->struct_member;
+		}
+	}
+
+	if(diff == 1 && type_is_incomplete_array(last_memb->ref)){
+		/* don't warn for flexarr */
+	}else if(diff > 0){
+		where *loc = ITER_WHERE(iter, last_loc ? last_loc : &sue->where);
+		unsigned char *warningp = &cc1_warning.init_missing_struct;
+
+		/* special case "= { 0 }" */
+		if(i == 1 && decl_init_is_zero(su_inits[0]))
+			warningp = &cc1_warning.init_missing_struct_zero;
+
+		cc1_warn_at_w(loc,
+				warningp,
+				"%u missing initialiser%s for '%s %s'\n"
+				"%s: note: starting at \"%s\"",
+				diff, diff == 1 ? "" : "s",
+				sue_str(sue), sue->spel,
+				where_str(loc), last_memb->spel);
+	}
+}
 
 static decl_init **decl_init_brace_up_sue2(
 		decl_init **current, decl_init ***range_store,
@@ -520,6 +574,7 @@ static decl_init **decl_init_brace_up_sue2(
 	unsigned n = dynarray_count(current), i;
 	unsigned sue_nmem;
 	int had_desig = 0;
+	where *first_non_desig = NULL;
 	where *last_loc = NULL;
 	decl_init *this;
 
@@ -624,6 +679,9 @@ static decl_init **decl_init_brace_up_sue2(
 
 			if(!found)
 				ICE("couldn't find member %s", des->bits.member);
+		}else{
+			if(!first_non_desig)
+				first_non_desig = ITER_WHERE(iter, NULL);
 		}
 
 		if(i < sue_nmem){
@@ -716,38 +774,20 @@ static decl_init **decl_init_brace_up_sue2(
 		}
 	}
 
-	if(sue->primitive == type_struct
-	&& !had_desig /* don't warn for designated inits */
-	&& i < sue_nmem)
-	{
-		unsigned diff = 0;
-		unsigned si;
-		decl *last_memb = NULL;
+	if(!had_desig)
+		maybe_warn_missing_init(sue, i, sue_nmem, iter, current, last_loc);
 
-		for(si = i; si < sue_nmem; si++){
-			decl *ent = sue->members[si]->struct_member;
+	if(first_non_desig){
+		attribute *desig_attr;
 
-			if(!DECL_IS_ANON_BITFIELD(ent)){
-				diff++;
-				if(!last_memb)
-					last_memb = sue->members[si]->struct_member;
-			}
-		}
+		if((desig_attr = attr_present(sue->attr, attr_desig_init))){
+			char buf[WHERE_BUF_SIZ];
 
-		if(diff == 1
-		&& type_is_incomplete_array(last_memb->ref))
-		{
-			/* don't warn for flexarr */
-		}else if(diff > 0){
-			where *loc = ITER_WHERE(iter, last_loc ? last_loc : &sue->where);
-
-			cc1_warn_at(loc,
-					init_missing_struct,
-					"%u missing initialiser%s for '%s %s'\n"
-					"%s: note: starting at \"%s\"",
-					diff, diff == 1 ? "" : "s",
-					sue_str(sue), sue->spel,
-					where_str(loc), last_memb->spel);
+			cc1_warn_at(first_non_desig, init_undesignated,
+				"positional initialisation of %s\n"
+				"%s: note: attribute here",
+				sue_str(sue),
+				where_str_r(buf, &desig_attr->where));
 		}
 	}
 
@@ -1004,6 +1044,8 @@ static decl_init *decl_init_brace_up_array_chk_char(
 						expr_new_val(k.bits.str->lit->str[str_i]),
 						&k.bits.str->where);
 
+				fold_expr(char_init->bits.expr, stab);
+
 				dynarray_add(&braced->bits.ar.inits, char_init);
 			}
 
@@ -1065,8 +1107,10 @@ static decl_init *decl_init_brace_up_start(
 	{
 		expr *e;
 		fold_expr_no_decay(e = init->bits.expr, stab);
+		const enum type_cmp cmp = type_cmp(e->tree_type, tfor, 0);
 
-		if(!(type_cmp(e->tree_type, tfor, 0) & TYPE_EQUAL_ANY)){
+		/* allow (copy)init of const from non-const and vice versa */
+		if(!(cmp & (TYPE_EQUAL_ANY | TYPE_QUAL_ADD | TYPE_QUAL_SUB))){
 			/* allow special case of char [] with "..." */
 			int str_mismatch = 0;
 
@@ -1138,8 +1182,10 @@ void decl_init_brace_up_fold(
 static expr *sue_base_for_init_assignment(
 		struct_union_enum_st *sue, expr *base,
 		decl **psmem, where *w,
-		unsigned idx, unsigned n)
+		unsigned idx, unsigned n,
+		symtable *stab)
 {
+	expr *e_access;
 	decl *smem;
 
 	UCC_ASSERT(idx < n, "oob member init");
@@ -1153,22 +1199,31 @@ static expr *sue_base_for_init_assignment(
 		return NULL;
 	}
 
-	return expr_set_where(
+	e_access = expr_set_where(
 			expr_new_struct_mem(base, 1, smem),
 			w);
+
+	fold_expr(e_access, stab);
+
+	return e_access;
 }
 
-static void expr_init_add(expr **pinit, expr *new)
+static void expr_init_add(expr **pinit, expr *new, symtable *stab)
 {
-	if(*pinit)
+	fold_expr(new, stab);
+
+	if(*pinit){
 		*pinit = expr_new_comma2(*pinit, new);
-	else
+		fold_expr(*pinit, stab);
+	}else{
 		*pinit = new;
+	}
 }
 
 static void decl_init_create_assignment_from_copy(
 		decl_init *di, expr **pinit,
-		type *next_type, expr *new_base)
+		type *next_type, expr *new_base,
+		symtable *stab)
 {
 	/* TODO: ideally when the backend is sufficiently optimised
 	 * it'll pick it up the memcpy well
@@ -1184,20 +1239,21 @@ static void decl_init_create_assignment_from_copy(
 		expr *memcp = builtin_new_memcpy(
 				new_base, last_base, type_size(next_type, &di->where));
 
-		expr_init_add(pinit, memcp);
+		expr_init_add(pinit, memcp, stab);
 	}else{
 		/* the initial assignment from the range_copy */
 		icpy->first_instance = new_base;
 
 		decl_init_create_assignments_base(icpy->range_init,
-				next_type, new_base, pinit);
+				next_type, new_base, pinit, stab);
 	}
 }
 
 void decl_init_create_assignments_base(
 		decl_init *init,
 		type *tfor, expr *base,
-		expr **pinit)
+		expr **pinit,
+		symtable *stab)
 {
 	if(!init){
 		expr *zero;
@@ -1221,7 +1277,7 @@ zero_init:
 
 		memcpy_safe(&zero->where, &base->where);
 
-		expr_init_add(pinit, zero);
+		expr_init_add(pinit, zero, stab);
 		return;
 	}
 
@@ -1230,7 +1286,8 @@ zero_init:
 			expr_init_add(pinit,
 					expr_set_where(
 						expr_new_assign_init(base, init->bits.expr),
-						&base->where));
+						&base->where),
+					stab);
 			break;
 
 		case decl_init_copy:
@@ -1253,7 +1310,8 @@ zero_init:
 				if(type_is_s_or_u(e->tree_type) == sue){
 					expr_init_add(pinit,
 							builtin_new_memcpy(
-								base, e, type_size(e->tree_type, &e->where)));
+								base, e, type_size(e->tree_type, &e->where)),
+							stab);
 					return;
 				}
 			}
@@ -1287,7 +1345,7 @@ zero_init:
 
 				if(*i){
 					sue_base = sue_base_for_init_assignment(
-							sue, base, &smem, &init->where, idx, n);
+							sue, base, &smem, &init->where, idx, n, stab);
 
 					UCC_ASSERT(sue_base, "zero width bitfield init in union?");
 
@@ -1295,7 +1353,8 @@ zero_init:
 							*i,
 							smem->ref,
 							sue_base,
-							pinit);
+							pinit,
+							stab);
 				}else{
 					/* zero init union - make sure we get all of it */
 					goto zero_init;
@@ -1317,7 +1376,8 @@ zero_init:
 					UCC_ASSERT(sue->primitive != type_union, "sneaky union");
 
 					new_base = sue_base_for_init_assignment(
-							sue, base, &smem, di ? &di->where : &init->where, idx, n);
+							sue, base, &smem, di ? &di->where : &init->where, idx, n,
+							stab);
 
 					if(!new_base)
 						continue; /* 0-width bitfield */
@@ -1330,17 +1390,22 @@ zero_init:
 							expr_new_array_idx(base, idx),
 							&base->where);
 
+					fold_expr(new_base, stab);
+
 					if(!next_type)
 						next_type = type_next(tfor);
 
 					if(di && di != DYNARRAY_NULL && di->type == decl_init_copy){
 						decl_init_create_assignment_from_copy(
-								di, pinit, next_type, new_base);
+								di, pinit, next_type, new_base, stab);
 						continue;
 					}
 				}
 
-				decl_init_create_assignments_base(di, next_type, new_base, pinit);
+				decl_init_create_assignments_base(
+						di, next_type,
+						new_base, pinit,
+						stab);
 			}
 			break;
 		}
@@ -1351,7 +1416,7 @@ void decl_init_create_assignments_base_and_fold(
 		decl *d, expr *e, symtable *scope)
 {
 	decl_init_create_assignments_base(d->bits.var.init.dinit,
-			d->ref, e, &d->bits.var.init.expr);
+			d->ref, e, &d->bits.var.init.expr, scope);
 
 	if(d->bits.var.init.expr)
 		fold_expr(d->bits.var.init.expr, scope);

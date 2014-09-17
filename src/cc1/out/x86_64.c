@@ -1017,7 +1017,29 @@ static const out_val *x86_idiv(
 				|| r->bits.regoff.reg.idx != X86_64_REG_RDX);
 
 		if(type_is_signed(r->t)){
-			out_asm(octx, "cqto");
+			const char *ext;
+			switch(type_size(r->t, NULL)){
+				default:
+					assert(0);
+
+				/* C frontends will only use case 4 and 8
+				 *
+				 * type     operand     div          quot     input
+				 * byte     r/m8        AL           AH       AX
+				 * word     r/m16       AX           DX       DX:AX
+				 * dword    r/m32       EAX          EDX      EDX:EAX
+				 */
+				case 1:
+				case 2:
+					assert(0 && "idiv with short/char?");
+				case 4:
+					ext = "cltd";
+					break;
+				case 8:
+					ext = "cqto";
+					break;
+			}
+			out_asm(octx, "%s", ext);
 		}else{
 			/* unsigned - don't sign extend into rdx:
 			 * mov $0, %rdx */
@@ -1635,6 +1657,8 @@ void impl_branch(
 		out_blk *bt, out_blk *bf,
 		int unlikely)
 {
+	int flag;
+
 	switch(cond->type){
 		case V_REG:
 		{
@@ -1644,7 +1668,11 @@ void impl_branch(
 			cond = v_reg_apply_offset(octx, cond);
 			rstr = vstack_str(cond, 0);
 
-			out_asm(octx, "test %s, %s", rstr, rstr);
+			if(type_is_floating(cond->t))
+				cond = out_normalise(octx, cond);
+			else
+				out_asm(octx, "test %s, %s", rstr, rstr);
+
 			cmp = ustrprintf("jz %s", bf->lbl);
 
 			blk_terminate_condjmp(octx, cmp, bf, bt, unlikely);
@@ -1687,14 +1715,16 @@ void impl_branch(
 		}
 
 		case V_CONST_F:
-			ICE("jcond float");
-
+			flag = !!cond->bits.val_f;
+			if(0){
 		case V_CONST_I:
+				flag = !!cond->bits.val_i;
+			}
 			out_comment(octx,
 					"constant jmp condition %staken",
-					cond->bits.val_i ? "" : "not ");
+					flag ? "" : "not ");
 
-			out_ctrl_transfer(octx, cond->bits.val_i ? bt : bf, NULL, NULL);
+			out_ctrl_transfer(octx, flag ? bt : bf, NULL, NULL);
 			break;
 
 		case V_LBL:

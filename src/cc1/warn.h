@@ -60,21 +60,28 @@ struct cc1_warning
 	unsigned char flexarr_init;
 	unsigned char flexarr_only;
 	unsigned char funcall_argcount;
+	unsigned char gnu_addr_lbl;
+	unsigned char gnu_alignof_expr;
 	unsigned char gnu_expr_stmt;
 	unsigned char gnu_typeof;
 	unsigned char gnu_attribute;
 	unsigned char gnu_init_array_range;
 	unsigned char gnu_case_range;
+	unsigned char gnu_gcc_compat;
+	unsigned char ignored_attribute;
 	unsigned char ignored_late_decl;
+	unsigned char ignored_qualifiers;
 	unsigned char implicit_func;
 	unsigned char implicit_int;
 	unsigned char implicit_old_func;
 	unsigned char incomplete_use;
 	unsigned char init_missing_braces;
 	unsigned char init_missing_struct;
+	unsigned char init_missing_struct_zero;
 	unsigned char init_obj_discard;
 	unsigned char init_overlong_strliteral;
 	unsigned char init_override;
+	unsigned char init_undesignated;
 	unsigned char int_ptr_conv;
 	unsigned char lbl_attr_unknown;
 	unsigned char lbl_unused;
@@ -102,11 +109,13 @@ struct cc1_warning
 	unsigned char restrict_ptrs;
 	unsigned char return_type;
 	unsigned char return_undef;
+	unsigned char return_void;
 	unsigned char shadow_global;
 	unsigned char shadow_local;
 	unsigned char sign_compare;
 	unsigned char signed_unsigned;
 	unsigned char sizeof_decayed;
+	unsigned char sizeof_ptr_div;
 	unsigned char static_array_bad;
 	unsigned char str_contain_nul;
 	unsigned char struct_noinstance_anon;
@@ -136,15 +145,14 @@ struct cc1_warning
 
 extern struct cc1_warning cc1_warning;
 
-void cc1_warn_at(
+void cc1_warn_at_w(
 		struct where *where,
 		unsigned char *pwarn,
 		const char *fmt, ...)
 	ucc_printflike(3, 4);
 
 #define cc1_warn_at(loc, warn, ...) do{ \
-		if(cc1_warning.warn) \
-			cc1_warn_at(loc, &cc1_warning.warn, __VA_ARGS__); \
+		cc1_warn_at_w(loc, &cc1_warning.warn, __VA_ARGS__); \
 	}while(0)
 
 #endif
