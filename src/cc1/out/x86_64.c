@@ -350,6 +350,8 @@ int impl_reg_frame_const(const struct vreg *r, int sp)
 		case X86_64_REG_RBP:
 			return 1;
 		case X86_64_REG_RSP:
+			/* TODO: this could be a frame constant if we know
+			 * alloca() and vlas aren't used in this function */
 			if(sp)
 				return 1;
 	}
