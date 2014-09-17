@@ -59,7 +59,7 @@ const out_val *out_alloca_push(
 			out_new_l(octx, arith_ty, ~((long)align - 1)));
 }
 
-void out_alloca_pop(out_ctx *octx, const out_val *ptr)
+void out_alloca_restore(out_ctx *octx, const out_val *ptr)
 {
 	struct vreg sp;
 
@@ -67,7 +67,12 @@ void out_alloca_pop(out_ctx *octx, const out_val *ptr)
 	sp.is_float = 0;
 
 	assert(octx->alloca_count > 0);
-	octx->alloca_count--;
 
 	out_flush_volatile(octx, v_to_reg_given(octx, ptr, &sp));
+}
+
+void out_alloca_pop(out_ctx *octx)
+{
+	assert(octx->alloca_count > 0);
+	octx->alloca_count--;
 }

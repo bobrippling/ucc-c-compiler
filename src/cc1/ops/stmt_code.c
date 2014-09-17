@@ -269,16 +269,19 @@ void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 
 	for(diter = stab->decls; diter && *diter; diter++){
 		decl *d = *diter;
+		int is_typedef;
 
 		if(!d->sym || d->sym->type != sym_local || type_is(d->ref, type_func))
 			continue;
 
+		is_typedef = ((d->store & STORE_MASK_STORE) == store_typedef);
+
 		/* typedefs may or may not have a sym */
-		if((d->store & STORE_MASK_STORE) == store_typedef
-		&& !d->sym->outval)
-		{
+		if(is_typedef && !d->sym->outval)
 			continue;
-		}
+
+		if(!is_typedef && type_is_vla(d->ref, VLA_ANY_DIMENSION))
+			out_alloca_pop(octx);
 
 		out_adealloc(octx, &d->sym->outval);
 	}
@@ -321,7 +324,7 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 			if(((d->store & STORE_MASK_STORE) != store_typedef)
 			&& type_is_vla(d->ref, VLA_ANY_DIMENSION))
 			{
-				out_alloca_pop(octx, vla_saved_ptr(d, octx));
+				out_alloca_restore(octx, vla_saved_ptr(d, octx));
 			}
 		}
 	}while(di != scope->decls);
@@ -367,7 +370,9 @@ void fold_check_scope_entry(where *w, const char *desc,
 	mark_symtabs(s_from, 0);
 }
 
-void gen_scope_leave(symtable *const s_from, symtable *const s_to, out_ctx *octx)
+void gen_scope_leave(
+		symtable *const s_from, symtable *const s_to,
+		out_ctx *octx)
 {
 	symtable *s_iter;
 

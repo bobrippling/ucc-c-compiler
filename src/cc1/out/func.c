@@ -100,6 +100,8 @@ void out_func_epilogue(
 	if(octx->current_blk && octx->current_blk->type == BLK_UNINIT)
 		out_ctrl_transfer(octx, octx->epilogue_blk, NULL, NULL);
 
+	assert(octx->alloca_count == 0 && "allocas after func gen?");
+
 	/* must generate callee saves/restores before the
 	 * epilogue or prologue blocks */
 	if(octx->used_callee_saved){
@@ -206,6 +208,7 @@ void out_func_prologue(
 	octx->current_fnty = fnty;
 
 	assert(octx->cur_stack_sz == 0 && "non-empty stack for new func");
+	assert(octx->alloca_count == 0 && "allocas left over?");
 
 	octx->check_flags = 1;
 

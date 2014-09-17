@@ -123,7 +123,10 @@ void out_func_epilogue(
 
 /* returns a pointer to allocated storage: */
 const out_val *out_alloca_push(out_ctx *, const out_val *sz, unsigned align);
-void out_alloca_pop(out_ctx *octx, const out_val *sz);
+/* alloca_restore restores the stack for scope-leave.
+ * alloca_pop restores the stack and cleans up internal vla state */
+void out_alloca_restore(out_ctx *octx, const out_val *ptr);
+void out_alloca_pop(out_ctx *octx);
 
 const out_val *out_aalloc(out_ctx *, unsigned sz, unsigned align, type *);
 void out_adealloc(out_ctx *, const out_val **);
