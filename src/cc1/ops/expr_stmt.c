@@ -50,8 +50,8 @@ const out_val *gen_expr_stmt(expr *e, out_ctx *octx)
 	else
 		ret = out_new_noop(octx);
 
-	/* this is skipped by gen_stmt_code_m1() */
-	gen_block_decls_dealloca(e->code->symtab, octx);
+	/* this is skipped by gen_stmt_code_m1( ... 1, ... ) */
+	gen_stmt_code_m1_finish(e->code, octx);
 
 	return ret;
 }

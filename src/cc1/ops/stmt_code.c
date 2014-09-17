@@ -401,6 +401,12 @@ void gen_scope_leave_parent(symtable *s_from, out_ctx *octx)
 	gen_scope_leave(s_from, s_from->parent, octx);
 }
 
+void gen_stmt_code_m1_finish(stmt *s, out_ctx *octx)
+{
+	gen_scope_leave_parent(s->symtab, octx);
+	gen_block_decls_dealloca(s->symtab, octx);
+}
+
 /* this is done for lea_expr_stmt(), i.e.
  * struct A x = ({ struct A y; y.i = 1; y; });
  * so we can lea the final expr
@@ -419,10 +425,9 @@ void gen_stmt_code_m1(stmt *s, int m1, out_ctx *octx)
 		gen_stmt(*titer, octx);
 	}
 
-	gen_scope_leave_parent(s->symtab, octx);
-
 	if(!m1)
-		gen_block_decls_dealloca(s->symtab, octx);
+		gen_stmt_code_m1_finish(s, octx);
+	/* else the caller should do ^ */
 
 	if(endlbl)
 		out_dbg_label(octx, endlbl);
