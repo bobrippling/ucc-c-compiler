@@ -33,6 +33,7 @@ struct out_ctx
 
 	unsigned check_flags : 1; /* decay flags? */
 	unsigned in_prologue : 1, used_stack : 1;
+	unsigned alloca_count;
 
 	/* we won't reserve it more than 255 times */
 	unsigned char *reserved_regs;

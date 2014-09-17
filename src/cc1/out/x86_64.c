@@ -16,6 +16,7 @@
 #include "../type_nav.h"
 #include "../funcargs.h"
 #include "../defs.h"
+#include "../pack.h"
 
 #include "../cc1.h"
 
@@ -1758,8 +1759,14 @@ const out_val *impl_call(
 
 	struct
 	{
-		v_stackt sz;
+		v_stackt bytesz;
 		const out_val *vptr;
+		enum
+		{
+			CLEANUP_NO,
+			CLEANUP_RESTORE_PUSHBACK = 1 << 0,
+			CLEANUP_POP = 1 << 1
+		} need_cleanup;
 	} arg_stack = { 0 };
 
 	unsigned nfloats = 0, nints = 0;
@@ -1788,11 +1795,11 @@ const out_val *impl_call(
 
 	/* do we need to do any stacking? */
 	if(nints > n_call_iregs)
-		arg_stack.sz += nints - n_call_iregs;
+		arg_stack.bytesz += pws * (nints - n_call_iregs);
 
 
 	if(nfloats > N_CALL_REGS_F)
-		arg_stack.sz += nfloats - N_CALL_REGS_F;
+		arg_stack.bytesz += pws * (nfloats - N_CALL_REGS_F);
 
 	/* need to save regs before pushes/call */
 	v_save_regs(octx, fnty, local_args, fn);
@@ -1801,13 +1808,31 @@ const out_val *impl_call(
 	if(!IS_32_BIT())
 		v_stack_needalign(octx, 16);
 
-	if(arg_stack.sz > 0){
-		out_comment(octx, "stack space for %lu arguments", arg_stack.sz);
-		/* this aligns the stack-ptr and returns arg_stack padded */
-		arg_stack.vptr = out_aalloc(octx, arg_stack.sz * pws, pws, arithty);
+	if(arg_stack.bytesz > 0){
+		out_comment(octx, "stack space for %lu arguments",
+				arg_stack.bytesz / pws);
+
+		if(x86_caller_cleanup(fnty))
+			arg_stack.need_cleanup = CLEANUP_NO;
+		else
+			arg_stack.need_cleanup |= CLEANUP_RESTORE_PUSHBACK;
+
+		/* see comment about stack_iter below */
+		if(octx->alloca_count){
+			arg_stack.bytesz = pack_to_align(arg_stack.bytesz, octx->max_align);
+
+			v_stack_adj(octx, arg_stack.bytesz, /*sub:*/1);
+			arg_stack.vptr = NULL;
+
+			arg_stack.need_cleanup |= CLEANUP_POP;
+
+		}else{
+			/* this aligns the stack-ptr and returns arg_stack padded */
+			arg_stack.vptr = out_aalloc(octx, arg_stack.bytesz, pws, arithty);
+		}
 	}
 
-	if(arg_stack.sz > 0){
+	if(arg_stack.bytesz > 0){
 		unsigned nfloats = 0, nints = 0; /* shadow */
 		const out_val *stack_iter;
 		type *storety = type_ptr_to(arithty);
@@ -1816,6 +1841,11 @@ const out_val *impl_call(
 		 * them based as offsets from %rsp, that way they're always
 		 * at the bottom of the stack, regardless of future changes
 		 * to octx->cur_stack_sz
+		 *
+		 * VLAs (and alloca()) unfortunately break this.
+		 * For this we special case and don't reuse existing stack.
+		 * Instead, we allocate stack explicitly, use it for the call,
+		 * then free it.
 		 */
 		stack_iter = v_new_sp(octx, NULL);
 
@@ -1923,14 +1953,25 @@ const out_val *impl_call(
 		out_asm(octx, "callq %s", jtarget);
 	}
 
-	if(arg_stack.sz){
-		if(!x86_caller_cleanup(fnty)){
+	if(arg_stack.bytesz){
+		if(arg_stack.need_cleanup & CLEANUP_RESTORE_PUSHBACK){
 			/* callee cleanup - the callee will have popped
 			 * args from the stack, so we need a stack alloc
 			 * to restore what we expect */
-			v_stack_adj(octx, arg_stack.sz, /*sub:*/1);
+
+			if(arg_stack.need_cleanup & CLEANUP_POP){
+				/* we wanted to pop anyway - callee did it for us */
+			}else{
+				v_stack_adj(octx, arg_stack.bytesz, /*sub:*/1);
+			}
+
+		}else if(arg_stack.need_cleanup & CLEANUP_POP){
+			/* caller cleanup - we reuse the stack for other purposes */
+				v_stack_adj(octx, arg_stack.bytesz, /*sub:*/0);
 		}
-		out_adealloc(octx, &arg_stack.vptr);
+
+		if(arg_stack.vptr)
+			out_adealloc(octx, &arg_stack.vptr);
 	}
 
 	for(i = 0; i < nargs; i++)
