@@ -459,7 +459,7 @@ void impl_func_prologue_save_call_regs(
 
 				continue;
 pass_via_stack:
-				arg_vals[i_arg] = v_new_bp3_below(
+				arg_vals[i_arg] = v_new_bp3_above(
 						octx, NULL, type_ptr_to(ty), (i_arg_stk++ + 2) * ws);
 			}
 
@@ -468,7 +468,7 @@ pass_via_stack:
 			 * this will break: */
 			out_adealloc(octx, &stack_loc);
 		}else{
-			unsigned i;
+			long i;
 			for(i = 0; i < nargs; i++){
 				long off;
 
@@ -484,7 +484,7 @@ pass_via_stack:
 					off = (i - n_call_i + 2) * ws;
 				}
 
-				arg_vals[i] = v_new_bp3_below(octx, NULL,
+				arg_vals[i] = v_new_bp3_above(octx, NULL,
 						type_ptr_to(fa->arglist[i]->ref), off);
 			}
 
