@@ -1812,7 +1812,12 @@ const out_val *impl_call(
 		const out_val *stack_iter;
 		type *storety = type_ptr_to(arithty);
 
-		stack_iter = out_val_retain(octx, arg_stack.vptr);
+		/* Rather than spilling the registers based on %rbp, we spill
+		 * them based as offsets from %rsp, that way they're always
+		 * at the bottom of the stack, regardless of future changes
+		 * to octx->cur_stack_sz
+		 */
+		stack_iter = v_new_sp(octx, NULL);
 
 		/* save in order */
 		for(i = 0; i < nargs; i++){
