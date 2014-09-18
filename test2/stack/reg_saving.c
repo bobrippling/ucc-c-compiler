@@ -23,6 +23,6 @@ void f(FLOAT fp, char *src, int line, char *fname, char *func)
 
 main()
 {
-	f(&gc, 7, &gc + 1, &gc + 2);
+	f(0, &gc, 7, &gc + 1, &gc + 2);
 	return 0;
 }

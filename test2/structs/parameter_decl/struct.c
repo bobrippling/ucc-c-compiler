@@ -9,6 +9,6 @@ f(struct A { int i; } *p)
 
 main()
 {
-	struct A a; // CHECK: /error: struct A is incomplete/
+	struct A a; // CHECK: error: "a" has incomplete type 'struct A'
 	f(&a);
 }
