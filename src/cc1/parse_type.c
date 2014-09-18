@@ -1883,33 +1883,6 @@ static int parse_decl_attr(decl *d, symtable *scope)
 	return 0;
 }
 
-static void check_decl_complete(decl *d)
-{
-	/* since we don't alloca decls here/at fold time,
-	 * we check for completeness now */
-	if(!d->spel)
-		return;
-
-	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
-		case store_typedef:
-		case store_extern:
-			return;
-		case store_static:
-		case store_register:
-		case store_default:
-		case store_auto:
-			break;
-		case store_inline:
-			assert(0);
-	}
-
-	if(!type_is_complete(d->ref)){
-		warn_at_print_error(&d->where, "\"%s\" has incomplete type '%s'",
-				d->spel, type_to_str(d->ref));
-		fold_had_error = 1;
-	}
-}
-
 int parse_decl_group(
 		const enum decl_multi_mode mode,
 		int newdecl,
@@ -2015,8 +1988,6 @@ int parse_decl_group(
 
 		/* must fold _after_ we get the bitfield, etc */
 		fold_decl(d, in_scope);
-
-		check_decl_complete(d);
 
 		last = d;
 		if(done)

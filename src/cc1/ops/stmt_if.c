@@ -36,6 +36,9 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 							decl_store_to_str(d->store));
 			}
 
+			/* block decls/for-init decls must be complete */
+			fold_check_decl_complete(d);
+
 			if(d->bits.var.init.expr)
 				fold_expr(d->bits.var.init.expr, *pstab);
 		}
