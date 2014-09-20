@@ -79,15 +79,19 @@ void gen_stmt(stmt *t, out_ctx *octx)
 	t->f_gen(t, octx);
 }
 
-static void assign_arg_vals(decl **decls, const out_val *argvals[])
+static void assign_arg_vals(decl **decls, const out_val *argvals[], out_ctx *octx)
 {
 	unsigned i, j;
 
 	for(i = j = 0; decls && decls[i]; i++){
 		sym *s = decls[i]->sym;
 
-		if(s && s->type == sym_arg)
+		if(s && s->type == sym_arg){
 			gen_set_sym_outval(s, argvals[j++]);
+
+			if(fopt_mode & FOPT_VERBOSE_ASM)
+				out_comment(octx, "arg %s @ %s", decls[i]->spel, out_val_str(s->outval, 1));
+		}
 	}
 }
 
@@ -199,7 +203,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 				is_vari = type_is_variadic_func(d->ref),
 				argvals, &d->bits.func.var_offset);
 
-		assign_arg_vals(arg_symtab->decls, argvals);
+		assign_arg_vals(arg_symtab->decls, argvals, octx);
 
 		allocate_vla_args(octx, arg_symtab);
 		free(argvals), argvals = NULL;
