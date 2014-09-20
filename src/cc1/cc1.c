@@ -723,7 +723,6 @@ int main(int argc, char **argv)
 	else
 		mopt_mode &= ~MOPT_32;
 
-	cc1_mstack_align = log2i(platform_word_size());
 	warning_init();
 
 	for(i = 1; i < argc; i++){
