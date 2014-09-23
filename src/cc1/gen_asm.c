@@ -201,7 +201,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		out_func_prologue(octx, sp, d->ref,
 				nargs,
 				is_vari = type_is_variadic_func(d->ref),
-				argvals, &d->bits.func.var_offset);
+				argvals);
 
 		assign_arg_vals(arg_symtab->decls, argvals, octx);
 

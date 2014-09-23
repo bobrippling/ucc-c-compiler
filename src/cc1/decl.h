@@ -65,7 +65,6 @@ struct decl
 		struct
 		{
 			struct stmt *code;
-			int var_offset;
 		} func;
 	} bits;
 

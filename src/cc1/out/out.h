@@ -114,7 +114,7 @@ void out_func_prologue(
 		out_ctx *, const char *sp,
 		type *fnty,
 		int nargs, int variadic,
-		const out_val *argvals[], int *local_offset);
+		const out_val *argvals[]);
 
 void out_func_epilogue(
 		out_ctx *, type *, char *end_dbg_lbl,

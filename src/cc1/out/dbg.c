@@ -1029,7 +1029,7 @@ static struct DIE *dwarf_global_variable(struct DIE_compile_unit *cu, decl *d)
 static void dwarf_symtable_scope(
 		struct DIE_compile_unit *cu,
 		struct DIE *scope_parent,
-		symtable *symtab, int var_offset)
+		symtable *symtab)
 {
 	symtable **si;
 	struct DIE *lexblk = NULL;
@@ -1103,7 +1103,7 @@ static void dwarf_symtable_scope(
 		lexblk = scope_parent;
 
 	for(si = symtab->children; si && *si; si++)
-		dwarf_symtable_scope(cu, lexblk, *si, var_offset);
+		dwarf_symtable_scope(cu, lexblk, *si);
 }
 
 static int func_code_emitted(decl *d)
@@ -1137,9 +1137,7 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 	dwarf_children(subprog,
 			dwarf_formal_params(cu, args, !arg_symtab->stack_used));
 
-	dwarf_symtable_scope(cu, subprog,
-			d->bits.func.code->symtab,
-			d->bits.func.var_offset);
+	dwarf_symtable_scope(cu, subprog, d->bits.func.code->symtab);
 
 	return subprog;
 }

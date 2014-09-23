@@ -201,7 +201,7 @@ void out_func_prologue(
 		out_ctx *octx, const char *sp,
 		type *fnty,
 		int nargs, int variadic,
-		const out_val *argvals[], int *local_offset)
+		const out_val *argvals[])
 {
 	out_blk *post_prologue = out_blk_new(octx, "post_prologue");
 
@@ -233,7 +233,6 @@ void out_func_prologue(
 		/* setup "pointers" to the right place in the stack */
 		octx->stack_variadic_offset = octx->cur_stack_sz - platform_word_size();
 		octx->stack_local_offset = octx->cur_stack_sz;
-		*local_offset = octx->stack_local_offset;
 
 		octx->stack_sz_initial = octx->cur_stack_sz;
 	}
