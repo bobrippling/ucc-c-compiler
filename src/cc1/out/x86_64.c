@@ -1782,12 +1782,20 @@ const out_val *impl_call(
 	 * also count floats and ints
 	 */
 	for(i = 0; i < nargs; i++){
+		type *argty;
+
 		assert(local_args[i]->retains > 0);
 
 		if(local_args[i]->type == V_FLAG)
 			local_args[i] = v_to_reg(octx, local_args[i]);
 
-		if((float_arg[i] = type_is_floating(local_args[i]->t)))
+		argty = local_args[i]->t;
+		if(local_args[i]->type == V_REG_SPILT)
+			argty = type_dereference_decay(argty);
+
+		float_arg[i] = type_is_floating(argty);
+
+		if(float_arg[i])
 			nfloats++;
 		else
 			nints++;
