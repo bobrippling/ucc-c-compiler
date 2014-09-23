@@ -289,6 +289,7 @@ void v_try_stack_reclaim(out_ctx *octx)
 	 * we can reclaim stack-spill space.
 	 * this is a simple algorithm for reclaiming */
 	out_val_list *iter;
+	long lowest = 0;
 
 	if(octx->in_prologue || octx->alloca_count)
 		return;
@@ -300,8 +301,11 @@ void v_try_stack_reclaim(out_ctx *octx)
 		switch(iter->val.type){
 			case V_REG:
 			case V_REG_SPILT:
-				if(!impl_reg_frame_const(&iter->val.bits.regoff.reg, 1))
+				if(!impl_reg_frame_const(&iter->val.bits.regoff.reg, 0))
 					return;
+				if(iter->val.bits.regoff.offset < lowest)
+					lowest = iter->val.bits.regoff.offset;
+				break;
 			case V_CONST_I:
 			case V_LBL:
 			case V_CONST_F:
@@ -310,12 +314,15 @@ void v_try_stack_reclaim(out_ctx *octx)
 		}
 	}
 
-	unsigned reclaim = octx->cur_stack_sz - octx->initial_stack_sz;
-	if(reclaim){
-		if(fopt_mode & FOPT_VERBOSE_ASM)
-			out_comment(octx, "reclaim %u", reclaim);
+	lowest = -lowest;
 
-		octx->cur_stack_sz = octx->initial_stack_sz;
+	v_stackt reclaim = octx->cur_stack_sz - lowest;
+	if(reclaim > 0){
+		if(fopt_mode & FOPT_VERBOSE_ASM)
+			out_comment(octx, "reclaim %ld (%ld start %ld lowest)",
+					reclaim, octx->initial_stack_sz, lowest);
+
+		octx->cur_stack_sz = lowest;
 	}
 }
 
