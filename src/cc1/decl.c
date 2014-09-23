@@ -42,17 +42,6 @@ decl *decl_new_ty_sp(type *ty, char *sp)
 	return d;
 }
 
-void decl_replace_with(decl *to, decl *from)
-{
-	/* XXX: memleak of .ref */
-	memcpy_safe(&to->where, &from->where);
-	to->ref      = from->ref;
-	to->attr = RETAIN(from->attr);
-	to->spel_asm = from->spel_asm;
-	/* no point copying bitfield stuff */
-	memcpy_safe(&to->bits, &from->bits);
-}
-
 const char *decl_asm_spel(decl *d)
 {
 	if(!d->spel_asm){
@@ -100,6 +89,7 @@ void decl_free(decl *d)
 		return;
 
 	/* expr_free(d->field_width); XXX: leak */
+	RELEASE(d->attr);
 
 	free(d);
 }

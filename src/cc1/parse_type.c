@@ -1504,7 +1504,39 @@ static int is_old_func(decl *d)
 	return r && r->bits.func.args->args_old_proto && r->bits.func.args->arglist;
 }
 
-static void check_and_replace_old_func(decl *d, decl **old_args, symtable *scope)
+static void remove_from_scope(decl **old_args, symtable *scope)
+{
+	size_t i;
+
+	for(i = 0; old_args[i]; i++){
+		decl *removed = dynarray_rm(&scope->decls, old_args[i]);
+
+		if(removed != old_args[i]){
+			ICW("couldn't remove old decl %s - got %p (%s)",
+					old_args[i]->spel,
+					removed,
+					removed ? removed->spel : "n/a");
+		}
+	}
+}
+
+static void decl_replace_with(decl *to, decl *from)
+{
+	memcpy_safe(&to->where, &from->where);
+	to->ref      = from->ref;
+	to->attr = RETAIN(from->attr);
+	to->spel_asm = from->spel_asm;
+
+	fprintf(stderr, "replace %s. sym %p\n", to->spel, to->sym);
+	to->sym = from->sym;
+	from->sym = NULL;
+
+	/* no point copying bitfield stuff */
+	memcpy_safe(&to->bits, &from->bits);
+}
+
+static void check_and_replace_old_func(
+		decl *d, decl **old_args, symtable *scope)
 {
 	/* check then replace old args */
 	int n_proto_decls, n_old_args;
@@ -1556,6 +1588,9 @@ static void check_and_replace_old_func(decl *d, decl **old_args, symtable *scope
 		if(!found)
 			die_at(&old_args[i]->where, "no such parameter '%s'", old_args[i]->spel);
 	}
+
+	/* can remove from scope now */
+	remove_from_scope(old_args, scope);
 
 	/* need to re-decay funcargs, etc.
 	 * f(i)
@@ -1772,11 +1807,28 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 
 	if(is_old_func(d)){
 		decl **old_args = NULL;
-		/* NULL - we don't want these in a scope */
+
 		while(parse_decl_group(
-				0, /*newdecl_context:*/0,
+				/*mode*/0,
+				/*newdecl_context:*/0,
 				in_scope,
-				NULL, &old_args))
+				in_scope, /* <-- add decls to scope - see below */
+				&old_args))
+			/* decls removed from scope later, replaced by
+			 * funcarg scope decls. This is necessary for e.g.:
+			 *
+			 * f(ar, i, ar2, j)
+			 *
+			 *   int i;
+			 *   short ar[sizeof i];
+			 *   // needs 'i' in scope - above
+			 *
+			 *   short ar2[sizeof j];
+			 *   // needs 'j' in scope - isn't, so error
+			 * {
+			 *   ...
+			 * }
+			 */
 		{
 		}
 
