@@ -11,4 +11,6 @@ void v_stack_needalign(out_ctx *octx, unsigned align);
 
 void v_aalloc_noop(out_ctx *, unsigned sz, unsigned align, const char *);
 
+void v_set_cur_stack_sz(out_ctx *octx, v_stackt new_sz);
+
 #endif

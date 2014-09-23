@@ -37,6 +37,14 @@ static void align_sz(unsigned *psz, unsigned align)
 		*psz = pack_to_align(*psz, align);
 }
 
+void v_set_cur_stack_sz(out_ctx *octx, v_stackt new_sz)
+{
+	octx->cur_stack_sz = new_sz;
+
+	if(new_sz > octx->max_stack_sz)
+		octx->max_stack_sz = new_sz;
+}
+
 const out_val *out_aalloc(
 		out_ctx *octx, unsigned sz, unsigned align, type *in_ty)
 {
@@ -48,14 +56,17 @@ const out_val *out_aalloc(
 	/* packing takes care of everything */
 	pack_next(&octx->cur_stack_sz, NULL, sz, align);
 
+	v_set_cur_stack_sz(octx, octx->cur_stack_sz);
+
 	return v_new_bp3_below(octx, NULL, ty, octx->cur_stack_sz);
 }
 
 void out_adealloc(out_ctx *octx, const out_val **val)
 {
-	/* TODO: reclaim stack */
 	out_val_release(octx, *val);
 	*val = NULL;
+
+	v_try_stack_reclaim(octx);
 }
 
 void v_aalloc_noop(out_ctx *octx, unsigned sz, unsigned align, const char *why)
@@ -65,7 +76,7 @@ void v_aalloc_noop(out_ctx *octx, unsigned sz, unsigned align, const char *why)
 	align_sz(&sz, align);
 
 	octx->stack_n_alloc += sz;
-	octx->cur_stack_sz += sz;
+	v_set_cur_stack_sz(octx, octx->cur_stack_sz + sz);
 }
 
 void v_stack_needalign(out_ctx *octx, unsigned align)

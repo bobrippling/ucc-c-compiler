@@ -130,20 +130,20 @@ void out_func_epilogue(
 			/* must have more or equal stack to the alloc_n, because alloc_n will
 			 * always add to {var,max}_stack_sz with possible padding,
 			 * and that same value (minus padding) to stack_n_alloc */
-			assert(octx->cur_stack_sz >= octx->stack_n_alloc);
+			assert(octx->max_stack_sz >= octx->stack_n_alloc);
 
 			out_comment(octx,
-					"cur_stack_sz=%lu stack_n_alloc=%lu (total=%lu) max_align=%u",
-					octx->cur_stack_sz, octx->stack_n_alloc,
+					"stack_sz{cur=%lu,max=%lu} stack_n_alloc=%lu (total=%lu) max_align=%u",
+					octx->cur_stack_sz, octx->max_stack_sz, octx->stack_n_alloc,
 					octx->cur_stack_sz + octx->stack_n_alloc,
 					octx->max_align);
 
 			if(octx->max_align){
-				/* must align cur_stack_sz,
+				/* must align max_stack_sz,
 				 * not the resultant after subtracting stack_n_alloc */
-				octx->cur_stack_sz = pack_to_align(octx->cur_stack_sz, octx->max_align);
+				octx->max_stack_sz = pack_to_align(octx->max_stack_sz, octx->max_align);
 			}
-			stack_adj = octx->cur_stack_sz - octx->stack_n_alloc;
+			stack_adj = octx->max_stack_sz - octx->stack_n_alloc;
 
 			v_stack_adj(octx, stack_adj, /*sub:*/1);
 
@@ -167,9 +167,9 @@ void out_func_epilogue(
 
 	free(octx->used_callee_saved), octx->used_callee_saved = NULL;
 
-	octx->stack_local_offset =
-		octx->stack_sz_initial =
+	octx->initial_stack_sz =
 		octx->cur_stack_sz =
+		octx->max_stack_sz =
 		octx->max_align =
 		octx->stack_n_alloc = 0;
 }
@@ -194,7 +194,7 @@ static void stack_realign(out_ctx *octx, unsigned align)
 
 	out_comment(octx, "stack aligned to %u bytes", align);
 
-	octx->cur_stack_sz = new_sz;
+	v_set_cur_stack_sz(octx, new_sz);
 }
 
 void out_func_prologue(
@@ -232,9 +232,7 @@ void out_func_prologue(
 
 		/* setup "pointers" to the right place in the stack */
 		octx->stack_variadic_offset = octx->cur_stack_sz - platform_word_size();
-		octx->stack_local_offset = octx->cur_stack_sz;
-
-		octx->stack_sz_initial = octx->cur_stack_sz;
+		octx->initial_stack_sz = octx->cur_stack_sz;
 	}
 	octx->in_prologue = 0;
 

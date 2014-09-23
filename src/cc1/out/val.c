@@ -283,27 +283,39 @@ out_val *v_new_bp3_below(
 	return v_new_bp3(octx, from, ty, -stack_pos);
 }
 
-static void try_stack_reclaim(out_ctx *octx)
+void v_try_stack_reclaim(out_ctx *octx)
 {
 	/* if we have no out_vals on the stack,
 	 * we can reclaim stack-spill space.
 	 * this is a simple algorithm for reclaiming */
 	out_val_list *iter;
 
-	if(1||octx->in_prologue)
+	if(octx->in_prologue || octx->alloca_count)
 		return;
 
 	/* only reclaim if we have an empty val list */
-	for(iter = octx->val_head; iter; iter = iter->next)
-		if(iter->val.retains > 0)
-			return;
+	for(iter = octx->val_head; iter; iter = iter->next){
+		if(iter->val.retains == 0)
+			continue;
+		switch(iter->val.type){
+			case V_REG:
+			case V_REG_SPILT:
+				if(!impl_reg_frame_const(&iter->val.bits.regoff.reg, 1))
+					return;
+			case V_CONST_I:
+			case V_LBL:
+			case V_CONST_F:
+			case V_FLAG:
+				break;
+		}
+	}
 
-	unsigned reclaim = octx->cur_stack_sz - octx->stack_sz_initial;
+	unsigned reclaim = octx->cur_stack_sz - octx->initial_stack_sz;
 	if(reclaim){
 		if(fopt_mode & FOPT_VERBOSE_ASM)
 			out_comment(octx, "reclaim %u", reclaim);
 
-		octx->cur_stack_sz = octx->stack_sz_initial;
+		octx->cur_stack_sz = octx->initial_stack_sz;
 	}
 }
 
@@ -312,7 +324,7 @@ const out_val *out_val_release(out_ctx *octx, const out_val *v)
 	out_val *mut = (out_val *)v;
 	assert(mut->retains > 0 && "double release");
 	if(--mut->retains == 0){
-		try_stack_reclaim(octx);
+		v_try_stack_reclaim(octx);
 
 		return NULL;
 	}
