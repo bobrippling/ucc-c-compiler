@@ -208,7 +208,7 @@ int main(int argc, char **argv)
 {
 	char *infname, *outfname;
 	int ret = 0;
-	enum { NONE, MACROS, STATS, DEPS } dump = NONE;
+	enum { NONE, MACROS, MACROS_WHERE, STATS, DEPS } dump = NONE;
 	int i;
 	int platform_win32 = 0;
 	int freestanding = 0;
@@ -350,8 +350,13 @@ int main(int argc, char **argv)
 				switch(argv[i][2]){
 					case 'M':
 					case 'S':
+					case 'W':
 						/* list #defines */
-						dump = argv[i][2] == 'M' ? MACROS : STATS;
+						dump = (
+								argv[i][2] == 'M' ? MACROS :
+								argv[i][2] == 'S' ? STATS :
+								MACROS_WHERE);
+
 						no_output = 1;
 						break;
 					case '\0':
@@ -483,7 +488,8 @@ defaul:
 		case NONE:
 			break;
 		case MACROS:
-			macros_dump();
+		case MACROS_WHERE:
+			macros_dump(dump == MACROS_WHERE);
 			break;
 		case STATS:
 			macros_stats();
