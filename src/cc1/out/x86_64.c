@@ -1875,9 +1875,12 @@ const out_val *impl_call(
 	}
 
 	nints = nfloats = 0;
+
 	for(i = 0; i < nargs; i++){
 		const out_val *const vp = local_args[i];
-		const int is_float = type_is_floating(vp->t);
+		/* we use float_arg[i] since vp->t may now be float *,
+		 * if it's been spilt */
+		const int is_float = float_arg[i];
 
 		const struct vreg *rp = NULL;
 		struct vreg r;
