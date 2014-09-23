@@ -596,8 +596,8 @@ static const out_val *temporary_for_output(
 		case C_ANY: /* XXX: suboptimal */
 		case C_MEM:
 		{
-			out_val *mutreg;
-			long stack_off;
+			const out_val *spill;
+			out_val *mut_spill;
 
 #if 0
 			switch(cval->val->type){
@@ -611,15 +611,12 @@ static const out_val *temporary_for_output(
 			}
 #endif
 
-			v_alloc_stack(octx, type_size(ty, NULL), "asm output temporary");
-			stack_off = octx->var_stack_sz;
+			spill = out_aalloc(octx, type_size(ty, NULL), type_align(ty, NULL), ty);
 
-			mutreg = v_new_bp3_below(octx, NULL,
-					ty, stack_off);
-
-			mutreg->type = V_REG_SPILT;
-
-			return mutreg;
+			assert(spill->retains == 1);
+			mut_spill = (out_val *)spill;
+			mut_spill->type = V_REG_SPILT;
+			return mut_spill;
 		}
 
 		case C_CONST:
