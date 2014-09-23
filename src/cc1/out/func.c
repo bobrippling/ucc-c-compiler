@@ -107,7 +107,18 @@ void out_func_epilogue(
 	if(octx->used_callee_saved){
 		call_save_spill_blk = out_blk_new(octx, "call_save");
 
-		callee_save_or_restore(octx, call_save_spill_blk);
+		/* ensure callee save doesn't overlap other parts of
+		 * the stack, namely arguments. this is needed because
+		 * even though cur_stack_sz is zero, we insert the callee
+		 * save basic-block after argument handling, where cur_stack_sz
+		 * is non-zero
+		 */
+		octx->in_prologue = 1;
+		{
+			octx->cur_stack_sz = octx->max_stack_sz;
+			callee_save_or_restore(octx, call_save_spill_blk);
+		}
+		octx->in_prologue = 0;
 	}
 
 	out_current_blk(octx, octx->epilogue_blk);
