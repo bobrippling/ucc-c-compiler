@@ -1835,7 +1835,6 @@ const out_val *impl_call(
 	if(arg_stack.bytesz > 0){
 		unsigned nfloats = 0, nints = 0; /* shadow */
 		const out_val *stack_iter;
-		type *storety = type_ptr_to(arithty);
 
 		/* Rather than spilling the registers based on %rbp, we spill
 		 * them based as offsets from %rsp, that way they're always
@@ -1856,6 +1855,8 @@ const out_val *impl_call(
 				: nints++ >= n_call_iregs;
 
 			if(stack_this){
+				type *storety = type_ptr_to(local_args[i]->t);
+
 				assert(stack_iter->retains > 0);
 
 				stack_iter = out_change_type(octx, stack_iter, storety);
