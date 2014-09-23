@@ -1433,17 +1433,17 @@ static type *default_type(void)
 static void unused_attribute(decl *dfor, attribute *attr)
 {
 	char buf[64];
-	struct_union_enum_st *su;
+	struct_union_enum_st *sue;
 
 	if(!attr)
 		return;
 
 	assert(!dfor || !dfor->spel);
 
-	if(dfor && (su = type_is_s_or_u(dfor->ref))){
+	if(dfor && (sue = type_is_s_or_u_or_e(dfor->ref))){
 		snprintf(buf, sizeof buf,
 				" (place attribute after '%s')",
-				su->primitive == type_struct ? "struct" : "union");
+				sue_str(sue));
 	}
 
 
