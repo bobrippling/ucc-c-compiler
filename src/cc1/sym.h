@@ -7,11 +7,8 @@
 typedef struct sym sym;
 struct sym
 {
-	union
-	{
-		int arg_offset;
-		unsigned stack_pos;
-	} loc;
+	const struct out_val *outval;
+	long bp_offset;
 
 	enum sym_type
 	{
@@ -41,7 +38,6 @@ struct symtable
 {
 	where where;
 
-	int auto_total_size;
 	unsigned mark : 1; /* used for scope checking */
 	unsigned folded : 1, laidout : 1;
 	unsigned internal_nest : 1, are_params : 1;
@@ -88,7 +84,7 @@ struct symtable_global
 };
 
 sym *sym_new(decl *d, enum sym_type t);
-sym *sym_new_stab(symtable *, decl *d, enum sym_type t);
+sym *sym_new_and_prepend_decl(symtable *, decl *d, enum sym_type t);
 
 symtable_global *symtabg_new(where *);
 

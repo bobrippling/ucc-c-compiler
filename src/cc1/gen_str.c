@@ -316,12 +316,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 	if(mode & PDECL_SYM_OFFSET){
 		if(d->sym){
-			const int off = d->sym->type == sym_arg
-				? d->sym->loc.arg_offset
-				: (int)d->sym->loc.stack_pos;
-
-			fprintf(cc1_out, " (sym %s, pos = %d)",
-					sym_to_str(d->sym->type), off);
+			fprintf(cc1_out, " (sym %s)", sym_to_str(d->sym->type));
 		}else{
 			fprintf(cc1_out, " (no sym)");
 		}
@@ -329,8 +324,10 @@ void print_decl(decl *d, enum pdeclargs mode)
 
 	if(mode & PDECL_SIZE && !type_is(d->ref, type_func)){
 		if(type_is_complete(d->ref)){
-			const int sz = decl_size(d);
-			fprintf(cc1_out, " size %d bytes. %d platform-word(s)", sz, sz / platform_word_size());
+			const unsigned sz = decl_size(d);
+			const unsigned align = decl_align(d);
+
+			fprintf(cc1_out, " size %u, align %u", sz, align);
 		}else{
 			fprintf(cc1_out, " incomplete decl");
 		}
@@ -359,18 +356,7 @@ void print_decl(decl *d, enum pdeclargs mode)
 	}
 
 	if((mode & PDECL_FUNC_DESCEND) && DECL_HAS_FUNC_CODE(d)){
-		decl **iter;
-
 		gen_str_indent++;
-
-		for(iter = d->bits.func.code->symtab->decls; iter && *iter; iter++){
-			sym *s = (*iter)->sym;
-			if(s)
-				idt_printf("offset of %s = %d\n", (*iter)->spel, s->loc.stack_pos);
-		}
-
-		idt_printf("function stack space %d\n",
-				d->bits.func.code->symtab->auto_total_size);
 
 		print_stmt(d->bits.func.code);
 
@@ -516,7 +502,6 @@ void print_stmt(stmt *t)
 		if(t->symtab){
 			decl **iter;
 
-			idt_printf("stack space %d\n", t->symtab->auto_total_size);
 			idt_printf("decls:\n");
 
 			for(iter = t->symtab->decls; iter && *iter; iter++){

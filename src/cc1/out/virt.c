@@ -47,32 +47,26 @@ int v_is_const_reg(const out_val *v)
 		&& impl_reg_frame_const(&v->bits.regoff.reg, 0);
 }
 
-const out_val *v_to_stack_mem(out_ctx *octx, const out_val *vp, long stack_pos)
+const out_val *v_to_stack_mem(
+		out_ctx *octx, const out_val *val, const out_val *stk)
 {
-	out_val *store = v_new_bp3_below(octx, NULL, vp->t, stack_pos);
+	out_val *spilt = v_dup_or_reuse(octx, stk, stk->t);
 
-	vp = v_to(octx, vp, TO_CONST | TO_REG);
+	val = v_to(octx, val, TO_CONST | TO_REG);
 
-	out_val_retain(octx, store);
+	out_val_retain(octx, spilt);
+	out_store(octx, spilt, val);
 
-	out_store(octx, store, vp);
+	spilt->type = V_REG_SPILT;
 
-	store->type = V_REG_SPILT;
-
-	return store;
+	return spilt;
 }
 
-void v_reg_to_stack(
-		out_ctx *octx,
-		const struct vreg *vr,
-		type *ty, long where)
+const out_val *v_reg_to_stack_mem(
+		out_ctx *octx, struct vreg const *vr, const out_val *stk)
 {
-	const out_val *reg = v_new_reg(octx, NULL, ty, vr);
-
-	/* value has been stored -
-	 * don't need to flush the pointer we get returned */
-	out_val_release(octx,
-			v_to_stack_mem(octx, reg, where));
+	const out_val *reg = v_new_reg(octx, NULL, stk->t, vr);
+	return v_to_stack_mem(octx, reg, stk);
 }
 
 static int v_in(const out_val *vp, enum vto to)
@@ -99,17 +93,16 @@ static int v_in(const out_val *vp, enum vto to)
 static ucc_wur const out_val *v_spill_reg(
 		out_ctx *octx, const out_val *v_reg)
 {
-	out_comment(octx, "spill @ stack=%u, max=%u",
-			octx->var_stack_sz, octx->max_stack_sz);
-
-	v_alloc_stack(octx, type_size(v_reg->t, NULL), "save reg");
+	const out_val *stack_pos = out_aalloc(octx,
+			type_size(v_reg->t, NULL),
+			type_align(v_reg->t, NULL),
+			v_reg->t);
 
 	out_val_retain(octx, v_reg);
 
 	{
 		const out_val *spilt = v_to_stack_mem(
-				octx, v_reg,
-				octx->var_stack_sz);
+				octx, v_reg, stack_pos);
 
 		out_val_overwrite((out_val *)v_reg, spilt);
 
@@ -482,103 +475,6 @@ void v_reserve_reg(out_ctx *octx, const struct vreg *r)
 void v_unreserve_reg(out_ctx *octx, const struct vreg *r)
 {
 	octx->reserved_regs[impl_reg_to_idx(r)]--;
-}
-
-void v_stack_adj(out_ctx *octx, unsigned amt, int sub)
-{
-	out_flush_volatile(
-			octx,
-			out_op(
-				octx, sub ? op_minus : op_plus,
-				v_new_sp(octx, NULL),
-				out_new_l(
-					octx,
-					type_nav_btype(cc1_type_nav, type_intptr_t),
-					amt)));
-}
-
-static void octx_set_stack_sz(out_ctx *octx, unsigned new)
-{
-	octx->var_stack_sz = new;
-
-	if(octx->var_stack_sz > octx->max_stack_sz)
-		octx->max_stack_sz = octx->var_stack_sz;
-}
-
-unsigned v_alloc_stack2(
-		out_ctx *octx,
-		const unsigned sz_initial, int noop, const char *desc)
-{
-	unsigned sz_rounded = sz_initial;
-
-	if(sz_initial){
-		/* must be a multiple of mstack_align.
-		 * assume stack_sz is aligned, and just
-		 * align what we add to it
-		 */
-		sz_rounded = pack_to_align(sz_initial, cc1_mstack_align);
-
-		/* if it changed, we need to realign the stack */
-		if(!noop || sz_rounded != sz_initial){
-			if(fopt_mode & FOPT_VERBOSE_ASM){
-				out_comment(octx, "stack alignment for %s (%u -> %u)",
-						desc, octx->var_stack_sz, octx->var_stack_sz + sz_rounded);
-				out_comment(octx, "alloc_n by %u (-> %u), padding with %u",
-						sz_initial, octx->var_stack_sz + sz_initial,
-						sz_rounded - sz_initial);
-			}
-
-			/* no actual stack adjustments here - done purely in prologue */
-		}
-
-		octx_set_stack_sz(octx, octx->var_stack_sz + sz_rounded);
-
-		if(noop)
-			octx->stack_n_alloc += sz_initial;
-	}
-
-	return sz_rounded;
-}
-
-unsigned v_alloc_stack_n(out_ctx *octx, unsigned sz, const char *desc)
-{
-	return v_alloc_stack2(octx, sz, 1, desc);
-}
-
-unsigned v_alloc_stack(out_ctx *octx, unsigned sz, const char *desc)
-{
-	return v_alloc_stack2(octx, sz, 0, desc);
-}
-
-unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
-{
-	if(force_mask || (octx->var_stack_sz & (align - 1))){
-		type *const ty = type_nav_btype(cc1_type_nav, type_intptr_t);
-		const unsigned new_sz = pack_to_align(octx->var_stack_sz, align);
-		unsigned added = new_sz - octx->var_stack_sz;
-		const out_val *sp = v_new_sp(octx, NULL);
-
-		assert(sp->retains == 1);
-
-		if(force_mask && added == 0)
-			added = align;
-
-		sp = out_op(
-				octx, op_minus,
-				sp,
-				out_new_l(octx, ty, added));
-
-		octx_set_stack_sz(octx, new_sz);
-
-		if(force_mask){
-			sp = out_op(octx, op_and, sp, out_new_l(octx, ty, align - 1));
-		}
-		out_val_release(octx, sp);
-		assert(sp->retains == 0);
-		out_comment(octx, "stack aligned to %u bytes", align);
-		return added;
-	}
-	return 0;
 }
 
 enum flag_cmp v_inv_cmp(enum flag_cmp cmp, int invert_eq)

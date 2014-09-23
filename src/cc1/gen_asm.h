@@ -6,6 +6,8 @@ extern char *curfunc_lblfin;
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx);
 void gen_asm_extern(decl *d, out_ctx *octx);
 
+void gen_set_sym_outval(sym *sym, const out_val *);
+
 #ifdef DBG_H
 void gen_asm(
 		symtable_global *globs,

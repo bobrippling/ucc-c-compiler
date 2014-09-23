@@ -16,6 +16,7 @@
 #include "../type_nav.h"
 #include "../funcargs.h"
 #include "../defs.h"
+#include "../pack.h"
 
 #include "../cc1.h"
 
@@ -28,6 +29,7 @@
 #include "lbl.h"
 #include "write.h"
 #include "virt.h"
+#include "macros.h"
 
 #include "ctx.h"
 #include "blk.h"
@@ -384,6 +386,8 @@ int impl_reg_frame_const(const struct vreg *r, int sp)
 		case X86_64_REG_RBP:
 			return 1;
 		case X86_64_REG_RSP:
+			/* TODO: this could be a frame constant if we know
+			 * alloca() and vlas aren't used in this function */
 			if(sp)
 				return 1;
 	}
@@ -418,7 +422,7 @@ void impl_func_prologue_save_fp(out_ctx *octx)
 void impl_func_prologue_save_call_regs(
 		out_ctx *octx,
 		type *rf, unsigned nargs,
-		int arg_offsets[/*nargs*/])
+		const out_val *arg_vals[/*nargs*/])
 {
 	if(nargs){
 		const unsigned ws = platform_word_size();
@@ -449,10 +453,10 @@ void impl_func_prologue_save_call_regs(
 		 */
 		if(n_call_f){
 			unsigned i_arg, i_stk, i_arg_stk, i_i, i_f;
+			const out_val *stack_loc;
+			type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 
-			v_alloc_stack(octx,
-					(n_call_f + n_call_i) * platform_word_size(),
-					"save call regs float+integral");
+			stack_loc = out_aalloc(octx, (n_call_f + n_call_i) * ws, ws, arithty);
 
 			for(i_arg = i_i = i_f = i_stk = i_arg_stk = 0;
 					i_arg < nargs;
@@ -477,36 +481,54 @@ void impl_func_prologue_save_call_regs(
 				}
 
 				{
-					int const off = ++i_stk * ws;
+					stack_loc = out_change_type(octx, stack_loc, ty);
+					out_val_retain(octx, stack_loc);
 
-					v_reg_to_stack(octx, rp, ty, off);
+					arg_vals[i_arg] = out_change_type(octx,
+							v_reg_to_stack_mem(octx, rp, stack_loc),
+							type_ptr_to(ty));
 
-					arg_offsets[i_arg] = -off;
+					stack_loc = out_op(octx, op_plus,
+							out_change_type(octx, stack_loc, arithty),
+							out_new_l(octx, arithty, ws));
 				}
 
 				continue;
 pass_via_stack:
-				arg_offsets[i_arg] = (i_arg_stk++ + 2) * ws;
+				arg_vals[i_arg] = v_new_bp3_above(
+						octx, NULL, type_ptr_to(ty), (i_arg_stk++ + 2) * ws);
 			}
+
+
+			/* note: this isn't broken by the stack reclaim code as
+			 * we're still in the prologue */
+			assert(octx->in_prologue);
+			out_adealloc(octx, &stack_loc);
 		}else{
-			unsigned i;
+			long i;
 			for(i = 0; i < nargs; i++){
+				long off;
+
 				if(i < n_call_i){
 					out_asm(octx, "push%s %%%s",
 							x86_suffix(NULL),
 							x86_reg_str(&call_regs[i], NULL));
 
 					/* +1 to step over saved rbp */
-					arg_offsets[i] = -(i + 1) * ws;
+					off = -(i + 1) * ws;
 				}else{
 					/* +2 to step back over saved rbp and saved rip */
-					arg_offsets[i] = (i - n_call_i + 2) * ws;
+					off = (i - n_call_i + 2) * ws;
 				}
+
+				arg_vals[i] = v_new_bp3_above(octx, NULL,
+						type_ptr_to(fa->arglist[i]->ref), off);
 			}
 
 			/* this aligns the stack too */
-			v_alloc_stack_n(octx,
-					n_call_i * platform_word_size(),
+			v_aalloc_noop(octx,
+					n_call_i * ws,
+					ws,
 					"save call regs push-version");
 		}
 	}
@@ -519,12 +541,13 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	unsigned n_call_regs;
 	const struct vreg *call_regs;
 
+	type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 	type *const ty_dbl = type_nav_btype(cc1_type_nav, type_double);
 	type *const ty_integral = type_nav_btype(cc1_type_nav, type_intptr_t);
 
 	unsigned n_int_args, n_fp_args;
 
-	unsigned stk_top;
+	const out_val *stk_spill;
 	unsigned i;
 
 	x86_call_regs(rf, &n_call_regs, &call_regs);
@@ -532,11 +555,9 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	funcargs_ty_calc(type_funcargs(rf), &n_int_args, &n_fp_args);
 
 	/* space for all call regs */
-	v_alloc_stack(octx,
-			(N_CALL_REGS_I + N_CALL_REGS_F * 2) * platform_word_size(),
-			"stack call arguments");
-
-	stk_top = octx->var_stack_sz;
+	stk_spill = out_aalloc(octx,
+			(N_CALL_REGS_I + N_CALL_REGS_F * 2) * pws,
+			pws, ty_integral);
 
 	/* go backwards, as we want registers pushed in reverse
 	 * so we can iterate positively.
@@ -547,13 +568,18 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	for(i = n_int_args; i < n_call_regs; i++){
 		/* intergral call regs go _below_ floating */
 		struct vreg vr;
+		const out_val *stk_ptr;
 
 		vr.is_float = 0;
 		vr.idx = call_regs[i].idx;
 
+		out_val_retain(octx, stk_spill);
+		stk_ptr = out_op(octx, op_plus,
+				out_change_type(octx, stk_spill, arithty),
+				out_new_l(octx, ty_integral, i * pws));
+
 		/* integral args are at the lowest address */
-		v_reg_to_stack(octx, &vr, ty_integral,
-				stk_top - i * pws);
+		out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr));
 	}
 
 	{
@@ -571,13 +597,20 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 
 		for(i = 0; i < N_CALL_REGS_F; i++){
 			struct vreg vr;
+			const out_val *stk_ptr;
 
 			vr.is_float = 1;
 			vr.idx = i;
 
+			out_val_retain(octx, stk_spill);
+			stk_ptr = out_op(octx, op_plus,
+					out_change_type(octx, stk_spill, arithty),
+					out_new_l(octx, arithty, (i * 2 + n_call_regs) * pws));
+
+			stk_ptr = out_change_type(octx, stk_ptr, ty_dbl);
+
 			/* we go above the integral regs */
-			v_reg_to_stack(octx, &vr, ty_dbl,
-					stk_top - (i * 2 + n_call_regs) * pws);
+			out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr));
 		}
 
 #ifdef VA_SHORTCIRCUIT
@@ -585,6 +618,8 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 		free(vfin);
 #endif
 	}
+
+	out_adealloc(octx, &stk_spill);
 }
 
 void impl_func_epilogue(out_ctx *octx, type *rf, int clean_stack)
@@ -593,7 +628,7 @@ void impl_func_epilogue(out_ctx *octx, type *rf, int clean_stack)
 		out_asm(octx, "leaveq");
 
 	if(fopt_mode & FOPT_VERBOSE_ASM)
-		out_comment(octx, "stack at %u bytes", octx->max_stack_sz);
+		out_comment(octx, "stack at %lu bytes", octx->cur_stack_sz);
 
 	/* callee cleanup */
 	if(!x86_caller_cleanup(rf)){
@@ -1021,7 +1056,29 @@ static const out_val *x86_idiv(
 				|| r->bits.regoff.reg.idx != X86_64_REG_RDX);
 
 		if(type_is_signed(r->t)){
-			out_asm(octx, "cqto");
+			const char *ext;
+			switch(type_size(r->t, NULL)){
+				default:
+					assert(0);
+
+				/* C frontends will only use case 4 and 8
+				 *
+				 * type     operand     div          quot     input
+				 * byte     r/m8        AL           AH       AX
+				 * word     r/m16       AX           DX       DX:AX
+				 * dword    r/m32       EAX          EDX      EDX:EAX
+				 */
+				case 1:
+				case 2:
+					assert(0 && "idiv with short/char?");
+				case 4:
+					ext = "cltd";
+					break;
+				case 8:
+					ext = "cqto";
+					break;
+			}
+			out_asm(octx, "%s", ext);
 		}else{
 			/* unsigned - don't sign extend into rdx:
 			 * mov $0, %rdx */
@@ -1639,6 +1696,8 @@ void impl_branch(
 		out_blk *bt, out_blk *bf,
 		int unlikely)
 {
+	int flag;
+
 	switch(cond->type){
 		case V_REG:
 		{
@@ -1648,7 +1707,11 @@ void impl_branch(
 			cond = v_reg_apply_offset(octx, cond);
 			rstr = impl_val_str(cond, 0);
 
-			out_asm(octx, "test %s, %s", rstr, rstr);
+			if(type_is_floating(cond->t))
+				cond = out_normalise(octx, cond);
+			else
+				out_asm(octx, "test %s, %s", rstr, rstr);
+
 			cmp = ustrprintf("jz %s", bf->lbl);
 
 			blk_terminate_condjmp(octx, cmp, bf, bt, unlikely);
@@ -1691,14 +1754,16 @@ void impl_branch(
 		}
 
 		case V_CONST_F:
-			ICE("jcond float");
-
+			flag = !!cond->bits.val_f;
+			if(0){
 		case V_CONST_I:
+				flag = !!cond->bits.val_i;
+			}
 			out_comment(octx,
 					"constant jmp condition %staken",
-					cond->bits.val_i ? "" : "not ");
+					flag ? "" : "not ");
 
-			out_ctrl_transfer(octx, cond->bits.val_i ? bt : bf, NULL, NULL);
+			out_ctrl_transfer(octx, flag ? bt : bf, NULL, NULL);
 			break;
 
 		case V_LBL:
@@ -1719,6 +1784,7 @@ const out_val *impl_call(
 		const out_val *fn, const out_val **args,
 		type *fnty)
 {
+	type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 	const unsigned pws = platform_word_size();
 	const unsigned nargs = dynarray_count(args);
 	char *const float_arg = umalloc(nargs);
@@ -1727,9 +1793,19 @@ const out_val *impl_call(
 	const struct vreg *call_iregs;
 	unsigned n_call_iregs;
 
+	struct
+	{
+		v_stackt bytesz;
+		const out_val *vptr;
+		enum
+		{
+			CLEANUP_NO,
+			CLEANUP_RESTORE_PUSHBACK = 1 << 0,
+			CLEANUP_POP = 1 << 1
+		} need_cleanup;
+	} arg_stack = { 0 };
+
 	unsigned nfloats = 0, nints = 0;
-	unsigned arg_stack = 0;
-	unsigned stk_snapshot = 0;
 	unsigned i;
 
 	dynarray_add_array(&local_args, args);
@@ -1742,10 +1818,20 @@ const out_val *impl_call(
 	 * also count floats and ints
 	 */
 	for(i = 0; i < nargs; i++){
+		type *argty;
+
+		assert(local_args[i]->retains > 0);
+
 		if(local_args[i]->type == V_FLAG)
 			local_args[i] = v_to_reg(octx, local_args[i]);
 
-		if((float_arg[i] = type_is_floating(local_args[i]->t)))
+		argty = local_args[i]->t;
+		if(local_args[i]->type == V_REG_SPILT)
+			argty = type_dereference_decay(argty);
+
+		float_arg[i] = type_is_floating(argty);
+
+		if(float_arg[i])
 			nfloats++;
 		else
 			nints++;
@@ -1753,34 +1839,58 @@ const out_val *impl_call(
 
 	/* do we need to do any stacking? */
 	if(nints > n_call_iregs)
-		arg_stack += nints - n_call_iregs;
+		arg_stack.bytesz += pws * (nints - n_call_iregs);
 
 
 	if(nfloats > N_CALL_REGS_F)
-		arg_stack += nfloats - N_CALL_REGS_F;
+		arg_stack.bytesz += pws * (nfloats - N_CALL_REGS_F);
 
 	/* need to save regs before pushes/call */
 	v_save_regs(octx, fnty, local_args, fn);
 
-	if(arg_stack > 0){
-		out_comment(octx, "stack space for %d arguments", arg_stack);
-		/* this aligns the stack-ptr and returns arg_stack padded */
-		arg_stack = v_alloc_stack(
-				octx, arg_stack * pws,
-				"call argument space");
-	}
-
 	/* 16 byte for SSE - special case here as mstack_align may be less */
 	if(!IS_32_BIT())
-		v_stack_align(octx, 16, 0);
+		v_stack_needalign(octx, 16);
 
-	if(arg_stack > 0){
+	if(arg_stack.bytesz > 0){
+		out_comment(octx, "stack space for %lu arguments",
+				arg_stack.bytesz / pws);
+
+		if(x86_caller_cleanup(fnty))
+			arg_stack.need_cleanup = CLEANUP_NO;
+		else
+			arg_stack.need_cleanup |= CLEANUP_RESTORE_PUSHBACK;
+
+		/* see comment about stack_iter below */
+		if(octx->alloca_count){
+			arg_stack.bytesz = pack_to_align(arg_stack.bytesz, octx->max_align);
+
+			v_stack_adj(octx, arg_stack.bytesz, /*sub:*/1);
+			arg_stack.vptr = NULL;
+
+			arg_stack.need_cleanup |= CLEANUP_POP;
+
+		}else{
+			/* this aligns the stack-ptr and returns arg_stack padded */
+			arg_stack.vptr = out_aalloc(octx, arg_stack.bytesz, pws, arithty);
+		}
+	}
+
+	if(arg_stack.bytesz > 0){
 		unsigned nfloats = 0, nints = 0; /* shadow */
+		const out_val *stack_iter;
 
-		unsigned stack_pos;
-		/* must be called after v_alloc_stack() */
-		stk_snapshot = stack_pos = octx->var_stack_sz;
-		out_comment(octx, "-- stack snapshot (%u) --", stk_snapshot);
+		/* Rather than spilling the registers based on %rbp, we spill
+		 * them based as offsets from %rsp, that way they're always
+		 * at the bottom of the stack, regardless of future changes
+		 * to octx->cur_stack_sz
+		 *
+		 * VLAs (and alloca()) unfortunately break this.
+		 * For this we special case and don't reuse existing stack.
+		 * Instead, we allocate stack explicitly, use it for the call,
+		 * then free it.
+		 */
+		stack_iter = v_new_sp(octx, NULL);
 
 		/* save in order */
 		for(i = 0; i < nargs; i++){
@@ -1789,26 +1899,32 @@ const out_val *impl_call(
 				: nints++ >= n_call_iregs;
 
 			if(stack_this){
-				local_args[i] = v_to_stack_mem(octx,
-						local_args[i], stack_pos);
+				type *storety = type_ptr_to(local_args[i]->t);
 
-				/* XXX: we ensure any registers used ^ are freed
-				 * by using the stack snapshot - the STACK_SAVE
-				 * space they take up isn't used after the call
-				 * and so we can mercilessly wipe it out just
-				 * before the call instruction.
-				 */
+				assert(stack_iter->retains > 0);
 
-				/* nth argument is higher in memory */
-				stack_pos -= pws;
+				stack_iter = out_change_type(octx, stack_iter, storety);
+				out_val_retain(octx, stack_iter);
+				local_args[i] = v_to_stack_mem(octx, local_args[i], stack_iter);
+
+				assert(local_args[i]->retains > 0);
+
+				stack_iter = out_op(octx, op_plus,
+						out_change_type(octx, stack_iter, arithty),
+						out_new_l(octx, arithty, pws));
 			}
 		}
+
+		out_val_release(octx, stack_iter);
 	}
 
 	nints = nfloats = 0;
+
 	for(i = 0; i < nargs; i++){
 		const out_val *const vp = local_args[i];
-		const int is_float = type_is_floating(vp->t);
+		/* we use float_arg[i] since vp->t may now be float *,
+		 * if it's been spilt */
+		const int is_float = float_arg[i];
 
 		const struct vreg *rp = NULL;
 		struct vreg r;
@@ -1838,29 +1954,19 @@ const out_val *impl_call(
 				/* need to free it up, as v_to_reg_given doesn't clobber check */
 				v_freeup_reg(octx, rp);
 
+#if 0
+				/* argument retainedness doesn't matter here -
+				 * local arguments and autos are held onto */
 				UCC_ASSERT(local_args[i]->retains == 1,
 						"incorrectly retained arg %d: %d",
 						i, local_args[i]->retains);
+#endif
 
 
 				local_args[i] = v_to_reg_given(octx, local_args[i], rp);
 			}
 		}
 		/* else already pushed */
-	}
-
-	if(stk_snapshot){
-		/* May have touched the stack in shifting around
-		 * registers above - need to clean up the stack here
-		 * for our call.
-		 *
-		 * Should just be able to add to the stack pointer,
-		 * since we save all non-call registers before we
-		 * start anything.
-		 */
-		unsigned chg = octx->var_stack_sz - stk_snapshot;
-		out_comment(octx, "-- restore snapshot (%u) --", chg);
-		v_stack_adj(octx, chg, /*sub:*/0);
 	}
 
 	{
@@ -1895,11 +2001,25 @@ const out_val *impl_call(
 		out_asm(octx, "callq %s", jtarget);
 	}
 
-	if(arg_stack && !x86_caller_cleanup(fnty)){
-		/* callee cleanup - the callee will have popped
-		 * args from the stack, so we need a stack alloc
-		 * to restore what we expect */
-		v_stack_adj(octx, arg_stack, /*sub:*/1);
+	if(arg_stack.bytesz){
+		if(arg_stack.need_cleanup & CLEANUP_RESTORE_PUSHBACK){
+			/* callee cleanup - the callee will have popped
+			 * args from the stack, so we need a stack alloc
+			 * to restore what we expect */
+
+			if(arg_stack.need_cleanup & CLEANUP_POP){
+				/* we wanted to pop anyway - callee did it for us */
+			}else{
+				v_stack_adj(octx, arg_stack.bytesz, /*sub:*/1);
+			}
+
+		}else if(arg_stack.need_cleanup & CLEANUP_POP){
+			/* caller cleanup - we reuse the stack for other purposes */
+				v_stack_adj(octx, arg_stack.bytesz, /*sub:*/0);
+		}
+
+		if(arg_stack.vptr)
+			out_adealloc(octx, &arg_stack.vptr);
 	}
 
 	for(i = 0; i < nargs; i++)

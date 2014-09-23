@@ -79,18 +79,24 @@ ptr:
 				strcpy(expected, "integral");
 				break;
 			}
-#define ATTR_CHECK(suff, str)                   \
-			if((attr & printf_attr_##suff)            \
-			&& !type_is_primitive_anysign(t_in, type_##suff)) \
-			{                                         \
-				strcpy(expected, str);                  \
+
+			if(attr & printf_attr_size_t){
+				if(!type_is_primitive_anysign(t_in, type_intptr_t))
+					strcpy(expected, "'size_t/intptr_t'");
+				break;
+			}
+
+#define ATTR_CHECK(suff, str)                             \
+			if(attr & printf_attr_##suff){                      \
+				if(!type_is_primitive_anysign(t_in, type_##suff)) \
+					strcpy(expected, str);                          \
+				break;                                            \
 			}
 
 			ATTR_CHECK(llong, "'long long'")
-			else
 			ATTR_CHECK(long, "'long'")
-			else
-			ATTR_CHECK(long, "'size_t'")
+
+#undef ATTR_CHECK
 			break;
 
 		case 'e':
@@ -108,16 +114,22 @@ ptr:
 			break;
 
 		default:
-			cc1_warn_at(loc_str, attr_printf_unknown,
-					"unknown conversion character '%c' (0x%x)", fmt, fmt);
+			if(fmt){
+				cc1_warn_at(loc_str, attr_printf_unknown,
+						"unknown conversion character '%c' (0x%x)",
+						fmt, fmt);
+			}else{
+				cc1_warn_at(loc_str, attr_printf_bad,
+						"missing conversion character");
+			}
 			return;
 	}
 
 	if(*expected){
 		cc1_warn_at(loc_expr, attr_printf_bad,
 				"format %%%s%c expects %s argument (got %s)",
-				attr & printf_attr_long ? "l" : "", fmt,
-				expected, type_to_str(t_in));
+				attr & printf_attr_llong ? "ll" : attr & printf_attr_long ? "l" : "",
+				fmt, expected, type_to_str(t_in));
 	}
 }
 

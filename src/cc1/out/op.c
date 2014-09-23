@@ -84,8 +84,12 @@ static out_val *try_mem_offset(
 		}
 
 		step = calc_ptr_step(mut_vregp_or_lbl->t);
-		if(step == -1)
+		if(step == -1){
+			/* restore retains */
+			out_val_retain(octx, vregp_or_lbl);
+			out_val_release(octx, mut_vregp_or_lbl);
 			return NULL;
+		}
 
 		*p += (binop == op_minus ? -1 : 1) *
 			vconst->bits.val_i * step;

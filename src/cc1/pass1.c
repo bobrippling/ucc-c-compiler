@@ -83,7 +83,7 @@ int parse_and_fold(symtable_global *globals)
 		dynarray_add_array(&globals->gasms, last_gasms);
 
 		while(accept_where(token_semicolon, &semi))
-			cc1_warn_at(NULL, parse_extra_semi, "extra ';' at global scope");
+			cc1_warn_at(&semi, parse_extra_semi, "extra ';' at global scope");
 
 		if(!cont)
 			break;

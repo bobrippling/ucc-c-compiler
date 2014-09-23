@@ -564,6 +564,21 @@ void fold_decl_add_sym(decl *d, symtable *stab)
 	}
 }
 
+static void fold_decl_func_retty(decl *d)
+{
+	type *retty = type_called(d->ref, NULL);
+
+	enum type_qualifier qual = type_qual(retty);
+
+	if(qual){
+		cc1_warn_at(&d->where, ignored_qualifiers,
+				type_is_void(type_skip_all(retty))
+				? "function has qualified void return type (%s)"
+				: "%s qualification on return type has no effect",
+				type_qual_to_str(qual, 0));
+	}
+}
+
 static void fold_decl_func(decl *d, symtable *stab)
 {
 	/* allow:
@@ -588,6 +603,8 @@ static void fold_decl_func(decl *d, symtable *stab)
 		warn_at_print_error(&d->where, "function with variably modified type");
 		fold_had_error = 1;
 	}
+
+	fold_decl_func_retty(d);
 
 	if(stab->parent){
 		if(d->bits.func.code)
@@ -855,6 +872,43 @@ void fold_decl(decl *d, symtable *stab)
 #undef first_fold
 }
 
+void fold_check_decl_complete(decl *d)
+{
+	if(!d->spel)
+		return;
+
+	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+		case store_typedef:
+		case store_extern:
+			return;
+		case store_static:
+		case store_register:
+		case store_default:
+		case store_auto:
+			break;
+		case store_inline:
+			assert(0);
+	}
+
+	if(!type_is_complete(d->ref)){
+		struct_union_enum_st *sue = type_is_s_or_u_or_e(d->ref);
+		char *extra = "";
+
+		if(sue){
+			extra = ustrprintf(
+					"\n%s: note: forward declared here",
+					where_str(&sue->where));
+		}
+
+		warn_at_print_error(&d->where, "\"%s\" has incomplete type '%s'%s",
+				d->spel, type_to_str(d->ref), extra);
+		fold_had_error = 1;
+
+		if(*extra)
+			free(extra);
+	}
+}
+
 void fold_decl_global_init(decl *d, symtable *stab)
 {
 	expr *nonstd = NULL;
@@ -966,9 +1020,6 @@ void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab)
 
 	fold_stmt(code);
 
-	/* now decls are folded, layout both parameters and local variables */
-	symtab_layout_decls(arg_symtab, 0);
-
 	/* finally, check label coherence */
 	symtab_chk_labels(symtab_func_root(arg_symtab));
 }
@@ -1005,7 +1056,7 @@ void fold_global_func(decl *func_decl)
 				dynarray_add(&func_decl->bits.func.code->bits.code.stmts, zret);
 				fold_stmt(zret);
 
-			}else{
+			}else if(!type_is_void(func_ret)){
 				warn_passable_func(func_decl);
 			}
 		}

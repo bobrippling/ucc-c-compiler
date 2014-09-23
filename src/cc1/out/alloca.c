@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "out.h"
 #include "val.h"
@@ -8,6 +9,9 @@
 /* v_to_reg_given */
 #include "virt.h"
 #include "impl.h"
+
+/* alloca_count */
+#include "ctx.h"
 
 /* cc1_mstack_align */
 #include <stdarg.h>
@@ -39,6 +43,8 @@ const out_val *out_alloca_push(
 	if(align < (unsigned)cc1_mstack_align)
 		align = cc1_mstack_align;
 
+	octx->alloca_count++;
+
 	if(align == 1)
 		return alloca_stack_adj(octx, op_minus, sz);
 
@@ -53,12 +59,20 @@ const out_val *out_alloca_push(
 			out_new_l(octx, arith_ty, ~((long)align - 1)));
 }
 
-void out_alloca_pop(out_ctx *octx, const out_val *ptr)
+void out_alloca_restore(out_ctx *octx, const out_val *ptr)
 {
 	struct vreg sp;
 
 	sp.idx = REG_SP;
 	sp.is_float = 0;
 
+	assert(octx->alloca_count > 0);
+
 	out_flush_volatile(octx, v_to_reg_given(octx, ptr, &sp));
+}
+
+void out_alloca_pop(out_ctx *octx)
+{
+	assert(octx->alloca_count > 0);
+	octx->alloca_count--;
 }

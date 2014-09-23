@@ -48,7 +48,7 @@ void impl_func_prologue_save_fp(out_ctx *octx);
 void impl_func_prologue_save_call_regs(
 		out_ctx *,
 		type *rf, unsigned nargs,
-		int arg_offsets[/*nargs*/]);
+		const out_val *arg_offsets[/*nargs*/]);
 
 void impl_func_prologue_save_variadic(out_ctx *octx, type *rf);
 void impl_func_epilogue(out_ctx *, type *, int clean_stack);
@@ -91,11 +91,6 @@ const char *impl_val_str_r(
 #  include CC1_IMPL_FNAME
 #else
 #  warning "no impl defined"
-#endif
-
-#ifndef MIN
-#  define MIN(x, y) ((x) < (y) ? (x) : (y))
-#  define MAX(x, y) ((x) > (y) ? (x) : (y))
 #endif
 
 #endif

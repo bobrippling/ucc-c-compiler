@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -170,12 +171,15 @@ static char *expand_trigraphs(char *line)
 		{ 0, 0 }
 	};
 	int i;
+	char *anchor = line;
 
 	for(;;){
-		char *qmark = strstr(line, "??");
+		char *qmark = strstr(anchor, "??");
 
 		if(!qmark)
 			break;
+
+		anchor = qmark + 1;
 
 		for(i = 0; map[i].from; i++){
 			if(map[i].from == qmark[2]){
@@ -220,7 +224,8 @@ static char *splice_lines(int *peof)
 {
 	static int n_nls;
 	char *line;
-	size_t len;
+	char *last_backslash;
+	int splice = 0;
 
 	if(n_nls){
 		n_nls--;
@@ -235,21 +240,36 @@ static char *splice_lines(int *peof)
 	if(option_trigraphs)
 		line = expand_trigraphs(line);
 
-	len = strlen(line);
 
-	if(len && line[len - 1] == '\\'){
+	last_backslash = strrchr(line, '\\');
+	if(last_backslash){
+		char *i;
+		/* is this the end of the line? */
+		for(i = last_backslash + 1; isspace(*i); i++);
+		if(*i == '\0'){
+			splice = 1;
+
+			if(i > last_backslash + 1){
+				CPP_WARN(WBACKSLASH_SPACE_NEWLINE,
+						"backslash and newline separated by space");
+			}
+		}
+	}
+
+	if(splice){
 		char *next = splice_lines(peof);
 
 		/* remove in any case */
-		line[len - 1] = '\0';
+		*last_backslash = '\0';
 
 		if(next){
+			const size_t this_len = last_backslash - line;
 			const size_t next_len = strlen(next);
 
 			n_nls++;
 
-			line = urealloc1(line, len + next_len + 1);
-			strcpy(line + len - 1, next);
+			line = urealloc1(line, this_len + next_len + 1);
+			strcpy(line + this_len, next);
 			free(next);
 		}else{
 			/* backslash-newline at eof

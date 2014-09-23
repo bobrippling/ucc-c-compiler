@@ -13,6 +13,10 @@
 
 void const_fold(expr *e, consty *k)
 {
+	UCC_ASSERT(e->tree_type,
+			"const_fold on %s before fold",
+			e->f_str());
+
 	memset(k, 0, sizeof *k);
 	k->type = CONST_NO;
 
@@ -148,7 +152,16 @@ integral_t const_op_exec(
 		case op_modulus:
 		case op_divide:
 			if(*rval){
-				result = op == op_divide ? lval / *rval : lval % *rval;
+				if(is_signed){
+					/* need sign-extended division */
+					result = (op == op_divide
+							? (sintegral_t)lval / (sintegral_t)*rval
+							: (sintegral_t)lval % (sintegral_t)*rval);
+				}else{
+					result = op == op_divide
+						? lval / *rval
+						: lval % *rval;
+				}
 			}else{
 				*error = "division by zero";
 				result = 0;

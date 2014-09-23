@@ -87,7 +87,8 @@ enum wmode wmode =
 	| WFINALESCAPE
 	| WMULTICHAR
 	| WQUOTE
-	| WHASHWARNING;
+	| WHASHWARNING
+	| WBACKSLASH_SPACE_NEWLINE;
 
 enum comment_strip strip_comments = STRIP_ALL;
 
@@ -108,6 +109,14 @@ static const struct
 	{ "paste", "warn when pasting doesn't make a token", WPASTE },
 	{ "uncalled-macro", "warn when a function-macro is mentioned without ()", WUNCALLED_FN },
 	{ "#warning", "emit #warnings", WHASHWARNING },
+	{ "backslash-newline-space", "space between backslash and newline", WBACKSLASH_SPACE_NEWLINE },
+
+	{ "everything", "everything", ~0 },
+
+	{
+		"all", "Most warnings", WREDEF | WWHITESPACE | WTRAILING | WPASTE |
+			WFINALESCAPE | WMULTICHAR | WHASHWARNING
+	},
 };
 
 #define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)

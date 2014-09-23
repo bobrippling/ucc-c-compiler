@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -32,9 +33,23 @@ expr *parse_expr_sizeof_typeof_alignof(
 	const int static_ctx = /*doesn't matter:*/0;
 	expr *e;
 	where w;
+	int is_expr = 1;
 
 	where_cc1_current(&w);
-	w.chr -= what_of == what_alignof ? 7 : 6; /* go back over the *of */
+
+	switch(what_of){
+			enum token t;
+		case what_alignof:
+			t = token__Alignof;
+			if(0)
+		case what_typeof:
+			t = token_typeof;
+			if(0)
+		case what_sizeof:
+			t = token_sizeof;
+
+			w.chr -= strlen(token_to_str(t));
+	}
 
 	if(accept(token_open_paren)){
 		type *r = parse_type(0, scope);
@@ -43,15 +58,17 @@ expr *parse_expr_sizeof_typeof_alignof(
 			EAT(token_close_paren);
 
 			/* check for sizeof(int){...} */
-			if(curtok == token_open_block)
+			if(curtok == token_open_block){
 				e = expr_new_sizeof_expr(
 							expr_new_compound_lit(
 								r,
 								parse_init(scope, static_ctx),
 								static_ctx),
 							what_of);
-			else
+			}else{
 				e = expr_new_sizeof_type(r, what_of);
+				is_expr = 0;
+			}
 
 		}else{
 			/* not a type - treat the open paren as part of the expression */
@@ -70,7 +87,14 @@ expr *parse_expr_sizeof_typeof_alignof(
 		/* don't go any higher, sizeof a - 1, means sizeof(a) - 1 */
 	}
 
-	return expr_set_where_len(e, &w);
+	e = expr_set_where_len(e, &w);
+
+	if(what_of == what_alignof && is_expr){
+		cc1_warn_at(&e->where, gnu_alignof_expr,
+				"_Alignof applied to expression is a GNU extension");
+	}
+
+	return e;
 }
 
 static expr *parse_expr__Generic(symtable *scope, int static_ctx)
@@ -377,6 +401,7 @@ expr *parse_expr_unary(symtable *scope, int static_ctx)
 		switch(curtok){
 			case token_andsc:
 				/* GNU &&label */
+				cc1_warn_at(NULL, gnu_addr_lbl, "use of GNU address-of-label");
 				EAT(curtok);
 				e = expr_new_addr_lbl(token_current_spel());
 				EAT(token_identifier);

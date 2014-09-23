@@ -5,6 +5,7 @@
 #include "../util/where.h"
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "../util/dynarray.h"
 
 #include "expr.h"
 #include "sue.h"
@@ -91,6 +92,11 @@ type *type_skip_non_casts(type *t)
 type *type_skip_wheres(type *t)
 {
 	return type_skip(t, ~0 & ~STOP_AT_WHERE);
+}
+
+type *type_skip_tdefs(type *t)
+{
+	return type_skip(t, ~STOP_AT_TDEF & ~STOP_AT_WHERE & ~STOP_AT_ATTR);
 }
 
 type *type_skip_non_tdefs_consts(type *t)
@@ -494,20 +500,26 @@ int type_decayable(type *r)
 	}
 }
 
-static type *type_keep_w_attr(type *t, where *loc, attribute *attr)
+static type *type_keep_w_attr(type *t, where *loc, attribute **attr)
 {
+	attribute **i;
+
+	for(i = attr; i && *i; i++)
+		t = type_attributed(t, RETAIN(*i));
+
 	if(loc && !type_has_loc(t))
 		t = type_at_where(t, loc);
 
-	return type_attributed(t, RETAIN(attr));
+	return t;
 }
 
 type *type_decay(type *const ty)
 {
 	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
 	where *loc = NULL;
-	attribute *attr = NULL;
+	attribute **attr = NULL;
 	type *test;
+	type *ret = ty;
 
 	for(test = ty; test; test = type_next_1(test)){
 		switch(test->type){
@@ -520,8 +532,7 @@ type *type_decay(type *const ty)
 				break;
 
 			case type_attr:
-				if(!attr)
-					attr = test->bits.attr;
+				dynarray_add(&attr, test->bits.attr);
 				break;
 
 			case type_cast:
@@ -533,21 +544,25 @@ type *type_decay(type *const ty)
 			case type_ptr:
 			case type_block:
 				/* nothing to decay */
-				return ty;
+				goto out;
 
 			case type_array:
-				return type_keep_w_attr(
+				ret = type_keep_w_attr(
 						type_decayed_ptr_to(test->ref, test),
 						loc, attr);
+				goto out;
 
 			case type_func:
-				return type_keep_w_attr(
+				ret = type_keep_w_attr(
 						type_ptr_to(test),
 						loc, attr);
+				goto out;
 		}
 	}
 
-	return ty;
+out:
+	dynarray_free(attribute **, &attr, NULL);
+	return ret;
 }
 
 int type_is_void(type *r)
@@ -598,13 +613,6 @@ enum type_qualifier type_qual(const type *r)
 
 	switch(r->type){
 		case type_btype:
-			if(r->bits.type->primitive == type_struct
-			|| r->bits.type->primitive == type_union)
-			{
-				if(r->bits.type->sue->contains_const)
-					return qual_const;
-			}
-
 		case type_auto:
 		case type_func:
 		case type_array:
