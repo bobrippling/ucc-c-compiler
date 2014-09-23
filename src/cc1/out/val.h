@@ -103,4 +103,6 @@ void v_decay_flags_except(out_ctx *octx, const out_val *except[]);
 void v_decay_flags_except1(out_ctx *octx, const out_val *except);
 void v_decay_flags(out_ctx *octx);
 
+void v_try_stack_reclaim(out_ctx *octx);
+
 #endif

@@ -118,6 +118,11 @@ void out_comment(out_ctx *octx, const char *fmt, ...)
 	va_end(l);
 }
 
+const char *out_val_str(const out_val *v, int deref)
+{
+	return impl_val_str(v, deref);
+}
+
 const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normalise_bool)
 {
 	type *const from = val->t;

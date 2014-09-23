@@ -531,7 +531,7 @@ const out_val *gen_expr_cast(expr *e, out_ctx *octx)
 	const out_val *casted = gen_expr(expr_cast_child(e), octx);
 
 	if(IS_RVAL_CAST(e)){
-		/*out_to_rvalue();*/
+		casted = out_change_type(octx, casted, e->tree_type);
 	}else{
 		type *tto, *tfrom;
 

@@ -5,8 +5,8 @@
 unsigned vla_decl_space(decl *);
 
 /* allocate and initialise space for a decl and all it sub-type sizes */
-void vla_alloc_decl(decl *, out_ctx *);
-void vla_typedef_alloc(decl *d, out_ctx *octx);
+void vla_decl_init(decl *, out_ctx *);
+void vla_typedef_init(decl *d, out_ctx *octx);
 
 /* get the address of the vla pointer */
 const out_val *vla_address(decl *, out_ctx *);
@@ -22,5 +22,7 @@ const out_val *vla_saved_ptr(decl *, out_ctx *);
  * sizeof(T[n]) -> no cached expr/size
  */
 const out_val *vla_size(type *, out_ctx *);
+
+void vla_cleanup(out_ctx *);
 
 #endif

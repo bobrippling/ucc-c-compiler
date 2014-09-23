@@ -870,6 +870,43 @@ void fold_decl(decl *d, symtable *stab)
 #undef first_fold
 }
 
+void fold_check_decl_complete(decl *d)
+{
+	if(!d->spel)
+		return;
+
+	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+		case store_typedef:
+		case store_extern:
+			return;
+		case store_static:
+		case store_register:
+		case store_default:
+		case store_auto:
+			break;
+		case store_inline:
+			assert(0);
+	}
+
+	if(!type_is_complete(d->ref)){
+		struct_union_enum_st *sue = type_is_s_or_u_or_e(d->ref);
+		char *extra = "";
+
+		if(sue){
+			extra = ustrprintf(
+					"\n%s: note: forward declared here",
+					where_str(&sue->where));
+		}
+
+		warn_at_print_error(&d->where, "\"%s\" has incomplete type '%s'%s",
+				d->spel, type_to_str(d->ref), extra);
+		fold_had_error = 1;
+
+		if(*extra)
+			free(extra);
+	}
+}
+
 void fold_decl_global_init(decl *d, symtable *stab)
 {
 	expr *nonstd = NULL;
@@ -980,9 +1017,6 @@ void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab)
 	}
 
 	fold_stmt(code);
-
-	/* now decls are folded, layout both parameters and local variables */
-	symtab_layout_decls(arg_symtab, 0);
 
 	/* finally, check label coherence */
 	symtab_chk_labels(symtab_func_root(arg_symtab));

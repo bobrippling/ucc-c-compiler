@@ -225,8 +225,11 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 	stmt **iter, *pdefault;
 	out_blk *blk_switch_end = out_blk_new(octx, "switch_fin");
 	const out_val *cmp_with;
+	const char *el[2];
 
 	s->blk_break = blk_switch_end;
+
+	flow_gen(s->flow, s->symtab, el, octx);
 
 	cmp_with = gen_expr(s->expr, octx);
 
@@ -298,6 +301,8 @@ void gen_stmt_switch(stmt *s, out_ctx *octx)
 		out_ctrl_transfer(octx, blk_switch_end, NULL, NULL);
 		out_current_blk(octx, blk_switch_end);
 	}
+
+	flow_end(s->flow, s->symtab, el, octx);
 }
 
 void style_stmt_switch(stmt *s, out_ctx *octx)

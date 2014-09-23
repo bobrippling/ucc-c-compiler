@@ -1,10 +1,12 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "stmt_code.h"
 #include "../decl_init.h"
 #include "../../util/dynarray.h"
+#include "../../util/platform.h"
 #include "../fold_sym.h"
 #include "../out/lbl.h"
 #include "../type_is.h"
@@ -74,6 +76,9 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 		attribute *attr;
 
 		fold_decl(d, stab);
+
+		/* block decls must be complete */
+		fold_check_decl_complete(d);
 
 		if((attr = attribute_present(d, attr_cleanup)))
 			cleanup_check(d, attr);
@@ -162,6 +167,61 @@ void fold_stmt_code(stmt *s)
 	}
 }
 
+static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
+{
+	sym *s = d->sym;
+	const enum decl_storage store = (d->store & STORE_MASK_STORE);
+
+	if(!s || s->type != sym_local)
+		return;
+
+	assert(!type_is(d->ref, type_func));
+
+	switch(store){
+		case store_register:
+		case store_default:
+		case store_auto:
+		case store_typedef:
+		{
+			unsigned siz;
+			unsigned align;
+			const int vm = type_is_variably_modified(s->decl->ref);
+
+			if(vm){
+				siz = vla_decl_space(s->decl);
+				align = platform_word_size();
+			}else if(store == store_typedef){
+				/* non-VM typedef - no space needed */
+				break;
+			}else{
+				siz = decl_size(s->decl);
+				align = decl_align(s->decl);
+			}
+
+			assert(!s->outval);
+			gen_set_sym_outval(s, out_aalloc(octx, siz, align, s->decl->ref));
+			break;
+		}
+
+		case store_static:
+		case store_extern:
+		case store_inline:
+			break;
+	}
+}
+
+static void gen_auto_decl(decl *d, out_ctx *octx)
+{
+	gen_auto_decl_alloc(d, octx);
+
+	if(type_is_variably_modified(d->ref)){
+		if((d->store & STORE_MASK_STORE) == store_typedef)
+			vla_typedef_init(d, octx);
+		else
+			vla_decl_init(d, octx);
+	}
+}
+
 void gen_block_decls(
 		symtable *stab, const char **dbg_end_lbl, out_ctx *octx)
 {
@@ -193,14 +253,7 @@ void gen_block_decls(
 			continue;
 		}
 
-		if(type_is_variably_modified(d->ref)){
-			if((d->store & STORE_MASK_STORE) == store_typedef)
-				vla_typedef_alloc(d, octx);
-			else
-				vla_alloc_decl(d, octx);
-			/* may be VM - fall through to the init
-			 * e.g. int (*p)[n] = 0; */
-		}
+		gen_auto_decl(d, octx);
 
 		/* check .expr, since empty structs .expr == NULL */
 		if(d->bits.var.init.expr
@@ -210,6 +263,30 @@ void gen_block_decls(
 			out_val_consume(octx,
 					gen_expr(d->bits.var.init.expr, octx));
 		}
+	}
+}
+
+void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
+{
+	decl **diter;
+
+	for(diter = stab->decls; diter && *diter; diter++){
+		decl *d = *diter;
+		int is_typedef;
+
+		if(!d->sym || d->sym->type != sym_local || type_is(d->ref, type_func))
+			continue;
+
+		is_typedef = ((d->store & STORE_MASK_STORE) == store_typedef);
+
+		/* typedefs may or may not have a sym */
+		if(is_typedef && !d->sym->outval)
+			continue;
+
+		if(!is_typedef && type_is_vla(d->ref, VLA_ANY_DIMENSION))
+			out_alloca_pop(octx);
+
+		out_adealloc(octx, &d->sym->outval);
 	}
 }
 
@@ -250,7 +327,7 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 			if(((d->store & STORE_MASK_STORE) != store_typedef)
 			&& type_is_vla(d->ref, VLA_ANY_DIMENSION))
 			{
-				out_alloca_pop(octx, vla_saved_ptr(d, octx));
+				out_alloca_restore(octx, vla_saved_ptr(d, octx));
 			}
 		}
 	}while(di != scope->decls);
@@ -296,7 +373,9 @@ void fold_check_scope_entry(where *w, const char *desc,
 	mark_symtabs(s_from, 0);
 }
 
-void gen_scope_leave(symtable *const s_from, symtable *const s_to, out_ctx *octx)
+void gen_scope_leave(
+		symtable *const s_from, symtable *const s_to,
+		out_ctx *octx)
 {
 	symtable *s_iter;
 
@@ -325,6 +404,12 @@ void gen_scope_leave_parent(symtable *s_from, out_ctx *octx)
 	gen_scope_leave(s_from, s_from->parent, octx);
 }
 
+void gen_stmt_code_m1_finish(stmt *s, out_ctx *octx)
+{
+	gen_scope_leave_parent(s->symtab, octx);
+	gen_block_decls_dealloca(s->symtab, octx);
+}
+
 /* this is done for lea_expr_stmt(), i.e.
  * struct A x = ({ struct A y; y.i = 1; y; });
  * so we can lea the final expr
@@ -343,7 +428,9 @@ void gen_stmt_code_m1(stmt *s, int m1, out_ctx *octx)
 		gen_stmt(*titer, octx);
 	}
 
-	gen_scope_leave_parent(s->symtab, octx);
+	if(!m1)
+		gen_stmt_code_m1_finish(s, octx);
+	/* else the caller should do ^ */
 
 	if(endlbl)
 		out_dbg_label(octx, endlbl);

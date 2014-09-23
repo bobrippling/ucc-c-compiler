@@ -122,9 +122,6 @@ const out_val *out_new_sym(out_ctx *octx, sym *sym)
 label:
 			return out_new_lbl(octx, ty, decl_asm_spel(sym->decl), 1);
 
-		case sym_arg:
-			return v_new_bp3_above(octx, NULL, ty, sym->loc.arg_offset);
-
 		case sym_local:
 		{
 			decl *d = sym->decl;
@@ -140,10 +137,12 @@ label:
 			if(type_is_vla(d->ref, VLA_ANY_DIMENSION))
 				return vla_address(d, octx);
 
-			/* sym offsetting takes into account the stack growth direction */
-			return v_new_bp3_below(octx, NULL, ty,
-					sym->loc.stack_pos + octx->stack_local_offset);
+			/* fallthru */
 		}
+
+		case sym_arg:
+			octx->used_stack = 1;
+			return out_val_retain(octx, sym->outval);
 	}
 
 	assert(0);

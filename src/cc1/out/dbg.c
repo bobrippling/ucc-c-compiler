@@ -849,14 +849,14 @@ static struct DIE **dwarf_formal_params(
 		dwarf_set_DW_AT_type(param, cu, NULL, d->ref);
 
 		if(d->spel){
-			if(!args_in_regs){
+			if(d->sym && d->sym->bp_offset && !args_in_regs){
 				struct dwarf_block *locn = umalloc(sizeof *locn);;
 				struct dwarf_block_ent *locn_data = umalloc(2 * sizeof *locn_data);
 
 				locn_data[0].type = BLOCK_HEADER;
 				locn_data[0].bits.v = DW_OP_breg6; /* rbp */
 				locn_data[1].type = BLOCK_LEB128_S;
-				locn_data[1].bits.v = d->sym->loc.arg_offset;
+				locn_data[1].bits.v = d->sym->bp_offset;
 
 				locn->cnt = 2;
 				locn->ents = locn_data;
@@ -1029,7 +1029,7 @@ static struct DIE *dwarf_global_variable(struct DIE_compile_unit *cu, decl *d)
 static void dwarf_symtable_scope(
 		struct DIE_compile_unit *cu,
 		struct DIE *scope_parent,
-		symtable *symtab, int var_offset)
+		symtable *symtab)
 {
 	symtable **si;
 	struct DIE *lexblk = NULL;
@@ -1063,16 +1063,17 @@ static void dwarf_symtable_scope(
 
 				switch(d->sym->type){
 					case sym_local:
-						locn_ents[0].type = BLOCK_HEADER;
-						locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
+						if(d->sym->bp_offset){
+							locn_ents[0].type = BLOCK_HEADER;
+							locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
 
-						locn_ents[1].type = BLOCK_LEB128_S;
-						locn_ents[1].bits.v = -(long)(
-								d->sym->loc.stack_pos + var_offset);
+							locn_ents[1].type = BLOCK_LEB128_S;
+							locn_ents[1].bits.v = d->sym->bp_offset;
 
-						if(vla){
-							locn_ents[2].type = BLOCK_LEB128_S;
-							locn_ents[2].bits.v = DW_OP_deref;
+							if(vla){
+								locn_ents[2].type = BLOCK_LEB128_S;
+								locn_ents[2].bits.v = DW_OP_deref;
+							}
 						}
 						break;
 
@@ -1102,7 +1103,7 @@ static void dwarf_symtable_scope(
 		lexblk = scope_parent;
 
 	for(si = symtab->children; si && *si; si++)
-		dwarf_symtable_scope(cu, lexblk, *si, var_offset);
+		dwarf_symtable_scope(cu, lexblk, *si);
 }
 
 static int func_code_emitted(decl *d)
@@ -1136,9 +1137,7 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 	dwarf_children(subprog,
 			dwarf_formal_params(cu, args, !arg_symtab->stack_used));
 
-	dwarf_symtable_scope(cu, subprog,
-			d->bits.func.code->symtab,
-			d->bits.func.var_offset);
+	dwarf_symtable_scope(cu, subprog, d->bits.func.code->symtab);
 
 	return subprog;
 }
