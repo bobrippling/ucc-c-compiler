@@ -100,17 +100,17 @@ void dynarray_nochk_prepend(void ***par, void *new)
 	ar[0] = new;
 }
 
-void dynarray_nochk_rm(void ***par, void *x)
+void *dynarray_nochk_rm(void ***par, void *x)
 {
 	int i, n;
 	void **ar = *par;
 
 	if(!ar)
-		return;
+		return NULL;
 
 	n = dynarray_nochk_count(ar);
 
-	for(i = 0; ar[i]; i++)
+	for(i = 0; ar[i]; i++){
 		if(ar[i] == x){
 			if(n == 1){
 				free(ar);
@@ -118,8 +118,11 @@ void dynarray_nochk_rm(void ***par, void *x)
 			}else{
 				memmove(ar + i, ar + i + 1, (n - i) * sizeof *ar);
 			}
-			return;
+			return x;
 		}
+	}
+
+	return NULL;
 }
 
 int dynarray_nochk_count(void **ar)
