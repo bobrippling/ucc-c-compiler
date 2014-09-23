@@ -849,15 +849,14 @@ static struct DIE **dwarf_formal_params(
 		dwarf_set_DW_AT_type(param, cu, NULL, d->ref);
 
 		if(d->spel){
-			if(!args_in_regs && 0){
+			if(d->sym && d->sym->bp_offset && !args_in_regs){
 				struct dwarf_block *locn = umalloc(sizeof *locn);;
 				struct dwarf_block_ent *locn_data = umalloc(2 * sizeof *locn_data);
 
 				locn_data[0].type = BLOCK_HEADER;
 				locn_data[0].bits.v = DW_OP_breg6; /* rbp */
 				locn_data[1].type = BLOCK_LEB128_S;
-				//locn_data[1].bits.v = d->sym->loc.arg_offset;
-#warning TODO
+				locn_data[1].bits.v = d->sym->bp_offset;
 
 				locn->cnt = 2;
 				locn->ents = locn_data;
@@ -1064,17 +1063,17 @@ static void dwarf_symtable_scope(
 
 				switch(d->sym->type){
 					case sym_local:
-						locn_ents[0].type = BLOCK_HEADER;
-						locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
+						if(d->sym->bp_offset){
+							locn_ents[0].type = BLOCK_HEADER;
+							locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
 
-						locn_ents[1].type = BLOCK_LEB128_S;
-						/*locn_ents[1].bits.v = -(long)(
-								d->sym->loc.stack_pos + var_offset);*/
-#warning TODO
+							locn_ents[1].type = BLOCK_LEB128_S;
+							locn_ents[1].bits.v = d->sym->bp_offset;
 
-						if(vla){
-							locn_ents[2].type = BLOCK_LEB128_S;
-							locn_ents[2].bits.v = DW_OP_deref;
+							if(vla){
+								locn_ents[2].type = BLOCK_LEB128_S;
+								locn_ents[2].bits.v = DW_OP_deref;
+							}
 						}
 						break;
 

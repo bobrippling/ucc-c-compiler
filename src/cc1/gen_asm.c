@@ -87,7 +87,7 @@ static void assign_arg_vals(decl **decls, const out_val *argvals[])
 		sym *s = decls[i]->sym;
 
 		if(s && s->type == sym_arg)
-			s->outval = argvals[j++];
+			gen_set_sym_outval(s, argvals[j++]);
 	}
 }
 
@@ -100,7 +100,7 @@ static void release_arg_vals(decl **decls, out_ctx *octx)
 
 		if(s && s->type == sym_arg){
 			out_val_release(octx, s->outval);
-			s->outval = NULL;
+			gen_set_sym_outval(s, NULL);
 		}
 	}
 }
@@ -142,8 +142,8 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 		vla_space = vla_decl_space(d);
 
 		out_val_release(octx, d->sym->outval);
-		d->sym->outval = out_aalloc(
-				octx, vla_space, type_align(d->ref, NULL), d->ref);
+		gen_set_sym_outval(d->sym, out_aalloc(
+					octx, vla_space, type_align(d->ref, NULL), d->ref));
 
 		dest = out_new_sym(octx, d->sym);
 		out_store(octx, dest, src);
@@ -151,6 +151,12 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 
 		vla_decl_init(d, octx);
 	}
+}
+
+void gen_set_sym_outval(sym *sym, const out_val *v)
+{
+	sym->outval = v;
+	sym->bp_offset = v ? out_get_bp_offset(v) : 0;
 }
 
 static void gen_asm_global(decl *d, out_ctx *octx)
