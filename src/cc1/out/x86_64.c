@@ -457,8 +457,9 @@ pass_via_stack:
 			}
 
 
-			/* note: as soon as the stack collector is implemented,
-			 * this will break: */
+			/* note: this isn't broken by the stack reclaim code as
+			 * we're still in the prologue */
+			assert(octx->in_prologue);
 			out_adealloc(octx, &stack_loc);
 		}else{
 			long i;
