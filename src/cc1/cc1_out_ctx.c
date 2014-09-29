@@ -24,5 +24,6 @@ void cc1_out_ctx_free(out_ctx *octx)
 
 	dynmap_free((*cc1_octx)->sym_inline_map);
 	dynmap_free((*cc1_octx)->vlamap);
+	dynmap_free((*cc1_octx)->generated_decls);
 	free(*cc1_octx);
 }
