@@ -121,6 +121,7 @@ static struct warn_str
 	{ "attr-printf-bad", &cc1_warning.attr_printf_bad },
 	{ "attr-printf-toomany", &cc1_warning.attr_printf_toomany },
 	{ "attr-printf-unknown", &cc1_warning.attr_printf_unknown },
+	{ "attr-printf-voidptr", &cc1_warning.attr_printf_voidp },
 	{
 		"format",
 		&cc1_warning.attr_printf_bad,
@@ -627,6 +628,8 @@ static void warning_pedantic(int set)
 	cc1_warning.flexarr_only =
 	cc1_warning.decl_nodecl =
 	cc1_warning.overlarge_enumerator_int =
+
+	cc1_warning.attr_printf_voidp =
 
 	cc1_warning.return_void =
 		set;

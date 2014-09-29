@@ -45,6 +45,8 @@ static void warn_printf_attr(char fmt, where *w, enum printf_attr attr)
 static void format_check_printf_1(char fmt, type *const t_in,
 		where *loc_expr, where *loc_str, enum printf_attr attr)
 {
+	unsigned char *const default_warningp = &cc1_warning.attr_printf_bad;
+	unsigned char *warningp = default_warningp;
 	char expected[BTYPE_STATIC_BUFSIZ];
 
 	expected[0] = '\0';
@@ -53,15 +55,33 @@ static void format_check_printf_1(char fmt, type *const t_in,
 		enum type_primitive prim;
 		type *tt;
 
+		case 'p':
+			prim = type_void;
+
+			/* emit the right warning flag */
+			warningp = &cc1_warning.attr_printf_voidp;
+
+			if(cc1_warning.attr_printf_voidp){
+				/* strict %p / void* check */
+			}else{
+				/* allow any* */
+				if(type_is_ptr(t_in))
+					break;
+			}
+			goto ptr;
+
 		case 's': prim = type_nchar; goto ptr;
-		case 'p': prim = type_void; goto ptr;
 		case 'n': prim = type_int;  goto ptr;
 ptr:
 			tt = type_is_primitive_anysign(type_is_ptr(t_in), prim);
 			if(!tt){
+				if(prim == type_unknown)
+					prim = type_void;
+
 				snprintf(expected, sizeof expected,
 						"'%s *'", type_primitive_to_str(prim));
 			}else if(attr){
+				warningp = default_warningp;
 				warn_printf_attr(fmt, loc_str, attr);
 			}
 			break;
@@ -126,7 +146,7 @@ ptr:
 	}
 
 	if(*expected){
-		cc1_warn_at(loc_expr, attr_printf_bad,
+		cc1_warn_at_w(loc_expr, warningp,
 				"format %%%s%c expects %s argument (got %s)",
 				attr & printf_attr_llong ? "ll" : attr & printf_attr_long ? "l" : "",
 				fmt, expected, type_to_str(t_in));
