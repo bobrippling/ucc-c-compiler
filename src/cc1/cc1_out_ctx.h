@@ -10,6 +10,8 @@ struct cc1_out_ctx
 
 	struct dynmap *generated_decls; /* decl* => NULL */
 
+	struct dynmap *spel_to_fndecl;
+
 	struct cc1_inline
 	{
 		struct out_blk *phi, **rets;

@@ -134,6 +134,7 @@ void out_adealloc(out_ctx *, const out_val **);
 
 
 long out_get_bp_offset(const out_val *) ucc_nonnull();
+const char *out_get_lbl(const out_val *) ucc_nonnull();
 
 /* commenting */
 void out_comment(out_ctx *, const char *, ...) ucc_printflike(2, 3);

@@ -266,6 +266,14 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		cc1_octx->generated_decls = dynmap_new(decl *, /*ref*/NULL, decl_hash);
 	(void)dynmap_set(decl *, int *, cc1_octx->generated_decls, d, (int *)NULL);
 
+	if(!cc1_octx->spel_to_fndecl)
+		cc1_octx->spel_to_fndecl = dynmap_new(const char *, strcmp, dynmap_strhash);
+
+	(void)dynmap_set(
+			const char *, decl *,
+			cc1_octx->spel_to_fndecl,
+			decl_asm_spel(d), d);
+
 	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		case store_inline:
 		case store_auto:

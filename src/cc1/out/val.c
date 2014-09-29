@@ -382,3 +382,8 @@ long out_get_bp_offset(const out_val *v)
 	}
 	return 0;
 }
+
+const char *out_get_lbl(const out_val *v)
+{
+	return v->type == V_LBL ? v->bits.lbl.str : NULL;
+}

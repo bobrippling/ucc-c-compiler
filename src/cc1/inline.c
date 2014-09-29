@@ -155,6 +155,33 @@ static int heuristic_should_inline(
 	return 1;
 }
 
+static stmt *try_resolve_val_to_func(
+		out_ctx *octx, const out_val *fnval, decl **out_decl)
+{
+	/* no code - may be a forward decl, or may be a function pointer.
+	 * if it's a function pointer, try to see if the backend has
+	 * resolved it for us */
+	struct cc1_out_ctx **pcc1_octx;
+
+	pcc1_octx = cc1_out_ctx(octx);
+	if(*pcc1_octx){
+		const char *lbl = out_get_lbl(fnval);
+
+		if(lbl){
+			struct cc1_out_ctx *cc1_octx = *pcc1_octx;
+
+			*out_decl = dynmap_get(
+					const char *, decl *,
+					cc1_octx->spel_to_fndecl,
+					lbl);
+
+			if(*out_decl)
+				return (*out_decl)->bits.func.code;
+		}
+	}
+	return NULL;
+}
+
 struct inline_outs
 {
 	decl *fndecl;
@@ -166,6 +193,7 @@ struct inline_outs
 ucc_nonnull()
 static const char *check_and_ret_inline(
 		expr *call_expr, out_ctx *octx,
+		const out_val *fnval,
 		struct inline_outs *iouts, int nargs)
 {
 	decl **diter;
@@ -180,8 +208,12 @@ static const char *check_and_ret_inline(
 	iouts->fndecl = decl_impl(iouts->fndecl);
 
 	if(!(iouts->fncode = iouts->fndecl->bits.func.code)){
-		/* see if the decl was later completed */
-		return "can't see function code";
+		iouts->fncode = try_resolve_val_to_func(octx, fnval, &iouts->fndecl);
+
+		if(!iouts->fncode){
+			/* see if the decl was later completed */
+			return "can't see function code";
+		}
 	}
 
 	if(attribute_present(iouts->fndecl, attr_noinline)){
@@ -235,7 +267,7 @@ const out_val *inline_func_try_gen(
 	struct inline_outs iouts = { 0 };
 
 	*whynot = check_and_ret_inline(
-			call_expr, octx,
+			call_expr, octx, fn,
 			&iouts, dynarray_count(args));
 
 	if(*whynot){
