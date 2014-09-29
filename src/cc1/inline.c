@@ -92,7 +92,10 @@ static const out_val *gen_inline_func(
 		/* if the symbol is addressed we need to spill it */
 		prev = s->outval;
 
-		if(s->nwrites){
+		if(s->nwrites || out_is_nonconst_temporary(args[i])){
+			/* registers can't persist across inlining in the case of
+			 * function calls, etc etc - need to spill, hence
+			 * non-const temporary */
 			s->outval = inline_arg_to_lvalue(octx, args[i], s->decl->ref);
 		}else{
 			const out_val *was_set;

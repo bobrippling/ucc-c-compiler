@@ -387,3 +387,18 @@ const char *out_get_lbl(const out_val *v)
 {
 	return v->type == V_LBL ? v->bits.lbl.str : NULL;
 }
+
+int out_is_nonconst_temporary(const out_val *v)
+{
+	switch(v->type){
+		case V_CONST_I:
+		case V_CONST_F:
+		case V_LBL:
+			break;
+		case V_REG:
+		case V_REG_SPILT:
+		case V_FLAG:
+			return 1;
+	}
+	return 0;
+}
