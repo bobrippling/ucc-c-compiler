@@ -19,6 +19,7 @@
 #include "include.h"
 #include "directive.h"
 #include "deps.h"
+#include "feat.h"
 
 #define FNAME_BUILTIN "<builtin>"
 #define FNAME_CMDLINE "<command-line>"
@@ -31,11 +32,18 @@ static const struct
 	{ "__unix__",       "1"  },
 	{ "__STDC__",       "1"  },
 
-	{ "__STDC_NO_ATOMICS__" , "1" }, /* _Atomic */
-	{ "__STDC_NO_THREADS__" , "1" }, /* _Thread_local */
-	{ "__STDC_NO_COMPLEX__", "1" }, /* _Complex */
-
-	/*{ "__STDC_NO_VLA__", "1" }, vla are implemented */
+#if !UCC_HAS_ATOMICS
+	{ "__STDC_NO_ATOMICS__" , "1", 0 }, /* _Atomic */
+#endif
+#if !UCC_HAS_THREADS
+	{ "__STDC_NO_THREADS__" , "1", 0 }, /* _Thread_local */
+#endif
+#if !UCC_HAS_COMPLEX
+	{ "__STDC_NO_COMPLEX__", "1", 0 }, /* _Complex */
+#endif
+#if !UCC_HAS_VLA
+	{ "__STDC_NO_VLA__", "1", 0 },
+#endif
 
 #define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
 
