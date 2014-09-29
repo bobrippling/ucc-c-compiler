@@ -27,10 +27,12 @@
 static const struct
 {
 	const char *nam, *val;
+	int is_fn;
+
 } initial_defs[] = {
 	/* standard */
-	{ "__unix__",       "1"  },
-	{ "__STDC__",       "1"  },
+	{ "__unix__",       "1", 0 },
+	{ "__STDC__",       "1", 0 },
 
 #if !UCC_HAS_ATOMICS
 	{ "__STDC_NO_ATOMICS__" , "1", 0 }, /* _Atomic */
@@ -45,24 +47,24 @@ static const struct
 	{ "__STDC_NO_VLA__", "1", 0 },
 #endif
 
-#define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
+#define TYPE(ty, c) { "__" #ty "_TYPE__", #c, 0 }
 
 	TYPE(SIZE, unsigned long),
 	TYPE(PTRDIFF, unsigned long),
 	TYPE(WINT, unsigned),
 
-	{ "__ORDER_LITTLE_ENDIAN__", "1234" },
-	{ "__ORDER_BIG_ENDIAN__",    "4321" },
-	{ "__ORDER_PDP_ENDIAN__",    "3412" },
+	{ "__ORDER_LITTLE_ENDIAN__", "1234", 0 },
+	{ "__ORDER_BIG_ENDIAN__",    "4321", 0 },
+	{ "__ORDER_PDP_ENDIAN__",    "3412", 0 },
 
 	/* non-standard */
-	{ "__BLOCKS__",     "1"  },
+	{ "__BLOCKS__",     "1", 0 },
 
 	/* custom */
-	{ "__UCC__",        "1"  },
+	{ "__UCC__",        "1", 0 },
 
 	/* magic */
-#define SPECIAL(x) { x, NULL }
+#define SPECIAL(x) { x, NULL, 0 }
 	SPECIAL("__FILE__"),
 	SPECIAL("__LINE__"),
 	SPECIAL("__COUNTER__"),
@@ -71,7 +73,7 @@ static const struct
 	SPECIAL("__TIMESTAMP__"),
 #undef SPECIAL
 
-	{ NULL,             NULL }
+	{ NULL, NULL, 0 }
 };
 
 struct loc loc_tok;
@@ -231,8 +233,12 @@ int main(int argc, char **argv)
 
 	macro_add_limits();
 
-	for(i = 0; initial_defs[i].nam; i++)
-		macro_add(initial_defs[i].nam, initial_defs[i].val, 0);
+	for(i = 0; initial_defs[i].nam; i++){
+		if(initial_defs[i].is_fn)
+			macro_add_func(initial_defs[i].nam, initial_defs[i].val, NULL, 0, 1);
+		else
+			macro_add(initial_defs[i].nam, initial_defs[i].val, 0);
+	}
 
 	switch(platform_type()){
 		case PLATFORM_x86_64:
