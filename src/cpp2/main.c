@@ -76,6 +76,8 @@ static const struct
 #define SPECIAL(x) { x, NULL, 1 }
 	SPECIAL("__has_feature"),
 	SPECIAL("__has_extension"),
+	SPECIAL("__has_attribute"),
+	SPECIAL("__has_builtin"),
 #undef SPECIAL
 
 	{ NULL, NULL, 0 }

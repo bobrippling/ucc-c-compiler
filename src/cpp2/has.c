@@ -13,6 +13,8 @@ typedef int has_fn(const char *nam);
 
 static has_fn has_feature;
 static has_fn has_extension;
+static has_fn has_attribute;
+static has_fn has_builtin;
 
 static const struct has_tbl
 {
@@ -22,6 +24,8 @@ static const struct has_tbl
 #define HAS(x) { #x, has_ ## x }
 	HAS(feature),
 	HAS(extension),
+	HAS(attribute),
+	HAS(builtin),
 #undef HAS
 	{ NULL, NULL }
 };
@@ -87,4 +91,16 @@ static int has_extension(const char *nam)
 static int has_feature(const char *nam)
 {
 	return has_feat_ext(nam, 0);
+}
+
+static int has_attribute(const char *nam)
+{
+	/* TODO */
+	return 0;
+}
+
+static int has_builtin(const char *nam)
+{
+	/* TODO */
+	return 0;
 }
