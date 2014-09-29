@@ -214,6 +214,9 @@ static const char *check_and_ret_inline(
 		return "function has noinline attribute";
 	}
 
+	if(attribute_present(iouts->fndecl, attr_weak))
+		return "weak-function overridable at link time";
+
 	if(!(iouts->fncode = iouts->fndecl->bits.func.code)){
 		/* may change the decl from fnptr -> function */
 		iouts->fncode = try_resolve_val_to_func(octx, fnval, &iouts->fndecl);
