@@ -2,5 +2,5 @@
 
 f()
 {
-	char invalid[]; // CHECK: /error: array has an incomplete size/
+	char invalid[]; // CHECK: error: "invalid" has incomplete type 'char[]'
 }

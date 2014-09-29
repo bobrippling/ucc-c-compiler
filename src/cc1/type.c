@@ -623,7 +623,7 @@ type *type_add_type_str(type *r,
 
 			BUF_ADD(" (aka '%s')",
 					t ? btype_to_str(t)
-					: type_to_str_r_spel_aka(buf, of, NULL, 0));
+					: type_to_str_r_spel_aka(buf, type_skip_tdefs(of), NULL, 0));
 		}
 
 		return ty;

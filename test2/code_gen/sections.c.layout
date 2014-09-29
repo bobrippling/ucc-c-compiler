@@ -16,13 +16,3 @@ x:
 main:
 .long 195
 .Lsection_end_rodata:
-
-
-.Lsection_begin_dbg_abrv:
-.Lsection_end_dbg_abrv:
-
-.Lsection_begin_dbg_info:
-.Lsection_end_dbg_info:
-
-.Lsection_begin_dbg_line:
-.Lsection_end_dbg_line:

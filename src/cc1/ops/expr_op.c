@@ -951,6 +951,30 @@ void expr_check_sign(const char *desc,
 	}
 }
 
+static int op_sizeof_div_check(expr *e)
+{
+	expr *lhs;
+
+	if(e->op != op_divide)
+		return 0;
+
+	lhs = expr_skip_casts(e->lhs);
+
+	if(!expr_kind(lhs, sizeof))
+		return 0;
+
+	if(lhs->expr && type_is_ptr(lhs->expr->tree_type)){
+		cc1_warn_at(&e->where,
+				sizeof_ptr_div,
+				"division of sizeof(%s) - did you mean sizoef(array)?",
+				type_to_str(lhs->expr->tree_type));
+
+		return 1;
+	}
+
+	return 0;
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
@@ -990,7 +1014,8 @@ void fold_expr_op(expr *e, symtable *stab)
 				op_check_precedence(e) ||
 				op_unsigned_cmp_check(e) ||
 				op_shift_check(e) ||
-				str_cmp_check(e));
+				str_cmp_check(e) ||
+				op_sizeof_div_check(e));
 
 	}else{
 		/* (except unary-not) can only have operations on integers,

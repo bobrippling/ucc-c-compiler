@@ -12,8 +12,12 @@
 #include "tokenise.h"
 #include "tokconv.h"
 
+#include "fold.h"
+
 #include "cc1_where.h"
 #include "warn.h"
+
+#include "fold.h"
 
 #include "parse_expr.h"
 
@@ -153,6 +157,9 @@ static expr *optional_parened_expr(symtable *scope)
 			goto out;
 
 		e = PARSE_EXPR_NO_COMMA(scope, 0);
+		FOLD_EXPR(e, scope);
+
+		FOLD_EXPR(e, scope);
 
 		EAT(token_close_paren);
 
@@ -224,6 +231,7 @@ EMPTY(attr_weak)
 EMPTY(attr_always_inline)
 EMPTY(attr_noinline)
 EMPTY(attr_ucc_debug)
+EMPTY(attr_desig_init)
 
 #undef EMPTY
 
@@ -258,6 +266,7 @@ static struct
 	ATTR(aligned),
 	ATTR(weak),
 	ATTR(cleanup),
+	{ "designated_init", parse_attr_desig_init },
 	ATTR(always_inline),
 	ATTR(noinline),
 	{ "__ucc_debug", parse_attr_ucc_debug },
@@ -276,16 +285,18 @@ static struct
 
 static void parse_attr_bracket_chomp(int had_open_paren)
 {
-	if(!had_open_paren && accept(token_open_paren))
-		had_open_paren = 1;
+	if(had_open_paren || accept(token_open_paren)){
+		for(;;){
+			if(accept(token_open_paren))
+				parse_attr_bracket_chomp(1); /* nest */
 
-	if(had_open_paren){
-		parse_attr_bracket_chomp(0); /* nest */
+			if(accept(token_close_paren))
+				break;
+			else if(curtok == token_eof)
+				break; /* failsafe */
 
-		while(curtok != token_close_paren)
 			EAT(curtok);
-
-		EAT(token_close_paren);
+		}
 	}
 }
 

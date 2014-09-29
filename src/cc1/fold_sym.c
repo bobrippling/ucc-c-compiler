@@ -7,7 +7,6 @@
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "../util/dynmap.h"
-#include "../util/platform.h"
 
 #include "cc1.h"
 #include "sym.h"
@@ -473,111 +472,6 @@ void symtab_fold_decls(symtable *tab)
 	}
 	free(all_idents);
 #undef IS_LOCAL_SCOPE
-}
-
-void fold_sym_pack_decl(decl *d, unsigned *sz, unsigned *align)
-{
-	if(type_is_variably_modified(d->ref)){
-		*sz = vla_decl_space(d);
-		*align = platform_word_size();
-	}else if((d->store & STORE_MASK_STORE) == store_typedef){
-		*sz = *align = 0;
-	}else{
-		*sz = decl_size(d);
-		*align = decl_align(d);
-	}
-}
-
-unsigned symtab_layout_decls(symtable *tab, unsigned current)
-{
-	const unsigned this_start = current;
-
-	if(tab->laidout)
-		goto out;
-	tab->laidout = 1;
-
-	if(tab->decls){
-		decl **diter;
-
-		for(diter = tab->decls; *diter; diter++){
-			decl *d = *diter;
-			sym *s = d->sym;
-
-			/* we might not have a symbol, e.g.
-			 * f(int (*pf)(int (*callme)()))
-			 *         ^         ^
-			 *         |         +-- nested - skipped
-			 *         +------------ `tab'
-			 */
-			if(!s)
-				continue;
-
-
-			switch(s->type){
-				case sym_arg:
-					break;
-
-				case sym_local: /* warn on unused args and locals */
-				{
-					if(type_is(d->ref, type_func))
-						continue;
-
-					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
-						case store_typedef: /* VLAs */
-							/* for now, we allocate stack space for register vars */
-						case store_register:
-						case store_default:
-						case store_auto:
-						{
-							unsigned siz;
-							unsigned align;
-
-							fold_sym_pack_decl(s->decl, &siz, &align);
-							if(siz == 0) /* typedef */
-								break;
-
-							/* align greater than size - we increase
-							 * size so it can be aligned to `align'
-							 */
-							if(align > siz)
-								siz = pack_to_align(siz, align);
-
-							/* packing takes care of everything */
-							pack_next(&current, NULL, siz, align);
-							s->loc.stack_pos = current;
-							break;
-						}
-
-						case store_static:
-						case store_extern:
-							break;
-						case store_inline:
-							ICE("%s store", decl_store_to_str(d->store));
-					}
-					break;
-				}
-				case sym_global:
-					break;
-			}
-		}
-	}
-
-	{
-		symtable **tabi;
-		unsigned subtab_max = 0;
-
-		for(tabi = tab->children; tabi && *tabi; tabi++){
-			unsigned this = symtab_layout_decls(*tabi, current);
-			if(this > subtab_max)
-				subtab_max = this;
-		}
-
-		/* don't account the args in the space */
-		tab->auto_total_size = current - this_start + subtab_max;
-	}
-
-out:
-	return tab->auto_total_size;
 }
 
 void symtab_chk_labels(symtable *stab)

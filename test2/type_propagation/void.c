@@ -1,11 +1,11 @@
-// RUN: %ucc -DA %s 2>&1 | grep 'error: a is void'
-// RUN: %ucc -DB %s 2>&1 | grep 'error: array of void'
+// RUN: %check -e --prefix=a %s -DA
+// RUN: %check -e --prefix=b %s -DB
 
 main()
 {
 #ifdef A
-	void a;
+	void a; // CHECK-a: error: "a" has incomplete type 'void'
 #else
-	void b[2];
+	void b[2]; // CHECK-b: error: array has incomplete type 'void'
 #endif
 }

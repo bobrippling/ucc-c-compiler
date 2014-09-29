@@ -27,7 +27,7 @@ macro *macro_add_sprintf(
 
 macro *macro_find(const char *sp);
 int    macro_remove(const char *nam);
-void   macros_dump(void);
+void   macros_dump(int show_where);
 void   macros_stats(void);
 void macros_warn_unused(void);
 

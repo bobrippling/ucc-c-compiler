@@ -283,27 +283,46 @@ out_val *v_new_bp3_below(
 	return v_new_bp3(octx, from, ty, -stack_pos);
 }
 
-static void try_stack_reclaim(out_ctx *octx)
+void v_try_stack_reclaim(out_ctx *octx)
 {
 	/* if we have no out_vals on the stack,
 	 * we can reclaim stack-spill space.
 	 * this is a simple algorithm for reclaiming */
 	out_val_list *iter;
+	long lowest = 0;
 
-	if(octx->in_prologue)
+	if(octx->in_prologue || octx->alloca_count)
 		return;
 
 	/* only reclaim if we have an empty val list */
-	for(iter = octx->val_head; iter; iter = iter->next)
-		if(iter->val.retains > 0)
-			return;
+	for(iter = octx->val_head; iter; iter = iter->next){
+		if(iter->val.retains == 0)
+			continue;
+		switch(iter->val.type){
+			case V_REG:
+			case V_REG_SPILT:
+				if(!impl_reg_frame_const(&iter->val.bits.regoff.reg, 0))
+					return;
+				if(iter->val.bits.regoff.offset < lowest)
+					lowest = iter->val.bits.regoff.offset;
+				break;
+			case V_CONST_I:
+			case V_LBL:
+			case V_CONST_F:
+			case V_FLAG:
+				break;
+		}
+	}
 
-	unsigned reclaim = octx->var_stack_sz - octx->stack_sz_initial;
-	if(reclaim){
+	lowest = -lowest;
+
+	v_stackt reclaim = octx->cur_stack_sz - lowest;
+	if(reclaim > 0){
 		if(fopt_mode & FOPT_VERBOSE_ASM)
-			out_comment(octx, "reclaim %u", reclaim);
+			out_comment(octx, "reclaim %ld (%ld start %ld lowest)",
+					reclaim, octx->initial_stack_sz, lowest);
 
-		octx->var_stack_sz = octx->stack_sz_initial;
+		octx->cur_stack_sz = lowest;
 	}
 }
 
@@ -312,7 +331,7 @@ const out_val *out_val_release(out_ctx *octx, const out_val *v)
 	out_val *mut = (out_val *)v;
 	assert(mut->retains > 0 && "double release");
 	if(--mut->retains == 0){
-		try_stack_reclaim(octx);
+		v_try_stack_reclaim(octx);
 
 		return NULL;
 	}
@@ -322,6 +341,7 @@ const out_val *out_val_release(out_ctx *octx, const out_val *v)
 const out_val *out_val_retain(out_ctx *octx, const out_val *v)
 {
 	(void)octx;
+	assert(v->retains > 0);
 	((out_val *)v)->retains++;
 	return v;
 }
@@ -348,4 +368,17 @@ const out_val *out_annotate_likely(
 int vreg_eq(const struct vreg *a, const struct vreg *b)
 {
 	return a->idx == b->idx && a->is_float == b->is_float;
+}
+
+long out_get_bp_offset(const out_val *v)
+{
+	switch(v->type){
+		case V_REG_SPILT:
+		case V_REG:
+			if(v->bits.regoff.reg.idx == REG_BP)
+				return v->bits.regoff.offset;
+		default:
+			break;
+	}
+	return 0;
 }

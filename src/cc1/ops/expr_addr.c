@@ -55,7 +55,8 @@ void fold_expr_addr(expr *e, symtable *stab)
 				die_at(&e->lhs->where, "can't take the address of register");
 		}
 
-		fold_check_expr(e->lhs, FOLD_CHK_NO_BITFIELD, "address-of");
+		fold_check_expr(e->lhs, FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_BITFIELD,
+				"address-of");
 
 		e->tree_type = type_ptr_to(e->lhs->tree_type);
 	}

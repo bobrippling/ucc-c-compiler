@@ -36,7 +36,7 @@ void expr_block_got_params(
 	symtab->in_func = df;
 
 	/* add a global symbol for the block */
-	e->bits.block.sym = sym_new_stab(
+	e->bits.block.sym = sym_new_and_prepend_decl(
 			symtab_root(symtab), df, sym_global);
 }
 

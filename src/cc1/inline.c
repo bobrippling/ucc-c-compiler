@@ -145,8 +145,8 @@ static int heuristic_should_inline(
 	if(fndecl->store & store_inline)
 		return 1;
 
-	if(symtab->auto_total_size > INLINE_MAX_STACK_BYTES)
-		return 0;
+	/*if(symtab->auto_total_size > INLINE_MAX_STACK_BYTES)
+		return 0;*/
 
 	stmt_walk(fncode, stmts_count, NULL, &nstmts);
 	if(nstmts > INLINE_MAX_STMTS)

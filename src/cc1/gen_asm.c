@@ -82,9 +82,7 @@ void gen_stmt(const stmt *t, out_ctx *octx)
 	t->f_gen(t, octx);
 }
 
-static void assign_arg_offsets(
-		out_ctx *octx,
-		decl **decls, int const offsets[])
+static void assign_arg_vals(decl **decls, const out_val *argvals[], out_ctx *octx)
 {
 	unsigned i, j;
 
@@ -92,25 +90,37 @@ static void assign_arg_offsets(
 		sym *s = decls[i]->sym;
 
 		if(s && s->type == sym_arg){
-			if(fopt_mode & FOPT_VERBOSE_ASM)
-				out_comment(octx, "%s @ offset %d", s->decl->spel, offsets[j]);
+			gen_set_sym_outval(s, argvals[j++]);
 
-			s->loc.arg_offset = offsets[j++];
+			if(fopt_mode & FOPT_VERBOSE_ASM)
+				out_comment(octx, "arg %s @ %s", decls[i]->spel, out_val_str(s->outval, 1));
 		}
 	}
 }
 
-static void allocate_vla_args(
-		out_ctx *octx, symtable *arg_symtab, unsigned const auto_space)
+static void release_arg_vals(decl **decls, out_ctx *octx)
 {
-	unsigned current_off = auto_space;
+	unsigned i, j;
+
+	for(i = j = 0; decls && decls[i]; i++){
+		sym *s = decls[i]->sym;
+
+		if(s && s->type == sym_arg){
+			out_val_release(octx, s->outval);
+			gen_set_sym_outval(s, NULL);
+		}
+	}
+}
+
+static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
+{
 	decl **i;
 
 	for(i = arg_symtab->decls; i && *i; i++){
 		const out_val *dest, *src;
 		decl *d = *i;
 		type *decayed;
-		int orig_off;
+		unsigned vla_space;
 
 		/* generate side-effects even if it's decayed, e.g.
 		 * f(int p[E1][E2])
@@ -134,20 +144,26 @@ static void allocate_vla_args(
 		 * don't touch the original pointer value, which is all it needs */
 		src = out_new_sym_val(octx, d->sym);
 
-		orig_off = d->sym->loc.arg_offset;
+		out_comment(octx, "move vla argument %s", d->spel);
 
-		current_off += vla_decl_space(d);
-		d->sym->loc.arg_offset = -(int)current_off - octx->stack_local_offset;
+		vla_space = vla_decl_space(d);
 
-		out_comment(octx, "move vla argument %s (%d -> %d)",
-				d->spel, orig_off, d->sym->loc.arg_offset);
+		out_val_release(octx, d->sym->outval);
+		gen_set_sym_outval(d->sym, out_aalloc(
+					octx, vla_space, type_align(d->ref, NULL), d->ref));
 
 		dest = out_new_sym(octx, d->sym);
 		out_store(octx, dest, src);
 
 
-		vla_alloc_decl(d, octx);
+		vla_decl_init(d, octx);
 	}
+}
+
+void gen_set_sym_outval(sym *sym, const out_val *v)
+{
+	sym->outval = v;
+	sym->bp_offset = v ? out_get_bp_offset(v) : 0;
 }
 
 static void gen_asm_global(decl *d, out_ctx *octx)
@@ -165,10 +181,8 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		int nargs = 0, is_vari;
 		decl **aiter;
 		const char *sp;
-		int *offsets;
+		const out_val **argvals;
 		symtable *arg_symtab;
-		unsigned arg_vla_space = 0;
-		unsigned auto_space;
 
 		if(!d->bits.func.code)
 			return;
@@ -179,31 +193,29 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++){
 			decl *d = *aiter;
 
-			if(d->sym->type == sym_arg){
+			if(d->sym->type == sym_arg)
 				nargs++;
-
-				if(type_is_variably_modified(d->ref))
-					arg_vla_space += vla_decl_space(d);
-			}
 		}
 
-		offsets = nargs ? umalloc(nargs * sizeof *offsets) : NULL;
+		argvals = nargs ? umalloc(nargs * sizeof *argvals) : NULL;
 
 		sp = decl_asm_spel(d);
 
-		auto_space = d->bits.func.code->symtab->auto_total_size;
-
 		out_func_prologue(octx, sp, d->ref,
-				auto_space + arg_vla_space,
 				nargs,
 				is_vari = type_is_variadic_func(d->ref),
-				offsets, &d->bits.func.var_offset);
+				argvals);
 
-		assign_arg_offsets(octx, arg_symtab->decls, offsets);
+		assign_arg_vals(arg_symtab->decls, argvals, octx);
 
-		allocate_vla_args(octx, arg_symtab, auto_space);
+		allocate_vla_args(octx, arg_symtab);
+		free(argvals), argvals = NULL;
 
 		gen_stmt(d->bits.func.code, octx);
+
+		release_arg_vals(arg_symtab->decls, octx);
+
+		vla_cleanup(octx);
 
 		out_dump_retained(octx, d->spel);
 
@@ -216,8 +228,6 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 			arg_symtab->stack_used = stack_used;
 			free(end);
 		}
-
-		free(offsets);
 
 		out_ctx_wipe(octx);
 

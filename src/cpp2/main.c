@@ -87,7 +87,8 @@ enum wmode wmode =
 	| WFINALESCAPE
 	| WMULTICHAR
 	| WQUOTE
-	| WHASHWARNING;
+	| WHASHWARNING
+	| WBACKSLASH_SPACE_NEWLINE;
 
 enum comment_strip strip_comments = STRIP_ALL;
 
@@ -108,6 +109,14 @@ static const struct
 	{ "paste", "warn when pasting doesn't make a token", WPASTE },
 	{ "uncalled-macro", "warn when a function-macro is mentioned without ()", WUNCALLED_FN },
 	{ "#warning", "emit #warnings", WHASHWARNING },
+	{ "backslash-newline-space", "space between backslash and newline", WBACKSLASH_SPACE_NEWLINE },
+
+	{ "everything", "everything", ~0 },
+
+	{
+		"all", "Most warnings", WREDEF | WWHITESPACE | WTRAILING | WPASTE |
+			WFINALESCAPE | WMULTICHAR | WHASHWARNING
+	},
 };
 
 #define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)
@@ -199,7 +208,7 @@ int main(int argc, char **argv)
 {
 	char *infname, *outfname;
 	int ret = 0;
-	enum { NONE, MACROS, STATS, DEPS } dump = NONE;
+	enum { NONE, MACROS, MACROS_WHERE, STATS, DEPS } dump = NONE;
 	int i;
 	int platform_win32 = 0;
 	int freestanding = 0;
@@ -341,8 +350,13 @@ int main(int argc, char **argv)
 				switch(argv[i][2]){
 					case 'M':
 					case 'S':
+					case 'W':
 						/* list #defines */
-						dump = argv[i][2] == 'M' ? MACROS : STATS;
+						dump = (
+								argv[i][2] == 'M' ? MACROS :
+								argv[i][2] == 'S' ? STATS :
+								MACROS_WHERE);
+
 						no_output = 1;
 						break;
 					case '\0':
@@ -474,7 +488,8 @@ defaul:
 		case NONE:
 			break;
 		case MACROS:
-			macros_dump();
+		case MACROS_WHERE:
+			macros_dump(dump == MACROS_WHERE);
 			break;
 		case STATS:
 			macros_stats();

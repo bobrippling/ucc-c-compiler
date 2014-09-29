@@ -47,13 +47,17 @@ void bitfield_trunc_check(decl *mem, expr *from)
 	}
 }
 
-void expr_must_lvalue(expr *e, const char *desc)
+int expr_must_lvalue(expr *e, const char *desc)
 {
 	if(!expr_is_lval(e)){
 		fold_had_error = 1;
 		warn_at_print_error(&e->where, "%s to %s - not an lvalue",
 				desc, type_to_str(e->tree_type));
+
+		return 0;
 	}
+
+	return 1;
 }
 
 static const out_val *lea_assign_lhs(const expr *e, out_ctx *octx)
@@ -67,10 +71,15 @@ static const out_val *lea_assign_lhs(const expr *e, out_ctx *octx)
 
 void expr_assign_const_check(expr *e, where *w)
 {
+	struct_union_enum_st *su;
+
 	if(type_is_const(e->tree_type)){
 		fold_had_error = 1;
 		warn_at_print_error(w, "can't modify const expression %s",
 				e->f_str());
+	}else if((su = type_is_s_or_u(e->tree_type)) && su->contains_const){
+		fold_had_error = 1;
+		warn_at_print_error(w, "can't assign struct - contains const member");
 	}
 }
 

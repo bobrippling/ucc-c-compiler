@@ -114,8 +114,8 @@ ucc_wur const out_val *out_ctrl_merge_n(out_ctx *, out_blk **rets);
 void out_func_prologue(
 		out_ctx *, const char *sp,
 		type *fnty,
-		int stack_res, int nargs, int variadic,
-		int arg_offsets[], int *local_offset);
+		int nargs, int variadic,
+		const out_val *argvals[]);
 
 void out_func_epilogue(
 		out_ctx *, type *, char *end_dbg_lbl,
@@ -124,15 +124,19 @@ void out_func_epilogue(
 
 /* returns a pointer to allocated storage: */
 const out_val *out_alloca_push(out_ctx *, const out_val *sz, unsigned align);
-void out_alloca_pop(out_ctx *octx, const out_val *sz);
+/* alloca_restore restores the stack for scope-leave.
+ * alloca_pop restores the stack and cleans up internal vla state */
+void out_alloca_restore(out_ctx *octx, const out_val *ptr);
+void out_alloca_pop(out_ctx *octx);
 
-/* similar to above, but fixed storage - this just changes the initial
- * stack space alloc. Provided for function inlining.
- * Returns stack offset */
-unsigned out_alloca_fixed(out_ctx *, unsigned sz);
+const out_val *out_aalloc(out_ctx *, unsigned sz, unsigned align, type *);
+void out_adealloc(out_ctx *, const out_val **);
 
+
+long out_get_bp_offset(const out_val *) ucc_nonnull();
 
 /* commenting */
 void out_comment(out_ctx *, const char *, ...) ucc_printflike(2, 3);
+const char *out_val_str(const out_val *, int deref);
 
 #endif

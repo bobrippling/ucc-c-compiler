@@ -25,10 +25,10 @@ sym *sym_new(decl *d, enum sym_type t)
 	return s;
 }
 
-sym *sym_new_stab(symtable *stab, decl *d, enum sym_type t)
+sym *sym_new_and_prepend_decl(symtable *stab, decl *d, enum sym_type t)
 {
 	sym *s = sym_new(d, t);
-	dynarray_add(&stab->decls, d);
+	dynarray_prepend(&stab->decls, d);
 	return s;
 }
 

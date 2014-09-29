@@ -70,6 +70,7 @@ my %vars = (
 	'debug_check' => './debug_check.pl',
 	'jmpcheck' => './jmpcheck.sh',
 	'archgen' => './archgen.pl',
+	'gdbcheck' => './gdb.sh',
 );
 
 if($verbose){

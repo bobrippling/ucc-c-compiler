@@ -46,11 +46,12 @@ static const char **system_includes;
 static struct warn_str
 {
 	const char *arg;
-	unsigned char *offsets[3];
+	unsigned char *offsets[7];
 } warns[] = {
 	{ "mismatch-arg", &cc1_warning.arg_mismatch },
 	{ "array-comma", &cc1_warning.array_comma },
 	{ "return-type", &cc1_warning.return_type },
+	{ "return-void", &cc1_warning.return_void },
 
 	{
 		"mismatch-assign",
@@ -175,18 +176,36 @@ static struct warn_str
 	{ "flexarr-single-member", &cc1_warning.flexarr_only },
 	{ "flexarr-init", &cc1_warning.flexarr_init },
 
+	{
+		"gnu",
+		&cc1_warning.gnu_addr_lbl,
+		&cc1_warning.gnu_expr_stmt,
+		&cc1_warning.gnu_typeof,
+		&cc1_warning.gnu_attribute,
+		&cc1_warning.gnu_init_array_range,
+		&cc1_warning.gnu_case_range,
+		&cc1_warning.gnu_alignof_expr
+	},
+
+	{ "gcc-compat", &cc1_warning.gnu_gcc_compat },
+
 	{ "call-argcount", &cc1_warning.funcall_argcount },
 
+	{ "ignored-attributes", &cc1_warning.ignored_attribute },
+
 	{ "ignored-late-decl", &cc1_warning.ignored_late_decl },
+
+	{ "ignored-qualifiers", &cc1_warning.ignored_qualifiers },
 
 	{ "implicit-old-func", &cc1_warning.implicit_old_func },
 
 	{ "init-missing-braces", &cc1_warning.init_missing_braces },
 	{ "init-missing-struct", &cc1_warning.init_missing_struct },
+	{ "init-missing-struct-zero", &cc1_warning.init_missing_struct_zero },
 	{ "init-obj-discard", &cc1_warning.init_obj_discard },
 	{ "init-overlong-string", &cc1_warning.init_overlong_strliteral },
 	{ "init-override", &cc1_warning.init_override },
-
+	{ "designated-init", &cc1_warning.init_undesignated },
 
 	{ "unknown-attribute", &cc1_warning.attr_unknown },
 	{ "unused-label", &cc1_warning.lbl_unused },
@@ -218,6 +237,7 @@ static struct warn_str
 	{ "return-undef", &cc1_warning.return_undef },
 	{ "signed-unsigned", &cc1_warning.signed_unsigned },
 	{ "sizeof-decayed", &cc1_warning.sizeof_decayed },
+	{ "sizeof-ptr-divide", &cc1_warning.sizeof_ptr_div },
 	{ "static-array-size", &cc1_warning.static_array_bad },
 	{ "static-local-in-inline", &cc1_warning.static_local_in_inline },
 	{ "str-contain-nul", &cc1_warning.str_contain_nul },
@@ -403,13 +423,15 @@ int where_in_sysheader(const where *w)
 	return 0;
 }
 
-#undef cc1_warn_at
-void cc1_warn_at(
+void cc1_warn_at_w(
 		const struct where *where, unsigned char *pwarn,
 		const char *fmt, ...)
 {
 	va_list l;
 	struct where backup;
+
+	if(!*pwarn)
+		return;
 
 	if(!where)
 		where = where_cc1_current(&backup);
@@ -466,7 +488,15 @@ static void io_fin(int do_sections, const char *fname)
 
 	for(i = 0; i < NUM_SECTIONS; i++){
 		/* cat cc_out[i] to cc1_out, with section headers */
-		if(do_sections){
+		int emit_this_section = 1;
+
+		if(cc1_gdebug && (i == SECTION_TEXT || i == SECTION_DBG_LINE)){
+			/* need .text for debug to reference */
+		}else if(asm_section_empty(i)){
+			emit_this_section = 0;
+		}
+
+		if(do_sections && emit_this_section){
 			char buf[256];
 			long last = ftell(cc_out[i]);
 
@@ -574,14 +604,24 @@ static void warnings_set(int to)
 	memset(&cc1_warning, to, sizeof cc1_warning);
 }
 
+static void warning_gnu(int set)
+{
+	struct warn_str *w;
+	for(w = warns; w->arg; w++){
+		if(!strcmp(w->arg, "gnu")){
+			unsigned i;
+			for(i = 0; i < countof(w->offsets); i++)
+				*w->offsets[i] = set;
+
+			break;
+		}
+	}
+}
+
 static void warning_pedantic(int set)
 {
 	/* warn about extensions */
-	cc1_warning.gnu_expr_stmt =
-	cc1_warning.gnu_typeof =
-	cc1_warning.gnu_attribute =
-	cc1_warning.gnu_init_array_range =
-	cc1_warning.gnu_case_range =
+	warning_gnu(set);
 
 	cc1_warning.nonstd_arraysz =
 	cc1_warning.nonstd_init =
@@ -591,12 +631,16 @@ static void warning_pedantic(int set)
 	cc1_warning.flexarr_only =
 	cc1_warning.decl_nodecl =
 	cc1_warning.overlarge_enumerator_int =
+
+	cc1_warning.return_void =
 		set;
 }
 
 static void warning_all(void)
 {
 	warnings_set(1);
+
+	warning_gnu(0);
 
 	cc1_warning.implicit_int =
 	cc1_warning.loss_precision =
@@ -607,6 +651,7 @@ static void warning_all(void)
 	cc1_warning.implicit_old_func =
 	cc1_warning.bitfield_boundary =
 	cc1_warning.vla =
+	cc1_warning.init_missing_struct_zero =
 	cc1_warning.pure_inline =
 		0;
 }
@@ -630,7 +675,6 @@ static void warning_special(enum warning_special type)
 		case W_EXTRA:
 			warning_all();
 			cc1_warning.implicit_int =
-			cc1_warning.loss_precision =
 			cc1_warning.sign_compare =
 			cc1_warning.tenative_init =
 			cc1_warning.shadow_global = 1;

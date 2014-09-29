@@ -116,8 +116,7 @@ void out_dbg_flush(out_ctx *octx, out_blk *blk)
 			ustrprintf(".loc %d %d %d\n",
 				idx,
 				octx->dbg.where.line,
-				octx->dbg.where.chr,
-				octx->dbg.where.fname));
+				octx->dbg.where.chr));
 }
 
 void out_dbg_where(out_ctx *octx, const where *w)
