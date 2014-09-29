@@ -5,7 +5,12 @@ inteq(int a, int b)
 }
 
 __attribute((always_inline))
-int *find(int *begin, int *end, int n, int cmp(int, int))
+int *find(
+		int *begin,
+		int *end,
+		int n,
+		// making this noinline brings the bug back
+		int __attribute((noinline)) cmp(int, int))
 {
 	int *i;
 	for(i = begin; i != end; i++)
