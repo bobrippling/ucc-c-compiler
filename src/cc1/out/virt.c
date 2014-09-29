@@ -435,8 +435,6 @@ void v_save_regs(
 					/* don't save */
 				}else if(!impl_reg_savable(&v->bits.regoff.reg)){
 					/* don't save stack references */
-					if(fopt_mode & FOPT_VERBOSE_ASM)
-						out_comment(octx, "not saving const-reg %d", v->bits.regoff.reg.idx);
 
 				}else if(func_ty
 				&& impl_reg_is_callee_save(octx->current_fnty, &v->bits.regoff.reg))
