@@ -55,12 +55,14 @@ static const struct
 	{ "__UCC__",        "1"  },
 
 	/* magic */
-	{ "__FILE__",       NULL },
-	{ "__LINE__",       NULL },
-	{ "__COUNTER__",    NULL },
-	{ "__DATE__",       NULL },
-	{ "__TIME__",       NULL },
-	{ "__TIMESTAMP__",  NULL },
+#define SPECIAL(x) { x, NULL }
+	SPECIAL("__FILE__"),
+	SPECIAL("__LINE__"),
+	SPECIAL("__COUNTER__"),
+	SPECIAL("__DATE__"),
+	SPECIAL("__TIME__"),
+	SPECIAL("__TIMESTAMP__"),
+#undef SPECIAL
 
 	{ NULL,             NULL }
 };
