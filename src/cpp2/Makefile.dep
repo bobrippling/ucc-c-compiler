@@ -7,13 +7,14 @@ directive.o: directive.c ../util/util.h ../util/warn.h ../util/where.h \
 eval.o: eval.c eval.h ../util/dynarray.h ../util/dyn.h ../util/util.h \
  ../util/warn.h ../util/where.h ../util/compiler.h ../util/alloc.h \
  ../util/str.h tokenise.h macro.h str.h main.h ../util/std.h snapshot.h \
- preproc.h
+ preproc.h has.h
 expr.o: expr.c ../util/alloc.h ../util/compiler.h ../util/util.h \
  ../util/warn.h ../util/where.h expr.h expr_tok.h main.h ../util/std.h \
  preproc.h
 expr_tok.o: expr_tok.c expr.h expr_tok.h str.h preproc.h main.h \
  ../util/std.h ../util/alloc.h ../util/compiler.h ../util/str.h \
  ../util/util.h ../util/warn.h ../util/where.h ../util/escape.h
+has.o: has.c ../util/std.h has.h feat.h main.h include.h
 include.o: include.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
  ../util/compiler.h ../util/util.h ../util/warn.h ../util/where.h \
  include.h main.h ../util/std.h preproc.h

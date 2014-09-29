@@ -71,6 +71,11 @@ static const struct
 	SPECIAL("__DATE__"),
 	SPECIAL("__TIME__"),
 	SPECIAL("__TIMESTAMP__"),
+
+#undef SPECIAL
+#define SPECIAL(x) { x, NULL, 1 }
+	SPECIAL("__has_feature"),
+	SPECIAL("__has_extension"),
 #undef SPECIAL
 
 	{ NULL, NULL, 0 }

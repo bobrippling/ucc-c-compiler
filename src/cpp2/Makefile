@@ -5,7 +5,7 @@ CFLAGS += -Wmissing-prototypes
 OBJ = preproc.o main.o macro.o str.o \
       directive.o tokenise.o eval.o  \
       snapshot.o include.o deps.o    \
-      expr.o expr_tok.o              \
+      expr.o expr_tok.o has.o        \
       ../util/util.o ../util/alloc.o \
       ../util/platform.o             \
       ../util/where.o ../util/str.o  \
