@@ -381,10 +381,11 @@ unsigned type_align(type *r, where *from)
 where *type_loc(type *t)
 {
 	static where fallback;
+	where *w;
 
-	t = type_skip_non_wheres(t);
-	if(t && t->type == type_where)
-		return &t->bits.where;
+	w = type_has_loc(t);
+	if(w)
+		return w;
 
 	if(!fallback.fname)
 		fallback.fname = "<unknown>";
@@ -395,7 +396,37 @@ where *type_loc(type *t)
 where *type_has_loc(type *t)
 {
 	t = type_skip_non_wheres(t);
-	return t && t->type == type_where ? &t->bits.where : NULL;
+	if(!t)
+		return NULL;
+
+	switch(t->type){
+		case type_ptr:
+			if(t->bits.ptr.decayed_from){
+				where *w = type_has_loc(t->bits.ptr.decayed_from);
+				if(w)
+					return w;
+			}
+			break;
+
+		case type_array:
+			if(t->bits.array.size)
+				return &t->bits.array.size->where;
+			break;
+
+		case type_where:
+			return &t->bits.where;
+
+		case type_btype:
+		case type_tdef:
+		case type_block:
+		case type_func:
+		case type_auto:
+		case type_cast:
+		case type_attr:
+			break;
+	}
+
+	return NULL;
 }
 
 #define BUF_ADD(...) \
