@@ -329,6 +329,7 @@ void v_try_stack_reclaim(out_ctx *octx)
 const out_val *out_val_release(out_ctx *octx, const out_val *v)
 {
 	out_val *mut = (out_val *)v;
+	assert(v && "release NULL out_val");
 	assert(mut->retains > 0 && "double release");
 	if(--mut->retains == 0){
 		v_try_stack_reclaim(octx);
