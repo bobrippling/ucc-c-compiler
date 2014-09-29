@@ -207,19 +207,24 @@ static const char *check_and_ret_inline(
 
 	iouts->fndecl = decl_impl(iouts->fndecl);
 
+	/* check for noinline before we potentially change the decl */
+	if(attribute_present(iouts->fndecl, attr_noinline)){
+		/* checking noinline first means __attribute((noinline, always_inline))
+		 * will always cause an error */
+		return "function has noinline attribute";
+	}
+
 	if(!(iouts->fncode = iouts->fndecl->bits.func.code)){
+		/* may change the decl from fnptr -> function */
 		iouts->fncode = try_resolve_val_to_func(octx, fnval, &iouts->fndecl);
 
 		if(!iouts->fncode){
 			/* see if the decl was later completed */
 			return "can't see function code";
 		}
-	}
 
-	if(attribute_present(iouts->fndecl, attr_noinline)){
-		/* jumping to noinline means __attribute((noinline, always_inline))
-		 * will always cause an error */
-		return "function has noinline attribute";
+		/* no need to check noinline attribute - gcc and clang
+		 * disallow inline attributes on function pointers */
 	}
 
 	iouts->arg_symtab = DECL_FUNC_ARG_SYMTAB(iouts->fndecl);
