@@ -17,7 +17,7 @@ static inline int h()
 // neither
 inline int g()
 {
-	static int i; // CHECK: warning: static variable in pure-inline function - may differ per file
+	static int i; // CHECK: warning: mutable static variable in pure-inline function - may differ per file
 	return i++;
 }
 
