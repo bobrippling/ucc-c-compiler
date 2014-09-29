@@ -11,7 +11,6 @@
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
 #include "../util/platform.h"
-#include "../util/std.h"
 #include "../util/limits.h"
 
 #include "main.h"
@@ -80,6 +79,8 @@ char **cd_stack = NULL;
 int option_line_info = 1;
 int option_trigraphs = 0, option_digraphs = 0;
 static int option_trace = 0;
+
+enum c_std cpp_std = STD_C99;
 
 enum wmode wmode =
 	  WWHITESPACE
@@ -214,7 +215,6 @@ int main(int argc, char **argv)
 	int i;
 	int platform_win32 = 0;
 	int freestanding = 0;
-	enum c_std std = STD_C99;
 
 	infname = outfname = NULL;
 
@@ -419,7 +419,7 @@ int main(int argc, char **argv)
 
 			default:
 defaul:
-				if(std_from_str(argv[i], &std, NULL) == 0){
+				if(std_from_str(argv[i], &cpp_std, NULL) == 0){
 					/* we have an std */
 				}else if(!strcmp(argv[i], "-trigraphs")){
 					option_trigraphs = 1;
@@ -435,7 +435,7 @@ defaul:
 	current_fname = FNAME_BUILTIN;
 
 	macro_add("__STDC_HOSTED__",  freestanding ? "0" : "1", 0);
-	switch(std){
+	switch(cpp_std){
 		case STD_C89:
 		case STD_C90:
 			/* no */
