@@ -72,7 +72,11 @@ static const out_val *gen_inline_func(
 	size_t i;
 	const out_val *merged_ret;
 	const size_t nargs = dynarray_count(args);
-	const out_val **pushed_vals = umalloc(nargs * sizeof *pushed_vals);
+	struct
+	{
+		const out_val *sym_outval;
+		const out_val *map_val;
+	} *pushed_vals = umalloc(nargs * sizeof *pushed_vals);
 
 	if(!cc1_octx->sym_inline_map)
 		cc1_octx->sym_inline_map = dynmap_new(sym *, NULL, sym_hash);
@@ -84,19 +88,22 @@ static const out_val *gen_inline_func(
 	 * expression/values, and generate */
 	for(i = 0, diter = arg_symtab->decls; diter && *diter; i++, diter++){
 		sym *s = (*diter)->sym;
-		const out_val *prev;
 
 		assert(args[i]);
 		assert(s && s->type == sym_arg);
 
-		/* if the symbol is addressed we need to spill it */
-		prev = s->outval;
+		/* if we're doign a (mutually-)recursive inline, we're replacing the
+		 * _exact_ symbol by a new value. we need to push/pop it */
+		pushed_vals[i].sym_outval = s->outval;
 
+		/* if the symbol is addressed we need to spill it */
 		if(s->nwrites || out_is_nonconst_temporary(args[i])){
 			/* registers can't persist across inlining in the case of
 			 * function calls, etc etc - need to spill, hence
 			 * non-const temporary */
 			s->outval = inline_arg_to_lvalue(octx, args[i], s->decl->ref);
+
+			pushed_vals[i].map_val = NULL;
 		}else{
 			const out_val *was_set;
 
@@ -104,15 +111,11 @@ static const out_val *gen_inline_func(
 					cc1_octx->sym_inline_map,
 					s, args[i]);
 
-			assert(!was_set || was_set == prev);
-
 			/* no outval, but a value for the lvalue2rvalue uses of this sym */
 			s->outval = NULL;
-		}
 
-		/* if we're doign a (mutually-)recursive inline, we're replacing the
-		 * _exact_ symbol by a new value. we need to push/pop it */
-		pushed_vals[i] = prev;
+			pushed_vals[i].map_val = was_set;
+		}
 
 		/* generate vla side-effects */
 		gen_vla_arg_sideeffects(*diter, octx);
@@ -126,13 +129,14 @@ static const out_val *gen_inline_func(
 		if(s->outval){
 			/* lvalue case */
 			out_val_release(octx, s->outval);
+			assert(!pushed_vals[i].map_val);
 		}else{
 			/* rvalue case */
 			const out_val *arg;
 
-			if(pushed_vals[i]){
+			if(pushed_vals[i].map_val){
 				arg = dynmap_set(sym *, const out_val *,
-						cc1_octx->sym_inline_map, s, pushed_vals[i]);
+						cc1_octx->sym_inline_map, s, pushed_vals[i].map_val);
 			}else{
 				arg = dynmap_rm(sym *, const out_val *,
 						cc1_octx->sym_inline_map, s);
@@ -142,7 +146,7 @@ static const out_val *gen_inline_func(
 		}
 
 		/* restore previous outval */
-		s->outval = pushed_vals[i];
+		s->outval = pushed_vals[i].sym_outval;
 	}
 
 	free(pushed_vals), pushed_vals = NULL;
