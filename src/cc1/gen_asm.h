@@ -8,6 +8,8 @@ void gen_asm_extern(decl *d, out_ctx *octx);
 
 void gen_set_sym_outval(sym *sym, const out_val *);
 
+void gen_vla_arg_sideeffects(decl *d, out_ctx *octx);
+
 #ifdef DBG_H
 void gen_asm(
 		symtable_global *globs,

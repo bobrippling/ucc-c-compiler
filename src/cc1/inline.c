@@ -113,6 +113,9 @@ static const out_val *gen_inline_func(
 		/* if we're doign a (mutually-)recursive inline, we're replacing the
 		 * _exact_ symbol by a new value. we need to push/pop it */
 		pushed_vals[i] = prev;
+
+		/* generate vla side-effects */
+		gen_vla_arg_sideeffects(*diter, octx);
 	}
 
 	gen_stmt(func_code, octx);

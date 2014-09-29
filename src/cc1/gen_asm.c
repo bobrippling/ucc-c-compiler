@@ -112,6 +112,17 @@ static void release_arg_vals(decl **decls, out_ctx *octx)
 	}
 }
 
+void gen_vla_arg_sideeffects(decl *d, out_ctx *octx)
+{
+	type *decayed;
+
+	if((decayed = type_is_decayed_array(d->ref))
+	&& (decayed = type_is_vla(decayed, VLA_TOP_DIMENSION)))
+	{
+		out_val_consume(octx, gen_expr(decayed->bits.array.size, octx));
+	}
+}
+
 static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 {
 	decl **i;
@@ -119,7 +130,6 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 	for(i = arg_symtab->decls; i && *i; i++){
 		const out_val *dest, *src;
 		decl *d = *i;
-		type *decayed;
 		unsigned vla_space;
 
 		/* generate side-effects even if it's decayed, e.g.
@@ -129,11 +139,7 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 		 *
 		 * we still want E1 generated
 		 */
-		if((decayed = type_is_decayed_array(d->ref))
-		&& (decayed = type_is_vla(decayed, VLA_TOP_DIMENSION)))
-		{
-			out_val_consume(octx, gen_expr(decayed->bits.array.size, octx));
-		}
+		gen_vla_arg_sideeffects(d, octx);
 
 		if(!type_is_variably_modified(d->ref))
 			continue;
