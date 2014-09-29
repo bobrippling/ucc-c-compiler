@@ -99,6 +99,8 @@ symtable_global *symtab_global(symtable *);
 
 int symtab_nested_internal(symtable *parent, symtable *nest);
 
+unsigned symtab_decl_bytes(symtable *);
+
 #define symtab_add_to_scope(scope, d) \
 	dynarray_add(&(scope)->decls, (d))
 

@@ -186,3 +186,18 @@ unsigned sym_hash(const sym *sym)
 {
 	return sym->type ^ (unsigned)(intptr_t)sym;
 }
+
+unsigned symtab_decl_bytes(symtable *stab)
+{
+	unsigned total = 0;
+	symtable **si;
+	decl **di;
+
+	for(di = stab->decls; di && *di; di++)
+		total += decl_size(*di);
+
+	for(si = stab->children; si && *si; si++)
+		total += symtab_decl_bytes(*si);
+
+	return total;
+}
