@@ -1,0 +1,296 @@
+==17616== Memcheck, a memory error detector
+==17616== Copyright (C) 2002-2011, and GNU GPL'd, by Julian Seward et al.
+==17616== Using Valgrind-3.7.0 and LibVEX; rerun with -h for copyright info
+==17616== Command: ./src/cc1/cc1 predecl.c
+==17616== 
+==17616== Conditional jump or move depends on uninitialised value(s)
+==17616==    at 0x40176C6: index (strchr.S:55)
+==17616==    by 0x400770D: expand_dynamic_string_token (dl-load.c:425)
+==17616==    by 0x4007FAD: _dl_map_object (dl-load.c:2538)
+==17616==    by 0x400136D: map_doit (rtld.c:627)
+==17616==    by 0x400E7B3: _dl_catch_error (dl-error.c:177)
+==17616==    by 0x4000FC9: do_preload (rtld.c:816)
+==17616==    by 0x4004117: dl_main (rtld.c:1630)
+==17616==    by 0x4015204: _dl_sysdep_start (dl-sysdep.c:249)
+==17616==    by 0x40049F5: _dl_start (rtld.c:332)
+==17616==    by 0x4001187: ??? (in /lib/x86_64-linux-gnu/ld-2.18.so)
+==17616==    by 0x1: ???
+==17616==    by 0x7FF000AE2: ???
+==17616== 
+==17616== Conditional jump or move depends on uninitialised value(s)
+==17616==    at 0x40176CB: index (strchr.S:58)
+==17616==    by 0x400770D: expand_dynamic_string_token (dl-load.c:425)
+==17616==    by 0x4007FAD: _dl_map_object (dl-load.c:2538)
+==17616==    by 0x400136D: map_doit (rtld.c:627)
+==17616==    by 0x400E7B3: _dl_catch_error (dl-error.c:177)
+==17616==    by 0x4000FC9: do_preload (rtld.c:816)
+==17616==    by 0x4004117: dl_main (rtld.c:1630)
+==17616==    by 0x4015204: _dl_sysdep_start (dl-sysdep.c:249)
+==17616==    by 0x40049F5: _dl_start (rtld.c:332)
+==17616==    by 0x4001187: ??? (in /lib/x86_64-linux-gnu/ld-2.18.so)
+==17616==    by 0x1: ???
+==17616==    by 0x7FF000AE2: ???
+==17616== 
+predecl.c:4:8: warning: old-style function declaration
+  "f(ar, n)"
+          ^
+replace n. sym 0x54dedc0
+replace ar. sym 0x54ded50
+==17616== Invalid read of size 8
+==17616==    at 0x434D94: fold_expr_identifier (expr_identifier.c:118)
+==17616==    by 0x419D81: fold_expr (fold.c:186)
+==17616==    by 0x419DE3: fold_expr_lval2rval (fold.c:193)
+==17616==    by 0x419E59: fold_expr_decay (fold.c:212)
+==17616==    by 0x438045: fold_expr_op (expr_op.c:983)
+==17616==    by 0x419D81: fold_expr (fold.c:186)
+==17616==    by 0x419DE3: fold_expr_lval2rval (fold.c:193)
+==17616==    by 0x419E59: fold_expr_decay (fold.c:212)
+==17616==    by 0x43A0BC: fold_expr_deref (expr_deref.c:17)
+==17616==    by 0x419D81: fold_expr (fold.c:186)
+==17616==    by 0x4149DB: parse_stmt (parse_stmt.c:479)
+==17616==    by 0x4146C5: parse_stmt_and_decls (parse_stmt.c:353)
+==17616==  Address 0x54df430 is 32 bytes inside a block of size 152 free'd
+==17616==    at 0x4C27D4E: free (vg_replace_malloc.c:427)
+==17616==    by 0x4068AD: decl_free (decl.c:94)
+==17616==    by 0x417D94: check_and_replace_old_func (parse_type.c:1581)
+==17616==    by 0x4184F2: parse_post_func (parse_type.c:1836)
+==17616==    by 0x418AC1: parse_decl_group (parse_type.c:2035)
+==17616==    by 0x4064EC: parse_and_fold (pass1.c:58)
+==17616==    by 0x40635C: main (cc1.c:913)
+==17616== 
+==17616== Invalid read of size 4
+==17616==    at 0x406C2F: decl_store_duration_is_static (decl.c:217)
+==17616==    by 0x434A53: fold_const_expr_identifier (expr_identifier.c:34)
+==17616==    by 0x41E4E9: const_fold (const.c:26)
+==17616==    by 0x4328F6: fold_const_expr_cast (expr_cast.c:319)
+==17616==    by 0x41E4E9: const_fold (const.c:26)
+==17616==    by 0x436990: fold_const_expr_op (expr_op.c:363)
+==17616==    by 0x41E4E9: const_fold (const.c:26)
+==17616==    by 0x43A2A0: const_expr_deref (expr_deref.c:63)
+==17616==    by 0x41E4E9: const_fold (const.c:26)
+==17616==    by 0x4328F6: fold_const_expr_cast (expr_cast.c:319)
+==17616==    by 0x41E4E9: const_fold (const.c:26)
+==17616==    by 0x424B3D: gen_expr (gen_asm.c:42)
+==17616==  Address 0x54df428 is 24 bytes inside a block of size 152 free'd
+==17616==    at 0x4C27D4E: free (vg_replace_malloc.c:427)
+==17616==    by 0x4068AD: decl_free (decl.c:94)
+==17616==    by 0x417D94: check_and_replace_old_func (parse_type.c:1581)
+==17616==    by 0x4184F2: parse_post_func (parse_type.c:1836)
+==17616==    by 0x418AC1: parse_decl_group (parse_type.c:2035)
+==17616==    by 0x4064EC: parse_and_fold (pass1.c:58)
+==17616==    by 0x40635C: main (cc1.c:913)
+==17616== 
+==17616== Invalid read of size 8
+==17616==    at 0x406C41: decl_store_duration_is_static (decl.c:218)
+==17616==    by 0x434A53: fold_const_expr_identifier (expr_identifier.c:34)
+==17616==    by 0x41E4E9: const_fold (const.c:26)
+==17616==    by 0x4328F6: fold_const_expr_cast (expr_cast.c:319)
+==17616==    by 0x41E4E9: const_fold (const.c:26)
+==17616==    by 0x436990: fold_const_expr_op (expr_op.c:363)
+==17616==    by 0x41E4E9: const_fold (const.c:26)
+==17616==    by 0x43A2A0: const_expr_deref (expr_deref.c:63)
+==17616==    by 0x41E4E9: const_fold (const.c:26)
+==17616==    by 0x4328F6: fold_const_expr_cast (expr_cast.c:319)
+==17616==    by 0x41E4E9: const_fold (const.c:26)
+==17616==    by 0x424B3D: gen_expr (gen_asm.c:42)
+==17616==  Address 0x54df498 is 136 bytes inside a block of size 152 free'd
+==17616==    at 0x4C27D4E: free (vg_replace_malloc.c:427)
+==17616==    by 0x4068AD: decl_free (decl.c:94)
+==17616==    by 0x417D94: check_and_replace_old_func (parse_type.c:1581)
+==17616==    by 0x4184F2: parse_post_func (parse_type.c:1836)
+==17616==    by 0x418AC1: parse_decl_group (parse_type.c:2035)
+==17616==    by 0x4064EC: parse_and_fold (pass1.c:58)
+==17616==    by 0x40635C: main (cc1.c:913)
+==17616== 
+==17616== Invalid read of size 8
+==17616==    at 0x434F87: gen_expr_identifier (expr_identifier.c:168)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x433117: gen_expr_cast (expr_cast.c:531)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x438753: gen_expr_op (expr_op.c:1161)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x43A1C8: gen_expr_deref_lea (expr_deref.c:40)
+==17616==    by 0x43A1ED: gen_expr_deref (expr_deref.c:45)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x433117: gen_expr_cast (expr_cast.c:531)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x43E06C: gen_stmt_return (stmt_return.c:86)
+==17616==  Address 0x54df430 is 32 bytes inside a block of size 152 free'd
+==17616==    at 0x4C27D4E: free (vg_replace_malloc.c:427)
+==17616==    by 0x4068AD: decl_free (decl.c:94)
+==17616==    by 0x417D94: check_and_replace_old_func (parse_type.c:1581)
+==17616==    by 0x4184F2: parse_post_func (parse_type.c:1836)
+==17616==    by 0x418AC1: parse_decl_group (parse_type.c:2035)
+==17616==    by 0x4064EC: parse_and_fold (pass1.c:58)
+==17616==    by 0x40635C: main (cc1.c:913)
+==17616== 
+==17616== Invalid read of size 8
+==17616==    at 0x42E6FE: out_new_sym (new.c:118)
+==17616==    by 0x42E886: out_new_sym_val (new.c:153)
+==17616==    by 0x434FEE: gen_expr_identifier (expr_identifier.c:173)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x433117: gen_expr_cast (expr_cast.c:531)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x438753: gen_expr_op (expr_op.c:1161)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x43A1C8: gen_expr_deref_lea (expr_deref.c:40)
+==17616==    by 0x43A1ED: gen_expr_deref (expr_deref.c:45)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x433117: gen_expr_cast (expr_cast.c:531)
+==17616==  Address 0x54df430 is 32 bytes inside a block of size 152 free'd
+==17616==    at 0x4C27D4E: free (vg_replace_malloc.c:427)
+==17616==    by 0x4068AD: decl_free (decl.c:94)
+==17616==    by 0x417D94: check_and_replace_old_func (parse_type.c:1581)
+==17616==    by 0x4184F2: parse_post_func (parse_type.c:1836)
+==17616==    by 0x418AC1: parse_decl_group (parse_type.c:2035)
+==17616==    by 0x4064EC: parse_and_fold (pass1.c:58)
+==17616==    by 0x40635C: main (cc1.c:913)
+==17616== 
+==17616== Invalid read of size 8
+==17616==    at 0x406730: decl_asm_spel (decl.c:47)
+==17616==    by 0x42E73D: out_new_sym (new.c:123)
+==17616==    by 0x42E886: out_new_sym_val (new.c:153)
+==17616==    by 0x434FEE: gen_expr_identifier (expr_identifier.c:173)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x433117: gen_expr_cast (expr_cast.c:531)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x438753: gen_expr_op (expr_op.c:1161)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x43A1C8: gen_expr_deref_lea (expr_deref.c:40)
+==17616==    by 0x43A1ED: gen_expr_deref (expr_deref.c:45)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==  Address 0x54df448 is 56 bytes inside a block of size 152 free'd
+==17616==    at 0x4C27D4E: free (vg_replace_malloc.c:427)
+==17616==    by 0x4068AD: decl_free (decl.c:94)
+==17616==    by 0x417D94: check_and_replace_old_func (parse_type.c:1581)
+==17616==    by 0x4184F2: parse_post_func (parse_type.c:1836)
+==17616==    by 0x418AC1: parse_decl_group (parse_type.c:2035)
+==17616==    by 0x4064EC: parse_and_fold (pass1.c:58)
+==17616==    by 0x40635C: main (cc1.c:913)
+==17616== 
+==17616== Invalid read of size 8
+==17616==    at 0x406741: decl_asm_spel (decl.c:49)
+==17616==    by 0x42E73D: out_new_sym (new.c:123)
+==17616==    by 0x42E886: out_new_sym_val (new.c:153)
+==17616==    by 0x434FEE: gen_expr_identifier (expr_identifier.c:173)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x433117: gen_expr_cast (expr_cast.c:531)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x438753: gen_expr_op (expr_op.c:1161)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x43A1C8: gen_expr_deref_lea (expr_deref.c:40)
+==17616==    by 0x43A1ED: gen_expr_deref (expr_deref.c:45)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==  Address 0x54df430 is 32 bytes inside a block of size 152 free'd
+==17616==    at 0x4C27D4E: free (vg_replace_malloc.c:427)
+==17616==    by 0x4068AD: decl_free (decl.c:94)
+==17616==    by 0x417D94: check_and_replace_old_func (parse_type.c:1581)
+==17616==    by 0x4184F2: parse_post_func (parse_type.c:1836)
+==17616==    by 0x418AC1: parse_decl_group (parse_type.c:2035)
+==17616==    by 0x4064EC: parse_and_fold (pass1.c:58)
+==17616==    by 0x40635C: main (cc1.c:913)
+==17616== 
+==17616== Invalid read of size 8
+==17616==    at 0x406829: decl_asm_spel (decl.c:79)
+==17616==    by 0x42E73D: out_new_sym (new.c:123)
+==17616==    by 0x42E886: out_new_sym_val (new.c:153)
+==17616==    by 0x434FEE: gen_expr_identifier (expr_identifier.c:173)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x433117: gen_expr_cast (expr_cast.c:531)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x438753: gen_expr_op (expr_op.c:1161)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x43A1C8: gen_expr_deref_lea (expr_deref.c:40)
+==17616==    by 0x43A1ED: gen_expr_deref (expr_deref.c:45)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==  Address 0x54df448 is 56 bytes inside a block of size 152 free'd
+==17616==    at 0x4C27D4E: free (vg_replace_malloc.c:427)
+==17616==    by 0x4068AD: decl_free (decl.c:94)
+==17616==    by 0x417D94: check_and_replace_old_func (parse_type.c:1581)
+==17616==    by 0x4184F2: parse_post_func (parse_type.c:1836)
+==17616==    by 0x418AC1: parse_decl_group (parse_type.c:2035)
+==17616==    by 0x4064EC: parse_and_fold (pass1.c:58)
+==17616==    by 0x40635C: main (cc1.c:913)
+==17616== 
+==17616== Invalid read of size 8
+==17616==    at 0x406836: decl_asm_spel (decl.c:80)
+==17616==    by 0x42E73D: out_new_sym (new.c:123)
+==17616==    by 0x42E886: out_new_sym_val (new.c:153)
+==17616==    by 0x434FEE: gen_expr_identifier (expr_identifier.c:173)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x433117: gen_expr_cast (expr_cast.c:531)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x438753: gen_expr_op (expr_op.c:1161)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x43A1C8: gen_expr_deref_lea (expr_deref.c:40)
+==17616==    by 0x43A1ED: gen_expr_deref (expr_deref.c:45)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==  Address 0x54df440 is 48 bytes inside a block of size 152 free'd
+==17616==    at 0x4C27D4E: free (vg_replace_malloc.c:427)
+==17616==    by 0x4068AD: decl_free (decl.c:94)
+==17616==    by 0x417D94: check_and_replace_old_func (parse_type.c:1581)
+==17616==    by 0x4184F2: parse_post_func (parse_type.c:1836)
+==17616==    by 0x418AC1: parse_decl_group (parse_type.c:2035)
+==17616==    by 0x4064EC: parse_and_fold (pass1.c:58)
+==17616==    by 0x40635C: main (cc1.c:913)
+==17616== 
+==17616== Invalid write of size 8
+==17616==    at 0x40683E: decl_asm_spel (decl.c:80)
+==17616==    by 0x42E73D: out_new_sym (new.c:123)
+==17616==    by 0x42E886: out_new_sym_val (new.c:153)
+==17616==    by 0x434FEE: gen_expr_identifier (expr_identifier.c:173)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x433117: gen_expr_cast (expr_cast.c:531)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x438753: gen_expr_op (expr_op.c:1161)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x43A1C8: gen_expr_deref_lea (expr_deref.c:40)
+==17616==    by 0x43A1ED: gen_expr_deref (expr_deref.c:45)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==  Address 0x54df448 is 56 bytes inside a block of size 152 free'd
+==17616==    at 0x4C27D4E: free (vg_replace_malloc.c:427)
+==17616==    by 0x4068AD: decl_free (decl.c:94)
+==17616==    by 0x417D94: check_and_replace_old_func (parse_type.c:1581)
+==17616==    by 0x4184F2: parse_post_func (parse_type.c:1836)
+==17616==    by 0x418AC1: parse_decl_group (parse_type.c:2035)
+==17616==    by 0x4064EC: parse_and_fold (pass1.c:58)
+==17616==    by 0x40635C: main (cc1.c:913)
+==17616== 
+==17616== Invalid read of size 8
+==17616==    at 0x406846: decl_asm_spel (decl.c:83)
+==17616==    by 0x42E73D: out_new_sym (new.c:123)
+==17616==    by 0x42E886: out_new_sym_val (new.c:153)
+==17616==    by 0x434FEE: gen_expr_identifier (expr_identifier.c:173)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x433117: gen_expr_cast (expr_cast.c:531)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x438753: gen_expr_op (expr_op.c:1161)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==    by 0x43A1C8: gen_expr_deref_lea (expr_deref.c:40)
+==17616==    by 0x43A1ED: gen_expr_deref (expr_deref.c:45)
+==17616==    by 0x424BC4: gen_expr (gen_asm.c:57)
+==17616==  Address 0x54df448 is 56 bytes inside a block of size 152 free'd
+==17616==    at 0x4C27D4E: free (vg_replace_malloc.c:427)
+==17616==    by 0x4068AD: decl_free (decl.c:94)
+==17616==    by 0x417D94: check_and_replace_old_func (parse_type.c:1581)
+==17616==    by 0x4184F2: parse_post_func (parse_type.c:1836)
+==17616==    by 0x418AC1: parse_decl_group (parse_type.c:2035)
+==17616==    by 0x4064EC: parse_and_fold (pass1.c:58)
+==17616==    by 0x40635C: main (cc1.c:913)
+==17616== 
+==17616== 
+==17616== HEAP SUMMARY:
+==17616==     in use at exit: 8,650 bytes in 144 blocks
+==17616==   total heap usage: 235 allocs, 91 frees, 26,038 bytes allocated
+==17616== 
+==17616== LEAK SUMMARY:
+==17616==    definitely lost: 357 bytes in 8 blocks
+==17616==    indirectly lost: 0 bytes in 0 blocks
+==17616==      possibly lost: 0 bytes in 0 blocks
+==17616==    still reachable: 8,293 bytes in 136 blocks
+==17616==         suppressed: 0 bytes in 0 blocks
+==17616== Rerun with --leak-check=full to see details of leaked memory
+==17616== 
+==17616== For counts of detected and suppressed errors, rerun with: -v
+==17616== Use --track-origins=yes to see where uninitialised values come from
+==17616== ERROR SUMMARY: 13 errors from 13 contexts (suppressed: 0 from 0)
