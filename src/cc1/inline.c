@@ -50,6 +50,17 @@ static const out_val *merge_inline_rets(
 	return out_new_noop(octx);
 }
 
+static const out_val *inline_arg_to_lvalue(
+		out_ctx *octx, const out_val *rval, type *const ty)
+{
+	const out_val *space = out_aalloct(octx, ty);
+
+	out_val_retain(octx, space);
+	out_store(octx, space, rval);
+
+	return space;
+}
+
 static const out_val *gen_inline_func(
 		symtable *arg_symtab,
 		stmt *func_code, const out_val **args,
@@ -78,9 +89,23 @@ static const out_val *gen_inline_func(
 		assert(args[i]);
 		assert(s && s->type == sym_arg);
 
-		prev = dynmap_set(sym *, const out_val *,
-				cc1_octx->sym_inline_map,
-				s, args[i]);
+		/* if the symbol is addressed we need to spill it */
+		prev = s->outval;
+
+		if(s->nwrites){
+			s->outval = inline_arg_to_lvalue(octx, args[i], s->decl->ref);
+		}else{
+			const out_val *was_set;
+
+			was_set = dynmap_set(sym *, const out_val *,
+					cc1_octx->sym_inline_map,
+					s, args[i]);
+
+			assert(!was_set || was_set == prev);
+
+			/* no outval, but a value for the lvalue2rvalue uses of this sym */
+			s->outval = NULL;
+		}
 
 		/* if we're doign a (mutually-)recursive inline, we're replacing the
 		 * _exact_ symbol by a new value. we need to push/pop it */
@@ -91,17 +116,27 @@ static const out_val *gen_inline_func(
 
 	for(i = 0, diter = arg_symtab->decls; diter && *diter; i++, diter++){
 		sym *s = (*diter)->sym;
-		const out_val *arg;
 
-		if(pushed_vals[i]){
-			arg = dynmap_set(sym *, const out_val *,
-					cc1_octx->sym_inline_map, s, pushed_vals[i]);
+		if(s->outval){
+			/* lvalue case */
+			out_val_release(octx, s->outval);
 		}else{
-			arg = dynmap_rm(sym *, const out_val *,
-					cc1_octx->sym_inline_map, s);
+			/* rvalue case */
+			const out_val *arg;
+
+			if(pushed_vals[i]){
+				arg = dynmap_set(sym *, const out_val *,
+						cc1_octx->sym_inline_map, s, pushed_vals[i]);
+			}else{
+				arg = dynmap_rm(sym *, const out_val *,
+						cc1_octx->sym_inline_map, s);
+			}
+
+			out_val_release(octx, arg);
 		}
 
-		out_val_release(octx, arg);
+		/* restore previous outval */
+		s->outval = pushed_vals[i];
 	}
 
 	free(pushed_vals), pushed_vals = NULL;
@@ -196,7 +231,6 @@ static const char *check_and_ret_inline(
 		const out_val *fnval,
 		struct inline_outs *iouts, int nargs)
 {
-	decl **diter;
 	funcargs *fargs;
 	const char *why;
 	struct cc1_out_ctx *cc1_octx;
@@ -242,12 +276,6 @@ static const char *check_and_ret_inline(
 	|| nargs != dynarray_count(iouts->arg_symtab->decls))
 	{
 		return "call to function with unspecified arguments";
-	}
-
-	for(diter = iouts->arg_symtab->decls; diter && *diter; diter++){
-		if((*diter)->sym->nwrites){
-			return "argument written or addressed";
-		}
 	}
 
 	cc1_octx = cc1_out_ctx_or_new(octx);

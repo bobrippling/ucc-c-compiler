@@ -17,17 +17,6 @@ always_inline void old(a, b)
 {
 }
 
-always_inline void addr(int x)
-{
-	int *p = &x;
-	*p = 3;
-}
-
-always_inline void write(int x)
-{
-	x++;
-}
-
 always_inline void rec(int depth)
 {
 	if(depth < 5)
@@ -50,6 +39,4 @@ main()
 	print("hi", 3); // CHECK: error: couldn't always_inline call: call to variadic function
 	print("hi"); // CHECK: error: couldn't always_inline call: call to variadic function
 	old(3, 1); // CHECK: error: couldn't always_inline call: call to function with unspecified arguments
-	addr(5); // CHECK: error: couldn't always_inline call: argument written or addressed
-	write(2); // CHECK: error: couldn't always_inline call: argument written or addressed
 }

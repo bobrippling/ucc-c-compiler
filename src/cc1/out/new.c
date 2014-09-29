@@ -115,7 +115,7 @@ const out_val *out_new_overflow(out_ctx *octx, const out_val **eval)
 	return impl_test_overflow(octx, eval);
 }
 
-static const out_val *sym_val(out_ctx *octx, sym *sym)
+static const out_val *sym_inline_val(out_ctx *octx, sym *sym)
 {
 	struct cc1_out_ctx **cc1_octx = cc1_out_ctx(octx);
 
@@ -171,7 +171,10 @@ label:
 const out_val *out_new_sym_val(out_ctx *octx, sym *sym)
 {
 	if(sym->type == sym_arg){
-		const out_val *inlined = sym_val(octx, sym);
+		/* if an argument is only ever used in rvalue context,
+		 * then as an optimisation we don't read from an lvalue
+		 * and use that - we inline the rvalue directly */
+		const out_val *inlined = sym_inline_val(octx, sym);
 		if(inlined)
 			return inlined;
 	}
