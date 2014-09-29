@@ -93,10 +93,7 @@ static int v_in(const out_val *vp, enum vto to)
 static ucc_wur const out_val *v_spill_reg(
 		out_ctx *octx, const out_val *v_reg)
 {
-	const out_val *stack_pos = out_aalloc(octx,
-			type_size(v_reg->t, NULL),
-			type_align(v_reg->t, NULL),
-			v_reg->t);
+	const out_val *stack_pos = out_aalloct(octx, v_reg->t);
 
 	out_val_retain(octx, v_reg);
 

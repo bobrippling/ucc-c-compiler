@@ -61,6 +61,14 @@ const out_val *out_aalloc(
 	return v_new_bp3_below(octx, NULL, ty, octx->cur_stack_sz);
 }
 
+const out_val *out_aalloct(out_ctx *octx, type *ty)
+{
+	return out_aalloc(octx,
+			type_size(ty, NULL),
+			type_align(ty, NULL),
+			ty);
+}
+
 void out_adealloc(out_ctx *octx, const out_val **val)
 {
 	out_val_release(octx, *val);
