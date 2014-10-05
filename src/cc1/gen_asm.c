@@ -232,7 +232,8 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		release_arg_vals(arg_symtab->decls, octx);
 
-		out_dump_retained(octx, d->spel);
+		if(out_dump_retained(octx, d->spel))
+			gen_had_error = 1;
 
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));

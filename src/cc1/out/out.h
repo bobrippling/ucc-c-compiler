@@ -14,7 +14,7 @@ void out_ctx_wipe(out_ctx *);
 
 void **out_user_ctx(out_ctx *);
 
-void out_dump_retained(out_ctx *octx, const char *desc);
+int out_dump_retained(out_ctx *octx, const char *desc);
 
 /* value creation */
 out_val *out_new_num(out_ctx *, type *t, const numeric *n)

@@ -76,7 +76,7 @@ void **out_user_ctx(out_ctx *octx)
 	return &octx->userctx;
 }
 
-void out_dump_retained(out_ctx *octx, const char *desc)
+int out_dump_retained(out_ctx *octx, const char *desc)
 {
 	out_val_list *l;
 	int done_desc = 0;
@@ -97,6 +97,8 @@ void out_dump_retained(out_ctx *octx, const char *desc)
 				l->val.bits.regoff.reg.idx,
 				(void *)&l->val);
 	}
+
+	return done_desc;
 }
 
 void out_comment(out_ctx *octx, const char *fmt, ...)
