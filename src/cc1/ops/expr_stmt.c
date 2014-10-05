@@ -8,6 +8,28 @@ const char *str_expr_stmt()
 	return "statement";
 }
 
+static const out_val *gen_lea_expr_stmt(
+		expr *e, out_ctx *octx,
+		const out_val *final_exp_gen(expr *, out_ctx *))
+{
+	size_t n;
+	const out_val *ret;
+
+	gen_stmt_code_m1(e->code, 1, octx);
+
+	n = dynarray_count(e->code->bits.code.stmts);
+
+	if(n > 0 && stmt_kind(e->code->bits.code.stmts[n-1], expr))
+		ret = final_exp_gen(e->code->bits.code.stmts[n - 1]->expr, octx);
+	else
+		ret = out_new_noop(octx);
+
+	/* this is skipped by gen_stmt_code_m1( ... 1, ... ) */
+	gen_stmt_code_m1_finish(e->code, octx);
+
+	return ret;
+}
+
 void fold_expr_stmt(expr *e, symtable *stab)
 {
 	stmt *last_stmt;
@@ -38,22 +60,7 @@ void fold_expr_stmt(expr *e, symtable *stab)
 
 const out_val *gen_expr_stmt(expr *e, out_ctx *octx)
 {
-	size_t n;
-	const out_val *ret;
-
-	gen_stmt_code_m1(e->code, 1, octx);
-
-	n = dynarray_count(e->code->bits.code.stmts);
-
-	if(n > 0 && stmt_kind(e->code->bits.code.stmts[n-1], expr))
-		ret = gen_expr(e->code->bits.code.stmts[n - 1]->expr, octx);
-	else
-		ret = out_new_noop(octx);
-
-	/* this is skipped by gen_stmt_code_m1( ... 1, ... ) */
-	gen_stmt_code_m1_finish(e->code, octx);
-
-	return ret;
+	return gen_lea_expr_stmt(e, octx, gen_expr);
 }
 
 const out_val *gen_expr_str_stmt(expr *e, out_ctx *octx)
