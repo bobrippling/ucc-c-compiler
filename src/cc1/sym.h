@@ -7,7 +7,15 @@
 typedef struct sym sym;
 struct sym
 {
-	const struct out_val *outval;
+	union
+	{
+		struct
+		{
+			const struct out_val **vals; /* sym_{local,arg} */
+			unsigned n;
+		} stack;
+		const struct out_val *val_single; /* sym_global */
+	} out;
 	long bp_offset;
 
 	enum sym_type
@@ -87,6 +95,9 @@ sym *sym_new(decl *d, enum sym_type t);
 sym *sym_new_and_prepend_decl(symtable *, decl *d, enum sym_type t);
 
 symtable_global *symtabg_new(where *);
+
+const struct out_val *sym_outval(sym *);
+void sym_setoutval(sym *, const struct out_val *);
 
 symtable *symtab_new(symtable *parent, where *w);
 void      symtab_set_parent(symtable *child, symtable *parent);

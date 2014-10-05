@@ -220,7 +220,6 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 				align = decl_align(s->decl);
 			}
 
-			assert(!s->outval);
 			gen_set_sym_outval(s, out_aalloc(octx, siz, align, s->decl->ref));
 			break;
 		}
@@ -295,20 +294,23 @@ void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 	for(diter = stab->decls; diter && *diter; diter++){
 		decl *d = *diter;
 		int is_typedef;
+		const out_val *v;
 
 		if(!d->sym || d->sym->type != sym_local || type_is(d->ref, type_func))
 			continue;
 
 		is_typedef = ((d->store & STORE_MASK_STORE) == store_typedef);
 
+		v = sym_outval(d->sym);
 		/* typedefs may or may not have a sym */
-		if(is_typedef && !d->sym->outval)
+		if(is_typedef && !v)
 			continue;
 
 		if(!is_typedef && type_is_vla(d->ref, VLA_ANY_DIMENSION))
 			out_alloca_pop(octx);
 
-		out_adealloc(octx, &d->sym->outval);
+		out_adealloc(octx, &v);
+		sym_setoutval(d->sym, /*null*/v);
 	}
 }
 

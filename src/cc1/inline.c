@@ -95,14 +95,14 @@ static const out_val *gen_inline_func(
 
 		/* if we're doign a (mutually-)recursive inline, we're replacing the
 		 * _exact_ symbol by a new value. we need to push/pop it */
-		pushed_vals[i].sym_outval = s->outval;
+		pushed_vals[i].sym_outval = sym_outval(s);
 
 		/* if the symbol is addressed we need to spill it */
 		if(s->nwrites || out_is_nonconst_temporary(args[i])){
 			/* registers can't persist across inlining in the case of
 			 * function calls, etc etc - need to spill, hence
 			 * non-const temporary */
-			s->outval = inline_arg_to_lvalue(octx, args[i], s->decl->ref);
+			sym_setoutval(s, inline_arg_to_lvalue(octx, args[i], s->decl->ref));
 
 			pushed_vals[i].map_val = NULL;
 		}else{
@@ -113,7 +113,7 @@ static const out_val *gen_inline_func(
 					s, args[i]);
 
 			/* no outval, but a value for the lvalue2rvalue uses of this sym */
-			s->outval = NULL;
+			sym_setoutval(s, NULL);
 
 			pushed_vals[i].map_val = was_set;
 		}
@@ -126,10 +126,11 @@ static const out_val *gen_inline_func(
 
 	for(i = 0, diter = arg_symtab->decls; diter && *diter; i++, diter++){
 		sym *s = (*diter)->sym;
+		const out_val *v;
 
-		if(s->outval){
+		if((v = sym_outval(s))){
 			/* lvalue case */
-			out_val_release(octx, s->outval);
+			out_val_release(octx, v);
 			assert(!pushed_vals[i].map_val);
 		}else{
 			/* rvalue case */
@@ -147,7 +148,7 @@ static const out_val *gen_inline_func(
 		}
 
 		/* restore previous outval */
-		s->outval = pushed_vals[i].sym_outval;
+		sym_setoutval(s, pushed_vals[i].sym_outval);
 	}
 
 	free(pushed_vals), pushed_vals = NULL;

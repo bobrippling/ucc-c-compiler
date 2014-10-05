@@ -208,3 +208,41 @@ unsigned symtab_decl_bytes(symtable *stab, unsigned const vla_cost)
 
 	return total;
 }
+
+const struct out_val *sym_outval(sym *s)
+{
+	switch(s->type){
+		case sym_global:
+		case sym_arg:
+			return s->out.val_single;
+
+		case sym_local:
+			if(s->out.stack.n == 0)
+				return NULL;
+
+			return s->out.stack.vals[s->out.stack.n - 1];
+	}
+	assert(0);
+}
+
+void sym_setoutval(sym *s, const struct out_val *v)
+{
+	switch(s->type){
+		case sym_global: /* exactly one should be null */
+			assert(!v ^ !s->out.val_single);
+		case sym_arg: /* fine to overwrite - inline code takes care */
+			s->out.val_single = v;
+			return;
+
+		case sym_local:
+			if(v == NULL){
+				s->out.stack.n--;
+				(void)dynarray_pop(const struct out_val *, &s->out.stack.vals);
+			}else{
+				s->out.stack.n++;
+				dynarray_add(&s->out.stack.vals, v);
+			}
+			return;
+	}
+	assert(0);
+}
