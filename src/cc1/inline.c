@@ -22,6 +22,7 @@
 
 #define INLINE_DEPTH_MAX 5
 #define INLINE_MAX_STACK_BYTES 256
+#define INLINE_VLA_COST 64
 #define INLINE_MAX_STMTS 10
 
 static void inline_vars_push(
@@ -190,7 +191,7 @@ static int heuristic_should_inline(
 	if(fndecl->store & store_inline)
 		return 1;
 
-	if(symtab_decl_bytes(symtab) > INLINE_MAX_STACK_BYTES)
+	if(symtab_decl_bytes(symtab, INLINE_VLA_COST) > INLINE_MAX_STACK_BYTES)
 		return 0;
 
 	stmt_walk(fncode, stmts_count, NULL, &nstmts);

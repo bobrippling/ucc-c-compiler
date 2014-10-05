@@ -14,6 +14,7 @@
 #include "sue.h"
 #include "funcargs.h"
 #include "label.h"
+#include "type_is.h"
 
 sym *sym_new(decl *d, enum sym_type t)
 {
@@ -187,17 +188,23 @@ unsigned sym_hash(const sym *sym)
 	return sym->type ^ (unsigned)(intptr_t)sym;
 }
 
-unsigned symtab_decl_bytes(symtable *stab)
+unsigned symtab_decl_bytes(symtable *stab, unsigned const vla_cost)
 {
 	unsigned total = 0;
 	symtable **si;
 	decl **di;
 
-	for(di = stab->decls; di && *di; di++)
-		total += decl_size(*di);
+	for(di = stab->decls; di && *di; di++){
+		decl *d = *di;
+
+		if(type_is_variably_modified(d->ref))
+			total += vla_cost;
+		else
+			total += decl_size(d);
+	}
 
 	for(si = stab->children; si && *si; si++)
-		total += symtab_decl_bytes(*si);
+		total += symtab_decl_bytes(*si, vla_cost);
 
 	return total;
 }
