@@ -1205,18 +1205,18 @@ static expr *sue_base_for_init_assignment(
 			expr_new_struct_mem(base, 1, smem),
 			w);
 
-	FOLD_EXPR(e_access, stab);
+	fold_expr_nodecay(e_access, stab);
 
 	return e_access;
 }
 
 static void expr_init_add(expr **pinit, expr *new, symtable *stab)
 {
-	FOLD_EXPR(new, stab);
+	fold_expr_nodecay(new, stab);
 
 	if(*pinit){
 		*pinit = expr_new_comma2(*pinit, new);
-		FOLD_EXPR(*pinit, stab);
+		fold_expr_nodecay(*pinit, stab);
 	}else{
 		*pinit = new;
 	}
@@ -1392,7 +1392,7 @@ zero_init:
 							expr_new_array_idx(base, idx),
 							&base->where);
 
-					FOLD_EXPR(new_base, stab);
+					fold_expr_nodecay(new_base, stab);
 
 					if(!next_type)
 						next_type = type_next(tfor);
