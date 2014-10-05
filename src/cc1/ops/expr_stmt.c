@@ -30,6 +30,11 @@ static const out_val *gen_lea_expr_stmt(
 	return ret;
 }
 
+static const out_val *lea_expr_stmt(expr *e, out_ctx *octx)
+{
+	return gen_lea_expr_stmt(e, octx, lea_expr);
+}
+
 void fold_expr_stmt(expr *e, symtable *stab)
 {
 	stmt *last_stmt;
@@ -47,10 +52,16 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	fold_stmt(e->code); /* symtab should've been set by parse */
 
 	if(last && stmt_kind(last_stmt, expr)){
-		e->tree_type = last_stmt->expr->tree_type;
+		expr *last_e = last_stmt->expr;
+
+		e->tree_type = last_e->tree_type;
+
 		fold_check_expr(e,
 				FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_ST_UN,
 				"({ ... }) statement");
+
+		if(last_e->f_lea)
+			e->f_lea = lea_expr_stmt;
 	}else{
 		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 	}
