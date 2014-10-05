@@ -370,19 +370,6 @@ static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
 	}
 }
 
-static const out_val *x86_stret_ptr(out_ctx *octx)
-{
-	type *voidpp
-		= type_ptr_to(
-				type_ptr_to(
-					type_nav_btype(cc1_type_nav, type_void)));
-
-	return out_deref(octx,
-			v_new_bp3(octx, NULL, voidpp,
-				/* stret is always the first argument:*/
-				- (long) platform_word_size()));
-}
-
 static const char *x86_reg_str(const struct vreg *reg, type *r)
 {
 	/* must be sync'd with header */
@@ -582,10 +569,13 @@ void impl_func_prologue_save_call_regs(
 	if(nargs){
 		const unsigned ws = platform_word_size();
 
-		funcargs *const fa = type_funcargs(rf);
+		funcargs *fa;
+		type *retty;
 
 		unsigned n_call_i, n_call_f;
 		const struct vreg *call_regs;
+
+		retty = type_called(rf, &fa);
 
 		n_call_f = N_CALL_REGS_F;
 		x86_call_regs(rf, &n_call_i, &call_regs);
@@ -619,9 +609,19 @@ void impl_func_prologue_save_call_regs(
 					i_arg < nargs;
 					i_arg++)
 			{
-				type *const ty = fa->arglist[i_arg]->ref;
+				type *ty;
 				const struct vreg *rp;
 				struct vreg vr;
+				const out_val **store;
+
+				if(is_stret && i_arg == 0){
+					ty = type_ptr_to(retty);
+					assert(!octx->current_stret);
+					store = &octx->current_stret;
+				}else{
+					ty = fa->arglist[i_arg - is_stret]->ref;
+					store = &arg_vals[i_arg - is_stret];
+				}
 
 				if(type_is_floating(ty)){
 					if(i_f >= n_call_f)
@@ -641,7 +641,7 @@ void impl_func_prologue_save_call_regs(
 					stack_loc = out_change_type(octx, stack_loc, ty);
 					out_val_retain(octx, stack_loc);
 
-					arg_vals[i_arg] = out_change_type(octx,
+					*store = out_change_type(octx,
 							v_reg_to_stack_mem(octx, rp, stack_loc),
 							type_ptr_to(ty));
 
@@ -652,7 +652,7 @@ void impl_func_prologue_save_call_regs(
 
 				continue;
 pass_via_stack:
-				arg_vals[i_arg] = v_new_bp3_above(
+				*store = v_new_bp3_above(
 						octx, NULL, type_ptr_to(ty), (i_arg_stk++ + 2) * ws);
 			}
 
@@ -665,6 +665,8 @@ pass_via_stack:
 			long i;
 			for(i = 0; i < nargs; i++){
 				long off;
+				const out_val **store;
+				type *ty;
 
 				if(i < n_call_i){
 					out_asm(octx, "push%s %%%s",
@@ -678,8 +680,16 @@ pass_via_stack:
 					off = (i - n_call_i + 2) * ws;
 				}
 
-				arg_vals[i] = v_new_bp3_above(octx, NULL,
-						type_ptr_to(fa->arglist[i]->ref), off);
+				if(is_stret && i == 0){
+					ty = type_ptr_to(retty);
+					assert(!octx->current_stret);
+					store = &octx->current_stret;
+				}else{
+					ty = fa->arglist[i - is_stret]->ref;
+					store = &arg_vals[i - is_stret];
+				}
+
+				*store = v_new_bp3_above(octx, NULL, type_ptr_to(ty), off);
 			}
 
 			/* this aligns the stack too */
@@ -688,6 +698,14 @@ pass_via_stack:
 					ws,
 					"save call regs push-version");
 		}
+
+		if(octx->current_stret && fopt_mode & FOPT_VERBOSE_ASM){
+			const out_val *stret = octx->current_stret;
+
+			out_comment(octx, "stret pointer '%s' @ %s",
+					type_to_str(stret->t), out_val_str(stret, 1));
+		}
+
 	}
 }
 
@@ -809,9 +827,10 @@ x86_func_ret_memcpy(
 	/* copy from *%rax to *%rdi (first argument) */
 	out_comment(octx, "stret copy");
 
-	stret_p = x86_stret_ptr(octx);
+	stret_p = octx->current_stret;
 
 	out_val_retain(octx, stret_p);
+	stret_p = out_deref(octx, stret_p);
 
 	out_flush_volatile(octx,
 			out_memcpy(octx, stret_p, from, type_size(called, NULL)));
@@ -820,7 +839,7 @@ x86_func_ret_memcpy(
 	ret_reg->is_float = 0;
 	ret_reg->idx = REG_RET_I;
 
-	return stret_p;
+	return out_deref(octx, out_val_retain(octx, octx->current_stret));
 }
 
 static void x86_func_ret_regs(
@@ -1998,7 +2017,6 @@ const out_val *impl_call(
 		const out_val *fn, const out_val **args,
 		type *fnty)
 {
-	type *const voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 	type *const retty = type_called(type_is_ptr_or_block(fnty), NULL);
 	type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 	const unsigned pws = platform_word_size();
@@ -2006,6 +2024,7 @@ const out_val *impl_call(
 	char *const float_arg = umalloc(nargs);
 	const out_val **local_args = NULL;
 	const out_val *retval_stret;
+	const out_val *stret_spill;
 
 	const struct vreg *call_iregs;
 	unsigned n_call_iregs;
@@ -2024,8 +2043,8 @@ const out_val *impl_call(
 
 	unsigned nfloats = 0, nints = 0;
 	unsigned i;
-	unsigned stret_stack = 0, stret_pos = 0;
 	enum stret stret_kind;
+	unsigned stret_stack;
 
 	dynarray_add_array(&local_args, args);
 
@@ -2062,8 +2081,7 @@ const out_val *impl_call(
 			nints++; /* only an extra pointer arg for stret_memcpy */
 			/* fall */
 		case stret_regs:
-			stret_stack = v_alloc_stack(octx, stret_stack, "stret space");
-			stret_pos = octx->var_stack_sz;
+			stret_spill = out_aalloc(octx, stret_stack, type_align(retty, NULL), retty);
 		case stret_scalar:
 			break;
 	}
@@ -2155,16 +2173,18 @@ const out_val *impl_call(
 	/* setup hidden stret pointer argument */
 	if(stret_kind == stret_memcpy){
 		const struct vreg *stret_reg = &call_iregs[nints];
-		const out_val *stret_ptr;
 		nints++;
 
-		out_comment(octx, "stret pointer @ %u-%u for struct, size %u",
-				stret_pos, stret_pos - stret_stack, stret_stack);
+		if(fopt_mode & FOPT_VERBOSE_ASM){
+			out_comment(octx, "stret spill space '%s' @ %s, %u bytes",
+					type_to_str(stret_spill->t),
+					out_val_str(stret_spill, 1),
+					stret_stack);
+		}
 
-		stret_ptr = v_new_bp3(octx, NULL, voidp, -(long)stret_pos);
-
+		out_val_retain(octx, stret_spill);
 		v_freeup_reg(octx, stret_reg);
-		out_flush_volatile(octx, v_to_reg_given(octx, stret_ptr, stret_reg));
+		out_flush_volatile(octx, v_to_reg_given(octx, stret_spill, stret_reg));
 	}
 
 	for(i = 0; i < nargs; i++){
@@ -2281,12 +2301,15 @@ const out_val *impl_call(
 
 			x86_overlay_regpair(regpair, retty);
 
-			retval_stret = v_new_bp3(octx, NULL, voidp, -(long)stret_pos);
+			retval_stret = out_val_retain(octx, stret_spill);
 			out_val_retain(octx, retval_stret);
 
 			/* spill from registers to the stack */
 			impl_overlay_regs2mem(octx, stret_stack, 2, regpair, retval_stret);
 		}
+
+		assert(stret_spill);
+		out_val_release(octx, stret_spill);
 	}
 
 	/* return type */

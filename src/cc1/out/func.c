@@ -178,6 +178,11 @@ void out_func_epilogue(
 
 	free(octx->used_callee_saved), octx->used_callee_saved = NULL;
 
+	if(octx->current_stret){
+		out_val_release(octx, octx->current_stret);
+		octx->current_stret = NULL;
+	}
+
 	octx->initial_stack_sz =
 		octx->cur_stack_sz =
 		octx->max_stack_sz =

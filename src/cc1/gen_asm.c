@@ -223,8 +223,6 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		vla_cleanup(octx);
 
-		out_dump_retained(octx, d->spel);
-
 		out_dbg_where(octx, &d->bits.func.code->where_cbrace);
 
 		{
@@ -234,6 +232,8 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 			arg_symtab->stack_used = stack_used;
 			free(end);
 		}
+
+		out_dump_retained(octx, d->spel);
 
 		out_ctx_wipe(octx);
 
