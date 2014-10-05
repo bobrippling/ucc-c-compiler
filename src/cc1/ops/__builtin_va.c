@@ -110,7 +110,8 @@ static void fold_va_start(expr *e, symtable *stab)
 #define ADD_ASSIGN(memb, exp)                     \
 		assign = W(expr_new_assign(                   \
 		        W(expr_new_struct(                    \
-		          va_l, 0 /* ->  since it's [1] */,   \
+		          expr_new_deref(va_l),               \
+		             1 /* ->  since it's *(exp) */,   \
 		            W(expr_new_identifier(memb)))),   \
 		        exp));                                \
                                                   \
