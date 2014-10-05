@@ -122,7 +122,7 @@ static const out_val *gen_inline_func(
 		gen_vla_arg_sideeffects(*diter, octx);
 	}
 
-	gen_stmt(func_code, octx);
+	gen_func_stmt(func_code, octx);
 
 	for(i = 0, diter = arg_symtab->decls; diter && *diter; i++, diter++){
 		sym *s = (*diter)->sym;

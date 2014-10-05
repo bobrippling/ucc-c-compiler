@@ -172,6 +172,12 @@ void gen_set_sym_outval(sym *sym, const out_val *v)
 	sym->bp_offset = v ? out_get_bp_offset(v) : 0;
 }
 
+void gen_func_stmt(const stmt *fnstmt, out_ctx *octx)
+{
+	gen_stmt(fnstmt, octx);
+	vla_cleanup(octx);
+}
+
 static void gen_asm_global(decl *d, out_ctx *octx)
 {
 	attribute *sec;
@@ -217,11 +223,10 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		allocate_vla_args(octx, arg_symtab);
 		free(argvals), argvals = NULL;
 
-		gen_stmt(d->bits.func.code, octx);
+		gen_func_stmt(d->bits.func.code, octx);
 
 		release_arg_vals(arg_symtab->decls, octx);
 
-		vla_cleanup(octx);
 
 		out_dump_retained(octx, d->spel);
 
