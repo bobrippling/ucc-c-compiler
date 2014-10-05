@@ -1106,8 +1106,10 @@ static decl_init *decl_init_brace_up_start(
 		|| type_is_s_or_u(tfor)))
 	{
 		expr *e;
+		enum type_cmp cmp;
+
 		fold_expr_no_decay(e = init->bits.expr, stab);
-		const enum type_cmp cmp = type_cmp(e->tree_type, tfor, 0);
+		cmp = type_cmp(e->tree_type, tfor, 0);
 
 		/* allow (copy)init of const from non-const and vice versa */
 		if(!(cmp & (TYPE_EQUAL_ANY | TYPE_QUAL_ADD | TYPE_QUAL_SUB))){
