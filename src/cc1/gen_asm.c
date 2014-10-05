@@ -225,12 +225,11 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		gen_func_stmt(d->bits.func.code, octx);
 
+		out_dbg_where(octx, &d->bits.func.code->where_cbrace);
+
 		release_arg_vals(arg_symtab->decls, octx);
 
-
 		out_dump_retained(octx, d->spel);
-
-		out_dbg_where(octx, &d->bits.func.code->where_cbrace);
 
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
