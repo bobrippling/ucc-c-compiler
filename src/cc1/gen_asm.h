@@ -26,6 +26,13 @@ void gen_stmt(const struct stmt *t, out_ctx *);
 /* gen_stmt() but with other-function necessities too, like vla cleanup */
 void gen_func_stmt(const struct stmt *, out_ctx *);
 
+ucc_wur
+const out_val *gen_call(
+		expr *maybe_exp, decl *maybe_dfn,
+		const out_val *fnval,
+		const out_val **args, out_ctx *octx,
+		const where *loc);
+
 /* temporary until the f_gen() logic from expr is pulled out
  * into asm, print and style backends */
 void IGNORE_PRINTGEN(const out_val *v);

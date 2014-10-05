@@ -239,7 +239,8 @@ struct inline_outs
 
 ucc_nonnull()
 static const char *check_and_ret_inline(
-		expr *call_expr, out_ctx *octx,
+		expr *maybe_call_expr, decl *maybe_decl,
+		out_ctx *octx,
 		const out_val *fnval,
 		struct inline_outs *iouts, int nargs)
 {
@@ -247,9 +248,13 @@ static const char *check_and_ret_inline(
 	const char *why;
 	struct cc1_out_ctx *cc1_octx;
 
-	iouts->fndecl = expr_to_declref(call_expr, &why);
-	if(!iouts->fndecl)
-		return why;
+	if(maybe_decl){
+		iouts->fndecl = maybe_decl;
+	}else{
+		iouts->fndecl = expr_to_declref(maybe_call_expr, &why);
+		if(!iouts->fndecl)
+			return why;
+	}
 
 	iouts->fndecl = decl_impl(iouts->fndecl);
 
@@ -307,15 +312,16 @@ static const char *check_and_ret_inline(
 }
 
 const out_val *inline_func_try_gen(
-		expr *call_expr,
-		const out_val *fn, const out_val **args,
+		expr *maybe_call_expr, decl *maybe_decl,
+		const out_val *fnval,
+		const out_val **args,
 		out_ctx *octx, const char **whynot)
 {
 	const out_val *inlined_ret;
 	struct inline_outs iouts = { 0 };
 
 	*whynot = check_and_ret_inline(
-			call_expr, octx, fn,
+			maybe_call_expr, maybe_decl, octx, fnval,
 			&iouts, dynarray_count(args));
 
 	if(*whynot){
@@ -327,7 +333,7 @@ const out_val *inline_func_try_gen(
 	iouts.cc1_octx->inline_.depth++;
 	{
 		/* we don't use the call expr/value */
-		out_val_consume(octx, fn);
+		out_val_consume(octx, fnval);
 
 		inlined_ret = gen_inline_func(
 				iouts.arg_symtab,

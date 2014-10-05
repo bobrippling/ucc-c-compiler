@@ -13,7 +13,6 @@
 #include "../format_chk.h"
 #include "../type_is.h"
 #include "../type_nav.h"
-#include "../inline.h"
 
 #define ARG_BUF(buf, i, sp)       \
 	snprintf(buf, sizeof buf,       \
@@ -390,7 +389,6 @@ const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 	}else{
 		/* continue with normal funcall */
 		const out_val *fn, **args = NULL;
-		const char *whynot;
 
 		fn = gen_expr(e->expr, octx);
 
@@ -410,21 +408,7 @@ const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 		}
 
 		/* consumes fn and args */
-		fn_ret = inline_func_try_gen(e->expr, fn, args, octx, &whynot);
-		if(fn_ret){
-			if(fopt_mode & FOPT_SHOW_INLINED)
-				note_at(&e->expr->where, "function inlined");
-
-		}else{
-			if(expr_attr_present(e->expr, attr_always_inline)){
-				warn_at_print_error(&e->expr->where,
-						"couldn't always_inline call: %s", whynot);
-
-				gen_had_error = 1;
-			}
-
-			fn_ret = out_call(octx, fn, args, e->expr->tree_type);
-		}
+		fn_ret = gen_call(e->expr, NULL, fn, args, octx, &e->expr->where);
 
 		dynarray_free(const out_val **, &args, NULL);
 	}

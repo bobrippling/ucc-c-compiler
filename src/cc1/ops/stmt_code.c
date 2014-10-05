@@ -332,20 +332,16 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 			attribute *cleanup = attribute_present(d, attr_cleanup);
 
 			if(cleanup){
-				const out_val *args[2];
-				type *fty = cleanup->bits.cleanup->ref;
+				const out_val *fn, *args[2];
 
 				out_dbg_where(octx, &d->where);
 
+				fn = out_new_lbl(octx, NULL, decl_asm_spel(cleanup->bits.cleanup), 1);
 				args[0] = out_new_sym(octx, d->sym);
 				args[1] = NULL;
 
-				out_flush_volatile(octx,
-						out_call(
-							octx,
-							out_new_lbl(octx, NULL, decl_asm_spel(cleanup->bits.cleanup), 1),
-							args,
-							type_ptr_to(fty)));
+				out_val_release(octx,
+						gen_call(NULL, cleanup->bits.cleanup, fn, args, octx, &d->where));
 			}
 
 			if(((d->store & STORE_MASK_STORE) != store_typedef)

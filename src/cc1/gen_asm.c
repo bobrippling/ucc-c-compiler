@@ -28,6 +28,8 @@
 #include "out/val.h"
 #include "out/ctx.h"
 #include "cc1_out_ctx.h"
+#include "inline.h"
+#include "type_nav.h"
 
 int gen_had_error;
 
@@ -249,6 +251,37 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		/* asm takes care of .bss vs .data, etc */
 		asm_declare_decl_init(d);
 	}
+}
+
+const out_val *gen_call(
+		expr *maybe_exp, decl *maybe_dfn,
+		const out_val *fnval,
+		const out_val **args, out_ctx *octx,
+		const where *loc)
+{
+	const char *whynot;
+	const out_val *fn_ret = inline_func_try_gen(maybe_exp, maybe_dfn, fnval, args, octx, &whynot);
+
+	if(fn_ret){
+		if(fopt_mode & FOPT_SHOW_INLINED)
+			note_at(loc, "function inlined");
+
+	}else{
+		const int always_inline = !!(maybe_exp
+			? expr_attr_present(maybe_exp, attr_always_inline)
+			: attribute_present(maybe_dfn, attr_always_inline));
+
+		if(always_inline){
+			warn_at_print_error(loc, "couldn't always_inline call: %s", whynot);
+
+			gen_had_error = 1;
+		}
+
+		fn_ret = out_call(octx, fnval, args,
+				maybe_exp ? maybe_exp->tree_type : type_ptr_to(maybe_dfn->ref));
+	}
+
+	return fn_ret;
 }
 
 static void gen_gasm(char *asm_str)
