@@ -2293,7 +2293,7 @@ const out_val *impl_call(
 		out_val_consume(octx, local_args[i]);
 	dynarray_free(const out_val **, &local_args, NULL);
 
-	if(stret_stack){
+	if(stret_kind != stret_scalar){
 		if(stret_kind == stret_regs){
 			/* we behave the same as stret_memcpy(),
 			 * but we must spill the regs out */
