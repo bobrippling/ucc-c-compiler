@@ -109,7 +109,7 @@ try_set(){
 	shift
 	for ent in $@
 	do
-		if test -f "$ent"
+		if test -e "$ent"
 		then eval "$var=\"\$$var:$ent\""
 		fi
 	done
@@ -130,7 +130,7 @@ unam="$(uname -s)"
 
 # setup include paths
 # TODO: option to use local ./lib path
-UCC_INC="-I/usr/include"
+UCC_INC="/usr/include"
 
 # defaults for an OS
 case "$unam" in
@@ -205,7 +205,7 @@ do
 			fi
 			;;
 		--with-ucc-lib)
-			UCC_INC="-Ilib/"
+			UCC_INC="lib/"
 			UCC_CRT="lib/crt.a"
 			UCC_STDLIB="lib/libc.a"
 			UCC_DYN=''

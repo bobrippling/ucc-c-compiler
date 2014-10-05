@@ -30,6 +30,7 @@ struct stmt
 	struct stmt_flow *flow; /* for, switch (do and while are simple enough for ->[lr]hs) */
 
 	/* specific data */
+#define stmt_is_default val
 	int val;
 	out_blk *blk_break, *blk_continue;
 
@@ -73,7 +74,6 @@ typedef struct stmt_flow stmt_flow;
 struct stmt_flow
 {
 	symtable *for_init_symtab; /* for(int b;;){} - symtab for b */
-	stmt *init_blk;
 
 	/* for specific */
 	struct expr *for_init, *for_while, *for_inc;

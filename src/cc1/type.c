@@ -111,24 +111,28 @@ static enum type_cmp type_cmp_r(
 			break;
 
 		case type_array:
-		{
-			const int a_complete = !!a->bits.array.size,
-			          b_complete = !!b->bits.array.size;
+			if(a->bits.array.is_vla || b->bits.array.is_vla){
+				/* fine, pretend they're equal even if different expressions */
+				ret = TYPE_EQUAL_TYPEDEF;
 
-			if(a_complete && b_complete){
-				const integral_t av = const_fold_val_i(a->bits.array.size),
-				                 bv = const_fold_val_i(b->bits.array.size);
+			}else{
+				const int a_has_sz = !!a->bits.array.size;
+				const int b_has_sz = !!b->bits.array.size;
 
-				if(av != bv)
-					return TYPE_NOT_EQUAL;
-			}else if(a_complete != b_complete){
-				if((opts & TYPE_CMP_ALLOW_TENATIVE_ARRAY) == 0)
-					return TYPE_NOT_EQUAL;
+				if(a_has_sz && b_has_sz){
+					integral_t av = const_fold_val_i(a->bits.array.size);
+					integral_t bv = const_fold_val_i(b->bits.array.size);
+
+					if(av != bv)
+						return TYPE_NOT_EQUAL;
+				}else if(a_has_sz != b_has_sz){
+					if((opts & TYPE_CMP_ALLOW_TENATIVE_ARRAY) == 0)
+						return TYPE_NOT_EQUAL;
+				}
 			}
 
 			/* next */
 			break;
-		}
 
 		case type_block:
 		case type_ptr:
@@ -258,11 +262,25 @@ enum type_cmp type_cmp(type *a, type *b, enum type_cmp_opts opts)
 	return cmp;
 }
 
+int type_eq_nontdef(type *a, type *b)
+{
+	enum type_cmp cmp = type_cmp(a, b, 0);
+
+	return cmp == TYPE_EQUAL ? 0 : 1;
+}
+
 integral_t type_max(type *r, where *from)
 {
 	unsigned sz = type_size(r, from);
+	unsigned bits = sz * CHAR_BIT;
+	int is_signed = type_is_signed(r);
 
-	return 1ULL << (sz * CHAR_BIT - 1);
+	integral_t max = ~0ULL >> (INTEGRAL_BITS - bits);
+
+	if(is_signed)
+		max = max / 2 - 1;
+
+	return max;
 }
 
 unsigned type_size(type *r, where *from)
@@ -363,10 +381,11 @@ unsigned type_align(type *r, where *from)
 where *type_loc(type *t)
 {
 	static where fallback;
+	where *w;
 
-	t = type_skip_non_wheres(t);
-	if(t && t->type == type_where)
-		return &t->bits.where;
+	w = type_has_loc(t);
+	if(w)
+		return w;
 
 	if(!fallback.fname)
 		fallback.fname = "<unknown>";
@@ -374,10 +393,40 @@ where *type_loc(type *t)
 	return &fallback;
 }
 
-int type_has_loc(type *t)
+where *type_has_loc(type *t)
 {
 	t = type_skip_non_wheres(t);
-	return t && t->type == type_where;
+	if(!t)
+		return NULL;
+
+	switch(t->type){
+		case type_ptr:
+			if(t->bits.ptr.decayed_from){
+				where *w = type_has_loc(t->bits.ptr.decayed_from);
+				if(w)
+					return w;
+			}
+			break;
+
+		case type_array:
+			if(t->bits.array.size)
+				return &t->bits.array.size->where;
+			break;
+
+		case type_where:
+			return &t->bits.where;
+
+		case type_btype:
+		case type_tdef:
+		case type_block:
+		case type_func:
+		case type_auto:
+		case type_cast:
+		case type_attr:
+			break;
+	}
+
+	return NULL;
 }
 
 #define BUF_ADD(...) \
@@ -521,31 +570,31 @@ static void type_add_str(
 			/* fall */
 		case type_array:
 			BUF_ADD("[");
-			if(r->bits.array.size){
-				int spc = 0;
+			switch(r->bits.array.is_vla){
+				case 0:
+				{
+					int spc = 0;
+					if(r->bits.array.is_static){
+						BUF_ADD("static");
+						spc = 1;
+					}
 
-				if(r->bits.array.is_static){
-					BUF_ADD("static");
-					spc = 1;
+					if(r->bits.array.size){
+						BUF_ADD(
+								"%s%" NUMERIC_FMT_D,
+								spc ? " " : "",
+								const_fold_val_i(r->bits.array.size));
+					}
+					break;
 				}
-
-#if 0
-				if(r->bits.array.qual){
-					BUF_ADD(
-							"%s%s",
-							spc ? " " : "",
-							type_qual_to_str(r->bits.array.qual, 0));
-					spc = 1;
-				}
-#endif
-
-				BUF_ADD(
-						"%s%" NUMERIC_FMT_D,
-						spc ? " " : "",
-						const_fold_val_i(r->bits.array.size));
+				case VLA:
+					BUF_ADD("vla");
+					break;
+				case VLA_STAR:
+					BUF_ADD("*");
+					break;
 			}
 			BUF_ADD("]");
-
 			break;
 	}
 
@@ -605,7 +654,7 @@ type *type_add_type_str(type *r,
 
 			BUF_ADD(" (aka '%s')",
 					t ? btype_to_str(t)
-					: type_to_str_r_spel_aka(buf, of, NULL, 0));
+					: type_to_str_r_spel_aka(buf, type_skip_tdefs(of), NULL, 0));
 		}
 
 		return ty;
@@ -666,19 +715,11 @@ const char *type_to_str_r(char buf[TYPE_STATIC_BUFSIZ], type *r)
 
 const char *type_to_str_r_show_decayed(char buf[TYPE_STATIC_BUFSIZ], struct type *r)
 {
-	const char *s;
-	enum type_kind restore;
-
 	r = type_skip_all(r);
-	restore = r->type;
-	if(r->type == type_ptr)
-		r->type = type_array;
+	if(r->type == type_ptr && r->bits.ptr.decayed_from)
+		r = r->bits.ptr.decayed_from;
 
-	s = type_to_str_r(buf, r);
-
-	r->type = restore;
-
-	return s;
+	return type_to_str_r(buf, r);
 }
 
 const char *type_to_str(type *r)
@@ -725,7 +766,16 @@ type_str_type(type *r)
 	}
 }
 
-unsigned type_hash(const type *t)
+unsigned sue_hash(const struct_union_enum_st *sue)
+{
+	if(!sue)
+		return 5;
+
+	return sue->primitive;
+}
+
+static unsigned type_hash2(
+		const type *t, unsigned nest_hash(const type *))
 {
 	unsigned hash = t->type << 20 | (unsigned)(unsigned long)t;
 
@@ -734,16 +784,24 @@ unsigned type_hash(const type *t)
 			ICE("auto type");
 
 		case type_btype:
-			hash |= t->bits.type->primitive;
+			hash |= t->bits.type->primitive | sue_hash(t->bits.type->sue);
 			break;
 
 		case type_tdef:
-			hash |= type_hash(t->bits.tdef.type_of->tree_type);
+			hash |= nest_hash(t->bits.tdef.type_of->tree_type);
+			hash |= 1 << 3;
 			break;
 
 		case type_ptr:
+			if(t->bits.ptr.decayed_from)
+				hash |= nest_hash(t->bits.ptr.decayed_from);
+			break;
+
 		case type_array:
-			hash |= type_hash(t->bits.ptr.size->tree_type);
+			if(t->bits.array.size)
+				hash |= nest_hash(t->bits.array.size->tree_type);
+			hash |= 1 << t->bits.array.is_static;
+			hash |= 1 << t->bits.array.is_vla;
 			break;
 
 		case type_block:
@@ -756,7 +814,7 @@ unsigned type_hash(const type *t)
 			decl **i;
 
 			for(i = t->bits.func.args->arglist; i && *i; i++)
-				hash |= type_hash((*i)->ref);
+				hash |= nest_hash((*i)->ref);
 
 			break;
 		}
@@ -773,4 +831,31 @@ unsigned type_hash(const type *t)
 	}
 
 	return hash;
+}
+
+unsigned type_hash(const type *t)
+{
+	return type_hash2(t, type_hash);
+}
+
+unsigned type_hash_skip_nontdefs_consts(const type *t)
+{
+	return type_hash2(
+			type_skip_non_tdefs_consts((type *)t),
+			type_hash_skip_nontdefs_consts);
+}
+
+enum type_primitive type_primitive_not_less_than_size(unsigned sz)
+{
+	static const enum type_primitive prims[] = {
+		type_long, type_int, type_short, type_nchar
+	};
+
+	unsigned i;
+
+	for(i = 0; i < sizeof(prims)/sizeof(*prims); i++)
+		if(sz >= type_primitive_size(prims[i]))
+			return prims[i];
+
+	return type_unknown;
 }

@@ -48,14 +48,21 @@ void fold_expr_stmt(expr *e, symtable *stab)
 const out_val *gen_expr_stmt(expr *e, out_ctx *octx)
 {
 	size_t n;
+	const out_val *ret;
+
 	gen_stmt_code_m1(e->code, 1, octx);
 
 	n = dynarray_count(e->code->bits.code.stmts);
 
 	if(n > 0 && stmt_kind(e->code->bits.code.stmts[n-1], expr))
-		return gen_expr(e->code->bits.code.stmts[n - 1]->expr, octx);
+		ret = gen_expr(e->code->bits.code.stmts[n - 1]->expr, octx);
+	else
+		ret = out_new_noop(octx);
 
-	return out_new_noop(octx);
+	/* this is skipped by gen_stmt_code_m1( ... 1, ... ) */
+	gen_stmt_code_m1_finish(e->code, octx);
+
+	return ret;
 }
 
 static const out_val *expr_stmt_lea(expr *e, out_ctx *octx)

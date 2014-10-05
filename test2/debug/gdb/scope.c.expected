@@ -1,0 +1,14 @@
+# check variables are as we expect and we are on the right line
+33		int local1 = 1;
+/\\$1 = 0x[0-9a-f]+ ""/
+35		printf("&a = %p\n", &a);
+37		int local5 = 5;
+local5 = 5
+local1 = 1
+16		char *pt_local = pt + 1;
+20		float *pfp = &fp;
+$2 = 3
+$3 = 1
+/\\$4 = 0 '\0+'/
+$5 = 1
+/&a = 0x[0-9a-f]+/

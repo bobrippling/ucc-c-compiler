@@ -74,7 +74,7 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 	}
 
 	out_current_blk(octx, blk_end);
-	flow_end(s->flow, s->flow->for_init_symtab, octx);
+	flow_end(s->flow, s->flow->for_init_symtab, el, octx);
 }
 
 void style_stmt_for(stmt *s, out_ctx *octx)
@@ -104,7 +104,7 @@ struct walk_info
 
 /* ??? change this so we set properties in fold() instead? */
 static void
-stmt_walk_first_break_goto_return(stmt *current, int *stop, int *descend, void *extra)
+stmt_walk_first_break_goto(stmt *current, int *stop, int *descend, void *extra)
 {
 	struct walk_info *wi = extra;
 	int found = 0;
@@ -113,7 +113,7 @@ stmt_walk_first_break_goto_return(stmt *current, int *stop, int *descend, void *
 
 	if(stmt_kind(current, break)){
 		found = wi->switch_depth == 0;
-	}else if(stmt_kind(current, return) || stmt_kind(current, goto)){
+	}else if(stmt_kind(current, goto)){
 		found = 1;
 	}else if(stmt_kind(current, switch)){
 		wi->switch_depth++;
@@ -140,9 +140,9 @@ int fold_code_escapable(stmt *s)
 
 	memset(&wi, 0, sizeof wi);
 
-	stmt_walk(s->lhs, stmt_walk_first_break_goto_return, stmt_walk_switch_leave, &wi);
+	stmt_walk(s->lhs, stmt_walk_first_break_goto, stmt_walk_switch_leave, &wi);
 
-	/* we only return if we find a break, goto or return statement */
+	/* we only return if we find a break or goto statement */
 	return !!wi.escape;
 }
 

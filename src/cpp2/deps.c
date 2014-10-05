@@ -18,7 +18,7 @@ void deps_add(const char *d)
 		return;
 
 	if(!depset)
-		depset = dynmap_new((dynmap_cmp_f *)strcmp, dynmap_strhash);
+		depset = dynmap_new(char *, strcmp, dynmap_strhash);
 
 	dynmap_set(
 			char *, void *,

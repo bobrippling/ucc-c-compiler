@@ -1,5 +1,7 @@
 #include <stdlib.h>
 
+#include "../../util/dynarray.h"
+
 #include "ops.h"
 #include "stmt_goto.h"
 #include "../out/lbl.h"
@@ -22,6 +24,8 @@ void fold_stmt_goto(stmt *s)
 		 symtab_label_find_or_new(
 			 s->symtab, s->bits.lbl.spel, &s->where))
 			->uses++;
+
+		dynarray_add(&s->bits.lbl.label->jumpers, s);
 	}
 }
 

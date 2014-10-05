@@ -644,9 +644,9 @@ static void cc1_read_quoted_char(const int is_wide)
 
 	if(multichar){
 		if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
-			warn_at(NULL, "multi-char constant too large");
+			cc1_warn_at(NULL, multichar_toolarge, "multi-char constant too large");
 		else
-			warn_at(NULL, "multi-char constant");
+			cc1_warn_at(NULL, multichar, "multi-char constant");
 	}
 
 	currentval.val.i = ch;
@@ -688,10 +688,12 @@ void nexttoken()
 				case 'x':
 					mode = HEX;
 					nextchar();
+					c = peeknextchar();
 					break;
 				case 'b':
 					mode = BIN;
 					nextchar();
+					c = peeknextchar();
 					break;
 				default:
 					if(!isoct(c)){
@@ -715,22 +717,6 @@ void nexttoken()
 		if(c != '.')
 			read_number(mode);
 
-#if 0
-		if(tolower(peeknextchar()) == 'e'){
-			/* 5e2 */
-			int n = currentval.val;
-
-			if(!isdigit(peeknextchar())){
-				curtok = token_unknown;
-				return;
-			}
-			read_number();
-
-			currentval.val = n * pow(10, currentval.val);
-			/* cv = n * 10 ^ cv */
-		}
-#endif
-
 		if(c == '.' || peeknextchar() == '.'){
 			/* floating point */
 
@@ -749,6 +735,22 @@ void nexttoken()
 			curtok = token_floater;
 
 		}else{
+			/* handle integral XeY */
+			if(tolower(peeknextchar()) == 'e'){
+				numeric mantissa = currentval;
+
+				nextchar();
+
+				if(!isdigit(peeknextchar())){
+					curtok = token_unknown;
+					return;
+				}
+				read_number(DEC);
+
+				mantissa.val.i *= pow(10, currentval.val.i);
+				currentval = mantissa;
+			}
+
 			curtok = token_integer;
 		}
 

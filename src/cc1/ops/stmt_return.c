@@ -29,18 +29,34 @@ void fold_stmt_return(stmt *s)
 	}
 
 	if(s->expr){
+		int void_return;
+
 		FOLD_EXPR(s->expr, s->symtab);
-		fold_check_expr(s->expr, 0, s->f_str());
+		fold_check_expr(s->expr, FOLD_CHK_ALLOW_VOID, s->f_str());
+
+		void_return = type_is_void(s->expr->tree_type);
+
+		if(void_return)
+			cc1_warn_at(&s->where, return_void,
+					"void function returns void expression");
 
 		if(ret_ty){
-			/* void return handled implicitly with a cast to void */
-			fold_type_chk_and_cast(
-					ret_ty, &s->expr,
-					s->symtab, &s->where, "return type");
+			if(void_return){
+				if(!void_func){
+					cc1_warn_at(&s->where, return_type,
+							"void return in non-void function %s", in_func->spel);
+				}
 
-			if(void_func){
-				cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
-						"return with a value in void function %s", in_func->spel);
+			}else{
+				/* void return handled implicitly with a cast to void */
+				fold_type_chk_and_cast(
+						ret_ty, &s->expr,
+						s->symtab, &s->where, "return type");
+
+				if(void_func){
+					cc1_warn_at(&s->where, return_type,
+							"return with a value in void function %s", in_func->spel);
+				}
 			}
 		}else{
 			/* in a block */
@@ -52,7 +68,7 @@ void fold_stmt_return(stmt *s)
 			/* in a void block */
 			void_func = 1;
 		}else if(!void_func){
-			cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
+			cc1_warn_at(&s->where, return_type,
 					"empty return in non-void function %s", in_func->spel);
 		}
 	}

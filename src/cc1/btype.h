@@ -36,6 +36,7 @@ enum type_primitive
 
 	/* unsigned primitive is signed primitive + 1 */
 #define TYPE_PRIMITIVE_TO_UNSIGNED(p) ((p) + 1)
+#define TYPE_PRIMITIVE_IS_CHAR(a) (type_nchar <= (a) && (a) <= type_uchar)
 #define S_U_TY(nam) type_ ## nam, type_u ## nam
 
 	S_U_TY(int),
@@ -70,6 +71,7 @@ struct btype
 	enum type_primitive primitive;
 
 	/* NULL unless this is a struct, union or enum */
+	/* special case - if we're an int, this may refer to the enum the int came from */
 	struct struct_union_enum_st *sue;
 };
 

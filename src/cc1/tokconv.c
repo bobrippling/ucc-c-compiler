@@ -470,7 +470,8 @@ void token_get_current_str(
 		char *p = memchr(currentstring, '\0', currentstringlen);
 
 		if(p && p < currentstring + currentstringlen - 1)
-			warn_at(NULL, "nul-character terminates string early (%s)", p + 1);
+			cc1_warn_at(NULL, str_contain_nul,
+					"nul-character terminates string early (%s)", p + 1);
 	}
 
 	currentstring = NULL;

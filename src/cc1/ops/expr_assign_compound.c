@@ -19,7 +19,11 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, "compound assignment");
 
 	/* skip the addr we inserted */
-	expr_must_lvalue(lvalue);
+	if(!expr_must_lvalue(lvalue, "compound assignment")){
+		/* prevent ICE from type_size(vla), etc */
+		e->tree_type = lvalue->tree_type;
+		return;
+	}
 
 	expr_assign_const_check(lvalue, &e->where);
 
@@ -31,7 +35,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 		type *tlhs, *trhs;
 		type *resolved = op_required_promotion(
 				e->bits.compoundop.op, lvalue, e->rhs, &e->where,
-				&tlhs, &trhs, op_to_str(e->bits.compoundop.op));
+				&tlhs, &trhs);
 
 		if(tlhs){
 			/* must cast the lvalue, then down cast once the operation is done
@@ -86,6 +90,7 @@ const out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
 		lhs = out_cast(octx, lhs, e->lhs->tree_type, /*normalise_bool:*/1);
 
 	result = out_op(octx, e->bits.compoundop.op, lhs, rhs);
+	gen_op_trapv(e->tree_type, &result, octx);
 
 	if(e->bits.compoundop.upcast) /* need to cast back down to store */
 		result = out_cast(octx, result, e->tree_type, /*normalise_bool:*/1);

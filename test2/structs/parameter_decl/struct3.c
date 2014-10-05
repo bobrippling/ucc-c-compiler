@@ -3,6 +3,6 @@ extern int (*f)(struct A *);
 
 main()
 {
-	struct A a; // CHECK: /error: struct A is incomplete/
+	struct A a; // CHECK: error: "a" has incomplete type 'struct A'
 	f(&a); // CHECK: /warning: mismatching types, argument/
 }

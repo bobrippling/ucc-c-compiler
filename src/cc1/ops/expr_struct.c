@@ -26,6 +26,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	const int ptr_expect = !e->expr_is_st_dot;
 	struct_union_enum_st *sue;
 	char *spel;
+	enum type_qualifier struct_qual;
 
 	fold_expr_nodecay(e->lhs, stab);
 	/* don't fold the rhs - just a member name */
@@ -36,7 +37,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 		UCC_ASSERT(!e->bits.struct_mem.d, "already have a struct-member");
 
-		spel = e->rhs->bits.ident.spel;
+		spel = e->rhs->bits.ident.bits.ident.spel;
 	}else{
 		UCC_ASSERT(e->bits.struct_mem.d, "no member specified already?");
 		spel = NULL;
@@ -92,10 +93,13 @@ err:
 	if(!expr_is_lval(e->lhs))
 		e->f_lea = NULL;
 
+	struct_qual = type_qual(
+			ptr_expect
+				? type_dereference_decay(e->lhs->tree_type)
+				: e->lhs->tree_type);
+
 	/* pull qualifiers from the struct to the member */
-	e->tree_type = type_qualify(
-			e->bits.struct_mem.d->ref,
-			type_qual(e->lhs->tree_type));
+	e->tree_type = type_qualify(e->bits.struct_mem.d->ref, struct_qual);
 }
 
 static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)

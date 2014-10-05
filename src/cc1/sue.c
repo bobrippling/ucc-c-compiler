@@ -53,11 +53,6 @@ int enum_nentries(struct_union_enum_st *e)
 	return dynarray_count(e->members);
 }
 
-int sue_enum_size(struct_union_enum_st *st)
-{
-	return st->size = type_primitive_size(type_int);
-}
-
 void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 {
 	if(!sue_complete(st)){
@@ -68,14 +63,13 @@ void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 	}
 
 	UCC_ASSERT(st->foldprog == SUE_FOLDED_FULLY, "sizeof unfolded sue");
+	if(st->primitive == type_enum)
+		UCC_ASSERT(st->size > 0, "zero-sized enum");
 }
 
 unsigned sue_size(struct_union_enum_st *st, where *w)
 {
 	sue_incomplete_chk(st, w);
-
-	if(st->primitive == type_enum)
-		return sue_enum_size(st);
 
 	return st->size; /* can be zero */
 }
@@ -83,9 +77,6 @@ unsigned sue_size(struct_union_enum_st *st, where *w)
 unsigned sue_align(struct_union_enum_st *st, where *w)
 {
 	sue_incomplete_chk(st, w);
-
-	if(st->primitive == type_enum)
-		return sue_enum_size(st);
 
 	return st->align;
 }
@@ -154,7 +145,7 @@ sue_member *sue_member_from_decl(decl *d)
 struct_union_enum_st *sue_decl(
 		symtable *stab, char *spel,
 		sue_member **members, enum type_primitive prim,
-		int got_membs, int is_declaration)
+		int got_membs, int is_declaration, int pre_parse, where *w)
 {
 	struct_union_enum_st *sue;
 	int new = 0;
@@ -230,7 +221,10 @@ new_type:
 
 		new = 1;
 
-		where_cc1_current(&sue->where);
+		if(w)
+			memcpy_safe(&sue->where, w);
+		else
+			where_cc1_current(&sue->where);
 	}
 
 	if(members){
@@ -252,7 +246,7 @@ new_type:
 			for(i = 0; decls && decls[i]; i++){
 				decl *d2, *d = decls[i]->struct_member;
 
-				if(d->bits.var.init)
+				if(d->bits.var.init.dinit)
 					die_at(&d->where, "%s member %s is initialised",
 							sue_str(sue), d->spel);
 
@@ -285,8 +279,8 @@ new_type:
 	}
 
 	if(new){
-		if(prim == type_enum && !sue->got_membs)
-			cc1_warn_at(NULL, 0, WARN_PREDECL_ENUM,
+		if(!pre_parse && prim == type_enum && !sue->got_membs)
+			cc1_warn_at(w, predecl_enum,
 					"forward-declaration of enum %s", sue->spel);
 
 		if(stab)

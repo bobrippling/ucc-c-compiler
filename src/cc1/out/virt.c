@@ -21,6 +21,13 @@
 
 #define REMOVE_CONST(t, exp) ((t)(exp))
 
+static int v_unused_reg2(
+		out_ctx *octx,
+		int stack_as_backup, const int fp,
+		struct vreg *out,
+		out_val const *to_replace,
+		int regtest(type *, const struct vreg *));
+
 unsigned char *v_alloc_reg_reserve(out_ctx *octx, int *p)
 {
 	int n = N_SCRATCH_REGS_I + N_SCRATCH_REGS_F;
@@ -40,32 +47,26 @@ int v_is_const_reg(const out_val *v)
 		&& impl_reg_frame_const(&v->bits.regoff.reg, 0);
 }
 
-const out_val *v_to_stack_mem(out_ctx *octx, const out_val *vp, long stack_pos)
+const out_val *v_to_stack_mem(
+		out_ctx *octx, const out_val *val, const out_val *stk)
 {
-	out_val *store = v_new_bp3(octx, NULL, vp->t, stack_pos);
+	out_val *spilt = v_dup_or_reuse(octx, stk, stk->t);
 
-	vp = v_to(octx, vp, TO_CONST | TO_REG);
+	val = v_to(octx, val, TO_CONST | TO_REG);
 
-	out_val_retain(octx, store);
+	out_val_retain(octx, spilt);
+	out_store(octx, spilt, val);
 
-	out_store(octx, store, vp);
+	spilt->type = V_REG_SPILT;
 
-	store->type = V_REG_SPILT;
-
-	return store;
+	return spilt;
 }
 
-void v_reg_to_stack(
-		out_ctx *octx,
-		const struct vreg *vr,
-		type *ty, long where)
+const out_val *v_reg_to_stack_mem(
+		out_ctx *octx, struct vreg const *vr, const out_val *stk)
 {
-	const out_val *reg = v_new_reg(octx, NULL, ty, vr);
-
-	/* value has been stored -
-	 * don't need to flush the pointer we get returned */
-	out_val_release(octx,
-			v_to_stack_mem(octx, reg, -where));
+	const out_val *reg = v_new_reg(octx, NULL, stk->t, vr);
+	return v_to_stack_mem(octx, reg, stk);
 }
 
 static int v_in(const out_val *vp, enum vto to)
@@ -89,28 +90,72 @@ static int v_in(const out_val *vp, enum vto to)
 	return 0;
 }
 
-static ucc_wur const out_val *v_save_reg(out_ctx *octx, const out_val *vp)
+static ucc_wur const out_val *v_spill_reg(
+		out_ctx *octx, const out_val *v_reg)
 {
-	assert(vp->type == V_REG && "not reg");
+	const out_val *stack_pos = out_aalloc(octx,
+			type_size(v_reg->t, NULL),
+			type_align(v_reg->t, NULL),
+			v_reg->t);
 
-	out_comment(octx, "spill @ stack=%u, max=%u",
-			octx->var_stack_sz, octx->max_stack_sz);
-
-	v_alloc_stack(octx, type_size(vp->t, NULL), "save reg");
-
-	out_val_retain(octx, vp);
+	out_val_retain(octx, v_reg);
 
 	{
 		const out_val *spilt = v_to_stack_mem(
-				octx, vp,
-				-octx->var_stack_sz);
+				octx, v_reg, stack_pos);
 
-		out_val_overwrite((out_val *)vp, spilt);
+		out_val_overwrite((out_val *)v_reg, spilt);
 
 		out_val_release(octx, spilt);
 	}
 
-	return vp;
+	return v_reg;
+}
+
+static ucc_wur const out_val *v_save_reg(
+		out_ctx *octx, const out_val *vp, type *fnty)
+{
+	assert(vp->type == V_REG && "not reg");
+
+	if(fnty){
+		/* try callee save */
+		struct vreg cs_reg;
+		int got_reg;
+
+		got_reg = v_unused_reg2(
+				octx, /*stack*/0, type_is_floating(vp->t),
+				&cs_reg, NULL, impl_reg_is_callee_save);
+
+		if(got_reg){
+			struct vreg *p;
+			int already_used = 0;
+
+			impl_reg_cp_no_off(octx, vp, &cs_reg);
+			memcpy_safe(&((out_val *)vp)->bits.regoff.reg, &cs_reg);
+
+			for(p = octx->used_callee_saved; p && p->is_float != 2; p++){
+				if(vreg_eq(p, &cs_reg)){
+					already_used = 1;
+					break;
+				}
+			}
+
+			if(!already_used){
+				size_t current = p ? p - octx->used_callee_saved : 0;
+
+				octx->used_callee_saved = urealloc1(
+						octx->used_callee_saved,
+						(current + 2) * sizeof *octx->used_callee_saved);
+
+				memcpy_safe(&octx->used_callee_saved[current], &cs_reg);
+				octx->used_callee_saved[current + 1].is_float = 2;
+			}
+
+			return vp;
+		}
+	}
+
+	return v_spill_reg(octx, vp);
 }
 
 const out_val *v_to(out_ctx *octx, const out_val *vp, enum vto loc)
@@ -128,7 +173,7 @@ const out_val *v_to(out_ctx *octx, const out_val *vp, enum vto loc)
 
 	if(loc & TO_MEM){
 		vp = v_to_reg(octx, vp);
-		return v_save_reg(octx, vp);
+		return v_save_reg(octx, vp, NULL);
 	}
 
 	assert(0 && "can't satisfy v_to");
@@ -159,7 +204,7 @@ static ucc_wur const out_val *v_freeup_regp(out_ctx *octx, const out_val *vp)
 
 	}else{
 		/* no free registers, save this one to the stack and mutate vp */
-		return out_val_retain(octx, v_save_reg(octx, vp));
+		return out_val_retain(octx, v_save_reg(octx, vp, octx->current_fnty));
 		/* vp is now a stack value */
 	}
 }
@@ -189,11 +234,12 @@ void v_freeup_reg(out_ctx *octx, const struct vreg *r)
 		out_val_consume(octx, v_freeup_regp(octx, v));
 }
 
-int v_unused_reg(
+static int v_unused_reg2(
 		out_ctx *octx,
 		int stack_as_backup, const int fp,
 		struct vreg *out,
-		out_val const *to_replace)
+		out_val const *to_replace,
+		int regtest(type *, const struct vreg *))
 {
 	unsigned char *used;
 	int nused;
@@ -232,7 +278,7 @@ int v_unused_reg(
 		if(this->retains
 		&& this->type == V_REG
 		&& this->bits.regoff.reg.is_float == fp
-		&& impl_reg_is_scratch(&this->bits.regoff.reg))
+		&& regtest(octx->current_fnty, &this->bits.regoff.reg))
 		{
 			if(!first)
 				first = this;
@@ -247,8 +293,10 @@ int v_unused_reg(
 			out->is_float = fp;
 			impl_scratch_to_reg(i, out);
 
-			free(used);
-			return 1;
+			if(regtest(octx->current_fnty, out)){
+				free(used);
+				return 1;
+			}
 		}
 	}
 
@@ -267,6 +315,17 @@ int v_unused_reg(
 		return 1;
 	}
 	return 0;
+}
+
+int v_unused_reg(
+		out_ctx *octx,
+		int stack_as_backup, const int fp,
+		struct vreg *out,
+		out_val const *to_replace)
+{
+	return v_unused_reg2(
+			octx, stack_as_backup, fp, out, to_replace,
+			impl_reg_is_scratch);
 }
 
 const out_val *v_to_reg_given(
@@ -383,7 +442,7 @@ void v_save_regs(
 						out_comment(octx, "not saving const-reg %d", v->bits.regoff.reg.idx);
 
 				}else if(func_ty
-				&& impl_reg_is_callee_save(&v->bits.regoff.reg, func_ty))
+				&& impl_reg_is_callee_save(octx->current_fnty, &v->bits.regoff.reg))
 				{
 					/* only comment for non-const regs */
 					out_comment(octx, "not saving reg %d - callee save",
@@ -410,15 +469,19 @@ void v_save_regs(
 		if(save){
 			const out_val *new;
 
-			assert(v->retains == 1 && "v_save_regs(): too heavily retained v");
+			/* other out_val:s can be as heavily retained as they want,
+			 * we still change the underlying val without any effect */
 
-			new = v_save_reg(octx, v);
+			new = v_save_reg(octx, v, func_ty);
 
-			out_val_overwrite(v, new);
-			/* transfer retain-ness to 'v' from 'new' */
-			out_val_release(octx, new);
-			assert(v->retains == 0);
-			v->retains = 1;
+			if(new != v){
+				out_val_overwrite(v, new);
+				/* transfer retain-ness to 'v' from 'new' */
+				out_val_release(octx, new);
+				out_val_retain(octx, v);
+			}else{
+				/* moved to callee save reg */
+			}
 		}
 	}
 }
@@ -431,100 +494,6 @@ void v_reserve_reg(out_ctx *octx, const struct vreg *r)
 void v_unreserve_reg(out_ctx *octx, const struct vreg *r)
 {
 	octx->reserved_regs[impl_reg_to_idx(r)]--;
-}
-
-void v_stack_adj(out_ctx *octx, unsigned amt, int sub)
-{
-	out_flush_volatile(
-			octx,
-			out_op(
-				octx, sub ? op_minus : op_plus,
-				v_new_sp(octx, NULL),
-				out_new_l(
-					octx,
-					type_nav_btype(cc1_type_nav, type_intptr_t),
-					amt)));
-}
-
-static void octx_set_stack_sz(out_ctx *octx, unsigned new)
-{
-	octx->var_stack_sz = new;
-
-	if(octx->var_stack_sz > octx->max_stack_sz)
-		octx->max_stack_sz = octx->var_stack_sz;
-}
-
-unsigned v_alloc_stack2(
-		out_ctx *octx,
-		const unsigned sz_initial, int noop, const char *desc)
-{
-	unsigned sz_rounded = sz_initial;
-
-	if(sz_initial){
-		/* must be a multiple of mstack_align.
-		 * assume stack_sz is aligned, and just
-		 * align what we add to it
-		 */
-		sz_rounded = pack_to_align(sz_initial, cc1_mstack_align);
-
-		/* if it changed, we need to realign the stack */
-		if(!noop || sz_rounded != sz_initial){
-			if(fopt_mode & FOPT_VERBOSE_ASM){
-				out_comment(octx, "stack alignment for %s (%u -> %u)",
-						desc, octx->var_stack_sz, octx->var_stack_sz + sz_rounded);
-				out_comment(octx, "alloc_n by %u (-> %u), padding with %u",
-						sz_initial, octx->var_stack_sz + sz_initial,
-						sz_rounded - sz_initial);
-			}
-
-			/* no actual stack adjustments here - done purely in prologue */
-		}
-
-		octx_set_stack_sz(octx, octx->var_stack_sz + sz_rounded);
-
-		if(noop)
-			octx->stack_n_alloc += sz_initial;
-	}
-
-	return sz_rounded;
-}
-
-unsigned v_alloc_stack_n(out_ctx *octx, unsigned sz, const char *desc)
-{
-	return v_alloc_stack2(octx, sz, 1, desc);
-}
-
-unsigned v_alloc_stack(out_ctx *octx, unsigned sz, const char *desc)
-{
-	return v_alloc_stack2(octx, sz, 0, desc);
-}
-
-unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask)
-{
-	if(force_mask || (octx->var_stack_sz & (align - 1))){
-		type *const ty = type_nav_btype(cc1_type_nav, type_intptr_t);
-		const unsigned new_sz = pack_to_align(octx->var_stack_sz, align);
-		const unsigned added = new_sz - octx->var_stack_sz;
-		const out_val *sp = v_new_sp(octx, NULL);
-
-		assert(sp->retains == 1);
-
-		sp = out_op(
-				octx, op_minus,
-				sp,
-				out_new_l(octx, ty, added));
-
-		octx_set_stack_sz(octx, new_sz);
-
-		if(force_mask){
-			sp = out_op(octx, op_and, sp, out_new_l(octx, ty, align - 1));
-		}
-		out_val_release(octx, sp);
-		assert(sp->retains == 0);
-		out_comment(octx, "stack aligned to %u bytes", align);
-		return added;
-	}
-	return 0;
 }
 
 enum flag_cmp v_inv_cmp(enum flag_cmp cmp, int invert_eq)

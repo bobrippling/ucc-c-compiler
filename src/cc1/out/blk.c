@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <stdarg.h>
+#include <string.h>
 #include <assert.h>
 
 #include "../../util/alloc.h"
@@ -8,11 +9,13 @@
 
 #include "../type.h"
 #include "../num.h"
+#include "../str.h" /* str_add_escape */
 
 #include "val.h"
 #include "ctx.h"
 #include "out.h" /* out_blk_new() */
 #include "lbl.h"
+#include "dbg.h"
 
 #include "blk.h"
 #include "impl_jmp.h"
@@ -105,21 +108,29 @@ static void bfs_block(out_blk *blk, struct flush_state *st)
 		case BLK_COND:
 			blk_codegen(blk, st);
 			fprintf(st->f, "\t%s\n", blk->bits.cond.insn);
+
+			/* we always jump to the true block if the conditional failed */
 			blk_jmpnext(blk->bits.cond.if_1_blk, st);
 
-			bfs_block(blk->bits.cond.if_1_blk, st);
-			bfs_block(blk->bits.cond.if_0_blk, st);
+			/* if it's unlikely, we want the false block already in the pipeline */
+			if(blk->bits.cond.unlikely){
+				bfs_block(blk->bits.cond.if_0_blk, st);
+				bfs_block(blk->bits.cond.if_1_blk, st);
+			}else{
+				bfs_block(blk->bits.cond.if_1_blk, st);
+				bfs_block(blk->bits.cond.if_0_blk, st);
+			}
 			break;
 	}
 }
 
-void blk_flushall(out_ctx *octx, char *end_dbg_lbl)
+void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl)
 {
 	struct flush_state st = { 0 };
 	out_blk **must_i;
 
 	st.f = cc_out[SECTION_TEXT];
-	bfs_block(octx->first_blk, &st);
+	bfs_block(first, &st);
 
 	for(must_i = octx->mustgen; must_i && *must_i; must_i++)
 		bfs_block(*must_i, &st);
@@ -132,7 +143,8 @@ void blk_flushall(out_ctx *octx, char *end_dbg_lbl)
 
 void blk_terminate_condjmp(
 		out_ctx *octx, char *condinsn,
-		out_blk *condto, out_blk *uncondto)
+		out_blk *condto, out_blk *uncondto,
+		int unlikely)
 {
 	out_blk *current = octx->current_blk;
 
@@ -148,6 +160,7 @@ void blk_terminate_condjmp(
 	current->bits.cond.insn = condinsn;
 	current->bits.cond.if_0_blk = condto;
 	current->bits.cond.if_1_blk = uncondto;
+	current->bits.cond.unlikely = unlikely;
 
 	octx->current_blk = NULL;
 }

@@ -420,6 +420,12 @@ char *eval_expand_macros(char *line)
 			break;
 
 		end = word_end(line);
+
+		if(*end == '"' && line == end - 1 && *line == 'L'){
+			line = end;
+			continue;
+		}
+
 		save = *end, *end = '\0';
 		m = macro_find(line);
 		*end = save;

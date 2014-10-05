@@ -35,7 +35,8 @@ static const struct
 	{ "__STDC_NO_ATOMICS__" , "1" }, /* _Atomic */
 	{ "__STDC_NO_THREADS__" , "1" }, /* _Thread_local */
 	{ "__STDC_NO_COMPLEX__", "1" }, /* _Complex */
-	{ "__STDC_NO_VLA__", "1" }, /* vlas */
+
+	/*{ "__STDC_NO_VLA__", "1" }, vla are implemented */
 
 #define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
 
@@ -76,6 +77,7 @@ char **cd_stack = NULL;
 
 int option_line_info = 1;
 int option_trigraphs = 0, option_digraphs = 0;
+static int option_trace = 0;
 
 enum wmode wmode =
 	  WWHITESPACE
@@ -84,7 +86,9 @@ enum wmode wmode =
 	| WPASTE
 	| WFINALESCAPE
 	| WMULTICHAR
-	| WQUOTE;
+	| WQUOTE
+	| WHASHWARNING
+	| WBACKSLASH_SPACE_NEWLINE;
 
 enum comment_strip strip_comments = STRIP_ALL;
 
@@ -93,7 +97,6 @@ static const struct
 	const char *warn, *desc;
 	enum wmode or_mask;
 } warns[] = {
-	{ "all", "turn on all warnings", ~0U },
 	{ "traditional", "warn about # in the first column", WTRADITIONAL },
 	{ "undef", "warn about undefined macros in #if and #undef", WUNDEF_IN_IF | WUNDEF_NDEF },
 	{ "undef-in-if", "warn about undefined macros in #if/elif", WUNDEF_IN_IF },
@@ -105,9 +108,29 @@ static const struct
 	{ "empty-arg", "warn on empty argument to single-arg macro", WEMPTY_ARG },
 	{ "paste", "warn when pasting doesn't make a token", WPASTE },
 	{ "uncalled-macro", "warn when a function-macro is mentioned without ()", WUNCALLED_FN },
+	{ "#warning", "emit #warnings", WHASHWARNING },
+	{ "backslash-newline-space", "space between backslash and newline", WBACKSLASH_SPACE_NEWLINE },
+
+	{ "everything", "everything", ~0 },
+
+	{
+		"all", "Most warnings", WREDEF | WWHITESPACE | WTRAILING | WPASTE |
+			WFINALESCAPE | WMULTICHAR | WHASHWARNING
+	},
 };
 
 #define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)
+
+void trace(const char *fmt, ...)
+{
+	va_list l;
+	if(!option_trace)
+		return;
+
+	va_start(l, fmt);
+	vfprintf(stderr, fmt, l);
+	va_end(l);
+}
 
 void debug_push_line(char *s)
 {
@@ -185,7 +208,7 @@ int main(int argc, char **argv)
 {
 	char *infname, *outfname;
 	int ret = 0;
-	enum { NONE, MACROS, STATS, DEPS } dump = NONE;
+	enum { NONE, MACROS, MACROS_WHERE, STATS, DEPS } dump = NONE;
 	int i;
 	int platform_win32 = 0;
 	int freestanding = 0;
@@ -322,14 +345,22 @@ int main(int argc, char **argv)
 				break;
 
 			case 'd':
-				if(argv[i][3])
+				if(argv[i][2] && argv[i][3])
 					goto defaul;
 				switch(argv[i][2]){
 					case 'M':
 					case 'S':
+					case 'W':
 						/* list #defines */
-						dump = argv[i][2] == 'M' ? MACROS : STATS;
+						dump = (
+								argv[i][2] == 'M' ? MACROS :
+								argv[i][2] == 'S' ? STATS :
+								MACROS_WHERE);
+
 						no_output = 1;
+						break;
+					case '\0':
+						option_trace = 1;
 						break;
 					default:
 						goto usage;
@@ -375,6 +406,13 @@ int main(int argc, char **argv)
 				/* if not found, we ignore - it was intended for cc1 */
 				break;
 			}
+
+			case 'w':
+				if(!argv[i][2]){
+					wmode = 0;
+					break;
+				}
+				/* fall */
 
 
 			default:
@@ -450,7 +488,8 @@ defaul:
 		case NONE:
 			break;
 		case MACROS:
-			macros_dump();
+		case MACROS_WHERE:
+			macros_dump(dump == MACROS_WHERE);
 			break;
 		case STATS:
 			macros_stats();
@@ -479,6 +518,8 @@ usage:
 				"  -dM: debug output\n"
 				"  -dS: print macro usage stats\n"
 				"  -MM: generate Makefile dependencies\n"
+				"  -C: don't discard comments, except in macros\n"
+				"  -CC: don't discard comments, even in macros\n"
 				"  -trigraphs: enable trigraphs\n"
 				"  -digraphs: enable digraphs\n"
 				, stderr);

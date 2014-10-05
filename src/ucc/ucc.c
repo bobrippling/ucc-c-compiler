@@ -64,6 +64,7 @@ static int unlink_tmps = 1;
 static int gdebug = 0, generated_temp_obj = 0;
 const char *argv0;
 char *wrapper;
+int fsystem_cpp;
 
 static void unlink_files(void)
 {
@@ -367,6 +368,7 @@ int main(int argc, char **argv)
 	char **args[4] = { 0 };
 	char *output = NULL;
 	char *backend = NULL;
+	const char **isystems = NULL;
 	struct
 	{
 		char optn;
@@ -429,24 +431,37 @@ int main(int argc, char **argv)
 
 					/* also add to cpp */
 					ADD_ARG(mode_preproc);
+					ADD_ARG(mode_compile);
+					continue;
 				}
 
 				case 'f':
+					/* fopts for ucc: */
 					if(!strcmp(arg, "-fsyntax-only")){
 						syntax_only = 1;
 						continue;
 					}
-					else if(!strcmp(argv[i], "-ffreestanding")){
+					if(!strcmp(argv[i], "-fsystem-cpp")){
+						fsystem_cpp = 1;
+						continue;
+					}
+
+					/* pull out some that cpp wants too: */
+					if(!strcmp(argv[i], "-ffreestanding")
+					|| !strncmp(argv[i], "-fmessage-length=", 17))
+					{
 						/* preproc gets this too */
 						ADD_ARG(mode_preproc);
 					}
-					else if(!strncmp(argv[i], "-fmessage-length=", 17)){
-						ADD_ARG(mode_preproc);
-					}
+
+					/* pass the rest onto cc1 */
+					ADD_ARG(mode_compile);
+					continue;
 
 				case 'w':
-					if(argv[i][1] == 'w' && argv[i][2])
-						goto word;
+					if(argv[i][2])
+						goto word; /* -wabc... */
+					ADD_ARG(mode_preproc); /* -w */
 				case 'm':
 					ADD_ARG(mode_compile);
 					continue;
@@ -470,7 +485,14 @@ arg_cpp:
 					}
 					continue;
 				case 'I':
-					dynarray_add(&includes, ustrdup(arg));
+					if(arg[2]){
+						dynarray_add(&includes, ustrdup(arg));
+					}else{
+						if(!argv[++i])
+							die("-I needs an argument");
+
+						dynarray_add(&includes, ustrprintf("-I%s", argv[i]));
+					}
 					continue;
 
 arg_asm:
@@ -552,6 +574,8 @@ word:
 						ADD_ARG(mode_compile);
 						ADD_ARG(mode_preproc);
 					}
+					else if(!strcmp(argv[i], "-pedantic"))
+						ADD_ARG(mode_compile);
 					else if(!strcmp(argv[i], "-nostdlib"))
 						gopts.nostdlib = 1;
 					else if(!strcmp(argv[i], "-nostartfiles"))
@@ -572,8 +596,14 @@ word:
 						ADD_ARG(mode_preproc);
 					else if(!strcmp(argv[i], "-digraphs"))
 						ADD_ARG(mode_preproc);
-					else if(!strcmp(argv[i], "--no-rm"))
+					else if(!strcmp(argv[i], "-save-temps"))
 						unlink_tmps = 0;
+					else if(!strcmp(argv[i], "-isystem")){
+						const char *sysinc = argv[++i];
+						if(!sysinc)
+							goto missing_arg;
+						dynarray_add(&isystems, sysinc);
+					}
 					else
 						break;
 
@@ -634,9 +664,34 @@ input:	dynarray_add(&inputs, argv[i]);
 	}
 
 	/* default include paths */
-	if(stdinc)
-		add_cfg_args(&args[mode_preproc], UCC_INC);
-	/* custom incldue paths */
+	if(stdinc){
+		char *const dup = ustrdup(UCC_INC);
+		char *p;
+
+		for(p = strtok(dup, ":"); p; p = strtok(NULL, ":")){
+			char *inc = ustrprintf("-I%s", p);
+			dynarray_add(&args[mode_preproc], inc);
+
+			/* cc1 needs include paths so it knows system headers
+			 * (for warning suppression) */
+			dynarray_add(&args[mode_compile], ustrdup(inc));
+		}
+
+		free(dup);
+	}
+	if(isystems){
+		const char **i;
+		for(i = isystems; *i; i++){
+			/* cpp doesn't care if it's system or not */
+			dynarray_add(&args[mode_preproc], ustrprintf("-I%s", *i));
+			/* cc1 only wants system - can use -I too */
+			dynarray_add(&args[mode_compile], ustrprintf("-I%s", *i));
+		}
+
+		dynarray_free(const char **, &isystems, NULL);
+	}
+
+	/* custom include paths */
 	if(includes)
 		dynarray_add_tmparray(&args[mode_preproc], includes);
 

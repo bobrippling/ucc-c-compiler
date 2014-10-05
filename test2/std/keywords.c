@@ -19,6 +19,11 @@
 // RUN: %ucc %s -fsyntax-only -DEXT -std=c99 -fasm
 // RUN: %ucc %s -fsyntax-only -DEXT -std=c11 -fasm
 //
+// should accept gnu keywords with -fgnu-keywords
+// RUN: %ucc %s -fsyntax-only -DEXT -std=c89 -fgnu-keywords
+// RUN: %ucc %s -fsyntax-only -DEXT -std=c99 -fgnu-keywords
+// RUN: %ucc %s -fsyntax-only -DEXT -std=c11 -fgnu-keywords
+//
 // should accept gnu keywords with -std=gnu*
 // RUN: %ucc %s -fsyntax-only -DEXT -std=gnu89
 // RUN: %ucc %s -fsyntax-only -DEXT -std=gnu99

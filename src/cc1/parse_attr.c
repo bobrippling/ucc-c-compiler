@@ -12,7 +12,12 @@
 #include "tokenise.h"
 #include "tokconv.h"
 
+#include "fold.h"
+
 #include "cc1_where.h"
+#include "warn.h"
+
+#include "fold.h"
 
 #include "parse_expr.h"
 
@@ -44,7 +49,8 @@ static attribute *parse_attr_format(symtable *scope)
 	}else if(CHECK("scanf")){
 		fmt = attr_fmt_scanf;
 	}else{
-		warn_at(NULL, "unknown format func \"%s\"", func);
+		cc1_warn_at(NULL, attr_format_unknown,
+				"unknown format func \"%s\"", func);
 		parse_attr_bracket_chomp(1);
 		return NULL;
 	}
@@ -85,7 +91,8 @@ static attribute *parse_attr_section()
 	for(i = 0; i < len; i++)
 		if(!isprint(func[i])){
 			if(i < len - 1 || func[i] != '\0')
-				warn_at(NULL, "character 0x%x detected in section", func[i]);
+				cc1_warn_at(NULL, attr_section_badchar,
+						"character 0x%x detected in section", func[i]);
 			break;
 		}
 
@@ -114,7 +121,9 @@ static attribute *parse_attr_nonnull()
 				int n = currentval.val.i;
 				if(n <= 0){
 					/* shouldn't ever be negative */
-					warn_at(NULL, "%s nonnull argument ignored", n < 0 ? "negative" : "zero");
+					cc1_warn_at(NULL,
+							attr_nonnull_bad,
+							"%s nonnull argument ignored", n < 0 ? "negative" : "zero");
 					had_error = 1;
 				}else{
 					/* implicitly disallow functions with >32 args */
@@ -148,6 +157,9 @@ static expr *optional_parened_expr(symtable *scope)
 			goto out;
 
 		e = PARSE_EXPR_NO_COMMA(scope, 0);
+		FOLD_EXPR(e, scope);
+
+		FOLD_EXPR(e, scope);
 
 		EAT(token_close_paren);
 
@@ -217,6 +229,7 @@ EMPTY(attr_noderef)
 EMPTY(attr_packed)
 EMPTY(attr_weak)
 EMPTY(attr_ucc_debug)
+EMPTY(attr_desig_init)
 
 #undef EMPTY
 
@@ -251,6 +264,7 @@ static struct
 	ATTR(aligned),
 	ATTR(weak),
 	ATTR(cleanup),
+	{ "designated_init", parse_attr_desig_init },
 	{ "__ucc_debug", parse_attr_ucc_debug },
 
 	ATTR(cdecl),
@@ -267,16 +281,18 @@ static struct
 
 static void parse_attr_bracket_chomp(int had_open_paren)
 {
-	if(!had_open_paren && accept(token_open_paren))
-		had_open_paren = 1;
+	if(had_open_paren || accept(token_open_paren)){
+		for(;;){
+			if(accept(token_open_paren))
+				parse_attr_bracket_chomp(1); /* nest */
 
-	if(had_open_paren){
-		parse_attr_bracket_chomp(0); /* nest */
+			if(accept(token_close_paren))
+				break;
+			else if(curtok == token_eof)
+				break; /* failsafe */
 
-		while(curtok != token_close_paren)
 			EAT(curtok);
-
-		EAT(token_close_paren);
+		}
 	}
 }
 
@@ -294,16 +310,20 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 		}
 	}
 
-	glob = symtab_global(scope);
-	if(!dynmap_exists(char *, glob->unrecog_attrs, (char *)ident)){
-		char *dup = ustrdup(ident);
+	/* unrecognised - only do the warning (and map checking) if non system-header */
+	if(!where_in_sysheader(where_cc1_current(NULL))){
+		glob = symtab_global(scope);
+		if(!dynmap_exists(char *, glob->unrecog_attrs, (char *)ident)){
+			char *dup = ustrdup(ident);
 
-		if(!glob->unrecog_attrs)
-			glob->unrecog_attrs = dynmap_new((dynmap_cmp_f *)strcmp, dynmap_strhash);
+			if(!glob->unrecog_attrs)
+				glob->unrecog_attrs = dynmap_new(char *, strcmp, dynmap_strhash);
 
-		dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
+			dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
 
-		warn_at(NULL, "ignoring unrecognised attribute \"%s\"", ident);
+			cc1_warn_at(NULL, attr_unknown,
+					"ignoring unrecognised attribute \"%s\"", ident);
+		}
 	}
 
 	/* if there are brackets, eat them all */

@@ -77,10 +77,7 @@ void decl_init_brace_up_fold(
 /* used for default initialising tenatives */
 void decl_default_init(struct decl *d, struct symtable *stab);
 
-/* creates assignment exprs - only used for local inits */
-void decl_init_create_assignments_base(
-		decl_init *init,
-		struct type *tfor, struct expr *base,
-		struct stmt *code);
+void decl_init_create_assignments_base_and_fold(
+		struct decl *d, struct expr *base, struct symtable *scope);
 
 #endif

@@ -2,7 +2,7 @@ include ../src_config.mk
 include ../../config.mk
 
 OBJ = platform.o util.o alloc.o dynarray.o dynmap.o where.o str.o \
-			std.o escape.o warn.o path.o
+			std.o escape.o math.o warn.o path.o
 SRC = $(OBJ:.o=.c)
 
 BUILD_CC = ${CC} ${CFLAGS} -c -o $@ $<
@@ -25,6 +25,8 @@ std.o: std.c
 	${BUILD_CC}
 escape.o: escape.c
 	${BUILD_CC}
+math.o: math.c
+	${BUILD_CC}
 warn.o: warn.c
 	${BUILD_CC}
 path.o: path.c
@@ -39,7 +41,7 @@ deps: Makefile.dep
 
 OBJ_TEST = test.o path.o dynarray.o alloc.o dynmap.o
 test: ${OBJ_TEST}
-	${CC} -o $@ ${OBJ_TEST}
+	${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
 
 check: test
 	./test

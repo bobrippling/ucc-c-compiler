@@ -142,7 +142,8 @@ long read_char_single(char *start, char **end, unsigned off)
 	if(c == '\\'){
 		char esc = tolower(*start);
 
-		if(esc == 'x' || esc == 'b' || isoct(esc)){
+		/* no binary here - only in numeric constants */
+		if(esc == 'x' || isoct(esc)){
 			int of; /* XXX: overflow ignored */
 
 			if(esc == 'x' || esc == 'b')
