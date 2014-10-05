@@ -25,10 +25,10 @@ sym *sym_new(decl *d, enum sym_type t)
 	return s;
 }
 
-sym *sym_new_stab(symtable *stab, decl *d, enum sym_type t)
+sym *sym_new_and_prepend_decl(symtable *stab, decl *d, enum sym_type t)
 {
 	sym *s = sym_new(d, t);
-	dynarray_add(&stab->decls, d);
+	dynarray_prepend(&stab->decls, d);
 	return s;
 }
 
@@ -90,7 +90,9 @@ int symtab_nested_internal(symtable *parent, symtable *nest)
 	return 0;
 }
 
-decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
+decl *symtab_search_d_exclude(
+		symtable *tab, const char *spel, symtable **pin,
+		decl *exclude)
 {
 	decl **const decls = tab->decls;
 	int i;
@@ -100,7 +102,7 @@ decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
 	 */
 	for(i = dynarray_count(decls) - 1; i >= 0; i--){
 		decl *d = decls[i];
-		if(d->spel && !strcmp(spel, d->spel)){
+		if(d != exclude && d->spel && !strcmp(spel, d->spel)){
 			if(pin)
 				*pin = tab;
 			return d;
@@ -108,10 +110,15 @@ decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
 	}
 
 	if(tab->parent)
-		return symtab_search_d(tab->parent, spel, pin);
+		return symtab_search_d_exclude(tab->parent, spel, pin, exclude);
 
 	return NULL;
 
+}
+
+decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
+{
+	return symtab_search_d_exclude(tab, spel, pin, NULL);
 }
 
 sym *symtab_search(symtable *tab, const char *sp)
@@ -120,7 +127,7 @@ sym *symtab_search(symtable *tab, const char *sp)
 	if(!d)
 		return NULL;
 
-	UCC_ASSERT(d->sym, "no symbol for decl");
+	/* if it doesn't have a symbol, we haven't finished parsing yet */
 	return d->sym;
 }
 
@@ -139,7 +146,7 @@ static void label_init(symtable **stab)
 	*stab = symtab_func_root(*stab);
 	if((*stab)->labels)
 		return;
-	(*stab)->labels = dynmap_new((dynmap_cmp_f *)strcmp, dynmap_strhash);
+	(*stab)->labels = dynmap_new(char *, strcmp, dynmap_strhash);
 }
 
 void symtab_label_add(symtable *stab, label *lbl)

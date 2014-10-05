@@ -1,6 +1,6 @@
 CFLAGS = -g -Wall -Wextra -pedantic -std=c99 \
          -Wno-char-subscripts -Wno-format-extra-args \
-				 -Wmissing-prototypes
+				 -Wmissing-prototypes -Wno-missing-braces
 
 #-Wconversion          \
 #-Wshadow              \

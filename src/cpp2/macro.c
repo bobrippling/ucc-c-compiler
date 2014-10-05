@@ -38,11 +38,14 @@ static macro *macro_add_nodup(const char *nam, char *val, int depth)
 	m = macro_find(nam);
 
 	if(m){
+		if(!m->val)
+			CPP_DIE("redefining \"%s\"", m->nam);
+
 		/* only warn if they're different */
 		if(strcmp(val, m->val)){
 			char buf[WHERE_BUF_SIZ];
 
-			CPP_WARN(WREDEF, "cpp: warning: redefining \"%s\"\n"
+			CPP_WARN(WREDEF, "redefining \"%s\"\n"
 					"%s: note: previous definition here",
 					nam, where_str_r(buf, &m->where));
 		}
@@ -117,10 +120,13 @@ void macro_use(macro *m, int adj)
 	m->use_dump += adj;
 }
 
-void macros_dump(void)
+void macros_dump(int show_where)
 {
 	ITER_MACROS(m){
 		if(m->val){
+			if(show_where)
+				printf("%s: ", where_str(&m->where));
+
 			printf("#define %s", m->nam);
 			switch(m->type){
 				case FUNC:

@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "expr_addr.h"
@@ -16,9 +17,7 @@ const char *str_expr_addr()
 
 int expr_is_addressable(expr *e)
 {
-	return expr_is_lval(e)
-		|| type_is(e->tree_type, type_array)
-		|| type_is(e->tree_type, type_func);
+	return expr_is_lval(e) || type_is(e->tree_type, type_func);
 }
 
 void fold_expr_addr(expr *e, symtable *stab)
@@ -39,24 +38,27 @@ void fold_expr_addr(expr *e, symtable *stab)
 		/* if it's an identifier, act as a read */
 		fold_inc_writes_if_sym(e->lhs, stab);
 
-		fold_expr_no_decay(e->lhs, stab);
+		fold_expr_nodecay(e->lhs, stab);
+
+		e->tree_type = type_ptr_to(e->lhs->tree_type);
 
 		/* can address: lvalues, arrays and functions */
 		if(!expr_is_addressable(e->lhs)){
-			die_at(&e->where, "can't take the address of %s (%s)",
+			warn_at_print_error(&e->where, "can't take the address of %s (%s)",
 					e->lhs->f_str(), type_to_str(e->lhs->tree_type));
+			fold_had_error = 1;
+			return;
 		}
 
 		if(expr_kind(e->lhs, identifier)){
-			decl *d = e->lhs->bits.ident.sym->decl;
+			decl *d = e->lhs->bits.ident.bits.ident.sym->decl;
 
 			if((d->store & STORE_MASK_STORE) == store_register)
 				die_at(&e->lhs->where, "can't take the address of register");
 		}
 
-		fold_check_expr(e->lhs, FOLD_CHK_NO_BITFIELD, "address-of");
-
-		e->tree_type = type_ptr_to(e->lhs->tree_type);
+		fold_check_expr(e->lhs, FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_BITFIELD,
+				"address-of");
 	}
 }
 
@@ -80,7 +82,9 @@ const out_val *gen_expr_addr(expr *e, out_ctx *octx)
 					"&[not-identifier], got %s",
 					sub->f_str());
 
-			return out_new_sym(octx, sub->bits.ident.sym);
+			assert(sub->bits.ident.type == IDENT_NORM);
+
+			return out_new_sym(octx, sub->bits.ident.bits.ident.sym);
 		}else{
 			return lea_expr(sub, octx);
 		}

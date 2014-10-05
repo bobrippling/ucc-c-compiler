@@ -110,16 +110,17 @@ int expr_is_lval(expr *e)
 	if(!e->f_lea || e->lvalue_internal)
 		return 0;
 
-	/* special case:
-	 * (a = b) = c
-	 * ^~~~~~~ not an lvalue, but internally we handle it as one
-	 */
-	if(expr_kind(e, assign) && type_is_s_or_u(e->tree_type))
-		return 0;
+	return e->f_islval && e->f_islval(e);
+}
 
-	if(type_is_array(e->tree_type))
-		return 0;
+int expr_is_lval_unless_array(expr *e)
+{
+	return !type_is_array(e->tree_type);
+}
 
+int expr_is_lval_always(expr *e)
+{
+	(void)e;
 	return 1;
 }
 

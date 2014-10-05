@@ -16,6 +16,9 @@
 
 void funcargs_free(funcargs *args, int free_decls)
 {
+	if(--args->retains > 0)
+		return;
+
 	if(free_decls && args){
 		int i;
 		for(i = 0; args->arglist[i]; i++)
@@ -90,6 +93,7 @@ funcargs *funcargs_new()
 {
 	funcargs *r = umalloc(sizeof *funcargs_new());
 	where_cc1_current(&r->where);
+	r->retains = 1;
 	return r;
 }
 

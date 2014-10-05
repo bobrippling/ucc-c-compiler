@@ -8,6 +8,7 @@ strlen2(char *s)
 	return i;
 }
 
+// this also checks callee-saving with variadic stack layout
 printf2(char *fmt, ...)
 {
 	__builtin_va_list l;

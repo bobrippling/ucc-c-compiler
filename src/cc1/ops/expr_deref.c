@@ -26,11 +26,8 @@ void fold_expr_deref(expr *e, symtable *stab)
 	}
 
 	if(expr_attr_present(ptr, attr_noderef))
-		warn_at(&ptr->where, "dereference of noderef expression");
-
-	/* check for *&x */
-	if(expr_kind(ptr, addr) && !ptr->expr_addr_implicit)
-		warn_at(&ptr->where, "possible optimisation for *& expression");
+		cc1_warn_at(&ptr->where, attr_noderef,
+				"dereference of noderef expression");
 
 	fold_check_bounds(ptr, 0);
 
@@ -69,6 +66,15 @@ static void const_expr_deref(expr *e, consty *k)
 		case CONST_STRK:
 		{
 			stringlit *sv = k->bits.str->lit;
+
+			/* check type we're supposed to be dereferencing as,
+			 * should be char *
+			 */
+			if(!type_is_primitive_anysign(type_is_ptr(from->tree_type), type_nchar)){
+				k->type = CONST_NO;
+				break;
+			}
+
 			if(k->offset < 0 || (unsigned)k->offset >= sv->len){
 				k->type = CONST_NO;
 			}else{
@@ -102,9 +108,16 @@ static void const_expr_deref(expr *e, consty *k)
 	}
 }
 
+static int expr_deref_islval(expr *e)
+{
+	(void)e;
+	return 1;
+}
+
 void mutate_expr_deref(expr *e)
 {
 	e->f_const_fold = const_expr_deref;
+	e->f_islval = expr_deref_islval;
 
 	/* unconditionally an lvalue */
 	e->f_lea = gen_expr_deref_lea;

@@ -201,16 +201,16 @@ expr *parse_any_args(symtable *scope)
 
 static void fold_memset(expr *e, symtable *stab)
 {
-	fold_expr_no_decay(e->lhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
 
 	if(!expr_is_addressable(e->lhs))
 		ICE("can't memset %s - not addressable", e->lhs->f_str());
 
 	if(e->bits.builtin_memset.len == 0)
-		warn_at(&e->where, "zero size memset");
+		cc1_warn_at(&e->where, builtin_memset_bad, "zero size memset");
 
 	if((unsigned)e->bits.builtin_memset.ch > 255)
-		warn_at(&e->where, "memset with value > UCHAR_MAX");
+		cc1_warn_at(&e->where, builtin_memset_bad, "memset with value > UCHAR_MAX");
 
 	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
@@ -310,8 +310,8 @@ static expr *parse_memset(void)
 
 static void fold_memcpy(expr *e, symtable *stab)
 {
-	fold_expr_no_decay(e->lhs, stab);
-	fold_expr_no_decay(e->rhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
+	fold_expr_nodecay(e->rhs, stab);
 
 	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
@@ -590,7 +590,9 @@ static void fold_expect(expr *e, symtable *stab)
 
 	const_fold(e->funcargs[1], &k);
 	if(k.type != CONST_NUM)
-		warn_at(&e->where, "%s second argument isn't a constant value", BUILTIN_SPEL(e->expr));
+		cc1_warn_at(&e->where, builtin_expect_nonconst,
+				"%s second argument isn't a constant value",
+				BUILTIN_SPEL(e->expr));
 
 	e->tree_type = e->funcargs[0]->tree_type;
 	wur_builtin(e);
@@ -598,11 +600,19 @@ static void fold_expect(expr *e, symtable *stab)
 
 static const out_val *builtin_gen_expect(expr *e, out_ctx *octx)
 {
-	/* not needed if it's const, but gcc and clang do this */
-	out_val_consume(octx,
-			gen_expr(e->funcargs[1], octx));
+	const out_val *eval;
+	consty k;
 
-	return gen_expr(e->funcargs[0], octx);
+	/* not needed if it's const, but gcc and clang do this */
+	out_val_consume(octx, gen_expr(e->funcargs[1], octx));
+
+	eval = gen_expr(e->funcargs[0], octx);
+
+	const_fold(e->funcargs[1], &k);
+	if(k.type == CONST_NUM)
+		eval = out_annotate_likely(octx, eval, !!k.bits.num.val.i);
+
+	return eval;
 }
 
 static void const_expect(expr *e, consty *k)
@@ -642,7 +652,7 @@ static void fold_choose_expr(expr *e, symtable *stab)
 				BUILTIN_SPEL(e->expr));
 
 	for(i = 0; i < 3; i++)
-		fold_expr_no_decay(e->funcargs[i], stab);
+		fold_expr_nodecay(e->funcargs[i], stab);
 
 	const_fold(e->funcargs[0], &k);
 	if(k.type != CONST_NUM){
@@ -659,7 +669,7 @@ static void fold_choose_expr(expr *e, symtable *stab)
 
 	wur_builtin(e);
 
-	if(expr_is_lval(c))
+	if(c->f_lea)
 		e->f_lea = choose_expr_lea;
 }
 

@@ -68,6 +68,61 @@ out_val *v_new(out_ctx *octx, type *ty)
 	return v;
 }
 
+static void v_decay_flag(out_ctx *octx, const out_val *flag)
+{
+	const out_val *regged = v_to_reg(octx, flag);
+
+	if(regged == flag)
+		return;
+
+	out_val_overwrite((out_val *)flag, regged);
+	out_val_release(octx, regged);
+	out_val_retain(octx, flag);
+}
+
+void v_decay_flags_except(out_ctx *octx, const out_val *except[])
+{
+	if(!octx->check_flags)
+		return;
+	octx->check_flags = 0;
+	{
+		out_val_list *iter;
+
+		for(iter = octx->val_head; iter; iter = iter->next){
+			out_val *v = &iter->val;
+
+			if(v->retains > 0 && v->type == V_FLAG){
+				const out_val **vi;
+				int found = 0;
+
+				for(vi = except; vi && *vi; vi++){
+					if(v == *vi){
+						found = 1;
+						break;
+					}
+				}
+
+				if(!found){
+					out_comment(octx, "saving flag");
+					v_decay_flag(octx, v);
+				}
+			}
+		}
+	}
+	octx->check_flags = 1;
+}
+
+void v_decay_flags_except1(out_ctx *octx, const out_val *except)
+{
+	const out_val *ar[] = { except, NULL };
+	v_decay_flags_except(octx, ar);
+}
+
+void v_decay_flags(out_ctx *octx)
+{
+	v_decay_flags_except(octx, NULL);
+}
+
 static out_val *v_dup(out_ctx *octx, const out_val *from, type *ty)
 {
 	switch(from->type){
@@ -190,6 +245,8 @@ out_val *v_new_sp(out_ctx *octx, const out_val *from)
 	r.is_float = 0;
 	r.idx = REG_SP;
 
+	octx->used_stack = 1;
+
 	return v_new_reg(octx, from, type_nav_voidptr(cc1_type_nav), &r);
 }
 
@@ -203,7 +260,7 @@ out_val *v_new_sp3(
 	return v;
 }
 
-out_val *v_new_bp3(
+static out_val *v_new_bp3(
 		out_ctx *octx, const out_val *from,
 		type *ty, long stack_pos)
 {
@@ -212,27 +269,60 @@ out_val *v_new_bp3(
 	return v;
 }
 
-static void try_stack_reclaim(out_ctx *octx)
+out_val *v_new_bp3_above(
+		out_ctx *octx, const out_val *from,
+		type *ty, long stack_pos)
+{
+	return v_new_bp3(octx, from, ty, stack_pos);
+}
+
+out_val *v_new_bp3_below(
+		out_ctx *octx, const out_val *from,
+		type *ty, long stack_pos)
+{
+	return v_new_bp3(octx, from, ty, -stack_pos);
+}
+
+void v_try_stack_reclaim(out_ctx *octx)
 {
 	/* if we have no out_vals on the stack,
 	 * we can reclaim stack-spill space.
 	 * this is a simple algorithm for reclaiming */
 	out_val_list *iter;
+	long lowest = 0;
 
-	if(octx->in_prologue)
+	if(octx->in_prologue || octx->alloca_count)
 		return;
 
 	/* only reclaim if we have an empty val list */
-	for(iter = octx->val_head; iter; iter = iter->next)
-		if(iter->val.retains > 0)
-			return;
+	for(iter = octx->val_head; iter; iter = iter->next){
+		if(iter->val.retains == 0)
+			continue;
+		switch(iter->val.type){
+			case V_REG:
+			case V_REG_SPILT:
+				if(!impl_reg_frame_const(&iter->val.bits.regoff.reg, 0))
+					return;
+				if(iter->val.bits.regoff.offset < lowest)
+					lowest = iter->val.bits.regoff.offset;
+				break;
+			case V_CONST_I:
+			case V_LBL:
+			case V_CONST_F:
+			case V_FLAG:
+				break;
+		}
+	}
 
-	unsigned reclaim = octx->var_stack_sz - octx->stack_sz_initial;
-	if(reclaim){
+	lowest = -lowest;
+
+	v_stackt reclaim = octx->cur_stack_sz - lowest;
+	if(reclaim > 0){
 		if(fopt_mode & FOPT_VERBOSE_ASM)
-			out_comment(octx, "reclaim %u", reclaim);
+			out_comment(octx, "reclaim %ld (%ld start %ld lowest)",
+					reclaim, octx->initial_stack_sz, lowest);
 
-		octx->var_stack_sz = octx->stack_sz_initial;
+		octx->cur_stack_sz = lowest;
 	}
 }
 
@@ -241,7 +331,7 @@ const out_val *out_val_release(out_ctx *octx, const out_val *v)
 	out_val *mut = (out_val *)v;
 	assert(mut->retains > 0 && "double release");
 	if(--mut->retains == 0){
-		try_stack_reclaim(octx);
+		v_try_stack_reclaim(octx);
 
 		return NULL;
 	}
@@ -251,6 +341,7 @@ const out_val *out_val_release(out_ctx *octx, const out_val *v)
 const out_val *out_val_retain(out_ctx *octx, const out_val *v)
 {
 	(void)octx;
+	assert(v->retains > 0);
 	((out_val *)v)->retains++;
 	return v;
 }
@@ -264,7 +355,30 @@ void out_val_overwrite(out_val *d, const out_val *s)
 	d->bits = s->bits;
 }
 
+const out_val *out_annotate_likely(
+		out_ctx *octx, const out_val *val, int unlikely)
+{
+	out_val *mut = v_dup_or_reuse(octx, val, val->t);
+
+	mut->flags |= unlikely ? VAL_FLAG_UNLIKELY : VAL_FLAG_LIKELY;
+
+	return mut;
+}
+
 int vreg_eq(const struct vreg *a, const struct vreg *b)
 {
 	return a->idx == b->idx && a->is_float == b->is_float;
+}
+
+long out_get_bp_offset(const out_val *v)
+{
+	switch(v->type){
+		case V_REG_SPILT:
+		case V_REG:
+			if(v->bits.regoff.reg.idx == REG_BP)
+				return v->bits.regoff.offset;
+		default:
+			break;
+	}
+	return 0;
 }

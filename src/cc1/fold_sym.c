@@ -7,7 +7,6 @@
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "../util/dynmap.h"
-#include "../util/platform.h"
 
 #include "cc1.h"
 #include "sym.h"
@@ -21,6 +20,7 @@
 #include "const.h"
 #include "label.h"
 #include "type_is.h"
+#include "vla.h"
 
 
 #define RW_TEST(decl, var)                      \
@@ -33,8 +33,8 @@
             && !type_is_s_or_u(decl->ref)
 
 #define RW_SHOW(decl, w, str)          \
-          cc1_warn_at(&decl->where, 0, \
-              WARN_SYM_NEVER_ ## w,    \
+          cc1_warn_at(&decl->where, \
+              sym_never_ ## w,    \
               "\"%s\" never " str,     \
               decl->spel);             \
 
@@ -150,8 +150,12 @@ void symtab_check_rw(symtable *tab)
 						case store_auto:
 						case store_static:
 							/* static analysis on sym */
-							if(!has_unused_attr && !type_is(d->ref, type_func) && !d->bits.var.init)
-								RW_WARN(WRITTEN, d, nwrites, "written to");
+							if(!has_unused_attr
+							&& !type_is(d->ref, type_func)
+							&& !d->bits.var.init.dinit)
+							{
+								RW_WARN(written, d, nwrites, "written to");
+							}
 							break;
 						case store_extern:
 						case store_typedef:
@@ -162,9 +166,10 @@ void symtab_check_rw(symtable *tab)
 
 				if(unused){
 					if(!has_unused_attr && (d->store & STORE_MASK_STORE) != store_extern)
-						RW_SHOW(d, READ, "read");
+						RW_SHOW(d, read, "read");
 				}else if(has_unused_attr){
-					warn_at(&d->where,
+					cc1_warn_at(&d->where,
+							attr_unused_used,
 							"\"%s\" declared unused, but is used", d->spel);
 				}
 			}
@@ -234,7 +239,8 @@ static void warn_c11_retypedef(decl *a, decl *b)
 	if(cc1_std < STD_C11){
 		char buf[WHERE_BUF_SIZ];
 
-		warn_at(&b->where,
+		cc1_warn_at(&b->where,
+				typedef_redef,
 				"typedef '%s' redefinition is a C11 extension\n"
 				"%s: note: other definition here",
 				a->spel, where_str_r(buf, &a->where));
@@ -276,7 +282,7 @@ void symtab_fold_decls(symtable *tab)
 	for(diter = tab->decls; diter && *diter; diter++){
 		decl *d = *diter;
 
-		fold_decl(d, tab, NULL);
+		fold_decl(d, tab);
 
 		if(d->spel)
 			NEW_DECL(d);
@@ -298,11 +304,9 @@ void symtab_fold_decls(symtable *tab)
 			}
 		}
 
-		if(type_is_func_or_block(d->ref)
-		&& d->store & store_inline
-		&& (d->store & STORE_MASK_STORE) == store_default)
-		{
-			warn_at(&d->where,
+		if(type_is_func_or_block(d->ref) && DECL_PURE_INLINE(d)){
+			cc1_warn_at(&d->where,
+					pure_inline,
 					"pure inline function will not have code emitted "
 					"(missing \"static\" or \"extern\")");
 		}
@@ -470,91 +474,6 @@ void symtab_fold_decls(symtable *tab)
 #undef IS_LOCAL_SCOPE
 }
 
-unsigned symtab_layout_decls(symtable *tab, unsigned current)
-{
-	const unsigned this_start = current;
-
-	if(tab->laidout)
-		goto out;
-	tab->laidout = 1;
-
-	if(tab->decls){
-		decl **diter;
-
-		for(diter = tab->decls; *diter; diter++){
-			decl *d = *diter;
-			sym *s = d->sym;
-
-			/* we might not have a symbol, e.g.
-			 * f(int (*pf)(int (*callme)()))
-			 *         ^         ^
-			 *         |         +-- nested - skipped
-			 *         +------------ `tab'
-			 */
-			if(!s)
-				continue;
-
-
-			switch(s->type){
-				case sym_arg:
-					break;
-
-				case sym_local: /* warn on unused args and locals */
-					if(type_is(d->ref, type_func))
-						continue;
-
-					switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
-							/* for now, we allocate stack space for register vars */
-						case store_register:
-						case store_default:
-						case store_auto:
-						{
-							unsigned siz = decl_size(s->decl);
-							unsigned align = decl_align(s->decl);
-
-							/* align greater than size - we increase
-							 * size so it can be aligned to `align'
-							 */
-							if(align > siz)
-								siz = pack_to_align(siz, align);
-
-							/* packing takes care of everything */
-							pack_next(&current, NULL, siz, align);
-							s->loc.stack_pos = current;
-							break;
-						}
-
-						case store_static:
-						case store_extern:
-						case store_typedef:
-							break;
-						case store_inline:
-							ICE("%s store", decl_store_to_str(d->store));
-					}
-				case sym_global:
-					break;
-			}
-		}
-	}
-
-	{
-		symtable **tabi;
-		unsigned subtab_max = 0;
-
-		for(tabi = tab->children; tabi && *tabi; tabi++){
-			unsigned this = symtab_layout_decls(*tabi, current);
-			if(this > subtab_max)
-				subtab_max = this;
-		}
-
-		/* don't account the args in the space */
-		tab->auto_total_size = current - this_start + subtab_max;
-	}
-
-out:
-	return tab->auto_total_size;
-}
-
 void symtab_chk_labels(symtable *stab)
 {
 	symtab_iter_children(stab, symtab_chk_labels);
@@ -566,10 +485,19 @@ void symtab_chk_labels(symtable *stab)
 		for(i = 0;
 		    (l = dynmap_value(label *, stab->labels, i));
 		    i++)
+		{
+			stmt **si;
+
 			if(!l->complete)
 				die_at(l->pw, "label '%s' undefined", l->spel);
 			else if(!l->uses && !l->unused)
-				warn_at(l->pw, "unused label '%s'", l->spel);
+				cc1_warn_at(l->pw, lbl_unused, "unused label '%s'", l->spel);
+
+			for(si = l->jumpers; si && *si; si++){
+				stmt *s = *si;
+				fold_check_scope_entry(&s->where, "goto enters", s->symtab, l->scope);
+			}
+		}
 	}
 }
 

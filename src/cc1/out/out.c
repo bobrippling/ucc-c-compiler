@@ -11,7 +11,6 @@
 #include "../../util/platform.h"
 #include "../pack.h"
 #include "../defs.h"
-#include "../opt.h"
 #include "../const.h"
 #include "../type_nav.h"
 #include "../type_is.h"
@@ -72,6 +71,11 @@ out_ctx *out_ctx_new(void)
 	return ctx;
 }
 
+void **out_user_ctx(out_ctx *octx)
+{
+	return &octx->userctx;
+}
+
 size_t out_expr_stack(out_ctx *octx)
 {
 	out_val_list *l;
@@ -114,10 +118,28 @@ void out_comment(out_ctx *octx, const char *fmt, ...)
 	va_end(l);
 }
 
+const char *out_val_str(const out_val *v, int deref)
+{
+	return impl_val_str(v, deref);
+}
+
 const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normalise_bool)
 {
 	type *const from = val->t;
 	char fp[2];
+
+	switch(val->type){
+		case V_REG:
+		case V_REG_SPILT:
+			if(val->bits.regoff.offset
+			&& type_size(val->t, NULL) != type_size(to, NULL))
+			{
+				/* must apply the offset in the current type */
+				val = v_reg_apply_offset(octx, val);
+			}
+		default:
+			break;
+	}
 
 	/* normalise before the cast, otherwise we do things like
 	 * 5.3 -> 5, then normalise 5, instead of 5.3 != 0.0

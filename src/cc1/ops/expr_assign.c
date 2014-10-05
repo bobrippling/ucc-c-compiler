@@ -38,7 +38,8 @@ void bitfield_trunc_check(decl *mem, expr *from)
 		{
 			sintegral_t kexp_to = kexp & ~(-1UL << k.bits.num.val.i);
 
-			warn_at(&from->where,
+			cc1_warn_at(&from->where,
+					bitfield_trunc,
 					"truncation in store to bitfield alters value: "
 					"%" NUMERIC_FMT_D " -> %" NUMERIC_FMT_D,
 					kexp, kexp_to);
@@ -46,14 +47,17 @@ void bitfield_trunc_check(decl *mem, expr *from)
 	}
 }
 
-void expr_must_lvalue(expr *e)
+int expr_must_lvalue(expr *e, const char *desc)
 {
 	if(!expr_is_lval(e)){
 		fold_had_error = 1;
-		warn_at_print_error(&e->where, "assignment to %s/%s - not an lvalue",
-				type_to_str(e->tree_type),
-				e->f_str());
+		warn_at_print_error(&e->where, "%s to %s - not an lvalue",
+				desc, type_to_str(e->tree_type));
+
+		return 0;
 	}
+
+	return 1;
 }
 
 static const out_val *lea_assign_lhs(expr *e, out_ctx *octx)
@@ -67,10 +71,15 @@ static const out_val *lea_assign_lhs(expr *e, out_ctx *octx)
 
 void expr_assign_const_check(expr *e, where *w)
 {
+	struct_union_enum_st *su;
+
 	if(type_is_const(e->tree_type)){
 		fold_had_error = 1;
 		warn_at_print_error(w, "can't modify const expression %s",
 				e->f_str());
+	}else if((su = type_is_s_or_u(e->tree_type)) && su->contains_const){
+		fold_had_error = 1;
+		warn_at_print_error(w, "can't assign struct - contains const member");
 	}
 }
 
@@ -80,7 +89,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	lhs_sym = fold_inc_writes_if_sym(e->lhs, stab);
 
-	fold_expr_no_decay(e->lhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
 	if(lhs_sym)
@@ -93,7 +102,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 		return;
 	}
 
-	expr_must_lvalue(e->lhs);
+	expr_must_lvalue(e->lhs, "assignment");
 
 	if(!e->assign_is_init)
 		expr_assign_const_check(e->lhs, &e->where);
@@ -147,12 +156,14 @@ const out_val *gen_expr_assign(expr *e, out_ctx *octx)
 		const out_val *val, *store;
 
 		val = gen_expr(e->rhs, octx);
-		out_val_retain(octx, val);
 		store = lea_expr(e->lhs, octx);
+		out_val_retain(octx, store);
 
 		out_store(octx, store, val);
 
-		return val;
+		/* re-read from the store,
+		 * e.g. if the value has undergone bitfield truncation */
+		return out_deref(octx, store);
 	}
 }
 

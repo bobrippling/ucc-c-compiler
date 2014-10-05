@@ -9,7 +9,6 @@ General
 Major C Features
 ################
 
-C99 VLAs - experimental/vla branch
 C99 _Complex types
 C11 _Thread_local / gcc __thread
 C11 _Atomic
@@ -35,6 +34,9 @@ __attribute__((pure))
 __attribute__((fastcall)), cdecl, etc
 - see Windows name mangling - https://en.wikipedia.org/wiki/Name_mangling
 [this is in the experimental/calling_conv branch]
+
+code gen:
+	Treat %rsp as a frame constant if alloca() and vlas aren't used (impl_reg_frame_const)
 
 cpp
 ###

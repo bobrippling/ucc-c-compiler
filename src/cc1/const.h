@@ -68,7 +68,7 @@ integral_t const_fold_val_i(struct expr *e);
 integral_t const_op_exec(
 		/* rval is optional */
 		integral_t lval, const integral_t *rval,
-		enum op_type op, int is_signed,
+		enum op_type op, struct type *arithty,
 		const char **error);
 
 floating_t const_op_exec_fp(

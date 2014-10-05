@@ -16,19 +16,17 @@ struct string_key
 	int is_wide;
 };
 
-static int strings_key_eq(void *a, void *b)
+static int strings_key_eq(
+		const struct string_key *ka,
+		const struct string_key *kb)
 {
-	const struct string_key *ka = a, *kb = b;
-
 	if(ka->is_wide != kb->is_wide)
 		return 1;
 	return strcmp(ka->str, kb->str);
 }
 
-static unsigned strings_hash(const void *p)
+static unsigned strings_hash(const struct string_key *k)
 {
-	const struct string_key *k = p;
-
 	return dynmap_strhash(k->str);
 }
 
@@ -40,7 +38,7 @@ stringlit *strings_lookup(
 	struct string_key key = { s, wide };
 
 	if(!*plit_tbl)
-		*plit_tbl = dynmap_new(strings_key_eq, strings_hash);
+		*plit_tbl = dynmap_new(struct string_key *, strings_key_eq, strings_hash);
 	lit_tbl = *plit_tbl;
 
 	lit = dynmap_get(struct string_key *, stringlit *, lit_tbl, &key);

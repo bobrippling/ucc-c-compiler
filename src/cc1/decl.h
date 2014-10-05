@@ -18,6 +18,12 @@ enum decl_storage
 #define STORE_MASK_STORE 0x00007 /* include all below 4 */
 #define STORE_MASK_EXTRA 0xfff38 /* exclude  ^ */
 
+struct decl_init_expr
+{
+	struct decl_init *dinit;
+	struct expr *expr;
+};
+
 typedef struct decl decl;
 struct decl
 {
@@ -54,12 +60,11 @@ struct decl
 			int init_normalised;
 
 			/* initialiser - converted to an assignment for non-globals */
-			struct decl_init *init;
+			struct decl_init_expr init;
 		} var;
 		struct
 		{
 			struct stmt *code;
-			int var_offset;
 		} func;
 	} bits;
 
@@ -116,5 +121,9 @@ const char *decl_store_to_str(const enum decl_storage);
 
 #define DECL_FUNC_ARG_SYMTAB(d) ((d)->bits.func.code->symtab->parent)
 #define DECL_HAS_FUNC_CODE(d) (type_is(d->ref, type_func) && d->bits.func.code)
+
+#define DECL_PURE_INLINE(d) \
+	((d)->store & store_inline && \
+	 ((d)->store & STORE_MASK_STORE) == store_default)
 
 #endif

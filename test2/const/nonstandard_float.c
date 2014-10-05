@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check %s -pedantic
 
 /* not a constant expression
  * C11, 6.6/6:

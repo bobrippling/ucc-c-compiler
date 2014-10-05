@@ -1,5 +1,4 @@
 main:
-.Lblk.0: # post_prologue
 	jmp .Lblk.4
 .Lblk.3: # b
 .Lblk.4: # c

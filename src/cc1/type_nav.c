@@ -17,6 +17,7 @@
 struct type_nav
 {
 	type **btypes; /* indexed by type_primitive */
+	dynmap *enumints; /* int types covering an enum, sue => type */
 	dynmap *suetypes; /* sue => type */
 	type *tva_list, *tauto;
 };
@@ -54,7 +55,20 @@ static type *type_new_btype(const btype *b)
 	return t;
 }
 
-static type *type_uptree_find_or_new(
+static int eq_true(type *t, void *ctx)
+{
+	(void)t; (void)ctx;
+	return 1;
+}
+
+static int eq_false(type *t, void *ctx)
+{
+	(void)t; (void)ctx;
+	return 0;
+}
+
+static ucc_nonnull((1, 3))
+type *type_uptree_find_or_new(
 		type *to, enum type_kind idx,
 		int (*eq)(type *, void *),
 		void (*init)(type *, void *),
@@ -71,7 +85,7 @@ static type *type_uptree_find_or_new(
 		type *candidate = (*ent)->t;
 		assert(candidate->type == idx);
 
-		if(!eq || eq(candidate, ctx))
+		if(eq(candidate, ctx))
 			return candidate;
 	}
 
@@ -92,13 +106,20 @@ struct ctx_array
 	expr *sz;
 	integral_t sz_i;
 	int is_static;
+	int is_vla;
 };
 
 static int eq_array(type *candidate, void *ctx)
 {
 	struct ctx_array *c = ctx;
+	consty k;
+
+	assert(candidate->type == type_array);
 
 	if(candidate->bits.array.is_static != c->is_static)
+		return 0;
+
+	if(candidate->bits.array.is_vla != c->is_vla)
 		return 0;
 
 	if(candidate->bits.array.size == c->sz){
@@ -106,10 +127,17 @@ static int eq_array(type *candidate, void *ctx)
 		return 1;
 	}
 
-	if(!candidate->bits.array.size)
+	if(!candidate->bits.array.size || !c->sz)
 		return 0;
 
-	return c->sz_i == const_fold_val_i(candidate->bits.array.size);
+	const_fold(candidate->bits.array.size, &k);
+	if(k.type == CONST_NUM){
+		assert(K_INTEGRAL(k.bits.num));
+		return c->sz_i == k.bits.num.val.i;
+	}else{
+		/* vla - just check expression equivalence */
+		return candidate->bits.array.size == c->sz;
+	}
 }
 
 static void init_array(type *ty, void *ctx)
@@ -117,22 +145,32 @@ static void init_array(type *ty, void *ctx)
 	struct ctx_array *c = ctx;
 	ty->bits.array.size = c->sz;
 	ty->bits.array.is_static = c->is_static;
+	ty->bits.array.is_vla = c->is_vla;
 }
 
 static void ctx_array_init(
 		struct ctx_array *ctx,
-		expr *sz, int is_static)
+		expr *sz,
+		int is_static, int is_vla)
 {
-	ctx->sz_i = sz ? const_fold_val_i(sz) : 0;
+	ctx->sz_i = 0;
 	ctx->sz = sz;
 	ctx->is_static = is_static;
+	ctx->is_vla = is_vla;
+
+	if(sz){
+		consty k;
+		const_fold(sz, &k);
+		if(K_INTEGRAL(k.bits.num))
+			ctx->sz_i = k.bits.num.val.i;
+	}
 }
 
 type *type_array_of_static(type *to, struct expr *new_sz, int is_static)
 {
 	struct ctx_array ctx;
 
-	ctx_array_init(&ctx, new_sz, is_static);
+	ctx_array_init(&ctx, new_sz, is_static, 0);
 
 	return type_uptree_find_or_new(
 			to, type_array,
@@ -143,6 +181,22 @@ type *type_array_of_static(type *to, struct expr *new_sz, int is_static)
 type *type_array_of(type *to, struct expr *new_sz)
 {
 	return type_array_of_static(to, new_sz, 0);
+}
+
+type *type_vla_of(type *of, struct expr *vlasz, int vlatype)
+{
+	type *vla;
+	struct ctx_array ctx;
+
+	ctx_array_init(&ctx, vlasz, 0, vlatype);
+
+	vla = type_uptree_find_or_new(
+			of, type_array,
+			/* vla - not equal to any other type */
+			eq_false, init_array,
+			&ctx);
+
+	return vla;
 }
 
 struct ctx_func
@@ -166,7 +220,7 @@ static int eq_func(type *ty, void *ctx)
 		return 0;
 
 	if(funcargs_cmp(ty->bits.func.args, c->args) == FUNCARGS_EXACT_EQUAL){
-		funcargs_free(ctx, 0);
+		funcargs_free(c->args, 0);
 		return 1;
 	}
 	return 0;
@@ -189,7 +243,9 @@ type *type_block_of(type *fn)
 {
 	return type_uptree_find_or_new(
 			fn, type_block,
-			NULL, NULL, NULL);
+			/*if there's an uptree, we'll take it:*/eq_true,
+			/*(since this is block pointer, not the block function type)*/
+			NULL, NULL);
 }
 
 static int eq_attr(type *candidate, void *ctx)
@@ -219,35 +275,69 @@ type *type_attributed(type *ty, attribute *attr)
 	return attributed;
 }
 
+struct ctx_ptr
+{
+	type *decayed_from;
+};
+
+static int eq_ptr(type *candidate, void *vctx)
+{
+	struct ctx_ptr *ctx = vctx;
+
+	return candidate->bits.ptr.decayed_from == ctx->decayed_from;
+}
+
+static void init_ptr(type *ty, void *vctx)
+{
+	struct ctx_ptr *ctx = vctx;
+
+	ty->bits.ptr.decayed_from = ctx->decayed_from;
+}
+
 type *type_ptr_to(type *pointee)
 {
+	struct ctx_ptr ctx = { NULL };
+
 	return type_uptree_find_or_new(
 			pointee, type_ptr,
-			NULL, NULL, NULL);
+			eq_ptr, init_ptr, &ctx);
 }
+
+struct ctx_decayed_array
+{
+	struct ctx_array array;
+	type *decayed_from;
+};
 
 static int eq_decayed_array(type *candidate, void *ctx)
 {
-	if(!candidate->bits.ptr.decayed)
+	struct ctx_decayed_array *actx = ctx;
+
+	if(!candidate->bits.ptr.decayed_from)
 		return 0;
 
-	return eq_array(candidate, ctx);
+	return eq_array(candidate->bits.ptr.decayed_from, &actx->array);
 }
 
 static void init_decayed_array(type *ty, void *ctx)
 {
-	init_array(ty, ctx);
-	ty->bits.ptr.decayed = 1;
+	struct ctx_decayed_array *actx = ctx;
+	/* don't init array - ty is a pointer */
+	assert(ty->type == type_ptr);
+	ty->bits.ptr.decayed_from = actx->decayed_from;
 }
 
 type *type_decayed_ptr_to(type *pointee, type *array_from)
 {
-	struct ctx_array ctx;
+	struct ctx_decayed_array ctx;
 
 	ctx_array_init(
-			&ctx,
+			&ctx.array,
 			array_from->bits.array.size,
-			array_from->bits.array.is_static);
+			array_from->bits.array.is_static,
+			array_from->bits.array.is_vla);
+
+	ctx.decayed_from = array_from;
 
 	return type_uptree_find_or_new(
 			pointee, type_ptr,
@@ -375,16 +465,38 @@ type *type_dereference_decay(type *const ty_ptr)
 
 type *type_nav_MAX_FOR(struct type_nav *root, unsigned sz)
 {
-	enum type_primitive prims[] = {
-		type_llong, type_long, type_int, type_short, type_nchar
-	};
-	unsigned i;
-
-	for(i = 0; i < sizeof(prims)/sizeof(*prims); i++)
-		if(sz >= type_primitive_size(prims[i]))
-			return type_nav_btype(root, prims[i]);
-
+	enum type_primitive p = type_primitive_not_less_than_size(sz);
+	if(p != type_unknown)
+		return type_nav_btype(root, p);
 	assert(0 && "no type max");
+}
+
+type *type_nav_int_enum(struct type_nav *root, struct_union_enum_st *enu)
+{
+	type *ent, *prev;
+	btype *bt;
+
+	assert(enu->primitive == type_enum && "enum?");
+
+	if(!root->enumints){
+		root->enumints = dynmap_new(
+				struct_union_enum_st *, /*refeq:*/NULL, sue_hash);
+	}
+
+	ent = dynmap_get(struct_union_enum_st *, type *, root->enumints, enu);
+
+	if(ent)
+		return ent;
+
+	bt = umalloc(sizeof *bt);
+	bt->primitive = type_int;
+	bt->sue = enu;
+	ent = type_new_btype(bt);
+
+	prev = dynmap_set(struct_union_enum_st *, type *, root->enumints, enu, ent);
+	assert(!prev);
+
+	return ent;
 }
 
 type *type_unqualify(type *t)
@@ -456,8 +568,10 @@ type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *sue)
 	type *ent, *prev;
 	btype *bt;
 
-	if(!root->suetypes)
-		root->suetypes = dynmap_new(/*refeq:*/NULL, (dynmap_hash_f *)type_hash);
+	if(!root->suetypes){
+		root->suetypes = dynmap_new(
+				struct_union_enum_st *, /*refeq:*/NULL, sue_hash);
+	}
 
 	ent = dynmap_get(struct_union_enum_st *, type *, root->suetypes, sue);
 
@@ -488,15 +602,71 @@ type *type_nav_voidptr(struct type_nav *root)
     return type_ptr_to(type_nav_btype(root, type_void));
 }
 
+type *type_nav_changeauto(type *const ontop, type *trailing)
+{
+	type *base;
+
+	if(!ontop || ontop->type == type_btype)
+		return trailing; /* replace auto with proper trailing type */
+
+	/* use recursion to pop non-btypes on top of trailing */
+	base = type_nav_changeauto(type_next_1(ontop), trailing);
+
+	/* pop our type on top of trailing */
+	switch(ontop->type){
+		case type_btype:
+		case type_auto:
+			assert(0);
+
+		case type_ptr:
+			return type_ptr_to(base);
+
+		case type_block:
+			return type_block_of(base);
+
+		case type_array:
+		{
+			return type_array_of_static(
+					base,
+					ontop->bits.array.size,
+					ontop->bits.array.is_static);
+		}
+
+		case type_func:
+		{
+			funcargs *args = type_funcargs(ontop);
+			args->retains++;
+
+			return type_func_of(
+					base, args,
+					ontop->bits.func.arg_scope);
+		}
+
+		case type_tdef:
+		case type_cast:
+			return base;
+
+		case type_where:
+			return type_at_where(base, &ontop->bits.where);
+
+		case type_attr:
+			return type_attributed(base, ontop->bits.attr);
+	}
+
+	assert(0);
+}
+
 static void type_dump_t(type *t, FILE *f, int indent)
 {
 	int i;
 	for(i = 0; i < indent; i++)
 		fputc(' ', f);
 
-	fprintf(f, "%s %s\n",
+	fprintf(f, "%s %s%s\n",
 			type_kind_to_str(t->type),
-			type_to_str(t));
+			type_to_str(t),
+			t->type == type_ptr && t->bits.ptr.decayed_from
+				? " [decayed]" : "");
 
 	if(t->uptree){
 		indent++;

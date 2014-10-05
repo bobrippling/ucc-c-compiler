@@ -8,6 +8,8 @@
 #include "../decl_init.h"
 #include "../type_is.h"
 
+#define COMP_LIT_INITIALISED(e) (e)->bits.complit.decl->bits.var.init.expr
+
 const char *str_expr_compound_lit(void)
 {
 	return "compound-lit";
@@ -18,6 +20,10 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	decl *d = e->bits.complit.decl;
 	int static_ctx = e->bits.complit.static_ctx; /* global or static */
 
+	if(cc1_std < STD_C99)
+		cc1_warn_at(&e->where, c89_compound_literal,
+				"compound literals are a C99 feature");
+
 	/* if(!stab->parent) assert(static_ctx);
 	 *
 	 * except things like sizeof() just pass 0 for static_ctx,
@@ -26,7 +32,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	if(!stab->parent)
 		static_ctx = 1;
 
-	if(e->code)
+	if(COMP_LIT_INITIALISED(e))
 		return; /* being called from fold_gen_init_assignment_base */
 
 	/* must be set before the recursive fold_gen_init_assignment_base */
@@ -37,11 +43,11 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		d->store = store_static;
 	}
 
-	e->bits.complit.sym = sym_new_stab(
+	e->bits.complit.sym = sym_new_and_prepend_decl(
 			stab, d, static_ctx ? sym_global : sym_local);
 
 	/* fold the initialiser */
-	UCC_ASSERT(d->bits.var.init, "no init for comp.literal");
+	UCC_ASSERT(d->bits.var.init.dinit, "no init for comp.literal");
 
 	decl_init_brace_up_fold(d, stab, /*initial struct copy:*/0);
 
@@ -59,12 +65,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 		 *   be generated twice - once for the scope we're nested in (stab),
 		 *   and again on our call to gen_stmt() in our gen function
 		 */
-		e->code = stmt_set_where(
-				stmt_new_wrapper(code, symtab_new(stab, &e->where)),
-				&e->where);
-		decl_init_create_assignments_base(d->bits.var.init, d->ref, e, e->code);
-
-		fold_stmt_code(e->code);
+		decl_init_create_assignments_base_and_fold(d, e, stab);
 	}else{
 		fold_decl_global_init(d, stab);
 	}
@@ -73,12 +74,12 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 static void gen_expr_compound_lit_code(expr *e, out_ctx *octx)
 {
 	if(!e->expr_comp_lit_cgen){
+		expr *initexp = e->bits.complit.decl->bits.var.init.expr;
+
 		e->expr_comp_lit_cgen = 1;
 
-		UCC_ASSERT(e->code->symtab->parent,
-				"global compound initialiser tried for code");
-
-		gen_stmt(e->code, octx);
+		if(initexp)
+			out_val_consume(octx, gen_expr(initexp, octx));
 	}
 }
 
@@ -104,7 +105,7 @@ static void const_expr_compound_lit(expr *e, consty *k)
 	decl *d = e->bits.complit.decl;
 	expr *nonstd = NULL;
 
-	if(decl_init_is_const(d->bits.var.init, NULL, &nonstd)){
+	if(decl_init_is_const(d->bits.var.init.dinit, NULL, &nonstd)){
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR_OR_NEED(d);
 		k->bits.addr.is_lbl = 1;
@@ -120,10 +121,10 @@ const out_val *gen_expr_str_compound_lit(expr *e, out_ctx *octx)
 {
 	decl *const d = e->bits.complit.decl;
 
-	if(e->op)
+	if(e->bits.op.op)
 		return NULL;
 
-	e->op = 1;
+	e->bits.op.op = 1;
 	{
 		idt_printf("(%s){\n", decl_to_str(d));
 
@@ -145,7 +146,7 @@ const out_val *gen_expr_str_compound_lit(expr *e, out_ctx *octx)
 			print_stmt(e->code);
 		}
 	}
-	e->op = 0;
+	e->bits.op.op = 0;
 
 	UNUSED_OCTX();
 }
@@ -153,7 +154,7 @@ const out_val *gen_expr_str_compound_lit(expr *e, out_ctx *octx)
 const out_val *gen_expr_style_compound_lit(expr *e, out_ctx *octx)
 {
 	stylef("(%s)", type_to_str(e->bits.complit.decl->ref));
-	gen_style_dinit(e->bits.complit.decl->bits.var.init);
+	gen_style_dinit(e->bits.complit.decl->bits.var.init.dinit);
 	UNUSED_OCTX();
 }
 
@@ -161,6 +162,7 @@ void mutate_expr_compound_lit(expr *e)
 {
 	/* unconditionally an lvalue */
 	e->f_lea = lea_expr_compound_lit;
+	e->f_islval = expr_is_lval_always;
 	e->f_const_fold = const_expr_compound_lit;
 }
 
@@ -169,7 +171,7 @@ static decl *compound_lit_decl(type *t, decl_init *init)
 	decl *d = decl_new();
 
 	d->ref = t;
-	d->bits.var.init = init;
+	d->bits.var.init.dinit = init;
 
 	return d;
 }

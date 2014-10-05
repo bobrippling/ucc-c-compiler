@@ -28,21 +28,19 @@ type *parse_type(int newdecl_ctx, symtable *scope);
 /* type *name[]... */
 decl *parse_decl(
 		enum decl_mode mode, int newdecl_ctx,
-		symtable *scope, symtable *add_to_scope,
-		struct stmt **pinit_code);
+		symtable *scope, symtable *add_to_scope);
 
 /* type ident...; */
 int parse_decl_group(
 		enum decl_multi_mode mode,
 		int newdecl_ctx,
 		symtable *in_scope,
-		symtable *add_to_scope, decl ***pdecls,
-		struct stmt **pinit_code)
+		symtable *add_to_scope, decl ***pdecls)
 	ucc_nonnull((3));
 
 struct funcargs *parse_func_arglist(symtable *);
 
-int parse_at_decl(symtable *scope);
+int parse_at_decl(symtable *scope, int include_attribute);
 
 void parse_add_attr(attribute **append, symtable *scope);
 
