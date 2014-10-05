@@ -14,7 +14,6 @@ void out_ctx_wipe(out_ctx *);
 
 void **out_user_ctx(out_ctx *);
 
-size_t out_expr_stack(out_ctx *);
 void out_dump_retained(out_ctx *octx, const char *desc);
 
 /* value creation */

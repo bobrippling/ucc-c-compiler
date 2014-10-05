@@ -76,17 +76,6 @@ void **out_user_ctx(out_ctx *octx)
 	return &octx->userctx;
 }
 
-size_t out_expr_stack(out_ctx *octx)
-{
-	out_val_list *l;
-	size_t retains = 0;
-
-	for(l = octx->val_head; l; l = l->next)
-		retains += l->val.retains;
-
-	return retains;
-}
-
 void out_dump_retained(out_ctx *octx, const char *desc)
 {
 	out_val_list *l;
