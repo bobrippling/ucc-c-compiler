@@ -298,7 +298,8 @@ static void x86_overlay_regpair_1(
 
 static void x86_overlay_regpair(
 		struct vreg out_regpair[ucc_static_param 2], type *retty,
-		const struct vreg int_regpair[ucc_static_param 2])
+		const struct vreg int_regpair[ucc_static_param 2],
+		unsigned *used_regs)
 {
 	/* if we have two floats at either 0-1 or 2-3, then we can do
 	 * a xmm0:rax or rax:xmm0 return. Otherwise we fallback to rdx:rax overlay
@@ -361,6 +362,9 @@ static void x86_overlay_regpair(
 					&regpair_idx,
 					int_regpair);
 
+			if(used_regs)
+				++*used_regs;
+
 			current_type = NONE;
 			current_size_bits = 0;
 		}
@@ -372,6 +376,9 @@ static void x86_overlay_regpair(
 				current_type,
 				&regpair_idx,
 				int_regpair);
+
+		if(current_size_bits && used_regs)
+			++*used_regs;
 	}
 }
 
@@ -383,7 +390,7 @@ static void x86_overlay_regpair_ret(
 		{ X86_64_REG_RDX, 0 },
 	};
 
-	x86_overlay_regpair(out_regpair, retty, int_retregs);
+	x86_overlay_regpair(out_regpair, retty, int_retregs, NULL);
 }
 
 static void x86_overlay_regpair_args(
@@ -391,9 +398,7 @@ static void x86_overlay_regpair_args(
 		type *arg_suty,
 		unsigned *const reg_idx, const struct vreg *call_regs)
 {
-	x86_overlay_regpair(out_regpair, arg_suty, call_regs + *reg_idx);
-
-	*reg_idx += 2;
+	x86_overlay_regpair(out_regpair, arg_suty, call_regs + *reg_idx, reg_idx);
 }
 
 static const char *x86_reg_str(const struct vreg *reg, type *r)
@@ -636,6 +641,8 @@ void impl_func_prologue_save_call_regs(
 				const struct vreg *rp;
 				struct vreg vr;
 				const out_val **store;
+				struct_union_enum_st *su;
+				int spilt_to_stack = 0;
 
 				if(is_stret && i_arg == 0){
 					ty = type_ptr_to(retty);
@@ -653,6 +660,35 @@ void impl_func_prologue_save_call_regs(
 					rp = &vr;
 					vr.is_float = 1;
 					vr.idx = i_f++;
+				}else if((su = type_is_s_or_u(ty))){
+					const unsigned su_sz = sue_size(su, NULL);
+
+					if(su_sz <= 2 * ws){
+						/* passed by register */
+						struct vreg regpair[2];
+
+						x86_overlay_regpair_args(
+								regpair, ty,
+								&i_i, call_regs);
+
+						*store = out_val_retain(octx, stack_loc);
+
+						out_val_retain(octx, stack_loc);
+
+						/* ask for the maximum number of regs - this is fine,
+						 * because we just won't use any we don't need */
+						impl_overlay_regs2mem(octx,
+								su_sz, /*nregs*/2, regpair, stack_loc);
+
+						stack_loc = out_op(octx, op_plus,
+								out_change_type(octx, stack_loc, arithty),
+								out_new_l(octx, arithty, su_sz));
+
+						spilt_to_stack = 1;
+					}else{
+						goto pass_via_stack;
+					}
+
 				}else{
 					if(i_i >= n_call_i)
 						goto pass_via_stack;
@@ -660,7 +696,7 @@ void impl_func_prologue_save_call_regs(
 					rp = &call_regs[i_i++];
 				}
 
-				{
+				if(!spilt_to_stack){
 					stack_loc = out_change_type(octx, stack_loc, ty);
 					out_val_retain(octx, stack_loc);
 
@@ -676,6 +712,7 @@ void impl_func_prologue_save_call_regs(
 
 				continue;
 pass_via_stack:
+				/* FIXME: not (... * ws) any more */
 				*store = v_new_bp3_above(
 						octx, NULL, type_ptr_to(ty), (i_arg_stk++ + 2) * ws);
 			}
