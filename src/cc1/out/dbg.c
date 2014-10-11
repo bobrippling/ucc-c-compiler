@@ -296,6 +296,11 @@ static void dwarf_release_children(struct DIE *parent)
 	free(ar);
 }
 
+static struct cc1_dbg_ctx *octx2dbg(out_ctx *octx)
+{
+	return &cc1_out_ctx_or_new(octx)->dbg;
+}
+
 static void dwarf_die_new_at(struct DIE *d, enum dwarf_tag tag)
 {
 	RETAIN_INIT(d, &dwarf_die_free_r);
@@ -983,7 +988,7 @@ static struct DIE *dbg_create_decl_die(
 
 void out_dbg_emit_decl(out_ctx *octx, decl *d, const out_val *val)
 {
-	struct cc1_dbg_ctx *dbg = &cc1_out_ctx_or_new(octx)->dbg;
+	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
 
 	dwarf_child(dbg->current_scope,
 			dbg_create_decl_die(dbg->compile_unit, d, val));
@@ -1140,7 +1145,7 @@ static struct DIE *dwarf_global_variable(struct cc1_dbg_ctx *dbg, decl *d)
 
 void out_dbg_scope_enter(out_ctx *octx, symtable *symtab)
 {
-	struct cc1_dbg_ctx *dbg = &cc1_out_ctx_or_new(octx)->dbg;
+	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
 	struct DIE *scope_parent = dbg->current_scope;
 	struct DIE *lexblk;
 
@@ -1159,7 +1164,7 @@ void out_dbg_scope_enter(out_ctx *octx, symtable *symtab)
 
 void out_dbg_scope_leave(out_ctx *octx)
 {
-	struct cc1_dbg_ctx *dbg = &cc1_out_ctx_or_new(octx)->dbg;
+	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
 
 	dbg->current_scope = dbg->current_scope->parent;
 }
@@ -1530,7 +1535,7 @@ static void dbg_emit_global(
 		out_ctx *octx, decl *d,
 		struct DIE *emit_fn(struct cc1_dbg_ctx *, decl *))
 {
-	struct cc1_dbg_ctx *dbg = &cc1_out_ctx_or_new(octx)->dbg;
+	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
 	struct DIE *new = emit_fn(dbg, d);
 
 	if(new)
@@ -1558,7 +1563,7 @@ void out_dbg_begin(
 		const char *compdir)
 {
 	struct DIE_compile_unit *cu = dwarf_cu(fname, compdir, pfilelist);
-	struct cc1_dbg_ctx *dbg = &cc1_out_ctx_or_new(octx)->dbg;
+	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
 
 	dbg->compile_unit = cu;
 	dbg->current_scope = NULL;
@@ -1567,7 +1572,7 @@ void out_dbg_begin(
 void out_dbg_end(out_ctx *octx)
 {
 	long info_offset = dwarf_info_header(cc_out[SECTION_DBG_INFO]);
-	struct cc1_dbg_ctx *dbg = &cc1_out_ctx_or_new(octx)->dbg;
+	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
 	struct DIE_compile_unit *compile_unit = dbg->compile_unit;
 	unsigned long abbrev = 0;
 	size_t i;
