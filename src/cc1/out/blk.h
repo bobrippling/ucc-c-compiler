@@ -13,11 +13,6 @@ struct out_blk
 	out_blk **merge_preds;
 	int flush_in_prog;
 
-#define BLK_IS_MERGE(b) ( \
-		b->merge_preds        \
-		&& b->merge_preds[0]  \
-		&& b->merge_preds[1])
-
 	enum
 	{
 		BLK_UNINIT,
