@@ -266,7 +266,16 @@ static struct DIE *dwarf_tydie_new(
 		enum dwarf_tag tag);
 
 static struct DIE *dbg_create_sym_die(
-		struct DIE_compile_unit *cu, sym *sym, const out_val *val);
+		struct DIE_compile_unit *cu, sym *sym, const out_val *val)
+	ucc_nonnull((1, 2));
+
+static void dwarf_location_addr(struct dwarf_block_ent *locn_ents, decl *d);
+
+static void dwarf_attr_decl(
+		struct DIE_compile_unit *cu,
+		struct DIE *in,
+		decl *d,
+		type *ty, int show_extern);
 
 static void dwarf_die_free_r(struct DIE *die);
 
@@ -857,23 +866,29 @@ static struct DIE *dwarf_suetype(
 	return suedie;
 }
 
+static int dbg_get_val_location(const out_val *v, long *const offset)
+{
+	switch(v->type){
+		case V_REG_SPILT:
+		case V_REG:
+			if(v->bits.regoff.reg.idx == REG_BP){
+				*offset = v->bits.regoff.offset;
+				return 1;
+			}
+			/* fall */
+		default:
+			return 0;
+	}
+}
+
 static void dbg_emit_sym_location(struct DIE *param, const out_val *v)
 {
 	struct dwarf_block *locn;
 	struct dwarf_block_ent *locn_data;
 	long offset;
 
-	switch(v->type){
-		case V_REG_SPILT:
-		case V_REG:
-			if(v->bits.regoff.reg.idx == REG_BP){
-				offset = v->bits.regoff.offset;
-				break;
-			}
-			/* fall */
-		default:
-			return;
-	}
+	if(!dbg_get_val_location(v, &offset))
+		return;
 
 	locn = umalloc(sizeof *locn);
 	locn_data = umalloc(2 * sizeof *locn_data);
@@ -889,7 +904,7 @@ static void dbg_emit_sym_location(struct DIE *param, const out_val *v)
 	dwarf_attr(param, DW_AT_location, DW_FORM_block1, locn);
 }
 
-static struct DIE *dbg_create_sym_die(
+static struct DIE *dbg_create_sym_die_arg(
 		struct DIE_compile_unit *cu, sym *sym, const out_val *val)
 {
 	struct DIE *param = dwarf_die_new(DW_TAG_formal_parameter);
@@ -905,6 +920,66 @@ static struct DIE *dbg_create_sym_die(
 	}
 
 	return RETAIN(param);
+}
+
+static struct DIE *dbg_create_sym_die_local(
+		struct DIE_compile_unit *cu, sym *sym, const out_val *val)
+{
+	decl *d = sym->decl;
+	struct DIE *var = dwarf_die_new(DW_TAG_variable);
+	long offset;
+
+	assert(d->sym);
+	if(dbg_get_val_location(val, &offset)){
+		struct dwarf_block_ent *locn_ents;
+		struct dwarf_block *locn;
+		const int vla = type_is_variably_modified(d->ref);
+
+		locn = umalloc(sizeof *locn);
+		locn->cnt = 2 + vla;
+
+		locn_ents = umalloc(locn->cnt * sizeof *locn_ents);
+		locn->ents = locn_ents;
+
+		switch(d->sym->type){
+			case sym_local:
+				locn_ents[0].type = BLOCK_HEADER;
+				locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
+
+				locn_ents[1].type = BLOCK_LEB128_S;
+				locn_ents[1].bits.v = offset;
+
+				if(vla){
+					locn_ents[2].type = BLOCK_LEB128_S;
+					locn_ents[2].bits.v = DW_OP_deref;
+				}
+				break;
+
+			case sym_global:
+				dwarf_location_addr(locn_ents, d);
+				break;
+
+			case sym_arg:
+				/* ignore arguments in local scope:
+				 * may be entering a block's code scope */
+				break;
+		}
+
+		dwarf_attr(var, DW_AT_location, DW_FORM_block1, locn);
+	}
+
+	dwarf_attr_decl(cu, var, d, d->ref, /*show_extern:*/0);
+
+	return var;
+}
+
+static struct DIE *dbg_create_sym_die(
+		struct DIE_compile_unit *cu, sym *sym, const out_val *val)
+{
+	if(sym->type == sym_arg)
+		return dbg_create_sym_die_arg(cu, sym, val);
+
+	return dbg_create_sym_die_local(cu, sym, val);
 }
 
 void out_dbg_emit_sym(out_ctx *octx, sym *sym, const out_val *val)
@@ -1064,87 +1139,6 @@ static struct DIE *dwarf_global_variable(struct cc1_dbg_ctx *dbg, decl *d)
 	return vardie;
 }
 
-#if 0
-static void dwarf_symtable_scope(
-		struct DIE_compile_unit *cu,
-		struct DIE *scope_parent,
-		symtable *symtab)
-{
-	symtable **si;
-	struct DIE *lexblk = NULL;
-
-	if(symtab->decls){
-		decl **di;
-
-		lexblk = dwarf_die_new(DW_TAG_lexical_block);
-
-		dwarf_attr(lexblk, DW_AT_low_pc,
-				DW_FORM_addr, ustrdup_or_null(symtab->lbl_begin));
-
-		dwarf_attr(lexblk, DW_AT_high_pc,
-				DW_FORM_addr, ustrdup_or_null(symtab->lbl_end));
-
-		/* generate variable DIEs */
-		for(di = symtab->decls; di && *di; di++){
-			decl *d = *di;
-			struct DIE *var = dwarf_die_new(DW_TAG_variable);
-
-			if(d->sym){
-				struct dwarf_block_ent *locn_ents;
-				struct dwarf_block *locn;
-				const int vla = type_is_variably_modified(d->ref);
-
-				locn = umalloc(sizeof *locn);
-				locn->cnt = 2 + vla;
-
-				locn_ents = umalloc(locn->cnt * sizeof *locn_ents);
-				locn->ents = locn_ents;
-
-				switch(d->sym->type){
-					case sym_local:
-						if(d->sym->bp_offset){
-							locn_ents[0].type = BLOCK_HEADER;
-							locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
-
-							locn_ents[1].type = BLOCK_LEB128_S;
-							locn_ents[1].bits.v = d->sym->bp_offset;
-
-							if(vla){
-								locn_ents[2].type = BLOCK_LEB128_S;
-								locn_ents[2].bits.v = DW_OP_deref;
-							}
-						}
-						break;
-
-					case sym_global:
-						dwarf_location_addr(locn_ents, d);
-						break;
-
-					case sym_arg:
-						/* ignore arguments in local scope:
-						 * may be entering a block's code scope */
-						break;
-				}
-
-				dwarf_attr(var, DW_AT_location, DW_FORM_block1, locn);
-			}
-
-			dwarf_attr_decl(cu, var, d, d->ref, /*show_extern:*/0);
-
-			dwarf_child(lexblk, var);
-		}
-
-		dwarf_child(scope_parent, lexblk);
-	}
-
-	/* children lex blocks - add to our parent if we are empty */
-	if(!lexblk)
-		lexblk = scope_parent;
-
-	for(si = symtab->children; si && *si; si++)
-		dwarf_symtable_scope(cu, lexblk, *si);
-}
-#endif
 
 static int func_code_emitted(decl *d)
 {
