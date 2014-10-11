@@ -163,7 +163,7 @@ void gen_set_sym_outval(out_ctx *octx, sym *sym, const out_val *v)
 	sym->outval = v;
 
 	if(v && cc1_gdebug)
-		out_dbg_emit_sym(octx, sym, v);
+		out_dbg_emit_decl(octx, sym->decl, v);
 }
 
 static void gen_asm_global(decl *d, out_ctx *octx)

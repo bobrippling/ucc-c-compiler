@@ -265,9 +265,8 @@ static struct DIE *dwarf_tydie_new(
 		type *ty,
 		enum dwarf_tag tag);
 
-static struct DIE *dbg_create_sym_die(
-		struct DIE_compile_unit *cu, sym *sym, const out_val *val)
-	ucc_nonnull((1, 2));
+static struct DIE *dbg_create_decl_die(
+		struct DIE_compile_unit *cu, decl *, const out_val *val);
 
 static void dwarf_location_addr(struct dwarf_block_ent *locn_ents, decl *d);
 
@@ -585,7 +584,7 @@ static struct DIE **dwarf_param_types(
 	for(di = args->arglist; di && *di; di++){
 		decl *d = *di;
 
-		dynarray_add(&dieargs, dbg_create_sym_die(cu, d->sym, NULL));
+		dynarray_add(&dieargs, dbg_create_decl_die(cu, d, NULL));
 	}
 
 	if(args->variadic){
@@ -881,7 +880,7 @@ static int dbg_get_val_location(const out_val *v, long *const offset)
 	}
 }
 
-static void dbg_emit_sym_location(struct DIE *param, const out_val *v)
+static void dbg_add_sym_location(struct DIE *param, const out_val *v)
 {
 	struct dwarf_block *locn;
 	struct dwarf_block_ent *locn_data;
@@ -904,28 +903,26 @@ static void dbg_emit_sym_location(struct DIE *param, const out_val *v)
 	dwarf_attr(param, DW_AT_location, DW_FORM_block1, locn);
 }
 
-static struct DIE *dbg_create_sym_die_arg(
-		struct DIE_compile_unit *cu, sym *sym, const out_val *val)
+static struct DIE *dbg_create_decl_die_arg(
+		struct DIE_compile_unit *cu, decl *d, const out_val *val)
 {
 	struct DIE *param = dwarf_die_new(DW_TAG_formal_parameter);
-	decl *d = sym->decl;
 
 	dwarf_set_DW_AT_type(param, cu, NULL, d->ref);
 
 	if(d->spel){
 		dwarf_attr(param, DW_AT_name, DW_FORM_string, d->spel);
 
-		if(d->sym && val)
-			dbg_emit_sym_location(param, val);
+		if(val)
+			dbg_add_sym_location(param, val);
 	}
 
 	return RETAIN(param);
 }
 
-static struct DIE *dbg_create_sym_die_local(
-		struct DIE_compile_unit *cu, sym *sym, const out_val *val)
+static struct DIE *dbg_create_decl_die_local(
+		struct DIE_compile_unit *cu, decl *d, const out_val *val)
 {
-	decl *d = sym->decl;
 	struct DIE *var = dwarf_die_new(DW_TAG_variable);
 	long offset;
 
@@ -973,21 +970,23 @@ static struct DIE *dbg_create_sym_die_local(
 	return var;
 }
 
-static struct DIE *dbg_create_sym_die(
-		struct DIE_compile_unit *cu, sym *sym, const out_val *val)
+static struct DIE *dbg_create_decl_die(
+		struct DIE_compile_unit *cu,
+		decl *d,
+		const out_val *val)
 {
-	if(sym->type == sym_arg)
-		return dbg_create_sym_die_arg(cu, sym, val);
+	if(!d->sym || d->sym->type == sym_arg)
+		return dbg_create_decl_die_arg(cu, d, val);
 
-	return dbg_create_sym_die_local(cu, sym, val);
+	return dbg_create_decl_die_local(cu, d, val);
 }
 
-void out_dbg_emit_sym(out_ctx *octx, sym *sym, const out_val *val)
+void out_dbg_emit_decl(out_ctx *octx, decl *d, const out_val *val)
 {
 	struct cc1_dbg_ctx *dbg = &cc1_out_ctx_or_new(octx)->dbg;
 
 	dwarf_child(dbg->current_scope,
-			dbg_create_sym_die(dbg->compile_unit, sym, val));
+			dbg_create_decl_die(dbg->compile_unit, d, val));
 }
 
 static struct DIE_compile_unit *dwarf_cu(
