@@ -17,6 +17,7 @@ struct cc1_warning
 	unsigned char attr_nonnull;
 	unsigned char attr_nonnull_bad;
 	unsigned char attr_nonnull_noargs;
+	unsigned char attr_nonnull_noptrs;
 	unsigned char attr_nonnull_nonptr;
 	unsigned char attr_nonnull_oob;
 	unsigned char attr_printf_bad;

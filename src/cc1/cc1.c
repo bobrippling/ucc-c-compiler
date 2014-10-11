@@ -134,6 +134,7 @@ static struct warn_str
 	{ "attr-nonnull-bad", &cc1_warning.attr_nonnull_bad },
 	{ "attr-nonnull-noargs", &cc1_warning.attr_nonnull_noargs },
 	{ "attr-nonnull-nonptr", &cc1_warning.attr_nonnull_nonptr },
+	{ "attr-nonnull-noptrs", &cc1_warning.attr_nonnull_noptrs },
 	{ "attr-nonnull-oob", &cc1_warning.attr_nonnull_oob },
 	{ "attr-section-badchar", &cc1_warning.attr_section_badchar },
 	{ "attr-sentinel", &cc1_warning.attr_sentinel },
