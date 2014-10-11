@@ -237,6 +237,9 @@ void gen_block_decls(
 		*dbg_end_lbl = NULL;
 	}
 
+	if(cc1_gdebug)
+		out_dbg_scope_enter(octx, stab);
+
 	/* declare strings, extern functions, blocks and vlas */
 	for(diter = stab->decls; diter && *diter; diter++){
 		decl *d = *diter;
@@ -288,6 +291,9 @@ void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 
 		out_adealloc(octx, &d->sym->outval);
 	}
+
+	if(cc1_gdebug)
+		out_dbg_scope_leave(octx);
 }
 
 static void gen_scope_destructors(symtable *scope, out_ctx *octx)

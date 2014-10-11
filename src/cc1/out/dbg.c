@@ -1139,6 +1139,31 @@ static struct DIE *dwarf_global_variable(struct cc1_dbg_ctx *dbg, decl *d)
 	return vardie;
 }
 
+void out_dbg_scope_enter(out_ctx *octx, symtable *symtab)
+{
+	struct cc1_dbg_ctx *dbg = &cc1_out_ctx_or_new(octx)->dbg;
+	struct DIE *scope_parent = dbg->current_scope;
+	struct DIE *lexblk;
+
+	lexblk = dwarf_die_new(DW_TAG_lexical_block);
+
+	dwarf_attr(lexblk, DW_AT_low_pc,
+			DW_FORM_addr, ustrdup_or_null(symtab->lbl_begin));
+
+	dwarf_attr(lexblk, DW_AT_high_pc,
+			DW_FORM_addr, ustrdup_or_null(symtab->lbl_end));
+
+	dwarf_child(scope_parent, lexblk);
+
+	dbg->current_scope = lexblk;
+}
+
+void out_dbg_scope_leave(out_ctx *octx)
+{
+	struct cc1_dbg_ctx *dbg = &cc1_out_ctx_or_new(octx)->dbg;
+
+	dbg->current_scope = dbg->current_scope->parent;
+}
 
 static int func_code_emitted(decl *d)
 {
@@ -1548,6 +1573,10 @@ void out_dbg_end(out_ctx *octx)
 	unsigned long abbrev = 0;
 	size_t i;
 	struct DIE *tydie;
+
+	/* current_scope should be a direct child of the compile unit */
+	if(dbg->current_scope && dbg->current_scope->parent != &compile_unit->die)
+		ICW("debug still has current_scope");
 
 	for(i = 0;
 	    (tydie = dynmap_value(struct DIE *, compile_unit->types_to_dies, i));

@@ -28,4 +28,7 @@ void out_dbg_emit_sym(out_ctx *, struct sym *, const out_val *);
 void out_dbg_emit_func(out_ctx *, struct decl *);
 void out_dbg_emit_global_var(out_ctx *, struct decl *);
 
+void out_dbg_scope_enter(out_ctx *, struct symtable *);
+void out_dbg_scope_leave(out_ctx *);
+
 #endif
