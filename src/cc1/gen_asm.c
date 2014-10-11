@@ -254,6 +254,28 @@ static void gen_stringlits(dynmap *litmap)
 			asm_declare_stringlit(SECTION_DATA, lit);
 }
 
+static int func_pure_inline(decl *d)
+{
+	if(d->store & store_inline){
+		/*
+		 * inline semantics
+		 *
+		 * "" = inline only
+		 * "static" = code emitted, decl is static
+		 * "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
+		 *
+		 * look for non-default store on any prototypes
+		 */
+		for(; d; d = d->proto)
+			if((d->store & STORE_MASK_STORE) != store_default)
+				return 0;
+
+		return 1;
+	}
+
+	return 0;
+}
+
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
 	int emitted_type = 0;
@@ -281,23 +303,8 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 	}
 
 	if(type_is(d->ref, type_func)){
-		if(d->store & store_inline){
-			/*
-			 * inline semantics
-			 *
-			 * "" = inline only
-			 * "static" = code emitted, decl is static
-			 * "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
-			 */
-			if((d->store & STORE_MASK_STORE) == store_default){
-				/* inline only - emit an extern for it anyway */
-				if(!emitted_type)
-					asm_predeclare_extern(d);
-				return;
-			}
-		}
-
-		if(!d->bits.func.code){
+		if(func_pure_inline(d) || !d->bits.func.code){
+			/* inline only gets extern emitted anyway */
 			if(!emitted_type)
 				asm_predeclare_extern(d);
 			return;
