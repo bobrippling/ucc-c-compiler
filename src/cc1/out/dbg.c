@@ -1208,11 +1208,6 @@ void out_dbg_scope_leave(out_ctx *octx, symtable *symtab)
 	dbg->current_scope = dbg->current_scope->parent;
 }
 
-static int func_code_emitted(decl *d)
-{
-	return d->bits.func.code && !DECL_PURE_INLINE(d);
-}
-
 static struct DIE *dwarf_subprogram_func(struct cc1_dbg_ctx *dbg, decl *d)
 {
 	struct DIE_compile_unit *cu = dbg->compile_unit;
@@ -1220,7 +1215,7 @@ static struct DIE *dwarf_subprogram_func(struct cc1_dbg_ctx *dbg, decl *d)
 	/* generate the DW_TAG_subprogram */
 	const char *asmsp;
 
-	if(!func_code_emitted(d))
+	if(!decl_should_emit_code(d))
 		return NULL;
 
 	subprog = dwarf_die_new(DW_TAG_subprogram);

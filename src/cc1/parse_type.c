@@ -1581,32 +1581,22 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 		 * (since d_prev is different), but one warning is fine
 		 *
 		 * special case: we allow changing a pure inline function
-		 * to extern- or static-inline.
+		 * to extern- or static-inline (provided it doesn't change
+		 * anything else like asm() renames)
 		 */
-		if(d_prev->store & store_inline
-		&& decl_store_static_or_extern(d_this->store))
-		{
-			/* check we aren't changing anything
-			 * errors are caught later on in the decl folding stage */
-			if(!decl_store_static_or_extern(d_prev->store)){
-				/* keep previous inline, obtain this extern/static */
-				d_prev->store =
-					(d_prev->store & STORE_MASK_EXTRA)
-					| (d_this->store & STORE_MASK_STORE);
-			}
-
-			if(!d_this->spel_asm)
-				return;
-			/* else we want the warning below */
+		if((d_prev->store & store_inline) && !d_this->spel_asm){
+			/* redefinition is fine.
+			 * type errors are caught later on in the decl folding stage
+			 */
+		}else{
+			cc1_warn_at(&d_this->where,
+					ignored_late_decl,
+					"declaration of \"%s\" after definition is ignored\n"
+					"%s: note: definition here",
+					d_this->spel,
+					where_str_r(wbuf, &d_prev->where));
+			return;
 		}
-
-		cc1_warn_at(&d_this->where,
-				ignored_late_decl,
-				"declaration of \"%s\" after definition is ignored\n"
-				"%s: note: definition here",
-				d_this->spel,
-				where_str_r(wbuf, &d_prev->where));
-		return;
 	}
 
 	if(d_this->spel_asm){
@@ -1621,11 +1611,9 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 		d_this->spel_asm = d_prev->spel_asm;
 	}
 
-	/* propagate static and inline */
+	/* propagate static, but not inline */
 	if((d_prev->store & STORE_MASK_STORE) == store_static)
 		d_this->store = (d_this->store & ~STORE_MASK_STORE) | store_static;
-
-	d_this->store |= (d_prev->store & STORE_MASK_EXTRA);
 
 	/* update the f(void) bools */
 	{

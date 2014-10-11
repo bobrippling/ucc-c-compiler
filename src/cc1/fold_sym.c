@@ -304,7 +304,7 @@ void symtab_fold_decls(symtable *tab)
 			}
 		}
 
-		if(type_is_func_or_block(d->ref) && DECL_PURE_INLINE(d)){
+		if(type_is_func_or_block(d->ref) && decl_is_pure_inline(d)){
 			cc1_warn_at(&d->where,
 					pure_inline,
 					"pure inline function will not have code emitted "

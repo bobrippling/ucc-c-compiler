@@ -245,3 +245,30 @@ const char *decl_to_str(decl *d)
 	static char buf[DECL_STATIC_BUFSIZ];
 	return decl_to_str_r(buf, d);
 }
+
+int decl_is_pure_inline(decl *d)
+{
+	/*
+	 * inline semantics
+	 *
+	 * "" = inline only
+	 * "static" = code emitted, decl is static
+	 * "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
+	 *
+	 * look for non-inline store on any prototypes
+	 */
+	for(; d; d = d->proto){
+		if(!(d->store & store_inline))
+			return 0; /* not marked as inline - not pure inline */
+
+		if((d->store & STORE_MASK_STORE) != store_default)
+			return 0; /* static or extern */
+	}
+
+	return 1;
+}
+
+int decl_should_emit_code(decl *d)
+{
+	return d->bits.func.code && !decl_is_pure_inline(d);
+}
