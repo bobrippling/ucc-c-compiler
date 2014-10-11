@@ -580,11 +580,19 @@ static struct DIE *dwarf_tydie_new(
 	return tydie;
 }
 
+static struct DIE *dwarf_maybe_create_variadic_tag(funcargs *args)
+{
+	return args->variadic
+		? dwarf_die_new(DW_TAG_unspecified_parameters)
+		: NULL;
+}
+
 static struct DIE **dwarf_param_types(
 		struct DIE_compile_unit *cu, funcargs *args)
 {
 	struct DIE **dieargs = NULL;
 	decl **di;
+	struct DIE *va_tag;
 
 	for(di = args->arglist; di && *di; di++){
 		decl *d = *di;
@@ -592,10 +600,9 @@ static struct DIE **dwarf_param_types(
 		dynarray_add(&dieargs, dbg_create_decl_die(cu, d, NULL));
 	}
 
-	if(args->variadic){
-		struct DIE *unspec = dwarf_die_new(DW_TAG_unspecified_parameters);
-		dynarray_add(&dieargs, RETAIN(unspec));
-	}
+	va_tag = dwarf_maybe_create_variadic_tag(args);
+	if(va_tag)
+		dynarray_add(&dieargs, RETAIN(va_tag));
 
 	return dieargs;
 }
@@ -998,6 +1005,15 @@ void out_dbg_emit_decl(out_ctx *octx, decl *d, const out_val *val)
 	dwarf_current_child(dbg, dbg_create_decl_die(dbg->compile_unit, d, val));
 }
 
+void out_dbg_emit_args_done(out_ctx *octx, funcargs *args)
+{
+	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
+	struct DIE *va = dwarf_maybe_create_variadic_tag(args);
+
+	if(va)
+		dwarf_current_child(dbg, va);
+}
+
 static struct DIE_compile_unit *dwarf_cu(
 		const char *fname, const char *compdir,
 		struct out_dbg_filelist **pfilelist)
@@ -1221,14 +1237,6 @@ static struct DIE *dwarf_subprogram_func(struct cc1_dbg_ctx *dbg, decl *d)
 	dwarf_attr(subprog, DW_AT_high_pc, DW_FORM_addr, out_dbg_func_end(asmsp));
 
 	/* code gen runs through and adds decls to scope */
-#if 0
-	dwarf_children(subprog,
-			dwarf_formal_params(cu, args, !arg_symtab->stack_used));
-
-	/* TODO: variadic */
-
-	dwarf_symtable_scope(cu, subprog, d->bits.func.code->symtab);
-#endif
 
 	return subprog;
 }

@@ -211,6 +211,9 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		allocate_vla_args(octx, arg_symtab);
 		free(argvals), argvals = NULL;
 
+		if(cc1_gdebug)
+			out_dbg_emit_args_done(octx, type_funcargs(d->ref));
+
 		gen_stmt(d->bits.func.code, octx);
 
 		release_arg_vals(arg_symtab->decls, octx);

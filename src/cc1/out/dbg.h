@@ -29,6 +29,9 @@ void out_dbg_emit_global_var(out_ctx *, struct decl *);
 void out_dbg_emit_decl(out_ctx *, struct decl *, const out_val *);
 void out_dbg_emit_global_decl_scoped(out_ctx *, struct decl *);
 
+/* maybe add on a variadic tag */
+void out_dbg_emit_args_done(out_ctx *, struct funcargs *);
+
 void out_dbg_scope_enter(out_ctx *, struct symtable *);
 void out_dbg_scope_leave(out_ctx *, struct symtable *);
 
