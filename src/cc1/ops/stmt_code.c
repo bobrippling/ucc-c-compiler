@@ -277,8 +277,15 @@ void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 		decl *d = *diter;
 		int is_typedef;
 
-		if(!d->sym || d->sym->type != sym_local || type_is(d->ref, type_func))
+		if(!d->sym || d->sym->type != sym_local || type_is(d->ref, type_func)){
+			if(d->sym && cc1_gdebug){
+				/* int a; f(){ int a; { extern a; ... } }
+				 *                      ^~~~~~~~~~~~~ need to say ::a is in scope
+				 */
+				out_dbg_emit_global_decl_scoped(octx, d);
+			}
 			continue;
+		}
 
 		is_typedef = ((d->store & STORE_MASK_STORE) == store_typedef);
 

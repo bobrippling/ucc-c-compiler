@@ -986,12 +986,16 @@ static struct DIE *dbg_create_decl_die(
 	return dbg_create_decl_die_local(cu, d, val);
 }
 
+static void dwarf_current_child(struct cc1_dbg_ctx *dbg, struct DIE *die)
+{
+	dwarf_child(dbg->current_scope, die);
+}
+
 void out_dbg_emit_decl(out_ctx *octx, decl *d, const out_val *val)
 {
 	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
 
-	dwarf_child(dbg->current_scope,
-			dbg_create_decl_die(dbg->compile_unit, d, val));
+	dwarf_current_child(dbg, dbg_create_decl_die(dbg->compile_unit, d, val));
 }
 
 static struct DIE_compile_unit *dwarf_cu(
@@ -1104,7 +1108,8 @@ static void dwarf_location_addr(struct dwarf_block_ent *locn_ents, decl *d)
 	locn_ents[1].bits.str = ustrdup(decl_asm_spel(d));
 }
 
-static struct DIE *dwarf_global_variable(struct cc1_dbg_ctx *dbg, decl *d)
+static struct DIE *dwarf_global_variable(
+		struct cc1_dbg_ctx *dbg, decl *d, const int only_if_init)
 {
 	struct DIE_compile_unit *cu = dbg->compile_unit;
 	const enum decl_storage store = d->store & STORE_MASK_STORE;
@@ -1114,7 +1119,9 @@ static struct DIE *dwarf_global_variable(struct cc1_dbg_ctx *dbg, decl *d)
 
 	if(!d->spel)
 		return NULL;
-	if((store == store_extern || store == store_default)
+
+	if(only_if_init
+	&& (store == store_extern || store == store_default)
 	&& !d->bits.var.init.dinit)
 	{
 		return NULL;
@@ -1531,15 +1538,21 @@ static unsigned long dwarf_offset_die(
 	return off;
 }
 
-static void dbg_emit_global(
-		out_ctx *octx, decl *d,
-		struct DIE *emit_fn(struct cc1_dbg_ctx *, decl *))
+static void dbg_emit_global(out_ctx *octx, struct DIE *global)
 {
 	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
-	struct DIE *new = emit_fn(dbg, d);
 
-	if(new)
-		dwarf_child(&dbg->compile_unit->die, new);
+	if(global)
+		dwarf_child(&dbg->compile_unit->die, global);
+}
+
+void out_dbg_emit_global_decl_scoped(out_ctx *octx, decl *d)
+{
+	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
+	struct DIE *global_scoped = dwarf_global_variable(dbg, d, 0);
+
+	if(global_scoped)
+		dwarf_current_child(dbg, global_scoped);
 }
 
 void dbg_out_filelist(
@@ -1610,10 +1623,10 @@ void out_dbg_end(out_ctx *octx)
 void out_dbg_emit_func(out_ctx *octx, decl *d)
 {
 	assert(type_is_func_or_block(d->ref));
-	dbg_emit_global(octx, d, dwarf_subprogram_func);
+	dbg_emit_global(octx, dwarf_subprogram_func(octx2dbg(octx), d));
 }
 
 void out_dbg_emit_global_var(out_ctx *octx, decl *d)
 {
-	dbg_emit_global(octx, d, dwarf_global_variable);
+	dbg_emit_global(octx, dwarf_global_variable(octx2dbg(octx), d, 1));
 }
