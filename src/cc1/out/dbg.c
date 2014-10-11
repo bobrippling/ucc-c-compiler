@@ -1150,11 +1150,23 @@ static struct DIE *dwarf_global_variable(
 	return vardie;
 }
 
+static int should_emit_dbg_scope(symtable *stab)
+{
+	/* if we're at func-root, don't need to emit a lexical block */
+	return stab->parent != symtab_func_root(stab);
+}
+
 void out_dbg_scope_enter(out_ctx *octx, symtable *symtab)
 {
-	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
-	struct DIE *scope_parent = dbg->current_scope;
+	struct cc1_dbg_ctx *dbg;
+	struct DIE *scope_parent;
 	struct DIE *lexblk;
+
+	if(!should_emit_dbg_scope(symtab))
+		return;
+
+	dbg = octx2dbg(octx);
+	scope_parent = dbg->current_scope;
 
 	lexblk = dwarf_die_new(DW_TAG_lexical_block);
 
@@ -1169,10 +1181,14 @@ void out_dbg_scope_enter(out_ctx *octx, symtable *symtab)
 	dbg->current_scope = lexblk;
 }
 
-void out_dbg_scope_leave(out_ctx *octx)
+void out_dbg_scope_leave(out_ctx *octx, symtable *symtab)
 {
-	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
+	struct cc1_dbg_ctx *dbg;
 
+	if(!should_emit_dbg_scope(symtab))
+		return;
+
+	dbg = octx2dbg(octx);
 	dbg->current_scope = dbg->current_scope->parent;
 }
 

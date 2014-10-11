@@ -300,7 +300,7 @@ void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 	}
 
 	if(cc1_gdebug)
-		out_dbg_scope_leave(octx);
+		out_dbg_scope_leave(octx, stab);
 }
 
 static void gen_scope_destructors(symtable *scope, out_ctx *octx)
