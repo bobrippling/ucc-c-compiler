@@ -637,7 +637,7 @@ static struct DIE *dwarf_type_die(
 
 		case type_func:
 		{
-			long flag = 1;
+			form_data_t flag = 1;
 
 			tydie = dwarf_tydie_new(cu, ty, DW_TAG_subroutine_type);
 
