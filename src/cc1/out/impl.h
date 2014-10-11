@@ -82,10 +82,6 @@ const char *impl_val_str_r(
 		char buf[], const out_val *vs, const int deref);
 
 /* can't do this for gen_deps.sh */
-#ifdef CC1_IMPL_FNAME
-#  include CC1_IMPL_FNAME
-#else
-#  warning "no impl defined"
-#endif
+#include "backend.h"
 
 #endif

@@ -6,6 +6,11 @@
 struct cc1_out_ctx
 {
 	struct dynmap *vlamap;
+	struct cc1_dbg_ctx
+	{
+		struct DIE_compile_unit *compile_unit;
+		struct DIE *current_scope;
+	} dbg;
 };
 
 #define cc1_out_ctx(octx) ((struct cc1_out_ctx **)out_user_ctx(octx))

@@ -23,6 +23,7 @@
 #include "../type_is.h"
 #include "../retain.h"
 #include "../vla.h"
+#include "../cc1_out_ctx.h"
 
 #include "asm.h" /* cc_out[] */
 
@@ -34,6 +35,8 @@
 #include "lbl.h"
 #include "dbg.h"
 #include "write.h" /* dbg_add_file */
+#include "val.h"
+#include "backend.h" /* REG_BP */
 
 #define DEBUG_TYPE_SKIP type_skip_non_tdefs_consts
 #define DEBUG_TYPE_HASH type_hash_skip_nontdefs_consts
@@ -253,9 +256,6 @@ static struct DIE *dwarf_suetype(
 		struct_union_enum_st *sue,
 		type *suety);
 
-static struct DIE **dwarf_formal_params(
-		struct DIE_compile_unit *cu, funcargs *args, int show_arg_locns);
-
 static struct DIE *dwarf_type_die(
 		struct DIE_compile_unit *cu,
 		struct DIE *parent, type *ty);
@@ -264,6 +264,9 @@ static struct DIE *dwarf_tydie_new(
 		struct DIE_compile_unit *cu,
 		type *ty,
 		enum dwarf_tag tag);
+
+static struct DIE *dbg_create_sym_die(
+		struct DIE_compile_unit *cu, sym *sym, const out_val *val);
 
 static void dwarf_die_free_r(struct DIE *die);
 
@@ -564,6 +567,26 @@ static struct DIE *dwarf_tydie_new(
 	return tydie;
 }
 
+static struct DIE **dwarf_param_types(
+		struct DIE_compile_unit *cu, funcargs *args)
+{
+	struct DIE **dieargs = NULL;
+	decl **di;
+
+	for(di = args->arglist; di && *di; di++){
+		decl *d = *di;
+
+		dynarray_add(&dieargs, dbg_create_sym_die(cu, d->sym, NULL));
+	}
+
+	if(args->variadic){
+		struct DIE *unspec = dwarf_die_new(DW_TAG_unspecified_parameters);
+		dynarray_add(&dieargs, RETAIN(unspec));
+	}
+
+	return dieargs;
+}
+
 static struct DIE *dwarf_type_die(
 		struct DIE_compile_unit *cu,
 		struct DIE *parent, type *ty)
@@ -645,8 +668,7 @@ static struct DIE *dwarf_type_die(
 
 			dwarf_attr(tydie, DW_AT_prototyped, DW_FORM_flag, &flag);
 
-			dwarf_children(tydie,
-					dwarf_formal_params(cu, ty->bits.func.args, /*args_in_regs:*/1));
+			dwarf_children(tydie, dwarf_param_types(cu, ty->bits.func.args));
 			break;
 		}
 
@@ -835,47 +857,62 @@ static struct DIE *dwarf_suetype(
 	return suedie;
 }
 
-static struct DIE **dwarf_formal_params(
-		struct DIE_compile_unit *cu, funcargs *args, int args_in_regs)
+static void dbg_emit_sym_location(struct DIE *param, const out_val *v)
 {
-	struct DIE **dieargs = NULL;
-	size_t i;
+	struct dwarf_block *locn;
+	struct dwarf_block_ent *locn_data;
+	long offset;
 
-	for(i = 0; args->arglist && args->arglist[i]; i++){
-		decl *d = args->arglist[i];
-
-		struct DIE *param = dwarf_die_new(DW_TAG_formal_parameter);
-
-		dwarf_set_DW_AT_type(param, cu, NULL, d->ref);
-
-		if(d->spel){
-			if(d->sym && d->sym->bp_offset && !args_in_regs){
-				struct dwarf_block *locn = umalloc(sizeof *locn);;
-				struct dwarf_block_ent *locn_data = umalloc(2 * sizeof *locn_data);
-
-				locn_data[0].type = BLOCK_HEADER;
-				locn_data[0].bits.v = DW_OP_breg6; /* rbp */
-				locn_data[1].type = BLOCK_LEB128_S;
-				locn_data[1].bits.v = d->sym->bp_offset;
-
-				locn->cnt = 2;
-				locn->ents = locn_data;
-
-				dwarf_attr(param, DW_AT_location, DW_FORM_block1, locn);
+	switch(v->type){
+		case V_REG_SPILT:
+		case V_REG:
+			if(v->bits.regoff.reg.idx == REG_BP){
+				offset = v->bits.regoff.offset;
+				break;
 			}
-
-			dwarf_attr(param, DW_AT_name, DW_FORM_string, d->spel);
-		}
-
-		dynarray_add(&dieargs, RETAIN(param));
+			/* fall */
+		default:
+			return;
 	}
 
-	if(args->variadic){
-		struct DIE *unspec = dwarf_die_new(DW_TAG_unspecified_parameters);
-		dynarray_add(&dieargs, RETAIN(unspec));
+	locn = umalloc(sizeof *locn);
+	locn_data = umalloc(2 * sizeof *locn_data);
+
+	locn_data[0].type = BLOCK_HEADER;
+	locn_data[0].bits.v = DW_OP_breg6; /* rbp */
+	locn_data[1].type = BLOCK_LEB128_S;
+	locn_data[1].bits.v = offset;
+
+	locn->cnt = 2;
+	locn->ents = locn_data;
+
+	dwarf_attr(param, DW_AT_location, DW_FORM_block1, locn);
+}
+
+static struct DIE *dbg_create_sym_die(
+		struct DIE_compile_unit *cu, sym *sym, const out_val *val)
+{
+	struct DIE *param = dwarf_die_new(DW_TAG_formal_parameter);
+	decl *d = sym->decl;
+
+	dwarf_set_DW_AT_type(param, cu, NULL, d->ref);
+
+	if(d->spel){
+		dwarf_attr(param, DW_AT_name, DW_FORM_string, d->spel);
+
+		if(d->sym && val)
+			dbg_emit_sym_location(param, val);
 	}
 
-	return dieargs;
+	return RETAIN(param);
+}
+
+void out_dbg_emit_sym(out_ctx *octx, sym *sym, const out_val *val)
+{
+	struct cc1_dbg_ctx *dbg = &cc1_out_ctx_or_new(octx)->dbg;
+
+	dwarf_child(dbg->current_scope,
+			dbg_create_sym_die(dbg->compile_unit, sym, val));
 }
 
 static struct DIE_compile_unit *dwarf_cu(
@@ -988,8 +1025,9 @@ static void dwarf_location_addr(struct dwarf_block_ent *locn_ents, decl *d)
 	locn_ents[1].bits.str = ustrdup(decl_asm_spel(d));
 }
 
-static struct DIE *dwarf_global_variable(struct DIE_compile_unit *cu, decl *d)
+static struct DIE *dwarf_global_variable(struct cc1_dbg_ctx *dbg, decl *d)
 {
+	struct DIE_compile_unit *cu = dbg->compile_unit;
 	const enum decl_storage store = d->store & STORE_MASK_STORE;
 	const int is_tdef = store == store_typedef;
 
@@ -1026,6 +1064,7 @@ static struct DIE *dwarf_global_variable(struct DIE_compile_unit *cu, decl *d)
 	return vardie;
 }
 
+#if 0
 static void dwarf_symtable_scope(
 		struct DIE_compile_unit *cu,
 		struct DIE *scope_parent,
@@ -1105,16 +1144,17 @@ static void dwarf_symtable_scope(
 	for(si = symtab->children; si && *si; si++)
 		dwarf_symtable_scope(cu, lexblk, *si);
 }
+#endif
 
 static int func_code_emitted(decl *d)
 {
 	return d->bits.func.code && !DECL_PURE_INLINE(d);
 }
 
-static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
+static struct DIE *dwarf_subprogram_func(struct cc1_dbg_ctx *dbg, decl *d)
 {
+	struct DIE_compile_unit *cu = dbg->compile_unit;
 	struct DIE *subprog;
-	funcargs *args;
 	/* generate the DW_TAG_subprogram */
 	const char *asmsp;
 
@@ -1122,22 +1162,27 @@ static struct DIE *dwarf_subprogram_func(struct DIE_compile_unit *cu, decl *d)
 		return NULL;
 
 	subprog = dwarf_die_new(DW_TAG_subprogram);
+
+	dbg->current_scope = subprog;
+
 	asmsp = decl_asm_spel(d);
-	args = type_funcargs(d->ref);
 
 	dwarf_attr_decl(cu, subprog,
 			d, type_func_call(d->ref, NULL),
 			/*show_extern:*/1);
 
-	symtable *const arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
-
 	dwarf_attr(subprog, DW_AT_low_pc, DW_FORM_addr, ustrdup(asmsp));
 	dwarf_attr(subprog, DW_AT_high_pc, DW_FORM_addr, out_dbg_func_end(asmsp));
 
+	/* code gen runs through and adds decls to scope */
+#if 0
 	dwarf_children(subprog,
 			dwarf_formal_params(cu, args, !arg_symtab->stack_used));
 
+	/* TODO: variadic */
+
 	dwarf_symtable_scope(cu, subprog, d->bits.func.code->symtab);
+#endif
 
 	return subprog;
 }
@@ -1463,6 +1508,17 @@ static unsigned long dwarf_offset_die(
 	return off;
 }
 
+static void dbg_emit_global(
+		out_ctx *octx, decl *d,
+		struct DIE *emit_fn(struct cc1_dbg_ctx *, decl *))
+{
+	struct cc1_dbg_ctx *dbg = &cc1_out_ctx_or_new(octx)->dbg;
+	struct DIE *new = emit_fn(dbg, d);
+
+	if(new)
+		dwarf_child(&dbg->compile_unit->die, new);
+}
+
 void dbg_out_filelist(
 		struct out_dbg_filelist *head, FILE *f)
 {
@@ -1477,34 +1533,27 @@ void dbg_out_filelist(
 	}
 }
 
-
-void out_dbginfo(symtable_global *globs,
+void out_dbg_begin(
+		out_ctx *octx,
 		struct out_dbg_filelist **pfilelist,
 		const char *fname,
 		const char *compdir)
 {
-	struct DIE_compile_unit *compile_unit;
-	struct DIE *tydie;
-	size_t i;
+	struct DIE_compile_unit *cu = dwarf_cu(fname, compdir, pfilelist);
+	struct cc1_dbg_ctx *dbg = &cc1_out_ctx_or_new(octx)->dbg;
+
+	dbg->compile_unit = cu;
+	dbg->current_scope = NULL;
+}
+
+void out_dbg_end(out_ctx *octx)
+{
 	long info_offset = dwarf_info_header(cc_out[SECTION_DBG_INFO]);
+	struct cc1_dbg_ctx *dbg = &cc1_out_ctx_or_new(octx)->dbg;
+	struct DIE_compile_unit *compile_unit = dbg->compile_unit;
 	unsigned long abbrev = 0;
-
-	compile_unit = dwarf_cu(fname, compdir, pfilelist);
-
-	{
-		decl **diter;
-
-		for(diter = globs->stab.decls; diter && *diter; diter++){
-			decl *d = *diter;
-
-			struct DIE *new = (type_is_func_or_block(d->ref)
-					? dwarf_subprogram_func
-					: dwarf_global_variable)(compile_unit, d);
-
-			if(new)
-				dwarf_child(&compile_unit->die, new);
-		}
-	}
+	size_t i;
+	struct DIE *tydie;
 
 	for(i = 0;
 	    (tydie = dynmap_value(struct DIE *, compile_unit->types_to_dies, i));
@@ -1529,4 +1578,15 @@ void out_dbginfo(symtable_global *globs,
 	dynmap_free(compile_unit->types_to_dies);
 
 	dwarf_die_free_r(&compile_unit->die);
+}
+
+void out_dbg_emit_func(out_ctx *octx, decl *d)
+{
+	assert(type_is_func_or_block(d->ref));
+	dbg_emit_global(octx, d, dwarf_subprogram_func);
+}
+
+void out_dbg_emit_global_var(out_ctx *octx, decl *d)
+{
+	dbg_emit_global(octx, d, dwarf_global_variable);
 }

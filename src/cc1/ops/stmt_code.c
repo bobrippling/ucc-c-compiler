@@ -199,7 +199,7 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 			}
 
 			assert(!s->outval);
-			gen_set_sym_outval(s, out_aalloc(octx, siz, align, s->decl->ref));
+			gen_set_sym_outval(octx, s, out_aalloc(octx, siz, align, s->decl->ref));
 			break;
 		}
 
