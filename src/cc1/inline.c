@@ -146,6 +146,12 @@ static const out_val *gen_inline_func(
 			pushed_vals[i].map_val = was_set;
 		}
 
+		if(cc1_gdebug){
+			/* sym_outval() may be null, in which case the debugger
+			 * will show "argument optimised out" etc etc.. */
+			out_dbg_emit_decl(octx, *diter, sym_outval(s));
+		}
+
 		/* generate vla side-effects */
 		gen_vla_arg_sideeffects(*diter, octx);
 	}
