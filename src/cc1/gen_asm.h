@@ -22,9 +22,7 @@ extern int gen_had_error;
 const out_val *gen_expr(const expr *e, out_ctx *) ucc_wur;
 const out_val *lea_expr(const expr *e, out_ctx *) ucc_wur;
 void gen_stmt(const struct stmt *t, out_ctx *);
-
-/* gen_stmt() but with other-function necessities too, like vla cleanup */
-void gen_func_stmt(const struct stmt *, out_ctx *);
+#define gen_func_stmt gen_stmt
 
 ucc_wur
 const out_val *gen_call(
