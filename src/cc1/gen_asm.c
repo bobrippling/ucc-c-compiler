@@ -263,7 +263,8 @@ const out_val *gen_call(
 		const where *loc)
 {
 	const char *whynot;
-	const out_val *fn_ret = inline_func_try_gen(maybe_exp, maybe_dfn, fnval, args, octx, &whynot);
+	const out_val *fn_ret = inline_func_try_gen(
+			maybe_exp, maybe_dfn, fnval, args, octx, &whynot, loc);
 
 	if(fn_ret){
 		if(fopt_mode & FOPT_SHOW_INLINED)

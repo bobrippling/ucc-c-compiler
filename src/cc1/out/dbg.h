@@ -35,4 +35,14 @@ void out_dbg_emit_args_done(out_ctx *, struct funcargs *);
 void out_dbg_scope_enter(out_ctx *, struct symtable *);
 void out_dbg_scope_leave(out_ctx *, struct symtable *);
 
+/* parameters are added during the inline code gen */
+void out_dbg_inlined_call(
+		out_ctx *,
+		struct decl *dinlined,
+		const char *caller_start_lbl,
+		out_blk *caller_end_blk,
+		const where *call_locn);
+
+void out_dbg_inline_end(out_ctx *);
+
 #endif

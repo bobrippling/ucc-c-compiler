@@ -8,7 +8,8 @@ const out_val *inline_func_try_gen(
 		expr *maybe_call_expr, decl *maybe_decl,
 		const out_val *fnval,
 		const out_val **args,
-		out_ctx *octx, const char **whynot);
+		out_ctx *octx,
+		const char **whynot, const where *call_loc);
 
 void inline_ret_add(out_ctx *octx, const out_val *v);
 

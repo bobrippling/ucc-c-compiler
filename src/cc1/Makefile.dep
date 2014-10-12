@@ -254,8 +254,8 @@ inline.o: inline.c ../util/dynarray.h ../util/dyn.h ../util/warn.h \
  ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
  ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
  ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h \
- gen_asm.h cc1.h ../util/std.h warn.h funcargs.h type_is.h inline.h \
- out/forwards.h cc1_out_ctx.h
+ gen_asm.h cc1.h ../util/std.h warn.h out/dbg.h out/lbl.h funcargs.h \
+ type_is.h inline.h out/forwards.h cc1_out_ctx.h
 label.o: label.c ../util/where.h ../util/compiler.h ../util/alloc.h \
  ../util/dynarray.h ../util/dyn.h sym.h decl.h type.h num.h btype.h \
  attribute.h retain.h ../util/dynmap.h label.h out/forwards.h out/out.h \
@@ -1554,7 +1554,7 @@ out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
  out/../retain.h out/../vla.h out/../cc1_out_ctx.h out/../out/forwards.h \
  out/asm.h out/../defs.h out/../../as_cfg.h out/leb.h out/lbl.h out/dbg.h \
  out/write.h out/../../util/compiler.h out/forwards.h out/val.h \
- out/backend.h out/x86_64.h
+ out/backend.h out/x86_64.h out/blk.h
 out/free.o: out/free.c out/../../util/dynmap.h out/../../util/dyn.h \
  out/../../util/dynarray.h out/../type.h out/../num.h out/../btype.h \
  out/../../util/where.h out/../../util/compiler.h out/forwards.h \

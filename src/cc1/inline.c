@@ -12,6 +12,10 @@
 #include "gen_asm.h"
 #include "cc1.h" /* fopt_mode */
 
+/* inline emission */
+#include "out/dbg.h"
+#include "out/lbl.h"
+
 /* old-func detection */
 #include "funcargs.h"
 #include "type_is.h"
@@ -24,6 +28,15 @@
 #define INLINE_MAX_STACK_BYTES 256
 #define INLINE_VLA_COST 64
 #define INLINE_MAX_STMTS 10
+
+struct inline_outs
+{
+	decl *fndecl;
+	symtable *arg_symtab;
+	stmt *fncode;
+	struct cc1_out_ctx *cc1_octx;
+};
+
 
 static void inline_vars_push(
 		struct cc1_inline *new, struct cc1_inline *save)
@@ -63,11 +76,13 @@ static const out_val *inline_arg_to_lvalue(
 }
 
 static const out_val *gen_inline_func(
-		symtable *arg_symtab,
-		stmt *func_code, const out_val **args,
+		const struct inline_outs *const iouts,
+		const out_val **args,
 		struct cc1_out_ctx *cc1_octx,
-		out_ctx *octx)
+		out_ctx *octx, const where *call_loc)
 {
+	symtable *const arg_symtab = iouts->arg_symtab;
+	stmt *const func_code = iouts->fncode;
 	struct cc1_inline saved;
 	decl **diter;
 	size_t i;
@@ -84,6 +99,19 @@ static const out_val *gen_inline_func(
 
 	inline_vars_push(&cc1_octx->inline_, &saved);
 	cc1_octx->inline_.phi = out_blk_new(octx, "inline_phi");
+
+	if(cc1_gdebug){
+		char *start_lbl = out_label_code("dbg_inline_start");
+
+		out_dbg_label(octx, start_lbl);
+
+		out_dbg_inlined_call(octx,
+				iouts->fndecl,
+				start_lbl, cc1_octx->inline_.phi,
+				call_loc);
+
+		free(start_lbl);
+	}
 
 	/* got a handle on the code, map the identifiers to our argument
 	 * expression/values, and generate */
@@ -149,6 +177,10 @@ static const out_val *gen_inline_func(
 
 		/* restore previous outval */
 		sym_setoutval(s, pushed_vals[i].sym_outval);
+	}
+
+	if(cc1_gdebug){
+		out_dbg_inline_end(octx);
 	}
 
 	free(pushed_vals), pushed_vals = NULL;
@@ -229,14 +261,6 @@ static stmt *try_resolve_val_to_func(
 	return NULL;
 }
 
-struct inline_outs
-{
-	decl *fndecl;
-	symtable *arg_symtab;
-	stmt *fncode;
-	struct cc1_out_ctx *cc1_octx;
-};
-
 ucc_nonnull()
 static const char *check_and_ret_inline(
 		expr *maybe_call_expr, decl *maybe_decl,
@@ -315,7 +339,8 @@ const out_val *inline_func_try_gen(
 		expr *maybe_call_expr, decl *maybe_decl,
 		const out_val *fnval,
 		const out_val **args,
-		out_ctx *octx, const char **whynot)
+		out_ctx *octx,
+		const char **whynot, const where *call_loc)
 {
 	const out_val *inlined_ret;
 	struct inline_outs iouts = { 0 };
@@ -336,11 +361,10 @@ const out_val *inline_func_try_gen(
 		out_val_consume(octx, fnval);
 
 		inlined_ret = gen_inline_func(
-				iouts.arg_symtab,
-				iouts.fncode,
+				&iouts,
 				args,
 				iouts.cc1_octx,
-				octx);
+				octx, call_loc);
 	}
 	iouts.cc1_octx->inline_.depth--;
 
