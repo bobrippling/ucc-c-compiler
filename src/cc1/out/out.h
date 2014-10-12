@@ -133,7 +133,6 @@ const out_val *out_aalloct(out_ctx *, type *);
 void out_adealloc(out_ctx *, const out_val **);
 
 
-long out_get_bp_offset(const out_val *) ucc_nonnull();
 const char *out_get_lbl(const out_val *) ucc_nonnull();
 int out_is_nonconst_temporary(const out_val *) ucc_nonnull();
 

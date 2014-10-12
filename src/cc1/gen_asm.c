@@ -92,7 +92,7 @@ static void assign_arg_vals(decl **decls, const out_val *argvals[], out_ctx *oct
 		sym *s = decls[i]->sym;
 
 		if(s && s->type == sym_arg){
-			gen_set_sym_outval(s, argvals[j++]);
+			gen_set_sym_outval(octx, s, argvals[j++]);
 
 			if(fopt_mode & FOPT_VERBOSE_ASM){
 				out_comment(octx, "arg %s @ %s",
@@ -112,7 +112,7 @@ static void release_arg_vals(decl **decls, out_ctx *octx)
 
 		if(s && s->type == sym_arg){
 			out_val_release(octx, sym_outval(s));
-			gen_set_sym_outval(s, NULL);
+			gen_set_sym_outval(octx, s, NULL);
 		}
 	}
 }
@@ -160,7 +160,7 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 		vla_space = vla_decl_space(d);
 
 		out_val_release(octx, sym_outval(d->sym));
-		gen_set_sym_outval(d->sym, out_aalloc(
+		gen_set_sym_outval(octx, d->sym, out_aalloc(
 					octx, vla_space, type_align(d->ref, NULL), d->ref));
 
 		dest = out_new_sym(octx, d->sym);
@@ -171,10 +171,12 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 	}
 }
 
-void gen_set_sym_outval(sym *sym, const out_val *v)
+void gen_set_sym_outval(out_ctx *octx, sym *sym, const out_val *v)
 {
 	sym_setoutval(sym, v);
-	sym->bp_offset = v ? out_get_bp_offset(v) : 0;
+
+	if(v && cc1_gdebug)
+		out_dbg_emit_decl(octx, sym->decl, v);
 }
 
 static void gen_asm_global(decl *d, out_ctx *octx)
@@ -222,15 +224,18 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		allocate_vla_args(octx, arg_symtab);
 		free(argvals), argvals = NULL;
 
+		if(cc1_gdebug)
+			out_dbg_emit_args_done(octx, type_funcargs(d->ref));
+
 		gen_func_stmt(d->bits.func.code, octx);
+
+		release_arg_vals(arg_symtab->decls, octx);
 
 		/* vla cleanup for an entire function - inlined
 		 * VLAs need to retain their uniqueness across inline calls */
 		vla_cleanup(octx);
 
 		out_dbg_where(octx, &d->bits.func.code->where_cbrace);
-
-		release_arg_vals(arg_symtab->decls, octx);
 
 		if(out_dump_retained(octx, d->spel))
 			gen_had_error = 1;
@@ -374,6 +379,9 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 				asm_predeclare_extern(d);
 			return;
 		}
+
+		if(cc1_gdebug)
+			out_dbg_emit_func(octx, d);
 	}else{
 		/* variable - if there's no init,
 		 * it's tenative and not output
@@ -385,6 +393,9 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 				asm_predeclare_extern(d);
 			return;
 		}
+
+		if(cc1_gdebug)
+			out_dbg_emit_global_var(octx, d);
 	}
 
 	if(!emitted_type && (d->store & STORE_MASK_STORE) != store_static)
@@ -402,6 +413,9 @@ void gen_asm(
 	out_ctx *octx = out_ctx_new();
 
 	*pfilelist = NULL;
+
+	if(cc1_gdebug)
+		out_dbg_begin(octx, &octx->dbg.file_head, fname, compdir);
 
 	for(diter = globs->stab.decls; diter && *diter; diter++){
 		decl *d = *diter;
@@ -421,9 +435,10 @@ void gen_asm(
 
 	gen_stringlits(globs->literals);
 
-	if(cc1_gdebug && globs->stab.decls){
+	if(cc1_gdebug){
+		out_dbg_end(octx);
+
 		*pfilelist = octx->dbg.file_head;
-		out_dbginfo(globs, &octx->dbg.file_head, fname, compdir);
 	}
 
 	cc1_out_ctx_free(octx);

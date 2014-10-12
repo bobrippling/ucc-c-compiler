@@ -69,8 +69,20 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	sym *sym = e->bits.ident.bits.ident.sym;
 	decl *in_fn = symtab_func(stab);
 
-	if(sp && !sym)
+	if(sp && !sym){
 		e->bits.ident.bits.ident.sym = sym = symtab_search(stab, sp);
+
+		/* prevent typedef */
+		if(sym && (sym->decl->store & STORE_MASK_STORE) == store_typedef){
+			warn_at_print_error(&e->where,
+					"use of typedef-name '%s' as expression",
+					sp);
+			fold_had_error = 1;
+
+			/* prevent warnings lower down */
+			sym->nwrites++;
+		}
+	}
 
 	/* special cases */
 	if(!sym){

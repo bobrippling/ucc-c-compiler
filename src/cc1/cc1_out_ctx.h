@@ -6,6 +6,7 @@
 struct cc1_out_ctx
 {
 	struct dynmap *vlamap;
+
 	struct dynmap *sym_inline_map;
 
 	struct dynmap *generated_decls; /* decl* => NULL */
@@ -17,6 +18,12 @@ struct cc1_out_ctx
 		struct out_blk *phi, **rets;
 		unsigned depth;
 	} inline_;
+
+	struct cc1_dbg_ctx
+	{
+		struct DIE_compile_unit *compile_unit;
+		struct DIE *current_scope;
+	} dbg;
 };
 
 #define cc1_out_ctx(octx) ((struct cc1_out_ctx **)out_user_ctx(octx))

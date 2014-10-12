@@ -371,19 +371,6 @@ int vreg_eq(const struct vreg *a, const struct vreg *b)
 	return a->idx == b->idx && a->is_float == b->is_float;
 }
 
-long out_get_bp_offset(const out_val *v)
-{
-	switch(v->type){
-		case V_REG_SPILT:
-		case V_REG:
-			if(v->bits.regoff.reg.idx == REG_BP)
-				return v->bits.regoff.offset;
-		default:
-			break;
-	}
-	return 0;
-}
-
 const char *out_get_lbl(const out_val *v)
 {
 	return v->type == V_LBL ? v->bits.lbl.str : NULL;

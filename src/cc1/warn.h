@@ -17,11 +17,13 @@ struct cc1_warning
 	unsigned char attr_nonnull;
 	unsigned char attr_nonnull_bad;
 	unsigned char attr_nonnull_noargs;
+	unsigned char attr_nonnull_noptrs;
 	unsigned char attr_nonnull_nonptr;
 	unsigned char attr_nonnull_oob;
 	unsigned char attr_printf_bad;
 	unsigned char attr_printf_toomany;
 	unsigned char attr_printf_unknown;
+	unsigned char attr_printf_voidp;
 	unsigned char attr_section_badchar;
 	unsigned char attr_sentinel;
 	unsigned char attr_sentinel_nonvariadic;

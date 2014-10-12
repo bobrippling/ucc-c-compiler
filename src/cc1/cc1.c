@@ -121,6 +121,7 @@ static struct warn_str
 	{ "attr-printf-bad", &cc1_warning.attr_printf_bad },
 	{ "attr-printf-toomany", &cc1_warning.attr_printf_toomany },
 	{ "attr-printf-unknown", &cc1_warning.attr_printf_unknown },
+	{ "attr-printf-voidptr", &cc1_warning.attr_printf_voidp },
 	{
 		"format",
 		&cc1_warning.attr_printf_bad,
@@ -133,6 +134,7 @@ static struct warn_str
 	{ "attr-nonnull-bad", &cc1_warning.attr_nonnull_bad },
 	{ "attr-nonnull-noargs", &cc1_warning.attr_nonnull_noargs },
 	{ "attr-nonnull-nonptr", &cc1_warning.attr_nonnull_nonptr },
+	{ "attr-nonnull-noptrs", &cc1_warning.attr_nonnull_noptrs },
 	{ "attr-nonnull-oob", &cc1_warning.attr_nonnull_oob },
 	{ "attr-section-badchar", &cc1_warning.attr_section_badchar },
 	{ "attr-sentinel", &cc1_warning.attr_sentinel },
@@ -631,6 +633,8 @@ static void warning_pedantic(int set)
 	cc1_warning.flexarr_only =
 	cc1_warning.decl_nodecl =
 	cc1_warning.overlarge_enumerator_int =
+
+	cc1_warning.attr_printf_voidp =
 
 	cc1_warning.return_void =
 		set;
