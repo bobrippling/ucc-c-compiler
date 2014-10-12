@@ -177,12 +177,6 @@ void gen_set_sym_outval(sym *sym, const out_val *v)
 	sym->bp_offset = v ? out_get_bp_offset(v) : 0;
 }
 
-void gen_func_stmt(const stmt *fnstmt, out_ctx *octx)
-{
-	gen_stmt(fnstmt, octx);
-	vla_cleanup(octx);
-}
-
 static void gen_asm_global(decl *d, out_ctx *octx)
 {
 	attribute *sec;
@@ -229,6 +223,10 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		free(argvals), argvals = NULL;
 
 		gen_func_stmt(d->bits.func.code, octx);
+
+		/* vla cleanup for an entire function - inlined
+		 * VLAs need to retain their uniqueness across inline calls */
+		vla_cleanup(octx);
 
 		out_dbg_where(octx, &d->bits.func.code->where_cbrace);
 
