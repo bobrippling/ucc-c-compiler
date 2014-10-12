@@ -214,7 +214,7 @@ struct DIE
 		union
 		{
 			struct dwarf_block *blk;
-			struct DIE *type_die;
+			struct DIE *die_xref;
 			char *str;
 			long value;
 		} bits;
@@ -355,7 +355,7 @@ static void dwarf_die_free_1(struct DIE *die)
 
 			case DW_FORM_ref4:
 				/* tydie */
-				dwarf_release(a->bits.type_die);
+				dwarf_release(a->bits.die_xref);
 				break;
 
 			case DW_FORM_addr:
@@ -411,7 +411,7 @@ static void dwarf_attr(
 			at->bits.blk = data;
 			break;
 		case DW_FORM_ref4:
-			at->bits.type_die = data;
+			at->bits.die_xref = data;
 			break;
 		case DW_FORM_addr:
 			at->bits.str = data;
@@ -1405,13 +1405,13 @@ addr:
 				break;
 
 			case DW_FORM_ref4:
-				UCC_ASSERT(a->bits.type_die->locn,
+				UCC_ASSERT(a->bits.die_xref->locn,
 						"unset DIE/%s location",
-						die_tag_to_str(a->bits.type_die->tag));
-				UCC_ASSERT(a->bits.type_die->locn != die->locn,
+						die_tag_to_str(a->bits.die_xref->tag));
+				UCC_ASSERT(a->bits.die_xref->locn != die->locn,
 						"subDIE has same location");
 
-				dwarf_printf(&state->info, LONG, "%lu", a->bits.type_die->locn);
+				dwarf_printf(&state->info, LONG, "%lu", a->bits.die_xref->locn);
 				break;
 			case DW_FORM_flag:
 				dwarf_printf(&state->info, BYTE, "%d", (int)a->bits.value);
