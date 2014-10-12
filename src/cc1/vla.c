@@ -12,6 +12,7 @@
 #include "out/val.h"
 #include "out/ctx.h"
 
+#include "cc1_out_ctx.h"
 #include "vla.h"
 
 /*
@@ -59,9 +60,10 @@ unsigned vla_decl_space(decl *d)
 static const out_val *vla_cached_size(type *const qual_t, out_ctx *octx)
 {
 	type *t = type_skip_all(qual_t);
-	dynmap *vlamap = *out_user_ctx(octx);
+	struct cc1_out_ctx **cc1_octx = cc1_out_ctx(octx);
+	dynmap *vlamap;
 
-	if(vlamap){
+	if(*cc1_octx && (vlamap = (*cc1_octx)->vlamap)){
 		const out_val *stack_off = dynmap_get(type *, const out_val *, vlamap, t);
 
 		if(stack_off){
@@ -82,8 +84,8 @@ static void vla_cache_size(
 		const out_val *stack_ent)
 {
 	type *ptrsizety = type_ptr_to(arith_ty);
-	void **pvlamap;
-	dynmap *vlamap;
+	dynmap **pvlamap, *vlamap;
+	struct cc1_out_ctx *cc1_octx;
 
 	/* keep the caller's retain */
 	out_val_retain(octx, stack_ent);
@@ -92,7 +94,9 @@ static void vla_cache_size(
 	out_val_retain(octx, stack_ent); /* retain for the vlamap */
 	out_store(octx, stack_ent, sz);
 
-	vlamap = *(pvlamap = out_user_ctx(octx));
+	cc1_octx = cc1_out_ctx_or_new(octx);
+
+	vlamap = *(pvlamap = &cc1_octx->vlamap);
 	if(!vlamap){
 		/* type * => out_val const* */
 		vlamap = *pvlamap = dynmap_new(type *, NULL, type_hash);
@@ -103,8 +107,8 @@ static void vla_cache_size(
 
 void vla_cleanup(out_ctx *octx)
 {
-	void **pvlamap = out_user_ctx(octx);
-	dynmap *vlamap = *pvlamap;
+	struct cc1_out_ctx *cc1_octx = cc1_out_ctx_or_new(octx);
+	dynmap *vlamap = cc1_octx->vlamap;
 	size_t i;
 	const out_val *v;
 
@@ -115,7 +119,7 @@ void vla_cleanup(out_ctx *octx)
 		out_val_release(octx, v);
 
 	dynmap_free(vlamap);
-	*pvlamap = NULL;
+	cc1_octx->vlamap = NULL;
 }
 
 static const out_val *vla_gen_size_ty(

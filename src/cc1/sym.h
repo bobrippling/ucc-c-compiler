@@ -8,7 +8,6 @@ typedef struct sym sym;
 struct sym
 {
 	const struct out_val *outval;
-	long bp_offset;
 
 	enum sym_type
 	{

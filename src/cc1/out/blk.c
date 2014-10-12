@@ -82,7 +82,7 @@ static void bfs_block(out_blk *blk, struct flush_state *st)
 		return;
 	blk->flush_in_prog = 1;
 
-	if(BLK_IS_MERGE(blk)){
+	if(blk->merge_preds){
 		out_blk **i;
 
 		for(i = blk->merge_preds; *i; i++){

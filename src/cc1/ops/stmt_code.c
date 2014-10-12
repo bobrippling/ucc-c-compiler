@@ -199,7 +199,7 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 			}
 
 			assert(!s->outval);
-			gen_set_sym_outval(s, out_aalloc(octx, siz, align, s->decl->ref));
+			gen_set_sym_outval(octx, s, out_aalloc(octx, siz, align, s->decl->ref));
 			break;
 		}
 
@@ -236,6 +236,9 @@ void gen_block_decls(
 	}else{
 		*dbg_end_lbl = NULL;
 	}
+
+	if(cc1_gdebug)
+		out_dbg_scope_enter(octx, stab);
 
 	/* declare strings, extern functions, blocks and vlas */
 	for(diter = stab->decls; diter && *diter; diter++){
@@ -274,8 +277,15 @@ void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 		decl *d = *diter;
 		int is_typedef;
 
-		if(!d->sym || d->sym->type != sym_local || type_is(d->ref, type_func))
+		if(!d->sym || d->sym->type != sym_local || type_is(d->ref, type_func)){
+			if(d->sym && cc1_gdebug){
+				/* int a; f(){ int a; { extern a; ... } }
+				 *                      ^~~~~~~~~~~~~ need to say ::a is in scope
+				 */
+				out_dbg_emit_global_decl_scoped(octx, d);
+			}
 			continue;
+		}
 
 		is_typedef = ((d->store & STORE_MASK_STORE) == store_typedef);
 
@@ -288,6 +298,9 @@ void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 
 		out_adealloc(octx, &d->sym->outval);
 	}
+
+	if(cc1_gdebug)
+		out_dbg_scope_leave(octx, stab);
 }
 
 static void gen_scope_destructors(symtable *scope, out_ctx *octx)
