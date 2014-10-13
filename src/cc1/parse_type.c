@@ -1884,19 +1884,38 @@ static void link_to_previous_decl(decl *d, symtable *in_scope)
 	 * This also means any use of d will have the most up to date
 	 * attribute information about it
 	 */
-	decl *d_prev = symtab_search_d_exclude(in_scope, d->spel, NULL, d);
+	symtable *prev_in = NULL;
+	decl *d_prev = symtab_search_d_exclude(in_scope, d->spel, &prev_in, d);
 
 	if(d_prev){
 		/* link the proto chain for __attribute__ checking,
 		 * nested function prototype checking and
 		 * '.extern fn' code gen easing
 		 */
+		const int are_functions =
+			(!!type_is(d->ref, type_func) +
+			 !!type_is(d_prev->ref, type_func));
+
 		d->proto = d_prev;
 
-		if(type_is(d->ref, type_func) && type_is(d_prev->ref, type_func))
-			decl_pull_to_func(d, d_prev);
-		else
-			check_var_storage_redef(d, d_prev);
+		switch(are_functions){
+			case 2:
+				decl_pull_to_func(d, d_prev);
+				break;
+			case 0:
+				/* variable - may or may not be related */
+				if(prev_in != in_scope){
+					/* unrelated */
+					d->proto = NULL;
+				}else{
+					check_var_storage_redef(d, d_prev);
+				}
+				break;
+			case 1:
+				/* unrelated */
+				d->proto = NULL;
+				break;
+		}
 	}
 }
 
