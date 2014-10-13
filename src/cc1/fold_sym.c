@@ -384,7 +384,9 @@ void symtab_fold_decls(symtable *tab)
 
 						if(!!type_is(db->ref, type_func) != a_func){
 							clash = "mismatching";
-						}else switch(decl_cmp(da, db, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
+						}else switch(type_cmp(da->ref, db->ref, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
+							/* ^ type_cmp, since decl_cmp checks storage,
+							 * but we handle that during parse */
 							case TYPE_NOT_EQUAL:
 							case TYPE_QUAL_ADD:
 							case TYPE_QUAL_SUB:
@@ -392,10 +394,10 @@ void symtab_fold_decls(symtable *tab)
 							case TYPE_QUAL_POINTED_SUB:
 							case TYPE_QUAL_NESTED_CHANGE:
 							case TYPE_CONVERTIBLE_EXPLICIT:
+							case TYPE_CONVERTIBLE_IMPLICIT:
 								/* must be an exact match */
 								clash = "mismatching";
 								break;
-							case TYPE_CONVERTIBLE_IMPLICIT:
 							case TYPE_EQUAL_TYPEDEF:
 							case TYPE_EQUAL:
 								if(IS_LOCAL_SCOPE){
