@@ -1566,12 +1566,37 @@ static void check_and_replace_old_func(decl *d, decl **old_args, symtable *scope
 	fold_funcargs(dfuncargs, scope, NULL);
 }
 
+static void check_function_storage_redef(decl *new, decl *old)
+{
+	/* C11 6.2.2 */
+	decl *d;
+
+	/* if the first is static, then we ignore storage */
+	for(d = old; d->proto; d = d->proto);
+
+	if((d->store & STORE_MASK_STORE) == store_static)
+		return;
+
+	/* can't redefine as static now */
+	if((new->store & STORE_MASK_STORE) == store_static){
+		char buf[WHERE_BUF_SIZ];
+
+		warn_at_print_error(&new->where,
+				"static redefinition of non-static \"%s\"\n"
+				"%s: note: previous definition",
+				new->spel, where_str_r(buf, &old->where));
+		fold_had_error = 1;
+	}
+}
+
 static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 {
 	char wbuf[WHERE_BUF_SIZ];
 
 	if(!type_is(d_prev->ref, type_func))
 		return; /* error caught later */
+
+	check_function_storage_redef(d_this, d_prev);
 
 	if(d_prev->bits.func.code){
 		/* just warn that we have a declaration
@@ -1610,10 +1635,6 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 	}else if(d_prev->spel_asm){
 		d_this->spel_asm = d_prev->spel_asm;
 	}
-
-	/* propagate static, but not inline */
-	if((d_prev->store & STORE_MASK_STORE) == store_static)
-		d_this->store = (d_this->store & ~STORE_MASK_STORE) | store_static;
 
 	/* update the f(void) bools */
 	{

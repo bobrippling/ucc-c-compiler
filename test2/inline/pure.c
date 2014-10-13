@@ -11,7 +11,7 @@ inline int yo() // CHECK: !/warn/
 	return 3;
 }
 
-static int yo(); // CHECK: !/warn/
+extern int yo(); // CHECK: !/warn/
 
 main()
 {

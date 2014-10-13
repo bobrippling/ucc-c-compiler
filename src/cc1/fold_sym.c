@@ -397,14 +397,7 @@ void symtab_fold_decls(symtable *tab)
 								break;
 							case TYPE_CONVERTIBLE_IMPLICIT:
 								if(a_func){
-									/* allow 'a' to be static and 'b' to not be */
-									if((da->store & STORE_MASK_STORE) == store_static
-									&& (db->store & STORE_MASK_STORE) != store_static)
-									{
-										/* fine */
-									}else{
-										clash = "mismatching";
-									}
+									/* fine, func static/extern redecl handled elsewhere */
 								}else{
 									clash = "mismatching";
 								}
@@ -439,12 +432,7 @@ void symtab_fold_decls(symtable *tab)
 											clash = "duplicate";
 										}
 									}else{
-										/* variables at global scope - check static redef */
-										if(((da->store & STORE_MASK_STORE) == store_static)
-										 !=((db->store & STORE_MASK_STORE) == store_static))
-										{
-											clash = "mismatching";
-										}
+										/* variables at global scope - static checked in parse */
 									}
 
 									if(!clash && (da->store & STORE_MASK_STORE) == store_typedef){
