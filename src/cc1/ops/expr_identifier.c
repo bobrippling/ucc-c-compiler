@@ -175,6 +175,7 @@ const out_val *gen_expr_identifier(expr *e, out_ctx *octx)
 	switch(e->bits.ident.type){
 		case IDENT_NORM:
 		{
+			return gen_expr_identifier_lea(e, octx);
 			sym *sym = e->bits.ident.bits.ident.sym;
 
 			if(type_is(sym->decl->ref, type_func)){
