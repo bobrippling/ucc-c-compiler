@@ -251,7 +251,7 @@ const char *decl_to_str(decl *d)
 	return decl_to_str_r(buf, d);
 }
 
-int decl_is_pure_inline(decl *d)
+int decl_is_pure_inline(decl *const d)
 {
 	/*
 	 * inline semantics
@@ -262,12 +262,21 @@ int decl_is_pure_inline(decl *d)
 	 *
 	 * look for non-inline store on any prototypes
 	 */
-	for(; d; d = d->proto){
-		if(!(d->store & store_inline))
-			return 0; /* not marked as inline - not pure inline */
+	decl *i;
 
-		if((d->store & STORE_MASK_STORE) != store_default)
+#define CHECK_INLINE(i)                                      \
+		if(!(i->store & store_inline))                           \
+			return 0; /* not marked as inline - not pure inline */ \
+                                                             \
+		if((i->store & STORE_MASK_STORE) != store_default)       \
 			return 0; /* static or extern */
+
+	for(i = d; i; i = i->proto){
+		CHECK_INLINE(i);
+	}
+
+	for(i = d; i; i = i->impl){
+		CHECK_INLINE(i);
 	}
 
 	return 1;
