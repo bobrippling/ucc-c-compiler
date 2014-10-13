@@ -281,23 +281,8 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 	}
 
 	if(type_is(d->ref, type_func)){
-		if(d->store & store_inline){
-			/*
-			 * inline semantics
-			 *
-			 * "" = inline only
-			 * "static" = code emitted, decl is static
-			 * "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
-			 */
-			if((d->store & STORE_MASK_STORE) == store_default){
-				/* inline only - emit an extern for it anyway */
-				if(!emitted_type)
-					asm_predeclare_extern(d);
-				return;
-			}
-		}
-
-		if(!d->bits.func.code){
+		if(!decl_should_emit_code(d)){
+			/* inline only gets extern emitted anyway */
 			if(!emitted_type)
 				asm_predeclare_extern(d);
 			return;
@@ -321,7 +306,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			out_dbg_emit_global_var(octx, d);
 	}
 
-	if(!emitted_type && (d->store & STORE_MASK_STORE) != store_static)
+	if(!emitted_type && decl_linkage(d) == linkage_external)
 		asm_predeclare_global(d);
 	gen_asm_global(d, octx);
 }

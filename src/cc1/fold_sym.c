@@ -304,7 +304,7 @@ void symtab_fold_decls(symtable *tab)
 			}
 		}
 
-		if(type_is_func_or_block(d->ref) && DECL_PURE_INLINE(d)){
+		if(type_is_func_or_block(d->ref) && decl_is_pure_inline(d)){
 			cc1_warn_at(&d->where,
 					pure_inline,
 					"pure inline function will not have code emitted "
@@ -384,7 +384,9 @@ void symtab_fold_decls(symtable *tab)
 
 						if(!!type_is(db->ref, type_func) != a_func){
 							clash = "mismatching";
-						}else switch(decl_cmp(da, db, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
+						}else switch(type_cmp(da->ref, db->ref, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
+							/* ^ type_cmp, since decl_cmp checks storage,
+							 * but we handle that during parse */
 							case TYPE_NOT_EQUAL:
 							case TYPE_QUAL_ADD:
 							case TYPE_QUAL_SUB:
@@ -392,24 +394,10 @@ void symtab_fold_decls(symtable *tab)
 							case TYPE_QUAL_POINTED_SUB:
 							case TYPE_QUAL_NESTED_CHANGE:
 							case TYPE_CONVERTIBLE_EXPLICIT:
+							case TYPE_CONVERTIBLE_IMPLICIT:
 								/* must be an exact match */
 								clash = "mismatching";
 								break;
-							case TYPE_CONVERTIBLE_IMPLICIT:
-								if(a_func){
-									/* allow 'a' to be static and 'b' to not be */
-									if((da->store & STORE_MASK_STORE) == store_static
-									&& (db->store & STORE_MASK_STORE) != store_static)
-									{
-										/* fine */
-									}else{
-										clash = "mismatching";
-									}
-								}else{
-									clash = "mismatching";
-								}
-								break;
-
 							case TYPE_EQUAL_TYPEDEF:
 							case TYPE_EQUAL:
 								if(IS_LOCAL_SCOPE){
@@ -439,12 +427,7 @@ void symtab_fold_decls(symtable *tab)
 											clash = "duplicate";
 										}
 									}else{
-										/* variables at global scope - check static redef */
-										if(((da->store & STORE_MASK_STORE) == store_static)
-										 !=((db->store & STORE_MASK_STORE) == store_static))
-										{
-											clash = "mismatching";
-										}
+										/* variables at global scope - static checked in parse */
 									}
 
 									if(!clash && (da->store & STORE_MASK_STORE) == store_typedef){
