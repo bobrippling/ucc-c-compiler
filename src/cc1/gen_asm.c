@@ -306,7 +306,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			out_dbg_emit_global_var(octx, d);
 	}
 
-	if(!emitted_type && (d->store & STORE_MASK_STORE) != store_static)
+	if(!emitted_type && decl_linkage(d) == linkage_external)
 		asm_predeclare_global(d);
 	gen_asm_global(d, octx);
 }
