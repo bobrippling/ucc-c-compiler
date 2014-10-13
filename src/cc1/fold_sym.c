@@ -396,13 +396,6 @@ void symtab_fold_decls(symtable *tab)
 								clash = "mismatching";
 								break;
 							case TYPE_CONVERTIBLE_IMPLICIT:
-								if(a_func){
-									/* fine, func static/extern redecl handled elsewhere */
-								}else{
-									clash = "mismatching";
-								}
-								break;
-
 							case TYPE_EQUAL_TYPEDEF:
 							case TYPE_EQUAL:
 								if(IS_LOCAL_SCOPE){

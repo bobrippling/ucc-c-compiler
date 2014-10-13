@@ -1589,6 +1589,50 @@ static void check_function_storage_redef(decl *new, decl *old)
 	}
 }
 
+static void check_var_storage_redef(decl *new, decl *old)
+{
+	/* C99 6.2.2
+	 * 5) [...] If the declaration of an identifier for an object has file scope
+	 * and no storage-class specifier, its linkage is external.
+	 */
+	char buf[WHERE_BUF_SIZ];
+	int expect_extern = 0;
+
+	switch((enum decl_storage)(old->store & STORE_MASK_STORE)){
+		default:
+			return;
+		case store_default:
+		case store_extern:
+			expect_extern = 1;
+			break;
+		case store_static:
+			break;
+	}
+
+	switch((enum decl_storage)(new->store & STORE_MASK_STORE)){
+		default:
+			return;
+		case store_default:
+		case store_extern:
+			if(expect_extern)
+				return;
+			break;
+		case store_static:
+			if(!expect_extern)
+				return;
+			break;
+	}
+
+	warn_at_print_error(&new->where,
+			"%sstatic redefinition of %sstatic \"%s\"\n"
+			"%s: note: previous definition",
+			expect_extern ? "" : "non-",
+			expect_extern ? "non-" : "",
+			new->spel,
+			where_str_r(buf, &old->where));
+	fold_had_error = 1;
+}
+
 static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 {
 	char wbuf[WHERE_BUF_SIZ];
@@ -1851,6 +1895,8 @@ static void link_to_previous_decl(decl *d, symtable *in_scope)
 
 		if(type_is(d->ref, type_func) && type_is(d_prev->ref, type_func))
 			decl_pull_to_func(d, d_prev);
+		else
+			check_var_storage_redef(d, d_prev);
 	}
 }
 
