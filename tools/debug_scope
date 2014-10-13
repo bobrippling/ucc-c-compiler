@@ -21,8 +21,11 @@ then exit $r
 fi
 
 emit_syms(){
-	printf '/* scope = %s*/ %s\n' "$syms" "$(sed -n "${cur_line_no}p" "$f")"
-	syms=
+	if [ -n "$syms" ]
+	then
+		printf '/* scope = %s*/ %s\n' "$syms" "$(sed -n "${cur_line_no}p" "$f")"
+		syms=
+	fi
 }
 
 for i in $(seq 1 $(wc -l "$f" | awk '{print $1}'))
