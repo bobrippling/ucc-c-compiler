@@ -261,7 +261,7 @@ static stmt *try_resolve_val_to_func(
 					lbl);
 
 			if(*out_decl)
-				return (*out_decl)->bits.func.code;
+				return decl_impl(*out_decl)->bits.func.code;
 		}
 	}
 	return NULL;

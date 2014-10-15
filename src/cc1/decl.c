@@ -263,9 +263,18 @@ const char *decl_to_str(decl *d)
 	return decl_to_str_r(buf, d);
 }
 
-decl *decl_impl(decl *d)
+decl *decl_impl(decl *const d)
 {
-	for(; d->impl; d = d->impl);
+	decl *i;
+
+	for(i = d; i; i = i->proto)
+		if(i->bits.func.code)
+			return i;
+
+	for(i = d; i; i = i->impl)
+		if(i->bits.func.code)
+			return i;
+
 	return d;
 }
 
