@@ -302,28 +302,6 @@ static void gen_stringlits(dynmap *litmap)
 			asm_declare_stringlit(SECTION_DATA, lit);
 }
 
-static int func_pure_inline(decl *d)
-{
-	if(d->store & store_inline){
-		/*
-		 * inline semantics
-		 *
-		 * "" = inline only
-		 * "static" = code emitted, decl is static
-		 * "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
-		 *
-		 * look for non-default store on any prototypes
-		 */
-		for(; d; d = d->proto)
-			if((d->store & STORE_MASK_STORE) != store_default)
-				return 0;
-
-		return 1;
-	}
-
-	return 0;
-}
-
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
@@ -374,7 +352,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 	}
 
 	if(type_is(d->ref, type_func)){
-		if(func_pure_inline(d) || !d->bits.func.code){
+		if(!decl_should_emit_code(d)){
 			/* inline only gets extern emitted anyway */
 			if(!emitted_type)
 				asm_predeclare_extern(d);
@@ -399,7 +377,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			out_dbg_emit_global_var(octx, d);
 	}
 
-	if(!emitted_type && (d->store & STORE_MASK_STORE) != store_static)
+	if(!emitted_type && decl_linkage(d) == linkage_external)
 		asm_predeclare_global(d);
 	gen_asm_global(d, octx);
 }

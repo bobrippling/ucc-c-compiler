@@ -1253,11 +1253,6 @@ void out_dbg_scope_leave(out_ctx *octx, symtable *symtab)
 	dbg_scope_leave(octx);
 }
 
-static int func_code_emitted(decl *d)
-{
-	return d->bits.func.code && !DECL_PURE_INLINE(d);
-}
-
 static struct DIE *dwarf_subprogram_func(
 		struct cc1_dbg_ctx *dbg, decl *d, int force_emission)
 {
@@ -1271,7 +1266,7 @@ static struct DIE *dwarf_subprogram_func(
 	if(subprog)
 		return subprog;
 
-	code_emitted = func_code_emitted(d);
+	code_emitted = decl_should_emit_code(d);
 	if(!force_emission && !code_emitted)
 		return NULL;
 

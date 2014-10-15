@@ -117,6 +117,9 @@ struct type *decl_is_decayed_array(decl *);
 
 decl *decl_impl(decl *); /* fast-forwards to the impl */
 
+int decl_is_pure_inline(decl *);
+int decl_should_emit_code(decl *);
+
 #define DECL_STATIC_BUFSIZ 512
 
 const char *decl_to_str(decl *d);
@@ -125,9 +128,5 @@ const char *decl_store_to_str(const enum decl_storage);
 
 #define DECL_FUNC_ARG_SYMTAB(d) ((d)->bits.func.code->symtab->parent)
 #define DECL_HAS_FUNC_CODE(d) (type_is(d->ref, type_func) && d->bits.func.code)
-
-#define DECL_PURE_INLINE(d) \
-	((d)->store & store_inline && \
-	 ((d)->store & STORE_MASK_STORE) == store_default)
 
 #endif
