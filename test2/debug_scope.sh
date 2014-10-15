@@ -1,8 +1,8 @@
 #!/bin/sh
 
-if [ $# -ne 1 ]
+if [ $# -lt 1 ]
 then
-	echo "Usage: $0 src" >&2
+	echo "Usage: $0 src [cflags...]" >&2
 	exit 1
 fi
 
@@ -13,10 +13,11 @@ then
 fi
 
 f="$1"
+shift
 e="$UCC_TESTDIR/exe"
 
 # compile
-"$UCC" -g -o "$e" "$f"
+"$UCC" -g -o "$e" "$f" "$@"
 r=$?
 if [ $r -ne 0 ]
 then exit $r

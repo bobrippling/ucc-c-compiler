@@ -1254,7 +1254,7 @@ void out_dbg_scope_leave(out_ctx *octx, symtable *symtab)
 }
 
 static struct DIE *dwarf_subprogram_func(
-		struct cc1_dbg_ctx *dbg, decl *d, int force_emission)
+		struct cc1_dbg_ctx *dbg, decl *d, int is_inline_instance)
 {
 	struct DIE_compile_unit *cu = dbg->compile_unit;
 	struct DIE *subprog;
@@ -1267,12 +1267,10 @@ static struct DIE *dwarf_subprogram_func(
 		return subprog;
 
 	code_emitted = decl_should_emit_code(d);
-	if(!force_emission && !code_emitted)
+	if(!is_inline_instance && !code_emitted)
 		return NULL;
 
 	subprog = dwarf_die_new(DW_TAG_subprogram);
-
-	dbg->current_scope = subprog;
 
 	asmsp = decl_asm_spel(d);
 
@@ -1695,8 +1693,15 @@ void out_dbg_end(out_ctx *octx)
 
 void out_dbg_emit_func(out_ctx *octx, decl *d)
 {
+	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
+	struct DIE *subprog;
+
 	assert(type_is_func_or_block(d->ref));
-	dbg_emit_global(octx, dwarf_subprogram_func(octx2dbg(octx), d, 0));
+
+	subprog = dwarf_subprogram_func(dbg, d, 0);
+	dbg_emit_global(octx, subprog);
+
+	dbg->current_scope = subprog;
 }
 
 void out_dbg_emit_global_var(out_ctx *octx, decl *d)
@@ -1715,14 +1720,11 @@ void out_dbg_inlined_call(
 	struct DIE_compile_unit *cu = dbg->compile_unit;
 	struct DIE *tag = dwarf_die_new(DW_TAG_inlined_subroutine);
 	struct DIE *lookup_fn = dwarf_global_lookup(cu, dinlined->spel);
-	struct DIE *const die_scope = dbg->current_scope;
 	form_data_t form_data;
 
 	if(!lookup_fn){
 		/* pure inline function, or later defined */
 		lookup_fn = dwarf_subprogram_func(dbg, dinlined, 1);
-
-		dbg->current_scope = die_scope;
 
 		dwarf_child(&cu->die, lookup_fn);
 	}
