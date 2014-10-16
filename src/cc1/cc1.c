@@ -660,6 +660,18 @@ static void warning_init(void)
 	/* default to -Wall */
 	warning_all();
 	warning_pedantic(0);
+
+	/* but with warnings about std compatability on too */
+	cc1_warning.typedef_redef =
+	cc1_warning.c89_parse_trailingcomma =
+	cc1_warning.unnamed_struct_memb =
+	cc1_warning.c89_for_init =
+	cc1_warning.mixed_code_decls =
+	cc1_warning.c89_init_constexpr =
+	cc1_warning.long_long =
+	cc1_warning.vla =
+	cc1_warning.c89_compound_literal =
+			1;
 }
 
 static void warning_special(enum warning_special type)
