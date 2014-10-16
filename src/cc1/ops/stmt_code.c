@@ -2,17 +2,21 @@
 #include <string.h>
 #include <assert.h>
 
+#include "../../util/dynarray.h"
+#include "../../util/platform.h"
+#include "../../util/alloc.h"
+
 #include "ops.h"
 #include "stmt_code.h"
 #include "../decl_init.h"
-#include "../../util/dynarray.h"
-#include "../../util/platform.h"
 #include "../fold_sym.h"
-#include "../out/lbl.h"
 #include "../type_is.h"
 #include "../type_nav.h"
-#include "../out/dbg.h"
 #include "../vla.h"
+
+#include "../out/lbl.h"
+#include "../out/dbg.h"
+#include "../out/dbg_lbl.h"
 
 /* out_alloca_fixed() */
 #include "../out/out.h"
@@ -244,18 +248,26 @@ static void gen_auto_decl(decl *d, out_ctx *octx)
 }
 
 void gen_block_decls(
-		symtable *stab, const char **dbg_end_lbl, out_ctx *octx)
+		symtable *stab,
+		struct out_dbg_lbl **const pushed_lbl,
+		out_ctx *octx)
 {
 	decl **diter;
 
 	if(cc1_gdebug && !stab->lbl_begin){
-		stab->lbl_begin = out_label_code("dbg_begin");
-		stab->lbl_end = out_label_code("dbg_end");
+		char *dbg_lbls[2];
 
-		out_dbg_label(octx, stab->lbl_begin);
-		*dbg_end_lbl = stab->lbl_end;
+		dbg_lbls[0] = out_label_code("dbg_begin");
+		dbg_lbls[1] = out_label_code("dbg_end");
+
+		stab->lbl_begin = ustrdup(dbg_lbls[0]);
+
+		out_dbg_label_push(octx, dbg_lbls, pushed_lbl);
+
+		stab->lbl_end = *pushed_lbl;
+
 	}else{
-		*dbg_end_lbl = NULL;
+		*pushed_lbl = NULL;
 	}
 
 	if(cc1_gdebug)
@@ -450,10 +462,10 @@ void gen_stmt_code_m1_finish(const stmt *s, out_ctx *octx)
 void gen_stmt_code_m1(const stmt *s, int m1, out_ctx *octx)
 {
 	stmt **titer;
-	const char *endlbl;
+	struct out_dbg_lbl *pushed_lbl;
 
 	/* stmt_for/if/while/do needs to do this too */
-	gen_block_decls(s->symtab, &endlbl, octx);
+	gen_block_decls(s->symtab, &pushed_lbl, octx);
 
 	for(titer = s->bits.code.stmts; titer && *titer; titer++){
 		if(m1 && !titer[1])
@@ -465,8 +477,8 @@ void gen_stmt_code_m1(const stmt *s, int m1, out_ctx *octx)
 		gen_stmt_code_m1_finish(s, octx);
 	/* else the caller should do ^ */
 
-	if(endlbl)
-		out_dbg_label(octx, endlbl);
+	if(pushed_lbl)
+		out_dbg_label_pop(octx, pushed_lbl);
 }
 
 void gen_stmt_code(const stmt *s, out_ctx *octx)

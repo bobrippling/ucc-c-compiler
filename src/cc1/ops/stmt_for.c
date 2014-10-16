@@ -31,7 +31,7 @@ void fold_stmt_for(stmt *s)
 
 void gen_stmt_for(const stmt *s, out_ctx *octx)
 {
-	const char *el[2];
+	struct out_dbg_lbl *el[2];
 	out_blk *blk_test = out_blk_new(octx, "for_test"),
 	        *blk_body = out_blk_new(octx, "for_body"),
 	        *blk_end = out_blk_new(octx, "for_end"),

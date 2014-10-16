@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "../../util/dynmap.h"
@@ -10,6 +11,7 @@
 #include "blk.h"
 #include "ctx.h"
 #include "out.h"
+#include "dbg_lbl.h"
 
 static unsigned blk_hash(const out_blk *b)
 {
@@ -43,6 +45,15 @@ static void out_blk_uniq(out_blk *blk, dynmap *uniq_blks)
 static void blk_free(out_blk *blk)
 {
 	char **i;
+
+	if(blk->labels){
+		struct out_dbg_lbl **dbg_i;
+
+		for(dbg_i = blk->labels; *dbg_i; dbg_i++){
+			RELEASE(*dbg_i);
+		}
+		dynarray_free(struct out_dbg_lbl *, blk->labels, NULL);
+	}
 
 	free(blk->lbl);
 

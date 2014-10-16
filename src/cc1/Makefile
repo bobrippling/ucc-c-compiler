@@ -24,7 +24,7 @@ OBJ = \
 	gen_asm.o gen_str.o gen_style.o inline.o \
 	out/out.o out/asm.o out/lbl.o out/impl.o out/write.o out/dbg.o out/leb.o \
 	out/virt.o out/ctrl.o out/func.o out/new.o out/val.o out/blk.o out/op.o \
-	out/bitfield.o out/free.o out/alloca.o out/stack.o \
+	out/bitfield.o out/free.o out/alloca.o out/stack.o out/dbg_lbl.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
 	ops/expr_funcall.o ops/expr_identifier.o ops/expr_if.o ops/expr_op.o \
 	ops/expr_sizeof.o ops/expr_val.o ops/expr_stmt.o ops/expr__Generic.o \

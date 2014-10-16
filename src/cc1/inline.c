@@ -15,6 +15,7 @@
 /* inline emission */
 #include "out/dbg.h"
 #include "out/lbl.h"
+#include "out/dbg_lbl.h"
 
 /* old-func detection */
 #include "funcargs.h"
@@ -93,6 +94,7 @@ static const out_val *gen_inline_func(
 		const out_val *sym_outval;
 		const out_val *map_val;
 	} *pushed_vals = umalloc(nargs * sizeof *pushed_vals);
+	struct out_dbg_lbl *dbg_endlbl = NULL;
 
 	if(!cc1_octx->sym_inline_map)
 		cc1_octx->sym_inline_map = dynmap_new(sym *, NULL, sym_hash);
@@ -101,16 +103,21 @@ static const out_val *gen_inline_func(
 	cc1_octx->inline_.phi = out_blk_new(octx, "inline_phi");
 
 	if(cc1_gdebug){
-		char *start_lbl = out_label_code("dbg_inline_start");
+		char *dbg_lbls[2];
+		char *dbg_start;
 
-		out_dbg_label(octx, start_lbl);
+		dbg_lbls[0] = out_label_code("dbg_inline_start");
+		dbg_lbls[1] = out_label_code("dbg_inline_end");
+		dbg_start = ustrdup(dbg_lbls[0]);
+
+		/* free/release ownership of dbg_lbls[0 ... 1] */
+		out_dbg_label_push(octx, dbg_lbls, &dbg_endlbl);
 
 		out_dbg_inlined_call(octx,
 				iouts->fndecl,
-				start_lbl, cc1_octx->inline_.phi,
+				dbg_start,
+				dbg_endlbl,
 				call_loc);
-
-		free(start_lbl);
 	}
 
 	/* got a handle on the code, map the identifiers to our argument
@@ -186,6 +193,7 @@ static const out_val *gen_inline_func(
 	}
 
 	if(cc1_gdebug){
+		out_dbg_label_pop(octx, dbg_endlbl);
 		out_dbg_inline_end(octx);
 	}
 

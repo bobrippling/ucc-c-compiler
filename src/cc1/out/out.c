@@ -49,17 +49,6 @@
  * variadic logic is in impl_func_prologue_save_variadic
  */
 
-void out_dbg_label(out_ctx *octx, const char *lbl)
-{
-	out_blk *blk = octx->current_blk;
-	if(!blk){
-		assert(octx->last_used_blk);
-		blk = octx->last_used_blk;
-	}
-	out_dbg_flush(octx, blk);
-	blk_add_insn(blk, ustrprintf("%s:\n", lbl));
-}
-
 out_ctx *out_ctx_new(void)
 {
 	out_ctx *ctx = umalloc(sizeof *ctx);

@@ -41,6 +41,8 @@ struct static_assert
 	int checked;
 };
 
+struct out_dbg_lbl;
+
 typedef struct symtable symtable;
 struct symtable
 {
@@ -60,7 +62,8 @@ struct symtable
 
 	decl *in_func; /* for r/w checks on args and return-type checks */
 
-	char *lbl_begin, *lbl_end; /* for debug - lexical block */
+	char *lbl_begin;
+	struct out_dbg_lbl *lbl_end; /* for debug - lexical block */
 
 	symtable *parent, **children;
 

@@ -38,6 +38,7 @@
 #include "val.h"
 #include "backend.h" /* REG_BP */
 #include "blk.h" /* .lbl */
+#include "dbg_lbl.h"
 
 #define DEBUG_TYPE_SKIP type_skip_non_tdefs_consts
 #define DEBUG_TYPE_HASH type_hash_skip_nontdefs_consts
@@ -96,6 +97,8 @@
 
 #define DW_ENCS            \
 	X(DW_FORM_addr, 0x1)     \
+	/* synthesized: */       \
+	X(DW_FORM_addr_lbl, 0xff)\
 	X(DW_FORM_data1, 0xb)    \
 	X(DW_FORM_data2, 0x5)    \
 	X(DW_FORM_data4, 0x6)    \
@@ -224,6 +227,7 @@ struct DIE
 			struct DIE *die_xref;
 			char *str;
 			long value;
+			struct out_dbg_lbl *lbl;
 		} bits;
 	} **attrs;
 
@@ -372,6 +376,10 @@ static void dwarf_die_free_1(struct DIE *die)
 				free(a->bits.str);
 				break;
 
+			case DW_FORM_addr_lbl:
+				/* weak pointer */
+				break;
+
 			case DW_FORM_ULEB:
 			case DW_FORM_flag:
 			case DW_FORM_data1:
@@ -454,6 +462,9 @@ static void dwarf_attr(
 			break;
 		case DW_FORM_addr:
 			at->bits.str = data;
+			break;
+		case DW_FORM_addr_lbl:
+			at->bits.lbl = data;
 			break;
 
 		case DW_FORM_ADDR4:
@@ -1230,7 +1241,7 @@ void out_dbg_scope_enter(out_ctx *octx, symtable *symtab)
 			DW_FORM_addr, ustrdup_or_null(symtab->lbl_begin));
 
 	dwarf_attr(lexblk, DW_AT_high_pc,
-			DW_FORM_addr, ustrdup_or_null(symtab->lbl_end));
+			DW_FORM_addr_lbl, RETAIN(symtab->lbl_end));
 
 	dwarf_child(scope_parent, lexblk);
 
@@ -1416,8 +1427,12 @@ static void dwarf_flush_die_1(
 		dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
 				a->attr, s_attr);
 
-		if(enc == DW_FORM_ADDR4)
-			enc = DW_FORM_data4;
+		/* synthetic encoding filter */
+		switch(enc){
+			default: break;
+			case DW_FORM_ADDR4: enc = DW_FORM_data4; break;
+			case DW_FORM_addr_lbl: enc = DW_FORM_addr; break;
+		}
 
 		dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
 				enc, s_enc);
@@ -1443,6 +1458,14 @@ addr:
 				dwarf_printf(&state->info, fty, "%s",
 						a->bits.str ?  a->bits.str : "0");
 				break;
+
+			case DW_FORM_addr_lbl:
+			{
+				const char *lbl;
+				if(out_dbg_label_shouldemit(a->bits.lbl, &lbl))
+					dwarf_printf(&state->info, QUAD, "%s", lbl);
+				break;
+			}
 
 			case DW_FORM_string:
 				fprintf(state->info.f, "\t.ascii \"%s\"\n", a->bits.str);
@@ -1548,6 +1571,11 @@ static unsigned long dwarf_offset_die(
 		enum dwarf_attr_encoding enc = a->enc;
 
 		switch(enc){
+			case DW_FORM_addr_lbl:
+				if(!out_dbg_label_shouldemit(a->bits.lbl, NULL))
+					break;
+				/* fall */
+
 			case DW_FORM_addr:  off += QUAD; break;
 			case DW_FORM_ADDR4: off += LONG; break;
 
@@ -1713,7 +1741,7 @@ void out_dbg_inlined_call(
 		out_ctx *octx,
 		decl *dinlined,
 		const char *caller_start_lbl,
-		out_blk *caller_end_blk,
+		struct out_dbg_lbl *caller_end_lbl,
 		const where *call_loc)
 {
 	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
@@ -1738,7 +1766,7 @@ void out_dbg_inlined_call(
 	}
 
 	dwarf_attr(tag, DW_AT_low_pc, DW_FORM_addr, ustrdup(caller_start_lbl));
-	dwarf_attr(tag, DW_AT_high_pc, DW_FORM_addr, ustrdup(caller_end_blk->lbl));
+	dwarf_attr(tag, DW_AT_high_pc, DW_FORM_addr_lbl, RETAIN(caller_end_lbl));
 
 	form_data = dbg_add_file(cu->pfilelist, call_loc->fname);
 	dwarf_attr(tag, DW_AT_call_file, DW_FORM_ULEB, &form_data);

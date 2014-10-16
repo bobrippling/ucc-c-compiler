@@ -16,6 +16,7 @@
 #include "out.h" /* out_blk_new() */
 #include "lbl.h"
 #include "dbg.h"
+#include "dbg_lbl.h"
 
 #include "blk.h"
 #include "impl_jmp.h"

@@ -1,6 +1,8 @@
 #ifndef DBG_H
 #define DBG_H
 
+#include "../../util/compiler.h"
+
 struct out_dbg_filelist
 {
 	const char *fname;
@@ -9,7 +11,6 @@ struct out_dbg_filelist
 
 /* debug output */
 void out_dbg_where(out_ctx *octx, const where *w);
-void out_dbg_label(out_ctx *octx, const char *lbl);
 
 void dbg_out_filelist(struct out_dbg_filelist *head, FILE *f);
 
@@ -36,11 +37,12 @@ void out_dbg_scope_enter(out_ctx *, struct symtable *);
 void out_dbg_scope_leave(out_ctx *, struct symtable *);
 
 /* parameters are added during the inline code gen */
+struct out_dbg_lbl;
 void out_dbg_inlined_call(
 		out_ctx *,
 		struct decl *dinlined,
 		const char *caller_start_lbl,
-		out_blk *caller_end_blk,
+		struct out_dbg_lbl *caller_end_lbl,
 		const where *call_locn);
 
 void out_dbg_inline_end(out_ctx *);

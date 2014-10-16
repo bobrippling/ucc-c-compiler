@@ -7,6 +7,7 @@
 #include "../out/lbl.h"
 #include "../fold_sym.h"
 #include "../out/dbg.h"
+#include "../out/dbg_lbl.h"
 
 const char *str_stmt_if()
 {
@@ -46,19 +47,23 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 }
 
 void flow_gen(
-		stmt_flow *flow, symtable *stab,
-		const char *endlbls[2], out_ctx *octx)
+		stmt_flow *flow,
+		symtable *stab,
+		struct out_dbg_lbl *pushed_lbls[2],
+		out_ctx *octx)
 {
-	gen_block_decls(stab, &endlbls[0], octx);
-	endlbls[1] = NULL;
+	gen_block_decls(stab, &pushed_lbls[0], octx);
+	pushed_lbls[1] = NULL;
 
 	if(flow && stab != flow->for_init_symtab)
-		gen_block_decls(flow->for_init_symtab, &endlbls[1], octx);
+		gen_block_decls(flow->for_init_symtab, &pushed_lbls[1], octx);
 }
 
 void flow_end(
-		stmt_flow *flow, symtable *stab,
-		const char *endlbls[2], out_ctx *octx)
+		stmt_flow *flow,
+		symtable *stab,
+		struct out_dbg_lbl *pushed_lbls[2],
+		out_ctx *octx)
 {
 	int i;
 
@@ -75,8 +80,8 @@ void flow_end(
 	}
 
 	for(i = 0; i < 2; i++)
-		if(endlbls[i])
-			out_dbg_label(octx, endlbls[i]);
+		if(pushed_lbls[i])
+			out_dbg_label_pop(octx, pushed_lbls[i]);
 }
 
 void fold_stmt_if(stmt *s)
@@ -93,7 +98,7 @@ void gen_stmt_if(const stmt *s, out_ctx *octx)
 	out_blk *blk_true = out_blk_new(octx, "if_true");
 	out_blk *blk_false = out_blk_new(octx, "if_false");
 	out_blk *blk_fi = out_blk_new(octx, "fi");
-	const char *el[2];
+	struct out_dbg_lbl *el[2];
 	const out_val *cond;
 
 	flow_gen(s->flow, s->symtab, el, octx);

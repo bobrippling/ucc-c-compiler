@@ -1,6 +1,12 @@
 STMT_DEFS(code);
 
-void gen_block_decls(symtable *stab, const char **dbg_end_lbl, out_ctx *);
+struct out_dbg_lbl;
+
+void gen_block_decls(
+		symtable *,
+		struct out_dbg_lbl **const,
+		out_ctx *);
+
 void gen_block_decls_dealloca(symtable *stab, out_ctx *octx);
 
 void gen_scope_leave(symtable *s_from, symtable *s_to, out_ctx *octx);
