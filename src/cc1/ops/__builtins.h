@@ -2,6 +2,7 @@
 #define BUILTINS_H
 
 #define BUILTINS                                \
+	BUILTIN("offsetof", offsetof)                 \
 	BUILTIN("unreachable", unreachable)           \
 	BUILTIN("trap", unreachable)                  \
 	BUILTIN("types_compatible_p", compatible_p)   \

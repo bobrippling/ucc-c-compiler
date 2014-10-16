@@ -176,6 +176,8 @@ struct expr
 		} builtin_nantype;
 
 		struct stmt *variadic_setup;
+
+		type *offsetof_ty;
 	} bits;
 
 	int in_parens; /* for if((x = 5)) testing */
