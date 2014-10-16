@@ -83,8 +83,12 @@ static void bfs_block(out_blk *blk, struct flush_state *st, int const force)
 	blk->flush_in_prog = 1;
 
 	/* dead code elimination: */
-	if(!force && !blk->merge_preds)
+	if(!force && !blk->merge_preds){
+		/* should only do this if called back from the merge-pred loop below,
+		 * since otherwise we're called from a BLK_NEXT_BLOCK, which means
+		 * control does jump into us */
 		return;
+	}
 
 	if(blk->merge_preds){
 		out_blk **i;
