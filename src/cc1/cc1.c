@@ -949,7 +949,7 @@ usage:
 	if(fopt_mode & FOPT_DUMP_TYPE_TREE)
 		type_nav_dump(cc1_type_nav);
 
-	dynarray_free(const char **, &system_includes, NULL);
+	dynarray_free(const char **, system_includes, NULL);
 
 	return parsed_folded;
 }

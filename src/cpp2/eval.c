@@ -282,7 +282,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 		}
 
 
-		dynarray_free(char **, &args, free);
+		dynarray_free(char **, args, free);
 		tokens_free(toks);
 		return replace;
 	}

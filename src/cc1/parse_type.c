@@ -137,7 +137,7 @@ static type *parse_type_sue(
 					dynarray_add(&members,
 							sue_member_from_decl(*i));
 
-				dynarray_free(decl **, &dmembers, NULL);
+				dynarray_free(decl **, dmembers, NULL);
 			}
 		}
 		EAT(token_close_block);
@@ -1836,7 +1836,7 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 		if(old_args){
 			check_and_replace_old_func(d, old_args, in_scope);
 
-			dynarray_free(decl **, &old_args, NULL);
+			dynarray_free(decl **, old_args, NULL);
 
 			/* old function with decls after the close paren,
 			 * need a function */

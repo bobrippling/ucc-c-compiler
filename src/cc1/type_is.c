@@ -561,7 +561,7 @@ type *type_decay(type *const ty)
 	}
 
 out:
-	dynarray_free(attribute **, &attr, NULL);
+	dynarray_free(attribute **, attr, NULL);
 	return ret;
 }
 
