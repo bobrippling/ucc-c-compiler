@@ -101,12 +101,12 @@ static type *parse_type_sue(
 				enum_vals_add(&members, &w, sp, e, en_attr);
 				RELEASE(en_attr);
 
-				if(!accept(token_comma))
+				if(!accept_where(token_comma, &w))
 					break;
 
 				if(curtok != token_identifier){
 					if(cc1_std < STD_C99)
-						cc1_warn_at(NULL, c89_parse_trailingcomma,
+						cc1_warn_at(&w, c89_parse_trailingcomma,
 								"trailing comma in enum definition");
 					break;
 				}
