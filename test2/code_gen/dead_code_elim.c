@@ -1,4 +1,5 @@
-// RUN: %ocheck 3 %s
+// RUN: %ocheck 3 %s -g
+// test debug emission too
 
 g()
 {
@@ -8,9 +9,11 @@ g()
 main()
 {
 	if(0){
+		int i;
 		f(); // shouldn't hit a linker error here - dead code
 a:
-		return g();
+		i = 2;
+		return g(i);
 	}
 
 	goto a;
