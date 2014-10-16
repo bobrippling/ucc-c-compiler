@@ -98,7 +98,7 @@ static void fold_cast_num(expr *const e, numeric *const num)
 #undef pv
 }
 
-static void signed_unsigned_warn_at(
+static void warn_value_changed_at(
 		where *w,
 		const char *infmt,
 		int signed_in, int signed_out,
@@ -117,7 +117,7 @@ static void signed_unsigned_warn_at(
 		}
 	}
 
-	cc1_warn_at(w, signed_unsigned, fmt, a, b);
+	cc1_warn_at(w, overflow, fmt, a, b);
 	free(fmt);
 }
 
@@ -192,13 +192,13 @@ static integral_t convert_integral_to_integral_warn(
 
 	if(do_warn){
 		if(ret != in){
-			signed_unsigned_warn_at(w,
+			warn_value_changed_at(w,
 					"implicit cast changes value from %llA to %llB",
 					signed_in, signed_out,
 					in, signed_out ? (integral_t)to_iv_sign_ext : ret);
 
 		}else if(signed_out && !signed_in && (sintegral_t)ret < 0){
-			signed_unsigned_warn_at(w,
+			warn_value_changed_at(w,
 					"implicit cast negates value, %llA to %llB",
 					signed_in, signed_out,
 					in, (sintegral_t)to_iv_sign_ext);
@@ -209,7 +209,7 @@ static integral_t convert_integral_to_integral_warn(
 			int out_high = integral_high_bit(type_max(tout, w), tout);
 
 			if(in_high > out_high){
-				signed_unsigned_warn_at(w,
+				warn_value_changed_at(w,
 						"implicit cast truncates value from %llA to %llB",
 						signed_in, signed_out,
 						in, ret & ((1ULL << (out_high + 1)) - 1));

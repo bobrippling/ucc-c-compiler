@@ -74,7 +74,7 @@ static struct warn_str
 
 	{ "unused-expr", &cc1_warning.unused_expr },
 
-	{ "test-in-assign", &cc1_warning.test_assign },
+	{ "assign-in-test", &cc1_warning.test_assign },
 	{ "test-bool", &cc1_warning.test_bool },
 
 	{ "dead-code", &cc1_warning.dead_code },
@@ -230,6 +230,8 @@ static struct warn_str
 	{ "undefined-shift", &cc1_warning.op_shift_bad },
 	{ "overlarge-enumerator-bitfield", &cc1_warning.overlarge_enumerator_bitfield },
 	{ "overlarge-enumerator-int", &cc1_warning.overlarge_enumerator_int },
+
+	{ "overflow", &cc1_warning.overflow },
 
 	{ "operator-precedence", &cc1_warning.parse_precedence },
 	{ "visibility", &cc1_warning.private_struct },
@@ -652,6 +654,9 @@ static void warning_all(void)
 	cc1_warning.bitfield_boundary =
 	cc1_warning.vla =
 	cc1_warning.init_missing_struct_zero =
+	cc1_warning.unused_param =
+	cc1_warning.test_assign =
+	cc1_warning.signed_unsigned =
 		0;
 }
 
@@ -686,9 +691,13 @@ static void warning_special(enum warning_special type)
 		case W_EXTRA:
 			warning_all();
 			cc1_warning.implicit_int =
-			cc1_warning.sign_compare =
-			cc1_warning.tenative_init =
-			cc1_warning.shadow_global = 1;
+			cc1_warning.shadow_global =
+			cc1_warning.cast_qual =
+			cc1_warning.init_missing_braces =
+			cc1_warning.init_missing_struct =
+			cc1_warning.unused_param =
+			cc1_warning.signed_unsigned =
+				1;
 			break;
 	}
 }
