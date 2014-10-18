@@ -30,6 +30,7 @@ decl_init *parse_init(symtable *scope, int static_ctx)
 #endif
 
 		while(curtok != token_close_block){
+			where comma_loc;
 			decl_init *sub;
 			struct desig *desig = NULL;
 
@@ -68,11 +69,11 @@ decl_init *parse_init(symtable *scope, int static_ctx)
 
 			dynarray_add(&exps, sub);
 
-			if(!accept(token_comma))
+			if(!accept_where(token_comma, &comma_loc))
 				break;
 
 			if(curtok == token_close_block && cc1_std < STD_C99)
-				cc1_warn_at(NULL, c89_parse_trailingcomma,
+				cc1_warn_at(&comma_loc, c89_parse_trailingcomma,
 						"trailing comma in initialiser");
 		}
 
