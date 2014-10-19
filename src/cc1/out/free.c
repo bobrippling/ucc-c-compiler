@@ -64,7 +64,7 @@ static void blk_free(out_blk *blk)
 	if(blk->type == BLK_COND)
 		free(blk->bits.cond.insn);
 
-	dynarray_free(out_blk **, &blk->merge_preds, NULL);
+	dynarray_free(out_blk **, blk->merge_preds, NULL);
 
 	/* .phi_val is handled by the out_val code */
 
@@ -102,7 +102,7 @@ static void out_wipe_blks(out_ctx *octx)
 	octx->epilogue_blk =
 	octx->last_used_blk = NULL;
 
-	dynarray_free(out_blk **, &octx->mustgen, NULL);
+	dynarray_free(out_blk **, octx->mustgen, NULL);
 }
 
 static void out_wipe_vals(out_ctx *octx)

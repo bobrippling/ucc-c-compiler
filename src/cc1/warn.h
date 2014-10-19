@@ -100,6 +100,7 @@ struct cc1_warning
 	unsigned char nonstd_init;
 	unsigned char omitted_param_types;
 	unsigned char op_shift_bad;
+	unsigned char overflow;
 	unsigned char overlarge_enumerator_bitfield;
 	unsigned char overlarge_enumerator_int;
 	unsigned char pad;

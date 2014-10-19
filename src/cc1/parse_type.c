@@ -101,12 +101,12 @@ static type *parse_type_sue(
 				enum_vals_add(&members, &w, sp, e, en_attr);
 				RELEASE(en_attr);
 
-				if(!accept(token_comma))
+				if(!accept_where(token_comma, &w))
 					break;
 
 				if(curtok != token_identifier){
 					if(cc1_std < STD_C99)
-						cc1_warn_at(NULL, c89_parse_trailingcomma,
+						cc1_warn_at(&w, c89_parse_trailingcomma,
 								"trailing comma in enum definition");
 					break;
 				}
@@ -137,7 +137,7 @@ static type *parse_type_sue(
 					dynarray_add(&members,
 							sue_member_from_decl(*i));
 
-				dynarray_free(decl **, &dmembers, NULL);
+				dynarray_free(decl **, dmembers, NULL);
 			}
 		}
 		EAT(token_close_block);
@@ -1836,7 +1836,7 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 		if(old_args){
 			check_and_replace_old_func(d, old_args, in_scope);
 
-			dynarray_free(decl **, &old_args, NULL);
+			dynarray_free(decl **, old_args, NULL);
 
 			/* old function with decls after the close paren,
 			 * need a function */

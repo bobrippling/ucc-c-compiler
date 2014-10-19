@@ -310,7 +310,7 @@ static void process_files(enum mode mode, char **inputs, char *output, char **ar
 		rename_files(files, ninputs, output, mode);
 	}
 
-	dynarray_free(char **, &links, free);
+	dynarray_free(char **, links, free);
 
 	for(i = 0; i < ninputs; i++){
 		close(files[i].in.fd);
@@ -688,7 +688,7 @@ input:	dynarray_add(&inputs, argv[i]);
 			dynarray_add(&args[mode_compile], ustrprintf("-I%s", *i));
 		}
 
-		dynarray_free(const char **, &isystems, NULL);
+		dynarray_free(const char **, isystems, NULL);
 	}
 
 	/* custom include paths */
@@ -699,8 +699,8 @@ input:	dynarray_add(&inputs, argv[i]);
 	process_files(mode, inputs, output, args, backend);
 
 	for(i = 0; i < 4; i++)
-		dynarray_free(char **, &args[i], free);
-	dynarray_free(char **, &inputs, NULL);
+		dynarray_free(char **, args[i], free);
+	dynarray_free(char **, inputs, NULL);
 
 	return 0;
 }

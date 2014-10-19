@@ -1983,7 +1983,7 @@ const out_val *impl_call(
 
 	for(i = 0; i < nargs; i++)
 		out_val_consume(octx, local_args[i]);
-	dynarray_free(const out_val **, &local_args, NULL);
+	dynarray_free(const out_val **, local_args, NULL);
 
 	free(float_arg);
 
