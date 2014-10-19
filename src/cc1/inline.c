@@ -53,7 +53,7 @@ static void inline_vars_pop(
 {
 	/* block memory management is handled by the out/backend
 	 * we just free our array of them */
-	dynarray_free(out_blk **, &current->rets, NULL);
+	dynarray_free(out_blk **, current->rets, NULL);
 	memcpy_safe(current, saved);
 }
 
@@ -103,19 +103,18 @@ static const out_val *gen_inline_func(
 	cc1_octx->inline_.phi = out_blk_new(octx, "inline_phi");
 
 	if(cc1_gdebug){
+		struct out_dbg_lbl *dbg_startlbl;
 		char *dbg_lbls[2];
-		char *dbg_start;
 
 		dbg_lbls[0] = out_label_code("dbg_inline_start");
 		dbg_lbls[1] = out_label_code("dbg_inline_end");
-		dbg_start = ustrdup(dbg_lbls[0]);
 
 		/* free/release ownership of dbg_lbls[0 ... 1] */
-		out_dbg_label_push(octx, dbg_lbls, &dbg_endlbl);
+		out_dbg_label_push(octx, dbg_lbls, &dbg_startlbl, &dbg_endlbl);
 
 		out_dbg_inlined_call(octx,
 				iouts->fndecl,
-				dbg_start,
+				dbg_startlbl,
 				dbg_endlbl,
 				call_loc);
 	}

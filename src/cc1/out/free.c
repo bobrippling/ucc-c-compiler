@@ -42,18 +42,25 @@ static void out_blk_uniq(out_blk *blk, dynmap *uniq_blks)
 	}
 }
 
+static void blk_free_labels(struct out_dbg_lbl ***parray)
+{
+	struct out_dbg_lbl **dbg_i;
+
+	if(!*parray)
+		return;
+
+	for(dbg_i = *parray; *dbg_i; dbg_i++){
+		RELEASE(*dbg_i);
+	}
+	dynarray_free_rval(struct out_dbg_lbl **, parray, NULL);
+}
+
 static void blk_free(out_blk *blk)
 {
 	char **i;
 
-	if(blk->labels){
-		struct out_dbg_lbl **dbg_i;
-
-		for(dbg_i = blk->labels; *dbg_i; dbg_i++){
-			RELEASE(*dbg_i);
-		}
-		dynarray_free(struct out_dbg_lbl *, blk->labels, NULL);
-	}
+	blk_free_labels(&blk->labels.start);
+	blk_free_labels(&blk->labels.end);
 
 	free(blk->lbl);
 

@@ -16,10 +16,12 @@
 /* functions */
 #include "blk.h"
 
-static void add_lbl_to_blk(struct out_dbg_lbl *lbl, out_blk *blk)
+static void add_lbl_to_blk(
+		struct out_dbg_lbl *lbl,
+		struct out_dbg_lbl ***parray)
 {
 	RETAIN(lbl);
-	dynarray_add(&blk->labels, lbl);
+	dynarray_add(parray, lbl);
 }
 
 static void out_dbg_label_free(struct out_dbg_lbl *lbl)
@@ -28,31 +30,39 @@ static void out_dbg_label_free(struct out_dbg_lbl *lbl)
 	free(lbl);
 }
 
+static struct out_dbg_lbl *dbg_lbl_new(char *strlbl)
+{
+	struct out_dbg_lbl *lbl = umalloc(sizeof *lbl);
+	RETAIN_INIT(lbl, &out_dbg_label_free);
+	lbl->lbl = strlbl;
+	return lbl;
+}
+
 void out_dbg_label_push(
 		out_ctx *octx,
 		char *lbl[ucc_static_param 2],
-		struct out_dbg_lbl **pushed)
+		struct out_dbg_lbl **out_startlbl,
+		struct out_dbg_lbl **out_endlbl)
 {
 	out_blk *blk = octx->current_blk;
-	struct out_dbg_lbl *attached_lbl;
+	struct out_dbg_lbl *startlbl, *endlbl;
 
 	if(!blk)
 		blk = octx->last_used_blk;
 
-	blk_add_insn(blk, ustrprintf("%s:\n", lbl[0]));
-	free(lbl[0]);
+	startlbl = dbg_lbl_new(lbl[0]);
+	endlbl = dbg_lbl_new(lbl[1]);
 
-	attached_lbl = umalloc(sizeof *attached_lbl);
-	RETAIN_INIT(attached_lbl, &out_dbg_label_free);
-
-	attached_lbl->lbl = lbl[1];
+	/* add to current block */
+	add_lbl_to_blk(startlbl, &blk->labels.start);
 
 	/* add to octx - octx emits this label at the end of the block gen if the
 	 * block containing it (set in out_dbg_label_pop()) hasn't been emitted */
-	dynarray_add(&octx->pending_lbls, attached_lbl);
+	dynarray_add(&octx->pending_lbls, endlbl);
 
-	/* out param */
-	*pushed = attached_lbl;
+	/* out params */
+	*out_startlbl = startlbl;
+	*out_endlbl = endlbl;
 }
 
 void out_dbg_label_pop(out_ctx *octx, struct out_dbg_lbl *to_pop)
@@ -62,15 +72,20 @@ void out_dbg_label_pop(out_ctx *octx, struct out_dbg_lbl *to_pop)
 		blk = octx->last_used_blk;
 
 	/* this is the block we should emit the label from */
-	add_lbl_to_blk(to_pop, blk);
+	add_lbl_to_blk(to_pop, &blk->labels.end);
 }
 
-int out_dbg_label_shouldemit(struct out_dbg_lbl *lbl, const char **out_lbl)
+int out_dbg_label_emitted(struct out_dbg_lbl *lbl, const char **out_lbl)
 {
 	if(out_lbl)
 		*out_lbl = lbl->lbl;
 
-	return !lbl->emitted;
+	return lbl->emitted;
+}
+
+int out_dbg_label_shouldemit(struct out_dbg_lbl *lbl, const char **out_lbl)
+{
+	return !out_dbg_label_emitted(lbl, out_lbl);
 }
 
 static void emit_lbl(FILE *f, struct out_dbg_lbl *lbl)

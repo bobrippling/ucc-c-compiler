@@ -181,7 +181,7 @@ void out_func_epilogue(
 
 	dynarray_free(
 			struct out_dbg_lbl **,
-			&octx->pending_lbls,
+			octx->pending_lbls,
 			NULL);
 
 	octx->initial_stack_sz =

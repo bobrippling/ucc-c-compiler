@@ -377,7 +377,7 @@ static void dwarf_die_free_1(struct DIE *die)
 				break;
 
 			case DW_FORM_addr_lbl:
-				/* weak pointer */
+				RELEASE(a->bits.lbl);
 				break;
 
 			case DW_FORM_ULEB:
@@ -1238,7 +1238,7 @@ void out_dbg_scope_enter(out_ctx *octx, symtable *symtab)
 	lexblk = dwarf_die_new(DW_TAG_lexical_block);
 
 	dwarf_attr(lexblk, DW_AT_low_pc,
-			DW_FORM_addr, ustrdup_or_null(symtab->lbl_begin));
+			DW_FORM_addr_lbl, RETAIN(symtab->lbl_begin));
 
 	dwarf_attr(lexblk, DW_AT_high_pc,
 			DW_FORM_addr_lbl, RETAIN(symtab->lbl_end));
@@ -1462,7 +1462,7 @@ addr:
 			case DW_FORM_addr_lbl:
 			{
 				const char *lbl;
-				if(out_dbg_label_shouldemit(a->bits.lbl, &lbl))
+				if(out_dbg_label_emitted(a->bits.lbl, &lbl))
 					dwarf_printf(&state->info, QUAD, "%s", lbl);
 				break;
 			}
@@ -1572,7 +1572,7 @@ static unsigned long dwarf_offset_die(
 
 		switch(enc){
 			case DW_FORM_addr_lbl:
-				if(!out_dbg_label_shouldemit(a->bits.lbl, NULL))
+				if(!out_dbg_label_emitted(a->bits.lbl, NULL))
 					break;
 				/* fall */
 
@@ -1740,7 +1740,7 @@ void out_dbg_emit_global_var(out_ctx *octx, decl *d)
 void out_dbg_inlined_call(
 		out_ctx *octx,
 		decl *dinlined,
-		const char *caller_start_lbl,
+		struct out_dbg_lbl *caller_start_lbl,
 		struct out_dbg_lbl *caller_end_lbl,
 		const where *call_loc)
 {
@@ -1765,7 +1765,7 @@ void out_dbg_inlined_call(
 		dwarf_attr(lookup_fn, DW_AT_inline, DW_FORM_data1, &flag);
 	}
 
-	dwarf_attr(tag, DW_AT_low_pc, DW_FORM_addr, ustrdup(caller_start_lbl));
+	dwarf_attr(tag, DW_AT_low_pc, DW_FORM_addr_lbl, RETAIN(caller_start_lbl));
 	dwarf_attr(tag, DW_AT_high_pc, DW_FORM_addr_lbl, RETAIN(caller_end_lbl));
 
 	form_data = dbg_add_file(cu->pfilelist, call_loc->fname);

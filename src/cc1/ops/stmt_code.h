@@ -1,10 +1,12 @@
 STMT_DEFS(code);
 
+#include "../../util/compiler.h"
+
 struct out_dbg_lbl;
 
 void gen_block_decls(
 		symtable *,
-		struct out_dbg_lbl **const,
+		struct out_dbg_lbl *[ucc_static_param 2],
 		out_ctx *);
 
 void gen_block_decls_dealloca(symtable *stab, out_ctx *octx);

@@ -249,7 +249,7 @@ static void gen_auto_decl(decl *d, out_ctx *octx)
 
 void gen_block_decls(
 		symtable *stab,
-		struct out_dbg_lbl **const pushed_lbl,
+		struct out_dbg_lbl *pushed_lbls[2],
 		out_ctx *octx)
 {
 	decl **diter;
@@ -260,14 +260,13 @@ void gen_block_decls(
 		dbg_lbls[0] = out_label_code("dbg_begin");
 		dbg_lbls[1] = out_label_code("dbg_end");
 
-		stab->lbl_begin = ustrdup(dbg_lbls[0]);
+		out_dbg_label_push(octx, dbg_lbls, &pushed_lbls[0], &pushed_lbls[1]);
 
-		out_dbg_label_push(octx, dbg_lbls, pushed_lbl);
-
-		stab->lbl_end = *pushed_lbl;
+		stab->lbl_begin = pushed_lbls[0];
+		stab->lbl_end = pushed_lbls[1];
 
 	}else{
-		*pushed_lbl = NULL;
+		pushed_lbls[0] = pushed_lbls[1] = NULL;
 	}
 
 	if(cc1_gdebug)

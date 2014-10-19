@@ -41,7 +41,7 @@ struct out_dbg_lbl;
 void out_dbg_inlined_call(
 		out_ctx *,
 		struct decl *dinlined,
-		const char *caller_start_lbl,
+		struct out_dbg_lbl *caller_start_lbl,
 		struct out_dbg_lbl *caller_end_lbl,
 		const where *call_locn);
 

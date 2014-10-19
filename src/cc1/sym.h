@@ -62,8 +62,8 @@ struct symtable
 
 	decl *in_func; /* for r/w checks on args and return-type checks */
 
-	char *lbl_begin;
-	struct out_dbg_lbl *lbl_end; /* for debug - lexical block */
+	/* for debug - lexical block */
+	struct out_dbg_lbl *lbl_begin, *lbl_end;
 
 	symtable *parent, **children;
 
