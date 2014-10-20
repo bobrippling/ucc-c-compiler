@@ -162,6 +162,7 @@ after_compile:
 			assume_obj:
 				fprintf(stderr, "assuming \"%s\" is object-file\n", in);
 			case 'o':
+			case 'a':
 				/* else assume it's already an object file */
 				file->out = file->in;
 		}
