@@ -64,6 +64,7 @@ struct cc1_warning
 	unsigned char funcall_argcount;
 	unsigned char gnu_addr_lbl;
 	unsigned char gnu_alignof_expr;
+	unsigned char gnu_empty_init;
 	unsigned char gnu_expr_stmt;
 	unsigned char gnu_typeof;
 	unsigned char gnu_attribute;

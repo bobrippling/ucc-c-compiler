@@ -167,6 +167,8 @@ static struct warn_str
 	{ "declaration-noop", &cc1_warning.decl_nodecl },
 	{ "empty-struct", &cc1_warning.empty_struct },
 
+	{ "empty-init", &cc1_warning.gnu_empty_init },
+
 	{ "enum-mismatch", &cc1_warning.enum_mismatch },
 	{ "enum-switch-bitmask", &cc1_warning.enum_switch_bitmask },
 	{ "enum-switch-imposter", &cc1_warning.enum_switch_imposter },
@@ -602,6 +604,7 @@ static void warning_gnu(int set)
 	cc1_warning.gnu_init_array_range =
 	cc1_warning.gnu_case_range =
 	cc1_warning.gnu_alignof_expr =
+	cc1_warning.gnu_empty_init =
 		set;
 }
 
