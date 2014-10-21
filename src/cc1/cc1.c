@@ -38,7 +38,7 @@ struct cc1_warning cc1_warning;
 
 enum warning_special
 {
-	W_ALL, W_EXTRA, W_EVERYTHING
+	W_ALL, W_EXTRA, W_EVERYTHING, W_GNU
 };
 
 static const char **system_includes;
@@ -46,7 +46,7 @@ static const char **system_includes;
 static struct warn_str
 {
 	const char *arg;
-	unsigned char *offsets[7];
+	unsigned char *offsets[3];
 } warns[] = {
 	{ "mismatch-arg", &cc1_warning.arg_mismatch },
 	{ "array-comma", &cc1_warning.array_comma },
@@ -177,17 +177,6 @@ static struct warn_str
 	{ "embedded-flexarr", &cc1_warning.flexarr_embed },
 	{ "flexarr-single-member", &cc1_warning.flexarr_only },
 	{ "flexarr-init", &cc1_warning.flexarr_init },
-
-	{
-		"gnu",
-		&cc1_warning.gnu_addr_lbl,
-		&cc1_warning.gnu_expr_stmt,
-		&cc1_warning.gnu_typeof,
-		&cc1_warning.gnu_attribute,
-		&cc1_warning.gnu_init_array_range,
-		&cc1_warning.gnu_case_range,
-		&cc1_warning.gnu_alignof_expr
-	},
 
 	{ "gcc-compat", &cc1_warning.gnu_gcc_compat },
 
@@ -606,16 +595,14 @@ static void warnings_set(int to)
 
 static void warning_gnu(int set)
 {
-	struct warn_str *w;
-	for(w = warns; w->arg; w++){
-		if(!strcmp(w->arg, "gnu")){
-			unsigned i;
-			for(i = 0; i < countof(w->offsets); i++)
-				*w->offsets[i] = set;
-
-			break;
-		}
-	}
+	cc1_warning.gnu_addr_lbl =
+	cc1_warning.gnu_expr_stmt =
+	cc1_warning.gnu_typeof =
+	cc1_warning.gnu_attribute =
+	cc1_warning.gnu_init_array_range =
+	cc1_warning.gnu_case_range =
+	cc1_warning.gnu_alignof_expr =
+		set;
 }
 
 static void warning_pedantic(int set)
@@ -699,6 +686,9 @@ static void warning_special(enum warning_special type)
 			cc1_warning.signed_unsigned =
 				1;
 			break;
+		case W_GNU:
+			warning_gnu(1);
+			break;
 	}
 }
 
@@ -715,6 +705,7 @@ static void warning_on(const char *warn, int to)
 	SPECIAL("all", W_ALL)
 	SPECIAL("extra", W_EXTRA)
 	SPECIAL("everything", W_EVERYTHING)
+	SPECIAL("gnu", W_GNU);
 
 	for(p = warns; p->arg; p++){
 		if(!strcmp(warn, p->arg)){
