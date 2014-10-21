@@ -1610,15 +1610,12 @@ static const char *x86_call_jmp_target(
 
 		case V_REG_SPILT: /* load, then jmp */
 		case V_REG: /* jmp *%rax */
-			/* TODO: v_to_reg_given() ? */
-			*pvp = v_to_reg(octx, *pvp);
+			*pvp = v_reg_apply_offset(octx, v_to_reg(octx, *pvp));
 
 			UCC_ASSERT(!(*pvp)->bits.regoff.reg.is_float, "jmp float?");
 
 			if(prevent_rax && (*pvp)->bits.regoff.reg.idx == X86_64_REG_RAX){
 				struct vreg r;
-
-				*pvp = v_reg_apply_offset(octx, *pvp);
 
 				v_unused_reg(octx, 1, 0, &r, /*don't want rax:*/NULL);
 				impl_reg_cp_no_off(octx, *pvp, &r);
@@ -1627,8 +1624,9 @@ static const char *x86_call_jmp_target(
 				memcpy_safe(&((out_val *)*pvp)->bits.regoff.reg, &r);
 			}
 
-			snprintf(buf, sizeof buf, "*%%%s",
-					x86_reg_str(&(*pvp)->bits.regoff.reg, NULL));
+			*buf = '*';
+			impl_val_str_r(buf + 1, *pvp, 0);
+			/* FIXME: derereference: 0 - this should check for an lvalue and if so, pass 1 */
 			return buf;
 	}
 
