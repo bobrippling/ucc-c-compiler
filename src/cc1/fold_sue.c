@@ -417,7 +417,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				fold_sue_calc_normal(&pack_state);
 			}
 
-			if(packed)
+			if(packed || attribute_present(d, attr_packed))
 				pack_state.align = 1;
 
 			if(sue->primitive == type_struct && !d->bits.var.field_width){
