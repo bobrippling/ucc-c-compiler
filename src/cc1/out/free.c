@@ -52,7 +52,7 @@ static void blk_free_labels(struct out_dbg_lbl ***parray)
 	for(dbg_i = *parray; *dbg_i; dbg_i++){
 		RELEASE(*dbg_i);
 	}
-	dynarray_free_rval(struct out_dbg_lbl **, parray, NULL);
+	dynarray_free(struct out_dbg_lbl **, *parray, NULL);
 }
 
 static void blk_free(out_blk *blk)

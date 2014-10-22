@@ -77,6 +77,9 @@ decl_init *parse_init(symtable *scope, int static_ctx)
 						"trailing comma in initialiser");
 		}
 
+		if(!exps)
+			cc1_warn_at(NULL, gnu_empty_init, "use of GNU empty initialiser");
+
 		di->bits.ar.inits = exps;
 
 		EAT(token_close_block);
