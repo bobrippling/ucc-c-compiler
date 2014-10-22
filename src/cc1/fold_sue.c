@@ -374,11 +374,9 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		int submemb_const = 0;
 		struct bitfield_state bitfield;
 		sue_member **i;
+		const int packed = !!attr_present(sue->attr, attr_packed);
 
 		memset(&bitfield, 0, sizeof bitfield);
-
-		if(attr_present(sue->attr, attr_packed))
-			ICE("TODO: __attribute__((packed)) support");
 
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
@@ -418,6 +416,9 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 			}else{
 				fold_sue_calc_normal(&pack_state);
 			}
+
+			if(packed)
+				pack_state.align = 1;
 
 			if(sue->primitive == type_struct && !d->bits.var.field_width){
 				fold_sue_apply_normal_offset(&pack_state, &offset, &bitfield);
