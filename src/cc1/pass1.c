@@ -32,7 +32,7 @@ static void link_gasms(symtable_gasm ***plast_gasms, decl *prev)
 	for(i = *plast_gasms; i && *i; i++)
 		(*i)->before = prev;
 
-	dynarray_free_rval(symtable_gasm **, plast_gasms, NULL);
+	dynarray_free(symtable_gasm **, *plast_gasms, NULL);
 }
 
 static int parse_add_gasms(symtable_gasm ***plast_gasms)
