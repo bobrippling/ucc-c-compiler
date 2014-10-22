@@ -20,6 +20,11 @@
 #include "type_is.h"
 #include "type_nav.h"
 
+struct bitfield_state
+{
+	unsigned current_off, first_off;
+};
+
 static void struct_pack(
 		decl *d, unsigned long *poffset, unsigned sz, unsigned align)
 {
@@ -132,6 +137,221 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 	en->align = type_align(type_nav_btype(cc1_type_nav, type_int), NULL);
 }
 
+static int fold_sue_check_unnamed(
+		decl *d,
+		struct_union_enum_st *sue,
+		struct_union_enum_st *sub_sue,
+		sue_member ***const pi)
+{
+	if(!d->spel){
+		/* if the decl doesn't have a name, it's
+		 * a useless decl, unless it's an anon struct/union
+		 * or a bitfield
+		 */
+		if(d->bits.var.field_width){
+			/* fine */
+		}else if(sub_sue){
+			/* anon */
+			char *prob = NULL;
+			int ignore = 0;
+
+			if(fopt_mode & FOPT_TAG_ANON_STRUCT_EXT){
+				/* fine */
+			}else if(!sub_sue->anon){
+				prob = "ignored - tagged";
+				ignore = 1;
+			}else if(cc1_std < STD_C11){
+				prob = "is a C11 extension";
+			}
+
+			if(prob){
+				cc1_warn_at(&d->where,
+						unnamed_struct_memb,
+						"unnamed member '%s' %s",
+						decl_to_str(d), prob);
+				if(ignore){
+					/* drop the decl */
+					sue_member *dropped = sue_drop(sue, *pi);
+					--*pi;
+					decl_free(dropped->struct_member);
+					free(dropped);
+					return 1;
+				}
+			}
+		}
+	}
+	return 0;
+}
+
+static int fold_sue_check_vm(decl *d)
+{
+	if(type_is_variably_modified(d->ref)){
+		/* C99 6.7.6.2
+		 * ... all identifiers declared with a VM type have to be ordinary
+		 * identifiers and cannot, therefore, be members of structures or
+		 * unions
+		 * */
+		fold_had_error = 1;
+		warn_at_print_error(
+				&d->where,
+				"member has variably modifed type '%s'",
+				type_to_str(d->ref));
+
+		return 1;
+	}
+	return 0;
+}
+
+static void fold_sue_calc_fieldwidth(
+		decl *d,
+		unsigned *const sz,
+		unsigned *const align,
+		int *const realign_next,
+		unsigned long *const offset,
+		unsigned *const bf_cur_lim,
+		struct bitfield_state *const bitfield)
+{
+	const unsigned bits = const_fold_val_i(d->bits.var.field_width);
+
+	*sz = *align = 0; /* don't affect sz_max or align_max */
+
+	if(bits == 0){
+		/* align next field / treat as new bitfield
+		 * note we don't pad here - we don't want to
+		 * take up any space with this field
+		 */
+		*realign_next = 1;
+
+		/* also set struct_offset for 0-len bf, for pad reasons */
+		d->bits.var.struct_offset = *offset;
+
+	}else if(*realign_next
+	|| !bitfield->current_off
+	|| bitfield->current_off + bits > *bf_cur_lim)
+	{
+		if(*realign_next || bitfield->current_off){
+			if(!*realign_next){
+				/* bitfield overflow - repad */
+				cc1_warn_at(&d->where,
+						bitfield_boundary,
+						"bitfield overflow (%d + %d > %d) - "
+						"moved to next boundary", bitfield->current_off, bits,
+						*bf_cur_lim);
+			}else{
+				*realign_next = 0;
+			}
+
+			/* don't pay attention to the current bitfield offset */
+			bitfield->current_off = 0;
+			struct_pack_finish_bitfield(offset, &bitfield->current_off);
+		}
+
+		*bf_cur_lim = CHAR_BIT * type_size(d->ref, &d->where);
+
+		/* Get some initial padding.
+		 * Note that we want to affect the align_max
+		 * of the struct and the size of this field
+		 */
+		bitfield_size_align(d->ref, sz, align, &d->where);
+
+		/* we are onto the beginning of a new group */
+		struct_pack(d, offset, *sz, *align);
+		bitfield->first_off = d->bits.var.struct_offset;
+		d->bits.var.first_bitfield = 1;
+
+	}else{
+		/* mirror previous bitfields' offset in the struct
+		 * difference is in .struct_offset_bitfield
+		 */
+		d->bits.var.struct_offset = bitfield->first_off;
+	}
+
+	d->bits.var.struct_offset_bitfield = bitfield->current_off;
+	bitfield->current_off += bits; /* allowed to go above sizeof(int) */
+
+	if(bitfield->current_off == *bf_cur_lim){
+		/* exactly reached the limit, reset bitfield indexing */
+		bitfield->current_off = 0;
+	}
+}
+
+static void fold_sue_calc_normal(
+		decl *d, struct_union_enum_st *sue,
+		sue_member **i,
+		unsigned *const sz, unsigned *const align)
+{
+	*align = decl_align(d);
+	if(type_is_incomplete_array(d->ref)){
+		if(i[1])
+			die_at(&d->where, "flexible array not at end of struct");
+		else if(sue->primitive != type_struct)
+			die_at(&d->where, "flexible array in a %s", sue_str(sue));
+		else if(i == sue->members) /* nothing currently */
+			cc1_warn_at(&d->where, flexarr_only,
+					"struct with just a flex-array is an extension");
+
+		sue->flexarr = 1;
+		*sz = 0; /* not counted in struct size */
+	}else{
+		*sz = decl_size(d);
+	}
+}
+
+static void fold_sue_apply_normal_offset(
+		decl *d, unsigned long *const offset,
+		struct bitfield_state *const bitfield,
+		unsigned const sz, unsigned const align,
+		struct_union_enum_st *sue)
+{
+	const int prev_offset = *offset;
+	int pad;
+
+	if(bitfield->current_off){
+		/* we automatically pad on the next struct_pack,
+		 * don't struct_pack() here */
+		bitfield->current_off = 0;
+	}
+
+	struct_pack(d, offset, sz, align);
+
+	pad = d->bits.var.struct_offset - prev_offset;
+	if(pad){
+		cc1_warn_at(&d->where, pad,
+				"padding '%s' with %d bytes to align '%s'",
+				sue->spel, pad, decl_to_str(d));
+	}
+}
+
+static void fold_sue_calc_substrut(
+		struct_union_enum_st *sub_sue,
+		struct_union_enum_st *sue,
+		decl *d,
+		sue_member **i,
+		unsigned *const sz,
+		unsigned *const align,
+		symtable *stab,
+		int *const submemb_const)
+{
+	if(sub_sue && sub_sue != sue){
+		fold_sue(sub_sue, stab);
+
+		if(sub_sue->contains_const)
+			*submemb_const = 1;
+	}
+
+	/* should've been caught by incompleteness checks */
+	UCC_ASSERT(sub_sue != sue, "nested %s", sue_str(sue));
+
+	if(sub_sue->flexarr && i[1]){
+		cc1_warn_at(&d->where,
+				flexarr_embed,
+				"embedded struct with flex-array not final member");
+	}
+
+	*sz = sue_size(sub_sue, &d->where);
+	*align = sub_sue->align;
+}
+
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
 	if(sue->foldprog != SUE_FOLDED_NO || !sue->got_membs)
@@ -148,10 +368,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		unsigned long offset = 0;
 		int realign_next = 0;
 		int submemb_const = 0;
-		struct
-		{
-			unsigned current_off, first_off;
-		} bitfield;
+		struct bitfield_state bitfield;
 		sue_member **i;
 
 		memset(&bitfield, 0, sizeof bitfield);
@@ -166,58 +383,11 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 			fold_decl(d, stab);
 
-			if(type_is_variably_modified(d->ref)){
-				/* C99 6.7.6.2
-				 * ... all identifiers declared with a VM type have to be ordinary
-				 * identifiers and cannot, therefore, be members of structures or
-				 * unions
-				 * */
-				fold_had_error = 1;
-				warn_at_print_error(
-						&d->where,
-						"member has variably modifed type '%s'",
-						type_to_str(d->ref));
-
+			if(fold_sue_check_vm(d))
 				continue;
-			}
 
-			if(!d->spel){
-				/* if the decl doesn't have a name, it's
-				 * a useless decl, unless it's an anon struct/union
-				 * or a bitfield
-				 */
-				if(d->bits.var.field_width){
-					/* fine */
-				}else if(sub_sue){
-					/* anon */
-					char *prob = NULL;
-					int ignore = 0;
-
-					if(fopt_mode & FOPT_TAG_ANON_STRUCT_EXT){
-						/* fine */
-					}else if(!sub_sue->anon){
-						prob = "ignored - tagged";
-						ignore = 1;
-					}else if(cc1_std < STD_C11){
-						prob = "is a C11 extension";
-					}
-
-					if(prob){
-						cc1_warn_at(&d->where,
-								unnamed_struct_memb,
-								"unnamed member '%s' %s",
-								decl_to_str(d), prob);
-						if(ignore){
-							/* drop the decl */
-							sue_member *dropped = sue_drop(sue, i);
-							i--;
-							decl_free(dropped->struct_member);
-							free(dropped);
-							continue;
-						}
-					}
-				}
-			}
+			if(fold_sue_check_unnamed(d, sue, sub_sue, &i))
+				continue;
 
 			if(!type_is_complete(d->ref)
 			&& !type_is_incomplete_array(d->ref)) /* allow flexarrays */
@@ -229,126 +399,21 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				submemb_const = 1;
 
 			if(sub_sue){
-				if(sub_sue && sub_sue != sue){
-					fold_sue(sub_sue, stab);
-
-					if(sub_sue->contains_const)
-						submemb_const = 1;
-				}
-
-				/* should've been caught by incompleteness checks */
-				UCC_ASSERT(sub_sue != sue, "nested %s", sue_str(sue));
-
-				if(sub_sue->flexarr && i[1]){
-					cc1_warn_at(&d->where,
-							flexarr_embed,
-							"embedded struct with flex-array not final member");
-				}
-
-				sz = sue_size(sub_sue, &d->where);
-				align = sub_sue->align;
+				fold_sue_calc_substrut(
+						sub_sue, sue, d, i,
+						&sz, &align, stab, &submemb_const);
 
 			}else if(d->bits.var.field_width){
-				const unsigned bits = const_fold_val_i(d->bits.var.field_width);
-
-				sz = align = 0; /* don't affect sz_max or align_max */
-
-				if(bits == 0){
-					/* align next field / treat as new bitfield
-					 * note we don't pad here - we don't want to
-					 * take up any space with this field
-					 */
-					realign_next = 1;
-
-					/* also set struct_offset for 0-len bf, for pad reasons */
-					d->bits.var.struct_offset = offset;
-
-				}else if(realign_next
-				|| !bitfield.current_off
-				|| bitfield.current_off + bits > bf_cur_lim)
-				{
-					if(realign_next || bitfield.current_off){
-						if(!realign_next){
-							/* bitfield overflow - repad */
-							cc1_warn_at(&d->where,
-									bitfield_boundary,
-									"bitfield overflow (%d + %d > %d) - "
-									"moved to next boundary", bitfield.current_off, bits,
-									bf_cur_lim);
-						}else{
-							realign_next = 0;
-						}
-
-						/* don't pay attention to the current bitfield offset */
-						bitfield.current_off = 0;
-						struct_pack_finish_bitfield(&offset, &bitfield.current_off);
-					}
-
-					bf_cur_lim = CHAR_BIT * type_size(d->ref, &d->where);
-
-					/* Get some initial padding.
-					 * Note that we want to affect the align_max
-					 * of the struct and the size of this field
-					 */
-					bitfield_size_align(d->ref, &sz, &align, &d->where);
-
-					/* we are onto the beginning of a new group */
-					struct_pack(d, &offset, sz, align);
-					bitfield.first_off = d->bits.var.struct_offset;
-					d->bits.var.first_bitfield = 1;
-
-				}else{
-					/* mirror previous bitfields' offset in the struct
-					 * difference is in .struct_offset_bitfield
-					 */
-					d->bits.var.struct_offset = bitfield.first_off;
-				}
-
-				d->bits.var.struct_offset_bitfield = bitfield.current_off;
-				bitfield.current_off += bits; /* allowed to go above sizeof(int) */
-
-				if(bitfield.current_off == bf_cur_lim){
-					/* exactly reached the limit, reset bitfield indexing */
-					bitfield.current_off = 0;
-				}
+				fold_sue_calc_fieldwidth(d,
+						&sz, &align, &realign_next, &offset,
+						&bf_cur_lim, &bitfield);
 
 			}else{
-				align = decl_align(d);
-				if(type_is_incomplete_array(d->ref)){
-					if(i[1])
-						die_at(&d->where, "flexible array not at end of struct");
-					else if(sue->primitive != type_struct)
-						die_at(&d->where, "flexible array in a %s", sue_str(sue));
-					else if(i == sue->members) /* nothing currently */
-						cc1_warn_at(&d->where, flexarr_only,
-								"struct with just a flex-array is an extension");
-
-					sue->flexarr = 1;
-					sz = 0; /* not counted in struct size */
-				}else{
-					sz = decl_size(d);
-				}
+				fold_sue_calc_normal(d, sue, i, &sz, &align);
 			}
 
 			if(sue->primitive == type_struct && !d->bits.var.field_width){
-				const int prev_offset = offset;
-
-				if(bitfield.current_off){
-					/* we automatically pad on the next struct_pack,
-					 * don't struct_pack() here */
-					bitfield.current_off = 0;
-				}
-
-				struct_pack(d, &offset, sz, align);
-
-				{
-					int pad = d->bits.var.struct_offset - prev_offset;
-					if(pad){
-						cc1_warn_at(&d->where, pad,
-								"padding '%s' with %d bytes to align '%s'",
-								sue->spel, pad, decl_to_str(d));
-					}
-				}
+				fold_sue_apply_normal_offset(d, &offset, &bitfield, sz, align, sue);
 			}
 
 			if(align > align_max)
