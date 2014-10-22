@@ -25,6 +25,14 @@ struct bitfield_state
 	unsigned current_off, first_off;
 };
 
+struct pack_state
+{
+	decl *d;
+	struct_union_enum_st *sue;
+	sue_member **iter;
+	unsigned sz, align;
+};
+
 static void struct_pack(
 		decl *d, unsigned long *poffset, unsigned sz, unsigned align)
 {
@@ -203,17 +211,17 @@ static int fold_sue_check_vm(decl *d)
 }
 
 static void fold_sue_calc_fieldwidth(
-		decl *d,
-		unsigned *const sz,
-		unsigned *const align,
+		struct pack_state *pack_state,
 		int *const realign_next,
 		unsigned long *const offset,
 		unsigned *const bf_cur_lim,
 		struct bitfield_state *const bitfield)
 {
-	const unsigned bits = const_fold_val_i(d->bits.var.field_width);
+	const unsigned bits = const_fold_val_i(pack_state->d->bits.var.field_width);
+	decl *const d = pack_state->d;
 
-	*sz = *align = 0; /* don't affect sz_max or align_max */
+	/* don't affect sz_max or align_max */
+	pack_state->sz = pack_state->align = 0;
 
 	if(bits == 0){
 		/* align next field / treat as new bitfield
@@ -252,10 +260,10 @@ static void fold_sue_calc_fieldwidth(
 		 * Note that we want to affect the align_max
 		 * of the struct and the size of this field
 		 */
-		bitfield_size_align(d->ref, sz, align, &d->where);
+		bitfield_size_align(d->ref, &pack_state->sz, &pack_state->align, &d->where);
 
 		/* we are onto the beginning of a new group */
-		struct_pack(d, offset, *sz, *align);
+		struct_pack(d, offset, pack_state->sz, pack_state->align);
 		bitfield->first_off = d->bits.var.struct_offset;
 		d->bits.var.first_bitfield = 1;
 
@@ -275,34 +283,34 @@ static void fold_sue_calc_fieldwidth(
 	}
 }
 
-static void fold_sue_calc_normal(
-		decl *d, struct_union_enum_st *sue,
-		sue_member **i,
-		unsigned *const sz, unsigned *const align)
+static void fold_sue_calc_normal(struct pack_state *const pack_state)
 {
-	*align = decl_align(d);
+	decl *const d = pack_state->d;
+
+	pack_state->align = decl_align(d);
+
 	if(type_is_incomplete_array(d->ref)){
-		if(i[1])
+		if(pack_state->iter[1])
 			die_at(&d->where, "flexible array not at end of struct");
-		else if(sue->primitive != type_struct)
-			die_at(&d->where, "flexible array in a %s", sue_str(sue));
-		else if(i == sue->members) /* nothing currently */
+		else if(pack_state->sue->primitive != type_struct)
+			die_at(&d->where, "flexible array in a %s", sue_str(pack_state->sue));
+		else if(pack_state->iter == pack_state->sue->members) /* nothing currently */
 			cc1_warn_at(&d->where, flexarr_only,
 					"struct with just a flex-array is an extension");
 
-		sue->flexarr = 1;
-		*sz = 0; /* not counted in struct size */
+		pack_state->sue->flexarr = 1;
+		pack_state->sz = 0; /* not counted in struct size */
 	}else{
-		*sz = decl_size(d);
+		pack_state->sz = decl_size(d);
 	}
 }
 
 static void fold_sue_apply_normal_offset(
-		decl *d, unsigned long *const offset,
-		struct bitfield_state *const bitfield,
-		unsigned const sz, unsigned const align,
-		struct_union_enum_st *sue)
+		struct pack_state *pack_state,
+		unsigned long *const offset,
+		struct bitfield_state *const bitfield)
 {
+	decl *const d = pack_state->d;
 	const int prev_offset = *offset;
 	int pad;
 
@@ -312,27 +320,23 @@ static void fold_sue_apply_normal_offset(
 		bitfield->current_off = 0;
 	}
 
-	struct_pack(d, offset, sz, align);
+	struct_pack(d, offset, pack_state->sz, pack_state->align);
 
 	pad = d->bits.var.struct_offset - prev_offset;
 	if(pad){
 		cc1_warn_at(&d->where, pad,
 				"padding '%s' with %d bytes to align '%s'",
-				sue->spel, pad, decl_to_str(d));
+				pack_state->sue->spel, pad, decl_to_str(d));
 	}
 }
 
 static void fold_sue_calc_substrut(
+		struct pack_state *pack_state,
 		struct_union_enum_st *sub_sue,
-		struct_union_enum_st *sue,
-		decl *d,
-		sue_member **i,
-		unsigned *const sz,
-		unsigned *const align,
 		symtable *stab,
 		int *const submemb_const)
 {
-	if(sub_sue && sub_sue != sue){
+	if(sub_sue && sub_sue != pack_state->sue){
 		fold_sue(sub_sue, stab);
 
 		if(sub_sue->contains_const)
@@ -340,16 +344,16 @@ static void fold_sue_calc_substrut(
 	}
 
 	/* should've been caught by incompleteness checks */
-	UCC_ASSERT(sub_sue != sue, "nested %s", sue_str(sue));
+	UCC_ASSERT(sub_sue != pack_state->sue, "nested %s", sue_str(pack_state->sue));
 
-	if(sub_sue->flexarr && i[1]){
-		cc1_warn_at(&d->where,
+	if(sub_sue->flexarr && pack_state->iter[1]){
+		cc1_warn_at(&pack_state->d->where,
 				flexarr_embed,
 				"embedded struct with flex-array not final member");
 	}
 
-	*sz = sue_size(sub_sue, &d->where);
-	*align = sub_sue->align;
+	pack_state->sz = sue_size(sub_sue, &pack_state->d->where);
+	pack_state->align = sub_sue->align;
 }
 
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)
@@ -378,8 +382,8 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
-			unsigned align, sz;
 			struct_union_enum_st *sub_sue = type_is_s_or_u(d->ref);
+			struct pack_state pack_state;
 
 			fold_decl(d, stab);
 
@@ -398,28 +402,31 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 			if(type_is_const(d->ref))
 				submemb_const = 1;
 
+			pack_state.d = d;
+			pack_state.sue = sue;
+			pack_state.iter = i;
+
 			if(sub_sue){
-				fold_sue_calc_substrut(
-						sub_sue, sue, d, i,
-						&sz, &align, stab, &submemb_const);
+				fold_sue_calc_substrut(&pack_state, sub_sue, stab, &submemb_const);
 
 			}else if(d->bits.var.field_width){
-				fold_sue_calc_fieldwidth(d,
-						&sz, &align, &realign_next, &offset,
+				fold_sue_calc_fieldwidth(
+						&pack_state,
+						&realign_next, &offset,
 						&bf_cur_lim, &bitfield);
 
 			}else{
-				fold_sue_calc_normal(d, sue, i, &sz, &align);
+				fold_sue_calc_normal(&pack_state);
 			}
 
 			if(sue->primitive == type_struct && !d->bits.var.field_width){
-				fold_sue_apply_normal_offset(d, &offset, &bitfield, sz, align, sue);
+				fold_sue_apply_normal_offset(&pack_state, &offset, &bitfield);
 			}
 
-			if(align > align_max)
-				align_max = align;
-			if(sz > sz_max)
-				sz_max = sz;
+			if(pack_state.align > align_max)
+				align_max = pack_state.align;
+			if(pack_state.sz > sz_max)
+				sz_max = pack_state.sz;
 		}
 
 		sue->contains_const = submemb_const;
