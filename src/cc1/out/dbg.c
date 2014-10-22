@@ -21,7 +21,6 @@
 #include "../type.h"
 #include "../funcargs.h"
 #include "../type_is.h"
-#include "../retain.h"
 #include "../vla.h"
 #include "../cc1_out_ctx.h"
 
@@ -200,8 +199,6 @@ struct dwarf_block
 
 struct DIE
 {
-	struct retain rc;
-
 	enum dwarf_tag tag;
 	unsigned long locn;
 	unsigned long abbrev_code;
@@ -278,12 +275,7 @@ static void dwarf_attr_decl(
 
 static void dwarf_die_free_r(struct DIE *die);
 
-static void dwarf_release(struct DIE *die)
-{
-	RELEASE(die);
-}
-
-static void dwarf_release_children(struct DIE *parent)
+static void dwarf_free_children(struct DIE *parent)
 {
 	struct DIE **const ar = parent->children, **i;
 
@@ -291,7 +283,7 @@ static void dwarf_release_children(struct DIE *parent)
 	parent->children = NULL;
 
 	for(i = ar; i && *i; i++)
-		dwarf_release(*i);
+		dwarf_die_free_r(*i);
 
 	free(ar);
 }
@@ -303,7 +295,6 @@ static struct cc1_dbg_ctx *octx2dbg(out_ctx *octx)
 
 static void dwarf_die_new_at(struct DIE *d, enum dwarf_tag tag)
 {
-	RETAIN_INIT(d, &dwarf_die_free_r);
 	d->tag = tag;
 }
 
@@ -318,7 +309,7 @@ static void dwarf_child(struct DIE *parent, struct DIE *child)
 {
 	if(child->parent)
 		return;
-	dynarray_add(&parent->children, RETAIN(child));
+	dynarray_add(&parent->children, child);
 	child->parent = parent;
 }
 
@@ -354,8 +345,7 @@ static void dwarf_die_free_1(struct DIE *die)
 			}
 
 			case DW_FORM_ref4:
-				/* tydie */
-				dwarf_release(a->bits.type_die);
+				/* die_xref - weak reference */
 				break;
 
 			case DW_FORM_addr:
@@ -380,15 +370,13 @@ static void dwarf_die_free_1(struct DIE *die)
 		free(a);
 	}
 
-	dwarf_release_children(die);
-
 	free(die->attrs);
 	free(die);
 }
 
 static void dwarf_die_free_r(struct DIE *die)
 {
-	dwarf_release_children(die);
+	dwarf_free_children(die);
 
 	dwarf_die_free_1(die);
 }
@@ -523,7 +511,7 @@ static void dwarf_set_DW_AT_type(
 		assert(!tydie);
 
 	if(tydie)
-		dwarf_attr(in, DW_AT_type, DW_FORM_ref4, RETAIN(tydie));
+		dwarf_attr(in, DW_AT_type, DW_FORM_ref4, tydie);
 }
 
 /* this should only be called from dwarf_tydie_new() to ensure
@@ -543,7 +531,7 @@ static void dwarf_add_tydie(
 				DEBUG_TYPE_HASH); /* attr/where aren't emitted */
 	}
 
-	prev = dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, RETAIN(tydie));
+	prev = dynmap_set(type *, struct DIE *, cu->types_to_dies, ty, tydie);
 
 	replaced_another = (prev && prev != tydie);
 
@@ -552,8 +540,6 @@ static void dwarf_add_tydie(
 	 * DIEs floating around that represent the same type
 	 */
 	UCC_ASSERT(!replaced_another, "replaced an unrelated type die in the map");
-
-	dwarf_release(prev);
 }
 
 static struct DIE *dwarf_tydie_new(
@@ -602,7 +588,7 @@ static struct DIE **dwarf_param_types(
 
 	va_tag = dwarf_maybe_create_variadic_tag(args);
 	if(va_tag)
-		dynarray_add(&dieargs, RETAIN(va_tag));
+		dynarray_add(&dieargs, va_tag);
 
 	return dieargs;
 }
@@ -929,7 +915,7 @@ static struct DIE *dbg_create_decl_die_arg(
 			dbg_add_sym_location(param, val);
 	}
 
-	return RETAIN(param);
+	return param;
 }
 
 static struct DIE *dbg_create_decl_die_local(
@@ -1628,12 +1614,7 @@ void out_dbg_end(out_ctx *octx)
 			cc_out[SECTION_DBG_INFO],
 			info_offset);
 
-	for(i = 0;
-	    (tydie = dynmap_value(struct DIE *, compile_unit->types_to_dies, i));
-	    i++)
-	{
-		dwarf_release(tydie);
-	}
+	/* no need to dwarf_die_free_1() type dies - they're children of the CU */
 	dynmap_free(compile_unit->types_to_dies);
 
 	dwarf_die_free_r(&compile_unit->die);
