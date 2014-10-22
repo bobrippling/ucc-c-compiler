@@ -464,7 +464,7 @@ static void dwarf_attr(
 			at->bits.str = data;
 			break;
 		case DW_FORM_addr_lbl:
-			at->bits.lbl = data;
+			at->bits.lbl = RETAIN((struct out_dbg_lbl *)data);
 			break;
 
 		case DW_FORM_ADDR4:
@@ -1237,11 +1237,9 @@ void out_dbg_scope_enter(out_ctx *octx, symtable *symtab)
 
 	lexblk = dwarf_die_new(DW_TAG_lexical_block);
 
-	dwarf_attr(lexblk, DW_AT_low_pc,
-			DW_FORM_addr_lbl, RETAIN(symtab->lbl_begin));
+	dwarf_attr(lexblk, DW_AT_low_pc, DW_FORM_addr_lbl, symtab->lbl_begin);
 
-	dwarf_attr(lexblk, DW_AT_high_pc,
-			DW_FORM_addr_lbl, RETAIN(symtab->lbl_end));
+	dwarf_attr(lexblk, DW_AT_high_pc, DW_FORM_addr_lbl, symtab->lbl_end);
 
 	dwarf_child(scope_parent, lexblk);
 
@@ -1765,8 +1763,8 @@ void out_dbg_inlined_call(
 		dwarf_attr(lookup_fn, DW_AT_inline, DW_FORM_data1, &flag);
 	}
 
-	dwarf_attr(tag, DW_AT_low_pc, DW_FORM_addr_lbl, RETAIN(caller_start_lbl));
-	dwarf_attr(tag, DW_AT_high_pc, DW_FORM_addr_lbl, RETAIN(caller_end_lbl));
+	dwarf_attr(tag, DW_AT_low_pc, DW_FORM_addr_lbl, caller_start_lbl);
+	dwarf_attr(tag, DW_AT_high_pc, DW_FORM_addr_lbl, caller_end_lbl);
 
 	form_data = dbg_add_file(cu->pfilelist, call_loc->fname);
 	dwarf_attr(tag, DW_AT_call_file, DW_FORM_ULEB, &form_data);
