@@ -96,10 +96,15 @@ static void emit_lbl(FILE *f, struct out_dbg_lbl *lbl)
 		fprintf(f, "%s:\n", lbl->lbl);
 		lbl->emitted = 1;
 	}
+	RELEASE(lbl);
 }
 
-void out_dbg_labels_emit_v(FILE *f, struct out_dbg_lbl **v)
+void out_dbg_labels_emit_release_v(FILE *f, struct out_dbg_lbl ***pv)
 {
+	struct out_dbg_lbl **v = *pv;
+
 	for(; v && *v; v++)
 		emit_lbl(f, *v);
+
+	dynarray_free(struct out_dbg_lbl **, *pv, NULL);
 }

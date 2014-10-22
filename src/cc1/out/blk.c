@@ -73,12 +73,12 @@ static void blk_codegen(out_blk *blk, struct flush_state *st)
 
 	fprintf(st->f, "%s: # %s\n", blk->lbl, blk->desc);
 
-	out_dbg_labels_emit_v(st->f, blk->labels.start);
+	out_dbg_labels_emit_release_v(st->f, &blk->labels.start);
 
 	for(i = blk->insns; i && *i; i++)
 		fprintf(st->f, "%s", *i);
 
-	out_dbg_labels_emit_v(st->f, blk->labels.end);
+	out_dbg_labels_emit_release_v(st->f, &blk->labels.end);
 }
 
 static void bfs_block(out_blk *blk, struct flush_state *st)
@@ -145,7 +145,7 @@ void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl)
 
 	fprintf(st.f, "%s:\n", end_dbg_lbl);
 
-	out_dbg_labels_emit_v(st.f, octx->pending_lbls);
+	out_dbg_labels_emit_release_v(st.f, &octx->pending_lbls);
 }
 
 void blk_terminate_condjmp(
