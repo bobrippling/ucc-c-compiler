@@ -22,7 +22,7 @@ void fold_stmt_while(stmt *s)
 
 void gen_stmt_while(const stmt *s, out_ctx *octx)
 {
-	struct out_dbg_lbl *endlbls[2];
+	struct out_dbg_lbl *endlbls[2][2];
 	out_blk *blk_body = out_blk_new(octx, "while_body");
 
 	stmt_init_blks(s,

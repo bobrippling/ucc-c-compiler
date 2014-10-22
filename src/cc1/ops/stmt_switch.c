@@ -225,7 +225,7 @@ void gen_stmt_switch(const stmt *s, out_ctx *octx)
 	stmt **iter, *pdefault;
 	out_blk *blk_switch_end = out_blk_new(octx, "switch_fin");
 	const out_val *cmp_with;
-	struct out_dbg_lbl *el[2];
+	struct out_dbg_lbl *el[2][2];
 
 	stmt_init_blks(s, NULL, blk_switch_end);
 

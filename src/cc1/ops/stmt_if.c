@@ -49,23 +49,22 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 void flow_gen(
 		stmt_flow *flow,
 		symtable *stab,
-		struct out_dbg_lbl *pushed_lbls[2],
+		struct out_dbg_lbl *pushed_lbls[2][2],
 		out_ctx *octx)
 {
-	gen_block_decls(stab, &pushed_lbls[0], octx);
-	pushed_lbls[1] = NULL;
+	gen_block_decls(stab, pushed_lbls[0], octx);
 
 	if(flow && stab != flow->for_init_symtab)
-		gen_block_decls(flow->for_init_symtab, &pushed_lbls[1], octx);
+		gen_block_decls(flow->for_init_symtab, pushed_lbls[1], octx);
 }
 
 void flow_end(
 		stmt_flow *flow,
 		symtable *stab,
-		struct out_dbg_lbl *pushed_lbls[2],
+		struct out_dbg_lbl *pushed_lbls[2][2],
 		out_ctx *octx)
 {
-	int i;
+	int i, j;
 
 	/* generate the braced scope first, then the for-control-variable's */
 	gen_scope_leave_parent(stab, octx);
@@ -79,9 +78,10 @@ void flow_end(
 		gen_block_decls_dealloca(flow->for_init_symtab, octx);
 	}
 
-	for(i = 0; i < 2; i++)
-		if(pushed_lbls[i])
-			out_dbg_label_pop(octx, pushed_lbls[i]);
+	for(j = 0; j < 2; j++)
+		for(i = 0; i < 2; i++)
+			if(pushed_lbls[i][j])
+				out_dbg_label_pop(octx, pushed_lbls[i][j]);
 }
 
 void fold_stmt_if(stmt *s)
@@ -98,7 +98,7 @@ void gen_stmt_if(const stmt *s, out_ctx *octx)
 	out_blk *blk_true = out_blk_new(octx, "if_true");
 	out_blk *blk_false = out_blk_new(octx, "if_false");
 	out_blk *blk_fi = out_blk_new(octx, "fi");
-	struct out_dbg_lbl *el[2];
+	struct out_dbg_lbl *el[2][2];
 	const out_val *cond;
 
 	flow_gen(s->flow, s->symtab, el, octx);

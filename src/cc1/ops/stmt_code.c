@@ -460,11 +460,12 @@ void gen_stmt_code_m1_finish(const stmt *s, out_ctx *octx)
  */
 void gen_stmt_code_m1(const stmt *s, int m1, out_ctx *octx)
 {
+	int i;
 	stmt **titer;
-	struct out_dbg_lbl *pushed_lbl;
+	struct out_dbg_lbl *pushed_lbls[2];
 
 	/* stmt_for/if/while/do needs to do this too */
-	gen_block_decls(s->symtab, &pushed_lbl, octx);
+	gen_block_decls(s->symtab, pushed_lbls, octx);
 
 	for(titer = s->bits.code.stmts; titer && *titer; titer++){
 		if(m1 && !titer[1])
@@ -476,8 +477,9 @@ void gen_stmt_code_m1(const stmt *s, int m1, out_ctx *octx)
 		gen_stmt_code_m1_finish(s, octx);
 	/* else the caller should do ^ */
 
-	if(pushed_lbl)
-		out_dbg_label_pop(octx, pushed_lbl);
+	for(i = 0; i < 2; i++)
+		if(pushed_lbls[i])
+			out_dbg_label_pop(octx, pushed_lbls[i]);
 }
 
 void gen_stmt_code(const stmt *s, out_ctx *octx)
