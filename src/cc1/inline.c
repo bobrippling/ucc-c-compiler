@@ -117,6 +117,8 @@ static const out_val *gen_inline_func(
 				dbg_startlbl,
 				dbg_endlbl,
 				call_loc);
+
+		RELEASE(dbg_startlbl);
 	}
 
 	/* got a handle on the code, map the identifiers to our argument
@@ -193,6 +195,7 @@ static const out_val *gen_inline_func(
 
 	if(cc1_gdebug){
 		out_dbg_label_pop(octx, dbg_endlbl);
+		RELEASE(dbg_endlbl);
 		out_dbg_inline_end(octx);
 	}
 
