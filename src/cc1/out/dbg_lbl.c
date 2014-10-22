@@ -58,7 +58,7 @@ void out_dbg_label_push(
 
 	/* add to octx - octx emits this label at the end of the block gen if the
 	 * block containing it (set in out_dbg_label_pop()) hasn't been emitted */
-	dynarray_add(&octx->pending_lbls, endlbl);
+	dynarray_add(&octx->pending_lbls, RETAIN(endlbl));
 
 	/* out params */
 	*out_startlbl = startlbl;
