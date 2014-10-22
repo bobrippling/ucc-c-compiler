@@ -40,8 +40,9 @@ const out_val *gen_expr_stmt(const expr *e, out_ctx *octx)
 {
 	size_t n;
 	const out_val *ret;
+	struct out_dbg_lbl *pushed_lbls[2];
 
-	gen_stmt_code_m1(e->code, 1, octx);
+	gen_stmt_code_m1(e->code, 1, pushed_lbls, octx);
 
 	n = dynarray_count(e->code->bits.code.stmts);
 
@@ -51,7 +52,7 @@ const out_val *gen_expr_stmt(const expr *e, out_ctx *octx)
 		ret = out_new_noop(octx);
 
 	/* this is skipped by gen_stmt_code_m1( ... 1, ... ) */
-	gen_stmt_code_m1_finish(e->code, octx);
+	gen_stmt_code_m1_finish(e->code, pushed_lbls, octx);
 
 	return ret;
 }

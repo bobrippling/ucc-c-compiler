@@ -301,9 +301,13 @@ void gen_block_decls(
 	}
 }
 
-void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
+void gen_block_decls_dealloca(
+		symtable *stab,
+		struct out_dbg_lbl *pushed_lbls[ucc_static_param 2],
+		out_ctx *octx)
 {
 	decl **diter;
+	int i;
 
 	for(diter = stab->decls; diter && *diter; diter++){
 		decl *d = *diter;
@@ -333,6 +337,10 @@ void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 		out_adealloc(octx, &v);
 		sym_setoutval(d->sym, /*null*/v);
 	}
+
+	for(i = 0; i < 2; i++)
+		if(pushed_lbls[i])
+			out_dbg_label_pop(octx, pushed_lbls[i]);
 
 	if(cc1_gdebug)
 		out_dbg_scope_leave(octx, stab);
@@ -448,21 +456,26 @@ void gen_scope_leave_parent(symtable *s_from, out_ctx *octx)
 	gen_scope_leave(s_from, s_from->parent, octx);
 }
 
-void gen_stmt_code_m1_finish(const stmt *s, out_ctx *octx)
+void gen_stmt_code_m1_finish(
+		const stmt *s,
+		struct out_dbg_lbl *pushed_lbls[2],
+		out_ctx *octx)
 {
 	gen_scope_leave_parent(s->symtab, octx);
-	gen_block_decls_dealloca(s->symtab, octx);
+	gen_block_decls_dealloca(s->symtab, pushed_lbls, octx);
 }
 
 /* this is done for lea_expr_stmt(), i.e.
  * struct A x = ({ struct A y; y.i = 1; y; });
  * so we can lea the final expr
  */
-void gen_stmt_code_m1(const stmt *s, int m1, out_ctx *octx)
+void gen_stmt_code_m1(
+		const stmt *s,
+		int m1,
+		struct out_dbg_lbl *pushed_lbls[2],
+		out_ctx *octx)
 {
-	int i;
 	stmt **titer;
-	struct out_dbg_lbl *pushed_lbls[2];
 
 	/* stmt_for/if/while/do needs to do this too */
 	gen_block_decls(s->symtab, pushed_lbls, octx);
@@ -474,17 +487,15 @@ void gen_stmt_code_m1(const stmt *s, int m1, out_ctx *octx)
 	}
 
 	if(!m1)
-		gen_stmt_code_m1_finish(s, octx);
+		gen_stmt_code_m1_finish(s, pushed_lbls, octx);
 	/* else the caller should do ^ */
-
-	for(i = 0; i < 2; i++)
-		if(pushed_lbls[i])
-			out_dbg_label_pop(octx, pushed_lbls[i]);
 }
 
 void gen_stmt_code(const stmt *s, out_ctx *octx)
 {
-	gen_stmt_code_m1(s, 0, octx);
+	struct out_dbg_lbl *pushed_lbls[2];
+
+	gen_stmt_code_m1(s, 0, pushed_lbls, octx);
 }
 
 void style_stmt_code(const stmt *s, out_ctx *octx)

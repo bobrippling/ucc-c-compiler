@@ -64,24 +64,17 @@ void flow_end(
 		struct out_dbg_lbl *pushed_lbls[2][2],
 		out_ctx *octx)
 {
-	int i, j;
-
 	/* generate the braced scope first, then the for-control-variable's */
 	gen_scope_leave_parent(stab, octx);
-	gen_block_decls_dealloca(stab, octx);
+	gen_block_decls_dealloca(stab, pushed_lbls[0], octx);
 
 	if(flow && stab != flow->for_init_symtab){
 		assert(stab->parent == flow->for_init_symtab);
 
 		gen_scope_leave_parent(flow->for_init_symtab, octx);
 
-		gen_block_decls_dealloca(flow->for_init_symtab, octx);
+		gen_block_decls_dealloca(flow->for_init_symtab, pushed_lbls[1], octx);
 	}
-
-	for(j = 0; j < 2; j++)
-		for(i = 0; i < 2; i++)
-			if(pushed_lbls[i][j])
-				out_dbg_label_pop(octx, pushed_lbls[i][j]);
 }
 
 void fold_stmt_if(stmt *s)
