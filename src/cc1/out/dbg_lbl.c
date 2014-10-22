@@ -73,6 +73,9 @@ void out_dbg_label_pop(out_ctx *octx, struct out_dbg_lbl *to_pop)
 
 	/* this is the block we should emit the label from */
 	add_lbl_to_blk(to_pop, &blk->labels.end);
+
+	/* release the caller's hold / hold returned by out_dbg_label_push() */
+	RELEASE(to_pop);
 }
 
 int out_dbg_label_emitted(struct out_dbg_lbl *lbl, const char **out_lbl)
