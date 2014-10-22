@@ -677,10 +677,14 @@ int type_is_callable(type *r)
 	return 0;
 }
 
-int type_is_const(type *r)
+int type_is_const(type *const ty)
 {
-	/* const char *x is not const. char *const x is */
-	return !!(type_qual(r) & qual_const);
+	/* const int x[3] - const, despite being array->const->int */
+	type *nonarray = type_is_array(ty);
+	if(!nonarray)
+		nonarray = ty;
+
+	return !!(type_qual(nonarray) & qual_const);
 }
 
 unsigned type_array_len(type *r)
