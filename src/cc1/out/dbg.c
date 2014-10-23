@@ -1408,15 +1408,24 @@ static void dwarf_flush_die_1(
 		const char *s_enc = die_enc_to_str(a->enc);
 		enum dwarf_attr_encoding enc = a->enc;
 
-		dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
-				a->attr, s_attr);
-
 		/* synthetic encoding filter */
 		switch(enc){
-			default: break;
-			case DW_FORM_ADDR4: enc = DW_FORM_data4; break;
-			case DW_FORM_addr_lbl: enc = DW_FORM_addr; break;
+			default:
+				break;
+
+			case DW_FORM_ADDR4:
+				enc = DW_FORM_data4;
+				break;
+
+			case DW_FORM_addr_lbl:
+				if(!out_dbg_label_emitted(a->bits.lbl, NULL))
+					continue;
+				enc = DW_FORM_addr;
+				break;
 		}
+
+		dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
+				a->attr, s_attr);
 
 		dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
 				enc, s_enc);
@@ -1446,8 +1455,9 @@ addr:
 			case DW_FORM_addr_lbl:
 			{
 				const char *lbl;
-				if(out_dbg_label_emitted(a->bits.lbl, &lbl))
-					dwarf_printf(&state->info, QUAD, "%s", lbl);
+				int emit = out_dbg_label_emitted(a->bits.lbl, &lbl);
+				assert(emit);
+				dwarf_printf(&state->info, QUAD, "%s", lbl);
 				break;
 			}
 
