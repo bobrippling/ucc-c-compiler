@@ -12,6 +12,9 @@ struct out_ctx
 	out_blk **mustgen; /* goto *lbl; where lbl is otherwise unreachable */
 	struct out_dbg_lbl **pending_lbls; /* debug labels */
 
+	/* memory management */
+	out_blk *mem_blk_head;
+
 	void *userctx;
 
 	struct out_val_list
