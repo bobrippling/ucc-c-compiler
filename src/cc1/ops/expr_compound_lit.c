@@ -76,10 +76,19 @@ static void gen_expr_compound_lit_code(const expr *e, out_ctx *octx)
 	if(!e->expr_comp_lit_cgen){
 		expr *initexp = e->bits.complit.decl->bits.var.init.expr;
 
+		/* prevent the sub gen_expr() call from coming back in here
+		 * when references to the compound literal symbol are generated.
+		 *
+		 * this is undone afterwards to allow re-entry per non-recursive
+		 * gen_expr() call, for example, function inlining means this
+		 * expression may be generated more than once
+		 */
 		((expr *)e)->expr_comp_lit_cgen = 1;
 
 		if(initexp)
 			out_val_consume(octx, gen_expr(initexp, octx));
+
+		((expr *)e)->expr_comp_lit_cgen = 0;
 	}
 }
 
