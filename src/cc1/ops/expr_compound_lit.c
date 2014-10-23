@@ -83,12 +83,12 @@ static void gen_expr_compound_lit_code(const expr *e, out_ctx *octx)
 		 * gen_expr() call, for example, function inlining means this
 		 * expression may be generated more than once
 		 */
-		((expr *)e)->expr_comp_lit_cgen = 1;
+		GEN_CONST_CAST(expr *, e)->expr_comp_lit_cgen = 1;
 
 		if(initexp)
 			out_val_consume(octx, gen_expr(initexp, octx));
 
-		((expr *)e)->expr_comp_lit_cgen = 0;
+		GEN_CONST_CAST(expr *, e)->expr_comp_lit_cgen = 0;
 	}
 }
 
@@ -133,7 +133,7 @@ const out_val *gen_expr_str_compound_lit(const expr *e, out_ctx *octx)
 	if(e->op)
 		return NULL;
 
-	((expr *)e)->op = 1;
+	GEN_CONST_CAST(expr *, e)->op = 1;
 	{
 		idt_printf("(%s){\n", decl_to_str(d));
 
@@ -155,7 +155,7 @@ const out_val *gen_expr_str_compound_lit(const expr *e, out_ctx *octx)
 			print_stmt(e->code);
 		}
 	}
-	((expr *)e)->op = 0;
+	GEN_CONST_CAST(expr *, e)->op = 0;
 
 	UNUSED_OCTX();
 }
