@@ -11,6 +11,9 @@ struct out_ctx
 	out_blk *last_used_blk; /* for appending debug labels */
 	out_blk **mustgen; /* goto *lbl; where lbl is otherwise unreachable */
 
+	/* memory management */
+	out_blk *mem_blk_head;
+
 	void *userctx;
 
 	struct out_val_list

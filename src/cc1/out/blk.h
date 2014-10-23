@@ -11,6 +11,7 @@ struct out_blk
 	char **insns;
 
 	out_blk **merge_preds;
+	out_blk *next;
 	int flush_in_prog;
 
 	enum
