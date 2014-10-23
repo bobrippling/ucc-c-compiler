@@ -195,7 +195,6 @@ static const out_val *gen_inline_func(
 
 	if(cc1_gdebug){
 		out_dbg_label_pop(octx, dbg_endlbl);
-		RELEASE(dbg_endlbl);
 		out_dbg_inline_end(octx);
 	}
 
