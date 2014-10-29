@@ -1504,9 +1504,10 @@ static void x86_fp_conv(
 		const char *sfrom, const char *sto)
 {
 	char vbuf[VAL_STR_SZ];
+	int truncate = type_is_integral(tto); /* going to int? */
 
-	out_asm(octx, "cvt%s2%s%s %s, %%%s",
-			/*truncate ? "t" : "",*/
+	out_asm(octx, "cvt%s%s2%s%s %s, %%%s",
+			truncate ? "t" : "",
 			sfrom, sto,
 			/* if we're doing an int-float conversion,
 			 * see if we need to do 64 or 32 bit
