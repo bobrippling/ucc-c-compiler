@@ -222,6 +222,7 @@ int main(int argc, char **argv)
 	int platform_win32 = 0;
 	int freestanding = 0;
 	int m32 = 0;
+	int offsetof_macro = 0;
 
 	infname = outfname = NULL;
 
@@ -381,6 +382,8 @@ int main(int argc, char **argv)
 				}else if(!strncmp(argv[i]+2, "message-length=", 15)){
 					const char *p = argv[i] + 17;
 					warning_length = atoi(p);
+				}else if(!strcmp(argv[i]+2, "cpp-offsetof")){
+					offsetof_macro = 1;
 				}else{
 					goto usage;
 				}
@@ -488,6 +491,18 @@ defaul:
 		case STD_C11:
 			macro_add("__STDC_VERSION__", "201112L", 0);
 	}
+
+	if(offsetof_macro){
+		char **args = umalloc(3 * sizeof *args);
+
+		args[0] = ustrdup("T");
+		args[1] = ustrdup("memb");
+
+		macro_add_func("__builtin_offsetof",
+				"(unsigned long)&((T *)0)->memb",
+				args, 0, 0);
+	}
+
 
 	if(i < argc){
 		infname = argv[i++];
