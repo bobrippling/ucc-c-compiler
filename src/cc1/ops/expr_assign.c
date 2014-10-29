@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "ops.h"
 #include "expr_assign.h"
 #include "__builtin.h"
@@ -76,24 +78,29 @@ void expr_assign_const_check(expr *e, where *w)
 
 static const out_val *lea_assign_lhs(expr *e, out_ctx *octx)
 {
-	/* generate our assignment, then lea
+	/* generate our assignment (e->expr), then lea
 	 * our lhs, i.e. the struct identifier
 	 * we're assigning to */
-	out_val_consume(octx, gen_expr(e, octx));
-	return lea_expr(e->lhs, octx);
+	out_val_consume(octx, gen_expr(e->expr, octx));
+	return gen_expr(e->lhs, octx);
 }
 
 void fold_expr_assign(expr *e, symtable *stab)
 {
 	sym *lhs_sym = NULL;
+	int is_struct_cpy = 0;
 
 	lhs_sym = fold_inc_writes_if_sym(e->lhs, stab);
 
 	fold_expr_no_decay(e->lhs, stab);
-	FOLD_EXPR(e->rhs, stab);
+	fold_expr_no_decay(e->rhs, stab);
 
 	if(lhs_sym)
 		lhs_sym->nreads--; /* cancel the read that fold_ident thinks it got */
+
+	is_struct_cpy = !!type_is_s_or_u(e->lhs->tree_type);
+	if(!is_struct_cpy)
+		FOLD_EXPR(e->rhs, stab); /* lval2rval the rhs */
 
 	if(type_is_primitive(e->rhs->tree_type, type_void)){
 		fold_had_error = 1;
@@ -129,7 +136,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	}
 
 
-	if(type_is_s_or_u(e->tree_type)){
+	if(is_struct_cpy){
 		e->expr = builtin_new_memcpy(
 				e->lhs, e->rhs,
 				type_size(e->rhs->tree_type, &e->rhs->where));
@@ -147,24 +154,21 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 const out_val *gen_expr_assign(expr *e, out_ctx *octx)
 {
+	const out_val *val, *store;
+
 	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
 
-	if(type_is_s_or_u(e->tree_type)){
-		/* memcpy */
-		return gen_expr(e->expr, octx);
-	}else{
-		const out_val *val, *store;
+	assert(!type_is_s_or_u(e->tree_type));
 
-		val = gen_expr(e->rhs, octx);
-		store = lea_expr(e->lhs, octx);
-		out_val_retain(octx, store);
+	val = gen_expr(e->rhs, octx);
+	store = lea_expr(e->lhs, octx);
+	out_val_retain(octx, store);
 
-		out_store(octx, store, val);
+	out_store(octx, store, val);
 
-		/* re-read from the store,
-		 * e.g. if the value has undergone bitfield truncation */
-		return out_deref(octx, store);
-	}
+	/* re-read from the store,
+	 * e.g. if the value has undergone bitfield truncation */
+	return out_deref(octx, store);
 }
 
 const out_val *gen_expr_str_assign(expr *e, out_ctx *octx)
