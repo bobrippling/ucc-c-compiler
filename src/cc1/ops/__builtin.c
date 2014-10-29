@@ -236,7 +236,7 @@ static const out_val *builtin_gen_memset(expr *e, out_ctx *octx)
 		textrap = type_ptr_to(textra);
 
 	/* works fine for bitfields - struct lea acts appropriately */
-	v_ptr = lea_expr(e->lhs, octx);
+	v_ptr = gen_expr(e->lhs, octx);
 
 	v_ptr = out_change_type(octx, v_ptr, type_ptr_to(tzero));
 
@@ -364,8 +364,8 @@ static const out_val *builtin_gen_memcpy(expr *e, out_ctx *octx)
 	unsigned tptr_sz;
 	const out_val *dest, *src;
 
-	dest = lea_expr(e->lhs, octx);
-	src = lea_expr(e->rhs, octx);
+	dest = gen_expr(e->lhs, octx);
+	src = gen_expr(e->rhs, octx);
 
 	if(i > 0){
 		tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, e->bits.num.val.i));

@@ -161,7 +161,7 @@ const out_val *gen_expr_assign(expr *e, out_ctx *octx)
 	assert(!type_is_s_or_u(e->tree_type));
 
 	val = gen_expr(e->rhs, octx);
-	store = lea_expr(e->lhs, octx);
+	store = gen_expr(e->lhs, octx);
 	out_val_retain(octx, store);
 
 	out_store(octx, store, val);
