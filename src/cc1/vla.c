@@ -194,8 +194,10 @@ static const out_val *vla_gen_size_ty(
 		case type_tdef:
 		{
 			const out_val *cached = vla_cached_size(t, octx);
-			if(cached)
+			if(cached){
+				out_val_release(octx, stack_ent);
 				return cached;
+			}
 
 			return vla_gen_size_ty(type_next_1(t), octx, arith_ty, stack_ent);
 		}
