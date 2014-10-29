@@ -1599,11 +1599,11 @@ out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
  out/../ops/stmt_label.h out/../ops/stmt_noop.h out/../ops/stmt_return.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../const.h out/../funcargs.h out/../sue.h \
- out/../type.h out/../type_is.h out/../retain.h out/../vla.h \
- out/../cc1_out_ctx.h out/../out/forwards.h out/asm.h out/../defs.h \
- out/../../as_cfg.h out/leb.h out/lbl.h out/dbg.h \
- out/../../util/compiler.h out/write.h out/forwards.h out/val.h \
- out/backend.h out/x86_64.h out/blk.h out/dbg_lbl.h
+ out/../type.h out/../type_is.h out/../vla.h out/../cc1_out_ctx.h \
+ out/../out/forwards.h out/asm.h out/../defs.h out/../../as_cfg.h \
+ out/leb.h out/lbl.h out/dbg.h out/../../util/compiler.h out/write.h \
+ out/forwards.h out/val.h out/backend.h out/x86_64.h out/blk.h \
+ out/dbg_lbl.h out/../retain.h
 out/dbg_lbl.o: out/dbg_lbl.c out/../../util/dynarray.h out/../../util/dyn.h \
  out/../../util/alloc.h out/../../util/compiler.h out/dbg_lbl.h \
  out/forwards.h out/../retain.h out/../../util/compiler.h out/../type.h \
