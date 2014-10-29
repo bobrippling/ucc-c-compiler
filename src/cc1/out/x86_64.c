@@ -260,6 +260,9 @@ const char *impl_val_str_r(
 			const char *rstr = x86_reg_str(
 					&vs->bits.regoff.reg, deref ? NULL : vs->t);
 
+			UCC_ASSERT(!deref || !vs->bits.regoff.reg.is_float,
+					"dereference float reg");
+
 			if(off){
 				UCC_ASSERT(1||deref,
 						"can't add to a register in %s",
