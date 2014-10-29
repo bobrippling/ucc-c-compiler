@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include <assert.h>
 
 #include "ops.h"
 #include "../../util/alloc.h"
@@ -297,37 +296,6 @@ static void cast_addr(expr *e, consty *k)
 		check_addr_int_cast(k, l);
 }
 
-static void const_intify(consty *k)
-{
-	switch(k->type){
-		case CONST_STRK:
-		case CONST_NO:
-			assert(0);
-		case CONST_NUM:
-			break;
-
-		case CONST_NEED_ADDR:
-		case CONST_ADDR:
-		{
-			integral_t memaddr;
-
-			/* can't do (int)&x */
-			if(k->bits.addr.is_lbl){
-				k->type = CONST_NO;
-				return;
-			}
-
-			memaddr = k->bits.addr.bits.memaddr + k->offset;
-
-			CONST_FOLD_LEAF(k);
-
-			k->type = CONST_NUM;
-			k->bits.num.val.i = memaddr;
-			break;
-		}
-	}
-}
-
 static void fold_const_expr_cast(expr *e, consty *k)
 {
 	int to_fp;
@@ -337,12 +305,16 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		return;
 	}
 
-	to_fp = type_is_floating(e->tree_type);
-
 	const_fold(expr_cast_child(e), k);
 
-	if(expr_cast_is_lval2rval(e))
+	if(expr_cast_is_lval2rval(e)){
+		/* if we're going from int to pointer or vice-versa,
+		 * change the const type */
+		const_ensure_num_or_memaddr(k, e->expr->tree_type, e->tree_type, e);
 		return;
+	}
+
+	to_fp = type_is_floating(e->tree_type);
 
 	switch(k->type){
 		case CONST_NO:
@@ -375,17 +347,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	if(k->type == CONST_NO)
 		return;
 
-	if(type_is_ptr(e->expr->tree_type)
-	&& !type_is_ptr(e->tree_type))
-	{
-		/* casting from pointer to int */
-		if(type_size(e->tree_type, &e->where) < platform_word_size())
-			const_intify(k); /* smaller than word size, force to int */
-
-		/* not a constant but we treat it as such, as an extension */
-		if(!k->nonstandard_const)
-			k->nonstandard_const = e;
-	}
+	const_ensure_num_or_memaddr(k, e->expr->tree_type, e->tree_type, e);
 }
 
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)

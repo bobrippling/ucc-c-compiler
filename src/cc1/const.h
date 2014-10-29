@@ -67,6 +67,10 @@ int const_expr_and_non_zero(struct expr *e);
 void const_fold_integral(struct expr *e, numeric *);
 integral_t const_fold_val_i(struct expr *e);
 
+void const_ensure_num_or_memaddr(
+		consty *k, struct type *from, struct type *to,
+		struct expr *nonstd);
+
 integral_t const_op_exec(
 		/* rval is optional */
 		integral_t lval, const integral_t *rval,

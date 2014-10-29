@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/util.h"
@@ -254,4 +255,83 @@ floating_t const_op_exec_fp(
 	}
 
 	ucc_unreach(-1);
+}
+
+static void const_intify(consty *k)
+{
+	switch(k->type){
+		case CONST_STRK:
+		case CONST_NO:
+			k->type = CONST_NO;
+		case CONST_NUM:
+			break;
+
+		case CONST_NEED_ADDR:
+		case CONST_ADDR:
+		{
+			integral_t memaddr;
+
+			/* can't do (int)&x */
+			if(k->bits.addr.is_lbl){
+				k->type = CONST_NO;
+				return;
+			}
+
+			memaddr = k->bits.addr.bits.memaddr + k->offset;
+
+			CONST_FOLD_LEAF(k);
+
+			k->type = CONST_NUM;
+			k->bits.num.val.i = memaddr;
+			break;
+		}
+	}
+}
+
+static void const_memify(consty *k)
+{
+	switch(k->type){
+		case CONST_STRK:
+		case CONST_NEED_ADDR:
+		case CONST_ADDR:
+			break;
+
+		case CONST_NO:
+			break;
+
+		case CONST_NUM:
+		{
+			integral_t memaddr = k->bits.num.val.i + k->offset;
+
+			CONST_FOLD_LEAF(k);
+
+			k->type = CONST_ADDR;
+			k->bits.addr.bits.memaddr = memaddr;
+			break;
+		}
+	}
+}
+
+void const_ensure_num_or_memaddr(
+		consty *k, type *from, type *to, expr *nonstd)
+{
+	const int from_ptr = !!type_is_ptr(from);
+	const int to_ptr = !!type_is_ptr(to);
+
+	if(from_ptr == to_ptr)
+		return;
+
+	if(from_ptr && !to_ptr){
+		/* casting from pointer to int */
+		const_intify(k);
+
+	}else{
+		assert(to_ptr && !from_ptr);
+
+		const_memify(k);
+	}
+
+	/* not a constant but we treat it as such, as an extension */
+	if(nonstd && !k->nonstandard_const)
+		k->nonstandard_const = nonstd;
 }
