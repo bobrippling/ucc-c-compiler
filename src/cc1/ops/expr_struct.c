@@ -208,7 +208,8 @@ static void fold_const_expr_struct(expr *e, consty *k)
 			break;
 
 		case CONST_NUM:
-			k->type = CONST_NEED_ADDR; /* e.g. &((A *)0)->b */
+			/* e.g. &((A *)0)->b */
+			k->type = CONST_ADDR_OR_NEED(e->bits.struct_mem.d);
 
 			/* convert the val to a memaddr */
 			/* read num.val before we clobber it */
