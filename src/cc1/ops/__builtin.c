@@ -833,10 +833,11 @@ static void const_offsetof(expr *e, consty *k)
 	consty offset;
 	const_fold(e->lhs, &offset);
 
-	/* TODO */
-	if(offset.type == CONST_ADDR && !offset.bits.addr.is_lbl){
+	if(offset.type == CONST_NEED_ADDR && !offset.bits.addr.is_lbl){
 		CONST_FOLD_LEAF(k);
-		k->bits.num.val.i = offset.bits.addr.bits.memaddr;
+
+		k->type = CONST_NUM;
+		k->bits.num.val.i = offset.bits.addr.bits.memaddr + offset.offset;
 	}
 }
 
