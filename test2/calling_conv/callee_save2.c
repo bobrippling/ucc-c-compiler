@@ -1,5 +1,5 @@
 // RUN: %ocheck 11 %s
-// RUN: %archgen %s 'x86,x86_64:/movl %%eax, %%ebx/'
+// RUN: %archgen %s 'x86,x86_64:/movl %%eax, %%ebx/' -fno-inline-functions
 
 g()
 {
