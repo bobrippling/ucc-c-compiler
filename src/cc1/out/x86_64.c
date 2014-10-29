@@ -935,11 +935,6 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 			ICE("invalid store lvalue 0x%x", to->type);
 
 		case V_REG_SPILT:
-			/* need to load the store value from memory
-			 * aka. double indir */
-			to = v_to_reg(octx, to);
-			break;
-
 		case V_REG:
 		case V_LBL:
 			break;
