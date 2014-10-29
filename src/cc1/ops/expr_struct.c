@@ -174,18 +174,25 @@ static void fold_const_expr_struct(expr *e, consty *k)
 
 	switch(k->type){
 		case CONST_NO:
-		case CONST_NEED_ADDR:
 		case CONST_STRK:
 			k->type = CONST_NO;
 			break;
 
+		case CONST_NEED_ADDR:
 		case CONST_ADDR:
-			/* not constant unless addressed e.g. &a->b (unless array/func) */
-			k->type = CONST_ADDR_OR_NEED(e->bits.struct_mem.d);
-			/* don't touch k->bits.addr info */
+			/* a.b == (&a)->b, i.e. a.b wants a CONST_NEED_ADDR
+			 * a->b wants a CONST_ADDR
+			 */
+			if(k->type == (e->expr_is_st_dot ? CONST_NEED_ADDR : CONST_ADDR)){
+				/* not constant unless addressed e.g. &a->b (unless array/func) */
+				k->type = CONST_ADDR_OR_NEED(e->bits.struct_mem.d);
+				/* don't touch k->bits.addr info */
 
-			/* obviously we offset this */
-			k->offset += struct_offset(e);
+				/* obviously we offset this */
+				k->offset += struct_offset(e);
+			}else{
+				k->type = CONST_NO;
+			}
 			break;
 
 		case CONST_NUM:
