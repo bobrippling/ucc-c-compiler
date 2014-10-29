@@ -149,12 +149,17 @@ void fold_stmt_code(stmt *s)
 {
 	stmt **siter;
 	int warned = 0;
-	enum decl_storage func_store;
+	enum decl_storage func_store = store_default;
+	decl *in_func;
 
 	/* local struct layout-ing */
 	symtab_fold_sues(s->symtab);
 
-	func_store = symtab_func(s->symtab)->store;
+	in_func = symtab_func(s->symtab);
+
+	if(in_func)
+		func_store = in_func->store;
+
 	if(func_store & store_inline
 	&& (func_store & STORE_MASK_STORE) == store_default)
 	{
