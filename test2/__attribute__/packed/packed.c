@@ -1,3 +1,5 @@
+// RUN: %ucc -fsyntax-only %s
+
 struct
 __attribute((packed))
 	A
