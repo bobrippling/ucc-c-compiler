@@ -11,6 +11,14 @@
 #include "cc1.h"
 #include "type_is.h"
 
+const char *constyness_strs[] = {
+	"CONST_NO",
+	"CONST_NUM",
+	"CONST_ADDR",
+	"CONST_STRK",
+	"CONST_NEED_ADDR"
+};
+
 void const_fold(expr *e, consty *k)
 {
 	UCC_ASSERT(e->tree_type,

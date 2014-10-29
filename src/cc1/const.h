@@ -14,6 +14,8 @@ typedef struct stringlit_at
 	stringlit *lit;
 } stringlit_at;
 
+extern const char *constyness_strs[];
+
 typedef struct consty
 {
 	enum constyness
