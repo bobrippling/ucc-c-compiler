@@ -260,3 +260,8 @@ void out_func_prologue(
 	octx->second_blk = post_prologue;
 	out_current_blk(octx, post_prologue);
 }
+
+unsigned out_current_stack(out_ctx *octx)
+{
+	return octx->max_stack_sz;
+}

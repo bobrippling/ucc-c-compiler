@@ -26,9 +26,9 @@
 #include "cc1_out_ctx.h"
 
 #define INLINE_DEPTH_MAX 5
-#define INLINE_MAX_STACK_BYTES 256
+#define INLINE_MAX_STACK_BYTES 128
 #define INLINE_VLA_COST 64
-#define INLINE_MAX_STMTS 10
+#define INLINE_MAX_STMTS 4
 
 struct inline_outs
 {
@@ -223,9 +223,10 @@ void inline_ret_add(out_ctx *octx, const out_val *v)
 }
 
 static int heuristic_should_inline(
-		decl *fndecl, stmt *fncode, symtable *symtab)
+		decl *fndecl, stmt *fncode, symtable *symtab, out_ctx *octx)
 {
 	unsigned nstmts = 0;
+	unsigned new_stack;
 
 	/* as with clang and gcc, -fno-inline-functions affects just the heuristic
 	 * __attribute((always_inline)) overrides it */
@@ -239,7 +240,9 @@ static int heuristic_should_inline(
 	if(fndecl->store & store_inline)
 		return 1;
 
-	if(symtab_decl_bytes(symtab, INLINE_VLA_COST) > INLINE_MAX_STACK_BYTES)
+	new_stack = symtab_decl_bytes(symtab, INLINE_VLA_COST) + out_current_stack(octx);
+
+	if(new_stack > INLINE_MAX_STACK_BYTES)
 		return 0;
 
 	stmt_walk(fncode, stmts_count, NULL, &nstmts);
@@ -342,7 +345,7 @@ static const char *check_and_ret_inline(
 
 	if(!attribute_present(iouts->fndecl, attr_always_inline)
 	&& !heuristic_should_inline(iouts->fndecl,
-		iouts->fncode, iouts->arg_symtab->children[0]))
+		iouts->fncode, iouts->arg_symtab->children[0], octx))
 	{
 		return "heuristic denied";
 	}

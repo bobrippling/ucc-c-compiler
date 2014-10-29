@@ -135,6 +135,7 @@ void out_adealloc(out_ctx *, const out_val **);
 
 const char *out_get_lbl(const out_val *) ucc_nonnull();
 int out_is_nonconst_temporary(const out_val *) ucc_nonnull();
+unsigned out_current_stack(out_ctx *); /* used in inlining */
 
 /* commenting */
 void out_comment(out_ctx *, const char *, ...) ucc_printflike(2, 3);
