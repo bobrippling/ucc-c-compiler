@@ -816,7 +816,7 @@ static void fold_offsetof(expr *e, symtable *stab)
 
 		fold_had_error = 1;
 	}else{
-		FOLD_EXPR(e->lhs, stab);
+		fold_expr_nodecay(e->lhs, stab);
 	}
 
 	e->tree_type = type_nav_btype(cc1_type_nav, type_ulong);
