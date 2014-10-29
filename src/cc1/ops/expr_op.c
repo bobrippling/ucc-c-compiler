@@ -72,12 +72,8 @@ static void const_op_num_fp(
 
 typedef struct
 {
-	int is_lbl;
-	union
-	{
-		integral_t i;
-		const char *lbl;
-	} bits;
+	const char *lbl; /* null if not label */
+	integral_t offset;
 } collapsed_consty;
 
 static void collapse_const(collapsed_consty *out, const consty *in)
@@ -87,23 +83,23 @@ static void collapse_const(collapsed_consty *out, const consty *in)
 			assert(0);
 
 		case CONST_NUM:
-			out->is_lbl = 0;
-			out->bits.i = in->bits.num.val.i;
+			out->lbl = NULL;
+			out->offset = in->bits.num.val.i + in->offset;
 			break;
 
 		case CONST_STRK:
-			out->is_lbl = 1;
-			out->bits.lbl = in->bits.str->lit->lbl;
+			out->lbl = in->bits.str->lit->lbl;
+			out->offset = in->offset;
 			break;
 
 		case CONST_NEED_ADDR:
 		case CONST_ADDR:
 			if(in->bits.addr.is_lbl){
-				out->is_lbl = 1;
-				out->bits.lbl = in->bits.addr.bits.lbl;
+				out->lbl = in->bits.addr.bits.lbl;
+				out->offset = in->offset;
 			}else{
-				out->is_lbl = 0;
-				out->bits.i = in->bits.addr.bits.memaddr;
+				out->lbl = NULL;
+				out->offset = in->bits.addr.bits.memaddr + in->offset;
 			}
 			break;
 	}
@@ -130,23 +126,23 @@ static void const_op_num_int(
 		collapse_const(&r, rhs);
 
 		/* need to apply pointer arithmetic */
-		if(l.is_lbl + r.is_lbl < 2 /* at least one side is a number */
+		if(!!l.lbl + !!r.lbl < 2 /* at least one side is a number */
 		&& (e->bits.op.op == op_plus || e->bits.op.op == op_minus) /* +/- */
 		&& ((ptr = type_is_ptr(e->lhs->tree_type))
 			|| (ptr_r = 1, ptr = type_is_ptr(e->rhs->tree_type))))
 		{
 			unsigned step = type_size(ptr, &e->where);
 
-			assert(!(ptr_r ? &l : &r)->is_lbl);
+			assert(!(ptr_r ? &l : &r)->lbl);
 
-			*(ptr_r ? &l.bits.i : &r.bits.i) *= step;
+			*(ptr_r ? &l.offset : &r.offset) *= step;
 		}
 	}else{
 		memset(&r, 0, sizeof r);
 	}
 
 	CONST_FOLD_LEAF(k);
-	switch(l.is_lbl + r.is_lbl){
+	switch(!!l.lbl + !!r.lbl){
 		default:
 			assert(0);
 
@@ -170,7 +166,7 @@ static void const_op_num_int(
 				case op_eq:
 				case op_ne:
 					assert(num_side && "binary two labels shouldn't be here");
-					if(num_side->bits.i == 0){
+					if(num_side->offset == 0){
 						/* &x == 0, etc */
 						k->type = CONST_NUM;
 						k->bits.num.val.i = (e->bits.op.op != op_eq);
@@ -193,9 +189,9 @@ static void const_op_num_int(
 
 					memcpy_safe(k, num_side == &l ? rhs : lhs);
 					if(e->bits.op.op == op_plus)
-						k->offset += num_side->bits.i;
+						k->offset += num_side->offset;
 					else if(e->bits.op.op == op_minus)
-						k->offset -= num_side->bits.i;
+						k->offset -= num_side->offset;
 					break;
 			}
 			break;
@@ -206,7 +202,7 @@ static void const_op_num_int(
 			integral_t int_r;
 
 			int_r = const_op_exec(
-					l.bits.i, rhs ? &r.bits.i : NULL,
+					l.offset, rhs ? &r.offset : NULL,
 					e->bits.op.op, e->tree_type, &err);
 
 			if(SHOW_CONST_OP){
@@ -214,13 +210,13 @@ static void const_op_num_int(
 					fprintf(stderr,
 							"const op: (%s) %lld %s %lld = %lld, is_signed=%d\n",
 							type_to_str(e->tree_type),
-							l.bits.i, op_to_str(e->bits.op.op), r.bits.i,
+							l.offset, op_to_str(e->bits.op.op), r.offset,
 							int_r, is_signed);
 				}else{
 					fprintf(stderr,
 							"const op: (%s) %s %lld = %lld, is_signed=%d\n",
 							type_to_str(e->tree_type),
-							op_to_str(e->bits.op.op), l.bits.i, int_r, is_signed);
+							op_to_str(e->bits.op.op), l.offset, int_r, is_signed);
 				}
 			}
 
@@ -271,7 +267,7 @@ static void const_op_num_int(
 				case op_eq:
 				case op_ne:
 				{
-					int same = !strcmp(l.bits.lbl, r.bits.lbl);
+					int same = !strcmp(l.lbl, r.lbl);
 					k->type = CONST_NUM;
 
 					k->bits.num.val.i = ((e->bits.op.op == op_eq) == same);
@@ -319,7 +315,7 @@ static void const_shortcircuit(
   assert(!CONST_AT_COMPILE_TIME(rhs->type));
 
 	collapse_const(&clhs, lhs);
-	truth = clhs.is_lbl ? 1 : clhs.bits.i;
+	truth = clhs.lbl ? 1 : clhs.offset;
 
 	if(e->bits.op.op == op_andsc){
 		if(truth){
