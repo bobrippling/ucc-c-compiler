@@ -1505,6 +1505,9 @@ static const out_val *x86_fp_conv(
 {
 	char vbuf[VAL_STR_SZ];
 
+	if(vp->type == V_CONST_F)
+		vp = x86_load_fp(octx, vp);
+
 	out_asm(octx, "cvt%s2%s%s %s, %%%s",
 			/*truncate ? "t" : "",*/
 			sfrom, sto,
