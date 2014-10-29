@@ -208,15 +208,7 @@ static void fold_const_expr_struct(expr *e, consty *k)
 			break;
 
 		case CONST_NUM:
-			/* e.g. &((A *)0)->b */
-			k->type = CONST_ADDR_OR_NEED(e->bits.struct_mem.d);
-
-			/* convert the val to a memaddr */
-			/* read num.val before we clobber it */
-			k->bits.addr.bits.memaddr = k->bits.num.val.i + struct_offset(e);
-			k->offset = 0;
-
-			k->bits.addr.is_lbl = 0;
+			ICE("const expr struct - address expected");
 			break;
 	}
 }
