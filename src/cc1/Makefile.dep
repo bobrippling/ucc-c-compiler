@@ -1504,11 +1504,10 @@ out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
  out/../ops/stmt_label.h out/../ops/stmt_noop.h out/../ops/stmt_return.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../const.h out/../funcargs.h out/../sue.h \
- out/../type.h out/../type_is.h out/../retain.h out/../vla.h \
- out/../cc1_out_ctx.h out/../out/forwards.h out/asm.h out/../defs.h \
- out/../../as_cfg.h out/leb.h out/lbl.h out/dbg.h out/write.h \
- out/../../util/compiler.h out/forwards.h out/val.h out/backend.h \
- out/x86_64.h
+ out/../type.h out/../type_is.h out/../vla.h out/../cc1_out_ctx.h \
+ out/../out/forwards.h out/asm.h out/../defs.h out/../../as_cfg.h \
+ out/leb.h out/lbl.h out/dbg.h out/write.h out/../../util/compiler.h \
+ out/forwards.h out/val.h out/backend.h out/x86_64.h
 out/free.o: out/free.c out/../../util/dynmap.h out/../../util/dyn.h \
  out/../../util/dynarray.h out/../type.h out/../num.h out/../btype.h \
  out/../../util/where.h out/../../util/compiler.h out/forwards.h \
