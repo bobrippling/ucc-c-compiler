@@ -289,6 +289,7 @@ static const char *check_and_ret_inline(
 	funcargs *fargs;
 	const char *why;
 	struct cc1_out_ctx *cc1_octx;
+	decl **arg_iter;
 
 	if(maybe_decl){
 		iouts->fndecl = maybe_decl;
@@ -335,6 +336,15 @@ static const char *check_and_ret_inline(
 	|| nargs != dynarray_count(iouts->arg_symtab->decls))
 	{
 		return "call to function with unspecified arguments";
+	}
+
+	for(arg_iter = fargs->arglist; arg_iter && *arg_iter; arg_iter++){
+		/* f(int [vla][3][2]) is fine due to function argument decay */
+		decl *d = *arg_iter;
+		type *t = type_is_ptr(d->ref);
+
+		if(t && type_is_variably_modified(t))
+			return "argument with variably modified type";
 	}
 
 	cc1_octx = cc1_out_ctx_or_new(octx);
