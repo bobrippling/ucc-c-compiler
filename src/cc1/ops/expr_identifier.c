@@ -57,12 +57,6 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 	}
 }
 
-static const out_val *gen_expr_identifier_lea(expr *e, out_ctx *octx)
-{
-	assert(e->bits.ident.type == IDENT_NORM);
-	return out_new_sym(octx, e->bits.ident.bits.ident.sym);
-}
-
 void fold_expr_identifier(expr *e, symtable *stab)
 {
 	char *sp = e->bits.ident.bits.ident.spel;
@@ -130,11 +124,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	e->tree_type = sym->decl->ref;
 
 	/* set if lvalue - expr_is_lval() checks for arrays */
-	e->f_lea =
-		type_is(e->tree_type, type_func)
-		? NULL
-		: gen_expr_identifier_lea;
-
+	e->is_lval = !type_is(e->tree_type, type_func);
 
 	if(sym->type == sym_local
 	&& !decl_store_duration_is_static(sym->decl)
@@ -174,18 +164,8 @@ const out_val *gen_expr_identifier(expr *e, out_ctx *octx)
 {
 	switch(e->bits.ident.type){
 		case IDENT_NORM:
-		{
-			return gen_expr_identifier_lea(e, octx);
-			sym *sym = e->bits.ident.bits.ident.sym;
+			return out_new_sym(octx, e->bits.ident.bits.ident.sym);
 
-			if(type_is(sym->decl->ref, type_func)){
-				UCC_ASSERT(sym->type != sym_arg, "function as argument?");
-
-				return out_new_sym(octx, sym);
-			}else{
-				return out_new_sym_val(octx, sym);
-			}
-		}
 		case IDENT_ENUM:
 			return out_new_l(octx, e->tree_type,
 					const_fold_val_i(e->bits.ident.bits.enum_mem->val));

@@ -60,15 +60,6 @@ int expr_must_lvalue(expr *e, const char *desc)
 	return 1;
 }
 
-static const out_val *lea_assign_lhs(expr *e, out_ctx *octx)
-{
-	/* generate our assignment, then lea
-	 * our lhs, i.e. the struct identifier
-	 * we're assigning to */
-	out_val_consume(octx, gen_expr(e, octx));
-	return lea_expr(e->lhs, octx);
-}
-
 void expr_assign_const_check(expr *e, where *w)
 {
 	struct_union_enum_st *su;
@@ -81,6 +72,15 @@ void expr_assign_const_check(expr *e, where *w)
 		fold_had_error = 1;
 		warn_at_print_error(w, "can't assign struct - contains const member");
 	}
+}
+
+static const out_val *lea_assign_lhs(expr *e, out_ctx *octx)
+{
+	/* generate our assignment, then lea
+	 * our lhs, i.e. the struct identifier
+	 * we're assigning to */
+	out_val_consume(octx, gen_expr(e, octx));
+	return lea_expr(e->lhs, octx);
 }
 
 void fold_expr_assign(expr *e, symtable *stab)
@@ -136,12 +136,12 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 		FOLD_EXPR(e->expr, stab);
 
-		/* set f_lea, so we can participate in struct-copy chains
+		/* set is_lval, so we can participate in struct-copy chains
 		 * FIXME: don't interpret as an lvalue, e.g. (a = b) = c;
 		 * this is currently special cased in expr_is_lval()
 		 */
-		e->f_lea = lea_assign_lhs;
-
+		e->f_gen = lea_assign_lhs;
+		e->is_lval = 1;
 	}
 }
 

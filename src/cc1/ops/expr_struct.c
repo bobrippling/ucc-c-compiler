@@ -12,8 +12,6 @@
 	 (e)->bits.struct_mem.extra_off                     \
 	 )
 
-static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx);
-
 const char *str_expr_struct()
 {
 	return "struct";
@@ -123,7 +121,7 @@ err:
 	e->tree_type = type_qualify(e->bits.struct_mem.d->ref, struct_qual);
 }
 
-static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
+const out_val *gen_expr_struct(expr *e, out_ctx *octx)
 {
 	const out_val *struct_exp, *off;
 
@@ -168,13 +166,6 @@ static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 	}
 
 	return off;
-}
-
-const out_val *gen_expr_struct(expr *e, out_ctx *octx)
-{
-	ASSERT_NOT_DOT();
-
-	return out_deref(octx, gen_expr_struct_lea(e, octx));
 }
 
 const out_val *gen_expr_str_struct(expr *e, out_ctx *octx)
@@ -236,7 +227,7 @@ static void fold_const_expr_struct(expr *e, consty *k)
 void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
-	e->f_lea = gen_expr_struct_lea;
+	e->is_lval = 1;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;

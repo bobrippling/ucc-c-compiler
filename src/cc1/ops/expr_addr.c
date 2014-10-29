@@ -71,23 +71,9 @@ const out_val *gen_expr_addr(expr *e, out_ctx *octx)
 		return out_new_blk_addr(octx, e->bits.lbl.label->bblock);
 
 	}else{
-		/* special case - can't lea_expr() functions because they
-		 * aren't lvalues
-		 */
-		expr *sub = e->lhs;
-
-		if(!sub->f_lea){
-			sub = expr_skip_casts(sub);
-			UCC_ASSERT(expr_kind(sub, identifier),
-					"&[not-identifier], got %s",
-					sub->f_str());
-
-			assert(sub->bits.ident.type == IDENT_NORM);
-
-			return out_new_sym(octx, sub->bits.ident.bits.ident.sym);
-		}else{
-			return lea_expr(sub, octx);
-		}
+		/* gen_expr works, even for &expr, because the fold_expr_no_decay()
+		 * means we don't lval2rval our sub-expression */
+		return gen_expr(e->lhs, octx);
 	}
 }
 

@@ -16,6 +16,7 @@ void gen_asm(
 #endif
 
 const out_val *gen_expr(expr *e, out_ctx *) ucc_wur;
+#define lea_expr gen_expr /* TODO */
 void gen_stmt(struct stmt *t, out_ctx *);
 
 /* temporary until the f_gen() logic from expr is pulled out

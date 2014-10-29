@@ -677,11 +677,6 @@ static expr *parse_expect(const char *ident, symtable *scope)
 
 #define CHOOSE_EXPR_CHOSEN(e) ((e)->funcargs[(e)->bits.num.val.i ? 1 : 2])
 
-static const out_val *choose_expr_lea(expr *e, out_ctx *octx)
-{
-	return lea_expr(CHOOSE_EXPR_CHOSEN(e), octx);
-}
-
 static void fold_choose_expr(expr *e, symtable *stab)
 {
 	consty k;
@@ -710,8 +705,7 @@ static void fold_choose_expr(expr *e, symtable *stab)
 
 	wur_builtin(e);
 
-	if(expr_is_lval(c))
-		e->f_lea = choose_expr_lea;
+	e->is_lval = expr_is_lval(c);
 }
 
 static void const_choose_expr(expr *e, consty *k)
