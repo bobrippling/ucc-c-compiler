@@ -24,6 +24,7 @@
 
 #include "../parse_expr.h"
 #include "../parse_type.h"
+#include "../cc1_out_ctx.h"
 
 #define PREFIX "__builtin_"
 
@@ -563,7 +564,14 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 static const out_val *builtin_gen_frame_address(const expr *e, out_ctx *octx)
 {
+	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	const int depth = e->bits.num.val.i;
+
+	if(cc1_octx && cc1_octx->inline_.depth){
+		cc1_warn_at(&e->where, inline_builtin_frame_addr,
+				"inlining function with call to %s",
+				BUILTIN_SPEL(e->expr));
+	}
 
 	return out_new_frame_ptr(octx, depth + 1);
 }

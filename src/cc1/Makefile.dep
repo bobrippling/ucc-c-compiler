@@ -484,7 +484,7 @@ ops/__builtin.o: ops/__builtin.c ops/../../util/util.h ops/../../util/warn.h \
  ops/../funcargs.h ops/../type_nav.h ops/../sue.h ops/../type_is.h \
  ops/../const.h ops/../gen_asm.h ops/../gen_str.h ops/../out/out.h \
  ops/__builtin_va.h ops/__builtin_va.def ops/../parse_expr.h \
- ops/../parse_type.h
+ ops/../parse_type.h ops/../cc1_out_ctx.h ops/../out/forwards.h
 ops/__builtin_va.o: ops/__builtin_va.c ops/../../util/util.h \
  ops/../../util/warn.h ops/../../util/where.h ops/../../util/compiler.h \
  ops/../../util/dynarray.h ops/../../util/dyn.h ops/../../util/platform.h \

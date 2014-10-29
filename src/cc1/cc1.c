@@ -145,6 +145,7 @@ static struct warn_str
 
 	{ "qualified-fntype", &cc1_warning.bad_funcqual },
 	{ "inline-non-function", &cc1_warning.bad_inline },
+	{ "inline-builtin-frame-addr", &cc1_warning.inline_builtin_frame_addr },
 	{ "restrict-non-ptr", &cc1_warning.bad_restrict },
 
 	{ "bitfield-boundary", &cc1_warning.bitfield_boundary },
