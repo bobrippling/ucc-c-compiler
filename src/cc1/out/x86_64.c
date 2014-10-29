@@ -1670,6 +1670,8 @@ void impl_branch(
 			cmp = ustrprintf("jz %s", bf->lbl);
 
 			blk_terminate_condjmp(octx, cmp, bf, bt, unlikely);
+
+			out_val_consume(octx, cond);
 			break;
 		}
 
@@ -1705,6 +1707,8 @@ void impl_branch(
 			}
 
 			blk_terminate_condjmp(octx, cmpjmp, bt, bf, unlikely);
+
+			out_val_consume(octx, cond);
 			break;
 		}
 
@@ -1717,6 +1721,8 @@ void impl_branch(
 			out_comment(octx,
 					"constant jmp condition %staken",
 					flag ? "" : "not ");
+
+			out_val_consume(octx, cond);
 
 			out_ctrl_transfer(octx, flag ? bt : bf, NULL, NULL);
 			break;

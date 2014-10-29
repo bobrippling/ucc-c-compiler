@@ -26,8 +26,6 @@ void out_ctrl_branch(
 			cond, if_true, if_false,
 			!!(cond->flags & VAL_FLAG_LIKELY));
 
-	out_val_consume(octx, cond);
-
 	out_current_blk(octx, if_true);
 }
 
