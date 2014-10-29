@@ -18,7 +18,6 @@ typedef const char *func_str(void);
 typedef void func_mutate_expr(struct expr *);
 
 typedef ucc_wur const out_val *func_gen(struct expr *, out_ctx *);
-typedef ucc_wur const out_val *func_gen_lea(struct expr *, out_ctx *);
 
 #define UNUSED_OCTX() (void)octx; return NULL
 
@@ -32,8 +31,8 @@ struct expr
 	func_str *f_str;
 
 	func_const *f_const_fold; /* optional, used in static/global init */
-	func_gen_lea *f_lea; /* optional */
 
+	int is_lval;
 
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
 	struct

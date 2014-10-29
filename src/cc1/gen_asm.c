@@ -59,19 +59,6 @@ const out_val *gen_expr(expr *e, out_ctx *octx)
 	}
 }
 
-const out_val *lea_expr(expr *e, out_ctx *octx)
-{
-	char buf[WHERE_BUF_SIZ];
-
-	UCC_ASSERT(e->f_lea,
-			"invalid store expression expr-%s @ %s (no f_lea())",
-			e->f_str(), where_str_r(buf, &e->where));
-
-	out_dbg_where(octx, &e->where);
-
-	return e->f_lea(e, octx);
-}
-
 void gen_stmt(stmt *t, out_ctx *octx)
 {
 	if(octx) /* for other backends */
