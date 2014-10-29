@@ -293,6 +293,7 @@ static struct
 	{ 'f',  "gnu-keywords", FOPT_EXT_KEYWORDS },
 	{ 'f',  "fold-const-vlas", FOPT_FOLD_CONST_VLAS },
 	{ 'f',  "show-warning-option", FOPT_SHOW_WARNING_OPTION },
+	{ 'f',  "print-typedefs", FOPT_PRINT_TYPEDEFS },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 	{ 'm',  "32", MOPT_32 },
@@ -327,7 +328,8 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SYMBOL_ARITH
                     | FOPT_SIGNED_CHAR
                     | FOPT_CAST_W_BUILTIN_TYPES
-                    | FOPT_FOLD_CONST_VLAS;
+                    | FOPT_FOLD_CONST_VLAS
+                    | FOPT_PRINT_TYPEDEFS;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
