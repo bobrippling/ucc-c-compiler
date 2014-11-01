@@ -67,7 +67,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 		e->bits.ident.bits.ident.sym = sym = symtab_search(stab, sp);
 
 		/* prevent typedef */
-		if(sym && (sym->decl->store & STORE_MASK_STORE) == store_typedef){
+		if(sym && STORE_IS_TYPEDEF(sym->decl->store)){
 			warn_at_print_error(&e->where,
 					"use of typedef-name '%s' as expression",
 					sp);

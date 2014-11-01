@@ -430,7 +430,7 @@ void symtab_fold_decls(symtable *tab)
 										/* variables at global scope - static checked in parse */
 									}
 
-									if(!clash && (da->store & STORE_MASK_STORE) == store_typedef){
+									if(!clash && STORE_IS_TYPEDEF(da->store)){
 										warn_c11_retypedef(da, db);
 									}
 								}

@@ -43,7 +43,7 @@ unsigned vla_decl_space(decl *d)
 	type *t;
 	unsigned sz;
 
-	if((d->store & STORE_MASK_STORE) == store_typedef)
+	if(STORE_IS_TYPEDEF(d->store))
 		sz = 0; /* just the sizes */
 	else if(type_is_vla(d->ref, VLA_ANY_DIMENSION))
 		sz = pws * 2; /* T *ptr; void *orig_sp; */

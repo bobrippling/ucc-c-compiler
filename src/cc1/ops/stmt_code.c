@@ -215,7 +215,7 @@ static void gen_auto_decl(decl *d, out_ctx *octx)
 	gen_auto_decl_alloc(d, octx);
 
 	if(type_is_variably_modified(d->ref)){
-		if((d->store & STORE_MASK_STORE) == store_typedef)
+		if(STORE_IS_TYPEDEF(d->store))
 			vla_typedef_init(d, octx);
 		else
 			vla_decl_init(d, octx);
@@ -287,7 +287,7 @@ void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
 			continue;
 		}
 
-		is_typedef = ((d->store & STORE_MASK_STORE) == store_typedef);
+		is_typedef = STORE_IS_TYPEDEF(d->store);
 
 		/* typedefs may or may not have a sym */
 		if(is_typedef && !d->sym->outval)

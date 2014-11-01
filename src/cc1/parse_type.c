@@ -214,7 +214,7 @@ static decl *parse_at_tdef(symtable *scope)
 	if(curtok == token_identifier){
 		decl *d = symtab_search_d(scope, token_current_spel_peek(), NULL);
 
-		if(d && d->store == store_typedef)
+		if(d && STORE_IS_TYPEDEF(d->store))
 			return d;
 	}
 	return NULL;
@@ -692,7 +692,7 @@ static type *parse_btype(
 		}
 
 		if(store
-		&& (*store & STORE_MASK_STORE) == store_typedef
+		&& STORE_IS_TYPEDEF(*store)
 		&& palign && *palign)
 		{
 			die_at(NULL, "typedefs can't be aligned");
@@ -1867,7 +1867,7 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 		 */
 		type_funcargs(d->ref)->args_void_implicit = 1;
 
-		if((d->store & STORE_MASK_STORE) == store_typedef){
+		if(STORE_IS_TYPEDEF(d->store)){
 			warn_at_print_error(&d->where, "typedef storage on function");
 			fold_had_error = 1;
 		}
