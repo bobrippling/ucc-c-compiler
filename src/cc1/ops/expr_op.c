@@ -417,7 +417,7 @@ static void expr_promote_if_smaller(expr **pe, symtable *stab, int do_float)
 	}
 }
 
-static void expr_promote_int_if_smaller(expr **pe, symtable *stab)
+void expr_promote_int_if_smaller(expr **pe, symtable *stab)
 {
 	expr_promote_if_smaller(pe, stab, 0);
 }
@@ -598,7 +598,8 @@ ptr_relation:
 			UCC_ASSERT(
 					type_size(tlhs, &lhs->where)
 						>= type_primitive_size(type_int),
-					"shift operand should have been promoted");
+					"shift operand should have been promoted (got %s)",
+					type_to_str(tlhs));
 
 			resolved = tlhs;
 

@@ -8,7 +8,7 @@ const char *str_expr_assign_compound()
 
 void fold_expr_assign_compound(expr *e, symtable *stab)
 {
-	expr *const lvalue = e->lhs;
+#define lvalue e->lhs
 
 	fold_inc_writes_if_sym(lvalue, stab);
 
@@ -30,6 +30,9 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	fold_check_restrict(lvalue, e->rhs, "compound assignment", &e->where);
 
 	UCC_ASSERT(op_can_compound(e->op), "non-compound op in compound expr");
+
+	expr_promote_int_if_smaller(&e->lhs, stab);
+	expr_promote_int_if_smaller(&e->rhs, stab);
 
 	{
 		type *tlhs, *trhs;
@@ -56,6 +59,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	}
 
 	/* type check is done in op_required_promotion() */
+#undef lvalue
 }
 
 const out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
