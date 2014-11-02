@@ -94,16 +94,6 @@ static void gen_expr_compound_lit_code(const expr *e, out_ctx *octx)
 
 const out_val *gen_expr_compound_lit(const expr *e, out_ctx *octx)
 {
-	/* allow (int){2}, but not (struct...){...} */
-	fold_check_expr(e, FOLD_CHK_NO_ST_UN, "compound literal");
-
-	gen_expr_compound_lit_code(e, octx);
-
-	return out_new_sym_val(octx, e->bits.complit.sym);
-}
-
-static const out_val *lea_expr_compound_lit(const expr *e, out_ctx *octx)
-{
 	gen_expr_compound_lit_code(e, octx);
 
 	return out_new_sym(octx, e->bits.complit.sym);
@@ -170,7 +160,7 @@ const out_val *gen_expr_style_compound_lit(const expr *e, out_ctx *octx)
 void mutate_expr_compound_lit(expr *e)
 {
 	/* unconditionally an lvalue */
-	e->f_lea = lea_expr_compound_lit;
+	e->is_lval = 1;
 	e->f_const_fold = const_expr_compound_lit;
 }
 

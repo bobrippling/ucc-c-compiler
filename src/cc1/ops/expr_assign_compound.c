@@ -65,7 +65,7 @@ const out_val *gen_expr_assign_compound(const expr *e, out_ctx *octx)
 	 */
 	const out_val *saved_post = NULL, *addr_lhs, *rhs, *lhs, *result;
 
-	addr_lhs = lea_expr(
+	addr_lhs = gen_expr(
 			e->bits.compound_upcast ? expr_cast_child(e->lhs) : e->lhs,
 			octx);
 

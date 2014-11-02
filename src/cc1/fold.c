@@ -825,8 +825,11 @@ void fold_decl(decl *d, symtable *stab)
 
 		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), stab, d->attr);
 
-		if(d->spel)
+		if(d->spel
+		&& (!STORE_IS_TYPEDEF(d->store) || type_is_variably_modified(d->ref)))
+		{
 			fold_decl_add_sym(d, stab);
+		}
 
 		if(((d->store & STORE_MASK_STORE) != store_typedef)
 		/* __attribute__((weak)) is allowed on typedefs */

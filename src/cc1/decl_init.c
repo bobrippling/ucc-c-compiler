@@ -587,7 +587,9 @@ static decl_init **decl_init_brace_up_sue2(
 	&& (this = *iter->pos)
 	&& this->type == decl_init_scalar)
 	{
-		expr *e = FOLD_EXPR(this->bits.expr, stab);
+		expr *e;
+
+		fold_expr_no_decay(e = this->bits.expr, stab);
 
 		if(type_is_s_or_u(e->tree_type) == sue){
 			/* copy init */

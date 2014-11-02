@@ -18,6 +18,8 @@ enum decl_storage
 #define STORE_MASK_STORE 0x00007 /* include all below 4 */
 #define STORE_MASK_EXTRA 0xfff38 /* exclude  ^ */
 
+#define STORE_IS_TYPEDEF(s) (((s) & STORE_MASK_STORE) == store_typedef)
+
 struct decl_init_expr
 {
 	struct decl_init *dinit;

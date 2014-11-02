@@ -43,7 +43,7 @@ unsigned vla_decl_space(decl *d)
 	type *t;
 	unsigned sz;
 
-	if((d->store & STORE_MASK_STORE) == store_typedef)
+	if(STORE_IS_TYPEDEF(d->store))
 		sz = 0; /* just the sizes */
 	else if(type_is_vla(d->ref, VLA_ANY_DIMENSION))
 		sz = pws * 2; /* T *ptr; void *orig_sp; */
@@ -194,8 +194,10 @@ static const out_val *vla_gen_size_ty(
 		case type_tdef:
 		{
 			const out_val *cached = vla_cached_size(t, octx);
-			if(cached)
+			if(cached){
+				out_val_release(octx, stack_ent);
 				return cached;
+			}
 
 			return vla_gen_size_ty(type_next_1(t), octx, arith_ty, stack_ent);
 		}

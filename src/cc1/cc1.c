@@ -295,6 +295,7 @@ static struct
 	{ 'f',  "gnu-keywords", FOPT_EXT_KEYWORDS },
 	{ 'f',  "fold-const-vlas", FOPT_FOLD_CONST_VLAS },
 	{ 'f',  "show-warning-option", FOPT_SHOW_WARNING_OPTION },
+	{ 'f',  "print-typedefs", FOPT_PRINT_TYPEDEFS },
 	{ 'f',  "show-inlined", FOPT_SHOW_INLINED },
 	{ 'f',  "inline-functions", FOPT_INLINE_FUNCTIONS },
 
@@ -332,6 +333,7 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SIGNED_CHAR
                     | FOPT_CAST_W_BUILTIN_TYPES
                     | FOPT_FOLD_CONST_VLAS
+                    | FOPT_PRINT_TYPEDEFS
                     | FOPT_INLINE_FUNCTIONS;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;

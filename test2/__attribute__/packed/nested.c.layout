@@ -1,0 +1,13 @@
+a:
+.byte 10
+.word 20
+.byte 30
+.space 1 # prev struct padding
+.word 40
+
+b:
+.byte 10
+.word 20
+.byte 30
+.space 1 # prev struct padding
+.word 40

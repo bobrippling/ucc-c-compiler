@@ -365,12 +365,6 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	}
 }
 
-static const out_val *lea_expr_cast(const expr *e, out_ctx *octx)
-{
-	expr *c = expr_cast_child(e);
-	return c->f_lea(c, octx);
-}
-
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 {
 	int flag;
@@ -382,10 +376,6 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	if(IS_RVAL_CAST(e)){
 		/* remove cv-qualifiers */
 		e->tree_type = type_unqualify(expr_cast_child(e)->tree_type);
-
-		/* rval cast can have a lea */
-		if(expr_cast_child(e)->f_lea)
-			e->f_lea = lea_expr_cast;
 
 	}else{
 		/* casts remove restrict qualifiers */
@@ -531,7 +521,7 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 	const out_val *casted = gen_expr(expr_cast_child(e), octx);
 
 	if(IS_RVAL_CAST(e)){
-		casted = out_change_type(octx, casted, e->tree_type);
+		casted = out_deref(octx, casted);
 	}else{
 		type *tto, *tfrom;
 

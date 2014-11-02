@@ -15,5 +15,5 @@ main()
 
 	for(int _Alignas(long) x = 0; x; x++); // CHECK: !/warn/
 
-	return f(); // CHECK: !/warn/
+	return 0;
 }

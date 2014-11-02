@@ -23,7 +23,6 @@ extern int gen_had_error;
 #define GEN_CONST_CAST(T, expr) ((T)(e))
 
 const out_val *gen_expr(const expr *e, out_ctx *) ucc_wur;
-const out_val *lea_expr(const expr *e, out_ctx *) ucc_wur;
 void gen_stmt(const struct stmt *t, out_ctx *);
 #define gen_func_stmt gen_stmt
 

@@ -1,5 +1,5 @@
 // RUN: %ucc -S -o %t %s
-// RUN: grep > /dev/null cvtss2si %t
+// RUN: grep > /dev/null cvttss2si %t
 // RUN: grep > /dev/null addss %t
 // RUN: grep > /dev/null addl %t; [ $? -ne 0 ]
 
