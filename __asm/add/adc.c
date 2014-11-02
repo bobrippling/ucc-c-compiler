@@ -32,6 +32,32 @@ void add(
 			);
 }
 
+/*
+unsigned fn_rw(unsigned sum, unsigned v)
+{
+	__asm__(
+			"addl %1, %0 ;"
+			"adcl $0, %0 ;"
+			: "+r" (sum)
+			: "g" (v)
+			);
+	return sum;
+}
+*/
+
+unsigned fn_io(unsigned sum, unsigned v)
+{
+	__asm__(
+			"addl %1, %0 ;"
+			"adcl $0, %0 ;"
+			: "=r" (sum)
+			: "g" (v)
+			, "0" (sum)
+			);
+
+	return sum;
+}
+
 void print(i128 const *i)
 {
 	printf("0x%llx%llx", i->h, i->l);
