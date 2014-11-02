@@ -411,6 +411,9 @@ const out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 		fn_ret = out_call(octx, fn, args, e->expr->tree_type);
 
 		dynarray_free(const out_val **, &args, NULL);
+
+		if(!expr_func_passable(e))
+			out_ctrl_end_undefined(octx);
 	}
 
 	return fn_ret;
