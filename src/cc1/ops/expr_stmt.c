@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "ops.h"
 #include "expr_stmt.h"
 #include "../../util/dynarray.h"
@@ -8,37 +10,10 @@ const char *str_expr_stmt()
 	return "statement";
 }
 
-static const out_val *gen_lea_expr_stmt(
-		expr *e, out_ctx *octx,
-		const out_val *final_exp_gen(expr *, out_ctx *))
-{
-	size_t n;
-	const out_val *ret;
-
-	gen_stmt_code_m1(e->code, 1, octx);
-
-	n = dynarray_count(e->code->bits.code.stmts);
-
-	if(n > 0 && stmt_kind(e->code->bits.code.stmts[n-1], expr))
-		ret = final_exp_gen(e->code->bits.code.stmts[n - 1]->expr, octx);
-	else
-		ret = out_new_noop(octx);
-
-	/* this is skipped by gen_stmt_code_m1( ... 1, ... ) */
-	gen_stmt_code_m1_finish(e->code, octx);
-
-	return ret;
-}
-
-static const out_val *lea_expr_stmt(expr *e, out_ctx *octx)
-{
-	return gen_lea_expr_stmt(e, octx, lea_expr);
-}
-
 void fold_expr_stmt(expr *e, symtable *stab)
 {
-	stmt *last_stmt;
-	int last;
+	stmt *last_stmt = NULL;
+	size_t last;
 
 	(void)stab;
 
@@ -49,29 +24,54 @@ void fold_expr_stmt(expr *e, symtable *stab)
 		last_stmt->expr_no_pop = 1;
 	}
 
-	fold_stmt(e->code); /* symtab should've been set by parse */
+	assert(stmt_kind(e->code, code));
+	fold_stmt_code_m1(e->code, 1); /* symtab should've been set by parse */
 
-	if(last && stmt_kind(last_stmt, expr)){
+	if(last_stmt && stmt_kind(last_stmt, expr)){
 		expr *last_e = last_stmt->expr;
 
-		e->tree_type = last_e->tree_type;
+		fold_expr_no_decay(last_e, last_stmt->symtab);
 
+		/* XXX: statement isn't folded... not bad but probs should do */
+
+		e->is_lval = expr_is_lval(last_e);
+		warn_at(&e->where, "lval = %d", e->is_lval);
+
+		e->tree_type = last_e->tree_type;
+		/* check _this_ statement expression */
 		fold_check_expr(e,
 				FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_ST_UN,
 				"({ ... }) statement");
 
-		if(last_e->f_lea)
-			e->f_lea = lea_expr_stmt;
-	}else{
-		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
+	}else if(last_stmt){
+		/* another statement, e.g. ({ if(...){...} }) */
+		fold_stmt(last_stmt);
 	}
+
+	if(!e->tree_type)
+		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */
 }
 
 const out_val *gen_expr_stmt(expr *e, out_ctx *octx)
 {
-	return gen_lea_expr_stmt(e, octx, gen_expr);
+	size_t n;
+	const out_val *ret;
+
+	gen_stmt_code_m1(e->code, 1, octx);
+
+	n = dynarray_count(e->code->bits.code.stmts);
+
+	if(n > 0 && stmt_kind(e->code->bits.code.stmts[n-1], expr))
+		ret = gen_expr(e->code->bits.code.stmts[n - 1]->expr, octx);
+	else
+		ret = out_new_noop(octx);
+
+	/* this is skipped by gen_stmt_code_m1( ... 1, ... ) */
+	gen_stmt_code_m1_finish(e->code, octx);
+
+	return ret;
 }
 
 const out_val *gen_expr_str_stmt(expr *e, out_ctx *octx)

@@ -137,7 +137,7 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 	}
 }
 
-void fold_stmt_code(stmt *s)
+void fold_stmt_code_m1(stmt *s, const int m1)
 {
 	stmt **siter;
 	int warned = 0;
@@ -147,6 +147,9 @@ void fold_stmt_code(stmt *s)
 
 	for(siter = s->bits.code.stmts; siter && *siter; siter++){
 		stmt *const st = *siter;
+
+		if(m1 && !siter[1])
+			break;
 
 		fold_stmt(st);
 
@@ -165,6 +168,11 @@ void fold_stmt_code(stmt *s)
 			warned = 1;
 		}
 	}
+}
+
+void fold_stmt_code(stmt *s)
+{
+	fold_stmt_code_m1(s, 0);
 }
 
 static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
