@@ -81,7 +81,7 @@ macro *macro_add_func(const char *nam, const char *val,
 {
 	macro *m  = macro_add(nam, val, depth);
 	if(m->args)
-		dynarray_free(char **, &m->args, free);
+		dynarray_free(char **, m->args, free);
 	m->args = args;
 	m->type = variadic ? VARIADIC : FUNC;
 	return m;
@@ -106,7 +106,7 @@ int macro_remove(const char *nam)
 	if(m){
 		free(m->nam);
 		free(m->val);
-		dynarray_free(char **, &m->args, free);
+		dynarray_free(char **, m->args, free);
 		dynarray_rm(&macros, m);
 		free(m);
 		return 1;

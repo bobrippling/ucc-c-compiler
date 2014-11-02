@@ -587,7 +587,9 @@ static decl_init **decl_init_brace_up_sue2(
 	&& (this = *iter->pos)
 	&& this->type == decl_init_scalar)
 	{
-		expr *e = FOLD_EXPR(this->bits.expr, stab);
+		expr *e;
+
+		fold_expr_no_decay(e = this->bits.expr, stab);
 
 		if(type_is_s_or_u(e->tree_type) == sue){
 			/* copy init */
@@ -1106,8 +1108,10 @@ static decl_init *decl_init_brace_up_start(
 		|| type_is_s_or_u(tfor)))
 	{
 		expr *e;
+		enum type_cmp cmp;
+
 		fold_expr_no_decay(e = init->bits.expr, stab);
-		const enum type_cmp cmp = type_cmp(e->tree_type, tfor, 0);
+		cmp = type_cmp(e->tree_type, tfor, 0);
 
 		/* allow (copy)init of const from non-const and vice versa */
 		if(!(cmp & (TYPE_EQUAL_ANY | TYPE_QUAL_ADD | TYPE_QUAL_SUB))){

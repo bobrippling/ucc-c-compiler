@@ -20,6 +20,13 @@
 
 #include "type_is.h"
 
+enum type_str_opts
+{
+	TY_STR_NOOPT = 0,
+	TY_STR_AKA = 1 << 0,
+	TY_STR_NO_TDEF = 1 << 1
+};
+
 static int type_qual_cmp_1(
 		enum type_qualifier a,
 		enum type_qualifier b,
@@ -381,10 +388,11 @@ unsigned type_align(type *r, where *from)
 where *type_loc(type *t)
 {
 	static where fallback;
+	where *w;
 
-	t = type_skip_non_wheres(t);
-	if(t && t->type == type_where)
-		return &t->bits.where;
+	w = type_has_loc(t);
+	if(w)
+		return w;
 
 	if(!fallback.fname)
 		fallback.fname = "<unknown>";
@@ -395,7 +403,37 @@ where *type_loc(type *t)
 where *type_has_loc(type *t)
 {
 	t = type_skip_non_wheres(t);
-	return t && t->type == type_where ? &t->bits.where : NULL;
+	if(!t)
+		return NULL;
+
+	switch(t->type){
+		case type_ptr:
+			if(t->bits.ptr.decayed_from){
+				where *w = type_has_loc(t->bits.ptr.decayed_from);
+				if(w)
+					return w;
+			}
+			break;
+
+		case type_array:
+			if(t->bits.array.size)
+				return &t->bits.array.size->where;
+			break;
+
+		case type_where:
+			return &t->bits.where;
+
+		case type_btype:
+		case type_tdef:
+		case type_block:
+		case type_func:
+		case type_auto:
+		case type_cast:
+		case type_attr:
+			break;
+	}
+
+	return NULL;
 }
 
 #define BUF_ADD(...) \
@@ -573,22 +611,26 @@ static void type_add_str(
 }
 
 static
-const char *type_to_str_r_spel_aka(
+const char *type_to_str_r_spel_opts(
 		char buf[BTYPE_STATIC_BUFSIZ], type *r,
-		char *spel, const int aka);
+		char *spel, enum type_str_opts);
 
 static
 type *type_add_type_str(type *r,
 		char **bufp, int *sz,
-		const int aka)
+		enum type_str_opts const opts)
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
 	type *ty;
 
 	**bufp = '\0';
 	for(ty = r;
-			ty && ty->type != type_btype && ty->type != type_tdef;
-			ty = ty->ref);
+			ty && ty->type != type_btype;
+			ty = ty->ref)
+	{
+		if((opts & TY_STR_NO_TDEF) == 0 && ty->type == type_tdef)
+			break;
+	}
 
 	if(!ty)
 		return NULL;
@@ -609,21 +651,21 @@ type *type_add_type_str(type *r,
 			BUF_ADD("typeof(%s%s)",
 					/* e is always expr_sizeof() */
 					is_type ? "" : "expr: ",
-					is_type ? type_to_str_r_spel_aka(buf, e->tree_type, NULL, 0)
+					is_type ? type_to_str_r_spel_opts(buf, e->tree_type, NULL, TY_STR_NOOPT)
 						: e->expr->f_str());
 
 			/* don't show aka for typeof types - it's there already */
 			of = is_type ? NULL : e->tree_type;
 		}
 
-		if(aka && of){
+		if((opts & TY_STR_AKA) && of){
 			/* descend to the type if it's next */
 			type *t_ref = type_is_primitive(of, type_unknown);
 			const btype *t = t_ref ? t_ref->bits.type : NULL;
 
 			BUF_ADD(" (aka '%s')",
 					t ? btype_to_str(t)
-					: type_to_str_r_spel_aka(buf, type_skip_tdefs(of), NULL, 0));
+					: type_to_str_r_spel_opts(buf, type_skip_tdefs(of), NULL, TY_STR_NOOPT));
 		}
 
 		return ty;
@@ -647,16 +689,20 @@ static type *type_set_parent(type *r, type *parent)
 }
 
 static
-const char *type_to_str_r_spel_aka(
+const char *type_to_str_r_spel_opts(
 		char buf[TYPE_STATIC_BUFSIZ], type *r,
-		char *spel, const int aka)
+		char *spel, enum type_str_opts const opts)
 {
 	char *bufp = buf;
 	int spc = 1;
 	type *stop_at;
 	int sz = TYPE_STATIC_BUFSIZ;
+	enum type_str_opts local_opts = TY_STR_NOOPT;
 
-	stop_at = type_add_type_str(r, &bufp, &sz, aka);
+	if((fopt_mode & FOPT_PRINT_TYPEDEFS) == 0)
+		local_opts |= TY_STR_NO_TDEF;
+
+	stop_at = type_add_type_str(r, &bufp, &sz, opts | local_opts);
 
 	assert(sz == (TYPE_STATIC_BUFSIZ - (bufp - buf)));
 
@@ -674,7 +720,7 @@ const char *type_to_str_r_spel_aka(
 
 const char *type_to_str_r_spel(char buf[TYPE_STATIC_BUFSIZ], type *r, char *spel)
 {
-	return type_to_str_r_spel_aka(buf, r, spel, 1);
+	return type_to_str_r_spel_opts(buf, r, spel, TY_STR_AKA);
 }
 
 const char *type_to_str_r(char buf[TYPE_STATIC_BUFSIZ], type *r)

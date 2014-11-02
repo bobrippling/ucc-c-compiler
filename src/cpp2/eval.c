@@ -282,7 +282,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 		}
 
 
-		dynarray_free(char **, &args, free);
+		dynarray_free(char **, args, free);
 		tokens_free(toks);
 		return replace;
 	}
@@ -438,7 +438,7 @@ char *eval_expand_macros(char *line)
 				case '\'':
 				{
 					/* skip quotes */
-					char *p = str_quotefin(line + 1);
+					char *p = str_quotefin2(line + 1, *line);
 					UCC_ASSERT(p, "no matching quote on line '%s' @ '%s'", anchor, line);
 					break;
 				}

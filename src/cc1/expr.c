@@ -34,7 +34,6 @@ void expr_mutate(expr *e, func_mutate_expr *f,
 	}
 
 	e->f_const_fold = NULL;
-	e->f_lea = NULL;
 
 	f(e);
 }
@@ -107,7 +106,7 @@ int expr_is_null_ptr(expr *e, enum null_strictness ty)
 
 int expr_is_lval(expr *e)
 {
-	if(!e->f_lea)
+	if(!e->is_lval)
 		return 0;
 
 	/* special case:

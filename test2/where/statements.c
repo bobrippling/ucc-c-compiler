@@ -1,4 +1,4 @@
-// RUN: %caret_check %s
+// RUN: %caret_check %s -Wassign-in-test
 
 main()
 {

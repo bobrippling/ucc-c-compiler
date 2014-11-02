@@ -177,6 +177,9 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 
 	if(!accept(token_semicolon)){
 		int got_decls;
+		where w;
+
+		where_cc1_current(&w);
 
 		got_decls = parse_decl_group(
 				DECL_MULTI_ALLOW_ALIGNAS | DECL_MULTI_ALLOW_STORE,
@@ -186,7 +189,7 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 
 		if(got_decls){
 			if(cc1_std < STD_C99)
-				cc1_warn_at(NULL, c89_for_init, "use of C99 for-init");
+				cc1_warn_at(&w, c89_for_init, "use of C99 for-init");
 
 			stmt_for_got_decls(s);
 		}else{

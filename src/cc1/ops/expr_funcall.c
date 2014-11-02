@@ -410,7 +410,7 @@ const out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 		/* consumes fn and args */
 		fn_ret = out_call(octx, fn, args, e->expr->tree_type);
 
-		dynarray_free(const out_val **, &args, NULL);
+		dynarray_free(const out_val **, args, NULL);
 	}
 
 	return fn_ret;

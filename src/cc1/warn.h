@@ -17,11 +17,13 @@ struct cc1_warning
 	unsigned char attr_nonnull;
 	unsigned char attr_nonnull_bad;
 	unsigned char attr_nonnull_noargs;
+	unsigned char attr_nonnull_noptrs;
 	unsigned char attr_nonnull_nonptr;
 	unsigned char attr_nonnull_oob;
 	unsigned char attr_printf_bad;
 	unsigned char attr_printf_toomany;
 	unsigned char attr_printf_unknown;
+	unsigned char attr_printf_voidp;
 	unsigned char attr_section_badchar;
 	unsigned char attr_sentinel;
 	unsigned char attr_sentinel_nonvariadic;
@@ -62,6 +64,7 @@ struct cc1_warning
 	unsigned char funcall_argcount;
 	unsigned char gnu_addr_lbl;
 	unsigned char gnu_alignof_expr;
+	unsigned char gnu_empty_init;
 	unsigned char gnu_expr_stmt;
 	unsigned char gnu_typeof;
 	unsigned char gnu_attribute;
@@ -98,6 +101,7 @@ struct cc1_warning
 	unsigned char nonstd_init;
 	unsigned char omitted_param_types;
 	unsigned char op_shift_bad;
+	unsigned char overflow;
 	unsigned char overlarge_enumerator_bitfield;
 	unsigned char overlarge_enumerator_int;
 	unsigned char pad;

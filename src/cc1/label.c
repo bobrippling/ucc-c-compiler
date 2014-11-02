@@ -30,6 +30,6 @@ void label_makeblk(label *l, out_ctx *octx)
 
 void label_free(label *l)
 {
-	dynarray_free(struct stmt *, l->jumpers, NULL);
+	dynarray_free(struct stmt **, l->jumpers, NULL);
 	free(l);
 }

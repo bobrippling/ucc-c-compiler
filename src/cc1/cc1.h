@@ -32,6 +32,7 @@ enum fopt
 	FOPT_EXT_KEYWORDS          = 1 << 20, /* -fasm */
 	FOPT_FOLD_CONST_VLAS       = 1 << 21,
 	FOPT_SHOW_WARNING_OPTION   = 1 << 22,
+	FOPT_PRINT_TYPEDEFS        = 1 << 23,
 };
 
 enum mopt

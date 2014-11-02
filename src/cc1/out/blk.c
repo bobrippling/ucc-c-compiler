@@ -82,7 +82,7 @@ static void bfs_block(out_blk *blk, struct flush_state *st)
 		return;
 	blk->flush_in_prog = 1;
 
-	if(BLK_IS_MERGE(blk)){
+	if(blk->merge_preds){
 		out_blk **i;
 
 		for(i = blk->merge_preds; *i; i++){
@@ -171,19 +171,24 @@ void blk_terminate_undef(out_blk *b)
 		b->type = BLK_TERMINAL;
 }
 
-out_blk *out_blk_new_lbl(out_ctx *octx, const char *lbl)
+static out_blk *blk_new_common(out_ctx *octx, char *lbl, const char *desc)
 {
 	out_blk *blk = umalloc(sizeof *blk);
-	(void)octx;
-	blk->desc = lbl;
-	blk->lbl = ustrdup(lbl);
+	blk->lbl = lbl;
+	blk->desc = desc;
+
+	blk->next = octx->mem_blk_head;
+	octx->mem_blk_head = blk;
+
 	return blk;
+}
+
+out_blk *out_blk_new_lbl(out_ctx *octx, const char *lbl)
+{
+	return blk_new_common(octx, ustrdup(lbl), lbl);
 }
 
 out_blk *out_blk_new(out_ctx *octx, const char *desc)
 {
-	out_blk *blk = umalloc(sizeof *blk);
-	blk->desc = desc;
-	blk->lbl = out_label_bblock(octx->nblks++);
-	return blk;
+	return blk_new_common(octx, out_label_bblock(octx->nblks++), desc);
 }

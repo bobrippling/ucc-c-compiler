@@ -260,6 +260,9 @@ const char *impl_val_str_r(
 			const char *rstr = x86_reg_str(
 					&vs->bits.regoff.reg, deref ? NULL : vs->t);
 
+			UCC_ASSERT(!deref || !vs->bits.regoff.reg.is_float,
+					"dereference float reg");
+
 			if(off){
 				UCC_ASSERT(1||deref,
 						"can't add to a register in %s",
@@ -932,11 +935,6 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 			ICE("invalid store lvalue 0x%x", to->type);
 
 		case V_REG_SPILT:
-			/* need to load the store value from memory
-			 * aka. double indir */
-			to = v_to_reg(octx, to);
-			break;
-
 		case V_REG:
 		case V_LBL:
 			break;
@@ -1379,9 +1377,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *reg)
 {
-	type *tpointed_to = vp->type == V_REG_SPILT
-		? vp->t
-		: type_dereference_decay(vp->t);
+	type *tpointed_to = type_dereference_decay(vp->t);
 
 	/* loaded the pointer, now we apply the deref change */
 	out_asm(octx, "mov%s %s, %%%s",
@@ -1504,9 +1500,10 @@ static void x86_fp_conv(
 		const char *sfrom, const char *sto)
 {
 	char vbuf[VAL_STR_SZ];
+	int truncate = type_is_integral(tto); /* going to int? */
 
-	out_asm(octx, "cvt%s2%s%s %s, %%%s",
-			/*truncate ? "t" : "",*/
+	out_asm(octx, "cvt%s%s2%s%s %s, %%%s",
+			truncate ? "t" : "",
 			sfrom, sto,
 			/* if we're doing an int-float conversion,
 			 * see if we need to do 64 or 32 bit
@@ -1610,15 +1607,12 @@ static const char *x86_call_jmp_target(
 
 		case V_REG_SPILT: /* load, then jmp */
 		case V_REG: /* jmp *%rax */
-			/* TODO: v_to_reg_given() ? */
-			*pvp = v_to_reg(octx, *pvp);
+			*pvp = v_reg_apply_offset(octx, v_to_reg(octx, *pvp));
 
 			UCC_ASSERT(!(*pvp)->bits.regoff.reg.is_float, "jmp float?");
 
 			if(prevent_rax && (*pvp)->bits.regoff.reg.idx == X86_64_REG_RAX){
 				struct vreg r;
-
-				*pvp = v_reg_apply_offset(octx, *pvp);
 
 				v_unused_reg(octx, 1, 0, &r, /*don't want rax:*/NULL);
 				impl_reg_cp_no_off(octx, *pvp, &r);
@@ -1627,8 +1621,9 @@ static const char *x86_call_jmp_target(
 				memcpy_safe(&((out_val *)*pvp)->bits.regoff.reg, &r);
 			}
 
-			snprintf(buf, sizeof buf, "*%%%s",
-					x86_reg_str(&(*pvp)->bits.regoff.reg, NULL));
+			*buf = '*';
+			impl_val_str_r(buf + 1, *pvp, 0);
+			/* FIXME: derereference: 0 - this should check for an lvalue and if so, pass 1 */
 			return buf;
 	}
 
@@ -1672,6 +1667,8 @@ void impl_branch(
 			cmp = ustrprintf("jz %s", bf->lbl);
 
 			blk_terminate_condjmp(octx, cmp, bf, bt, unlikely);
+
+			out_val_consume(octx, cond);
 			break;
 		}
 
@@ -1707,6 +1704,8 @@ void impl_branch(
 			}
 
 			blk_terminate_condjmp(octx, cmpjmp, bt, bf, unlikely);
+
+			out_val_consume(octx, cond);
 			break;
 		}
 
@@ -1719,6 +1718,8 @@ void impl_branch(
 			out_comment(octx,
 					"constant jmp condition %staken",
 					flag ? "" : "not ");
+
+			out_val_consume(octx, cond);
 
 			out_ctrl_transfer(octx, flag ? bt : bf, NULL, NULL);
 			break;
@@ -1981,7 +1982,7 @@ const out_val *impl_call(
 
 	for(i = 0; i < nargs; i++)
 		out_val_consume(octx, local_args[i]);
-	dynarray_free(const out_val **, &local_args, NULL);
+	dynarray_free(const out_val **, local_args, NULL);
 
 	free(float_arg);
 
