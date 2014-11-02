@@ -141,11 +141,11 @@ void gen_stmt_asm(const stmt *s, out_ctx *octx)
 		struct constrained_val *new;
 		const out_val *generated;
 
+		generated = gen_expr(param->exp, octx);
+
 		if(param->is_output){
-			generated = NULL;
 			new = dynvec_add(&outputs.arr, &outputs.n);
 		}else{
-			generated = gen_expr(param->exp, octx);
 			new = dynvec_add(&inputs.arr, &inputs.n);
 		}
 
@@ -185,7 +185,6 @@ void gen_stmt_asm(const stmt *s, out_ctx *octx)
 			asm_param *param = *params;
 			if(!param->is_output)
 				continue;
-			outputs.arr[i].val = gen_expr(param->exp, octx);
 
 			out_inline_asm_ext_output(octx, i, &outputs.arr[i], &state);
 		}

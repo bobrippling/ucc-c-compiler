@@ -280,8 +280,16 @@ done_mods:;
 static void constrain_output(
 		out_ctx *octx,
 		const out_val *out_lval,
-		const out_val *out_temporary)
+		const out_val *out_temporary,
+		const struct chosen_constraint *constraint)
 {
+	int temporary_is_lvalue = (constraint->type == C_MEM);
+
+	assert(constraint->type != C_ANY && "C_ANY should've been eliminated");
+
+	if(temporary_is_lvalue)
+		out_temporary = out_deref(octx, out_temporary);
+
 	out_store(octx, out_lval, out_temporary);
 }
 
@@ -550,6 +558,7 @@ static void constrain_input_val(
 	/* fill it with the right values */
 	switch(constraint->type){
 		case C_ANY:
+			/* already in the right state */
 			break;
 
 		case C_MEM:
@@ -573,7 +582,9 @@ static void constrain_input_val(
 
 static const out_val *temporary_for_output(
 		out_ctx *octx,
-		struct chosen_constraint *constraint, type *ty)
+		struct chosen_constraint *constraint,
+		type *ty,
+		const out_val *for_val)
 {
 	/* if the output already references the lvalue and matches the constraint,
 	 * we can leave it.
@@ -582,6 +593,23 @@ static const out_val *temporary_for_output(
 	 * that as a temporary, then assign to the output afterwards
 	 */
 	switch(constraint->type){
+		case C_ANY:
+			/* map C_ANY onto a the best/closest C_* type */
+			switch(for_val->type){
+				case V_CONST_I:
+				case V_CONST_F:
+				case V_REG:
+				case V_FLAG:
+					constraint->type = C_REG;
+					break;
+
+				case V_LBL:
+				case V_REG_SPILT:
+					constraint->type = C_MEM;
+					break;
+			}
+			return temporary_for_output(octx, constraint, ty, for_val);
+
 		case C_REG:
 			/* need to use a temporary - a register can't match an lvalue
 			 * e.g.
@@ -591,11 +619,9 @@ static const out_val *temporary_for_output(
 			 */
 			return v_new_reg(octx, NULL, ty, &constraint->bits.reg);
 
-		case C_ANY: /* XXX: suboptimal */
 		case C_MEM:
 		{
 			const out_val *spill;
-			out_val *mut_spill;
 
 #if 0
 			switch(cval->val->type){
@@ -611,10 +637,7 @@ static const out_val *temporary_for_output(
 
 			spill = out_aalloc(octx, type_size(ty, NULL), type_align(ty, NULL), ty);
 
-			assert(spill->retains == 1);
-			mut_spill = (out_val *)spill;
-			mut_spill->type = V_REG_SPILT;
-			return mut_spill;
+			return spill;
 		}
 
 		case C_CONST:
@@ -622,6 +645,49 @@ static const out_val *temporary_for_output(
 	}
 
 	assert(0);
+}
+
+static const out_val *initialise_output_temporary(
+		out_ctx *octx,
+		const out_val *out_temporary,
+		struct chosen_constraint *constraint,
+		const out_val *with_val)
+{
+	/* out_temporary is an uninitialised temporary,
+	 * either memory or register. need to initialise it
+	 * if "+" constraint (rw) present
+	 *
+	 * (and provided it's not the same memory as the lvalue)
+	 */
+	out_comment(octx, "read-write/\"+\" operand:");
+
+	if(constraint->type == C_MEM){
+		out_val_retain(octx, with_val);
+		out_val_retain(octx, out_temporary);
+
+		out_store(octx,
+				/*dest*/out_deref(octx, out_temporary),
+				/*src */out_deref(octx, with_val));
+	}else{
+		struct vreg temporary_reg;
+
+		assert(constraint->type == C_REG);
+		assert(out_temporary->type == V_REG);
+
+		/* need to get value in 'with_val'
+		 * into register 'out_temporary->bits.regoff.reg'
+		 */
+		memcpy_safe(&temporary_reg, &out_temporary->bits.regoff.reg);
+
+		out_val_retain(octx, with_val);
+		out_val_release(octx, out_temporary);
+
+		out_temporary = v_to_reg_given(octx,
+				out_deref(octx, with_val),
+				&temporary_reg);
+	}
+
+	return out_temporary;
 }
 
 static void parse_clobbers(
@@ -698,14 +764,25 @@ static void constrain_values(out_ctx *octx,
 
 		}else{
 			const out_val *out_temporary;
+			const int init_temporary
+				= (outputs->arr[i].calculated_constraint & MODIFIER_MASK_rw);
 
 			constraint = &coutputs[i];
 
 			out_temporary = temporary_for_output(
-					octx, constraint, outputs->arr[i].ty);
+					octx, constraint,
+					outputs->arr[i].ty,
+					outputs->arr[i].val);
+
+			if(init_temporary){
+				out_temporary = initialise_output_temporary(
+						octx,
+						out_temporary,
+						constraint,
+						outputs->arr[i].val);
+			}
 
 			output_temporaries[i] = out_temporary;
-			/* TODO: if this is a '+' / readwrite, dereference it beforehand? */
 		}
 
 		if(constraint->type == C_REG
@@ -862,10 +939,15 @@ void out_inline_asm_ext_output(
 {
 	const out_val *val = output->val;
 
-	if(st->output_temporaries[i])
-		constrain_output(octx, val, st->output_temporaries[i]);
-	else
+	if(st->output_temporaries[i]){
+		constrain_output(octx,
+				val,
+				st->output_temporaries[i],
+				&st->constraints.outputs[i]);
+
+	}else{
 		out_val_release(octx, val);
+	}
 }
 
 void out_inline_asm_ext_end(struct inline_asm_state *st)
