@@ -667,8 +667,9 @@ static type *parse_btype(
 				UCC_ASSERT(tdef_typeof, "no tdef_typeof for typedef/typeof");
 				/* signed size_t x; */
 				if(signed_set){
-					die_at(NULL, "signed/unsigned not allowed with typedef instance (%s)",
-							tdef_typeof->bits.ident.bits.ident.spel);
+					signed_set = 0;
+					warn_at_print_error(NULL,
+							"typedef instance can't be signed or unsigned");
 				}
 
 				if(tdef_decl) /* typedef only */
