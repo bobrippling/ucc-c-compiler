@@ -33,10 +33,12 @@ static void blk_free(out_blk *blk)
 
 static void out_wipe_blks(out_ctx *octx)
 {
-	out_blk *b;
+	out_blk *b, *next;
 
-	for(b = octx->mem_blk_head; b; b = b->next)
+	for(b = octx->mem_blk_head; b; b = next){
+		next = b->next;
 		blk_free(b);
+	}
 
 	octx->first_blk =
 	octx->second_blk =
