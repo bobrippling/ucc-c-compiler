@@ -40,21 +40,36 @@ struct inline_outs
 
 
 static void inline_vars_push(
-		struct cc1_inline *new, struct cc1_inline *save)
+		struct cc1_out_ctx *cc1_octx, struct cc1_inline *save,
+		dynmap **const nested_label_map)
 {
+	struct cc1_inline *const new = &cc1_octx->inline_;
+
 	memcpy_safe(save, new);
 	new->phi = NULL;
 	new->rets = NULL;
 	/* keep depth */
+
+	/* current label context is saved */
+	*nested_label_map = cc1_octx->label_to_blk;
+	cc1_octx->label_to_blk = NULL;
 }
 
 static void inline_vars_pop(
-		struct cc1_inline *current, struct cc1_inline *saved)
+		struct cc1_out_ctx *cc1_octx, struct cc1_inline *saved,
+		dynmap **const nested_label_map)
 {
+	struct cc1_inline *const current = &cc1_octx->inline_;
+
 	/* block memory management is handled by the out/backend
 	 * we just free our array of them */
 	dynarray_free(out_blk **, current->rets, NULL);
 	memcpy_safe(current, saved);
+
+	/* restore current label context */
+	dynmap_free(cc1_octx->label_to_blk);
+	cc1_octx->label_to_blk = *nested_label_map;
+	*nested_label_map = NULL;
 }
 
 static const out_val *merge_inline_rets(
@@ -95,11 +110,12 @@ static const out_val *gen_inline_func(
 		const out_val *map_val;
 	} *pushed_vals = umalloc(nargs * sizeof *pushed_vals);
 	struct out_dbg_lbl *dbg_endlbl = NULL;
+	dynmap *nested_label_map;
 
 	if(!cc1_octx->sym_inline_map)
 		cc1_octx->sym_inline_map = dynmap_new(sym *, NULL, sym_hash);
 
-	inline_vars_push(&cc1_octx->inline_, &saved);
+	inline_vars_push(cc1_octx, &saved, &nested_label_map);
 	cc1_octx->inline_.phi = out_blk_new(octx, "inline_phi");
 
 	if(cc1_gdebug){
@@ -203,7 +219,7 @@ static const out_val *gen_inline_func(
 	out_ctrl_transfer_make_current(octx, cc1_octx->inline_.phi);
 
 	merged_ret = merge_inline_rets(&cc1_octx->inline_, octx);
-	inline_vars_pop(&cc1_octx->inline_, &saved);
+	inline_vars_pop(cc1_octx, &saved, &nested_label_map);
 
 	return merged_ret;
 }
