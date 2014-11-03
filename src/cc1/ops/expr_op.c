@@ -434,7 +434,7 @@ type *op_required_promotion(
 		type **plhs, type **prhs)
 {
 	type *resolved = NULL;
-	type *const tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
+	type *tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
 	int floating_lhs;
 
 	*plhs = *prhs = NULL;
@@ -592,14 +592,11 @@ ptr_relation:
 		if(op == op_shiftl || op == op_shiftr){
 			/* fine with any parameter sizes
 			 * don't need to match. resolves to lhs,
-			 * or int if lhs is smaller (done before this function)
+			 * or int if lhs is smaller
 			 */
 
-			UCC_ASSERT(
-					type_size(tlhs, &lhs->where)
-						>= type_primitive_size(type_int),
-					"shift operand should have been promoted (got %s)",
-					type_to_str(tlhs));
+			if(type_size(tlhs, &lhs->where) < type_primitive_size(type_int))
+				tlhs = *plhs = type_nav_btype(cc1_type_nav, type_int);
 
 			resolved = tlhs;
 

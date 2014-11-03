@@ -68,7 +68,7 @@ struct expr
 		/* __builtin_va_start */
 		int n;
 
-		int compound_upcast;
+		type *compound_upcast_ty;
 
 		struct
 		{
