@@ -30,6 +30,7 @@
 #include "cc1_out_ctx.h"
 #include "inline.h"
 #include "type_nav.h"
+#include "label.h"
 
 int gen_had_error;
 
@@ -221,6 +222,8 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		/* vla cleanup for an entire function - inlined
 		 * VLAs need to retain their uniqueness across inline calls */
 		vla_cleanup(octx);
+
+		label_cleanup(octx);
 
 		out_dbg_where(octx, &d->bits.func.code->where_cbrace);
 

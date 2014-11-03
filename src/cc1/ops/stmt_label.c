@@ -32,12 +32,10 @@ void fold_stmt_label(stmt *s)
 
 void gen_stmt_label(const stmt *s, out_ctx *octx)
 {
-	label *l = s->bits.lbl.label;
-
-	label_makeblk(l, octx);
+	out_blk *thisblk = label_getblk(s->bits.lbl.label, octx);
 
 	/* explicit fall through */
-	out_ctrl_transfer_make_current(octx, l->bblock);
+	out_ctrl_transfer_make_current(octx, thisblk);
 	gen_stmt(s->lhs, octx); /* the code-part of the compound statement */
 }
 

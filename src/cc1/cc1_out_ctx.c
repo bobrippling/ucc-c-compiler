@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <assert.h>
 
 #include "cc1_out_ctx.h"
 
@@ -26,5 +27,9 @@ void cc1_out_ctx_free(out_ctx *octx)
 	dynmap_free((*cc1_octx)->vlamap);
 	dynmap_free((*cc1_octx)->generated_decls);
 	dynmap_free((*cc1_octx)->spel_to_fndecl);
+
+	assert(!(*cc1_octx)->label_to_blk
+			&& "label_to_blk should be handled elsewhere");
+
 	free(*cc1_octx);
 }

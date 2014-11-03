@@ -24,6 +24,8 @@ struct cc1_out_ctx
 		struct DIE_compile_unit *compile_unit;
 		struct DIE *current_scope;
 	} dbg;
+
+	struct dynmap *label_to_blk;
 };
 
 #define cc1_out_ctx(octx) ((struct cc1_out_ctx **)out_user_ctx(octx))
