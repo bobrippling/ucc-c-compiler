@@ -8,7 +8,7 @@ const char *str_expr_assign_compound()
 
 void fold_expr_assign_compound(expr *e, symtable *stab)
 {
-	expr *const lvalue = e->lhs;
+#define lvalue e->lhs
 
 	fold_inc_writes_if_sym(lvalue, stab);
 
@@ -31,6 +31,10 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	UCC_ASSERT(op_can_compound(e->op), "non-compound op in compound expr");
 
+	/*expr_promote_int_if_smaller(&e->lhs, stab);
+	 * lhs int promotion is handled in code-gen */
+	expr_promote_int_if_smaller(&e->rhs, stab);
+
 	{
 		type *tlhs, *trhs;
 		type *resolved = op_required_promotion(e->op, lvalue, e->rhs, &e->where, &tlhs, &trhs);
@@ -39,11 +43,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 			/* must cast the lvalue, then down cast once the operation is done
 			 * special handling for expr_kind(e->lhs, cast) is done in the gen-code
 			 */
-			fold_insert_casts(tlhs, &e->lhs, stab);
-
-			/* casts may be inserted anyway, and don't want to rely on
-			 * .implicit_cast stuff */
-			e->bits.compound_upcast = 1;
+			e->bits.compound_upcast_ty = tlhs;
 
 		}else if(trhs){
 			fold_insert_casts(trhs, &e->rhs, stab);
@@ -56,6 +56,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	}
 
 	/* type check is done in op_required_promotion() */
+#undef lvalue
 }
 
 const out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
@@ -65,9 +66,7 @@ const out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
 	 */
 	const out_val *saved_post = NULL, *addr_lhs, *rhs, *lhs, *result;
 
-	addr_lhs = gen_expr(
-			e->bits.compound_upcast ? expr_cast_child(e->lhs) : e->lhs,
-			octx);
+	addr_lhs = gen_expr(e->lhs, octx);
 
 	out_val_retain(octx, addr_lhs); /* 2 */
 
@@ -84,13 +83,13 @@ const out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
 
 	/* here's the delayed dereference */
 	lhs = out_deref(octx, addr_lhs); /* addr_lhs=1 */
-	if(e->bits.compound_upcast)
-		lhs = out_cast(octx, lhs, e->lhs->tree_type, /*normalise_bool:*/1);
+	if(e->bits.compound_upcast_ty)
+		lhs = out_cast(octx, lhs, e->bits.compound_upcast_ty, /*normalise_bool:*/1);
 
 	result = out_op(octx, e->op, lhs, rhs);
 	gen_op_trapv(e->tree_type, &result, octx);
 
-	if(e->bits.compound_upcast) /* need to cast back down to store */
+	if(e->bits.compound_upcast_ty) /* need to cast back down to store */
 		result = out_cast(octx, result, e->tree_type, /*normalise_bool:*/1);
 
 	if(!saved_post)
