@@ -7,7 +7,16 @@
 typedef struct sym sym;
 struct sym
 {
-	const struct out_val *outval;
+	union
+	{
+		struct
+		{
+			const struct out_val **vals; /* sym_{local,arg} */
+			unsigned n;
+		} stack;
+		const struct out_val *val_single; /* sym_global */
+	} out;
+	long bp_offset;
 
 	enum sym_type
 	{
@@ -32,6 +41,8 @@ struct static_assert
 	int checked;
 };
 
+struct out_dbg_lbl;
+
 typedef struct symtable symtable;
 struct symtable
 {
@@ -51,7 +62,8 @@ struct symtable
 
 	decl *in_func; /* for r/w checks on args and return-type checks */
 
-	char *lbl_begin, *lbl_end; /* for debug - lexical block */
+	/* for debug - lexical block */
+	struct out_dbg_lbl *lbl_begin, *lbl_end;
 
 	symtable *parent, **children;
 
@@ -87,6 +99,9 @@ sym *sym_new_and_prepend_decl(symtable *, decl *d, enum sym_type t);
 
 symtable_global *symtabg_new(where *);
 
+const struct out_val *sym_outval(sym *);
+void sym_setoutval(sym *, const struct out_val *);
+
 symtable *symtab_new(symtable *parent, where *w);
 void      symtab_set_parent(symtable *child, symtable *parent);
 void      symtab_rm_parent( symtable *child);
@@ -97,6 +112,8 @@ symtable *symtab_func_root(symtable *stab);
 symtable_global *symtab_global(symtable *);
 
 int symtab_nested_internal(symtable *parent, symtable *nest);
+
+unsigned symtab_decl_bytes(symtable *, unsigned const vla_cost);
 
 #define symtab_add_to_scope(scope, d) \
 	dynarray_add(&(scope)->decls, (d))
@@ -113,5 +130,7 @@ const char *sym_to_str(enum sym_type);
 /* labels */
 struct label *symtab_label_find_or_new(symtable *, char *, where *);
 void symtab_label_add(symtable *, struct label *);
+
+unsigned sym_hash(const sym *);
 
 #endif

@@ -17,7 +17,7 @@ typedef void func_const(struct expr *, consty *);
 typedef const char *func_str(void);
 typedef void func_mutate_expr(struct expr *);
 
-typedef ucc_wur const out_val *func_gen(struct expr *, out_ctx *);
+typedef ucc_wur const out_val *func_gen(const struct expr *, out_ctx *);
 
 #define UNUSED_OCTX() (void)octx; return NULL
 
@@ -223,6 +223,7 @@ expr *expr_new_decl_init(decl *d, struct decl_init *di);
 #include "ops/expr_struct.h"
 #include "ops/expr_compound_lit.h"
 #include "ops/expr_string.h"
+#include "ops/expr_block.h"
 
 /* XXX: memleak */
 #define expr_free(x) do{                 \
@@ -282,5 +283,7 @@ expr *expr_new_array_idx_e(expr *base, expr *idx);
 expr *expr_new_array_idx(expr *base, int i);
 
 expr *expr_skip_casts(expr *);
+
+decl *expr_to_declref(expr *e, const char **whynot);
 
 #endif

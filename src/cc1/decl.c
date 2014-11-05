@@ -172,6 +172,18 @@ enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts)
 	return cmp;
 }
 
+unsigned decl_hash(const decl *d)
+{
+	unsigned hash = type_hash(d->ref);
+
+	hash ^= d->store;
+
+	if(d->spel)
+		hash ^= dynmap_strhash(d->spel);
+
+	return hash;
+}
+
 int decl_conv_array_func_to_ptr(decl *d)
 {
 	type *old = d->ref;
@@ -249,6 +261,21 @@ const char *decl_to_str(decl *d)
 {
 	static char buf[DECL_STATIC_BUFSIZ];
 	return decl_to_str_r(buf, d);
+}
+
+decl *decl_impl(decl *const d)
+{
+	decl *i;
+
+	for(i = d; i; i = i->proto)
+		if(i->bits.func.code)
+			return i;
+
+	for(i = d; i; i = i->impl)
+		if(i->bits.func.code)
+			return i;
+
+	return d;
 }
 
 int decl_is_pure_inline(decl *const d)

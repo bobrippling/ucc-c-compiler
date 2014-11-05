@@ -1054,7 +1054,7 @@ void fold_expr_op(expr *e, symtable *stab)
 	}
 }
 
-const out_val *gen_expr_str_op(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_op(const expr *e, out_ctx *octx)
 {
 	idt_printf("op: %s\n", op_to_str(e->op));
 	gen_str_indent++;
@@ -1069,7 +1069,7 @@ const out_val *gen_expr_str_op(expr *e, out_ctx *octx)
 	UNUSED_OCTX();
 }
 
-static const out_val *op_shortcircuit(expr *e, out_ctx *octx)
+static const out_val *op_shortcircuit(const expr *e, out_ctx *octx)
 {
 	out_blk *blk_rhs, *blk_empty, *landing;
 	const out_val *lhs;
@@ -1140,7 +1140,7 @@ void gen_op_trapv(type *evaltt, const out_val **eval, out_ctx *octx)
 	}
 }
 
-const out_val *gen_expr_op(expr *e, out_ctx *octx)
+const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 {
 	const out_val *lhs, *eval;
 
@@ -1194,7 +1194,7 @@ expr *expr_new_op2(enum op_type o, expr *l, expr *r)
 	return e;
 }
 
-const out_val *gen_expr_style_op(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_op(const expr *e, out_ctx *octx)
 {
 	if(e->rhs){
 		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));

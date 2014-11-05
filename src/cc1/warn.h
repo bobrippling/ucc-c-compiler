@@ -85,6 +85,7 @@ struct cc1_warning
 	unsigned char init_overlong_strliteral;
 	unsigned char init_override;
 	unsigned char init_undesignated;
+	unsigned char inline_builtin_frame_addr;
 	unsigned char int_ptr_conv;
 	unsigned char lbl_attr_unknown;
 	unsigned char lbl_unused;
@@ -121,6 +122,7 @@ struct cc1_warning
 	unsigned char sizeof_decayed;
 	unsigned char sizeof_ptr_div;
 	unsigned char static_array_bad;
+	unsigned char static_local_in_inline;
 	unsigned char str_contain_nul;
 	unsigned char struct_noinstance_anon;
 	unsigned char struct_noinstance_qualified;
@@ -150,7 +152,7 @@ struct cc1_warning
 extern struct cc1_warning cc1_warning;
 
 void cc1_warn_at_w(
-		struct where *where,
+		const struct where *where,
 		unsigned char *pwarn,
 		const char *fmt, ...)
 	ucc_printflike(3, 4);

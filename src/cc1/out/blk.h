@@ -10,6 +10,11 @@ struct out_blk
 	char *lbl;
 	char **insns;
 
+	struct
+	{
+		struct out_dbg_lbl **start, **end;
+	} labels;
+
 	out_blk **merge_preds;
 	out_blk *next;
 	int flush_in_prog;

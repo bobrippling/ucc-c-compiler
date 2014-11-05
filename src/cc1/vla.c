@@ -227,7 +227,7 @@ static const out_val *vla_gen_size(type *t, out_ctx *octx)
 void vla_typedef_init(decl *d, out_ctx *octx)
 {
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
-	const out_val *alloc_start = d->sym->outval;
+	const out_val *alloc_start = sym_outval(d->sym);
 
 	out_val_retain(octx, alloc_start);
 	out_val_consume(octx,
@@ -249,7 +249,7 @@ void vla_decl_init(decl *d, out_ctx *octx)
 	const int is_vla = !!type_is_vla(d->ref, VLA_ANY_DIMENSION);
 	const out_val *stack_ent;
 
-	stack_ent = out_val_retain(octx, d->sym->outval);
+	stack_ent = out_val_retain(octx, sym_outval(d->sym));
 	stack_ent = out_change_type(octx, stack_ent, charp);
 
 	assert(s && "no sym for vla");
@@ -299,7 +299,7 @@ void vla_decl_init(decl *d, out_ctx *octx)
 static const out_val *vla_read(decl *d, out_ctx *octx, long offset, type *deref_ty)
 {
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
-	const out_val *stack_ent = d->sym->outval;
+	const out_val *stack_ent = sym_outval(d->sym);
 
 	out_val_retain(octx, stack_ent);
 	stack_ent = out_change_type(octx, stack_ent, sizety);

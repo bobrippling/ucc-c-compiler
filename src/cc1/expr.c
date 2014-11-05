@@ -141,3 +141,23 @@ expr *expr_skip_casts(expr *e)
 		e = e->expr;
 	return e;
 }
+
+decl *expr_to_declref(expr *e, const char **whynot)
+{
+	e = expr_skip_casts(e);
+
+	if(expr_kind(e, identifier)){
+		if(e->bits.ident.type == IDENT_NORM)
+			return e->bits.ident.bits.ident.sym->decl;
+		else if(whynot)
+			*whynot = "not normal identifier";
+
+	}else if(expr_kind(e, block)){
+		return e->bits.block.sym->decl;
+
+	}else if(whynot){
+		*whynot = "not an identifier or block";
+	}
+
+	return NULL;
+}

@@ -24,6 +24,7 @@
 
 #include "../parse_expr.h"
 #include "../parse_type.h"
+#include "../cc1_out_ctx.h"
 
 #define PREFIX "__builtin_"
 
@@ -134,7 +135,7 @@ expr *builtin_parse(const char *sp, symtable *scope)
 	return NULL;
 }
 
-const out_val *builtin_gen_print(expr *e, out_ctx *octx)
+const out_val *builtin_gen_print(const expr *e, out_ctx *octx)
 {
 	/*const enum pdeclargs dflags =
 		  PDECL_INDENT
@@ -182,7 +183,7 @@ static void wur_builtin(expr *e)
 	e->freestanding = 0; /* needs use */
 }
 
-static const out_val *builtin_gen_undefined(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_undefined(const expr *e, out_ctx *octx)
 {
 	(void)e;
 	out_ctrl_end_undefined(octx);
@@ -215,7 +216,7 @@ static void fold_memset(expr *e, symtable *stab)
 	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
 
-static const out_val *builtin_gen_memset(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_memset(const expr *e, out_ctx *octx)
 {
 	size_t n, rem;
 	unsigned i;
@@ -340,7 +341,7 @@ static void builtin_memcpy_single(
 	*src = out_op(octx, op_plus, *src, out_new_l(octx, t1, 1));
 }
 
-static const out_val *builtin_gen_memcpy(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_memcpy(const expr *e, out_ctx *octx)
 {
 #ifdef BUILTIN_USE_LIBC
 	/* TODO - also with memset */
@@ -561,9 +562,16 @@ static void fold_frame_address(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static const out_val *builtin_gen_frame_address(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_frame_address(const expr *e, out_ctx *octx)
 {
+	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	const int depth = e->bits.num.val.i;
+
+	if(cc1_octx && cc1_octx->inline_.depth){
+		cc1_warn_at(&e->where, inline_builtin_frame_addr,
+				"inlining function with call to %s",
+				BUILTIN_SPEL(e->expr));
+	}
 
 	return out_new_frame_ptr(octx, depth + 1);
 }
@@ -599,7 +607,7 @@ static void fold_reg_save_area(expr *e, symtable *stab)
 	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar));
 }
 
-static const out_val *gen_reg_save_area(expr *e, out_ctx *octx)
+static const out_val *gen_reg_save_area(const expr *e, out_ctx *octx)
 {
 	(void)e;
 	out_comment(octx, "stack local offset:");
@@ -639,7 +647,7 @@ static void fold_expect(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static const out_val *builtin_gen_expect(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_expect(const expr *e, out_ctx *octx)
 {
 	const out_val *eval;
 	consty k;
@@ -714,7 +722,7 @@ static void const_choose_expr(expr *e, consty *k)
 	const_fold(CHOOSE_EXPR_CHOSEN(e), k);
 }
 
-static const out_val *gen_choose_expr(expr *e, out_ctx *octx)
+static const out_val *gen_choose_expr(const expr *e, out_ctx *octx)
 {
 	/* forward to the chosen expr */
 	return gen_expr(CHOOSE_EXPR_CHOSEN(e), octx);
@@ -813,7 +821,7 @@ need_char_p:
 	wur_builtin(e);
 }
 
-static const out_val *builtin_gen_nan(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_nan(const expr *e, out_ctx *octx)
 {
 	return out_new_nan(octx, e->tree_type);
 }

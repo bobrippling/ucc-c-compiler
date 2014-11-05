@@ -33,7 +33,7 @@ void fold_expr_str(expr *e, symtable *stab)
 			sz);
 }
 
-const out_val *gen_expr_str(expr *e, out_ctx *octx)
+const out_val *gen_expr_str(const expr *e, out_ctx *octx)
 {
 	/* gen_expr_str :: char (*)[]
 	 *
@@ -46,7 +46,7 @@ const out_val *gen_expr_str(expr *e, out_ctx *octx)
 	return out_new_lbl(octx, type_decay(e->tree_type), strl->lbl, 1);
 }
 
-const out_val *gen_expr_str_str(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_str(const expr *e, out_ctx *octx)
 {
 	FILE *f = gen_file();
 	stringlit *lit = e->bits.strlit.lit_at.lit;
@@ -102,7 +102,7 @@ expr *expr_new_str(char *s, size_t l, int wide, where *w, symtable *stab)
 	return e;
 }
 
-const out_val *gen_expr_style_str(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_str(const expr *e, out_ctx *octx)
 {
 	literal_print(gen_file(),
 			e->bits.strlit.lit_at.lit->str,

@@ -62,13 +62,13 @@ void fold_expr_addr(expr *e, symtable *stab)
 	}
 }
 
-const out_val *gen_expr_addr(expr *e, out_ctx *octx)
+const out_val *gen_expr_addr(const expr *e, out_ctx *octx)
 {
 	if(e->bits.lbl.spel){
 		/* GNU &&lbl */
-		label_makeblk(e->bits.lbl.label, octx);
+		out_blk *blk = label_getblk(e->bits.lbl.label, octx);
 
-		return out_new_blk_addr(octx, e->bits.lbl.label->bblock);
+		return out_new_blk_addr(octx, blk);
 
 	}else{
 		/* gen_expr works, even for &expr, because the fold_expr_no_decay()
@@ -77,7 +77,7 @@ const out_val *gen_expr_addr(expr *e, out_ctx *octx)
 	}
 }
 
-const out_val *gen_expr_str_addr(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_addr(const expr *e, out_ctx *octx)
 {
 	if(e->bits.lbl.spel){
 		idt_printf("address of label \"%s\"\n", e->bits.lbl.spel);
@@ -141,7 +141,7 @@ void mutate_expr_addr(expr *e)
 	e->f_const_fold = const_expr_addr;
 }
 
-const out_val *gen_expr_style_addr(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_addr(const expr *e, out_ctx *octx)
 {
 	const out_val *r;
 	stylef("&(");

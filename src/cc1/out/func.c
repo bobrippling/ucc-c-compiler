@@ -19,6 +19,7 @@
 
 #include "../cc1.h" /* mopt_mode */
 #include "../../util/platform.h"
+#include "../../util/dynarray.h"
 
 const out_val *out_call(out_ctx *octx,
 		const out_val *fn, const out_val **args,
@@ -178,6 +179,11 @@ void out_func_epilogue(
 
 	free(octx->used_callee_saved), octx->used_callee_saved = NULL;
 
+	dynarray_free(
+			struct out_dbg_lbl **,
+			octx->pending_lbls,
+			NULL);
+
 	octx->initial_stack_sz =
 		octx->cur_stack_sz =
 		octx->max_stack_sz =
@@ -253,4 +259,9 @@ void out_func_prologue(
 	 * in case any spills are needed */
 	octx->second_blk = post_prologue;
 	out_current_blk(octx, post_prologue);
+}
+
+unsigned out_current_stack(out_ctx *octx)
+{
+	return octx->max_stack_sz;
 }

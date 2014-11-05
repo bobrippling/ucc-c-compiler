@@ -1092,7 +1092,7 @@ void fold_decl_global(decl *d, symtable *stab)
 		fold_global_func(d);
 }
 
-void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
+void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 {
 	if(!e)
 		return;
@@ -1157,7 +1157,7 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 
 	if(chk & FOLD_CHK_CONST_I){
 		consty k;
-		const_fold(e, &k);
+		const_fold((expr *)e, &k);
 
 		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
 			die_at(&e->where, "integral constant expected for %s", desc);

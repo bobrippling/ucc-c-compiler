@@ -25,28 +25,12 @@ void fold_stmt_expr(stmt *s)
 	}
 }
 
-void gen_stmt_expr(stmt *s, out_ctx *octx)
+void gen_stmt_expr(const stmt *s, out_ctx *octx)
 {
-	size_t prev = out_expr_stack(octx);
-	size_t now;
-	char wbuf[WHERE_BUF_SIZ];
-
 	out_val_consume(octx, gen_expr(s->expr, octx));
-
-	now = out_expr_stack(octx);
-
-	if(now != prev){
-		ICW("values still retained (%ld <-- %ld - %ld) after %s @ %s",
-				(long)(now - prev),
-				now, prev,
-				s->expr->f_str(),
-				where_str_r(wbuf, &s->where));
-
-		out_dump_retained(octx, s->f_str());
-	}
 }
 
-void style_stmt_expr(stmt *s, out_ctx *octx)
+void style_stmt_expr(const stmt *s, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(";\n");

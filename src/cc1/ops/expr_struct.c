@@ -102,7 +102,7 @@ err:
 	e->tree_type = type_qualify(e->bits.struct_mem.d->ref, struct_qual);
 }
 
-const out_val *gen_expr_struct(expr *e, out_ctx *octx)
+const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 {
 	const out_val *struct_exp, *off;
 
@@ -147,7 +147,7 @@ const out_val *gen_expr_struct(expr *e, out_ctx *octx)
 	return off;
 }
 
-const out_val *gen_expr_str_struct(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_struct(const expr *e, out_ctx *octx)
 {
 	decl *mem = e->bits.struct_mem.d;
 
@@ -236,7 +236,7 @@ expr *expr_new_struct_mem(expr *sub, int dot, decl *d)
 	return e;
 }
 
-const out_val *gen_expr_style_struct(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_struct(const expr *e, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef("->%s", e->bits.struct_mem.d->spel);

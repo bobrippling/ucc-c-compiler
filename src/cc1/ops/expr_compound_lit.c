@@ -71,19 +71,28 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	}
 }
 
-static void gen_expr_compound_lit_code(expr *e, out_ctx *octx)
+static void gen_expr_compound_lit_code(const expr *e, out_ctx *octx)
 {
 	if(!e->expr_comp_lit_cgen){
 		expr *initexp = e->bits.complit.decl->bits.var.init.expr;
 
-		e->expr_comp_lit_cgen = 1;
+		/* prevent the sub gen_expr() call from coming back in here
+		 * when references to the compound literal symbol are generated.
+		 *
+		 * this is undone afterwards to allow re-entry per non-recursive
+		 * gen_expr() call, for example, function inlining means this
+		 * expression may be generated more than once
+		 */
+		GEN_CONST_CAST(expr *, e)->expr_comp_lit_cgen = 1;
 
 		if(initexp)
 			out_val_consume(octx, gen_expr(initexp, octx));
+
+		GEN_CONST_CAST(expr *, e)->expr_comp_lit_cgen = 0;
 	}
 }
 
-const out_val *gen_expr_compound_lit(expr *e, out_ctx *octx)
+const out_val *gen_expr_compound_lit(const expr *e, out_ctx *octx)
 {
 	gen_expr_compound_lit_code(e, octx);
 
@@ -107,14 +116,14 @@ static void const_expr_compound_lit(expr *e, consty *k)
 	}
 }
 
-const out_val *gen_expr_str_compound_lit(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_compound_lit(const expr *e, out_ctx *octx)
 {
 	decl *const d = e->bits.complit.decl;
 
 	if(e->op)
 		return NULL;
 
-	e->op = 1;
+	GEN_CONST_CAST(expr *, e)->op = 1;
 	{
 		idt_printf("(%s){\n", decl_to_str(d));
 
@@ -136,12 +145,12 @@ const out_val *gen_expr_str_compound_lit(expr *e, out_ctx *octx)
 			print_stmt(e->code);
 		}
 	}
-	e->op = 0;
+	GEN_CONST_CAST(expr *, e)->op = 0;
 
 	UNUSED_OCTX();
 }
 
-const out_val *gen_expr_style_compound_lit(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_compound_lit(const expr *e, out_ctx *octx)
 {
 	stylef("(%s)", type_to_str(e->bits.complit.decl->ref));
 	gen_style_dinit(e->bits.complit.decl->bits.var.init.dinit);

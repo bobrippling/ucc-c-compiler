@@ -43,57 +43,84 @@ void out_ctrl_end_undefined(out_ctx *octx)
 	octx->current_blk = NULL;
 }
 
-const out_val *out_ctrl_merge(out_ctx *octx, out_blk *from_a, out_blk *from_b)
+const out_val *out_ctrl_merge_n(out_ctx *octx, out_blk **rets)
 {
 	out_blk *const saved_current_blk = octx->current_blk;
-	type *ty;
 	struct vreg merge_reg;
-	unsigned sz_a, sz_b;
-
-	assert(from_a->phi_val && from_b->phi_val);
-
-	ty = from_a->phi_val->t;
-
-	sz_a = type_size(from_a->phi_val->t, NULL);
-	sz_b = type_size(from_b->phi_val->t, NULL);
-
-	/* need them both in a register */
-	out_current_blk(octx, from_a);
+	int merge_reg_set = 0;
+	out_blk **blk_iter;
+	struct
 	{
-		/* apply_offset - prevent merge_reg being a base pointer */
-		const out_val *regged =
-			v_reg_apply_offset(octx,
-					v_to_reg_out(
-						octx,
-						from_a->phi_val,
-						&merge_reg));
+		type *ty;
+		unsigned sz;
+	} max = { NULL, 0 };
+
+	/* optimisation: if we only have one (e.g. single inline ret),
+	 * then we can just returns its phi */
+	if(!rets[1])
+		return rets[0]->phi_val;
+
+	/* get the largest size */
+	for(blk_iter = rets; *blk_iter; blk_iter++){
+		const out_val *phi = (*blk_iter)->phi_val;
+		unsigned this_sz;
+
+		assert(phi);
+
+		this_sz = type_size(phi->t, NULL);
+		if(this_sz > max.sz){
+			max.sz = this_sz;
+			max.ty = phi->t;
+		}
+	}
+
+	/* need them all in registers */
+	for(blk_iter = rets; *blk_iter; blk_iter++){
+		out_blk *const blk = *blk_iter;
+		const out_val *regged;
+
+		out_current_blk(octx, blk);
+
+		if(!merge_reg_set){
+			/* apply_offset - prevent merge_reg being a base pointer */
+			regged =
+				v_reg_apply_offset(octx,
+						v_to_reg_out(
+							octx,
+							blk->phi_val,
+							&merge_reg));
+
+			/* apply_offset may move to another reg */
+			memcpy_safe(&merge_reg, &regged->bits.regoff.reg);
+			merge_reg_set = 1;
+		}else{
+			regged = v_to_reg_given(octx, blk->phi_val, &merge_reg);
+		}
 
 		/* if we have mismatching sizes, we need to cast one side up,
 		 * so that we fill out all parts of the smaller size'd register,
 		 */
-		if(sz_a < sz_b)
-			regged = out_cast(octx, regged, from_b->phi_val->t, 0);
+		if(type_size(regged->t, NULL) < max.sz)
+			regged = out_cast(octx, regged, max.ty, 0);
 
-		/* apply_offset may move to another reg */
-		memcpy_safe(&merge_reg, &regged->bits.regoff.reg);
 
-		out_flush_volatile(octx, regged);
-	}
-	out_current_blk(octx, from_b);
-	{
-		const out_val *regged = v_to_reg_given(octx, from_b->phi_val, &merge_reg);
-		if(sz_b < sz_a)
-			regged = out_cast(octx, regged, from_a->phi_val->t, 0);
 		out_flush_volatile(octx, regged);
 	}
 
 	out_current_blk(octx, saved_current_blk);
 
-	return v_new_reg(octx, NULL, ty, &merge_reg);
+	return v_new_reg(octx, NULL, max.ty, &merge_reg);
+}
+
+const out_val *out_ctrl_merge(out_ctx *octx, out_blk *from_a, out_blk *from_b)
+{
+	out_blk *rets[] = { from_a, from_b, NULL };
+	return out_ctrl_merge_n(octx, rets);
 }
 
 void out_current_blk(out_ctx *octx, out_blk *new_blk)
 {
+	assert(new_blk);
 	v_decay_flags(octx);
 
 	octx->last_used_blk = new_blk;
@@ -117,6 +144,7 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 	 * terminating branches before their merge block, even though
 	 * they don't merge to it (instead of generating them after ret)
 	 */
+	assert(octx->last_used_blk);
 	dynarray_add(&to->merge_preds, from ? from : octx->last_used_blk);
 
 	if(!from){

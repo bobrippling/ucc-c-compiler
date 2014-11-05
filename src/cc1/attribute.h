@@ -28,6 +28,8 @@ struct attribute
 		attr_weak,
 		attr_cleanup,
 		attr_desig_init,
+		attr_always_inline,
+		attr_noinline,
 		attr_ucc_debug, /* logs out a message when handled */
 		attr_LAST
 		/*

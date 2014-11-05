@@ -521,6 +521,10 @@ arg_ld:
 					}
 					continue;
 
+				case 'O':
+					ADD_ARG(mode_compile);
+					continue;
+
 				case 'g':
 					/* debug */
 					if(argv[i][2])

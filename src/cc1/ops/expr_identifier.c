@@ -143,7 +143,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	sym->nreads++;
 }
 
-const out_val *gen_expr_str_identifier(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_identifier(const expr *e, out_ctx *octx)
 {
 	switch(e->bits.ident.type){
 		case IDENT_NORM:
@@ -160,7 +160,7 @@ const out_val *gen_expr_str_identifier(expr *e, out_ctx *octx)
 	UNUSED_OCTX();
 }
 
-const out_val *gen_expr_identifier(expr *e, out_ctx *octx)
+const out_val *gen_expr_identifier(const expr *e, out_ctx *octx)
 {
 	switch(e->bits.ident.type){
 		case IDENT_NORM:
@@ -186,7 +186,7 @@ expr *expr_new_identifier(char *sp)
 	return e;
 }
 
-const out_val *gen_expr_style_identifier(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_identifier(const expr *e, out_ctx *octx)
 {
 	switch(e->bits.ident.type){
 		case IDENT_NORM:

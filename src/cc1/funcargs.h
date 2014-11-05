@@ -36,6 +36,8 @@ funcargs *funcargs_new(void);
 void funcargs_empty(funcargs *func);
 void funcargs_free(funcargs *args, int free_decls);
 
+int funcargs_is_old_func(funcargs *);
+
 void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp);
 
 #endif

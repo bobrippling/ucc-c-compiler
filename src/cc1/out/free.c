@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "../../util/dynmap.h"
@@ -10,10 +11,27 @@
 #include "blk.h"
 #include "ctx.h"
 #include "out.h"
+#include "dbg_lbl.h"
+
+static void blk_free_labels(struct out_dbg_lbl ***parray)
+{
+	struct out_dbg_lbl **dbg_i;
+
+	if(!*parray)
+		return;
+
+	for(dbg_i = *parray; *dbg_i; dbg_i++){
+		RELEASE(*dbg_i);
+	}
+	dynarray_free(struct out_dbg_lbl **, *parray, NULL);
+}
 
 static void blk_free(out_blk *blk)
 {
 	char **i;
+
+	blk_free_labels(&blk->labels.start);
+	blk_free_labels(&blk->labels.end);
 
 	free(blk->lbl);
 

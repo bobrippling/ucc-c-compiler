@@ -1,9 +1,9 @@
-// RUN: %ucc %s -o %t
-// RUN: %t
+// RUN: %ocheck 0 %s -fno-inline-functions
+// RUN: %check %s -finline-functions
 
 void *func(int x)
 {
-	char *fp1 = __builtin_frame_address(1);
+	char *fp1 = __builtin_frame_address(1); // CHECK: warning: inlining function with call to __builtin_frame_address
 	fp1 += x;
 	return fp1;
 }

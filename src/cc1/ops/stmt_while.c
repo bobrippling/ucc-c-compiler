@@ -22,13 +22,14 @@ void fold_stmt_while(stmt *s)
 	fold_stmt(s->lhs);
 }
 
-void gen_stmt_while(stmt *s, out_ctx *octx)
+void gen_stmt_while(const stmt *s, out_ctx *octx)
 {
-	const char *endlbls[2];
+	struct out_dbg_lbl *endlbls[2][2];
 	out_blk *blk_body = out_blk_new(octx, "while_body");
 
-	s->blk_break = out_blk_new(octx, "while_break");
-	s->blk_continue = out_blk_new(octx, "while_cont");
+	stmt_init_blks(s,
+			out_blk_new(octx, "while_cont"),
+			out_blk_new(octx, "while_break"));
 
 	out_ctrl_transfer(octx, s->blk_continue, NULL, NULL);
 
@@ -55,7 +56,7 @@ void gen_stmt_while(stmt *s, out_ctx *octx)
 	}
 }
 
-void style_stmt_while(stmt *s, out_ctx *octx)
+void style_stmt_while(const stmt *s, out_ctx *octx)
 {
 	stylef("while(");
 	IGNORE_PRINTGEN(gen_expr(s->expr, octx));

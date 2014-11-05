@@ -7,7 +7,6 @@ struct label
 {
 	where *pw;
 	char *spel;
-	out_blk *bblock;
 	symtable *scope;
 	struct stmt **jumpers; /* gotos that target us */
 	unsigned uses;
@@ -16,7 +15,9 @@ struct label
 typedef struct label label;
 
 label *label_new(where *, char *id, int complete, symtable *scope);
-void label_makeblk(label *, out_ctx *);
 void label_free(label *);
+
+out_blk *label_getblk(label *, out_ctx *);
+void label_cleanup(out_ctx *);
 
 #endif
