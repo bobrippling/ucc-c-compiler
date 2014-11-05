@@ -1,5 +1,6 @@
 // RUN: %ucc -o %t %s
 
+__attribute((always_inline))
 f(int ok)
 {
 	if(ok)

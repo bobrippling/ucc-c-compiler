@@ -1,5 +1,5 @@
 // RUN: %ocheck 0 %s -fno-inline-functions
-// RUN: %check %s
+// RUN: %check %s -finline-functions
 
 void *func(int x)
 {

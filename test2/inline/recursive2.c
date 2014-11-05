@@ -1,4 +1,4 @@
-// RUN: %ocheck 7 %s
+// RUN: %ocheck 7 %s -finline-functions
 
 int count;
 

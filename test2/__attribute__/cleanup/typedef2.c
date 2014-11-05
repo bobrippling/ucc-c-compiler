@@ -4,6 +4,7 @@ struct A
 {
 };
 
+__attribute__((always_inline))
 inline void decref_a(struct A **pp)
 {
 	struct A *p = *pp;
@@ -11,6 +12,7 @@ inline void decref_a(struct A **pp)
 
 typedef __attribute((cleanup(decref_a))) struct A shared_a;
 
+__attribute__((always_inline))
 inline struct A *f()
 {
 	shared_a *p = 0;

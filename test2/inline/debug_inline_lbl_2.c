@@ -1,9 +1,11 @@
 // RUN: %ucc -g %s
 
-g()
+__attribute((always_inline))
+g(int *a, int *b)
 {
 }
 
+__attribute((always_inline))
 f(int x)
 {
 	int local = 3;

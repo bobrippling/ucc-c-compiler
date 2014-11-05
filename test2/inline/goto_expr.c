@@ -1,4 +1,4 @@
-// RUN: %ocheck 0 %s
+// RUN: %ocheck 0 %s -finline-functions
 
 __attribute((always_inline))
 int f(int x)

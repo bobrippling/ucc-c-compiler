@@ -1,4 +1,4 @@
-// RUN: %check %s -fshow-inlined
+// RUN: %check %s -fshow-inlined -finline-functions
 
 inline int f(int i)
 {

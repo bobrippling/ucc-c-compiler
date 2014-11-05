@@ -1,5 +1,6 @@
 // RUN: %ocheck 12 %s
 
+__attribute((always_inline))
 f(int x)
 {
 	int counts[] = { x-1, x, x+1 };

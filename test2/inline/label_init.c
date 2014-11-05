@@ -2,6 +2,7 @@
 
 typedef int i;
 
+__attribute((always_inline))
 void yo()
 {
 	struct i {i i;} i;

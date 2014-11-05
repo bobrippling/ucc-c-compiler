@@ -1,4 +1,4 @@
-// RUN: %ocheck 10 %s
+// RUN: %ocheck 10 %s -finline-functions
 
 void abort(void);
 

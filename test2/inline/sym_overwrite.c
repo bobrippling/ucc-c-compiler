@@ -1,4 +1,4 @@
-// RUN: %ucc -o %t %s
+// RUN: %ucc -o %t %s -finline-functions
 
 int printf(const char *, ...)
 	__attribute((format(printf, 1, 2)));

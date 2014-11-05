@@ -1,5 +1,5 @@
-// RUN: %ocheck 3 %s
-// RUN: %check %s -fshow-inlined
+// RUN: %ocheck 3 %s -finline-functions
+// RUN: %check %s -fshow-inlined -finline-functions
 
 inc(int x)
 {
