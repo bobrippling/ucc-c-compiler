@@ -332,9 +332,7 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SYMBOL_ARITH
                     | FOPT_SIGNED_CHAR
                     | FOPT_CAST_W_BUILTIN_TYPES
-                    | FOPT_FOLD_CONST_VLAS
-                    | FOPT_PRINT_TYPEDEFS
-                    | FOPT_INLINE_FUNCTIONS;
+                    | FOPT_PRINT_TYPEDEFS;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
@@ -734,6 +732,63 @@ static void warning_on(const char *warn, int to)
 	fprintf(stderr, "Unknown warning option \"-W%s\"\n", warn);
 }
 
+static int optimise(const char *argv0, const char *arg)
+{
+	/* TODO: -fdce, -fthread-jumps, -falign-{functions,jumps,loops,labels}
+	 * -fdelete-null-pointer-checks, -freorder-blocks
+	 */
+	enum { O0, O1, O2, O3, Os } opt = O0;
+	struct
+	{
+		unsigned enable, disable;
+	} mask = { 0, 0 };
+
+	if(!*arg){
+		/* -O means -O2 */
+		opt = O2;
+	}else if(arg[1]){
+		goto unrecog;
+	}else switch(arg[0]){
+		default:
+			goto unrecog;
+
+		case '0': opt = O0; break;
+		case '1': opt = O1; break;
+		case '2': opt = O2; break;
+		case '3': opt = O3; break;
+		case 's': opt = Os; break;
+	}
+
+	switch(opt){
+		case O0:
+			break;
+
+		case Os:
+			/* same as -O2 but disable inlining and int-float-load */
+			mask.disable = FOPT_INLINE_FUNCTIONS
+				| FOPT_INTEGRAL_FLOAT_LOAD;
+			/* fall */
+
+		case O1:
+		case O2:
+		case O3:
+			mask.enable = FOPT_FOLD_CONST_VLAS
+				| FOPT_INLINE_FUNCTIONS
+				| FOPT_INTEGRAL_FLOAT_LOAD;
+			break;
+	}
+
+	/* enable, then disable (to allow -Os to turn bits off from -O2 etc) */
+	fopt_mode |= mask.enable;
+	fopt_mode &= ~mask.disable;
+
+	return 0;
+unrecog:
+	fprintf(stderr, "%s: unrecognised optimisation flag -O%c\n", argv0, arg[0]);
+	return 1;
+}
+
+
 int main(int argc, char **argv)
 {
 	int failure;
@@ -894,6 +949,10 @@ unrecognised:
 		}else if(!strncmp(argv[i], "-I", 2)){
 			/* these are system headers only - we don't get the full set */
 			dynarray_add(&system_includes, (const char *)argv[i] + 2);
+
+		}else if(!strncmp(argv[i], "-O", 2)){
+			if(optimise(*argv, argv[i] + 2))
+				exit(1);
 
 		}else if(!fname){
 			fname = argv[i];
