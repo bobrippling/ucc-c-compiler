@@ -105,7 +105,7 @@ const char *out_val_str(const out_val *v, int deref)
 
 const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normalise_bool)
 {
-	type *const from = val->t;
+	type *from = val->t;
 	char fp[2];
 
 	switch(val->type){
@@ -131,6 +131,10 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 			out_comment(octx, "out_cast done via normalise");
 			return val;
 		}
+
+		/* val may have changed type, e.g. float -> _Bool.
+		 * update `from' */
+		from = val->t;
 	}
 
 	fp[0] = type_is_floating(from);
