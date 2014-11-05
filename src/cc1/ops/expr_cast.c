@@ -518,7 +518,18 @@ void fold_expr_cast(expr *e, symtable *stab)
 
 const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 {
-	const out_val *casted = gen_expr(expr_cast_child(e), octx);
+	const out_val *casted;
+
+	if(IS_RVAL_CAST(e)){
+		/* we're an lval2rval cast
+		 * if inlining, check if we can substitute the lvalue's rvalue here
+		 */
+		decl *d = expr_to_declref(GEN_CONST_CAST(expr *, e), NULL);
+		if(d && d->sym)
+			return out_new_sym_val(octx, d->sym);
+	}
+
+	casted = gen_expr(expr_cast_child(e), octx);
 
 	if(IS_RVAL_CAST(e)){
 		casted = out_deref(octx, casted);
