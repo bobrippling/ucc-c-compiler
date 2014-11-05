@@ -161,8 +161,12 @@ label:
 		}
 
 		case sym_arg:
+		{
+			const out_val *v = sym_outval(sym);
+			assert(v && "no value for argument");
 			octx->used_stack = 1;
-			return out_val_retain(octx, sym_outval(sym));
+			return out_val_retain(octx, v);
+		}
 	}
 
 	assert(0);
