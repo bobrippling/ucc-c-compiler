@@ -1,3 +1,5 @@
+// RUN: %check %s -fshow-inlined
+
 // inline
 int f(int x)
 {
@@ -20,6 +22,6 @@ int g(int x)
 
 int main()
 {
-	printf("%d\n", f(5));
-	printf("%d\n", g(5));
+	printf("%d\n", f(5)); // CHECK: note: function inlined
+	printf("%d\n", g(5)); // CHECK: !/function inlined/
 }
