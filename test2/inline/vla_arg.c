@@ -15,8 +15,7 @@ g(){ gs++; return 3; }
 h(){ hs++; return 4; }
 q(){ qs++; return 5; }
 
-__attribute((always_inline))
-inline int f(int n, int vla[g()][h()])
+static inline int f(int n, int vla[g()][h()])
 {
 	// 5 + 5 = 10
 	short lvla[n + q()];
