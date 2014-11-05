@@ -1099,10 +1099,22 @@ static const out_val *x86_shift(
 	return v_dup_or_reuse(octx, l, l->t);
 }
 
+static const out_val *min_retained(
+		out_ctx *octx,
+		const out_val *a, const out_val *b)
+{
+	if(a->retains > b->retains){
+		out_val_consume(octx, a);
+		return b;
+	}else{
+		out_val_consume(octx, b);
+		return a;
+	}
+}
+
 const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const out_val *r)
 {
 	const char *opc;
-	const out_val *min_retained = l->retains < r->retains ? l : r;
 
 	l = x86_check_ivfp(octx, l);
 	r = x86_check_ivfp(octx, r);
@@ -1120,12 +1132,9 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 					impl_val_str_r(b1, r, 0),
 					impl_val_str_r(b2, l, 0));
 
-			if(l != min_retained) out_val_consume(octx, l);
-			if(r != min_retained) out_val_consume(octx, r);
-
 			/* not flag_mod_signed - we want seta, not setgt */
 			return v_new_flag(
-					octx, min_retained,
+					octx, min_retained(octx, l, r),
 					op_to_flag(op), flag_mod_float);
 		}
 
@@ -1254,11 +1263,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				cmp = v_inv_cmp(cmp, /*invert_eq:*/0);
 			}
 
-			if(l != min_retained) out_val_consume(octx, l);
-			if(r != min_retained) out_val_consume(octx, r);
-
 			return v_new_flag(
-					octx, min_retained,
+					octx, min_retained(octx, l, r),
 					cmp, is_signed ? flag_mod_signed : 0);
 		}
 
@@ -1272,6 +1278,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 	{
 		char buf[VAL_STR_SZ];
+		type *ret_ty;
 
 		/* RHS    LHS
 		 * r/m += r/imm;
@@ -1370,8 +1377,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 						impl_val_str(l, 0));
 		}
 
-		out_val_consume(octx, r);
-		return v_dup_or_reuse(octx, l, l->t);
+		ret_ty = l->t;
+		return v_dup_or_reuse(octx, min_retained(octx, l, r), ret_ty);
 	}
 }
 
