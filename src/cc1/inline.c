@@ -38,6 +38,12 @@ struct inline_outs
 	struct cc1_out_ctx *cc1_octx;
 };
 
+struct inline_sym_map
+{
+	const out_val *sym_outval;
+	const out_val *map_val;
+};
+
 
 static void inline_vars_push(
 		struct cc1_out_ctx *cc1_octx, struct cc1_inline *save,
@@ -91,54 +97,16 @@ static const out_val *inline_arg_to_lvalue(
 	return space;
 }
 
-static const out_val *gen_inline_func(
-		const struct inline_outs *const iouts,
+static void inline_sym_map_save(
+		symtable *arg_symtab,
 		const out_val **args,
+		struct inline_sym_map *pushed_vals,
 		struct cc1_out_ctx *cc1_octx,
-		out_ctx *octx, const where *call_loc)
+		out_ctx *octx)
 {
-	symtable *const arg_symtab = iouts->arg_symtab;
-	stmt *const func_code = iouts->fncode;
-	struct cc1_inline saved;
-	decl **diter;
 	size_t i;
-	const out_val *merged_ret;
-	const size_t nargs = dynarray_count(args);
-	struct
-	{
-		const out_val *sym_outval;
-		const out_val *map_val;
-	} *pushed_vals = umalloc(nargs * sizeof *pushed_vals);
-	struct out_dbg_lbl *dbg_endlbl = NULL;
-	dynmap *nested_label_map;
+	decl **diter;
 
-	if(!cc1_octx->sym_inline_map)
-		cc1_octx->sym_inline_map = dynmap_new(sym *, NULL, sym_hash);
-
-	inline_vars_push(cc1_octx, &saved, &nested_label_map);
-	cc1_octx->inline_.phi = out_blk_new(octx, "inline_phi");
-
-	if(cc1_gdebug){
-		struct out_dbg_lbl *dbg_startlbl;
-		char *dbg_lbls[2];
-
-		dbg_lbls[0] = out_label_code("dbg_inline_start");
-		dbg_lbls[1] = out_label_code("dbg_inline_end");
-
-		/* free/release ownership of dbg_lbls[0 ... 1] */
-		out_dbg_label_push(octx, dbg_lbls, &dbg_startlbl, &dbg_endlbl);
-
-		out_dbg_inlined_call(octx,
-				iouts->fndecl,
-				dbg_startlbl,
-				dbg_endlbl,
-				call_loc);
-
-		RELEASE(dbg_startlbl);
-	}
-
-	/* got a handle on the code, map the identifiers to our argument
-	 * expression/values, and generate */
 	for(i = 0, diter = arg_symtab->decls; diter && *diter; i++, diter++){
 		sym *s = (*diter)->sym;
 
@@ -179,8 +147,16 @@ static const out_val *gen_inline_func(
 		/* generate vla side-effects */
 		gen_vla_arg_sideeffects(*diter, octx);
 	}
+}
 
-	gen_func_stmt(func_code, octx);
+static void inline_sym_map_restore(
+		symtable *arg_symtab,
+		struct inline_sym_map *pushed_vals,
+		struct cc1_out_ctx *cc1_octx,
+		out_ctx *octx)
+{
+	size_t i;
+	decl **diter;
 
 	for(i = 0, diter = arg_symtab->decls; diter && *diter; i++, diter++){
 		sym *s = (*diter)->sym;
@@ -208,6 +184,54 @@ static const out_val *gen_inline_func(
 		/* restore previous outval */
 		sym_setoutval(s, pushed_vals[i].sym_outval);
 	}
+}
+
+static const out_val *gen_inline_func(
+		const struct inline_outs *const iouts,
+		const out_val **args,
+		struct cc1_out_ctx *cc1_octx,
+		out_ctx *octx, const where *call_loc)
+{
+	symtable *const arg_symtab = iouts->arg_symtab;
+	stmt *const func_code = iouts->fncode;
+	struct cc1_inline saved;
+	const out_val *merged_ret;
+	const size_t nargs = dynarray_count(args);
+	struct inline_sym_map *pushed_vals = umalloc(nargs * sizeof *pushed_vals);
+
+	struct out_dbg_lbl *dbg_endlbl = NULL;
+	dynmap *nested_label_map;
+
+	if(!cc1_octx->sym_inline_map)
+		cc1_octx->sym_inline_map = dynmap_new(sym *, NULL, sym_hash);
+
+	inline_vars_push(cc1_octx, &saved, &nested_label_map);
+	cc1_octx->inline_.phi = out_blk_new(octx, "inline_phi");
+
+	if(cc1_gdebug){
+		struct out_dbg_lbl *dbg_startlbl;
+		char *dbg_lbls[2];
+
+		dbg_lbls[0] = out_label_code("dbg_inline_start");
+		dbg_lbls[1] = out_label_code("dbg_inline_end");
+
+		/* free/release ownership of dbg_lbls[0 ... 1] */
+		out_dbg_label_push(octx, dbg_lbls, &dbg_startlbl, &dbg_endlbl);
+
+		out_dbg_inlined_call(octx,
+				iouts->fndecl,
+				dbg_startlbl,
+				dbg_endlbl,
+				call_loc);
+
+		RELEASE(dbg_startlbl);
+	}
+
+	inline_sym_map_save(arg_symtab, args, pushed_vals, cc1_octx, octx);
+
+	gen_func_stmt(func_code, octx);
+
+	inline_sym_map_restore(arg_symtab, pushed_vals, cc1_octx, octx);
 
 	if(cc1_gdebug){
 		out_dbg_label_pop(octx, dbg_endlbl);
