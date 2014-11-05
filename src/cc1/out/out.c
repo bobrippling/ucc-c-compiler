@@ -237,6 +237,8 @@ const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 		case V_CONST_F:
 			normalised->bits.val_i = !!normalised->bits.val_f;
 			normalised->type = V_CONST_I;
+			/* float to int - change .t */
+			normalised->t = type_nav_btype(cc1_type_nav, type__Bool);
 			break;
 
 		default:
