@@ -34,6 +34,8 @@ struct flush_state
 	out_blk *jmpto;
 };
 
+static void dot_blocks(out_blk *);
+
 static void blk_jmpnext(out_blk *to, struct flush_state *st)
 {
 	assert(!st->jmpto);
@@ -144,6 +146,9 @@ void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl)
 	struct flush_state st = { 0 };
 	out_blk **must_i;
 
+	if(fopt_mode & FOPT_DUMP_BASIC_BLOCKS)
+		dot_blocks(first);
+
 	st.f = cc_out[SECTION_TEXT];
 	bfs_block(first, &st, 1);
 
@@ -156,6 +161,64 @@ void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl)
 	fprintf(st.f, "%s:\n", end_dbg_lbl);
 
 	out_dbg_labels_emit_release_v(st.f, &octx->pending_lbls);
+}
+
+static void dot_replace(char *lbl)
+{
+	for(; *lbl; lbl++)
+		if(*lbl == '.')
+			*lbl = '_';
+}
+
+static void dot_emit(const char *from, const char *to)
+{
+	char *from_ = ustrdup(from);
+	char *to_ = ustrdup(to);
+
+	dot_replace(from_);
+	dot_replace(to_);
+
+	fprintf(stderr, "%s -> %s;\n", from_, to_);
+
+	free(from_);
+	free(to_);
+}
+
+static void dot_block(out_blk *b)
+{
+	if(b->emitted)
+		return;
+	b->emitted = 1;
+
+	switch(b->type){
+		case BLK_UNINIT:
+			assert(0);
+
+		case BLK_TERMINAL:
+		case BLK_NEXT_EXPR:
+			break;
+
+		case BLK_NEXT_BLOCK:
+			dot_emit(b->lbl, b->bits.next->lbl);
+			dot_block(b->bits.next);
+			break;
+
+		case BLK_COND:
+			dot_emit(b->lbl, b->bits.cond.if_0_blk->lbl);
+			dot_emit(b->lbl, b->bits.cond.if_1_blk->lbl);
+			dot_block(b->bits.cond.if_0_blk);
+			dot_block(b->bits.cond.if_1_blk);
+			break;
+	}
+}
+
+static void dot_blocks(out_blk *b)
+{
+	fprintf(stderr, "digraph blocks {\n");
+
+	dot_block(b);
+
+	fprintf(stderr, "}\n");
 }
 
 void blk_terminate_condjmp(

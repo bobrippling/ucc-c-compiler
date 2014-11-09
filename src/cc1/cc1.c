@@ -298,6 +298,7 @@ static struct
 	{ 'f',  "print-typedefs", FOPT_PRINT_TYPEDEFS },
 	{ 'f',  "show-inlined", FOPT_SHOW_INLINED },
 	{ 'f',  "inline-functions", FOPT_INLINE_FUNCTIONS },
+	{ 'f',  "dump-bblocks", FOPT_DUMP_BASIC_BLOCKS },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 	{ 'm',  "32", MOPT_32 },
