@@ -258,7 +258,7 @@ const char *impl_val_str_r(
 		{
 			long off = vs->bits.regoff.offset;
 			const char *rstr = x86_reg_str(
-					&vs->bits.regoff.reg, deref ? NULL : vs->t);
+					&vs->bits.regoff.reg, off || deref ? NULL : vs->t);
 
 			UCC_ASSERT(!deref || !vs->bits.regoff.reg.is_float,
 					"dereference float reg");
