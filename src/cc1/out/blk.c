@@ -113,7 +113,7 @@ static void bfs_block(out_blk *blk, struct flush_state *st, int const force)
 
 			if(blk->type == BLK_NEXT_BLOCK){
 				blk_jmpnext(blk->bits.next, st);
-				bfs_block(blk->bits.next, st, 0);
+				bfs_block(blk->bits.next, st, 1);
 			}
 			break;
 
@@ -126,11 +126,11 @@ static void bfs_block(out_blk *blk, struct flush_state *st, int const force)
 
 			/* if it's unlikely, we want the false block already in the pipeline */
 			if(blk->bits.cond.unlikely){
-				bfs_block(blk->bits.cond.if_0_blk, st, 0);
-				bfs_block(blk->bits.cond.if_1_blk, st, 0);
+				bfs_block(blk->bits.cond.if_0_blk, st, 1);
+				bfs_block(blk->bits.cond.if_1_blk, st, 1);
 			}else{
-				bfs_block(blk->bits.cond.if_1_blk, st, 0);
-				bfs_block(blk->bits.cond.if_0_blk, st, 0);
+				bfs_block(blk->bits.cond.if_1_blk, st, 1);
+				bfs_block(blk->bits.cond.if_0_blk, st, 1);
 			}
 			break;
 	}
