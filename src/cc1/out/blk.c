@@ -83,27 +83,16 @@ static void blk_codegen(out_blk *blk, struct flush_state *st)
 	out_dbg_labels_emit_release_v(st->f, &blk->labels.end);
 }
 
-static void bfs_block(out_blk *blk, struct flush_state *st, int const force)
+static void bfs_block(out_blk *blk, struct flush_state *st)
 {
-	if(blk->emitted)
+	if(blk->emitted || !blk->reachable)
 		return;
-
-	if(!force){
-		/*
-		 * dead code elimination.
-		 * should only do this if called back from the merge-pred loop (force=0),
-		 * since otherwise we're called from a BLK_NEXT_BLOCK, which means control
-		 * does jump into us */
-		return;
-	}
-
 	blk->emitted = 1;
 
 	if(blk->merge_preds){
 		out_blk **i;
-
 		for(i = blk->merge_preds; *i; i++){
-			bfs_block(*i, st, 0);
+			bfs_block(*i, st);
 		}
 	}
 
@@ -118,7 +107,7 @@ static void bfs_block(out_blk *blk, struct flush_state *st, int const force)
 
 			if(blk->type == BLK_NEXT_BLOCK){
 				blk_jmpnext(blk->bits.next, st);
-				bfs_block(blk->bits.next, st, 1);
+				bfs_block(blk->bits.next, st);
 			}
 			break;
 
@@ -131,12 +120,33 @@ static void bfs_block(out_blk *blk, struct flush_state *st, int const force)
 
 			/* if it's unlikely, we want the false block already in the pipeline */
 			if(blk->bits.cond.unlikely){
-				bfs_block(blk->bits.cond.if_0_blk, st, 1);
-				bfs_block(blk->bits.cond.if_1_blk, st, 1);
+				bfs_block(blk->bits.cond.if_0_blk, st);
+				bfs_block(blk->bits.cond.if_1_blk, st);
 			}else{
-				bfs_block(blk->bits.cond.if_1_blk, st, 1);
-				bfs_block(blk->bits.cond.if_0_blk, st, 1);
+				bfs_block(blk->bits.cond.if_1_blk, st);
+				bfs_block(blk->bits.cond.if_0_blk, st);
 			}
+			break;
+	}
+}
+
+static void mark_reachable_blocks(out_blk *blk)
+{
+	if(blk->reachable)
+		return;
+	blk->reachable = 1;
+	switch(blk->type){
+		case BLK_UNINIT:
+			assert(0);
+		case BLK_TERMINAL:
+		case BLK_NEXT_EXPR:
+			break;
+		case BLK_NEXT_BLOCK:
+			mark_reachable_blocks(blk->bits.next);
+			break;
+		case BLK_COND:
+			mark_reachable_blocks(blk->bits.cond.if_0_blk);
+			mark_reachable_blocks(blk->bits.cond.if_1_blk);
 			break;
 	}
 }
@@ -149,11 +159,15 @@ void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl)
 	if(fopt_mode & FOPT_DUMP_BASIC_BLOCKS)
 		dot_blocks(first);
 
+	mark_reachable_blocks(first);
+	for(must_i = octx->mustgen; must_i && *must_i; must_i++)
+		mark_reachable_blocks(*must_i);
+
 	st.f = cc_out[SECTION_TEXT];
-	bfs_block(first, &st, 1);
+	bfs_block(first, &st);
 
 	for(must_i = octx->mustgen; must_i && *must_i; must_i++)
-		bfs_block(*must_i, &st, 1);
+		bfs_block(*must_i, &st);
 
 	if(st.jmpto)
 		impl_jmp(st.f, st.jmpto->lbl);

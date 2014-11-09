@@ -17,7 +17,7 @@ struct out_blk
 
 	out_blk **merge_preds;
 	out_blk *next;
-	int emitted;
+	unsigned reachable : 1, emitted : 1;
 
 	enum
 	{
