@@ -815,9 +815,10 @@ static void fold_offsetof(expr *e, symtable *stab)
 				type_to_str(e->bits.offsetof_ty));
 
 		fold_had_error = 1;
-	}else{
-		fold_expr_nodecay(e->lhs, stab);
 	}
+
+	/* fold regardless, prevent const_fold() ICEs */
+	fold_expr_nodecay(e->lhs, stab);
 
 	e->tree_type = type_nav_btype(cc1_type_nav, type_ulong);
 	wur_builtin(e);
