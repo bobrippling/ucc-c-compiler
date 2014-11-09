@@ -175,8 +175,7 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 				 * sign extends the int to an int64_t, then changes
 				 * the type
 				 */
-				val = impl_cast_load(octx, val, from, to,
-						type_is_signed(from));
+				val = impl_extend(octx, val, from, to, type_is_signed(from));
 			}else{
 				char buf[TYPE_STATIC_BUFSIZ];
 

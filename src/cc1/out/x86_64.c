@@ -775,7 +775,22 @@ static int x86_need_fp_parity_p(
 	}
 }
 
-const out_val *impl_load(
+static const out_val *x86_deref(out_ctx *octx, const out_val *vp, const struct vreg *reg)
+{
+	type *tpointed_to = (vp->type == V_REG_SPILT
+		? vp->t
+		: type_dereference_decay(vp->t));
+
+	/* loaded the pointer, now we apply the deref change */
+	out_asm(octx, "mov%s %s, %%%s",
+			x86_suffix(tpointed_to),
+			impl_val_str(vp, 1),
+			x86_reg_str(reg, tpointed_to));
+
+	return v_new_reg(octx, vp, tpointed_to, reg);
+}
+
+const out_val *impl_load_to_reg(
 		out_ctx *octx,
 		const out_val *from,
 		const struct vreg *reg)
@@ -802,7 +817,7 @@ const out_val *impl_load(
 
 			/* movl $0, %eax */
 			out_flush_volatile(octx,
-					impl_load(
+					impl_load_to_reg(
 						octx,
 						out_new_l(octx, int_ty, 0),
 						reg));
@@ -846,7 +861,7 @@ const out_val *impl_load(
 
 		case V_REG_SPILT:
 			/* actually a pointer to T */
-			return impl_deref(octx, from, reg);
+			return x86_deref(octx, from, reg);
 
 		case V_REG:
 			if(from->bits.regoff.offset)
@@ -884,7 +899,7 @@ lea:
 		case V_CONST_F:
 			from = x86_load_fp(octx, from);
 			if(from->type != V_REG)
-				from = impl_load(octx, from, reg);
+				from = impl_load_to_reg(octx, from, reg);
 	}
 
 	return v_new_reg(octx, from, from->t, reg);
@@ -918,7 +933,7 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 
 		/* setne %evalreg */
 		v_unused_reg(octx, 1, 0, &evalreg, NULL);
-		from = impl_load(octx, from, &evalreg);
+		from = impl_load_to_reg(octx, from, &evalreg);
 
 		/* mov %evalreg, (from) */
 		impl_store(octx, to, from);
@@ -1382,19 +1397,6 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	}
 }
 
-const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *reg)
-{
-	type *tpointed_to = type_dereference_decay(vp->t);
-
-	/* loaded the pointer, now we apply the deref change */
-	out_asm(octx, "mov%s %s, %%%s",
-			x86_suffix(tpointed_to),
-			impl_val_str(vp, 1),
-			x86_reg_str(reg, tpointed_to));
-
-	return v_new_reg(octx, vp, tpointed_to, reg);
-}
-
 const out_val *impl_op_unary(out_ctx *octx, enum op_type op, const out_val *val)
 {
 	const char *opc;
@@ -1437,7 +1439,7 @@ const out_val *impl_op_unary(out_ctx *octx, enum op_type op, const out_val *val)
 	return v_dup_or_reuse(octx, val, val->t);
 }
 
-const out_val *impl_cast_load(
+const out_val *impl_extend(
 		out_ctx *octx, const out_val *vp,
 		type *small, type *big,
 		int is_signed)
@@ -1792,8 +1794,6 @@ const out_val *impl_call(
 			local_args[i] = v_to_reg(octx, local_args[i]);
 
 		argty = local_args[i]->t;
-		if(local_args[i]->type == V_REG_SPILT)
-			argty = type_dereference_decay(argty);
 
 		float_arg[i] = type_is_floating(argty);
 

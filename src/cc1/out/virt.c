@@ -329,7 +329,7 @@ const out_val *v_to_reg_given(
 		out_ctx *octx, const out_val *from,
 		const struct vreg *given)
 {
-	return impl_load(octx, from, given);
+	return impl_load_to_reg(octx, from, given);
 }
 
 const out_val *v_to_reg_given_freeup(

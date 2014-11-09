@@ -48,7 +48,7 @@ static void callee_save_or_restore_1(
 			const out_val *reg = v_new_reg(octx, NULL, type_is_ptr(voidpp), cs);
 			out_store(octx, stk, reg);
 		}else{
-			out_flush_volatile(octx, impl_deref(octx, stk, cs));
+			out_flush_volatile(octx, impl_load_to_reg(octx, stk, cs));
 		}
 	}
 }
