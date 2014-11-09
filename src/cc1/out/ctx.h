@@ -46,6 +46,23 @@ struct out_ctx
 	/* mark callee save regs, to preserve at prologue */
 	struct vreg *used_callee_saved;
 
+	/* either map 'sym*' onto 'long' representing register,
+	 * then on sym deref try to copy an existing register.
+	 *
+	 * OR map stack_entry[n] onto 'long' representing register.
+	 * then on read of stack[n], use said register.
+	 * calls invalid this, as do writes to T* memory addresses,
+	 * e.g.
+	 * int *p = ...;
+	 * int a, b;
+	 *
+	 * x = a;
+	 * *p = 3;
+	 * x = a; // may have changed
+	 *
+	 * this also brings in a use for 'restrict'
+	 */
+
 	struct
 	{
 		struct out_dbg_filelist *file_head;
