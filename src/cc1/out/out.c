@@ -195,14 +195,11 @@ const out_val *out_change_type(out_ctx *octx, const out_val *val, type *ty)
 	return v_dup_or_reuse(octx, val, ty);
 }
 
-const out_val *out_deref(out_ctx *octx, const out_val *target)
+const out_val *out_deref(out_ctx *octx, const out_val *const target)
 {
 	type *tnext = type_is_ptr(target->t);
-	struct vreg reg_store;
-	const struct vreg *reg = &reg_store;
-	int is_fp;
 	struct vbitfield bf = target->bitfield;
-	const out_val *dval;
+	const out_val *dref_val;
 
 	/* if the pointed-to object is not an lvalue, don't deref */
 	if(type_is(tnext, type_array)
@@ -213,15 +210,29 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 				type_dereference_decay(target->t));
 	}
 
-	is_fp = type_is_floating(tnext);
 
-	v_unused_reg(octx, 1, is_fp, &reg_store, target);
+	/* optimisation:
+	 * dereference of a register changes it to an lvalue/spilt-reg */
+	if(target->type == V_REG){
+		out_val *mut;
 
-	dval = impl_deref(octx, target, reg);
+		mut = v_dup_or_reuse(octx, target, type_dereference_decay(target->t));
+		mut->type = V_REG_SPILT;
+
+		dref_val = mut;
+	}else{
+		int is_fp = type_is_floating(tnext);
+		struct vreg reg_store;
+
+		v_unused_reg(octx, 1, is_fp, &reg_store, target);
+
+		dref_val = impl_load_to_reg(octx, target, &reg_store);
+	}
+
 	if(bf.nbits)
-		dval = out_bitfield_to_scalar(octx, &bf, dval);
+		dref_val = out_bitfield_to_scalar(octx, &bf, dref_val);
 
-	return dval;
+	return dref_val;
 }
 
 const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
