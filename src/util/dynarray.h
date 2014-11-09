@@ -38,11 +38,9 @@ void *dynarray_nochk_padinsert(void ***par,
 	(UCC_TYPECHECK(__typeof(p) **, ar), \
 	dynarray_nochk_rm((void ***)ar, p))
 
-
-#define dynarray_free(ty, ar, fn)     \
-	(UCC_TYPECHECK(ty *, ar),           \
-	 dynarray_nochk_free((void ***)ar, fn))
-
+#define dynarray_free(ty, ar, fn)            \
+	(UCC_TYPECHECK(ty, ar),                    \
+	 dynarray_nochk_free((void ***)&(ar), fn))
 
 #define dynarray_add_array(ar, sub)                      \
 	(UCC_TYPECHECK(__typeof(sub) *, ar),                   \

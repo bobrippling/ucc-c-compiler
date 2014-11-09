@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check %s -Wsigned-unsigned
 typedef int sint;
 typedef unsigned uint;
 

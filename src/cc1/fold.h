@@ -54,7 +54,7 @@ enum fold_chk
 	FOLD_CHK_NOWARN_ASSIGN = 1 << 6, /* if(a = b){ ... } */
 	FOLD_CHK_ARITHMETIC = 1 << 7,
 };
-void fold_check_expr(expr *e, enum fold_chk, const char *desc);
+void fold_check_expr(const expr *e, enum fold_chk, const char *desc);
 
 /* expression + statement folding */
 expr *fold_expr_decay(expr *e, symtable *stab) ucc_wur;

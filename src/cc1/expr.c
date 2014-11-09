@@ -34,7 +34,6 @@ void expr_mutate(expr *e, func_mutate_expr *f,
 	}
 
 	e->f_const_fold = NULL;
-	e->f_lea = NULL;
 
 	f(e);
 }
@@ -107,7 +106,7 @@ int expr_is_null_ptr(expr *e, enum null_strictness ty)
 
 int expr_is_lval(expr *e)
 {
-	if(!e->f_lea)
+	if(!e->is_lval)
 		return 0;
 
 	/* special case:
@@ -141,4 +140,24 @@ expr *expr_skip_casts(expr *e)
 	while(expr_kind(e, cast))
 		e = e->expr;
 	return e;
+}
+
+decl *expr_to_declref(expr *e, const char **whynot)
+{
+	e = expr_skip_casts(e);
+
+	if(expr_kind(e, identifier)){
+		if(e->bits.ident.type == IDENT_NORM)
+			return e->bits.ident.bits.ident.sym->decl;
+		else if(whynot)
+			*whynot = "not normal identifier";
+
+	}else if(expr_kind(e, block)){
+		return e->bits.block.sym->decl;
+
+	}else if(whynot){
+		*whynot = "not an identifier or block";
+	}
+
+	return NULL;
 }

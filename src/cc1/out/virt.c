@@ -93,10 +93,7 @@ static int v_in(const out_val *vp, enum vto to)
 static ucc_wur const out_val *v_spill_reg(
 		out_ctx *octx, const out_val *v_reg)
 {
-	const out_val *stack_pos = out_aalloc(octx,
-			type_size(v_reg->t, NULL),
-			type_align(v_reg->t, NULL),
-			v_reg->t);
+	const out_val *stack_pos = out_aalloct(octx, v_reg->t);
 
 	out_val_retain(octx, v_reg);
 
@@ -438,8 +435,6 @@ void v_save_regs(
 					/* don't save */
 				}else if(!impl_reg_savable(&v->bits.regoff.reg)){
 					/* don't save stack references */
-					if(fopt_mode & FOPT_VERBOSE_ASM)
-						out_comment(octx, "not saving const-reg %d", v->bits.regoff.reg.idx);
 
 				}else if(func_ty
 				&& impl_reg_is_callee_save(octx->current_fnty, &v->bits.regoff.reg))

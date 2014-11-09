@@ -14,6 +14,7 @@
 #include "sue.h"
 #include "funcargs.h"
 #include "label.h"
+#include "type_is.h"
 
 sym *sym_new(decl *d, enum sym_type t)
 {
@@ -180,4 +181,68 @@ label *symtab_label_find_or_new(symtable *const stab, char *spel, where *w)
 	}
 
 	return lbl;
+}
+
+unsigned sym_hash(const sym *sym)
+{
+	return sym->type ^ (unsigned)(intptr_t)sym;
+}
+
+unsigned symtab_decl_bytes(symtable *stab, unsigned const vla_cost)
+{
+	unsigned total = 0;
+	symtable **si;
+	decl **di;
+
+	for(di = stab->decls; di && *di; di++){
+		decl *d = *di;
+
+		if(type_is_variably_modified(d->ref))
+			total += vla_cost;
+		else
+			total += decl_size(d);
+	}
+
+	for(si = stab->children; si && *si; si++)
+		total += symtab_decl_bytes(*si, vla_cost);
+
+	return total;
+}
+
+const struct out_val *sym_outval(sym *s)
+{
+	switch(s->type){
+		case sym_global:
+		case sym_arg:
+			return s->out.val_single;
+
+		case sym_local:
+			if(s->out.stack.n == 0)
+				return NULL;
+
+			return s->out.stack.vals[s->out.stack.n - 1];
+	}
+	assert(0);
+}
+
+void sym_setoutval(sym *s, const struct out_val *v)
+{
+	switch(s->type){
+		case sym_global: /* exactly one should be null */
+			assert(!v ^ !s->out.val_single);
+		case sym_arg: /* fine to overwrite - inline code takes care */
+			s->out.val_single = v;
+			return;
+
+		case sym_local:
+			if(v == NULL){
+				s->out.stack.n--;
+				(void)dynarray_pop(const struct out_val *, &s->out.stack.vals);
+			}else{
+				s->out.stack.n++;
+				dynarray_add(&s->out.stack.vals, v);
+			}
+			return;
+	}
+	assert(0);
 }

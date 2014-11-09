@@ -65,7 +65,7 @@ char *canonicalise_path(char *path)
 
 	dest[trailing_slash ? 0 : -1] = '\0';
 
-	dynarray_free(char **, &ents, NULL);
+	dynarray_free(char **, ents, NULL);
 
 	return path;
 }

@@ -375,7 +375,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		e->freestanding = 0; /* needs use */
 }
 
-const out_val *gen_expr_funcall(expr *e, out_ctx *octx)
+const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 {
 	const out_val *fn_ret;
 
@@ -408,9 +408,9 @@ const out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 		}
 
 		/* consumes fn and args */
-		fn_ret = out_call(octx, fn, args, e->expr->tree_type);
+		fn_ret = gen_call(e->expr, NULL, fn, args, octx, &e->expr->where);
 
-		dynarray_free(const out_val **, &args, NULL);
+		dynarray_free(const out_val **, args, NULL);
 
 		if(!expr_func_passable(e))
 			out_ctrl_end_undefined(octx);
@@ -419,7 +419,7 @@ const out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 	return fn_ret;
 }
 
-const out_val *gen_expr_str_funcall(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_funcall(const expr *e, out_ctx *octx)
 {
 	expr **iter;
 
@@ -465,7 +465,7 @@ expr *expr_new_funcall()
 	return e;
 }
 
-const out_val *gen_expr_style_funcall(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_funcall(const expr *e, out_ctx *octx)
 {
 	stylef("(");
 	IGNORE_PRINTGEN(gen_expr(e->expr, octx));

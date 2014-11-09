@@ -417,7 +417,7 @@ static void expr_promote_if_smaller(expr **pe, symtable *stab, int do_float)
 	}
 }
 
-static void expr_promote_int_if_smaller(expr **pe, symtable *stab)
+void expr_promote_int_if_smaller(expr **pe, symtable *stab)
 {
 	expr_promote_if_smaller(pe, stab, 0);
 }
@@ -434,7 +434,7 @@ type *op_required_promotion(
 		type **plhs, type **prhs)
 {
 	type *resolved = NULL;
-	type *const tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
+	type *tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
 	int floating_lhs;
 
 	*plhs = *prhs = NULL;
@@ -592,13 +592,11 @@ ptr_relation:
 		if(op == op_shiftl || op == op_shiftr){
 			/* fine with any parameter sizes
 			 * don't need to match. resolves to lhs,
-			 * or int if lhs is smaller (done before this function)
+			 * or int if lhs is smaller
 			 */
 
-			UCC_ASSERT(
-					type_size(tlhs, &lhs->where)
-						>= type_primitive_size(type_int),
-					"shift operand should have been promoted");
+			if(type_size(tlhs, &lhs->where) < type_primitive_size(type_int))
+				tlhs = *plhs = type_nav_btype(cc1_type_nav, type_int);
 
 			resolved = tlhs;
 
@@ -1056,7 +1054,7 @@ void fold_expr_op(expr *e, symtable *stab)
 	}
 }
 
-const out_val *gen_expr_str_op(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_op(const expr *e, out_ctx *octx)
 {
 	idt_printf("op: %s\n", op_to_str(e->op));
 	gen_str_indent++;
@@ -1071,7 +1069,7 @@ const out_val *gen_expr_str_op(expr *e, out_ctx *octx)
 	UNUSED_OCTX();
 }
 
-static const out_val *op_shortcircuit(expr *e, out_ctx *octx)
+static const out_val *op_shortcircuit(const expr *e, out_ctx *octx)
 {
 	out_blk *blk_rhs, *blk_empty, *landing;
 	const out_val *lhs;
@@ -1142,7 +1140,7 @@ void gen_op_trapv(type *evaltt, const out_val **eval, out_ctx *octx)
 	}
 }
 
-const out_val *gen_expr_op(expr *e, out_ctx *octx)
+const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 {
 	const out_val *lhs, *eval;
 
@@ -1196,7 +1194,7 @@ expr *expr_new_op2(enum op_type o, expr *l, expr *r)
 	return e;
 }
 
-const out_val *gen_expr_style_op(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_op(const expr *e, out_ctx *octx)
 {
 	if(e->rhs){
 		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));

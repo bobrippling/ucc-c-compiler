@@ -2,17 +2,25 @@
 #include <string.h>
 #include <assert.h>
 
+#include "../../util/dynarray.h"
+#include "../../util/platform.h"
+#include "../../util/alloc.h"
+
 #include "ops.h"
 #include "stmt_code.h"
 #include "../decl_init.h"
-#include "../../util/dynarray.h"
-#include "../../util/platform.h"
 #include "../fold_sym.h"
-#include "../out/lbl.h"
 #include "../type_is.h"
 #include "../type_nav.h"
-#include "../out/dbg.h"
 #include "../vla.h"
+
+#include "../out/lbl.h"
+#include "../out/dbg.h"
+#include "../out/dbg_lbl.h"
+
+/* out_alloca_fixed() */
+#include "../out/out.h"
+#include "../cc1_out_ctx.h"
 
 const char *str_stmt_code()
 {
@@ -141,9 +149,32 @@ void fold_stmt_code(stmt *s)
 {
 	stmt **siter;
 	int warned = 0;
+	enum decl_storage func_store = store_default;
+	decl *in_func;
 
 	/* local struct layout-ing */
 	symtab_fold_sues(s->symtab);
+
+	in_func = symtab_func(s->symtab);
+
+	if(in_func)
+		func_store = in_func->store;
+
+	if(func_store & store_inline
+	&& (func_store & STORE_MASK_STORE) == store_default)
+	{
+		decl **diter;
+		for(diter = s->symtab->decls; diter && *diter; diter++){
+			decl *d = *diter;
+
+			if((d->store & STORE_MASK_STORE) == store_static
+			&& !type_is_const(d->ref))
+			{
+				cc1_warn_at(&d->where, static_local_in_inline,
+						"mutable static variable in pure-inline function - may differ per file");
+			}
+		}
+	}
 
 	for(siter = s->bits.code.stmts; siter && *siter; siter++){
 		stmt *const st = *siter;
@@ -198,8 +229,7 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 				align = decl_align(s->decl);
 			}
 
-			assert(!s->outval);
-			gen_set_sym_outval(s, out_aalloc(octx, siz, align, s->decl->ref));
+			gen_set_sym_outval(octx, s, out_aalloc(octx, siz, align, s->decl->ref));
 			break;
 		}
 
@@ -215,7 +245,7 @@ static void gen_auto_decl(decl *d, out_ctx *octx)
 	gen_auto_decl_alloc(d, octx);
 
 	if(type_is_variably_modified(d->ref)){
-		if((d->store & STORE_MASK_STORE) == store_typedef)
+		if(STORE_IS_TYPEDEF(d->store))
 			vla_typedef_init(d, octx);
 		else
 			vla_decl_init(d, octx);
@@ -223,19 +253,29 @@ static void gen_auto_decl(decl *d, out_ctx *octx)
 }
 
 void gen_block_decls(
-		symtable *stab, const char **dbg_end_lbl, out_ctx *octx)
+		symtable *stab,
+		struct out_dbg_lbl *pushed_lbls[2],
+		out_ctx *octx)
 {
 	decl **diter;
 
 	if(cc1_gdebug && !stab->lbl_begin){
-		stab->lbl_begin = out_label_code("dbg_begin");
-		stab->lbl_end = out_label_code("dbg_end");
+		char *dbg_lbls[2];
 
-		out_dbg_label(octx, stab->lbl_begin);
-		*dbg_end_lbl = stab->lbl_end;
+		dbg_lbls[0] = out_label_code("dbg_begin");
+		dbg_lbls[1] = out_label_code("dbg_end");
+
+		out_dbg_label_push(octx, dbg_lbls, &pushed_lbls[0], &pushed_lbls[1]);
+
+		stab->lbl_begin = pushed_lbls[0];
+		stab->lbl_end = pushed_lbls[1];
+
 	}else{
-		*dbg_end_lbl = NULL;
+		pushed_lbls[0] = pushed_lbls[1] = NULL;
 	}
+
+	if(cc1_gdebug)
+		out_dbg_scope_enter(octx, stab);
 
 	/* declare strings, extern functions, blocks and vlas */
 	for(diter = stab->decls; diter && *diter; diter++){
@@ -266,28 +306,49 @@ void gen_block_decls(
 	}
 }
 
-void gen_block_decls_dealloca(symtable *stab, out_ctx *octx)
+void gen_block_decls_dealloca(
+		symtable *stab,
+		struct out_dbg_lbl *pushed_lbls[ucc_static_param 2],
+		out_ctx *octx)
 {
 	decl **diter;
+	int i;
 
 	for(diter = stab->decls; diter && *diter; diter++){
 		decl *d = *diter;
 		int is_typedef;
+		const out_val *v;
 
-		if(!d->sym || d->sym->type != sym_local || type_is(d->ref, type_func))
+		if(!d->sym || d->sym->type != sym_local || type_is(d->ref, type_func)){
+			if(d->sym && cc1_gdebug){
+				/* int a; f(){ int a; { extern a; ... } }
+				 *                      ^~~~~~~~~~~~~ need to say ::a is in scope
+				 */
+				out_dbg_emit_global_decl_scoped(octx, d);
+			}
 			continue;
+		}
 
-		is_typedef = ((d->store & STORE_MASK_STORE) == store_typedef);
+		is_typedef = STORE_IS_TYPEDEF(d->store);
 
+		v = sym_outval(d->sym);
 		/* typedefs may or may not have a sym */
-		if(is_typedef && !d->sym->outval)
+		if(is_typedef && !v)
 			continue;
 
 		if(!is_typedef && type_is_vla(d->ref, VLA_ANY_DIMENSION))
 			out_alloca_pop(octx);
 
-		out_adealloc(octx, &d->sym->outval);
+		out_adealloc(octx, &v);
+		sym_setoutval(d->sym, /*null*/v);
 	}
+
+	for(i = 0; i < 2; i++)
+		if(pushed_lbls[i])
+			out_dbg_label_pop(octx, pushed_lbls[i]);
+
+	if(cc1_gdebug)
+		out_dbg_scope_leave(octx, stab);
 }
 
 static void gen_scope_destructors(symtable *scope, out_ctx *octx)
@@ -308,20 +369,16 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 			attribute *cleanup = attribute_present(d, attr_cleanup);
 
 			if(cleanup){
-				const out_val *args[2];
-				type *fty = cleanup->bits.cleanup->ref;
+				const out_val *fn, *args[2];
 
 				out_dbg_where(octx, &d->where);
 
+				fn = out_new_lbl(octx, NULL, decl_asm_spel(cleanup->bits.cleanup), 1);
 				args[0] = out_new_sym(octx, d->sym);
 				args[1] = NULL;
 
-				out_flush_volatile(octx,
-						out_call(
-							octx,
-							out_new_lbl(octx, NULL, decl_asm_spel(cleanup->bits.cleanup), 1),
-							args,
-							type_ptr_to(fty)));
+				out_val_release(octx,
+						gen_call(NULL, cleanup->bits.cleanup, fn, args, octx, &d->where));
 			}
 
 			if(((d->store & STORE_MASK_STORE) != store_typedef)
@@ -404,23 +461,29 @@ void gen_scope_leave_parent(symtable *s_from, out_ctx *octx)
 	gen_scope_leave(s_from, s_from->parent, octx);
 }
 
-void gen_stmt_code_m1_finish(stmt *s, out_ctx *octx)
+void gen_stmt_code_m1_finish(
+		const stmt *s,
+		struct out_dbg_lbl *pushed_lbls[2],
+		out_ctx *octx)
 {
 	gen_scope_leave_parent(s->symtab, octx);
-	gen_block_decls_dealloca(s->symtab, octx);
+	gen_block_decls_dealloca(s->symtab, pushed_lbls, octx);
 }
 
 /* this is done for lea_expr_stmt(), i.e.
  * struct A x = ({ struct A y; y.i = 1; y; });
  * so we can lea the final expr
  */
-void gen_stmt_code_m1(stmt *s, int m1, out_ctx *octx)
+void gen_stmt_code_m1(
+		const stmt *s,
+		int m1,
+		struct out_dbg_lbl *pushed_lbls[2],
+		out_ctx *octx)
 {
 	stmt **titer;
-	const char *endlbl;
 
 	/* stmt_for/if/while/do needs to do this too */
-	gen_block_decls(s->symtab, &endlbl, octx);
+	gen_block_decls(s->symtab, pushed_lbls, octx);
 
 	for(titer = s->bits.code.stmts; titer && *titer; titer++){
 		if(m1 && !titer[1])
@@ -429,19 +492,18 @@ void gen_stmt_code_m1(stmt *s, int m1, out_ctx *octx)
 	}
 
 	if(!m1)
-		gen_stmt_code_m1_finish(s, octx);
+		gen_stmt_code_m1_finish(s, pushed_lbls, octx);
 	/* else the caller should do ^ */
-
-	if(endlbl)
-		out_dbg_label(octx, endlbl);
 }
 
-void gen_stmt_code(stmt *s, out_ctx *octx)
+void gen_stmt_code(const stmt *s, out_ctx *octx)
 {
-	gen_stmt_code_m1(s, 0, octx);
+	struct out_dbg_lbl *pushed_lbls[2];
+
+	gen_stmt_code_m1(s, 0, pushed_lbls, octx);
 }
 
-void style_stmt_code(stmt *s, out_ctx *octx)
+void style_stmt_code(const stmt *s, out_ctx *octx)
 {
 	stmt **i_s;
 	decl **i_d;

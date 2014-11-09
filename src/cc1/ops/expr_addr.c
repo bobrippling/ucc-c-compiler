@@ -62,36 +62,22 @@ void fold_expr_addr(expr *e, symtable *stab)
 	}
 }
 
-const out_val *gen_expr_addr(expr *e, out_ctx *octx)
+const out_val *gen_expr_addr(const expr *e, out_ctx *octx)
 {
 	if(e->bits.lbl.spel){
 		/* GNU &&lbl */
-		label_makeblk(e->bits.lbl.label, octx);
+		out_blk *blk = label_getblk(e->bits.lbl.label, octx);
 
-		return out_new_blk_addr(octx, e->bits.lbl.label->bblock);
+		return out_new_blk_addr(octx, blk);
 
 	}else{
-		/* special case - can't lea_expr() functions because they
-		 * aren't lvalues
-		 */
-		expr *sub = e->lhs;
-
-		if(!sub->f_lea){
-			sub = expr_skip_casts(sub);
-			UCC_ASSERT(expr_kind(sub, identifier),
-					"&[not-identifier], got %s",
-					sub->f_str());
-
-			assert(sub->bits.ident.type == IDENT_NORM);
-
-			return out_new_sym(octx, sub->bits.ident.bits.ident.sym);
-		}else{
-			return lea_expr(sub, octx);
-		}
+		/* gen_expr works, even for &expr, because the fold_expr_no_decay()
+		 * means we don't lval2rval our sub-expression */
+		return gen_expr(e->lhs, octx);
 	}
 }
 
-const out_val *gen_expr_str_addr(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_addr(const expr *e, out_ctx *octx)
 {
 	if(e->bits.lbl.spel){
 		idt_printf("address of label \"%s\"\n", e->bits.lbl.spel);
@@ -155,7 +141,7 @@ void mutate_expr_addr(expr *e)
 	e->f_const_fold = const_expr_addr;
 }
 
-const out_val *gen_expr_style_addr(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_addr(const expr *e, out_ctx *octx)
 {
 	const out_val *r;
 	stylef("&(");

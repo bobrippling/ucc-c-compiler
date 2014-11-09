@@ -825,8 +825,11 @@ void fold_decl(decl *d, symtable *stab)
 
 		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), stab, d->attr);
 
-		if(d->spel)
+		if(d->spel
+		&& (!STORE_IS_TYPEDEF(d->store) || type_is_variably_modified(d->ref)))
+		{
 			fold_decl_add_sym(d, stab);
+		}
 
 		if(((d->store & STORE_MASK_STORE) != store_typedef)
 		/* __attribute__((weak)) is allowed on typedefs */
@@ -1089,7 +1092,7 @@ void fold_decl_global(decl *d, symtable *stab)
 		fold_global_func(d);
 }
 
-void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
+void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 {
 	if(!e)
 		return;
@@ -1154,7 +1157,7 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 
 	if(chk & FOLD_CHK_CONST_I){
 		consty k;
-		const_fold(e, &k);
+		const_fold((expr *)e, &k);
 
 		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
 			die_at(&e->where, "integral constant expected for %s", desc);
@@ -1180,11 +1183,13 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 	if(fargs->arglist){
 		/* check for unnamed params and extern/static specs */
 		int i;
+		int seen_ptr = 0;
 
 		for(i = 0; fargs->arglist[i]; i++){
 			decl *const d = fargs->arglist[i];
 
 			const int is_var = !type_is(d->ref, type_func);
+			int is_ptr;
 
 			/* fold before for array checks, etc */
 			if(is_var && d->bits.var.init.dinit)
@@ -1220,17 +1225,17 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 					break;
 			}
 
+			is_ptr = type_is(d->ref, type_ptr) || type_is(d->ref, type_block);
+
 			/* ensure ptr, unless __attribute__((nonnull)) */
-			if(nonnulls != ~0UL
-			&& (nonnulls & (1 << i))
-			&& !type_is(d->ref, type_ptr)
-			&& !type_is(d->ref, type_block))
-			{
+			if(nonnulls != ~0UL && (nonnulls & (1 << i)) && !is_ptr){
 				cc1_warn_at(&fargs->arglist[i]->where,
 						attr_nonnull_nonptr,
 						"nonnull attribute applied to non-pointer argument '%s'",
 						type_to_str(d->ref));
 			}
+
+			seen_ptr |= is_ptr;
 		}
 
 		if(i == 0 && nonnulls)
@@ -1241,6 +1246,11 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 			cc1_warn_at(&fargs->where,
 					attr_nonnull_oob,
 					"nonnull attributes above argument index %d ignored", i + 1);
+		else if(!seen_ptr && nonnulls)
+			cc1_warn_at(&fargs->where,
+					attr_nonnull_noptrs,
+					"nonnull attributes applied to function with no pointer arguments");
+
 	}else if(nonnulls){
 		cc1_warn_at(&fargs->where,
 				attr_nonnull_noargs,

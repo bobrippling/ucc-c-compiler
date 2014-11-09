@@ -159,7 +159,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
-static const out_val *builtin_gen_va_start(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_va_start(const expr *e, out_ctx *octx)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -196,7 +196,7 @@ expr *parse_va_start(const char *ident, symtable *scope)
 }
 
 static const out_val *va_arg_gen_read(
-		expr *const e,
+		const expr *const e,
 		out_ctx *const octx,
 		type *const ty,
 		decl *const offset_decl, /* varies - float or integral */
@@ -328,7 +328,7 @@ static const out_val *va_arg_gen_read(
 				type_ptr_to(ty)));
 }
 
-static const out_val *builtin_gen_va_arg(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_va_arg(const expr *e, out_ctx *octx)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -525,7 +525,7 @@ expr *parse_va_arg(const char *ident, symtable *scope)
 	return fcall;
 }
 
-static const out_val *builtin_gen_va_end(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_va_end(const expr *e, out_ctx *octx)
 {
 	(void)e;
 	return out_new_noop(octx);
@@ -553,7 +553,7 @@ expr *parse_va_end(const char *ident, symtable *scope)
 	return fcall;
 }
 
-static const out_val *builtin_gen_va_copy(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_va_copy(const expr *e, out_ctx *octx)
 {
 	return gen_expr(e->lhs, octx);
 }
