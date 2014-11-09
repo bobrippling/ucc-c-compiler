@@ -411,6 +411,9 @@ const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 		fn_ret = gen_call(e->expr, NULL, fn, args, octx, &e->expr->where);
 
 		dynarray_free(const out_val **, args, NULL);
+
+		if(!expr_func_passable(GEN_CONST_CAST(expr *, e)))
+			out_ctrl_end_undefined(octx);
 	}
 
 	return fn_ret;
