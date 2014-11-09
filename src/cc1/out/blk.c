@@ -83,9 +83,19 @@ static void blk_codegen(out_blk *blk, struct flush_state *st)
 
 static void bfs_block(out_blk *blk, struct flush_state *st, int const force)
 {
-	if(blk->flush_in_prog)
+	if(blk->emitted)
 		return;
-	blk->flush_in_prog = 1;
+
+	if(!force){
+		/*
+		 * dead code elimination.
+		 * should only do this if called back from the merge-pred loop (force=0),
+		 * since otherwise we're called from a BLK_NEXT_BLOCK, which means control
+		 * does jump into us */
+		return;
+	}
+
+	blk->emitted = 1;
 
 	if(blk->merge_preds){
 		out_blk **i;
@@ -93,13 +103,6 @@ static void bfs_block(out_blk *blk, struct flush_state *st, int const force)
 		for(i = blk->merge_preds; *i; i++){
 			bfs_block(*i, st, 0);
 		}
-	}else if(!force){
-		/*
-		 * dead code elimination.
-		 * should only do this if called back from the merge-pred loop (force=0),
-		 * since otherwise we're called from a BLK_NEXT_BLOCK, which means control
-		 * does jump into us */
-		return;
 	}
 
 	switch(blk->type){

@@ -17,7 +17,7 @@ struct out_blk
 
 	out_blk **merge_preds;
 	out_blk *next;
-	int flush_in_prog;
+	int emitted;
 
 	enum
 	{
