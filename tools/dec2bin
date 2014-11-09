@@ -1,0 +1,9 @@
+#!/usr/bin/perl -p
+use warnings;
+
+sub bin
+{
+	return sprintf "%b", shift;
+}
+
+s/\b[1-9][0-9]*\b/"0b" . bin($&)/ge;
