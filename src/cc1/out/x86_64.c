@@ -793,14 +793,9 @@ static const out_val *x86_deref(out_ctx *octx, const out_val *vp, const struct v
 const out_val *impl_load_to_reg(
 		out_ctx *octx,
 		const out_val *from,
-		const struct vreg *reg)
+		const struct vreg *reg,
+		const int dereference)
 {
-	if(from->type == V_REG
-	&& vreg_eq(reg, &from->bits.regoff.reg))
-	{
-		return from;
-	}
-
 	switch(from->type){
 		case V_FLAG:
 		{
@@ -864,6 +859,10 @@ const out_val *impl_load_to_reg(
 			return x86_deref(octx, from, reg);
 
 		case V_REG:
+			// WHAT TO DO? XXX XXX XXX
+			if(vreg_eq(reg, &from->bits.regoff.reg))
+				return from;
+
 			if(from->bits.regoff.offset)
 				goto lea;
 
@@ -886,7 +885,7 @@ lea:
 			if(suff_ty && type_size(suff_ty, NULL) < 4)
 				suff_ty = chosen_ty = NULL;
 
-			out_asm(octx, "%s%s %s, %%%s",
+			out_asm(octx, "mov%s %s, %%%s",
 					fp ? "mov" : "lea",
 					x86_suffix(suff_ty),
 					impl_val_str(from, 1),

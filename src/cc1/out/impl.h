@@ -7,8 +7,10 @@
 void impl_store(out_ctx *, const out_val *dest, const out_val *val);
 
 ucc_wur const out_val *impl_load_to_reg(
-		out_ctx *octx, const out_val *from,
-		const struct vreg *reg)
+		out_ctx *octx,
+		const out_val *from,
+		const struct vreg *reg,
+		int dereference)
 	ucc_nonnull();
 
 ucc_wur const out_val *impl_extend(
