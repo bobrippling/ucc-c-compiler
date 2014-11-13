@@ -75,13 +75,22 @@ static int const_expr_zero(expr *e, int zero)
 
 	const_fold(e, &k);
 
-	if(k.type != CONST_NUM)
-		return 0;
+	switch(k.type){
+		case CONST_NUM:
+			if(K_FLOATING(k.bits.num))
+				return !k.bits.num.val.f == zero;
+			return !k.bits.num.val.i == zero;
 
-	if(K_FLOATING(k.bits.num))
-		return !k.bits.num.val.f == zero;
+		case CONST_ADDR:
+			return !k.bits.addr.is_lbl && k.bits.addr.bits.memaddr == 0;
 
-	return !k.bits.num.val.i == zero;
+		case CONST_NEED_ADDR:
+		case CONST_STRK:
+		case CONST_NO:
+			break;
+	}
+
+	return 0;
 }
 
 void const_fold_integral(expr *e, numeric *piv)
