@@ -350,3 +350,11 @@ int decl_unused_and_internal(decl *d)
 fin:
 	return !used && decl_linkage(d) != linkage_external;
 }
+
+int decl_is_bitfield(decl *d)
+{
+	if(type_is(d->ref, type_func))
+		return 0;
+
+	return !!d->bits.var.field_width;
+}

@@ -132,6 +132,8 @@ int decl_is_pure_inline(decl *);
 int decl_should_emit_code(decl *);
 int decl_unused_and_internal(decl *);
 
+int decl_is_bitfield(decl *);
+
 #define DECL_STATIC_BUFSIZ 512
 
 const char *decl_to_str(decl *d);

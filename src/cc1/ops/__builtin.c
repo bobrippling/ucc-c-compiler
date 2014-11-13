@@ -810,8 +810,7 @@ static expr *parse_strlen(const char *ident, symtable *scope)
 static void fold_offsetof(expr *e, symtable *stab)
 {
 	if(!type_is_complete(e->bits.offsetof_ty)){
-		warn_at_print_error(&e->where, "%s on incomplete type '%s'",
-				BUILTIN_SPEL(e->expr),
+		warn_at_print_error(&e->where, "offsetof() on incomplete type '%s'",
 				type_to_str(e->bits.offsetof_ty));
 
 		fold_had_error = 1;
@@ -819,6 +818,11 @@ static void fold_offsetof(expr *e, symtable *stab)
 
 	/* fold regardless, prevent const_fold() ICEs */
 	fold_expr_nodecay(e->lhs, stab);
+
+	if(expr_is_struct_bitfield(e->lhs)){
+		warn_at_print_error(&e->lhs->where, "offsetof() into bitfield");
+		fold_had_error = 1;
+	}
 
 	e->tree_type = type_nav_btype(cc1_type_nav, type_ulong);
 	wur_builtin(e);

@@ -308,6 +308,8 @@ enum lvalue_kind expr_is_lval(expr *e);
 enum lvalue_kind expr_is_lval_always(expr *);
 enum lvalue_kind expr_is_lval_struct(expr *);
 
+int expr_is_struct_bitfield(const expr *); /* a->b where b is bitfield */
+
 void expr_set_const(expr *, consty *);
 
 /* util */

@@ -1266,19 +1266,8 @@ void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 		}
 	}
 
-	if(chk & FOLD_CHK_NO_BITFIELD){
-		if(e && expr_kind(e, struct)){
-			decl *d = e->bits.struct_mem.d;
-
-			/* may be null from a bad struct access */
-			if(d){
-				assert(!type_is(d->ref, type_func));
-
-				if(d->bits.var.field_width)
-					die_at(&e->where, "bitfield in %s", desc);
-			}
-		}
-	}
+	if(chk & FOLD_CHK_NO_BITFIELD && expr_is_struct_bitfield(e))
+		die_at(&e->where, "bitfield in %s", desc);
 
 	if(chk & (FOLD_CHK_ARITHMETIC | FOLD_CHK_INTEGRAL)){
 		int (*chkfn)(type *) = chk & FOLD_CHK_ARITHMETIC
