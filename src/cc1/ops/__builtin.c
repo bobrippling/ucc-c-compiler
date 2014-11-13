@@ -838,11 +838,25 @@ static void const_offsetof(expr *e, consty *k)
 	consty offset;
 	const_fold(e->lhs, &offset);
 
-	if(offset.type == CONST_NEED_ADDR && !offset.bits.addr.is_lbl){
-		CONST_FOLD_LEAF(k);
+	switch(offset.type){
+		case CONST_ADDR:
+			/* allow, if array */
+			if(!type_is_array(e->lhs->tree_type))
+				break;
+			/* fall */
 
-		k->type = CONST_NUM;
-		k->bits.num.val.i = offset.bits.addr.bits.memaddr + offset.offset;
+		case CONST_NEED_ADDR:
+			if(offset.bits.addr.is_lbl)
+				break;
+
+			CONST_FOLD_LEAF(k);
+
+			k->type = CONST_NUM;
+			k->bits.num.val.i = offset.bits.addr.bits.memaddr + offset.offset;
+			break;
+
+		default:
+			break;
 	}
 }
 
