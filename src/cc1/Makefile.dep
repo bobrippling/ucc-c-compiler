@@ -212,7 +212,7 @@ gen_asm.o: gen_asm.c ../util/util.h ../util/warn.h ../util/where.h \
  ops/stmt_while.h ops/stmt_continue.h vla.h type_is.h out/dbg.h \
  out/../../util/compiler.h gen_asm.h out/lbl.h out/asm.h gen_style.h \
  decl_init.h out/val.h out/ctx.h out/vstack_t.h cc1_out_ctx.h \
- out/forwards.h inline.h type_nav.h sue.h
+ out/forwards.h inline.h type_nav.h sue.h label.h
 gen_c.o: gen_c.c
 gen_str.o: gen_str.c ../util/util.h ../util/warn.h ../util/where.h \
  ../util/compiler.h ../util/platform.h ../util/dynarray.h ../util/dyn.h \
@@ -268,7 +268,8 @@ inline.o: inline.c ../util/dynarray.h ../util/dyn.h ../util/warn.h \
 label.o: label.c ../util/where.h ../util/compiler.h ../util/alloc.h \
  ../util/dynarray.h ../util/dyn.h sym.h decl.h type.h num.h btype.h \
  attribute.h retain.h ../util/dynmap.h label.h out/forwards.h out/out.h \
- out/../type.h out/../num.h out/../sym.h out/../op.h out/forwards.h
+ out/../type.h out/../num.h out/../sym.h out/../op.h out/forwards.h \
+ cc1_out_ctx.h
 num.o: num.c type.h num.h btype.h ../util/where.h ../util/compiler.h \
  type_is.h cc1.h ../util/std.h warn.h defs.h
 op.o: op.c op.h macros.h
