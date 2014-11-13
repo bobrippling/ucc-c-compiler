@@ -124,6 +124,7 @@ static type *parse_type_sue(
 					  DECL_MULTI_CAN_DEFAULT
 					| DECL_MULTI_ACCEPT_FIELD_WIDTH
 					| DECL_MULTI_NAMELESS
+					| DECL_MULTI_IS_STRUCT_UN_MEMB
 					| DECL_MULTI_ALLOW_ALIGNAS,
 					/*newdecl_context:*/0,
 					scope, NULL, &dmembers))
@@ -2049,7 +2050,7 @@ int parse_decl_group(
 			done = 1;
 		}
 
-		if(d->spel)
+		if(d->spel && (mode & DECL_MULTI_IS_STRUCT_UN_MEMB) == 0)
 			link_to_previous_decl(d, in_scope);
 		if(pdecls)
 			dynarray_add(pdecls, d);
