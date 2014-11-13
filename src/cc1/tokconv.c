@@ -475,4 +475,5 @@ void token_get_current_str(
 	}
 
 	currentstring = NULL;
+	currentstringlen = 0;
 }
