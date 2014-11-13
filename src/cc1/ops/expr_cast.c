@@ -242,7 +242,7 @@ static void check_qual_rm(type *ptr_lhs, type *ptr_rhs, expr *e)
 			type_qual_to_str(remain, 0));
 }
 
-static void check_addr_int_cast(consty *k, int l)
+static void check_addr_int_cast(consty *k, int l, expr *owner)
 {
 	/* shouldn't fit, check if it will */
 	switch(k->type){
@@ -252,13 +252,13 @@ static void check_addr_int_cast(consty *k, int l)
 		case CONST_STRK:
 			/* no idea where it will be in memory,
 			 * can't fit into a smaller type */
-			k->type = CONST_NO; /* e.g. (int)&a */
+			CONST_FOLD_NO(k, owner); /* e.g. (int)&a */
 			break;
 
 		case CONST_NEED_ADDR:
 		case CONST_ADDR:
 			if(k->bits.addr.is_lbl){
-				k->type = CONST_NO; /* similar to strk case */
+				CONST_FOLD_NO(k, owner); /* similar to strk case */
 			}else{
 				integral_t new = k->bits.addr.bits.memaddr;
 				const int pws = platform_word_size();
@@ -269,11 +269,11 @@ static void check_addr_int_cast(consty *k, int l)
 
 					if(k->bits.addr.bits.memaddr != new)
 						/* can't cast without losing value - not const */
-						k->type = CONST_NO;
+						CONST_FOLD_NO(k, owner);
 
 				}else{
 					/* what are you doing... */
-					k->type = CONST_NO;
+					CONST_FOLD_NO(k, owner);
 				}
 			}
 	}
@@ -293,7 +293,7 @@ static void cast_addr(expr *e, consty *k)
 		r = type_size(subtt, &expr_cast_child(e)->where);
 
 	if(l < r)
-		check_addr_int_cast(k, l);
+		check_addr_int_cast(k, l, e);
 }
 
 static void fold_const_expr_cast(expr *e, consty *k)
@@ -301,7 +301,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	int to_fp;
 
 	if(type_is_void(e->tree_type)){
-		k->type = CONST_NO;
+		CONST_FOLD_NO(k, e);
 		return;
 	}
 
@@ -326,7 +326,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 		case CONST_NEED_ADDR:
 			if(to_fp){
-				k->type = CONST_NO;
+				CONST_FOLD_NO(k, e);
 				break;
 			}
 			/* fall */
@@ -335,7 +335,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		case CONST_STRK:
 			if(to_fp){
 				/* had an error - reported in fold() */
-				k->type = CONST_NO;
+				CONST_FOLD_NO(k, e);
 				return;
 			}
 

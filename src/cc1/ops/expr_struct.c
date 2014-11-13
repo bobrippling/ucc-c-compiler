@@ -187,7 +187,7 @@ static void fold_const_expr_struct(expr *e, consty *k)
 	switch(k->type){
 		case CONST_NO:
 		case CONST_STRK:
-			k->type = CONST_NO;
+			CONST_FOLD_NO(k, e);
 			break;
 
 		case CONST_NEED_ADDR:

@@ -73,13 +73,12 @@ static void const_expr_deref(expr *e, consty *k)
 			 * should be char *
 			 */
 			if(!type_is_primitive_anysign(type_is_ptr(from->tree_type), type_nchar)){
-				k->type = CONST_NO;
+				CONST_FOLD_NO(k, e);
 				break;
 			}
 
 			if(k->offset < 0 || (unsigned)k->offset >= sv->len){
-				/* undefined - we define as */
-				k->type = CONST_NO;
+				CONST_FOLD_NO(k, e);
 			}else{
 				const long offset = k->offset;
 
@@ -97,7 +96,7 @@ static void const_expr_deref(expr *e, consty *k)
 			break;
 		}
 		case CONST_NEED_ADDR:
-			k->type = CONST_NO;
+			CONST_FOLD_NO(k, e);
 			break;
 
 		case CONST_NUM:

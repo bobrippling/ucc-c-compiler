@@ -176,14 +176,14 @@ static void const_op_num_int(
 
 				default:
 					/* ~&lbl, 5 == &lbl, 6 > &lbl etc */
-					k->type = CONST_NO;
+					CONST_FOLD_NO(k, e);
 					break;
 
 				case op_plus:
 				case op_minus:
 					if(!rhs){
 						/* unary +/- on label */
-						k->type = CONST_NO;
+						CONST_FOLD_NO(k, e);
 						break;
 					}
 
@@ -222,7 +222,7 @@ static void const_op_num_int(
 
 			if(err){
 				cc1_warn_at(&e->where, constop_bad, "%s", err);
-				k->type = CONST_NO;
+				CONST_FOLD_NO(k, e);
 			}else{
 				const btype *bt;
 
@@ -255,7 +255,7 @@ static void const_op_num_int(
 				case op_unknown:
 					assert(0);
 				default:
-					k->type = CONST_NO;
+					CONST_FOLD_NO(k, e);
 					break;
 
 				case op_orsc:
@@ -357,10 +357,17 @@ static void fold_const_expr_op(expr *e, consty *k)
 	if(!CONST_AT_COMPILE_TIME(lhs.type) /* catch need_addr */
 	|| !CONST_AT_COMPILE_TIME(rhs.type))
 	{
+		const_fold_no(k, &lhs, e->lhs, &rhs, e->rhs);
+
 		/* allow shortcircuit */
-		k->type = CONST_NO;
-		if(e->bits.op.op == op_andsc || e->bits.op.op == op_orsc)
+		if(e->bits.op.op == op_andsc || e->bits.op.op == op_orsc){
 			const_shortcircuit(e, k, &lhs, &rhs);
+
+			/* undo CONST_FOLD_NO() above */
+			if(k->type != CONST_NO)
+				k->nonconst = NULL;
+		}
+
 		return;
 	}
 
@@ -905,7 +912,7 @@ static int op_shift_check(expr *e)
 					k.type = CONST_NUM;
 					k.bits.num.val.i = 0;
 				}else{
-					k.type = CONST_NO;
+					CONST_FOLD_NO(&k, e);
 				}
 
 				expr_set_const(e, &k);

@@ -123,7 +123,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 static void const_expr_sizeof(expr *e, consty *k)
 {
 	if(NEED_RUNTIME_SIZEOF(SIZEOF_WHAT(e))){
-		k->type = CONST_NO;
+		CONST_FOLD_NO(k, e);
 		return;
 	}
 

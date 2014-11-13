@@ -40,6 +40,21 @@ void const_fold(expr *e, consty *k)
 
 		memcpy_safe(k, &e->const_eval.k);
 	}
+
+	if(k->type == CONST_NO && !k->nonconst)
+		k->nonconst = e;
+}
+
+void const_fold_no(
+		consty *k,
+		consty *klhs, expr *lhs,
+		consty *krhs, expr *rhs)
+{
+	k->type = CONST_NO;
+
+	k->nonconst = CONST_AT_COMPILE_TIME(klhs->type)
+		? (krhs->nonconst ? krhs->nonconst : rhs)
+		: (klhs->nonconst ? klhs->nonconst : lhs);
 }
 
 #if 0
@@ -266,12 +281,12 @@ floating_t const_op_exec_fp(
 	ucc_unreach(-1);
 }
 
-static void const_intify(consty *k)
+static void const_intify(consty *k, expr *owner)
 {
 	switch(k->type){
 		case CONST_STRK:
 		case CONST_NO:
-			k->type = CONST_NO;
+			CONST_FOLD_NO(k, owner);
 		case CONST_NUM:
 			break;
 
@@ -282,7 +297,7 @@ static void const_intify(consty *k)
 
 			/* can't do (int)&x */
 			if(k->bits.addr.is_lbl){
-				k->type = CONST_NO;
+				CONST_FOLD_NO(k, owner);
 				return;
 			}
 
@@ -322,7 +337,8 @@ static void const_memify(consty *k)
 }
 
 void const_ensure_num_or_memaddr(
-		consty *k, type *from, type *to, expr *nonstd)
+		consty *k, type *from, type *to,
+		expr *owner)
 {
 	const int from_ptr = !!type_is_ptr(from);
 	const int to_ptr = !!type_is_ptr(to);
@@ -332,7 +348,7 @@ void const_ensure_num_or_memaddr(
 
 	if(from_ptr && !to_ptr){
 		/* casting from pointer to int */
-		const_intify(k);
+		const_intify(k, owner);
 
 	}else{
 		assert(to_ptr && !from_ptr);
@@ -341,6 +357,6 @@ void const_ensure_num_or_memaddr(
 	}
 
 	/* not a constant but we treat it as such, as an extension */
-	if(nonstd && !k->nonstandard_const)
-		k->nonstandard_const = nonstd;
+	if(owner && !k->nonstandard_const)
+		k->nonstandard_const = owner;
 }

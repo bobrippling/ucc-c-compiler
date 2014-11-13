@@ -43,6 +43,7 @@ typedef struct consty
 		} addr;
 	} bits;
 	struct expr *nonstandard_const; /* e.g. (1, 2) is not strictly const */
+	struct expr *nonconst; /* non-constant sub-expression */
 } consty;
 #define CONST_AT_COMPILE_TIME(t) (t != CONST_NO && t != CONST_NEED_ADDR)
 
@@ -58,6 +59,17 @@ typedef struct consty
 #define K_INTEGRAL(num) !K_FLOATING(num)
 
 #define CONST_FOLD_LEAF(k) memset((k), 0, sizeof *(k))
+#define CONST_FOLD_NO(k, e) do{ \
+		(k)->type = CONST_NO;       \
+		if(!(k)->nonconst)          \
+			(k)->nonconst = (e);      \
+	}while(0)
+
+/* this is used to propagate the .nonconst member from two sub-exprs */
+void const_fold_no(
+		consty *k,
+		consty *ksub1, struct expr *sub1,
+		consty *ksub2, struct expr *sub2);
 
 void const_fold(struct expr *e, consty *);
 
@@ -69,7 +81,7 @@ integral_t const_fold_val_i(struct expr *e);
 
 void const_ensure_num_or_memaddr(
 		consty *k, struct type *from, struct type *to,
-		struct expr *nonstd);
+		struct expr *owner);
 
 integral_t const_op_exec(
 		/* rval is optional */

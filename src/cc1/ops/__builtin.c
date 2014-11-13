@@ -770,7 +770,7 @@ static expr *parse_nan(const char *ident, symtable *scope)
 
 static void const_strlen(expr *e, consty *k)
 {
-	k->type = CONST_NO;
+	CONST_FOLD_NO(k, e);
 
 	/* if 1 arg and it has a char * constant, return length */
 	if(dynarray_count(e->funcargs) == 1){

@@ -154,7 +154,7 @@ static struct init_cpy *init_cpy_from_dinit(decl_init *di)
 
 int decl_init_is_const(
 		decl_init *dinit, symtable *stab,
-		type *expected_ty, expr **nonstd)
+		type *expected_ty, expr **const nonstd, expr **const nonconst)
 {
 	DINIT_NULL_CHECK(dinit, return 1);
 
@@ -165,6 +165,7 @@ int decl_init_is_const(
 		{
 			expr *e;
 			consty k;
+			int ret;
 
 			e = FOLD_EXPR(dinit->bits.expr, stab);
 			const_fold(e, &k);
@@ -172,7 +173,12 @@ int decl_init_is_const(
 			if(k.nonstandard_const && nonstd && !*nonstd)
 				*nonstd = k.nonstandard_const;
 
-			return CONST_AT_COMPILE_TIME(k.type);
+			ret = CONST_AT_COMPILE_TIME(k.type);
+
+			if(!ret && nonconst && !*nonconst)
+				*nonconst = k.nonconst;
+
+			return ret;
 		}
 
 		case decl_init_brace:
@@ -220,7 +226,7 @@ int decl_init_is_const(
 					}
 				}
 
-				if(!decl_init_is_const(init, stab, current_ty, nonstd))
+				if(!decl_init_is_const(init, stab, current_ty, nonstd, nonconst))
 					return 0;
 			}
 
@@ -230,7 +236,7 @@ int decl_init_is_const(
 		case decl_init_copy:
 		{
 			struct init_cpy *cpy = *dinit->bits.range_copy;
-			return decl_init_is_const(cpy->range_init, stab, expected_ty, nonstd);
+			return decl_init_is_const(cpy->range_init, stab, expected_ty, nonstd, nonconst);
 		}
 	}
 
@@ -570,7 +576,7 @@ static decl_init **decl_init_brace_up_array2(
 					 * int x[] = { [0 ... 9] = f(), [1] = `exp' };
 					 * if exp is const we can do it.
 					 */
-					if(!decl_init_is_const(replacing, stab, next_type, NULL)){
+					if(!decl_init_is_const(replacing, stab, next_type, NULL, NULL)){
 						char wbuf[WHERE_BUF_SIZ];
 
 						die_at(&this->where,

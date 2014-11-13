@@ -20,7 +20,7 @@ static void fold_const_expr_comma(expr *e, consty *k)
 	k->nonstandard_const = e;
 
 	if(!CONST_AT_COMPILE_TIME(klhs.type))
-		k->type = CONST_NO;
+		CONST_FOLD_NO(k, e);
 }
 
 void fold_expr_comma(expr *e, symtable *stab)
