@@ -738,7 +738,7 @@ static void fold_decl_var(decl *d, symtable *stab)
 				fold_decl_global_init(d, stab);
 
 			}else if(!d->bits.var.init.expr){
-				decl_init_brace_up_fold(d, stab, /*struct_copy:*/1);
+				decl_init_brace_up_fold(d, stab);
 
 				decl_init_create_assignments_base_and_fold(
 						d,
@@ -924,7 +924,7 @@ void fold_decl_global_init(decl *d, symtable *stab)
 		return;
 
 	/* this completes the array, if any */
-	decl_init_brace_up_fold(d, stab, /*struct_copy:*/1);
+	decl_init_brace_up_fold(d, stab);
 
 	type = stab->parent ? "static" : "global";
 	if(!decl_init_is_const(d->bits.var.init.dinit, stab, &nonstd)){

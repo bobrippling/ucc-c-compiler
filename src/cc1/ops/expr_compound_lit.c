@@ -49,7 +49,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	/* fold the initialiser */
 	UCC_ASSERT(d->bits.var.init.dinit, "no init for comp.literal");
 
-	decl_init_brace_up_fold(d, stab, /*initial struct copy:*/0);
+	decl_init_brace_up_fold(d, stab);
 
 	/*
 	 * update the type, for example if an array type has been completed
