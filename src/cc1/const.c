@@ -284,20 +284,21 @@ floating_t const_op_exec_fp(
 static void const_intify(consty *k, expr *owner)
 {
 	switch(k->type){
-		case CONST_STRK:
 		case CONST_NO:
 			CONST_FOLD_NO(k, owner);
 		case CONST_NUM:
 			break;
+
+		case CONST_STRK:
+			return;
 
 		case CONST_NEED_ADDR:
 		case CONST_ADDR:
 		{
 			integral_t memaddr;
 
-			/* can't do (int)&x */
 			if(k->bits.addr.is_lbl){
-				CONST_FOLD_NO(k, owner);
+				/* can't do (int)&x */
 				return;
 			}
 
