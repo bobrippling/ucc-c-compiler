@@ -872,6 +872,9 @@ static expr *parse_offsetof(const char *ident, symtable *scope)
 			0 /* dot */,
 			parse_expr_identifier());
 
+	if(curtok != token_close_paren)
+		cc1_warn_at(NULL, offsetof_extended, "extended designator in offsetof()");
+
 	while(curtok != token_close_paren){
 		if(accept(token_dot)){
 			fcall->lhs = expr_new_struct(

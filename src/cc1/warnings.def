@@ -147,6 +147,8 @@ X("embedded-flexarr", flexarr_embed)
 X("flexarr-single-member", flexarr_only)
 X("flexarr-init", flexarr_init)
 
+X("extended-offsetof", offsetof_extended)
+
 X("free-nonheap-object", free_nonheap)
 
 X("gcc-compat", gnu_gcc_compat)
