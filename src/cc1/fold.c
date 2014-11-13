@@ -304,14 +304,19 @@ void fold_type_w_attr(
 					UCC_ASSERT(K_INTEGRAL(k.bits.num),
 							"integral array should be checked during parse");
 
-					if((sintegral_t)k.bits.num.val.i < 0)
-						die_at(array_loc, "negative array size");
 					/* allow zero length arrays */
-					else if(k.nonstandard_const)
+					if(type_is_signed(r->bits.array.size->tree_type)
+					&& (sintegral_t)k.bits.num.val.i < 0)
+					{
+						die_at(array_loc, "negative array size");
+					}
+
+					if(k.nonstandard_const){
 						cc1_warn_at(&k.nonstandard_const->where,
 								nonstd_arraysz,
 								"%s-expr is a non-standard constant expression (for array size)",
 								k.nonstandard_const->f_str());
+					}
 				}
 			}
 			break;
