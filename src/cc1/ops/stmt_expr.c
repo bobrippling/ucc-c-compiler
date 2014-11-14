@@ -13,7 +13,7 @@ void fold_stmt_expr(stmt *s)
 {
 	int folded = !s->expr->tree_type;
 
-	FOLD_EXPR(s->expr, s->symtab);
+	fold_expr_nodecay(s->expr, s->symtab);
 
 	if(!folded
 	&& !s->freestanding
