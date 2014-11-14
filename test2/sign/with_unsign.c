@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check %s -Wsigned-unsigned
 
 f(signed s, unsigned u)
 {

@@ -87,9 +87,9 @@ static void stmt_walk2(stmt *base, stmt_walk_enter enter, stmt_walk_leave leave,
 	WALK_IF(base->rhs);
 
 	if(stmt_kind(base, code) && base->bits.code.stmts){
-		int i;
-		for(i = 0; base->bits.code.stmts[i]; i++){
-			stmt_walk2(base->bits.code.stmts[i], enter, leave, data, stop);
+		stmt **i;
+		for(i = base->bits.code.stmts; i && *i; i++){
+			stmt_walk2(*i, enter, leave, data, stop);
 			if(*stop)
 				break;
 		}
@@ -111,9 +111,24 @@ void stmt_walk_first_return(stmt *current, int *stop, int *descend, void *extra)
 	}
 }
 
+void stmts_count(stmt *current, int *stop, int *descend, void *extra)
+{
+	(void)descend;
+	(void)stop;
+	(void)current;
+	++*(int *)extra;
+}
+
 void stmt_walk(stmt *base, stmt_walk_enter enter, stmt_walk_leave leave, void *data)
 {
 	int stop = 0;
 
 	stmt_walk2(base, enter, leave, data, &stop);
+}
+
+void stmt_init_blks(const stmt *ks, out_blk *con, out_blk *bbreak)
+{
+	stmt *s = (stmt *)ks;
+	s->blk_continue = con;
+	s->blk_break = bbreak;
 }

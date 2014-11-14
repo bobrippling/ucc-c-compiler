@@ -98,7 +98,7 @@ static void fold_cast_num(expr *const e, numeric *const num)
 #undef pv
 }
 
-static void signed_unsigned_warn_at(
+static void warn_value_changed_at(
 		where *w,
 		const char *infmt,
 		int signed_in, int signed_out,
@@ -117,7 +117,7 @@ static void signed_unsigned_warn_at(
 		}
 	}
 
-	cc1_warn_at(w, signed_unsigned, fmt, a, b);
+	cc1_warn_at(w, overflow, fmt, a, b);
 	free(fmt);
 }
 
@@ -192,13 +192,13 @@ static integral_t convert_integral_to_integral_warn(
 
 	if(do_warn){
 		if(ret != in){
-			signed_unsigned_warn_at(w,
+			warn_value_changed_at(w,
 					"implicit cast changes value from %llA to %llB",
 					signed_in, signed_out,
 					in, signed_out ? (integral_t)to_iv_sign_ext : ret);
 
 		}else if(signed_out && !signed_in && (sintegral_t)ret < 0){
-			signed_unsigned_warn_at(w,
+			warn_value_changed_at(w,
 					"implicit cast negates value, %llA to %llB",
 					signed_in, signed_out,
 					in, (sintegral_t)to_iv_sign_ext);
@@ -209,7 +209,7 @@ static integral_t convert_integral_to_integral_warn(
 			int out_high = integral_high_bit(type_max(tout, w), tout);
 
 			if(in_high > out_high){
-				signed_unsigned_warn_at(w,
+				warn_value_changed_at(w,
 						"implicit cast truncates value from %llA to %llB",
 						signed_in, signed_out,
 						in, ret & ((1ULL << (out_high + 1)) - 1));
@@ -365,12 +365,6 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	}
 }
 
-static const out_val *lea_expr_cast(expr *e, out_ctx *octx)
-{
-	expr *c = expr_cast_child(e);
-	return c->f_lea(c, octx);
-}
-
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 {
 	int flag;
@@ -382,10 +376,6 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	if(IS_LVAL_DECAY(e)){
 		/* implicitly removes cv-qualifiers */
 		e->tree_type = type_decay(expr_cast_child(e)->tree_type);
-
-		/* rval cast can have a lea */
-		if(expr_cast_child(e)->f_lea)
-			e->f_lea = lea_expr_cast;
 
 	}else{
 		/* casts remove restrict qualifiers */
@@ -520,21 +510,25 @@ void fold_expr_cast(expr *e, symtable *stab)
 	fold_expr_cast_descend(e, stab, 1);
 }
 
-const out_val *gen_expr_cast(expr *e, out_ctx *octx)
+const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 {
 	type *tto = e->tree_type;
 	const int cast_to_void = type_is_void(tto);
 	const out_val *casted;
 
-	/* avoid a struct dereference for (void) <struct> and lval-to-rval struct */
-	casted = (cast_to_void || IS_LVAL_DECAY(e)
-			? gen_maybe_struct_expr : gen_expr)(
-				expr_cast_child(e),
-				octx);
+	if(IS_LVAL_DECAY(e)){
+		/* we're an lval2rval cast
+		 * if inlining, check if we can substitute the lvalue's rvalue here
+		 */
+		decl *d = expr_to_declref(GEN_CONST_CAST(expr *, e), NULL);
+		if(d && d->sym)
+			return out_new_sym_val(octx, d->sym);
+	}
+
+	casted = gen_expr(expr_cast_child(e), octx);
 
 	if(IS_LVAL_DECAY(e)){
-		/*out_to_rvalue();*/
-		casted = out_change_type(octx, casted, e->tree_type);
+		casted = out_deref(octx, casted);
 	}else{
 		type *tfrom = expr_cast_child(e)->tree_type;
 
@@ -583,7 +577,7 @@ const out_val *gen_expr_cast(expr *e, out_ctx *octx)
 	return casted;
 }
 
-const out_val *gen_expr_str_cast(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_cast(const expr *e, out_ctx *octx)
 {
 	idt_printf("%scast expr:\n", IS_LVAL_DECAY(e) ? "lvalue-decay-" : "");
 	gen_str_indent++;
@@ -616,7 +610,7 @@ expr *expr_new_cast_lval_decay(expr *sub)
 	return e;
 }
 
-const out_val *gen_expr_style_cast(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_cast(const expr *e, out_ctx *octx)
 {
 	if(e->bits.cast_to)
 		stylef("(%s)", type_to_str(e->bits.cast_to));

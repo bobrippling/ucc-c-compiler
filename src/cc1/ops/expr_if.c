@@ -8,8 +8,6 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 
-const out_val *lea_expr_if(expr *, out_ctx *);
-
 const char *str_expr_if()
 {
 	return "if";
@@ -199,7 +197,7 @@ void fold_expr_if(expr *e, symtable *stab)
 		if((cmp & (TYPE_EQUAL_ANY | TYPE_QUAL_ADD | TYPE_QUAL_SUB))
 		&& type_is_s_or_u(tt_l))
 		{
-			e->f_lea = lea_expr_if;
+			e->f_islval = expr_is_lval_always;
 			e->lvalue_internal = 1;
 			e->tree_type = type_qualify(tt_l, type_qual(tt_l) | type_qual(tt_r));
 
@@ -209,9 +207,7 @@ void fold_expr_if(expr *e, symtable *stab)
 	}
 }
 
-static const out_val *gen_expr_if_via(
-		expr *e, out_ctx *octx,
-		const out_val *fn(expr *, out_ctx *))
+const out_val *gen_expr_if(const expr *e, out_ctx *octx)
 {
 	out_blk *landing = out_blk_new(octx, "if_end"),
 	        *blk_lhs = out_blk_new(octx, "if_lhs"),
@@ -226,14 +222,14 @@ static const out_val *gen_expr_if_via(
 	out_current_blk(octx, blk_lhs);
 	{
 		out_ctrl_transfer(octx, landing,
-				e->lhs ? fn(e->lhs, octx) : cond,
+				e->lhs ? gen_expr(e->lhs, octx) : cond,
 				&blk_lhs);
 	}
 
 	out_current_blk(octx, blk_rhs);
 	{
 		out_ctrl_transfer(octx, landing,
-				fn(e->rhs, octx),
+				gen_expr(e->rhs, octx),
 				&blk_rhs);
 	}
 
@@ -241,17 +237,7 @@ static const out_val *gen_expr_if_via(
 	return out_ctrl_merge(octx, blk_lhs, blk_rhs);
 }
 
-const out_val *gen_expr_if(expr *e, out_ctx *octx)
-{
-	return gen_expr_if_via(e, octx, gen_expr);
-}
-
-const out_val *lea_expr_if(expr *e, out_ctx *octx)
-{
-	return gen_expr_if_via(e, octx, lea_expr);
-}
-
-const out_val *gen_expr_str_if(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_if(const expr *e, out_ctx *octx)
 {
 	idt_printf("if expression:\n");
 	gen_str_indent++;
@@ -289,7 +275,7 @@ expr *expr_new_if(expr *test)
 	return e;
 }
 
-const out_val *gen_expr_style_if(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_if(const expr *e, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(e->expr, octx));
 	stylef(" ? ");

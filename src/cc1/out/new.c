@@ -11,6 +11,8 @@
 #include "../sym.h"
 #include "../vla.h"
 
+#include "../cc1_out_ctx.h"
+
 #include "out.h" /* this file defs */
 #include "val.h"
 #include "ctx.h"
@@ -113,8 +115,26 @@ const out_val *out_new_overflow(out_ctx *octx, const out_val **eval)
 	return impl_test_overflow(octx, eval);
 }
 
+static const out_val *sym_inline_val(out_ctx *octx, sym *sym)
+{
+	struct cc1_out_ctx **cc1_octx = cc1_out_ctx(octx);
+
+	if(*cc1_octx){
+		dynmap *symmap = (*cc1_octx)->sym_inline_map;
+
+		const out_val *val = dynmap_get(
+				struct sym *, const out_val *, symmap, sym);
+
+		if(val)
+			return out_val_retain(octx, val);
+	}
+
+	return NULL;
+}
+
 const out_val *out_new_sym(out_ctx *octx, sym *sym)
 {
+	/* this function shouldn't be in out/ */
 	type *ty = type_ptr_to(sym->decl->ref);
 
 	switch(sym->type){
@@ -141,8 +161,12 @@ label:
 		}
 
 		case sym_arg:
+		{
+			const out_val *v = sym_outval(sym);
+			assert(v && "no value for argument");
 			octx->used_stack = 1;
-			return out_val_retain(octx, sym->outval);
+			return out_val_retain(octx, v);
+		}
 	}
 
 	assert(0);
@@ -150,6 +174,15 @@ label:
 
 const out_val *out_new_sym_val(out_ctx *octx, sym *sym)
 {
+	if(sym->type == sym_arg){
+		/* if an argument is only ever used in rvalue context,
+		 * then as an optimisation we don't read from an lvalue
+		 * and use that - we inline the rvalue directly */
+		const out_val *inlined = sym_inline_val(octx, sym);
+		if(inlined)
+			return inlined;
+	}
+
 	return out_deref(octx, out_new_sym(octx, sym));
 }
 

@@ -25,6 +25,7 @@ type *op_promote_types(
 	ucc_wur;
 
 void expr_promote_default(expr **pe, symtable *stab);
+void expr_promote_int_if_smaller(expr **pe, symtable *stab);
 
 /* called from op code and deref code
  * op code checks for 0 to len-1,

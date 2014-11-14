@@ -8,7 +8,7 @@ const char *str_expr_assign_compound()
 
 void fold_expr_assign_compound(expr *e, symtable *stab)
 {
-	expr *const lvalue = e->lhs;
+#define lvalue e->lhs
 
 	fold_inc_writes_if_sym(lvalue, stab);
 
@@ -31,6 +31,10 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	UCC_ASSERT(op_can_compound(e->bits.compoundop.op), "non-compound op in compound expr");
 
+	/*expr_promote_int_if_smaller(&e->lhs, stab);
+	 * lhs int promotion is handled in code-gen */
+	expr_promote_int_if_smaller(&e->rhs, stab);
+
 	{
 		type *tlhs, *trhs;
 		type *resolved = op_required_promotion(
@@ -41,11 +45,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 			/* must cast the lvalue, then down cast once the operation is done
 			 * special handling for expr_kind(e->lhs, cast) is done in the gen-code
 			 */
-			fold_insert_casts(tlhs, &e->lhs, stab);
-
-			/* casts may be inserted anyway, and don't want to rely on
-			 * .implicit_cast stuff */
-			e->bits.compoundop.upcast = 1;
+			e->bits.compoundop.upcast_ty = tlhs;
 
 		}else if(trhs){
 			fold_insert_casts(trhs, &e->rhs, stab);
@@ -58,18 +58,17 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	}
 
 	/* type check is done in op_required_promotion() */
+#undef lvalue
 }
 
-const out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
+const out_val *gen_expr_assign_compound(const expr *e, out_ctx *octx)
 {
 	/* int += float
 	 * lea int, cast up to float, add, cast down to int, store
 	 */
 	const out_val *saved_post = NULL, *addr_lhs, *rhs, *lhs, *result;
 
-	addr_lhs = lea_expr(
-			e->bits.compoundop.upcast ? expr_cast_child(e->lhs) : e->lhs,
-			octx);
+	addr_lhs = gen_expr(e->lhs, octx);
 
 	out_val_retain(octx, addr_lhs); /* 2 */
 
@@ -86,13 +85,13 @@ const out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
 
 	/* here's the delayed dereference */
 	lhs = out_deref(octx, addr_lhs); /* addr_lhs=1 */
-	if(e->bits.compoundop.upcast)
-		lhs = out_cast(octx, lhs, e->lhs->tree_type, /*normalise_bool:*/1);
+	if(e->bits.compoundop.upcast_ty)
+		lhs = out_cast(octx, lhs, e->bits.compoundop.upcast_ty, /*normalise_bool:*/1);
 
 	result = out_op(octx, e->bits.compoundop.op, lhs, rhs);
 	gen_op_trapv(e->tree_type, &result, octx);
 
-	if(e->bits.compoundop.upcast) /* need to cast back down to store */
+	if(e->bits.compoundop.upcast_ty) /* need to cast back down to store */
 		result = out_cast(octx, result, e->tree_type, /*normalise_bool:*/1);
 
 	if(!saved_post)
@@ -104,7 +103,7 @@ const out_val *gen_expr_assign_compound(expr *e, out_ctx *octx)
 	return saved_post;
 }
 
-const out_val *gen_expr_str_assign_compound(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_assign_compound(const expr *e, out_ctx *octx)
 {
 	idt_printf("compound %s%s-assignment expr:\n",
 			e->assign_is_post ? "post-" : "",
@@ -138,7 +137,7 @@ expr *expr_new_assign_compound(expr *to, expr *from, enum op_type op)
 	return e;
 }
 
-const out_val *gen_expr_style_assign_compound(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_assign_compound(const expr *e, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(e->lhs->lhs, octx));
 	stylef(" %s= ", op_to_str(e->bits.compoundop.op));

@@ -1,6 +1,6 @@
 // RUN: %ocheck 0 %s
 // all accesses should be 4-byte aligned (int)
-// RUN: %ucc -S -o- %s | awk '/main/,/^}/' | grep '[0-9](%%rbp' | grep -v '4(%%rbp'; [ $? -eq 1 ]
+// RUN: %ucc -fno-inline-functions -S -o- %s | awk '/main/,/^}/' | grep '[0-9](%%rbp' | grep -v '4(%%rbp'; [ $? -eq 1 ]
 
 struct bits
 {

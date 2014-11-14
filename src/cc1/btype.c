@@ -124,7 +124,7 @@ int btype_is_signed(const btype *t)
 	return type_primitive_is_signed(t->primitive);
 }
 
-unsigned btype_size(const btype *t, where *from)
+unsigned btype_size(const btype *t, const where *from)
 {
 	if(t->sue && t->primitive != type_int)
 		return sue_size(t->sue, from);
@@ -132,7 +132,7 @@ unsigned btype_size(const btype *t, where *from)
 	return type_primitive_size(t->primitive);
 }
 
-unsigned btype_align(const btype *t, where *from)
+unsigned btype_align(const btype *t, const where *from)
 {
 	if(t->sue)
 		return sue_align(t->sue, from);

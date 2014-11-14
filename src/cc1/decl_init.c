@@ -45,7 +45,7 @@ static decl_init *decl_init_brace_up_aggregate(
 		symtable *stab,
 		type *tfor,
 		aggregate_brace_f *,
-		void *arg1, int arg2, int allow_struct_copy);
+		void *arg1, int arg2);
 
 static void decl_init_create_assignments_base(
 		decl_init *init,
@@ -219,7 +219,7 @@ const char *decl_init_to_str(enum decl_init_type t)
  */
 
 static decl_init *decl_init_brace_up_r(decl_init *current, init_iter *,
-		type *, symtable *stab, int allow_struct_copy);
+		type *, symtable *stab);
 
 static void override_warn(
 		type *tfor, where *old, where *new, int whole)
@@ -280,7 +280,7 @@ static decl_init *decl_init_brace_up_scalar(
 		if(n > 1)
 			excess_init(&first_init->where, tfor);
 
-		return decl_init_brace_up_r(current, &it, tfor, stab, 1);
+		return decl_init_brace_up_r(current, &it, tfor, stab);
 	}
 
 	/* fold */
@@ -461,7 +461,7 @@ static decl_init **decl_init_brace_up_array2(
 			}
 
 			/* check for char[] init */
-			braced = decl_init_brace_up_r(replacing, iter, next_type, stab, 1);
+			braced = decl_init_brace_up_r(replacing, iter, next_type, stab);
 
 			dynarray_padinsert(&current, i, &n, braced);
 
@@ -587,7 +587,9 @@ static decl_init **decl_init_brace_up_sue2(
 	&& (this = *iter->pos)
 	&& this->type == decl_init_scalar)
 	{
-		expr *e = FOLD_EXPR(this->bits.expr, stab);
+		expr *e;
+
+		fold_expr_nodecay(e = this->bits.expr, stab);
 
 		if(type_is_s_or_u(e->tree_type) == sue){
 			/* copy init */
@@ -666,7 +668,7 @@ static decl_init **decl_init_brace_up_sue2(
 						braced_sub = decl_init_brace_up_aggregate(
 								replacing, iter, stab, jmem->ref,
 								(aggregate_brace_f *)&decl_init_brace_up_sue2, in,
-								/*anon:*/1, /*allow_copy:*/1);
+								/*anon:*/1);
 
 						found = 1;
 					}
@@ -735,23 +737,9 @@ static decl_init **decl_init_brace_up_sue2(
 			}
 
 			if(!braced_sub){
-				int sub_allow_struct_copy = 1;
-
-				if(iter
-				&& iter->pos
-				&& iter->pos[0]->type == decl_init_brace)
-				{
-					/* struct B b;
-					 * struct A { struct B b; } a = { { b } };
-					 *                                ^   ~
-					 * braces aren't allowed here
-					 */
-					sub_allow_struct_copy = 0;
-				}
-
 				braced_sub = decl_init_brace_up_r(
 						replacing, iter,
-						d_mem->ref, stab, sub_allow_struct_copy);
+						d_mem->ref, stab);
 			}
 
 			/* XXX: padinsert will insert zero inits for skipped fields,
@@ -823,7 +811,7 @@ static decl_init *decl_init_brace_up_aggregate(
 		init_iter *iter,
 		symtable *stab, type *tfor,
 		aggregate_brace_f *brace_up_f,
-		void *arg1, int arg2, int allow_struct_copy)
+		void *arg1, int arg2)
 {
 	/* we don't pass through iter in the case that:
 	 * we are brace or next is a designator, i.e.
@@ -848,6 +836,8 @@ static decl_init *decl_init_brace_up_aggregate(
 	 * };
 	 */
 	int desig_index;
+	const int allow_struct_copy = iter->pos
+			&& iter->pos[0] && iter->pos[0]->type == decl_init_scalar;
 
 	if(iter->pos[0]->type == decl_init_brace){
 		/* pass down this as a new iterator */
@@ -1058,13 +1048,13 @@ static decl_init *decl_init_brace_up_array_chk_char(
 	return decl_init_brace_up_aggregate(
 			current, iter, stab, next_type,
 			(aggregate_brace_f *)&decl_init_brace_up_array2,
-			array_of, limit, /*allow_struct_copy:*/1);
+			array_of, limit);
 }
 
 
 static decl_init *decl_init_brace_up_r(
 		decl_init *current, init_iter *iter,
-		type *tfor, symtable *stab, int allow_struct_copy)
+		type *tfor, symtable *stab)
 {
 	struct_union_enum_st *sue;
 
@@ -1082,14 +1072,14 @@ static decl_init *decl_init_brace_up_r(
 		return decl_init_brace_up_aggregate(
 				current, iter, stab, tfor,
 				(aggregate_brace_f *)&decl_init_brace_up_sue2,
-				sue, 0 /* is anon */, allow_struct_copy);
+				sue, 0 /* is anon */);
 
 	return decl_init_brace_up_scalar(current, iter, tfor, stab);
 }
 
 static decl_init *decl_init_brace_up_start(
 		decl_init *init, type **ptfor,
-		symtable *stab, const int allow_initial_copy)
+		symtable *stab)
 {
 	decl_init *inits[2] = {
 		init, NULL
@@ -1140,7 +1130,7 @@ static decl_init *decl_init_brace_up_start(
 		/* else struct copy init */
 	}
 
-	ret = decl_init_brace_up_r(NULL, &it, tfor, stab, allow_initial_copy);
+	ret = decl_init_brace_up_r(NULL, &it, tfor, stab);
 
 	if(type_is_incomplete_array(tfor)){
 		/* complete it */
@@ -1157,9 +1147,7 @@ static decl_init *decl_init_brace_up_start(
 	return ret;
 }
 
-void decl_init_brace_up_fold(
-		decl *d, symtable *stab,
-		const int allow_initial_struct_copy)
+void decl_init_brace_up_fold(decl *d, symtable *stab)
 {
 	assert(!type_is(d->ref, type_func));
 	if(!d->bits.var.init_normalised){
@@ -1176,7 +1164,7 @@ void decl_init_brace_up_fold(
 		d->bits.var.init.dinit = decl_init_brace_up_start(
 				d->bits.var.init.dinit,
 				&d->ref,
-				stab, allow_initial_struct_copy);
+				stab);
 	}
 }
 
@@ -1437,5 +1425,5 @@ void decl_default_init(decl *d, symtable *stab)
 	}
 
 	d->bits.var.init.dinit = decl_init_new_w(decl_init_brace, &d->where);
-	decl_init_brace_up_fold(d, stab, 1);
+	decl_init_brace_up_fold(d, stab);
 }

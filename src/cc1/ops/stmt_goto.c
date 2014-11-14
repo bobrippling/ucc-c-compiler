@@ -29,7 +29,7 @@ void fold_stmt_goto(stmt *s)
 	}
 }
 
-void gen_stmt_goto(stmt *s, out_ctx *octx)
+void gen_stmt_goto(const stmt *s, out_ctx *octx)
 {
 	if(s->expr){
 		/* no idea whether we're leaving scope - don't do anything */
@@ -39,15 +39,17 @@ void gen_stmt_goto(stmt *s, out_ctx *octx)
 		out_ctrl_transfer_exp(octx, target);
 
 	}else{
+		out_blk *target;
+
 		gen_scope_leave(s->symtab, s->bits.lbl.label->scope, octx);
 
-		label_makeblk(s->bits.lbl.label, octx);
+		target = label_getblk(s->bits.lbl.label, octx);
 
-		out_ctrl_transfer(octx, s->bits.lbl.label->bblock, NULL, NULL);
+		out_ctrl_transfer(octx, target, NULL, NULL);
 	}
 }
 
-void style_stmt_goto(stmt *s, out_ctx *octx)
+void style_stmt_goto(const stmt *s, out_ctx *octx)
 {
 	stylef("goto ");
 

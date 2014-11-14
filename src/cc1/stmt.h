@@ -5,7 +5,7 @@
 #include "out/out.h"
 
 typedef void        func_fold_stmt(struct stmt *);
-typedef void        func_gen_stmt(struct stmt *, struct out_ctx *);
+typedef void        func_gen_stmt(const struct stmt *, struct out_ctx *);
 typedef const char *func_str_stmt(void);
 
 /* non-critical */
@@ -128,9 +128,12 @@ typedef void stmt_walk_enter(stmt *current, int *stop, int *descend, void *);
 typedef void stmt_walk_leave(stmt *current, void *);
 
 stmt_walk_enter stmt_walk_first_return; /* completes after the first return statement is found */
+stmt_walk_enter stmts_count;
 
 void stmt_walk(stmt *base, stmt_walk_enter, stmt_walk_leave, void *data);
 
 stmt *stmt_set_where(stmt *, where const *);
+
+void stmt_init_blks(const stmt *ks, out_blk *con, out_blk *bbreak);
 
 #endif

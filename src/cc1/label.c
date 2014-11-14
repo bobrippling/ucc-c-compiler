@@ -10,6 +10,7 @@
 #include "label.h"
 
 #include "out/out.h"
+#include "cc1_out_ctx.h"
 
 label *label_new(where *w, char *id, int complete, symtable *scope)
 {
@@ -21,15 +22,47 @@ label *label_new(where *w, char *id, int complete, symtable *scope)
 	return l;
 }
 
-void label_makeblk(label *l, out_ctx *octx)
+static unsigned label_hash(const label *l)
 {
-	if(l->bblock)
+	return dynmap_strhash(l->spel);
+}
+
+out_blk *label_getblk(label *l, out_ctx *octx)
+{
+	struct cc1_out_ctx *cc1_octx = cc1_out_ctx_or_new(octx);
+	out_blk *blk;
+
+	if(!cc1_octx->label_to_blk)
+		cc1_octx->label_to_blk = dynmap_new(label *, NULL, label_hash);
+
+	blk = dynmap_get(
+			label *, out_blk *,
+			cc1_octx->label_to_blk,
+			l);
+
+	if(!blk){
+		blk = out_blk_new(octx, l->spel);
+
+		(void)dynmap_set(
+				label *, out_blk *,
+				cc1_octx->label_to_blk,
+				l, blk);
+	}
+
+	return blk;
+}
+
+void label_cleanup(out_ctx *octx)
+{
+	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
+	if(!cc1_octx)
 		return;
-	l->bblock = out_blk_new(octx, l->spel);
+
+	dynmap_free(cc1_octx->label_to_blk), cc1_octx->label_to_blk = NULL;
 }
 
 void label_free(label *l)
 {
-	dynarray_free(struct stmt *, l->jumpers, NULL);
+	dynarray_free(struct stmt **, l->jumpers, NULL);
 	free(l);
 }

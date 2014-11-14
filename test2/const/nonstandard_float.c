@@ -1,4 +1,4 @@
-// RUN: %check %s -pedantic
+// RUN: %check %s -pedantic -ffold-const-vlas
 
 /* not a constant expression
  * C11, 6.6/6:
