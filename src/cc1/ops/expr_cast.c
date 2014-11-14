@@ -370,8 +370,12 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	int flag;
 	type *tlhs, *trhs;
 
-	if(descend)
-		FOLD_EXPR(expr_cast_child(e), stab);
+	if(descend){
+		fold_expr_nodecay(expr_cast_child(e), stab);
+
+		if(expr_is_lval(expr_cast_child(e), 1))
+			e->f_islval = expr_is_lval_internal;
+	}
 
 	if(IS_LVAL_DECAY(e)){
 		/* implicitly removes cv-qualifiers */
@@ -516,6 +520,12 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 	const int cast_to_void = type_is_void(tto);
 	const out_val *casted;
 
+	/* return if cast-to-void */
+	if(cast_to_void){
+		out_comment(octx, "cast to void");
+		return out_change_type(octx, gen_expr(expr_cast_child(e), octx), tto);
+	}
+
 	if(IS_LVAL_DECAY(e)){
 		/* we're an lval2rval cast
 		 * if inlining, check if we can substitute the lvalue's rvalue here
@@ -531,13 +541,6 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 		casted = out_deref(octx, casted);
 	}else{
 		type *tfrom = expr_cast_child(e)->tree_type;
-
-		/* return if cast-to-void */
-		if(cast_to_void){
-			casted = out_change_type(octx, casted, tto);
-			out_comment(octx, "cast to void");
-			return casted;
-		}
 
 		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
 			/* allow b to be an anonymous member of a */
