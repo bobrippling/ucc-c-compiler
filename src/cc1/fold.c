@@ -211,7 +211,7 @@ expr *fold_expr_lval2rval(expr *e, symtable *stab)
 
 	should_decay =
 		(cc1_std >= STD_C99 && type_decayable(e->tree_type))
-		|| expr_is_lval(e);
+		|| expr_is_lval(e, 0);
 
 	if(should_decay || type_is(e->tree_type, type_func)){
 		e = expr_set_where(

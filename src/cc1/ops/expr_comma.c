@@ -44,11 +44,19 @@ void fold_expr_comma(expr *e, symtable *stab)
 				"left hand side of comma is unused");
 
 	e->freestanding = e->rhs->freestanding;
+
+	if(expr_is_lval(e->rhs, 1)){
+		/* comma expressions aren't internal, but we need their
+		 * address for things like:
+		 * struct A from = ...;
+		 * struct A to = (0, from);
+		 */
+		e->f_islval = expr_is_lval_internal;
+	}
 }
 
 const out_val *gen_expr_comma(const expr *e, out_ctx *octx)
 {
-	/* attempt lea, don't want full struct dereference */
 	out_val_consume(octx, gen_expr(e->lhs, octx));
 
 	return gen_expr(e->rhs, octx);

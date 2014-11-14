@@ -10,6 +10,11 @@ const char *str_expr__Generic()
 	return "_Generic";
 }
 
+static int is_lval_generic(expr *e, int allow_internal)
+{
+	return expr_is_lval(e->bits.generic.chosen->e, allow_internal);
+}
+
 void fold_expr__Generic(expr *e, symtable *stab)
 {
 	struct generic_lbl **i, *def;
@@ -119,9 +124,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		}
 	}
 
-	e->f_islval = expr_is_lval(e->bits.generic.chosen->e)
-		? expr_is_lval_always
-		: NULL;
+	e->f_islval = is_lval_generic;
 
 	e->tree_type = e->bits.generic.chosen->e->tree_type;
 

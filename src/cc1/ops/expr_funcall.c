@@ -357,9 +357,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 	if(type_is_s_or_u(e->tree_type)){
 		/* handled transparently by the backend */
-		e->f_islval = expr_is_lval_always;
-
-		e->lvalue_internal = 1;
+		e->f_islval = expr_is_lval_internal;
 	}
 
 	/* attr */

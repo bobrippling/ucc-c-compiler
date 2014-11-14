@@ -16,7 +16,7 @@ typedef void func_fold(struct expr *, struct symtable *);
 typedef void func_const(struct expr *, consty *);
 typedef const char *func_str(void);
 typedef void func_mutate_expr(struct expr *);
-typedef int func_is_lval(struct expr *);
+typedef int func_is_lval(struct expr *, int allow_internal);
 
 typedef ucc_wur const out_val *func_gen(const struct expr *, out_ctx *);
 
@@ -34,9 +34,6 @@ struct expr
 	func_const *f_const_fold; /* optional, used in static/global init */
 
 	func_is_lval *f_islval; /* optional */
-
-	/* not a user lvalue, e.g. a?b:c, where the operands are structs */
-	int lvalue_internal;
 
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
 	struct
@@ -274,10 +271,11 @@ enum null_strictness
 
 int expr_is_null_ptr(expr *, enum null_strictness);
 
-int expr_is_lval(expr *);
+int expr_is_lval(expr *e, int allow_internal);
 
-int expr_is_lval_unless_array(expr *);
-int expr_is_lval_always(expr *);
+int expr_is_lval_unless_array(expr *e, int allow_internal);
+int expr_is_lval_always(expr *, int allow_internal);
+int expr_is_lval_internal(expr *, int allow_internal);
 
 void expr_set_const(expr *, consty *);
 

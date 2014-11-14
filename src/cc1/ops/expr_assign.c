@@ -51,7 +51,7 @@ void bitfield_trunc_check(decl *mem, expr *from)
 
 int expr_must_lvalue(expr *e, const char *desc)
 {
-	if(!expr_is_lval(e)){
+	if(!expr_is_lval(e, 0)){
 		fold_had_error = 1;
 		warn_at_print_error(&e->where, "%s to %s - not an lvalue",
 				desc, type_to_str(e->tree_type));
@@ -148,8 +148,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 		 * this is currently special cased in expr_is_lval()
 		 */
 		e->f_gen = lea_assign_lhs;
-		e->f_islval = expr_is_lval_always;
-		e->lvalue_internal = 1;
+		e->f_islval = expr_is_lval_internal;
 	}
 }
 

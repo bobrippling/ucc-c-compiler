@@ -32,10 +32,8 @@ void fold_expr_stmt(expr *e, symtable *stab)
 				FOLD_CHK_ALLOW_VOID,
 				"({ ... }) statement");
 
-		if(expr_is_lval(last_expr)){
-			e->f_islval = expr_is_lval_always;
-			e->lvalue_internal = 1;
-		}
+		if(expr_is_lval(last_expr, 1))
+			e->f_islval = expr_is_lval_internal;
 	}else{
 		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 	}

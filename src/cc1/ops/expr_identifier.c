@@ -123,8 +123,10 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	e->bits.ident.type = IDENT_NORM;
 	e->tree_type = sym->decl->ref;
 
-	/* set if lvalue - expr_is_lval() checks for arrays */
-	e->f_islval = expr_is_lval_unless_array;
+	/* set if lvalue */
+	e->f_islval = type_is(e->tree_type, type_func)
+		? NULL
+		: expr_is_lval_unless_array;
 
 	if(sym->type == sym_local
 	&& !decl_store_duration_is_static(sym->decl)

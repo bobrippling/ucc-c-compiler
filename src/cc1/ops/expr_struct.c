@@ -91,8 +91,10 @@ err:
 		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
 	}/* else already have the member */
 
-	if(!expr_is_lval(e->lhs))
-		e->f_islval = NULL;
+	/* 'a.b' is only an lvalue if 'a' is an lvalue
+	 * a->b is always an lvalue */
+	if(!ptr_expect && !expr_is_lval(e->lhs, 0))
+		e->f_islval = expr_is_lval_internal;
 
 	/* pointer to struct - skip the pointer type and pull the quals
 	 * off the struct type */
@@ -211,15 +213,10 @@ static void fold_const_expr_struct(expr *e, consty *k)
 	}
 }
 
-static int expr_struct_is_lval(expr *e)
-{
-	return expr_is_lval(e->lhs);
-}
-
 void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
-	e->f_islval = expr_struct_is_lval;
+	e->f_islval = expr_is_lval_unless_array;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;
