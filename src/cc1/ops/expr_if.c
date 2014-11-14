@@ -146,13 +146,13 @@ void fold_expr_if(expr *e, symtable *stab)
 	fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, desc);
 
 	if(e->lhs){
-		FOLD_EXPR(e->lhs, stab);
+		fold_expr_nodecay(e->lhs, stab);
 		fold_check_expr(e->lhs,
 				FOLD_CHK_ALLOW_VOID,
 				"?: left operand");
 	}
 
-	FOLD_EXPR(e->rhs, stab);
+	fold_expr_nodecay(e->rhs, stab);
 	fold_check_expr(e->rhs,
 			FOLD_CHK_ALLOW_VOID,
 			"?: right operand");
