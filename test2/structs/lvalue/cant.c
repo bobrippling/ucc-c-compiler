@@ -7,5 +7,5 @@ main()
 		int i;
 	} a, b, c;
 
-	a = b ? : c; // CHECK: error: struct involved in if-expr
+	a = b ? : c; // CHECK: error: struct involved in ?:
 }
