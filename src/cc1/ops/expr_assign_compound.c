@@ -8,6 +8,7 @@ const char *str_expr_assign_compound()
 
 void fold_expr_assign_compound(expr *e, symtable *stab)
 {
+	const char *const desc = "compound assignment";
 #define lvalue e->lhs
 
 	fold_inc_writes_if_sym(lvalue, stab);
@@ -15,11 +16,11 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	fold_expr_nodecay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
-	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, "compound assignment");
-	fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, "compound assignment");
+	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, desc);
+	fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, desc);
 
 	/* skip the addr we inserted */
-	if(!expr_must_lvalue(lvalue, "compound assignment")){
+	if(!expr_must_lvalue(lvalue, desc)){
 		/* prevent ICE from type_size(vla), etc */
 		e->tree_type = lvalue->tree_type;
 		return;
@@ -27,7 +28,7 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	expr_assign_const_check(lvalue, &e->where);
 
-	fold_check_restrict(lvalue, e->rhs, "compound assignment", &e->where);
+	fold_check_restrict(lvalue, e->rhs, desc, &e->where);
 
 	UCC_ASSERT(op_can_compound(e->bits.compoundop.op), "non-compound op in compound expr");
 
@@ -38,7 +39,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	{
 		type *tlhs, *trhs;
 		type *resolved = op_required_promotion(
-				e->bits.compoundop.op, lvalue, e->rhs, &e->where,
+				e->bits.compoundop.op, lvalue, e->rhs,
+				&e->where, desc,
 				&tlhs, &trhs);
 
 		if(tlhs){

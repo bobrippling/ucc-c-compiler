@@ -430,12 +430,15 @@ void expr_promote_default(expr **pe, symtable *stab)
 type *op_required_promotion(
 		enum op_type op,
 		expr *lhs, expr *rhs,
-		where *w,
+		where *w, const char *desc,
 		type **plhs, type **prhs)
 {
 	type *resolved = NULL;
 	type *tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
 	int floating_lhs;
+
+	if(!desc)
+		desc = op_to_str(op);
 
 	*plhs = *prhs = NULL;
 
@@ -612,9 +615,7 @@ ptr_relation:
 			          r_sz = type_size(trhs, &rhs->where);
 
 			/* want to warn regardless of checks - for enums */
-			fold_type_chk_warn(
-					tlhs, trhs,
-					w, op_to_str(op));
+			fold_type_chk_warn(tlhs, trhs, w, desc);
 
 			if(l_unsigned == r_unsigned){
 				if(l_sz != r_sz){
@@ -668,13 +669,14 @@ fin:
 type *op_promote_types(
 		enum op_type op,
 		expr **plhs, expr **prhs,
-		where *w, symtable *stab)
+		symtable *stab,
+		where *w, const char *desc)
 {
 	type *tlhs, *trhs;
 	type *resolved;
 
 	resolved = op_required_promotion(
-			op, *plhs, *prhs, w,
+			op, *plhs, *prhs, w, desc,
 			&tlhs, &trhs);
 
 	if(tlhs)
@@ -1011,7 +1013,7 @@ void fold_expr_op(expr *e, symtable *stab)
 		}
 
 		e->tree_type = op_promote_types(e->bits.op.op,
-				&e->lhs, &e->rhs, &e->where, stab);
+				&e->lhs, &e->rhs, stab, &e->where, op_desc);
 
 		(void)(
 				fold_check_bounds(e, 1) ||

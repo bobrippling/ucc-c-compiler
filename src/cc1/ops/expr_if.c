@@ -186,7 +186,8 @@ void fold_expr_if(expr *e, symtable *stab)
 
 		e->tree_type = op_promote_types(
 				op_unknown,
-				middle_op, &e->rhs, &e->where, stab);
+				middle_op, &e->rhs, stab,
+				&e->where, desc);
 
 	}else if(type_is_void(tt_l) || type_is_void(tt_r)){
 		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
