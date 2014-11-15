@@ -51,6 +51,7 @@ struct symtable
 	unsigned mark : 1; /* used for scope checking */
 	unsigned folded : 1, laidout : 1;
 	unsigned internal_nest : 1, are_params : 1;
+	unsigned transparent : 1;
 	/*
 	 * { int i; 5; int j; }
 	 * j's symtab is internally represented like:
@@ -102,7 +103,14 @@ symtable_global *symtabg_new(where *);
 const struct out_val *sym_outval(sym *);
 void sym_setoutval(sym *, const struct out_val *);
 
+/* symtab_new             - a new symbol table that decls are added to
+ * symtab_new_transparent - a new symbol table that decls pass through to
+ *                          higher scope - ensures separate symtables for
+ *                          different statements, while keeping decls in
+ *                          the same symtable
+ */
 symtable *symtab_new(symtable *parent, where *w);
+symtable *symtab_new_transparent(symtable *parent, where *w);
 void      symtab_set_parent(symtable *child, symtable *parent);
 void      symtab_rm_parent( symtable *child);
 
@@ -115,8 +123,8 @@ int symtab_nested_internal(symtable *parent, symtable *nest);
 
 unsigned symtab_decl_bytes(symtable *, unsigned const vla_cost);
 
-#define symtab_add_to_scope(scope, d) \
-	dynarray_add(&(scope)->decls, (d))
+void symtab_add_to_scope(symtable *, decl *);
+void symtab_add_sue(symtable *, struct struct_union_enum_st *);
 #define symtab_decls(stab) ((stab)->decls)
 
 sym  *symtab_search(symtable *, const char *);
