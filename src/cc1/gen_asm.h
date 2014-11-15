@@ -33,6 +33,8 @@ const out_val *gen_call(
 		const out_val **args, out_ctx *octx,
 		const where *loc);
 
+void gen_asm_emit_type(out_ctx *, type *);
+
 /* temporary until the f_gen() logic from expr is pulled out
  * into asm, print and style backends */
 void IGNORE_PRINTGEN(const out_val *v);

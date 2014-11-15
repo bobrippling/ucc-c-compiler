@@ -120,7 +120,7 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 {
 	decl **i;
 
-	for(i = arg_symtab->decls; i && *i; i++){
+	for(i = symtab_decls(arg_symtab); i && *i; i++){
 		const out_val *dest, *src;
 		decl *d = *i;
 		unsigned vla_space;
@@ -191,7 +191,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		out_dbg_where(octx, &d->where);
 
 		arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
-		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++){
+		for(aiter = symtab_decls(arg_symtab); aiter && *aiter; aiter++){
 			decl *d = *aiter;
 
 			if(d->sym->type == sym_arg)
@@ -207,7 +207,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 				is_vari = type_is_variadic_func(d->ref),
 				argvals);
 
-		assign_arg_vals(arg_symtab->decls, argvals, octx);
+		assign_arg_vals(symtab_decls(arg_symtab), argvals, octx);
 
 		allocate_vla_args(octx, arg_symtab);
 		free(argvals), argvals = NULL;
@@ -217,7 +217,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		gen_func_stmt(d->bits.func.code, octx);
 
-		release_arg_vals(arg_symtab->decls, octx);
+		release_arg_vals(symtab_decls(arg_symtab), octx);
 
 		/* vla cleanup for an entire function - inlined
 		 * VLAs need to retain their uniqueness across inline calls */
@@ -290,6 +290,14 @@ static void gen_stringlits(dynmap *litmap)
 	for(i = 0; (lit = dynmap_value(stringlit *, litmap, i)); i++)
 		if(lit->use_cnt > 0)
 			asm_declare_stringlit(SECTION_DATA, lit);
+}
+
+void gen_asm_emit_type(out_ctx *octx, type *ty)
+{
+	/* for types that aren't on variables (e.g. in exprs),
+	 * that debug info may not find out about normally */
+	if(cc1_gdebug && type_is_s_or_u(ty))
+		out_dbg_emit_type(octx, ty);
 }
 
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
@@ -386,7 +394,7 @@ void gen_asm(
 	if(cc1_gdebug)
 		out_dbg_begin(octx, &octx->dbg.file_head, fname, compdir);
 
-	for(diter = globs->stab.decls; diter && *diter; diter++){
+	for(diter = symtab_decls(&globs->stab); diter && *diter; diter++){
 		decl *d = *diter;
 
 		while(iasm && d == (*iasm)->before){

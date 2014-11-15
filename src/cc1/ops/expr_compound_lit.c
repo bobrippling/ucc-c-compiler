@@ -94,6 +94,7 @@ static void gen_expr_compound_lit_code(const expr *e, out_ctx *octx)
 
 const out_val *gen_expr_compound_lit(const expr *e, out_ctx *octx)
 {
+	gen_asm_emit_type(octx, e->tree_type);
 	gen_expr_compound_lit_code(e, octx);
 
 	return out_new_sym(octx, e->bits.complit.sym);

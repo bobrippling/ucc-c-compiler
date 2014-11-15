@@ -129,7 +129,7 @@ void symtab_check_rw(symtable *tab)
 
 	symtab_iter_children(tab, symtab_check_rw);
 
-	for(diter = tab->decls; diter && *diter; diter++){
+	for(diter = symtab_decls(tab); diter && *diter; diter++){
 		decl *const d = *diter;
 
 		if(d->sym) switch(d->sym->type){
@@ -279,7 +279,7 @@ void symtab_fold_decls(symtable *tab)
 		return;
 	tab->folded = 1;
 
-	for(diter = tab->decls; diter && *diter; diter++){
+	for(diter = symtab_decls(tab); diter && *diter; diter++){
 		decl *d = *diter;
 
 		fold_decl(d, tab);
@@ -339,7 +339,7 @@ void symtab_fold_decls(symtable *tab)
 	 *                      ^ don't want to import the parent 'a' here
 	 */
 	if(tab->parent && tab->parent->are_params && tab->parent->in_func)
-		for(diter = tab->parent->decls; diter && *diter; diter++)
+		for(diter = symtab_decls(tab->parent); diter && *diter; diter++)
 			NEW_DECL(*diter);
 
 	if(nidents > 1){

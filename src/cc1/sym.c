@@ -16,6 +16,37 @@
 #include "label.h"
 #include "type_is.h"
 
+static symtable *symtab_add_target(symtable *symtab)
+{
+	for(; symtab->transparent; symtab = symtab->parent);
+
+	assert(symtab && "no non-transparent symtable");
+	return symtab;
+}
+
+static void symtab_add_to_scope2(
+		symtable *symtab, decl *d, int prepend)
+{
+	symtab = symtab_add_target(symtab);
+
+	if(prepend)
+		dynarray_prepend(&symtab->decls, d);
+	else
+		dynarray_add(&symtab->decls, d);
+}
+
+void symtab_add_to_scope(symtable *symtab, decl *d)
+{
+	symtab_add_to_scope2(symtab, d, 0);
+}
+
+void symtab_add_sue(symtable *symtab, struct_union_enum_st *sue)
+{
+	symtab = symtab_add_target(symtab);
+
+	dynarray_add(&symtab->sues, sue);
+}
+
 sym *sym_new(decl *d, enum sym_type t)
 {
 	sym *s = umalloc(sizeof *s);
@@ -29,7 +60,7 @@ sym *sym_new(decl *d, enum sym_type t)
 sym *sym_new_and_prepend_decl(symtable *stab, decl *d, enum sym_type t)
 {
 	sym *s = sym_new(d, t);
-	dynarray_prepend(&stab->decls, d);
+	symtab_add_to_scope2(stab, d, 1);
 	return s;
 }
 
@@ -53,6 +84,13 @@ symtable *symtab_new(symtable *parent, where *w)
 	UCC_ASSERT(parent, "no parent for symtable");
 	symtab_set_parent(p, parent);
 	memcpy_safe(&p->where, w);
+	return p;
+}
+
+symtable *symtab_new_transparent(symtable *parent, where *w)
+{
+	symtable *p = symtab_new(parent, w);
+	p->transparent = 1;
 	return p;
 }
 

@@ -1042,6 +1042,13 @@ void out_dbg_emit_decl(out_ctx *octx, decl *d, const out_val *val)
 	dwarf_current_child(dbg, dbg_create_decl_die(dbg->compile_unit, d, val));
 }
 
+void out_dbg_emit_type(out_ctx *octx, type *ty)
+{
+	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
+
+	(void)dwarf_type_die(dbg->compile_unit, NULL, ty);
+}
+
 void out_dbg_emit_args_done(out_ctx *octx, funcargs *args)
 {
 	struct cc1_dbg_ctx *dbg = octx2dbg(octx);

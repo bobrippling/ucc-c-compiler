@@ -284,7 +284,7 @@ new_type:
 					"forward-declaration of enum %s", sue->spel);
 
 		if(stab)
-			dynarray_add(&stab->sues, sue);
+			symtab_add_sue(stab, sue);
 	}
 
 	return sue;
