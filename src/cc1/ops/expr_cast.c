@@ -11,6 +11,7 @@
 #include "../defs.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../out/dbg.h"
 
 #define IMPLICIT_STR(e) ((e)->expr_cast_implicit ? "implicit " : "")
 #define IS_RVAL_CAST(e)  (!(e)->bits.cast.tref)
@@ -582,6 +583,10 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 			}
 
 			casted = out_cast(octx, casted, tto, /*normalise_bool:*/1);
+
+			/* a cast can potentially introduce a usage of a new type.
+			 * let debug info know about it */
+			gen_asm_emit_type(octx, tto);
 		}
 	}
 

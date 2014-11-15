@@ -292,6 +292,14 @@ static void gen_stringlits(dynmap *litmap)
 			asm_declare_stringlit(SECTION_DATA, lit);
 }
 
+void gen_asm_emit_type(out_ctx *octx, type *ty)
+{
+	/* for types that aren't on variables (e.g. in exprs),
+	 * that debug info may not find out about normally */
+	if(cc1_gdebug && type_is_s_or_u(ty))
+		out_dbg_emit_type(octx, ty);
+}
+
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
