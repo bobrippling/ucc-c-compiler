@@ -1040,6 +1040,11 @@ void fold_global_func(decl *func_decl)
 					typedef_fnimpl,
 					"typedef function implementation is an extension");
 
+		if(!type_is_void(func_ret) && !type_is_complete(func_ret)){
+			warn_at_print_error(&func_decl->where, "incomplete return type");
+			fold_had_error = 1;
+		}
+
 		fold_func_code(
 				func_decl->bits.func.code,
 				&func_decl->where,
