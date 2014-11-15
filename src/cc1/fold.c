@@ -1009,14 +1009,14 @@ int fold_func_is_passable(decl *func_decl, type *func_ret, int warn)
 
 void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab)
 {
-	decl **i;
+	decl **i, **const start = symtab_decls(arg_symtab);
 
-	for(i = arg_symtab->decls; i && *i; i++){
+	for(i = start; i && *i; i++){
 		decl *d = *i;
 
 		if(!d->spel)
 			die_at(w, "argument %ld in \"%s\" is unnamed",
-					i - arg_symtab->decls + 1, sp);
+					i - start + 1, sp);
 
 		if(!type_is_complete(d->ref))
 			die_at(&d->where,
@@ -1276,7 +1276,7 @@ int fold_passable(stmt *s)
 
 void fold_merge_tenatives(symtable *stab)
 {
-	decl **const globs = stab->decls;
+	decl **const globs = symtab_decls(stab);
 
 	int i;
 	/* go in reverse - check the last declared decl so we

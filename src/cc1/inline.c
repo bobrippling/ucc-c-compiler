@@ -107,7 +107,7 @@ static void inline_sym_map_save(
 	size_t i;
 	decl **diter;
 
-	for(i = 0, diter = arg_symtab->decls; diter && *diter; i++, diter++){
+	for(i = 0, diter = symtab_decls(arg_symtab); diter && *diter; i++, diter++){
 		sym *s = (*diter)->sym;
 
 		assert(args[i]);
@@ -158,7 +158,7 @@ static void inline_sym_map_restore(
 	size_t i;
 	decl **diter;
 
-	for(i = 0, diter = arg_symtab->decls; diter && *diter; i++, diter++){
+	for(i = 0, diter = symtab_decls(arg_symtab); diter && *diter; i++, diter++){
 		sym *s = (*diter)->sym;
 		const out_val *v;
 
@@ -373,7 +373,7 @@ static const char *check_and_ret_inline(
 
 	/* can't do functions where the argument count != param count */
 	if(funcargs_is_old_func(fargs)
-	|| nargs != dynarray_count(iouts->arg_symtab->decls))
+	|| nargs != dynarray_count(symtab_decls(iouts->arg_symtab)))
 	{
 		return "call to function with unspecified arguments";
 	}

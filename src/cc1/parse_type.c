@@ -1788,7 +1788,7 @@ static void check_star_modifier(symtable *arg_symtab)
 {
 	decl **i;
 
-	for(i = arg_symtab->decls; i && *i; i++){
+	for(i = symtab_decls(arg_symtab); i && *i; i++){
 		decl *d = *i;
 		type *t = type_is_decayed_array(d->ref);
 

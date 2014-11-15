@@ -80,7 +80,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	/* second arg check */
 	{
 		sym *second = NULL;
-		decl **args = symtab_func_root(stab)->decls;
+		decl **args = symtab_decls(symtab_func_root(stab));
 		sym *arg = args[dynarray_count(args) - 1]->sym;
 		expr *last_exp = expr_skip_casts(e->funcargs[1]);
 

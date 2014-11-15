@@ -72,12 +72,12 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 	 * resize under us */
 	size_t i;
 
-	if(!stab->decls)
+	if(!symtab_decls(stab))
 		return;
 
 	/* check for invalid function redefinitions and shadows */
-	for(i = 0; stab->decls[i]; i++){
-		decl *const d = stab->decls[i];
+	for(i = 0; symtab_decls(stab)[i]; i++){
+		decl *const d = symtab_decls(stab)[i];
 		decl *found;
 		symtable *above_scope;
 		int chk_shadow = 0, is_func = 0;
@@ -164,7 +164,7 @@ void fold_stmt_code(stmt *s)
 	&& (func_store & STORE_MASK_STORE) == store_default)
 	{
 		decl **diter;
-		for(diter = s->symtab->decls; diter && *diter; diter++){
+		for(diter = symtab_decls(s->symtab); diter && *diter; diter++){
 			decl *d = *diter;
 
 			if((d->store & STORE_MASK_STORE) == store_static
@@ -278,7 +278,7 @@ void gen_block_decls(
 		out_dbg_scope_enter(octx, stab);
 
 	/* declare strings, extern functions, blocks and vlas */
-	for(diter = stab->decls; diter && *diter; diter++){
+	for(diter = symtab_decls(stab); diter && *diter; diter++){
 		decl *d = *diter;
 		int func;
 
@@ -314,7 +314,7 @@ void gen_block_decls_dealloca(
 	decl **diter;
 	int i;
 
-	for(diter = stab->decls; diter && *diter; diter++){
+	for(diter = symtab_decls(stab); diter && *diter; diter++){
 		decl *d = *diter;
 		int is_typedef;
 		const out_val *v;
@@ -355,10 +355,10 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 {
 	decl **di;
 
-	if(!scope->decls)
+	if(!symtab_decls(scope))
 		return;
 
-	for(di = scope->decls; *di; di++);
+	for(di = symtab_decls(scope); *di; di++);
 	do{
 		decl *d;
 
@@ -387,7 +387,7 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 				out_alloca_restore(octx, vla_saved_ptr(d, octx));
 			}
 		}
-	}while(di != scope->decls);
+	}while(di != symtab_decls(scope));
 }
 
 #define SYMTAB_PARENT_WALK(it, begin) \
@@ -413,7 +413,7 @@ void fold_check_scope_entry(where *w, const char *desc,
 		if(s_iter->mark)
 			break;
 
-		for(i = s_iter->decls; i && *i; i++){
+		for(i = symtab_decls(s_iter); i && *i; i++){
 			decl *d = *i;
 			if(type_is_variably_modified(d->ref)){
 				char buf[WHERE_BUF_SIZ];
@@ -510,7 +510,7 @@ void style_stmt_code(const stmt *s, out_ctx *octx)
 
 	stylef("{\n");
 
-	for(i_d = s->symtab->decls; i_d && *i_d; i_d++)
+	for(i_d = symtab_decls(s->symtab); i_d && *i_d; i_d++)
 		gen_style_decl(*i_d);
 
 	for(i_s = s->bits.code.stmts; i_s && *i_s; i_s++)

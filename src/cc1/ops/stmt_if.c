@@ -24,7 +24,7 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 		fold_shadow_dup_check_block_decls(*pstab);
 
 		/* sanity check on _flow_ vars only */
-		for(i = (*pstab)->decls; i && *i; i++){
+		for(i = symtab_decls(*pstab); i && *i; i++){
 			decl *const d = *i;
 
 			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){

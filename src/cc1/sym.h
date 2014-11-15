@@ -117,6 +117,7 @@ unsigned symtab_decl_bytes(symtable *, unsigned const vla_cost);
 
 #define symtab_add_to_scope(scope, d) \
 	dynarray_add(&(scope)->decls, (d))
+#define symtab_decls(stab) ((stab)->decls)
 
 sym  *symtab_search(symtable *, const char *);
 decl *symtab_search_d(symtable *, const char *, symtable **pin);
