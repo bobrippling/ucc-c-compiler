@@ -210,7 +210,9 @@ static void fold_const_expr_struct(expr *e, consty *k)
 
 static int struct_is_lval(expr *e, int internal)
 {
-	if(expr_is_lval(e->lhs, internal))
+	/* we're only an lvalue if our subexpression is a
+	 * non-internal/C-standard lvalue */
+	if(expr_is_lval(e->lhs, 0))
 		return 1;
 
 	return expr_is_lval_unless_array(e, internal);
