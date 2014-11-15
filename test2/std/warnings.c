@@ -24,8 +24,9 @@ main()
 	}
 
 	long long i = a.i + 1; // CHECK: warning: long long is a C99 feature
-	// CHECK: ^ warning: initialiser is not a constant expression
-	// CHECK: ^^ warning: mixed code and declarations
+	// CHECK: ^ warning: mixed code and declarations
+
+	int ar[] = { f() }; // CHECK: warning: aggregate initialiser is not a constant expression
 
 	int vla[i]; // CHECK: warning: variable length array is a C99 feature
 
