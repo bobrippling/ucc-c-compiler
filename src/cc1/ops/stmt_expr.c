@@ -9,6 +9,11 @@ const char *str_stmt_expr()
 	return "expr";
 }
 
+static int unused_expr_type(type *t)
+{
+	return !type_is_void(t) && !(type_qual(t) & qual_volatile);
+}
+
 void fold_stmt_expr(stmt *s)
 {
 	int folded = !s->expr->tree_type;
@@ -23,7 +28,7 @@ void fold_stmt_expr(stmt *s)
 	if(!folded
 	&& !s->freestanding
 	&& !s->expr->freestanding
-	&& !type_is_void(s->expr->tree_type))
+	&& unused_expr_type(s->expr->tree_type))
 	{
 		cc1_warn_at(&s->expr->where, unused_expr,
 				"unused expression (%s)", expr_skip_casts(s->expr)->f_str());
