@@ -15,6 +15,11 @@ void fold_stmt_expr(stmt *s)
 
 	fold_expr_nodecay(s->expr, s->symtab);
 
+	if(type_qual(s->expr->tree_type) & qual_volatile){
+		/* must generate a read */
+		FOLD_EXPR(s->expr, s->symtab);
+	}
+
 	if(!folded
 	&& !s->freestanding
 	&& !s->expr->freestanding

@@ -518,6 +518,7 @@ void fold_expr_cast(expr *e, symtable *stab)
 const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 {
 	type *tto = e->tree_type;
+	type *tfrom;
 	const int cast_to_void = type_is_void(tto);
 	const out_val *casted;
 
@@ -538,11 +539,33 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 
 	casted = gen_expr(expr_cast_child(e), octx);
 
-	if(IS_LVAL_DECAY(e)){
-		casted = out_deref(octx, casted);
-	}else{
-		type *tfrom = expr_cast_child(e)->tree_type;
+	tfrom = expr_cast_child(e)->tree_type;
 
+	if(IS_LVAL_DECAY(e)){
+
+		if(type_is_s_or_u(tfrom)){
+			if(!cast_to_void)
+				ICW("defererence %s in non-cast-to-void", type_to_str(tfrom));
+
+			if(type_qual(tfrom) & qual_volatile){
+				/* must read */
+				const out_val *target = out_aalloct(octx, tfrom);
+
+				out_val_consume(octx,
+						out_memcpy(octx, target, casted, type_size(tfrom, NULL)));
+
+			}else{
+				out_val_consume(octx, casted);
+			}
+
+			/* else we've been generated but won't be used - noop
+			 * e.g. (void) *a; */
+			casted = out_new_noop(octx);
+		}else{
+			casted = out_deref(octx, casted);
+		}
+
+	}else{
 		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
 			/* allow b to be an anonymous member of a */
 			struct_union_enum_st *a_sue = type_is_s_or_u(type_is_ptr(tto)),
