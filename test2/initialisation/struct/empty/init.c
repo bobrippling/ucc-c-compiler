@@ -3,7 +3,7 @@
 
 struct A
 {
-}; // CHECK: /warning: empty struct/
+}; // CHECK: /warning: struct is empty/
 
 struct Container
 {

@@ -81,6 +81,25 @@ unsigned sue_align(struct_union_enum_st *st, const where *w)
 	return st->align;
 }
 
+enum sue_szkind sue_sizekind(struct_union_enum_st *sue)
+{
+	sue_member **mi;
+
+	if(!sue->members)
+		return SUE_EMPTY;
+
+	if(sue->primitive == type_enum)
+		return SUE_NORMAL;
+
+	for(mi = sue->members; mi && *mi; mi++){
+		decl *d = (*mi)->struct_member;
+		if(d->spel) /* not anon-bitfield, must have size */
+			return SUE_NORMAL;
+	}
+
+	return SUE_NONAMED;
+}
+
 struct_union_enum_st *sue_find_this_scope(symtable *stab, const char *spel)
 {
 	struct_union_enum_st **i;

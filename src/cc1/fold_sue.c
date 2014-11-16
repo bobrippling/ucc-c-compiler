@@ -432,6 +432,19 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 		sue->contains_const = submemb_const;
 
+		switch(sue_sizekind(sue)){
+				const char *warn;
+			case SUE_NORMAL:
+				break;
+			case SUE_EMPTY:
+				warn = "is empty";
+				goto warn;
+			case SUE_NONAMED:
+				warn = "has no named members";
+warn:
+				cc1_warn_at(NULL, empty_struct, "%s %s", sue_str_type(sue->primitive), warn);
+		}
+
 		sue->align = align_max;
 		sue->size = pack_to_align(
 				sue->primitive == type_struct ? offset : sz_max,

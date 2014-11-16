@@ -131,9 +131,7 @@ static type *parse_type_sue(
 			{
 			}
 
-			if(!dmembers){
-				cc1_warn_at(NULL, empty_struct, "empty %s", sue_str_type(prim));
-			}else{
+			if(dmembers){
 				for(i = dmembers; *i; i++)
 					dynarray_add(&members,
 							sue_member_from_decl(*i));

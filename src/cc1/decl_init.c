@@ -607,9 +607,8 @@ static decl_init **decl_init_brace_up_sue2(
 		}
 	}
 
-	sue_nmem = sue_nmembers(sue);
 	/* check for {} */
-	if(sue_nmem == 0
+	if(sue_sizekind(sue) != SUE_NORMAL
 	&& (this = *iter->pos)
 	&& (this->type != decl_init_brace
 		|| dynarray_count(this->bits.ar.inits) != 0))
@@ -619,6 +618,7 @@ static decl_init **decl_init_brace_up_sue2(
 				sue_str(sue), sue->spel);
 	}
 
+	sue_nmem = sue_nmembers(sue);
 	for(i = 0; (this = *iter->pos); i++){
 		desig *des;
 		decl_init *braced_sub = NULL;
