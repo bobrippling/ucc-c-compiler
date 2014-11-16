@@ -1139,7 +1139,7 @@ lea:
 		case V_LBL:
 		{
 			const int fp = type_is_floating(from->t);
-			type *chosen_ty = from->t;
+			type *chosen_ty = fp ? from->t : NULL;
 
 			/* just go with leaq for small sizes */
 
