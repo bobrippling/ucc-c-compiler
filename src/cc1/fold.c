@@ -224,6 +224,14 @@ expr *fold_expr_lval2rval(expr *e, symtable *stab)
 	return e;
 }
 
+expr *fold_expr_nonstructdecay(expr *e, symtable *stab)
+{
+	fold_expr_nodecay(e, stab);
+	if(!type_is_s_or_u(e->tree_type))
+		e = fold_expr_lval2rval(e, stab);
+	return e;
+}
+
 static void fold_calling_conv(type *r)
 {
 	enum calling_conv conv;

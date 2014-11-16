@@ -60,6 +60,7 @@ void fold_check_expr(const expr *e, enum fold_chk, const char *desc);
 /*   decay */
 expr *fold_expr_lval2rval(expr *e, symtable *stab) ucc_wur;
 #define FOLD_EXPR(e, stab) ((e) = fold_expr_lval2rval((e), (stab)))
+expr *fold_expr_nonstructdecay(expr *e, symtable *stab) ucc_wur;
 /*   normal fold */
 void fold_expr_nodecay(expr *e, symtable *stab);
 
