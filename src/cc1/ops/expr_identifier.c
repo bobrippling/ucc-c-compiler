@@ -57,12 +57,6 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 	}
 }
 
-static const out_val *gen_expr_identifier_lea(expr *e, out_ctx *octx)
-{
-	assert(e->bits.ident.type == IDENT_NORM);
-	return out_new_sym(octx, e->bits.ident.bits.ident.sym);
-}
-
 void fold_expr_identifier(expr *e, symtable *stab)
 {
 	char *sp = e->bits.ident.bits.ident.spel;
@@ -73,7 +67,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 		e->bits.ident.bits.ident.sym = sym = symtab_search(stab, sp);
 
 		/* prevent typedef */
-		if(sym && (sym->decl->store & STORE_MASK_STORE) == store_typedef){
+		if(sym && STORE_IS_TYPEDEF(sym->decl->store)){
 			warn_at_print_error(&e->where,
 					"use of typedef-name '%s' as expression",
 					sp);
@@ -129,12 +123,9 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	e->bits.ident.type = IDENT_NORM;
 	e->tree_type = sym->decl->ref;
 
-	/* set if lvalue - expr_is_lval() checks for arrays */
-	e->f_lea =
-		type_is(e->tree_type, type_func)
-		? NULL
-		: gen_expr_identifier_lea;
-
+	/* set if lvalue */
+	if(type_is(e->tree_type, type_func))
+		e->f_islval = NULL;
 
 	if(sym->type == sym_local
 	&& !decl_store_duration_is_static(sym->decl)
@@ -153,7 +144,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	sym->nreads++;
 }
 
-const out_val *gen_expr_str_identifier(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_identifier(const expr *e, out_ctx *octx)
 {
 	switch(e->bits.ident.type){
 		case IDENT_NORM:
@@ -170,21 +161,12 @@ const out_val *gen_expr_str_identifier(expr *e, out_ctx *octx)
 	UNUSED_OCTX();
 }
 
-const out_val *gen_expr_identifier(expr *e, out_ctx *octx)
+const out_val *gen_expr_identifier(const expr *e, out_ctx *octx)
 {
 	switch(e->bits.ident.type){
 		case IDENT_NORM:
-		{
-			sym *sym = e->bits.ident.bits.ident.sym;
+			return out_new_sym(octx, e->bits.ident.bits.ident.sym);
 
-			if(type_is(sym->decl->ref, type_func)){
-				UCC_ASSERT(sym->type != sym_arg, "function as argument?");
-
-				return out_new_sym(octx, sym);
-			}else{
-				return out_new_sym_val(octx, sym);
-			}
-		}
 		case IDENT_ENUM:
 			return out_new_l(octx, e->tree_type,
 					const_fold_val_i(e->bits.ident.bits.enum_mem->val));
@@ -206,7 +188,7 @@ expr *expr_new_identifier(char *sp)
 	return e;
 }
 
-const out_val *gen_expr_style_identifier(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_identifier(const expr *e, out_ctx *octx)
 {
 	switch(e->bits.ident.type){
 		case IDENT_NORM:

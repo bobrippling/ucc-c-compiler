@@ -640,6 +640,7 @@ static void read_string_multiple(const int is_wide)
 static void cc1_read_quoted_char(const int is_wide)
 {
 	int multichar;
+	char *const start = bufferpos;
 	long ch = read_quoted_char(bufferpos, &bufferpos, &multichar);
 
 	if(multichar){
@@ -652,6 +653,8 @@ static void cc1_read_quoted_char(const int is_wide)
 	currentval.val.i = ch;
 	currentval.suffix = 0;
 	curtok = is_wide ? token_integer : token_character;
+
+	loc_now.chr += bufferpos - start;
 }
 
 void nexttoken()

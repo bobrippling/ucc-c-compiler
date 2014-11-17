@@ -205,15 +205,30 @@ expr *fold_expr_lval2rval(expr *e, symtable *stab)
 	 * "pointer to type" that points to the initial element of the array object
 	 * and is not an lvalue."
 	 */
-	int should_decay;
+	int should_lval2rval, decayable;
 
 	fold_expr_nodecay(e, stab);
 
-	should_decay =
-		(cc1_std >= STD_C99 && type_decayable(e->tree_type))
-		|| expr_is_lval(e);
+	decayable = type_decayable(e->tree_type);
+	should_lval2rval = (cc1_std >= STD_C99 && decayable);
 
-	if(should_decay || type_is(e->tree_type, type_func)){
+	if(!should_lval2rval){
+		switch(expr_is_lval(e)){
+			case LVALUE_NO:
+				break;
+
+			case LVALUE_STRUCT:
+				/* not a user-lvalue - only lval2rval if non-decayable type */
+				should_lval2rval = !decayable;
+				break;
+
+			case LVALUE_USER_ASSIGNABLE:
+				should_lval2rval = 1;
+				break;
+		}
+	}
+
+	if(should_lval2rval || type_is(e->tree_type, type_func)){
 		e = expr_set_where(
 				expr_new_cast_lval_decay(e),
 				&e->where);
@@ -221,6 +236,14 @@ expr *fold_expr_lval2rval(expr *e, symtable *stab)
 		fold_expr_cast_descend(e, stab, 0);
 	}
 
+	return e;
+}
+
+expr *fold_expr_nonstructdecay(expr *e, symtable *stab)
+{
+	fold_expr_nodecay(e, stab);
+	if(!type_is_s_or_u(e->tree_type))
+		e = fold_expr_lval2rval(e, stab);
 	return e;
 }
 
@@ -302,14 +325,19 @@ void fold_type_w_attr(
 					UCC_ASSERT(K_INTEGRAL(k.bits.num),
 							"integral array should be checked during parse");
 
-					if((sintegral_t)k.bits.num.val.i < 0)
-						die_at(array_loc, "negative array size");
 					/* allow zero length arrays */
-					else if(k.nonstandard_const)
+					if(type_is_signed(r->bits.array.size->tree_type)
+					&& (sintegral_t)k.bits.num.val.i < 0)
+					{
+						die_at(array_loc, "negative array size");
+					}
+
+					if(k.nonstandard_const){
 						cc1_warn_at(&k.nonstandard_const->where,
 								nonstd_arraysz,
 								"%s-expr is a non-standard constant expression (for array size)",
 								k.nonstandard_const->f_str());
+					}
 				}
 			}
 			break;
@@ -731,7 +759,7 @@ static void fold_decl_var(decl *d, symtable *stab)
 				fold_decl_global_init(d, stab);
 
 			}else if(!d->bits.var.init.expr){
-				decl_init_brace_up_fold(d, stab, /*struct_copy:*/1);
+				decl_init_brace_up_fold(d, stab);
 
 				decl_init_create_assignments_base_and_fold(
 						d,
@@ -823,8 +851,11 @@ void fold_decl(decl *d, symtable *stab)
 
 		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), stab, d->attr);
 
-		if(d->spel)
+		if(d->spel
+		&& (!STORE_IS_TYPEDEF(d->store) || type_is_variably_modified(d->ref)))
+		{
 			fold_decl_add_sym(d, stab);
+		}
 
 		if(((d->store & STORE_MASK_STORE) != store_typedef)
 		/* __attribute__((weak)) is allowed on typedefs */
@@ -914,7 +945,7 @@ void fold_decl_global_init(decl *d, symtable *stab)
 		return;
 
 	/* this completes the array, if any */
-	decl_init_brace_up_fold(d, stab, /*struct_copy:*/1);
+	decl_init_brace_up_fold(d, stab);
 
 	type = stab->parent ? "static" : "global";
 	if(!decl_init_is_const(d->bits.var.init.dinit, stab, &nonstd)){
@@ -999,14 +1030,14 @@ int fold_func_is_passable(decl *func_decl, type *func_ret, int warn)
 
 void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab)
 {
-	decl **i;
+	decl **i, **const start = symtab_decls(arg_symtab);
 
-	for(i = arg_symtab->decls; i && *i; i++){
+	for(i = start; i && *i; i++){
 		decl *d = *i;
 
 		if(!d->spel)
 			die_at(w, "argument %ld in \"%s\" is unnamed",
-					i - arg_symtab->decls + 1, sp);
+					i - start + 1, sp);
 
 		if(!type_is_complete(d->ref))
 			die_at(&d->where,
@@ -1031,6 +1062,11 @@ void fold_global_func(decl *func_decl)
 			cc1_warn_at(&func_decl->where,
 					typedef_fnimpl,
 					"typedef function implementation is an extension");
+
+		if(!type_is_void(func_ret) && !type_is_complete(func_ret)){
+			warn_at_print_error(&func_decl->where, "incomplete return type");
+			fold_had_error = 1;
+		}
 
 		fold_func_code(
 				func_decl->bits.func.code,
@@ -1087,7 +1123,7 @@ void fold_decl_global(decl *d, symtable *stab)
 		fold_global_func(d);
 }
 
-void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
+void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 {
 	if(!e)
 		return;
@@ -1152,7 +1188,7 @@ void fold_check_expr(expr *e, enum fold_chk chk, const char *desc)
 
 	if(chk & FOLD_CHK_CONST_I){
 		consty k;
-		const_fold(e, &k);
+		const_fold((expr *)e, &k);
 
 		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
 			die_at(&e->where, "integral constant expected for %s", desc);
@@ -1178,11 +1214,13 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 	if(fargs->arglist){
 		/* check for unnamed params and extern/static specs */
 		int i;
+		int seen_ptr = 0;
 
 		for(i = 0; fargs->arglist[i]; i++){
 			decl *const d = fargs->arglist[i];
 
 			const int is_var = !type_is(d->ref, type_func);
+			int is_ptr;
 
 			/* fold before for array checks, etc */
 			if(is_var && d->bits.var.init.dinit)
@@ -1218,17 +1256,17 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 					break;
 			}
 
+			is_ptr = type_is(d->ref, type_ptr) || type_is(d->ref, type_block);
+
 			/* ensure ptr, unless __attribute__((nonnull)) */
-			if(nonnulls != ~0UL
-			&& (nonnulls & (1 << i))
-			&& !type_is(d->ref, type_ptr)
-			&& !type_is(d->ref, type_block))
-			{
+			if(nonnulls != ~0UL && (nonnulls & (1 << i)) && !is_ptr){
 				cc1_warn_at(&fargs->arglist[i]->where,
 						attr_nonnull_nonptr,
 						"nonnull attribute applied to non-pointer argument '%s'",
 						type_to_str(d->ref));
 			}
+
+			seen_ptr |= is_ptr;
 		}
 
 		if(i == 0 && nonnulls)
@@ -1239,6 +1277,11 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 			cc1_warn_at(&fargs->where,
 					attr_nonnull_oob,
 					"nonnull attributes above argument index %d ignored", i + 1);
+		else if(!seen_ptr && nonnulls)
+			cc1_warn_at(&fargs->where,
+					attr_nonnull_noptrs,
+					"nonnull attributes applied to function with no pointer arguments");
+
 	}else if(nonnulls){
 		cc1_warn_at(&fargs->where,
 				attr_nonnull_noargs,
@@ -1259,7 +1302,7 @@ int fold_passable(stmt *s)
 
 void fold_merge_tenatives(symtable *stab)
 {
-	decl **const globs = stab->decls;
+	decl **const globs = symtab_decls(stab);
 
 	int i;
 	/* go in reverse - check the last declared decl so we

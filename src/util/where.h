@@ -23,6 +23,6 @@ void where_current(where *);
 
 int where_equal(where *, where *);
 
-where *default_where(where *w);
+const where *default_where(const where *w);
 
 #endif

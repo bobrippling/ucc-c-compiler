@@ -417,7 +417,7 @@ static void expr_promote_if_smaller(expr **pe, symtable *stab, int do_float)
 	}
 }
 
-static void expr_promote_int_if_smaller(expr **pe, symtable *stab)
+void expr_promote_int_if_smaller(expr **pe, symtable *stab)
 {
 	expr_promote_if_smaller(pe, stab, 0);
 }
@@ -430,12 +430,15 @@ void expr_promote_default(expr **pe, symtable *stab)
 type *op_required_promotion(
 		enum op_type op,
 		expr *lhs, expr *rhs,
-		where *w,
+		where *w, const char *desc,
 		type **plhs, type **prhs)
 {
 	type *resolved = NULL;
-	type *const tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
+	type *tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
 	int floating_lhs;
+
+	if(!desc)
+		desc = op_to_str(op);
 
 	*plhs = *prhs = NULL;
 
@@ -592,13 +595,11 @@ ptr_relation:
 		if(op == op_shiftl || op == op_shiftr){
 			/* fine with any parameter sizes
 			 * don't need to match. resolves to lhs,
-			 * or int if lhs is smaller (done before this function)
+			 * or int if lhs is smaller
 			 */
 
-			UCC_ASSERT(
-					type_size(tlhs, &lhs->where)
-						>= type_primitive_size(type_int),
-					"shift operand should have been promoted");
+			if(type_size(tlhs, &lhs->where) < type_primitive_size(type_int))
+				tlhs = *plhs = type_nav_btype(cc1_type_nav, type_int);
 
 			resolved = tlhs;
 
@@ -614,9 +615,7 @@ ptr_relation:
 			          r_sz = type_size(trhs, &rhs->where);
 
 			/* want to warn regardless of checks - for enums */
-			fold_type_chk_warn(
-					tlhs, trhs,
-					w, op_to_str(op));
+			fold_type_chk_warn(tlhs, trhs, w, desc);
 
 			if(l_unsigned == r_unsigned){
 				if(l_sz != r_sz){
@@ -670,13 +669,14 @@ fin:
 type *op_promote_types(
 		enum op_type op,
 		expr **plhs, expr **prhs,
-		where *w, symtable *stab)
+		symtable *stab,
+		where *w, const char *desc)
 {
 	type *tlhs, *trhs;
 	type *resolved;
 
 	resolved = op_required_promotion(
-			op, *plhs, *prhs, w,
+			op, *plhs, *prhs, w, desc,
 			&tlhs, &trhs);
 
 	if(tlhs)
@@ -1013,7 +1013,7 @@ void fold_expr_op(expr *e, symtable *stab)
 		}
 
 		e->tree_type = op_promote_types(e->bits.op.op,
-				&e->lhs, &e->rhs, &e->where, stab);
+				&e->lhs, &e->rhs, stab, &e->where, op_desc);
 
 		(void)(
 				fold_check_bounds(e, 1) ||
@@ -1063,7 +1063,7 @@ void fold_expr_op(expr *e, symtable *stab)
 	}
 }
 
-const out_val *gen_expr_str_op(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_op(const expr *e, out_ctx *octx)
 {
 	idt_printf("op: %s\n", op_to_str(e->bits.op.op));
 	gen_str_indent++;
@@ -1078,7 +1078,7 @@ const out_val *gen_expr_str_op(expr *e, out_ctx *octx)
 	UNUSED_OCTX();
 }
 
-static const out_val *op_shortcircuit(expr *e, out_ctx *octx)
+static const out_val *op_shortcircuit(const expr *e, out_ctx *octx)
 {
 	out_blk *blk_rhs, *blk_empty, *landing;
 	const out_val *lhs;
@@ -1149,7 +1149,7 @@ void gen_op_trapv(type *evaltt, const out_val **eval, out_ctx *octx)
 	}
 }
 
-const out_val *gen_expr_op(expr *e, out_ctx *octx)
+const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 {
 	const out_val *lhs, *eval;
 
@@ -1203,7 +1203,7 @@ expr *expr_new_op2(enum op_type o, expr *l, expr *r)
 	return e;
 }
 
-const out_val *gen_expr_style_op(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_op(const expr *e, out_ctx *octx)
 {
 	if(e->rhs){
 		const char *post;

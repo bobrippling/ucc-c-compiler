@@ -32,7 +32,7 @@ static void link_gasms(symtable_gasm ***plast_gasms, decl *prev)
 	for(i = *plast_gasms; i && *i; i++)
 		(*i)->before = prev;
 
-	dynarray_free(symtable_gasm **, plast_gasms, NULL);
+	dynarray_free(symtable_gasm **, *plast_gasms, NULL);
 }
 
 static int parse_add_gasms(symtable_gasm ***plast_gasms)
@@ -74,7 +74,7 @@ int parse_and_fold(symtable_global *globals)
 			for(di = new; di && *di; di++)
 				fold_decl_global(*di, &globals->stab);
 
-			dynarray_free(decl **, &new, NULL);
+			dynarray_free(decl **, new, NULL);
 
 			cont = 1;
 		}
@@ -99,7 +99,7 @@ int parse_and_fold(symtable_global *globals)
 
 	fold_merge_tenatives(&globals->stab);
 
-	dynarray_free(symtable_gasm **, &last_gasms, NULL);
+	dynarray_free(symtable_gasm **, last_gasms, NULL);
 
 	UCC_ASSERT(!globals->stab.parent, "scope leak during parse");
 

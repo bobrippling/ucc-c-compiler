@@ -12,14 +12,20 @@
 #include "out/out.h"
 #include "../util/compiler.h"
 
+enum lvalue_kind
+{
+	LVALUE_NO,
+	LVALUE_USER_ASSIGNABLE,
+	LVALUE_STRUCT /* e.g. struct A f(); f() - is an lvalue internally */
+};
+
 typedef void func_fold(struct expr *, struct symtable *);
 typedef void func_const(struct expr *, consty *);
 typedef const char *func_str(void);
 typedef void func_mutate_expr(struct expr *);
-typedef int func_is_lval(struct expr *);
+typedef enum lvalue_kind func_is_lval(struct expr *);
 
-typedef ucc_wur const out_val *func_gen(struct expr *, out_ctx *);
-typedef ucc_wur const out_val *func_gen_lea(struct expr *, out_ctx *);
+typedef ucc_wur const out_val *func_gen(const struct expr *, out_ctx *);
 
 #define UNUSED_OCTX() (void)octx; return NULL
 
@@ -33,11 +39,8 @@ struct expr
 	func_str *f_str;
 
 	func_const *f_const_fold; /* optional, used in static/global init */
-	func_gen_lea *f_lea; /* optional */
-	func_is_lval *f_islval; /* optional */
 
-	/* not a user lvalue, e.g. a?b:c, where the operands are structs */
-	int lvalue_internal;
+	func_is_lval *f_islval; /* optional */
 
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
 	struct
@@ -76,8 +79,8 @@ struct expr
 
 		struct
 		{
+			type *upcast_ty;
 			enum op_type op;
-			int upcast;
 		} compoundop;
 
 		/* __builtin_va_start */
@@ -225,6 +228,7 @@ expr *expr_new_decl_init(decl *d, struct decl_init *di);
 #include "ops/expr_struct.h"
 #include "ops/expr_compound_lit.h"
 #include "ops/expr_string.h"
+#include "ops/expr_block.h"
 
 /* XXX: memleak */
 #define expr_free(x) do{                 \
@@ -274,10 +278,10 @@ enum null_strictness
 
 int expr_is_null_ptr(expr *, enum null_strictness);
 
-int expr_is_lval(expr *);
+enum lvalue_kind expr_is_lval(expr *e);
 
-int expr_is_lval_unless_array(expr *);
-int expr_is_lval_always(expr *);
+enum lvalue_kind expr_is_lval_always(expr *);
+enum lvalue_kind expr_is_lval_struct(expr *);
 
 void expr_set_const(expr *, consty *);
 
@@ -286,5 +290,7 @@ expr *expr_new_array_idx_e(expr *base, expr *idx);
 expr *expr_new_array_idx(expr *base, int i);
 
 expr *expr_skip_casts(expr *);
+
+decl *expr_to_declref(expr *e, const char **whynot);
 
 #endif

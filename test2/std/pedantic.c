@@ -1,4 +1,4 @@
-// RUN: %check %s -fgnu-keywords -w -pedantic
+// RUN: %check %s -fgnu-keywords -w -pedantic -ffold-const-vlas
 
 typedef int fn();
 

@@ -61,14 +61,16 @@ static out_val *try_mem_offset(
 		const out_val *vconst, const out_val *vregp_or_lbl,
 		const out_val *rhs)
 {
+	int step;
+
 	/* if it's a minus, we enforce an order */
 	if((binop == op_plus || (binop == op_minus && vconst == rhs))
-	&& (vregp_or_lbl->type != V_LBL || (fopt_mode & FOPT_SYMBOL_ARITH)))
+	&& (vregp_or_lbl->type != V_LBL || (fopt_mode & FOPT_SYMBOL_ARITH))
+	&& (step = calc_ptr_step(vregp_or_lbl->t)) != -1)
 	{
 		out_val *mut_vregp_or_lbl = v_dup_or_reuse(
 				octx, vregp_or_lbl, vregp_or_lbl->t);
 		long *p;
-		int step;
 
 		switch(mut_vregp_or_lbl->type){
 			case V_LBL:
@@ -83,16 +85,7 @@ static out_val *try_mem_offset(
 				assert(0);
 		}
 
-		step = calc_ptr_step(mut_vregp_or_lbl->t);
-		if(step == -1){
-			/* restore retains */
-			out_val_retain(octx, vregp_or_lbl);
-			out_val_release(octx, mut_vregp_or_lbl);
-			return NULL;
-		}
-
-		*p += (binop == op_minus ? -1 : 1) *
-			vconst->bits.val_i * step;
+		*p += (binop == op_minus ? -1 : 1) * vconst->bits.val_i * step;
 
 		out_val_consume(octx, vconst);
 

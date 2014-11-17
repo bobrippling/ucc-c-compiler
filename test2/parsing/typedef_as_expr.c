@@ -10,7 +10,8 @@ g(int n)
 
 	typedef char ch;
 
-	g(ch); // CHECK: error: use of typedef-name 'ch' as expression
+	g(ch); // CHECK: error: undeclared identifier "ch"
+	// non-symbol typedefs don't have symbols, so no 'typedef-name' error
 }
 
 main()

@@ -123,3 +123,9 @@ void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)
 
 	decl_ty_calc(fa->arglist, n_int, n_fp);
 }
+
+int funcargs_is_old_func(funcargs *fa)
+{
+	/* don't treat int f(); as an old function */
+	return fa->args_old_proto && fa->arglist;
+}

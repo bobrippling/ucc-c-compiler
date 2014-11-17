@@ -7,7 +7,15 @@
 typedef struct sym sym;
 struct sym
 {
-	const struct out_val *outval;
+	union
+	{
+		struct
+		{
+			const struct out_val **vals; /* sym_{local,arg} */
+			unsigned n;
+		} stack;
+		const struct out_val *val_single; /* sym_global */
+	} out;
 	long bp_offset;
 
 	enum sym_type
@@ -33,6 +41,8 @@ struct static_assert
 	int checked;
 };
 
+struct out_dbg_lbl;
+
 typedef struct symtable symtable;
 struct symtable
 {
@@ -41,6 +51,7 @@ struct symtable
 	unsigned mark : 1; /* used for scope checking */
 	unsigned folded : 1, laidout : 1;
 	unsigned internal_nest : 1, are_params : 1;
+	unsigned transparent : 1;
 	/*
 	 * { int i; 5; int j; }
 	 * j's symtab is internally represented like:
@@ -52,7 +63,8 @@ struct symtable
 
 	decl *in_func; /* for r/w checks on args and return-type checks */
 
-	char *lbl_begin, *lbl_end; /* for debug - lexical block */
+	/* for debug - lexical block */
+	struct out_dbg_lbl *lbl_begin, *lbl_end;
 
 	symtable *parent, **children;
 
@@ -88,7 +100,17 @@ sym *sym_new_and_prepend_decl(symtable *, decl *d, enum sym_type t);
 
 symtable_global *symtabg_new(where *);
 
+const struct out_val *sym_outval(sym *);
+void sym_setoutval(sym *, const struct out_val *);
+
+/* symtab_new             - a new symbol table that decls are added to
+ * symtab_new_transparent - a new symbol table that decls pass through to
+ *                          higher scope - ensures separate symtables for
+ *                          different statements, while keeping decls in
+ *                          the same symtable
+ */
 symtable *symtab_new(symtable *parent, where *w);
+symtable *symtab_new_transparent(symtable *parent, where *w);
 void      symtab_set_parent(symtable *child, symtable *parent);
 void      symtab_rm_parent( symtable *child);
 
@@ -99,8 +121,11 @@ symtable_global *symtab_global(symtable *);
 
 int symtab_nested_internal(symtable *parent, symtable *nest);
 
-#define symtab_add_to_scope(scope, d) \
-	dynarray_add(&(scope)->decls, (d))
+unsigned symtab_decl_bytes(symtable *, unsigned const vla_cost);
+
+void symtab_add_to_scope(symtable *, decl *);
+void symtab_add_sue(symtable *, struct struct_union_enum_st *);
+#define symtab_decls(stab) ((stab)->decls)
 
 sym  *symtab_search(symtable *, const char *);
 decl *symtab_search_d(symtable *, const char *, symtable **pin);
@@ -114,5 +139,7 @@ const char *sym_to_str(enum sym_type);
 /* labels */
 struct label *symtab_label_find_or_new(symtable *, char *, where *);
 void symtab_label_add(symtable *, struct label *);
+
+unsigned sym_hash(const sym *);
 
 #endif

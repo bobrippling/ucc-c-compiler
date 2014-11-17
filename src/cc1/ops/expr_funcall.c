@@ -357,9 +357,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 	if(type_is_s_or_u(e->tree_type)){
 		/* handled transparently by the backend */
-		e->f_lea = gen_expr;
-
-		e->lvalue_internal = 1;
+		e->f_islval = expr_is_lval_struct;
 	}
 
 	/* attr */
@@ -379,7 +377,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		e->freestanding = 0; /* needs use */
 }
 
-const out_val *gen_expr_funcall(expr *e, out_ctx *octx)
+const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 {
 	const out_val *fn_ret;
 
@@ -405,7 +403,7 @@ const out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 
 				/* should be of size int or larger (for integral types)
 				 * or double (for floating types) */
-				arg = gen_maybe_struct_expr(earg, octx);
+				arg = gen_expr(earg, octx);
 
 				/* force struct lvalues to have struct type,
 				 * so the backend can handle them */
@@ -417,15 +415,18 @@ const out_val *gen_expr_funcall(expr *e, out_ctx *octx)
 		}
 
 		/* consumes fn and args */
-		fn_ret = out_call(octx, fn, args, e->expr->tree_type);
+		fn_ret = gen_call(e->expr, NULL, fn, args, octx, &e->expr->where);
 
-		dynarray_free(const out_val **, &args, NULL);
+		dynarray_free(const out_val **, args, NULL);
+
+		if(!expr_func_passable(GEN_CONST_CAST(expr *, e)))
+			out_ctrl_end_undefined(octx);
 	}
 
 	return fn_ret;
 }
 
-const out_val *gen_expr_str_funcall(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_funcall(const expr *e, out_ctx *octx)
 {
 	expr **iter;
 
@@ -471,7 +472,7 @@ expr *expr_new_funcall()
 	return e;
 }
 
-const out_val *gen_expr_style_funcall(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_funcall(const expr *e, out_ctx *octx)
 {
 	stylef("(");
 	IGNORE_PRINTGEN(gen_expr(e->expr, octx));

@@ -12,6 +12,7 @@
 #include "out/val.h"
 #include "out/ctx.h"
 
+#include "cc1_out_ctx.h"
 #include "vla.h"
 
 /*
@@ -42,7 +43,7 @@ unsigned vla_decl_space(decl *d)
 	type *t;
 	unsigned sz;
 
-	if((d->store & STORE_MASK_STORE) == store_typedef)
+	if(STORE_IS_TYPEDEF(d->store))
 		sz = 0; /* just the sizes */
 	else if(type_is_vla(d->ref, VLA_ANY_DIMENSION))
 		sz = pws * 2; /* T *ptr; void *orig_sp; */
@@ -59,9 +60,10 @@ unsigned vla_decl_space(decl *d)
 static const out_val *vla_cached_size(type *const qual_t, out_ctx *octx)
 {
 	type *t = type_skip_all(qual_t);
-	dynmap *vlamap = *out_user_ctx(octx);
+	struct cc1_out_ctx **cc1_octx = cc1_out_ctx(octx);
+	dynmap *vlamap;
 
-	if(vlamap){
+	if(*cc1_octx && (vlamap = (*cc1_octx)->vlamap)){
 		const out_val *stack_off = dynmap_get(type *, const out_val *, vlamap, t);
 
 		if(stack_off){
@@ -82,8 +84,8 @@ static void vla_cache_size(
 		const out_val *stack_ent)
 {
 	type *ptrsizety = type_ptr_to(arith_ty);
-	void **pvlamap;
-	dynmap *vlamap;
+	dynmap **pvlamap, *vlamap;
+	struct cc1_out_ctx *cc1_octx;
 
 	/* keep the caller's retain */
 	out_val_retain(octx, stack_ent);
@@ -92,7 +94,9 @@ static void vla_cache_size(
 	out_val_retain(octx, stack_ent); /* retain for the vlamap */
 	out_store(octx, stack_ent, sz);
 
-	vlamap = *(pvlamap = out_user_ctx(octx));
+	cc1_octx = cc1_out_ctx_or_new(octx);
+
+	vlamap = *(pvlamap = &cc1_octx->vlamap);
 	if(!vlamap){
 		/* type * => out_val const* */
 		vlamap = *pvlamap = dynmap_new(type *, NULL, type_hash);
@@ -103,8 +107,8 @@ static void vla_cache_size(
 
 void vla_cleanup(out_ctx *octx)
 {
-	void **pvlamap = out_user_ctx(octx);
-	dynmap *vlamap = *pvlamap;
+	struct cc1_out_ctx *cc1_octx = cc1_out_ctx_or_new(octx);
+	dynmap *vlamap = cc1_octx->vlamap;
 	size_t i;
 	const out_val *v;
 
@@ -115,7 +119,7 @@ void vla_cleanup(out_ctx *octx)
 		out_val_release(octx, v);
 
 	dynmap_free(vlamap);
-	*pvlamap = NULL;
+	cc1_octx->vlamap = NULL;
 }
 
 static const out_val *vla_gen_size_ty(
@@ -190,8 +194,10 @@ static const out_val *vla_gen_size_ty(
 		case type_tdef:
 		{
 			const out_val *cached = vla_cached_size(t, octx);
-			if(cached)
+			if(cached){
+				out_val_release(octx, stack_ent);
 				return cached;
+			}
 
 			return vla_gen_size_ty(type_next_1(t), octx, arith_ty, stack_ent);
 		}
@@ -221,7 +227,7 @@ static const out_val *vla_gen_size(type *t, out_ctx *octx)
 void vla_typedef_init(decl *d, out_ctx *octx)
 {
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
-	const out_val *alloc_start = d->sym->outval;
+	const out_val *alloc_start = sym_outval(d->sym);
 
 	out_val_retain(octx, alloc_start);
 	out_val_consume(octx,
@@ -243,7 +249,7 @@ void vla_decl_init(decl *d, out_ctx *octx)
 	const int is_vla = !!type_is_vla(d->ref, VLA_ANY_DIMENSION);
 	const out_val *stack_ent;
 
-	stack_ent = out_val_retain(octx, d->sym->outval);
+	stack_ent = out_val_retain(octx, sym_outval(d->sym));
 	stack_ent = out_change_type(octx, stack_ent, charp);
 
 	assert(s && "no sym for vla");
@@ -293,7 +299,7 @@ void vla_decl_init(decl *d, out_ctx *octx)
 static const out_val *vla_read(decl *d, out_ctx *octx, long offset, type *deref_ty)
 {
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
-	const out_val *stack_ent = d->sym->outval;
+	const out_val *stack_ent = sym_outval(d->sym);
 
 	out_val_retain(octx, stack_ent);
 	stack_ent = out_change_type(octx, stack_ent, sizety);

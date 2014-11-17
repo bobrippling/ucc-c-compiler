@@ -10,8 +10,6 @@
 	 (e)->bits.struct_mem.extra_off                     \
 	 )
 
-static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx);
-
 const char *str_expr_struct()
 {
 	return "struct";
@@ -28,9 +26,12 @@ void fold_expr_struct(expr *e, symtable *stab)
 	char *spel;
 	enum type_qualifier struct_qual;
 
-	fold_expr_nodecay(e->lhs, stab);
-	/* don't fold the rhs - just a member name */
+	if(ptr_expect)
+		FOLD_EXPR(e->lhs, stab);
+	else
+		fold_expr_nodecay(e->lhs, stab);
 
+	/* don't fold the rhs - just a member name */
 	if(e->rhs){
 		UCC_ASSERT(expr_kind(e->rhs, identifier),
 				"struct/union member not identifier (%s)", e->rhs->f_str());
@@ -90,19 +91,18 @@ err:
 		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
 	}/* else already have the member */
 
-	if(!expr_is_lval(e->lhs))
-		e->f_lea = NULL;
-
+	/* pointer to struct - skip the pointer type and pull the quals
+	 * off the struct type */
 	struct_qual = type_qual(
 			ptr_expect
-				? type_dereference_decay(e->lhs->tree_type)
-				: e->lhs->tree_type);
+			? type_dereference_decay(e->lhs->tree_type)
+			: e->lhs->tree_type);
 
 	/* pull qualifiers from the struct to the member */
 	e->tree_type = type_qualify(e->bits.struct_mem.d->ref, struct_qual);
 }
 
-static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
+const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 {
 	const out_val *struct_exp, *off;
 
@@ -110,7 +110,7 @@ static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 
 	struct_exp = out_change_type(
 			octx,
-			(e->expr_is_st_dot ? lea_expr : gen_expr)(e->lhs, octx),
+			gen_expr(e->lhs, octx),
 			type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
 
 	off =
@@ -147,12 +147,7 @@ static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 	return off;
 }
 
-const out_val *gen_expr_struct(expr *e, out_ctx *octx)
-{
-	return out_deref(octx, gen_expr_struct_lea(e, octx));
-}
-
-const out_val *gen_expr_str_struct(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_struct(const expr *e, out_ctx *octx)
 {
 	decl *mem = e->bits.struct_mem.d;
 
@@ -179,18 +174,25 @@ static void fold_const_expr_struct(expr *e, consty *k)
 
 	switch(k->type){
 		case CONST_NO:
-		case CONST_NEED_ADDR:
 		case CONST_STRK:
 			k->type = CONST_NO;
 			break;
 
+		case CONST_NEED_ADDR:
 		case CONST_ADDR:
-			/* not constant unless addressed e.g. &a->b (unless array/func) */
-			k->type = CONST_ADDR_OR_NEED(e->bits.struct_mem.d);
-			/* don't touch k->bits.addr info */
+			/* a.b == (&a)->b, i.e. a.b wants a CONST_NEED_ADDR
+			 * a->b wants a CONST_ADDR
+			 */
+			if(k->type == (e->expr_is_st_dot ? CONST_NEED_ADDR : CONST_ADDR)){
+				/* not constant unless addressed e.g. &a->b (unless array/func) */
+				k->type = CONST_ADDR_OR_NEED(e->bits.struct_mem.d);
+				/* don't touch k->bits.addr info */
 
-			/* obviously we offset this */
-			k->offset += struct_offset(e);
+				/* obviously we offset this */
+				k->offset += struct_offset(e);
+			}else{
+				k->type = CONST_NO;
+			}
 			break;
 
 		case CONST_NUM:
@@ -206,16 +208,25 @@ static void fold_const_expr_struct(expr *e, consty *k)
 	}
 }
 
-static int expr_struct_is_lval(expr *e)
+static enum lvalue_kind struct_is_lval(expr *e)
 {
-	return expr_is_lval(e->lhs);
+	if(e->expr_is_st_dot){
+		/* we're only an lvalue if our subexpression is a
+		 * non-internal/C-standard lvalue.
+		 *
+		 * unless we're being checked internally, in which
+		 * case we want lval2rval decay - hence yes
+		 */
+		return expr_is_lval(e->lhs);
+	}else{
+		return LVALUE_USER_ASSIGNABLE;
+	}
 }
 
 void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
-	e->f_lea = gen_expr_struct_lea;
-	e->f_islval = expr_struct_is_lval;
+	e->f_islval = struct_is_lval;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;
@@ -240,7 +251,7 @@ expr *expr_new_struct_mem(expr *sub, int dot, decl *d)
 	return e;
 }
 
-const out_val *gen_expr_style_struct(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_struct(const expr *e, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef("->%s", e->bits.struct_mem.d->spel);

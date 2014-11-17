@@ -18,6 +18,8 @@ enum decl_storage
 #define STORE_MASK_STORE 0x00007 /* include all below 4 */
 #define STORE_MASK_EXTRA 0xfff38 /* exclude  ^ */
 
+#define STORE_IS_TYPEDEF(s) (((s) & STORE_MASK_STORE) == store_typedef)
+
 struct decl_init_expr
 {
 	struct decl_init *dinit;
@@ -77,6 +79,7 @@ struct decl
 	} fold_state;
 	int proto_flag;
 	struct decl *proto;
+	struct decl *impl;
 
 	struct sym *sym;
 
@@ -99,6 +102,7 @@ unsigned decl_size(decl *);
 unsigned decl_align(decl *);
 
 enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts);
+unsigned decl_hash(const decl *);
 int   decl_store_static_or_extern(enum decl_storage);
 
 enum linkage
@@ -113,6 +117,11 @@ int decl_store_duration_is_static(decl *d); /* i.e. not argument/typedef/local *
 int decl_conv_array_func_to_ptr(decl *d);
 struct type *decl_is_decayed_array(decl *);
 
+decl *decl_impl(decl *); /* fast-forwards to the impl */
+
+int decl_is_pure_inline(decl *);
+int decl_should_emit_code(decl *);
+
 #define DECL_STATIC_BUFSIZ 512
 
 const char *decl_to_str(decl *d);
@@ -121,9 +130,5 @@ const char *decl_store_to_str(const enum decl_storage);
 
 #define DECL_FUNC_ARG_SYMTAB(d) ((d)->bits.func.code->symtab->parent)
 #define DECL_HAS_FUNC_CODE(d) (type_is(d->ref, type_func) && d->bits.func.code)
-
-#define DECL_PURE_INLINE(d) \
-	((d)->store & store_inline && \
-	 ((d)->store & STORE_MASK_STORE) == store_default)
 
 #endif

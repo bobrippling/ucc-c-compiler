@@ -9,6 +9,7 @@ local1 = 1
 20		float *pfp = &fp;
 $2 = 3
 $3 = 1
+# this ensures that { extern a; ... } replaces local a:s with global a:s
 /\\$4 = 0 '\0+'/
 $5 = 1
 /&a = 0x[0-9a-f]+/

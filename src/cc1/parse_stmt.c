@@ -42,9 +42,10 @@ static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 	 *
 	 * C90 drags the scope of the enum up to the enclosing block
 	 */
-	if(cc1_std >= STD_C99){
-		ctx->scope = t->symtab = symtab_new(t->symtab, &here);
-	}
+	t->symtab = (cc1_std >= STD_C99 ? symtab_new : symtab_new_transparent)(
+				t->symtab, &here);
+
+	ctx->scope = t->symtab;
 
   if(parse_at_decl(ctx->scope, 1)){
 		decl *d;
@@ -177,6 +178,9 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 
 	if(!accept(token_semicolon)){
 		int got_decls;
+		where w;
+
+		where_cc1_current(&w);
 
 		got_decls = parse_decl_group(
 				DECL_MULTI_ALLOW_ALIGNAS | DECL_MULTI_ALLOW_STORE,
@@ -186,7 +190,7 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 
 		if(got_decls){
 			if(cc1_std < STD_C99)
-				cc1_warn_at(NULL, c89_for_init, "use of C99 for-init");
+				cc1_warn_at(&w, c89_for_init, "use of C99 for-init");
 
 			stmt_for_got_decls(s);
 		}else{

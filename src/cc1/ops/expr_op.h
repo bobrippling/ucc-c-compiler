@@ -14,17 +14,19 @@ func_gen     gen_expr_style_op;
 type *op_required_promotion(
 		enum op_type op,
 		expr *lhs, expr *rhs,
-		where *w,
+		where *w, const char *desc /* maybe null */,
 		type **plhs, type **prhs)
 	ucc_wur;
 
 type *op_promote_types(
 		enum op_type op,
 		expr **plhs, expr **prhs,
-		where *w, symtable *stab)
+		symtable *stab,
+		where *w, const char *desc)
 	ucc_wur;
 
 void expr_promote_default(expr **pe, symtable *stab);
+void expr_promote_int_if_smaller(expr **pe, symtable *stab);
 
 /* called from op code and deref code
  * op code checks for 0 to len-1,

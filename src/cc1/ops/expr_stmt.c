@@ -3,8 +3,6 @@
 #include "../../util/dynarray.h"
 #include "../type_nav.h"
 
-static const out_val *expr_stmt_lea(expr *, out_ctx *);
-
 const char *str_expr_stmt()
 {
 	return "statement";
@@ -34,9 +32,12 @@ void fold_expr_stmt(expr *e, symtable *stab)
 				FOLD_CHK_ALLOW_VOID,
 				"({ ... }) statement");
 
-		if(last_expr->f_lea){
-			e->f_lea = expr_stmt_lea;
-			e->lvalue_internal = 1;
+		switch(expr_is_lval(last_expr)){
+			case LVALUE_NO:
+				break;
+			case LVALUE_STRUCT:
+			case LVALUE_USER_ASSIGNABLE:
+				e->f_islval = expr_is_lval_struct;
 		}
 	}else{
 		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
@@ -45,12 +46,13 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */
 }
 
-const out_val *gen_expr_stmt(expr *e, out_ctx *octx)
+const out_val *gen_expr_stmt(const expr *e, out_ctx *octx)
 {
 	size_t n;
 	const out_val *ret;
+	struct out_dbg_lbl *pushed_lbls[2];
 
-	gen_stmt_code_m1(e->code, 1, octx);
+	gen_stmt_code_m1(e->code, 1, pushed_lbls, octx);
 
 	n = dynarray_count(e->code->bits.code.stmts);
 
@@ -60,22 +62,12 @@ const out_val *gen_expr_stmt(expr *e, out_ctx *octx)
 		ret = out_new_noop(octx);
 
 	/* this is skipped by gen_stmt_code_m1( ... 1, ... ) */
-	gen_stmt_code_m1_finish(e->code, octx);
+	gen_stmt_code_m1_finish(e->code, pushed_lbls, octx);
 
 	return ret;
 }
 
-static const out_val *expr_stmt_lea(expr *e, out_ctx *octx)
-{
-	size_t n;
-
-	gen_stmt_code_m1(e->code, 1, octx);
-
-	n = dynarray_count(e->code->bits.code.stmts);
-	return lea_expr(e->code->bits.code.stmts[n - 1]->expr, octx);
-}
-
-const out_val *gen_expr_str_stmt(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_stmt(const expr *e, out_ctx *octx)
 {
 	idt_printf("statement:\n");
 	gen_str_indent++;
@@ -96,7 +88,7 @@ expr *expr_new_stmt(stmt *code)
 	return e;
 }
 
-const out_val *gen_expr_style_stmt(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_stmt(const expr *e, out_ctx *octx)
 {
 	stylef("({\n");
 	gen_stmt(e->code, octx);

@@ -459,6 +459,9 @@ const char *impl_val_str_r(
 			const char *rstr = x86_reg_str(
 					&vs->bits.regoff.reg, deref ? NULL : vs->t);
 
+			UCC_ASSERT(!deref || !vs->bits.regoff.reg.is_float,
+					"dereference float reg");
+
 			if(off){
 				UCC_ASSERT(1||deref,
 						"can't add to a register in %s",
@@ -1120,17 +1123,13 @@ lea:
 		case V_LBL:
 		{
 			const int fp = type_is_floating(from->t);
-			/* leab doesn't work as an instruction */
-			type *suff_ty = fp ? NULL : from->t;
-			type *chosen_ty = from->t;
+			type *chosen_ty = fp ? from->t : NULL;
 
 			/* just go with leaq for small sizes */
-			if(suff_ty && type_size(suff_ty, NULL) < 4)
-				suff_ty = chosen_ty = NULL;
 
 			out_asm(octx, "%s%s %s, %%%s",
 					fp ? "mov" : "lea",
-					x86_suffix(suff_ty),
+					x86_suffix(NULL),
 					impl_val_str(from, 1),
 					x86_reg_str(reg, chosen_ty));
 
@@ -1192,11 +1191,6 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 			ICE("invalid store lvalue 0x%x", to->type);
 
 		case V_REG_SPILT:
-			/* need to load the store value from memory
-			 * aka. double indir */
-			to = v_to_reg(octx, to);
-			break;
-
 		case V_REG:
 		case V_LBL:
 			break;
@@ -1361,10 +1355,22 @@ static const out_val *x86_shift(
 	return v_dup_or_reuse(octx, l, l->t);
 }
 
+static const out_val *min_retained(
+		out_ctx *octx,
+		const out_val *a, const out_val *b)
+{
+	if(a->retains > b->retains){
+		out_val_consume(octx, a);
+		return b;
+	}else{
+		out_val_consume(octx, b);
+		return a;
+	}
+}
+
 const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const out_val *r)
 {
 	const char *opc;
-	const out_val *min_retained = l->retains < r->retains ? l : r;
 
 	l = x86_check_ivfp(octx, l);
 	r = x86_check_ivfp(octx, r);
@@ -1382,12 +1388,9 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 					impl_val_str_r(b1, r, 0),
 					impl_val_str_r(b2, l, 0));
 
-			if(l != min_retained) out_val_consume(octx, l);
-			if(r != min_retained) out_val_consume(octx, r);
-
 			/* not flag_mod_signed - we want seta, not setgt */
 			return v_new_flag(
-					octx, min_retained,
+					octx, min_retained(octx, l, r),
 					op_to_flag(op), flag_mod_float);
 		}
 
@@ -1516,11 +1519,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				cmp = v_inv_cmp(cmp, /*invert_eq:*/0);
 			}
 
-			if(l != min_retained) out_val_consume(octx, l);
-			if(r != min_retained) out_val_consume(octx, r);
-
 			return v_new_flag(
-					octx, min_retained,
+					octx, min_retained(octx, l, r),
 					cmp, is_signed ? flag_mod_signed : 0);
 		}
 
@@ -1534,6 +1534,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 	{
 		char buf[VAL_STR_SZ];
+		type *ret_ty;
 
 		/* RHS    LHS
 		 * r/m += r/imm;
@@ -1632,16 +1633,14 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 						impl_val_str(l, 0));
 		}
 
-		out_val_consume(octx, r);
-		return v_dup_or_reuse(octx, l, l->t);
+		ret_ty = l->t;
+		return v_dup_or_reuse(octx, min_retained(octx, l, r), ret_ty);
 	}
 }
 
 const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *reg)
 {
-	type *tpointed_to = vp->type == V_REG_SPILT
-		? vp->t
-		: type_dereference_decay(vp->t);
+	type *tpointed_to = type_dereference_decay(vp->t);
 
 	/* loaded the pointer, now we apply the deref change */
 	out_asm(octx, "mov%s %s, %%%s",
@@ -1756,7 +1755,7 @@ const out_val *impl_cast_load(
 	}
 }
 
-static void x86_fp_conv(
+static const out_val *x86_fp_conv(
 		out_ctx *octx,
 		const out_val *vp,
 		struct vreg *r, type *tto,
@@ -1764,9 +1763,13 @@ static void x86_fp_conv(
 		const char *sfrom, const char *sto)
 {
 	char vbuf[VAL_STR_SZ];
+	int truncate = type_is_integral(tto); /* going to int? */
 
-	out_asm(octx, "cvt%s2%s%s %s, %%%s",
-			/*truncate ? "t" : "",*/
+	if(vp->type == V_CONST_F)
+		vp = x86_load_fp(octx, vp);
+
+	out_asm(octx, "cvt%s%s2%s%s %s, %%%s",
+			truncate ? "t" : "",
 			sfrom, sto,
 			/* if we're doing an int-float conversion,
 			 * see if we need to do 64 or 32 bit
@@ -1774,6 +1777,8 @@ static void x86_fp_conv(
 			int_ty ? type_size(int_ty, NULL) == 8 ? "q" : "l" : "",
 			impl_val_str_r(vbuf, vp, vp->type == V_REG_SPILT),
 			x86_reg_str(r, tto));
+
+	return v_new_reg(octx, vp, tto, r);
 }
 
 static const out_val *x86_xchg_fi(
@@ -1813,12 +1818,10 @@ static const out_val *x86_xchg_fi(
 		}
 	}
 
-	x86_fp_conv(octx, vp, &r, tto,
+	return x86_fp_conv(octx, vp, &r, tto,
 			to_float ? tfrom : tto,
 			to_float ? "si" : fp_s,
 			to_float ? fp_s : "si");
-
-	return v_new_reg(octx, vp, tto, &r);
 }
 
 const out_val *impl_i2f(out_ctx *octx, const out_val *vp, type *t_i, type *t_f)
@@ -1838,11 +1841,9 @@ const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *from, type *to)
 	v_unused_reg(octx, 1, 1, &r, vp);
 	assert(r.is_float);
 
-	x86_fp_conv(octx, vp, &r, to, NULL,
+	return x86_fp_conv(octx, vp, &r, to, NULL,
 			x86_suffix(from),
 			x86_suffix(to));
-
-	return v_new_reg(octx, vp, to, &r);
 }
 
 static const char *x86_call_jmp_target(
@@ -1870,15 +1871,12 @@ static const char *x86_call_jmp_target(
 
 		case V_REG_SPILT: /* load, then jmp */
 		case V_REG: /* jmp *%rax */
-			/* TODO: v_to_reg_given() ? */
-			*pvp = v_to_reg(octx, *pvp);
+			*pvp = v_reg_apply_offset(octx, v_to_reg(octx, *pvp));
 
 			UCC_ASSERT(!(*pvp)->bits.regoff.reg.is_float, "jmp float?");
 
 			if(prevent_rax && (*pvp)->bits.regoff.reg.idx == X86_64_REG_RAX){
 				struct vreg r;
-
-				*pvp = v_reg_apply_offset(octx, *pvp);
 
 				v_unused_reg(octx, 1, 0, &r, /*don't want rax:*/NULL);
 				impl_reg_cp_no_off(octx, *pvp, &r);
@@ -1887,8 +1885,9 @@ static const char *x86_call_jmp_target(
 				memcpy_safe(&((out_val *)*pvp)->bits.regoff.reg, &r);
 			}
 
-			snprintf(buf, sizeof buf, "*%%%s",
-					x86_reg_str(&(*pvp)->bits.regoff.reg, NULL));
+			*buf = '*';
+			impl_val_str_r(buf + 1, *pvp, 0);
+			/* FIXME: derereference: 0 - this should check for an lvalue and if so, pass 1 */
 			return buf;
 	}
 
@@ -1932,6 +1931,8 @@ void impl_branch(
 			cmp = ustrprintf("jz %s", bf->lbl);
 
 			blk_terminate_condjmp(octx, cmp, bf, bt, unlikely);
+
+			out_val_consume(octx, cond);
 			break;
 		}
 
@@ -1967,6 +1968,8 @@ void impl_branch(
 			}
 
 			blk_terminate_condjmp(octx, cmpjmp, bt, bf, unlikely);
+
+			out_val_consume(octx, cond);
 			break;
 		}
 
@@ -1979,6 +1982,8 @@ void impl_branch(
 			out_comment(octx,
 					"constant jmp condition %staken",
 					flag ? "" : "not ");
+
+			out_val_consume(octx, cond);
 
 			out_ctrl_transfer(octx, flag ? bt : bf, NULL, NULL);
 			break;
@@ -2282,7 +2287,9 @@ const out_val *impl_call(
 
 #if 0
 				/* argument retainedness doesn't matter here -
-				 * local arguments and autos are held onto */
+				 * local arguments and autos are held onto, and
+				 * inline functions hold onto their arguments one extra
+				 */
 				UCC_ASSERT(local_args[i]->retains == 1,
 						"incorrectly retained arg %d: %d",
 						i, local_args[i]->retains);
@@ -2365,7 +2372,7 @@ const out_val *impl_call(
 
 	for(i = 0; i < nargs; i++)
 		out_val_consume(octx, local_args[i]);
-	dynarray_free(const out_val **, &local_args, NULL);
+	dynarray_free(const out_val **, local_args, NULL);
 
 	if(stret_stack){
 		if(stret_kind == stret_regs){

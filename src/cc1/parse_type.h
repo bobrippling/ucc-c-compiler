@@ -19,6 +19,9 @@ enum decl_multi_mode
 	DECL_MULTI_ALLOW_STORE        = 1 << 4,
 	DECL_MULTI_NAMELESS           = 1 << 5,
 	DECL_MULTI_ALLOW_ALIGNAS      = 1 << 6,
+
+	/* another name for field-width, for documentation/checking */
+	DECL_MULTI_IS_STRUCT_UN_MEMB  = DECL_MULTI_ACCEPT_FIELD_WIDTH
 };
 
 

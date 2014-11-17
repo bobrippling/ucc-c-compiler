@@ -2,7 +2,7 @@
 // RUN: %check %s
 struct A
 {
-	struct B {} b; // CHECK: /warning: empty struct/
+	struct B {} b; // CHECK: /warning: struct is empty/
 	int x[];       // CHECK: !/warning/
 };
 

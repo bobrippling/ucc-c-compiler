@@ -54,12 +54,13 @@ enum fold_chk
 	FOLD_CHK_NOWARN_ASSIGN = 1 << 6, /* if(a = b){ ... } */
 	FOLD_CHK_ARITHMETIC = 1 << 7,
 };
-void fold_check_expr(expr *e, enum fold_chk, const char *desc);
+void fold_check_expr(const expr *e, enum fold_chk, const char *desc);
 
 /* expression + statement folding */
 /*   decay */
 expr *fold_expr_lval2rval(expr *e, symtable *stab) ucc_wur;
 #define FOLD_EXPR(e, stab) ((e) = fold_expr_lval2rval((e), (stab)))
+expr *fold_expr_nonstructdecay(expr *e, symtable *stab) ucc_wur;
 /*   normal fold */
 void fold_expr_nodecay(expr *e, symtable *stab);
 

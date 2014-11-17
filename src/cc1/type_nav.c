@@ -460,6 +460,10 @@ type *type_dereference_decay(type *const ty_ptr)
 	if(type_is(pointee, type_func))
 		return ty_ptr;
 
+	/* decay never returns an array type - decay to pointer */
+	if(type_is(pointee, type_array))
+		return type_decay(pointee);
+
 	return pointee;
 }
 

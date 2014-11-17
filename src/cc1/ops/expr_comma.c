@@ -23,24 +23,18 @@ static void fold_const_expr_comma(expr *e, consty *k)
 		k->type = CONST_NO;
 }
 
-static const out_val *comma_lea(expr *e, out_ctx *octx)
-{
-	out_val_consume(octx, gen_maybe_struct_expr(e->lhs, octx));
-	return lea_expr(e->rhs, octx);
-}
-
 void fold_expr_comma(expr *e, symtable *stab)
 {
-	FOLD_EXPR(e->lhs, stab);
+	e->lhs = fold_expr_nonstructdecay(e->lhs, stab);
 	fold_check_expr(
 			e->lhs,
-			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
+			FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
 			"comma-expr");
 
-	FOLD_EXPR(e->rhs, stab);
+	e->rhs = fold_expr_nonstructdecay(e->rhs, stab);
 	fold_check_expr(
 			e->rhs,
-			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
+			FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
 			"comma-expr");
 
 	e->tree_type = e->rhs->tree_type;
@@ -51,21 +45,28 @@ void fold_expr_comma(expr *e, symtable *stab)
 
 	e->freestanding = e->rhs->freestanding;
 
-	if(e->rhs->f_lea){
-		e->f_lea = comma_lea;
-		e->lvalue_internal = 1;
+	switch(expr_is_lval(e->rhs)){
+		case LVALUE_NO:
+			break;
+		case LVALUE_STRUCT:
+		case LVALUE_USER_ASSIGNABLE:
+			/* comma expressions aren't lvalues,
+			 * but we need their address for things like:
+			 * struct A from = ...;
+			 * struct A to = (0, from);
+			 */
+			e->f_islval = expr_is_lval_struct;
 	}
 }
 
-const out_val *gen_expr_comma(expr *e, out_ctx *octx)
+const out_val *gen_expr_comma(const expr *e, out_ctx *octx)
 {
-	/* attempt lea, don't want full struct dereference */
-	out_val_consume(octx, gen_maybe_struct_expr(e->lhs, octx));
+	out_val_consume(octx, gen_expr(e->lhs, octx));
 
 	return gen_expr(e->rhs, octx);
 }
 
-const out_val *gen_expr_str_comma(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_comma(const expr *e, out_ctx *octx)
 {
 	idt_printf("comma expression\n");
 	idt_printf("comma lhs:\n");
@@ -91,7 +92,7 @@ void mutate_expr_comma(expr *e)
 	e->f_const_fold = fold_const_expr_comma;
 }
 
-const out_val *gen_expr_style_comma(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_comma(const expr *e, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef(", ");

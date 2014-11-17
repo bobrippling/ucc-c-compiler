@@ -1,19 +1,14 @@
-// RUN: %check %s
 // RUN: %ocheck 3 %s
+// RUN: %ucc -S -o- %s | grep 'b:'
 
-inline int notemitted() // CHECK: warning: pure inline function will not have code emitted (missing "static" or "extern")
+__attribute((noinline))
+inline int b() // no code emitted yet
 {
-	return 2;
-}
-
-inline int yo() // CHECK: !/warn/
-{ // CHECK: !/warn/
 	return 3;
 }
-
-static int yo(); // CHECK: !/warn/
+extern int b(); // causes b to be emitted externally
 
 main()
 {
-	return yo();
+	return b();
 }
