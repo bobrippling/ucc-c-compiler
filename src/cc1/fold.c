@@ -178,7 +178,7 @@ sym *fold_inc_writes_if_sym(expr *e, symtable *stab)
 	return NULL;
 }
 
-void fold_expr(expr *e, symtable *stab)
+void fold_expr_nodecay(expr *e, symtable *stab)
 {
 	if(e->tree_type)
 		return;
@@ -188,13 +188,49 @@ void fold_expr(expr *e, symtable *stab)
 	UCC_ASSERT(e->tree_type, "no tree_type after fold (%s)", e->f_str());
 }
 
-static expr *fold_expr_lval2rval(expr *e, symtable *stab)
+expr *fold_expr_lval2rval(expr *e, symtable *stab)
 {
-	fold_expr(e, stab);
+	/*
+	 * C89:
+	 *
+	 * "Except when it is the operand of the sizeof operator ... an lvalue that
+	 * has type "array of type" is converted to an expression that has type
+	 * "pointer to type" that points to the initial member of the array object
+	 * and is not an lvalue.
+	 *
+	 * C99 (6.3.2.1p3):
+	 *
+	 * "Except when it is the operand of the sizeof operator ... an expression
+	 * that has type "array of type" is converted to an expression with type
+	 * "pointer to type" that points to the initial element of the array object
+	 * and is not an lvalue."
+	 */
+	int should_lval2rval, decayable;
 
-	if(expr_is_lval(e)){
+	fold_expr_nodecay(e, stab);
+
+	decayable = type_decayable(e->tree_type);
+	should_lval2rval = (cc1_std >= STD_C99 && decayable);
+
+	if(!should_lval2rval){
+		switch(expr_is_lval(e)){
+			case LVALUE_NO:
+				break;
+
+			case LVALUE_STRUCT:
+				/* not a user-lvalue - only lval2rval if non-decayable type */
+				should_lval2rval = !decayable;
+				break;
+
+			case LVALUE_USER_ASSIGNABLE:
+				should_lval2rval = 1;
+				break;
+		}
+	}
+
+	if(should_lval2rval || type_is(e->tree_type, type_func)){
 		e = expr_set_where(
-				expr_new_cast_rval(e),
+				expr_new_cast_lval_decay(e),
 				&e->where);
 
 		fold_expr_cast_descend(e, stab, 0);
@@ -203,26 +239,11 @@ static expr *fold_expr_lval2rval(expr *e, symtable *stab)
 	return e;
 }
 
-expr *fold_expr_decay(expr *e, symtable *stab)
+expr *fold_expr_nonstructdecay(expr *e, symtable *stab)
 {
-	/* perform array decay and pointer decay */
-	type *r;
-	type *decayed;
-
-	e = fold_expr_lval2rval(e, stab);
-
-	r = e->tree_type;
-
-	decayed = type_decay(r);
-
-	if(decayed != r){
-		expr *imp_cast = expr_set_where(
-				expr_new_cast_decay(e, decayed),
-				&e->where);
-		fold_expr_cast_descend(imp_cast, stab, 0);
-		e = imp_cast;
-	}
-
+	fold_expr_nodecay(e, stab);
+	if(!type_is_s_or_u(e->tree_type))
+		e = fold_expr_lval2rval(e, stab);
 	return e;
 }
 
@@ -383,7 +404,7 @@ void fold_type_w_attr(
 			expr *p_expr = r->bits.tdef.type_of;
 
 			/* q_to_check = TODO */
-			fold_expr_no_decay(p_expr, stab);
+			fold_expr_nodecay(p_expr, stab);
 
 			if(r->bits.tdef.decl)
 				fold_decl(r->bits.tdef.decl, stab);
@@ -1041,6 +1062,11 @@ void fold_global_func(decl *func_decl)
 			cc1_warn_at(&func_decl->where,
 					typedef_fnimpl,
 					"typedef function implementation is an extension");
+
+		if(!type_is_void(func_ret) && !type_is_complete(func_ret)){
+			warn_at_print_error(&func_decl->where, "incomplete return type");
+			fold_had_error = 1;
+		}
 
 		fold_func_code(
 				func_decl->bits.func.code,

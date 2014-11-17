@@ -10,6 +10,11 @@ const char *str_expr__Generic()
 	return "_Generic";
 }
 
+static enum lvalue_kind is_lval_generic(expr *e)
+{
+	return expr_is_lval(e->bits.generic.chosen->e);
+}
+
 void fold_expr__Generic(expr *e, symtable *stab)
 {
 	struct generic_lbl **i, *def;
@@ -24,7 +29,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 	for(i = e->bits.generic.list; i && *i; i++){
 		struct generic_lbl **j, *l = *i;
 
-		fold_expr_no_decay(l->e, stab);
+		fold_expr_nodecay(l->e, stab);
 
 		/* duplicate default checked below */
 		for(j = i + 1; *j; j++){
@@ -119,7 +124,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		}
 	}
 
-	e->is_lval = expr_is_lval(e->bits.generic.chosen->e);
+	e->f_islval = is_lval_generic;
 
 	e->tree_type = e->bits.generic.chosen->e->tree_type;
 

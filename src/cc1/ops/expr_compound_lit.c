@@ -121,10 +121,10 @@ const out_val *gen_expr_str_compound_lit(const expr *e, out_ctx *octx)
 {
 	decl *const d = e->bits.complit.decl;
 
-	if(e->op)
+	if(e->bits.op.op)
 		return NULL;
 
-	GEN_CONST_CAST(expr *, e)->op = 1;
+	GEN_CONST_CAST(expr *, e)->bits.op.op = 1;
 	{
 		idt_printf("(%s){\n", decl_to_str(d));
 
@@ -146,7 +146,7 @@ const out_val *gen_expr_str_compound_lit(const expr *e, out_ctx *octx)
 			print_stmt(e->code);
 		}
 	}
-	GEN_CONST_CAST(expr *, e)->op = 0;
+	GEN_CONST_CAST(expr *, e)->bits.op.op = 0;
 
 	UNUSED_OCTX();
 }
@@ -161,7 +161,7 @@ const out_val *gen_expr_style_compound_lit(const expr *e, out_ctx *octx)
 void mutate_expr_compound_lit(expr *e)
 {
 	/* unconditionally an lvalue */
-	e->is_lval = 1;
+	e->f_islval = expr_is_lval_always;
 	e->f_const_fold = const_expr_compound_lit;
 }
 

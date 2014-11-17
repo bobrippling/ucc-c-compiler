@@ -31,7 +31,7 @@ void fold_expr_deref(expr *e, symtable *stab)
 
 	fold_check_bounds(ptr, 0);
 
-	e->tree_type = type_dereference_decay(ptr->tree_type);
+	e->tree_type = type_is_ptr(ptr->tree_type);
 }
 
 const out_val *gen_expr_deref(const expr *e, out_ctx *octx)
@@ -105,8 +105,7 @@ void mutate_expr_deref(expr *e)
 {
 	e->f_const_fold = const_expr_deref;
 
-	/* unconditionally an lvalue */
-	e->is_lval = 1;
+	e->f_islval = expr_is_lval_always;
 }
 
 expr *expr_new_deref(expr *of)

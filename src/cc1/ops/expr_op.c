@@ -52,16 +52,16 @@ static void const_op_num_fp(
 	fp_r = const_op_exec_fp(
 			lhs->bits.num.val.f,
 			rhs ? &rhs->bits.num.val.f : NULL,
-			e->op);
+			e->bits.op.op);
 
 	k->type = CONST_NUM;
 
 	/* both relational and normal ops between floats are not constant */
 	/* except -, which is taken as part of the floating point constant */
-	if(e->op != op_minus && !k->nonstandard_const)
+	if(e->bits.op.op != op_minus && !k->nonstandard_const)
 		k->nonstandard_const = e;
 
-	if(op_returns_bool(e->op)){
+	if(op_returns_bool(e->bits.op.op)){
 		k->bits.num.val.i = fp_r; /* convert to bool */
 
 	}else{
@@ -141,7 +141,7 @@ static void const_op_num_int(
 
 		/* need to apply pointer arithmetic */
 		if(l.is_lbl + r.is_lbl < 2 /* at least one side is a number */
-		&& (e->op == op_plus || e->op == op_minus) /* +/- */
+		&& (e->bits.op.op == op_plus || e->bits.op.op == op_minus) /* +/- */
 		&& ((ptr = type_is_ptr(e->lhs->tree_type))
 			|| (ptr_r = 1, ptr = type_is_ptr(e->rhs->tree_type))))
 		{
@@ -169,7 +169,7 @@ static void const_op_num_int(
 				num_side = &r;
 
 			/* label and num - only + and -, or comparison */
-			switch(e->op){
+			switch(e->bits.op.op){
 				case op_not:
 					/* !&lbl */
 					assert(!rhs);
@@ -183,7 +183,7 @@ static void const_op_num_int(
 					if(num_side->bits.i == 0){
 						/* &x == 0, etc */
 						k->type = CONST_NUM;
-						k->bits.num.val.i = (e->op != op_eq);
+						k->bits.num.val.i = (e->bits.op.op != op_eq);
 						break;
 					}
 					/* fall */
@@ -202,9 +202,9 @@ static void const_op_num_int(
 					}
 
 					memcpy_safe(k, num_side == &l ? rhs : lhs);
-					if(e->op == op_plus)
+					if(e->bits.op.op == op_plus)
 						k->offset += num_side->bits.i;
-					else if(e->op == op_minus)
+					else if(e->bits.op.op == op_minus)
 						k->offset -= num_side->bits.i;
 					break;
 			}
@@ -217,20 +217,20 @@ static void const_op_num_int(
 
 			int_r = const_op_exec(
 					l.bits.i, rhs ? &r.bits.i : NULL,
-					e->op, e->tree_type, &err);
+					e->bits.op.op, e->tree_type, &err);
 
 			if(SHOW_CONST_OP){
 				if(rhs){
 					fprintf(stderr,
 							"const op: (%s) %lld %s %lld = %lld, is_signed=%d\n",
 							type_to_str(e->tree_type),
-							l.bits.i, op_to_str(e->op), r.bits.i,
+							l.bits.i, op_to_str(e->bits.op.op), r.bits.i,
 							int_r, is_signed);
 				}else{
 					fprintf(stderr,
 							"const op: (%s) %s %lld = %lld, is_signed=%d\n",
 							type_to_str(e->tree_type),
-							op_to_str(e->op), l.bits.i, int_r, is_signed);
+							op_to_str(e->bits.op.op), l.bits.i, int_r, is_signed);
 				}
 			}
 
@@ -263,7 +263,7 @@ static void const_op_num_int(
 		}
 
 		case 2:
-			switch(e->op){
+			switch(e->bits.op.op){
 				case op_not:
 					assert(0 && "binary not?");
 				case op_unknown:
@@ -284,7 +284,7 @@ static void const_op_num_int(
 					int same = !strcmp(l.bits.lbl, r.bits.lbl);
 					k->type = CONST_NUM;
 
-					k->bits.num.val.i = ((e->op == op_eq) == same);
+					k->bits.num.val.i = ((e->bits.op.op == op_eq) == same);
 					break;
 				}
 			}
@@ -331,7 +331,7 @@ static void const_shortcircuit(
 	collapse_const(&clhs, lhs);
 	truth = clhs.is_lbl ? 1 : clhs.bits.i;
 
-	if(e->op == op_andsc){
+	if(e->bits.op.op == op_andsc){
 		if(truth){
 			/* &lbl && [not-constant] */
 		}else{
@@ -340,7 +340,7 @@ static void const_shortcircuit(
 			k->type = CONST_NUM;
 			k->bits.num.val.i = 0;
 		}
-	}else if(e->op == op_orsc){
+	}else if(e->bits.op.op == op_orsc){
 		if(truth){
 			/* &lbl || [not-constant] */
 			CONST_FOLD_LEAF(k);
@@ -373,7 +373,7 @@ static void fold_const_expr_op(expr *e, consty *k)
 	{
 		/* allow shortcircuit */
 		k->type = CONST_NO;
-		if(e->op == op_andsc || e->op == op_orsc)
+		if(e->bits.op.op == op_andsc || e->bits.op.op == op_orsc)
 			const_shortcircuit(e, k, &lhs, &rhs);
 		return;
 	}
@@ -430,12 +430,15 @@ void expr_promote_default(expr **pe, symtable *stab)
 type *op_required_promotion(
 		enum op_type op,
 		expr *lhs, expr *rhs,
-		where *w,
+		where *w, const char *desc,
 		type **plhs, type **prhs)
 {
 	type *resolved = NULL;
 	type *tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
 	int floating_lhs;
+
+	if(!desc)
+		desc = op_to_str(op);
 
 	*plhs = *prhs = NULL;
 
@@ -612,9 +615,7 @@ ptr_relation:
 			          r_sz = type_size(trhs, &rhs->where);
 
 			/* want to warn regardless of checks - for enums */
-			fold_type_chk_warn(
-					tlhs, trhs,
-					w, op_to_str(op));
+			fold_type_chk_warn(tlhs, trhs, w, desc);
 
 			if(l_unsigned == r_unsigned){
 				if(l_sz != r_sz){
@@ -668,12 +669,15 @@ fin:
 type *op_promote_types(
 		enum op_type op,
 		expr **plhs, expr **prhs,
-		where *w, symtable *stab)
+		symtable *stab,
+		where *w, const char *desc)
 {
 	type *tlhs, *trhs;
 	type *resolved;
 
-	resolved = op_required_promotion(op, *plhs, *prhs, w, &tlhs, &trhs);
+	resolved = op_required_promotion(
+			op, *plhs, *prhs, w, desc,
+			&tlhs, &trhs);
 
 	if(tlhs)
 		fold_insert_casts(tlhs, plhs, stab);
@@ -708,7 +712,7 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 	int lhs = 0;
 
 	/* check bounds */
-	if(e->op != op_plus && e->op != op_minus)
+	if(e->bits.op.op != op_plus && e->bits.op.op != op_minus)
 		return 0;
 
 	array = expr_is_nonvla_casted_array(e->lhs);
@@ -729,7 +733,7 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 					"fp index?");
 
 #define idx k.bits.num
-			if(e->op == op_minus)
+			if(e->bits.op.op == op_minus)
 				idx.val.i = -idx.val.i;
 
 			/* index is allowed to be one past the end, i.e. idx.val == sz */
@@ -756,7 +760,7 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 
 static int op_unsigned_cmp_check(expr *e)
 {
-	switch(e->op){
+	switch(e->bits.op.op){
 			int lhs;
 		/*case op_gt:*/
 		case op_ge:
@@ -776,8 +780,8 @@ static int op_unsigned_cmp_check(expr *e)
 						cc1_warn_at(&e->where,
 								tautologic_unsigned,
 								"comparison of unsigned expression %s %d is always %s",
-								op_to_str(e->op), v,
-								e->op == op_lt || e->op == op_le ? "false" : "true");
+								op_to_str(e->bits.op.op), v,
+								e->bits.op.op == op_lt || e->bits.op.op == op_le ? "false" : "true");
 						return 1;
 					}
 				}
@@ -796,13 +800,13 @@ static int msg_if_precedence(expr *sub, where *w,
 	if(expr_kind(sub, op)
 	&& sub->rhs /* don't warn for (1 << -5) : (-5) is a unary op */
 	&& !sub->in_parens
-	&& sub->op != binary
-	&& (test ? (*test)(sub->op) : 1))
+	&& sub->bits.op.op != binary
+	&& (test ? (*test)(sub->bits.op.op) : 1))
 	{
 		/* ==, !=, <, ... */
 		cc1_warn_at(w, parse_precedence,
 				"%s has higher precedence than %s",
-				op_to_str(sub->op), op_to_str(binary));
+				op_to_str(sub->bits.op.op), op_to_str(binary));
 		return 1;
 	}
 	return 0;
@@ -810,23 +814,23 @@ static int msg_if_precedence(expr *sub, where *w,
 
 static int op_check_precedence(expr *e)
 {
-	switch(e->op){
+	switch(e->bits.op.op){
 		case op_or:
 		case op_and:
-			return msg_if_precedence(e->lhs, &e->where, e->op, op_is_comparison)
-				||   msg_if_precedence(e->rhs, &e->where, e->op, op_is_comparison);
+			return msg_if_precedence(e->lhs, &e->where, e->bits.op.op, op_is_comparison)
+				||   msg_if_precedence(e->rhs, &e->where, e->bits.op.op, op_is_comparison);
 			break;
 
 		case op_andsc:
 		case op_orsc:
-			return msg_if_precedence(e->lhs, &e->where, e->op, op_is_shortcircuit)
-				||   msg_if_precedence(e->rhs, &e->where, e->op, op_is_shortcircuit);
+			return msg_if_precedence(e->lhs, &e->where, e->bits.op.op, op_is_shortcircuit)
+				||   msg_if_precedence(e->rhs, &e->where, e->bits.op.op, op_is_shortcircuit);
 			break;
 
 		case op_shiftl:
 		case op_shiftr:
-			return msg_if_precedence(e->lhs, &e->where, e->op, NULL)
-				|| msg_if_precedence(e->rhs, &e->where, e->op, NULL);
+			return msg_if_precedence(e->lhs, &e->where, e->bits.op.op, NULL)
+				|| msg_if_precedence(e->rhs, &e->where, e->bits.op.op, NULL);
 			break;
 
 		default:
@@ -836,7 +840,7 @@ static int op_check_precedence(expr *e)
 
 static int str_cmp_check(expr *e)
 {
-	if(op_is_comparison(e->op)){
+	if(op_is_comparison(e->bits.op.op)){
 		consty kl, kr;
 
 		const_fold(e->lhs, &kl);
@@ -854,7 +858,7 @@ static int str_cmp_check(expr *e)
 
 static int op_shift_check(expr *e)
 {
-	switch(e->op){
+	switch(e->bits.op.op){
 		case op_shiftl:
 		case op_shiftr:
 		{
@@ -911,7 +915,7 @@ static int op_float_check(expr *e)
 	         *tr = e->rhs->tree_type;
 
 	if((type_is_floating(tl) || type_is_floating(tr))
-	&& !op_can_float(e->op))
+	&& !op_can_float(e->bits.op.op))
 	{
 		char buf[TYPE_STATIC_BUFSIZ];
 
@@ -919,7 +923,7 @@ static int op_float_check(expr *e)
 		fold_had_error = 1;
 		warn_at_print_error(&e->where,
 				"binary %s between '%s' and '%s'",
-				op_to_str(e->op),
+				op_to_str(e->bits.op.op),
 				type_to_str_r(buf, tl),
 				type_to_str(       tr));
 
@@ -953,7 +957,7 @@ static int op_sizeof_div_check(expr *e)
 {
 	expr *lhs;
 
-	if(e->op != op_divide)
+	if(e->bits.op.op != op_divide)
 		return 0;
 
 	lhs = expr_skip_casts(e->lhs);
@@ -975,15 +979,19 @@ static int op_sizeof_div_check(expr *e)
 
 void fold_expr_op(expr *e, symtable *stab)
 {
-	UCC_ASSERT(e->op != op_unknown, "unknown op in expression at %s",
+	const char *op_desc = e->bits.op.array_notation
+		? "subscript"
+		: op_to_str(e->bits.op.op);
+
+	UCC_ASSERT(e->bits.op.op != op_unknown, "unknown op in expression at %s",
 			where_str(&e->where));
 
 	FOLD_EXPR(e->lhs, stab);
-	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_to_str(e->op));
+	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_desc);
 
 	if(e->rhs){
 		FOLD_EXPR(e->rhs, stab);
-		fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_to_str(e->op));
+		fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_desc);
 
 		if(op_float_check(e)){
 			/* short circuit - TODO: error expr */
@@ -996,16 +1004,16 @@ void fold_expr_op(expr *e, symtable *stab)
 		expr_promote_int_if_smaller(&e->rhs, stab);
 
 		/* must check signs before casting */
-		if(op_is_comparison(e->op)){
+		if(op_is_comparison(e->bits.op.op)){
 			expr_check_sign(
-					op_to_str(e->op),
+					op_desc,
 					e->lhs,
 					e->rhs,
 					&e->where);
 		}
 
-		e->tree_type = op_promote_types(e->op,
-				&e->lhs, &e->rhs, &e->where, stab);
+		e->tree_type = op_promote_types(e->bits.op.op,
+				&e->lhs, &e->rhs, stab, &e->where, op_desc);
 
 		(void)(
 				fold_check_bounds(e, 1) ||
@@ -1019,17 +1027,18 @@ void fold_expr_op(expr *e, symtable *stab)
 		/* (except unary-not) can only have operations on integers,
 		 * promote to signed int
 		 */
+		const char *op_desc = op_to_str(e->bits.op.op);
 
 		expr_promote_int_if_smaller(&e->lhs, stab);
 
-		switch(e->op){
+		switch(e->bits.op.op){
 			default:
-				ICE("bad unary op %s", op_to_str(e->op));
+				ICE("bad unary op %s", op_desc);
 
 			case op_not:
 				fold_check_expr(e->lhs,
 						FOLD_CHK_NO_ST_UN,
-						op_to_str(e->op));
+						op_desc);
 
 				e->tree_type = type_nav_btype(cc1_type_nav, type_int);
 				break;
@@ -1040,12 +1049,12 @@ void fold_expr_op(expr *e, symtable *stab)
 			{
 				enum fold_chk chk = FOLD_CHK_NO_ST_UN;
 
-				if(e->op == op_bnot)
+				if(e->bits.op.op == op_bnot)
 					chk |= FOLD_CHK_INTEGRAL;
 				else
 					chk |= FOLD_CHK_ARITHMETIC;
 
-				fold_check_expr(e->lhs, chk, op_to_str(e->op));
+				fold_check_expr(e->lhs, chk, op_to_str(e->bits.op.op));
 
 				e->tree_type = e->lhs->tree_type;
 				break;
@@ -1056,7 +1065,7 @@ void fold_expr_op(expr *e, symtable *stab)
 
 const out_val *gen_expr_str_op(const expr *e, out_ctx *octx)
 {
-	idt_printf("op: %s\n", op_to_str(e->op));
+	idt_printf("op: %s\n", op_to_str(e->bits.op.op));
 	gen_str_indent++;
 
 #define PRINT_IF(hs) if(e->hs) print_expr(e->hs)
@@ -1084,8 +1093,8 @@ static const out_val *op_shortcircuit(const expr *e, out_ctx *octx)
 	out_ctrl_branch(
 			octx,
 			lhs,
-			e->op == op_andsc ? blk_rhs : blk_empty,
-			e->op == op_andsc ? blk_empty : blk_rhs);
+			e->bits.op.op == op_andsc ? blk_rhs : blk_empty,
+			e->bits.op.op == op_andsc ? blk_empty : blk_rhs);
 
 	out_current_blk(octx, blk_rhs);
 	{
@@ -1103,7 +1112,7 @@ static const out_val *op_shortcircuit(const expr *e, out_ctx *octx)
 				out_new_l(
 					octx,
 					type_nav_btype(cc1_type_nav, BOOLEAN_TYPE),
-					e->op == op_orsc ? 1 : 0),
+					e->bits.op.op == op_orsc ? 1 : 0),
 				&blk_empty);
 
 	}
@@ -1144,7 +1153,7 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 {
 	const out_val *lhs, *eval;
 
-	switch(e->op){
+	switch(e->bits.op.op){
 		case op_orsc:
 		case op_andsc:
 			return op_shortcircuit(e, octx);
@@ -1159,11 +1168,11 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 	lhs = gen_expr(e->lhs, octx);
 
 	if(!e->rhs){
-		eval = out_op_unary(octx, e->op, lhs);
+		eval = out_op_unary(octx, e->bits.op.op, lhs);
 	}else{
 		const out_val *rhs = gen_expr(e->rhs, octx);
 
-		eval = out_op(octx, e->op, lhs, rhs);
+		eval = out_op(octx, e->bits.op.op, lhs, rhs);
 
 		/* make sure we get the pointer, for example 2+(int *)p
 		 * or the int, e.g. (int *)a && (int *)b -> int */
@@ -1183,7 +1192,7 @@ void mutate_expr_op(expr *e)
 expr *expr_new_op(enum op_type op)
 {
 	expr *e = expr_new_wrapper(op);
-	e->op = op;
+	e->bits.op.op = op;
 	return e;
 }
 
@@ -1197,11 +1206,24 @@ expr *expr_new_op2(enum op_type o, expr *l, expr *r)
 const out_val *gen_expr_style_op(const expr *e, out_ctx *octx)
 {
 	if(e->rhs){
+		const char *post;
+		char middle[16];
+
+		if(e->bits.op.array_notation){
+			strcpy(middle, "[");
+			post = "]";
+		}else{
+			snprintf(middle, sizeof middle, " %s ", op_to_str(e->bits.op.op));
+			post = "";
+		}
+
 		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
-		stylef(" %s ", op_to_str(e->op));
+		stylef("%s", middle);
 		IGNORE_PRINTGEN(gen_expr(e->rhs, octx));
+		stylef("%s", post);
+
 	}else{
-		stylef("%s ", op_to_str(e->op));
+		stylef("%s ", op_to_str(e->bits.op.op));
 		IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	}
 	return NULL;

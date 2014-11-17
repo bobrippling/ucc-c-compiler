@@ -227,9 +227,6 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		out_dbg_where(octx, &d->bits.func.code->where_cbrace);
 
-		if(out_dump_retained(octx, d->spel))
-			gen_had_error = 1;
-
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
 			int stack_used;
@@ -237,6 +234,9 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 			arg_symtab->stack_used = stack_used;
 			free(end);
 		}
+
+		if(out_dump_retained(octx, d->spel))
+			gen_had_error = 1;
 
 		out_ctx_wipe(octx);
 

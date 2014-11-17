@@ -22,6 +22,7 @@ struct out_ctx
 		out_val val;
 		struct out_val_list *next, *prev;
 	} *val_head, *val_tail;
+	const out_val *current_stret;
 
 	type *current_fnty;
 

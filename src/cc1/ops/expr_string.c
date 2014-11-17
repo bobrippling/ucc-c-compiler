@@ -43,7 +43,7 @@ const out_val *gen_expr_str(const expr *e, out_ctx *octx)
 
 	stringlit_use(strl);
 
-	return out_new_lbl(octx, type_decay(e->tree_type), strl->lbl, 1);
+	return out_new_lbl(octx, type_ptr_to(e->tree_type), strl->lbl, 1);
 }
 
 const out_val *gen_expr_str_str(const expr *e, out_ctx *octx)
@@ -76,7 +76,7 @@ static void const_expr_string(expr *e, consty *k)
 void mutate_expr_str(expr *e)
 {
 	e->f_const_fold = const_expr_string;
-	e->is_lval = 1;
+	e->f_islval = expr_is_lval_always;
 }
 
 void expr_mutate_str(

@@ -123,8 +123,9 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	e->bits.ident.type = IDENT_NORM;
 	e->tree_type = sym->decl->ref;
 
-	/* set if lvalue - expr_is_lval() checks for arrays */
-	e->is_lval = !type_is(e->tree_type, type_func);
+	/* set if lvalue */
+	if(type_is(e->tree_type, type_func))
+		e->f_islval = NULL;
 
 	if(sym->type == sym_local
 	&& !decl_store_duration_is_static(sym->decl)
@@ -176,6 +177,7 @@ const out_val *gen_expr_identifier(const expr *e, out_ctx *octx)
 void mutate_expr_identifier(expr *e)
 {
 	e->f_const_fold  = fold_const_expr_identifier;
+	e->f_islval = expr_is_lval_always;
 }
 
 expr *expr_new_identifier(char *sp)

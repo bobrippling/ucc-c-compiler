@@ -51,10 +51,13 @@ void bitfield_trunc_check(decl *mem, expr *from)
 
 int expr_must_lvalue(expr *e, const char *desc)
 {
-	if(!expr_is_lval(e)){
+	int lval = (expr_is_lval(e) == LVALUE_USER_ASSIGNABLE);
+
+	if(!lval || type_is_array(e->tree_type)){
 		fold_had_error = 1;
-		warn_at_print_error(&e->where, "%s to %s - not an lvalue",
-				desc, type_to_str(e->tree_type));
+		warn_at_print_error(&e->where, "%s to %s - %s",
+				desc, type_to_str(e->tree_type),
+				lval ? "arrays not assignable" : "not an lvalue");
 
 		return 0;
 	}
@@ -92,8 +95,8 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	lhs_sym = fold_inc_writes_if_sym(e->lhs, stab);
 
-	fold_expr_no_decay(e->lhs, stab);
-	fold_expr_no_decay(e->rhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
+	fold_expr_nodecay(e->rhs, stab);
 
 	if(lhs_sym)
 		lhs_sym->nreads--; /* cancel the read that fold_ident thinks it got */
@@ -146,9 +149,11 @@ void fold_expr_assign(expr *e, symtable *stab)
 		/* set is_lval, so we can participate in struct-copy chains
 		 * FIXME: don't interpret as an lvalue, e.g. (a = b) = c;
 		 * this is currently special cased in expr_is_lval()
+		 *
+		 * CHECK THIS
 		 */
 		e->f_gen = lea_assign_lhs;
-		e->is_lval = 1;
+		e->f_islval = expr_is_lval_struct;
 	}
 }
 

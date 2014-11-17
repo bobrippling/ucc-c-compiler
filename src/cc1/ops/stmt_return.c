@@ -34,7 +34,10 @@ void fold_stmt_return(stmt *s)
 	if(s->expr){
 		int void_return;
 
-		FOLD_EXPR(s->expr, s->symtab);
+		fold_expr_nodecay(s->expr, s->symtab);
+		if(!type_is_s_or_u(s->expr->tree_type))
+			FOLD_EXPR(s->expr, s->symtab);
+
 		fold_check_expr(s->expr, FOLD_CHK_ALLOW_VOID, s->f_str());
 
 		void_return = type_is_void(s->expr->tree_type);

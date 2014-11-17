@@ -29,7 +29,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	if(ptr_expect)
 		FOLD_EXPR(e->lhs, stab);
 	else
-		fold_expr_no_decay(e->lhs, stab);
+		fold_expr_nodecay(e->lhs, stab);
 
 	/* don't fold the rhs - just a member name */
 	if(e->rhs){
@@ -208,10 +208,25 @@ static void fold_const_expr_struct(expr *e, consty *k)
 	}
 }
 
+static enum lvalue_kind struct_is_lval(expr *e)
+{
+	if(e->expr_is_st_dot){
+		/* we're only an lvalue if our subexpression is a
+		 * non-internal/C-standard lvalue.
+		 *
+		 * unless we're being checked internally, in which
+		 * case we want lval2rval decay - hence yes
+		 */
+		return expr_is_lval(e->lhs);
+	}else{
+		return LVALUE_USER_ASSIGNABLE;
+	}
+}
+
 void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
-	e->is_lval = 1;
+	e->f_islval = struct_is_lval;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;

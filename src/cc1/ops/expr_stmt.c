@@ -25,10 +25,20 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	fold_stmt(e->code); /* symtab should've been set by parse */
 
 	if(last && stmt_kind(last_stmt, expr)){
-		e->tree_type = last_stmt->expr->tree_type;
+		expr *last_expr = last_stmt->expr;
+
+		e->tree_type = last_expr->tree_type;
 		fold_check_expr(e,
-				FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_ST_UN,
+				FOLD_CHK_ALLOW_VOID,
 				"({ ... }) statement");
+
+		switch(expr_is_lval(last_expr)){
+			case LVALUE_NO:
+				break;
+			case LVALUE_STRUCT:
+			case LVALUE_USER_ASSIGNABLE:
+				e->f_islval = expr_is_lval_struct;
+		}
 	}else{
 		e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 	}

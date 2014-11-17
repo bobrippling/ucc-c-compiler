@@ -104,22 +104,24 @@ int expr_is_null_ptr(expr *e, enum null_strictness ty)
 	return b && const_expr_and_zero(e);
 }
 
-int expr_is_lval(expr *e)
+enum lvalue_kind expr_is_lval(expr *e)
 {
-	if(!e->is_lval)
-		return 0;
+	if(e->f_islval)
+		return e->f_islval(e);
 
-	/* special case:
-	 * (a = b) = c
-	 * ^~~~~~~ not an lvalue, but internally we handle it as one
-	 */
-	if(expr_kind(e, assign) && type_is_s_or_u(e->tree_type))
-		return 0;
+	return LVALUE_NO;
+}
 
-	if(type_is_array(e->tree_type))
-		return 0;
+enum lvalue_kind expr_is_lval_always(expr *e)
+{
+	(void)e;
+	return LVALUE_USER_ASSIGNABLE;
+}
 
-	return 1;
+enum lvalue_kind expr_is_lval_struct(expr *e)
+{
+	(void)e;
+	return LVALUE_STRUCT;
 }
 
 expr *expr_new_array_idx_e(expr *base, expr *idx)

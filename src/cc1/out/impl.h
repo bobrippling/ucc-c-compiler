@@ -71,6 +71,20 @@ const int *impl_callee_save_regs(type *fnty, unsigned *pn);
 
 void impl_comment(out_ctx *, const char *fmt, va_list l);
 
+/* implicitly takes vtop as a pointer to the memory */
+void impl_overlay_mem2regs(
+		out_ctx *,
+		unsigned memsz, unsigned nregs,
+		struct vreg regs[],
+		const out_val *ptr);
+
+/* same - implicit vtop */
+void impl_overlay_regs2mem(
+		out_ctx *,
+		unsigned memsz, unsigned nregs,
+		struct vreg regs[],
+		const out_val *ptr);
+
 enum flag_cmp op_to_flag(enum op_type op);
 const char *flag_cmp_to_str(enum flag_cmp);
 

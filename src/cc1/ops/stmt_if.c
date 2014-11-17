@@ -41,7 +41,7 @@ void flow_fold(stmt_flow *flow, symtable **pstab)
 			fold_check_decl_complete(d);
 
 			if(d->bits.var.init.expr)
-				fold_expr(d->bits.var.init.expr, *pstab);
+				FOLD_EXPR(d->bits.var.init.expr, *pstab);
 		}
 	}
 }

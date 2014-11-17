@@ -25,16 +25,16 @@ static void fold_const_expr_comma(expr *e, consty *k)
 
 void fold_expr_comma(expr *e, symtable *stab)
 {
-	FOLD_EXPR(e->lhs, stab);
+	e->lhs = fold_expr_nonstructdecay(e->lhs, stab);
 	fold_check_expr(
 			e->lhs,
-			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
+			FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
 			"comma-expr");
 
-	FOLD_EXPR(e->rhs, stab);
+	e->rhs = fold_expr_nonstructdecay(e->rhs, stab);
 	fold_check_expr(
 			e->rhs,
-			FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
+			FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
 			"comma-expr");
 
 	e->tree_type = e->rhs->tree_type;
@@ -44,11 +44,25 @@ void fold_expr_comma(expr *e, symtable *stab)
 				"left hand side of comma is unused");
 
 	e->freestanding = e->rhs->freestanding;
+
+	switch(expr_is_lval(e->rhs)){
+		case LVALUE_NO:
+			break;
+		case LVALUE_STRUCT:
+		case LVALUE_USER_ASSIGNABLE:
+			/* comma expressions aren't lvalues,
+			 * but we need their address for things like:
+			 * struct A from = ...;
+			 * struct A to = (0, from);
+			 */
+			e->f_islval = expr_is_lval_struct;
+	}
 }
 
 const out_val *gen_expr_comma(const expr *e, out_ctx *octx)
 {
 	out_val_consume(octx, gen_expr(e->lhs, octx));
+
 	return gen_expr(e->rhs, octx);
 }
 

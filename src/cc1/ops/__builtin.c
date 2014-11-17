@@ -202,7 +202,7 @@ expr *parse_any_args(symtable *scope)
 
 static void fold_memset(expr *e, symtable *stab)
 {
-	fold_expr_no_decay(e->lhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
 
 	if(!expr_is_addressable(e->lhs))
 		ICE("can't memset %s - not addressable", e->lhs->f_str());
@@ -311,8 +311,8 @@ static expr *parse_memset(void)
 
 static void fold_memcpy(expr *e, symtable *stab)
 {
-	fold_expr_no_decay(e->lhs, stab);
-	fold_expr_no_decay(e->rhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
+	fold_expr_nodecay(e->rhs, stab);
 
 	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
@@ -326,20 +326,6 @@ static decl *decl_new_tref(char *sp, type *ref)
 	return d;
 }
 #endif
-
-static void builtin_memcpy_single(
-		out_ctx *octx,
-		const out_val **dst, const out_val **src)
-{
-	type *t1 = type_nav_btype(cc1_type_nav, type_intptr_t);
-
-	out_val_retain(octx, *dst);
-	out_val_retain(octx, *src);
-	out_store(octx, *dst, out_deref(octx, *src));
-
-	*dst = out_op(octx, op_plus, *dst, out_new_l(octx, t1, 1));
-	*src = out_op(octx, op_plus, *src, out_new_l(octx, t1, 1));
-}
 
 static const out_val *builtin_gen_memcpy(const expr *e, out_ctx *octx)
 {
@@ -360,39 +346,12 @@ static const out_val *builtin_gen_memcpy(const expr *e, out_ctx *octx)
 	lea_expr(e->lhs, stab);
 	out_call(3, e->tree_type, ctype);
 #else
-	size_t i = e->bits.num.val.i;
-	type *tptr;
-	unsigned tptr_sz;
 	const out_val *dest, *src;
 
 	dest = gen_expr(e->lhs, octx);
 	src = gen_expr(e->rhs, octx);
 
-	if(i > 0){
-		tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, e->bits.num.val.i));
-		tptr_sz = type_size(tptr, &e->where);
-	}
-
-	while(i > 0){
-		/* as many copies as we can */
-		dest = out_change_type(octx, dest, tptr);
-		src = out_change_type(octx, src, tptr);
-
-		while(i >= tptr_sz){
-			i -= tptr_sz;
-			builtin_memcpy_single(octx, &dest, &src);
-		}
-
-		if(i > 0){
-			tptr_sz /= 2;
-			tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, tptr_sz));
-		}
-	}
-
-	out_val_release(octx, src);
-	return out_op(
-			octx, op_minus,
-			dest, out_new_l(octx, e->tree_type, e->bits.num.val.i));
+	return out_memcpy(octx, dest, src, e->bits.num.val.i);
 #endif
 }
 
@@ -685,6 +644,11 @@ static expr *parse_expect(const char *ident, symtable *scope)
 
 #define CHOOSE_EXPR_CHOSEN(e) ((e)->funcargs[(e)->bits.num.val.i ? 1 : 2])
 
+static enum lvalue_kind is_lval_choose(expr *e)
+{
+	return expr_is_lval(CHOOSE_EXPR_CHOSEN(e));
+}
+
 static void fold_choose_expr(expr *e, symtable *stab)
 {
 	consty k;
@@ -696,7 +660,7 @@ static void fold_choose_expr(expr *e, symtable *stab)
 				BUILTIN_SPEL(e->expr));
 
 	for(i = 0; i < 3; i++)
-		fold_expr_no_decay(e->funcargs[i], stab);
+		fold_expr_nodecay(e->funcargs[i], stab);
 
 	const_fold(e->funcargs[0], &k);
 	if(k.type != CONST_NUM){
@@ -713,7 +677,7 @@ static void fold_choose_expr(expr *e, symtable *stab)
 
 	wur_builtin(e);
 
-	e->is_lval = expr_is_lval(c);
+	e->f_islval = is_lval_choose;
 }
 
 static void const_choose_expr(expr *e, consty *k)

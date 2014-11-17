@@ -288,13 +288,15 @@ static decl_init *decl_init_brace_up_scalar(
 	{
 		expr *e = FOLD_EXPR(first_init->bits.expr, stab);
 
-		if(type_is_primitive(e->tree_type, type_void))
-			die_at(&e->where, "initialisation from void expression");
-
-		fold_type_chk_and_cast(
-				tfor, &first_init->bits.expr,
-				stab, &first_init->bits.expr->where,
-				"initialisation");
+		if(type_is_primitive(e->tree_type, type_void)){
+			warn_at_print_error(&e->where, "initialisation from void expression");
+			fold_had_error = 1;
+		}else{
+			fold_type_chk_and_cast(
+					tfor, &first_init->bits.expr,
+					stab, &first_init->bits.expr->where,
+					"initialisation");
+		}
 	}
 
 	return first_init;
@@ -559,7 +561,7 @@ static void decl_init_const_check(expr *e, symtable *stab)
 {
 	if(cc1_std <= STD_C89){
 		consty k;
-		fold_expr_no_decay(e, stab);
+		fold_expr_nodecay(e, stab);
 		const_fold(e, &k);
 
 		if(!CONST_AT_COMPILE_TIME(k.type)){
@@ -595,7 +597,7 @@ static decl_init **decl_init_brace_up_sue2(
 	{
 		expr *e;
 
-		fold_expr_no_decay(e = this->bits.expr, stab);
+		fold_expr_nodecay(e = this->bits.expr, stab);
 
 		if(type_is_s_or_u(e->tree_type) == sue){
 			/* copy init */
@@ -971,7 +973,7 @@ static decl_init *is_char_init(
 		decl_init *chosen = this->type == decl_init_scalar
 			? this : this->bits.ar.inits[0];
 
-		fold_expr_no_decay(chosen->bits.expr, stab);
+		fold_expr_nodecay(chosen->bits.expr, stab);
 
 		ty_expr = type_str_type(chosen->bits.expr->tree_type);
 		ty_decl = type_str_type(ty);
@@ -1040,7 +1042,7 @@ static decl_init *decl_init_brace_up_array_chk_char(
 						expr_new_val(k.bits.str->lit->str[str_i]),
 						&k.bits.str->where);
 
-				fold_expr(char_init->bits.expr, stab);
+				FOLD_EXPR(char_init->bits.expr, stab);
 
 				dynarray_add(&braced->bits.ar.inits, char_init);
 			}
@@ -1104,7 +1106,7 @@ static decl_init *decl_init_brace_up_start(
 		expr *e;
 		enum type_cmp cmp;
 
-		fold_expr_no_decay(e = init->bits.expr, stab);
+		fold_expr_nodecay(e = init->bits.expr, stab);
 		cmp = type_cmp(e->tree_type, tfor, 0);
 
 		/* allow (copy)init of const from non-const and vice versa */
@@ -1199,18 +1201,18 @@ static expr *sue_base_for_init_assignment(
 			expr_new_struct_mem(base, 1, smem),
 			w);
 
-	fold_expr(e_access, stab);
+	fold_expr_nodecay(e_access, stab);
 
 	return e_access;
 }
 
 static void expr_init_add(expr **pinit, expr *new, symtable *stab)
 {
-	fold_expr(new, stab);
+	fold_expr_nodecay(new, stab);
 
 	if(*pinit){
 		*pinit = expr_new_comma2(*pinit, new);
-		fold_expr(*pinit, stab);
+		fold_expr_nodecay(*pinit, stab);
 	}else{
 		*pinit = new;
 	}
@@ -1392,7 +1394,7 @@ zero_init:
 							expr_new_array_idx(base, idx),
 							&base->where);
 
-					fold_expr(new_base, stab);
+					fold_expr_nodecay(new_base, stab);
 
 					if(!next_type)
 						next_type = type_next(tfor);
@@ -1422,7 +1424,7 @@ void decl_init_create_assignments_base_and_fold(
 			!type_is_scalar(d->ref));
 
 	if(d->bits.var.init.expr)
-		fold_expr(d->bits.var.init.expr, scope);
+		FOLD_EXPR(d->bits.var.init.expr, scope);
 	/* else had error */
 }
 

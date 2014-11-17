@@ -136,7 +136,7 @@ static stmt *parse_do(const struct stmt_ctx *const ctx)
 	EAT(token_while);
 	EAT(token_open_paren);
 	t->expr = parse_expr_exp(subctx.scope, 0);
-	fold_expr(t->expr, ctx->scope);
+	fold_expr_nodecay(t->expr, ctx->scope);
 	EAT(token_close_paren);
 	EAT(token_semicolon);
 
@@ -480,7 +480,7 @@ stmt *parse_stmt(const struct stmt_ctx *ctx)
 
 				if(curtok != token_semicolon){
 					t->expr = parse_expr_exp(ctx->scope, 0);
-					fold_expr(t->expr, ctx->scope);
+					fold_expr_nodecay(t->expr, ctx->scope);
 				}
 			}else{
 				t = stmt_new_wrapper(goto, ctx->scope);
