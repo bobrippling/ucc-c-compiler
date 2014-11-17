@@ -388,7 +388,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				e->f_islval = expr_is_lval_internal;
 
 		}else{
-			FOLD_EXPR(expr_cast_child(e), stab);
+			expr_cast_child(e) = fold_expr_nonstructdecay(expr_cast_child(e), stab);
 		}
 	}
 
