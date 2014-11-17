@@ -288,13 +288,15 @@ static decl_init *decl_init_brace_up_scalar(
 	{
 		expr *e = FOLD_EXPR(first_init->bits.expr, stab);
 
-		if(type_is_primitive(e->tree_type, type_void))
-			die_at(&e->where, "initialisation from void expression");
-
-		fold_type_chk_and_cast(
-				tfor, &first_init->bits.expr,
-				stab, &first_init->bits.expr->where,
-				"initialisation");
+		if(type_is_primitive(e->tree_type, type_void)){
+			warn_at_print_error(&e->where, "initialisation from void expression");
+			fold_had_error = 1;
+		}else{
+			fold_type_chk_and_cast(
+					tfor, &first_init->bits.expr,
+					stab, &first_init->bits.expr->where,
+					"initialisation");
+		}
 	}
 
 	return first_init;
