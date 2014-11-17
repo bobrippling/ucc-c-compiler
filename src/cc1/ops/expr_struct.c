@@ -210,13 +210,12 @@ static void fold_const_expr_struct(expr *e, consty *k)
 
 static int struct_is_lval(expr *e, int internal)
 {
+	(void)internal;
+
 	if(e->expr_is_st_dot){
 		/* we're only an lvalue if our subexpression is a
 		 * non-internal/C-standard lvalue */
-		if(expr_is_lval(e->lhs, 0))
-			return 1;
-
-		return expr_is_lval_always(e, internal);
+		return expr_is_lval(e->lhs, 0);
 	}else{
 		return 1;
 	}
@@ -225,9 +224,7 @@ static int struct_is_lval(expr *e, int internal)
 void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
-	e->f_islval = (cc1_std >= STD_C99
-			? expr_is_lval_always
-			: struct_is_lval);
+	e->f_islval = struct_is_lval;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;
