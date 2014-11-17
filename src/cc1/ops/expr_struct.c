@@ -216,7 +216,7 @@ static int struct_is_lval(expr *e, int internal)
 		if(expr_is_lval(e->lhs, 0))
 			return 1;
 
-		return expr_is_lval_unless_array(e, internal);
+		return expr_is_lval_always(e, internal);
 	}else{
 		return 1;
 	}
@@ -226,7 +226,7 @@ void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
 	e->f_islval = (cc1_std >= STD_C99
-			? expr_is_lval_unless_array
+			? expr_is_lval_always
 			: struct_is_lval);
 
 	/* zero out the union/rhs if we're mutating */

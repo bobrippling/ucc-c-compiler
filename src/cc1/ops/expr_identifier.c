@@ -124,9 +124,8 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	e->tree_type = sym->decl->ref;
 
 	/* set if lvalue */
-	e->f_islval = type_is(e->tree_type, type_func)
-		? NULL
-		: expr_is_lval_unless_array;
+	if(type_is(e->tree_type, type_func))
+		e->f_islval = NULL;
 
 	if(sym->type == sym_local
 	&& !decl_store_duration_is_static(sym->decl)

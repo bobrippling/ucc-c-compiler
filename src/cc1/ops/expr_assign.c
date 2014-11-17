@@ -51,10 +51,13 @@ void bitfield_trunc_check(decl *mem, expr *from)
 
 int expr_must_lvalue(expr *e, const char *desc)
 {
-	if(!expr_is_lval(e, 0)){
+	int lval = expr_is_lval(e, 0);
+
+	if(!lval || type_is_array(e->tree_type)){
 		fold_had_error = 1;
-		warn_at_print_error(&e->where, "%s to %s - not an lvalue",
-				desc, type_to_str(e->tree_type));
+		warn_at_print_error(&e->where, "%s to %s - %s",
+				desc, type_to_str(e->tree_type),
+				lval ? "arrays not assignable" : "not an lvalue");
 
 		return 0;
 	}

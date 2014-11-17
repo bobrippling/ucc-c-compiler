@@ -3,5 +3,5 @@
 f(int (*pa)[2])
 {
 	int x[2];
-	*pa = x; // CHECK: error: assignment to int[2] - not an lvalue
+	*pa = x; // CHECK: error: assignment to int[2] - arrays not assignable
 }

@@ -105,7 +105,6 @@ void mutate_expr_deref(expr *e)
 {
 	e->f_const_fold = const_expr_deref;
 
-	/* unconditionally an lvalue */
 	e->f_islval = expr_is_lval_always;
 }
 

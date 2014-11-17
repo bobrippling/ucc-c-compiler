@@ -273,7 +273,6 @@ int expr_is_null_ptr(expr *, enum null_strictness);
 
 int expr_is_lval(expr *e, int allow_internal);
 
-int expr_is_lval_unless_array(expr *e, int allow_internal);
 int expr_is_lval_always(expr *, int allow_internal);
 int expr_is_lval_internal(expr *, int allow_internal);
 

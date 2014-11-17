@@ -109,12 +109,6 @@ int expr_is_lval(expr *e, int allow_internal)
 	return e->f_islval && e->f_islval(e, allow_internal);
 }
 
-int expr_is_lval_unless_array(expr *e, int allow_internal)
-{
-	(void)allow_internal;
-	return !type_is_array(e->tree_type);
-}
-
 int expr_is_lval_always(expr *e, int allow_internal)
 {
 	(void)e;
