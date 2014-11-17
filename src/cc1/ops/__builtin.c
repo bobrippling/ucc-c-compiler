@@ -644,9 +644,9 @@ static expr *parse_expect(const char *ident, symtable *scope)
 
 #define CHOOSE_EXPR_CHOSEN(e) ((e)->funcargs[(e)->bits.num.val.i ? 1 : 2])
 
-static int is_lval_choose(expr *e, int allow_internal)
+static enum lvalue_kind is_lval_choose(expr *e)
 {
-	return expr_is_lval(CHOOSE_EXPR_CHOSEN(e), allow_internal);
+	return expr_is_lval(CHOOSE_EXPR_CHOSEN(e));
 }
 
 static void fold_choose_expr(expr *e, symtable *stab)

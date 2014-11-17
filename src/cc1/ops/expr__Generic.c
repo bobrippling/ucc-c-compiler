@@ -10,9 +10,9 @@ const char *str_expr__Generic()
 	return "_Generic";
 }
 
-static int is_lval_generic(expr *e, int allow_internal)
+static enum lvalue_kind is_lval_generic(expr *e)
 {
-	return expr_is_lval(e->bits.generic.chosen->e, allow_internal);
+	return expr_is_lval(e->bits.generic.chosen->e);
 }
 
 void fold_expr__Generic(expr *e, symtable *stab)

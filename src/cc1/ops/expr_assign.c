@@ -51,7 +51,7 @@ void bitfield_trunc_check(decl *mem, expr *from)
 
 int expr_must_lvalue(expr *e, const char *desc)
 {
-	int lval = expr_is_lval(e, 0);
+	int lval = (expr_is_lval(e) == LVALUE_USER_ASSIGNABLE);
 
 	if(!lval || type_is_array(e->tree_type)){
 		fold_had_error = 1;
@@ -149,9 +149,11 @@ void fold_expr_assign(expr *e, symtable *stab)
 		/* set is_lval, so we can participate in struct-copy chains
 		 * FIXME: don't interpret as an lvalue, e.g. (a = b) = c;
 		 * this is currently special cased in expr_is_lval()
+		 *
+		 * CHECK THIS
 		 */
 		e->f_gen = lea_assign_lhs;
-		e->f_islval = expr_is_lval_internal;
+		e->f_islval = expr_is_lval_struct;
 	}
 }
 

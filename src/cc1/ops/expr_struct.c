@@ -208,16 +208,18 @@ static void fold_const_expr_struct(expr *e, consty *k)
 	}
 }
 
-static int struct_is_lval(expr *e, int internal)
+static enum lvalue_kind struct_is_lval(expr *e)
 {
-	(void)internal;
-
 	if(e->expr_is_st_dot){
 		/* we're only an lvalue if our subexpression is a
-		 * non-internal/C-standard lvalue */
-		return expr_is_lval(e->lhs, 0);
+		 * non-internal/C-standard lvalue.
+		 *
+		 * unless we're being checked internally, in which
+		 * case we want lval2rval decay - hence yes
+		 */
+		return expr_is_lval(e->lhs);
 	}else{
-		return 1;
+		return LVALUE_USER_ASSIGNABLE;
 	}
 }
 

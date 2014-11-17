@@ -12,11 +12,18 @@
 #include "out/out.h"
 #include "../util/compiler.h"
 
+enum lvalue_kind
+{
+	LVALUE_NO,
+	LVALUE_USER_ASSIGNABLE,
+	LVALUE_STRUCT /* e.g. struct A f(); f() - is an lvalue internally */
+};
+
 typedef void func_fold(struct expr *, struct symtable *);
 typedef void func_const(struct expr *, consty *);
 typedef const char *func_str(void);
 typedef void func_mutate_expr(struct expr *);
-typedef int func_is_lval(struct expr *, int allow_internal);
+typedef enum lvalue_kind func_is_lval(struct expr *);
 
 typedef ucc_wur const out_val *func_gen(const struct expr *, out_ctx *);
 
@@ -271,10 +278,10 @@ enum null_strictness
 
 int expr_is_null_ptr(expr *, enum null_strictness);
 
-int expr_is_lval(expr *e, int allow_internal);
+enum lvalue_kind expr_is_lval(expr *e);
 
-int expr_is_lval_always(expr *, int allow_internal);
-int expr_is_lval_internal(expr *, int allow_internal);
+enum lvalue_kind expr_is_lval_always(expr *);
+enum lvalue_kind expr_is_lval_struct(expr *);
 
 void expr_set_const(expr *, consty *);
 

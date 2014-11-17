@@ -198,7 +198,7 @@ void fold_expr_if(expr *e, symtable *stab)
 		if((cmp & (TYPE_EQUAL_ANY | TYPE_QUAL_ADD | TYPE_QUAL_SUB))
 		&& type_is_s_or_u(tt_l))
 		{
-			e->f_islval = expr_is_lval_internal;
+			e->f_islval = expr_is_lval_struct;
 			e->tree_type = type_qualify(tt_l, type_qual(tt_l) | type_qual(tt_r));
 
 		}else{

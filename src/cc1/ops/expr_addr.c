@@ -17,7 +17,10 @@ const char *str_expr_addr()
 
 int expr_is_addressable(expr *e)
 {
-	return expr_is_lval(e, 0) || type_is(e->tree_type, type_func);
+	if(type_is(e->tree_type, type_func))
+		return 1;
+
+	return expr_is_lval(e) == LVALUE_USER_ASSIGNABLE;
 }
 
 void fold_expr_addr(expr *e, symtable *stab)

@@ -45,13 +45,17 @@ void fold_expr_comma(expr *e, symtable *stab)
 
 	e->freestanding = e->rhs->freestanding;
 
-	if(expr_is_lval(e->rhs, 1)){
-		/* comma expressions aren't internal, but we need their
-		 * address for things like:
-		 * struct A from = ...;
-		 * struct A to = (0, from);
-		 */
-		e->f_islval = expr_is_lval_internal;
+	switch(expr_is_lval(e->rhs)){
+		case LVALUE_NO:
+			break;
+		case LVALUE_STRUCT:
+		case LVALUE_USER_ASSIGNABLE:
+			/* comma expressions aren't lvalues,
+			 * but we need their address for things like:
+			 * struct A from = ...;
+			 * struct A to = (0, from);
+			 */
+			e->f_islval = expr_is_lval_struct;
 	}
 }
 

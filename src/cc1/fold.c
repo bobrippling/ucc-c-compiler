@@ -205,15 +205,30 @@ expr *fold_expr_lval2rval(expr *e, symtable *stab)
 	 * "pointer to type" that points to the initial element of the array object
 	 * and is not an lvalue."
 	 */
-	int should_decay;
+	int should_lval2rval, decayable;
 
 	fold_expr_nodecay(e, stab);
 
-	should_decay =
-		(cc1_std >= STD_C99 && type_decayable(e->tree_type))
-		|| expr_is_lval(e, 1);
+	decayable = type_decayable(e->tree_type);
+	should_lval2rval = (cc1_std >= STD_C99 && decayable);
 
-	if(should_decay || type_is(e->tree_type, type_func)){
+	if(!should_lval2rval){
+		switch(expr_is_lval(e)){
+			case LVALUE_NO:
+				break;
+
+			case LVALUE_STRUCT:
+				/* not a user-lvalue - only lval2rval if non-decayable type */
+				should_lval2rval = !decayable;
+				break;
+
+			case LVALUE_USER_ASSIGNABLE:
+				should_lval2rval = 1;
+				break;
+		}
+	}
+
+	if(should_lval2rval || type_is(e->tree_type, type_func)){
 		e = expr_set_where(
 				expr_new_cast_lval_decay(e),
 				&e->where);

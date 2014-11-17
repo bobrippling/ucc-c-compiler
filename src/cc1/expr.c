@@ -104,22 +104,24 @@ int expr_is_null_ptr(expr *e, enum null_strictness ty)
 	return b && const_expr_and_zero(e);
 }
 
-int expr_is_lval(expr *e, int allow_internal)
+enum lvalue_kind expr_is_lval(expr *e)
 {
-	return e->f_islval && e->f_islval(e, allow_internal);
+	if(e->f_islval)
+		return e->f_islval(e);
+
+	return LVALUE_NO;
 }
 
-int expr_is_lval_always(expr *e, int allow_internal)
+enum lvalue_kind expr_is_lval_always(expr *e)
 {
 	(void)e;
-	(void)allow_internal;
-	return 1;
+	return LVALUE_USER_ASSIGNABLE;
 }
 
-int expr_is_lval_internal(expr *e, int allow_internal)
+enum lvalue_kind expr_is_lval_struct(expr *e)
 {
 	(void)e;
-	return allow_internal;
+	return LVALUE_STRUCT;
 }
 
 expr *expr_new_array_idx_e(expr *base, expr *idx)

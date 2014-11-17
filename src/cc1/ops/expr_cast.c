@@ -384,8 +384,13 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			 * are not lvalues, and so the non-lval-decay case doesn't
 			 * set lvalue-internal
 			 */
-			if(expr_is_lval(expr_cast_child(e), 1))
-				e->f_islval = expr_is_lval_internal;
+			switch(expr_is_lval(expr_cast_child(e))){
+				case LVALUE_NO:
+				case LVALUE_STRUCT:
+					break;
+				case LVALUE_USER_ASSIGNABLE:
+					e->f_islval = expr_is_lval_struct;
+			}
 
 		}else{
 			expr_cast_child(e) = fold_expr_nonstructdecay(expr_cast_child(e), stab);
