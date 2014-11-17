@@ -25,13 +25,13 @@ static void fold_const_expr_comma(expr *e, consty *k)
 
 void fold_expr_comma(expr *e, symtable *stab)
 {
-	fold_expr_nodecay(e->lhs, stab);
+	e->lhs = fold_expr_nonstructdecay(e->lhs, stab);
 	fold_check_expr(
 			e->lhs,
 			FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
 			"comma-expr");
 
-	fold_expr_nodecay(e->rhs, stab);
+	e->rhs = fold_expr_nonstructdecay(e->rhs, stab);
 	fold_check_expr(
 			e->rhs,
 			FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
