@@ -372,10 +372,24 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	type *tlhs, *trhs;
 
 	if(descend){
-		fold_expr_nodecay(expr_cast_child(e), stab);
+		if(IS_LVAL_DECAY(e)){
+			fold_expr_nodecay(expr_cast_child(e), stab);
 
-		if(expr_is_lval(expr_cast_child(e), 1))
-			e->f_islval = expr_is_lval_internal;
+			/* Only lval2rval casts are lvalue-internals - they
+			 * need the proper dereference done to them.
+			 * Normal casts, in particular rvalue-casts of lvalues,
+			 *
+			 * e.g. int p; (long)p;
+			 *
+			 * are not lvalues, and so the non-lval-decay case doesn't
+			 * set lvalue-internal
+			 */
+			if(expr_is_lval(expr_cast_child(e), 1))
+				e->f_islval = expr_is_lval_internal;
+
+		}else{
+			FOLD_EXPR(expr_cast_child(e), stab);
+		}
 	}
 
 	if(IS_LVAL_DECAY(e)){
