@@ -14,13 +14,18 @@ const char *str_stmt_asm()
 
 static void check_constraint(asm_param *param, symtable *stab)
 {
+	const char *desc = "__asm__() output";
+
 	if(param->is_output){
 		fold_inc_writes_if_sym(param->exp, stab);
 		fold_expr_nodecay(param->exp, stab);
 
 	}else{
 		FOLD_EXPR(param->exp, stab);
+		desc = "__asm__() input";
 	}
+
+	fold_check_expr(param->exp, FOLD_CHK_NO_ST_UN, desc);
 }
 
 void fold_stmt_asm(stmt *s)
