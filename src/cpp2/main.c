@@ -265,9 +265,17 @@ int main(int argc, char **argv)
 
 	current_fname = FNAME_CMDLINE;
 
-	for(i = 1; i < argc && *argv[i] == '-'; i++){
-		if(!strcmp(argv[i]+1, "-"))
-			break;
+	for(i = 1; i < argc; i++){
+		if(argv[i][0] != '-' || !strcmp(argv[i]+1, "-")){
+			if(!infname)
+				infname = argv[i];
+			else if(!outfname)
+				outfname = argv[i];
+			else
+				goto usage;
+
+			continue;
+		}
 
 		switch(argv[i][1]){
 			case 'I':
@@ -443,17 +451,6 @@ defaul:
 			break;
 		case STD_C11:
 			macro_add("__STDC_VERSION__", "201112L", 0);
-	}
-
-	if(i < argc){
-		infname = argv[i++];
-		if(i < argc){
-			if(outfname)
-				goto usage;
-			outfname = argv[i++];
-			if(i < argc)
-				goto usage;
-		}
 	}
 
 	calctime(infname);
