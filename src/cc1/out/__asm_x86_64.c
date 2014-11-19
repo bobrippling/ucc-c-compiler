@@ -444,6 +444,11 @@ static void assign_constraint(
 				/* pick the first one - prioritised so this is fine */
 retry_reg:
 				for(i = 0; i < lim; i++){
+					if(i >= N_SCRATCH_REGS_I){ /* no floats */
+						i = lim;
+						break;
+					}
+
 					if((regs->arr[i] & regmask) == 0){
 
 						cc->bits.reg.idx = i;
