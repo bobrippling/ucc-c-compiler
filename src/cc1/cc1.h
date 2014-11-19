@@ -36,6 +36,7 @@ enum fopt
 	FOPT_SHOW_INLINED          = 1 << 24,
 	FOPT_INLINE_FUNCTIONS      = 1 << 25,
 	FOPT_DUMP_BASIC_BLOCKS     = 1 << 26,
+	FOPT_DUMP_SYMTAB           = 1 << 27,
 };
 
 enum mopt
