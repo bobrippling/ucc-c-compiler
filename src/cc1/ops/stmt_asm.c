@@ -42,6 +42,8 @@ void fold_stmt_asm(stmt *s)
 			if(!expr_is_lval(param->exp))
 				die_at(&param->exp->where, "asm output not an lvalue");
 
+			fold_check_expr(param->exp, FOLD_CHK_NO_BITFIELD_WARN, "asm output");
+
 			fold_inc_writes_if_sym(param->exp, s->symtab);
 		}
 	}

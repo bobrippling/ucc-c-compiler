@@ -148,6 +148,7 @@ static struct warn_str
 	{ "inline-builtin-frame-addr", &cc1_warning.inline_builtin_frame_addr },
 	{ "restrict-non-ptr", &cc1_warning.bad_restrict },
 
+	{ "bitfield-addr", &cc1_warning.bitfield_addr },
 	{ "bitfield-boundary", &cc1_warning.bitfield_boundary },
 	{ "bitfield-onebit-int", &cc1_warning.bitfield_onebit_int },
 	{ "bitfield-trunc", &cc1_warning.bitfield_trunc },

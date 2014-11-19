@@ -33,6 +33,7 @@ struct cc1_warning
 	unsigned char bad_funcqual;
 	unsigned char bad_inline;
 	unsigned char bad_restrict;
+	unsigned char bitfield_addr;
 	unsigned char bitfield_boundary;
 	unsigned char bitfield_onebit_int;
 	unsigned char bitfield_trunc;

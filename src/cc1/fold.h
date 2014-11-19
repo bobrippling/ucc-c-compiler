@@ -53,6 +53,7 @@ enum fold_chk
 	FOLD_CHK_CONST_I     = 1 << 5, /* e.g. case (...): */
 	FOLD_CHK_NOWARN_ASSIGN = 1 << 6, /* if(a = b){ ... } */
 	FOLD_CHK_ARITHMETIC = 1 << 7,
+	FOLD_CHK_NO_BITFIELD_WARN = 1 << 8, /* asm("" : "="(bit.field)) */
 };
 void fold_check_expr(const expr *e, enum fold_chk, const char *desc);
 
