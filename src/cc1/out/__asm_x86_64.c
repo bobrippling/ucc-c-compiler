@@ -650,6 +650,7 @@ static void constrain_input_val(
 static const out_val *temporary_for_output(
 		out_ctx *octx,
 		struct chosen_constraint *constraint,
+		const out_val *for_val,
 		type *ty)
 {
 	/* if the output already references the lvalue and matches the constraint,
@@ -673,17 +674,16 @@ static const out_val *temporary_for_output(
 		{
 			const out_val *spill;
 
-#if 0
-			switch(cval->val->type){
-				case V_REG:
+			switch(for_val->type){
+				case V_FLAG:
+				case V_CONST_I:
+				case V_CONST_F:
 					break;
+				case V_REG:
 				case V_LBL:
 				case V_REG_SPILT:
 					return NULL; /* matched */
-				default:
-					break;
 			}
-#endif
 
 			spill = out_aalloc(octx, type_size(ty, NULL), type_align(ty, NULL), ty);
 
@@ -831,9 +831,10 @@ static void constrain_values(out_ctx *octx,
 			constraint = &coutputs[i];
 
 			out_temporary = temporary_for_output(
-					octx, constraint, outputs->arr[i].ty);
+					octx, constraint, outputs->arr[i].val, outputs->arr[i].ty);
+			/* may return null - in which case we reuse lvalue memory */
 
-			if(init_temporary){
+			if(out_temporary && init_temporary){
 				out_temporary = initialise_output_temporary(
 						octx,
 						out_temporary,
