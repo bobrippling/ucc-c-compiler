@@ -11,13 +11,13 @@ void fold_stmt_noop(stmt *s)
 	(void)s;
 }
 
-void gen_stmt_noop(stmt *s, out_ctx *octx)
+void gen_stmt_noop(const stmt *s, out_ctx *octx)
 {
 	(void)s;
 	(void)octx;
 }
 
-void style_stmt_noop(stmt *s, out_ctx *octx)
+void style_stmt_noop(const stmt *s, out_ctx *octx)
 {
 	(void)s;
 	(void)octx;

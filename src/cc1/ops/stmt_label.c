@@ -30,18 +30,16 @@ void fold_stmt_label(stmt *s)
 	fold_stmt(s->lhs); /* compound */
 }
 
-void gen_stmt_label(stmt *s, out_ctx *octx)
+void gen_stmt_label(const stmt *s, out_ctx *octx)
 {
-	label *l = s->bits.lbl.label;
-
-	label_makeblk(l, octx);
+	out_blk *thisblk = label_getblk(s->bits.lbl.label, octx);
 
 	/* explicit fall through */
-	out_ctrl_transfer_make_current(octx, l->bblock);
+	out_ctrl_transfer_make_current(octx, thisblk);
 	gen_stmt(s->lhs, octx); /* the code-part of the compound statement */
 }
 
-void style_stmt_label(stmt *s, out_ctx *octx)
+void style_stmt_label(const stmt *s, out_ctx *octx)
 {
 	stylef("\n%s: ", s->bits.lbl.spel);
 	gen_stmt(s->lhs, octx);

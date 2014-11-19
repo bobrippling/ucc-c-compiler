@@ -504,7 +504,7 @@ void print_stmt(stmt *t)
 
 			idt_printf("decls:\n");
 
-			for(iter = t->symtab->decls; iter && *iter; iter++){
+			for(iter = symtab_decls(t->symtab); iter && *iter; iter++){
 				decl *d = *iter;
 
 				gen_str_indent++;
@@ -537,7 +537,7 @@ void gen_str(symtable_global *symtab)
 
 	print_sues_static_asserts(&symtab->stab);
 
-	for(diter = symtab->stab.decls; diter && *diter; diter++){
+	for(diter = symtab_decls(&symtab->stab); diter && *diter; diter++){
 		decl *const d = *diter;
 
 		print_decl(d, PDECL_INDENT

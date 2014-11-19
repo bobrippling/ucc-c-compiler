@@ -76,6 +76,20 @@ void impl_use_callee_save(out_ctx *octx, const struct vreg *);
 
 void impl_comment(out_ctx *, const char *fmt, va_list l);
 
+/* implicitly takes vtop as a pointer to the memory */
+void impl_overlay_mem2regs(
+		out_ctx *,
+		unsigned memsz, unsigned nregs,
+		struct vreg regs[],
+		const out_val *ptr);
+
+/* same - implicit vtop */
+void impl_overlay_regs2mem(
+		out_ctx *,
+		unsigned memsz, unsigned nregs,
+		struct vreg regs[],
+		const out_val *ptr);
+
 enum flag_cmp op_to_flag(enum op_type op);
 const char *flag_cmp_to_str(enum flag_cmp);
 
@@ -87,10 +101,6 @@ const char *impl_val_str_r(
 		char buf[], const out_val *vs, const int deref);
 
 /* can't do this for gen_deps.sh */
-#ifdef CC1_IMPL_FNAME
-#  include CC1_IMPL_FNAME
-#else
-#  warning "no impl defined"
-#endif
+#include "backend.h"
 
 #endif

@@ -38,7 +38,7 @@ struct cc1_warning cc1_warning;
 
 enum warning_special
 {
-	W_ALL, W_EXTRA, W_EVERYTHING
+	W_ALL, W_EXTRA, W_EVERYTHING, W_GNU
 };
 
 static const char **system_includes;
@@ -46,7 +46,7 @@ static const char **system_includes;
 static struct warn_str
 {
 	const char *arg;
-	unsigned char *offsets[7];
+	unsigned char *offsets[3];
 } warns[] = {
 	{ "mismatch-arg", &cc1_warning.arg_mismatch },
 	{ "array-comma", &cc1_warning.array_comma },
@@ -74,7 +74,7 @@ static struct warn_str
 
 	{ "unused-expr", &cc1_warning.unused_expr },
 
-	{ "test-in-assign", &cc1_warning.test_assign },
+	{ "assign-in-test", &cc1_warning.test_assign },
 	{ "test-bool", &cc1_warning.test_bool },
 
 	{ "dead-code", &cc1_warning.dead_code },
@@ -121,6 +121,7 @@ static struct warn_str
 	{ "attr-printf-bad", &cc1_warning.attr_printf_bad },
 	{ "attr-printf-toomany", &cc1_warning.attr_printf_toomany },
 	{ "attr-printf-unknown", &cc1_warning.attr_printf_unknown },
+	{ "attr-printf-voidptr", &cc1_warning.attr_printf_voidp },
 	{
 		"format",
 		&cc1_warning.attr_printf_bad,
@@ -133,6 +134,7 @@ static struct warn_str
 	{ "attr-nonnull-bad", &cc1_warning.attr_nonnull_bad },
 	{ "attr-nonnull-noargs", &cc1_warning.attr_nonnull_noargs },
 	{ "attr-nonnull-nonptr", &cc1_warning.attr_nonnull_nonptr },
+	{ "attr-nonnull-noptrs", &cc1_warning.attr_nonnull_noptrs },
 	{ "attr-nonnull-oob", &cc1_warning.attr_nonnull_oob },
 	{ "attr-section-badchar", &cc1_warning.attr_section_badchar },
 	{ "attr-sentinel", &cc1_warning.attr_sentinel },
@@ -143,6 +145,7 @@ static struct warn_str
 
 	{ "qualified-fntype", &cc1_warning.bad_funcqual },
 	{ "inline-non-function", &cc1_warning.bad_inline },
+	{ "inline-builtin-frame-addr", &cc1_warning.inline_builtin_frame_addr },
 	{ "restrict-non-ptr", &cc1_warning.bad_restrict },
 
 	{ "bitfield-boundary", &cc1_warning.bitfield_boundary },
@@ -165,6 +168,8 @@ static struct warn_str
 	{ "declaration-noop", &cc1_warning.decl_nodecl },
 	{ "empty-struct", &cc1_warning.empty_struct },
 
+	{ "empty-init", &cc1_warning.gnu_empty_init },
+
 	{ "enum-mismatch", &cc1_warning.enum_mismatch },
 	{ "enum-switch-bitmask", &cc1_warning.enum_switch_bitmask },
 	{ "enum-switch-imposter", &cc1_warning.enum_switch_imposter },
@@ -175,17 +180,6 @@ static struct warn_str
 	{ "embedded-flexarr", &cc1_warning.flexarr_embed },
 	{ "flexarr-single-member", &cc1_warning.flexarr_only },
 	{ "flexarr-init", &cc1_warning.flexarr_init },
-
-	{
-		"gnu",
-		&cc1_warning.gnu_addr_lbl,
-		&cc1_warning.gnu_expr_stmt,
-		&cc1_warning.gnu_typeof,
-		&cc1_warning.gnu_attribute,
-		&cc1_warning.gnu_init_array_range,
-		&cc1_warning.gnu_case_range,
-		&cc1_warning.gnu_alignof_expr
-	},
 
 	{ "gcc-compat", &cc1_warning.gnu_gcc_compat },
 
@@ -229,6 +223,8 @@ static struct warn_str
 	{ "overlarge-enumerator-bitfield", &cc1_warning.overlarge_enumerator_bitfield },
 	{ "overlarge-enumerator-int", &cc1_warning.overlarge_enumerator_int },
 
+	{ "overflow", &cc1_warning.overflow },
+
 	{ "operator-precedence", &cc1_warning.parse_precedence },
 	{ "visibility", &cc1_warning.private_struct },
 
@@ -239,6 +235,7 @@ static struct warn_str
 	{ "sizeof-decayed", &cc1_warning.sizeof_decayed },
 	{ "sizeof-ptr-divide", &cc1_warning.sizeof_ptr_div },
 	{ "static-array-size", &cc1_warning.static_array_bad },
+	{ "static-local-in-inline", &cc1_warning.static_local_in_inline },
 	{ "str-contain-nul", &cc1_warning.str_contain_nul },
 
 	{ "struct-noinstance-anon", &cc1_warning.struct_noinstance_anon },
@@ -298,6 +295,10 @@ static struct
 	{ 'f',  "gnu-keywords", FOPT_EXT_KEYWORDS },
 	{ 'f',  "fold-const-vlas", FOPT_FOLD_CONST_VLAS },
 	{ 'f',  "show-warning-option", FOPT_SHOW_WARNING_OPTION },
+	{ 'f',  "print-typedefs", FOPT_PRINT_TYPEDEFS },
+	{ 'f',  "show-inlined", FOPT_SHOW_INLINED },
+	{ 'f',  "inline-functions", FOPT_INLINE_FUNCTIONS },
+	{ 'f',  "dump-bblocks", FOPT_DUMP_BASIC_BLOCKS },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 	{ 'm',  "32", MOPT_32 },
@@ -332,7 +333,7 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SYMBOL_ARITH
                     | FOPT_SIGNED_CHAR
                     | FOPT_CAST_W_BUILTIN_TYPES
-                    | FOPT_FOLD_CONST_VLAS;
+                    | FOPT_PRINT_TYPEDEFS;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
@@ -409,7 +410,7 @@ static void show_warn_option(unsigned char *pwarn)
 	}
 }
 
-int where_in_sysheader(where *w)
+int where_in_sysheader(const where *w)
 {
 	const char **i;
 	for(i = system_includes; i && *i; i++)
@@ -420,7 +421,7 @@ int where_in_sysheader(where *w)
 }
 
 void cc1_warn_at_w(
-		struct where *where, unsigned char *pwarn,
+		const struct where *where, unsigned char *pwarn,
 		const char *fmt, ...)
 {
 	va_list l;
@@ -602,16 +603,15 @@ static void warnings_set(int to)
 
 static void warning_gnu(int set)
 {
-	struct warn_str *w;
-	for(w = warns; w->arg; w++){
-		if(!strcmp(w->arg, "gnu")){
-			unsigned i;
-			for(i = 0; i < countof(w->offsets); i++)
-				*w->offsets[i] = set;
-
-			break;
-		}
-	}
+	cc1_warning.gnu_addr_lbl =
+	cc1_warning.gnu_expr_stmt =
+	cc1_warning.gnu_typeof =
+	cc1_warning.gnu_attribute =
+	cc1_warning.gnu_init_array_range =
+	cc1_warning.gnu_case_range =
+	cc1_warning.gnu_alignof_expr =
+	cc1_warning.gnu_empty_init =
+		set;
 }
 
 static void warning_pedantic(int set)
@@ -627,6 +627,8 @@ static void warning_pedantic(int set)
 	cc1_warning.flexarr_only =
 	cc1_warning.decl_nodecl =
 	cc1_warning.overlarge_enumerator_int =
+
+	cc1_warning.attr_printf_voidp =
 
 	cc1_warning.return_void =
 		set;
@@ -648,6 +650,10 @@ static void warning_all(void)
 	cc1_warning.bitfield_boundary =
 	cc1_warning.vla =
 	cc1_warning.init_missing_struct_zero =
+	cc1_warning.pure_inline =
+	cc1_warning.unused_param =
+	cc1_warning.test_assign =
+	cc1_warning.signed_unsigned =
 		0;
 }
 
@@ -656,6 +662,18 @@ static void warning_init(void)
 	/* default to -Wall */
 	warning_all();
 	warning_pedantic(0);
+
+	/* but with warnings about std compatability on too */
+	cc1_warning.typedef_redef =
+	cc1_warning.c89_parse_trailingcomma =
+	cc1_warning.unnamed_struct_memb =
+	cc1_warning.c89_for_init =
+	cc1_warning.mixed_code_decls =
+	cc1_warning.c89_init_constexpr =
+	cc1_warning.long_long =
+	cc1_warning.vla =
+	cc1_warning.c89_compound_literal =
+			1;
 }
 
 static void warning_special(enum warning_special type)
@@ -670,9 +688,16 @@ static void warning_special(enum warning_special type)
 		case W_EXTRA:
 			warning_all();
 			cc1_warning.implicit_int =
-			cc1_warning.sign_compare =
-			cc1_warning.tenative_init =
-			cc1_warning.shadow_global = 1;
+			cc1_warning.shadow_global =
+			cc1_warning.cast_qual =
+			cc1_warning.init_missing_braces =
+			cc1_warning.init_missing_struct =
+			cc1_warning.unused_param =
+			cc1_warning.signed_unsigned =
+				1;
+			break;
+		case W_GNU:
+			warning_gnu(1);
 			break;
 	}
 }
@@ -690,6 +715,7 @@ static void warning_on(const char *warn, int to)
 	SPECIAL("all", W_ALL)
 	SPECIAL("extra", W_EXTRA)
 	SPECIAL("everything", W_EVERYTHING)
+	SPECIAL("gnu", W_GNU);
 
 	for(p = warns; p->arg; p++){
 		if(!strcmp(warn, p->arg)){
@@ -706,6 +732,63 @@ static void warning_on(const char *warn, int to)
 
 	fprintf(stderr, "Unknown warning option \"-W%s\"\n", warn);
 }
+
+static int optimise(const char *argv0, const char *arg)
+{
+	/* TODO: -fdce, -fthread-jumps, -falign-{functions,jumps,loops,labels}
+	 * -fdelete-null-pointer-checks, -freorder-blocks
+	 */
+	enum { O0, O1, O2, O3, Os } opt = O0;
+	struct
+	{
+		unsigned enable, disable;
+	} mask = { 0, 0 };
+
+	if(!*arg){
+		/* -O means -O2 */
+		opt = O2;
+	}else if(arg[1]){
+		goto unrecog;
+	}else switch(arg[0]){
+		default:
+			goto unrecog;
+
+		case '0': opt = O0; break;
+		case '1': opt = O1; break;
+		case '2': opt = O2; break;
+		case '3': opt = O3; break;
+		case 's': opt = Os; break;
+	}
+
+	switch(opt){
+		case O0:
+			break;
+
+		case Os:
+			/* same as -O2 but disable inlining and int-float-load */
+			mask.disable = FOPT_INLINE_FUNCTIONS
+				| FOPT_INTEGRAL_FLOAT_LOAD;
+			/* fall */
+
+		case O1:
+		case O2:
+		case O3:
+			mask.enable = FOPT_FOLD_CONST_VLAS
+				| FOPT_INLINE_FUNCTIONS
+				| FOPT_INTEGRAL_FLOAT_LOAD;
+			break;
+	}
+
+	/* enable, then disable (to allow -Os to turn bits off from -O2 etc) */
+	fopt_mode |= mask.enable;
+	fopt_mode &= ~mask.disable;
+
+	return 0;
+unrecog:
+	fprintf(stderr, "%s: unrecognised optimisation flag -O%c\n", argv0, arg[0]);
+	return 1;
+}
+
 
 int main(int argc, char **argv)
 {
@@ -868,6 +951,10 @@ unrecognised:
 			/* these are system headers only - we don't get the full set */
 			dynarray_add(&system_includes, (const char *)argv[i] + 2);
 
+		}else if(!strncmp(argv[i], "-O", 2)){
+			if(optimise(*argv, argv[i] + 2))
+				exit(1);
+
 		}else if(!fname){
 			fname = argv[i];
 		}else{
@@ -927,7 +1014,7 @@ usage:
 	if(fopt_mode & FOPT_DUMP_TYPE_TREE)
 		type_nav_dump(cc1_type_nav);
 
-	dynarray_free(const char **, &system_includes, NULL);
+	dynarray_free(const char **, system_includes, NULL);
 
 	return failure;
 }

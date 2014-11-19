@@ -228,6 +228,8 @@ EMPTY(attr_noreturn)
 EMPTY(attr_noderef)
 EMPTY(attr_packed)
 EMPTY(attr_weak)
+EMPTY(attr_always_inline)
+EMPTY(attr_noinline)
 EMPTY(attr_ucc_debug)
 EMPTY(attr_desig_init)
 
@@ -265,6 +267,8 @@ static struct
 	ATTR(weak),
 	ATTR(cleanup),
 	{ "designated_init", parse_attr_desig_init },
+	ATTR(always_inline),
+	ATTR(noinline),
 	{ "__ucc_debug", parse_attr_ucc_debug },
 
 	ATTR(cdecl),

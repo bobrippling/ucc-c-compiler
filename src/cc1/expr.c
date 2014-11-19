@@ -34,7 +34,6 @@ void expr_mutate(expr *e, func_mutate_expr *f,
 	}
 
 	e->f_const_fold = NULL;
-	e->f_lea = NULL;
 
 	f(e);
 }
@@ -105,22 +104,24 @@ int expr_is_null_ptr(expr *e, enum null_strictness ty)
 	return b && const_expr_and_zero(e);
 }
 
-int expr_is_lval(expr *e)
+enum lvalue_kind expr_is_lval(expr *e)
 {
-	if(!e->f_lea)
-		return 0;
+	if(e->f_islval)
+		return e->f_islval(e);
 
-	/* special case:
-	 * (a = b) = c
-	 * ^~~~~~~ not an lvalue, but internally we handle it as one
-	 */
-	if(expr_kind(e, assign) && type_is_s_or_u(e->tree_type))
-		return 0;
+	return LVALUE_NO;
+}
 
-	if(type_is_array(e->tree_type))
-		return 0;
+enum lvalue_kind expr_is_lval_always(expr *e)
+{
+	(void)e;
+	return LVALUE_USER_ASSIGNABLE;
+}
 
-	return 1;
+enum lvalue_kind expr_is_lval_struct(expr *e)
+{
+	(void)e;
+	return LVALUE_STRUCT;
 }
 
 expr *expr_new_array_idx_e(expr *base, expr *idx)
@@ -141,4 +142,24 @@ expr *expr_skip_casts(expr *e)
 	while(expr_kind(e, cast))
 		e = e->expr;
 	return e;
+}
+
+decl *expr_to_declref(expr *e, const char **whynot)
+{
+	e = expr_skip_casts(e);
+
+	if(expr_kind(e, identifier)){
+		if(e->bits.ident.type == IDENT_NORM)
+			return e->bits.ident.bits.ident.sym->decl;
+		else if(whynot)
+			*whynot = "not normal identifier";
+
+	}else if(expr_kind(e, block)){
+		return e->bits.block.sym->decl;
+
+	}else if(whynot){
+		*whynot = "not an identifier or block";
+	}
+
+	return NULL;
 }

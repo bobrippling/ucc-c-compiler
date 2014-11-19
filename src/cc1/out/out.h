@@ -14,8 +14,7 @@ void out_ctx_wipe(out_ctx *);
 
 void **out_user_ctx(out_ctx *);
 
-size_t out_expr_stack(out_ctx *);
-void out_dump_retained(out_ctx *octx, const char *desc);
+int out_dump_retained(out_ctx *octx, const char *desc);
 
 /* value creation */
 out_val *out_new_num(out_ctx *, type *t, const numeric *n)
@@ -69,6 +68,11 @@ ucc_wur const out_val *out_annotate_likely(
 ucc_wur const out_val *out_op(out_ctx *, enum op_type, const out_val *lhs, const out_val *rhs);
 ucc_wur const out_val *out_op_unary(out_ctx *, enum op_type, const out_val *);
 
+ucc_wur const out_val *out_memcpy(
+		out_ctx *octx,
+		const out_val *dest, const out_val *src,
+		unsigned long bytes);
+
 ucc_wur const out_val *out_deref(out_ctx *, const out_val *) ucc_wur;
 
 ucc_wur const out_val *out_cast(out_ctx *, const out_val *, type *to, int normalise_bool)
@@ -108,6 +112,7 @@ void out_ctrl_branch(
 /* maybe ret null */
 ucc_wur const out_val *out_ctrl_merge(out_ctx *, out_blk *, out_blk *);
 
+ucc_wur const out_val *out_ctrl_merge_n(out_ctx *, out_blk **rets);
 
 /* function setup */
 void out_func_prologue(
@@ -129,10 +134,13 @@ void out_alloca_restore(out_ctx *octx, const out_val *ptr);
 void out_alloca_pop(out_ctx *octx);
 
 const out_val *out_aalloc(out_ctx *, unsigned sz, unsigned align, type *);
+const out_val *out_aalloct(out_ctx *, type *);
 void out_adealloc(out_ctx *, const out_val **);
 
 
-long out_get_bp_offset(const out_val *) ucc_nonnull();
+const char *out_get_lbl(const out_val *) ucc_nonnull();
+int out_is_nonconst_temporary(const out_val *) ucc_nonnull();
+unsigned out_current_stack(out_ctx *); /* used in inlining */
 
 /* commenting */
 void out_comment(out_ctx *, const char *, ...) ucc_printflike(2, 3);

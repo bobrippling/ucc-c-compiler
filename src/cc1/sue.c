@@ -53,7 +53,7 @@ int enum_nentries(struct_union_enum_st *e)
 	return dynarray_count(e->members);
 }
 
-void sue_incomplete_chk(struct_union_enum_st *st, where *w)
+void sue_incomplete_chk(struct_union_enum_st *st, const where *w)
 {
 	if(!sue_complete(st)){
 		char buf[WHERE_BUF_SIZ];
@@ -67,18 +67,37 @@ void sue_incomplete_chk(struct_union_enum_st *st, where *w)
 		UCC_ASSERT(st->size > 0, "zero-sized enum");
 }
 
-unsigned sue_size(struct_union_enum_st *st, where *w)
+unsigned sue_size(struct_union_enum_st *st, const where *w)
 {
 	sue_incomplete_chk(st, w);
 
 	return st->size; /* can be zero */
 }
 
-unsigned sue_align(struct_union_enum_st *st, where *w)
+unsigned sue_align(struct_union_enum_st *st, const where *w)
 {
 	sue_incomplete_chk(st, w);
 
 	return st->align;
+}
+
+enum sue_szkind sue_sizekind(struct_union_enum_st *sue)
+{
+	sue_member **mi;
+
+	if(!sue->members)
+		return SUE_EMPTY;
+
+	if(sue->primitive == type_enum)
+		return SUE_NORMAL;
+
+	for(mi = sue->members; mi && *mi; mi++){
+		decl *d = (*mi)->struct_member;
+		if(d->spel) /* not anon-bitfield, must have size */
+			return SUE_NORMAL;
+	}
+
+	return SUE_NONAMED;
 }
 
 struct_union_enum_st *sue_find_this_scope(symtable *stab, const char *spel)
@@ -261,7 +280,7 @@ new_type:
 				}
 			}
 
-			dynarray_free(sue_member **, &decls, NULL);
+			dynarray_free(sue_member **, decls, NULL);
 		}
 	}
 
@@ -284,7 +303,7 @@ new_type:
 					"forward-declaration of enum %s", sue->spel);
 
 		if(stab)
-			dynarray_add(&stab->sues, sue);
+			symtab_add_sue(stab, sue);
 	}
 
 	return sue;

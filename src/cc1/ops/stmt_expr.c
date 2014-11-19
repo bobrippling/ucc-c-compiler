@@ -9,44 +9,38 @@ const char *str_stmt_expr()
 	return "expr";
 }
 
+static int unused_expr_type(type *t)
+{
+	return !type_is_void(t) && !(type_qual(t) & qual_volatile);
+}
+
 void fold_stmt_expr(stmt *s)
 {
 	int folded = !s->expr->tree_type;
 
-	FOLD_EXPR(s->expr, s->symtab);
+	fold_expr_nodecay(s->expr, s->symtab);
+
+	if(type_qual(s->expr->tree_type) & qual_volatile){
+		/* must generate a read */
+		FOLD_EXPR(s->expr, s->symtab);
+	}
 
 	if(!folded
 	&& !s->freestanding
 	&& !s->expr->freestanding
-	&& !type_is_void(s->expr->tree_type))
+	&& unused_expr_type(s->expr->tree_type))
 	{
 		cc1_warn_at(&s->expr->where, unused_expr,
 				"unused expression (%s)", expr_skip_casts(s->expr)->f_str());
 	}
 }
 
-void gen_stmt_expr(stmt *s, out_ctx *octx)
+void gen_stmt_expr(const stmt *s, out_ctx *octx)
 {
-	size_t prev = out_expr_stack(octx);
-	size_t now;
-	char wbuf[WHERE_BUF_SIZ];
-
 	out_val_consume(octx, gen_expr(s->expr, octx));
-
-	now = out_expr_stack(octx);
-
-	if(now != prev){
-		ICW("values still retained (%ld <-- %ld - %ld) after %s @ %s",
-				(long)(now - prev),
-				now, prev,
-				s->expr->f_str(),
-				where_str_r(wbuf, &s->where));
-
-		out_dump_retained(octx, s->f_str());
-	}
 }
 
-void style_stmt_expr(stmt *s, out_ctx *octx)
+void style_stmt_expr(const stmt *s, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(";\n");

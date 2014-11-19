@@ -328,6 +328,7 @@ static expr *parse_expr_postfix(symtable *scope, int static_ctx)
 
 			sum->lhs  = e;
 			sum->rhs  = parse_expr_exp(scope, static_ctx);
+			sum->bits.op.array_notation = 1;
 
 			EAT(token_close_square);
 

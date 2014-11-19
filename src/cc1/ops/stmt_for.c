@@ -23,15 +23,15 @@ void fold_stmt_for(stmt *s)
 		fold_check_expr(
 				s->flow->for_while,
 				FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
-				"for-while");
+				"for-test");
 	}
 
 	fold_stmt(s->lhs);
 }
 
-void gen_stmt_for(stmt *s, out_ctx *octx)
+void gen_stmt_for(const stmt *s, out_ctx *octx)
 {
-	const char *el[2];
+	struct out_dbg_lbl *el[2][2];
 	out_blk *blk_test = out_blk_new(octx, "for_test"),
 	        *blk_body = out_blk_new(octx, "for_body"),
 	        *blk_end = out_blk_new(octx, "for_end"),
@@ -57,8 +57,7 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 		out_ctrl_transfer(octx, blk_body, NULL, NULL);
 	}
 
-	s->blk_continue = blk_inc;
-	s->blk_break = blk_end;
+	stmt_init_blks(s, blk_inc, blk_end);
 
 	out_current_blk(octx, blk_body);
 	{
@@ -77,7 +76,7 @@ void gen_stmt_for(stmt *s, out_ctx *octx)
 	flow_end(s->flow, s->flow->for_init_symtab, el, octx);
 }
 
-void style_stmt_for(stmt *s, out_ctx *octx)
+void style_stmt_for(const stmt *s, out_ctx *octx)
 {
 	stylef("for(");
 	if(s->flow->for_init)

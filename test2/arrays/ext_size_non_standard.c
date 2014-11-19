@@ -1,4 +1,4 @@
-// RUN: %check %s -pedantic
+// RUN: %check %s -pedantic -ffold-const-vlas
 
 main()
 {

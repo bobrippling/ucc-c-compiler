@@ -12,13 +12,20 @@
 #include "out/out.h"
 #include "../util/compiler.h"
 
+enum lvalue_kind
+{
+	LVALUE_NO,
+	LVALUE_USER_ASSIGNABLE,
+	LVALUE_STRUCT /* e.g. struct A f(); f() - is an lvalue internally */
+};
+
 typedef void func_fold(struct expr *, struct symtable *);
 typedef void func_const(struct expr *, consty *);
 typedef const char *func_str(void);
 typedef void func_mutate_expr(struct expr *);
+typedef enum lvalue_kind func_is_lval(struct expr *);
 
-typedef ucc_wur const out_val *func_gen(struct expr *, out_ctx *);
-typedef ucc_wur const out_val *func_gen_lea(struct expr *, out_ctx *);
+typedef ucc_wur const out_val *func_gen(const struct expr *, out_ctx *);
 
 #define UNUSED_OCTX() (void)octx; return NULL
 
@@ -32,8 +39,8 @@ struct expr
 	func_str *f_str;
 
 	func_const *f_const_fold; /* optional, used in static/global init */
-	func_gen_lea *f_lea; /* optional */
 
+	func_is_lval *f_islval; /* optional */
 
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
 	struct
@@ -41,8 +48,6 @@ struct expr
 		int const_folded;
 		consty k;
 	} const_eval;
-
-	enum op_type op;
 
 	/* flags */
 	/* do we return the altered value or the old one? */
@@ -66,10 +71,20 @@ struct expr
 	{
 		numeric num;
 
+		struct
+		{
+			enum op_type op;
+			int array_notation; /* a[b] */
+		} op;
+
+		struct
+		{
+			type *upcast_ty;
+			enum op_type op;
+		} compoundop;
+
 		/* __builtin_va_start */
 		int n;
-
-		int compound_upcast;
 
 		struct
 		{
@@ -125,18 +140,7 @@ struct expr
 
 		type *va_arg_type;
 
-		struct
-		{
-			type *tref; /* from cast */
-			int is_decay;
-			/* cast type:
-			 * tref == NULL
-			 *   ? lval-to-rval
-			 *   : is_decay
-			 *     ? decay
-			 *     : normal
-			 */
-		} cast;
+		type *cast_to;
 
 		struct
 		{
@@ -224,6 +228,7 @@ expr *expr_new_decl_init(decl *d, struct decl_init *di);
 #include "ops/expr_struct.h"
 #include "ops/expr_compound_lit.h"
 #include "ops/expr_string.h"
+#include "ops/expr_block.h"
 
 /* XXX: memleak */
 #define expr_free(x) do{                 \
@@ -238,8 +243,7 @@ expr *expr_new_decl_init(decl *d, struct decl_init *di);
 
 expr *expr_new_identifier(char *sp);
 expr *expr_new_cast(expr *, type *cast_to, int implicit);
-expr *expr_new_cast_rval(expr *);
-expr *expr_new_cast_decay(expr *, type *cast_to);
+expr *expr_new_cast_lval_decay(expr *);
 
 expr *expr_new_identifier(char *sp);
 expr *expr_new_val(int val);
@@ -274,7 +278,10 @@ enum null_strictness
 
 int expr_is_null_ptr(expr *, enum null_strictness);
 
-int expr_is_lval(expr *);
+enum lvalue_kind expr_is_lval(expr *e);
+
+enum lvalue_kind expr_is_lval_always(expr *);
+enum lvalue_kind expr_is_lval_struct(expr *);
 
 void expr_set_const(expr *, consty *);
 
@@ -283,5 +290,7 @@ expr *expr_new_array_idx_e(expr *base, expr *idx);
 expr *expr_new_array_idx(expr *base, int i);
 
 expr *expr_skip_casts(expr *);
+
+decl *expr_to_declref(expr *e, const char **whynot);
 
 #endif

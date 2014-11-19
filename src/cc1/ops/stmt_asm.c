@@ -16,7 +16,7 @@ static void check_constraint(asm_param *param, symtable *stab)
 {
 	if(param->is_output){
 		fold_inc_writes_if_sym(param->exp, stab);
-		fold_expr_no_decay(param->exp, stab);
+		fold_expr_nodecay(param->exp, stab);
 
 	}else{
 		FOLD_EXPR(param->exp, stab);
@@ -88,11 +88,11 @@ static expr *err_operand_to_expr(
 }
 
 static int show_asm_error(
-		stmt *s, struct out_asm_error *error,
+		const stmt *s, struct out_asm_error *error,
 		struct constrained_val_array *outputs,
 		struct constrained_val_array *inputs)
 {
-	where *loc = &s->where;
+	const where *loc = &s->where;
 
 	if(!error->str)
 		return 0;
@@ -121,7 +121,7 @@ static void free_release_valarray(
 	free(container->arr);
 }
 
-void gen_stmt_asm(stmt *s, out_ctx *octx)
+void gen_stmt_asm(const stmt *s, out_ctx *octx)
 {
 	asm_param **params;
 	struct out_asm_error error = { 0 };
@@ -180,7 +180,7 @@ void gen_stmt_asm(stmt *s, out_ctx *octx)
 			asm_param *param = *params;
 			if(!param->is_output)
 				continue;
-			outputs.arr[i].val = lea_expr(param->exp, octx);
+			outputs.arr[i].val = gen_expr(param->exp, octx);
 
 			out_inline_asm_ext_output(octx, i, &outputs.arr[i], &state);
 		}
@@ -238,7 +238,7 @@ static void style_asm_params(asm_param **i, int outputs)
 	}
 }
 
-void style_stmt_asm(stmt *s, out_ctx *octx)
+void style_stmt_asm(const stmt *s, out_ctx *octx)
 {
 	(void)octx;
 

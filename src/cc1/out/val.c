@@ -329,6 +329,7 @@ void v_try_stack_reclaim(out_ctx *octx)
 const out_val *out_val_release(out_ctx *octx, const out_val *v)
 {
 	out_val *mut = (out_val *)v;
+	assert(v && "release NULL out_val");
 	assert(mut->retains > 0 && "double release");
 	if(--mut->retains == 0){
 		v_try_stack_reclaim(octx);
@@ -370,15 +371,22 @@ int vreg_eq(const struct vreg *a, const struct vreg *b)
 	return a->idx == b->idx && a->is_float == b->is_float;
 }
 
-long out_get_bp_offset(const out_val *v)
+const char *out_get_lbl(const out_val *v)
+{
+	return v->type == V_LBL ? v->bits.lbl.str : NULL;
+}
+
+int out_is_nonconst_temporary(const out_val *v)
 {
 	switch(v->type){
-		case V_REG_SPILT:
-		case V_REG:
-			if(v->bits.regoff.reg.idx == REG_BP)
-				return v->bits.regoff.offset;
-		default:
+		case V_CONST_I:
+		case V_CONST_F:
+		case V_LBL:
 			break;
+		case V_REG:
+		case V_REG_SPILT:
+		case V_FLAG:
+			return 1;
 	}
 	return 0;
 }

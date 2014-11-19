@@ -40,7 +40,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 	type *chosen;
 
 	if(e->expr)
-		fold_expr_no_decay(e->expr, stab);
+		fold_expr_nodecay(e->expr, stab);
 	else
 		fold_type(e->bits.size_of.of_type, stab);
 
@@ -126,7 +126,7 @@ static void const_expr_sizeof(expr *e, consty *k)
 	k->type = CONST_NUM;
 }
 
-const out_val *gen_expr_sizeof(expr *e, out_ctx *octx)
+const out_val *gen_expr_sizeof(const expr *e, out_ctx *octx)
 {
 	type *ty = SIZEOF_WHAT(e);
 
@@ -173,7 +173,7 @@ const out_val *gen_expr_sizeof(expr *e, out_ctx *octx)
 	return out_new_l(octx, e->tree_type, SIZEOF_SIZE(e));
 }
 
-const out_val *gen_expr_str_sizeof(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_sizeof(const expr *e, out_ctx *octx)
 {
 	if(e->expr){
 		idt_printf("sizeof expr:\n");
@@ -210,7 +210,7 @@ expr *expr_new_sizeof_expr(expr *sizeof_this, enum what_of what_of)
 	return e;
 }
 
-const out_val *gen_expr_style_sizeof(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_sizeof(const expr *e, out_ctx *octx)
 {
 	stylef("%s(", sizeof_what(e->what_of));
 

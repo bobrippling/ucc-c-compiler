@@ -17,9 +17,10 @@ const char *str_expr_addr()
 
 int expr_is_addressable(expr *e)
 {
-	return expr_is_lval(e)
-		|| type_is(e->tree_type, type_array)
-		|| type_is(e->tree_type, type_func);
+	if(type_is(e->tree_type, type_func))
+		return 1;
+
+	return expr_is_lval(e) == LVALUE_USER_ASSIGNABLE;
 }
 
 void fold_expr_addr(expr *e, symtable *stab)
@@ -40,12 +41,16 @@ void fold_expr_addr(expr *e, symtable *stab)
 		/* if it's an identifier, act as a read */
 		fold_inc_writes_if_sym(e->lhs, stab);
 
-		fold_expr_no_decay(e->lhs, stab);
+		fold_expr_nodecay(e->lhs, stab);
+
+		e->tree_type = type_ptr_to(e->lhs->tree_type);
 
 		/* can address: lvalues, arrays and functions */
 		if(!expr_is_addressable(e->lhs)){
-			die_at(&e->where, "can't take the address of %s (%s)",
+			warn_at_print_error(&e->where, "can't take the address of %s (%s)",
 					e->lhs->f_str(), type_to_str(e->lhs->tree_type));
+			fold_had_error = 1;
+			return;
 		}
 
 		if(expr_kind(e->lhs, identifier)){
@@ -55,42 +60,27 @@ void fold_expr_addr(expr *e, symtable *stab)
 				die_at(&e->lhs->where, "can't take the address of register");
 		}
 
-		fold_check_expr(e->lhs, FOLD_CHK_NO_BITFIELD, "address-of");
-
-		e->tree_type = type_ptr_to(e->lhs->tree_type);
+		fold_check_expr(e->lhs, FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_BITFIELD,
+				"address-of");
 	}
 }
 
-const out_val *gen_expr_addr(expr *e, out_ctx *octx)
+const out_val *gen_expr_addr(const expr *e, out_ctx *octx)
 {
 	if(e->bits.lbl.spel){
 		/* GNU &&lbl */
-		label_makeblk(e->bits.lbl.label, octx);
+		out_blk *blk = label_getblk(e->bits.lbl.label, octx);
 
-		return out_new_blk_addr(octx, e->bits.lbl.label->bblock);
+		return out_new_blk_addr(octx, blk);
 
 	}else{
-		/* special case - can't lea_expr() functions because they
-		 * aren't lvalues
-		 */
-		expr *sub = e->lhs;
-
-		if(!sub->f_lea){
-			sub = expr_skip_casts(sub);
-			UCC_ASSERT(expr_kind(sub, identifier),
-					"&[not-identifier], got %s",
-					sub->f_str());
-
-			assert(sub->bits.ident.type == IDENT_NORM);
-
-			return out_new_sym(octx, sub->bits.ident.bits.ident.sym);
-		}else{
-			return lea_expr(sub, octx);
-		}
+		/* gen_expr works, even for &expr, because the fold_expr_no_decay()
+		 * means we don't lval2rval our sub-expression */
+		return gen_expr(e->lhs, octx);
 	}
 }
 
-const out_val *gen_expr_str_addr(expr *e, out_ctx *octx)
+const out_val *gen_expr_str_addr(const expr *e, out_ctx *octx)
 {
 	if(e->bits.lbl.spel){
 		idt_printf("address of label \"%s\"\n", e->bits.lbl.spel);
@@ -154,7 +144,7 @@ void mutate_expr_addr(expr *e)
 	e->f_const_fold = const_expr_addr;
 }
 
-const out_val *gen_expr_style_addr(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_addr(const expr *e, out_ctx *octx)
 {
 	const out_val *r;
 	stylef("&(");

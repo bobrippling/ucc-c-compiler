@@ -119,7 +119,7 @@ void out_dbg_flush(out_ctx *octx, out_blk *blk)
 				octx->dbg.where.chr));
 }
 
-void out_dbg_where(out_ctx *octx, where *w)
+void out_dbg_where(out_ctx *octx, const where *w)
 {
 	memcpy_safe(&octx->dbg.where, w);
 }

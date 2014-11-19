@@ -35,13 +35,13 @@ int where_equal(where *a, where *b)
 	return memcmp(a, b, sizeof *a) == 0;
 }
 
-struct where *default_where(struct where *w)
+const struct where *default_where(const struct where *w)
 {
 	if(!w){
 		static struct where instead;
 
 		w = &instead;
-		where_current(w);
+		where_current(&instead);
 	}
 
 	return w;
