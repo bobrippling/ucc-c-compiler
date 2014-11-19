@@ -368,7 +368,7 @@ static void assign_constraint(
 	int retry_count;
 	enum constraint_mask whole_constraint = cval->calculated_constraint;
 
-	if(cval->calculated_constraint & MODIFIER_MASK_preclob)
+	if(cval->calculated_constraint & (MODIFIER_MASK_preclob | MODIFIER_MASK_rw))
 		regmask |= REG_USED_IN;
 
 	for(retry_count = 0;; retry_count++){
