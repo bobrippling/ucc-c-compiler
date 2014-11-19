@@ -15,6 +15,7 @@
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "ucc_lib.h"
+#include "ucc_path.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "../util/util.h"
@@ -364,7 +365,7 @@ int main(int argc, char **argv)
 {
 	enum mode mode = mode_link;
 	int i, syntax_only = 0;
-	int stdinc = 1;
+	int stdlibinc = 1, builtininc = 1;
 	char **includes = NULL;
 	char **inputs = NULL;
 	char **args[4] = { 0 };
@@ -601,8 +602,15 @@ word:
 						gopts.nostdlib = 1;
 					else if(!strcmp(argv[i], "-nostartfiles"))
 						gopts.nostartfiles = 1;
+
+					/* nostdinc = nostdlibinc and nobuiltininc */
 					else if(!strcmp(argv[i], "-nostdinc"))
-						stdinc = 0;
+						stdlibinc = 0, builtininc = 0;
+					else if(!strcmp(argv[i], "-nostdlibinc"))
+						stdlibinc = 0;
+					else if(!strcmp(argv[i], "-nobuiltininc"))
+						builtininc = 0;
+
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
@@ -687,7 +695,7 @@ input:	dynarray_add(&inputs, argv[i]);
 	}
 
 	/* default include paths */
-	if(stdinc){
+	if(stdlibinc){
 		char *const dup = ustrdup(UCC_INC);
 		char *p;
 
@@ -712,6 +720,21 @@ input:	dynarray_add(&inputs, argv[i]);
 		}
 
 		dynarray_free(const char **, isystems, NULL);
+	}
+	/* builtin last: -isystem has priority */
+	if(builtininc){
+		struct cmdpath builtin_path;
+		char *resolved;
+
+		cmdpath_initrelative(&builtin_path, "include", "../include");
+
+		resolved = cmdpath_resolve(&builtin_path, NULL);
+
+		/* again - add the cpp for the include and cc1 for the system inc */
+		dynarray_add(&args[mode_preproc], ustrprintf("-I%s", resolved));
+		dynarray_add(&args[mode_compile], ustrprintf("-I%s", resolved));
+
+		free(resolved);
 	}
 
 	/* custom include paths */

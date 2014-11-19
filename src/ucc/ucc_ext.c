@@ -230,19 +230,6 @@ static void runner_single_arg(
 	dynarray_free(char **, all, NULL);
 }
 
-static void make_cmdpath(
-		struct cmdpath *p,
-		const char *bprefix, const char *ucc_relative)
-{
-	if(Bprefix){
-		p->path = bprefix;
-		p->type = FROM_Bprefix;
-	}else{
-		p->path = ucc_relative;
-		p->type = RELATIVE_TO_UCC;
-	}
-}
-
 void preproc(char *in, char *out, char **args)
 {
 	char **all = NULL;
@@ -273,7 +260,7 @@ void preproc(char *in, char *out, char **args)
 		pp_path.type = USE_PATH;
 		pp_path.path = "cpp";
 	}else{
-		make_cmdpath(&pp_path, "cpp", UCC_CPP);
+		cmdpath_initrelative(&pp_path, "cpp", UCC_CPP);
 	}
 
 	runner_single_arg(&pp_path, in, out, all);
@@ -285,7 +272,7 @@ void compile(char *in, char *out, char **args)
 {
 	struct cmdpath cc1path;
 
-	make_cmdpath(&cc1path, "cc1", UCC_CC1);
+	cmdpath_initrelative(&cc1path, "cc1", UCC_CC1);
 
 	runner_single_arg(&cc1path, in, out, args);
 }

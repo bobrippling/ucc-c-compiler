@@ -19,6 +19,7 @@ UCC_CPU     = ${UCC_CPU}
 #define UCC_LD      "${UCC_LD}"
 #define UCC_ARCH    "${UCC_ARCH}"
 #define UCC_INC     "${UCC_INC}"
+#define UCC_BUILTIN_INC "${UCC_BUILTIN_INC}"
 
 #define NEED_DSYM $NEED_DSYM
 
@@ -121,7 +122,7 @@ try_set(){
 	done
 }
 
-# these will change with 'make install'
+# these will change with 'make install', as will $UCC_BUILTIN_INC
 UCC_CPP=../cpp2/cpp
 UCC_CC1=../cc1/cc1
 
@@ -141,6 +142,7 @@ unam="$(uname -s)"
 # setup include paths
 # TODO: option to use local ./lib path
 UCC_INC="/usr/include"
+UCC_BUILTIN_INC=../include
 
 # defaults for an OS
 case "$unam" in

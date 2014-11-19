@@ -14,6 +14,11 @@ struct cmdpath
 
 typedef int cmdpath_exec_fn(const char *, char *const[]);
 
+void cmdpath_initrelative(
+		struct cmdpath *,
+		const char *bprefix,
+		const char *ucc_relative);
+
 const char *cmdpath_type(enum cmdpath_type);
 char *cmdpath_resolve(const struct cmdpath *, cmdpath_exec_fn **);
 

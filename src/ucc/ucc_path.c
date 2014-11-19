@@ -91,6 +91,20 @@ char *cmdpath_resolve(const struct cmdpath *p, cmdpath_exec_fn **fn)
 	return NULL;
 }
 
+void cmdpath_initrelative(
+		struct cmdpath *p,
+		const char *bprefix,
+		const char *ucc_relative)
+{
+	if(Bprefix){
+		p->path = bprefix;
+		p->type = FROM_Bprefix;
+	}else{
+		p->path = ucc_relative;
+		p->type = RELATIVE_TO_UCC;
+	}
+}
+
 const char *cmdpath_type(enum cmdpath_type t)
 {
 	switch(t){
