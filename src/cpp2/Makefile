@@ -17,7 +17,7 @@ OBJ = preproc.o main.o macro.o str.o \
       ../util/path.o
 
 cpp: ${OBJ}
-	${CC} ${CFLAGS} -o $@ ${OBJ}
+	${CC} ${CFLAGS} -o $@ ${OBJ} ${LDFLAGS}
 
 clean:
 	rm -f *.o cpp
