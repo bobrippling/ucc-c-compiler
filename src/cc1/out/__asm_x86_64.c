@@ -362,6 +362,7 @@ static void assign_constraint(
 		const int priority,
 		const int is_output,
 		struct regarray *regs,
+		type *const fnty,
 		struct out_asm_error *error)
 {
 	int regmask = (is_output ? REG_USED_OUT : REG_USED_IN);
@@ -438,20 +439,35 @@ static void assign_constraint(
 						? X86_64_REG_RDX + 1
 						: regs->n);
 				int i;
+				int include_callee_save = 0;
 
 				/* pick the first one - prioritised so this is fine */
+retry_reg:
 				for(i = 0; i < lim; i++){
 					if((regs->arr[i] & regmask) == 0){
-						regs->arr[i] |= regmask;
-						cc->type = C_REG;
+
 						cc->bits.reg.idx = i;
 						cc->bits.reg.is_float = 0;
+
+						if(!include_callee_save
+						&& impl_reg_is_callee_save(fnty, &cc->bits.reg))
+						{
+							continue;
+						}
+
+						regs->arr[i] |= regmask;
+						cc->type = C_REG;
 						break;
 					}
 				}
 
-				if(i == lim)
+				if(i == lim){
+					if(!include_callee_save){
+						include_callee_save = 1;
+						goto retry_reg;
+					}
 					continue; /* try again */
+				}
 				break;
 			}
 
@@ -491,7 +507,8 @@ static void assign_constraint(
 
 static void assign_constraints(
 		struct constrained_pri_val *entries, size_t nentries,
-		struct regarray *regs, struct out_asm_error *error)
+		struct regarray *regs,
+		type *const fnty, struct out_asm_error *error)
 {
 	size_t i;
 	for(i = 0; i < nentries; i++){
@@ -501,7 +518,7 @@ static void assign_constraints(
 		/* pick the highest satisfiable constraint */
 		assign_constraint(cval, cc,
 				entries[i].pri, entries[i].is_output,
-				regs, error);
+				regs, fnty, error);
 
 		if(error->str)
 			break;
@@ -514,6 +531,7 @@ static void calculate_constraints(
 		struct chosen_constraint *oconstraints,
 		struct chosen_constraint *iconstraints,
 		struct regarray *regs,
+		type *const fnty,
 		struct out_asm_error *error)
 {
 	size_t const nentries = outputs->n + inputs->n;
@@ -545,7 +563,7 @@ static void calculate_constraints(
 	qsort(entries, nentries, sizeof *entries, constrained_pri_val_cmp);
 
 	/* assign values */
-	assign_constraints(entries, nentries, regs, error);
+	assign_constraints(entries, nentries, regs, fnty, error);
 
 	free(entries);
 }
@@ -891,7 +909,7 @@ void out_inline_asm_ext_begin(
 	calculate_constraints(
 			outputs, inputs,
 			st->constraints.outputs, st->constraints.inputs,
-			&regs, error);
+			&regs, fnty, error);
 	if(error->str) goto error;
 
 	constrain_values(octx,
