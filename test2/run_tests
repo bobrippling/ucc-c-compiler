@@ -105,9 +105,12 @@ die "can't be quiet and verbose" if $quiet and $verbose;
 @ignores = read_ignores($ign_file) if $ign_file;
 
 my $tdir = '/tmp/ucc.test/';
+my @unlinks;
+push @unlinks, $tdir;
 if(not -d $tdir and not mkdir($tdir)){
 	die "mkdir: $!";
 }
+$ENV{UCC_TESTDIR} = $tdir;
 
 my $ec = 0;
 
@@ -145,10 +148,16 @@ for my $f (@test_files){
 	if($rc & 127){
 		die "test caught signal " . ($rc & 127) . "\n";
 	}
+	$rc >>= 8; # exit code
 
 	my $desc;
-	if($rc){
+	my $failed = 0;
+
+	if($rc == 1){
 		$desc = 'fail';
+		$failed = 1;
+	}elsif($rc == 2){
+		$desc = 'skip';
 	}else{
 		$desc = 'pass';
 	}
@@ -159,7 +168,7 @@ for my $f (@test_files){
 	. ($ignored ? ' (fail expected)' : '')
 	. ": $f";
 
-	if(!!$ignored != !!$rc){
+	if($failed != $ignored){
 		print "\n";
 
 		$ec = 1;
@@ -171,6 +180,13 @@ for my $f (@test_files){
 	}else{
 		print "\n";
 	}
+}
+
+END
+{
+	my $r = $?;
+	system('rm', '-r', @unlinks) if @unlinks;
+	$? = $r;
 }
 
 exit $ec;

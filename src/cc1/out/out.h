@@ -1,68 +1,149 @@
 #ifndef OUT_H
 #define OUT_H
 
-#define OUT_VPHI_SZ 64 /* sizeof(struct vstack) */
+#include "../type.h"
+#include "../num.h"
+#include "../sym.h"
+#include "../op.h"
 
-void out_pop(void);
-void out_pop_func_ret(type_ref *) ucc_nonnull((1));
+#include "forwards.h"
 
-void out_phi_pop_to(void *); /* put the current value into a phi-save area */
-void out_phi_join(void *);   /* join vtop and the phi-save area */
+out_ctx *out_ctx_new(void);
+void out_ctx_end(out_ctx *);
+void out_ctx_wipe(out_ctx *);
 
-void out_push_num(type_ref *t, const numeric *n) ucc_nonnull((1));
-void out_push_l(type_ref *, long) ucc_nonnull((1));
-void out_push_zero(type_ref *) ucc_nonnull((1));
-void out_push_lbl(const char *s, int pic);
-void out_push_noop(void);
+void **out_user_ctx(out_ctx *);
 
-void out_dup(void); /* duplicate top of stack */
-void out_pulltop(int i); /* pull the nth stack entry to the top */
-void out_normalise(void); /* change to 0 or 1 */
+int out_dump_retained(out_ctx *octx, const char *desc);
 
-void out_push_sym(sym *);
-void out_push_sym_val(sym *);
-void out_store(void); /* store stack[1] into *stack[0] */
+/* value creation */
+out_val *out_new_num(out_ctx *, type *t, const numeric *n)
+	ucc_nonnull((1)) ucc_wur;
 
-void out_set_bitfield(unsigned off, unsigned nbits);
+out_val *out_new_l(out_ctx *, type *, long) ucc_nonnull((1))
+	ucc_wur;
 
-void out_op(      enum op_type); /* binary ops and comparisons */
-void out_op_unary(enum op_type); /* unary ops */
-void out_deref(void);
-void out_swap(void);
-void out_flush_volatile(void);
+out_val *out_new_zero(out_ctx *, type *) ucc_nonnull((1))
+	ucc_wur;
 
-void out_cast(type_ref *to) ucc_nonnull((1));
-void out_change_type(type_ref *) ucc_nonnull((1));
-void out_set_lvalue(void);
+out_val *out_new_lbl(out_ctx *, type *, const char *s, int pic)
+	ucc_wur;
 
-void out_call(int nargs, type_ref *rt, type_ref *f) ucc_nonnull((2, 3));
+out_val *out_new_blk_addr(out_ctx *, out_blk *) ucc_wur;
 
-void out_jmp(void); /* jmp to *pop() */
-void out_jtrue( const char *);
-void out_jfalse(const char *);
+out_val *out_new_noop(out_ctx *) ucc_wur;
 
+const out_val *out_new_sym(out_ctx *, sym *) ucc_wur;
+const out_val *out_new_sym_val(out_ctx *, sym *) ucc_wur;
+
+/* modifies expr/val and returns the overflow check expr/val */
+const out_val *out_new_overflow(out_ctx *, const out_val **) ucc_wur;
+
+out_val *out_new_frame_ptr(out_ctx *, int nframes) ucc_wur;
+out_val *out_new_reg_save_ptr(out_ctx *) ucc_wur;
+out_val *out_new_nan(out_ctx *, type *ty) ucc_wur;
+
+const out_val *out_normalise(out_ctx *, const out_val *) ucc_wur;
+
+
+/* by default, all values are temporaries
+ * this will prevent them being overwritten */
+const out_val *out_val_retain(out_ctx *, const out_val *);
+const out_val *out_val_release(out_ctx *, const out_val *);
+#define out_val_consume(oc, v) out_val_release((oc), (v))
+
+
+/* value use */
+const out_val *out_set_bitfield(out_ctx *, const out_val *, unsigned off, unsigned nbits)
+	ucc_wur;
+
+void out_store(out_ctx *, const out_val *dest, const out_val *val);
+
+void out_flush_volatile(out_ctx *, const out_val *);
+
+ucc_wur const out_val *out_annotate_likely(
+		out_ctx *, const out_val *, int unlikely);
+
+/* operators/comparisons */
+ucc_wur const out_val *out_op(out_ctx *, enum op_type, const out_val *lhs, const out_val *rhs);
+ucc_wur const out_val *out_op_unary(out_ctx *, enum op_type, const out_val *);
+
+ucc_wur const out_val *out_memcpy(
+		out_ctx *octx,
+		const out_val *dest, const out_val *src,
+		unsigned long bytes);
+
+ucc_wur const out_val *out_deref(out_ctx *, const out_val *) ucc_wur;
+
+ucc_wur const out_val *out_cast(out_ctx *, const out_val *, type *to, int normalise_bool)
+	ucc_nonnull((1)) ucc_wur;
+
+ucc_wur const out_val *out_change_type(out_ctx *, const out_val *, type *)
+	ucc_nonnull((1)) ucc_wur;
+
+/* functions */
+ucc_wur const out_val *out_call(out_ctx *,
+		const out_val *fn, const out_val **args,
+		type *fnty)
+		ucc_nonnull((1, 2, 4));
+
+
+/* control flow */
+ucc_wur out_blk *out_blk_new(out_ctx *, const char *desc);
+void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
+
+void out_ctrl_end_undefined(out_ctx *);
+void out_ctrl_end_ret(out_ctx *, const out_val *, type *) ucc_nonnull((1));
+
+void out_ctrl_transfer(out_ctx *octx, out_blk *to,
+		/* optional: */
+		const out_val *phi, out_blk **mergee);
+
+void out_ctrl_transfer_make_current(out_ctx *octx, out_blk *to);
+
+/* goto *<exp> */
+void out_ctrl_transfer_exp(out_ctx *, const out_val *addr);
+
+void out_ctrl_branch(
+		out_ctx *octx,
+		const out_val *cond,
+		out_blk *if_true, out_blk *if_false);
+
+/* maybe ret null */
+ucc_wur const out_val *out_ctrl_merge(out_ctx *, out_blk *, out_blk *);
+
+ucc_wur const out_val *out_ctrl_merge_n(out_ctx *, out_blk **rets);
+
+/* function setup */
 void out_func_prologue(
-		type_ref *rf,
-		int stack_res, int nargs, int variadic,
-		int arg_offsets[]);
+		out_ctx *, const char *sp,
+		type *fnty,
+		int nargs, int variadic,
+		const out_val *argvals[]);
 
-void out_func_epilogue(type_ref *);
-void out_label(const char *);
+void out_func_epilogue(
+		out_ctx *, type *, char *end_dbg_lbl,
+		int *out_usedstack);
 
-void out_comment(const char *, ...) ucc_printflike(1, 2);
-#ifdef ASM_H
-void out_comment_sec(enum section_type, const char *, ...) ucc_printflike(2, 3);
-#endif
 
-void out_assert_vtop_null(void);
-void out_dump(void);
-void out_undefined(void);
-void out_push_overflow(void);
+/* returns a pointer to allocated storage: */
+const out_val *out_alloca_push(out_ctx *, const out_val *sz, unsigned align);
+/* alloca_restore restores the stack for scope-leave.
+ * alloca_pop restores the stack and cleans up internal vla state */
+void out_alloca_restore(out_ctx *octx, const out_val *ptr);
+void out_alloca_pop(out_ctx *octx);
 
-void out_push_frame_ptr(int nframes);
-void out_push_reg_save_ptr(void);
-void out_push_nan(type_ref *ty);
+const out_val *out_aalloc(out_ctx *, unsigned sz, unsigned align, type *);
+const out_val *out_aalloct(out_ctx *, type *);
+void out_adealloc(out_ctx *, const out_val **);
 
-int out_vcount(void);
+
+const char *out_get_lbl(const out_val *) ucc_nonnull();
+int out_is_nonconst_temporary(const out_val *) ucc_nonnull();
+unsigned out_current_stack(out_ctx *); /* used in inlining */
+
+/* commenting */
+void out_comment(out_ctx *, const char *, ...) ucc_printflike(2, 3);
+const char *out_val_str(const out_val *, int deref);
 
 #endif

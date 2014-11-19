@@ -1,6 +1,7 @@
 #include "ops.h"
 #include "stmt_label.h"
 #include "../label.h"
+#include "../out/lbl.h"
 
 const char *str_stmt_label()
 {
@@ -14,6 +15,8 @@ void fold_stmt_label(stmt *s)
 
 	/* update its where */
 	l->pw = &s->where;
+	/* update its scope */
+	l->scope = s->symtab;
 
 	if(l->complete)
 		die_at(&s->where, "duplicate label '%s'", s->bits.lbl.spel);
@@ -27,16 +30,19 @@ void fold_stmt_label(stmt *s)
 	fold_stmt(s->lhs); /* compound */
 }
 
-void gen_stmt_label(stmt *s)
+void gen_stmt_label(const stmt *s, out_ctx *octx)
 {
-	out_label(s->bits.lbl.label->mangled);
-	gen_stmt(s->lhs); /* the code-part of the compound statement */
+	out_blk *thisblk = label_getblk(s->bits.lbl.label, octx);
+
+	/* explicit fall through */
+	out_ctrl_transfer_make_current(octx, thisblk);
+	gen_stmt(s->lhs, octx); /* the code-part of the compound statement */
 }
 
-void style_stmt_label(stmt *s)
+void style_stmt_label(const stmt *s, out_ctx *octx)
 {
 	stylef("\n%s: ", s->bits.lbl.spel);
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 }
 
 int label_passable(stmt *s)

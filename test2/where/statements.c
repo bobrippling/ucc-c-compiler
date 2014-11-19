@@ -1,4 +1,4 @@
-// RUN: %caret_check %s
+// RUN: %caret_check %s -Wassign-in-test
 
 main()
 {
@@ -20,8 +20,4 @@ do ; while(a = c);
 for(;a = c;);
 // CARETS:
 //     ^ assignment in
-
-return _Generic(0, char: 5);
-// CARETS:
-//     ^ no type satisfying
 }

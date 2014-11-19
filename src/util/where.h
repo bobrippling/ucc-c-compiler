@@ -21,4 +21,8 @@ const char *where_str_r(char buf[ucc_static_param WHERE_BUF_SIZ], const struct w
 
 void where_current(where *);
 
+int where_equal(where *, where *);
+
+const where *default_where(const where *w);
+
 #endif

@@ -7,6 +7,10 @@
 #include <unistd.h>
 #include <sys/wait.h>
 
+#include "cfg.h"
+
+#include "ucc_ext.h"
+#include "ucc.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 
@@ -15,8 +19,6 @@
 #include "ucc_path.h"
 
 #include "str.h"
-
-#include "cfg.h"
 
 
 #ifndef UCC_AS
@@ -131,10 +133,13 @@ static void runner(struct cmdpath *path, char **args)
 			if(wait(&status) == -1)
 				die("wait()");
 
-			if(WIFEXITED(status) && (i = WEXITSTATUS(status)) != 0)
+			if(WIFEXITED(status) && (i = WEXITSTATUS(status)) != 0){
 				die("%s returned %d", path->path, i);
-			else if(WIFSIGNALED(status))
-				die("%s caught signal %d", path->path, WTERMSIG(status));
+			}else if(WIFSIGNALED(status)){
+				fprintf(stderr, "%s caught signal %d\n", path->path, WTERMSIG(status));
+				/* exit with abort status */
+				exit(134);
+			}
 		}
 	}
 }
@@ -222,7 +227,7 @@ static void runner_single_arg(
 
 	runner(path, all);
 
-	dynarray_free(char **, &all, NULL);
+	dynarray_free(char **, all, NULL);
 }
 
 static void make_cmdpath(
@@ -264,17 +269,16 @@ void preproc(char *in, char *out, char **args)
 			free(this);
 	}
 
-#if 0
-	make_cmdpath(&pp_path, "cpp", UCC_CPP);
-#else
-	/* use the system preproc. for now */
-	pp_path.type = USE_PATH;
-	pp_path.path = "cpp";
-#endif
+	if(fsystem_cpp){
+		pp_path.type = USE_PATH;
+		pp_path.path = "cpp";
+	}else{
+		make_cmdpath(&pp_path, "cpp", UCC_CPP);
+	}
 
 	runner_single_arg(&pp_path, in, out, all);
 
-	dynarray_free(char **, &all, NULL);
+	dynarray_free(char **, all, NULL);
 }
 
 void compile(char *in, char *out, char **args)
@@ -298,7 +302,7 @@ void assemble(char *in, char *out, char **args)
 	aspath.type = USE_PATH;
 	runner_single_arg(&aspath, in, out, copy);
 
-	dynarray_free(char **, &copy, NULL);
+	dynarray_free(char **, copy, NULL);
 }
 
 void link_all(char **objs, char *out, char **args)
@@ -325,5 +329,16 @@ void link_all(char **objs, char *out, char **args)
 
 	runner(&ldpath, all);
 
-	dynarray_free(char **, &all, NULL);
+	dynarray_free(char **, all, NULL);
+}
+
+void dsym(char *exe)
+{
+	struct cmdpath dsymutil;
+	char *args[] = { exe, NULL };
+
+	dsymutil.path = "dsymutil";
+	dsymutil.type = USE_PATH;
+
+	runner(&dsymutil, args);
 }

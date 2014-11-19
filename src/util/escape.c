@@ -24,6 +24,7 @@ int escape_char(int c)
 		{ 'v', '\v'  },
 		{ 'f', '\f'  },
 		{ '0', '\0'  },
+		{ 'a', '\a'  },
 		{ 'e', '\33' },
 		{ '\\', '\\' },
 		{ '\'', '\'' },
@@ -135,13 +136,14 @@ unsigned long long char_seq_to_ullong(
 	return val;
 }
 
-long read_char_single(char *start, char **end)
+long read_char_single(char *start, char **end, unsigned off)
 {
 	long c = *start++;
 
 	if(c == '\\'){
 		char esc = tolower(*start);
 
+		/* no binary here - only in numeric constants */
 		if(esc == 'x' || isoct(esc)){
 			int of; /* XXX: overflow ignored */
 
@@ -159,7 +161,13 @@ long read_char_single(char *start, char **end)
 			c = escape_char(esc);
 
 			if(c == -1){
-				warn_at(NULL, "unrecognised escape character '%c'", esc);
+				where loc;
+
+				where_current(&loc);
+				loc.chr += off + 1;
+				loc.len = 2;
+
+				warn_at(&loc, "unrecognised escape character '%c'", esc);
 				c = esc;
 			}
 
@@ -177,19 +185,20 @@ long read_quoted_char(
 		int *multichar)
 {
 	unsigned long total = 0;
+	unsigned i;
 
 	*multichar = 0;
 
 	if(*start == '\'') /* '' */
 		die_at(NULL, "empty char constant");
 
-	for(;;){
+	for(i = 0;; i++){
 		int ch;
 
 		if(!*start)
 			die_at(NULL, "no terminating quote to character");
 
-		ch = read_char_single(start, &start);
+		ch = read_char_single(start, &start, i);
 		total = (total * 256) + (0xff & ch);
 
 		if(*start == '\'')

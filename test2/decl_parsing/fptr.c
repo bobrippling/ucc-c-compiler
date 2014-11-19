@@ -1,4 +1,4 @@
-// RUN: %ocheck 28 %s
+// RUN: %ocheck 0 %s
 
 int t;
 
@@ -31,5 +31,9 @@ main()
 	(****inst)(3);
 	(&inst)(3);
 
-	return 28;
+	extern void _Noreturn abort();
+	if(t != 28)
+		abort();
+
+	return 0;
 }

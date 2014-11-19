@@ -25,4 +25,13 @@ typedef char *va_list;
 #  define va_copy(d, s) ((d) = (s))
 #endif
 
+void __clean_va_list(va_list *p);
+
+typedef va_list __attribute((cleanup(__clean_va_list))) __cleaned_va_list;
+
+inline void __clean_va_list(va_list *p)
+{
+	va_end(*p);
+}
+
 #endif

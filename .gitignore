@@ -19,6 +19,9 @@ lib/syscall_err.s
 lib/syscalls_darwin.h
 lib/string_strerrs.h
 
+test2/a.out
+test2/core
+
 src/cc1/cc1.exe
 src/cpp2/cpp.exe
 src/ucc/ucc.exe

@@ -53,7 +53,7 @@ union_init()
 		.a.i = 1, // a.[jk] = 0
 	};
 
-	if(sizeof(union_single_init) != sizeof(typeof(union_single_init)))
+	if(sizeof(union_single_init) != sizeof(__typeof(union_single_init)))
 		abort();
 	if(sizeof(union_single_init) != sizeof(union A))
 		abort();

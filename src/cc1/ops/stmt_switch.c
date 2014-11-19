@@ -5,43 +5,40 @@
 #include "stmt_switch.h"
 #include "../sue.h"
 #include "../../util/alloc.h"
-#include "../../util/dynarray.h"
 #include "../out/lbl.h"
+#include "../type_is.h"
+#include "../../util/dynarray.h"
+
+#define ITER_SWITCH(sw, iter) \
+	for(iter = sw->bits.switch_.cases; iter && *iter; iter++)
 
 const char *str_stmt_switch()
 {
 	return "switch";
 }
 
+/* checks case duplicates, not default */
 static void fold_switch_dups(stmt *sw)
 {
 	typedef int (*qsort_f)(const void *, const void *);
 
-	int n = dynarray_count(sw->codes);
 	struct
 	{
 		numeric start, end;
 		stmt *cse;
-	} *const vals = malloc(n * sizeof *vals);
+	} *vals;
+	size_t n = dynarray_count(sw->bits.switch_.cases);
+	size_t i = 0;
+	stmt **titer;
 
-	stmt **titer, *def = NULL;
-	int i;
+	if(n == 0)
+		return;
+
+	vals = malloc(n * sizeof *vals);
 
 	/* gather all switch values */
-	for(i = 0, titer = sw->codes; titer && *titer; titer++){
+	ITER_SWITCH(sw, titer){
 		stmt *cse = *titer;
-
-		if(cse->expr->expr_is_default){
-			if(def){
-				char buf[WHERE_BUF_SIZ];
-
-				die_at(&cse->where, "duplicate default statement (from %s)",
-						where_str_r(buf, &def->where));
-			}
-			def = cse;
-			n--;
-			continue;
-		}
 
 		vals[i].cse = cse;
 
@@ -56,7 +53,8 @@ static void fold_switch_dups(stmt *sw)
 	}
 
 	/* sort vals for comparison */
-	qsort(vals, n, sizeof(*vals), (qsort_f)numeric_cmp); /* struct layout guarantees this */
+	qsort(vals, n,
+			sizeof(*vals), (qsort_f)numeric_cmp); /* struct layout guarantees this */
 
 	for(i = 1; i < n; i++){
 		const long last_prev  = vals[i-1].end.val.i;
@@ -67,7 +65,9 @@ static void fold_switch_dups(stmt *sw)
 			const int overlap = vals[i  ].end.val.i != vals[i  ].start.val.i
 				               || vals[i-1].end.val.i != vals[i-1].start.val.i;
 
-			die_at(&vals[i-1].cse->where, "%s case statements %s %ld (from %s)",
+			die_at(&vals[i-1].cse->where,
+					"%s case statements %s %ld\n"
+					"%s: note: other case",
 					overlap ? "overlapping" : "duplicate",
 					overlap ? "starting at" : "for",
 					(long)vals[i].start.val.i,
@@ -81,22 +81,26 @@ static void fold_switch_dups(stmt *sw)
 static void fold_switch_enum(
 		stmt *sw, struct_union_enum_st *enum_sue)
 {
-	const int nents = enum_nentries(enum_sue);
-	stmt **titer;
-	char *const marks = umalloc(nents * sizeof *marks);
+	stmt **iter;
+	char *marks;
+	int nents;
 	int midx;
+
+	if(sw->bits.switch_.default_case)
+		return;
+
+	nents = enum_nentries(enum_sue);
+	marks = umalloc(nents * sizeof *marks);
 
 	/* warn if we switch on an enum bitmask */
 	if(expr_attr_present(sw->expr, attr_enum_bitmask))
-		warn_at(&sw->where, "switch on enum with enum_bitmask attribute");
+		cc1_warn_at(&sw->where, enum_switch_bitmask,
+				"switch on enum with enum_bitmask attribute");
 
 	/* for each case/default/case_range... */
-	for(titer = sw->codes; titer && *titer; titer++){
-		stmt *cse = *titer;
+	ITER_SWITCH(sw, iter){
+		stmt *cse = *iter;
 		integral_t v, w;
-
-		if(cse->expr->expr_is_default)
-			goto ret;
 
 		fold_check_expr(cse->expr,
 				FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
@@ -125,127 +129,188 @@ static void fold_switch_enum(
 			}
 
 			if(!found)
-				warn_at(&cse->where, "'case %ld' not a member of enum %s",
+				cc1_warn_at(&cse->where,
+						enum_switch_imposter,
+						"'case %ld' not a member of enum %s",
 						(long)v, enum_sue->spel);
 		}
 	}
 
 	for(midx = 0; midx < nents; midx++)
 		if(!marks[midx])
-			cc1_warn_at(&sw->where, 0, WARN_SWITCH_ENUM,
+			cc1_warn_at(&sw->where, switch_enum,
 					"enum %s::%s not handled in switch",
 					enum_sue->anon ? "" : enum_sue->spel,
 					enum_sue->members[midx]->enum_member->spel);
 
-ret:
 	free(marks);
+}
+
+void fold_stmt_and_add_to_curswitch(stmt *cse)
+{
+	stmt *sw = cse->parent;
+
+	fold_stmt(cse->lhs); /* compound */
+
+	if(!sw)
+		die_at(&cse->where, "%s not inside switch", cse->f_str());
+
+	if(cse->expr){
+		/* promote to the controlling statement */
+		fold_insert_casts(sw->expr->tree_type, &cse->expr, cse->symtab);
+
+		dynarray_add(&sw->bits.switch_.cases, cse);
+	}else{
+		if(sw->bits.switch_.default_case){
+			char buf[WHERE_BUF_SIZ];
+
+			die_at(&cse->where,
+					"duplicate default statement\n"
+					"%s: note: other default here",
+					where_str_r(buf, &sw->bits.switch_.default_case->where));
+
+			return;
+		}
+		sw->bits.switch_.default_case = cse;
+	}
+
+	/* we are compound, copy some attributes */
+	cse->kills_below_code = cse->lhs->kills_below_code;
+	/* TODO: copy ->freestanding? */
+}
+
+static void fold_switch_scopechecks(stmt *sw)
+{
+	stmt **iter;
+
+	ITER_SWITCH(sw, iter){
+		stmt *to = *iter;
+
+		fold_check_scope_entry(&to->where, "case inside", sw->symtab, to->symtab);
+	}
 }
 
 void fold_stmt_switch(stmt *s)
 {
-	symtable *stab = s->symtab;
-
-	flow_fold(s->flow, &stab);
-
-	s->lbl_break = out_label_flow("switch");
-
-	FOLD_EXPR(s->expr, stab);
+	FOLD_EXPR(s->expr, s->symtab);
 
 	fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch");
 
+	/* default integer promotions */
+	expr_promote_default(&s->expr, s->symtab);
+
 	/* this folds sub-statements,
-	 * causing case: and default: to add themselves to ->parent->codes,
-	 * i.e. s->codes
+	 * causing case: and default: to add themselves to
+	 * ->parent->bits.switch_.cases
 	 */
 	fold_stmt(s->lhs);
 
 	/* check for dups */
 	fold_switch_dups(s);
 
+	fold_switch_scopechecks(s);
+
 	/* check for an enum */
 	{
-		struct_union_enum_st *sue = type_ref_is_s_or_u_or_e(
+		struct_union_enum_st *sue = type_is_enum(
 					s->expr->tree_type);
 
-		if(sue && sue->primitive == type_enum)
+		if(sue)
 			fold_switch_enum(s, sue);
 	}
 }
 
-void gen_stmt_switch(stmt *s)
+void gen_stmt_switch(const stmt *s, out_ctx *octx)
 {
-	stmt **titer, *tdefault;
+	stmt **iter, *pdefault;
+	out_blk *blk_switch_end = out_blk_new(octx, "switch_fin");
+	const out_val *cmp_with;
+	struct out_dbg_lbl *el[2][2];
 
-	tdefault = NULL;
+	stmt_init_blks(s, NULL, blk_switch_end);
 
-	gen_expr(s->expr);
+	flow_gen(s->flow, s->symtab, el, octx);
 
-	out_comment("switch on this");
+	cmp_with = gen_expr(s->expr, octx);
 
-	for(titer = s->codes; titer && *titer; titer++){
-		stmt *cse = *titer;
+	for(iter = s->bits.switch_.cases; iter && *iter; iter++){
+		stmt *cse = *iter;
 		numeric iv;
-
-		if(cse->expr->expr_is_default){
-			tdefault = cse;
-			continue;
-		}
+		out_blk *blk_cancel = out_blk_new(octx, "case_next");
 
 		const_fold_integral(cse->expr, &iv);
 
-		UCC_ASSERT(cse->expr->expr_is_default || !(iv.suffix & VAL_UNSIGNED),
-				"don't handle unsigned yet");
+		/* create the case blocks here,
+		 * since we need the jumps before we code-gen them */
+		cse->bits.case_blk = out_blk_new(octx, "case");
 
 		if(stmt_kind(cse, case_range)){
-			char *skip = out_label_code("range_skip");
 			numeric max;
+			const out_val *this_case[2];
+			out_blk *blk_test2 = out_blk_new(octx, "range_true");
 
 			/* TODO: proper signed/unsiged format - out_op() */
 			const_fold_integral(cse->expr2, &max);
 
-			out_dup();
-			out_push_num(cse->expr->tree_type, &iv);
+			this_case[0] = out_new_num(octx, cse->expr->tree_type, &iv);
 
-			out_op(op_lt);
-			out_jtrue(skip);
+			out_val_retain(octx, cmp_with);
+			out_ctrl_branch(octx,
+					out_op(octx, op_lt, cmp_with, this_case[0]),
+					blk_cancel,
+					blk_test2);
 
-			out_dup();
-			out_push_num(cse->expr2->tree_type, &max);
-			out_op(op_gt);
+			out_current_blk(octx, blk_test2);
+			this_case[1] = out_new_num(octx, cse->expr2->tree_type, &max);
 
-			out_jfalse(cse->expr->bits.ident.spel);
-
-			out_label(skip);
-			free(skip);
+			out_val_retain(octx, cmp_with);
+			out_ctrl_branch(octx,
+					out_op(octx, op_gt, cmp_with, this_case[1]),
+					blk_cancel,
+					cse->bits.case_blk);
 
 		}else{
-			out_dup();
-			out_push_num(cse->expr->tree_type, &iv);
+			const out_val *this_case = out_new_num(octx, cse->expr->tree_type, &iv);
 
-			out_op(op_eq);
-
-			out_jtrue(cse->expr->bits.ident.spel);
+			out_val_retain(octx, cmp_with);
+			out_ctrl_branch(octx,
+				out_op(octx, op_eq, this_case, cmp_with),
+				cse->bits.case_blk,
+				blk_cancel);
 		}
+
+		out_current_blk(octx, blk_cancel);
+		/* implicitly linked to next */
 	}
 
-	out_pop(); /* free the value we switched on asap */
+	out_val_release(octx, cmp_with);
 
-	out_push_lbl(tdefault ? tdefault->expr->bits.ident.spel : s->lbl_break, 0);
-	out_jmp();
+	pdefault = s->bits.switch_.default_case;
+	if(pdefault)
+		pdefault->bits.case_blk = out_blk_new(octx, "default");
 
-	/* out-stack must be empty from here on */
+	/* no matches - branch to default/end */
+	out_ctrl_transfer(octx,
+			pdefault ? pdefault->bits.case_blk : blk_switch_end,
+			NULL, NULL);
 
-	gen_stmt(s->lhs); /* the actual code inside the switch */
+	{
+		out_blk *body = out_blk_new(octx, "switch_body");
+		out_current_blk(octx, body);
+		gen_stmt(s->lhs, octx); /* the actual code inside the switch */
+		out_ctrl_transfer(octx, blk_switch_end, NULL, NULL);
+		out_current_blk(octx, blk_switch_end);
+	}
 
-	out_label(s->lbl_break);
+	flow_end(s->flow, s->symtab, el, octx);
 }
 
-void style_stmt_switch(stmt *s)
+void style_stmt_switch(const stmt *s, out_ctx *octx)
 {
 	stylef("switch(");
-	gen_expr(s->expr);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(")");
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 }
 
 static int switch_passable(stmt *s)

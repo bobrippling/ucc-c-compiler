@@ -1,0 +1,11 @@
+i:
+.long 5
+
+m:
+.long 0
+
+n:
+.long 5
+
+l:
+.long 0

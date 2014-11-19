@@ -1,10 +1,12 @@
 #ifndef PACK_H
 #define PACK_H
 
-int  pack_to_align(int o, int align);
-int  pack_to_word(int o);
+unsigned long pack_to_align(unsigned long, unsigned align);
+unsigned long pack_to_word(unsigned long);
+
 void pack_next(
-		unsigned *poffset, unsigned *after_space,
+		unsigned long *poffset,
+		unsigned long *after_space,
 		unsigned sz, unsigned align);
 
 #endif

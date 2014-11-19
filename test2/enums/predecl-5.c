@@ -9,5 +9,5 @@ enum B
 
 main()
 {
-	g(B2); // CHECK: /error: implicit cast to incomplete type enum B/
+	g(B2); // CHECK: /error: .*incomplete type/
 }

@@ -7,11 +7,6 @@ struct list
 	struct list *next;
 };
 
-#ifdef __UCC__
-# warning long -> int
-# define long int
-#endif
-
 long malloc2(unsigned sz)
 {
 	static char buf[256];

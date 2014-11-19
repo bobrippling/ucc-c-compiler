@@ -1,3 +1,3 @@
-// RUN: %check %s
-static int x[]; // CHECK: !/warning/
-int x[5]; // CHECK: !/warning/
+// RUN: %check -e %s
+static int x[]; // CHECK: note: previous definition
+int x[5]; // CHECK: error: non-static redefinition of static "x"

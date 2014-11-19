@@ -5,6 +5,7 @@
 
 extern const char *argv0;
 extern char *wrapper; /* -wrapper gdb,--args */
+extern int fsystem_cpp;
 extern char *Bprefix; /* -Bexec-prefix */
 void die(const char *s, ...) ucc_printflike(1, 2);
 

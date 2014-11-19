@@ -3,9 +3,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "../util/util.h"
-#include "data_structs.h"
 #include "sym.h"
 #include "../util/alloc.h"
 #include "macros.h"
@@ -14,6 +14,38 @@
 #include "sue.h"
 #include "funcargs.h"
 #include "label.h"
+#include "type_is.h"
+
+static symtable *symtab_add_target(symtable *symtab)
+{
+	for(; symtab->transparent; symtab = symtab->parent);
+
+	assert(symtab && "no non-transparent symtable");
+	return symtab;
+}
+
+static void symtab_add_to_scope2(
+		symtable *symtab, decl *d, int prepend)
+{
+	symtab = symtab_add_target(symtab);
+
+	if(prepend)
+		dynarray_prepend(&symtab->decls, d);
+	else
+		dynarray_add(&symtab->decls, d);
+}
+
+void symtab_add_to_scope(symtable *symtab, decl *d)
+{
+	symtab_add_to_scope2(symtab, d, 0);
+}
+
+void symtab_add_sue(symtable *symtab, struct_union_enum_st *sue)
+{
+	symtab = symtab_add_target(symtab);
+
+	dynarray_add(&symtab->sues, sue);
+}
 
 sym *sym_new(decl *d, enum sym_type t)
 {
@@ -25,16 +57,16 @@ sym *sym_new(decl *d, enum sym_type t)
 	return s;
 }
 
-sym *sym_new_stab(symtable *stab, decl *d, enum sym_type t)
+sym *sym_new_and_prepend_decl(symtable *stab, decl *d, enum sym_type t)
 {
 	sym *s = sym_new(d, t);
-	dynarray_add(&stab->decls, d);
+	symtab_add_to_scope2(stab, d, 1);
 	return s;
 }
 
 void symtab_rm_parent(symtable *child)
 {
-	dynarray_rm(child->parent->children, child);
+	dynarray_rm(&child->parent->children, child);
 	child->parent = NULL;
 }
 
@@ -46,17 +78,27 @@ void symtab_set_parent(symtable *child, symtable *parent)
 	dynarray_add(&parent->children, child);
 }
 
-symtable *symtab_new(symtable *parent)
+symtable *symtab_new(symtable *parent, where *w)
 {
 	symtable *p = umalloc(sizeof *p);
-	if(parent)
-		symtab_set_parent(p, parent);
+	UCC_ASSERT(parent, "no parent for symtable");
+	symtab_set_parent(p, parent);
+	memcpy_safe(&p->where, w);
 	return p;
 }
 
-symtable_global *symtabg_new(void)
+symtable *symtab_new_transparent(symtable *parent, where *w)
 {
-	return umalloc(sizeof *symtabg_new());
+	symtable *p = symtab_new(parent, w);
+	p->transparent = 1;
+	return p;
+}
+
+symtable_global *symtabg_new(where *w)
+{
+	symtable_global *s = umalloc(sizeof *s);
+	memcpy_safe(&s->stab.where, w);
+	return s;
 }
 
 symtable *symtab_root(symtable *stab)
@@ -77,12 +119,6 @@ symtable_global *symtab_global(symtable *stab)
 	return (symtable_global *)symtab_root(stab);
 }
 
-void symtab_add_params(symtable *stab, decl **params)
-{
-	stab->are_params = 1;
-	dynarray_add_array(&stab->decls, params);
-}
-
 int symtab_nested_internal(symtable *parent, symtable *nest)
 {
 	while(nest && nest->internal_nest){
@@ -93,7 +129,9 @@ int symtab_nested_internal(symtable *parent, symtable *nest)
 	return 0;
 }
 
-decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
+decl *symtab_search_d_exclude(
+		symtable *tab, const char *spel, symtable **pin,
+		decl *exclude)
 {
 	decl **const decls = tab->decls;
 	int i;
@@ -103,7 +141,7 @@ decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
 	 */
 	for(i = dynarray_count(decls) - 1; i >= 0; i--){
 		decl *d = decls[i];
-		if(d->spel && !strcmp(spel, d->spel)){
+		if(d != exclude && d->spel && !strcmp(spel, d->spel)){
 			if(pin)
 				*pin = tab;
 			return d;
@@ -111,23 +149,25 @@ decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
 	}
 
 	if(tab->parent)
-		return symtab_search_d(tab->parent, spel, pin);
+		return symtab_search_d_exclude(tab->parent, spel, pin, exclude);
 
 	return NULL;
 
 }
 
+decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
+{
+	return symtab_search_d_exclude(tab, spel, pin, NULL);
+}
+
 sym *symtab_search(symtable *tab, const char *sp)
 {
 	decl *d = symtab_search_d(tab, sp, NULL);
-	/* d->sym may be null if it's not been assigned yet */
-	return d ? d->sym : NULL;
-}
+	if(!d)
+		return NULL;
 
-int typedef_visible(symtable *stab, const char *spel)
-{
-	decl *d = symtab_search_d(stab, spel, NULL);
-	return d && (d->store & STORE_MASK_STORE) == store_typedef;
+	/* if it doesn't have a symbol, we haven't finished parsing yet */
+	return d->sym;
 }
 
 const char *sym_to_str(enum sym_type t)
@@ -145,34 +185,102 @@ static void label_init(symtable **stab)
 	*stab = symtab_func_root(*stab);
 	if((*stab)->labels)
 		return;
-	(*stab)->labels = dynmap_new((dynmap_cmp_f *)strcmp);
+	(*stab)->labels = dynmap_new(char *, strcmp, dynmap_strhash);
 }
 
 void symtab_label_add(symtable *stab, label *lbl)
 {
+	label *prev;
+
 	label_init(&stab);
 
-	dynmap_set(char *, label *,
+	prev = dynmap_set(char *, label *,
 			symtab_func_root(stab)->labels,
 			lbl->spel, lbl);
+
+	assert(!prev);
 }
 
-label *symtab_label_find_or_new(symtable *stab, char *spel, where *w)
+label *symtab_label_find_or_new(symtable *const stab, char *spel, where *w)
 {
+	symtable *root;
 	label *lbl;
 
-	stab = symtab_func_root(stab);
+	root = symtab_func_root(stab);
 
-	lbl = stab->labels
-		? dynmap_get(char *, label *,
-		    stab->labels, spel)
+	lbl = root->labels
+		? dynmap_get(char *, label *, root->labels, spel)
 		: NULL;
 
 	if(!lbl){
 		/* forward decl */
-		lbl = label_new(w, symtab_func(stab)->spel, spel, 0);
-		symtab_label_add(stab, lbl);
+		lbl = label_new(w, spel, 0, stab);
+		symtab_label_add(root, lbl);
 	}
 
 	return lbl;
+}
+
+unsigned sym_hash(const sym *sym)
+{
+	return sym->type ^ (unsigned)(intptr_t)sym;
+}
+
+unsigned symtab_decl_bytes(symtable *stab, unsigned const vla_cost)
+{
+	unsigned total = 0;
+	symtable **si;
+	decl **di;
+
+	for(di = stab->decls; di && *di; di++){
+		decl *d = *di;
+
+		if(type_is_variably_modified(d->ref))
+			total += vla_cost;
+		else
+			total += decl_size(d);
+	}
+
+	for(si = stab->children; si && *si; si++)
+		total += symtab_decl_bytes(*si, vla_cost);
+
+	return total;
+}
+
+const struct out_val *sym_outval(sym *s)
+{
+	switch(s->type){
+		case sym_global:
+		case sym_arg:
+			return s->out.val_single;
+
+		case sym_local:
+			if(s->out.stack.n == 0)
+				return NULL;
+
+			return s->out.stack.vals[s->out.stack.n - 1];
+	}
+	assert(0);
+}
+
+void sym_setoutval(sym *s, const struct out_val *v)
+{
+	switch(s->type){
+		case sym_global: /* exactly one should be null */
+			assert(!v ^ !s->out.val_single);
+		case sym_arg: /* fine to overwrite - inline code takes care */
+			s->out.val_single = v;
+			return;
+
+		case sym_local:
+			if(v == NULL){
+				s->out.stack.n--;
+				(void)dynarray_pop(const struct out_val *, &s->out.stack.vals);
+			}else{
+				s->out.stack.n++;
+				dynarray_add(&s->out.stack.vals, v);
+			}
+			return;
+	}
+	assert(0);
 }

@@ -2,6 +2,8 @@
 CC = ../../ucc
 
 test: eg
+	./eg
+	./eg | grep '^4$$'
 
 eg: apply.o eg.o
 

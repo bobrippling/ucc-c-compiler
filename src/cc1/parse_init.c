@@ -1,4 +1,22 @@
-decl_init *parse_initialisation(void)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdarg.h>
+
+#include "../util/where.h"
+#include "../util/alloc.h"
+#include "../util/util.h"
+#include "../util/dynarray.h"
+
+#include "sym.h"
+#include "cc1.h"
+
+#include "parse_init.h"
+#include "parse_expr.h"
+
+#include "tokenise.h"
+#include "tokconv.h"
+
+decl_init *parse_init(symtable *scope, int static_ctx)
 {
 	decl_init *di;
 
@@ -12,6 +30,7 @@ decl_init *parse_initialisation(void)
 #endif
 
 		while(curtok != token_close_block){
+			where comma_loc;
 			decl_init *sub;
 			struct desig *desig = NULL;
 
@@ -30,10 +49,10 @@ decl_init *parse_initialisation(void)
 
 					}else if(accept(token_open_square)){
 						d->type = desig_ar;
-						d->bits.range[0] = parse_expr_exp();
+						d->bits.range[0] = parse_expr_exp(scope, static_ctx);
 
 						if(accept(token_elipsis))
-							d->bits.range[1] = parse_expr_exp();
+							d->bits.range[1] = parse_expr_exp(scope, static_ctx);
 
 						EAT(token_close_square);
 
@@ -45,17 +64,21 @@ decl_init *parse_initialisation(void)
 				EAT(token_assign);
 			}
 
-			sub = parse_initialisation();
+			sub = parse_init(scope, static_ctx);
 			sub->desig = desig;
 
 			dynarray_add(&exps, sub);
 
-			if(!accept(token_comma))
+			if(!accept_where(token_comma, &comma_loc))
 				break;
 
 			if(curtok == token_close_block && cc1_std < STD_C99)
-				warn_at(NULL, "trailing comma in initialiser");
+				cc1_warn_at(&comma_loc, c89_parse_trailingcomma,
+						"trailing comma in initialiser");
 		}
+
+		if(!exps)
+			cc1_warn_at(NULL, gnu_empty_init, "use of GNU empty initialiser");
 
 		di->bits.ar.inits = exps;
 
@@ -63,7 +86,7 @@ decl_init *parse_initialisation(void)
 
 	}else{
 		di = decl_init_new(decl_init_scalar);
-		di->bits.expr = parse_expr_no_comma();
+		di->bits.expr = PARSE_EXPR_NO_COMMA(scope, static_ctx);
 		memcpy_safe(&di->where, &di->bits.expr->where);
 
 #ifdef DEBUG_DECL_INIT

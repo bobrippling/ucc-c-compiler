@@ -2,50 +2,47 @@
 
 #include "ops.h"
 #include "stmt_expr.h"
+#include "../type_is.h"
 
 const char *str_stmt_expr()
 {
 	return "expr";
 }
 
-void fold_stmt_expr(stmt *s)
+static int unused_expr_type(type *t)
 {
-	FOLD_EXPR(s->expr, s->symtab);
-	if(!s->freestanding && !s->expr->freestanding && !type_ref_is_void(s->expr->tree_type))
-		cc1_warn_at(&s->expr->where, 0, WARN_UNUSED_EXPR,
-				"unused expression (%s)", s->expr->f_str());
+	return !type_is_void(t) && !(type_qual(t) & qual_volatile);
 }
 
-void gen_stmt_expr(stmt *s)
+void fold_stmt_expr(stmt *s)
 {
-	int pre_vcount = out_vcount();
-	char *sp;
+	int folded = !s->expr->tree_type;
 
-	gen_expr(s->expr);
+	fold_expr_nodecay(s->expr, s->symtab);
 
-	if((fopt_mode & FOPT_ENABLE_ASM) == 0
-	|| !s->expr
-	|| expr_kind(s->expr, funcall)
-	|| !(sp = s->expr->bits.ident.spel)
-	|| strcmp(sp, ASM_INLINE_FNAME))
+	if(type_qual(s->expr->tree_type) & qual_volatile){
+		/* must generate a read */
+		FOLD_EXPR(s->expr, s->symtab);
+	}
+
+	if(!folded
+	&& !s->freestanding
+	&& !s->expr->freestanding
+	&& unused_expr_type(s->expr->tree_type))
 	{
-		if(s->expr_no_pop)
-			pre_vcount++;
-		else
-			out_pop(); /* cancel the implicit push from gen_expr() above */
-
-		out_comment("end of %s-stmt", s->f_str());
-
-		UCC_ASSERT(out_vcount() == pre_vcount,
-				"vcount changed over %s statement (%d -> %d)",
-				s->expr->f_str(),
-				out_vcount(), pre_vcount);
+		cc1_warn_at(&s->expr->where, unused_expr,
+				"unused expression (%s)", expr_skip_casts(s->expr)->f_str());
 	}
 }
 
-void style_stmt_expr(stmt *s)
+void gen_stmt_expr(const stmt *s, out_ctx *octx)
 {
-	gen_expr(s->expr);
+	out_val_consume(octx, gen_expr(s->expr, octx));
+}
+
+void style_stmt_expr(const stmt *s, out_ctx *octx)
+{
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(";\n");
 }
 

@@ -36,6 +36,8 @@ extern struct loc loc_tok;
 void debug_push_line(char *);
 void debug_pop_line(void);
 
+void trace(const char *, ...);
+
 extern enum wmode
 {
 	WTRADITIONAL = 1 << 0,
@@ -51,6 +53,8 @@ extern enum wmode
 	WFINALESCAPE = 1 << 10, /* backslash-esc at eof */
 	WMULTICHAR   = 1 << 11, /* duh */
 	WQUOTE       = 1 << 12, /* dodgy quoting */
+	WHASHWARNING = 1 << 13, /* #warning */
+	WBACKSLASH_SPACE_NEWLINE = 1 << 14,
 } wmode;
 
 extern enum comment_strip

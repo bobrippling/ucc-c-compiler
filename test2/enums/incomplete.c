@@ -4,5 +4,5 @@ enum A; // CHECK: /warning: forward-declaration of enum A/
 
 main()
 {
-	enum A a; // CHECK: /error: enum A is incomplete/
+	enum A a; // CHECK: error: "a" has incomplete type 'enum A'
 }

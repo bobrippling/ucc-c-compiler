@@ -1,6 +1,8 @@
-all: configure
-	make -C src
+all: src
 	make -C lib
+
+src: configure
+	make -C src
 
 deps:
 	make -Csrc deps
@@ -30,4 +32,4 @@ tags: ${ALL_SRC}
 
 -include bootstrap.mak
 
-.PHONY: all clean cleanall configure
+.PHONY: all clean cleanall configure src

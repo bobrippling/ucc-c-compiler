@@ -3,9 +3,10 @@
 
 #include "../util/util.h"
 #include "../util/alloc.h"
-#include "data_structs.h"
 #include "stmt.h"
 #include "cc1.h"
+#include "cc1_where.h"
+#include "expr.h"
 
 stmt_flow *stmt_flow_new(symtable *parent)
 {
@@ -59,8 +60,13 @@ stmt *expr_to_stmt(expr *e, symtable *scope)
 {
 	stmt *t = stmt_new_wrapper(expr, scope);
 	t->expr = e;
-	memcpy_safe(&t->where, &e->where);
-	return t;
+	return stmt_set_where(t, &e->where);
+}
+
+stmt *stmt_set_where(stmt *s, where const *w)
+{
+	memcpy_safe(&s->where, w);
+	return s;
 }
 
 static void stmt_walk2(stmt *base, stmt_walk_enter enter, stmt_walk_leave leave, void *data, int *stop)
@@ -80,10 +86,10 @@ static void stmt_walk2(stmt *base, stmt_walk_enter enter, stmt_walk_leave leave,
 	WALK_IF(base->lhs);
 	WALK_IF(base->rhs);
 
-	if(base->codes){
-		int i;
-		for(i = 0; base->codes[i]; i++){
-			stmt_walk2(base->codes[i], enter, leave, data, stop);
+	if(stmt_kind(base, code) && base->bits.code.stmts){
+		stmt **i;
+		for(i = base->bits.code.stmts; i && *i; i++){
+			stmt_walk2(*i, enter, leave, data, stop);
 			if(*stop)
 				break;
 		}
@@ -105,9 +111,24 @@ void stmt_walk_first_return(stmt *current, int *stop, int *descend, void *extra)
 	}
 }
 
+void stmts_count(stmt *current, int *stop, int *descend, void *extra)
+{
+	(void)descend;
+	(void)stop;
+	(void)current;
+	++*(int *)extra;
+}
+
 void stmt_walk(stmt *base, stmt_walk_enter enter, stmt_walk_leave leave, void *data)
 {
 	int stop = 0;
 
 	stmt_walk2(base, enter, leave, data, &stop);
+}
+
+void stmt_init_blks(const stmt *ks, out_blk *con, out_blk *bbreak)
+{
+	stmt *s = (stmt *)ks;
+	s->blk_continue = con;
+	s->blk_break = bbreak;
 }

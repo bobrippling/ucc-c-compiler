@@ -30,7 +30,7 @@ int func()
 void q();
 (void)(1 ? f_name : q);
 // CARETS:
-//       ^ note:
+//       ^ conditional type mismatch
 }
 
 main()
@@ -71,7 +71,7 @@ f(5 + 2);
 // CARETS:
 //  ^ note:
 
-f(    sizeof(typeof(int)));
+f(    sizeof(__typeof(int)));
 // CARETS:
 //    ^ note:
 }

@@ -1,18 +1,26 @@
 #!/bin/sh
 
 verbose=
-if [ "$1" = -v ]
-then
-	shift
-	verbose=-v
-fi
-
 error=0
-if [ "$1" = -e ]
-then
-	shift
-	error=1
-fi
+prefix=
+for arg in "$@"
+do
+	if [ "$arg" = -v ]
+	then
+		shift
+		verbose=-v
+	elif [ "$1" = -e ]
+	then
+		shift
+		error=1
+	elif echo "$arg" | grep '^--prefix=' >/dev/null
+	then
+		shift
+		prefix="$arg"
+	else
+		break
+	fi
+done
 
 usage(){
 	echo "Usage: $0 [-e] cc-params..." >&2
@@ -25,8 +33,16 @@ e=/tmp/check.$$
 
 trap "rm -f $e" EXIT
 
-$ucc -o/dev/null -c $@ 2>$e
+$ucc -o/dev/null -c "$@" 2>$e
 r=$?
+
+# check for abort
+if [ $r -eq 134 ]
+then
+	echo >&2 "abort: ucc on $@"
+	exit 1
+fi
+
 if [ $r -ne 0 ]
 then r=1
 fi
@@ -41,5 +57,5 @@ then
 	cat $e
 	exit 1
 fi >&2
-./check.pl $verbose < $e "$1"
+./check.pl $prefix $verbose < $e "$1"
 exit $?

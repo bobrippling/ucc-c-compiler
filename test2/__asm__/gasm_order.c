@@ -3,7 +3,7 @@
 
 __asm__(".globl Z");
 A(){}
-asm(".globl B");
+__asm(".globl B");
 C(){}
 __asm(".globl D");
 E(){}

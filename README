@@ -1,15 +1,19 @@
-It's a compiler!
-
-It doesn't use system include files nor libraries yet, just some simple ones in lib/
+A C Compiler written in C
 
 
 Requirements
-========================
+============
 
 as (I use gnu as, but any should be fine)
 ld (any form should be fine)
 
 Obviously you need a compiler to compile this compiler with.
+
+Standard system include files are supported
+- barring a preprocessor bug with multiple function macro expansions on the same line (e.g. glibc's tgmath.h)
+- barring __asm__ statements (feature/asm)
+
+System libraries are fully supported, including ABI compatability with things like va_list.
 
 
 Compiling (the compiler)
@@ -22,21 +26,17 @@ make
 Compiling C files
 =================
 
-Pretty much the standard arguments.
-I haven't made an install make target yet, ucc finds libraries + includes locally
-
-All programs compiled by ucc are statically linked.
+POSIX 'cc' standard arguments plus a few extra.
+No make install target yet, ucc uses libaries from the usual place.
 
 
 Major C-Features Todo
-=============
+=====================
 
-Floating point numbers (experimental/float)
-C99 VLAs (experimental/vla)
-By-value argument passing and function return for:
-	- structure/union types
-	- long-double types
-	- long long types on 32-bit archs
+- by-value argument passing for structure/union types (feature/1st-class-struct-args)
+- long long types on 32-bit archs
+- long-double type
+- complex types (_Complex)
 
 
 Examples

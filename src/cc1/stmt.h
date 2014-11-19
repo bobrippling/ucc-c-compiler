@@ -1,16 +1,21 @@
-#ifndef STAT_H
-#define STAT_H
+#ifndef STMT_H
+#define STMT_H
 
-typedef void        func_fold_stmt(stmt *);
-typedef void        func_gen_stmt( stmt *);
+#include "sym.h"
+#include "out/out.h"
+
+typedef void        func_fold_stmt(struct stmt *);
+typedef void        func_gen_stmt(const struct stmt *, struct out_ctx *);
 typedef const char *func_str_stmt(void);
 
 /* non-critical */
-typedef int         func_passable_stmt(stmt *);
+typedef int         func_passable_stmt(struct stmt *);
 
+typedef struct stmt stmt;
 struct stmt
 {
 	where where;
+	where where_cbrace; /* '}' */
 
 	func_fold_stmt     *f_fold;
 	func_gen_stmt      *f_gen;
@@ -19,14 +24,15 @@ struct stmt
 	                                   no for return + things containing return, etc */
 
 	stmt *lhs, *rhs;
-	expr *expr; /* test expr for if and do, etc */
-	expr *expr2;
+	struct expr *expr; /* test expr for if and do, etc */
+	struct expr *expr2;
 
-	stmt_flow *flow; /* for, switch (do and while are simple enough for ->[lr]hs) */
+	struct stmt_flow *flow; /* for, switch (do and while are simple enough for ->[lr]hs) */
 
 	/* specific data */
+#define stmt_is_default val
 	int val;
-	char *lbl_break, *lbl_continue;
+	out_blk *blk_break, *blk_continue;
 
 	int freestanding;     /* if this is freestanding, non-freestanding expressions inside are allowed */
 	int kills_below_code; /* break, return, etc - for checking dead code */
@@ -34,15 +40,29 @@ struct stmt
 
 	struct
 	{
+		/* goto and labels */
 		struct
 		{
 			struct label *label;
 			char *spel;
 			int unused;
 		} lbl;
-	} bits;
 
-	stmt **codes; /* for a code block */
+		/* for a case/default */
+		out_blk *case_blk;
+
+		/* for a code block */
+		struct
+		{
+			stmt **stmts;
+		} code;
+
+		/* switch */
+		struct
+		{
+			stmt **cases, *default_case;
+		} switch_;
+	} bits;
 
 	symtable *symtab; /* block definitions, e.g. { int i... } */
 
@@ -50,13 +70,13 @@ struct stmt
 	stmt *parent;
 };
 
+typedef struct stmt_flow stmt_flow;
 struct stmt_flow
 {
 	symtable *for_init_symtab; /* for(int b;;){} - symtab for b */
-	stmt *init_blk;
 
 	/* for specific */
-	expr *for_init, *for_while, *for_inc;
+	struct expr *for_init, *for_while, *for_inc;
 };
 
 #define STMT_DEFS(ty)                  \
@@ -102,13 +122,18 @@ stmt *stmt_new(func_fold_stmt *,
 
 stmt_flow *stmt_flow_new(symtable *parent);
 
-stmt *expr_to_stmt(expr *e, symtable *scope);
+stmt *expr_to_stmt(struct expr *e, symtable *scope);
 
 typedef void stmt_walk_enter(stmt *current, int *stop, int *descend, void *);
 typedef void stmt_walk_leave(stmt *current, void *);
 
 stmt_walk_enter stmt_walk_first_return; /* completes after the first return statement is found */
+stmt_walk_enter stmts_count;
 
 void stmt_walk(stmt *base, stmt_walk_enter, stmt_walk_leave, void *data);
+
+stmt *stmt_set_where(stmt *, where const *);
+
+void stmt_init_blks(const stmt *ks, out_blk *con, out_blk *bbreak);
 
 #endif

@@ -1,5 +1,5 @@
-// RUN: %check %s
+// RUN: %check %s -Woverflow
 main()
 {
-	char x = 65536; // CHECK: /warning: implicit cast truncates value from 65536 to 0/
+	char x = 65536; // CHECK: warning: implicit cast changes value from 65536 to 0
 }
