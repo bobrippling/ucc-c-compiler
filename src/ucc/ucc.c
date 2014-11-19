@@ -34,7 +34,7 @@ enum mode
 struct
 {
 	enum mode assume;
-	int nostdlib;
+	int nodefaultlibs;
 	int nostartfiles;
 } gopts;
 
@@ -296,7 +296,7 @@ static void process_files(enum mode mode, char **inputs, char *output, char **ar
 		 * be _later_ in the linker's argv array.
 		 * crt, user files, then stdlib
 		 */
-		if(!gopts.nostdlib)
+		if(!gopts.nodefaultlibs)
 			/* ld_crt_args() refers to static memory */
 			dynarray_add_array(&links, ld_stdlib_args());
 
@@ -598,9 +598,13 @@ word:
 					}
 					else if(!strcmp(argv[i], "-pedantic"))
 						ADD_ARG(mode_compile);
+
+					/* nostdlib = nostartfiles and nodefaultlibs */
 					else if(!strcmp(argv[i], "-nostdlib"))
-						gopts.nostdlib = 1;
+						gopts.nostartfiles = 1, gopts.nodefaultlibs = 1;
 					else if(!strcmp(argv[i], "-nostartfiles"))
+						gopts.nostartfiles = 1;
+					else if(!strcmp(argv[i], "-nodefaultlibs"))
 						gopts.nostartfiles = 1;
 
 					/* nostdinc = nostdlibinc and nobuiltininc */
