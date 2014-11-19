@@ -1,4 +1,5 @@
 include ../src_config.mk
+include ../../config.mk
 
 # mkstemp
 CFLAGS += -D_XOPEN_SOURCE=500
