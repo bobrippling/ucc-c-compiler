@@ -47,12 +47,12 @@ static void test_canon(char *in, char *exp, int ln)
 
 static void test_canon_all(void)
 {
-	TEST_CANON(
-				"./hello///there//..//tim/./file.",
+	TEST_CANON( \
+				"./hello///there//..//tim/./file.", \
 				"hello/tim/file.");
 
-	TEST_CANON(
-				"./hello///there//..//tim/./file../.dir/",
+	TEST_CANON( \
+				"./hello///there//..//tim/./file../.dir/", \
 				"hello/tim/file../.dir/");
 
 	TEST_CANON("../", "../");
