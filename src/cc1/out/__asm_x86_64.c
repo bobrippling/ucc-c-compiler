@@ -560,8 +560,6 @@ static void constrain_input_val(
 			break;
 
 		case C_REG:
-			assert((int)constraint->bits.reg.idx >= 0);
-
 			if(cval->val->type != V_REG
 			|| cval->val->bits.regoff.reg.idx != constraint->bits.reg.idx)
 			{
