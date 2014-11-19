@@ -431,12 +431,17 @@ static void fold_compatible_p(expr *e, symtable *stab)
 static void const_compatible_p(expr *e, consty *k)
 {
 	type **types = e->bits.types;
+	/* allow const int and int to be compatible, or T *const and T* */
+	enum type_cmp mask = (TYPE_EQUAL_ANY | TYPE_QUAL_ADD | TYPE_QUAL_SUB);
+	enum type_cmp cmp;
 
 	CONST_FOLD_LEAF(k);
 
 	k->type = CONST_NUM;
 
-	k->bits.num.val.i = !!(type_cmp(types[0], types[1], 0) & TYPE_EQUAL_ANY);
+	cmp = type_cmp(types[0], types[1], 0);
+
+	k->bits.num.val.i = !!(cmp & mask);
 }
 
 static expr *expr_new_funcall_typelist(symtable *scope)
