@@ -619,13 +619,14 @@ static const out_val *temporary_for_output(
 		case C_ANY:
 			/* map C_ANY onto a the best/closest C_* type */
 			switch(for_val->type){
-				case V_CONST_I:
-				case V_CONST_F:
 				case V_REG:
-				case V_FLAG:
 					constraint->type = C_REG;
+					memcpy_safe(&constraint->bits.reg, &for_val->bits.regoff.reg);
 					break;
 
+				case V_CONST_I:
+				case V_CONST_F:
+				case V_FLAG:
 				case V_LBL:
 				case V_REG_SPILT:
 					constraint->type = C_MEM;
