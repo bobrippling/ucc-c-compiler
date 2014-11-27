@@ -288,7 +288,7 @@ void gen_block_decls(
 		{
 			/* if it's a string, go,
 			 * if it's the most-unnested func. prototype, go */
-			if(!func || !d->proto)
+			if(!func || (!d->proto && !d->bits.func.code))
 				gen_asm_global_w_store(d, 1, octx);
 			continue;
 		}

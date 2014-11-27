@@ -1852,9 +1852,21 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 		/* need to set scope to include function argumen
 		 * e.g. f(struct A { ... })
 		 */
+		symtable *root;
+
 		UCC_ASSERT(func_r, "function expected");
 
 		arg_symtab->in_func = d;
+
+		root = symtab_func_root(in_scope);
+		if(root && root->in_func){
+			// TODO: cc1_warn_at
+			warn_at(&d->where, "nested function is a GNU extension");
+
+			/* nested functions need a global sym */
+			d->sym = sym_new_and_prepend_decl(root, d, sym_global);
+			// FIXME
+		}
 
 		fold_decl(d, arg_symtab->parent);
 

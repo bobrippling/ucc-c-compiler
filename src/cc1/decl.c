@@ -313,3 +313,12 @@ int decl_should_emit_code(decl *d)
 {
 	return d->bits.func.code && !decl_is_pure_inline(d);
 }
+
+int decl_is_nested_func(decl *d)
+{
+	type *fnty = type_is(d->ref, type_func);
+
+	symtable *root = symtab_root(fnty->bits.func.arg_scope);
+
+	return root && root->in_func;
+}
