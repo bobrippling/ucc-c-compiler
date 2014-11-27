@@ -788,9 +788,12 @@ void out_asm_release_valarray(
 		out_ctx *octx, struct constrained_val_array *vals)
 {
 	size_t i;
-	for(i = 0; i < vals->n; i++)
-		if(vals->arr[i].val)
+	for(i = 0; i < vals->n; i++){
+		if(vals->arr[i].val){
 			out_val_release(octx, vals->arr[i].val);
+			vals->arr[i].val = NULL;
+		}
+	}
 }
 
 static void constrain_values(out_ctx *octx,
@@ -1050,9 +1053,12 @@ void out_inline_asm_ext_begin(
 	if(0){
 error:
 		/* release temporaries */
-		for(i = 0; i < outputs->n; i++)
-			if(st->output_temporaries[i])
+		for(i = 0; i < outputs->n; i++){
+			if(st->output_temporaries[i]){
 				out_val_release(octx, st->output_temporaries[i]);
+				st->output_temporaries[i] = NULL;
+			}
+		}
 	}
 
 	free(insn), insn = NULL;
@@ -1077,6 +1083,8 @@ void out_inline_asm_ext_output(
 	}else{
 		out_val_release(octx, val);
 	}
+
+	output->val = NULL;
 }
 
 void out_inline_asm_ext_end(struct inline_asm_state *st)
