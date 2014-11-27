@@ -501,7 +501,7 @@ static char **parse_asm_clobbers(void)
 {
 	char **ret = NULL;
 
-	while(1){
+	while(curtok == token_string){
 		char *s;
 
 		token_get_current_str(&s, NULL, NULL, NULL);
