@@ -45,33 +45,6 @@ void fold_stmt_asm(stmt *s)
 			fold_inc_writes_if_sym(param->exp, s->symtab);
 		}
 	}
-
-	/* validate asm string - s->bits.asm_args->cmd */
-	if(s->bits.asm_args->extended){
-		char *str;
-
-		for(str = s->bits.asm_args->cmd; *str; str++)
-			if(*str == '%'){
-				if(str[1] == '%'){
-					str++;
-
-				}else if(str[1] == '['){
-					ICE("TODO: named constraint");
-
-				}else{
-					char *ep;
-					long pos = strtol(str + 1, &ep, 0);
-
-					if(ep == str + 1)
-						die_at(&s->where, "invalid register character '%c', number expected", *ep);
-
-					if(pos >= n_inouts)
-						die_at(&s->where, "invalid register index %ld / %d", pos, n_inouts);
-
-					str = ep - 1;
-				}
-			}
-	}
 }
 
 static expr *err_operand_to_expr(

@@ -853,63 +853,100 @@ static void constrain_values(out_ctx *octx,
 	}
 }
 
+static void format_single_percent(
+		char **const written_insn,
+		const char **const p,
+		size_t *const insn_len,
+		struct constrained_val_array *outputs,
+		const out_val *output_temporaries[],
+		struct constrained_val_array *inputs,
+		struct out_asm_error *error)
+{
+	size_t this_index;
+	char *end;
+	const out_val *oval;
+	int deref = 0;
+
+	if(**p == '['){
+		ICE("TODO: named constraint");
+	}
+
+	this_index = strtol(*p, &end, 0);
+	if(end == *p){
+		error->str = ustrprintf(
+				"invalid register character '%c', number expected",
+				**p);
+		return;
+	}
+	*p = end - 1; /* ready for ++ */
+
+	if(this_index >= outputs->n){
+		this_index -= outputs->n;
+
+		if(this_index > inputs->n){
+			error->str = ustrprintf(
+					"invalid register index %d",
+					(int)this_index);
+			return;
+		}
+
+		oval = inputs->arr[this_index].val;
+	}else{
+		if((oval = output_temporaries[this_index])){
+			/* fine */
+		}else{
+			oval = outputs->arr[this_index].val;
+			deref = 1;
+		}
+	}
+
+
+	if(!deref)
+		deref = (oval->type == V_REG_SPILT);
+
+	{
+		const char *val_str;
+		char *op;
+		size_t oplen;
+
+		val_str = impl_val_str(oval, deref);
+		oplen = strlen(val_str);
+
+		op = dynvec_add_n(written_insn, insn_len, oplen);
+
+		memcpy(op, val_str, oplen);
+	}
+}
+
 static char *format_insn(const char *format,
 		struct constrained_val_array *outputs,
 		const out_val *output_temporaries[],
-		struct constrained_val_array *inputs)
+		struct constrained_val_array *inputs,
+		struct out_asm_error *error)
 {
 	char *written_insn = NULL;
 	size_t insn_len = 0;
 	const char *p;
 
 	for(p = format; *p; p++){
-		if(*p == '%' && *++p != '%'){
-			size_t this_index;
-			char *end;
-			const out_val *oval;
-			int deref = 0;
+		if(*p == '%'){
+			switch(*++p){
+				case '%':
+					*(char *)dynvec_add(&written_insn, &insn_len) = '%';
+					break;
 
-			if(*p == '['){
-				ICE("TODO: named constraint");
+				default:
+					format_single_percent(
+							&written_insn,
+							&p,
+							&insn_len,
+							outputs,
+							output_temporaries,
+							inputs,
+							error);
 			}
-
-			this_index = strtol(p, &end, 0);
-			if(end == p)
-				ICE("not an int - should've been caught");
-			p = end - 1; /* ready for ++ */
-
-			if(this_index >= outputs->n){
-				this_index -= outputs->n;
-
-				if(this_index > inputs->n)
-					ICE("index %lu oob", (unsigned long)this_index);
-
-				oval = inputs->arr[this_index].val;
-			}else{
-				if((oval = output_temporaries[this_index])){
-					/* fine */
-				}else{
-					oval = outputs->arr[this_index].val;
-					deref = 1;
-				}
-			}
-
-
-			if(!deref)
-				deref = (oval->type == V_REG_SPILT);
-
-			{
-				const char *val_str;
-				char *op;
-				size_t oplen;
-
-				val_str = impl_val_str(oval, deref);
-				oplen = strlen(val_str);
-
-				op = dynvec_add_n(&written_insn, &insn_len, oplen);
-
-				memcpy(op, val_str, oplen);
-			}
+			if(error->str)
+				break;
 		}else{
 			*(char *)dynvec_add(&written_insn, &insn_len) = *p;
 		}
@@ -946,7 +983,7 @@ void out_inline_asm_ext_begin(
 	size_t i;
 	struct regarray regs;
 	char *escaped_fname;
-	char *insn;
+	char *insn = NULL;
 
 	st->constraints.inputs = umalloc(inputs->n * sizeof *st->constraints.inputs);
 	st->constraints.outputs = umalloc(outputs->n * sizeof *st->constraints.outputs);
@@ -978,7 +1015,8 @@ void out_inline_asm_ext_begin(
 			error);
 	if(error->str) goto error;
 
-	insn = format_insn(format, outputs, st->output_temporaries, inputs);
+	insn = format_insn(format, outputs, st->output_temporaries, inputs, error);
+	if(error->str) goto error;
 
 	out_comment(octx, "### actual inline");
 
@@ -993,8 +1031,6 @@ void out_inline_asm_ext_begin(
 	/* consume inputs */
 	out_asm_release_valarray(octx, inputs);
 
-	free(insn), insn = NULL;
-
 	if(0){
 error:
 		/* release temporaries */
@@ -1002,6 +1038,8 @@ error:
 			if(st->output_temporaries[i])
 				out_val_release(octx, st->output_temporaries[i]);
 	}
+
+	free(insn), insn = NULL;
 
 	free(regs.arr);
 }
