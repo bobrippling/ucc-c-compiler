@@ -68,8 +68,7 @@ struct chosen_constraint
 	{
 		C_REG,
 		C_MEM,
-		C_CONST,
-		C_ANY
+		C_CONST
 	} type;
 
 	union
@@ -285,8 +284,6 @@ static void constrain_output(
 {
 	int temporary_is_lvalue = (constraint->type == C_MEM);
 
-	assert(constraint->type != C_ANY && "C_ANY should've been eliminated");
-
 	if(temporary_is_lvalue)
 		out_temporary = out_deref(octx, out_temporary);
 
@@ -501,7 +498,35 @@ retry_reg:
 				ICE("TODO: float");
 
 			case CONSTRAINT_MASK_any:
-				cc->type = C_ANY;
+				switch(cval->val->type){
+					case V_CONST_F:
+						ICE("TODO: float");
+
+					case V_CONST_I:
+						cc->type = C_CONST;
+						break;
+
+					case V_REG:
+					{
+						int i = cval->val->bits.regoff.reg.idx;
+						/* any - attempt to use current register */
+						if((regs->arr[i] & regmask) == 0){
+							cc->type = C_REG;
+							memcpy_safe(&cc->bits.reg, &cval->val->bits.regoff.reg);
+							break;
+
+						}else{
+							/* fall through to mem */
+						}
+						/* fall */
+					}
+
+					case V_FLAG: /* spill */
+					case V_LBL:
+					case V_REG_SPILT:
+						cc->type = C_MEM;
+						break;
+				}
 				break;
 		}
 
@@ -580,10 +605,6 @@ static void constrain_input_val(
 {
 	/* fill it with the right values */
 	switch(constraint->type){
-		case C_ANY:
-			/* already in the right state */
-			break;
-
 		case C_MEM:
 			cval->val = v_to(octx, cval->val, TO_MEM);
 			break;
@@ -606,8 +627,7 @@ static void constrain_input_val(
 static const out_val *temporary_for_output(
 		out_ctx *octx,
 		struct chosen_constraint *constraint,
-		type *ty,
-		const out_val *for_val)
+		type *ty)
 {
 	/* if the output already references the lvalue and matches the constraint,
 	 * we can leave it.
@@ -616,24 +636,6 @@ static const out_val *temporary_for_output(
 	 * that as a temporary, then assign to the output afterwards
 	 */
 	switch(constraint->type){
-		case C_ANY:
-			/* map C_ANY onto a the best/closest C_* type */
-			switch(for_val->type){
-				case V_REG:
-					constraint->type = C_REG;
-					memcpy_safe(&constraint->bits.reg, &for_val->bits.regoff.reg);
-					break;
-
-				case V_CONST_I:
-				case V_CONST_F:
-				case V_FLAG:
-				case V_LBL:
-				case V_REG_SPILT:
-					constraint->type = C_MEM;
-					break;
-			}
-			return temporary_for_output(octx, constraint, ty, for_val);
-
 		case C_REG:
 			/* need to use a temporary - a register can't match an lvalue
 			 * e.g.
@@ -794,9 +796,7 @@ static void constrain_values(out_ctx *octx,
 			constraint = &coutputs[i];
 
 			out_temporary = temporary_for_output(
-					octx, constraint,
-					outputs->arr[i].ty,
-					outputs->arr[i].val);
+					octx, constraint, outputs->arr[i].ty);
 
 			if(init_temporary){
 				out_temporary = initialise_output_temporary(
@@ -964,9 +964,6 @@ void out_inline_asm_ext_output(
 	const out_val *val = output->val;
 
 	if(st->output_temporaries[i]){
-		assert(st->constraints.outputs[i].type != C_ANY
-				&& "C_ANY should've been eliminated");
-
 		constrain_output(octx,
 				val,
 				st->output_temporaries[i],
