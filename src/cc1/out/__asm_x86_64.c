@@ -24,6 +24,7 @@
 #include "asm.h" /* section_type, for write.c: */
 #include "write.h"
 #include "ctx.h" /* var_stack_sz */
+#include "macros.h"
 
 #include "virt.h" /* v_to* */
 
@@ -353,6 +354,44 @@ static int constrained_pri_val_cmp(const void *va, const void *vb)
 	return pa->pri - pb->pri;
 }
 
+static int assign_constraint_pick_reg(
+		struct chosen_constraint *cc,
+		struct regarray *regs,
+		const unsigned regmask,
+		const int lim,
+		type *fnty)
+{
+	int include_callee_save = 0;
+	int i;
+retry_reg:
+	for(i = 0; i < lim; i++){
+		if((regs->arr[i] & regmask) == 0){
+
+			cc->bits.reg.idx = i;
+			cc->bits.reg.is_float = 0;
+
+			if(!include_callee_save
+			&& impl_reg_is_callee_save(fnty, &cc->bits.reg))
+			{
+				continue;
+			}
+
+			regs->arr[i] |= regmask;
+			cc->type = C_REG;
+			break;
+		}
+	}
+
+	if(i == lim){
+		if(!include_callee_save){
+			include_callee_save = 1;
+			goto retry_reg;
+		}
+		return 0;
+	}
+	return 1;
+}
+
 static void assign_constraint(
 		struct constrained_val *cval,
 		struct chosen_constraint *cc,
@@ -434,42 +473,13 @@ static void assign_constraint(
 			{
 				const int lim = (constraint_attempt == CONSTRAINT_MASK_REG_abcd
 						? X86_64_REG_RDX + 1
-						: regs->n);
-				int i;
-				int include_callee_save = 0;
+						: MIN(regs->n, N_SCRATCH_REGS_I)); /* no floats */
 
 				/* pick the first one - prioritised so this is fine */
-retry_reg:
-				for(i = 0; i < lim; i++){
-					if(i >= N_SCRATCH_REGS_I){ /* no floats */
-						i = lim;
-						break;
-					}
+				int found_reg = assign_constraint_pick_reg(cc, regs, regmask, lim, fnty);
 
-					if((regs->arr[i] & regmask) == 0){
-
-						cc->bits.reg.idx = i;
-						cc->bits.reg.is_float = 0;
-
-						if(!include_callee_save
-						&& impl_reg_is_callee_save(fnty, &cc->bits.reg))
-						{
-							continue;
-						}
-
-						regs->arr[i] |= regmask;
-						cc->type = C_REG;
-						break;
-					}
-				}
-
-				if(i == lim){
-					if(!include_callee_save){
-						include_callee_save = 1;
-						goto retry_reg;
-					}
+				if(!found_reg)
 					continue; /* try again */
-				}
 				break;
 			}
 
