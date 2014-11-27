@@ -963,6 +963,9 @@ void out_inline_asm_ext_output(
 	const out_val *val = output->val;
 
 	if(st->output_temporaries[i]){
+		assert(st->constraints.outputs[i].type != C_ANY
+				&& "C_ANY should've been eliminated");
+
 		constrain_output(octx,
 				val,
 				st->output_temporaries[i],
