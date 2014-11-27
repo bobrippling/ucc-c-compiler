@@ -254,10 +254,10 @@ done_mods:;
 		return 0;
 	}
 
-	if(rw & (rw - 1)){
-		/* not a power of two - multiple modifiers */
+	if((rw & (RW_WRITEONLY | RW_READWRITE)) == (RW_WRITEONLY | RW_READWRITE)){
 		error->str = ustrprintf(
-				"multiple modifiers for constraint \"%s\"", constraint);
+				"writeonly and readwrite modifiers for constraint \"%s\"",
+				constraint);
 		return 0;
 	}
 
