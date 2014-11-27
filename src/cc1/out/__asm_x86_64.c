@@ -69,7 +69,8 @@ struct chosen_constraint
 	{
 		C_REG,
 		C_MEM,
-		C_CONST
+		C_CONST,
+		C_TO_REG_OR_MEM
 	} type;
 
 	union
@@ -518,23 +519,27 @@ static void assign_constraint(
 
 					case V_REG:
 					{
+						int found = 1;
 						int i = cval->val->bits.regoff.reg.idx;
+
 						/* any - attempt to use current register */
 						if((regs->arr[i] & regmask) == 0){
 							cc->type = C_REG;
 							memcpy_safe(&cc->bits.reg, &cval->val->bits.regoff.reg);
 						}else{
 							const int lim = N_SCRATCH_REGS_I; /* no floats */
-							int found_reg = assign_constraint_pick_reg(
+							found = assign_constraint_pick_reg(
 									cc, regs, regmask, lim, fnty);
-
-							if(!found_reg)
-								continue;
 						}
-						break;
-					}
 
-					case V_FLAG: /* spill */
+						if(found)
+							break;
+					} /* fall */
+
+					case V_FLAG:
+						cc->type = C_TO_REG_OR_MEM;
+						break;
+
 					case V_LBL:
 					case V_REG_SPILT:
 						cc->type = C_MEM;
@@ -616,10 +621,15 @@ static void constrain_input_val(
 		struct chosen_constraint *constraint,
 		struct constrained_val *cval)
 {
+	enum vto to_flags = TO_MEM;
+
 	/* fill it with the right values */
 	switch(constraint->type){
+		case C_TO_REG_OR_MEM:
+			to_flags |= TO_REG;
+			/* fall */
 		case C_MEM:
-			cval->val = v_to(octx, cval->val, TO_MEM);
+			cval->val = v_to(octx, cval->val, to_flags);
 			break;
 
 		case C_CONST:
@@ -658,6 +668,7 @@ static const out_val *temporary_for_output(
 			 */
 			return v_new_reg(octx, NULL, ty, &constraint->bits.reg);
 
+		case C_TO_REG_OR_MEM:
 		case C_MEM:
 		{
 			const out_val *spill;
@@ -700,30 +711,41 @@ static const out_val *initialise_output_temporary(
 	 */
 	out_comment(octx, "read-write/\"+\" operand:");
 
-	if(constraint->type == C_MEM){
-		out_val_retain(octx, with_val);
-		out_val_retain(octx, out_temporary);
+	switch(constraint->type){
+		case C_TO_REG_OR_MEM:
+		case C_MEM:
+			out_val_retain(octx, with_val);
+			out_val_retain(octx, out_temporary);
 
-		out_store(octx,
-				/*dest*/out_deref(octx, out_temporary),
-				/*src */out_deref(octx, with_val));
-	}else{
-		struct vreg temporary_reg;
+			if(constraint->type == C_MEM)
+				with_val = out_deref(octx, with_val);
 
-		assert(constraint->type == C_REG);
-		assert(out_temporary->type == V_REG);
+			out_store(octx,
+					/*dest*/out_deref(octx, out_temporary),
+					/*src */with_val);
+			break;
 
-		/* need to get value in 'with_val'
-		 * into register 'out_temporary->bits.regoff.reg'
-		 */
-		memcpy_safe(&temporary_reg, &out_temporary->bits.regoff.reg);
+		case C_CONST:
+			assert(0 && "output temporary const?");
 
-		out_val_retain(octx, with_val);
-		out_val_release(octx, out_temporary);
+		case C_REG:
+		{
+			struct vreg temporary_reg;
 
-		out_temporary = v_to_reg_given(octx,
-				out_deref(octx, with_val),
-				&temporary_reg);
+			assert(out_temporary->type == V_REG);
+
+			/* need to get value in 'with_val'
+				* into register 'out_temporary->bits.regoff.reg'
+				*/
+			memcpy_safe(&temporary_reg, &out_temporary->bits.regoff.reg);
+
+			out_val_retain(octx, with_val);
+			out_val_release(octx, out_temporary);
+
+			out_temporary = v_to_reg_given(octx,
+					out_deref(octx, with_val),
+					&temporary_reg);
+		}
 	}
 
 	return out_temporary;
