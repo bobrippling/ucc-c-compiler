@@ -26,6 +26,8 @@ char *out_label_case(enum out_label_type, int val);
 char *out_label_flow(const char *fmt);
 char *out_label_block(const char *funcsp);
 
+unsigned out_label_uniq_asm(void);
+
 char *out_dbg_func_end(const char *fn);
 
 #endif

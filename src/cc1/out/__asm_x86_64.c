@@ -25,6 +25,7 @@
 #include "write.h"
 #include "ctx.h" /* var_stack_sz */
 #include "macros.h"
+#include "lbl.h"
 
 #include "virt.h" /* v_to* */
 
@@ -934,6 +935,21 @@ static char *format_insn(const char *format,
 				case '%':
 					*(char *)dynvec_add(&written_insn, &insn_len) = '%';
 					break;
+
+				case '=':
+				{
+					unsigned v = out_label_uniq_asm();
+					int len;
+					char buf[32];
+					char *dest;
+
+					len = snprintf(buf, sizeof buf, "%u", v);
+					assert(len > 0);
+
+					dest = dynvec_add_n(&written_insn, &insn_len, len);
+					memcpy(dest, buf, len);
+					break;
+				}
 
 				default:
 					format_single_percent(

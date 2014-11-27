@@ -13,7 +13,13 @@ static int label_last    = 1,
 					 switch_last   = 1,
 					 flow_last     = 1,
 					 block_last    = 1,
-					 static_last   = 1;
+					 static_last   = 1,
+					 asm_last      = 1;
+
+unsigned out_label_uniq_asm(void)
+{
+	return asm_last++;
+}
 
 char *out_label_bblock(unsigned long n)
 {

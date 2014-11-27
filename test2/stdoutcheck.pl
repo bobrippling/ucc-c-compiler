@@ -9,8 +9,8 @@ sub usage
 sub trim
 {
 	my $s = shift;
-	$s =~ s/^ +//;
-	$s =~ s/ +$//;
+	$s =~ s/^[ 	]+//;
+	$s =~ s/[ 	]+$//;
 	return $s;
 }
 
