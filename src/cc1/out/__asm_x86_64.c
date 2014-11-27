@@ -133,6 +133,12 @@ enum constraint_x86
 	CONSTRAINT_REG_float = 'f',
 	CONSTRAINT_any = 'g',
 
+	CONSTRAINT_0_to_31 = 'I',
+	CONSTRAINT_0_to_63 = 'J',
+	CONSTRAINT_8bit_signed = 'K',
+	CONSTRAINT_0123 = 'M',
+	CONSTRAINT_8bit_unsigned = 'N',
+
 	/* TODO: o, V, E, F, X
 	 * TODO: matching: 0-9 */
 };
@@ -152,7 +158,14 @@ enum constraint_mask
 	CONSTRAINT_MASK_REG_any = 1 << 12,
 	CONSTRAINT_MASK_REG_abcd = 1 << 13,
 	CONSTRAINT_MASK_REG_float = 1 << 14,
-	CONSTRAINT_MASK_any = 1 << 15,
+
+	CONSTRAINT_MASK_0_to_31 = 1 << 15,
+	CONSTRAINT_MASK_0_to_63 = 1 << 16,
+	CONSTRAINT_MASK_8bit_signed = 1 << 17,
+	CONSTRAINT_MASK_0123 = 1 << 18,
+	CONSTRAINT_MASK_8bit_unsigned = 1 << 19,
+
+	CONSTRAINT_MASK_any = 1 << 20,
 };
 
 #define CONSTRAINT_ITER(i) \
@@ -245,6 +258,11 @@ done_mods:;
 			MAP(memory);
 			MAP(int);
 			MAP(int_asm);
+			MAP(0_to_31);
+			MAP(0_to_63);
+			MAP(8bit_signed);
+			MAP(0123);
+			MAP(8bit_unsigned);
 			MAP(any);
 #undef MAP
 		}
@@ -316,9 +334,6 @@ static void constrain_output(
 static int prioritise_mask(enum constraint_mask mask)
 {
 	switch(mask){
-		default:
-			return -1;
-
 		case CONSTRAINT_MASK_REG_a:
 		case CONSTRAINT_MASK_REG_b:
 		case CONSTRAINT_MASK_REG_c:
@@ -333,6 +348,11 @@ static int prioritise_mask(enum constraint_mask mask)
 		case CONSTRAINT_MASK_memory:
 			return PRIORITY_MEM;
 
+		case CONSTRAINT_MASK_0_to_31:
+		case CONSTRAINT_MASK_0_to_63:
+		case CONSTRAINT_MASK_8bit_signed:
+		case CONSTRAINT_MASK_0123:
+		case CONSTRAINT_MASK_8bit_unsigned:
 		case CONSTRAINT_MASK_int:
 		case CONSTRAINT_MASK_int_asm:
 			return PRIORITY_INT;
@@ -346,6 +366,8 @@ static int prioritise_mask(enum constraint_mask mask)
 		case CONSTRAINT_MASK_any:
 			return PRIORITY_ANY;
 	}
+
+	return -1;
 }
 
 static int prioritise(const enum constraint_mask in_mask)
@@ -425,6 +447,33 @@ static void callback_gen_val(
 			setupstate->octx, cval, setupstate->gen_callback_ctx);
 
 	assert(cval->val && "no value generated");
+}
+
+static int valid_int_constraint(
+		enum constraint_mask constraint, const out_val *val)
+{
+	integral_t i, min, max;
+
+	if(val->type != V_CONST_I)
+		return 0;
+
+	switch(constraint){
+		default:
+			assert(0 && "non-int constraint");
+
+		case CONSTRAINT_MASK_int:
+			return 1;
+
+		case CONSTRAINT_MASK_0_to_31:       min = 0,    max = 31; break;
+		case CONSTRAINT_MASK_0_to_63:       min = 0,    max = 31; break;
+		case CONSTRAINT_MASK_8bit_signed:   min = -128, max = 127; break;
+		case CONSTRAINT_MASK_0123:          min = 0,    max = 3; break;
+		case CONSTRAINT_MASK_8bit_unsigned: min = 0,    max = 256; break;
+	}
+
+	i = val->bits.val_i;
+
+	return min <= i && i <= max;
 }
 
 static void assign_constraint(
@@ -533,10 +582,15 @@ static void assign_constraint(
 						continue; /* try again */
 				}
 				if(0){
+			case CONSTRAINT_MASK_0_to_31:
+			case CONSTRAINT_MASK_0_to_63:
+			case CONSTRAINT_MASK_8bit_signed:
+			case CONSTRAINT_MASK_0123:
+			case CONSTRAINT_MASK_8bit_unsigned:
 			case CONSTRAINT_MASK_int:
 					callback_gen_val(setupstate, cval);
-					if(cval->val->type != V_CONST_I)
-						continue; /* try again */
+					if(!valid_int_constraint(constraint_attempt, cval->val))
+						continue;
 				}
 				cc->type = C_CONST;
 				break;
