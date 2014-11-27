@@ -894,6 +894,19 @@ static char *format_insn(const char *format,
 	return written_insn;
 }
 
+static void init_used_regs(out_ctx *octx, struct regarray *regs)
+{
+	out_val_list *it;
+	for(it = octx->val_head; it; it = it->next){
+		const out_val *this = &it->val;
+		if(this->retains && this->type == V_REG){
+			const struct vreg *vr = &this->bits.regoff.reg;
+			if(!vr->is_float)
+				regs->arr[vr->idx] |= REG_USED_IN | REG_USED_OUT;
+		}
+	}
+}
+
 void out_inline_asm_ext_begin(
 		out_ctx *octx, const char *format,
 		struct constrained_val_array *outputs,
@@ -915,6 +928,8 @@ void out_inline_asm_ext_begin(
 	st->output_temporaries = umalloc(outputs->n * sizeof *st->output_temporaries);
 
 	regs.arr = v_alloc_reg_reserve(octx, &regs.n);
+
+	init_used_regs(octx, &regs);
 
 	/* first, spill all the clobber registers,
 	 * then we can have a valid list of registers active at asm() time
