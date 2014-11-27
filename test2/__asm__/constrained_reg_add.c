@@ -1,4 +1,6 @@
-int main(void)
+// RUN: %ocheck 25 %s
+
+main()
 {
 	int foo = 10, bar = 15;
 

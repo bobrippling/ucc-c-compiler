@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <assert.h>
 
 #include "../../util/dynvec.h"
 
@@ -6,6 +7,12 @@
 #include "stmt_asm.h"
 #include "../__asm.h"
 #include "../out/__asm.h"
+
+struct gen_asm_callback_ctx
+{
+	asm_param **params;
+	struct constrained_val_array *outputs, *inputs;
+};
 
 const char *str_stmt_asm()
 {
@@ -49,7 +56,7 @@ void fold_stmt_asm(stmt *s)
 	}
 }
 
-static expr *err_operand_to_expr(
+static expr *cval_to_expr(
 		asm_param **params, struct constrained_val *cval,
 		struct constrained_val_array *outputs,
 		struct constrained_val_array *inputs)
@@ -78,7 +85,7 @@ static int show_asm_error(
 		return 0;
 
 	if(error->operand){
-		expr *err_expr = err_operand_to_expr(
+		expr *err_expr = cval_to_expr(
 				s->bits.asm_args->params, error->operand,
 				outputs, inputs);
 
@@ -101,6 +108,18 @@ static void free_release_valarray(
 	free(container->arr);
 }
 
+static void gen_stmt_asm_operand(
+		out_ctx *octx, struct constrained_val *cval, const void *ctx)
+{
+	const struct gen_asm_callback_ctx *cb_ctx = ctx;
+	expr *exp;
+
+	assert(!cval->val && "already generated this value");
+
+	exp = cval_to_expr(cb_ctx->params, cval, cb_ctx->outputs, cb_ctx->inputs);
+	cval->val = gen_expr(exp, octx);
+}
+
 void gen_stmt_asm(const stmt *s, out_ctx *octx)
 {
 	asm_param **params;
@@ -114,9 +133,6 @@ void gen_stmt_asm(const stmt *s, out_ctx *octx)
 	for(params = s->bits.asm_args->params; params && *params; params++){
 		asm_param *param = *params;
 		struct constrained_val *new;
-		const out_val *generated;
-
-		generated = gen_expr(param->exp, octx);
 
 		if(param->is_output){
 			new = dynvec_add(&outputs.arr, &outputs.n);
@@ -125,7 +141,7 @@ void gen_stmt_asm(const stmt *s, out_ctx *octx)
 		}
 
 		new->ty = param->exp->tree_type;
-		new->val = generated;
+		new->val = NULL;
 		error.operand = new;
 		new->calculated_constraint = out_asm_calculate_constraint(
 				param->constraints, param->is_output, &error);
@@ -141,15 +157,23 @@ void gen_stmt_asm(const stmt *s, out_ctx *octx)
 		size_t i;
 		struct inline_asm_state state;
 		decl *fndecl = symtab_func(s->symtab);
+		struct inline_asm_parameters asm_params;
+		struct gen_asm_callback_ctx cb_ctx;
 
-		out_inline_asm_ext_begin(octx,
-				s->bits.asm_args->cmd,
-				&outputs, &inputs,
-				s->bits.asm_args->clobbers,
-				&s->where,
-				fndecl->ref,
-				&error,
-				&state);
+		cb_ctx.params = s->bits.asm_args->params;
+		cb_ctx.outputs = &outputs;
+		cb_ctx.inputs = &inputs;
+
+		asm_params.format = s->bits.asm_args->cmd;
+		asm_params.outputs = &outputs;
+		asm_params.inputs = &inputs;
+		asm_params.clobbers = s->bits.asm_args->clobbers;
+		asm_params.where = &s->where;
+		asm_params.fnty = fndecl->ref;
+		asm_params.gen_callback = &gen_stmt_asm_operand;
+		asm_params.gen_callback_ctx = &cb_ctx;
+
+		out_inline_asm_ext_begin(octx, &asm_params, &state, &error);
 
 		out_comment(octx, "### assignments to outputs");
 
@@ -160,6 +184,9 @@ void gen_stmt_asm(const stmt *s, out_ctx *octx)
 			asm_param *param = *params;
 			if(!param->is_output)
 				continue;
+
+			if(!outputs.arr[i].val)
+				gen_stmt_asm_operand(octx, &outputs.arr[i], &cb_ctx);
 
 			out_inline_asm_ext_output(octx, i, &outputs.arr[i], &state);
 		}

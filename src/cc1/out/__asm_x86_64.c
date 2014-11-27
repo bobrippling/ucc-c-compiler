@@ -80,6 +80,16 @@ struct chosen_constraint
 	} bits;
 };
 
+struct asm_setup_state
+{
+	out_ctx *octx;
+	asm_callback_fn *gen_callback;
+	void *gen_callback_ctx;
+	struct regarray *regs;
+	type *fnty;
+	struct out_asm_error *error;
+};
+
 #if 0
 +---+--------------------+
 | r |    Register(s)     |
@@ -394,15 +404,27 @@ retry_reg:
 	return 1;
 }
 
+static void callback_gen_val(
+		struct asm_setup_state *setupstate,
+		struct constrained_val *cval)
+{
+	if(cval->val)
+		return;
+
+	setupstate->gen_callback(
+			setupstate->octx, cval, setupstate->gen_callback_ctx);
+
+	assert(cval->val && "no value generated");
+}
+
 static void assign_constraint(
+		struct asm_setup_state *setupstate,
 		struct constrained_val *cval,
 		struct chosen_constraint *cc,
 		const int priority,
-		const int is_output,
-		struct regarray *regs,
-		type *const fnty,
-		struct out_asm_error *error)
+		const int is_output)
 {
+	struct regarray *const regs = setupstate->regs;
 	int regmask = (is_output ? REG_USED_OUT : REG_USED_IN);
 	int retry_count;
 	enum constraint_mask whole_constraint = cval->calculated_constraint;
@@ -416,8 +438,8 @@ static void assign_constraint(
 		enum constraint_mask constraint_attempt = -1;
 
 		if(min_priority > PRIORITY_ANY){
-			error->operand = cval;
-			error->str = ustrprintf(
+			setupstate->error->operand = cval;
+			setupstate->error->str = ustrprintf(
 					"%s constraint unsatisfiable",
 					is_output ? "output" : "input");
 			return;
@@ -478,7 +500,8 @@ static void assign_constraint(
 						: MIN(regs->n, N_SCRATCH_REGS_I)); /* no floats */
 
 				/* pick the first one - prioritised so this is fine */
-				int found_reg = assign_constraint_pick_reg(cc, regs, regmask, lim, fnty);
+				int found_reg = assign_constraint_pick_reg(
+						cc, regs, regmask, lim, setupstate->fnty);
 
 				if(!found_reg)
 					continue; /* try again */
@@ -491,6 +514,7 @@ static void assign_constraint(
 
 			case CONSTRAINT_MASK_int_asm:
 				/* link-time address or constant int */
+				callback_gen_val(setupstate, cval);
 				switch(cval->val->type){
 					case V_LBL:
 					case V_CONST_I:
@@ -500,6 +524,7 @@ static void assign_constraint(
 				}
 				if(0){
 			case CONSTRAINT_MASK_int:
+					callback_gen_val(setupstate, cval);
 					if(cval->val->type != V_CONST_I)
 						continue; /* try again */
 				}
@@ -510,6 +535,7 @@ static void assign_constraint(
 				ICE("TODO: float");
 
 			case CONSTRAINT_MASK_any:
+				callback_gen_val(setupstate, cval);
 				switch(cval->val->type){
 					case V_CONST_F:
 						ICE("TODO: float");
@@ -530,7 +556,7 @@ static void assign_constraint(
 						}else{
 							const int lim = N_SCRATCH_REGS_I; /* no floats */
 							found = assign_constraint_pick_reg(
-									cc, regs, regmask, lim, fnty);
+									cc, regs, regmask, lim, setupstate->fnty);
 						}
 
 						if(found)
@@ -555,9 +581,9 @@ static void assign_constraint(
 }
 
 static void assign_constraints(
-		struct constrained_pri_val *entries, size_t nentries,
-		struct regarray *regs,
-		type *const fnty, struct out_asm_error *error)
+		struct asm_setup_state *setupstate,
+		struct constrained_pri_val *entries,
+		size_t nentries)
 {
 	size_t i;
 	for(i = 0; i < nentries; i++){
@@ -565,23 +591,22 @@ static void assign_constraints(
 		struct chosen_constraint *cc = entries[i].cchosen;
 
 		/* pick the highest satisfiable constraint */
-		assign_constraint(cval, cc,
-				entries[i].pri, entries[i].is_output,
-				regs, fnty, error);
+		assign_constraint(
+				setupstate,
+				cval, cc,
+				entries[i].pri, entries[i].is_output);
 
-		if(error->str)
+		if(setupstate->error->str)
 			break;
 	}
 }
 
 static void calculate_constraints(
+		struct asm_setup_state *setupstate,
 		struct constrained_val_array *outputs,
 		struct constrained_val_array *inputs,
 		struct chosen_constraint *oconstraints,
-		struct chosen_constraint *iconstraints,
-		struct regarray *regs,
-		type *const fnty,
-		struct out_asm_error *error)
+		struct chosen_constraint *iconstraints)
 {
 	size_t const nentries = outputs->n + inputs->n;
 	struct constrained_pri_val *entries;
@@ -612,17 +637,19 @@ static void calculate_constraints(
 	qsort(entries, nentries, sizeof *entries, constrained_pri_val_cmp);
 
 	/* assign values */
-	assign_constraints(entries, nentries, regs, fnty, error);
+	assign_constraints(setupstate, entries, nentries);
 
 	free(entries);
 }
 
 static void constrain_input_val(
-		out_ctx *octx,
+		struct asm_setup_state *setupstate,
 		struct chosen_constraint *constraint,
 		struct constrained_val *cval)
 {
 	enum vto to_flags = TO_MEM;
+
+	callback_gen_val(setupstate, cval);
 
 	/* fill it with the right values */
 	switch(constraint->type){
@@ -630,7 +657,7 @@ static void constrain_input_val(
 			to_flags |= TO_REG;
 			/* fall */
 		case C_MEM:
-			cval->val = v_to(octx, cval->val, to_flags);
+			cval->val = v_to(setupstate->octx, cval->val, to_flags);
 			break;
 
 		case C_CONST:
@@ -642,18 +669,20 @@ static void constrain_input_val(
 			{
 				/* don't freeup register */
 				cval->val = v_to_reg_given(
-						octx, cval->val, &constraint->bits.reg);
+						setupstate->octx, cval->val, &constraint->bits.reg);
 			}
 			break;
 	}
 }
 
 static const out_val *temporary_for_output(
-		out_ctx *octx,
+		struct asm_setup_state *setupstate,
 		struct chosen_constraint *constraint,
-		const out_val *for_val,
+		struct constrained_val *cval,
 		type *ty)
 {
+	out_ctx *const octx = setupstate->octx;
+
 	/* if the output already references the lvalue and matches the constraint,
 	 * we can leave it.
 	 *
@@ -675,7 +704,9 @@ static const out_val *temporary_for_output(
 		{
 			const out_val *spill;
 
-			switch(for_val->type){
+			callback_gen_val(setupstate, cval);
+
+			switch(cval->val->type){
 				case V_FLAG:
 				case V_CONST_I:
 				case V_CONST_F:
@@ -796,14 +827,13 @@ void out_asm_release_valarray(
 	}
 }
 
-static void constrain_values(out_ctx *octx,
+static void constrain_values(
+		struct asm_setup_state *setupstate,
 		struct constrained_val_array *outputs,
 		struct constrained_val_array *inputs,
 		struct chosen_constraint *coutputs,
 		struct chosen_constraint *cinputs,
-		const out_val *output_temporaries[],
-		type *const fnty,
-		struct out_asm_error *error)
+		const out_val *output_temporaries[])
 {
 	size_t const total = outputs->n + inputs->n;
 	size_t i;
@@ -820,10 +850,10 @@ static void constrain_values(out_ctx *octx,
 			 * for the asm. if we can't, hard error */
 			constraint = &cinputs[input_i];
 
-			constrain_input_val(octx, constraint, &inputs->arr[input_i]);
+			constrain_input_val(setupstate, constraint, &inputs->arr[input_i]);
 
-			if(error->str){
-				error->operand = &inputs->arr[input_i];
+			if(setupstate->error->str){
+				setupstate->error->operand = &inputs->arr[input_i];
 				return;
 			}
 
@@ -835,12 +865,15 @@ static void constrain_values(out_ctx *octx,
 			constraint = &coutputs[i];
 
 			out_temporary = temporary_for_output(
-					octx, constraint, outputs->arr[i].val, outputs->arr[i].ty);
+					setupstate, constraint,
+					&outputs->arr[i], outputs->arr[i].ty);
 			/* may return null - in which case we reuse lvalue memory */
 
 			if(out_temporary && init_temporary){
+				callback_gen_val(setupstate, &outputs->arr[i]);
+
 				out_temporary = initialise_output_temporary(
-						octx,
+						setupstate->octx,
 						out_temporary,
 						constraint,
 						outputs->arr[i].val);
@@ -850,9 +883,9 @@ static void constrain_values(out_ctx *octx,
 		}
 
 		if(constraint->type == C_REG
-		&& impl_reg_is_callee_save(fnty, &constraint->bits.reg))
+		&& impl_reg_is_callee_save(setupstate->fnty, &constraint->bits.reg))
 		{
-			impl_use_callee_save(octx, &constraint->bits.reg);
+			impl_use_callee_save(setupstate->octx, &constraint->bits.reg);
 		}
 	}
 }
@@ -990,28 +1023,35 @@ static void init_used_regs(out_ctx *octx, struct regarray *regs)
 }
 
 void out_inline_asm_ext_begin(
-		out_ctx *octx, const char *format,
-		struct constrained_val_array *outputs,
-		struct constrained_val_array *inputs,
-		char **clobbers,
-		where const *loc,
-		type *const fnty,
-		struct out_asm_error *error,
-		struct inline_asm_state *st)
+		out_ctx *octx,
+		struct inline_asm_parameters *asm_params,
+		struct inline_asm_state *st,
+		struct out_asm_error *error)
 {
+#define format asm_params->format
+#define clobbers asm_params->clobbers
+#define loc asm_params->where
 	size_t i;
 	struct regarray regs;
 	char *escaped_fname;
 	char *insn = NULL;
+	struct asm_setup_state setupstate;
 
-	st->constraints.inputs = umalloc(inputs->n * sizeof *st->constraints.inputs);
-	st->constraints.outputs = umalloc(outputs->n * sizeof *st->constraints.outputs);
+	st->constraints.inputs = umalloc(asm_params->inputs->n * sizeof *st->constraints.inputs);
+	st->constraints.outputs = umalloc(asm_params->outputs->n * sizeof *st->constraints.outputs);
 
-	st->output_temporaries = umalloc(outputs->n * sizeof *st->output_temporaries);
+	st->output_temporaries = umalloc(asm_params->outputs->n * sizeof *st->output_temporaries);
 
 	regs.arr = v_alloc_reg_reserve(octx, &regs.n);
 
 	init_used_regs(octx, &regs);
+
+	setupstate.octx = octx;
+	setupstate.gen_callback = asm_params->gen_callback;
+	setupstate.gen_callback_ctx = asm_params->gen_callback_ctx;
+	setupstate.regs = &regs;
+	setupstate.fnty = asm_params->fnty;
+	setupstate.error = error;
 
 	/* first, spill all the clobber registers,
 	 * then we can have a valid list of registers active at asm() time
@@ -1020,21 +1060,27 @@ void out_inline_asm_ext_begin(
 	if(error->str) goto error;
 
 	calculate_constraints(
-			outputs, inputs,
-			st->constraints.outputs, st->constraints.inputs,
-			&regs, fnty, error);
+			&setupstate,
+			asm_params->outputs, asm_params->inputs,
+			st->constraints.outputs, st->constraints.inputs);
 	if(error->str) goto error;
 
-	constrain_values(octx,
-			outputs, inputs,
+	constrain_values(
+			&setupstate,
+			asm_params->outputs,
+			asm_params->inputs,
 			st->constraints.outputs,
 			st->constraints.inputs,
-			st->output_temporaries,
-			fnty,
-			error);
+			st->output_temporaries);
 	if(error->str) goto error;
 
-	insn = format_insn(format, outputs, st->output_temporaries, inputs, error);
+	insn = format_insn(
+			format,
+			asm_params->outputs,
+			st->output_temporaries,
+			asm_params->inputs,
+			error);
+
 	if(error->str) goto error;
 
 	out_comment(octx, "### actual inline");
@@ -1048,12 +1094,12 @@ void out_inline_asm_ext_begin(
 	out_asm2(octx, SECTION_TEXT, P_NO_INDENT, "# 0 \"\"");
 
 	/* consume inputs */
-	out_asm_release_valarray(octx, inputs);
+	out_asm_release_valarray(octx, asm_params->inputs);
 
 	if(0){
 error:
 		/* release temporaries */
-		for(i = 0; i < outputs->n; i++){
+		for(i = 0; i < asm_params->outputs->n; i++){
 			if(st->output_temporaries[i]){
 				out_val_release(octx, st->output_temporaries[i]);
 				st->output_temporaries[i] = NULL;
@@ -1064,6 +1110,9 @@ error:
 	free(insn), insn = NULL;
 
 	free(regs.arr);
+#undef format
+#undef clobbers
+#undef loc
 }
 
 void out_inline_asm_ext_output(

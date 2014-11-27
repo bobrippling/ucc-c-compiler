@@ -8,6 +8,8 @@ struct constrained_val
 	unsigned calculated_constraint;
 };
 
+typedef void asm_callback_fn(out_ctx *, struct constrained_val *, const void *);
+
 struct constrained_val_array
 {
 	struct constrained_val *arr;
@@ -38,16 +40,24 @@ struct inline_asm_state
 	const out_val **output_temporaries;
 };
 
+struct inline_asm_parameters
+{
+	const char *format;
+	struct constrained_val_array *outputs;
+	struct constrained_val_array *inputs;
+	char **clobbers;
+	const where *where;
+	type *fnty;
+	asm_callback_fn *gen_callback;
+	void *gen_callback_ctx;
+};
+
 /* output the constraint cmd, with %0 replaced, etc */
 void out_inline_asm_ext_begin(
-		out_ctx *, const char *insn,
-		struct constrained_val_array *outputs,
-		struct constrained_val_array *inputs,
-		char **clobbers,
-		const where *,
-		type *fnty,
-		struct out_asm_error *error,
-		struct inline_asm_state *state);
+		out_ctx *,
+		struct inline_asm_parameters *,
+		struct inline_asm_state *state,
+		struct out_asm_error *error);
 
 void out_inline_asm_ext_output(
 		out_ctx *octx,
