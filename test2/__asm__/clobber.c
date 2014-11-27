@@ -1,3 +1,5 @@
+// RUN: %ucc -fsyntax-only %s
+
 main()
 {
 	__asm("" : : :

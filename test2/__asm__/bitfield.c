@@ -6,6 +6,24 @@ struct A
 	unsigned x : 1, y : 1, z : 1;
 };
 
+another()
+{
+	struct
+	{
+		int i : 2;
+	} a;
+
+	__asm("movl $5, %0" : "=r"(a.i));
+
+	if(a.i != 1)
+		abort();
+
+	__asm("movl $5, %0" : "=m"(a.i));
+
+	if(a.i != 1)
+		abort();
+}
+
 main()
 {
 	struct A a = { 0 };
@@ -19,6 +37,8 @@ main()
 		abort();
 	if(a.z != 1)
 		abort();
+
+	another();
 
 	return 0;
 }

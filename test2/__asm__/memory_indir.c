@@ -1,13 +1,15 @@
+// RUN: %ocheck 5 %s
+
 f(int *p)
 {
-	asm("movl $5, %0" : "=m"(*p));
+	__asm("movl $5, %0" : "=m"(*p));
 	/* here it's possible to inline fully:
 	 *
 	 * movq -8(%rbp), %rax
 	 * movl $5, (%rax)
 	 */
 
-	asm("movl $5, %0" : "=r"(*p));
+	__asm("movl $5, %0" : "=r"(*p));
 	/* but if the constraint is a register
 	 * then we must do a post assignment from the register to *p
 	 *
@@ -15,4 +17,11 @@ f(int *p)
 	 * movq -8(%rbp), %rax
 	 * movl %ebx, (%rax)
 	 */
+}
+
+main()
+{
+	int i;
+	f(&i);
+	return i;
 }
