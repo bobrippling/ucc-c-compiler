@@ -523,12 +523,15 @@ static void assign_constraint(
 						if((regs->arr[i] & regmask) == 0){
 							cc->type = C_REG;
 							memcpy_safe(&cc->bits.reg, &cval->val->bits.regoff.reg);
-							break;
-
 						}else{
-							/* fall through to mem */
+							const int lim = N_SCRATCH_REGS_I; /* no floats */
+							int found_reg = assign_constraint_pick_reg(
+									cc, regs, regmask, lim, fnty);
+
+							if(!found_reg)
+								continue;
 						}
-						/* fall */
+						break;
 					}
 
 					case V_FLAG: /* spill */
