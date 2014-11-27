@@ -221,6 +221,30 @@ static integral_t convert_integral_to_integral_warn(
 	return ret;
 }
 
+static void check_qual_rm(type *ptr_lhs, type *ptr_rhs, expr *e)
+{
+	enum type_qualifier ql, qr, remain;
+
+	if(!e->expr_cast_implicit)
+		return;
+
+	if(!ptr_lhs || !ptr_rhs)
+		return;
+
+	ql = type_qual(ptr_lhs);
+	qr = type_qual(ptr_rhs);
+	remain = qr & ~ql;
+
+	if(remain == qual_none)
+		return;
+
+	cc1_warn_at(&e->where,
+			cast_qual,
+			"%scast removes qualifiers (%s)",
+			IMPLICIT_STR(e),
+			type_qual_to_str(remain, 0));
+}
+
 static void check_addr_int_cast(consty *k, int l)
 {
 	/* shouldn't fit, check if it will */
@@ -407,7 +431,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			= FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN;
 		enum type_qualifier q = type_qual(e->bits.cast_to);
 		int size_lhs, size_rhs;
-		int ptr_lhs, ptr_rhs;
+		type *ptr_lhs, *ptr_rhs;
 
 		e->tree_type = type_qualify(e->bits.cast_to, q & ~qual_restrict);
 
@@ -429,8 +453,8 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 					type_to_str(tlhs));
 		}
 
-		ptr_lhs = !!type_is_ptr(tlhs);
-		ptr_rhs = !!type_is_ptr(trhs);
+		ptr_lhs = type_is_ptr(tlhs);
+		ptr_rhs = type_is_ptr(trhs);
 
 
 		if((flag = !!type_is(tlhs, type_func))
@@ -470,7 +494,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 						eb->spel, ea->spel);
 			}
 
-			if(ptr_lhs ^ ptr_rhs){
+			if(!!ptr_lhs ^ !!ptr_rhs){
 				if(ptr_lhs && expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_INT)){
 					/* no warning if 0 --> ptr */
 				}else if(ptr_rhs && type_is_bool(e->tree_type)){
@@ -512,20 +536,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			}
 		}
 
-#ifdef W_QUAL
-		if(decl_is_ptr(tlhs) && decl_is_ptr(trhs) && (tlhs->type->qual | trhs->type->qual) != tlhs->type->qual){
-			const enum type_qualifier away = trhs->type->qual & ~tlhs->type->qual;
-			char *buf = type_qual_to_str(away);
-			char *p;
-
-			p = &buf[strlen(buf)-1];
-			if(p >= buf && *p == ' ')
-				*p = '\0';
-
-			cc1_warn_at(&e->where, qual_drop, "%scast removes qualifiers (%s)",
-					IMPLICIT_STR(e), buf);
-		}
-#endif
+		check_qual_rm(ptr_lhs, ptr_rhs, e);
 	}
 }
 
