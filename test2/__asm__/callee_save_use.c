@@ -1,3 +1,5 @@
+// RUN: %ocheck 0 %s
+
 use_ebx()
 {
 	int ebx_temp;
@@ -18,4 +20,6 @@ main()
 
 	if(ebx_after != 72)
 		abort();
+
+	return 0;
 }
