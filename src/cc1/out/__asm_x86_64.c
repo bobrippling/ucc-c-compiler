@@ -252,7 +252,17 @@ done_mods:;
 			found = 1;
 
 		if(!found){
-			error->str = ustrprintf("unknown constraint character '%c'", *iter);
+			switch(*iter){
+				case MODIFIER_preclobber:
+				case MODIFIER_write_only:
+				case MODIFIER_readwrite:
+					error->str = ustrprintf(
+							"modifier character not at start ('%c')",
+							*iter);
+					break;
+				default:
+					error->str = ustrprintf("unknown constraint character '%c'", *iter);
+			}
 			return 0;
 		}
 	}
