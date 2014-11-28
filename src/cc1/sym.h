@@ -127,7 +127,8 @@ void symtab_add_to_scope(symtable *, decl *);
 void symtab_add_sue(symtable *, struct struct_union_enum_st *);
 #define symtab_decls(stab) ((stab)->decls)
 
-sym  *symtab_search(symtable *, const char *);
+sym *symtab_search_in(symtable *, const char *, symtable **pin);
+#define symtab_search(s, sp) symtab_search_in((s), (sp), NULL)
 decl *symtab_search_d(symtable *, const char *, symtable **pin);
 decl *symtab_search_d_exclude(
 		symtable *, const char *, symtable **pin, decl *exclude);

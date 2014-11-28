@@ -160,9 +160,9 @@ decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
 	return symtab_search_d_exclude(tab, spel, pin, NULL);
 }
 
-sym *symtab_search(symtable *tab, const char *sp)
+sym *symtab_search_in(symtable *tab, const char *sp, symtable **pin)
 {
-	decl *d = symtab_search_d(tab, sp, NULL);
+	decl *d = symtab_search_d(tab, sp, pin);
 	if(!d)
 		return NULL;
 

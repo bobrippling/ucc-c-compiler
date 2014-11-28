@@ -57,14 +57,25 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 	}
 }
 
+static void check_lambda_sym(
+		expr *e, symtable *stab,
+		sym *sym, symtable *container)
+{
+	(void)e;
+
+	fprintf(stderr, "found %s in %p from %p\n",
+			sym->decl->spel, stab, container);
+}
+
 void fold_expr_identifier(expr *e, symtable *stab)
 {
 	char *sp = e->bits.ident.bits.ident.spel;
 	sym *sym = e->bits.ident.bits.ident.sym;
 	decl *in_fn = symtab_func(stab);
+	symtable *container = NULL;
 
 	if(sp && !sym){
-		e->bits.ident.bits.ident.sym = sym = symtab_search(stab, sp);
+		e->bits.ident.bits.ident.sym = sym = symtab_search_in(stab, sp, &container);
 
 		/* prevent typedef */
 		if(sym && STORE_IS_TYPEDEF(sym->decl->store)){
@@ -119,6 +130,8 @@ void fold_expr_identifier(expr *e, symtable *stab)
 		}
 		return;
 	}
+
+	check_lambda_sym(e, stab, sym, container);
 
 	e->bits.ident.type = IDENT_NORM;
 	e->tree_type = sym->decl->ref;
