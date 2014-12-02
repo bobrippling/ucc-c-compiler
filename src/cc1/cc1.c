@@ -251,6 +251,7 @@ static struct warn_str
 	{ "typedef-redefinition", &cc1_warning.typedef_redef },
 
 	{ "undef-string-comparison", &cc1_warning.undef_strlitcmp },
+	{ "undefined-internal", &cc1_warning.undef_internal },
 
 	{ "unnamed-struct-memb", &cc1_warning.unnamed_struct_memb },
 	{ "unused-comma", &cc1_warning.unused_comma },

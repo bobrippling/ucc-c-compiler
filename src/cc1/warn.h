@@ -136,6 +136,7 @@ struct cc1_warning
 	unsigned char test_bool;
 	unsigned char typedef_fnimpl;
 	unsigned char typedef_redef;
+	unsigned char undef_internal;
 	unsigned char undef_strlitcmp;
 	unsigned char uninitialised;
 	unsigned char unnamed_struct_memb;
