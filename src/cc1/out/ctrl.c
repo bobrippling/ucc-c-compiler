@@ -128,12 +128,25 @@ void out_current_blk(out_ctx *octx, out_blk *new_blk)
 	octx->current_blk = new_blk;
 }
 
+static void v_transfer_spill(out_ctx *octx, const out_val *skip)
+{
+	/* all active regs must be spilt here since we don't know if they'll be spilt
+	 * (or moved to callee-save) in one of the branches we're about to jump into,
+	 * and if they are spilt, they might not be spilt in the other branch,
+	 * leaving the other branch's code path undefined
+	 */
+
+	// TODO
+}
+
 void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 		const out_val *phi /* optional */, out_blk **mergee)
 {
 	out_blk *from = octx->current_blk;
 
 	v_decay_flags(octx);
+
+	v_transfer_spill(octx, phi);
 
 	assert(!!phi == !!mergee);
 
@@ -175,6 +188,8 @@ void out_ctrl_transfer_exp(out_ctx *octx, const out_val *addr)
 	assert(addr->retains == 1); /* don't want this changing under us */
 
 	v_decay_flags_except1(octx, addr);
+
+	v_transfer_spill(octx, addr);
 
 	impl_jmp_expr(octx, addr); /* must jump now, while we have octx */
 
