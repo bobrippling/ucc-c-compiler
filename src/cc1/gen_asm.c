@@ -392,7 +392,7 @@ void gen_asm(
 	*pfilelist = NULL;
 
 	if(cc1_gdebug)
-		out_dbg_begin(octx, &octx->dbg.file_head, fname, compdir);
+		out_dbg_begin(octx, &octx->dbg.file_head, fname, compdir, cc1_std);
 
 	for(diter = symtab_decls(&globs->stab); diter && *diter; diter++){
 		decl *d = *diter;

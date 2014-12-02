@@ -248,7 +248,8 @@ enum dwarf_misc
 	DW_INL_inlined = 1,
 
 	DW_LANG_C89 = 0x1,
-	DW_LANG_C99 = 0xc
+	DW_LANG_C99 = 0xc,
+	DW_LANG_C11 = 0x1d
 };
 
 enum dwarf_encoding
@@ -1061,9 +1062,21 @@ void out_dbg_emit_args_done(out_ctx *octx, funcargs *args)
 		dwarf_current_child(dbg, va);
 }
 
+static int dw_lang_from_c_std(enum c_std std)
+{
+	switch(std){
+		case STD_C90:
+		case STD_C89: return DW_LANG_C89;
+		case STD_C99: return DW_LANG_C99;
+		case STD_C11: return DW_LANG_C11;
+	}
+	abort();
+}
+
 static struct DIE_compile_unit *dwarf_cu(
 		const char *fname, const char *compdir,
-		struct out_dbg_filelist **pfilelist)
+		struct out_dbg_filelist **pfilelist,
+		enum c_std lang)
 {
 	struct DIE_compile_unit *cu = umalloc(sizeof *cu);
 	form_data_t attrv;
@@ -1076,7 +1089,7 @@ static struct DIE_compile_unit *dwarf_cu(
 			"ucc development version");
 
 	dwarf_attr(&cu->die, DW_AT_language, DW_FORM_data2,
-			((attrv = DW_LANG_C99), &attrv));
+			((attrv = dw_lang_from_c_std(lang)), &attrv));
 
 	dwarf_attr(&cu->die, DW_AT_name, DW_FORM_string, (char *)fname);
 
@@ -1676,9 +1689,10 @@ void out_dbg_begin(
 		out_ctx *octx,
 		struct out_dbg_filelist **pfilelist,
 		const char *fname,
-		const char *compdir)
+		const char *compdir,
+		enum c_std lang)
 {
-	struct DIE_compile_unit *cu = dwarf_cu(fname, compdir, pfilelist);
+	struct DIE_compile_unit *cu = dwarf_cu(fname, compdir, pfilelist, lang);
 	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
 
 	dbg->compile_unit = cu;
