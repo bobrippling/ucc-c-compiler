@@ -71,12 +71,18 @@ struct chosen_constraint
 		C_REG,
 		C_MEM,
 		C_CONST,
-		C_TO_REG_OR_MEM
+		C_TO_REG_OR_MEM,
+		C_MATCH
 	} type;
 
 	union
 	{
 		struct vreg reg;
+		struct
+		{
+			struct constrained_val *cval;
+			struct chosen_constraint *constraint;
+		} match;
 	} bits;
 };
 
@@ -139,6 +145,11 @@ enum constraint_x86
 	CONSTRAINT_0123 = 'M',
 	CONSTRAINT_8bit_unsigned = 'N',
 
+	CONSTRAINT_0 = '0', CONSTRAINT_1 = '1', CONSTRAINT_2 = '2',
+	CONSTRAINT_3 = '3', CONSTRAINT_4 = '4', CONSTRAINT_5 = '5',
+	CONSTRAINT_6 = '6', CONSTRAINT_7 = '7', CONSTRAINT_8 = '8',
+	CONSTRAINT_9 = '9',
+
 	/* TODO: o, V, E, F, X
 	 * TODO: matching: 0-9 */
 };
@@ -166,10 +177,21 @@ enum constraint_mask
 	CONSTRAINT_MASK_8bit_unsigned = 1 << 19,
 
 	CONSTRAINT_MASK_any = 1 << 20,
+
+	/* 9 = 1001, 4 bits to encode a match-constraint.
+	 * match-constraint encoded as match+1, since we
+	 * can't tell if 0 is present
+	 *
+	 * 1<<21 to 1<<25 are reserved */
+#define MATCHING_CONSTRAINT_SHIFT 21
+#define MATCHING_CONSTRAINT_MASK  15 /* 1111 */
+#define MATCHING_CONSTRAINT_MASK_SHIFTED (MATCHING_CONSTRAINT_MASK << MATCHING_CONSTRAINT_SHIFT)
+
+#define CONSTRAINT_MAX_BIT (20 + 4) /* include matching bits */
 };
 
 #define CONSTRAINT_ITER(i) \
-	for(i = MODIFIER_COUNT; i < 'z' - 'a' + MODIFIER_COUNT; i++)
+	for(i = MODIFIER_COUNT; i <= CONSTRAINT_MAX_BIT; i++)
 
 enum modifier
 {
@@ -265,6 +287,20 @@ done_mods:;
 			MAP(8bit_unsigned);
 			MAP(any);
 #undef MAP
+
+			case '0': case '1': case '2':
+			case '3': case '4': case '5':
+			case '6': case '7': case '8':
+			case '9':
+				found = 1;
+				if(finalmask & MATCHING_CONSTRAINT_MASK_SHIFTED){
+					error->str = ustrprintf(
+							"can't handle two matching constraints (%c)",
+							*iter);
+					return 0;
+				}
+				finalmask |= (*iter - '0' + 1) << MATCHING_CONSTRAINT_SHIFT;
+				break;
 		}
 		if(!found && isspace(*iter))
 			found = 1;
@@ -478,11 +514,14 @@ static int valid_int_constraint(
 
 static void assign_constraint(
 		struct asm_setup_state *setupstate,
-		struct constrained_val *cval,
-		struct chosen_constraint *cc,
-		const int priority,
-		const int is_output)
+		struct constrained_pri_val *const entries,
+		const size_t this_entry_i)
 {
+	struct constrained_val *const cval = entries[this_entry_i].cval;
+	struct chosen_constraint *const cc = entries[this_entry_i].cchosen;
+	const int priority = entries[this_entry_i].pri;
+	const int is_output = entries[this_entry_i].is_output;
+
 	struct regarray *const regs = setupstate->regs;
 	int regmask = (is_output ? REG_USED_OUT : REG_USED_IN);
 	int retry_count;
@@ -493,7 +532,7 @@ static void assign_constraint(
 
 	for(retry_count = 0;; retry_count++){
 		const int min_priority = priority + retry_count;
-		int i;
+		unsigned constraint_i;
 		enum constraint_mask constraint_attempt = -1;
 
 		if(min_priority > PRIORITY_ANY){
@@ -508,8 +547,8 @@ static void assign_constraint(
 
 		/* find the constraint with the lowest priority that we
 		 * haven't already tried */
-		CONSTRAINT_ITER(i){
-			enum constraint_mask onebit = 1 << i;
+		CONSTRAINT_ITER(constraint_i){
+			enum constraint_mask onebit = 1 << constraint_i;
 
 			if(whole_constraint & onebit){
 				const int this_pri = prioritise_mask(onebit);
@@ -529,6 +568,42 @@ static void assign_constraint(
 			continue;
 
 		CONSTRAINT_DEBUG("trying constraint '%c'\n", constraint_attempt);
+
+		if(constraint_attempt & MATCHING_CONSTRAINT_MASK_SHIFTED){
+			/* matching constraint */
+			const unsigned shift = MATCHING_CONSTRAINT_SHIFT;
+			const unsigned mask = MATCHING_CONSTRAINT_MASK;
+			unsigned match = ((cval->calculated_constraint >> shift) & mask) - 1;
+
+			setupstate->error->operand = cval;
+
+			if(entries[this_entry_i].is_output){
+				setupstate->error->str = ustrprintf(
+						"output operand has matching constraint");
+				return;
+			}
+
+			if(match >= this_entry_i){
+				setupstate->error->str = ustrprintf(
+						"matching constraint (%u) out of bounds (must be < %ld)",
+						match, (long)this_entry_i);
+				return;
+			}
+
+			if(!entries[match].is_output){
+				setupstate->error->str = ustrprintf(
+						"matching constraint target is not an input");
+				return;
+			}
+
+			cc->type = C_MATCH;
+			cc->bits.match.cval = entries[match].cval;
+			cc->bits.match.constraint = entries[match].cchosen;
+			break; /* constraint met */
+
+		}else{
+			/* non-matching constraint - switch: */
+		}
 
 		switch(constraint_attempt){
 				int chosen_reg;
@@ -554,6 +629,7 @@ static void assign_constraint(
 			case CONSTRAINT_MASK_REG_any:
 			case CONSTRAINT_MASK_REG_abcd:
 			{
+				/* 'q' / abcd register is actually any integer register on x64 */
 				const int lim = (constraint_attempt == CONSTRAINT_MASK_REG_abcd
 						? X86_64_REG_RDX + 1
 						: MIN(regs->n, N_SCRATCH_REGS_I)); /* no floats */
@@ -639,8 +715,7 @@ static void assign_constraint(
 				break;
 		}
 
-		/* constraint met */
-		break;
+		break; /* constraint met */
 	}
 }
 
@@ -651,14 +726,8 @@ static void assign_constraints(
 {
 	size_t i;
 	for(i = 0; i < nentries; i++){
-		struct constrained_val *cval = entries[i].cval;
-		struct chosen_constraint *cc = entries[i].cchosen;
-
 		/* pick the highest satisfiable constraint */
-		assign_constraint(
-				setupstate,
-				cval, cc,
-				entries[i].pri, entries[i].is_output);
+		assign_constraint(setupstate, entries, i);
 
 		if(setupstate->error->str)
 			break;
@@ -706,6 +775,57 @@ static void calculate_constraints(
 	free(entries);
 }
 
+static void constrain_input_matching(
+		struct asm_setup_state *setupstate,
+		struct chosen_constraint *constraint,
+		struct constrained_val *cval)
+{
+	out_ctx *octx = setupstate->octx;
+
+	switch(constraint->bits.match.constraint->type){
+		case C_MATCH:
+			ICE("match matching match");
+
+		case C_MEM:
+		{
+			const out_val *v = constraint->bits.match.cval->val;
+
+			assert(v && "should've generated memory operand for matching input");
+
+			switch(v->type){
+				case V_FLAG:
+				case V_CONST_I:
+				case V_CONST_F:
+					ICE("can't constrain input val to %s", v_store_to_str(v->type));
+
+				case V_LBL:
+					out_val_retain(octx, v);
+					out_val_retain(octx, cval->val);
+					out_store(octx, v, cval->val);
+					break;
+
+				case V_REG:
+				case V_REG_SPILT:
+					out_val_retain(octx, v);
+					cval->val = v_to_stack_mem(setupstate->octx, cval->val, v);
+					break;
+			}
+			break;
+		}
+
+		case C_REG:
+			cval->val = v_to_reg_given(
+					octx, cval->val,
+					&constraint->bits.match.constraint->bits.reg);
+			break;
+
+		case C_CONST:
+		case C_TO_REG_OR_MEM:
+			ICE("TODO");
+			break;
+	}
+}
+
 static void constrain_input_val(
 		struct asm_setup_state *setupstate,
 		struct chosen_constraint *constraint,
@@ -717,6 +837,10 @@ static void constrain_input_val(
 
 	/* fill it with the right values */
 	switch(constraint->type){
+		case C_MATCH:
+			constrain_input_matching(setupstate, constraint, cval);
+			break;
+
 		case C_TO_REG_OR_MEM:
 			to_flags |= TO_REG;
 			/* fall */
@@ -754,6 +878,9 @@ static const out_val *temporary_for_output(
 	 * that as a temporary, then assign to the output afterwards
 	 */
 	switch(constraint->type){
+		case C_MATCH:
+			ICE("matching constraint for output?");
+
 		case C_REG:
 			/* need to use a temporary - a register can't match an lvalue
 			 * e.g.
@@ -808,6 +935,9 @@ static const out_val *initialise_output_temporary(
 	out_comment(octx, "read-write/\"+\" operand:");
 
 	switch(constraint->type){
+		case C_MATCH:
+			ICE("matching constraint for output-temporary");
+
 		case C_TO_REG_OR_MEM:
 		case C_MEM:
 			out_val_retain(octx, with_val);
