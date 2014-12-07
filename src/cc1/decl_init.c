@@ -30,9 +30,6 @@ typedef struct
 	 ? &it->pos[0]->where \
 	 : def)
 
-#define DECL_IS_ANON_BITFIELD(d) \
-	((d)->bits.var.field_width && !(d)->spel)
-
 typedef decl_init **aggregate_brace_f(
 		decl_init **current, struct init_cpy ***range_store,
 		init_iter *,

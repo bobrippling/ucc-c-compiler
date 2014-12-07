@@ -857,8 +857,8 @@ static struct DIE *dwarf_suetype(
 				struct dwarf_block *offset;
 				struct dwarf_block_ent *blkents;
 
-				if(!dmem->spel){
-					/* skip, otherwise dwarf thinks we've a field and messes up */
+				if(DECL_IS_ANON_BITFIELD(dmem)){
+					/* skip, otherwise dwarf thinks this decl's a field and messes up */
 					continue;
 				}
 
@@ -866,9 +866,12 @@ static struct DIE *dwarf_suetype(
 
 				dwarf_child(suedie, memdie);
 
-				dwarf_attr(memdie,
-						DW_AT_name, DW_FORM_string,
-						dmem->spel);
+				if(dmem->spel){
+					/* could be anonymous sub-struct/union */
+					dwarf_attr(memdie,
+							DW_AT_name, DW_FORM_string,
+							dmem->spel);
+				}
 
 				dwarf_set_DW_AT_type(memdie, cu, NULL, dmem->ref);
 
