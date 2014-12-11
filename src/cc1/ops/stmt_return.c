@@ -93,6 +93,13 @@ void gen_stmt_return(const stmt *s, out_ctx *octx)
 	/* need to generate the ret expr before the scope leave code */
 	const out_val *ret_exp = s->expr ? gen_expr(s->expr, octx) : NULL;
 
+	/* if it's a struct we need to (potentially) spill, since
+	 * we haven't lval2rval'd it, so it'll change if modified on
+	 * scope leave */
+	if(s->expr && type_is_s_or_u(s->expr->tree_type)){
+		/* ... do this in the backend? detect struct lvalue and spill? */
+	}
+
 	gen_scope_leave(s->symtab, symtab_root(s->symtab), octx);
 
 	pcc1_octx = cc1_out_ctx(octx);
