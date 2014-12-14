@@ -871,6 +871,7 @@ static void parse_clobbers(
 				error->str = ustrprintf(
 						"unknown entry in clobber: \"%s\"",
 						clob);
+				error->operand = NULL;
 				break;
 			}
 
