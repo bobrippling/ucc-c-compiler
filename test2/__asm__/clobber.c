@@ -4,5 +4,6 @@ main()
 {
 	__asm("" : : :
 			"memory", "cc",
-			"rax", "ebx", "cx", "dl", "ah");
+			"rax", "ebx", "cx", "dl", "ah",
+			"r11");
 }
