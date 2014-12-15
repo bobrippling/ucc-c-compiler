@@ -685,7 +685,13 @@ static void assign_constraint(
 						ICE("TODO: float");
 
 					case V_CONST_I:
-						cc->type = C_CONST;
+						/* if we're an output, need to drop to reg or memory */
+						if(is_output){
+							ICE("TODO");
+						}else{
+							/* input can be const */
+							cc->type = C_CONST;
+						}
 						break;
 
 					case V_REG:
