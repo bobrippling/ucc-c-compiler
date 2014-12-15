@@ -109,6 +109,42 @@ static ucc_wur const out_val *v_spill_reg(
 	return v_reg;
 }
 
+static int v_unused_callee_save_reg(
+		out_ctx *octx, int is_fp, struct vreg *const cs_reg)
+{
+	int got_reg;
+
+	got_reg = v_unused_reg2(
+			octx, /*stack*/0, is_fp,
+			cs_reg, NULL, impl_reg_is_callee_save);
+
+	if(got_reg){
+		struct vreg *p;
+		int already_used = 0;
+
+		for(p = octx->used_callee_saved; p && p->is_float != 2; p++){
+			if(vreg_eq(p, cs_reg)){
+				already_used = 1;
+				break;
+			}
+		}
+
+		if(!already_used){
+			size_t current = p ? p - octx->used_callee_saved : 0;
+
+			octx->used_callee_saved = urealloc1(
+					octx->used_callee_saved,
+					(current + 2) * sizeof *octx->used_callee_saved);
+
+			memcpy_safe(&octx->used_callee_saved[current], cs_reg);
+			octx->used_callee_saved[current + 1].is_float = 2;
+		}
+
+		return 1;
+	}
+	return 0;
+}
+
 static ucc_wur const out_val *v_save_reg(
 		out_ctx *octx, const out_val *vp, type *fnty)
 {
@@ -117,36 +153,12 @@ static ucc_wur const out_val *v_save_reg(
 	if(fnty){
 		/* try callee save */
 		struct vreg cs_reg;
-		int got_reg;
+		int got_cs = v_unused_callee_save_reg(
+				octx, type_is_floating(vp->t), &cs_reg);
 
-		got_reg = v_unused_reg2(
-				octx, /*stack*/0, type_is_floating(vp->t),
-				&cs_reg, NULL, impl_reg_is_callee_save);
-
-		if(got_reg){
-			struct vreg *p;
-			int already_used = 0;
-
+		if(got_cs){
 			impl_reg_cp_no_off(octx, vp, &cs_reg);
 			memcpy_safe(&((out_val *)vp)->bits.regoff.reg, &cs_reg);
-
-			for(p = octx->used_callee_saved; p && p->is_float != 2; p++){
-				if(vreg_eq(p, &cs_reg)){
-					already_used = 1;
-					break;
-				}
-			}
-
-			if(!already_used){
-				size_t current = p ? p - octx->used_callee_saved : 0;
-
-				octx->used_callee_saved = urealloc1(
-						octx->used_callee_saved,
-						(current + 2) * sizeof *octx->used_callee_saved);
-
-				memcpy_safe(&octx->used_callee_saved[current], &cs_reg);
-				octx->used_callee_saved[current + 1].is_float = 2;
-			}
 
 			return vp;
 		}
