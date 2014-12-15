@@ -174,6 +174,8 @@ label:
 
 const out_val *out_new_sym_val(out_ctx *octx, sym *sym)
 {
+	const out_val *sym_val;
+
 	if(sym->type == sym_arg){
 		/* if an argument is only ever used in rvalue context,
 		 * then as an optimisation we don't read from an lvalue
@@ -181,6 +183,12 @@ const out_val *out_new_sym_val(out_ctx *octx, sym *sym)
 		const out_val *inlined = sym_inline_val(octx, sym);
 		if(inlined)
 			return inlined;
+	}
+
+	sym_val = sym_outval(sym);
+	if(sym_val && sym_val->type == V_REG){ // || sym->val->type == V_REG_SPILT){
+		/* register variable */
+		return out_val_retain(octx, sym_val);
 	}
 
 	return out_deref(octx, out_new_sym(octx, sym));
