@@ -2,6 +2,7 @@
 
 #include "../type.h"
 #include "../type_nav.h"
+#include "../type_is.h"
 #include "../pack.h"
 
 #include "macros.h"
@@ -11,6 +12,7 @@
 #include "val.h"
 #include "ctx.h"
 #include "blk.h"
+#include "virt.h"
 
 #include "out.h"
 
@@ -59,6 +61,20 @@ const out_val *out_aalloc(
 	v_set_cur_stack_sz(octx, octx->cur_stack_sz);
 
 	return v_new_bp3_below(octx, NULL, ty, octx->cur_stack_sz);
+}
+
+const out_val *out_aalloc_maybereg(
+		out_ctx *octx, unsigned sz, unsigned align, type *in_ty)
+{
+	struct vreg cs_reg;
+
+	int got_cs = v_unused_callee_save_reg(
+			octx, type_is_floating(in_ty), &cs_reg);
+
+	if(!got_cs)
+		return out_aalloc(octx, sz, align, in_ty);
+
+	return v_new_reg(octx, NULL, in_ty, &cs_reg);
 }
 
 const out_val *out_aalloct(out_ctx *octx, type *ty)

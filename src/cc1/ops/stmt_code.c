@@ -202,6 +202,7 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 {
 	sym *s = d->sym;
 	const enum decl_storage store = (d->store & STORE_MASK_STORE);
+	int in_reg = (s->naddrs == 0);
 
 	if(!s || s->type != sym_local)
 		return;
@@ -210,6 +211,7 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 
 	switch(store){
 		case store_register:
+			in_reg = 1;
 		case store_default:
 		case store_auto:
 		case store_typedef:
@@ -221,6 +223,7 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 			if(vm){
 				siz = vla_decl_space(s->decl);
 				align = platform_word_size();
+				in_reg = 0;
 			}else if(store == store_typedef){
 				/* non-VM typedef - no space needed */
 				break;
@@ -229,7 +232,9 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 				align = decl_align(s->decl);
 			}
 
-			gen_set_sym_outval(octx, s, out_aalloc(octx, siz, align, s->decl->ref));
+			gen_set_sym_outval(octx, s,
+					(in_reg ? out_aalloc_maybereg : out_aalloc)(
+						octx, siz, align, s->decl->ref));
 			break;
 		}
 

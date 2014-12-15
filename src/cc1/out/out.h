@@ -134,6 +134,8 @@ void out_alloca_restore(out_ctx *octx, const out_val *ptr);
 void out_alloca_pop(out_ctx *octx);
 
 const out_val *out_aalloc(out_ctx *, unsigned sz, unsigned align, type *);
+const out_val *out_aalloc_maybereg(
+		out_ctx *, unsigned sz, unsigned align, type *);
 const out_val *out_aalloct(out_ctx *, type *);
 void out_adealloc(out_ctx *, const out_val **);
 

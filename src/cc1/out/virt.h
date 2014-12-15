@@ -12,6 +12,9 @@ int v_unused_reg(
 		struct vreg *out,
 		out_val const *to_replace);
 
+int v_unused_callee_save_reg(
+		out_ctx *octx, int is_fp, struct vreg *const cs_reg);
+
 /* v_to_* */
 enum vto
 {

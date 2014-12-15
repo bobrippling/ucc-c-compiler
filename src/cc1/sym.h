@@ -28,8 +28,8 @@ struct sym
 	decl *decl;
 	type *owning_func; /* only for sym_arg */
 
-	/* static analysis */
-	int nreads, nwrites;
+	/* static analysis and used for inlining+register optimisations */
+	int nreads, nwrites, naddrs;
 };
 
 typedef struct static_assert static_assert;

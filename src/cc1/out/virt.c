@@ -109,7 +109,7 @@ static ucc_wur const out_val *v_spill_reg(
 	return v_reg;
 }
 
-static int v_unused_callee_save_reg(
+int v_unused_callee_save_reg(
 		out_ctx *octx, int is_fp, struct vreg *const cs_reg)
 {
 	int got_reg;
