@@ -66,15 +66,27 @@ const out_val *out_aalloc(
 const out_val *out_aalloc_maybereg(
 		out_ctx *octx, unsigned sz, unsigned align, type *in_ty)
 {
+	// TODO
+	void *impl_val_str();
+	int printf(const char *, ...);
+
 	struct vreg cs_reg;
+	const out_val *reg_val;
+
 
 	int got_cs = v_unused_callee_save_reg(
 			octx, type_is_floating(in_ty), &cs_reg);
 
+	printf("got_cs = %d\n", got_cs);
+
 	if(!got_cs)
 		return out_aalloc(octx, sz, align, in_ty);
 
-	return v_new_reg(octx, NULL, in_ty, &cs_reg);
+	reg_val = v_new_reg(octx, NULL, in_ty, &cs_reg);
+
+	printf("FOUND CS REG %s, using\n", impl_val_str(reg_val));
+
+	return reg_val;
 }
 
 const out_val *out_aalloct(out_ctx *octx, type *ty)

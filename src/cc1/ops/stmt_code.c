@@ -233,6 +233,9 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 			}
 
 			/* TODO: give the most read/written variables register storage */
+			fprintf(stderr, "%s in_reg=%d (naddrs=%d)\n",
+					d->spel, in_reg, s->naddrs);
+
 			gen_set_sym_outval(octx, s,
 					(in_reg ? out_aalloc_maybereg : out_aalloc)(
 						octx, siz, align, s->decl->ref));
