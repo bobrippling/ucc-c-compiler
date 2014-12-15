@@ -8,11 +8,13 @@ typedef struct numeric numeric;
 
 typedef unsigned long long integral_t;
 typedef   signed long long sintegral_t;
-typedef        long double floating_t;
+typedef        double floating_t;
+#define ucc_strtold strtof
+/*#define UCC_USE_LDOUBLE*/
 #define NUMERIC_FMT_D "lld"
 #define NUMERIC_FMT_U "llu"
 #define NUMERIC_FMT_X "llx"
-#define NUMERIC_FMT_LD "Lf"
+#define NUMERIC_FMT_LD "f"
 #define NUMERIC_T_MAX ULLONG_MAX
 #define INTEGRAL_BITS (sizeof(integral_t) * CHAR_BIT)
 struct numeric

@@ -723,7 +723,7 @@ void nexttoken()
 		if(c == '.' || peeknextchar() == '.'){
 			/* floating point */
 
-			currentval.val.f = strtold(num_start, &bufferpos);
+			currentval.val.f = ucc_strtold(num_start, &bufferpos);
 
 			if(toupper(peeknextchar()) == 'F'){
 				currentval.suffix = VAL_FLOAT;

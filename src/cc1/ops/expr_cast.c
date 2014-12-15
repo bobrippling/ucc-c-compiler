@@ -63,7 +63,9 @@ static void fold_cast_num(expr *const e, numeric *const num)
 
 			TRUNC(float, float, VAL_FLOAT);
 			TRUNC(double, double, VAL_DOUBLE);
+#ifdef UCC_USE_LDOUBLE
 			TRUNC(ldouble, long double, VAL_LDOUBLE);
+#endif
 #undef TRUNC
 		}
 		return;
