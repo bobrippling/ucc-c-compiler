@@ -717,7 +717,7 @@ static void warning_on(const char *warn, int to)
 	SPECIAL("all", W_ALL)
 	SPECIAL("extra", W_EXTRA)
 	SPECIAL("everything", W_EVERYTHING)
-	SPECIAL("gnu", W_GNU);
+	SPECIAL("gnu", W_GNU)
 
 	for(p = warns; p->arg; p++){
 		if(!strcmp(warn, p->arg)){

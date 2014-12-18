@@ -78,7 +78,7 @@ int integral_str(char *buf, size_t nbuf, integral_t v, type *ty)
 			is_signed
 				? "%" NUMERIC_FMT_D
 				: "%" NUMERIC_FMT_U,
-			v, is_signed);
+			v);
 }
 
 integral_t integral_truncate_bits(

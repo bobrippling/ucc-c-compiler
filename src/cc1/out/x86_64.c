@@ -602,13 +602,13 @@ void impl_func_prologue_save_call_regs(
 		 * (e.g. long double, struct/union args, etc)
 		 */
 		if(n_call_f){
-			unsigned i_arg, i_stk, i_arg_stk, i_i, i_f;
+			unsigned i_arg, i_arg_stk, i_i, i_f;
 			const out_val *stack_loc;
 			type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 
 			stack_loc = out_aalloc(octx, (n_call_f + n_call_i) * ws, ws, arithty);
 
-			for(i_arg = i_i = i_f = i_stk = i_arg_stk = 0;
+			for(i_arg = i_i = i_f = i_arg_stk = 0;
 					i_arg < nargs;
 					i_arg++)
 			{
