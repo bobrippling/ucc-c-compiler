@@ -152,7 +152,8 @@ void fold_expr_assign(expr *e, symtable *stab)
 		 *
 		 * CHECK THIS
 		 */
-		e->f_gen = lea_assign_lhs;
+		if(cc1_backend == BACKEND_ASM)
+			e->f_gen = lea_assign_lhs;
 		e->f_islval = expr_is_lval_struct;
 	}
 }
