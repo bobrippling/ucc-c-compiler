@@ -868,6 +868,24 @@ void fold_decl(decl *d, symtable *stab)
 		}
 	}
 
+	/* name static decls - do this before handling init,
+	 * in case the decl is used in its own init */
+	if(first_fold
+	&& stab->parent
+	&& (d->store & STORE_MASK_STORE) == store_static
+	&& d->spel
+	/* ignore static arguments - error handled elsewhere */
+	&& (!d->sym || d->sym->type != sym_arg))
+	{
+		decl *in_fn = symtab_func(stab);
+		UCC_ASSERT(in_fn, "not in function for \"%s\"", d->spel);
+
+		assert(!d->spel_asm);
+		d->spel_asm = out_label_static_local(
+				in_fn->spel,
+				d->spel);
+	}
+
 	if(type_is(d->ref, type_func)){
 		if(first_fold)
 			fold_decl_func(d, stab);
@@ -879,22 +897,6 @@ void fold_decl(decl *d, symtable *stab)
 			d->fold_state = DECL_FOLD_INIT;
 			fold_decl_var(d, stab);
 		}
-	}
-
-	/* name static decls */
-	if(first_fold
-	&& stab->parent
-	&& (d->store & STORE_MASK_STORE) == store_static
-	&& d->spel
-	/* ignore static arguments - error handled elsewhere */
-	&& (!d->sym || d->sym->type != sym_arg))
-	{
-		decl *in_fn = symtab_func(stab);
-		UCC_ASSERT(in_fn, "not in function for \"%s\"", d->spel);
-
-		d->spel_asm = out_label_static_local(
-				in_fn->spel,
-				d->spel);
 	}
 #undef first_fold
 }
