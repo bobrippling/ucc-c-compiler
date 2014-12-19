@@ -129,6 +129,10 @@ ptr:
 				break;
 
 #undef ATTR_CHECK
+
+			/* check int doesn't have anything greater */
+			if(!type_is_primitive_anysign(t_in, type_int))
+				strcpy(expected, "'int'");
 			break;
 
 		case 'e':
