@@ -125,12 +125,13 @@ void gen_stmt_asm(const stmt *s, out_ctx *octx)
 	asm_param **params;
 	struct out_asm_error error = { 0 };
 	struct constrained_val_array outputs = { 0 }, inputs = { 0 };
+	size_t i = 0;
 
 	out_comment(octx, "### begin asm(%s) from %s",
 			s->bits.asm_args->extended ? ":::" : "",
 			where_str(&s->where));
 
-	for(params = s->bits.asm_args->params; params && *params; params++){
+	for(params = s->bits.asm_args->params; params && *params; params++, i++){
 		asm_param *param = *params;
 		struct constrained_val *new;
 
@@ -144,7 +145,7 @@ void gen_stmt_asm(const stmt *s, out_ctx *octx)
 		new->val = NULL;
 		error.operand = new;
 		new->calculated_constraint = out_asm_calculate_constraint(
-				param->constraints, param->is_output, &error);
+				param->constraints, param->is_output, &error, i);
 
 		if(show_asm_error(s, &error, &outputs, &inputs)){
 			/* error - out_inline_asm...() hasn't released.

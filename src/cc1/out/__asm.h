@@ -27,9 +27,10 @@ struct out_asm_error
 
 /* constraint init */
 unsigned out_asm_calculate_constraint(
-		const char *constraint,
+		const char *const constraint,
 		const int is_output,
-		struct out_asm_error *error);
+		struct out_asm_error *error,
+		const size_t this_entry_i);
 
 struct inline_asm_state
 {

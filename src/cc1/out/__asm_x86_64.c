@@ -212,7 +212,8 @@ enum modifier_mask
 unsigned out_asm_calculate_constraint(
 		const char *const constraint,
 		const int is_output,
-		struct out_asm_error *error)
+		struct out_asm_error *error,
+		const size_t this_entry_i)
 {
 	enum
 	{
@@ -294,6 +295,8 @@ done_mods:;
 			case '3': case '4': case '5':
 			case '6': case '7': case '8':
 			case '9':
+			{
+				const size_t idx = *iter - '0';
 				found = 1;
 				if(finalmask & MATCHING_CONSTRAINT_MASK_SHIFTED){
 					error->str = ustrprintf(
@@ -301,8 +304,17 @@ done_mods:;
 							*iter);
 					return 0;
 				}
-				finalmask |= (*iter - '0' + 1) << MATCHING_CONSTRAINT_SHIFT;
+
+				if(idx >= this_entry_i){
+					error->str = ustrprintf(
+							"matching constraint (%ld) out of bounds (must be < %ld)",
+							(long)idx, (long)this_entry_i);
+					return 0;
+				}
+
+				finalmask |= (idx + 1) << MATCHING_CONSTRAINT_SHIFT;
 				break;
+			}
 		}
 		if(!found && isspace(*iter))
 			found = 1;
@@ -588,12 +600,7 @@ static void assign_constraint(
 				return;
 			}
 
-			if(match >= this_entry_i){
-				setupstate->error->str = ustrprintf(
-						"matching constraint (%u) out of bounds (must be < %ld)",
-						match, (long)this_entry_i);
-				return;
-			}
+			assert(match < this_entry_i);
 
 			if(!entries[match].is_output){
 				setupstate->error->str = ustrprintf(
