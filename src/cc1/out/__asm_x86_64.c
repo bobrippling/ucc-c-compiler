@@ -1210,5 +1210,5 @@ void out_inline_asm_ext_end(struct inline_asm_state *st)
 
 void out_inline_asm(out_ctx *octx, const char *insn)
 {
-	out_asm(octx, "%s\n", insn);
+	out_asm(octx, "%s", insn);
 }
