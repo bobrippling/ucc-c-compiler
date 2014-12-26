@@ -641,7 +641,7 @@ static void cc1_read_quoted_char(const int is_wide)
 {
 	int multichar;
 	char *const start = bufferpos;
-	long ch = read_quoted_char(bufferpos, &bufferpos, &multichar);
+	long ch = read_quoted_char(bufferpos, &bufferpos, &multichar, /*256*/!is_wide);
 
 	if(multichar){
 		if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))

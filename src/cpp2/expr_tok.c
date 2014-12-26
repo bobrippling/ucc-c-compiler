@@ -67,7 +67,7 @@ end_ty:
 		/* char literal */
 		int mchar;
 
-		tok_cur_num = read_quoted_char(++tok_pos, &tok_pos, &mchar);
+		tok_cur_num = read_quoted_char(++tok_pos, &tok_pos, &mchar, /*256*/1);
 
 		if(!tok_pos)
 			CPP_DIE("missing terminating single quote (\"%s\")", tok_pos);

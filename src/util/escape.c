@@ -181,7 +181,7 @@ long read_char_single(char *start, char **end, unsigned off)
 
 long read_quoted_char(
 		char *start, char **end,
-		int *multichar)
+		int *multichar, int clip_256)
 {
 	unsigned long total = 0;
 	unsigned i;
@@ -198,7 +198,11 @@ long read_quoted_char(
 			die_at(NULL, "no terminating quote to character");
 
 		ch = read_char_single(start, &start, i);
-		total = (total * 256) + (0xff & ch);
+
+		if(clip_256)
+			total = (total * 256) + (0xff & ch);
+		else
+			total += ch;
 
 		if(*start == '\'')
 			break;
