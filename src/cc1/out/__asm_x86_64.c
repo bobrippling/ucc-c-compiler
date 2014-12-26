@@ -16,6 +16,7 @@
 #include "../type_nav.h"
 #include "../num.h"
 #include "../str.h" /* str_add_escape() */
+#include "../cc1.h" /* fopt_mode */
 
 #include "out.h" /* our (umbrella) header */
 
@@ -478,6 +479,9 @@ static void callback_gen_val(
 {
 	if(cval->val)
 		return;
+
+	if(fopt_mode & FOPT_VERBOSE_ASM)
+		out_comment(setupstate->octx, "callback_gen_val()");
 
 	setupstate->gen_callback(
 			setupstate->octx, cval, setupstate->gen_callback_ctx);
@@ -1217,6 +1221,27 @@ static void init_used_regs(out_ctx *octx, struct regarray *regs)
 	}
 }
 
+static void debug_used_regs(out_ctx *octx, struct regarray *regs)
+{
+	int i;
+	for(i = 0; i < regs->n; i++){
+		if(regs->arr[i]){
+			struct vreg reg;
+			const char *desc = "out";
+
+			if(regs->arr[i] & (REG_USED_IN | REG_USED_OUT))
+				desc = "in | out";
+			else if(regs->arr[i] & REG_USED_IN)
+				desc = "in";
+
+			reg.idx = i;
+			reg.is_float = 0;
+
+			out_comment(octx, "regs[%s] = %s", impl_reg_str(&reg), desc);
+		}
+	}
+}
+
 void out_inline_asm_ext_begin(
 		out_ctx *octx,
 		struct inline_asm_parameters *asm_params,
@@ -1259,6 +1284,9 @@ void out_inline_asm_ext_begin(
 			asm_params->outputs, asm_params->inputs,
 			st->constraints.outputs, st->constraints.inputs);
 	if(error->str) goto error;
+
+	if(fopt_mode & FOPT_VERBOSE_ASM)
+		debug_used_regs(octx, &regs);
 
 	constrain_values(
 			&setupstate,

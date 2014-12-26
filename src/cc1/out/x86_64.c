@@ -423,6 +423,11 @@ static const char *x86_reg_str(const struct vreg *reg, type *r)
 	}
 }
 
+const char *impl_reg_str(const struct vreg *reg)
+{
+	return x86_reg_str(reg, NULL);
+}
+
 const char *impl_val_str_r(
 		char buf[VAL_STR_SZ], const out_val *vs, const int deref)
 {

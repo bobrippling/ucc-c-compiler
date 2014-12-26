@@ -100,6 +100,8 @@ const char *impl_val_str(const out_val *vs, int deref);
 const char *impl_val_str_r(
 		char buf[], const out_val *vs, const int deref);
 
+const char *impl_reg_str(const struct vreg *);
+
 /* can't do this for gen_deps.sh */
 #include "backend.h"
 
