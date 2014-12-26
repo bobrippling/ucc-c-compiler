@@ -1000,12 +1000,16 @@ static const out_val *initialise_output_temporary(
 				*/
 			memcpy_safe(&temporary_reg, &out_temporary->bits.regoff.reg);
 
+			out_comment(octx, "temp_reg = %s", impl_reg_str(&temporary_reg));
+
 			out_val_retain(octx, with_val);
 			out_val_release(octx, out_temporary);
 
 			out_temporary = v_to_reg_given(octx,
 					out_deref(octx, with_val),
 					&temporary_reg);
+
+			out_comment(octx, "done init temp reg");
 		}
 	}
 
@@ -1071,6 +1075,8 @@ static void constrain_values(
 	for(i = 0; i < total; i++){
 		struct chosen_constraint *constraint;
 
+		out_comment(setupstate->octx, "CONSTRAINT %d", (int)i);
+
 		if(i >= outputs->n){
 			size_t input_i = i - outputs->n;
 
@@ -1101,6 +1107,13 @@ static void constrain_values(
 					setupstate, constraint,
 					&outputs->arr[i], outputs->arr[i].ty);
 			/* may return null - in which case we reuse lvalue memory */
+
+			if(out_temporary){
+				out_comment(setupstate->octx,
+						"out_temp %d %s",
+						(int)i,
+						impl_val_str(out_temporary,0));
+			}
 
 			if(out_temporary && init_temporary){
 				callback_gen_val(setupstate, &outputs->arr[i]);
