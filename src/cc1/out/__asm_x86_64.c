@@ -83,6 +83,7 @@ struct chosen_constraint
 		{
 			struct constrained_val *cval;
 			struct chosen_constraint *constraint;
+			size_t idx;
 		} match;
 	} bits;
 };
@@ -603,6 +604,7 @@ static void assign_constraint(
 			cc->type = C_MATCH;
 			cc->bits.match.cval = entries[match].cval;
 			cc->bits.match.constraint = entries[match].cchosen;
+			cc->bits.match.idx = match;
 			break; /* constraint met */
 
 		}else{
@@ -788,7 +790,8 @@ static void calculate_constraints(
 static void constrain_input_matching(
 		struct asm_setup_state *setupstate,
 		struct chosen_constraint *constraint,
-		struct constrained_val *cval)
+		struct constrained_val *cval,
+		const out_val *output_temporaries[])
 {
 	out_ctx *octx = setupstate->octx;
 
@@ -824,22 +827,42 @@ static void constrain_input_matching(
 		}
 
 		case C_REG:
-			cval->val = v_to_reg_given(
-					octx, cval->val,
-					&constraint->bits.match.constraint->bits.reg);
+		case C_TO_REG_OR_MEM:
+		{
+			/* try output_temporaries, then the cval itself */
+			const size_t match_idx = constraint->bits.match.idx;
+			const out_val *out_temp;
+
+			if((out_temp = output_temporaries[match_idx])){
+				switch(out_temp->type){
+					case V_CONST_I:
+					case V_LBL:
+					case V_CONST_F:
+					case V_FLAG:
+						ICE("bad register type");
+
+					case V_REG:
+					case V_REG_SPILT:
+						cval->val = v_to_reg_given(
+								octx, cval->val, &out_temp->bits.regoff.reg);
+						break;
+				}
+			}else{
+				ICE("no output temporary for c_reg/c_to_reg_or_mem");
+			}
 			break;
+		}
 
 		case C_CONST:
-		case C_TO_REG_OR_MEM:
-			ICE("TODO");
-			break;
+			ICE("matching C_CONST output - can't output to const");
 	}
 }
 
 static void constrain_input_val(
 		struct asm_setup_state *setupstate,
 		struct chosen_constraint *constraint,
-		struct constrained_val *cval)
+		struct constrained_val *cval,
+		const out_val *output_temporaries[])
 {
 	enum vto to_flags = TO_MEM;
 
@@ -848,7 +871,9 @@ static void constrain_input_val(
 	/* fill it with the right values */
 	switch(constraint->type){
 		case C_MATCH:
-			constrain_input_matching(setupstate, constraint, cval);
+			constrain_input_matching(
+					setupstate, constraint,
+					cval, output_temporaries);
 			break;
 
 		case C_TO_REG_OR_MEM:
@@ -1055,7 +1080,10 @@ static void constrain_values(
 			 * for the asm. if we can't, hard error */
 			constraint = &cinputs[input_i];
 
-			constrain_input_val(setupstate, constraint, &inputs->arr[input_i]);
+			constrain_input_val(
+					setupstate, constraint,
+					&inputs->arr[input_i],
+					output_temporaries);
 
 			if(setupstate->error->str){
 				setupstate->error->operand = &inputs->arr[input_i];
