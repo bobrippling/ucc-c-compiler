@@ -758,7 +758,8 @@ static void assign_constraints(
 	}
 }
 
-static void calculate_constraints(
+static struct constrained_pri_val *
+calculate_constraints(
 		struct asm_setup_state *setupstate,
 		struct constrained_val_array *outputs,
 		struct constrained_val_array *inputs,
@@ -796,7 +797,7 @@ static void calculate_constraints(
 	/* assign values */
 	assign_constraints(setupstate, entries, nentries);
 
-	free(entries);
+	return entries;
 }
 
 static void constrain_input_matching(
@@ -1078,6 +1079,7 @@ void out_asm_release_valarray(
 
 static void constrain_values(
 		struct asm_setup_state *setupstate,
+		struct constrained_pri_val *sorted,
 		struct constrained_val_array *outputs,
 		struct constrained_val_array *inputs,
 		struct chosen_constraint *coutputs,
@@ -1085,62 +1087,61 @@ static void constrain_values(
 		const out_val *output_temporaries[])
 {
 	size_t const total = outputs->n + inputs->n;
-	size_t i;
+	size_t forward_i;
 
-	for(i = 0; i < total; i++){
-		struct chosen_constraint *constraint;
+	for(forward_i = 0; forward_i < total; forward_i++){
+		size_t i_sort = total - forward_i - 1;
+		struct chosen_constraint *constraint = sorted[i_sort].cchosen;
 
-		out_comment(setupstate->octx, "CONSTRAINT %d", (int)i);
 
-		if(i >= outputs->n){
-			size_t input_i = i - outputs->n;
-
-			assert(input_i < inputs->n);
-
-			/* get this input into the memory/register/constant
-			 * for the asm. if we can't, hard error */
-			constraint = &cinputs[input_i];
-
-			constrain_input_val(
-					setupstate, constraint,
-					&inputs->arr[input_i],
-					output_temporaries);
-
-			if(setupstate->error->str){
-				setupstate->error->operand = &inputs->arr[input_i];
-				return;
-			}
-
-		}else{
+		if(sorted[i_sort].is_output){
 			const out_val *out_temporary;
 			const int init_temporary
-				= (outputs->arr[i].calculated_constraint & MODIFIER_MASK_rw);
-
-			constraint = &coutputs[i];
+				= (sorted[i_sort].cval->calculated_constraint & MODIFIER_MASK_rw);
 
 			out_temporary = temporary_for_output(
 					setupstate, constraint,
-					&outputs->arr[i], outputs->arr[i].ty);
+					sorted[i_sort].cval, sorted[i_sort].cval->ty);
 			/* may return null - in which case we reuse lvalue memory */
 
 			if(out_temporary){
 				out_comment(setupstate->octx,
-						"out_temp %d %s",
-						(int)i,
+						"using out-temp %s",
 						impl_val_str(out_temporary,0));
 			}
 
 			if(out_temporary && init_temporary){
-				callback_gen_val(setupstate, &outputs->arr[i]);
+				callback_gen_val(setupstate, sorted[i_sort].cval);
 
 				out_temporary = initialise_output_temporary(
 						setupstate->octx,
 						out_temporary,
 						constraint,
-						outputs->arr[i].val);
+						sorted[i_sort].cval->val);
 			}
 
-			output_temporaries[i] = out_temporary;
+			if(out_temporary){
+				size_t output;
+				for(output = 0; output < outputs->n; output++)
+					if(&outputs->arr[output] == sorted[i_sort].cval)
+						break;
+
+				assert(output < outputs->n && "couldn't find unsorted entry");
+				output_temporaries[output] = out_temporary;
+			}
+
+		}else{
+			/* get this input into the memory/register/constant
+			 * for the asm. if we can't, hard error */
+			constrain_input_val(
+					setupstate, constraint,
+					sorted[i_sort].cval,
+					output_temporaries);
+
+			if(setupstate->error->str){
+				setupstate->error->operand = sorted[i_sort].cval;
+				return;
+			}
 		}
 
 		if(constraint->type == C_REG
@@ -1320,6 +1321,7 @@ void out_inline_asm_ext_begin(
 	struct regarray regs;
 	char *insn = NULL;
 	struct asm_setup_state setupstate;
+	struct constrained_pri_val *sorted = NULL;
 
 	st->constraints.inputs = umalloc(asm_params->inputs->n * sizeof *st->constraints.inputs);
 	st->constraints.outputs = umalloc(asm_params->outputs->n * sizeof *st->constraints.outputs);
@@ -1343,7 +1345,7 @@ void out_inline_asm_ext_begin(
 	parse_clobbers(clobbers, &regs, error);
 	if(error->str) goto error;
 
-	calculate_constraints(
+	sorted = calculate_constraints(
 			&setupstate,
 			asm_params->outputs, asm_params->inputs,
 			st->constraints.outputs, st->constraints.inputs);
@@ -1354,6 +1356,7 @@ void out_inline_asm_ext_begin(
 
 	constrain_values(
 			&setupstate,
+			sorted,
 			asm_params->outputs,
 			asm_params->inputs,
 			st->constraints.outputs,
@@ -1401,6 +1404,8 @@ error:
 			}
 		}
 	}
+
+	free(sorted), sorted = NULL;
 
 	free(insn), insn = NULL;
 
