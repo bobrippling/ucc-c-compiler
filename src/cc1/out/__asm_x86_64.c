@@ -1003,8 +1003,8 @@ static const out_val *initialise_output_temporary(
 			assert(out_temporary->type == V_REG);
 
 			/* need to get value in 'with_val'
-				* into register 'out_temporary->bits.regoff.reg'
-				*/
+			 * into register 'out_temporary->bits.regoff.reg'
+			 */
 			memcpy_safe(&temporary_reg, &out_temporary->bits.regoff.reg);
 
 			out_comment(octx, "temp_reg = %s", impl_reg_str(&temporary_reg));
