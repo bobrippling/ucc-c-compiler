@@ -538,6 +538,12 @@ void asm_declare_decl_init(decl *d)
 		asm_declare_init(sec, d->bits.var.init.dinit, d->ref);
 		asm_out_section(sec, "\n");
 
+	}else if(fopt_mode & FOPT_COMMON){
+
+		/* section doesn't matter */
+		asm_out_section(SECTION_BSS, ".comm %s,%u,%u\n",
+				decl_asm_spel(d), decl_size(d), decl_align(d));
+
 	}else{
 		/* always resB, since we use decl_size() */
 		asm_nam_begin(SECTION_BSS, d);

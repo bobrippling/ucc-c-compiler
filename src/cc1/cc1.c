@@ -306,6 +306,7 @@ static struct
 	{ 'f',  "inline-functions", FOPT_INLINE_FUNCTIONS },
 	{ 'f',  "dump-bblocks", FOPT_DUMP_BASIC_BLOCKS },
 	{ 'f',  "dump-symtab", FOPT_DUMP_SYMTAB },
+	{ 'f',  "common", FOPT_COMMON },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 	{ 'm',  "32", MOPT_32 },
@@ -340,7 +341,8 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SYMBOL_ARITH
                     | FOPT_SIGNED_CHAR
                     | FOPT_CAST_W_BUILTIN_TYPES
-                    | FOPT_PRINT_TYPEDEFS;
+                    | FOPT_PRINT_TYPEDEFS
+                    | FOPT_COMMON;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
