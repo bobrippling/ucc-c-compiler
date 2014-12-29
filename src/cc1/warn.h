@@ -115,7 +115,8 @@ struct cc1_warning
 	unsigned char return_type;
 	unsigned char return_undef;
 	unsigned char return_void;
-	unsigned char shadow_global;
+	unsigned char shadow_global_user; /* exclude sysheaders */
+	unsigned char shadow_global_all; /* include sysheaders */
 	unsigned char shadow_local;
 	unsigned char sign_compare;
 	unsigned char signed_unsigned;

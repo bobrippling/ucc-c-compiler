@@ -90,8 +90,13 @@ static struct warn_str
 	{ "tenative-init", &cc1_warning.tenative_init },
 
 	{ "shadow-local", &cc1_warning.shadow_local },
-	{ "shadow-global", &cc1_warning.shadow_global },
-	{ "shadow", &cc1_warning.shadow_global, &cc1_warning.shadow_local },
+	{ "shadow-global", &cc1_warning.shadow_global_user },
+	{ "shadow-global-all", &cc1_warning.shadow_global_all },
+	{
+		"shadow",
+		&cc1_warning.shadow_global_user,
+		&cc1_warning.shadow_local
+	},
 
 	{ "cast-qual", &cc1_warning.cast_qual },
 
@@ -647,7 +652,8 @@ static void warning_all(void)
 	cc1_warning.sign_compare =
 	cc1_warning.pad =
 	cc1_warning.tenative_init =
-	cc1_warning.shadow_global =
+	cc1_warning.shadow_global_user =
+	cc1_warning.shadow_global_all =
 	cc1_warning.implicit_old_func =
 	cc1_warning.bitfield_boundary =
 	cc1_warning.vla =
@@ -690,7 +696,7 @@ static void warning_special(enum warning_special type)
 		case W_EXTRA:
 			warning_all();
 			cc1_warning.implicit_int =
-			cc1_warning.shadow_global =
+			cc1_warning.shadow_global_user =
 			cc1_warning.cast_qual =
 			cc1_warning.init_missing_braces =
 			cc1_warning.init_missing_struct =
