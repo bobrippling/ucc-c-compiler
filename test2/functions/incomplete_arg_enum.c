@@ -1,9 +1,8 @@
 // RUN: %check -e %s
 
 f(a, b, c)
-	enum A a; // CHECK: error: enum A is incomplete
+	enum A a; // CHECK: error: function argument "a" has incomplete type 'enum A'
 {
-	return a + b + c;
 }
 
 main()

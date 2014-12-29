@@ -229,11 +229,20 @@ expr *fold_expr_lval2rval(expr *e, symtable *stab)
 	}
 
 	if(should_lval2rval || type_is(e->tree_type, type_func)){
+		struct_union_enum_st *enum_ty;
+
 		e = expr_set_where(
 				expr_new_cast_lval_decay(e),
 				&e->where);
 
 		fold_expr_cast_descend(e, stab, 0);
+
+		if((enum_ty = type_is_enum(e->tree_type))){
+			/* enums always become ints */
+			fold_insert_casts(
+					type_nav_int_enum(cc1_type_nav, enum_ty),
+					&e, stab);
+		}
 	}
 
 	return e;
