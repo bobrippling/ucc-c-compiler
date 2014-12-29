@@ -1384,6 +1384,23 @@ static const out_val *min_retained(
 	}
 }
 
+static void maybe_promote(out_ctx *octx, const out_val **pl, const out_val **pr)
+{
+	const out_val *l = *pl;
+	const out_val *r = *pr;
+
+	unsigned sz_l = type_size(l->t, NULL);
+	unsigned sz_r = type_size(r->t, NULL);
+
+	if(sz_l == sz_r)
+		return;
+
+	if(sz_l < sz_r)
+		*pl = out_cast(octx, l, r->t, /*normalise*/0);
+	else
+		*pr = out_cast(octx, r, l->t, /*normalise*/0);
+}
+
 const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const out_val *r)
 {
 	const char *opc;
@@ -1625,6 +1642,9 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 			x86_reg_cp(octx, &new_reg, &old_reg, l->t);
 		}
+
+		/* ensure types match - may have upgraded from V_FLAG / _Bool */
+		maybe_promote(octx, &l, &r);
 
 		switch(op){
 			case op_plus:
