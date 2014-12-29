@@ -39,7 +39,7 @@ OBJ = \
 SRC = ${OBJ:.o=.c}
 
 cc1: ${OBJ}
-	${CC} ${CFLAGS} ${LDFLAGS} -o $@ ${OBJ}
+	${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 .c.o:
 	${CC} ${CFLAGS} -c -o $@ $<
