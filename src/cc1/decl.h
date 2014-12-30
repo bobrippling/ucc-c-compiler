@@ -24,6 +24,8 @@ struct decl_init_expr
 {
 	struct decl_init *dinit;
 	struct expr *expr;
+
+	int normalised;
 };
 
 typedef struct decl decl;
@@ -58,8 +60,6 @@ struct decl
 				} bits;
 				struct decl_align *next;
 			} *align;
-
-			int init_normalised;
 
 			/* initialiser - converted to an assignment for non-globals */
 			struct decl_init_expr init;

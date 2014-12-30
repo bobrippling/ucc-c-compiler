@@ -1155,8 +1155,8 @@ static decl_init *decl_init_brace_up_start(
 void decl_init_brace_up_fold(decl *d, symtable *stab)
 {
 	assert(!type_is(d->ref, type_func));
-	if(!d->bits.var.init_normalised){
-		d->bits.var.init_normalised = 1;
+	if(!d->bits.var.init.normalised){
+		d->bits.var.init.normalised = 1;
 
 		if(type_is_vla(d->ref, VLA_ANY_DIMENSION)){
 			warn_at_print_error(
