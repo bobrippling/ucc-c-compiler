@@ -741,8 +741,13 @@ void nexttoken()
 			/* handle integral XeY */
 			if(tolower(peeknextchar()) == 'e'){
 				numeric mantissa = currentval;
+				int powmul;
 
 				nextchar();
+
+				powmul = (peeknextchar() == '-' ? -1 : 1);
+				if(powmul == -1)
+					nextchar();
 
 				if(!isdigit(peeknextchar())){
 					curtok = token_unknown;
@@ -750,7 +755,8 @@ void nexttoken()
 				}
 				read_number(DEC);
 
-				mantissa.val.i *= pow(10, currentval.val.i);
+				mantissa.val.i *= pow(10, powmul * (sintegral_t)currentval.val.i);
+
 				currentval = mantissa;
 			}
 
