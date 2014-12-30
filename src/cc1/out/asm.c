@@ -539,9 +539,14 @@ void asm_declare_decl_init(decl *d)
 		asm_out_section(sec, "\n");
 
 	}else if(d->bits.var.init.compiler_generated && fopt_mode & FOPT_COMMON){
-
 		/* section doesn't matter */
-		asm_out_section(SECTION_BSS, ".comm %s,%u,%u\n",
+		sec = SECTION_BSS;
+
+		if(decl_linkage(d) == linkage_internal){
+			asm_out_section(sec, ".local %s\n", decl_asm_spel(d));
+		}
+
+		asm_out_section(sec, ".comm %s,%u,%u\n",
 				decl_asm_spel(d), decl_size(d), decl_align(d));
 
 	}else{
