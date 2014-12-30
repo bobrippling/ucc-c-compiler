@@ -538,7 +538,7 @@ void asm_declare_decl_init(decl *d)
 		asm_declare_init(sec, d->bits.var.init.dinit, d->ref);
 		asm_out_section(sec, "\n");
 
-	}else if(fopt_mode & FOPT_COMMON){
+	}else if(d->bits.var.init.compiler_generated && fopt_mode & FOPT_COMMON){
 
 		/* section doesn't matter */
 		asm_out_section(SECTION_BSS, ".comm %s,%u,%u\n",

@@ -1437,5 +1437,6 @@ void decl_default_init(decl *d, symtable *stab)
 	}
 
 	d->bits.var.init.dinit = decl_init_new_w(decl_init_brace, &d->where);
+	d->bits.var.init.compiler_generated = 1;
 	decl_init_brace_up_fold(d, stab);
 }

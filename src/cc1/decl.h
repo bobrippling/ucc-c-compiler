@@ -26,6 +26,7 @@ struct decl_init_expr
 	struct expr *expr;
 
 	int normalised;
+	int compiler_generated;
 };
 
 typedef struct decl decl;
