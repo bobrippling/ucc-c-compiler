@@ -64,7 +64,7 @@ static struct warn_str
 	{ "extern-assume", &cc1_warning.extern_assume },
 
 	{ "implicit-int", &cc1_warning.implicit_int },
-	{ "implicit-func", &cc1_warning.implicit_func },
+	{ "implicit-function-declaration", &cc1_warning.implicit_func },
 	{ "implicit", &cc1_warning.implicit_func, &cc1_warning.implicit_int },
 
 	{ "switch-enum", &cc1_warning.switch_enum },
