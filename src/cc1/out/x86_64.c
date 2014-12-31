@@ -1352,7 +1352,7 @@ static const out_val *x86_shift(
 
 	/* force %cl: */
 	nchar = type_nav_btype(cc1_type_nav, type_nchar);
-	if(type_cmp(r->t, nchar, 0))
+	if(type_cmp(r->t, nchar, 0) & ~TYPE_EQUAL_ANY)
 		r = v_dup_or_reuse(octx, r, nchar); /* change type */
 
 	l = v_to(octx, l, TO_MEM | TO_REG);
