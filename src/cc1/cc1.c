@@ -35,11 +35,15 @@
 #define countof(ar) sizeof(ar)/sizeof((ar)[0])
 
 struct cc1_warning cc1_warning;
-enum
+enum warning_fatality
 {
 	W_OFF = 0,
 	W_WARN = 1,
-	W_ERROR = 2
+	W_ERROR = 2, /* set by -Werror */
+
+	W_NO_ERROR = 3
+	/* set by -Wno-error=xyz
+	 * not reset to W_WARN since -Werror/-Wno-error will alter this */
 };
 
 enum warning_special
@@ -443,13 +447,14 @@ void cc1_warn_at_w(
 	struct where backup;
 	enum warn_type warn_type = VWARN_WARN;
 
-	switch(*pwarn){
+	switch((enum warning_fatality)*pwarn){
 		case W_OFF:
 			return;
 		case W_ERROR:
 			fold_had_error = parse_had_error = 1;
 			warn_type = VWARN_ERR;
 			break;
+		case W_NO_ERROR:
 		case W_WARN:
 			break;
 	}
@@ -620,12 +625,12 @@ static void gen_backend(symtable_global *globs, const char *fname)
 	io_fin(gf == NULL, fname);
 }
 
-static void warnings_set(int to)
+static void warnings_set(enum warning_fatality to)
 {
 	memset(&cc1_warning, to, sizeof cc1_warning);
 }
 
-static void warning_gnu(int set)
+static void warning_gnu(enum warning_fatality set)
 {
 	cc1_warning.gnu_addr_lbl =
 	cc1_warning.gnu_expr_stmt =
@@ -638,7 +643,7 @@ static void warning_gnu(int set)
 		set;
 }
 
-static void warning_pedantic(int set)
+static void warning_pedantic(enum warning_fatality set)
 {
 	/* warn about extensions */
 	warning_gnu(set);
@@ -732,7 +737,9 @@ static void warning_unknown(const char *warg)
 	fprintf(stderr, "Unknown warning option \"%s\"\n", warg);
 }
 
-static void warning_on(const char *warn, int to)
+static void warning_on(
+		const char *warn, enum warning_fatality to,
+		int *const werror)
 {
 	struct warn_str *p;
 
@@ -746,6 +753,31 @@ static void warning_on(const char *warn, int to)
 	SPECIAL("extra", W_EXTRA)
 	SPECIAL("everything", W_EVERYTHING)
 	SPECIAL("gnu", W_GNU)
+
+	if(!strncmp(warn, "error", 5)){
+		const char *werr = warn + 5;
+
+		switch(*werr){
+			case '\0':
+				/* set later once we know all the desired warnings */
+				*werror = (to != W_OFF);
+				break;
+
+			case '=':
+				if(to == W_OFF){
+					/* force to non-error */
+					warning_on(werr + 1, W_NO_ERROR, werror);
+				}else{
+					warning_on(werr + 1, W_ERROR, werror);
+				}
+				break;
+
+			default:
+				warning_unknown(warn);
+		}
+		return;
+	}
+
 
 	for(p = warns; p->arg; p++){
 		if(!strcmp(warn, p->arg)){
@@ -895,22 +927,6 @@ int main(int argc, char **argv)
 		}else if(!strcmp(argv[i], "-w")){
 			warnings_set(W_OFF);
 
-		}else if(!strncmp(argv[i], "-Werror", 7)){
-			const char *werr = argv[i] + 7;
-			switch(*werr){
-				case '\0':
-					/* set later once we know all the desired warnings */
-					werror = 1;
-					break;
-
-				case '=':
-					warning_on(werr + 1, W_ERROR);
-					break;
-
-				default:
-					warning_unknown(argv[i] + 1);
-			}
-
 		}else if(!strcmp(argv[i], "-pedantic")){
 			warning_pedantic(W_WARN);
 
@@ -969,7 +985,7 @@ int main(int argc, char **argv)
 					ucc_unreach(1);
 
 				case 'W':
-					warning_on(arg, rev ? W_OFF : W_WARN);
+					warning_on(arg, rev ? W_OFF : W_WARN, &werror);
 					continue;
 			}
 
