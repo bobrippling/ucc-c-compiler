@@ -35,6 +35,12 @@
 #define countof(ar) sizeof(ar)/sizeof((ar)[0])
 
 struct cc1_warning cc1_warning;
+enum
+{
+	W_OFF = 0,
+	W_WARN = 1,
+	W_ERROR = 2
+};
 
 enum warning_special
 {
@@ -435,9 +441,18 @@ void cc1_warn_at_w(
 {
 	va_list l;
 	struct where backup;
+	enum warn_type warn_type = VWARN_WARN;
 
-	if(!*pwarn)
-		return;
+	switch(*pwarn){
+		case W_OFF:
+			return;
+		case W_ERROR:
+			fold_had_error = parse_had_error = 1;
+			warn_type = VWARN_ERR;
+			break;
+		case W_WARN:
+			break;
+	}
 
 	if(!where)
 		where = where_cc1_current(&backup);
@@ -447,7 +462,7 @@ void cc1_warn_at_w(
 		return;
 
 	va_start(l, fmt);
-	vwarn(where, VWARN_WARN, fmt, l);
+	vwarn(where, warn_type, fmt, l);
 	va_end(l);
 
 	if(fopt_mode & FOPT_SHOW_WARNING_OPTION)
@@ -645,9 +660,9 @@ static void warning_pedantic(int set)
 
 static void warning_all(void)
 {
-	warnings_set(1);
+	warnings_set(W_WARN);
 
-	warning_gnu(0);
+	warning_gnu(W_OFF);
 
 	cc1_warning.implicit_int =
 	cc1_warning.loss_precision =
@@ -664,14 +679,14 @@ static void warning_all(void)
 	cc1_warning.unused_param =
 	cc1_warning.test_assign =
 	cc1_warning.signed_unsigned =
-		0;
+		W_OFF;
 }
 
 static void warning_init(void)
 {
 	/* default to -Wall */
 	warning_all();
-	warning_pedantic(0);
+	warning_pedantic(W_OFF);
 
 	/* but with warnings about std compatability on too */
 	cc1_warning.typedef_redef =
@@ -683,14 +698,14 @@ static void warning_init(void)
 	cc1_warning.long_long =
 	cc1_warning.vla =
 	cc1_warning.c89_compound_literal =
-			1;
+			W_WARN;
 }
 
 static void warning_special(enum warning_special type)
 {
 	switch(type){
 		case W_EVERYTHING:
-			warnings_set(1);
+			warnings_set(W_WARN);
 			break;
 		case W_ALL:
 			warning_all();
@@ -704,12 +719,17 @@ static void warning_special(enum warning_special type)
 			cc1_warning.init_missing_struct =
 			cc1_warning.unused_param =
 			cc1_warning.signed_unsigned =
-				1;
+				W_WARN;
 			break;
 		case W_GNU:
-			warning_gnu(1);
+			warning_gnu(W_WARN);
 			break;
 	}
+}
+
+static void warning_unknown(const char *warg)
+{
+	fprintf(stderr, "Unknown warning option \"%s\"\n", warg);
 }
 
 static void warning_on(const char *warn, int to)
@@ -740,7 +760,7 @@ static void warning_on(const char *warn, int to)
 		}
 	}
 
-	fprintf(stderr, "Unknown warning option \"-W%s\"\n", warn);
+	warning_unknown(warn);
 }
 
 static int optimise(const char *argv0, const char *arg)
@@ -799,6 +819,17 @@ unrecog:
 	return 1;
 }
 
+static void warnings_upgrade(void)
+{
+	struct warn_str *p;
+	unsigned i;
+
+	/* easier to iterate through this array, than cc1_warning's members */
+	for(p = warns; p->arg; p++)
+		for(i = 0; i < countof(p->offsets) && p->offsets[i]; i++)
+			if(*p->offsets[i] == W_WARN)
+				*p->offsets[i] = W_ERROR;
+}
 
 int main(int argc, char **argv)
 {
@@ -862,13 +893,26 @@ int main(int argc, char **argv)
 				fopt_mode &= ~FOPT_EXT_KEYWORDS;
 
 		}else if(!strcmp(argv[i], "-w")){
-			warnings_set(0);
+			warnings_set(W_OFF);
 
-		}else if(!strcmp(argv[i], "-Werror")){
-			werror = 1;
+		}else if(!strncmp(argv[i], "-Werror", 7)){
+			const char *werr = argv[i] + 7;
+			switch(*werr){
+				case '\0':
+					/* set later once we know all the desired warnings */
+					werror = 1;
+					break;
+
+				case '=':
+					warning_on(werr + 1, W_ERROR);
+					break;
+
+				default:
+					warning_unknown(argv[i] + 1);
+			}
 
 		}else if(!strcmp(argv[i], "-pedantic")){
-			warning_pedantic(1);
+			warning_pedantic(W_WARN);
 
 		}else if(argv[i][0] == '-'
 		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
@@ -925,7 +969,7 @@ int main(int argc, char **argv)
 					ucc_unreach(1);
 
 				case 'W':
-					warning_on(arg, !rev);
+					warning_on(arg, rev ? W_OFF : W_WARN);
 					continue;
 			}
 
@@ -983,6 +1027,9 @@ usage:
 		cc1_mstack_align = new;
 	}
 
+	if(werror)
+		warnings_upgrade();
+
 	if(fname && strcmp(fname, "-")){
 		infile = fopen(fname, "r");
 		if(!infile)
@@ -1011,9 +1058,6 @@ usage:
 
 	if(infile != stdin)
 		fclose(infile), infile = NULL;
-
-	if(werror && warning_count)
-		ccdie(0, "%s: Treating warnings as errors", *argv);
 
 	if(failure == 0){
 		gen_backend(globs, fname);
