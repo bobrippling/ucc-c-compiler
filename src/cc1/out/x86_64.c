@@ -1536,6 +1536,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				if(l->type == V_CONST_I)
 					l = v_to_reg(octx, l);
 
+				maybe_promote(octx, &l, &r);
+
 				out_asm(octx, "cmp%s %s, %s",
 						x86_suffix(l->t), /* pick the non-const one (for type-ing) */
 						impl_val_str(r, 0),
