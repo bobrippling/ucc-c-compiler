@@ -1187,10 +1187,16 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 	{
 		/* the register we're storing into is an lvalue */
 		struct vreg evalreg;
+		type *dest_ty;
 
 		/* setne %evalreg */
 		v_unused_reg(octx, 1, 0, &evalreg, NULL);
 		from = impl_load(octx, from, &evalreg);
+
+		/* ensure we are storing the flag as an extended type */
+		dest_ty = type_is_ptr(to->t);
+		if(type_size(from->t, NULL) < type_size(dest_ty, NULL))
+			from = v_dup_or_reuse(octx, from, dest_ty);
 
 		/* mov %evalreg, (from) */
 		impl_store(octx, to, from);
