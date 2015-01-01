@@ -1,6 +1,6 @@
 PWD = $(shell pwd)
 
-.PHONY: bootstrap
+.PHONY: bootstrap bootstrap_clean
 
 bootstrap: stage3
 
