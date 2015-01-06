@@ -1276,7 +1276,18 @@ static void parse_add_asm(decl *d)
 				break;
 			}
 
-		d->spel_asm = rename;
+		if(d->spel_asm){
+			if(strcmp(d->spel_asm, rename)){
+				warn_at_print_error(&d->where,
+						"decl \"%s\" already has an asm() name (\"%s\")",
+						d->spel, d->spel_asm);
+				parse_had_error = 1;
+			}else{
+				free(rename);
+			}
+		}else{
+			d->spel_asm = rename;
+		}
 	}
 }
 

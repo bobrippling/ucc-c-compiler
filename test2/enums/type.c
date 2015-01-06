@@ -14,5 +14,5 @@ _Static_assert(
 _Static_assert(
 		_Generic(
 			(enum E)0,
-			int: 1) == 1,
-		"enum != int");
+			enum E: 1) == 1,
+		"enum decayed");

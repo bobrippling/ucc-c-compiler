@@ -93,9 +93,9 @@ static void assign_arg_vals(decl **decls, const out_val *argvals[], out_ctx *oct
 
 static void release_arg_vals(decl **decls, out_ctx *octx)
 {
-	unsigned i, j;
+	unsigned i;
 
-	for(i = j = 0; decls && decls[i]; i++){
+	for(i = 0; decls && decls[i]; i++){
 		sym *s = decls[i]->sym;
 
 		if(s && s->type == sym_arg){
@@ -392,7 +392,7 @@ void gen_asm(
 	*pfilelist = NULL;
 
 	if(cc1_gdebug)
-		out_dbg_begin(octx, &octx->dbg.file_head, fname, compdir);
+		out_dbg_begin(octx, &octx->dbg.file_head, fname, compdir, cc1_std);
 
 	for(diter = symtab_decls(&globs->stab); diter && *diter; diter++){
 		decl *d = *diter;

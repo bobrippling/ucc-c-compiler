@@ -8,6 +8,7 @@
 
 #include "ops.h"
 #include "stmt_code.h"
+#include "../cc1_where.h"
 #include "../decl_init.h"
 #include "../fold_sym.h"
 #include "../type_is.h"
@@ -91,10 +92,14 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 		if((attr = attribute_present(d, attr_cleanup)))
 			cleanup_check(d, attr);
 
-		if((is_func = !!type_is(d->ref, type_func)))
+		if((is_func = !!type_is(d->ref, type_func))){
 			chk_shadow = 1;
-		else if(cc1_warning.shadow_local || cc1_warning.shadow_global)
+		}else if(cc1_warning.shadow_local
+				|| cc1_warning.shadow_global_user
+				|| cc1_warning.shadow_global_all)
+		{
 			chk_shadow = 1;
+		}
 
 		if(chk_shadow
 		&& d->spel
@@ -123,13 +128,19 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 							d->spel, where_str_r(buf, &found->where));
 				}
 
-				/* -Wshadow:
-				 * if it has a parent, we found it in local scope, so check the local mask
-				 * and vice versa
-				 */
-				if(above_scope->parent
+				if(!cc1_warning.shadow_global_all
+				&& where_in_sysheader(&found->where))
+				{
+					/* system headers are excluded */
+				}
+				else if(above_scope->parent
 						? cc1_warning.shadow_local
-						: cc1_warning.shadow_global)
+						: (cc1_warning.shadow_global_all || cc1_warning.shadow_global_user))
+					/* -Wshadow:
+					 * if it has a parent,
+					 * we found it in local scope, so check the local mask
+					 * and vice versa
+					 */
 				{
 					const char *ty = above_scope->parent ? "local" : "global";
 

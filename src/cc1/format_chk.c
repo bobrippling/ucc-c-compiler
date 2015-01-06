@@ -42,6 +42,19 @@ static void warn_printf_attr(char fmt, where *w, enum printf_attr attr)
 			printf_attr_to_str(attr), fmt);
 }
 
+static int attr_check(
+		enum printf_attr attr, enum printf_attr mask,
+		enum type_primitive primitive, type *ty,
+		char expected[BTYPE_STATIC_BUFSIZ], const char *str)
+{
+	int present = !!(attr & mask);
+
+	if(present && !type_is_primitive_anysign(ty, primitive))
+		strcpy(expected, str);
+
+	return present;
+}
+
 static void format_check_printf_1(char fmt, type *const t_in,
 		where *loc_expr, where *loc_str, enum printf_attr attr)
 {
@@ -106,17 +119,20 @@ ptr:
 				break;
 			}
 
-#define ATTR_CHECK(suff, str)                             \
-			if(attr & printf_attr_##suff){                      \
-				if(!type_is_primitive_anysign(t_in, type_##suff)) \
-					strcpy(expected, str);                          \
-				break;                                            \
-			}
+			/* check %ld and %lld */
+#define ATTR_CHECK(suff, str) \
+			attr_check(attr, printf_attr_##suff, type_##suff, t_in, expected, str)
 
-			ATTR_CHECK(llong, "'long long'")
-			ATTR_CHECK(long, "'long'")
+			if(ATTR_CHECK(llong, "'long long'"))
+				break;
+			if(ATTR_CHECK(long, "'long'"))
+				break;
 
 #undef ATTR_CHECK
+
+			/* check int doesn't have anything greater */
+			if(!type_is_primitive_anysign(t_in, type_int))
+				strcpy(expected, "'int'");
 			break;
 
 		case 'e':

@@ -2,6 +2,7 @@
 #define DBG_H
 
 #include "../../util/compiler.h"
+#include "../../util/std.h"
 
 struct out_dbg_filelist
 {
@@ -19,7 +20,8 @@ void out_dbg_begin(
 		out_ctx *octx,
 		struct out_dbg_filelist **pfilelist,
 		const char *fname,
-		const char *compdir);
+		const char *compdir,
+		enum c_std lang);
 
 void out_dbg_end(out_ctx *octx);
 #endif

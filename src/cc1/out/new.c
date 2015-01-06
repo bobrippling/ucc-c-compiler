@@ -188,10 +188,10 @@ const out_val *out_new_sym_val(out_ctx *octx, sym *sym)
 
 out_val *out_new_zero(out_ctx *octx, type *ty)
 {
-	numeric n;
+	numeric n = { 0 };
 
-	n.val.f = 0;
-	n.suffix = VAL_FLOATING; /* sufficient for V_CONST_F */
+	if(type_is_floating(ty))
+		n.suffix = VAL_FLOATING; /* sufficient for V_CONST_F */
 
 	return out_new_num(octx, ty, &n);
 }

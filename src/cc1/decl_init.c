@@ -30,9 +30,6 @@ typedef struct
 	 ? &it->pos[0]->where \
 	 : def)
 
-#define DECL_IS_ANON_BITFIELD(d) \
-	((d)->bits.var.field_width && !(d)->spel)
-
 typedef decl_init **aggregate_brace_f(
 		decl_init **current, struct init_cpy ***range_store,
 		init_iter *,
@@ -1158,8 +1155,8 @@ static decl_init *decl_init_brace_up_start(
 void decl_init_brace_up_fold(decl *d, symtable *stab)
 {
 	assert(!type_is(d->ref, type_func));
-	if(!d->bits.var.init_normalised){
-		d->bits.var.init_normalised = 1;
+	if(!d->bits.var.init.normalised){
+		d->bits.var.init.normalised = 1;
 
 		if(type_is_vla(d->ref, VLA_ANY_DIMENSION)){
 			warn_at_print_error(
@@ -1440,5 +1437,6 @@ void decl_default_init(decl *d, symtable *stab)
 	}
 
 	d->bits.var.init.dinit = decl_init_new_w(decl_init_brace, &d->where);
+	d->bits.var.init.compiler_generated = 1;
 	decl_init_brace_up_fold(d, stab);
 }

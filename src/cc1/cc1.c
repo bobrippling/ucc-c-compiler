@@ -35,6 +35,16 @@
 #define countof(ar) sizeof(ar)/sizeof((ar)[0])
 
 struct cc1_warning cc1_warning;
+enum warning_fatality
+{
+	W_OFF = 0,
+	W_WARN = 1,
+	W_ERROR = 2, /* set by -Werror */
+
+	W_NO_ERROR = 3
+	/* set by -Wno-error=xyz
+	 * not reset to W_WARN since -Werror/-Wno-error will alter this */
+};
 
 enum warning_special
 {
@@ -64,7 +74,7 @@ static struct warn_str
 	{ "extern-assume", &cc1_warning.extern_assume },
 
 	{ "implicit-int", &cc1_warning.implicit_int },
-	{ "implicit-func", &cc1_warning.implicit_func },
+	{ "implicit-function-declaration", &cc1_warning.implicit_func },
 	{ "implicit", &cc1_warning.implicit_func, &cc1_warning.implicit_int },
 
 	{ "switch-enum", &cc1_warning.switch_enum },
@@ -90,8 +100,13 @@ static struct warn_str
 	{ "tenative-init", &cc1_warning.tenative_init },
 
 	{ "shadow-local", &cc1_warning.shadow_local },
-	{ "shadow-global", &cc1_warning.shadow_global },
-	{ "shadow", &cc1_warning.shadow_global, &cc1_warning.shadow_local },
+	{ "shadow-global", &cc1_warning.shadow_global_user },
+	{ "shadow-global-all", &cc1_warning.shadow_global_all },
+	{
+		"shadow",
+		&cc1_warning.shadow_global_user,
+		&cc1_warning.shadow_local
+	},
 
 	{ "cast-qual", &cc1_warning.cast_qual },
 
@@ -251,6 +266,7 @@ static struct warn_str
 	{ "typedef-redefinition", &cc1_warning.typedef_redef },
 
 	{ "undef-string-comparison", &cc1_warning.undef_strlitcmp },
+	{ "undefined-internal", &cc1_warning.undef_internal },
 
 	{ "unnamed-struct-memb", &cc1_warning.unnamed_struct_memb },
 	{ "unused-comma", &cc1_warning.unused_comma },
@@ -299,6 +315,8 @@ static struct
 	{ 'f',  "show-inlined", FOPT_SHOW_INLINED },
 	{ 'f',  "inline-functions", FOPT_INLINE_FUNCTIONS },
 	{ 'f',  "dump-bblocks", FOPT_DUMP_BASIC_BLOCKS },
+	{ 'f',  "dump-symtab", FOPT_DUMP_SYMTAB },
+	{ 'f',  "common", FOPT_COMMON },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 	{ 'm',  "32", MOPT_32 },
@@ -333,7 +351,8 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SYMBOL_ARITH
                     | FOPT_SIGNED_CHAR
                     | FOPT_CAST_W_BUILTIN_TYPES
-                    | FOPT_PRINT_TYPEDEFS;
+                    | FOPT_PRINT_TYPEDEFS
+                    | FOPT_COMMON;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
@@ -426,9 +445,19 @@ void cc1_warn_at_w(
 {
 	va_list l;
 	struct where backup;
+	enum warn_type warn_type = VWARN_WARN;
 
-	if(!*pwarn)
-		return;
+	switch((enum warning_fatality)*pwarn){
+		case W_OFF:
+			return;
+		case W_ERROR:
+			fold_had_error = parse_had_error = 1;
+			warn_type = VWARN_ERR;
+			break;
+		case W_NO_ERROR:
+		case W_WARN:
+			break;
+	}
 
 	if(!where)
 		where = where_cc1_current(&backup);
@@ -438,7 +467,7 @@ void cc1_warn_at_w(
 		return;
 
 	va_start(l, fmt);
-	vwarn(where, VWARN_WARN, fmt, l);
+	vwarn(where, warn_type, fmt, l);
 	va_end(l);
 
 	if(fopt_mode & FOPT_SHOW_WARNING_OPTION)
@@ -596,12 +625,12 @@ static void gen_backend(symtable_global *globs, const char *fname)
 	io_fin(gf == NULL, fname);
 }
 
-static void warnings_set(int to)
+static void warnings_set(enum warning_fatality to)
 {
 	memset(&cc1_warning, to, sizeof cc1_warning);
 }
 
-static void warning_gnu(int set)
+static void warning_gnu(enum warning_fatality set)
 {
 	cc1_warning.gnu_addr_lbl =
 	cc1_warning.gnu_expr_stmt =
@@ -614,7 +643,7 @@ static void warning_gnu(int set)
 		set;
 }
 
-static void warning_pedantic(int set)
+static void warning_pedantic(enum warning_fatality set)
 {
 	/* warn about extensions */
 	warning_gnu(set);
@@ -636,16 +665,17 @@ static void warning_pedantic(int set)
 
 static void warning_all(void)
 {
-	warnings_set(1);
+	warnings_set(W_WARN);
 
-	warning_gnu(0);
+	warning_gnu(W_OFF);
 
 	cc1_warning.implicit_int =
 	cc1_warning.loss_precision =
 	cc1_warning.sign_compare =
 	cc1_warning.pad =
 	cc1_warning.tenative_init =
-	cc1_warning.shadow_global =
+	cc1_warning.shadow_global_user =
+	cc1_warning.shadow_global_all =
 	cc1_warning.implicit_old_func =
 	cc1_warning.bitfield_boundary =
 	cc1_warning.vla =
@@ -654,14 +684,14 @@ static void warning_all(void)
 	cc1_warning.unused_param =
 	cc1_warning.test_assign =
 	cc1_warning.signed_unsigned =
-		0;
+		W_OFF;
 }
 
 static void warning_init(void)
 {
 	/* default to -Wall */
 	warning_all();
-	warning_pedantic(0);
+	warning_pedantic(W_OFF);
 
 	/* but with warnings about std compatability on too */
 	cc1_warning.typedef_redef =
@@ -673,14 +703,14 @@ static void warning_init(void)
 	cc1_warning.long_long =
 	cc1_warning.vla =
 	cc1_warning.c89_compound_literal =
-			1;
+			W_WARN;
 }
 
 static void warning_special(enum warning_special type)
 {
 	switch(type){
 		case W_EVERYTHING:
-			warnings_set(1);
+			warnings_set(W_WARN);
 			break;
 		case W_ALL:
 			warning_all();
@@ -688,21 +718,28 @@ static void warning_special(enum warning_special type)
 		case W_EXTRA:
 			warning_all();
 			cc1_warning.implicit_int =
-			cc1_warning.shadow_global =
+			cc1_warning.shadow_global_user =
 			cc1_warning.cast_qual =
 			cc1_warning.init_missing_braces =
 			cc1_warning.init_missing_struct =
 			cc1_warning.unused_param =
 			cc1_warning.signed_unsigned =
-				1;
+				W_WARN;
 			break;
 		case W_GNU:
-			warning_gnu(1);
+			warning_gnu(W_WARN);
 			break;
 	}
 }
 
-static void warning_on(const char *warn, int to)
+static void warning_unknown(const char *warg)
+{
+	fprintf(stderr, "Unknown warning option \"%s\"\n", warg);
+}
+
+static void warning_on(
+		const char *warn, enum warning_fatality to,
+		int *const werror)
 {
 	struct warn_str *p;
 
@@ -715,7 +752,32 @@ static void warning_on(const char *warn, int to)
 	SPECIAL("all", W_ALL)
 	SPECIAL("extra", W_EXTRA)
 	SPECIAL("everything", W_EVERYTHING)
-	SPECIAL("gnu", W_GNU);
+	SPECIAL("gnu", W_GNU)
+
+	if(!strncmp(warn, "error", 5)){
+		const char *werr = warn + 5;
+
+		switch(*werr){
+			case '\0':
+				/* set later once we know all the desired warnings */
+				*werror = (to != W_OFF);
+				break;
+
+			case '=':
+				if(to == W_OFF){
+					/* force to non-error */
+					warning_on(werr + 1, W_NO_ERROR, werror);
+				}else{
+					warning_on(werr + 1, W_ERROR, werror);
+				}
+				break;
+
+			default:
+				warning_unknown(warn);
+		}
+		return;
+	}
+
 
 	for(p = warns; p->arg; p++){
 		if(!strcmp(warn, p->arg)){
@@ -730,7 +792,7 @@ static void warning_on(const char *warn, int to)
 		}
 	}
 
-	fprintf(stderr, "Unknown warning option \"-W%s\"\n", warn);
+	warning_unknown(warn);
 }
 
 static int optimise(const char *argv0, const char *arg)
@@ -789,6 +851,17 @@ unrecog:
 	return 1;
 }
 
+static void warnings_upgrade(void)
+{
+	struct warn_str *p;
+	unsigned i;
+
+	/* easier to iterate through this array, than cc1_warning's members */
+	for(p = warns; p->arg; p++)
+		for(i = 0; i < countof(p->offsets) && p->offsets[i]; i++)
+			if(*p->offsets[i] == W_WARN)
+				*p->offsets[i] = W_ERROR;
+}
 
 int main(int argc, char **argv)
 {
@@ -852,13 +925,10 @@ int main(int argc, char **argv)
 				fopt_mode &= ~FOPT_EXT_KEYWORDS;
 
 		}else if(!strcmp(argv[i], "-w")){
-			warnings_set(0);
-
-		}else if(!strcmp(argv[i], "-Werror")){
-			werror = 1;
+			warnings_set(W_OFF);
 
 		}else if(!strcmp(argv[i], "-pedantic")){
-			warning_pedantic(1);
+			warning_pedantic(W_WARN);
 
 		}else if(argv[i][0] == '-'
 		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
@@ -915,7 +985,7 @@ int main(int argc, char **argv)
 					ucc_unreach(1);
 
 				case 'W':
-					warning_on(arg, !rev);
+					warning_on(arg, rev ? W_OFF : W_WARN, &werror);
 					continue;
 			}
 
@@ -973,6 +1043,9 @@ usage:
 		cc1_mstack_align = new;
 	}
 
+	if(werror)
+		warnings_upgrade();
+
 	if(fname && strcmp(fname, "-")){
 		infile = fopen(fname, "r");
 		if(!infile)
@@ -1001,9 +1074,6 @@ usage:
 
 	if(infile != stdin)
 		fclose(infile), infile = NULL;
-
-	if(werror && warning_count)
-		ccdie(0, "%s: Treating warnings as errors", *argv);
 
 	if(failure == 0){
 		gen_backend(globs, fname);

@@ -39,13 +39,6 @@ void tok_next()
 
 	tok_pos = str_spc_skip(tok_pos);
 
-	if(isalpha(*tok_pos) || *tok_pos == '_'){
-		/* don't save the ident - it's zero */
-		tok_pos = word_end(tok_pos);
-		tok_cur = tok_ident;
-		return;
-	}
-
 	if(isdigit(*tok_pos)){
 		char *ep;
 		tok_cur_num = strtol(tok_pos, &ep, 0);
@@ -63,11 +56,17 @@ end_ty:
 		return;
 	}
 
-	if(*tok_pos == '\''){
+	if(*tok_pos == '\''
+	|| (tok_pos[0] == 'L' && tok_pos[1] == '\''))
+	{
 		/* char literal */
 		int mchar;
+		const int wide = (*tok_pos == 'L');
 
-		tok_cur_num = read_quoted_char(++tok_pos, &tok_pos, &mchar);
+		if(wide)
+			tok_pos++;
+
+		tok_cur_num = read_quoted_char(++tok_pos, &tok_pos, &mchar, /*256*/!wide);
 
 		if(!tok_pos)
 			CPP_DIE("missing terminating single quote (\"%s\")", tok_pos);
@@ -77,6 +76,13 @@ end_ty:
 
 		tok_cur = tok_num;
 
+		return;
+	}
+
+	if(isalpha(*tok_pos) || *tok_pos == '_'){
+		/* don't save the ident - it's zero */
+		tok_pos = word_end(tok_pos);
+		tok_cur = tok_ident;
 		return;
 	}
 

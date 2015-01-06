@@ -253,7 +253,7 @@ void out_func_prologue(
 			impl_func_prologue_save_variadic(octx, fnty);
 
 		/* setup "pointers" to the right place in the stack */
-		octx->stack_variadic_offset = octx->cur_stack_sz - platform_word_size();
+		octx->stack_variadic_offset = octx->cur_stack_sz;
 		octx->initial_stack_sz = octx->cur_stack_sz;
 	}
 	octx->in_prologue = 0;

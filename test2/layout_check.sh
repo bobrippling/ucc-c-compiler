@@ -42,7 +42,7 @@ then
 		fi
 
 		# $@ are the optional compiler args
-		"$UCC" -S -o"$out" "$in" "$@"
+		"$UCC" -S -o"$out" "$in" -fno-common "$@"
 		r=$?
 		if [ $r -ne 0 ]
 		then exit $r

@@ -19,6 +19,7 @@
 #include "defs.h"
 
 #include "type_is.h"
+#include "type_nav.h"
 
 decl *decl_new_w(const where *w)
 {

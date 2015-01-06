@@ -215,10 +215,11 @@ static attribute *parse_attr_cleanup(symtable *scope)
 	return attr;
 }
 
-#define EMPTY(t)                      \
-static attribute *parse_ ## t()       \
-{                                     \
-	return attribute_new(t);            \
+#define EMPTY(t)                                \
+static attribute *parse_ ## t(symtable *symtab) \
+{                                               \
+	(void)symtab;                                 \
+	return attribute_new(t);                      \
 }
 
 EMPTY(attr_unused)

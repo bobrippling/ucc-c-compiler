@@ -25,7 +25,8 @@ unsigned long long char_seq_to_ullong(
 /* we're just after the opening quote */
 long read_quoted_char(
 		char *start, char **end,
-		int *multichar) ucc_nonnull();
+		int *multichar, int clip_256)
+	ucc_nonnull();
 
 /* we're in the quote, single or double */
 long read_char_single(char *start, char **end, unsigned off) ucc_nonnull();

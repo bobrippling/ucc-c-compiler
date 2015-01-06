@@ -19,7 +19,6 @@ type *type_complete_array(type *r, struct expr *sz);
 type *type_func_call(type *fp, struct funcargs **pfuncargs);
 
 int type_decayable(type *r);
-type *type_decay(type *const r);
 
 enum type_qualifier type_qual(const type *r);
 enum type_primitive type_primitive(type *ty);

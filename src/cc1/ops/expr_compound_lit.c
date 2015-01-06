@@ -39,6 +39,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	e->tree_type = d->ref;
 
 	if(static_ctx){
+		assert(!d->spel_asm);
 		d->spel_asm = out_label_data_store(STORE_COMP_LIT);
 		d->store = store_static;
 	}

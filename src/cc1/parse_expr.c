@@ -583,15 +583,14 @@ expr **parse_funcargs(symtable *scope, int static_ctx)
 {
 	expr **args = NULL;
 
-	while(curtok != token_close_paren){
+	if(curtok == token_close_paren)
+		return NULL;
+
+	do{
 		expr *arg = PARSE_EXPR_NO_COMMA(scope, static_ctx);
 		UCC_ASSERT(arg, "no arg?");
 		dynarray_add(&args, arg);
-
-		if(curtok == token_close_paren)
-			break;
-		EAT(token_comma);
-	}
+	}while(accept(token_comma));
 
 	return args;
 }

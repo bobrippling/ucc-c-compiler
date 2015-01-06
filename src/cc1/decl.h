@@ -24,6 +24,9 @@ struct decl_init_expr
 {
 	struct decl_init *dinit;
 	struct expr *expr;
+
+	int normalised;
+	int compiler_generated;
 };
 
 typedef struct decl decl;
@@ -58,8 +61,6 @@ struct decl
 				} bits;
 				struct decl_align *next;
 			} *align;
-
-			int init_normalised;
 
 			/* initialiser - converted to an assignment for non-globals */
 			struct decl_init_expr init;
@@ -130,5 +131,8 @@ const char *decl_store_to_str(const enum decl_storage);
 
 #define DECL_FUNC_ARG_SYMTAB(d) ((d)->bits.func.code->symtab->parent)
 #define DECL_HAS_FUNC_CODE(d) (type_is(d->ref, type_func) && d->bits.func.code)
+
+#define DECL_IS_ANON_BITFIELD(d) \
+	((d)->bits.var.field_width && !(d)->spel)
 
 #endif

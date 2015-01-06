@@ -138,13 +138,7 @@ static void fold_va_start(expr *e, symtable *stab)
 		ADD_ASSIGN_VAL("fp_offset", (6 + nargs.fp) * ws);
 		/* FIXME: x86_64::N_CALL_REGS_I reference above */
 
-		/* adjust to take the skip into account */
-		ADD_ASSIGN("reg_save_area",
-				W(expr_new_op2(op_minus,
-					W(builtin_new_reg_save_area()),
-					/* void arith - need _pws
-					 * total arg count * ws */
-					W(expr_new_val((nargs.gp + nargs.fp) * ws)))));
+		ADD_ASSIGN("reg_save_area", W(builtin_new_reg_save_area()));
 
 		ADD_ASSIGN("overflow_arg_area",
 				W(expr_new_op2(op_plus,

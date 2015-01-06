@@ -398,9 +398,9 @@ const out_val *v_reg_apply_offset(out_ctx *octx, const out_val *const orig)
 	REMOVE_CONST(out_val *, vreg)->bits.regoff.offset = 0;
 
 	/* use impl_op as it doesn't do reg offsetting */
-	return impl_op(octx, op_plus,
+	return impl_op(octx, off > 0 ? op_plus : op_minus,
 			vreg,
-			out_new_l(octx, vreg->t, off));
+			out_new_l(octx, vreg->t, labs(off)));
 }
 
 static int val_present(const out_val *v, const out_val **ignores)

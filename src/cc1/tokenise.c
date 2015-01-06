@@ -641,7 +641,7 @@ static void cc1_read_quoted_char(const int is_wide)
 {
 	int multichar;
 	char *const start = bufferpos;
-	long ch = read_quoted_char(bufferpos, &bufferpos, &multichar);
+	long ch = read_quoted_char(bufferpos, &bufferpos, &multichar, /*256*/!is_wide);
 
 	if(multichar){
 		if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
@@ -741,8 +741,13 @@ void nexttoken()
 			/* handle integral XeY */
 			if(tolower(peeknextchar()) == 'e'){
 				numeric mantissa = currentval;
+				int powmul;
 
 				nextchar();
+
+				powmul = (peeknextchar() == '-' ? -1 : 1);
+				if(powmul == -1)
+					nextchar();
 
 				if(!isdigit(peeknextchar())){
 					curtok = token_unknown;
@@ -750,7 +755,8 @@ void nexttoken()
 				}
 				read_number(DEC);
 
-				mantissa.val.i *= pow(10, currentval.val.i);
+				mantissa.val.i *= pow(10, powmul * (sintegral_t)currentval.val.i);
+
 				currentval = mantissa;
 			}
 

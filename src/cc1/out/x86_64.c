@@ -602,13 +602,13 @@ void impl_func_prologue_save_call_regs(
 		 * (e.g. long double, struct/union args, etc)
 		 */
 		if(n_call_f){
-			unsigned i_arg, i_stk, i_arg_stk, i_i, i_f;
+			unsigned i_arg, i_arg_stk, i_i, i_f;
 			const out_val *stack_loc;
 			type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 
 			stack_loc = out_aalloc(octx, (n_call_f + n_call_i) * ws, ws, arithty);
 
-			for(i_arg = i_i = i_f = i_stk = i_arg_stk = 0;
+			for(i_arg = i_i = i_f = i_arg_stk = 0;
 					i_arg < nargs;
 					i_arg++)
 			{
@@ -1187,10 +1187,16 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 	{
 		/* the register we're storing into is an lvalue */
 		struct vreg evalreg;
+		type *dest_ty;
 
 		/* setne %evalreg */
 		v_unused_reg(octx, 1, 0, &evalreg, NULL);
 		from = impl_load(octx, from, &evalreg);
+
+		/* ensure we are storing the flag as an extended type */
+		dest_ty = type_is_ptr(to->t);
+		if(type_size(from->t, NULL) < type_size(dest_ty, NULL))
+			from = v_dup_or_reuse(octx, from, dest_ty);
 
 		/* mov %evalreg, (from) */
 		impl_store(octx, to, from);
@@ -1348,11 +1354,13 @@ static const out_val *x86_shift(
 		cl.idx = X86_64_REG_RCX;
 
 		r = v_to_reg_given_freeup(octx, r, &cl);
+
+		r = v_reg_apply_offset(octx, r);
 	}
 
 	/* force %cl: */
 	nchar = type_nav_btype(cc1_type_nav, type_nchar);
-	if(type_cmp(r->t, nchar, 0))
+	if(type_cmp(r->t, nchar, 0) & ~TYPE_EQUAL_ANY)
 		r = v_dup_or_reuse(octx, r, nchar); /* change type */
 
 	l = v_to(octx, l, TO_MEM | TO_REG);
@@ -1382,6 +1390,23 @@ static const out_val *min_retained(
 		out_val_consume(octx, b);
 		return a;
 	}
+}
+
+static void maybe_promote(out_ctx *octx, const out_val **pl, const out_val **pr)
+{
+	const out_val *l = *pl;
+	const out_val *r = *pr;
+
+	unsigned sz_l = type_size(l->t, NULL);
+	unsigned sz_r = type_size(r->t, NULL);
+
+	if(sz_l == sz_r)
+		return;
+
+	if(sz_l < sz_r)
+		*pl = out_cast(octx, l, r->t, /*normalise*/0);
+	else
+		*pr = out_cast(octx, r, l->t, /*normalise*/0);
 }
 
 const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const out_val *r)
@@ -1517,6 +1542,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				if(l->type == V_CONST_I)
 					l = v_to_reg(octx, l);
 
+				maybe_promote(octx, &l, &r);
+
 				out_asm(octx, "cmp%s %s, %s",
 						x86_suffix(l->t), /* pick the non-const one (for type-ing) */
 						impl_val_str(r, 0),
@@ -1625,6 +1652,9 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 			x86_reg_cp(octx, &new_reg, &old_reg, l->t);
 		}
+
+		/* ensure types match - may have upgraded from V_FLAG / _Bool */
+		maybe_promote(octx, &l, &r);
 
 		switch(op){
 			case op_plus:
@@ -2238,6 +2268,9 @@ const out_val *impl_call(
 
 
 				local_args[i] = v_to_reg_given(octx, local_args[i], rp);
+			}else if(vp->type == V_REG && vp->bits.regoff.offset){
+				/* need to ensure offsets are flushed */
+				local_args[i] = v_reg_apply_offset(octx, local_args[i]);
 			}
 		}
 		/* else already pushed */
