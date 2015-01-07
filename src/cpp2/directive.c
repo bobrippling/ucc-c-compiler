@@ -222,36 +222,58 @@ static void handle_error(token **tokens)
 	handle_error_warning(tokens, 1);
 }
 
+static char *include_parse(
+		char *include_arg_anchor, int *const is_lib,
+		int may_expand_macros)
+{
+	char *include_arg = str_spc_skip(include_arg_anchor);
+	char *fin;
+
+	*is_lib = 0;
+
+	switch(*include_arg++){
+		case '<':
+			*is_lib = 1;
+			fin = strchr(include_arg, '>');
+			break;
+
+		case '"':
+			fin = strchr(include_arg, '"');
+			break;
+
+		default:
+			if(may_expand_macros){
+				char *expanded = eval_expand_macros(include_arg);
+				str_trim(expanded);
+				return include_parse(expanded, is_lib, 0);
+			}else{
+				CPP_DIE("bad include start: %c", *include_arg);
+			}
+	}
+
+	if(!fin)
+		CPP_DIE("unterminated #include directive");
+
+	*fin = '\0';
+
+	return ustrdup(include_arg);
+}
+
 static void handle_include(token **tokens)
 {
+	char *include_arg;
+	int is_lib;
+
 	const char *curdir;
-	char *fname, *final_path, *fin;
-	size_t fname_len;
-	int is_lib = 0;
+	char *fname, *final_path;
+
 	FILE *f = NULL;
 
 	NOOP_RET();
 
-	fname = eval_expand_macros(tokens_join(tokens));
-	str_trim(fname);
-	fname_len = strlen(fname);
-
-	switch(*fname){
-		case '<':
-			is_lib = 1;
-			fin = strchr(fname, '>');
-			break;
-		case '"':
-			fin = strchr(fname + 1, '"');
-			break;
-		default:
-			CPP_DIE("bad include start: %c", *fname);
-	}
-	if(!fin)
-		CPP_DIE("invalid include end '%c'", fname[fname_len-1]);
-
-	*fin = '\0';
-	fname++;
+	include_arg = tokens_join(tokens);
+	fname = include_parse(include_arg, &is_lib, 1);
+	free(include_arg), include_arg = NULL;
 
 	curdir = cd_stack[dynarray_count(cd_stack) - 1];
 
@@ -289,7 +311,7 @@ static void handle_include(token **tokens)
 	dirname_push(udirname(final_path));
 	free(final_path);
 
-	free(fname - 1);
+	free(fname);
 }
 
 static void if_push(int is_true)
