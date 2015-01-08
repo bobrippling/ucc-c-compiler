@@ -4,9 +4,11 @@
 
 union f;
 
+#define DECAY(x) (0, x)
+
 main()
 {
 	return _Generic(
-				*(__typeof((*(struct A { int (*i)(union f); } *)0).i))0
+				DECAY(*(__typeof((*(struct A { int (*i)(union f); } *)0).i))0)
 				, char: 5, int (*)(S_OR_U f): 1);
 }

@@ -22,7 +22,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 	def = NULL;
 
-	FOLD_EXPR(e->expr, stab);
+	fold_expr_nodecay(e->expr, stab);
 	/* strip top level qualifiers */
 	expr_ty = type_skip_all(e->expr->tree_type);
 

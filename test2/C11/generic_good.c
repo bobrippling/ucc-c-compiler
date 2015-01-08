@@ -29,12 +29,14 @@ main()
 
 	int ar[1];
 	const int kar[1];
-	if(_Generic(ar, int *: 0, const int *: abort2())) // XXX
+	if(_Generic(ar, int [1]: 0, const int *: abort2())) // XXX
 		abort();
-	if(_Generic(kar, const int *: 0, int *: abort2())) // XXX
+	if(_Generic(kar, const int [1]: 0, int *: abort2())) // XXX
 		abort();
 
-	if(_Generic(main, int (*)(): 0)) // XXX
+#define DECAY(x) (0, x)
+
+	if(_Generic(DECAY(main), int (*)(): 0)) // XXX
 		abort();
 
 	return 0;
