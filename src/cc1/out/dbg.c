@@ -52,6 +52,8 @@
 	X(DW_TAG_array_type, 0x1)            \
 	X(DW_TAG_subrange_type, 0x21)        \
 	X(DW_TAG_const_type, 0x26)           \
+	X(DW_TAG_volatile_type, 0x35)        \
+	X(DW_TAG_restrict_type, 0x37)        \
 	X(DW_TAG_subroutine_type, 0x15)      \
 	X(DW_TAG_enumeration_type, 0x4)      \
 	X(DW_TAG_enumerator, 0x28)           \
@@ -758,12 +760,25 @@ static struct DIE *dwarf_type_die(
 
 		case type_cast:
 		{
-
 			if(ty->bits.cast.is_signed_cast){
 				/* skip */
 				tydie = dwarf_type_die(cu, parent, ty->ref);
 			}else{
-				tydie = dwarf_tydie_new(cu, ty, DW_TAG_const_type);
+				/* due to how types map to tydies,
+				 * we can only have a single qualifier */
+				enum type_qualifier q = ty->bits.cast.qual;
+				enum dwarf_tag tag;
+
+				if(q & qual_const)
+					tag = DW_TAG_const_type;
+				else if(q & qual_volatile)
+					tag = DW_TAG_volatile_type;
+				else if(q & qual_restrict)
+					tag = DW_TAG_restrict_type;
+				else
+					ucc_unreach(NULL);
+
+				tydie = dwarf_tydie_new(cu, ty, tag);
 				dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 			}
 			break;
