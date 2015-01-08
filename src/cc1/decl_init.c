@@ -57,6 +57,82 @@ static void decl_init_create_assignments_base(
 	if(di == DYNARRAY_NULL)    \
 		return 1
 
+#define init_debug_indent(op) init_indent op
+
+static int init_indent;
+
+static void init_indent_out(void)
+{
+	int i;
+	for(i = 0; i < init_indent; i++)
+		fputs("  ", stderr);
+}
+
+ucc_printflike(1, 2)
+static void init_debug(const char *fmt, ...)
+{
+	va_list l;
+
+	if(!(fopt_mode & FOPT_DUMP_INIT))
+		return;
+
+	init_indent_out();
+	va_start(l, fmt);
+	vfprintf(stderr, fmt, l);
+	va_end(l);
+}
+
+ucc_printflike(1, 2)
+static void init_debug_noindent(const char *fmt, ...)
+{
+	va_list l;
+
+	if(!(fopt_mode & FOPT_DUMP_INIT))
+		return;
+
+	va_start(l, fmt);
+	vfprintf(stderr, fmt, l);
+	va_end(l);
+}
+
+static void init_debug_dinit(init_iter *init_iter, type *tfor)
+{
+	if(!(fopt_mode & FOPT_DUMP_INIT))
+		return;
+
+	init_debug_noindent("%s --> %s\n",
+			init_iter && init_iter->pos
+			? decl_init_to_str(init_iter->pos[0]->type)
+			: "[nil]",
+			type_to_str(tfor));
+}
+
+static void init_debug_desig(struct desig *desig)
+{
+	if(!(fopt_mode & FOPT_DUMP_INIT))
+		return;
+
+	for(; desig; desig = desig->next){
+		switch(desig->type){
+			case desig_ar:
+				if(desig->bits.range[1]){
+					init_debug_noindent("[%" NUMERIC_FMT_U " ...  %" NUMERIC_FMT_U "]",
+							const_fold_val_i(desig->bits.range[0]),
+							const_fold_val_i(desig->bits.range[1]));
+				}else{
+					init_debug_noindent("[%" NUMERIC_FMT_U "]",
+							const_fold_val_i(desig->bits.range[0]));
+				}
+				break;
+			case desig_struct:
+				init_debug_noindent(".%s", desig->bits.member);
+				break;
+		}
+	}
+
+	fputc('\n', stderr);
+}
+
 static struct init_cpy *init_cpy_from_dinit(decl_init *di)
 {
 	struct init_cpy *cpy = umalloc(sizeof *cpy);
@@ -251,6 +327,10 @@ static decl_init *decl_init_brace_up_scalar(
 		decl_init_free_1(current);
 	}
 
+	init_debug("brace-up-scalar: ", type_to_str(tfor));
+	init_debug_dinit(iter, tfor);
+	init_debug_indent(++);
+
 	if(!iter->pos || !*iter->pos){
 		first_init = decl_init_new_w(decl_init_scalar, w);
 		/* default init for everything */
@@ -258,6 +338,9 @@ static decl_init *decl_init_brace_up_scalar(
 				expr_new_val(0), w);
 
 		FOLD_EXPR(first_init->bits.expr, stab);
+
+		init_debug("  [zero init]\n");
+		init_debug_indent(--);
 
 		return first_init;
 	}
@@ -270,7 +353,10 @@ static decl_init *decl_init_brace_up_scalar(
 
 	if(first_init->type == decl_init_brace){
 		init_iter it;
+		decl_init *ret;
 		unsigned n;
+
+		init_debug("substepping through scalar...\n");
 
 		it.pos = first_init->bits.ar.inits;
 
@@ -278,7 +364,11 @@ static decl_init *decl_init_brace_up_scalar(
 		if(n > 1)
 			excess_init(&first_init->where, tfor);
 
-		return decl_init_brace_up_r(current, &it, tfor, stab);
+		ret = decl_init_brace_up_r(current, &it, tfor, stab);
+
+		init_debug_indent(--);
+
+		return ret;
 	}
 
 	/* fold */
@@ -294,7 +384,11 @@ static decl_init *decl_init_brace_up_scalar(
 					stab, &first_init->bits.expr->where,
 					"initialisation");
 		}
+
+		init_debug("init scalar with %s expr\n", e->f_str());
 	}
+
+	init_debug_indent(--);
 
 	return first_init;
 }
@@ -587,6 +681,8 @@ static decl_init **decl_init_brace_up_sue2(
 
 	UCC_ASSERT(sue_complete(sue), "should've checked sue completeness");
 
+	init_debug("brace-up-sue: %s\n", sue->spel);
+
 	/* check for copy-init */
 	if(allow_struct_copy
 	&& (this = *iter->pos)
@@ -601,6 +697,8 @@ static decl_init **decl_init_brace_up_sue2(
 			dynarray_padinsert(&current, 0, &n, this);
 
 			++iter->pos;
+
+			init_debug("sue copy-init\n");
 
 			return current;
 		}
@@ -640,6 +738,8 @@ static decl_init **decl_init_brace_up_sue2(
 			had_desig = 1;
 
 			this->desig = des->next;
+
+			init_debug("sue member desig: %s\n", des->bits.member);
 
 			mem = struct_union_member_find(sue, des->bits.member, &j, &in);
 			if(!mem){
@@ -699,6 +799,7 @@ static decl_init **decl_init_brace_up_sue2(
 			if(!mem)
 				break;
 			d_mem = mem->struct_member;
+			init_debug("sue member init: %s\n", decl_to_str(d_mem));
 
 			/* skip bitfield padding
 			 * init for it is <zero> created by a dynarray_padinsert */
@@ -747,6 +848,8 @@ static decl_init **decl_init_brace_up_sue2(
 						d_mem->ref, stab);
 			}
 
+			init_debug("done sue member %s\n", d_mem->spel);
+
 			/* XXX: padinsert will insert zero inits for skipped fields,
 			 * including anonymous bitfield pads
 			 */
@@ -766,6 +869,9 @@ static decl_init **decl_init_brace_up_sue2(
 			break;
 		}
 	}
+
+	init_debug("done sue %s init: iter->pos = %p\n",
+			sue->spel, iter ? (void *)iter->pos[0] : NULL);
 
 	if(!had_desig)
 		maybe_warn_missing_init(sue, i, sue_nmem, iter, current, last_loc);
@@ -899,8 +1005,13 @@ static decl_init *decl_init_brace_up_aggregate(
 				int brace_i = 0;
 
 				for(brace_i = 0; braced_inits[brace_i]; brace_i++){
+					init_debug("designated, changing: ");
+					init_debug_desig(braced_inits[brace_i]->desig);
 
 					insert_desig(&braced_inits[brace_i]->desig, desig_copy(first->desig));
+
+					init_debug("changed: ");
+					init_debug_desig(braced_inits[brace_i]->desig);
 				}
 
 			}else if(current){ /* gcc (not clang) compliant */
@@ -1034,6 +1145,8 @@ static decl_init *decl_init_brace_up_array_chk_char(
 
 	decl_init *strk;
 
+	init_debug("brace-up-array: of=%s\n", type_to_str(next_type));
+
 	if(!type_is_complete(array_of))
 		die_incomplete(iter, next_type);
 
@@ -1083,6 +1196,8 @@ static decl_init *decl_init_brace_up_array_chk_char(
 
 			++iter->pos;
 
+			init_debug("array via char-init\n");
+
 			return braced;
 		}
 	}
@@ -1099,24 +1214,35 @@ static decl_init *decl_init_brace_up_r(
 		type *tfor, symtable *stab)
 {
 	struct_union_enum_st *sue;
+	decl_init *ret;
 
 	fold_type(tfor, stab);
 
-	if(type_is(tfor, type_array))
-		return decl_init_brace_up_array_chk_char(
+	init_debug("brace-up-R: ");
+	init_debug_dinit(iter, tfor);
+	init_debug_indent(++);
+
+	if(type_is(tfor, type_array)){
+		ret = decl_init_brace_up_array_chk_char(
 				current, iter, tfor, stab);
+	}else{
+		/* incomplete check _after_ array, since we allow T x[] */
+		if(!type_is_complete(tfor))
+			die_incomplete(iter, tfor);
 
-	/* incomplete check _after_ array, since we allow T x[] */
-	if(!type_is_complete(tfor))
-		die_incomplete(iter, tfor);
+		if((sue = type_is_s_or_u(tfor))){
+			ret = decl_init_brace_up_aggregate(
+					current, iter, stab, tfor,
+					(aggregate_brace_f *)&decl_init_brace_up_sue2,
+					sue, 0 /* is anon */);
+		}else{
+			ret = decl_init_brace_up_scalar(current, iter, tfor, stab);
+		}
+	}
 
-	if((sue = type_is_s_or_u(tfor)))
-		return decl_init_brace_up_aggregate(
-				current, iter, stab, tfor,
-				(aggregate_brace_f *)&decl_init_brace_up_sue2,
-				sue, 0 /* is anon */);
+	init_debug_indent(--);
 
-	return decl_init_brace_up_scalar(current, iter, tfor, stab);
+	return ret;
 }
 
 static decl_init *decl_init_brace_up_start(
@@ -1184,6 +1310,8 @@ static decl_init *decl_init_brace_up_start(
 
 		UCC_ASSERT(ret->type == decl_init_brace, "unbraced array");
 		*ptfor = type_complete_array(tfor, sz);
+
+		init_debug("completed array type: %s\n", type_to_str(*ptfor));
 	}
 
 	return ret;
@@ -1191,6 +1319,8 @@ static decl_init *decl_init_brace_up_start(
 
 void decl_init_brace_up_fold(decl *d, symtable *stab)
 {
+	init_debug("top level: %s\n", decl_to_str(d));
+
 	assert(!type_is(d->ref, type_func));
 	if(!d->bits.var.init.normalised){
 		d->bits.var.init.normalised = 1;
