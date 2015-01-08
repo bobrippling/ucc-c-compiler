@@ -12,7 +12,7 @@
 
 int iswordpart(char c)
 {
-	return isalnum(c) || c == '_';
+	return isalnum(c) || c == '_' || c == '$';
 }
 
 char *word_end(char *s)

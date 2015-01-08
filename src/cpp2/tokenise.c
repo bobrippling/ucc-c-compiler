@@ -40,7 +40,7 @@ token **tokenise(char *line)
 			t->tok = TOKEN_WORD;
 
 			for(p++; *p; p++)
-				if(!(isalnum(*p) || *p == '_'))
+				if(!iswordpart(*p))
 					break;
 
 			t->w = ustrdup2(start, p);
