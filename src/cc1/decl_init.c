@@ -811,6 +811,38 @@ static int decl_init_is_struct_copy(decl_init *di)
 	return 0;
 }
 
+static void insert_desig(struct desig **pins_here, struct desig *to_insert)
+{
+	struct desig *des, *sub_d = *pins_here;
+
+	*pins_here = to_insert;
+
+	/* tack old on the end - need to do this for all designators at this level,
+	 * e.g.
+	 * .a.b = { .i = 5, .j = 2 }
+	 * becomes
+	 *
+	 * .a = { .b.i = 5, .b.j = 2 }
+	 * instead of (wrongly) doing:
+	 * .a = { .b.i = 5, .j = 2 }
+	 */
+
+	for(des = *pins_here; des->next; des = des->next);
+
+	des->next = sub_d;
+}
+
+static struct desig *desig_copy(struct desig *desig)
+{
+	struct desig *copy = umalloc(sizeof *copy);
+
+	memcpy_safe(copy, desig);
+	if(desig->next)
+		copy->next = desig_copy(desig->next);
+
+	return copy;
+}
+
 static decl_init *decl_init_brace_up_aggregate(
 		decl_init *current,
 		init_iter *iter,
@@ -847,24 +879,29 @@ static decl_init *decl_init_brace_up_aggregate(
 	if(iter->pos[0]->type == decl_init_brace){
 		/* pass down this as a new iterator */
 		decl_init *first = iter->pos[0];
-		decl_init **old_subs = first->bits.ar.inits;
+		decl_init **braced_inits = first->bits.ar.inits;
 
-		if(old_subs){
+		if(braced_inits){
+			/* the brace contains some inits { 1, .x = 2, 3 } */
 			init_iter it;
 
-			it.pos = old_subs;
+			it.pos = braced_inits;
 
 			/* prevent designator loss */
 			if(first->desig){
-				/* need to insert our desig */
-				struct desig *sub_d = old_subs[0]->desig, *di;
+				/* need to insert our desig
+				 * e.g.
+				 *
+				 * .a.b = { .x = 1, 2, 3 }
+				 * becomes:
+				 * .a = { .b = { .x = 1, 2, 3 } }
+				 */
+				int brace_i = 0;
 
-				/* insert */
-				old_subs[0]->desig = first->desig;
+				for(brace_i = 0; braced_inits[brace_i]; brace_i++){
 
-				/* tack old on the end */
-				for(di = old_subs[0]->desig; di->next; di = di->next);
-				di->next = sub_d;
+					insert_desig(&braced_inits[brace_i]->desig, desig_copy(first->desig));
+				}
 
 			}else if(current){ /* gcc (not clang) compliant */
 				/* we have no sub-designator - we're overriding an entire sub object */
@@ -889,7 +926,7 @@ static decl_init *decl_init_brace_up_aggregate(
 				excess_init(&it.pos[0]->where, tfor);
 			}
 
-			free(old_subs);
+			free(braced_inits);
 
 		}else{
 			/* {} */
