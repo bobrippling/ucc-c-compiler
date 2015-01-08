@@ -270,6 +270,7 @@ static struct warn_str
 
 	{ "unnamed-struct-memb", &cc1_warning.unnamed_struct_memb },
 	{ "unused-comma", &cc1_warning.unused_comma },
+	{ "unused-function-return", &cc1_warning.unused_fnret },
 
 	{ "vla", &cc1_warning.vla },
 
@@ -684,6 +685,7 @@ static void warning_all(void)
 	cc1_warning.unused_param =
 	cc1_warning.test_assign =
 	cc1_warning.signed_unsigned =
+	cc1_warning.unused_fnret =
 		W_OFF;
 }
 

@@ -1,4 +1,4 @@
-// RUN: %check %s -Weverything -xcpp-output -nostdinc -isystem sysheader
+// RUN: %check %s -Wimplicit-int -xcpp-output -nostdinc -isystem sysheader
 
 # 1 "sysheader/systemfile.h"
 

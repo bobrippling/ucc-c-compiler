@@ -1,4 +1,4 @@
-// RUN: %check %s -Weverything
+// RUN: %check %s -Wenum-mismatch
 
 enum A
 {

@@ -463,7 +463,7 @@ int expr_func_passable(expr *e)
 expr *expr_new_funcall()
 {
 	expr *e = expr_new_wrapper(funcall);
-	e->freestanding = 1;
+	e->freestanding = !cc1_warning.unused_fnret;
 	return e;
 }
 
