@@ -539,14 +539,21 @@ void asm_declare_decl_init(decl *d)
 		asm_out_section(sec, "\n");
 
 	}else if(d->bits.var.init.compiler_generated && fopt_mode & FOPT_COMMON){
+		const char *common_prefix = "comm ";
+
 		/* section doesn't matter */
 		sec = SECTION_BSS;
 
 		if(decl_linkage(d) == linkage_internal){
-			asm_out_section(sec, ".local %s\n", decl_asm_spel(d));
+			if(AS_SUPPORTS_LOCAL_COMMON){
+				asm_out_section(sec, ".local %s\n", decl_asm_spel(d));
+			}else{
+				common_prefix = "zerofill __DATA,__bss,";
+			}
 		}
 
-		asm_out_section(sec, ".comm %s,%u,%u\n",
+		asm_out_section(sec, ".%s%s,%u,%u\n",
+				common_prefix,
 				decl_asm_spel(d), decl_size(d), decl_align(d));
 
 	}else{
