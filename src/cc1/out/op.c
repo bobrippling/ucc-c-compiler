@@ -40,7 +40,7 @@ static void fill_if_type(
 		const out_val **vconst,
 		const out_val **vregp_or_lbl)
 {
-	switch(v->type){
+	switch(v->bitstype){
 		case V_CONST_I:
 			*vconst = v;
 			break;
@@ -65,14 +65,14 @@ static out_val *try_mem_offset(
 
 	/* if it's a minus, we enforce an order */
 	if((binop == op_plus || (binop == op_minus && vconst == rhs))
-	&& (vregp_or_lbl->type != V_LBL || (fopt_mode & FOPT_SYMBOL_ARITH))
+	&& (vregp_or_lbl->bitstype != V_LBL || (fopt_mode & FOPT_SYMBOL_ARITH))
 	&& (step = calc_ptr_step(vregp_or_lbl->t)) != -1)
 	{
 		out_val *mut_vregp_or_lbl = v_dup_or_reuse(
 				octx, vregp_or_lbl, vregp_or_lbl->t);
 		long *p;
 
-		switch(mut_vregp_or_lbl->type){
+		switch(mut_vregp_or_lbl->bitstype){
 			case V_LBL:
 				p = &mut_vregp_or_lbl->bits.lbl.offset;
 				break;
@@ -166,7 +166,7 @@ static void apply_ptr_step(
 
 		*incdec = mut_incdec = v_dup_or_reuse(octx, *incdec, (*incdec)->t);
 
-		switch(mut_incdec->type){
+		switch(mut_incdec->bitstype){
 			case V_CONST_I:
 				if(ptr_step == -1){
 					*incdec = out_op(octx, op_multiply,
@@ -186,7 +186,7 @@ static void apply_ptr_step(
 
 			case V_LBL:
 			case V_FLAG:
-			case V_REG_SPILT:
+			case V_MEM_REF:
 				assert(mut_incdec->retains == 1);
 				*incdec = (out_val *)v_to_reg(octx, *incdec);
 
@@ -226,7 +226,7 @@ static void try_shift_conv(
 		enum op_type *binop,
 		const out_val **lhs, const out_val **rhs)
 {
-	if(*binop == op_divide && (*rhs)->type == V_CONST_I){
+	if(*binop == op_divide && (*rhs)->bitstype == V_CONST_I){
 		integral_t k = (*rhs)->bits.val_i;
 		if((k & (k - 1)) == 0){
 			/* power of two, can shift */
@@ -238,7 +238,7 @@ static void try_shift_conv(
 			mut->bits.val_i = log2(k);
 		}
 	}else if(*binop == op_multiply){
-		const out_val **vconst = (*lhs)->type == V_CONST_I ? lhs : rhs;
+		const out_val **vconst = (*lhs)->bitstype == V_CONST_I ? lhs : rhs;
 		integral_t k = (*vconst)->bits.val_i;
 
 		if((k & (k - 1)) == 0){
@@ -297,7 +297,7 @@ const out_val *out_op(
 	if(vconst && (fopt_mode & FOPT_CONST_FOLD)){
 		const out_val *oconst = (vconst == lhs ? rhs : lhs);
 
-		if(oconst->type == V_CONST_I){
+		if(oconst->bitstype == V_CONST_I){
 			int step_l = calc_ptr_step(lhs->t);
 			int step_r = calc_ptr_step(rhs->t);
 			out_val *consted;
@@ -345,7 +345,7 @@ const out_val *out_op_unary(out_ctx *octx, enum op_type uop, const out_val *val)
 	}
 
 	/* special case - reverse the flag if possible */
-	switch(val->type){
+	switch(val->bitstype){
 		case V_FLAG:
 			if(uop == op_not){
 				out_val *reversed = v_dup_or_reuse(octx, val, val->t);

@@ -8,15 +8,23 @@ struct out_val
 	enum out_val_store
 	{
 		V_CONST_I, /* constant integer */
+		V_CONST_F, /* constant float */
 
-		V_REG, /* value in a register, possibly offset */
-		V_REG_SPILT, /* value in memory pointed to by register */
 		V_LBL, /* value at a memory address */
 
-		V_CONST_F, /* constant float */
 		V_FLAG, /* cpu flag */
-#define V_IS_MEM(ty) ((ty) == V_REG_SPILT || (ty) == V_LBL)
-	} type;
+
+		V_REG, /* value in a register, possibly offset */
+		V_MEM_REF, /* value in memory pointed to by register */
+#define V_IS_MEM(ty) ((ty) == V_MEM_REF || (ty) == V_LBL)
+	} bitstype;
+
+	/* lvalue reference -
+	 * a value may be stored in a register, stack memory, or label memory
+	 * (or for const ints, maybe a V_CONST_I)
+	 */
+	int is_ref;
+
 	unsigned retains;
 
 	type *t;
@@ -26,16 +34,16 @@ struct out_val
 		integral_t val_i;
 		floating_t val_f;
 
-		struct vreg_off
+		struct
 		{
 			struct vreg
 			{
 				unsigned short idx;
 				unsigned char is_float;
 			} reg;
+#define VREG_INIT(idx, fp) { idx, fp }
 			long offset;
 		} regoff;
-#define VREG_INIT(idx, fp) { idx, fp }
 
 		struct flag_opts
 		{

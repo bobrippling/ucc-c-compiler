@@ -26,7 +26,7 @@ const char *v_store_to_str(enum out_val_store store)
 	switch(store){
 		CASE_STR(V_CONST_I);
 		CASE_STR(V_REG);
-		CASE_STR(V_REG_SPILT);
+		CASE_STR(V_MEM_REF);
 		CASE_STR(V_LBL);
 		CASE_STR(V_CONST_F);
 		CASE_STR(V_FLAG);
@@ -91,7 +91,7 @@ void v_decay_flags_except(out_ctx *octx, const out_val *except[])
 		for(iter = octx->val_head; iter; iter = iter->next){
 			out_val *v = &iter->val;
 
-			if(v->retains > 0 && v->type == V_FLAG){
+			if(v->retains > 0 && v->bitstype == V_FLAG){
 				const out_val **vi;
 				int found = 0;
 
@@ -125,7 +125,7 @@ void v_decay_flags(out_ctx *octx)
 
 static out_val *v_dup(out_ctx *octx, const out_val *from, type *ty)
 {
-	switch(from->type){
+	switch(from->bitstype){
 		case V_CONST_I:
 		case V_CONST_F:
 		case V_LBL:
@@ -150,7 +150,7 @@ copy:
 			/* fall */
 		}
 
-		case V_REG_SPILT:
+		case V_MEM_REF:
 		case V_REG:
 		{
 			struct vreg r;
@@ -170,7 +170,8 @@ copy:
 			impl_reg_cp_no_off(octx, from, &r);
 
 			new = v_new(octx, ty);
-			new->type = from->type;
+			new->bitstype = from->bitstype;
+			new->is_ref = from->is_ref;
 			new->bits.regoff.reg = r;
 			new->bits.regoff.offset = from->bits.regoff.offset;
 
@@ -219,7 +220,7 @@ out_val *v_new_flag(
 	out_val *v = v_reuse(octx, from,
 			type_nav_btype(cc1_type_nav, type__Bool));
 
-	v->type = V_FLAG;
+	v->bitstype = V_FLAG;
 	v->bits.flag.cmp = cmp;
 	v->bits.flag.mods = mod;
 	return v;
@@ -232,7 +233,7 @@ out_val *v_new_reg(
 	/* reg may alias from->bits... */
 	const struct vreg savedreg = *reg;
 	out_val *v = v_reuse(octx, from, ty);
-	v->type = V_REG;
+	v->bitstype = V_REG;
 	v->bits.regoff.offset = 0;
 	memcpy_safe(&v->bits.regoff.reg, &savedreg);
 	return v;
@@ -298,9 +299,9 @@ void v_try_stack_reclaim(out_ctx *octx)
 	for(iter = octx->val_head; iter; iter = iter->next){
 		if(iter->val.retains == 0)
 			continue;
-		switch(iter->val.type){
+		switch(iter->val.bitstype){
 			case V_REG:
-			case V_REG_SPILT:
+			case V_MEM_REF:
 				if(!impl_reg_frame_const(&iter->val.bits.regoff.reg, 0))
 					return;
 				if(iter->val.bits.regoff.offset < lowest)
@@ -350,7 +351,8 @@ const out_val *out_val_retain(out_ctx *octx, const out_val *v)
 void out_val_overwrite(out_val *d, const out_val *s)
 {
 	/* don't copy .retains */
-	d->type = s->type;
+	d->bitstype = s->bitstype;
+	d->is_ref = s->is_ref;
 	d->t = s->t;
 	d->bitfield = s->bitfield;
 	d->bits = s->bits;
@@ -373,18 +375,18 @@ int vreg_eq(const struct vreg *a, const struct vreg *b)
 
 const char *out_get_lbl(const out_val *v)
 {
-	return v->type == V_LBL ? v->bits.lbl.str : NULL;
+	return v->bitstype == V_LBL ? v->bits.lbl.str : NULL;
 }
 
 int out_is_nonconst_temporary(const out_val *v)
 {
-	switch(v->type){
+	switch(v->bitstype){
 		case V_CONST_I:
 		case V_CONST_F:
 		case V_LBL:
 			break;
 		case V_REG:
-		case V_REG_SPILT:
+		case V_MEM_REF:
 		case V_FLAG:
 			return 1;
 	}

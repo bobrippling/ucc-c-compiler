@@ -60,10 +60,10 @@ out_val *out_new_num(out_ctx *octx, type *ty, const numeric *n)
 	out_val *v = v_new(octx, ty);
 
 	if(n->suffix & VAL_FLOATING){
-		v->type = V_CONST_F;
+		v->bitstype = V_CONST_F;
 		v->bits.val_f = n->val.f;
 	}else{
-		v->type = V_CONST_I;
+		v->bitstype = V_CONST_I;
 		v->bits.val_i = n->val.i;
 	}
 
@@ -84,7 +84,7 @@ out_val *out_new_lbl(out_ctx *octx, type *ty, const char *s, int pic)
 {
 	out_val *v = v_new(octx, ty);
 
-	v->type = V_LBL;
+	v->bitstype = V_LBL;
 	v->bits.lbl.str = s;
 	v->bits.lbl.pic = pic;
 	v->bits.lbl.offset = 0;
@@ -106,7 +106,7 @@ out_val *out_new_noop(out_ctx *octx)
 	out_val *v = v_new(octx,
 			type_nav_btype(cc1_type_nav, type_void));
 
-	v->type = V_CONST_I;
+	v->bitstype = V_CONST_I;
 	return v;
 }
 

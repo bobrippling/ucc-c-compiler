@@ -81,7 +81,7 @@ int out_dump_retained(out_ctx *octx, const char *desc)
 
 		fprintf(stderr, "retained(%d) %s { %d %d } %p\n",
 				l->val.retains,
-				v_store_to_str(l->val.type),
+				v_store_to_str(l->val.bitstype),
 				l->val.bits.regoff.reg.is_float,
 				l->val.bits.regoff.reg.idx,
 				(void *)&l->val);
@@ -108,9 +108,9 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 	type *from = val->t;
 	char fp[2];
 
-	switch(val->type){
+	switch(val->bitstype){
 		case V_REG:
-		case V_REG_SPILT:
+		case V_MEM_REF:
 			if(val->bits.regoff.offset
 			&& type_size(val->t, NULL) != type_size(to, NULL))
 			{
@@ -229,7 +229,7 @@ const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 {
 	out_val *normalised = v_dup_or_reuse(octx, unnormal, unnormal->t);
 
-	switch(normalised->type){
+	switch(normalised->bitstype){
 		case V_FLAG:
 			/* already normalised */
 			break;
@@ -240,7 +240,7 @@ const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 
 		case V_CONST_F:
 			normalised->bits.val_i = !!normalised->bits.val_f;
-			normalised->type = V_CONST_I;
+			normalised->bitstype = V_CONST_I;
 			/* float to int - change .t */
 			normalised->t = type_nav_btype(cc1_type_nav, type__Bool);
 			break;

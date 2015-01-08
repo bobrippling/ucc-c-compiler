@@ -919,8 +919,8 @@ static struct DIE *dwarf_suetype(
 
 static int dbg_get_val_location(const out_val *v, long *const offset)
 {
-	switch(v->type){
-		case V_REG_SPILT:
+	switch(v->bitstype){
+		case V_MEM_REF:
 		case V_REG:
 			if(v->bits.regoff.reg.idx == REG_BP){
 				*offset = v->bits.regoff.offset;

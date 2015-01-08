@@ -43,7 +43,7 @@ void out_flush_volatile(out_ctx *octx, const out_val *val)
 
 int v_is_const_reg(const out_val *v)
 {
-	return v->type == V_REG
+	return v->bitstype == V_REG
 		&& impl_reg_frame_const(&v->bits.regoff.reg, 0);
 }
 
@@ -57,7 +57,7 @@ const out_val *v_to_stack_mem(
 	out_val_retain(octx, spilt);
 	out_store(octx, spilt, val);
 
-	spilt->type = V_REG_SPILT;
+	spilt->bitstype = V_MEM_REF;
 
 	return spilt;
 }
@@ -71,7 +71,7 @@ const out_val *v_reg_to_stack_mem(
 
 static int v_in(const out_val *vp, enum vto to)
 {
-	switch(vp->type){
+	switch(vp->bitstype){
 		case V_FLAG:
 			break;
 
@@ -82,7 +82,7 @@ static int v_in(const out_val *vp, enum vto to)
 		case V_REG:
 			return (to & TO_REG) && vp->bits.regoff.offset == 0;
 
-		case V_REG_SPILT:
+		case V_MEM_REF:
 		case V_LBL:
 			return !!(to & TO_MEM);
 	}
@@ -112,7 +112,7 @@ static ucc_wur const out_val *v_spill_reg(
 static ucc_wur const out_val *v_save_reg(
 		out_ctx *octx, const out_val *vp, type *fnty)
 {
-	assert(vp->type == V_REG && "not reg");
+	assert(vp->bitstype == V_REG && "not reg");
 
 	if(fnty){
 		/* try callee save */
@@ -181,7 +181,7 @@ static ucc_wur const out_val *v_freeup_regp(out_ctx *octx, const out_val *vp)
 	struct vreg r;
 	int got_reg;
 
-	assert(vp->type == V_REG && "not reg");
+	assert(vp->bitstype == V_REG && "not reg");
 
 	v_reserve_reg(octx, &vp->bits.regoff.reg);
 
@@ -206,6 +206,23 @@ static ucc_wur const out_val *v_freeup_regp(out_ctx *octx, const out_val *vp)
 	}
 }
 
+static int v_is_reg(const out_val *v, const struct vreg *reg)
+{
+	switch(v->bitstype){
+		case V_REG:
+		case V_MEM_REF:
+			if(reg)
+				return vreg_eq(&v->bits.regoff.reg, reg);
+			return 1;
+
+		case V_FLAG:
+		case V_CONST_I:
+		case V_CONST_F:
+		case V_LBL:
+			return 0;
+	}
+}
+
 static const out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
 {
 	out_val_list *i;
@@ -216,7 +233,7 @@ static const out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
 		if(!v->retains)
 			continue;
 
-		if(v->type == V_REG && vreg_eq(&v->bits.regoff.reg, reg))
+		if(v_is_reg(v, reg))
 			return v;
 	}
 
@@ -248,7 +265,7 @@ static int v_unused_reg2(
 	 * if we have other references to it */
 	if(to_replace
 	&& to_replace->retains == 1
-	&& to_replace->type == V_REG
+	&& v_is_reg(to_replace, NULL)
 	&& to_replace->bits.regoff.reg.is_float == fp
 	&& !impl_reg_frame_const(&to_replace->bits.regoff.reg, /*sp*/1))
 	{
@@ -273,7 +290,7 @@ static int v_unused_reg2(
 	for(it = octx->val_head; it; it = it->next){
 		const out_val *this = &it->val;
 		if(this->retains
-		&& this->type == V_REG
+		&& this->bitstype == V_REG
 		&& this->bits.regoff.reg.is_float == fp
 		&& regtest(octx->current_fnty, &this->bits.regoff.reg))
 		{
@@ -336,19 +353,18 @@ const out_val *v_to_reg_given_freeup(
 		out_ctx *octx, const out_val *from,
 		const struct vreg *given)
 {
-	if(from->type == V_REG
+	if(from->bitstype == V_REG
 	&& vreg_eq(&from->bits.regoff.reg, given))
 	{
 		return from;
 	}
-
 	v_freeup_reg(octx, given);
 	return v_to_reg_given(octx, from, given);
 }
 
 const out_val *v_to_reg_out(out_ctx *octx, const out_val *conv, struct vreg *out)
 {
-	if(conv->type != V_REG){
+	if(conv->bitstype != V_REG){
 		struct vreg chosen;
 		if(!out)
 			out = &chosen;
@@ -377,9 +393,9 @@ const out_val *v_reg_apply_offset(out_ctx *octx, const out_val *const orig)
 	const out_val *vreg;
 	long off;
 
-	switch(orig->type){
+	switch(orig->bitstype){
 		case V_REG:
-		case V_REG_SPILT:
+		case V_MEM_REF:
 			break;
 		default:
 			assert(0 && "not a reg");
@@ -428,8 +444,8 @@ void v_save_regs(
 		if(v->retains == 0)
 			continue;
 
-		switch(v->type){
-			case V_REG_SPILT:
+		switch(v->bitstype){
+			case V_MEM_REF:
 			case V_REG:
 				if(v == fnval || val_present(v, ignores)){
 					/* don't save */

@@ -383,7 +383,7 @@ static const char *x86_reg_str(const struct vreg *reg, type *r)
 const char *impl_val_str_r(
 		char buf[VAL_STR_SZ], const out_val *vs, const int deref)
 {
-	switch(vs->type){
+	switch(vs->bitstype){
 		case V_CONST_I:
 		{
 			char *p = buf;
@@ -427,7 +427,7 @@ const char *impl_val_str_r(
 		}
 
 		case V_REG:
-		case V_REG_SPILT:
+		case V_MEM_REF:
 		{
 			long off = vs->bits.regoff.offset;
 			const char *rstr = x86_reg_str(
@@ -920,7 +920,7 @@ static const out_val *x86_load_iv(
 	const int high_bit = integral_high_bit_ABS(from->bits.val_i, from->t);
 	struct vreg r;
 
-	assert(from->type == V_CONST_I);
+	assert(from->bitstype == V_CONST_I);
 	assert(!type_is_floating(from->t));
 
 	if(high_bit >= AS_MAX_MOV_BIT){
@@ -961,7 +961,7 @@ static const out_val *x86_load_iv(
 
 static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 {
-	switch(from->type){
+	switch(from->bitstype){
 		case V_CONST_I:
 			/* CONST_I shouldn't be entered,
 			 * type prop. should cast */
@@ -977,7 +977,7 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 
 				from = mut;
 
-				mut->type = V_CONST_I;
+				mut->bitstype = V_CONST_I;
 				mut->bits.val_i = from->bits.val_f;
 				/* TODO: use just an int if we can get away with it */
 				mut->t = type_nav_btype(cc1_type_nav, type_llong);
@@ -1005,7 +1005,7 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 
 			/* must treat this as a pointer, and dereference here,
 			 * as we currently don't have V_LBL_SPILT, for e.g. */
-			mut->type = V_LBL;
+			mut->bitstype = V_LBL;
 			mut->bits.lbl.str = lbl;
 			mut->bits.lbl.pic = 1;
 			mut->bits.lbl.offset = 0;
@@ -1056,13 +1056,13 @@ const out_val *impl_load(
 		const out_val *from,
 		const struct vreg *reg)
 {
-	if(from->type == V_REG
+	if(from->bitstype == V_REG
 	&& vreg_eq(reg, &from->bits.regoff.reg))
 	{
 		return from;
 	}
 
-	switch(from->type){
+	switch(from->bitstype){
 		case V_FLAG:
 		{
 			type *int_ty = type_nav_btype(cc1_type_nav, type_int);
@@ -1120,7 +1120,7 @@ const out_val *impl_load(
 			break;
 		}
 
-		case V_REG_SPILT:
+		case V_MEM_REF:
 			/* actually a pointer to T */
 			return impl_deref(octx, from, reg);
 
@@ -1155,7 +1155,7 @@ lea:
 
 		case V_CONST_F:
 			from = x86_load_fp(octx, from);
-			if(from->type != V_REG)
+			if(from->bitstype != V_REG)
 				from = impl_load(octx, from, reg);
 	}
 
@@ -1164,7 +1164,7 @@ lea:
 
 static const out_val *x86_check_ivfp(out_ctx *octx, const out_val *from)
 {
-	switch(from->type){
+	switch(from->bitstype){
 		case V_CONST_I:
 			from = x86_load_iv(octx, from, NULL);
 			break;
@@ -1182,8 +1182,8 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 	char vbuf[VAL_STR_SZ];
 
 	/* from must be either a reg, value or flag */
-	if(from->type == V_FLAG
-	&& to->type == V_REG)
+	if(from->bitstype == V_FLAG
+	&& to->bitstype == V_REG)
 	{
 		/* the register we're storing into is an lvalue */
 		struct vreg evalreg;
@@ -1207,12 +1207,12 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 	from = v_to(octx, from, TO_REG | TO_CONST);
 	from = x86_check_ivfp(octx, from);
 
-	switch(to->type){
+	switch(to->bitstype){
 		case V_FLAG:
 		case V_CONST_F:
-			ICE("invalid store lvalue 0x%x", to->type);
+			ICE("invalid store lvalue 0x%x", to->bitstype);
 
-		case V_REG_SPILT:
+		case V_MEM_REF:
 		case V_REG:
 		case V_LBL:
 			break;
@@ -1250,8 +1250,8 @@ static void x86_reg_cp(
 void impl_reg_cp_no_off(
 		out_ctx *octx, const out_val *from, const struct vreg *to_reg)
 {
-	UCC_ASSERT(from->type == V_REG,
-			"reg_cp on non register type 0x%x", from->type);
+	UCC_ASSERT(from->bitstype == V_REG,
+			"reg_cp on non register type 0x%x", from->bitstype);
 
 	if(!from->bits.regoff.offset && vreg_eq(&from->bits.regoff.reg, to_reg))
 		return;
@@ -1285,7 +1285,7 @@ static const out_val *x86_idiv(
 		/* idiv takes either a reg or memory address */
 		r = v_to(octx, r, TO_REG | TO_MEM);
 
-		assert(r->type != V_REG
+		assert(r->bitstype != V_REG
 				|| r->bits.regoff.reg.idx != X86_64_REG_RDX);
 
 		if(type_is_signed(r->t)){
@@ -1347,7 +1347,7 @@ static const out_val *x86_shift(
 	/* sh[lr] [r/m], [c/r]
 	 * where            ^ must be %cl
 	 */
-	if(r->type != V_CONST_I){
+	if(r->bitstype != V_CONST_I){
 		struct vreg cl;
 
 		cl.is_float = 0;
@@ -1457,7 +1457,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		 * [should merge at some point - generic instructions etc]
 		 */
 
-		if(l->type != V_REG && op_is_commutative(op)){
+		if(l->bitstype != V_REG && op_is_commutative(op)){
 			const out_val *tmp = l;
 			l = r, r = tmp;
 		}
@@ -1518,9 +1518,9 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			l = v_to(octx, l, TO_REG | TO_CONST);
 			r = v_to(octx, r, TO_REG | TO_CONST);
 
-			if(l->type == V_CONST_I)
+			if(l->bitstype == V_CONST_I)
 				vconst = l;
-			else if(r->type == V_CONST_I)
+			else if(r->bitstype == V_CONST_I)
 				vconst = r;
 
 			/* if we have a CONST try a test instruction */
@@ -1532,14 +1532,14 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				out_asm(octx, "test%s %s, %s", x86_suffix(vother->t), vstr, vstr);
 			}else{
 				/* if we have a const, it must be the first arg */
-				if(l->type == V_CONST_I){
+				if(l->bitstype == V_CONST_I){
 					const out_val *tmp = l;
 					l = r, r = tmp;
 					inv = 1;
 				}
 
 				/* still a const? */
-				if(l->type == V_CONST_I)
+				if(l->bitstype == V_CONST_I)
 					l = v_to_reg(octx, l);
 
 				maybe_promote(octx, &l, &r);
@@ -1594,13 +1594,13 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			/* XXX: currently implicit here that V_REG means w/no offset */
 			{ V_REG, V_CONST_I },
 			{ V_LBL, V_CONST_I },
-			{ V_REG_SPILT, V_CONST_I },
+			{ V_MEM_REF, V_CONST_I },
 
 			{ V_REG, V_LBL },
 			{ V_LBL, V_REG },
 
-			{ V_REG_SPILT, V_REG },
-			{ V_REG, V_REG_SPILT },
+			{ V_MEM_REF, V_REG },
+			{ V_REG, V_MEM_REF },
 
 			{ V_REG, V_REG },
 		};
@@ -1608,8 +1608,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		int i, need_swap = 0, satisfied = 0;
 
 #define OP_MATCH(vp, op) (   \
-		vp->type == ops[i].op && \
-		(vp->type != V_REG || !vp->bits.regoff.offset))
+		vp->bitstype == ops[i].op && \
+		(vp->bitstype != V_REG || !vp->bits.regoff.offset))
 
 		for(i = 0; i < ops_n; i++){
 			if(OP_MATCH(l, l) && OP_MATCH(r, r)){
@@ -1632,7 +1632,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			l = v_to(octx, l, TO_REG | TO_MEM);
 			r = v_to(octx, r, TO_REG | TO_MEM | TO_CONST);
 
-			if(V_IS_MEM(l->type) && V_IS_MEM(r->type))
+			if(V_IS_MEM(l->bitstype) && V_IS_MEM(r->bitstype))
 				r = v_to_reg(octx, r);
 		}
 
@@ -1660,9 +1660,9 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			case op_plus:
 			case op_minus:
 				/* use inc/dec if possible */
-				if(r->type == V_CONST_I
+				if(r->bitstype == V_CONST_I
 				&& r->bits.val_i == 1
-				&& l->type == V_REG)
+				&& l->bitstype == V_REG)
 				{
 					out_asm(octx, "%s%s %s",
 							op == op_plus ? "inc" : "dec",
@@ -1750,13 +1750,13 @@ const out_val *impl_cast_load(
 	UCC_ASSERT(!type_is_floating(small) && !type_is_floating(big),
 			"we don't cast-load floats");
 
-	switch(vp->type){
+	switch(vp->bitstype){
 		case V_CONST_F:
 			ICE("cast load float");
 
 		case V_CONST_I:
 		case V_LBL:
-		case V_REG_SPILT: /* could do something like movslq -8(%rbp), %rax */
+		case V_MEM_REF: /* could do something like movslq -8(%rbp), %rax */
 		case V_FLAG:
 			vp = v_to_reg(octx, vp);
 		case V_REG:
@@ -1811,7 +1811,7 @@ static const out_val *x86_fp_conv(
 	char vbuf[VAL_STR_SZ];
 	int truncate = type_is_integral(tto); /* going to int? */
 
-	if(vp->type == V_CONST_F)
+	if(vp->bitstype == V_CONST_F)
 		vp = x86_load_fp(octx, vp);
 
 	out_asm(octx, "cvt%s%s2%s%s %s, %%%s",
@@ -1821,7 +1821,7 @@ static const out_val *x86_fp_conv(
 			 * see if we need to do 64 or 32 bit
 			 */
 			int_ty ? type_size(int_ty, NULL) == 8 ? "q" : "l" : "",
-			impl_val_str_r(vbuf, vp, vp->type == V_REG_SPILT),
+			impl_val_str_r(vbuf, vp, vp->bitstype == V_MEM_REF),
 			x86_reg_str(r, tto));
 
 	return v_new_reg(octx, vp, tto, r);
@@ -1898,7 +1898,7 @@ static const char *x86_call_jmp_target(
 {
 	static char buf[VAL_STR_SZ + 2];
 
-	switch((*pvp)->type){
+	switch((*pvp)->bitstype){
 		case V_LBL:
 			if((*pvp)->bits.lbl.offset){
 				snprintf(buf, sizeof buf, "%s + %ld",
@@ -1915,7 +1915,7 @@ static const char *x86_call_jmp_target(
 			snprintf(buf, sizeof buf, "*%s", impl_val_str((*pvp), 1));
 			return buf;
 
-		case V_REG_SPILT: /* load, then jmp */
+		case V_MEM_REF: /* load, then jmp */
 		case V_REG: /* jmp *%rax */
 			*pvp = v_reg_apply_offset(octx, v_to_reg(octx, *pvp));
 
@@ -1937,7 +1937,7 @@ static const char *x86_call_jmp_target(
 			return buf;
 	}
 
-	ICE("invalid jmp target type 0x%x", (*pvp)->type);
+	ICE("invalid jmp target type 0x%x", (*pvp)->bitstype);
 	return NULL;
 }
 
@@ -1960,7 +1960,7 @@ void impl_branch(
 {
 	int flag;
 
-	switch(cond->type){
+	switch(cond->bitstype){
 		case V_REG:
 		{
 			const char *rstr;
@@ -2035,10 +2035,10 @@ void impl_branch(
 			break;
 
 		case V_LBL:
-		case V_REG_SPILT:
+		case V_MEM_REF:
 			cond = v_to_reg(octx, cond);
 
-			UCC_ASSERT(cond->type != V_REG_SPILT,
+			UCC_ASSERT(cond->bitstype != V_MEM_REF,
 					"normalise remained as spilt reg");
 
 			cond = out_normalise(octx, cond);
@@ -2095,11 +2095,11 @@ const out_val *impl_call(
 
 		assert(local_args[i]->retains > 0);
 
-		if(local_args[i]->type == V_FLAG)
+		if(local_args[i]->bitstype == V_FLAG)
 			local_args[i] = v_to_reg(octx, local_args[i]);
 
 		argty = local_args[i]->t;
-		if(local_args[i]->type == V_REG_SPILT)
+		if(local_args[i]->bitstype == V_MEM_REF)
 			argty = type_dereference_decay(argty);
 
 		float_arg[i] = type_is_floating(argty);
@@ -2252,7 +2252,7 @@ const out_val *impl_call(
 
 		if(rp){
 			/* only bother if it's not already in the register */
-			if(vp->type != V_REG || !vreg_eq(rp, &vp->bits.regoff.reg)){
+			if(vp->bitstype != V_REG || !vreg_eq(rp, &vp->bits.regoff.reg)){
 				/* need to free it up, as v_to_reg_given doesn't clobber check */
 				v_freeup_reg(octx, rp);
 
@@ -2268,7 +2268,7 @@ const out_val *impl_call(
 
 
 				local_args[i] = v_to_reg_given(octx, local_args[i], rp);
-			}else if(vp->type == V_REG && vp->bits.regoff.offset){
+			}else if(vp->bitstype == V_REG && vp->bits.regoff.offset){
 				/* need to ensure offsets are flushed */
 				local_args[i] = v_reg_apply_offset(octx, local_args[i]);
 			}
@@ -2419,6 +2419,6 @@ void impl_set_nan(out_ctx *octx, out_val *v)
 			ICE("TODO: long double nan");
 	}
 
-	v->type = V_CONST_F;
+	v->bitstype = V_CONST_F;
 	/*impl_load_fp(v);*/
 }
