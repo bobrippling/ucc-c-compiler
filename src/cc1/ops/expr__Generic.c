@@ -50,32 +50,16 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 
 		if(l->t){
-			enum { OKAY, INCOMPLETE, VARIABLE, FUNC } prob = OKAY;
-			const char *sprob;
+			const char *sprob = NULL;
 
 			fold_type(l->t, stab);
 
 			if(!type_is_complete(l->t))
-				prob = INCOMPLETE;
+				sprob = "incomplete";
 			else if(type_is_variably_modified(l->t))
-				prob = VARIABLE;
+				sprob = "variably-modified";
 			else if(type_is_func_or_block(l->t))
-				prob = FUNC;
-
-			switch(prob){
-				case INCOMPLETE:
-					sprob = "incomplete";
-					break;
-				case VARIABLE:
-					sprob = "variably-modified";
-					break;
-				case FUNC:
-					sprob = "function";
-					break;
-				case OKAY:
-					sprob = NULL;
-					break;
-			}
+				sprob = "function";
 
 			if(sprob){
 				fold_had_error = 1;
