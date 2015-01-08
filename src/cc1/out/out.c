@@ -111,6 +111,9 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 	switch(val->bitstype){
 		case V_REG:
 		case V_MEM_REF:
+			if(val->is_lvalref)
+				val = v_to_reg(octx, val);
+
 			if(val->bits.regoff.offset
 			&& type_size(val->t, NULL) != type_size(to, NULL))
 			{

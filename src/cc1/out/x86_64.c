@@ -428,6 +428,7 @@ const char *impl_val_str_r(
 
 		case V_REG:
 		case V_MEM_REF:
+#warning remove deref parameter?
 		{
 			long off = vs->bits.regoff.offset;
 			const char *rstr = x86_reg_str(
@@ -1121,8 +1122,11 @@ const out_val *impl_load(
 		}
 
 		case V_MEM_REF:
-			/* actually a pointer to T */
-			return impl_deref(octx, from, reg);
+			if(from->is_lvalref){
+				/* actually a pointer to T */
+				return impl_deref(octx, from, reg);
+			}
+			/* else fallthrough */
 
 		case V_REG:
 			if(from->bits.regoff.offset)
@@ -1213,6 +1217,10 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 			ICE("invalid store lvalue 0x%x", to->bitstype);
 
 		case V_MEM_REF:
+			if(!to->is_lvalref){
+				/* not an lvalue, store to what's inside the memory */
+				to = v_to_reg(octx, to);
+			}
 		case V_REG:
 		case V_LBL:
 			break;
@@ -1608,7 +1616,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		int i, need_swap = 0, satisfied = 0;
 
 #define OP_MATCH(vp, op) (   \
-		vp->bitstype == ops[i].op && \
+		!vp->is_lvalref && vp->bitstype == ops[i].op && \
 		(vp->bitstype != V_REG || !vp->bits.regoff.offset))
 
 		for(i = 0; i < ops_n; i++){
@@ -1810,9 +1818,12 @@ static const out_val *x86_fp_conv(
 {
 	char vbuf[VAL_STR_SZ];
 	int truncate = type_is_integral(tto); /* going to int? */
+	int deref;
 
 	if(vp->bitstype == V_CONST_F)
 		vp = x86_load_fp(octx, vp);
+
+	deref = (vp->bitstype == V_MEM_REF && vp->is_lvalref);
 
 	out_asm(octx, "cvt%s%s2%s%s %s, %%%s",
 			truncate ? "t" : "",
@@ -1821,7 +1832,7 @@ static const out_val *x86_fp_conv(
 			 * see if we need to do 64 or 32 bit
 			 */
 			int_ty ? type_size(int_ty, NULL) == 8 ? "q" : "l" : "",
-			impl_val_str_r(vbuf, vp, vp->bitstype == V_MEM_REF),
+			impl_val_str_r(vbuf, vp, deref),
 			x86_reg_str(r, tto));
 
 	return v_new_reg(octx, vp, tto, r);
@@ -2099,7 +2110,7 @@ const out_val *impl_call(
 			local_args[i] = v_to_reg(octx, local_args[i]);
 
 		argty = local_args[i]->t;
-		if(local_args[i]->bitstype == V_MEM_REF)
+		if(local_args[i]->bitstype == V_MEM_REF && local_args[i]->is_lvalref)
 			argty = type_dereference_decay(argty);
 
 		float_arg[i] = type_is_floating(argty);

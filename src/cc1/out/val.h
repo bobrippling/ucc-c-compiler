@@ -23,7 +23,7 @@ struct out_val
 	 * a value may be stored in a register, stack memory, or label memory
 	 * (or for const ints, maybe a V_CONST_I)
 	 */
-	int is_ref;
+	int is_lvalref;
 
 	unsigned retains;
 

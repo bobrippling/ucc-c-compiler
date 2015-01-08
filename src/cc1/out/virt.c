@@ -58,6 +58,8 @@ const out_val *v_to_stack_mem(
 	out_store(octx, spilt, val);
 
 	spilt->bitstype = V_MEM_REF;
+	/* not an lvalue - the value we can about is on the stack,
+	 * not a reference to the stack */
 
 	return spilt;
 }
@@ -71,6 +73,15 @@ const out_val *v_reg_to_stack_mem(
 
 static int v_in(const out_val *vp, enum vto to)
 {
+	/* lval  memref | result
+	 *   1     1      int stack; stack;
+	 *   0     1      int stack, *p = &stack; *p;
+	 *   1     0      n/a
+	 *   0     0      n/a
+	 */
+	if(vp->is_lvalref && vp->bitstype == V_MEM_REF)
+		return !!(to & TO_MEM);
+
 	switch(vp->bitstype){
 		case V_FLAG:
 			break;
@@ -83,6 +94,18 @@ static int v_in(const out_val *vp, enum vto to)
 			return (to & TO_REG) && vp->bits.regoff.offset == 0;
 
 		case V_MEM_REF:
+			/* not an lval - we mean the register pointer itself,
+			 * e.g. %rax - offset
+			 *
+			 * if there's an offset,
+			 * then this value can only be displayed as in memory: 3(%rbp)
+			 *
+			 * if there's no offset, this value can be a register: %rax
+			 */
+			if(vp->bits.regoff.offset)
+				return !!(to & TO_MEM);
+			return !!(to & TO_REG);
+
 		case V_LBL:
 			return !!(to & TO_MEM);
 	}
@@ -388,15 +411,20 @@ const out_val *v_to_reg(out_ctx *octx, const out_val *conv)
 	return v_to_reg_out(octx, conv, NULL);
 }
 
-const out_val *v_reg_apply_offset(out_ctx *octx, const out_val *const orig)
+const out_val *v_reg_apply_offset(out_ctx *octx, const out_val *orig)
 {
 	const out_val *vreg;
 	long off;
 
 	switch(orig->bitstype){
-		case V_REG:
 		case V_MEM_REF:
+			if(orig->is_lvalref)
+				orig = v_to_reg(octx, orig);
 			break;
+
+		case V_REG:
+			break;
+
 		default:
 			assert(0 && "not a reg");
 	}

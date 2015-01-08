@@ -156,6 +156,11 @@ copy:
 			struct vreg r;
 			out_val *new;
 
+			/* if it's an lvalue reference we can reuse it,
+			 * since they can't be changed */
+			if(from->is_lvalref)
+				goto copy;
+
 			/* if it's a frame constant we can just use the same register */
 			if(impl_reg_frame_const(&from->bits.regoff.reg, 0))
 				goto copy;
@@ -171,7 +176,7 @@ copy:
 
 			new = v_new(octx, ty);
 			new->bitstype = from->bitstype;
-			new->is_ref = from->is_ref;
+			new->is_lvalref = from->is_lvalref;
 			new->bits.regoff.reg = r;
 			new->bits.regoff.offset = from->bits.regoff.offset;
 
@@ -352,7 +357,7 @@ void out_val_overwrite(out_val *d, const out_val *s)
 {
 	/* don't copy .retains */
 	d->bitstype = s->bitstype;
-	d->is_ref = s->is_ref;
+	d->is_lvalref = s->is_lvalref;
 	d->t = s->t;
 	d->bitfield = s->bitfield;
 	d->bits = s->bits;
@@ -387,6 +392,7 @@ int out_is_nonconst_temporary(const out_val *v)
 			break;
 		case V_REG:
 		case V_MEM_REF:
+			/* could check v->is_lvalref */
 		case V_FLAG:
 			return 1;
 	}

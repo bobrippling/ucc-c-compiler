@@ -922,7 +922,7 @@ static int dbg_get_val_location(const out_val *v, long *const offset)
 	switch(v->bitstype){
 		case V_MEM_REF:
 		case V_REG:
-			if(v->bits.regoff.reg.idx == REG_BP){
+			if(v->is_lvalref && v->bits.regoff.reg.idx == REG_BP){
 				*offset = v->bits.regoff.offset;
 				return 1;
 			}
