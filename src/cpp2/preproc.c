@@ -48,11 +48,6 @@ void include_bt(FILE *f)
 	}
 }
 
-void preproc_backtrace()
-{
-	include_bt(stderr);
-}
-
 static void preproc_out_info(void)
 {
 	/* output PP info */

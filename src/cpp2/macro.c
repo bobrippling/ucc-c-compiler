@@ -162,7 +162,6 @@ void macros_warn_unused(void)
 		&& m->include_depth == 0)
 		{
 			current_line--;
-			preproc_backtrace();
 			warn_at(&m->where, "unused macro \"%s\"", m->nam);
 			current_line++;
 		}

@@ -24,7 +24,6 @@ extern struct loc loc_tok;
   do{                          \
     if(wm == 0 || wm & wmode){ \
       current_line--;          \
-      preproc_backtrace();     \
       f(NULL, __VA_ARGS__);    \
       current_line++;          \
     }                          \

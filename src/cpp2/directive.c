@@ -183,8 +183,6 @@ static void handle_error_warning(token **tokens, int err)
 
 	s = tokens_join(tokens);
 
-	preproc_backtrace();
-
 	warn_colour(1, err);
 
 	/* we're already on the next line */
