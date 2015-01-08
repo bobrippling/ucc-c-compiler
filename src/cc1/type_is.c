@@ -191,12 +191,12 @@ type *type_is_primitive_anysign(type *ty, enum type_primitive p)
 	if(TYPE_PRIMITIVE_IS_CHAR(a))
 		a = type_nchar;
 	else
-		a = type_primitive_is_signed(a) ? TYPE_PRIMITIVE_TO_UNSIGNED(a) : a;
+		a = type_primitive_is_signed(a, 0) ? TYPE_PRIMITIVE_TO_UNSIGNED(a) : a;
 
 	if(TYPE_PRIMITIVE_IS_CHAR(b))
 		b = type_nchar;
 	else
-		b = type_primitive_is_signed(b) ? TYPE_PRIMITIVE_TO_UNSIGNED(b) : b;
+		b = type_primitive_is_signed(b, 0) ? TYPE_PRIMITIVE_TO_UNSIGNED(b) : b;
 
 	return a == b ? ty : NULL;
 }

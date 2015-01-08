@@ -73,7 +73,7 @@ enum type_cmp btype_cmp(const btype *a, const btype *b)
 	return TYPE_NOT_EQUAL;
 }
 
-int type_primitive_is_signed(enum type_primitive p)
+int type_primitive_is_signed(enum type_primitive p, int hard_err_on_su)
 {
 	switch(p){
 		case type_nchar:
@@ -93,9 +93,12 @@ int type_primitive_is_signed(enum type_primitive p)
 
 		case type_struct:
 		case type_union:
-			ICE("%s(%s)",
-					__func__,
-					type_primitive_to_str(p));
+			if(hard_err_on_su){
+				ICE("%s(%s)",
+						__func__,
+						type_primitive_to_str(p));
+			}
+			return 0;
 
 		case type_enum:
 			return 0; /* for now - enum types coming later */
@@ -118,7 +121,7 @@ int type_primitive_is_signed(enum type_primitive p)
 
 int btype_is_signed(const btype *t)
 {
-	return type_primitive_is_signed(t->primitive);
+	return type_primitive_is_signed(t->primitive, 1);
 }
 
 unsigned btype_size(const btype *t, const where *from)

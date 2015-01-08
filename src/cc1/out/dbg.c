@@ -497,7 +497,7 @@ static struct DIE *dwarf_basetype(struct DIE_compile_unit *cu, type *ty)
 			break;
 
 		case type_nchar:
-			if(type_primitive_is_signed(prim)){
+			if(type_primitive_is_signed(prim, 1)){
 		case type_schar:
 				enc = DW_ATE_signed_char;
 			}else{

@@ -76,7 +76,7 @@ struct btype
 };
 
 enum type_cmp btype_cmp(const btype *a, const btype *b);
-int type_primitive_is_signed(enum type_primitive);
+int type_primitive_is_signed(enum type_primitive, int hard_err_on_su);
 int btype_is_signed(const btype *);
 
 #define BTYPE_STATIC_BUFSIZ 128
