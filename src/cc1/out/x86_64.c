@@ -380,8 +380,7 @@ static const char *x86_reg_str(const struct vreg *reg, type *r)
 	}
 }
 
-const char *impl_val_str_r(
-		char buf[VAL_STR_SZ], const out_val *vs, const int deref)
+const char *impl_val_str_r(char buf[VAL_STR_SZ], const out_val *vs)
 {
 	switch(vs->bitstype){
 		case V_CONST_I:
@@ -428,7 +427,6 @@ const char *impl_val_str_r(
 
 		case V_REG:
 		case V_MEM_REF:
-#warning remove deref parameter?
 		{
 			long off = vs->bits.regoff.offset;
 			const char *rstr = x86_reg_str(
@@ -953,7 +951,7 @@ static const out_val *x86_load_iv(
 
 		out_asm(octx, "mov%s %s, %%%s",
 				x86_suffix(from->t),
-				impl_val_str(from, 0),
+				impl_val_str(from),
 				x86_reg_str(reg, from->t));
 	}
 
