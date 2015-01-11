@@ -116,7 +116,7 @@ void out_func_epilogue(
 		 */
 		octx->in_prologue = 1;
 		{
-			octx->cur_stack_sz = octx->max_stack_sz;
+			octx->cur_stack_sz = octx->max_stack_sz - octx->stack_callspace;
 			callee_save_or_restore(octx, call_save_spill_blk);
 		}
 		octx->in_prologue = 0;
@@ -145,9 +145,10 @@ void out_func_epilogue(
 			assert(octx->max_stack_sz >= octx->stack_n_alloc);
 
 			out_comment(octx,
-					"stack_sz{cur=%lu,max=%lu} stack_n_alloc=%lu (total=%lu) max_align=%u",
+					"stack_sz{cur=%lu,max=%lu} stack_n_alloc=%lu (total=%lu) call_spc=%lu max_align=%u",
 					octx->cur_stack_sz, octx->max_stack_sz, octx->stack_n_alloc,
 					octx->cur_stack_sz + octx->stack_n_alloc,
+					octx->stack_callspace,
 					octx->max_align);
 
 			if(octx->max_align){
@@ -193,6 +194,7 @@ void out_func_epilogue(
 		octx->cur_stack_sz =
 		octx->max_stack_sz =
 		octx->max_align =
+		octx->stack_callspace =
 		octx->stack_n_alloc = 0;
 }
 

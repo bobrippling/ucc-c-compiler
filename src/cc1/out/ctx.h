@@ -35,6 +35,7 @@ struct out_ctx
 	v_stackt cur_stack_sz;
 	v_stackt max_stack_sz;
 	v_stackt stack_n_alloc; /* just the alloc_n() part */
+	v_stackt stack_callspace; /* space used by extra call arguments */
 	unsigned max_align;
 
 	unsigned check_flags : 1; /* decay flags? */

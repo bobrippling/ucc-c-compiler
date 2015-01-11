@@ -2157,6 +2157,9 @@ const out_val *impl_call(
 		}else{
 			/* this aligns the stack-ptr and returns arg_stack padded */
 			arg_stack.vptr = out_aalloc(octx, arg_stack.bytesz, pws, arithty);
+
+			if(octx->stack_callspace < arg_stack.bytesz)
+				octx->stack_callspace = arg_stack.bytesz;
 		}
 	}
 
@@ -2172,7 +2175,7 @@ const out_val *impl_call(
 		 * VLAs (and alloca()) unfortunately break this.
 		 * For this we special case and don't reuse existing stack.
 		 * Instead, we allocate stack explicitly, use it for the call,
-		 * then free it.
+		 * then free it (done above).
 		 */
 		stack_iter = v_new_sp(octx, NULL);
 
