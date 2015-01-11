@@ -695,6 +695,7 @@ void nexttoken()
 					break;
 				case 'b':
 					mode = BIN;
+					cc1_warn_at(NULL, binary_literal, "binary literals are an extension");
 					nextchar();
 					c = peeknextchar();
 					break;

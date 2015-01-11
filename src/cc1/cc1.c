@@ -70,6 +70,8 @@ static struct warn_str
 		&cc1_warning.return_type
 	},
 
+	{ "binary-literal", &cc1_warning.binary_literal },
+
 	{ "sign-compare", &cc1_warning.sign_compare },
 	{ "extern-assume", &cc1_warning.extern_assume },
 
@@ -661,6 +663,7 @@ static void warning_pedantic(enum warning_fatality set)
 	cc1_warning.attr_printf_voidp =
 
 	cc1_warning.return_void =
+	cc1_warning.binary_literal =
 		set;
 }
 
@@ -686,6 +689,7 @@ static void warning_all(void)
 	cc1_warning.test_assign =
 	cc1_warning.signed_unsigned =
 	cc1_warning.unused_fnret =
+	cc1_warning.binary_literal =
 		W_OFF;
 }
 
