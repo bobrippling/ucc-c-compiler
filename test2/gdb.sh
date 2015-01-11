@@ -1,5 +1,10 @@
 #!/bin/sh
 
+die(){
+	echo >&2 "$@"
+	exit 1
+}
+
 if [ $# -ne 3 ]
 then
 	echo >&2 "Usage: $0 exe gdb-batch-file expected"
