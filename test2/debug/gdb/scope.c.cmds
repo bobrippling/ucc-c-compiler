@@ -10,7 +10,6 @@ s
 n
 n
 n
-n
 p *pfp
 p &pt_local[-1] == $1
 p a

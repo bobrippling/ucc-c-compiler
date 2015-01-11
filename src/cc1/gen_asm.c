@@ -253,7 +253,14 @@ const out_val *gen_call(
 		const where *loc)
 {
 	const char *whynot;
-	const out_val *fn_ret = inline_func_try_gen(
+	const out_val *fn_ret;
+
+	/* (re-)emit line location - function calls are commonly split
+	 * over multiple lines, so we want the debugger to stop again
+	 * on the top line when we're about to emit the call */
+	out_dbg_where(octx, loc);
+
+	fn_ret = inline_func_try_gen(
 			maybe_exp, maybe_dfn, fnval, args, octx, &whynot, loc);
 
 	if(fn_ret){
