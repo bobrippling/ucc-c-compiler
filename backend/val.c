@@ -25,6 +25,7 @@ struct val
 	{
 		int i;
 		char *name;
+		int alloca_cnt;
 	} u;
 };
 
@@ -98,7 +99,8 @@ char *val_str(val *v)
 			snprintf(buf, sizeof buf, "%s", v->u.name);
 			break;
 		case ALLOCA:
-			snprintf(buf, sizeof buf, "alloca-%p", (void *)v);
+			snprintf(buf, sizeof buf, "alloca-%d-%p",
+					v->u.alloca_cnt, (void *)v);
 			break;
 	}
 	return xstrdup(buf);
@@ -141,9 +143,10 @@ val *val_new_ptr_from_int(int i)
 	return p;
 }
 
-val *val_alloca(void)
+val *val_alloca(int n)
 {
 	val *v = val_new(ALLOCA);
+	v->u.alloca_cnt = n;
 	return v;
 }
 

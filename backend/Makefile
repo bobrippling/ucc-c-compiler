@@ -3,6 +3,8 @@ OBJ = val.o main.o mem.o isn.o op.o \
 
 SRC = ${OBJ:.o=.c}
 
+CFLAGS = -g
+
 all: val tags
 
 val: ${OBJ}
@@ -13,5 +15,10 @@ tags: ${SRC}
 
 clean:
 	rm -f val ${OBJ}
+
+Makefile.dep: ${SRC}
+	${CC} -MM ${SRC} > $@
+
+-include Makefile.dep
 
 .PHONY: clean all

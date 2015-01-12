@@ -11,7 +11,7 @@ int main()
 
 	val *loaded = val_load(store);
 
-	val *other_store = val_alloca();
+	val *other_store = val_alloca(2);
 
 	val_store(val_new_i(7), other_store);
 
@@ -26,6 +26,10 @@ int main()
 					val_load(store),
 					val_load(other_store)),
 				added);
+
+	val *alloca_p = val_element(other_store, 1);
+
+	val_add(val_load(alloca_p), val_new_i(33));
 
 	isn_optimise();
 
