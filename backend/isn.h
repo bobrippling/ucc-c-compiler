@@ -1,9 +1,15 @@
 #ifndef ISN_H
 #define ISN_H
 
-typedef struct isn isn;
+#include "op.h"
 
-void isn_load(val *, val *);
-void isn_store(val *, val *);
+void isn_load(val *to, val *lval);
+void isn_store(val *from, val *lval);
+
+void isn_op(enum op op, val *lhs, val *rhs, val *res);
+
+void isn_optimise(void);
+
+void isn_dump(void);
 
 #endif

@@ -3,8 +3,13 @@
 #include <assert.h>
 
 #include "mem.h"
+#include "dynmap.h"
 
-#include "backend.h"
+#include "val.h"
+#include "val_internal.h"
+
+#include "isn.h"
+#include "op.h"
 
 struct val
 {
@@ -12,14 +17,15 @@ struct val
 	{
 		INT,
 		INT_PTR,
-		NAME
+		NAME,
+		ALLOCA
 	} type;
 
 	union
 	{
 		int i;
 		char *name;
-	} bits;
+	} u;
 };
 
 enum val_to
@@ -38,6 +44,8 @@ static bool val_in(val *v, enum val_to to)
 			return to & (LITERAL | ADDRESSABLE);
 		case NAME:
 			return to & NAMED;
+		case ALLOCA:
+			return to & ADDRESSABLE;
 	}
 }
 
@@ -48,17 +56,49 @@ static val *val_need(val *v, enum val_to to)
 	assert(0);
 }
 
-static char *val_str(val *v)
+unsigned val_hash(val *v)
+{
+	unsigned h = v->type;
+
+	switch(v->type){
+		case INT:
+		case INT_PTR:
+			h ^= v->u.i;
+			break;
+		case NAME:
+			h ^= dynmap_strhash(v->u.name);
+			break;
+		case ALLOCA:
+			break;
+	}
+
+	return h;
+}
+
+bool val_maybe_op(enum op op, val *l, val *r, int *res)
+{
+	if(l->type != INT || r->type != INT)
+		return false;
+
+	*res = op_exe(op, l->u.i, r->u.i);
+
+	return true;
+}
+
+char *val_str(val *v)
 {
 	/* XXX: memleak */
 	char buf[256];
 	switch(v->type){
 		case INT:
 		case INT_PTR:
-			snprintf(buf, sizeof buf, "%d", v->bits.i);
+			snprintf(buf, sizeof buf, "%d", v->u.i);
 			break;
 		case NAME:
-			snprintf(buf, sizeof buf, "%s", v->bits.name);
+			snprintf(buf, sizeof buf, "%s", v->u.name);
+			break;
+		case ALLOCA:
+			snprintf(buf, sizeof buf, "alloca-%p", (void *)v);
 			break;
 	}
 	return xstrdup(buf);
@@ -82,7 +122,7 @@ static val *val_name_new(void)
 
 	snprintf(buf, sizeof buf, "tmp.%d", n++);
 
-	v->bits.name = xstrdup(buf);
+	v->u.name = xstrdup(buf);
 
 	return v;
 }
@@ -90,7 +130,7 @@ static val *val_name_new(void)
 val *val_new_i(int i)
 {
 	val *p = val_new(INT);
-	p->bits.i = i;
+	p->u.i = i;
 	return p;
 }
 
@@ -101,18 +141,18 @@ val *val_new_ptr_from_int(int i)
 	return p;
 }
 
-static void assert_address(val *v)
+val *val_alloca(void)
 {
-	assert(v->type == INT_PTR);
+	val *v = val_new(ALLOCA);
+	return v;
 }
 
-void val_store(val *d, val *s)
+void val_store(val *rval, val *lval)
 {
-	d = val_need(d, ADDRESSABLE);
-	s = val_need(s, LITERAL | NAMED);
+	lval = val_need(lval, ADDRESSABLE);
+	rval = val_need(rval, LITERAL | NAMED);
 
-	isn_store(STORE, d, s);
-	printf("store %s -> i32* %s\n", val_str(s), val_str(d));
+	isn_store(rval, lval);
 }
 
 val *val_load(val *v)
@@ -121,7 +161,7 @@ val *val_load(val *v)
 
 	v = val_need(v, ADDRESSABLE);
 
-	printf("load i32* %s -> %s\n", val_str(v), val_str(named));
+	isn_load(named, v);
 
 	return named;
 }
@@ -130,13 +170,7 @@ val *val_add(val *a, val *b)
 {
 	val *named = val_name_new();
 
-	printf("%s <- %s + %s\n", val_str(named), val_str(a), val_str(b));
+	isn_op(op_add, a, b, named);
 
 	return named;
-}
-
-val *val_show(val *v)
-{
-	printf("SHOW: %s\n", val_str(v));
-	return v;
 }

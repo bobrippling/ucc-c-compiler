@@ -1,4 +1,5 @@
 #include "backend.h"
+#include "isn.h"
 
 int main()
 {
@@ -6,11 +7,27 @@ int main()
 	val *b = val_new_i(5);
 	val *store = val_new_ptr_from_int(0);
 
-	val_store(store, a);
+	val_store(a, store);
 
 	val *loaded = val_load(store);
 
-	val *added = val_add(b, loaded);
+	val *other_store = val_alloca();
 
-	val_show(added);
+	val_store(val_new_i(7), other_store);
+
+	val *added = val_add(b,
+			val_add(
+				val_load(other_store),
+				loaded));
+
+	val *add_again = 
+		val_add(
+				val_add(
+					val_load(store),
+					val_load(other_store)),
+				added);
+
+	isn_optimise();
+
+	//isn_dump();
 }
