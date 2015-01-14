@@ -231,19 +231,21 @@ static char *include_parse(
 
 	*is_lib = 0;
 
-	switch(*include_arg++){
+	switch(*include_arg){
 		case '<':
 			*is_lib = 1;
+			include_arg++;
 			fin = str_quotefin2(include_arg, '>');
 			break;
 
 		case '"':
+			include_arg++;
 			fin = str_quotefin(include_arg);
 			break;
 
 		default:
 			if(may_expand_macros){
-				char *expanded = eval_expand_macros(include_arg);
+				char *expanded = eval_expand_macros(ustrdup(include_arg));
 				str_trim(expanded);
 				return include_parse(expanded, is_lib, 0);
 			}else{
