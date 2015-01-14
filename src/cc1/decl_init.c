@@ -931,38 +931,6 @@ static int decl_init_is_struct_copy(decl_init *di)
 	return 0;
 }
 
-static void insert_desig(struct desig **pins_here, struct desig *to_insert)
-{
-	struct desig *des, *sub_d = *pins_here;
-
-	*pins_here = to_insert;
-
-	/* tack old on the end - need to do this for all designators at this level,
-	 * e.g.
-	 * .a.b = { .i = 5, .j = 2 }
-	 * becomes
-	 *
-	 * .a = { .b.i = 5, .b.j = 2 }
-	 * instead of (wrongly) doing:
-	 * .a = { .b.i = 5, .j = 2 }
-	 */
-
-	for(des = *pins_here; des->next; des = des->next);
-
-	des->next = sub_d;
-}
-
-static struct desig *desig_copy(struct desig *desig)
-{
-	struct desig *copy = umalloc(sizeof *copy);
-
-	memcpy_safe(copy, desig);
-	if(desig->next)
-		copy->next = desig_copy(desig->next);
-
-	return copy;
-}
-
 static decl_init *decl_init_brace_up_aggregate(
 		decl_init *current,
 		init_iter *iter,
@@ -999,11 +967,12 @@ static decl_init *decl_init_brace_up_aggregate(
 	if(iter->pos[0]->type == decl_init_brace){
 		/* pass down this as a new iterator */
 		decl_init *first = iter->pos[0];
-		decl_init **braced_inits = first->bits.ar.inits;
+		decl_init **const braced_inits = first->bits.ar.inits;
 
 		if(braced_inits){
 			/* the brace contains some inits { 1, .x = 2, 3 } */
 			init_iter it;
+			decl_init *synthesized_braces[2];
 
 			it.pos = braced_inits;
 
@@ -1016,35 +985,26 @@ static decl_init *decl_init_brace_up_aggregate(
 				 * becomes:
 				 * .a = { .b = { .x = 1, 2, 3 } }
 				 */
-				int brace_i = 0;
+				decl_init *synthesized_brace;
 
 				init_debug("first desig: ");
 				init_debug_desig(first->desig, stab);
 
-				for(brace_i = 0; braced_inits[brace_i]; brace_i++){
-					/* only nest the desginator if there is one already:
-					 * [0].x = { 3, .i = 7 };
-					 * becomes:
-					 * [0] = { 3, .x.i = 7 };
-					 * otherwise we'd get:
-					 * [0] = { .x = 3, .x.i = 7 };
-					 *
-					 * except the first init always gets copied over,
-					 * so we don't lose the designator entirely
-					 */
-					if(brace_i == 0 || braced_inits[brace_i]->desig){
-						init_debug("designated, changing: ");
-						init_debug_desig(braced_inits[brace_i]->desig, stab);
+				/* if we designate and pass a brace, make sure the brace-ness
+				 * is passed through to the lower layers
+				 *
+				 * a = { .i = { 1, 2 } }
+				 * need to pass { 1, 2 }, not 1, 2
+				 */
 
-						insert_desig(&braced_inits[brace_i]->desig,
-								desig_copy(first->desig));
+				synthesized_brace = decl_init_new_w(decl_init_brace, &first->where);
+				synthesized_brace->bits.ar.inits = braced_inits;
+				synthesized_brace->desig = first->desig;
 
-						init_debug("changed: ");
-						init_debug_desig(braced_inits[brace_i]->desig, stab);
-					}else{
-						init_debug("skipping over non-desig init @ %d\n", brace_i);
-					}
-				}
+				synthesized_braces[0] = synthesized_brace;
+				synthesized_braces[1] = NULL;
+
+				it.pos = synthesized_braces;
 
 			}else if(current){ /* gcc (not clang) compliant */
 				/* we have no sub-designator - we're overriding an entire sub object */
@@ -1068,8 +1028,6 @@ static decl_init *decl_init_brace_up_aggregate(
 				 * so it.pos... etc aren't for anything else */
 				excess_init(&it.pos[0]->where, tfor);
 			}
-
-			free(braced_inits);
 
 		}else{
 			/* {} */
