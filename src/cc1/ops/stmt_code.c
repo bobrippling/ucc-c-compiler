@@ -50,20 +50,32 @@ static void cleanup_check(decl *d, attribute *cleanup)
 		return;
 	}
 
-	expected = args->arglist[0]->ref;
+	expected = type_unqualify(args->arglist[0]->ref);
 	targ = type_ptr_to(d->ref);
-	if(!(type_cmp(targ, expected, 0) & TYPE_EQUAL_ANY)
-	&& !type_is_void_ptr(expected))
-	{
-		char targ_buf[TYPE_STATIC_BUFSIZ];
-		char expected_buf[TYPE_STATIC_BUFSIZ];
 
-		fold_had_error = 1;
-		warn_at_print_error(&cleanup->where,
-				"type '%s' passed - cleanup needs '%s'",
-				type_to_str_r(targ_buf, targ),
-				type_to_str_r(expected_buf, expected));
-		return;
+	switch(type_cmp(expected, targ, 0)){
+		case TYPE_QUAL_ADD:
+		case TYPE_QUAL_SUB:
+			assert(0 && "shouldn't get top-level quals");
+		case TYPE_EQUAL:
+		case TYPE_EQUAL_TYPEDEF:
+		case TYPE_QUAL_POINTED_ADD:
+			/* passing the argument adds pointed-qualifiers, this is okay:
+			 * int* -> int const* */
+			break;
+
+		default:
+			if(!type_is_void_ptr(expected)){
+				char targ_buf[TYPE_STATIC_BUFSIZ];
+				char expected_buf[TYPE_STATIC_BUFSIZ];
+
+				fold_had_error = 1;
+				warn_at_print_error(&cleanup->where,
+						"type '%s' passed - cleanup needs '%s'",
+						type_to_str_r(targ_buf, targ),
+						type_to_str_r(expected_buf, expected));
+				return;
+			}
 	}
 }
 
