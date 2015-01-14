@@ -234,11 +234,11 @@ static char *include_parse(
 	switch(*include_arg++){
 		case '<':
 			*is_lib = 1;
-			fin = strchr(include_arg, '>');
+			fin = str_quotefin2(include_arg, '>');
 			break;
 
 		case '"':
-			fin = strchr(include_arg, '"');
+			fin = str_quotefin(include_arg);
 			break;
 
 		default:
