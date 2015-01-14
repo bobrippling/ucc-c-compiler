@@ -97,20 +97,28 @@ static void init_debug_noindent(const char *fmt, ...)
 
 static void init_debug_dinit(init_iter *init_iter, type *tfor)
 {
+	where dummy_where = { 0 };
+
 	if(!(fopt_mode & FOPT_DUMP_INIT))
 		return;
 
-	init_debug_noindent("%s --> %s\n",
+	dummy_where.fname = "<n/a>";
+
+	init_debug_noindent("%s --> %s [%s]\n",
 			init_iter && init_iter->pos
 			? decl_init_to_str(init_iter->pos[0]->type)
 			: "[nil]",
-			type_to_str(tfor));
+			type_to_str(tfor),
+			where_str(ITER_WHERE(init_iter, &dummy_where)));
 }
 
 static void init_debug_desig(struct desig *desig, symtable *stab)
 {
 	if(!(fopt_mode & FOPT_DUMP_INIT))
 		return;
+
+	if(!desig)
+		init_debug_noindent("<empty>");
 
 	for(; desig; desig = desig->next){
 		switch(desig->type){
