@@ -40,7 +40,7 @@ type *type_tdef_of(expr *, decl *);
 
 type *type_unqualify(type *);
 type *type_qualify(type *, enum type_qualifier);
-type *type_sign(type *, int is_signed);
+type *type_sign(struct type_nav *root, type *ty, int make_signed);
 
 type *type_attributed(type *, attribute *);
 

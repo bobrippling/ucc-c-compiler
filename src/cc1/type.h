@@ -72,8 +72,6 @@ struct type
 		/* type_cast */
 		struct
 		{
-			char is_signed_cast; /* if true - signed_true else qual */
-			char signed_true;
 			enum type_qualifier qual;
 		} cast;
 

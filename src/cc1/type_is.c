@@ -53,7 +53,7 @@ static type *type_skip(type *t, enum type_skippage skippage)
 			case type_cast:
 				if(skippage & STOP_AT_CAST)
 					goto fin;
-				if(skippage & STOP_AT_QUAL_CASTS && !t->bits.cast.is_signed_cast)
+				if(skippage & STOP_AT_QUAL_CASTS)
 					goto fin;
 				break;
 			case type_attr:
@@ -589,11 +589,6 @@ int type_is_signed(type *r)
 				/* "unspecified" */
 				return 1;
 
-			case type_cast:
-				if(r->bits.cast.is_signed_cast)
-					return r->bits.cast.signed_true;
-				/* fall */
-
 			default:
 				r = type_next_1(r);
 		}
@@ -631,8 +626,6 @@ enum type_qualifier type_qual(const type *r)
 
 		case type_cast:
 			/* descend */
-			if(r->bits.cast.is_signed_cast)
-				return type_qual(r->ref);
 			return r->bits.cast.qual | type_qual(r->ref);
 
 		case type_ptr:

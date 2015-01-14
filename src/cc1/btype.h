@@ -37,6 +37,7 @@ enum type_primitive
 	/* unsigned primitive is signed primitive + 1
 	 * this is important for type_intrank() */
 #define TYPE_PRIMITIVE_TO_UNSIGNED(p) ((p) + 1)
+#define TYPE_PRIMITIVE_TO_SIGNED(p) ((p) - 1)
 #define TYPE_PRIMITIVE_IS_CHAR(a) (type_nchar <= (a) && (a) <= type_uchar)
 #define S_U_TY(nam) type_ ## nam, type_u ## nam
 

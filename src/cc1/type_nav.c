@@ -347,8 +347,6 @@ type *type_decayed_ptr_to(type *pointee, type *array_from)
 
 static int eq_qual(type *candidate, void *ctx)
 {
-	if(candidate->bits.cast.is_signed_cast)
-		return 0;
 	return candidate->bits.cast.qual == *(enum type_qualifier *)ctx;
 }
 
@@ -388,25 +386,33 @@ type *type_qualify(type *unqualified, enum type_qualifier qual)
 			&qual);
 }
 
-static int eq_sign(type *candidate, void *ctx)
+type *type_sign(struct type_nav *root, type *ty, int make_signed)
 {
-	if(!candidate->bits.cast.is_signed_cast)
-		return 0;
-	return candidate->bits.cast.signed_true == *(int *)ctx;
-}
+	enum type_primitive prim = type_get_primitive(ty);
+	int is_signed;
 
-static void init_sign(type *t, void *ctx)
-{
-	t->bits.cast.is_signed_cast = 1;
-	t->bits.cast.signed_true = *(int *)ctx;
-}
+	assert(prim != type_unknown);
+	assert(type_intrank(prim) != -1);
 
-type *type_sign(type *ty, int is_signed)
-{
-	return type_uptree_find_or_new(
-			ty, type_cast,
-			eq_sign, init_sign,
-			&is_signed);
+	is_signed = type_primitive_is_signed(prim, 1);
+
+	if(make_signed){
+		if(!is_signed){
+			if(TYPE_PRIMITIVE_IS_CHAR(prim)){
+				prim = type_schar;
+			}else{
+				prim = TYPE_PRIMITIVE_TO_SIGNED(prim);
+			}
+		}
+	}else if(is_signed){
+		if(TYPE_PRIMITIVE_IS_CHAR(prim)){
+			prim = type_uchar;
+		}else{
+			prim = TYPE_PRIMITIVE_TO_UNSIGNED(prim);
+		}
+	}
+
+	return type_nav_btype(root, prim);
 }
 
 struct ctx_tdef
@@ -508,7 +514,7 @@ type *type_unqualify(type *t)
 	type *t_restrict = NULL, *prev = NULL;
 
 	while(t){
-		if(t->type == type_cast && !t->bits.cast.is_signed_cast){
+		if(t->type == type_cast){
 			/* restrict qualifier is special, and is only on pointer
 			 * types and doesn't really apply to the expression itself
 			 */

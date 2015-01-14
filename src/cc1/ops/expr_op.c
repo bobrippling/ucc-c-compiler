@@ -636,21 +636,25 @@ ptr_relation:
 				else
 					tlarger = *plhs = trhs;
 
-			}else if(l_unsigned ? r_rank > l_rank : l_rank > r_rank){
-				/* can the signed type represent all of the unsigned type's values?
-				 * this is true if signed_type > unsigned_type
-				 * - convert unsigned to signed type */
-
-				if(l_unsigned)
-					tlarger = *plhs = trhs;
-				else
-					tlarger = *prhs = tlhs;
-
 			}else{
-				/* else convert both to (unsigned)signed_type */
-				type *signed_t = l_unsigned ? trhs : tlhs;
+				/* can the signed type represent all of the unsigned type's values?
+				 * this is true if signed_type_size > unsigned_type_size
+				 * if so - convert unsigned to signed type */
+				const int l_sz = type_size(tlhs, &lhs->where),
+				          r_sz = type_size(trhs, &rhs->where);
 
-				tlarger = *plhs = *prhs = type_sign(signed_t, 0);
+				if(l_unsigned ? r_sz > l_sz : l_sz > r_sz){
+					if(l_unsigned)
+						tlarger = *plhs = trhs;
+					else
+						tlarger = *prhs = tlhs;
+
+				}else{
+					/* else convert both to (unsigned)signed_type */
+					type *signed_t = l_unsigned ? trhs : tlhs;
+
+					tlarger = *plhs = *prhs = type_sign(cc1_type_nav, signed_t, 0);
+				}
 			}
 
 			/* if we have a _comparison_, convert to bool */

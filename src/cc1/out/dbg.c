@@ -760,27 +760,22 @@ static struct DIE *dwarf_type_die(
 
 		case type_cast:
 		{
-			if(ty->bits.cast.is_signed_cast){
-				/* skip */
-				tydie = dwarf_type_die(cu, parent, ty->ref);
-			}else{
-				/* due to how types map to tydies,
-				 * we can only have a single qualifier */
-				enum type_qualifier q = ty->bits.cast.qual;
-				enum dwarf_tag tag;
+			/* due to how types map to tydies,
+			 * we can only have a single qualifier */
+			enum type_qualifier q = ty->bits.cast.qual;
+			enum dwarf_tag tag;
 
-				if(q & qual_const)
-					tag = DW_TAG_const_type;
-				else if(q & qual_volatile)
-					tag = DW_TAG_volatile_type;
-				else if(q & qual_restrict)
-					tag = DW_TAG_restrict_type;
-				else
-					ucc_unreach(NULL);
+			if(q & qual_const)
+				tag = DW_TAG_const_type;
+			else if(q & qual_volatile)
+				tag = DW_TAG_volatile_type;
+			else if(q & qual_restrict)
+				tag = DW_TAG_restrict_type;
+			else
+				ucc_unreach(NULL);
 
-				tydie = dwarf_tydie_new(cu, ty, tag);
-				dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
-			}
+			tydie = dwarf_tydie_new(cu, ty, tag);
+			dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 			break;
 		}
 

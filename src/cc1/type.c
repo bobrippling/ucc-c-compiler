@@ -494,12 +494,7 @@ static void type_add_str_pre(
 			break;
 
 		case type_cast:
-			if(r->bits.cast.is_signed_cast){
-				ADD_SPC();
-				BUF_ADD(r->bits.cast.signed_true ? "signed" : "unsigned");
-			}else{
-				q = r->bits.cast.qual;
-			}
+			q = r->bits.cast.qual;
 			break;
 
 		case type_block:
@@ -835,9 +830,7 @@ static unsigned type_hash2(
 		}
 
 		case type_cast:
-			hash |= t->bits.cast.is_signed_cast
-				| t->bits.cast.signed_true << 2
-				| t->bits.cast.qual << 4;
+			hash |= t->bits.cast.qual;
 			break;
 
 		case type_attr:
