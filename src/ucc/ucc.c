@@ -209,7 +209,8 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 	int i;
 
 	for(i = 0; i < nfiles; i++){
-		/* path/to/input.c -> path/to/input.[os] */
+		/* path/to/input.c -> input.[os]
+		 * directory names all trimmed */
 		char *new;
 
 		if(mode < FILE_IN_MODE(&files[i])){
@@ -246,7 +247,11 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 				case mode_assemb:
 				{
 					int len;
-					new = ustrdup(files[i].in.fname);
+					const char *base = strrchr(files[i].in.fname, '/');
+					if(!base++)
+						base = files[i].in.fname;
+
+					new = ustrdup(base);
 					len = strlen(new);
 					if(len > 2 && new[len - 2] == '.')
 						new[len - 1] = mode == mode_compile ? 's' : 'o';
