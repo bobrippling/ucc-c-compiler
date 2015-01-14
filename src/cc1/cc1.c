@@ -319,6 +319,7 @@ static struct
 	{ 'f',  "inline-functions", FOPT_INLINE_FUNCTIONS },
 	{ 'f',  "dump-bblocks", FOPT_DUMP_BASIC_BLOCKS },
 	{ 'f',  "dump-symtab", FOPT_DUMP_SYMTAB },
+	{ 'f',  "dump-init", FOPT_DUMP_INIT },
 	{ 'f',  "common", FOPT_COMMON },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
