@@ -220,36 +220,57 @@ static void handle_error(token **tokens)
 	handle_error_warning(tokens, 1);
 }
 
-static void handle_include(token **tokens)
+static char *include_parse(
+		char *include_arg_anchor, int *const is_lib,
+		int may_expand_macros)
 {
+	char *include_arg = str_spc_skip(include_arg_anchor);
+	char *fin;
+
+	*is_lib = 0;
+
+	switch(*include_arg){
+		case '<':
+			*is_lib = 1;
+			include_arg++;
+			fin = str_quotefin2(include_arg, '>');
+			break;
+
+		case '"':
+			include_arg++;
+			fin = str_quotefin(include_arg);
+			break;
+
+		default:
+			if(may_expand_macros){
+				char *expanded = eval_expand_macros(ustrdup(include_arg));
+				str_trim(expanded);
+				return include_parse(expanded, is_lib, 0);
+			}else{
+				CPP_DIE("bad include start: %c", *include_arg);
+			}
+	}
+
+	if(!fin)
+		CPP_DIE("unterminated #include directive");
+
+	*fin = '\0';
+
+	return ustrdup(include_arg);
+}
+
+static void handle_include(char *include_arg)
+{
+	int is_lib;
+
 	const char *curdir;
-	char *fname, *final_path, *fin;
-	size_t fname_len;
-	int is_lib = 0;
+	char *fname, *final_path;
+
 	FILE *f = NULL;
 
 	NOOP_RET();
 
-	fname = eval_expand_macros(tokens_join(tokens));
-	str_trim(fname);
-	fname_len = strlen(fname);
-
-	switch(*fname){
-		case '<':
-			is_lib = 1;
-			fin = strchr(fname, '>');
-			break;
-		case '"':
-			fin = strchr(fname + 1, '"');
-			break;
-		default:
-			CPP_DIE("bad include start: %c", *fname);
-	}
-	if(!fin)
-		CPP_DIE("invalid include end '%c'", fname[fname_len-1]);
-
-	*fin = '\0';
-	fname++;
+	fname = include_parse(include_arg, &is_lib, 1);
 
 	curdir = cd_stack[dynarray_count(cd_stack) - 1];
 
@@ -287,7 +308,7 @@ static void handle_include(token **tokens)
 	dirname_push(udirname(final_path));
 	free(final_path);
 
-	free(fname - 1);
+	free(fname);
 }
 
 static void if_push(int is_true)
@@ -483,6 +504,12 @@ static int handle_line_directive(char *line)
 	return 1;
 }
 
+static void directive_sync(void)
+{
+	if(!no_output)
+		putchar('\n'); /* keep line-no.s in sync */
+}
+
 void parse_directive(char *line)
 {
 	token **tokens = NULL;
@@ -490,6 +517,27 @@ void parse_directive(char *line)
 	/* check for /# *[0-9]+ *( +"...")?/ */
 	if(handle_line_directive(line))
 		goto fin;
+
+	/* check for include - we handle it specially
+	 * because <> need to be handled like quotes */
+	if(!parse_should_noop()){
+		const char *const inc = "include";
+		char *start = str_spc_skip(line);
+		char *end = word_end(start);
+		char save = *end;
+		int is_inc;
+
+		*end = '\0';
+		is_inc = !strcmp(start, inc);
+		*end = save;
+
+		if(is_inc){
+			directive_sync();
+
+			handle_include(start + strlen(inc));
+			return;
+		}
+	}
 
 	tokens = tokenise(line);
 
@@ -503,8 +551,7 @@ void parse_directive(char *line)
 		CPP_DIE("invalid preproc token");
 	}
 
-	if(!no_output)
-		putchar('\n'); /* keep line-no.s in sync */
+	directive_sync();
 
 #define HANDLE(s)                \
 	if(!strcmp(tokens[0]->w, #s)){ \
@@ -521,8 +568,6 @@ void parse_directive(char *line)
 
 	if(parse_should_noop())
 		goto fin; /* checked for flow control, nothing else so noop */
-
-	HANDLE(include)
 
 	HANDLE(define)
 	HANDLE(undef)

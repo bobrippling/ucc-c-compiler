@@ -240,7 +240,7 @@ static char *splice_lines(int *peof)
 	if(last_backslash){
 		char *i;
 		/* is this the end of the line? */
-		for(i = last_backslash + 1; isspace(*i); i++);
+		i = str_spc_skip(last_backslash + 1);
 		if(*i == '\0'){
 			splice = 1;
 
