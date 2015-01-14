@@ -506,6 +506,12 @@ static int handle_line_directive(char *line)
 	return 1;
 }
 
+static void directive_sync(void)
+{
+	if(!no_output)
+		putchar('\n'); /* keep line-no.s in sync */
+}
+
 void parse_directive(char *line)
 {
 	token **tokens = NULL;
@@ -528,6 +534,8 @@ void parse_directive(char *line)
 		*end = save;
 
 		if(is_inc){
+			directive_sync();
+
 			handle_include(start + strlen(inc));
 			return;
 		}
@@ -545,8 +553,7 @@ void parse_directive(char *line)
 		CPP_DIE("invalid preproc token");
 	}
 
-	if(!no_output)
-		putchar('\n'); /* keep line-no.s in sync */
+	directive_sync();
 
 #define HANDLE(s)                \
 	if(!strcmp(tokens[0]->w, #s)){ \
