@@ -508,6 +508,8 @@ type *type_unqualify(type *t)
 	type *t_restrict = NULL, *prev = NULL;
 
 	while(t){
+		t = type_skip_non_casts(t);
+
 		if(t->type == type_cast && !t->bits.cast.is_signed_cast){
 			/* restrict qualifier is special, and is only on pointer
 			 * types and doesn't really apply to the expression itself
