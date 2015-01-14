@@ -1008,14 +1008,32 @@ static decl_init *decl_init_brace_up_aggregate(
 				 */
 				int brace_i = 0;
 
+				init_debug("first desig: ");
+				init_debug_desig(first->desig, stab);
+
 				for(brace_i = 0; braced_inits[brace_i]; brace_i++){
-					init_debug("designated, changing: ");
-					init_debug_desig(braced_inits[brace_i]->desig, stab);
+					/* only nest the desginator if there is one already:
+					 * [0].x = { 3, .i = 7 };
+					 * becomes:
+					 * [0] = { 3, .x.i = 7 };
+					 * otherwise we'd get:
+					 * [0] = { .x = 3, .x.i = 7 };
+					 *
+					 * except the first init always gets copied over,
+					 * so we don't lose the designator entirely
+					 */
+					if(brace_i == 0 || braced_inits[brace_i]->desig){
+						init_debug("designated, changing: ");
+						init_debug_desig(braced_inits[brace_i]->desig, stab);
 
-					insert_desig(&braced_inits[brace_i]->desig, desig_copy(first->desig));
+						insert_desig(&braced_inits[brace_i]->desig,
+								desig_copy(first->desig));
 
-					init_debug("changed: ");
-					init_debug_desig(braced_inits[brace_i]->desig, stab);
+						init_debug("changed: ");
+						init_debug_desig(braced_inits[brace_i]->desig, stab);
+					}else{
+						init_debug("skipping over non-desig init @ %d\n", brace_i);
+					}
 				}
 
 			}else if(current){ /* gcc (not clang) compliant */
