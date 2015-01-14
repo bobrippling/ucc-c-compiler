@@ -557,6 +557,8 @@ static decl_init **decl_init_brace_up_array2(
 			}
 
 			/* check for char[] init */
+			init_debug("array init [%d ... %d]: ", i, j);
+			init_debug_dinit(iter, next_type);
 			braced = decl_init_brace_up_r(replacing, iter, next_type, stab);
 
 			dynarray_padinsert(&current, i, &n, braced);
