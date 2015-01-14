@@ -375,8 +375,7 @@ void fold_type_w_attr(
 			break;
 
 		case type_cast:
-			if(!r->bits.cast.is_signed_cast)
-				q_to_check = type_qual(r);
+			q_to_check = type_qual(r);
 			thisparent = parent;
 			break;
 
@@ -464,9 +463,7 @@ void fold_type_w_attr(
 			break;
 
 		case type_cast:
-			if(!r->bits.cast.is_signed_cast
-			&& type_is(r->ref, type_func))
-			{
+			if(type_is(r->ref, type_func)){
 				/* C11 6.7.3.9
 				 * If the specification of an array type includes any type qualifiers,
 				 * the element type is so-qualified, not the array type. If the

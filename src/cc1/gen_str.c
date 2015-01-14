@@ -161,10 +161,7 @@ static void print_type_eng(type *ref)
 			ICE("__auto_type");
 
 		case type_cast:
-			if(ref->bits.cast.is_signed_cast)
-				fprintf(cc1_out, "%s ", ref->bits.cast.signed_true ? "signed" : "unsigned");
-			else
-				fprintf(cc1_out, "%s", type_qual_to_str(ref->bits.cast.qual, 1));
+			fprintf(cc1_out, "%s", type_qual_to_str(ref->bits.cast.qual, 1));
 			break;
 
 		case type_ptr:

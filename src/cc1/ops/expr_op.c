@@ -598,7 +598,7 @@ ptr_relation:
 			 * or int if lhs is smaller
 			 */
 
-			if(type_size(tlhs, &lhs->where) < type_primitive_size(type_int))
+			if(type_intrank(type_get_primitive(tlhs)) < type_intrank(type_int))
 				tlhs = *plhs = type_nav_btype(cc1_type_nav, type_int);
 
 			resolved = tlhs;
@@ -611,46 +611,52 @@ ptr_relation:
 			const int l_unsigned = !type_is_signed(tlhs),
 			          r_unsigned = !type_is_signed(trhs);
 
-			const int l_sz = type_size(tlhs, &lhs->where),
-			          r_sz = type_size(trhs, &rhs->where);
+			const int l_rank = type_intrank(type_get_primitive(tlhs)),
+			          r_rank = type_intrank(type_get_primitive(trhs));
 
 			/* want to warn regardless of checks - for enums */
 			fold_type_chk_warn(tlhs, trhs, w, desc);
 
 			if(l_unsigned == r_unsigned){
-				if(l_sz != r_sz){
-					const int l_larger = l_sz > r_sz;
+				int l_larger = l_rank > r_rank;
 
-					*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
+				if(l_rank == r_rank && l_rank == -1){
+					/* floating types come in here - default to larger */
+					const int l_sz = type_size(tlhs, &lhs->where),
+					          r_sz = type_size(trhs, &rhs->where);
 
-					tlarger = l_larger ? tlhs : trhs;
-
-				}else{
-					/* default to either */
-					tlarger = tlhs;
+					l_larger = (l_sz > r_sz);
 				}
 
-			}else if(l_unsigned ? l_sz >= r_sz : r_sz >= l_sz){
+				*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
+
+				tlarger = l_larger ? tlhs : trhs;
+
+			}else if(l_unsigned ? l_rank >= r_rank : r_rank >= l_rank){
 				if(l_unsigned)
 					tlarger = *prhs = tlhs;
 				else
 					tlarger = *plhs = trhs;
-
-			}else if(l_unsigned ? r_sz > l_sz : l_sz > r_sz){
-				/* can the signed type represent all of the unsigned type's values?
-				 * this is true if signed_type > unsigned_type
-				 * - convert unsigned to signed type */
-
-				if(l_unsigned)
-					tlarger = *plhs = trhs;
-				else
-					tlarger = *prhs = tlhs;
 
 			}else{
-				/* else convert both to (unsigned)signed_type */
-				type *signed_t = l_unsigned ? trhs : tlhs;
+				/* can the signed type represent all of the unsigned type's values?
+				 * this is true if signed_type_size > unsigned_type_size
+				 * if so - convert unsigned to signed type */
+				const int l_sz = type_size(tlhs, &lhs->where),
+				          r_sz = type_size(trhs, &rhs->where);
 
-				tlarger = *plhs = *prhs = type_sign(signed_t, 0);
+				if(l_unsigned ? r_sz > l_sz : l_sz > r_sz){
+					if(l_unsigned)
+						tlarger = *plhs = trhs;
+					else
+						tlarger = *prhs = tlhs;
+
+				}else{
+					/* else convert both to (unsigned)signed_type */
+					type *signed_t = l_unsigned ? trhs : tlhs;
+
+					tlarger = *plhs = *prhs = type_sign(cc1_type_nav, signed_t, 0);
+				}
 			}
 
 			/* if we have a _comparison_, convert to bool */
