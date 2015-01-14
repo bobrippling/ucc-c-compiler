@@ -107,7 +107,7 @@ static void init_debug_dinit(init_iter *init_iter, type *tfor)
 			type_to_str(tfor));
 }
 
-static void init_debug_desig(struct desig *desig)
+static void init_debug_desig(struct desig *desig, symtable *stab)
 {
 	if(!(fopt_mode & FOPT_DUMP_INIT))
 		return;
@@ -115,7 +115,11 @@ static void init_debug_desig(struct desig *desig)
 	for(; desig; desig = desig->next){
 		switch(desig->type){
 			case desig_ar:
+				FOLD_EXPR(desig->bits.range[0], stab);
+
 				if(desig->bits.range[1]){
+					FOLD_EXPR(desig->bits.range[1], stab);
+
 					init_debug_noindent("[%" NUMERIC_FMT_U " ...  %" NUMERIC_FMT_U "]",
 							const_fold_val_i(desig->bits.range[0]),
 							const_fold_val_i(desig->bits.range[1]));
@@ -1006,12 +1010,12 @@ static decl_init *decl_init_brace_up_aggregate(
 
 				for(brace_i = 0; braced_inits[brace_i]; brace_i++){
 					init_debug("designated, changing: ");
-					init_debug_desig(braced_inits[brace_i]->desig);
+					init_debug_desig(braced_inits[brace_i]->desig, stab);
 
 					insert_desig(&braced_inits[brace_i]->desig, desig_copy(first->desig));
 
 					init_debug("changed: ");
-					init_debug_desig(braced_inits[brace_i]->desig);
+					init_debug_desig(braced_inits[brace_i]->desig, stab);
 				}
 
 			}else if(current){ /* gcc (not clang) compliant */
