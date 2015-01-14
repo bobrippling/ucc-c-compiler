@@ -14,4 +14,4 @@ ent3:
 abc:
 .space 8
 .long 1
-.long 2
+.long 0

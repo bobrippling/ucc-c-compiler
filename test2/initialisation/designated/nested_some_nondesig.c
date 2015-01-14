@@ -31,4 +31,4 @@ struct { int i, j; } abc[] = {
 };
 
 // 0,0
-// 1,2 // should perhaps be 1,0
+// 1,0
