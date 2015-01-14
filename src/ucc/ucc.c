@@ -418,15 +418,20 @@ int main(int argc, char **argv)
 					/* check for W%c, */
 					char c;
 					if(sscanf(arg, "-W%c", &c) == 1 && arg[3] == ','){
+						/* split by commas */
+						char **entries = strsplit(arg + 4, ",");
+
 						switch(c){
-#define MAP(c, l) case c: arg += 4; goto arg_ ## l;
-							MAP('p', cpp);
-							MAP('a', asm);
-							MAP('l', ld);
+#define MAP(c, to) case c: dynarray_add_tmparray(&args[to], entries); break
+							MAP('p', mode_preproc);
+							MAP('a', mode_assemb);
+							MAP('l', mode_link);
 #undef MAP
 							default:
 								fprintf(stderr, "argument \"%s\" assumed to be for cc1\n", arg);
+								dynarray_add_tmparray(&args[mode_compile], entries);
 						}
+						continue;
 					}
 					/* else default to -Wsomething - add to cc1 */
 
@@ -494,10 +499,6 @@ arg_cpp:
 
 						dynarray_add(&includes, ustrprintf("-I%s", argv[i]));
 					}
-					continue;
-
-arg_asm:
-					ADD_ARG(mode_assemb);
 					continue;
 
 				case 'l':
