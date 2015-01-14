@@ -259,9 +259,8 @@ static char *include_parse(
 	return ustrdup(include_arg);
 }
 
-static void handle_include(token **tokens)
+static void handle_include(char *include_arg)
 {
-	char *include_arg;
 	int is_lib;
 
 	const char *curdir;
@@ -271,9 +270,7 @@ static void handle_include(token **tokens)
 
 	NOOP_RET();
 
-	include_arg = tokens_join(tokens);
 	fname = include_parse(include_arg, &is_lib, 1);
-	free(include_arg), include_arg = NULL;
 
 	curdir = cd_stack[dynarray_count(cd_stack) - 1];
 
@@ -515,6 +512,25 @@ void parse_directive(char *line)
 	if(handle_line_directive(line))
 		goto fin;
 
+	/* check for include - we handle it specially
+	 * because <> need to be handled like quotes */
+	if(!parse_should_noop()){
+		const char *const inc = "include";
+		char *start = str_spc_skip(line);
+		char *end = word_end(start);
+		char save = *end;
+		int is_inc;
+
+		*end = '\0';
+		is_inc = !strcmp(start, inc);
+		*end = save;
+
+		if(is_inc){
+			handle_include(start + strlen(inc));
+			return;
+		}
+	}
+
 	tokens = tokenise(line);
 
 	if(!tokens)
@@ -545,8 +561,6 @@ void parse_directive(char *line)
 
 	if(parse_should_noop())
 		goto fin; /* checked for flow control, nothing else so noop */
-
-	HANDLE(include)
 
 	HANDLE(define)
 	HANDLE(undef)
