@@ -13,6 +13,7 @@ type *type_skip_non_tdefs_consts(type *);
 type *type_skip_tdefs(type *);
 
 const btype *type_get_type(type *r);
+enum type_primitive type_get_primitive(type *);
 
 type *type_complete_array(type *r, struct expr *sz);
 

@@ -255,6 +255,13 @@ const btype *type_get_type(type *t)
 	return t && t->type == type_btype ? t->bits.type : NULL;
 }
 
+enum type_primitive type_get_primitive(type *t)
+{
+	const btype *bt = type_get_type(t);
+
+	return bt ? bt->primitive : type_unknown;
+}
+
 int type_is_bool(type *r)
 {
 	if(type_is(r, type_ptr))

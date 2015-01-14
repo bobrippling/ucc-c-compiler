@@ -124,6 +124,36 @@ int btype_is_signed(const btype *t)
 	return type_primitive_is_signed(t->primitive, 1);
 }
 
+int type_intrank(enum type_primitive p)
+{
+	switch(p){
+		default:
+			return -1;
+
+		case type_nchar:
+		case type_schar:
+		case type_uchar:
+		case type_int:
+		case type_uint:
+		case type_short:
+		case type_ushort:
+		case type_long:
+		case type_ulong:
+		case type_llong:
+		case type_ullong:
+			return p;
+	}
+
+#define static_assert(tag, exp) typedef char tag[(exp) ? 1 : -1]
+	/* check special case: char */
+	static_assert(a, type_nchar < type_schar);
+	static_assert(b, type_schar < type_uchar);
+
+	/* rest follow on from type_int */
+	static_assert(c, type_int < type_uint);
+#undef static_assert
+}
+
 unsigned btype_size(const btype *t, const where *from)
 {
 	if(t->sue && t->primitive != type_int)
