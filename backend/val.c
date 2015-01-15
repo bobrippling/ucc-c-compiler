@@ -169,6 +169,11 @@ val *val_load(val *v)
 	return named;
 }
 
+val *val_element(val *lval, int i)
+{
+
+}
+
 val *val_add(val *a, val *b)
 {
 	val *named = val_name_new();

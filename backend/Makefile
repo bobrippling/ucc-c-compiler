@@ -5,7 +5,7 @@ SRC = ${OBJ:.o=.c}
 
 CFLAGS = -g
 
-all: val tags
+all: tags val
 
 val: ${OBJ}
 	${CC} -o $@ ${OBJ} ${LDFALGS}
