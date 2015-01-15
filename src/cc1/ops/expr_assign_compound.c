@@ -1,5 +1,6 @@
 #include "ops.h"
 #include "expr_assign_compound.h"
+#include "../type_is.h"
 
 const char *str_expr_assign_compound()
 {
@@ -69,6 +70,12 @@ const out_val *gen_expr_assign_compound(const expr *e, out_ctx *octx)
 	 * lea int, cast up to float, add, cast down to int, store
 	 */
 	const out_val *saved_post = NULL, *addr_lhs, *rhs, *lhs, *result;
+
+	if(type_qual(e->lhs->tree_type) & qual_atomic){
+		fprintf(stderr, "TODO: %s= on _Atomic (%s)\n",
+				op_to_str(e->bits.compoundop.op),
+				e->lhs->f_str());
+	}
 
 	addr_lhs = gen_expr(e->lhs, octx);
 
