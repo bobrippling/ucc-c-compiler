@@ -1221,10 +1221,24 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 			break;
 	}
 
-	out_asm(octx, "mov%s %s, %s",
-			x86_suffix(from->t),
-			impl_val_str_r(vbuf, from, 0),
-			impl_val_str(to, 1));
+#warning TODO: merge dup
+	if(type_qual(type_is_ptr(to->t)) & qual_atomic){
+		to = v_to_reg(octx, to);
+		from = v_to(octx, from, TO_REG | TO_MEM); /* must be modifiable */
+
+		out_asm(octx, "xchg%s %s, %s",
+				x86_suffix(from->t),
+				impl_val_str_r(vbuf, from, 0),
+				impl_val_str(to, 1),
+				type_to_str(to->t));
+
+	}else{
+		out_asm(octx, "mov%s %s, %s",
+				x86_suffix(from->t),
+				impl_val_str_r(vbuf, from, 0),
+				impl_val_str(to, 1),
+				type_to_str(to->t));
+	}
 
 	out_val_consume(octx, from);
 	out_val_consume(octx, to);
