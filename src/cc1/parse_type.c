@@ -314,6 +314,82 @@ enum parse_btype_flags
 	PARSE_BTYPE_DEFAULT_INT = 1 << 1
 };
 
+enum primitive_mode
+{
+	NONE,
+	PRIMITIVE_MAYBE_MORE,
+	PRIMITIVE_NO_MORE,
+	TYPEDEF,
+	TYPEOF,
+	AUTOTYPE
+};
+
+static void parse_btype_got_primitive(
+		enum primitive_mode *const primitive_mode,
+		enum type_primitive *const primitive)
+{
+	const enum type_primitive got = curtok_to_type_primitive();
+
+	switch(*primitive_mode){
+		case PRIMITIVE_MAYBE_MORE:
+			/* allow "long int" and "short int" */
+#define INT(x)   x == type_int
+#define SHORT(x) x == type_short
+#define LONG(x)  x == type_long
+#define LLONG(x) x == type_llong
+#define DBL(x)   x == type_double
+
+			if(      INT(got) && (SHORT(*primitive) || LONG(*primitive))){
+				/* fine, ignore the int */
+			}else if(INT(*primitive) && (SHORT(got) || LONG(got))){
+				*primitive = got;
+			}else{
+				int die = 1;
+
+				if(*primitive_mode == PRIMITIVE_MAYBE_MORE){
+					/* special case for long long and long double */
+					if(LONG(*primitive) && LONG(got))
+						*primitive = type_llong, die = 0; /* allow "int" after this */
+					else if(LLONG(*primitive) && INT(got))
+						*primitive_mode = PRIMITIVE_NO_MORE, die = 0;
+					else if((LONG(*primitive) && DBL(got)) || (DBL(*primitive) && LONG(got)))
+						*primitive = type_ldouble, die = 0, *primitive_mode = PRIMITIVE_NO_MORE;
+				}
+
+				if(die)
+				case PRIMITIVE_NO_MORE:
+					die_at(NULL, "second type primitive %s", type_primitive_to_str(got));
+			}
+			if(*primitive_mode == PRIMITIVE_MAYBE_MORE){
+				switch(*primitive){
+					case type_int:
+					case type_long:
+					case type_llong:
+						/* allow short int, long int and long long and long long int */
+						break;
+					default:
+						*primitive_mode = PRIMITIVE_NO_MORE;
+				}
+			}
+			break;
+
+		case NONE:
+			*primitive = got;
+			*primitive_mode = PRIMITIVE_MAYBE_MORE;
+			break;
+		case TYPEDEF:
+		case TYPEOF:
+		case AUTOTYPE:
+			die_at(NULL, "type primitive (%s) with %s",
+					type_primitive_to_str(*primitive),
+					*primitive_mode == TYPEDEF
+					? "typedef-instance"
+					: *primitive_mode == TYPEOF
+					? "typeof"
+					: "__auto_type");
+	}
+}
+
 static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
 		int newdecl_context, symtable *scope,
@@ -329,15 +405,7 @@ static type *parse_btype(
 	int is_signed = 1, is_inline = 0, is_noreturn = 0, is_va_list = 0;
 	int store_set = 0, signed_set = 0;
 	decl *tdef_decl = NULL;
-	enum
-	{
-		NONE,
-		PRIMITIVE_MAYBE_MORE,
-		PRIMITIVE_NO_MORE,
-		TYPEDEF,
-		TYPEOF,
-		AUTOTYPE
-	} primitive_mode = NONE;
+	enum primitive_mode primitive_mode = NONE;
 
 	while(accept(token___extension__));
 
@@ -354,66 +422,8 @@ static type *parse_btype(
 			EAT(curtok);
 
 		}else if(curtok_is_type_primitive()){
-			const enum type_primitive got = curtok_to_type_primitive();
 
-			switch(primitive_mode){
-				case PRIMITIVE_MAYBE_MORE:
-					/* allow "long int" and "short int" */
-#define INT(x)   x == type_int
-#define SHORT(x) x == type_short
-#define LONG(x)  x == type_long
-#define LLONG(x) x == type_llong
-#define DBL(x)   x == type_double
-
-					if(      INT(got) && (SHORT(primitive) || LONG(primitive))){
-						/* fine, ignore the int */
-					}else if(INT(primitive) && (SHORT(got) || LONG(got))){
-						primitive = got;
-					}else{
-						int die = 1;
-
-						if(primitive_mode == PRIMITIVE_MAYBE_MORE){
-							/* special case for long long and long double */
-							if(LONG(primitive) && LONG(got))
-								primitive = type_llong, die = 0; /* allow "int" after this */
-							else if(LLONG(primitive) && INT(got))
-								primitive_mode = PRIMITIVE_NO_MORE, die = 0;
-							else if((LONG(primitive) && DBL(got)) || (DBL(primitive) && LONG(got)))
-								primitive = type_ldouble, die = 0, primitive_mode = PRIMITIVE_NO_MORE;
-						}
-
-						if(die)
-				case PRIMITIVE_NO_MORE:
-							die_at(NULL, "second type primitive %s", type_primitive_to_str(got));
-					}
-					if(primitive_mode == PRIMITIVE_MAYBE_MORE){
-						switch(primitive){
-							case type_int:
-							case type_long:
-							case type_llong:
-								/* allow short int, long int and long long and long long int */
-								break;
-							default:
-								primitive_mode = PRIMITIVE_NO_MORE;
-						}
-					}
-					break;
-
-				case NONE:
-					primitive = got;
-					primitive_mode = PRIMITIVE_MAYBE_MORE;
-					break;
-				case TYPEDEF:
-				case TYPEOF:
-				case AUTOTYPE:
-					die_at(NULL, "type primitive (%s) with %s",
-							type_primitive_to_str(primitive),
-							primitive_mode == TYPEDEF
-							? "typedef-instance"
-							: primitive_mode == TYPEOF
-							? "typeof"
-							: "__auto_type");
-			}
+			parse_btype_got_primitive(&primitive_mode, &primitive);
 
 			EAT(curtok);
 
