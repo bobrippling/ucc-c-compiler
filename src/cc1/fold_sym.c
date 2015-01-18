@@ -96,17 +96,23 @@ void symtab_check_static_asserts(symtable *stab)
 		sa->checked = 1;
 
 		FOLD_EXPR(sa->e, sa->scope);
-		if(!type_is_integral(sa->e->tree_type))
-			die_at(&sa->e->where,
+		if(!type_is_integral(sa->e->tree_type)){
+			warn_at_print_error(&sa->e->where,
 					"static assert: not an integral expression (%s)",
 					sa->e->f_str());
+			fold_had_error = 1;
+			continue;
+		}
 
 		const_fold(sa->e, &k);
 
-		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
-			die_at(&sa->e->where,
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num)){
+			warn_at_print_error(&sa->e->where,
 					"static assert: not an integer constant expression (%s)",
 					sa->e->f_str());
+			fold_had_error = 1;
+			continue;
+		}
 
 		if(!k.bits.num.val.i){
 			warn_at_print_error(&sa->e->where, "static assertion failure: %s", sa->s);
