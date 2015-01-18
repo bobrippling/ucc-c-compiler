@@ -324,6 +324,21 @@ enum primitive_mode
 	AUTOTYPE
 };
 
+static void read_extra_quals_and_store(
+		enum type_qualifier *const qual,
+		enum decl_storage *store, int *const store_set)
+{
+	int is_qual;
+
+	while((is_qual = curtok_is_type_qual()) || curtok_is_decl_store()){
+		if(is_qual)
+			*qual |= curtok_to_type_qualifier();
+		else
+			btype_set_store(store, store_set, curtok_to_decl_storage());
+		EAT(curtok);
+	}
+}
+
 static void parse_btype_got_primitive(
 		enum primitive_mode *const primitive_mode,
 		enum type_primitive *const primitive)
@@ -390,6 +405,34 @@ static void parse_btype_got_primitive(
 	}
 }
 
+static type *handle_atomic_specifier(
+		enum type_qualifier qual,
+		enum decl_storage *store, int store_set,
+		const int is_noreturn, attribute *attr,
+		symtable *scope,
+		where *w)
+{
+	type *subatomic;
+
+	EAT(token_open_paren);
+
+	subatomic = parse_type(0, scope);
+
+	EAT(token_close_paren);
+
+	if(!subatomic){
+		warn_at_print_error(NULL, "type expected in _Atomic()");
+		parse_had_error = 1;
+		subatomic = type_nav_btype(cc1_type_nav, type_int);
+	}
+
+	/* similar to struct-tail parsing - read extras quals and store,
+	 * then get out */
+	read_extra_quals_and_store(&qual, store, &store_set);
+
+	return parse_btype_end(subatomic, qual, is_noreturn, attr, scope, w);
+}
+
 static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
 		int newdecl_context, symtable *scope,
@@ -413,8 +456,33 @@ static type *parse_btype(
 		decl *tdef_decl_test;
 
 		if(curtok_is_type_qual()){
+			where w;
+
 			qual |= curtok_to_type_qualifier();
-			EAT(curtok);
+
+			if(accept_where(token__Atomic, &w)){
+				if(curtok == token_open_paren){
+					/* array, function, atomic or qualified */
+					if(primitive_mode == PRIMITIVE_MAYBE_MORE){
+						warn_at_print_error(NULL,
+								"_Atomic specifier with previous type (%s)",
+								type_primitive_to_str(primitive));
+						parse_had_error = 1;
+					}else if(signed_set){
+						warn_at_print_error(NULL,
+								"_Atomic specifier with \"%s\"",
+								is_signed ? "signed" : "unsigned");
+						parse_had_error = 1;
+					}
+
+					return handle_atomic_specifier(qual, store, store_set,
+							is_noreturn, attr, scope, &w);
+				}
+				/* else eaten _Atomic */
+			}else{
+				/* other qualifier */
+				EAT(curtok);
+			}
 
 		}else if(curtok_is_decl_store()){
 
@@ -456,7 +524,6 @@ static type *parse_btype(
 			const enum token tok = curtok;
 			const char *str;
 			type *tref;
-			int is_qual;
 			where w;
 
 			where_cc1_current(&w);
@@ -486,13 +553,7 @@ static type *parse_btype(
 			 * struct A { ... } const x;
 			 * accept qualifiers and storage for the type, not decl
 			 */
-			while((is_qual = curtok_is_type_qual()) || curtok_is_decl_store()){
-				if(is_qual)
-					qual |= curtok_to_type_qualifier();
-				else
-					btype_set_store(store, &store_set, curtok_to_decl_storage());
-				EAT(curtok);
-			}
+			read_extra_quals_and_store(&qual, store, &store_set);
 
 			/* *store is assigned elsewhere */
 			/* a _Noreturn function returning a sue is pretty daft... */
