@@ -290,6 +290,24 @@ static void fold_calling_conv(type *r)
 	type_funcargs(r)->conv = conv;
 }
 
+static void check_atomic_qual(type *t)
+{
+	type *subatomic = type_next(t);
+
+	if(type_is(subatomic, type_func)){
+		warn_at_print_error(NULL,
+				"function type (%s) in _Atomic()",
+				type_to_str(subatomic));
+
+		fold_had_error = 1;
+	}else if(type_is(subatomic, type_array)){
+		warn_at_print_error(NULL,
+				"array type (%s) in _Atomic()",
+				type_to_str(subatomic));
+		fold_had_error = 1;
+	}
+}
+
 void fold_type_w_attr(
 		type *const r, type *const parent, where *loc,
 		symtable *stab, attribute *attr)
@@ -377,6 +395,8 @@ void fold_type_w_attr(
 		case type_cast:
 			q_to_check = type_qual(r);
 			thisparent = parent;
+			if(q_to_check & qual_atomic)
+				check_atomic_qual(r);
 			break;
 
 		case type_ptr:

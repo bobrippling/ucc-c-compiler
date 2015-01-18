@@ -426,6 +426,30 @@ static type *handle_atomic_specifier(
 		subatomic = type_nav_btype(cc1_type_nav, type_int);
 	}
 
+	if(type_qual(subatomic)){
+		/* qualified types in _Atomic() are an error, but
+		 * _Atomic const int i; is not */
+		warn_at_print_error(NULL, "qualified type in _Atomic()");
+		fold_had_error = 1;
+	}
+
+	/* check function and arrays here too - other qualifiers
+	 * are just warned about (or with arrays, moved to the subtype),
+	 * but with _Atomic we want a hard error */
+	if(type_is(subatomic, type_func)){
+		warn_at_print_error(NULL,
+				"function type (%s) in _Atomic()",
+				type_to_str(subatomic));
+
+		fold_had_error = 1;
+	}else if(type_is(subatomic, type_array)){
+		warn_at_print_error(NULL,
+				"array type (%s) in _Atomic()",
+				type_to_str(subatomic));
+		fold_had_error = 1;
+	}
+
+
 	/* similar to struct-tail parsing - read extras quals and store,
 	 * then get out */
 	read_extra_quals_and_store(&qual, store, &store_set);
