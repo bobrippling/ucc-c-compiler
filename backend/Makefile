@@ -4,11 +4,12 @@ OBJ = val.o main.o mem.o isn.o op.o \
 SRC = ${OBJ:.o=.c}
 
 CFLAGS = -g
+LDFLAGS = -g
 
 all: tags val
 
 val: ${OBJ}
-	${CC} -o $@ ${OBJ} ${LDFALGS}
+	${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 tags: ${SRC}
 	ctags ${SRC}
