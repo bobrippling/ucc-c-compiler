@@ -15,7 +15,9 @@ struct isn
 	{
 		ISN_LOAD,
 		ISN_STORE,
-		ISN_OP
+		ISN_ALLOCA,
+		ISN_OP,
+		ISN_ELEM
 	} type;
 
 	union
@@ -34,6 +36,17 @@ struct isn
 			enum op op;
 			val *lhs, *rhs, *res;
 		} op;
+
+		struct
+		{
+			val *lval, *add, *res;
+		} elem;
+
+		struct
+		{
+			unsigned sz;
+			val *out;
+		} alloca;
 	} u;
 
 	isn *next;
@@ -75,6 +88,21 @@ void isn_op(enum op op, val *lhs, val *rhs, val *res)
 	isn->u.op.lhs = lhs;
 	isn->u.op.rhs = rhs;
 	isn->u.op.res = res;
+}
+
+void isn_elem(val *lval, val *add, val *res)
+{
+	isn *isn = isn_new(ISN_ELEM);
+	isn->u.elem.lval = lval;
+	isn->u.elem.add = add;
+	isn->u.elem.res = res;
+}
+
+void isn_alloca(unsigned sz, val *v)
+{
+	isn *isn = isn_new(ISN_ALLOCA);
+	isn->u.alloca.sz = sz;
+	isn->u.alloca.out = v;
 }
 
 static val *resolve_val(val *initial, dynmap *stores2rvals)
@@ -120,6 +148,28 @@ void isn_optimise()
 				dynmap_set(val *, val *,
 						stores2rvals,
 						i->u.load.to, rval);
+				break;
+			}
+
+			case ISN_ALLOCA:
+			{
+				printf("\t%s = alloca %u\n",
+						val_str(i->u.alloca.out),
+						i->u.alloca.sz);
+				break;
+			}
+
+			case ISN_ELEM:
+			{
+				val *solved_lval = i->u.elem.lval;
+				/* ^ lval - doesn't resolve since we don't want the value inside it */
+				val *solved_add = resolve_val(i->u.elem.add, stores2rvals);
+				int res;
+
+				printf("\t%s = elem %s, %s\n",
+							val_str(i->u.elem.res),
+							val_str(solved_lval),
+							val_str(solved_add));
 				break;
 			}
 
