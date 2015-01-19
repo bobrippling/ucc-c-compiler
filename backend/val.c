@@ -2,6 +2,11 @@
 #include <stdbool.h>
 #include <assert.h>
 
+#include <execinfo.h>
+_Noreturn void exit(int);
+#undef assert
+#define assert(x) ({ if(!(x)) exit(2); })
+
 #include "mem.h"
 #include "dynmap.h"
 
