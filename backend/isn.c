@@ -116,34 +116,40 @@ static val *resolve_val(val *initial, dynmap *stores2rvals)
 	return initial;
 }
 
-void isn_optimise()
+static val *ret_val(val *initial, dynmap *stores2rvals)
+{
+	return initial;
+}
+
+void isn_dump(bool optimise)
 {
 	dynmap *stores2rvals = dynmap_new(val *, /*ref*/NULL, val_hash);
+	val *(*const resolve)(val *, dynmap *) = optimise ? resolve_val : ret_val;
 	isn *i;
 
 	for(i = head; i; i = i->next){
 		switch(i->type){
 			case ISN_STORE:
 			{
-				val *resolved_rval = resolve_val(i->u.store.from, stores2rvals);
+				val *resolved_rval = resolve(i->u.store.from, stores2rvals);
 
 				dynmap_set(val *, val *,
 						stores2rvals,
 						i->u.store.lval, resolved_rval);
 
-				printf("store %s -> %s\n",
-							val_str(resolved_rval),
-							val_str(i->u.load.lval));
+				printf("\tstore %s, %s\n",
+							val_str(i->u.load.lval),
+							val_str(resolved_rval));
 				break;
 			}
 
 			case ISN_LOAD:
 			{
-				val *rval = resolve_val(i->u.load.lval, stores2rvals);
+				val *rval = resolve(i->u.load.lval, stores2rvals);
 
-				printf("load %s -> %s\n",
-						val_str(rval),
-						val_str(i->u.load.to));
+				printf("\t%s = load %s\n",
+						val_str(i->u.load.to),
+						val_str(rval));
 
 				dynmap_set(val *, val *,
 						stores2rvals,
@@ -163,7 +169,7 @@ void isn_optimise()
 			{
 				val *solved_lval = i->u.elem.lval;
 				/* ^ lval - doesn't resolve since we don't want the value inside it */
-				val *solved_add = resolve_val(i->u.elem.add, stores2rvals);
+				val *solved_add = resolve(i->u.elem.add, stores2rvals);
 				int res;
 
 				printf("\t%s = elem %s, %s\n",
@@ -175,14 +181,15 @@ void isn_optimise()
 
 			case ISN_OP:
 			{
-				val *solved_lhs = resolve_val(i->u.op.lhs, stores2rvals);
-				val *solved_rhs = resolve_val(i->u.op.rhs, stores2rvals);
+				val *solved_lhs = resolve(i->u.op.lhs, stores2rvals);
+				val *solved_rhs = resolve(i->u.op.rhs, stores2rvals);
 				int res;
 
-				printf("op: %s %s %s\n",
-							val_str(solved_lhs),
-							"+",
-							val_str(solved_rhs));
+				printf("\t%s = %s %s, %s\n",
+						val_str(i->u.op.res),
+						"+",
+						val_str(solved_lhs),
+						val_str(solved_rhs));
 
 				if(val_maybe_op(i->u.op.op, solved_lhs, solved_rhs, &res)){
 					val *synth_add = val_new_i(res);
@@ -196,32 +203,3 @@ void isn_optimise()
 		}
 	}
 }
-
-/*
-void isn_dump()
-{
-	isn *i;
-	for(i = head; i; i = i->next){
-		switch(i->type){
-			case ISN_LOAD:
-				printf("load: %s <- %s\n",
-						val_str(i->u.load.to),
-						val_str(i->u.load.lval));
-				break;
-
-			case ISN_STORE:
-				printf("store: %s <- %s\n",
-						val_str(i->u.store.lval),
-						val_str(i->u.store.from));
-				break;
-
-			case ISN_OP:
-				printf("op: %s %s %s\n",
-						val_str(i->u.op.lhs),
-						"+",
-						val_str(i->u.op.rhs));
-				break;
-		}
-	}
-}
-*/
