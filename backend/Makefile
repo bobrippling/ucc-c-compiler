@@ -6,7 +6,10 @@ SRC = ${OBJ:.o=.c}
 CFLAGS = -g
 LDFLAGS = -g
 
-all: tags val
+all: tags val tim
+
+tim: tim.ll
+	llc -o $@ $< 2>.log; ec=$$?; sed 's/^llc: *//' .log; exit $$ec
 
 val: ${OBJ}
 	${CC} -o $@ ${OBJ} ${LDFLAGS}
