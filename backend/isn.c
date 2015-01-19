@@ -141,6 +141,7 @@ void isn_optimise()
 							stores2rvals,
 							i->u.op.res, synth_add);
 				}
+				break;
 			}
 		}
 	}
