@@ -257,7 +257,7 @@ static void check_arg_types(
 		expr **exprargs, symtable *stab,
 		char *sp, where *const exprloc)
 {
-	if(exprargs){
+	if(exprargs && args_from_decl->arglist){
 		int i;
 		char buf[64];
 
