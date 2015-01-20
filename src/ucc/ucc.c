@@ -635,11 +635,14 @@ word:
 				}
 
 			if(!found){
-unrec:	die("unrecognised option \"%s\"", argv[i]);
-missing_arg:	die("need argument for %s", argv[i - 1]);
+unrec:
+				die("unrecognised option \"%s\"", argv[i]);
+missing_arg:
+				die("need argument for %s", argv[i - 1]);
 			}
 		}else{
-input:	dynarray_add(&inputs, argv[i]);
+input:
+			dynarray_add(&inputs, argv[i]);
 		}
 	}
 
