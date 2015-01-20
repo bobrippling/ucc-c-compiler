@@ -111,6 +111,7 @@ static void const_expr_addr(expr *e, consty *k)
 				k->type = CONST_ADDR; /* addr is const but with no value */
 				break;
 
+			case CONST_STRK:
 			case CONST_ADDR:
 				/* int x[]; int *p = &x;
 				 * already addr, just roll with it.
