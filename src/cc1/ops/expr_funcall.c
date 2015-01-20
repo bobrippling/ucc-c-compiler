@@ -190,7 +190,10 @@ static int check_arg_counts(
 		if(count_decl != count_arg
 		&& (args_from_decl->variadic ? count_arg < count_decl : 1))
 		{
-			int warn = args_from_decl->args_old_proto;
+			/* may be args_old_proto but also args_void if copied from
+			 * another prototype elsewhere */
+			int warn = args_from_decl->args_old_proto
+				&& !args_from_decl->args_void;
 
 #define common_warning                                         \
 					"too %s arguments to function %s%s(got %d, need %d)",\
