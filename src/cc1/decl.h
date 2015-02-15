@@ -135,4 +135,8 @@ const char *decl_store_to_str(const enum decl_storage);
 #define DECL_IS_ANON_BITFIELD(d) \
 	((d)->bits.var.field_width && !(d)->spel)
 
+#define DECL_IS_HOSTED_MAIN(fdecl) \
+			((fopt_mode & FOPT_FREESTANDING) == 0 \
+			&& !strcmp(fdecl->spel, "main"))
+
 #endif

@@ -1889,6 +1889,9 @@ static void check_missing_proto_extern(decl *d)
 {
 	/* 'd' has no previous decl */
 
+	if(DECL_IS_HOSTED_MAIN(d))
+		return;
+
 	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		case store_static:
 		case store_typedef:

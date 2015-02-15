@@ -1,4 +1,4 @@
-// RUN: %check %s -Wmissing-prototypes -Wmissing-variable-declarations
+// RUN: %check %s -Wmissing-prototypes -Wmissing-variable-declarations -ffreestanding
 
 void f(void) // CHECK: warning: no previous prototype for non-static function
 {
@@ -27,3 +27,8 @@ int a; // CHECK: warning: non-static declaration has no previous extern declarat
 static int b; // CHECK: !/warn.*extern/
 
 extern int c; // CHECK: !/warn.*extern/
+
+// should warn for main in freestanding environment
+int main(void) // CHECK: warning: no previous prototype
+{
+}
