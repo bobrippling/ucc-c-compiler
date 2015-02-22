@@ -737,6 +737,7 @@ static void read_number(const int first)
 {
 	char *const num_start = bufferpos - 1;
 	enum base mode;
+	int just_zero = 0;
 
 	if(first == '0'){
 		int next = *bufferpos;
@@ -762,6 +763,7 @@ static void read_number(const int first)
 				}else{
 					/* just zero */
 					update_bufferpos(num_start);
+					just_zero = 1;
 				}
 				break;
 		}
@@ -771,8 +773,6 @@ static void read_number(const int first)
 	}
 
 	if(*bufferpos != '.'){
-		int just_zero = (mode == OCT && !isdigit(*bufferpos));
-
 		if(just_zero){
 			currentval.val.i = 0;
 			currentval.suffix = VAL_OCTAL;
@@ -781,10 +781,11 @@ static void read_number(const int first)
 		}
 	}
 
+	/* TODO somethign about flaots*/
 	if(*bufferpos == '.' || peeknextchar() == '.'){
 		char *new;
 
-		if(mode != DEC)
+		if(mode != DEC && !just_zero)
 			warn_at_print_error(NULL, "invalid prefix on floating literal");
 
 		currentval.val.f = strtold(num_start, &new);

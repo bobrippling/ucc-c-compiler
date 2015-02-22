@@ -4,7 +4,7 @@
 // RUN: %check --prefix=D -e %s -DD
 
 #ifdef A
-float e = 12.3e-4.5; // CHECK-A: error: expecting token ';', got float-literal (parse_type.c:2090)
+float e = 12.3e-4.5; // CHECK-A: error: invalid suffix on integer constant (.)
 #endif
 
 #ifdef B
