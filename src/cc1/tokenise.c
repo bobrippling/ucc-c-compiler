@@ -242,11 +242,15 @@ static void parse_line_directive(char *l)
 		l += 4;
 
 	lno = strtol(l, &ep, 0);
-	if(ep == l)
-		die("couldn't parse number for #line directive (%s)", ep);
+	if(ep == l){
+		warn_at(NULL, "couldn't parse number for #line directive (%s)", ep);
+		return;
+	}
 
-	if(lno < 0)
-		die("negative #line directive argument");
+	if(lno < 0){
+		warn_at(NULL, "negative #line directive argument");
+		return;
+	}
 
 	loc_now.line = lno - 1; /* inc'd below */
 
@@ -256,8 +260,13 @@ static void parse_line_directive(char *l)
 		case '"':
 			{
 				char *p = str_quotefin(++ep);
-				if(!p)
-					die("no terminating quote to #line directive (%s)", l);
+				if(!p){
+					warn_at(NULL,
+							"no terminating quote to #line directive (%s)",
+							l);
+					return;
+				}
+
 				handle_line_file_directive(ustrdup2(ep, p), lno);
 				/*l = str_spc_skip(p + 1);
 					if(*l)
@@ -269,7 +278,9 @@ static void parse_line_directive(char *l)
 			break;
 
 		default:
-			die("expected '\"' or nothing after #line directive (%s)", ep);
+			warn_at(NULL,
+					"expected '\"' or nothing after #line directive (%s)",
+					ep);
 	}
 }
 
