@@ -1885,7 +1885,37 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 	}
 }
 
-static void link_to_previous_decl(decl *d, symtable *in_scope)
+static void check_missing_proto_extern(decl *d)
+{
+	/* 'd' has no previous decl */
+
+	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
+		case store_static:
+		case store_typedef:
+			return;
+		default:
+			break;
+	}
+
+	if(type_is(d->ref, type_func)){
+		if(!d->bits.func.code)
+			return; /* only warn if it has code */
+
+		cc1_warn_at(&d->where, missing_prototype,
+				"no previous prototype for non-static function");
+
+	}else{
+		/* extern is ignored for variables */
+		if((d->store & STORE_MASK_STORE) == store_extern)
+			return;
+
+		cc1_warn_at(&d->where, missing_variable_decls,
+				"non-static declaration has no previous extern declaration");
+	}
+}
+
+static void link_to_previous_decl(
+		decl *d, symtable *in_scope, int *const found_prev_proto)
 {
 	/* Look for a previous declaration of d->spel.
 	 * if found, we pull its asm() and attributes to the current,
@@ -1907,13 +1937,24 @@ static void link_to_previous_decl(decl *d, symtable *in_scope)
 			(!!type_is(d->ref, type_func) +
 			 !!type_is(d_prev->ref, type_func));
 
+		*found_prev_proto = 1;
+
 		d->proto = d_prev;
 		d_prev->impl = d; /* for inlining */
 
 		switch(are_functions){
 			case 2:
 				decl_pull_to_func(d, d_prev);
+
+				if(!d_prev->proto){
+					funcargs *fa = type_funcargs(d_prev->ref);
+					int is_prototype = !FUNCARGS_EMPTY_NOVOID(fa);
+
+					if(!is_prototype)
+						*found_prev_proto = 0;
+				}
 				break;
+
 			case 0:
 				/* variable - may or may not be related */
 				if(prev_in != in_scope){
@@ -1928,7 +1969,10 @@ static void link_to_previous_decl(decl *d, symtable *in_scope)
 				d->proto = NULL;
 				break;
 		}
+	}else{
+		*found_prev_proto = 0;
 	}
+
 }
 
 static void error_on_unwanted_func(
@@ -2010,6 +2054,7 @@ int parse_decl_group(
 	}
 
 	do{
+		int found_prev_proto = 1;
 		int had_field_width = 0;
 		int done = 0;
 		int attr_post_decl;
@@ -2060,13 +2105,16 @@ int parse_decl_group(
 		}
 
 		if(d->spel && (mode & DECL_MULTI_IS_STRUCT_UN_MEMB) == 0)
-			link_to_previous_decl(d, in_scope);
+			link_to_previous_decl(d, in_scope, &found_prev_proto);
 		if(pdecls)
 			dynarray_add(pdecls, d);
 
 		/* now we have the function in scope we parse its code */
 		if(type_is(d->ref, type_func))
 			parse_post_func(d, in_scope, attr_post_decl);
+
+		if(!in_scope->parent && !found_prev_proto)
+			check_missing_proto_extern(d);
 
 		error_on_unwanted_func(d, mode);
 

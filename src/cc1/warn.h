@@ -96,6 +96,8 @@ struct cc1_warning
 	unsigned char mismatch_ptr;
 	unsigned char mismatching_types;
 	unsigned char missing_empty_struct_brace_init;
+	unsigned char missing_prototype;
+	unsigned char missing_variable_decls;
 	unsigned char mixed_code_decls;
 	unsigned char multichar;
 	unsigned char multichar_toolarge;

@@ -229,6 +229,14 @@ static struct warn_str
 
 	{ "missing-empty-struct-brace-init", &cc1_warning.missing_empty_struct_brace_init },
 
+	{ "missing-prototypes", &cc1_warning.missing_prototype },
+	{ "missing-variable-declarations", &cc1_warning.missing_variable_decls },
+	{
+		"missing-forwards",
+		&cc1_warning.missing_variable_decls,
+		&cc1_warning.missing_prototype
+	},
+
 	{ "multichar", &cc1_warning.multichar },
 	{ "multichar-too-large", &cc1_warning.multichar_toolarge },
 
@@ -691,6 +699,8 @@ static void warning_all(void)
 	cc1_warning.signed_unsigned =
 	cc1_warning.unused_fnret =
 	cc1_warning.binary_literal =
+	cc1_warning.missing_prototype =
+	cc1_warning.missing_variable_decls =
 		W_OFF;
 }
 

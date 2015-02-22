@@ -4,6 +4,11 @@
 char **environ;
 char *__progname;
 
+_Noreturn
+void __libc_start_main(
+		int (*main)(int, char **, char **),
+		int argc, char **argv);
+
 _Noreturn void __libc_start_main(
 		int (*main)(int, char **, char **),
 		int argc, char **argv)
