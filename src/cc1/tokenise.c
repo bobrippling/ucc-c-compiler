@@ -341,6 +341,12 @@ static void tokenise_next_line()
 	bufferpos = buffer = new;
 }
 
+static void update_bufferpos(char *new)
+{
+	loc_now.chr += new - bufferpos;
+	bufferpos = new;
+}
+
 void tokenise_set_input(tokenise_line_f *func, const char *nam)
 {
 	char *nam_dup = ustrdup(nam);
@@ -478,9 +484,7 @@ static void read_integer(const enum base mode)
 		die_at(NULL, "%s-number expected (got '%c')",
 				base_to_str(mode), peeknextchar());
 
-	/* -1, since we've already eaten the first numeric char */
-	loc_now.chr += end - bufferpos - 1;
-	bufferpos = end;
+	update_bufferpos(end);
 }
 
 static void read_suffix_float_exp(void)
@@ -647,8 +651,7 @@ static void read_string(char **sptr, size_t *plen)
 
 	escape_string(*sptr, plen);
 
-	bufferpos += size;
-	loc_now.chr += size;
+	update_bufferpos(bufferpos + size);
 }
 
 static void ungetchar(char ch)
@@ -713,8 +716,8 @@ static void read_string_multiple(const int is_wide)
 static void cc1_read_quoted_char(const int is_wide)
 {
 	int multichar;
-	char *const start = bufferpos;
-	long ch = read_quoted_char(bufferpos, &bufferpos, &multichar, /*256*/!is_wide);
+	char *p;
+	long ch = read_quoted_char(bufferpos, &p, &multichar, /*256*/!is_wide);
 
 	if(multichar){
 		if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
@@ -727,56 +730,66 @@ static void cc1_read_quoted_char(const int is_wide)
 	currentval.suffix = 0;
 	curtok = is_wide ? token_integer : token_character;
 
-	loc_now.chr += bufferpos - start;
+	update_bufferpos(p);
 }
 
-static void read_number(int c)
+static void read_number(const int first)
 {
 	char *const num_start = bufferpos - 1;
 	enum base mode;
 
-	if(c == '0'){
-		/* note the '0' */
-		loc_now.chr++;
+	if(first == '0'){
+		int next = *bufferpos;
 
-		switch(tolower(c = peeknextchar())){
+		switch(tolower(next)){
 			case 'x':
 				mode = HEX;
-				nextchar();
-				c = peeknextchar();
+				update_bufferpos(bufferpos + 1);
 				break;
 			case 'b':
-				mode = BIN;
 				cc1_warn_at(NULL, binary_literal, "binary literals are an extension");
-				nextchar();
-				c = peeknextchar();
+				mode = BIN;
+				update_bufferpos(bufferpos + 1);
 				break;
-			default:
-				if(!isoct(c)){
-					if(isdigit(c))
-						die_at(NULL, "invalid oct character '%c'", c);
-					else
-						mode = DEC; /* just zero */
 
-					bufferpos--; /* have the zero */
-					loc_now.chr--;
+			default:
+				mode = OCT;
+
+				if(isoct(next)){
+					/* fine */
+				}else if(isdigit(next)){
+					die_at(NULL, "invalid oct character '%c'", next);
 				}else{
-					mode = OCT;
+					/* just zero */
+					update_bufferpos(num_start);
 				}
 				break;
 		}
 	}else{
 		mode = DEC;
-		bufferpos--; /* rewind */
+		update_bufferpos(num_start);
 	}
 
-	if(c != '.'){
-		read_integer(mode);
+	if(*bufferpos != '.'){
+		int just_zero = (mode == OCT && !isdigit(*bufferpos));
+
+		if(just_zero){
+			currentval.val.i = 0;
+			currentval.suffix = VAL_OCTAL;
+		}else{
+			read_integer(mode);
+		}
 	}
 
-	if(c == '.' || peeknextchar() == '.'){
-		currentval.val.f = strtold(num_start, &bufferpos);
+	if(*bufferpos == '.' || peeknextchar() == '.'){
+		char *new;
+
+		if(mode != DEC)
+			warn_at_print_error(NULL, "invalid prefix on floating literal");
+
+		currentval.val.f = strtold(num_start, &new);
 		currentval.suffix = VAL_FLOATING;
+		update_bufferpos(new);
 	}
 
 	read_suffix();
