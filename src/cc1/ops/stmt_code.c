@@ -212,6 +212,7 @@ void fold_stmt_code(stmt *s)
 		&& siter[1]
 		&& !stmt_kind(siter[1], label)
 		&& !stmt_kind(siter[1], case)
+		&& !stmt_kind(siter[1], case_range)
 		&& !stmt_kind(siter[1], default)
 		){
 			cc1_warn_at(&siter[1]->where, dead_code,
