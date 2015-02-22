@@ -191,15 +191,14 @@ char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  __builtin_va_list);
 
 		CASE_STR_PREFIX(token,  identifier);
-		CASE_STR_PREFIX(token,  integer);
 		CASE_STR_PREFIX(token,  character);
 		CASE_STR_PREFIX(token,  string);
 
 		CASE_STR_PREFIX(token,  __extension__);
 		CASE_STR_PREFIX(token,  __auto_type);
 
-		case token_floater:
-			return "float";
+		case token_integer: return "integer-literal";
+		case token_floater: return "float-literal";
 
 #define MAP(t, s) case token_##t: return s
 		MAP(attribute,       "__attribute__");
