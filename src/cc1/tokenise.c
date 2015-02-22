@@ -520,6 +520,19 @@ out:
 		 */
 		currentval.suffix |= suff;
 	}
+
+	{
+		int next = peeknextchar();
+		if(isalpha(next)
+		&& (tolower(next) == 'e' ? isalpha(bufferpos[1]) : 1))
+		{
+			warn_at_print_error(NULL, "invalid suffix on integer constant (%c)", next);
+			parse_had_error = 1;
+
+			while(isalpha(peeknextchar()))
+				nextchar();
+		}
+	}
 }
 
 static enum token curtok_to_xequal(void)
