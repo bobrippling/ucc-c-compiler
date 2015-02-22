@@ -1293,6 +1293,9 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 
 		out_val_consume(octx, out_memcpy(octx, to, src_tmp, sz));
 
+		if(src_tmp != from)
+			out_val_release(octx, src_tmp);
+
 		goto out;
 	}
 
