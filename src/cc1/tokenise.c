@@ -31,7 +31,7 @@
 	KEYWORD(mode, x),           \
 	KEYWORD__(x, token_ ## x)
 
-struct keyword
+static const struct keyword
 {
 	const char *str;
 	enum token tok;
@@ -797,7 +797,7 @@ void nexttoken()
 	if(isalpha(c) || c == '_' || c == '$'){
 		unsigned int len = 1;
 		char *const start = bufferpos - 1; /* regrab the char we switched on */
-		struct keyword *k;
+		const struct keyword *k;
 
 		do{ /* allow numbers */
 			c = peeknextchar();
