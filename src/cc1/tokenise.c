@@ -460,6 +460,17 @@ static int peeknextchar()
 	return *bufferpos;
 }
 
+static void skip_to_end_of_num(void)
+{
+	char *p;
+
+	for(p = bufferpos;
+			isalnum(*p) || *p == '.';
+			p++);
+
+	update_bufferpos(p);
+}
+
 static void read_integer(const enum base mode)
 {
 	char *end;
@@ -508,6 +519,7 @@ static void read_suffix_float_exp(void)
 	if(!isdigit(peeknextchar())){
 		warn_at_print_error(NULL, "no digits in exponent");
 		parse_had_error = 1;
+		skip_to_end_of_num();
 		return;
 	}
 	read_integer(DEC); /* can't have fractional powers */
@@ -587,15 +599,13 @@ static void read_suffix(void)
 	}
 
 
-	if(isalpha(peeknextchar())){
+	if(isalpha(peeknextchar()) || peeknextchar() == '.'){
 		warn_at_print_error(NULL,
 				"invalid suffix on integer constant (%c)",
 				peeknextchar());
 
 		parse_had_error = 1;
-
-		while(isalpha(peeknextchar()))
-			nextchar();
+		skip_to_end_of_num();
 	}
 }
 
@@ -736,6 +746,7 @@ static void cc1_read_quoted_char(const int is_wide)
 static void read_number(const int first)
 {
 	char *const num_start = bufferpos - 1;
+	char *p;
 	enum base mode;
 	int just_zero = 0;
 
@@ -772,25 +783,56 @@ static void read_number(const int first)
 		update_bufferpos(num_start);
 	}
 
-	if(*bufferpos != '.'){
+	/* check for '.' after prefix handling:
+	 * may be a hex-float constant */
+	for(p = bufferpos; isdigit(*p); p++);
+	if(*p == '.' || (mode == HEX && *p == 'p')){
+		char *new;
+		int bad_prefix = 0;
+
+		currentval.val.f = strtold(num_start, &new);
+		currentval.suffix = VAL_FLOATING;
+		update_bufferpos(new);
+
+		switch(mode){
+			case DEC:
+				break;
+
+			case HEX:
+				/* check for exponent */
+				assert(!strncmp(num_start, "0x", 2));
+				for(p = num_start + 2; isdigit(*p) || *p == '.'; p++);
+
+				if(tolower(*p) != 'p'){
+					warn_at_print_error(NULL, "floating literal requires exponent");
+					parse_had_error = 1;
+					skip_to_end_of_num();
+				}
+				break;
+
+			case OCT:
+				if(!just_zero)
+					bad_prefix = 1;
+				break;
+			case BIN:
+				bad_prefix = 1;
+				break;
+		}
+
+		if(bad_prefix){
+			warn_at_print_error(NULL, "invalid prefix on floating literal");
+			parse_had_error = 1;
+			skip_to_end_of_num();
+		}
+
+	}else{
 		if(just_zero){
+			update_bufferpos(p);
 			currentval.val.i = 0;
 			currentval.suffix = VAL_OCTAL;
 		}else{
 			read_integer(mode);
 		}
-	}
-
-	/* TODO somethign about flaots*/
-	if(*bufferpos == '.' || peeknextchar() == '.'){
-		char *new;
-
-		if(mode != DEC && !just_zero)
-			warn_at_print_error(NULL, "invalid prefix on floating literal");
-
-		currentval.val.f = strtold(num_start, &new);
-		currentval.suffix = VAL_FLOATING;
-		update_bufferpos(new);
 	}
 
 	read_suffix();
