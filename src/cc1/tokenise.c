@@ -453,7 +453,7 @@ static int peeknextchar()
 	return *bufferpos;
 }
 
-static void read_number(const enum base mode)
+static void read_integer(const enum base mode)
 {
 	char *end;
 	int of; /*verflow*/
@@ -657,6 +657,93 @@ static void cc1_read_quoted_char(const int is_wide)
 	loc_now.chr += bufferpos - start;
 }
 
+static void read_number(int c)
+{
+	char *const num_start = bufferpos - 1;
+	enum base mode;
+
+	if(c == '0'){
+		/* note the '0' */
+		loc_now.chr++;
+
+		switch(tolower(c = peeknextchar())){
+			case 'x':
+				mode = HEX;
+				nextchar();
+				c = peeknextchar();
+				break;
+			case 'b':
+				mode = BIN;
+				cc1_warn_at(NULL, binary_literal, "binary literals are an extension");
+				nextchar();
+				c = peeknextchar();
+				break;
+			default:
+				if(!isoct(c)){
+					if(isdigit(c))
+						die_at(NULL, "invalid oct character '%c'", c);
+					else
+						mode = DEC; /* just zero */
+
+					bufferpos--; /* have the zero */
+					loc_now.chr--;
+				}else{
+					mode = OCT;
+				}
+				break;
+		}
+	}else{
+		mode = DEC;
+		bufferpos--; /* rewind */
+	}
+
+	if(c != '.')
+		read_integer(mode);
+
+	if(c == '.' || peeknextchar() == '.'){
+		/* floating point */
+
+		currentval.val.f = strtold(num_start, &bufferpos);
+
+		if(toupper(peeknextchar()) == 'F'){
+			currentval.suffix = VAL_FLOAT;
+			nextchar();
+		}else if(toupper(peeknextchar()) == 'L'){
+			currentval.suffix = VAL_LDOUBLE;
+			nextchar();
+		}else{
+			currentval.suffix = VAL_DOUBLE;
+		}
+
+		curtok = token_floater;
+
+	}else{
+		/* handle integral XeY */
+		if(tolower(peeknextchar()) == 'e'){
+			numeric mantissa = currentval;
+			int powmul;
+
+			nextchar();
+
+			powmul = (peeknextchar() == '-' ? -1 : 1);
+			if(powmul == -1)
+				nextchar();
+
+			if(!isdigit(peeknextchar())){
+				curtok = token_unknown;
+				return;
+			}
+			read_integer(DEC);
+
+			mantissa.val.i *= pow(10, powmul * (sintegral_t)currentval.val.i);
+
+			currentval = mantissa;
+		}
+
+		curtok = token_integer;
+	}
+}
+
 void nexttoken()
 {
 	int c;
@@ -680,90 +767,7 @@ void nexttoken()
 	}
 
 	if(isdigit(c) || (c == '.' && isdigit(peeknextchar()))){
-		char *const num_start = bufferpos - 1;
-		enum base mode;
-
-		if(c == '0'){
-			/* note the '0' */
-			loc_now.chr++;
-
-			switch(tolower(c = peeknextchar())){
-				case 'x':
-					mode = HEX;
-					nextchar();
-					c = peeknextchar();
-					break;
-				case 'b':
-					mode = BIN;
-					cc1_warn_at(NULL, binary_literal, "binary literals are an extension");
-					nextchar();
-					c = peeknextchar();
-					break;
-				default:
-					if(!isoct(c)){
-						if(isdigit(c))
-							die_at(NULL, "invalid oct character '%c'", c);
-						else
-							mode = DEC; /* just zero */
-
-						bufferpos--; /* have the zero */
-						loc_now.chr--;
-					}else{
-						mode = OCT;
-					}
-					break;
-			}
-		}else{
-			mode = DEC;
-			bufferpos--; /* rewind */
-		}
-
-		if(c != '.')
-			read_number(mode);
-
-		if(c == '.' || peeknextchar() == '.'){
-			/* floating point */
-
-			currentval.val.f = strtold(num_start, &bufferpos);
-
-			if(toupper(peeknextchar()) == 'F'){
-				currentval.suffix = VAL_FLOAT;
-				nextchar();
-			}else if(toupper(peeknextchar()) == 'L'){
-				currentval.suffix = VAL_LDOUBLE;
-				nextchar();
-			}else{
-				currentval.suffix = VAL_DOUBLE;
-			}
-
-			curtok = token_floater;
-
-		}else{
-			/* handle integral XeY */
-			if(tolower(peeknextchar()) == 'e'){
-				numeric mantissa = currentval;
-				int powmul;
-
-				nextchar();
-
-				powmul = (peeknextchar() == '-' ? -1 : 1);
-				if(powmul == -1)
-					nextchar();
-
-				if(!isdigit(peeknextchar())){
-					curtok = token_unknown;
-					return;
-				}
-				read_number(DEC);
-
-				mantissa.val.i *= pow(10, powmul * (sintegral_t)currentval.val.i);
-
-				currentval = mantissa;
-			}
-
-			curtok = token_integer;
-		}
-
+		read_number(c);
 		return;
 	}
 
