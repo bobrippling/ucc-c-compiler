@@ -6,6 +6,8 @@ float y = 1.2e3;
 
 z = 7959571e-3;
 
+float q = 1e3f;
+
 main()
 {
 	if(x != 5600000)
