@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <limits.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "tokenise.h"
@@ -480,58 +481,117 @@ static void read_integer(const enum base mode)
 	/* -1, since we've already eaten the first numeric char */
 	loc_now.chr += end - bufferpos - 1;
 	bufferpos = end;
+}
 
-	/* accept either 'U' 'L' or 'LL' as atomic parts (i.e. not LUL) */
-	/* fine using nextchar() since we peeknextchar() first */
-	{
-		enum numeric_suffix suff = 0;
-		char c;
+static void read_suffix_float_exp(void)
+{
+	numeric mantissa;
+	int powmul;
+	int just_read = nextchar();
 
-		for(;;) switch((c = peeknextchar())){
-			case 'U':
-			case 'u':
-				if(suff & VAL_UNSIGNED)
-					die_at(NULL, "duplicate U suffix");
-				suff |= VAL_UNSIGNED;
-				nextchar();
-				break;
-			case 'L':
-			case 'l':
-				if(suff & (VAL_LLONG | VAL_LONG))
-					die_at(NULL, "already have a L/LL suffix");
+	assert(just_read == 'e');
 
-				nextchar();
-				if(peeknextchar() == c){
-					C99_LONGLONG();
-					suff |= VAL_LLONG;
-					nextchar();
-				}else{
-					suff |= VAL_LONG;
-				}
-				break;
-			default:
-				goto out;
-		}
+	if(!(currentval.suffix & VAL_FLOATING)){
+		currentval.suffix = VAL_DOUBLE; /* 1e2 is double by default */
+		currentval.val.f = currentval.val.i;
+	}
+	mantissa = currentval;
 
-out:
-		/* don't touch cv.suffix until after
-		 * - it may already have ULL from an
-		 * overflow in parsing
-		 */
-		currentval.suffix |= suff;
+	powmul = (peeknextchar() == '-' ? -1 : 1);
+	if(powmul == -1)
+		nextchar();
+
+	if(!isdigit(peeknextchar())){
+		warn_at_print_error(NULL, "no digits in exponent");
+		parse_had_error = 1;
+		return;
+	}
+	read_integer(DEC); /* can't have fractional powers */
+
+	mantissa.val.f *= pow(10, powmul * (sintegral_t)currentval.val.i);
+
+	currentval = mantissa;
+}
+
+static void read_suffix_float(void)
+{
+	if(tolower(peeknextchar()) == 'e'){
+		read_suffix_float_exp();
 	}
 
-	{
-		int next = peeknextchar();
-		if(isalpha(next)
-		&& (tolower(next) == 'e' ? isalpha(bufferpos[1]) : 1))
-		{
-			warn_at_print_error(NULL, "invalid suffix on integer constant (%c)", next);
-			parse_had_error = 1;
+	if(tolower(peeknextchar()) == 'f'){
+		currentval.suffix = VAL_FLOAT;
+		nextchar();
+	}else if(tolower(peeknextchar()) == 'l'){
+		currentval.suffix = VAL_LDOUBLE;
+		nextchar();
+	}else{
+		currentval.suffix = VAL_DOUBLE;
+	}
 
-			while(isalpha(peeknextchar()))
+	currentval.suffix &= VAL_FLOATING;
+}
+
+static void read_suffix_int(void)
+{
+	/* accept either 'U' 'L' or 'LL' as atomic parts (i.e. not LUL) */
+	/* fine using nextchar() since we peeknextchar() first */
+	enum numeric_suffix suff = 0;
+	char c;
+
+	for(;;) switch((c = peeknextchar())){
+		case 'U':
+		case 'u':
+			if(suff & VAL_UNSIGNED)
+				die_at(NULL, "duplicate U suffix");
+			suff |= VAL_UNSIGNED;
+			nextchar();
+			break;
+		case 'L':
+		case 'l':
+			if(suff & (VAL_LLONG | VAL_LONG))
+				die_at(NULL, "already have a L/LL suffix");
+
+			nextchar();
+			if(peeknextchar() == c){
+				C99_LONGLONG();
+				suff |= VAL_LLONG;
 				nextchar();
-		}
+			}else{
+				suff |= VAL_LONG;
+			}
+			break;
+		default:
+			goto out;
+	}
+
+out:
+	/* don't touch cv.suffix until after
+	 * - it may already have ULL from an
+	 * overflow in parsing
+	 */
+	currentval.suffix |= suff;
+}
+
+static void read_suffix(void)
+{
+	/* handle floating XeY */
+	if(currentval.suffix & VAL_FLOATING || tolower(peeknextchar())== 'e'){
+		read_suffix_float();
+	}else{
+		read_suffix_int();
+	}
+
+
+	if(isalpha(peeknextchar())){
+		warn_at_print_error(NULL,
+				"invalid suffix on integer constant (%c)",
+				peeknextchar());
+
+		parse_had_error = 1;
+
+		while(isalpha(peeknextchar()))
+			nextchar();
 	}
 }
 
@@ -710,51 +770,18 @@ static void read_number(int c)
 		bufferpos--; /* rewind */
 	}
 
-	if(c != '.')
+	if(c != '.'){
 		read_integer(mode);
+	}
 
 	if(c == '.' || peeknextchar() == '.'){
-		/* floating point */
-
 		currentval.val.f = strtold(num_start, &bufferpos);
-
-		if(toupper(peeknextchar()) == 'F'){
-			currentval.suffix = VAL_FLOAT;
-			nextchar();
-		}else if(toupper(peeknextchar()) == 'L'){
-			currentval.suffix = VAL_LDOUBLE;
-			nextchar();
-		}else{
-			currentval.suffix = VAL_DOUBLE;
-		}
-
-		curtok = token_floater;
-
-	}else{
-		/* handle integral XeY */
-		if(tolower(peeknextchar()) == 'e'){
-			numeric mantissa = currentval;
-			int powmul;
-
-			nextchar();
-
-			powmul = (peeknextchar() == '-' ? -1 : 1);
-			if(powmul == -1)
-				nextchar();
-
-			if(!isdigit(peeknextchar())){
-				curtok = token_unknown;
-				return;
-			}
-			read_integer(DEC);
-
-			mantissa.val.i *= pow(10, powmul * (sintegral_t)currentval.val.i);
-
-			currentval = mantissa;
-		}
-
-		curtok = token_integer;
+		currentval.suffix = VAL_FLOATING;
 	}
+
+	read_suffix();
+
+	curtok = (currentval.suffix & VAL_FLOATING ? token_floater : token_integer);
 }
 
 void nexttoken()
