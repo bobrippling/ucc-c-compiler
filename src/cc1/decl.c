@@ -110,12 +110,19 @@ const char *decl_store_to_str(const enum decl_storage s)
 	static char buf[16]; /* "inline register" is the longest - just a fit */
 
 	if(s & STORE_MASK_EXTRA){
+		char *trail_space = NULL;
 		*buf = '\0';
 
-		if((s & STORE_MASK_EXTRA) == store_inline)
+		if((s & STORE_MASK_EXTRA) == store_inline){
 			strcpy(buf, "inline ");
+			trail_space = buf + strlen("inline");
+		}
 
 		strcpy(buf + strlen(buf), decl_store_to_str(s & STORE_MASK_STORE));
+
+		if(trail_space && trail_space[1] == '\0')
+			*trail_space = '\0';
+
 		return buf;
 	}
 
