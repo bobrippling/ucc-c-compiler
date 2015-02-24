@@ -22,6 +22,7 @@
 #include "fold.h"
 #include "const.h"
 #include "type_nav.h"
+#include "c_types.h"
 
 #include "pass1.h"
 
@@ -48,6 +49,8 @@ static int parse_add_gasms(symtable_gasm ***plast_gasms)
 int parse_and_fold(symtable_global *globals)
 {
 	symtable_gasm **last_gasms = NULL;
+
+	c_types_init(&globals->stab);
 
 	while(curtok != token_eof){
 		where semi;

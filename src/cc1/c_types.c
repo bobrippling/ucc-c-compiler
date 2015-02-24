@@ -11,6 +11,28 @@
 
 #include "c_types.h"
 
+static void add_int_typedef(
+		symtable *symtab,
+		enum type_primitive intprim,
+		const char *spel)
+{
+	type *intty = type_nav_btype(cc1_type_nav, intprim);
+	decl *dtydef = decl_new_ty_sp(intty, ustrdup(spel));
+
+	dtydef->store = store_typedef;
+
+	symtab_add_to_scope(symtab, dtydef);
+}
+
+void c_types_init(symtable *symtab)
+{
+	/* typedef __int128 __int128_t */
+	add_int_typedef(symtab, type___int128, "__int128_t");
+
+	/* typedef unsigned __int128 __uint128_t */
+	add_int_typedef(symtab, type___uint128, "__uint128_t");
+}
+
 type *c_types_make_va_list(symtable *symtab)
 {
 	/* pointer to struct __builtin_va_list */

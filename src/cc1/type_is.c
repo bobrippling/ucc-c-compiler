@@ -346,6 +346,7 @@ int type_is_integral(type *r)
 		case type_short: case type_ushort:
 		case type_long:  case type_ulong:
 		case type_llong: case type_ullong:
+		case type___int128: case type___uint128:
 		case type_enum:
 			return 1;
 

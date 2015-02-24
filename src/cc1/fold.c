@@ -1168,7 +1168,10 @@ void fold_global_func(decl *func_decl)
 				arg_symtab);
 
 		if(fold_func_is_passable(func_decl, func_ret, 0)){
-			if(cc1_std >= STD_C99 && DECL_IS_HOSTED_MAIN(func_decl)){
+			if((fopt_mode & FOPT_FREESTANDING) == 0
+			&& cc1_std >= STD_C99
+			&& !strcmp(func_decl->spel, "main"))
+			{
 				/* hosted environment, in main. return 0 */
 				stmt *zret = stmt_new_wrapper(return,
 						func_decl->bits.func.code->symtab);

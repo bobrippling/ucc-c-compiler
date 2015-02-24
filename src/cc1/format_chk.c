@@ -74,15 +74,15 @@ static void format_check_printf_1(char fmt, type *const t_in,
 		case 'p':
 			prim = type_void;
 
+			/* emit the right warning flag */
+			warningp = &cc1_warning.attr_printf_voidp;
+
 			if(cc1_warning.attr_printf_voidp){
-				/* strict %p / void* check - emitted with voidp flag */
-				warningp = &cc1_warning.attr_printf_voidp;
+				/* strict %p / void* check */
 			}else{
 				/* allow any* */
 				if(type_is_ptr(t_in))
 					break;
-
-				/* not a pointer - emit with the default-warning flag */
 			}
 			goto ptr;
 

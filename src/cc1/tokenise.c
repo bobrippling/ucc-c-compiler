@@ -98,6 +98,7 @@ static const struct keyword
 	KEYWORD(KW_ALL, _Static_assert),
 
 	KEYWORD(KW_ALL, __builtin_va_list),
+	KEYWORD(KW_ALL, __int128),
 	KEYWORD(KW_ALL, __auto_type),
 
 	KEYWORD(KW_ALL, __extension__),
@@ -774,12 +775,12 @@ static void read_number(const int first)
 		switch(tolower(next)){
 			case 'x':
 				mode = HEX;
-				update_bufferpos(bufferpos + 1);
+				bufferpos++;
 				break;
 			case 'b':
 				cc1_warn_at(NULL, binary_literal, "binary literals are an extension");
 				mode = BIN;
-				update_bufferpos(bufferpos + 1);
+				bufferpos++;
 				break;
 
 			default:
@@ -823,7 +824,7 @@ static void read_number(const int first)
 				for(p = num_start + 2; isxdigit(*p) || *p == '.'; p++);
 
 				if(tolower(*p) != 'p'){
-					warn_at_print_error(NULL, "floating literal requires exponent");
+					warn_at_print_error(NULL, "floating literal requies exponent");
 					parse_had_error = 1;
 					skip_to_end_of_num();
 				}

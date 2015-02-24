@@ -45,6 +45,7 @@ enum type_primitive
 	S_U_TY(short),
 	S_U_TY(long),
 	S_U_TY(llong),
+	S_U_TY(__int128),
 
 	type_float,
 	type_double,

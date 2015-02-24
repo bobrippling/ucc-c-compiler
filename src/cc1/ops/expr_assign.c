@@ -180,7 +180,8 @@ const out_val *gen_expr_assign(const expr *e, out_ctx *octx)
 
 	/* re-read from the store,
 	 * e.g. if the value has undergone bitfield truncation */
-	return out_deref(octx, store);
+	out_val_release(octx, store);
+	return out_new_noop(octx);//out_deref(octx, store);
 }
 
 void dump_expr_assign(const expr *e, dump *ctx)

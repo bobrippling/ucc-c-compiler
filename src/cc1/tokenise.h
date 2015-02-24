@@ -46,6 +46,7 @@ enum token
 	token_double,
 	token__Bool,
 	token___builtin_va_list,
+	token___int128,
 
 	token_inline,
 	token__Noreturn,

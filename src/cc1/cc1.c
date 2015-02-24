@@ -101,6 +101,7 @@ static struct
 };
 
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
+static char fnames[NUM_SECTIONS]; /* duh */
 FILE *cc1_out;                  /* final output */
 char *cc1_first_fname;
 
@@ -203,8 +204,13 @@ static void io_cleanup(void)
 		if(!cc_out[i])
 			continue;
 
-		if(fclose(cc_out[i]) == EOF)
-			fprintf(stderr, "close tmpfile: %s\n", strerror(errno));
+		if(fclose(cc_out[i]) == EOF && !caught_sig)
+			fprintf(stderr, "close %s: %s\n", fnames[i], strerror(errno));
+		if(remove(fnames[i]) && !caught_sig)
+			fprintf(stderr, "remove %s: %s\n", fnames[i], strerror(errno));
+
+		free(fnames[i]);
+		fnames[i] = NULL;
 	}
 }
 

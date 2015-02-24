@@ -24,6 +24,7 @@ enum type_primitive curtok_to_type_primitive()
 		case token_short: return type_short;
 		case token_int:   return type_int;
 		case token_long:  return type_long;
+		case token___int128: return type___int128;
 
 		case token_float:  return type_float;
 		case token_double: return type_double;
@@ -189,6 +190,7 @@ char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  union);
 		CASE_STR_PREFIX(token,  enum);
 		CASE_STR_PREFIX(token,  __builtin_va_list);
+		CASE_STR_PREFIX(token,  __int128);
 
 		CASE_STR_PREFIX(token,  identifier);
 		CASE_STR_PREFIX(token,  character);
@@ -305,6 +307,7 @@ char *curtok_to_identifier(int *alloc)
 		case token_union:
 		case token_enum:
 		case token___builtin_va_list:
+		case token___int128:
 		case token_attribute:
 		case token___extension__:
 		case token___auto_type:

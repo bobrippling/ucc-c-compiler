@@ -24,6 +24,7 @@ static int type_convertible(enum type_primitive p)
 		case type_short: case type_ushort:
 		case type_long:  case type_ulong:
 		case type_llong: case type_ullong:
+		case type___int128: case type___uint128:
 		case type_float:
 		case type_double:
 		case type_ldouble:
@@ -86,6 +87,7 @@ int type_primitive_is_signed(enum type_primitive p, int hard_err_on_su)
 		case type_short:
 		case type_long:
 		case type_llong:
+		case type___int128:
 		case type_float:
 		case type_double:
 		case type_ldouble:
@@ -110,6 +112,7 @@ int type_primitive_is_signed(enum type_primitive p, int hard_err_on_su)
 		case type_ushort:
 		case type_ulong:
 		case type_ullong:
+		case type___uint128:
 			return 0;
 
 		case type_unknown:
@@ -205,6 +208,7 @@ const char *btype_to_str(const btype *t)
 		case type_float:
 		case type_double:
 		case type_llong: case type_ullong:
+		case type___int128: case type___uint128:
 		case type_ldouble:
 			snprintf(bufp, BUF_SIZE, "%s",
 					type_primitive_to_str(t->primitive));
@@ -257,6 +261,10 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_llong:
 		case type_ullong:
 			return UCC_SZ_LONG_LONG;
+
+		case type___int128:
+		case type___uint128:
+			return 16;
 
 		case type_double:
 			return IS_32_BIT() ? 4 : 8;
@@ -351,6 +359,9 @@ const char *type_primitive_to_str(const enum type_primitive p)
 		case type_llong:   return "long long";
 		case type_ullong:  return "unsigned long long";
 		case type_ldouble: return "long double";
+
+		case type___int128: return "__int128";
+		case type___uint128: return "unsigned __int128";
 
 		CASE_STR_PREFIX(type, struct);
 		CASE_STR_PREFIX(type, union);
