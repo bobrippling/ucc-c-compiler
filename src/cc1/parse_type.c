@@ -1167,6 +1167,23 @@ static type *parse_type_declarator_to_type(
 				break;
 		}
 
+		/* don't transform arrays from int[const] -> int const[],
+		 * C11 6.7.3.9 specifies this, but we don't do it yet as
+		 * we want int[const] for function parameters, so we can
+		 * convert them to int *const.
+		 *
+		 * additionally, int[const] is invalid anywhere else, so
+		 * we don't transform so this can also be detected.
+		 *
+		 * const qualification of arrays can therefore only happen
+		 * through typedefs:
+		 * typedef int array[3];
+		 * const array x;
+		 *
+		 * here type_qualify() is used to create x's type, not
+		 * type_qualify_transform_array(), meaning the transformation
+		 * is applied correctly where needed
+		 */
 		ty = type_attributed(
 				type_qualify_transform_array(
 					type_at_where(ty, &i->where),
