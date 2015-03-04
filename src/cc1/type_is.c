@@ -527,6 +527,7 @@ type *type_decay(type *const ty)
 	attribute **attr = NULL;
 	type *test;
 	type *ret = ty;
+	enum type_qualifier last_qual = qual_none;
 
 	for(test = ty; test; test = type_next_1(test)){
 		switch(test->type){
@@ -543,6 +544,13 @@ type *type_decay(type *const ty)
 				break;
 
 			case type_cast:
+				/* fine to unconditionally collect - we stop at the top
+				 * level array or function, so there's no need to reset
+				 * last_qual when meeting a type-category such as array,
+				 * ptr, func or block */
+				last_qual |= test->bits.cast.qual;
+				break;
+
 			case type_tdef:
 				/* skip */
 				break;
@@ -555,7 +563,9 @@ type *type_decay(type *const ty)
 
 			case type_array:
 				ret = type_keep_w_attr(
-						type_decayed_ptr_to(test->ref, test),
+						type_qualify(
+							type_decayed_ptr_to(test->ref, test),
+							last_qual),
 						loc, attr);
 				goto out;
 
