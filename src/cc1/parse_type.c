@@ -1127,7 +1127,7 @@ static type *parse_type_declarator_to_type(
 				qual = i->bits.ptr.qual;
 				break;
 			case PARSED_ARRAY:
-				qual = i->bits.ptr.qual;
+				qual = i->bits.array.qual;
 
 				if(i->bits.array.is_vla){
 					if(i->bits.array.is_static){
