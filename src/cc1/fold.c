@@ -294,7 +294,6 @@ static void fold_type_w_attr(
 		type *const r, type *const parent, const where *loc,
 		symtable *stab, attribute *attr)
 {
-	type *thisparent = r;
 	attribute *this_attr = NULL;
 	enum type_qualifier q_to_check = qual_none;
 
@@ -366,17 +365,14 @@ static void fold_type_w_attr(
 
 		case type_attr:
 			this_attr = r->bits.attr;
-			thisparent = parent;
 			break;
 
 		case type_where:
 			/* nothing to do */
-			thisparent = parent;
 			break;
 
 		case type_cast:
 			q_to_check = type_qual(r);
-			thisparent = parent;
 			break;
 
 		case type_ptr:
@@ -416,8 +412,6 @@ static void fold_type_w_attr(
 
 			if(r->bits.tdef.decl)
 				fold_decl(r->bits.tdef.decl, stab);
-
-			thisparent = parent;
 			break;
 		}
 	}
@@ -439,7 +433,7 @@ static void fold_type_w_attr(
 		}
 	}
 
-	fold_type_w_attr(r->ref, thisparent, loc, stab, this_attr ? this_attr : attr);
+	fold_type_w_attr(r->ref, r, loc, stab, this_attr ? this_attr : attr);
 
 	/* checks that rely on r->ref being folded... */
 	switch(r->type){
