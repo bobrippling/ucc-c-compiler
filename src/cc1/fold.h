@@ -21,10 +21,11 @@ void fold_global_func(decl *);
 void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab);
 int fold_func_is_passable(decl *, type *, int warn);
 
+/* unadorned types, e.g. (int)..., _Generic(..., int: ...) */
 void fold_type(type *t, symtable *stab);
-void fold_type_w_attr(
-		type *, type *parent, where *,
-		symtable *stab, attribute *attr);
+
+/* type as part of something else, e.g. int x; */
+void fold_type_ondecl_w(decl *, symtable *, const where *);
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
 

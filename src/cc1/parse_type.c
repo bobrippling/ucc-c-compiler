@@ -1314,7 +1314,7 @@ static void parsed_decl(decl *d, symtable *scope)
 	if(!loc)
 		loc = &d->where;
 
-	fold_type_w_attr(d->ref, NULL, loc, scope, d->attr);
+	fold_type_ondecl_w(d, scope, loc);
 }
 
 static decl *parse_decl_stored_aligned(
@@ -2104,7 +2104,7 @@ int parse_decl_group(
 			unused_attribute(d, decl_attr);
 		}
 
-		fold_type_w_attr(d->ref, NULL, &d->where, in_scope, d->attr);
+		fold_type_ondecl_w(d, in_scope, NULL);
 
 		if(!d->spel && !had_field_width){
 			/*

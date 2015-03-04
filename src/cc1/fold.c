@@ -290,8 +290,8 @@ static void fold_calling_conv(type *r)
 	type_funcargs(r)->conv = conv;
 }
 
-void fold_type_w_attr(
-		type *const r, type *const parent, where *loc,
+static void fold_type_w_attr(
+		type *const r, type *const parent, const where *loc,
 		symtable *stab, attribute *attr)
 {
 	type *thisparent = r;
@@ -506,6 +506,14 @@ void fold_type_w_attr(
 void fold_type(type *t, symtable *stab)
 {
 	fold_type_w_attr(t, NULL, type_loc(t), stab, NULL);
+}
+
+void fold_type_ondecl_w(decl *d, symtable *scope, where const *w)
+{
+	if(!w)
+		w = &d->where;
+
+	fold_type_w_attr(d->ref, NULL, w, scope, d->attr);
 }
 
 static int fold_align(int al, int min, int max, where *w)
