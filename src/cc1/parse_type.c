@@ -1168,9 +1168,9 @@ static type *parse_type_declarator_to_type(
 		}
 
 		ty = type_attributed(
-				type_qualify(
+				type_qualify_transform_array(
 					type_at_where(ty, &i->where),
-					qual),
+					qual, 0),
 				i->attr);
 	}
 

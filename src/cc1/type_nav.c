@@ -355,7 +355,10 @@ static void init_qual(type *t, void *ctx)
 	t->bits.cast.qual = *(enum type_qualifier *)ctx;
 }
 
-type *type_qualify(type *unqualified, enum type_qualifier qual)
+static type *type_qualify3(
+		type *unqualified,
+		enum type_qualifier qual,
+		int transform_array_qual)
 {
 	type *ar_ty;
 	enum type_qualifier existing;
@@ -368,7 +371,7 @@ type *type_qualify(type *unqualified, enum type_qualifier qual)
 	if((qual & ~existing) == existing)
 		return unqualified;
 
-	if((ar_ty = type_is(unqualified, type_array))){
+	if(transform_array_qual && (ar_ty = type_is(unqualified, type_array))){
 		/* const -> array -> int
 		 * becomes
 		 * array -> const -> int
@@ -384,6 +387,18 @@ type *type_qualify(type *unqualified, enum type_qualifier qual)
 			unqualified, type_cast,
 			eq_qual, init_qual,
 			&qual);
+}
+
+type *type_qualify_transform_array(
+		type *unqualified, enum type_qualifier qual,
+		int transform_array_qual)
+{
+	return type_qualify3(unqualified, qual, transform_array_qual);
+}
+
+type *type_qualify(type *unqualified, enum type_qualifier qual)
+{
+	return type_qualify3(unqualified, qual, 1);
 }
 
 type *type_sign(struct type_nav *root, type *ty, int make_signed)
