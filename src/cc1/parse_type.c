@@ -38,7 +38,8 @@
 static decl *parse_decl_stored_aligned(
 		type *btype, enum decl_mode mode,
 		enum decl_storage store, struct decl_align *align,
-		symtable *scope, symtable *add_to_scope);
+		symtable *scope, symtable *add_to_scope,
+		int is_arg);
 
 static type *default_type(void);
 
@@ -722,7 +723,7 @@ static decl *parse_arg_decl(symtable *scope)
 			btype, flags,
 			store /* register is a valid argument store */,
 			/*align:*/NULL,
-			scope, NULL);
+			scope, NULL, /*is_arg*/1);
 
 	if(!argdecl)
 		die_at(NULL, "type expected (got %s)", token_to_str(curtok));
@@ -1308,19 +1309,20 @@ static void parse_add_asm(decl *d)
 	}
 }
 
-static void parsed_decl(decl *d, symtable *scope)
+static void parsed_decl(decl *d, symtable *scope, int is_arg)
 {
 	where *loc = type_has_loc(d->ref);
 	if(!loc)
 		loc = &d->where;
 
-	fold_type_ondecl_w(d, scope, loc);
+	fold_type_ondecl_w(d, scope, loc, is_arg);
 }
 
 static decl *parse_decl_stored_aligned(
 		type *btype, enum decl_mode mode,
 		enum decl_storage store, struct decl_align *align,
-		symtable *scope, symtable *add_to_scope)
+		symtable *scope, symtable *add_to_scope,
+		int is_arg)
 {
 	decl *d = decl_new();
 	where w_eq;
@@ -1372,7 +1374,7 @@ static decl *parse_decl_stored_aligned(
 		parse_add_attr(&d->attr, scope); /* int spel __attr__ */
 
 		/* now we have attributes, etc... */
-		parsed_decl(d, scope);
+		parsed_decl(d, scope, is_arg);
 
 		if(d->spel && accept_where(token_assign, &w_eq)){
 			int static_ctx = !scope->parent ||
@@ -1418,7 +1420,7 @@ static decl *parse_decl_stored_aligned(
 								type_qual(type_at_where(btype, &init->where))),
 							attr);
 
-					parsed_decl(d, scope);
+					parsed_decl(d, scope, is_arg);
 				}
 			}
 
@@ -1518,7 +1520,7 @@ decl *parse_decl(
 			type_attributed(bt, decl_attr),
 			mode,
 			store, NULL /* align */,
-			scope, add_to_scope);
+			scope, add_to_scope, 0);
 
 	fold_decl(d, scope);
 
@@ -2084,7 +2086,7 @@ int parse_decl_group(
 		d = parse_decl_stored_aligned(
 				this_ref, parse_flag,
 				store, align,
-				in_scope, add_to_scope);
+				in_scope, add_to_scope, 0);
 
 		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH)
 		&& accept(token_colon))
@@ -2104,7 +2106,7 @@ int parse_decl_group(
 			unused_attribute(d, decl_attr);
 		}
 
-		fold_type_ondecl_w(d, in_scope, NULL);
+		fold_type_ondecl_w(d, in_scope, NULL, 0);
 
 		if(!d->spel && !had_field_width){
 			/*

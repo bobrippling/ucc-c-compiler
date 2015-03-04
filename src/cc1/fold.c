@@ -26,6 +26,11 @@
 #include "type_is.h"
 #include "type_nav.h"
 
+enum fold_type_chk
+{
+	FOLD_TYPE_NO_ARRAYQUAL = 1 << 0
+};
+
 int fold_had_error;
 
 void fold_insert_casts(type *tlhs, expr **prhs, symtable *stab)
@@ -292,7 +297,7 @@ static void fold_calling_conv(type *r)
 
 static void fold_type_w_attr(
 		type *const r, type *const parent, const where *loc,
-		symtable *stab, attribute *attr)
+		symtable *stab, attribute *attr, const enum fold_type_chk chk)
 {
 	attribute *this_attr = NULL;
 	enum type_qualifier q_to_check = qual_none;
@@ -311,6 +316,16 @@ static void fold_type_w_attr(
 			ICE("__auto_type");
 
 		case type_array:
+			if(parent
+			&& (chk & FOLD_TYPE_NO_ARRAYQUAL)
+			&& parent->type == type_cast)
+			{
+				fold_had_error = 1;
+				warn_at_print_error(loc,
+						"array has qualified type: %s",
+						type_to_str(parent));
+			}
+
 			if(r->bits.array.size){
 				consty k;
 				where *array_loc = &r->bits.array.size->where;
@@ -433,7 +448,9 @@ static void fold_type_w_attr(
 		}
 	}
 
-	fold_type_w_attr(r->ref, r, loc, stab, this_attr ? this_attr : attr);
+	fold_type_w_attr(r->ref, r,
+			loc, stab, this_attr ? this_attr : attr,
+			chk);
 
 	/* checks that rely on r->ref being folded... */
 	switch(r->type){
@@ -499,15 +516,20 @@ static void fold_type_w_attr(
 
 void fold_type(type *t, symtable *stab)
 {
-	fold_type_w_attr(t, NULL, type_loc(t), stab, NULL);
+	fold_type_w_attr(t, NULL, type_loc(t), stab, NULL, FOLD_TYPE_NO_ARRAYQUAL);
 }
 
-void fold_type_ondecl_w(decl *d, symtable *scope, where const *w)
+void fold_type_ondecl_w(decl *d, symtable *scope, where const *w, int is_arg)
 {
+	enum fold_type_chk fold_flags = 0;
+
+	if(!is_arg)
+		fold_flags |= FOLD_TYPE_NO_ARRAYQUAL;
+
 	if(!w)
 		w = &d->where;
 
-	fold_type_w_attr(d->ref, NULL, w, scope, d->attr);
+	fold_type_w_attr(d->ref, NULL, w, scope, d->attr, fold_flags);
 }
 
 static int fold_align(int al, int min, int max, where *w)
@@ -689,7 +711,10 @@ static void fold_decl_var(decl *d, symtable *stab)
 			}else{
 				type *ty = i->bits.align_ty;
 				UCC_ASSERT(ty, "no type");
-				fold_type_w_attr(ty, NULL, type_loc(d->ref), stab, d->attr);
+
+				fold_type_w_attr(ty, NULL, type_loc(d->ref),
+						stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
+
 				al = type_align(ty, &d->where);
 			}
 
@@ -857,7 +882,8 @@ void fold_decl(decl *d, symtable *stab)
 	if(first_fold){
 		attribute *attr;
 
-		fold_type_w_attr(d->ref, NULL, type_loc(d->ref), stab, d->attr);
+		fold_type_w_attr(d->ref, NULL, type_loc(d->ref),
+				stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
 
 		if(d->spel
 		&& (!STORE_IS_TYPEDEF(d->store) || type_is_variably_modified(d->ref)))
@@ -1254,7 +1280,8 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 			/* must be before the decl is folded (since fold checks this) */
 			if(decl_conv_array_func_to_ptr(d)){
 				/* refold if we converted */
-				fold_type_w_attr(d->ref, NULL, type_loc(d->ref), stab, d->attr);
+				fold_type_w_attr(d->ref, NULL, type_loc(d->ref),
+						stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
 			}
 
 			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){

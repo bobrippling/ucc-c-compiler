@@ -25,7 +25,7 @@ int fold_func_is_passable(decl *, type *, int warn);
 void fold_type(type *t, symtable *stab);
 
 /* type as part of something else, e.g. int x; */
-void fold_type_ondecl_w(decl *, symtable *, const where *);
+void fold_type_ondecl_w(decl *, symtable *, const where *, int is_arg);
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
 
