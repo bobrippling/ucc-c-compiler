@@ -525,6 +525,7 @@ static void type_add_str(
 		type *stop_at)
 {
 	int need_paren;
+	type *array_qual = NULL, *next_ty;
 
 	if(!r){
 		/* reached the bottom/end - spel */
@@ -543,7 +544,13 @@ static void type_add_str(
 
 	type_add_str_pre(r, &need_paren, need_spc, bufp, sz);
 
-	type_add_str(r->tmp, spel, need_spc, bufp, sz, stop_at);
+	next_ty = r->tmp;
+	if(r->type == type_array && r->tmp && r->tmp->type == type_cast){
+		array_qual = r->tmp;
+		next_ty = array_qual->tmp;
+	}
+
+	type_add_str(next_ty, spel, need_spc, bufp, sz, stop_at);
 
 	switch(r->type){
 		case type_auto:
@@ -571,24 +578,30 @@ static void type_add_str(
 				break;
 			/* fall */
 		case type_array:
+		{
+			const char *sz_space = "";
+
 			BUF_ADD("[");
+			if(r->bits.array.is_vla == 0 && r->bits.array.is_static){
+				BUF_ADD("static");
+				sz_space = " ";
+			}
+
+			if(array_qual){
+				BUF_ADD("%s%s", sz_space,
+						type_qual_to_str(array_qual->bits.cast.qual, 0));
+				sz_space = " ";
+			}
+
 			switch(r->bits.array.is_vla){
 				case 0:
-				{
-					int spc = 0;
-					if(r->bits.array.is_static){
-						BUF_ADD("static");
-						spc = 1;
-					}
-
 					if(r->bits.array.size){
 						BUF_ADD(
 								"%s%" NUMERIC_FMT_D,
-								spc ? " " : "",
+								sz_space,
 								const_fold_val_i(r->bits.array.size));
 					}
 					break;
-				}
 				case VLA:
 					BUF_ADD("vla");
 					break;
@@ -598,6 +611,7 @@ static void type_add_str(
 			}
 			BUF_ADD("]");
 			break;
+		}
 	}
 
 	if(need_paren)
