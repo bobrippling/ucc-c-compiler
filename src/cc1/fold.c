@@ -363,9 +363,14 @@ static void fold_type_w_attr(
 					if(cc1_std < STD_C99){
 						cc1_warn_at(
 								&r->bits.array.size->where,
-								vla,
+								c89_vla,
 								"variable length array is a C99 feature");
+
+					}else{
+						cc1_warn_at(&r->bits.array.size->where,
+								vla, "use of variable length array");
 					}
+
 				}else{
 					const_fold(r->bits.array.size, &k);
 

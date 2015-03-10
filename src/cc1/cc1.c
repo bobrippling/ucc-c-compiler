@@ -290,6 +290,7 @@ static struct warn_str
 	{ "unused-function-return", &cc1_warning.unused_fnret },
 
 	{ "vla", &cc1_warning.vla },
+	{ "c89-vla", &cc1_warning.c89_vla },
 
 	{ "__func__init", &cc1_warning.x__func__init },
 	{ "__func__outside-fn", &cc1_warning.x__func__outsidefn },
@@ -735,7 +736,7 @@ static void warning_init(void)
 	cc1_warning.mixed_code_decls =
 	cc1_warning.c89_init_constexpr =
 	cc1_warning.long_long =
-	cc1_warning.vla =
+	cc1_warning.c89_vla =
 	cc1_warning.c89_compound_literal =
 			W_WARN;
 }

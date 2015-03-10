@@ -46,6 +46,7 @@ struct cc1_warning
 	unsigned char c89_for_init;
 	unsigned char c89_init_constexpr;
 	unsigned char c89_parse_trailingcomma;
+	unsigned char c89_vla;
 	unsigned char cast_qual;
 	unsigned char compare_mismatch;
 	unsigned char constant_large_unsigned;
