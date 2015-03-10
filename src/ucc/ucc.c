@@ -450,6 +450,7 @@ int main(int argc, char **argv)
 						switch(c){
 #define MAP(c, to) case c: dynarray_add_tmparray(&args[to], entries); break
 							MAP('p', mode_preproc);
+							MAP('c', mode_compile);
 							MAP('a', mode_assemb);
 							MAP('l', mode_link);
 #undef MAP
