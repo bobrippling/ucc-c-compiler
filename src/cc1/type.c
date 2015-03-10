@@ -87,9 +87,9 @@ static enum type_cmp type_cmp_r(
 		if(type_is_primitive(a, type__Bool) && type_is_ptr(b))
 			return TYPE_CONVERTIBLE_IMPLICIT;
 
-		/* allow int <-> ptr */
-		if((type_is_ptr(a) && type_is_integral(b))
-		|| (type_is_ptr(b) && type_is_integral(a)))
+		/* allow int <-> ptr (or block) */
+		if((type_is_ptr_or_block(a) && type_is_integral(b))
+		|| (type_is_ptr_or_block(b) && type_is_integral(a)))
 		{
 			return TYPE_CONVERTIBLE_EXPLICIT;
 		}
