@@ -589,7 +589,7 @@ static void sigh(int sig)
 
 static char *next_line()
 {
-	char *s = fline(infile);
+	char *s = fline(infile, NULL);
 	char *p;
 
 	if(!s){

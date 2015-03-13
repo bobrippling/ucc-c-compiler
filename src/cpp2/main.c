@@ -110,6 +110,7 @@ static const struct
 	{ "uncalled-macro", "warn when a function-macro is mentioned without ()", WUNCALLED_FN },
 	{ "#warning", "emit #warnings", WHASHWARNING },
 	{ "backslash-newline-space", "space between backslash and newline", WBACKSLASH_SPACE_NEWLINE },
+	{ "newline-eof", "newline at eof", WNEWLINE },
 
 	{ "everything", "everything", ~0 },
 

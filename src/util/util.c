@@ -36,10 +36,13 @@ void icw(const char *f, int line, const char *fn, const char *fmt, ...)
 	va_end(l);
 }
 
-char *fline(FILE *f)
+char *fline(FILE *f, int *const newline)
 {
 	int c, pos, len;
 	char *line;
+
+	if(newline)
+		*newline = 0;
 
 	if(feof(f) || ferror(f))
 		return NULL;
@@ -68,6 +71,8 @@ char *fline(FILE *f)
 		}
 
 		if(c == '\n'){
+			if(newline)
+				*newline = 1;
 			line[pos-1] = '\0';
 			return line;
 		}

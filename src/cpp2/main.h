@@ -54,6 +54,7 @@ extern enum wmode
 	WQUOTE       = 1 << 12, /* dodgy quoting */
 	WHASHWARNING = 1 << 13, /* #warning */
 	WBACKSLASH_SPACE_NEWLINE = 1 << 14,
+	WNEWLINE     = 1 << 15,
 } wmode;
 
 extern enum comment_strip

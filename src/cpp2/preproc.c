@@ -33,6 +33,7 @@ struct
 } file_stack[64] = { { NULL, NULL, 0 } };
 
 int file_stack_idx = -1;
+static int prev_newline;
 
 void include_bt(FILE *f)
 {
@@ -121,13 +122,14 @@ static char *read_line(void)
 {
 	FILE *f;
 	char *line;
+	int newline;
 
 re_read:
 	if(file_stack_idx < 0)
 		ICE("file stack idx = 0 on read()");
 	f = file_stack[file_stack_idx].file;
 
-	line = fline(f);
+	line = fline(f, &newline);
 
 	if(!line){
 		if(ferror(f))
@@ -138,11 +140,16 @@ re_read:
 			free(dirname_pop());
 			preproc_pop();
 			goto re_read;
+		}else{
+			if(!prev_newline){
+				CPP_WARN(WNEWLINE, "no newline at end-of-file");
+			}
 		}
 
 		return NULL;
 	}
 
+	prev_newline = newline;
 	current_line++;
 
 	return line;
