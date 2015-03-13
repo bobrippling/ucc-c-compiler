@@ -40,4 +40,8 @@ int fold_check_bounds(expr *e, int chk_one_past_end);
 void expr_check_sign(const char *desc,
 		expr *lhs, expr *rhs, where *w);
 
-void gen_op_trapv(type *evaltt, const out_val **eval, out_ctx *octx);
+void gen_op_trapv(
+		type *evaltt,
+		const out_val **eval,
+		out_ctx *octx,
+		enum op_type op);

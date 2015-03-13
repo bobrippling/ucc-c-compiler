@@ -1131,12 +1131,19 @@ static const out_val *op_shortcircuit(const expr *e, out_ctx *octx)
 	}
 }
 
-void gen_op_trapv(type *evaltt, const out_val **eval, out_ctx *octx)
+void gen_op_trapv(
+		type *evaltt,
+		const out_val **eval,
+		out_ctx *octx,
+		enum op_type op)
 {
 	if((fopt_mode & FOPT_TRAPV) == 0)
 		return;
 
 	if(!type_is_integral(evaltt) || !type_is_signed(evaltt))
+		return;
+
+	if(op_is_comparison(op))
 		return;
 
 	{
@@ -1185,7 +1192,7 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 		eval = out_change_type(octx, eval, e->tree_type);
 	}
 
-	gen_op_trapv(e->tree_type, &eval, octx);
+	gen_op_trapv(e->tree_type, &eval, octx, e->bits.op.op);
 
 	return eval;
 }

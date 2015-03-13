@@ -91,7 +91,7 @@ const out_val *gen_expr_assign_compound(const expr *e, out_ctx *octx)
 		lhs = out_cast(octx, lhs, e->bits.compoundop.upcast_ty, /*normalise_bool:*/1);
 
 	result = out_op(octx, e->bits.compoundop.op, lhs, rhs);
-	gen_op_trapv(e->tree_type, &result, octx);
+	gen_op_trapv(e->tree_type, &result, octx, e->bits.compoundop.op);
 
 	if(e->bits.compoundop.upcast_ty) /* need to cast back down to store */
 		result = out_cast(octx, result, e->tree_type, /*normalise_bool:*/1);
