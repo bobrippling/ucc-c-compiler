@@ -1,9 +1,11 @@
-// RUN: %ucc -Wall -Wno-extra -Weverything -Wcpp -Wpaste -Wno-traditional -Wunused -Wno-implicit -Werror=overflow -Wno-error=vla %s -'###' >%t 2>&1
+// RUN: %ucc -Wall -Wno-extra -Weverything -Wgnu -Werror -Wcpp -Wpaste -Wno-traditional -Wunused -Wno-implicit -Werror=overflow -Wno-error=vla %s -'###' >%t 2>&1
 
 // true and false groups:
 // -Wall
 // -Wno-extra
 // -Weverything
+// -Wgnu
+// -Werror
 
 // non existent option:
 // -Wcpp
@@ -23,6 +25,8 @@
 // RUN:   grep -q "cpp .*-Wall" %t
 // RUN:   grep -q "cpp .*-Wno-extra" %t
 // RUN:   grep -q "cpp .*-Weverything" %t
+// RUN: ! grep -q "cpp .*-Wgnu" %t
+// RUN:   grep -q "cpp .*-Werror " %t
 // RUN: ! grep -q "cpp .*-Wcpp" %t
 // RUN:   grep -q "cpp .*-Wpaste" %t
 // RUN:   grep -q "cpp .*-Wno-traditional" %t
@@ -34,6 +38,8 @@
 // RUN:   grep -q "cc1 .*-Wall" %t
 // RUN:   grep -q "cc1 .*-Wno-extra" %t
 // RUN:   grep -q "cc1 .*-Weverything" %t
+// RUN:   grep -q "cc1 .*-Wgnu" %t
+// RUN:   grep -q "cc1 .*-Werror " %t
 // RUN: ! grep -q "cc1 .*-Wcpp" %t
 // RUN: ! grep -q "cc1 .*-Wpaste" %t
 // RUN: ! grep -q "cc1 .*-Wno-traditional" %t
