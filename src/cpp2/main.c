@@ -97,27 +97,10 @@ static const struct
 	const char *warn, *desc;
 	enum wmode or_mask;
 } warns[] = {
-	{ "traditional", "warn about # in the first column", WTRADITIONAL },
-	{ "undef", "warn about undefined macros in #if and #undef", WUNDEF_IN_IF | WUNDEF_NDEF },
-	{ "undef-in-if", "warn about undefined macros in #if/elif", WUNDEF_IN_IF },
-	{ "undef-noop", "warn about #undef <undefined macro>", WUNDEF_NDEF },
-	{ "unused-macros", "warn about unused macros", WUNUSED },
-	{ "redef", "warn about redefining macros", WREDEF },
-	{ "whitespace", "warn about no-whitespace after #define func(a)", WWHITESPACE },
-	{ "trailing", "warn about tokens after #else/endif", WTRAILING },
-	{ "empty-arg", "warn on empty argument to single-arg macro", WEMPTY_ARG },
-	{ "paste", "warn when pasting doesn't make a token", WPASTE },
-	{ "uncalled-macro", "warn when a function-macro is mentioned without ()", WUNCALLED_FN },
-	{ "#warning", "emit #warnings", WHASHWARNING },
-	{ "backslash-newline-space", "space between backslash and newline", WBACKSLASH_SPACE_NEWLINE },
-	{ "newline-eof", "newline at eof", WNEWLINE },
 
-	{ "everything", "everything", ~0 },
-
-	{
-		"all", "Most warnings", WREDEF | WWHITESPACE | WTRAILING | WPASTE |
-			WFINALESCAPE | WMULTICHAR | WHASHWARNING
-	},
+#define X(arg, desc, flag) { arg, desc, flag },
+#include "warnings.def"
+#undef X
 };
 
 #define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)

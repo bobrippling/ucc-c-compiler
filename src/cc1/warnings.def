@@ -1,0 +1,210 @@
+X("mismatch-arg", &cc1_warning.arg_mismatch)
+X("array-comma", &cc1_warning.array_comma)
+X("return-type", &cc1_warning.return_type)
+X("return-void", &cc1_warning.return_void)
+
+X("mismatch-assign", &cc1_warning.assign_mismatch, &cc1_warning.compare_mismatch, &cc1_warning.return_type)
+
+X("binary-literal", &cc1_warning.binary_literal)
+
+X("sign-compare", &cc1_warning.sign_compare)
+X("extern-assume", &cc1_warning.extern_assume)
+
+X("implicit-int", &cc1_warning.implicit_int)
+X("implicit-function-declaration", &cc1_warning.implicit_func)
+X("implicit", &cc1_warning.implicit_func, &cc1_warning.implicit_int)
+
+X("switch-enum", &cc1_warning.switch_enum)
+X("enum-compare", &cc1_warning.enum_cmp)
+
+X("incomplete-use", &cc1_warning.incomplete_use)
+
+X("unused-expr", &cc1_warning.unused_expr)
+
+X("assign-in-test", &cc1_warning.test_assign)
+X("test-bool", &cc1_warning.test_bool)
+
+X("dead-code", &cc1_warning.dead_code)
+
+X("predecl-enum", &cc1_warning.predecl_enum,)
+
+X("mixed-code-decls", &cc1_warning.mixed_code_decls)
+
+X("loss-of-precision", &cc1_warning.loss_precision)
+
+X("pad", &cc1_warning.pad)
+
+X("tenative-init", &cc1_warning.tenative_init)
+
+X("shadow-local", &cc1_warning.shadow_local)
+X("shadow-global", &cc1_warning.shadow_global_user)
+X("shadow-global-all", &cc1_warning.shadow_global_all)
+X("shadow", &cc1_warning.shadow_global_user, &cc1_warning.shadow_local)
+
+X("cast-qual", &cc1_warning.cast_qual)
+
+X("unused-parameter", &cc1_warning.unused_param)
+X("unused-variable", &cc1_warning.unused_var)
+X("unused-value", &cc1_warning.unused_val)
+X("unused", &cc1_warning.unused_param, &cc1_warning.unused_var, &cc1_warning.unused_val)
+
+X("uninitialised", &cc1_warning.uninitialised)
+
+X("int-ptr-conversion", &cc1_warning.int_ptr_conv)
+X("ptr-int-conversion", &cc1_warning.int_ptr_conv)
+
+X("arith-funcptr", &cc1_warning.arith_fnptr)
+X("arith-voidptr", &cc1_warning.arith_voidp)
+
+X("array-bounds", &cc1_warning.array_oob)
+X("asm-badchar", &cc1_warning.asm_badchar)
+
+X("attr-badcleanup", &cc1_warning.attr_badcleanup)
+
+X("attr-printf-bad", &cc1_warning.attr_printf_bad)
+X("attr-printf-toomany", &cc1_warning.attr_printf_toomany)
+X("attr-printf-unknown", &cc1_warning.attr_printf_unknown)
+X("attr-printf-voidptr", &cc1_warning.attr_printf_voidp)
+X("format", &cc1_warning.attr_printf_bad, &cc1_warning.attr_printf_toomany, &cc1_warning.attr_printf_unknown)
+
+X("address-of-lvalue", &cc1_warning.address_of_lvalue)
+
+X("attr-noderef", &cc1_warning.attr_noderef)
+X("attr-nonnull", &cc1_warning.attr_nonnull)
+X("attr-nonnull-bad", &cc1_warning.attr_nonnull_bad)
+X("attr-nonnull-noargs", &cc1_warning.attr_nonnull_noargs)
+X("attr-nonnull-nonptr", &cc1_warning.attr_nonnull_nonptr)
+X("attr-nonnull-noptrs", &cc1_warning.attr_nonnull_noptrs)
+X("attr-nonnull-oob", &cc1_warning.attr_nonnull_oob)
+X("attr-section-badchar", &cc1_warning.attr_section_badchar)
+X("attr-sentinel", &cc1_warning.attr_sentinel)
+X("attr-sentinel-nonvariadic", &cc1_warning.attr_sentinel_nonvariadic)
+X("attr-unknown-on-label", &cc1_warning.lbl_attr_unknown)
+X("attr-unused-used", &cc1_warning.attr_unused_used)
+X("attr-unused-voidfn", &cc1_warning.attr_unused_voidfn)
+
+X("qualified-fntype", &cc1_warning.bad_funcqual)
+X("inline-non-function", &cc1_warning.bad_inline)
+X("inline-builtin-frame-addr", &cc1_warning.inline_builtin_frame_addr)
+X("restrict-non-ptr", &cc1_warning.bad_restrict)
+
+X("bitfield-boundary", &cc1_warning.bitfield_boundary)
+X("bitfield-onebit-int", &cc1_warning.bitfield_onebit_int)
+X("bitfield-trunc", &cc1_warning.bitfield_trunc)
+
+X("builtin-expect-nonconst", &cc1_warning.builtin_expect_nonconst)
+X("builtin-memset-bad", &cc1_warning.builtin_memset_bad)
+X("builtin-va_arg-undefined", &cc1_warning.builtin_va_arg)
+X("builtin-va_start-2nd-param", &cc1_warning.builtin_va_start)
+
+X("c89-compound-literal", &cc1_warning.c89_compound_literal)
+X("c89-for-init", &cc1_warning.c89_for_init)
+X("c89-init-constexpr", &cc1_warning.c89_init_constexpr)
+X("c89-trailing-comma", &cc1_warning.c89_parse_trailingcomma)
+
+X("constant-large-unsigned", &cc1_warning.constant_large_unsigned)
+
+X("div-zero", &cc1_warning.constop_bad)
+X("declaration-noop", &cc1_warning.decl_nodecl)
+X("empty-struct", &cc1_warning.empty_struct)
+
+X("empty-init", &cc1_warning.gnu_empty_init)
+
+X("enum-mismatch", &cc1_warning.enum_mismatch)
+X("enum-switch-bitmask", &cc1_warning.enum_switch_bitmask)
+X("enum-switch-imposter", &cc1_warning.enum_switch_imposter)
+
+X("excess-init", &cc1_warning.excess_init)
+X("extern-init", &cc1_warning.extern_init)
+
+X("embedded-flexarr", &cc1_warning.flexarr_embed)
+X("flexarr-single-member", &cc1_warning.flexarr_only)
+X("flexarr-init", &cc1_warning.flexarr_init)
+
+X("gcc-compat", &cc1_warning.gnu_gcc_compat)
+
+X("call-argcount", &cc1_warning.funcall_argcount)
+
+X("ignored-attributes", &cc1_warning.ignored_attribute)
+
+X("ignored-late-decl", &cc1_warning.ignored_late_decl)
+
+X("ignored-qualifiers", &cc1_warning.ignored_qualifiers)
+
+X("implicit-old-func", &cc1_warning.implicit_old_func)
+
+X("init-missing-braces", &cc1_warning.init_missing_braces)
+X("init-missing-struct", &cc1_warning.init_missing_struct)
+X("init-missing-struct-zero", &cc1_warning.init_missing_struct_zero)
+X("init-obj-discard", &cc1_warning.init_obj_discard)
+X("init-overlong-string", &cc1_warning.init_overlong_strliteral)
+X("init-override", &cc1_warning.init_override)
+X("designated-init", &cc1_warning.init_undesignated)
+
+X("unknown-attribute", &cc1_warning.attr_unknown)
+X("unused-label", &cc1_warning.lbl_unused)
+
+X("long-long", &cc1_warning.long_long)
+
+X("mismatch-conditional", &cc1_warning.mismatch_conditional)
+X("mismatch-ptr", &cc1_warning.mismatch_ptr)
+X("mismatching-types", &cc1_warning.mismatching_types)
+
+X("missing-empty-struct-brace-init", &cc1_warning.missing_empty_struct_brace_init)
+
+X("missing-prototypes", &cc1_warning.missing_prototype)
+X("missing-variable-declarations", &cc1_warning.missing_variable_decls)
+X("missing-forwards", &cc1_warning.missing_variable_decls, &cc1_warning.missing_prototype)
+
+X("multichar", &cc1_warning.multichar)
+X("multichar-too-large", &cc1_warning.multichar_toolarge)
+
+X("nonstandard-array-size", &cc1_warning.nonstd_arraysz)
+X("nonstandard-init", &cc1_warning.nonstd_init)
+
+X("null-zero-literal", &cc1_warning.null_zero_literal)
+
+X("omitted-param-types", &cc1_warning.omitted_param_types)
+X("undefined-shift", &cc1_warning.op_shift_bad)
+X("overlarge-enumerator-bitfield", &cc1_warning.overlarge_enumerator_bitfield)
+X("overlarge-enumerator-int", &cc1_warning.overlarge_enumerator_int)
+
+X("overflow", &cc1_warning.overflow)
+
+X("operator-precedence", &cc1_warning.parse_precedence)
+X("visibility", &cc1_warning.private_struct)
+
+X("pure-inline", &cc1_warning.pure_inline)
+X("restrict-ptrs", &cc1_warning.restrict_ptrs)
+X("return-undef", &cc1_warning.return_undef)
+X("signed-unsigned", &cc1_warning.signed_unsigned)
+X("sizeof-decayed", &cc1_warning.sizeof_decayed)
+X("sizeof-ptr-divide", &cc1_warning.sizeof_ptr_div)
+X("static-array-size", &cc1_warning.static_array_bad)
+X("static-local-in-inline", &cc1_warning.static_local_in_inline)
+X("str-contain-nul", &cc1_warning.str_contain_nul)
+
+X("struct-noinstance-anon", &cc1_warning.struct_noinstance_anon)
+X("struct-noinstance-qualified", &cc1_warning.struct_noinstance_qualified)
+
+X("sym-never-read", &cc1_warning.sym_never_read)
+X("sym-never-written", &cc1_warning.sym_never_written)
+
+X("tautologic-unsigned-op", &cc1_warning.tautologic_unsigned)
+X("tenative-array", &cc1_warning.tenative_array_1elem)
+
+X("typedef-function-impl", &cc1_warning.typedef_fnimpl)
+X("typedef-redefinition", &cc1_warning.typedef_redef)
+
+X("undef-string-comparison", &cc1_warning.undef_strlitcmp)
+X("undefined-internal", &cc1_warning.undef_internal)
+
+X("unnamed-struct-memb", &cc1_warning.unnamed_struct_memb)
+X("unused-comma", &cc1_warning.unused_comma)
+X("unused-function-return", &cc1_warning.unused_fnret)
+
+X("vla", &cc1_warning.vla)
+X("c89-vla", &cc1_warning.c89_vla)
+
+X("__func__init", &cc1_warning.x__func__init)
+X("__func__outside-fn", &cc1_warning.x__func__outsidefn)

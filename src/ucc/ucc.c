@@ -21,6 +21,7 @@
 #include "../util/platform.h"
 #include "../util/tmpfile.h"
 #include "str.h"
+#include "warning.h"
 
 enum mode
 {
@@ -384,6 +385,30 @@ static void print_search_dirs_and_exit(
 	exit(0);
 }
 
+static void pass_warning(char **args[4], const char *arg)
+{
+	enum warning_owner owner;
+
+	assert(!strncmp(arg, "-W", 2));
+	owner = warning_owner(arg + 2);
+
+	switch((int)owner){
+		case W_OWNER_CPP:
+			dynarray_add(&args[mode_preproc], ustrdup(arg));
+			break;
+		case W_OWNER_CC1:
+			dynarray_add(&args[mode_compile], ustrdup(arg));
+			break;
+		case W_OWNER_CPP | W_OWNER_CC1:
+			dynarray_add(&args[mode_preproc], ustrdup(arg));
+			dynarray_add(&args[mode_compile], ustrdup(arg));
+			break;
+
+		default:
+			fprintf(stderr, "%s: unknown warning: '%s'\n", argv0, arg);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	enum mode mode = mode_link;
@@ -460,11 +485,9 @@ int main(int argc, char **argv)
 						}
 						continue;
 					}
-					/* else default to -Wsomething - add to cc1 */
 
-					/* also add to cpp */
-					ADD_ARG(mode_preproc);
-					ADD_ARG(mode_compile);
+					/* else pass to cc1 and possibly cpp */
+					pass_warning(args, arg);
 					continue;
 				}
 

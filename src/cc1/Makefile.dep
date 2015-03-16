@@ -53,7 +53,7 @@ cc1.o: cc1.c ../util/util.h ../util/warn.h ../util/where.h \
  ops/expr_string.h ops/expr_block.h funcargs.h out/asm.h out/dbg.h \
  out/../../util/compiler.h out/../../util/std.h gen_asm.h gen_str.h \
  gen_style.h decl_init.h fold_sym.h ops/__builtin.h ops/../expr.h pass1.h \
- type_nav.h sue.h cc1_where.h ../as_cfg.h
+ type_nav.h sue.h cc1_where.h ../as_cfg.h warnings.def
 cc1_out_ctx.o: cc1_out_ctx.c cc1_out_ctx.h out/forwards.h ../util/alloc.h \
  ../util/compiler.h out/out.h out/../type.h out/../num.h out/../btype.h \
  out/../../util/where.h out/../../util/compiler.h out/../num.h \
