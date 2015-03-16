@@ -163,3 +163,9 @@ decl *expr_to_declref(expr *e, const char **whynot)
 
 	return NULL;
 }
+
+expr *expr_compiler_generated(expr *e)
+{
+	e->freestanding = 1;
+	return e;
+}

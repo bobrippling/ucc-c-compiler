@@ -268,6 +268,8 @@ expr *expr_new_addr(expr *);
 expr *expr_new_comma2(expr *lhs, expr *rhs);
 #define expr_new_comma() expr_new_wrapper(comma)
 
+expr *expr_compiler_generated(expr *);
+
 enum null_strictness
 {
 	NULL_STRICT_VOID_PTR,

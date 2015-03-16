@@ -1148,7 +1148,7 @@ void fold_global_func(decl *func_decl)
 				stmt *zret = stmt_new_wrapper(return,
 						func_decl->bits.func.code->symtab);
 
-				zret->expr = expr_new_val(0);
+				zret->expr = expr_set_where(expr_new_val(0), &zret->where);
 
 				dynarray_add(&func_decl->bits.func.code->bits.code.stmts, zret);
 				fold_stmt(zret);

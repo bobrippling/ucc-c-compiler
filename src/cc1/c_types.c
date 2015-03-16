@@ -19,7 +19,7 @@ type *c_types_make_va_list(symtable *symtab)
 
 	type *void_ptr = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 
-	expr *e_one = expr_new_val(1);
+	expr *e_one = expr_compiler_generated(expr_new_val(1));
 
 	FOLD_EXPR(e_one, symtab);
 
@@ -64,7 +64,7 @@ type *c_types_make_va_list(symtable *symtab)
 		decl *typedef_decl = decl_new_ty_sp(
 				builtin_ar, ustrdup("__builtin_va_list"));
 
-		expr *sz = expr_new_sizeof_type(builtin_ar, 1);
+		expr *sz = expr_compiler_generated(expr_new_sizeof_type(builtin_ar, 1));
 
 		fold_decl_global(typedef_decl, symtab);
 		FOLD_EXPR(sz, symtab);

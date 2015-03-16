@@ -553,7 +553,7 @@ expr *builtin_new_frame_address(int depth)
 {
 	expr *e = expr_new_funcall();
 
-	dynarray_add(&e->funcargs, expr_new_val(depth));
+	dynarray_add(&e->funcargs, expr_compiler_generated(expr_new_val(depth)));
 
 	return builtin_frame_address_mutate(e);
 }

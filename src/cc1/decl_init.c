@@ -1365,7 +1365,7 @@ static void expr_init_add(expr **pinit, expr *new, symtable *stab)
 	fold_expr_nodecay(new, stab);
 
 	if(*pinit){
-		*pinit = expr_new_comma2(*pinit, new);
+		*pinit = expr_set_where(expr_new_comma2(*pinit, new), &new->where);
 		fold_expr_nodecay(*pinit, stab);
 	}else{
 		*pinit = new;
