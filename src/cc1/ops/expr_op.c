@@ -947,9 +947,8 @@ void expr_check_sign(const char *desc,
 	const_fold(lhs, &kl);
 	const_fold(rhs, &kr);
 
-	/* don't bother for literals */
-	if(kl.type != CONST_NUM
-	&& kr.type != CONST_NUM
+	/* don't bother for two literals */
+	if((kl.type != CONST_NUM || kr.type != CONST_NUM)
 	&& type_is_scalar(lhs->tree_type) && type_is_scalar(rhs->tree_type)
 	&& type_is_signed(lhs->tree_type) != type_is_signed(rhs->tree_type))
 	{
