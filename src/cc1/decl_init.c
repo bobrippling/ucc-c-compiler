@@ -1388,8 +1388,9 @@ static void decl_init_create_assignment_from_copy(
 	if(icpy->first_instance){
 		expr *last_base = icpy->first_instance;
 
-		expr *memcp = builtin_new_memcpy(
-				new_base, last_base, type_size(next_type, &di->where));
+		expr *memcp = expr_compiler_generated(
+				builtin_new_memcpy(
+					new_base, last_base, type_size(next_type, &di->where)));
 
 		expr_init_add(pinit, memcp, stab);
 	}else{
