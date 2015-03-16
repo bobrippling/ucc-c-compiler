@@ -1,5 +1,4 @@
 X("mismatch-arg", &cc1_warning.arg_mismatch)
-X("array-comma", &cc1_warning.array_comma)
 X("return-type", &cc1_warning.return_type)
 X("return-void", &cc1_warning.return_void)
 

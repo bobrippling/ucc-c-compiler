@@ -7,7 +7,6 @@ struct cc1_warning
 	unsigned char arg_mismatch;
 	unsigned char arith_fnptr;
 	unsigned char arith_voidp;
-	unsigned char array_comma;
 	unsigned char array_oob;
 	unsigned char asm_badchar;
 	unsigned char assign_mismatch;
