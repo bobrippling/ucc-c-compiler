@@ -1,8 +1,43 @@
-// RUN: %ucc -Wpaste -Wcpp -Wimplicit %s -'###' >%t 2>&1
-// RUN: grep -F "ucc: unknown warning: '-Wcpp'" %t
+// RUN: %ucc -Wall -Wno-extra -Weverything -Wcpp -Wpaste -Wno-traditional -Wunused -Wno-implicit -Werror=overflow -Wno-error=vla %s -'###' >%t 2>&1
 
-// RUN: grep "cpp .*-Wpaste" %t
-// RUN: ! grep "cpp .*-Wimplicit" %t
+// true and false groups:
+// -Wall
+// -Wno-extra
+// -Weverything
 
-// RUN: grep "cc1 .*-Wimplicit" %t
-// RUN: ! grep "cc1 .*-Wpaste" %t
+// non existent option:
+// -Wcpp
+
+// true and false cpp options:
+// -Wpaste
+// -Wno-traditional
+
+// true, false and Werror cc1 options:
+// -Wunused
+// -Wno-implicit
+// -Werror=overflow
+// -Wno-error=vla
+
+// RUN: grep -q -F "ucc: unknown warning: '-Wcpp'" %t
+
+// RUN:   grep -q "cpp .*-Wall" %t
+// RUN:   grep -q "cpp .*-Wno-extra" %t
+// RUN:   grep -q "cpp .*-Weverything" %t
+// RUN: ! grep -q "cpp .*-Wcpp" %t
+// RUN:   grep -q "cpp .*-Wpaste" %t
+// RUN:   grep -q "cpp .*-Wno-traditional" %t
+// RUN: ! grep -q "cpp .*-Wunused" %t
+// RUN: ! grep -q "cpp .*-Wno-implicit" %t
+// RUN: ! grep -q "cpp .*-Werror=overflow" %t
+// RUN: ! grep -q "cpp .*-Wno-error=vla" %t
+
+// RUN:   grep -q "cc1 .*-Wall" %t
+// RUN:   grep -q "cc1 .*-Wno-extra" %t
+// RUN:   grep -q "cc1 .*-Weverything" %t
+// RUN: ! grep -q "cc1 .*-Wcpp" %t
+// RUN: ! grep -q "cc1 .*-Wpaste" %t
+// RUN: ! grep -q "cc1 .*-Wno-traditional" %t
+// RUN:   grep -q "cc1 .*-Wunused" %t
+// RUN:   grep -q "cc1 .*-Wno-implicit" %t
+// RUN:   grep -q "cc1 .*-Werror=overflow" %t
+// RUN:   grep -q "cc1 .*-Wno-error=vla" %t

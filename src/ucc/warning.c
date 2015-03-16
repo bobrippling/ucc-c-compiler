@@ -31,6 +31,22 @@ enum warning_owner warning_owner(const char *arg)
 {
 	enum warning_owner owner = 0;
 
+	/* handle no- */
+	if(!strncmp(arg, "no-", 3))
+		arg += 3;
+
+	/* handle all, extra and everything */
+	if(!strcmp(arg, "all")
+	|| !strcmp(arg, "extra")
+	|| !strcmp(arg, "everything"))
+	{
+		return W_OWNER_CC1 | W_OWNER_CPP;
+	}
+
+	/* handle error=... */
+	if(!strncmp(arg, "error=", 6))
+		arg += 6;
+
 	if(in_array(arg, wcpp))
 		owner |= W_OWNER_CPP;
 
