@@ -103,9 +103,6 @@ static void create_file(struct cc_file *file, enum mode mode, char *in)
 	file->in.fname = in;
 	file->in.fd = FILE_UNINIT;
 
-	if(!strcmp(in, "-"))
-		goto preproc;
-
 	switch(gopts.assume){
 		case mode_preproc:
 			goto preproc;
@@ -158,6 +155,8 @@ after_compile:
 				file->out = file->in;
 		}
 	}else{
+		if(!strcmp(in, "-"))
+			goto preproc;
 		goto assume_obj;
 	}
 }
