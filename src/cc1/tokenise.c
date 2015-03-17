@@ -602,8 +602,11 @@ out:
 
 static void read_suffix(void)
 {
+	const int fp = (currentval.suffix & VAL_FLOATING
+			|| tolower(peeknextchar()) == 'e');
+
 	/* handle floating XeY */
-	if(currentval.suffix & VAL_FLOATING || tolower(peeknextchar())== 'e'){
+	if(fp){
 		read_suffix_float();
 	}else{
 		read_suffix_int();
@@ -612,7 +615,8 @@ static void read_suffix(void)
 
 	if(isalpha(peeknextchar()) || peeknextchar() == '.'){
 		warn_at_print_error(NULL,
-				"invalid suffix on integer constant (%c)",
+				"invalid suffix on %s constant (%c)",
+				fp ? "floating point" : "integer",
 				peeknextchar());
 
 		parse_had_error = 1;
