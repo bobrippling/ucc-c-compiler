@@ -322,6 +322,16 @@ static void fold_calling_conv(type *r)
 	type_funcargs(r)->conv = conv;
 }
 
+void fold_check_embedded_flexar(
+		struct_union_enum_st *sue, const where *loc, const char *desc)
+{
+	if(!sue || !sue->flexarr)
+		return;
+
+	cc1_warn_at(loc, flexarr_embed,
+			"embedded flexible-array as %s", desc);
+}
+
 static void fold_type_w_attr(
 		type *const r, type *const parent, const where *loc,
 		symtable *stab, attribute *attr, const enum fold_type_chk chk)
@@ -493,6 +503,7 @@ static void fold_type_w_attr(
 						"array has incomplete type '%s'",
 						type_to_str(r->ref));
 			}
+			fold_check_embedded_flexar(type_is_s_or_u(r->ref), loc, "array element");
 			/* fall through to x()[] check */
 
 		case type_func:
@@ -530,19 +541,6 @@ static void fold_type_w_attr(
 
 		default:
 			break;
-	}
-
-
-	{
-		/* warn on embedded structs/unions with flexarrs */
-		struct_union_enum_st *sue = type_is_s_or_u(r);
-		if(sue && sue->flexarr
-		&& (type_is_array(parent) || type_is_s_or_u(parent)))
-		{
-			cc1_warn_at(&sue->where, flexarr_embed,
-					"%s with flex-array embedded in %s",
-					sue_str(sue), type_to_str(parent));
-		}
 	}
 }
 

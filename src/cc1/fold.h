@@ -29,6 +29,9 @@ void fold_type_ondecl_w(decl *, symtable *, const where *, int is_arg);
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
 
+void fold_check_embedded_flexar(
+		struct struct_union_enum_st *, const where *, const char *desc);
+
 void fold_funcargs(funcargs *fargs, symtable *stab, attribute *);
 
 /* cast insertion */

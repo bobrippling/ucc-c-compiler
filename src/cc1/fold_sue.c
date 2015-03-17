@@ -336,7 +336,16 @@ static void fold_sue_calc_substrut(
 		symtable *stab,
 		int *const submemb_const)
 {
-	if(sub_sue && sub_sue != pack_state->sue){
+	char desc[32];
+
+	snprintf(desc, sizeof desc, "nested in %s",
+			type_primitive_to_str(pack_state->sue->primitive));
+
+	fold_check_embedded_flexar(
+			sub_sue, &pack_state->d->where,
+			desc);
+
+	if(sub_sue != pack_state->sue){
 		fold_sue(sub_sue, stab);
 
 		if(sub_sue->contains_const)
