@@ -22,7 +22,7 @@
 out_val *out_new_blk_addr(out_ctx *octx, out_blk *blk)
 {
 	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
-	dynarray_add(&octx->mustgen, blk);
+	out_blk_mustgen(octx, blk, 0);
 	return out_new_lbl(octx, voidp, blk->lbl, 1);
 }
 

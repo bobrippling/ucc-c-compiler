@@ -74,6 +74,8 @@ static void blk_codegen(out_blk *blk, struct flush_state *st)
 	}
 
 	fprintf(st->f, "%s: # %s\n", blk->lbl, blk->desc);
+	if(blk->force_lbl)
+		fprintf(st->f, "%s: # mustgen_spel\n", blk->force_lbl);
 
 	out_dbg_labels_emit_release_v(st->f, &blk->labels.start);
 
@@ -285,4 +287,12 @@ out_blk *out_blk_new_lbl(out_ctx *octx, const char *lbl)
 out_blk *out_blk_new(out_ctx *octx, const char *desc)
 {
 	return blk_new_common(octx, out_label_bblock(octx->nblks++), desc);
+}
+
+void out_blk_mustgen(out_ctx *octx, out_blk *blk, char *force_lbl)
+{
+	if(force_lbl)
+		blk->force_lbl = force_lbl;
+
+	dynarray_add(&octx->mustgen, blk);
 }

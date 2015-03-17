@@ -109,7 +109,11 @@ static void const_expr_addr(expr *e, consty *k)
 		k->type = CONST_ADDR;
 		k->offset = 0;
 		k->bits.addr.is_lbl = 1;
-		k->bits.addr.bits.lbl = e->bits.lbl.label->spel;
+
+		e->bits.lbl.label->mustgen_spel = out_label_code("goto");
+
+		k->bits.addr.bits.lbl = e->bits.lbl.label->mustgen_spel;
+
 	}else{
 		const_fold(e->lhs, k);
 

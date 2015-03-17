@@ -7,6 +7,7 @@ struct label
 {
 	where *pw;
 	char *spel;
+	char *mustgen_spel;
 	symtable *scope;
 	struct stmt **jumpers; /* gotos that target us */
 	unsigned uses;

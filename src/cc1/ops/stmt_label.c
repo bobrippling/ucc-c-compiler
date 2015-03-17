@@ -34,6 +34,9 @@ void gen_stmt_label(const stmt *s, out_ctx *octx)
 {
 	out_blk *thisblk = label_getblk(s->bits.lbl.label, octx);
 
+	if(s->bits.lbl.label->mustgen_spel)
+		out_blk_mustgen(octx, thisblk, s->bits.lbl.label->mustgen_spel);
+
 	/* explicit fall through */
 	out_ctrl_transfer_make_current(octx, thisblk);
 	gen_stmt(s->lhs, octx); /* the code-part of the compound statement */

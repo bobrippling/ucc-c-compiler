@@ -64,5 +64,6 @@ void label_cleanup(out_ctx *octx)
 void label_free(label *l)
 {
 	dynarray_free(struct stmt **, l->jumpers, NULL);
+	free(l->mustgen_spel);
 	free(l);
 }

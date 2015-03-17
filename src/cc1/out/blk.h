@@ -7,7 +7,7 @@ struct out_blk
 {
 	/* all blocks: */
 	const char *desc;
-	char *lbl;
+	char *lbl, *force_lbl;
 	char **insns;
 
 	struct

@@ -109,6 +109,8 @@ void out_ctrl_branch(
 		const out_val *cond,
 		out_blk *if_true, out_blk *if_false);
 
+void out_blk_mustgen(out_ctx *octx, out_blk *blk, char *force_lbl);
+
 /* maybe ret null */
 ucc_wur const out_val *out_ctrl_merge(out_ctx *, out_blk *, out_blk *);
 
