@@ -1280,8 +1280,9 @@ static decl_init *decl_init_brace_up_start(
 				if(expr_kind(e, str) && e->bits.strlit.is_func){
 					cc1_warn_at(&init->where,
 							x__func__init,
-							"initialisation of %s from __func__ is an extension",
-							type_to_str(tfor));
+							"initialisation of %s from %s is an extension",
+							type_to_str(tfor),
+							e->bits.strlit.is_func == 1 ? "__func__" : "__FUNCTION__");
 				}
 			}
 		}

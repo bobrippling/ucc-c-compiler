@@ -80,22 +80,27 @@ void fold_expr_identifier(expr *e, symtable *stab)
 
 	/* special cases */
 	if(!sym){
-		if(!strcmp(sp, "__func__")){
-			char *sp;
+		int std = 1;
+		if(!strcmp(sp, "__func__") || (std = 0, !strcmp(sp, "__FUNCTION__"))){
+			char *fnsp;
+
+			if(!std)
+				cc1_warn_at(&e->where, gnu__function, "use of GNU __FUNCTION__");
 
 			if(!in_fn){
 				cc1_warn_at(&e->where,
 						x__func__outsidefn,
-						"__func__ is not defined outside of functions");
+						"%s is not defined outside of functions",
+						sp);
 
-				sp = "";
+				fnsp = "";
 			}else{
-				sp = in_fn->spel;
+				fnsp = in_fn->spel;
 			}
 
-			expr_mutate_str(e, sp, strlen(sp) + 1, /*wide:*/0, &e->where, stab);
+			expr_mutate_str(e, fnsp, strlen(fnsp) + 1, /*wide:*/0, &e->where, stab);
 			/* +1 - take the null byte */
-			e->bits.strlit.is_func = 1;
+			e->bits.strlit.is_func = 2 - std;
 
 			FOLD_EXPR(e, stab);
 		}else{

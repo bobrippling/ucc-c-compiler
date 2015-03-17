@@ -89,7 +89,7 @@ struct expr
 		struct
 		{
 			stringlit_at lit_at; /* for strings */
-			int is_func; /* __func__ ? */
+			int is_func; /* __func__ (1) / __FUNCTION__ (2) */
 		} strlit;
 
 		struct

@@ -27,6 +27,8 @@ main()
 
 	char fn_name[] = __func__; // CHECK: warning: initialisation of char[] from __func__ is an extension
 
+	char fn_name2[] = __FUNCTION__; // CHECK: warning: initialisation of char[] from __FUNCTION__ is an extension
+
 	struct A
 	{
 		int buf[]; // CHECK: warning: struct with just a flex-array is an extension

@@ -68,6 +68,7 @@ struct cc1_warning
 	unsigned char gnu_alignof_expr;
 	unsigned char gnu_empty_init;
 	unsigned char gnu_expr_stmt;
+	unsigned char gnu__function;
 	unsigned char gnu_typeof;
 	unsigned char gnu_attribute;
 	unsigned char gnu_init_array_range;
