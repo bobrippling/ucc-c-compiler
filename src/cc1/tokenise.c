@@ -800,7 +800,8 @@ static void read_number(const int first)
 
 	/* check for '.' after prefix handling:
 	 * may be a hex-float constant */
-	for(p = bufferpos; isdigit(*p); p++);
+	for(p = bufferpos; (mode == HEX ? isxdigit : isdigit)(*p); p++);
+
 	if(*p == '.' || (mode == HEX && *p == 'p')){
 		char *new;
 		int bad_prefix = 0;
@@ -816,7 +817,7 @@ static void read_number(const int first)
 			case HEX:
 				/* check for exponent */
 				assert(!strncmp(num_start, "0x", 2));
-				for(p = num_start + 2; isdigit(*p) || *p == '.'; p++);
+				for(p = num_start + 2; isxdigit(*p) || *p == '.'; p++);
 
 				if(tolower(*p) != 'p'){
 					warn_at_print_error(NULL, "floating literal requires exponent");
