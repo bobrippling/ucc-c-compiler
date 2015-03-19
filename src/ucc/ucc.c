@@ -19,6 +19,7 @@
 #include "../util/dynarray.h"
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "../util/tmpfile.h"
 #include "str.h"
 
 enum mode
@@ -79,29 +80,18 @@ static void unlink_files(void)
 
 static void tmpfilenam(struct fd_name_pair *pair)
 {
-	char *tmppath;
-	char *tmpdir = getenv("TMPDIR");
-	int fd;
-
-#ifdef P_tmpdir
-	if(!tmpdir)
-		tmpdir = ustrdup(P_tmpdir);
-#endif
-	if(!tmpdir)
-		tmpdir = ustrdup("/tmp");
-
-	tmppath = ustrprintf("%s/ucc.XXXXXX", tmpdir);
-	fd = mkstemp(tmppath);
+	char *path;
+	int fd = tmpfile_prefix_out("ucc.", &path);
 
 	if(fd == -1)
-		die("mkstemp():");
+		die("tmpfile(%s):", path);
 
 	if(!remove_these) /* only register once */
 		atexit(unlink_files);
 
-	dynarray_add(&remove_these, tmppath);
+	dynarray_add(&remove_these, path);
 
-	pair->fname = tmppath;
+	pair->fname = path;
 	pair->fd = fd;
 }
 

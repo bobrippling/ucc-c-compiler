@@ -12,7 +12,7 @@ OBJ = \
 	../util/alloc.o ../util/util.o ../util/platform.o \
 	../util/dynarray.o ../util/dynmap.o ../util/where.o \
 	../util/str.o ../util/std.o ../util/escape.o ../util/warn.o \
-	../util/math.o \
+	../util/math.o ../util/tmpfile.o \
 	str.o num.o label.o strings.o \
 	cc1.o pass1.o cc1_out_ctx.o \
 	decl.o attribute.o decl_init.o funcargs.o expr.o stmt.o \

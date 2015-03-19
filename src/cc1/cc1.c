@@ -1,3 +1,4 @@
+#define _POSIX_SOURCE 1 /* fdopen */
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -5,6 +6,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include <unistd.h>
 #include <signal.h>
@@ -13,6 +15,7 @@
 #include "../util/platform.h"
 #include "../util/math.h"
 #include "../util/dynarray.h"
+#include "../util/tmpfile.h"
 
 #include "tokenise.h"
 #include "cc1.h"
@@ -350,7 +353,6 @@ static struct
 };
 
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
-static char fnames[NUM_SECTIONS][32]; /* duh */
 FILE *cc1_out;                  /* final output */
 char *cc1_first_fname;
 
@@ -489,14 +491,16 @@ void cc1_warn_at_w(
 static void io_cleanup(void)
 {
 	int i;
+
+	if(caught_sig)
+		return;
+
 	for(i = 0; i < NUM_SECTIONS; i++){
 		if(!cc_out[i])
 			continue;
 
-		if(fclose(cc_out[i]) == EOF && !caught_sig)
-			fprintf(stderr, "close %s: %s\n", fnames[i], strerror(errno));
-		if(remove(fnames[i]) && !caught_sig)
-			fprintf(stderr, "remove %s: %s\n", fnames[i], strerror(errno));
+		if(fclose(cc_out[i]) == EOF)
+			fprintf(stderr, "close tmpfile: %s\n", strerror(errno));
 	}
 }
 
@@ -508,11 +512,19 @@ static void io_setup(void)
 		cc1_out = stdout;
 
 	for(i = 0; i < NUM_SECTIONS; i++){
-		snprintf(fnames[i], sizeof fnames[i], "/tmp/cc1_%d%d", getpid(), i);
+		char *fname;
+		int fd = tmpfile_prefix_out("cc1_", &fname);
 
-		cc_out[i] = fopen(fnames[i], "w+"); /* need to seek */
-		if(!cc_out[i])
-			ccdie(0, "open \"%s\":", fnames[i]);
+		if(fd < 0)
+			ccdie(0, "tmpfile(%s):", fname);
+
+		if(remove(fname) != 0)
+			fprintf(stderr, "remove %s: %s\n", fname, strerror(errno));
+
+		cc_out[i] = fdopen(fd, "w+"); /* need to seek */
+		assert(cc_out[i]);
+
+		free(fname);
 	}
 
 	atexit(io_cleanup);
