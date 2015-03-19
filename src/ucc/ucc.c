@@ -354,11 +354,42 @@ static void add_cfg_args(char ***par, const char *args)
 	dynarray_add_tmparray(par, strsplit(args, " "));
 }
 
+static void print_search_dirs_and_exit(
+		char **includes, const char **isystems, int stdinc)
+{
+	char **i;
+	const char **ki;
+	const char *sep = "";
+
+	/* empty - no runtime libraries by default, just ld's defaults */
+	printf("libraries:\n");
+
+	printf("include: ");
+
+	if(stdinc){
+		printf("%s", UCC_INC);
+
+		if(*UCC_INC)
+			sep = ":";
+	}
+
+	for(i = includes; i && *i; i++, sep = ":")
+		printf("%s%s", sep, *i + /*-I*/2);
+
+	for(ki = isystems; ki && *ki; ki++, sep = ":")
+		printf("%s%s", sep, *ki);
+
+	putchar('\n');
+
+	exit(0);
+}
+
 int main(int argc, char **argv)
 {
 	enum mode mode = mode_link;
 	int i, syntax_only = 0;
 	int stdinc = 1;
+	int print_search_dirs = 0;
 	char **includes = NULL;
 	char **inputs = NULL;
 	char **args[4] = { 0 };
@@ -605,6 +636,8 @@ word:
 							goto missing_arg;
 						dynarray_add(&isystems, sysinc);
 					}
+					else if(!strcmp(argv[i], "-print-search-dirs"))
+						print_search_dirs = 1;
 					else
 						break;
 
@@ -635,6 +668,11 @@ input:
 			dynarray_add(&inputs, argv[i]);
 		}
 	}
+
+	if(print_search_dirs){
+		print_search_dirs_and_exit(includes, isystems, stdinc);
+	}
+
 
 	{
 		const int ninputs = dynarray_count(inputs);
