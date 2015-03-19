@@ -168,7 +168,8 @@ case "$unam" in
 		UCC_CFLAGS='-mpreferred-stack-boundary=4' # 2^4 = 16 byte aligned
 		UCC_STDLIB='-lSystem'
 		UCC_CRT='-lcrt1.o'
-		UCC_LDFLAGS='-macosx_version_min 10.5'
+		syslibroot=$(ls -d /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX*.sdk | head -1)
+		UCC_LDFLAGS="-macosx_version_min 10.5 -syslibroot $syslibroot"
 		ASM_PLBL=L
 		NEED_DSYM=1
 		leading_underscore
