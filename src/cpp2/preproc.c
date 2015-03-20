@@ -24,12 +24,7 @@ static enum
 	IN_BLOCK_FULL
 } strip_in_block = NOT_IN_BLOCK;
 
-struct
-{
-	FILE *file;
-	char *fname;
-	int line_no;
-} file_stack[64] = { { NULL, NULL, 0 } };
+struct file_stack file_stack[64];
 
 int file_stack_idx = -1;
 static int prev_newline;

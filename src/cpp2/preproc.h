@@ -7,6 +7,16 @@ struct macro
 	char *replace;
 };
 
+struct file_stack
+{
+	FILE *file;
+	char *fname;
+	int line_no;
+};
+
+extern struct file_stack file_stack[];
+extern int file_stack_idx;
+
 void preprocess(void);
 void preproc_push(FILE *f, const char *fname);
 int preproc_in_include(void);
