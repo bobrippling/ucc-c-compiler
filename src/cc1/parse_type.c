@@ -525,7 +525,7 @@ static type *parse_btype(
 								*      { short td; }
 								*/
 
-			assert(tdef_decl_test->store == store_typedef);
+			assert((tdef_decl_test->store & STORE_MASK_STORE) == store_typedef);
 
 			tdef_decl = tdef_decl_test;
 			tdef_typeof = expr_new_sizeof_type(tdef_decl->ref, what_typeof);
