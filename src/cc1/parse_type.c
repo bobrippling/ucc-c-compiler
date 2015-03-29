@@ -693,10 +693,15 @@ static type *parse_btype(
 		}
 
 		if(store
-		&& STORE_IS_TYPEDEF(*store)
-		&& palign && *palign)
+		&& STORE_IS_TYPEDEF(*store))
 		{
-			die_at(NULL, "typedefs can't be aligned");
+			if(palign && *palign){
+				die_at(NULL, "typedefs can't be aligned");
+			}
+			if(*store & store_inline){
+				warn_at_print_error(NULL, "typedef has inline specified");
+				fold_had_error = 1;
+			}
 		}
 
 		return parse_btype_end(r, qual, is_noreturn, attr, scope, &w);
