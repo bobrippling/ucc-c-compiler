@@ -1264,7 +1264,7 @@ void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 	}
 
 	if(chk & FOLD_CHK_BOOL){
-		if(!type_is_bool(e->tree_type)){
+		if(!type_is_bool_ish(e->tree_type)){
 			cc1_warn_at(&e->where, test_bool,
 					"testing a non-boolean expression (%s), in %s",
 					type_to_str(e->tree_type), desc);

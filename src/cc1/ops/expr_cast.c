@@ -521,7 +521,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			if(!!ptr_lhs ^ !!ptr_rhs){
 				if(ptr_lhs && expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_INT)){
 					/* no warning if 0 --> ptr */
-				}else if(ptr_rhs && type_is_bool(e->tree_type)){
+				}else if(ptr_rhs && type_is_primitive(e->tree_type, type__Bool)){
 					/* no warning for ptr --> bool */
 				}else{
 					cc1_warn_at(&e->where,

@@ -262,7 +262,7 @@ enum type_primitive type_get_primitive(type *t)
 	return bt ? bt->primitive : type_unknown;
 }
 
-int type_is_bool(type *r)
+int type_is_bool_ish(type *r)
 {
 	if(type_is(r, type_ptr))
 		return 1;

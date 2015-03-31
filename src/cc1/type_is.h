@@ -32,7 +32,7 @@ type *type_next_1(type *r);
 
 int type_is_arith(type *);
 int type_is_autotype(type *);
-int type_is_bool(type *);
+int type_is_bool_ish(type *);
 int type_is_callable(type *);
 int type_is_complete(type *);
 int type_is_const(type *);
