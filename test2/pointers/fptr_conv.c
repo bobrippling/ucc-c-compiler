@@ -15,5 +15,5 @@ main()
 	pf = (int *)5; // CHECK: /warning: implicit cast from pointer to function-pointer/
 
 	pf = f; // CHECK: !/warn/
-	p = (void *)2; // CHECK: !/warn/
+	p = (void *)2; // CHECK: !/warning: implicit cast from pointer to fun/
 }

@@ -428,6 +428,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			= FOLD_CHK_NO_ST_UN | FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN;
 		enum type_qualifier q = type_qual(e->bits.cast_to);
 		int size_lhs, size_rhs;
+		int warned_about_size = 0;
 		type *ptr_lhs, *ptr_rhs;
 
 		e->tree_type = type_qualify(e->bits.cast_to, q & ~qual_restrict);
@@ -517,24 +518,49 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 							ea->spel);
 				}
 			}
+		}
 
-			if(!!ptr_lhs ^ !!ptr_rhs){
-				if(ptr_lhs && expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_INT)){
-					/* no warning if 0 --> ptr */
-				}else if(ptr_rhs && type_is_primitive(e->tree_type, type__Bool)){
-					/* no warning for ptr --> bool */
-				}else{
+		size_lhs = type_size(tlhs, &e->where);
+		size_rhs = type_size(trhs, &expr_cast_child(e)->where);
+
+		if(!!ptr_lhs ^ !!ptr_rhs){
+			consty k;
+
+			if(ptr_lhs && expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_INT)){
+				/* no warning if 0 --> ptr */
+			}else if(ptr_rhs && type_is_primitive(e->tree_type, type__Bool)){
+				/* no warning for ptr --> bool */
+			}else{
+				/* this checks any pointer <--> integer conversion */
+
+				if(e->expr_cast_implicit){
 					cc1_warn_at(&e->where,
 							int_ptr_conv,
 							"implicit conversion between pointer and integer");
+
+					warned_about_size = 1;
+
+				}else if(size_lhs != size_rhs
+				/* don't warn for (void *)0, etc */
+				&& (const_fold(expr_cast_child(e), &k), k.type != CONST_NUM))
+				{
+					/* check explicit pointer <--> int truncation */
+					char buf[TYPE_STATIC_BUFSIZ];
+
+					cc1_warn_at(&e->where,
+							int_ptr_conv,
+							"cast %s '%s' %s smaller integer type '%s'",
+							ptr_lhs ? "to" : "from",
+							type_to_str(ptr_lhs ? tlhs : trhs),
+							ptr_lhs ? "from" : "to",
+							type_to_str_r(buf, ptr_lhs ? trhs : tlhs));
+
+					warned_about_size = 1;
 				}
 			}
 		}
 
-
-		size_lhs = type_size(tlhs, &e->where);
-		size_rhs = type_size(trhs, &expr_cast_child(e)->where);
-		if(size_lhs < size_rhs){
+		if(!warned_about_size && size_lhs < size_rhs){
 			char buf[DECL_STATIC_BUFSIZ];
 
 			cc1_warn_at(&e->where, loss_precision,

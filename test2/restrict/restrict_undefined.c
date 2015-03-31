@@ -1,5 +1,5 @@
 // RUN: %ucc -c %s -o /dev/null
-// RUN: %check %s
+// RUN: %check %s -Wno-int-ptr-conversion -Wno-ptr-int-conversion
 
 f(int *restrict a, int *restrict b)
 {
