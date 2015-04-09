@@ -494,8 +494,9 @@ ptr_relation:
 							? "comparison lacks a cast"
 							: "comparison between pointer and integer"))
 					{
-						/* not equal - ptr vs int */
-						*(l_ptr ? prhs : plhs) = type_nav_btype(cc1_type_nav, type_intptr_t);
+						/* not equal - ptr-A vs ptr-B */
+						*plhs = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+						*prhs = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 					}
 				}
 
