@@ -114,8 +114,12 @@ ptr:
 			}
 
 			if(attr & printf_attr_size_t){
-				if(!type_is_primitive_anysign(t_in, type_intptr_t))
+				/* just do size checks for size_t, since it
+				 * could be long, or long-long */
+
+				if(type_size(t_in, loc_expr) != type_primitive_size(type_intptr_t))
 					strcpy(expected, "'size_t/intptr_t'");
+
 				break;
 			}
 
