@@ -18,7 +18,7 @@ OBJ_CRT  = crt.o
 OBJ_LIBC = ${OBJ_LIBC_C} ${OBJ_LIBC_S}
 
 CPPFLAGS = -nostdinc
-CFLAGS = -g -Wmissing-forwards
+CFLAGS = -g -Wmissing-forwards -fsanitize=undefined
 
 LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp2/cpp
 
