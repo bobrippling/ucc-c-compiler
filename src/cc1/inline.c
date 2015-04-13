@@ -341,9 +341,8 @@ static const char *check_and_ret_inline(
 
 	iouts->fndecl = decl_impl(iouts->fndecl);
 
-	if(iouts->fndecl->bits.func.contains_addr_lbl){
+	if(iouts->fndecl->bits.func.contains_static_label_addr)
 		return "function contains static-address-of-label expression";
-	}
 
 	/* check for noinline before we potentially change the decl */
 	if(attribute_present(iouts->fndecl, attr_noinline)){

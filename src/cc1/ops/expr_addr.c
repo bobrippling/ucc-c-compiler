@@ -40,7 +40,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 			die_at(&e->where, "address-of-label outside a function");
 
 		if(e->bits.lbl.static_ctx)
-			in_func->bits.func.contains_addr_lbl = 1;
+			in_func->bits.func.contains_static_label_addr = 1;
 
 		(e->bits.lbl.label =
 		 symtab_label_find_or_new(
