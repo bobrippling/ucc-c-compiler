@@ -1451,10 +1451,15 @@ static decl *parse_decl_stored_aligned(
 		}
 	}
 
-	if(!type_is(d->ref, type_func))
+	if(!type_is(d->ref, type_func)){
 		d->bits.var.align = align;
-	else if(align)
-		ICE("align for function?");
+	}else if(align){
+		warn_at_print_error(&d->where,
+				"alignment specified for function '%s'",
+				d->spel);
+
+		fold_had_error = 1;
+	}
 
 	/* copy all of d's attributes to the .ref, so that function
 	 * types get everything correctly. */
