@@ -1141,7 +1141,7 @@ void gen_op_trapv(type *evaltt, const out_val **eval, out_ctx *octx)
 
 	{
 		out_blk *land = out_blk_new(octx, "trapv_end");
-		out_blk *blk_undef = out_blk_new(octx, "travp_bad");
+		out_blk *blk_undef = out_blk_new(octx, "trapv_bad");
 
 		out_ctrl_branch(octx,
 				out_new_overflow(octx, eval),
