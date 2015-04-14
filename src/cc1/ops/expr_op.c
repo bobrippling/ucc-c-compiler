@@ -1179,9 +1179,7 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 	}else{
 		const out_val *rhs = gen_expr(e->rhs, octx);
 
-		if(cc1_sanitize & CC1_UBSAN
-		&& e->bits.op.op == op_plus)
-		{
+		if(e->bits.op.op == op_plus){
 			sanitize_boundscheck(e->lhs, e->rhs, octx, lhs, rhs);
 		}
 
