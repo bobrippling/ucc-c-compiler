@@ -32,7 +32,11 @@ $SIG{CHLD} = sub {
 	my $dead = wait;
 	my $ret = $?;
 
-	exit !!$ret;
+	if($dead == -1){
+		die "wait: $!"
+	}
+
+	exit wexitstatus($ret);
 };
 
 my $pid = bg @ARGV;

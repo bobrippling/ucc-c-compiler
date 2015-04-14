@@ -13,10 +13,15 @@ sub usage
 	die "Usage: $0 [--ucc=path] file\n";
 }
 
+sub wexitstatus
+{
+	return (shift >> 8) & 0xff
+}
+
 sub timeout
 {
-	my $r = system("./timeout", $timeout, @_);
-	return $r;
+	system("./timeout", $timeout, @_);
+	return $?;
 }
 
 sub basename
@@ -143,6 +148,11 @@ while(<F>){
 			my $want_err = ($subst_sh =~ s/^ *! *//);
 
 			my $ec = timeout($subst_sh);
+
+			if($ec & 127){
+				# signal death - always a failure
+				die2 "command '$subst_sh' caught signal " . ($ec - 128);
+			}
 
 			my $unexpected = ($want_err ? "passed" : "failed");
 
