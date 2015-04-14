@@ -371,6 +371,7 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 enum mopt mopt_mode = 0;
+enum san_opts cc1_sanitize = 0;
 
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
 int cc1_gdebug;
@@ -892,6 +893,16 @@ static void warnings_upgrade(void)
 				*p->offsets[i] = W_ERROR;
 }
 
+static void add_sanitize_option(const char *argv0, const char *san)
+{
+	if(!strcmp(san, "undefined")){
+		cc1_sanitize |= CC1_UBSAN;
+	}else{
+		fprintf(stderr, "%s: unknown sanitize option '%s'\n", argv0, san);
+		exit(1);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int failure;
@@ -982,6 +993,11 @@ int main(int argc, char **argv)
 					if(rev){
 						fprintf(stderr, "\"no-\" unexpected for value-argument\n");
 						goto usage;
+					}
+
+					if(!strncmp(arg, "sanitize=", 9)){
+						add_sanitize_option(*argv, arg + 9);
+						continue;
 					}
 
 					*equal = '\0';

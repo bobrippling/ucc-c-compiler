@@ -55,9 +55,15 @@ enum cc1_backend
 	BACKEND_STYLE,
 };
 
+enum san_opts
+{
+	CC1_UBSAN = 1 << 0
+};
+
 extern enum fopt fopt_mode;
 extern enum mopt mopt_mode;
 extern enum cc1_backend cc1_backend;
+extern enum san_opts cc1_sanitize;
 
 extern enum c_std cc1_std;
 #define C99_LONGLONG() \
