@@ -96,6 +96,13 @@ funcargs *funcargs_new()
 	return r;
 }
 
+funcargs *funcargs_new_void()
+{
+	funcargs *args = funcargs_new();
+	args->args_void = 1;
+	return args;
+}
+
 void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)
 {
 	decl **di;

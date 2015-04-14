@@ -202,9 +202,11 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		sp = decl_asm_spel(d);
 
+		is_vari = type_is_variadic_func(d->ref);
+
 		out_func_prologue(octx, sp, d->ref,
-				nargs,
-				is_vari = type_is_variadic_func(d->ref),
+				nargs, is_vari,
+				fopt_mode & FOPT_STACK_PROTECTOR,
 				argvals);
 
 		assign_arg_vals(symtab_decls(arg_symtab), argvals, octx);

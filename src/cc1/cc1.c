@@ -317,6 +317,7 @@ static struct
 	{ 'f',  "dump-bblocks", FOPT_DUMP_BASIC_BLOCKS },
 	{ 'f',  "dump-symtab", FOPT_DUMP_SYMTAB },
 	{ 'f',  "common", FOPT_COMMON },
+	{ 'f',  "stack-protector", FOPT_STACK_PROTECTOR },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 	{ 'm',  "32", MOPT_32 },

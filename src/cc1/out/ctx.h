@@ -23,6 +23,7 @@ struct out_ctx
 		struct out_val_list *next, *prev;
 	} *val_head, *val_tail;
 	const out_val *current_stret;
+	const out_val *stack_canary_ent;
 
 	type *current_fnty;
 

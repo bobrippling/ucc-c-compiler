@@ -7,6 +7,8 @@
 #include "../type_nav.h"
 #include "../type_is.h"
 #include "../pack.h"
+#include "../mangle.h"
+#include "../funcargs.h"
 
 #include "val.h"
 #include "out.h" /* this file defs */
@@ -16,6 +18,7 @@
 #include "virt.h"
 #include "blk.h"
 #include "dbg.h"
+#include "stack_protector.h"
 
 #include "../cc1.h" /* mopt_mode */
 #include "../../util/platform.h"
@@ -124,6 +127,8 @@ void out_func_epilogue(
 
 	out_current_blk(octx, octx->epilogue_blk);
 	{
+		out_check_stack_canary(octx);
+
 		impl_func_epilogue(octx, ty, octx->used_stack);
 		/* terminate here without an insn */
 		assert(octx->current_blk->type == BLK_UNINIT);
@@ -222,7 +227,7 @@ static void stack_realign(out_ctx *octx, unsigned align)
 void out_func_prologue(
 		out_ctx *octx, const char *sp,
 		type *fnty,
-		int nargs, int variadic,
+		int nargs, int variadic, int stack_protector,
 		const out_val *argvals[])
 {
 	out_blk *post_prologue = out_blk_new(octx, "post_prologue");
@@ -236,6 +241,8 @@ void out_func_prologue(
 
 	octx->in_prologue = 1;
 	{
+		const out_val *stack_prot_slot = NULL;
+
 		assert(!octx->current_blk);
 		octx->first_blk = out_blk_new_lbl(octx, sp);
 		octx->epilogue_blk = out_blk_new(octx, "epilogue");
@@ -243,6 +250,12 @@ void out_func_prologue(
 		out_current_blk(octx, octx->first_blk);
 
 		impl_func_prologue_save_fp(octx);
+
+		if(stack_protector){
+			type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
+
+			stack_prot_slot = out_aalloct(octx, type_ptr_to(type_ptr_to(intptr_ty)));
+		}
 
 		if(mopt_mode & MOPT_STACK_REALIGN)
 			stack_realign(octx, cc1_mstack_align);
@@ -255,6 +268,11 @@ void out_func_prologue(
 		/* setup "pointers" to the right place in the stack */
 		octx->stack_variadic_offset = octx->cur_stack_sz;
 		octx->initial_stack_sz = octx->cur_stack_sz;
+
+		if(stack_prot_slot){
+			/* now all registers are safe, init stack protector */
+			out_init_stack_canary(octx, stack_prot_slot);
+		}
 	}
 	octx->in_prologue = 0;
 

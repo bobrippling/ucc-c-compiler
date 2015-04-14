@@ -38,6 +38,7 @@ enum fopt
 	FOPT_DUMP_BASIC_BLOCKS     = 1 << 26,
 	FOPT_DUMP_SYMTAB           = 1 << 27,
 	FOPT_COMMON                = 1 << 28,
+	FOPT_STACK_PROTECTOR       = 1 << 29,
 };
 
 enum mopt
