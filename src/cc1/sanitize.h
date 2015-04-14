@@ -8,4 +8,10 @@ void sanitize_boundscheck(
 
 void sanitize_vlacheck(const out_val *vla_sz, out_ctx *);
 
+void sanitize_shift(
+		expr *elhs, expr *erhs,
+		enum op_type,
+		out_ctx *octx,
+		const out_val *lhs, const out_val *rhs);
+
 #endif

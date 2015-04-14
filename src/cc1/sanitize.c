@@ -40,24 +40,27 @@ static void sanitize_assert(const out_val *cond, out_ctx *octx)
 }
 
 static void sanitize_assert_order(
-		const out_val *test, enum op_type op, long limit, out_ctx *octx)
+		const out_val *test, enum op_type op, long limit,
+		type *op_type, out_ctx *octx)
 {
-	/* force unsigned compare, which catches negative indexes */
-	type *uintptr_ty = type_nav_btype(cc1_type_nav, type_uintptr_t);
-
 	const out_val *vsz = out_new_l(
 			octx,
-			uintptr_ty,
+			op_type,
 			limit);
 
 	const out_val *index = out_change_type(
 			octx,
 			out_val_retain(octx, test),
-			uintptr_ty);
+			op_type);
 
 	const out_val *cmp = out_op(octx, op, vsz, index);
 
 	sanitize_assert(cmp, octx);
+}
+
+static type *uintptr_ty(void)
+{
+	return type_nav_btype(cc1_type_nav, type_uintptr_t);
 }
 
 void sanitize_boundscheck(
@@ -96,7 +99,8 @@ void sanitize_boundscheck(
 	if(!K_INTEGRAL(sz.bits.num))
 		return;
 
-	sanitize_assert_order(val, op_lt, sz.bits.num.val.i, octx);
+	/* force unsigned compare, which catches negative indexes */
+	sanitize_assert_order(val, op_lt, sz.bits.num.val.i, uintptr_ty(), octx);
 }
 
 void sanitize_vlacheck(const out_val *vla_sz, out_ctx *octx)
@@ -104,5 +108,24 @@ void sanitize_vlacheck(const out_val *vla_sz, out_ctx *octx)
 	if(!(cc1_sanitize & CC1_UBSAN))
 		return;
 
-	sanitize_assert_order(vla_sz, op_gt, 0, octx);
+	sanitize_assert_order(vla_sz, op_gt, 0, uintptr_ty(), octx);
+}
+
+void sanitize_shift(
+		expr *elhs, expr *erhs,
+		enum op_type op,
+		out_ctx *octx,
+		const out_val *lhs, const out_val *rhs)
+{
+	/* rhs must be < bit-size of lhs' type */
+	const unsigned max = CHAR_BIT * type_size(elhs->tree_type, NULL);
+
+	sanitize_assert_order(rhs, op_lt, max, uintptr_ty(), octx);
+
+	/* rhs must not be negative */
+	sanitize_assert_order(rhs, op_ge, 0, erhs->tree_type, octx);
+
+	/* if left shift, lhs must not be negative */
+	if(op == op_shiftl)
+		sanitize_assert_order(lhs, op_ge, 0, elhs->tree_type, octx);
 }

@@ -1179,8 +1179,16 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 	}else{
 		const out_val *rhs = gen_expr(e->rhs, octx);
 
-		if(e->bits.op.op == op_plus){
-			sanitize_boundscheck(e->lhs, e->rhs, octx, lhs, rhs);
+		switch(e->bits.op.op){
+			case op_plus:
+				sanitize_boundscheck(e->lhs, e->rhs, octx, lhs, rhs);
+				break;
+			case op_shiftl:
+			case op_shiftr:
+				sanitize_shift(e->lhs, e->rhs, e->bits.op.op, octx, lhs, rhs);
+				break;
+			default:
+				break;
 		}
 
 		eval = out_op(octx, e->bits.op.op, lhs, rhs);
