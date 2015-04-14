@@ -12,3 +12,4 @@ escape.o: escape.c escape.h compiler.h util.h warn.h where.h str.h
 math.o: math.c math.h
 warn.o: warn.c warn.h where.h compiler.h alloc.h
 path.o: path.c dynarray.h dyn.h path.h
+tmpfile.o: tmpfile.c tmpfile.h alloc.h compiler.h
