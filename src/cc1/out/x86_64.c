@@ -601,7 +601,7 @@ void impl_func_prologue_save_call_regs(
 		 * each argument takes a full word for now - subject to change
 		 * (e.g. long double, struct/union args, etc)
 		 */
-		if(n_call_f){
+		{
 			unsigned i_arg, i_arg_stk, i_i, i_f;
 			const out_val *stack_loc;
 			type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
@@ -664,42 +664,6 @@ pass_via_stack:
 			 * we're still in the prologue */
 			assert(octx->in_prologue);
 			out_adealloc(octx, &stack_loc);
-		}else{
-			long i;
-			for(i = 0; i < nargs; i++){
-				long off;
-				const out_val **store;
-				type *ty;
-
-				if(i < n_call_i){
-					out_asm(octx, "push%s %%%s",
-							x86_suffix(NULL),
-							x86_reg_str(&call_regs[i], NULL));
-
-					/* +1 to step over saved rbp */
-					off = -(i + 1) * ws;
-				}else{
-					/* +2 to step back over saved rbp and saved rip */
-					off = (i - n_call_i + 2) * ws;
-				}
-
-				if(is_stret && i == 0){
-					ty = type_ptr_to(retty);
-					assert(!octx->current_stret);
-					store = &octx->current_stret;
-				}else{
-					ty = fa->arglist[i - is_stret]->ref;
-					store = &arg_vals[i - is_stret];
-				}
-
-				*store = v_new_bp3_above(octx, NULL, type_ptr_to(ty), off);
-			}
-
-			/* this aligns the stack too */
-			v_aalloc_noop(octx,
-					n_call_i * ws,
-					ws,
-					"save call regs push-version");
 		}
 
 		if(octx->current_stret && fopt_mode & FOPT_VERBOSE_ASM){
