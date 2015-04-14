@@ -98,3 +98,11 @@ void sanitize_boundscheck(
 
 	sanitize_assert_order(val, op_lt, sz.bits.num.val.i, octx);
 }
+
+void sanitize_vlacheck(const out_val *vla_sz, out_ctx *octx)
+{
+	if(!(cc1_sanitize & CC1_UBSAN))
+		return;
+
+	sanitize_assert_order(vla_sz, op_gt, 0, octx);
+}

@@ -6,4 +6,6 @@ void sanitize_boundscheck(
 		out_ctx *octx,
 		const out_val *lhs, const out_val *rhs);
 
+void sanitize_vlacheck(const out_val *vla_sz, out_ctx *);
+
 #endif
