@@ -1,8 +1,11 @@
-#include <stddef.h>
+#include <stdlib.h>
 
 #include "expr.h"
 #include "type_is.h"
 #include "type_nav.h"
+#include "cc1.h"
+#include "funcargs.h"
+#include "mangle.h"
 
 #include "sanitize.h"
 
@@ -64,6 +67,20 @@ void sanitize_boundscheck(
 				land);
 
 		out_current_blk(octx, blk_undef);
+		if(cc1_sanitize_handler_fn){
+			type *voidty = type_nav_btype(cc1_type_nav, type_void);
+			funcargs *args = funcargs_new();
+			type *fnty_noptr = type_func_of(voidty, args, NULL);
+			type *fnty_ptr = type_ptr_to(fnty_noptr);
+			char *mangled = func_mangle(cc1_sanitize_handler_fn, fnty_noptr);
+
+			const out_val *fn = out_new_lbl(octx, fnty_ptr, mangled, 0);
+
+			out_val_release(octx, out_call(octx, fn, NULL, fnty_ptr));
+
+			if(mangled != cc1_sanitize_handler_fn)
+				free(mangled);
+		}
 		out_ctrl_end_undefined(octx);
 
 		out_current_blk(octx, land);
