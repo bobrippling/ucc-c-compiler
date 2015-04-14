@@ -9,6 +9,7 @@
 #include "../out/asm.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../sanitize.h"
 
 /*
  * usual arithmetic conversions:
@@ -1177,6 +1178,12 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 		eval = out_op_unary(octx, e->bits.op.op, lhs);
 	}else{
 		const out_val *rhs = gen_expr(e->rhs, octx);
+
+		if(cc1_sanitize & CC1_UBSAN
+		&& e->bits.op.op == op_plus)
+		{
+			sanitize_boundscheck(e->lhs, e->rhs, octx, lhs, rhs);
+		}
 
 		eval = out_op(octx, e->bits.op.op, lhs, rhs);
 
