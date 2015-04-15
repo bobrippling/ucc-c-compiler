@@ -40,23 +40,23 @@ static void sanitize_assert(const out_val *cond, out_ctx *octx, const char *desc
 	out_current_blk(octx, land);
 }
 
+static void sanitize_assert_order_runtime(
+		const out_val *test, enum op_type op, const out_val *against,
+		out_ctx *octx)
+{
+	const out_val *cmp = out_op(octx, op, test, against);
+
+	sanitize_assert(cmp, octx);
+}
+
 static void sanitize_assert_order(
 		const out_val *test, enum op_type op, long limit,
 		type *op_type, out_ctx *octx, const char *desc)
 {
-	const out_val *vlimit = out_new_l(
-			octx,
-			op_type,
-			limit);
+	const out_val *index = out_change_type(octx, out_val_retain(test), op_type);
+	const out_val *vsz = out_new_l(octx, op_type, limit);
 
-	const out_val *lengthened_test = out_change_type(
-			octx,
-			out_val_retain(octx, test),
-			op_type);
-
-	const out_val *cmp = out_op(octx, op, lengthened_test, vlimit);
-
-	sanitize_assert(cmp, octx, desc);
+	sanitize_assert_order_runtime(index, op, vsz, octx);
 }
 
 static type *uintptr_ty(void)
@@ -102,8 +102,7 @@ void sanitize_boundscheck(
 
 	/* force unsigned compare, which catches negative indexes */
 	sanitize_assert_order(
-			runtime_idx, op_le, sz.bits.num.val.i,
-			uintptr_ty(), octx,
+			runtime_idx, op_lt, sz.bits.num.val.i,
 			"bounds");
 }
 

@@ -1,6 +1,8 @@
 #ifndef SANITIZE_H
 #define SANITIZE_H
 
+/* public/top-level sanitize methods don't consume out_val:s */
+
 void sanitize_boundscheck(
 		expr *elhs, expr *erhs,
 		out_ctx *octx,
