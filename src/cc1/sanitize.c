@@ -6,6 +6,7 @@
 #include "cc1.h"
 #include "funcargs.h"
 #include "mangle.h"
+#include "vla.h"
 
 #include "sanitize.h"
 
@@ -94,16 +95,38 @@ void sanitize_boundscheck(
 		return;
 	const_fold(expr_sz, &sz);
 
-	if(sz.type != CONST_NUM)
-		return;
+	out_val_retain(octx, runtime_idx);
 
-	if(!K_INTEGRAL(sz.bits.num))
-		return;
+	if(sz.type == CONST_NUM){
+		if(!K_INTEGRAL(sz.bits.num))
+			return;
 
-	/* force unsigned compare, which catches negative indexes */
-	sanitize_assert_order(
-			runtime_idx, op_lt, sz.bits.num.val.i,
-			"bounds");
+		/* force unsigned compare, which catches negative indexes */
+		sanitize_assert_order(
+				runtime_idx, op_lt, sz.bits.num.val.i,
+				uintptr_ty(), octx,
+				"bounds");
+
+	}else{
+		const out_val *vla_sz;
+		type *array_of = type_next(array_ty);
+
+		if(type_is_vla(array_of, VLA_ANY_DIMENSION)){
+			/* can't index-check multidimensional VLAs */
+			return;
+		}
+
+		vla_sz = out_op(octx,
+				op_divide,
+				vla_size(array_ty, octx),
+				out_new_l(octx, uintptr_ty(), type_size(array_of, NULL)));
+
+		sanitize_assert_order_runtime(
+				out_change_type(octx, runtime_idx, uintptr_ty()),
+				op_lt,
+				out_change_type(octx, vla_sz, uintptr_ty()),
+				octx);
+	}
 }
 
 void sanitize_vlacheck(const out_val *vla_sz, out_ctx *octx)
