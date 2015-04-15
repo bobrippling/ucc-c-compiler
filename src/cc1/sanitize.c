@@ -73,15 +73,15 @@ void sanitize_boundscheck(
 	type *array_ty;
 	expr *expr_sz;
 	consty sz;
-	const out_val *val;
+	const out_val *runtime_idx;
 
 	if(!(cc1_sanitize & CC1_UBSAN))
 		return;
 
 	if(type_is_ptr(elhs->tree_type))
-		array_decl = expr_to_declref(elhs, NULL), val = rhs;
+		array_decl = expr_to_declref(elhs, NULL), runtime_idx = rhs;
 	else if(type_is_ptr(erhs->tree_type))
-		array_decl = expr_to_declref(erhs, NULL), val = lhs;
+		array_decl = expr_to_declref(erhs, NULL), runtime_idx = lhs;
 
 	if(!array_decl)
 		return;
@@ -101,7 +101,10 @@ void sanitize_boundscheck(
 		return;
 
 	/* force unsigned compare, which catches negative indexes */
-	sanitize_assert_order(val, op_le, sz.bits.num.val.i, uintptr_ty(), octx, "bounds");
+	sanitize_assert_order(
+			runtime_idx, op_le, sz.bits.num.val.i,
+			uintptr_ty(), octx,
+			"bounds");
 }
 
 void sanitize_vlacheck(const out_val *vla_sz, out_ctx *octx)
