@@ -101,6 +101,10 @@ void sanitize_boundscheck(
 		if(!K_INTEGRAL(sz.bits.num))
 			return;
 
+		out_comment(octx,
+				"sanitize array, max=%" NUMERIC_FMT_U,
+				sz.bits.num.val.i);
+
 		/* force unsigned compare, which catches negative indexes */
 		sanitize_assert_order(
 				runtime_idx, op_lt, sz.bits.num.val.i,
@@ -113,13 +117,18 @@ void sanitize_boundscheck(
 
 		if(type_is_vla(array_of, VLA_ANY_DIMENSION)){
 			/* can't index-check multidimensional VLAs */
+			out_comment(octx, "can't sanitize %s", type_to_str(array_ty));
 			return;
 		}
+
+		out_comment(octx, "sanitize vla, size:");
 
 		vla_sz = out_op(octx,
 				op_divide,
 				vla_size(array_ty, octx),
 				out_new_l(octx, uintptr_ty(), type_size(array_of, NULL)));
+
+		out_comment(octx, "sanitize vla, check:");
 
 		sanitize_assert_order_runtime(
 				out_change_type(octx, runtime_idx, uintptr_ty()),
@@ -133,6 +142,8 @@ void sanitize_vlacheck(const out_val *vla_sz, out_ctx *octx)
 {
 	if(!(cc1_sanitize & CC1_UBSAN))
 		return;
+
+	out_comment(octx, "sanitize vla init (gt 0):");
 
 	sanitize_assert_order(vla_sz, op_gt, 0, uintptr_ty(), octx, "vla");
 }
@@ -148,6 +159,8 @@ void sanitize_shift(
 
 	if(!(cc1_sanitize & CC1_UBSAN))
 		return;
+
+	out_comment(octx, "sanitize shift:");
 
 	out_comment(octx, "rhs less than %u", max);
 	sanitize_assert_order(rhs, op_lt, max, uintptr_ty(), octx, "shift rhs size");
