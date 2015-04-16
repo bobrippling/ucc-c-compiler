@@ -65,6 +65,18 @@ static type *uintptr_ty(void)
 	return type_nav_btype(cc1_type_nav, type_uintptr_t);
 }
 
+void sanitize_nonnull(const out_val *v, out_ctx *octx)
+{
+	if(!(cc1_sanitize & CC1_UBSAN))
+		return;
+
+	out_val_retain(octx, v);
+
+	sanitize_assert(
+			out_op(octx, op_ne, v, out_new_l(octx, uintptr_ty(), 0)),
+			octx);
+}
+
 void sanitize_boundscheck(
 		expr *elhs, expr *erhs,
 		out_ctx *octx,

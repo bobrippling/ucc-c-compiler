@@ -31,6 +31,7 @@
 #include "inline.h"
 #include "type_nav.h"
 #include "label.h"
+#include "sanitize.h"
 
 int gen_had_error;
 
@@ -72,20 +73,36 @@ void gen_stmt(const stmt *t, out_ctx *octx)
 	t->f_gen(t, octx);
 }
 
-static void assign_arg_vals(decl **decls, const out_val *argvals[], out_ctx *octx)
+static void assign_arg_vals(
+		decl **decls, decl *fndecl, const out_val *argvals[], out_ctx *octx)
 {
 	unsigned i, j;
+	unsigned long nonnulls = 0;
+	attribute *da;
+
+	if(cc1_sanitize & CC1_UBSAN && (da = attribute_present(fndecl, attr_nonnull)))
+		nonnulls = da->bits.nonnull_args;
 
 	for(i = j = 0; decls && decls[i]; i++){
 		sym *s = decls[i]->sym;
 
 		if(s && s->type == sym_arg){
-			gen_set_sym_outval(octx, s, argvals[j++]);
+			const out_val *argval = argvals[j++];
+
+			gen_set_sym_outval(octx, s, argval);
 
 			if(fopt_mode & FOPT_VERBOSE_ASM){
 				out_comment(octx, "arg %s @ %s",
 						decls[i]->spel,
 						out_val_str(sym_outval(s), 1));
+			}
+
+			if((nonnulls & (1 << i)) || attribute_present(decls[i], attr_nonnull)){
+				const out_val *deref = out_deref(octx, out_val_retain(octx, argval));
+
+				sanitize_nonnull(deref, octx);
+
+				out_val_release(octx, deref);
 			}
 		}
 	}
@@ -207,7 +224,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 				is_vari = type_is_variadic_func(d->ref),
 				argvals);
 
-		assign_arg_vals(symtab_decls(arg_symtab), argvals, octx);
+		assign_arg_vals(symtab_decls(arg_symtab), d, argvals, octx);
 
 		allocate_vla_args(octx, arg_symtab);
 		free(argvals), argvals = NULL;

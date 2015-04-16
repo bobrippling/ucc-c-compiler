@@ -16,4 +16,6 @@ void sanitize_shift(
 		out_ctx *octx,
 		const out_val *lhs, const out_val *rhs);
 
+void sanitize_nonnull(const out_val *, out_ctx *);
+
 #endif
