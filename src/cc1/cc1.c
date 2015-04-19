@@ -149,6 +149,8 @@ static struct warn_str
 		&cc1_warning.attr_printf_unknown
 	},
 
+	{ "address-of-lvalue", &cc1_warning.address_of_lvalue },
+
 	{ "attr-noderef", &cc1_warning.attr_noderef },
 	{ "attr-nonnull", &cc1_warning.attr_nonnull },
 	{ "attr-nonnull-bad", &cc1_warning.attr_nonnull_bad },

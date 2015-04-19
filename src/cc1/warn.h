@@ -3,6 +3,7 @@
 
 struct cc1_warning
 {
+	unsigned char address_of_lvalue;
 	unsigned char arg_mismatch;
 	unsigned char arith_fnptr;
 	unsigned char arith_voidp;

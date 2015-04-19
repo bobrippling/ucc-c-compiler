@@ -23,6 +23,14 @@ int expr_is_addressable(expr *e)
 	return expr_is_lval(e) == LVALUE_USER_ASSIGNABLE;
 }
 
+expr *expr_addr_target(const expr *e)
+{
+	if(e->bits.lbl.spel)
+		return NULL;
+
+	return e->lhs;
+}
+
 void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->bits.lbl.spel){

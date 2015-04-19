@@ -1189,6 +1189,16 @@ void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 					"testing a non-boolean expression (%s), in %s",
 					type_to_str(e->tree_type), desc);
 		}
+
+		if(expr_kind(e, addr)){
+			expr *addr_of = expr_addr_target(e);
+
+			if(addr_of && expr_is_lval(addr_of) == LVALUE_USER_ASSIGNABLE){
+				cc1_warn_at(&e->where, address_of_lvalue,
+						"address of lvalue (%s) is always true",
+						type_to_str(addr_of->tree_type));
+			}
+		}
 	}
 
 	if(chk & FOLD_CHK_CONST_I){
