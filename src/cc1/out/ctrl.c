@@ -15,12 +15,24 @@
 #include "ctx.h"
 #include "virt.h"
 
+static void v_transfer_spill(out_ctx *octx, const out_val *skip)
+{
+	/* all active regs must be spilt here since we don't know if they'll be spilt
+	 * (or moved to callee-save) in one of the branches we're about to jump into,
+	 * and if they are spilt, they might not be spilt in the other branch,
+	 * leaving the other branch's code path undefined
+	 */
+
+	v_save_regs(octx, NULL, NULL, skip);
+}
+
 void out_ctrl_branch(
 		out_ctx *octx,
 		const out_val *cond,
 		out_blk *if_true, out_blk *if_false)
 {
 	v_decay_flags_except1(octx, cond);
+	v_transfer_spill(octx, cond);
 
 	impl_branch(octx,
 			cond, if_true, if_false,
@@ -126,17 +138,6 @@ void out_current_blk(out_ctx *octx, out_blk *new_blk)
 	octx->last_used_blk = new_blk;
 
 	octx->current_blk = new_blk;
-}
-
-static void v_transfer_spill(out_ctx *octx, const out_val *skip)
-{
-	/* all active regs must be spilt here since we don't know if they'll be spilt
-	 * (or moved to callee-save) in one of the branches we're about to jump into,
-	 * and if they are spilt, they might not be spilt in the other branch,
-	 * leaving the other branch's code path undefined
-	 */
-
-	// TODO
 }
 
 void out_ctrl_transfer(out_ctx *octx, out_blk *to,
