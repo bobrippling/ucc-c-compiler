@@ -145,7 +145,7 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 {
 	out_blk *from = octx->current_blk;
 
-	v_decay_flags(octx);
+	v_decay_flags_except1(octx, phi);
 
 	v_transfer_spill(octx, phi);
 
