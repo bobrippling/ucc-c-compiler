@@ -29,7 +29,7 @@ struct out_blk
 	} type;
 
 	/* phi terminators: */
-	const out_val *phi_val;
+	out_val *phi_val;
 
 	union
 	{

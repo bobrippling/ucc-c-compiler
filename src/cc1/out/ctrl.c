@@ -55,6 +55,12 @@ void out_ctrl_end_undefined(out_ctx *octx)
 	octx->current_blk = NULL;
 }
 
+static out_val *unphi(out_val *phival)
+{
+	phival->flags &= ~VAL_IS_PHI;
+	return phival;
+}
+
 const out_val *out_ctrl_merge_n(out_ctx *octx, out_blk **rets)
 {
 	out_blk *const saved_current_blk = octx->current_blk;
@@ -69,8 +75,11 @@ const out_val *out_ctrl_merge_n(out_ctx *octx, out_blk **rets)
 
 	/* optimisation: if we only have one (e.g. single inline ret),
 	 * then we can just returns its phi */
-	if(!rets[1])
-		return rets[0]->phi_val;
+	if(!rets[1]){
+		/* we only need to use unphi() here (as opposed to for unphi'ing all the
+		 * phi vals), because this is the only escapable phi val */
+		return unphi(rets[0]->phi_val);
+	}
 
 	/* get the largest size */
 	for(blk_iter = rets; *blk_iter; blk_iter++){
@@ -169,7 +178,16 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 	}
 
 	assert(!from->phi_val);
-	from->phi_val = phi;
+	if(phi){
+		/* we're keeping a hold of phi, and setting VAL_IS_PHI on it,
+		 * so we need our own modifiable copy */
+		out_val *phi_mut = v_dup_or_reuse(octx, phi, phi->t);
+		phi_mut->flags |= VAL_IS_PHI;
+
+		from->phi_val = phi_mut;
+	}else{
+		from->phi_val = NULL;
+	}
 
 	assert(from->type == BLK_UNINIT);
 	from->type = BLK_NEXT_BLOCK;

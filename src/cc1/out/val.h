@@ -71,6 +71,7 @@ enum
 {
 	VAL_FLAG_LIKELY = 1 << 0,
 	VAL_FLAG_UNLIKELY = 1 << 1,
+	VAL_IS_PHI = 1 << 2, /* used to ignore during control transfer reg-spilling */
 };
 
 const char *v_store_to_str(enum out_val_store);

@@ -215,6 +215,10 @@ static const out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
 
 		if(!v->retains)
 			continue;
+		if(v->flags & VAL_IS_PHI){
+			/* FIXME: check if octx->current_block == v->phi_source_block
+			 * if it's the same block, we've found the reg, else ignore and continue */
+		}
 
 		if(v->type == V_REG && vreg_eq(&v->bits.regoff.reg, reg))
 			return v;
@@ -427,6 +431,8 @@ void v_save_regs(
 
 		if(v->retains == 0)
 			continue;
+		if(v->flags & VAL_IS_PHI)
+			continue; /* phi values are special and don't need to be spilt across jumps */
 
 		switch(v->type){
 			case V_REG_SPILT:
