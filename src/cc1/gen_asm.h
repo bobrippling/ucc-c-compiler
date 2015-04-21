@@ -33,6 +33,9 @@ const out_val *gen_call(
 		const out_val **args, out_ctx *octx,
 		const where *loc);
 
+ucc_wur
+const out_val *gen_decl_addr(out_ctx *, decl *);
+
 void gen_asm_emit_type(out_ctx *, type *);
 
 /* temporary until the f_gen() logic from expr is pulled out

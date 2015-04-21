@@ -285,6 +285,23 @@ const out_val *gen_call(
 	return fn_ret;
 }
 
+const out_val *gen_decl_addr(out_ctx *octx, decl *d)
+{
+	int local = decl_linkage(d) == linkage_internal;
+
+	if(!local && type_is(d->ref, type_func)){
+		/* defined functions, even though exported, are local. unless weak */
+		local = d->bits.func.code && !attribute_present(d, attr_weak);
+	}
+
+	return out_new_lbl(
+			octx,
+			type_ptr_to(d->ref),
+			decl_asm_spel(d),
+			1,
+			local);
+}
+
 static void gen_gasm(char *asm_str)
 {
 	fprintf(cc_out[SECTION_TEXT], "%s\n", asm_str);

@@ -1,0 +1,43 @@
+// RUN: %ucc -S -o %t %s -fpic -fno-leading-underscore
+
+// RUN: grep -FA1 'movl i(%%rip), %%eax' %t | grep -F 'movl %%eax, %%edi'
+// RUN: grep -FA2 'movq p(%%rip), %%rax' %t | grep -FA1 'movl (%%rax), %%eax' | grep -F 'movl %%eax, %%edi'
+// RUN: grep -FA2 'movq defined_here@GOTPCREL(%%rip), %%rax' %t | grep -FA1 'movl (%%rax), %%eax' | grep -F 'movl %%eax, %%edi'
+// RUN: grep -FA2 'movq elsewhere@GOTPCREL(%%rip), %%rax' %t | grep -FA1 'movl (%%rax), %%eax' | grep -F 'movl %%eax, %%edi'
+
+// RUN: grep -F 'leaq f(%%rip), %%rdi' %t
+// RUN: grep -F 'movq g@GOTPCREL(%%rip), %%rdi' %t
+// RUN: grep -F 'movq weak@GOTPCREL(%%rip), %%rdi' %t
+
+
+void f(int i)
+{
+}
+
+void g(int);
+
+__attribute((weak))
+void weak(int i)
+{
+}
+
+void addr_func(void (int));
+
+static int i;
+static int *p = &i;
+
+int defined_here;
+
+extern int elsewhere;
+
+main()
+{
+	f(i);
+	f(*p);
+	f(defined_here);
+	f(elsewhere);
+
+	addr_func(f);
+	addr_func(g);
+	addr_func(weak);
+}

@@ -414,9 +414,17 @@ const char *impl_val_str_r(
 
 		case V_LBL:
 		{
-			const int pic = fopt_mode & FOPT_PIC && vs->bits.lbl.pic;
 			const char *pre = deref ? "" : "$";
-			const char *picstr = pic && deref ? "(%rip)" : "";
+			const char *picstr = "";
+
+			if(deref && (vs->bits.lbl.pic_type & LBL_PIC) && fopt_mode & FOPT_PIC){
+				int local_sym = vs->bits.lbl.pic_type & LBL_PIC_LOCAL;
+
+				/* if it's local, we can access the symbol at a fixed offset.
+				 * otherwise it's in another module, so we need the GOT to access it
+				 */
+				picstr = local_sym ? "(%rip)" : "@GOTPCREL(%rip)";
+			}
 
 			if(vs->bits.lbl.offset){
 				SNPRINTF(buf, VAL_STR_SZ, "%s%s+%ld%s",
@@ -1012,7 +1020,7 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			 * as we currently don't have V_LBL_SPILT, for e.g. */
 			mut->type = V_LBL;
 			mut->bits.lbl.str = lbl;
-			mut->bits.lbl.pic = 1;
+			mut->bits.lbl.pic_type = LBL_PIC | LBL_PIC_LOCAL;
 			mut->bits.lbl.offset = 0;
 			mut->t = type_ptr_to(mut->t);
 
@@ -1145,16 +1153,24 @@ lea:
 		{
 			const int fp = type_is_floating(from->t);
 			type *chosen_ty = fp ? from->t : NULL;
+			const int from_GOT = from->type == V_LBL
+				&& fopt_mode & FOPT_PIC
+				&& !(from->bits.lbl.pic_type & LBL_PIC_LOCAL);
 
 			/* just go with leaq for small sizes */
 
 			out_asm(octx, "%s%s %s, %%%s",
-					fp ? "mov" : "lea",
+					fp || from_GOT ? "mov" : "lea",
 					x86_suffix(NULL),
 					impl_val_str(from, 1),
-					x86_reg_str(reg, chosen_ty));
+					x86_reg_str(reg, from_GOT ? NULL : chosen_ty));
 
 			/* 'from' is now in a reg */
+			if(from_GOT){
+				const out_val *in_reg = v_new_reg(octx, from, from->t, reg);
+
+				return out_deref(octx, in_reg);
+			}
 			break;
 		}
 
@@ -1692,6 +1708,17 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *reg)
 {
 	type *tpointed_to = type_dereference_decay(vp->t);
+	type *stash = NULL;
+	const out_val *ret;
+
+	if(vp->type == V_LBL
+	&& vp->bits.lbl.pic_type & LBL_PIC
+	&& !(vp->bits.lbl.pic_type & LBL_PIC_LOCAL)
+	&& fopt_mode & FOPT_PIC)
+	{
+		stash = vp->t;
+		tpointed_to = NULL;
+	}
 
 	/* loaded the pointer, now we apply the deref change */
 	out_asm(octx, "mov%s %s, %%%s",
@@ -1699,7 +1726,14 @@ const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *r
 			impl_val_str(vp, 1),
 			x86_reg_str(reg, tpointed_to));
 
-	return v_new_reg(octx, vp, tpointed_to, reg);
+	ret = v_new_reg(octx, vp, tpointed_to, reg);
+
+	if(stash){
+		ret = out_change_type(octx, ret, stash);
+		ret = out_deref(octx, ret);
+	}
+
+	return ret;
 }
 
 const out_val *impl_op_unary(out_ctx *octx, enum op_type op, const out_val *val)

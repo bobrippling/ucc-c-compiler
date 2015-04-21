@@ -26,7 +26,11 @@ out_val *out_new_l(out_ctx *, type *, long) ucc_nonnull((1))
 out_val *out_new_zero(out_ctx *, type *) ucc_nonnull((1))
 	ucc_wur;
 
-out_val *out_new_lbl(out_ctx *, type *, const char *s, int pic)
+/* pic: generate position independent accesses to the label
+ * local_sym: symbol/label is present in the current C.U.
+ *            pass false if unsure
+ */
+out_val *out_new_lbl(out_ctx *, type *, const char *s, int pic, int local_sym)
 	ucc_wur;
 
 out_val *out_new_blk_addr(out_ctx *, out_blk *) ucc_wur;
