@@ -10,8 +10,9 @@ struct label
 	char *mustgen_spel;
 	symtable *scope;
 	struct stmt **jumpers; /* gotos that target us */
+	struct stmt *next_stmt;
 	unsigned uses;
-	unsigned complete : 1, unused : 1;
+	unsigned complete : 1, unused : 1, doing_passable_check : 1;
 };
 typedef struct label label;
 
