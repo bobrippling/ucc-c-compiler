@@ -48,7 +48,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 	fold_check_expr(e->expr,
 			FOLD_CHK_NO_BITFIELD
-			| (e->what_of == what_typeof
+			| (e->what_of == what_typeof || e->what_of == what_sizeof
 					? FOLD_CHK_ALLOW_VOID
 					: 0),
 			sizeof_what(e->what_of));
@@ -77,8 +77,15 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 			int set = 0; /* need this, since .bits can't be relied upon to be 0 */
 			int vla = NEED_RUNTIME_SIZEOF(chosen);
 
-			if(!type_is_complete(chosen))
-				die_at(&e->where, "sizeof incomplete type %s", type_to_str(chosen));
+			if(!type_is_complete(chosen)){
+				if(type_is_void(chosen))
+					cc1_warn_at(&e->where, sizeof_void_or_func, "sizeof() on void type");
+				else
+					die_at(&e->where, "sizeof incomplete type %s", type_to_str(chosen));
+			}
+
+			if(type_is(chosen, type_func))
+				cc1_warn_at(&e->where, sizeof_void_or_func, "sizeof() on function type");
 
 			if((e->what_of == what_alignof || vla) && e->expr){
 				decl *d = NULL;

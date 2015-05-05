@@ -55,6 +55,8 @@ X("ptr-int-conversion", &cc1_warning.int_ptr_conv)
 X("arith-funcptr", &cc1_warning.arith_fnptr)
 X("arith-voidptr", &cc1_warning.arith_voidp)
 
+X("pointer-arith", &cc1_warning.arith_fnptr, &cc1_warning.arith_voidp, &cc1_warning.sizeof_void_or_func)
+
 X("array-bounds", &cc1_warning.array_oob)
 X("asm-badchar", &cc1_warning.asm_badchar)
 
