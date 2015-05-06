@@ -182,8 +182,14 @@ static void io_setup(void)
 	atexit(io_cleanup);
 }
 
+static int should_emit_gnu_stack_note(void)
+{
+	return platform_sys() == PLATFORM_LINUX;
+}
+
 static void io_fin(int do_sections, const char *fname)
 {
+	const int execstack = 0;
 	int i;
 
 	(void)fname;
@@ -221,6 +227,14 @@ static void io_fin(int do_sections, const char *fname)
 			if(fprintf(cc1_out, "%s%s:\n", SECTION_END, sections[i].desc) < 0)
 				ccdie("terminating section %d:", i);
 		}
+	}
+
+	if(should_emit_gnu_stack_note()
+	&& fprintf(cc1_out,
+			".section .note.GNU-stack,\"%s\",@progbits\n",
+			execstack ? "x" : "") < 0)
+	{
+		ccdie(0, "write to cc1 output:");
 	}
 
 	if(fclose(cc1_out))
