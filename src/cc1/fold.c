@@ -1101,9 +1101,13 @@ void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab)
 	for(i = start; i && *i; i++){
 		decl *d = *i;
 
-		if(!d->spel)
-			die_at(w, "argument %ld in \"%s\" is unnamed",
+		if(!d->spel){
+			warn_at_print_error(w,
+					"argument %ld in \"%s\" is unnamed",
 					i - start + 1, sp);
+
+			fold_had_error = 1;
+		}
 
 		if(!type_is_complete(d->ref))
 			die_at(&d->where,
