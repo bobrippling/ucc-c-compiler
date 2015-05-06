@@ -1,8 +1,6 @@
 include ../src_config.mk
 include ../../config.mk
 
-CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
-
 ARCH_OBJ = out/${UCC_CPU}.o
 
 CFLAGS  += -Wno-missing-field-initializers -Wno-empty-body ${CPPFLAGS}
@@ -57,10 +55,19 @@ tags: ${SRC}
 	@echo util must be built from util/
 	false
 
+# files that need target info
+out/alloca.o out/ctrl.o out/func.o out/impl.o out/mipsel_32.o \
+	out/new.o out/op.o out/out.o out/val.o out/virt.o out/vm.o \
+	out/x86_64.o out/dbg.o : \
+	CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
+
 # extra deps
 out/impl.h: out/x86_64.h out/mipsel_32.h
 
 deps: Makefile.dep
+
+Makefile.dep: \
+	CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
 
 Makefile.dep:
 	${CC} ${CPPFLAGS} -MM *.c > $@
