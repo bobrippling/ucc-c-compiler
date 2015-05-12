@@ -29,17 +29,6 @@ const char *str_expr_op()
 	return "op";
 }
 
-#define addr_multiply(i, addr_type)  \
-do{                                  \
-	type *next = type_next(addr_type); \
-	sintegral_t step = 1;              \
-                                     \
-	if(next)                           \
-		step = type_size(next, NULL);    \
-                                     \
-	i *= step;                         \
-}while(0)
-
 static void const_op_num_fp(
 		expr *e, consty *k,
 		const consty *lhs, const consty *rhs)
