@@ -1,5 +1,5 @@
 // RUN: %layout_check %s
-// RUN: %ucc -Xprint %s | grep -Fi "(aka 'struct A[3]')" >/dev/null
+// RUN: %ucc -emit=print %s | grep -Fi "(aka 'struct A[3]')" >/dev/null
 
 struct A
 {

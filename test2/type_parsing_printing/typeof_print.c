@@ -1,4 +1,4 @@
-// RUN: %ucc -Xprint %s | grep -F "typeof(expr: val) (aka 'int') a"
+// RUN: %ucc -emit=print %s | grep -F "typeof(expr: val) (aka 'int') a"
 
 main()
 {

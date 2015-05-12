@@ -916,15 +916,30 @@ int main(int argc, char **argv)
 	warning_init();
 
 	for(i = 1; i < argc; i++){
-		if(!strcmp(argv[i], "-X")){
-			if(++i == argc)
-				goto usage;
+		if(!strncmp(argv[i], "-emit", 5)){
+			const char *emit;
 
-			if(!strcmp(argv[i], "print"))
+			switch(argv[i][5]){
+				case '=':
+					emit = argv[i] + 6;
+					break;
+
+				case '\0':
+					if(++i == argc)
+						goto usage;
+					emit = argv[i];
+					break;
+
+				default:
+					goto usage;
+			}
+
+
+			if(!strcmp(emit, "print"))
 				cc1_backend = BACKEND_PRINT;
-			else if(!strcmp(argv[i], "asm"))
+			else if(!strcmp(emit, "asm"))
 				cc1_backend = BACKEND_ASM;
-			else if(!strcmp(argv[i], "style"))
+			else if(!strcmp(emit, "style"))
 				cc1_backend = BACKEND_STYLE;
 			else
 				goto usage;

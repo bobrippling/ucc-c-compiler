@@ -1,4 +1,4 @@
-// RUN: %ucc -Xprint %s 2>/dev/null | grep 'typeof' | %output_check -w "/typeof\(int \*\) ip.*/" "/typeof\(int \*\) \*a1.*/" "/typeof\(int \*\) a2\[2\].*/" "/typeof\(int \*\) a3\(\).*/" "typeof(expr: identifier) (aka 'long *') abc()" "typeof(expr: identifier) (aka 'long *') xyz()"
+// RUN: %ucc -emit=print %s 2>/dev/null | grep 'typeof' | %output_check -w "/typeof\(int \*\) ip.*/" "/typeof\(int \*\) \*a1.*/" "/typeof\(int \*\) a2\[2\].*/" "/typeof\(int \*\) a3\(\).*/" "typeof(expr: identifier) (aka 'long *') abc()" "typeof(expr: identifier) (aka 'long *') xyz()"
 
 long *x;
 
