@@ -1050,7 +1050,7 @@ void fold_expr_op(expr *e, symtable *stab)
 
 				fold_check_expr(e->lhs, chk, op_to_str(e->bits.op.op));
 
-				e->tree_type = e->lhs->tree_type;
+				e->tree_type = type_unqualify(e->lhs->tree_type);
 				break;
 			}
 		}
