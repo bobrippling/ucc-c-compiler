@@ -1324,10 +1324,22 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 				case store_extern:
 				case store_typedef:
 				case store_inline:
-					die_at(&fargs->where,
-							"%s storage on \"%s\"",
-							decl_store_to_str(d->store), d->spel);
-					break;
+				{
+					const char *spel = d->spel, *quote = "\"";
+
+					if(!spel){
+						spel = "unnamed argument";
+						quote = "";
+					}
+
+					warn_at_print_error(&d->where,
+							"%s storage on %s%s%s",
+							decl_store_to_str(d->store),
+							quote, spel, quote);
+
+					fold_had_error = 1;
+					continue;
+				}
 
 				case store_register:
 				case store_default:
