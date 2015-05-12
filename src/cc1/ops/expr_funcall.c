@@ -233,7 +233,13 @@ static void check_arg_voidness_and_nonnulls(
 		nonnulls = da->bits.nonnull_args;
 
 	for(i = 0; exprargs[i]; i++){
-		expr *arg = FOLD_EXPR(exprargs[i], stab);
+		expr *arg;
+
+		/* struct arguments need to be kept as lvalues for
+		 * backend call code-generation */
+		exprargs[i] = fold_expr_nonstructdecay(exprargs[i], stab);
+		arg = exprargs[i];
+
 		char buf[64];
 
 		ARG_BUF(buf, i, sp);
