@@ -790,6 +790,17 @@ funcargs *parse_func_arglist(symtable *scope)
 				break;
 			}
 
+			/* we allow implicit int, but there must be something,
+			 * i.e.
+			 * f(int, );
+			 * is invalid, as is:
+			 * f(int, , int);
+			 */
+			if(curtok == token_close_paren || curtok == token_comma){
+				warn_at_print_error(NULL, "parameter expected");
+				fold_had_error = 1;
+			}
+
 			/* continue loop */
 			argdecl = parse_arg_decl(scope);
 		}
