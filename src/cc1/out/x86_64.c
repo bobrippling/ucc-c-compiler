@@ -56,6 +56,11 @@ const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 8, "quad" },
 };
 
+enum x86_arg_ty
+{
+	ARG_INT, ARG_FP, ARG_SU
+};
+
 /* TODO: each register has a class, smarter than this */
 static const struct calling_conv_desc
 {
@@ -2092,6 +2097,85 @@ static const out_val *spill_struct_to_regs(
 	return struct_ptr;
 }
 
+static void x86_call_prescan_su_sum(
+		struct_union_enum_st *su,
+		unsigned *const nints, unsigned *const nfloats)
+{
+	sue_member **i;
+	for(i = su->members; i && *i; i++){
+		if(su->primitive == type_struct){
+			decl *memb = (*i)->struct_member;
+			type *ty = memb->ref;
+
+			if(type_is_floating(ty)){
+				++*nfloats;
+
+			}else if(type_is_s_or_u(ty)){
+				x86_call_prescan_su_sum(su, nints, nfloats);
+
+			}else{
+				++*nints;
+			}
+
+		}else{
+			ICE("TODO: unions");
+		}
+	}
+}
+
+static void x86_call_prescan_su(
+		struct_union_enum_st *su,
+		unsigned *const nints, unsigned *const nfloats,
+		unsigned const n_call_regs_i)
+{
+	unsigned local_ints = 0, local_floats = 0;
+
+	/* can this struct fit in (remaining) regs? */
+	x86_call_prescan_su_sum(su, &local_ints, &local_floats);
+
+	if(*nints + local_ints <= n_call_regs_i
+	&& *nfloats + local_floats <= N_CALL_REGS_F)
+	{
+		*nints += local_ints;
+		*nfloats += local_floats;
+	}/* else passed by stack */
+}
+
+static void x86_call_prescan(
+		out_ctx *octx,
+		const out_val **args, unsigned nargs,
+		unsigned *const nints, unsigned *const nfloats,
+		enum x86_arg_ty *const arg_ty, unsigned const n_call_regs_i)
+{
+	unsigned i;
+	for(i = 0; i < nargs; i++){
+		struct_union_enum_st *su;
+		type *argty;
+
+		assert(args[i]->retains > 0);
+
+		if(args[i]->type == V_FLAG)
+			args[i] = v_to_reg(octx, args[i]);
+
+		argty = args[i]->t;
+		if(args[i]->type == V_REG_SPILT)
+			argty = type_dereference_decay(argty);
+
+		if(type_is_floating(argty)){
+			arg_ty[i] = ARG_FP;
+			++*nfloats;
+
+		}else if((su = type_is_s_or_u(argty))){
+			arg_ty[i] = ARG_SU;
+			x86_call_prescan_su(su, nints, nfloats, n_call_regs_i);
+
+		}else{
+			++*nints;
+			arg_ty[i] = ARG_INT;
+		}
+	}
+}
+
 const out_val *impl_call(
 		out_ctx *octx,
 		const out_val *fn, const out_val **args,
@@ -2101,7 +2185,7 @@ const out_val *impl_call(
 	type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 	const unsigned pws = platform_word_size();
 	const unsigned nargs = dynarray_count(args);
-	enum { ARG_INT, ARG_FP, ARG_SU } *const arg_ty = umalloc(nargs);
+	enum x86_arg_ty *const arg_ty = umalloc(nargs);
 	const out_val **local_args = NULL;
 	const out_val *retval_stret;
 	const out_val *stret_spill;
@@ -2134,28 +2218,10 @@ const out_val *impl_call(
 	 * (should only be one flag)
 	 * also count floats and ints
 	 */
-	for(i = 0; i < nargs; i++){
-		type *argty;
-
-		assert(local_args[i]->retains > 0);
-
-		if(local_args[i]->type == V_FLAG)
-			local_args[i] = v_to_reg(octx, local_args[i]);
-
-		argty = local_args[i]->t;
-		if(local_args[i]->type == V_REG_SPILT)
-			argty = type_dereference_decay(argty);
-
-		if(type_is_floating(argty)){
-			arg_ty[i] = ARG_FP;
-			nfloats++;
-		}else if(type_is_s_or_u(argty)){
-			arg_ty[i] = ARG_SU;
-		}else{
-			nints++;
-			arg_ty[i] = ARG_INT;
-		}
-	}
+	x86_call_prescan(
+			octx, local_args, nargs,
+			&nints, &nfloats,
+			arg_ty, n_call_iregs);
 
 	/* hidden stret argument - get spill space */
 	switch((stret_kind = x86_stret(retty, &stret_stack))){
@@ -2182,6 +2248,7 @@ const out_val *impl_call(
 			continue;
 
 		arg_stack.bytesz += struct_to_stack_space(su);
+		out_comment(octx, "reserving space for %s", type_to_str(local_args[i]->t));
 	}
 
 	/* need to save regs before pushes/call */
@@ -2192,8 +2259,7 @@ const out_val *impl_call(
 		v_stack_needalign(octx, 16);
 
 	if(arg_stack.bytesz > 0){
-		out_comment(octx, "stack space for %lu arguments",
-				arg_stack.bytesz / pws);
+		out_comment(octx, "stack space for call: %lu", arg_stack.bytesz);
 
 		if(x86_caller_cleanup(fnty))
 			arg_stack.need_cleanup = CLEANUP_NO;
@@ -2242,7 +2308,11 @@ const out_val *impl_call(
 					stack_this = (nints++ >= n_call_iregs);
 					break;
 				case ARG_SU:
-					stack_this = (0/*buh*/);
+					stack_this = 1;
+					local_args[i] = out_change_type(
+							octx, local_args[i],
+							type_ptr_to(local_args[i]->t));
+					break;
 			}
 
 			if(stack_this){
