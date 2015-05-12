@@ -122,6 +122,14 @@ decl *decl_impl(decl *); /* fast-forwards to the impl */
 int decl_is_pure_inline(decl *);
 int decl_should_emit_code(decl *);
 
+void decl_ty_calc(
+		decl *d,
+		unsigned *const n_int, unsigned *const n_fp);
+
+void decls_ty_calc(
+		decl **decls,
+		unsigned *const n_int, unsigned *const n_fp);
+
 #define DECL_STATIC_BUFSIZ 512
 
 const char *decl_to_str(decl *d);

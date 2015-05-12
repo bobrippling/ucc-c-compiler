@@ -97,31 +97,11 @@ funcargs *funcargs_new()
 	return r;
 }
 
-static void decl_ty_calc(
-		decl **decls,
-		unsigned *n_int, unsigned *n_fp)
-{
-	decl **di;
-
-	for(di = decls; di && *di; di++){
-		type *ty = (*di)->ref;
-		struct_union_enum_st *su;
-
-		if(type_is_floating(ty)){
-			++*n_fp;
-		}else if((su = type_is_s_or_u(ty))){
-			decl_ty_calc((decl **)su->members, n_int, n_fp);
-		}else{
-			++*n_int;
-		}
-	}
-}
-
-void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)
+void funcargs_ty_calc(funcargs *fa, unsigned *const n_int, unsigned *const n_fp)
 {
 	*n_int = *n_fp = 0;
 
-	decl_ty_calc(fa->arglist, n_int, n_fp);
+	decls_ty_calc(fa->arglist, n_int, n_fp);
 }
 
 int funcargs_is_old_func(funcargs *fa)

@@ -313,3 +313,33 @@ int decl_should_emit_code(decl *d)
 {
 	return d->bits.func.code && !decl_is_pure_inline(d);
 }
+
+void decl_ty_calc(
+		decl *d,
+		unsigned *const n_int, unsigned *const n_fp)
+{
+	type *ty = d->ref;
+	struct_union_enum_st *su;
+
+	if(type_is_floating(ty)){
+		++*n_fp;
+	}else if((su = type_is_s_or_u(ty))){
+		sue_member **mi;
+
+		for(mi = su->members; mi && *mi; mi++)
+			decl_ty_calc((*mi)->struct_member, n_int, n_fp);
+
+	}else{
+		++*n_int;
+	}
+}
+
+void decls_ty_calc(
+		decl **decls,
+		unsigned *const n_int, unsigned *const n_fp)
+{
+	decl **di;
+
+	for(di = decls; di && *di; di++)
+		decl_ty_calc(*di, n_int, n_fp);
+}
