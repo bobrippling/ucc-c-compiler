@@ -82,6 +82,12 @@ ucc_wur const out_val *out_memcpy(
 		const out_val *dest, const out_val *src,
 		unsigned long bytes);
 
+void out_memset(
+		out_ctx *octx,
+		const out_val *dest,
+		unsigned char byte,
+		unsigned long nbytes);
+
 ucc_wur const out_val *out_deref(out_ctx *, const out_val *) ucc_wur;
 
 ucc_wur const out_val *out_cast(out_ctx *, const out_val *, type *to, int normalise_bool)

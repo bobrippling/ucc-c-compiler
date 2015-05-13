@@ -174,65 +174,16 @@ static void fold_memset(expr *e, symtable *stab)
 
 static const out_val *builtin_gen_memset(const expr *e, out_ctx *octx)
 {
-	size_t n, rem;
-	unsigned i;
-	type *tzero = type_nav_MAX_FOR(
-			cc1_type_nav,
-			e->bits.builtin_memset.len,
-			0);
-
-	type *textra, *textrap;
-	const out_val *v_ptr;
-
-	if(!tzero)
-		tzero = type_nav_btype(cc1_type_nav, type_nchar);
-
-	n   = e->bits.builtin_memset.len / type_size(tzero, NULL);
-	rem = e->bits.builtin_memset.len % type_size(tzero, NULL);
-
-	if((textra = rem ? type_nav_MAX_FOR(cc1_type_nav, rem, 0) : NULL))
-		textrap = type_ptr_to(textra);
-
 	/* works fine for bitfields - struct lea acts appropriately */
-	v_ptr = gen_expr(e->lhs, octx);
+	const out_val *addr = gen_expr(e->lhs, octx);
 
-	v_ptr = out_change_type(octx, v_ptr, type_ptr_to(tzero));
+	out_val_retain(octx, addr);
 
-#ifdef MEMSET_VERBOSE
-	out_comment("memset(%s, %d, %lu), using ptr<%s>, %lu steps",
-			e->expr->f_str(),
+	out_memset(octx, addr,
 			e->bits.builtin_memset.ch,
-			e->bits.builtin_memset.len,
-			type_to_str(tzero), n);
-#endif
+			e->bits.builtin_memset.len);
 
-	for(i = 0; i < n; i++){
-		const out_val *v_zero = out_new_zero(octx, tzero);
-		const out_val *v_inc;
-
-		/* *p = 0 */
-		out_val_retain(octx, v_ptr);
-		out_store(octx, v_ptr, v_zero);
-
-		/* p++ (copied pointer) */
-		v_inc = out_new_l(octx, type_nav_btype(cc1_type_nav, type_intptr_t), 1);
-
-		v_ptr = out_op(octx, op_plus, v_ptr, v_inc);
-
-		if(rem){
-			/* need to zero a little more */
-			v_ptr = out_change_type(octx, v_ptr, textrap);
-			v_zero = out_new_zero(octx, textra);
-
-			out_val_retain(octx, v_ptr);
-			out_store(octx, v_ptr, v_zero);
-		}
-	}
-
-	return out_op(
-			octx, op_minus,
-			v_ptr,
-			out_new_l(octx, e->tree_type, e->bits.builtin_memset.len));
+	return addr;
 }
 
 expr *builtin_new_memset(expr *p, int ch, size_t len)
