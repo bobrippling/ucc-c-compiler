@@ -820,6 +820,7 @@ static int op_check_precedence(expr *e)
 	switch(e->bits.op.op){
 		case op_or:
 		case op_and:
+		case op_xor:
 			return msg_if_precedence(e->lhs, &e->where, e->bits.op.op, op_is_comparison)
 				||   msg_if_precedence(e->rhs, &e->where, e->bits.op.op, op_is_comparison);
 			break;
