@@ -23,7 +23,7 @@
 #include "out/asm.h" /* NUM_SECTIONS */
 #include "out/dbg.h" /* dbg_out_filelist() */
 #include "gen_asm.h"
-#include "gen_str.h"
+#include "gen_dump.h"
 #include "gen_style.h"
 #include "sym.h"
 #include "fold_sym.h"
@@ -611,8 +611,8 @@ static void gen_backend(symtable_global *globs, const char *fname)
 		case BACKEND_STYLE:
 			gf = gen_style;
 			if(0){
-		case BACKEND_PRINT:
-				gf = gen_str;
+		case BACKEND_DUMP:
+				gf = gen_dump;
 			}
 			gf(globs);
 			break;
@@ -935,8 +935,8 @@ int main(int argc, char **argv)
 			}
 
 
-			if(!strcmp(emit, "print"))
-				cc1_backend = BACKEND_PRINT;
+			if(!strcmp(emit, "dump") || !strcmp(emit, "print"))
+				cc1_backend = BACKEND_DUMP;
 			else if(!strcmp(emit, "asm"))
 				cc1_backend = BACKEND_ASM;
 			else if(!strcmp(emit, "style"))

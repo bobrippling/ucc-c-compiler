@@ -19,7 +19,7 @@ void expr_mutate(expr *e, func_mutate_expr *f,
 		func_fold *f_fold,
 		func_str *f_str,
 		func_gen *f_gen,
-		func_gen *f_gen_str,
+		func_gen *f_gen_dump,
 		func_gen *f_gen_style
 		)
 {
@@ -28,7 +28,7 @@ void expr_mutate(expr *e, func_mutate_expr *f,
 
 	switch(cc1_backend){
 		case BACKEND_ASM:   e->f_gen = f_gen;       break;
-		case BACKEND_PRINT: e->f_gen = f_gen_str;   break;
+		case BACKEND_DUMP: e->f_gen = f_gen_dump;   break;
 		case BACKEND_STYLE: e->f_gen = f_gen_style; break;
 		default: ICE("bad backend");
 	}
@@ -42,12 +42,12 @@ expr *expr_new(func_mutate_expr *f,
 		func_fold *f_fold,
 		func_str *f_str,
 		func_gen *f_gen,
-		func_gen *f_gen_str,
+		func_gen *f_gen_dump,
 		func_gen *f_gen_style)
 {
 	expr *e = umalloc(sizeof *e);
 	where_cc1_current(&e->where);
-	expr_mutate(e, f, f_fold, f_str, f_gen, f_gen_str, f_gen_style);
+	expr_mutate(e, f, f_fold, f_str, f_gen, f_gen_dump, f_gen_style);
 	return e;
 }
 

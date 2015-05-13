@@ -18,6 +18,7 @@ stmt_flow *stmt_flow_new(symtable *parent)
 stmt *stmt_new(
 		func_fold_stmt *f_fold,
 		func_gen_stmt *f_gen,
+		func_gen_stmt *f_gen_dump,
 		func_gen_stmt *f_gen_style,
 		func_str_stmt *f_str,
 		void (*init)(stmt *),
@@ -35,7 +36,9 @@ stmt *stmt_new(
 		case BACKEND_ASM:
 			s->f_gen = f_gen;
 			break;
-		case BACKEND_PRINT:
+		case BACKEND_DUMP:
+			s->f_gen = f_gen_dump;
+			break;
 		case BACKEND_STYLE:
 			s->f_gen = f_gen_style;
 			break;

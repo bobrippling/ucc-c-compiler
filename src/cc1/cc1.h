@@ -51,7 +51,7 @@ enum mopt
 enum cc1_backend
 {
 	BACKEND_ASM,
-	BACKEND_PRINT,
+	BACKEND_DUMP,
 	BACKEND_STYLE,
 };
 

@@ -23,7 +23,7 @@ void print_type(type *ref, decl *d);
 void print_stmt(stmt *t);
 void print_expr(expr *e);
 
-void gen_str(symtable_global *);
+void gen_dump(symtable_global *);
 
 extern int gen_str_indent;
 

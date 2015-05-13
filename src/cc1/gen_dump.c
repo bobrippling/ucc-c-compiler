@@ -15,7 +15,7 @@
 #include "expr.h"
 #include "stmt.h"
 #include "type_is.h"
-#include "gen_str.h"
+#include "gen_dump.h"
 #include "str.h"
 #include "const.h"
 #include "decl_init.h"
@@ -528,7 +528,7 @@ void print_stmt(stmt *t)
 	}
 }
 
-void gen_str(symtable_global *symtab)
+void gen_dump(symtable_global *symtab)
 {
 	decl **diter;
 

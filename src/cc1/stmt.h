@@ -84,6 +84,7 @@ struct stmt_flow
 	func_str_stmt    str_stmt_ ## ty;    \
 	func_gen_stmt    style_stmt_ ## ty;  \
 	func_gen_stmt    gen_stmt_ ## ty;    \
+	func_gen_stmt    dump_stmt_ ## ty;   \
 	void   init_stmt_ ## ty(stmt *)
 
 #include "ops/stmt_break.h"
@@ -106,6 +107,7 @@ struct stmt_flow
 #define stmt_new_wrapper(type, stab) stmt_new(                \
                                         fold_stmt_ ## type,   \
                                         gen_stmt_ ## type,    \
+                                        dump_stmt_ ## type,    \
                                         style_stmt_ ## type,  \
                                         str_stmt_ ## type,    \
                                         init_stmt_ ## type,   \
@@ -115,6 +117,7 @@ struct stmt_flow
 
 stmt *stmt_new(func_fold_stmt *,
 		func_gen_stmt *g_asm,
+		func_gen_stmt *f_gen_dump,
 		func_gen_stmt *g_style,
 		func_str_stmt *,
 		void (*init)(stmt *),

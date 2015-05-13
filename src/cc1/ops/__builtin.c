@@ -17,7 +17,7 @@
 
 #include "../const.h"
 #include "../gen_asm.h"
-#include "../gen_str.h"
+#include "../gen_dump.h"
 
 #include "../out/out.h"
 #include "__builtin_va.h"
