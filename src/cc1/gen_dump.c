@@ -7,22 +7,13 @@
 #include "../util/platform.h"
 #include "../util/dynarray.h"
 
-#include "macros.h"
+struct dump
+{
+	FILE *fout;
+	unsigned indent;
+};
 
-#include "sym.h"
-#include "cc1.h"
-#include "sue.h"
-#include "expr.h"
-#include "stmt.h"
-#include "type_is.h"
-#include "gen_dump.h"
-#include "str.h"
-#include "const.h"
-#include "decl_init.h"
-#include "funcargs.h"
-#include "out/asm.h" /* cc*_out */
-#include "gen_asm.h" /* IGNORE_PRINTGEN */
-
+#if 0
 #define ENGLISH_PRINT_ARGLIST
 
 #define PRINT_IF(x, sub, fn) \
@@ -32,13 +23,6 @@
 		fn(x->sub); \
 		gen_str_indent--; \
 	}
-
-int gen_str_indent = 0;
-
-FILE *gen_file(void)
-{
-	return cc1_out;
-}
 
 void idt_print()
 {
@@ -527,25 +511,26 @@ void print_stmt(stmt *t)
 		}
 	}
 }
+#endif
 
 void gen_dump(symtable_global *symtab)
 {
+	dump dump = { 0 };
 	decl **diter;
 
-	print_sues_static_asserts(&symtab->stab);
+	dump.fout = stdout;
 
-	for(diter = symtab_decls(&symtab->stab); diter && *diter; diter++){
-		decl *const d = *diter;
+	for(diter = symtab_decls(&globs->stab); diter && *diter; diter++){
+		decl *d = *diter;
 
-		print_decl(d, PDECL_INDENT
-				| PDECL_NEWLINE
-				| PDECL_FUNC_DESCEND
-				| PDECL_SIZE
-				| PDECL_PINIT
-				| PDECL_ATTR);
+		todo();
+		while(iasm && d == (*iasm)->before){
+			gen_gasm((*iasm)->asm_str);
 
-		if(gen_str_indent != 0)
-			fprintf(stderr, "indent (%d) not reset after %s\n",
-					gen_str_indent, d->spel);
+			if(!*++iasm)
+				iasm = NULL;
+		}
+
+		gen_asm_global_w_store(d, 0, octx);
 	}
 }

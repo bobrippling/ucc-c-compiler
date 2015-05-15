@@ -215,22 +215,7 @@ gen_asm.o: gen_asm.c ../util/util.h ../util/warn.h ../util/where.h \
  cc1_out_ctx.h out/forwards.h inline.h type_nav.h sue.h label.h
 gen_c.o: gen_c.c
 gen_dump.o: gen_dump.c ../util/util.h ../util/warn.h ../util/where.h \
- ../util/compiler.h ../util/platform.h ../util/dynarray.h ../util/dyn.h \
- macros.h sym.h decl.h type.h num.h btype.h ../util/where.h attribute.h \
- retain.h ../util/dynmap.h cc1.h ../util/std.h warn.h sue.h expr.h \
- strings.h op.h const.h out/out.h out/../type.h out/../num.h out/../sym.h \
- out/../op.h out/forwards.h ../util/compiler.h ops/expr_addr.h \
- ops/expr_assign.h ops/expr_assign_compound.h ops/expr_cast.h \
- ops/expr_comma.h ops/expr_funcall.h ops/expr_identifier.h ops/expr_if.h \
- ops/expr_op.h ops/expr_sizeof.h ops/expr_val.h ops/expr_stmt.h \
- ops/expr_deref.h ops/expr_struct.h ops/expr_compound_lit.h \
- ops/expr_string.h ops/expr_block.h stmt.h ops/stmt_break.h \
- ops/stmt_case.h ops/stmt_case_range.h ops/stmt_code.h \
- ops/../../util/compiler.h ops/stmt_default.h ops/stmt_do.h \
- ops/stmt_expr.h ops/stmt_for.h ops/stmt_goto.h ops/stmt_if.h \
- ops/stmt_label.h ops/stmt_noop.h ops/stmt_return.h ops/stmt_switch.h \
- ops/stmt_while.h ops/stmt_continue.h type_is.h gen_dump.h str.h \
- decl_init.h funcargs.h out/asm.h gen_asm.h
+ ../util/compiler.h ../util/platform.h ../util/dynarray.h ../util/dyn.h
 gen_style.o: gen_style.c ../util/util.h ../util/warn.h ../util/where.h \
  ../util/compiler.h ../util/dynarray.h ../util/dyn.h expr.h strings.h \
  ../util/dynmap.h type.h num.h btype.h ../util/where.h op.h sym.h decl.h \
