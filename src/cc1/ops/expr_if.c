@@ -97,8 +97,18 @@ static void try_pointer_propagate(
 
 		/* both may still be pointers here */
 		if((l_ptr && r_ptr_null) || (r_ptr && l_ptr_null)){
+			type *pointed_to;
+
+			if(l_ptr_null != r_ptr_null){
+				/* only one is an int - pick the other side */
+				pointed_to = type_next(l_ptr_null ? tt_r : tt_l);
+			}else{
+				/* both are pointers, pick either side */
+				pointed_to = type_next(l_ptr ? tt_l : tt_r);
+			}
+
 			e->tree_type = pointer_to_qualified(
-					type_next(l_ptr_null ? tt_r : tt_l),
+					pointed_to,
 					l_ptr ? tt_l : NULL,
 					r_ptr ? tt_r : NULL);
 		}
