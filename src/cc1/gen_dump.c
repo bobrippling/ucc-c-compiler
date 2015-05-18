@@ -13,6 +13,7 @@
 #include "str.h"
 #include "expr.h"
 #include "decl_init.h"
+#include "stmt.h"
 
 #include "gen_dump.h"
 
@@ -574,10 +575,10 @@ void dump_expr(expr *e, dump *ctx)
 	e->f_dump(e, ctx);
 }
 
-/*void dump_stmt(stmt *s, dump *ctx)
+void dump_stmt(stmt *s, dump *ctx)
 {
 	s->f_dump(s, ctx);
-}*/
+}
 
 void dump_init(dump *ctx, decl_init *dinit)
 {
