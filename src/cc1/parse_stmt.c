@@ -580,6 +580,8 @@ symtable_gasm *parse_gasm(void)
 {
 	symtable_gasm *g = umalloc(sizeof *g);
 
+	where_cc1_current(&g->where);
+
 	EAT(token_open_paren);
 	token_get_current_str(&g->asm_str, NULL, NULL, NULL);
 	EAT(token_string);

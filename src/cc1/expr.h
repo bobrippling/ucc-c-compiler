@@ -27,6 +27,9 @@ typedef enum lvalue_kind func_is_lval(struct expr *);
 
 typedef ucc_wur const out_val *func_gen(const struct expr *, out_ctx *);
 
+struct dump;
+typedef void func_dump(const struct expr *, struct dump *);
+
 #define UNUSED_OCTX() (void)octx; return NULL
 
 typedef struct expr expr;
@@ -36,6 +39,7 @@ struct expr
 
 	func_fold *f_fold;
 	func_gen *f_gen;
+	func_dump *f_dump;
 	func_str *f_str;
 
 	func_const *f_const_fold; /* optional, used in static/global init */
@@ -182,8 +186,14 @@ struct expr
 };
 
 
-expr *expr_new(          func_mutate_expr *, func_fold *, func_str *, func_gen *, func_gen *, func_gen *);
-void expr_mutate(expr *, func_mutate_expr *, func_fold *, func_str *, func_gen *, func_gen *, func_gen *);
+expr *expr_new(
+		func_mutate_expr *, func_fold *, func_str *,
+		func_gen *, func_dump *, func_gen *);
+
+void expr_mutate(
+		expr *,
+		func_mutate_expr *, func_fold *, func_str *,
+		func_gen *, func_dump *, func_gen *);
 
 /* sets e->where */
 expr *expr_set_where(expr *, where const *);
@@ -191,20 +201,30 @@ expr *expr_set_where(expr *, where const *);
 /* sets e->where and e->where.len based on the change */
 expr *expr_set_where_len(expr *, where *);
 
-#define expr_mutate_wrapper(e, type) expr_mutate(e,               \
-                                        mutate_expr_     ## type, \
-                                        fold_expr_       ## type, \
-                                        str_expr_        ## type, \
-                                        gen_expr_        ## type, \
-                                        gen_expr_str_    ## type, \
-                                        gen_expr_style_  ## type)
+#define expr_mutate_wrapper(e, type) \
+	expr_mutate(e,                \
+			mutate_expr_     ## type, \
+			fold_expr_       ## type, \
+			str_expr_        ## type, \
+			gen_expr_        ## type, \
+			dump_expr_       ## type, \
+			gen_expr_style_  ## type)
 
-#define expr_new_wrapper(type) expr_new(mutate_expr_     ## type, \
-                                        fold_expr_       ## type, \
-                                        str_expr_        ## type, \
-                                        gen_expr_        ## type, \
-                                        gen_expr_str_    ## type, \
-                                        gen_expr_style_  ## type)
+#define expr_new_wrapper(type)   \
+	expr_new(mutate_expr_ ## type, \
+			fold_expr_       ## type,  \
+			str_expr_        ## type,  \
+			gen_expr_        ## type,  \
+			dump_expr_       ## type,  \
+			gen_expr_style_  ## type)
+
+#define EXPR_DEFS(type)                  \
+	func_fold fold_expr_ ## type;          \
+	func_gen gen_expr_ ## type;            \
+	func_str str_expr_ ## type;            \
+	func_dump dump_expr_ ## type;          \
+	func_mutate_expr mutate_expr_ ## type; \
+	func_gen gen_expr_style_ ## type
 
 expr *expr_new_numeric(numeric *);
 

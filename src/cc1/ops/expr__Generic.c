@@ -121,40 +121,32 @@ const out_val *gen_expr__Generic(const expr *e, out_ctx *octx)
 	return gen_expr(e->bits.generic.chosen->e, octx);
 }
 
-const out_val *gen_expr_str__Generic(const expr *e, out_ctx *octx)
+void dump_expr__Generic(const expr *e, dump *ctx)
 {
 	struct generic_lbl **i;
 
-	idt_printf("_Generic expr:\n");
-	gen_str_indent++;
-	print_expr(e->expr);
-	gen_str_indent--;
+	dump_desc_expr(ctx, "generic selection", e);
+	dump_inc(ctx);
+	dump_expr(e->expr, ctx);
+	dump_dec(ctx);
 
-	idt_printf("_Generic choices:\n");
-	gen_str_indent++;
+	dump_inc(ctx);
 	for(i = e->bits.generic.list; i && *i; i++){
 		struct generic_lbl *l = *i;
 
-		if(e->bits.generic.chosen == l)
-			idt_printf("[Chosen]\n");
-
 		if(l->t){
-			idt_printf("type: ");
-			gen_str_indent++;
-			print_type(l->t, NULL);
-			gen_str_indent--;
-			fprintf(gen_file(), "\n");
+			dump_inc(ctx);
+			dump_printf(ctx, "%s:\n", type_to_str(l->t));
+			dump_dec(ctx);
 		}else{
-			idt_printf("default:\n");
+			dump_printf(ctx, "default:\n");
 		}
-		idt_printf("expr:\n");
-		gen_str_indent++;
-		print_expr(l->e);
-		gen_str_indent--;
-	}
-	gen_str_indent--;
 
-	UNUSED_OCTX();
+		dump_inc(ctx);
+		dump_expr(l->e, ctx);
+		dump_dec(ctx);
+	}
+	dump_dec(ctx);
 }
 
 static void const_expr__Generic(expr *e, consty *k)
@@ -192,8 +184,7 @@ const out_val *gen_expr_style__Generic(const expr *e, out_ctx *octx)
 	for(i = e->bits.generic.list; i && *i; i++){
 		struct generic_lbl *l = *i;
 
-		idt_printf("%s: ",
-				l->t ? type_to_str(l->t) : "default");
+		printf("%s: ", l->t ? type_to_str(l->t) : "default");
 
 		IGNORE_PRINTGEN(gen_expr(l->e, octx));
 	}

@@ -190,7 +190,7 @@ expr *parse_va_start(const char *ident, symtable *scope)
 	 */
 	expr *fcall = parse_any_args(scope);
 	(void)ident;
-	expr_mutate_builtin_gen(fcall, va_start);
+	expr_mutate_builtin(fcall, va_start);
 	return fcall;
 }
 
@@ -519,7 +519,7 @@ expr *parse_va_arg(const char *ident, symtable *scope)
 	fcall->lhs = list;
 	fcall->bits.va_arg_type = ty;
 
-	expr_mutate_builtin_gen(fcall, va_arg);
+	expr_mutate_builtin(fcall, va_arg);
 
 	return fcall;
 }
@@ -548,7 +548,7 @@ expr *parse_va_end(const char *ident, symtable *scope)
 	expr *fcall = parse_any_args(scope);
 
 	(void)ident;
-	expr_mutate_builtin_gen(fcall, va_end);
+	expr_mutate_builtin(fcall, va_end);
 	return fcall;
 }
 
@@ -584,6 +584,6 @@ expr *parse_va_copy(const char *ident, symtable *scope)
 {
 	expr *fcall = parse_any_args(scope);
 	(void)ident;
-	expr_mutate_builtin_gen(fcall, va_copy);
+	expr_mutate_builtin(fcall, va_copy);
 	return fcall;
 }

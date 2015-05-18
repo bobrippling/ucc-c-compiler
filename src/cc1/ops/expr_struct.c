@@ -147,23 +147,17 @@ const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 	return off;
 }
 
-const out_val *gen_expr_str_struct(const expr *e, out_ctx *octx)
+void dump_expr_struct(const expr *e, dump *ctx)
 {
 	decl *mem = e->bits.struct_mem.d;
 
-	idt_printf("struct/union member %s offset %d\n",
-			mem->spel, struct_offset(e));
+	dump_desc_expr_newline(ctx, "member-access", e, 0);
 
-	if(mem->bits.var.field_width)
-		idt_printf("bitfield offset %u, width %u\n",
-				mem->bits.var.struct_offset_bitfield,
-				(unsigned)const_fold_val_i(mem->bits.var.field_width));
+	dump_printf(ctx, ".%s\n", mem->spel);
 
-	gen_str_indent++;
-	print_expr(e->lhs);
-	gen_str_indent--;
-
-	UNUSED_OCTX();
+	dump_inc(ctx);
+	dump_expr(e->lhs, ctx);
+	dump_dec(ctx);
 }
 
 static void fold_const_expr_struct(expr *e, consty *k)

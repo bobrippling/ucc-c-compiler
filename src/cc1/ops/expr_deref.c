@@ -40,13 +40,12 @@ const out_val *gen_expr_deref(const expr *e, out_ctx *octx)
 	return gen_expr(expr_deref_what(e), octx);
 }
 
-const out_val *gen_expr_str_deref(const expr *e, out_ctx *octx)
+void dump_expr_deref(const expr *e, dump *ctx)
 {
-	idt_printf("deref, size: %s\n", type_to_str(e->tree_type));
-	gen_str_indent++;
-	print_expr(expr_deref_what(e));
-	gen_str_indent--;
-	UNUSED_OCTX();
+	dump_desc_expr(ctx, "dereference", e);
+	dump_inc(ctx);
+	dump_expr(expr_deref_what(e), ctx);
+	dump_dec(ctx);
 }
 
 static void const_expr_deref(expr *e, consty *k)

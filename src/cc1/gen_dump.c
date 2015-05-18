@@ -1,11 +1,20 @@
 #include <stdio.h>
-#include <stdarg.h>
-#include <unistd.h>
 #include <string.h>
+#include <stdarg.h>
+#if 0
+#include <unistd.h>
 
 #include "../util/util.h"
 #include "../util/platform.h"
+#endif
 #include "../util/dynarray.h"
+
+#include "sym.h"
+#include "str.h"
+#include "expr.h"
+#include "decl_init.h"
+
+#include "gen_dump.h"
 
 struct dump
 {
@@ -513,9 +522,134 @@ void print_stmt(stmt *t)
 }
 #endif
 
-void gen_dump(symtable_global *symtab)
+static void dump_newline(dump *ctx, int newline)
+{
+	if(newline)
+		fputc('\n', ctx->fout);
+}
+
+static void dump_desc_newline(
+		dump *ctx,
+		const char *desc, const void *uniq, const where *loc,
+		int newline)
+{
+	fprintf(ctx->fout, "%s %p <%s>", desc, uniq, where_str(loc));
+
+	dump_newline(ctx, newline);
+}
+
+void dump_desc(
+		dump *ctx,
+		const char *desc, const void *uniq, const where *loc)
+{
+	dump_desc_newline(ctx, desc, uniq, loc, 1);
+}
+
+void dump_desc_expr_newline(
+		dump *ctx, const char *desc, const struct expr *e,
+		int newline)
+{
+	dump_desc_newline(ctx, desc, e, &e->where, 0);
+
+	if(e->tree_type)
+		fprintf(ctx->fout, " %s", type_to_str(e->tree_type));
+
+	dump_newline(ctx, newline);
+}
+
+void dump_desc_expr(dump *ctx, const char *desc, const expr *e)
+{
+	dump_desc_expr_newline(ctx, desc, e, 1);
+}
+
+void dump_strliteral(dump *ctx, const char *str, size_t len)
+{
+	fprintf(ctx->fout, "\"");
+	literal_print(ctx->fout, str, len);
+	fprintf(ctx->fout, "\"\n");
+}
+
+void dump_expr(expr *e, dump *ctx)
+{
+	e->f_dump(e, ctx);
+}
+
+/*void dump_stmt(stmt *s, dump *ctx)
+{
+	s->f_dump(s, ctx);
+}*/
+
+void dump_init(dump *ctx, decl_init *dinit)
+{
+	if(dinit == DYNARRAY_NULL){
+		dump_printf(ctx, "<null init>\n");
+		return;
+	}
+
+	switch(dinit->type){
+		case decl_init_scalar:
+		{
+			dump_expr(dinit->bits.expr, ctx);
+			break;
+		}
+
+		case decl_init_brace:
+		{
+			decl_init **i;
+
+			dump_desc(ctx, "brace init", dinit, &dinit->where);
+
+			dump_inc(ctx);
+
+			for(i = dinit->bits.ar.inits; i && *i; i++)
+				dump_init(ctx, *i);
+
+			dump_dec(ctx);
+			break;
+		}
+
+		case decl_init_copy:
+		{
+			struct init_cpy *cpy = *dinit->bits.range_copy;
+			dump_init(ctx, cpy->range_init);
+			break;
+		}
+	}
+}
+
+void dump_inc(dump *ctx)
+{
+	(void)ctx;
+}
+
+void dump_dec(dump *ctx)
+{
+	(void)ctx;
+}
+
+void dump_printf(dump *ctx, const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+
+	vfprintf(ctx->fout, fmt, l);
+
+	va_end(l);
+}
+
+static void dump_gasm(symtable_gasm *gasm, dump *ctx)
+{
+	dump_desc(ctx, "global asm", gasm, &gasm->where);
+
+	dump_inc(ctx);
+	dump_strliteral(ctx, gasm->asm_str, strlen(gasm->asm_str));
+	dump_dec(ctx);
+}
+
+void gen_dump(symtable_global *globs)
 {
 	dump dump = { 0 };
+	symtable_gasm **iasm = globs->gasms;
 	decl **diter;
 
 	dump.fout = stdout;
@@ -523,14 +657,13 @@ void gen_dump(symtable_global *symtab)
 	for(diter = symtab_decls(&globs->stab); diter && *diter; diter++){
 		decl *d = *diter;
 
-		todo();
 		while(iasm && d == (*iasm)->before){
-			gen_gasm((*iasm)->asm_str);
+			dump_gasm(*iasm, &dump);
 
 			if(!*++iasm)
 				iasm = NULL;
 		}
 
-		gen_asm_global_w_store(d, 0, octx);
+		/*dump_global(d, &dump);*/
 	}
 }

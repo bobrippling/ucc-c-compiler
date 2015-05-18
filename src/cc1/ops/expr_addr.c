@@ -88,17 +88,19 @@ const out_val *gen_expr_addr(const expr *e, out_ctx *octx)
 	}
 }
 
-const out_val *gen_expr_str_addr(const expr *e, out_ctx *octx)
+void dump_expr_addr(const expr *e, dump *ctx)
 {
 	if(e->bits.lbl.spel){
-		idt_printf("address of label \"%s\"\n", e->bits.lbl.spel);
+		dump_desc_expr(ctx, "label address", e);
+		dump_inc(ctx);
+		dump_strliteral(ctx, e->bits.lbl.spel, strlen(e->bits.lbl.spel));
+		dump_dec(ctx);
 	}else{
-		idt_printf("address of expr:\n");
-		gen_str_indent++;
-		print_expr(e->lhs);
-		gen_str_indent--;
+		dump_desc_expr(ctx, "address-of", e);
+		dump_inc(ctx);
+		dump_expr(e->lhs, ctx);
+		dump_dec(ctx);
 	}
-	UNUSED_OCTX();
 }
 
 static void const_expr_addr(expr *e, consty *k)

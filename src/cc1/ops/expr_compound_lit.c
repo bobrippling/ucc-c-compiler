@@ -118,38 +118,15 @@ static void const_expr_compound_lit(expr *e, consty *k)
 	}
 }
 
-const out_val *gen_expr_str_compound_lit(const expr *e, out_ctx *octx)
+void dump_expr_compound_lit(const expr *e, dump *ctx)
 {
 	decl *const d = e->bits.complit.decl;
 
-	if(e->bits.op.op)
-		return NULL;
+	dump_desc_expr(ctx, "compound literal", e);
 
-	GEN_CONST_CAST(expr *, e)->bits.op.op = 1;
-	{
-		idt_printf("(%s){\n", decl_to_str(d));
-
-		gen_str_indent++;
-		print_decl(d,
-				PDECL_NONE         |
-				PDECL_INDENT       |
-				PDECL_NEWLINE      |
-				PDECL_SYM_OFFSET   |
-				PDECL_FUNC_DESCEND |
-				PDECL_PINIT        |
-				PDECL_SIZE         |
-				PDECL_ATTR);
-		gen_str_indent--;
-
-		idt_printf("}\n");
-		if(e->code){
-			idt_printf("init code:\n");
-			print_stmt(e->code);
-		}
-	}
-	GEN_CONST_CAST(expr *, e)->bits.op.op = 0;
-
-	UNUSED_OCTX();
+	dump_inc(ctx);
+	dump_init(ctx, d->bits.var.init.dinit);
+	dump_dec(ctx);
 }
 
 const out_val *gen_expr_style_compound_lit(const expr *e, out_ctx *octx)
