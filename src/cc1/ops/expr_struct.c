@@ -153,7 +153,7 @@ void dump_expr_struct(const expr *e, dump *ctx)
 
 	dump_desc_expr_newline(ctx, "member-access", e, 0);
 
-	dump_printf(ctx, ".%s\n", mem->spel);
+	dump_printf_indent(ctx, 0, " .%s\n", mem->spel);
 
 	dump_inc(ctx);
 	dump_expr(e->lhs, ctx);

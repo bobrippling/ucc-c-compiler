@@ -136,10 +136,10 @@ void dump_expr__Generic(const expr *e, dump *ctx)
 
 		if(l->t){
 			dump_inc(ctx);
-			dump_printf(ctx, "%s:\n", type_to_str(l->t));
+			dump_printf_indent(ctx, 0, "%s:\n", type_to_str(l->t));
 			dump_dec(ctx);
 		}else{
-			dump_printf(ctx, "default:\n");
+			dump_printf_indent(ctx, 0, "default:\n");
 		}
 
 		dump_inc(ctx);

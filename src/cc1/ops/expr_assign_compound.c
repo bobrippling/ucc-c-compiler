@@ -109,7 +109,7 @@ void dump_expr_assign_compound(const expr *e, dump *ctx)
 {
 	dump_desc_expr_newline(ctx, "compound assignment", e, 0);
 
-	dump_printf(ctx, " %s%s\n",
+	dump_printf_indent(ctx, 0, " %s%s\n",
 			e->assign_is_post ? "post-assignment " : "",
 			op_to_str(e->bits.compoundop.op));
 

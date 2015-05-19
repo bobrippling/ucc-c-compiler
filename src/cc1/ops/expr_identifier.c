@@ -159,7 +159,7 @@ void dump_expr_identifier(const expr *e, dump *ctx)
 	}
 
 	dump_desc_expr_newline(ctx, desc, e, 0);
-	dump_printf(ctx, "%s\n", e->bits.ident.bits.ident.spel);
+	dump_printf_indent(ctx, 0, " %s\n", e->bits.ident.bits.ident.spel);
 }
 
 const out_val *gen_expr_identifier(const expr *e, out_ctx *octx)

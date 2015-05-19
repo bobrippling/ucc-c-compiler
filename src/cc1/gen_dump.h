@@ -23,6 +23,8 @@ void dump_desc_stmt(dump *ctx, const char *desc, const struct stmt *);
 
 void dump_printf(dump *, const char *, ...)
 	ucc_printflike(2, 3);
+void dump_printf_indent(dump *ctx, int indent, const char *fmt, ...)
+	ucc_printflike(3, 4);
 
 void dump_inc(dump *);
 void dump_dec(dump *);

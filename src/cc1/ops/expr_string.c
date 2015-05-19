@@ -52,7 +52,10 @@ void dump_expr_str(const expr *e, dump *ctx)
 
 	dump_desc_expr_newline(ctx, "string literal", e, 0);
 
-	dump_printf(ctx, "%sstring at %p\n", lit->wide ? "wide " : "", lit->lbl);
+	dump_printf_indent(
+			ctx, 0,
+			" %sstring at %p\n",
+			lit->wide ? "wide " : "", lit->lbl);
 
 	dump_inc(ctx);
 

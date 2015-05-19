@@ -1,12 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
-#if 0
-#include <unistd.h>
 
-#include "../util/util.h"
-#include "../util/platform.h"
-#endif
 #include "../util/dynarray.h"
 
 #include "sym.h"
@@ -14,6 +9,8 @@
 #include "expr.h"
 #include "decl_init.h"
 #include "stmt.h"
+#include "type_is.h"
+#include "sue.h"
 
 #include "gen_dump.h"
 
@@ -22,6 +19,8 @@ struct dump
 	FILE *fout;
 	unsigned indent;
 };
+
+static void dump_decl(decl *d, dump *ctx);
 
 #if 0
 #define ENGLISH_PRINT_ARGLIST
@@ -523,6 +522,13 @@ void print_stmt(stmt *t)
 }
 #endif
 
+static void dump_indent(dump *ctx)
+{
+	unsigned i;
+	for(i = ctx->indent; i; i--)
+		fputc(' ', ctx->fout);
+}
+
 static void dump_newline(dump *ctx, int newline)
 {
 	if(newline)
@@ -534,6 +540,8 @@ static void dump_desc_newline(
 		const char *desc, const void *uniq, const where *loc,
 		int newline)
 {
+	dump_indent(ctx);
+
 	fprintf(ctx->fout, "%s %p <%s>", desc, uniq, where_str(loc));
 
 	dump_newline(ctx, newline);
@@ -553,7 +561,7 @@ void dump_desc_expr_newline(
 	dump_desc_newline(ctx, desc, e, &e->where, 0);
 
 	if(e->tree_type)
-		fprintf(ctx->fout, " %s", type_to_str(e->tree_type));
+		fprintf(ctx->fout, " '%s'", type_to_str(e->tree_type));
 
 	dump_newline(ctx, newline);
 }
@@ -625,21 +633,36 @@ void dump_init(dump *ctx, decl_init *dinit)
 
 void dump_inc(dump *ctx)
 {
-	(void)ctx;
+	ctx->indent++;
 }
 
 void dump_dec(dump *ctx)
 {
-	(void)ctx;
+	ctx->indent--;
+}
+
+static void dump_vprintf_indent(
+		dump *ctx, int indent, const char *fmt, va_list l)
+{
+	if(indent)
+		dump_indent(ctx);
+
+	vfprintf(ctx->fout, fmt, l);
+}
+
+void dump_printf_indent(dump *ctx, int indent, const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	dump_vprintf_indent(ctx, indent, fmt, l);
+	va_end(l);
 }
 
 void dump_printf(dump *ctx, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-
-	vfprintf(ctx->fout, fmt, l);
-
+	dump_vprintf_indent(ctx, 1, fmt, l);
 	va_end(l);
 }
 
@@ -650,6 +673,71 @@ static void dump_gasm(symtable_gasm *gasm, dump *ctx)
 	dump_inc(ctx);
 	dump_strliteral(ctx, gasm->asm_str, strlen(gasm->asm_str));
 	dump_dec(ctx);
+}
+
+static void dump_sue(dump *ctx, type *ty)
+{
+	struct_union_enum_st *sue = type_is_s_or_u_or_e(ty);
+	sue_member **mi;
+
+	if(!sue)
+		return;
+
+	dump_inc(ctx);
+
+	for(mi = sue->members; mi && *mi; mi++){
+		if(sue->primitive == type_enum){
+			enum_member *emem = (*mi)->enum_member;
+
+			dump_desc(ctx, emem->spel, emem, &emem->where);
+
+		}else{
+			decl *d = (*mi)->struct_member;
+
+			dump_decl(d, ctx);
+
+			dump_sue(ctx, d->ref);
+		}
+	}
+
+	dump_dec(ctx);
+}
+
+static void dump_decl(decl *d, dump *ctx)
+{
+	int is_func = !!type_is(d->ref, type_func);
+	const char *desc;
+
+	if(d->spel){
+		desc = is_func ? "function" : "variable";
+	}else{
+		desc = "type";
+	}
+
+	dump_desc_newline(ctx, desc, d, &d->where, 0);
+
+	if(d->proto)
+		dump_printf_indent(ctx, 0, " prev %p", (void *)d->proto);
+
+	if(d->spel)
+		dump_printf_indent(ctx, 0, " %s", d->spel);
+
+	dump_printf_indent(ctx, 0, " '%s'", type_to_str(d->ref));
+
+	if(d->store)
+		dump_printf_indent(ctx, 0, " %s", decl_store_to_str(d->store));
+
+	dump_printf_indent(ctx, 0, "\n");
+
+	if(is_func){
+		if(d->bits.func.code){
+			dump_inc(ctx);
+			dump_stmt(d->bits.func.code, ctx);
+			dump_dec(ctx);
+		}
+	}else if(!d->spel){
+		dump_sue(ctx, d->ref);
+	}
 }
 
 void gen_dump(symtable_global *globs)
@@ -670,6 +758,6 @@ void gen_dump(symtable_global *globs)
 				iasm = NULL;
 		}
 
-		/*dump_global(d, &dump);*/
+		dump_decl(d, &dump);
 	}
 }

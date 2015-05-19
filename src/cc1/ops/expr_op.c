@@ -1073,7 +1073,7 @@ void dump_expr_op(const expr *e, dump *ctx)
 {
 	dump_desc_expr_newline(ctx, "operator", e, 0);
 
-	dump_printf(ctx, " %s\n", op_to_str(e->bits.op.op));
+	dump_printf_indent(ctx, 0, " %s\n", op_to_str(e->bits.op.op));
 
 	dump_inc(ctx);
 
