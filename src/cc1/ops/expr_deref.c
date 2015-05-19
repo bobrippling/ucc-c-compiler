@@ -42,10 +42,20 @@ const out_val *gen_expr_deref(const expr *e, out_ctx *octx)
 
 void dump_expr_deref(const expr *e, dump *ctx)
 {
-	dump_desc_expr(ctx, "dereference", e);
-	dump_inc(ctx);
-	dump_expr(expr_deref_what(e), ctx);
-	dump_dec(ctx);
+	expr *what = expr_deref_what(e);
+
+	if(expr_kind(what, op) && what->bits.op.array_notation){
+		dump_desc_expr(ctx, "array subscript", e);
+		dump_inc(ctx);
+		dump_expr(what->lhs, ctx);
+		dump_expr(what->rhs, ctx);
+		dump_dec(ctx);
+	}else{
+		dump_desc_expr(ctx, "dereference", e);
+		dump_inc(ctx);
+		dump_expr(what, ctx);
+		dump_dec(ctx);
+	}
 }
 
 static void const_expr_deref(expr *e, consty *k)
