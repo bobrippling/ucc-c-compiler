@@ -175,6 +175,15 @@ static void dump_gasm(symtable_gasm *gasm, dump *ctx)
 	dump_dec(ctx);
 }
 
+static void dump_attributes(attribute *da, dump *ctx)
+{
+	for(; da; da = da->next){
+		dump_desc_newline(ctx, "attribute", da, &da->where, 0);
+
+		dump_printf_indent(ctx, 0, " %s\n", attribute_to_str(da));
+	}
+}
+
 static void dump_sue(dump *ctx, type *ty)
 {
 	struct_union_enum_st *sue = type_is_s_or_u_or_e(ty);
@@ -205,8 +214,9 @@ static void dump_sue(dump *ctx, type *ty)
 
 static void dump_decl(decl *d, dump *ctx)
 {
-	int is_func = !!type_is(d->ref, type_func);
+	const int is_func = !!type_is(d->ref, type_func);
 	const char *desc;
+	type *ty;
 
 	if(d->spel){
 		desc = is_func ? "function" : "variable";
@@ -229,13 +239,7 @@ static void dump_decl(decl *d, dump *ctx)
 
 	dump_printf_indent(ctx, 0, "\n");
 
-	if(is_func){
-		if(d->bits.func.code){
-			dump_inc(ctx);
-			dump_stmt(d->bits.func.code, ctx);
-			dump_dec(ctx);
-		}
-	}else{
+	if(!is_func){
 		if(d->bits.var.field_width){
 			dump_inc(ctx);
 			dump_expr(d->bits.var.field_width, ctx);
@@ -249,6 +253,19 @@ static void dump_decl(decl *d, dump *ctx)
 			dump_init(ctx, d->bits.var.init.dinit);
 			dump_dec(ctx);
 		}
+	}
+
+	dump_inc(ctx);
+	dump_attributes(d->attr, ctx);
+	ty = type_skip_non_attr(d->ref);
+	if(ty && ty->type == type_attr)
+		dump_attributes(ty->bits.attr, ctx);
+	dump_dec(ctx);
+
+	if(is_func && d->bits.func.code){
+		dump_inc(ctx);
+		dump_stmt(d->bits.func.code, ctx);
+		dump_dec(ctx);
 	}
 }
 
