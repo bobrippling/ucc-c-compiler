@@ -737,6 +737,10 @@ static void dump_decl(decl *d, dump *ctx)
 		}
 	}else if(!d->spel){
 		dump_sue(ctx, d->ref);
+	}else if(d->bits.var.init.dinit){
+		dump_inc(ctx);
+		dump_init(ctx, d->bits.var.init.dinit);
+		dump_dec(ctx);
 	}
 }
 
