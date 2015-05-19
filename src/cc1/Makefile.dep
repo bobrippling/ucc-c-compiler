@@ -228,7 +228,7 @@ gen_dump.o: gen_dump.c ../util/dynarray.h ../util/dyn.h sym.h decl.h \
  ops/stmt_default.h ops/stmt_do.h ops/stmt_expr.h ops/stmt_for.h \
  ops/stmt_goto.h ops/stmt_if.h ops/stmt_label.h ops/stmt_noop.h \
  ops/stmt_return.h ops/stmt_switch.h ops/stmt_while.h ops/stmt_continue.h \
- type_is.h sue.h gen_dump.h
+ type_is.h sue.h funcargs.h gen_dump.h
 gen_style.o: gen_style.c ../util/util.h ../util/warn.h ../util/where.h \
  ../util/compiler.h ../util/dynarray.h ../util/dyn.h expr.h strings.h \
  ../util/dynmap.h type.h num.h btype.h ../util/where.h op.h sym.h decl.h \

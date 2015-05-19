@@ -11,6 +11,7 @@
 #include "stmt.h"
 #include "type_is.h"
 #include "sue.h"
+#include "funcargs.h"
 
 #include "gen_dump.h"
 
@@ -20,7 +21,7 @@ struct dump
 	unsigned indent;
 };
 
-static void dump_decl(decl *d, dump *ctx);
+static void dump_decl(decl *d, dump *ctx, const char *desc);
 
 static void dump_indent(dump *ctx)
 {
@@ -203,7 +204,7 @@ static void dump_sue(dump *ctx, type *ty)
 		}else{
 			decl *d = (*mi)->struct_member;
 
-			dump_decl(d, ctx);
+			dump_decl(d, ctx, "member");
 
 			dump_sue(ctx, d->ref);
 		}
@@ -212,16 +213,25 @@ static void dump_sue(dump *ctx, type *ty)
 	dump_dec(ctx);
 }
 
-static void dump_decl(decl *d, dump *ctx)
+static void dump_args(funcargs *fa, dump *ctx)
+{
+	decl **di;
+
+	for(di = fa->arglist; di && *di; di++)
+		dump_decl(*di, ctx, "argument");
+}
+
+static void dump_decl(decl *d, dump *ctx, const char *desc)
 {
 	const int is_func = !!type_is(d->ref, type_func);
-	const char *desc;
 	type *ty;
 
-	if(d->spel){
-		desc = is_func ? "function" : "variable";
-	}else{
-		desc = "type";
+	if(!desc){
+		if(d->spel){
+			desc = is_func ? "function" : "variable";
+		}else{
+			desc = "type";
+		}
 	}
 
 	dump_desc_newline(ctx, desc, d, &d->where, 0);
@@ -263,7 +273,10 @@ static void dump_decl(decl *d, dump *ctx)
 	dump_dec(ctx);
 
 	if(is_func && d->bits.func.code){
+		funcargs *fa = type_funcargs(d->ref);
+
 		dump_inc(ctx);
+		dump_args(fa, ctx);
 		dump_stmt(d->bits.func.code, ctx);
 		dump_dec(ctx);
 	}
@@ -287,6 +300,6 @@ void gen_dump(symtable_global *globs)
 				iasm = NULL;
 		}
 
-		dump_decl(d, &dump);
+		dump_decl(d, &dump, NULL);
 	}
 }
