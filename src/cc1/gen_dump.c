@@ -735,12 +735,20 @@ static void dump_decl(decl *d, dump *ctx)
 			dump_stmt(d->bits.func.code, ctx);
 			dump_dec(ctx);
 		}
-	}else if(!d->spel){
-		dump_sue(ctx, d->ref);
-	}else if(d->bits.var.init.dinit){
-		dump_inc(ctx);
-		dump_init(ctx, d->bits.var.init.dinit);
-		dump_dec(ctx);
+	}else{
+		if(d->bits.var.field_width){
+			dump_inc(ctx);
+			dump_expr(d->bits.var.field_width, ctx);
+			dump_dec(ctx);
+		}
+
+		if(!d->spel){
+			dump_sue(ctx, d->ref);
+		}else if(d->bits.var.init.dinit){
+			dump_inc(ctx);
+			dump_init(ctx, d->bits.var.init.dinit);
+			dump_dec(ctx);
+		}
 	}
 }
 
