@@ -76,6 +76,17 @@ void gen_stmt_for(const stmt *s, out_ctx *octx)
 	flow_end(s->flow, s->flow->for_init_symtab, el, octx);
 }
 
+void dump_stmt_for(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "for", s);
+
+	dump_inc(ctx);
+
+	dump_expr(s->expr, ctx);
+
+	dump_dec(ctx);
+}
+
 void style_stmt_for(const stmt *s, out_ctx *octx)
 {
 	stylef("for(");

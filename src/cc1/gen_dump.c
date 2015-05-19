@@ -558,6 +558,11 @@ void dump_desc_expr_newline(
 	dump_newline(ctx, newline);
 }
 
+void dump_desc_stmt(dump *ctx, const char *desc, const struct stmt *s)
+{
+	dump_desc(ctx, desc, s, &s->where);
+}
+
 void dump_desc_expr(dump *ctx, const char *desc, const expr *e)
 {
 	dump_desc_expr_newline(ctx, desc, e, 1);

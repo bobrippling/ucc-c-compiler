@@ -49,6 +49,19 @@ void gen_stmt_goto(const stmt *s, out_ctx *octx)
 	}
 }
 
+void dump_stmt_goto(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, s->expr ? "computed-goto" : "goto", s);
+
+	dump_inc(ctx);
+	if(s->expr){
+		dump_expr(s->expr, ctx);
+	}else{
+		dump_printf(ctx, "label %s\n", s->bits.lbl.spel);
+	}
+	dump_dec(ctx);
+}
+
 void style_stmt_goto(const stmt *s, out_ctx *octx)
 {
 	stylef("goto ");

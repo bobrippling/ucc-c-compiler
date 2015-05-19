@@ -56,6 +56,14 @@ void gen_stmt_while(const stmt *s, out_ctx *octx)
 	}
 }
 
+void dump_stmt_while(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "while", s);
+
+	dump_expr(s->expr, ctx);
+	dump_stmt(s->lhs, ctx);
+}
+
 void style_stmt_while(const stmt *s, out_ctx *octx)
 {
 	stylef("while(");

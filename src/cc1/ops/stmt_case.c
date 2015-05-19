@@ -23,6 +23,15 @@ void gen_stmt_case(const stmt *s, out_ctx *octx)
 	gen_stmt(s->lhs, octx);
 }
 
+void dump_stmt_case(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "case", s);
+
+	dump_inc(ctx);
+	dump_expr(s->expr, ctx);
+	dump_dec(ctx);
+}
+
 void style_stmt_case(const stmt *s, out_ctx *octx)
 {
 	stylef("\ncase %ld: ", (long)const_fold_val_i(s->expr));

@@ -39,6 +39,15 @@ void gen_stmt_label(const stmt *s, out_ctx *octx)
 	gen_stmt(s->lhs, octx); /* the code-part of the compound statement */
 }
 
+void dump_stmt_label(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "label", s);
+
+	dump_inc(ctx);
+	dump_printf(ctx, "label %s\n", s->bits.lbl.spel);
+	dump_dec(ctx);
+}
+
 void style_stmt_label(const stmt *s, out_ctx *octx)
 {
 	stylef("\n%s: ", s->bits.lbl.spel);

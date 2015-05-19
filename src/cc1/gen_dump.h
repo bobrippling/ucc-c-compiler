@@ -19,6 +19,8 @@ void dump_desc_expr_newline(
 
 void dump_init(dump *, struct decl_init *);
 
+void dump_desc_stmt(dump *ctx, const char *desc, const struct stmt *);
+
 void dump_printf(dump *, const char *, ...)
 	ucc_printflike(2, 3);
 

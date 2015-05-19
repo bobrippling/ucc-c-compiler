@@ -41,6 +41,18 @@ void gen_stmt_do(const stmt *s, out_ctx *octx)
 	out_current_blk(octx, s->blk_break);
 }
 
+void dump_stmt_do(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "do-while", s);
+
+	dump_inc(ctx);
+
+	dump_stmt(s->lhs, ctx);
+	dump_expr(s->expr, ctx);
+
+	dump_dec(ctx);
+}
+
 void style_stmt_do(const stmt *s, out_ctx *octx)
 {
 	stylef("do");

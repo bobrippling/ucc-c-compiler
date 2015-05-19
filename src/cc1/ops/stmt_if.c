@@ -116,6 +116,16 @@ void gen_stmt_if(const stmt *s, out_ctx *octx)
 	flow_end(s->flow, s->symtab, el, octx);
 }
 
+void dump_stmt_if(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "if", s);
+
+	dump_expr(s->expr, ctx);
+	dump_stmt(s->lhs, ctx);
+	if(s->rhs)
+		dump_stmt(s->rhs, ctx);
+}
+
 void style_stmt_if(const stmt *s, out_ctx *octx)
 {
 	stylef("if(");

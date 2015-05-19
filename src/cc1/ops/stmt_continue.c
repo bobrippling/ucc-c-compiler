@@ -18,6 +18,11 @@ void gen_stmt_continue(const stmt *s, out_ctx *octx)
 	out_ctrl_transfer(octx, s->parent->blk_continue, NULL, NULL);
 }
 
+void dump_stmt_continue(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "continue", s);
+}
+
 void style_stmt_continue(const stmt *s, out_ctx *octx)
 {
 	stylef("continue;");
