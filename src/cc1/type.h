@@ -112,7 +112,7 @@ const char *type_kind_to_str(enum type_kind);
 
 const char *type_to_str_r_spel(
 		char buf[TYPE_STATIC_BUFSIZ],
-		type *r, char *spel);
+		type *r, const char *spel);
 
 const char *type_to_str_r_show_decayed(
 		char buf[TYPE_STATIC_BUFSIZ], type *r);

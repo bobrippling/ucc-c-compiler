@@ -253,16 +253,25 @@ int decl_store_duration_is_static(decl *d)
 		|| (d->sym && d->sym->type == sym_global);
 }
 
-const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
+const char *decl_store_spel_type_to_str_r(
+		char buf[DECL_STATIC_BUFSIZ],
+		enum decl_storage store,
+		const char *spel,
+		type *ty)
 {
 	char *bufp = buf;
 
-	if(d->store)
-		bufp += snprintf(bufp, DECL_STATIC_BUFSIZ, "%s ", decl_store_to_str(d->store));
+	if(store)
+		bufp += snprintf(bufp, DECL_STATIC_BUFSIZ, "%s ", decl_store_to_str(store));
 
-	type_to_str_r_spel(bufp, d->ref, d->spel);
+	type_to_str_r_spel(bufp, ty, spel);
 
 	return buf;
+}
+
+const char *decl_to_str_r(char buf[DECL_STATIC_BUFSIZ], decl *d)
+{
+	return decl_store_spel_type_to_str_r(buf, d->store, d->spel, d->ref);
 }
 
 const char *decl_to_str(decl *d)
