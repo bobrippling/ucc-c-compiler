@@ -54,18 +54,14 @@ void dump_expr_str(const expr *e, dump *ctx)
 
 	dump_printf_indent(
 			ctx, 0,
-			" %sstring at %p\n",
-			lit->wide ? "wide " : "", lit->lbl);
+			" %sstr ",
+			lit->wide ? "wide " : "");
 
-	dump_inc(ctx);
-
-	dump_strliteral(
+	dump_strliteral_indent(
 			ctx,
+			0,
 			e->bits.strlit.lit_at.lit->str,
 			e->bits.strlit.lit_at.lit->len);
-
-
-	dump_dec(ctx);
 }
 
 static void const_expr_string(expr *e, consty *k)

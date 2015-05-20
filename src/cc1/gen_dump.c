@@ -22,6 +22,7 @@ static const char *const col_desc_expr = "\x1b[1;35m";
 static const char *const col_ptr = "\x1b[0;33m";
 static const char *const col_where = "\x1b[0;33m";
 static const char *const col_type = "\x1b[0;32m";
+static const char *const col_strlit = "\x1b[1;36m";
 static const char *const col_off = "\x1b[m";
 
 struct dump
@@ -96,11 +97,18 @@ void dump_desc_expr(dump *ctx, const char *desc, const expr *e)
 	dump_desc_expr_newline(ctx, desc, e, 1);
 }
 
+void dump_strliteral_indent(dump *ctx, int indent, const char *str, size_t len)
+{
+	if(indent)
+		dump_indent(ctx);
+	fprintf(ctx->fout, "%s\"", col_strlit);
+	literal_print(ctx->fout, str, len);
+	fprintf(ctx->fout, "\"%s\n", col_off);
+}
+
 void dump_strliteral(dump *ctx, const char *str, size_t len)
 {
-	fprintf(ctx->fout, "\"");
-	literal_print(ctx->fout, str, len);
-	fprintf(ctx->fout, "\"\n");
+	dump_strliteral_indent(ctx, 1, str, len);
 }
 
 void dump_expr(expr *e, dump *ctx)
