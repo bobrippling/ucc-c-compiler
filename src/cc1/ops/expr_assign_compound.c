@@ -109,9 +109,16 @@ void dump_expr_assign_compound(const expr *e, dump *ctx)
 {
 	dump_desc_expr_newline(ctx, "compound assignment", e, 0);
 
-	dump_printf_indent(ctx, 0, " %s%s\n",
+	dump_printf_indent(ctx, 0, " %s%s=",
 			e->assign_is_post ? "post-assignment " : "",
 			op_to_str(e->bits.compoundop.op));
+
+	if(e->bits.compoundop.upcast_ty){
+		dump_printf_indent(ctx, 0, " upcast='%s'",
+				type_to_str(e->bits.compoundop.upcast_ty));
+	}
+
+	dump_printf_indent(ctx, 0, "\n");
 
 	dump_inc(ctx);
 	dump_expr(e->lhs, ctx);
