@@ -76,13 +76,28 @@ void gen_stmt_for(const stmt *s, out_ctx *octx)
 	flow_end(s->flow, s->flow->for_init_symtab, el, octx);
 }
 
+void dump_flow(stmt_flow *flow, dump *ctx)
+{
+	decl **di;
+
+	if(!flow)
+		return;
+
+	for(di = flow->for_init_symtab->decls; di && *di; di++)
+		dump_decl(*di, ctx, NULL);
+}
+
 void dump_stmt_for(const stmt *s, dump *ctx)
 {
 	dump_desc_stmt(ctx, "for", s);
 
 	dump_inc(ctx);
 
-	dump_expr(s->expr, ctx);
+	dump_flow(s->flow, ctx);
+
+	if(s->flow->for_init) dump_expr(s->flow->for_init, ctx);
+	if(s->flow->for_while) dump_expr(s->flow->for_while, ctx);
+	if(s->flow->for_inc) dump_expr(s->flow->for_inc, ctx);
 
 	dump_dec(ctx);
 }

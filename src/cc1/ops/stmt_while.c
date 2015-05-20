@@ -61,6 +61,7 @@ void dump_stmt_while(const stmt *s, dump *ctx)
 	dump_desc_stmt(ctx, "while", s);
 
 	dump_inc(ctx);
+	dump_flow(s->flow, ctx);
 	dump_expr(s->expr, ctx);
 	dump_stmt(s->lhs, ctx);
 	dump_dec(ctx);
