@@ -607,19 +607,28 @@ ptr_relation:
 			fold_type_chk_warn(lhs, NULL, rhs, w, desc);
 
 			if(l_unsigned == r_unsigned){
-				int l_larger = l_rank > r_rank;
+				enum { SAME, LEFT, RIGHT } larger = SAME;
+
+				if(l_rank > r_rank)
+					larger = LEFT;
+				else if(l_rank < r_rank)
+					larger = RIGHT;
 
 				if(l_rank == r_rank && l_rank == -1){
 					/* floating types come in here - default to larger */
 					const int l_sz = type_size(tlhs, &lhs->where),
 					          r_sz = type_size(trhs, &rhs->where);
 
-					l_larger = (l_sz > r_sz);
+					if(l_sz > r_sz)
+						larger = LEFT;
+					else if(l_sz < r_sz)
+						larger = RIGHT;
 				}
 
-				*(l_larger ? prhs : plhs) = (l_larger ? tlhs : trhs);
+				if(larger != SAME)
+					*(larger == LEFT ? prhs : plhs) = (larger == LEFT ? tlhs : trhs);
 
-				tlarger = l_larger ? tlhs : trhs;
+				tlarger = (larger == LEFT ? tlhs : trhs);
 
 			}else if(l_unsigned ? l_rank >= r_rank : r_rank >= l_rank){
 				if(l_unsigned)
