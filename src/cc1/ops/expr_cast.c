@@ -640,7 +640,15 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 
 void dump_expr_cast(const expr *e, dump *ctx)
 {
-	dump_desc_expr(ctx, IS_LVAL_DECAY(e) ? "lvalue-decay" : "cast", e);
+	const char *desc = "cast";
+
+	if(IS_LVAL_DECAY(e)){
+		desc = "lvalue-decay";
+	}else if(e->expr_cast_implicit){
+		desc = "implicit cast";
+	}
+
+	dump_desc_expr(ctx, desc, e);
 
 	dump_inc(ctx);
 	dump_expr(expr_cast_child(e), ctx);
