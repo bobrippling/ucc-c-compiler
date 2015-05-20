@@ -17,6 +17,7 @@ void dump_desc_expr_newline(
 		dump *ctx, const char *desc, const struct expr *,
 		int newline);
 
+void dump_decl(decl *d, dump *ctx, const char *desc);
 void dump_init(dump *, struct decl_init *);
 
 void dump_desc_stmt(dump *ctx, const char *desc, const struct stmt *);

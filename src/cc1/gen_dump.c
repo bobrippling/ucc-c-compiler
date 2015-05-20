@@ -31,8 +31,6 @@ struct dump
 	unsigned indent;
 };
 
-static void dump_decl(decl *d, dump *ctx, const char *desc);
-
 static void dump_indent(dump *ctx)
 {
 	unsigned i;
@@ -255,7 +253,7 @@ static void dump_args(funcargs *fa, dump *ctx)
 		dump_decl(*di, ctx, "argument");
 }
 
-static void dump_decl(decl *d, dump *ctx, const char *desc)
+void dump_decl(decl *d, dump *ctx, const char *desc)
 {
 	const int is_func = !!type_is(d->ref, type_func);
 	type *ty;
