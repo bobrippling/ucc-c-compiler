@@ -121,6 +121,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 			e->bits.ident.bits.enum_mem = m;
 
 			e->tree_type = type_nav_int_enum(cc1_type_nav, sue);
+			e->f_islval = NULL;
 		}
 		return;
 	}
