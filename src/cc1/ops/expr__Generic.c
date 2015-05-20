@@ -134,15 +134,13 @@ void dump_expr__Generic(const expr *e, dump *ctx)
 	for(i = e->bits.generic.list; i && *i; i++){
 		struct generic_lbl *l = *i;
 
+		dump_inc(ctx);
 		if(l->t){
-			dump_inc(ctx);
-			dump_printf_indent(ctx, 0, "%s:\n", type_to_str(l->t));
-			dump_dec(ctx);
+			dump_printf(ctx, "%s:\n", type_to_str(l->t));
 		}else{
-			dump_printf_indent(ctx, 0, "default:\n");
+			dump_printf(ctx, "default:\n");
 		}
 
-		dump_inc(ctx);
 		dump_expr(l->e, ctx);
 		dump_dec(ctx);
 	}
