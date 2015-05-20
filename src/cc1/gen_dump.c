@@ -15,6 +15,15 @@
 
 #include "gen_dump.h"
 
+static const char *const col_desc = "\x1b[1;34m";
+static const char *const col_desc_decl = "\x1b[1;34m";
+static const char *const col_desc_stmt = "\x1b[1;34m";
+static const char *const col_desc_expr = "\x1b[1;35m";
+static const char *const col_ptr = "\x1b[0;33m";
+static const char *const col_where = "\x1b[0;33m";
+static const char *const col_type = "\x1b[0;32m";
+static const char *const col_off = "\x1b[m";
+
 struct dump
 {
 	FILE *fout;
@@ -36,40 +45,50 @@ static void dump_newline(dump *ctx, int newline)
 		fputc('\n', ctx->fout);
 }
 
-static void dump_desc_newline(
+static void dump_desc_colour_newline(
 		dump *ctx,
 		const char *desc, const void *uniq, const where *loc,
-		int newline)
+		const char *col, int newline)
 {
 	dump_indent(ctx);
 
-	fprintf(ctx->fout, "%s %p <%s>", desc, uniq, where_str(loc));
+	fprintf(ctx->fout, "%s%s %s%p %s<%s>%s",
+			col, desc,
+			col_ptr, uniq,
+			col_where, where_str(loc),
+			col_off);
 
 	dump_newline(ctx, newline);
+}
+
+static void dump_type(dump *ctx, type *ty)
+{
+	dump_printf_indent(ctx, 0, " %s'%s'%s",
+			col_type, type_to_str(ty), col_off);
 }
 
 void dump_desc(
 		dump *ctx,
 		const char *desc, const void *uniq, const where *loc)
 {
-	dump_desc_newline(ctx, desc, uniq, loc, 1);
+	dump_desc_colour_newline(ctx, desc, uniq, loc, col_desc_decl, 1);
 }
 
 void dump_desc_expr_newline(
 		dump *ctx, const char *desc, const struct expr *e,
 		int newline)
 {
-	dump_desc_newline(ctx, desc, e, &e->where, 0);
+	dump_desc_colour_newline(ctx, desc, e, &e->where, col_desc_expr, 0);
 
 	if(e->tree_type)
-		fprintf(ctx->fout, " '%s'", type_to_str(e->tree_type));
+		dump_type(ctx, e->tree_type);
 
 	dump_newline(ctx, newline);
 }
 
 void dump_desc_stmt(dump *ctx, const char *desc, const struct stmt *s)
 {
-	dump_desc(ctx, desc, s, &s->where);
+	dump_desc_colour_newline(ctx, desc, s, &s->where, col_desc_stmt, 1);
 }
 
 void dump_desc_expr(dump *ctx, const char *desc, const expr *e)
@@ -179,7 +198,7 @@ static void dump_gasm(symtable_gasm *gasm, dump *ctx)
 static void dump_attributes(attribute *da, dump *ctx)
 {
 	for(; da; da = da->next){
-		dump_desc_newline(ctx, "attribute", da, &da->where, 0);
+		dump_desc_colour_newline(ctx, "attribute", da, &da->where, col_desc, 0);
 
 		dump_printf_indent(ctx, 0, " %s\n", attribute_to_str(da));
 	}
@@ -234,7 +253,7 @@ static void dump_decl(decl *d, dump *ctx, const char *desc)
 		}
 	}
 
-	dump_desc_newline(ctx, desc, d, &d->where, 0);
+	dump_desc_colour_newline(ctx, desc, d, &d->where, col_desc_decl, 0);
 
 	if(d->proto)
 		dump_printf_indent(ctx, 0, " prev %p", (void *)d->proto);
@@ -242,7 +261,7 @@ static void dump_decl(decl *d, dump *ctx, const char *desc)
 	if(d->spel)
 		dump_printf_indent(ctx, 0, " %s", d->spel);
 
-	dump_printf_indent(ctx, 0, " '%s'", type_to_str(d->ref));
+	dump_type(ctx, d->ref);
 
 	if(d->store)
 		dump_printf_indent(ctx, 0, " %s", decl_store_to_str(d->store));
