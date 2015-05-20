@@ -21,6 +21,10 @@ void dump_init(dump *, struct decl_init *);
 
 void dump_desc_stmt(dump *ctx, const char *desc, const struct stmt *);
 
+void dump_desc_stmt_newline(
+		dump *ctx, const char *desc, const struct stmt *,
+		int newline);
+
 void dump_printf(dump *, const char *, ...)
 	ucc_printflike(2, 3);
 void dump_printf_indent(dump *ctx, int indent, const char *fmt, ...)

@@ -51,15 +51,16 @@ void gen_stmt_goto(const stmt *s, out_ctx *octx)
 
 void dump_stmt_goto(const stmt *s, dump *ctx)
 {
-	dump_desc_stmt(ctx, s->expr ? "computed-goto" : "goto", s);
-
-	dump_inc(ctx);
 	if(s->expr){
+		dump_desc_stmt(ctx, "computed-goto", s);
+
+		dump_inc(ctx);
 		dump_expr(s->expr, ctx);
+		dump_dec(ctx);
 	}else{
-		dump_printf(ctx, "label %s\n", s->bits.lbl.spel);
+		dump_desc_stmt_newline(ctx, "goto", s, 0);
+		dump_printf_indent(ctx, 0, " %s\n", s->bits.lbl.spel);
 	}
-	dump_dec(ctx);
 }
 
 void style_stmt_goto(const stmt *s, out_ctx *octx)

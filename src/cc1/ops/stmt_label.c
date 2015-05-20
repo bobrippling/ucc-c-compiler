@@ -41,11 +41,8 @@ void gen_stmt_label(const stmt *s, out_ctx *octx)
 
 void dump_stmt_label(const stmt *s, dump *ctx)
 {
-	dump_desc_stmt(ctx, "label", s);
-
-	dump_inc(ctx);
-	dump_printf(ctx, "label %s\n", s->bits.lbl.spel);
-	dump_dec(ctx);
+	dump_desc_stmt_newline(ctx, "label", s, 0);
+	dump_printf_indent(ctx, 0, " %s\n", s->bits.lbl.spel);
 }
 
 void style_stmt_label(const stmt *s, out_ctx *octx)

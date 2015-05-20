@@ -87,9 +87,16 @@ void dump_desc_expr_newline(
 	dump_newline(ctx, newline);
 }
 
+void dump_desc_stmt_newline(
+		dump *ctx, const char *desc, const struct stmt *s,
+		int newline)
+{
+	dump_desc_colour_newline(ctx, desc, s, &s->where, col_desc_stmt, newline);
+}
+
 void dump_desc_stmt(dump *ctx, const char *desc, const struct stmt *s)
 {
-	dump_desc_colour_newline(ctx, desc, s, &s->where, col_desc_stmt, 1);
+	dump_desc_stmt_newline(ctx, desc, s, 1);
 }
 
 void dump_desc_expr(dump *ctx, const char *desc, const expr *e)
