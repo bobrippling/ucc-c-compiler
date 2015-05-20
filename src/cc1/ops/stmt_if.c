@@ -120,10 +120,12 @@ void dump_stmt_if(const stmt *s, dump *ctx)
 {
 	dump_desc_stmt(ctx, "if", s);
 
+	dump_inc(ctx);
 	dump_expr(s->expr, ctx);
 	dump_stmt(s->lhs, ctx);
 	if(s->rhs)
 		dump_stmt(s->rhs, ctx);
+	dump_dec(ctx);
 }
 
 void style_stmt_if(const stmt *s, out_ctx *octx)
