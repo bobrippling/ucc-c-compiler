@@ -14,8 +14,8 @@ expr.o: expr.c ../util/alloc.h ../util/compiler.h ../util/util.h \
 expr_tok.o: expr_tok.c expr.h expr_tok.h str.h preproc.h main.h \
  ../util/std.h ../util/alloc.h ../util/compiler.h ../util/str.h \
  ../util/util.h ../util/warn.h ../util/where.h ../util/escape.h
-has.o: has.c ../util/std.h ../cc1/attributes.h has.h feat.h main.h \
- include.h
+has.o: has.c ../util/std.h ../cc1/attributes.h ../cc1/ops/__builtins.h \
+ has.h feat.h main.h include.h
 include.o: include.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
  ../util/compiler.h ../util/util.h ../util/warn.h ../util/where.h \
  include.h main.h ../util/std.h preproc.h

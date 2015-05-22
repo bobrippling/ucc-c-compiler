@@ -3,6 +3,7 @@
 
 #include "../util/std.h"
 #include "../cc1/attributes.h"
+#include "../cc1/ops/__builtins.h"
 
 #include "has.h"
 
@@ -108,6 +109,8 @@ static int has_attribute(const char *nam)
 
 static int has_builtin(const char *nam)
 {
-	/* TODO */
+#define BUILTIN(x, ty) if(!strcmp("__builtin_" x, nam)) return 1;
+	BUILTINS
+#undef BUILTIN
 	return 0;
 }
