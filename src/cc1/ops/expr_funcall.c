@@ -313,6 +313,33 @@ static void default_promote_args(
 			expr_promote_default(&args[i], stab);
 }
 
+static void check_standard_funcs(const char *name, expr **args)
+{
+	if(!strcmp(name, "free") && dynarray_count(args) == 1){
+		int warn = 0;
+		expr *arg = args[0];
+
+		arg = expr_skip_casts(arg);
+
+		if(expr_kind(arg, identifier)){
+			sym *sym = arg->bits.ident.bits.ident.sym;
+
+			if(sym && type_is_array(sym->decl->ref))
+				warn = 1;
+
+		}else if(expr_kind(arg, addr)){
+			expr *addrof = expr_addr_target(arg);
+
+			if(expr_kind(addrof, identifier))
+				warn = 1;
+		}
+
+		if(warn){
+			cc1_warn_at(&arg->where, free_nonheap, "free() of non-heap object");
+		}
+	}
+}
+
 void fold_expr_funcall(expr *e, symtable *stab)
 {
 	type *func_ty;
@@ -378,6 +405,9 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	/* check the subexp tree type to get the funcall attributes */
 	if(func_attr_present(e, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
+
+	if(sp && !(fopt_mode & FOPT_FREESTANDING))
+		check_standard_funcs(sp, e->funcargs);
 }
 
 const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
