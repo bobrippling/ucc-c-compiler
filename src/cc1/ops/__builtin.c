@@ -20,6 +20,7 @@
 #include "../gen_str.h"
 
 #include "../out/out.h"
+#include "__builtins.h"
 #include "__builtin_va.h"
 
 #include "../parse_expr.h"
@@ -51,27 +52,9 @@ typedef struct
 } builtin_table;
 
 builtin_table builtins[] = {
-	{ "unreachable", parse_unreachable },
-	{ "trap", parse_unreachable }, /* same */
-
-	{ "types_compatible_p", parse_compatible_p },
-	{ "constant_p", parse_constant_p },
-
-	{ "frame_address", parse_frame_address },
-
-	{ "expect", parse_expect },
-
-	{ "is_signed", parse_is_signed },
-
-	{ "nan",  parse_nan },
-	{ "nanf", parse_nan },
-	{ "nanl", parse_nan },
-
-	{ "choose_expr", parse_choose_expr },
-
-#define BUILTIN_VA(nam) { "va_" #nam, parse_va_ ##nam },
-#  include "__builtin_va.def"
-#undef BUILTIN_VA
+#define BUILTIN(name, type) { name, parse_ ## type },
+	BUILTINS
+#undef BUILTIN
 
 	{ NULL, NULL }
 

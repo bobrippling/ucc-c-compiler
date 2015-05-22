@@ -448,7 +448,7 @@ ops/__builtin.o: ops/__builtin.c ops/../../util/util.h ops/../../util/warn.h \
  ops/../ops/stmt_continue.h ops/../expr.h ops/../funcargs.h \
  ops/../funcargs.h ops/../type_nav.h ops/../sue.h ops/../type_is.h \
  ops/../const.h ops/../gen_asm.h ops/../gen_str.h ops/../out/out.h \
- ops/__builtin_va.h ops/__builtin_va.def ops/../parse_expr.h \
+ ops/__builtins.h ops/__builtin_va.h ops/../parse_expr.h \
  ops/../parse_type.h
 ops/__builtin_va.o: ops/__builtin_va.c ops/../../util/util.h \
  ops/../../util/warn.h ops/../../util/where.h ops/../../util/compiler.h \
@@ -465,19 +465,18 @@ ops/__builtin_va.o: ops/__builtin_va.c ops/../../util/util.h \
  ops/../ops/expr_sizeof.h ops/../ops/expr_val.h ops/../ops/expr_stmt.h \
  ops/../ops/expr_deref.h ops/../ops/expr_struct.h \
  ops/../ops/expr_compound_lit.h ops/../ops/expr_string.h ops/__builtin.h \
- ops/__builtin_va.h ops/__builtin_va.def ops/../cc1.h \
- ops/../../util/std.h ops/../warn.h ops/../fold.h ops/../stmt.h \
- ops/../ops/stmt_break.h ops/../ops/stmt_case.h \
- ops/../ops/stmt_case_range.h ops/../ops/stmt_code.h \
- ops/../ops/stmt_default.h ops/../ops/stmt_do.h ops/../ops/stmt_expr.h \
- ops/../ops/stmt_for.h ops/../ops/stmt_goto.h ops/../ops/stmt_if.h \
- ops/../ops/stmt_label.h ops/../ops/stmt_noop.h ops/../ops/stmt_return.h \
- ops/../ops/stmt_switch.h ops/../ops/stmt_while.h \
- ops/../ops/stmt_continue.h ops/../expr.h ops/../funcargs.h \
- ops/../gen_asm.h ops/../out/out.h ops/../out/lbl.h ops/../pack.h \
- ops/../sue.h ops/../funcargs.h ops/../tokenise.h ops/../tokconv.h \
- ops/../parse_type.h ops/../type_is.h ops/../type_nav.h ops/../sue.h \
- ops/../parse_expr.h
+ ops/__builtin_va.h ops/../cc1.h ops/../../util/std.h ops/../warn.h \
+ ops/../fold.h ops/../stmt.h ops/../ops/stmt_break.h \
+ ops/../ops/stmt_case.h ops/../ops/stmt_case_range.h \
+ ops/../ops/stmt_code.h ops/../ops/stmt_default.h ops/../ops/stmt_do.h \
+ ops/../ops/stmt_expr.h ops/../ops/stmt_for.h ops/../ops/stmt_goto.h \
+ ops/../ops/stmt_if.h ops/../ops/stmt_label.h ops/../ops/stmt_noop.h \
+ ops/../ops/stmt_return.h ops/../ops/stmt_switch.h \
+ ops/../ops/stmt_while.h ops/../ops/stmt_continue.h ops/../expr.h \
+ ops/../funcargs.h ops/../gen_asm.h ops/../out/out.h ops/../out/lbl.h \
+ ops/../pack.h ops/../sue.h ops/../funcargs.h ops/../tokenise.h \
+ ops/../tokconv.h ops/../parse_type.h ops/../type_is.h ops/../type_nav.h \
+ ops/../sue.h ops/../parse_expr.h
 ops/expr__Generic.o: ops/expr__Generic.c ops/ops.h ops/../../util/util.h \
  ops/../../util/warn.h ops/../../util/where.h ops/../../util/compiler.h \
  ops/../cc1.h ops/../../util/std.h ops/../warn.h ops/../out/out.h \
