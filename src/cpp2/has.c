@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "../util/std.h"
+#include "../cc1/attributes.h"
 
 #include "has.h"
 
@@ -95,7 +96,13 @@ static int has_feature(const char *nam)
 
 static int has_attribute(const char *nam)
 {
-	/* TODO */
+#define NAME(x) if(!strcmp(nam, #x) || !strcmp("__" #x "__", nam)) return 1;
+#define ALIAS(s, x) if(!strcmp(nam, s) || !strcmp("__" s "__", nam)) return 1;
+#define EXTRA_ALIAS ALIAS
+	ATTRIBUTES
+#undef NAME
+#undef ALIAS
+#undef EXTRA_ALIAS
 	return 0;
 }
 
