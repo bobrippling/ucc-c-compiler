@@ -31,7 +31,6 @@ struct cc1_warning
 	unsigned char attr_unused_used;
 	unsigned char attr_unused_voidfn;
 	unsigned char bad_funcqual;
-	unsigned char bad_inline;
 	unsigned char bad_restrict;
 	unsigned char binary_literal;
 	unsigned char bitfield_boundary;

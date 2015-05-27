@@ -707,8 +707,10 @@ static void fold_decl_var(decl *d, symtable *stab)
 	int is_static_duration = !stab->parent
 		|| (d->store & STORE_MASK_STORE) == store_static;
 
-	if((d->store & STORE_MASK_EXTRA) == store_inline)
-		cc1_warn_at(&d->where, bad_inline, "inline on non-function");
+	if((d->store & STORE_MASK_EXTRA) == store_inline){
+		warn_at_print_error(&d->where, "inline on non-function");
+		fold_had_error = 1;
+	}
 
 	if(d->bits.var.align || (attrib = attribute_present(d, attr_aligned))){
 		const int tal = type_align(d->ref, &d->where);

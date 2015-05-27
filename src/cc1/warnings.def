@@ -85,7 +85,6 @@ X("attr-unused-used", &cc1_warning.attr_unused_used)
 X("attr-unused-voidfn", &cc1_warning.attr_unused_voidfn)
 
 X("qualified-fntype", &cc1_warning.bad_funcqual)
-X("inline-non-function", &cc1_warning.bad_inline)
 X("inline-builtin-frame-addr", &cc1_warning.inline_builtin_frame_addr)
 X("restrict-non-ptr", &cc1_warning.bad_restrict)
 
