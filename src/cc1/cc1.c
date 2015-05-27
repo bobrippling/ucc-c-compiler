@@ -1121,7 +1121,7 @@ usage:
 	if(infile != stdin)
 		fclose(infile), infile = NULL;
 
-	if(failure == 0){
+	if(failure == 0 || /* attempt dump anyway */cc1_backend == BACKEND_DUMP){
 		gen_backend(globs, fname);
 		if(gen_had_error)
 			failure = 1;
