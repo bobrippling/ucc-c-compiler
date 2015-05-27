@@ -1465,7 +1465,7 @@ static decl *parse_decl_stored_aligned(
 
 static void prevent_typedef(enum decl_storage store)
 {
-	if(store_typedef == store)
+	if(store_typedef == (store & STORE_MASK_STORE))
 		die_at(NULL, "typedef unexpected");
 }
 
