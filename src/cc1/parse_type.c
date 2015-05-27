@@ -288,7 +288,7 @@ static void btype_set_store(
 	if(*pstore_set)
 		die_at(NULL, "second store %s", decl_store_to_str(st));
 
-	*store = st;
+	*store |= st;
 	*pstore_set = 1;
 }
 
