@@ -39,9 +39,13 @@ void fold_expr_comma(expr *e, symtable *stab)
 
 	e->tree_type = e->rhs->tree_type;
 
-	if(!e->lhs->freestanding && !type_is_void(e->lhs->tree_type))
+	if(!e->lhs->freestanding
+	&& !e->expr_comma_synthesized
+	&& !type_is_void(e->lhs->tree_type))
+	{
 		cc1_warn_at(&e->lhs->where, unused_comma,
 				"left hand side of comma is unused");
+	}
 
 	e->freestanding = e->rhs->freestanding;
 
@@ -77,10 +81,11 @@ void dump_expr_comma(const expr *e, dump *ctx)
 	dump_dec(ctx);
 }
 
-expr *expr_new_comma2(expr *lhs, expr *rhs)
+expr *expr_new_comma2(expr *lhs, expr *rhs, int compiler_gen)
 {
 	expr *e = expr_new_comma();
 	e->lhs = lhs, e->rhs = rhs;
+	e->expr_comma_synthesized = compiler_gen;
 	return e;
 }
 

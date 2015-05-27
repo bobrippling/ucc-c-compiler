@@ -61,6 +61,7 @@ struct expr
 #define expr_is_st_dot     assign_is_post
 #define expr_addr_implicit assign_is_post
 #define expr_comp_lit_cgen assign_is_post
+#define expr_comma_synthesized assign_is_post
 	enum what_of
 	{
 		what_sizeof,
@@ -286,7 +287,7 @@ expr *expr_new_str(char *, size_t, int wide, where *, symtable *stab);
 expr *expr_new_addr_lbl(char *lbl, int static_ctx);
 expr *expr_new_addr(expr *);
 
-expr *expr_new_comma2(expr *lhs, expr *rhs);
+expr *expr_new_comma2(expr *lhs, expr *rhs, int compiler_gen);
 #define expr_new_comma() expr_new_wrapper(comma)
 
 expr *expr_compiler_generated(expr *);
