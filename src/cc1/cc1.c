@@ -220,6 +220,10 @@ static void show_warn_option(unsigned char *pwarn)
 int where_in_sysheader(const where *w)
 {
 	const char **i;
+
+	if(!w->fname)
+		return 0;
+
 	for(i = system_includes; i && *i; i++)
 		if(!strncmp(w->fname, *i, strlen(*i)))
 			return 1;
