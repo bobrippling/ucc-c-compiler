@@ -16,6 +16,7 @@
 #include "../util/math.h"
 #include "../util/dynarray.h"
 #include "../util/tmpfile.h"
+#include "../util/alloc.h"
 
 #include "tokenise.h"
 #include "cc1.h"
@@ -540,14 +541,21 @@ static void warning_special(enum warning_special type)
 	}
 }
 
-static void warning_unknown(const char *warg)
+static void warning_unknown(const char *warg, dynmap *unknowns)
 {
-	fprintf(stderr, "Unknown warning option \"%s\"\n", warg);
+	char *dup_warg = ustrdup(warg);
+
+	int present = dynmap_set(
+			char *, intptr_t,
+			unknowns, dup_warg, (intptr_t)1);
+
+	if(present)
+		free(dup_warg);
 }
 
 static void warning_on(
 		const char *warn, enum warning_fatality to,
-		int *const werror)
+		int *const werror, dynmap *unknowns)
 {
 	struct warn_str *p;
 
@@ -574,14 +582,14 @@ static void warning_on(
 			case '=':
 				if(to == W_OFF){
 					/* force to non-error */
-					warning_on(werr + 1, W_NO_ERROR, werror);
+					warning_on(werr + 1, W_NO_ERROR, werror, unknowns);
 				}else{
-					warning_on(werr + 1, W_ERROR, werror);
+					warning_on(werr + 1, W_ERROR, werror, unknowns);
 				}
 				break;
 
 			default:
-				warning_unknown(warn);
+				warning_unknown(warn, unknowns);
 		}
 		return;
 	}
@@ -600,7 +608,7 @@ static void warning_on(
 		}
 	}
 
-	warning_unknown(warn);
+	warning_unknown(warn, unknowns);
 }
 
 static int optimise(const char *argv0, const char *arg)
@@ -671,6 +679,35 @@ static void warnings_upgrade(void)
 				*p->offsets[i] = W_ERROR;
 }
 
+static int warnings_check_unknown(dynmap *unknown_warnings)
+{
+	where loc = { 0 };
+	int hard_error = 0, got_unknown = 0;
+	char *key;
+	size_t i;
+
+	loc.fname = "<command line>";
+
+	switch(cc1_warning.unknown_warning_option){
+		case W_OFF:
+			return 0;
+		case W_WARN:
+		case W_NO_ERROR:
+			break;
+		case W_ERROR:
+			hard_error = 1;
+			break;
+	}
+
+	for(i = 0; (key = dynmap_key(char *, unknown_warnings, i)); i++){
+		cc1_warn_at(&loc, unknown_warning_option,
+				"unknown warning option: \"%s\"", key);
+		got_unknown = 1;
+	}
+
+	return hard_error && got_unknown;
+}
+
 int main(int argc, char **argv)
 {
 	int failure;
@@ -679,6 +716,7 @@ int main(int argc, char **argv)
 	const char *fname;
 	int i;
 	int werror = 0;
+	dynmap *unknown_warnings = dynmap_new(char *, strcmp, dynmap_strhash);
 
 	/*signal(SIGINT , sigh);*/
 	signal(SIGQUIT, sigh);
@@ -732,7 +770,7 @@ int main(int argc, char **argv)
 				cc1_out = fopen(argv[i], "w");
 				if(!cc1_out){
 					ccdie(0, "open %s:", argv[i]);
-					return 1;
+					goto out;
 				}
 			}
 
@@ -808,7 +846,7 @@ int main(int argc, char **argv)
 					ucc_unreach(1);
 
 				case 'W':
-					warning_on(arg, rev ? W_OFF : W_WARN, &werror);
+					warning_on(arg, rev ? W_OFF : W_WARN, &werror, unknown_warnings);
 					continue;
 			}
 
@@ -869,6 +907,11 @@ usage:
 	if(werror)
 		warnings_upgrade();
 
+	if(warnings_check_unknown(unknown_warnings)){
+		failure = 1;
+		goto out;
+	}
+
 	if(fname && strcmp(fname, "-")){
 		infile = fopen(fname, "r");
 		if(!infile)
@@ -907,7 +950,15 @@ usage:
 	if(fopt_mode & FOPT_DUMP_TYPE_TREE)
 		type_nav_dump(cc1_type_nav);
 
+out:
 	dynarray_free(const char **, system_includes, NULL);
+	{
+		size_t i;
+		char *key;
+		for(i = 0; (key = dynmap_key(char *, unknown_warnings, i)); i++)
+			free(key);
+		dynmap_free(unknown_warnings);
+	}
 
 	return failure;
 }

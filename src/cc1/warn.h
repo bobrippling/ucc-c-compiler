@@ -146,6 +146,7 @@ struct cc1_warning
 	unsigned char undef_internal;
 	unsigned char undef_strlitcmp;
 	unsigned char uninitialised;
+	unsigned char unknown_warning_option;
 	unsigned char unnamed_struct_memb;
 	unsigned char unused_comma;
 	unsigned char unused_expr;

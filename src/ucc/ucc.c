@@ -395,15 +395,13 @@ static void pass_warning(char **args[4], const char *arg)
 			dynarray_add(&args[mode_preproc], ustrdup(arg));
 			break;
 		case W_OWNER_CC1:
+		default: /* give to cc1 by default - it has the -Werror=unknown-warning logic */
 			dynarray_add(&args[mode_compile], ustrdup(arg));
 			break;
 		case W_OWNER_CPP | W_OWNER_CC1:
 			dynarray_add(&args[mode_preproc], ustrdup(arg));
 			dynarray_add(&args[mode_compile], ustrdup(arg));
 			break;
-
-		default:
-			fprintf(stderr, "%s: unknown warning: '%s'\n", argv0, arg);
 	}
 }
 

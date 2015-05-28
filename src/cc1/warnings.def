@@ -208,3 +208,5 @@ X("c89-vla", &cc1_warning.c89_vla)
 
 X("__func__init", &cc1_warning.x__func__init)
 X("__func__outside-fn", &cc1_warning.x__func__outsidefn)
+
+X("unknown-warning-option", &cc1_warning.unknown_warning_option)
