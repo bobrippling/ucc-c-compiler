@@ -144,7 +144,9 @@ while(<F>){
 
 			my $ec = timeout($subst_sh);
 
-			die2 "command '$subst_sh' failed" if ($want_err == !$ec);
+			my $unexpected = ($want_err ? "passed" : "failed");
+
+			die2 "command '$subst_sh' $unexpected" if ($want_err == !$ec);
 		}elsif($command eq 'CHECK'){
 			$want_check = 1;
 
