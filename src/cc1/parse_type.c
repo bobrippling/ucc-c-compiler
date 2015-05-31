@@ -2104,7 +2104,7 @@ int parse_decl_group(
 		/* need to parse __attribute__ before folding the type */
 		attr_post_decl = parse_decl_attr(d, in_scope);
 
-		RETAIN(decl_attr);
+		(void)RETAIN(decl_attr);
 		if(d->spel){
 			d->ref = type_attributed(d->ref, decl_attr);
 		}else{

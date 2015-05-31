@@ -20,7 +20,7 @@ static void add_lbl_to_blk(
 		struct out_dbg_lbl *lbl,
 		struct out_dbg_lbl ***parray)
 {
-	RETAIN(lbl);
+	(void)RETAIN(lbl);
 	dynarray_add(parray, lbl);
 }
 
