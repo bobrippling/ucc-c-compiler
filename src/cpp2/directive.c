@@ -498,8 +498,10 @@ static int handle_line_directive(char *line)
 		CPP_DIE("#line directive with a negative argument");
 
 	/* don't care about the filename - that's for cc1 */
-	if(option_line_info && !no_output)
+	if(option_line_info && !no_output){
 		printf("# %s\n", line);
+		current_line = n - 1;
+	}
 
 	return 1;
 }
