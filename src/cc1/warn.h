@@ -104,6 +104,7 @@ struct cc1_warning
 	unsigned char multichar_toolarge;
 	unsigned char nonstd_arraysz;
 	unsigned char nonstd_init;
+	unsigned char null_zero_literal;
 	unsigned char omitted_param_types;
 	unsigned char op_shift_bad;
 	unsigned char overflow;

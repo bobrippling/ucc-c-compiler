@@ -35,11 +35,19 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *);
 void fold_insert_casts(type *tlhs, expr **prhs, symtable *stab);
 
 int fold_type_chk_warn(
-		type *lhs, type *rhs,
+		/* take exprs to check null-ptr-constants */
+		expr *maybe_lhs,
+		type *tlhs,
+		expr *rhs,
 		where *w, const char *desc);
 
+void fold_type_chk_and_cast_ty(
+		type *tlhs, expr **prhs,
+		symtable *stab, where *w,
+		const char *desc);
+
 void fold_type_chk_and_cast(
-		type *lhs, expr **prhs,
+		expr *lhs, expr **prhs,
 		symtable *stab, where *w,
 		const char *desc);
 

@@ -434,7 +434,7 @@ type *op_required_promotion(
 		type **plhs, type **prhs)
 {
 	type *resolved = NULL;
-	type *tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
+	type *const tlhs = lhs->tree_type, *const trhs = rhs->tree_type;
 	int floating_lhs;
 
 	if(!desc)
@@ -500,7 +500,7 @@ type *op_required_promotion(
 			}else if(op_returns_bool(op)){
 ptr_relation:
 				if(op_is_comparison(op)){
-					if(fold_type_chk_warn(tlhs, trhs, w,
+					if(fold_type_chk_warn(lhs, NULL, rhs, w,
 							l_ptr && r_ptr
 							? "comparison lacks a cast"
 							: "comparison between pointer and integer"))
@@ -599,9 +599,9 @@ ptr_relation:
 			 */
 
 			if(type_intrank(type_get_primitive(tlhs)) < type_intrank(type_int))
-				tlhs = *plhs = type_nav_btype(cc1_type_nav, type_int);
-
-			resolved = tlhs;
+				resolved = *plhs = type_nav_btype(cc1_type_nav, type_int);
+			else
+				resolved = tlhs;
 
 		}else if(op == op_andsc || op == op_orsc){
 			/* no promotion */
@@ -615,7 +615,7 @@ ptr_relation:
 			          r_rank = type_intrank(type_get_primitive(trhs));
 
 			/* want to warn regardless of checks - for enums */
-			fold_type_chk_warn(tlhs, trhs, w, desc);
+			fold_type_chk_warn(lhs, NULL, rhs, w, desc);
 
 			if(l_unsigned == r_unsigned){
 				int l_larger = l_rank > r_rank;

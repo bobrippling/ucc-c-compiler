@@ -67,20 +67,26 @@ static int check_enum_cmp(
 }
 
 int fold_type_chk_warn(
-		type *lhs, type *rhs,
+		expr *maybe_lhs, type *tlhs, expr *rhs,
 		where *w, const char *desc)
 {
+	unsigned char *pwarn = &cc1_warning.mismatching_types;
+	type *const trhs = rhs->tree_type;
 	int error = 1;
 	const char *detail = "";
 
-	switch(type_cmp(lhs, rhs, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
+	assert(!!maybe_lhs ^ !!tlhs);
+	if(!tlhs)
+		tlhs = maybe_lhs->tree_type;
+
+	switch(type_cmp(tlhs, trhs, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
 		case TYPE_CONVERTIBLE_IMPLICIT:
 			/* attempt to insert regardless, e.g. _Bool x = 5;
 			 *  - they match but we need the _Bool cast */
 			return 1;
 		case TYPE_EQUAL:
 			/* for enum types, we still want the cast, for warnings' sake */
-			if(check_enum_cmp(lhs, rhs, w, desc))
+			if(check_enum_cmp(tlhs, trhs, w, desc))
 				return 1;
 		case TYPE_QUAL_ADD: /* const int <- int */
 		case TYPE_QUAL_SUB: /* int <- const int */
@@ -88,12 +94,43 @@ int fold_type_chk_warn(
 		case TYPE_EQUAL_TYPEDEF:
 			break;
 
+		case TYPE_CONVERTIBLE_EXPLICIT:
+		{
+			int skip_warn = 0;
+
+			error = 0;
+
+			/* special case - allow pointer <--> 0-constant */
+			if(type_is_ptr_or_block(tlhs)
+			&& expr_is_null_ptr(rhs, NULL_STRICT_INT))
+			{
+				skip_warn = 1;
+			}else if(maybe_lhs
+			&& type_is_ptr_or_block(trhs)
+			&& expr_is_null_ptr(maybe_lhs, NULL_STRICT_INT))
+			{
+				skip_warn = 1;
+			}
+
+			if(cc1_warning.null_zero_literal){
+				skip_warn = 0;
+				pwarn = &cc1_warning.null_zero_literal;
+			}
+
+			if(skip_warn){
+				/* no warning, but still sign extend the zero */
+				return 1;
+			}
+			goto warning;
+		}
+
 		case TYPE_QUAL_NESTED_CHANGE: /* char ** <- const char ** or vice versa */
 			detail = "nested ";
 		case TYPE_QUAL_POINTED_SUB: /* char * <- const char * */
-		case TYPE_CONVERTIBLE_EXPLICIT:
 			error = 0;
+			/* fallthru */
 
+warning:
 		case TYPE_NOT_EQUAL:
 		{
 			char buf[TYPE_STATIC_BUFSIZ];
@@ -102,14 +139,14 @@ int fold_type_chk_warn(
 #define common_warning                                    \
 			"mismatching %stypes, %s:\n%s: note: '%s' vs '%s'", \
 			detail, desc, where_str_r(wbuf, w),                 \
-			type_to_str_r(buf, lhs),                            \
-			type_to_str(       rhs)
+			type_to_str_r(buf, tlhs),                           \
+			type_to_str(       trhs)
 
 			if(error){
 				warn_at_print_error(w, common_warning);
 				fold_had_error = 1;
 			}else{
-				cc1_warn_at(w, mismatching_types, common_warning);
+				cc1_warn_at_w(w, pwarn, common_warning);
 			}
 
 #undef common_warning
@@ -124,39 +161,29 @@ int fold_type_chk_warn(
 	return 0;
 }
 
-void fold_type_chk_and_cast(
-		type *lhs, expr **prhs,
+static void fold_type_chk_and_cast_common(
+		expr *lhs, type *tlhs, expr **prhs,
 		symtable *stab, where *w,
 		const char *desc)
 {
-#if 0
-	int strict = 0;
+	if(fold_type_chk_warn(lhs, tlhs, *prhs, w, desc))
+		fold_insert_casts(tlhs ? tlhs : lhs->tree_type, prhs, stab);
+}
 
-	/* stronger checks for blocks, functions and (non-void) pointers */
-	if(type_is_nonvoid_ptr(a)
-	&& type_is_nonvoid_ptr(b))
-	{
-		strict = 1;
-	}
-	else
-	if(type_is(a, type_block)
-	|| type_is(b, type_block)
-	|| type_is(a, type_func)
-	|| type_is(b, type_func))
-	{
-		strict = 1;
-	}
-#endif
-	int cast = 0;
+void fold_type_chk_and_cast(
+		expr *lhs, expr **prhs,
+		symtable *stab, where *w,
+		const char *desc)
+{
+	fold_type_chk_and_cast_common(lhs, NULL, prhs, stab, w, desc);
+}
 
-	/* special case - allow assignment to pointer from 0-constant */
-	if(type_is_ptr_or_block(lhs) && expr_is_null_ptr(*prhs, NULL_STRICT_INT))
-		cast = 1; /* no warning, but still sign extend the zero */
-	else if(fold_type_chk_warn(lhs, (*prhs)->tree_type, w, desc))
-		cast = 1;
-
-	if(cast)
-		fold_insert_casts(lhs, prhs, stab);
+void fold_type_chk_and_cast_ty(
+		type *tlhs, expr **prhs,
+		symtable *stab, where *w,
+		const char *desc)
+{
+	fold_type_chk_and_cast_common(NULL, tlhs, prhs, stab, w, desc);
 }
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w)

@@ -55,7 +55,7 @@ void fold_stmt_return(stmt *s)
 
 			}else{
 				/* void return handled implicitly with a cast to void */
-				fold_type_chk_and_cast(
+				fold_type_chk_and_cast_ty(
 						ret_ty, &s->expr,
 						s->symtab, &s->where, "return type");
 

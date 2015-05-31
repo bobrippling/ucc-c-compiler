@@ -248,6 +248,8 @@ static struct warn_str
 	{ "nonstandard-array-size", &cc1_warning.nonstd_arraysz },
 	{ "nonstandard-init", &cc1_warning.nonstd_init },
 
+	{ "null-zero-literal", &cc1_warning.null_zero_literal },
+
 	{ "omitted-param-types", &cc1_warning.omitted_param_types },
 	{ "undefined-shift", &cc1_warning.op_shift_bad },
 	{ "overlarge-enumerator-bitfield", &cc1_warning.overlarge_enumerator_bitfield },
@@ -715,6 +717,7 @@ static void warning_all(void)
 	cc1_warning.binary_literal =
 	cc1_warning.missing_prototype =
 	cc1_warning.missing_variable_decls =
+	cc1_warning.null_zero_literal =
 		W_OFF;
 }
 

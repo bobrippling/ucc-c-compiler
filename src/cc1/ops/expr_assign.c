@@ -122,7 +122,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	e->tree_type = e->lhs->tree_type;
 
 	/* type check */
-	fold_type_chk_and_cast(
+	fold_type_chk_and_cast_ty(
 			e->lhs->tree_type, &e->rhs,
 			stab, &e->where, "assignment");
 

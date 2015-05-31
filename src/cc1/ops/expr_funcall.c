@@ -286,7 +286,7 @@ static void check_arg_types(
 
 			ARG_BUF(buf, i, sp);
 
-			fold_type_chk_and_cast(
+			fold_type_chk_and_cast_ty(
 					decl_arg->ref, &exprargs[i],
 					stab, &exprargs[i]->where,
 					buf);

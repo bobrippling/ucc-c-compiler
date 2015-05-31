@@ -391,7 +391,7 @@ static decl_init *decl_init_brace_up_scalar(
 			warn_at_print_error(&e->where, "initialisation from void expression");
 			fold_had_error = 1;
 		}else{
-			fold_type_chk_and_cast(
+			fold_type_chk_and_cast_ty(
 					tfor, &first_init->bits.expr,
 					stab, &first_init->bits.expr->where,
 					"initialisation");
