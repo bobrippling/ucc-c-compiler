@@ -103,6 +103,8 @@ static const struct keyword
 	KEYWORD(KW_ALL, __extension__),
 	KEYWORD__(attribute, token_attribute),
 
+	KEYWORD(KW_ALL, __label__),
+
 	{ NULL, 0, 0 },
 };
 

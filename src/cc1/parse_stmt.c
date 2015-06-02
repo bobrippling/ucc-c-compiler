@@ -293,6 +293,10 @@ static stmt *parse_label(const struct stmt_ctx *ctx)
 	return parse_label_next(lblstmt, ctx);
 }
 
+static void parse_local_labels(const struct stmt_ctx *const ctx)
+{
+}
+
 static stmt *parse_stmt_and_decls(
 		const struct stmt_ctx *const ctx, int nested_scope)
 {
@@ -304,6 +308,8 @@ static stmt *parse_stmt_and_decls(
 	code_stmt->symtab->internal_nest = nested_scope;
 
 	subctx.scope = code_stmt->symtab;
+
+	parse_local_labels(&subctx);
 
 	parse_static_assert(subctx.scope);
 
