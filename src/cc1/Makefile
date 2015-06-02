@@ -12,7 +12,7 @@ OBJ = \
 	../util/str.o ../util/std.o ../util/escape.o ../util/warn.o \
 	../util/math.o ../util/tmpfile.o \
 	str.o num.o label.o strings.o \
-	cc1.o pass1.o cc1_out_ctx.o \
+	pass1.o cc1_out_ctx.o \
 	decl.o attribute.o decl_init.o funcargs.o expr.o stmt.o \
 	btype.o type.o type_is.o type_nav.o op.o c_types.o \
 	tokconv.o tokenise.o \
@@ -34,10 +34,20 @@ OBJ = \
 	ops/expr_assign_compound.o ops/expr_string.o \
 	${ARCH_OBJ}
 
+OBJ_TEST = test.o ${OBJ}
+
 SRC = ${OBJ:.o=.c}
 
-cc1: ${OBJ}
-	${CC} -o $@ ${OBJ} ${LDFLAGS}
+all: cc1 check
+
+cc1: ${OBJ} cc1.o
+	${CC} -o $@ ${OBJ} cc1.o ${LDFLAGS}
+
+test: ${OBJ_TEST}
+	${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
+
+check: test
+	./test
 
 .c.o:
 	${CC} ${CFLAGS} -c -o $@ $<

@@ -11,6 +11,9 @@ src/ucc/cfg.h
 src/as_cfg.h
 src/src_config_platform.mk
 
+src/cc1/test
+src/util/test
+
 lib/libc.a
 lib/crt.a
 
