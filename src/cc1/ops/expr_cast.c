@@ -422,7 +422,6 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	}
 
 	if(IS_LVAL_DECAY(e)){
-		/* implicitly removes cv-qualifiers */
 		e->tree_type = type_decay(expr_cast_child(e)->tree_type);
 
 	}else{
@@ -537,6 +536,10 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		}
 
 		check_qual_rm(ptr_lhs, ptr_rhs, e);
+
+		/* removes cv-qualifiers:
+		 * (const int)3 has type int, not const int */
+		e->tree_type = type_unqualify(e->tree_type);
 	}
 }
 
