@@ -368,8 +368,13 @@ static type *type_qualify3(
 
 	/* if nothing new, no-op */
 	existing = type_qual(unqualified);
-	if((qual & ~existing) == existing)
+
+	if(existing && (qual | existing) == existing){
 		return unqualified;
+	}
+
+	/* don't double up on qualifiers */
+	qual &= ~existing;
 
 	if(transform_array_qual && (ar_ty = type_is(unqualified, type_array))){
 		/* const -> array -> int
