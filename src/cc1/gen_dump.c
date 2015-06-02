@@ -282,6 +282,14 @@ void dump_decl(decl *d, dump *ctx, const char *desc)
 	dump_printf_indent(ctx, 0, "\n");
 
 	if(!is_func){
+		type *tof = type_skip_non_tdefs(d->ref);
+		if(tof->type == type_tdef && !tof->bits.tdef.decl){
+			/* show typeof expr */
+			dump_inc(ctx);
+			dump_expr(tof->bits.tdef.type_of, ctx);
+			dump_dec(ctx);
+		}
+
 		if(d->bits.var.field_width){
 			dump_inc(ctx);
 			dump_expr(d->bits.var.field_width, ctx);
