@@ -179,7 +179,9 @@ void dump_expr_sizeof(const expr *e, dump *ctx)
 
 	if(e->expr){
 		dump_printf(ctx, "\n");
+		dump_inc(ctx);
 		dump_expr(e->expr, ctx);
+		dump_dec(ctx);
 	}else{
 		dump_printf(ctx, " %s\n", type_to_str(e->bits.size_of.of_type));
 	}
