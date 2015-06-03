@@ -390,8 +390,12 @@ void symtab_fold_decls(symtable *tab)
 						decl *db = b->bits.decl;
 
 						const int a_func = !!type_is(da->ref, type_func);
+						const int a_tdef = (da->store & STORE_MASK_STORE) == store_typedef;
+						const int b_tdef = (db->store & STORE_MASK_STORE) == store_typedef;
 
-						if(!!type_is(db->ref, type_func) != a_func){
+						if(a_tdef != b_tdef){
+							clash = "mismatching";
+						}else if(!!type_is(db->ref, type_func) != a_func){
 							clash = "mismatching";
 						}else switch(type_cmp(da->ref, db->ref, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
 							/* ^ type_cmp, since decl_cmp checks storage,
