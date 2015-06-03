@@ -48,6 +48,10 @@ void dump_stmt_case_range(const stmt *s, dump *ctx)
 	dump_expr(s->expr, ctx);
 	dump_expr(s->expr2, ctx);
 	dump_dec(ctx);
+
+	dump_inc(ctx);
+	dump_stmt(s->lhs, ctx);
+	dump_dec(ctx);
 }
 
 void style_stmt_case_range(const stmt *s, out_ctx *octx)

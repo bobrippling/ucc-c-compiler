@@ -30,6 +30,10 @@ void dump_stmt_case(const stmt *s, dump *ctx)
 	dump_inc(ctx);
 	dump_expr(s->expr, ctx);
 	dump_dec(ctx);
+
+	dump_inc(ctx);
+	dump_stmt(s->lhs, ctx);
+	dump_dec(ctx);
 }
 
 void style_stmt_case(const stmt *s, out_ctx *octx)

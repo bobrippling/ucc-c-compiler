@@ -23,6 +23,10 @@ void gen_stmt_default(const stmt *s, out_ctx *octx)
 void dump_stmt_default(const stmt *s, dump *ctx)
 {
 	dump_desc_stmt(ctx, "default", s);
+
+	dump_inc(ctx);
+	dump_stmt(s->lhs, ctx);
+	dump_dec(ctx);
 }
 
 void style_stmt_default(const stmt *s, out_ctx *octx)
