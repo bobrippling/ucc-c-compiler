@@ -322,9 +322,22 @@ static void check_standard_funcs(const char *name, expr **args)
 		c_func_check_free(args[0]);
 
 	}else if(!strcmp(name, "memcpy") && nargs == 3){
+		expr *ptrargs[3];
+		ptrargs[0] = args[0];
+		ptrargs[1] = args[1];
+		ptrargs[2] = NULL;
 
-		c_func_check_memcpy(args);
+		c_func_check_mem(ptrargs, args[2], "memcpy");
+
+	}else if(!strcmp(name, "memset") && nargs == 3){
+		expr *ptrargs[2];
+		ptrargs[0] = args[0];
+		ptrargs[1] = NULL;
+
+		c_func_check_mem(ptrargs, args[2], "memset");
 	}
+
+	/* TODO: memmove, memcmp */
 }
 
 void fold_expr_funcall(expr *e, symtable *stab)

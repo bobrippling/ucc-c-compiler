@@ -66,29 +66,22 @@ static int warn_if_type_mismatch(type *a, type *b, where *loc, const char *fn)
 	return 1;
 }
 
-void c_func_check_memcpy(expr *args[])
+void c_func_check_mem(expr *ptr_args[], expr *sizeof_arg, const char *func)
 {
-	const char *fn = "memcpy";
-	expr *const dest = expr_skip_casts(args[0]);
-	expr *const src = expr_skip_casts(args[1]);
-	expr *const sz = expr_skip_casts(args[2]);
-	type *const sztype = find_sizeof(sz);
-	type *tdest;
-	type *tsrc;
+	type *const sztype = find_sizeof(sizeof_arg);
+	expr **i;
 
 	if(!sztype)
 		return;
 
-	tdest = type_is_ptr(dest->tree_type);
-	tsrc = type_is_ptr(src->tree_type);
+	for(i = ptr_args; *i; i++){
+		expr *e = expr_skip_casts(*i);
+		type *ptr_ty = type_is_ptr(e->tree_type);
 
-	if(tdest){
-		if(warn_if_type_mismatch(tdest, sztype, &dest->where, fn))
-			return;
-	}
+		if(!ptr_ty)
+			continue;
 
-	if(tsrc){
-		if(warn_if_type_mismatch(tsrc, sztype, &src->where, fn))
-			return;
+		if(warn_if_type_mismatch(ptr_ty, sztype, &e->where, func))
+			break;
 	}
 }
