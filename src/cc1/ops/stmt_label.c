@@ -14,7 +14,7 @@ void fold_stmt_label(stmt *s)
 			s->symtab, s->bits.lbl.spel, &s->where);
 
 	/* update its where */
-	l->pw = &s->where;
+	memcpy_safe(&l->where, &s->where);
 	/* update its scope */
 	l->scope = s->symtab;
 	/* update code the label uses */

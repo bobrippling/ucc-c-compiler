@@ -5,7 +5,7 @@
 
 struct label
 {
-	where *pw;
+	where where;
 	char *spel;
 	char *mustgen_spel;
 	symtable *scope;
