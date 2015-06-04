@@ -15,7 +15,8 @@ enum warn_type
 {
 	VWARN_NOTE,
 	VWARN_WARN,
-	VWARN_ERR
+	VWARN_ERR,
+	VWARN_OTHER
 };
 
 void note_at(const struct where *, const char *, ...) ucc_printflike(2, 3);
