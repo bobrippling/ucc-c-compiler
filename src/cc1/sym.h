@@ -139,6 +139,11 @@ const char *sym_to_str(enum sym_type);
 
 /* labels */
 struct label *symtab_label_find_or_new(symtable *, char *, where *);
+
+/* returns 1 if successful, 0 if said label already exists
+ * if 0 is returned, spel is not consumed */
+int symtab_label_add_local(symtable *, char *spel/*consumed*/, where *);
+
 void symtab_label_add(symtable *, struct label *);
 
 unsigned sym_hash(const sym *);
