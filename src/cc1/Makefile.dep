@@ -1166,10 +1166,10 @@ ops/stmt_code.o: ops/stmt_code.c ops/../../util/dynarray.h \
  ops/../decl_init.h ops/../gen_asm.h ops/stmt_code.h \
  ops/../../util/compiler.h ops/../cc1_where.h ops/../decl_init.h \
  ops/../fold_sym.h ops/../type_is.h ops/../type_nav.h ops/../btype.h \
- ops/../sue.h ops/../vla.h ops/../out/lbl.h ops/../out/dbg.h \
- ops/../out/../../util/compiler.h ops/../out/../../util/std.h \
- ops/../out/dbg_lbl.h ops/../out/../retain.h ops/../cc1_out_ctx.h \
- ops/../out/forwards.h
+ ops/../sue.h ops/../vla.h ops/../label.h ops/../out/forwards.h \
+ ops/../out/lbl.h ops/../out/dbg.h ops/../out/../../util/compiler.h \
+ ops/../out/../../util/std.h ops/../out/dbg_lbl.h ops/../out/../retain.h \
+ ops/../cc1_out_ctx.h
 ops/stmt_continue.o: ops/stmt_continue.c ops/ops.h ops/../../util/util.h \
  ops/../../util/warn.h ops/../../util/where.h ops/../../util/compiler.h \
  ops/../cc1.h ops/../../util/std.h ops/../warn.h ops/../out/out.h \
