@@ -13,6 +13,7 @@
 #include "../format_chk.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../c_funcs.h"
 
 #define ARG_BUF(buf, i, sp)       \
 	snprintf(buf, sizeof buf,       \
@@ -315,28 +316,11 @@ static void default_promote_args(
 
 static void check_standard_funcs(const char *name, expr **args)
 {
-	if(!strcmp(name, "free") && dynarray_count(args) == 1){
-		int warn = 0;
-		expr *arg = args[0];
+	const size_t nargs = dynarray_count(args);
 
-		arg = expr_skip_casts(arg);
+	if(!strcmp(name, "free") && nargs == 1){
+		c_func_check_free(args[0]);
 
-		if(expr_kind(arg, identifier)){
-			sym *sym = arg->bits.ident.bits.ident.sym;
-
-			if(sym && type_is_array(sym->decl->ref))
-				warn = 1;
-
-		}else if(expr_kind(arg, addr)){
-			expr *addrof = expr_addr_target(arg);
-
-			if(expr_kind(addrof, identifier))
-				warn = 1;
-		}
-
-		if(warn){
-			cc1_warn_at(&arg->where, free_nonheap, "free() of non-heap object");
-		}
 	}
 }
 
