@@ -321,6 +321,9 @@ static void check_standard_funcs(const char *name, expr **args)
 	if(!strcmp(name, "free") && nargs == 1){
 		c_func_check_free(args[0]);
 
+	}else if(!strcmp(name, "memcpy") && nargs == 3){
+
+		c_func_check_memcpy(args);
 	}
 }
 

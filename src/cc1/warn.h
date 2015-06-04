@@ -127,6 +127,7 @@ struct cc1_warning
 	unsigned char sign_compare;
 	unsigned char signed_unsigned;
 	unsigned char sizeof_decayed;
+	unsigned char sizeof_pointer_memaccess;
 	unsigned char sizeof_ptr_div;
 	unsigned char sizeof_void_or_func;
 	unsigned char static_array_bad;
