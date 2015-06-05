@@ -6,6 +6,8 @@
 #include "../util/alloc.h"
 #include "../util/util.h"
 #include "../util/dynarray.h"
+
+#include "num.h"
 #include "sue.h"
 #include "cc1.h"
 #include "cc1_where.h"
@@ -405,6 +407,22 @@ void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable 
 
 	*pm = NULL;
 	*psue = NULL;
+}
+
+int enum_has_value(struct_union_enum_st *en, integral_t val)
+{
+	sue_member **i;
+
+	UCC_ASSERT(en->primitive == type_enum, "enum");
+
+	for(i = en->members; i && *i; i++){
+		enum_member *ent = (*i)->enum_member;
+		integral_t ent_i = const_fold_val_i(ent->val);
+
+		if(val == ent_i)
+			return 1;
+	}
+	return 0;
 }
 
 decl *struct_union_member_find_sue(struct_union_enum_st *in, struct_union_enum_st *needle)

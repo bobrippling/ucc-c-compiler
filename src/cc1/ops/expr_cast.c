@@ -483,14 +483,31 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		if(e->expr_cast_implicit){
 			struct_union_enum_st *ea, *eb;
 
-			if((ea = type_is_enum(tlhs))
-			&& (eb = type_is_enum(trhs))
-			&& ea != eb)
-			{
+			ea = type_is_enum(tlhs);
+			eb = type_is_enum(trhs);
+
+			if(ea && eb && ea != eb){
 				cc1_warn_at(&e->where,
 						enum_mismatch,
 						"implicit conversion from 'enum %s' to 'enum %s'",
 						eb->spel, ea->spel);
+			}else if(ea && !eb){
+				/* passing to enum from non-enum */
+				consty k;
+
+				/* warn if out of range */
+				const_fold(e->expr, &k);
+
+				if(k.type == CONST_NUM
+				&& K_INTEGRAL(k.bits.num)
+				&& !enum_has_value(ea, k.bits.num.val.i))
+				{
+					cc1_warn_at(&e->where,
+							enum_out_of_range,
+							"value %" NUMERIC_FMT_U " is out of range for 'enum %s'",
+							k.bits.num.val.i,
+							ea->spel);
+				}
 			}
 
 			if(!!ptr_lhs ^ !!ptr_rhs){

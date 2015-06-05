@@ -89,6 +89,10 @@ int  enum_nentries(struct_union_enum_st *);
 void enum_member_search(enum_member **, struct_union_enum_st **,
 		struct symtable *, const char *spel);
 
+#ifdef NUM_H
+int enum_has_value(struct_union_enum_st *, integral_t);
+#endif
+
 /* struct/union specific */
 unsigned sue_size(struct_union_enum_st *, const where *w);
 unsigned sue_align(struct_union_enum_st *, const where *w);

@@ -492,6 +492,7 @@ static void warning_all(void)
 	cc1_warning.missing_prototype =
 	cc1_warning.missing_variable_decls =
 	cc1_warning.null_zero_literal =
+	cc1_warning.enum_out_of_range =
 		W_OFF;
 }
 
