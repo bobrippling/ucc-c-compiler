@@ -4,6 +4,7 @@
 
 #include "../util/alloc.h"
 #include "../util/util.h"
+#include "../util/macros.h"
 
 #include "expr.h"
 #include "expr_tok.h"
@@ -151,7 +152,7 @@ static void expr_init(void)
 		return;
 	init = 1;
 
-	for(i = 0; i < sizeof(preds)/sizeof(*preds); i++)
+	for(i = 0; i < countof(preds); i++)
 		preds[i] = MAX_PRI; /* any large value */
 
 #define PRED_SET(op, n) PRECEDENCE(tok_ ## op) = n

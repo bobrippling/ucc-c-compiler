@@ -7,6 +7,7 @@
 #include "escape.h"
 #include "util.h"
 #include "str.h"
+#include "macros.h"
 
 typedef int digit_test(int);
 
@@ -33,7 +34,7 @@ int escape_char(int c)
 	};
 	unsigned int i;
 
-	for(i = 0; i < sizeof(escapechars) / sizeof(escapechars[0]); i++)
+	for(i = 0; i < countof(escapechars); i++)
 		if(escapechars[i].from == c)
 			return escapechars[i].to;
 

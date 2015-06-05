@@ -13,6 +13,7 @@
 #include "../util/platform.h"
 #include "../util/std.h"
 #include "../util/limits.h"
+#include "../util/macros.h"
 
 #include "main.h"
 #include "macro.h"
@@ -103,7 +104,7 @@ static const struct
 #undef X
 };
 
-#define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)
+#define ITER_WARNS(j) for(j = 0; j < countof(warns); j++)
 
 void trace(const char *fmt, ...)
 {

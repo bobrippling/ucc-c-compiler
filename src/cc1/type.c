@@ -879,7 +879,7 @@ enum type_primitive type_primitive_not_less_than_size(unsigned sz)
 
 	unsigned i;
 
-	for(i = 0; i < sizeof(prims)/sizeof(*prims); i++)
+	for(i = 0; i < countof(prims); i++)
 		if(sz >= type_primitive_size(prims[i]))
 			return prims[i];
 

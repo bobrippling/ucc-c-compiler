@@ -8,14 +8,13 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
+#include "../util/macros.h"
 
 #include "main.h"
 #include "preproc.h"
 #include "directive.h"
 #include "eval.h"
 #include "str.h"
-
-#define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
 
 static enum
 {
@@ -68,7 +67,7 @@ void preproc_push(FILE *f, const char *fname)
 
 
 	file_stack_idx++;
-	if(file_stack_idx == ARRAY_LEN(file_stack))
+	if(file_stack_idx == countof(file_stack))
 		CPP_DIE("too many includes");
 
 #ifdef DO_CHDIR

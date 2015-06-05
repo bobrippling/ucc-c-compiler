@@ -155,9 +155,8 @@ static const char *x86_intreg_str(unsigned reg, type *r)
 		{  "bpl", "bp", "ebp", "rbp" },
 		{  "spl", "sp", "esp", "rsp" },
 	};
-#define N_REGS (sizeof rnames / sizeof *rnames)
 
-	UCC_ASSERT(reg < N_REGS, "invalid x86 int reg %d", reg);
+	UCC_ASSERT(reg < countof(rnames), "invalid x86 int reg %d", reg);
 
 	return rnames[reg][asm_table_lookup(r)];
 }
@@ -168,8 +167,7 @@ static const char *x86_fpreg_str(unsigned i)
 		"xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7"
 	};
 
-	UCC_ASSERT(i < sizeof nams/sizeof(*nams),
-			"bad fp reg index %d", i);
+	UCC_ASSERT(i < countof(nams), "bad fp reg index %d", i);
 
 	return nams[i];
 }
@@ -1604,14 +1602,14 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 			{ V_REG, V_REG },
 		};
-		static const int ops_n = sizeof(ops) / sizeof(ops[0]);
-		int i, need_swap = 0, satisfied = 0;
+		int need_swap = 0, satisfied = 0;
+		unsigned i;
 
 #define OP_MATCH(vp, op) (   \
 		vp->type == ops[i].op && \
 		(vp->type != V_REG || !vp->bits.regoff.offset))
 
-		for(i = 0; i < ops_n; i++){
+		for(i = 0; i < countof(ops); i++){
 			if(OP_MATCH(l, l) && OP_MATCH(r, r)){
 				satisfied = 1;
 				break;

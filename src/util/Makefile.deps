@@ -8,7 +8,8 @@ dynmap.o: dynmap.c dynmap.h dyn.h alloc.h compiler.h
 where.o: where.c where.h compiler.h
 str.o: str.c str.h
 std.o: std.c std.h
-escape.o: escape.c escape.h compiler.h util.h warn.h where.h str.h
+escape.o: escape.c escape.h compiler.h util.h warn.h where.h str.h \
+ macros.h
 math.o: math.c math.h
 warn.o: warn.c warn.h where.h compiler.h alloc.h
 path.o: path.c dynarray.h dyn.h path.h

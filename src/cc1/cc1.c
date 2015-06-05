@@ -17,6 +17,7 @@
 #include "../util/dynarray.h"
 #include "../util/tmpfile.h"
 #include "../util/alloc.h"
+#include "../util/macros.h"
 
 #include "tokenise.h"
 #include "cc1.h"
@@ -35,8 +36,6 @@
 #include "cc1_where.h"
 
 #include "../as_cfg.h"
-
-#define countof(ar) sizeof(ar)/sizeof((ar)[0])
 
 struct cc1_warning cc1_warning;
 enum warning_fatality
