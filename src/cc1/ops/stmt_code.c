@@ -204,9 +204,6 @@ void fold_stmt_code(stmt *s)
 
 		fold_stmt(st);
 
-		/*
-		 * check for dead code
-		 */
 		if(!warned
 		&& st->kills_below_code
 		&& siter[1]
@@ -215,8 +212,7 @@ void fold_stmt_code(stmt *s)
 		&& !stmt_kind(siter[1], case_range)
 		&& !stmt_kind(siter[1], default)
 		){
-			cc1_warn_at(&siter[1]->where, dead_code,
-					"dead code after %s (%s)", st->f_str(), siter[1]->f_str());
+			cc1_warn_at(&siter[1]->where, dead_code, "code will never be executed");
 			warned = 1;
 		}
 	}
