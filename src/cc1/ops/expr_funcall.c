@@ -6,6 +6,7 @@
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
+#include "../../util/macros.h"
 
 #include "ops.h"
 #include "expr_funcall.h"
@@ -320,24 +321,37 @@ static void check_standard_funcs(const char *name, expr **args)
 
 	if(!strcmp(name, "free") && nargs == 1){
 		c_func_check_free(args[0]);
+	}else{
+		static const struct {
+			const char *name;
+			unsigned nargs;
+			int szarg;
+			int ptrargs[2];
+		} memfuncs[] = {
+			{ "memcpy", 3, 2, { 0, 1 } },
+			{ "memset", 3, 2, { 0, -1 } },
+			/* TODO: memmove, memcmp */
 
-	}else if(!strcmp(name, "memcpy") && nargs == 3){
-		expr *ptrargs[3];
-		ptrargs[0] = args[0];
-		ptrargs[1] = args[1];
-		ptrargs[2] = NULL;
+			{ 0 }
+		};
 
-		c_func_check_mem(ptrargs, args[2], "memcpy");
+		for(int i = 0; memfuncs[i].name; i++){
+			if(nargs == memfuncs[i].nargs && !strcmp(name, memfuncs[i].name)){
+				expr *ptrargs[countof(memfuncs[0].ptrargs) + 1] = { 0 };
+				unsigned arg;
 
-	}else if(!strcmp(name, "memset") && nargs == 3){
-		expr *ptrargs[2];
-		ptrargs[0] = args[0];
-		ptrargs[1] = NULL;
+				for(arg = 0; arg < countof(memfuncs[0].ptrargs); arg++){
+					if(memfuncs[i].ptrargs[arg] == -1)
+						break;
 
-		c_func_check_mem(ptrargs, args[2], "memset");
+					ptrargs[arg] = args[memfuncs[i].ptrargs[arg]];
+				}
+
+				c_func_check_mem(ptrargs, args[memfuncs[i].szarg], memfuncs[i].name);
+				break;
+			}
+		}
 	}
-
-	/* TODO: memmove, memcmp */
 }
 
 void fold_expr_funcall(expr *e, symtable *stab)
