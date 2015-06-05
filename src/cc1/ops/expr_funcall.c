@@ -330,7 +330,8 @@ static void check_standard_funcs(const char *name, expr **args)
 		} memfuncs[] = {
 			{ "memcpy", 3, 2, { 0, 1 } },
 			{ "memset", 3, 2, { 0, -1 } },
-			/* TODO: memmove, memcmp */
+			{ "memmove", 3, 2, { 0, 1 } },
+			{ "memcmp", 3, 2, { 0, 1 } },
 
 			{ 0 }
 		};
