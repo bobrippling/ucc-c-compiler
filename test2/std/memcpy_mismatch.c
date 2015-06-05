@@ -11,8 +11,17 @@ void *memcpy(void *, const void *, size_t);
 f(A *a, A *b)
 {
 	memcpy(a, b, sizeof a); // CHECK: warning: memcpy with different types 'A (aka 'struct A')' and 'A (aka 'struct A') *'
-	memcpy(a, b, sizeof *a);
+	memcpy(a, b, sizeof *a); // CHECK: !/warning: memcpy/
 
 	memcpy(a, b, 2 * sizeof a); // CHECK: warning: memcpy with different types 'A (aka 'struct A')' and 'A (aka 'struct A') *'
-	memcpy(a, b, 2 * sizeof *a);
+	memcpy(a, b, 2 * sizeof *a); // CHECK: !/warning: memcpy/
+}
+
+g(A *a, const A *b)
+{
+	memcpy(a, b, sizeof a); // CHECK: warning: memcpy with different types 'A (aka 'struct A')' and 'A (aka 'struct A') *'
+	memcpy(a, b, sizeof *a); // CHECK: !/warning: memcpy/
+
+	memcpy(a, b, 2 * sizeof a); // CHECK: warning: memcpy with different types 'A (aka 'struct A')' and 'A (aka 'struct A') *'
+	memcpy(a, b, 2 * sizeof *a); // CHECK: !/warning: memcpy/
 }

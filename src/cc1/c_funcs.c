@@ -51,7 +51,7 @@ static int warn_if_type_mismatch(type *a, type *b, where *loc, const char *fn)
 	char buf[TYPE_STATIC_BUFSIZ];
 
 	/* if different, warn, unless one is void */
-	if(type_cmp(a, b, 0) & TYPE_EQUAL_ANY)
+	if(type_cmp(a, b, 0) & (TYPE_EQUAL_ANY | TYPE_QUAL_ADD | TYPE_QUAL_SUB))
 		return 0;
 
 	if(type_is_void(a) || type_is_void(b))
