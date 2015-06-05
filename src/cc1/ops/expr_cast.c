@@ -495,7 +495,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				/* passing to enum from non-enum */
 				consty k;
 
-				/* warn if out of range */
+				/* warn if out of range. if in range, warn about int literal -> enum */
 				const_fold(e->expr, &k);
 
 				if(k.type == CONST_NUM
@@ -506,6 +506,16 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 							enum_out_of_range,
 							"value %" NUMERIC_FMT_U " is out of range for 'enum %s'",
 							k.bits.num.val.i,
+							ea->spel);
+				}
+				else
+				{
+					const btype *non_enum = type_get_type(trhs);
+
+					cc1_warn_at(&e->where,
+							enum_mismatch_int,
+							"implicit conversion from '%s' to 'enum %s'",
+							btype_to_str(non_enum),
 							ea->spel);
 				}
 			}

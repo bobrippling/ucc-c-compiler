@@ -54,6 +54,7 @@ struct cc1_warning
 	unsigned char empty_struct;
 	unsigned char enum_cmp;
 	unsigned char enum_mismatch;
+	unsigned char enum_mismatch_int;
 	unsigned char enum_out_of_range;
 	unsigned char enum_switch_bitmask;
 	unsigned char enum_switch_imposter;

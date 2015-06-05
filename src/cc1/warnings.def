@@ -112,6 +112,7 @@ X("empty-init", &cc1_warning.gnu_empty_init)
 
 X("enum-mismatch", &cc1_warning.enum_mismatch)
 X("assign-enum", &cc1_warning.enum_out_of_range) /* clang compat */
+X("enum-mismatch-int", &cc1_warning.enum_mismatch_int)
 X("enum-out-of-range", &cc1_warning.enum_out_of_range)
 X("enum-switch-bitmask", &cc1_warning.enum_switch_bitmask)
 X("enum-switch-imposter", &cc1_warning.enum_switch_imposter)
