@@ -99,6 +99,8 @@ void dump_stmt_for(const stmt *s, dump *ctx)
 	if(s->flow->for_while) dump_expr(s->flow->for_while, ctx);
 	if(s->flow->for_inc) dump_expr(s->flow->for_inc, ctx);
 
+	dump_stmt(s->lhs, ctx);
+
 	dump_dec(ctx);
 }
 
