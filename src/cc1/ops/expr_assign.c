@@ -8,7 +8,7 @@
 
 const char *str_expr_assign()
 {
-	return "assign";
+	return "assignment";
 }
 
 void bitfield_trunc_check(decl *mem, expr *from)

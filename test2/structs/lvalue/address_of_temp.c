@@ -14,5 +14,5 @@ struct A
 
 main()
 {
-	int (*p)[5] = &f().x; // CHECK: error: can't take the address of struct (int[5])
+	int (*p)[5] = &f().x; // CHECK: error: can't take the address of member-access (int[5])
 }

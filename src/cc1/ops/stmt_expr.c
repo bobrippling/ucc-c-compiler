@@ -6,7 +6,7 @@
 
 const char *str_stmt_expr()
 {
-	return "expr";
+	return "expression";
 }
 
 static int unused_expr_type(type *t)

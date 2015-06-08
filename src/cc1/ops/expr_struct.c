@@ -12,7 +12,7 @@
 
 const char *str_expr_struct()
 {
-	return "struct";
+	return "member-access";
 }
 
 void fold_expr_struct(expr *e, symtable *stab)

@@ -23,7 +23,7 @@
 
 const char *str_expr_funcall()
 {
-	return "funcall";
+	return "function-call";
 }
 
 static attribute *func_attr_present(expr *e, enum attribute_type t)

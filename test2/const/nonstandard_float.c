@@ -11,10 +11,10 @@
  * sizeof or _Alignof operator.
  */
 
-int x[(int)(1.2 + 3.2)]; // CHECK: /warning: op-expr is a non-standard/
+int x[(int)(1.2 + 3.2)]; // CHECK: /warning: operator-expr is a non-standard/
 //              ^ addition of non-ints
 
-int y[1.5 > 1.4]; // CHECK: /warning: op-expr is a non-standard/
+int y[1.5 > 1.4]; // CHECK: /warning: operator-expr is a non-standard/
 
 int z1[1 > 1]; // CHECK: !/warn|err/
 int z2[2 * 5]; // CHECK: !/warn|err/

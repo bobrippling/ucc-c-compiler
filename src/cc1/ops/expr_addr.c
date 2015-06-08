@@ -12,7 +12,7 @@
 
 const char *str_expr_addr()
 {
-	return "addr";
+	return "address-of";
 }
 
 int expr_is_addressable(expr *e)

@@ -26,7 +26,7 @@
 
 const char *str_expr_op()
 {
-	return "op";
+	return "operator";
 }
 
 static void const_op_num_fp(

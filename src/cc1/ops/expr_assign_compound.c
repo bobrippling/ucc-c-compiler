@@ -3,7 +3,7 @@
 
 const char *str_expr_assign_compound()
 {
-	return "assign_compound";
+	return "compound-assignment";
 }
 
 void fold_expr_assign_compound(expr *e, symtable *stab)

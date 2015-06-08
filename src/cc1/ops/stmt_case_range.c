@@ -6,7 +6,7 @@
 
 const char *str_stmt_case_range()
 {
-	return "case_range";
+	return "case-range";
 }
 
 void fold_stmt_case_range(stmt *s)

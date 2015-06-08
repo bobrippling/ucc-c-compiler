@@ -9,7 +9,7 @@
 
 const char *str_expr_val()
 {
-	return "val";
+	return "value";
 }
 
 /*

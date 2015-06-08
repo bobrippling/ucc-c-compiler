@@ -7,5 +7,5 @@ f()
 
 main()
 {
-	f(); // CHECK: warning: unused expression (funcall)
+	f(); // CHECK: warning: unused expression (function-call)
 }
