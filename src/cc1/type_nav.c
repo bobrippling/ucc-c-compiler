@@ -2,6 +2,7 @@
 #include <assert.h>
 
 #include "../util/alloc.h"
+#include "../util/dynarray.h"
 #include "cc1_where.h"
 
 #include "btype.h"
@@ -529,40 +530,65 @@ type *type_nav_int_enum(struct type_nav *root, struct_union_enum_st *enu)
 	return ent;
 }
 
-type *type_unqualify(type *t)
+type *type_unqualify(type *const qualified)
 {
+	attribute **attr = NULL, **attr_i;
 	type *t_restrict = NULL, *prev = NULL;
+	type *i, *ret;
 
-	while(t){
-		t = type_skip_non_casts(t);
+	for(i = qualified; i; i = type_next_1(i)){
+		switch(i->type){
+			case type_cast:
+			{
+				/* restrict qualifier is special, and is only on pointer
+				 * types and doesn't really apply to the expression itself
+				 */
+				if(i->bits.cast.qual & qual_restrict)
+					t_restrict = i;
 
-		if(t->type == type_cast){
-			/* restrict qualifier is special, and is only on pointer
-			 * types and doesn't really apply to the expression itself
-			 */
-			if(t->bits.cast.qual & qual_restrict)
-				t_restrict = t;
+				prev = i;
+				break;
+			}
 
-			prev = t;
-			t = t->ref;
-		}else{
-			break;
+			case type_attr:
+			{
+				dynarray_add(&attr, i->bits.attr);
+				break;
+			}
+
+			case_CONCRETE_TYPE:
+			{
+				goto done;
+			}
+
+			default:
+				break;
 		}
 	}
+
+done:;
+	assert(i);
 
 	if(t_restrict){
 		assert(prev);
 		if(prev == t_restrict){
 			/* fine - we can just return this, preserving restrictness,
 			 * as nothing below it is a qualifier */
-			return t_restrict;
+			ret = t_restrict;
 		}else{
 			/* preserve restrict */
-			return type_qualify(t, qual_restrict);
+			ret = type_qualify(i, qual_restrict);
 		}
+	}else{
+		ret = i;
 	}
 
-	return t;
+	for(attr_i = attr; attr_i && *attr_i; attr_i++)
+		ret = type_attributed(ret, RETAIN(*attr_i));
+
+	dynarray_free(attribute **, attr, NULL);
+
+	return ret;
 }
 
 type *type_at_where(type *t, where *w)

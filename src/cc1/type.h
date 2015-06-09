@@ -32,6 +32,13 @@ struct type
 		type_attr,  /* __attribute__ */
 		type_where  /* .where */
 #define N_TYPE_KINDS (type_where + 1)
+#define case_CONCRETE_TYPE \
+			case type_btype:     \
+			case type_ptr:       \
+			case type_block:     \
+			case type_func:      \
+			case type_array
+
 	} type;
 
 	union
