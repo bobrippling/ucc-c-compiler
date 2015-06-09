@@ -561,6 +561,7 @@ arg_ld:
 
 				case 'O':
 					ADD_ARG(mode_compile);
+					ADD_ARG(mode_preproc); /* __OPTIMIZE__, etc */
 					continue;
 
 				case 'g':

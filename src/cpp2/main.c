@@ -415,6 +415,20 @@ int main(int argc, char **argv)
 				break;
 			}
 
+			case 'O':
+			{
+				switch(argv[i][2]){
+					case '0':
+						break;
+					case 's':
+						macro_add("__OPTIMIZE_SIZE__",  "1", 0);
+						/* fallthru */
+					default:
+						macro_add("__OPTIMIZE__",  "1", 0);
+				}
+				break;
+			}
+
 			case 'w':
 				if(!argv[i][2]){
 					wmode = 0;
