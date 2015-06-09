@@ -489,13 +489,13 @@ static type *parse_btype(
 			/* a _Noreturn function returning a sue is pretty daft... */
 			return parse_btype_end(tref, qual, is_noreturn, attr, scope, &w);
 
-		}else if(accept(token_typeof)){
+		}else if(curtok == token_typeof){
 			if(primitive_mode != NONE)
 				die_at(NULL, "typeof specifier after previous specifier");
 
 			cc1_warn_at(NULL, gnu_typeof, "use of GNU typeof()");
 
-			tdef_typeof = parse_expr_sizeof_typeof_alignof(what_typeof, scope);
+			tdef_typeof = parse_expr_sizeof_typeof_alignof(scope);
 			primitive_mode = TYPEOF;
 
 		}else if(accept(token___builtin_va_list)){

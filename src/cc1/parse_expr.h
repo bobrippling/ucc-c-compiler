@@ -9,8 +9,7 @@
 
 expr *parse_expr_assignment(symtable *, int static_ctx);
 
-expr *parse_expr_sizeof_typeof_alignof(
-		enum what_of what_of, symtable *scope);
+expr *parse_expr_sizeof_typeof_alignof(symtable *scope);
 
 expr *parse_expr_exp(symtable *, int static_ctx);
 

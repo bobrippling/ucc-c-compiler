@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -27,29 +28,30 @@
 expr *parse_expr_unary(symtable *scope, int static_ctx);
 #define PARSE_EXPR_CAST(s, static_ctx) parse_expr_unary(s, static_ctx)
 
-expr *parse_expr_sizeof_typeof_alignof(
-		enum what_of what_of, symtable *scope)
+expr *parse_expr_sizeof_typeof_alignof(symtable *scope)
 {
 	const int static_ctx = /*doesn't matter:*/0;
 	expr *e;
 	where w;
 	int is_expr = 1;
+	enum what_of what_of;
 
 	where_cc1_current(&w);
 
-	switch(what_of){
-			enum token t;
-		case what_alignof:
-			t = token__Alignof;
-			if(0)
-		case what_typeof:
-			t = token_typeof;
-			if(0)
-		case what_sizeof:
-			t = token_sizeof;
+	switch(curtok){
+		default:
+			assert(0 && "unreachable sizeof parse");
 
-			w.chr -= strlen(token_to_str(t));
+		case token__Alignof:
+			what_of = what_alignof;
+			if(0)
+		case token_typeof:
+			what_of = what_typeof;
+			if(0)
+		case token_sizeof:
+			what_of = what_sizeof;
 	}
+	EAT(curtok);
 
 	if(accept(token_open_paren)){
 		type *r = parse_type(0, scope);
@@ -429,14 +431,12 @@ expr *parse_expr_unary(symtable *scope, int static_ctx)
 
 			case token_sizeof:
 				set_w = 0; /* no need since there's no sub-parsing here */
-				EAT(token_sizeof);
-				e = parse_expr_sizeof_typeof_alignof(what_sizeof, scope);
+				e = parse_expr_sizeof_typeof_alignof(scope);
 				break;
 
 			case token__Alignof:
 				set_w = 0;
-				EAT(token__Alignof);
-				e = parse_expr_sizeof_typeof_alignof(what_alignof, scope);
+				e = parse_expr_sizeof_typeof_alignof(scope);
 				break;
 
 			case token___extension__:
