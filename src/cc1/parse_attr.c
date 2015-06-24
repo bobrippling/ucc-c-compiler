@@ -308,6 +308,7 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 {
 	symtable_global *glob;
 	int i;
+	where attrloc;
 
 	for(i = 0; attrs[i].ident; i++){
 		char buf[MAX_FMT_LEN];
@@ -318,8 +319,11 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 		}
 	}
 
+	where_cc1_current(&attrloc);
+	attrloc.chr -= strlen(ident);
+
 	/* unrecognised - only do the warning (and map checking) if non system-header */
-	if(!where_in_sysheader(where_cc1_current(NULL))){
+	if(!where_in_sysheader(&attrloc)){
 		glob = symtab_global(scope);
 		if(!dynmap_exists(char *, glob->unrecog_attrs, (char *)ident)){
 			char *dup = ustrdup(ident);
@@ -329,7 +333,7 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 
 			dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
 
-			cc1_warn_at(NULL, attr_unknown,
+			cc1_warn_at(&attrloc, attr_unknown,
 					"ignoring unrecognised attribute \"%s\"", ident);
 		}
 	}
