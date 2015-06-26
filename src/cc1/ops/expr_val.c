@@ -47,7 +47,7 @@ void fold_expr_val(expr *e, symtable *stab)
 	int is_signed = !(num->suffix & VAL_UNSIGNED);
 	const int can_change_sign = is_signed && (num->suffix & VAL_NON_DECIMAL);
 
-	const int long_max_bit = 63; /* TODO */
+	const int long_max_bit = 8 * type_primitive_size(type_long) - 1;
 	const int highest_bit = integral_high_bit(num->val.i, e->tree_type);
 	enum type_primitive p =
 		num->suffix & VAL_LLONG ? type_llong :
