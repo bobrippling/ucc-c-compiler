@@ -3,6 +3,7 @@
 
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/util.h"
 #include "cc1_where.h"
 
 #include "btype.h"
@@ -494,12 +495,13 @@ type *type_dereference_decay(type *const ty_ptr)
 	return pointee;
 }
 
-type *type_nav_MAX_FOR(struct type_nav *root, unsigned sz)
+type *type_nav_MAX_FOR(struct type_nav *root, unsigned sz, int is_signed)
 {
-	enum type_primitive p = type_primitive_not_less_than_size(sz);
-	if(p != type_unknown)
-		return type_nav_btype(root, p);
-	assert(0 && "no type max");
+	enum type_primitive p = type_primitive_not_less_than_size(sz, is_signed);
+
+	UCC_ASSERT(p != type_unknown, "no type max for %u", sz);
+
+	return type_nav_btype(root, p);
 }
 
 type *type_nav_int_enum(struct type_nav *root, struct_union_enum_st *enu)

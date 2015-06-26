@@ -147,6 +147,6 @@ unsigned type_hash_skip_nontdefs_consts(const type *);
 unsigned sue_hash(const struct struct_union_enum_st *);
 
 /* returns the largest type to hold a type of size 'sz' */
-enum type_primitive type_primitive_not_less_than_size(unsigned sz);
+enum type_primitive type_primitive_not_less_than_size(unsigned sz, int is_signed);
 
 #endif
