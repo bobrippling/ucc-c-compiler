@@ -109,7 +109,10 @@ void fold_expr_val(expr *e, symtable *stab)
 	}
 
 	/* ulong? */
-	if(p <= type_long && highest_bit == long_max_bit && (!is_signed || can_change_sign)){
+	if(p <= type_long && highest_bit == long_max_bit
+	&& (!is_signed || can_change_sign || cc1_std <= STD_C89))
+	{
+		/* in C89 we use a unsigned long for the large integer constants */
 		is_signed = 0;
 		p = type_long;
 		goto chosen;
