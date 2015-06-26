@@ -440,7 +440,7 @@ void eat(enum token t, const char *fnam, int line)
 int curtok_in_list(va_list l)
 {
 	enum token t;
-	while((t = va_arg(l, enum token)) != token_unknown)
+	while((enum token)(t = va_arg(l, int)) != token_unknown)
 		if(curtok == t)
 			return 1;
 	return 0;
