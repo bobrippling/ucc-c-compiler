@@ -507,6 +507,8 @@ int main(int argc, char **argv)
 					ADD_ARG(mode_preproc); /* -w */
 				case 'm':
 					ADD_ARG(mode_compile);
+					if(!strcmp(argv[i] + 2, "32") || !strcmp(argv[i] + 2, "64"))
+						ADD_ARG(mode_preproc);
 					continue;
 
 				case 'D':

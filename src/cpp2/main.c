@@ -217,6 +217,7 @@ int main(int argc, char **argv)
 	int i;
 	int platform_win32 = 0;
 	int freestanding = 0;
+	int m32 = 0;
 
 	infname = outfname = NULL;
 
@@ -230,17 +231,6 @@ int main(int argc, char **argv)
 			macro_add_func(initial_defs[i].nam, initial_defs[i].val, NULL, 0, 1);
 		else
 			macro_add(initial_defs[i].nam, initial_defs[i].val, 0);
-	}
-
-	switch(platform_type()){
-		case PLATFORM_x86_64:
-			macro_add("__LP64__", "1", 0);
-			macro_add("__x86_64__", "1", 0);
-			/* TODO: __i386__ for 32 bit */
-			break;
-
-		case PLATFORM_mipsel_32:
-			macro_add("__MIPS__", "1", 0);
 	}
 
 	if(platform_bigendian())
@@ -390,6 +380,13 @@ int main(int argc, char **argv)
 				}
 				break;
 
+			case 'm':
+				if(!strcmp(argv[i]+2, "32"))
+					m32 = 1;
+				else if(!strcmp(argv[i]+2, "64"))
+					m32 = 0;
+				break;
+
 			case 'W':
 			{
 				int off;
@@ -450,6 +447,20 @@ defaul:
 					goto usage;
 				}
 		}
+	}
+
+	switch(platform_type()){
+		case PLATFORM_x86_64:
+			if(m32){
+				macro_add("__i386__", "1", 0);
+			}else{
+				macro_add("__LP64__", "1", 0);
+				macro_add("__x86_64__", "1", 0);
+			}
+			break;
+
+		case PLATFORM_mipsel_32:
+			macro_add("__MIPS__", "1", 0);
 	}
 
 	current_fname = FNAME_BUILTIN;
