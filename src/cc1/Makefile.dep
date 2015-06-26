@@ -1823,8 +1823,9 @@ out/stack.o: out/stack.c out/../type.h out/../num.h out/../btype.h \
  out/../ops/expr_sizeof.h out/../ops/expr_val.h out/../ops/expr_stmt.h \
  out/../ops/expr_deref.h out/../ops/expr_struct.h \
  out/../ops/expr_compound_lit.h out/../ops/expr_string.h \
- out/../ops/expr_block.h out/../pack.h out/macros.h out/forwards.h \
- out/val.h out/ctx.h out/vstack_t.h out/blk.h out/out.h out/stack.h
+ out/../ops/expr_block.h out/../pack.h out/../../util/macros.h \
+ out/forwards.h out/val.h out/ctx.h out/vstack_t.h out/blk.h out/out.h \
+ out/stack.h
 out/val.o: out/val.c out/../../util/alloc.h out/../../util/compiler.h \
  out/../type.h out/../num.h out/../btype.h out/../../util/where.h \
  out/../type_nav.h out/../sue.h out/../type.h out/../decl.h \
@@ -1877,12 +1878,12 @@ out/write.o: out/write.c out/../../util/dynarray.h out/../../util/dyn.h \
 out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/warn.h \
  out/../../util/where.h out/../../util/compiler.h out/../../util/alloc.h \
  out/../../util/dynarray.h out/../../util/dyn.h out/../../util/platform.h \
- out/../op.h out/../decl.h out/../type.h out/../num.h out/../btype.h \
- out/../../util/where.h out/../attribute.h out/../retain.h \
- out/../attributes.h out/../type.h out/../type_is.h out/../type_nav.h \
- out/../sue.h out/../decl.h out/../expr.h out/../strings.h \
- out/../../util/dynmap.h out/../op.h out/../sym.h out/../const.h \
- out/../out/out.h out/../out/../type.h out/../out/../num.h \
+ out/../../util/macros.h out/../op.h out/../decl.h out/../type.h \
+ out/../num.h out/../btype.h out/../../util/where.h out/../attribute.h \
+ out/../retain.h out/../attributes.h out/../type.h out/../type_is.h \
+ out/../type_nav.h out/../sue.h out/../decl.h out/../expr.h \
+ out/../strings.h out/../../util/dynmap.h out/../op.h out/../sym.h \
+ out/../const.h out/../out/out.h out/../out/../type.h out/../out/../num.h \
  out/../out/../sym.h out/../out/../op.h out/../out/forwards.h \
  out/../../util/compiler.h out/../ops/expr_addr.h \
  out/../ops/expr_assign.h out/../ops/expr_assign_compound.h \
@@ -1896,5 +1897,5 @@ out/x86_64.o: out/x86_64.c out/../../util/util.h out/../../util/warn.h \
  out/../warn.h out/val.h out/forwards.h out/asm.h out/impl.h \
  out/../../util/compiler.h out/backend.h out/x86_64.h out/impl_jmp.h \
  out/common.h out/out.h out/lbl.h out/write.h out/dbg.h \
- out/../../util/std.h out/virt.h out/stack.h out/vstack_t.h out/macros.h \
- out/ctx.h out/blk.h
+ out/../../util/std.h out/virt.h out/stack.h out/vstack_t.h out/ctx.h \
+ out/blk.h

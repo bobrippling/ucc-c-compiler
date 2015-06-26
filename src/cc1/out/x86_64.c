@@ -8,6 +8,7 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
+#include "../../util/macros.h"
 
 #include "../op.h"
 #include "../decl.h"
@@ -30,7 +31,6 @@
 #include "write.h"
 #include "../defs.h"
 #include "virt.h"
-#include "macros.h"
 
 #include "ctx.h"
 #include "blk.h"
