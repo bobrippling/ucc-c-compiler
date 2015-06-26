@@ -176,11 +176,14 @@ decl *expr_to_declref(expr *e, const char **whynot)
 		else if(whynot)
 			*whynot = "not normal identifier";
 
+	}else if(expr_kind(e, struct)){
+		return e->bits.struct_mem.d;
+
 	}else if(expr_kind(e, block)){
 		return e->bits.block.sym->decl;
 
 	}else if(whynot){
-		*whynot = "not an identifier or block";
+		*whynot = "not an identifier, member or block";
 	}
 
 	return NULL;

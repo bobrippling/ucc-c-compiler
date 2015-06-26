@@ -93,12 +93,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 				cc1_warn_at(&e->where, sizeof_void_or_func, "sizeof() on function type");
 
 			if((e->what_of == what_alignof || vla) && e->expr){
-				decl *d = NULL;
-
-				if(expr_kind(e->expr, identifier))
-					d = e->expr->bits.ident.bits.ident.sym->decl;
-				else if(expr_kind(e->expr, struct))
-					d = e->expr->bits.struct_mem.d;
+				decl *d = expr_to_declref(e->expr, NULL);
 
 				if(d){
 					if(e->what_of == what_alignof){
