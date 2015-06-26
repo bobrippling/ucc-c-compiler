@@ -7,6 +7,8 @@
 #include "../out/asm.h"
 #include "../type_nav.h"
 
+#define DEBUG_VAL 0
+
 const char *str_expr_val()
 {
 	return "value";
@@ -14,7 +16,8 @@ const char *str_expr_val()
 
 /*
 -- no suffix --
-[0-9]+ -> int, long int, long long int
+C89: [0-9]+ -> int, long int, unsigned long
+C99: [0-9]+ -> int, long int, long long int
 oct|hex -> int, unsigned int, long int, unsigned long int, long long int, unsigned long long int
 
 -- u suffix --
@@ -50,9 +53,11 @@ void fold_expr_val(expr *e, symtable *stab)
 		num->suffix & VAL_LLONG ? type_llong :
 		num->suffix & VAL_LONG  ? type_long  : type_int;
 
-	/*fprintf(stderr, "----\n0x%" NUMERIC_FMT_X
-	      ", highest bit = %d. suff = 0x%x\n",
-	      num->val.i, highest_bit, num->suffix);*/
+	if(DEBUG_VAL){
+		fprintf(stderr, "----\n0x%" NUMERIC_FMT_X
+				", highest bit = %d. suff = 0x%x\n",
+				num->val.i, highest_bit, num->suffix);
+	}
 
 	/* just bail for floats for now, apart from truncating it */
 	if(num->suffix & VAL_FLOATING){
@@ -136,11 +141,12 @@ void fold_expr_val(expr *e, symtable *stab)
 	}
 
 chosen:
-	/*
-	fprintf(stderr, "%s -> %ssigned %s\n",
-			where_str(&e->where),
-			is_signed ? "" : "un",
-			type_primitive_to_str(p)); */
+	if(DEBUG_VAL){
+		fprintf(stderr, "%s -> %ssigned %s\n",
+				where_str(&e->where),
+				is_signed ? "" : "un",
+				type_primitive_to_str(p));
+	}
 
 	if(is_signed)
 		num->suffix &= ~VAL_UNSIGNED;
