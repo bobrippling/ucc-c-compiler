@@ -82,7 +82,6 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 	int defval = has_bitmask;
 	integral_t max = 0, min = 0;
 	type *contained_ty;
-	unsigned bits;
 	int is_signed = 0;
 
 	for(i = en->members; i && *i; i++){
@@ -161,15 +160,19 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 		defval = has_bitmask ? v << 1 : v + 1;
 	}
 
-	bits = (MAX(log2ll(round2(-min + 1)), log2ll(round2(max + 1))));
+	if(fopt_mode & FOPT_SHORT_ENUMS){
+		unsigned bits = (MAX(log2ll(round2(-min + 1)), log2ll(round2(max + 1))));
 
-	/* bits needs to be a power of 2 since those are the only word sizes supported */
-	bits = round2(bits);
+		/* bits needs to be a power of 2 since those are the only word sizes supported */
+		bits = round2(bits);
 
-	if(bits < 8)
-		bits = 8;
+		if(bits < 8)
+			bits = 8;
 
-	contained_ty = type_nav_MAX_FOR(cc1_type_nav, bits / 8, is_signed);
+		contained_ty = type_nav_MAX_FOR(cc1_type_nav, bits / 8, is_signed);
+	}else{
+		contained_ty = type_nav_btype(cc1_type_nav, type_int);
+	}
 
 	en->size = type_size(contained_ty, NULL);
 	en->align = type_align(contained_ty, NULL);
