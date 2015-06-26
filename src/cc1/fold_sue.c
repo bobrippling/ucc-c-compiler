@@ -172,7 +172,7 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 	contained_ty = type_nav_MAX_FOR(cc1_type_nav, bits / 8, is_signed);
 
 	en->size = type_size(contained_ty, NULL);
-	en->align = type_align(type_nav_btype(cc1_type_nav, type_int), NULL);
+	en->align = type_align(contained_ty, NULL);
 }
 
 static int fold_sue_check_unnamed(
