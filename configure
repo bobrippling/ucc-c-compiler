@@ -205,11 +205,18 @@ case "$target" in
 		;;
 esac
 
+# platform/ABI setup
 if test $leading_underscore = 1
 then
 	ucc_cppflags="-D__LEADING_UNDERSCORE $ucc_cppflags"
 	ucc_cflags="-fleading-underscore $ucc_cflags"
 fi
+
+case "$target" in
+	*arm*)
+		ucc_cflags="-fshort-enums $ucc_cflags"
+		;;
+esac
 
 if test $local_lib = 1
 then
