@@ -387,10 +387,7 @@ int type_is_complete(type *r)
 
 type *type_is_vla(type *ty, enum vla_kind kind)
 {
-	for(ty = type_is(ty, type_array);
-	    ty;
-	    ty = ty->ref)
-	{
+	for(; (ty = type_is(ty, type_array)); ty = ty->ref){
 		if(ty->bits.array.is_vla)
 			return ty;
 
