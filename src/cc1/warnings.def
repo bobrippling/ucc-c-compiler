@@ -184,6 +184,7 @@ X("operator-precedence", &cc1_warning.parse_precedence)
 X("visibility", &cc1_warning.private_struct)
 
 X("pure-inline", &cc1_warning.pure_inline)
+X("inline", &cc1_warning.inline_failed)
 X("restrict-ptrs", &cc1_warning.restrict_ptrs)
 X("return-undef", &cc1_warning.return_undef)
 X("sizeof-decayed", &cc1_warning.sizeof_decayed)

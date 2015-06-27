@@ -93,6 +93,7 @@ struct cc1_warning
 	unsigned char init_undesignated;
 	unsigned char init_static_complit;
 	unsigned char inline_builtin_frame_addr;
+	unsigned char inline_failed;
 	unsigned char int_ptr_conv;
 	unsigned char lbl_attr_unknown;
 	unsigned char lbl_unused;

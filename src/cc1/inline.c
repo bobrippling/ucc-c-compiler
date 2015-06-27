@@ -423,6 +423,8 @@ const out_val *inline_func_try_gen(
 	if(*whynot){
 		if(fopt_mode & FOPT_VERBOSE_ASM)
 			out_comment(octx, "can't inline call: %s", *whynot);
+		if(iouts.fndecl && iouts.fndecl->store & store_inline)
+			cc1_warn_at(call_loc, inline_failed, "can't inline call: %s", *whynot);
 		return NULL;
 	}
 
