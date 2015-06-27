@@ -580,6 +580,29 @@ arg_ld:
 				case 'C': /* -C and -CC */
 					goto arg_cpp;
 
+				case 'X':
+				{
+					/* check for passing arguments */
+					int target = -1;
+
+					/**/ if(!strcmp(argv[i] + 2, "assembler"))
+						target = mode_assemb;
+					else if(!strcmp(argv[i] + 2, "preprocessor"))
+						target = mode_preproc;
+					else if(!strcmp(argv[i] + 2, "linker"))
+						target = mode_link;
+
+					if(target == -1)
+						break;
+
+					if(++i == argc)
+						goto missing_arg;
+
+					arg = argv[i];
+					ADD_ARG(target);
+					continue;
+				}
+
 				case 'x':
 				{
 					const char *arg;
