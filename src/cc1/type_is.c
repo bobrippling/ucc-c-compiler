@@ -404,16 +404,17 @@ type *type_is_vla(type *ty, enum vla_kind kind)
 int type_is_variably_modified_vla(type *const ty, int *vla)
 {
 	type *ti;
+	int first = 1;
 
 	if(vla)
 		*vla = 0;
 
 	/* need to check all the way down to the btype */
-	for(ti = ty; ti; ti = type_next(ti)){
+	for(ti = ty; ti; first = 0, ti = type_next(ti)){
 		type *test = type_is(ti, type_array);
 
 		if(test && test->bits.array.is_vla){
-			if(vla && ti == ty)
+			if(vla && first)
 				*vla = 1;
 			return 1;
 		}
