@@ -1,6 +1,8 @@
+#define _POSIX_SOURCE /* fileno() */
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 #include "../util/dynarray.h"
 
@@ -44,6 +46,11 @@ static void dump_newline(dump *ctx, int newline)
 		fputc('\n', ctx->fout);
 }
 
+static const char *maybe_colour(FILE *f, const char *col)
+{
+	return isatty(fileno(f)) ? col : "";
+}
+
 static void dump_desc_colour_newline(
 		dump *ctx,
 		const char *desc, const void *uniq, const where *loc,
@@ -53,9 +60,9 @@ static void dump_desc_colour_newline(
 
 	fprintf(ctx->fout, "%s%s %s%p %s<%s>%s",
 			col, desc,
-			col_ptr, uniq,
-			col_where, where_str(loc),
-			col_off);
+			maybe_colour(ctx->fout, col_ptr), uniq,
+			maybe_colour(ctx->fout, col_where), where_str(loc),
+			maybe_colour(ctx->fout, col_off));
 
 	dump_newline(ctx, newline);
 }
@@ -63,21 +70,25 @@ static void dump_desc_colour_newline(
 static void dump_type(dump *ctx, type *ty)
 {
 	dump_printf_indent(ctx, 0, " %s'%s'%s",
-			col_type, type_to_str(ty), col_off);
+			maybe_colour(ctx->fout, col_type),
+			type_to_str(ty),
+			maybe_colour(ctx->fout, col_off));
 }
 
 void dump_desc(
 		dump *ctx,
 		const char *desc, const void *uniq, const where *loc)
 {
-	dump_desc_colour_newline(ctx, desc, uniq, loc, col_desc_decl, 1);
+	dump_desc_colour_newline(ctx, desc, uniq, loc,
+			maybe_colour(ctx->fout, col_desc_decl), 1);
 }
 
 void dump_desc_expr_newline(
 		dump *ctx, const char *desc, const struct expr *e,
 		int newline)
 {
-	dump_desc_colour_newline(ctx, desc, e, &e->where, col_desc_expr, 0);
+	dump_desc_colour_newline(ctx, desc, e, &e->where,
+			maybe_colour(ctx->fout, col_desc_expr), 0);
 
 	if(e->tree_type)
 		dump_type(ctx, e->tree_type);
@@ -89,7 +100,8 @@ void dump_desc_stmt_newline(
 		dump *ctx, const char *desc, const struct stmt *s,
 		int newline)
 {
-	dump_desc_colour_newline(ctx, desc, s, &s->where, col_desc_stmt, newline);
+	dump_desc_colour_newline(ctx, desc, s, &s->where,
+			maybe_colour(ctx->fout, col_desc_stmt), newline);
 }
 
 void dump_desc_stmt(dump *ctx, const char *desc, const struct stmt *s)
@@ -106,9 +118,9 @@ void dump_strliteral_indent(dump *ctx, int indent, const char *str, size_t len)
 {
 	if(indent)
 		dump_indent(ctx);
-	fprintf(ctx->fout, "%s\"", col_strlit);
+	fprintf(ctx->fout, "%s\"", maybe_colour(ctx->fout, col_strlit));
 	literal_print(ctx->fout, str, len);
-	fprintf(ctx->fout, "\"%s\n", col_off);
+	fprintf(ctx->fout, "\"%s\n", maybe_colour(ctx->fout, col_off));
 }
 
 void dump_strliteral(dump *ctx, const char *str, size_t len)
@@ -211,7 +223,9 @@ static void dump_gasm(symtable_gasm *gasm, dump *ctx)
 static void dump_attributes(attribute *da, dump *ctx)
 {
 	for(; da; da = da->next){
-		dump_desc_colour_newline(ctx, "attribute", da, &da->where, col_desc, 0);
+		dump_desc_colour_newline(ctx, "attribute",
+				da, &da->where,
+				maybe_colour(ctx->fout, col_desc), 0);
 
 		dump_printf_indent(ctx, 0, " %s\n", attribute_to_str(da));
 	}
@@ -266,7 +280,8 @@ void dump_decl(decl *d, dump *ctx, const char *desc)
 		}
 	}
 
-	dump_desc_colour_newline(ctx, desc, d, &d->where, col_desc_decl, 0);
+	dump_desc_colour_newline(ctx, desc, d, &d->where,
+			maybe_colour(ctx->fout, col_desc_decl), 0);
 
 	if(d->proto)
 		dump_printf_indent(ctx, 0, " prev %p", (void *)d->proto);
