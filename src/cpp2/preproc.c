@@ -320,7 +320,7 @@ static char *strip_comment(char *line)
 			}
 
 		}else if(*s == '/'){
-			if(s[1] == '/'){
+			if(cpp_std >= STD_C99 && s[1] == '/'){
 				switch(strip_comments){
 					case STRIP_EXCEPT_DIRECTIVE:
 						if(is_directive)
