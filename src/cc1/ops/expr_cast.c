@@ -15,8 +15,6 @@
 
 #define IMPLICIT_STR(e) ((e)->expr_cast_implicit ? "implicit " : "")
 
-#define IS_LVAL_DECAY(e) (!(e)->bits.cast_to)
-
 static integral_t convert_integral_to_integral_warn(
 		const integral_t in, type *tin,
 		type *tout,
@@ -343,7 +341,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 	const_fold(expr_cast_child(e), k);
 
-	if(IS_LVAL_DECAY(e))
+	if(expr_cast_is_lval2rval(e))
 		return;
 
 	switch(k->type){
@@ -396,7 +394,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	type *tlhs, *trhs;
 
 	if(descend){
-		if(IS_LVAL_DECAY(e)){
+		if(expr_cast_is_lval2rval(e)){
 			fold_expr_nodecay(expr_cast_child(e), stab);
 
 			/* Only lval2rval casts are lvalue-internals - they
@@ -421,7 +419,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		}
 	}
 
-	if(IS_LVAL_DECAY(e)){
+	if(expr_cast_is_lval2rval(e)){
 		e->tree_type = type_decay(expr_cast_child(e)->tree_type);
 
 	}else{
@@ -588,7 +586,7 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 		return out_change_type(octx, gen_expr(expr_cast_child(e), octx), tto);
 	}
 
-	if(IS_LVAL_DECAY(e)){
+	if(expr_cast_is_lval2rval(e)){
 		/* we're an lval2rval cast
 		 * if inlining, check if we can substitute the lvalue's rvalue here
 		 */
@@ -601,7 +599,7 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 
 	tfrom = expr_cast_child(e)->tree_type;
 
-	if(IS_LVAL_DECAY(e)){
+	if(expr_cast_is_lval2rval(e)){
 
 		if(type_is_s_or_u(tfrom)){
 			if(!cast_to_void)
@@ -672,7 +670,7 @@ void dump_expr_cast(const expr *e, dump *ctx)
 {
 	const char *desc = "cast";
 
-	if(IS_LVAL_DECAY(e)){
+	if(expr_cast_is_lval2rval(e)){
 		desc = "lvalue-decay";
 	}else if(e->expr_cast_implicit){
 		desc = "implicit cast";

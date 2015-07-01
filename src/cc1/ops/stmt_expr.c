@@ -31,7 +31,7 @@ void fold_stmt_expr(stmt *s)
 	&& unused_expr_type(s->expr->tree_type))
 	{
 		cc1_warn_at(&s->expr->where, unused_expr,
-				"unused expression (%s)", expr_skip_casts(s->expr)->f_str());
+				"unused expression (%s)", expr_skip_lval2rval(s->expr)->f_str());
 	}
 }
 

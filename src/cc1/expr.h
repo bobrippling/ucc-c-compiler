@@ -312,7 +312,8 @@ void expr_set_const(expr *, consty *);
 expr *expr_new_array_idx_e(expr *base, expr *idx);
 expr *expr_new_array_idx(expr *base, int i);
 
-expr *expr_skip_casts(expr *);
+expr *expr_skip_all_casts(expr *);
+expr *expr_skip_lval2rval(expr *);
 
 decl *expr_to_declref(expr *e, const char **whynot);
 

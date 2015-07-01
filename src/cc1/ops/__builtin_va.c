@@ -87,7 +87,7 @@ static void fold_va_start(expr *e, symtable *stab)
 		sym *second = NULL;
 		decl **args = symtab_decls(symtab_func_root(stab));
 		sym *arg = args[dynarray_count(args) - 1]->sym;
-		expr *last_exp = expr_skip_casts(e->funcargs[1]);
+		expr *last_exp = expr_skip_lval2rval(e->funcargs[1]);
 
 		if(expr_kind(last_exp, identifier))
 			second = last_exp->bits.ident.bits.ident.sym;

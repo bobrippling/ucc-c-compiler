@@ -1276,7 +1276,7 @@ static decl_init *decl_init_brace_up_start(
 						type_to_str(tfor));
 				return init;
 			}else{
-				e = expr_skip_casts(e);
+				e = expr_skip_lval2rval(e);
 				if(expr_kind(e, str) && e->bits.strlit.is_func){
 					cc1_warn_at(&init->where,
 							x__func__init,

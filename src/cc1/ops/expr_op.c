@@ -799,7 +799,7 @@ static int op_unsigned_cmp_check(expr *e)
 static int msg_if_precedence(expr *sub, where *w,
 		enum op_type binary, int (*test)(enum op_type))
 {
-	sub = expr_skip_casts(sub);
+	sub = expr_skip_all_casts(sub);
 
 	if(expr_kind(sub, op)
 	&& sub->rhs /* don't warn for (1 << -5) : (-5) is a unary op */
@@ -963,7 +963,7 @@ static int op_sizeof_div_check(expr *e)
 	if(e->bits.op.op != op_divide)
 		return 0;
 
-	lhs = expr_skip_casts(e->lhs);
+	lhs = expr_skip_all_casts(e->lhs);
 
 	if(!expr_kind(lhs, sizeof))
 		return 0;

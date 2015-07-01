@@ -145,16 +145,23 @@ expr *expr_new_array_idx(expr *base, int i)
 	return expr_new_array_idx_e(base, expr_new_val(i));
 }
 
-expr *expr_skip_casts(expr *e)
+expr *expr_skip_all_casts(expr *e)
 {
 	while(expr_kind(e, cast))
 		e = e->expr;
 	return e;
 }
 
+expr *expr_skip_lval2rval(expr *e)
+{
+	while(expr_kind(e, cast) && expr_cast_is_lval2rval(e))
+		e = e->expr;
+	return e;
+}
+
 decl *expr_to_declref(expr *e, const char **whynot)
 {
-	e = expr_skip_casts(e);
+	e = expr_skip_all_casts(e);
 
 	if(expr_kind(e, identifier)){
 		if(e->bits.ident.type == IDENT_NORM)

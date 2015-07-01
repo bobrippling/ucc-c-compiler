@@ -10,7 +10,7 @@ void c_func_check_free(expr *arg)
 {
 	int warn = 0;
 
-	arg = expr_skip_casts(arg);
+	arg = expr_skip_all_casts(arg);
 
 	if(expr_kind(arg, identifier)){
 		sym *sym = arg->bits.ident.bits.ident.sym;
@@ -75,7 +75,7 @@ void c_func_check_mem(expr *ptr_args[], expr *sizeof_arg, const char *func)
 		return;
 
 	for(i = ptr_args; *i; i++){
-		expr *e = expr_skip_casts(*i);
+		expr *e = expr_skip_all_casts(*i);
 		type *ptr_ty = type_is_ptr(e->tree_type);
 
 		if(!ptr_ty)
