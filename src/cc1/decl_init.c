@@ -918,17 +918,32 @@ static int find_desig(decl_init **const ar)
 	return -1;
 }
 
-static int decl_init_is_struct_copy(decl_init *di)
+expr *decl_init_is_struct_copy(decl_init *di, struct_union_enum_st *constraint)
 {
-	if(di->type == decl_init_brace
-	&& dynarray_count(di->bits.ar.inits) == 1)
-	{
-		decl_init *sub = di->bits.ar.inits[0];
-		if(sub->type == decl_init_scalar
-		&& type_is_s_or_u(sub->bits.expr->tree_type))
-			return 1;
-	}
-	return 0;
+	decl_init *sub;
+	struct_union_enum_st *su;
+
+	if(di->type != decl_init_brace)
+		return NULL;
+
+	if(dynarray_count(di->bits.ar.inits) != 1)
+		return NULL;
+
+	sub = di->bits.ar.inits[0];
+	if(sub == DYNARRAY_NULL)
+		return NULL;
+
+	if(sub->type != decl_init_scalar)
+		return NULL;
+
+	su = type_is_s_or_u(sub->bits.expr->tree_type);
+	if(!su)
+		return NULL;
+
+	if(constraint && constraint != su)
+		return NULL;
+
+	return sub->bits.expr;
 }
 
 static decl_init *decl_init_brace_up_aggregate(
@@ -1069,7 +1084,7 @@ static decl_init *decl_init_brace_up_aggregate(
 
 		/* only warn if it's not designated
 		 * and it's not a struct copy */
-		if(!was_desig && !decl_init_is_struct_copy(r)){
+		if(!was_desig && !decl_init_is_struct_copy(r, NULL)){
 			cc1_warn_at(loc,
 					init_missing_braces,
 					"missing braces for initialisation of sub-object '%s'",

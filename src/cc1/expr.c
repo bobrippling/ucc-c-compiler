@@ -147,14 +147,14 @@ expr *expr_new_array_idx(expr *base, int i)
 
 expr *expr_skip_all_casts(expr *e)
 {
-	while(expr_kind(e, cast))
+	while(e && expr_kind(e, cast))
 		e = e->expr;
 	return e;
 }
 
 expr *expr_skip_lval2rval(expr *e)
 {
-	while(expr_kind(e, cast) && expr_cast_is_lval2rval(e))
+	while(e && expr_kind(e, cast) && expr_cast_is_lval2rval(e))
 		e = e->expr;
 	return e;
 }

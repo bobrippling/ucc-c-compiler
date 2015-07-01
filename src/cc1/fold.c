@@ -1017,11 +1017,27 @@ void fold_decl_global_init(decl *d, symtable *stab)
 
 	type = stab->parent ? "static" : "global";
 	if(!decl_init_is_const(d->bits.var.init.dinit, stab, &nonstd)){
-		warn_at_print_error(&d->bits.var.init.dinit->where,
-				"%s %s initialiser not constant",
-				type, decl_init_to_str(d->bits.var.init.dinit->type));
+		decl_init *dinit = d->bits.var.init.dinit;
 
-		fold_had_error = 1;
+		struct_union_enum_st *decl_suty = type_is_s_or_u(d->ref);
+
+		expr *copy_from = expr_skip_lval2rval(
+				decl_init_is_struct_copy(dinit, decl_suty));
+
+		if(copy_from && expr_kind(copy_from, compound_lit)){
+			cc1_warn_at(&d->bits.var.init.dinit->where,
+					init_static_complit,
+					"statically initialising with compound literal"
+					" (not a constant expression)");
+
+		}else{
+			warn_at_print_error(&d->bits.var.init.dinit->where,
+					"%s %s initialiser not constant",
+					type, decl_init_to_str(d->bits.var.init.dinit->type));
+
+			fold_had_error = 1;
+		}
+
 	}else if(nonstd){
 		char wbuf[WHERE_BUF_SIZ];
 

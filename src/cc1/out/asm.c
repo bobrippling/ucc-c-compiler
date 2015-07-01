@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "../../util/util.h"
 #include "../../util/platform.h"
@@ -261,12 +262,31 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 		struct bitfield_val *bitfields = NULL;
 		unsigned nbitfields = 0;
 		decl *first_bf = NULL;
+		expr *copy_from_exp;
 
 		UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
 
 #define DEBUG(s, ...) /*fprintf(f, "\033[35m" s "\033[m\n", __VA_ARGS__)*/
 
 		i = init->bits.ar.inits;
+
+		/* check for compound-literal copy-init */
+		if((copy_from_exp = decl_init_is_struct_copy(init, sue))){
+			decl_init *copy_from_init;
+
+			copy_from_exp = expr_skip_lval2rval(copy_from_exp);
+
+			/* the only struct-expression that's possible
+			 * in static context is a compound literal */
+			assert(expr_kind(copy_from_exp, compound_lit)
+					&& "unhandled expression init");
+
+			copy_from_init = copy_from_exp->bits.complit.decl->bits.var.init.dinit;
+			assert(copy_from_init->type == decl_init_brace);
+
+			i = copy_from_init->bits.ar.inits;
+		}
+
 		/* iterate using members, not inits */
 		for(mem = sue->members;
 				mem && *mem;
