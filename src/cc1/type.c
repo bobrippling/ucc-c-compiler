@@ -710,12 +710,14 @@ const char *type_to_str_r_spel_opts(
 	int spc = 1;
 	type *stop_at;
 	int sz = TYPE_STATIC_BUFSIZ;
-	enum type_str_opts local_opts = TY_STR_NOOPT;
+	enum type_str_opts local_opts = opts;
 
 	if((fopt_mode & FOPT_PRINT_TYPEDEFS) == 0)
 		local_opts |= TY_STR_NO_TDEF;
+	if((fopt_mode & FOPT_PRINT_AKA) == 0)
+		local_opts &= ~TY_STR_AKA;
 
-	stop_at = type_add_type_str(r, &bufp, &sz, opts | local_opts);
+	stop_at = type_add_type_str(r, &bufp, &sz, local_opts);
 
 	assert(sz == (TYPE_STATIC_BUFSIZ - (bufp - buf)));
 

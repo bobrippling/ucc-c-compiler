@@ -39,6 +39,7 @@ enum fopt
 	FOPT_DUMP_SYMTAB           = 1 << 27,
 	FOPT_COMMON                = 1 << 28,
 	FOPT_DUMP_INIT             = 1 << 29,
+	FOPT_PRINT_AKA             = 1 << 30,
 };
 
 enum mopt

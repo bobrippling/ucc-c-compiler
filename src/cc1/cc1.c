@@ -100,6 +100,7 @@ static struct
 	{ 'f',  "fold-const-vlas", FOPT_FOLD_CONST_VLAS },
 	{ 'f',  "show-warning-option", FOPT_SHOW_WARNING_OPTION },
 	{ 'f',  "print-typedefs", FOPT_PRINT_TYPEDEFS },
+	{ 'f',  "print-aka", FOPT_PRINT_AKA },
 	{ 'f',  "show-inlined", FOPT_SHOW_INLINED },
 	{ 'f',  "inline-functions", FOPT_INLINE_FUNCTIONS },
 	{ 'f',  "dump-bblocks", FOPT_DUMP_BASIC_BLOCKS },
@@ -140,6 +141,7 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SIGNED_CHAR
                     | FOPT_CAST_W_BUILTIN_TYPES
                     | FOPT_PRINT_TYPEDEFS
+                    | FOPT_PRINT_AKA
                     | FOPT_COMMON;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
