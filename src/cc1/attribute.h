@@ -79,4 +79,16 @@ struct attribute **attribute_array_retain(struct attribute **);
 void attribute_array_release(struct attribute ***);
 void attribute_debug_check(struct attribute **attr);
 
+
+int attribute_verify_cat(
+		enum attribute_category current,
+		enum attribute_category constraint,
+		where *loc);
+
+void attribute_verify_type(
+		attribute ***attr, type *ty);
+
+void attribute_verify_decl(
+		attribute ***attr, struct decl *d);
+
 #endif

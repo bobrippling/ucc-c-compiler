@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/dynarray.h"
 #include "../util/util.h"
@@ -303,16 +304,13 @@ static stmt *parse_label(const struct stmt_ctx *ctx)
 	lblstmt->bits.lbl.spel = lbl;
 	memcpy_safe(&lblstmt->where, &w);
 
-	parse_add_attr(&attr, ctx->scope);
+	parse_add_attr(&attr, ctx->scope, attribute_cat_label);
 
 	for(ai = attr; ai && *ai; ai++)
-		if((*ai)->type == attr_unused)
-			lblstmt->bits.lbl.unused = 1;
-		else
-			cc1_warn_at(&(*ai)->where,
-					lbl_attr_unknown,
-					"ignoring attribute \"%s\" on label",
-					attribute_to_str(*ai));
+		assert((*ai)->type == attr_unused);
+
+	if(attr)
+		lblstmt->bits.lbl.unused = 1;
 
 	attribute_array_release(&attr);
 

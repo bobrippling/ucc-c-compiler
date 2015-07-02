@@ -4,6 +4,6 @@
 #include "attribute.h"
 #include "sym.h"
 
-attribute **parse_attr(symtable *);
+attribute **parse_attr(symtable *, enum attribute_category);
 
 #endif

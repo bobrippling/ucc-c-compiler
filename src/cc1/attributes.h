@@ -5,24 +5,20 @@ enum attribute_category
 {
 	attribute_cat_type_funconly = 1 << 0,
 	attribute_cat_type_enumonly = 1 << 1,
-	attribute_cat_type_ptronly = 1 << 2,
-	attribute_cat_type_structonly = 1 << 3,
+	attribute_cat_type_enumentonly = 1 << 2,
+	attribute_cat_type_ptronly = 1 << 3,
+	attribute_cat_type_structonly = 1 << 4,
 
-	attribute_cat_type =
-		attribute_cat_type_funconly |
-		attribute_cat_type_enumonly |
-		1 << 4,
+	attribute_cat_type = 1 << 5,
 
-	attribute_cat_decl_funconly = 1 << 5,
-	attribute_cat_decl_varonly = 1 << 6,
+	attribute_cat_decl_funconly = 1 << 6,
+	attribute_cat_decl_varonly = 1 << 7,
 
-	attribute_cat_decl =
-		attribute_cat_decl_funconly |
-		1 << 7,
+	attribute_cat_decl = 1 << 8,
 
-	attribute_cat_label = 1 << 8,
+	attribute_cat_label = 1 << 9,
 
-	attribute_cat_any
+	attribute_cat_any = ~0
 };
 
 /* - name/spelling + name,
