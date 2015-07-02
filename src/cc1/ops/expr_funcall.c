@@ -183,8 +183,10 @@ static int check_arg_counts(
 		funcargs *args_from_decl,
 		unsigned count_decl,
 		expr **exprargs,
-		where *loc, char *sp)
+		expr *fnexpr, char *sp)
 {
+	where *const loc = &fnexpr->where;
+
 	/* this block is purely count checking */
 	if(!FUNCARGS_EMPTY_NOVOID(args_from_decl)){
 		const unsigned count_arg  = dynarray_count(exprargs);
@@ -192,6 +194,7 @@ static int check_arg_counts(
 		if(count_decl != count_arg
 		&& (args_from_decl->variadic ? count_arg < count_decl : 1))
 		{
+			decl *call_decl;
 			/* may be args_old_proto but also args_void if copied from
 			 * another prototype elsewhere */
 			int warn = args_from_decl->args_old_proto
@@ -211,6 +214,9 @@ static int check_arg_counts(
 			}
 
 #undef common_warning
+
+			if((call_decl = expr_to_declref(fnexpr->expr, NULL)))
+				note_at(&call_decl->where, "'%s' declared here", call_decl->spel);
 
 			if(!warn){
 				fold_had_error = 1;
@@ -384,7 +390,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 	count_decl = dynarray_count(args_from_decl->arglist);
 
-	if(check_arg_counts(args_from_decl, count_decl, e->funcargs, &e->where, sp))
+	if(check_arg_counts(args_from_decl, count_decl, e->funcargs, e, sp))
 		return;
 
 	if(e->funcargs){
