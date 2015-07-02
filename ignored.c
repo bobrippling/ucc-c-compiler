@@ -28,10 +28,12 @@ __attribute((noderef)) char *cp; // fine - odd usage but accepted
 char *__attribute((noderef)) cp2;
 
 
+void nonnul_1(int *, int *) __attribute((nonnull));
+void nonnul_2(int *__attribute((nonnull)));
+int __attribute((nonnull)) nonnul_i; // warn
+
+__attribute((packed)) int x; // warn
 /*
-NAME(noderef, attribute_cat_type_ptronly)                                                         \
-NAME(nonnull, attribute_cat_type_funconly | attribute_cat_type_ptronly)                           \
-NAME(packed, attribute_cat_type_structonly)                                                       \
 NAME(sentinel, attribute_cat_type_funconly)                                                       \
 ALIAS("designated_init", desig_init, attribute_cat_type_structonly)                               \
 ALIAS("__ucc_debug", ucc_debug, attribute_cat_any)
