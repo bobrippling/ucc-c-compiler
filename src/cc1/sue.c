@@ -95,8 +95,16 @@ enum sue_szkind sue_sizekind(struct_union_enum_st *sue)
 
 	for(mi = sue->members; mi && *mi; mi++){
 		decl *d = (*mi)->struct_member;
+		struct_union_enum_st *subsue;
+
 		if(d->spel) /* not anon-bitfield, must have size */
 			return SUE_NORMAL;
+
+		if((subsue = type_is_s_or_u(d->ref))
+		&& sue_sizekind(subsue) == SUE_NORMAL)
+		{
+			return SUE_NORMAL;
+		}
 	}
 
 	return SUE_NONAMED;
