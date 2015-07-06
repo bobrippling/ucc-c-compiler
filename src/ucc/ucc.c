@@ -272,8 +272,7 @@ static void process_files(enum mode mode, char **inputs, char *output, char **ar
 
 
 	if(backend){
-		dynarray_add(&args[mode_compile], ustrdup("-X"));
-		dynarray_add(&args[mode_compile], ustrdup(backend));
+		dynarray_add(&args[mode_compile], ustrprintf("-emit=%s", backend));
 	}
 
 	for(i = 0; i < ninputs; i++){
@@ -420,14 +419,6 @@ int main(int argc, char **argv)
 	char *output = NULL;
 	char *backend = NULL;
 	const char **isystems = NULL;
-	struct
-	{
-		char optn;
-		char **ptr;
-	} opts[] = {
-		{ 'o', &output   },
-		{ 'X', &backend  },
-	};
 
 	umask(0077); /* prevent reading of the temporary files we create */
 
@@ -457,7 +448,6 @@ int main(int argc, char **argv)
 
 		}else if(*argv[i] == '-'){
 			int found = 0;
-			unsigned int j;
 			char *arg = argv[i];
 
 			switch(arg[1]){
@@ -641,6 +631,21 @@ word:
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
 						ucc_ext_cmds_show(1);
+					else if(!strncmp(argv[i], "-emit", 5)){
+						switch(argv[i][5]){
+							case '=':
+								backend = argv[i] + 6;
+								break;
+							case '\0':
+								if(++i == argc)
+									goto missing_arg;
+
+								backend = argv[i];
+								break;
+							default:
+								goto unrec;
+						}
+					}
 					else if(!strcmp(argv[i], "-wrapper")){
 						/* -wrapper echo,-n etc */
 						wrapper = argv[++i];
@@ -667,25 +672,10 @@ word:
 					continue;
 			}
 
-			for(j = 0; j < sizeof(opts) / sizeof(opts[0]); j++)
-				if(argv[i][1] == opts[j].optn){
-					if(argv[i][2]){
-						*opts[j].ptr = argv[i] + 2;
-					}else{
-						if(!argv[++i])
-							goto missing_arg;
-						*opts[j].ptr = argv[i];
-					}
-					found = 1;
-					break;
-				}
-
-			if(!found){
 unrec:
-				die("unrecognised option \"%s\"", argv[i]);
+			die("unrecognised option \"%s\"", argv[i]);
 missing_arg:
-				die("need argument for %s", argv[i - 1]);
-			}
+			die("need argument for %s", argv[i - 1]);
 		}else{
 input:
 			dynarray_add(&inputs, argv[i]);
@@ -722,7 +712,7 @@ input:
 	/* other case is -S, which is handled in rename_files */
 
 	if(backend){
-		/* -Xprint stops early */
+		/* -emit=... stops early */
 		mode = mode_compile;
 		if(!output)
 			output = "-";

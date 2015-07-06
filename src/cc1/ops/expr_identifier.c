@@ -149,21 +149,22 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	sym->nreads++;
 }
 
-const out_val *gen_expr_str_identifier(const expr *e, out_ctx *octx)
+void dump_expr_identifier(const expr *e, dump *ctx)
 {
+	const char *desc = NULL;
+
 	switch(e->bits.ident.type){
 		case IDENT_NORM:
-			idt_printf("identifier: \"%s\" (sym %p)\n",
-					e->bits.ident.bits.ident.spel,
-					(void *)e->bits.ident.bits.ident.sym);
+			desc = "identifier";
 			break;
+
 		case IDENT_ENUM:
-			idt_printf("enum: \"%s\" value %ld\n",
-					e->bits.ident.bits.ident.spel,
-					(long)const_fold_val_i(e->bits.ident.bits.enum_mem->val));
+			desc = "enum constant";
 			break;
 	}
-	UNUSED_OCTX();
+
+	dump_desc_expr_newline(ctx, desc, e, 0);
+	dump_printf_indent(ctx, 0, " %s\n", e->bits.ident.bits.ident.spel);
 }
 
 const out_val *gen_expr_identifier(const expr *e, out_ctx *octx)

@@ -66,18 +66,15 @@ const out_val *gen_expr_comma(const expr *e, out_ctx *octx)
 	return gen_expr(e->rhs, octx);
 }
 
-const out_val *gen_expr_str_comma(const expr *e, out_ctx *octx)
+void dump_expr_comma(const expr *e, dump *ctx)
 {
-	idt_printf("comma expression\n");
-	idt_printf("comma lhs:\n");
-	gen_str_indent++;
-	print_expr(e->lhs);
-	gen_str_indent--;
-	idt_printf("comma rhs:\n");
-	gen_str_indent++;
-	print_expr(e->rhs);
-	gen_str_indent--;
-	UNUSED_OCTX();
+	dump_desc_expr(ctx, "comma", e);
+	dump_inc(ctx);
+	dump_expr(e->lhs, ctx);
+	dump_dec(ctx);
+	dump_inc(ctx);
+	dump_expr(e->rhs, ctx);
+	dump_dec(ctx);
 }
 
 expr *expr_new_comma2(expr *lhs, expr *rhs)

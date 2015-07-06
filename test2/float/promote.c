@@ -1,5 +1,5 @@
-// -Xstyle to avoid code gen
-// RUN: %ucc -Xstyle -fsyntax-only %s
+// -emit=print to avoid code gen
+// RUN: %ucc -emit=print -fsyntax-only %s
 
 #define CHK(exp, ty)                \
 	_Static_assert(                   \

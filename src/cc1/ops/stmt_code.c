@@ -527,6 +527,23 @@ void gen_stmt_code(const stmt *s, out_ctx *octx)
 	gen_stmt_code_m1(s, 0, pushed_lbls, octx);
 }
 
+void dump_stmt_code(const stmt *s, dump *ctx)
+{
+	stmt **siter;
+	decl **di;
+
+	dump_desc_stmt(ctx, "code", s);
+
+	dump_inc(ctx);
+
+	for(di = symtab_decls(s->symtab); di && *di; di++)
+		dump_decl(*di, ctx, NULL);
+
+	for(siter = s->bits.code.stmts; siter && *siter; siter++)
+		dump_stmt(*siter, ctx);
+	dump_dec(ctx);
+}
+
 void style_stmt_code(const stmt *s, out_ctx *octx)
 {
 	stmt **i_s;

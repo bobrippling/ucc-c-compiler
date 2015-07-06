@@ -1057,19 +1057,19 @@ void fold_expr_op(expr *e, symtable *stab)
 	}
 }
 
-const out_val *gen_expr_str_op(const expr *e, out_ctx *octx)
+void dump_expr_op(const expr *e, dump *ctx)
 {
-	idt_printf("op: %s\n", op_to_str(e->bits.op.op));
-	gen_str_indent++;
+	dump_desc_expr_newline(ctx, "operator", e, 0);
 
-#define PRINT_IF(hs) if(e->hs) print_expr(e->hs)
-	PRINT_IF(lhs);
-	PRINT_IF(rhs);
-#undef PRINT_IF
+	dump_printf_indent(ctx, 0, " %s\n", op_to_str(e->bits.op.op));
 
-	gen_str_indent--;
+	dump_inc(ctx);
 
-	UNUSED_OCTX();
+	dump_expr(e->lhs, ctx);
+	if(e->rhs)
+		dump_expr(e->rhs, ctx);
+
+	dump_dec(ctx);
 }
 
 static const out_val *op_shortcircuit(const expr *e, out_ctx *octx)

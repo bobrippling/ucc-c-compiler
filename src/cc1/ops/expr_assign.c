@@ -177,18 +177,15 @@ const out_val *gen_expr_assign(const expr *e, out_ctx *octx)
 	return out_deref(octx, store);
 }
 
-const out_val *gen_expr_str_assign(const expr *e, out_ctx *octx)
+void dump_expr_assign(const expr *e, dump *ctx)
 {
-	idt_printf("assignment, expr:\n");
-	idt_printf("assign to:\n");
-	gen_str_indent++;
-	print_expr(e->lhs);
-	gen_str_indent--;
-	idt_printf("assign from:\n");
-	gen_str_indent++;
-	print_expr(e->rhs);
-	gen_str_indent--;
-	UNUSED_OCTX();
+	dump_desc_expr(ctx, "assignment", e);
+	dump_inc(ctx);
+	dump_expr(e->lhs, ctx);
+	dump_dec(ctx);
+	dump_inc(ctx);
+	dump_expr(e->rhs, ctx);
+	dump_dec(ctx);
 }
 
 void mutate_expr_assign(expr *e)

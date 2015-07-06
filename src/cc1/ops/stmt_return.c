@@ -102,6 +102,17 @@ void gen_stmt_return(const stmt *s, out_ctx *octx)
 		out_ctrl_end_ret(octx, ret_exp, s->expr ? s->expr->tree_type : NULL);
 }
 
+void dump_stmt_return(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "return", s);
+
+	if(s->expr){
+		dump_inc(ctx);
+		dump_expr(s->expr, ctx);
+		dump_dec(ctx);
+	}
+}
+
 void style_stmt_return(const stmt *s, out_ctx *octx)
 {
 	stylef("return ");

@@ -237,30 +237,22 @@ const out_val *gen_expr_if(const expr *e, out_ctx *octx)
 	return out_ctrl_merge(octx, blk_lhs, blk_rhs);
 }
 
-const out_val *gen_expr_str_if(const expr *e, out_ctx *octx)
+void dump_expr_if(const expr *e, dump *ctx)
 {
-	idt_printf("if expression:\n");
-	gen_str_indent++;
-#define SUB_PRINT(nam) \
-	do{\
-		idt_printf(#nam  ":\n"); \
-		gen_str_indent++; \
-		print_expr(e->nam); \
-		gen_str_indent--; \
-	}while(0)
+	dump_desc_expr(ctx, "conditional", e);
 
-	SUB_PRINT(expr);
+	dump_inc(ctx);
+
+	dump_expr(e->expr, ctx);
+
 	if(e->lhs)
-		SUB_PRINT(lhs);
+		dump_expr(e->lhs, ctx);
 	else
-		idt_printf("?: syntactic sugar\n");
+		dump_printf(ctx, "?: lhs\n");
 
-	SUB_PRINT(rhs);
-#undef SUB_PRINT
+	dump_expr(e->rhs, ctx);
 
-	gen_str_indent--;
-
-	UNUSED_OCTX();
+	dump_dec(ctx);
 }
 
 void mutate_expr_if(expr *e)

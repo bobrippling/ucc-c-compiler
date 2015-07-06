@@ -17,7 +17,7 @@
 
 #include "../const.h"
 #include "../gen_asm.h"
-#include "../gen_str.h"
+#include "../gen_dump.h"
 
 #include "../out/out.h"
 #include "__builtin_va.h"
@@ -86,6 +86,12 @@ builtin_table builtins[] = {
 	{ NULL, NULL }
 };
 
+
+#define expr_mutate_builtin_const(exp, to) \
+	exp->f_fold = fold_ ## to,               \
+	exp->f_const_fold = const_ ## to
+
+
 static builtin_table *builtin_table_search(builtin_table *tab, const char *sp)
 {
 	int i;
@@ -134,49 +140,6 @@ expr *builtin_parse(const char *sp, symtable *scope)
 
 	return NULL;
 }
-
-const out_val *builtin_gen_print(const expr *e, out_ctx *octx)
-{
-	/*const enum pdeclargs dflags =
-		  PDECL_INDENT
-		| PDECL_NEWLINE
-		| PDECL_SYM_OFFSET
-		| PDECL_FUNC_DESCEND
-		| PDECL_PISDEF
-		| PDECL_PINIT
-		| PDECL_SIZE
-		| PDECL_ATTR;*/
-
-	idt_printf("%s(\n", BUILTIN_SPEL(e->expr));
-
-#define PRINT_ARGS(type, from, func)      \
-	{                                       \
-		type **i;                             \
-                                          \
-		gen_str_indent++;                     \
-		for(i = from; i && *i; i++){          \
-			func;                               \
-			if(i[1])                            \
-				idt_printf(",\n");                \
-		}                                     \
-		gen_str_indent--;                     \
-	}
-
-	if(e->funcargs)
-		PRINT_ARGS(expr, e->funcargs, print_expr(*i))
-
-	/*if(e->bits.block_args)
-		PRINT_ARGS(decl, e->bits.block_args->arglist, print_decl(*i, dflags))*/
-
-	idt_printf(");\n");
-
-	(void)octx;
-	return NULL;
-}
-
-#define expr_mutate_builtin_const(exp, to) \
-	expr_mutate_builtin(exp, to),             \
-	exp->f_const_fold = const_ ## to
 
 static void wur_builtin(expr *e)
 {
@@ -284,7 +247,7 @@ expr *builtin_new_memset(expr *p, int ch, size_t len)
 
 	fcall->expr = expr_new_identifier("__builtin_memset");
 
-	expr_mutate_builtin_gen(fcall, memset);
+	expr_mutate_builtin(fcall, memset);
 
 	fcall->lhs = p;
 	fcall->bits.builtin_memset.ch = ch;
@@ -362,7 +325,6 @@ expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
 	fcall->expr = expr_new_identifier("__builtin_memcpy");
 
 	expr_mutate_builtin(fcall, memcpy);
-	BUILTIN_SET_GEN(fcall, builtin_gen_memcpy);
 
 	fcall->lhs = to;
 	fcall->rhs = from;
@@ -398,6 +360,11 @@ static void fold_unreachable(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
+static const out_val *builtin_gen_unreachable(const expr *e, out_ctx *octx)
+{
+	return builtin_gen_undefined(e, octx);
+}
+
 static expr *parse_unreachable(const char *ident, symtable *scope)
 {
 	expr *fcall = expr_new_funcall();
@@ -406,8 +373,6 @@ static expr *parse_unreachable(const char *ident, symtable *scope)
 	(void)scope;
 
 	expr_mutate_builtin(fcall, unreachable);
-
-	BUILTIN_SET_GEN(fcall, builtin_gen_undefined);
 
 	return fcall;
 }
@@ -538,7 +503,6 @@ static const out_val *builtin_gen_frame_address(const expr *e, out_ctx *octx)
 static expr *builtin_frame_address_mutate(expr *e)
 {
 	expr_mutate_builtin(e, frame_address);
-	BUILTIN_SET_GEN(e, builtin_gen_frame_address);
 	return e;
 }
 
@@ -566,7 +530,7 @@ static void fold_reg_save_area(expr *e, symtable *stab)
 	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar));
 }
 
-static const out_val *gen_reg_save_area(const expr *e, out_ctx *octx)
+static const out_val *builtin_gen_reg_save_area(const expr *e, out_ctx *octx)
 {
 	(void)e;
 	out_comment(octx, "stack local offset:");
@@ -578,7 +542,6 @@ expr *builtin_new_reg_save_area(void)
 	expr *e = expr_new_funcall();
 
 	expr_mutate_builtin(e, reg_save_area);
-	BUILTIN_SET_GEN(e, gen_reg_save_area);
 
 	return e;
 }
@@ -635,8 +598,9 @@ static expr *parse_expect(const char *ident, symtable *scope)
 
 	(void)ident;
 
-	expr_mutate_builtin_const(fcall, expect);
-	BUILTIN_SET_GEN(fcall, builtin_gen_expect);
+	expr_mutate_builtin(fcall, expect);
+	expr_mutate_builtin_const(fcall, expect); /* add const */
+
 	return fcall;
 }
 
@@ -700,7 +664,7 @@ static expr *parse_choose_expr(const char *ident, symtable *scope)
 
 	fcall->f_fold       = fold_choose_expr;
 	fcall->f_const_fold = const_choose_expr;
-	BUILTIN_SET_GEN(fcall, gen_choose_expr);
+	fcall->f_gen        = gen_choose_expr;
 
 	return fcall;
 }
@@ -793,7 +757,6 @@ static const out_val *builtin_gen_nan(const expr *e, out_ctx *octx)
 static expr *builtin_nan_mutate(expr *e)
 {
 	expr_mutate_builtin(e, nan);
-	BUILTIN_SET_GEN(e, builtin_gen_nan);
 	return e;
 }
 

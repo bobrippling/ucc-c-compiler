@@ -424,32 +424,21 @@ const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 	return fn_ret;
 }
 
-const out_val *gen_expr_str_funcall(const expr *e, out_ctx *octx)
+void dump_expr_funcall(const expr *e, dump *ctx)
 {
 	expr **iter;
 
-	idt_printf("funcall, calling:\n");
+	dump_desc_expr(ctx, "call", e);
 
-	gen_str_indent++;
-	print_expr(e->expr);
-	gen_str_indent--;
+	dump_inc(ctx);
+	dump_expr(e->expr, ctx);
+	dump_dec(ctx);
 
-	if(e->funcargs){
-		int i;
-		idt_printf("args:\n");
-		gen_str_indent++;
-		for(i = 1, iter = e->funcargs; *iter; iter++, i++){
-			idt_printf("arg %d:\n", i);
-			gen_str_indent++;
-			print_expr(*iter);
-			gen_str_indent--;
-		}
-		gen_str_indent--;
-	}else{
-		idt_printf("no args\n");
-	}
+	dump_inc(ctx);
+	for(iter = e->funcargs; iter && *iter; iter++)
+		dump_expr(*iter, ctx);
 
-	UNUSED_OCTX();
+	dump_dec(ctx);
 }
 
 void mutate_expr_funcall(expr *e)

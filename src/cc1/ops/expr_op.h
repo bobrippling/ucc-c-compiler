@@ -1,9 +1,4 @@
-func_fold    fold_expr_op;
-func_gen     gen_expr_op;
-func_str     str_expr_op;
-func_gen     gen_expr_str_op;
-func_mutate_expr mutate_expr_op;
-func_gen     gen_expr_style_op;
+EXPR_DEFS(op);
 
 #if defined(__GNUC__) && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
 #  define ucc_wur __attribute__((warn_unused_result))

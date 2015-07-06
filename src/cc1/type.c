@@ -451,7 +451,11 @@ static void type_add_funcargs(
 	BUF_ADD("(");
 	for(i = args->arglist; i && *i; i++){
 		char tmp_buf[DECL_STATIC_BUFSIZ];
-		BUF_ADD("%s%s", comma, decl_to_str_r(tmp_buf, *i));
+		decl *d = *i;
+
+		BUF_ADD("%s%s", comma,
+				decl_store_spel_type_to_str_r(tmp_buf, d->store, NULL, d->ref));
+
 		comma = ", ";
 	}
 	BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
@@ -519,7 +523,7 @@ static void type_add_str_pre(
 }
 
 static void type_add_str(
-		type *r, char *spel,
+		type *r, const char *spel,
 		int *need_spc,
 		char **bufp, int *sz,
 		type *stop_at)
@@ -622,7 +626,7 @@ static void type_add_str(
 static
 const char *type_to_str_r_spel_opts(
 		char buf[BTYPE_STATIC_BUFSIZ], type *r,
-		char *spel, enum type_str_opts);
+		const char *spel, enum type_str_opts);
 
 static
 type *type_add_type_str(type *r,
@@ -700,7 +704,7 @@ static type *type_set_parent(type *r, type *parent)
 static
 const char *type_to_str_r_spel_opts(
 		char buf[TYPE_STATIC_BUFSIZ], type *r,
-		char *spel, enum type_str_opts const opts)
+		const char *spel, enum type_str_opts const opts)
 {
 	char *bufp = buf;
 	int spc = 1;
@@ -727,7 +731,7 @@ const char *type_to_str_r_spel_opts(
 	return buf;
 }
 
-const char *type_to_str_r_spel(char buf[TYPE_STATIC_BUFSIZ], type *r, char *spel)
+const char *type_to_str_r_spel(char buf[TYPE_STATIC_BUFSIZ], type *r, const char *spel)
 {
 	return type_to_str_r_spel_opts(buf, r, spel, TY_STR_AKA);
 }

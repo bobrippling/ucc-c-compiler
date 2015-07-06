@@ -638,13 +638,21 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 	return casted;
 }
 
-const out_val *gen_expr_str_cast(const expr *e, out_ctx *octx)
+void dump_expr_cast(const expr *e, dump *ctx)
 {
-	idt_printf("%scast expr:\n", IS_LVAL_DECAY(e) ? "lvalue-decay-" : "");
-	gen_str_indent++;
-	print_expr(expr_cast_child(e));
-	gen_str_indent--;
-	UNUSED_OCTX();
+	const char *desc = "cast";
+
+	if(IS_LVAL_DECAY(e)){
+		desc = "lvalue-decay";
+	}else if(e->expr_cast_implicit){
+		desc = "implicit cast";
+	}
+
+	dump_desc_expr(ctx, desc, e);
+
+	dump_inc(ctx);
+	dump_expr(expr_cast_child(e), ctx);
+	dump_dec(ctx);
 }
 
 void mutate_expr_cast(expr *e)

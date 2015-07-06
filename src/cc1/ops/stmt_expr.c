@@ -40,6 +40,17 @@ void gen_stmt_expr(const stmt *s, out_ctx *octx)
 	out_val_consume(octx, gen_expr(s->expr, octx));
 }
 
+void dump_stmt_expr(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "expression", s);
+
+	dump_inc(ctx);
+
+	dump_expr(s->expr, ctx);
+
+	dump_dec(ctx);
+}
+
 void style_stmt_expr(const stmt *s, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(s->expr, octx));

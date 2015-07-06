@@ -130,6 +130,12 @@ const char *decl_to_str(decl *d);
 const char *decl_to_str_r(char buf[ucc_static_param DECL_STATIC_BUFSIZ], decl *);
 const char *decl_store_to_str(const enum decl_storage);
 
+const char *decl_store_spel_type_to_str_r(
+		char buf[ucc_static_param DECL_STATIC_BUFSIZ],
+		enum decl_storage store,
+		const char *spel,
+		type *ty);
+
 #define DECL_FUNC_ARG_SYMTAB(d) ((d)->bits.func.code->symtab->parent)
 #define DECL_HAS_FUNC_CODE(d) (type_is(d->ref, type_func) && d->bits.func.code)
 

@@ -82,6 +82,7 @@ struct symtable
 typedef struct symtable_gasm symtable_gasm;
 struct symtable_gasm
 {
+	where where;
 	decl *before; /* the decl this occurs before - NULL if last */
 	char *asm_str;
 };

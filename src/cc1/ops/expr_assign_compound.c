@@ -105,22 +105,25 @@ const out_val *gen_expr_assign_compound(const expr *e, out_ctx *octx)
 	return saved_post;
 }
 
-const out_val *gen_expr_str_assign_compound(const expr *e, out_ctx *octx)
+void dump_expr_assign_compound(const expr *e, dump *ctx)
 {
-	idt_printf("compound %s%s-assignment expr:\n",
-			e->assign_is_post ? "post-" : "",
+	dump_desc_expr_newline(ctx, "compound assignment", e, 0);
+
+	dump_printf_indent(ctx, 0, " %s%s=",
+			e->assign_is_post ? "post-assignment " : "",
 			op_to_str(e->bits.compoundop.op));
 
-	idt_printf("assign to:\n");
-	gen_str_indent++;
-	print_expr(e->lhs);
-	gen_str_indent--;
-	idt_printf("assign from:\n");
-	gen_str_indent++;
-	print_expr(e->rhs);
-	gen_str_indent--;
+	if(e->bits.compoundop.upcast_ty){
+		dump_printf_indent(ctx, 0, " upcast='%s'",
+				type_to_str(e->bits.compoundop.upcast_ty));
+	}
 
-	UNUSED_OCTX();
+	dump_printf_indent(ctx, 0, "\n");
+
+	dump_inc(ctx);
+	dump_expr(e->lhs, ctx);
+	dump_expr(e->rhs, ctx);
+	dump_dec(ctx);
 }
 
 void mutate_expr_assign_compound(expr *e)
