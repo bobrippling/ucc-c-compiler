@@ -1,9 +1,7 @@
-include ../src_config.mk
-include ../../config.mk
+include ../config.mk
 
-ARCH_OBJ = out/${UCC_CPU}.o
+ARCH_OBJ = out/${ARCH}.o
 
-CFLAGS  += -Wno-missing-field-initializers -Wno-empty-body ${CPPFLAGS}
 LDFLAGS += -lm
 
 OBJ = \
@@ -49,7 +47,7 @@ test: ${OBJ_TEST}
 check: test
 	./test
 
-.c.o:
+%.o: %.c
 	${CC} ${CFLAGS} -c -o $@ $<
 
 clean:
@@ -69,7 +67,7 @@ tags: ${SRC}
 out/alloca.o out/ctrl.o out/func.o out/impl.o out/mipsel_32.o \
 	out/new.o out/op.o out/out.o out/val.o out/virt.o out/vm.o \
 	out/x86_64.o out/dbg.o : \
-	CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
+	CFLAGS += -DCC1_IMPL_FNAME=\"${ARCH}.h\"
 
 # extra deps
 out/impl.h: out/x86_64.h out/mipsel_32.h
@@ -77,11 +75,11 @@ out/impl.h: out/x86_64.h out/mipsel_32.h
 deps: Makefile.dep
 
 Makefile.dep: \
-	CPPFLAGS = -DCC1_IMPL_FNAME=\"${UCC_CPU}.h\"
+	CFLAGS += -DCC1_IMPL_FNAME=\"${ARCH}.h\"
 
 Makefile.dep:
-	${CC} ${CPPFLAGS} -MM *.c > $@
-	${CC} ${CPPFLAGS} -MM ops/*.c | sed 's#^\([^ ]\)#ops/\1#' >> $@
-	${CC} ${CPPFLAGS} -MM out/*.c | sed 's#^\([^ ]\)#out/\1#' >> $@
+	${CC} ${CFLAGS} -MM *.c > $@
+	${CC} ${CFLAGS} -MM ops/*.c | sed 's#^\([^ ]\)#ops/\1#' >> $@
+	${CC} ${CFLAGS} -MM out/*.c | sed 's#^\([^ ]\)#out/\1#' >> $@
 
 include Makefile.dep

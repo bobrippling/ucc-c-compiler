@@ -1,14 +1,14 @@
 all: src
 	make -C lib
 
-src: configure
+src: src/config.mk
 	make -C src
 
 deps:
 	make -Csrc deps
 
-configure:
-	@if ! test -e config.mk; then echo ucc needs configuring; exit 1; fi
+src/config.mk:
+	echo ucc needs configuring >&2; exit 1
 
 clean:
 	make -C src clean
@@ -30,4 +30,4 @@ ALL_SRC = $(shell find . -iname '*.[ch]')
 tags: ${ALL_SRC}
 	ctags -R .
 
-.PHONY: all clean cleanall configure src
+.PHONY: all clean cleanall src

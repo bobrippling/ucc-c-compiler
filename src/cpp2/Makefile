@@ -1,4 +1,4 @@
-include ../src_config.mk
+include ../config.mk
 
 CFLAGS += -Wmissing-prototypes
 
@@ -17,7 +17,7 @@ OBJ = preproc.o main.o macro.o str.o \
       ../util/path.o
 
 cpp: ${OBJ}
-	${CC} ${CFLAGS} -o $@ ${OBJ}
+	${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 clean:
 	rm -f *.o cpp
@@ -27,6 +27,6 @@ clean:
 deps: Makefile.dep
 
 Makefile.dep:
-	${CC} ${CPPFLAGS} -MM *.c > $@
+	${CC} ${CFLAGS} -MM *.c > $@
 
 include Makefile.dep

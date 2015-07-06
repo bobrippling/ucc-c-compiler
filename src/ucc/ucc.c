@@ -366,9 +366,9 @@ static void print_search_dirs_and_exit(
 	printf("include: ");
 
 	if(stdinc){
-		printf("%s", UCC_INC);
+		printf("%s", UCC_STDINC);
 
-		if(*UCC_INC)
+		if(*UCC_STDINC)
 			sep = ":";
 	}
 
@@ -719,7 +719,7 @@ input:
 
 	/* default include paths */
 	if(stdinc){
-		char *const dup = ustrdup(UCC_INC);
+		char *const dup = ustrdup(UCC_STDINC);
 		char *p;
 
 		for(p = strtok(dup, ":"); p; p = strtok(NULL, ":")){
