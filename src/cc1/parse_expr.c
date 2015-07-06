@@ -404,7 +404,7 @@ expr *parse_expr_unary(symtable *scope, int static_ctx)
 				/* GNU &&label */
 				cc1_warn_at(NULL, gnu_addr_lbl, "use of GNU address-of-label");
 				EAT(curtok);
-				e = expr_new_addr_lbl(token_current_spel());
+				e = expr_new_addr_lbl(token_current_spel(), static_ctx);
 				EAT(token_identifier);
 				break;
 

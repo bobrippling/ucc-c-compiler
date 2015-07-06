@@ -114,6 +114,7 @@ struct expr
 		{
 			char *spel;
 			struct label *label;
+			int static_ctx;
 		} lbl;
 
 		struct /* used in compound literal */
@@ -262,7 +263,7 @@ expr *expr_new_deref(expr *);
 expr *expr_new_struct(expr *sub, int dot, expr *ident);
 expr *expr_new_struct_mem(expr *sub, int dot, decl *);
 expr *expr_new_str(char *, size_t, int wide, where *, symtable *stab);
-expr *expr_new_addr_lbl(char *);
+expr *expr_new_addr_lbl(char *lbl, int static_ctx);
 expr *expr_new_addr(expr *);
 
 expr *expr_new_comma2(expr *lhs, expr *rhs);

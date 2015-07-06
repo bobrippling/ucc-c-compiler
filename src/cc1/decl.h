@@ -68,6 +68,7 @@ struct decl
 		struct
 		{
 			struct stmt *code;
+			int contains_addr_lbl; /* can't inline static-&& expressions */
 		} func;
 	} bits;
 

@@ -34,8 +34,13 @@ expr *expr_addr_target(const expr *e)
 void fold_expr_addr(expr *e, symtable *stab)
 {
 	if(e->bits.lbl.spel){
-		if(!symtab_func(stab))
+		decl *in_func = symtab_func(stab);
+
+		if(!in_func)
 			die_at(&e->where, "address-of-label outside a function");
+
+		if(e->bits.lbl.static_ctx)
+			in_func->bits.func.contains_addr_lbl = 1;
 
 		(e->bits.lbl.label =
 		 symtab_label_find_or_new(
@@ -104,15 +109,21 @@ const out_val *gen_expr_str_addr(const expr *e, out_ctx *octx)
 static void const_expr_addr(expr *e, consty *k)
 {
 	if(e->bits.lbl.spel){
+		int static_ctx = e->bits.lbl.static_ctx; /* global or static */
+
 		/*k->sym_lbl = e->bits.lbl.spel;*/
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR;
 		k->offset = 0;
 		k->bits.addr.is_lbl = 1;
 
-		e->bits.lbl.label->mustgen_spel = out_label_code("goto");
+		if(static_ctx){
+			e->bits.lbl.label->mustgen_spel = out_label_code("goto");
 
-		k->bits.addr.bits.lbl = e->bits.lbl.label->mustgen_spel;
+			k->bits.addr.bits.lbl = e->bits.lbl.label->mustgen_spel;
+		}else{
+			k->bits.addr.bits.lbl = e->bits.lbl.label->spel;
+		}
 
 	}else{
 		const_fold(e->lhs, k);
@@ -145,10 +156,11 @@ expr *expr_new_addr(expr *sub)
 	return e;
 }
 
-expr *expr_new_addr_lbl(char *lbl)
+expr *expr_new_addr_lbl(char *lbl, int static_ctx)
 {
 	expr *e = expr_new_wrapper(addr);
 	e->bits.lbl.spel = lbl;
+	e->bits.lbl.static_ctx = static_ctx;
 	return e;
 }
 
