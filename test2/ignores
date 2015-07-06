@@ -20,3 +20,6 @@ stack/register.c
 
 # waiting for proper cpp tokenisation
 cpp/number_tokenisation.c
+
+# __attribute__ ignored on block types now
+inline/block_call.c
