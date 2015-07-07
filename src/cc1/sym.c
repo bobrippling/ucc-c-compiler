@@ -180,19 +180,36 @@ const char *sym_to_str(enum sym_type t)
 	return NULL;
 }
 
-static void label_init(symtable **stab)
+static void label_init(symtable *stab)
 {
-	*stab = symtab_func_root(*stab);
-	if((*stab)->labels)
+	if(stab->labels)
 		return;
-	(*stab)->labels = dynmap_new(char *, strcmp, dynmap_strhash);
+	stab->labels = dynmap_new(char *, strcmp, dynmap_strhash);
+}
+
+int symtab_label_add_local(symtable *stab, char *spel, where *loc)
+{
+	label *lbl, *prev;
+
+	label_init(stab);
+
+	lbl = dynmap_get(char *, label *, stab->labels, spel);
+	if(lbl)
+		return 0;
+
+	lbl = label_new(loc, /*consumed*/spel, 0, stab);
+
+	prev = dynmap_set(char *, label *, stab->labels, spel, lbl);
+	assert(!prev);
+	return 1;
 }
 
 void symtab_label_add(symtable *stab, label *lbl)
 {
 	label *prev;
 
-	label_init(&stab);
+	stab = symtab_func_root(stab);
+	label_init(stab);
 
 	prev = dynmap_set(char *, label *,
 			symtab_func_root(stab)->labels,
@@ -203,19 +220,25 @@ void symtab_label_add(symtable *stab, label *lbl)
 
 label *symtab_label_find_or_new(symtable *const stab, char *spel, where *w)
 {
-	symtable *root;
+	symtable *const func_root = symtab_func_root(stab), *siter = stab;
 	label *lbl;
 
-	root = symtab_func_root(stab);
+	for(; siter; siter = siter->parent){
+		lbl = siter->labels
+			? dynmap_get(char *, label *, siter->labels, spel)
+			: NULL;
 
-	lbl = root->labels
-		? dynmap_get(char *, label *, root->labels, spel)
-		: NULL;
+		if(lbl)
+			break;
+	}
 
 	if(!lbl){
 		/* forward decl */
 		lbl = label_new(w, spel, 0, stab);
-		symtab_label_add(root, lbl);
+
+		/* already create new ones in func_root
+		 * - local labels are created separately */
+		symtab_label_add(func_root, lbl);
 	}
 
 	return lbl;

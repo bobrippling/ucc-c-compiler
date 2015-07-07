@@ -14,16 +14,18 @@ void fold_stmt_label(stmt *s)
 			s->symtab, s->bits.lbl.spel, &s->where);
 
 	/* update its where */
-	l->pw = &s->where;
+	memcpy_safe(&l->where, &s->where);
 	/* update its scope */
 	l->scope = s->symtab;
 	/* update code the label uses */
 	l->next_stmt = s;
 
-	if(l->complete)
-		die_at(&s->where, "duplicate label '%s'", s->bits.lbl.spel);
-	else
+	if(l->complete){
+		warn_at_print_error(&s->where, "duplicate label '%s'", s->bits.lbl.spel);
+		fold_had_error = 1;
+	}else{
 		l->complete = 1;
+	}
 
 	s->bits.lbl.label = l;
 

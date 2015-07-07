@@ -14,6 +14,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../vla.h"
+#include "../label.h"
 
 #include "../out/lbl.h"
 #include "../out/dbg.h"
@@ -531,6 +532,15 @@ void dump_stmt_code(const stmt *s, dump *ctx)
 	dump_desc_stmt(ctx, "code", s);
 
 	dump_inc(ctx);
+
+	/* local labels */
+	if(s->symtab->labels){
+		size_t i;
+		label *lbl;
+
+		for(i = 0; (lbl = dynmap_value(label *, s->symtab->labels, i)); i++)
+			dump_printf(ctx, "__label__ %s\n", lbl->spel);
+	}
 
 	for(di = symtab_decls(s->symtab); di && *di; di++)
 		dump_decl(*di, ctx, NULL);

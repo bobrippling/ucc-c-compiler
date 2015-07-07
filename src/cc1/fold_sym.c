@@ -484,10 +484,12 @@ void symtab_chk_labels(symtable *stab)
 		{
 			stmt **si;
 
-			if(!l->complete)
-				die_at(l->pw, "label '%s' undefined", l->spel);
-			else if(!l->uses && !l->unused)
-				cc1_warn_at(l->pw, lbl_unused, "unused label '%s'", l->spel);
+			if(!l->complete){
+				warn_at_print_error(&l->where, "label '%s' undefined", l->spel);
+				fold_had_error = 1;
+			}else if(!l->uses && !l->unused){
+				cc1_warn_at(&l->where, lbl_unused, "unused label '%s'", l->spel);
+			}
 
 			for(si = l->jumpers; si && *si; si++){
 				stmt *s = *si;
