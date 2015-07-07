@@ -6,6 +6,7 @@
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
+#include "../../util/macros.h"
 
 #include "ops.h"
 #include "expr_funcall.h"
@@ -13,6 +14,7 @@
 #include "../format_chk.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../c_funcs.h"
 
 #define ARG_BUF(buf, i, sp)       \
 	snprintf(buf, sizeof buf,       \
@@ -313,6 +315,46 @@ static void default_promote_args(
 			expr_promote_default(&args[i], stab);
 }
 
+static void check_standard_funcs(const char *name, expr **args)
+{
+	const size_t nargs = dynarray_count(args);
+
+	if(!strcmp(name, "free") && nargs == 1){
+		c_func_check_free(args[0]);
+	}else{
+		static const struct {
+			const char *name;
+			unsigned nargs;
+			int szarg;
+			int ptrargs[2];
+		} memfuncs[] = {
+			{ "memcpy", 3, 2, { 0, 1 } },
+			{ "memset", 3, 2, { 0, -1 } },
+			{ "memmove", 3, 2, { 0, 1 } },
+			{ "memcmp", 3, 2, { 0, 1 } },
+
+			{ 0 }
+		};
+
+		for(int i = 0; memfuncs[i].name; i++){
+			if(nargs == memfuncs[i].nargs && !strcmp(name, memfuncs[i].name)){
+				expr *ptrargs[countof(memfuncs[0].ptrargs) + 1] = { 0 };
+				unsigned arg;
+
+				for(arg = 0; arg < countof(memfuncs[0].ptrargs); arg++){
+					if(memfuncs[i].ptrargs[arg] == -1)
+						break;
+
+					ptrargs[arg] = args[memfuncs[i].ptrargs[arg]];
+				}
+
+				c_func_check_mem(ptrargs, args[memfuncs[i].szarg], memfuncs[i].name);
+				break;
+			}
+		}
+	}
+}
+
 void fold_expr_funcall(expr *e, symtable *stab)
 {
 	type *func_ty;
@@ -378,6 +420,9 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	/* check the subexp tree type to get the funcall attributes */
 	if(func_attr_present(e, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
+
+	if(sp && !(fopt_mode & FOPT_FREESTANDING))
+		check_standard_funcs(sp, e->funcargs);
 }
 
 const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)

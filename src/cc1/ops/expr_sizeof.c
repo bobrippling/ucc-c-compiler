@@ -30,6 +30,11 @@ static const char *sizeof_what(enum what_of wo)
 	return NULL;
 }
 
+type *expr_sizeof_type(expr *e)
+{
+	return SIZEOF_WHAT(e);
+}
+
 const char *str_expr_sizeof()
 {
 	return "sizeof/typeof/alignof";
