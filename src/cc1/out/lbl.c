@@ -6,7 +6,7 @@
 #include "../../util/util.h"
 #include "common.h"
 #include "lbl.h"
-#include "../../as_cfg.h"
+#include "../../config_as.h"
 
 static int label_last    = 1,
 					 str_last      = 1,

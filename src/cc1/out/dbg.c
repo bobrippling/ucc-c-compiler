@@ -27,7 +27,7 @@
 #include "asm.h" /* cc_out[] */
 
 #include "../defs.h" /* CHAR_BIT */
-#include "../../as_cfg.h" /* section names, private label */
+#include "../../config_as.h" /* section names, private label */
 
 #include "leb.h" /* leb128 */
 

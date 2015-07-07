@@ -35,7 +35,7 @@
 #include "type_nav.h"
 #include "cc1_where.h"
 
-#include "../as_cfg.h"
+#include "../config_as.h"
 
 struct cc1_warning cc1_warning;
 enum warning_fatality

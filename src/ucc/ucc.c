@@ -10,7 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "cfg.h"
+#include "../config_driver.h"
 
 #include "ucc.h"
 #include "ucc_ext.h"

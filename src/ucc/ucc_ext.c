@@ -7,7 +7,7 @@
 #include <sys/wait.h>
 #include <stdarg.h>
 
-#include "cfg.h"
+#include "../config_driver.h"
 
 #include "ucc_ext.h"
 #include "ucc.h"
