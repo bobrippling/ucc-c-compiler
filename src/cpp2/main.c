@@ -11,7 +11,6 @@
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
 #include "../util/platform.h"
-#include "../util/std.h"
 #include "../util/limits.h"
 #include "../util/macros.h"
 
@@ -21,6 +20,7 @@
 #include "include.h"
 #include "directive.h"
 #include "deps.h"
+#include "feat.h"
 
 #define FNAME_BUILTIN "<builtin>"
 #define FNAME_CMDLINE "<command-line>"
@@ -28,42 +28,60 @@
 static const struct
 {
 	const char *nam, *val;
+	int is_fn;
+
 } initial_defs[] = {
 	/* standard */
-	{ "__unix__",       "1"  },
-	{ "__STDC__",       "1"  },
+	{ "__unix__",       "1", 0 },
+	{ "__STDC__",       "1", 0 },
 
-	{ "__STDC_NO_ATOMICS__" , "1" }, /* _Atomic */
-	{ "__STDC_NO_THREADS__" , "1" }, /* _Thread_local */
-	{ "__STDC_NO_COMPLEX__", "1" }, /* _Complex */
+#if !UCC_HAS_ATOMICS
+	{ "__STDC_NO_ATOMICS__" , "1", 0 }, /* _Atomic */
+#endif
+#if !UCC_HAS_THREADS
+	{ "__STDC_NO_THREADS__" , "1", 0 }, /* _Thread_local */
+#endif
+#if !UCC_HAS_COMPLEX
+	{ "__STDC_NO_COMPLEX__", "1", 0 }, /* _Complex */
+#endif
+#if !UCC_HAS_VLA
+	{ "__STDC_NO_VLA__", "1", 0 },
+#endif
 
-	/*{ "__STDC_NO_VLA__", "1" }, vla are implemented */
-
-#define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
+#define TYPE(ty, c) { "__" #ty "_TYPE__", #c, 0 }
 
 	TYPE(SIZE, unsigned long),
 	TYPE(PTRDIFF, unsigned long),
 	TYPE(WINT, unsigned),
 
-	{ "__ORDER_LITTLE_ENDIAN__", "1234" },
-	{ "__ORDER_BIG_ENDIAN__",    "4321" },
-	{ "__ORDER_PDP_ENDIAN__",    "3412" },
+	{ "__ORDER_LITTLE_ENDIAN__", "1234", 0 },
+	{ "__ORDER_BIG_ENDIAN__",    "4321", 0 },
+	{ "__ORDER_PDP_ENDIAN__",    "3412", 0 },
 
 	/* non-standard */
-	{ "__BLOCKS__",     "1"  },
+	{ "__BLOCKS__",     "1", 0 },
 
 	/* custom */
-	{ "__UCC__",        "1"  },
+	{ "__UCC__",        "1", 0 },
 
 	/* magic */
-	{ "__FILE__",       NULL },
-	{ "__LINE__",       NULL },
-	{ "__COUNTER__",    NULL },
-	{ "__DATE__",       NULL },
-	{ "__TIME__",       NULL },
-	{ "__TIMESTAMP__",  NULL },
+#define SPECIAL(x) { x, NULL, 0 }
+	SPECIAL("__FILE__"),
+	SPECIAL("__LINE__"),
+	SPECIAL("__COUNTER__"),
+	SPECIAL("__DATE__"),
+	SPECIAL("__TIME__"),
+	SPECIAL("__TIMESTAMP__"),
 
-	{ NULL,             NULL }
+#undef SPECIAL
+#define SPECIAL(x) { x, NULL, 1 }
+	SPECIAL("__has_feature"),
+	SPECIAL("__has_extension"),
+	SPECIAL("__has_attribute"),
+	SPECIAL("__has_builtin"),
+#undef SPECIAL
+
+	{ NULL, NULL, 0 }
 };
 
 struct loc loc_tok;
@@ -79,6 +97,8 @@ char **cd_stack = NULL;
 int option_line_info = 1;
 int option_trigraphs = 0, option_digraphs = 0;
 static int option_trace = 0;
+
+enum c_std cpp_std = STD_C99;
 
 enum wmode wmode =
 	  WWHITESPACE
@@ -197,7 +217,6 @@ int main(int argc, char **argv)
 	int i;
 	int platform_win32 = 0;
 	int freestanding = 0;
-	enum c_std std = STD_C99;
 
 	infname = outfname = NULL;
 
@@ -206,8 +225,12 @@ int main(int argc, char **argv)
 
 	macro_add_limits();
 
-	for(i = 0; initial_defs[i].nam; i++)
-		macro_add(initial_defs[i].nam, initial_defs[i].val, 0);
+	for(i = 0; initial_defs[i].nam; i++){
+		if(initial_defs[i].is_fn)
+			macro_add_func(initial_defs[i].nam, initial_defs[i].val, NULL, 0, 1);
+		else
+			macro_add(initial_defs[i].nam, initial_defs[i].val, 0);
+	}
 
 	switch(platform_type()){
 		case PLATFORM_x86_64:
@@ -402,7 +425,7 @@ int main(int argc, char **argv)
 
 			default:
 defaul:
-				if(std_from_str(argv[i], &std, NULL) == 0){
+				if(std_from_str(argv[i], &cpp_std, NULL) == 0){
 					/* we have an std */
 				}else if(!strcmp(argv[i], "-trigraphs")){
 					option_trigraphs = 1;
@@ -418,7 +441,7 @@ defaul:
 	current_fname = FNAME_BUILTIN;
 
 	macro_add("__STDC_HOSTED__",  freestanding ? "0" : "1", 0);
-	switch(std){
+	switch(cpp_std){
 		case STD_C89:
 		case STD_C90:
 			/* no */

@@ -27,6 +27,7 @@
 #include "../type_nav.h"
 
 #include "../parse_expr.h"
+#include "__builtin_va.h"
 
 static void va_type_check(
 		expr *va_l, expr *in, symtable *stab, int expect_decay)

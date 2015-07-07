@@ -1,8 +1,9 @@
-#ifndef OPS_BUILTIN_VA_H
-#define OPS_BUILTIN_VA_H
+#ifndef BUILTIN_VA_H
+#define BUILTIN_VA_H
 
-#define BUILTIN_VA(nam) expr *parse_va_ ##nam(const char *, symtable *);
-#  include "__builtin_va.def"
-#undef BUILTIN_VA
+expr *parse_va_start(const char *ident, symtable *scope);
+expr *parse_va_arg(const char *ident, symtable *scope);
+expr *parse_va_end(const char *ident, symtable *scope);
+expr *parse_va_copy(const char *ident, symtable *scope);
 
 #endif

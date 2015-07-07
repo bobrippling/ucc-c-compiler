@@ -3,6 +3,7 @@
 
 #include "type.h"
 #include "retain.h"
+#include "attributes.h"
 
 typedef struct attribute attribute;
 struct attribute
@@ -13,24 +14,13 @@ struct attribute
 
 	enum attribute_type
 	{
-		attr_format,
-		attr_unused,
-		attr_warn_unused,
-		attr_section,
-		attr_enum_bitmask,
-		attr_noreturn,
-		attr_noderef,
-		attr_call_conv,
-		attr_nonnull,
-		attr_packed,
-		attr_sentinel,
-		attr_aligned,
-		attr_weak,
-		attr_cleanup,
-		attr_desig_init,
-		attr_always_inline,
-		attr_noinline,
-		attr_ucc_debug, /* logs out a message when handled */
+#define NAME(x) attr_ ## x,
+#define ALIAS(s, x) attr_ ## x,
+#define EXTRA_ALIAS(s, x)
+		ATTRIBUTES
+#undef NAME
+#undef ALIAS
+#undef EXTRA_ALIAS
 		attr_LAST
 		/*
 		 * TODO: warning

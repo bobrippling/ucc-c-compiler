@@ -2,30 +2,34 @@ deps.o: deps.c ../util/dynmap.h ../util/dyn.h ../util/alloc.h \
  ../util/compiler.h ../util/path.h deps.h
 directive.o: directive.c ../util/util.h ../util/warn.h ../util/where.h \
  ../util/compiler.h ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
- ../util/str.h ../util/path.h directive.h tokenise.h main.h macro.h \
- preproc.h include.h str.h eval.h expr.h deps.h
+ ../util/str.h ../util/path.h directive.h tokenise.h main.h ../util/std.h \
+ macro.h preproc.h include.h str.h eval.h expr.h deps.h
 eval.o: eval.c eval.h ../util/dynarray.h ../util/dyn.h ../util/util.h \
  ../util/warn.h ../util/where.h ../util/compiler.h ../util/alloc.h \
- ../util/str.h tokenise.h macro.h str.h main.h snapshot.h preproc.h
+ ../util/str.h tokenise.h macro.h str.h main.h ../util/std.h snapshot.h \
+ preproc.h has.h
 expr.o: expr.c ../util/alloc.h ../util/compiler.h ../util/util.h \
  ../util/warn.h ../util/where.h ../util/macros.h expr.h expr_tok.h main.h \
- preproc.h
+ ../util/std.h preproc.h
 expr_tok.o: expr_tok.c expr.h expr_tok.h str.h preproc.h main.h \
- ../util/alloc.h ../util/compiler.h ../util/str.h ../util/util.h \
- ../util/warn.h ../util/where.h ../util/escape.h
+ ../util/std.h ../util/alloc.h ../util/compiler.h ../util/str.h \
+ ../util/util.h ../util/warn.h ../util/where.h ../util/escape.h
+has.o: has.c ../util/std.h ../cc1/attributes.h ../cc1/ops/__builtins.h \
+ has.h feat.h main.h include.h
 include.o: include.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
  ../util/compiler.h ../util/util.h ../util/warn.h ../util/where.h \
- include.h main.h preproc.h
+ include.h main.h ../util/std.h preproc.h
 macro.o: macro.c ../util/util.h ../util/warn.h ../util/where.h \
  ../util/compiler.h ../util/alloc.h ../util/dynarray.h ../util/dyn.h \
- macro.h main.h preproc.h
+ macro.h main.h ../util/std.h preproc.h
 main.o: main.c ../util/util.h ../util/warn.h ../util/where.h \
  ../util/compiler.h ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
- ../util/platform.h ../util/std.h ../util/limits.h ../util/macros.h \
- main.h macro.h preproc.h include.h directive.h deps.h warnings.def
+ ../util/platform.h ../util/limits.h ../util/macros.h main.h \
+ ../util/std.h macro.h preproc.h include.h directive.h deps.h feat.h \
+ warnings.def
 preproc.o: preproc.c ../util/util.h ../util/warn.h ../util/where.h \
  ../util/compiler.h ../util/alloc.h ../util/str.h ../util/macros.h main.h \
- preproc.h directive.h eval.h str.h
+ ../util/std.h preproc.h directive.h eval.h str.h
 snapshot.o: snapshot.c ../util/dynarray.h ../util/dyn.h ../util/alloc.h \
  ../util/compiler.h ../util/where.h snapshot.h macro.h
 str.o: str.c str.h ../util/alloc.h ../util/compiler.h ../util/util.h \

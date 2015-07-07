@@ -18,6 +18,7 @@
 #include "main.h"
 #include "snapshot.h"
 #include "preproc.h"
+#include "has.h"
 
 #define VA_ARGS_STR "__VA_ARGS__"
 
@@ -128,6 +129,23 @@ static char *eval_func_macro(macro *m, char *args_str)
 
 	int got = dynarray_count(args)
 		, exp = dynarray_count(m->args);
+
+	if(!m->val){
+		int ret;
+
+		if(got != 1){
+			CPP_DIE("too %s arguments to builtin macro \"%s\"",
+					args ? "many" : "few", m->nam);
+		}
+
+		/* we don't want macro-substitution of the argument */
+		ret = has_func(m->nam, args[0]);
+
+		dynarray_free(char **, args, free);
+
+		return ustrdup(ret ? "1" : "0");
+	}
+
 
 	if(m->type == VARIADIC ? got < exp : got != exp){
 		if(got == 0 && exp == 1){

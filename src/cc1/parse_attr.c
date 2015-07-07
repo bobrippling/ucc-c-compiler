@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -23,14 +24,12 @@
 
 static void parse_attr_bracket_chomp(int had_open_paren);
 
-static attribute *parse_attr_format(symtable *scope)
+static attribute *parse_attr_format()
 {
 	/* __attribute__((format (printf, fmtarg, firstvararg))) */
 	attribute *da;
 	char *func;
 	enum fmt_type fmt;
-
-	(void)scope;
 
 	EAT(token_open_paren);
 
@@ -169,30 +168,36 @@ out:
 	return NULL;
 }
 
-static attribute *parse_attr_sentinel(symtable *scope)
+static attribute *parse_attr_sentinel(symtable *scope, const char *ident)
 {
 	attribute *da = attribute_new(attr_sentinel);
+
+	(void)ident;
 
   da->bits.sentinel = optional_parened_expr(scope);
 
 	return da;
 }
 
-static attribute *parse_attr_aligned(symtable *scope)
+static attribute *parse_attr_aligned(symtable *scope, const char *ident)
 {
 	attribute *da = attribute_new(attr_aligned);
+
+	(void)ident;
 
   da->bits.align = optional_parened_expr(scope);
 
 	return da;
 }
 
-static attribute *parse_attr_cleanup(symtable *scope)
+static attribute *parse_attr_cleanup(symtable *scope, const char *ident)
 {
 	decl *d;
 	char *sp;
 	where ident_loc;
 	attribute *attr;
+
+	(void)ident;
 
 	EAT(token_open_paren);
 
@@ -216,9 +221,11 @@ static attribute *parse_attr_cleanup(symtable *scope)
 }
 
 #define EMPTY(t)                                \
-static attribute *parse_ ## t(symtable *symtab) \
+static attribute *parse_ ## t(                  \
+		symtable *symtab, const char *ident)        \
 {                                               \
 	(void)symtab;                                 \
+	(void)ident;                                  \
 	return attribute_new(t);                      \
 }
 
@@ -236,49 +243,36 @@ EMPTY(attr_desig_init)
 
 #undef EMPTY
 
-#define CALL_CONV(n)                            \
-static attribute *parse_attr_## n()             \
-{                                               \
-	attribute *a = attribute_new(attr_call_conv); \
-	a->bits.conv = conv_ ## n;                    \
-	return a;                                     \
-}
+static attribute *parse_attr_call_conv(symtable *symtab, const char *ident)
+{
+	attribute *a = attribute_new(attr_call_conv);
 
-CALL_CONV(cdecl)
-CALL_CONV(stdcall)
-CALL_CONV(fastcall)
+	(void)symtab;
+
+	/**/ if(!strcmp(ident, "cdecl"))
+		a->bits.conv = conv_cdecl;
+	else if(!strcmp(ident, "stdcall"))
+		a->bits.conv = conv_stdcall;
+	else if(!strcmp(ident, "fastcall"))
+		a->bits.conv = conv_fastcall;
+	else
+		assert(0 && "unreachable");
+
+	return a;
+}
 
 static struct
 {
 	const char *ident;
-	attribute *(*parser)(symtable *);
+	attribute *(*parser)(symtable *, const char *ident);
 } attrs[] = {
-#define ATTR(x) { #x, parse_attr_ ## x }
-	ATTR(format),
-	ATTR(unused),
-	ATTR(warn_unused),
-	ATTR(section),
-	ATTR(enum_bitmask),
-	ATTR(noreturn),
-	ATTR(noderef),
-	ATTR(nonnull),
-	ATTR(packed),
-	ATTR(sentinel),
-	ATTR(aligned),
-	ATTR(weak),
-	ATTR(cleanup),
-	{ "designated_init", parse_attr_desig_init },
-	ATTR(always_inline),
-	ATTR(noinline),
-	{ "__ucc_debug", parse_attr_ucc_debug },
-
-	ATTR(cdecl),
-	ATTR(stdcall),
-	ATTR(fastcall),
-#undef ATTR
-
-	/* compat */
-	{ "warn_unused_result", parse_attr_warn_unused },
+#define NAME(x) { #x, parse_attr_ ## x },
+#define ALIAS(s, x) { s, parse_attr_ ## x },
+#define EXTRA_ALIAS(s, x) { s, parse_attr_ ## x},
+	ATTRIBUTES
+#undef NAME
+#undef ALIAS
+#undef EXTRA_ALIAS
 
 	{ NULL, NULL },
 };
@@ -311,7 +305,7 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 		if(!strcmp(attrs[i].ident, ident)
 		|| (snprintf(buf, sizeof buf, "__%s__", attrs[i].ident), !strcmp(buf, ident)))
 		{
-			return attrs[i].parser(scope);
+			return attrs[i].parser(scope, attrs[i].ident);
 		}
 	}
 

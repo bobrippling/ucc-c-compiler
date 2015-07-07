@@ -1,10 +1,14 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#include "../util/std.h"
+
 void dirname_push(char *d);
 char *dirname_pop(void);
 
 extern char **cd_stack;
+
+extern enum c_std cpp_std;
 
 extern char cpp_time[16], cpp_date[16], cpp_timestamp[64];
 
