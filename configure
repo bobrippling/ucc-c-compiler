@@ -41,7 +41,7 @@ try_cflag(){
 
 usage(){
 	cat >&2 <<!
-Usage: $0 [OPTIONS...]
+Usage: $0 [OPTIONS...] [CC/CFLAGS/LDFLAGS=...]
 
 Options:
 	--target=..., --host=...    Build for target machine
@@ -49,7 +49,7 @@ Options:
 	--enable-debug              Build with debug symbols [enabled]
 	--enable-optimize           Build with optimsations
 
-CC, CFLAGS and LDFLAGS are pulled from the environment
+CC, CFLAGS and LDFLAGS are pulled from the environment if not specified
 !
 	exit 1
 }
@@ -102,6 +102,10 @@ do
 
 		--enable-optimi[sz]e|--enable-optimi[sz]e=yes) optimise=1 ;;
 		--disable-optimi[sz]e|--enable-optimi[sz]e=no) optimise=0 ;;
+
+		CC=*) CC=${arg#*=} ;;
+		CFLAGS=*) CFLAGS=${arg#*=} ;;
+		LDFLAGS=*) LDFLAGS=${arg#*=} ;;
 
 		*)
 			usage
