@@ -7,8 +7,9 @@
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "ucc_lib.h"
-#include "cfg.h"
 #include "str.h"
+
+#include "../config_driver.h"
 
 #include "../util/alloc.h"
 #include "../util/dynarray.h"

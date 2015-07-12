@@ -1,113 +1,16 @@
 #!/bin/sh
 
-set -e
+set -eu
 
-os_cfg(){
-	cat > config.mk <<!
-UCC_AS      = ${UCC_AS}
-UCC_LD      = ${UCC_LD}
-UCC_ARCH    = ${UCC_ARCH}
-UCC_LDFLAGS = ${UCC_LDFLAGS}
-UCC_CPU     = ${UCC_CPU}
-!
-
-	cat > src/ucc/cfg.h <<!
-#define UCC_AS      "${UCC_AS}"
-#define UCC_LD      "${UCC_LD}"
-#define UCC_ARCH    "${UCC_ARCH}"
-#define UCC_INC     "${UCC_INC}"
-
-#define NEED_DSYM $NEED_DSYM
-
-#define UCC_CPPFLAGS "${UCC_CPPFLAGS}"
-#define UCC_CFLAGS   "${UCC_CFLAGS}"
-#define UCC_LDFLAGS  "${UCC_LDFLAGS}"
-
-#define UCC_STDLIB "${UCC_STDLIB}"
-#define UCC_CRT    "${UCC_CRT}"
-!
-
-	if [ $1 = Darwin ]
-	then
-		SECTION_TEXT="__TEXT,__text"
-		SECTION_DATA="__DATA,__data"
-		SECTION_BSS="__BSS,__bss"
-		SECTION_RODATA="__TEXT,__const"
-		SECTION_DBG_ABBREV="__DWARF,__debug_abbrev,regular,debug"
-		SECTION_DBG_INFO="__DWARF,__debug_info,regular,debug"
-		SECTION_DBG_LINE="__DWARF,__debug_line,regular,debug"
-		DWARF_INDIRECT_SECTION_LINKS=1
-
-		ASM_WEAK_DIRECTIVE='weak_reference'
-		# Darwin also needs "-flat_namespace -undefined suppress"
-		AS_SUPPORTS_LOCAL_COMMON=0
-	else
-		SECTION_TEXT=".text"
-		SECTION_DATA=".data"
-		SECTION_BSS=".bss"
-		SECTION_RODATA=".rodata"
-		SECTION_DBG_ABBREV=".debug_abbrev"
-		SECTION_DBG_INFO=".debug_info"
-		SECTION_DBG_LINE=".debug_line"
-		DWARF_INDIRECT_SECTION_LINKS=0
-		ASM_WEAK_DIRECTIVE='weak'
-		AS_SUPPORTS_LOCAL_COMMON=1
-	fi
-
-	cat > src/as_cfg.h <<!
-#define SECTION_NAME_TEXT $SECTION_TEXT
-#define SECTION_NAME_DATA $SECTION_DATA
-#define SECTION_NAME_BSS  $SECTION_BSS
-#define SECTION_NAME_RODATA $SECTION_RODATA
-#define SECTION_NAME_DBG_ABBREV $SECTION_DBG_ABBREV
-#define SECTION_NAME_DBG_INFO $SECTION_DBG_INFO
-#define SECTION_NAME_DBG_LINE $SECTION_DBG_LINE
-#define UCC_M32      ${UCC_M32}
-#define DWARF_INDIRECT_SECTION_LINKS $DWARF_INDIRECT_SECTION_LINKS
-#define ASM_PLBL_PRE "$ASM_PLBL"
-#define ASM_WEAK_DIRECTIVE "$ASM_WEAK_DIRECTIVE"
-#define AS_SUPPORTS_LOCAL_COMMON $AS_SUPPORTS_LOCAL_COMMON
-!
-
-	if ! which perl > /dev/null
-	then
-		if [ $1 = Darwin ]
-		then m=" (and darwin syscalls)"
-		fi
-		echo >&2 "Perl not found, generate strerror$m yourself"
-	else
-		perl -e '
-		for(1 .. 100){
-			$! = $_;
-			printf "\t\"%s\",\n", $!;
-		}
-		' > lib/string_strerrs.h
-
-		if [ $1 = Darwin ]
-		then perl lib/syscalls_darwin.pl < lib/syscalls_darwin_unix.h > lib/syscalls_darwin.h
-		fi
-	fi
-
-	if [ $1 = Cygwin ]
-	then echo "CFLAGS += -Wno-char-subscripts"
-	fi > src/src_config_platform.mk
-
-	echo "Configured for $UCC_CPU $1"
+echo(){
+	printf '%s\n' "$*"
 }
 
-usage(){
-	cat >&2 <<!
-Usage: $0 [--as=path/to/as] [--cpu=...] [--with-ucc-lib] [clean]
-!
-	exit 1
+trim_first_assign(){
+	echo "$1" | cut -d= -f2
 }
 
-leading_underscore(){
-	UCC_CPPFLAGS="-D__LEADING_UNDERSCORE $UCC_CPPFLAGS"
-	UCC_CFLAGS="-fleading-underscore $UCC_CFLAGS"
-}
-
-try_set(){
+try_path(){
 	var="$1"
 	shift
 	for ent in $@
@@ -118,138 +21,278 @@ try_set(){
 	done
 }
 
-UCC_AS=as
-UCC_LD=ld
+test_cflag(){
+	echo "int main(void){return 0;}" >"$tmpc"
+	$CC $CFLAGS_CONFIGURE "$1" "$tmpc" -o /dev/null
+	return $?
+}
 
-UCC_ARCH=elf64
-UCC_LDFLAGS=''
-UCC_CFLAGS=''
-UCC_CPU=x86_64
-UCC_M32=0
-ASM_PLBL=.L
-NEED_DSYM=0
+try_cflag(){
+	printf 'checking whether compiler accepts %s... ' "$1"
 
-unam="$(uname -s)"
+	if test_cflag "$1" 2>/dev/null
+	then
+		CFLAGS="$CFLAGS $1"
+		echo yes
+	else
+		echo no
+	fi
+}
 
-# setup include paths
-# TODO: option to use local ./lib path
-UCC_INC="/usr/include"
+usage(){
+	cat >&2 <<!
+Usage: $0 [OPTIONS...] [CC/CFLAGS/LDFLAGS=...]
 
-# defaults for an OS
-case "$unam" in
-	Linux)
-		# assume gcc
-		unam_lc="$(echo "$unam" | tr A-Z a-z)"
+Options:
+	--target=..., --host=...    Build for target machine
+	--with-ucc-lib              Include and link against local lib/
+	--enable-debug              Build with debug symbols [enabled]
+	--enable-optimize           Build with optimsations
 
-		UCC_DYN="-dynamic-linker /lib64/ld-linux-x86-64.so.2"
-		UCC_STDLIB="-lc"
+CC, CFLAGS and LDFLAGS are pulled from the environment if not specified
+!
+	exit 1
+}
 
-		machine_path="$UCC_CPU-$unam_lc-gnu"
+# globals
+local_label_prefix=.L
+need_dsym=0
+section_text=".text"
+section_data=".data"
+section_bss=".bss"
+section_rodata=".rodata"
+section_dbg_abbrev=".debug_abbrev"
+section_dbg_info=".debug_info"
+section_dbg_line=".debug_line"
+dwarf_indirect_section_links=0
+asm_weak_directive='weak'
+as_supports_local_common=1
+leading_underscore=0
+local_lib=0
 
-		try_set UCC_CRT /usr/lib/"${machine_path}"/crt1.o
-		try_set UCC_CRT /usr/lib/"${machine_path}"/crti.o
-		try_set UCC_CRT /usr/lib/"${machine_path}"/crtn.o
+debug=1
+optimise=0
 
-		gcc_inc=$(echo /usr/lib/gcc/$machine_path/*/ | tr ' ' '\n' | sort | tail -1)
-		echo "Borrowing gcc-$(basename "$gcc_inc")'s include/"
+include_path="/usr/include"
+target=
 
-		try_set UCC_INC "/usr/include/$machine_path"
-		try_set UCC_INC "$gcc_inc/include"
-		;;
+ucc_cflags=
+ucc_cppflags=
+ucc_crt=
+ucc_dyn=
+ucc_stdinc=
+ucc_stdlib=
+ucc_ldflags=
 
+CFLAGS_CONFIGURE=
 
-	FreeBSD)
-		UCC_CRT="/usr/lib/crt1.o:/usr/lib/crti.o:/usr/lib/crtbegin.o:/usr/lib/crtend.o:/usr/lib/crtn.o"
-		UCC_STDLIB="-lc"
-		;;
-
-	Darwin)
-		UCC_ARCH=macho64
-		UCC_CFLAGS='-mpreferred-stack-boundary=4' # 2^4 = 16 byte aligned
-		UCC_STDLIB='-lSystem'
-		UCC_CRT='-lcrt1.o'
-		syslibroot=$(ls -d /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX*.sdk | head -1)
-		UCC_LDFLAGS="-macosx_version_min 10.5 -syslibroot $syslibroot"
-		ASM_PLBL=L
-		NEED_DSYM=1
-		leading_underscore
-		;;
-
-	CYGWIN_NT-*)
-		UCC_ARCH=win32
-		UCC_M32=1
-		leading_underscore
-		;;
-esac
-
-clean=0
-
-get_arg='echo "$arg" | cut -d= -f2'
-
-i=1
-while [ $i -le $# ]
+for arg
 do
-	arg=`eval echo '$'"$i"`
 	case "$arg" in
-		--as=*)
-			UCC_AS="`eval $get_arg`"
+		--target=*|--host=*)
+			target=${arg#*=}
 			;;
-		--cpu=*)
-			UCC_CPU="`eval $get_arg`"
-			ARCH_DIR=lib/arch
-			if ! [ -d $ARCH_DIR/"$UCC_CPU" ]
-			then
-				echo >&2 "$UCC_CPU invalid, choices are:"
-				(cd $ARCH_DIR; ls -d *)
-				usage
-			fi
-			if echo "$UCC_CPU" | grep 64 > /dev/null
-			then UCC_M32=0
-			else UCC_M32=1
-			fi
-			;;
+
 		--with-ucc-lib)
-			UCC_INC="lib/"
-			UCC_CRT="lib/crt.a"
-			UCC_STDLIB="lib/libc.a"
-			UCC_DYN=''
+			local_lib=1
 			;;
-		clean)
-			clean=1
-			;;
+
+		--enable-debug|--enable-debug=yes) debug=1 ;;
+		--disable-debug|--enable-debug=no) debug=0 ;;
+
+		--enable-optimi[sz]e|--enable-optimi[sz]e=yes) optimise=1 ;;
+		--disable-optimi[sz]e|--enable-optimi[sz]e=no) optimise=0 ;;
+
+		CC=*) CC=${arg#*=} ;;
+		CFLAGS=*) CFLAGS=${arg#*=} ;;
+		LDFLAGS=*) LDFLAGS=${arg#*=} ;;
+
 		*)
 			usage
+			;;
 	esac
-	i=`expr $i + 1`
 done
 
-if [ $clean -ne 0 ]
-then
-	rm -f config.mk lib/string_strerrs.h lib/syscalls_darwin.h
-	exit
-fi
+# find temporary file
+set +u
+test -n "$TMPDIR" || TMPDIR=/tmp
+set -u
 
-UCC_LDFLAGS="$UCC_LDFLAGS $UCC_DYN"
+i=0
+while :
+do
+	tmpc="$TMPDIR/ucc_configure.$$.$i.c"
+	set +C
+	echo >"$tmpc" && break
+	set -C
+	if test $i = 100
+	then
+		echo >&2 "$0: can't create temporary file"
+		exit 1
+	fi
+	i=$(expr $i + 1)
+done
+test -z "$tmpc" && exit 1
+trap "rm -f $tmpc" EXIT
 
-case "$unam" in
-	Darwin)
-		os_cfg Darwin
+# set CC, CFLAGS and LDFLAGS if they don't exist
+set +u
+test -n "$CC" || CC=cc
+test -n "$CFLAGS" || CFLAGS=
+test -n "$LDFLAGS" || LDFLAGS=
+set -u
+
+printf 'checking target... '
+test -n "$target" || target=$($CC -dumpmachine) || target=unknown
+printf '%s\n' "$target"
+arch="${target%%-*}"
+
+# OS defaults
+case "$target" in
+	*linux*)
+		# assume gcc
+		ucc_dyn="-dynamic-linker /lib64/ld-linux-x86-64.so.2"
+		ucc_stdlib="-lc"
+
+		try_path ucc_crt /usr/lib/"${target}"/crt1.o
+		try_path ucc_crt /usr/lib/"${target}"/crti.o
+		try_path ucc_crt /usr/lib/"${target}"/crtn.o
+
+		gcc_inc=$(echo /usr/lib/gcc/$target/*/ | tr ' ' '\n' | sort | tail -1)
+		echo "Borrowing gcc-$(basename "$gcc_inc")'s include/"
+
+		try_path ucc_stdinc "/usr/include/$target"
+		try_path ucc_stdinc "$gcc_inc/include"
 		;;
 
-	Linux)
-		os_cfg Linux
+	*freebsd*)
+		ucc_crt="/usr/lib/crt1.o:/usr/lib/crti.o:/usr/lib/crtbegin.o:/usr/lib/crtend.o:/usr/lib/crtn.o"
+		ucc_stdlib="-lc"
 		;;
 
-	FreeBSD)
-		os_cfg FreeBSD
+	*-apple-*)
+		section_text="__TEXT,__text"
+		section_data="__DATA,__data"
+		section_bss="__BSS,__bss"
+		section_rodata="__TEXT,__const"
+		section_dbg_abbrev="__DWARF,__debug_abbrev,regular,debug"
+		section_dbg_info="__DWARF,__debug_info,regular,debug"
+		section_dbg_line="__DWARF,__debug_line,regular,debug"
+		dwarf_indirect_section_links=1
+
+		asm_weak_directive='weak_reference'
+		# Darwin also needs "-flat_namespace -undefined suppress"
+		as_supports_local_common=0
+		ucc_cflags='-mpreferred-stack-boundary=4' # 2^4 = 16 byte aligned
+		ucc_stdlib='-lSystem'
+		ucc_crt='-lcrt1.o'
+		ucc_stdinc='/usr/include'
+		syslibroot=$(ls -d /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX*.sdk | head -1)
+		ucc_ldflags="-macosx_version_min 10.5 -syslibroot $syslibroot"
+		local_label_prefix=L
+		need_dsym=1
+		leading_underscore=1
 		;;
 
 	CYGWIN_NT-*)
-		os_cfg Cygwin
+		leading_underscore=1
 		;;
 
 	*)
-		echo "unknown OS ($unam)" >&2
+		echo "$0: unknown target ($target)" >&2
 		exit 1
 		;;
 esac
+
+if test $leading_underscore = 1
+then
+	ucc_cppflags="-D__LEADING_UNDERSCORE $ucc_cppflags"
+	ucc_cflags="-fleading-underscore $ucc_cflags"
+fi
+
+if test $local_lib = 1
+then
+	ucc_stdinc="lib/"
+	ucc_crt="lib/crt.a"
+	ucc_stdlib="lib/libc.a"
+	ucc_dyn=''
+fi
+
+test_cflag -Werror=unknown-warning-option 2>/dev/null \
+	&& CFLAGS_CONFIGURE="$CFLAGS_CONFIGURE -Werror=unknown-warning-option"
+
+try_cflag -std=c99
+
+try_cflag -Wall
+try_cflag -Wextra
+try_cflag -pedantic
+
+try_cflag -Wmissing-prototypes
+try_cflag -Wstrict-prototypes
+
+try_cflag -Wno-char-subscripts
+try_cflag -Wno-format-extra-args
+try_cflag -Wno-missing-braces
+try_cflag -Wno-missing-field-initializers
+
+if test $debug = 1
+then
+	CFLAGS="$CFLAGS -g"
+fi
+
+if test $optimise = 1
+then
+	try_cflag -O
+fi
+
+# write configs
+printf 'writing config.mk... '
+cat > src/config.mk <<!
+# generated by configure $@
+
+CC = ${CC}
+CFLAGS = ${CFLAGS}
+LDFLAGS = ${LDFLAGS}
+
+ARCH = $arch
+TARGET = $target
+!
+echo 'done'
+
+printf 'writing config_driver.h... '
+cat > src/config_driver.h <<!
+/* generated by configure $@ */
+
+#define NEED_DSYM $need_dsym
+
+#define UCC_AS       "as"
+
+#define UCC_CPPFLAGS "${ucc_cppflags}"
+#define UCC_CFLAGS   "${ucc_cflags}"
+#define UCC_LDFLAGS  "${ucc_ldflags} ${ucc_dyn}"
+
+#define UCC_STDINC  "${ucc_stdinc}"
+#define UCC_STDLIB "${ucc_stdlib}"
+#define UCC_CRT    "${ucc_crt}"
+!
+echo 'done'
+
+printf 'writing config_as.h... '
+cat > src/config_as.h <<!
+/* generated by configure $@ */
+
+#define SECTION_NAME_TEXT $section_text
+#define SECTION_NAME_DATA $section_data
+#define SECTION_NAME_BSS  $section_bss
+#define SECTION_NAME_RODATA $section_rodata
+#define SECTION_NAME_DBG_ABBREV $section_dbg_abbrev
+#define SECTION_NAME_DBG_INFO $section_dbg_info
+#define SECTION_NAME_DBG_LINE $section_dbg_line
+#define DWARF_INDIRECT_SECTION_LINKS $dwarf_indirect_section_links
+#define ASM_PLBL_PRE "$local_label_prefix"
+#define ASM_WEAK_DIRECTIVE "$asm_weak_directive"
+#define AS_SUPPORTS_LOCAL_COMMON $as_supports_local_common
+!
+echo 'done'
+
+echo "Configured for $target"

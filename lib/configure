@@ -1,0 +1,21 @@
+#!/bin/sh
+
+if ! which perl > /dev/null
+then
+	if [ $1 = Darwin ]
+	then m=" (and darwin syscalls)"
+	fi
+	echo >&2 "Perl not found, generate strerror$m yourself"
+	exit
+fi
+
+perl -e '
+for(1 .. 100){
+	$! = $_;
+	printf "\t\"%s\",\n", $!;
+}
+' > string_strerrs.h
+
+if [ $1 = Darwin ]
+then perl syscalls_darwin.pl < syscalls_darwin_unix.h > syscalls_darwin.h
+fi

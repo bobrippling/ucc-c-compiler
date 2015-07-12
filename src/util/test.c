@@ -170,7 +170,7 @@ static void test_dynmap(void)
 	test_dynmap_collision();
 }
 
-int main()
+int main(void)
 {
 	test_dynmap();
 	test_canon_all();

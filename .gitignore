@@ -1,15 +1,14 @@
 *.o
 
-config.mk
-
 tags
+
+src/config.mk
+src/config_as.h
+src/config_driver.h
 
 src/cc1/cc1
 src/cpp2/cpp
 src/ucc/ucc
-src/ucc/cfg.h
-src/as_cfg.h
-src/src_config_platform.mk
 
 src/cc1/test
 src/util/test
@@ -21,9 +20,6 @@ lib/syscall.s
 lib/syscall_err.s
 lib/syscalls_darwin.h
 lib/string_strerrs.h
-
-test2/a.out
-test2/core
 
 src/cc1/cc1.exe
 src/cpp2/cpp.exe

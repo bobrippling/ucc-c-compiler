@@ -64,7 +64,7 @@ cc1.o: cc1.c ../util/util.h ../util/warn.h ../util/where.h \
  ops/expr_block.h funcargs.h out/asm.h out/dbg.h \
  out/../../util/compiler.h out/../../util/std.h gen_asm.h gen_dump.h \
  gen_style.h decl_init.h fold_sym.h ops/__builtin.h ops/../expr.h pass1.h \
- type_nav.h sue.h cc1_where.h ../as_cfg.h warnings.def
+ type_nav.h sue.h cc1_where.h ../config_as.h warnings.def
 cc1_out_ctx.o: cc1_out_ctx.c cc1_out_ctx.h out/forwards.h ../util/alloc.h \
  ../util/compiler.h out/out.h out/../type.h out/../num.h out/../btype.h \
  out/../../util/where.h out/../../util/compiler.h out/../num.h \
@@ -1606,7 +1606,7 @@ out/asm.o: out/asm.c out/../../util/util.h out/../../util/warn.h \
  out/../ops/stmt_switch.h out/../ops/stmt_while.h \
  out/../ops/stmt_continue.h out/../type_is.h out/../sue.h out/../const.h \
  out/../gen_asm.h out/../decl_init.h out/../pack.h out/../str.h \
- out/../../as_cfg.h
+ out/../../config_as.h
 out/bitfield.o: out/bitfield.c out/../type.h out/../num.h out/../btype.h \
  out/../../util/where.h out/../../util/compiler.h out/../type_is.h \
  out/../type_nav.h out/../sue.h out/../type.h out/../decl.h \
@@ -1666,7 +1666,7 @@ out/dbg.o: out/dbg.c out/../../util/where.h out/../../util/compiler.h \
  out/../ops/stmt_continue.h out/../const.h out/../funcargs.h out/../sue.h \
  out/../type.h out/../type_is.h out/../vla.h out/../cc1_out_ctx.h \
  out/../out/forwards.h out/asm.h out/../defs.h out/../../util/macros.h \
- out/../../as_cfg.h out/leb.h out/lbl.h out/dbg.h \
+ out/../../config_as.h out/leb.h out/lbl.h out/dbg.h \
  out/../../util/compiler.h out/../../util/std.h out/write.h \
  out/forwards.h out/val.h out/backend.h out/x86_64.h out/blk.h \
  out/dbg_lbl.h out/../retain.h
@@ -1724,7 +1724,7 @@ out/impl.o: out/impl.c out/../../util/util.h out/../../util/warn.h \
  out/virt.h out/stack.h out/vstack_t.h
 out/lbl.o: out/lbl.c out/../../util/alloc.h out/../../util/compiler.h \
  out/../../util/util.h out/../../util/warn.h out/../../util/where.h \
- out/common.h out/lbl.h out/../../as_cfg.h
+ out/common.h out/lbl.h out/../../config_as.h
 out/leb.o: out/leb.c out/leb.h
 out/mem.o: out/mem.c out/../type_nav.h out/../btype.h out/../../util/where.h \
  out/../../util/compiler.h out/../sue.h out/../type.h out/../num.h \

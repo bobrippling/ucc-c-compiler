@@ -7,7 +7,7 @@
 #include <sys/wait.h>
 #include <stdarg.h>
 
-#include "cfg.h"
+#include "../config_driver.h"
 
 #include "ucc_ext.h"
 #include "ucc.h"
@@ -39,7 +39,7 @@ bname(char *path)
 }
 
 static char *
-where()
+where(void)
 {
 	static char where[1024];
 

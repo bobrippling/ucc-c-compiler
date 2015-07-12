@@ -29,7 +29,7 @@
 #include "../pack.h"
 #include "../str.h"
 
-#include "../../as_cfg.h" /* weak directive */
+#include "../../config_as.h" /* weak directive */
 
 #define ASSERT_SCALAR(di)                  \
 	UCC_ASSERT(di->type == decl_init_scalar, \

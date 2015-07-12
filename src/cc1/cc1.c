@@ -35,7 +35,7 @@
 #include "type_nav.h"
 #include "cc1_where.h"
 
-#include "../as_cfg.h"
+#include "../config_as.h"
 
 struct cc1_warning cc1_warning;
 enum warning_fatality
@@ -364,7 +364,7 @@ static void sigh(int sig)
 	io_cleanup();
 }
 
-static char *next_line()
+static char *next_line(void)
 {
 	char *s = fline(infile, NULL);
 	char *p;

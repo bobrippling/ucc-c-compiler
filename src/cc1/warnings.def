@@ -67,6 +67,7 @@ X("attr-printf-toomany", &cc1_warning.attr_printf_toomany)
 X("attr-printf-unknown", &cc1_warning.attr_printf_unknown)
 X("attr-printf-voidptr", &cc1_warning.attr_printf_voidp)
 X("format", &cc1_warning.attr_printf_bad, &cc1_warning.attr_printf_toomany, &cc1_warning.attr_printf_unknown)
+X("format-extra-args", &cc1_warning.attr_printf_toomany)/* gcc/clang */
 
 X("address-of-lvalue", &cc1_warning.address_of_lvalue)
 
@@ -136,8 +137,10 @@ X("ignored-qualifiers", &cc1_warning.ignored_qualifiers)
 
 X("implicit-old-func", &cc1_warning.implicit_old_func)
 
+X("missing-braces", &cc1_warning.init_missing_braces) /* clang/gcc */
 X("init-missing-braces", &cc1_warning.init_missing_braces)
 X("init-missing-struct", &cc1_warning.init_missing_struct)
+X("missing-field-initializers", &cc1_warning.init_missing_struct)/* gcc/clang */
 X("init-missing-struct-zero", &cc1_warning.init_missing_struct_zero)
 X("init-obj-discard", &cc1_warning.init_obj_discard)
 X("init-overlong-string", &cc1_warning.init_overlong_strliteral)
@@ -159,6 +162,7 @@ X("missing-empty-struct-brace-init", &cc1_warning.missing_empty_struct_brace_ini
 X("missing-prototypes", &cc1_warning.missing_prototype)
 X("missing-variable-declarations", &cc1_warning.missing_variable_decls)
 X("missing-forwards", &cc1_warning.missing_variable_decls, &cc1_warning.missing_prototype)
+X("strict-prototypes", &cc1_warning.implicit_old_func)/* gcc/clang */
 
 X("multichar", &cc1_warning.multichar)
 X("multichar-too-large", &cc1_warning.multichar_toolarge)

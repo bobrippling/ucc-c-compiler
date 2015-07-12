@@ -24,12 +24,15 @@
 
 static void parse_attr_bracket_chomp(int had_open_paren);
 
-static attribute *parse_attr_format()
+static attribute *parse_attr_format(symtable *symtab, const char *ident)
 {
 	/* __attribute__((format (printf, fmtarg, firstvararg))) */
 	attribute *da;
 	char *func;
 	enum fmt_type fmt;
+
+	(void)symtab;
+	(void)ident;
 
 	EAT(token_open_paren);
 
@@ -72,12 +75,15 @@ static attribute *parse_attr_format()
 	return da;
 }
 
-static attribute *parse_attr_section()
+static attribute *parse_attr_section(symtable *symtab, const char *ident)
 {
 	/* __attribute__((section ("sectionname"))) */
 	attribute *da;
 	char *func;
 	size_t len, i;
+
+	(void)symtab;
+	(void)ident;
 
 	EAT(token_open_paren);
 
@@ -104,7 +110,7 @@ static attribute *parse_attr_section()
 	return da;
 }
 
-static attribute *parse_attr_nonnull()
+static attribute *parse_attr_nonnull(symtable *symtab, const char *ident)
 {
 	/* __attribute__((nonnull(1, 2, 3, 4...)))
 	 * or
@@ -113,6 +119,9 @@ static attribute *parse_attr_nonnull()
 	attribute *da = attribute_new(attr_nonnull);
 	unsigned long l = 0;
 	int had_error = 0;
+
+	(void)symtab;
+	(void)ident;
 
 	if(accept(token_open_paren)){
 		while(curtok != token_close_paren){

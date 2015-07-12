@@ -306,7 +306,7 @@ static void add_store_line(char *l)
 	store_line_last = &new->next;
 }
 
-static ucc_wur char *tokenise_read_line()
+static ucc_wur char *tokenise_read_line(void)
 {
 	char *l;
 
@@ -339,7 +339,7 @@ static ucc_wur char *tokenise_read_line()
 	return l;
 }
 
-static void tokenise_next_line()
+static void tokenise_next_line(void)
 {
 	char *new = tokenise_read_line();
 
@@ -436,7 +436,7 @@ int tok_at_label(void)
 	}
 }
 
-static int rawnextchar()
+static int rawnextchar(void)
 {
 	if(buffereof)
 		return EOF;
@@ -452,7 +452,7 @@ static int rawnextchar()
 	return *bufferpos++;
 }
 
-static int nextchar()
+static int nextchar(void)
 {
 	int c;
 	do
@@ -461,7 +461,7 @@ static int nextchar()
 	return c;
 }
 
-static int peeknextchar()
+static int peeknextchar(void)
 {
 	/* doesn't ignore isspace() */
 	if(!bufferpos)
@@ -650,7 +650,7 @@ static enum token curtok_to_xequal(void)
 	return token_unknown;
 }
 
-static int curtok_is_xequal()
+static int curtok_is_xequal(void)
 {
 	return curtok_to_xequal() != token_unknown;
 }

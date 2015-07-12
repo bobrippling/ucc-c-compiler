@@ -18,9 +18,9 @@ CFLAGS = -g -Wmissing-forwards
 
 BUILD_CMD = ${UCC_CC} ${CPPFLAGS} ${CFLAGS} -c -o $@ $<
 
-include ../config.mk
+include ../src/config.mk
 
-ARCH_DIR = arch/${UCC_CPU}
+ARCH_DIR = arch/${ARCH}
 
 all: ${LIBC} ${CRT}
 
