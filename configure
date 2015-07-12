@@ -110,7 +110,10 @@ do
 done
 
 # find temporary file
+set +u
 test -n "$TMPDIR" || TMPDIR=/tmp
+set -u
+
 i=0
 while :
 do
