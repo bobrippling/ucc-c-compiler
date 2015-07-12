@@ -9,6 +9,7 @@
 #include "../out/asm.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../sanitize.h"
 
 /*
  * usual arithmetic conversions:
@@ -1146,7 +1147,7 @@ void gen_op_trapv(
 
 	{
 		out_blk *land = out_blk_new(octx, "trapv_end");
-		out_blk *blk_undef = out_blk_new(octx, "travp_bad");
+		out_blk *blk_undef = out_blk_new(octx, "trapv_bad");
 
 		out_ctrl_branch(octx,
 				out_new_overflow(octx, eval),
@@ -1182,6 +1183,18 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 		eval = out_op_unary(octx, e->bits.op.op, lhs);
 	}else{
 		const out_val *rhs = gen_expr(e->rhs, octx);
+
+		switch(e->bits.op.op){
+			case op_plus:
+				sanitize_boundscheck(e->lhs, e->rhs, octx, lhs, rhs);
+				break;
+			case op_shiftl:
+			case op_shiftr:
+				sanitize_shift(e->lhs, e->rhs, e->bits.op.op, octx, lhs, rhs);
+				break;
+			default:
+				break;
+		}
 
 		eval = out_op(octx, e->bits.op.op, lhs, rhs);
 

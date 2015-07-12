@@ -147,6 +147,8 @@ enum fopt fopt_mode = FOPT_CONST_FOLD
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 enum mopt mopt_mode = 0;
+enum san_opts cc1_sanitize = 0;
+char *cc1_sanitize_handler_fn;
 
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
 int cc1_gdebug;
@@ -711,6 +713,38 @@ static int warnings_check_unknown(dynmap *unknown_warnings)
 	return hard_error && got_unknown;
 }
 
+static void add_sanitize_option(const char *argv0, const char *san)
+{
+	if(!strcmp(san, "undefined")){
+		cc1_sanitize |= CC1_UBSAN;
+		fopt_mode |= FOPT_TRAPV;
+	}else{
+		fprintf(stderr, "%s: unknown sanitize option '%s'\n", argv0, san);
+		exit(1);
+	}
+}
+
+static void set_sanitize_error(const char *argv0, const char *handler)
+{
+	free(cc1_sanitize_handler_fn);
+	cc1_sanitize_handler_fn = NULL;
+
+	if(!strcmp(handler, "trap")){
+		/* fine */
+	}else if(!strncmp(handler, "call=", 5)){
+		cc1_sanitize_handler_fn = ustrdup(handler + 5);
+
+		if(!*cc1_sanitize_handler_fn){
+			fprintf(stderr, "%s: empty sanitize function handler\n", argv0);
+			exit(1);
+		}
+
+	}else{
+		fprintf(stderr, "%s: unknown sanitize handler '%s'\n", argv0, handler);
+		exit(1);
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int failure;
@@ -817,6 +851,14 @@ int main(int argc, char **argv)
 					if(rev){
 						fprintf(stderr, "\"no-\" unexpected for value-argument\n");
 						goto usage;
+					}
+
+					if(!strncmp(arg, "sanitize=", 9)){
+						add_sanitize_option(*argv, arg + 9);
+						continue;
+					}else if(!strncmp(arg, "sanitize-error=", 15)){
+						set_sanitize_error(*argv, arg + 15);
+						continue;
 					}
 
 					*equal = '\0';

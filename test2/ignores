@@ -23,3 +23,6 @@ cpp/number_tokenisation.c
 
 # __attribute__ ignored on block types now
 inline/block_call.c
+
+# waiting for call-reg-spill bug fix
+sanitize/shift.c

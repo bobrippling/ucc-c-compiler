@@ -17,6 +17,7 @@
 #include "fold.h"
 #include "funcargs.h"
 #include "defs.h"
+#include "mangle.h"
 
 #include "type_is.h"
 #include "type_nav.h"
@@ -56,41 +57,8 @@ void decl_replace_with(decl *to, decl *from)
 
 const char *decl_asm_spel(decl *d)
 {
-	if(!d->spel_asm){
-		/* apply underscore prefixes, name mangling, etc */
-		type *rf = type_is(d->ref, type_func);
-		char *pre, suff[8];
-
-		pre = fopt_mode & FOPT_LEADING_UNDERSCORE ? "_" : "";
-		*suff = '\0';
-
-		if(rf){
-			funcargs *fa = type_funcargs(rf);
-
-			switch(fa->conv){
-				case conv_fastcall:
-					pre = "@";
-
-				case conv_stdcall:
-					snprintf(suff, sizeof suff,
-							"@%d",
-							dynarray_count(fa->arglist) * platform_word_size());
-
-				case conv_x64_sysv:
-				case conv_x64_ms:
-				case conv_cdecl:
-					break;
-			}
-		}
-
-		if(*pre || *suff)
-			d->spel_asm = ustrprintf(
-					"%s%s%s", pre, d->spel, suff);
-
-
-		if(!d->spel_asm)
-			d->spel_asm = d->spel;
-	}
+	if(!d->spel_asm)
+		d->spel_asm = func_mangle(d->spel, type_is(d->ref, type_func));
 
 	return d->spel_asm;
 }

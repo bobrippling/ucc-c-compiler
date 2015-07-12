@@ -19,6 +19,8 @@ enum fopt fopt_mode;
 enum mopt mopt_mode;
 struct section sections[NUM_SECTIONS];
 int show_current_line;
+enum san_opts cc1_sanitize;
+char *cc1_sanitize_handler_fn;
 
 void cc1_warn_at_w(
 		const struct where *where, unsigned char *pwarn,

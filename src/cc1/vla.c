@@ -7,6 +7,7 @@
 #include "type_is.h"
 #include "type_nav.h"
 #include "gen_asm.h"
+#include "sanitize.h"
 
 #include "out/out.h"
 #include "out/val.h"
@@ -228,12 +229,13 @@ void vla_typedef_init(decl *d, out_ctx *octx)
 {
 	type *sizety = type_nav_btype(cc1_type_nav, type_long);
 	const out_val *alloc_start = sym_outval(d->sym);
+	const out_val *vla_sz;
 
 	out_val_retain(octx, alloc_start);
-	out_val_consume(octx,
-			vla_gen_size_ty(
-				d->ref, octx, sizety,
-				alloc_start));
+
+	vla_sz = vla_gen_size_ty(d->ref, octx, sizety, alloc_start);
+	sanitize_vlacheck(vla_sz, octx);
+	out_val_consume(octx, vla_sz);
 
 	assert(alloc_start->retains > 0);
 }
@@ -278,6 +280,8 @@ void vla_decl_init(decl *d, out_ctx *octx)
 				stack_ent, out_new_l(octx, sizety, (1 + is_vla) * pws));
 
 		v_sz = vla_gen_size_ty(d->ref, octx, sizety, generated_sz_loc);
+
+		sanitize_vlacheck(v_sz, octx);
 	}
 
 	if(is_vla){
