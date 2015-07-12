@@ -20,3 +20,6 @@ stack/register.c
 
 # waiting for proper cpp tokenisation
 cpp/number_tokenisation.c
+
+# waiting for call-reg-spill bug fix
+sanitize/shift.c
