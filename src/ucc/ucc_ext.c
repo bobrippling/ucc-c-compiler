@@ -39,7 +39,7 @@ bname(char *path)
 }
 
 static char *
-where()
+where(void)
 {
 	static char where[1024];
 

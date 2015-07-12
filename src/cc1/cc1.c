@@ -364,7 +364,7 @@ static void sigh(int sig)
 	io_cleanup();
 }
 
-static char *next_line()
+static char *next_line(void)
 {
 	char *s = fline(infile, NULL);
 	char *p;
