@@ -30,7 +30,7 @@ test_cflag(){
 try_cflag(){
 	printf 'checking whether compiler accepts %s... ' "$1"
 
-	if test_cflag "$1"
+	if test_cflag "$1" 2>/dev/null
 	then
 		CFLAGS="$CFLAGS $1"
 		echo yes
@@ -211,7 +211,7 @@ then
 	ucc_dyn=''
 fi
 
-test_cflag -Werror=unknown-warning-option \
+test_cflag -Werror=unknown-warning-option 2>/dev/null \
 	&& CFLAGS_CONFIGURE="$CFLAGS_CONFIGURE -Werror=unknown-warning-option"
 
 try_cflag -std=c99
