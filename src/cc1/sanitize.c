@@ -9,17 +9,18 @@
 
 #include "sanitize.h"
 
-static void sanitize_assert(const out_val *cond, out_ctx *octx)
+static void sanitize_assert(const out_val *cond, out_ctx *octx, const char *desc)
 {
-	out_blk *land = out_blk_new(octx, "oob_end");
-	out_blk *blk_undef = out_blk_new(octx, "oob_bad");
+	out_blk *land = out_blk_new(octx, "san_end");
+	out_blk *blk_undef = out_blk_new(octx, "san_bad");
 
 	out_ctrl_branch(octx,
 			cond,
-			blk_undef,
-			land);
+			land,
+			blk_undef);
 
 	out_current_blk(octx, blk_undef);
+	out_comment(octx, "sanitizer for %s", desc);
 	if(cc1_sanitize_handler_fn){
 		type *voidty = type_nav_btype(cc1_type_nav, type_void);
 		funcargs *args = funcargs_new();
@@ -41,21 +42,21 @@ static void sanitize_assert(const out_val *cond, out_ctx *octx)
 
 static void sanitize_assert_order(
 		const out_val *test, enum op_type op, long limit,
-		type *op_type, out_ctx *octx)
+		type *op_type, out_ctx *octx, const char *desc)
 {
-	const out_val *vsz = out_new_l(
+	const out_val *vlimit = out_new_l(
 			octx,
 			op_type,
 			limit);
 
-	const out_val *index = out_change_type(
+	const out_val *lengthened_test = out_change_type(
 			octx,
 			out_val_retain(octx, test),
 			op_type);
 
-	const out_val *cmp = out_op(octx, op, vsz, index);
+	const out_val *cmp = out_op(octx, op, lengthened_test, vlimit);
 
-	sanitize_assert(cmp, octx);
+	sanitize_assert(cmp, octx, desc);
 }
 
 static type *uintptr_ty(void)
@@ -100,7 +101,7 @@ void sanitize_boundscheck(
 		return;
 
 	/* force unsigned compare, which catches negative indexes */
-	sanitize_assert_order(val, op_lt, sz.bits.num.val.i, uintptr_ty(), octx);
+	sanitize_assert_order(val, op_le, sz.bits.num.val.i, uintptr_ty(), octx, "bounds");
 }
 
 void sanitize_vlacheck(const out_val *vla_sz, out_ctx *octx)
@@ -108,7 +109,7 @@ void sanitize_vlacheck(const out_val *vla_sz, out_ctx *octx)
 	if(!(cc1_sanitize & CC1_UBSAN))
 		return;
 
-	sanitize_assert_order(vla_sz, op_gt, 0, uintptr_ty(), octx);
+	sanitize_assert_order(vla_sz, op_gt, 0, uintptr_ty(), octx, "vla");
 }
 
 void sanitize_shift(
@@ -120,12 +121,13 @@ void sanitize_shift(
 	/* rhs must be < bit-size of lhs' type */
 	const unsigned max = CHAR_BIT * type_size(elhs->tree_type, NULL);
 
-	sanitize_assert_order(rhs, op_lt, max, uintptr_ty(), octx);
+	out_comment(octx, "rhs less than %u", max);
+	sanitize_assert_order(rhs, op_lt, max, uintptr_ty(), octx, "shift rhs size");
 
 	/* rhs must not be negative */
-	sanitize_assert_order(rhs, op_ge, 0, erhs->tree_type, octx);
+	sanitize_assert_order(rhs, op_ge, 0, erhs->tree_type, octx, "shift rhs negative");
 
 	/* if left shift, lhs must not be negative */
 	if(op == op_shiftl)
-		sanitize_assert_order(lhs, op_ge, 0, elhs->tree_type, octx);
+		sanitize_assert_order(lhs, op_ge, 0, elhs->tree_type, octx, "shift lhs negative");
 }

@@ -15,5 +15,6 @@ f(int i)
 
 main()
 {
-	f(4);
+	// currently array[N] is allowed since its address may be taken
+	f(5);
 }
