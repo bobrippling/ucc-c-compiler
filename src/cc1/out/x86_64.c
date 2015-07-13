@@ -759,18 +759,20 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	}
 
 	{
-#ifdef VA_SHORTCIRCUIT
-		char *vfin = out_label_code("va_skip_float");
+		out_blk *va_shortcircuit_join = out_blk_new(octx, "va_shortc");
+		out_blk *save_fp = out_blk_new(octx, "va_save");
 		type *const ty_ch = type_nav_btype(cc1_type_nav, type_nchar);
+		struct vreg eax = { 0 };
+		const out_val *veax;
+		const out_val *eaxcond;
 
 		/* testb %al, %al ; jz vfin */
-		vpush(ty_ch);
-		v_set_reg_i(vtop, X86_64_REG_RAX);
-		out_push_zero(ty_ch);
-		out_op(op_eq);
-		out_jtrue(vfin);
-#endif
+		eax.idx = X86_64_REG_RAX;
+		veax = v_new_reg(octx, NULL, ty_ch, &eax);
+		eaxcond = out_op(octx, op_eq, veax, out_new_zero(octx, ty_ch));
+		out_ctrl_branch(octx, eaxcond, va_shortcircuit_join, save_fp);
 
+		out_current_blk(octx, save_fp);
 		for(i = 0; i < N_CALL_REGS_F; i++){
 			struct vreg vr;
 			const out_val *stk_ptr;
@@ -789,10 +791,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 			out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr));
 		}
 
-#ifdef VA_SHORTCIRCUIT
-		out_label(vfin);
-		free(vfin);
-#endif
+		out_ctrl_transfer_make_current(octx, va_shortcircuit_join);
 	}
 
 	out_adealloc(octx, &stk_spill);

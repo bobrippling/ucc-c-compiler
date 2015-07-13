@@ -1,6 +1,6 @@
 f:
-	jmp Lblk.4
-Lblk.2: # while_body
-Lblk.4: # while_cont
+	jmp Lblk.5
+Lblk.3:
+Lblk.5:
 	/* constant jmp condition taken */
-	jmp Lblk.2
+	jmp Lblk.3

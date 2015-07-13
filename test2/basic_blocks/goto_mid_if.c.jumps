@@ -1,13 +1,14 @@
 f:
-Lblk.0: # post_prologue
+Lblk.1: # post_prologue
+Lblk.2: # post_prologue
 	/* constant jmp condition not taken */
-Lblk.3: # if_false
-	jmp Lblk.4
+Lblk.4:
+	jmp Lblk.5
+Lblk.7:
 Lblk.6: # if_true
+	jmp Lblk.0
+Lblk.8:
+Lblk.9:
+Lblk.0:
 Lblk.5: # l
-	jmp Lblk.1
-Lblk.7: # if_false
-Lblk.8: # fi
-Lblk.1: # epilogue
-Lblk.4: # fi
-	jmp Lblk.6
+	jmp Lblk.7

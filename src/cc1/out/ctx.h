@@ -7,7 +7,14 @@ typedef struct out_val_list out_val_list;
 
 struct out_ctx
 {
-	out_blk *first_blk, *second_blk, *current_blk, *epilogue_blk;
+	/* entry handles arg spill, etc.
+	 * prologue handles variadic spill, jumps, etc,
+	 * post_prologue is where user code goes
+	 */
+	out_blk *entry_blk, *prologue_prejoin_blk, *prologue_postjoin_blk;
+	out_blk *current_blk;
+	out_blk *epilogue_blk;
+
 	out_blk *last_used_blk; /* for appending debug labels */
 	out_blk **mustgen; /* goto *lbl; where lbl is otherwise unreachable */
 	struct out_dbg_lbl **pending_lbls; /* debug labels */
