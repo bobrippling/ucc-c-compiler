@@ -749,13 +749,12 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 				/* XXX: note */
 				char buf[WHERE_BUF_SIZ];
 
-				cc1_warn_at(&e->where,
+				return cc1_warn_at(&e->where,
 						array_oob,
 						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld\n"
 						"%s: note: array declared here",
 						idx.val.i, (long)sz,
 						where_str_r(buf, type_loc(array->tree_type)));
-				return 1;
 			}
 #undef idx
 		}
@@ -783,12 +782,11 @@ static int op_unsigned_cmp_check(expr *e)
 					const int v = k.bits.num.val.i;
 
 					if(v <= 0){
-						cc1_warn_at(&e->where,
+						return cc1_warn_at(&e->where,
 								tautologic_unsigned,
 								"comparison of unsigned expression %s %d is always %s",
 								op_to_str(e->bits.op.op), v,
 								e->bits.op.op == op_lt || e->bits.op.op == op_le ? "false" : "true");
-						return 1;
 					}
 				}
 			}
@@ -810,10 +808,9 @@ static int msg_if_precedence(expr *sub, where *w,
 	&& (test ? (*test)(sub->bits.op.op) : 1))
 	{
 		/* ==, !=, <, ... */
-		cc1_warn_at(w, parse_precedence,
+		return cc1_warn_at(w, parse_precedence,
 				"%s has higher precedence than %s",
 				op_to_str(sub->bits.op.op), op_to_str(binary));
-		return 1;
 	}
 	return 0;
 }
@@ -853,10 +850,9 @@ static int str_cmp_check(expr *e)
 		const_fold(e->rhs, &kr);
 
 		if(kl.type == CONST_STRK || kr.type == CONST_STRK){
-			cc1_warn_at(&e->rhs->where,
+			return cc1_warn_at(&e->rhs->where,
 					undef_strlitcmp,
 					"comparison with string literal is undefined");
-			return 1;
 		}
 	}
 	return 0;
@@ -871,6 +867,7 @@ static int op_shift_check(expr *e)
 			const unsigned ty_sz = CHAR_BIT * type_size(e->lhs->tree_type, &e->lhs->where);
 			int undefined = 0;
 			consty lhs, rhs;
+			int emitted = 0;
 
 			const_fold(e->lhs, &lhs);
 			const_fold(e->rhs, &rhs);
@@ -878,14 +875,14 @@ static int op_shift_check(expr *e)
 			if(type_is_signed(e->rhs->tree_type)
 			&& (sintegral_t)rhs.bits.num.val.i < 0)
 			{
-				cc1_warn_at(&e->rhs->where,
+				emitted = cc1_warn_at(&e->rhs->where,
 						op_shift_bad,
 						"shift count is negative (%"
 						NUMERIC_FMT_D ")", (sintegral_t)rhs.bits.num.val.i);
 
 				undefined = 1;
 			}else if(rhs.bits.num.val.i >= ty_sz){
-				cc1_warn_at(&e->rhs->where,
+				emitted = cc1_warn_at(&e->rhs->where,
 						op_shift_bad,
 						"shift count >= width of %s (%u)",
 						type_to_str(e->lhs->tree_type), ty_sz);
@@ -908,7 +905,7 @@ static int op_shift_check(expr *e)
 				expr_set_const(e, &k);
 			}
 
-			return undefined; /* aka, warned */
+			return emitted; /* aka, warned */
 		}
 		default:
 			return 0;
@@ -971,12 +968,10 @@ static int op_sizeof_div_check(expr *e)
 		return 0;
 
 	if(lhs->expr && type_is_ptr(lhs->expr->tree_type)){
-		cc1_warn_at(&e->where,
+		return cc1_warn_at(&e->where,
 				sizeof_ptr_div,
 				"division of sizeof(%s) - did you mean sizoef(array)?",
 				type_to_str(lhs->expr->tree_type));
-
-		return 1;
 	}
 
 	return 0;

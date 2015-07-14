@@ -235,7 +235,7 @@ int where_in_sysheader(const where *w)
 	return 0;
 }
 
-void cc1_warn_at_w(
+int cc1_warn_at_w(
 		const struct where *where, unsigned char *pwarn,
 		const char *fmt, ...)
 {
@@ -245,7 +245,7 @@ void cc1_warn_at_w(
 
 	switch((enum warning_fatality)*pwarn){
 		case W_OFF:
-			return;
+			return 0;
 		case W_ERROR:
 			fold_had_error = parse_had_error = 1;
 			warn_type = VWARN_ERR;
@@ -260,7 +260,7 @@ void cc1_warn_at_w(
 
 	/* don't emit warnings from system headers */
 	if(where_in_sysheader(where))
-		return;
+		return 0;
 
 	va_start(l, fmt);
 	vwarn(where, warn_type, fmt, l);
@@ -268,6 +268,8 @@ void cc1_warn_at_w(
 
 	if(fopt_mode & FOPT_SHOW_WARNING_OPTION)
 		show_warn_option(pwarn);
+
+	return 1;
 }
 
 static void io_cleanup(void)
