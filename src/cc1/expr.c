@@ -159,6 +159,13 @@ expr *expr_skip_lval2rval(expr *e)
 	return e;
 }
 
+expr *expr_skip_implicit_casts(expr *e)
+{
+	while(e && expr_kind(e, cast) && expr_cast_is_implicit(e))
+		e = e->expr;
+	return e;
+}
+
 decl *expr_to_declref(expr *e, const char **whynot)
 {
 	e = expr_skip_all_casts(e);
