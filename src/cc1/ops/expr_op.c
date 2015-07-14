@@ -977,6 +977,27 @@ static int op_sizeof_div_check(expr *e)
 	return 0;
 }
 
+static int array_subscript_tycheck(expr *e)
+{
+	type *ty_maybe_int;
+
+	if(!e->bits.op.array_notation)
+		return 0;
+
+	if(type_is_ptr(e->lhs->tree_type))
+		ty_maybe_int = expr_skip_implicit_casts(e->rhs)->tree_type;
+	else if(type_is_ptr(e->rhs->tree_type))
+		ty_maybe_int = expr_skip_implicit_casts(e->lhs)->tree_type;
+	else
+		return 0;
+
+	if(!type_is_primitive(ty_maybe_int, type_nchar))
+		return 0;
+
+	return cc1_warn_at(&e->where, char_subscript,
+			"array subscript is of type 'char'");
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	const char *op_desc = e->bits.op.array_notation
@@ -1021,7 +1042,8 @@ void fold_expr_op(expr *e, symtable *stab)
 				op_unsigned_cmp_check(e) ||
 				op_shift_check(e) ||
 				str_cmp_check(e) ||
-				op_sizeof_div_check(e));
+				op_sizeof_div_check(e) ||
+				array_subscript_tycheck(e));
 
 	}else{
 		/* (except unary-not) can only have operations on integers,

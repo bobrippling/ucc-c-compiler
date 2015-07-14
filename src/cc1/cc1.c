@@ -518,6 +518,9 @@ static void warning_init(void)
 	cc1_warning.c89_vla =
 	cc1_warning.c89_compound_literal =
 			W_WARN;
+
+	/* but disable others */
+	cc1_warning.char_subscript = W_OFF;
 }
 
 static void warning_special(enum warning_special type)
