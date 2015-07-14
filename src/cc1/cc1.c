@@ -454,8 +454,6 @@ static void warning_gnu(enum warning_fatality set)
 static void warning_pedantic(enum warning_fatality set)
 {
 	/* warn about extensions */
-	warning_gnu(set);
-
 	cc1_warning.nonstd_arraysz =
 	cc1_warning.nonstd_init =
 
