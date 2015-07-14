@@ -936,17 +936,34 @@ static int op_float_check(expr *e)
 	return 0;
 }
 
+static int is_unsuffixed_positive_int_literal(expr *e)
+{
+	if(!expr_kind(e, val))
+		return 0;
+
+	if(e->bits.num.suffix & VAL_FLOATING)
+		return 0;
+
+	if(e->bits.num.suffix & (VAL_SUFFIXED_MASK))
+		return 0; /* suffixed */
+
+	if((sintegral_t)e->bits.num.val.i < 0)
+		return 0; /* negative */
+
+	return 1;
+}
+
 void expr_check_sign(const char *desc,
 		expr *lhs, expr *rhs, where *w)
 {
-	consty kl, kr;
+	/* don't warn for unsuffixed +ve integer literals */
+	if(is_unsuffixed_positive_int_literal(lhs))
+		return;
+	if(is_unsuffixed_positive_int_literal(rhs))
+		return;
 
-	const_fold(lhs, &kl);
-	const_fold(rhs, &kr);
-
-	/* don't bother for two literals */
-	if((kl.type != CONST_NUM || kr.type != CONST_NUM)
-	&& type_is_scalar(lhs->tree_type) && type_is_scalar(rhs->tree_type)
+	if(type_is_scalar(lhs->tree_type)
+	&& type_is_scalar(rhs->tree_type)
 	&& type_is_signed(lhs->tree_type) != type_is_signed(rhs->tree_type))
 	{
 		cc1_warn_at(w,
