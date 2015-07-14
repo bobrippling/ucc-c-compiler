@@ -63,7 +63,7 @@ int usleep(useconds_t usec)
 	return select(0, NULL, NULL, NULL, &tv);
 }
 
-pid_t getpid()
+pid_t getpid(void)
 {
 	return __syscall(SYS_getpid);
 }
