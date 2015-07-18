@@ -129,7 +129,6 @@ struct cc1_warning
 	unsigned char shadow_global_all; /* include sysheaders */
 	unsigned char shadow_local;
 	unsigned char sign_compare;
-	unsigned char signed_unsigned;
 	unsigned char sizeof_decayed;
 	unsigned char sizeof_pointer_memaccess;
 	unsigned char sizeof_ptr_div;

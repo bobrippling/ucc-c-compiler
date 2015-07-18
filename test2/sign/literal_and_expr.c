@@ -1,4 +1,4 @@
-// RUN: %check %s -Wsigned-unsigned
+// RUN: %check %s -Wsign-compare
 
 int f(int i)
 {

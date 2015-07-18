@@ -478,7 +478,6 @@ static void warning_all(void)
 
 	cc1_warning.implicit_int =
 	cc1_warning.loss_precision =
-	cc1_warning.sign_compare =
 	cc1_warning.pad =
 	cc1_warning.tenative_init =
 	cc1_warning.shadow_global_user =
@@ -490,7 +489,7 @@ static void warning_all(void)
 	cc1_warning.pure_inline =
 	cc1_warning.unused_param =
 	cc1_warning.test_assign =
-	cc1_warning.signed_unsigned =
+	cc1_warning.sign_compare =
 	cc1_warning.unused_fnret =
 	cc1_warning.binary_literal =
 	cc1_warning.missing_prototype =
@@ -540,7 +539,7 @@ static void warning_special(enum warning_special type)
 			cc1_warning.init_missing_braces =
 			cc1_warning.init_missing_struct =
 			cc1_warning.unused_param =
-			cc1_warning.signed_unsigned =
+			cc1_warning.sign_compare =
 				W_WARN;
 			break;
 		case W_GNU:

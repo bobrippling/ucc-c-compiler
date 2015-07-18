@@ -950,7 +950,7 @@ void expr_check_sign(const char *desc,
 	&& type_is_signed(lhs->tree_type) != type_is_signed(rhs->tree_type))
 	{
 		cc1_warn_at(w,
-				signed_unsigned,
+				sign_compare,
 				"signed and unsigned types in '%s'", desc);
 	}
 }
