@@ -1,10 +1,12 @@
 #define _POSIX_SOURCE /* fileno() */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <unistd.h>
 
 #include "../util/dynarray.h"
+#include "../util/alloc.h"
 
 #include "sym.h"
 #include "str.h"
@@ -30,6 +32,8 @@ static const char *const col_off = "\x1b[m";
 struct dump
 {
 	FILE *fout;
+	const char *last_fname;
+	unsigned last_line;
 	unsigned indent;
 };
 
@@ -56,15 +60,43 @@ static void dump_desc_colour_newline(
 		const char *desc, const void *uniq, const where *loc,
 		const char *col, int newline)
 {
+	char *where_str;
+	size_t where_str_len = 0;
+	const char *fname = NULL;
+	unsigned line = 0;
+	const int num_len = 32;
+
 	dump_indent(ctx);
+
+	if(!ctx->last_fname || ctx->last_fname != loc->fname)
+		fname = loc->fname;
+	if(!ctx->last_line || ctx->last_line != loc->line)
+		line = loc->line;
+
+	where_str_len = (fname ? strlen(fname) : 0) + (line ? num_len : 0) + num_len;
+	where_str = umalloc(where_str_len);
+
+	if(fname)
+		snprintf(where_str, where_str_len, "%s:%d:%d", fname, line, loc->chr);
+	else if(line)
+		snprintf(where_str, where_str_len, "line %d, col %d", line, loc->chr);
+	else
+		snprintf(where_str, where_str_len, "col %d", loc->chr);
 
 	fprintf(ctx->fout, "%s%s %s%p %s<%s>%s",
 			col, desc,
 			maybe_colour(ctx->fout, col_ptr), uniq,
-			maybe_colour(ctx->fout, col_where), where_str(loc),
+			maybe_colour(ctx->fout, col_where), where_str,
 			maybe_colour(ctx->fout, col_off));
 
 	dump_newline(ctx, newline);
+
+	free(where_str);
+
+	if(fname)
+		ctx->last_fname = fname;
+	if(line)
+		ctx->last_line = line;
 }
 
 static void dump_type(dump *ctx, type *ty)
