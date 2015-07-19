@@ -292,13 +292,12 @@ static void check_arg_types(
 				break;
 
 			if(!type_is_complete(decl_arg->ref)){
-				char wbuf[WHERE_BUF_SIZ];
 				warn_at_print_error(&decl_arg->where,
-						"incomplete parameter type '%s'\n"
-						"%s: note: in call here",
-						type_to_str(decl_arg->ref),
-						where_str_r(wbuf, exprloc));
+						"incomplete parameter type '%s'",
+						type_to_str(decl_arg->ref));
 				fold_had_error = 1;
+
+				note_at(exprloc, "in call here");
 			}
 
 			/* exprargs[i] may be NULL - old style function */

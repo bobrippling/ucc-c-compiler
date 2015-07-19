@@ -762,14 +762,15 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 			|| (chk_one_past_end ? idx.val.i > sz : idx.val.i == sz))
 			{
 				/* XXX: note */
-				char buf[WHERE_BUF_SIZ];
+				int warned;
 
-				return cc1_warn_at(&e->where,
+				warned = cc1_warn_at(&e->where,
 						array_oob,
-						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld\n"
-						"%s: note: array declared here",
-						idx.val.i, (long)sz,
-						where_str_r(buf, type_loc(array->tree_type)));
+						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld",
+						idx.val.i, (long)sz);
+
+				if(warned)
+					note_at(type_loc(array->tree_type), "array declared here");
 			}
 #undef idx
 		}

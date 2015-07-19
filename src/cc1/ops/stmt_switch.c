@@ -62,17 +62,17 @@ static void fold_switch_dups(stmt *sw)
 		const long first_this = vals[i].start.val.i;
 
 		if(last_prev >= first_this){
-			char buf[WHERE_BUF_SIZ];
 			const int overlap = vals[i  ].end.val.i != vals[i  ].start.val.i
 				               || vals[i-1].end.val.i != vals[i-1].start.val.i;
 
-			die_at(&vals[i-1].cse->where,
-					"%s case statements %s %ld\n"
-					"%s: note: other case",
+			fold_had_error = 1;
+			warn_at_print_error(&vals[i-1].cse->where,
+					"%s case statements %s %ld",
 					overlap ? "overlapping" : "duplicate",
 					overlap ? "starting at" : "for",
-					(long)vals[i].start.val.i,
-					where_str_r(buf, &vals[i].cse->where));
+					(long)vals[i].start.val.i);
+
+			note_at(&vals[i].cse->where, "other case");
 		}
 	}
 
@@ -197,12 +197,9 @@ void fold_stmt_and_add_to_curswitch(stmt *cse)
 		dynarray_add(&sw->bits.switch_.cases, cse);
 	}else{
 		if(sw->bits.switch_.default_case){
-			char buf[WHERE_BUF_SIZ];
-
-			die_at(&cse->where,
-					"duplicate default statement\n"
-					"%s: note: other default here",
-					where_str_r(buf, &sw->bits.switch_.default_case->where));
+			fold_had_error = 1;
+			warn_at_print_error(&cse->where, "duplicate default statement");
+			note_at(&sw->bits.switch_.default_case->where, "other default here");
 
 			return;
 		}

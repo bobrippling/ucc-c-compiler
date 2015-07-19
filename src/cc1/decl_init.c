@@ -889,13 +889,13 @@ static decl_init **decl_init_brace_up_sue2(
 				&& replacing->bits.ar.inits[0]->type == decl_init_scalar
 				&& type_is_s_or_u(replacing->bits.ar.inits[0]->bits.expr->tree_type))
 				{
-					char wb[WHERE_BUF_SIZ];
-
-					cc1_warn_at(&this->where,
+					int warned = cc1_warn_at(
+							&this->where,
 							init_obj_discard,
-							"designating into object discards entire previous initialisation\n"
-							"%s: note: previous initialisation",
-							where_str_r(wb, &replacing->where));
+							"designating into object discards entire previous initialisation");
+
+					if(warned)
+						note_at(&replacing->where, "previous initialisation");
 
 					/* XXX: memleak */
 					replacing = NULL;

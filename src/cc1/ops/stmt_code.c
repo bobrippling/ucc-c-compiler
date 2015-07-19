@@ -129,10 +129,9 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 			if((both_func || both_extern)
 			&& !(decl_cmp(d, found, 0) & TYPE_EQUAL_ANY))
 			{
-				die_at(&d->where,
-						"incompatible redefinition of \"%s\"\n"
-						"%s: note: previous definition",
-						d->spel, where_str_r(buf, &found->where));
+				fold_had_error = 1;
+				warn_at_print_error(&d->where, "incompatible redefinition of \"%s\"", d->spel);
+				note_at(&found->where, "previous definition");
 			}else{
 				const int same_scope = symtab_nested_internal(above_scope, stab);
 				unsigned char *pwarn = NULL;
