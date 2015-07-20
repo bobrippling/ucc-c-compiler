@@ -676,7 +676,7 @@ type *type_add_type_str(type *r,
 			type *t_ref = type_is_primitive(of, type_unknown);
 			const btype *t = t_ref ? t_ref->bits.type : NULL;
 
-			BUF_ADD(" (aka '%s')",
+			BUF_ADD(" {aka '%s'}",
 					t ? btype_to_str(t)
 					: type_to_str_r_spel_opts(buf, type_skip_tdefs(of), NULL, TY_STR_NOOPT));
 		}

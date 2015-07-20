@@ -17,6 +17,6 @@ f()
 {
 	tdef_f local;
 
-	g(&local); // CHECK: note: 'int *' vs 'tdef_f (aka 'struct A') volatile const *'
+	g(&local); // CHECK: note: 'int *' vs 'tdef_f {aka 'struct A'} volatile const *'
 	// ensure we get "struct A" in the warning, not any typedefs
 }

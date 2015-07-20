@@ -12,7 +12,7 @@ typedef struct A A;
 typedef struct B B;
 
 // warning
-IF_TY_EQ(void *, A *, B *); // CHECK: warning: conditional type mismatch (A (aka 'struct A') * vs B (aka 'struct B') *)
+IF_TY_EQ(void *, A *, B *); // CHECK: warning: conditional type mismatch (A {aka 'struct A'} * vs B {aka 'struct B'} *)
 
 IF_TY_EQ(void, void, B *);
 
