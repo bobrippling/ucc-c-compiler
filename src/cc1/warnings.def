@@ -146,7 +146,6 @@ X("init-missing-struct-zero", &cc1_warning.init_missing_struct_zero)
 X("init-obj-discard", &cc1_warning.init_obj_discard)
 X("init-overlong-string", &cc1_warning.init_overlong_strliteral)
 X("init-override", &cc1_warning.init_override)
-X("init-static-compound-literal", &cc1_warning.init_static_complit)
 X("designated-init", &cc1_warning.init_undesignated)
 
 X("unknown-attribute", &cc1_warning.attr_unknown)

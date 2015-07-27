@@ -106,7 +106,7 @@ static void const_expr_compound_lit(expr *e, consty *k)
 	decl *d = e->bits.complit.decl;
 	expr *nonstd = NULL;
 
-	if(decl_init_is_const(d->bits.var.init.dinit, NULL, &nonstd)){
+	if(decl_init_is_const(d->bits.var.init.dinit, NULL, d->ref, &nonstd)){
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR_OR_NEED(d);
 		k->bits.addr.is_lbl = 1;

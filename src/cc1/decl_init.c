@@ -53,9 +53,9 @@ static void decl_init_create_assignments_base(
 
 /* null init are const/zero, flag-init is const/zero if prev. is const/zero,
  * which will be checked elsewhere */
-#define DINIT_NULL_CHECK(di) \
+#define DINIT_NULL_CHECK(di, fallback) \
 	if(di == DYNARRAY_NULL)    \
-		return 1
+		fallback
 
 #define init_debug_indent(op) init_indent op
 
@@ -153,9 +153,12 @@ static struct init_cpy *init_cpy_from_dinit(decl_init *di)
 }
 
 int decl_init_is_const(
-		decl_init *dinit, symtable *stab, expr **nonstd)
+		decl_init *dinit, symtable *stab,
+		type *expected_ty, expr **nonstd)
 {
-	DINIT_NULL_CHECK(dinit);
+	DINIT_NULL_CHECK(dinit, return 1);
+
+	assert(expected_ty);
 
 	switch(dinit->type){
 		case decl_init_scalar:
@@ -174,11 +177,52 @@ int decl_init_is_const(
 
 		case decl_init_brace:
 		{
-			decl_init **i;
+			size_t i;
+			type *sub;
+			expr *copy_from;
+			struct_union_enum_st *su = type_is_s_or_u(expected_ty);
 
-			for(i = dinit->bits.ar.inits; i && *i; i++)
-				if(!decl_init_is_const(*i, stab, nonstd))
+			if(su && (copy_from = decl_init_is_struct_copy(dinit, su))){
+				copy_from = expr_skip_lval2rval(copy_from);
+
+				if(expr_kind(copy_from, compound_lit)
+				&& type_is_s_or_u(copy_from->tree_type) == type_is_s_or_u(expected_ty))
+				{
+					*nonstd = copy_from;
+					return 1;
+				}
+			}
+
+			if(!dinit->bits.ar.inits){
+				/* empty */
+				return 1;
+			}
+
+			sub = type_is_array(expected_ty);
+
+			for(i = 0; ; i++){
+				decl_init *init = dinit->bits.ar.inits[i];
+				type *current_ty = sub;
+
+				if(!init){
+					break;
+				}
+
+				if(!current_ty){
+					/* struct/union */
+					assert(su);
+					if(su->members){
+						current_ty = su->members[i]->struct_member->ref;
+						assert(current_ty);
+					}else{
+						current_ty = NULL;
+						assert(init == DYNARRAY_NULL);
+					}
+				}
+
+				if(!decl_init_is_const(init, stab, current_ty, nonstd))
 					return 0;
+			}
 
 			return 1;
 		}
@@ -186,7 +230,7 @@ int decl_init_is_const(
 		case decl_init_copy:
 		{
 			struct init_cpy *cpy = *dinit->bits.range_copy;
-			return decl_init_is_const(cpy->range_init, stab, nonstd);
+			return decl_init_is_const(cpy->range_init, stab, expected_ty, nonstd);
 		}
 	}
 
@@ -196,7 +240,7 @@ int decl_init_is_const(
 
 int decl_init_is_zero(decl_init *dinit)
 {
-	DINIT_NULL_CHECK(dinit);
+	DINIT_NULL_CHECK(dinit, return 1);
 
 	switch(dinit->type){
 		case decl_init_scalar:
@@ -526,7 +570,7 @@ static decl_init **decl_init_brace_up_array2(
 					 * int x[] = { [0 ... 9] = f(), [1] = `exp' };
 					 * if exp is const we can do it.
 					 */
-					if(!decl_init_is_const(replacing, stab, NULL)){
+					if(!decl_init_is_const(replacing, stab, next_type, NULL)){
 						char wbuf[WHERE_BUF_SIZ];
 
 						die_at(&this->where,
