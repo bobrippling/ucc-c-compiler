@@ -21,6 +21,8 @@ CFLAGS = -g -Wmissing-forwards
 
 CC = ${UCC_CC}
 
+include config.mk
+
 ARCH_DIR = arch/${ARCH}
 
 all: ${LIBC} ${CRT}

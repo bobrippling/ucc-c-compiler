@@ -6,6 +6,7 @@ tags
 src/config.mk
 src/config_as.h
 src/config_driver.h
+lib/config.mk
 
 src/cc1/cc1
 src/cpp2/cpp
