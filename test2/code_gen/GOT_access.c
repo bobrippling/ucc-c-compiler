@@ -9,6 +9,13 @@
 // RUN: grep -F 'movq g@GOTPCREL(%%rip), %%rdi' %t
 // RUN: grep -F 'movq weak@GOTPCREL(%%rip), %%rdi' %t
 
+// RUN: grep -FA1 'movq elsewhere@GOTPCREL(%%rip), %%rax' %t | grep -F 'movl $1, (%%rax)'
+// RUN: grep -FA1 'movq defined_here@GOTPCREL(%%rip), %%rax' %t | grep -F 'movl $1, (%%rax)'
+// RUN: grep -F   'movl $1, i(%%rip)' %t
+
+// RUN: grep -F 'movq elsewhere@GOTPCREL(%%rip), %%rdi' %t
+// RUN: grep -F 'movq defined_here@GOTPCREL(%%rip), %%rsi' %t
+// RUN: grep -F 'leaq i(%%rip), %%rdx' %t
 
 void f(int i)
 {
@@ -22,6 +29,7 @@ void weak(int i)
 }
 
 void addr_func(void (int));
+void addr_vars(int*,int*,int*);
 
 static int i;
 static int *p = &i;
@@ -40,4 +48,10 @@ main()
 	addr_func(f);
 	addr_func(g);
 	addr_func(weak);
+
+	elsewhere = 1;
+	defined_here = 1;
+	i = 1;
+
+	addr_vars(&elsewhere, &defined_here, &i);
 }

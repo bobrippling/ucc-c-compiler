@@ -45,6 +45,14 @@ int v_is_const_reg(const out_val *v)
 		&& impl_reg_frame_const(&v->bits.regoff.reg, 0);
 }
 
+int v_needs_GOT(const out_val *v)
+{
+	return v->type == V_LBL
+		&& v->bits.lbl.pic_type & LBL_PIC
+		&& !(v->bits.lbl.pic_type & LBL_PIC_LOCAL)
+		&& fopt_mode & FOPT_PIC;
+}
+
 const out_val *v_to_stack_mem(
 		out_ctx *octx, const out_val *val, const out_val *stk)
 {

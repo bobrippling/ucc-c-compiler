@@ -49,6 +49,10 @@
 
 #define REG_STR_SZ 8
 
+static const out_val *impl_deref_noGOT(
+		out_ctx *octx, const out_val *vp,
+		const struct vreg *reg, type *tpointed_to);
+
 const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 1, "byte" },
 	{ 2, "word" },
@@ -1164,13 +1168,6 @@ lea:
 					x86_suffix(NULL),
 					impl_val_str(from, 1),
 					x86_reg_str(reg, from_GOT ? NULL : chosen_ty));
-
-			/* 'from' is now in a reg */
-			if(from_GOT){
-				const out_val *in_reg = v_new_reg(octx, from, from->t, reg);
-
-				return out_deref(octx, in_reg);
-			}
 			break;
 		}
 
@@ -1240,6 +1237,20 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 
 		case V_CONST_I:
 			break;
+	}
+
+	/* if storing to something through the GOT, need double-indirection */
+	if(v_needs_GOT(to)){
+		out_val *mut_to;
+		type *ptr_to_ty = type_ptr_to(to->t);
+		struct vreg reg_store;
+
+		/* type change + make mutable */
+		to = mut_to = v_dup_or_reuse(octx, to, ptr_to_ty);
+
+		v_unused_reg(octx, /*stack-spill*/1, /*fp*/0, &reg_store, to);
+
+		to = impl_deref_noGOT(octx, to, &reg_store, ptr_to_ty);
 	}
 
 	out_asm(octx, "mov%s %s, %s",
@@ -1705,28 +1716,34 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	}
 }
 
-const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *reg)
+static const out_val *impl_deref_noGOT(
+		out_ctx *octx,
+		const out_val *vp,
+		const struct vreg *reg,
+		type *tpointed_to)
 {
-	type *tpointed_to = type_dereference_decay(vp->t);
-	type *stash = NULL;
-	const out_val *ret;
-
-	if(vp->type == V_LBL
-	&& vp->bits.lbl.pic_type & LBL_PIC
-	&& !(vp->bits.lbl.pic_type & LBL_PIC_LOCAL)
-	&& fopt_mode & FOPT_PIC)
-	{
-		stash = vp->t;
-		tpointed_to = NULL;
-	}
-
-	/* loaded the pointer, now we apply the deref change */
 	out_asm(octx, "mov%s %s, %%%s",
 			x86_suffix(tpointed_to),
 			impl_val_str(vp, 1),
 			x86_reg_str(reg, tpointed_to));
 
-	ret = v_new_reg(octx, vp, tpointed_to, reg);
+	return v_new_reg(octx, vp, tpointed_to, reg);
+}
+
+const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *reg)
+{
+	type *tpointed_to = type_dereference_decay(vp->t);
+
+	type *stash = NULL;
+	const out_val *ret;
+
+	if(v_needs_GOT(vp)){
+		stash = vp->t;
+		tpointed_to = vp->t;
+	}
+
+	/* loaded the pointer, now we apply the deref change */
+	ret = impl_deref_noGOT(octx, vp, reg, tpointed_to);
 
 	if(stash){
 		ret = out_change_type(octx, ret, stash);
