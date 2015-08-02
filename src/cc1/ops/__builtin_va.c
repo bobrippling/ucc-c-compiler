@@ -480,6 +480,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 {
 	type *const ty = e->bits.va_arg_type;
 	type *to;
+	const char *warning = NULL;
 
 	FOLD_EXPR(e->lhs, stab);
 	fold_type(ty, stab);
@@ -487,12 +488,19 @@ static void fold_va_arg(expr *e, symtable *stab)
 	va_type_check(e->lhs, e->expr, stab, 1);
 
 	if(type_is_promotable(ty, &to)){
+		warning = "";
+	}else if(type_is_enum(ty)){
+		warning = "when enums are short ";
+		to = type_nav_btype(cc1_type_nav, type_int);
+	}
+
+	if(warning){
 		char tbuf[TYPE_STATIC_BUFSIZ];
 
 		cc1_warn_at(&e->where,
 				builtin_va_arg,
-				"va_arg(..., %s) has undefined behaviour - promote to %s",
-				type_to_str(ty), type_to_str_r(tbuf, to));
+				"va_arg(..., %s) has undefined behaviour %s- promote to %s",
+				type_to_str(ty), warning, type_to_str_r(tbuf, to));
 	}
 
 	e->tree_type = ty;
