@@ -44,6 +44,7 @@ static func_builtin_parse parse_unreachable
                           , parse_nan
                           , parse_choose_expr
                           , parse_offsetof
+                          , parse_has_attribute
 #ifdef BUILTIN_LIBC_FUNCTIONS
                           , parse_memset
                           , parse_memcpy
@@ -706,6 +707,65 @@ static expr *parse_is_signed(const char *ident, symtable *scope)
 	fcall->f_fold       = fold_is_signed;
 	fcall->f_const_fold = const_is_signed;
 
+	return fcall;
+}
+
+/* --- has_attribute */
+
+static void fold_has_attribute(expr *e, symtable *stab)
+{
+	if(e->bits.builtin_ident.ty)
+		fold_type(e->bits.builtin_ident.ty, stab);
+	else
+		FOLD_EXPR(e->bits.builtin_ident.expr, stab);
+
+	e->tree_type = type_nav_btype(cc1_type_nav, type__Bool);
+	wur_builtin(e);
+}
+
+static void const_has_attribute(expr *e, consty *k)
+{
+	enum attribute_type attr;
+	const char *spel = e->bits.builtin_ident.ident;
+
+#define NAME(x, tprop)      else if(!strcmp(spel, #x)) attr = attr_ ## x;
+#define ALIAS(s, x, typrop) else if(!strcmp(spel, s))  attr = attr_ ## x;
+#define EXTRA_ALIAS(s, x)   else if(!strcmp(spel, s))  attr = attr_ ## x;
+	if(0)
+		;
+	ATTRIBUTES
+	else{
+		CONST_FOLD_LEAF(k);
+		k->type = CONST_NO;
+		return;
+	}
+
+	CONST_FOLD_LEAF(k);
+	k->type = CONST_NUM;
+
+	if(e->bits.builtin_ident.ty)
+		k->bits.num.val.i = !!type_attr_present(e->bits.builtin_ident.ty, attr);
+	else
+		k->bits.num.val.i = !!expr_attr_present(e->bits.builtin_ident.expr, attr);
+}
+
+static expr *parse_has_attribute(const char *ident, symtable *scope)
+{
+	expr *fcall = expr_new_funcall();
+
+	(void)ident;
+
+	fcall->bits.builtin_ident.ty = parse_type(1, scope);
+	if(!fcall->bits.builtin_ident.ty)
+		fcall->bits.builtin_ident.expr = PARSE_EXPR_NO_COMMA(scope, /*static_ctx*/1);
+
+	EAT(token_comma);
+
+	fcall->bits.builtin_ident.ident = curtok_to_identifier(&fcall->bits.builtin_ident.alloc);
+
+	EAT(token_identifier);
+
+	expr_mutate_builtin_const(fcall, has_attribute);
 	return fcall;
 }
 

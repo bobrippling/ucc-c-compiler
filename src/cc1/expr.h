@@ -91,6 +91,15 @@ struct expr
 		/* __builtin_va_start */
 		int n;
 
+		/* __builtin_has_attribute */
+		struct
+		{
+			expr *expr;
+			type *ty;
+			char *ident;
+			int alloc;
+		} builtin_ident;
+
 		struct
 		{
 			stringlit_at lit_at; /* for strings */
