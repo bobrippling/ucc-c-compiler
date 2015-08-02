@@ -161,6 +161,7 @@ case "$target" in
 		gcc_inc=$(echo /usr/lib/gcc/$target/*/ | tr ' ' '\n' | sort | tail -1)
 		echo "Borrowing gcc-$(basename "$gcc_inc")'s include/"
 
+		try_path ucc_stdinc "/usr/include"
 		try_path ucc_stdinc "/usr/include/$target"
 		try_path ucc_stdinc "$gcc_inc/include"
 		;;
