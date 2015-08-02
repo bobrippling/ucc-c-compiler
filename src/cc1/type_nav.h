@@ -47,7 +47,7 @@ type *type_qualify_transform_array(
 
 type *type_attributed(type *, attribute *);
 
-type *type_nav_MAX_FOR(struct type_nav *, unsigned sz);
+type *type_nav_MAX_FOR(struct type_nav *, unsigned sz, int is_signed);
 
 type *type_at_where(type *, where *);
 

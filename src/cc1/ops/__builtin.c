@@ -168,7 +168,8 @@ static const out_val *builtin_gen_memset(const expr *e, out_ctx *octx)
 	unsigned i;
 	type *tzero = type_nav_MAX_FOR(
 			cc1_type_nav,
-			e->bits.builtin_memset.len);
+			e->bits.builtin_memset.len,
+			0);
 
 	type *textra, *textrap;
 	const out_val *v_ptr;
@@ -179,7 +180,7 @@ static const out_val *builtin_gen_memset(const expr *e, out_ctx *octx)
 	n   = e->bits.builtin_memset.len / type_size(tzero, NULL);
 	rem = e->bits.builtin_memset.len % type_size(tzero, NULL);
 
-	if((textra = rem ? type_nav_MAX_FOR(cc1_type_nav, rem) : NULL))
+	if((textra = rem ? type_nav_MAX_FOR(cc1_type_nav, rem, 0) : NULL))
 		textrap = type_ptr_to(textra);
 
 	/* works fine for bitfields - struct lea acts appropriately */

@@ -46,7 +46,7 @@ const out_val *out_memcpy(
 	unsigned tptr_sz;
 
 	if(i > 0){
-		tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, nbytes));
+		tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, nbytes, 0));
 		tptr_sz = type_size(tptr, NULL);
 	}
 
@@ -62,7 +62,7 @@ const out_val *out_memcpy(
 
 		if(i > 0){
 			tptr_sz /= 2;
-			tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, tptr_sz));
+			tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, tptr_sz, 0));
 		}
 	}
 

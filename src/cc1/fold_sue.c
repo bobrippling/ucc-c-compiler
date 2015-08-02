@@ -7,6 +7,8 @@
 #include "../util/util.h"
 #include "../util/where.h"
 #include "../util/limits.h"
+#include "../util/math.h"
+#include "../util/macros.h"
 
 #include "cc1.h"
 #include "fold.h"
@@ -78,11 +80,15 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 	const int has_bitmask = !!attr_present(en->attr, attr_enum_bitmask);
 	sue_member **i;
 	int defval = has_bitmask;
+	integral_t max = 0, min = 0;
+	type *contained_ty;
+	int is_signed = 0;
 
 	for(i = en->members; i && *i; i++){
 		enum_member *m = (*i)->enum_member;
 		expr *e = m->val;
 		integral_t v;
+		int negative = 0;
 
 		/* -1 because we can't do dynarray_add(..., 0) */
 		if(e == (expr *)-1){
@@ -94,11 +100,13 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 			FOLD_EXPR(m->val, stab);
 
 			v = defval;
+			if(negative && v == 0){
+				negative = 0;
+			}
 
 		}else{
 			numeric n;
 			int oob;
-			int negative;
 
 			m->val = FOLD_EXPR(e, stab);
 
@@ -138,11 +146,36 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 			fold_had_error = 1;
 		}
 
+		if(negative ?
+		(sintegral_t)v < (sintegral_t)min
+		: v > max)
+		{
+			if(negative)
+				min = v;
+			else
+				max = v;
+		}
+		is_signed |= negative;
+
 		defval = has_bitmask ? v << 1 : v + 1;
 	}
 
-	en->size = type_primitive_size(type_int);
-	en->align = type_align(type_nav_btype(cc1_type_nav, type_int), NULL);
+	if(fopt_mode & FOPT_SHORT_ENUMS){
+		unsigned bits = (MAX(log2ll(round2(-min + 1)), log2ll(round2(max + 1))));
+
+		/* bits needs to be a power of 2 since those are the only word sizes supported */
+		bits = round2(bits);
+
+		if(bits < 8)
+			bits = 8;
+
+		contained_ty = type_nav_MAX_FOR(cc1_type_nav, bits / 8, is_signed);
+	}else{
+		contained_ty = type_nav_btype(cc1_type_nav, type_int);
+	}
+
+	en->size = type_size(contained_ty, NULL);
+	en->align = type_align(contained_ty, NULL);
 }
 
 static int fold_sue_check_unnamed(

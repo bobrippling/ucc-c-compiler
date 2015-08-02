@@ -40,6 +40,7 @@ enum fopt
 	FOPT_COMMON                = 1 << 28,
 	FOPT_DUMP_INIT             = 1 << 29,
 	FOPT_PRINT_AKA             = 1 << 30,
+	FOPT_SHORT_ENUMS           = 1 << 31,
 };
 
 enum mopt

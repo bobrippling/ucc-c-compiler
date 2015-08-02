@@ -107,6 +107,7 @@ static struct
 	{ 'f',  "dump-symtab", FOPT_DUMP_SYMTAB },
 	{ 'f',  "dump-init", FOPT_DUMP_INIT },
 	{ 'f',  "common", FOPT_COMMON },
+	{ 'f',  "short-enums", FOPT_SHORT_ENUMS },
 
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 	{ 'm',  "32", MOPT_32 },

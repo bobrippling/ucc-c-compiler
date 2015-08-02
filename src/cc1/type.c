@@ -873,17 +873,28 @@ unsigned type_hash_skip_nontdefs_consts(const type *t)
 			type_hash_skip_nontdefs_consts);
 }
 
-enum type_primitive type_primitive_not_less_than_size(unsigned sz)
+enum type_primitive type_primitive_not_less_than_size(unsigned sz, int is_signed)
 {
 	static const enum type_primitive prims[] = {
-		type_long, type_int, type_short, type_nchar
+		type_ulong, type_uint, type_ushort, type_uchar
 	};
 
 	unsigned i;
 
-	for(i = 0; i < countof(prims); i++)
-		if(sz >= type_primitive_size(prims[i]))
-			return prims[i];
+	for(i = 0; i < countof(prims); i++){
+		if(sz >= type_primitive_size(prims[i])){
+			enum type_primitive prim = prims[i];
+
+			if(is_signed){
+				if(TYPE_PRIMITIVE_IS_CHAR(prim))
+					prim = type_schar;
+				else
+					prim = TYPE_PRIMITIVE_TO_SIGNED(prim);
+			}
+
+			return prim;
+		}
+	}
 
 	return type_unknown;
 }
