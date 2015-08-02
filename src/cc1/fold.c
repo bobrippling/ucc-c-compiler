@@ -890,7 +890,7 @@ static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
 	}
 }
 
-void fold_decl(decl *d, symtable *stab)
+void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 {
 	/* this is called from wherever we can define a
 	 * struct/union/enum,
@@ -917,7 +917,8 @@ void fold_decl(decl *d, symtable *stab)
 		fold_type_w_attr(d->ref, NULL, type_loc(d->ref),
 				stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
 
-		if(d->spel
+		if(!su_member
+		&& d->spel
 		&& (!STORE_IS_TYPEDEF(d->store) || type_is_variably_modified(d->ref)))
 		{
 			fold_decl_add_sym(d, stab);
@@ -965,6 +966,11 @@ void fold_decl(decl *d, symtable *stab)
 		}
 	}
 #undef first_fold
+}
+
+void fold_decl(decl *d, symtable *stab)
+{
+	fold_decl_maybe_member(d, stab, 0);
 }
 
 void fold_check_decl_complete(decl *d)

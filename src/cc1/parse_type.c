@@ -2164,7 +2164,7 @@ int parse_decl_group(
 		warn_for_unaccessible_sue(d, mode);
 
 		/* must fold _after_ we get the bitfield, etc */
-		fold_decl(d, in_scope);
+		fold_decl_maybe_member(d, in_scope, mode & DECL_MULTI_IS_STRUCT_UN_MEMB);
 
 		last = d;
 		if(done)
