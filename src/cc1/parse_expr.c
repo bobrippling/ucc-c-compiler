@@ -151,8 +151,7 @@ static expr *parse_expr_identifier(void)
 	char *sp;
 
 	if(curtok != token_identifier)
-		die_at(NULL, "identifier expected, got %s (%s:%d)",
-				token_to_str(curtok), __FILE__, __LINE__);
+		die_at(NULL, "identifier expected, got %s", token_to_str(curtok));
 
 	sp = token_current_spel();
 
@@ -304,8 +303,7 @@ static expr *parse_expr_primary(symtable *scope, int static_ctx)
 
 				if(curtok != token_identifier){
 					/* TODO? cc1_error = 1, return expr_new_val(0) */
-					die_at(NULL, "expression expected, got %s (%s:%d)",
-							token_to_str(curtok), __FILE__, __LINE__);
+					die_at(NULL, "expression expected, got %s", token_to_str(curtok));
 				}
 
 				return parse_expr_identifier();
