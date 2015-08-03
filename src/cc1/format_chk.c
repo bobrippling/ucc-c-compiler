@@ -21,13 +21,16 @@ enum printf_attr
 {
 	printf_attr_long = 1 << 0,
 	printf_attr_llong = 1 << 1,
-	printf_attr_size_t = 1 << 2
+	printf_attr_size_t = 1 << 2,
+	printf_attr_ptrdiff_t = 1 << 3
 };
 
 static const char *printf_attr_to_str(enum printf_attr attr)
 {
 	if(attr & printf_attr_size_t)
 		return "z";
+	if(attr & printf_attr_ptrdiff_t)
+		return "t";
 	if(attr & printf_attr_llong)
 		return "ll";
 	if(attr & printf_attr_long)
@@ -113,7 +116,7 @@ ptr:
 				break;
 			}
 
-			if(attr & printf_attr_size_t){
+			if(attr & (printf_attr_size_t | printf_attr_ptrdiff_t)){
 				/* just do size checks for size_t, since it
 				 * could be long, or long-long */
 
@@ -197,7 +200,11 @@ static enum printf_attr printf_modifiers(
 			break;
 
 		case 'z':
-			attr |= printf_attr_size_t;
+		case 't':
+			attr |= (fmt[*index] == 'z'
+					? printf_attr_size_t
+					: printf_attr_ptrdiff_t);
+
 			++*index;
 			break;
 
