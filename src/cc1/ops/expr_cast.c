@@ -628,23 +628,27 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 	if(expr_cast_is_lval2rval(e)){
 
 		if(type_is_s_or_u(tfrom)){
-			if(!cast_to_void)
-				ICW("defererence %s in non-cast-to-void", type_to_str(tfrom));
+			if(cast_to_void){
+				if(type_qual(tfrom) & qual_volatile){
+					/* must read */
+					const out_val *target = out_aalloct(octx, tfrom);
 
-			if(type_qual(tfrom) & qual_volatile){
-				/* must read */
-				const out_val *target = out_aalloct(octx, tfrom);
+					out_val_consume(octx,
+							out_memcpy(octx, target, casted, type_size(tfrom, NULL)));
 
-				out_val_consume(octx,
-						out_memcpy(octx, target, casted, type_size(tfrom, NULL)));
+				}else{
+					out_val_consume(octx, casted);
+				}
 
+				/* else we've been generated but won't be used - noop
+				 * e.g. (void) *a; */
+				casted = out_new_noop(octx);
 			}else{
-				out_val_consume(octx, casted);
+				UCC_ASSERT(type_cmp(tfrom, tto, 0) & TYPE_EQUAL_ANY, "struct cast?");
+
+				/* continue with casted as casted */
 			}
 
-			/* else we've been generated but won't be used - noop
-			 * e.g. (void) *a; */
-			casted = out_new_noop(octx);
 		}else{
 			casted = out_deref(octx, casted);
 		}
