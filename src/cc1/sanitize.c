@@ -121,6 +121,9 @@ void sanitize_shift(
 	/* rhs must be < bit-size of lhs' type */
 	const unsigned max = CHAR_BIT * type_size(elhs->tree_type, NULL);
 
+	if(!(cc1_sanitize & CC1_UBSAN))
+		return;
+
 	out_comment(octx, "rhs less than %u", max);
 	sanitize_assert_order(rhs, op_lt, max, uintptr_ty(), octx, "shift rhs size");
 
