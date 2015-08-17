@@ -517,7 +517,7 @@ static void read_suffix_float_exp(void)
 	int powmul;
 	int just_read = nextchar();
 
-	assert(just_read == 'e');
+	assert(tolower(just_read) == 'e');
 
 	if(!(currentval.suffix & VAL_FLOATING)){
 		currentval.suffix = VAL_DOUBLE; /* 1e2 is double by default */
