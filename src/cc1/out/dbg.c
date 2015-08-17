@@ -471,13 +471,18 @@ static void dwarf_attr(
 			at->bits.value = *(form_data_t *)data;
 
 			if(enc == DW_FORM_ULEB){
-				switch(leb128_length(at->bits.value, 0)){
-					case 1: at->enc = DW_FORM_data1; break;
-					case 2: at->enc = DW_FORM_data2; break;
-					case 4: at->enc = DW_FORM_data4; break;
-					case 8: at->enc = DW_FORM_data8; break;
-					default: ucc_unreach();
-				}
+				unsigned len = leb128_length(at->bits.value, 0);
+
+				if(len <= 1)
+					at->enc = DW_FORM_data1;
+				else if(len <= 2)
+					at->enc = DW_FORM_data2;
+				else if(len <= 4)
+					at->enc = DW_FORM_data4;
+				else if(len <= 8)
+					at->enc = DW_FORM_data8;
+				else
+					ucc_unreach();
 			}
 			break;
 

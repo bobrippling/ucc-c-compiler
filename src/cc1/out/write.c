@@ -78,10 +78,10 @@ void out_asm2(
 
 /* -- dbg -- */
 
-int dbg_add_file(struct out_dbg_filelist **files, const char *nam)
+unsigned dbg_add_file(struct out_dbg_filelist **files, const char *nam)
 {
 	struct out_dbg_filelist **p;
-	int i = 1; /* indexes start at 1 */
+	unsigned i = 1; /* indexes start at 1 */
 
 	for(p = files; *p; p = &(*p)->next, i++)
 		if(!strcmp(nam, (*p)->fname))
@@ -97,7 +97,7 @@ void out_dbg_flush(out_ctx *octx, out_blk *blk)
 	/* .file <fileidx> "<name>"
 	 * .loc <fileidx> <line> <col>
 	 */
-	int idx;
+	unsigned idx;
 
 	if(!octx->dbg.where.fname || !cc1_gdebug)
 		return;
