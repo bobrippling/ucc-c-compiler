@@ -495,9 +495,17 @@ ptr_relation:
 							? "comparison lacks a cast"
 							: "comparison between pointer and integer"))
 					{
+						int void_lhs;
 						/* not equal - ptr-A vs ptr-B */
-						*plhs = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
-						*prhs = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+
+						/* special case - if comparing against void*, cast the void*
+						 * to the target type */
+						if((void_lhs = type_is_void_ptr(tlhs)) || type_is_void_ptr(trhs)){
+							*(void_lhs ? plhs : prhs) = (void_lhs ? trhs : tlhs);
+						}else{
+							*plhs = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+							*prhs = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+						}
 					}
 				}
 
