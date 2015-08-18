@@ -58,6 +58,11 @@ struct out_val
 			long offset;
 			enum out_pic_type pic_type;
 		} lbl;
+		struct
+		{
+			unsigned pos;
+			int locked;
+		} altstack;
 	} bits;
 
 	struct vbitfield

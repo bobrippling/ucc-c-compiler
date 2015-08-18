@@ -39,6 +39,8 @@
 #define REG_SP            X86_64_REG_RSP
 #define REG_BP            X86_64_REG_RBP
 
+#define N_ALTSTACK 8
+
 #define VAL_STR_SZ 128
 
 #endif

@@ -4,6 +4,7 @@
 #include <assert.h>
 
 #include "../../util/alloc.h"
+#include "../../util/util.h"
 
 #include "../type.h"
 #include "../type_nav.h"
@@ -235,6 +236,25 @@ out_val *v_new_reg(
 	v->type = V_REG;
 	v->bits.regoff.offset = 0;
 	memcpy_safe(&v->bits.regoff.reg, &savedreg);
+	return v;
+}
+
+out_val *v_new_altstack(out_ctx *octx, const out_val *from, type *ty)
+{
+	out_val *v;
+
+	v = v_reuse(octx, from, ty);
+
+	v_altstack_push_all(octx);
+
+	if(octx->altstackcount >= N_ALTSTACK){
+		ICW("altstack overflow unaccounted for");
+	}
+
+	v->type = V_ALTSTACK;
+	v->bits.altstack.pos = 0;
+	v->bits.altstack.locked = 0;
+
 	return v;
 }
 

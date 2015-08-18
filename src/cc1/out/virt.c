@@ -115,8 +115,7 @@ static ucc_wur const out_val *v_spill_reg(
 	return v_reg;
 }
 
-static ucc_wur const out_val *v_save_reg(
-		out_ctx *octx, const out_val *vp, type *fnty)
+ucc_wur const out_val *v_save_reg(out_ctx *octx, const out_val *vp, type *fnty)
 {
 	assert(vp->type == V_REG && "not reg");
 

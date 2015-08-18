@@ -43,6 +43,8 @@ const out_val *v_reg_to_stack_mem(
 void v_freeup_reg(out_ctx *, const struct vreg *r);
 
 /* func_ty may be null, ignores is null-terminated */
+ucc_wur const out_val *v_save_reg(out_ctx *octx, const out_val *vp, type *fnty);
+
 void v_save_regs(
 		out_ctx *, type *func_ty,
 		const out_val *ignores[], const out_val *fnval);

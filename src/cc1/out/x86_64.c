@@ -33,6 +33,7 @@
 #include "write.h"
 #include "../defs.h"
 #include "virt.h"
+#include "altstack.h"
 
 #include "ctx.h"
 #include "blk.h"
@@ -628,7 +629,7 @@ void impl_func_prologue_save_call_regs(
 
 			stack_loc = out_aalloc(octx, (n_call_f + n_call_i) * ws, ws, arithty);
 
-			for(i_arg = i_i = i_f = i_arg_stk = 0;
+			for(i_arg = i_i = i_f = 0, i_arg_stk = 2 * ws;
 					i_arg < nargs;
 					i_arg++)
 			{
@@ -675,8 +676,14 @@ void impl_func_prologue_save_call_regs(
 
 				continue;
 pass_via_stack:
-				*store = v_new_bp3_above(
-						octx, NULL, type_ptr_to(ty), (i_arg_stk++ + 2) * ws);
+				{
+					*store = v_new_bp3_above(octx, NULL, type_ptr_to(ty), i_arg_stk);
+
+					/*fprintf(stderr, "i_arg_stk (%u) += type_size(%s)\n",
+							i_arg_stk, type_to_str(ty));*/
+
+					i_arg_stk += type_size(ty, NULL);
+				}
 			}
 
 
@@ -1214,6 +1221,25 @@ static const out_val *x86_check_ivfp(out_ctx *octx, const out_val *from)
 	return from;
 }
 
+static const out_val *v_to_altstack(out_ctx *octx, const out_val *v)
+{
+	if(V_IS_MEM(v->type)){
+		type *ty_fp = v->t;
+
+		v_altstack_reserve(octx);
+		out_asm(octx, "fldl %s", impl_val_str(v, 1));
+
+		return v_new_altstack(octx, v, ty_fp);
+
+	}else if(v->type == V_CONST_F){
+		return x86_load_fp(octx, v);
+
+	}else{
+		assert(0 && "unknown long-double val-type");
+		return NULL;
+	}
+}
+
 void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 {
 	char vbuf[VAL_STR_SZ];
@@ -1463,6 +1489,40 @@ static void maybe_promote(out_ctx *octx, const out_val **pl, const out_val **pr)
 const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const out_val *r)
 {
 	const char *opc;
+	const out_val *top;
+	unsigned nontop_idx;
+	int pop = 0;
+
+	l = v_to(octx, l, TO_ALTSTACK);
+	v_altstack_lock(l);
+	r = v_to(octx, r, TO_ALTSTACK);
+	v_altstack_unlock(l);
+
+	assert(l->type == V_ALTSTACK);
+	assert(r->type == V_ALTSTACK);
+	assert(octx->altstackcount >= 2);
+
+	out_comment(octx, "on fp stack(%u): %%st(%u) %s %%st(%u)",
+			octx->altstackcount,
+			l->bits.altstack.pos,
+			op_to_str(op),
+			r->bits.altstack.pos);
+
+	/* need one on the top of the stack */
+	if(l->bits.altstack.pos == 0){
+		/* fine */
+		top = l;
+
+	}else if(r->bits.altstack.pos == 0){
+		top = r;
+
+		if(!op_is_commutative(op)){
+			/* need to swap to ensure semantics are preserved */
+			x86_lfp_swap(octx, r, l);
+			top = l;
+		}
+	}
+	/* TODO */
 
 	l = x86_check_ivfp(octx, l);
 	r = x86_check_ivfp(octx, r);
@@ -1752,6 +1812,12 @@ static const out_val *impl_deref_nodoubleindir(
 		vp_mut->bits.lbl.offset = 0;
 	}
 
+	if(type_is_primitive(tpointed_to, type_ldouble)){
+		v_altstack_reserve(octx);
+
+		out_asm(octx, "fldt %s", impl_val_str(vp, 1));
+	}
+
 	out_asm(octx, "mov%s %s, %%%s",
 			x86_suffix(tpointed_to),
 			impl_val_str(vp_mut, 1),
@@ -1919,6 +1985,93 @@ static const out_val *x86_fp_conv(
 	return v_new_reg(octx, vp, tto, r);
 }
 
+static const out_val *x86_xchg_lfi(
+		out_ctx *octx, const out_val *vp,
+		type *ty_fp, type *ty_int, int to_float)
+{
+	if(to_float){
+		if(vp->type == V_CONST_I){
+			const char *special = NULL;
+
+			if(vp->bits.val_i == 0){
+				special = "fldz";
+			}else if(vp->bits.val_i == 1){
+				special = "fld1";
+			}
+
+			if(special){
+				v_altstack_reserve(octx);
+				out_asm(octx, "%s", special);
+				return v_new_altstack(octx, vp, ty_fp);
+			}
+		}
+
+		if(type_size(ty_int, NULL) < type_primitive_size(type_int)){
+			ty_int = type_nav_btype(cc1_type_nav, type_int);
+			vp = out_cast(octx, vp, ty_int, 0);
+		}
+
+		vp = v_to(octx, vp, TO_MEM);
+
+		v_altstack_reserve(octx);
+
+		out_asm(octx, "fildl%s %s",
+				type_size(ty_int, NULL) >= type_primitive_size(type_long) ? "l" : "",
+				impl_val_str(vp, 1));
+
+		return v_new_altstack(octx, vp, ty_fp);
+	}else{
+		const char *suffix;
+		const out_val *mem;
+		type *mem_ty = ty_int;
+		int oversized = 0;
+
+		/* fistt (i.e. truncating fist [Float Int STore])
+		 * is only available with sse3 */
+		assert(vp->type == V_ALTSTACK);
+
+		v_altstack_make_top(octx, vp);
+		assert(vp->bits.altstack.pos == 0);
+
+		switch(type_size(ty_int, NULL)){
+			case 1:
+			case 2:
+				mem_ty = type_nav_btype(cc1_type_nav, type_int);
+				oversized = 1;
+				/* fall */
+			case 4:
+				suffix = "";
+				break;
+			case 8:
+				suffix = "l";
+				break;
+			default:
+				assert(0 && "bad int size");
+		}
+
+		mem = out_aalloct(octx, mem_ty);
+
+		out_asm(octx, "fisttpl%s %s",
+				suffix,
+				impl_val_str(mem, 1));
+
+		if(vp->retains > 1){
+			/* need to reload to ensure it's still valid,
+			 * and fisttl{l} [no-pop] is not a valid instruction */
+			ICW("possible long double bug?");
+		}
+
+		clear_ldbl(octx, vp);
+		out_val_release(octx, vp);
+
+		if(oversized){
+			mem = out_cast(octx, mem, type_ptr_to(ty_int), 1);
+		}
+
+		return out_deref(octx, mem);
+	}
+}
+
 static const out_val *x86_xchg_fi(
 		out_ctx *octx, const out_val *vp,
 		type *tfrom, type *tto)
@@ -1970,6 +2123,46 @@ const out_val *impl_i2f(out_ctx *octx, const out_val *vp, type *t_i, type *t_f)
 const out_val *impl_f2i(out_ctx *octx, const out_val *vp, type *t_f, type *t_i)
 {
 	return x86_xchg_fi(octx, vp, t_f, t_i);
+}
+
+static const out_val *impl_lf2lf(
+		out_ctx *octx, const out_val *vp, type *from, type *to)
+{
+	int to_ld = !!type_is_primitive(to, type_ldouble);
+	int from_ld = !!type_is_primitive(from, type_ldouble);
+	const char *suffix;
+
+	assert(to_ld ^ from_ld);
+
+	switch(type_get_primitive(to_ld ? from : to)){
+		case type_float: suffix = "s"; break;
+		case type_double: suffix = "l"; break;
+		default: assert(0 && "bad float load");
+	}
+
+	if(to_ld){
+		vp = v_to(octx, vp, TO_MEM);
+
+		v_altstack_reserve(octx);
+		out_asm(octx, "fld%s %s", suffix, impl_val_str(vp, 1));
+
+		return v_new_altstack(octx, vp, type_nav_btype(cc1_type_nav, type_ldouble));
+	}else{
+		const out_val *mem;
+		int pop = (vp->retains == 1);
+
+		v_altstack_make_top(octx, vp);
+		assert(vp->bits.altstack.pos == 0);
+
+		mem = out_aalloct(octx, to);
+
+		out_asm(octx, "fst%s%s %s", pop ? "p" : "", suffix, impl_val_str(mem, 1));
+
+		clear_ldbl(octx, vp);
+		out_val_release(octx, vp);
+
+		return out_deref(octx, mem);
+	}
 }
 
 const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *from, type *to)
@@ -2279,7 +2472,14 @@ const out_val *impl_call(
 				: nints++ >= n_call_iregs;
 
 			if(stack_this){
-				type *storety = type_ptr_to(local_args[i]->t);
+				type *argty = local_args[i]->t;
+				type *storety;
+				unsigned stack_inc;
+
+				if(local_args[i]->type == V_REG_SPILT)
+					argty = type_dereference_decay(argty);
+
+				storety = type_ptr_to(argty);
 
 				assert(stack_iter->retains > 0);
 
@@ -2289,9 +2489,11 @@ const out_val *impl_call(
 
 				assert(local_args[i]->retains > 0);
 
+				stack_inc = MAX(pws, type_size(argty, NULL));
+
 				stack_iter = out_op(octx, op_plus,
 						out_change_type(octx, stack_iter, arithty),
-						out_new_l(octx, arithty, pws));
+						out_new_l(octx, arithty, stack_inc));
 			}
 		}
 
