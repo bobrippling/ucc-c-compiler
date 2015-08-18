@@ -8,6 +8,7 @@
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
+#include "../../util/math.h"
 
 #include "../type.h"
 #include "../decl.h"
@@ -472,10 +473,14 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 
 void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align)
 {
-	asm_out_section(sec,
-			".align %u\n"
-			"%s:\n",
-			align, lbl);
+	if(AS_ALIGN_IS_POW2){
+		align = log2i(align);
+	}
+
+	if(align)
+		asm_out_section(sec, ".align %u\n", align);
+
+	asm_out_section(sec, "%s:\n", lbl);
 }
 
 static void asm_nam_begin(enum section_type sec, decl *d)
@@ -560,6 +565,7 @@ void asm_declare_decl_init(decl *d)
 
 	}else if(d->bits.var.init.compiler_generated && fopt_mode & FOPT_COMMON){
 		const char *common_prefix = "comm ";
+		unsigned align;
 
 		/* section doesn't matter */
 		sec = SECTION_BSS;
@@ -572,9 +578,14 @@ void asm_declare_decl_init(decl *d)
 			}
 		}
 
+		align = decl_align(d);
+		if(AS_ALIGN_IS_POW2){
+			align = log2i(align);
+		}
+
 		asm_out_section(sec, ".%s%s,%u,%u\n",
 				common_prefix,
-				decl_asm_spel(d), decl_size(d), decl_align(d));
+				decl_asm_spel(d), decl_size(d), align);
 
 	}else{
 		/* always resB, since we use decl_size() */

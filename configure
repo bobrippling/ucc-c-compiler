@@ -65,6 +65,7 @@ section_dbg_line=".debug_line"
 dwarf_indirect_section_links=0
 asm_weak_directive='weak'
 as_supports_local_common=1
+as_align_is_pow2=0
 leading_underscore=0
 local_lib=0
 
@@ -185,6 +186,7 @@ case "$target" in
 		asm_weak_directive='weak_reference'
 		# Darwin also needs "-flat_namespace -undefined suppress"
 		as_supports_local_common=0
+		as_align_is_pow2=1
 		ucc_cflags='-mpreferred-stack-boundary=4' # 2^4 = 16 byte aligned
 		ucc_stdlib='-lSystem'
 		ucc_crt='-lcrt1.o'
@@ -305,6 +307,7 @@ cat > src/config_as.h <<!
 #define ASM_PLBL_PRE "$local_label_prefix"
 #define ASM_WEAK_DIRECTIVE "$asm_weak_directive"
 #define AS_SUPPORTS_LOCAL_COMMON $as_supports_local_common
+#define AS_ALIGN_IS_POW2 $as_align_is_pow2
 !
 echo 'done'
 
