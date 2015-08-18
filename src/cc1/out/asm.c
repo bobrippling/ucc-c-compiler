@@ -180,7 +180,18 @@ void asm_out_fp(enum section_type sec, type *ty, floating_t f)
 				break;
 			}
 		case type_ldouble:
-			ICE("TODO");
+		{
+			union {
+				long double ld;
+				unsigned long ul[2];
+			} u = { 0 };
+
+			u.ld = f;
+
+			asm_out_section(sec, ".quad %lu # long double %Lf\n", u.ul[0], u.ld);
+			asm_out_section(sec, ".quad %lu\n", u.ul[1]);
+			break;
+		}
 		default:
 			ICE("bad float type");
 	}
