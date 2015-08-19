@@ -78,14 +78,20 @@ static int reserve(out_val *val, void *vctx)
 
 	saved = v_save_reg(octx, val, NULL);
 
-	fprintf(stderr, "          spilt:   val retains %d, saved %d\n",
-			val->retains, saved->retains);
+	if(saved != val){
+		fprintf(stderr, "          spilt:   val retains %d, saved %d\n",
+				val->retains, saved->retains);
 
-	out_val_overwrite(octx, val, saved);
-	out_val_consume(octx, saved);
+		out_val_overwrite(octx, val, saved);
 
-	fprintf(stderr, "       overwritten: val retains %d, saved %d\n",
-			val->retains, saved->retains);
+		fprintf(stderr, "       overwritten: val retains %d, saved %d\n",
+				val->retains, saved->retains);
+
+		out_val_consume(octx, saved);
+
+		fprintf(stderr, "    saved consumed: val retains %d, saved %d\n",
+				val->retains, saved->retains);
+	}
 
 	ctx->success = 1;
 

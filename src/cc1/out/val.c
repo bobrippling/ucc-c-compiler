@@ -369,6 +369,14 @@ const out_val *out_val_retain(out_ctx *octx, const out_val *v)
 
 void out_val_overwrite(out_val *d, const out_val *s)
 {
+	assert(d != s);
+
+	if(d->type == V_ALTSTACK && s->type != V_ALTSTACK){
+		assert(d->retains > 0);
+		assert(octx->altstackcount > 0);
+		octx->altstackcount--;
+	}
+
 	/* don't copy .retains */
 	d->type = s->type;
 	d->t = s->t;
