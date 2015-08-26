@@ -47,7 +47,7 @@ Options:
 	--target=..., --host=...    Build for target machine
 	--with-ucc-lib              Include and link against local lib/
 	--enable-debug              Build with debug symbols [enabled]
-	--enable-optimize           Build with optimsations
+	--enable-optimize           Build with optimisations
 
 CC, CFLAGS and LDFLAGS are pulled from the environment if not specified
 !
