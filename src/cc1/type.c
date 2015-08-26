@@ -66,6 +66,31 @@ static int type_qual_cmp(enum type_qualifier a, enum type_qualifier b)
 	return 0;
 }
 
+static int type_attribute_missing1(type *ta, type *tb, enum attribute_type attr)
+{
+	return type_attr_present(tb, attr) && !type_attr_present(ta, attr);
+}
+
+static int type_attribute_missing(type *ta, type *tb)
+{
+#define NAME(x, typrop)                             \
+	if(typrop){                                       \
+		if(type_attribute_missing1(ta, tb, attr_ ## x)) \
+			return 1;                                     \
+	}
+
+#define ALIAS(s, x, typrop) NAME(x, typrop)
+#define EXTRA_ALIAS(s, x)
+
+	ATTRIBUTES
+
+#undef NAME
+#undef ALIAS
+#undef EXTRA_ALIAS
+
+		return 0;
+}
+
 static enum type_cmp type_cmp_r(
 		type *const orig_a,
 		type *const orig_b,
@@ -232,6 +257,13 @@ static enum type_cmp type_cmp_r(
 		}else if(b_qual){
 			ret = TYPE_QUAL_SUB;
 		} /* else neither are casts */
+	}
+
+	/* check attributes */
+	if(ret & TYPE_EQUAL_ANY
+	&& type_attribute_missing(orig_a, orig_b))
+	{
+		ret = TYPE_QUAL_POINTED_SUB;
 	}
 
 	if(ret == TYPE_EQUAL){
