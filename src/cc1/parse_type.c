@@ -33,8 +33,6 @@
 #include "fold.h"
 #include "fold_sue.h"
 
-/*#define PARSE_DECL_VERBOSE*/
-
 static decl *parse_decl_stored_aligned(
 		type *btype, enum decl_mode mode,
 		enum decl_storage store, struct decl_align *align,
