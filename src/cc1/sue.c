@@ -132,8 +132,14 @@ struct_union_enum_st *sue_find_descend(
 		struct_union_enum_st *sue = sue_find_this_scope(stab, spel);
 		if(sue)
 			return sue;
-		if(descended)
+
+		if(descended
+		&& !stab->internal_nest
+		&& !stab->are_params
+		&& !stab->transparent)
+		{
 			*descended = 1;
+		}
 	}
 
 	return NULL;
@@ -194,7 +200,7 @@ struct_union_enum_st *sue_decl(
 				 * }
 				 */
 
-			die_at(NULL, "trying to redefine %s as %s\n"
+			die_at(NULL, "redefinition of %s as %s\n"
 					"%s: note: from here",
 					sue_str(sue),
 					type_primitive_to_str(prim),

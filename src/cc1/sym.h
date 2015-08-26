@@ -58,6 +58,9 @@ struct symtable
 	 * { int i; 5; { int j; } }
 	 *
 	 * internal_nest marks if it is so, for duplicate checking
+	 *
+	 * transparent marks C99 for-statements creating a new scope
+	 * - see symtab_new_transparent()
 	 */
 	unsigned stack_used : 1; /* function symtab - used stack? */
 
