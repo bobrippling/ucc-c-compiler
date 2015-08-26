@@ -194,6 +194,7 @@ static type *parse_sue_finish(
 		char *spel,
 		enum type_primitive const prim,
 		attribute *this_sue_attr,
+		attribute *this_type_attr,
 		int const already_exists,
 		symtable *const scope,
 		where *const sue_loc)
@@ -223,7 +224,9 @@ static type *parse_sue_finish(
 
 	fold_sue(sue, scope);
 
-	return type_nav_suetype(cc1_type_nav, sue);
+	return type_attributed(
+			type_nav_suetype(cc1_type_nav, sue),
+			this_type_attr);
 }
 
 static int parse_token_creates_sue(enum token tok)
@@ -268,7 +271,7 @@ static type *parse_type_sue(
 	char *spel = NULL;
 	struct_union_enum_st *predecl_sue = NULL;
 	sue_member **members = NULL;
-	attribute *this_sue_attr = NULL;
+	attribute *this_sue_attr = NULL, *this_type_attr = NULL;
 	where sue_loc;
 
 	/* location is the tag, by default */
@@ -354,6 +357,8 @@ static type *parse_type_sue(
 
 			if(descended && newdecl_context && parse_token_creates_sue(curtok))
 				predecl_sue = NULL;
+
+			already_exists = !!predecl_sue;
 		}
 
 		if(!predecl_sue){
@@ -374,12 +379,13 @@ static type *parse_type_sue(
 	 * - struct is incomplete before this point, so we handle the
 	 *   attributes before sue_decl()
 	 */
-	parse_add_attr(&this_sue_attr, scope);
+	parse_add_attr(&this_type_attr, scope);
 
 	return parse_sue_finish(
 			predecl_sue, members, is_definition,
 			spel, prim,
 			this_sue_attr,
+			this_type_attr,
 			already_exists,
 			scope, &sue_loc);
 }
