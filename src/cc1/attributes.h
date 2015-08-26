@@ -1,25 +1,29 @@
 #ifndef ATTRIBUTES_H
 #define ATTRIBUTES_H
 
+/* name/spelling + name,
+ * then an int describing whether the attribute
+ * takes part in type propagation */
+
 #define ATTRIBUTES    \
-		NAME(format)         \
-		NAME(unused)         \
-		NAME(warn_unused)    \
-		NAME(section)        \
-		NAME(enum_bitmask)   \
-		NAME(noreturn)       \
-		NAME(noderef)        \
-		NAME(nonnull)        \
-		NAME(packed)         \
-		NAME(sentinel)       \
-		NAME(aligned)        \
-		NAME(weak)           \
-		NAME(cleanup)        \
-		NAME(always_inline)  \
-		NAME(noinline)       \
-		ALIAS("designated_init", desig_init)     \
-		ALIAS("__ucc_debug", ucc_debug) /* logs out a message when handled */ \
-		ALIAS("__cdecl", call_conv)        \
+		NAME(format, 0)         \
+		NAME(unused, 0)         \
+		NAME(warn_unused, 0)    \
+		NAME(section, 0)        \
+		NAME(enum_bitmask, 0)   \
+		NAME(noreturn, 0)       \
+		NAME(noderef, 1)        \
+		NAME(nonnull, 1)        \
+		NAME(packed, 0)         \
+		NAME(sentinel, 0)       \
+		NAME(aligned, 1)        \
+		NAME(weak, 0)           \
+		NAME(cleanup, 0)        \
+		NAME(always_inline, 0)  \
+		NAME(noinline, 0)       \
+		ALIAS("designated_init", desig_init, 0)     \
+		ALIAS("__ucc_debug", ucc_debug, 1) /* logs out a message when handled */ \
+		ALIAS("__cdecl", call_conv, 0)        \
 		EXTRA_ALIAS("cdecl", call_conv)    \
 		EXTRA_ALIAS("stdcall", call_conv)  \
 		EXTRA_ALIAS("fastcall", call_conv) \

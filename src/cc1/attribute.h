@@ -14,8 +14,8 @@ struct attribute
 
 	enum attribute_type
 	{
-#define NAME(x) attr_ ## x,
-#define ALIAS(s, x) attr_ ## x,
+#define NAME(x, typrop) attr_ ## x,
+#define ALIAS(s, x, typrop) attr_ ## x,
 #define EXTRA_ALIAS(s, x)
 		ATTRIBUTES
 #undef NAME
@@ -71,6 +71,8 @@ attribute *attribute_present(struct decl *, enum attribute_type);
 attribute *expr_attr_present(struct expr *, enum attribute_type);
 
 int attribute_equal(attribute *, attribute *);
+
+int attribute_is_typrop(attribute *);
 
 void attribute_free(struct attribute *a);
 void attribute_debug_check(struct attribute *attr);

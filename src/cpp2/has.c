@@ -101,9 +101,9 @@ static int has_feature(const char *nam)
 
 static int has_attribute(const char *nam)
 {
-#define NAME(x) if(!strcmp(nam, #x) || !strcmp("__" #x "__", nam)) return 1;
-#define ALIAS(s, x) if(!strcmp(nam, s) || !strcmp("__" s "__", nam)) return 1;
-#define EXTRA_ALIAS ALIAS
+#define NAME(x, t) if(!strcmp(nam, #x) || !strcmp("__" #x "__", nam)) return 1;
+#define ALIAS(s, x, t) if(!strcmp(nam, s) || !strcmp("__" s "__", nam)) return 1;
+#define EXTRA_ALIAS(s, x)
 	ATTRIBUTES
 #undef NAME
 #undef ALIAS

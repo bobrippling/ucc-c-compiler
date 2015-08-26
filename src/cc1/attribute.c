@@ -253,6 +253,22 @@ int attribute_equal(attribute *a, attribute *b)
 		return a == b;
 }
 
+int attribute_is_typrop(attribute *attr)
+{
+	switch(attr->type){
+#define NAME(nam, typrop) case attr_ ## nam: return typrop;
+#define ALIAS(str, nam, typrop) case attr_ ## nam: return typrop;
+#define EXTRA_ALIAS(str, nam)
+		ATTRIBUTES
+#undef NAME
+#undef ALIAS
+#undef EXTRA_ALIAS
+		case attr_LAST:
+			break;
+	}
+	assert(0);
+}
+
 void attribute_debug_check(struct attribute *attr)
 {
 	for(; attr; attr = attr->next){

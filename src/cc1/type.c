@@ -506,6 +506,15 @@ static void type_add_str_pre(
 			BUF_ADD("^");
 			break;
 
+		case type_attr:
+			if(attribute_is_typrop(r->bits.attr)){
+				ADD_SPC();
+				BUF_ADD("__attribute__((%s))", attribute_to_str(r->bits.attr));
+				*need_spc = 1;
+				/* space after pseudo-qualifier */
+			}
+			break;
+
 		default:break;
 	}
 
