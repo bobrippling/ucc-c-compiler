@@ -28,6 +28,8 @@
 expr *parse_expr_unary(symtable *scope, int static_ctx);
 #define PARSE_EXPR_CAST(s, static_ctx) parse_expr_unary(s, static_ctx)
 
+static expr *parse_expr_postfix_with(symtable *, int static_ctx, expr *);
+
 expr *parse_expr_sizeof_typeof_alignof(symtable *scope)
 {
 	const int static_ctx = /*doesn't matter:*/0;
@@ -59,14 +61,22 @@ expr *parse_expr_sizeof_typeof_alignof(symtable *scope)
 		if(ty){
 			EAT(token_close_paren);
 
-			/* check for sizeof(int){...} */
+			/* check for sizeof(int){...}.x[0]->q... */
+
 			if(curtok == token_open_block){
-				e = expr_new_sizeof_expr(
-							expr_new_compound_lit(
-								ty,
-								parse_init(scope, static_ctx),
-								static_ctx),
-							what_of);
+				decl_init *complit_init = parse_init(scope, static_ctx);
+				/* got the { 1, 2, ... } */
+
+				expr *complit = expr_new_compound_lit(ty, complit_init, static_ctx);
+				/* got the (int){ 1, 2, ... } */
+
+				expr *entire_sizeof_primary = parse_expr_postfix_with(
+						scope, static_ctx, complit);
+				/* got the (int){ 1, 2, ... }.x[0]->q... */
+
+				e = expr_new_sizeof_expr(entire_sizeof_primary, what_of);
+				/* got the sizeof(int){...}.x[0]->q... */
+
 			}else{
 				e = expr_new_sizeof_type(ty, what_of);
 				is_expr = 0;
@@ -313,12 +323,10 @@ static expr *parse_expr_primary(symtable *scope, int static_ctx)
 	}
 }
 
-static expr *parse_expr_postfix(symtable *scope, int static_ctx)
+static expr *parse_expr_postfix_with(
+		symtable *scope, int static_ctx, expr *e)
 {
-	expr *e;
 	int flag;
-
-	e = parse_expr_primary(scope, static_ctx);
 
 	for(;;){
 		where w;
@@ -377,6 +385,12 @@ static expr *parse_expr_postfix(symtable *scope, int static_ctx)
 	}
 
 	return e;
+}
+
+static expr *parse_expr_postfix(symtable *scope, int static_ctx)
+{
+	return parse_expr_postfix_with(
+			scope, static_ctx, parse_expr_primary(scope, static_ctx));
 }
 
 expr *parse_expr_unary(symtable *scope, int static_ctx)
