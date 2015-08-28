@@ -54,21 +54,21 @@ expr *parse_expr_sizeof_typeof_alignof(symtable *scope)
 	EAT(curtok);
 
 	if(accept(token_open_paren)){
-		type *r = parse_type(0, scope);
+		type *ty = parse_type(0, scope);
 
-		if(r){
+		if(ty){
 			EAT(token_close_paren);
 
 			/* check for sizeof(int){...} */
 			if(curtok == token_open_block){
 				e = expr_new_sizeof_expr(
 							expr_new_compound_lit(
-								r,
+								ty,
 								parse_init(scope, static_ctx),
 								static_ctx),
 							what_of);
 			}else{
-				e = expr_new_sizeof_type(r, what_of);
+				e = expr_new_sizeof_type(ty, what_of);
 				is_expr = 0;
 			}
 
