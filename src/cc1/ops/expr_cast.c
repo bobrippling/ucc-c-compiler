@@ -420,7 +420,10 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	}
 
 	if(expr_cast_is_lval2rval(e)){
-		e->tree_type = type_decay(expr_cast_child(e)->tree_type);
+		e->tree_type = type_unattribute(
+				type_unqualify(
+					type_decay(
+						expr_cast_child(e)->tree_type)));
 
 	}else{
 		/* casts remove restrict qualifiers */

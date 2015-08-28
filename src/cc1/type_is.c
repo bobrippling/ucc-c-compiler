@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "../util/where.h"
 #include "../util/util.h"
@@ -579,6 +580,46 @@ type *type_decay(type *const ty)
 out:
 	dynarray_free(attribute **, attr, NULL);
 	return ret;
+}
+
+type *type_unattribute(type *t)
+{
+	type *i;
+	where *loc = NULL;
+	enum type_qualifier last_qual = qual_none;
+
+	for(i = t; i; i = type_next_1(i)){
+		switch(i->type){
+			case type_auto:
+				ICE("__auto_type");
+
+			case type_where:
+				if(!loc)
+					loc = &i->bits.where;
+				break;
+
+			case type_cast:
+				last_qual |= i->bits.cast.qual;
+				break;
+
+			case type_attr:
+			case type_tdef:
+				break;
+
+			case type_btype:
+			case type_ptr:
+			case type_block:
+			case type_array:
+			case type_func:
+				goto out;
+		}
+	}
+
+out:
+	assert(i);
+	return type_keep_w_attr(
+			type_qualify(i, last_qual),
+			loc, NULL);
 }
 
 int type_is_void(type *r)

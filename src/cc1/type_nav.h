@@ -23,6 +23,7 @@ type *type_nav_changeauto(type *ontop, type *trailing);
 type *type_nav_va_list(struct type_nav *root, symtable *symtab);
 type *type_nav_voidptr(struct type_nav *root);
 type *type_decay(type *);
+type *type_unattribute(type *);
 
 type *type_ptr_to(type *);
 type *type_decayed_ptr_to(type *, type *array_from);
