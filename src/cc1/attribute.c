@@ -34,6 +34,50 @@ void attribute_append(attribute **loc, attribute *new)
 	*loc = RETAIN(new);
 }
 
+attribute *attribute_copy(attribute *attr)
+{
+	attribute *ret;
+
+	if(!attr)
+		return NULL;
+
+	ret = umalloc(sizeof *ret);
+
+	memcpy(ret, attr, sizeof *ret);
+	ret->rc.retains = 1;
+
+	switch(ret->type){
+		case attr_section:
+			ret->bits.section = ustrdup(attr->bits.section);
+			break;
+
+		case attr_format:
+		case attr_unused:
+		case attr_warn_unused:
+		case attr_enum_bitmask:
+		case attr_noreturn:
+		case attr_noderef:
+		case attr_nonnull:
+		case attr_packed:
+		case attr_sentinel:
+		case attr_aligned:
+		case attr_weak:
+		case attr_cleanup:
+		case attr_always_inline:
+		case attr_noinline:
+		case attr_desig_init:
+		case attr_ucc_debug:
+		case attr_call_conv:
+			break;
+		case attr_LAST:
+			assert(0);
+	}
+
+	ret->next = attribute_copy(attr->next);
+
+	return ret;
+}
+
 attribute *attr_present(attribute *da, enum attribute_type t)
 {
 	for(; da; da = da->next)

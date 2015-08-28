@@ -25,6 +25,8 @@ void fold_expr_struct(expr *e, symtable *stab)
 	struct_union_enum_st *sue;
 	char *spel;
 	enum type_qualifier struct_qual;
+	attribute *struct_attr;
+	type *struct_type;
 
 	if(ptr_expect)
 		FOLD_EXPR(e->lhs, stab);
@@ -95,15 +97,21 @@ err:
 		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
 	}/* else already have the member */
 
-	/* pointer to struct - skip the pointer type and pull the quals
-	 * off the struct type */
-	struct_qual = type_qual(
-			ptr_expect
+	/* pointer to struct - skip the pointer type and
+	 * pull the quals and attrs off the struct type */
+	struct_type = ptr_expect
 			? type_dereference_decay(e->lhs->tree_type)
-			: e->lhs->tree_type);
+			: e->lhs->tree_type;
 
-	/* pull qualifiers from the struct to the member */
-	e->tree_type = type_qualify(e->bits.struct_mem.d->ref, struct_qual);
+	struct_qual = type_qual(struct_type);
+	struct_attr = type_get_attrs_toplvl(struct_type);
+
+	/* pull qualifiers and attributes from the struct to the member */
+	e->tree_type = type_attributed(
+			type_qualify(
+				e->bits.struct_mem.d->ref,
+				struct_qual),
+			struct_attr);
 }
 
 const out_val *gen_expr_struct(const expr *e, out_ctx *octx)

@@ -263,6 +263,37 @@ enum type_primitive type_get_primitive(type *t)
 	return bt ? bt->primitive : type_unknown;
 }
 
+struct attribute *type_get_attrs_toplvl(type *t)
+{
+	attribute *attr = NULL;
+	type *const end = type_next(t);
+	int copied = 0;
+
+	for(; t && t != end; t = type_next_1(t)){
+		attribute *this_attr;
+
+		if(t->type != type_attr)
+			continue;
+
+		this_attr = t->bits.attr;
+
+		if(!attribute_is_typrop(this_attr))
+			continue;
+
+		if(!attr){
+			attr = RETAIN(this_attr);
+		}else if(!copied){
+			attribute *new = attribute_copy(attr);
+			RELEASE(attr);
+			attr = new;
+		}else{
+			attribute_append(&attr, attribute_copy(this_attr));
+		}
+	}
+
+	return attr;
+}
+
 int type_is_bool_ish(type *r)
 {
 	if(type_is(r, type_ptr))
