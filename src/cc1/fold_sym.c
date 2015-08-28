@@ -378,9 +378,10 @@ void symtab_fold_decls(symtable *tab)
 					: &cc1_warning.unused_var);
 
 			cc1_warn_at_w(&d->where, pwarn,
-					"unused %s '%s'",
+					"unused %s '%s' (d=%s)",
 					is_fn ? "function" : "variable",
-					d->spel);
+					d->spel,
+					decl_to_str(d));
 		}
 	}
 
