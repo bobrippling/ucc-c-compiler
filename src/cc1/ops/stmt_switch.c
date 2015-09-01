@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "stmt_switch.h"
@@ -133,6 +134,11 @@ static void fold_switch_enum(
 						enum_switch_imposter,
 						"'case %ld' not a member of enum %s",
 						(long)v, enum_sue->spel);
+
+			if(v == NUMERIC_T_MAX){
+				assert(w == NUMERIC_T_MAX);
+				break;
+			}
 		}
 	}
 
