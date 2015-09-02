@@ -165,12 +165,13 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 				ty = above_scope->parent ? "local" : "global";
 
 				/* unconditional warning - checked above */
-				cc1_warn_at_w(&d->where,
+				if(cc1_warn_at_w(&d->where,
 						pwarn,
-						"declaration of \"%s\" shadows %s declaration\n"
-						"%s: note: %s declaration here",
-						d->spel, ty,
-						where_str_r(buf, &found->where), ty);
+						"declaration of \"%s\" shadows %s declaration",
+						d->spel, ty))
+				{
+					note_at(&found->where, "%s declaration here", ty);
+				}
 			}
 		}
 	}
