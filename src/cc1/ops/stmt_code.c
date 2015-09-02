@@ -133,6 +133,8 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 						d->spel, where_str_r(buf, &found->where));
 			}else{
 				const int same_scope = symtab_nested_internal(above_scope, stab);
+				unsigned char *pwarn = NULL;
+				const char *ty;
 
 				/* same scope? error unless they're both extern */
 				if(same_scope && !both_extern){
@@ -141,29 +143,34 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 							d->spel, where_str_r(buf, &found->where));
 				}
 
-				if(!cc1_warning.shadow_global_sysheaders
-				&& where_in_sysheader(&found->where))
-				{
-					/* system headers are excluded */
-				}
-				else if(above_scope->parent
-						? cc1_warning.shadow_local
-						: (cc1_warning.shadow_global_sysheaders || cc1_warning.shadow_global_user))
-					/* -Wshadow:
-					 * if it has a parent,
-					 * we found it in local scope, so check the local mask
-					 * and vice versa
-					 */
-				{
-					const char *ty = above_scope->parent ? "local" : "global";
+				/* -Wshadow:
+				 * if it has a parent,
+				 * we found it in local scope, so check the local mask
+				 * and vice versa
+				 */
+				if(where_in_sysheader(&found->where)){
+					/* system headers are included */
+					pwarn = &cc1_warning.shadow_global_sysheaders;
 
-					/* unconditional warning - checked above */
-					warn_at(&d->where,
-							"declaration of \"%s\" shadows %s declaration\n"
-							"%s: note: %s declaration here",
-							d->spel, ty,
-							where_str_r(buf, &found->where), ty);
+				}else if(above_scope->parent){
+					pwarn = &cc1_warning.shadow_local;
+
+				}else if(cc1_warning.shadow_global_user){
+					pwarn = &cc1_warning.shadow_global_user;
+
+				}else{
+					pwarn = &cc1_warning.shadow_global_sysheaders;
 				}
+
+				ty = above_scope->parent ? "local" : "global";
+
+				/* unconditional warning - checked above */
+				cc1_warn_at_w(&d->where,
+						pwarn,
+						"declaration of \"%s\" shadows %s declaration\n"
+						"%s: note: %s declaration here",
+						d->spel, ty,
+						where_str_r(buf, &found->where), ty);
 			}
 		}
 	}
