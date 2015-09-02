@@ -19,6 +19,7 @@ extern int option_trigraphs, option_digraphs;
 
 extern char *current_fname;
 extern int no_output;
+extern int missing_header_error;
 
 extern struct loc loc_tok;
 #define current_line loc_tok.line

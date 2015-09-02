@@ -89,6 +89,7 @@ char *current_fname;
 char *current_line_str;
 int show_current_line = 1;
 int no_output = 0;
+int missing_header_error = 1;
 
 char cpp_time[16], cpp_date[16], cpp_timestamp[64];
 
@@ -308,6 +309,8 @@ int main(int argc, char **argv)
 				if(!strcmp(argv[i] + 2, "M")){
 					dump = DEPS;
 					no_output = 1;
+				}else if(!strcmp(argv[i] + 2, "G")){
+					missing_header_error = 0;
 				}else{
 					goto usage;
 				}
@@ -455,6 +458,11 @@ defaul:
 		}
 	}
 
+	if(!missing_header_error && dump != DEPS){
+		fprintf(stderr, "%s: -MG requires -MM\n", *argv);
+		return 1;
+	}
+
 	switch(platform_type()){
 		case PLATFORM_x86_64:
 			if(m32){
@@ -557,6 +565,7 @@ usage:
 				"  -dM: debug output\n"
 				"  -dS: print macro usage stats\n"
 				"  -MM: generate Makefile dependencies\n"
+				"  -MG: ignore missing headers, count as dependency\n"
 				"  -C: don't discard comments, except in macros\n"
 				"  -CC: don't discard comments, even in macros\n"
 				"  -trigraphs: enable trigraphs\n"

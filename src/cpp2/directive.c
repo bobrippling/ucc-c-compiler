@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <assert.h>
 #include <errno.h>
 
 #include "../util/util.h"
@@ -294,8 +295,14 @@ static void handle_include(char *include_arg)
 		f = include_search_fopen(curdir, fname, &final_path);
 
 		if(!f){
-			CPP_DIE("can't find include file %c%s%c",
-					"\"<"[is_lib], fname, "\">"[is_lib]);
+			if(missing_header_error){
+				CPP_DIE("can't find include file %c%s%c",
+						"\"<"[is_lib], fname, "\">"[is_lib]);
+			}else{
+				/* okay - ignored except for dep */
+				deps_add(fname);
+				goto out;
+			}
 		}
 	}
 
@@ -307,6 +314,8 @@ static void handle_include(char *include_arg)
 
 	preproc_push(f, final_path);
 	dirname_push(udirname(final_path));
+
+out:
 	free(final_path);
 
 	free(fname);
