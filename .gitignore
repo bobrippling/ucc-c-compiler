@@ -22,6 +22,8 @@ lib/syscall.s
 lib/syscall_err.s
 lib/syscalls_darwin.h
 lib/string_strerrs.h
+lib/string_strerrs
+lib/.*.d
 
 src/cc1/cc1.exe
 src/cpp2/cpp.exe
