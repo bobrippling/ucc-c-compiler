@@ -50,6 +50,7 @@ struct cc1_warning
 	unsigned char compare_mismatch;
 	unsigned char constant_large_unsigned;
 	unsigned char constop_bad;
+	unsigned char cpp_line_parsing;
 	unsigned char dead_code;
 	unsigned char decl_nodecl;
 	unsigned char empty_struct;

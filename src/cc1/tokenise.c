@@ -245,12 +245,13 @@ static void parse_line_directive(char *l)
 
 	lno = strtol(l, &ep, 0);
 	if(ep == l){
-		warn_at(NULL, "couldn't parse number for #line directive (%s)", ep);
+		cc1_warn_at(NULL, cpp_line_parsing,
+				"couldn't parse number for #line directive (%s)", ep);
 		return;
 	}
 
 	if(lno < 0){
-		warn_at(NULL, "negative #line directive argument");
+		cc1_warn_at(NULL, cpp_line_parsing, "negative #line directive argument");
 		return;
 	}
 
@@ -263,7 +264,7 @@ static void parse_line_directive(char *l)
 			{
 				char *p = str_quotefin(++ep);
 				if(!p){
-					warn_at(NULL,
+					cc1_warn_at(NULL, cpp_line_parsing,
 							"no terminating quote to #line directive (%s)",
 							l);
 					return;
@@ -280,7 +281,7 @@ static void parse_line_directive(char *l)
 			break;
 
 		default:
-			warn_at(NULL,
+			cc1_warn_at(NULL, cpp_line_parsing,
 					"expected '\"' or nothing after #line directive (%s)",
 					ep);
 	}

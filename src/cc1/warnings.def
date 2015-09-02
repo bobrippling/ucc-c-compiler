@@ -130,6 +130,8 @@ X("gcc-compat", &cc1_warning.gnu_gcc_compat)
 
 X("call-argcount", &cc1_warning.funcall_argcount)
 
+X("cpp-line-parsing", &cc1_warning.cpp_line_parsing)
+
 X("ignored-attributes", &cc1_warning.ignored_attribute)
 
 X("ignored-late-decl", &cc1_warning.ignored_late_decl)
