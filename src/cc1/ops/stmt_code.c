@@ -109,7 +109,7 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 			chk_shadow = 1;
 		}else if(cc1_warning.shadow_local
 				|| cc1_warning.shadow_global_user
-				|| cc1_warning.shadow_global_all)
+				|| cc1_warning.shadow_global_sysheaders)
 		{
 			chk_shadow = 1;
 		}
@@ -141,14 +141,14 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 							d->spel, where_str_r(buf, &found->where));
 				}
 
-				if(!cc1_warning.shadow_global_all
+				if(!cc1_warning.shadow_global_sysheaders
 				&& where_in_sysheader(&found->where))
 				{
 					/* system headers are excluded */
 				}
 				else if(above_scope->parent
 						? cc1_warning.shadow_local
-						: (cc1_warning.shadow_global_all || cc1_warning.shadow_global_user))
+						: (cc1_warning.shadow_global_sysheaders || cc1_warning.shadow_global_user))
 					/* -Wshadow:
 					 * if it has a parent,
 					 * we found it in local scope, so check the local mask

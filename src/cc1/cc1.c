@@ -482,7 +482,7 @@ static void warning_all(void)
 	cc1_warning.pad =
 	cc1_warning.tenative_init =
 	cc1_warning.shadow_global_user =
-	cc1_warning.shadow_global_all =
+	cc1_warning.shadow_global_sysheaders =
 	cc1_warning.implicit_old_func =
 	cc1_warning.bitfield_boundary =
 	cc1_warning.vla =

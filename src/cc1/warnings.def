@@ -37,7 +37,7 @@ X("tenative-init", &cc1_warning.tenative_init)
 
 X("shadow-local", &cc1_warning.shadow_local)
 X("shadow-global", &cc1_warning.shadow_global_user)
-X("shadow-global-all", &cc1_warning.shadow_global_all)
+X("shadow-global-sysheaders", &cc1_warning.shadow_global_sysheaders)
 X("shadow", &cc1_warning.shadow_global_user, &cc1_warning.shadow_local)
 
 X("cast-qual", &cc1_warning.cast_qual)

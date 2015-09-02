@@ -1,5 +1,5 @@
-// RUN: %check --prefix=ALL   %s -Wshadow-global-all -nostdinc -isystem sysheader
-// RUN: %check --prefix=USR   %s -Wshadow-global     -nostdinc -isystem sysheader
+// RUN: %check --prefix=ALL   %s -Wshadow-global-sysheaders -nostdinc -isystem sysheader
+// RUN: %check --prefix=USR   %s -Wshadow-global            -nostdinc -isystem sysheader
 // RUN: %check --prefix=NOSYS %s -Wshadow-global
 
 # 1 "sysheader/hi.h"
