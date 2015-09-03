@@ -184,3 +184,118 @@ void sanitize_shift(
 	if(op == op_shiftl)
 		sanitize_assert_order(lhs, op_ge, 0, elhs->tree_type, octx, "shift lhs negative");
 }
+
+static void sanitize_address1(const out_val *addr, out_ctx *octx)
+{
+	type *const charp_ty = type_ptr_to(type_nav_btype(cc1_type_nav, type_uchar));
+	type *const intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
+
+	const out_val *shadow_mem = out_new_l(
+			octx, charp_ty, 0x100000000000L);
+
+	const out_val *intaddr = out_change_type(
+			octx, out_val_retain(octx, addr), intptr_ty);
+
+	const out_val *shadow_ent;
+	const out_val *adjusted_addr;
+	const out_val *cmp_ge, *cmp_z;
+	const out_val *asan_bad;
+
+	out_blk *blk_good = out_blk_new(octx, "asan_good");
+	out_blk *blk_bad = out_blk_new(octx, "asan_bad");
+
+	intaddr = out_op(
+			octx,
+			op_shiftr,
+			intaddr,
+			out_new_l(
+				octx,
+				intptr_ty,
+				3));
+
+	shadow_ent = out_cast(
+			octx,
+			out_deref(
+				octx,
+				out_change_type(
+					octx,
+					out_op(
+						octx,
+						op_plus,
+						shadow_mem,
+						out_val_retain(octx, intaddr)),
+					charp_ty)),
+			intptr_ty,
+			0);
+
+	adjusted_addr = out_op(
+			octx,
+			op_plus,
+			out_op(
+				octx,
+				op_and,
+				intaddr,
+				out_new_l(
+					octx,
+					intptr_ty,
+					7)),
+			out_new_l(
+				octx,
+				intptr_ty,
+				3)); // eax
+
+	cmp_z = out_op(
+			octx,
+			op_eq,
+			out_val_retain(octx, shadow_ent),
+			out_new_l(
+				octx,
+				intptr_ty,
+				0));
+
+	cmp_ge = out_op(
+			octx,
+			op_ge,
+			adjusted_addr,
+			shadow_ent);
+
+	asan_bad = out_op(
+			octx,
+			op_and,
+			cmp_z,
+			cmp_ge);
+
+	out_ctrl_branch(octx, asan_bad, blk_bad, blk_good);
+
+	out_current_blk(octx, blk_bad);
+	{
+		/*
+		_Noreturn void __asan_report_load4(void *);
+		__asan_report_load4(p);
+		printf("%#lx is bad\n", l);
+		return;
+		*/
+		out_ctrl_end_undefined(octx);
+	}
+
+	out_current_blk(octx, blk_good);
+	/* continue onwards... */
+
+#warning todo init
+	/*
+	__attribute((constructor))
+	static void asan_init(void)
+	{
+		void __asan_init_v4(void);
+		__asan_init_v4();
+	}
+	*/
+}
+
+void sanitize_address(const out_val *addr, out_ctx *octx)
+{
+	if(!(cc1_sanitize & CC1_ASAN))
+		return;
+
+	sanitize_address1(addr, octx);
+}

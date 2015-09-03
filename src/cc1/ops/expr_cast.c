@@ -12,6 +12,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../out/dbg.h"
+#include "../sanitize.h"
 
 #define IMPLICIT_STR(e) (expr_cast_is_implicit(e) ? "implicit " : "")
 
@@ -629,6 +630,8 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 	casted = gen_expr(expr_cast_child(e), octx);
 
 	if(expr_cast_is_lval2rval(e)){
+		sanitize_address(casted, octx);
+
 		if(type_is_s_or_u(tfrom)){
 			/* either pass through as an LVALUE_STRUCT,
 			 * or dereference here for cast-to-void, if volatile */

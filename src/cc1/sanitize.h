@@ -18,4 +18,6 @@ void sanitize_shift(
 
 void sanitize_nonnull(const out_val *, out_ctx *);
 
+void sanitize_address(const out_val *addr, out_ctx *);
+
 #endif

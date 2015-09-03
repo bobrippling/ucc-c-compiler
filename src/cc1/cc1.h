@@ -59,7 +59,8 @@ enum cc1_backend
 
 enum san_opts
 {
-	CC1_UBSAN = 1 << 0
+	CC1_UBSAN = 1 << 0,
+	CC1_ASAN = 1 << 1
 };
 
 extern enum fopt fopt_mode;

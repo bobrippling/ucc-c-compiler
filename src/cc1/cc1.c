@@ -414,6 +414,8 @@ static void add_sanitize_option(const char *argv0, const char *san)
 	if(!strcmp(san, "undefined")){
 		cc1_sanitize |= CC1_UBSAN;
 		fopt_mode |= FOPT_TRAPV;
+	}else if(!strcmp(san, "address")){
+		cc1_sanitize |= CC1_ASAN;
 	}else{
 		fprintf(stderr, "%s: unknown sanitize option '%s'\n", argv0, san);
 		exit(1);
