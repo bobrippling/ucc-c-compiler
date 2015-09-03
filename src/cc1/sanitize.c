@@ -1,5 +1,7 @@
 #include <stdlib.h>
 
+#include "../util/dynarray.h"
+
 #include "expr.h"
 #include "type_is.h"
 #include "type_nav.h"
@@ -7,6 +9,7 @@
 #include "funcargs.h"
 #include "mangle.h"
 #include "vla.h"
+#include "out/val.h"
 
 #include "sanitize.h"
 
@@ -185,6 +188,66 @@ void sanitize_shift(
 		sanitize_assert_order(lhs, op_ge, 0, elhs->tree_type, octx, "shift lhs negative");
 }
 
+static void sanitize_asan_fail_call(
+		const out_val *addr, out_ctx *octx,
+		const char *func_spel, const unsigned size)
+{
+	type *voidty = type_nav_btype(cc1_type_nav, type_void);
+	type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
+	funcargs *args = funcargs_new();
+	type *fnty_noptr, *fnty_ptr;
+	char *mangled;
+	const out_val *fn;
+	const out_val *arg_vals[3] = { 0 };
+	decl *arg_decls[3] = { 0 };
+
+	arg_decls[0] = decl_new_ty_sp(type_ptr_to(voidty), NULL);
+	dynarray_add(&args->arglist, arg_decls[0]);
+	arg_vals[0] = addr;
+	if(size){
+		arg_decls[1] = decl_new_ty_sp(intptr_ty, NULL);
+		dynarray_add(&args->arglist, arg_decls[1]);
+		arg_vals[1] = out_new_l(octx, intptr_ty, size);
+	}
+
+	fnty_noptr = type_func_of(voidty, args, NULL);
+	fnty_ptr = type_ptr_to(fnty_noptr);
+	mangled = func_mangle(func_spel, fnty_noptr);
+
+	fn = out_new_lbl(octx, fnty_ptr, mangled, 0);
+
+	out_val_release(octx, out_call(octx, fn, arg_vals, fnty_ptr));
+
+	if(mangled != func_spel)
+		free(mangled);
+}
+
+static void sanitize_asan_fail(const out_val *addr, out_ctx *octx)
+{
+	/* _Noreturn void __asan_report_load%d(void *); */
+	const unsigned sz = type_size(type_is_ptr(addr->t), NULL);
+	char fnbuf[32];
+	int need_arg = 0;
+
+	switch(sz){
+		case 1:
+		case 2:
+		case 4:
+		case 8:
+		case 16:
+			snprintf(fnbuf, sizeof fnbuf, "__asan_report_load%d", sz);
+			break;
+		default:
+			snprintf(fnbuf, sizeof fnbuf, "__asan_report_load_n");
+			need_arg = 1;
+			break;
+	}
+
+	sanitize_asan_fail_call(addr, octx, fnbuf, need_arg ? sz : 0);
+
+	out_ctrl_end_undefined(octx);
+}
+
 static void sanitize_address1(const out_val *addr, out_ctx *octx)
 {
 	type *const charp_ty = type_ptr_to(type_nav_btype(cc1_type_nav, type_uchar));
@@ -269,13 +332,7 @@ static void sanitize_address1(const out_val *addr, out_ctx *octx)
 
 	out_current_blk(octx, blk_bad);
 	{
-		/*
-		_Noreturn void __asan_report_load4(void *);
-		__asan_report_load4(p);
-		printf("%#lx is bad\n", l);
-		return;
-		*/
-		out_ctrl_end_undefined(octx);
+		sanitize_asan_fail(out_val_retain(octx, addr), octx);
 	}
 
 	out_current_blk(octx, blk_good);
