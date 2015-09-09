@@ -436,6 +436,10 @@ void gen_asm(
 
 	*pfilelist = NULL;
 
+	if(cc1_sanitize & CC1_ASAN){
+		ICW("TODO: __asan_init_v%d");
+	}
+
 	if(cc1_gdebug)
 		out_dbg_begin(octx, &octx->dbg.file_head, fname, compdir, cc1_std);
 
