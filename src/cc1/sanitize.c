@@ -34,6 +34,9 @@ static void sanitize_assert(const out_val *cond, out_ctx *octx, const char *desc
 
 		const out_val *fn = out_new_lbl(octx, fnty_ptr, mangled, OUT_LBL_NOPIC);
 
+		/* attempt to lookup the function for gen_call()? */
+		/*gen_call();*/
+
 		out_val_release(octx, out_call(octx, fn, NULL, fnty_ptr));
 
 		if(mangled != cc1_sanitize_handler_fn)
