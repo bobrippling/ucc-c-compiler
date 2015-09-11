@@ -6,10 +6,6 @@ echo(){
 	printf '%s\n' "$*"
 }
 
-trim_first_assign(){
-	echo "$1" | cut -d= -f2
-}
-
 try_path(){
 	var="$1"
 	shift
