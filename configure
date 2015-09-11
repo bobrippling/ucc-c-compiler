@@ -245,7 +245,7 @@ try_cflag -Wno-logical-not-parentheses
 
 if test $debug = 1
 then
-	CFLAGS="$CFLAGS -g"
+	try_cflag -g
 fi
 
 if test $optimise = 1
