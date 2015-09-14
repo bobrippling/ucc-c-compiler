@@ -19,8 +19,6 @@
 #include "asm.h"
 #include "impl.h"
 
-#define REMOVE_CONST(t, exp) ((t)(exp))
-
 static int v_unused_reg2(
 		out_ctx *octx,
 		int stack_as_backup, const int fp,

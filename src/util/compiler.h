@@ -22,5 +22,6 @@
 #endif
 
 #define memcpy_safe(a, b) (*(a) = *(b))
+#define REMOVE_CONST(t, exp) ((t)(exp))
 
 #endif
