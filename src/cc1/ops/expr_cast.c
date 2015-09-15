@@ -509,12 +509,10 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				}
 				else
 				{
-					const btype *non_enum = type_get_type(trhs);
-
 					cc1_warn_at(&e->where,
 							enum_mismatch_int,
 							"implicit conversion from '%s' to 'enum %s'",
-							btype_to_str(non_enum),
+							type_to_str(trhs),
 							ea->spel);
 				}
 			}
