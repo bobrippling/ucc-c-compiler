@@ -1474,11 +1474,21 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute **attr)
 			is_ptr = type_is(d->ref, type_ptr) || type_is(d->ref, type_block);
 
 			/* ensure ptr, unless __attribute__((nonnull)) */
-			if(nonnulls != ~0UL && (nonnulls & (1 << i)) && !is_ptr){
-				cc1_warn_at(&fargs->arglist[i]->where,
-						attr_nonnull_nonptr,
-						"nonnull attribute applied to non-pointer argument '%s'",
-						type_to_str(d->ref));
+			if(nonnulls & (1 << i)){
+				attribute **nonnull_attr;
+
+				if(nonnulls != ~0UL && !is_ptr){
+					cc1_warn_at(&fargs->arglist[i]->where,
+							attr_nonnull_nonptr,
+							"nonnull attribute applied to non-pointer argument '%s'",
+							type_to_str(d->ref));
+				}
+
+				nonnull_attr = umalloc(2 * sizeof(*nonnull_attr));
+				nonnull_attr[0] = attribute_new(attr_nonnull);
+
+				/* apply nonnull attribute to decl type regardless */
+				d->ref = type_attributed(d->ref, nonnull_attr);
 			}
 
 			seen_ptr |= is_ptr;

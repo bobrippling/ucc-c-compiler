@@ -12,7 +12,7 @@ q() __attribute__((nonnull)); // CHECK: /warning: nonnull attribute on parameter
 
 r(int i, int j) __attribute__((nonnull(3))); // CHECK: /warning: nonnull attributes above argument index 3 ignored/
 
-r(int i, int j) __attribute__((nonnull(1))); // CHECK: /warning: nonnull attribute applied to non-pointer argument 'int'/
+s(int i, int j) __attribute__((nonnull(1))); // CHECK: /warning: nonnull attribute applied to non-pointer argument 'int'/
 
 main()
 {
