@@ -1307,12 +1307,12 @@ void fold_stmt(stmt *t)
 
 void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 {
-	attribute *da;
+	attribute *nonnull_attr;
 	unsigned long nonnulls = 0;
 
 	/* check nonnull corresponds to a pointer arg */
-	if((da = attr_present(attr, attr_nonnull)))
-		nonnulls = da->bits.nonnull_args;
+	if((nonnull_attr = attr_present(attr, attr_nonnull)))
+		nonnulls = nonnull_attr->bits.nonnull_args;
 
 	if(fargs->arglist){
 		/* check for unnamed params and extern/static specs */
