@@ -86,6 +86,7 @@ static void fold_switch_enum(
 	char *marks = NULL;
 	int nents;
 	int midx;
+	int covered = 1;
 	const unsigned char *switch_warnp = &cc1_warning.switch_enum_even_when_default_lbl;
 
 	if(!*switch_warnp){
@@ -167,9 +168,15 @@ static void fold_switch_enum(
 						"enum %s::%s not handled in switch",
 						enum_sue->anon ? "" : enum_sue->spel,
 						enum_sue->members[midx]->enum_member->spel);
+
+				covered = 0;
 			}
 		}
 	}
+
+	if(sw->bits.switch_.default_case && covered)
+		cc1_warn_at(&sw->bits.switch_.default_case->where, switch_default_covered,
+				"default label in switch covering all enum values");
 
 	free(marks);
 }

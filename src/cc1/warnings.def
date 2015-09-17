@@ -26,6 +26,9 @@ X("switch-default", &cc1_warning.switch_default)
 
 X("switch-enum-bitmask", &cc1_warning.switch_enum_bitmask)
 
+/* warn if default label in fully covered switch */
+X("covered-switch-default", &cc1_warning.switch_default_covered)
+
 X("enum-compare", &cc1_warning.enum_cmp)
 
 X("incomplete-use", &cc1_warning.incomplete_use)
