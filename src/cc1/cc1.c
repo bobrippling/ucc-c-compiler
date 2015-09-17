@@ -499,6 +499,7 @@ static void warning_all(void)
 	cc1_warning.enum_out_of_range =
 	cc1_warning.enum_mismatch_int =
 	cc1_warning.inline_failed =
+	cc1_warning.switch_default =
 		W_OFF;
 }
 

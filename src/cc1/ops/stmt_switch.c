@@ -246,6 +246,9 @@ void fold_stmt_switch(stmt *s)
 		if(sue)
 			fold_switch_enum(s, sue);
 	}
+
+	if(!s->bits.switch_.default_case)
+		cc1_warn_at(&s->where, switch_default, "switch has no default label");
 }
 
 void gen_stmt_switch(const stmt *s, out_ctx *octx)

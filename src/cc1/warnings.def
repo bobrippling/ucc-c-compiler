@@ -21,6 +21,9 @@ X("switch", &cc1_warning.switch_enum)
 /* same as -Wswitch except default labels change nothing */
 X("switch-enum", &cc1_warning.switch_enum_even_when_default_lbl)
 
+/* missing default label */
+X("switch-default", &cc1_warning.switch_default)
+
 X("switch-enum-bitmask", &cc1_warning.switch_enum_bitmask)
 
 X("enum-compare", &cc1_warning.enum_cmp)

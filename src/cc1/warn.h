@@ -137,6 +137,7 @@ struct cc1_warning
 	unsigned char str_contain_nul;
 	unsigned char struct_noinstance_anon;
 	unsigned char struct_noinstance_qualified;
+	unsigned char switch_default;
 	unsigned char switch_enum;
 	unsigned char switch_enum_bitmask;
 	unsigned char switch_enum_even_when_default_lbl;
