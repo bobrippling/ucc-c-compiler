@@ -207,7 +207,7 @@ static void ccdie(int verbose, const char *fmt, ...)
 	exit(1);
 }
 
-static void show_warn_option(unsigned char *pwarn)
+static void show_warn_option(const unsigned char *pwarn)
 {
 	struct warn_str *p;
 
@@ -237,7 +237,7 @@ int where_in_sysheader(const where *w)
 }
 
 int cc1_warn_at_w(
-		const struct where *where, unsigned char *pwarn,
+		const struct where *where, const unsigned char *pwarn,
 		const char *fmt, ...)
 {
 	va_list l;

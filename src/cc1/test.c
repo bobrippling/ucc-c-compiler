@@ -23,7 +23,7 @@ enum san_opts cc1_sanitize;
 char *cc1_sanitize_handler_fn;
 
 int cc1_warn_at_w(
-		const struct where *where, unsigned char *pwarn,
+		const struct where *where, const unsigned char *pwarn,
 		const char *fmt, ...)
 {
 	(void)where;
