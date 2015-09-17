@@ -83,19 +83,30 @@ static void fold_switch_enum(
 		stmt *sw, struct_union_enum_st *enum_sue)
 {
 	stmt **iter;
-	char *marks;
+	char *marks = NULL;
 	int nents;
 	int midx;
+	const unsigned char *switch_warnp = &cc1_warning.switch_enum_even_when_default_lbl;
 
-	if(sw->bits.switch_.default_case)
-		return;
+	if(!*switch_warnp){
+		switch_warnp = &cc1_warning.switch_enum;
+		if(!*switch_warnp)
+			return;
+	}
 
 	nents = enum_nentries(enum_sue);
-	marks = umalloc(nents * sizeof *marks);
+
+	/* if there's no default case or we're on the even_when_default
+	 * warning then warn about missing entries */
+	if(!sw->bits.switch_.default_case
+	|| cc1_warning.switch_enum_even_when_default_lbl)
+	{
+		marks = umalloc(nents * sizeof *marks);
+	}
 
 	/* warn if we switch on an enum bitmask */
 	if(expr_attr_present(sw->expr, attr_enum_bitmask))
-		cc1_warn_at(&sw->where, enum_switch_bitmask,
+		cc1_warn_at(&sw->where, switch_enum_bitmask,
 				"switch on enum with enum_bitmask attribute");
 
 	/* for each case/default/case_range... */
@@ -125,15 +136,22 @@ static void fold_switch_enum(
 			for(midx = 0, mi = enum_sue->members; *mi; midx++, mi++){
 				enum_member *m = (*mi)->enum_member;
 
-				if(v == const_fold_val_i(m->val))
-					marks[midx]++, found = 1;
+				if(v == const_fold_val_i(m->val)){
+					found = 1;
+
+					if(marks)
+						marks[midx]++;
+					else
+						break;
+				}
 			}
 
-			if(!found)
-				cc1_warn_at(&cse->where,
-						enum_switch_imposter,
+			if(!found){
+				cc1_warn_at_w(&cse->where,
+						switch_warnp,
 						"'case %ld' not a member of enum %s",
 						(long)v, enum_sue->spel);
+			}
 
 			if(v == NUMERIC_T_MAX){
 				assert(w == NUMERIC_T_MAX);
@@ -142,12 +160,16 @@ static void fold_switch_enum(
 		}
 	}
 
-	for(midx = 0; midx < nents; midx++)
-		if(!marks[midx])
-			cc1_warn_at(&sw->where, switch_enum,
-					"enum %s::%s not handled in switch",
-					enum_sue->anon ? "" : enum_sue->spel,
-					enum_sue->members[midx]->enum_member->spel);
+	if(marks){
+		for(midx = 0; midx < nents; midx++){
+			if(!marks[midx]){
+				cc1_warn_at_w(&sw->where, switch_warnp,
+						"enum %s::%s not handled in switch",
+						enum_sue->anon ? "" : enum_sue->spel,
+						enum_sue->members[midx]->enum_member->spel);
+			}
+		}
+	}
 
 	free(marks);
 }

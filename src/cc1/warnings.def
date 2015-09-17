@@ -13,7 +13,16 @@ X("implicit-int", &cc1_warning.implicit_int)
 X("implicit-function-declaration", &cc1_warning.implicit_func)
 X("implicit", &cc1_warning.implicit_func, &cc1_warning.implicit_int)
 
-X("switch-enum", &cc1_warning.switch_enum)
+/* switch on enum type without default label:
+ * warn on missing enum entry
+ * warn on case labels outside of range */
+X("switch", &cc1_warning.switch_enum)
+
+/* same as -Wswitch except default labels change nothing */
+X("switch-enum", &cc1_warning.switch_enum_even_when_default_lbl)
+
+X("switch-enum-bitmask", &cc1_warning.switch_enum_bitmask)
+
 X("enum-compare", &cc1_warning.enum_cmp)
 
 X("incomplete-use", &cc1_warning.incomplete_use)
@@ -116,8 +125,6 @@ X("enum-mismatch", &cc1_warning.enum_mismatch)
 X("assign-enum", &cc1_warning.enum_out_of_range) /* clang compat */
 X("enum-mismatch-int", &cc1_warning.enum_mismatch_int)
 X("enum-out-of-range", &cc1_warning.enum_out_of_range)
-X("enum-switch-bitmask", &cc1_warning.enum_switch_bitmask)
-X("enum-switch-imposter", &cc1_warning.enum_switch_imposter)
 
 X("excess-init", &cc1_warning.excess_init)
 X("extern-init", &cc1_warning.extern_init)

@@ -58,8 +58,6 @@ struct cc1_warning
 	unsigned char enum_mismatch;
 	unsigned char enum_mismatch_int;
 	unsigned char enum_out_of_range;
-	unsigned char enum_switch_bitmask;
-	unsigned char enum_switch_imposter;
 	unsigned char excess_init;
 	unsigned char extern_assume;
 	unsigned char extern_init;
@@ -140,6 +138,8 @@ struct cc1_warning
 	unsigned char struct_noinstance_anon;
 	unsigned char struct_noinstance_qualified;
 	unsigned char switch_enum;
+	unsigned char switch_enum_bitmask;
+	unsigned char switch_enum_even_when_default_lbl;
 	unsigned char sym_never_read;
 	unsigned char sym_never_written;
 	unsigned char tautologic_unsigned;
