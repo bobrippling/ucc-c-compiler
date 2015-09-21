@@ -501,6 +501,7 @@ static void warning_all(void)
 	cc1_warning.inline_failed =
 	cc1_warning.switch_default =
 	cc1_warning.switch_default_covered =
+	cc1_warning.sym_never_read =
 		W_OFF;
 }
 
