@@ -55,12 +55,17 @@ static int has_feat_ext(const char *nam, int as_ext)
 		int ignore_ext;
 	} tbl[] = {
 		{ "c_alignas", 1, 0 },
+		{ "c_alignof", 1, 0 },
 		{ "c_generic_selections", 1, 0 },
 		{ "c_static_assert", 1, 0 },
 		{ "c_atomic", UCC_HAS_ATOMICS, 0 },
 		{ "c_thread_local", UCC_HAS_THREADS, 0 },
 		{ "c_complex", UCC_HAS_COMPLEX, 0 },
 		{ "c_vla", UCC_HAS_VLA, 0 },
+
+		/* compat with clang */
+		{ "address_sanitizer", 0, 1 },
+		{ "enumerator_attributes", 1, 1 },
 
 		{ "blocks", 1, 1 },
 
