@@ -95,7 +95,28 @@ static void gen_expr_compound_lit_code(const expr *e, out_ctx *octx)
 
 const out_val *gen_expr_compound_lit(const expr *e, out_ctx *octx)
 {
-	gen_asm_emit_type(octx, e->tree_type);
+	gen_ir_expr_compound_lit_code(e, octx);
+
+	return out_new_sym(octx, e->bits.complit.sym);
+}
+
+static void gen_ir_expr_compound_lit_code(const expr *e, irctx *ctx)
+{
+	if(!e->expr_comp_lit_cgen){
+		expr *initexp = e->bits.complit.decl->bits.var.init.expr;
+
+		GEN_CONST_CAST(expr *, e)->expr_comp_lit_cgen = 1;
+
+		if(initexp)
+			irval_free(gen_ir_expr(initexp, ctx));
+
+		GEN_CONST_CAST(expr *, e)->expr_comp_lit_cgen = 0;
+	}
+}
+
+irval *gen_ir_expr_compound_lit(const expr *e, irctx *ctx)
+{
+	gen_ir_emit_type(octx, e->tree_type);
 	gen_expr_compound_lit_code(e, octx);
 
 	return out_new_sym(octx, e->bits.complit.sym);

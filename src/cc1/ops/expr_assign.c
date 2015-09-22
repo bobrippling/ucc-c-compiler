@@ -216,3 +216,14 @@ const out_val *gen_expr_style_assign(const expr *e, out_ctx *octx)
 	stylef(" = ");
 	return gen_expr(e->rhs, octx);
 }
+
+irval *gen_ir_expr_assign(const expr *e, irctx *ctx)
+{
+	irval *lhs = gen_ir_expr(e->lhs, ctx);
+	irval *rhs = gen_ir_expr(e->rhs, ctx);
+
+#warning TODO: free irvals
+	printf("store %s, %s", irval_str(lhs), irval_str(rhs));
+
+	return rhs;
+}

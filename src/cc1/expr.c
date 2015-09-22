@@ -20,12 +20,14 @@ void expr_mutate(expr *e, func_mutate_expr *f,
 		func_str *f_str,
 		func_gen *f_gen,
 		func_dump *f_dump,
+		func_gen_ir *f_ir,
 		func_gen *f_gen_style
 		)
 {
 	e->f_fold = f_fold;
 	e->f_str  = f_str;
 	e->f_dump = f_dump;
+	e->f_ir = f_ir;
 
 	switch(cc1_backend){
 		case BACKEND_DUMP:
@@ -51,11 +53,12 @@ expr *expr_new(func_mutate_expr *f,
 		func_str *f_str,
 		func_gen *f_gen,
 		func_dump *f_dump,
+		func_gen_ir *f_gen_ir,
 		func_gen *f_gen_style)
 {
 	expr *e = umalloc(sizeof *e);
 	where_cc1_current(&e->where);
-	expr_mutate(e, f, f_fold, f_str, f_gen, f_dump, f_gen_style);
+	expr_mutate(e, f, f_fold, f_str, f_gen, f_dump, f_gen_ir, f_gen_style);
 	return e;
 }
 

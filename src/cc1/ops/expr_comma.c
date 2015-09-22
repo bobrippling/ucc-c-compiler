@@ -70,6 +70,13 @@ const out_val *gen_expr_comma(const expr *e, out_ctx *octx)
 	return gen_expr(e->rhs, octx);
 }
 
+irval *gen_ir_expr_comma(const expr *e, irctx *ctx)
+{
+	irval_free(gen_ir_expr(e->lhs, ctx));
+
+	return gen_ir_expr(e->rhs, ctx);
+}
+
 void dump_expr_comma(const expr *e, dump *ctx)
 {
 	dump_desc_expr(ctx, "comma", e);

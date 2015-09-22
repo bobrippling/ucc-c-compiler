@@ -27,6 +27,7 @@
 #include "gen_asm.h"
 #include "gen_dump.h"
 #include "gen_style.h"
+#include "gen_ir.h"
 #include "sym.h"
 #include "fold_sym.h"
 #include "ops/__builtin.h"
@@ -390,11 +391,15 @@ static void gen_backend(symtable_global *globs, const char *fname)
 	void (*gf)(symtable_global *) = NULL;
 
 	switch(cc1_backend){
+		case BACKEND_IR:
+			gf = gen_ir;
+			if(0){
 		case BACKEND_STYLE:
 			gf = gen_style;
 			if(0){
 		case BACKEND_DUMP:
-				gf = gen_dump;
+			gf = gen_dump;
+			}
 			}
 			gf(globs);
 			break;
@@ -791,6 +796,8 @@ int main(int argc, char **argv)
 
 			if(!strcmp(emit, "dump") || !strcmp(emit, "print"))
 				cc1_backend = BACKEND_DUMP;
+			else if(!strcmp(emit, "ir"))
+				cc1_backend = BACKEND_IR;
 			else if(!strcmp(emit, "asm"))
 				cc1_backend = BACKEND_ASM;
 			else if(!strcmp(emit, "style"))

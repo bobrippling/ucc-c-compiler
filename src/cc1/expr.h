@@ -30,6 +30,10 @@ typedef ucc_wur const out_val *func_gen(const struct expr *, out_ctx *);
 struct dump;
 typedef void func_dump(const struct expr *, struct dump *);
 
+struct irctx;
+struct irval;
+typedef struct irval *func_gen_ir(const struct expr *, struct irctx *);
+
 #define UNUSED_OCTX() (void)octx; return NULL
 
 typedef struct expr expr;
@@ -40,6 +44,7 @@ struct expr
 	func_fold *f_fold;
 	func_gen *f_gen;
 	func_dump *f_dump;
+	func_gen_ir *f_ir;
 	func_str *f_str;
 
 	func_const *f_const_fold; /* optional, used in static/global init */
@@ -190,12 +195,12 @@ struct expr
 
 expr *expr_new(
 		func_mutate_expr *, func_fold *, func_str *,
-		func_gen *, func_dump *, func_gen *);
+		func_gen *, func_dump *, func_gen_ir *, func_gen *);
 
 void expr_mutate(
 		expr *,
 		func_mutate_expr *, func_fold *, func_str *,
-		func_gen *, func_dump *, func_gen *);
+		func_gen *, func_dump *, func_gen_ir *, func_gen *);
 
 /* sets e->where */
 expr *expr_set_where(expr *, where const *);
@@ -210,6 +215,7 @@ expr *expr_set_where_len(expr *, where *);
 			str_expr_        ## type, \
 			gen_expr_        ## type, \
 			dump_expr_       ## type, \
+			gen_ir_expr_     ## type, \
 			gen_expr_style_  ## type)
 
 #define expr_new_wrapper(type)   \
@@ -218,6 +224,7 @@ expr *expr_set_where_len(expr *, where *);
 			str_expr_        ## type,  \
 			gen_expr_        ## type,  \
 			dump_expr_       ## type,  \
+			gen_ir_expr_     ## type,  \
 			gen_expr_style_  ## type)
 
 #define EXPR_DEFS(type)                  \
@@ -225,6 +232,7 @@ expr *expr_set_where_len(expr *, where *);
 	func_gen gen_expr_ ## type;            \
 	func_str str_expr_ ## type;            \
 	func_dump dump_expr_ ## type;          \
+	func_gen_ir gen_ir_expr_ ## type;      \
 	func_mutate_expr mutate_expr_ ## type; \
 	func_gen gen_expr_style_ ## type
 

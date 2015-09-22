@@ -1,5 +1,6 @@
 #include "ops.h"
 #include "expr_assign_compound.h"
+#include "../gen_ir_internal.h"
 
 const char *str_expr_assign_compound()
 {
@@ -103,6 +104,24 @@ const out_val *gen_expr_assign_compound(const expr *e, out_ctx *octx)
 	if(!saved_post)
 		return result;
 	return saved_post;
+}
+
+irval *gen_ir_expr_assign_compound(const expr *e, irctx *ctx)
+{
+	irval *lhs = gen_ir_expr(e->lhs, ctx);
+	irval *rhs = gen_ir_expr(e->rhs, ctx);
+	const unsigned tmp_val = ctx->curval++;
+	const unsigned tmp_res = ctx->curval++;
+
+	printf("$%u = load %s\n", tmp_val, irval_str(lhs));
+	printf("$%u = %s $%u, %s\n", tmp_res, tmp_val, irval_str(rhs));
+
+	printf("store $%u, %s", tmp_res, irval_str(lhs));
+
+	irval_free(lhs);
+	irval_free(rhs);
+
+	return irval_from_int(tmp_res);
 }
 
 void dump_expr_assign_compound(const expr *e, dump *ctx)

@@ -1242,6 +1242,41 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 	return eval;
 }
 
+irval *gen_expr_op(const expr *e, irctx *ctx)
+{
+	irval *lhs, *eval;
+	const unsigned evali = ctx->curval++;
+
+	switch(e->bits.op.op){
+		case op_orsc:
+		case op_andsc:
+			ICE("TODO: shortcircuit");
+
+		case op_unknown:
+			ICE("asm_operate: unknown operator got through");
+
+		default:
+			break;
+	}
+
+	lhs = gen_ir_expr(e->lhs, ctx);
+
+	if(!e->rhs){
+		printf("$%u = %s %s\n", evali, irval_str(lhs));
+	}else{
+		irval *rhs = gen_ir_expr(e->rhs, ctx);
+
+#warning TODO: sanitize
+
+		printf("$%u = %s %s, ",
+				evali,
+				irval_str(lhs));
+		printf("%s\n", irval_str(rhs));
+	}
+
+	return irval_from_int(evali);
+}
+
 void mutate_expr_op(expr *e)
 {
 	e->f_const_fold = fold_const_expr_op;

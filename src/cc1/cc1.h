@@ -54,6 +54,7 @@ enum cc1_backend
 	BACKEND_ASM,
 	BACKEND_DUMP,
 	BACKEND_STYLE,
+	BACKEND_IR
 };
 
 enum san_opts

@@ -189,3 +189,8 @@ const out_val *gen_expr_style__Generic(const expr *e, out_ctx *octx)
 
 	return NULL;
 }
+
+irval *gen_ir_expr__Generic(const expr *e, irctx *ctx)
+{
+	return gen_ir_expr(e->expr, ctx);
+}

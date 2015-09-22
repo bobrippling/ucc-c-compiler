@@ -185,6 +185,23 @@ const out_val *gen_expr_sizeof(const expr *e, out_ctx *octx)
 	return out_new_l(octx, e->tree_type, SIZEOF_SIZE(e));
 }
 
+irval *gen_expr_sizeof(const expr *e, irctx *ctx)
+{
+	type *ty = SIZEOF_WHAT(e);
+
+	if(NEED_RUNTIME_SIZEOF(ty)){
+#warning runtime sizeof
+		ICE("TODO: ir runtime sizeof");
+
+		if(e->expr)
+			irval_free(gen_ir_expr(e->expr, ctx));
+
+		return 0; /*vla_size(ty, octx);*/
+	}
+
+	return irval_from_int(SIZEOF_SIZE(e));
+}
+
 void dump_expr_sizeof(const expr *e, dump *ctx)
 {
 	dump_desc_expr_newline(ctx, sizeof_what(e->what_of), e, 0);

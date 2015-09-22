@@ -147,6 +147,24 @@ const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 	return off;
 }
 
+irval *gen_expr_struct(const expr *e, irctx *ctx)
+{
+	decl *const d = e->bits.struct_mem.d;
+	irval *struct_exp;
+	const unsigned off = ctx->curval++;
+
+	struct_exp = gen_ir_expr(e->lhs, ctx);
+
+	printf("$%u = elem %s, i4 %u\n", off, irval_str(struct_exp), idx);
+
+	if(d->bits.var.field_width){
+#warning bitfield
+		ICE("TODO: bitfield");
+	}
+
+	return irval_from_id(off);
+}
+
 void dump_expr_struct(const expr *e, dump *ctx)
 {
 	decl *mem = e->bits.struct_mem.d;

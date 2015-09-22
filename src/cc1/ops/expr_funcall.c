@@ -475,6 +475,40 @@ const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 	return fn_ret;
 }
 
+irval *gen_expr_funcall(const expr *e, irctx *ctx)
+{
+	irval **args = NULL;
+	irval *fnv;
+	irval *ret;
+
+	const unsigned reti = ctx->curval++;
+	expr **earg;
+	irval **irarg;
+	const char *comma = "";
+
+	for(earg = e->funcargs; earg && *earg; earg++){
+		irval *arg = gen_ir_expr(*earg, ctx);
+		dynarray_add(&args, arg);
+	}
+
+	fnv = gen_ir_expr(e->expr, ctx);
+
+	printf("$%u = call %s(", reti, irval_str(fnv));
+
+	for(irarg = args; irarg && *irarg; irarg++){
+		printf("%s%s", comma, irval_str(*irarg));
+
+		comma = ", ";
+	}
+
+	printf(")\n");
+
+	dynarray_free(irval **, args, irval_free);
+	irval_free(fnv);
+
+	return ret;
+}
+
 void dump_expr_funcall(const expr *e, dump *ctx)
 {
 	expr **iter;

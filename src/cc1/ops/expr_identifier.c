@@ -181,6 +181,20 @@ const out_val *gen_expr_identifier(const expr *e, out_ctx *octx)
 	assert(0);
 }
 
+irval *gen_expr_identifier(const expr *e, irctx *ctx)
+{
+	switch(e->bits.ident.type){
+		case IDENT_NORM:
+			return irval_from_sym(ctx, e->bits.ident.bits.ident.sym);
+
+		case IDENT_ENUM:
+			return irval_from_int(
+					ctx,
+					const_fold_val_i(e->bits.ident.bits.enum_mem->val));
+	}
+	assert(0);
+}
+
 void mutate_expr_identifier(expr *e)
 {
 	e->f_const_fold  = fold_const_expr_identifier;

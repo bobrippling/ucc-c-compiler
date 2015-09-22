@@ -179,3 +179,8 @@ const out_val *gen_expr_style_addr(const expr *e, out_ctx *octx)
 	stylef(")");
 	return r;
 }
+
+irval *gen_ir_expr_addr(const expr *e, irctx *ctx)
+{
+	return gen_expr(e->lhs, ctx);
+}

@@ -11,6 +11,9 @@ typedef const char *func_str_stmt(void);
 struct dump;
 typedef void func_dump_stmt(const struct stmt *, struct dump *);
 
+struct irctx;
+typedef void func_gen_ir_stmt(const struct stmt *, struct irctx *);
+
 /* non-critical */
 typedef int         func_passable_stmt(struct stmt *);
 
@@ -23,6 +26,7 @@ struct stmt
 	func_fold_stmt     *f_fold;
 	func_gen_stmt      *f_gen;
 	func_dump_stmt     *f_dump;
+	func_gen_ir_stmt   *f_ir;
 	func_str_stmt      *f_str;
 	func_passable_stmt *f_passable; /* can code get past this statement:
 	                                   no for return + things containing return, etc */
@@ -89,6 +93,7 @@ struct stmt_flow
 	func_gen_stmt    style_stmt_ ## ty;  \
 	func_gen_stmt    gen_stmt_ ## ty;    \
 	func_dump_stmt   dump_stmt_ ## ty;   \
+	func_gen_ir_stmt gen_ir_stmt_ ## ty;    \
 	void   init_stmt_ ## ty(stmt *)
 
 #include "ops/stmt_break.h"
@@ -113,6 +118,7 @@ struct stmt_flow
 		fold_stmt_ ## type,   \
 		gen_stmt_ ## type,    \
 		dump_stmt_ ## type,   \
+		gen_ir_stmt_ ## type, \
 		style_stmt_ ## type,  \
 		str_stmt_ ## type,    \
 		init_stmt_ ## type,   \
@@ -124,6 +130,7 @@ stmt *stmt_new(
 		func_fold_stmt *,
 		func_gen_stmt *g_asm,
 		func_dump_stmt *g_dump,
+		func_gen_ir_stmt *g_ir,
 		func_gen_stmt *g_style,
 		func_str_stmt *,
 		void (*init)(stmt *),

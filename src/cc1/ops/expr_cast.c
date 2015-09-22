@@ -12,6 +12,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../out/dbg.h"
+#include "../gen_ir_internal.h"
 
 #define IMPLICIT_STR(e) (expr_cast_is_implicit(e) ? "implicit " : "")
 
@@ -690,6 +691,23 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 	}
 
 	return casted;
+}
+
+irval *gen_ir_expr_cast(const expr *e, irctx *ctx)
+{
+	irval *sub = gen_ir_expr(expr_cast_child(e), ctx);
+
+	if(expr_cast_is_lval2rval(e)){
+		const unsigned tmp = ctx->curval++;
+
+		printf("$%u = load %s\n", tmp, irval_str(sub));
+
+		return irval_from_int(tmp);
+	}
+
+	ICW("TODO: cast");
+
+	return sub;
 }
 
 void dump_expr_cast(const expr *e, dump *ctx)

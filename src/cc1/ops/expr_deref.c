@@ -40,6 +40,12 @@ const out_val *gen_expr_deref(const expr *e, out_ctx *octx)
 	return gen_expr(expr_deref_what(e), octx);
 }
 
+irval *gen_ir_expr_deref(const expr *e, irctx *ctx)
+{
+	/* lea - we're an lvalue */
+	return gen_ir_expr(expr_deref_what(e), ctx);
+}
+
 void dump_expr_deref(const expr *e, dump *ctx)
 {
 	expr *what = expr_deref_what(e);

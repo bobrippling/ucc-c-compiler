@@ -46,6 +46,15 @@ const out_val *gen_expr_str(const expr *e, out_ctx *octx)
 	return out_new_lbl(octx, type_ptr_to(e->tree_type), strl->lbl, 1);
 }
 
+irval *gen_ir_expr_str(const expr *e, irctx *ctx)
+{
+	stringlit *strl = e->bits.strlit.lit_at.lit;
+
+	stringlit_use(strl);
+
+	return irval_from_lbl(strl->lbl);
+}
+
 void dump_expr_str(const expr *e, dump *ctx)
 {
 	stringlit *lit = e->bits.strlit.lit_at.lit;

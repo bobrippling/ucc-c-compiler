@@ -160,6 +160,16 @@ const out_val *gen_expr_val(const expr *e, out_ctx *octx)
 	return out_new_num(octx, e->tree_type, &e->bits.num);
 }
 
+irval *gen_expr_val(const expr *e, irctx *ctx)
+{
+	if(e->bits.num.suffix & VAL_FLOATING){
+#warning todo: float
+		ICE("TODO: float");
+	}else{
+		return irval_from_l(e->bits.num.val.i);
+	}
+}
+
 void dump_expr_val(const expr *e, dump *ctx)
 {
 	dump_desc_expr_newline(ctx, "integer literal", e, 0);

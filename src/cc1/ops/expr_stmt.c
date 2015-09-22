@@ -67,6 +67,12 @@ const out_val *gen_expr_stmt(const expr *e, out_ctx *octx)
 	return ret;
 }
 
+irval *gen_ir_expr_stmt(const expr *e, irctx *ctx)
+{
+	ICE("TODO");
+	return 0;
+}
+
 void dump_expr_stmt(const expr *e, dump *ctx)
 {
 	dump_desc_expr(ctx, "statement expression", e);

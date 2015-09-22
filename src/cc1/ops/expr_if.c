@@ -247,6 +247,13 @@ const out_val *gen_expr_if(const expr *e, out_ctx *octx)
 	return out_ctrl_merge(octx, blk_lhs, blk_rhs);
 }
 
+irval *gen_ir_expr_if(const expr *e, irctx *ctx)
+{
+#warning todo
+	ICE("TODO: expr if");
+	return 0;
+}
+
 void dump_expr_if(const expr *e, dump *ctx)
 {
 	dump_desc_expr(ctx, "conditional", e);

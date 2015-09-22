@@ -19,6 +19,7 @@ stmt *stmt_new(
 		func_fold_stmt *f_fold,
 		func_gen_stmt *f_gen,
 		func_dump_stmt *f_dump,
+		func_gen_ir_stmt *f_ir,
 		func_gen_stmt *f_gen_style,
 		func_str_stmt *f_str,
 		void (*init)(stmt *),
@@ -32,6 +33,7 @@ stmt *stmt_new(
 
 	s->f_fold = f_fold;
 	s->f_dump = f_dump;
+	s->f_ir = f_ir;
 
 	switch(cc1_backend){
 		case BACKEND_ASM:
