@@ -286,17 +286,32 @@ const char *irval_str(irval *v)
 		case IRVAL_ID:
 			snprintf(buf, sizeof buf, "$%u", v->bits.id);
 			break;
+
 		case IRVAL_NAMED:
 		{
-			const char *pre = "";
-
 			assert(v->bits.decl->sym);
-			if(v->bits.decl->sym->type == sym_arg)
-				pre = "arg_";
 
-			snprintf(buf, sizeof buf, "$%s%s",
-					pre,
-					decl_asm_spel(v->bits.decl));
+			switch(v->bits.decl->sym->type){
+				case sym_global:
+					snprintf(buf, sizeof buf, "$%s",
+							decl_asm_spel(v->bits.decl));
+					break;
+
+				case sym_local:
+					ICE("TODO: local variables");
+
+				case sym_arg:
+				{
+					const char *pre = "";
+					pre = "arg_";
+
+					snprintf(buf, sizeof buf, "$%s%s",
+							pre,
+							decl_asm_spel(v->bits.decl));
+					break;
+				}
+			}
+
 			break;
 		}
 	}
