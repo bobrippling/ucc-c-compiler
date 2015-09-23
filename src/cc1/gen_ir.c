@@ -46,12 +46,16 @@ void gen_ir_stmt(const struct stmt *stmt, irctx *ctx)
 
 static void gen_ir_decl(decl *d, irctx *ctx)
 {
-	if(type_is(d->ref, type_func)){
-		gen_ir_stmt(d->bits.func.code, ctx);
-	}else{
-		printf("$%s = %s\n", decl_asm_spel(d), irtype_str(d->ref));
+	printf("$%s = %s", decl_asm_spel(d), irtype_str(d->ref));
 
-		if(d->bits.var.init.dinit){
+	if(type_is(d->ref, type_func)){
+		printf("\n{\n");
+		gen_ir_stmt(d->bits.func.code, ctx);
+		printf("}\n");
+	}else{
+		printf("\n");
+
+		if(!d->bits.var.init.compiler_generated){
 			ICW("TODO: ir init for %s\n", d->spel);
 		}
 	}

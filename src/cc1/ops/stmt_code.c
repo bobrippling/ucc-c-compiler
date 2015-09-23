@@ -526,7 +526,15 @@ void gen_stmt_code(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_code(const stmt *s, irctx *ctx)
 {
-	ICE("TODO: code");
+	stmt **titer;
+
+	ICW("TODO: gen block decls");
+
+	for(titer = s->bits.code.stmts; titer && *titer; titer++){
+		gen_ir_stmt(*titer, ctx);
+	}
+
+	ICW("TODO: gen block decls finish");
 }
 
 void dump_stmt_code(const stmt *s, dump *ctx)
