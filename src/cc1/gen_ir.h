@@ -15,7 +15,7 @@ const char *irval_str(irval *);
 typedef unsigned irid;
 
 irval *irval_from_id(irid);
-irval *irval_from_l(integral_t);
+irval *irval_from_l(type *, integral_t);
 struct sym;
 irval *irval_from_sym(irctx *, struct sym *);
 irval *irval_from_lbl(irctx *, char *);

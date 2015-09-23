@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <assert.h>
+#include <string.h>
 
 #include <strbuf_fixed.h>
 
@@ -30,7 +31,11 @@ struct irval
 
 	union
 	{
-		integral_t lit;
+		struct
+		{
+			type *ty;
+			integral_t val;
+		} lit;
 		irid id;
 		decl *decl;
 	} bits;
@@ -247,8 +252,21 @@ const char *irval_str(irval *v)
 
 	switch(v->type){
 		case IRVAL_LITERAL:
-			snprintf(buf, sizeof buf, "i4_todo %" NUMERIC_FMT_D, v->bits.lit);
+		{
+			strbuf_fixed sbuf = STRBUF_FIXED_INIT_ARRAY(buf);
+			size_t len;
+
+			irtype_str_r(&sbuf, v->bits.lit.ty, NULL);
+			len = strlen(buf);
+
+			assert(len < sizeof buf);
+
+			snprintf(buf + len, sizeof buf - len,
+					" %" NUMERIC_FMT_D,
+					v->bits.lit.val);
 			break;
+		}
+
 		case IRVAL_ID:
 			snprintf(buf, sizeof buf, "$%u", v->bits.id);
 			break;
@@ -273,10 +291,11 @@ irval *irval_from_id(irid id)
 	return v;
 }
 
-irval *irval_from_l(integral_t l)
+irval *irval_from_l(type *ty, integral_t l)
 {
 	irval *v = irval_new(IRVAL_LITERAL);
-	v->bits.lit = l;
+	v->bits.lit.val = l;
+	v->bits.lit.ty = ty;
 	return v;
 }
 

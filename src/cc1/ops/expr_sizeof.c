@@ -199,7 +199,7 @@ irval *gen_ir_expr_sizeof(const expr *e, irctx *ctx)
 		return 0; /*vla_size(ty, octx);*/
 	}
 
-	return irval_from_l(SIZEOF_SIZE(e));
+	return irval_from_l(e->tree_type, SIZEOF_SIZE(e));
 }
 
 void dump_expr_sizeof(const expr *e, dump *ctx)

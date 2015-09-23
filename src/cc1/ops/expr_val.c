@@ -166,7 +166,7 @@ irval *gen_ir_expr_val(const expr *e, irctx *ctx)
 #warning todo: float
 		ICE("TODO: float");
 	}else{
-		return irval_from_l(e->bits.num.val.i);
+		return irval_from_l(e->tree_type, e->bits.num.val.i);
 	}
 }
 

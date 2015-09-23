@@ -189,6 +189,7 @@ irval *gen_ir_expr_identifier(const expr *e, irctx *ctx)
 
 		case IDENT_ENUM:
 			return irval_from_l(
+					e->tree_type,
 					const_fold_val_i(e->bits.ident.bits.enum_mem->val));
 	}
 	assert(0);
