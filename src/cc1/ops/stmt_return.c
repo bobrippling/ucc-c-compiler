@@ -102,6 +102,20 @@ void gen_stmt_return(const stmt *s, out_ctx *octx)
 		out_ctrl_end_ret(octx, ret_exp, s->expr ? s->expr->tree_type : NULL);
 }
 
+void gen_ir_stmt_return(const stmt *s, irctx *ctx)
+{
+	irval *ret_exp = s->expr ? gen_expr(s->expr, octx) : NULL;
+
+	ICW("TODO: scope leave");
+	ICW("TODO: check inlining");
+	ICW("TODO: ret dummy value if undef and void if void-fn");
+
+	if(ret_exp)
+		printf("ret %s\n", irval_str(ret_exp));
+	else
+		printf("ret void\n");
+}
+
 void dump_stmt_return(const stmt *s, dump *ctx)
 {
 	dump_desc_stmt(ctx, "return", s);

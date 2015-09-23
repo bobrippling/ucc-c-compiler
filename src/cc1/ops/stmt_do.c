@@ -41,6 +41,11 @@ void gen_stmt_do(const stmt *s, out_ctx *octx)
 	out_current_blk(octx, s->blk_break);
 }
 
+void gen_stmt_do(const stmt *s, out_ctx *octx)
+{
+	ICE("TODO: do");
+}
+
 void dump_stmt_do(const stmt *s, dump *ctx)
 {
 	dump_desc_stmt(ctx, "do-while", s);

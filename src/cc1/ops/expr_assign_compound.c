@@ -114,14 +114,18 @@ irval *gen_ir_expr_assign_compound(const expr *e, irctx *ctx)
 	const unsigned tmp_res = ctx->curval++;
 
 	printf("$%u = load %s\n", tmp_val, irval_str(lhs));
-	printf("$%u = %s $%u, %s\n", tmp_res, tmp_val, irval_str(rhs));
+	printf("$%u = %s $%u, %s\n",
+			tmp_res,
+			op_to_str(e->bits.compoundop.op),
+			tmp_val,
+			irval_str(rhs));
 
 	printf("store $%u, %s", tmp_res, irval_str(lhs));
 
 	irval_free(lhs);
 	irval_free(rhs);
 
-	return irval_from_int(tmp_res);
+	return irval_from_id(tmp_res);
 }
 
 void dump_expr_assign_compound(const expr *e, dump *ctx)

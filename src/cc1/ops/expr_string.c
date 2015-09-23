@@ -52,7 +52,7 @@ irval *gen_ir_expr_str(const expr *e, irctx *ctx)
 
 	stringlit_use(strl);
 
-	return irval_from_lbl(strl->lbl);
+	return irval_from_lbl(ctx, strl->lbl);
 }
 
 void dump_expr_str(const expr *e, dump *ctx)

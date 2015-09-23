@@ -11,4 +11,6 @@
 #include "../gen_dump.h"
 #include "../gen_style.h"
 #include "../gen_asm.h"
+#include "../gen_ir.h"
+#include "../gen_ir_internal.h"
 #include "../out/out.h"

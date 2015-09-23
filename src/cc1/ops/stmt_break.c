@@ -28,6 +28,12 @@ void gen_stmt_break(const stmt *s, out_ctx *octx)
 	out_ctrl_transfer(octx, s->parent->blk_break, NULL, NULL);
 }
 
+void gen_ir_stmt_break(const stmt *s, irctx *ctx)
+{
+	ICW("TODO: scope leave");
+	ICE("TODO: break");
+}
+
 void dump_stmt_break(const stmt *s, dump *ctx)
 {
 	dump_desc_stmt(ctx, "break", s);

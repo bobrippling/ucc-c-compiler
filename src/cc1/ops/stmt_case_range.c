@@ -40,6 +40,11 @@ void gen_stmt_case_range(const stmt *s, out_ctx *octx)
 	gen_stmt(s->lhs, octx);
 }
 
+void gen_ir_stmt_case_range(const stmt *s, irctx *ctx)
+{
+	gen_ir_stmt(s->lhs, ctx);
+}
+
 void dump_stmt_case_range(const stmt *s, dump *ctx)
 {
 	dump_desc_stmt(ctx, "case-range", s);

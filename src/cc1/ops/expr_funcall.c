@@ -475,11 +475,10 @@ const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 	return fn_ret;
 }
 
-irval *gen_expr_funcall(const expr *e, irctx *ctx)
+irval *gen_ir_expr_funcall(const expr *e, irctx *ctx)
 {
 	irval **args = NULL;
 	irval *fnv;
-	irval *ret;
 
 	const unsigned reti = ctx->curval++;
 	expr **earg;
@@ -503,10 +502,10 @@ irval *gen_expr_funcall(const expr *e, irctx *ctx)
 
 	printf(")\n");
 
-	dynarray_free(irval **, args, irval_free);
+	dynarray_free(irval **, args, irval_free_abi);
 	irval_free(fnv);
 
-	return ret;
+	return irval_from_id(reti);
 }
 
 void dump_expr_funcall(const expr *e, dump *ctx)

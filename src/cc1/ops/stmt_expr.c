@@ -40,6 +40,11 @@ void gen_stmt_expr(const stmt *s, out_ctx *octx)
 	out_val_consume(octx, gen_expr(s->expr, octx));
 }
 
+void gen_ir_stmt_expr(const stmt *s, irctx *ctx)
+{
+	irval_free(gen_ir_expr(s->expr, ctx));
+}
+
 void dump_stmt_expr(const stmt *s, dump *ctx)
 {
 	dump_desc_stmt(ctx, "expression", s);

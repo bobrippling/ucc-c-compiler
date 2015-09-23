@@ -18,6 +18,12 @@ void gen_stmt_continue(const stmt *s, out_ctx *octx)
 	out_ctrl_transfer(octx, s->parent->blk_continue, NULL, NULL);
 }
 
+void gen_ir_stmt_continue(const stmt *s, irctx *ctx)
+{
+	ICW("TODO: scope leave");
+	ICE("TODO: continue");
+}
+
 void dump_stmt_continue(const stmt *s, dump *ctx)
 {
 	dump_desc_stmt(ctx, "continue", s);

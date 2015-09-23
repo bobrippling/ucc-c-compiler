@@ -185,7 +185,7 @@ const out_val *gen_expr_sizeof(const expr *e, out_ctx *octx)
 	return out_new_l(octx, e->tree_type, SIZEOF_SIZE(e));
 }
 
-irval *gen_expr_sizeof(const expr *e, irctx *ctx)
+irval *gen_ir_expr_sizeof(const expr *e, irctx *ctx)
 {
 	type *ty = SIZEOF_WHAT(e);
 
@@ -199,7 +199,7 @@ irval *gen_expr_sizeof(const expr *e, irctx *ctx)
 		return 0; /*vla_size(ty, octx);*/
 	}
 
-	return irval_from_int(SIZEOF_SIZE(e));
+	return irval_from_l(SIZEOF_SIZE(e));
 }
 
 void dump_expr_sizeof(const expr *e, dump *ctx)

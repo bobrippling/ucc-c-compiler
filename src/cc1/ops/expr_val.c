@@ -160,7 +160,7 @@ const out_val *gen_expr_val(const expr *e, out_ctx *octx)
 	return out_new_num(octx, e->tree_type, &e->bits.num);
 }
 
-irval *gen_expr_val(const expr *e, irctx *ctx)
+irval *gen_ir_expr_val(const expr *e, irctx *ctx)
 {
 	if(e->bits.num.suffix & VAL_FLOATING){
 #warning todo: float

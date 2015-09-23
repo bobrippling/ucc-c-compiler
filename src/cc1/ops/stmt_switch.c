@@ -305,6 +305,11 @@ void gen_stmt_switch(const stmt *s, out_ctx *octx)
 	flow_end(s->flow, s->symtab, el, octx);
 }
 
+void gen_ir_stmt_switch(const stmt *s, irctx *ctx)
+{
+	ICE("TODO: switch");
+}
+
 void dump_stmt_switch(const stmt *s, dump *ctx)
 {
 	dump_desc_stmt(ctx, "switch", s);

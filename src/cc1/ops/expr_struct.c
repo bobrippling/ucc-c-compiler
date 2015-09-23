@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "ops.h"
 #include "expr_struct.h"
 #include "../sue.h"
@@ -147,11 +149,28 @@ const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 	return off;
 }
 
-irval *gen_expr_struct(const expr *e, irctx *ctx)
+irval *gen_ir_expr_struct(const expr *e, irctx *ctx)
 {
 	decl *const d = e->bits.struct_mem.d;
 	irval *struct_exp;
 	const unsigned off = ctx->curval++;
+	unsigned idx;
+	int found = 0;
+	struct_union_enum_st *su = type_is_s_or_u(e->lhs->tree_type);
+
+	assert(su && "no struct type");
+	if(su->primitive == type_union){
+#warning todo: union
+		ICE("TODO: union");
+	}
+
+	for(idx = 0; ; idx++){
+		if(su->members[idx]->struct_member == d){
+			found = 1;
+			break;
+		}
+	}
+	assert(found && "couldn't find struct member index");
 
 	struct_exp = gen_ir_expr(e->lhs, ctx);
 

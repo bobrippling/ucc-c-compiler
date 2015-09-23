@@ -1242,9 +1242,9 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 	return eval;
 }
 
-irval *gen_expr_op(const expr *e, irctx *ctx)
+irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 {
-	irval *lhs, *eval;
+	irval *lhs;
 	const unsigned evali = ctx->curval++;
 
 	switch(e->bits.op.op){
@@ -1262,7 +1262,7 @@ irval *gen_expr_op(const expr *e, irctx *ctx)
 	lhs = gen_ir_expr(e->lhs, ctx);
 
 	if(!e->rhs){
-		printf("$%u = %s %s\n", evali, irval_str(lhs));
+		printf("$%u = %s %s\n", evali, op_to_str(e->bits.op.op), irval_str(lhs));
 	}else{
 		irval *rhs = gen_ir_expr(e->rhs, ctx);
 
@@ -1270,11 +1270,12 @@ irval *gen_expr_op(const expr *e, irctx *ctx)
 
 		printf("$%u = %s %s, ",
 				evali,
+				op_to_str(e->bits.op.op),
 				irval_str(lhs));
 		printf("%s\n", irval_str(rhs));
 	}
 
-	return irval_from_int(evali);
+	return irval_from_id(evali);
 }
 
 void mutate_expr_op(expr *e)

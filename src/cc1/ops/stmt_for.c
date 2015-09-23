@@ -76,6 +76,11 @@ void gen_stmt_for(const stmt *s, out_ctx *octx)
 	flow_end(s->flow, s->flow->for_init_symtab, el, octx);
 }
 
+void gen_ir_stmt_for(const stmt *s, irctx *ctx)
+{
+	ICE("TODO: for");
+}
+
 void dump_flow(stmt_flow *flow, dump *ctx)
 {
 	decl **di;

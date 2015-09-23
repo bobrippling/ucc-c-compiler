@@ -111,7 +111,7 @@ const out_val *gen_expr_block(const expr *e, out_ctx *octx)
 
 irval *gen_ir_expr_block(const expr *e, irctx *ctx)
 {
-	return irval_from_sym(e->bits.block.sym);
+	return irval_from_sym(ctx, e->bits.block.sym);
 }
 
 void dump_expr_block(const expr *e, dump *ctx)

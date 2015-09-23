@@ -56,6 +56,11 @@ void gen_stmt_while(const stmt *s, out_ctx *octx)
 	}
 }
 
+void gen_ir_stmt_while(const stmt *s, irctx *ctx)
+{
+	ICE("TODO: while");
+}
+
 void dump_stmt_while(const stmt *s, dump *ctx)
 {
 	dump_desc_stmt(ctx, "while", s);

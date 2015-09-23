@@ -95,7 +95,8 @@ static void gen_expr_compound_lit_code(const expr *e, out_ctx *octx)
 
 const out_val *gen_expr_compound_lit(const expr *e, out_ctx *octx)
 {
-	gen_ir_expr_compound_lit_code(e, octx);
+	gen_asm_emit_type(octx, e->tree_type);
+	gen_expr_compound_lit_code(e, octx);
 
 	return out_new_sym(octx, e->bits.complit.sym);
 }
@@ -116,10 +117,9 @@ static void gen_ir_expr_compound_lit_code(const expr *e, irctx *ctx)
 
 irval *gen_ir_expr_compound_lit(const expr *e, irctx *ctx)
 {
-	gen_ir_emit_type(octx, e->tree_type);
-	gen_expr_compound_lit_code(e, octx);
+	gen_ir_expr_compound_lit_code(e, ctx);
 
-	return out_new_sym(octx, e->bits.complit.sym);
+	return irval_from_sym(ctx, e->bits.complit.sym);
 }
 
 static void const_expr_compound_lit(expr *e, consty *k)

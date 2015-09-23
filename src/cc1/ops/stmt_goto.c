@@ -49,6 +49,11 @@ void gen_stmt_goto(const stmt *s, out_ctx *octx)
 	}
 }
 
+void gen_stmt_goto(const stmt *s, irctx *ctx)
+{
+	ICE("TODO: goto");
+}
+
 void dump_stmt_goto(const stmt *s, dump *ctx)
 {
 	if(s->expr){

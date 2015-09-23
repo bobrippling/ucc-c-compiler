@@ -17,6 +17,12 @@ void gen_stmt_noop(const stmt *s, out_ctx *octx)
 	(void)octx;
 }
 
+void gen_ir_stmt_noop(const stmt *s, irctx *ctx)
+{
+	(void)s;
+	(void)ctx;
+}
+
 void dump_stmt_noop(const stmt *s, dump *ctx)
 {
 	dump_desc_stmt(ctx, "no-op", s);
