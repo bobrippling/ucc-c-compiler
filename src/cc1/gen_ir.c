@@ -53,6 +53,21 @@ void gen_ir_stmt(const struct stmt *stmt, irctx *ctx)
 	stmt->f_ir(stmt, ctx);
 }
 
+static void gen_ir_spill_args(irctx *ctx, funcargs *args)
+{
+	decl **i;
+
+	(void)ctx;
+
+	for(i = args->arglist; i && *i; i++){
+		decl *d = *i;
+		const char *asm_spel = decl_asm_spel(d);
+
+		printf("$arg_%s = alloca %s\n", asm_spel, irtype_str(d->ref));
+		printf("store $arg_%s, $%s\n", asm_spel, asm_spel);
+	}
+}
+
 static void gen_ir_decl(decl *d, irctx *ctx)
 {
 	funcargs *args = type_is(d->ref, type_func) ? type_funcargs(d->ref) : NULL;
@@ -61,6 +76,7 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 
 	if(args){
 		printf("\n{\n");
+		gen_ir_spill_args(ctx, args);
 		gen_ir_stmt(d->bits.func.code, ctx);
 		printf("}\n");
 	}else{
@@ -271,8 +287,18 @@ const char *irval_str(irval *v)
 			snprintf(buf, sizeof buf, "$%u", v->bits.id);
 			break;
 		case IRVAL_NAMED:
-			snprintf(buf, sizeof buf, "$%s", decl_asm_spel(v->bits.decl));
+		{
+			const char *pre = "";
+
+			assert(v->bits.decl->sym);
+			if(v->bits.decl->sym->type == sym_arg)
+				pre = "arg_";
+
+			snprintf(buf, sizeof buf, "$%s%s",
+					pre,
+					decl_asm_spel(v->bits.decl));
 			break;
+		}
 	}
 	return buf;
 }
