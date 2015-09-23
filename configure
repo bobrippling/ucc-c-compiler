@@ -138,6 +138,9 @@ set +u
 test -n "$CC" || CC=cc
 test -n "$CFLAGS" || CFLAGS=
 test -n "$LDFLAGS" || LDFLAGS=
+
+# CFLAGS_CONFIGURE inherits command-line CFLAGS and LDFLAGS
+CFLAGS_CONFIGURE="$CFLAGS_CONFIGURE $CFLAGS $LDFLAGS"
 set -u
 
 printf 'checking target... '
