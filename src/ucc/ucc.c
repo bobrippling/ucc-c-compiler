@@ -34,7 +34,6 @@ enum mode
 
 struct
 {
-	enum mode assume;
 	int nostdlib;
 	int nostartfiles;
 } gopts;
@@ -54,6 +53,7 @@ struct cc_file
 	struct fd_name_pair out;
 
 	int preproc_asm;
+	int assume;
 };
 #define FILE_IN_MODE(f)        \
 ((f)->preproc.fname ? mode_preproc : \
@@ -96,14 +96,18 @@ static void tmpfilenam(struct fd_name_pair *pair)
 	pair->fd = fd;
 }
 
-static void create_file(struct cc_file *file, enum mode mode, char *in)
+static void create_file(
+		struct cc_file *file,
+		int assumption,
+		enum mode mode,
+		char *in)
 {
 	char *ext;
 
 	file->in.fname = in;
 	file->in.fd = FILE_UNINIT;
 
-	switch(gopts.assume){
+	switch(assumption){
 		case mode_preproc:
 			goto preproc;
 		case mode_compile:
@@ -257,7 +261,13 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 	}
 }
 
-static void process_files(enum mode mode, char **inputs, char *output, char **args[4], char *backend)
+static void process_files(
+		enum mode mode,
+		char **inputs,
+		int *assumptions,
+		char *output,
+		char **args[4],
+		char *backend)
 {
 	const int ninputs = dynarray_count(inputs);
 	int i;
@@ -276,7 +286,7 @@ static void process_files(enum mode mode, char **inputs, char *output, char **ar
 	}
 
 	for(i = 0; i < ninputs; i++){
-		create_file(&files[i], mode, inputs[i]);
+		create_file(&files[i], assumptions[i], mode, inputs[i]);
 
 		gen_obj_file(&files[i], args, mode);
 
@@ -417,10 +427,11 @@ int main(int argc, char **argv)
 	char *output = NULL;
 	char *backend = NULL;
 	const char **isystems = NULL;
+	int current_assumption = -1;
+	int *assumptions = umalloc((argc - 1) * sizeof *assumptions);
 
 	umask(0077); /* prevent reading of the temporary files we create */
 
-	gopts.assume = -1;
 	argv0 = argv[0];
 
 	if(argc <= 1){
@@ -616,15 +627,14 @@ arg_ld:
 						arg = argv[i];
 
 					/* TODO: "asm-with-cpp"? */
-					/* TODO: order-sensitive -x */
 					if(!strcmp(arg, "c"))
-						gopts.assume = mode_preproc;
+						current_assumption = mode_preproc;
 					else if(!strcmp(arg, "cpp-output"))
-						gopts.assume = mode_compile;
+						current_assumption = mode_compile;
 					else if(!strcmp(arg, "asm"))
-						gopts.assume = mode_assemb;
+						current_assumption = mode_assemb;
 					else if(!strcmp(arg, "none"))
-						gopts.assume = -1; /* reset */
+						current_assumption = -1; /* reset */
 					else
 						die("-x accepts \"c\", \"cpp-output\", \"asm\" "
 								"or \"none\", not \"%s\"", arg);
@@ -702,8 +712,11 @@ unrec:
 missing_arg:
 			die("need argument for %s", argv[i - 1]);
 		}else{
+			size_t n;
 input:
+			n = dynarray_count(inputs);
 			dynarray_add(&inputs, argv[i]);
+			assumptions[n] = current_assumption;
 		}
 	}
 
@@ -776,11 +789,12 @@ input:
 		dynarray_add_tmparray(&args[mode_preproc], includes);
 
 	/* got arguments, a mode, and files to link */
-	process_files(mode, inputs, output, args, backend);
+	process_files(mode, inputs, assumptions, output, args, backend);
 
 	for(i = 0; i < 4; i++)
 		dynarray_free(char **, args[i], free);
 	dynarray_free(char **, inputs, NULL);
+	free(assumptions);
 
 	return 0;
 }
