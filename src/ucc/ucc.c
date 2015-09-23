@@ -424,6 +424,7 @@ int main(int argc, char **argv)
 	argv0 = argv[0];
 
 	if(argc <= 1){
+usage:
 		fprintf(stderr, "Usage: %s [options] input(s)\n", *argv);
 		return 1;
 	}
@@ -727,7 +728,7 @@ input:
 		}
 
 		if(ninputs == 0)
-			die("no inputs");
+			goto usage;
 	}
 
 
