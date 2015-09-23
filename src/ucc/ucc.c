@@ -631,12 +631,12 @@ arg_ld:
 						current_assumption = mode_preproc;
 					else if(!strcmp(arg, "cpp-output"))
 						current_assumption = mode_compile;
-					else if(!strcmp(arg, "asm"))
+					else if(!strcmp(arg, "asm") || !strcmp(arg, "assembler"))
 						current_assumption = mode_assemb;
 					else if(!strcmp(arg, "none"))
 						current_assumption = -1; /* reset */
 					else
-						die("-x accepts \"c\", \"cpp-output\", \"asm\" "
+						die("-x accepts \"c\", \"cpp-output\", \"asm\", \"assembler\" "
 								"or \"none\", not \"%s\"", arg);
 					continue;
 				}
