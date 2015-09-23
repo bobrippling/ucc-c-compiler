@@ -19,8 +19,10 @@ try_path(){
 
 test_cflag(){
 	echo "int main(void){return 0;}" >"$tmpc"
-	$CC $CFLAGS_CONFIGURE "$1" "$tmpc" -o /dev/null
-	return $?
+	$CC $CFLAGS_CONFIGURE "$1" "$tmpc" -o "$tmpc.e"
+	e=$?
+	rm -f "$tmpc.e"
+	return $e
 }
 
 try_cflag(){
