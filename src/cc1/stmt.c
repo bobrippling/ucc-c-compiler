@@ -40,6 +40,7 @@ stmt *stmt_new(
 			s->f_gen = f_gen;
 			break;
 		case BACKEND_DUMP:
+		case BACKEND_IR:
 			s->f_gen = NULL;
 			break;
 		case BACKEND_STYLE:

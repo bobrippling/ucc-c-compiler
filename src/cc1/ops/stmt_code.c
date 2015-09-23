@@ -524,7 +524,7 @@ void gen_stmt_code(const stmt *s, out_ctx *octx)
 	gen_stmt_code_m1(s, 0, pushed_lbls, octx);
 }
 
-void gen_ir_stmt_case_range(const stmt *s, irctx *ctx)
+void gen_ir_stmt_code(const stmt *s, irctx *ctx)
 {
 	ICE("TODO: code");
 }

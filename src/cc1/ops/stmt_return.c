@@ -104,7 +104,7 @@ void gen_stmt_return(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_return(const stmt *s, irctx *ctx)
 {
-	irval *ret_exp = s->expr ? gen_expr(s->expr, octx) : NULL;
+	irval *ret_exp = s->expr ? gen_ir_expr(s->expr, ctx) : NULL;
 
 	ICW("TODO: scope leave");
 	ICW("TODO: check inlining");

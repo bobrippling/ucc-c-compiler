@@ -116,7 +116,7 @@ void gen_stmt_if(const stmt *s, out_ctx *octx)
 	flow_end(s->flow, s->symtab, el, octx);
 }
 
-void gen_stmt_if(const stmt *s, out_ctx *octx)
+void gen_ir_stmt_if(const stmt *s, irctx *ctx)
 {
 	ICE("TODO: if");
 }

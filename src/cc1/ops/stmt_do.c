@@ -41,7 +41,7 @@ void gen_stmt_do(const stmt *s, out_ctx *octx)
 	out_current_blk(octx, s->blk_break);
 }
 
-void gen_stmt_do(const stmt *s, out_ctx *octx)
+void gen_ir_stmt_do(const stmt *s, irctx *ctx)
 {
 	ICE("TODO: do");
 }

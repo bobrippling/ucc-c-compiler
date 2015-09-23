@@ -223,7 +223,8 @@ irval *gen_ir_expr_assign(const expr *e, irctx *ctx)
 	irval *rhs = gen_ir_expr(e->rhs, ctx);
 
 #warning TODO: free irvals
-	printf("store %s, %s", irval_str(lhs), irval_str(rhs));
+	printf("store %s, ", irval_str(lhs));
+	printf("%s\n", irval_str(rhs));
 
 	return rhs;
 }

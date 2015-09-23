@@ -46,7 +46,7 @@ void gen_stmt_label(const stmt *s, out_ctx *octx)
 	gen_stmt(s->lhs, octx); /* the code-part of the compound statement */
 }
 
-void gen_stmt_label(const stmt *s, out_ctx *octx)
+void gen_ir_stmt_label(const stmt *s, irctx *ctx)
 {
 	ICW("TODO: explicit-ify fallthrough?");
 	gen_ir_stmt(s->lhs, ctx);

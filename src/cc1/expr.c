@@ -30,6 +30,7 @@ void expr_mutate(expr *e, func_mutate_expr *f,
 	e->f_ir = f_ir;
 
 	switch(cc1_backend){
+		case BACKEND_IR:
 		case BACKEND_DUMP:
 			e->f_gen = NULL;
 			break;
