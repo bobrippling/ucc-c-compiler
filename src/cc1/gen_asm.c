@@ -296,7 +296,7 @@ static void gen_stringlits(dynmap *litmap)
 	size_t i;
 	for(i = 0; (lit = dynmap_value(stringlit *, litmap, i)); i++)
 		if(lit->use_cnt > 0)
-			asm_declare_stringlit(SECTION_DATA, lit);
+			asm_declare_stringlit(SECTION_RODATA, lit);
 }
 
 void gen_asm_emit_type(out_ctx *octx, type *ty)
