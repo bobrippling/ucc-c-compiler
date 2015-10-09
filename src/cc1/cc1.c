@@ -523,6 +523,11 @@ static void warning_init(void)
 	cc1_warning.c89_compound_literal =
 			W_WARN;
 
+	/* also turn off global-unused warnings */
+	cc1_warning.unused_param = W_OFF;
+	cc1_warning.unused_var = W_OFF;
+	cc1_warning.unused_function = W_OFF;
+
 	/* but disable others */
 	cc1_warning.char_subscript = W_OFF;
 }

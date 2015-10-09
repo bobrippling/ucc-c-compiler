@@ -40,6 +40,7 @@ struct decl
 	attribute *attr;
 
 	char *spel, *spel_asm;
+	int used;
 
 	union
 	{

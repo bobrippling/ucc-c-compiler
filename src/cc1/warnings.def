@@ -59,6 +59,7 @@ X("cast-qual", &cc1_warning.cast_qual)
 
 X("unused-parameter", &cc1_warning.unused_param)
 X("unused-variable", &cc1_warning.unused_var)
+X("unused-function", &cc1_warning.unused_function)
 X("unused-value", &cc1_warning.unused_val)
 X("unused", &cc1_warning.unused_param, &cc1_warning.unused_var, &cc1_warning.unused_val)
 

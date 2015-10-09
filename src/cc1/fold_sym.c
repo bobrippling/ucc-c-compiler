@@ -319,6 +319,21 @@ void symtab_fold_decls(symtable *tab)
 			cc1_warn_at(&d->where, undef_internal,
 					"function declared static but not defined");
 		}
+
+		if(!tab->parent
+		&& !d->used
+		&& decl_linkage(d) != linkage_external)
+		{
+			int is_fn = !!type_is(d->ref, type_func);
+			unsigned char *pwarn = (is_fn
+					? &cc1_warning.unused_function
+					: &cc1_warning.unused_var);
+
+			cc1_warn_at_w(&d->where, pwarn,
+					"unused %s '%s'",
+					is_fn ? "function" : "variable",
+					d->spel);
+		}
 	}
 
 	/* add enums */

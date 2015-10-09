@@ -158,6 +158,7 @@ struct cc1_warning
 	unsigned char unnamed_struct_memb;
 	unsigned char unused_comma;
 	unsigned char unused_expr;
+	unsigned char unused_function;
 	unsigned char unused_fnret;
 	unsigned char unused_param;
 	unsigned char unused_val;
