@@ -59,14 +59,32 @@ static const char **system_includes;
 static struct warn_str
 {
 	const char *arg;
-	unsigned char *offsets[3];
+	unsigned char *offset;
 } warns[] = {
-#define X(arg, ...) { arg, __VA_ARGS__ },
+#define X(arg, name) { arg, &cc1_warning.name },
+#define ALIAS X
+#define GROUP(arg, ...)
 #include "warnings.def"
 #undef X
+#undef ALIAS
+#undef GROUP
 	{ NULL, NULL }
 };
 
+static struct warn_str_group
+{
+	const char *arg;
+	unsigned char *offsets[3];
+} warn_groups[] = {
+#define X(arg, name)
+#define ALIAS X
+#define GROUP(arg, ...) { arg, __VA_ARGS__ },
+#include "warnings.def"
+#undef X
+#undef ALIAS
+#undef GROUP
+	{ NULL, NULL }
+};
 
 static struct
 {
@@ -207,17 +225,30 @@ static void ccdie(int verbose, const char *fmt, ...)
 	exit(1);
 }
 
-static void show_warn_option(const unsigned char *pwarn)
+static void show_warn_option(
+		const unsigned char *poffset,
+		const unsigned char *pwarn,
+		const char *arg)
+{
+	if(pwarn != poffset)
+		return;
+
+	fprintf(stderr, "[-W%s]\n", arg);
+}
+
+static void show_warn_options(const unsigned char *pwarn)
 {
 	struct warn_str *p;
+	struct warn_str_group *p_group;
 
-	for(p = warns; p->arg; p++){
+	for(p = warns; p->arg; p++)
+		show_warn_option(p->offset, pwarn, p->arg);
+
+	for(p_group = warn_groups; p_group->arg; p_group++){
 		unsigned i;
-		for(i = 0; i < countof(p->offsets) && p->offsets[i]; i++){
-			if(pwarn == p->offsets[i]){
-				fprintf(stderr, "[-W%s]\n", p->arg);
-				break;
-			}
+
+		for(i = 0; i < countof(p_group->offsets) && p_group->offsets[i]; i++){
+			show_warn_option(p_group->offsets[i], pwarn, p_group->arg);
 		}
 	}
 }
@@ -268,7 +299,7 @@ int cc1_warn_at_w(
 	va_end(l);
 
 	if(fopt_mode & FOPT_SHOW_WARNING_OPTION)
-		show_warn_option(pwarn);
+		show_warn_options(pwarn);
 
 	return 1;
 }
@@ -575,6 +606,7 @@ static void warning_on(
 		int *const werror, dynmap *unknowns)
 {
 	struct warn_str *p;
+	struct warn_str_group *p_group;
 
 #define SPECIAL(str, w)   \
 	if(!strcmp(warn, str)){ \
@@ -614,13 +646,17 @@ static void warning_on(
 
 	for(p = warns; p->arg; p++){
 		if(!strcmp(warn, p->arg)){
-			unsigned i;
-			for(i = 0; i < countof(p->offsets); i++){
-				if(!p->offsets[i])
-					break;
+			*p->offset = to;
+			return;
+		}
+	}
 
-				*p->offsets[i] = to;
-			}
+	for(p_group = warn_groups; p_group->arg; p_group++){
+		if(!strcmp(warn, p_group->arg)){
+			unsigned i;
+
+			for(i = 0; i < countof(p_group->offsets) && p_group->offsets[i]; i++)
+				*p_group->offsets[i] = to;
 			return;
 		}
 	}
@@ -687,13 +723,11 @@ unrecog:
 static void warnings_upgrade(void)
 {
 	struct warn_str *p;
-	unsigned i;
 
 	/* easier to iterate through this array, than cc1_warning's members */
 	for(p = warns; p->arg; p++)
-		for(i = 0; i < countof(p->offsets) && p->offsets[i]; i++)
-			if(*p->offsets[i] == W_WARN)
-				*p->offsets[i] = W_ERROR;
+		if(*p->offset == W_WARN)
+			*p->offset = W_ERROR;
 }
 
 static int warnings_check_unknown(dynmap *unknown_warnings)
