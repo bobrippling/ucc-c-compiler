@@ -18,6 +18,7 @@ void fopt_default(struct cc1_fopt *opt)
 	opt->print_typedefs = 1;
 	opt->print_aka = 1;
 	opt->common = 1;
+	opt->thread_jumps = 1;
 }
 
 int fopt_on(struct cc1_fopt *fopt, const char *argument, int invert)

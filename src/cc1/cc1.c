@@ -345,6 +345,7 @@ static int optimise(const char *argv0, const char *arg)
 
 	switch(opt){
 		case O0:
+			cc1_fopt.thread_jumps = 0;
 			break;
 
 		case Os:
@@ -360,6 +361,7 @@ static int optimise(const char *argv0, const char *arg)
 			cc1_fopt.fold_const_vlas = 1;
 			cc1_fopt.inline_functions = 1;
 			cc1_fopt.integral_float_load = 1;
+			cc1_fopt.thread_jumps = 1;
 			break;
 	}
 
