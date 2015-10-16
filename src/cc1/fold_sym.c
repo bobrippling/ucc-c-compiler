@@ -320,10 +320,7 @@ void symtab_fold_decls(symtable *tab)
 					"function declared static but not defined");
 		}
 
-		if(!tab->parent
-		&& !d->used
-		&& decl_linkage(d) != linkage_external)
-		{
+		if(!tab->parent && decl_unused_and_internal(d)){
 			int is_fn = !!type_is(d->ref, type_func);
 			unsigned char *pwarn = (is_fn
 					? &cc1_warning.unused_function

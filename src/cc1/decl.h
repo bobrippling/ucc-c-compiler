@@ -127,6 +127,7 @@ decl *decl_impl(decl *); /* fast-forwards to the impl */
 
 int decl_is_pure_inline(decl *);
 int decl_should_emit_code(decl *);
+int decl_unused_and_internal(decl *);
 
 #define DECL_STATIC_BUFSIZ 512
 

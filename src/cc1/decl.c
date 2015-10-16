@@ -298,3 +298,8 @@ int decl_should_emit_code(decl *d)
 {
 	return d->bits.func.code && !decl_is_pure_inline(d);
 }
+
+int decl_unused_and_internal(decl *d)
+{
+	return !d->used && decl_linkage(d) != linkage_external;
+}
