@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -296,7 +297,8 @@ int decl_is_pure_inline(decl *const d)
 
 int decl_should_emit_code(decl *d)
 {
-	return d->bits.func.code && !decl_is_pure_inline(d);
+	assert(type_is(d->ref, type_func));
+	return d->bits.func.code && !decl_unused_and_internal(d) && !decl_is_pure_inline(d);
 }
 
 int decl_unused_and_internal(decl *d)
