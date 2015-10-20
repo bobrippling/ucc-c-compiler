@@ -50,38 +50,37 @@ static int has_feat_ext(const char *nam, int as_ext)
 {
 	static const struct c_tbl
 	{
+		enum c_std std;
 		const char *nam;
 		int has;
 		int ignore_ext;
 	} tbl[] = {
-		{ "c_alignas", 1, 0 },
-		{ "c_alignof", 1, 0 },
-		{ "c_generic_selections", 1, 0 },
-		{ "c_static_assert", 1, 0 },
-		{ "c_atomic", UCC_HAS_ATOMICS, 0 },
-		{ "c_thread_local", UCC_HAS_THREADS, 0 },
-		{ "c_complex", UCC_HAS_COMPLEX, 0 },
-		{ "c_vla", UCC_HAS_VLA, 0 },
+		{ STD_C11, "c_alignas", 1, 0 },
+		{ STD_C11, "c_alignof", 1, 0 },
+		{ STD_C11, "c_generic_selections", 1, 0 },
+		{ STD_C11, "c_static_assert", 1, 0 },
+		{ STD_C11, "c_atomic", UCC_HAS_ATOMICS, 0 },
+		{ STD_C11, "c_thread_local", UCC_HAS_THREADS, 0 },
+		{ STD_C11, "c_complex", UCC_HAS_COMPLEX, 0 },
+
+		{ STD_C99, "c_vla", UCC_HAS_VLA, 0 },
 
 		/* compat with clang */
-		{ "address_sanitizer", 0, 1 },
-		{ "enumerator_attributes", 1, 1 },
+		{ STD_C89, "address_sanitizer", 0, 1 },
+		{ STD_C89, "enumerator_attributes", 1, 1 },
 
-		{ "blocks", 1, 1 },
+		{ STD_C89, "blocks", 1, 1 },
 
-		{ NULL, 0, 0 }
+		{ STD_C89, NULL, 0, 0 }
 	};
 	const struct c_tbl *p;
 
 	for(p = tbl; p->nam; p++){
 		if(!strcmp(p->nam, nam)){
-			/* all are currently >= C11 */
-			if(!p->ignore_ext
-			&& !as_ext
-			&& cpp_std < STD_C11)
-			{
+			if(!p->ignore_ext && !as_ext)
 				continue;
-			}
+			if(cpp_std < p->std)
+				continue;
 
 			return p->has;
 		}
