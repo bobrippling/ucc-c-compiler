@@ -527,8 +527,15 @@ void gen_stmt_code(const stmt *s, out_ctx *octx)
 void gen_ir_stmt_code(const stmt *s, irctx *ctx)
 {
 	stmt **titer;
+	decl **diter;
 
-	ICW("TODO: gen block decls");
+	/* gen_block_decls() */
+	for(diter = symtab_decls(s->symtab); diter && *diter; diter++){
+		decl *d = *diter;
+
+
+		printf("$%s = alloca %s\n", decl_asm_spel(d), irtype_str(d->ref));
+	}
 
 	for(titer = s->bits.code.stmts; titer && *titer; titer++){
 		gen_ir_stmt(*titer, ctx);
