@@ -213,22 +213,35 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 			size_t i;
 			int first = 1;
 			decl **arglist = t->bits.func.args->arglist;
+			int have_arg_names = 1;
+
+			for(i = 0; arglist && arglist[i]; i++){
+				decl *d = maybe_args->arglist[i];
+				if(!d)
+					break;
+				if(!maybe_args){
+					have_arg_names = 0;
+					break;
+				}
+				if(!d->spel){
+					have_arg_names = 0;
+					break;
+				}
+			}
 
 			irtype_str_r(buf, t->ref, NULL);
 			strbuf_fixed_printf(buf, "(");
 
 			for(i = 0; arglist && arglist[i]; i++){
-				const char *sp;
-
 				if(!first)
 					strbuf_fixed_printf(buf, ", ");
 
 				irtype_str_r(buf, arglist[i]->ref, NULL);
 
-				if(maybe_args){
-					sp = decl_asm_spel(maybe_args->arglist[i]);
-					if(sp)
-						strbuf_fixed_printf(buf, " $%s", sp);
+				if(have_arg_names){
+					decl *arg = maybe_args->arglist[i];
+
+					strbuf_fixed_printf(buf, " $%s", decl_asm_spel(arg));
 				}
 
 				first = 0;
