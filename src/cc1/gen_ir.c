@@ -75,10 +75,13 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 	printf("$%s = %s", decl_asm_spel(d), irtype_str_maybe_fn(d->ref, args));
 
 	if(args){
-		printf("\n{\n");
-		gen_ir_spill_args(ctx, args);
-		gen_ir_stmt(d->bits.func.code, ctx);
-		printf("}\n");
+		putchar('\n');
+		if(d->bits.func.code){
+			printf("{\n");
+			gen_ir_spill_args(ctx, args);
+			gen_ir_stmt(d->bits.func.code, ctx);
+			printf("}\n");
+		}
 	}else{
 		printf("\n");
 
