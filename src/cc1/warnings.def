@@ -42,7 +42,7 @@ X("extra-semi", parse_extra_semi)
 
 X("mixed-code-decls", mixed_code_decls)
 
-X("loss-of-precision", loss_precision)
+X("truncation", truncation)
 
 X("pad", pad)
 

@@ -164,7 +164,7 @@ static void warning_all(void)
 	warning_gnu(W_OFF);
 
 	cc1_warning.implicit_int =
-	cc1_warning.loss_precision =
+	cc1_warning.truncation =
 	cc1_warning.pad =
 	cc1_warning.tenative_init =
 	cc1_warning.shadow_global_user =
