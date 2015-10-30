@@ -698,7 +698,13 @@ irval *gen_ir_expr_cast(const expr *e, irctx *ctx)
 	irval *sub = gen_ir_expr(expr_cast_child(e), ctx);
 
 	if(expr_cast_is_lval2rval(e)){
-		const irid tmp = ctx->curval++;
+		irid tmp;
+
+		/* don't dereference functions */
+		if(type_is(expr_cast_child(e)->tree_type, type_func))
+			return sub;
+
+		tmp = ctx->curval++;
 
 		printf("$%u = load %s\n", tmp, irval_str(sub));
 
