@@ -1,0 +1,4 @@
+-Wconversion - width truncation(?)
+-Wsign-conversion - sign change
+-Wsign-compare - comparisons of different signs
+-Wfloat-conversion - loss in FP precision
