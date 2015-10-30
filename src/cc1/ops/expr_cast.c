@@ -699,14 +699,20 @@ irval *gen_ir_expr_cast(const expr *e, irctx *ctx)
 
 	if(expr_cast_is_lval2rval(e)){
 		irid tmp;
+		type *tnext = expr_cast_child(e)->tree_type;
 
-		/* don't dereference functions */
-		if(type_is(expr_cast_child(e)->tree_type, type_func))
+		/* if the pointed-to object is not an lvalue, don't deref */
+		if(type_is(tnext, type_func))
 			return sub;
 
 		tmp = ctx->curval++;
 
-		printf("$%u = load %s\n", tmp, irval_str(sub));
+		if(type_is(tnext, type_array)){
+			/* int[] -> int* */
+			printf("$%u = elem %s, i1 0\n", tmp, irval_str(sub));
+		}else{
+			printf("$%u = load %s\n", tmp, irval_str(sub));
+		}
 
 		return irval_from_id(tmp);
 	}
