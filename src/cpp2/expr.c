@@ -309,7 +309,7 @@ expr_n expr_eval(expr *e_, int *had_ident, int noop)
 				return 0;
 
 			switch(ke.bits.op.op){
-				case '*':
+				case '%':
 				case '/':
 					if(nums[1] == 0)
 						CPP_DIE("%s by zero",
