@@ -78,15 +78,21 @@ static void const_expr_deref(expr *e, consty *k)
 			}
 
 			if(k->offset < 0 || (unsigned)k->offset >= sv->len){
+				/* undefined - we define as */
 				k->type = CONST_NO;
 			}else{
-				long off = k->offset;
+				const long offset = k->offset;
 
 				UCC_ASSERT(!sv->wide, "TODO: constant wchar_t[] deref");
 
+				/* need to preserve original string for lvalue-ness -> CONST_NEED_ADDR */
 				CONST_FOLD_LEAF(k);
-				k->type = CONST_NUM;
-				k->bits.num.val.i = sv->str[off];
+				k->type = CONST_NEED_ADDR;
+				k->bits.addr.is_lbl = 1;
+				k->bits.addr.bits.lbl = sv->lbl;
+				k->offset = offset;
+
+				stringlit_use(sv); /* ensure emit */
 			}
 			break;
 		}
