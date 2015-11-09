@@ -539,6 +539,10 @@ void gen_ir_stmt_code(const stmt *s, irctx *ctx)
 		}
 
 		printf("$%s = alloca %s\n", decl_asm_spel(d), irtype_str(d->ref));
+
+		if(d->bits.var.init.expr && d->spel){
+			irval_free(gen_ir_expr(d->bits.var.init.expr, ctx));
+		}
 	}
 
 	for(titer = s->bits.code.stmts; titer && *titer; titer++){
