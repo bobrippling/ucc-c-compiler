@@ -85,6 +85,7 @@ struct decl
 	int proto_flag;
 	struct decl *proto;
 	struct decl *impl;
+	struct decl *shadowee;
 
 	struct sym *sym;
 

@@ -114,10 +114,14 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 			chk_shadow = 1;
 		}
 
-		if(chk_shadow
-		&& d->spel
-		&& (found = symtab_search_d(stab->parent, d->spel, &above_scope)))
-		{
+		found = NULL;
+		if(d->spel){
+			found = symtab_search_d(stab->parent, d->spel, &above_scope);
+			if(found)
+				d->shadowee = found;
+		}
+
+		if(chk_shadow && found){
 			char buf[WHERE_BUF_SIZ];
 			int both_func = is_func && type_is(found->ref, type_func);
 			int both_extern = decl_linkage(d) == linkage_external
