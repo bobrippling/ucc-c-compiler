@@ -537,8 +537,13 @@ void gen_ir_stmt_code(const stmt *s, irctx *ctx)
 	for(diter = symtab_decls(s->symtab); diter && *diter; diter++){
 		decl *d = *diter;
 
-		if(type_is(d->ref, type_func) || decl_store_duration_is_static(d)){
 #warning todo: static constants + string constants
+		if(type_is(d->ref, type_func)){
+			ICW("TODO: locally scoped function %s", d->spel);
+			continue;
+		}
+		if(decl_store_duration_is_static(d)){
+			ICW("TODO: string constant/complit?");
 			continue;
 		}
 
