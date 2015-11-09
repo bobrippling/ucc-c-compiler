@@ -305,28 +305,8 @@ const char *irval_str(irval *v)
 
 		case IRVAL_NAMED:
 		{
-			enum sym_type sym_type = v->bits.decl->sym->type;
-
 			assert(v->bits.decl->sym);
-
-			switch(sym_type){
-				case sym_global:
-					snprintf(buf, sizeof buf, "$%s",
-							decl_asm_spel(v->bits.decl));
-					break;
-
-				case sym_local:
-				case sym_arg:
-				{
-					const char *pre = (sym_type == sym_local ? "" : "arg_");
-
-					snprintf(buf, sizeof buf, "$%s%s",
-							pre,
-							decl_asm_spel(v->bits.decl));
-					break;
-				}
-			}
-
+			snprintf(buf, sizeof buf, "$%s", decl_asm_spel(v->bits.decl));
 			break;
 		}
 	}
