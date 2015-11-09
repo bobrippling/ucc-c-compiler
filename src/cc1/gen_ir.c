@@ -63,8 +63,8 @@ static void gen_ir_spill_args(irctx *ctx, funcargs *args)
 		decl *d = *i;
 		const char *asm_spel = decl_asm_spel(d);
 
-		printf("$arg_%s = alloca %s\n", asm_spel, irtype_str(d->ref));
-		printf("store $arg_%s, $%s\n", asm_spel, asm_spel);
+		printf("$%s = alloca %s\n", asm_spel, irtype_str(d->ref));
+		printf("store $%s, $%s\n", d->spel, asm_spel);
 	}
 }
 

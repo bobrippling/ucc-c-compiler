@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -57,8 +58,30 @@ void decl_replace_with(decl *to, decl *from)
 
 const char *decl_asm_spel(decl *d)
 {
-	if(!d->spel_asm)
-		d->spel_asm = func_mangle(d->spel, type_is(d->ref, type_func));
+	if(d->spel_asm)
+		return d->spel_asm;
+
+	/* local decls get ir-related spellings */
+	assert(d->sym);
+	switch(d->sym->type){
+			const char *type;
+		case sym_local: type = "l"; goto local_or_arg;
+		case sym_arg: type = "a"; goto local_or_arg;
+local_or_arg:
+		{
+			unsigned depth = 0;
+			decl *i;
+			for(i = d; i->shadowee; i = i->shadowee, depth++);
+
+			/* arguments always have a suffix, to not clash with the non-alloc / ir-argument */
+			d->spel_asm = ustrprintf("%s_%s_%d", type, d->spel, depth);
+			break;
+		}
+
+		case sym_global:
+				d->spel_asm = func_mangle(d->spel, type_is(d->ref, type_func));
+			break;
+	}
 
 	return d->spel_asm;
 }
