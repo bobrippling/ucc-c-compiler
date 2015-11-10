@@ -64,7 +64,7 @@ static void gen_ir_spill_args(irctx *ctx, funcargs *args)
 		const char *asm_spel = decl_asm_spel(d);
 
 		printf("$%s = alloca %s\n", asm_spel, irtype_str(d->ref));
-		printf("store $%s, $%s\n", d->spel, asm_spel);
+		printf("store $%s, $%s\n", asm_spel, d->spel);
 	}
 }
 
@@ -241,7 +241,8 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 				if(have_arg_names){
 					decl *arg = maybe_args->arglist[i];
 
-					strbuf_fixed_printf(buf, " $%s", decl_asm_spel(arg));
+					/* use arg->spel, as decl_asm_spel() is used for the alloca-version */
+					strbuf_fixed_printf(buf, " $%s", arg->spel);
 				}
 
 				first = 0;
