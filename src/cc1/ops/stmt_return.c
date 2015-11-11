@@ -104,16 +104,23 @@ void gen_stmt_return(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_return(const stmt *s, irctx *ctx)
 {
+	decl *const in_func = symtab_func(s->symtab);
+	int const void_return = type_is_void(type_called(in_func->ref, NULL));
 	irval *ret_exp = s->expr ? gen_ir_expr(s->expr, ctx) : NULL;
 
 	ICW("TODO: scope leave");
 	ICW("TODO: check inlining");
 	ICW("TODO: ret dummy value if undef and void if void-fn");
 
-	if(ret_exp)
-		printf("ret %s\n", irval_str(ret_exp));
-	else
+	if(void_return){
+		/* ignore ret_exp */
 		printf("ret void\n");
+	}else if(ret_exp){
+		printf("ret %s\n", irval_str(ret_exp));
+	}else{
+		/* empty return, non-void func */
+		printf("ret undef\n");
+	}
 }
 
 void dump_stmt_return(const stmt *s, dump *ctx)
