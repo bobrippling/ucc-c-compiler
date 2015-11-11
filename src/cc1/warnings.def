@@ -242,6 +242,8 @@ X("undefined-internal", undef_internal)
 
 X("unnamed-struct-memb", unnamed_struct_memb)
 
+X("dangling-else", dangling_else)
+
 X("vla", vla)
 X("c89-vla", c89_vla)
 
