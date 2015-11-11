@@ -72,6 +72,7 @@ struct decl
 			/* can't inline static-&& expressions:
 			 * static void *x = &&lbl; */
 			int contains_static_label_addr;
+			int control_returns_undef; /* e.g. int f(){} */
 		} func;
 	} bits;
 

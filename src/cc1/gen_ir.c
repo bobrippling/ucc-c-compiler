@@ -80,6 +80,12 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 			printf("{\n");
 			gen_ir_spill_args(ctx, args);
 			gen_ir_stmt(d->bits.func.code, ctx);
+
+			/* if non-void function and function may fall off the end, dummy a return */
+			if(d->bits.func.control_returns_undef){
+				printf("ret undef\n");
+			}
+
 			printf("}\n");
 		}
 	}else{

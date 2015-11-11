@@ -1174,6 +1174,7 @@ void fold_global_func(decl *func_decl)
 				fold_stmt(zret);
 
 			}else if(!type_is_void(func_ret)){
+				func_decl->bits.func.control_returns_undef = 1;
 				warn_passable_func(func_decl);
 			}
 		}
