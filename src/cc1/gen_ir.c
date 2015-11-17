@@ -72,6 +72,9 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 {
 	funcargs *args = type_is(d->ref, type_func) ? type_funcargs(d->ref) : NULL;
 
+	if((d->store & STORE_MASK_STORE) == store_typedef)
+		return;
+
 	printf("$%s = %s", decl_asm_spel(d), irtype_str_maybe_fn(d->ref, args));
 
 	if(args){
