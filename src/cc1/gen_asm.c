@@ -322,7 +322,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		cc1_octx->generated_decls = dynmap_new(decl *, /*ref*/NULL, decl_hash);
 	(void)dynmap_set(decl *, int *, cc1_octx->generated_decls, d, (int *)NULL);
 
-	if(decl_asm_spel(d)){
+	if(d->spel_asm){
 		if(!cc1_octx->spel_to_fndecl){
 			cc1_octx->spel_to_fndecl = dynmap_new(
 					const char *, strcmp, dynmap_strhash);
