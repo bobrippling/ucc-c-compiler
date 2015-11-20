@@ -706,7 +706,7 @@ type *type_add_type_str(type *r,
 					/* e is always expr_sizeof() */
 					is_type ? "" : "expr: ",
 					is_type ? type_to_str_r_spel_opts(buf, e->tree_type, NULL, TY_STR_NOOPT)
-						: e->expr->f_str());
+						: expr_str_friendly(e->expr));
 
 			/* don't show aka for typeof types - it's there already */
 			of = is_type ? NULL : e->tree_type;

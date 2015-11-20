@@ -113,7 +113,7 @@ void symtab_check_static_asserts(symtable *stab)
 		if(!type_is_integral(sa->e->tree_type)){
 			warn_at_print_error(&sa->e->where,
 					"static assert: not an integral expression (%s)",
-					sa->e->f_str());
+					expr_str_friendly(sa->e));
 			fold_had_error = 1;
 			continue;
 		}
@@ -123,7 +123,7 @@ void symtab_check_static_asserts(symtable *stab)
 		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num)){
 			warn_at_print_error(&sa->e->where,
 					"static assert: not an integer constant expression (%s)",
-					sa->e->f_str());
+					expr_str_friendly(sa->e));
 			fold_had_error = 1;
 			continue;
 		}
@@ -134,7 +134,7 @@ void symtab_check_static_asserts(symtable *stab)
 
 		}else if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
 			fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
-					where_str(&sa->e->where), sa->e->f_str(), sa->s);
+					where_str(&sa->e->where), expr_str_friendly(sa->e), sa->s);
 		}
 	}
 }

@@ -317,6 +317,8 @@ expr *expr_skip_lval2rval(expr *);
 expr *expr_skip_implicit_casts(expr *);
 expr *expr_skip_generated_casts(expr *);
 
+const char *expr_str_friendly(expr *);
+
 decl *expr_to_declref(expr *e, const char **whynot);
 
 #endif
