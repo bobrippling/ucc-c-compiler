@@ -16,6 +16,7 @@
 #include "cc1.h" /* IS_32_BIT() */
 #include "sue.h"
 #include "funcargs.h"
+#include "str.h" /* literal_print() */
 
 #include "gen_ir.h"
 #include "gen_ir_internal.h"
@@ -26,7 +27,8 @@ struct irval
 	{
 		IRVAL_LITERAL,
 		IRVAL_ID,
-		IRVAL_NAMED
+		IRVAL_NAMED,
+		IRVAL_LBL
 	} type;
 
 	union
@@ -38,6 +40,7 @@ struct irval
 		} lit;
 		irid id;
 		decl *decl;
+		const char *lbl;
 	} bits;
 };
 
@@ -309,6 +312,10 @@ const char *irval_str(irval *v)
 			break;
 		}
 
+		case IRVAL_LBL:
+			snprintf(buf, sizeof buf, "$%s", v->bits.lbl);
+			break;
+
 		case IRVAL_ID:
 			snprintf(buf, sizeof buf, "$%u", v->bits.id);
 			break;
@@ -355,9 +362,10 @@ irval *irval_from_sym(irctx *ctx, struct sym *sym)
 
 irval *irval_from_lbl(irctx *ctx, char *lbl)
 {
+	irval *v = irval_new(IRVAL_LBL);
 	(void)ctx;
-	(void)lbl;
-	assert(0 && "TODO: label");
+	v->bits.lbl = lbl;
+	return v;
 }
 
 void irval_free(irval *v)
