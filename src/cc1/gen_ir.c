@@ -103,11 +103,34 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 	}
 }
 
+static void gen_ir_stringlit(const stringlit *lit, int predeclare)
+{
+	printf("$%s = [i%c x 0]", lit->lbl, lit->wide ? '4' : '1', lit->lbl);
+
+	if(!predeclare){
+		printf(" \"");
+		literal_print(stdout, lit->str, lit->len);
+		printf("\"");
+	}
+	printf("\n");
+}
+
+static void gen_ir_stringlits(dynmap *litmap, int predeclare)
+{
+	const stringlit *lit;
+	size_t i;
+	for(i = 0; (lit = dynmap_value(stringlit *, litmap, i)); i++)
+		if(lit->use_cnt > 0 || predeclare)
+			gen_ir_stringlit(lit, predeclare);
+}
+
 void gen_ir(symtable_global *globs)
 {
 	irctx ctx = { 0 };
 	symtable_gasm **iasm = globs->gasms;
 	decl **diter;
+
+	gen_ir_stringlits(globs->literals, 1);
 
 	for(diter = symtab_decls(&globs->stab); diter && *diter; diter++){
 		decl *d = *diter;
@@ -121,6 +144,8 @@ void gen_ir(symtable_global *globs)
 
 		gen_ir_decl(d, &ctx);
 	}
+
+	gen_ir_stringlits(globs->literals, 0); /* must be after code-gen - use_cnt */
 }
 
 static const char *irtype_btype_str(const btype *bt)
