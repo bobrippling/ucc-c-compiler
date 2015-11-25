@@ -253,13 +253,14 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 			int have_arg_names = 1;
 
 			for(i = 0; arglist && arglist[i]; i++){
-				decl *d = maybe_args->arglist[i];
-				if(!d)
-					break;
+				decl *d;
 				if(!maybe_args){
 					have_arg_names = 0;
 					break;
 				}
+				d = maybe_args->arglist[i];
+				if(!d)
+					break;
 				if(!d->spel){
 					have_arg_names = 0;
 					break;
