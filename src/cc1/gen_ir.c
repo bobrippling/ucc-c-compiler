@@ -251,6 +251,7 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 			int first = 1;
 			decl **arglist = t->bits.func.args->arglist;
 			int have_arg_names = 1;
+			int variadic_or_any;
 
 			for(i = 0; arglist && arglist[i]; i++){
 				decl *d;
@@ -286,7 +287,12 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 				first = 0;
 			}
 
-			strbuf_fixed_printf(buf, ")");
+			variadic_or_any = maybe_args
+				&& (FUNCARGS_EMPTY_NOVOID(maybe_args) || maybe_args->variadic);
+
+			strbuf_fixed_printf(buf, "%s%s)",
+					variadic_or_any && maybe_args->arglist ? ", " : "",
+					variadic_or_any ? "..." : "");
 			break;
 		}
 
