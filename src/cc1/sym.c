@@ -24,20 +24,21 @@ static symtable *symtab_add_target(symtable *symtab)
 	return symtab;
 }
 
-static void symtab_add_to_scope2(
-		symtable *symtab, decl *d, int prepend)
+static void symtab_add_to_scope2(symtable *symtab, decl *d)
 {
 	symtab = symtab_add_target(symtab);
 
-	if(prepend)
-		dynarray_prepend(&symtab->decls, d);
-	else
-		dynarray_add(&symtab->decls, d);
+	dynarray_add(&symtab->decls, d);
 }
 
 void symtab_add_to_scope(symtable *symtab, decl *d)
 {
 	symtab_add_to_scope2(symtab, d, 0);
+}
+
+void symtab_add_to_scope_pre(symtable *symtab, decl *d)
+{
+	symtab_add_to_scope2(symtab, d);
 }
 
 void symtab_add_sue(symtable *symtab, struct_union_enum_st *sue)
@@ -54,13 +55,6 @@ sym *sym_new(decl *d, enum sym_type t)
 	s->decl = d;
 	d->sym  = s;
 	s->type = t;
-	return s;
-}
-
-sym *sym_new_and_prepend_decl(symtable *stab, decl *d, enum sym_type t)
-{
-	sym *s = sym_new(d, t);
-	symtab_add_to_scope2(stab, d, 1);
 	return s;
 }
 

@@ -97,7 +97,6 @@ struct symtable_global
 };
 
 sym *sym_new(decl *d, enum sym_type t);
-sym *sym_new_and_prepend_decl(symtable *, decl *d, enum sym_type t);
 
 symtable_global *symtabg_new(where *);
 
