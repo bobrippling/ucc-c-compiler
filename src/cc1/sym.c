@@ -24,11 +24,23 @@ static symtable *symtab_add_target(symtable *symtab)
 	return symtab;
 }
 
-static void symtab_add_to_scope2(symtable *symtab, decl *d)
+static void symtab_add_to_scope2(symtable *symtab, decl *d, int m1)
 {
 	symtab = symtab_add_target(symtab);
+	if(m1){
+		size_t n = dynarray_count(symtab->decls);
+		decl *last;
 
-	dynarray_add(&symtab->decls, d);
+		assert(n > 0 && "can't insert in empty scope");
+
+		/* "move" last to the end, then replace [n-1] with 'd' */
+		last = symtab->decls[n - 1];
+		dynarray_add(&symtab->decls, last);
+		symtab->decls[n - 1] = d;
+
+	}else{
+		dynarray_add(&symtab->decls, d);
+	}
 }
 
 void symtab_add_to_scope(symtable *symtab, decl *d)
@@ -38,7 +50,7 @@ void symtab_add_to_scope(symtable *symtab, decl *d)
 
 void symtab_add_to_scope_pre(symtable *symtab, decl *d)
 {
-	symtab_add_to_scope2(symtab, d);
+	symtab_add_to_scope2(symtab, d, 1);
 }
 
 void symtab_add_sue(symtable *symtab, struct_union_enum_st *sue)

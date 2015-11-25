@@ -176,7 +176,7 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **psp)
 	df->sym->type = sym_global;
 
 	/* ensure code-gen of implicit symbol, e.g. forward decl, etc */
-	symtab_add_to_scope(symtab_root(stab), df);
+	symtab_add_to_scope_pre(symtab_root(stab), df);
 
 	e->expr->bits.ident.bits.ident.sym = df->sym;
 	e->expr->tree_type = func_ty;

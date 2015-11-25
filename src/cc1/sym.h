@@ -124,6 +124,7 @@ int symtab_nested_internal(symtable *parent, symtable *nest);
 unsigned symtab_decl_bytes(symtable *, unsigned const vla_cost);
 
 void symtab_add_to_scope(symtable *, decl *);
+void symtab_add_to_scope_pre(symtable *, decl *); /* add at n-2 */
 void symtab_add_sue(symtable *, struct struct_union_enum_st *);
 #define symtab_decls(stab) ((stab)->decls)
 
