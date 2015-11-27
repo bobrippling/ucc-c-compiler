@@ -528,9 +528,8 @@ void gen_stmt_code(const stmt *s, out_ctx *octx)
 	gen_stmt_code_m1(s, 0, pushed_lbls, octx);
 }
 
-void gen_ir_stmt_code(const stmt *s, irctx *ctx)
+static void gen_ir_block_decls(const stmt *s, irctx *ctx)
 {
-	stmt **titer;
 	decl **diter;
 
 	/* gen_block_decls() */
@@ -553,6 +552,13 @@ void gen_ir_stmt_code(const stmt *s, irctx *ctx)
 			irval_free(gen_ir_expr(d->bits.var.init.expr, ctx));
 		}
 	}
+}
+
+void gen_ir_stmt_code(const stmt *s, irctx *ctx)
+{
+	stmt **titer;
+
+	gen_ir_block_decls(s, ctx);
 
 	for(titer = s->bits.code.stmts; titer && *titer; titer++){
 		gen_ir_stmt(*titer, ctx);
