@@ -1,6 +1,8 @@
 #ifndef GEN_IR_H
 #define GEN_IR_H
 
+#define IRTODO(...) /*ICW(__VA_ARGS__)*/
+
 void gen_ir(symtable_global *);
 
 typedef struct irctx irctx;

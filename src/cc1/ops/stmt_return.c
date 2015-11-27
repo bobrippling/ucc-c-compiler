@@ -108,9 +108,9 @@ void gen_ir_stmt_return(const stmt *s, irctx *ctx)
 	int const void_return = type_is_void(type_called(in_func->ref, NULL));
 	irval *ret_exp = s->expr ? gen_ir_expr(s->expr, ctx) : NULL;
 
-	ICW("TODO: scope leave");
-	ICW("TODO: check inlining");
-	ICW("TODO: ret dummy value if undef and void if void-fn");
+	IRTODO("scope leave");
+	IRTODO("check inlining");
+	IRTODO("ret dummy value if undef and void if void-fn");
 
 	if(void_return){
 		/* ignore ret_exp */

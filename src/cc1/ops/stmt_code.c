@@ -539,11 +539,11 @@ void gen_ir_stmt_code(const stmt *s, irctx *ctx)
 
 #warning todo: static constants + string constants
 		if(type_is(d->ref, type_func)){
-			ICW("TODO: locally scoped function %s", d->spel);
+			IRTODO("locally scoped function %s", d->spel);
 			continue;
 		}
 		if(decl_store_duration_is_static(d)){
-			ICW("TODO: string constant/complit?");
+			IRTODO("string constant/complit?");
 			continue;
 		}
 
@@ -558,7 +558,7 @@ void gen_ir_stmt_code(const stmt *s, irctx *ctx)
 		gen_ir_stmt(*titer, ctx);
 	}
 
-	ICW("TODO: gen block decls finish");
+	IRTODO("gen block decls finish");
 }
 
 void dump_stmt_code(const stmt *s, dump *ctx)

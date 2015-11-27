@@ -717,7 +717,7 @@ irval *gen_ir_expr_cast(const expr *e, irctx *ctx)
 		return irval_from_id(tmp);
 	}
 
-	ICW("TODO: cast");
+	IRTODO("cast");
 
 	return sub;
 }

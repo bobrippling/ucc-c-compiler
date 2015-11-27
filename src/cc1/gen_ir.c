@@ -98,7 +98,7 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 		printf("\n");
 
 		if(!d->bits.var.init.compiler_generated){
-			ICW("TODO: ir init for %s\n", d->spel);
+			IRTODO("ir init for %s\n", d->spel);
 		}
 	}
 }
@@ -136,7 +136,7 @@ void gen_ir(symtable_global *globs)
 		decl *d = *diter;
 
 		while(iasm && d == (*iasm)->before){
-			ICW("TODO: emit global __asm__");
+			IRTODO("emit global __asm__");
 
 			if(!*++iasm)
 				iasm = NULL;

@@ -20,7 +20,7 @@ void gen_stmt_continue(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_continue(const stmt *s, irctx *ctx)
 {
-	ICW("TODO: scope leave");
+	IRTODO("scope leave");
 	ICE("TODO: continue");
 }
 
