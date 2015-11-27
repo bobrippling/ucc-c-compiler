@@ -236,16 +236,12 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 				case mode_compile:
 				case mode_assemb:
 				{
-					int len;
 					const char *base = strrchr(files[i].in.fname, '/');
+					const char *suffix = (mode == mode_compile ? "s" : "o");
 					if(!base++)
 						base = files[i].in.fname;
 
-					new = ustrdup(base);
-					len = strlen(new);
-					if(len > 2 && new[len - 2] == '.')
-						new[len - 1] = mode == mode_compile ? 's' : 'o';
-					/* else stick with what we were given */
+					new = ustrprintf("%s.%s", base, suffix);
 					break;
 				}
 			}
