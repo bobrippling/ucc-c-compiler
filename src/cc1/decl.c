@@ -69,12 +69,26 @@ const char *decl_asm_spel(decl *d)
 		case sym_arg: type = "a"; goto local_or_arg;
 local_or_arg:
 		{
-			unsigned depth = 0;
-			decl *i;
-			for(i = d; i->shadowee; i = i->shadowee, depth++);
+			unsigned uniq = d->shadow_uniq;
+
+			/* { int i; } { int i; }
+			 * register an int on the top-most unshadowed decl,
+			 * which shadowers use, instead
+			 */
+			if(!uniq){
+				if(d->shadowee){
+					/* we are a child - take a number */
+					decl *i;
+					for(i = d; i->shadowee; i = i->shadowee);
+					uniq = ++i->shadow_uniq;
+					d->shadow_uniq = uniq;
+				}else{
+					/* we are top-level, zero is ours */
+				}
+			}
 
 			/* arguments always have a suffix, to not clash with the non-alloc / ir-argument */
-			d->spel_asm = ustrprintf("%s_%s_%d", type, d->spel, depth);
+			d->spel_asm = ustrprintf("%s_%s_%d", type, d->spel, uniq);
 			break;
 		}
 

@@ -87,6 +87,7 @@ struct decl
 	struct decl *proto;
 	struct decl *impl;
 	struct decl *shadowee;
+	unsigned shadow_uniq;
 
 	struct sym *sym;
 
