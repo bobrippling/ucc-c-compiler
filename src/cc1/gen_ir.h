@@ -21,6 +21,7 @@ irval *irval_from_l(type *, integral_t);
 struct sym;
 irval *irval_from_sym(irctx *, struct sym *);
 irval *irval_from_lbl(irctx *, char *);
+irval *irval_from_noop(void);
 
 void irval_free(irval *);
 void irval_free_abi(void *);

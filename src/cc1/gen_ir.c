@@ -400,6 +400,11 @@ irval *irval_from_lbl(irctx *ctx, char *lbl)
 	return v;
 }
 
+irval *irval_from_noop(void)
+{
+	return irval_from_l(NULL, 0);
+}
+
 void irval_free(irval *v)
 {
 	free(v);

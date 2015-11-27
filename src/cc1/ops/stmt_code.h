@@ -32,3 +32,5 @@ void gen_stmt_code_m1_finish(
 		const stmt *s,
 		struct out_dbg_lbl *pushed_lbls[ucc_static_param 2],
 		out_ctx *octx);
+
+void gen_ir_stmt_code_m1(const stmt *s, struct irctx *ctx, const int m1);

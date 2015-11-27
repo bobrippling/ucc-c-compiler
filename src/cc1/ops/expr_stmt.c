@@ -46,20 +46,31 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */
 }
 
+static const expr *expr_stmt_last(const expr *e)
+{
+	size_t n = dynarray_count(e->code->bits.code.stmts);
+	stmt *last;
+
+	if(n == 0)
+		return NULL;
+
+	last = e->code->bits.code.stmts[n-1];
+	if(!stmt_kind(last, expr))
+		return NULL;
+
+	return last->expr;
+}
+
 const out_val *gen_expr_stmt(const expr *e, out_ctx *octx)
 {
-	size_t n;
 	const out_val *ret;
 	struct out_dbg_lbl *pushed_lbls[2];
+	const expr *last;
 
 	gen_stmt_code_m1(e->code, 1, pushed_lbls, octx);
 
-	n = dynarray_count(e->code->bits.code.stmts);
-
-	if(n > 0 && stmt_kind(e->code->bits.code.stmts[n-1], expr))
-		ret = gen_expr(e->code->bits.code.stmts[n - 1]->expr, octx);
-	else
-		ret = out_new_noop(octx);
+	last = expr_stmt_last(e);
+	ret = (last ? gen_expr(last, octx) : out_new_noop(octx));
 
 	/* this is skipped by gen_stmt_code_m1( ... 1, ... ) */
 	gen_stmt_code_m1_finish(e->code, pushed_lbls, octx);
@@ -69,8 +80,15 @@ const out_val *gen_expr_stmt(const expr *e, out_ctx *octx)
 
 irval *gen_ir_expr_stmt(const expr *e, irctx *ctx)
 {
-	ICE("TODO");
-	return 0;
+	const expr *last;
+
+	gen_ir_stmt_code_m1(e->code, ctx, 1);
+
+	last = expr_stmt_last(e);
+	if(!last)
+		return irval_from_noop();
+
+	return gen_ir_expr(last, ctx);
 }
 
 void dump_expr_stmt(const expr *e, dump *ctx)

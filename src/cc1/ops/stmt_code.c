@@ -554,7 +554,7 @@ static void gen_ir_block_decls(const stmt *s, irctx *ctx)
 	}
 }
 
-static void gen_ir_stmt_code_m1(const stmt *s, irctx *ctx, const int m1)
+void gen_ir_stmt_code_m1(const stmt *s, irctx *ctx, const int m1)
 {
 	stmt **titer;
 
