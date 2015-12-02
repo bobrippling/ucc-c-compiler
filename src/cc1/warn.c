@@ -107,7 +107,7 @@ int cc1_warn_at_w(
 		where = where_cc1_current(&backup);
 
 	/* don't emit warnings from system headers */
-	if(where_in_sysheader(where))
+	if(!cc1_warning.system_headers && where_in_sysheader(where))
 		return 0;
 
 	va_start(l, fmt);
@@ -188,6 +188,7 @@ static void warning_all(void)
 	cc1_warning.switch_default =
 	cc1_warning.switch_default_covered =
 	cc1_warning.sym_never_read =
+	cc1_warning.system_headers =
 		W_OFF;
 }
 

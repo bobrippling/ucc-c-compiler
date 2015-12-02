@@ -251,3 +251,5 @@ X("__func__init", x__func__init)
 X("__func__outside-fn", x__func__outsidefn)
 
 X("unknown-warning-option", unknown_warning_option)
+
+X("system-headers", system_headers)
