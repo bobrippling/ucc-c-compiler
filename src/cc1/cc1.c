@@ -521,8 +521,10 @@ int main(int argc, char **argv)
 		}else if(!strcmp(argv[i], "-w")){
 			warnings_set(W_OFF);
 
-		}else if(!strcmp(argv[i], "-pedantic")){
-			warning_pedantic(W_WARN);
+		}else if(!strcmp(argv[i], "-pedantic") || !strcmp(argv[i], "-pedantic-errors")){
+			const int errors = (argv[i][9] != '\0');
+
+			warning_pedantic(errors ? W_ERROR : W_WARN);
 
 		}else if(!strcmp(argv[i], "-pedantic-errors")){
 			warning_pedantic(W_ERROR);
