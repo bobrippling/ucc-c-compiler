@@ -430,6 +430,7 @@ static void set_sanitize_error(const char *argv0, const char *handler)
 	if(!strcmp(handler, "trap")){
 		/* fine */
 	}else if(!strncmp(handler, "call=", 5)){
+		/* FIXME: -ftrap-function=... like clang / gcc(?) */
 		cc1_sanitize_handler_fn = ustrdup(handler + 5);
 
 		if(!*cc1_sanitize_handler_fn){
