@@ -302,6 +302,11 @@ void compile(char *in, char *out, char **args)
 	runner_1(1, "cc1/cc1", in, out, args);
 }
 
+void ir(char *in, char *out, char **args)
+{
+	runner_1(1, "../../../cg/ir", in, out, args);
+}
+
 void assemble(char *in, char *out, char **args)
 {
 	char **copy = NULL;

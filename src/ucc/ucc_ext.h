@@ -9,6 +9,7 @@ void cat(char *in, char *out, int append);
 
 void preproc( char *in,    char *out, char **args);
 void compile( char *in,    char *out, char **args);
+void ir(      char *in,    char *out, char **args);
 void assemble(char *in,    char *out, char **args);
 void link_all(char **objs, char *out, char **args);
 void dsym(char *exe);

@@ -27,10 +27,11 @@ enum mode
 {
 	mode_preproc,
 	mode_compile,
+	mode_ir,
 	mode_assemb,
 	mode_link
+#define mode_COUNT (mode_link + 1)
 };
-#define MODE_ARG_CH(m) ("ESc\0"[m])
 
 struct
 {
@@ -49,7 +50,7 @@ struct cc_file
 		int fd;
 	} in;
 
-	struct fd_name_pair preproc, compile, assemb;
+	struct fd_name_pair preproc, compile, ir, assemb;
 
 	struct fd_name_pair out;
 
@@ -58,6 +59,7 @@ struct cc_file
 #define FILE_IN_MODE(f)        \
 ((f)->preproc.fname ? mode_preproc : \
  (f)->compile.fname ? mode_compile : \
+ (f)->ir.fname      ? mode_ir      : \
  (f)->assemb.fname  ? mode_assemb  : \
  mode_link)
 
@@ -67,6 +69,18 @@ static int gdebug = 0, generated_temp_obj = 0;
 const char *argv0;
 char *wrapper;
 int fsystem_cpp;
+
+static const char *mode_arg_str(enum mode mode)
+{
+	switch(mode){
+		case mode_preproc: return "E";
+		case mode_compile: return "S";
+		case mode_ir: return "emit ir";
+		case mode_assemb: return "c";
+		case mode_link: break;
+	}
+	return "";
+}
 
 static void unlink_files(void)
 {
@@ -96,7 +110,7 @@ static void tmpfilenam(struct fd_name_pair *pair)
 	pair->fd = fd;
 }
 
-static void create_file(struct cc_file *file, enum mode mode, char *in)
+static void create_file(struct cc_file *file, enum mode mode, char *in, int via_ir)
 {
 	char *ext;
 
@@ -108,6 +122,8 @@ static void create_file(struct cc_file *file, enum mode mode, char *in)
 			goto preproc;
 		case mode_compile:
 			goto compile;
+		case mode_ir:
+			goto ir;
 		case mode_assemb:
 			goto assemb;
 		case mode_link:
@@ -124,6 +140,11 @@ static void create_file(struct cc_file *file, enum mode mode, char *in)
 			}
 
 	ext = strrchr(in, '.');
+	if(ext && !strcmp(ext + 1, "ir")){
+		via_ir = 1;
+		goto ir;
+	}
+
 	if(ext && ext[1] && !ext[2]){
 		switch(ext[1]){
 preproc:
@@ -138,6 +159,10 @@ assemb:
 				file->preproc_asm = 1;
 				FILL_WITH_TMP(preproc); /* preprocess .S assembly files by default */
 after_compile:
+ir:
+				if(via_ir){
+					FILL_WITH_TMP(ir);
+				}
 			case 's':
 				if(NEED_DSYM && !file->assemb.fname)
 					generated_temp_obj = 1;
@@ -161,7 +186,7 @@ after_compile:
 	}
 }
 
-static void gen_obj_file(struct cc_file *file, char **args[4], enum mode mode)
+static void gen_obj_file(struct cc_file *file, char **args[], enum mode mode)
 {
 	char *in = file->in.fname;
 
@@ -188,6 +213,15 @@ static void gen_obj_file(struct cc_file *file, char **args[4], enum mode mode)
 	if(mode == mode_compile)
 		return;
 
+	if(file->ir.fname){
+		ir(in, file->ir.fname, args[mode_ir]);
+
+		in = file->ir.fname;
+	}
+
+	if(mode == mode_ir)
+		return;
+
 	if(file->assemb.fname){
 		assemble(in, file->assemb.fname, args[mode_assemb]);
 	}
@@ -195,7 +229,7 @@ static void gen_obj_file(struct cc_file *file, char **args[4], enum mode mode)
 
 static void rename_files(struct cc_file *files, int nfiles, char *output, enum mode mode)
 {
-	const char mode_ch = MODE_ARG_CH(mode);
+	const char *mode_str = mode_arg_str(mode);
 	int i;
 
 	for(i = 0; i < nfiles; i++){
@@ -204,8 +238,8 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 		char *new;
 
 		if(mode < FILE_IN_MODE(&files[i])){
-			fprintf(stderr, "input \"%s\" unused with -%c present\n",
-					files[i].in.fname, mode_ch);
+			fprintf(stderr, "input \"%s\" unused with -%s present\n",
+					files[i].in.fname, mode_str);
 			continue;
 		}
 
@@ -215,8 +249,8 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 				if(files[i].preproc.fname)
 					cat(files[i].preproc.fname, output, i);
 				continue;
-			}else if(mode == mode_compile && !strcmp(output, "-")){
-				/* -S -o- */
+			}else if((mode == mode_compile || mode == mode_ir) && !strcmp(output, "-")){
+				/* -S -o-, -emit ir -o-  */
 				if(files[i].compile.fname)
 					cat(files[i].compile.fname, NULL, 0);
 				continue;
@@ -233,11 +267,19 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 						cat(files[i].preproc.fname, NULL, 0);
 					continue;
 
+				case mode_ir:
 				case mode_compile:
 				case mode_assemb:
 				{
 					const char *base = strrchr(files[i].in.fname, '/');
-					const char *suffix = (mode == mode_compile ? "s" : "o");
+					const char *suffix;
+					switch(mode){
+						case mode_compile: suffix = "s"; break;
+						case mode_assemb:  suffix = "o"; break;
+						case mode_ir:      suffix = "ir"; break;
+						default: assert(0);
+					}
+
 					if(!base++)
 						base = files[i].in.fname;
 
@@ -253,12 +295,13 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 	}
 }
 
-static void process_files(enum mode mode, char **inputs, char *output, char **args[4], char *backend)
+static void process_files(enum mode mode, char **inputs, char *output, char **args[], char *backend)
 {
 	const int ninputs = dynarray_count(inputs);
 	int i;
 	struct cc_file *files;
 	char **links = NULL;
+	int const via_ir = backend && !strcmp(backend, "ir");
 
 	files = umalloc(ninputs * sizeof *files);
 
@@ -272,7 +315,7 @@ static void process_files(enum mode mode, char **inputs, char *output, char **ar
 	}
 
 	for(i = 0; i < ninputs; i++){
-		create_file(&files[i], mode, inputs[i]);
+		create_file(&files[i], mode, inputs[i], via_ir);
 
 		gen_obj_file(&files[i], args, mode);
 
@@ -379,7 +422,7 @@ static void print_search_dirs_and_exit(
 	exit(0);
 }
 
-static void pass_warning(char **args[4], const char *arg)
+static void pass_warning(char **args[], const char *arg)
 {
 	enum warning_owner owner;
 
@@ -409,7 +452,7 @@ int main(int argc, char **argv)
 	int print_search_dirs = 0;
 	char **includes = NULL;
 	char **inputs = NULL;
-	char **args[4] = { 0 };
+	char **args[mode_COUNT] = { 0 };
 	char *output = NULL;
 	char *backend = NULL;
 	const char **isystems = NULL;
@@ -461,6 +504,7 @@ int main(int argc, char **argv)
 							MAP('c', mode_compile);
 							MAP('a', mode_assemb);
 							MAP('l', mode_link);
+							MAP('i', mode_ir);
 #undef MAP
 							default:
 								fprintf(stderr, "argument \"%s\" assumed to be for cc1\n", arg);
@@ -685,13 +729,13 @@ input:
 	{
 		const int ninputs = dynarray_count(inputs);
 
-		if(output && ninputs > 1 && (mode == mode_compile || mode == mode_assemb))
-			die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(mode));
+		if(output && ninputs > 1 && mode != mode_preproc && mode != mode_link)
+			die("can't specify '-o' with '-%s' and an output", mode_arg_str(mode));
 
 		if(syntax_only){
 			if(output || mode != mode_link)
-				die("-%c specified in syntax-only mode",
-						output ? 'o' : MODE_ARG_CH(mode));
+				die("-%s specified in syntax-only mode",
+						output ? "o" : mode_arg_str(mode));
 
 			mode = mode_compile;
 			output = "/dev/null";
@@ -707,10 +751,16 @@ input:
 	/* other case is -S, which is handled in rename_files */
 
 	if(backend){
-		/* -emit=... stops early */
-		mode = mode_compile;
-		if(!output)
-			output = "-";
+		/* -emit=... wrangling */
+		if(!strcmp(backend, "style")
+		|| !strcmp(backend, "print")
+		|| !strcmp(backend, "dump"))
+		{
+			/* stop short */
+			mode = mode_compile;
+			if(!output)
+				output = "-";
+		}
 	}
 
 	/* default include paths */
@@ -748,7 +798,7 @@ input:
 	/* got arguments, a mode, and files to link */
 	process_files(mode, inputs, output, args, backend);
 
-	for(i = 0; i < 4; i++)
+	for(i = 0; i < mode_COUNT; i++)
 		dynarray_free(char **, args[i], free);
 	dynarray_free(char **, inputs, NULL);
 
