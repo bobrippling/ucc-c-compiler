@@ -818,6 +818,10 @@ int main(int argc, char **argv)
 					ccdie(0, "open %s:", argv[i]);
 					goto out;
 				}
+				if(!freopen(argv[i], "w", stdout)){
+					ccdie(0, "open %s:", argv[i]);
+					goto out;
+				}
 			}
 
 		}else if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
