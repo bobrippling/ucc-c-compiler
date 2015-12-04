@@ -221,6 +221,41 @@ static const char *irtype_btype_str(const btype *bt)
 	}
 }
 
+const char *ir_op_str(enum op_type op, int is_unary)
+{
+	switch(op){
+		case op_multiply: return "mul";
+		case op_divide:   return "div";
+		case op_modulus:  return "mod";
+		case op_plus:     return "add";
+		case op_minus:    return "sub";
+		case op_xor:      return "xor";
+		case op_or:       return "or";
+		case op_and:      return "and";
+		case op_shiftl:   return "shl";
+		case op_shiftr:   return "TODO: RSHIFT"; /* FIXME? arith vs. logical */
+
+		case op_eq:       return "eq";
+		case op_ne:       return "ne";
+		case op_le:       return "le";
+		case op_lt:       return "lt";
+		case op_ge:       return "ge";
+		case op_gt:       return "gt";
+
+		case op_not:
+			assert(0 && "operator! should use cmp with zero");
+		case op_bnot:
+			assert(0 && "operator~ should use xor with -1");
+
+		case op_orsc:
+		case op_andsc:
+			assert(0 && "invalid op string (shortcircuit)");
+
+		case op_unknown:
+			assert(0 && "unknown op");
+	}
+}
+
 static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 {
 	t = type_skip_all(t);

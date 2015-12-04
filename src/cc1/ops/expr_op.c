@@ -1262,7 +1262,7 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 	lhs = gen_ir_expr(e->lhs, ctx);
 
 	if(!e->rhs){
-		printf("$%u = %s %s\n", evali, op_to_str(e->bits.op.op), irval_str(lhs));
+		printf("$%u = %s %s\n", evali, ir_op_str(e->bits.op.op, 1), irval_str(lhs));
 	}else{
 		irval *rhs = gen_ir_expr(e->rhs, ctx);
 
@@ -1270,7 +1270,7 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 
 		printf("$%u = %s %s, ",
 				evali,
-				op_to_str(e->bits.op.op),
+				ir_op_str(e->bits.op.op, 0),
 				irval_str(lhs));
 		printf("%s\n", irval_str(rhs));
 	}
