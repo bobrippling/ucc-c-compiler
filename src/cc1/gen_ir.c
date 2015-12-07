@@ -56,6 +56,21 @@ void gen_ir_stmt(const struct stmt *stmt, irctx *ctx)
 	stmt->f_ir(stmt, ctx);
 }
 
+void gen_ir_comment(irctx *ctx, const char *fmt, ...)
+{
+	va_list l;
+
+	(void)ctx;
+
+	printf("# ");
+
+	va_start(l, fmt);
+	vprintf(fmt, l);
+	va_end(l);
+
+	putchar('\n');
+}
+
 static void gen_ir_spill_args(irctx *ctx, funcargs *args)
 {
 	decl **i;

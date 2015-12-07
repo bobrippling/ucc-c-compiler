@@ -11,6 +11,9 @@ typedef struct irval irval;
 irval *gen_ir_expr(const struct expr *, irctx *);
 void gen_ir_stmt(const struct stmt *, irctx *);
 
+void gen_ir_comment(irctx *, const char *, ...)
+	ucc_printflike(2, 3);
+
 const char *irtype_str(type *);
 const char *irval_str(irval *);
 
