@@ -4,6 +4,7 @@
 struct irctx
 {
 	unsigned curval;
+	unsigned curlbl;
 };
 
 #endif

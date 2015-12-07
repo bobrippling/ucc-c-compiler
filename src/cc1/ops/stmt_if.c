@@ -118,7 +118,54 @@ void gen_stmt_if(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_if(const stmt *s, irctx *ctx)
 {
-	ICE("TODO: if");
+	irval *cond;
+	const unsigned blk_true = ctx->curlbl++;
+	const unsigned blk_fin = ctx->curlbl++;
+	unsigned blk_false;
+	unsigned i1_tmp;
+
+	/* TODO: flow_ir_gen(s->flow, s->symtab, el, octx); */
+
+	if(s->rhs){
+		blk_false = ctx->curlbl++;
+	}else{
+		blk_false = blk_fin;
+	}
+
+	cond = gen_ir_expr(s->expr, ctx);
+
+	if(type_size(s->expr->tree_type, NULL) > 1){
+		i1_tmp = ctx->curval++;
+
+		printf("$%u = ne %s 0, %s\n",
+				i1_tmp,
+				irtype_str(s->expr->tree_type),
+				irval_str(cond));
+
+		irval_free(cond);
+		cond = irval_from_id(i1_tmp);
+	}
+
+	printf("br %s, $L_%u, $L_%u\n",
+			irval_str(cond),
+			blk_true,
+			blk_false);
+	irval_free(cond);
+
+	printf("$L_%u:\n", blk_true);
+	{
+		gen_ir_stmt(s->lhs, ctx);
+	}
+
+	if(s->rhs){
+		printf("jmp $L_%u\n", blk_fin);
+
+		printf("$L_%u:\n", blk_false);
+		{
+			gen_ir_stmt(s->rhs, ctx);
+		}
+	}
+	printf("$L_%u:\n", blk_fin);
 }
 
 void dump_stmt_if(const stmt *s, dump *ctx)
