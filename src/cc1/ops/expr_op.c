@@ -1319,10 +1319,11 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 
 	}else{
 		irval *rhs = gen_ir_expr(e->rhs, ctx);
+		int const rshift_is_arith = type_is_signed(e->lhs->tree_type);
 
 		printf("$%u = %s %s, ",
 				evali,
-				ir_op_str(e->bits.op.op, 0),
+				ir_op_str(e->bits.op.op, rshift_is_arith),
 				irval_str(lhs));
 		printf("%s\n", irval_str(rhs));
 	}

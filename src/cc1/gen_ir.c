@@ -221,7 +221,7 @@ static const char *irtype_btype_str(const btype *bt)
 	}
 }
 
-const char *ir_op_str(enum op_type op, int is_unary)
+const char *ir_op_str(enum op_type op, int arith_rshift)
 {
 	switch(op){
 		case op_multiply: return "mul";
@@ -232,8 +232,9 @@ const char *ir_op_str(enum op_type op, int is_unary)
 		case op_xor:      return "xor";
 		case op_or:       return "or";
 		case op_and:      return "and";
-		case op_shiftl:   return "shl";
-		case op_shiftr:   return "TODO: RSHIFT"; /* FIXME? arith vs. logical */
+		case op_shiftl:   return "shiftl";
+		case op_shiftr:
+			return arith_rshift ? "shiftr_arith" : "shiftr_logic";
 
 		case op_eq:       return "eq";
 		case op_ne:       return "ne";

@@ -16,7 +16,7 @@ void gen_ir_comment(irctx *, const char *, ...)
 
 const char *irtype_str(type *);
 const char *irval_str(irval *);
-const char *ir_op_str(enum op_type, int is_unary);
+const char *ir_op_str(enum op_type, int arith_rshift);
 
 typedef unsigned irid;
 
