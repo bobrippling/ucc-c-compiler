@@ -1282,9 +1282,13 @@ static void unary_op_gen(const expr *e, irval *lhs, irctx *ctx, unsigned const e
 		}
 
 		case op_bnot:
-			/* xor with -1 */
-			IRTODO("unary operator^");
+		{
+			printf("$%u = xor %s -1, %s\n",
+					evali,
+					irtype_str(e->lhs->tree_type),
+					irval_str(lhs));
 			break;
+		}
 
 		default:
 			ICE("bad unary op %s", op_to_str(e->bits.op.op));
