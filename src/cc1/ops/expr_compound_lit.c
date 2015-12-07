@@ -45,7 +45,7 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	}
 
 	e->bits.complit.sym = sym_new(d, static_ctx ? sym_global : sym_local);
-	symtab_add_to_scope(stab, d);
+	symtab_add_to_scope_pre(stab, d);
 
 	/* fold the initialiser */
 	UCC_ASSERT(d->bits.var.init.dinit, "no init for comp.literal");
