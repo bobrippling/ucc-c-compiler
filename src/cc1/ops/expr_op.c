@@ -1257,33 +1257,26 @@ static void unary_op_gen(const expr *e, irval *lhs, irctx *ctx, unsigned const e
 
 		case op_not:
 		{
-			type *lhsty = e->lhs->tree_type;
+			const int need_ext = (type_size(e->tree_type, NULL) > 1);
+			unsigned evaltmp;
 
-			if(type_is_ptr(lhsty)){
-				IRTODO("!ptr");
-
+			if(need_ext){
+				evaltmp = ctx->curval++;
 			}else{
-				const int need_ext = (type_size(e->tree_type, NULL) > 1);
-				unsigned evaltmp;
+				evaltmp = evali;
+			}
 
-				if(need_ext){
-					evaltmp = ctx->curval++;
-				}else{
-					evaltmp = evali;
-				}
+			/* compare with zero (maybe float), zext */
+			printf("$%u = eq %s 0, %s\n",
+					evaltmp,
+					irtype_str(e->lhs->tree_type),
+					irval_str(lhs));
 
-				/* compare with zero (maybe float), zext */
-				printf("$%u = eq %s 0, %s\n",
-						evaltmp,
-						irtype_str(e->lhs->tree_type),
-						irval_str(lhs));
-
-				if(need_ext){
-					printf("$%u = zext %s, $%u\n",
-							evali,
-							irtype_str(e->tree_type),
-							evaltmp);
-				}
+			if(need_ext){
+				printf("$%u = zext %s, $%u\n",
+						evali,
+						irtype_str(e->tree_type),
+						evaltmp);
 			}
 			break;
 		}
