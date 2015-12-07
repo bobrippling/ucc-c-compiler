@@ -88,7 +88,7 @@ local_or_arg:
 			}
 
 			/* arguments always have a suffix, to not clash with the non-alloc / ir-argument */
-			d->spel_asm = ustrprintf("%s_%s_%d", type, d->spel, uniq);
+			d->spel_asm = ustrprintf("%s_%s_%d", type, d->spel ? d->spel : "", uniq);
 			break;
 		}
 
