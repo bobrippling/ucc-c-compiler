@@ -1242,6 +1242,62 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 	return eval;
 }
 
+static void unary_op_gen(const expr *e, irval *lhs, irctx *ctx, unsigned const evali)
+{
+	/* unary ops don't exist in ir - convert accordingly */
+	switch(e->bits.op.op){
+		case op_plus:
+		case op_minus:
+			printf("$%u = %s %s 0, %s\n",
+					evali,
+					e->bits.op.op == op_plus ? "add" : "sub",
+					irtype_str(e->lhs->tree_type),
+					irval_str(lhs));
+			break;
+
+		case op_not:
+		{
+			type *lhsty = e->lhs->tree_type;
+
+			if(type_is_ptr(lhsty)){
+				IRTODO("!ptr");
+
+			}else{
+				const int need_ext = (type_size(e->tree_type, NULL) > 1);
+				unsigned evaltmp;
+
+				if(need_ext){
+					evaltmp = ctx->curval++;
+				}else{
+					evaltmp = evali;
+				}
+
+				/* compare with zero (maybe float), zext */
+				printf("$%u = eq %s 0, %s\n",
+						evaltmp,
+						irtype_str(e->lhs->tree_type),
+						irval_str(lhs));
+
+				if(need_ext){
+					printf("$%u = zext %s, $%u\n",
+							evali,
+							irtype_str(e->tree_type),
+							evaltmp);
+				}
+			}
+			break;
+		}
+
+		case op_bnot:
+			/* xor with -1 */
+			IRTODO("unary operator^");
+			break;
+
+		default:
+			ICE("bad unary op %s", op_to_str(e->bits.op.op));
+	}
+}
+
 irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 {
 	irval *lhs;
@@ -1262,11 +1318,10 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 	lhs = gen_ir_expr(e->lhs, ctx);
 
 	if(!e->rhs){
-		printf("$%u = %s %s\n", evali, ir_op_str(e->bits.op.op, 1), irval_str(lhs));
+		unary_op_gen(e, lhs, ctx, evali);
+
 	}else{
 		irval *rhs = gen_ir_expr(e->rhs, ctx);
-
-#warning TODO: sanitize
 
 		printf("$%u = %s %s, ",
 				evali,
