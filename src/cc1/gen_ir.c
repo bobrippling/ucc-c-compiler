@@ -11,6 +11,7 @@
 
 #include "sym.h"
 #include "type_is.h"
+#include "type_nav.h"
 #include "expr.h"
 #include "stmt.h"
 #include "cc1.h" /* IS_32_BIT() */
@@ -105,6 +106,8 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 			/* if non-void function and function may fall off the end, dummy a return */
 			if(d->bits.func.control_returns_undef){
 				printf("ret undef\n");
+			}else if(type_is_void(type_called(d->ref, NULL))){
+				printf("ret void\n");
 			}
 
 			printf("}\n");
