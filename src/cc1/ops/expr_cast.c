@@ -719,6 +719,11 @@ irval *gen_ir_expr_cast(const expr *e, irctx *ctx)
 
 	IRTODO("cast");
 
+	printf("# TODO: cast '%s' to '%s' /* aka %s */\n",
+			irval_str(sub),
+			irtype_str(e->tree_type),
+			type_to_str(e->tree_type));
+
 	return sub;
 }
 
