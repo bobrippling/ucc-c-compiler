@@ -17,3 +17,5 @@ void flow_end(
 		symtable *stab,
 		struct out_dbg_lbl *pushed_lbls[ucc_static_param 2][2],
 		out_ctx *octx);
+
+void flow_ir_gen(stmt_flow *flow, symtable *stab, struct irctx *ctx);

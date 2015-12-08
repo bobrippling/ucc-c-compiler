@@ -9,6 +9,8 @@ void gen_block_decls(
 		struct out_dbg_lbl *[ucc_static_param 2],
 		out_ctx *);
 
+void gen_ir_block_decls(symtable *symtab, struct irctx *ctx);
+
 void gen_block_decls_dealloca(
 		symtable *stab,
 		struct out_dbg_lbl *pushed_lbls[ucc_static_param 2],

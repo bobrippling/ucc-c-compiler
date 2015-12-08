@@ -528,12 +528,12 @@ void gen_stmt_code(const stmt *s, out_ctx *octx)
 	gen_stmt_code_m1(s, 0, pushed_lbls, octx);
 }
 
-static void gen_ir_block_decls(const stmt *s, irctx *ctx)
+void gen_ir_block_decls(symtable *symtab, irctx *ctx)
 {
 	decl **diter;
 
 	/* gen_block_decls() */
-	for(diter = symtab_decls(s->symtab); diter && *diter; diter++){
+	for(diter = symtab_decls(symtab); diter && *diter; diter++){
 		decl *d = *diter;
 
 #warning todo: static constants + string constants
@@ -558,7 +558,7 @@ void gen_ir_stmt_code_m1(const stmt *s, irctx *ctx, const int m1)
 {
 	stmt **titer;
 
-	gen_ir_block_decls(s, ctx);
+	gen_ir_block_decls(s->symtab, ctx);
 
 	for(titer = s->bits.code.stmts; titer && *titer; titer++){
 		if(m1 && !titer[1])

@@ -58,6 +58,14 @@ void flow_gen(
 		gen_block_decls(flow->for_init_symtab, pushed_lbls[1], octx);
 }
 
+void flow_ir_gen(stmt_flow *flow, symtable *stab, irctx *ctx)
+{
+	gen_ir_block_decls(stab, ctx);
+
+	if(flow && stab != flow->for_init_symtab)
+		gen_ir_block_decls(flow->for_init_symtab, ctx);
+}
+
 void flow_end(
 		stmt_flow *flow,
 		symtable *stab,
@@ -124,7 +132,7 @@ void gen_ir_stmt_if(const stmt *s, irctx *ctx)
 	unsigned blk_false;
 	unsigned i1_tmp;
 
-	/* TODO: flow_ir_gen(s->flow, s->symtab, el, octx); */
+	flow_ir_gen(s->flow, s->symtab, ctx);
 
 	if(s->rhs){
 		blk_false = ctx->curlbl++;
@@ -166,6 +174,8 @@ void gen_ir_stmt_if(const stmt *s, irctx *ctx)
 		}
 	}
 	printf("$if_%u:\n", blk_fin);
+
+	/* TODO: flow_ir_end() */
 }
 
 void dump_stmt_if(const stmt *s, dump *ctx)
