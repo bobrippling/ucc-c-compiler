@@ -1320,12 +1320,22 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 	}else{
 		irval *rhs = gen_ir_expr(e->rhs, ctx);
 		int const rshift_is_arith = type_is_signed(e->lhs->tree_type);
+		int const fixup_type = op_is_comparison(e->bits.op.op);
+		unsigned const op_result = (fixup_type ? ctx->curval++ : evali);
 
 		printf("$%u = %s %s, ",
-				evali,
+				op_result,
 				ir_op_str(e->bits.op.op, rshift_is_arith),
 				irval_str(lhs));
 		printf("%s\n", irval_str(rhs));
+
+		/* binary op - fixup the type to be a C type, if we've got an i1 */
+		if(fixup_type){
+			assert(op_result != evali);
+
+			printf("$%u = zext %s, $%u # C type fixup\n",
+					evali, irtype_str(e->tree_type), op_result);
+		}
 	}
 
 	return irval_from_id(evali);
