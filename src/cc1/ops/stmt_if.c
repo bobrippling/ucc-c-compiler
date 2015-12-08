@@ -146,26 +146,26 @@ void gen_ir_stmt_if(const stmt *s, irctx *ctx)
 		cond = irval_from_id(i1_tmp);
 	}
 
-	printf("br %s, $L_%u, $L_%u\n",
+	printf("br %s, $if_%u, $if_%u\n",
 			irval_str(cond),
 			blk_true,
 			blk_false);
 	irval_free(cond);
 
-	printf("$L_%u:\n", blk_true);
+	printf("$if_%u:\n", blk_true);
 	{
 		gen_ir_stmt(s->lhs, ctx);
 	}
 
 	if(s->rhs){
-		printf("jmp $L_%u\n", blk_fin);
+		printf("jmp $if_%u\n", blk_fin);
 
-		printf("$L_%u:\n", blk_false);
+		printf("$if_%u:\n", blk_false);
 		{
 			gen_ir_stmt(s->rhs, ctx);
 		}
 	}
-	printf("$L_%u:\n", blk_fin);
+	printf("$if_%u:\n", blk_fin);
 }
 
 void dump_stmt_if(const stmt *s, dump *ctx)
