@@ -376,7 +376,11 @@ void gen_block_decls_dealloca(
 		out_dbg_scope_leave(octx, stab);
 }
 
-static void gen_scope_destructors(symtable *scope, out_ctx *octx)
+static void gen_scope_destructors(
+		symtable *scope,
+		void cleanup_fn(decl *, attribute *, void *),
+		void vla_restore(decl *, void *),
+		void *ctx)
 {
 	decl **di;
 
@@ -394,25 +398,37 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 			attribute *cleanup = attribute_present(d, attr_cleanup);
 
 			if(cleanup){
-				const out_val *fn, *args[2];
-
-				out_dbg_where(octx, &d->where);
-
-				fn = out_new_lbl(octx, NULL, decl_asm_spel(cleanup->bits.cleanup), 1);
-				args[0] = out_new_sym(octx, d->sym);
-				args[1] = NULL;
-
-				out_val_release(octx,
-						gen_call(NULL, cleanup->bits.cleanup, fn, args, octx, &d->where));
+				cleanup_fn(d, cleanup, ctx);
 			}
 
 			if(((d->store & STORE_MASK_STORE) != store_typedef)
 			&& type_is_vla(d->ref, VLA_ANY_DIMENSION))
 			{
-				out_alloca_restore(octx, vla_saved_ptr(d, octx));
+				vla_restore(d, ctx);
 			}
 		}
 	}while(di != symtab_decls(scope));
+}
+
+static void octx_run_dtor(decl *d, attribute *cleanup, void *vctx)
+{
+	out_ctx *octx = vctx;
+	const out_val *fn, *args[2];
+
+	out_dbg_where(octx, &d->where);
+
+	fn = out_new_lbl(octx, NULL, decl_asm_spel(cleanup->bits.cleanup), 1);
+	args[0] = out_new_sym(octx, d->sym);
+	args[1] = NULL;
+
+	out_val_release(octx,
+			gen_call(NULL, cleanup->bits.cleanup, fn, args, octx, &d->where));
+}
+
+static void octx_vla_restore(decl *d, void *vctx)
+{
+	out_ctx *octx = vctx;
+	out_alloca_restore(octx, vla_saved_ptr(d, octx));
 }
 
 #define SYMTAB_PARENT_WALK(it, begin) \
@@ -455,14 +471,17 @@ void fold_check_scope_entry(where *w, const char *desc,
 	mark_symtabs(s_from, 0);
 }
 
-void gen_scope_leave(
-		symtable *const s_from, symtable *const s_to,
-		out_ctx *octx)
+static void gen_generic_scope_leave(
+		symtable *const s_from,
+		symtable *const s_to,
+		void cleanup_fn(decl *, attribute *, void *),
+		void vla_restore_fn(decl *, void *),
+		void *ctx)
 {
 	symtable *s_iter;
 
 	if(!s_to){ /* e.g. return */
-		gen_scope_destructors(s_from, octx);
+		gen_scope_destructors(s_from, cleanup_fn, vla_restore_fn, ctx);
 		return;
 	}
 
@@ -475,10 +494,17 @@ void gen_scope_leave(
 		if(s_iter->mark)
 			break;
 
-		gen_scope_destructors(s_iter, octx);
+		gen_scope_destructors(s_iter, cleanup_fn, vla_restore_fn, ctx);
 	}
 
 	mark_symtabs(s_to, 0);
+}
+
+void gen_scope_leave(
+		symtable *const s_from, symtable *const s_to,
+		out_ctx *octx)
+{
+	gen_generic_scope_leave(s_from, s_to, octx_run_dtor, octx_vla_restore, octx);
 }
 
 void gen_scope_leave_parent(symtable *s_from, out_ctx *octx)
