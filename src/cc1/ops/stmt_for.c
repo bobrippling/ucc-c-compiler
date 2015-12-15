@@ -78,7 +78,51 @@ void gen_stmt_for(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_for(const stmt *s, irctx *ctx)
 {
-	ICE("TODO: for");
+	const unsigned blk_test = ctx->curlbl++;
+	const unsigned blk_code = ctx->curlbl++;
+	const unsigned blk_inc = ctx->curlbl++;
+	const unsigned blk_fin = ctx->curlbl++;
+
+	flow_ir_gen(s->flow, s->flow->for_init_symtab, ctx);
+
+	if(s->flow->for_init){
+		irval *init = gen_ir_expr(s->flow->for_init, ctx);
+		irval_free(init);
+	}
+
+	printf("$for_%u:\n", blk_test);
+	if(s->flow->for_while){
+		const unsigned val_test = ctx->curval++;
+
+		irval *for_cond = gen_ir_expr(s->flow->for_while, ctx);
+
+		printf("$%u = ne %s 0, %s\n",
+				val_test,
+				irtype_str(s->flow->for_while->tree_type),
+				irval_str(for_cond));
+
+		printf("br $%u, $for_%u, $for_%u\n",
+				val_test,
+				blk_code,
+				blk_fin);
+	}
+
+	printf("$for_%u:\n", blk_code);
+	{
+		gen_ir_stmt(s->lhs, ctx);
+	}
+
+	printf("$for_%u:\n", blk_inc);
+	{
+		if(s->flow->for_inc){
+			irval *inc = gen_ir_expr(s->flow->for_inc, ctx);
+			irval_free(inc);
+		}
+		printf("jmp $for_%u\n", blk_test);
+	}
+
+	printf("$for_%u:\n", blk_fin);
+	flow_ir_end(s->flow, s->flow->for_init_symtab, ctx);
 }
 
 void dump_flow(stmt_flow *flow, dump *ctx)
