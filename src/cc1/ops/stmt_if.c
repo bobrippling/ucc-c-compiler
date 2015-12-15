@@ -89,11 +89,13 @@ void flow_ir_end(stmt_flow *flow, symtable *stab, irctx *ctx)
 {
 	/* generate the braced scope first, then the for-control-variable's */
 	gen_ir_scope_leave_parent(stab, ctx);
+	gen_ir_block_decls_dealloca(stab, ctx);
 
 	if(flow && stab != flow->for_init_symtab){
 		assert(stab->parent == flow->for_init_symtab);
 
 		gen_ir_scope_leave_parent(flow->for_init_symtab, ctx);
+		gen_ir_block_decls_dealloca(flow->for_init_symtab, ctx);
 	}
 }
 

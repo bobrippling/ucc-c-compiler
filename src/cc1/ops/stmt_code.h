@@ -46,3 +46,5 @@ void gen_ir_stmt_code_m1_finish(const stmt *s, struct irctx *ctx);
 
 void gen_ir_scope_leave(symtable *s_from, symtable *s_to, struct irctx *ctx);
 void gen_ir_scope_leave_parent(symtable *s_from, struct irctx *);
+
+void gen_ir_block_decls_dealloca(symtable *stab, struct irctx *);
