@@ -81,14 +81,20 @@ const out_val *gen_expr_stmt(const expr *e, out_ctx *octx)
 irval *gen_ir_expr_stmt(const expr *e, irctx *ctx)
 {
 	const expr *last;
+	irval *ret;
 
 	gen_ir_stmt_code_m1(e->code, ctx, 1);
 
 	last = expr_stmt_last(e);
-	if(!last)
-		return irval_from_noop();
+	if(last)
+		ret = gen_ir_expr(last, ctx);
+	else
+		ret = irval_from_noop();
 
-	return gen_ir_expr(last, ctx);
+	/* this is skipped by gen_stmt_code_m1( ... 1, ... ) */
+	gen_ir_stmt_code_m1_finish(e->code, ctx);
+
+	return ret;
 }
 
 void dump_expr_stmt(const expr *e, dump *ctx)
