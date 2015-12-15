@@ -85,6 +85,18 @@ void flow_end(
 	}
 }
 
+void flow_ir_end(stmt_flow *flow, symtable *stab, irctx *ctx)
+{
+	/* generate the braced scope first, then the for-control-variable's */
+	gen_ir_scope_leave_parent(stab, ctx);
+
+	if(flow && stab != flow->for_init_symtab){
+		assert(stab->parent == flow->for_init_symtab);
+
+		gen_ir_scope_leave_parent(flow->for_init_symtab, ctx);
+	}
+}
+
 void fold_stmt_if(stmt *s)
 {
 	fold_check_expr(s->expr, FOLD_CHK_BOOL, s->f_str());
@@ -175,7 +187,7 @@ void gen_ir_stmt_if(const stmt *s, irctx *ctx)
 	}
 	printf("$if_%u:\n", blk_fin);
 
-	/* TODO: flow_ir_end() */
+	flow_ir_end(s->flow, s->symtab, ctx);
 }
 
 void dump_stmt_if(const stmt *s, dump *ctx)

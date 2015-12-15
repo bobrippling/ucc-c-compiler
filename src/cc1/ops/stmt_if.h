@@ -19,3 +19,4 @@ void flow_end(
 		out_ctx *octx);
 
 void flow_ir_gen(stmt_flow *flow, symtable *stab, struct irctx *ctx);
+void flow_ir_end(stmt_flow *flow, symtable *stab, struct irctx *ctx);
