@@ -108,7 +108,8 @@ void gen_ir_stmt_return(const stmt *s, irctx *ctx)
 	int const void_return = type_is_void(type_called(in_func->ref, NULL));
 	irval *ret_exp = s->expr ? gen_ir_expr(s->expr, ctx) : NULL;
 
-	IRTODO("scope leave");
+	gen_ir_scope_leave(s->symtab, symtab_root(s->symtab), ctx);
+
 	IRTODO("check inlining");
 	IRTODO("ret dummy value if undef and void if void-fn");
 
