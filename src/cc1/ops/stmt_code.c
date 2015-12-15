@@ -593,12 +593,45 @@ void gen_ir_stmt_code_m1(const stmt *s, irctx *ctx, const int m1)
 		gen_ir_stmt(*titer, ctx);
 	}
 
-	IRTODO("gen block decls finish");
+	if(!m1)
+		gen_ir_stmt_code_m1_finish(s, ctx);
+	/* else the caller should do ^ */
+}
+
+void gen_ir_stmt_code_m1_finish(const stmt *s, struct irctx *ctx)
+{
+	gen_ir_scope_leave_parent(s->symtab, ctx);
+	gen_ir_block_decls_dealloca(s->symtab, ctx);
 }
 
 void gen_ir_stmt_code(const stmt *s, irctx *ctx)
 {
 	gen_ir_stmt_code_m1(s, ctx, 0);
+}
+
+static void irctx_run_dtor(decl *d, attribute *cleanup, void *vctx)
+{
+	irctx *ctx = vctx;
+	(void)ctx;
+
+	printf("call $%s($%s)\n",
+			decl_asm_spel(cleanup->bits.cleanup),
+			decl_asm_spel(d));
+}
+
+static void irctx_vla_restore(decl *d, void *vctx)
+{
+	ICE("TODO: irctx vla restore");
+}
+
+void gen_ir_scope_leave(symtable *s_from, symtable *s_to, struct irctx *ctx)
+{
+	gen_generic_scope_leave(s_from, s_to, irctx_run_dtor, irctx_vla_restore, ctx);
+}
+
+void gen_ir_scope_leave_parent(symtable *s_from, struct irctx *ctx)
+{
+	gen_ir_scope_leave(s_from, s_from->parent, ctx);
 }
 
 void dump_stmt_code(const stmt *s, dump *ctx)

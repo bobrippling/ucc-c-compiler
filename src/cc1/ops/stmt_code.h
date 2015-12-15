@@ -42,3 +42,7 @@ void gen_stmt_code_m1_finish(
 void gen_ir_block_decls(symtable *symtab, struct irctx *ctx);
 
 void gen_ir_stmt_code_m1(const stmt *s, struct irctx *ctx, const int m1);
+void gen_ir_stmt_code_m1_finish(const stmt *s, struct irctx *ctx);
+
+void gen_ir_scope_leave(symtable *s_from, symtable *s_to, struct irctx *ctx);
+void gen_ir_scope_leave_parent(symtable *s_from, struct irctx *);
