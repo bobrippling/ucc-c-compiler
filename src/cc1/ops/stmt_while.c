@@ -68,7 +68,7 @@ void gen_ir_stmt_while(const stmt *s, irctx *ctx)
 
 		flow_ir_gen(s->flow, s->symtab, ctx);
 
-		printf("$while_%u:\n", blk_test);
+		printf("$%u:\n", blk_test);
 
 		cond = gen_ir_expr(s->expr, ctx);
 
@@ -77,21 +77,21 @@ void gen_ir_stmt_while(const stmt *s, irctx *ctx)
 				irtype_str(s->expr->tree_type),
 				irval_str(cond));
 
-		printf("br $%u, $while_%u, $while_%u\n",
+		printf("br $%u, $%u, $%u\n",
 				cond_bool,
 				blk_body,
 				blk_fin);
 	}
 
 	{
-		printf("$while_%u:\n", blk_body);
+		printf("$%u:\n", blk_body);
 		gen_ir_stmt(s->lhs, ctx);
 
-		printf("jmp $while_%u\n", blk_test);
+		printf("jmp $%u\n", blk_test);
 	}
 
 	{
-		printf("$while_%u:\n", blk_fin);
+		printf("$%u:\n", blk_fin);
 		flow_ir_end(s->flow, s->symtab, ctx);
 	}
 }

@@ -90,7 +90,7 @@ void gen_ir_stmt_for(const stmt *s, irctx *ctx)
 		irval_free(init);
 	}
 
-	printf("$for_%u:\n", blk_test);
+	printf("$%u:\n", blk_test);
 	if(s->flow->for_while){
 		const unsigned val_test = ctx->curval++;
 
@@ -101,27 +101,27 @@ void gen_ir_stmt_for(const stmt *s, irctx *ctx)
 				irtype_str(s->flow->for_while->tree_type),
 				irval_str(for_cond));
 
-		printf("br $%u, $for_%u, $for_%u\n",
+		printf("br $%u, $%u, $%u\n",
 				val_test,
 				blk_code,
 				blk_fin);
 	}
 
-	printf("$for_%u:\n", blk_code);
+	printf("$%u:\n", blk_code);
 	{
 		gen_ir_stmt(s->lhs, ctx);
 	}
 
-	printf("$for_%u:\n", blk_inc);
+	printf("$%u:\n", blk_inc);
 	{
 		if(s->flow->for_inc){
 			irval *inc = gen_ir_expr(s->flow->for_inc, ctx);
 			irval_free(inc);
 		}
-		printf("jmp $for_%u\n", blk_test);
+		printf("jmp $%u\n", blk_test);
 	}
 
-	printf("$for_%u:\n", blk_fin);
+	printf("$%u:\n", blk_fin);
 	flow_ir_end(s->flow, s->flow->for_init_symtab, ctx);
 }
 

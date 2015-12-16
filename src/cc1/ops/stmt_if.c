@@ -168,26 +168,26 @@ void gen_ir_stmt_if(const stmt *s, irctx *ctx)
 		cond = irval_from_id(i1_tmp);
 	}
 
-	printf("br %s, $if_%u, $if_%u\n",
+	printf("br %s, $%u, $%u\n",
 			irval_str(cond),
 			blk_true,
 			blk_false);
 	irval_free(cond);
 
-	printf("$if_%u:\n", blk_true);
+	printf("$%u:\n", blk_true);
 	{
 		gen_ir_stmt(s->lhs, ctx);
 	}
 
 	if(s->rhs){
-		printf("jmp $if_%u\n", blk_fin);
+		printf("jmp $%u\n", blk_fin);
 
-		printf("$if_%u:\n", blk_false);
+		printf("$%u:\n", blk_false);
 		{
 			gen_ir_stmt(s->rhs, ctx);
 		}
 	}
-	printf("$if_%u:\n", blk_fin);
+	printf("$%u:\n", blk_fin);
 
 	flow_ir_end(s->flow, s->symtab, ctx);
 }

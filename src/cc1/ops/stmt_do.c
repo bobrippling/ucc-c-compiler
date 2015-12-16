@@ -47,13 +47,13 @@ void gen_ir_stmt_do(const stmt *s, irctx *ctx)
 	const unsigned blk_continue = ctx->curlbl++;
 	const unsigned blk_break = ctx->curlbl++;
 
-	printf("$do_%u:\n", blk_begin);
+	printf("$%u:\n", blk_begin);
 	{
 		gen_ir_stmt(s->lhs, ctx);
-		printf("jmp $do_%u\n", blk_continue);
+		printf("jmp $%u\n", blk_continue);
 	}
 
-	printf("$do_%u:\n", blk_continue);
+	printf("$%u:\n", blk_continue);
 	{
 		const unsigned val_test = ctx->curlbl++;
 		irval *cond = gen_ir_expr(s->expr, ctx);
@@ -63,13 +63,13 @@ void gen_ir_stmt_do(const stmt *s, irctx *ctx)
 				irtype_str(s->expr->tree_type),
 				irval_str(cond));
 
-		printf("br $%u, $do_%u, $do_%u\n",
+		printf("br $%u, $%u, $%u\n",
 				val_test,
 				blk_begin,
 				blk_break);
 	}
 
-	printf("$do_%u:\n", blk_break);
+	printf("$%u:\n", blk_break);
 }
 
 void dump_stmt_do(const stmt *s, dump *ctx)
