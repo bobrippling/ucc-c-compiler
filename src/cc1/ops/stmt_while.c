@@ -58,7 +58,42 @@ void gen_stmt_while(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_while(const stmt *s, irctx *ctx)
 {
-	ICE("TODO: while");
+	const unsigned blk_test = ctx->curlbl++;
+	const unsigned blk_body = ctx->curlbl++;
+	const unsigned blk_fin = ctx->curlbl++;
+
+	{
+		irval *cond;
+		const unsigned cond_bool = ctx->curval++;
+
+		flow_ir_gen(s->flow, s->symtab, ctx);
+
+		printf("$while_%u:\n", blk_test);
+
+		cond = gen_ir_expr(s->expr, ctx);
+
+		printf("$%u = ne %s 0, %s\n",
+				cond_bool,
+				irtype_str(s->expr->tree_type),
+				irval_str(cond));
+
+		printf("br $%u, $while_%u, $while_%u\n",
+				cond_bool,
+				blk_body,
+				blk_fin);
+	}
+
+	{
+		printf("$while_%u:\n", blk_body);
+		gen_ir_stmt(s->lhs, ctx);
+
+		printf("jmp $while_%u\n", blk_test);
+	}
+
+	{
+		printf("$while_%u:\n", blk_fin);
+		flow_ir_end(s->flow, s->symtab, ctx);
+	}
 }
 
 void dump_stmt_while(const stmt *s, dump *ctx)
