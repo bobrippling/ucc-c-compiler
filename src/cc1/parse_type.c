@@ -2099,7 +2099,7 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 		decl **old_args = NULL;
 		/* NULL - we don't want these in a scope */
 		while(parse_decl_group(
-				0, /*newdecl_context:*/0,
+				DECL_MULTI_IS_OLD_ARGS, /*newdecl_context:*/0,
 				in_scope,
 				NULL, &old_args))
 		{
@@ -2411,7 +2411,7 @@ int parse_decl_group(
 		if(type_is(d->ref, type_func))
 			parse_post_func(d, in_scope, attr_post_decl);
 
-		if(!in_scope->parent && !found_prev_proto)
+		if(!in_scope->parent && !found_prev_proto && !(mode & DECL_MULTI_IS_OLD_ARGS))
 			check_missing_proto_extern(d);
 
 		error_on_unwanted_func(d, mode);
