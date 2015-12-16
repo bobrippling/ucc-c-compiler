@@ -83,6 +83,8 @@ void gen_ir_stmt_for(const stmt *s, irctx *ctx)
 	const unsigned blk_inc = ctx->curlbl++;
 	const unsigned blk_fin = ctx->curlbl++;
 
+	stmt_init_ir_blks(s, blk_inc, blk_fin);
+
 	flow_ir_gen(s->flow, s->flow->for_init_symtab, ctx);
 
 	if(s->flow->for_init){

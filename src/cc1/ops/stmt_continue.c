@@ -20,8 +20,9 @@ void gen_stmt_continue(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_continue(const stmt *s, irctx *ctx)
 {
-	IRTODO("scope leave");
-	ICE("TODO: continue");
+	gen_ir_scope_leave(s->symtab, s->parent->symtab, ctx);
+
+	printf("jmp $%u\n", s->parent->blk_continue_ir);
 }
 
 void dump_stmt_continue(const stmt *s, dump *ctx)

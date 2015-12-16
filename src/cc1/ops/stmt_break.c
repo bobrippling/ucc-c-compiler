@@ -30,8 +30,9 @@ void gen_stmt_break(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_break(const stmt *s, irctx *ctx)
 {
-	IRTODO("scope leave");
-	ICE("TODO: break");
+	gen_ir_scope_leave(s->symtab, s->parent->symtab, ctx);
+
+	printf("jmp $%u\n", s->parent->blk_break_ir);
 }
 
 void dump_stmt_break(const stmt *s, dump *ctx)

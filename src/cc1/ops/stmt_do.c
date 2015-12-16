@@ -47,6 +47,8 @@ void gen_ir_stmt_do(const stmt *s, irctx *ctx)
 	const unsigned blk_continue = ctx->curlbl++;
 	const unsigned blk_break = ctx->curlbl++;
 
+	stmt_init_ir_blks(s, blk_continue, blk_break);
+
 	printf("$%u:\n", blk_begin);
 	{
 		gen_ir_stmt(s->lhs, ctx);

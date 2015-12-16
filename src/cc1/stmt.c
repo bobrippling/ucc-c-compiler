@@ -139,3 +139,10 @@ void stmt_init_blks(const stmt *ks, out_blk *con, out_blk *bbreak)
 	s->blk_continue = con;
 	s->blk_break = bbreak;
 }
+
+void stmt_init_ir_blks(const stmt *ks, unsigned con, unsigned brk)
+{
+	stmt *s = (stmt *)ks;
+	s->blk_continue_ir = con;
+	s->blk_break_ir = brk;
+}

@@ -41,6 +41,7 @@ struct stmt
 #define stmt_is_default val
 	int val;
 	out_blk *blk_break, *blk_continue;
+	unsigned blk_break_ir, blk_continue_ir;
 
 	int freestanding;     /* if this is freestanding, non-freestanding expressions inside are allowed */
 	int kills_below_code; /* break, return, etc - for checking dead code */
@@ -151,5 +152,6 @@ void stmt_walk(stmt *base, stmt_walk_enter, stmt_walk_leave, void *data);
 stmt *stmt_set_where(stmt *, where const *);
 
 void stmt_init_blks(const stmt *ks, out_blk *con, out_blk *bbreak);
+void stmt_init_ir_blks(const stmt *ks, unsigned con, unsigned brk);
 
 #endif

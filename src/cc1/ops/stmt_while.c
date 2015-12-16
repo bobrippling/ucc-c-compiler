@@ -62,6 +62,8 @@ void gen_ir_stmt_while(const stmt *s, irctx *ctx)
 	const unsigned blk_body = ctx->curlbl++;
 	const unsigned blk_fin = ctx->curlbl++;
 
+	stmt_init_ir_blks(s, blk_test, blk_fin);
+
 	{
 		irval *cond;
 		const unsigned cond_bool = ctx->curval++;
