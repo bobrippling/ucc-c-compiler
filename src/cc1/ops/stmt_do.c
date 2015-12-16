@@ -43,7 +43,33 @@ void gen_stmt_do(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_do(const stmt *s, irctx *ctx)
 {
-	ICE("TODO: do");
+	const unsigned blk_begin = ctx->curlbl++;
+	const unsigned blk_continue = ctx->curlbl++;
+	const unsigned blk_break = ctx->curlbl++;
+
+	printf("$do_%u:\n", blk_begin);
+	{
+		gen_ir_stmt(s->lhs, ctx);
+		printf("jmp $do_%u\n", blk_continue);
+	}
+
+	printf("$do_%u:\n", blk_continue);
+	{
+		const unsigned val_test = ctx->curlbl++;
+		irval *cond = gen_ir_expr(s->expr, ctx);
+
+		printf("$%u = ne %s 0, %s\n",
+				val_test,
+				irtype_str(s->expr->tree_type),
+				irval_str(cond));
+
+		printf("br $%u, $do_%u, $do_%u\n",
+				val_test,
+				blk_begin,
+				blk_break);
+	}
+
+	printf("$do_%u:\n", blk_break);
 }
 
 void dump_stmt_do(const stmt *s, dump *ctx)
