@@ -478,6 +478,26 @@ const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 	return fn_ret;
 }
 
+static irval *funcall_ir_correct_type(const expr *e, irval *fnv, irctx *ctx)
+{
+	funcargs *args = type_funcargs(type_is_ptr(e->expr->tree_type));
+	unsigned casted_val;
+
+	if(!args->args_old_proto){
+		return fnv;
+	}
+
+	/* need to cast T(old_arg1, old_arg2, ...) to T(...) in order to call it */
+	casted_val = ctx->curval++;
+
+	printf("$%u = ptrcast %s(...)*, %s\n",
+			casted_val,
+			irtype_str(e->tree_type),
+			irval_str(fnv));
+
+	return irval_from_id(casted_val);
+}
+
 irval *gen_ir_expr_funcall(const expr *e, irctx *ctx)
 {
 	irval **args = NULL;
@@ -493,7 +513,8 @@ irval *gen_ir_expr_funcall(const expr *e, irctx *ctx)
 		dynarray_add(&args, arg);
 	}
 
-	fnv = gen_ir_expr(e->expr, ctx);
+	/* type check the function expression */
+	fnv = funcall_ir_correct_type(e, gen_ir_expr(e->expr, ctx), ctx);
 
 	printf("$%u = call %s(", reti, irval_str(fnv));
 

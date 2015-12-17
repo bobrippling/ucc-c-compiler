@@ -326,6 +326,13 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 			irtype_str_r(buf, t->ref, NULL);
 			strbuf_fixed_printf(buf, "(");
 
+			/* ignore fargs->args_old_proto
+			 * technically args_old_proto means the [ir]type is T(...)
+			 * however, then we don't have access to arguments.
+			 * therefore, the function must be cast to T(...) at all call
+			 * sites, to enable us to call it with any arguments, as a valid C old-function
+			 */
+
 			for(i = 0; arglist && arglist[i]; i++){
 				if(!first)
 					strbuf_fixed_printf(buf, ", ");
