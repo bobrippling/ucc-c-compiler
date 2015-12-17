@@ -449,6 +449,18 @@ static void type_add_funcargs(
 
 	ADD_SPC();
 	BUF_ADD("(");
+
+	/* if old function, it's (), regardless of the actual argument list.
+	 *
+	 * this is because the names of arguments is currently embedded in
+	 * the funcargs, mixed with the type, and we need the names for the function,
+	 * even though the type is technically T()
+	 */
+	if(args->args_old_proto){
+		BUF_ADD(")");
+		return;
+	}
+
 	for(i = args->arglist; i && *i; i++){
 		char tmp_buf[DECL_STATIC_BUFSIZ];
 		decl *d = *i;
