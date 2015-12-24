@@ -1,5 +1,5 @@
 OBJ = strbuf_fixed.o
+LIB = strbuf.a
 
-.PHONY: all
-
-all: ${OBJ}
+${LIB}: ${OBJ}
+	ar rc $@ ${OBJ}
