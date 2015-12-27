@@ -227,7 +227,12 @@ static void gen_obj_file(struct cc_file *file, char **args[], enum mode mode)
 	}
 }
 
-static void rename_files(struct cc_file *files, int nfiles, char *output, enum mode mode)
+static void rename_files(
+		struct cc_file *files,
+		int nfiles,
+		char *output,
+		const char *backend,
+		enum mode mode)
 {
 	const char *mode_str = mode_arg_str(mode);
 	int i;
@@ -276,10 +281,24 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 					const char *suffix;
 
 					switch(mode){
-						case mode_compile: suffix = "s"; break;
-						case mode_assemb:  suffix = "o"; break;
-						case mode_ir:      suffix = "ir"; break;
-						default: assert(0);
+						case mode_compile:
+							if(!strcmp(backend, "ir"))
+								suffix = "ir";
+							else
+								suffix = "s";
+							break;
+
+						case mode_assemb:
+							suffix = "o";
+							break;
+
+						case mode_ir:
+							/* unreachable - can't emit bytecode ir yet */
+							suffix = "ir";
+							break;
+
+						default:
+							assert(0);
 					}
 
 					if(dot && dot[1])
@@ -344,7 +363,7 @@ static void process_files(enum mode mode, char **inputs, char *output, char **ar
 			dsym(output);
 		}
 	}else{
-		rename_files(files, ninputs, output, mode);
+		rename_files(files, ninputs, output, backend, mode);
 	}
 
 	dynarray_free(char **, links, free);
