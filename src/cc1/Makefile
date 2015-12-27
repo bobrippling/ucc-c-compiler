@@ -2,7 +2,10 @@ include ../config.mk
 
 ARCH_OBJ = out/${ARCH}.o
 
-LDFLAGS += -lm
+STRBUF_PATH = ../strbuf
+LIB = ${STRBUF_PATH}/strbuf.a
+
+LDFLAGS += -lm ${LIB}
 
 OBJ = \
 	../util/alloc.o ../util/util.o ../util/platform.o \
@@ -38,10 +41,10 @@ SRC = ${OBJ:.o=.c}
 
 all: cc1 check
 
-cc1: ${OBJ} cc1.o
+cc1: ${OBJ} ${LIB} cc1.o
 	${CC} -o $@ ${OBJ} cc1.o ${LDFLAGS}
 
-test: ${OBJ_TEST}
+test: ${OBJ_TEST} ${LIB}
 	${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
 
 check: test
@@ -69,6 +72,8 @@ out/alloca.o out/ctrl.o out/func.o out/impl.o out/mipsel_32.o \
 	out/x86_64.o out/dbg.o : \
 	CFLAGS += -DCC1_IMPL_FNAME=\"${ARCH}.h\"
 
+gen_ir.o: CFLAGS += -I${STRBUF_PATH}
+
 # extra deps
 out/impl.h: out/x86_64.h out/mipsel_32.h
 
@@ -83,3 +88,4 @@ Makefile.dep:
 	${CC} ${CFLAGS} -MM out/*.c | sed 's#^\([^ ]\)#out/\1#' >> $@
 
 include Makefile.dep
+include ${STRBUF_PATH}/strbuf.mk
