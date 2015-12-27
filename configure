@@ -76,6 +76,7 @@ optimise=0
 include_path="/usr/include"
 target=
 
+ucc_ir=../cg/ir
 ucc_cflags=
 ucc_cppflags=
 ucc_crt=
@@ -102,6 +103,8 @@ do
 
 		--enable-optimi[sz]e|--enable-optimi[sz]e=yes) optimise=1 ;;
 		--disable-optimi[sz]e|--enable-optimi[sz]e=no) optimise=0 ;;
+
+		--with-ir=*) ucc_ir=${arg#*=} ;;
 
 		CC=*) CC=${arg#*=} ;;
 		CFLAGS=*) CFLAGS=${arg#*=} ;;
@@ -267,6 +270,7 @@ cat > src/config_driver.h <<!
 #define NEED_DSYM $need_dsym
 
 #define UCC_AS       "as"
+#define UCC_IR       "${ucc_ir}"
 
 #define UCC_CPPFLAGS "${ucc_cppflags}"
 #define UCC_CFLAGS   "${ucc_cflags}"

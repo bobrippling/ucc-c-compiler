@@ -304,7 +304,7 @@ void compile(char *in, char *out, char **args)
 
 void ir(char *in, char *out, char **args)
 {
-	runner_1(1, "../../../cg/ir", in, out, args);
+	runner_1(1, "../" UCC_IR, in, out, args);
 }
 
 void assemble(char *in, char *out, char **args)
