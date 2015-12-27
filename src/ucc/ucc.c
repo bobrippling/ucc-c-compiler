@@ -271,8 +271,10 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 				case mode_compile:
 				case mode_assemb:
 				{
-					const char *base = strrchr(files[i].in.fname, '/');
+					char *const dup = ustrdup(files[i].in.fname);
+					char *dot = strrchr(dup, '.');
 					const char *suffix;
+
 					switch(mode){
 						case mode_compile: suffix = "s"; break;
 						case mode_assemb:  suffix = "o"; break;
@@ -280,10 +282,11 @@ static void rename_files(struct cc_file *files, int nfiles, char *output, enum m
 						default: assert(0);
 					}
 
-					if(!base++)
-						base = files[i].in.fname;
+					if(dot && dot[1])
+						*dot = '\0';
 
-					new = ustrprintf("%s.%s", base, suffix);
+					new = ustrprintf("%s.%s", dup, suffix);
+					free(dup);
 					break;
 				}
 			}
