@@ -1,0 +1,6 @@
+STRBUF_LIB = ${STRBUF_PATH}/strbuf.a
+
+.PHONY: ${STRBUF_PATH}
+
+${STRBUF_LIB}: ${STRBUF_PATH}
+	make -C${STRBUF_PATH}
