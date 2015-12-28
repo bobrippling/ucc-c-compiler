@@ -693,6 +693,69 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 	return casted;
 }
 
+static irval *gen_ir_cast_ptr2ptr(const expr *e, irval *sub, irctx *ctx)
+{
+	int const to = ctx->curval++;
+
+	printf("$%u = ptrcast %s, %s\n",
+			to,
+			irtype_str(e->tree_type),
+			irval_str(sub));
+
+	return irval_from_id(to);
+}
+
+static irval *gen_ir_cast_int_ptr_swap(
+		const expr *e,
+		irval *sub,
+		irctx *ctx,
+		int const sub_ptr)
+{
+	int const to = ctx->curval++;
+
+	printf("$%u = %s %s, %s\n",
+			to,
+			sub_ptr ? "ptr2int" : "int2ptr",
+			irtype_str(e->tree_type),
+			irval_str(sub));
+
+	return irval_from_id(to);
+}
+
+static irval *gen_ir_cast_int_ext_trunc(const expr *e, irval *sub, irctx *ctx)
+{
+	/* ext or trunc */
+	int const to = ctx->curval++;
+	int const is_trunc
+		= type_size(e->tree_type, NULL) < type_size(e->expr->tree_type, NULL);
+	int const zext = !type_is_signed(e->expr->tree_type);
+
+	printf("$%u = %s %s, %s\n",
+			to,
+			is_trunc ? "trunc" : zext ? "zext" : "sext",
+			irtype_str(e->tree_type),
+			irval_str(sub));
+
+	return irval_from_id(to);
+}
+
+static irval *gen_ir_cast_int_ptr_etc(const expr *e, irval *sub, irctx *ctx)
+{
+	/* what type of cast? */
+	int const sub_ptr = !!type_is_ptr(e->expr->tree_type);
+	int const this_ptr = !!type_is_ptr(e->tree_type);
+
+	if(sub_ptr && this_ptr)
+		return gen_ir_cast_ptr2ptr(e, sub, ctx);
+
+	if((sub_ptr && !this_ptr) || (!sub_ptr && this_ptr))
+		return gen_ir_cast_int_ptr_swap(e, sub, ctx, sub_ptr);
+
+	assert(!sub_ptr && !this_ptr);
+
+	return gen_ir_cast_int_ext_trunc(e, sub, ctx);
+}
+
 irval *gen_ir_expr_cast(const expr *e, irctx *ctx)
 {
 	irval *sub = gen_ir_expr(expr_cast_child(e), ctx);
@@ -717,14 +780,7 @@ irval *gen_ir_expr_cast(const expr *e, irctx *ctx)
 		return irval_from_id(tmp);
 	}
 
-	IRTODO("cast");
-
-	printf("# TODO: cast '%s' to '%s' /* aka %s */\n",
-			irval_str(sub),
-			irtype_str(e->tree_type),
-			type_to_str(e->tree_type));
-
-	return sub;
+	return gen_ir_cast_int_ptr_etc(e, sub, ctx);
 }
 
 void dump_expr_cast(const expr *e, dump *ctx)
