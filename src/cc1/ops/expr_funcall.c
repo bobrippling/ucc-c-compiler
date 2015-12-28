@@ -207,6 +207,7 @@ static int check_arg_counts(
 			 * another prototype elsewhere */
 			int warn = args_from_decl->args_old_proto
 				&& !args_from_decl->args_void;
+			int warning_emitted = 1;
 
 #define common_warning                                         \
 					"too %s arguments to function %s%s(got %d, need %d)",\
@@ -216,15 +217,18 @@ static int check_arg_counts(
 					count_arg, count_decl
 
 			if(warn){
-				cc1_warn_at(loc, funcall_argcount, common_warning);
+				warning_emitted = cc1_warn_at(loc, funcall_argcount, common_warning);
 			}else{
 				warn_at_print_error(loc, common_warning);
 			}
 
 #undef common_warning
 
-			if((call_decl = expr_to_declref(fnexpr->expr, NULL)))
+			if(warning_emitted
+			&& (call_decl = expr_to_declref(fnexpr->expr, NULL)))
+			{
 				note_at(&call_decl->where, "'%s' declared here", call_decl->spel);
+			}
 
 			if(!warn){
 				fold_had_error = 1;
