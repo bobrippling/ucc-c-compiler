@@ -122,7 +122,7 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 	}
 
 	/* normalise before the cast, otherwise we do things like
-	 * 5.3 -> 5, then normalise 5, instead of 5.3 != 0.0
+	 * 0.3 -> 0 (i.e. false), instead of 0.3 != 0.0 (i.e. true)
 	 */
 	if(normalise_bool && type_is_primitive(to, type__Bool)){
 		val = out_normalise(octx, val);
