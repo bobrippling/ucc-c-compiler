@@ -1323,18 +1323,45 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 		int const fixup_type = op_is_comparison(e->bits.op.op);
 		unsigned const op_result = (fixup_type ? ctx->curval++ : evali);
 
-		printf("$%u = %s %s, ",
-				op_result,
-				ir_op_str(e->bits.op.op, rshift_is_arith),
-				irval_str(lhs));
-		printf("%s\n", irval_str(rhs));
+		int const is_ptr_lhs = !!type_is_ptr(e->lhs->tree_type);
+		int const is_ptr_rhs = !!type_is_ptr(e->rhs->tree_type);
 
-		/* binary op - fixup the type to be a C type, if we've got an i1 */
-		if(fixup_type){
-			assert(op_result != evali);
+		if(!fixup_type && (is_ptr_lhs || is_ptr_rhs)){
+			/* emit ptradd */
+			irval *ptr = is_ptr_lhs ? lhs : rhs;
+			irval *add = is_ptr_lhs ? rhs : lhs;
 
-			printf("$%u = zext %s, $%u # C type fixup\n",
-					evali, irtype_str(e->tree_type), op_result);
+			assert(e->bits.op.op == op_plus || e->bits.op.op == op_minus);
+
+			if(e->bits.op.op == op_minus){
+				int const addi = ctx->curval++;
+
+				printf("$%u = sub %s 0, %s # ptrsub\n",
+						addi,
+						irtype_str((is_ptr_lhs ? e->rhs : e->lhs)->tree_type),
+						irval_str(add));
+
+				irval_free(add);
+				add = irval_from_id(addi);
+			}
+
+			printf("$%u = ptradd %s, ", op_result, irval_str(ptr));
+			printf("%s\n", irval_str(add));
+
+		}else{
+			printf("$%u = %s %s, ",
+					op_result,
+					ir_op_str(e->bits.op.op, rshift_is_arith),
+					irval_str(lhs));
+			printf("%s\n", irval_str(rhs));
+
+			/* binary op - fixup the type to be a C type, if we've got an i1 */
+			if(fixup_type){
+				assert(op_result != evali);
+
+				printf("$%u = zext %s, $%u # C type fixup\n",
+						evali, irtype_str(e->tree_type), op_result);
+			}
 		}
 	}
 
