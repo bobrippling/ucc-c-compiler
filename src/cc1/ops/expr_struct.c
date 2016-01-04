@@ -184,6 +184,10 @@ irval *gen_ir_expr_struct(const expr *e, irctx *ctx)
 #warning bitfield
 		ICE("TODO: bitfield");
 	}
+	if(e->bits.struct_mem.extra_off){
+#warning extra_off
+		ICE("TODO: struct extra_off");
+	}
 
 	return irval_from_id(off);
 }
