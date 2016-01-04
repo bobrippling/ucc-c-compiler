@@ -487,7 +487,29 @@ static irval *funcall_ir_correct_type(const expr *e, irval *fnv, irctx *ctx)
 		return fnv;
 	}
 
-	/* need to cast T(old_arg1, old_arg2, ...) to T(...) in order to call it */
+	/* need to cast T(old_arg1, old_arg2, ...) to T(...) in order to call it
+	 *
+	 * unless we're calling it with no arguments, in which case, we need no cast
+	 * (either way, ir removes the cast / it doesn't appear in code-gen, but this
+	 * keeps the output tidy)
+	 */
+	if(!args->arglist && !e->funcargs){
+		return fnv;
+	}
+
+	/* at the call site, we can't tell if the function is defined as
+	 * f(a, b)
+	 *   int a, b;   i.e. $f = i4(i4 $a, i4 $b){ ... }
+	 * { ... }
+	 *
+	 * or
+	 *
+	 * f()           i.e. $f = i4(...){ ... }
+	 * { ... }
+	 *
+	 * so we must assume that we need to cast it to i4(...) to call it
+	 */
+
 	casted_val = ctx->curval++;
 
 	printf("$%u = ptrcast %s(...)*, %s\n",
