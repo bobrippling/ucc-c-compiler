@@ -151,12 +151,16 @@ const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 
 irval *gen_ir_expr_struct(const expr *e, irctx *ctx)
 {
+	const int ptr_expect = !e->expr_is_st_dot;
 	decl *const d = e->bits.struct_mem.d;
 	irval *struct_exp;
 	const unsigned off = ctx->curval++;
 	unsigned idx;
 	int found = 0;
-	struct_union_enum_st *su = type_is_s_or_u(e->lhs->tree_type);
+	struct_union_enum_st *su = type_is_s_or_u(
+			ptr_expect
+			? type_is_ptr(e->lhs->tree_type)
+			: e->lhs->tree_type);
 
 	assert(su && "no struct type");
 	if(su->primitive == type_union){
