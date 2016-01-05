@@ -98,7 +98,7 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 
 	if(args){
 		putchar('\n');
-		if(d->bits.func.code){
+		if(decl_should_emit_code(d)){
 			printf("{\n");
 			gen_ir_spill_args(ctx, args);
 			gen_ir_stmt(d->bits.func.code, ctx);
