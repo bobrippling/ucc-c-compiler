@@ -745,6 +745,10 @@ static irval *gen_ir_cast_int_ptr_etc(const expr *e, irval *sub, irctx *ctx)
 	int const sub_ptr = !!type_is_ptr(e->expr->tree_type);
 	int const this_ptr = !!type_is_ptr(e->tree_type);
 
+	if(type_is_void(e->tree_type)){
+		return irval_from_noop();
+	}
+
 	if(sub_ptr && this_ptr)
 		return gen_ir_cast_ptr2ptr(e, sub, ctx);
 
