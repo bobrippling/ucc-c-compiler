@@ -13,11 +13,4 @@ ucc: ${OBJ}
 clean:
 	rm -f *.o ucc
 
-Makefile.dep:
-	${CC} ${CFLAGS} -MM *.c > $@
-
-deps: Makefile.dep
-
-.PHONY: clean deps
-
-include Makefile.dep
+.PHONY: clean

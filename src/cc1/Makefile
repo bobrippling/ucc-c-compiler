@@ -56,7 +56,7 @@ clean:
 tags: ${SRC}
 	ctags -R .
 
-.PHONY: clean deps
+.PHONY: clean
 
 ../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
 ../util/dynmap.o:
@@ -71,15 +71,3 @@ out/alloca.o out/ctrl.o out/func.o out/impl.o out/mipsel_32.o \
 
 # extra deps
 out/impl.h: out/x86_64.h out/mipsel_32.h
-
-deps: Makefile.dep
-
-Makefile.dep: \
-	CFLAGS += -DCC1_IMPL_FNAME=\"${ARCH}.h\"
-
-Makefile.dep:
-	${CC} ${CFLAGS} -MM *.c > $@
-	${CC} ${CFLAGS} -MM ops/*.c | sed 's#^\([^ ]\)#ops/\1#' >> $@
-	${CC} ${CFLAGS} -MM out/*.c | sed 's#^\([^ ]\)#out/\1#' >> $@
-
-include Makefile.dep

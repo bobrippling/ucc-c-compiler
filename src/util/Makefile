@@ -14,8 +14,6 @@ platform.o: platform.c
 %.o: %.c
 	${BUILD_CC}
 
-deps: Makefile.dep
-
 OBJ_TEST = test.o path.o dynarray.o alloc.o dynmap.o
 test: ${OBJ_TEST}
 	${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
@@ -23,12 +21,7 @@ test: ${OBJ_TEST}
 check: test
 	./test
 
-Makefile.deps:
-	${CC} -MM ${SRC} > $@
-
 clean:
 	rm -f *.o
 
 .PHONY: all clean check
-
-include Makefile.deps

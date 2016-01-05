@@ -22,11 +22,4 @@ cpp: ${OBJ}
 clean:
 	rm -f *.o cpp
 
-.PHONY: clean deps
-
-deps: Makefile.dep
-
-Makefile.dep:
-	${CC} ${CFLAGS} -MM *.c > $@
-
-include Makefile.dep
+.PHONY: clean
