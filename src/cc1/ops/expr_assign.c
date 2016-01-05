@@ -1,10 +1,12 @@
 #include <assert.h>
+#include <string.h>
 
 #include "ops.h"
 #include "expr_assign.h"
 #include "__builtin.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../c_funcs.h"
 
 const char *str_expr_assign()
 {
@@ -92,6 +94,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 {
 	sym *lhs_sym = NULL;
 	int is_struct_cpy = 0;
+	expr *rhs_nocast;
 
 	lhs_sym = fold_inc_writes_if_sym(e->lhs, stab);
 
@@ -144,6 +147,15 @@ void fold_expr_assign(expr *e, symtable *stab)
 		}
 	}
 
+	rhs_nocast = expr_skip_implicit_casts(e->rhs);
+	if(expr_kind(rhs_nocast, funcall)){
+		expr *callexpr = e->rhs->expr;
+		decl *rhs_call_decl = expr_to_declref(callexpr->expr, NULL);
+
+		if(rhs_call_decl && rhs_call_decl->spel && !strcmp(rhs_call_decl->spel, "malloc")){
+			c_func_check_malloc(callexpr, e->lhs->tree_type);
+		}
+	}
 
 	if(is_struct_cpy){
 		e->expr = builtin_new_memcpy(

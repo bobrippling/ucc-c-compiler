@@ -152,6 +152,7 @@ X("flexarr-init", flexarr_init)
 X("extended-offsetof", offsetof_extended)
 
 X("free-nonheap-object", free_nonheap)
+X("malloc-type-mismatch", malloc_type_mismatch)
 
 X("gcc-compat", gnu_gcc_compat)
 
