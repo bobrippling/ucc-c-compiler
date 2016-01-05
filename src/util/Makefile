@@ -13,13 +13,16 @@ platform.o: \
 	CFLAGS += -DUCC_PLATFORM=PLATFORM_${ARCH}
 
 test: ${OBJ_TEST}
-	${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
+	@echo link $@
+	$Q${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
 
 check: test
-	./test
+	@echo test util
+	$Q./test
 
 clean:
-	rm -f ${OBJ} ${OBJ_TEST}
+	@echo clean util
+	$Qrm -f ${OBJ} ${OBJ_TEST}
 
 .PHONY: all clean check
 

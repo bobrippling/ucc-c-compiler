@@ -21,10 +21,12 @@ SRC = ${OBJ:.o=.c}
 all: cpp tags
 
 cpp: ${OBJ}
-	${CC} -o $@ ${OBJ} ${LDFLAGS}
+	@echo link $@
+	$Q${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 clean:
-	rm -f ${OBJ} cpp
+	@echo clean cpp
+	$Qrm -f ${OBJ} cpp
 
 .PHONY: clean all
 

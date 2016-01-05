@@ -45,16 +45,20 @@ OBJ_CC1 = cc1.o ${OBJ_REST} ${OBJ_UTIL}
 all: cc1 tags check
 
 cc1: ${OBJ_CC1}
-	${CC} -o $@ ${OBJ_CC1} ${LDFLAGS}
+	@echo link $@
+	$Q${CC} -o $@ ${OBJ_CC1} ${LDFLAGS}
 
 test: ${OBJ_TEST}
-	${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
+	@echo link $@
+	$Q${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
 
 check: test
-	./test
+	@echo test cc1
+	$Q./test
 
 clean:
-	rm -f cc1 test ${OBJ_CC1} ${OBJ_TEST}
+	@echo clean cc1
+	$Qrm -f cc1 test ${OBJ_CC1} ${OBJ_TEST}
 
 .PHONY: clean check
 

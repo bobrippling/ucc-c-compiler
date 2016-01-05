@@ -12,10 +12,12 @@ SRC = ${OBJ:.o=.c}
 all: ucc tags
 
 ucc: ${OBJ}
-	${CC} -o $@ ${OBJ} ${LDFLAGS}
+	@echo link $@
+	$Q${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 clean:
-	rm -f ${OBJ} ucc
+	@echo clean ucc
+	$Qrm -f ${OBJ} ucc
 
 .PHONY: clean all
 
