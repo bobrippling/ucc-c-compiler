@@ -2,19 +2,16 @@ include ../config.mk
 
 OBJ = platform.o util.o alloc.o dynarray.o dynmap.o where.o str.o \
 			std.o escape.o math.o warn.o path.o tmpfile.o
-SRC = $(OBJ:.o=.c)
-
-BUILD_CC = ${CC} ${CFLAGS} -c -o $@ $<
-
-all: ${OBJ} check
-
-platform.o: platform.c
-	${BUILD_CC} -DUCC_PLATFORM=PLATFORM_${ARCH}
-
-%.o: %.c
-	${BUILD_CC}
 
 OBJ_TEST = test.o path.o dynarray.o alloc.o dynmap.o
+
+SRC = ${OBJ:.o=.c} ${OBJ_TEST:.o=.c}
+
+all: ${OBJ} tags check
+
+platform.o: \
+	CFLAGS += -DUCC_PLATFORM=PLATFORM_${ARCH}
+
 test: ${OBJ_TEST}
 	${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
 
@@ -22,6 +19,8 @@ check: test
 	./test
 
 clean:
-	rm -f *.o
+	rm -f ${OBJ} ${OBJ_TEST}
 
 .PHONY: all clean check
+
+include ../Makefile.common

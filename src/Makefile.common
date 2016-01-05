@@ -1,0 +1,9 @@
+# requires ${SRC}
+
+tags: ${SRC}
+	-ctags ${SRC} *.h
+
+%.d: %.c
+	${CC} -MM ${CPPFLAGS} $< -o $@
+
+-include ${SRC:%.c=%.d}

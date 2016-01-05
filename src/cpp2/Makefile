@@ -16,10 +16,16 @@ OBJ = preproc.o main.o macro.o str.o \
       ../util/warn.o                 \
       ../util/path.o
 
+SRC = ${OBJ:.o=.c}
+
+all: cpp tags
+
 cpp: ${OBJ}
 	${CC} -o $@ ${OBJ} ${LDFLAGS}
 
 clean:
-	rm -f *.o cpp
+	rm -f ${OBJ} cpp
 
-.PHONY: clean
+.PHONY: clean all
+
+include ../Makefile.common

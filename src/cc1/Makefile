@@ -1,14 +1,16 @@
 include ../config.mk
 
-ARCH_OBJ = out/${ARCH}.o
-
 LDFLAGS += -lm
 
-OBJ = \
+OBJ_ARCH = out/${ARCH}.o
+
+OBJ_UTIL = \
 	../util/alloc.o ../util/util.o ../util/platform.o \
 	../util/dynarray.o ../util/dynmap.o ../util/where.o \
 	../util/str.o ../util/std.o ../util/escape.o ../util/warn.o \
 	../util/math.o ../util/tmpfile.o \
+
+OBJ_REST = \
 	str.o num.o label.o strings.o \
 	pass1.o cc1_out_ctx.o \
 	decl.o attribute.o decl_init.o funcargs.o expr.o stmt.o \
@@ -30,16 +32,20 @@ OBJ = \
 	ops/stmt_if.o ops/stmt_label.o ops/stmt_noop.o ops/stmt_return.o \
 	ops/stmt_switch.o ops/stmt_while.o ops/stmt_continue.o ops/expr_block.o \
 	ops/expr_assign_compound.o ops/expr_string.o \
-	${ARCH_OBJ}
+	${OBJ_ARCH}
 
-OBJ_TEST = test.o ${OBJ}
+BACKEND_SRC = \
+		out/alloca.c out/ctrl.c out/func.c out/impl.c out/mipsel_32.c \
+		out/new.c out/op.c out/out.c out/val.c out/virt.c out/vm.c \
+		out/x86_64.c out/dbg.c
 
-SRC = ${OBJ:.o=.c}
+OBJ_TEST = test.o ${OBJ_REST} ${OBJ_UTIL}
+OBJ_CC1 = cc1.o ${OBJ_REST} ${OBJ_UTIL}
 
-all: cc1 check
+all: cc1 tags check
 
-cc1: ${OBJ} cc1.o
-	${CC} -o $@ ${OBJ} cc1.o ${LDFLAGS}
+cc1: ${OBJ_CC1}
+	${CC} -o $@ ${OBJ_CC1} ${LDFLAGS}
 
 test: ${OBJ_TEST}
 	${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
@@ -47,27 +53,24 @@ test: ${OBJ_TEST}
 check: test
 	./test
 
-%.o: %.c
-	${CC} ${CFLAGS} -c -o $@ $<
-
 clean:
-	rm -f *.o cc1 ops/*.o out/*.o
+	rm -f cc1 test ${OBJ_CC1} ${OBJ_TEST}
 
-tags: ${SRC}
-	ctags -R .
+.PHONY: clean check
 
-.PHONY: clean
-
-../util/alloc.o ../util/util.o ../util/platform.o ../util/dynarray.o \
-../util/dynmap.o:
+${OBJ_UTIL}:
 	@echo util must be built from util/
 	false
 
 # files that need target info
-out/alloca.o out/ctrl.o out/func.o out/impl.o out/mipsel_32.o \
-	out/new.o out/op.o out/out.o out/val.o out/virt.o out/vm.o \
-	out/x86_64.o out/dbg.o : \
+${BACKEND_SRC:.c=.o} : \
 	CFLAGS += -DCC1_IMPL_FNAME=\"${ARCH}.h\"
+
+${BACKEND_SRC:.c=.d} : \
+	CPPFLAGS += -DCC1_IMPL_FNAME=\"${ARCH}.h\"
 
 # extra deps
 out/impl.h: out/x86_64.h out/mipsel_32.h
+
+SRC = cc1.c test.c ${OBJ_REST:.o=.c} # not util - we don't want dependencies for util/
+include ../Makefile.common
