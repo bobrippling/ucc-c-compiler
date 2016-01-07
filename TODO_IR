@@ -1,2 +1,3 @@
 linkage (extern, static, weak)
 tenatives
+initialisation + const-memory + -fcommon
