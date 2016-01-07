@@ -18,6 +18,7 @@
 #include "sue.h"
 #include "funcargs.h"
 #include "str.h" /* literal_print() */
+#include "decl_init.h"
 
 #include "gen_ir.h"
 #include "gen_ir_internal.h"
@@ -87,6 +88,83 @@ static void gen_ir_spill_args(irctx *ctx, funcargs *args)
 	}
 }
 
+static void gen_ir_init_scalar(decl_init *init)
+{
+	int anyptr = 0;
+	expr *e = init->bits.expr;
+	consty k;
+
+	memset(&k, 0, sizeof k);
+	const_fold(e, &k);
+
+	switch(k.type){
+		case CONST_NEED_ADDR:
+		case CONST_NO:
+			ICE("non-constant expr-%s const=%d%s",
+					e->f_str(),
+					k.type,
+					k.type == CONST_NEED_ADDR ? " (needs addr)" : "");
+			break;
+
+		case CONST_NUM:
+			if(K_FLOATING(k.bits.num)){
+				/* asm fp const */
+				IRTODO("floating static constant");
+				printf("<TODO: float constant>");
+			}else{
+				char buf[INTEGRAL_BUF_SIZ];
+				integral_str(buf, sizeof buf, k.bits.num.val.i, e->tree_type);
+				fputs(buf, stdout);
+			}
+			break;
+
+		case CONST_ADDR:
+			if(k.bits.addr.is_lbl)
+				printf("$%s", k.bits.addr.bits.lbl);
+			else
+				printf("%ld", k.bits.addr.bits.memaddr);
+			break;
+
+		case CONST_STRK:
+			stringlit_use(k.bits.str->lit);
+			printf("$%s", k.bits.str->lit->lbl);
+			anyptr = 1;
+			break;
+	}
+
+	if(k.offset)
+		printf(" add %" NUMERIC_FMT_D, k.offset);
+	if(anyptr)
+		printf(" anyptr");
+}
+
+static void gen_ir_init_r(decl_init *init)
+{
+	switch(init->type){
+		case decl_init_scalar:
+			gen_ir_init_scalar(init);
+			break;
+
+		case decl_init_brace:
+		case decl_init_copy:
+			IRTODO("complex init");
+			break;
+	}
+}
+
+static void gen_ir_init(decl *d)
+{
+	printf(" %s ", decl_linkage(d) == linkage_internal ? "internal" : "global");
+
+	if(attribute_present(d, attr_weak))
+		printf("weak ");
+
+	if(type_is_const(d->ref))
+		printf("const ");
+
+	gen_ir_init_r(d->bits.var.init.dinit);
+}
+
 static void gen_ir_decl(decl *d, irctx *ctx)
 {
 	funcargs *args = type_is(d->ref, type_func) ? type_funcargs(d->ref) : NULL;
@@ -113,11 +191,12 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 			printf("}\n");
 		}
 	}else{
-		printf("\n");
-
-		if(!d->bits.var.init.compiler_generated){
-			IRTODO("ir init for %s\n", d->spel);
+		if((d->store & STORE_MASK_STORE) != store_extern
+		&& d->bits.var.init.dinit)
+		{
+			gen_ir_init(d);
 		}
+		putchar('\n');
 	}
 }
 
@@ -126,7 +205,7 @@ static void gen_ir_stringlit(const stringlit *lit, int predeclare)
 	printf("$%s = [i%c x 0]", lit->lbl, lit->wide ? '4' : '1', lit->lbl);
 
 	if(!predeclare){
-		printf(" \"");
+		printf(" internal \"");
 		literal_print(stdout, lit->str, lit->len);
 		printf("\"");
 	}
