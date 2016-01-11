@@ -390,7 +390,7 @@ static int /*bool*/ if_eval(token **tokens, const char *type)
 	/* and eval (this also frees e) */
 	{
 		int had_ident = 0;
-		const int r = !!expr_eval(e, &had_ident);
+		const int r = !!expr_eval(e, &had_ident, 0);
 
 		if(had_ident)
 			CPP_WARN(WUNDEF_IN_IF,
