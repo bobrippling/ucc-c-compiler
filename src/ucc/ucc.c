@@ -772,6 +772,16 @@ input:
 
 		free(dup);
 	}
+	if(stdinc){
+		/* add ucc specific files - std{align,bool,arg} etc... */
+		char *local_inc = actual_path("../../include", "");
+		char *inc = ustrprintf("-I%s", local_inc);
+
+		dynarray_add(&args[mode_preproc], inc);
+		dynarray_add(&args[mode_compile], ustrdup(inc));
+
+		free(local_inc);
+	}
 	if(isystems){
 		const char **i;
 		for(i = isystems; *i; i++){
