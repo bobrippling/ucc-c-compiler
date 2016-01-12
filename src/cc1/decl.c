@@ -303,5 +303,23 @@ int decl_should_emit_code(decl *d)
 
 int decl_unused_and_internal(decl *d)
 {
-	return !d->used && decl_linkage(d) != linkage_external;
+	/* need to check every clone of the decl */
+	decl *i;
+	int used = 0;
+
+	for(i = d; i; i = i->proto){
+		if(i->used){
+			used = 1;
+			goto fin;
+		}
+	}
+	for(i = d; i; i = i->impl){
+		if(i->used){
+			used = 1;
+			goto fin;
+		}
+	}
+
+fin:
+	return !used && decl_linkage(d) != linkage_external;
 }
