@@ -133,6 +133,11 @@ static void wur_builtin(expr *e)
 	e->freestanding = 0; /* needs use */
 }
 
+const char *builtin_str(void)
+{
+	return "<builtin-expression>";
+}
+
 static const out_val *builtin_gen_undefined(const expr *e, out_ctx *octx)
 {
 	(void)e;

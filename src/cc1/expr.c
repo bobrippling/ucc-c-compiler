@@ -190,10 +190,14 @@ decl *expr_to_declref(expr *e, const char **whynot)
 	e = expr_skip_all_casts(e);
 
 	if(expr_kind(e, identifier)){
-		if(e->bits.ident.type == IDENT_NORM)
-			return e->bits.ident.bits.ident.sym->decl;
-		else if(whynot)
+		if(whynot)
 			*whynot = "not normal identifier";
+
+		if(e->bits.ident.type == IDENT_NORM){
+			sym *s = e->bits.ident.bits.ident.sym;
+			if(s)
+				return s->decl;
+		}
 
 	}else if(expr_kind(e, struct)){
 		return e->bits.struct_mem.d;
