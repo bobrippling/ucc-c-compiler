@@ -129,7 +129,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 	e->bits.ident.type = IDENT_NORM;
 	e->tree_type = sym->decl->ref;
 
-	sym->decl->used = 1;
+	decl_use(sym->decl);
 
 	/* set if lvalue */
 	if(type_is(e->tree_type, type_func))
