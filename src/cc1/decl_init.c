@@ -1186,6 +1186,13 @@ static decl_init *is_char_init(
 
 		fold_expr_nodecay(chosen->bits.expr, stab);
 
+		/* only allow char[] init from string literal (or __func__)
+		 * otherwise we allow things like:
+		 * char x[] = (q ? "hi" : "there");
+		 */
+		if(!expr_kind(chosen->bits.expr, str))
+			return NULL;
+
 		ty_expr = type_str_type(chosen->bits.expr->tree_type);
 		ty_decl = type_str_type(ty);
 
@@ -1346,6 +1353,8 @@ static decl_init *decl_init_brace_up_start(
 			/* allow special case of char [] with "..." */
 			int str_mismatch = 0;
 
+			/* if not initialising an array, type mismatch.
+			 * if initialising array, but isn't char[] init, mismatch */
 			if(!for_array
 			|| !is_char_init(tfor, &it, stab, &str_mismatch))
 			{
