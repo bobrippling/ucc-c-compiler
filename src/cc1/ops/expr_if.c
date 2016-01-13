@@ -88,7 +88,9 @@ static type *pointer_to_qualified(type *base, type *lhs, type *rhs)
 	enum type_qualifier qrhs = rhs ? type_qual(type_next(rhs)) : qual_none;
 
 	/* special case: prevent merging noreturn attributes on pointers to functions */
-	base = remove_function_noreturn(base);
+	if(!!type_attr_present(lhs, attr_noreturn) ^ !!type_attr_present(rhs, attr_noreturn)){
+		base = remove_function_noreturn(base);
+	}
 
 	return type_ptr_to(type_qualify(base, qlhs | qrhs));
 }
