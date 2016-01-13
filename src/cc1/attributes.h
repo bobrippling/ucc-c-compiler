@@ -14,7 +14,7 @@
 		NAME(noreturn, 0)       \
 		NAME(noderef, 1)        \
 		NAME(nonnull, 1)        \
-		NAME(packed, 0)         \
+		NAME(packed, 1)         \
 		NAME(sentinel, 0)       \
 		NAME(aligned, 1)        \
 		NAME(weak, 0)           \
