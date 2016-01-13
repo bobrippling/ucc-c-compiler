@@ -406,6 +406,11 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 		if(type_is_void(tlhs))
 			return; /* fine */
+		if(type_is_void(trhs)){
+			warn_at_print_error(&e->where, "cast from void");
+			fold_had_error = 1;
+			return;
+		}
 
 		fold_check_expr(expr_cast_child(e), check_flags, "cast");
 
