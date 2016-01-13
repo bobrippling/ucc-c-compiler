@@ -403,7 +403,7 @@ const char *impl_val_str_r(
 			/* we should never get a 64-bit value here
 			 * since movabsq should load those in
 			 */
-			UCC_ASSERT(integral_high_bit_ABS(vs->bits.val_i, vs->t) < AS_MAX_MOV_BIT,
+			UCC_ASSERT(integral_high_bit(vs->bits.val_i, vs->t) < AS_MAX_MOV_BIT,
 					"can't load 64-bit constants here (0x%llx)", vs->bits.val_i);
 
 			if(deref == 0)
@@ -938,7 +938,7 @@ static const out_val *x86_load_iv(
 		out_ctx *octx, const out_val *from,
 		const struct vreg *reg /* may be null */)
 {
-	const int high_bit = integral_high_bit_ABS(from->bits.val_i, from->t);
+	const int high_bit = integral_high_bit(from->bits.val_i, from->t);
 	struct vreg r;
 
 	assert(from->type == V_CONST_I);
