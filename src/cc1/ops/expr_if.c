@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "expr_if.h"
@@ -62,10 +63,32 @@ static void fold_const_expr_if(expr *e, consty *k)
 	}
 }
 
+static type *remove_function_noreturn(type *const t)
+{
+	type *ret;
+	funcargs *args;
+	type *test;
+
+	if(!(test = type_is(t, type_func)))
+		return t;
+
+	ret = type_called(t, &args);
+
+	ret = type_skip_all(ret);
+
+	assert(test->type == type_func);
+
+	args->retains++;
+	return type_func_of(ret, args, test->bits.func.arg_scope);
+}
+
 static type *pointer_to_qualified(type *base, type *lhs, type *rhs)
 {
 	enum type_qualifier qlhs = lhs ? type_qual(type_next(lhs)) : qual_none;
 	enum type_qualifier qrhs = rhs ? type_qual(type_next(rhs)) : qual_none;
+
+	/* special case: prevent merging noreturn attributes on pointers to functions */
+	base = remove_function_noreturn(base);
 
 	return type_ptr_to(type_qualify(base, qlhs | qrhs));
 }
