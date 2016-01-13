@@ -46,7 +46,7 @@
 
 #define integral_high_bit_ABS(v, t) integral_high_bit(llabs(v), t)
 
-#define NUM_FMT "%d"
+#define NUM_FMT "%lld"
 /* format for movl $5, -0x6(%rbp) asm output
                         ^~~                    */
 
@@ -465,7 +465,7 @@ const char *impl_val_str_r(
 				SNPRINTF(buf, VAL_STR_SZ,
 						"%s" NUM_FMT "(%%%s)",
 						off < 0 ? "-" : "",
-						abs(off),
+						llabs(off),
 						rstr);
 			}else{
 				SNPRINTF(buf, VAL_STR_SZ,
