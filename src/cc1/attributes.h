@@ -11,7 +11,7 @@
 		NAME(warn_unused, 0)    \
 		NAME(section, 0)        \
 		NAME(enum_bitmask, 0)   \
-		NAME(noreturn, 0)       \
+		NAME(noreturn, 1)       \
 		NAME(noderef, 1)        \
 		NAME(nonnull, 1)        \
 		NAME(packed, 1)         \
