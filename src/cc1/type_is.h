@@ -3,6 +3,7 @@
 
 struct decl;
 
+/* see type_unattribute and type_unqualify for removing specific entries */
 type *type_skip_all(type *r);
 type *type_skip_non_tdefs(type *);
 type *type_skip_non_attr(type *);
