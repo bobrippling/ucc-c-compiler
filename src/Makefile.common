@@ -4,6 +4,8 @@ tags: ${SRC}
 	-ctags ${SRC} *.h
 
 %.d: %.c
-	${CC} -MM ${CPPFLAGS} $< -o $@
+	${CC} -MM ${CPPFLAGS} $< -o $@.tmp
+	../depend_fixup $@.tmp > $@
+	rm -f $@.tmp
 
 -include ${SRC:%.c=%.d}

@@ -1,0 +1,17 @@
+#!/bin/sh
+
+if test $# -ne 1
+then
+	echo >&2 "Usage: $0 dependency-file"
+	exit 1
+fi
+
+arg="$1"
+
+if echo "$arg" | grep / >/dev/null
+then
+	subdir=${arg%/*}
+	sed -e "1s%^%$subdir/%" "$arg"
+else
+	cat "$arg"
+fi
