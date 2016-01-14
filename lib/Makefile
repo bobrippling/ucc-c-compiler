@@ -1,3 +1,6 @@
+include ../src/config.mk
+# include src_config (for $ARCH), but overwrite CFLAGS, etc...
+
 UCC_CC = ../src/ucc/ucc
 LIBC   = libc.a
 CRT    = crt.a
@@ -17,8 +20,6 @@ CPPFLAGS = -nostdinc
 CFLAGS = -g -Wmissing-forwards
 
 BUILD_CMD = ${UCC_CC} ${CPPFLAGS} ${CFLAGS} -c -o $@ $<
-
-include ../src/config.mk
 
 ARCH_DIR = arch/${ARCH}
 
