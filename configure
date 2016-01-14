@@ -245,6 +245,7 @@ try_cflag -Wno-char-subscripts
 try_cflag -Wno-format-extra-args
 try_cflag -Wno-missing-braces
 try_cflag -Wno-missing-field-initializers
+try_cflag -Wno-logical-not-parentheses
 
 if test $debug = 1
 then
