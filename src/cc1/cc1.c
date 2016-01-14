@@ -46,7 +46,7 @@ static struct
 	char type;
 	const char *arg;
 	int mask;
-} fopts[] = {
+} mopts[] = {
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 	{ 'm',  "32", MOPT_32 },
 	{ 'm',  "64", ~MOPT_32 },
@@ -385,6 +385,103 @@ static void set_sanitize_error(const char *argv0, const char *handler)
 	}
 }
 
+static void parse_Wmf_equals()
+{
+	int new_val;
+
+	if(rev){
+		fprintf(stderr, "\"no-\" unexpected for value-argument\n");
+		goto usage;
+	}
+
+	if(!strncmp(arg, "sanitize=", 9)){
+		add_sanitize_option(argv0, arg + 9);
+		continue;
+	}else if(!strncmp(arg, "sanitize-error=", 15)){
+		set_sanitize_error(argv0, arg + 15);
+		continue;
+	}
+
+	*equal = '\0';
+	if(sscanf(equal + 1, "%d", &new_val) != 1){
+		fprintf(stderr, "need number for %s\n", arg);
+		goto usage;
+	}
+
+	for(j = 0; val_args[j].arg; j++)
+		if(val_args[j].pref == arg_ty && !strcmp(arg, val_args[j].arg)){
+			*val_args[j].pval = new_val;
+			found = 1;
+			break;
+		}
+
+	if(!found)
+		goto unrecognised;
+}
+
+static void mopt_on(const char *argument, int invert)
+{
+	for(j = 0; mopts[j].arg; j++){
+		if(mopts[j].type == arg_ty && !strcmp(arg, mopts[j].arg)){
+			/* if the mask isn't a single bit, treat it as
+			 * an unmask, e.g. -funsigned-char unmasks FOPT_SIGNED_CHAR
+			 */
+			const int unmask = mopts[j].mask & (mopts[j].mask - 1);
+
+			if(rev){
+				if(unmask)
+					*mask |= ~mopts[j].mask;
+				else
+					*mask &= ~mopts[j].mask;
+			}else{
+				if(unmask)
+					*mask &= mopts[j].mask;
+				else
+					*mask |= mopts[j].mask;
+			}
+			found = 1;
+			break;
+		}
+	}
+}
+
+static void parse_Wmf_option(const char *argument, const char *argv0)
+{
+	const char arg_ty = argument[1];
+	const char *arg_substr = argument + 2;
+	int invert = 0;
+	const char *equal;
+
+	if(!strncmp(arg_substr, "no-", 3)){
+		arg_substr += 3;
+		invert = 1;
+	}
+
+	equal = strchr(arg, '=');
+	if(equal){
+		parse_Wmf_equals();
+		return;
+	}
+
+	if(arg_ty == 'f'){
+		fopt_on(arg_substr, invert);
+		return;
+	}
+
+	if(arg_ty == 'W'){
+		warning_on(arg, invert ? W_OFF : W_WARN, &werror, unknown_warnings);
+		return;
+	}
+
+	mopt_on(arg, invert);
+
+	if(!found){
+unrecognised:
+		fprintf(stderr, "\"%s\" unrecognised\n", argument);
+		goto usage;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	int failure;
@@ -476,98 +573,7 @@ int main(int argc, char **argv)
 
 		}else if(argv[i][0] == '-'
 		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
-			const char arg_ty = argv[i][1];
-			char *arg = argv[i] + 2;
-			int *mask;
-			int j, found, rev;
-
-			rev = found = 0;
-
-			if(!strncmp(arg, "no-", 3)){
-				arg += 3;
-				rev = 1;
-			}
-
-			if(arg_ty != 'W'){
-				char *equal = strchr(arg, '=');
-
-				if(equal){
-					int new_val;
-
-					if(rev){
-						fprintf(stderr, "\"no-\" unexpected for value-argument\n");
-						goto usage;
-					}
-
-					if(!strncmp(arg, "sanitize=", 9)){
-						add_sanitize_option(*argv, arg + 9);
-						continue;
-					}else if(!strncmp(arg, "sanitize-error=", 15)){
-						set_sanitize_error(*argv, arg + 15);
-						continue;
-					}
-
-					*equal = '\0';
-					if(sscanf(equal + 1, "%d", &new_val) != 1){
-						fprintf(stderr, "need number for %s\n", arg);
-						goto usage;
-					}
-
-					for(j = 0; val_args[j].arg; j++)
-						if(val_args[j].pref == arg_ty && !strcmp(arg, val_args[j].arg)){
-							*val_args[j].pval = new_val;
-							found = 1;
-							break;
-						}
-
-					if(!found)
-						goto unrecognised;
-					continue;
-				}
-			}
-
-			switch(arg_ty){
-				case 'f':
-					fopt_on(arg, rev);
-					break;
-				case 'm':
-					mask = (int *)&mopt_mode;
-					break;
-				default:
-					ucc_unreach(1);
-
-				case 'W':
-					warning_on(arg, rev ? W_OFF : W_WARN, &werror, unknown_warnings);
-					continue;
-			}
-
-			for(j = 0; fopts[j].arg; j++)
-				if(fopts[j].type == arg_ty && !strcmp(arg, fopts[j].arg)){
-					/* if the mask isn't a single bit, treat it as
-					 * an unmask, e.g. -funsigned-char unmasks FOPT_SIGNED_CHAR
-					 */
-					const int unmask = fopts[j].mask & (fopts[j].mask - 1);
-
-					if(rev){
-						if(unmask)
-							*mask |= ~fopts[j].mask;
-						else
-							*mask &= ~fopts[j].mask;
-					}else{
-						if(unmask)
-							*mask &= fopts[j].mask;
-						else
-							*mask |= fopts[j].mask;
-					}
-					found = 1;
-					break;
-				}
-
-			if(!found){
-unrecognised:
-				fprintf(stderr, "\"%s\" unrecognised\n", argv[i]);
-				goto usage;
-			}
+			parse_Wmf_option(argv[i], *argv);
 
 		}else if(!strncmp(argv[i], "-I", 2)){
 			/* these are system headers only - we don't get the full set */
