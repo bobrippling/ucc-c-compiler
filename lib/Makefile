@@ -19,7 +19,7 @@ LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp2/cpp
 CPPFLAGS = -nostdinc
 CFLAGS = -g -Wmissing-forwards
 
-BUILD_CMD = ${UCC_CC} ${CPPFLAGS} ${CFLAGS} -c -o $@ $<
+CC = ${UCC_CC}
 
 ARCH_DIR = arch/${ARCH}
 
@@ -34,60 +34,16 @@ ${OBJ_LIBC}: ${LIBDEPS}
 ${OBJ_CRT}: ${LIBDEPS}
 
 crt.o: ${ARCH_DIR}/crt.S
-	${BUILD_CMD}
+	${CC} -c -o $@ $< ${ASFLAGS}
 syscall.o: ${ARCH_DIR}/syscall.S
-	${BUILD_CMD}
-begin.o: begin.c
-	${BUILD_CMD}
-
-stdio.o: stdio.c
-	${BUILD_CMD}
-stdlib.o: stdlib.c
-	${BUILD_CMD}
-string.o: string.c
-	${BUILD_CMD}
-unistd.o: unistd.c
-	${BUILD_CMD}
-signal.o: signal.c
-	${BUILD_CMD}
-assert.o: assert.c
-	${BUILD_CMD}
-ctype.o: ctype.c
-	${BUILD_CMD}
-dirent.o: dirent.c
-	${BUILD_CMD}
-stdarg.o: stdarg.c
-	${BUILD_CMD}
-
+	${CC} -c -o $@ $< ${ASFLAGS}
 alloca.o: ${ARCH_DIR}/alloca.S
-	${BUILD_CMD}
-
-#ucc.o: ucc.c
-#	${UCC_CC} -fenable-asm -c -o $@ $<
-
-sys/fcntl.o: sys/fcntl.c
-	${BUILD_CMD}
-sys/wait.o: sys/wait.c
-	${BUILD_CMD}
-sys/mman.o: sys/mman.c
-	${BUILD_CMD}
-sys/socket.o: sys/socket.c
-	${BUILD_CMD}
-sys/utsname.o: sys/utsname.c
-	${BUILD_CMD}
-sys/select.o: sys/select.c
-	${BUILD_CMD}
-sys/time.o: sys/time.c
-	${BUILD_CMD}
-
-arpa/inet.o: arpa/inet.c
-	${BUILD_CMD}
+	${CC} -c -o $@ $< ${ASFLAGS}
 
 clean:
 	rm -f *.o sys/*.o ${CRT} ${LIBC}
 
 .PHONY: all clean
-
 
 assert.o: assert.c stdio.h stdarg.h sys/types.h macros.h stdlib.h \
  ucc_attr.h assert.h
