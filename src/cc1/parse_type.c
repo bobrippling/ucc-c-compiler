@@ -19,6 +19,7 @@
 
 #include "cc1.h"
 #include "cc1_where.h"
+#include "fopt.h"
 
 #include "parse_type.h"
 #include "parse_expr.h"
@@ -1248,7 +1249,7 @@ static type_parsed *parsed_type_array(
 					 * (and we don't have the fold-const-vlas setting), then treat
 					 * as a vla */
 					if(k.type != CONST_NUM
-					|| (k.nonstandard_const && !(fopt_mode & FOPT_FOLD_CONST_VLAS)))
+					|| (k.nonstandard_const && !(cc1_fopt.fold_const_vlas)))
 					{
 						is_vla = VLA;
 					}

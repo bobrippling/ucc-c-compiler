@@ -16,6 +16,7 @@
 #include "cc1.h"
 #include "cc1_where.h"
 #include "btype.h"
+#include "fopt.h"
 
 #ifndef CHAR_BIT
 #  define CHAR_BIT 8
@@ -320,7 +321,7 @@ static ucc_wur char *tokenise_read_line(void)
 	}else{
 		/* check for preprocessor line info */
 		/* but first - add to store_lines */
-		if(fopt_mode & FOPT_SHOW_LINE)
+		if(cc1_fopt.show_line)
 			add_store_line(l);
 
 		/* format is # line? [0-9] "filename" ([0-9])* */
@@ -348,7 +349,7 @@ static void tokenise_next_line(void)
 		SET_CURRENT_LINE_STR(ustrdup(new));
 
 	if(buffer){
-		if((fopt_mode & FOPT_SHOW_LINE) == 0)
+		if((cc1_fopt.show_line) == 0)
 			free(buffer);
 	}
 
@@ -366,7 +367,7 @@ void tokenise_set_input(tokenise_line_f *func, const char *nam)
 	char *nam_dup = ustrdup(nam);
 	in_func = func;
 
-	if(fopt_mode & FOPT_TRACK_INITIAL_FNAM)
+	if(cc1_fopt.track_initial_fnam)
 		push_fname(nam_dup, 1);
 	else
 		current_fname = nam_dup;

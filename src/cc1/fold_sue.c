@@ -14,6 +14,7 @@
 #include "fold.h"
 #include "sue.h"
 #include "const.h"
+#include "fopt.h"
 
 #include "pack.h"
 #include "defs.h"
@@ -160,7 +161,7 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 		defval = has_bitmask ? v << 1 : v + 1;
 	}
 
-	if(fopt_mode & FOPT_SHORT_ENUMS){
+	if(cc1_fopt.short_enums){
 		unsigned bits = (MAX(log2ll(round2(-min + 1)), log2ll(round2(max + 1))));
 
 		/* bits needs to be a power of 2 since those are the only word sizes supported */
@@ -196,7 +197,7 @@ static int fold_sue_check_unnamed(
 			char *prob = NULL;
 			int ignore = 0;
 
-			if(fopt_mode & FOPT_TAG_ANON_STRUCT_EXT){
+			if(FOPT_TAG_ANON_STRUCT_EXT(&cc1_fopt)){
 				/* fine */
 			}else if(!sub_sue->anon){
 				prob = "ignored - tagged";

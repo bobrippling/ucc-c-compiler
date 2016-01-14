@@ -14,6 +14,7 @@
 #include "sue.h"
 #include "btype.h"
 #include "cc1.h"
+#include "fopt.h"
 
 static int type_convertible(enum type_primitive p)
 {
@@ -79,7 +80,7 @@ int type_primitive_is_signed(enum type_primitive p, int hard_err_on_su)
 		case type_nchar:
 			/* XXX: note we treat char as signed */
 			/* -fsigned-char */
-			return !!(fopt_mode & FOPT_SIGNED_CHAR);
+			return !!(cc1_fopt.signed_char);
 
 		case type_schar:
 		case type_int:

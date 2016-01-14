@@ -21,6 +21,7 @@
 #include "label.h"
 #include "type_is.h"
 #include "vla.h"
+#include "fopt.h"
 
 
 #define RW_TEST(decl, var)                      \
@@ -132,7 +133,7 @@ void symtab_check_static_asserts(symtable *stab)
 			warn_at_print_error(&sa->e->where, "static assertion failure: %s", sa->s);
 			fold_had_error = 1;
 
-		}else if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
+		}else if(cc1_fopt.show_static_asserts){
 			fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
 					where_str(&sa->e->where), expr_str_friendly(sa->e), sa->s);
 		}
@@ -284,7 +285,7 @@ void symtab_fold_decls(symtable *tab)
 		  all_idents[nidents-1].bits.decl = d;  \
 		}while(0)
 
-	if(fopt_mode & FOPT_DUMP_SYMTAB && !tab->parent)
+	if(cc1_fopt.dump_symtab && !tab->parent)
 		dump_symtab(tab, 0);
 
 	symtab_iter_children(tab, symtab_fold_decls);

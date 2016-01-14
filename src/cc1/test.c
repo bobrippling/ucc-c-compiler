@@ -6,6 +6,7 @@
 #include "cc1.h"
 #include "cc1_where.h"
 #include "out/asm.h"
+#include "fopt.h"
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 int cc1_error_limit = 16;

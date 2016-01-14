@@ -18,6 +18,7 @@
 #include "ctx.h"
 #include "asm.h"
 #include "impl.h"
+#include "../fopt.h"
 
 static int v_unused_reg2(
 		out_ctx *octx,
@@ -50,7 +51,7 @@ int v_needs_GOT(const out_val *v)
 	return v->type == V_LBL
 		&& v->bits.lbl.pic_type & OUT_LBL_PIC
 		&& !(v->bits.lbl.pic_type & OUT_LBL_PICLOCAL)
-		&& fopt_mode & FOPT_PIC;
+		&& cc1_fopt.pic;
 }
 
 const out_val *v_to_stack_mem(

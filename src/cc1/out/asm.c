@@ -17,6 +17,7 @@
 #include "asm.h"
 #include "out.h"
 
+#include "../fopt.h"
 #include "../cc1.h"
 #include "../sym.h"
 #include "../expr.h"
@@ -563,7 +564,7 @@ void asm_declare_decl_init(decl *d)
 		asm_declare_init(sec, d->bits.var.init.dinit, d->ref);
 		asm_out_section(sec, "\n");
 
-	}else if(d->bits.var.init.compiler_generated && fopt_mode & FOPT_COMMON){
+	}else if(d->bits.var.init.compiler_generated && cc1_fopt.common){
 		const char *common_prefix = "comm ";
 		unsigned align;
 

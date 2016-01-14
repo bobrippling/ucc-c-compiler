@@ -15,6 +15,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../c_funcs.h"
+#include "../fopt.h"
 
 #define ARG_BUF(buf, i, sp)       \
 	snprintf(buf, sizeof buf,       \
@@ -443,7 +444,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	if(func_attr_present(e, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 
-	if(sp && !(fopt_mode & FOPT_FREESTANDING))
+	if(sp && !(cc1_fopt.freestanding))
 		check_standard_funcs(sp, e->funcargs);
 }
 

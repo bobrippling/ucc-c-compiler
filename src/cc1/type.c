@@ -17,6 +17,7 @@
 #include "funcargs.h"
 #include "cc1.h" /* fopt_mode */
 #include "defs.h"
+#include "fopt.h"
 
 #include "type_is.h"
 
@@ -201,7 +202,7 @@ static enum type_cmp type_cmp_r(
 
 	if(ret == TYPE_NOT_EQUAL
 	&& a->type == type_ptr
-	&& fopt_mode & FOPT_PLAN9_EXTENSIONS)
+	&& cc1_fopt.plan9_extensions)
 	{
 		/* allow b to be an anonymous member of a, if pointers */
 		struct_union_enum_st *a_sue = type_is_s_or_u(a),
@@ -753,9 +754,9 @@ const char *type_to_str_r_spel_opts(
 	int sz = TYPE_STATIC_BUFSIZ;
 	enum type_str_opts local_opts = opts;
 
-	if((fopt_mode & FOPT_PRINT_TYPEDEFS) == 0)
+	if((cc1_fopt.print_typedefs) == 0)
 		local_opts |= TY_STR_NO_TDEF;
-	if((fopt_mode & FOPT_PRINT_AKA) == 0)
+	if((cc1_fopt.print_aka) == 0)
 		local_opts &= ~TY_STR_AKA;
 
 	stop_at = type_add_type_str(r, &bufp, &sz, local_opts);

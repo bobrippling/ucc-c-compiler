@@ -35,6 +35,7 @@
 #include "pass1.h"
 #include "type_nav.h"
 #include "cc1_where.h"
+#include "fopt.h"
 
 #include "../config_as.h"
 
@@ -46,41 +47,6 @@ static struct
 	const char *arg;
 	int mask;
 } fopts[] = {
-	{ 'f',  "enable-asm",    FOPT_ENABLE_ASM      },
-	{ 'f',  "const-fold",    FOPT_CONST_FOLD      },
-	{ 'f',  "english",       FOPT_ENGLISH         },
-	{ 'f',  "show-line",     FOPT_SHOW_LINE       },
-	{ 'f',  "pic",           FOPT_PIC             },
-	{ 'f',  "PIC",           FOPT_PIC             },
-	{ 'f',  "builtin",       FOPT_BUILTIN         },
-	{ 'f',  "ms-extensions",    FOPT_MS_EXTENSIONS    },
-	{ 'f',  "plan9-extensions", FOPT_PLAN9_EXTENSIONS },
-	{ 'f',  "leading-underscore", FOPT_LEADING_UNDERSCORE },
-	{ 'f',  "trapv",              FOPT_TRAPV },
-	{ 'f',  "track-initial-fname", FOPT_TRACK_INITIAL_FNAM },
-	{ 'f',  "freestanding",        FOPT_FREESTANDING },
-	{ 'f',  "show-static-asserts", FOPT_SHOW_STATIC_ASSERTS },
-	{ 'f',  "verbose-asm",         FOPT_VERBOSE_ASM },
-	{ 'f',  "integral-float-load", FOPT_INTEGRAL_FLOAT_LOAD },
-	{ 'f',  "symbol-arith",        FOPT_SYMBOL_ARITH },
-	{ 'f',  "signed-char",         FOPT_SIGNED_CHAR },
-	{ 'f',  "unsigned-char",      ~FOPT_SIGNED_CHAR },
-	{ 'f',  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
-	{ 'f',  "dump-type-tree", FOPT_DUMP_TYPE_TREE },
-	{ 'f',  "asm", FOPT_EXT_KEYWORDS },
-	{ 'f',  "gnu-keywords", FOPT_EXT_KEYWORDS },
-	{ 'f',  "fold-const-vlas", FOPT_FOLD_CONST_VLAS },
-	{ 'f',  "show-warning-option", FOPT_SHOW_WARNING_OPTION },
-	{ 'f',  "print-typedefs", FOPT_PRINT_TYPEDEFS },
-	{ 'f',  "print-aka", FOPT_PRINT_AKA },
-	{ 'f',  "show-inlined", FOPT_SHOW_INLINED },
-	{ 'f',  "inline-functions", FOPT_INLINE_FUNCTIONS },
-	{ 'f',  "dump-bblocks", FOPT_DUMP_BASIC_BLOCKS },
-	{ 'f',  "dump-symtab", FOPT_DUMP_SYMTAB },
-	{ 'f',  "dump-init", FOPT_DUMP_INIT },
-	{ 'f',  "common", FOPT_COMMON },
-	{ 'f',  "short-enums", FOPT_SHORT_ENUMS },
-
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 	{ 'm',  "32", MOPT_32 },
 	{ 'm',  "64", ~MOPT_32 },
@@ -96,6 +62,7 @@ static struct
 } val_args[] = {
 	{ 'f', "error-limit", &cc1_error_limit },
 	{ 'f', "message-length", &warning_length },
+
 	{ 'm', "preferred-stack-boundary", &cc1_mstack_align },
 	{ 0, NULL, NULL }
 };
@@ -103,18 +70,6 @@ static struct
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 FILE *cc1_out;                  /* final output */
 char *cc1_first_fname;
-
-enum fopt fopt_mode = FOPT_CONST_FOLD
-                    | FOPT_SHOW_LINE
-                    | FOPT_BUILTIN
-                    | FOPT_TRACK_INITIAL_FNAM
-                    | FOPT_INTEGRAL_FLOAT_LOAD
-                    | FOPT_SYMBOL_ARITH
-                    | FOPT_SIGNED_CHAR
-                    | FOPT_CAST_W_BUILTIN_TYPES
-                    | FOPT_PRINT_TYPEDEFS
-                    | FOPT_PRINT_AKA
-                    | FOPT_COMMON;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
@@ -133,6 +88,8 @@ static int caught_sig = 0;
 
 int show_current_line;
 
+struct cc1_fopt cc1_fopt;
+
 struct section sections[NUM_SECTIONS] = {
 	{ "text", QUOTE(SECTION_NAME_TEXT) },
 	{ "data", QUOTE(SECTION_NAME_DATA) },
@@ -144,12 +101,6 @@ struct section sections[NUM_SECTIONS] = {
 };
 
 static FILE *infile;
-
-/* compile time check for enum <-> int compat */
-#define COMP_CHECK(pre, test) \
-struct unused_ ## pre { char check[test ? -1 : 1]; }
-COMP_CHECK(b, sizeof fopt_mode != sizeof(int));
-
 
 static void ccdie(int verbose, const char *fmt, ...)
 {
@@ -359,10 +310,6 @@ static int optimise(const char *argv0, const char *arg)
 	 * -fdelete-null-pointer-checks, -freorder-blocks
 	 */
 	enum { O0, O1, O2, O3, Os } opt = O0;
-	struct
-	{
-		unsigned enable, disable;
-	} mask = { 0, 0 };
 
 	if(!*arg){
 		/* -O means -O2 */
@@ -386,22 +333,19 @@ static int optimise(const char *argv0, const char *arg)
 
 		case Os:
 			/* same as -O2 but disable inlining and int-float-load */
-			mask.disable = FOPT_INLINE_FUNCTIONS
-				| FOPT_INTEGRAL_FLOAT_LOAD;
-			/* fall */
+			cc1_fopt.fold_const_vlas = 1;
+			cc1_fopt.inline_functions = 0;
+			cc1_fopt.integral_float_load = 0;
+			break;
 
 		case O1:
 		case O2:
 		case O3:
-			mask.enable = FOPT_FOLD_CONST_VLAS
-				| FOPT_INLINE_FUNCTIONS
-				| FOPT_INTEGRAL_FLOAT_LOAD;
+			cc1_fopt.fold_const_vlas = 1;
+			cc1_fopt.inline_functions = 1;
+			cc1_fopt.integral_float_load = 1;
 			break;
 	}
-
-	/* enable, then disable (to allow -Os to turn bits off from -O2 etc) */
-	fopt_mode |= mask.enable;
-	fopt_mode &= ~mask.disable;
 
 	return 0;
 unrecog:
@@ -413,7 +357,7 @@ static void add_sanitize_option(const char *argv0, const char *san)
 {
 	if(!strcmp(san, "undefined")){
 		cc1_sanitize |= CC1_UBSAN;
-		fopt_mode |= FOPT_TRAPV;
+		cc1_fopt.trapv = 1;
 	}else{
 		fprintf(stderr, "%s: unknown sanitize option '%s'\n", argv0, san);
 		exit(1);
@@ -462,6 +406,7 @@ int main(int argc, char **argv)
 	/* defaults */
 	cc1_mstack_align = log2i(platform_word_size());
 	warning_init();
+	fopt_default(&cc1_fopt);
 
 	for(i = 1; i < argc; i++){
 		if(!strncmp(argv[i], "-emit", 5)){
@@ -514,9 +459,9 @@ int main(int argc, char **argv)
 				ccdie(0, "-std argument \"%s\" not recognised", argv[i]);
 
 			if(gnu)
-				fopt_mode |= FOPT_EXT_KEYWORDS;
+				cc1_fopt.ext_keywords = 1;
 			else
-				fopt_mode &= ~FOPT_EXT_KEYWORDS;
+				cc1_fopt.ext_keywords = 0;
 
 		}else if(!strcmp(argv[i], "-w")){
 			warnings_set(W_OFF);
@@ -583,7 +528,7 @@ int main(int argc, char **argv)
 
 			switch(arg_ty){
 				case 'f':
-					mask = (int *)&fopt_mode;
+					fopt_on(arg, rev);
 					break;
 				case 'm':
 					mask = (int *)&mopt_mode;
@@ -669,12 +614,12 @@ usage:
 
 	io_setup();
 
-	show_current_line = fopt_mode & FOPT_SHOW_LINE;
+	show_current_line = cc1_fopt.show_line;
 
 	cc1_type_nav = type_nav_init();
 
 	tokenise_set_mode(
-			(fopt_mode & FOPT_EXT_KEYWORDS ? KW_EXT : 0) |
+			(cc1_fopt.ext_keywords ? KW_EXT : 0) |
 			(cc1_std >= STD_C99 ? KW_C99 : 0));
 
 	tokenise_set_input(next_line, fname);
@@ -693,7 +638,7 @@ usage:
 			failure = 1;
 	}
 
-	if(fopt_mode & FOPT_DUMP_TYPE_TREE)
+	if(cc1_fopt.dump_type_tree)
 		type_nav_dump(cc1_type_nav);
 
 out:

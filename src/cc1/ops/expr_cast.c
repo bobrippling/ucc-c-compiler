@@ -12,6 +12,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../out/dbg.h"
+#include "../fopt.h"
 
 #define IMPLICIT_STR(e) (expr_cast_is_implicit(e) ? "implicit " : "")
 
@@ -662,7 +663,7 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 		}
 
 	}else{
-		if(fopt_mode & FOPT_PLAN9_EXTENSIONS){
+		if(cc1_fopt.plan9_extensions){
 			/* allow b to be an anonymous member of a */
 			struct_union_enum_st *a_sue = type_is_s_or_u(type_is_ptr(tto)),
 			                      *b_sue = type_is_s_or_u(type_is_ptr(tfrom));
