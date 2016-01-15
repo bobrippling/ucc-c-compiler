@@ -102,8 +102,9 @@ struct section sections[NUM_SECTIONS] = {
 
 static FILE *infile;
 
+ucc_printflike(1, 2)
 ucc_noreturn
-static void ccdie(int verbose, const char *fmt, ...)
+static void ccdie(const char *fmt, ...)
 {
 	int i = strlen(fmt);
 	va_list l;
@@ -117,14 +118,6 @@ static void ccdie(int verbose, const char *fmt, ...)
 		perror(NULL);
 	}else{
 		fputc('\n', stderr);
-	}
-
-	if(verbose){
-		fputs("warnings + options:\n", stderr);
-		for(i = 0; fopts[i].arg; i++)
-			fprintf(stderr, "  -%c%s\n", fopts[i].type, fopts[i].arg);
-		for(i = 0; val_args[i].arg; i++)
-			fprintf(stderr, "  -%c%s=value\n", val_args[i].pref, val_args[i].arg);
 	}
 
 	exit(1);
@@ -172,7 +165,7 @@ static void io_setup(void)
 		int fd = tmpfile_prefix_out("cc1_", &fname);
 
 		if(fd < 0)
-			ccdie(0, "tmpfile(%s):", fname);
+			ccdie("tmpfile(%s):", fname);
 
 		if(remove(fname) != 0)
 			fprintf(stderr, "remove %s: %s\n", fname, strerror(errno));
@@ -207,28 +200,28 @@ static void io_fin(int do_sections, const char *fname)
 			long last = ftell(cc_out[i]);
 
 			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
-				ccdie(0, "seeking on section file %d:", i);
+				ccdie("seeking on section file %d:", i);
 
 			if(fprintf(cc1_out, ".section %s\n", sections[i].name) < 0
 			|| fprintf(cc1_out, "%s%s:\n", SECTION_BEGIN, sections[i].desc) < 0)
 			{
-				ccdie(0, "write to cc1 output:");
+				ccdie("write to cc1 output:");
 			}
 
 			while(fgets(buf, sizeof buf, cc_out[i]))
 				if(fputs(buf, cc1_out) == EOF)
-					ccdie(0, "write to cc1 output:");
+					ccdie("write to cc1 output:");
 
 			if(ferror(cc_out[i]))
-				ccdie(0, "read from section file %d:", i);
+				ccdie("read from section file %d:", i);
 
 			if(fprintf(cc1_out, "%s%s:\n", SECTION_END, sections[i].desc) < 0)
-				ccdie(0, "terminating section %d:", i);
+				ccdie("terminating section %d:", i);
 		}
 	}
 
 	if(fclose(cc1_out))
-		ccdie(0, "close cc1 output");
+		ccdie("close cc1 output");
 }
 
 static void sigh(int sig)
@@ -303,6 +296,20 @@ static void gen_backend(symtable_global *globs, const char *fname)
 	}
 
 	io_fin(gf == NULL, fname);
+}
+
+ucc_printflike(2, 3)
+ucc_noreturn
+static void usage(const char *argv0, const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	vfprintf(stderr, fmt, l);
+	va_end(l);
+
+	ccdie(
+			"Usage: %s [-W[no-]warning] [-f[no-]option] [-m[no-]machine] [-o output] file",
+			argv0);
 }
 
 static int optimise(const char *argv0, const char *arg)
@@ -386,101 +393,112 @@ static void set_sanitize_error(const char *argv0, const char *handler)
 	}
 }
 
-static void parse_Wmf_equals()
+static void parse_Wmf_equals(
+		const char *argv0,
+		char arg_ty,
+		const char *arg_substr,
+		char *equal,
+		int invert)
 {
+	int found = 0;
+	int i;
 	int new_val;
 
-	if(rev){
-		fprintf(stderr, "\"no-\" unexpected for value-argument\n");
-		goto usage;
+	if(invert){
+		usage(argv0, "\"no-\" unexpected for value-argument\n");
 	}
 
-	if(!strncmp(arg, "sanitize=", 9)){
-		add_sanitize_option(argv0, arg + 9);
-		continue;
-	}else if(!strncmp(arg, "sanitize-error=", 15)){
-		set_sanitize_error(argv0, arg + 15);
-		continue;
+	if(!strncmp(arg_substr, "sanitize=", 9)){
+		add_sanitize_option(argv0, arg_substr + 9);
+		return;
+	}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
+		set_sanitize_error(argv0, arg_substr + 15);
+		return;
+	}
+
+	if(sscanf(equal + 1, "%d", &new_val) != 1){
+		usage(argv0, "need number for %s\n", arg_substr);
 	}
 
 	*equal = '\0';
-	if(sscanf(equal + 1, "%d", &new_val) != 1){
-		fprintf(stderr, "need number for %s\n", arg);
-		goto usage;
-	}
-
-	for(j = 0; val_args[j].arg; j++)
-		if(val_args[j].pref == arg_ty && !strcmp(arg, val_args[j].arg)){
-			*val_args[j].pval = new_val;
+	for(i = 0; val_args[i].arg; i++){
+		if(val_args[i].pref == arg_ty && !strcmp(arg_substr, val_args[i].arg)){
+			*val_args[i].pval = new_val;
 			found = 1;
 			break;
 		}
+	}
 
 	if(!found)
-		goto unrecognised;
+		usage(argv0, "\"-%c%s\" unrecognised", arg_ty, arg_substr);
 }
 
-static void mopt_on(const char *argument, int invert)
+static int mopt_on(const char *argument, int invert)
 {
-	for(j = 0; mopts[j].arg; j++){
-		if(mopts[j].type == arg_ty && !strcmp(arg, mopts[j].arg)){
-			/* if the mask isn't a single bit, treat it as
-			 * an unmask, e.g. -funsigned-char unmasks FOPT_SIGNED_CHAR
-			 */
-			const int unmask = mopts[j].mask & (mopts[j].mask - 1);
+	int i;
+	for(i = 0; mopts[i].arg; i++){
+		if(!strcmp(argument, mopts[i].arg)){
+			/* if the mask isn't a single bit, treat it as an unmask */
+			const int unmask = mopts[i].mask & (mopts[i].mask - 1);
 
-			if(rev){
+			if(invert){
 				if(unmask)
-					*mask |= ~mopts[j].mask;
+					mopt_mode |= ~mopts[i].mask;
 				else
-					*mask &= ~mopts[j].mask;
+					mopt_mode &= ~mopts[i].mask;
 			}else{
 				if(unmask)
-					*mask &= mopts[j].mask;
+					mopt_mode &= mopts[i].mask;
 				else
-					*mask |= mopts[j].mask;
+					mopt_mode |= mopts[i].mask;
 			}
-			found = 1;
-			break;
+			return 1;
 		}
 	}
+	return 0;
 }
 
-static void parse_Wmf_option(const char *argument, const char *argv0)
+static void parse_Wmf_option(
+		const char *argv0,
+		char *argument,
+		int *const werror,
+		dynmap *unknown_warnings)
 {
 	const char arg_ty = argument[1];
 	const char *arg_substr = argument + 2;
 	int invert = 0;
-	const char *equal;
+	char *equal;
 
 	if(!strncmp(arg_substr, "no-", 3)){
 		arg_substr += 3;
 		invert = 1;
 	}
 
-	equal = strchr(arg, '=');
+	equal = strchr(argument, '=');
 	if(equal){
-		parse_Wmf_equals();
+		parse_Wmf_equals(argv0, arg_ty, arg_substr, equal, invert);
 		return;
 	}
 
 	if(arg_ty == 'f'){
-		fopt_on(arg_substr, invert);
-		return;
+		if(fopt_on(&cc1_fopt, arg_substr, invert))
+			return;
+		goto unknown;
 	}
 
 	if(arg_ty == 'W'){
-		warning_on(arg, invert ? W_OFF : W_WARN, &werror, unknown_warnings);
+		warning_on(argument, invert ? W_OFF : W_WARN, werror, unknown_warnings);
 		return;
 	}
 
-	mopt_on(arg, invert);
-
-	if(!found){
-unrecognised:
-		fprintf(stderr, "\"%s\" unrecognised\n", argument);
-		goto usage;
+	if(arg_ty == 'm'){
+		if(mopt_on(argument, invert))
+			return;
+		goto unknown;
 	}
+
+unknown:
+	usage(argv0, "\"%s\" unrecognised\n", argument);
 }
 
 int main(int argc, char **argv)
@@ -517,12 +535,12 @@ int main(int argc, char **argv)
 
 				case '\0':
 					if(++i == argc)
-						goto usage;
+						usage(argv[0], "-emit needs an argument");
 					emit = argv[i];
 					break;
 
 				default:
-					goto usage;
+					usage(argv[0], "\"%s\" unrecognised\n", argv[i]);
 			}
 
 
@@ -533,19 +551,19 @@ int main(int argc, char **argv)
 			else if(!strcmp(emit, "style"))
 				cc1_backend = BACKEND_STYLE;
 			else
-				goto usage;
+				usage(argv[0], "unknown emit backend \"%s\"", emit);
 
 		}else if(!strcmp(argv[i], "-g")){
 			cc1_gdebug = 1;
 
 		}else if(!strcmp(argv[i], "-o")){
 			if(++i == argc)
-				goto usage;
+				usage(argv[0], "-o needs an argument");
 
 			if(strcmp(argv[i], "-")){
 				cc1_out = fopen(argv[i], "w");
 				if(!cc1_out){
-					ccdie(0, "open %s:", argv[i]);
+					ccdie("open %s:", argv[i]);
 					goto out;
 				}
 			}
@@ -554,7 +572,7 @@ int main(int argc, char **argv)
 			int gnu;
 
 			if(std_from_str(argv[i], &cc1_std, &gnu))
-				ccdie(0, "-std argument \"%s\" not recognised", argv[i]);
+				ccdie("-std argument \"%s\" not recognised", argv[i]);
 
 			if(gnu)
 				cc1_fopt.ext_keywords = 1;
@@ -574,7 +592,7 @@ int main(int argc, char **argv)
 
 		}else if(argv[i][0] == '-'
 		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
-			parse_Wmf_option(argv[i], *argv);
+			parse_Wmf_option(*argv, argv[i], &werror, unknown_warnings);
 
 		}else if(!strncmp(argv[i], "-I", 2)){
 			/* these are system headers only - we don't get the full set */
@@ -587,8 +605,7 @@ int main(int argc, char **argv)
 		}else if(!fname){
 			fname = argv[i];
 		}else{
-usage:
-			ccdie(1, "Usage: %s [-W[no-]warning] [-f[no-]option] [-X backend] [-m[32|64]] [-o output] file", *argv);
+			usage(argv[0], "unknown argument %s", argv[i]);
 		}
 	}
 
@@ -596,7 +613,7 @@ usage:
 	{
 		const unsigned new = powf(2, cc1_mstack_align);
 		if(new < platform_word_size())
-			ccdie(0, "stack alignment must be >= platform word size (2^%d)",
+			ccdie("stack alignment must be >= platform word size (2^%d)",
 					log2i(platform_word_size()));
 
 		cc1_mstack_align = new;
@@ -613,7 +630,7 @@ usage:
 	if(fname && strcmp(fname, "-")){
 		infile = fopen(fname, "r");
 		if(!infile)
-			ccdie(0, "open %s:", fname);
+			ccdie("open %s:", fname);
 	}else{
 		infile = stdin;
 		fname = "-";
