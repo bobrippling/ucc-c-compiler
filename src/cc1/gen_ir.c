@@ -164,7 +164,35 @@ static void gen_ir_init_r(decl_init *init, type *ty)
 	if((test = type_is_primitive(ty, type_struct))){
 		ICE("TODO: init: struct");
 	}else if((test = type_is(ty, type_array))){
-		ICE("TODO: init: array");
+		type *elem = type_next(test);
+		size_t i;
+		const size_t len = type_array_len(test);
+		decl_init **p = init->bits.ar.inits;
+
+		printf("{");
+
+		assert(init->type == decl_init_brace);
+
+		for(i = 0; i < len; i++){
+			decl_init *this = NULL;
+
+			if((this = *p)){
+				p++;
+
+				if(this != DYNARRAY_NULL && this->type == decl_init_copy){
+					struct init_cpy *icpy = *this->bits.range_copy;
+					/* resolve the copy */
+					this = icpy->range_init;
+				}
+			}
+
+			gen_ir_init_r(this, elem);
+
+			if(i < len - 1)
+				printf(", ");
+		}
+
+		printf("}");
 	}else if((test = type_is_primitive(ty, type_union))){
 		ICE("TODO: init: union");
 	}else{
