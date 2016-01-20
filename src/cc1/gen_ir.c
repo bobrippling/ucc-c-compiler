@@ -8,6 +8,7 @@
 
 #include "../util/util.h"
 #include "../util/alloc.h"
+#include "../util/dynarray.h"
 
 #include "sym.h"
 #include "type_is.h"
@@ -138,17 +139,36 @@ static void gen_ir_init_scalar(decl_init *init)
 		printf(" anyptr");
 }
 
-static void gen_ir_init_r(decl_init *init)
+static void gen_ir_zeroinit(type *ty)
 {
-	switch(init->type){
-		case decl_init_scalar:
-			gen_ir_init_scalar(init);
-			break;
+	(void)ty;
+	ICE("TODO: init: zero");
+}
 
-		case decl_init_brace:
-		case decl_init_copy:
-			IRTODO("complex init");
-			break;
+static void gen_ir_init_r(decl_init *init, type *ty)
+{
+	type *test;
+
+	if(init == DYNARRAY_NULL)
+		init = NULL;
+
+	if(!init){
+		if(type_is_incomplete_array(ty))
+			/* flexarray */
+			;
+		else
+			gen_ir_zeroinit(ty);
+		return;
+	}
+
+	if((test = type_is_primitive(ty, type_struct))){
+		ICE("TODO: init: struct");
+	}else if((test = type_is(ty, type_array))){
+		ICE("TODO: init: array");
+	}else if((test = type_is_primitive(ty, type_union))){
+		ICE("TODO: init: union");
+	}else{
+		gen_ir_init_scalar(init);
 	}
 }
 
@@ -162,7 +182,7 @@ static void gen_ir_init(decl *d)
 	if(type_is_const(d->ref))
 		printf("const ");
 
-	gen_ir_init_r(d->bits.var.init.dinit);
+	gen_ir_init_r(d->bits.var.init.dinit, d->ref);
 }
 
 static void gen_ir_decl(decl *d, irctx *ctx)
