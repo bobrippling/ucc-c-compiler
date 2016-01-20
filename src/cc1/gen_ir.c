@@ -48,6 +48,7 @@ struct irval
 };
 
 static const char *irtype_str_maybe_fn(type *, funcargs *maybe_args);
+static void gen_ir_init_r(decl_init *init, type *ty);
 
 irval *gen_ir_expr(const struct expr *expr, irctx *ctx)
 {
@@ -141,8 +142,28 @@ static void gen_ir_init_scalar(decl_init *init)
 
 static void gen_ir_zeroinit(type *ty)
 {
-	(void)ty;
-	ICE("TODO: init: zero");
+	type *test;
+	if((test = type_is_primitive(ty, type_struct))){
+		ICE("TODO: zeroinit: struct");
+	}else if((test = type_is(ty, type_array))){
+		type *elem = type_next(test);
+		size_t i;
+		const size_t len = type_array_len(test);
+
+		printf("{");
+		for(i = 0; i < len; i++){
+			gen_ir_init_r(NULL, elem);
+
+			if(i < len - 1)
+				printf(", ");
+		}
+		printf("}");
+
+	}else if((test = type_is_primitive(ty, type_union))){
+		ICE("TODO: zeroinit: union");
+	}else{
+		printf("0");
+	}
 }
 
 static void gen_ir_init_r(decl_init *init, type *ty)
