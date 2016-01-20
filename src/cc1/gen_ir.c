@@ -240,6 +240,8 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 
 	if((d->store & STORE_MASK_STORE) == store_typedef)
 		return;
+	if(!d->spel)
+		return;
 
 	printf("$%s = %s", decl_asm_spel(d), irtype_str_maybe_fn(d->ref, args));
 
