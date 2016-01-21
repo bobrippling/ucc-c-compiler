@@ -156,8 +156,12 @@ warning:
 			}
 #undef common_warning
 
-			if(show_note)
-				note_at(w, "'%s' vs '%s'", type_to_str_r(buf, tlhs), type_to_str(trhs));
+			if(show_note){
+				/* don't show line with this note */
+				where loc = *w;
+				loc.line_str = NULL;
+				note_at(&loc, "'%s' vs '%s'", type_to_str_r(buf, tlhs), type_to_str(trhs));
+			}
 
 			if(error){
 				fold_had_error = 1;
