@@ -761,16 +761,15 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 			if((sintegral_t)idx.val.i < 0
 			|| (chk_one_past_end ? idx.val.i > sz : idx.val.i == sz))
 			{
-				/* XXX: note */
-				int warned;
-
-				warned = cc1_warn_at(&e->where,
+				int warned = cc1_warn_at(&e->where,
 						array_oob,
 						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld",
 						idx.val.i, (long)sz);
 
 				if(warned)
 					note_at(type_loc(array->tree_type), "array declared here");
+
+				return warned;
 			}
 #undef idx
 		}
