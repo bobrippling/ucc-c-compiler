@@ -71,7 +71,8 @@ int fold_type_chk_warn(
 		expr *maybe_lhs, type *tlhs, expr *rhs,
 		where *w, const char *desc)
 {
-	unsigned char *pwarn = &cc1_warning.mismatching_types;
+	unsigned char *const pwarn_mismatch = &cc1_warning.mismatching_types;
+	unsigned char *pwarn = pwarn_mismatch;
 	type *const trhs = rhs->tree_type;
 	int error = 1;
 	const char *detail = "";
@@ -136,6 +137,14 @@ warning:
 		{
 			char buf[TYPE_STATIC_BUFSIZ];
 			int show_note = 1;
+
+			/* still default? -> change to mismatching pointers if pointer types */
+			if(pwarn == pwarn_mismatch
+			&& type_is_ptr_or_block(tlhs)
+			&& type_is_ptr_or_block(trhs))
+			{
+				pwarn = &cc1_warning.mismatch_ptr;
+			}
 
 #define common_warning "mismatching %stypes, %s:", detail, desc
 			if(error){
