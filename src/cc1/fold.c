@@ -86,15 +86,16 @@ int fold_type_chk_warn(
 			/* attempt to insert regardless, e.g. _Bool x = 5;
 			 *  - they match but we need the _Bool cast */
 			return 1;
+
 		case TYPE_EQUAL:
 			/* for enum types, we still want the cast, for warnings' sake */
-			if(check_enum_cmp(tlhs, trhs, w, desc))
-				return 1;
+			return check_enum_cmp(tlhs, trhs, w, desc);
+
 		case TYPE_QUAL_ADD: /* const int <- int */
 		case TYPE_QUAL_SUB: /* int <- const int */
 		case TYPE_QUAL_POINTED_ADD: /* const char * <- char * */
 		case TYPE_EQUAL_TYPEDEF:
-			break;
+			return 0;
 
 		case TYPE_CONVERTIBLE_EXPLICIT:
 		{
@@ -165,6 +166,7 @@ warning:
 			return 1; /* need cast */
 		}
 	}
+
 	return 0;
 }
 
