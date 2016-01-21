@@ -255,6 +255,9 @@ try_cflag -Wall
 try_cflag -Wextra
 try_cflag -pedantic
 
+
+try_cflag -Werror=incompatible-pointer-types
+
 try_cflag -Wmissing-prototypes
 try_cflag -Wstrict-prototypes
 
