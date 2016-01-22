@@ -86,32 +86,12 @@ static void asm_declare_init_type(enum section_type sec, type *ty)
 	asm_out_section(sec, ".%s ", asm_type_directive(ty));
 }
 
-static void asm_declare_init_bitfields(
-		enum section_type sec,
-		struct bitfield_val *vals, unsigned n,
+static void asm_out_bitfield(
+		struct bitfield_val *vals,
+		unsigned n,
 		type *ty)
 {
-#define BITFIELD_DBG(...) /*fprintf(stderr, __VA_ARGS__)*/
-	integral_t v = 0;
-	unsigned width = 0;
-	unsigned i;
-
-	BITFIELD_DBG("bitfield out -- new\n");
-	for(i = 0; i < n; i++){
-		integral_t this = integral_truncate_bits(
-				vals[i].val, vals[i].width, NULL);
-
-		width += vals[i].width;
-
-		BITFIELD_DBG("bitfield out: 0x%llx << %u gives ",
-				this, vals[i].offset);
-
-		v |= this << vals[i].offset;
-
-		BITFIELD_DBG("0x%llx\n", v);
-	}
-
-	BITFIELD_DBG("bitfield done with 0x%llx\n", v);
+	integral_t v = bitfield_merge(...);
 
 	if(width > 0){
 		asm_declare_init_type(sec, ty);
@@ -121,43 +101,6 @@ static void asm_declare_init_bitfields(
 				ASM_COMMENT " skipping zero length bitfield%s init\n",
 				n == 1 ? "" : "s");
 	}
-}
-
-static void bitfields_out(
-		enum section_type sec,
-		struct bitfield_val *bfs, unsigned *pn,
-		type *ty)
-{
-	asm_declare_init_bitfields(sec, bfs, *pn, ty);
-	*pn = 0;
-}
-
-static void bitfield_val_set(
-		struct bitfield_val *bfv, expr *kval, expr *field_w)
-{
-	bfv->val = kval ? const_fold_val_i(kval) : 0;
-	bfv->offset = 0;
-	bfv->width = const_fold_val_i(field_w);
-}
-
-static struct bitfield_val *bitfields_add(
-		struct bitfield_val *bfs, unsigned *pn,
-		decl *mem, decl_init *di)
-{
-	const unsigned i = *pn;
-
-	bfs = urealloc1(bfs, (*pn += 1) * sizeof *bfs);
-
-	if(di)
-		ASSERT_SCALAR(di);
-
-	bitfield_val_set(&bfs[i],
-			di ? di->bits.expr : NULL,
-			mem->bits.var.field_width);
-
-	bfs[i].offset = mem->bits.var.struct_offset_bitfield;
-
-	return bfs;
 }
 
 void asm_out_fp(enum section_type sec, type *ty, floating_t f)
