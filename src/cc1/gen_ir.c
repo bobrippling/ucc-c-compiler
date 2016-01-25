@@ -20,6 +20,7 @@
 #include "funcargs.h"
 #include "str.h" /* literal_print() */
 #include "decl_init.h"
+#include "bitfields.h"
 
 #include "gen_ir.h"
 #include "gen_ir_internal.h"
@@ -48,7 +49,7 @@ struct irval
 };
 
 static const char *irtype_str_maybe_fn(type *, funcargs *maybe_args);
-static void gen_ir_init_r(decl_init *init, type *ty);
+static void gen_ir_init_r(irctx *, decl_init *init, type *ty);
 
 irval *gen_ir_expr(const struct expr *expr, irctx *ctx)
 {
@@ -90,6 +91,13 @@ static void gen_ir_spill_args(irctx *ctx, funcargs *args)
 	}
 }
 
+static void gen_ir_integral(integral_t i, type *ty)
+{
+	char buf[INTEGRAL_BUF_SIZ];
+	integral_str(buf, sizeof buf, i, ty);
+	fputs(buf, stdout);
+}
+
 static void gen_ir_init_scalar(decl_init *init)
 {
 	int anyptr = 0;
@@ -114,9 +122,7 @@ static void gen_ir_init_scalar(decl_init *init)
 				IRTODO("floating static constant");
 				printf("<TODO: float constant>");
 			}else{
-				char buf[INTEGRAL_BUF_SIZ];
-				integral_str(buf, sizeof buf, k.bits.num.val.i, e->tree_type);
-				fputs(buf, stdout);
+				gen_ir_integral(k.bits.num.val.i, e->tree_type);
 			}
 			break;
 
@@ -140,7 +146,7 @@ static void gen_ir_init_scalar(decl_init *init)
 		printf(" anyptr");
 }
 
-static void gen_ir_zeroinit(type *ty)
+static void gen_ir_zeroinit(irctx *ctx, type *ty)
 {
 	type *test;
 	if((test = type_is_primitive(ty, type_struct))){
@@ -152,7 +158,7 @@ static void gen_ir_zeroinit(type *ty)
 
 		printf("{");
 		for(i = 0; i < len; i++){
-			gen_ir_init_r(NULL, elem);
+			gen_ir_init_r(ctx, NULL, elem);
 
 			if(i < len - 1)
 				printf(", ");
@@ -166,7 +172,158 @@ static void gen_ir_zeroinit(type *ty)
 	}
 }
 
-static void gen_ir_init_r(decl_init *init, type *ty)
+static void gen_ir_out_bitfields(
+		irctx *ctx,
+		struct bitfield_val **const bitfields,
+		unsigned *const nbitfields,
+		type *ty)
+{
+	unsigned total_width;
+	integral_t v = bitfields_merge(*bitfields, *nbitfields, &total_width);
+
+	(void)ctx;
+
+	if(total_width > 0)
+		gen_ir_integral(v, ty);
+
+	*nbitfields = 0;
+	free(*bitfields);
+	*bitfields = NULL;
+}
+
+static void gen_ir_init_struct(irctx *ctx, decl_init *init, type *su_ty)
+{
+	struct_union_enum_st *const sue = su_ty->bits.type->sue;
+	sue_member **mem;
+	decl_init **i;
+	unsigned end_of_last = 0;
+	struct bitfield_val *bitfields = NULL;
+	unsigned nbitfields = 0;
+	decl *first_bf = NULL;
+	expr *copy_from_exp;
+
+	UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
+
+	i = init->bits.ar.inits;
+
+	/* check for compound-literal copy-init */
+	if((copy_from_exp = decl_init_is_struct_copy(init, sue))){
+		decl_init *copy_from_init;
+
+		copy_from_exp = expr_skip_lval2rval(copy_from_exp);
+
+		/* the only struct-expression that's possible
+		 * in static context is a compound literal */
+		assert(expr_kind(copy_from_exp, compound_lit)
+				&& "unhandled expression init");
+
+		copy_from_init = copy_from_exp->bits.complit.decl->bits.var.init.dinit;
+		assert(copy_from_init->type == decl_init_brace);
+
+		i = copy_from_init->bits.ar.inits;
+	}
+
+	printf("{ ");
+
+	/* iterate using members, not inits */
+	for(mem = sue->members;
+			mem && *mem;
+			mem++)
+	{
+		int emit_comma = !!mem[1];
+		decl *d_mem = (*mem)->struct_member;
+		decl_init *di_to_use = NULL;
+
+		if(i){
+			int inc = 1;
+
+			if(*i == NULL)
+				inc = 0;
+			else if(*i != DYNARRAY_NULL)
+				di_to_use = *i;
+
+			if(inc){
+				i++;
+				if(!*i)
+					i = NULL; /* reached end */
+			}
+		}
+
+#define DEBUG(...)
+
+		DEBUG("init for %ld/%s, %s",
+				mem - sue->members, d_mem->spel,
+				di_to_use ? di_to_use->bits.expr->f_str() : NULL);
+
+		/* only pad if we're not on a bitfield or we're on the first bitfield */
+		if(!d_mem->bits.var.field_width || !first_bf){
+			DEBUG("prev padding, offset=%d, end_of_last=%d",
+					d_mem->struct_offset, end_of_last);
+
+			UCC_ASSERT(
+					d_mem->bits.var.struct_offset >= end_of_last,
+					"negative struct pad, sue %s, member %s "
+					"offset %u, end_of_last %u",
+					sue->spel, decl_to_str(d_mem),
+					d_mem->bits.var.struct_offset, end_of_last);
+		}
+
+		if(d_mem->bits.var.field_width){
+			if(!first_bf || d_mem->bits.var.first_bitfield){
+				if(first_bf){
+					DEBUG("new bitfield group (%s is new boundary), old:",
+							d_mem->spel);
+					/* next bitfield group - store the current */
+					gen_ir_out_bitfields(ctx, &bitfields, &nbitfields, first_bf->ref);
+					if(emit_comma)
+						printf(", ");
+				}
+				first_bf = d_mem;
+			}
+
+			assert(di_to_use->type == decl_init_scalar);
+
+			bitfields = bitfields_add(
+					bitfields, &nbitfields,
+					d_mem, di_to_use->bits.expr);
+
+			emit_comma = 0;
+
+		}else{
+			if(nbitfields){
+				DEBUG("at non-bitfield, prev-bitfield out:", 0);
+				gen_ir_out_bitfields(ctx, &bitfields, &nbitfields, first_bf->ref);
+				first_bf = NULL;
+			}
+
+			DEBUG("normal init for %s:", d_mem->spel);
+			gen_ir_init_r(ctx, di_to_use, d_mem->ref);
+		}
+
+		if(type_is_incomplete_array(d_mem->ref)){
+			UCC_ASSERT(!mem[1], "flex-arr not at end");
+		}else if(!d_mem->bits.var.field_width || d_mem->bits.var.first_bitfield){
+			unsigned last_sz = type_size(d_mem->ref, NULL);
+
+			end_of_last = d_mem->bits.var.struct_offset + last_sz;
+			DEBUG("done with member \"%s\", end_of_last = %d",
+					d_mem->spel, end_of_last);
+		}
+
+		if(emit_comma)
+			printf(", ");
+
+#undef DEBUG
+	}
+
+	if(nbitfields)
+		gen_ir_out_bitfields(ctx, &bitfields, &nbitfields, first_bf->ref);
+	free(bitfields);
+
+	printf(" }");
+}
+
+static void gen_ir_init_r(irctx *ctx, decl_init *init, type *ty)
 {
 	type *test;
 
@@ -178,12 +335,13 @@ static void gen_ir_init_r(decl_init *init, type *ty)
 			/* flexarray */
 			;
 		else
-			gen_ir_zeroinit(ty);
+			gen_ir_zeroinit(ctx, ty);
 		return;
 	}
 
 	if((test = type_is_primitive(ty, type_struct))){
-		ICE("TODO: init: struct");
+		gen_ir_init_struct(ctx, init, test);
+
 	}else if((test = type_is(ty, type_array))){
 		type *elem = type_next(test);
 		size_t i;
@@ -207,7 +365,7 @@ static void gen_ir_init_r(decl_init *init, type *ty)
 				}
 			}
 
-			gen_ir_init_r(this, elem);
+			gen_ir_init_r(ctx, this, elem);
 
 			if(i < len - 1)
 				printf(", ");
@@ -221,7 +379,7 @@ static void gen_ir_init_r(decl_init *init, type *ty)
 	}
 }
 
-static void gen_ir_init(decl *d)
+static void gen_ir_init(irctx *ctx, decl *d)
 {
 	printf(" %s ", decl_linkage(d) == linkage_internal ? "internal" : "global");
 
@@ -231,7 +389,7 @@ static void gen_ir_init(decl *d)
 	if(type_is_const(d->ref))
 		printf("const ");
 
-	gen_ir_init_r(d->bits.var.init.dinit, d->ref);
+	gen_ir_init_r(ctx, d->bits.var.init.dinit, d->ref);
 }
 
 static void gen_ir_decl(decl *d, irctx *ctx)
@@ -265,7 +423,7 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 		if((d->store & STORE_MASK_STORE) != store_extern
 		&& d->bits.var.init.dinit)
 		{
-			gen_ir_init(d);
+			gen_ir_init(ctx, d);
 		}
 		putchar('\n');
 	}
@@ -417,15 +575,34 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 				case type_struct:
 				{
 					int first = 1;
+					struct {
+						unsigned current_field_width;
+						int present;
+					} bitfield = { 0 };
 					sue_member **i;
 
 					strbuf_fixed_printf(buf, "{");
 
 					for(i = t->bits.type->sue->members; i && *i; i++){
+						decl *memb = (*i)->struct_member;
+
+#warning todo
+						if(memb->bits.var.field_width){
+							if(memb->bits.var.first_bitfield){
+							}else{
+							}
+
+							bitfield.current_field_width += const_fold_val_i(memb->field_width);
+
+						}else if(bitfield.present){
+							/* finalise bitfield */
+
+						}
+
 						if(!first)
 							strbuf_fixed_printf(buf, ", ");
 
-						irtype_str_r(buf, (*i)->struct_member->ref, NULL);
+						irtype_str_r(buf, memb->ref, NULL);
 
 						first = 0;
 					}
