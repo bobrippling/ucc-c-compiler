@@ -28,6 +28,7 @@
 #include "../decl_init.h"
 #include "../pack.h"
 #include "../str.h"
+#include "../bitfields.h"
 
 #include "../../config_as.h" /* weak directive */
 
@@ -36,13 +37,6 @@
 			"scalar expected for bitfield init")
 
 #define ASM_COMMENT "#"
-
-struct bitfield_val
-{
-	integral_t val;
-	unsigned offset;
-	unsigned width;
-};
 
 int asm_table_lookup(type *r)
 {
@@ -87,20 +81,26 @@ static void asm_declare_init_type(enum section_type sec, type *ty)
 }
 
 static void asm_out_bitfield(
-		struct bitfield_val *vals,
-		unsigned n,
+		enum section_type sec,
+		struct bitfield_val **const bfs,
+		unsigned *const n,
 		type *ty)
 {
-	integral_t v = bitfield_merge(...);
+	unsigned total_width;
+	integral_t v = bitfields_merge(*bfs, *n, &total_width);
 
-	if(width > 0){
+	if(total_width > 0){
 		asm_declare_init_type(sec, ty);
 		asm_out_section(sec, "%" NUMERIC_FMT_D "\n", v);
 	}else{
 		asm_out_section(sec,
 				ASM_COMMENT " skipping zero length bitfield%s init\n",
-				n == 1 ? "" : "s");
+				*n == 1 ? "" : "s");
 	}
+
+	*n = 0;
+	free(*bfs);
+	*bfs = NULL;
 }
 
 void asm_out_fp(enum section_type sec, type *ty, floating_t f)
@@ -280,19 +280,23 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 						DEBUG("new bitfield group (%s is new boundary), old:",
 								d_mem->spel);
 						/* next bitfield group - store the current */
-						bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
+						asm_out_bitfield(sec, &bitfields, &nbitfields, first_bf->ref);
+						bitfields = NULL;
+						nbitfields = 0;
 					}
 					first_bf = d_mem;
 				}
 
+				assert(di_to_use->type == decl_init_scalar);
+
 				bitfields = bitfields_add(
 						bitfields, &nbitfields,
-						d_mem, di_to_use);
+						d_mem, di_to_use->bits.expr);
 
 			}else{
 				if(nbitfields){
 					DEBUG("at non-bitfield, prev-bitfield out:", 0);
-					bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
+					asm_out_bitfield(sec, &bitfields, &nbitfields, first_bf->ref);
 					first_bf = NULL;
 				}
 
@@ -312,8 +316,7 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 		}
 
 		if(nbitfields)
-			bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
-		free(bitfields);
+			asm_out_bitfield(sec, &bitfields, &nbitfields, first_bf->ref);
 
 		/* need to pad to struct size */
 		asm_declare_pad(sec,
@@ -372,13 +375,14 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 			/* union init, member at index `i' */
 			if(mem->bits.var.field_width){
 				/* we know it's integral */
-				struct bitfield_val bfv;
+				struct bitfield_val bfv, *p = &bfv;
+				unsigned n = 1;
 
 				ASSERT_SCALAR(u_init);
 
-				bitfield_val_set(&bfv, u_init->bits.expr, mem->bits.var.field_width);
+				bitfields_val_set(&bfv, u_init->bits.expr, mem->bits.var.field_width);
 
-				asm_declare_init_bitfields(sec, &bfv, 1, mem_r);
+				asm_out_bitfield(sec, &p, &n, mem->ref);
 			}else{
 				asm_declare_init(sec, u_init, mem_r);
 			}
