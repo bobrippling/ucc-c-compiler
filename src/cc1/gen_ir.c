@@ -281,11 +281,11 @@ static void gen_ir_init_struct(irctx *ctx, decl_init *init, type *su_ty)
 				first_bf = d_mem;
 			}
 
-			assert(di_to_use->type == decl_init_scalar);
+			assert(!di_to_use || di_to_use->type == decl_init_scalar);
 
 			bitfields = bitfields_add(
 					bitfields, &nbitfields,
-					d_mem, di_to_use->bits.expr);
+					d_mem, di_to_use ? di_to_use->bits.expr : NULL);
 
 			emit_comma = 0;
 
