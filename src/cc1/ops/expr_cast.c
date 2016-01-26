@@ -760,28 +760,33 @@ static irval *gen_ir_cast_int_ptr_etc(const expr *e, irval *sub, irctx *ctx)
 	return gen_ir_cast_int_ext_trunc(e, sub, ctx);
 }
 
+static irval *gen_ir_lval2rval(irval *sub, const expr *e, irctx *ctx)
+{
+	irid tmp;
+	type *tnext = expr_cast_child(e)->tree_type;
+
+	/* if the pointed-to object is not an lvalue, don't deref */
+	if(type_is(tnext, type_func))
+		return sub;
+
+	tmp = ctx->curval++;
+
+	if(type_is(tnext, type_array)){
+		/* int[] -> int* */
+		printf("$%u = elem %s, i1 0\n", tmp, irval_str(sub));
+	}else{
+		printf("$%u = load %s\n", tmp, irval_str(sub));
+	}
+
+	return irval_from_id(tmp);
+}
+
 irval *gen_ir_expr_cast(const expr *e, irctx *ctx)
 {
 	irval *sub = gen_ir_expr(expr_cast_child(e), ctx);
 
 	if(expr_cast_is_lval2rval(e)){
-		irid tmp;
-		type *tnext = expr_cast_child(e)->tree_type;
-
-		/* if the pointed-to object is not an lvalue, don't deref */
-		if(type_is(tnext, type_func))
-			return sub;
-
-		tmp = ctx->curval++;
-
-		if(type_is(tnext, type_array)){
-			/* int[] -> int* */
-			printf("$%u = elem %s, i1 0\n", tmp, irval_str(sub));
-		}else{
-			printf("$%u = load %s\n", tmp, irval_str(sub));
-		}
-
-		return irval_from_id(tmp);
+		return gen_ir_lval2rval(sub, e, ctx);
 	}
 
 	return gen_ir_cast_int_ptr_etc(e, sub, ctx);

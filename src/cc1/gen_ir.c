@@ -575,36 +575,34 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 				case type_struct:
 				{
 					int first = 1;
-					struct {
-						unsigned current_field_width;
-						int present;
-					} bitfield = { 0 };
+					int in_bitfield = 0;
 					sue_member **i;
 
 					strbuf_fixed_printf(buf, "{");
 
-					for(i = t->bits.type->sue->members; i && *i; i++){
+					for(i = t->bits.type->sue->members; i && *i; i++, first = 0){
 						decl *memb = (*i)->struct_member;
 
-#warning todo
 						if(memb->bits.var.field_width){
 							if(memb->bits.var.first_bitfield){
+								if(!first)
+									strbuf_fixed_printf(buf, ", ");
+
+								irtype_str_r(buf, memb->ref, NULL);
 							}else{
+								assert(in_bitfield);
 							}
+							in_bitfield = 1;
+							continue;
 
-							bitfield.current_field_width += const_fold_val_i(memb->field_width);
-
-						}else if(bitfield.present){
-							/* finalise bitfield */
-
+						}else if(in_bitfield){
+							in_bitfield = 0;
 						}
 
 						if(!first)
 							strbuf_fixed_printf(buf, ", ");
 
 						irtype_str_r(buf, memb->ref, NULL);
-
-						first = 0;
 					}
 
 					strbuf_fixed_printf(buf, "}");
