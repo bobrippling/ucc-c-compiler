@@ -70,7 +70,7 @@ static char **remove_these;
 static int unlink_tmps = 1;
 const char *argv0;
 char *wrapper;
-int fsystem_cpp;
+char *fsystem_cpp;
 
 static void unlink_files(void)
 {
@@ -466,8 +466,21 @@ static void parse_argv(
 						state->syntax_only = 1;
 						continue;
 					}
-					if(!strcmp(argv[i], "-fsystem-cpp")){
-						fsystem_cpp = 1;
+					if(!strncmp(argv[i], "-fsystem-cpp", 12)){
+						char *end = argv[i] + 12;
+
+						free(fsystem_cpp);
+						switch(*end){
+							case '\0':
+								fsystem_cpp = ustrdup("cpp");
+								break;
+							case '=':
+								fsystem_cpp = ustrdup(end + 1);
+								break;
+							default:
+								die("%s: -fsystem-cpp should have no argument, or \"=path/to/cpp\"\n",
+										argv[0]);
+						}
 						continue;
 					}
 					if(!strcmp(argv[i], "-fleading-underscore")

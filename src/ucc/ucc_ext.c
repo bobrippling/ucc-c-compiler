@@ -288,7 +288,7 @@ void preproc(char *in, const char *out, char **args)
 	}
 
 	if(fsystem_cpp)
-		runner_1(0, "cpp", in, out, all);
+		runner_1(0, fsystem_cpp, in, out, all);
 	else
 		runner_1(1, "cpp2/cpp", in, out, all);
 
