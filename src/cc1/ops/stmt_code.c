@@ -612,11 +612,19 @@ void gen_ir_stmt_code(const stmt *s, irctx *ctx)
 static void irctx_run_dtor(decl *d, attribute *cleanup, void *vctx)
 {
 	irctx *ctx = vctx;
-	(void)ctx;
+	irid casted = ctx->curval++;
+	type *argty
+		= type_funcargs(type_is_func_or_block(cleanup->bits.cleanup->ref))->arglist[0]->ref;
 
-	printf("call $%s($%s)\n",
-			decl_asm_spel(cleanup->bits.cleanup),
+	/* trust ir to remove unnecessary casts */
+	printf("$%u = ptrcast %s, $%s\n",
+			casted,
+			irtype_str(argty),
 			decl_asm_spel(d));
+
+	printf("call $%s($%u)\n",
+			decl_asm_spel(cleanup->bits.cleanup),
+			casted);
 }
 
 static void irctx_vla_restore(decl *d, void *vctx)
