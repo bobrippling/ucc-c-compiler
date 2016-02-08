@@ -725,10 +725,16 @@ static irval *gen_ir_cast_int_ptr_swap(
 static irval *gen_ir_cast_int_ext_trunc(const expr *e, irval *sub, irctx *ctx)
 {
 	/* ext or trunc */
-	int const to = ctx->curval++;
-	int const is_trunc
-		= type_size(e->tree_type, NULL) < type_size(e->expr->tree_type, NULL);
+	unsigned const sz_to = type_size(e->tree_type, NULL);
+	unsigned const sz_from = type_size(e->expr->tree_type, NULL);
+	int const is_trunc = sz_to < sz_from;
 	int const zext = !type_is_signed(e->expr->tree_type);
+	int to;
+
+	if(sz_to == sz_from)
+		return sub;
+
+	to = ctx->curval++;
 
 	printf("$%u = %s %s, %s\n",
 			to,
