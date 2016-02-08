@@ -525,10 +525,11 @@ irval *gen_ir_expr_funcall(const expr *e, irctx *ctx)
 	irval **args = NULL;
 	irval *fnv;
 
-	const unsigned reti = ctx->curval++;
+	unsigned reti;
 	expr **earg;
 	irval **irarg;
 	const char *comma = "";
+	int is_void;
 
 	for(earg = e->funcargs; earg && *earg; earg++){
 		irval *arg = gen_ir_expr(*earg, ctx);
@@ -538,7 +539,13 @@ irval *gen_ir_expr_funcall(const expr *e, irctx *ctx)
 	/* type check the function expression */
 	fnv = funcall_ir_correct_type(e, gen_ir_expr(e->expr, ctx), ctx);
 
-	printf("$%u = call %s(", reti, irval_str(fnv));
+	is_void = type_is_void(type_called(type_is_ptr(e->expr->tree_type), NULL));
+	if(is_void){
+		printf("call %s(", irval_str(fnv));
+	}else{
+		reti = ctx->curval++;
+		printf("$%u = call %s(", reti, irval_str(fnv));
+	}
 
 	for(irarg = args; irarg && *irarg; irarg++){
 		printf("%s%s", comma, irval_str(*irarg));
@@ -551,7 +558,7 @@ irval *gen_ir_expr_funcall(const expr *e, irctx *ctx)
 	dynarray_free(irval **, args, irval_free_abi);
 	irval_free(fnv);
 
-	return irval_from_id(reti);
+	return is_void ? irval_from_noop() : irval_from_id(reti);
 }
 
 void dump_expr_funcall(const expr *e, dump *ctx)
