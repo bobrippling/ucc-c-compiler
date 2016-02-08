@@ -760,10 +760,39 @@ static irval *gen_ir_cast_int_ptr_etc(const expr *e, irval *sub, irctx *ctx)
 	return gen_ir_cast_int_ext_trunc(e, sub, ctx);
 }
 
+static irid gen_ir_lval2rval_bitfield(irid tmp, const expr *child, irctx *ctx)
+{
+	irid bfid[2];
+	unsigned width, nshift, mask;
+	decl *d = child->bits.struct_mem.d;
+	const char *lit_ty_str;
+
+	if(!d->bits.var.field_width)
+		return tmp;
+
+	nshift = d->bits.var.struct_offset_bitfield;
+	width = const_fold_val_i(d->bits.var.field_width);
+
+	gen_ir_comment(ctx, "bitfield width=%u offset=%u", width, nshift);
+
+	bfid[0] = ctx->curval++;
+	bfid[1] = ctx->curval++;
+
+	mask = width - 1;
+
+	lit_ty_str = irtype_str(child->tree_type);
+
+	printf("$%u = shiftr_arith $%u, %s %u\n", bfid[0], tmp, lit_ty_str, nshift);
+	printf("$%u = and $%u, %s %u\n", bfid[1], bfid[0], lit_ty_str, mask);
+
+	return bfid[1];
+}
+
 static irval *gen_ir_lval2rval(irval *sub, const expr *e, irctx *ctx)
 {
 	irid tmp;
-	type *tnext = expr_cast_child(e)->tree_type;
+	const expr *child = expr_cast_child(e);
+	type *tnext = child->tree_type;
 
 	/* if the pointed-to object is not an lvalue, don't deref */
 	if(type_is(tnext, type_func))
@@ -776,6 +805,11 @@ static irval *gen_ir_lval2rval(irval *sub, const expr *e, irctx *ctx)
 		printf("$%u = elem %s, i1 0\n", tmp, irval_str(sub));
 	}else{
 		printf("$%u = load %s\n", tmp, irval_str(sub));
+
+		/* special case bitfield loading */
+		if(expr_kind(child, struct)){
+			tmp = gen_ir_lval2rval_bitfield(tmp, child, ctx);
+		}
 	}
 
 	return irval_from_id(tmp);

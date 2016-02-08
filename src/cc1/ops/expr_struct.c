@@ -176,9 +176,10 @@ irval *gen_ir_expr_struct(const expr *e, irctx *ctx)
 	printf("$%u = elem %s, i4 %u\n", off, irval_str(struct_exp), idx);
 
 	if(d->bits.var.field_width){
-#warning bitfield
-		ICE("TODO: bitfield");
+		/* bitfield loading handled by expr_cast (lval2rval),
+		 * special cased, since we can't deref here as we're an lvalue */
 	}
+
 	if(e->bits.struct_mem.extra_off){
 #warning extra_off
 		ICE("TODO: struct extra_off");
