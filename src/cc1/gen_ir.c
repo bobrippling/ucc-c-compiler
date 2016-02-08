@@ -25,6 +25,8 @@
 #include "gen_ir.h"
 #include "gen_ir_internal.h"
 
+#define IR_DUMP_FIELD_OFFSETS 0
+
 struct irval
 {
 	enum irval_type
@@ -392,14 +394,46 @@ static void gen_ir_init(irctx *ctx, decl *d)
 	gen_ir_init_r(ctx, d->bits.var.init.dinit, d->ref);
 }
 
+static void gen_ir_dump_su(struct_union_enum_st *su, irctx *ctx)
+{
+	size_t i;
+
+	gen_ir_comment(ctx, "struct %s:", su->spel);
+
+	for(i = 0; ; i++){
+		sue_member *su_mem = su->members[i];
+		decl *memb;
+		unsigned idx;
+
+		if(!su_mem)
+			break;
+
+		memb = su_mem->struct_member;
+		if(!irtype_struct_decl_index(su, memb, &idx)){
+			fprintf(stderr, "couldn't get index for \"%s\"\n", memb->spel);
+			continue;
+		}
+
+		gen_ir_comment(ctx, "  %s index %u (first bitfield = %d, field_width = %c)",
+				memb->spel ? memb->spel : "?", idx, memb->bits.var.first_bitfield,
+				"NY"[!!memb->bits.var.field_width]);
+	}
+}
+
 static void gen_ir_decl(decl *d, irctx *ctx)
 {
 	funcargs *args = type_is(d->ref, type_func) ? type_funcargs(d->ref) : NULL;
 
 	if((d->store & STORE_MASK_STORE) == store_typedef)
 		return;
-	if(!d->spel)
+
+	if(!d->spel){
+		struct_union_enum_st *su = type_is_s_or_u(d->ref);
+		if(su && IR_DUMP_FIELD_OFFSETS)
+			gen_ir_dump_su(su, ctx);
+
 		return;
+	}
 
 	printf("$%s = %s", decl_asm_spel(d), irtype_str_maybe_fn(d->ref, args));
 
@@ -563,6 +597,55 @@ const char *ir_op_str(enum op_type op, int arith_rshift)
 		case op_unknown:
 			assert(0 && "unknown op");
 	}
+}
+
+int irtype_struct_decl_index(struct_union_enum_st *su, decl *d, unsigned *const out_idx)
+{
+	size_t i, ir_idx = 0;
+
+	for(i = 0; ; i++){
+		sue_member *su_mem = su->members[i], *su_memnext;
+		decl *memb, *next;
+
+		if(!su_mem)
+			break;
+
+		memb = su_mem->struct_member;
+
+		if(memb == d){
+			*out_idx = ir_idx;
+			return 1;
+		}
+
+		su_memnext = su->members[i + 1];
+		if(!su_memnext)
+			break;
+		next = su_memnext->struct_member;
+		assert(next);
+
+		/* calculate index of next field: */
+		if(memb->bits.var.field_width){
+			/* we are a bitfield - is next a bitfield? */
+			if(next->bits.var.field_width){
+				/* if it's a bitfield boundary, increment, except for 0-width */
+				if(next->bits.var.first_bitfield
+				&& const_fold_val_i(next->bits.var.field_width) > 0)
+				{
+					ir_idx++;
+				}
+				/* else it's part of us */
+			}else{
+				/* next not a bitfield: */
+				ir_idx++;
+			}
+		}else{
+			/* next and current not bitfields: */
+			ir_idx++;
+		}
+
+	}
+
+	return 0;
 }
 
 static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)

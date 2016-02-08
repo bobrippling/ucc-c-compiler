@@ -168,12 +168,7 @@ irval *gen_ir_expr_struct(const expr *e, irctx *ctx)
 		ICE("TODO: union");
 	}
 
-	for(idx = 0; ; idx++){
-		if(su->members[idx]->struct_member == d){
-			found = 1;
-			break;
-		}
-	}
+	found = irtype_struct_decl_index(su, d, &idx);
 	assert(found && "couldn't find struct member index");
 
 	struct_exp = gen_ir_expr(e->lhs, ctx);
