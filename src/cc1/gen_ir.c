@@ -25,7 +25,7 @@
 #include "gen_ir.h"
 #include "gen_ir_internal.h"
 
-#define IR_DUMP_FIELD_OFFSETS 0
+#define IR_DUMP_FIELD_OFFSETS 1
 
 struct irval
 {
@@ -658,29 +658,21 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 				case type_struct:
 				{
 					int first = 1;
-					int in_bitfield = 0;
 					sue_member **i;
+					unsigned current_idx = -1;
+					struct_union_enum_st *su = t->bits.type->sue;
 
 					strbuf_fixed_printf(buf, "{");
 
-					for(i = t->bits.type->sue->members; i && *i; i++, first = 0){
+					for(i = su->members; i && *i; i++, first = 0){
 						decl *memb = (*i)->struct_member;
+						unsigned new_idx;
+						int found = irtype_struct_decl_index(su, memb, &new_idx);
 
-						if(memb->bits.var.field_width){
-							if(memb->bits.var.first_bitfield){
-								if(!first)
-									strbuf_fixed_printf(buf, ", ");
-
-								irtype_str_r(buf, memb->ref, NULL);
-							}else{
-								assert(in_bitfield);
-							}
-							in_bitfield = 1;
+						assert(found);
+						if(new_idx == current_idx)
 							continue;
-
-						}else if(in_bitfield){
-							in_bitfield = 0;
-						}
+						current_idx = new_idx;
 
 						if(!first)
 							strbuf_fixed_printf(buf, ", ");
