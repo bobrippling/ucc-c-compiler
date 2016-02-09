@@ -217,14 +217,67 @@ const out_val *gen_expr_style_assign(const expr *e, out_ctx *octx)
 	return gen_expr(e->rhs, octx);
 }
 
+static irval *gen_ir_assign_bitfield(irval *lhs, irval *rhs, expr *estruct, irctx *ctx)
+{
+	irid loaded, masked_loaded, masked_input, shifted_input, ored;
+	integral_t mask_loaded, mask_input;
+	unsigned width, nshift;
+	decl *d = estruct->bits.struct_mem.d;
+	const char *lit_ty_str;
+
+#warning TODO: free irvals
+	if(!d->bits.var.field_width){
+		return rhs;
+	}
+
+	loaded = ctx->curval++;
+	masked_loaded = ctx->curval++;
+	masked_input = ctx->curval++;
+	shifted_input = ctx->curval++;
+	ored = ctx->curval++;
+
+	nshift = d->bits.var.struct_offset_bitfield;
+	width = const_fold_val_i(d->bits.var.field_width);
+
+	mask_loaded = (~0ull << (width + nshift)) | ~(~0ull << nshift);
+	mask_input = ~(~0ull << width);
+
+	lit_ty_str = irtype_str(estruct->tree_type);
+
+	printf("$%u = load %s\n", loaded, irval_str(lhs));
+
+	printf("$%u = and $%u, %s %" NUMERIC_FMT_U "\n",
+			masked_loaded, loaded, lit_ty_str,
+			integral_truncate_bits(mask_loaded, 8 * type_size(estruct->tree_type, NULL), NULL));
+
+	printf("$%u = and %s, %s %" NUMERIC_FMT_U "\n",
+			masked_input, irval_str(rhs), lit_ty_str,
+			integral_truncate_bits(mask_input, 8 * type_size(estruct->tree_type, NULL), NULL));
+
+	printf("$%u = shiftl $%u, %s %u\n",
+			shifted_input, masked_input, lit_ty_str, nshift);
+
+	printf("$%u = or $%u, $%u\n", ored, masked_loaded, shifted_input);
+
+	return irval_from_id(ored);
+}
+
 irval *gen_ir_expr_assign(const expr *e, irctx *ctx)
 {
 	irval *lhs = gen_ir_expr(e->lhs, ctx);
 	irval *rhs = gen_ir_expr(e->rhs, ctx);
+	irval *to_store;
 
 #warning TODO: free irvals
+
+	/* special case bitfield storing */
+	if(expr_kind(e->lhs, struct))
+		to_store = gen_ir_assign_bitfield(lhs, rhs, e->lhs, ctx);
+	else
+		to_store = rhs;
+
 	printf("store %s, ", irval_str(lhs));
-	printf("%s\n", irval_str(rhs));
+	printf("%s\n", irval_str(to_store));
 
 	return rhs;
 }
