@@ -217,7 +217,7 @@ const out_val *gen_expr_style_assign(const expr *e, out_ctx *octx)
 	return gen_expr(e->rhs, octx);
 }
 
-static irval *gen_ir_assign_bitfield(irval *lhs, irval *rhs, expr *estruct, irctx *ctx)
+irval *gen_ir_assign_bitfield(irval *lhs, irval *rhs, expr *estruct, irctx *ctx)
 {
 	irid loaded, masked_loaded, masked_input, shifted_input, ored;
 	integral_t mask_loaded, mask_input;

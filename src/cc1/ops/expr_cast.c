@@ -766,7 +766,7 @@ static irval *gen_ir_cast_int_ptr_etc(const expr *e, irval *sub, irctx *ctx)
 	return gen_ir_cast_int_ext_trunc(e, sub, ctx);
 }
 
-static irid gen_ir_lval2rval_bitfield(irid tmp, const expr *child, irctx *ctx)
+irid gen_ir_lval2rval_bitfield(irid tmp, const expr *child, irctx *ctx)
 {
 	irid bfid[2];
 	unsigned width, nshift, mask;

@@ -1,6 +1,7 @@
 #include "ops.h"
 #include "expr_assign_compound.h"
 #include "../gen_ir_internal.h"
+#include "../type_is.h"
 
 const char *str_expr_assign_compound()
 {
@@ -111,22 +112,47 @@ irval *gen_ir_expr_assign_compound(const expr *e, irctx *ctx)
 #warning TODO: post-increment, etc
 	irval *lhs = gen_ir_expr(e->lhs, ctx);
 	irval *rhs = gen_ir_expr(e->rhs, ctx);
-	const unsigned tmp_val = ctx->curval++;
-	const unsigned tmp_res = ctx->curval++;
+	irval *ret;
+	const irid tmp_val = ctx->curval++;
+	int const rshift_is_arith = type_is_signed(e->lhs->tree_type);
 
 	printf("$%u = load %s\n", tmp_val, irval_str(lhs));
-	printf("$%u = %s $%u, %s\n",
-			tmp_res,
-			op_to_str(e->bits.compoundop.op),
-			tmp_val,
-			irval_str(rhs));
 
-	printf("store $%u, %s", tmp_res, irval_str(lhs));
+	/* special case bitfield storing */
+	if(expr_kind(e->lhs, struct)){
+		irid masked_lhs = gen_ir_lval2rval_bitfield(tmp_val, e->lhs, ctx);
+		const irid compound_result = ctx->curval++;
+		irval *compound_result_v = irval_from_id(compound_result);
+
+		printf("$%u = %s $%u, %s\n",
+				compound_result,
+				ir_op_str(e->bits.compoundop.op, rshift_is_arith),
+				masked_lhs,
+				irval_str(rhs));
+
+		ret = gen_ir_assign_bitfield(lhs, compound_result_v, e->lhs, ctx);
+
+		irval_free(compound_result_v);
+
+	}else{
+		const unsigned tmp_res = ctx->curval++;
+
+		printf("$%u = %s $%u, %s\n",
+				tmp_res,
+				ir_op_str(e->bits.compoundop.op, rshift_is_arith),
+				tmp_val,
+				irval_str(rhs));
+
+		ret = irval_from_id(tmp_res);
+	}
+
+	printf("store %s, ", irval_str(lhs));
+	printf("%s\n", irval_str(ret));
 
 	irval_free(lhs);
 	irval_free(rhs);
 
-	return irval_from_id(tmp_res);
+	return ret;
 }
 
 void dump_expr_assign_compound(const expr *e, dump *ctx)

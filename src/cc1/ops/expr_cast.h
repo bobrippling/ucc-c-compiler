@@ -6,3 +6,8 @@ EXPR_DEFS(cast);
 
 void fold_expr_cast_descend(
 		expr *e, symtable *stab, int descend);
+
+unsigned gen_ir_lval2rval_bitfield(
+		unsigned unmasked,
+		const expr *child,
+		struct irctx *ctx);
