@@ -73,7 +73,11 @@ static void test_ir_nonbitfield_enumeration(void)
 	sue_member members[2] = { &ds[0], &ds[1] };
 	sue_member *pmembers[3] = { &members[0], &members[1], NULL };
 	struct_union_enum_st su = { 0 };
+	type ty = { 0 };
 	unsigned idx;
+
+	for(idx = 0; idx < countof(ds); idx++)
+		ds[idx].ref = &ty;
 
 	su.members = pmembers;
 
@@ -101,12 +105,15 @@ static void test_ir_bitfield_enumeration(void)
 	sue_member *pmembers[countof(members) + 1];
 	struct_union_enum_st su = { 0 };
 	unsigned idx;
+	type ty = { 0 };
 
 	for(idx = 0; idx < countof(ds); idx++){
+		ds[idx].ref = &ty;
 		members[idx].struct_member = &ds[idx];
 		pmembers[idx] = &members[idx];
 	}
 	pmembers[idx] = NULL;
+	not_in.ref = &ty;
 
 	ds[0].bits.var.field_width = folded_val(5);
 	ds[0].bits.var.first_bitfield = 1;
