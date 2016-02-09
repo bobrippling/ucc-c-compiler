@@ -104,6 +104,16 @@ err:
 	e->tree_type = type_qualify(e->bits.struct_mem.d->ref, struct_qual);
 }
 
+struct_union_enum_st *expr_struct_sutype(const expr *e)
+{
+	type *ty = e->lhs->tree_type;
+
+	if(!e->expr_is_st_dot)
+		ty = type_is_ptr(ty);
+
+	return type_is_s_or_u(ty);
+}
+
 const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 {
 	const out_val *struct_exp, *off;
