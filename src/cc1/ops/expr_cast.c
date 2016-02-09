@@ -766,18 +766,21 @@ static irval *gen_ir_cast_int_ptr_etc(const expr *e, irval *sub, irctx *ctx)
 	return gen_ir_cast_int_ext_trunc(e, sub, ctx);
 }
 
-irid gen_ir_lval2rval_bitfield(irid tmp, const expr *child, irctx *ctx)
+irid gen_ir_lval2rval_bitfield(
+		irid tmp, decl *memb, struct_union_enum_st *su, irctx *ctx)
 {
 	irid bfid[2];
 	unsigned width, nshift, mask;
-	decl *d = child->bits.struct_mem.d;
 	const char *lit_ty_str;
+	type *arith_ty;
 
-	if(!d->bits.var.field_width)
+	if(!memb->bits.var.field_width)
 		return tmp;
 
-	nshift = d->bits.var.struct_offset_bitfield;
-	width = const_fold_val_i(d->bits.var.field_width);
+	arith_ty = irtype_struct_decl_type(su, memb);
+
+	nshift = memb->bits.var.struct_offset_bitfield;
+	width = const_fold_val_i(memb->bits.var.field_width);
 
 	gen_ir_comment(ctx, "bitfield width=%u offset=%u", width, nshift);
 
@@ -786,9 +789,9 @@ irid gen_ir_lval2rval_bitfield(irid tmp, const expr *child, irctx *ctx)
 
 	mask = width - 1;
 
-	lit_ty_str = irtype_str(child->tree_type);
+	lit_ty_str = irtype_str(arith_ty);
 
-	printf("$%u = shiftr_arith $%u, %s %u\n", bfid[0], tmp, lit_ty_str, nshift);
+	printf("$%u = shiftr_arith $%u, i1 %u\n", bfid[0], tmp, lit_ty_str, nshift);
 	printf("$%u = and $%u, %s %u\n", bfid[1], bfid[0], lit_ty_str, mask);
 
 	return bfid[1];
@@ -814,7 +817,11 @@ static irval *gen_ir_lval2rval(irval *sub, const expr *e, irctx *ctx)
 
 		/* special case bitfield loading */
 		if(expr_kind(child, struct)){
-			tmp = gen_ir_lval2rval_bitfield(tmp, child, ctx);
+			tmp = gen_ir_lval2rval_bitfield(
+					tmp,
+					child->bits.struct_mem.d,
+					expr_struct_sutype(child),
+					ctx);
 		}
 	}
 

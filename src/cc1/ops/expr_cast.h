@@ -8,6 +8,7 @@ void fold_expr_cast_descend(
 		expr *e, symtable *stab, int descend);
 
 unsigned gen_ir_lval2rval_bitfield(
-		unsigned unmasked,
-		const expr *child,
+		unsigned tmp,
+		decl *memb,
+		struct struct_union_enum_st *su,
 		struct irctx *ctx);

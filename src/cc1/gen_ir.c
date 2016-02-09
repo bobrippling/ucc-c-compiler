@@ -599,9 +599,15 @@ const char *ir_op_str(enum op_type op, int arith_rshift)
 	}
 }
 
-int irtype_struct_decl_index(struct_union_enum_st *su, decl *d, unsigned *const out_idx)
+static int irtype_struct_decl_index_type(
+		struct_union_enum_st *su,
+		decl *d,
+		unsigned *const out_idx,
+		type **const out_type)
 {
 	size_t i, ir_idx = 0;
+
+	*out_type = NULL;
 
 	for(i = 0; ; i++){
 		sue_member *su_mem = su->members[i], *su_memnext;
@@ -612,7 +618,13 @@ int irtype_struct_decl_index(struct_union_enum_st *su, decl *d, unsigned *const 
 
 		memb = su_mem->struct_member;
 
+		if(!memb->bits.var.field_width || memb->bits.var.first_bitfield)
+			*out_type = memb->ref;
+
 		if(memb == d){
+			/* should've been set from .first_bitfield or first member: */
+			assert(*out_type);
+
 			*out_idx = ir_idx;
 			return 1;
 		}
@@ -646,6 +658,21 @@ int irtype_struct_decl_index(struct_union_enum_st *su, decl *d, unsigned *const 
 	}
 
 	return 0;
+}
+
+int irtype_struct_decl_index(struct_union_enum_st *su, decl *d, unsigned *const out_idx)
+{
+	type *unused;
+	return irtype_struct_decl_index_type(su, d, out_idx, &unused);
+}
+
+type *irtype_struct_decl_type(struct_union_enum_st *su, decl *memb)
+{
+	unsigned unused;
+	type *ty = NULL;
+	int found = irtype_struct_decl_index_type(su, memb, &unused, &ty);
+	assert(found);
+	return ty;
 }
 
 static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)

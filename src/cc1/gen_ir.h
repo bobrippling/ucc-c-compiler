@@ -23,6 +23,11 @@ int irtype_struct_decl_index(
 		decl *d,
 		unsigned *const out_idx);
 
+/* used for getting first-bitfield type: */
+type *irtype_struct_decl_type(
+		struct struct_union_enum_st *su,
+		struct decl *memb);
+
 typedef unsigned irid;
 
 irval *irval_from_id(irid);

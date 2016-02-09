@@ -120,7 +120,10 @@ irval *gen_ir_expr_assign_compound(const expr *e, irctx *ctx)
 
 	/* special case bitfield storing */
 	if(expr_kind(e->lhs, struct)){
-		irid masked_lhs = gen_ir_lval2rval_bitfield(tmp_val, e->lhs, ctx);
+		decl *memb = e->lhs->bits.struct_mem.d;
+		irid masked_lhs = gen_ir_lval2rval_bitfield(
+				tmp_val, memb, expr_struct_sutype(e->lhs), ctx);
+
 		const irid compound_result = ctx->curval++;
 		irval *compound_result_v = irval_from_id(compound_result);
 
