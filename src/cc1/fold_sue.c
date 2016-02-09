@@ -23,6 +23,8 @@
 #include "type_is.h"
 #include "type_nav.h"
 
+#include "ops/expr_val.h"
+
 #define DUMP_RECORD_LAYOUT 0
 
 struct bitfield_state

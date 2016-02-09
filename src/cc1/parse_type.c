@@ -34,6 +34,8 @@
 #include "fold.h"
 #include "fold_sue.h"
 
+#include "ops/expr_sizeof.h"
+
 static decl *parse_decl_stored_aligned(
 		type *btype, enum decl_mode mode,
 		enum decl_storage store, struct decl_align *align,

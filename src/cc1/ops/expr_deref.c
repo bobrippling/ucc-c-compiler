@@ -5,6 +5,8 @@
 #include "../type_nav.h"
 #include "../type_is.h"
 
+#include "expr_op.h"
+
 const char *str_expr_deref()
 {
 	return "dereference";

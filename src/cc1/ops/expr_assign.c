@@ -8,6 +8,10 @@
 #include "../type_nav.h"
 #include "../c_funcs.h"
 
+#include "expr_cast.h"
+#include "expr_struct.h"
+#include "expr_funcall.h"
+
 const char *str_expr_assign()
 {
 	return "assignment";

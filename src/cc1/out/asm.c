@@ -32,6 +32,8 @@
 #include "../pack.h"
 #include "../str.h"
 
+#include "../ops/expr_compound_lit.h"
+
 #include "../../config_as.h" /* weak directive */
 
 #define ASSERT_SCALAR(di)                  \

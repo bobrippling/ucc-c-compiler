@@ -9,6 +9,7 @@
 #include "../label.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "expr_identifier.h"
 
 const char *str_expr_addr()
 {

@@ -12,6 +12,9 @@
 #include "decl.h"
 #include "expr.h"
 
+#include "ops/expr_cast.h"
+#include "ops/expr_identifier.h"
+
 #include "macros.h"
 
 #include "attribute.h"

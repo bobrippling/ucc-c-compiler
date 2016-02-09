@@ -27,6 +27,13 @@
 #include "type_nav.h"
 #include "fopt.h"
 
+#include "ops/expr_cast.h"
+#include "ops/expr_identifier.h"
+#include "ops/expr_val.h"
+#include "ops/expr_struct.h"
+#include "ops/expr_assign.h"
+#include "ops/expr_addr.h"
+
 enum fold_type_chk
 {
 	FOLD_TYPE_NO_ARRAYQUAL = 1 << 0

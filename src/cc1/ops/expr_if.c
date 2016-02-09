@@ -9,6 +9,8 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 
+#include "expr_op.h"
+
 const char *str_expr_if()
 {
 	return "if";

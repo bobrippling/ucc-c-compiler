@@ -10,6 +10,8 @@
 #include "../type_is.h"
 #include "../../util/dynarray.h"
 
+#include "expr_op.h"
+
 #define ITER_SWITCH(sw, iter) \
 	for(iter = sw->bits.switch_.cases; iter && *iter; iter++)
 

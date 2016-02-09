@@ -23,7 +23,24 @@
 #include "funcargs.h"
 #include "type_is.h"
 
+#include "ops/expr__Generic.h"
+#include "ops/expr_addr.h"
+#include "ops/expr_assign.h"
+#include "ops/expr_assign_compound.h"
 #include "ops/expr_block.h"
+#include "ops/expr_cast.h"
+#include "ops/expr_comma.h"
+#include "ops/expr_compound_lit.h"
+#include "ops/expr_deref.h"
+#include "ops/expr_funcall.h"
+#include "ops/expr_identifier.h"
+#include "ops/expr_op.h"
+#include "ops/expr_sizeof.h"
+#include "ops/expr_stmt.h"
+#include "ops/expr_string.h"
+#include "ops/expr_struct.h"
+#include "ops/expr_val.h"
+#include "ops/expr_if.h"
 
 expr *parse_expr_unary(symtable *scope, int static_ctx);
 #define PARSE_EXPR_CAST(s, static_ctx) parse_expr_unary(s, static_ctx)

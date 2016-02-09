@@ -8,6 +8,8 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 
+#include "expr_string.h"
+
 const char *str_expr_identifier()
 {
 	return "identifier";

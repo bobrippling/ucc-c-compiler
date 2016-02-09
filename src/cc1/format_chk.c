@@ -17,6 +17,8 @@
 
 #include "format_chk.h"
 
+#include "ops/expr_if.h"
+
 enum printf_attr
 {
 	printf_attr_long = 1 << 0,

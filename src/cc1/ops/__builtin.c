@@ -29,6 +29,13 @@
 #include "../parse_type.h"
 #include "../cc1_out_ctx.h"
 
+#include "../ops/expr_funcall.h"
+#include "../ops/expr_addr.h"
+#include "../ops/expr_identifier.h"
+#include "../ops/expr_val.h"
+#include "../ops/expr_struct.h"
+#include "../ops/expr_cast.h"
+
 #define PREFIX "__builtin_"
 
 typedef expr *func_builtin_parse(

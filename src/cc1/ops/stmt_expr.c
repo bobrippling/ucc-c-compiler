@@ -4,6 +4,10 @@
 #include "stmt_expr.h"
 #include "../type_is.h"
 
+#include "expr_funcall.h"
+#include "expr_stmt.h"
+#include "expr_cast.h"
+
 const char *str_stmt_expr()
 {
 	return "expression";

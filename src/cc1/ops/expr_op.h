@@ -40,3 +40,6 @@ void gen_op_trapv(
 		const out_val **eval,
 		out_ctx *octx,
 		enum op_type op);
+
+expr *expr_new_op(enum op_type o);
+expr *expr_new_op2(enum op_type o, expr *l, expr *r);

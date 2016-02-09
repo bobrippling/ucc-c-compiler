@@ -10,6 +10,11 @@
 #include "type_is.h"
 #include "cc1.h"
 
+#include "ops/expr_identifier.h"
+#include "ops/expr_addr.h"
+#include "ops/expr_sizeof.h"
+#include "ops/expr_op.h"
+
 void c_func_check_free(expr *arg)
 {
 	int warn = 0;

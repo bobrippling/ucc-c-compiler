@@ -10,6 +10,9 @@
 #include "../out/lbl.h"
 #include "../type_nav.h"
 
+#include "expr_string.h"
+#include "expr_val.h"
+
 const char *str_expr_str(void)
 {
 	return "string";

@@ -19,6 +19,12 @@
 #include "cc1_where.h"
 #include "decl_init.h"
 #include "type_is.h"
+#include "ops/expr_compound_lit.h"
+#include "ops/expr_string.h"
+#include "ops/expr_val.h"
+#include "ops/expr_assign.h"
+#include "ops/expr_struct.h"
+#include "ops/expr_comma.h"
 
 #include "fopt.h"
 

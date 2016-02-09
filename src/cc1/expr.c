@@ -15,6 +15,14 @@
 
 #include "cc1_where.h"
 
+#include "ops/expr_op.h"
+#include "ops/expr_deref.h"
+#include "ops/expr_val.h"
+#include "ops/expr_cast.h"
+#include "ops/expr_identifier.h"
+#include "ops/expr_struct.h"
+#include "ops/expr_block.h"
+
 void expr_mutate(expr *e, func_mutate_expr *f,
 		func_fold *f_fold,
 		func_str *f_str,

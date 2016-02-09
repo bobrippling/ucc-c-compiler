@@ -245,24 +245,6 @@ expr *expr_new_numeric(numeric *);
 expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_new_decl_init(decl *d, struct decl_init *di);
 
-#include "ops/expr_addr.h"
-#include "ops/expr_assign.h"
-#include "ops/expr_assign_compound.h"
-#include "ops/expr_cast.h"
-#include "ops/expr_comma.h"
-#include "ops/expr_funcall.h"
-#include "ops/expr_identifier.h"
-#include "ops/expr_if.h"
-#include "ops/expr_op.h"
-#include "ops/expr_sizeof.h"
-#include "ops/expr_val.h"
-#include "ops/expr_stmt.h"
-#include "ops/expr_deref.h"
-#include "ops/expr_struct.h"
-#include "ops/expr_compound_lit.h"
-#include "ops/expr_string.h"
-#include "ops/expr_block.h"
-
 /* XXX: memleak */
 #define expr_free(x) do{                 \
 		if(x){                               \
@@ -273,33 +255,6 @@ expr *expr_new_decl_init(decl *d, struct decl_init *di);
 	}while(0)
 
 #define expr_kind(exp, kind) ((exp)->f_str == str_expr_ ## kind)
-
-expr *expr_new_identifier(char *sp);
-expr *expr_new_cast(expr *, type *cast_to, int implicit);
-expr *expr_new_cast_lval_decay(expr *);
-
-expr *expr_new_val(int val);
-expr *expr_new_op(enum op_type o);
-expr *expr_new_op2(enum op_type o, expr *l, expr *r);
-expr *expr_new_if(expr *test);
-expr *expr_new_stmt(struct stmt *code);
-expr *expr_new_sizeof_type(type *, enum what_of what_of);
-expr *expr_new_sizeof_expr(expr *, enum what_of what_of);
-expr *expr_new_funcall(void);
-expr *expr_new_assign(         expr *to, expr *from);
-expr *expr_new_assign_init(    expr *to, expr *from);
-expr *expr_new_assign_compound(expr *to, expr *from, enum op_type);
-expr *expr_new__Generic(expr *test, struct generic_lbl **lbls);
-expr *expr_new_block(type *rt, struct funcargs *args);
-expr *expr_new_deref(expr *);
-expr *expr_new_struct(expr *sub, int dot, expr *ident);
-expr *expr_new_struct_mem(expr *sub, int dot, decl *);
-expr *expr_new_str(char *, size_t, int wide, where *, symtable *stab);
-expr *expr_new_addr_lbl(char *lbl, int static_ctx);
-expr *expr_new_addr(expr *);
-
-expr *expr_new_comma2(expr *lhs, expr *rhs, int compiler_gen);
-#define expr_new_comma() expr_new_wrapper(comma)
 
 expr *expr_compiler_generated(expr *);
 

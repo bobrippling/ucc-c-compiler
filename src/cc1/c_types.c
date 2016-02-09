@@ -11,6 +11,9 @@
 
 #include "c_types.h"
 
+#include "ops/expr_val.h"
+#include "ops/expr_sizeof.h"
+
 type *c_types_make_va_list(symtable *symtab)
 {
 	/* pointer to struct __builtin_va_list */

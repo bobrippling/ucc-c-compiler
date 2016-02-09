@@ -20,6 +20,8 @@
 
 #include "fold.h"
 
+#include "ops/expr_identifier.h"
+
 struct stmt_ctx
 {
 	stmt *continue_target,

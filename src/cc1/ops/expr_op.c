@@ -12,6 +12,10 @@
 #include "../sanitize.h"
 #include "../fopt.h"
 
+#include "expr_cast.h"
+#include "expr_val.h"
+#include "expr_sizeof.h"
+
 /*
  * usual arithmetic conversions:
  *   mul, div, mod,

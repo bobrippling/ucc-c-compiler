@@ -29,6 +29,14 @@
 #include "../parse_expr.h"
 #include "__builtin_va.h"
 
+#include "../ops/expr_identifier.h"
+#include "../ops/expr_assign.h"
+#include "../ops/expr_struct.h"
+#include "../ops/expr_deref.h"
+#include "../ops/expr_val.h"
+#include "../ops/expr_op.h"
+#include "../ops/expr_funcall.h"
+
 static void va_type_check(
 		expr *va_l, expr *in, symtable *stab, int expect_decay)
 {

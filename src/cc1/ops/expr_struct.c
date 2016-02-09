@@ -6,6 +6,8 @@
 #include "../type_nav.h"
 #include "../fopt.h"
 
+#include "expr_identifier.h"
+
 #define struct_offset(e) (                            \
 	 (e)->bits.struct_mem.d->bits.var.struct_offset +   \
 	 (e)->bits.struct_mem.extra_off                     \
