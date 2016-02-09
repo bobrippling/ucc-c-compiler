@@ -225,7 +225,6 @@ static irval *gen_ir_assign_bitfield(irval *lhs, irval *rhs, expr *estruct, irct
 	decl *d = estruct->bits.struct_mem.d;
 	const char *lit_ty_str;
 
-#warning TODO: free irvals
 	if(!d->bits.var.field_width){
 		return rhs;
 	}
@@ -268,8 +267,6 @@ irval *gen_ir_expr_assign(const expr *e, irctx *ctx)
 	irval *rhs = gen_ir_expr(e->rhs, ctx);
 	irval *to_store;
 
-#warning TODO: free irvals
-
 	/* special case bitfield storing */
 	if(expr_kind(e->lhs, struct))
 		to_store = gen_ir_assign_bitfield(lhs, rhs, e->lhs, ctx);
@@ -278,6 +275,10 @@ irval *gen_ir_expr_assign(const expr *e, irctx *ctx)
 
 	printf("store %s, ", irval_str(lhs));
 	printf("%s\n", irval_str(to_store));
+
+	irval_free(lhs);
+	if(to_store != rhs)
+		irval_free(to_store);
 
 	return rhs;
 }
