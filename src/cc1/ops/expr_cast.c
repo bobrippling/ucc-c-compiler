@@ -770,7 +770,8 @@ irid gen_ir_lval2rval_bitfield(
 		irid tmp, decl *memb, struct_union_enum_st *su, irctx *ctx)
 {
 	irid bfid[2];
-	unsigned width, nshift, mask;
+	integral_t mask;
+	unsigned width, nshift;
 	const char *lit_ty_str;
 	type *arith_ty;
 
@@ -787,12 +788,12 @@ irid gen_ir_lval2rval_bitfield(
 	bfid[0] = ctx->curval++;
 	bfid[1] = ctx->curval++;
 
-	mask = width - 1;
+	mask = (1ull << width) - 1;
 
 	lit_ty_str = irtype_str(arith_ty);
 
-	printf("$%u = shiftr_arith $%u, i1 %u\n", bfid[0], tmp, lit_ty_str, nshift);
-	printf("$%u = and $%u, %s %u\n", bfid[1], bfid[0], lit_ty_str, mask);
+	printf("$%u = shiftr_arith $%u, %s %u\n", bfid[0], tmp, lit_ty_str, nshift);
+	printf("$%u = and $%u, %s %" NUMERIC_FMT_U "\n", bfid[1], bfid[0], lit_ty_str, mask);
 
 	return bfid[1];
 }
