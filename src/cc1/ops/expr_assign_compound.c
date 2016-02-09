@@ -108,6 +108,7 @@ const out_val *gen_expr_assign_compound(const expr *e, out_ctx *octx)
 
 irval *gen_ir_expr_assign_compound(const expr *e, irctx *ctx)
 {
+#warning TODO: post-increment, etc
 	irval *lhs = gen_ir_expr(e->lhs, ctx);
 	irval *rhs = gen_ir_expr(e->rhs, ctx);
 	const unsigned tmp_val = ctx->curval++;
