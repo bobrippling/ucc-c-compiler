@@ -257,6 +257,7 @@ try_cflag -pedantic
 
 
 try_cflag -Werror=incompatible-pointer-types
+try_cflag -Werror=implicit-function-declaration
 
 try_cflag -Wmissing-prototypes
 try_cflag -Wstrict-prototypes
