@@ -93,6 +93,7 @@ X("restrict-non-ptr", &cc1_warning.bad_restrict)
 X("bitfield-boundary", &cc1_warning.bitfield_boundary)
 X("bitfield-onebit-int", &cc1_warning.bitfield_onebit_int)
 X("bitfield-trunc", &cc1_warning.bitfield_trunc)
+X("bitfield-mixed-type", &cc1_warning.bitfield_mixed_type)
 
 X("builtin-expect-nonconst", &cc1_warning.builtin_expect_nonconst)
 X("builtin-memset-bad", &cc1_warning.builtin_memset_bad)

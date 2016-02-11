@@ -36,6 +36,7 @@ struct cc1_warning
 	unsigned char bitfield_boundary;
 	unsigned char bitfield_onebit_int;
 	unsigned char bitfield_trunc;
+	unsigned char bitfield_mixed_type;
 	unsigned char builtin_expect_nonconst;
 	unsigned char builtin_memset_bad;
 	unsigned char builtin_va_arg;

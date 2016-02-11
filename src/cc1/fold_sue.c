@@ -22,6 +22,7 @@
 
 struct bitfield_state
 {
+	type *first_ty;
 	unsigned current_off, first_off;
 };
 
@@ -268,6 +269,7 @@ static void fold_sue_calc_fieldwidth(
 		/* we are onto the beginning of a new group */
 		struct_pack(d, offset, pack_state->sz, pack_state->align);
 		bitfield->first_off = d->bits.var.struct_offset;
+		bitfield->first_ty = d->ref;
 		d->bits.var.first_bitfield = 1;
 
 	}else{
@@ -275,6 +277,15 @@ static void fold_sue_calc_fieldwidth(
 		 * difference is in .struct_offset_bitfield
 		 */
 		d->bits.var.struct_offset = bitfield->first_off;
+
+		if(!(type_cmp(d->ref, bitfield->first_ty, 0) & TYPE_EQUAL_ANY)){
+			char buf[TYPE_STATIC_BUFSIZ];
+
+			cc1_warn_at(&d->where, bitfield_mixed_type,
+					"bitfield '%s' type doesn't match its packed bitfield type of '%s'",
+					type_to_str_r(buf, d->ref),
+					type_to_str(bitfield->first_ty));
+		}
 	}
 
 	d->bits.var.struct_offset_bitfield = bitfield->current_off;
