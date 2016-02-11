@@ -78,6 +78,8 @@ struct_union_enum_st *sue_decl(
 		int got_membs, int is_declaration, int pre_parse,
 		where *);
 
+struct type *su_member_type(struct_union_enum_st *su, struct decl *);
+
 sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 
 /* enum specific */

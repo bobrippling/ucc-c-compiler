@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/alloc.h"
 #include "../util/util.h"
@@ -169,6 +170,35 @@ sue_member *sue_member_from_decl(decl *d)
 	sue_member *sm = umalloc(sizeof *sm);
 	sm->struct_member = d;
 	return sm;
+}
+
+type *su_member_type(struct_union_enum_st *su, decl *search_memb)
+{
+	size_t i;
+	type *ty = NULL;
+
+	for(i = 0; ; i++){
+		sue_member *su_mem = su->members[i];
+		decl *memb;
+
+		if(!su_mem)
+			break;
+
+		memb = su_mem->struct_member;
+
+		/* only set ty on non-bitfield or first-bitfield */
+		if(!memb->bits.var.field_width || memb->bits.var.first_bitfield)
+			ty = memb->ref;
+
+		if(memb == search_memb){
+			/* should've been set from .first_bitfield or first member: */
+			assert(ty);
+			return ty;
+		}
+	}
+
+	assert(0 && "member not found");
+	return NULL;
 }
 
 struct_union_enum_st *sue_decl(

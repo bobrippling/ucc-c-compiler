@@ -17,6 +17,18 @@ const char *str_expr_struct()
 	return "member-access";
 }
 
+static type *struct_member_type(struct_union_enum_st *su, decl *d)
+{
+	if(!d->bits.var.field_width)
+		return d->ref; /* simple */
+
+	/*
+	 * struct A { short s : 2; int i : 2; };
+	 * A::i has type short, since it's in a short bitfield
+	 */
+	return su_member_type(su, d);
+}
+
 void fold_expr_struct(expr *e, symtable *stab)
 {
 	/*
@@ -101,7 +113,9 @@ err:
 			: e->lhs->tree_type);
 
 	/* pull qualifiers from the struct to the member */
-	e->tree_type = type_qualify(e->bits.struct_mem.d->ref, struct_qual);
+	e->tree_type = type_qualify(
+			struct_member_type(sue, e->bits.struct_mem.d),
+			struct_qual);
 }
 
 struct_union_enum_st *expr_struct_sutype(const expr *e)
