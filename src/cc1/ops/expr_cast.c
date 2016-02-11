@@ -769,9 +769,9 @@ static irval *gen_ir_cast_int_ptr_etc(const expr *e, irval *sub, irctx *ctx)
 irid gen_ir_lval2rval_bitfield(
 		irid tmp, decl *memb, struct_union_enum_st *su, irctx *ctx)
 {
-	irid bfid[2];
+	irid bfid[2], sext[2];
 	integral_t mask;
-	unsigned width, nshift;
+	unsigned width, nshift, sext_nbits;
 	const char *lit_ty_str;
 	type *arith_ty;
 
@@ -795,7 +795,19 @@ irid gen_ir_lval2rval_bitfield(
 	printf("$%u = shiftr_arith $%u, %s %u\n", bfid[0], tmp, lit_ty_str, nshift);
 	printf("$%u = and $%u, %s %" NUMERIC_FMT_U "\n", bfid[1], bfid[0], lit_ty_str, mask);
 
-	return bfid[1];
+	/* if signed, need to sign extend */
+	if(!type_is_signed(arith_ty))
+		return bfid[1];
+
+	sext_nbits = type_size(arith_ty, NULL) * 8 - width;
+
+	sext[0] = ctx->curval++;
+	sext[1] = ctx->curval++;
+
+	printf("$%u = shiftl $%u, %s %u\n", sext[0], bfid[1], lit_ty_str, sext_nbits);
+	printf("$%u = shiftr_arith $%u, %s %u\n", sext[1], sext[0], lit_ty_str, sext_nbits);
+
+	return sext[1];
 }
 
 static irval *gen_ir_lval2rval(irval *sub, const expr *e, irctx *ctx)
