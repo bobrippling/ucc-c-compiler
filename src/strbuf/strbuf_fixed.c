@@ -4,6 +4,13 @@
 
 #include "strbuf_fixed.h"
 
+void strbuf_fixed_init(strbuf_fixed *buf, char *p, size_t l)
+{
+	buf->str = p;
+	buf->current = 0;
+	buf->max = l;
+}
+
 bool strbuf_fixed_vprintf(strbuf_fixed *buf, const char *fmt, va_list l)
 {
 	size_t space_req;
