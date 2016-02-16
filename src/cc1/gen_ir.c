@@ -675,7 +675,7 @@ type *irtype_struct_decl_type(struct_union_enum_st *su, decl *memb)
 	return ty;
 }
 
-static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
+static const char *irtype_str_maybe_fn_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 {
 	t = type_skip_all(t);
 
@@ -704,7 +704,7 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 						if(!first)
 							strbuf_fixed_printf(buf, ", ");
 
-						irtype_str_r(buf, memb->ref, NULL);
+						irtype_str_r(buf, memb->ref);
 					}
 
 					strbuf_fixed_printf(buf, "}");
@@ -722,7 +722,7 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 
 		case type_ptr:
 		case type_block:
-			irtype_str_r(buf, t->ref, NULL);
+			irtype_str_r(buf, t->ref);
 			strbuf_fixed_printf(buf, "*");
 			break;
 
@@ -750,7 +750,7 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 				}
 			}
 
-			irtype_str_r(buf, t->ref, NULL);
+			irtype_str_r(buf, t->ref);
 			strbuf_fixed_printf(buf, "(");
 
 			/* ignore fargs->args_old_proto
@@ -764,7 +764,7 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 				if(!first)
 					strbuf_fixed_printf(buf, ", ");
 
-				irtype_str_r(buf, arglist[i]->ref, NULL);
+				irtype_str_r(buf, arglist[i]->ref);
 
 				if(have_arg_names){
 					decl *arg = maybe_args->arglist[i];
@@ -786,7 +786,7 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 
 		case type_array:
 			strbuf_fixed_printf(buf, "[");
-			irtype_str_r(buf, t->ref, NULL);
+			irtype_str_r(buf, t->ref);
 			strbuf_fixed_printf(buf, " x %" NUMERIC_FMT_D "]",
 					const_fold_val_i(t->bits.array.size));
 			break;
@@ -794,60 +794,61 @@ static void irtype_str_r(strbuf_fixed *buf, type *t, funcargs *maybe_args)
 		default:
 			assert(0 && "unskipped type");
 	}
+
+	return strbuf_fixed_detach(buf);
 }
 
 static const char *irtype_str_maybe_fn(type *t, funcargs *maybe_args)
 {
-	static char ar[128];
-	strbuf_fixed buf = STRBUF_FIXED_INIT_ARRAY(ar);
+	static char buf[128];
+	strbuf_fixed sbuf = STRBUF_FIXED_INIT_ARRAY(buf);
 
-	irtype_str_r(&buf, t, maybe_args);
+	return irtype_str_maybe_fn_r(&sbuf, t, maybe_args);
+}
 
-	return strbuf_fixed_detach(&buf);
+const char *irtype_str_r(strbuf_fixed *buf, type *t)
+{
+	return irtype_str_maybe_fn_r(buf, t, NULL);
 }
 
 const char *irtype_str(type *t)
 {
-	return irtype_str_maybe_fn(t, NULL);
+	static char buf[128];
+	strbuf_fixed sbuf = STRBUF_FIXED_INIT_ARRAY(buf);
+
+	return irtype_str_r(&sbuf, t);
+}
+
+const char *irval_str_r(strbuf_fixed *buf, irval *v)
+{
+	switch(v->type){
+		case IRVAL_LITERAL:
+			irtype_str_r(buf, v->bits.lit.ty);
+			strbuf_fixed_printf(buf, " %" NUMERIC_FMT_D, v->bits.lit.val);
+			break;
+
+		case IRVAL_LBL:
+			strbuf_fixed_printf(buf, "$%s", v->bits.lbl);
+			break;
+
+		case IRVAL_ID:
+			strbuf_fixed_printf(buf, "$%u", v->bits.id);
+			break;
+
+		case IRVAL_NAMED:
+			assert(v->bits.decl->sym);
+			strbuf_fixed_printf(buf, "$%s", decl_asm_spel(v->bits.decl));
+			break;
+	}
+	return strbuf_fixed_detach(buf);
 }
 
 const char *irval_str(irval *v)
 {
 	static char buf[256];
+	strbuf_fixed sbuf = STRBUF_FIXED_INIT_ARRAY(buf);
 
-	switch(v->type){
-		case IRVAL_LITERAL:
-		{
-			strbuf_fixed sbuf = STRBUF_FIXED_INIT_ARRAY(buf);
-			size_t len;
-
-			irtype_str_r(&sbuf, v->bits.lit.ty, NULL);
-			len = strlen(buf);
-
-			assert(len < sizeof buf);
-
-			snprintf(buf + len, sizeof buf - len,
-					" %" NUMERIC_FMT_D,
-					v->bits.lit.val);
-			break;
-		}
-
-		case IRVAL_LBL:
-			snprintf(buf, sizeof buf, "$%s", v->bits.lbl);
-			break;
-
-		case IRVAL_ID:
-			snprintf(buf, sizeof buf, "$%u", v->bits.id);
-			break;
-
-		case IRVAL_NAMED:
-		{
-			assert(v->bits.decl->sym);
-			snprintf(buf, sizeof buf, "$%s", decl_asm_spel(v->bits.decl));
-			break;
-		}
-	}
-	return buf;
+	return irval_str_r(&sbuf, v);
 }
 
 static irval *irval_new(enum irval_type t)

@@ -3,6 +3,8 @@
 
 #define IRTODO(...) /*ICW(__VA_ARGS__)*/
 
+struct strbuf_fixed;
+
 void gen_ir(symtable_global *);
 
 typedef struct irctx irctx;
@@ -15,7 +17,10 @@ void gen_ir_comment(irctx *, const char *, ...)
 	ucc_printflike(2, 3);
 
 const char *irtype_str(type *);
+const char *irtype_str_r(struct strbuf_fixed *, type *);
 const char *irval_str(irval *);
+const char *irval_str_r(struct strbuf_fixed *, irval *);
+
 const char *ir_op_str(enum op_type, int arith_rshift);
 
 int irtype_struct_decl_index(
