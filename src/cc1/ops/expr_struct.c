@@ -197,7 +197,7 @@ irval *gen_ir_expr_struct(const expr *e, irctx *ctx)
 
 	struct_exp = gen_ir_expr(e->lhs, ctx);
 
-	printf("$%u = elem %s, i4 %u\n", off, irval_str(struct_exp), idx);
+	printf("$%u = elem %s, i4 %u\n", off, irval_str(struct_exp, ctx), idx);
 
 	if(d->bits.var.field_width){
 		/* bitfield loading handled by expr_cast (lval2rval),

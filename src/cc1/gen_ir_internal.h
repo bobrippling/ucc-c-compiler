@@ -5,6 +5,8 @@ struct irctx
 {
 	unsigned curval;
 	unsigned curlbl;
+	unsigned curtype;
+	dynmap *structints;
 };
 
 #endif

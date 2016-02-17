@@ -572,7 +572,7 @@ void gen_ir_block_decls(symtable *symtab, irctx *ctx)
 			continue;
 		}
 
-		printf("$%s = alloca %s\n", decl_asm_spel(d), irtype_str(d->ref));
+		printf("$%s = alloca %s\n", decl_asm_spel(d), irtype_str(d->ref, ctx));
 
 		if(d->bits.var.init.expr && d->spel){
 			irval_free(gen_ir_expr(d->bits.var.init.expr, ctx));
@@ -619,7 +619,7 @@ static void irctx_run_dtor(decl *d, attribute *cleanup, void *vctx)
 	/* trust ir to remove unnecessary casts */
 	printf("$%u = ptrcast %s, $%s\n",
 			casted,
-			irtype_str(argty),
+			irtype_str(argty, ctx),
 			decl_asm_spel(d));
 
 	printf("call $%s($%u)\n",

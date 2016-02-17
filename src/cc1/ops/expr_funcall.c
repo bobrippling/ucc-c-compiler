@@ -514,8 +514,8 @@ static irval *funcall_ir_correct_type(const expr *e, irval *fnv, irctx *ctx)
 
 	printf("$%u = ptrcast %s(...)*, %s\n",
 			casted_val,
-			irtype_str(e->tree_type),
-			irval_str(fnv));
+			irtype_str(e->tree_type, ctx),
+			irval_str(fnv, ctx));
 
 	return irval_from_id(casted_val);
 }
@@ -541,14 +541,14 @@ irval *gen_ir_expr_funcall(const expr *e, irctx *ctx)
 
 	is_void = type_is_void(type_called(type_is_ptr(e->expr->tree_type), NULL));
 	if(is_void){
-		printf("call %s(", irval_str(fnv));
+		printf("call %s(", irval_str(fnv, ctx));
 	}else{
 		reti = ctx->curval++;
-		printf("$%u = call %s(", reti, irval_str(fnv));
+		printf("$%u = call %s(", reti, irval_str(fnv, ctx));
 	}
 
 	for(irarg = args; irarg && *irarg; irarg++){
-		printf("%s%s", comma, irval_str(*irarg));
+		printf("%s%s", comma, irval_str(*irarg, ctx));
 
 		comma = ", ";
 	}

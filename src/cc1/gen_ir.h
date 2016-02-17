@@ -16,10 +16,10 @@ void gen_ir_stmt(const struct stmt *, irctx *);
 void gen_ir_comment(irctx *, const char *, ...)
 	ucc_printflike(2, 3);
 
-const char *irtype_str(type *);
-const char *irtype_str_r(struct strbuf_fixed *, type *);
-const char *irval_str(irval *);
-const char *irval_str_r(struct strbuf_fixed *, irval *);
+const char *irtype_str(type *, irctx *);
+const char *irtype_str_r(struct strbuf_fixed *, type *, irctx *);
+const char *irval_str(irval *, irctx *);
+const char *irval_str_r(struct strbuf_fixed *, irval *, irctx *);
 
 const char *ir_op_str(enum op_type, int arith_rshift);
 
