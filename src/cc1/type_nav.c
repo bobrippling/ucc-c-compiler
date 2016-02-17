@@ -740,6 +740,11 @@ static void type_dump_t(type *t, FILE *f, int indent)
 	}
 }
 
+dynmap *type_nav_suetypes(struct type_nav *nav)
+{
+	return nav->suetypes;
+}
+
 void type_nav_dump(struct type_nav *nav)
 {
 	int i;

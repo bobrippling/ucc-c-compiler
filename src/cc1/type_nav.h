@@ -13,6 +13,8 @@ extern struct type_nav *cc1_type_nav;
 
 struct type_nav *type_nav_init(void);
 
+dynmap *type_nav_suetypes(struct type_nav *); /* sue => type */
+
 type *type_nav_btype(struct type_nav *root, enum type_primitive p);
 type *type_nav_auto(struct type_nav *root); /* returns placeholder */
 type *type_nav_suetype(struct type_nav *root, struct_union_enum_st *);

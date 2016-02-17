@@ -436,9 +436,6 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 		if(su){
 			if(IR_DUMP_FIELD_OFFSETS)
 				gen_ir_dump_su(su, ctx);
-
-			printf("type %s = ", irtype_su_str(su, ctx, 1));
-			printf("%s\n", irtype_su_str(su, ctx, 0));
 		}
 
 		return;
@@ -493,6 +490,24 @@ static void gen_ir_stringlits(dynmap *litmap, int predeclare)
 			gen_ir_stringlit(lit, predeclare);
 }
 
+static void gen_ir_su_types(struct type_nav *type_nav, irctx *ctx)
+{
+	dynmap *suetypes = type_nav_suetypes(type_nav);
+	struct_union_enum_st *su;
+	size_t i;
+
+	for(i = 0;
+	    (su = dynmap_key(struct_union_enum_st *, suetypes, i));
+			i++)
+	{
+		if(su->primitive == type_enum)
+			continue;
+
+		printf("type %s = ", irtype_su_str(su, ctx, 1));
+		printf("%s\n", irtype_su_str(su, ctx, 0));
+	}
+}
+
 void gen_ir(symtable_global *globs)
 {
 	irctx ctx = { 0 };
@@ -500,6 +515,7 @@ void gen_ir(symtable_global *globs)
 	decl **diter;
 
 	gen_ir_stringlits(globs->literals, 1);
+	gen_ir_su_types(cc1_type_nav, &ctx);
 
 	for(diter = symtab_decls(&globs->stab); diter && *diter; diter++){
 		decl *d = *diter;
