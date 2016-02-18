@@ -1,6 +1,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include "../../util/alloc.h"
+
 #include "ops.h"
 #include "expr_compound_lit.h"
 #include "../out/asm.h"
@@ -38,11 +40,11 @@ void fold_expr_compound_lit(expr *e, symtable *stab)
 	/* must be set before the recursive fold_gen_init_assignment_base */
 	e->tree_type = d->ref;
 
-	if(static_ctx){
-		assert(!d->spel_asm);
-		d->spel_asm = out_label_data_store(STORE_COMP_LIT);
+	/* always give a unique spel_asm */
+	assert(!d->spel_asm);
+	d->spel_asm = out_label_data_store(STORE_COMP_LIT);
+	if(static_ctx)
 		d->store = store_static;
-	}
 
 	e->bits.complit.sym = sym_new(d, static_ctx ? sym_global : sym_local);
 	symtab_add_to_scope_pre(stab, d);
