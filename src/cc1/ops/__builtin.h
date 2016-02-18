@@ -13,7 +13,8 @@ expr *parse_any_args(symtable *scope);
 
 #define expr_mutate_builtin(exp, to)  \
 	exp->f_fold = fold_ ## to,          \
-	exp->f_gen = builtin_gen_ ## to
+	exp->f_gen = builtin_gen_ ## to,    \
+	exp->f_ir = builtin_gen_ir_ ## to
 
 expr *builtin_new_memset(expr *p, int ch, size_t len);
 expr *builtin_new_memcpy(expr *to, expr *from, size_t len);

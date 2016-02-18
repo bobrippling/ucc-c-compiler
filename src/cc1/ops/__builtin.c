@@ -17,6 +17,7 @@
 
 #include "../const.h"
 #include "../gen_asm.h"
+#include "../gen_ir.h"
 #include "../gen_dump.h"
 
 #include "../out/out.h"
@@ -224,6 +225,12 @@ static const out_val *builtin_gen_memset(const expr *e, out_ctx *octx)
 			out_new_l(octx, e->tree_type, e->bits.builtin_memset.len));
 }
 
+static irval *builtin_gen_ir_memset(const expr *e, irctx *ctx)
+{
+	ICW("TODO: %s", __func__);
+	return NULL;
+}
+
 expr *builtin_new_memset(expr *p, int ch, size_t len)
 {
 	expr *fcall = expr_new_funcall();
@@ -301,6 +308,12 @@ static const out_val *builtin_gen_memcpy(const expr *e, out_ctx *octx)
 #endif
 }
 
+static irval *builtin_gen_ir_memcpy(const expr *e, irctx *ctx)
+{
+	ICW("TODO: %s", __func__);
+	return NULL;
+}
+
 expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
 {
 	expr *fcall = expr_new_funcall();
@@ -346,6 +359,12 @@ static void fold_unreachable(expr *e, symtable *stab)
 static const out_val *builtin_gen_unreachable(const expr *e, out_ctx *octx)
 {
 	return builtin_gen_undefined(e, octx);
+}
+
+static irval *builtin_gen_ir_unreachable(const expr *e, irctx *ctx)
+{
+	ICW("TODO: %s", __func__);
+	return NULL;
 }
 
 static expr *parse_unreachable(const char *ident, symtable *scope)
@@ -483,6 +502,12 @@ static const out_val *builtin_gen_frame_address(const expr *e, out_ctx *octx)
 	return out_new_frame_ptr(octx, depth + 1);
 }
 
+static irval *builtin_gen_ir_frame_address(const expr *e, irctx *ctx)
+{
+	ICW("TODO: %s", __func__);
+	return NULL;
+}
+
 static expr *builtin_frame_address_mutate(expr *e)
 {
 	expr_mutate_builtin(e, frame_address);
@@ -518,6 +543,12 @@ static const out_val *builtin_gen_reg_save_area(const expr *e, out_ctx *octx)
 	(void)e;
 	out_comment(octx, "stack local offset:");
 	return out_new_reg_save_ptr(octx);
+}
+
+static irval *builtin_gen_ir_reg_save_area(const expr *e, irctx *ctx)
+{
+	ICW("TODO: %s", __func__);
+	return NULL;
 }
 
 expr *builtin_new_reg_save_area(void)
@@ -567,6 +598,12 @@ static const out_val *builtin_gen_expect(const expr *e, out_ctx *octx)
 		eval = out_annotate_likely(octx, eval, !!k.bits.num.val.i);
 
 	return eval;
+}
+
+static irval *builtin_gen_ir_expect(const expr *e, irctx *ctx)
+{
+	ICW("TODO: %s", __func__);
+	return NULL;
 }
 
 static void const_expect(expr *e, consty *k)
@@ -639,6 +676,11 @@ static const out_val *gen_choose_expr(const expr *e, out_ctx *octx)
 	return gen_expr(CHOOSE_EXPR_CHOSEN(e), octx);
 }
 
+static irval *builtin_gen_ir_choose_expr(const expr *e, irctx *ctx)
+{
+	return gen_ir_expr(CHOOSE_EXPR_CHOSEN(e), ctx);
+}
+
 static expr *parse_choose_expr(const char *ident, symtable *scope)
 {
 	expr *fcall = parse_any_args(scope);
@@ -648,6 +690,7 @@ static expr *parse_choose_expr(const char *ident, symtable *scope)
 	fcall->f_fold       = fold_choose_expr;
 	fcall->f_const_fold = const_choose_expr;
 	fcall->f_gen        = gen_choose_expr;
+	fcall->f_ir         = builtin_gen_ir_choose_expr;
 
 	return fcall;
 }
@@ -735,6 +778,12 @@ need_char_p:
 static const out_val *builtin_gen_nan(const expr *e, out_ctx *octx)
 {
 	return out_new_nan(octx, e->tree_type);
+}
+
+static irval *builtin_gen_ir_nan(const expr *e, irctx *ctx)
+{
+	ICW("TODO: %s", __func__);
+	return NULL;
 }
 
 static expr *builtin_nan_mutate(expr *e)

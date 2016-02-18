@@ -12,6 +12,7 @@
 #include "../cc1.h"
 #include "../fold.h"
 #include "../gen_asm.h"
+#include "../gen_ir.h"
 #include "../out/out.h"
 #include "../out/lbl.h"
 #include "../pack.h"
@@ -182,6 +183,12 @@ static const out_val *builtin_gen_va_start(const expr *e, out_ctx *octx)
 	out_comment(octx, "va_start() end");
 	return out_new_noop(octx);
 #endif
+}
+
+static irval *builtin_gen_ir_va_start(const expr *e, irctx *ctx)
+{
+	ICW("TODO: %s", __func__);
+	return NULL;
 }
 
 expr *parse_va_start(const char *ident, symtable *scope)
@@ -476,6 +483,12 @@ stack:
 #endif
 }
 
+static irval *builtin_gen_ir_va_arg(const expr *e, irctx *ctx)
+{
+	ICW("TODO: %s", __func__);
+	return NULL;
+}
+
 static void fold_va_arg(expr *e, symtable *stab)
 {
 	type *const ty = e->bits.va_arg_type;
@@ -531,6 +544,12 @@ static const out_val *builtin_gen_va_end(const expr *e, out_ctx *octx)
 	return out_new_noop(octx);
 }
 
+static irval *builtin_gen_ir_va_end(const expr *e, irctx *ctx)
+{
+	ICW("TODO: %s", __func__);
+	return NULL;
+}
+
 static void fold_va_end(expr *e, symtable *stab)
 {
 	if(dynarray_count(e->funcargs) != 1)
@@ -556,6 +575,12 @@ expr *parse_va_end(const char *ident, symtable *scope)
 static const out_val *builtin_gen_va_copy(const expr *e, out_ctx *octx)
 {
 	return gen_expr(e->lhs, octx);
+}
+
+static irval *builtin_gen_ir_va_copy(const expr *e, irctx *ctx)
+{
+	ICW("TODO: %s", __func__);
+	return NULL;
 }
 
 static void fold_va_copy(expr *e, symtable *stab)
