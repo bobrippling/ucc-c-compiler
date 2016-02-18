@@ -55,7 +55,8 @@ static void gen_ir_init_r(irctx *, decl_init *init, type *ty);
 
 static const char *irtype_str_maybe_fn(type *t, funcargs *args, irctx *ctx);
 static unsigned irtype_struct_num(irctx *ctx, struct_union_enum_st *su);
-static const char *irtype_su_str(struct_union_enum_st *su, irctx *, int abbreviate);
+static const char *irtype_su_str_full(struct_union_enum_st *su, irctx *);
+static const char *irtype_su_str_abbreviated(struct_union_enum_st *su, irctx *ctx);
 
 irval *gen_ir_expr(const struct expr *expr, irctx *ctx)
 {
@@ -503,8 +504,8 @@ static void gen_ir_su_types(struct type_nav *type_nav, irctx *ctx)
 		if(su->primitive == type_enum)
 			continue;
 
-		printf("type %s = ", irtype_su_str(su, ctx, 1));
-		printf("%s\n", irtype_su_str(su, ctx, 0));
+		printf("type %s = ", irtype_su_str_abbreviated(su, ctx));
+		printf("%s\n", irtype_su_str_full(su, ctx));
 	}
 }
 
@@ -721,22 +722,22 @@ static unsigned irtype_struct_num(irctx *ctx, struct_union_enum_st *su)
 	return val;
 }
 
-static const char *irtype_su_str(struct_union_enum_st *su, irctx *ctx, int abbreviate)
+static const char *irtype_su_str_abbreviated(struct_union_enum_st *su, irctx *ctx)
 {
 	static char buf[256];
-	strbuf_fixed sbuf;
 
-	if(abbreviate){
-		/* emit struct alias */
-		snprintf(buf, sizeof(buf),
-				"$struct%u_%s",
-				irtype_struct_num(ctx, su),
-				su->anon ? "" : su->spel);
+	snprintf(buf, sizeof(buf),
+			"$struct%u_%s",
+			irtype_struct_num(ctx, su),
+			su->anon ? "" : su->spel);
 
-		return buf;
-	}
+	return buf;
+}
 
-	strbuf_fixed_init(&sbuf, buf, sizeof(buf));
+static const char *irtype_su_str_full(struct_union_enum_st *su, irctx *ctx)
+{
+	static char buf[256];
+	strbuf_fixed sbuf = STRBUF_FIXED_INIT_ARRAY(buf);
 
 	switch(su->primitive){
 		case type_struct:
@@ -788,7 +789,8 @@ static const char *irtype_str_maybe_fn_r(
 			switch(t->bits.type->primitive){
 				case type_struct:
 				case type_union:
-					strbuf_fixed_printf(buf, "%s", irtype_su_str(t->bits.type->sue, ctx, 1));
+					strbuf_fixed_printf(buf, "%s",
+							irtype_su_str_abbreviated(t->bits.type->sue, ctx));
 					break;
 
 				default:
