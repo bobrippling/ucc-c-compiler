@@ -31,7 +31,8 @@ static void symtab_add_to_scope2(symtable *symtab, decl *d, int m1)
 		size_t n = dynarray_count(symtab->decls);
 		decl *last;
 
-		assert(n > 0 && "can't insert in empty scope");
+		if(n == 0)
+			goto normal;
 
 		/* "move" last to the end, then replace [n-1] with 'd' */
 		last = symtab->decls[n - 1];
@@ -39,6 +40,7 @@ static void symtab_add_to_scope2(symtable *symtab, decl *d, int m1)
 		symtab->decls[n - 1] = d;
 
 	}else{
+normal:
 		dynarray_add(&symtab->decls, d);
 	}
 }
