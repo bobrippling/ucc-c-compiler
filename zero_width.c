@@ -22,6 +22,20 @@ struct C
 	int b : 3;
 };
 
+struct D
+{
+	int a : 3;
+	int : 0;
+	int b;
+};
+
+/*
+type $struct1_A = {i4, i2}
+type $struct2_B = {i4, i4, i4}
+type $struct3_C = {i4, i4, i4}
+type $struct4_D = {i4, i4}
+*/
+
 /*
 f(struct A *p)
 {
