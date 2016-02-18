@@ -227,7 +227,16 @@ static const out_val *builtin_gen_memset(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_memset(const expr *e, irctx *ctx)
 {
+	irval *p = gen_ir_expr(e->lhs, ctx);
+
 	ICW("TODO: %s", __func__);
+
+	gen_ir_comment(ctx,
+			"memset %s size %lu to 0x%x",
+			irval_str(p, ctx),
+			e->bits.builtin_memset.len,
+			e->bits.builtin_memset.ch);
+
 	return NULL;
 }
 
