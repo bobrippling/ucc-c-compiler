@@ -93,7 +93,7 @@ local_or_arg:
 		}
 
 		case sym_global:
-				d->spel_asm = func_mangle(d->spel, type_is(d->ref, type_func));
+			d->spel_asm = func_mangle(d->spel, type_is(d->ref, type_func));
 			break;
 	}
 
