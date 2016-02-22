@@ -409,6 +409,7 @@ static void gen_ir_dump_su(struct_union_enum_st *su, irctx *ctx)
 		sue_member *su_mem = su->members[i];
 		decl *memb;
 		unsigned idx;
+		expr *fwidth;
 
 		if(!su_mem)
 			break;
@@ -419,9 +420,13 @@ static void gen_ir_dump_su(struct_union_enum_st *su, irctx *ctx)
 			continue;
 		}
 
-		gen_ir_comment(ctx, "  %s index %u (first bitfield = %d, field_width = %c)",
-				memb->spel ? memb->spel : "?", idx, memb->bits.var.first_bitfield,
-				"NY"[!!memb->bits.var.field_width]);
+		fwidth = memb->bits.var.field_width;
+
+		gen_ir_comment(ctx, "  %s index %u (field_width = %d%s)",
+				memb->spel ? memb->spel : "?",
+				idx,
+				fwidth ? (int)const_fold_val_i(fwidth) : -1,
+				memb->bits.var.first_bitfield ? " [first]" : "");
 	}
 }
 
