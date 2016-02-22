@@ -664,23 +664,24 @@ static int irtype_struct_decl_index_type(
 		next = su_memnext->struct_member;
 		assert(next);
 
+		/* if next is zero-width, we have the previous index */
+		if(next->bits.var.field_width && const_fold_val_i(next->bits.var.field_width) == 0)
+			continue;
+
 		/* calculate index of next field: */
 		if(memb->bits.var.field_width){
 			/* we are a bitfield - is next a bitfield? */
 			if(next->bits.var.field_width){
-				/* if it's a bitfield boundary, increment, except for 0-width */
-				if(next->bits.var.first_bitfield
-				&& const_fold_val_i(next->bits.var.field_width) > 0)
-				{
+				/* if it's a bitfield boundary, increment */
+				if(next->bits.var.first_bitfield)
 					ir_idx++;
-				}
 				/* else it's part of us */
 			}else{
 				/* next not a bitfield: */
 				ir_idx++;
 			}
 		}else{
-			/* next and current not bitfields: */
+			/* current not bitfield */
 			ir_idx++;
 		}
 

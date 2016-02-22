@@ -234,8 +234,8 @@ static void fold_sue_calc_fieldwidth(
 		/* also set struct_offset for 0-len bf, for pad reasons */
 		d->bits.var.struct_offset = *offset;
 
-		/* for consistency: */
-		d->bits.var.first_bitfield = 1;
+		/* never first: */
+		d->bits.var.first_bitfield = 0;
 
 	}else if(*realign_next
 	|| !bitfield->current_off
