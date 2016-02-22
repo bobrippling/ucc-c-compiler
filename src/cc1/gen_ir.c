@@ -775,7 +775,28 @@ static const char *irtype_su_str_full(struct_union_enum_st *su, irctx *ctx)
 		}
 
 		case type_union:
-			ICE("TODO: union type");
+		{
+			sue_member **i;
+			struct {
+				unsigned size;
+				decl *memb;
+			} largest;
+
+			largest.size = 0;
+			largest.memb = NULL;
+
+			for(i = su->members; i && *i; i++){
+				decl *memb = (*i)->struct_member;
+				unsigned sz = decl_size(memb);
+
+				if(sz > largest.size){
+					largest.size = sz;
+					largest.memb = memb;
+				}
+			}
+
+			return irtype_str_r(&sbuf, largest.memb->ref, ctx);
+		}
 
 		default:
 			assert(0 && "unreachable");
