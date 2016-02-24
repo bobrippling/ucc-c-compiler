@@ -23,6 +23,7 @@
 #include "decl_init.h"
 #include "bitfields.h"
 #include "fold.h"
+#include "pack.h"
 
 #include "gen_ir.h"
 #include "gen_ir_internal.h"
@@ -778,21 +779,31 @@ static const char *irtype_su_str_full(struct_union_enum_st *su, irctx *ctx)
 
 		case type_union:
 		{
+			sue_member **i;
+			struct szalign {
+				unsigned size, align;
+			} largest = { 0 };
 			expr *esize;
 			type *unionty;
-			sue_member **i;
-			unsigned largest = 0;
+			unsigned packed_size;
 
 			for(i = su->members; i && *i; i++){
 				decl *memb = (*i)->struct_member;
-				unsigned new = decl_size(memb);
+				struct szalign new;
 
-				if(new > largest)
-					largest = new;
+				new.size = decl_size(memb);
+				new.align = decl_align(memb);
+
+				if(new.size > largest.size)
+					largest.size = new.size;
+				if(new.align > largest.align)
+					largest.align = new.align;
 			}
 
+			packed_size = pack_to_align(largest.size, largest.align);
+
 			/* { [i8 x N] } */
-			esize = expr_new_val(largest);
+			esize = expr_new_val(packed_size);
 			FOLD_EXPR(esize, NULL);
 
 			unionty = type_array_of(
