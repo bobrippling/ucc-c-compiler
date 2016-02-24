@@ -187,26 +187,29 @@ irval *gen_ir_expr_struct(const expr *e, irctx *ctx)
 			: e->lhs->tree_type);
 
 	assert(su && "no struct type");
-	if(su->primitive == type_union){
-#warning todo: union
-		ICE("TODO: union");
-	}
 
 	found = irtype_struct_decl_index(su, d, &idx);
 	assert(found && "couldn't find struct member index");
 
 	struct_exp = gen_ir_expr(e->lhs, ctx);
 
-	printf("$%u = elem %s, i4 %u\n", off, irval_str(struct_exp, ctx), idx);
+	if(e->bits.struct_mem.extra_off){
+#warning extra_off
+		ICE("TODO: struct extra_off");
+	}
+
+	if(su->primitive == type_union){
+		printf("$%u = ptrcast %s, %s\n",
+				off,
+				irtype_str(type_ptr_to(d->ref), ctx),
+				irval_str(struct_exp, ctx));
+	}else{
+		printf("$%u = elem %s, i4 %u\n", off, irval_str(struct_exp, ctx), idx);
+	}
 
 	if(d->bits.var.field_width){
 		/* bitfield loading handled by expr_cast (lval2rval),
 		 * special cased, since we can't deref here as we're an lvalue */
-	}
-
-	if(e->bits.struct_mem.extra_off){
-#warning extra_off
-		ICE("TODO: struct extra_off");
 	}
 
 	return irval_from_id(off);
