@@ -22,6 +22,7 @@
 #include "str.h" /* literal_print() */
 #include "decl_init.h"
 #include "bitfields.h"
+#include "fold.h"
 
 #include "gen_ir.h"
 #include "gen_ir_internal.h"
@@ -776,26 +777,30 @@ static const char *irtype_su_str_full(struct_union_enum_st *su, irctx *ctx)
 
 		case type_union:
 		{
+			expr *esize;
+			type *unionty;
 			sue_member **i;
-			struct {
-				unsigned size;
-				decl *memb;
-			} largest;
-
-			largest.size = 0;
-			largest.memb = NULL;
+			unsigned largest = 0;
 
 			for(i = su->members; i && *i; i++){
 				decl *memb = (*i)->struct_member;
-				unsigned sz = decl_size(memb);
+				unsigned new = decl_size(memb);
 
-				if(sz > largest.size){
-					largest.size = sz;
-					largest.memb = memb;
-				}
+				if(new > largest)
+					largest = new;
 			}
 
-			return irtype_str_r(&sbuf, largest.memb->ref, ctx);
+			/* { [i8 x N] } */
+			esize = expr_new_val(largest);
+			FOLD_EXPR(esize, NULL);
+
+			unionty = type_array_of(
+					type_nav_btype(cc1_type_nav, type_nchar),
+					esize);
+
+			/* alignment is taken care of where the decl is allocated */
+
+			return irtype_str_r(&sbuf, unionty, ctx);
 		}
 
 		default:
