@@ -405,7 +405,14 @@ static void gen_ir_init_r(irctx *ctx, decl_init *init, type *ty)
 
 		/* union init, member at index `i' */
 		if(mem->bits.var.field_width){
-			ICE("TODO: bitfield union init");
+			struct bitfield_val bfv, *p = &bfv;
+			unsigned n = 1;
+
+			assert(u_init->type == decl_init_scalar);
+
+			bitfields_val_set(&bfv, u_init->bits.expr, mem->bits.var.field_width);
+
+			gen_ir_out_bitfields(ctx, &p, &n, mem->ref);
 		}else{
 			gen_ir_init_r(ctx, u_init, mem_ty);
 		}
