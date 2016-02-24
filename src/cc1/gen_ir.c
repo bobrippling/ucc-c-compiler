@@ -382,7 +382,34 @@ static void gen_ir_init_r(irctx *ctx, decl_init *init, type *ty)
 
 		printf("}");
 	}else if((test = type_is_primitive(ty, type_union))){
-		ICE("TODO: init: union");
+		/* union inits are decl_init_brace with spaces up to the first union init,
+		 * then NULL/end of the init-array */
+		struct_union_enum_st *union_ = type_is_s_or_u(test);
+		unsigned i;
+		decl_init *u_init;
+		decl *mem;
+		type *mem_ty;
+
+		UCC_ASSERT(init->type == decl_init_brace, "brace init expected");
+
+		/* skip the empties until we get to one */
+		for(i = 0; init->bits.ar.inits[i] == DYNARRAY_NULL; i++);
+
+		u_init = init->bits.ar.inits[i];
+		assert(u_init);
+
+		mem = union_->members[i]->struct_member;
+		mem_ty = mem->ref;
+
+		printf("aliasinit %s ", irtype_str(mem_ty, ctx));
+
+		/* union init, member at index `i' */
+		if(mem->bits.var.field_width){
+			ICE("TODO: bitfield union init");
+		}else{
+			gen_ir_init_r(ctx, u_init, mem_ty);
+		}
+
 	}else{
 		gen_ir_init_scalar(init);
 	}
