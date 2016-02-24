@@ -734,7 +734,8 @@ static const char *irtype_su_str_abbreviated(struct_union_enum_st *su, irctx *ct
 	static char buf[256];
 
 	snprintf(buf, sizeof(buf),
-			"$struct%u_%s",
+			"$%s%u_%s",
+			su->primitive == type_struct ? "struct" : "union",
 			irtype_struct_num(ctx, su),
 			su->anon ? "" : su->spel);
 
