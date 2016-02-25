@@ -74,20 +74,27 @@ static void test_ir_nonbitfield_enumeration(void)
 	sue_member *pmembers[3] = { &members[0], &members[1], NULL };
 	struct_union_enum_st su = { 0 };
 	type ty = { 0 };
-	unsigned idx;
+	unsigned *idxs, n_idxs;
+	unsigned i;
 
-	for(idx = 0; idx < countof(ds); idx++)
-		ds[idx].ref = &ty;
+	for(i = 0; i < countof(ds); i++){
+		ds[i].ref = &ty;
+		ds[i].spel = "a";
+	}
 
 	su.members = pmembers;
 
-	test(irtype_struct_decl_index(&su, &ds[0], &idx));
-	test(idx == 0);
+	test(irtype_struct_decl_index(&su, &ds[0], &idxs, &n_idxs));
+	test(n_idxs == 1);
+	test(idxs[0] == 0);
 
-	test(irtype_struct_decl_index(&su, &ds[1], &idx));
-	test(idx == 1);
+	test(irtype_struct_decl_index(&su, &ds[1], &idxs, &n_idxs));
+	test(n_idxs == 1);
+	test(idxs[0] == 1);
 
-	test(!irtype_struct_decl_index(&su, &ds[2], &idx));
+	test(!irtype_struct_decl_index(&su, &ds[2], &idxs, &n_idxs));
+	test(n_idxs == 0);
+	test(!idxs);
 }
 
 static expr *folded_val(int v)
@@ -104,15 +111,16 @@ static void test_ir_bitfield_enumeration(void)
 	sue_member members[countof(ds)];
 	sue_member *pmembers[countof(members) + 1];
 	struct_union_enum_st su = { 0 };
-	unsigned idx;
+	unsigned *idxs, n_idxs, i;
 	type ty = { 0 };
 
-	for(idx = 0; idx < countof(ds); idx++){
-		ds[idx].ref = &ty;
-		members[idx].struct_member = &ds[idx];
-		pmembers[idx] = &members[idx];
+	for(i = 0; i < countof(ds); i++){
+		ds[i].ref = &ty;
+		ds[i].spel = "a";
+		members[i].struct_member = &ds[i];
+		pmembers[i] = &members[i];
 	}
-	pmembers[idx] = NULL;
+	pmembers[i] = NULL;
 	not_in.ref = &ty;
 
 	ds[0].bits.var.field_width = folded_val(5);
@@ -140,28 +148,35 @@ static void test_ir_bitfield_enumeration(void)
 
 	su.members = pmembers;
 
-	test(!irtype_struct_decl_index(&su, &not_in, &idx));
+	test(!irtype_struct_decl_index(&su, &not_in, &idxs, &n_idxs));
 
-	test(irtype_struct_decl_index(&su, &ds[0], &idx));
-	test(idx == 0);
+	test(irtype_struct_decl_index(&su, &ds[0], &idxs, &n_idxs));
+	test(n_idxs == 1);
+	test(idxs[0] == 0);
 
-	test(irtype_struct_decl_index(&su, &ds[1], &idx));
-	test(idx == 0);
+	test(irtype_struct_decl_index(&su, &ds[1], &idxs, &n_idxs));
+	test(n_idxs == 1);
+	test(idxs[0] == 0);
 
-	test(irtype_struct_decl_index(&su, &ds[3], &idx));
-	test(idx == 1);
+	test(irtype_struct_decl_index(&su, &ds[3], &idxs, &n_idxs));
+	test(n_idxs == 1);
+	test(idxs[0] == 1);
 
-	test(irtype_struct_decl_index(&su, &ds[4], &idx));
-	test(idx == 1);
+	test(irtype_struct_decl_index(&su, &ds[4], &idxs, &n_idxs));
+	test(n_idxs == 1);
+	test(idxs[0] == 1);
 
-	test(irtype_struct_decl_index(&su, &ds[5], &idx));
-	test(idx == 2);
+	test(irtype_struct_decl_index(&su, &ds[5], &idxs, &n_idxs));
+	test(n_idxs == 1);
+	test(idxs[0] == 2);
 
-	test(irtype_struct_decl_index(&su, &ds[6], &idx));
-	test(idx == 3);
+	test(irtype_struct_decl_index(&su, &ds[6], &idxs, &n_idxs));
+	test(n_idxs == 1);
+	test(idxs[0] == 3);
 
-	test(irtype_struct_decl_index(&su, &ds[7], &idx));
-	test(idx == 4);
+	test(irtype_struct_decl_index(&su, &ds[7], &idxs, &n_idxs));
+	test(n_idxs == 1);
+	test(idxs[0] == 4);
 }
 
 int main(void)

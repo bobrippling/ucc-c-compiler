@@ -26,7 +26,8 @@ const char *ir_op_str(enum op_type, int arith_rshift);
 int irtype_struct_decl_index(
 		struct struct_union_enum_st *su,
 		decl *d,
-		unsigned *const out_idx);
+		unsigned **const out_idxs,
+		unsigned *const n_out_idx);
 
 /* used for getting first-bitfield type: */
 type *irtype_struct_decl_type(

@@ -70,18 +70,27 @@ void gen_ir_stmt(const struct stmt *stmt, irctx *ctx)
 	stmt->f_ir(stmt, ctx);
 }
 
+static void gen_ir_comment_nonewline_v(irctx *ctx, const char *fmt, va_list l)
+{
+	(void)ctx;
+	printf("# ");
+	vprintf(fmt, l);
+}
+
+static void gen_ir_comment_nonewline(irctx *ctx, const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	gen_ir_comment_nonewline_v(ctx, fmt, l);
+	va_end(l);
+}
+
 void gen_ir_comment(irctx *ctx, const char *fmt, ...)
 {
 	va_list l;
-
-	(void)ctx;
-
-	printf("# ");
-
 	va_start(l, fmt);
-	vprintf(fmt, l);
+	gen_ir_comment_nonewline_v(ctx, fmt, l);
 	va_end(l);
-
 	putchar('\n');
 }
 
@@ -444,25 +453,31 @@ static void gen_ir_dump_su(struct_union_enum_st *su, irctx *ctx)
 	for(i = 0; ; i++){
 		sue_member *su_mem = su->members[i];
 		decl *memb;
-		unsigned idx;
+		unsigned *idxes, nidxes, j;
 		expr *fwidth;
+		const char *idx_sep = "";
 
 		if(!su_mem)
 			break;
 
 		memb = su_mem->struct_member;
-		if(!irtype_struct_decl_index(su, memb, &idx)){
+		if(!irtype_struct_decl_index(su, memb, &idxes, &nidxes)){
 			fprintf(stderr, "couldn't get index for \"%s\"\n", memb->spel);
 			continue;
 		}
 
 		fwidth = memb->bits.var.field_width;
 
-		gen_ir_comment(ctx, "  %s index %u (field_width = %d%s)",
-				memb->spel ? memb->spel : "?",
-				idx,
+		gen_ir_comment_nonewline(ctx, "  %s index-path ", memb->spel ? memb->spel : "?");
+
+		for(j = 0; j < nidxes; idx_sep = ", ", j++)
+			gen_ir_comment_nonewline(ctx, "%s%u", idx_sep, idxes[j]);
+
+		gen_ir_comment(ctx, " (field_width = %d%s)",
 				fwidth ? (int)const_fold_val_i(fwidth) : -1,
 				memb->bits.var.first_bitfield ? " [first]" : "");
+
+		free(idxes);
 	}
 }
 
@@ -669,10 +684,26 @@ const char *ir_op_str(enum op_type op, int arith_rshift)
 	}
 }
 
+static void irtype_struct_decl_add_index(
+		unsigned **const out_idxs,
+		unsigned *const n_out_idx,
+		unsigned idx)
+{
+	++*n_out_idx;
+	*out_idxs = urealloc1(*out_idxs, *n_out_idx * sizeof(*out_idxs));
+
+	(*out_idxs)[*n_out_idx - 1] = idx;
+}
+
+/* precondition: expects
+ *	unsigned **const out_idxs, // NULL
+ *	unsigned *const n_out_idx, // 0
+ */
 static int irtype_struct_decl_index_type(
 		struct_union_enum_st *su,
 		decl *d,
-		unsigned *const out_idx,
+		unsigned **const out_idxs,
+		unsigned *const n_out_idx,
 		type **const out_type)
 {
 	size_t i, ir_idx = 0;
@@ -682,11 +713,22 @@ static int irtype_struct_decl_index_type(
 	for(i = 0; ; i++){
 		sue_member *su_mem = su->members[i], *su_memnext;
 		decl *memb, *next;
+		struct_union_enum_st *sub;
 
 		if(!su_mem)
 			break;
 
 		memb = su_mem->struct_member;
+
+		/* anonymous sub-struct? */
+		if(!memb->spel
+		&& (sub = type_is_s_or_u(memb->ref))
+		&& irtype_struct_decl_index_type(sub, d, out_idxs, n_out_idx, out_type))
+		{
+			/* found in anon sub-struct - include index in current struct */
+			irtype_struct_decl_add_index(out_idxs, n_out_idx, ir_idx);
+			return 1;
+		}
 
 		if(!memb->bits.var.field_width || memb->bits.var.first_bitfield)
 			*out_type = memb->ref;
@@ -695,7 +737,8 @@ static int irtype_struct_decl_index_type(
 			/* should've been set from .first_bitfield or first member: */
 			assert(*out_type);
 
-			*out_idx = ir_idx;
+			irtype_struct_decl_add_index(out_idxs, n_out_idx, ir_idx);
+
 			return 1;
 		}
 
@@ -731,18 +774,37 @@ static int irtype_struct_decl_index_type(
 	return 0;
 }
 
-int irtype_struct_decl_index(struct_union_enum_st *su, decl *d, unsigned *const out_idx)
+static void irtype_struct_decl_index_type_init(
+		unsigned **const out_idxs,
+		unsigned *const n_out_idx)
+{
+	*out_idxs = NULL;
+	*n_out_idx = 0;
+}
+
+int irtype_struct_decl_index(
+		struct_union_enum_st *su,
+		decl *d,
+		unsigned **const out_idxs,
+		unsigned *const n_out_idx)
 {
 	type *unused;
-	return irtype_struct_decl_index_type(su, d, out_idx, &unused);
+	irtype_struct_decl_index_type_init(out_idxs, n_out_idx);
+	return irtype_struct_decl_index_type(su, d, out_idxs, n_out_idx, &unused);
 }
 
 type *irtype_struct_decl_type(struct_union_enum_st *su, decl *memb)
 {
-	unsigned unused;
+	unsigned *unused, unused_cnt;
 	type *ty = NULL;
-	int found = irtype_struct_decl_index_type(su, memb, &unused, &ty);
+	int found;
+
+	irtype_struct_decl_index_type_init(&unused, &unused_cnt);
+	found = irtype_struct_decl_index_type(su, memb, &unused, &unused_cnt, &ty);
+
 	assert(found);
+	free(unused), unused = NULL;
+
 	return ty;
 }
 
@@ -777,6 +839,22 @@ static const char *irtype_su_str_abbreviated(struct_union_enum_st *su, irctx *ct
 	return buf;
 }
 
+static int uint_array_equal(
+		unsigned *current_idxs, unsigned current_idx_cnt,
+		unsigned *new_idxs, unsigned new_idx_cnt)
+{
+	unsigned i;
+
+	if(current_idx_cnt != new_idx_cnt)
+		return 0;
+
+	for(i = 0; i < current_idx_cnt; i++)
+		if(current_idxs[i] != new_idxs[i])
+			return 0;
+
+	return 1;
+}
+
 static const char *irtype_su_str_full(struct_union_enum_st *su, irctx *ctx)
 {
 	static char buf[256];
@@ -787,25 +865,33 @@ static const char *irtype_su_str_full(struct_union_enum_st *su, irctx *ctx)
 		{
 			int first = 1;
 			sue_member **i;
-			unsigned current_idx = -1;
+			unsigned *current_idxs = NULL, current_idx_cnt = 0;
 
 			strbuf_fixed_printf(&sbuf, "{");
 
 			for(i = su->members; i && *i; i++, first = 0){
 				decl *memb = (*i)->struct_member;
-				unsigned new_idx;
-				int found = irtype_struct_decl_index(su, memb, &new_idx);
+				unsigned *new_idxs, new_idx_cnt;
+				int found = irtype_struct_decl_index(su, memb, &new_idxs, &new_idx_cnt);
 
 				assert(found);
-				if(new_idx == current_idx)
+				if(uint_array_equal(current_idxs, current_idx_cnt, new_idxs, new_idx_cnt)){
+					free(new_idxs);
 					continue;
-				current_idx = new_idx;
+				}
+
+				/* current = new */
+				free(current_idxs);
+				current_idxs = new_idxs;
+				current_idx_cnt = new_idx_cnt;
 
 				if(!first)
 					strbuf_fixed_printf(&sbuf, ", ");
 
 				irtype_str_r(&sbuf, memb->ref, ctx);
 			}
+
+			free(current_idxs), current_idxs = NULL;
 
 			strbuf_fixed_printf(&sbuf, "}");
 			break;

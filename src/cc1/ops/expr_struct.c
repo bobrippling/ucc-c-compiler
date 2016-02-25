@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <stdlib.h>
 
 #include "ops.h"
 #include "expr_struct.h"
@@ -210,14 +211,45 @@ const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 	return off;
 }
 
+static irid gen_ir_expr_struct_elem_r(
+		struct_union_enum_st *su,
+		decl *const target,
+		irval *struct_val,
+		irctx *ctx)
+{
+	unsigned *indexes = 0, index_count, i;
+	irid id;
+	int found;
+
+	found = irtype_struct_decl_index(su, target, &indexes, &index_count);
+	assert(found);
+
+	printf("# ir indexing, index_count=%u, indexes:\n", index_count);
+
+	for(i = index_count; i > 0; i--){
+		const irid previd = id;
+		unsigned memb_idx = indexes[i - 1];
+
+		id = ctx->curval++;
+
+		if(i == index_count)
+			printf("$%u = elem %s, i4 %u\n", id, irval_str(struct_val, ctx), memb_idx);
+		else
+			printf("$%u = elem $%u, i4 %u\n", id, previd, memb_idx);
+	}
+	free(indexes);
+
+	printf("#   done\n");
+
+	return id;
+}
+
 irval *gen_ir_expr_struct(const expr *e, irctx *ctx)
 {
 	const int ptr_expect = !e->expr_is_st_dot;
 	decl *const d = e->bits.struct_mem.d;
 	irval *struct_exp;
-	const unsigned off = ctx->curval++;
-	unsigned idx;
-	int found = 0;
+	unsigned retid;
 	struct_union_enum_st *su = type_is_s_or_u(
 			ptr_expect
 			? type_is_ptr(e->lhs->tree_type)
@@ -225,18 +257,17 @@ irval *gen_ir_expr_struct(const expr *e, irctx *ctx)
 
 	assert(su && "no struct type");
 
-	found = irtype_struct_decl_index(su, d, &idx);
-	assert(found && "couldn't find struct member index");
-
 	struct_exp = gen_ir_expr(e->lhs, ctx);
 
 	if(su->primitive == type_union){
+		retid = ctx->curval++;
+
 		printf("$%u = ptrcast %s, %s\n",
-				off,
+				retid,
 				irtype_str(type_ptr_to(d->ref), ctx),
 				irval_str(struct_exp, ctx));
 	}else{
-		printf("$%u = elem %s, i4 %u\n", off, irval_str(struct_exp, ctx), idx);
+		retid = gen_ir_expr_struct_elem_r(su, e->bits.struct_mem.d, struct_exp, ctx);
 	}
 
 	if(d->bits.var.field_width){
@@ -244,7 +275,7 @@ irval *gen_ir_expr_struct(const expr *e, irctx *ctx)
 		 * special cased, since we can't deref here as we're an lvalue */
 	}
 
-	return irval_from_id(off);
+	return irval_from_id(retid);
 }
 
 void dump_expr_struct(const expr *e, dump *ctx)
