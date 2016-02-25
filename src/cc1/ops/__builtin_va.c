@@ -465,7 +465,7 @@ stack:
 					)->bits.type->sue;
 
 #define VA_DECL(nam) \
-			decl *mem_ ## nam = struct_union_member_find(sue_va, #nam, NULL, NULL)
+			decl *mem_ ## nam = struct_union_member_find(sue_va, #nam, NULL)
 			VA_DECL(gp_offset);
 			VA_DECL(fp_offset);
 			VA_DECL(reg_save_area);

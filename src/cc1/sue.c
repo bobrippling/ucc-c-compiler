@@ -364,7 +364,8 @@ sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos)
 }
 
 static void *sue_member_find(
-		struct_union_enum_st *sue, const char *spel, unsigned *extra_off,
+		struct_union_enum_st *sue,
+		const char *spel,
 		struct_union_enum_st **pin)
 {
 	sue_member **mi;
@@ -385,8 +386,11 @@ static void *sue_member_find(
 			char *sp = d->spel;
 
 			if(sp){
-				if(!strcmp(sp, spel))
+				if(!strcmp(sp, spel)){
+					if(pin)
+						*pin = sue;
 					return d;
+				}
 
 			}else if((sub = type_is_s_or_u(d->ref))){
 				/* C11 anonymous struct/union */
@@ -406,12 +410,11 @@ static void *sue_member_find(
 				}
 
 				if(!dsub)
-					dsub = sue_member_find(sub, spel, extra_off, pin);
+					dsub = sue_member_find(sub, spel, pin);
 
 				if(dsub){
 					if(pin)
 						*pin = sub;
-					*extra_off += d->bits.var.struct_offset;
 					return dsub;
 				}
 			}
@@ -431,8 +434,7 @@ void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable 
 			struct_union_enum_st *e = *i;
 
 			if(e->primitive == type_enum){
-				enum_member *emem = sue_member_find(e, spel,
-						NULL /* safe - is enum */, NULL);
+				enum_member *emem = sue_member_find(e, spel, NULL);
 
 				if(emem){
 					*pm = emem;
@@ -482,10 +484,10 @@ decl *struct_union_member_find_sue(struct_union_enum_st *in, struct_union_enum_s
 
 decl *struct_union_member_find(
 		struct_union_enum_st *sue,
-		const char *spel, unsigned *extra_off,
+		const char *spel,
 		struct_union_enum_st **pin)
 {
-	return sue_member_find(sue, spel, extra_off, pin);
+	return sue_member_find(sue, spel, pin);
 }
 
 decl *struct_union_member_at_idx(struct_union_enum_st *sue, int idx)

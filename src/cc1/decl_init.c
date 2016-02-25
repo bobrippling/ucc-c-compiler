@@ -755,7 +755,7 @@ static decl_init **decl_init_brace_up_sue2(
 
 			init_debug("sue member desig: %s\n", des->bits.member);
 
-			mem = struct_union_member_find(sue, des->bits.member, &j, &in);
+			mem = struct_union_member_find(sue, des->bits.member, &in);
 			if(!mem){
 				/* if we're an anonymous struct, return out */
 				if(is_anon){
