@@ -1,4 +1,4 @@
-#define _POSIX_SOURCE /* fileno() */
+#define _XOPEN_SOURCE /* fileno() */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
