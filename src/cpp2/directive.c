@@ -475,6 +475,7 @@ static int handle_line_directive(char *line)
 	int need_line = 0;
 	int n;
 	char *endp;
+	char *output_anchor;
 
 	line = str_spc_skip(line);
 
@@ -486,6 +487,7 @@ static int handle_line_directive(char *line)
 		line += 4;
 		need_line = 1;
 	}
+	line = str_spc_skip(line);
 
 	n = strtol(line, &endp, 0);
 	if(endp == line){
@@ -498,9 +500,25 @@ static int handle_line_directive(char *line)
 	if(n < 0)
 		CPP_DIE("#line directive with a negative argument");
 
+	/* parse the filename, if given */
+	output_anchor = line;
+	line = str_spc_skip(endp);
+	*endp = '\0';
+	if(*line == '"'){
+		char *fname = line + 1;
+		char *end = strchr(fname, '"');
+
+		if(!*fname || !end)
+			CPP_DIE("#line directive has unterminated double-quote");
+
+		*line = '\0';
+		*end = '\0';
+		set_current_fname(fname);
+	}
+
 	/* don't care about the filename - that's for cc1 */
 	if(option_line_info && !no_output){
-		printf("# %s\n", line);
+		printf("# %s \"%s\"\n", output_anchor, current_fname);
 		current_line = n - 1;
 	}
 
