@@ -6,6 +6,8 @@
 void dirname_push(char *d);
 char *dirname_pop(void);
 
+void set_current_fname(const char *);
+
 extern char **cd_stack;
 
 extern enum c_std cpp_std;

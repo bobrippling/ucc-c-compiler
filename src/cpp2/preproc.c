@@ -107,7 +107,7 @@ static void preproc_pop(void)
 
 	/* restore state */
 	current_line  = file_stack[file_stack_idx].line_no;
-	current_fname = file_stack[file_stack_idx].fname;
+	set_current_fname(file_stack[file_stack_idx].fname);
 
 	preproc_out_info();
 }

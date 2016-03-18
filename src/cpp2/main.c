@@ -159,6 +159,12 @@ char *dirname_pop()
 	return dynarray_pop(char *, &cd_stack);
 }
 
+void set_current_fname(const char *new)
+{
+	free(current_fname);
+	current_fname = ustrdup(new);
+}
+
 static void calctime(const char *fname)
 {
 	time_t t;
@@ -222,7 +228,7 @@ int main(int argc, char **argv)
 	infname = outfname = NULL;
 
 	current_line = 1;
-	current_fname = FNAME_BUILTIN;
+	set_current_fname(FNAME_BUILTIN);
 
 	macro_add_limits();
 
@@ -261,7 +267,7 @@ int main(int argc, char **argv)
 
 	macro_add_sprintf("__BIGGEST_ALIGNMENT__", "%u", platform_align_max());
 
-	current_fname = FNAME_CMDLINE;
+	set_current_fname(FNAME_CMDLINE);
 
 	for(i = 1; i < argc && *argv[i] == '-'; i++){
 		if(!strcmp(argv[i]+1, "-"))
@@ -463,7 +469,7 @@ defaul:
 			macro_add("__MIPS__", "1", 0);
 	}
 
-	current_fname = FNAME_BUILTIN;
+	set_current_fname(FNAME_BUILTIN);
 
 	macro_add("__STDC_HOSTED__",  freestanding ? "0" : "1", 0);
 	switch(cpp_std){
@@ -510,7 +516,7 @@ defaul:
 		dirname_push(ustrdup("."));
 	}
 
-	current_fname = infname;
+	set_current_fname(infname);
 
 	preprocess();
 
