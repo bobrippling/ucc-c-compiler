@@ -613,7 +613,7 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 		return out_change_type(octx, gen_expr(expr_cast_child(e), octx), tto);
 	}
 
-	if(expr_cast_is_lval2rval(e)){
+	if(expr_cast_is_lval2rval(e) && !is_volatile){
 		/* we're an lval2rval cast
 		 * if inlining, check if we can substitute the lvalue's rvalue here
 		 */

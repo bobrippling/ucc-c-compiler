@@ -118,7 +118,7 @@ static void inline_sym_map_save(
 		pushed_vals[i].sym_outval = sym_outval(s);
 
 		/* if the symbol is addressed we need to spill it */
-		if(s->nwrites || out_is_nonconst_temporary(args[i])){
+		if(s->nwrites || out_is_nonconst_temporary(args[i]) || (type_qual(s->decl->ref) & qual_volatile)){
 			/* registers can't persist across inlining in the case of
 			 * function calls, etc etc - need to spill, hence
 			 * non-const temporary */
