@@ -630,12 +630,7 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 		if(type_is_s_or_u(tfrom)){
 			if(cast_to_void){
 				if(type_qual(tfrom) & qual_volatile){
-					/* must read */
-					const out_val *target = out_aalloct(octx, tfrom);
-
-					out_val_consume(octx,
-							out_memcpy(octx, target, casted, type_size(tfrom, NULL)));
-
+					out_force_read(octx, tfrom, casted);
 				}else{
 					out_val_consume(octx, casted);
 				}
