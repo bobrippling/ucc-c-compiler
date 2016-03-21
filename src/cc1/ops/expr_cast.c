@@ -689,7 +689,18 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 			}
 		}
 
-		casted = out_cast(octx, casted, tto, /*normalise_bool:*/1);
+		/* if cast-to-void and our operand is a volatile lvalue,
+		 * we need to read it */
+		if(cast_to_void
+		&& is_volatile
+		&& expr_is_lval(expr_cast_child(e)) != LVALUE_NO)
+		{
+			/* can read - lvalue, so it's in memory */
+			out_force_read(octx, tfrom, casted);
+			casted = out_new_noop(octx); /* fine - cast_to_void */
+		}else{
+			casted = out_cast(octx, casted, tto, /*normalise_bool:*/1);
+		}
 
 		/* a cast can potentially introduce a usage of a new type.
 		 * let debug info know about it */
