@@ -119,7 +119,12 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	fold_check_restrict(e->lhs, e->rhs, "assignment", &e->where);
 
-	e->tree_type = e->lhs->tree_type;
+	/* this makes sense, but it's also critical for code-gen:
+	 * if we assign to a volatile lvalue, we don't want the volatile-ness
+	 * to propagate, as we are now an rvalue, and don't want our value read
+	 * as we decay
+	 */
+	e->tree_type = type_unqualify(e->lhs->tree_type);
 
 	/* type check */
 	fold_type_chk_and_cast_ty(

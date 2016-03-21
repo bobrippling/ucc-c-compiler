@@ -602,17 +602,18 @@ void fold_expr_cast(expr *e, symtable *stab)
 const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 {
 	type *tto = e->tree_type;
-	type *tfrom;
+	type *tfrom = expr_cast_child(e)->tree_type;
 	const int cast_to_void = type_is_void(tto);
+	const int is_volatile = type_qual(tfrom) & qual_volatile;
 	const out_val *casted;
 
 	/* return if cast-to-void */
-	if(cast_to_void){
-		out_comment(octx, "cast to void");
+	if(cast_to_void && !is_volatile){
+		out_comment(octx, "(non-volatile) cast to void");
 		return out_change_type(octx, gen_expr(expr_cast_child(e), octx), tto);
 	}
 
-	if(expr_cast_is_lval2rval(e)){
+	if(expr_cast_is_lval2rval(e) && !is_volatile){
 		/* we're an lval2rval cast
 		 * if inlining, check if we can substitute the lvalue's rvalue here
 		 */
@@ -623,33 +624,35 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 
 	casted = gen_expr(expr_cast_child(e), octx);
 
-	tfrom = expr_cast_child(e)->tree_type;
-
 	if(expr_cast_is_lval2rval(e)){
-
 		if(type_is_s_or_u(tfrom)){
+			/* either pass through as an LVALUE_STRUCT,
+			 * or dereference here for cast-to-void, if volatile */
+			UCC_ASSERT(
+					cast_to_void || type_cmp(tfrom, tto, 0) & TYPE_EQUAL_ANY,
+					"struct cast? (non-lval2rval)");
+
+			out_comment(octx,
+					"struct lval decay, cast_to_void=%d is_volatile=%d",
+					cast_to_void, is_volatile);
+
 			if(cast_to_void){
-				if(type_qual(tfrom) & qual_volatile){
-					/* must read */
-					const out_val *target = out_aalloct(octx, tfrom);
-
-					out_val_consume(octx,
-							out_memcpy(octx, target, casted, type_size(tfrom, NULL)));
-
+				if(is_volatile){
+					out_force_read(octx, tfrom, casted);
 				}else{
 					out_val_consume(octx, casted);
 				}
 
-				/* else we've been generated but won't be used - noop
-				 * e.g. (void) *a; */
+				/* we've been generated but won't be used
+				 * i.e. (void) *a; */
 				casted = out_new_noop(octx);
-			}else{
-				UCC_ASSERT(type_cmp(tfrom, tto, 0) & TYPE_EQUAL_ANY, "struct cast?");
 
-				/* continue with casted as casted */
+			}else{
+				/* LVALUE_STRUCT passthru */
 			}
 
 		}else{
+			/* primitive lval2rval */
 			casted = out_deref(octx, casted);
 		}
 
@@ -686,7 +689,18 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 			}
 		}
 
-		casted = out_cast(octx, casted, tto, /*normalise_bool:*/1);
+		/* if cast-to-void and our operand is a volatile lvalue,
+		 * we need to read it */
+		if(cast_to_void
+		&& is_volatile
+		&& expr_is_lval(expr_cast_child(e)) != LVALUE_NO)
+		{
+			/* can read - lvalue, so it's in memory */
+			out_force_read(octx, tfrom, casted);
+			casted = out_new_noop(octx); /* fine - cast_to_void */
+		}else{
+			casted = out_cast(octx, casted, tto, /*normalise_bool:*/1);
+		}
 
 		/* a cast can potentially introduce a usage of a new type.
 		 * let debug info know about it */

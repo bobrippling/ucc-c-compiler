@@ -37,7 +37,12 @@ void fold_stmt_expr(stmt *s)
 
 void gen_stmt_expr(const stmt *s, out_ctx *octx)
 {
-	out_val_consume(octx, gen_expr(s->expr, octx));
+	const out_val *v = gen_expr(s->expr, octx);
+
+	if(type_qual(s->expr->tree_type) & qual_volatile)
+		out_force_read(octx, s->expr->tree_type, v);
+	else
+		out_val_consume(octx, v);
 }
 
 void dump_stmt_expr(const stmt *s, dump *ctx)

@@ -285,3 +285,12 @@ void out_store(out_ctx *octx, const out_val *dest, const out_val *val)
 
 	impl_store(octx, dest, val);
 }
+
+void out_force_read(out_ctx *octx, type *ty, const out_val *v)
+{
+	/* must read */
+	const out_val *target = out_aalloct(octx, ty);
+
+	out_val_consume(octx,
+			out_memcpy(octx, target, v, type_size(ty, NULL)));
+}

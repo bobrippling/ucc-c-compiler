@@ -139,6 +139,7 @@ const out_val *out_aalloc(out_ctx *, unsigned sz, unsigned align, type *);
 const out_val *out_aalloct(out_ctx *, type *);
 void out_adealloc(out_ctx *, const out_val **);
 
+void out_force_read(out_ctx *octx, type *, const out_val *);
 
 const char *out_get_lbl(const out_val *) ucc_nonnull();
 int out_is_nonconst_temporary(const out_val *) ucc_nonnull();
