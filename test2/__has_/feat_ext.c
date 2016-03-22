@@ -1,16 +1,5 @@
-// RUN: %ocheck 0 %s -std=c99 -DEXPECTED_FEAT_ALIGNAS=0
-// RUN: %ocheck 0 %s -std=c11 -DEXPECTED_FEAT_ALIGNAS=1
+// RUN: %ucc %s -fsyntax-only -std=c99 -DEXPECTED_FEAT_ALIGNAS=0
+// RUN: %ucc %s -fsyntax-only -std=c11 -DEXPECTED_FEAT_ALIGNAS=1
 
-int feat_alignas = __has_feature(c_alignas);
-int ext_alignas = __has_extension(c_alignas);
-
-main()
-{
-	if(feat_alignas != EXPECTED_FEAT_ALIGNAS)
-		abort();
-
-	if(!ext_alignas)
-		abort();
-
-	return 0;
-}
+_Static_assert(__has_feature(c_alignas) == EXPECTED_FEAT_ALIGNAS, "should have c_alignas in C11 mode");
+_Static_assert(__has_extension(c_alignas), "should always have c_alignas extension");

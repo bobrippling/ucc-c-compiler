@@ -53,36 +53,36 @@ static int has_feat_ext(const char *nam, int as_ext)
 		enum c_std std;
 		const char *nam;
 		int has;
-		int ignore_ext;
 	} tbl[] = {
-		{ STD_C11, "c_alignas", 1, 0 },
-		{ STD_C11, "c_alignof", 1, 0 },
-		{ STD_C11, "c_generic_selections", 1, 0 },
-		{ STD_C11, "c_static_assert", 1, 0 },
-		{ STD_C11, "c_atomic", UCC_HAS_ATOMICS, 0 },
-		{ STD_C11, "c_thread_local", UCC_HAS_THREADS, 0 },
-		{ STD_C11, "c_complex", UCC_HAS_COMPLEX, 0 },
+		{ STD_C11, "c_alignas", 1 },
+		{ STD_C11, "c_alignof", 1 },
+		{ STD_C11, "c_generic_selections", 1 },
+		{ STD_C11, "c_static_assert", 1 },
+		{ STD_C11, "c_atomic", UCC_HAS_ATOMICS },
+		{ STD_C11, "c_thread_local", UCC_HAS_THREADS },
+		{ STD_C11, "c_complex", UCC_HAS_COMPLEX },
 
-		{ STD_C99, "c_vla", UCC_HAS_VLA, 0 },
+		{ STD_C99, "c_vla", UCC_HAS_VLA },
 
 		/* compat with clang */
-		{ STD_C89, "address_sanitizer", 0, 1 },
-		{ STD_C89, "enumerator_attributes", 1, 1 },
+		{ STD_C89, "address_sanitizer", 0 },
+		{ STD_C89, "enumerator_attributes", 1 },
 
-		{ STD_C89, "blocks", 1, 1 },
+		{ STD_C89, "blocks", 1 },
 
-		{ STD_C89, NULL, 0, 0 }
+		{ STD_C89, NULL, 0 }
 	};
 	const struct c_tbl *p;
 
 	for(p = tbl; p->nam; p++){
 		if(!strcmp(p->nam, nam)){
-			if(!p->ignore_ext && !as_ext)
-				continue;
-			if(cpp_std < p->std)
-				continue;
+			/* always have a name as an extension */
+			if(as_ext)
+				return 1;
 
-			return p->has;
+			/* we have it as a feature if it's in our standard
+			 * and actually has the .has member set to non-zero */
+			return p->std <= cpp_std && p->has;
 		}
 	}
 
