@@ -41,109 +41,226 @@ static decl *parse_decl_stored_aligned(
 
 static type *default_type(void);
 
-/* newdecl_context:
- * struct B { int b; };
- * {
- *   struct A { struct B; }; // this is not a new B
- * };
- */
-static type *parse_type_sue(
-		enum type_primitive const prim,
-		int const newdecl_context,
-		symtable *const scope)
+static struct_union_enum_st *parse_sue_definition(
+		sue_member ***members,
+		char **const spel,
+		enum type_primitive prim,
+		symtable *scope,
+		where *const sue_loc)
 {
-	int is_complete = 0;
-	char *spel = NULL;
 	struct_union_enum_st *predecl_sue = NULL;
-	sue_member **members = NULL;
-	attribute *this_sue_attr = NULL;
-	where sue_loc;
 
-	/* struct __attr__(()) name { ... } ... */
-	parse_add_attr(&this_sue_attr, scope);
+	if(*spel){
+		/* predeclare so the struct/union can be recursive.
+		 * we know this is fine to explicitly declare as we're
+		 * parsing a definition, so we aren't worried about
+		 * referring to a sue in an outer scope
+		 */
+		struct_union_enum_st *already_existing = sue_find_this_scope(scope, *spel);
 
-	where_cc1_current(&sue_loc);
+		if(already_existing){
+			fold_had_error = 1;
 
-	if(curtok == token_identifier){
-		spel = token_current_spel();
-		EAT(token_identifier);
-		where_cc1_adj_identifier(&sue_loc, spel);
-	}
+			warn_at_print_error(sue_loc,
+					"redefinition of %s as %s\n",
+					sue_str(already_existing),
+					type_primitive_to_str(prim));
 
-	if(accept(token_open_block)){
-		/* sue is now in scope, but incomplete */
-		if(spel){
-			predecl_sue = sue_decl(
-					scope, ustrdup(spel), /*members:*/ NULL, prim,
-					/*is_complete:*/0, /*isdef:*/0, /*pre-parse:*/1,
-					&sue_loc);
-		}
+			note_at(&already_existing->where, "previous definition here");
 
-		if(prim == type_enum){
-			for(;;){
-				where w;
-				expr *e;
-				char *sp;
-				attribute *en_attr = NULL;
-
-				where_cc1_current(&w);
-				sp = token_current_spel();
-				EAT(token_identifier);
-
-				parse_add_attr(&en_attr, scope);
-
-				if(accept(token_assign))
-					e = PARSE_EXPR_CONSTANT(scope, 0); /* no commas */
-				else
-					e = NULL;
-
-				enum_vals_add(&members, &w, sp, e, en_attr);
-				RELEASE(en_attr);
-
-				if(!accept_where(token_comma, &w))
-					break;
-
-				if(curtok != token_identifier){
-					if(cc1_std < STD_C99)
-						cc1_warn_at(&w, c89_parse_trailingcomma,
-								"trailing comma in enum definition");
-					break;
-				}
-			}
+			free(*spel), *spel = NULL;
 
 		}else{
-			/* always allow nameless structs (C11)
-			 * we don't allow tagged ones unless
-			 * -fms-extensions or -fplan9-extensions
-			 */
-			decl **dmembers = NULL;
-			decl **i;
+			predecl_sue = sue_predeclare(
+					scope, ustrdup(*spel),
+					prim, sue_loc);
+		}
+	}
 
-			while(parse_decl_group(
-					  DECL_MULTI_CAN_DEFAULT
+	/* sue is now in scope, but incomplete */
+	if(prim == type_enum){
+		for(;;){
+			where w;
+			expr *e;
+			char *sp;
+			attribute *en_attr = NULL;
+
+			where_cc1_current(&w);
+			sp = token_current_spel();
+			EAT(token_identifier);
+
+			parse_add_attr(&en_attr, scope);
+
+			if(accept(token_assign)){
+				e = PARSE_EXPR_CONSTANT(scope, 0); /* no commas */
+				/* ensure we fold before this enum member is added to the scope,
+				 * e.g.
+				 * enum { A };
+				 * f()
+				 * {
+				 *   enum {
+				 *     A = A // the right-most A here resolves to the global A
+				 *   };
+				 * }
+				 */
+
+				fold_expr_nodecay(e, scope);
+			}else{
+				e = NULL;
+			}
+
+			enum_vals_add(members, &w, sp, e, en_attr);
+			RELEASE(en_attr);
+
+			if(!accept_where(token_comma, &w))
+				break;
+
+			if(curtok != token_identifier){
+				if(cc1_std < STD_C99)
+					cc1_warn_at(&w, c89_parse_trailingcomma,
+							"trailing comma in enum definition");
+				break;
+			}
+		}
+
+	}else{
+		/* always allow nameless structs (C11)
+		 * we don't allow tagged ones unless
+		 * -fms-extensions or -fplan9-extensions
+		 */
+		decl **dmembers = NULL;
+		decl **i;
+
+		while(parse_decl_group(
+					DECL_MULTI_CAN_DEFAULT
 					| DECL_MULTI_ACCEPT_FIELD_WIDTH
 					| DECL_MULTI_NAMELESS
 					| DECL_MULTI_IS_STRUCT_UN_MEMB
 					| DECL_MULTI_ALLOW_ALIGNAS,
 					/*newdecl_context:*/0,
 					scope, NULL, &dmembers))
-			{
-			}
-
-			if(dmembers){
-				for(i = dmembers; *i; i++)
-					dynarray_add(&members,
-							sue_member_from_decl(*i));
-
-				dynarray_free(decl **, dmembers, NULL);
-			}
+		{
 		}
+
+		if(dmembers){
+			for(i = dmembers; *i; i++)
+				dynarray_add(members, sue_member_from_decl(*i));
+
+			dynarray_free(decl **, dmembers, NULL);
+		}
+
+		sue_member_init_dup_check(*members);
+	}
+
+	return predecl_sue;
+}
+
+static type *parse_sue_finish(
+		struct_union_enum_st *predecl_sue,
+		sue_member **members,
+		int const got_membs,
+		char *spel,
+		enum type_primitive const prim,
+		attribute *this_sue_attr,
+		int const already_exists,
+		symtable *const scope,
+		where *const sue_loc)
+{
+	struct_union_enum_st *sue = predecl_sue;
+
+	if(!sue){
+		assert(!spel);
+		sue = sue_predeclare(scope, NULL, prim, sue_loc);
+	}
+
+	if(got_membs)
+		sue_define(sue, members);
+
+	/* sue may already exist */
+	if(this_sue_attr){
+		if(already_exists){
+			cc1_warn_at(&this_sue_attr->where,
+					ignored_attribute,
+					"cannot add attributes to already-defined type");
+		}else{
+			attribute_append(&sue->attr, this_sue_attr);
+		}
+	}
+
+	RELEASE(this_sue_attr);
+
+	fold_sue(sue, scope);
+
+	return type_nav_suetype(cc1_type_nav, sue);
+}
+
+/* newdecl_context:
+ * struct B { int b; };
+ * {
+ *   struct A { struct B; }; // this is not a new B
+ * };
+ */
+static type *parse_type_sue(enum type_primitive const prim, symtable *const scope)
+{
+	int is_definition = 0;
+	int already_exists = 0;
+	char *spel = NULL;
+	struct_union_enum_st *predecl_sue = NULL;
+	sue_member **members = NULL;
+	attribute *this_sue_attr = NULL;
+	where sue_loc;
+
+	/* location is the tag, by default */
+	where_cc1_current(&sue_loc);
+
+	/* struct __attr__(()) name { ... } ... */
+	parse_add_attr(&this_sue_attr, scope);
+
+	if(curtok == token_identifier){
+		/* update location to be the name, since we have one */
+		where_cc1_current(&sue_loc);
+
+		spel = token_current_spel();
+		EAT(token_identifier);
+		where_cc1_adj_identifier(&sue_loc, spel);
+	}
+
+	if(accept(token_open_block)){
+		is_definition = 1;
+
+		predecl_sue = parse_sue_definition(
+				&members, &spel, prim, scope, &sue_loc);
+
 		EAT(token_close_block);
 
-		is_complete = 1;
+	}else{
+		if(!spel){
+			fold_had_error = 1;
 
-	}else if(!spel){
-		die_at(NULL, "expected: %s definition or name", sue_str_type(prim));
+			warn_at_print_error(
+					NULL,
+					"expected: %s definition or name",
+					sue_str_type(prim));
+
+			RELEASE(this_sue_attr);
+			free(spel);
+			return type_nav_btype(cc1_type_nav, type_int);
+
+		}
+
+		predecl_sue = sue_find_descend(scope, spel);
+
+		if(!predecl_sue){
+			/* forward definition */
+			predecl_sue = sue_predeclare(
+					scope, spel, prim,
+					&sue_loc);
+
+			if(prim == type_enum){
+				cc1_warn_at(&predecl_sue->where, predecl_enum,
+						"forward-declaration of enum %s", predecl_sue->spel);
+			}
+		}
 	}
 
 	/* struct A { ... } __attr__
@@ -153,31 +270,12 @@ static type *parse_type_sue(
 	 */
 	parse_add_attr(&this_sue_attr, scope);
 
-	{
-		/* struct [tag] <name | '{' | ';'>
-		 *
-		 * it's a straight declaration if we have a ';'
-		 */
-		const int isdef = (newdecl_context && curtok == token_semicolon) || is_complete;
-		struct_union_enum_st *sue = sue_decl(
-				scope, spel,
-				members, prim, is_complete,
-				isdef, /*pre_parse:*/0,
-				&sue_loc);
-
-		UCC_ASSERT(isdef || !predecl_sue || predecl_sue == sue,
-				"predecl_sue(%s) != sue(%s) (isdef=%d)",
-				predecl_sue->spel, sue->spel, isdef);
-
-		/* sue may already exist */
-		attribute_append(&sue->attr, this_sue_attr);
-
-		RELEASE(this_sue_attr);
-
-		fold_sue(sue, scope);
-
-		return type_nav_suetype(cc1_type_nav, sue);
-	}
+	return parse_sue_finish(
+			predecl_sue, members, is_definition,
+			spel, prim,
+			this_sue_attr,
+			already_exists,
+			scope, &sue_loc);
 }
 
 static void parse_add_attr_out(
@@ -453,11 +551,10 @@ static type *parse_btype(
 			EAT(curtok);
 
 			switch(tok){
-#define CASE(a)                              \
-				case token_ ## a:                    \
-					tref = parse_type_sue(type_ ## a,  \
-							newdecl_context, scope);       \
-					str = #a;                          \
+#define CASE(a)                                     \
+				case token_ ## a:                           \
+					tref = parse_type_sue(type_ ## a, scope); \
+					str = #a;                                 \
 					break
 
 				CASE(enum);

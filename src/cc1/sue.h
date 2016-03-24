@@ -58,25 +58,22 @@ struct struct_union_enum_st
 sue_member *sue_member_from_decl(struct decl *);
 
 struct_union_enum_st *sue_find_descend(
-		struct symtable *stab, const char *spel, int *descended);
+		struct symtable *stab, const char *spel);
 
 struct_union_enum_st *sue_find_this_scope(
-		struct symtable *, const char *spel);
+		struct symtable *stab, const char *spel);
 
-/* we need to know if the struct is a definition at this point,
- * e.g.
- * struct A { int i; };
- * f()
- * {
- *   struct A a; // old type
- *   struct A;   // new type
- * }
- */
-struct_union_enum_st *sue_decl(
-		struct symtable *stab, char *spel,
-		sue_member **members, enum type_primitive prim,
-		int got_membs, int is_declaration, int pre_parse,
-		where *);
+struct_union_enum_st *sue_predeclare(
+		struct symtable *stab,
+		/*consumed*/char *spel,
+		enum type_primitive prim /* S, U or E */,
+		const where *)
+	ucc_nonnull((1, 4));
+
+void sue_define(struct_union_enum_st *sue, sue_member **members)
+	ucc_nonnull();
+
+void sue_member_init_dup_check(sue_member **members);
 
 sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 

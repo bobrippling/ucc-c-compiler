@@ -447,7 +447,7 @@ static void fold_type_w_attr(
 
 				if(stab->are_params){
 					struct_union_enum_st *above = sue_find_descend(
-							stab->parent, sue->spel, NULL);
+							stab->parent, sue->spel);
 
 					if(!above){
 						cc1_warn_at(&sue->where,

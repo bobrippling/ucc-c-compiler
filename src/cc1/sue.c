@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/alloc.h"
 #include "../util/util.h"
@@ -26,6 +27,19 @@ static void sue_set_spel(struct_union_enum_st *sue, char *spel)
 
 	free(sue->spel);
 	sue->spel = spel;
+}
+
+static struct_union_enum_st *sue_new(
+		enum type_primitive prim,
+		const where *loc)
+{
+	struct_union_enum_st *sue = umalloc(sizeof *sue);
+
+	sue->primitive = prim;
+	sue->foldprog = SUE_FOLDED_NO;
+	memcpy_safe(&sue->where, loc);
+
+	return sue;
 }
 
 void enum_vals_add(
@@ -127,24 +141,12 @@ struct_union_enum_st *sue_find_this_scope(symtable *stab, const char *spel)
 	return NULL;
 }
 
-struct_union_enum_st *sue_find_descend(
-		symtable *stab, const char *spel, int *descended)
+struct_union_enum_st *sue_find_descend(symtable *stab, const char *spel)
 {
-	if(descended)
-		*descended = 0;
-
 	for(; stab; stab = stab->parent){
 		struct_union_enum_st *sue = sue_find_this_scope(stab, spel);
 		if(sue)
 			return sue;
-
-		if(descended
-		&& !stab->internal_nest
-		&& !stab->are_params
-		&& !stab->transparent)
-		{
-			*descended = 1;
-		}
 	}
 
 	return NULL;
@@ -182,152 +184,64 @@ sue_member *sue_member_from_decl(decl *d)
 	return sm;
 }
 
-struct_union_enum_st *sue_decl(
-		symtable *stab, char *spel,
-		sue_member **members, enum type_primitive prim,
-		int got_membs, int is_declaration, int pre_parse, where *w)
+struct_union_enum_st *sue_predeclare(
+		struct symtable *scope,
+		/*consumed*/char *spel,
+		enum type_primitive prim,
+		const where *loc)
 {
 	struct_union_enum_st *sue;
-	int new = 0;
-	int descended;
 
-	if(spel && stab && (sue = sue_find_descend(stab, spel, &descended))){
-		char wbuf[WHERE_BUF_SIZ];
-
-		/* redef checks */
-		if(sue->primitive != prim){
-			if(descended)
-				goto new_type;
-				/* struct A;
-				 * f()
-				 * {
-				 *   union A { ... }; <--- new type
-				 * }
-				 */
-
-			die_at(NULL, "redefinition of %s as %s\n"
-					"%s: note: from here",
-					sue_str(sue),
-					type_primitive_to_str(prim),
-					where_str_r(wbuf, &sue->where));
-		}
-
-		if(got_membs){
-			if(descended){
-				/* struct A {}; f(){ struct A {}; } */
-				goto new_type;
-			}
-
-			/* check we don't have two definitions */
-			if(sue->got_membs){
-				die_at(NULL, "can't redefine %s %s's members\n"
-						"%s: note: from here",
-						sue_str(sue), sue->spel,
-						where_str_r(wbuf, &sue->where));
-			}
-		}
-
-#if 0
-		if(is_complete && !sue->complete){
-			/* we've completed a sue - need a new type
-			 * with a link back to its forward-decl
-			 * otherwise we could get:
-			 * struct A;
-			 * f(struct A *p){ return p->i; } // BAD
-			 * struct A { int i; }; // complete from now on
-			 */
-			goto new_type;
-
-			note - this would complicate things massively
-			instead we just fold functions after we parse them,
-			then move on
-		}
-#endif
-
-		/* struct A;
-		 * f()
-		 * {
-		 *   struct A; <-- new type ONLY IF it's a declaration, i.e.
-		 *   struct A a; <-- this alone wouldn't be a new type
-		 * }
-		 */
-		if(is_declaration && descended)
-			goto new_type;
-
-	}else{
-new_type:
-		sue = umalloc(sizeof *sue);
-		sue->primitive = prim;
-
-		new = 1;
-
-		if(w)
-			memcpy_safe(&sue->where, w);
-		else
-			where_cc1_current(&sue->where);
+	if(spel){
+		assert(!sue_find_this_scope(scope, spel));
 	}
 
-	if(members){
-		if(prim == type_enum){
-			/* enum member duplicate check is done in fold_sym,
-			 * same as identifiers
-			 */
-
-		}else{
-			sue_member **decls = NULL;
-			int i;
-
-			sue_get_decls(members, &decls);
-
-			qsort(decls,
-					dynarray_count(decls), sizeof *decls,
-					decl_spel_cmp);
-
-			for(i = 0; decls && decls[i]; i++){
-				decl *d2, *d = decls[i]->struct_member;
-
-				if(d->bits.var.init.dinit)
-					die_at(&d->where, "%s member %s is initialised",
-							sue_str(sue), d->spel);
-
-				if(decls[i + 1]
-				&& (d2 = decls[i + 1]->struct_member,
-					!strcmp(d->spel, d2->spel)))
-				{
-					char buf[WHERE_BUF_SIZ];
-
-					die_at(&d2->where, "duplicate member %s (from %s)",
-							d->spel, where_str_r(buf, &d->where));
-				}
-			}
-
-			dynarray_free(sue_member **, decls, NULL);
-		}
-	}
-
+	sue = sue_new(prim, loc);
 	sue->anon = !spel;
-	if(got_membs)
-		sue->got_membs = 1;
-	/* completeness checks done above */
-
 	sue_set_spel(sue, spel);
 
-	if(members){
-		UCC_ASSERT(!sue->members,
-				"redef of struct/union should've been caught");
-		sue->members = members;
-	}
-
-	if(new){
-		if(!pre_parse && prim == type_enum && !sue->got_membs)
-			cc1_warn_at(w, predecl_enum,
-					"forward-declaration of enum %s", sue->spel);
-
-		if(stab)
-			symtab_add_sue(stab, sue);
-	}
+	symtab_add_sue(scope, sue);
 
 	return sue;
+}
+
+void sue_define(struct_union_enum_st *sue, sue_member **members)
+{
+	sue->got_membs = 1;
+
+	assert(!sue->members);
+	sue->members = members;
+}
+
+void sue_member_init_dup_check(sue_member **members)
+{
+	sue_member **decls = NULL;
+	int i;
+
+	sue_get_decls(members, &decls);
+
+	qsort(decls,
+			dynarray_count(decls), sizeof *decls,
+			decl_spel_cmp);
+
+	for(i = 0; decls && decls[i]; i++){
+		decl *d2, *d = decls[i]->struct_member;
+
+		if(d->bits.var.init.dinit)
+			die_at(&d->where, "member %s is initialised", d->spel);
+
+		if(decls[i + 1]
+				&& (d2 = decls[i + 1]->struct_member,
+					!strcmp(d->spel, d2->spel)))
+		{
+			char buf[WHERE_BUF_SIZ];
+
+			die_at(&d2->where, "duplicate member %s (from %s)",
+					d->spel, where_str_r(buf, &d->where));
+		}
+	}
+
+	dynarray_free(sue_member **, decls, NULL);
 }
 
 sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos)
