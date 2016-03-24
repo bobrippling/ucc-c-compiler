@@ -102,6 +102,7 @@ struct section sections[NUM_SECTIONS] = {
 
 static FILE *infile;
 
+ucc_noreturn
 static void ccdie(int verbose, const char *fmt, ...)
 {
 	int i = strlen(fmt);
