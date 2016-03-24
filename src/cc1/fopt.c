@@ -19,3 +19,17 @@ void fopt_default(struct cc1_fopt *opt)
 	opt->print_aka = 1;
 	opt->common = 1;
 }
+
+int fopt_on(struct cc1_fopt *fopt, const char *argument, int invert)
+{
+#define X(arg, memb) else if(!strcmp(argument, arg)){ fopt->memb = !invert; return 1; }
+#define ALIAS(arg, memb) X(arg, memb)
+#define INVERT(arg, memb) else if(!strcmp(argument, arg)){ fopt->memb = invert; return 1; }
+	if(0);
+#include "fopts.h"
+#undef X
+#undef ALIAS
+#undef INVERT
+
+	return 0;
+}
