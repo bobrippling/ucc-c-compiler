@@ -16,7 +16,7 @@ int cc1_mstack_align;
 enum c_std cc1_std = STD_C99;
 struct cc1_warning cc1_warning;
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
-enum fopt fopt_mode;
+struct cc1_fopt cc1_fopt;
 enum mopt mopt_mode;
 struct section sections[NUM_SECTIONS];
 int show_current_line;
