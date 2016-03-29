@@ -57,7 +57,7 @@ int enum_nentries(struct_union_enum_st *e)
 
 void sue_incomplete_chk(struct_union_enum_st *st, const where *w)
 {
-	if(!sue_complete(st)){
+	if(!sue_is_complete(st)){
 		char buf[WHERE_BUF_SIZ];
 
 		die_at(w, "%s %s is incomplete\n%s: note: forward declared here",

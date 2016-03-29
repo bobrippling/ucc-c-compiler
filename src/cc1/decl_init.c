@@ -737,7 +737,7 @@ static decl_init **decl_init_brace_up_sue2(
 
 	(void)range_store;
 
-	UCC_ASSERT(sue_complete(sue), "should've checked sue completeness");
+	UCC_ASSERT(sue_is_complete(sue), "should've checked sue completeness");
 
 	init_debug("brace-up-sue: %s\n", sue->spel);
 

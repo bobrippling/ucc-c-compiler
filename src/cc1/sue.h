@@ -52,7 +52,7 @@ struct struct_union_enum_st
 
 #define sue_nmembers(x) dynarray_count((x)->members)
 
-#define sue_complete(sue) (\
+#define sue_is_complete(sue) (\
 		(sue)->got_membs && (sue)->foldprog == SUE_FOLDED_FULLY)
 
 sue_member *sue_member_from_decl(struct decl *);

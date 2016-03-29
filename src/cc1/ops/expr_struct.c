@@ -67,7 +67,7 @@ err:
 		}
 	}
 
-	if(!sue_complete(sue)){
+	if(!sue_is_complete(sue)){
 		char wbuf[WHERE_BUF_SIZ];
 
 		die_at(&e->lhs->where, "%s incomplete type (%s)\n"
