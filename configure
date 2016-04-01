@@ -154,6 +154,9 @@ test -n "$target" || target=$($CC -dumpmachine) || target=unknown
 printf '%s\n' "$target"
 arch="${target%%-*}"
 
+try_path ucc_stdinc ' -isystem ' "/usr/include"
+try_path ucc_stdinc ' -isystem ' "/usr/local/include"
+
 # OS defaults
 case "$target" in
 	*linux*)
@@ -168,7 +171,6 @@ case "$target" in
 		gcc_inc=$(echo /usr/lib/gcc/$target/*/ | tr ' ' '\n' | sort | tail -1)
 		echo "Borrowing gcc-$(basename "$gcc_inc")'s include/"
 
-		try_path ucc_stdinc ' -isystem ' "/usr/include"
 		try_path ucc_stdinc ' -isystem ' "/usr/include/$target"
 		try_path ucc_stdinc ' -isystem ' "$gcc_inc/include"
 		;;
@@ -197,7 +199,6 @@ case "$target" in
 		ucc_initflags='-mpreferred-stack-boundary=4 -malign-is-p2' # 2^4 = 16 byte aligned
 		ucc_stdlib='-lSystem'
 		ucc_startfiles=''
-		ucc_stdinc='-isystem /usr/include'
 		ucc_ldflags="-macosx_version_min 10.11"
 		local_label_prefix=L
 		need_dsym=1
