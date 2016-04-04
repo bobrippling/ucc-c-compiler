@@ -55,30 +55,35 @@ int enum_nentries(struct_union_enum_st *e)
 	return dynarray_count(e->members);
 }
 
-void sue_incomplete_chk(struct_union_enum_st *st, const where *w)
+int sue_incomplete_chk(struct_union_enum_st *st, const where *w)
 {
 	if(!sue_is_complete(st)){
-		char buf[WHERE_BUF_SIZ];
-
-		die_at(w, "%s %s is incomplete\n%s: note: forward declared here",
-				sue_str(st), st->spel, where_str_r(buf, &st->where));
+		extern int fold_had_error;
+		fold_had_error = 1;
+		warn_at_print_error(w, "%s %s is incomplete", sue_str(st), st->spel);
+		note_at(&st->where, "forward declared here");
+		return 1;
 	}
 
 	UCC_ASSERT(st->foldprog == SUE_FOLDED_FULLY, "sizeof unfolded sue");
 	if(st->primitive == type_enum)
 		UCC_ASSERT(st->size > 0, "zero-sized enum");
+
+	return 0;
 }
 
 unsigned sue_size(struct_union_enum_st *st, const where *w)
 {
-	sue_incomplete_chk(st, w);
+	if(sue_incomplete_chk(st, w))
+		return 1; /* dummy size */
 
 	return st->size; /* can be zero */
 }
 
 unsigned sue_align(struct_union_enum_st *st, const where *w)
 {
-	sue_incomplete_chk(st, w);
+	if(sue_incomplete_chk(st, w))
+		return 1; /* dummy align */
 
 	return st->align;
 }

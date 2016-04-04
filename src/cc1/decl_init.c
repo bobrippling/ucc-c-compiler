@@ -1139,14 +1139,15 @@ static decl_init *decl_init_brace_up_aggregate(
 	}
 }
 
-static void die_incomplete(init_iter *iter, type *tfor)
+static void emit_incomplete_error(init_iter *iter, type *tfor)
 {
 	struct_union_enum_st *sue = type_is_s_or_u_or_e(tfor);
-	if(sue)
-		sue_incomplete_chk(sue, ITER_WHERE(iter, &sue->where));
 
-	die_at(ITER_WHERE(iter, NULL),
-			"initialising %s", type_to_str(tfor));
+	if(sue && sue_incomplete_chk(sue, ITER_WHERE(iter, &sue->where)))
+		return;
+
+	warn_at_print_error(ITER_WHERE(iter, NULL),
+			"initialising incomplete type '%s'", type_to_str(tfor));
 }
 
 static decl_init *is_char_init(
@@ -1196,8 +1197,10 @@ static decl_init *decl_init_brace_up_array_chk_char(
 
 	init_debug("brace-up-array: of=%s\n", type_to_str(next_type));
 
-	if(!type_is_complete(array_of))
-		die_incomplete(iter, next_type);
+	if(!type_is_complete(array_of)){
+		emit_incomplete_error(iter, next_type);
+		return current;
+	}
 
 	if((strk = is_char_init(next_type, iter, stab, NULL))){
 		consty k;
@@ -1276,8 +1279,11 @@ static decl_init *decl_init_brace_up_r(
 				current, iter, tfor, stab);
 	}else{
 		/* incomplete check _after_ array, since we allow T x[] */
-		if(!type_is_complete(tfor))
-			die_incomplete(iter, tfor);
+		if(!type_is_complete(tfor)){
+			emit_incomplete_error(iter, tfor);
+			ret = current;
+			goto out;
+		}
 
 		if((sue = type_is_s_or_u(tfor))){
 			ret = decl_init_brace_up_aggregate(
@@ -1289,6 +1295,7 @@ static decl_init *decl_init_brace_up_r(
 		}
 	}
 
+out:
 	init_debug_indent(--);
 
 	return ret;

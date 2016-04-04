@@ -105,7 +105,8 @@ enum sue_szkind
 };
 enum sue_szkind sue_sizekind(struct_union_enum_st *);
 
-void sue_incomplete_chk(struct_union_enum_st *st, const where *w);
+ucc_wur
+int sue_incomplete_chk(struct_union_enum_st *st, const where *w);
 
 struct decl *struct_union_member_find(struct_union_enum_st *,
 		const char *spel, unsigned *extra_off,
