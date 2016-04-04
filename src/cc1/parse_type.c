@@ -59,17 +59,20 @@ static struct_union_enum_st *parse_sue_definition(
 		struct_union_enum_st *already_existing = sue_find_this_scope(scope, *spel);
 
 		if(already_existing){
-			fold_had_error = 1;
+			if(already_existing->got_membs){
+				fold_had_error = 1;
 
-			warn_at_print_error(sue_loc,
-					"redefinition of %s as %s\n",
-					sue_str(already_existing),
-					type_primitive_to_str(prim));
+				warn_at_print_error(sue_loc,
+						"redefinition of %s as %s\n",
+						sue_str(already_existing),
+						type_primitive_to_str(prim));
 
-			note_at(&already_existing->where, "previous definition here");
+				note_at(&already_existing->where, "previous definition here");
 
-			free(*spel), *spel = NULL;
-
+				free(*spel), *spel = NULL;
+			}else{
+				predecl_sue = already_existing;
+			}
 		}else{
 			predecl_sue = sue_predeclare(
 					scope, ustrdup(*spel),
