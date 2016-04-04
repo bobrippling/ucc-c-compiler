@@ -101,10 +101,14 @@ static void dump_desc_colour_newline(
 
 static void dump_type(dump *ctx, type *ty)
 {
+	struct_union_enum_st *sue;
 	dump_printf_indent(ctx, 0, " %s'%s'%s",
 			maybe_colour(ctx->fout, col_type),
 			type_to_str(ty),
 			maybe_colour(ctx->fout, col_off));
+
+	if((sue = type_is_s_or_u_or_e(ty)) && !sue_is_complete(sue))
+		dump_printf_indent(ctx, 0, " (incomplete)");
 }
 
 void dump_desc(
