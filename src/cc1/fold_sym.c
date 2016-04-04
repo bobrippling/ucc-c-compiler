@@ -62,10 +62,24 @@ static void dump_symtab(symtable *st, unsigned indent)
 
 	for(di = st->decls; di && *di; di++){
 		decl *d = *di;
+		decl *impl;
+
 		STAB_INDENT();
-		fprintf(stderr, "  %s, %s\n",
+		fprintf(stderr, "  %s, %s %p",
 				d->sym ? sym_to_str(d->sym->type) : "<nosym>",
-				decl_to_str(d));
+				decl_to_str(d),
+				(void *)d);
+
+		if(d->proto)
+			fprintf(stderr, ", prev %p", (void *)d->proto);
+		if(d->impl)
+			fprintf(stderr, ", next %p", (void *)d->impl);
+
+		impl = decl_impl(d);
+		if(impl && impl != d)
+			fprintf(stderr, ", impl %p", (void *)impl);
+
+		fputc('\n', stderr);
 	}
 
 	for(si = st->children; si && *si; si++)
