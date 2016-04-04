@@ -65,7 +65,7 @@ static void dump_symtab(symtable *st, unsigned indent)
 		STAB_INDENT();
 		fprintf(stderr, "  %s, %s\n",
 				d->sym ? sym_to_str(d->sym->type) : "<nosym>",
-				d->spel);
+				decl_to_str(d));
 	}
 
 	for(si = st->children; si && *si; si++)
