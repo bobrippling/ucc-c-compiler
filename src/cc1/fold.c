@@ -700,18 +700,9 @@ static void fold_decl_func(decl *d, symtable *stab)
 	fold_func_attr(d);
 }
 
-static void fold_decl_var(decl *d, symtable *stab)
+static void fold_decl_var_align(decl *d, symtable *stab)
 {
 	attribute *attrib = NULL;
-	int vla;
-	int is_static_duration = !stab->parent
-		|| (d->store & STORE_MASK_STORE) == store_static;
-
-	if((d->store & STORE_MASK_EXTRA) == store_inline){
-		warn_at_print_error(&d->where, "inline on non-function");
-		fold_had_error = 1;
-	}
-
 	if(d->bits.var.align || (attrib = attribute_present(d, attr_aligned))){
 		const int tal = type_align(d->ref, &d->where);
 
@@ -778,7 +769,11 @@ static void fold_decl_var(decl *d, symtable *stab)
 
 		d->bits.var.align->resolved = max_al;
 	}
+}
 
+static void fold_decl_var_vm(decl *d, symtable *stab, int const is_static_duration)
+{
+	int vla;
 	if((is_static_duration || (d->store & STORE_MASK_STORE) == store_extern)
 	&& type_is_variably_modified_vla(d->ref, &vla))
 	{
@@ -796,7 +791,11 @@ static void fold_decl_var(decl *d, symtable *stab)
 			return;
 		}
 	}
+}
 
+static void fold_decl_var_dinit(
+		decl *d, symtable *stab, int const is_static_duration)
+{
 	if(d->bits.var.init.dinit){
 		switch(d->store & STORE_MASK_STORE){
 			case store_typedef:
@@ -838,6 +837,21 @@ static void fold_decl_var(decl *d, symtable *stab)
 			}
 		}
 	}
+}
+
+static void fold_decl_var(decl *d, symtable *stab)
+{
+	int is_static_duration = !stab->parent
+		|| (d->store & STORE_MASK_STORE) == store_static;
+
+	if((d->store & STORE_MASK_EXTRA) == store_inline){
+		warn_at_print_error(&d->where, "inline on non-function");
+		fold_had_error = 1;
+	}
+
+	fold_decl_var_align(d, stab);
+	fold_decl_var_vm(d, stab, is_static_duration);
+	fold_decl_var_dinit(d, stab, is_static_duration);
 }
 
 static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
