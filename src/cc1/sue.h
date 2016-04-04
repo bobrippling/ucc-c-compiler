@@ -58,7 +58,7 @@ struct struct_union_enum_st
 sue_member *sue_member_from_decl(struct decl *);
 
 struct_union_enum_st *sue_find_descend(
-		struct symtable *stab, const char *spel);
+		struct symtable *stab, const char *spel, int *const descended);
 
 struct_union_enum_st *sue_find_this_scope(
 		struct symtable *stab, const char *spel);

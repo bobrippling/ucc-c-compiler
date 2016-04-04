@@ -41,6 +41,29 @@ static decl *parse_decl_stored_aligned(
 
 static type *default_type(void);
 
+static int can_complete_existing_sue(
+		struct_union_enum_st *sue, enum type_primitive new_tag)
+{
+	return sue->primitive == new_tag && !sue->got_membs;
+}
+
+static void emit_redef_sue_error(
+		where const *new_sue_loc,
+		struct_union_enum_st *already_existing,
+		enum type_primitive prim,
+		const int is_definition)
+{
+	fold_had_error = 1;
+
+	warn_at_print_error(new_sue_loc,
+			"rede%s of %s as %s",
+			is_definition ? "finition" : "claration",
+			sue_str(already_existing),
+			type_primitive_to_str(prim));
+
+	note_at(&already_existing->where, "previous definition here");
+}
+
 static struct_union_enum_st *parse_sue_definition(
 		sue_member ***members,
 		char **const spel,
@@ -59,19 +82,12 @@ static struct_union_enum_st *parse_sue_definition(
 		struct_union_enum_st *already_existing = sue_find_this_scope(scope, *spel);
 
 		if(already_existing){
-			if(already_existing->got_membs){
-				fold_had_error = 1;
-
-				warn_at_print_error(sue_loc,
-						"redefinition of %s as %s\n",
-						sue_str(already_existing),
-						type_primitive_to_str(prim));
-
-				note_at(&already_existing->where, "previous definition here");
+			if(can_complete_existing_sue(already_existing, prim)){
+				predecl_sue = already_existing;
+			}else{
+				emit_redef_sue_error(sue_loc, already_existing, prim, /*isdef:*/1);
 
 				free(*spel), *spel = NULL;
-			}else{
-				predecl_sue = already_existing;
 			}
 		}else{
 			predecl_sue = sue_predeclare(
@@ -237,6 +253,8 @@ static type *parse_type_sue(enum type_primitive const prim, symtable *const scop
 		EAT(token_close_block);
 
 	}else{
+		int descended;
+
 		if(!spel){
 			fold_had_error = 1;
 
@@ -251,9 +269,18 @@ static type *parse_type_sue(enum type_primitive const prim, symtable *const scop
 
 		}
 
-		predecl_sue = sue_find_descend(scope, spel);
+		predecl_sue = sue_find_descend(scope, spel, &descended);
 
-		if(!predecl_sue){
+		if(predecl_sue){
+			/* found - if we didn't descend, ensure we can complete */
+			if(!descended && !can_complete_existing_sue(predecl_sue, prim)){
+				emit_redef_sue_error(
+						&sue_loc,
+						predecl_sue,
+						prim,
+						/*isdef:*/is_definition);
+			}
+		}else{
 			/* forward definition */
 			predecl_sue = sue_predeclare(
 					scope, spel, prim,

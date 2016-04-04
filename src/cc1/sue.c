@@ -131,22 +131,36 @@ enum sue_szkind sue_sizekind(struct_union_enum_st *sue)
 
 struct_union_enum_st *sue_find_this_scope(symtable *stab, const char *spel)
 {
-	struct_union_enum_st **i;
-	for(i = stab->sues; i && *i; i++){
-		struct_union_enum_st *st = *i;
+	for(; stab; stab = stab->parent){
+		struct_union_enum_st **i;
+		for(i = stab->sues; i && *i; i++){
+			struct_union_enum_st *st = *i;
 
-		if(st->spel && !strcmp(st->spel, spel))
-			return st;
+			if(st->spel && !strcmp(st->spel, spel))
+				return st;
+		}
+
+		if(stab->are_params || stab->transparent)
+			continue;
+		break;
 	}
+
 	return NULL;
 }
 
-struct_union_enum_st *sue_find_descend(symtable *stab, const char *spel)
+struct_union_enum_st *sue_find_descend(
+		symtable *stab, const char *spel, int *const descended)
 {
+	if(descended)
+		*descended = 0;
+
 	for(; stab; stab = stab->parent){
 		struct_union_enum_st *sue = sue_find_this_scope(stab, spel);
 		if(sue)
 			return sue;
+
+		if(descended)
+			*descended = 1;
 	}
 
 	return NULL;
