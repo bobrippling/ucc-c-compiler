@@ -1,16 +1,16 @@
-// RUN: %check -e %s
+// RUN: %check %s
 
-struct A // CHECK: note: from here
+struct A
 {
 	int i;
 };
 
 g()
 {
-	enum A { X } a; // CHECK: !/error/
+	enum A { X } a;
 }
 
-f(enum A { X } a) // CHECK: error: redefinition of struct as enum
+f(enum A { X } a) // CHECK: warning: declaration of 'enum A' only visible inside function
 {
 	return a+1;
 }

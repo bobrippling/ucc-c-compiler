@@ -449,7 +449,8 @@ static void fold_type_w_attr(
 					struct_union_enum_st *above = sue_find_descend(
 							stab->parent, sue->spel, NULL);
 
-					if(!above){
+					/* 'above' may be null */
+					if(above != sue){
 						cc1_warn_at(&sue->where,
 								private_struct,
 								"declaration of '%s %s' only visible inside function",
