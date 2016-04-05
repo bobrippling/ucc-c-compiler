@@ -275,8 +275,8 @@ static type *parse_type_sue(enum type_primitive const prim, symtable *const scop
 		predecl_sue = sue_find_descend(scope, spel, &descended);
 
 		if(predecl_sue){
-			/* found - if we didn't descend, ensure we can complete */
-			if(!descended && !can_complete_existing_sue(predecl_sue, prim)){
+			/* found - if we didn't descend, ensure we can redeclare */
+			if(!descended && predecl_sue->primitive != prim){
 				emit_redef_sue_error(
 						&sue_loc,
 						predecl_sue,
