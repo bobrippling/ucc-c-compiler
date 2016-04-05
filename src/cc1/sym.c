@@ -254,7 +254,6 @@ int symtab_is_transparent(symtable const *stab)
 	/* symtable tables are the same if transparent
 	 * or parent symtable is a parameter one */
 	return stab->transparent
-		|| stab->are_params
 		|| (stab->parent && stab->parent->are_params);
 }
 
