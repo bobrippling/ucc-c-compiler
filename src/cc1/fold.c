@@ -859,7 +859,7 @@ static void fold_decl_var(decl *d, symtable *stab)
 	 * as by the time we reach stmt_code's fold function,
 	 * we may have parsed a later-defined struct type,
 	 * completing the definition. */
-	if(stab->parent)
+	if(stab->parent && !stab->are_params)
 		fold_check_decl_complete(d);
 }
 
