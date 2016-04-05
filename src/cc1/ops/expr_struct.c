@@ -68,15 +68,19 @@ err:
 	}
 
 	if(!sue_is_complete(sue)){
-		char wbuf[WHERE_BUF_SIZ];
+		fold_had_error = 1;
 
-		die_at(&e->lhs->where, "%s incomplete type (%s)\n"
-				"%s: note: forward declared here",
+		warn_at_print_error(
+				&e->lhs->where, "%s incomplete type (%s)",
 				ptr_expect
 					? "dereferencing pointer to"
 					: "accessing member of",
-				type_to_str(e->lhs->tree_type),
-				where_str_r(wbuf, &sue->where));
+				type_to_str(e->lhs->tree_type));
+
+		note_at(&sue->where, "forward declared here");
+
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
 	}
 
 	if(spel){

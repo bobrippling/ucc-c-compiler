@@ -137,7 +137,8 @@ void fold_expr_assign(expr *e, symtable *stab)
 	{
 		decl *mem;
 		if(expr_kind(e->lhs, struct)
-		&& (mem = e->lhs->bits.struct_mem.d)->bits.var.field_width)
+		&& (mem = e->lhs->bits.struct_mem.d) /* maybe null from s->non_present_memb */
+		&& mem->bits.var.field_width)
 		{
 			bitfield_trunc_check(mem, e->rhs);
 		}

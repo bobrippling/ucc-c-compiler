@@ -1232,10 +1232,13 @@ void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 		if(e && expr_kind(e, struct)){
 			decl *d = e->bits.struct_mem.d;
 
-			assert(!type_is(d->ref, type_func));
+			/* may be null from a bad struct access */
+			if(d){
+				assert(!type_is(d->ref, type_func));
 
-			if(d->bits.var.field_width)
-				die_at(&e->where, "bitfield in %s", desc);
+				if(d->bits.var.field_width)
+					die_at(&e->where, "bitfield in %s", desc);
+			}
 		}
 	}
 
