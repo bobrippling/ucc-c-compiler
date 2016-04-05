@@ -136,6 +136,8 @@ decl *symtab_search_d(symtable *, const char *, symtable **pin);
 decl *symtab_search_d_exclude(
 		symtable *, const char *, symtable **pin, decl *exclude);
 
+int symtab_is_transparent(symtable const *);
+
 const char *sym_to_str(enum sym_type);
 
 #define sym_free(s) free(s)

@@ -140,12 +140,8 @@ struct_union_enum_st *sue_find_this_scope(symtable *stab, const char *spel)
 				return st;
 		}
 
-		if(stab->are_params
-		|| stab->transparent
-		|| (stab->parent && stab->parent->are_params))
-		{
+		if(symtab_is_transparent(stab))
 			continue;
-		}
 		break;
 	}
 

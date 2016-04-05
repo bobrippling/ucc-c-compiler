@@ -249,6 +249,15 @@ unsigned sym_hash(const sym *sym)
 	return sym->type ^ (unsigned)(intptr_t)sym;
 }
 
+int symtab_is_transparent(symtable const *stab)
+{
+	/* symtable tables are the same if transparent
+	 * or parent symtable is a parameter one */
+	return stab->transparent
+		|| stab->are_params
+		|| (stab->parent && stab->parent->are_params);
+}
+
 unsigned symtab_decl_bytes(symtable *stab, unsigned const vla_cost)
 {
 	unsigned total = 0;
