@@ -222,7 +222,10 @@ static type *parse_sue_finish(
  *   struct A { struct B; }; // this is not a new B
  * };
  */
-static type *parse_type_sue(enum type_primitive const prim, symtable *const scope)
+static type *parse_type_sue(
+		enum type_primitive const prim,
+		symtable *const scope,
+		int const newdecl_context)
 {
 	int is_definition = 0;
 	int already_exists = 0;
@@ -283,7 +286,34 @@ static type *parse_type_sue(enum type_primitive const prim, symtable *const scop
 						prim,
 						/*isdef:*/is_definition);
 			}
-		}else{
+
+			/* if we have found a s/u/e BUT we descended in scope,
+			 * then we're actually declaring a new one, if we're at
+			 * a semi-colon.
+			 * i.e.
+			 * struct A { ... };
+			 * void f()
+			 * {
+			 *     struct A; // a new type
+			 * }
+			 *
+			 * provided we're in a newdecl context. i.e. the following
+			 * is not a new type declaration
+			 *
+			 * struct A { ... };
+			 * void f()
+			 * {
+			 *     struct irrelevant_name
+			 *     {
+			 *         struct A; // a reference to the outside type
+			 *     };
+			 * }
+			 */
+			if(descended && curtok == token_semicolon && newdecl_context)
+				predecl_sue = NULL;
+		}
+
+		if(!predecl_sue){
 			/* forward definition */
 			predecl_sue = sue_predeclare(
 					scope, spel, prim,
@@ -584,10 +614,10 @@ static type *parse_btype(
 			EAT(curtok);
 
 			switch(tok){
-#define CASE(a)                                     \
-				case token_ ## a:                           \
-					tref = parse_type_sue(type_ ## a, scope); \
-					str = #a;                                 \
+#define CASE(a)            \
+				case token_ ## a:  \
+					tref = parse_type_sue(type_ ## a, scope, newdecl_context); \
+					str = #a;        \
 					break
 
 				CASE(enum);
