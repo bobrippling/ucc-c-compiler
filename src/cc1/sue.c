@@ -159,7 +159,7 @@ struct_union_enum_st *sue_find_descend(
 		if(sue)
 			return sue;
 
-		if(descended)
+		if(descended && symtab_is_transparent(stab))
 			*descended = 1;
 	}
 
