@@ -53,13 +53,16 @@ static void emit_redef_sue_error(
 		enum type_primitive prim,
 		const int is_definition)
 {
+	const int equal_tags = (prim == already_existing->primitive);
+
 	fold_had_error = 1;
 
 	warn_at_print_error(new_sue_loc,
-			"rede%s of %s as %s",
+			"rede%s of %s%s%s",
 			is_definition ? "finition" : "claration",
 			sue_str(already_existing),
-			type_primitive_to_str(prim));
+			equal_tags ? " in scope" : " as ",
+			equal_tags ? "" : type_primitive_to_str(prim));
 
 	note_at(&already_existing->where, "previous definition here");
 }
