@@ -853,14 +853,6 @@ static void fold_decl_var(decl *d, symtable *stab)
 	fold_decl_var_align(d, stab);
 	fold_decl_var_vm(d, stab, is_static_duration);
 	fold_decl_var_dinit(d, stab, is_static_duration);
-
-	/* Ensure locally declared types are complete.
-	 * Must be done here (instead of stmt_code)
-	 * as by the time we reach stmt_code's fold function,
-	 * we may have parsed a later-defined struct type,
-	 * completing the definition. */
-	if(stab->parent && !stab->are_params)
-		fold_check_decl_complete(d);
 }
 
 static void fold_decl_var_fieldwidth(decl *d, symtable *stab)

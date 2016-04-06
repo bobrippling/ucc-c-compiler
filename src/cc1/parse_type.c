@@ -2214,6 +2214,32 @@ static int parse_decl_attr(decl *d, symtable *scope)
 	return 0;
 }
 
+static void parse_decl_check_complete(
+		decl *d,
+		symtable *scope,
+		const int is_member)
+{
+	/* Ensure locally declared types are complete.
+	 * Must be done here (instead of stmt_code)
+	 * as by the time we reach stmt_code's fold function,
+	 * we may have parsed a later-defined struct type,
+	 * completing the definition.
+	 *
+	 * Only check for local variables - i.e. not args, members and globals
+	 */
+
+	if(is_member)
+		return;
+
+	if(!scope->parent)
+		return; /* global */
+
+	if(scope->are_params)
+		return; /* arg */
+
+	fold_check_decl_complete(d);
+}
+
 int parse_decl_group(
 		const enum decl_multi_mode mode,
 		int newdecl,
@@ -2323,6 +2349,8 @@ int parse_decl_group(
 
 		/* must fold _after_ we get the bitfield, etc */
 		fold_decl_maybe_member(d, in_scope, mode & DECL_MULTI_IS_STRUCT_UN_MEMB);
+
+		parse_decl_check_complete(d, in_scope, mode & DECL_MULTI_IS_STRUCT_UN_MEMB);
 
 		last = d;
 		if(done)
