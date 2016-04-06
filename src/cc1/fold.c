@@ -923,7 +923,8 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 	 * an argument list/type::func: f(struct A { int i, j; } *p, ...)
 	 */
 	int just_init = 0;
-#define first_fold (!just_init)
+	int first_fold;
+
 	switch(d->fold_state){
 		case DECL_FOLD_EXCEPT_INIT:
 			just_init = 1;
@@ -933,6 +934,8 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 			return;
 	}
 	d->fold_state = DECL_FOLD_EXCEPT_INIT;
+
+	first_fold = !just_init;
 
 	if(first_fold){
 		attribute *attr;
@@ -988,7 +991,6 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 			fold_decl_var(d, stab);
 		}
 	}
-#undef first_fold
 }
 
 void fold_decl(decl *d, symtable *stab)
