@@ -201,10 +201,10 @@ static attribute *parse_attr_aligned(symtable *scope, const char *ident)
 
 static attribute *parse_attr_cleanup(symtable *scope, const char *ident)
 {
-	decl *d;
 	char *sp;
 	where ident_loc;
 	attribute *attr = NULL;
+	struct symtab_entry ent;
 
 	(void)ident;
 
@@ -217,10 +217,9 @@ static attribute *parse_attr_cleanup(symtable *scope, const char *ident)
 	sp = token_current_spel();
 	EAT(token_identifier);
 
-	d = symtab_search_d(scope, sp, NULL);
-	if(d){
+	if(symtab_search(scope, sp, NULL, &ent) && ent.type == SYMTAB_ENT_DECL){
 		attr = attribute_new(attr_cleanup);
-		attr->bits.cleanup = d;
+		attr->bits.cleanup = ent.bits.decl;
 	}else{
 		warn_at_print_error(&ident_loc, "function '%s' not found", sp);
 		fold_had_error = 1;

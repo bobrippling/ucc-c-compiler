@@ -330,24 +330,25 @@ static void *sue_member_find(
 	return NULL;
 }
 
-
-void enum_member_search(enum_member **pm, struct_union_enum_st **psue, symtable *stab, const char *spel)
+void enum_member_search_nodescend(
+		enum_member **const pm,
+		struct_union_enum_st **const psue,
+		symtable *stab,
+		const char *spel)
 {
-	for(; stab; stab = stab->parent){
-		struct_union_enum_st **i;
+	struct_union_enum_st **i;
 
-		for(i = stab->sues; i && *i; i++){
-			struct_union_enum_st *e = *i;
+	for(i = stab->sues; i && *i; i++){
+		struct_union_enum_st *e = *i;
 
-			if(e->primitive == type_enum){
-				enum_member *emem = sue_member_find(e, spel,
-						NULL /* safe - is enum */, NULL);
+		if(e->primitive == type_enum){
+			enum_member *emem = sue_member_find(e, spel,
+					NULL /* safe - is enum */, NULL);
 
-				if(emem){
-					*pm = emem;
-					*psue = e;
-					return;
-				}
+			if(emem){
+				*pm = emem;
+				*psue = e;
+				return;
 			}
 		}
 	}

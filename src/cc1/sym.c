@@ -129,45 +129,52 @@ int symtab_nested_internal(symtable *parent, symtable *nest)
 	return 0;
 }
 
-decl *symtab_search_d_exclude(
-		symtable *tab, const char *spel, symtable **pin,
-		decl *exclude)
+int symtab_search(
+		symtable *tab, const char *spel, decl *exclude, struct symtab_entry *ent)
 {
-	decl **const decls = tab->decls;
+	decl **decls;
 	int i;
+
+	if(!tab)
+		return 0;
+	decls = tab->decls;
 
 	/* must search in reverse order - find the most
 	 * recent decl first (e.g. function prototype propagation)
+	 *
+	 * at first glance this may appear to break enums:
+	 * f()
+	 * {
+	 *   int a;
+	 *   enum { a };
+	 * }
+	 *
+	 * will find 'int a' first - but this is fine - the above case
+	 * can't happen as it's a symbol collision
 	 */
 	for(i = dynarray_count(decls) - 1; i >= 0; i--){
 		decl *d = decls[i];
 		if(d != exclude && d->spel && !strcmp(spel, d->spel)){
-			if(pin)
-				*pin = tab;
-			return d;
+			ent->type = SYMTAB_ENT_DECL;
+			ent->bits.decl = d;
+			ent->owning_symtab = tab;
+			return 1;
 		}
 	}
 
-	if(tab->parent)
-		return symtab_search_d_exclude(tab->parent, spel, pin, exclude);
+	enum_member_search_nodescend(
+			&ent->bits.enum_member.memb,
+			&ent->bits.enum_member.sue,
+			tab,
+			spel);
 
-	return NULL;
+	if(ent->bits.enum_member.memb){
+		ent->type = SYMTAB_ENT_ENUM;
+		ent->owning_symtab = tab;
+		return 1;
+	}
 
-}
-
-decl *symtab_search_d(symtable *tab, const char *spel, symtable **pin)
-{
-	return symtab_search_d_exclude(tab, spel, pin, NULL);
-}
-
-sym *symtab_search(symtable *tab, const char *sp)
-{
-	decl *d = symtab_search_d(tab, sp, NULL);
-	if(!d)
-		return NULL;
-
-	/* if it doesn't have a symbol, we haven't finished parsing yet */
-	return d->sym;
+	return symtab_search(tab->parent, spel, exclude, ent);
 }
 
 const char *sym_to_str(enum sym_type t)

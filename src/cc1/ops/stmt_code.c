@@ -91,9 +91,8 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 
 	/* check for invalid function redefinitions and shadows */
 	for(i = 0; symtab_decls(stab)[i]; i++){
+		struct symtab_entry ent;
 		decl *const d = symtab_decls(stab)[i];
-		decl *found;
-		symtable *above_scope;
 		int chk_shadow = 0, is_func = 0;
 		attribute *attr;
 
@@ -116,8 +115,11 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 
 		if(chk_shadow
 		&& d->spel
-		&& (found = symtab_search_d(stab->parent, d->spel, &above_scope)))
+		&& symtab_search(stab->parent, d->spel, NULL, &ent)
+		&& ent.type == SYMTAB_ENT_DECL)
 		{
+			symtable *above_scope = ent.owning_symtab;
+			decl *found = ent.bits.decl;
 			char buf[WHERE_BUF_SIZ];
 			int both_func = is_func && type_is(found->ref, type_func);
 			int both_extern = decl_linkage(d) == linkage_external

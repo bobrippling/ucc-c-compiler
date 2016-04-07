@@ -370,12 +370,16 @@ void parse_add_attr(attribute **append, symtable *scope)
 
 static decl *parse_at_tdef(symtable *scope)
 {
-	if(curtok == token_identifier){
-		decl *d = symtab_search_d(scope, token_current_spel_peek(), NULL);
+	struct symtab_entry ent;
 
-		if(d && STORE_IS_TYPEDEF(d->store))
-			return d;
+	if(curtok == token_identifier
+	&& symtab_search(scope, token_current_spel_peek(), NULL, &ent)
+	&& ent.type == SYMTAB_ENT_DECL
+	&& STORE_IS_TYPEDEF(ent.bits.decl->store))
+	{
+		return ent.bits.decl;
 	}
+
 	return NULL;
 }
 
@@ -2126,14 +2130,15 @@ static void link_to_previous_decl(
 	 * This also means any use of d will have the most up to date
 	 * attribute information about it
 	 */
-	symtable *prev_in = NULL;
-	decl *d_prev = symtab_search_d_exclude(in_scope, d->spel, &prev_in, d);
+	struct symtab_entry ent;
 
-	if(d_prev){
+	if(symtab_search(in_scope, d->spel, d, &ent) && ent.type == SYMTAB_ENT_DECL){
 		/* link the proto chain for __attribute__ checking,
 		 * nested function prototype checking and
 		 * '.extern fn' code gen easing
 		 */
+		symtable *const prev_in = ent.owning_symtab;
+		decl *const d_prev = ent.bits.decl;
 		const int are_functions =
 			(!!type_is(d->ref, type_func) +
 			 !!type_is(d_prev->ref, type_func));

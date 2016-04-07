@@ -81,9 +81,10 @@ sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 void enum_vals_add(sue_member ***, where *, char *,
 		struct expr *, struct attribute *);
 
-int  enum_nentries(struct_union_enum_st *);
+int enum_nentries(struct_union_enum_st *);
 
-void enum_member_search(enum_member **, struct_union_enum_st **,
+void enum_member_search_nodescend(
+		enum_member **, struct_union_enum_st **,
 		struct symtable *, const char *spel);
 
 #ifdef NUM_H

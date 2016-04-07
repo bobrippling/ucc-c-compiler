@@ -131,10 +131,27 @@ void symtab_add_to_scope(symtable *, decl *);
 void symtab_add_sue(symtable *, struct struct_union_enum_st *);
 #define symtab_decls(stab) ((stab)->decls)
 
-sym  *symtab_search(symtable *, const char *);
-decl *symtab_search_d(symtable *, const char *, symtable **pin);
-decl *symtab_search_d_exclude(
-		symtable *, const char *, symtable **pin, decl *exclude);
+struct symtab_entry
+{
+	enum
+	{
+		SYMTAB_ENT_DECL,
+		SYMTAB_ENT_ENUM
+	} type;
+	union
+	{
+		decl *decl;
+		struct
+		{
+			struct struct_union_enum_st *sue;
+			struct enum_member *memb;
+		} enum_member;
+	} bits;
+	symtable *owning_symtab;
+};
+
+int symtab_search(symtable *, const char *, decl *exclude, struct symtab_entry *)
+	ucc_nonnull((2, 4));
 
 int symtab_is_transparent(symtable const *);
 
