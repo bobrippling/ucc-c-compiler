@@ -204,7 +204,7 @@ static attribute *parse_attr_cleanup(symtable *scope, const char *ident)
 	decl *d;
 	char *sp;
 	where ident_loc;
-	attribute *attr;
+	attribute *attr = NULL;
 
 	(void)ident;
 
@@ -218,11 +218,13 @@ static attribute *parse_attr_cleanup(symtable *scope, const char *ident)
 	EAT(token_identifier);
 
 	d = symtab_search_d(scope, sp, NULL);
-	if(!d)
-		die_at(&ident_loc, "function '%s' not found", sp);
-
-	attr = attribute_new(attr_cleanup);
-	attr->bits.cleanup = d;
+	if(d){
+		attr = attribute_new(attr_cleanup);
+		attr->bits.cleanup = d;
+	}else{
+		warn_at_print_error(&ident_loc, "function '%s' not found", sp);
+		fold_had_error = 1;
+	}
 
 	EAT(token_close_paren);
 
