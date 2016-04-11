@@ -101,6 +101,11 @@ static struct_union_enum_st *parse_sue_definition(
 
 	/* sue is now in scope, but incomplete */
 	if(prim == type_enum){
+		if(!predecl_sue){
+			assert(!*spel);
+			predecl_sue = sue_predeclare(scope, NULL, prim, sue_loc);
+		}
+
 		for(;;){
 			where w;
 			expr *e;
@@ -134,6 +139,8 @@ static struct_union_enum_st *parse_sue_definition(
 			enum_vals_add(members, &w, sp, e, en_attr);
 			RELEASE(en_attr);
 
+			predecl_sue->members = *members;
+
 			if(!accept_where(token_comma, &w))
 				break;
 
@@ -144,6 +151,8 @@ static struct_union_enum_st *parse_sue_definition(
 				break;
 			}
 		}
+
+		predecl_sue->members = NULL;
 
 	}else{
 		/* always allow nameless structs (C11)
