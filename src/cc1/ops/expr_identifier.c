@@ -185,6 +185,7 @@ void fold_expr_identifier(expr *e, symtable *stab)
 void dump_expr_identifier(const expr *e, dump *ctx)
 {
 	const char *desc = NULL;
+	const char *namespace = "";
 
 	switch(e->bits.ident.type){
 		case IDENT_NORM:
@@ -192,12 +193,22 @@ void dump_expr_identifier(const expr *e, dump *ctx)
 			break;
 
 		case IDENT_ENUM:
+		{
+			struct_union_enum_st *sue = type_is_enum(e->tree_type);
+			if(!sue->anon){
+				namespace = sue->spel;
+				assert(namespace);
+			}
 			desc = "enum constant";
 			break;
+		}
 	}
 
 	dump_desc_expr_newline(ctx, desc, e, 0);
-	dump_printf_indent(ctx, 0, " %s\n", e->bits.ident.bits.ident.spel);
+	dump_printf_indent(ctx, 0, " %s%s%s\n",
+			namespace,
+			*namespace ? "::" : "",
+			e->bits.ident.bits.ident.spel);
 }
 
 const out_val *gen_expr_identifier(const expr *e, out_ctx *octx)
