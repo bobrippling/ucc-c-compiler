@@ -283,6 +283,14 @@ static void dump_sue(dump *ctx, type *ty)
 
 			dump_desc(ctx, emem->spel, emem, &emem->where);
 
+			if(emem->val && emem->val != (expr *)-1){
+				dump_inc(ctx);
+				dump_expr(emem->val, ctx);
+				dump_dec(ctx);
+			}
+
+			dump_attributes(emem->attr, ctx);
+
 		}else{
 			decl *d = (*mi)->struct_member;
 
