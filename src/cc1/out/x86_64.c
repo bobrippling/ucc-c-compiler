@@ -293,7 +293,8 @@ static void x86_overlay_regpair_1(
 	++*regpair_idx;
 }
 
-static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
+static void x86_overlay_regpair(
+		struct vreg regpair[/*2*/], int *const nregs, type *retty)
 {
 	/* if we have two floats at either 0-1 or 2-3, then we can do
 	 * a xmm0:rax or rax:xmm0 return. Otherwise we fallback to rdx:rax overlay
@@ -321,6 +322,8 @@ static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
 	unsigned current_size_bits = 0;
 	enum regtype current_type = NONE;
 	int regpair_idx = 0;
+
+	*nregs = 0;
 
 	UCC_ASSERT(su->primitive != type_enum, "enum?");
 
@@ -355,6 +358,8 @@ static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
 					current_type,
 					&regpair_idx);
 
+			++*nregs;
+
 			current_type = NONE;
 			current_size_bits = 0;
 		}
@@ -365,6 +370,8 @@ static void x86_overlay_regpair(struct vreg regpair[/*2*/], type *retty)
 				regpair,
 				current_type,
 				&regpair_idx);
+
+		++*nregs;
 	}
 }
 
@@ -847,11 +854,12 @@ static void x86_func_ret_regs(
 {
 	const unsigned sz = type_size(called, NULL);
 	struct vreg regs[2];
+	int nregs;
 
-	x86_overlay_regpair(regs, called);
+	x86_overlay_regpair(regs, &nregs, called);
 
 	/* read from the stack to registers */
-	impl_overlay_mem2regs(octx, sz, 2, regs, from);
+	impl_overlay_mem2regs(octx, sz, nregs, regs, from);
 }
 
 void impl_to_retreg(out_ctx *octx, const out_val *val, type *called)
@@ -2338,14 +2346,15 @@ const out_val *impl_call(
 			/* we behave the same as stret_memcpy(),
 			 * but we must spill the regs out */
 			struct vreg regpair[2];
+			int nregs;
 
-			x86_overlay_regpair(regpair, retty);
+			x86_overlay_regpair(regpair, &nregs, retty);
 
 			retval_stret = out_val_retain(octx, stret_spill);
 			out_val_retain(octx, retval_stret);
 
 			/* spill from registers to the stack */
-			impl_overlay_regs2mem(octx, stret_stack, 2, regpair, retval_stret);
+			impl_overlay_regs2mem(octx, stret_stack, nregs, regpair, retval_stret);
 		}
 
 		assert(stret_spill);
