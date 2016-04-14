@@ -271,6 +271,8 @@ static void format_check_printf_str(
 						&current_arg,
 						attr);
 				i++;
+				if(i >= len)
+					continue;
 			}
 
 			if(fmt[i] == '*'){
@@ -287,6 +289,9 @@ static void format_check_printf_str(
 			}
 		}
 	}
+
+	if(i > len)
+		i = len;
 
 	if(var_idx != -1 && (!fmt[i] || i == len) && *current_arg){
 		cc1_warn_at(&(*current_arg)->where, attr_printf_toomany,
