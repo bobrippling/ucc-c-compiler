@@ -128,6 +128,10 @@ static int find_identifier(expr *expr_ident, symtable *stab)
 		case SYMTAB_ENT_DECL:
 		{
 			sym *const sym = ent.bits.decl->sym;
+
+			if(!sym)
+				return 0; /* not found, e.g. __auto_type x = x; */
+
 			expr_ident->bits.ident.bits.ident.sym = sym;
 
 			/* prevent typedef */
