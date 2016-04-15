@@ -840,6 +840,9 @@ int main(int argc, char **argv)
 		}else if(!strcmp(argv[i], "-pedantic")){
 			warning_pedantic(W_WARN);
 
+		}else if(!strcmp(argv[i], "-pedantic-errors")){
+			warning_pedantic(W_ERROR);
+
 		}else if(argv[i][0] == '-'
 		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
 			const char arg_ty = argv[i][1];
