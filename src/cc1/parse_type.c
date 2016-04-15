@@ -40,6 +40,7 @@ static decl *parse_decl_stored_aligned(
 		int is_arg);
 
 static type *default_type(void);
+static int parse_at_decl_spec(void);
 
 static int can_complete_existing_sue(
 		struct_union_enum_st *sue, enum type_primitive new_tag)
@@ -225,6 +226,23 @@ static type *parse_sue_finish(
 	return type_nav_suetype(cc1_type_nav, sue);
 }
 
+static int parse_token_creates_sue(enum token tok)
+{
+	/*
+	 * // new type:
+	 * struct A;
+	 *
+	 * // reference to existing:
+	 * struct A *p;
+	 * struct A a;
+	 * struct A (x);
+	 */
+	if(tok == token_semicolon)
+		return 1;
+
+	return !parse_at_decl_spec();
+}
+
 /* newdecl_context:
  * struct B { int b; };
  * {
@@ -287,15 +305,6 @@ static type *parse_type_sue(
 		predecl_sue = sue_find_descend(scope, spel, &descended);
 
 		if(predecl_sue){
-			/* found - if we didn't descend, ensure we can redeclare */
-			if(!descended && predecl_sue->primitive != prim){
-				emit_redef_sue_error(
-						&sue_loc,
-						predecl_sue,
-						prim,
-						/*isdef:*/is_definition);
-			}
-
 			/* if we have found a s/u/e BUT we descended in scope,
 			 * then we're actually declaring a new one, if we're at
 			 * a semi-colon.
@@ -318,7 +327,23 @@ static type *parse_type_sue(
 			 *     };
 			 * }
 			 */
-			if(descended && curtok == token_semicolon && newdecl_context)
+			int redecl_error = 0;
+			const int prim_mismatch = (predecl_sue->primitive != prim);
+
+			if(!descended && prim_mismatch)
+				redecl_error = 1;
+			else if(prim_mismatch && !parse_token_creates_sue(curtok))
+					redecl_error = 1;
+
+			if(redecl_error){
+				emit_redef_sue_error(
+						&sue_loc,
+						predecl_sue,
+						prim,
+						/*isdef:*/is_definition);
+			}
+
+			if(descended && newdecl_context && parse_token_creates_sue(curtok))
 				predecl_sue = NULL;
 		}
 
