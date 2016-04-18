@@ -1,2 +1,2 @@
 // RUN: %check -e %s
-struct A x[] = {{{{}}}}; // CHECK: error: initialising struct A[]
+struct A x[] = {{{{}}}}; // CHECK: error: initialising incomplete type 'struct A[]'

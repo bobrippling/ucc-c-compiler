@@ -1150,6 +1150,14 @@ static void emit_incomplete_error(init_iter *iter, type *tfor)
 			"initialising incomplete type '%s'", type_to_str(tfor));
 }
 
+static decl_init *decl_init_dummy(decl_init *current)
+{
+	if(current)
+		return current;
+
+	return decl_init_new(decl_init_brace);
+}
+
 static decl_init *is_char_init(
 		type *ty, init_iter *iter,
 		symtable *stab, int *mismatch)
@@ -1199,7 +1207,7 @@ static decl_init *decl_init_brace_up_array_chk_char(
 
 	if(!type_is_complete(array_of)){
 		emit_incomplete_error(iter, next_type);
-		return current;
+		return decl_init_dummy(current);
 	}
 
 	if((strk = is_char_init(next_type, iter, stab, NULL))){
@@ -1281,7 +1289,7 @@ static decl_init *decl_init_brace_up_r(
 		/* incomplete check _after_ array, since we allow T x[] */
 		if(!type_is_complete(tfor)){
 			emit_incomplete_error(iter, tfor);
-			ret = current;
+			ret = decl_init_dummy(current);
 			goto out;
 		}
 
@@ -1558,6 +1566,14 @@ zero_init:
 				/* error already emitted */
 				return;
 			}else{
+				if(!type_is_complete(tfor)){
+					warn_at_print_error(
+							&init->where,
+							"initialising incomplete type '%s'",
+							type_to_str(tfor));
+					fold_had_error = 1;
+					return;
+				}
 				n = type_array_len(tfor);
 			}
 

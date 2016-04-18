@@ -236,11 +236,20 @@ static int parse_token_creates_sue(enum token tok)
 	 * struct A *p;
 	 * struct A a;
 	 * struct A (x);
+	 * struct A ()
+	 * f(struct A);
 	 */
-	if(tok == token_semicolon)
-		return 1;
+	switch(tok){
+		case token_semicolon:
+			return 1;
 
-	return !parse_at_decl_spec();
+		case token_close_paren:
+		case token_comma:
+			return 0;
+
+		default:
+			return !parse_at_decl_spec();
+	}
 }
 
 /* newdecl_context:
