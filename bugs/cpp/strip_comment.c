@@ -1,5 +1,5 @@
 #define typename(x) _Generic((x),                                                 \
-        _Bool: "_BoolÓ,                  unsigned char: "unsigned charÓ,          \
+        _Bool: "_Bool",                  unsigned char: "unsigned char",          \
          char: "char",                     signed char: "signed char",            \
-       void *: "pointer to voidÓ,                int *: "pointer to int",         \
+       void *: "pointer to void",                int *: "pointer to int",         \
       default: "other")
