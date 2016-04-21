@@ -8,4 +8,5 @@ struct pair f(void);
 main()
 {
 	return f().m[0]; // not an lvalue, can't `operator.'
+	// need better warning
 }
