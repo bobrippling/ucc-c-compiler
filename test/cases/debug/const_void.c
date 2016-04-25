@@ -12,8 +12,3 @@ const V    *x2;
 V fn(V)
 {
 }
-
-int main()
-{
-	*(int *)0 = 0;
-}
