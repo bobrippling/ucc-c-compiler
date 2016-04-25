@@ -15,7 +15,6 @@ my %vars = (
 	'ocheck' => './bin/ocheck',
 	'layout_check' => './bin/layout_check.sh',
 	'caret_check' => './bin/caret_check.pl',
-	'debug_scope' => './bin/debug_scope.sh',
 	'debug_check' => './bin/debug-check',
 	'jmpcheck' => './bin/jmpcheck.sh',
 );
