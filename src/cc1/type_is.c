@@ -357,7 +357,7 @@ int type_is_complete(type *r)
 				case type_struct:
 				case type_union:
 				case type_enum:
-					return sue_complete(t->sue);
+					return sue_is_complete(t->sue);
 
 				default:break;
 			}

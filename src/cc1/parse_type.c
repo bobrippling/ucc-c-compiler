@@ -40,6 +40,217 @@ static decl *parse_decl_stored_aligned(
 		int is_arg);
 
 static type *default_type(void);
+static int parse_at_decl_spec(void);
+
+static int can_complete_existing_sue(
+		struct_union_enum_st *sue, enum type_primitive new_tag)
+{
+	return sue->primitive == new_tag && !sue->got_membs;
+}
+
+static void emit_redef_sue_error(
+		where const *new_sue_loc,
+		struct_union_enum_st *already_existing,
+		enum type_primitive prim,
+		const int is_definition)
+{
+	const int equal_tags = (prim == already_existing->primitive);
+
+	fold_had_error = 1;
+
+	warn_at_print_error(new_sue_loc,
+			"rede%s of %s%s%s",
+			is_definition ? "finition" : "claration",
+			sue_str(already_existing),
+			equal_tags ? " in scope" : " as ",
+			equal_tags ? "" : type_primitive_to_str(prim));
+
+	note_at(&already_existing->where, "previous definition here");
+}
+
+static struct_union_enum_st *parse_sue_definition(
+		sue_member ***members,
+		char **const spel,
+		enum type_primitive prim,
+		symtable *scope,
+		where *const sue_loc)
+{
+	struct_union_enum_st *predecl_sue = NULL;
+
+	if(*spel){
+		/* predeclare so the struct/union can be recursive.
+		 * we know this is fine to explicitly declare as we're
+		 * parsing a definition, so we aren't worried about
+		 * referring to a sue in an outer scope
+		 */
+		struct_union_enum_st *already_existing = sue_find_this_scope(scope, *spel);
+
+		if(already_existing){
+			if(can_complete_existing_sue(already_existing, prim)){
+				predecl_sue = already_existing;
+			}else{
+				emit_redef_sue_error(sue_loc, already_existing, prim, /*isdef:*/1);
+
+				free(*spel), *spel = NULL;
+			}
+		}else{
+			predecl_sue = sue_predeclare(
+					scope, ustrdup(*spel),
+					prim, sue_loc);
+		}
+	}
+
+	/* sue is now in scope, but incomplete */
+	if(prim == type_enum){
+		if(!predecl_sue){
+			assert(!*spel);
+			predecl_sue = sue_predeclare(scope, NULL, prim, sue_loc);
+		}
+
+		for(;;){
+			where w;
+			expr *e;
+			char *sp;
+			attribute *en_attr = NULL;
+
+			where_cc1_current(&w);
+			sp = token_current_spel();
+			EAT(token_identifier);
+
+			parse_add_attr(&en_attr, scope);
+
+			if(accept(token_assign)){
+				e = PARSE_EXPR_CONSTANT(scope, 0); /* no commas */
+				/* ensure we fold before this enum member is added to the scope,
+				 * e.g.
+				 * enum { A };
+				 * f()
+				 * {
+				 *   enum {
+				 *     A = A // the right-most A here resolves to the global A
+				 *   };
+				 * }
+				 */
+
+				fold_expr_nodecay(e, scope);
+			}else{
+				e = NULL;
+			}
+
+			enum_vals_add(members, &w, sp, e, en_attr);
+			RELEASE(en_attr);
+
+			predecl_sue->members = *members;
+
+			if(!accept_where(token_comma, &w))
+				break;
+
+			if(curtok != token_identifier){
+				if(cc1_std < STD_C99)
+					cc1_warn_at(&w, c89_parse_trailingcomma,
+							"trailing comma in enum definition");
+				break;
+			}
+		}
+
+		predecl_sue->members = NULL;
+
+	}else{
+		/* always allow nameless structs (C11)
+		 * we don't allow tagged ones unless
+		 * -fms-extensions or -fplan9-extensions
+		 */
+		decl **dmembers = NULL;
+		decl **i;
+
+		while(parse_decl_group(
+					DECL_MULTI_CAN_DEFAULT
+					| DECL_MULTI_ACCEPT_FIELD_WIDTH
+					| DECL_MULTI_NAMELESS
+					| DECL_MULTI_IS_STRUCT_UN_MEMB
+					| DECL_MULTI_ALLOW_ALIGNAS,
+					/*newdecl_context:*/0,
+					scope, NULL, &dmembers))
+		{
+		}
+
+		if(dmembers){
+			for(i = dmembers; *i; i++)
+				dynarray_add(members, sue_member_from_decl(*i));
+
+			dynarray_free(decl **, dmembers, NULL);
+		}
+
+		sue_member_init_dup_check(*members);
+	}
+
+	return predecl_sue;
+}
+
+static type *parse_sue_finish(
+		struct_union_enum_st *predecl_sue,
+		sue_member **members,
+		int const got_membs,
+		char *spel,
+		enum type_primitive const prim,
+		attribute *this_sue_attr,
+		int const already_exists,
+		symtable *const scope,
+		where *const sue_loc)
+{
+	struct_union_enum_st *sue = predecl_sue;
+
+	if(!sue){
+		assert(!spel);
+		sue = sue_predeclare(scope, NULL, prim, sue_loc);
+	}
+
+	if(got_membs)
+		sue_define(sue, members);
+
+	/* sue may already exist */
+	if(this_sue_attr){
+		if(already_exists){
+			cc1_warn_at(&this_sue_attr->where,
+					ignored_attribute,
+					"cannot add attributes to already-defined type");
+		}else{
+			attribute_append(&sue->attr, this_sue_attr);
+		}
+	}
+
+	RELEASE(this_sue_attr);
+
+	fold_sue(sue, scope);
+
+	return type_nav_suetype(cc1_type_nav, sue);
+}
+
+static int parse_token_creates_sue(enum token tok)
+{
+	/*
+	 * // new type:
+	 * struct A;
+	 *
+	 * // reference to existing:
+	 * struct A *p;
+	 * struct A a;
+	 * struct A (x);
+	 * struct A ()
+	 * f(struct A);
+	 */
+	switch(tok){
+		case token_semicolon:
+			return 1;
+
+		case token_close_paren:
+		case token_comma:
+			return 0;
+
+		default:
+			return !parse_at_decl_spec();
+	}
+}
 
 /* newdecl_context:
  * struct B { int b; };
@@ -49,101 +260,113 @@ static type *default_type(void);
  */
 static type *parse_type_sue(
 		enum type_primitive const prim,
-		int const newdecl_context,
-		symtable *const scope)
+		symtable *const scope,
+		int const newdecl_context)
 {
-	int is_complete = 0;
+	int is_definition = 0;
+	int already_exists = 0;
 	char *spel = NULL;
 	struct_union_enum_st *predecl_sue = NULL;
 	sue_member **members = NULL;
 	attribute *this_sue_attr = NULL;
 	where sue_loc;
 
+	/* location is the tag, by default */
+	where_cc1_current(&sue_loc);
+
 	/* struct __attr__(()) name { ... } ... */
 	parse_add_attr(&this_sue_attr, scope);
 
-	where_cc1_current(&sue_loc);
-
 	if(curtok == token_identifier){
+		/* update location to be the name, since we have one */
+		where_cc1_current(&sue_loc);
+
 		spel = token_current_spel();
 		EAT(token_identifier);
 		where_cc1_adj_identifier(&sue_loc, spel);
 	}
 
 	if(accept(token_open_block)){
-		/* sue is now in scope, but incomplete */
-		if(spel){
-			predecl_sue = sue_decl(
-					scope, ustrdup(spel), /*members:*/ NULL, prim,
-					/*is_complete:*/0, /*isdef:*/0, /*pre-parse:*/1,
-					&sue_loc);
-		}
+		is_definition = 1;
 
-		if(prim == type_enum){
-			for(;;){
-				where w;
-				expr *e;
-				char *sp;
-				attribute *en_attr = NULL;
+		predecl_sue = parse_sue_definition(
+				&members, &spel, prim, scope, &sue_loc);
 
-				where_cc1_current(&w);
-				sp = token_current_spel();
-				EAT(token_identifier);
-
-				parse_add_attr(&en_attr, scope);
-
-				if(accept(token_assign))
-					e = PARSE_EXPR_CONSTANT(scope, 0); /* no commas */
-				else
-					e = NULL;
-
-				enum_vals_add(&members, &w, sp, e, en_attr);
-				RELEASE(en_attr);
-
-				if(!accept_where(token_comma, &w))
-					break;
-
-				if(curtok != token_identifier){
-					if(cc1_std < STD_C99)
-						cc1_warn_at(&w, c89_parse_trailingcomma,
-								"trailing comma in enum definition");
-					break;
-				}
-			}
-
-		}else{
-			/* always allow nameless structs (C11)
-			 * we don't allow tagged ones unless
-			 * -fms-extensions or -fplan9-extensions
-			 */
-			decl **dmembers = NULL;
-			decl **i;
-
-			while(parse_decl_group(
-					  DECL_MULTI_CAN_DEFAULT
-					| DECL_MULTI_ACCEPT_FIELD_WIDTH
-					| DECL_MULTI_NAMELESS
-					| DECL_MULTI_IS_STRUCT_UN_MEMB
-					| DECL_MULTI_ALLOW_ALIGNAS,
-					/*newdecl_context:*/0,
-					scope, NULL, &dmembers))
-			{
-			}
-
-			if(dmembers){
-				for(i = dmembers; *i; i++)
-					dynarray_add(&members,
-							sue_member_from_decl(*i));
-
-				dynarray_free(decl **, dmembers, NULL);
-			}
-		}
 		EAT(token_close_block);
 
-		is_complete = 1;
+	}else{
+		int descended;
 
-	}else if(!spel){
-		die_at(NULL, "expected: %s definition or name", sue_str_type(prim));
+		if(!spel){
+			fold_had_error = 1;
+
+			warn_at_print_error(
+					NULL,
+					"expected: %s definition or name",
+					sue_str_type(prim));
+
+			RELEASE(this_sue_attr);
+			free(spel);
+			return type_nav_btype(cc1_type_nav, type_int);
+
+		}
+
+		predecl_sue = sue_find_descend(scope, spel, &descended);
+
+		if(predecl_sue){
+			/* if we have found a s/u/e BUT we descended in scope,
+			 * then we're actually declaring a new one, if we're at
+			 * a semi-colon.
+			 * i.e.
+			 * struct A { ... };
+			 * void f()
+			 * {
+			 *     struct A; // a new type
+			 * }
+			 *
+			 * provided we're in a newdecl context. i.e. the following
+			 * is not a new type declaration
+			 *
+			 * struct A { ... };
+			 * void f()
+			 * {
+			 *     struct irrelevant_name
+			 *     {
+			 *         struct A; // a reference to the outside type
+			 *     };
+			 * }
+			 */
+			int redecl_error = 0;
+			const int prim_mismatch = (predecl_sue->primitive != prim);
+
+			if(!descended && prim_mismatch)
+				redecl_error = 1;
+			else if(prim_mismatch && !parse_token_creates_sue(curtok))
+					redecl_error = 1;
+
+			if(redecl_error){
+				emit_redef_sue_error(
+						&sue_loc,
+						predecl_sue,
+						prim,
+						/*isdef:*/is_definition);
+			}
+
+			if(descended && newdecl_context && parse_token_creates_sue(curtok))
+				predecl_sue = NULL;
+		}
+
+		if(!predecl_sue){
+			/* forward definition */
+			predecl_sue = sue_predeclare(
+					scope, spel, prim,
+					&sue_loc);
+
+			if(prim == type_enum){
+				cc1_warn_at(&predecl_sue->where, predecl_enum,
+						"forward-declaration of enum %s", predecl_sue->spel);
+			}
+		}
 	}
 
 	/* struct A { ... } __attr__
@@ -153,31 +376,12 @@ static type *parse_type_sue(
 	 */
 	parse_add_attr(&this_sue_attr, scope);
 
-	{
-		/* struct [tag] <name | '{' | ';'>
-		 *
-		 * it's a straight declaration if we have a ';'
-		 */
-		const int isdef = (newdecl_context && curtok == token_semicolon) || is_complete;
-		struct_union_enum_st *sue = sue_decl(
-				scope, spel,
-				members, prim, is_complete,
-				isdef, /*pre_parse:*/0,
-				&sue_loc);
-
-		UCC_ASSERT(isdef || !predecl_sue || predecl_sue == sue,
-				"predecl_sue(%s) != sue(%s) (isdef=%d)",
-				predecl_sue->spel, sue->spel, isdef);
-
-		/* sue may already exist */
-		attribute_append(&sue->attr, this_sue_attr);
-
-		RELEASE(this_sue_attr);
-
-		fold_sue(sue, scope);
-
-		return type_nav_suetype(cc1_type_nav, sue);
-	}
+	return parse_sue_finish(
+			predecl_sue, members, is_definition,
+			spel, prim,
+			this_sue_attr,
+			already_exists,
+			scope, &sue_loc);
 }
 
 static void parse_add_attr_out(
@@ -209,12 +413,16 @@ void parse_add_attr(attribute **append, symtable *scope)
 
 static decl *parse_at_tdef(symtable *scope)
 {
-	if(curtok == token_identifier){
-		decl *d = symtab_search_d(scope, token_current_spel_peek(), NULL);
+	struct symtab_entry ent;
 
-		if(d && STORE_IS_TYPEDEF(d->store))
-			return d;
+	if(curtok == token_identifier
+	&& symtab_search(scope, token_current_spel_peek(), NULL, &ent)
+	&& ent.type == SYMTAB_ENT_DECL
+	&& STORE_IS_TYPEDEF(ent.bits.decl->store))
+	{
+		return ent.bits.decl;
 	}
+
 	return NULL;
 }
 
@@ -453,11 +661,10 @@ static type *parse_btype(
 			EAT(curtok);
 
 			switch(tok){
-#define CASE(a)                              \
-				case token_ ## a:                    \
-					tref = parse_type_sue(type_ ## a,  \
-							newdecl_context, scope);       \
-					str = #a;                          \
+#define CASE(a)            \
+				case token_ ## a:  \
+					tref = parse_type_sue(type_ ## a, scope, newdecl_context); \
+					str = #a;        \
 					break
 
 				CASE(enum);
@@ -1966,14 +2173,15 @@ static void link_to_previous_decl(
 	 * This also means any use of d will have the most up to date
 	 * attribute information about it
 	 */
-	symtable *prev_in = NULL;
-	decl *d_prev = symtab_search_d_exclude(in_scope, d->spel, &prev_in, d);
+	struct symtab_entry ent;
 
-	if(d_prev){
+	if(symtab_search(in_scope, d->spel, d, &ent) && ent.type == SYMTAB_ENT_DECL){
 		/* link the proto chain for __attribute__ checking,
 		 * nested function prototype checking and
 		 * '.extern fn' code gen easing
 		 */
+		symtable *const prev_in = ent.owning_symtab;
+		decl *const d_prev = ent.bits.decl;
 		const int are_functions =
 			(!!type_is(d->ref, type_func) +
 			 !!type_is(d_prev->ref, type_func));
@@ -2052,6 +2260,32 @@ static int parse_decl_attr(decl *d, symtable *scope)
 		return 1;
 	}
 	return 0;
+}
+
+static void parse_decl_check_complete(
+		decl *d,
+		symtable *scope,
+		const int is_member)
+{
+	/* Ensure locally declared types are complete.
+	 * Must be done here (instead of stmt_code)
+	 * as by the time we reach stmt_code's fold function,
+	 * we may have parsed a later-defined struct type,
+	 * completing the definition.
+	 *
+	 * Only check for local variables - i.e. not args, members and globals
+	 */
+
+	if(is_member)
+		return;
+
+	if(!scope->parent)
+		return; /* global */
+
+	if(scope->are_params)
+		return; /* arg */
+
+	fold_check_decl_complete(d);
 }
 
 int parse_decl_group(
@@ -2163,6 +2397,8 @@ int parse_decl_group(
 
 		/* must fold _after_ we get the bitfield, etc */
 		fold_decl_maybe_member(d, in_scope, mode & DECL_MULTI_IS_STRUCT_UN_MEMB);
+
+		parse_decl_check_complete(d, in_scope, mode & DECL_MULTI_IS_STRUCT_UN_MEMB);
 
 		last = d;
 		if(done)

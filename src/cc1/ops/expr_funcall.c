@@ -137,22 +137,29 @@ static void static_array_check(
 	/* else it's a random pointer, just be quiet */
 }
 
-static void check_implicit_funcall(expr *e, symtable *stab, char **psp)
+static void check_implicit_funcall(expr *e, symtable *stab, char **const psp)
 {
+	struct symtab_entry ent;
 	funcargs *args;
 	decl *df;
 	type *func_ty;
 
 	if(e->expr->in_parens
 	|| !expr_kind(e->expr, identifier)
+	/* not folded yet, hence no 'e->expr->bits.ident.type != IDENT_NORM' */
+	/* get the spel that parse stashes in the identifier expr: */
 	|| !((*psp) = e->expr->bits.ident.bits.ident.spel))
 	{
 		return;
 	}
 
 	/* check for implicit function */
-	if((e->expr->bits.ident.bits.ident.sym = symtab_search(stab, *psp)))
+	if(symtab_search(stab, *psp, NULL, &ent)
+	&& ent.type == SYMTAB_ENT_DECL)
+	{
+		e->expr->bits.ident.bits.ident.sym = ent.bits.decl->sym;
 		return;
+	}
 
 	args = funcargs_new();
 

@@ -199,9 +199,12 @@ void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w)
 sym *fold_inc_writes_if_sym(expr *e, symtable *stab)
 {
 	if(expr_kind(e, identifier)){
-		sym *sym = symtab_search(stab, e->bits.ident.bits.ident.spel);
-
-		if(sym){
+		struct symtab_entry ent;
+		if(symtab_search(stab, e->bits.ident.bits.ident.spel, NULL, &ent)
+		&& ent.type == SYMTAB_ENT_DECL
+		&& ent.bits.decl->sym)
+		{
+			sym *sym = ent.bits.decl->sym;
 			sym->nwrites++;
 			return sym;
 		}
@@ -449,7 +452,8 @@ static void fold_type_w_attr(
 					struct_union_enum_st *above = sue_find_descend(
 							stab->parent, sue->spel, NULL);
 
-					if(!above){
+					/* 'above' may be null */
+					if(above != sue){
 						cc1_warn_at(&sue->where,
 								private_struct,
 								"declaration of '%s %s' only visible inside function",
@@ -700,18 +704,9 @@ static void fold_decl_func(decl *d, symtable *stab)
 	fold_func_attr(d);
 }
 
-static void fold_decl_var(decl *d, symtable *stab)
+static void fold_decl_var_align(decl *d, symtable *stab)
 {
 	attribute *attrib = NULL;
-	int vla;
-	int is_static_duration = !stab->parent
-		|| (d->store & STORE_MASK_STORE) == store_static;
-
-	if((d->store & STORE_MASK_EXTRA) == store_inline){
-		warn_at_print_error(&d->where, "inline on non-function");
-		fold_had_error = 1;
-	}
-
 	if(d->bits.var.align || (attrib = attribute_present(d, attr_aligned))){
 		const int tal = type_align(d->ref, &d->where);
 
@@ -778,7 +773,11 @@ static void fold_decl_var(decl *d, symtable *stab)
 
 		d->bits.var.align->resolved = max_al;
 	}
+}
 
+static void fold_decl_var_vm(decl *d, symtable *stab, int const is_static_duration)
+{
+	int vla;
 	if((is_static_duration || (d->store & STORE_MASK_STORE) == store_extern)
 	&& type_is_variably_modified_vla(d->ref, &vla))
 	{
@@ -796,7 +795,11 @@ static void fold_decl_var(decl *d, symtable *stab)
 			return;
 		}
 	}
+}
 
+static void fold_decl_var_dinit(
+		decl *d, symtable *stab, int const is_static_duration)
+{
 	if(d->bits.var.init.dinit){
 		switch(d->store & STORE_MASK_STORE){
 			case store_typedef:
@@ -838,6 +841,21 @@ static void fold_decl_var(decl *d, symtable *stab)
 			}
 		}
 	}
+}
+
+static void fold_decl_var(decl *d, symtable *stab)
+{
+	int is_static_duration = !stab->parent
+		|| (d->store & STORE_MASK_STORE) == store_static;
+
+	if((d->store & STORE_MASK_EXTRA) == store_inline){
+		warn_at_print_error(&d->where, "inline on non-function");
+		fold_had_error = 1;
+	}
+
+	fold_decl_var_align(d, stab);
+	fold_decl_var_vm(d, stab, is_static_duration);
+	fold_decl_var_dinit(d, stab, is_static_duration);
 }
 
 static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
@@ -900,7 +918,8 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 	 * an argument list/type::func: f(struct A { int i, j; } *p, ...)
 	 */
 	int just_init = 0;
-#define first_fold (!just_init)
+	int first_fold;
+
 	switch(d->fold_state){
 		case DECL_FOLD_EXCEPT_INIT:
 			just_init = 1;
@@ -910,6 +929,8 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 			return;
 	}
 	d->fold_state = DECL_FOLD_EXCEPT_INIT;
+
+	first_fold = !just_init;
 
 	if(first_fold){
 		attribute *attr;
@@ -965,7 +986,6 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 			fold_decl_var(d, stab);
 		}
 	}
-#undef first_fold
 }
 
 void fold_decl(decl *d, symtable *stab)
@@ -993,20 +1013,13 @@ void fold_check_decl_complete(decl *d)
 
 	if(!type_is_complete(d->ref)){
 		struct_union_enum_st *sue = type_is_s_or_u_or_e(d->ref);
-		char *extra = "";
 
-		if(sue){
-			extra = ustrprintf(
-					"\n%s: note: forward declared here",
-					where_str(&sue->where));
-		}
-
-		warn_at_print_error(&d->where, "\"%s\" has incomplete type '%s'%s",
-				d->spel, type_to_str(d->ref), extra);
+		warn_at_print_error(&d->where, "\"%s\" has incomplete type '%s'",
+				d->spel, type_to_str(d->ref));
 		fold_had_error = 1;
 
-		if(*extra)
-			free(extra);
+		if(sue)
+			note_at(&sue->where, "forward declared here");
 	}
 }
 
@@ -1225,10 +1238,13 @@ void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 		if(e && expr_kind(e, struct)){
 			decl *d = e->bits.struct_mem.d;
 
-			assert(!type_is(d->ref, type_func));
+			/* may be null from a bad struct access */
+			if(d){
+				assert(!type_is(d->ref, type_func));
 
-			if(d->bits.var.field_width)
-				die_at(&e->where, "bitfield in %s", desc);
+				if(d->bits.var.field_width)
+					die_at(&e->where, "bitfield in %s", desc);
+			}
 		}
 	}
 

@@ -57,104 +57,139 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 	}
 }
 
+static int attempt_func_keyword(expr *expr_ident, symtable *stab)
+{
+	const char *sp = expr_ident->bits.ident.bits.ident.spel;
+	int std = 1;
+
+	if(!strcmp(sp, "__func__") || (std = 0, !strcmp(sp, "__FUNCTION__"))){
+		char *fnsp;
+		decl *in_fn = symtab_func(stab);
+
+		if(!std){
+			cc1_warn_at(
+					&expr_ident->where, gnu__function,
+					"use of GNU __FUNCTION__");
+		}
+
+		if(!in_fn){
+			cc1_warn_at(&expr_ident->where,
+					x__func__outsidefn,
+					"%s is not defined outside of functions",
+					sp);
+
+			fnsp = "";
+		}else{
+			fnsp = in_fn->spel;
+		}
+
+		expr_mutate_str(
+				expr_ident,
+				fnsp,
+				strlen(fnsp) + 1,
+				/*wide:*/0,
+				&expr_ident->where,
+				stab);
+
+		/* +1 - take the null byte */
+		expr_ident->bits.strlit.is_func = 2 - std;
+
+		FOLD_EXPR(expr_ident, stab);
+		return 1;
+	}
+
+	return 0;
+}
+
+static int find_identifier(expr *expr_ident, symtable *stab)
+{
+	char *sp = expr_ident->bits.ident.bits.ident.spel;
+	int found = 0;
+	struct symtab_entry ent;
+
+	found = symtab_search(stab, sp, NULL, &ent);
+
+	if(!found)
+		return attempt_func_keyword(expr_ident, stab);
+
+	switch(ent.type){
+		case SYMTAB_ENT_ENUM:
+		{
+			expr_ident->bits.ident.type = IDENT_ENUM;
+			expr_ident->bits.ident.bits.enum_mem = ent.bits.enum_member.memb;
+
+			expr_ident->tree_type = type_nav_int_enum(
+					cc1_type_nav, ent.bits.enum_member.sue);
+
+			expr_ident->f_islval = NULL;
+			break;
+		}
+
+		case SYMTAB_ENT_DECL:
+		{
+			sym *const sym = ent.bits.decl->sym;
+
+			if(!sym)
+				return 0; /* not found, e.g. __auto_type x = x; */
+
+			expr_ident->bits.ident.bits.ident.sym = sym;
+
+			/* prevent typedef */
+			if(sym && STORE_IS_TYPEDEF(sym->decl->store)){
+				warn_at_print_error(&expr_ident->where,
+						"use of typedef-name '%s' as expression",
+						sp);
+				fold_had_error = 1;
+
+				/* prevent warnings lower down */
+				sym->nwrites++;
+			}
+
+			expr_ident->bits.ident.type = IDENT_NORM;
+			expr_ident->tree_type = sym->decl->ref;
+
+			decl_use(sym->decl);
+
+			/* set if lvalue */
+			if(type_is(expr_ident->tree_type, type_func))
+				expr_ident->f_islval = NULL;
+
+			if(sym->type == sym_local
+			&& !decl_store_duration_is_static(sym->decl)
+			&& !type_is(sym->decl->ref, type_array)
+			&& !type_is(sym->decl->ref, type_func)
+			&& !type_is_s_or_u(sym->decl->ref)
+			&& sym->nwrites == 0
+			&& !sym->decl->bits.var.init.dinit)
+			{
+				cc1_warn_at(&expr_ident->where, uninitialised,
+						"\"%s\" uninitialised on read", sp);
+				sym->nwrites = 1; /* silence future warnings */
+			}
+
+			/* this is cancelled by expr_assign in the case we fold for an assignment to us */
+			sym->nreads++;
+			break;
+		}
+	}
+
+	return 1;
+}
+
 void fold_expr_identifier(expr *e, symtable *stab)
 {
-	char *sp = e->bits.ident.bits.ident.spel;
-	sym *sym = e->bits.ident.bits.ident.sym;
-	decl *in_fn = symtab_func(stab);
-
-	if(sp && !sym){
-		e->bits.ident.bits.ident.sym = sym = symtab_search(stab, sp);
-
-		/* prevent typedef */
-		if(sym && STORE_IS_TYPEDEF(sym->decl->store)){
-			warn_at_print_error(&e->where,
-					"use of typedef-name '%s' as expression",
-					sp);
-			fold_had_error = 1;
-
-			/* prevent warnings lower down */
-			sym->nwrites++;
-		}
+	if(!find_identifier(e, stab)){
+		char *sp = e->bits.ident.bits.ident.spel;
+		warn_at_print_error(&e->where, "undeclared identifier \"%s\"", sp);
+		fold_had_error = 1;
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
 	}
-
-	/* special cases */
-	if(!sym){
-		int std = 1;
-		if(!strcmp(sp, "__func__") || (std = 0, !strcmp(sp, "__FUNCTION__"))){
-			char *fnsp;
-
-			if(!std)
-				cc1_warn_at(&e->where, gnu__function, "use of GNU __FUNCTION__");
-
-			if(!in_fn){
-				cc1_warn_at(&e->where,
-						x__func__outsidefn,
-						"%s is not defined outside of functions",
-						sp);
-
-				fnsp = "";
-			}else{
-				fnsp = in_fn->spel;
-			}
-
-			expr_mutate_str(e, fnsp, strlen(fnsp) + 1, /*wide:*/0, &e->where, stab);
-			/* +1 - take the null byte */
-			e->bits.strlit.is_func = 2 - std;
-
-			FOLD_EXPR(e, stab);
-		}else{
-			/* check for an enum */
-			struct_union_enum_st *sue;
-			enum_member *m;
-
-			enum_member_search(&m, &sue, stab, sp);
-
-			if(!m){
-				warn_at_print_error(&e->where, "undeclared identifier \"%s\"", sp);
-				fold_had_error = 1;
-				e->tree_type = type_nav_btype(cc1_type_nav, type_int);
-				return;
-			}
-
-			e->bits.ident.type = IDENT_ENUM;
-			e->bits.ident.bits.enum_mem = m;
-
-			e->tree_type = type_nav_int_enum(cc1_type_nav, sue);
-			e->f_islval = NULL;
-		}
-		return;
-	}
-
-	e->bits.ident.type = IDENT_NORM;
-	e->tree_type = sym->decl->ref;
-
-	decl_use(sym->decl);
-
-	/* set if lvalue */
-	if(type_is(e->tree_type, type_func))
-		e->f_islval = NULL;
-
-	if(sym->type == sym_local
-	&& !decl_store_duration_is_static(sym->decl)
-	&& !type_is(sym->decl->ref, type_array)
-	&& !type_is(sym->decl->ref, type_func)
-	&& !type_is_s_or_u(sym->decl->ref)
-	&& sym->nwrites == 0
-	&& !sym->decl->bits.var.init.dinit)
-	{
-		cc1_warn_at(&e->where, uninitialised,
-				"\"%s\" uninitialised on read", sp);
-		sym->nwrites = 1; /* silence future warnings */
-	}
-
-	/* this is cancelled by expr_assign in the case we fold for an assignment to us */
-	sym->nreads++;
 }
 
 void dump_expr_identifier(const expr *e, dump *ctx)
 {
 	const char *desc = NULL;
+	const char *namespace = "";
 
 	switch(e->bits.ident.type){
 		case IDENT_NORM:
@@ -162,12 +197,22 @@ void dump_expr_identifier(const expr *e, dump *ctx)
 			break;
 
 		case IDENT_ENUM:
+		{
+			struct_union_enum_st *sue = type_is_enum(e->tree_type);
+			if(!sue->anon){
+				namespace = sue->spel;
+				assert(namespace);
+			}
 			desc = "enum constant";
 			break;
+		}
 	}
 
 	dump_desc_expr_newline(ctx, desc, e, 0);
-	dump_printf_indent(ctx, 0, " %s\n", e->bits.ident.bits.ident.spel);
+	dump_printf_indent(ctx, 0, " %s%s%s\n",
+			namespace,
+			*namespace ? "::" : "",
+			e->bits.ident.bits.ident.spel);
 }
 
 const out_val *gen_expr_identifier(const expr *e, out_ctx *octx)

@@ -52,31 +52,28 @@ struct struct_union_enum_st
 
 #define sue_nmembers(x) dynarray_count((x)->members)
 
-#define sue_complete(sue) (\
+#define sue_is_complete(sue) (\
 		(sue)->got_membs && (sue)->foldprog == SUE_FOLDED_FULLY)
 
 sue_member *sue_member_from_decl(struct decl *);
 
 struct_union_enum_st *sue_find_descend(
-		struct symtable *stab, const char *spel, int *descended);
+		struct symtable *stab, const char *spel, int *const descended);
 
 struct_union_enum_st *sue_find_this_scope(
-		struct symtable *, const char *spel);
+		struct symtable *stab, const char *spel);
 
-/* we need to know if the struct is a definition at this point,
- * e.g.
- * struct A { int i; };
- * f()
- * {
- *   struct A a; // old type
- *   struct A;   // new type
- * }
- */
-struct_union_enum_st *sue_decl(
-		struct symtable *stab, char *spel,
-		sue_member **members, enum type_primitive prim,
-		int got_membs, int is_declaration, int pre_parse,
-		where *);
+struct_union_enum_st *sue_predeclare(
+		struct symtable *stab,
+		/*consumed*/char *spel,
+		enum type_primitive prim /* S, U or E */,
+		const where *)
+	ucc_nonnull((1, 4));
+
+void sue_define(struct_union_enum_st *sue, sue_member **members)
+	ucc_nonnull();
+
+void sue_member_init_dup_check(sue_member **members);
 
 sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 
@@ -84,9 +81,10 @@ sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 void enum_vals_add(sue_member ***, where *, char *,
 		struct expr *, struct attribute *);
 
-int  enum_nentries(struct_union_enum_st *);
+int enum_nentries(struct_union_enum_st *);
 
-void enum_member_search(enum_member **, struct_union_enum_st **,
+void enum_member_search_nodescend(
+		enum_member **, struct_union_enum_st **,
 		struct symtable *, const char *spel);
 
 #ifdef NUM_H
@@ -105,7 +103,8 @@ enum sue_szkind
 };
 enum sue_szkind sue_sizekind(struct_union_enum_st *);
 
-void sue_incomplete_chk(struct_union_enum_st *st, const where *w);
+ucc_wur
+int sue_incomplete_chk(struct_union_enum_st *st, const where *w);
 
 struct decl *struct_union_member_find(struct_union_enum_st *,
 		const char *spel, unsigned *extra_off,

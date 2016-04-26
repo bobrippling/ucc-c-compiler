@@ -806,7 +806,7 @@ static struct DIE *dwarf_sue_header(
 	if(!sue->anon)
 		dwarf_attr(suedie, DW_AT_name, DW_FORM_string, sue->spel);
 
-	if(sue_complete(sue)){
+	if(sue_is_complete(sue)){
 		form_data_t sz = sue_size(sue, NULL);
 
 		dwarf_attr(suedie, DW_AT_byte_size,

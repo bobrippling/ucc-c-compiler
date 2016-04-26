@@ -1,11 +1,11 @@
-// RUN: %ucc -fsyntax-only %s 2>&1 | grep -F ':3:6: note: from here'
+// RUN: %check -e %s
 
-enum an_enum
+enum an_enum // CHECK: note: previous definition here
 {
 	X
 };
 
-enum an_enum
+enum an_enum // CHECK: error: redefinition of enum in scope
 {
 	REDEFINED
 };
