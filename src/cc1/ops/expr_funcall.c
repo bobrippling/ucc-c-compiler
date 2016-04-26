@@ -278,6 +278,7 @@ static void check_arg_types(
 	if(exprargs && args_from_decl->arglist){
 		int i;
 		char buf[64];
+		int finished_expr_args = 0;
 
 		for(i = 0; ; i++){
 			decl *decl_arg = args_from_decl->arglist[i];
@@ -296,8 +297,10 @@ static void check_arg_types(
 			}
 
 			/* exprargs[i] may be NULL - old style function */
-			if(!exprargs[i])
+			if(finished_expr_args || !exprargs[i]){
+				finished_expr_args = 1;
 				continue;
+			}
 
 			ARG_BUF(buf, i, sp);
 
