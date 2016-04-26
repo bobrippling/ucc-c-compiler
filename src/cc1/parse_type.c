@@ -1808,7 +1808,10 @@ static void check_and_replace_old_func(decl *d, decl **old_args, symtable *scope
 				 */
 				decl_replace_with(dfuncargs->arglist[j], old_args[i]);
 
-				decl_free(old_args[i]);
+				/* TODO: remove old_args[i] from scope
+				 * (needs refactor to remove symtable from types) */
+				/*decl_free(old_args[i]);*/
+				/*old_args[i] = NULL;*/
 
 				found = 1;
 				break;
