@@ -229,7 +229,7 @@ void out_func_prologue(
 		const out_val *argvals[])
 {
 	funcargs *fargs = type_funcargs(fnty);
-	const int oldfunc = fargs->args_old_proto;
+	const int oldfunc = fargs->args_old_proto && fargs->arglist;
 	const int variadic = fargs->variadic;
 
 	octx->current_fnty = fnty;
