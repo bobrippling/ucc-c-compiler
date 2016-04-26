@@ -488,11 +488,17 @@ static int parse_at_decl_spec(void)
 static void btype_set_store(
 		enum decl_storage *store, int *pstore_set, enum decl_storage st)
 {
-	if(!store)
-		die_at(NULL, "storage unwanted (%s)", decl_store_to_str(st));
+	if(!store){
+		warn_at_print_error(NULL, "storage unwanted (%s)", decl_store_to_str(st));
+		fold_had_error = 1;
+		return;
+	}
 
-	if(*pstore_set)
-		die_at(NULL, "second store %s", decl_store_to_str(st));
+	if(*pstore_set){
+		warn_at_print_error(NULL, "second store %s", decl_store_to_str(st));
+		fold_had_error = 1;
+		return;
+	}
 
 	*store |= st;
 	*pstore_set = 1;
