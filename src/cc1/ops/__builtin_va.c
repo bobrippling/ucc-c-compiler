@@ -56,12 +56,24 @@ static void va_type_check(
 	}
 }
 
-static void va_ensure_variadic(expr *e, symtable *stab)
+static ucc_wur int va_ensure_variadic(expr *e, symtable *stab)
 {
 	funcargs *args = type_funcargs(symtab_func(stab)->ref);
 
-	if(!args->variadic)
-		die_at(&e->where, "%s in non-variadic function", BUILTIN_SPEL(e->expr));
+	if(args->args_old_proto)
+		return 1;
+
+	if(!args->variadic){
+		warn_at_print_error(
+				&e->where,
+				"%s in non-variadic function",
+				BUILTIN_SPEL(e->expr));
+
+		fold_had_error = 1;
+		return 0;
+	}
+
+	return 1;
 }
 
 static void fold_va_start(expr *e, symtable *stab)
@@ -80,23 +92,35 @@ static void fold_va_start(expr *e, symtable *stab)
 	va_l = e->funcargs[0];
 	va_type_check(va_l, e->expr, stab, 0);
 
-	va_ensure_variadic(e, stab);
+	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
+
+	if(!va_ensure_variadic(e, stab))
+		return;
 
 	/* second arg check */
 	{
-		sym *second = NULL;
+		int warn = 0;
 		decl **args = symtab_decls(symtab_func_root(stab));
-		sym *arg = args[dynarray_count(args) - 1]->sym;
 		expr *last_exp = expr_skip_lval2rval(e->funcargs[1]);
 
-		if(expr_kind(last_exp, identifier))
-			second = last_exp->bits.ident.bits.ident.sym;
+		if(args){
+			sym *second = NULL;
+			sym *arg = args[dynarray_count(args) - 1]->sym;
 
-		if(second != arg)
+			if(expr_kind(last_exp, identifier))
+				second = last_exp->bits.ident.bits.ident.sym;
+
+			warn = (second != arg);
+		}else{
+			warn = 1;
+		}
+
+		if(warn){
 			cc1_warn_at(&last_exp->where,
 					builtin_va_start,
 					"second parameter to va_start "
 					"isn't last named argument");
+		}
 	}
 
 #ifndef UCC_VA_ABI
@@ -155,8 +179,6 @@ static void fold_va_start(expr *e, symtable *stab)
 #undef ADD_ASSIGN_VAL
 #undef W
 #endif
-
-	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
 static const out_val *builtin_gen_va_start(const expr *e, out_ctx *octx)

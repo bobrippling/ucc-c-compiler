@@ -179,7 +179,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 	/* order of the if matters */
 	if(type_is(d->ref, type_func)){
-		int nargs = 0, is_vari;
+		int nargs = 0;
 		decl **aiter;
 		const char *sp;
 		const out_val **argvals;
@@ -202,10 +202,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		sp = decl_asm_spel(d);
 
-		out_func_prologue(octx, sp, d->ref,
-				nargs,
-				is_vari = type_is_variadic_func(d->ref),
-				argvals);
+		out_func_prologue(octx, sp, d->ref, nargs, argvals);
 
 		assign_arg_vals(symtab_decls(arg_symtab), argvals, octx);
 

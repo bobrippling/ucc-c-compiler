@@ -7,6 +7,7 @@
 #include "../type_nav.h"
 #include "../type_is.h"
 #include "../pack.h"
+#include "../funcargs.h"
 
 #include "val.h"
 #include "out.h" /* this file defs */
@@ -221,11 +222,16 @@ static void stack_realign(out_ctx *octx, unsigned align)
 }
 
 void out_func_prologue(
-		out_ctx *octx, const char *sp,
+		out_ctx *octx,
+		const char *sp,
 		type *fnty,
-		int nargs, int variadic,
+		int nargs,
 		const out_val *argvals[])
 {
+	funcargs *fargs = type_funcargs(fnty);
+	const int oldfunc = fargs->args_old_proto;
+	const int variadic = fargs->variadic;
+
 	octx->current_fnty = fnty;
 
 	assert(octx->cur_stack_sz == 0 && "non-empty stack for new func");
@@ -248,7 +254,7 @@ void out_func_prologue(
 
 		impl_func_prologue_save_call_regs(octx, fnty, nargs, argvals);
 
-		if(variadic) /* save variadic call registers */
+		if(variadic || oldfunc) /* save variadic call registers */
 			impl_func_prologue_save_variadic(octx, fnty);
 
 		/* need to definitely be on a BLK_UNINIT block after
