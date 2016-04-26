@@ -127,6 +127,7 @@ static int find_identifier(expr *expr_ident, symtable *stab)
 
 		case SYMTAB_ENT_DECL:
 		{
+			type *func_ty;
 			sym *const sym = ent.bits.decl->sym;
 
 			if(!sym)
@@ -147,6 +148,22 @@ static int find_identifier(expr *expr_ident, symtable *stab)
 
 			expr_ident->bits.ident.type = IDENT_NORM;
 			expr_ident->tree_type = sym->decl->ref;
+
+			/* if we're a k&r function, become it without the args */
+			if(0 && (func_ty = type_is(expr_ident->tree_type, type_func))){
+				funcargs *args = type_funcargs(func_ty);
+
+				if(args->args_old_proto){
+					funcargs *empty_args = funcargs_new();
+
+					empty_args->args_old_proto = 1;
+
+					expr_ident->tree_type = type_func_of(
+							func_ty->ref,
+							empty_args,
+							func_ty->bits.func.arg_scope);
+				}
+			}
 
 			decl_use(sym->decl);
 
