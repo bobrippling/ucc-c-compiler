@@ -52,6 +52,7 @@ void decl_replace_with(decl *to, decl *from)
 	to->ref      = from->ref;
 	to->attr = RETAIN(from->attr);
 	to->spel_asm = from->spel_asm, from->spel_asm = NULL;
+	to->store = from->store;
 	/* no point copying bitfield stuff */
 	memcpy_safe(&to->bits, &from->bits);
 }

@@ -2092,7 +2092,7 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 		decl **old_args = NULL;
 		/* NULL - we don't want these in a scope */
 		while(parse_decl_group(
-				0, /*newdecl_context:*/0,
+				DECL_MULTI_ALLOW_STORE, /*newdecl_context:*/0,
 				in_scope,
 				NULL, &old_args))
 		{
