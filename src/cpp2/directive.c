@@ -291,6 +291,14 @@ static void handle_include(char *include_arg)
 	/* successfully opened */
 	canonicalise_path(final_path);
 
+	if(option_show_include_nesting){
+		int i;
+		for(i = file_stack_idx + 1; i > 0; i--)
+			fputc('.', stderr);
+
+		fprintf(stderr, " %s\n", final_path);
+	}
+
 	if(!is_angle)
 		deps_add(final_path);
 

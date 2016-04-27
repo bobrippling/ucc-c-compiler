@@ -117,6 +117,7 @@ enum wmode wmode =
 	| WBACKSLASH_SPACE_NEWLINE;
 
 enum comment_strip strip_comments = STRIP_ALL;
+int option_show_include_nesting;
 
 static const struct
 {
@@ -393,6 +394,10 @@ int main(int argc, char **argv)
 
 			case 'P':
 				option_line_info = 0;
+				break;
+
+			case 'H':
+				option_show_include_nesting = 1;
 				break;
 
 			case 'C':
@@ -691,6 +696,7 @@ usage:
 				"  -dS: output stats debugging information\n"
 				"  -dW: output macro location debugging information\n"
 				"  -d: output trace debugging information\n"
+				"  -H: show header includes and nesting depth\n"
 				"\n"
 				, stderr);
 
