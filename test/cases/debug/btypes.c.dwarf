@@ -406,7 +406,7 @@
 	.byte 3  # Abbrev. Code 3 DW_TAG_variable
 	.ascii "uc"
 	.byte 0 # DW_AT_name
-	.long 384 # DW_AT_type
+	.long 415 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 4 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -418,7 +418,7 @@
 	.byte 4  # Abbrev. Code 4 DW_TAG_variable
 	.ascii "ss"
 	.byte 0 # DW_AT_name
-	.long 423 # DW_AT_type
+	.long 403 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 6 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -430,7 +430,7 @@
 	.byte 5  # Abbrev. Code 5 DW_TAG_variable
 	.ascii "us"
 	.byte 0 # DW_AT_name
-	.long 445 # DW_AT_type
+	.long 481 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 7 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -454,7 +454,7 @@
 	.byte 7  # Abbrev. Code 7 DW_TAG_variable
 	.ascii "ui"
 	.byte 0 # DW_AT_name
-	.long 404 # DW_AT_type
+	.long 384 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 10 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -466,7 +466,7 @@
 	.byte 8  # Abbrev. Code 8 DW_TAG_variable
 	.ascii "sl"
 	.byte 0 # DW_AT_name
-	.long 486 # DW_AT_type
+	.long 502 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 12 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -478,7 +478,7 @@
 	.byte 9  # Abbrev. Code 9 DW_TAG_variable
 	.ascii "ul"
 	.byte 0 # DW_AT_name
-	.long 466 # DW_AT_type
+	.long 445 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 13 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -490,7 +490,7 @@
 	.byte 10  # Abbrev. Code 10 DW_TAG_variable
 	.ascii "sll"
 	.byte 0 # DW_AT_name
-	.long 497 # DW_AT_type
+	.long 465 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 15 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -502,7 +502,7 @@
 	.byte 11  # Abbrev. Code 11 DW_TAG_variable
 	.ascii "ull"
 	.byte 0 # DW_AT_name
-	.long 513 # DW_AT_type
+	.long 526 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 16 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -526,7 +526,7 @@
 	.byte 13  # Abbrev. Code 13 DW_TAG_variable
 	.ascii "d"
 	.byte 0 # DW_AT_name
-	.long 538 # DW_AT_type
+	.long 513 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 19 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -552,22 +552,22 @@
 	.long 1 # DW_AT_byte_size
 
 	.byte 16  # Abbrev. Code 16 DW_TAG_base_type
-	.ascii "unsigned char"
-	.byte 0 # DW_AT_name
-	.byte 8 # DW_AT_encoding
-	.long 1 # DW_AT_byte_size
-
-	.byte 17  # Abbrev. Code 17 DW_TAG_base_type
 	.ascii "unsigned int"
 	.byte 0 # DW_AT_name
 	.byte 7 # DW_AT_encoding
 	.long 4 # DW_AT_byte_size
 
-	.byte 18  # Abbrev. Code 18 DW_TAG_base_type
+	.byte 17  # Abbrev. Code 17 DW_TAG_base_type
 	.ascii "short"
 	.byte 0 # DW_AT_name
 	.byte 5 # DW_AT_encoding
 	.long 2 # DW_AT_byte_size
+
+	.byte 18  # Abbrev. Code 18 DW_TAG_base_type
+	.ascii "unsigned char"
+	.byte 0 # DW_AT_name
+	.byte 8 # DW_AT_encoding
+	.long 1 # DW_AT_byte_size
 
 	.byte 19  # Abbrev. Code 19 DW_TAG_base_type
 	.ascii "int"
@@ -576,39 +576,39 @@
 	.long 4 # DW_AT_byte_size
 
 	.byte 20  # Abbrev. Code 20 DW_TAG_base_type
-	.ascii "unsigned short"
-	.byte 0 # DW_AT_name
-	.byte 7 # DW_AT_encoding
-	.long 2 # DW_AT_byte_size
-
-	.byte 21  # Abbrev. Code 21 DW_TAG_base_type
 	.ascii "unsigned long"
 	.byte 0 # DW_AT_name
 	.byte 7 # DW_AT_encoding
 	.long 8 # DW_AT_byte_size
 
-	.byte 22  # Abbrev. Code 22 DW_TAG_base_type
-	.ascii "long"
-	.byte 0 # DW_AT_name
-	.byte 5 # DW_AT_encoding
-	.long 8 # DW_AT_byte_size
-
-	.byte 23  # Abbrev. Code 23 DW_TAG_base_type
+	.byte 21  # Abbrev. Code 21 DW_TAG_base_type
 	.ascii "long long"
 	.byte 0 # DW_AT_name
 	.byte 5 # DW_AT_encoding
 	.long 8 # DW_AT_byte_size
 
-	.byte 24  # Abbrev. Code 24 DW_TAG_base_type
-	.ascii "unsigned long long"
+	.byte 22  # Abbrev. Code 22 DW_TAG_base_type
+	.ascii "unsigned short"
 	.byte 0 # DW_AT_name
 	.byte 7 # DW_AT_encoding
+	.long 2 # DW_AT_byte_size
+
+	.byte 23  # Abbrev. Code 23 DW_TAG_base_type
+	.ascii "long"
+	.byte 0 # DW_AT_name
+	.byte 5 # DW_AT_encoding
 	.long 8 # DW_AT_byte_size
 
-	.byte 25  # Abbrev. Code 25 DW_TAG_base_type
+	.byte 24  # Abbrev. Code 24 DW_TAG_base_type
 	.ascii "double"
 	.byte 0 # DW_AT_name
 	.byte 4 # DW_AT_encoding
+	.long 8 # DW_AT_byte_size
+
+	.byte 25  # Abbrev. Code 25 DW_TAG_base_type
+	.ascii "unsigned long long"
+	.byte 0 # DW_AT_name
+	.byte 7 # DW_AT_encoding
 	.long 8 # DW_AT_byte_size
 
 	.byte 26  # Abbrev. Code 26 DW_TAG_base_type
