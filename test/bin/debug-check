@@ -21,7 +21,7 @@ if test $verbose = yes
 then set -x
 fi
 
-$UCC -g -S -o - "$1" \
+$UCC -g -fno-debug-emit-compdir -S -o - "$1" \
 	| awk '/section_begin.*dbg/,/section_end/' \
 	> "$TEST_TMP"
 
