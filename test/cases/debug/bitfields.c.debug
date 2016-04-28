@@ -8,8 +8,6 @@ Lsection_begin_dbg_abrv:
 	.byte 5  # DW_FORM_data2
 	.byte 3  # DW_AT_name
 	.byte 8  # DW_FORM_string
-	.byte 27  # DW_AT_comp_dir
-	.byte 8  # DW_FORM_string
 	.byte 16  # DW_AT_stmt_list
 	.byte 6  # DW_FORM_ADDR4
 	.byte 17  # DW_AT_low_pc
@@ -36,23 +34,27 @@ Lsection_begin_dbg_abrv:
 	.byte 0, 0 # name/val abbrev 2 end
 
 	.byte 3  # Abbrev. Code 3
-	.byte 36  # DW_TAG_base_type
-	.byte 0  # DW_CHILDREN_no
-	.byte 3  # DW_AT_name
-	.byte 8  # DW_FORM_string
-	.byte 62  # DW_AT_encoding
-	.byte 11  # DW_FORM_data1
-	.byte 11  # DW_AT_byte_size
-	.byte 6  # DW_FORM_data4
-	.byte 0, 0 # name/val abbrev 3 end
-
-	.byte 4  # Abbrev. Code 4
 	.byte 19  # DW_TAG_structure_type
 	.byte 1  # DW_CHILDREN_yes
 	.byte 3  # DW_AT_name
 	.byte 8  # DW_FORM_string
 	.byte 11  # DW_AT_byte_size
 	.byte 6  # DW_FORM_data4
+	.byte 0, 0 # name/val abbrev 3 end
+
+	.byte 4  # Abbrev. Code 4
+	.byte 13  # DW_TAG_member
+	.byte 0  # DW_CHILDREN_no
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 56  # DW_AT_data_member_location
+	.byte 10  # DW_FORM_block1
+	.byte 12  # DW_AT_bit_offset
+	.byte 11  # DW_FORM_data1
+	.byte 13  # DW_AT_bit_size
+	.byte 11  # DW_FORM_data1
 	.byte 0, 0 # name/val abbrev 4 end
 
 	.byte 5  # Abbrev. Code 5
@@ -161,18 +163,14 @@ Lsection_begin_dbg_abrv:
 	.byte 0, 0 # name/val abbrev 11 end
 
 	.byte 12  # Abbrev. Code 12
-	.byte 13  # DW_TAG_member
+	.byte 36  # DW_TAG_base_type
 	.byte 0  # DW_CHILDREN_no
 	.byte 3  # DW_AT_name
 	.byte 8  # DW_FORM_string
-	.byte 73  # DW_AT_type
-	.byte 19  # DW_FORM_ref4
-	.byte 56  # DW_AT_data_member_location
-	.byte 10  # DW_FORM_block1
-	.byte 12  # DW_AT_bit_offset
+	.byte 62  # DW_AT_encoding
 	.byte 11  # DW_FORM_data1
-	.byte 13  # DW_AT_bit_size
-	.byte 11  # DW_FORM_data1
+	.byte 11  # DW_AT_byte_size
+	.byte 6  # DW_FORM_data4
 	.byte 0, 0 # name/val abbrev 12 end
 
 	.byte 13  # Abbrev. Code 13
@@ -201,8 +199,6 @@ Labrv_off = Lsection_begin_dbg_abrv - Lsection_begin_dbg_abrv
 	.word 12 # DW_AT_language
 	.ascii "cases/debug/bitfields.c"
 	.byte 0 # DW_AT_name
-	.ascii "/usr/local/share/man/.mancache/ucc/_other/test"
-	.byte 0 # DW_AT_comp_dir
 	.long 0 # DW_AT_stmt_list
 	.quad Lsection_begin_text # DW_AT_low_pc
 	.quad Lsection_end_text # DW_AT_high_pc
