@@ -56,7 +56,7 @@ unless(-x $ARGV[0]){
 	my $ucc = $ENV{UCC};
 	die "$0: no \$UCC" unless $ucc;
 
-	my $tmp = "/tmp/$$.out";
+	my $tmp = "$ENV{UCC_TESTDIR}/$$.out";
 	push @unlinks, $tmp;
 	if(system_v($ucc, '-o', $tmp, $cmd, @args)){
 		die;
