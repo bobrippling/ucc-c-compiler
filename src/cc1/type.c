@@ -156,6 +156,8 @@ static enum type_cmp type_cmp_r(
 				case FUNCARGS_EXACT_EQUAL:
 				case FUNCARGS_IMPLICIT_CONV:
 					break;
+				case FUNCARGS_MISMATCH_OLD_FUNC:
+					return TYPE_CONVERTIBLE_IMPLICIT;
 				default:
 					/* "void (int)" and "void (int, int)" aren't equal,
 					 * but a cast can soon fix it */

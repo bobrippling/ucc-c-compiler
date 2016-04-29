@@ -54,7 +54,7 @@ enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 	}
 
 	if(args_to->args_old_proto || args_from->args_old_proto)
-		return FUNCARGS_IMPLICIT_CONV;
+		return FUNCARGS_MISMATCH_OLD_FUNC;
 
 	count_to = dynarray_count(args_to->arglist);
 	count_from = dynarray_count(args_from->arglist);
