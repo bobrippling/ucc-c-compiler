@@ -31,6 +31,19 @@ sub next_line
 	return $line;
 }
 
+sub linematch
+{
+	my($line, $text) = @_;
+
+	if($text =~ m;^/(.*)/$;){
+		my $regex = $1;
+
+		return $line =~ /$regex/;
+	}else{
+		return index($line, $text) >= 0;
+	}
+}
+
 usage()
 if @ARGV != 1;
 
@@ -60,7 +73,7 @@ for(my $annotation = 0; $annotation < @annotations; $annotation++){
 	if($tag eq 'STDOUT'){
 		while(1){
 			$line = next_line();
-			last if index($line, $text) >= 0;
+			last if linematch($line, $text);
 
 			# didn't match - record a STDOUT-NOT if needed
 			record_not($line);
@@ -74,7 +87,7 @@ for(my $annotation = 0; $annotation < @annotations; $annotation++){
 
 		$line = next_line() if($tag =~ /NEXT/);
 
-		if(index($line, $text) == -1){
+		if(!linematch($line, $text)){
 			die "$0: $tag: \"$text\" not in \"$line\"\n";
 		}
 		next;
@@ -95,7 +108,7 @@ for my $notref (@nots){
 	my @lines = @{$notref->{lines}};
 
 	for $line (@lines){
-		if(index($line, $text) >= 0){
+		if(linematch($line, $text)){
 			die "$0: STDOUT-NOT: \"$text\" found in \"$line\"\n";
 		}
 	}
