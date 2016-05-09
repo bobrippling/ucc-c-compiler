@@ -1,6 +1,6 @@
 #!/bin/sh
 
-verbose=
+verbose=$UCC_VERBOSE
 error=0
 prefix=
 only=
@@ -11,10 +11,6 @@ do
 	if test $in_ucc_args -eq 0
 	then
 		case "$arg" in
-			-v)
-				shift
-				verbose=-v
-				;;
 			-e)
 				shift
 				error=1
@@ -54,7 +50,7 @@ usage(){
 
 e="$UCC_TESTDIR"/check.$$
 
-trap "rm -f $e" EXIT
+trap "rm -f '$e'" EXIT
 
 # ensure "$f" comes after other args, to allow for things like -x ...
 f="$1"
@@ -64,9 +60,9 @@ $UCC -fno-show-line -Werror=unknown-warning-option $synonly "$@" "$f" 2>$e
 r=$?
 
 # check for abort
-if test $r -gt 5
+if test $(expr $r '&' 127) -ne 0
 then
-	echo >&2 "unexpected ucc exit code '$r'"
+	echo >&2 "$0: ucc caught signal ($r)"
 	echo >&2 "invocation flags: $@ $f"
 	cat >&2 <"$e"
 	exit 1
@@ -83,8 +79,7 @@ then
 	then s="no "
 	fi
 	echo "${s}error expected"
-	cat $e
+	cat "$e"
 	exit 1
 fi >&2
-./check.pl $only $prefix $verbose < $e "$f"
-exit $?
+exec ./check.pl $only $prefix "$f" < $e
