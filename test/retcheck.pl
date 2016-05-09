@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 use warnings;
+use strict;
+
 use Config '%Config';
 
 my $verbose = 0;
@@ -17,23 +19,8 @@ sub signame
 	return "<unknown signal>";
 }
 
-sub dirname
-{
-	my $a = shift;
-	return $1 if $a =~ m@^(.*/)[^/]+$@;
-	return './';
-}
-
-sub system_v
-{
-	print "$0: run: @_\n" if $verbose;
-	return system @_;
-}
-
-if($ARGV[0] eq '-v'){
-	$verbose = 1;
-	shift;
-}
+die "Usage: $0 exit-code program [args...]\n"
+unless @ARGV;
 
 my $expected = shift();
 my $expected_signal = 0;
@@ -48,24 +35,20 @@ if($expected =~ /^SIG[A-Z]+$/){
 	die "\"$expected\" not numeric, nor a signal";
 }
 
-unless(-x $ARGV[0]){
+if(!-x $ARGV[0]){
 	# we've been passed a source file
 	my($cmd, @args) = @ARGV;
-	@ARGV = ();
 
 	my $ucc = $ENV{UCC};
 	die "$0: no \$UCC" unless $ucc;
 
-	my $tmp = "$ENV{UCC_TESTDIR}/$$.out";
-	push @unlinks, $tmp;
-	if(system_v($ucc, '-o', $tmp, $cmd, @args)){
-		die;
-	}
+	my $tmp = "$ENV{UCC_TESTDIR}/$$.retcheck-exe";
 
-	$ARGV[0] = $tmp;
-}
+	my @cmd = ($ucc, '-o', $tmp, $cmd, @args);
+	print "$0: run: @cmd\n" if exists $ENV{UCC_VERBOSE};
+	die "$0: couldn't compile\n" if system(@cmd);
 
-my $r = system_v(@ARGV);
+my $r = system(@ARGV);
 my $got_exitcode = $r >> 8;
 my $got_signal = $r & 127;
 if($got_signal){
@@ -89,11 +72,4 @@ if($expected_signal){
 	if($expected != $got_exitcode){
 		die "$0: expected exit code $expected, got exit code $got_exitcode, from @ARGV\n";
 	}
-}
-
-END
-{
-	my $r = $?;
-	unlink @unlinks;
-	$? = $r;
 }
