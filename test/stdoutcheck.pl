@@ -1,66 +1,102 @@
 #!/usr/bin/perl
 use warnings;
+use strict;
+
+# instead, grep source file for:
+# STDOUT: ...           # occurs somewhere on or after current line
+# STDOUT-NEXT: ...      # occurs exactly on the next line
+# STDOUT-SAME-LINE: ... # occurs exactly on the same line
+# STDOUT-NOT: ...       # doesn't occur between here and the next match hitting
 
 sub usage
 {
-	die "Usage: $0 [-w] line1 line2... [< to_check]\n"
+	die "Usage: $0 file-with-annotations [< to-check]\n"
 }
 
-sub trim
+sub file_contents
 {
-	my $s = shift;
-	$s =~ s/^ +//;
-	$s =~ s/ +$//;
-	return $s;
+	my $f = shift;
+	open my $fh, '<', $f or die "$0: open $f: $!\n";
+	my @c = map { chomp; $_ } <$fh>;
+	close $fh;
+	return @c;
 }
 
-my $ign_whitespace = 0;
-if($ARGV[0] eq '-w'){
-	shift;
-	$ign_whitespace = 1;
+sub next_line
+{
+	my $line = <STDIN>;
+	die "$0: reached EOF\n" unless defined $line;
+	chomp $line;
+	$line =~ s/\bSTDOUT.*//;
+	return $line;
 }
 
-usage() unless @ARGV;
+usage()
+if @ARGV != 1;
 
-die "$0 needs STDIN from a pipe\n" if -t STDIN;
+my $f = shift;
+my @annotations;
+for(file_contents($f)){
+	next unless /\b(STDOUT(-[A-Z]+)*): *(.+)$/;
 
-my @output = map { chomp; $_ } <STDIN>;
-
-if($ign_whitespace){
-	@output = grep { !/^[ \t]*$/ } @output;
+	push @annotations, { tag => $1, text => $3 };
 }
 
-if(@output != @ARGV){
-	if(@output){
-		print "output:\n";
-		map { print "  $_\n" } @output;
+my $line = '';
+my @nots;
+my $nots_active = 0;
+
+sub record_not
+{
+	return unless $nots_active;
+	my $line = shift;
+	push @{$nots[$#nots]->{lines}}, $line;
+}
+
+for(my $annotation = 0; $annotation < @annotations; $annotation++){
+	my $tag = $annotations[$annotation]->{tag};
+	my $text = $annotations[$annotation]->{text};
+
+	if($tag eq 'STDOUT'){
+		while(1){
+			$line = next_line();
+			last if index($line, $text) >= 0;
+
+			# didn't match - record a STDOUT-NOT if needed
+			record_not($line);
+		}
+		$nots_active = 0;
+		next;
 	}
 
-	die "$0: mismatching output counts "
-	. scalar(@output)
-	. " vs "
-	. scalar(@ARGV)
-	. "\n";
+	if($tag eq 'STDOUT-NEXT' or $tag eq 'STDOUT-SAME-LINE'){
+		die "$0: STDOUT-NOT not followed by STDOUT\n" if $nots_active;
+
+		$line = next_line() if($tag =~ /NEXT/);
+
+		if(index($line, $text) == -1){
+			die "$0: $tag: \"$text\" not in \"$line\"\n";
+		}
+		next;
+	}
+
+	if($tag eq 'STDOUT-NOT'){
+		push @nots, { text => $text, lines => [] };
+		$nots_active = 1;
+		next;
+	}
+
+	die "$0: unrecognised tag '$tag'\n";
 }
 
-for(my $i = 0; $i < @output; ++$i){
-	my($a, $b) = ($output[$i], $ARGV[$i]);
+# verify nots
+for my $notref (@nots){
+	my $text = $notref->{text};
+	my @lines = @{$notref->{lines}};
 
-	if($ign_whitespace){
-		$a = trim($a);
-		$b = trim($b);
+	for $line (@lines){
+		if(index($line, $text) >= 0){
+			die "$0: STDOUT-NOT: \"$text\" found in \"$line\"\n";
+		}
 	}
-
-	my $match;
-	my $regex;
-	if($regex = ($b =~ m;^/(.*)/$;)){
-		$match = ($a =~ /$1/);
-	}else{
-		$match = $a eq $b;
-	}
-
-	die "mismatching "
-	. ($regex ? "regex " : "")
-	. "lines [$i]: '$a' and '$b'\n"
-	unless $match;
 }
