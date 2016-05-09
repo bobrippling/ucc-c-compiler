@@ -10,7 +10,7 @@ my $log = undef;
 my $verbose = 0;
 
 my %vars = (
-	'check'     => './check.sh',
+	'check'     => './bin/check.sh',
 	'asmcheck'  => './asmcheck.pl',
 	'stdoutcheck' => './bin/stdoutcheck',
 	'ocheck' => './bin/ocheck',

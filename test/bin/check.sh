@@ -1,5 +1,10 @@
 #!/bin/sh
 
+. "$(dirname "$0")"/common.sh
+
+require_env UCC
+require_env UCC_TESTDIR
+
 verbose=$UCC_VERBOSE
 error=0
 prefix=
