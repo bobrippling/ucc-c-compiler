@@ -99,7 +99,7 @@ sub emit_string
 					$val = oct($1);
 					$i += 2;
 				}else{
-					die "couldn't match string byte from '$str'";
+					die "$0: couldn't match string byte from '$str'\n";
 				}
 			}
 		}else{

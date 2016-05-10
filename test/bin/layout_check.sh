@@ -1,9 +1,11 @@
 #!/bin/sh
 
 usage(){
-	echo "Usage: $0 [-v] [--sections] A [B] -- [cc-args]\n" >&2
+	echo "Usage: $0 [--sections] A [B] -- [cc-args]\n" >&2
 	exit 1
 }
+
+verbose=$UCC_VERBOSE
 
 rmfiles(){
 	test -z "$rmfiles" || rm -f $rmfiles
@@ -11,16 +13,12 @@ rmfiles(){
 rmfiles=
 trap rmfiles EXIT
 
-verbose=0
 sec=
 args=
 f=
 for arg
 do
-	if test "$arg" = -v
-	then
-		verbose=1
-	elif test "$arg" = '--help'
+	if test "$arg" = '--help'
 	then
 		usage
 	elif test "$arg" = '--sections'
@@ -73,4 +71,4 @@ else
 	./layout_normalise.pl $sec "$f_layout" > $b
 fi
 
-diff -u $b $a
+exec diff -u $b $a
