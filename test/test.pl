@@ -19,7 +19,6 @@ my %vars = (
 	'debug_check' => './bin/debug-check',
 	'jmpcheck' => './bin/jmpcheck.sh',
 	'archgen' => './archgen.pl',
-	'gdbcheck' => './gdb.sh',
 );
 
 sub require_env
