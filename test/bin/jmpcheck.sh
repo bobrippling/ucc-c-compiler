@@ -6,14 +6,13 @@ then
 	exit 1
 fi
 
-if test -z "$UCC"
-then
-	echo >&2 "$0: need \$UCC"
-	exit 1
-fi
+. "$(dirname "$0")"/common.sh
 
-tmp="$1".tmp
-ucc_out="$1".S
+require_env UCC
+require_env UCC_TESTDIR
+
+tmp="$UCC_TESTDIR/$$.tmp"
+ucc_out="$UCC_TESTDIR/$$.out.S"
 trap "rm -f '$tmp' '$ucc_out'" EXIT
 
 asfilter(){

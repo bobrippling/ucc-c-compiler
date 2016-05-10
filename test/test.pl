@@ -17,7 +17,7 @@ my %vars = (
 	'layout_check' => './bin/layout_check.sh',
 	'caret_check' => './bin/caret_check.pl',
 	'debug_check' => './bin/debug-check',
-	'jmpcheck' => './jmpcheck.sh',
+	'jmpcheck' => './bin/jmpcheck.sh',
 	'archgen' => './archgen.pl',
 	'gdbcheck' => './gdb.sh',
 );
