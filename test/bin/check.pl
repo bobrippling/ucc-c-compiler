@@ -2,7 +2,7 @@
 use warnings;
 use strict;
 
-unshift @INC, ".";
+unshift @INC, "bin";
 require Parser;
 
 sub lines

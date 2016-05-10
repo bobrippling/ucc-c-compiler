@@ -7,7 +7,7 @@ use constant
 	GOT   => 1
 };
 
-unshift @INC, ".";
+unshift @INC, "bin/";
 require Parser;
 
 my $src = shift;

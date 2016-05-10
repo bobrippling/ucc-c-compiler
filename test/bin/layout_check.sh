@@ -63,12 +63,12 @@ set -e
 if test -z "$sec"
 then
 	# no section relevance, sort (for convenience / non-brittle tests that don't rely on section name hash ordering)
-	./layout_normalise.pl $sec "$out" | ./layout_sort.pl > $a
-	./layout_normalise.pl $sec "$f_layout" | ./layout_sort.pl > $b
+	bin/layout_normalise.pl $sec "$out" | bin/layout_sort.pl > $a
+	bin/layout_normalise.pl $sec "$f_layout" | bin/layout_sort.pl > $b
 else
 	# sections are relevant, so make order relevant too
-	./layout_normalise.pl $sec "$out" > $a
-	./layout_normalise.pl $sec "$f_layout" > $b
+	bin/layout_normalise.pl $sec "$out" > $a
+	bin/layout_normalise.pl $sec "$f_layout" > $b
 fi
 
 exec diff -u $b $a

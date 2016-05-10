@@ -87,4 +87,5 @@ then
 	cat "$e"
 	exit 1
 fi >&2
-exec ./check.pl $only $prefix "$f" < $e
+
+exec ./bin/check.pl $only $prefix "$f" < $e
