@@ -81,7 +81,7 @@ sub find_carets
 				my($spc, $msg) = ($1, $2);
 
 				# 2 for "//"
-				my $offset = 2 + ($spc =~ s/[ \t]//g);
+				my $offset = 2 + ($spc =~ s/ //g);
 
 				push @carets, {
 					lineno => $lineno,
