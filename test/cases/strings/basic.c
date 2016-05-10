@@ -1,6 +1,6 @@
 // RUN: %ucc -o %t %s
 // RUN: %ocheck 108 %t
-// RUN: %t | %output_check hi
+// RUN: %t | grep -F hi
 
 f()
 {

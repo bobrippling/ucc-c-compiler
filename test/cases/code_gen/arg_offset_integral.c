@@ -1,7 +1,10 @@
 // RUN: %ucc -o %t %s
-// RUN: %t | %output_check '1793'
+// RUN: %t | %stdoutcheck %s
 // RUN: %ucc -o %t %s -fstack-protector-all
-// RUN: %t | %output_check '1793'
+// RUN: %t | %stdoutcheck %s
+
+// STDOUT: 1793
+
 int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 f(a, b, c, d, e, f, g, h)

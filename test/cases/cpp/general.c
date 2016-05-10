@@ -1,4 +1,4 @@
-// RUN: %ucc -E %s -P | %output_check -w '1 + 2 - 3' '312' '3 + 2 + 1' 'data32' 'dataWIDTH'
+// RUN: %ucc -E %s -P | %stdoutcheck %s
 #define F(a, b, c) a + b - c
 #define A F
 A(1,2,3)
@@ -15,3 +15,9 @@ A(B(3))
 #define INDIRECT(n) DIRECT(n)
 INDIRECT(WIDTH)
 DIRECT(WIDTH)
+
+// STDOUT: 1 + 2 - 3
+// STDOUT: 312
+// STDOUT: 3 + 2 + 1
+// STDOUT: data32
+// STDOUT: dataWIDTH

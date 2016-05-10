@@ -1,7 +1,12 @@
 // RUN: %ucc -c -o %t.o %s -fpic
 // below ensures we link with the system libs
 // RUN: cc -o %t %t.o -fpic
-// RUN: %t | %output_check before 'hi 5 hello' after
+// RUN: %t | %stdoutcheck %s
+
+// STDOUT: before
+// STDOUT-NEXT: hi 5 hello
+// STDOUT-NEXT: after
+
 int vprintf(const char * restrict format, __builtin_va_list ap);
 int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 

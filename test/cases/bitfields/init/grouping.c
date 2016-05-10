@@ -1,5 +1,5 @@
 // RUN: %ucc -o %t %s
-// RUN: %t | %output_check '0x18200000001'
+// RUN: %t | grep 0x18200000001
 struct Padded
 {
 	int i : 2;

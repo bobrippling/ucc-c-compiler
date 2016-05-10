@@ -1,4 +1,4 @@
-// RUN: %ucc %s 2>&1 | head -4 | %output_check '/inc.c:2: included from here/' "yo.h:5: included from here" "inc.c:2: included from here" "yo2.h:9:1: error: unknown type name 'compile'"
+// RUN: %ucc %s 2>&1 | head -4 | %stdoutcheck %s
 
 # line 5 "yo.h"
 
@@ -12,3 +12,8 @@ compile error;
 main()
 {
 }
+
+// STDOUT: /inc.c:2: included from here/
+// STDOUT-NEXT: "yo.h:5: included from here
+// STDOUT-NEXT: inc.c:2: included from here
+// STDOUT-NEXT: yo2.h:9:1: error: unknown type name 'compile'

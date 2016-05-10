@@ -1,5 +1,6 @@
 // RUN: %ucc -o %t %s
-// RUN: %t | %output_check '5.2 -5.2 5.2'
+// RUN: %t | grep '^5.2 -5.2 5.2$'
+
 int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 float f1 = 5.2f;

@@ -1,5 +1,6 @@
 // RUN: %ucc -o %t %s
-// RUN: %t | %output_check '3'
+// RUN: %t | grep '^3$'
+
 int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 double f(int a, ...)

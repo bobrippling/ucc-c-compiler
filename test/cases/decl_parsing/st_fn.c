@@ -1,9 +1,12 @@
-// RUN: %ucc -o %t %s
-// RUN: %ocheck 0 %t
-// RUN: %t | %output_check yo
-int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
+// RUN: %ocheck 0 %s
 
-p1(){printf("yo\n");}
+int called;
+
+int p1()
+{
+	called = 1;
+}
+
 main()
 {
 	struct
@@ -17,5 +20,5 @@ main()
 
 	f.f();
 
-	return 0;
+	return called ? 0 : 1;
 }

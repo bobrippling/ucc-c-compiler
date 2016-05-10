@@ -1,4 +1,4 @@
-// RUN: %ucc -P -E %s | %output_check -w '"CONCATTHREE(PATH, FILNAME, .h)";'
+// RUN: %ucc -P -E %s | grep -F '"CONCATTHREE(PATH, FILNAME, .h)";'
 #define CONCAT_(a, b) a ## b
 #define CONCAT(a, b) CONCAT_(a, b)
 #define CONCAT3(a, b, c) CONCAT(CONCAT(a, b), c)

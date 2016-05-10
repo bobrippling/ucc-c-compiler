@@ -1,4 +1,4 @@
-// RUN: %ucc -E %s -P | %output_check -w '><' '><' '><' '><'
+// RUN: %ucc -E %s -P | %stdoutcheck %s
 // RUN: %check %s -E -fmessage-length=0
 
 #define F(a) >a<
@@ -9,3 +9,8 @@ F( )
 
 G() // this is fine
 G( )
+
+// STDOUT: ><
+// STDOUT: ><
+// STDOUT: ><
+// STDOUT: ><

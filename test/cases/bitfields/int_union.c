@@ -1,5 +1,8 @@
 // RUN: %ucc -o %t %s
-// RUN: %t | %output_check '00000011' '00000111' '7'
+// RUN: %t | %stdoutcheck %s
+// STDOUT: 00000011
+// STDOUT-NEXT: 00000111
+// STDOUT-NEXT: 7
 
 typedef union
 {

@@ -1,6 +1,10 @@
 // RUN: %ucc -o %t %s
 // RUN: %t
-// RUN: %t | %output_check a b c
+// RUN: %t | %stdoutcheck %s
+// STDOUT: a
+// STDOUT-NEXT: b
+// STDOUT-NEXT: c
+
 int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 void abort(void) __attribute__((noreturn));
 

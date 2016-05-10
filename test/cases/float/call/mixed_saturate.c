@@ -1,6 +1,24 @@
 // RUN: %ucc -o %t %s
-// RUN: %t | %output_check 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18
 // RUN: %check --only %s
+// RUN: %t | %stdoutcheck %s
+// STDOUT: 1
+// STDOUT-NEXT: 2
+// STDOUT-NEXT: 3
+// STDOUT-NEXT: 4
+// STDOUT-NEXT: 5
+// STDOUT-NEXT: 6
+// STDOUT-NEXT: 7
+// STDOUT-NEXT: 8
+// STDOUT-NEXT: 9
+// STDOUT-NEXT: 10
+// STDOUT-NEXT: 11
+// STDOUT-NEXT: 12
+// STDOUT-NEXT: 13
+// STDOUT-NEXT: 14
+// STDOUT-NEXT: 15
+// STDOUT-NEXT: 16
+// STDOUT-NEXT: 17
+// STDOUT-NEXT: 18
 
 extern printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 

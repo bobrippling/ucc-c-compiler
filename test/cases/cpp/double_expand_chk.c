@@ -1,4 +1,8 @@
-// RUN: %ucc -P -E %s | %output_check -w '__attribute__((unused)) int i;' '__attribute__((unused)) int32_t __j_1;' 'f(__attribute__((unused)))int32_t.__j_1;'
+// RUN: %ucc -P -E %s | %stdoutcheck %s
+
+// STDOUT: __attribute__((unused)) int i;
+// STDOUT: __attribute__((unused)) int32_t __j_1;
+// STDOUT: f(__attribute__((unused)))int32_t.__j_1;
 
 /* this tests where we resume after expanding a macro */
 

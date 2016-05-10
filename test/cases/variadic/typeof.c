@@ -1,5 +1,10 @@
 // RUN: %ucc -o %t %s
-// RUN: %t | %output_check "hello" "hi" "greetings" "hola"
+// RUN: %t | %stdoutcheck %s
+
+// STDOUT: hello
+// STDOUT-NEXT: hi
+// STDOUT-NEXT: greetings
+// STDOUT-NEXT: hola
 
 printv(const char *a, __builtin_va_list l)
 {

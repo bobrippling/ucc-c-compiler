@@ -1,4 +1,4 @@
-// RUN: %ucc -E %s -P | %output_check -w 'cpp_overload1(1);' 'cpp_overload2(1, 2);' 'cpp_overload3(1, 2, 3);'
+// RUN: %ucc -E %s -P | %stdoutcheck %s
 #define CAT(A, B) CAT2(A, B)
 #define CAT2(A, B) A ## B
 
@@ -12,3 +12,7 @@
 cpp_overload(1);
 cpp_overload(1, 2);
 cpp_overload(1, 2, 3);
+
+// STDOUT: cpp_overload1(1);
+// STDOUT-NEXT: cpp_overload2(1, 2);
+// STDOUT-NEXT: cpp_overload3(1, 2, 3);

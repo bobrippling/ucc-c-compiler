@@ -1,6 +1,9 @@
-// RUN: %ucc -P -E %s | %output_check -w "'\"' 5" "\"'\" 5"
+// RUN: %ucc -P -E %s | %stdoutcheck %s
 
 #define abc 5
 
 '"' abc
 "'" abc
+
+// STDOUT: '"' 5
+// STDOUT-NEXT: "'" 5

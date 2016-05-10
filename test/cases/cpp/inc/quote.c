@@ -1,4 +1,7 @@
-// RUN: %ucc -I"$(dirname "%s")" -P -E %s | %output_check -w A B C
+// RUN: %ucc -I"$(dirname "%s")" -P -E %s | %stdoutcheck %s
+// STDOUT: A
+// STDOUT: B
+// STDOUT: C
 
 #include <">
 #include "\""

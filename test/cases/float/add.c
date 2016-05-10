@@ -1,7 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %t
-// RUN: %t | %output_check '4.5'
-int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
+// RUN: %ocheck 0 %s
 
 main()
 {
@@ -9,7 +6,8 @@ main()
 
 	a = 1.3f, b = 3.2f;
 
-	printf("%.1f\n", a + b);
-
+	float q = a + b;
+	if(q != 4.5)
+		return 1;
 	return 0;
 }

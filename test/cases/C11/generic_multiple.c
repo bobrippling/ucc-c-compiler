@@ -1,6 +1,15 @@
 /* TODO: signed char */
 // RUN: %ucc -o %t %s
-// RUN: %t | %output_check "size_t is 'unsigned long int'" "ptrdiff_t is 'long int'" "intmax_t is 'long long int'" "character constant is 'int'" "0x7FFFFFFF is 'int'" "0xFFFFFFFF is 'unsigned int'" "0x7FFFFFFFU is 'unsigned int'" "array of int is 'other'"
+// RUN: %t | %stdoutcheck %s
+
+// STDOUT: size_t is 'unsigned long int'
+// STDOUT-NEXT: ptrdiff_t is 'long int'
+// STDOUT-NEXT: intmax_t is 'long long int'
+// STDOUT-NEXT: character constant is 'int'
+// STDOUT-NEXT: 0x7FFFFFFF is 'int'
+// STDOUT-NEXT: 0xFFFFFFFF is 'unsigned int'
+// STDOUT-NEXT: 0x7FFFFFFFU is 'unsigned int'
+// STDOUT-NEXT: array of int is 'other'
 
 /* Get the name of a type */
 #define typename(x) _Generic((x),                                                 \

@@ -1,6 +1,10 @@
 // RUN: %ucc -o %t %s
-// RUN: %t | %output_check 2 'inline call' hi
+// RUN: %t | %stdoutcheck %s
 // RUN: %t; [ $? -eq 3 ]
+
+// STDOUT: 2
+// STDOUT-NEXT: inline call
+// STDOUT-NEXT: hi
 
 int printf(const char *, ...);
 
