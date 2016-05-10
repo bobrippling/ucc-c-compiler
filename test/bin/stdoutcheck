@@ -55,6 +55,8 @@ for(file_contents($f)){
 	push @annotations, { tag => $1, text => $3 };
 }
 
+die "$0: no annotations\n" unless @annotations;
+
 my $line = '';
 my @nots;
 my $nots_active = 0;
