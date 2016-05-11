@@ -767,6 +767,8 @@ word:
 						if(!*specpath)
 							goto missing_arg;
 					}
+					else if(!strcmp(argv[i], "-time"))
+						time_subcmds = 1;
 					else
 						break;
 
