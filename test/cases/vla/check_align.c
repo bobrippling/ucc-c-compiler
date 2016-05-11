@@ -1,4 +1,4 @@
-// RUN: %ucc -o %t %s vla/check_align_asm.s
+// RUN: %ucc -o %t %s "$(dirname %s)"/check_align_asm.s
 // RUN: %t
 
 extern void check_align() __asm("check_align");
