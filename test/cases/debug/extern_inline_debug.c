@@ -1,4 +1,4 @@
-// RUN: %debug_scope %s -c -fno-semantic-interposition
+// RUN: %debug_scope %s -c -fno-semantic-interposition | %stdoutcheck %s
 
 void f_indirect(void); // this would call 'extern int f()'
 
@@ -29,3 +29,10 @@ int f(int x)
 	int i = x + 1; //SCOPE: x i
 	return i - g(); //SCOPE: x i
 }
+
+// we expect 'i' to have scope from 16 to wherever because it's inlined in main()
+
+// STDOUT: i 16 30
+// STDOUT: i<1> 27 30
+// STDOUT: x 16 30
+// STDOUT: x<1> 27 30
