@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 /* umask */
 #include <sys/types.h>
@@ -77,8 +78,7 @@ static void unlink_files(void)
 {
 	int i;
 	for(i = 0; remove_these[i]; i++){
-		if(!save_temps)
-			remove(remove_these[i]);
+		remove(remove_these[i]);
 		free(remove_these[i]);
 	}
 	free(remove_these);
@@ -111,18 +111,30 @@ static char *expected_filename(const char *in, enum mode mode)
 	return new;
 }
 
-static void tmpfilenam(struct fd_name_pair *pair)
+static void tmpfilenam(
+		struct fd_name_pair *pair,
+		enum mode const mode,
+		const char *in)
 {
 	char *path;
-	int fd = tmpfile_prefix_out("ucc.", &path);
+	int fd;
 
-	if(fd == -1)
-		die("tmpfile(%s):", path);
+	if(save_temps){
+		path = expected_filename(in, mode);
+		fd = open(path, O_RDWR | O_TRUNC | O_CREAT, 0600);
+		if(fd < 0)
+			die("open (for -save-temps) %s:", path);
 
-	if(!remove_these) /* only register once */
-		atexit(unlink_files);
+	}else{
+		fd = tmpfile_prefix_out("ucc.", &path);
 
-	dynarray_add(&remove_these, path);
+		if(fd == -1)
+			die("tmpfile(%s):", path);
+
+		if(!remove_these) /* only register once */
+			atexit(unlink_files);
+		dynarray_add(&remove_these, path);
+	}
 
 	pair->fname = path;
 	pair->fd = fd;
@@ -152,7 +164,7 @@ static void create_file(
 
 #define FILL_WITH_TMP(x)         \
 			if(!file->x.fname){        \
-				tmpfilenam(&file->x);    \
+				tmpfilenam(&file->x, mode_##x, in); \
 				if(mode == mode_ ## x){  \
 					file->out = file->x;   \
 					return;                \
