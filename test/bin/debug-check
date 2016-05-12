@@ -2,27 +2,25 @@
 
 . "$(dirname "$0")/common.sh"
 
-verbose=no
-if test "$1" = -v
-then
-	verbose=yes
-	shift
-fi
-
 if test $# -ne 1
 then
-	echo "Usage: $0 [-v] path/to/file" >&2
+	echo "Usage: $0 path/to/file" >&2
 	exit 1
 fi
 
+require_env UCC
+require_env UCC_TESTDIR
+
 set -e
 
-if test $verbose = yes
+if test -n "$UCC_VERBOSE"
 then set -x
 fi
 
-$UCC -g -fno-debug-emit-compdir -S -o - "$1" \
-	| awk '/section_begin.*dbg/,/section_end/' \
-	> "$TEST_TMP"
+tmp="$UCC_TESTDIR/dbg.$$"
 
-diff -u "$TEST_TMP" "$1".debug
+$UCC -g -fno-debug-emit-compdir -S -o- "$1" \
+	| awk '/section_begin.*dbg/,/section_end/' \
+	> "$tmp"
+
+diff -u "$tmp" "$1".debug
