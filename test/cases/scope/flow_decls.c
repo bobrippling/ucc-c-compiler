@@ -1,5 +1,5 @@
 // just check it links
-// RUN: %ucc %s
+// RUN: %ucc -o %t %s
 
 main()
 {

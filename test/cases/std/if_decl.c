@@ -1,4 +1,4 @@
-// RUN: %ucc %s
+// RUN: %ocheck 2 %s
 
 main()
 {
@@ -7,4 +7,5 @@ main()
 		a.i = 2;
 		return a.i;
 	}
+	return 0;
 }

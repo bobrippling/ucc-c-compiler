@@ -1,4 +1,4 @@
-// RUN: %ucc %s
+// RUN: %ucc -o %t %s
 // must ensure we link successfully
 
 main()

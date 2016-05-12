@@ -1,4 +1,4 @@
-// RUN: %ucc %s
+// RUN: %ucc -fsyntax-only %s
 
 f(int [][2]);
 

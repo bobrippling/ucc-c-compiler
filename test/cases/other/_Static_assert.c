@@ -1,12 +1,12 @@
-// RUN: %ucc %s
+// RUN: %ucc -fsyntax-only %s
 
-_Static_assert(sizeof(void *) == sizeof(int *), "hi");
+_Static_assert(sizeof(void *) == sizeof(int *), "");
 
 main()
 {
 	int i;
 
-	_Static_assert(sizeof(i) == sizeof(int), "buh");
+	_Static_assert(sizeof(i) == sizeof(int), "");
 
 	return 0;
 }

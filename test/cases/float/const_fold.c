@@ -1,5 +1,5 @@
 // RUN: %ucc -o %t %s
-// RUN: %t | grep '^-1.0$'
+// RUN: %t | grep '^-1\.0$'
 
 int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 

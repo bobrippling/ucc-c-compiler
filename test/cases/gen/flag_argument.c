@@ -1,4 +1,4 @@
-// RUN: %ucc %s
+// RUN: %ucc -c -o %t %s
 
 f(){}
 

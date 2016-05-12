@@ -1,4 +1,4 @@
-// RUN: %ucc %s
+// RUN: %ucc -fsyntax-only %s
 typedef int td;
 
 main()
