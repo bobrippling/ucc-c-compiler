@@ -84,6 +84,33 @@ static void unlink_files(void)
 	free(remove_these);
 }
 
+static char *expected_filename(const char *in, enum mode mode)
+{
+	const char *base = strrchr(in, '/');
+	size_t len;
+	char *new;
+
+	if(!base++)
+		base = in;
+
+	new = ustrdup(base);
+	len = strlen(new);
+	if(len > 2 && new[len - 2] == '.'){
+		char ext;
+		switch(mode){
+			case mode_preproc: ext = 'i'; break;
+			case mode_compile: ext = 's'; break;
+			case mode_assemb: ext = 'o'; break;
+			case mode_link: ext = '?'; break;
+		}
+
+		new[len - 1] = ext;
+	}
+	/* else stick with what we were given */
+
+	return new;
+}
+
 static void tmpfilenam(struct fd_name_pair *pair)
 {
 	char *path;
@@ -242,19 +269,8 @@ static void rename_files(struct cc_file *files, int nfiles, const char *output, 
 
 				case mode_compile:
 				case mode_assemb:
-				{
-					int len;
-					const char *base = strrchr(files[i].in.fname, '/');
-					if(!base++)
-						base = files[i].in.fname;
-
-					new = ustrdup(base);
-					len = strlen(new);
-					if(len > 2 && new[len - 2] == '.')
-						new[len - 1] = mode == mode_compile ? 's' : 'o';
-					/* else stick with what we were given */
+					new = expected_filename(files[i].in.fname, mode);
 					break;
-				}
 			}
 		}
 
