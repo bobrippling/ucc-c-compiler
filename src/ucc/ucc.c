@@ -68,7 +68,7 @@ struct ucc
 };
 
 static char **remove_these;
-static int unlink_tmps = 1;
+static int save_temps = 0;
 const char *argv0;
 char *wrapper;
 const char *binpath_cpp;
@@ -77,7 +77,7 @@ static void unlink_files(void)
 {
 	int i;
 	for(i = 0; remove_these[i]; i++){
-		if(unlink_tmps)
+		if(!save_temps)
 			remove(remove_these[i]);
 		free(remove_these[i]);
 	}
@@ -755,7 +755,7 @@ word:
 					else if(!strcmp(argv[i], "-digraphs"))
 						ADD_ARG(mode_preproc);
 					else if(!strcmp(argv[i], "-save-temps"))
-						unlink_tmps = 0;
+						save_temps = 1;
 					else if(!strcmp(argv[i], "-isystem")){
 						const char *sysinc = argv[++i];
 						if(!sysinc)
