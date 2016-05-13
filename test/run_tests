@@ -16,6 +16,7 @@ my $tdir = "$env_tmpdir/ucc.test/";
 my $ign_file = undef;
 my $quiet;
 my $jobs = 1;
+my $progress = 0;
 my @tests;
 
 if(not -d $tdir and not mkdir($tdir)){
@@ -24,7 +25,7 @@ if(not -d $tdir and not mkdir($tdir)){
 
 sub usage
 {
-	print STDERR "Usage: $0 [-q | -v] [-i ignore-file] [--ucc=...] [tests...]\n";
+	print STDERR "Usage: $0 [-q | -v] [-p] [-i ignore-file] [--ucc=...] [tests...]\n";
 	print STDERR "Specify UCC_CHECK_SKIP=path1,path2,... to skip paths\n";
 	exit 2;
 }
@@ -173,6 +174,13 @@ sub reap_test
 	delete $tasks{$pid};
 }
 
+sub show_progress
+{
+	my($i, $n) = @_;
+
+	printf "%d%% (%d/%d)\r", $i / $n * 100, $i, $n;
+}
+
 if($ENV{CI}){
 	$quiet = 0;
 }elsif(-t 1){
@@ -194,6 +202,8 @@ for(my $i = 0; $i < @ARGV; $i++){
 		my $f = $ARGV[++$i];
 		usage() unless $f;
 		$ign_file = $f;
+	}elsif($ARGV[$i] eq '-p'){
+		$progress = 1;
 	}elsif($ARGV[$i] =~ /^--ucc=(.+)$/){
 		$ENV{UCC} = $1;
 
@@ -236,12 +246,19 @@ colour_init($quiet);
 my @test_files = find_tests(@tests);
 die "$0: no tests found\n" unless @test_files;
 
-for my $f (@test_files){
+$| = 1 if $progress;
+
+for(my $fi = 0; $fi < @test_files; $fi++){
 	reap_test() while keys %tasks >= $jobs;
 
 	next if file_status($f) == 'skip';
 
+	show_progress($fi + 1, scalar @test_files) if $progress;
+
+	my $f = $test_files[$fi];
 	launch_test('./bin/test.pl', $f);
+
+	show_progress($fi + 1, scalar @test_files) if $progress;
 }
 
 reap_all_tests();
