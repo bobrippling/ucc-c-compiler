@@ -1543,6 +1543,13 @@ zero_init:
 				return;
 			}
 
+			/* optimisation - if the entire sub-init is zero,
+			 * if so, coalesce into a single memset */
+			if(decl_init_is_zero(init)){
+				decl_init_create_memset(base, tfor, pinit, stab);
+				return;
+			}
+
 			for(idx = 0, i = init->bits.ar.inits; idx < n; (*i ? i++ : 0), idx++){
 				decl_init *di = *i;
 				expr *new_base;
