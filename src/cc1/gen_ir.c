@@ -149,6 +149,7 @@ static void gen_ir_init_scalar(decl_init *init)
 				printf("$%s", k.bits.addr.bits.lbl);
 			else
 				printf("%ld", k.bits.addr.bits.memaddr);
+			anyptr = 1;
 			break;
 
 		case CONST_STRK:
