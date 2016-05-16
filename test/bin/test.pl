@@ -86,12 +86,7 @@ $file = shift;
 
 my $target = "$tmpdir/$$.tmp";
 $log = "$tmpdir/$$.log";
-END {
-	my $r = $?;
-	unlink $target if defined $target;
-	unlink $log if defined $log;
-	$? = $r;
-}
+# don't unlink target - leave for parent tools / user to cleanup
 
 $vars{s} = $file;
 $vars{t} = $target;
