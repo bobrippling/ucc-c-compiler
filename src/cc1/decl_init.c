@@ -1418,6 +1418,26 @@ static void decl_init_create_assignment_from_copy(
 	}
 }
 
+static void decl_init_create_memset(
+		expr *base, type *tfor, expr **pinit, symtable *stab)
+{
+	expr *zero;
+
+	/* this works for zeroing bitfields,
+	 * since we don't take the address
+	 * - builtin memset calls lea_expr()
+	 *   which can handle bitfields
+	 */
+	zero = builtin_new_memset(
+			base,
+			0,
+			type_size(tfor, &base->where));
+
+	memcpy_safe(&zero->where, &base->where);
+
+	expr_init_add(pinit, zero, stab);
+}
+
 void decl_init_create_assignments_base(
 		decl_init *init,
 		type *tfor, expr *base,
@@ -1426,8 +1446,6 @@ void decl_init_create_assignments_base(
 		const int aggregate)
 {
 	if(!init){
-		expr *zero;
-
 zero_init:
 		if(type_is_incomplete_array(tfor)){
 			/* error caught elsewhere,
@@ -1435,19 +1453,7 @@ zero_init:
 			return;
 		}
 
-		/* this works for zeroing bitfields,
-		 * since we don't take the address
-		 * - builtin memset calls lea_expr()
-		 *   which can handle bitfields
-		 */
-		zero = builtin_new_memset(
-				base,
-				0,
-				type_size(tfor, &base->where));
-
-		memcpy_safe(&zero->where, &base->where);
-
-		expr_init_add(pinit, zero, stab);
+		decl_init_create_memset(base, tfor, pinit, stab);
 		return;
 	}
 
