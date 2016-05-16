@@ -53,6 +53,12 @@ struct irval
 	} bits;
 };
 
+enum ir_comment
+{
+	IR_COMMENT_CHAR = 1 << 0,
+	IR_COMMENT_NEWLINE = 1 << 1
+};
+
 static void gen_ir_init_r(irctx *, decl_init *init, type *ty);
 
 static const char *irtype_str_maybe_fn(type *t, funcargs *args, irctx *ctx);
@@ -70,18 +76,23 @@ void gen_ir_stmt(const struct stmt *stmt, irctx *ctx)
 	stmt->f_ir(stmt, ctx);
 }
 
-static void gen_ir_comment_nonewline_v(irctx *ctx, const char *fmt, va_list l)
+static void gen_ir_comment_opts_v(
+		enum ir_comment opts, irctx *ctx, const char *fmt, va_list l)
 {
 	(void)ctx;
-	printf("# ");
+	if(opts & IR_COMMENT_CHAR)
+		printf("# ");
 	vprintf(fmt, l);
+	if(opts & IR_COMMENT_NEWLINE)
+		putchar('\n');
 }
 
-static void gen_ir_comment_nonewline(irctx *ctx, const char *fmt, ...)
+static void gen_ir_comment_opts(
+		enum ir_comment opts, irctx *ctx, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	gen_ir_comment_nonewline_v(ctx, fmt, l);
+	gen_ir_comment_opts_v(opts, ctx, fmt, l);
 	va_end(l);
 }
 
@@ -89,9 +100,8 @@ void gen_ir_comment(irctx *ctx, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	gen_ir_comment_nonewline_v(ctx, fmt, l);
+	gen_ir_comment_opts_v(IR_COMMENT_CHAR | IR_COMMENT_NEWLINE, ctx, fmt, l);
 	va_end(l);
-	putchar('\n');
 }
 
 static void gen_ir_spill_args(irctx *ctx, funcargs *args)
@@ -463,18 +473,26 @@ static void gen_ir_dump_su(struct_union_enum_st *su, irctx *ctx)
 
 		memb = su_mem->struct_member;
 		if(!irtype_struct_decl_index(su, memb, &idxes, &nidxes)){
-			fprintf(stderr, "couldn't get index for \"%s\"\n", memb->spel);
+			fprintf(stderr, "couldn't get indices for \"%s\"\n", memb->spel);
 			continue;
 		}
 
 		fwidth = memb->bits.var.field_width;
 
-		gen_ir_comment_nonewline(ctx, "  %s index-path ", memb->spel ? memb->spel : "?");
+		gen_ir_comment_opts(
+				IR_COMMENT_CHAR,
+				ctx,
+				"  %s index%s ",
+				memb->spel ? memb->spel : "?",
+				nidxes > 1 ? "-path" : "");
 
-		for(j = 0; j < nidxes; idx_sep = ", ", j++)
-			gen_ir_comment_nonewline(ctx, "%s%u", idx_sep, idxes[j]);
+		for(j = nidxes; j > 0; idx_sep = ", ", j--)
+			gen_ir_comment_opts(0, ctx, "%s%u", idx_sep, idxes[j - 1]);
 
-		gen_ir_comment(ctx, " (field_width = %d%s)",
+		gen_ir_comment_opts(
+				IR_COMMENT_NEWLINE,
+				ctx,
+				" (field_width = %d%s)",
 				fwidth ? (int)const_fold_val_i(fwidth) : -1,
 				memb->bits.var.first_bitfield ? " [first]" : "");
 
