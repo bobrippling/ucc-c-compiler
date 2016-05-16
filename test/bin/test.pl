@@ -92,6 +92,8 @@ $vars{s} = $file;
 $vars{t} = $target;
 $vars{ucc} = $ucc;
 
+my $run_previous = '';
+
 open F, '<', $file or die "open $file: $!\n";
 while(<F>){
 	chomp;
@@ -100,7 +102,14 @@ while(<F>){
 		if($command eq 'RUN'){
 			$ran++;
 
-			my $subst_sh = apply_vars($sh);
+			# check for line continuation
+			if($sh =~ /(.*[^\\])\\$/){
+				$run_previous .= $1;
+				next;
+			}
+
+			my $subst_sh = apply_vars("$run_previous$sh");
+			$run_previous = '';
 			print "$0: run: $subst_sh\n" if $verbose;
 
 			my $want_err = ($subst_sh =~ s/^ *! *//);
@@ -126,6 +135,9 @@ close F;
 
 die "no commands in $file"
 unless $ran;
+
+die "line continuation in final RUN command (\"$run_previous\")"
+if length $run_previous;
 
 die "CHECK commands found with no %check"
 unless $had_check or not $want_check;
