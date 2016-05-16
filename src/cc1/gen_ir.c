@@ -500,6 +500,28 @@ static void gen_ir_dump_su(struct_union_enum_st *su, irctx *ctx)
 	}
 }
 
+static void gen_ir_memset_small(irctx *ctx, irval *v, char ch, size_t len)
+{
+	assert(len <= 8);
+	printf(
+			"store %s, i%d 0x%x # memset\n",
+			irval_str(v, ctx),
+			(int)len, ch);
+}
+
+static void gen_ir_memset_large(irctx *ctx, irval *v, char ch, size_t len)
+{
+	printf("# todo: large memset %s to %#x x %zu\n", irval_str(v, ctx), ch, len);
+}
+
+void gen_ir_memset(irctx *ctx, irval *v, char ch, size_t len)
+{
+	if(len <= 8)
+		gen_ir_memset_small(ctx, v, ch, len);
+	else
+		gen_ir_memset_large(ctx, v, ch, len);
+}
+
 static void gen_ir_decl(decl *d, irctx *ctx)
 {
 	funcargs *args = type_is(d->ref, type_func) ? type_funcargs(d->ref) : NULL;

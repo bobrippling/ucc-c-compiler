@@ -46,4 +46,7 @@ irval *irval_from_noop(void);
 void irval_free(irval *);
 void irval_free_abi(void *);
 
+/* helpers */
+void gen_ir_memset(irctx *ctx, irval *v, char ch, size_t len);
+
 #endif
