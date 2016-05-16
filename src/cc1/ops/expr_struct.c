@@ -224,7 +224,8 @@ static irid gen_ir_expr_struct_elem_r(
 	found = irtype_struct_decl_index(su, target, &indexes, &index_count);
 	assert(found);
 
-	printf("# ir indexing, index_count=%u, indexes:\n", index_count);
+	if(index_count > 1)
+		printf("# ir indexing, index_count=%u, indexes:\n", index_count);
 
 	for(i = index_count; i > 0; i--){
 		const irid previd = id;
@@ -238,8 +239,6 @@ static irid gen_ir_expr_struct_elem_r(
 			printf("$%u = elem $%u, i4 %u\n", id, previd, memb_idx);
 	}
 	free(indexes);
-
-	printf("#   done\n");
 
 	return id;
 }
