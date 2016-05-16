@@ -16,7 +16,7 @@ platform.o: platform.c
 
 deps: Makefile.dep
 
-OBJ_TEST = test.o path.o dynarray.o alloc.o dynmap.o
+OBJ_TEST = test.o path.o dynarray.o alloc.o dynmap.o math.o
 test: ${OBJ_TEST}
 	${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
 

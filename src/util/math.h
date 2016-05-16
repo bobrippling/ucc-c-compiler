@@ -2,5 +2,6 @@
 #define UTIL_MATH_H
 
 int log2i(unsigned);
+unsigned round_down_pow2(unsigned);
 
 #endif
