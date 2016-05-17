@@ -1,7 +1,7 @@
 #ifndef GEN_IR_H
 #define GEN_IR_H
 
-#define IRTODO(...) /*ICW(__VA_ARGS__)*/
+#define IRTODO(...) ICW("IR TODO: " __VA_ARGS__)
 
 struct strbuf_fixed;
 

@@ -317,7 +317,7 @@ static const out_val *builtin_gen_memcpy(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_memcpy(const expr *e, irctx *ctx)
 {
-	ICW("TODO: %s", __func__);
+	IRTODO("TODO: %s", __func__);
 	return NULL;
 }
 
@@ -370,7 +370,7 @@ static const out_val *builtin_gen_unreachable(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_unreachable(const expr *e, irctx *ctx)
 {
-	ICW("TODO: %s", __func__);
+	IRTODO("TODO: %s", __func__);
 	return NULL;
 }
 
@@ -511,7 +511,7 @@ static const out_val *builtin_gen_frame_address(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_frame_address(const expr *e, irctx *ctx)
 {
-	ICW("TODO: %s", __func__);
+	IRTODO("TODO: %s", __func__);
 	return NULL;
 }
 
@@ -554,7 +554,7 @@ static const out_val *builtin_gen_reg_save_area(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_reg_save_area(const expr *e, irctx *ctx)
 {
-	ICW("TODO: %s", __func__);
+	IRTODO("TODO: %s", __func__);
 	return NULL;
 }
 
@@ -609,7 +609,7 @@ static const out_val *builtin_gen_expect(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_expect(const expr *e, irctx *ctx)
 {
-	ICW("TODO: %s", __func__);
+	IRTODO("TODO: %s", __func__);
 	return NULL;
 }
 
@@ -789,7 +789,7 @@ static const out_val *builtin_gen_nan(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_nan(const expr *e, irctx *ctx)
 {
-	ICW("TODO: %s", __func__);
+	IRTODO("TODO: %s", __func__);
 	return NULL;
 }
 

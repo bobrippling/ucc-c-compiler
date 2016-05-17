@@ -187,7 +187,7 @@ static const out_val *builtin_gen_va_start(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_va_start(const expr *e, irctx *ctx)
 {
-	ICW("TODO: %s", __func__);
+	IRTODO("TODO: %s", __func__);
 	return NULL;
 }
 
@@ -485,7 +485,7 @@ stack:
 
 static irval *builtin_gen_ir_va_arg(const expr *e, irctx *ctx)
 {
-	ICW("TODO: %s", __func__);
+	IRTODO("TODO: %s", __func__);
 	return NULL;
 }
 
@@ -546,7 +546,7 @@ static const out_val *builtin_gen_va_end(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_va_end(const expr *e, irctx *ctx)
 {
-	ICW("TODO: %s", __func__);
+	IRTODO("TODO: %s", __func__);
 	return NULL;
 }
 
@@ -579,7 +579,7 @@ static const out_val *builtin_gen_va_copy(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_va_copy(const expr *e, irctx *ctx)
 {
-	ICW("TODO: %s", __func__);
+	IRTODO("TODO: %s", __func__);
 	return NULL;
 }
 
