@@ -9,7 +9,7 @@ int log2i(unsigned v)
 	return r;
 }
 
-static int is_pow2(unsigned u)
+int is_pow2(unsigned u)
 {
 	return (u & (u - 1)) == 0;
 }
