@@ -644,7 +644,9 @@ void gen_ir_scope_leave_parent(symtable *s_from, struct irctx *ctx)
 
 void gen_ir_block_decls_dealloca(symtable *stab, struct irctx *ctx)
 {
-	ICW("TODO: dealloca");
+	/* nothing to do */
+	(void)stab;
+	(void)ctx;
 }
 
 void dump_stmt_code(const stmt *s, dump *ctx)
