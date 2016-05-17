@@ -700,6 +700,13 @@ static void gen_ir_su_types(struct type_nav *type_nav, irctx *ctx)
 	}
 }
 
+static void gen_ir_local_funcs(decl **local_funcs, irctx *ctx)
+{
+	decl **i;
+	for(i = local_funcs; i && *i; i++)
+		gen_ir_decl(*i, ctx);
+}
+
 void gen_ir(symtable_global *globs)
 {
 	irctx ctx = { 0 };
@@ -708,6 +715,7 @@ void gen_ir(symtable_global *globs)
 
 	gen_ir_stringlits(globs->literals, 1);
 	gen_ir_su_types(cc1_type_nav, &ctx);
+	gen_ir_local_funcs(globs->local_funcs, &ctx);
 
 	for(diter = symtab_decls(&globs->stab); diter && *diter; diter++){
 		decl *d = *diter;
