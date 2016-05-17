@@ -636,14 +636,16 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 	if(args){
 		putchar('\n');
 		if(decl_should_emit_code(d)){
+			type *retty = type_called(d->ref, NULL);
+
 			printf("{\n");
 			gen_ir_spill_args(ctx, args);
 			gen_ir_stmt(d->bits.func.code, ctx);
 
 			/* if non-void function and function may fall off the end, dummy a return */
 			if(d->bits.func.control_returns_undef){
-				printf("ret undef\n");
-			}else if(type_is_void(type_called(d->ref, NULL))){
+				printf("ret %s undef\n", irtype_str(retty, ctx));
+			}else if(type_is_void(retty)){
 				printf("ret void\n");
 			}
 

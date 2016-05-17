@@ -105,13 +105,11 @@ void gen_stmt_return(const stmt *s, out_ctx *octx)
 void gen_ir_stmt_return(const stmt *s, irctx *ctx)
 {
 	decl *const in_func = symtab_func(s->symtab);
-	int const void_return = type_is_void(type_called(in_func->ref, NULL));
+	type *retty = type_called(in_func->ref, NULL);
+	int const void_return = type_is_void(retty);
 	irval *ret_exp = s->expr ? gen_ir_expr(s->expr, ctx) : NULL;
 
 	gen_ir_scope_leave(s->symtab, symtab_root(s->symtab), ctx);
-
-	IRTODO("check inlining");
-	IRTODO("ret dummy value if undef and void if void-fn");
 
 	if(void_return){
 		/* ignore ret_exp */
@@ -120,7 +118,7 @@ void gen_ir_stmt_return(const stmt *s, irctx *ctx)
 		printf("ret %s\n", irval_str(ret_exp, ctx));
 	}else{
 		/* empty return, non-void func */
-		printf("ret undef\n");
+		printf("ret %s undef\n", irtype_str(retty, ctx));
 	}
 }
 
