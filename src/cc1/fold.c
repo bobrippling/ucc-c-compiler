@@ -691,10 +691,16 @@ static void fold_decl_func(decl *d, symtable *stab)
 	fold_decl_func_retty(d);
 
 	if(stab->parent){
+		symtable_global *gsymtab;
+
 		if(d->bits.func.code)
 			die_at(&d->bits.func.code->where, "nested function %s", d->spel);
 		else if((d->store & STORE_MASK_STORE) == store_static)
 			die_at(&d->where, "block-scoped function cannot have static storage");
+
+
+		gsymtab = symtab_global(stab);
+		dynarray_add(&gsymtab->local_funcs, d);
 	}
 
 	fold_func_attr(d);

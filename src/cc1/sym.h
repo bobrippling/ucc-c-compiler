@@ -94,6 +94,7 @@ struct symtable_global
 	symtable_gasm **gasms;
 	dynmap *literals;
 	dynmap *unrecog_attrs;
+	decl **local_funcs;
 };
 
 sym *sym_new(decl *d, enum sym_type t);
