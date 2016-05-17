@@ -34,6 +34,7 @@ type *irtype_struct_decl_type(
 		struct struct_union_enum_st *su,
 		struct decl *memb);
 
+/* irvals */
 typedef unsigned irid;
 
 irval *irval_from_id(irid);
