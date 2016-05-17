@@ -65,8 +65,17 @@ const char *decl_asm_spel(decl *d)
 	assert(d->sym);
 	switch(d->sym->type){
 			const char *type;
-		case sym_local: type = "l"; goto local_or_arg;
-		case sym_arg: type = "a"; goto local_or_arg;
+		case sym_local:
+			if(type_is(d->ref, type_func))
+				goto global;
+
+			type = "l";
+			goto local_or_arg;
+
+		case sym_arg:
+			type = "a";
+			goto local_or_arg;
+
 local_or_arg:
 		{
 			unsigned uniq = d->shadow_uniq;
@@ -93,6 +102,7 @@ local_or_arg:
 		}
 
 		case sym_global:
+global:
 			d->spel_asm = func_mangle(d->spel, type_is(d->ref, type_func));
 			break;
 	}
