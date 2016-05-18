@@ -609,8 +609,8 @@ static const out_val *builtin_gen_expect(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_expect(const expr *e, irctx *ctx)
 {
-	IRTODO("TODO: %s", __func__);
-	return NULL;
+	irval_free(gen_ir_expr(e->funcargs[1], ctx));
+	return gen_ir_expr(e->funcargs[0], ctx);
 }
 
 static void const_expect(expr *e, consty *k)
