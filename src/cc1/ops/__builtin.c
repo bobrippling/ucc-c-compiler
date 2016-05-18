@@ -554,7 +554,7 @@ static const out_val *builtin_gen_reg_save_area(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_reg_save_area(const expr *e, irctx *ctx)
 {
-	IRTODO("TODO: %s", __func__);
+	ICE("va_list setup in IR");
 	return NULL;
 }
 
