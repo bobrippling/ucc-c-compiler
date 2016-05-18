@@ -370,8 +370,8 @@ static const out_val *builtin_gen_unreachable(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_unreachable(const expr *e, irctx *ctx)
 {
-	IRTODO("TODO: %s", __func__);
-	return NULL;
+	printf("unreachable\n");
+	return irval_from_noop();
 }
 
 static expr *parse_unreachable(const char *ident, symtable *scope)
