@@ -267,6 +267,14 @@ irval *gen_ir_expr_assign(const expr *e, irctx *ctx)
 	irval *rhs = gen_ir_expr(e->rhs, ctx);
 	irval *to_store;
 
+	if(type_is_s_or_u(e->tree_type)){
+		/* generate our assignment (e->expr), then return our lhs,
+		 * i.e. the struct lval we're assigning to */
+		irval_free(rhs);
+		irval_free(gen_ir_expr(e->expr, ctx));
+		return lhs;
+	}
+
 	/* special case bitfield storing */
 	if(expr_kind(e->lhs, struct))
 		to_store = gen_ir_assign_bitfield(lhs, rhs, e->lhs, ctx);

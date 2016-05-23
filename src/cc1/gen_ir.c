@@ -604,6 +604,130 @@ static void gen_ir_memset_large(
 	gen_ir_memset_small(ctx, &iter_passtmp, ch, len % word_size);
 }
 
+static void gen_ir_memcpy_small(
+		irctx *ctx, irval *dest_iter, irval *src_iter, size_t len)
+{
+	assert(len <= 8);
+
+	if(len == 0)
+		return;
+
+	if(is_pow2(len)){
+		/* easy */
+		const unsigned dest_cast = ctx->curval++;
+		const unsigned src_cast = ctx->curval++;
+		const unsigned load = ctx->curval++;
+
+		printf("$%u = ptrcast i%d*, %s\n",
+				dest_cast, (int)len,
+				irval_str(dest_iter, ctx));
+
+		printf("$%u = ptrcast i%d*, %s\n",
+				src_cast, (int)len,
+				irval_str(src_iter, ctx));
+
+		printf("$%u = load $%u\n", load, src_cast);
+
+		printf("store $%u, $%u\n", dest_cast, load);
+
+	}else{
+		/* as with memset(), just emit unrolled assignments */
+		unsigned remain = len;
+		irval *iter_dest = dest_iter;
+		irval *iter_src = src_iter;
+		irval iter_tmp_dest, iter_tmp_src;
+
+		gen_ir_comment(ctx, "unrolled memcpy(..., %u)", (unsigned)len);
+
+		for(;;){
+			unsigned rounded = round_down_pow2(remain);
+			unsigned addtmp_dest, addtmp_src;
+
+			remain -= rounded;
+
+			gen_ir_memcpy_small(ctx, iter_dest, iter_src, rounded);
+
+			if(!remain)
+				break;
+
+			addtmp_dest = ctx->curval++;
+			addtmp_src = ctx->curval++;
+
+			printf("$%u = ptradd %s, i4 1\n", addtmp_dest, irval_str(iter_dest, ctx));
+			printf("$%u = ptradd %s, i4 1\n", addtmp_src, irval_str(iter_src, ctx));
+
+			iter_tmp_dest.type = IRVAL_ID;
+			iter_tmp_dest.bits.id = addtmp_dest;
+			iter_dest = &iter_tmp_dest;
+
+			iter_tmp_src.type = IRVAL_ID;
+			iter_tmp_src.bits.id = addtmp_src;
+			iter_src = &iter_tmp_src;
+		}
+	}
+}
+
+static void gen_ir_memcpy_large(
+		irctx *ctx, irval *dest_iter, irval *src_iter, size_t len, unsigned word_size)
+{
+	const unsigned blk_loop = ctx->curlbl++;
+	const unsigned blk_fin = ctx->curlbl++;
+	const unsigned byte_cnt = ctx->curval++;
+	const unsigned byte_tmp = ctx->curval++;
+	const unsigned byte_load = ctx->curval++;
+	const unsigned byte_cmp = ctx->curval++;
+	const unsigned iter_dest_voidp = ctx->curval++, iter_src_voidp = ctx->curval++;
+	const unsigned iter_dest_store = ctx->curval++, iter_src_store = ctx->curval++;
+	const unsigned iter_dest_tmp = ctx->curval++,   iter_src_tmp = ctx->curval++;
+	const unsigned iter_dest_add = ctx->curval++,   iter_src_add = ctx->curval++;
+	irval iter_dest_passtmp, iter_src_passtmp;
+
+	assert(len > word_size);
+
+	printf("$%u = alloca i%d\n", byte_cnt, word_size);
+	printf("store $%u, i%d 0x%x\n", byte_cnt, word_size, (unsigned)len);
+
+	printf("$%u = alloca void*\n", iter_dest_store);
+	printf("$%u = ptrcast void*, %s\n", iter_dest_voidp, irval_str(dest_iter, ctx));
+	printf("store $%u, $%u\n", iter_dest_store, iter_dest_voidp);
+
+	printf("$%u = alloca void*\n", iter_src_store);
+	printf("$%u = ptrcast void*, %s\n", iter_src_voidp, irval_str(src_iter, ctx));
+	printf("store $%u, $%u\n", iter_src_store, iter_src_voidp);
+
+	printf("$%u:\n", blk_loop);
+	printf("$%u = load $%u\n", iter_dest_tmp, iter_dest_store);
+	printf("$%u = load $%u\n", iter_src_tmp, iter_src_store);
+
+	iter_dest_passtmp.type = IRVAL_ID;
+	iter_dest_passtmp.bits.id = iter_dest_tmp;
+	iter_src_passtmp.type = IRVAL_ID;
+	iter_src_passtmp.bits.id = iter_src_tmp;
+
+	gen_ir_memcpy_small(ctx, &iter_dest_passtmp, &iter_src_passtmp, word_size);
+
+	printf("$%u = load $%u\n", byte_load, byte_cnt);
+	printf("$%u = sub $%u, i%d 0x%x\n", byte_tmp, byte_load, word_size, word_size);
+	printf("store $%u, $%u\n", byte_cnt, byte_tmp);
+
+	printf("$%u = ptradd $%u, i4 1\n", iter_dest_add, iter_dest_tmp);
+	printf("store $%u, $%u\n", iter_dest_store, iter_dest_add);
+	printf("$%u = ptradd $%u, i4 1\n", iter_src_add, iter_src_tmp);
+	printf("store $%u, $%u\n", iter_src_store, iter_src_add);
+
+	/* byte_cnt must be > 0 here, since initial len is > word_size
+	 * if it's > 8, we continue, otherwise we break and copy the remaining bytes
+	 */
+	printf("$%u = gt $%u, i%d 0x%x\n",
+			byte_cmp, byte_tmp, word_size, word_size);
+
+	printf("br $%u, $%u, $%u\n", byte_cmp, blk_loop, blk_fin);
+
+	printf("$%u:\n", blk_fin);
+
+	gen_ir_memcpy_small(ctx, &iter_dest_passtmp, &iter_src_passtmp, len % word_size);
+}
+
 void gen_ir_memset(irctx *ctx, irval *v, char ch, size_t len)
 {
 	unsigned ws = platform_word_size();
@@ -612,6 +736,16 @@ void gen_ir_memset(irctx *ctx, irval *v, char ch, size_t len)
 		gen_ir_memset_small(ctx, v, ch, len);
 	else
 		gen_ir_memset_large(ctx, v, ch, len, ws);
+}
+
+void gen_ir_memcpy(irctx *ctx, irval *dest, irval *src, size_t len)
+{
+	unsigned ws = platform_word_size();
+
+	if(len <= ws)
+		gen_ir_memcpy_small(ctx, dest, src, len);
+	else
+		gen_ir_memcpy_large(ctx, dest, src, len, ws);
 }
 
 static void gen_ir_decl(decl *d, irctx *ctx)

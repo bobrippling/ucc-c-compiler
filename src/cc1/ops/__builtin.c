@@ -317,8 +317,12 @@ static const out_val *builtin_gen_memcpy(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_memcpy(const expr *e, irctx *ctx)
 {
-	IRTODO("TODO: %s", __func__);
-	return NULL;
+	irval *dest = gen_ir_expr(e->lhs, ctx);
+	irval *src = gen_ir_expr(e->rhs, ctx);
+
+	gen_ir_memcpy(ctx, dest, src, e->bits.num.val.i);
+
+	return dest;
 }
 
 expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
