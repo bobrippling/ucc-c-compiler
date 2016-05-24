@@ -659,6 +659,8 @@ arg_ld:
 						gopts.assume = mode_compile;
 					else if(!strcmp(arg, "asm"))
 						gopts.assume = mode_assemb;
+					else if(!strcmp(arg, "ir"))
+						gopts.assume = mode_ir;
 					else if(!strcmp(arg, "none"))
 						gopts.assume = -1; /* reset */
 					else
