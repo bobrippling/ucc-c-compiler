@@ -17,6 +17,7 @@
 #include "type_is.h"
 #include "fopt.h"
 #include "parse_fold_error.h"
+#include "fold.h"
 
 static void sue_set_spel(struct_union_enum_st *sue, char *spel)
 {
@@ -242,8 +243,10 @@ void sue_member_init_dup_check(sue_member **members)
 	for(i = 0; decls && decls[i]; i++){
 		decl *d2, *d = decls[i]->struct_member;
 
-		if(d->bits.var.init.dinit)
-			die_at(&d->where, "member %s is initialised", d->spel);
+		if(d->bits.var.init.dinit){
+			warn_at_print_error(&d->where, "member %s is initialised", d->spel);
+			fold_had_error = 1;
+		}
 
 		if(decls[i + 1]
 				&& (d2 = decls[i + 1]->struct_member,

@@ -1643,7 +1643,8 @@ static decl *parse_decl_stored_aligned(
 				decl_init *init = d->bits.var.init.dinit;
 
 				/* delayed add-to-scope */
-				symtab_add_to_scope(add_to_scope, d);
+				if(add_to_scope)
+					symtab_add_to_scope(add_to_scope, d);
 
 				UCC_ASSERT(!d->ref, "already have decl type?");
 
