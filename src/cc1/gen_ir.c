@@ -533,7 +533,7 @@ static void gen_ir_memset_small(irctx *ctx, irval *v, char ch, size_t len)
 
 		for(;;){
 			unsigned rounded = round_down_pow2(remain);
-			unsigned addtmp;
+			unsigned addtmp, casttmp;
 
 			remain -= rounded;
 
@@ -542,9 +542,11 @@ static void gen_ir_memset_small(irctx *ctx, irval *v, char ch, size_t len)
 			if(!remain)
 				break;
 
+			casttmp = ctx->curval++;
 			addtmp = ctx->curval++;
 
-			printf("$%u = ptradd %s, i4 1\n", addtmp, irval_str(iter, ctx));
+			printf("$%u = ptrcast i%d, %s\n", casttmp, rounded, irval_str(iter, ctx));
+			printf("$%u = ptradd $%u, i4 1\n", addtmp, casttmp);
 
 			iter_tmp.type = IRVAL_ID;
 			iter_tmp.bits.id = addtmp;
@@ -565,7 +567,9 @@ static void gen_ir_memset_large(
 	const unsigned iter_voidp = ctx->curval++;
 	const unsigned iter_store = ctx->curval++;
 	const unsigned iter_tmp = ctx->curval++;
+	const unsigned iter_cast = ctx->curval++;
 	const unsigned iter_add = ctx->curval++;
+	const unsigned iter_storeback = ctx->curval++;
 	irval iter_passtmp;
 
 	assert(len > word_size);
@@ -588,8 +592,10 @@ static void gen_ir_memset_large(
 	printf("$%u = sub $%u, i%d 0x%x\n", byte_tmp, byte_load, word_size, word_size);
 	printf("store $%u, $%u\n", byte_cnt, byte_tmp);
 
-	printf("$%u = ptradd $%u, i4 1\n", iter_add, iter_tmp);
-	printf("store $%u, $%u\n", iter_store, iter_add);
+	printf("$%u = ptrcast i%d*, $%u\n", iter_cast, word_size, iter_tmp);
+	printf("$%u = ptradd $%u, i4 1\n", iter_add, iter_cast);
+	printf("$%u = ptrcast void*, $%u\n", iter_storeback, iter_add);
+	printf("store $%u, $%u\n", iter_store, iter_storeback);
 
 	/* byte_cnt must be > 0 here, since initial len is > word_size
 	 * if it's > 8, we continue, otherwise we break and copy the remaining bytes
@@ -681,18 +687,26 @@ static void gen_ir_memcpy_large(
 	const unsigned iter_dest_tmp = ctx->curval++,   iter_src_tmp = ctx->curval++;
 	const unsigned iter_dest_add = ctx->curval++,   iter_src_add = ctx->curval++;
 	irval iter_dest_passtmp, iter_src_passtmp;
+	type *const word_size_type = type_nav_MAX_FOR(cc1_type_nav, word_size);
+	const char *const word_size_type_str = irtype_str(word_size_type, ctx);
 
 	assert(len > word_size);
 
 	printf("$%u = alloca i%d\n", byte_cnt, word_size);
 	printf("store $%u, i%d 0x%x\n", byte_cnt, word_size, (unsigned)len);
 
-	printf("$%u = alloca void*\n", iter_dest_store);
-	printf("$%u = ptrcast void*, %s\n", iter_dest_voidp, irval_str(dest_iter, ctx));
+	/* alloca the pointers as T*, where T is a word_size int,
+	 * since we'll be performing most assignments through
+	 * that type
+	 */
+	printf("$%u = alloca %s*\n", iter_dest_store, word_size_type_str);
+	printf("$%u = ptrcast %s*, %s\n",
+			iter_dest_voidp, word_size_type_str, irval_str(dest_iter, ctx));
 	printf("store $%u, $%u\n", iter_dest_store, iter_dest_voidp);
 
-	printf("$%u = alloca void*\n", iter_src_store);
-	printf("$%u = ptrcast void*, %s\n", iter_src_voidp, irval_str(src_iter, ctx));
+	printf("$%u = alloca %s*\n", iter_src_store, word_size_type_str);
+	printf("$%u = ptrcast %s*, %s\n",
+			iter_src_voidp, word_size_type_str, irval_str(src_iter, ctx));
 	printf("store $%u, $%u\n", iter_src_store, iter_src_voidp);
 
 	printf("$%u:\n", blk_loop);
