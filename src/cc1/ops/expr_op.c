@@ -649,6 +649,7 @@ ptr_relation:
 			}else{
 				/* can the signed type represent all of the unsigned type's values?
 				 * this is true if signed_type_size > unsigned_type_size
+				 * (for 2's complement, which we assume)
 				 * if so - convert unsigned to signed type */
 				const int l_sz = type_size(tlhs, &lhs->where),
 				          r_sz = type_size(trhs, &rhs->where);

@@ -115,6 +115,7 @@ X("restrict-non-ptr", bad_restrict)
 X("bitfield-boundary", bitfield_boundary)
 X("bitfield-onebit-int", bitfield_onebit_int)
 X("bitfield-trunc", bitfield_trunc)
+X("bitfield-promotion", bitfield_promotion)
 
 X("builtin-expect-nonconst", builtin_expect_nonconst)
 X("builtin-memset-bad", builtin_memset_bad)
