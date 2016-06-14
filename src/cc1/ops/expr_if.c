@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../../strbuf/strbuf_fixed.h"
+
 #include "ops.h"
 #include "expr_if.h"
 #include "../sue.h"
@@ -249,9 +251,64 @@ const out_val *gen_expr_if(const expr *e, out_ctx *octx)
 
 irval *gen_ir_expr_if(const expr *e, irctx *ctx)
 {
-#warning todo
-	ICE("TODO: expr if");
-	return 0;
+	const irid evali = ctx->curval++;
+	irval *cond, *orig_cond, *lval, *rval;
+	const unsigned blk_true = ctx->curlbl++;
+	const unsigned blk_fin = ctx->curlbl++;
+	const unsigned blk_false = ctx->curlbl++;
+	char buf_l[32], buf_r[32];
+	strbuf_fixed strbuf_l = STRBUF_FIXED_INIT_ARRAY(buf_l);
+	strbuf_fixed strbuf_r = STRBUF_FIXED_INIT_ARRAY(buf_r);
+
+	orig_cond = cond = gen_ir_expr(e->expr, ctx);
+
+	if(type_size(e->expr->tree_type, NULL) > 1){
+		irid i1_tmp = ctx->curval++;
+
+		printf("$%u = ne %s 0, %s\n",
+				i1_tmp,
+				irtype_str(e->expr->tree_type, ctx),
+				irval_str(cond, ctx));
+
+		cond = irval_from_id(i1_tmp);
+	}
+
+	printf("br %s, $%u, $%u\n",
+			irval_str(cond, ctx),
+			blk_true,
+			blk_false);
+
+	printf("$%u:\n", blk_true);
+	{
+		lval = gen_ir_expr(e->lhs, ctx);
+	}
+
+	if(e->rhs){
+		printf("jmp $%u\n", blk_fin);
+
+		printf("$%u:\n", blk_false);
+		{
+			rval = gen_ir_expr(e->rhs, ctx);
+		}
+	}else{
+		rval = orig_cond;
+	}
+	printf("$%u:\n", blk_fin);
+
+	printf("$%u = phi [$%u, %s], [$%u, %s]\n",
+			evali,
+			blk_true, irval_str_r(&strbuf_l, lval, ctx),
+			blk_false, irval_str_r(&strbuf_r, rval, ctx));
+
+	irval_free(lval);
+	irval_free(orig_cond);
+
+	if(rval != orig_cond)
+		irval_free(rval);
+	if(cond != orig_cond)
+		irval_free(cond);
+
+	return irval_from_id(evali);
 }
 
 void dump_expr_if(const expr *e, dump *ctx)
