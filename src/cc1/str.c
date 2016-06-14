@@ -43,7 +43,7 @@ void escape_string(char *old_str, size_t *plen)
 				case 0:
 					break;
 				case ERANGE:
-					cc1_warn_at(&loc, escape_char,
+					warn_at_print_error(&loc,
 							"escape sequence out of range (larger than 0xff)");
 					break;
 				case EINVAL:

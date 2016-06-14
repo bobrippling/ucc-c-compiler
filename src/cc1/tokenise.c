@@ -779,7 +779,9 @@ static void cc1_read_quoted_char(const int is_wide)
 		case 0:
 			break;
 		case ERANGE:
-			cc1_warn_at(NULL, escape_char, "escape character out of range (larger than 0xff)");
+			warn_at_print_error(NULL,
+					"escape character out of range (larger than 0xff)");
+			parse_had_error = 1;
 			break;
 		case EINVAL:
 			cc1_warn_at(NULL, escape_char, "invalid escape character");
