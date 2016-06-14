@@ -6,6 +6,7 @@
 #include <stdarg.h>
 #include <limits.h>
 #include <assert.h>
+#include <errno.h>
 
 #include "../util/util.h"
 #include "tokenise.h"
@@ -490,6 +491,9 @@ static void read_integer(const enum base mode)
 {
 	char *end;
 	int of; /*verflow*/
+	where loc;
+
+	where_cc1_current(&loc);
 
 	switch(mode){
 		case BIN: currentval.suffix = VAL_BIN; break;
@@ -498,17 +502,24 @@ static void read_integer(const enum base mode)
 		case DEC: currentval.suffix = 0; break;
 	}
 
-	currentval.val.i = char_seq_to_ullong(bufferpos, &end, mode, 0, &of);
+	currentval.val.i = char_seq_to_ullong(bufferpos, &end, mode, &of);
 
 	if(of){
 		/* force unsigned long long ULLONG_MAX */
+		cc1_warn_at(&loc, overflow,
+				"overflow parsing integer, truncating to unsigned long long");
+
 		currentval.val.i = NUMERIC_T_MAX;
 		currentval.suffix = VAL_LLONG | VAL_UNSIGNED;
 	}
 
-	if(end == bufferpos)
-		die_at(NULL, "%s-number expected (got '%c')",
-				base_to_str(mode), peeknextchar());
+	if(end == bufferpos){
+		parse_had_error = 1;
+		warn_at_print_error(NULL,
+				"%s-number expected",
+				base_to_str(mode));
+		return;
+	}
 
 	update_bufferpos(end);
 }
@@ -746,13 +757,33 @@ static void cc1_read_quoted_char(const int is_wide)
 {
 	int multichar;
 	char *p;
-	long ch = read_quoted_char(bufferpos, &p, &multichar, /*256*/!is_wide);
+	const char *err;
+	int warn;
+	long ch = read_quoted_char(
+			bufferpos, &p, &multichar, /*256*/!is_wide,
+			&err, &warn);
+
+	if(err){
+		/* empty char or no finishing quote */
+		warn_at_print_error(NULL, "%s", err);
+		parse_had_error = 1;
+	}
 
 	if(multichar){
 		if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
 			cc1_warn_at(NULL, multichar_toolarge, "multi-char constant too large");
 		else
 			cc1_warn_at(NULL, multichar, "multi-char constant");
+	}
+	switch(warn){
+		case 0:
+			break;
+		case ERANGE:
+			cc1_warn_at(NULL, escape_char, "escape character out of range (larger than 0xff)");
+			break;
+		case EINVAL:
+			cc1_warn_at(NULL, escape_char, "invalid escape character");
+			break;
 	}
 
 	currentval.val.i = ch;

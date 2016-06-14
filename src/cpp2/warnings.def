@@ -12,6 +12,7 @@ X("uncalled-macro", "warn when a function-macro is mentioned without ()", WUNCAL
 X("#warning", "emit #warnings", WHASHWARNING)
 X("backslash-newline-space", "space between backslash and newline", WBACKSLASH_SPACE_NEWLINE)
 X("newline-eof", "newline at eof", WNEWLINE)
+X("escape", "escape characters", WESCAPE)
 
 X("everything", "everything", ~0)
 

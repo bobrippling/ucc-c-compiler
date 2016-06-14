@@ -3,9 +3,9 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include "escape.h"
-#include "util.h"
 #include "str.h"
 #include "macros.h"
 
@@ -61,8 +61,6 @@ static int inc_and_chk(unsigned long long *const val, unsigned base, unsigned in
 
 static void overflow_handle(char *s, char **end, digit_test *test)
 {
-	warn_at(NULL, "overflow parsing integer, truncating to unsigned long long");
-
 	while(test(*s))
 		s++;
 
@@ -71,15 +69,13 @@ static void overflow_handle(char *s, char **end, digit_test *test)
 
 static unsigned long long read_ap_num(
 		digit_test test, char *s, int base,
-		int max_n,
-		char **end, int *of)
+		char **const end, int *const of)
 {
 	unsigned long long val = 0;
-	int i = 0;
 
 	*of = 0;
 
-	while(test(*s) && (max_n == -1 || i++ < max_n)){
+	while(test(*s)){
 		int dv = isdigit(*s) ? *s - '0' : tolower(*s) - 'a' + 10;
 
 		if(inc_and_chk(&val, base, dv)){
@@ -111,65 +107,61 @@ static int isodigit(int c)
 }
 
 unsigned long long char_seq_to_ullong(
-		char *s, char **eptr, enum base mode,
-		int limit, int *of)
+		char *s, char **const eptr, enum base mode, int *const of)
 {
 	static const struct
 	{
-		int base, max_n;
+		int base;
 		digit_test *test;
 	} bases[] = {
-		{    2, -1, isbdigit },
-		{  010,  3, isodigit },
-		{   10, -1, isdigit  },
-		{ 0x10, -1, isxdigit },
+		{    2, isbdigit },
+		{  010, isodigit },
+		{   10, isdigit  },
+		{ 0x10, isxdigit },
 	};
-	unsigned long long val;
 
-	val = read_ap_num(
-			bases[mode].test, s, bases[mode].base,
-			limit ? bases[mode].max_n : -1,
-			eptr, of);
-
-	if(s == *eptr)
-		die_at(NULL, "invalid number (read 0 chars, at \"%s\")", s);
-
-	return val;
+	return read_ap_num(
+			bases[mode].test,
+			s,
+			bases[mode].base,
+			eptr,
+			of);
 }
 
-long read_char_single(char *start, char **end, unsigned off)
+long read_char_single(char *start, char **end, int *const warn)
 {
 	long c = *start++;
+
+	*warn = 0;
 
 	if(c == '\\'){
 		char esc = tolower(*start);
 
 		/* no binary here - only in numeric constants */
 		if(esc == 'x' || isoct(esc)){
-			int of; /* XXX: overflow ignored */
+			long parsed;
+			int of;
 
 			if(esc == 'x' || esc == 'b')
 				start++;
 
-			return char_seq_to_ullong(
-					start, end,
+			parsed = char_seq_to_ullong(
+					start,
+					end,
 					esc == 'x' ? HEX : esc == 'b' ? BIN : OCT,
-					1, &of);
+					&of);
+
+			if((unsigned)parsed > 0xff)
+				*warn = ERANGE;
+
+			return parsed;
 
 		}else{
 			/* special parsing */
 			c = escape_char(esc);
 
-			if(c == -1){
-				where loc;
-
-				where_current(&loc);
-				loc.chr += off + 1;
-				loc.len = 2;
-
-				warn_at(&loc, "unrecognised escape character '%c'", esc);
-				c = esc;
-			}
+			if(c == -1)
+				*warn = EINVAL;
 
 			*end = start + 1;
 		}
@@ -182,23 +174,31 @@ long read_char_single(char *start, char **end, unsigned off)
 
 long read_quoted_char(
 		char *start, char **end,
-		int *multichar, int clip_256)
+		int *multichar, int clip_256,
+		const char **const err,
+		int *const warn)
 {
 	unsigned long total = 0;
 	unsigned i;
 
 	*multichar = 0;
+	*err = NULL;
 
-	if(*start == '\'') /* '' */
-		die_at(NULL, "empty char constant");
+	if(*start == '\''){
+		/* '' */
+		*err = "empty char constant";
+		goto out;
+	}
 
 	for(i = 0;; i++){
 		int ch;
 
-		if(!*start)
-			die_at(NULL, "no terminating quote to character");
+		if(!*start){
+			*err = "no terminating quote to character";
+			goto out;
+		}
 
-		ch = read_char_single(start, &start, i);
+		ch = read_char_single(start, &start, warn);
 
 		if(clip_256)
 			total = (total * 256) + (0xff & ch);
@@ -212,6 +212,7 @@ long read_quoted_char(
 		*multichar = 1;
 	}
 
+out:
 	*end = start + 1;
 	return total;
 }

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include "expr.h"
 #include "expr_tok.h"
@@ -62,17 +63,36 @@ end_ty:
 		/* char literal */
 		int mchar;
 		const int wide = (*tok_pos == 'L');
+		int warn;
+		const char *err;
 
 		if(wide)
 			tok_pos++;
 
-		tok_cur_num = read_quoted_char(++tok_pos, &tok_pos, &mchar, /*256*/!wide);
+		tok_pos++;
+		tok_cur_num = read_quoted_char(
+				tok_pos, &tok_pos, &mchar,
+				/*clip_256*/!wide, &err, &warn);
+
+		if(err)
+			CPP_DIE("%s", err);
 
 		if(!tok_pos)
 			CPP_DIE("missing terminating single quote (\"%s\")", tok_pos);
 
 		if(mchar)
 			CPP_WARN(WMULTICHAR, "multi-char constant");
+
+		switch(warn){
+			case 0:
+				break;
+			case ERANGE:
+				CPP_WARN(WESCAPE, "character escape out of range");
+				break;
+			case EINVAL:
+				CPP_WARN(WESCAPE, "invalid escape character");
+				break;
+		}
 
 		tok_cur = tok_num;
 

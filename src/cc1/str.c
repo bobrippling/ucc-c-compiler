@@ -4,12 +4,15 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <errno.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/escape.h"
 #include "str.h"
 #include "macros.h"
+#include "cc1_where.h"
+#include "warn.h"
 
 void escape_string(char *old_str, size_t *plen)
 {
@@ -22,13 +25,31 @@ void escape_string(char *old_str, size_t *plen)
 		char add;
 
 		if(old_str[i] == '\\'){
+			where loc;
 			char *end;
+			int warn;
 
-      add = read_char_single(old_str + i, &end, i);
+			where_cc1_current(&loc);
+			loc.chr += i;
+
+			add = read_char_single(old_str + i, &end, &warn);
 
 			UCC_ASSERT(end, "bad escape?");
 
 			i = (end - old_str) - 1;
+
+			switch(warn){
+				case 0:
+					break;
+				case ERANGE:
+					cc1_warn_at(&loc, escape_char,
+							"escape sequence out of range (larger than 0xff)");
+					break;
+				case EINVAL:
+					cc1_warn_at(&loc, escape_char,
+							"invalid escape character");
+					break;
+			}
 
 		}else{
 			add = old_str[i];

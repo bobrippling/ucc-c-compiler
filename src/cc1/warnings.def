@@ -11,6 +11,8 @@ X("implicit-int", implicit_int)
 X("implicit-function-declaration", implicit_func)
 GROUP("implicit", &cc1_warning.implicit_func, &cc1_warning.implicit_int)
 
+X("escape-char", escape_char)
+
 /* switch on enum type without default label:
  * warn on missing enum entry
  * warn on case labels outside of range */
