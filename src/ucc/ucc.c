@@ -70,7 +70,7 @@ static char **remove_these;
 static int unlink_tmps = 1;
 const char *argv0;
 char *wrapper;
-char *fsystem_cpp;
+const char *fsystem_cpp;
 
 static void unlink_files(void)
 {
@@ -467,15 +467,13 @@ static void parse_argv(
 						continue;
 					}
 					if(!strncmp(argv[i], "-fsystem-cpp", 12)){
-						char *end = argv[i] + 12;
-
-						free(fsystem_cpp);
-						switch(*end){
+						const char *arg = argv[i] + 12;
+						switch(*arg){
 							case '\0':
-								fsystem_cpp = ustrdup("cpp");
+								fsystem_cpp = "cpp";
 								break;
 							case '=':
-								fsystem_cpp = ustrdup(end + 1);
+								fsystem_cpp = arg + 1;
 								break;
 							default:
 								die("%s: -fsystem-cpp should have no argument, or \"=path/to/cpp\"\n",

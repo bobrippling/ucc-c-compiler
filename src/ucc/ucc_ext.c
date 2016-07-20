@@ -75,7 +75,7 @@ char *actual_path(const char *prefix, const char *path)
 	return buf;
 }
 
-static void runner(int local, char *path, char **args)
+static void runner(int local, const char *path, char **args)
 {
 	pid_t pid;
 
@@ -137,7 +137,7 @@ static void runner(int local, char *path, char **args)
 					argv[i_out++] = last;
 			}
 
-			argv[i_out++] = local ? actual_path("../", path) : path;
+			argv[i_out++] = local ? actual_path("../", path) : (char *)path;
 
 			while(args[i_in])
 				argv[i_out++] = args[i_in++];
@@ -245,7 +245,7 @@ void cat(char *fnin, const char *fnout, int append)
 		die("close():");
 }
 
-static void runner_1(int local, char *path, char *in, const char *out, char **args)
+static void runner_1(int local, const char *path, char *in, const char *out, char **args)
 {
 	char **all = NULL;
 
