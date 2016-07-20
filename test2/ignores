@@ -26,3 +26,6 @@ inline/block_call.c
 
 # waiting for call-reg-spill bug fix
 sanitize/shift.c
+
+# waiting for fixed stret (passes by coincidence)
+#structs/function_passing/nested_ret.c
