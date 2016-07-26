@@ -50,7 +50,7 @@ usage() unless @ARGV > 1;
 
 my $timeout = shift;
 
-usage() unless $timeout =~ /^[0-9]+$/;
+usage() unless $timeout =~ /^[0-9]+(\.[0-9]+)?$/;
 
 $SIG{CHLD} = \&handle_exit;
 
