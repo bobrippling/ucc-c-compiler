@@ -1868,43 +1868,44 @@ static void check_var_storage_redef(decl *new, decl *old)
 	/* C99 6.2.2
 	 * 5) [...] If the declaration of an identifier for an object has file scope
 	 * and no storage-class specifier, its linkage is external.
+	 *
+	 * first decl: if static, can't have default storage (unless function)
+	 *             if extern, can have anything but static
 	 */
-	char buf[WHERE_BUF_SIZ];
-	int expect_extern = 0;
+	int first_is_static;
+	int is_fn;
+	int error = 0;
 
-	switch((enum decl_storage)(old->store & STORE_MASK_STORE)){
-		default:
-			return;
-		case store_default:
-		case store_extern:
-			expect_extern = 1;
-			break;
-		case store_static:
-			break;
-	}
+	old = decl_proto(old);
+	is_fn = !!type_is(old->ref, type_func);
+
+	first_is_static = (store_static == (enum decl_storage)(old->store & STORE_MASK_STORE));
 
 	switch((enum decl_storage)(new->store & STORE_MASK_STORE)){
 		default:
 			return;
 		case store_default:
-		case store_extern:
-			if(expect_extern)
-				return;
+			if(first_is_static && !is_fn)
+				error = 1;
 			break;
 		case store_static:
-			if(!expect_extern)
-				return;
+			if(!first_is_static)
+				error = 1;
+			break;
+		case store_extern:
+			/* fine */
 			break;
 	}
 
-	warn_at_print_error(&new->where,
-			"%sstatic redefinition of %sstatic \"%s\"\n"
-			"%s: note: previous definition",
-			expect_extern ? "" : "non-",
-			expect_extern ? "non-" : "",
-			new->spel,
-			where_str_r(buf, &old->where));
-	fold_had_error = 1;
+	if(error){
+		char buf[WHERE_BUF_SIZ];
+		warn_at_print_error(&new->where,
+				"static redefinition as non-static\n"
+				"%s: note: previous definition",
+				new->spel,
+				where_str_r(buf, &old->where));
+		fold_had_error = 1;
+	}
 }
 
 static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
