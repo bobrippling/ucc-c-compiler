@@ -17,13 +17,8 @@ sub bg
 	return $pid;
 }
 
-usage() unless @ARGV > 1;
-
-my $timeout = shift;
-
-usage() unless $timeout =~ /^[0-9]+$/;
-
-$SIG{CHLD} = sub {
+sub handle_exit
+{
 	sub wexitstatus
 	{
 		return (shift >> 8) & 0xff
@@ -37,7 +32,15 @@ $SIG{CHLD} = sub {
 	}
 
 	exit wexitstatus($ret);
-};
+}
+
+usage() unless @ARGV > 1;
+
+my $timeout = shift;
+
+usage() unless $timeout =~ /^[0-9]+$/;
+
+$SIG{CHLD} = \&handle_exit;
 
 my $pid = bg @ARGV;
 
