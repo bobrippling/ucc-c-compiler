@@ -20,7 +20,7 @@ sub wexitstatus
 
 sub timeout
 {
-	system("./timeout", $timeout, @_);
+	system("../tools/timeout", $timeout, @_);
 	return $?;
 }
 
