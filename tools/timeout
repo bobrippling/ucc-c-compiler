@@ -1,6 +1,8 @@
 #!/usr/bin/perl
 use warnings;
 
+my $timedout = 0;
+
 sub usage
 {
 	die "Usage: $0 timeout cmd...\n";
@@ -31,7 +33,17 @@ sub handle_exit
 		die "wait: $!"
 	}
 
+	if($timedout){
+		exit_timedout();
+	}
+
 	exit wexitstatus($ret);
+}
+
+sub exit_timedout
+{
+	print STDERR "$0: timeout $ARGV[0]\n";
+	exit 1;
 }
 
 usage() unless @ARGV > 1;
@@ -45,8 +57,8 @@ $SIG{CHLD} = \&handle_exit;
 my $pid = bg @ARGV;
 
 select(undef, undef, undef, $timeout);
+$timedout = 1;
 kill 15, $pid;
 select(undef, undef, undef, 0.5); # half a second to tidy up
 kill  9, $pid;
-print STDERR "$0: timeout $ARGV[0]\n";
-exit 1;
+exit_timedout();
