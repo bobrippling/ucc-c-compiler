@@ -135,7 +135,8 @@ irval *gen_ir_expr_assign_compound(const expr *e, irctx *ctx)
 
 		ret = gen_ir_assign_bitfield(lhs, compound_result_v, e->lhs, ctx);
 
-		irval_free(compound_result_v);
+		if(ret != compound_result_v)
+			irval_free(compound_result_v);
 
 	}else{
 		const unsigned tmp_res = ctx->curval++;
@@ -152,8 +153,10 @@ irval *gen_ir_expr_assign_compound(const expr *e, irctx *ctx)
 	printf("store %s, ", irval_str(lhs, ctx));
 	printf("%s\n", irval_str(ret, ctx));
 
-	irval_free(lhs);
-	irval_free(rhs);
+	if(lhs != ret)
+		irval_free(lhs);
+	if(rhs != ret)
+		irval_free(rhs);
 
 	return ret;
 }
