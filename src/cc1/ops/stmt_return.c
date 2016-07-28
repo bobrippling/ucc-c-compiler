@@ -1,3 +1,5 @@
+#include <assert.h>
+
 #include "ops.h"
 #include "stmt_return.h"
 
@@ -35,8 +37,7 @@ void fold_stmt_return(stmt *s)
 		int void_return;
 
 		fold_expr_nodecay(s->expr, s->symtab);
-		if(!type_is_s_or_u(s->expr->tree_type))
-			FOLD_EXPR(s->expr, s->symtab);
+		FOLD_EXPR(s->expr, s->symtab);
 
 		fold_check_expr(s->expr, FOLD_CHK_ALLOW_VOID, s->f_str());
 
@@ -91,7 +92,18 @@ void gen_stmt_return(const stmt *s, out_ctx *octx)
 	struct cc1_out_ctx **pcc1_octx, *cc1_octx;
 
 	/* need to generate the ret expr before the scope leave code */
-	const out_val *ret = s->expr ? gen_expr(s->expr, octx) : NULL;
+	const out_val *ret;
+	expr *ret_exp = s->expr;
+
+	if(ret_exp && type_is_s_or_u(ret_exp->tree_type)){
+		/* undergone lval2rval, but we want the lvalue for return */
+		assert(expr_kind(ret_exp, cast));
+		assert(expr_cast_is_lval2rval(ret_exp));
+
+		ret_exp = expr_cast_child(ret_exp);
+	}
+
+	ret = ret_exp ? gen_expr(ret_exp, octx) : NULL;
 
 	gen_scope_leave(s->symtab, symtab_root(s->symtab), octx);
 
@@ -99,7 +111,7 @@ void gen_stmt_return(const stmt *s, out_ctx *octx)
 	if((cc1_octx = *pcc1_octx) && cc1_octx->inline_.depth)
 		inline_ret_add(octx, ret);
 	else
-		out_ctrl_end_ret(octx, ret, s->expr ? s->expr->tree_type : NULL);
+		out_ctrl_end_ret(octx, ret, ret_exp ? ret_exp->tree_type : NULL);
 }
 
 void gen_ir_stmt_return(const stmt *s, irctx *ctx)
