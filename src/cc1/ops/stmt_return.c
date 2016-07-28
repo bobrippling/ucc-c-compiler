@@ -91,15 +91,15 @@ void gen_stmt_return(const stmt *s, out_ctx *octx)
 	struct cc1_out_ctx **pcc1_octx, *cc1_octx;
 
 	/* need to generate the ret expr before the scope leave code */
-	const out_val *ret_exp = s->expr ? gen_expr(s->expr, octx) : NULL;
+	const out_val *ret = s->expr ? gen_expr(s->expr, octx) : NULL;
 
 	gen_scope_leave(s->symtab, symtab_root(s->symtab), octx);
 
 	pcc1_octx = cc1_out_ctx(octx);
 	if((cc1_octx = *pcc1_octx) && cc1_octx->inline_.depth)
-		inline_ret_add(octx, ret_exp);
+		inline_ret_add(octx, ret);
 	else
-		out_ctrl_end_ret(octx, ret_exp, s->expr ? s->expr->tree_type : NULL);
+		out_ctrl_end_ret(octx, ret, s->expr ? s->expr->tree_type : NULL);
 }
 
 void gen_ir_stmt_return(const stmt *s, irctx *ctx)
