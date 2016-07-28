@@ -756,10 +756,15 @@ void gen_ir_memcpy(irctx *ctx, irval *dest, irval *src, size_t len)
 {
 	unsigned ws = platform_word_size();
 
+	printf("# memcpy %s -> ", irval_str(src, ctx));
+	printf("%s, size %lu\n", irval_str(dest, ctx), len);
+
 	if(len <= ws)
 		gen_ir_memcpy_small(ctx, dest, src, len);
 	else
 		gen_ir_memcpy_large(ctx, dest, src, len, ws);
+
+	printf("# memcpy complete\n");
 }
 
 static void gen_ir_decl(decl *d, irctx *ctx)
