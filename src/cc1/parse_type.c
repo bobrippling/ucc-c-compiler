@@ -2371,7 +2371,14 @@ int parse_decl_group(
 		if(d->spel){
 			d->ref = type_attributed(d->ref, decl_attr);
 		}else{
+			type *attributed;
+
 			unused_attribute(d, decl_attr);
+
+			/* check for unused attribute on the type */
+			attributed = type_skip_non_attr(this_ref);
+			if(attributed && attributed->type == type_attr)
+				unused_attribute(d, attributed->bits.attr);
 		}
 
 		fold_type_ondecl_w(d, in_scope, NULL, 0);
