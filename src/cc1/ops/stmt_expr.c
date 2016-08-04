@@ -9,9 +9,20 @@ const char *str_stmt_expr()
 	return "expression";
 }
 
-static int unused_expr_type(type *t)
+static int unused_expr_type(expr *e)
 {
-	return !type_is_void(t) && !(type_qual(t) & qual_volatile);
+	type *t = e->tree_type;
+
+	if(type_is_void(t))
+		return 0;
+	if(type_qual(t) & qual_volatile)
+		return 0;
+
+	/* check decayed exprs */
+	if(expr_kind(e, cast) && expr_cast_is_lval2rval(e))
+		return unused_expr_type(expr_cast_child(e));
+
+	return 1;
 }
 
 void fold_stmt_expr(stmt *s)
@@ -28,7 +39,7 @@ void fold_stmt_expr(stmt *s)
 	if(!folded
 	&& !s->freestanding
 	&& !s->expr->freestanding
-	&& unused_expr_type(s->expr->tree_type))
+	&& unused_expr_type(s->expr))
 	{
 		cc1_warn_at(&s->expr->where, unused_expr,
 				"unused expression (%s)", expr_skip_lval2rval(s->expr)->f_str());
