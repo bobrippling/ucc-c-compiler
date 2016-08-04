@@ -425,6 +425,10 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	{
 		type *fnty = e->expr->tree_type;
 
+		/* look through decays */
+		if(expr_kind(e->expr, cast) && expr_cast_is_lval2rval(e->expr))
+			fnty = expr_cast_child(e->expr)->tree_type;
+
 		format_check_call(fnty, e->funcargs, args_from_decl->variadic);
 
 		sentinel_check(
