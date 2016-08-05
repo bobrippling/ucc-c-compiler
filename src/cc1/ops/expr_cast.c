@@ -630,7 +630,8 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 			/* either pass through as an LVALUE_STRUCT,
 			 * or dereference here for cast-to-void, if volatile */
 			UCC_ASSERT(
-					cast_to_void || type_cmp(tfrom, tto, 0) & TYPE_EQUAL_ANY,
+					cast_to_void ||
+					type_cmp(tfrom, tto, 0) & (TYPE_EQUAL_ANY | TYPE_QUAL_ADD | TYPE_QUAL_SUB),
 					"struct cast? (non-lval2rval)");
 
 			out_comment(octx,

@@ -46,11 +46,21 @@ void fold_stmt_expr(stmt *s)
 	}
 }
 
+static int expr_volatile_skipcasts(expr *e)
+{
+	if(type_qual(e->tree_type) & qual_volatile)
+		return 1;
+
+	return expr_kind(e, cast)
+		&& expr_cast_is_lval2rval(e)
+		&& type_qual(expr_cast_child(e)->tree_type) & qual_volatile;
+}
+
 void gen_stmt_expr(const stmt *s, out_ctx *octx)
 {
 	const out_val *v = gen_expr(s->expr, octx);
 
-	if(type_qual(s->expr->tree_type) & qual_volatile)
+	if(expr_volatile_skipcasts(s->expr))
 		out_force_read(octx, s->expr->tree_type, v);
 	else
 		out_val_consume(octx, v);
