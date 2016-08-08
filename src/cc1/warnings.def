@@ -1,237 +1,251 @@
-X("mismatch-arg", &cc1_warning.arg_mismatch)
-X("return-type", &cc1_warning.return_type)
-X("return-void", &cc1_warning.return_void)
+X("mismatch-arg", arg_mismatch)
+X("return-type", return_type)
+X("return-void", return_void)
 
-X("mismatch-assign", &cc1_warning.assign_mismatch, &cc1_warning.compare_mismatch, &cc1_warning.return_type)
+X("binary-literal", binary_literal)
 
-X("binary-literal", &cc1_warning.binary_literal)
+X("sign-compare", sign_compare)
+X("extern-assume", extern_assume)
 
-X("sign-compare", &cc1_warning.sign_compare)
-X("extern-assume", &cc1_warning.extern_assume)
-
-X("implicit-int", &cc1_warning.implicit_int)
-X("implicit-function-declaration", &cc1_warning.implicit_func)
-X("implicit", &cc1_warning.implicit_func, &cc1_warning.implicit_int)
+X("implicit-int", implicit_int)
+X("implicit-function-declaration", implicit_func)
+GROUP("implicit", &cc1_warning.implicit_func, &cc1_warning.implicit_int)
 
 /* switch on enum type without default label:
  * warn on missing enum entry
  * warn on case labels outside of range */
-X("switch", &cc1_warning.switch_enum)
+X("switch", switch_enum)
 
 /* same as -Wswitch except default labels change nothing */
-X("switch-enum", &cc1_warning.switch_enum_even_when_default_lbl)
+X("switch-enum", switch_enum_even_when_default_lbl)
 
 /* missing default label */
-X("switch-default", &cc1_warning.switch_default)
+X("switch-default", switch_default)
 
-X("switch-enum-bitmask", &cc1_warning.switch_enum_bitmask)
+X("switch-enum-bitmask", switch_enum_bitmask)
 
 /* warn if default label in fully covered switch */
-X("covered-switch-default", &cc1_warning.switch_default_covered)
+X("covered-switch-default", switch_default_covered)
 
-X("enum-compare", &cc1_warning.enum_cmp)
+X("enum-compare", enum_cmp)
 
-X("incomplete-use", &cc1_warning.incomplete_use)
+X("incomplete-use", incomplete_use)
 
-X("unused-expr", &cc1_warning.unused_expr)
+X("assign-in-test", test_assign)
+X("test-bool", test_bool)
 
-X("assign-in-test", &cc1_warning.test_assign)
-X("test-bool", &cc1_warning.test_bool)
+X("dead-code", dead_code)
 
-X("dead-code", &cc1_warning.dead_code)
+X("predecl-enum", predecl_enum)
 
-X("predecl-enum", &cc1_warning.predecl_enum,)
+X("extra-semi", parse_extra_semi)
 
-X("mixed-code-decls", &cc1_warning.mixed_code_decls)
+X("mixed-code-decls", mixed_code_decls)
 
-X("loss-of-precision", &cc1_warning.loss_precision)
+X("loss-of-precision", loss_precision)
 
-X("pad", &cc1_warning.pad)
+X("pad", pad)
 
-X("tenative-init", &cc1_warning.tenative_init)
+X("tenative-init", tenative_init)
 
-X("shadow-local", &cc1_warning.shadow_local)
-X("shadow-global", &cc1_warning.shadow_global_user)
-X("shadow-global-sysheaders", &cc1_warning.shadow_global_sysheaders)
-X("shadow", &cc1_warning.shadow_global_user, &cc1_warning.shadow_local)
+X("shadow-local", shadow_local)
+X("shadow-global", shadow_global_user)
+X("shadow-global-sysheaders", shadow_global_sysheaders)
+GROUP("shadow", &cc1_warning.shadow_global_user, &cc1_warning.shadow_local)
 
-X("cast-qual", &cc1_warning.cast_qual)
+X("cast-qual", cast_qual)
 
-X("unused-parameter", &cc1_warning.unused_param)
-X("unused-variable", &cc1_warning.unused_var)
-X("unused-function", &cc1_warning.unused_function)
-X("unused-value", &cc1_warning.unused_val)
-X("unused", &cc1_warning.unused_param, &cc1_warning.unused_var, &cc1_warning.unused_val)
+X("unused-comma", unused_comma)
+X("unused-expression", unused_expr)
+X("unused-function", unused_function)
+X("unused-return-value", unused_fnret)
+X("unused-label", unused_label)
+X("unused-local-typedef", unused_local_typedef)
+X("unused-parameter", unused_param)
+X("unused-variable", unused_var)
 
-X("uninitialised", &cc1_warning.uninitialised)
+GROUP("unused", &cc1_warning.unused_param, &cc1_warning.unused_var)
 
-X("int-ptr-conversion", &cc1_warning.int_ptr_conv)
-X("ptr-int-conversion", &cc1_warning.int_ptr_conv)
+X("uninitialised", uninitialised)
 
-X("arith-funcptr", &cc1_warning.arith_fnptr)
-X("arith-voidptr", &cc1_warning.arith_voidp)
+X("int-ptr-conversion", int_ptr_conv)
+ALIAS("ptr-int-conversion", int_ptr_conv)
 
-X("pointer-arith", &cc1_warning.arith_fnptr, &cc1_warning.arith_voidp, &cc1_warning.sizeof_void_or_func)
+X("arith-funcptr", arith_fnptr)
+X("arith-voidptr", arith_voidp)
 
-X("array-bounds", &cc1_warning.array_oob)
-X("char-subscripts", &cc1_warning.char_subscript)/* gcc/clang */
-X("asm-badchar", &cc1_warning.asm_badchar)
+X("sizeof-void", sizeof_void_or_func)
+GROUP("pointer-arith", &cc1_warning.arith_fnptr, &cc1_warning.arith_voidp, &cc1_warning.sizeof_void_or_func)
 
-X("attr-badcleanup", &cc1_warning.attr_badcleanup)
+X("array-bounds", array_oob)
+X("char-subscripts", char_subscript)/* gcc/clang */
+X("asm-badchar", asm_badchar)
 
-X("attr-printf-bad", &cc1_warning.attr_printf_bad)
-X("attr-printf-toomany", &cc1_warning.attr_printf_toomany)
-X("attr-printf-unknown", &cc1_warning.attr_printf_unknown)
-X("attr-printf-voidptr", &cc1_warning.attr_printf_voidp)
-X("format", &cc1_warning.attr_printf_bad, &cc1_warning.attr_printf_toomany, &cc1_warning.attr_printf_unknown)
-X("format-extra-args", &cc1_warning.attr_printf_toomany)/* gcc/clang */
+X("attr-badcleanup", attr_badcleanup)
 
-X("address-of-lvalue", &cc1_warning.address_of_lvalue)
+X("attr-format-unknown", attr_format_unknown)
+X("attr-format-baddecl", attr_format_baddecl)
+X("attr-printf-bad", attr_printf_bad)
+X("attr-printf-toomany", attr_printf_toomany)
+X("attr-printf-unknown", attr_printf_unknown)
+X("attr-printf-voidptr", attr_printf_voidp)
+GROUP("format", &cc1_warning.attr_printf_bad, &cc1_warning.attr_printf_toomany, &cc1_warning.attr_printf_unknown)
+ALIAS("format-extra-args", attr_printf_toomany)/* gcc/clang */
 
-X("attr-noderef", &cc1_warning.attr_noderef)
-X("attr-nonnull", &cc1_warning.attr_nonnull)
-X("attr-nonnull-bad", &cc1_warning.attr_nonnull_bad)
-X("attr-nonnull-noargs", &cc1_warning.attr_nonnull_noargs)
-X("attr-nonnull-nonptr", &cc1_warning.attr_nonnull_nonptr)
-X("attr-nonnull-noptrs", &cc1_warning.attr_nonnull_noptrs)
-X("attr-nonnull-oob", &cc1_warning.attr_nonnull_oob)
-X("attr-section-badchar", &cc1_warning.attr_section_badchar)
-X("attr-sentinel", &cc1_warning.attr_sentinel)
-X("attr-sentinel-nonvariadic", &cc1_warning.attr_sentinel_nonvariadic)
-X("attr-unknown-on-label", &cc1_warning.lbl_attr_unknown)
-X("attr-unused-used", &cc1_warning.attr_unused_used)
-X("attr-unused-voidfn", &cc1_warning.attr_unused_voidfn)
+X("address-of-lvalue", address_of_lvalue)
 
-X("qualified-fntype", &cc1_warning.bad_funcqual)
-X("inline-builtin-frame-addr", &cc1_warning.inline_builtin_frame_addr)
-X("restrict-non-ptr", &cc1_warning.bad_restrict)
+X("attr-noderef", attr_noderef)
+X("attr-nonnull", attr_nonnull)
+X("attr-nonnull-bad", attr_nonnull_bad)
+X("attr-nonnull-noargs", attr_nonnull_noargs)
+X("attr-nonnull-nonptr", attr_nonnull_nonptr)
+X("attr-nonnull-noptrs", attr_nonnull_noptrs)
+X("attr-nonnull-oob", attr_nonnull_oob)
+X("attr-section-badchar", attr_section_badchar)
+X("attr-sentinel", attr_sentinel)
+X("attr-sentinel-nonvariadic", attr_sentinel_nonvariadic)
+X("attr-unknown-on-label", lbl_attr_unknown)
+X("attr-unused-used", attr_unused_used)
+X("attr-unused-voidfn", attr_unused_voidfn)
 
-X("bitfield-boundary", &cc1_warning.bitfield_boundary)
-X("bitfield-onebit-int", &cc1_warning.bitfield_onebit_int)
-X("bitfield-trunc", &cc1_warning.bitfield_trunc)
+X("qualified-fntype", bad_funcqual)
+X("inline-builtin-frame-addr", inline_builtin_frame_addr)
+X("restrict-non-ptr", bad_restrict)
 
-X("builtin-expect-nonconst", &cc1_warning.builtin_expect_nonconst)
-X("builtin-memset-bad", &cc1_warning.builtin_memset_bad)
-X("builtin-va_arg-undefined", &cc1_warning.builtin_va_arg)
-X("builtin-va_start-2nd-param", &cc1_warning.builtin_va_start)
+X("bitfield-boundary", bitfield_boundary)
+X("bitfield-onebit-int", bitfield_onebit_int)
+X("bitfield-trunc", bitfield_trunc)
 
-X("c89-compound-literal", &cc1_warning.c89_compound_literal)
-X("c89-for-init", &cc1_warning.c89_for_init)
-X("c89-init-constexpr", &cc1_warning.c89_init_constexpr)
-X("c89-trailing-comma", &cc1_warning.c89_parse_trailingcomma)
+X("builtin-expect-nonconst", builtin_expect_nonconst)
+X("builtin-memset-bad", builtin_memset_bad)
+X("builtin-va_arg-undefined", builtin_va_arg)
+X("builtin-va_start-2nd-param", builtin_va_start)
 
-X("constant-large-unsigned", &cc1_warning.constant_large_unsigned)
+X("c89-compound-literal", c89_compound_literal)
+X("c89-for-init", c89_for_init)
+X("c89-init-constexpr", c89_init_constexpr)
+X("c89-trailing-comma", c89_parse_trailingcomma)
 
-X("div-zero", &cc1_warning.constop_bad)
-X("declaration-noop", &cc1_warning.decl_nodecl)
-X("empty-struct", &cc1_warning.empty_struct)
+X("constant-large-unsigned", constant_large_unsigned)
 
-X("empty-init", &cc1_warning.gnu_empty_init)
+X("div-zero", constop_bad)
+X("declaration-noop", decl_nodecl)
+X("empty-struct", empty_struct)
 
-X("enum-mismatch", &cc1_warning.enum_mismatch)
-X("assign-enum", &cc1_warning.enum_out_of_range) /* clang compat */
-X("enum-mismatch-int", &cc1_warning.enum_mismatch_int)
-X("enum-out-of-range", &cc1_warning.enum_out_of_range)
+X("empty-init", gnu_empty_init)
 
-X("excess-init", &cc1_warning.excess_init)
-X("extern-init", &cc1_warning.extern_init)
+X("enum-mismatch", enum_mismatch)
+X("assign-enum", enum_out_of_range) /* clang compat */
+X("enum-mismatch-int", enum_mismatch_int)
+ALIAS("enum-out-of-range", enum_out_of_range)
 
-X("embedded-flexarr", &cc1_warning.flexarr_embed)
-X("flexarr-single-member", &cc1_warning.flexarr_only)
-X("flexarr-init", &cc1_warning.flexarr_init)
+X("excess-init", excess_init)
+X("extern-init", extern_init)
 
-X("gcc-compat", &cc1_warning.gnu_gcc_compat)
+X("embedded-flexarr", flexarr_embed)
+X("flexarr-single-member", flexarr_only)
+X("flexarr-init", flexarr_init)
 
-X("call-argcount", &cc1_warning.funcall_argcount)
+X("free-nonheap-object", free_nonheap)
 
-X("cpp-line-parsing", &cc1_warning.cpp_line_parsing)
+X("gcc-compat", gnu_gcc_compat)
 
-X("ignored-attributes", &cc1_warning.ignored_attribute)
+X("gnu-alignof-expression", gnu_alignof_expr)
+X("gnu-statement-expression", gnu_expr_stmt)
+X("gnu-label-as-value", gnu_addr_lbl)
+X("gnu-attribute", gnu_attribute)
+X("gnu-typeof", gnu_typeof)
+X("gnu-function", gnu__function)
+X("gnu-case-range", gnu_case_range)
 
-X("ignored-late-decl", &cc1_warning.ignored_late_decl)
+X("call-argcount", funcall_argcount)
 
-X("ignored-qualifiers", &cc1_warning.ignored_qualifiers)
+X("cpp-line-parsing", cpp_line_parsing)
 
-X("implicit-old-func", &cc1_warning.implicit_old_func)
+X("ignored-attributes", ignored_attribute)
 
-X("missing-braces", &cc1_warning.init_missing_braces) /* clang/gcc */
-X("init-missing-braces", &cc1_warning.init_missing_braces)
-X("init-missing-struct", &cc1_warning.init_missing_struct)
-X("missing-field-initializers", &cc1_warning.init_missing_struct)/* gcc/clang */
-X("init-missing-struct-zero", &cc1_warning.init_missing_struct_zero)
-X("init-obj-discard", &cc1_warning.init_obj_discard)
-X("init-overlong-string", &cc1_warning.init_overlong_strliteral)
-X("init-override", &cc1_warning.init_override)
-X("designated-init", &cc1_warning.init_undesignated)
+X("ignored-late-decl", ignored_late_decl)
 
-X("unknown-attribute", &cc1_warning.attr_unknown)
-X("unused-label", &cc1_warning.lbl_unused)
+X("ignored-qualifiers", ignored_qualifiers)
 
-X("long-long", &cc1_warning.long_long)
+X("implicit-old-func", implicit_old_func)
 
-X("mismatch-conditional", &cc1_warning.mismatch_conditional)
-X("mismatch-ptr", &cc1_warning.mismatch_ptr)
-X("mismatching-types", &cc1_warning.mismatching_types)
+X("missing-braces", init_missing_braces) /* clang/gcc */
+ALIAS("init-missing-braces", init_missing_braces)
+X("init-missing-struct", init_missing_struct)
+ALIAS("missing-field-initializers", init_missing_struct)/* gcc/clang */
+X("init-missing-struct-zero", init_missing_struct_zero)
+X("init-obj-discard", init_obj_discard)
+X("init-overlong-string", init_overlong_strliteral)
+X("init-override", init_override)
+X("designated-init", init_undesignated)
+X("init-array-range", gnu_init_array_range)
 
-X("missing-empty-struct-brace-init", &cc1_warning.missing_empty_struct_brace_init)
+X("unknown-attribute", attr_unknown)
 
-X("missing-prototypes", &cc1_warning.missing_prototype)
-X("missing-variable-declarations", &cc1_warning.missing_variable_decls)
-X("missing-forwards", &cc1_warning.missing_variable_decls, &cc1_warning.missing_prototype)
-X("strict-prototypes", &cc1_warning.implicit_old_func)/* gcc/clang */
+X("long-long", long_long)
 
-X("multichar", &cc1_warning.multichar)
-X("multichar-too-large", &cc1_warning.multichar_toolarge)
+X("mismatch-conditional", mismatch_conditional)
+X("mismatch-ptr", mismatch_ptr)
+X("mismatching-types", mismatching_types)
 
-X("nonstandard-array-size", &cc1_warning.nonstd_arraysz)
-X("nonstandard-init", &cc1_warning.nonstd_init)
+X("missing-empty-struct-brace-init", missing_empty_struct_brace_init)
 
-X("null-zero-literal", &cc1_warning.null_zero_literal)
+X("missing-prototypes", missing_prototype)
+X("missing-variable-declarations", missing_variable_decls)
+GROUP("missing-forwards", &cc1_warning.missing_variable_decls, &cc1_warning.missing_prototype)
+ALIAS("strict-prototypes", implicit_old_func)/* gcc/clang */
 
-X("omitted-param-types", &cc1_warning.omitted_param_types)
-X("undefined-shift", &cc1_warning.op_shift_bad)
-X("overlarge-enumerator-bitfield", &cc1_warning.overlarge_enumerator_bitfield)
-X("overlarge-enumerator-int", &cc1_warning.overlarge_enumerator_int)
+X("multichar", multichar)
+X("multichar-too-large", multichar_toolarge)
 
-X("overflow", &cc1_warning.overflow)
+X("nonstandard-array-size", nonstd_arraysz)
+X("nonstandard-init", nonstd_init)
 
-X("operator-precedence", &cc1_warning.parse_precedence)
-X("visibility", &cc1_warning.private_struct)
+X("null-zero-literal", null_zero_literal)
 
-X("pure-inline", &cc1_warning.pure_inline)
-X("inline", &cc1_warning.inline_failed)
-X("restrict-ptrs", &cc1_warning.restrict_ptrs)
-X("return-undef", &cc1_warning.return_undef)
-X("sizeof-decayed", &cc1_warning.sizeof_decayed)
-X("sizeof-ptr-divide", &cc1_warning.sizeof_ptr_div)
-X("sizeof-pointer-memaccess", &cc1_warning.sizeof_pointer_memaccess)
-X("static-array-size", &cc1_warning.static_array_bad)
-X("static-local-in-inline", &cc1_warning.static_local_in_inline)
-X("str-contain-nul", &cc1_warning.str_contain_nul)
+X("omitted-param-types", omitted_param_types)
+X("undefined-shift", op_shift_bad)
+X("overlarge-enumerator-bitfield", overlarge_enumerator_bitfield)
+X("overlarge-enumerator-int", overlarge_enumerator_int)
 
-X("struct-noinstance-anon", &cc1_warning.struct_noinstance_anon)
-X("struct-noinstance-qualified", &cc1_warning.struct_noinstance_qualified)
+X("overflow", overflow)
 
-X("sym-never-read", &cc1_warning.sym_never_read)
-X("sym-never-written", &cc1_warning.sym_never_written)
+X("operator-precedence", parse_precedence)
+X("visibility", private_struct)
 
-X("tautologic-unsigned-op", &cc1_warning.tautologic_unsigned)
-X("tenative-array", &cc1_warning.tenative_array_1elem)
+X("pure-inline", pure_inline)
+X("inline", inline_failed)
+X("restrict-ptrs", restrict_ptrs)
+X("return-undef", return_undef)
+X("sizeof-decayed", sizeof_decayed)
+X("sizeof-ptr-divide", sizeof_ptr_div)
+X("sizeof-pointer-memaccess", sizeof_pointer_memaccess)
+X("static-array-size", static_array_bad)
+X("static-local-in-inline", static_local_in_inline)
+X("str-contain-nul", str_contain_nul)
 
-X("typedef-function-impl", &cc1_warning.typedef_fnimpl)
-X("typedef-redefinition", &cc1_warning.typedef_redef)
+X("struct-noinstance-anon", struct_noinstance_anon)
+X("struct-noinstance-qualified", struct_noinstance_qualified)
 
-X("undef-string-comparison", &cc1_warning.undef_strlitcmp)
-X("undefined-internal", &cc1_warning.undef_internal)
+X("sym-never-read", sym_never_read)
+X("sym-never-written", sym_never_written)
 
-X("unnamed-struct-memb", &cc1_warning.unnamed_struct_memb)
-X("unused-comma", &cc1_warning.unused_comma)
-X("unused-function-return", &cc1_warning.unused_fnret)
+X("tautologic-unsigned-op", tautologic_unsigned)
+X("tenative-array", tenative_array_1elem)
 
-X("vla", &cc1_warning.vla)
-X("c89-vla", &cc1_warning.c89_vla)
+X("typedef-function-impl", typedef_fnimpl)
+X("typedef-redefinition", typedef_redef)
 
-X("__func__init", &cc1_warning.x__func__init)
-X("__func__outside-fn", &cc1_warning.x__func__outsidefn)
+X("undef-string-comparison", undef_strlitcmp)
+X("undefined-internal", undef_internal)
 
-X("unknown-warning-option", &cc1_warning.unknown_warning_option)
+X("unnamed-struct-memb", unnamed_struct_memb)
+
+X("vla", vla)
+X("c89-vla", c89_vla)
+
+X("__func__init", x__func__init)
+X("__func__outside-fn", x__func__outsidefn)
+
+X("unknown-warning-option", unknown_warning_option)

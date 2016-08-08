@@ -11,8 +11,12 @@ static const char *wcpp[] = {
 
 static const char *wcc1[] = {
 #define X(name, ...) name,
+#define ALIAS X
+#define GROUP X
 #include "../cc1/warnings.def"
 #undef X
+#undef ALIAS
+#undef GROUP
 	NULL
 };
 
