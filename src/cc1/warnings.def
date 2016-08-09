@@ -42,7 +42,7 @@ X("extra-semi", parse_extra_semi)
 
 X("mixed-code-decls", mixed_code_decls)
 
-X("loss-of-precision", loss_precision)
+X("truncation", truncation)
 
 X("pad", pad)
 
@@ -242,6 +242,8 @@ X("undefined-internal", undef_internal)
 
 X("unnamed-struct-memb", unnamed_struct_memb)
 
+X("dangling-else", dangling_else)
+
 X("vla", vla)
 X("c89-vla", c89_vla)
 
@@ -249,3 +251,5 @@ X("__func__init", x__func__init)
 X("__func__outside-fn", x__func__outsidefn)
 
 X("unknown-warning-option", unknown_warning_option)
+
+X("system-headers", system_headers)

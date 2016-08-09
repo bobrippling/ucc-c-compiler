@@ -107,7 +107,7 @@ int cc1_warn_at_w(
 		where = where_cc1_current(&backup);
 
 	/* don't emit warnings from system headers */
-	if(where_in_sysheader(where))
+	if(!cc1_warning.system_headers && where_in_sysheader(where))
 		return 0;
 
 	va_start(l, fmt);
@@ -164,7 +164,7 @@ static void warning_all(void)
 	warning_gnu(W_OFF);
 
 	cc1_warning.implicit_int =
-	cc1_warning.loss_precision =
+	cc1_warning.truncation =
 	cc1_warning.pad =
 	cc1_warning.tenative_init =
 	cc1_warning.shadow_global_user =
@@ -188,6 +188,7 @@ static void warning_all(void)
 	cc1_warning.switch_default =
 	cc1_warning.switch_default_covered =
 	cc1_warning.sym_never_read =
+	cc1_warning.system_headers =
 		W_OFF;
 }
 

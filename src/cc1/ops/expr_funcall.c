@@ -384,8 +384,10 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	func_ty = e->expr->tree_type;
 
 	if(!type_is_callable(func_ty)){
-		warn_at_print_error(&e->expr->where, "%s-expression (type '%s') not callable",
-				e->expr->f_str(), type_to_str(func_ty));
+		warn_at_print_error(&e->expr->where,
+				"%s-expression (type '%s') not callable",
+				expr_str_friendly(e->expr),
+				type_to_str(func_ty));
 
 		fold_had_error = 1;
 

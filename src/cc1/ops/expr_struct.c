@@ -63,7 +63,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 err:
 			die_at(&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
 					type_to_str(e->lhs->tree_type),
-					e->lhs->f_str(),
+					expr_str_friendly(e->lhs),
 					ptr_expect ? "pointer to " : "",
 					spel);
 		}

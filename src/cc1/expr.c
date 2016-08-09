@@ -59,6 +59,11 @@ expr *expr_new(func_mutate_expr *f,
 	return e;
 }
 
+const char *expr_str_friendly(expr *e)
+{
+	return expr_skip_generated_casts(e)->f_str();
+}
+
 expr *expr_set_where(expr *e, where const *w)
 {
 	memcpy_safe(&e->where, w);
@@ -162,6 +167,13 @@ expr *expr_skip_lval2rval(expr *e)
 expr *expr_skip_implicit_casts(expr *e)
 {
 	while(e && expr_kind(e, cast) && expr_cast_is_implicit(e))
+		e = e->expr;
+	return e;
+}
+
+expr *expr_skip_generated_casts(expr *e)
+{
+	while(e && expr_kind(e, cast) && (expr_cast_is_implicit(e) || expr_cast_is_lval2rval(e)))
 		e = e->expr;
 	return e;
 }

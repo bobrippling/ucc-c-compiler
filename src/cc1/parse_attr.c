@@ -324,7 +324,7 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 	attrloc.chr -= strlen(ident);
 
 	/* unrecognised - only do the warning (and map checking) if non system-header */
-	if(!where_in_sysheader(&attrloc)){
+	if(cc1_warning.system_headers || !where_in_sysheader(&attrloc)){
 		glob = symtab_global(scope);
 		if(!dynmap_exists(char *, glob->unrecog_attrs, (char *)ident)){
 			char *dup = ustrdup(ident);

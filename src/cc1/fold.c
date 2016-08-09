@@ -404,7 +404,7 @@ static void fold_type_w_attr(
 						cc1_warn_at(&k.nonstandard_const->where,
 								nonstd_arraysz,
 								"%s-expr is a non-standard constant expression (for array size)",
-								k.nonstandard_const->f_str());
+								expr_str_friendly(k.nonstandard_const));
 					}
 				}
 			}
@@ -1052,7 +1052,7 @@ void fold_decl_global_init(decl *d, symtable *stab)
 				"%s: note: %s expression here",
 				type, decl_init_to_str(d->bits.var.init.dinit->type),
 				where_str_r(wbuf, &nonstd->where),
-				nonstd->f_str());
+				expr_str_friendly(nonstd));
 	}
 
 }

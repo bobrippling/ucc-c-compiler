@@ -26,6 +26,8 @@ struct stmt_ctx
 	     *break_target,
 	     *switch_target;
 	symtable *scope;
+
+	int parsing_unbraced_if; /* dangling-else detection */
 };
 
 static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
@@ -91,15 +93,28 @@ static stmt *parse_if(const struct stmt_ctx *const ctx)
 {
 	stmt *t = stmt_new_wrapper(if, ctx->scope);
 	struct stmt_ctx subctx = *ctx;
+	where else_locn;
 
 	EAT(token_if);
+
+	subctx.parsing_unbraced_if = (curtok != token_open_block);
 
 	parse_test_init_expr(t, &subctx);
 
 	t->lhs = parse_stmt(&subctx);
 
-	if(accept(token_else))
+	if(accept_where(token_else, &else_locn)){
+		if(ctx->parsing_unbraced_if){
+			/* if we are already parsing an if-statement that hasn't got braces and run
+			 * into an else while pasing an inner-if statement, then we have a dangling
+			 * else
+			 */
+			cc1_warn_at(&else_locn, dangling_else, "dangling else statement");
+		}
+
+		subctx.parsing_unbraced_if = 0; /* parsing the else, can't be ambiguous now */
 		t->rhs = parse_stmt(&subctx);
+	}
 
 	return t;
 }
@@ -551,8 +566,15 @@ flow:
 		}
 
 		case token_open_block:
-			t = parse_stmt_block(ctx->scope, ctx);
+		{
+			struct stmt_ctx subctx = *ctx;
+
+			/* we're in a block - if we find an else in here, it's unambiguous */
+			subctx.parsing_unbraced_if = 0;
+
+			t = parse_stmt_block(ctx->scope, &subctx);
 			break;
+		}
 
 		case token_switch:
 			t = parse_switch(ctx);

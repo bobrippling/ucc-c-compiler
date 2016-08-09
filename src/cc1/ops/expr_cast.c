@@ -561,13 +561,16 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			}
 		}
 
-		if(!warned_about_size && size_lhs < size_rhs){
+		if(!warned_about_size && size_lhs < size_rhs
+		&& !expr_kind(expr_cast_child(e), val))
+		{
 			char buf[DECL_STATIC_BUFSIZ];
 
-			cc1_warn_at(&e->where, loss_precision,
-					"possible loss of precision %s, size %d <-- %s, size %d",
-					type_to_str(tlhs), size_lhs,
-					type_to_str_r(buf, trhs), size_rhs);
+			cc1_warn_at(&e->where, truncation,
+					"possible truncation converting %s to %s",
+					type_to_str(trhs), type_to_str_r(buf, tlhs));
+
+			warned_about_size = 1;
 		}
 
 		if((flag = (type_is_fptr(tlhs) && type_is_nonfptr(trhs)))
