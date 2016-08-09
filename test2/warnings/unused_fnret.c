@@ -1,4 +1,4 @@
-// RUN: %check %s -Wunused-function-return
+// RUN: %check %s -Wunused-return-value
 
 f()
 {
