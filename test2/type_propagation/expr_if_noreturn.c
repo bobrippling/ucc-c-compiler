@@ -1,20 +1,29 @@
-// RUN: %ocheck 0 %s
+// RUN: %ucc -fsyntax-only %s
 
 _Noreturn void exit(int);
-void g(int i)
-{
-}
+__attribute((noreturn)) void exit2(int);
+void g(int i);
 
-int f(int p)
-{
-	(p == 5 ? exit : g)(2);
+_Static_assert(
+		!__builtin_has_attribute(g, noreturn),
+		"");
 
-	// this shouldn't be thought of as unreachable
-	return 7;
-}
+_Static_assert(
+		__builtin_has_attribute(exit, noreturn),
+		"");
 
-main()
-{
-	f(4);
-	return 0;
-}
+_Static_assert(
+		__builtin_has_attribute(exit2, noreturn),
+		"");
+
+_Static_assert(
+		!__builtin_has_attribute(
+			(1 ? exit : g),
+			noreturn),
+		"");
+
+_Static_assert(
+		!__builtin_has_attribute(
+			(1 ? exit2 : g),
+			noreturn),
+		"");
