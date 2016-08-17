@@ -141,7 +141,7 @@ static void wur_builtin(expr *e)
 	e->freestanding = 0; /* needs use */
 }
 
-const char *builtin_str(void)
+const char *str_expr_builtin(void)
 {
 	return "<builtin-expression>";
 }
