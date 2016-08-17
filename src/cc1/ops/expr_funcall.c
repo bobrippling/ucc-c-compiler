@@ -31,7 +31,7 @@ const char *str_expr_funcall()
 	return "function-call";
 }
 
-static attribute *func_attr_present(expr *e, enum attribute_type t)
+attribute *func_or_builtin_attr_present(expr *e, enum attribute_type t)
 {
 	attribute *a;
 	a = expr_attr_present(e, t);
@@ -46,7 +46,7 @@ static void sentinel_check(where *w, expr *e, expr **args,
 #define ATTR_WARN_RET(w, ...) \
 	do{ cc1_warn_at(w, attr_sentinel, __VA_ARGS__); return; }while(0)
 
-	attribute *attr = func_attr_present(e, attr_sentinel);
+	attribute *attr = func_or_builtin_attr_present(e, attr_sentinel);
 	int i, nvs;
 	expr *sentinel;
 
@@ -256,7 +256,7 @@ static void check_arg_voidness_and_nonnulls(
 	unsigned i;
 	attribute *da;
 
-	if((da = func_attr_present(callexpr, attr_nonnull)))
+	if((da = func_or_builtin_attr_present(callexpr, attr_nonnull)))
 		nonnulls = da->bits.nonnull_args;
 
 	for(i = 0; exprargs[i]; i++){
@@ -448,7 +448,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	}
 
 	/* check the subexp tree type to get the funcall attributes */
-	if(func_attr_present(e, attr_warn_unused))
+	if(func_or_builtin_attr_present(e, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 
 	if(sp && !(cc1_fopt.freestanding))
@@ -524,7 +524,7 @@ void mutate_expr_funcall(expr *e)
 int expr_func_passable(expr *e)
 {
 	/* need to check the sub-expr, i.e. the function */
-	return !func_attr_present(e, attr_noreturn);
+	return !func_or_builtin_attr_present(e, attr_noreturn);
 }
 
 expr *expr_new_funcall()
