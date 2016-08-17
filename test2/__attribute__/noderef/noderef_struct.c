@@ -8,7 +8,7 @@ int g(struct A __attribute((noderef)) *p)
 
 	__auto_type x = &p->i; // CHECK: !/warning/
 
-	int *local = &p->i; // CHECK: warning: mismatching nested types, initialisation:
+	int *local = &p->i; // CHECK: warning: mismatching nested types, initialisation
 	// CHECK: ^ note: 'int *' vs 'int __attribute__((noderef)) *'
 
 	return *x; // CHECK: warning: dereference of noderef expression

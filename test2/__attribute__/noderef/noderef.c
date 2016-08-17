@@ -1,4 +1,4 @@
-// RUN: %check %s -w -Wattr-noderef -Wmismatching-types
+// RUN: %check %s -w -Wattr-noderef -Wincompatible-pointer-types
 
 #define userd(t) t __attribute((noderef))
 
