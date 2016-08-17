@@ -7,6 +7,7 @@
 #include "expr_funcall.h"
 #include "expr_stmt.h"
 #include "expr_cast.h"
+#include "__builtin.h"
 
 const char *str_stmt_expr()
 {
@@ -98,6 +99,9 @@ static int expr_passable(stmt *s)
 
 	if(expr_kind(s->expr, stmt))
 		return fold_passable(s->expr->code);
+
+	if(expr_kind(s->expr, builtin))
+		return !func_or_builtin_attr_present(s->expr, attr_noreturn);
 
 	return 1;
 }
