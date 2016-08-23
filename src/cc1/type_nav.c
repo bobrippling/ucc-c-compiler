@@ -252,27 +252,42 @@ type *type_block_of(type *fn)
 
 static int eq_attr(type *candidate, void *ctx)
 {
-	return attribute_equal(candidate->bits.attr, ctx);
+	attribute **cand = candidate->bits.attr;
+	attribute **other = ctx;
+
+	for(; *cand; cand++){
+		attribute **i;
+
+		for(i = other; *i; i++)
+			if(attribute_equal(*cand, *i))
+				break;
+
+		if(!*i)
+			return 0; /* not found */
+	}
+
+	return 1;
 }
 
 static void init_attr(type *ty, void *ctx)
 {
-	ty->bits.attr = RETAIN((attribute *)ctx);
+	attribute **other = ctx;
+
+	attribute_array_retain(other);
+	dynarray_add_array(&ty->bits.attr, other);
 }
 
-type *type_attributed(type *ty, attribute *attr)
+type *type_attributed(type *ty, attribute **attrs)
 {
 	type *attributed;
 
-	if(!attr)
+	if(!attrs)
 		return ty;
 
 	attributed = type_uptree_find_or_new(
 			ty, type_attr,
 			eq_attr, init_attr,
-			attr);
-
-	RELEASE(attr);
+			attrs);
 
 	return attributed;
 }
@@ -534,7 +549,7 @@ type *type_nav_int_enum(struct type_nav *root, struct_union_enum_st *enu)
 
 type *type_unqualify(type *const qualified)
 {
-	attribute **attr = NULL, **attr_i;
+	attribute **attr = NULL;
 	type *t_restrict = NULL, *prev = NULL;
 	type *i, *ret;
 
@@ -553,10 +568,8 @@ type *type_unqualify(type *const qualified)
 			}
 
 			case type_attr:
-			{
-				dynarray_add(&attr, i->bits.attr);
+				dynarray_add_array(&attr, attribute_array_retain(i->bits.attr));
 				break;
-			}
 
 			case_CONCRETE_TYPE:
 			{
@@ -585,10 +598,8 @@ done:;
 		ret = i;
 	}
 
-	for(attr_i = attr; attr_i && *attr_i; attr_i++)
-		ret = type_attributed(ret, RETAIN(*attr_i));
-
-	dynarray_free(attribute **, attr, NULL);
+	ret = type_attributed(ret, attr);
+	attribute_array_release(&attr);
 
 	return ret;
 }

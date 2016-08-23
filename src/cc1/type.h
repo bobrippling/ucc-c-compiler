@@ -47,7 +47,7 @@ struct type
 		const btype *type;
 
 		/* type_attr */
-		struct attribute *attr;
+		struct attribute **attr;
 
 		/* type_tdef */
 		struct type_tdef

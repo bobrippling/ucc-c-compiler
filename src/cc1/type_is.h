@@ -15,7 +15,7 @@ type *type_skip_tdefs(type *);
 
 const btype *type_get_type(type *r);
 enum type_primitive type_get_primitive(type *);
-struct attribute *type_get_attrs_toplvl(type *);
+struct attribute **type_get_attrs_toplvl(type *);
 
 type *type_complete_array(type *r, struct expr *sz);
 

@@ -7,6 +7,7 @@
 
 #include "../util/util.h"
 #include "../util/alloc.h"
+#include "../util/dynarray.h"
 
 #include "parse_attr.h"
 
@@ -365,9 +366,9 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 	return NULL;
 }
 
-attribute *parse_attr(symtable *scope)
+attribute **parse_attr(symtable *scope)
 {
-	attribute *attr = NULL, **next = &attr;
+	attribute **attr = NULL;
 
 	for(;;){
 		attribute *this;
@@ -389,9 +390,11 @@ attribute *parse_attr(symtable *scope)
 
 		EAT(curtok);
 
-		if((this = *next = parse_attr_single(ident, scope))){
+		this = parse_attr_single(ident, scope);
+
+		if(this){
 			memcpy_safe(&this->where, &w);
-			next = &(*next)->next;
+			dynarray_add(&attr, this);
 		}
 
 		if(alloc)

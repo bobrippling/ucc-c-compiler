@@ -46,7 +46,7 @@ type *type_qualify_transform_array(
 		type *unqualified, enum type_qualifier qual,
 		int transform_array_qual);
 
-type *type_attributed(type *, attribute *);
+type *type_attributed(type *, attribute **);
 
 type *type_nav_MAX_FOR(struct type_nav *, unsigned sz, int is_signed);
 

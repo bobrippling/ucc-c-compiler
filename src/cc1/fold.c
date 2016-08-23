@@ -389,9 +389,9 @@ void fold_check_embedded_flexar(
 
 static void fold_type_w_attr(
 		type *const r, type *const parent, const where *loc,
-		symtable *stab, attribute *attr, const enum fold_type_chk chk)
+		symtable *stab, attribute **attr, const enum fold_type_chk chk)
 {
-	attribute *this_attr = NULL;
+	attribute **this_attr = NULL;
 	enum type_qualifier q_to_check = qual_none;
 
 	/* must be above the .folded check,
@@ -1405,7 +1405,7 @@ void fold_stmt(stmt *t)
 	t->f_fold(t);
 }
 
-void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
+void fold_funcargs(funcargs *fargs, symtable *stab, attribute **attr)
 {
 	attribute *nonnull_attr;
 	unsigned long nonnulls = 0;

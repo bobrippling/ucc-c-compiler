@@ -281,7 +281,7 @@ static stmt *parse_label(const struct stmt_ctx *ctx)
 {
 	where w;
 	char *lbl;
-	attribute *attr = NULL, *ai;
+	attribute **attr = NULL, **ai;
 	stmt *lblstmt;
 
 	where_cc1_current(&w);
@@ -296,16 +296,17 @@ static stmt *parse_label(const struct stmt_ctx *ctx)
 	memcpy_safe(&lblstmt->where, &w);
 
 	parse_add_attr(&attr, ctx->scope);
-	for(ai = attr; ai; ai = ai->next)
-		if(ai->type == attr_unused)
+
+	for(ai = attr; ai && *ai; ai++)
+		if((*ai)->type == attr_unused)
 			lblstmt->bits.lbl.unused = 1;
 		else
-			cc1_warn_at(&ai->where,
+			cc1_warn_at(&(*ai)->where,
 					lbl_attr_unknown,
 					"ignoring attribute \"%s\" on label",
-					attribute_to_str(ai));
+					attribute_to_str(*ai));
 
-	attribute_free(attr);
+	attribute_array_release(&attr);
 
 	return parse_label_next(lblstmt, ctx);
 }

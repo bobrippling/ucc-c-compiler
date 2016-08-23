@@ -47,7 +47,7 @@ void enum_vals_add(
 		sue_member ***pmembers,
 		where *w,
 		char *sp, expr *e,
-		attribute *attr)
+		attribute **attr)
 {
 	enum_member *emem = umalloc(sizeof *emem);
 	sue_member *mem = umalloc(sizeof *mem);
@@ -57,7 +57,7 @@ void enum_vals_add(
 
 	emem->spel = sp;
 	emem->val  = e;
-	emem->attr = RETAIN(attr);
+	dynarray_add_tmparray(&emem->attr, attr);
 	memcpy_safe(&emem->where, w);
 
 	mem->enum_member = emem;

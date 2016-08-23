@@ -6,6 +6,7 @@
 #include "../util/where.h"
 #include "../util/alloc.h"
 #include "../util/warn.h"
+#include "../util/dynarray.h"
 
 #include "cc1_where.h"
 #include "sue.h"
@@ -28,69 +29,12 @@ attribute *attribute_new(enum attribute_type t)
 	return da;
 }
 
-void attribute_append(attribute **loc, attribute *new)
+attribute *attr_present(attribute **attrs, enum attribute_type t)
 {
-	/* may be appending from a prototype to a function def. */
-	while(*loc)
-		loc = &(*loc)->next;
+	for(; attrs && *attrs; attrs++)
+		if((*attrs)->type == t)
+			return *attrs;
 
-	*loc = RETAIN(new);
-}
-
-attribute *attribute_copy(attribute *attr)
-{
-	attribute *ret;
-
-	if(!attr)
-		return NULL;
-
-	ret = umalloc(sizeof *ret);
-
-	memcpy(ret, attr, sizeof *ret);
-	ret->rc.retains = 1;
-
-	switch(ret->type){
-		case attr_section:
-			ret->bits.section = ustrdup(attr->bits.section);
-			break;
-
-		case attr_destructor:
-			ret->bits.priority = attr->bits.priority; /* TODO: retain expr */
-			break;
-
-		case attr_format:
-		case attr_unused:
-		case attr_warn_unused:
-		case attr_enum_bitmask:
-		case attr_noreturn:
-		case attr_noderef:
-		case attr_nonnull:
-		case attr_packed:
-		case attr_sentinel:
-		case attr_aligned:
-		case attr_weak:
-		case attr_cleanup:
-		case attr_always_inline:
-		case attr_noinline:
-		case attr_desig_init:
-		case attr_ucc_debug:
-		case attr_call_conv:
-		case attr_constructor:
-			break;
-		case attr_LAST:
-			assert(0);
-	}
-
-	ret->next = attribute_copy(attr->next);
-
-	return ret;
-}
-
-attribute *attr_present(attribute *da, enum attribute_type t)
-{
-	for(; da; da = da->next)
-		if(da->type == t)
-			return da;
 	return NULL;
 }
 
@@ -117,6 +61,7 @@ attribute *type_attr_present(type *r, enum attribute_type t)
 			case type_btype:
 			{
 				struct_union_enum_st *sue = r->bits.type->sue;
+
 				return sue ? attr_present(sue->attr, t) : NULL;
 			}
 
@@ -221,96 +166,107 @@ const char *attribute_to_str(attribute *da)
 
 void attribute_free(attribute *a)
 {
-	attribute *i;
-	if(!a)
-		return;
-
-	for(i = a->next; i; i = i->next)
-		RELEASE(i);
-
 	free(a);
+}
+
+void attribute_array_release(attribute ***array)
+{
+	attribute **i;
+
+	for(i = *array; i && *i; i++)
+		RELEASE(*i);
+
+	dynarray_free(attribute **, *array, NULL);
+}
+
+struct attribute **attribute_array_retain(struct attribute **attrs)
+{
+	attribute **i;
+
+	for(i = attrs; i && *i; i++)
+		(void)RETAIN(*i);
+
+	return attrs;
 }
 
 int attribute_equal(attribute *a, attribute *b)
 {
+	if(a->type != b->type)
+		return 0;
+
+	switch(a->type){
+		case attr_LAST:
+			assert(0);
+		case attr_format:
 #define NEQ(bit, memb) (a->bits.bit.memb != b->bits.bit.memb)
-
-		for(; a && b; a = a->next, b = b->next){
-			if(a->type != b->type)
+			if(NEQ(format, fmt_func)
+			|| NEQ(format, fmt_idx)
+			|| NEQ(format, var_idx))
+			{
 				return 0;
-			switch(a->type){
-				case attr_LAST:
-					assert(0);
-				case attr_format:
-					if(NEQ(format, fmt_func)
-					|| NEQ(format, fmt_idx)
-					|| NEQ(format, var_idx))
-					{
-						return 0;
-					}
-					if(a->bits.format.fmt_idx != b->bits.format.fmt_idx
-					|| a->bits.format.var_idx != b->bits.format.var_idx)
-					{
-						return 0;
-					}
-					break;
-
-				case attr_cleanup:
-					/* since a cleanup must be a global function,
-					 * we can just strcmp */
-					return !strcmp(a->bits.cleanup->spel, b->bits.cleanup->spel);
-
-				case attr_section:
-					if(strcmp(a->bits.section, b->bits.section))
-						return 0;
-					break;
-
-				case attr_call_conv:
-					if(a->bits.conv != b->bits.conv)
-						return 0;
-					break;
-
-				case attr_nonnull:
-					if(a->bits.nonnull_args != b->bits.nonnull_args)
-						return 0;
-					break;
-
-				case attr_constructor:
-				case attr_destructor:
-					if(a->bits.priority != b->bits.priority)
-						return 0;
-					break;
-
-				case attr_sentinel:
-					/* lazy solution for now */
-					if(a->bits.sentinel != b->bits.sentinel)
-						return 0;
-					break;
-
-				case attr_aligned:
-					/* same as sentinel */
-					if(a->bits.align != b->bits.align)
-						return 0;
-					break;
-
-				case attr_unused:
-				case attr_warn_unused:
-				case attr_enum_bitmask:
-				case attr_noreturn:
-				case attr_noderef:
-				case attr_packed:
-				case attr_weak:
-				case attr_desig_init:
-				case attr_ucc_debug:
-				case attr_always_inline:
-				case attr_noinline:
-					/* equal */
-					break;
 			}
-		}
+#undef NEQ
+			if(a->bits.format.fmt_idx != b->bits.format.fmt_idx
+			|| a->bits.format.var_idx != b->bits.format.var_idx)
+			{
+				return 0;
+			}
+			break;
 
-		/* both null? */
-		return a == b;
+		case attr_cleanup:
+			/* since a cleanup must be a global function,
+			 * we can just strcmp */
+			return !strcmp(a->bits.cleanup->spel, b->bits.cleanup->spel);
+
+		case attr_section:
+			if(strcmp(a->bits.section, b->bits.section))
+				return 0;
+			break;
+
+		case attr_call_conv:
+			if(a->bits.conv != b->bits.conv)
+				return 0;
+			break;
+
+		case attr_nonnull:
+			if(a->bits.nonnull_args != b->bits.nonnull_args)
+				return 0;
+			break;
+
+		case attr_sentinel:
+			/* lazy solution for now */
+			if(a->bits.sentinel != b->bits.sentinel)
+				return 0;
+			break;
+
+		case attr_aligned:
+			/* same as sentinel */
+			if(a->bits.align != b->bits.align)
+				return 0;
+			break;
+
+		case attr_constructor:
+		case attr_destructor:
+			if(a->bits.priority != b->bits.priority)
+				return 0;
+			break;
+
+		case attr_unused:
+		case attr_warn_unused:
+		case attr_enum_bitmask:
+		case attr_noreturn:
+		case attr_noderef:
+		case attr_packed:
+		case attr_weak:
+		case attr_desig_init:
+		case attr_ucc_debug:
+		case attr_always_inline:
+		case attr_noinline:
+			/* equal */
+			break;
+	}
+
+	return 1;
 }
 
 int attribute_is_typrop(attribute *attr)
@@ -329,9 +285,11 @@ int attribute_is_typrop(attribute *attr)
 	assert(0);
 }
 
-void attribute_debug_check(struct attribute *attr)
+void attribute_debug_check(struct attribute **attrs)
 {
-	for(; attr; attr = attr->next){
+	for(; attrs && *attrs; attrs++){
+		attribute *attr = *attrs;
+
 		if(attr->type == attr_ucc_debug && !attr->bits.ucc_debugged){
 			attr->bits.ucc_debugged = 1;
 

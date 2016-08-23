@@ -265,9 +265,12 @@ static void dump_gasm(symtable_gasm *gasm, dump *ctx)
 	dump_dec(ctx);
 }
 
-static void dump_attributes(attribute *da, dump *ctx)
+static void dump_attributes(attribute **attrs, dump *ctx)
 {
-	for(; da; da = da->next){
+	attribute **i;
+	for(i = attrs; i && *i; i++){
+		attribute *da = *i;
+
 		dump_desc_colour_newline(ctx, "attribute",
 				da, &da->where,
 				maybe_colour(ctx->fout, col_desc), 0);

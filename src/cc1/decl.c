@@ -47,13 +47,17 @@ decl *decl_new_ty_sp(type *ty, char *sp)
 
 void decl_replace_with(decl *to, decl *from)
 {
+	attribute **i;
+
 	/* XXX: memleak of .ref */
 	memcpy_safe(&to->where, &from->where);
 	to->ref      = from->ref;
-	to->attr = RETAIN(from->attr);
 	to->spel_asm = from->spel_asm, from->spel_asm = NULL;
 	/* no point copying bitfield stuff */
 	memcpy_safe(&to->bits, &from->bits);
+
+	for(i = from->attr; i && *i; i++)
+		dynarray_add(&to->attr, RETAIN(*i));
 }
 
 const char *decl_asm_spel(decl *d)

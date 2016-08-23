@@ -10,7 +10,7 @@ typedef struct enum_member
 	where where;
 	char *spel;
 	struct expr *val; /* (expr *)-1 if not given */
-	struct attribute *attr; /* enum { ABC __attribute(()) [ = ... ] }; */
+	struct attribute **attr; /* enum { ABC __attribute(()) [ = ... ] }; */
 } enum_member;
 
 typedef union sue_member
@@ -23,7 +23,7 @@ typedef struct struct_union_enum_st struct_union_enum_st;
 struct struct_union_enum_st
 {
 	where where;
-	struct attribute *attr;
+	struct attribute **attr;
 	enum type_primitive primitive; /* struct or enum or union */
 
 	char *spel; /* "<anon ...>" if anon */
@@ -79,7 +79,7 @@ sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 
 /* enum specific */
 void enum_vals_add(sue_member ***, where *, char *,
-		struct expr *, struct attribute *);
+		struct expr *, struct attribute **);
 
 int enum_nentries(struct_union_enum_st *);
 

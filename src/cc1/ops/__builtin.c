@@ -303,11 +303,14 @@ static expr *parse_memcpy(void)
 static void fold_unreachable(expr *e, symtable *stab)
 {
 	type *tvoid = type_nav_btype(cc1_type_nav , type_void);
+	attribute **attr = NULL;
 
 	e->expr->tree_type = type_func_of(tvoid,
 			funcargs_new(), symtab_new(stab, &e->where));
 
-	e->tree_type = type_attributed(tvoid, attribute_new(attr_noreturn));
+	dynarray_add(&attr, attribute_new(attr_noreturn));
+	e->tree_type = type_attributed(tvoid, attr);
+	attribute_array_release(&attr);
 
 	wur_builtin(e);
 }

@@ -28,7 +28,7 @@ void fold_expr_struct(expr *e, symtable *stab)
 	struct_union_enum_st *sue;
 	char *spel;
 	enum type_qualifier struct_qual;
-	attribute *struct_attr;
+	attribute **struct_attr;
 	type *struct_type;
 
 	if(ptr_expect)
@@ -115,6 +115,8 @@ err:
 				e->bits.struct_mem.d->ref,
 				struct_qual),
 			struct_attr);
+
+	attribute_array_release(&struct_attr);
 }
 
 const out_val *gen_expr_struct(const expr *e, out_ctx *octx)

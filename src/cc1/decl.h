@@ -37,7 +37,7 @@ struct decl
 
 	struct type *ref; /* should never be null - we always have a ref to a type */
 
-	attribute *attr;
+	attribute **attr;
 
 	char *spel, *spel_asm;
 	int used;

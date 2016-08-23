@@ -540,13 +540,18 @@ static void type_add_str_pre(
 			break;
 
 		case type_attr:
-			if(attribute_is_typrop(r->bits.attr)){
-				ADD_SPC();
-				BUF_ADD("__attribute__((%s))", attribute_to_str(r->bits.attr));
-				*need_spc = 1;
-				/* space after pseudo-qualifier */
+		{
+			attribute **i;
+			for(i = r->bits.attr; i && *i; i++){
+				if(attribute_is_typrop(*i)){
+					ADD_SPC();
+					BUF_ADD("__attribute__((%s))", attribute_to_str(*i));
+					*need_spc = 1;
+					/* space after pseudo-qualifier */
+				}
 			}
 			break;
+		}
 
 		default:break;
 	}
@@ -896,8 +901,12 @@ static unsigned type_hash2(
 			break;
 
 		case type_attr:
-			hash |= t->bits.attr->type;
+		{
+			attribute **i;
+			for(i = t->bits.attr; i && *i; i++)
+				hash ^= (*i)->type;
 			break;
+		}
 	}
 
 	return hash;
