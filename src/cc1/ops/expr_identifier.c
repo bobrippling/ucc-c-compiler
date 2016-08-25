@@ -154,7 +154,7 @@ static int find_identifier(expr *expr_ident, symtable *stab)
 			}
 
 			expr_ident->bits.ident.type = IDENT_NORM;
-			expr_ident->tree_type = sym->decl->ref;
+			expr_ident->tree_type = type_attributed(sym->decl->ref, sym->decl->attr);
 
 			decl_use(sym->decl);
 
