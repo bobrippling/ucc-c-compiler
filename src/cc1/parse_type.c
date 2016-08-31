@@ -2098,6 +2098,8 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 	 * before __attribute__
 	 */
 	if(curtok == token_asm){
+		attribute **attrs = NULL;
+
 		if(had_post_attr){
 			cc1_warn_at(NULL, gnu_gcc_compat,
 					"asm() after __attribute__ (GCC compat)");
@@ -2105,7 +2107,12 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 
 		parse_add_asm(d);
 
-		parse_add_attr(&d->attr, in_scope);
+		parse_add_attr(&attrs, in_scope);
+
+		if(attrs)
+			d->ref = type_attributed(d->ref, attrs);
+
+		attribute_array_release(&attrs);
 	}
 
 	if(is_old_func(d)){
