@@ -16,6 +16,8 @@
 #include "funcargs.h"
 #include "c_types.h"
 
+#define TYPE_UNIQ_DEBUG 0
+
 struct type_nav
 {
 	type **btypes; /* indexed by type_primitive */
@@ -80,14 +82,27 @@ type *type_uptree_find_or_new(
 
 	to = type_skip_wheres(to);
 
-	if(!to->uptree)
+	if(!to->uptree){
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "no uptree for %s\n", type_to_str(to));
+
 		to->uptree = umalloc(sizeof *to->uptree);
+	}
 
 	for(ent = &to->uptree->ups[idx]; *ent; ent = &(*ent)->next){
 		type *candidate = (*ent)->t;
+		int is_candidate;
 		assert(candidate->type == idx);
 
-		if(eq(candidate, ctx))
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "candidate? '%s'... ", type_to_str(candidate));
+
+		is_candidate = eq(candidate, ctx);
+
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, " ... candidate=%s\n", is_candidate ? "yes" : "no");
+
+		if(is_candidate)
 			return candidate;
 	}
 
@@ -99,6 +114,10 @@ type *type_uptree_find_or_new(
 
 		*ent = umalloc(sizeof **ent);
 		(*ent)->t = new_t;
+
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "no candidates - created new: '%s'\n", type_to_str(new_t));
+
 		return new_t;
 	}
 }
@@ -218,10 +237,15 @@ static int eq_func(type *ty, void *ctx)
 {
 	struct ctx_func *c = ctx;
 
-	if(c->arg_scope != ty->bits.func.arg_scope)
+	if(c->arg_scope != ty->bits.func.arg_scope){
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "mismatching arg_scope");
 		return 0;
+	}
 
 	if(funcargs_cmp(ty->bits.func.args, c->args) == FUNCARGS_EXACT_EQUAL){
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "mismatching funcargs");
 		funcargs_free(c->args, 0);
 		return 1;
 	}
