@@ -195,8 +195,8 @@ static type *parse_sue_finish(
 		int const got_membs,
 		char *spel,
 		enum type_primitive const prim,
-		attribute **this_sue_attr,
-		attribute **this_type_attr,
+		attribute ***this_sue_attr,
+		attribute ***this_type_attr,
 		int const already_exists,
 		symtable *const scope,
 		where *const sue_loc)
@@ -212,15 +212,13 @@ static type *parse_sue_finish(
 		sue_define(sue, members);
 
 	/* sue may already exist */
-	if(this_sue_attr){
+	if(*this_sue_attr){
 		if(already_exists){
-			cc1_warn_at(&this_sue_attr[0]->where,
+			cc1_warn_at(&(*this_sue_attr)[0]->where,
 					ignored_attribute,
 					"cannot add attributes to already-defined type");
-
-			attribute_array_release(&this_sue_attr);
 		}else{
-			dynarray_add_tmparray(&sue->attr, this_sue_attr);
+			dynarray_add_array(&sue->attr, attribute_array_retain(*this_sue_attr));
 		}
 	}
 
@@ -228,7 +226,7 @@ static type *parse_sue_finish(
 
 	return type_attributed(
 			type_nav_suetype(cc1_type_nav, sue),
-			this_type_attr);
+			*this_type_attr);
 }
 
 static int parse_token_creates_sue(enum token tok)
@@ -387,8 +385,8 @@ static type *parse_type_sue(
 	retty = parse_sue_finish(
 			predecl_sue, members, is_definition,
 			spel, prim,
-			this_sue_attr,
-			this_type_attr,
+			&this_sue_attr,
+			&this_type_attr,
 			already_exists,
 			scope, &sue_loc);
 
