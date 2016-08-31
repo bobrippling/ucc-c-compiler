@@ -606,10 +606,11 @@ done:;
 
 type *type_at_where(type *t, where *w)
 {
-	if(t->type != type_where || !where_equal(w, &t->bits.where)){
-		t = type_new(type_where, t);
-		memcpy_safe(&t->bits.where, w);
-	}
+	if(t->type == type_where && where_equal(w, &t->bits.where))
+		return t;
+
+	t = type_new(type_where, type_skip_wheres(t));
+	memcpy_safe(&t->bits.where, w);
 	return t;
 }
 
