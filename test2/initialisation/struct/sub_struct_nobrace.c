@@ -7,13 +7,13 @@ struct A
 
 f()
 {
-  struct A loc = { glob }; // CHECK: error: mismatching types, initialisation:
+  struct A loc = { glob }; // CHECK: error: mismatching types, initialisation
 	// CHECK: ^ note: 'int' vs 'struct A'
   return loc.i;
 }
 
 g()
 {
-	(struct A){ glob }; // CHECK: error: mismatching types, initialisation:
+	(struct A){ glob }; // CHECK: error: mismatching types, initialisation
 	// CHECK: ^ note: 'int' vs 'struct A'
 }

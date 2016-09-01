@@ -3,7 +3,7 @@
 int main(void)
 {
 	char c;
-	int *p = &c; // CHECK: warning: mismatching types, initialisation:
+	int *p = &c; // CHECK: warning: mismatching types, initialisation
 
 	return *p;
 }
