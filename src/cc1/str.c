@@ -16,7 +16,7 @@
 #include "warn.h"
 #include "parse_fold_error.h"
 
-void escape_string(char *old_str, size_t *plen)
+void escape_string(char *old_str, size_t *plen, int is_wide)
 {
 	char *const new_str = umalloc(*plen);
 	size_t i, iout;
@@ -34,7 +34,7 @@ void escape_string(char *old_str, size_t *plen)
 			where_cc1_current(&loc);
 			loc.chr += i + 1;
 
-			add = escape_char_1(&old_str[i + 1], &end, &warn, /*1bytelim*/1);
+			add = escape_char_1(&old_str[i + 1], &end, &warn, /*1bytelim*/!is_wide);
 
 			UCC_ASSERT(end, "bad parse?");
 

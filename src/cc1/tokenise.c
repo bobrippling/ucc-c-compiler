@@ -668,7 +668,7 @@ static int curtok_is_xequal(void)
 	return curtok_to_xequal() != token_unknown;
 }
 
-static void read_string(char **sptr, size_t *plen)
+static void read_string(char **sptr, size_t *plen, int is_wide)
 {
 	char *const start = bufferpos;
 	char *const end = str_quotefin(start);
@@ -696,7 +696,7 @@ static void read_string(char **sptr, size_t *plen)
 	strncpy(*sptr, start, size);
 	(*sptr)[size-1] = '\0';
 
-	escape_string(*sptr, plen);
+	escape_string(*sptr, plen, is_wide);
 
 out:
 	update_bufferpos(bufferpos + size);
@@ -724,7 +724,7 @@ static void read_string_multiple(const int is_wide)
 
 	where_cc1_current(&currentstringwhere);
 
-	read_string(&str, &len);
+	read_string(&str, &len, is_wide);
 
 	curtok = token_string;
 
@@ -737,7 +737,7 @@ static void read_string_multiple(const int is_wide)
 			char *new, *alloc;
 			size_t newlen;
 
-			read_string(&new, &newlen);
+			read_string(&new, &newlen, is_wide);
 
 			alloc = umalloc(newlen + len);
 
