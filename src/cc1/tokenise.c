@@ -802,14 +802,15 @@ static void read_char(const int is_wide)
 			default:
 				assert(0 && "unhandled escape warning");
 		}
-
-		update_bufferpos(end + 1);
 	}else{
 		warn_at_print_error(NULL, "no terminating quote to character literal");
 		parse_had_error = 1;
 	}
 
 out:
+	if(end)
+		update_bufferpos(end + 1);
+
 	currentval.val.i = ch;
 	currentval.suffix = 0;
 	curtok = is_wide ? token_integer : token_character;
