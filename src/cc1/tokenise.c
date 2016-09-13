@@ -678,7 +678,14 @@ static void read_string(char **sptr, size_t *plen)
 		char *p;
 		if((p = strchr(bufferpos, '\n')))
 			*p = '\0';
-		die_at(NULL, "Couldn't find terminating quote to \"%s\"", bufferpos);
+		warn_at_print_error(NULL, "no terminating quote to string");
+		parse_had_error = 1;
+
+		size = 1;
+		*sptr = umalloc(size);
+		*plen = size;
+		**sptr = '\0';
+		goto out;
 	}
 
 	size = end - start + 1;
@@ -691,6 +698,7 @@ static void read_string(char **sptr, size_t *plen)
 
 	escape_string(*sptr, plen);
 
+out:
 	update_bufferpos(bufferpos + size);
 }
 
@@ -711,7 +719,6 @@ static int getungetchar(void)
 
 static void read_string_multiple(const int is_wide)
 {
-	/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
 	char *str;
 	size_t len;
 
@@ -753,46 +760,60 @@ static void read_string_multiple(const int is_wide)
 	currentstringwide = is_wide;
 }
 
-static void cc1_read_quoted_char(const int is_wide)
+static void read_char(const int is_wide)
 {
-	int multichar;
-	char *p;
-	const char *err;
-	int warn;
-	long ch = read_quoted_char(
-			bufferpos, &p, &multichar, /*256*/!is_wide,
-			&err, &warn);
+	char *begin = bufferpos;
+	char *end = char_quotefin(begin);
+	int ch = 0;
 
-	if(err){
-		/* empty char or no finishing quote */
-		warn_at_print_error(NULL, "%s", err);
+	if(end){
+		const size_t len = (end - begin);
+		int multichar, warn, err;
+		char *endesc;
+
+		ch = escape_char(begin, end, &endesc, is_wide, &multichar, &warn, &err);
+
+		if(endesc != end){
+			warn_at_print_error(NULL, "invalid characters in literal");
+			parse_had_error = 1;
+		}
+
+		if(multichar){
+			if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
+				cc1_warn_at(NULL, multichar_toolarge, "multi-char constant too large");
+			else
+				cc1_warn_at(NULL, multichar, "multi-char constant");
+		}else if(len == 0){
+			warn_at_print_error(NULL, "empty char constant");
+			parse_had_error = 1;
+			goto out;
+		}
+
+		switch(warn){
+			case 0:
+				break;
+			case ERANGE:
+				warn_at_print_error(NULL,
+						"escape character out of range (larger than 0xff)");
+				parse_had_error = 1;
+				break;
+			case EINVAL:
+				cc1_warn_at(NULL, escape_char, "invalid escape character");
+				break;
+			default:
+				assert(0 && "unhandled escape warning");
+		}
+
+		update_bufferpos(end + 1);
+	}else{
+		warn_at_print_error(NULL, "no terminating quote to character literal");
 		parse_had_error = 1;
 	}
 
-	if(multichar){
-		if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
-			cc1_warn_at(NULL, multichar_toolarge, "multi-char constant too large");
-		else
-			cc1_warn_at(NULL, multichar, "multi-char constant");
-	}
-	switch(warn){
-		case 0:
-			break;
-		case ERANGE:
-			warn_at_print_error(NULL,
-					"escape character out of range (larger than 0xff)");
-			parse_had_error = 1;
-			break;
-		case EINVAL:
-			cc1_warn_at(NULL, escape_char, "invalid escape character");
-			break;
-	}
-
+out:
 	currentval.val.i = ch;
 	currentval.suffix = 0;
 	curtok = is_wide ? token_integer : token_character;
-
-	update_bufferpos(p);
 }
 
 static void read_number(const int first)
@@ -943,7 +964,7 @@ void nexttoken()
 			return;
 		case '\'':
 			nextchar();
-			cc1_read_quoted_char(1);
+			read_char(1);
 			return;
 	}
 
@@ -985,7 +1006,7 @@ void nexttoken()
 			break;
 
 		case '\'':
-			cc1_read_quoted_char(0);
+			read_char(0);
 			break;
 
 		case '(':

@@ -12,7 +12,7 @@
 typedef int digit_test(int);
 
 
-int escape_char(int c)
+static int escape_char1(int c)
 {
 	struct
 	{
@@ -73,6 +73,7 @@ static unsigned long long read_ap_num(
 		char **const end, int *const of)
 {
 	unsigned long long val = 0;
+	int i = 0;
 
 	*of = 0;
 
@@ -83,7 +84,7 @@ static unsigned long long read_ap_num(
 			/* advance over what's left, etc */
 			overflow_handle(s, end, test);
 			*of = 1;
-			while(test(*s) || *s == '_')
+			while((test(*s) || *s == '_'))
 				s++;
 			break;
 		}
@@ -92,6 +93,8 @@ static unsigned long long read_ap_num(
 			s++;
 		if(max_chars > 0 && --max_chars == 0)
 			break;
+
+		i++;
 	}
 
 	*end = s;
@@ -133,94 +136,95 @@ unsigned long long char_seq_to_ullong(
 			of);
 }
 
-long read_char_single(char *start, char **end, int *const warn)
+char escape_char_1(char *start, char **const end, int *const warn)
 {
-	long c = *start++;
+	/* no binary here - only in numeric constants */
+	char esc = *start;
 
-	*warn = 0;
+	if(esc == 'x' || isoct(esc)){
+		long parsed;
+		int overflow;
 
-	if(c == '\\'){
-		char esc = tolower(*start);
+		if(esc == 'x')
+			start++;
 
-		/* no binary here - only in numeric constants */
-		if(esc == 'x' || isoct(esc)){
-			long parsed;
-			int of;
+		parsed = char_seq_to_ullong(
+				start,
+				end,
+				/*apply_limit*/1,
+				esc == 'x' ? HEX : esc == 'b' ? BIN : OCT,
+				&overflow);
 
-			if(esc == 'x' || esc == 'b')
-				start++;
+		if(overflow || (unsigned)parsed > 0xff)
+			*warn = ERANGE;
 
-			parsed = char_seq_to_ullong(
-					start,
-					end,
-					/*apply_limit*/1,
-					esc == 'x' ? HEX : esc == 'b' ? BIN : OCT,
-					&of);
+		return parsed;
 
-			if((unsigned)parsed > 0xff)
-				*warn = ERANGE;
-
-			return parsed;
-
-		}else{
-			/* special parsing */
-			c = escape_char(esc);
-
-			if(c == -1)
-				*warn = EINVAL;
-
-			*end = start + 1;
-		}
 	}else{
-		*end = start;
-	}
+		/* special parsing */
+		int c = escape_char1(esc);
 
-	return c;
+		if(c == -1)
+			*warn = EINVAL;
+
+		*end = start + 1;
+
+		return c;
+	}
 }
 
-long read_quoted_char(
-		char *start, char **end,
-		int *multichar, int clip_256,
-		const char **const err,
-		int *const warn)
+int escape_char(
+		char *start,
+		/*nullable*/char *limit,
+		char **const end,
+		int is_wide,
+		int *const multi,
+		int *const warn,
+		int *const err)
 {
-	unsigned long total = 0;
-	unsigned i;
+	int ret = 0;
+	char *i;
+	size_t n = 0;
 
-	*multichar = 0;
-	*err = NULL;
+	*warn = *err = 0;
 
-	if(*start == '\''){
-		/* '' */
-		*err = "empty char constant";
-		goto out;
-	}
+	/* assuming start..end doesn't contain nuls */
+	for(i = start; i != limit && *i; i++){
+		int this;
 
-	for(i = 0;; i++){
-		int ch;
+		if(*i == '\\'){
+			char *escfin;
 
-		if(!*start){
-			*err = "no terminating quote to character";
-			goto out;
+			i++;
+			if(i == limit){
+				*err = EILSEQ;
+				break;
+			}
+
+			this = escape_char_1(i, &escfin, warn);
+
+			i = escfin /*for inc:*/- 1;
+		}else{
+			this = *i;
 		}
 
-		ch = read_char_single(start, &start, warn);
-
-		if(clip_256)
-			total = (total * 256) + (0xff & ch);
+		if(is_wide)
+			ret = this;
 		else
-			total += ch;
+			ret = ret * 256 + this;
 
-		if(*start == '\'')
-			break;
-
-
-		*multichar = 1;
+		n++;
 	}
 
-out:
-	*end = start + 1;
-	return total;
+	if(multi)
+		*multi = n > 1;
+
+	if(i == limit)
+		*end = i;
+	else
+		*end = i - 1;
+
+	return ret;
 }
 
 const char *base_to_str(enum base b)

@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <errno.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -17,12 +18,12 @@
 
 void escape_string(char *old_str, size_t *plen)
 {
-	char *new_str = umalloc(*plen);
-	size_t i, new_i;
+	char *const new_str = umalloc(*plen);
+	size_t i, iout;
 
 	/* "parse" into another string */
 
-	for(i = new_i = 0; i < *plen; i++){
+	for(i = iout = 0; i < *plen; i++){
 		char add;
 
 		if(old_str[i] == '\\'){
@@ -33,11 +34,11 @@ void escape_string(char *old_str, size_t *plen)
 			where_cc1_current(&loc);
 			loc.chr += i + 1;
 
-			add = read_char_single(old_str + i, &end, &warn);
+			add = escape_char_1(&old_str[i + 1], &end, &warn);
 
-			UCC_ASSERT(end, "bad escape?");
+			UCC_ASSERT(end, "bad parse?");
 
-			i = (end - old_str) - 1;
+			i = (end - old_str) /*for the loop inc:*/- 1;
 
 			switch(warn){
 				case 0:
@@ -56,11 +57,13 @@ void escape_string(char *old_str, size_t *plen)
 			add = old_str[i];
 		}
 
-		new_str[new_i++] = add;
+		new_str[iout++] = add;
 	}
 
-	memcpy(old_str, new_str, new_i);
-	*plen = new_i;
+	assert(iout <= *plen);
+
+	memcpy(old_str, new_str, iout);
+	*plen = iout;
 	free(new_str);
 }
 
