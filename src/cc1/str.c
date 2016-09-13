@@ -34,7 +34,7 @@ void escape_string(char *old_str, size_t *plen)
 			where_cc1_current(&loc);
 			loc.chr += i + 1;
 
-			add = escape_char_1(&old_str[i + 1], &end, &warn);
+			add = escape_char_1(&old_str[i + 1], &end, &warn, /*1bytelim*/1);
 
 			UCC_ASSERT(end, "bad parse?");
 

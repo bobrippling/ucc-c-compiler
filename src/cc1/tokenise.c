@@ -793,8 +793,7 @@ static void read_char(const int is_wide)
 			case 0:
 				break;
 			case ERANGE:
-				warn_at_print_error(NULL,
-						"escape character out of range (larger than 0xff)");
+				warn_at_print_error(NULL, "escape character out of range");
 				parse_had_error = 1;
 				break;
 			case EINVAL:

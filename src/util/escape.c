@@ -136,13 +136,13 @@ unsigned long long char_seq_to_ullong(
 			of);
 }
 
-char escape_char_1(char *start, char **const end, int *const warn)
+char escape_char_1(char *start, char **const end, int *const warn, int one_byte_limit)
 {
 	/* no binary here - only in numeric constants */
 	char esc = *start;
 
 	if(esc == 'x' || isoct(esc)){
-		long parsed;
+		unsigned long long parsed;
 		int overflow;
 
 		if(esc == 'x')
@@ -151,11 +151,15 @@ char escape_char_1(char *start, char **const end, int *const warn)
 		parsed = char_seq_to_ullong(
 				start,
 				end,
-				/*apply_limit*/1,
-				esc == 'x' ? HEX : esc == 'b' ? BIN : OCT,
+				one_byte_limit,
+				esc == 'x' ? HEX : OCT,
 				&overflow);
 
-		if(overflow || (unsigned)parsed > 0xff)
+		if(overflow)
+			*warn = ERANGE;
+		else if(one_byte_limit && parsed > 0xffU)
+			*warn = ERANGE;
+		else if(!one_byte_limit && parsed > 0xffffffffU)
 			*warn = ERANGE;
 
 		return parsed;
@@ -201,7 +205,7 @@ int escape_char(
 				break;
 			}
 
-			this = escape_char_1(i, &escfin, warn);
+			this = escape_char_1(i, &escfin, warn, /*limit-to-1-byte*/!is_wide);
 
 			i = escfin /*for inc:*/- 1;
 		}else{
@@ -209,7 +213,7 @@ int escape_char(
 		}
 
 		if(is_wide)
-			ret = this;
+			ret = this; /* truncate to last parsed char */
 		else
 			ret = ret * 256 + this;
 
