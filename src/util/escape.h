@@ -33,7 +33,7 @@ int escape_char(
  * e.g.
  * "\xffg" -> 255, end="g"
  */
-char escape_char_1(
+int escape_char_1(
 		char *start, char **const end,
 		int *const warn, int one_byte_limit)
 	ucc_nonnull();
