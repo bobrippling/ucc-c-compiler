@@ -1268,7 +1268,8 @@ static decl_init *decl_init_brace_up_array_chk_char(
 				decl_init *char_init = decl_init_new_w(decl_init_scalar, w);
 
 				char_init->bits.expr = expr_set_where(
-						expr_new_val(cstring_char_at(k.bits.str->lit->cstr, str_i)),
+						expr_compiler_generated( /* use this to prevent warnings */
+							expr_new_val(cstring_char_at(k.bits.str->lit->cstr, str_i))),
 						&k.bits.str->where);
 
 				FOLD_EXPR(char_init->bits.expr, stab);
