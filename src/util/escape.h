@@ -35,7 +35,7 @@ int escape_char(
  */
 int escape_char_1(
 		char *start, char **const end,
-		int *const warn, int one_byte_limit)
+		int *const warn)
 	ucc_nonnull();
 
 /*
