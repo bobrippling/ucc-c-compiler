@@ -18,4 +18,6 @@ symtable_gasm *parse_gasm(void);
 
 expr *parse_expr_identifier(void);
 
+struct cstring *parse_asciz_str(void);
+
 #endif

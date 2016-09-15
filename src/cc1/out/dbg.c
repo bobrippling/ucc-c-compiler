@@ -487,8 +487,15 @@ static void dwarf_attr(
 			break;
 
 		case DW_FORM_string:
-			at->bits.str = str_add_escape(data, strlen(data));
+		{
+			char *s = data;
+			struct cstring local;
+
+			cstring_init_ascii(&local, s, strlen(s));
+
+			at->bits.str = str_add_escape(&local);
 			break;
+		}
 	}
 }
 
@@ -1697,7 +1704,11 @@ void dbg_out_filelist(
 	unsigned idx;
 
 	for(i = head, idx = 1; i; i = i->next, idx++){
-		char *esc = str_add_escape(i->fname, strlen(i->fname));
+		struct cstring local;
+
+		cstring_init_ascii(&local, i->fname, strlen(i->fname));
+
+		char *esc = str_add_escape(&local);
 
 		fprintf(f, ".file %u \"%s\"\n", idx, esc);
 		free(esc);

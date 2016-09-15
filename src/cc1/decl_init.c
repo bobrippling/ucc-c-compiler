@@ -25,6 +25,7 @@
 #include "ops/expr_assign.h"
 #include "ops/expr_struct.h"
 #include "ops/expr_comma.h"
+#include "str.h"
 
 #include "fopt.h"
 
@@ -1243,15 +1244,15 @@ static decl_init *decl_init_brace_up_array_chk_char(
 			decl_init *braced;
 
 			if(limit == -1){
-				count = k.bits.str->lit->len;
+				count = k.bits.str->lit->cstr->count;
 			}else{
-				if(k.bits.str->lit->len <= (unsigned)limit){
-					count = k.bits.str->lit->len;
+				if(k.bits.str->lit->cstr->count <= (unsigned)limit){
+					count = k.bits.str->lit->cstr->count;
 				}else{
 					/* only warn if it's more than one larger,
 					 * i.e. allow char[2] = "hi" <-- '\0' excluded
 					 */
-					if(k.bits.str->lit->len - 1 > (unsigned)limit){
+					if(k.bits.str->lit->cstr->count - 1 > (unsigned)limit){
 						cc1_warn_at(&k.bits.str->where,
 								init_overlong_strliteral,
 								"string literal too long for '%s'",
@@ -1267,7 +1268,7 @@ static decl_init *decl_init_brace_up_array_chk_char(
 				decl_init *char_init = decl_init_new_w(decl_init_scalar, w);
 
 				char_init->bits.expr = expr_set_where(
-						expr_new_val(k.bits.str->lit->str[str_i]),
+						expr_new_val(cstring_char_at(k.bits.str->lit->cstr, str_i)),
 						&k.bits.str->where);
 
 				FOLD_EXPR(char_init->bits.expr, stab);

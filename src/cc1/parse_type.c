@@ -13,6 +13,7 @@
 
 #include "tokenise.h"
 #include "tokconv.h"
+#include "str.h"
 
 #include "sue.h"
 #include "sym.h"
@@ -1518,13 +1519,18 @@ static void parse_add_asm(decl *d)
 {
 	if(accept(token_asm)){
 		char *rename, *p;
+		struct cstring *cstr;
 
 		EAT(token_open_paren);
 
 		if(curtok != token_string)
 			die_at(NULL, "string expected");
 
-		token_get_current_str(&rename, NULL, NULL, NULL);
+		cstr = parse_asciz_str();
+		if(!cstr)
+			return;
+
+		rename = cstring_detach(cstr);
 		EAT(token_string);
 
 		EAT(token_close_paren);

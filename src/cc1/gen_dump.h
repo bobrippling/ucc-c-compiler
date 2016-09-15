@@ -34,7 +34,7 @@ void dump_printf_indent(dump *ctx, int indent, const char *fmt, ...)
 void dump_inc(dump *);
 void dump_dec(dump *);
 
-void dump_strliteral_indent(dump *ctx, int indent, const char *str, size_t len);
+void dump_strliteral_indent(dump *ctx, int indent, struct cstring *);
 void dump_strliteral(dump *ctx, const char *str, size_t len);
 
 void dump_stmt(struct stmt *t, dump *);

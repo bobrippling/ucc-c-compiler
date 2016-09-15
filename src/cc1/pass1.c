@@ -39,7 +39,9 @@ static int parse_add_gasms(symtable_gasm ***plast_gasms)
 {
 	int r = 0;
 	while(accept(token_asm)){
-		dynarray_add(plast_gasms, parse_gasm());
+		symtable_gasm *g = parse_gasm();
+		if(g)
+			dynarray_add(plast_gasms, g);
 		r = 1;
 	}
 	return r;

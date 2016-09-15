@@ -7,6 +7,7 @@
 #include "expr_addr.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../str.h"
 
 #include "expr_string.h"
 
@@ -72,6 +73,7 @@ static int attempt_func_keyword(expr *expr_ident, symtable *stab)
 
 	if(!strcmp(sp, "__func__") || (std = 0, !strcmp(sp, "__FUNCTION__"))){
 		char *fnsp;
+		struct cstring *cstr;
 		decl *in_fn = symtab_func(stab);
 
 		if(!std){
@@ -91,11 +93,11 @@ static int attempt_func_keyword(expr *expr_ident, symtable *stab)
 			fnsp = in_fn->spel;
 		}
 
+		cstr = cstring_new_raw_from_ascii(fnsp, fnsp + strlen(fnsp));
+
 		expr_mutate_str(
 				expr_ident,
-				fnsp,
-				strlen(fnsp) + 1,
-				/*wide:*/0,
+				cstr,
 				&expr_ident->where,
 				stab);
 

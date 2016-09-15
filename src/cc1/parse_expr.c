@@ -15,6 +15,7 @@
 
 #include "tokenise.h"
 #include "tokconv.h"
+#include "str.h"
 
 #include "parse_type.h"
 #include "parse_init.h"
@@ -251,6 +252,25 @@ def_args:
 	}
 }
 
+struct cstring *parse_asciz_str(void)
+{
+	struct cstring *cstr = token_get_current_str(NULL);
+	char *nul;
+
+	if(cstr->type == CSTRING_WIDE){
+		warn_at_print_error(NULL, "wide string not wanted");
+		parse_had_error = 1;
+		return NULL;
+	}
+
+	nul = memchr(cstr->bits.ascii, '\0', cstr->count);
+	if(nul && nul < cstr->bits.ascii + cstr->count - 1){
+		cc1_warn_at(NULL, str_contain_nul, "nul-character terminates string early");
+	}
+
+	return cstr;
+}
+
 static expr *parse_expr_primary(symtable *scope, int static_ctx)
 {
 	switch(curtok){
@@ -266,14 +286,11 @@ static expr *parse_expr_primary(symtable *scope, int static_ctx)
 		case token_string:
 		{
 			where w;
-			char *s;
-			size_t l;
-			int wide;
+			struct cstring *str = token_get_current_str(&w);
 
-			token_get_current_str(&s, &l, &wide, &w);
 			EAT(token_string);
 
-			return expr_new_str(s, l, wide, &w, scope);
+			return expr_new_str(str, &w, scope);
 		}
 
 		case token__Generic:

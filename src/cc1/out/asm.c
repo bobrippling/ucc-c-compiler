@@ -564,20 +564,27 @@ void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
 	/* could be SECTION_RODATA */
 	asm_nam_begin3(sec, lit->lbl, /*align:*/1);
 
-	if(lit->wide){
-		const char *join = "";
-		size_t i;
-
-		fprintf(f, ".long ");
-		for(i = 0; i < lit->len; i++){
-			fprintf(f, "%s%d", join, lit->str[i]);
-			join = ", ";
+	switch(lit->cstr->type){
+		case CSTRING_WIDE:
+		{
+			const char *join = "";
+			size_t i;
+			fprintf(f, ".long ");
+			for(i = 0; i < lit->cstr->count; i++){
+				fprintf(f, "%s%d", join, lit->cstr->bits.wides[i]);
+				join = ", ";
+			}
+			break;
 		}
 
-	}else{
-		fprintf(f, ".ascii \"");
-		literal_print(f, lit->str, lit->len);
-		fputc('"', f);
+		case CSTRING_RAW:
+			assert(0 && "raw string in code gen");
+
+		case CSTRING_ASCII:
+			fprintf(f, ".ascii \"");
+			literal_print(f, lit->cstr);
+			fputc('"', f);
+			break;
 	}
 
 	fputc('\n', f);

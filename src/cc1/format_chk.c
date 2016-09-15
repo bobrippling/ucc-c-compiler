@@ -14,6 +14,7 @@
 #include "funcargs.h"
 #include "type_is.h"
 #include "warn.h"
+#include "str.h"
 
 #include "format_chk.h"
 
@@ -343,9 +344,9 @@ not_string:
 			break;
 	}
 
-	{
-		const char *fmt = fmt_str->str;
-		const int   len = fmt_str->len - 1;
+	if(fmt_str->cstr->type != CSTRING_WIDE){
+		const char *fmt = fmt_str->cstr->bits.ascii;
+		const int   len = fmt_str->cstr->count - 1;
 
 		if(len <= 0)
 			;

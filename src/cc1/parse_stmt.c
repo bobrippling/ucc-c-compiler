@@ -9,6 +9,7 @@
 
 #include "cc1_where.h"
 #include "cc1.h" /* cc1_std */
+#include "str.h"
 
 #include "tokenise.h"
 #include "tokconv.h"
@@ -244,6 +245,7 @@ void parse_static_assert(symtable *scope)
 {
 	while(accept(token__Static_assert)){
 		static_assert *sa = umalloc(sizeof *sa);
+		struct cstring *str;
 
 		sa->scope = scope;
 
@@ -251,7 +253,13 @@ void parse_static_assert(symtable *scope)
 		sa->e = PARSE_EXPR_NO_COMMA(scope, 0);
 		EAT(token_comma);
 
-		token_get_current_str(&sa->s, NULL, NULL, NULL);
+		str = parse_asciz_str();
+		if(!str){
+			expr_free(sa->e);
+			free(sa);
+			continue;
+		}
+		sa->s = cstring_detach(str);
 
 		EAT(token_string);
 		EAT(token_close_paren);
@@ -631,12 +639,22 @@ flow:
 
 symtable_gasm *parse_gasm(void)
 {
-	symtable_gasm *g = umalloc(sizeof *g);
+	symtable_gasm *g;
+	struct cstring *cstr;
+	where w;
 
-	where_cc1_current(&g->where);
+	where_cc1_current(&w);
 
 	EAT(token_open_paren);
-	token_get_current_str(&g->asm_str, NULL, NULL, NULL);
+
+	cstr = parse_asciz_str();
+	if(!cstr)
+		return NULL;
+
+	g = umalloc(sizeof *g);
+	g->asm_str = cstring_detach(cstr);
+	memcpy_safe(&g->where, &w);
+
 	EAT(token_string);
 	EAT(token_close_paren);
 	EAT(token_semicolon);

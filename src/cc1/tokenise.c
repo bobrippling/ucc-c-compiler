@@ -145,9 +145,7 @@ numeric currentval = { { 0 } }; /* an integer literal */
 
 char *currentspelling = NULL; /* e.g. name of a variable */
 
-char *currentstring   = NULL; /* a string literal */
-size_t currentstringlen = 0;
-int   currentstringwide = 0;
+struct cstring *currentstring = NULL; /* a string literal */
 where currentstringwhere;
 
 /* where the parser is, and where the last parsed token was */
@@ -668,38 +666,32 @@ static int curtok_is_xequal(void)
 	return curtok_to_xequal() != token_unknown;
 }
 
-static void read_string(char **sptr, size_t *plen, int is_wide)
+static struct cstring *read_string(int is_wide)
 {
-	char *const start = bufferpos;
-	char *const end = str_quotefin(start);
-	size_t size;
+	const char *start = bufferpos;
+	const char *end = str_quotefin((char *)start);
+	struct cstring *ret;
 
 	if(!end){
+		const char *empty = "";
+
 		char *p;
 		if((p = strchr(bufferpos, '\n')))
 			*p = '\0';
 		warn_at_print_error(NULL, "no terminating quote to string");
 		parse_had_error = 1;
 
-		size = 1;
-		*sptr = umalloc(size);
-		*plen = size;
-		**sptr = '\0';
-		goto out;
+		start = empty;
+		end = empty + 1;
 	}
 
-	size = end - start + 1;
+	ret = cstring_new_raw_from_ascii(start, end - 1);
 
-	*sptr = umalloc(size);
-	*plen = size;
+	update_bufferpos(bufferpos + ret->count);
 
-	strncpy(*sptr, start, size);
-	(*sptr)[size-1] = '\0';
+	cstring_escape(ret, is_wide);
 
-	escape_string(*sptr, plen, is_wide);
-
-out:
-	update_bufferpos(bufferpos + size);
+	return ret;
 }
 
 static void ungetchar(char ch)
@@ -719,12 +711,11 @@ static int getungetchar(void)
 
 static void read_string_multiple(const int is_wide)
 {
-	char *str;
-	size_t len;
+	struct cstring *cstr;
 
 	where_cc1_current(&currentstringwhere);
 
-	read_string(&str, &len, is_wide);
+	cstr = read_string(is_wide);
 
 	curtok = token_string;
 
@@ -734,30 +725,17 @@ static void read_string_multiple(const int is_wide)
 			/* "abc" "def"
 			 *       ^
 			 */
-			char *new, *alloc;
-			size_t newlen;
+			struct cstring *appendstr = read_string(is_wide);
 
-			read_string(&new, &newlen, is_wide);
-
-			alloc = umalloc(newlen + len);
-
-			memcpy(alloc, str, len);
-			memcpy(alloc + len - 1, new, newlen);
-
-			free(str);
-			free(new);
-
-			str = alloc;
-			len += newlen - 1;
+			cstring_append(cstr, appendstr);
+			cstring_free(appendstr);
 		}else{
 			ungetchar(c);
 			break;
 		}
 	}
 
-	currentstring    = str;
-	currentstringlen = len;
-	currentstringwide = is_wide;
+	currentstring = cstr;
 }
 
 static void read_char(const int is_wide)

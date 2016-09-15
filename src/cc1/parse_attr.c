@@ -13,6 +13,7 @@
 
 #include "tokenise.h"
 #include "tokconv.h"
+#include "str.h"
 
 #include "fold.h"
 
@@ -80,6 +81,7 @@ static attribute *parse_attr_section(symtable *symtab, const char *ident)
 {
 	/* __attribute__((section ("sectionname"))) */
 	attribute *da;
+	struct cstring *str;
 	char *func;
 	size_t len, i;
 
@@ -91,8 +93,12 @@ static attribute *parse_attr_section(symtable *symtab, const char *ident)
 	if(curtok != token_string)
 		die_at(NULL, "string expected for section");
 
-	token_get_current_str(&func, &len, NULL, NULL);
+	str = parse_asciz_str();
 	EAT(token_string);
+	if(!str)
+		return NULL;
+	len = str->count;
+	func = cstring_detach(str);
 
 	for(i = 0; i < len; i++)
 		if(!isprint(func[i])){
