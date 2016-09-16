@@ -453,12 +453,18 @@ static int rawnextchar(void)
 	return *bufferpos++;
 }
 
+static int char_is_cspace(int ch)
+{
+	/* C allows ^L aka '\f' anywhere in the code */
+	return isspace(ch) || ch == '\f';
+}
+
 static int nextchar(void)
 {
 	int c;
 	do
 		c = rawnextchar();
-	while(isspace(c) || c == '\f'); /* C allows ^L aka '\f' anywhere in the code */
+	while(char_is_cspace(c));
 	return c;
 }
 
@@ -709,7 +715,7 @@ static int getungetchar(void)
 	return ch;
 }
 
-static void read_string_multiple(const int is_wide)
+static void read_string_multiple(int is_wide)
 {
 	struct cstring *cstr;
 
@@ -720,12 +726,21 @@ static void read_string_multiple(const int is_wide)
 	curtok = token_string;
 
 	for(;;){
+		/* look for '"' or "L\"" */
 		int c = nextchar();
-		if(c == '"'){
+
+		if(c == '"' || (c == 'L' && *bufferpos == '"')){
 			/* "abc" "def"
 			 *       ^
 			 */
-			struct cstring *appendstr = read_string(is_wide);
+			struct cstring *appendstr;
+
+			if(c == 'L'){
+				is_wide = 1;
+				bufferpos++;
+			}
+
+			appendstr = read_string(is_wide);
 
 			cstring_append(cstr, appendstr);
 			cstring_free(appendstr);

@@ -181,9 +181,31 @@ unsigned cstring_hash(const struct cstring *cstr)
 	return hash;
 }
 
-void cstring_append(struct cstring *out, const struct cstring *addend)
+static void cstring_widen(struct cstring *cstr)
 {
-	assert(out->type == addend->type);
+	int *wides = umalloc(sizeof(*wides) * cstr->count);
+	size_t i;
+
+	assert(cstr->type == CSTRING_RAW || cstr->type == CSTRING_ASCII);
+
+	for(i = 0; i < cstr->count; i++)
+		wides[i] = cstr->bits.ascii[i];
+
+	free(cstr->bits.ascii);
+	cstr->bits.wides = wides;
+	cstr->type = CSTRING_WIDE;
+}
+
+void cstring_append(struct cstring *out, struct cstring *addend)
+{
+	if(addend->type != out->type){
+		assert(addend->type == CSTRING_WIDE || out->type == CSTRING_WIDE);
+
+		if(addend->type == CSTRING_WIDE)
+			cstring_widen(out);
+		else
+			cstring_widen(addend);
+	}
 
 	out->count += addend->count /* ignore trailing \0 on ours */ - 1;
 

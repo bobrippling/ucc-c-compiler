@@ -23,7 +23,7 @@ void cstring_init_ascii(struct cstring *, const char *, size_t);
 int cstring_char_at(const struct cstring *, size_t);
 
 void cstring_escape(struct cstring *, int is_wide);
-void cstring_append(struct cstring *, const struct cstring *);
+void cstring_append(struct cstring *, struct cstring *);
 
 int cstring_eq(const struct cstring *, const struct cstring *);
 unsigned cstring_hash(const struct cstring *);
