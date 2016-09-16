@@ -214,7 +214,11 @@ static void static_val(enum section_type sec, type *ty, expr *e)
 			}else{
 				char buf[INTEGRAL_BUF_SIZ];
 				asm_declare_init_type(sec, ty);
-				integral_str(buf, sizeof buf, k.bits.num.val.i, e->tree_type);
+				/* use 'ty' here - e->tree_type will be the casted-from type,
+				 * e.g.
+				 * char x[] = { 5ull };
+				 * we want 'char', not 'unsigned long long' */
+				integral_str(buf, sizeof buf, k.bits.num.val.i, ty);
 				asm_out_section(sec, "%s", buf);
 			}
 			break;
