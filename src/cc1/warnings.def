@@ -206,7 +206,7 @@ GROUP("missing-forwards", &cc1_warning.missing_variable_decls, &cc1_warning.miss
 ALIAS("strict-prototypes", implicit_old_func)/* gcc/clang */
 
 X("multichar", multichar)
-X("multichar-too-large", multichar_toolarge)
+X("char-too-large", char_toolarge)
 
 X("nonstandard-array-size", nonstd_arraysz)
 X("nonstandard-init", nonstd_init)

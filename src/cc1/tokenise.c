@@ -774,7 +774,7 @@ static void read_char(int is_wide)
 
 		if(multichar){
 			if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
-				cc1_warn_at(NULL, multichar_toolarge, "multi-char constant too large");
+				cc1_warn_at(NULL, char_toolarge, "multi-char constant too large");
 			else
 				cc1_warn_at(NULL, multichar, "multi-char constant");
 		}else if(len == 0){
