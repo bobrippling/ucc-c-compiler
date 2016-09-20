@@ -136,7 +136,10 @@ unsigned long long char_seq_to_ullong(
 			of);
 }
 
-int escape_char_1(char *start, char **const end, int *const warn, int *const err)
+int escape_char_1(
+		char *start, char **const end,
+		int is_wide,
+		int *const warn, int *const err)
 {
 	/* no binary here - only in numeric constants */
 	char esc = *start;
@@ -161,7 +164,7 @@ int escape_char_1(char *start, char **const end, int *const warn, int *const err
 			*warn = ERANGE;
 		if(start == *end)
 			*err = EILSEQ;
-		if(parsed > 0x7fffffff)
+		if(parsed > (is_wide ? 0x7fffffff : 0xff))
 			*warn = ERANGE;
 
 		return parsed;
@@ -207,7 +210,7 @@ int escape_char(
 				break;
 			}
 
-			this = escape_char_1(i, &escfin, warn, err);
+			this = escape_char_1(i, &escfin, is_wide, warn, err);
 
 			i = escfin /*for inc:*/- 1;
 		}else{
@@ -217,7 +220,7 @@ int escape_char(
 		if(is_wide)
 			ret = this; /* truncate to last parsed char */
 		else
-			ret = ret * 256 + this;
+			ret = ret * 256u + this;
 
 		n++;
 	}

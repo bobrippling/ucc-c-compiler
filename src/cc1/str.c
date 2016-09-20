@@ -81,7 +81,7 @@ void cstring_escape(struct cstring *cstr, int is_wide)
 			where_cc1_current(&loc);
 			loc.chr += i + 1;
 
-			add = escape_char_1(&cstr->bits.ascii[i + 1], &end, &warn, &err);
+			add = escape_char_1(&cstr->bits.ascii[i + 1], &end, is_wide, &warn, &err);
 
 			UCC_ASSERT(end, "bad parse?");
 

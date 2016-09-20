@@ -753,15 +753,16 @@ static void read_string_multiple(int is_wide)
 	currentstring = cstr;
 }
 
-static void read_char(const int is_wide)
+static void read_char(int is_wide)
 {
 	char *begin = bufferpos;
 	char *end = char_quotefin(begin);
 	int ch = 0;
+	int multichar = 0;
 
 	if(end){
 		const size_t len = (end - begin);
-		int multichar, warn, err;
+		int warn, err;
 		char *endesc;
 
 		ch = escape_char(begin, end, &endesc, is_wide, &multichar, &warn, &err);
@@ -804,7 +805,7 @@ out:
 	if(end)
 		update_bufferpos(end + 1);
 
-	if(is_wide)
+	if(is_wide || multichar)
 		currentval.val.i = (int)ch;
 	else
 		currentval.val.i = (char)ch; /* ensure we sign extend from char */

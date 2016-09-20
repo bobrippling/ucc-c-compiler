@@ -88,7 +88,7 @@ int main()
 	{
 		char *oct = "a\0563";
 		char *hexterm = "\xagh";
-		char *s = "h\xbcdef515abd\03321\012345";
+		char *s = "h\xbc\03321\012345";
 		//         h\275         \03321\n  345
 
 		if(strcmp(oct, "a.3"))
@@ -97,7 +97,7 @@ int main()
 		if(strcmp(hexterm, (char[]){ 10, 'g', 'h', 0 }))
 			abort();
 
-		if(strcmp(s, "h\275\03321\n345"))
+		if(strcmp(s, (char[]){ 'h', 188, 27, '2', '1', 10, '3', '4', '5', 0 }))
 			abort();
 	}
 

@@ -32,9 +32,13 @@ int escape_char(
 /* convert a single character-as-string to 'char'
  * e.g.
  * "\xffg" -> 255, end="g"
+ *
+ * is_wide dictates whether '\x100' overflows
+ * (if not, wchar_t max is checked)
  */
 int escape_char_1(
 		char *start, char **const end,
+		int is_wide,
 		int *const warn,
 		int *const err)
 	ucc_nonnull();
