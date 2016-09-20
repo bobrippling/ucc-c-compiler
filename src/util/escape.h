@@ -18,6 +18,8 @@ const char *base_to_str(enum base);
  *
  * warn: ERANGE, EINVAL
  * err: EILSEQ (e.g. '\')
+ *
+ * *warn and *err must be initialised by the caller
  */
 int escape_char(
 		char *start,
@@ -35,6 +37,8 @@ int escape_char(
  *
  * is_wide dictates whether '\x100' overflows
  * (if not, wchar_t max is checked)
+ *
+ * *warn and *err must be initialised by the caller
  */
 int escape_char_1(
 		char *start, char **const end,

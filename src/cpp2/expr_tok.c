@@ -71,6 +71,7 @@ end_ty:
 			tok_pos++;
 
 		tok_pos++;
+		warn = err = 0;
 		tok_cur_num = escape_char(
 				tok_pos, NULL, &tok_pos, wide,
 				&mchar, &warn, &err);

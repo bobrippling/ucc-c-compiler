@@ -765,6 +765,7 @@ static void read_char(int is_wide)
 		int warn, err;
 		char *endesc;
 
+		warn = err = 0;
 		ch = escape_char(begin, end, &endesc, is_wide, &multichar, &warn, &err);
 
 		if(endesc != end){

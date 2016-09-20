@@ -144,8 +144,6 @@ int escape_char_1(
 	/* no binary here - only in numeric constants */
 	char esc = *start;
 
-	*warn = *err = 0;
-
 	if(esc == 'x' || isoct(esc)){
 		unsigned long long parsed;
 		int overflow;
@@ -194,8 +192,6 @@ int escape_char(
 	int ret = 0;
 	char *i;
 	size_t n = 0;
-
-	*warn = *err = 0;
 
 	/* assuming start..end doesn't contain nuls */
 	for(i = start; i != limit && *i; i++){
