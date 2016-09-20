@@ -4,11 +4,11 @@
 _Static_assert((char)'abc' == 'c', ""); // CHECK: /multi-char/
 _Static_assert(/*int*/'abc' == 0x616263, "");
 
-_Static_assert(/*int*/'abcde' == 'bcde', ""); // CHECK: /too large/
+_Static_assert(/*int*/'abcde' == 'bcde', ""); // CHECK: warning: ignoring extraneous characters in literal
 _Static_assert(/*int*/'abcde' == 0x62636465, "");
 
 _Static_assert(L'a' == 'a', "");
-_Static_assert(L'ab' == 'b', ""); // CHECK: /extra.*ignored/
+_Static_assert(L'ab' == 'b', ""); // CHECK: warning: ignoring extraneous characters in literal
 
 _Static_assert('\xc' == 12, "");
 _Static_assert('\3' == 3, "");

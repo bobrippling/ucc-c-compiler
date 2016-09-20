@@ -101,6 +101,9 @@ void cstring_escape(struct cstring *cstr, int is_wide)
 			switch(warn){
 				case 0:
 					break;
+				case E2BIG:
+					cc1_warn_at(&loc, char_toolarge, "ignoring extraneous characters in literal");
+					break;
 				case ERANGE:
 					warn_at_print_error(&loc, "escape sequence out of range");
 					parse_had_error = 1;

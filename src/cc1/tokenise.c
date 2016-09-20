@@ -787,6 +787,9 @@ static void read_char(int is_wide)
 		switch(warn){
 			case 0:
 				break;
+			case E2BIG:
+				cc1_warn_at(NULL, char_toolarge, "ignoring extraneous characters in literal");
+				break;
 			case ERANGE:
 				warn_at_print_error(NULL, "escape character out of range");
 				parse_had_error = 1;

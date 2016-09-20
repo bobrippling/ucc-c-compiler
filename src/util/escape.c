@@ -4,6 +4,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
 
 #include "escape.h"
 #include "str.h"
@@ -213,10 +214,23 @@ int escape_char(
 			this = *i;
 		}
 
-		if(is_wide)
+		if(is_wide){
 			ret = this; /* truncate to last parsed char */
-		else
-			ret = ret * 256u + this;
+			if(ret)
+				*warn = E2BIG;
+		}else{
+			/* overflow? */
+			int of = 0;
+			if((unsigned)ret > UINT_MAX / 256u)
+				of = 1;
+			ret *= 256u;
+			if((unsigned)ret > UINT_MAX - this)
+				of = 1;
+			ret += this;
+
+			if(of)
+				*warn = E2BIG;
+		}
 
 		n++;
 	}
