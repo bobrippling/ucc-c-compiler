@@ -824,22 +824,7 @@ static void read_char(int is_wide)
 			goto out;
 		}
 
-		switch(warn){
-			case 0:
-				break;
-			case E2BIG:
-				cc1_warn_at(NULL, char_toolarge, "ignoring extraneous characters in literal");
-				break;
-			case ERANGE:
-				warn_at_print_error(NULL, "escape character out of range");
-				parse_had_error = 1;
-				break;
-			case EINVAL:
-				cc1_warn_at(NULL, escape_char, "invalid escape character");
-				break;
-			default:
-				assert(0 && "unhandled escape warning");
-		}
+		handle_escape_warn_err(warn, err, NULL);
 	}else{
 		warn_at_print_error(NULL, "no terminating quote to character literal");
 		parse_had_error = 1;
