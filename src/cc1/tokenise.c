@@ -672,6 +672,46 @@ static int curtok_is_xequal(void)
 	return curtok_to_xequal() != token_unknown;
 }
 
+static void handle_escape_warn_err(int warn, int err, void *ctx)
+{
+	extern int parse_had_error;
+	const where *loc = ctx;
+	where loc_;
+
+	if(!loc){
+		where_cc1_current(&loc_);
+		loc = &loc_;
+	}
+
+	switch(err){
+		case 0:
+			break;
+		case EILSEQ:
+			warn_at_print_error(loc, "empty escape sequence");
+			parse_had_error = 1;
+			break;
+		default:
+			assert(0 && "unhandled escape error");
+	}
+	switch(warn){
+		case 0:
+			break;
+		case E2BIG:
+			cc1_warn_at(loc, char_toolarge, "ignoring extraneous characters in literal");
+			break;
+		case ERANGE:
+			warn_at_print_error(loc, "escape sequence out of range");
+			parse_had_error = 1;
+			break;
+		case EINVAL:
+			warn_at_print_error(loc, "invalid escape character");
+			parse_had_error = 1;
+			break;
+		default:
+			assert(0 && "unhandled escape warning");
+	}
+}
+
 static struct cstring *read_string(int is_wide)
 {
 	const char *start = bufferpos;
@@ -695,7 +735,7 @@ static struct cstring *read_string(int is_wide)
 
 	update_bufferpos(bufferpos + ret->count);
 
-	cstring_escape(ret, is_wide);
+	cstring_escape(ret, is_wide, handle_escape_warn_err, NULL);
 
 	return ret;
 }

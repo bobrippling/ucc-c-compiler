@@ -52,7 +52,10 @@ static void cstring_char_set(struct cstring *cstr, size_t i, int to)
 		cstr->bits.ascii[i] = to;
 }
 
-void cstring_escape(struct cstring *cstr, int is_wide)
+void cstring_escape(
+		struct cstring *cstr, int is_wide,
+		void handle_escape_warn_err(int w, int e, void *),
+		void *ctx)
 {
 	struct cstring tmpout = { 0 };
 	size_t i, iout;
@@ -72,14 +75,8 @@ void cstring_escape(struct cstring *cstr, int is_wide)
 		unsigned add;
 
 		if(cstr->bits.ascii[i] == '\\'){
-			extern int parse_had_error;
-			where loc;
-			char *end;
 			int warn, err;
-
-			/* assumes we're called immediately after tokenisation of string */
-			where_cc1_current(&loc);
-			loc.chr += i + 1;
+			char *end;
 
 			warn = err = 0;
 			add = escape_char_1(&cstr->bits.ascii[i + 1], &end, is_wide, &warn, &err);
@@ -88,34 +85,7 @@ void cstring_escape(struct cstring *cstr, int is_wide)
 
 			i = (end - cstr->bits.ascii) /*for the loop inc:*/- 1;
 
-			switch(err){
-				case 0:
-					break;
-				case EILSEQ:
-					warn_at_print_error(&loc, "empty escape sequence");
-					parse_had_error = 1;
-					break;
-				default:
-					assert(0 && "unhandled escape error");
-			}
-			switch(warn){
-				case 0:
-					break;
-				case E2BIG:
-					cc1_warn_at(&loc, char_toolarge, "ignoring extraneous characters in literal");
-					break;
-				case ERANGE:
-					warn_at_print_error(&loc, "escape sequence out of range");
-					parse_had_error = 1;
-					break;
-				case EINVAL:
-					warn_at_print_error(&loc, "invalid escape character");
-					parse_had_error = 1;
-					break;
-				default:
-					assert(0 && "unhandled escape warning");
-			}
-
+			handle_escape_warn_err(warn, err, ctx);
 		}else{
 			add = cstr->bits.ascii[i];
 		}

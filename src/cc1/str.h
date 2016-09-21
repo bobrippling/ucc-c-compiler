@@ -22,7 +22,11 @@ void cstring_init_ascii(struct cstring *, const char *, size_t);
 
 int cstring_char_at(const struct cstring *, size_t);
 
-void cstring_escape(struct cstring *, int is_wide);
+void cstring_escape(
+		struct cstring *cstr, int is_wide,
+		void handle_escape_warn_err(int w, int e, void *),
+		void *ctx);
+
 void cstring_append(struct cstring *, struct cstring *);
 
 int cstring_eq(const struct cstring *, const struct cstring *);
