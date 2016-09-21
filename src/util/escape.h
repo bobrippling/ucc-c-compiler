@@ -16,8 +16,8 @@ const char *base_to_str(enum base);
  * or
  *   L'abc' -> L'c'
  *
- * warn: ERANGE (escseq), EINVAL (escchar), E2BIG ('abcde')
- * err: EILSEQ (e.g. '\')
+ * warn: EINVAL ('\z'), E2BIG ('abcde')
+ * err: EILSEQ (e.g. '\'), ERANGE ('\x100')
  *
  * *warn and *err must be initialised by the caller
  */

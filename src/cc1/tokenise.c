@@ -690,6 +690,10 @@ static void handle_escape_warn_err(int warn, int err, void *ctx)
 			warn_at_print_error(loc, "empty escape sequence");
 			parse_had_error = 1;
 			break;
+		case ERANGE:
+			warn_at_print_error(loc, "escape sequence out of range");
+			parse_had_error = 1;
+			break;
 		default:
 			assert(0 && "unhandled escape error");
 	}
@@ -698,10 +702,6 @@ static void handle_escape_warn_err(int warn, int err, void *ctx)
 			break;
 		case E2BIG:
 			cc1_warn_at(loc, char_toolarge, "ignoring extraneous characters in literal");
-			break;
-		case ERANGE:
-			warn_at_print_error(loc, "escape sequence out of range");
-			parse_had_error = 1;
 			break;
 		case EINVAL:
 			warn_at_print_error(loc, "invalid escape character");

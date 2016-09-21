@@ -160,11 +160,11 @@ int escape_char_1(
 				&overflow);
 
 		if(overflow)
-			*warn = ERANGE;
+			*err = ERANGE;
 		if(start == *end)
 			*err = EILSEQ;
 		if(parsed > (is_wide ? 0x7fffffff : 0xff))
-			*warn = ERANGE;
+			*err = ERANGE;
 
 		return parsed;
 

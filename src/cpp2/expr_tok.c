@@ -76,9 +76,13 @@ end_ty:
 				tok_pos, NULL, &tok_pos, wide,
 				&mchar, &warn, &err);
 
-		if(err){
-			assert(err == EILSEQ);
-			CPP_DIE("incomplete escape sequence in literal");
+		switch(err){
+			case EILSEQ:
+				CPP_DIE("incomplete escape sequence in literal");
+				break;
+			case ERANGE:
+				CPP_DIE("character escape out of range");
+				break;
 		}
 
 		if(!tok_pos)
@@ -89,9 +93,6 @@ end_ty:
 
 		switch(warn){
 			case 0:
-				break;
-			case ERANGE:
-				CPP_WARN(WESCAPE, "character escape out of range");
 				break;
 			case EINVAL:
 				CPP_WARN(WESCAPE, "invalid escape character");
