@@ -97,6 +97,9 @@ end_ty:
 			case EINVAL:
 				CPP_WARN(WESCAPE, "invalid escape character");
 				break;
+			case E2BIG:
+				CPP_WARN(WESCAPE, "ignoring extraneous characters in literal");
+				break;
 		}
 
 		tok_cur = tok_num;
