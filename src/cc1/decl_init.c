@@ -1407,6 +1407,22 @@ static decl_init *decl_init_brace_up_start(
 	return ret;
 }
 
+static void maybe_complete_array_from_prev(decl *d)
+{
+	if(!type_is_incomplete_array(d->ref))
+		return;
+
+	if(!d->proto)
+		return;
+
+	if(!type_is_array(d->proto->ref) || type_is_incomplete_array(d->proto->ref))
+		return;
+
+	d->ref = d->proto->ref;
+	init_debug("changing %s's type to %s (from prev decl)\n",
+			d->spel, type_to_str(d->ref));
+}
+
 void decl_init_brace_up_fold(decl *d, symtable *stab)
 {
 	init_debug("top level: %s\n", decl_to_str(d));
@@ -1422,6 +1438,8 @@ void decl_init_brace_up_fold(decl *d, symtable *stab)
 			fold_had_error = 1;
 			return;
 		}
+
+		maybe_complete_array_from_prev(d);
 
 		d->bits.var.init.dinit = decl_init_brace_up_start(
 				d->bits.var.init.dinit,
