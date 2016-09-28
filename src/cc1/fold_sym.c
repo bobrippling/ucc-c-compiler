@@ -482,14 +482,9 @@ void symtab_fold_decls(symtable *tab)
 			}
 
 			if(clash){
-				/* XXX: note */
-				char wbuf[WHERE_BUF_SIZ];
-
-				die_at(b->w,
-						"%s definitions of \"%s\"\n"
-						"%s: note: previous definition",
-						clash, IDENT_LOC_SPEL(a),
-						where_str_r(wbuf, a->w));
+				warn_at_print_error(b->w, "%s definitions of \"%s\"", clash, IDENT_LOC_SPEL(a));
+				note_at(a->w, "previous definition");
+				fold_had_error = 1;
 			}
 		}
 	}
