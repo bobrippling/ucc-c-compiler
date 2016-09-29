@@ -18,6 +18,7 @@ struct cstring
 };
 
 struct cstring *cstring_new_raw_from_ascii(const char *start, const char *end);
+struct cstring *cstring_new_ascii_from_ascii(const char *start, const char *end);
 void cstring_init_ascii(struct cstring *, const char *, size_t);
 
 int cstring_char_at(const struct cstring *, size_t);

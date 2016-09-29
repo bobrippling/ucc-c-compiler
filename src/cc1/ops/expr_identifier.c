@@ -93,7 +93,7 @@ static int attempt_func_keyword(expr *expr_ident, symtable *stab)
 			fnsp = in_fn->spel;
 		}
 
-		cstr = cstring_new_raw_from_ascii(fnsp, fnsp + strlen(fnsp));
+		cstr = cstring_new_ascii_from_ascii(fnsp, fnsp + strlen(fnsp));
 
 		expr_mutate_str(
 				expr_ident,

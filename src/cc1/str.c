@@ -36,6 +36,15 @@ struct cstring *cstring_new_raw_from_ascii(const char *start, const char *end)
 	return alloc;
 }
 
+struct cstring *cstring_new_ascii_from_ascii(const char *start, const char *end)
+{
+	struct cstring *cstr = cstring_new_raw_from_ascii(start, end);
+
+	cstr->type = CSTRING_ASCII;
+
+	return cstr;
+}
+
 int cstring_char_at(const struct cstring *cstr, size_t i)
 {
 	if(cstr->type == CSTRING_WIDE)
