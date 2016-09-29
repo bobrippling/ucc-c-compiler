@@ -118,12 +118,17 @@ char *cstring_detach(struct cstring *cstr)
 	return r;
 }
 
-void cstring_free(struct cstring *cstr)
+void cstring_deinit(struct cstring *cstr)
 {
 	if(cstr->type == CSTRING_WIDE)
 		free(cstr->bits.wides);
 	else
 		free(cstr->bits.ascii);
+}
+
+void cstring_free(struct cstring *cstr)
+{
+	cstring_deinit(cstr);
 
 	free(cstr);
 }

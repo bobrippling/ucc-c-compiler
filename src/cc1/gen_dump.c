@@ -185,6 +185,8 @@ void dump_strliteral(dump *ctx, const char *str, size_t len)
 	cstring_init_ascii(&cstr, str, len);
 
 	dump_strliteral_indent(ctx, 1, &cstr);
+
+	cstring_deinit(&cstr);
 }
 
 void dump_expr(expr *e, dump *ctx)

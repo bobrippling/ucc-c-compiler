@@ -33,6 +33,7 @@ int cstring_eq(const struct cstring *, const struct cstring *);
 unsigned cstring_hash(const struct cstring *);
 
 void cstring_free(struct cstring *);
+void cstring_deinit(struct cstring *);
 char *cstring_detach(struct cstring *);
 
 char *str_add_escape(struct cstring *);

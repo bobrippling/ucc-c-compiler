@@ -494,6 +494,8 @@ static void dwarf_attr(
 			cstring_init_ascii(&local, s, strlen(s));
 
 			at->bits.str = str_add_escape(&local);
+
+			cstring_deinit(&local);
 			break;
 		}
 	}
@@ -1705,12 +1707,15 @@ void dbg_out_filelist(
 
 	for(i = head, idx = 1; i; i = i->next, idx++){
 		struct cstring local;
+		char *esc;
 
 		cstring_init_ascii(&local, i->fname, strlen(i->fname));
 
-		char *esc = str_add_escape(&local);
+		esc = str_add_escape(&local);
 
 		fprintf(f, ".file %u \"%s\"\n", idx, esc);
+
+		cstring_deinit(&local);
 		free(esc);
 	}
 }
