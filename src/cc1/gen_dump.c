@@ -328,6 +328,8 @@ static void dump_sue(dump *ctx, type *ty)
 		}
 	}
 
+	dump_attributes(sue->attr, ctx);
+
 	dump_dec(ctx);
 }
 
