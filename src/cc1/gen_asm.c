@@ -289,9 +289,14 @@ const out_val *gen_decl_addr(out_ctx *octx, decl *d)
 {
 	int local = decl_linkage(d) == linkage_internal;
 
-	if(!local && type_is(d->ref, type_func)){
-		/* defined functions, even though exported, are local. unless weak */
-		local = d->bits.func.code && !attribute_present(d, attr_weak);
+	if(!local){
+		if(type_is(d->ref, type_func)){
+			/* defined functions, even though exported, are local. unless weak */
+			local = d->bits.func.code && !attribute_present(d, attr_weak);
+		}else{
+			/* variable - if initialised then it's not interposable */
+			local = d->bits.var.init.dinit && !d->bits.var.init.compiler_generated;
+		}
 	}
 
 	return out_new_lbl(
