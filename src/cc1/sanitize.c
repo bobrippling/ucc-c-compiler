@@ -28,7 +28,7 @@ static void sanitize_assert(const out_val *cond, out_ctx *octx, const char *desc
 		type *fnty_ptr = type_ptr_to(fnty_noptr);
 		char *mangled = func_mangle(cc1_sanitize_handler_fn, fnty_noptr);
 
-		const out_val *fn = out_new_lbl(octx, fnty_ptr, mangled, 0, 0);
+		const out_val *fn = out_new_lbl(octx, fnty_ptr, mangled, OUT_LBL_NOPIC);
 
 		out_val_release(octx, out_call(octx, fn, NULL, fnty_ptr));
 

@@ -421,8 +421,8 @@ const char *impl_val_str_r(
 			const char *pre = deref ? "" : "$";
 			const char *picstr = "";
 
-			if(deref && (vs->bits.lbl.pic_type & LBL_PIC) && fopt_mode & FOPT_PIC){
-				int local_sym = vs->bits.lbl.pic_type & LBL_PIC_LOCAL;
+			if(deref && (vs->bits.lbl.pic_type & OUT_LBL_PIC) && fopt_mode & FOPT_PIC){
+				int local_sym = vs->bits.lbl.pic_type & OUT_LBL_PICLOCAL;
 
 				/* if it's local, we can access the symbol at a fixed offset.
 				 * otherwise it's in another module, so we need the GOT to access it
@@ -1024,7 +1024,7 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			 * as we currently don't have V_LBL_SPILT, for e.g. */
 			mut->type = V_LBL;
 			mut->bits.lbl.str = lbl;
-			mut->bits.lbl.pic_type = LBL_PIC | LBL_PIC_LOCAL;
+			mut->bits.lbl.pic_type = OUT_LBL_PICLOCAL;
 			mut->bits.lbl.offset = 0;
 			mut->t = type_ptr_to(mut->t);
 
@@ -1159,7 +1159,7 @@ lea:
 			type *chosen_ty = fp ? from->t : NULL;
 			const int from_GOT = from->type == V_LBL
 				&& fopt_mode & FOPT_PIC
-				&& !(from->bits.lbl.pic_type & LBL_PIC_LOCAL);
+				&& !(from->bits.lbl.pic_type & OUT_LBL_PICLOCAL);
 
 			/* just go with leaq for small sizes */
 

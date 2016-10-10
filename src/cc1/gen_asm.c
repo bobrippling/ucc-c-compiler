@@ -298,8 +298,7 @@ const out_val *gen_decl_addr(out_ctx *octx, decl *d)
 			octx,
 			type_ptr_to(d->ref),
 			decl_asm_spel(d),
-			1,
-			local);
+			OUT_LBL_PIC | (local ? OUT_LBL_PICLOCAL : 0));
 }
 
 static void gen_gasm(char *asm_str)

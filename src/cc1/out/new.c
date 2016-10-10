@@ -25,7 +25,7 @@ out_val *out_new_blk_addr(out_ctx *octx, out_blk *blk)
 	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 	out_blk_mustgen(octx, blk, 0);
 	dynarray_add(&octx->mustgen, blk);
-	return out_new_lbl(octx, voidp, blk->lbl, 1, 1);
+	return out_new_lbl(octx, voidp, blk->lbl, OUT_LBL_PIC | OUT_LBL_PICLOCAL);
 }
 
 static out_val *out_new_bp_off(out_ctx *octx, long off)
@@ -85,20 +85,14 @@ out_val *out_new_l(out_ctx *octx, type *ty, long val)
 out_val *out_new_lbl(
 		out_ctx *octx, type *ty,
 		const char *s,
-		int pic, int local_sym)
+		enum out_pic_type pic_type)
 {
 	out_val *v = v_new(octx, ty);
 
 	v->type = V_LBL;
 	v->bits.lbl.str = s;
 	v->bits.lbl.offset = 0;
-
-	if(pic){
-		v->bits.lbl.pic_type = LBL_PIC;
-
-		if(local_sym)
-			v->bits.lbl.pic_type |= LBL_PIC_LOCAL;
-	}
+	v->bits.lbl.pic_type = pic_type;
 
 	return v;
 }

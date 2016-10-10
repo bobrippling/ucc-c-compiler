@@ -30,7 +30,7 @@ out_val *out_new_zero(out_ctx *, type *) ucc_nonnull((1))
  * local_sym: symbol/label is present in the current C.U.
  *            pass false if unsure
  */
-out_val *out_new_lbl(out_ctx *, type *, const char *s, int pic, int local_sym)
+out_val *out_new_lbl(out_ctx *, type *, const char *s, enum out_pic_type)
 	ucc_wur;
 
 out_val *out_new_blk_addr(out_ctx *, out_blk *) ucc_wur;

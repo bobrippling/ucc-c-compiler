@@ -43,7 +43,11 @@ const out_val *gen_expr_str(const expr *e, out_ctx *octx)
 
 	stringlit_use(strl);
 
-	return out_new_lbl(octx, type_ptr_to(e->tree_type), strl->lbl, 1, 1);
+	return out_new_lbl(
+			octx,
+			type_ptr_to(e->tree_type),
+			strl->lbl,
+			OUT_LBL_PIC | OUT_LBL_PICLOCAL);
 }
 
 void dump_expr_str(const expr *e, dump *ctx)

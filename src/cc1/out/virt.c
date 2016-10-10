@@ -48,8 +48,8 @@ int v_is_const_reg(const out_val *v)
 int v_needs_GOT(const out_val *v)
 {
 	return v->type == V_LBL
-		&& v->bits.lbl.pic_type & LBL_PIC
-		&& !(v->bits.lbl.pic_type & LBL_PIC_LOCAL)
+		&& v->bits.lbl.pic_type & OUT_LBL_PIC
+		&& !(v->bits.lbl.pic_type & OUT_LBL_PICLOCAL)
 		&& fopt_mode & FOPT_PIC;
 }
 
