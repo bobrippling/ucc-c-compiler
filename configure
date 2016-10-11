@@ -67,7 +67,7 @@ asm_weak_directive='weak'
 as_supports_local_common=1
 as_align_is_pow2=0
 ld_indirect_call_via_plt=1
-leading_underscore=0
+default_leading_underscore=0
 local_lib=0
 
 debug=1
@@ -197,11 +197,11 @@ case "$target" in
 		ucc_ldflags="-macosx_version_min 10.5 -syslibroot $syslibroot"
 		local_label_prefix=L
 		need_dsym=1
-		leading_underscore=1
+		default_leading_underscore=1
 		;;
 
 	CYGWIN_NT-* | *-pc-cygwin)
-		leading_underscore=1
+		default_leading_underscore=1
 		if test "$arch" = i686
 		then arch=x86_64
 		fi
@@ -214,7 +214,7 @@ case "$target" in
 esac
 
 # platform/ABI setup
-if test $leading_underscore = 1
+if test $default_leading_underscore = 1
 then
 	ucc_cppflags="-D__LEADING_UNDERSCORE $ucc_cppflags"
 	ucc_cflags="-fleading-underscore $ucc_cflags"
