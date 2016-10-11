@@ -178,7 +178,7 @@ case "$target" in
 		section_text="__TEXT,__text"
 		section_data="__DATA,__data"
 		section_bss="__BSS,__bss"
-		section_rodata="__TEXT,__const"
+		section_rodata="__DATA,__const"
 		section_dbg_abbrev="__DWARF,__debug_abbrev,regular,debug"
 		section_dbg_info="__DWARF,__debug_info,regular,debug"
 		section_dbg_line="__DWARF,__debug_line,regular,debug"
