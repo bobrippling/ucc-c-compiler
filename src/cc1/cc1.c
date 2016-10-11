@@ -50,6 +50,7 @@ static struct
 	{ 'f',  "english",       FOPT_ENGLISH         },
 	{ 'f',  "show-line",     FOPT_SHOW_LINE       },
 	{ 'f',  "pic",           FOPT_PIC             },
+	{ 'f',  "PIC",           FOPT_PIC             },
 	{ 'f',  "builtin",       FOPT_BUILTIN         },
 	{ 'f',  "ms-extensions",    FOPT_MS_EXTENSIONS    },
 	{ 'f',  "plan9-extensions", FOPT_PLAN9_EXTENSIONS },
