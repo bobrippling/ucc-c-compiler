@@ -493,6 +493,26 @@ static void parse_argv(
 						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
 						continue;
 					}
+					if(!strcmp(argv[i], "-fpic")
+					|| !strcmp(argv[i], "-fPIC")
+					|| !strcmp(argv[i], "-fno-pic")
+					|| !strcmp(argv[i], "-fno-PIC"))
+					{
+						const int no = (argv[i][2] == 'n');
+
+						if(no){
+							dynarray_add(&state->args[mode_preproc], ustrprintf("-U__PIC__"));
+							dynarray_add(&state->args[mode_preproc], ustrprintf("-U__pic__"));
+						}else{
+							int piclevel = (argv[i][2] == 'P' ? 2 : 1);
+
+							dynarray_add(&state->args[mode_preproc], ustrprintf("-D__PIC__=%d", piclevel));
+							dynarray_add(&state->args[mode_preproc], ustrprintf("-D__pic__=%d", piclevel));
+						}
+
+						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
+						continue;
+					}
 
 					/* pull out some that cpp wants too: */
 					if(!strcmp(argv[i], "-ffreestanding")
