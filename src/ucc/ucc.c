@@ -484,6 +484,15 @@ static void parse_argv(
 						fsystem_cpp = 1;
 						continue;
 					}
+					if(!strcmp(argv[i], "-fleading-underscore")
+					|| !strcmp(argv[i], "-fno-leading-underscore"))
+					{
+						const int no = (argv[i][2] == 'n');
+
+						dynarray_add(&state->args[mode_preproc], ustrprintf("-%c__LEADING_UNDERSCORE", no ? 'U' : 'D'));
+						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
+						continue;
+					}
 
 					/* pull out some that cpp wants too: */
 					if(!strcmp(argv[i], "-ffreestanding")
