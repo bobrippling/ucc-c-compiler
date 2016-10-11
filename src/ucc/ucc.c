@@ -376,11 +376,6 @@ void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 	abort();
 }
 
-static void add_cfg_args(char ***par, const char *args)
-{
-	dynarray_add_tmparray(par, strsplit(args, " "));
-}
-
 static void print_search_dirs_and_exit(
 		char **includes, const char **isystems, int stdinc)
 {
@@ -710,6 +705,20 @@ input:
 	}
 }
 
+static void parse_builtin_argv(struct ucc *const state)
+{
+	char **argv;
+
+	/* we don't want the initial temporary fname "/tmp/tmp.xyz" tracked
+	 * or showing up in error messages
+	 */
+	dynarray_add(&state->args[mode_compile], ustrdup("-fno-track-initial-fname"));
+
+	argv = strsplit(UCC_INITFLAGS, " ");
+	parse_argv(dynarray_count(argv), argv, state);
+	dynarray_free(char **, argv, free);
+}
+
 int main(int argc, char **argv)
 {
 	int i;
@@ -730,15 +739,7 @@ usage:
 		return 1;
 	}
 
-	/* we don't want the initial temporary fname "/tmp/tmp.xyz" tracked
-	 * or showing up in error messages
-	 */
-	dynarray_add(&state.args[mode_compile], ustrdup("-fno-track-initial-fname"));
-
-	/* bring in CPPFLAGS and CFLAGS */
-	add_cfg_args(&state.args[mode_compile], UCC_CFLAGS);
-	add_cfg_args(&state.args[mode_preproc], UCC_CPPFLAGS);
-
+	parse_builtin_argv(&state);
 
 	parse_argv(argc - 1, argv + 1, &state);
 
