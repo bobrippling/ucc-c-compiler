@@ -68,6 +68,7 @@ as_supports_local_common=1
 as_align_is_pow2=0
 ld_indirect_call_via_plt=1
 default_leading_underscore=0
+default_fpic=0
 local_lib=0
 
 debug=1
@@ -197,6 +198,7 @@ case "$target" in
 		local_label_prefix=L
 		need_dsym=1
 		default_leading_underscore=1
+		default_fpic=1
 		;;
 
 	CYGWIN_NT-* | *-pc-cygwin)
@@ -216,6 +218,10 @@ esac
 if test $default_leading_underscore = 1
 then
 	ucc_initflags="-fleading-underscore $ucc_initflags"
+fi
+if test $default_fpic = 1
+then
+	ucc_initflags="-fpic $ucc_initflags"
 fi
 
 case "$target" in

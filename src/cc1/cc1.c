@@ -105,7 +105,6 @@ char *cc1_first_fname;
 
 enum fopt fopt_mode = FOPT_CONST_FOLD
                     | FOPT_SHOW_LINE
-                    | FOPT_PIC
                     | FOPT_BUILTIN
                     | FOPT_TRACK_INITIAL_FNAM
                     | FOPT_INTEGRAL_FLOAT_LOAD
