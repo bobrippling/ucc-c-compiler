@@ -61,6 +61,24 @@ struct cc_file
  (f)->assemb.fname  ? mode_assemb  : \
  mode_link)
 
+struct ucc
+{
+	char **inputs;
+	char **args[4];
+	char **includes;
+	char *output;
+	char *backend;
+	const char **isystems;
+
+	int syntax_only;
+	int current_assumption;
+	int *assumptions;
+
+	int stdinc;
+	int print_search_dirs;
+	enum mode mode;
+};
+
 static char **remove_these;
 static int unlink_tmps = 1;
 static int gdebug = 0, generated_temp_obj = 0;
@@ -415,45 +433,16 @@ static void pass_warning(char **args[4], const char *arg)
 	}
 }
 
-int main(int argc, char **argv)
+static void parse_argv(
+		int argc, char **argv,
+		struct ucc *const state)
 {
-	enum mode mode = mode_link;
-	int i, syntax_only = 0;
-	int stdinc = 1;
-	int print_search_dirs = 0;
-	char **includes = NULL;
-	char **inputs = NULL;
-	char **args[4] = { 0 };
-	char *output = NULL;
-	char *backend = NULL;
-	const char **isystems = NULL;
-	int current_assumption = -1;
-	int *assumptions = umalloc((argc - 1) * sizeof *assumptions);
+	int i;
 
-	umask(0077); /* prevent reading of the temporary files we create */
-
-	argv0 = argv[0];
-
-	if(argc <= 1){
-usage:
-		fprintf(stderr, "Usage: %s [options] input(s)\n", *argv);
-		return 1;
-	}
-
-	/* we don't want the initial temporary fname "/tmp/tmp.xyz" tracked
-	 * or showing up in error messages
-	 */
-	dynarray_add(&args[mode_compile], ustrdup("-fno-track-initial-fname"));
-
-	/* bring in CPPFLAGS and CFLAGS */
-	add_cfg_args(&args[mode_compile], UCC_CFLAGS);
-	add_cfg_args(&args[mode_preproc], UCC_CPPFLAGS);
-
-
-	for(i = 1; i < argc; i++){
+	for(i = 0; i < argc; i++){
 		if(!strcmp(argv[i], "--")){
 			while(++i < argc)
-				dynarray_add(&inputs, argv[i]);
+				dynarray_add(&state->inputs, argv[i]);
 			break;
 
 		}else if(*argv[i] == '-'){
@@ -461,7 +450,7 @@ usage:
 			char *arg = argv[i];
 
 			switch(arg[1]){
-#define ADD_ARG(to) dynarray_add(&args[to], ustrdup(arg))
+#define ADD_ARG(to) dynarray_add(&state->args[to], ustrdup(arg))
 
 				case 'W':
 				{
@@ -472,7 +461,7 @@ usage:
 						char **entries = strsplit(arg + 4, ",");
 
 						switch(c){
-#define MAP(c, to) case c: dynarray_add_tmparray(&args[to], entries); break
+#define MAP(c, to) case c: dynarray_add_tmparray(&state->args[to], entries); break
 							MAP('p', mode_preproc);
 							MAP('c', mode_compile);
 							MAP('a', mode_assemb);
@@ -480,20 +469,20 @@ usage:
 #undef MAP
 							default:
 								fprintf(stderr, "argument \"%s\" assumed to be for cc1\n", arg);
-								dynarray_add_tmparray(&args[mode_compile], entries);
+								dynarray_add_tmparray(&state->args[mode_compile], entries);
 						}
 						continue;
 					}
 
 					/* else pass to cc1 and possibly cpp */
-					pass_warning(args, arg);
+					pass_warning(state->args, arg);
 					continue;
 				}
 
 				case 'f':
 					/* fopts for ucc: */
 					if(!strcmp(arg, "-fsyntax-only")){
-						syntax_only = 1;
+						state->syntax_only = 1;
 						continue;
 					}
 					if(!strcmp(argv[i], "-fsystem-cpp")){
@@ -530,7 +519,7 @@ usage:
 arg_cpp:
 					ADD_ARG(mode_preproc);
 					if(!strcmp(argv[i] + 1, "MM"))
-						mode = mode_preproc; /* cc -MM *.c stops after preproc */
+						state->mode = mode_preproc; /* cc -MM *.c stops after preproc */
 
 					if(found){
 						if(!arg[2]){
@@ -543,12 +532,12 @@ arg_cpp:
 					continue;
 				case 'I':
 					if(arg[2]){
-						dynarray_add(&includes, ustrdup(arg));
+						dynarray_add(&state->includes, ustrdup(arg));
 					}else{
 						if(!argv[++i])
 							die("-I needs an argument");
 
-						dynarray_add(&includes, ustrprintf("-I%s", argv[i]));
+						dynarray_add(&state->includes, ustrprintf("-I%s", argv[i]));
 					}
 					continue;
 
@@ -559,16 +548,16 @@ arg_ld:
 					continue;
 
 #define CHECK_1() if(argv[i][2]) goto unrec;
-				case 'E': CHECK_1(); mode = mode_preproc; continue;
-				case 'S': CHECK_1(); mode = mode_compile; continue;
-				case 'c': CHECK_1(); mode = mode_assemb;  continue;
+				case 'E': CHECK_1(); state->mode = mode_preproc; continue;
+				case 'S': CHECK_1(); state->mode = mode_compile; continue;
+				case 'c': CHECK_1(); state->mode = mode_assemb;  continue;
 
 				case 'o':
 					if(argv[i][2]){
-						output = argv[i] + 2;
+						state->output = argv[i] + 2;
 					}else{
-						output = argv[++i];
-						if(!output)
+						state->output = argv[++i];
+						if(!state->output)
 							goto missing_arg;
 					}
 					continue;
@@ -628,13 +617,13 @@ arg_ld:
 
 					/* TODO: "asm-with-cpp"? */
 					if(!strcmp(arg, "c"))
-						current_assumption = mode_preproc;
+						state->current_assumption = mode_preproc;
 					else if(!strcmp(arg, "cpp-output"))
-						current_assumption = mode_compile;
+						state->current_assumption = mode_compile;
 					else if(!strcmp(arg, "asm") || !strcmp(arg, "assembler"))
-						current_assumption = mode_assemb;
+						state->current_assumption = mode_assemb;
 					else if(!strcmp(arg, "none"))
-						current_assumption = -1; /* reset */
+						state->current_assumption = -1; /* reset */
 					else
 						die("-x accepts \"c\", \"cpp-output\", \"asm\", \"assembler\" "
 								"or \"none\", not \"%s\"", arg);
@@ -661,7 +650,7 @@ word:
 					else if(!strcmp(argv[i], "-nostartfiles"))
 						gopts.nostartfiles = 1;
 					else if(!strcmp(argv[i], "-nostdinc"))
-						stdinc = 0;
+						state->stdinc = 0;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
@@ -669,13 +658,13 @@ word:
 					else if(!strncmp(argv[i], "-emit", 5)){
 						switch(argv[i][5]){
 							case '=':
-								backend = argv[i] + 6;
+								state->backend = argv[i] + 6;
 								break;
 							case '\0':
 								if(++i == argc)
 									goto missing_arg;
 
-								backend = argv[i];
+								state->backend = argv[i];
 								break;
 							default:
 								goto unrec;
@@ -697,10 +686,10 @@ word:
 						const char *sysinc = argv[++i];
 						if(!sysinc)
 							goto missing_arg;
-						dynarray_add(&isystems, sysinc);
+						dynarray_add(&state->isystems, sysinc);
 					}
 					else if(!strcmp(argv[i], "-print-search-dirs"))
-						print_search_dirs = 1;
+						state->print_search_dirs = 1;
 					else
 						break;
 
@@ -714,30 +703,63 @@ missing_arg:
 		}else{
 			size_t n;
 input:
-			n = dynarray_count(inputs);
-			dynarray_add(&inputs, argv[i]);
-			assumptions[n] = current_assumption;
+			n = dynarray_count(state->inputs);
+			dynarray_add(&state->inputs, argv[i]);
+			state->assumptions[n] = state->current_assumption;
 		}
 	}
+}
 
-	if(print_search_dirs){
-		print_search_dirs_and_exit(includes, isystems, stdinc);
+int main(int argc, char **argv)
+{
+	int i;
+	struct ucc state = { 0 };
+
+	state.mode = mode_link;
+	state.stdinc = 1;
+	state.current_assumption = -1;
+	state.assumptions = umalloc((argc - 1) * sizeof(*state.assumptions));
+
+	umask(0077); /* prevent reading of the temporary files we create */
+
+	argv0 = argv[0];
+
+	if(argc <= 1){
+usage:
+		fprintf(stderr, "Usage: %s [options] input(s)\n", *argv);
+		return 1;
+	}
+
+	/* we don't want the initial temporary fname "/tmp/tmp.xyz" tracked
+	 * or showing up in error messages
+	 */
+	dynarray_add(&state.args[mode_compile], ustrdup("-fno-track-initial-fname"));
+
+	/* bring in CPPFLAGS and CFLAGS */
+	add_cfg_args(&state.args[mode_compile], UCC_CFLAGS);
+	add_cfg_args(&state.args[mode_preproc], UCC_CPPFLAGS);
+
+
+	parse_argv(argc - 1, argv + 1, &state);
+
+	if(state.print_search_dirs){
+		print_search_dirs_and_exit(state.includes, state.isystems, state.stdinc);
 	}
 
 
 	{
-		const int ninputs = dynarray_count(inputs);
+		const int ninputs = dynarray_count(state.inputs);
 
-		if(output && ninputs > 1 && (mode == mode_compile || mode == mode_assemb))
-			die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(mode));
+		if(state.output && ninputs > 1 && (state.mode == mode_compile || state.mode == mode_assemb))
+			die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(state.mode));
 
-		if(syntax_only){
-			if(output || mode != mode_link)
+		if(state.syntax_only){
+			if(state.output || state.mode != mode_link)
 				die("-%c specified in syntax-only mode",
-						output ? 'o' : MODE_ARG_CH(mode));
+						state.output ? 'o' : MODE_ARG_CH(state.mode));
 
-			mode = mode_compile;
-			output = "/dev/null";
+			state.mode = mode_compile;
+			state.output = "/dev/null";
 		}
 
 		if(ninputs == 0)
@@ -745,66 +767,72 @@ input:
 	}
 
 
-	if(output && mode == mode_preproc && !strcmp(output, "-"))
-		output = NULL;
+	if(state.output && state.mode == mode_preproc && !strcmp(state.output, "-"))
+		state.output = NULL;
 	/* other case is -S, which is handled in rename_files */
 
-	if(backend){
+	if(state.backend){
 		/* -emit=... stops early */
-		mode = mode_compile;
-		if(!output)
-			output = "-";
+		state.mode = mode_compile;
+		if(!state.output)
+			state.output = "-";
 	}
 
 	/* default include paths */
-	if(stdinc){
+	if(state.stdinc){
 		char *const dup = ustrdup(UCC_STDINC);
 		char *p;
 
 		for(p = strtok(dup, ":"); p; p = strtok(NULL, ":")){
 			char *inc = ustrprintf("-I%s", p);
-			dynarray_add(&args[mode_preproc], inc);
+			dynarray_add(&state.args[mode_preproc], inc);
 
 			/* cc1 needs include paths so it knows system headers
 			 * (for warning suppression) */
-			dynarray_add(&args[mode_compile], ustrdup(inc));
+			dynarray_add(&state.args[mode_compile], ustrdup(inc));
 		}
 
 		free(dup);
 	}
-	if(stdinc){
+	if(state.stdinc){
 		/* add ucc specific files - std{align,bool,arg} etc... */
 		char *local_inc = actual_path("../../include", "");
 		char *inc = ustrprintf("-I%s", local_inc);
 
-		dynarray_add(&args[mode_preproc], inc);
-		dynarray_add(&args[mode_compile], ustrdup(inc));
+		dynarray_add(&state.args[mode_preproc], inc);
+		dynarray_add(&state.args[mode_compile], ustrdup(inc));
 
 		free(local_inc);
 	}
-	if(isystems){
+	if(state.isystems){
 		const char **i;
-		for(i = isystems; *i; i++){
+		for(i = state.isystems; *i; i++){
 			/* cpp doesn't care if it's system or not */
-			dynarray_add(&args[mode_preproc], ustrprintf("-I%s", *i));
+			dynarray_add(&state.args[mode_preproc], ustrprintf("-I%s", *i));
 			/* cc1 only wants system - can use -I too */
-			dynarray_add(&args[mode_compile], ustrprintf("-I%s", *i));
+			dynarray_add(&state.args[mode_compile], ustrprintf("-I%s", *i));
 		}
 
-		dynarray_free(const char **, isystems, NULL);
+		dynarray_free(const char **, state.isystems, NULL);
 	}
 
 	/* custom include paths */
-	if(includes)
-		dynarray_add_tmparray(&args[mode_preproc], includes);
+	if(state.includes)
+		dynarray_add_tmparray(&state.args[mode_preproc], state.includes);
 
 	/* got arguments, a mode, and files to link */
-	process_files(mode, inputs, assumptions, output, args, backend);
+	process_files(
+			state.mode,
+			state.inputs,
+			state.assumptions,
+			state.output,
+			state.args,
+			state.backend);
 
 	for(i = 0; i < 4; i++)
-		dynarray_free(char **, args[i], free);
-	dynarray_free(char **, inputs, NULL);
-	free(assumptions);
+		dynarray_free(char **, state.args[i], free);
+	dynarray_free(char **, state.inputs, NULL);
+	free(state.assumptions);
 
 	return 0;
 }
