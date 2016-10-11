@@ -41,13 +41,19 @@ static macro *macro_add_nodup(const char *nam, char *val, int depth)
 		if(!m->val)
 			CPP_DIE("redefining \"%s\"", m->nam);
 
-		/* only warn if they're different */
+		/* only warn if they're different
+		 * and if the override is in code (i.e. not cmdline) */
 		if(strcmp(val, m->val)){
+			where new_where;
 			char buf[WHERE_BUF_SIZ];
 
-			CPP_WARN(WREDEF, "redefining \"%s\"\n"
-					"%s: note: previous definition here",
-					nam, where_str_r(buf, &m->where));
+			where_current(&new_where);
+
+			if(strcmp(new_where.fname, FNAME_CMDLINE)){
+				CPP_WARN(WREDEF, "redefining \"%s\"\n"
+						"%s: note: previous definition here",
+						nam, where_str_r(buf, &m->where));
+			}
 		}
 
 		free(m->val);

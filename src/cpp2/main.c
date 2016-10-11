@@ -22,9 +22,6 @@
 #include "deps.h"
 #include "feat.h"
 
-#define FNAME_BUILTIN "<builtin>"
-#define FNAME_CMDLINE "<command-line>"
-
 static const struct
 {
 	const char *nam, *val;
