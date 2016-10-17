@@ -295,7 +295,6 @@ cat > src/ucc.spec <<!
 
 initflags:
 	$ucc_initflags
-	$ucc_dyn
 	%{stdinc:-isystem $ucc_stdinc}
 	%{stdinc:-isystem %{bindir}/../../include}
 
@@ -308,6 +307,7 @@ ld:
 	ld
 
 ldflags_pre_user:
+	$ucc_dyn
 	$ucc_ldflags
 	%{shared:$ucc_paramshared}
 
