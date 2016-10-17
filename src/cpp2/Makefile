@@ -14,6 +14,7 @@ OBJ = preproc.o main.o macro.o str.o \
       ../util/std.o                  \
       ../util/escape.o               \
       ../util/warn.o                 \
+      ../util/io.o                   \
       ../util/path.o
 
 SRC = ${OBJ:.o=.c}

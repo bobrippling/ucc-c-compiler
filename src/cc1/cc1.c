@@ -12,6 +12,7 @@
 #include <signal.h>
 
 #include "../util/util.h"
+#include "../util/io.h"
 #include "../util/platform.h"
 #include "../util/math.h"
 #include "../util/dynarray.h"
