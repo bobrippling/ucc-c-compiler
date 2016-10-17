@@ -8,11 +8,12 @@ echo(){
 
 try_path(){
 	var="$1"
+	separator="$2"
 	shift
 	for ent in $@
 	do
 		if test -e "$ent"
-		then eval "$var=\"\$$var:$ent\""
+		then eval "$var=\"\$$var$separator$ent\""
 		fi
 	done
 }
@@ -158,16 +159,16 @@ case "$target" in
 		ucc_dyn="-dynamic-linker /lib64/ld-linux-x86-64.so.2"
 		ucc_stdlib="-lc"
 
-		try_path ucc_startfiles /usr/lib/"${target}"/crt1.o
-		try_path ucc_startfiles /usr/lib/"${target}"/crti.o
-		try_path ucc_startfiles /usr/lib/"${target}"/crtn.o
+		try_path ucc_startfiles ' ' /usr/lib/"${target}"/crt1.o
+		try_path ucc_startfiles ' ' /usr/lib/"${target}"/crti.o
+		try_path ucc_startfiles ' ' /usr/lib/"${target}"/crtn.o
 
 		gcc_inc=$(echo /usr/lib/gcc/$target/*/ | tr ' ' '\n' | sort | tail -1)
 		echo "Borrowing gcc-$(basename "$gcc_inc")'s include/"
 
-		try_path ucc_stdinc "/usr/include"
-		try_path ucc_stdinc "/usr/include/$target"
-		try_path ucc_stdinc "$gcc_inc/include"
+		try_path ucc_stdinc ' -isystem ' "/usr/include"
+		try_path ucc_stdinc ' -isystem ' "/usr/include/$target"
+		try_path ucc_stdinc ' -isystem ' "$gcc_inc/include"
 		;;
 
 	*freebsd*)
@@ -193,7 +194,7 @@ case "$target" in
 		ucc_initflags='-mpreferred-stack-boundary=4' # 2^4 = 16 byte aligned
 		ucc_stdlib='-lSystem'
 		ucc_startfiles=''
-		ucc_stdinc='/usr/include'
+		ucc_stdinc='-isystem /usr/include'
 		ucc_ldflags="-macosx_version_min 10.11"
 		local_label_prefix=L
 		need_dsym=1
@@ -234,7 +235,7 @@ esac
 
 if test $local_lib = 1
 then
-	ucc_stdinc="lib/"
+	ucc_stdinc="-isystem lib/"
 	ucc_startfiles="lib/crt.a"
 	ucc_stdlib="lib/libc.a"
 	ucc_dyn=''
@@ -268,12 +269,6 @@ then
 	try_cflag -O
 fi
 
-if test -z "$ucc_stdinc"
-then
-	# can't be empty
-	ucc_stdinc=/dev/null/nowhere
-fi
-
 # write configs
 printf 'writing config.mk... '
 cat > src/config.mk <<!
@@ -295,7 +290,7 @@ cat > src/ucc.spec <<!
 
 initflags:
 	$ucc_initflags
-	%{stdinc:-isystem $ucc_stdinc}
+	%{stdinc:$ucc_stdinc}
 	%{stdinc:-isystem %{bindir}/../../include}
 
 as:
