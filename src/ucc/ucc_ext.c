@@ -7,17 +7,11 @@
 #include <sys/wait.h>
 #include <stdarg.h>
 
-#include "../config_driver.h"
-
 #include "ucc_ext.h"
 #include "ucc.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "str.h"
-
-#ifndef UCC_AS
-# error "ucc needs reconfiguring"
-#endif
 
 char **include_paths;
 
@@ -211,7 +205,7 @@ void rename_or_move(char *old, char *new)
 	free(cmd);
 }
 
-void cat(char *fnin, char *fnout, int append)
+void cat(char *fnin, const char *fnout, int append)
 {
 	FILE *in, *out;
 	char buf[1024];
@@ -247,7 +241,7 @@ void cat(char *fnin, char *fnout, int append)
 		die("close():");
 }
 
-static void runner_1(int local, char *path, char *in, char *out, char **args)
+static void runner_1(int local, char *path, char *in, const char *out, char **args)
 {
 	char **all = NULL;
 
@@ -255,7 +249,7 @@ static void runner_1(int local, char *path, char *in, char *out, char **args)
 		dynarray_add_array(&all, args);
 
 	dynarray_add(&all, (char *)"-o");
-	dynarray_add(&all, out);
+	dynarray_add(&all, (char *)out);
 
 	dynarray_add(&all, in);
 
@@ -264,7 +258,7 @@ static void runner_1(int local, char *path, char *in, char *out, char **args)
 	dynarray_free(char **, all, NULL);
 }
 
-void preproc(char *in, char *out, char **args)
+void preproc(char *in, const char *out, char **args)
 {
 	char **all = NULL;
 	char **i;
@@ -297,35 +291,29 @@ void preproc(char *in, char *out, char **args)
 	dynarray_free(char **, all, NULL);
 }
 
-void compile(char *in, char *out, char **args)
+void compile(char *in, const char *out, char **args)
 {
 	runner_1(1, "cc1/cc1", in, out, args);
 }
 
-void assemble(char *in, char *out, char **args)
+void assemble(char *in, const char *out, char **args, char *as)
 {
 	char **copy = NULL;
 
 	if(args)
 		dynarray_add_array(&copy, args);
 
-	runner_1(0, UCC_AS, in, out, copy);
+	runner_1(0, as, in, out, copy);
 
 	dynarray_free(char **, copy, NULL);
 }
 
-void link_all(char **objs, char *out, char **args)
+void link_all(char **objs, const char *out, char **args)
 {
 	char **all = NULL;
 
 	dynarray_add(&all, (char *)"-o");
-	dynarray_add(&all, out);
-
-	/* note: order is important - can't just group all objs at the end
-	 * this is handled in configure
-	 */
-
-	dynarray_add_tmparray(&all, strsplit(UCC_LDFLAGS, " "));
+	dynarray_add(&all, (char *)out);
 
 	dynarray_add_array(&all, objs);
 
