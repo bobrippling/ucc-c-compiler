@@ -55,6 +55,7 @@ struct cc_file
 
 struct ucc
 {
+	/* be sure to update merge_states() */
 	char **inputs;
 	char **args[4];
 	char **includes;
@@ -710,16 +711,60 @@ static void init_spec(
 	free(specpath);
 }
 
+static void parse_argv_spec(
+		char **const initflags_spec,
+		char ***const initflags_split,
+		struct ucc *state,
+		struct specvars *vars)
+{
+	char **i;
+
+	*initflags_split = NULL;
+
+	for(i = initflags_spec; i && *i; i++)
+		dynarray_add_tmparray(initflags_split, strsplit(*i, " \t"));
+
+	parse_argv(
+			dynarray_count(*initflags_split),
+			*initflags_split,
+			state,
+			vars);
+}
+
+static void merge_states(struct ucc *state, struct ucc *append)
+{
+	int i;
+	dynarray_add_tmparray(&state->inputs, append->inputs);
+
+	for(i = 0; i < 4; i++)
+		dynarray_add_tmparray(&state->args[i], append->args[i]);
+
+	dynarray_add_tmparray(&state->includes, append->includes);
+
+	assert(!state->backend);
+	state->backend = append->backend;
+
+	dynarray_add_tmparray(&state->isystems, append->isystems);
+
+	assert(!state->syntax_only);
+
+	state->assumptions = append->assumptions;
+
+	state->mode = append->mode;
+}
+
 int main(int argc, char **argv)
 {
 	int i;
 	struct ucc state = { 0 };
+	struct ucc argstate = { 0 };
 	struct specopts specopts = { 0 };
 	struct specvars specvars = { 0 };
+	char **initflags;
 
-	state.mode = mode_link;
-	state.current_assumption = -1;
-	state.assumptions = umalloc((argc - 1) * sizeof(*state.assumptions));
+	argstate.mode = mode_link;
+	argstate.current_assumption = -1;
+	argstate.assumptions = umalloc((argc - 1) * sizeof(*state.assumptions));
 
 	/*specvars.shared = 0; TODO: -shared */
 	specvars.stdinc = 1;
@@ -740,12 +785,21 @@ usage:
 	 * or showing up in error messages */
 	dynarray_add(&state.args[mode_compile], ustrdup("-fno-track-initial-fname"));
 
-	parse_argv(argc - 1, argv + 1, &state, &specvars);
+	/* we must parse argv first for things like -nostdinc.
+	 * then we can parse the spec file, then we need to
+	 * append argv's inputs, etc onto the state from the spec file */
+	parse_argv(argc - 1, argv + 1, &argstate, &specvars);
 
-	if(!specvars.output && state.mode == mode_link)
+	if(!specvars.output && argstate.mode == mode_link)
 		specvars.output = "a.out";
 
 	init_spec(&specopts, &specvars);
+
+	parse_argv_spec(specopts.initflags, &initflags, &state, &specvars);
+
+	/* ensure argument state is appended to (spec)state,
+	 * allowing it to override things like initflags */
+	merge_states(&state, &argstate);
 
 	{
 		const int ninputs = dynarray_count(state.inputs);
@@ -808,6 +862,7 @@ usage:
 		dynarray_free(char **, state.args[i], free);
 	dynarray_free(char **, state.inputs, NULL);
 	free(state.assumptions);
+	free(initflags);
 
 	return 0;
 }
