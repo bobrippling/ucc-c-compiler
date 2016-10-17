@@ -132,6 +132,16 @@ static char *spec_interpolate(char *line, const struct specvars *vars)
 	return line;
 }
 
+static char *spec_ignore_space(char *line)
+{
+	char *p = str_spc_skip(line);
+
+	if(p != line)
+		memmove(line, p, strlen(p) + 1);
+
+	return line;
+}
+
 void spec_parse(
 		struct specopts *opts,
 		const struct specvars *vars,
@@ -179,6 +189,7 @@ void spec_parse(
 
 			p = NULL;
 			line = spec_interpolate(line, vars);
+			line = spec_ignore_space(line);
 
 			if(!strcmp(current_block, "initflags")){
 				dynarray_add(&opts->initflags, line);
