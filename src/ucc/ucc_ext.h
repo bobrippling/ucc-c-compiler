@@ -7,6 +7,8 @@ char *actual_path(const char *prefix, const char *path);
 void rename_or_move(char *old, char *new);
 void cat(char *in, const char *out, int append);
 
+char *ucc_where(void);
+
 void execute(char *path, char **args);
 
 void preproc( char *in,    const char *out, char **args);

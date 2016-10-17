@@ -32,8 +32,7 @@ bname(char *path)
 		p[1] = '\0';
 }
 
-static char *
-where(void)
+char *ucc_where(void)
 {
 	static char where[1024];
 
@@ -66,7 +65,7 @@ where(void)
 
 char *actual_path(const char *prefix, const char *path)
 {
-	char *w = where();
+	char *w = ucc_where();
 	char *buf;
 
 	buf = umalloc(strlen(w) + strlen(prefix) + strlen(path) + 2);

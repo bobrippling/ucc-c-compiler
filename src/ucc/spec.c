@@ -7,6 +7,7 @@
 #include "../util/dynarray.h"
 
 #include "spec.h"
+#include "ucc_ext.h"
 
 static int var_lookup_str(
 		const char *varname,
@@ -17,7 +18,10 @@ static int var_lookup_str(
 		*varvalue = vars->output;
 		return 1;
 	}
-	/* TODO: %{bindir} */
+	if(!strcmp(varname, "bindir")){
+		*varvalue = ucc_where();
+		return 1;
+	}
 	return 0;
 }
 

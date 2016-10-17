@@ -290,12 +290,13 @@ echo 'done'
 printf 'writing ucc.spec... '
 cat > src/ucc.spec <<!
 # available for %{bool:str}: startfiles, debug, stdlib, stdinc
-# available for %name: out
+# available for %{name}: out, bindir
 
 initflags:
 	$ucc_initflags
 	$ucc_dyn
 	%{stdinc:-isystem $ucc_stdinc}
+	%{stdinc:-isystem %{bindir}/../../include}
 
 as:
 	as
