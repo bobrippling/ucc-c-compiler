@@ -713,26 +713,6 @@ static void init_spec(
 	free(specpath);
 }
 
-static void parse_argv_spec(
-		char **const initflags_spec,
-		char ***const initflags_split,
-		struct ucc *state,
-		struct specvars *vars)
-{
-	char **i;
-
-	*initflags_split = NULL;
-
-	for(i = initflags_spec; i && *i; i++)
-		dynarray_add_tmparray(initflags_split, strsplit(*i, " \t"));
-
-	parse_argv(
-			dynarray_count(*initflags_split),
-			*initflags_split,
-			state,
-			vars);
-}
-
 static void merge_states(struct ucc *state, struct ucc *append)
 {
 	int i;
@@ -762,7 +742,6 @@ int main(int argc, char **argv)
 	struct ucc argstate = { 0 };
 	struct specopts specopts = { 0 };
 	struct specvars specvars = { 0 };
-	char **initflags;
 
 	argstate.mode = mode_link;
 	argstate.current_assumption = -1;
@@ -797,7 +776,11 @@ usage:
 
 	init_spec(&specopts, &specvars);
 
-	parse_argv_spec(specopts.initflags, &initflags, &state, &specvars);
+	parse_argv(
+			dynarray_count(specopts.initflags),
+			specopts.initflags,
+			&state,
+			&specvars);
 
 	/* ensure argument state is appended to (spec)state,
 	 * allowing it to override things like initflags */
@@ -864,7 +847,6 @@ usage:
 		dynarray_free(char **, state.args[i], free);
 	dynarray_free(char **, state.inputs, NULL);
 	free(state.assumptions);
-	free(initflags);
 
 	return 0;
 }

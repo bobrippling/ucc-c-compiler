@@ -8,6 +8,7 @@
 
 #include "spec.h"
 #include "ucc_ext.h"
+#include "str.h"
 
 static int var_lookup_str(
 		const char *varname,
@@ -192,19 +193,19 @@ void spec_parse(
 			line = spec_ignore_space(line);
 
 			if(!strcmp(current_block, "initflags")){
-				dynarray_add(&opts->initflags, line);
+				dynarray_add_tmparray(&opts->initflags, strsplit(line, " \t"));
 
 			}else if(!strcmp(current_block, "as")){
 				free(opts->as), opts->as = line;
 			}else if(!strcmp(current_block, "asflags")){
-				dynarray_add(&opts->asflags, line);
+				dynarray_add_tmparray(&opts->asflags, strsplit(line, " \t"));
 
 			}else if(!strcmp(current_block, "ld")){
 				free(opts->ld), opts->ld = line;
 			}else if(!strcmp(current_block, "ldflags_pre_user")){
-				dynarray_add(&opts->ldflags_pre_user, line);
+				dynarray_add_tmparray(&opts->ldflags_pre_user, strsplit(line, " \t"));
 			}else if(!strcmp(current_block, "ldflags_post_user")){
-				dynarray_add(&opts->ldflags_post_user, line);
+				dynarray_add_tmparray(&opts->ldflags_post_user, strsplit(line, " \t"));
 
 			}else if(!strcmp(current_block, "post-link")){
 				free(opts->post_link), opts->post_link = line;
