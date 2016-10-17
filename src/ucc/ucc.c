@@ -10,8 +10,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include "../config_driver.h"
-
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "spec.h"
@@ -20,6 +18,7 @@
 #include "../util/util.h"
 #include "../util/platform.h"
 #include "../util/tmpfile.h"
+#include "../util/str.h"
 #include "str.h"
 #include "warning.h"
 
@@ -71,7 +70,6 @@ struct ucc
 
 static char **remove_these;
 static int unlink_tmps = 1;
-static int generated_temp_obj = 0;
 const char *argv0;
 char *wrapper;
 int fsystem_cpp;
@@ -151,9 +149,6 @@ assemb:
 				FILL_WITH_TMP(preproc); /* preprocess .S assembly files by default */
 after_compile:
 			case 's':
-				if(NEED_DSYM && !file->assemb.fname)
-					generated_temp_obj = 1;
-
 				FILL_WITH_TMP(assemb);
 				file->out = file->assemb;
 				break;
@@ -306,18 +301,16 @@ static void process_files(
 		 * crt, user files, then stdlib
 		 */
 		dynarray_add_array(&links, ((struct specopts *)opts)->ldflags_post_user);
-		if(!output)
-			output = "a.out";
 
 		link_all(links, output, args[mode_link]);
 
-#if 0
-		// TODO
-		if(NEED_DSYM && specvars->debug && generated_temp_obj){
-			/* only need dsym if we use temporary .o files */
-			dsym(output);
+		if(opts->post_link && *str_spc_skip(opts->post_link)){
+			char *exebuf[3];
+			exebuf[0] = "-c";
+			exebuf[1] = opts->post_link;
+			exebuf[2] = NULL;
+			execute("sh", exebuf);
 		}
-#endif
 	}else{
 		rename_files(files, ninputs, output, mode);
 	}
@@ -748,6 +741,9 @@ usage:
 	dynarray_add(&state.args[mode_compile], ustrdup("-fno-track-initial-fname"));
 
 	parse_argv(argc - 1, argv + 1, &state, &specvars);
+
+	if(!specvars.output && state.mode == mode_link)
+		specvars.output = "a.out";
 
 	init_spec(&specopts, &specvars);
 

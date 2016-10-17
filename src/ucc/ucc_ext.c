@@ -178,6 +178,11 @@ static void runner(int local, char *path, char **args)
 	}
 }
 
+void execute(char *path, char **args)
+{
+	runner(0, path, args);
+}
+
 void rename_or_move(char *old, char *new)
 {
 	/* don't move, cat instead, since we can't move to /dev/null, for e.g. */

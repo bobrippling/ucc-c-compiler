@@ -7,6 +7,8 @@ char *actual_path(const char *prefix, const char *path);
 void rename_or_move(char *old, char *new);
 void cat(char *in, const char *out, int append);
 
+void execute(char *path, char **args);
+
 void preproc( char *in,    const char *out, char **args);
 void compile( char *in,    const char *out, char **args);
 void assemble(char *in,    const char *out, char **args, char *as);
