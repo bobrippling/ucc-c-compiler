@@ -3,7 +3,7 @@
 
 struct specvars
 {
-	int /*TODO shared,*/ startfiles, debug, stdlib, stdinc;
+	int shared, startfiles, debug, stdlib, stdinc;
 	const char *output;
 };
 

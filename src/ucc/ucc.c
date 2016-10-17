@@ -629,6 +629,8 @@ word:
 						specvars->startfiles = 0;
 					else if(!strcmp(argv[i], "-nostdinc"))
 						specvars->stdinc = 0;
+					else if(!strcmp(argv[i], "-shared"))
+						specvars->shared = 1;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
@@ -766,7 +768,7 @@ int main(int argc, char **argv)
 	argstate.current_assumption = -1;
 	argstate.assumptions = umalloc((argc - 1) * sizeof(*state.assumptions));
 
-	/*specvars.shared = 0; TODO: -shared */
+	specvars.shared = 0;
 	specvars.stdinc = 1;
 	specvars.stdlib = 1;
 	specvars.startfiles = 1;

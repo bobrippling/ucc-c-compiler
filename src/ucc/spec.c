@@ -46,7 +46,10 @@ static int var_lookup_bool(
 		*varvalue = vars->stdinc;
 		return 1;
 	}
-	/* TODO: %{shared} */
+	if(!strcmp(varname, "shared")){
+		*varvalue = vars->shared;
+		return 1;
+	}
 	return 0;
 }
 

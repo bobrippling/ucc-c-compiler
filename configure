@@ -83,6 +83,7 @@ ucc_stdinc=
 ucc_stdlib=
 ucc_ldflags=
 ucc_postlink=
+ucc_paramshared=-shared
 
 CFLAGS_CONFIGURE=
 
@@ -200,6 +201,7 @@ case "$target" in
 		default_leading_underscore=1
 		default_fpic=1
 		ucc_postlink='%{debug:dsymutil %{out}}'
+		ucc_paramshared=-dylib
 		;;
 
 	CYGWIN_NT-* | *-pc-cygwin)
@@ -289,7 +291,7 @@ echo 'done'
 
 printf 'writing ucc.spec... '
 cat > src/ucc.spec <<!
-# available for %{bool:str}: startfiles, debug, stdlib, stdinc
+# available for %{bool:str}: shared, startfiles, debug, stdlib, stdinc
 # available for %{name}: out, bindir
 
 initflags:
@@ -308,6 +310,8 @@ ld:
 
 ldflags_pre_user:
 	$ucc_ldflags
+	%{shared:$ucc_paramshared}
+
 	# An object file's unresolved symbols must
 	# be _later_ in the linker's argv array.
 	# crt, user files, then stdlib
