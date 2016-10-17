@@ -63,9 +63,6 @@ struct ucc
 	const char **isystems;
 
 	int syntax_only;
-	int current_assumption;
-	int *assumptions;
-
 	enum mode mode;
 };
 
@@ -384,7 +381,9 @@ static void pass_warning(char **args[4], const char *arg)
 static void parse_argv(
 		int argc, char **argv,
 		struct ucc *const state,
-		struct specvars *specvars)
+		struct specvars *specvars,
+		int *const assumptions,
+		int *const current_assumption)
 {
 	int i;
 
@@ -595,13 +594,13 @@ arg_ld:
 
 					/* TODO: "asm-with-cpp"? */
 					if(!strcmp(arg, "c"))
-						state->current_assumption = mode_preproc;
+						*current_assumption = mode_preproc;
 					else if(!strcmp(arg, "cpp-output"))
-						state->current_assumption = mode_compile;
+						*current_assumption = mode_compile;
 					else if(!strcmp(arg, "asm") || !strcmp(arg, "assembler"))
-						state->current_assumption = mode_assemb;
+						*current_assumption = mode_assemb;
 					else if(!strcmp(arg, "none"))
-						state->current_assumption = -1; /* reset */
+						*current_assumption = -1; /* reset */
 					else
 						die("-x accepts \"c\", \"cpp-output\", \"asm\", \"assembler\" "
 								"or \"none\", not \"%s\"", arg);
@@ -683,7 +682,7 @@ missing_arg:
 input:
 			n = dynarray_count(state->inputs);
 			dynarray_add(&state->inputs, argv[i]);
-			state->assumptions[n] = state->current_assumption;
+			assumptions[n] = *current_assumption;
 		}
 	}
 }
@@ -730,8 +729,6 @@ static void merge_states(struct ucc *state, struct ucc *append)
 
 	assert(!state->syntax_only);
 
-	state->assumptions = append->assumptions;
-
 	state->mode = append->mode;
 }
 
@@ -742,10 +739,12 @@ int main(int argc, char **argv)
 	struct ucc argstate = { 0 };
 	struct specopts specopts = { 0 };
 	struct specvars specvars = { 0 };
+	int *assumptions;
+	int current_assumption;
 
 	argstate.mode = mode_link;
-	argstate.current_assumption = -1;
-	argstate.assumptions = umalloc((argc - 1) * sizeof(*state.assumptions));
+	current_assumption = -1;
+	assumptions = umalloc((argc - 1) * sizeof(*assumptions));
 
 	specvars.shared = 0;
 	specvars.stdinc = 1;
@@ -769,7 +768,7 @@ usage:
 	/* we must parse argv first for things like -nostdinc.
 	 * then we can parse the spec file, then we need to
 	 * append argv's inputs, etc onto the state from the spec file */
-	parse_argv(argc - 1, argv + 1, &argstate, &specvars);
+	parse_argv(argc - 1, argv + 1, &argstate, &specvars, assumptions, &current_assumption);
 
 	if(!specvars.output && argstate.mode == mode_link)
 		specvars.output = "a.out";
@@ -780,7 +779,9 @@ usage:
 			dynarray_count(specopts.initflags),
 			specopts.initflags,
 			&state,
-			&specvars);
+			&specvars,
+			assumptions,
+			&current_assumption);
 
 	/* ensure argument state is appended to (spec)state,
 	 * allowing it to override things like initflags */
@@ -837,7 +838,7 @@ usage:
 	process_files(
 			state.mode,
 			state.inputs,
-			state.assumptions,
+			assumptions,
 			specvars.output,
 			state.args,
 			state.backend,
@@ -846,7 +847,7 @@ usage:
 	for(i = 0; i < 4; i++)
 		dynarray_free(char **, state.args[i], free);
 	dynarray_free(char **, state.inputs, NULL);
-	free(state.assumptions);
+	free(assumptions);
 
 	return 0;
 }
