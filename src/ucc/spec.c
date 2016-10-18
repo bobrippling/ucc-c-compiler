@@ -86,7 +86,7 @@ static char *spec_interpolate(char *line, const struct specvars *vars)
 		char *varname = percent + 2;
 		const char *replacewith = NULL;
 
-		anchor = (percent - line) + 1;
+		anchor = (percent - line);
 
 		close = nested_close_curly(varname);
 		if(!close)
