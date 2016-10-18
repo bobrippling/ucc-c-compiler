@@ -224,6 +224,11 @@ void spec_parse(
 		}
 	}
 
+	if(!opts->ld)
+		opts->ld = "ld";
+	if(!opts->as)
+		opts->as = "as";
+
 	free(line), line = NULL;
 }
 
