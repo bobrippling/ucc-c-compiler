@@ -328,9 +328,3 @@ void link_all(char **objs, const char *out, char **args, char *ld)
 
 	dynarray_free(char **, all, NULL);
 }
-
-void dsym(char *exe)
-{
-	char *args[] = { exe, NULL };
-	runner(0, "dsymutil", args);
-}
