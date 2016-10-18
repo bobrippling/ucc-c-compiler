@@ -383,7 +383,8 @@ static void parse_argv(
 		struct ucc *const state,
 		struct specvars *specvars,
 		int *const assumptions,
-		int *const current_assumption)
+		int *const current_assumption,
+		const char **const specpath)
 {
 	int i;
 
@@ -669,6 +670,11 @@ word:
 							goto missing_arg;
 						dynarray_add(&state->isystems, sysinc);
 					}
+					else if(specpath && !strcmp(argv[i], "-specs")){
+						*specpath = argv[++i];
+						if(!*specpath)
+							goto missing_arg;
+					}
 					else
 						break;
 
@@ -691,13 +697,14 @@ input:
 
 static void init_spec(
 	struct specopts *specopts,
-	const struct specvars *specvars)
+	const struct specvars *specvars,
+	const char *specpath)
 {
-	char *specpath = actual_path("../", "ucc.spec");
-	FILE *f = fopen(specpath, "r");
+	const char *resolved_path = specpath ? specpath : actual_path("../", "ucc.spec");
+	FILE *f = fopen(resolved_path, "r");
 
 	if(!f){
-		fprintf(stderr, "couldn't open \"%s\": %s\n", specpath, strerror(errno));
+		fprintf(stderr, "couldn't open \"%s\": %s\n", resolved_path, strerror(errno));
 	}else{
 		struct specerr err = { 0 };
 
@@ -707,11 +714,12 @@ static void init_spec(
 
 		if(err.errstr){
 			fprintf(stderr, "%s:%u: spec error: %s\n",
-					specpath, err.errline, err.errstr);
+					resolved_path, err.errline, err.errstr);
 		}
 	}
 
-	free(specpath);
+	if(resolved_path != specpath)
+		free((char *)resolved_path);
 }
 
 static void merge_states(struct ucc *state, struct ucc *append)
@@ -743,6 +751,7 @@ int main(int argc, char **argv)
 	struct specvars specvars = { 0 };
 	int *assumptions;
 	int current_assumption;
+	const char *specpath = NULL;
 
 	argstate.mode = mode_link;
 	current_assumption = -1;
@@ -770,12 +779,12 @@ usage:
 	/* we must parse argv first for things like -nostdinc.
 	 * then we can parse the spec file, then we need to
 	 * append argv's inputs, etc onto the state from the spec file */
-	parse_argv(argc - 1, argv + 1, &argstate, &specvars, assumptions, &current_assumption);
+	parse_argv(argc - 1, argv + 1, &argstate, &specvars, assumptions, &current_assumption, &specpath);
 
 	if(!specvars.output && argstate.mode == mode_link)
 		specvars.output = "a.out";
 
-	init_spec(&specopts, &specvars);
+	init_spec(&specopts, &specvars, specpath);
 
 	parse_argv(
 			dynarray_count(specopts.initflags),
@@ -783,7 +792,8 @@ usage:
 			&state,
 			&specvars,
 			assumptions,
-			&current_assumption);
+			&current_assumption,
+			/*specpath*/NULL);
 
 	/* ensure argument state is appended to (spec)state,
 	 * allowing it to override things like initflags */
