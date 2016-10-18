@@ -300,7 +300,7 @@ static void process_files(
 		 */
 		dynarray_add_array(&links, ((struct specopts *)opts)->ldflags_post_user);
 
-		link_all(links, output, args[mode_link]);
+		link_all(links, output, args[mode_link], opts->ld);
 
 		if(opts->post_link && *str_spc_skip(opts->post_link)){
 			char *exebuf[3];

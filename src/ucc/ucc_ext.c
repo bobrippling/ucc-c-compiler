@@ -312,7 +312,7 @@ void assemble(char *in, const char *out, char **args, char *as)
 	dynarray_free(char **, copy, NULL);
 }
 
-void link_all(char **objs, const char *out, char **args)
+void link_all(char **objs, const char *out, char **args, char *ld)
 {
 	char **all = NULL;
 
@@ -324,7 +324,7 @@ void link_all(char **objs, const char *out, char **args)
 	if(args)
 		dynarray_add_array(&all, args);
 
-	runner(0, "ld", all);
+	runner(0, ld, all);
 
 	dynarray_free(char **, all, NULL);
 }
