@@ -51,6 +51,10 @@ static int var_lookup_bool(
 		*varvalue = vars->shared;
 		return 1;
 	}
+	if(!strcmp(varname, "static")){
+		*varvalue = vars->static_;
+		return 1;
+	}
 	return 0;
 }
 

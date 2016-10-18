@@ -85,6 +85,7 @@ ucc_stdlib=
 ucc_ldflags=
 ucc_postlink=
 ucc_paramshared=-shared
+ucc_paramstatic=-static
 
 CFLAGS_CONFIGURE=
 
@@ -285,7 +286,7 @@ echo 'done'
 
 printf 'writing ucc.spec... '
 cat > src/ucc.spec <<!
-# available for %{bool:str}: shared, startfiles, debug, stdlib, stdinc
+# available for %{bool:str}: static, shared, startfiles, debug, stdlib, stdinc
 # available for %{name}: out, bindir
 
 initflags:
@@ -305,6 +306,7 @@ ldflags_pre_user:
 	$ucc_dyn
 	$ucc_ldflags
 	%{shared:$ucc_paramshared}
+	%{static:$ucc_paramstatic}
 
 	# An object file's unresolved symbols must
 	# be _later_ in the linker's argv array.

@@ -630,6 +630,8 @@ word:
 						specvars->stdinc = 0;
 					else if(!strcmp(argv[i], "-shared"))
 						specvars->shared = 1;
+					else if(!strcmp(argv[i], "-static"))
+						specvars->static_ = 1;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
