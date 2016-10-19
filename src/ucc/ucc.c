@@ -753,6 +753,7 @@ int main(int argc, char **argv)
 	int *assumptions;
 	int current_assumption;
 	const char *specpath = NULL;
+	int output_given;
 
 	argstate.mode = mode_link;
 	current_assumption = -1;
@@ -782,6 +783,7 @@ usage:
 	 * append argv's inputs, etc onto the state from the spec file */
 	parse_argv(argc - 1, argv + 1, &argstate, &specvars, assumptions, &current_assumption, &specpath);
 
+	output_given = !!specvars.output;
 	if(!specvars.output && argstate.mode == mode_link)
 		specvars.output = "a.out";
 
@@ -803,11 +805,11 @@ usage:
 	{
 		const int ninputs = dynarray_count(state.inputs);
 
-		if(specvars.output && ninputs > 1 && (state.mode == mode_compile || state.mode == mode_assemb))
+		if(output_given && ninputs > 1 && (state.mode == mode_compile || state.mode == mode_assemb))
 			die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(state.mode));
 
 		if(state.syntax_only){
-			if(specvars.output || state.mode != mode_link)
+			if(output_given || state.mode != mode_link)
 				die("-%c specified in syntax-only mode",
 						specvars.output ? 'o' : MODE_ARG_CH(state.mode));
 
@@ -827,7 +829,7 @@ usage:
 	if(state.backend){
 		/* -emit=... stops early */
 		state.mode = mode_compile;
-		if(!specvars.output)
+		if(!output_given)
 			specvars.output = "-";
 	}
 
