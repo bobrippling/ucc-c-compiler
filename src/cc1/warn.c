@@ -190,6 +190,7 @@ static void warning_all(enum warning_fatality set)
 	cc1_warning.switch_default_covered =
 	cc1_warning.sym_never_read =
 	cc1_warning.system_headers =
+	cc1_warning.int_op_promotion =
 		W_OFF;
 }
 

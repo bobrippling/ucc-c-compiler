@@ -136,6 +136,7 @@ X("constant-large-unsigned", constant_large_unsigned)
 X("div-zero", constop_bad)
 X("declaration-noop", decl_nodecl)
 X("empty-struct", empty_struct)
+X("integer-op-promotion", int_op_promotion)
 
 X("empty-init", gnu_empty_init)
 
