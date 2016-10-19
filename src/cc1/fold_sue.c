@@ -22,6 +22,8 @@
 #include "type_is.h"
 #include "type_nav.h"
 
+#define DUMP_RECORD_LAYOUT 0
+
 struct bitfield_state
 {
 	type *master_ty;
@@ -411,6 +413,9 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 		memset(&bitfield, 0, sizeof bitfield);
 
+		if(DUMP_RECORD_LAYOUT)
+			fprintf(stderr, "Record layout for %s:\n", sue->spel);
+
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
 			struct_union_enum_st *sub_sue = type_is_s_or_u(d->ref);
@@ -457,6 +462,25 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				fold_sue_apply_normal_offset(&pack_state, &offset, &bitfield);
 			}
 
+			if(DUMP_RECORD_LAYOUT){
+				fprintf(stderr, " %2u", d->bits.var.struct_offset);
+
+				if(d->bits.var.field_width){
+					const unsigned bits = const_fold_val_i(d->bits.var.field_width);
+
+					fprintf(stderr, ":%2u-%-2u",
+							d->bits.var.struct_offset_bitfield,
+							d->bits.var.struct_offset_bitfield + bits - 1);
+				}else{
+					fprintf(stderr, "      ");
+				}
+
+				fprintf(stderr, "| .%-10s size=%u align=%u\n",
+						d->spel,
+						type_size(d->ref, NULL),
+						decl_align(d));
+			}
+
 			if(pack_state.align > align_max)
 				align_max = pack_state.align;
 			if(pack_state.sz > sz_max)
@@ -482,6 +506,9 @@ warn:
 		sue->size = pack_to_align(
 				sue->primitive == type_struct ? offset : sz_max,
 				align_max);
+
+		if(DUMP_RECORD_LAYOUT)
+			fprintf(stderr, "         | record size=%u align=%u\n", sue->size, sue->align);
 	}
 
 	sue->foldprog = SUE_FOLDED_FULLY;
