@@ -738,6 +738,7 @@ static void merge_states(struct ucc *state, struct ucc *append)
 	dynarray_add_tmparray(&state->isystems, append->isystems);
 
 	assert(!state->syntax_only);
+	state->syntax_only = append->syntax_only;
 
 	state->mode = append->mode;
 }
