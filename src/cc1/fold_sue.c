@@ -282,6 +282,11 @@ static void fold_sue_calc_fieldwidth(
 		bitfield->first_off = d->bits.var.struct_offset;
 		d->bits.var.first_bitfield = 1;
 
+		/* now that we've done the struct packing w.r.t. bitfield size, we change
+		 * pack_state->align to the align of the declared member type itself, to
+		 * affect the struct's alignment (and also tail padding, etc) */
+		pack_state->align = type_align(d->ref, NULL);
+
 	}else{
 		/* mirror previous bitfields' offset in the struct
 		 * difference is in .struct_offset_bitfield
