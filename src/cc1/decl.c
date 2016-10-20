@@ -120,10 +120,8 @@ unsigned decl_size(decl *d)
 	return type_size(d->ref, &d->where);
 }
 
-void decl_size_align_inc_bitfield(decl *d, unsigned *const sz, unsigned *const align)
+static type *decl_type_for_bitfield(decl *d)
 {
-	type *ty;
-
 	assert(!type_is(d->ref, type_func));
 
 	if(d->bits.var.field_width){
@@ -135,10 +133,15 @@ void decl_size_align_inc_bitfield(decl *d, unsigned *const sz, unsigned *const a
 		if(bits % CHAR_BIT)
 			bytes++;
 
-		ty = type_nav_MAX_FOR(cc1_type_nav, bytes, is_signed);
+		return type_nav_MAX_FOR(cc1_type_nav, bytes, is_signed);
 	}else{
-		ty = d->ref;
+		return d->ref;
 	}
+}
+
+void decl_size_align_inc_bitfield(decl *d, unsigned *const sz, unsigned *const align)
+{
+	type *ty = decl_type_for_bitfield(d);
 
 	*sz = type_size(ty, NULL);
 	*align = type_align(ty, NULL);
