@@ -57,24 +57,6 @@ static void struct_pack_finish_bitfield(
 	*pbitfield_current = 0;
 }
 
-static void bitfield_size_align(
-		type *tref, unsigned *psz, unsigned *palign, where *from)
-{
-	/* implementation defined if ty isn't one of:
-	 * unsigned, signed or _Bool.
-	 * We make it take that align,
-	 * and reserve a max. of that size for the bitfield
-	 */
-	const btype *ty;
-	tref = type_is_primitive(tref, type_unknown);
-	assert(tref);
-
-	ty = tref->bits.type;
-
-	*psz = btype_size(ty, from);
-	*palign = btype_align(ty, from);
-}
-
 static void fold_enum(struct_union_enum_st *en, symtable *stab)
 {
 	const int has_bitmask = !!attr_present(en->attr, attr_enum_bitmask);
@@ -293,7 +275,7 @@ static void fold_sue_calc_fieldwidth(
 		 * Note that we want to affect the align_max
 		 * of the struct and the size of this field
 		 */
-		bitfield_size_align(d->ref, &pack_state->sz, &pack_state->align, &d->where);
+		decl_size_align_inc_bitfield(d, &pack_state->sz, &pack_state->align);
 
 		/* we are onto the beginning of a new group */
 		struct_pack(d, offset, pack_state->sz, pack_state->align);

@@ -361,9 +361,11 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 			if(type_is_incomplete_array(d_mem->ref)){
 				UCC_ASSERT(!mem[1], "flex-arr not at end");
 			}else if(!d_mem->bits.var.field_width || d_mem->bits.var.first_bitfield){
-				unsigned last_sz = type_size(d_mem->ref, NULL);
+				unsigned sz, align;
 
-				end_of_last = d_mem->bits.var.struct_offset + last_sz;
+				decl_size_align_inc_bitfield(d_mem, &sz, &align);
+
+				end_of_last = d_mem->bits.var.struct_offset + sz;
 				DEBUG("done with member \"%s\", end_of_last = %d",
 						d_mem->spel, end_of_last);
 			}
