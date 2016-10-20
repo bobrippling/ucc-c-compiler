@@ -350,7 +350,8 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 			}else{
 				if(nbitfields){
 					DEBUG("at non-bitfield, prev-bitfield out:", 0);
-					bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
+
+					bitfields_out(sec, bitfields, &nbitfields, decl_type_for_bitfield(first_bf));
 					first_bf = NULL;
 				}
 

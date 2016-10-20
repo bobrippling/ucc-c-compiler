@@ -120,7 +120,7 @@ unsigned decl_size(decl *d)
 	return type_size(d->ref, &d->where);
 }
 
-static type *decl_type_for_bitfield(decl *d)
+type *decl_type_for_bitfield(decl *d)
 {
 	assert(!type_is(d->ref, type_func));
 
