@@ -42,6 +42,13 @@
 
 #define ASM_COMMENT "#"
 
+#define INIT_DEBUG 0
+
+#define DEBUG(s, ...) do{ \
+	if(INIT_DEBUG) fprintf(stderr, "\033[35m" s "\033[m\n", __VA_ARGS__); \
+}while(0)
+
+
 struct bitfield_val
 {
 	integral_t val;
@@ -275,8 +282,6 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 
 		UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
 
-#define DEBUG(s, ...) /*fprintf(f, "\033[35m" s "\033[m\n", __VA_ARGS__)*/
-
 		i = init->bits.ar.inits;
 
 		/* check for compound-literal copy-init */
@@ -321,17 +326,18 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 
 			DEBUG("init for %ld/%s, %s",
 					mem - sue->members, d_mem->spel,
-					di_to_use ? di_to_use->bits.expr->f_str() : NULL);
+					di_to_use && di_to_use->type == decl_init_scalar
+					? di_to_use->bits.expr->f_str()
+					: NULL);
 
 			/* only pad if we're not on a bitfield or we're on the first bitfield */
 			if(!d_mem->bits.var.field_width || !first_bf){
 				DEBUG("prev padding, offset=%d, end_of_last=%d",
-						d_mem->struct_offset, end_of_last);
+						d_mem->bits.var.struct_offset, end_of_last);
 
 				UCC_ASSERT(
 						d_mem->bits.var.struct_offset >= end_of_last,
-						"negative struct pad, sue %s, member %s "
-						"offset %u, end_of_last %u",
+						"negative struct pad, %s::%s @ %u >= end_of_last @ %u",
 						sue->spel, decl_to_str(d_mem),
 						d_mem->bits.var.struct_offset, end_of_last);
 
