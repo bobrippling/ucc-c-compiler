@@ -454,6 +454,14 @@ static void gen_ir_init(irctx *ctx, decl *d)
 	if(type_is_const(d->ref))
 		printf("const ");
 
+	if(decl_linkage(d) == linkage_external
+	&& decl_init_is_zero(d->bits.var.init.dinit)
+	&& d->bits.var.init.compiler_generated
+	&& fopt_mode & FOPT_COMMON)
+	{
+		printf("common ");
+	}
+
 	gen_ir_init_r(ctx, d->bits.var.init.dinit, d->ref);
 }
 
