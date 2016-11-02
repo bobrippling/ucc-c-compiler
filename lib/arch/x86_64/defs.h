@@ -1,5 +1,4 @@
-#ifdef __LEADING_UNDERSCORE
-#  define SYMBL(x) _ ## x
-#else
-#  define SYMBL(x) x
-#endif
+#define JOIN_(a, b) a ## b
+#define JOIN(a, b) JOIN_(a, b)
+
+#define SYMBL(x) JOIN(__USER_LABEL_PREFIX__, x)

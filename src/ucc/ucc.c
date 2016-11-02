@@ -488,6 +488,13 @@ static void parse_argv(
 
 						dynarray_add(&state->args[mode_preproc], ustrprintf("-%c__LEADING_UNDERSCORE", no ? 'U' : 'D'));
 						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
+
+						dynarray_add(
+								&state->args[mode_preproc],
+								ustrprintf(
+									"-%c__USER_LABEL_PREFIX__%s",
+									no ? 'U' : 'D',
+									no ? "" : "=_"));
 						continue;
 					}
 					if(!strcmp(argv[i], "-fpic")
