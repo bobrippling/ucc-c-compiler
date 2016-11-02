@@ -244,6 +244,7 @@ then
 	ucc_stdinc="-isystem lib/"
 	ucc_startfiles="lib/crt.a"
 	ucc_stdlib="lib/libc.a"
+	ucc_ldflags="$ucc_ldflags -static"
 	ucc_dyn=''
 fi
 
