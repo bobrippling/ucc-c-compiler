@@ -526,7 +526,7 @@ static int handle_line_directive(char *line)
 	}
 
 	/* don't care about the filename - that's for cc1 */
-	preproc_emit_line_info(atoi(output_anchor), current_fname);
+	preproc_emit_line_info(atoi(output_anchor), current_fname, /* no line-info */0);
 	current_line = n - 1;
 
 	return 1;
