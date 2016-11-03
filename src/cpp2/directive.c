@@ -526,10 +526,8 @@ static int handle_line_directive(char *line)
 	}
 
 	/* don't care about the filename - that's for cc1 */
-	if(option_line_info && !no_output){
-		printf("# %s \"%s\"\n", output_anchor, current_fname);
-		current_line = n - 1;
-	}
+	preproc_emit_line_info(atoi(output_anchor), current_fname);
+	current_line = n - 1;
 
 	return 1;
 }

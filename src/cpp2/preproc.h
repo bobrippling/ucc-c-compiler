@@ -21,4 +21,6 @@ void preprocess(void);
 void preproc_push(FILE *f, const char *fname);
 int preproc_in_include(void);
 
+void preproc_emit_line_info(int lineno, const char *fname);
+
 #endif

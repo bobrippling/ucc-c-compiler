@@ -44,11 +44,18 @@ void include_bt(FILE *f)
 	}
 }
 
-static void preproc_out_info(void)
+void preproc_emit_line_info(int lineno, const char *fname)
 {
 	/* output PP info */
-	if(!no_output && option_line_info)
-		printf("# %d \"%s\"\n", file_stack[file_stack_idx].line_no, file_stack[file_stack_idx].fname);
+	if(no_output || !option_line_info)
+		return;
+
+	printf("# %d \"%s\"\n", lineno, fname);
+}
+
+static void preproc_emit_line_info_top(void)
+{
+	preproc_emit_line_info(file_stack[file_stack_idx].line_no, file_stack[file_stack_idx].fname);
 }
 
 int preproc_in_include()
@@ -86,7 +93,7 @@ void preproc_push(FILE *f, const char *fname)
 	file_stack[file_stack_idx].fname   = ustrdup(fname);
 	file_stack[file_stack_idx].line_no = current_line = 1;
 
-	preproc_out_info();
+	preproc_emit_line_info_top();
 }
 
 static void preproc_pop(void)
@@ -110,7 +117,7 @@ static void preproc_pop(void)
 	current_line  = file_stack[file_stack_idx].line_no;
 	set_current_fname(file_stack[file_stack_idx].fname);
 
-	preproc_out_info();
+	preproc_emit_line_info_top();
 }
 
 static char *read_line(void)
