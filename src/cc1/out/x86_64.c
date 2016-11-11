@@ -49,7 +49,7 @@
 
 #define REG_STR_SZ 8
 
-static const out_val *impl_deref_noGOT(
+static const out_val *impl_deref_nodoubleindir(
 		out_ctx *octx, const out_val *vp,
 		const struct vreg *reg, type *tpointed_to);
 
@@ -1250,7 +1250,7 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 
 		v_unused_reg(octx, /*stack-spill*/1, /*fp*/0, &reg_store, to);
 
-		to = impl_deref_noGOT(octx, to, &reg_store, ptr_to_ty);
+		to = impl_deref_nodoubleindir(octx, to, &reg_store, ptr_to_ty);
 	}
 
 	out_asm(octx, "mov%s %s, %s",
@@ -1716,7 +1716,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	}
 }
 
-static const out_val *impl_deref_noGOT(
+static const out_val *impl_deref_nodoubleindir(
 		out_ctx *octx,
 		const out_val *vp,
 		const struct vreg *reg,
@@ -1743,7 +1743,7 @@ const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *r
 	}
 
 	/* loaded the pointer, now we apply the deref change */
-	ret = impl_deref_noGOT(octx, vp, reg, tpointed_to);
+	ret = impl_deref_nodoubleindir(octx, vp, reg, tpointed_to);
 
 	if(stash){
 		ret = out_change_type(octx, ret, stash);
