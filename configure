@@ -241,9 +241,9 @@ esac
 
 if test $local_lib = 1
 then
-	ucc_stdinc="-isystem lib/"
-	ucc_startfiles="lib/crt.a"
-	ucc_stdlib="lib/libc.a"
+	ucc_stdinc="-isystem %{bindir}/../../lib/"
+	ucc_startfiles="%{bindir}/../../lib/crt.a"
+	ucc_stdlib="%{bindir}/../../lib/libc.a"
 	ucc_ldflags="$ucc_ldflags -static"
 	ucc_dyn=''
 fi
