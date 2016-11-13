@@ -1245,7 +1245,7 @@ static type_parsed *parsed_type_array(
 				if(!type_is_integral(size->tree_type)){
 					parse_had_error = 1;
 					warn_at_print_error(&size->where,
-							"array type isn't integral (%s)",
+							"array size isn't integral (%s)",
 							type_to_str(size->tree_type));
 					size = NULL;
 				}else{
