@@ -312,7 +312,7 @@ static void handle_include(char *include_arg)
 	if(!is_lib)
 		deps_add(final_path);
 
-	preproc_push(f, final_path);
+	preproc_push(f, final_path, is_lib);
 	dirname_push(udirname(final_path));
 
 out:

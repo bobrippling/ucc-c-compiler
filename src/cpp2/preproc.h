@@ -12,6 +12,7 @@ struct file_stack
 	FILE *file;
 	char *fname;
 	int line_no;
+	int is_sysh;
 };
 
 enum lineinfo
@@ -26,7 +27,7 @@ extern struct file_stack file_stack[];
 extern int file_stack_idx;
 
 void preprocess(void);
-void preproc_push(FILE *f, const char *fname);
+void preproc_push(FILE *f, const char *fname, int is_sysh);
 int preproc_in_include(void);
 
 void preproc_emit_line_info(int lineno, const char *fname, enum lineinfo);
