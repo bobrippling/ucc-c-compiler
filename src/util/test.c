@@ -7,6 +7,7 @@
 #include "path.h"
 #include "alloc.h"
 #include "dynmap.h"
+#include "math.h"
 
 #define DIE() ice(__FILE__, __LINE__, __func__, NULL)
 
@@ -32,6 +33,15 @@ void icw(const char *f, int line, const char *fn, const char *fmt, ...)
 
 	ec = 1;
 }
+
+static void test(int cond, const char *expr)
+{
+	if(!cond){
+		ec = 1;
+		fprintf(stderr, "test failed: %s\n", expr);
+	}
+}
+#define test(exp) test((exp), #exp)
 
 static void test_canon(char *in, char *exp, int ln)
 {
@@ -170,10 +180,22 @@ static void test_dynmap(void)
 	test_dynmap_collision();
 }
 
+static void test_math(void)
+{
+	/* 0b1011010 */
+	unsigned x = 0x5a;
+	test(extractbottombit(&x) == 0x2);
+	test(x == 0x58);
+
+	test(log2i(extractbottombit(&x)) == 3);
+	test(x == 0x50);
+}
+
 int main(void)
 {
 	test_dynmap();
 	test_canon_all();
+	test_math();
 
 	return ec;
 }
