@@ -2,16 +2,36 @@
 use warnings;
 
 my $opt_shownth = 1;
+my $opt_regex = '0x[0-9a-fA-F]+';
+my @files;
 
-if(@ARGV){
-	if($ARGV[0] eq '-N'){
+sub usage
+{
+	print STDERR "Usage: $0 [-N] [-r regex] [files...]\n"
+		. "  -r: regex to use instead of /$opt_regex/\n"
+		. "  -N: Don't show the hex's entry number\n"
+		;
+	exit 1;
+}
+
+my $i = 0;
+for(my $i = 0; $i < @ARGV; $i++){
+	$_ = $ARGV[$i];
+
+	if($_ eq '-N'){
 		$opt_shownth = 0;
-		shift @ARGV;
 
-	}elsif($ARGV[0] eq '--help'){
-		print STDERR "Usage: $0 [-N] [files...]\n"
-		. "  -N: Don't show the hex's entry number\n";
-		exit 1;
+	}elsif($_ eq '-r'){
+		$i++;
+		usage() if $i >= @ARGV;
+
+		$opt_regex = $ARGV[$i];
+
+	}elsif($_ eq '--help'){
+		usage();
+
+	}else{
+		push @files, $_;
 	}
 }
 
@@ -62,7 +82,9 @@ sub count_hex
 	return "{$cnt$suff}";
 }
 
+@ARGV = @files;
+
 while(<>){
-	s/0x[0-9a-fA-F]+/got_hex($&) . count_hex($&)/eg;
+	s/$opt_regex/got_hex($&) . count_hex($&)/eg;
 	print;
 }
