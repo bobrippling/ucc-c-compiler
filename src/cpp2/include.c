@@ -118,6 +118,6 @@ FILE *include_fopen(
 	}
 
 	trace(" trying -isystem dirs:\n");
-	*is_sysh = is_angle;
+	*is_sysh = 1; /* "" or <>, either way it's in -isystem, so is a sysh */
 	return include_search(fname, include_dirs_sys, final_path);
 }
