@@ -923,10 +923,8 @@ usage:
 	if(state.isystems){
 		const char **i;
 		for(i = state.isystems; *i; i++){
-			/* cpp doesn't care if it's system or not */
-			dynarray_add(&state.args[mode_preproc], ustrprintf("-I%s", *i));
-			/* cc1 only wants system - can use -I too */
-			dynarray_add(&state.args[mode_compile], ustrprintf("-I%s", *i));
+			dynarray_add(&state.args[mode_preproc], ustrdup("-isystem"));
+			dynarray_add(&state.args[mode_preproc], ustrdup(*i));
 		}
 
 		dynarray_free(const char **, state.isystems, NULL);
