@@ -281,7 +281,7 @@ int main(int argc, char **argv)
 		switch(argv[i][1]){
 			case 'I':
 				if(argv[i][2])
-					include_add_dir(argv[i]+2);
+					include_add_dir(argv[i]+2, 0);
 				else
 					goto usage;
 				break;
@@ -457,7 +457,13 @@ int main(int argc, char **argv)
 
 			default:
 defaul:
-				if(std_from_str(argv[i], &cpp_std, NULL) == 0){
+				if(!strcmp(argv[i], "-isystem")){
+					if(++i == argc){
+						fprintf(stderr, "-isystem needs a parameter");
+						goto usage;
+					}
+					include_add_dir(argv[i], 1);
+				}else if(std_from_str(argv[i], &cpp_std, NULL) == 0){
 					/* we have an std */
 				}else if(!strcmp(argv[i], "-trigraphs")){
 					option_trigraphs = 1;

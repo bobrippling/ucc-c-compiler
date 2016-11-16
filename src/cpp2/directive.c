@@ -263,7 +263,7 @@ static char *include_parse(
 
 static void handle_include(char *include_arg)
 {
-	int is_lib;
+	int is_angle, is_sysh;
 
 	const char *curdir;
 	char *fname, *final_path;
@@ -272,47 +272,29 @@ static void handle_include(char *include_arg)
 
 	NOOP_RET();
 
-	fname = include_parse(include_arg, &is_lib, 1);
-
+	fname = include_parse(include_arg, &is_angle, 1);
 	curdir = cd_stack[dynarray_count(cd_stack) - 1];
 
-	if(*fname == '/' || !is_lib){
-		/* absolute path */
-		if(*fname == '/')
-			final_path = ustrdup(fname);
-		else
-			final_path = ustrprintf("%s/%s", curdir, fname);
-
-		f = include_fopen(final_path);
-		/* if it fails, try lib */
-		if(!f){
-			free(final_path);
-			final_path = NULL;
-		}
-	}
-
+	f = include_fopen(curdir, fname, is_angle, &final_path, &is_sysh);
 	if(!f){
-		f = include_search_fopen(curdir, fname, &final_path);
-
-		if(!f){
-			if(missing_header_error){
-				CPP_DIE("can't find include file %c%s%c",
-						"\"<"[is_lib], fname, "\">"[is_lib]);
-			}else{
-				/* okay - ignored except for dep */
-				deps_add(fname);
-				goto out;
-			}
+		if(missing_header_error){
+			CPP_DIE("can't find include file %c%s%c",
+					"\"<"[is_angle], fname, "\">"[is_angle]);
+		}else{
+			/* okay - ignored except for dep */
+			deps_add(fname);
+			goto out;
 		}
+		/* unreachable */
 	}
 
 	/* successfully opened */
 	canonicalise_path(final_path);
 
-	if(!is_lib)
+	if(!is_angle)
 		deps_add(final_path);
 
-	preproc_push(f, final_path, is_lib);
+	preproc_push(f, final_path, is_sysh);
 	dirname_push(udirname(final_path));
 
 out:

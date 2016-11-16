@@ -15,18 +15,23 @@
 #include "preproc.h"
 
 static char **include_dirs;
+static char **include_dirs_sys;
 
-void include_add_dir(char *d)
+void include_add_dir(char *d, int sysh)
 {
-	dynarray_add(&include_dirs, d);
+	if(sysh){
+		dynarray_add(&include_dirs_sys, d);
+	}else{
+		dynarray_add(&include_dirs, d);
+	}
 }
 
-FILE *include_fopen(const char *fnam)
+static FILE *wrapped_fopen(const char *fnam)
 {
 	FILE *f;
 	char *rslash = strrchr(fnam, '/');
 
-	if(!(rslash ? rslash[1] : *fnam))
+	if((rslash ? rslash[1] : *fnam) == '\0')
 		CPP_DIE("empty filename");
 
 	f = fopen(fnam, "r");
@@ -39,42 +44,80 @@ FILE *include_fopen(const char *fnam)
 	return NULL;
 }
 
-FILE *include_search_fopen(const char *cd, const char *fnam, char **ppath)
+static FILE *include_search(
+		const char *fname,
+		char **dirs,
+		char **const final_path)
 {
-	FILE *f = NULL;
-	int i;
+	size_t i;
 
-	trace("include \"%s\", cd=%s", fnam, cd);
-
-retry:
-	for(i = 0; include_dirs && include_dirs[i]; i++){
-		char *path;
-
-		if(cd){
-			path = ustrprintf(
-					"%s/%s/%s",
-					*include_dirs[i] == '/' ? "" : cd,
-					include_dirs[i],
-					fnam);
-		}else{
-			path = ustrprintf("%s/%s", include_dirs[i], fnam);
-		}
+	for(i = 0; dirs && dirs[i]; i++){
+		char *path = ustrprintf("%s/%s", dirs[i], fname);
+		FILE *f = wrapped_fopen(path);
 
 		trace("  trying %s...\n", path);
 
-		f = include_fopen(path);
 		if(f){
-			trace(" found @ %s\n", path);
-			*ppath = path;
-			break;
+			trace("  found @ %s\n", path);
+			*final_path = path;
+			return f;
 		}
 		free(path);
 	}
 
-	if(!f && cd){
-		cd = NULL;
-		goto retry;
+	return NULL;
+}
+
+FILE *include_fopen(
+		const char *curdir,
+		const char *fname,
+		int is_angle,
+		char **final_path,
+		int *is_sysh)
+{
+	/* "" -> curdir, includes, isystems
+	 * <> ->         includes, isystems */
+	FILE *f;
+
+	*final_path = NULL;
+
+	trace("include %c%s%c\n",
+			(is_angle ? '<' : '"'),
+			fname,
+			(is_angle ? '>' : '"'));
+
+	if(*fname == '/'){
+		*final_path = ustrdup(fname);
+		*is_sysh = 0;
+		trace("  absolute path - using\n");
+		return wrapped_fopen(fname);
 	}
 
-	return f;
+	if(!is_angle){
+		*final_path = ustrprintf("%s/%s", curdir, fname);
+
+		f = wrapped_fopen(*final_path);
+		if(f){
+			trace("  found (local) @ %s\n", *final_path);
+			*is_sysh = 0;
+			return f;
+		}
+
+		free(*final_path);
+		*final_path = NULL;
+	}
+
+	trace(" trying -I dirs:\n");
+	f = include_search(fname, include_dirs, final_path);
+	if(f){
+		/* this disagrees with clang/gcc - for them, even if found with -I...,
+		 * if the directory in which `f` is in, is also in -isystem, then it's a
+		 * system header */
+		*is_sysh = 0;
+		return f;
+	}
+
+	trace(" trying -isystem dirs:\n");
+	*is_sysh = is_angle;
+	return include_search(fname, include_dirs_sys, final_path);
 }
