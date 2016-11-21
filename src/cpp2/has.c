@@ -76,9 +76,10 @@ static int has_feat_ext(const char *nam, int as_ext)
 
 	for(p = tbl; p->nam; p++){
 		if(!strcmp(p->nam, nam)){
-			/* always have a name as an extension */
+			/* always have a name as an extension, or at least,
+			 * we don't depend on the C standard version */
 			if(as_ext)
-				return 1;
+				return p->has;
 
 			/* we have it as a feature if it's in our standard
 			 * and actually has the .has member set to non-zero */
