@@ -1,5 +1,4 @@
-// RUN: %ucc -c %s
-// RUN: %asmcheck %s
+// RUN: %asmcheck %s -fno-pic
 f()
 {
 	extern f();
