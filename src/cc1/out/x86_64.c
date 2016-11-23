@@ -2362,7 +2362,8 @@ const out_val *impl_call(
 
 
 				local_args[i] = v_to_reg_given(octx, local_args[i], rp);
-			}else if(vp->type == V_REG && vp->bits.regoff.offset){
+			}
+			if(local_args[i]->type == V_REG && local_args[i]->bits.regoff.offset){
 				/* need to ensure offsets are flushed */
 				local_args[i] = v_reg_apply_offset(octx, local_args[i]);
 			}
