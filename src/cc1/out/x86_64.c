@@ -1161,14 +1161,30 @@ lea:
 			const int from_GOT = from->type == V_LBL
 				&& fopt_mode & FOPT_PIC
 				&& !(from->bits.lbl.pic_type & OUT_LBL_PICLOCAL);
+			out_val *from_mut = (out_val *)from;
+			long saved_offset = 0;
+
+			/* code duplication of impl_deref_nodoubleindir() */
+			if(from_GOT && from->type == V_LBL && from->bits.lbl.offset){
+				saved_offset = from->bits.lbl.offset;
+				from_mut = v_dup_or_reuse(octx, from, from->t);
+				from_mut->bits.lbl.offset = 0;
+			}
 
 			/* just go with leaq for small sizes */
 
 			out_asm(octx, "%s%s %s, %%%s",
 					fp || from_GOT ? "mov" : "lea",
 					x86_suffix(NULL),
-					impl_val_str(from, 1),
+					impl_val_str(from_mut, 1),
 					x86_reg_str(reg, from_GOT ? NULL : chosen_ty));
+
+			if(saved_offset){
+				out_val *ret = v_new_reg(octx, from, from->t, reg);
+				assert(ret->type == V_REG);
+				ret->bits.regoff.offset = saved_offset;
+				return ret;
+			}
 			break;
 		}
 
