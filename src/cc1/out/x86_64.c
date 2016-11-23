@@ -51,7 +51,8 @@
 
 static const out_val *impl_deref_nodoubleindir(
 		out_ctx *octx, const out_val *vp,
-		const struct vreg *reg, type *tpointed_to);
+		const struct vreg *reg, type *tpointed_to,
+		int transfer_offset_for_got);
 
 const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 1, "byte" },
@@ -1250,7 +1251,7 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 
 		v_unused_reg(octx, /*stack-spill*/1, /*fp*/0, &reg_store, to);
 
-		to = impl_deref_nodoubleindir(octx, to, &reg_store, ptr_to_ty);
+		to = impl_deref_nodoubleindir(octx, to, &reg_store, ptr_to_ty, /*v_needs_GOT(to)=*/1);
 	}
 
 	out_asm(octx, "mov%s %s, %s",
@@ -1720,14 +1721,30 @@ static const out_val *impl_deref_nodoubleindir(
 		out_ctx *octx,
 		const out_val *vp,
 		const struct vreg *reg,
-		type *tpointed_to)
+		type *tpointed_to,
+		int transfer_offset_for_got)
 {
+	/* need to ensure we move any offsets to after we've got the pointer */
+	long saved_offset = 0;
+	out_val *vp_mut = (out_val *)vp;
+
+	if(transfer_offset_for_got && vp->type == V_LBL && vp->bits.lbl.offset){
+		saved_offset = vp->bits.lbl.offset;
+		vp_mut = v_dup_or_reuse(octx, vp, vp->t);
+		vp_mut->bits.lbl.offset = 0;
+	}
+
 	out_asm(octx, "mov%s %s, %%%s",
 			x86_suffix(tpointed_to),
-			impl_val_str(vp, 1),
-			x86_reg_str(reg, tpointed_to));
+			impl_val_str(vp_mut, 1),
+			x86_reg_str(reg, tpointed_to),
+			saved_offset);
 
-	return v_new_reg(octx, vp, tpointed_to, reg);
+	vp_mut = v_new_reg(octx, vp_mut, tpointed_to, reg);
+	assert(vp_mut->type == V_REG);
+	vp_mut->bits.regoff.offset = saved_offset;
+
+	return vp_mut;
 }
 
 const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *reg)
@@ -1736,14 +1753,15 @@ const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *r
 
 	type *stash = NULL;
 	const out_val *ret;
+	const int via_GOT = v_needs_GOT(vp);
 
-	if(v_needs_GOT(vp)){
+	if(via_GOT){
 		stash = vp->t;
 		tpointed_to = vp->t;
 	}
 
 	/* loaded the pointer, now we apply the deref change */
-	ret = impl_deref_nodoubleindir(octx, vp, reg, tpointed_to);
+	ret = impl_deref_nodoubleindir(octx, vp, reg, tpointed_to, via_GOT);
 
 	if(stash){
 		ret = out_change_type(octx, ret, stash);
