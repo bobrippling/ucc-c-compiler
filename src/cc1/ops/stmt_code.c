@@ -404,7 +404,8 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 
 				out_dbg_where(octx, &d->where);
 
-				fn = out_new_lbl(octx, NULL, decl_asm_spel(cleanup->bits.cleanup), 1);
+				fn = gen_decl_addr(octx, cleanup->bits.cleanup);
+
 				args[0] = out_new_sym(octx, d->sym);
 				args[1] = NULL;
 

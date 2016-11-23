@@ -49,6 +49,11 @@
 
 #define REG_STR_SZ 8
 
+static const out_val *impl_deref_nodoubleindir(
+		out_ctx *octx, const out_val *vp,
+		const struct vreg *reg, type *tpointed_to,
+		int transfer_offset_for_got);
+
 const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 1, "byte" },
 	{ 2, "word" },
@@ -414,9 +419,17 @@ const char *impl_val_str_r(
 
 		case V_LBL:
 		{
-			const int pic = fopt_mode & FOPT_PIC && vs->bits.lbl.pic;
 			const char *pre = deref ? "" : "$";
-			const char *picstr = pic && deref ? "(%rip)" : "";
+			const char *picstr = "";
+
+			if(deref && (vs->bits.lbl.pic_type & OUT_LBL_PIC) && fopt_mode & FOPT_PIC){
+				int local_sym = vs->bits.lbl.pic_type & OUT_LBL_PICLOCAL;
+
+				/* if it's local, we can access the symbol at a fixed offset.
+				 * otherwise it's in another module, so we need the GOT to access it
+				 */
+				picstr = local_sym ? "(%rip)" : "@GOTPCREL(%rip)";
+			}
 
 			if(vs->bits.lbl.offset){
 				SNPRINTF(buf, VAL_STR_SZ, "%s%s+%ld%s",
@@ -1012,7 +1025,7 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			 * as we currently don't have V_LBL_SPILT, for e.g. */
 			mut->type = V_LBL;
 			mut->bits.lbl.str = lbl;
-			mut->bits.lbl.pic = 1;
+			mut->bits.lbl.pic_type = OUT_LBL_PIC | OUT_LBL_PICLOCAL;
 			mut->bits.lbl.offset = 0;
 			mut->t = type_ptr_to(mut->t);
 
@@ -1145,16 +1158,33 @@ lea:
 		{
 			const int fp = type_is_floating(from->t);
 			type *chosen_ty = fp ? from->t : NULL;
+			const int from_GOT = from->type == V_LBL
+				&& fopt_mode & FOPT_PIC
+				&& !(from->bits.lbl.pic_type & OUT_LBL_PICLOCAL);
+			out_val *from_mut = (out_val *)from;
+			long saved_offset = 0;
+
+			/* code duplication of impl_deref_nodoubleindir() */
+			if(from_GOT && from->type == V_LBL && from->bits.lbl.offset){
+				saved_offset = from->bits.lbl.offset;
+				from_mut = v_dup_or_reuse(octx, from, from->t);
+				from_mut->bits.lbl.offset = 0;
+			}
 
 			/* just go with leaq for small sizes */
 
 			out_asm(octx, "%s%s %s, %%%s",
-					fp ? "mov" : "lea",
+					fp || from_GOT ? "mov" : "lea",
 					x86_suffix(NULL),
-					impl_val_str(from, 1),
-					x86_reg_str(reg, chosen_ty));
+					impl_val_str(from_mut, 1),
+					x86_reg_str(reg, from_GOT ? NULL : chosen_ty));
 
-			/* 'from' is now in a reg */
+			if(saved_offset){
+				out_val *ret = v_new_reg(octx, from, from->t, reg);
+				assert(ret->type == V_REG);
+				ret->bits.regoff.offset = saved_offset;
+				return ret;
+			}
 			break;
 		}
 
@@ -1224,6 +1254,20 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 
 		case V_CONST_I:
 			break;
+	}
+
+	/* if storing to something through the GOT, need double-indirection */
+	if(v_needs_GOT(to)){
+		out_val *mut_to;
+		type *ptr_to_ty = type_ptr_to(to->t);
+		struct vreg reg_store;
+
+		/* type change + make mutable */
+		to = mut_to = v_dup_or_reuse(octx, to, ptr_to_ty);
+
+		v_unused_reg(octx, /*stack-spill*/1, /*fp*/0, &reg_store, to);
+
+		to = impl_deref_nodoubleindir(octx, to, &reg_store, ptr_to_ty, /*v_needs_GOT(to)=*/1);
 	}
 
 	out_asm(octx, "mov%s %s, %s",
@@ -1689,17 +1733,58 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	}
 }
 
+static const out_val *impl_deref_nodoubleindir(
+		out_ctx *octx,
+		const out_val *vp,
+		const struct vreg *reg,
+		type *tpointed_to,
+		int transfer_offset_for_got)
+{
+	/* need to ensure we move any offsets to after we've got the pointer */
+	long saved_offset = 0;
+	out_val *vp_mut = (out_val *)vp;
+
+	if(transfer_offset_for_got && vp->type == V_LBL && vp->bits.lbl.offset){
+		saved_offset = vp->bits.lbl.offset;
+		vp_mut = v_dup_or_reuse(octx, vp, vp->t);
+		vp_mut->bits.lbl.offset = 0;
+	}
+
+	out_asm(octx, "mov%s %s, %%%s",
+			x86_suffix(tpointed_to),
+			impl_val_str(vp_mut, 1),
+			x86_reg_str(reg, tpointed_to),
+			saved_offset);
+
+	vp_mut = v_new_reg(octx, vp_mut, tpointed_to, reg);
+	assert(vp_mut->type == V_REG);
+	vp_mut->bits.regoff.offset = saved_offset;
+
+	return vp_mut;
+}
+
 const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *reg)
 {
 	type *tpointed_to = type_dereference_decay(vp->t);
 
-	/* loaded the pointer, now we apply the deref change */
-	out_asm(octx, "mov%s %s, %%%s",
-			x86_suffix(tpointed_to),
-			impl_val_str(vp, 1),
-			x86_reg_str(reg, tpointed_to));
+	type *stash = NULL;
+	const out_val *ret;
+	const int via_GOT = v_needs_GOT(vp);
 
-	return v_new_reg(octx, vp, tpointed_to, reg);
+	if(via_GOT){
+		stash = vp->t;
+		tpointed_to = vp->t;
+	}
+
+	/* loaded the pointer, now we apply the deref change */
+	ret = impl_deref_nodoubleindir(octx, vp, reg, tpointed_to, via_GOT);
+
+	if(stash){
+		ret = out_change_type(octx, ret, stash);
+		ret = out_deref(octx, ret);
+	}
+
+	return ret;
 }
 
 const out_val *impl_op_unary(out_ctx *octx, enum op_type op, const out_val *val)
@@ -1899,17 +1984,16 @@ const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *from, type *to)
 
 static const char *x86_call_jmp_target(
 		out_ctx *octx, const out_val **pvp,
-		int prevent_rax)
+		int prevent_rax, int *const use_plt)
 {
 	static char buf[VAL_STR_SZ + 2];
 
+	*use_plt = 0;
+
 	switch((*pvp)->type){
 		case V_LBL:
-			if((*pvp)->bits.lbl.offset){
-				snprintf(buf, sizeof buf, "%s + %ld",
-						(*pvp)->bits.lbl.str, (*pvp)->bits.lbl.offset);
-				return buf;
-			}
+			assert((*pvp)->bits.lbl.offset == 0 && "non-zero label offset in call");
+			*use_plt = v_needs_GOT(*pvp);
 			return (*pvp)->bits.lbl.str;
 
 		case V_CONST_F:
@@ -1953,7 +2037,9 @@ void impl_jmp(FILE *f, const char *lbl)
 
 void impl_jmp_expr(out_ctx *octx, const out_val *v)
 {
-	const char *jmp = x86_call_jmp_target(octx, &v, 0);
+	int use_plt;
+	const char *jmp = x86_call_jmp_target(octx, &v, 0, &use_plt);
+	assert(!use_plt && "local jumps shouldn't be PIC");
 	out_asm(octx, "jmp %s", jmp);
 	out_val_consume(octx, v);
 }
@@ -2276,7 +2362,8 @@ const out_val *impl_call(
 
 
 				local_args[i] = v_to_reg_given(octx, local_args[i], rp);
-			}else if(vp->type == V_REG && vp->bits.regoff.offset){
+			}
+			if(local_args[i]->type == V_REG && local_args[i]->bits.regoff.offset){
 				/* need to ensure offsets are flushed */
 				local_args[i] = v_reg_apply_offset(octx, local_args[i]);
 			}
@@ -2290,7 +2377,8 @@ const out_val *impl_call(
 			args->variadic
 			|| FUNCARGS_EMPTY_NOVOID(args);
 		/* jtarget must be assigned before "movb $0, %al" */
-		const char *jtarget = x86_call_jmp_target(octx, &fn, need_float_count);
+		int use_plt;
+		const char *jtarget = x86_call_jmp_target(octx, &fn, need_float_count, &use_plt);
 
 		/* if x(...) or x() */
 		if(need_float_count){
@@ -2313,7 +2401,7 @@ const out_val *impl_call(
 						&r));
 		}
 
-		out_asm(octx, "callq %s", jtarget);
+		out_asm(octx, "callq %s%s", jtarget, use_plt ? "@PLT" : "");
 	}
 
 	if(arg_stack.bytesz){

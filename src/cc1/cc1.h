@@ -13,7 +13,7 @@ enum fopt
 	FOPT_ENGLISH               = 1 << 2,
 	FOPT_SHOW_LINE             = 1 << 3,
 	FOPT_PIC                   = 1 << 4,
-	FOPT_PIC_PCREL             = 1 << 5,
+	/* gap */
 	FOPT_BUILTIN               = 1 << 6,
 	FOPT_MS_EXTENSIONS         = 1 << 7,
 	FOPT_PLAN9_EXTENSIONS      = 1 << 8,

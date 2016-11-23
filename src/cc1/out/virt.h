@@ -48,6 +48,7 @@ void v_save_regs(
 		const out_val *ignores[], const out_val *fnval);
 
 int v_is_const_reg(const out_val *);
+int v_needs_GOT(const out_val *);
 
 
 void v_reserve_reg(out_ctx *, const struct vreg *);
