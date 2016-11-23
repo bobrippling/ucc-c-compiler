@@ -1984,17 +1984,16 @@ const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *from, type *to)
 
 static const char *x86_call_jmp_target(
 		out_ctx *octx, const out_val **pvp,
-		int prevent_rax)
+		int prevent_rax, int *const use_plt)
 {
 	static char buf[VAL_STR_SZ + 2];
 
+	*use_plt = 0;
+
 	switch((*pvp)->type){
 		case V_LBL:
-			if((*pvp)->bits.lbl.offset){
-				snprintf(buf, sizeof buf, "%s + %ld",
-						(*pvp)->bits.lbl.str, (*pvp)->bits.lbl.offset);
-				return buf;
-			}
+			assert((*pvp)->bits.lbl.offset == 0 && "non-zero label offset in call");
+			*use_plt = v_needs_GOT(*pvp);
 			return (*pvp)->bits.lbl.str;
 
 		case V_CONST_F:
@@ -2038,7 +2037,9 @@ void impl_jmp(FILE *f, const char *lbl)
 
 void impl_jmp_expr(out_ctx *octx, const out_val *v)
 {
-	const char *jmp = x86_call_jmp_target(octx, &v, 0);
+	int use_plt;
+	const char *jmp = x86_call_jmp_target(octx, &v, 0, &use_plt);
+	assert(!use_plt && "local jumps shouldn't be PIC");
 	out_asm(octx, "jmp %s", jmp);
 	out_val_consume(octx, v);
 }
@@ -2375,7 +2376,8 @@ const out_val *impl_call(
 			args->variadic
 			|| FUNCARGS_EMPTY_NOVOID(args);
 		/* jtarget must be assigned before "movb $0, %al" */
-		const char *jtarget = x86_call_jmp_target(octx, &fn, need_float_count);
+		int use_plt;
+		const char *jtarget = x86_call_jmp_target(octx, &fn, need_float_count, &use_plt);
 
 		/* if x(...) or x() */
 		if(need_float_count){
@@ -2398,7 +2400,7 @@ const out_val *impl_call(
 						&r));
 		}
 
-		out_asm(octx, "callq %s", jtarget);
+		out_asm(octx, "callq %s%s", jtarget, use_plt ? "@PLT" : "");
 	}
 
 	if(arg_stack.bytesz){
