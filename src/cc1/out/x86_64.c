@@ -21,6 +21,8 @@
 
 #include "../cc1.h"
 
+#include "../../config_as.h"
+
 #include "val.h"
 #include "asm.h"
 #include "impl.h"
@@ -1993,7 +1995,7 @@ static const char *x86_call_jmp_target(
 	switch((*pvp)->type){
 		case V_LBL:
 			assert((*pvp)->bits.lbl.offset == 0 && "non-zero label offset in call");
-			*use_plt = v_needs_GOT(*pvp);
+			*use_plt = LD_INDIRECT_CALL_VIA_PLT && v_needs_GOT(*pvp);
 			return (*pvp)->bits.lbl.str;
 
 		case V_CONST_F:
