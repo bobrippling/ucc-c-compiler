@@ -6,6 +6,7 @@
 #include <ctype.h>
 
 #include "../util/util.h"
+#include "../util/io.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
 #include "../util/macros.h"

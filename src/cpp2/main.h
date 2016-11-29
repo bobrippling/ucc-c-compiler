@@ -3,6 +3,9 @@
 
 #include "../util/std.h"
 
+#define FNAME_BUILTIN "<builtin>"
+#define FNAME_CMDLINE "<command-line>"
+
 void dirname_push(char *d);
 char *dirname_pop(void);
 
