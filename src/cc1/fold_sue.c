@@ -312,22 +312,19 @@ static void fold_sue_calc_fieldwidth(
 
 		d->bits.var.bitfield_master_ty = bitfield->master_ty;
 
-		/* Get some initial padding.
-		 * Note that we want to affect the align_max
-		 * of the struct and the size of this field
-		 */
-		decl_size_align_inc_bitfield(d, &pack_state->sz, &pack_state->align);
+		/* Get some initial padding. Note that we want to affect the align_max of
+		 * the struct and the size of this field.
+		 *
+		 * pack_state->align must be the align of the declared member type itself,
+		 * to affect the struct's alignment (and also tail padding, etc) */
+		pack_state->sz = decl_size_inc_bitfield(d);
+		pack_state->align = type_align(d->ref, NULL);
 		round_size_to_align(&pack_state->sz, pack_state->align);
 
 		/* we are onto the beginning of a new group */
 		struct_pack(d, offset, pack_state->sz, pack_state->align);
 		bitfield->first_off = d->bits.var.struct_offset;
 		d->bits.var.first_bitfield = 1;
-
-		/* now that we've done the struct packing w.r.t. bitfield size, we change
-		 * pack_state->align to the align of the declared member type itself, to
-		 * affect the struct's alignment (and also tail padding, etc) */
-		pack_state->align = type_align(d->ref, NULL);
 
 	}else{
 		/* mirror previous bitfields' offset in the struct

@@ -190,8 +190,9 @@ static void asm_declare_init_bitfields(
 static void bitfields_out(
 		const struct section *sec,
 		struct bitfield_val *bfs, unsigned *pn,
-		type *ty)
+		decl *first_bf)
 {
+	type *ty = decl_type_for_bitfield(first_bf);
 	asm_declare_init_bitfields(sec, bfs, *pn, ty);
 	*pn = 0;
 }
@@ -406,7 +407,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 						DEBUG("new bitfield group (%s is new boundary), old:",
 								d_mem->spel);
 						/* next bitfield group - store the current */
-						bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
+						bitfields_out(sec, bitfields, &nbitfields, first_bf);
 					}
 					if(!zero_width)
 						first_bf = d_mem;
@@ -422,7 +423,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 				if(nbitfields){
 					DEBUG("at non-bitfield, prev-bitfield out:", 0);
 
-					bitfields_out(sec, bitfields, &nbitfields, decl_type_for_bitfield(first_bf));
+					bitfields_out(sec, bitfields, &nbitfields, first_bf);
 					first_bf = NULL;
 				}
 
@@ -433,9 +434,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 			if(type_is_incomplete_array(d_mem->ref)){
 				UCC_ASSERT(!mem[1], "flex-arr not at end");
 			}else if(!d_mem->bits.var.field_width || d_mem->bits.var.first_bitfield){
-				unsigned sz, align;
-
-				decl_size_align_inc_bitfield(d_mem, &sz, &align);
+				unsigned sz = decl_size_inc_bitfield(d_mem);
 
 				end_of_last = d_mem->bits.var.struct_offset + sz;
 				DEBUG("done with member \"%s\", end_of_last = %d",
@@ -444,7 +443,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 		}
 
 		if(nbitfields)
-			bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
+			bitfields_out(sec, bitfields, &nbitfields, first_bf);
 		free(bitfields);
 
 		/* need to pad to struct size */

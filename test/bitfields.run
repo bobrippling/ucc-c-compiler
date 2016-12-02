@@ -1,0 +1,8 @@
+fail: bitfields/init/pad_end.c
+        bitfields/init/pad_end.c:12:22: ICE type_nav.c:502 (type_nav_MAX_FOR): no type max for 0
+        ../tools/timeout: timeout ./layout_check.sh bitfields/init/pad_end.c
+        ./test.pl: command './layout_check.sh bitfields/init/pad_end.c' failed
+fail: bitfields/skip_pad_init.c
+        bitfields/skip_pad_init.c:12:22: ICE type_nav.c:502 (type_nav_MAX_FOR): no type max for 0
+        cc1/cc1 caught signal 6
+        ./test.pl: command './layout_check.sh bitfields/skip_pad_init.c' failed

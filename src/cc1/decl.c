@@ -138,18 +138,15 @@ type *decl_type_for_bitfield(decl *d)
 		if(bits % CHAR_BIT)
 			bytes++;
 
-		return type_nav_MAX_FOR(cc1_type_nav, bytes, is_signed);
+		return bytes == 0 ? NULL : type_nav_MAX_FOR(cc1_type_nav, bytes, is_signed);
 	}else{
 		return d->ref;
 	}
 }
 
-void decl_size_align_inc_bitfield(decl *d, unsigned *const sz, unsigned *const align)
+unsigned decl_size_inc_bitfield(decl *d)
 {
-	type *ty = decl_type_for_bitfield(d);
-
-	*sz = type_size(ty, NULL);
-	*align = type_align(ty, NULL);
+	return type_size(decl_type_for_bitfield(d), NULL);
 }
 
 static unsigned decl_align1(decl *d)
