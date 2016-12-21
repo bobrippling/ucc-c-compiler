@@ -380,7 +380,14 @@ attribute **parse_attr(symtable *scope)
 		attribute *this;
 		where w;
 		int alloc;
-		char *ident = curtok_to_identifier(&alloc);
+		char *ident;
+
+		if(accept(token_comma))
+			continue;
+		if(curtok == token_close_paren)
+			break;
+
+		ident = curtok_to_identifier(&alloc);
 
 		if(!ident){
 			parse_had_error = 1;
