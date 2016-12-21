@@ -129,35 +129,13 @@ attribute *expr_attr_present(expr *e, enum attribute_type t)
 const char *attribute_to_str(attribute *da)
 {
 	switch(da->type){
-		CASE_STR_PREFIX(attr, format);
-		CASE_STR_PREFIX(attr, unused);
-		CASE_STR_PREFIX(attr, warn_unused);
-		CASE_STR_PREFIX(attr, section);
-		CASE_STR_PREFIX(attr, enum_bitmask);
-		CASE_STR_PREFIX(attr, noreturn);
-		CASE_STR_PREFIX(attr, noderef);
-		CASE_STR_PREFIX(attr, nonnull);
-		CASE_STR_PREFIX(attr, packed);
-		CASE_STR_PREFIX(attr, sentinel);
-		CASE_STR_PREFIX(attr, aligned);
-		CASE_STR_PREFIX(attr, weak);
-		CASE_STR_PREFIX(attr, cleanup);
-		CASE_STR_PREFIX(attr, desig_init);
-		CASE_STR_PREFIX(attr, always_inline);
-		CASE_STR_PREFIX(attr, noinline);
-		CASE_STR_PREFIX(attr, constructor);
-		CASE_STR_PREFIX(attr, destructor);
-		CASE_STR_PREFIX(attr, ucc_debug);
-
-		case attr_call_conv:
-			switch(da->bits.conv){
-				case conv_x64_sysv: return "x64 SYSV";
-				case conv_x64_ms:   return "x64 MS";
-				CASE_STR_PREFIX(conv, cdecl);
-				CASE_STR_PREFIX(conv, stdcall);
-				CASE_STR_PREFIX(conv, fastcall);
-			}
-
+#define NAME(x, typrop) case attr_ ## x: return #x;
+#define ALIAS(s, x, typrop) case attr_ ## x: return s;
+#define EXTRA_ALIAS(s, x)
+		ATTRIBUTES
+#undef NAME
+#undef ALIAS
+#undef EXTRA_ALIAS
 		case attr_LAST:
 			break;
 	}
