@@ -249,6 +249,9 @@ static void try_shift_conv(
 		enum op_type *binop,
 		const out_val **lhs, const out_val **rhs)
 {
+	if(type_is_signed((*lhs)->t))
+		return;
+
 	if(*binop == op_divide && (*rhs)->type == V_CONST_I){
 		integral_t k = (*rhs)->bits.val_i;
 		if((k & (k - 1)) == 0){
