@@ -282,7 +282,7 @@ static void rename_files(
 
 					switch(mode){
 						case mode_compile:
-							if(!strcmp(backend, "ir"))
+							if(backend && !strcmp(backend, "ir"))
 								suffix = "ir";
 							else
 								suffix = "s";
