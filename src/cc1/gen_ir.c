@@ -398,6 +398,9 @@ static void gen_ir_dump_su(struct_union_enum_st *su, irctx *ctx)
 {
 	size_t i;
 
+	if(!su->members)
+		return;
+
 	gen_ir_comment(ctx, "struct %s:", su->spel);
 
 	for(i = 0; ; i++){
