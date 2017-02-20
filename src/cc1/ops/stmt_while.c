@@ -76,8 +76,8 @@ void gen_ir_stmt_while(const stmt *s, irctx *ctx)
 
 		printf("$%u = ne %s 0, %s\n",
 				cond_bool,
-				irtype_str(s->expr->tree_type),
-				irval_str(cond));
+				irtype_str(s->expr->tree_type, ctx),
+				irval_str(cond, ctx));
 
 		printf("br $%u, $%u, $%u\n",
 				cond_bool,

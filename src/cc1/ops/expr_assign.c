@@ -241,16 +241,16 @@ irval *gen_ir_assign_bitfield(irval *lhs, irval *rhs, expr *estruct, irctx *ctx)
 	mask_loaded = (~0ull << (width + nshift)) | ~(~0ull << nshift);
 	mask_input = ~(~0ull << width);
 
-	lit_ty_str = irtype_str(estruct->tree_type);
+	lit_ty_str = irtype_str(estruct->tree_type, ctx);
 
-	printf("$%u = load %s\n", loaded, irval_str(lhs));
+	printf("$%u = load %s\n", loaded, irval_str(lhs, ctx));
 
 	printf("$%u = and $%u, %s %" NUMERIC_FMT_U "\n",
 			masked_loaded, loaded, lit_ty_str,
 			integral_truncate_bits(mask_loaded, 8 * type_size(estruct->tree_type, NULL), NULL));
 
 	printf("$%u = and %s, %s %" NUMERIC_FMT_U "\n",
-			masked_input, irval_str(rhs), lit_ty_str,
+			masked_input, irval_str(rhs, ctx), lit_ty_str,
 			integral_truncate_bits(mask_input, 8 * type_size(estruct->tree_type, NULL), NULL));
 
 	printf("$%u = shiftl $%u, %s %u\n",
@@ -273,8 +273,8 @@ irval *gen_ir_expr_assign(const expr *e, irctx *ctx)
 	else
 		to_store = rhs;
 
-	printf("store %s, ", irval_str(lhs));
-	printf("%s\n", irval_str(to_store));
+	printf("store %s, ", irval_str(lhs, ctx));
+	printf("%s\n", irval_str(to_store, ctx));
 
 	irval_free(lhs);
 	if(to_store != rhs)

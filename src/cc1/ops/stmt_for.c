@@ -100,8 +100,8 @@ void gen_ir_stmt_for(const stmt *s, irctx *ctx)
 
 		printf("$%u = ne %s 0, %s\n",
 				val_test,
-				irtype_str(s->flow->for_while->tree_type),
-				irval_str(for_cond));
+				irtype_str(s->flow->for_while->tree_type, ctx),
+				irval_str(for_cond, ctx));
 
 		printf("br $%u, $%u, $%u\n",
 				val_test,

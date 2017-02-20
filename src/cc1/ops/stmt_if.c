@@ -161,15 +161,15 @@ void gen_ir_stmt_if(const stmt *s, irctx *ctx)
 
 		printf("$%u = ne %s 0, %s\n",
 				i1_tmp,
-				irtype_str(s->expr->tree_type),
-				irval_str(cond));
+				irtype_str(s->expr->tree_type, ctx),
+				irval_str(cond, ctx));
 
 		irval_free(cond);
 		cond = irval_from_id(i1_tmp);
 	}
 
 	printf("br %s, $%u, $%u\n",
-			irval_str(cond),
+			irval_str(cond, ctx),
 			blk_true,
 			blk_false);
 	irval_free(cond);

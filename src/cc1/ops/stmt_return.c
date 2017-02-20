@@ -117,7 +117,7 @@ void gen_ir_stmt_return(const stmt *s, irctx *ctx)
 		/* ignore ret_exp */
 		printf("ret void\n");
 	}else if(ret_exp){
-		printf("ret %s\n", irval_str(ret_exp));
+		printf("ret %s\n", irval_str(ret_exp, ctx));
 	}else{
 		/* empty return, non-void func */
 		printf("ret undef\n");

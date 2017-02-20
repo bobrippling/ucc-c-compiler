@@ -1251,8 +1251,8 @@ static void unary_op_gen(const expr *e, irval *lhs, irctx *ctx, unsigned const e
 			printf("$%u = %s %s 0, %s\n",
 					evali,
 					e->bits.op.op == op_plus ? "add" : "sub",
-					irtype_str(e->lhs->tree_type),
-					irval_str(lhs));
+					irtype_str(e->lhs->tree_type, ctx),
+					irval_str(lhs, ctx));
 			break;
 
 		case op_not:
@@ -1269,13 +1269,13 @@ static void unary_op_gen(const expr *e, irval *lhs, irctx *ctx, unsigned const e
 			/* compare with zero (maybe float), zext */
 			printf("$%u = eq %s 0, %s\n",
 					evaltmp,
-					irtype_str(e->lhs->tree_type),
-					irval_str(lhs));
+					irtype_str(e->lhs->tree_type, ctx),
+					irval_str(lhs, ctx));
 
 			if(need_ext){
 				printf("$%u = zext %s, $%u\n",
 						evali,
-						irtype_str(e->tree_type),
+						irtype_str(e->tree_type, ctx),
 						evaltmp);
 			}
 			break;
@@ -1285,8 +1285,8 @@ static void unary_op_gen(const expr *e, irval *lhs, irctx *ctx, unsigned const e
 		{
 			printf("$%u = xor %s -1, %s\n",
 					evali,
-					irtype_str(e->lhs->tree_type),
-					irval_str(lhs));
+					irtype_str(e->lhs->tree_type, ctx),
+					irval_str(lhs, ctx));
 			break;
 		}
 
@@ -1338,29 +1338,29 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 
 				printf("$%u = sub %s 0, %s # ptrsub\n",
 						addi,
-						irtype_str((is_ptr_lhs ? e->rhs : e->lhs)->tree_type),
-						irval_str(add));
+						irtype_str((is_ptr_lhs ? e->rhs : e->lhs)->tree_type, ctx),
+						irval_str(add, ctx));
 
 				irval_free(add);
 				add = irval_from_id(addi);
 			}
 
-			printf("$%u = ptradd %s, ", op_result, irval_str(ptr));
-			printf("%s\n", irval_str(add));
+			printf("$%u = ptradd %s, ", op_result, irval_str(ptr, ctx));
+			printf("%s\n", irval_str(add, ctx));
 
 		}else{
 			printf("$%u = %s %s, ",
 					op_result,
 					ir_op_str(e->bits.op.op, rshift_is_arith),
-					irval_str(lhs));
-			printf("%s\n", irval_str(rhs));
+					irval_str(lhs, ctx));
+			printf("%s\n", irval_str(rhs, ctx));
 
 			/* binary op - fixup the type to be a C type, if we've got an i1 */
 			if(fixup_type){
 				assert(op_result != evali);
 
 				printf("$%u = zext %s, $%u # C type fixup\n",
-						evali, irtype_str(e->tree_type), op_result);
+						evali, irtype_str(e->tree_type, ctx), op_result);
 			}
 		}
 	}

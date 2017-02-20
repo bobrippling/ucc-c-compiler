@@ -699,8 +699,8 @@ static irval *gen_ir_cast_ptr2ptr(const expr *e, irval *sub, irctx *ctx)
 
 	printf("$%u = ptrcast %s, %s\n",
 			to,
-			irtype_str(e->tree_type),
-			irval_str(sub));
+			irtype_str(e->tree_type, ctx),
+			irval_str(sub, ctx));
 
 	return irval_from_id(to);
 }
@@ -716,8 +716,8 @@ static irval *gen_ir_cast_int_ptr_swap(
 	printf("$%u = %s %s, %s\n",
 			to,
 			sub_ptr ? "ptr2int" : "int2ptr",
-			irtype_str(e->tree_type),
-			irval_str(sub));
+			irtype_str(e->tree_type, ctx),
+			irval_str(sub, ctx));
 
 	return irval_from_id(to);
 }
@@ -739,8 +739,8 @@ static irval *gen_ir_cast_int_ext_trunc(const expr *e, irval *sub, irctx *ctx)
 	printf("$%u = %s %s, %s\n",
 			to,
 			is_trunc ? "trunc" : zext ? "zext" : "sext",
-			irtype_str(e->tree_type),
-			irval_str(sub));
+			irtype_str(e->tree_type, ctx),
+			irval_str(sub, ctx));
 
 	return irval_from_id(to);
 }
@@ -786,7 +786,7 @@ irid gen_ir_lval2rval_bitfield(irid tmp, const expr *child, irctx *ctx)
 
 	mask = width - 1;
 
-	lit_ty_str = irtype_str(child->tree_type);
+	lit_ty_str = irtype_str(child->tree_type, ctx);
 
 	printf("$%u = shiftr_arith $%u, %s %u\n", bfid[0], tmp, lit_ty_str, nshift);
 	printf("$%u = and $%u, %s %u\n", bfid[1], bfid[0], lit_ty_str, mask);
@@ -808,9 +808,9 @@ static irval *gen_ir_lval2rval(irval *sub, const expr *e, irctx *ctx)
 
 	if(type_is(tnext, type_array)){
 		/* int[] -> int* */
-		printf("$%u = elem %s, i1 0\n", tmp, irval_str(sub));
+		printf("$%u = elem %s, i1 0\n", tmp, irval_str(sub, ctx));
 	}else{
-		printf("$%u = load %s\n", tmp, irval_str(sub));
+		printf("$%u = load %s\n", tmp, irval_str(sub, ctx));
 
 		/* special case bitfield loading */
 		if(expr_kind(child, struct)){

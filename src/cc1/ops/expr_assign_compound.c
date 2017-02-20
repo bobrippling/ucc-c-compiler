@@ -116,7 +116,7 @@ irval *gen_ir_expr_assign_compound(const expr *e, irctx *ctx)
 	const irid tmp_val = ctx->curval++;
 	int const rshift_is_arith = type_is_signed(e->lhs->tree_type);
 
-	printf("$%u = load %s\n", tmp_val, irval_str(lhs));
+	printf("$%u = load %s\n", tmp_val, irval_str(lhs, ctx));
 
 	/* special case bitfield storing */
 	if(expr_kind(e->lhs, struct)){
@@ -128,7 +128,7 @@ irval *gen_ir_expr_assign_compound(const expr *e, irctx *ctx)
 				compound_result,
 				ir_op_str(e->bits.compoundop.op, rshift_is_arith),
 				masked_lhs,
-				irval_str(rhs));
+				irval_str(rhs, ctx));
 
 		ret = gen_ir_assign_bitfield(lhs, compound_result_v, e->lhs, ctx);
 
@@ -141,13 +141,13 @@ irval *gen_ir_expr_assign_compound(const expr *e, irctx *ctx)
 				tmp_res,
 				ir_op_str(e->bits.compoundop.op, rshift_is_arith),
 				tmp_val,
-				irval_str(rhs));
+				irval_str(rhs, ctx));
 
 		ret = irval_from_id(tmp_res);
 	}
 
-	printf("store %s, ", irval_str(lhs));
-	printf("%s\n", irval_str(ret));
+	printf("store %s, ", irval_str(lhs, ctx));
+	printf("%s\n", irval_str(ret, ctx));
 
 	irval_free(lhs);
 	irval_free(rhs);
