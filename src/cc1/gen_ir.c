@@ -564,6 +564,7 @@ static const char *irtype_btype_str(const btype *bt)
 		case type_unknown:
 			assert(0 && "unknown type");
 	}
+	assert(0);
 }
 
 const char *ir_op_str(enum op_type op, int arith_rshift)
@@ -600,6 +601,7 @@ const char *ir_op_str(enum op_type op, int arith_rshift)
 		case op_unknown:
 			assert(0 && "unknown op");
 	}
+	assert(0);
 }
 
 int irtype_struct_decl_index(struct_union_enum_st *su, decl *d, unsigned *const out_idx)
