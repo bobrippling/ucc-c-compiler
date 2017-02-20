@@ -813,7 +813,7 @@ unsigned sue_hash(const struct_union_enum_st *sue)
 	if(!sue)
 		return 5;
 
-	return sue->primitive;
+	return sue->primitive ^ dynmap_strhash(sue->spel);
 }
 
 static unsigned type_hash2(
