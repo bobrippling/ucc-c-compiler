@@ -3,6 +3,7 @@
 
 struct irctx
 {
+	dynmap *sus; /* struct_union_enum_st* => char* */
 	unsigned curval;
 	unsigned curlbl;
 };

@@ -432,9 +432,20 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 
 	if(!d->spel){
 		struct_union_enum_st *su = type_is_s_or_u(d->ref);
-		if(su && IR_DUMP_FIELD_OFFSETS)
+		const char *braced_type;
+
+		if(!su)
+			return;
+
+		if(IR_DUMP_FIELD_OFFSETS)
 			gen_ir_dump_su(su, ctx);
 
+		/* generate the type name first */
+		braced_type = irtype_str_maybe_fn(d->ref, args, ctx);
+
+		printf("type %s = %s\n",
+				dynmap_get(struct_union_enum_st *, char *, ctx->sus, su),
+				braced_type);
 		return;
 	}
 
@@ -493,6 +504,8 @@ void gen_ir(symtable_global *globs)
 	symtable_gasm **iasm = globs->gasms;
 	decl **diter;
 
+	ctx.sus = dynmap_new(struct_union_enum_st *, NULL, sue_hash);
+
 	gen_ir_stringlits(globs->literals, 1);
 
 	for(diter = symtab_decls(&globs->stab); diter && *diter; diter++){
@@ -509,6 +522,8 @@ void gen_ir(symtable_global *globs)
 	}
 
 	gen_ir_stringlits(globs->literals, 0); /* must be after code-gen - use_cnt */
+
+	dynmap_free(ctx.sus);
 }
 
 static const char *irtype_btype_str(const btype *bt)
@@ -670,6 +685,26 @@ static void irtype_str_r(
 					sue_member **i;
 					unsigned current_idx = -1;
 					struct_union_enum_st *su = t->bits.type->sue;
+					char *asmspel;
+
+					assert(ctx->sus);
+					asmspel = dynmap_get(struct_union_enum_st *, char *, ctx->sus, su);
+
+					if(asmspel){
+						/* have the struct, use its name */
+						strbuf_fixed_printf(buf, "%s", asmspel);
+						break;
+					}else{
+						char *already;
+
+						if(su->anon)
+							asmspel = ustrprintf("$__su_%d", ctx->curlbl++);
+						else
+							asmspel = ustrprintf("$__su_%s", su->spel);
+
+						already = dynmap_set(struct_union_enum_st *, char *, ctx->sus, su, asmspel);
+						assert(!already);
+					}
 
 					strbuf_fixed_printf(buf, "{");
 
@@ -802,8 +837,11 @@ const char *irval_str(irval *v, irctx *ctx)
 		{
 			strbuf_fixed sbuf = STRBUF_FIXED_INIT_ARRAY(buf);
 			size_t len;
+			dynmap *structs = NULL;
 
 			irtype_str_r(&sbuf, v->bits.lit.ty, NULL, ctx);
+			dynmap_free(structs);
+
 			len = strlen(buf);
 
 			assert(len < sizeof buf);
