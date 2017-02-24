@@ -602,6 +602,7 @@ void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
 
 void asm_declare_decl_init(decl *d)
 {
+	int is_const, nonzero_init;
 	enum section_type sec;
 
 	if((d->store & STORE_MASK_STORE) == store_extern){
@@ -609,9 +610,18 @@ void asm_declare_decl_init(decl *d)
 		return;
 	}
 
-	sec = type_is_const(d->ref) ? SECTION_RODATA : SECTION_DATA;
+	is_const = type_is_const(d->ref);
+	nonzero_init = d->bits.var.init.dinit && !decl_init_is_zero(d->bits.var.init.dinit);
 
-	if(d->bits.var.init.dinit && !decl_init_is_zero(d->bits.var.init.dinit)){
+	if(is_const){
+		sec = SECTION_RODATA;
+	}else if(nonzero_init){
+		sec = SECTION_DATA;
+	}else{
+		sec = SECTION_BSS;
+	}
+
+	if(nonzero_init){
 		asm_nam_begin(sec, d);
 		asm_declare_init(sec, d->bits.var.init.dinit, d->ref);
 		asm_out_section(sec, "\n");
@@ -619,9 +629,6 @@ void asm_declare_decl_init(decl *d)
 	}else if(d->bits.var.init.compiler_generated && cc1_fopt.common){
 		const char *common_prefix = "comm ";
 		unsigned align;
-
-		/* section doesn't matter */
-		sec = SECTION_BSS;
 
 		if(decl_linkage(d) == linkage_internal){
 			if(AS_SUPPORTS_LOCAL_COMMON){
@@ -642,8 +649,8 @@ void asm_declare_decl_init(decl *d)
 
 	}else{
 		/* always resB, since we use decl_size() */
-		asm_nam_begin(SECTION_BSS, d);
-		asm_reserve_bytes(SECTION_BSS, decl_size(d));
+		asm_nam_begin(sec, d);
+		asm_reserve_bytes(sec, decl_size(d));
 	}
 }
 
