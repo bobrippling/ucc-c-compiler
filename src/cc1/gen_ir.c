@@ -1338,7 +1338,7 @@ static const char *irtype_str_maybe_fn_r(
 			strbuf_fixed_printf(buf, "[");
 			irtype_str_maybe_fn_r(buf, t->ref, ctx, NULL);
 			strbuf_fixed_printf(buf, " x %" NUMERIC_FMT_D "]",
-					const_fold_val_i(t->bits.array.size));
+					t->bits.array.size ? const_fold_val_i(t->bits.array.size) : 0);
 			break;
 
 		default:
