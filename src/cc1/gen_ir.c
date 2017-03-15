@@ -471,6 +471,9 @@ static void gen_ir_dump_su(struct_union_enum_st *su, irctx *ctx)
 
 	gen_ir_comment(ctx, "struct %s:", su->spel);
 
+	if(!su->members)
+		return;
+
 	for(i = 0; ; i++){
 		sue_member *su_mem = su->members[i];
 		decl *memb;
