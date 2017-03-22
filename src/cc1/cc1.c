@@ -130,6 +130,48 @@ static void ccdie(const char *fmt, ...)
 	exit(1);
 }
 
+static void dump_options(void)
+{
+	int i;
+
+	fprintf(stderr, "Output options\n");
+	fprintf(stderr, "  -g0, -gline-tables-only, -g[no-]column-info\n");
+	fprintf(stderr, "  -o output-file\n");
+	fprintf(stderr, "  -emit=(dump|print|asm|style)\n");
+	fprintf(stderr, "  -m(stringop-strategy=...|...)\n");
+	fprintf(stderr, "  -O[0123s]\n");
+	fprintf(stderr, "  --help\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Input options\n");
+	fprintf(stderr, "  -pedantic{,-errors}\n");
+	fprintf(stderr, "  -W(no-)?(all|extra|everything|gnu|error(=...)|...)\n");
+	fprintf(stderr, "  -w\n");
+	fprintf(stderr, "  -std=(gnu|c)(99|90|89|11), -ansi\n");
+	fprintf(stderr, "  -f(sanitize=...|sanitize-error=...)\n");
+	fprintf(stderr, "  -fvisibility=default|hidden|protected\n");
+	fprintf(stderr, "  -fdebug-compilation-dir=...\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Feature options\n");
+
+#define X(flag, memb) fprintf(stderr, "  -f[no-]" flag "\n");
+#define ALIAS X
+#define INVERT X
+#include "fopts.h"
+#undef X
+#undef ALIAS
+#undef INVERT
+
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Machine options\n");
+	for(i = 0; mopts[i].arg; i++)
+		fprintf(stderr, "  -m[no-]%s\n", mopts[i].arg);
+
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Feature/machine values\n");
+	for(i = 0; val_args[i].arg; i++)
+		fprintf(stderr, "  -%c%s=value\n", val_args[i].pref, val_args[i].arg);
+}
+
 int where_in_sysheader(const where *w)
 {
 	return w->is_sysh;
@@ -640,10 +682,14 @@ int main(int argc, char **argv)
 			if(optimise(*argv, argv[i] + 2))
 				exit(1);
 
+		}else if(!strcmp(argv[i], "--help")){
+			dump_options();
+			usage(argv[0], "");
+
 		}else if(!fname){
 			fname = argv[i];
 		}else{
-			usage(argv[0], "unknown argument %s", argv[i]);
+			usage(argv[0], "unknown argument: '%s'", argv[i]);
 		}
 	}
 
