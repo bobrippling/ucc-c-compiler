@@ -32,6 +32,9 @@ __attribute__((fastcall)), cdecl, etc
 code gen:
 	Treat %rsp as a frame constant if alloca() and vlas aren't used (impl_reg_frame_const)
 
+attempt to build:
+	https://github.com/mit-pdos/xv6-public
+
 cpp
 ###
 
