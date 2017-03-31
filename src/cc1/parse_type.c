@@ -571,7 +571,13 @@ static type *parse_btype(
 		decl *tdef_decl_test;
 
 		if(curtok_is_type_qual()){
-			qual |= curtok_to_type_qualifier();
+			enum type_qualifier q = curtok_to_type_qualifier();
+
+			if(qual & q){
+				cc1_warn_at(NULL, duplicate_declspec, "duplicate '%s' specifier", type_qual_to_str(q, 0));
+			}
+
+			qual |= q;
 			EAT(curtok);
 
 		}else if(curtok_is_decl_store()){

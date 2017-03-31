@@ -176,6 +176,7 @@ X("ignored-attributes", ignored_attribute)
 X("ignored-late-decl", ignored_late_decl)
 
 X("ignored-qualifiers", ignored_qualifiers)
+X("duplicate-decl-specifier", duplicate_declspec)
 
 X("implicit-old-func", implicit_old_func)
 
