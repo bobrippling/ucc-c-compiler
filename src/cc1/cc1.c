@@ -562,8 +562,19 @@ int main(int argc, char **argv)
 			else
 				usage(argv[0], "unknown emit backend \"%s\"", emit);
 
-		}else if(!strcmp(argv[i], "-g")){
-			cc1_gdebug = 1;
+		}else if(!strncmp(argv[i], "-g", 2)){
+			switch(argv[i][2]){
+				case '0':
+					if(argv[i][3]){
+				default:
+						die("-g extra argument unexpected");
+					}
+					cc1_gdebug = 0;
+					break;
+				case '\0':
+					cc1_gdebug = 1;
+					break;
+			}
 
 		}else if(!strcmp(argv[i], "-o")){
 			if(++i == argc)
