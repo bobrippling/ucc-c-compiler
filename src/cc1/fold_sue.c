@@ -24,6 +24,7 @@
 
 struct bitfield_state
 {
+	type *master_ty;
 	unsigned current_off, first_off;
 	unsigned current_limit;
 };
@@ -269,7 +270,10 @@ static void fold_sue_calc_fieldwidth(
 			struct_pack_finish_bitfield(offset, &bitfield->current_off);
 		}
 
+		bitfield->master_ty = d->ref;
 		bitfield->current_limit = CHAR_BIT * type_size(d->ref, &d->where);
+
+		d->bits.var.bitfield_master_ty = bitfield->master_ty;
 
 		/* Get some initial padding.
 		 * Note that we want to affect the align_max
@@ -292,6 +296,7 @@ static void fold_sue_calc_fieldwidth(
 		 * difference is in .struct_offset_bitfield
 		 */
 		d->bits.var.struct_offset = bitfield->first_off;
+		d->bits.var.bitfield_master_ty = bitfield->master_ty;
 	}
 
 	d->bits.var.struct_offset_bitfield = bitfield->current_off;

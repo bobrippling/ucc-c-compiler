@@ -47,6 +47,7 @@ struct decl
 		struct
 		{
 			struct expr *field_width;
+			type *bitfield_master_ty;
 			unsigned struct_offset;
 			unsigned struct_offset_bitfield; /* add onto struct_offset */
 			int first_bitfield; /* marker for the first bitfield in a set */
