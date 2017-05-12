@@ -218,6 +218,11 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 
 	v_unused_reg(octx, 1, is_fp, &reg_store, target);
 
+	if(bf.nbits){
+		/* need to ensure we load using the bitfield's master type */
+		target = out_cast(octx, target, type_ptr_to(bf.master_ty), 0);
+	}
+
 	dval = impl_deref(octx, target, reg);
 	if(bf.nbits)
 		dval = out_bitfield_to_scalar(octx, &bf, dval);
