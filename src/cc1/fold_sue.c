@@ -25,6 +25,7 @@
 struct bitfield_state
 {
 	unsigned current_off, first_off;
+	unsigned current_limit;
 };
 
 struct pack_state
@@ -229,7 +230,6 @@ static void fold_sue_calc_fieldwidth(
 		struct pack_state *pack_state,
 		int *const realign_next,
 		unsigned long *const offset,
-		unsigned *const bf_cur_lim,
 		struct bitfield_state *const bitfield)
 {
 	const unsigned bits = const_fold_val_i(pack_state->d->bits.var.field_width);
@@ -250,7 +250,7 @@ static void fold_sue_calc_fieldwidth(
 
 	}else if(*realign_next
 	|| !bitfield->current_off
-	|| bitfield->current_off + bits > *bf_cur_lim)
+	|| bitfield->current_off + bits > bitfield->current_limit)
 	{
 		if(*realign_next || bitfield->current_off){
 			if(!*realign_next){
@@ -259,7 +259,7 @@ static void fold_sue_calc_fieldwidth(
 						bitfield_boundary,
 						"bitfield overflow (%d + %d > %d) - "
 						"moved to next boundary", bitfield->current_off, bits,
-						*bf_cur_lim);
+						bitfield->current_limit);
 			}else{
 				*realign_next = 0;
 			}
@@ -269,7 +269,7 @@ static void fold_sue_calc_fieldwidth(
 			struct_pack_finish_bitfield(offset, &bitfield->current_off);
 		}
 
-		*bf_cur_lim = CHAR_BIT * type_size(d->ref, &d->where);
+		bitfield->current_limit = CHAR_BIT * type_size(d->ref, &d->where);
 
 		/* Get some initial padding.
 		 * Note that we want to affect the align_max
@@ -297,7 +297,7 @@ static void fold_sue_calc_fieldwidth(
 	d->bits.var.struct_offset_bitfield = bitfield->current_off;
 	bitfield->current_off += bits; /* allowed to go above sizeof(int) */
 
-	if(bitfield->current_off == *bf_cur_lim){
+	if(bitfield->current_off == bitfield->current_limit){
 		/* exactly reached the limit, reset bitfield indexing */
 		bitfield->current_off = 0;
 	}
@@ -395,7 +395,6 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		fold_enum(sue, stab);
 
 	}else{
-		unsigned bf_cur_lim;
 		unsigned align_max = 1;
 		unsigned sz_max = 0;
 		unsigned long offset = 0;
@@ -440,7 +439,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				fold_sue_calc_fieldwidth(
 						&pack_state,
 						&realign_next, &offset,
-						&bf_cur_lim, &bitfield);
+						&bitfield);
 
 			}else{
 				fold_sue_calc_normal(&pack_state);
