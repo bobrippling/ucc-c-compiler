@@ -266,12 +266,14 @@ const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 
 const out_val *out_set_bitfield(
 		out_ctx *octx, const out_val *val,
-		unsigned off, unsigned nbits)
+		unsigned off, unsigned nbits,
+		type *master_ty)
 {
 	out_val *mut = v_dup_or_reuse(octx, val, val->t);
 
 	mut->bitfield.off = off;
 	mut->bitfield.nbits = nbits;
+	mut->bitfield.master_ty = master_ty;
 
 	return mut;
 }

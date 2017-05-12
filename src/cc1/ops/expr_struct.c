@@ -150,7 +150,11 @@ const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 			unsigned w = const_fold_val_i(d->bits.var.field_width);
 
 			off = out_set_bitfield(
-					octx, off, d->bits.var.struct_offset_bitfield, w);
+					octx,
+					off,
+					d->bits.var.struct_offset_bitfield,
+					w,
+					d->bits.var.bitfield_master_ty);
 
 			out_comment(octx, "struct bitfield lea");
 		}
