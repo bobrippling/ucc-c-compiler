@@ -22,7 +22,7 @@
 #include "type_is.h"
 #include "type_nav.h"
 
-#define DUMP_RECORD_LAYOUT 1
+#define DUMP_RECORD_LAYOUT 0
 
 struct bitfield_state
 {
@@ -479,10 +479,13 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 					fprintf(stderr, "      ");
 				}
 
-				fprintf(stderr, "| .%-10s size=%u align=%u\n",
-						d->spel,
+				fprintf(stderr, "| .%-10s", d->spel);
+				if(type_is_complete(d->ref)){
+					fprintf(stderr, " size=%u align=%u",
 						type_size(d->ref, NULL),
 						decl_align(d));
+				}
+				fprintf(stderr, "\n");
 			}
 
 			if(pack_state.align > align_max)
