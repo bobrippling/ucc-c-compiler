@@ -333,6 +333,8 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 			}
 
 			if(d_mem->bits.var.field_width){
+				const int zero_width = const_fold_val_i(d_mem->bits.var.field_width) == 0;
+
 				if(!first_bf || d_mem->bits.var.first_bitfield){
 					if(first_bf){
 						DEBUG("new bitfield group (%s is new boundary), old:",
@@ -340,12 +342,15 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 						/* next bitfield group - store the current */
 						bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
 					}
-					first_bf = d_mem;
+					if(!zero_width)
+						first_bf = d_mem;
 				}
 
-				bitfields = bitfields_add(
-						bitfields, &nbitfields,
-						d_mem, di_to_use);
+				if(!zero_width){
+					bitfields = bitfields_add(
+							bitfields, &nbitfields,
+							d_mem, di_to_use);
+				}
 
 			}else{
 				if(nbitfields){
