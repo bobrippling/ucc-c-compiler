@@ -22,7 +22,7 @@
 #include "type_is.h"
 #include "type_nav.h"
 
-#define DUMP_RECORD_LAYOUT 0
+#define DUMP_RECORD_LAYOUT 1
 
 struct bitfield_state
 {
@@ -51,14 +51,14 @@ static void struct_pack(
 }
 
 static void struct_pack_finish_bitfield(
-		unsigned long *poffset, unsigned *pbitfield_current)
+		unsigned long *offset, struct bitfield_state *bitfield)
 {
-	/* gone from a bitfield to a normal field - pad by the overflow */
-	unsigned change = *pbitfield_current / CHAR_BIT;
+	if(bitfield->master_ty){
+		unsigned master_ty_size = type_size(bitfield->master_ty, NULL);
 
-	*poffset = pack_to_align(*poffset + change, 1);
-
-	*pbitfield_current = 0;
+		if(*offset % master_ty_size)
+			*offset += master_ty_size - *offset % master_ty_size;
+	}
 }
 
 static void fold_enum(struct_union_enum_st *en, symtable *stab)
@@ -263,13 +263,15 @@ static void fold_sue_calc_fieldwidth(
 						"bitfield overflow (%d + %d > %d) - "
 						"moved to next boundary", bitfield->current_off, bits,
 						bitfield->current_limit);
-			}else{
-				*realign_next = 0;
 			}
 
-			/* don't pay attention to the current bitfield offset */
+			*realign_next = 0;
 			bitfield->current_off = 0;
-			struct_pack_finish_bitfield(offset, &bitfield->current_off);
+
+			if(bitfield->master_ty){
+				/* round offset up to master_ty's size */
+				struct_pack_finish_bitfield(offset, bitfield);
+			}
 		}
 
 		bitfield->master_ty = d->ref;
@@ -307,6 +309,8 @@ static void fold_sue_calc_fieldwidth(
 	if(bitfield->current_off == bitfield->current_limit){
 		/* exactly reached the limit, reset bitfield indexing */
 		bitfield->current_off = 0;
+
+		struct_pack_finish_bitfield(offset, bitfield);
 	}
 }
 
