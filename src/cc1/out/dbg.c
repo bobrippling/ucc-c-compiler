@@ -856,6 +856,7 @@ static struct DIE *dwarf_suetype(
 		case type_struct:
 		{
 			sue_member **si;
+			decl *current_bitfield = NULL;
 
 			suedie = dwarf_sue_header(
 					cu,
@@ -872,6 +873,9 @@ static struct DIE *dwarf_suetype(
 
 				struct dwarf_block *offset;
 				struct dwarf_block_ent *blkents;
+
+				if(dmem->bits.var.first_bitfield)
+					current_bitfield = dmem;
 
 				if(DECL_IS_ANON_BITFIELD(dmem)){
 					/* skip, otherwise dwarf thinks this decl's a field and messes up */
@@ -909,7 +913,7 @@ static struct DIE *dwarf_suetype(
 				/* bitfield */
 				if(dmem->bits.var.field_width){
 					form_data_t width = const_fold_val_i(dmem->bits.var.field_width);
-					form_data_t whole_sz = type_size(dmem->ref, NULL);
+					form_data_t whole_sz = type_size(current_bitfield->ref, NULL);
 
 					/* address of top-end */
 					form_data_t off =

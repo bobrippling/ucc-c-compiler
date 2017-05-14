@@ -58,7 +58,12 @@ const out_val *out_val_release(out_ctx *, const out_val *);
 
 
 /* value use */
-const out_val *out_set_bitfield(out_ctx *, const out_val *, unsigned off, unsigned nbits)
+const out_val *out_set_bitfield(
+		out_ctx *,
+		const out_val *,
+		unsigned off,
+		unsigned nbits,
+		type *master_ty)
 	ucc_wur;
 
 void out_store(out_ctx *, const out_val *dest, const out_val *val);

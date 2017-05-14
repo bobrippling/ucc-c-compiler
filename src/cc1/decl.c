@@ -120,6 +120,33 @@ unsigned decl_size(decl *d)
 	return type_size(d->ref, &d->where);
 }
 
+type *decl_type_for_bitfield(decl *d)
+{
+	assert(!type_is(d->ref, type_func));
+
+	if(d->bits.var.field_width){
+		const unsigned bits = const_fold_val_i(d->bits.var.field_width);
+		const int is_signed = type_is_signed(d->ref);
+		unsigned bytes = bits / CHAR_BIT;
+
+		/* need to add on a byte for any leftovers */
+		if(bits % CHAR_BIT)
+			bytes++;
+
+		return type_nav_MAX_FOR(cc1_type_nav, bytes, is_signed);
+	}else{
+		return d->ref;
+	}
+}
+
+void decl_size_align_inc_bitfield(decl *d, unsigned *const sz, unsigned *const align)
+{
+	type *ty = decl_type_for_bitfield(d);
+
+	*sz = type_size(ty, NULL);
+	*align = type_align(ty, NULL);
+}
+
 unsigned decl_align(decl *d)
 {
 	unsigned al = 0;

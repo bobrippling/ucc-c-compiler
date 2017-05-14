@@ -47,6 +47,7 @@ struct decl
 		struct
 		{
 			struct expr *field_width;
+			type *bitfield_master_ty;
 			unsigned struct_offset;
 			unsigned struct_offset_bitfield; /* add onto struct_offset */
 			int first_bitfield; /* marker for the first bitfield in a set */
@@ -106,6 +107,8 @@ void         decl_free(decl *);
 
 unsigned decl_size(decl *);
 unsigned decl_align(decl *);
+void decl_size_align_inc_bitfield(decl *, unsigned *const sz, unsigned *const align);
+type *decl_type_for_bitfield(decl *);
 
 enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts);
 unsigned decl_hash(const decl *);

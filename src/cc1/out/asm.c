@@ -333,6 +333,8 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 			}
 
 			if(d_mem->bits.var.field_width){
+				const int zero_width = const_fold_val_i(d_mem->bits.var.field_width) == 0;
+
 				if(!first_bf || d_mem->bits.var.first_bitfield){
 					if(first_bf){
 						DEBUG("new bitfield group (%s is new boundary), old:",
@@ -340,17 +342,21 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 						/* next bitfield group - store the current */
 						bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
 					}
-					first_bf = d_mem;
+					if(!zero_width)
+						first_bf = d_mem;
 				}
 
-				bitfields = bitfields_add(
-						bitfields, &nbitfields,
-						d_mem, di_to_use);
+				if(!zero_width){
+					bitfields = bitfields_add(
+							bitfields, &nbitfields,
+							d_mem, di_to_use);
+				}
 
 			}else{
 				if(nbitfields){
 					DEBUG("at non-bitfield, prev-bitfield out:", 0);
-					bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
+
+					bitfields_out(sec, bitfields, &nbitfields, decl_type_for_bitfield(first_bf));
 					first_bf = NULL;
 				}
 
@@ -361,9 +367,11 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 			if(type_is_incomplete_array(d_mem->ref)){
 				UCC_ASSERT(!mem[1], "flex-arr not at end");
 			}else if(!d_mem->bits.var.field_width || d_mem->bits.var.first_bitfield){
-				unsigned last_sz = type_size(d_mem->ref, NULL);
+				unsigned sz, align;
 
-				end_of_last = d_mem->bits.var.struct_offset + last_sz;
+				decl_size_align_inc_bitfield(d_mem, &sz, &align);
+
+				end_of_last = d_mem->bits.var.struct_offset + sz;
 				DEBUG("done with member \"%s\", end_of_last = %d",
 						d_mem->spel, end_of_last);
 			}

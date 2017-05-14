@@ -22,9 +22,13 @@
 #include "type_is.h"
 #include "type_nav.h"
 
+#define DUMP_RECORD_LAYOUT 0
+
 struct bitfield_state
 {
+	type *master_ty;
 	unsigned current_off, first_off;
+	unsigned current_limit;
 };
 
 struct pack_state
@@ -47,32 +51,14 @@ static void struct_pack(
 }
 
 static void struct_pack_finish_bitfield(
-		unsigned long *poffset, unsigned *pbitfield_current)
+		unsigned long *offset, struct bitfield_state *bitfield)
 {
-	/* gone from a bitfield to a normal field - pad by the overflow */
-	unsigned change = *pbitfield_current / CHAR_BIT;
+	if(bitfield->master_ty){
+		unsigned master_ty_size = type_size(bitfield->master_ty, NULL);
 
-	*poffset = pack_to_align(*poffset + change, 1);
-
-	*pbitfield_current = 0;
-}
-
-static void bitfield_size_align(
-		type *tref, unsigned *psz, unsigned *palign, where *from)
-{
-	/* implementation defined if ty isn't one of:
-	 * unsigned, signed or _Bool.
-	 * We make it take that align,
-	 * and reserve a max. of that size for the bitfield
-	 */
-	const btype *ty;
-	tref = type_is_primitive(tref, type_unknown);
-	assert(tref);
-
-	ty = tref->bits.type;
-
-	*psz = btype_size(ty, from);
-	*palign = btype_align(ty, from);
+		if(*offset % master_ty_size)
+			*offset += master_ty_size - *offset % master_ty_size;
+	}
 }
 
 static void fold_enum(struct_union_enum_st *en, symtable *stab)
@@ -247,7 +233,6 @@ static void fold_sue_calc_fieldwidth(
 		struct pack_state *pack_state,
 		int *const realign_next,
 		unsigned long *const offset,
-		unsigned *const bf_cur_lim,
 		struct bitfield_state *const bitfield)
 {
 	const unsigned bits = const_fold_val_i(pack_state->d->bits.var.field_width);
@@ -268,7 +253,7 @@ static void fold_sue_calc_fieldwidth(
 
 	}else if(*realign_next
 	|| !bitfield->current_off
-	|| bitfield->current_off + bits > *bf_cur_lim)
+	|| bitfield->current_off + bits > bitfield->current_limit)
 	{
 		if(*realign_next || bitfield->current_off){
 			if(!*realign_next){
@@ -277,42 +262,55 @@ static void fold_sue_calc_fieldwidth(
 						bitfield_boundary,
 						"bitfield overflow (%d + %d > %d) - "
 						"moved to next boundary", bitfield->current_off, bits,
-						*bf_cur_lim);
-			}else{
-				*realign_next = 0;
+						bitfield->current_limit);
 			}
 
-			/* don't pay attention to the current bitfield offset */
+			*realign_next = 0;
 			bitfield->current_off = 0;
-			struct_pack_finish_bitfield(offset, &bitfield->current_off);
+
+			if(bitfield->master_ty){
+				/* round offset up to master_ty's size */
+				struct_pack_finish_bitfield(offset, bitfield);
+			}
 		}
 
-		*bf_cur_lim = CHAR_BIT * type_size(d->ref, &d->where);
+		bitfield->master_ty = d->ref;
+		bitfield->current_limit = CHAR_BIT * type_size(d->ref, &d->where);
+
+		d->bits.var.bitfield_master_ty = bitfield->master_ty;
 
 		/* Get some initial padding.
 		 * Note that we want to affect the align_max
 		 * of the struct and the size of this field
 		 */
-		bitfield_size_align(d->ref, &pack_state->sz, &pack_state->align, &d->where);
+		decl_size_align_inc_bitfield(d, &pack_state->sz, &pack_state->align);
 
 		/* we are onto the beginning of a new group */
 		struct_pack(d, offset, pack_state->sz, pack_state->align);
 		bitfield->first_off = d->bits.var.struct_offset;
 		d->bits.var.first_bitfield = 1;
 
+		/* now that we've done the struct packing w.r.t. bitfield size, we change
+		 * pack_state->align to the align of the declared member type itself, to
+		 * affect the struct's alignment (and also tail padding, etc) */
+		pack_state->align = type_align(d->ref, NULL);
+
 	}else{
 		/* mirror previous bitfields' offset in the struct
 		 * difference is in .struct_offset_bitfield
 		 */
 		d->bits.var.struct_offset = bitfield->first_off;
+		d->bits.var.bitfield_master_ty = bitfield->master_ty;
 	}
 
 	d->bits.var.struct_offset_bitfield = bitfield->current_off;
 	bitfield->current_off += bits; /* allowed to go above sizeof(int) */
 
-	if(bitfield->current_off == *bf_cur_lim){
+	if(bitfield->current_off == bitfield->current_limit){
 		/* exactly reached the limit, reset bitfield indexing */
 		bitfield->current_off = 0;
+
+		struct_pack_finish_bitfield(offset, bitfield);
 	}
 }
 
@@ -408,7 +406,6 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		fold_enum(sue, stab);
 
 	}else{
-		unsigned bf_cur_lim;
 		unsigned align_max = 1;
 		unsigned sz_max = 0;
 		unsigned long offset = 0;
@@ -419,6 +416,9 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		const int packed = !!attr_present(sue->attr, attr_packed);
 
 		memset(&bitfield, 0, sizeof bitfield);
+
+		if(DUMP_RECORD_LAYOUT)
+			fprintf(stderr, "Record layout for %s:\n", sue->spel);
 
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
@@ -453,7 +453,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				fold_sue_calc_fieldwidth(
 						&pack_state,
 						&realign_next, &offset,
-						&bf_cur_lim, &bitfield);
+						&bitfield);
 
 			}else{
 				fold_sue_calc_normal(&pack_state);
@@ -464,6 +464,28 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 			if(sue->primitive == type_struct && !d->bits.var.field_width){
 				fold_sue_apply_normal_offset(&pack_state, &offset, &bitfield);
+			}
+
+			if(DUMP_RECORD_LAYOUT){
+				fprintf(stderr, " %2u", d->bits.var.struct_offset);
+
+				if(d->bits.var.field_width){
+					const unsigned bits = const_fold_val_i(d->bits.var.field_width);
+
+					fprintf(stderr, ":%2u-%-2u",
+							d->bits.var.struct_offset_bitfield,
+							d->bits.var.struct_offset_bitfield + bits - 1);
+				}else{
+					fprintf(stderr, "      ");
+				}
+
+				fprintf(stderr, "| .%-10s", d->spel);
+				if(type_is_complete(d->ref)){
+					fprintf(stderr, " size=%u align=%u",
+						type_size(d->ref, NULL),
+						decl_align(d));
+				}
+				fprintf(stderr, "\n");
 			}
 
 			if(pack_state.align > align_max)
@@ -491,6 +513,9 @@ warn:
 		sue->size = pack_to_align(
 				sue->primitive == type_struct ? offset : sz_max,
 				align_max);
+
+		if(DUMP_RECORD_LAYOUT)
+			fprintf(stderr, "         | record size=%u align=%u\n", sue->size, sue->align);
 	}
 
 	sue->foldprog = SUE_FOLDED_FULLY;

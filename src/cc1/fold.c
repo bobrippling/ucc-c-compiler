@@ -265,12 +265,44 @@ expr *fold_expr_lval2rval(expr *e, symtable *stab)
 
 	if(should_lval2rval || type_is(e->tree_type, type_func)){
 		struct_union_enum_st *enum_ty;
+		expr *const orig_e = e;
 
 		e = expr_set_where(
 				expr_new_cast_lval_decay(e),
 				&e->where);
 
 		fold_expr_cast_descend(e, stab, 0);
+
+		/* if we've just lval2rval'd a bitfield, we may need to promote it */
+		if(expr_kind(orig_e, struct)
+		&& orig_e->bits.struct_mem.d
+		&& orig_e->bits.struct_mem.d->bits.var.field_width)
+		{
+			/*
+			 * If an int can represent all values of the original type (as restricted
+			 * by the width, for a bit-field), the value is converted to an int;
+			 * otherwise, it is converted to an unsigned int.
+			 */
+			decl *bitfield = orig_e->bits.struct_mem.d;
+			unsigned bf_nbits = const_fold_val_i(bitfield->bits.var.field_width);
+			unsigned uint_nbits = type_primitive_size(type_int) * CHAR_BIT;
+			unsigned sint_nbits = uint_nbits - 1; /* we assume 2's complement: */
+			type *prom;
+
+			if(bf_nbits <= sint_nbits){
+				/* can be represented in int */
+				if(!type_is_signed(bitfield->ref)){
+					cc1_warn_at(&orig_e->where, bitfield_promotion,
+							"promoting unsigned bitfield to int");
+				}
+				prom = type_nav_btype(cc1_type_nav, type_int);
+			}else{
+				/* must be represented in unsigned int */
+				prom = type_nav_btype(cc1_type_nav, type_uint);
+			}
+
+			fold_insert_casts(prom, &e, stab);
+		}
 
 		if((enum_ty = type_is_enum(e->tree_type))){
 			/* enums always become ints */

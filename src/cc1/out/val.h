@@ -62,6 +62,7 @@ struct out_val
 
 	struct vbitfield
 	{
+		type *master_ty;
 		unsigned short off, nbits;
 	} bitfield; /* !!width iif bitfield */
 	unsigned char flags;
