@@ -481,7 +481,7 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 
 void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align)
 {
-	if(AS_ALIGN_IS_POW2){
+	if(mopt_mode & MOPT_ALIGN_IS_POW2){
 		align = log2i(align);
 	}
 
@@ -587,7 +587,7 @@ void asm_declare_decl_init(decl *d)
 		}
 
 		align = decl_align(d);
-		if(AS_ALIGN_IS_POW2){
+		if(mopt_mode & MOPT_ALIGN_IS_POW2){
 			align = log2i(align);
 		}
 

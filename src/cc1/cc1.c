@@ -84,6 +84,7 @@ static struct
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 	{ 'm',  "32", MOPT_32 },
 	{ 'm',  "64", ~MOPT_32 },
+	{ 'm',  "align-is-p2", MOPT_ALIGN_IS_POW2 },
 
 	{ 0,  NULL, 0 }
 };
