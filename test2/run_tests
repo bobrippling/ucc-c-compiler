@@ -104,7 +104,8 @@ die "can't be quiet and verbose" if $quiet and $verbose;
 
 @ignores = read_ignores($ign_file) if $ign_file;
 
-my $tdir = '/tmp/ucc.test/';
+my $env_tmpdir = $ENV{TMPDIR} || '/tmp';
+my $tdir = "$env_tmpdir/ucc.test/";
 my @unlinks;
 push @unlinks, $tdir;
 if(not -d $tdir and not mkdir($tdir)){
