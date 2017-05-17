@@ -165,13 +165,11 @@ const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 
 void dump_expr_struct(const expr *e, dump *ctx)
 {
-	decl *mem = e->bits.struct_mem.d;
-
 	dump_desc_expr_newline(ctx, "member-access", e, 0);
 
 	dump_printf_indent(ctx, 0, " %s%s\n",
 			e->expr_is_st_dot ? "." : "->",
-			mem->spel);
+			e->bits.struct_mem.d ? e->bits.struct_mem.d->spel : "<error>");
 
 	dump_inc(ctx);
 	dump_expr(e->lhs, ctx);
@@ -183,6 +181,11 @@ static void fold_const_expr_struct(expr *e, consty *k)
 	/* if lhs is NULL (or some pointer constant),
 	 * const fold to struct offset, (obv. if !dot, which is taken care of in fold) */
 	const_fold(e->lhs, k);
+
+	if(!e->bits.struct_mem.d){
+		CONST_FOLD_NO(k, e);
+		return;
+	}
 
 	switch(k->type){
 		case CONST_NO:
