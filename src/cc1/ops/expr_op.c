@@ -149,10 +149,12 @@ static void const_op_num_int(
 		case 1:
 		{
 			collapsed_consty *num_side = NULL;
-			if(lhs->type == CONST_NUM)
+			if(!l.lbl)
 				num_side = &l;
-			else if(rhs)
+			else if(!r.lbl)
 				num_side = &r;
+			else
+				assert(0 && "unreachable");
 
 			/* label and num - only + and -, or comparison */
 			switch(e->bits.op.op){
