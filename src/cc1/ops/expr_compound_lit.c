@@ -123,11 +123,22 @@ void dump_expr_compound_lit(const expr *e, dump *ctx)
 {
 	decl *const d = e->bits.complit.decl;
 
+	if(e->expr_comp_lit_cgen)
+		return;
+
+	GEN_CONST_CAST(expr *, e)->expr_comp_lit_cgen = 1;
+
 	dump_desc_expr(ctx, "compound literal", e);
 
 	dump_inc(ctx);
 	dump_init(ctx, d->bits.var.init.dinit);
+	dump_desc_expr(ctx, "compound literal generated init", e);
+	dump_inc(ctx);
+	dump_expr(e->bits.complit.decl->bits.var.init.expr, ctx);
 	dump_dec(ctx);
+	dump_dec(ctx);
+
+	GEN_CONST_CAST(expr *, e)->expr_comp_lit_cgen = 0;
 }
 
 const out_val *gen_expr_style_compound_lit(const expr *e, out_ctx *octx)
