@@ -148,7 +148,7 @@ static void const_expr_addr(expr *e, consty *k)
 				break;
 
 			default:
-				k->type = CONST_NO;
+				CONST_FOLD_NO(k, e);
 				break;
 		}
 	}

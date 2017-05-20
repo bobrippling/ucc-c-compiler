@@ -155,7 +155,7 @@ static expr *parse_expr__Generic(symtable *scope, int static_ctx)
 			expr_new__Generic(test, lbls), &w);
 }
 
-static expr *parse_expr_identifier(void)
+expr *parse_expr_identifier(void)
 {
 	expr *e;
 	char *sp;

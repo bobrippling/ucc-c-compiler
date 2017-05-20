@@ -106,15 +106,18 @@ static void const_expr_compound_lit(expr *e, consty *k)
 	decl *d = e->bits.complit.decl;
 	expr *nonstd = NULL;
 
-	if(decl_init_is_const(d->bits.var.init.dinit, NULL, d->ref, &nonstd)){
+	if(decl_init_is_const(d->bits.var.init.dinit, NULL, d->ref, &nonstd, NULL)
+	&& decl_store_duration_is_static(d))
+	{
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR_OR_NEED(d);
 		k->bits.addr.is_lbl = 1;
 		k->bits.addr.bits.lbl = decl_asm_spel(d);
 		k->offset = 0;
-		k->nonstandard_const = nonstd;
+		if(!k->nonstandard_const)
+			k->nonstandard_const = nonstd;
 	}else{
-		k->type = CONST_NO;
+		CONST_FOLD_NO(k, e);
 	}
 }
 
@@ -122,11 +125,22 @@ void dump_expr_compound_lit(const expr *e, dump *ctx)
 {
 	decl *const d = e->bits.complit.decl;
 
+	if(e->expr_comp_lit_cgen)
+		return;
+
+	GEN_CONST_CAST(expr *, e)->expr_comp_lit_cgen = 1;
+
 	dump_desc_expr(ctx, "compound literal", e);
 
 	dump_inc(ctx);
 	dump_init(ctx, d->bits.var.init.dinit);
+	dump_desc_expr(ctx, "compound literal generated init", e);
+	dump_inc(ctx);
+	dump_expr(e->bits.complit.decl->bits.var.init.expr, ctx);
 	dump_dec(ctx);
+	dump_dec(ctx);
+
+	GEN_CONST_CAST(expr *, e)->expr_comp_lit_cgen = 0;
 }
 
 const out_val *gen_expr_style_compound_lit(const expr *e, out_ctx *octx)

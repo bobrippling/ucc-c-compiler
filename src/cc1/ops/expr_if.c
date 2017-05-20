@@ -28,7 +28,7 @@ static void fold_const_expr_if(expr *e, consty *k)
 
 	/* only evaluate lhs/rhs' constness if we need to */
 	if(!CONST_AT_COMPILE_TIME(consts[0].type)){
-		k->type = CONST_NO;
+		CONST_FOLD_NO(k, e);
 		return;
 	}
 
@@ -52,7 +52,10 @@ static void fold_const_expr_if(expr *e, consty *k)
 	res = res ? 1 : 2; /* index into consts */
 
 	if(!CONST_AT_COMPILE_TIME(consts[res].type)){
-		k->type = CONST_NO;
+		const_fold_no(k,
+				&consts[1], e->lhs ? e->lhs : e->expr,
+				&consts[2], e->rhs);
+
 	}else{
 		memcpy_safe(k, &consts[res]);
 		k->nonstandard_const = consts[res == 1 ? 2 : 1].nonstandard_const;

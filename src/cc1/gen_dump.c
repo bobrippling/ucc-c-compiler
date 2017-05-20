@@ -27,6 +27,7 @@ static const char *const col_ptr = "\x1b[0;33m";
 static const char *const col_where = "\x1b[0;33m";
 static const char *const col_type = "\x1b[0;32m";
 static const char *const col_strlit = "\x1b[1;36m";
+static const char *const col_const = "\x1b[0;36m";
 static const char *const col_off = "\x1b[m";
 
 struct dump
@@ -126,8 +127,15 @@ void dump_desc_expr_newline(
 	dump_desc_colour_newline(ctx, desc, e, &e->where,
 			maybe_colour(ctx->fout, col_desc_expr), 0);
 
-	if(e->tree_type)
+	if(e->tree_type){
+		consty k;
+
 		dump_type(ctx, e->tree_type);
+
+		const_fold((expr *)e, &k);
+		if(k.type != CONST_NO)
+			fprintf(ctx->fout, " %s%s%s", col_const, constyness_strs[k.type], col_off);
+	}
 
 	dump_newline(ctx, newline);
 }

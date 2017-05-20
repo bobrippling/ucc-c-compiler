@@ -152,7 +152,7 @@ static void const_expr__Generic(expr *e, consty *k)
 	/* we're const if our chosen expr is */
 	if(!e->bits.generic.chosen){
 		UCC_ASSERT(fold_had_error, "_Generic const check before fold");
-		k->type = CONST_NO;
+		CONST_FOLD_NO(k, e);
 		return;
 	}
 

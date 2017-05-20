@@ -476,6 +476,11 @@ static void parse_argv(
 						ADD_ARG(mode_preproc);
 					}
 
+					if(!strcmp(argv[i], "-fcpp-offsetof")){
+						ADD_ARG(mode_preproc);
+						continue;
+					}
+
 					/* pass the rest onto cc1 */
 					ADD_ARG(mode_compile);
 					continue;

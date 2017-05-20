@@ -176,6 +176,8 @@ struct expr
 		} builtin_nantype;
 
 		struct stmt *variadic_setup;
+
+		type *offsetof_ty;
 	} bits;
 
 	int in_parens; /* for if((x = 5)) testing */
@@ -305,6 +307,8 @@ enum lvalue_kind expr_is_lval(expr *e);
 
 enum lvalue_kind expr_is_lval_always(expr *);
 enum lvalue_kind expr_is_lval_struct(expr *);
+
+int expr_is_struct_bitfield(const expr *); /* a->b where b is bitfield */
 
 void expr_set_const(expr *, consty *);
 

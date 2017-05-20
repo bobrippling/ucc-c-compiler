@@ -1057,7 +1057,7 @@ void fold_check_decl_complete(decl *d)
 
 void fold_decl_global_init(decl *d, symtable *stab)
 {
-	expr *nonstd = NULL;
+	expr *nonstd = NULL, *nonconst = NULL;
 	const char *type;
 
 	if(!type_is(d->ref, type_func) && !d->bits.var.init.dinit)
@@ -1067,14 +1067,18 @@ void fold_decl_global_init(decl *d, symtable *stab)
 	decl_init_brace_up_fold(d, stab);
 
 	type = stab->parent ? "static" : "global";
-	if(!decl_init_is_const(d->bits.var.init.dinit, stab, d->ref, &nonstd)){
-
+	if(!decl_init_is_const(d->bits.var.init.dinit, stab, d->ref, &nonstd, &nonconst)){
 		warn_at_print_error(&d->bits.var.init.dinit->where,
 				"%s %s initialiser not constant",
-				type, decl_init_to_str(d->bits.var.init.dinit->type));
+				type, decl_init_to_str(d->bits.var.init.dinit->type), nonconst);
 
 		fold_had_error = 1;
 
+		if(nonconst){
+			note_at(&nonconst->where,
+				"first non-constant expression here (%s)",
+				nonconst->f_str());
+		}
 	}else if(nonstd){
 		char wbuf[WHERE_BUF_SIZ];
 
@@ -1266,19 +1270,8 @@ void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 		}
 	}
 
-	if(chk & FOLD_CHK_NO_BITFIELD){
-		if(e && expr_kind(e, struct)){
-			decl *d = e->bits.struct_mem.d;
-
-			/* may be null from a bad struct access */
-			if(d){
-				assert(!type_is(d->ref, type_func));
-
-				if(d->bits.var.field_width)
-					die_at(&e->where, "bitfield in %s", desc);
-			}
-		}
-	}
+	if(chk & FOLD_CHK_NO_BITFIELD && expr_is_struct_bitfield(e))
+		die_at(&e->where, "bitfield in %s", desc);
 
 	if(chk & (FOLD_CHK_ARITHMETIC | FOLD_CHK_INTEGRAL)){
 		int (*chkfn)(type *) = chk & FOLD_CHK_ARITHMETIC

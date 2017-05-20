@@ -137,6 +137,13 @@ enum lvalue_kind expr_is_lval_struct(expr *e)
 	return LVALUE_STRUCT;
 }
 
+int expr_is_struct_bitfield(const expr *e)
+{
+	return expr_kind(e, struct)
+		&& e->bits.struct_mem.d /* may be null from a bad struct access */
+		&& decl_is_bitfield(e->bits.struct_mem.d);
+}
+
 expr *expr_new_array_idx_e(expr *base, expr *idx)
 {
 	expr *op = expr_new_op(op_plus);

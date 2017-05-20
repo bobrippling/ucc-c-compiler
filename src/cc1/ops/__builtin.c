@@ -14,6 +14,7 @@
 #include "../funcargs.h"
 #include "../type_nav.h"
 #include "../type_is.h"
+#include "../tokconv.h"
 
 #include "../const.h"
 #include "../gen_asm.h"
@@ -32,19 +33,21 @@
 typedef expr *func_builtin_parse(
 		const char *ident, symtable *);
 
-static func_builtin_parse parse_unreachable,
-                          parse_compatible_p,
-                          parse_constant_p,
-                          parse_frame_address,
-                          parse_expect,
-                          parse_strlen,
-                          parse_is_signed,
-                          parse_nan,
-                          parse_choose_expr;
+static func_builtin_parse parse_unreachable
+                          , parse_compatible_p
+                          , parse_constant_p
+                          , parse_frame_address
+                          , parse_expect
+                          , parse_strlen
+                          , parse_is_signed
+                          , parse_nan
+                          , parse_choose_expr
+                          , parse_offsetof
 #ifdef BUILTIN_LIBC_FUNCTIONS
-                          parse_memset,
-                          parse_memcpy;
+                          , parse_memset
+                          , parse_memcpy
 #endif
+                          ;
 
 typedef struct
 {
@@ -767,7 +770,7 @@ static expr *parse_nan(const char *ident, symtable *scope)
 
 static void const_strlen(expr *e, consty *k)
 {
-	k->type = CONST_NO;
+	CONST_FOLD_NO(k, e);
 
 	/* if 1 arg and it has a char * constant, return length */
 	if(dynarray_count(e->funcargs) == 1){
@@ -798,6 +801,113 @@ static expr *parse_strlen(const char *ident, symtable *scope)
 
 	/* simply set the const vtable ent */
 	fcall->f_const_fold = const_strlen;
+
+	return fcall;
+}
+
+/* --- offsetof */
+
+static void fold_offsetof(expr *e, symtable *stab)
+{
+	if(!type_is_complete(e->bits.offsetof_ty)){
+		warn_at_print_error(&e->where, "offsetof() on incomplete type '%s'",
+				type_to_str(e->bits.offsetof_ty));
+
+		fold_had_error = 1;
+	}
+
+	/* fold regardless, prevent const_fold() ICEs */
+	fold_expr_nodecay(e->lhs, stab);
+
+	if(expr_is_struct_bitfield(e->lhs)){
+		warn_at_print_error(&e->lhs->where, "offsetof() into bitfield");
+		fold_had_error = 1;
+	}
+
+	e->tree_type = type_nav_btype(cc1_type_nav, type_ulong);
+	wur_builtin(e);
+}
+
+static const out_val *builtin_gen_offsetof(const expr *e, out_ctx *octx)
+{
+	return out_change_type(octx, gen_expr(e->lhs, octx), e->tree_type);
+}
+
+static void const_offsetof(expr *e, consty *k)
+{
+	consty offset;
+	const_fold(e->lhs, &offset);
+
+	switch(offset.type){
+		case CONST_ADDR:
+			/* allow, if array */
+			if(!type_is_array(e->lhs->tree_type))
+				break;
+			/* fall */
+
+		case CONST_NEED_ADDR:
+			if(offset.bits.addr.is_lbl)
+				break;
+
+			CONST_FOLD_LEAF(k);
+
+			k->type = CONST_NUM;
+			k->bits.num.val.i = offset.bits.addr.bits.memaddr + offset.offset;
+			break;
+
+		default:
+			break;
+	}
+}
+
+static expr *parse_offsetof(const char *ident, symtable *scope)
+{
+	expr *fcall = expr_new_funcall();
+
+	(void)ident;
+
+	fcall->bits.offsetof_ty = parse_type(0, scope);
+
+	if(!fcall->bits.offsetof_ty){
+		warn_at_print_error(NULL, "type expected for offsetof()");
+		parse_had_error = 1;
+		return fcall;
+	}
+
+	EAT(token_comma);
+
+	fold_type(fcall->bits.offsetof_ty, scope);
+	/* ((struct ... *)0)->.... */
+	fcall->lhs = expr_new_struct(
+			expr_new_cast(
+				expr_new_val(0),
+				type_ptr_to(fcall->bits.offsetof_ty),
+				1 /* implicit */),
+			0 /* dot */,
+			parse_expr_identifier());
+
+	if(curtok != token_close_paren)
+		cc1_warn_at(NULL, offsetof_extended, "extended designator in offsetof()");
+
+	while(curtok != token_close_paren){
+		if(accept(token_dot)){
+			fcall->lhs = expr_new_struct(
+					fcall->lhs, 1, parse_expr_identifier());
+
+		}else if(accept(token_open_square)){
+			fcall->lhs = expr_new_array_idx_e(
+					fcall->lhs, parse_expr_exp(scope, 0));
+
+			EAT(token_close_square);
+		}else{
+			warn_at_print_error(NULL, "\".\" or \"[\" expected");
+			parse_had_error = 1;
+			break;
+		}
+	}
+
+	expr_mutate_builtin_const(fcall, offsetof);
+	fcall->f_gen = builtin_gen_offsetof;
 
 	return fcall;
 }

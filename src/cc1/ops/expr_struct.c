@@ -165,13 +165,11 @@ const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 
 void dump_expr_struct(const expr *e, dump *ctx)
 {
-	decl *mem = e->bits.struct_mem.d;
-
 	dump_desc_expr_newline(ctx, "member-access", e, 0);
 
 	dump_printf_indent(ctx, 0, " %s%s\n",
 			e->expr_is_st_dot ? "." : "->",
-			mem->spel);
+			e->bits.struct_mem.d ? e->bits.struct_mem.d->spel : "<error>");
 
 	dump_inc(ctx);
 	dump_expr(e->lhs, ctx);
@@ -184,10 +182,15 @@ static void fold_const_expr_struct(expr *e, consty *k)
 	 * const fold to struct offset, (obv. if !dot, which is taken care of in fold) */
 	const_fold(e->lhs, k);
 
+	if(!e->bits.struct_mem.d){
+		CONST_FOLD_NO(k, e);
+		return;
+	}
+
 	switch(k->type){
 		case CONST_NO:
 		case CONST_STRK:
-			k->type = CONST_NO;
+			CONST_FOLD_NO(k, e);
 			break;
 
 		case CONST_NEED_ADDR:
@@ -208,14 +211,7 @@ static void fold_const_expr_struct(expr *e, consty *k)
 			break;
 
 		case CONST_NUM:
-			k->type = CONST_NEED_ADDR; /* e.g. &((A *)0)->b */
-
-			/* convert the val to a memaddr */
-			/* read num.val before we clobber it */
-			k->bits.addr.bits.memaddr = k->bits.num.val.i + struct_offset(e);
-			k->offset = 0;
-
-			k->bits.addr.is_lbl = 0;
+			ICE("const expr struct - address expected");
 			break;
 	}
 }

@@ -1,7 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include <assert.h>
 
 #include "ops.h"
 #include "../../util/alloc.h"
@@ -243,7 +242,7 @@ static void check_qual_rm(type *ptr_lhs, type *ptr_rhs, expr *e)
 			type_qual_to_str(remain, 0));
 }
 
-static void check_addr_int_cast(consty *k, int l)
+static void check_addr_int_cast(consty *k, int l, expr *owner)
 {
 	/* shouldn't fit, check if it will */
 	switch(k->type){
@@ -253,13 +252,13 @@ static void check_addr_int_cast(consty *k, int l)
 		case CONST_STRK:
 			/* no idea where it will be in memory,
 			 * can't fit into a smaller type */
-			k->type = CONST_NO; /* e.g. (int)&a */
+			CONST_FOLD_NO(k, owner); /* e.g. (int)&a */
 			break;
 
 		case CONST_NEED_ADDR:
 		case CONST_ADDR:
 			if(k->bits.addr.is_lbl){
-				k->type = CONST_NO; /* similar to strk case */
+				CONST_FOLD_NO(k, owner); /* similar to strk case */
 			}else{
 				integral_t new = k->bits.addr.bits.memaddr;
 				const int pws = platform_word_size();
@@ -270,11 +269,11 @@ static void check_addr_int_cast(consty *k, int l)
 
 					if(k->bits.addr.bits.memaddr != new)
 						/* can't cast without losing value - not const */
-						k->type = CONST_NO;
+						CONST_FOLD_NO(k, owner);
 
 				}else{
 					/* what are you doing... */
-					k->type = CONST_NO;
+					CONST_FOLD_NO(k, owner);
 				}
 			}
 	}
@@ -294,38 +293,7 @@ static void cast_addr(expr *e, consty *k)
 		r = type_size(subtt, &expr_cast_child(e)->where);
 
 	if(l < r)
-		check_addr_int_cast(k, l);
-}
-
-static void const_intify(consty *k)
-{
-	switch(k->type){
-		case CONST_STRK:
-		case CONST_NO:
-			assert(0);
-		case CONST_NUM:
-			break;
-
-		case CONST_NEED_ADDR:
-		case CONST_ADDR:
-		{
-			integral_t memaddr;
-
-			/* can't do (int)&x */
-			if(k->bits.addr.is_lbl){
-				k->type = CONST_NO;
-				return;
-			}
-
-			memaddr = k->bits.addr.bits.memaddr + k->offset;
-
-			CONST_FOLD_LEAF(k);
-
-			k->type = CONST_NUM;
-			k->bits.num.val.i = memaddr;
-			break;
-		}
-	}
+		check_addr_int_cast(k, l, e);
 }
 
 static void fold_const_expr_cast(expr *e, consty *k)
@@ -333,16 +301,20 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	int to_fp;
 
 	if(type_is_void(e->tree_type)){
-		k->type = CONST_NO;
+		CONST_FOLD_NO(k, e);
+		return;
+	}
+
+	const_fold(expr_cast_child(e), k);
+
+	if(expr_cast_is_lval2rval(e)){
+		/* if we're going from int to pointer or vice-versa,
+		 * change the const type */
+		const_ensure_num_or_memaddr(k, e->expr->tree_type, e->tree_type, e);
 		return;
 	}
 
 	to_fp = type_is_floating(e->tree_type);
-
-	const_fold(expr_cast_child(e), k);
-
-	if(expr_cast_is_lval2rval(e))
-		return;
 
 	switch(k->type){
 		case CONST_NO:
@@ -354,7 +326,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 
 		case CONST_NEED_ADDR:
 			if(to_fp){
-				k->type = CONST_NO;
+				CONST_FOLD_NO(k, e);
 				break;
 			}
 			/* fall */
@@ -363,7 +335,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		case CONST_STRK:
 			if(to_fp){
 				/* had an error - reported in fold() */
-				k->type = CONST_NO;
+				CONST_FOLD_NO(k, e);
 				return;
 			}
 
@@ -375,17 +347,7 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	if(k->type == CONST_NO)
 		return;
 
-	if(type_is_ptr(e->expr->tree_type)
-	&& !type_is_ptr(e->tree_type))
-	{
-		/* casting from pointer to int */
-		if(type_size(e->tree_type, &e->where) < platform_word_size())
-			const_intify(k); /* smaller than word size, force to int */
-
-		/* not a constant but we treat it as such, as an extension */
-		if(!k->nonstandard_const)
-			k->nonstandard_const = e;
-	}
+	const_ensure_num_or_memaddr(k, e->expr->tree_type, e->tree_type, e);
 }
 
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)

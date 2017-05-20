@@ -66,7 +66,7 @@ const char *decl_init_to_str(enum decl_init_type);
  */
 int decl_init_is_const(
 		decl_init *dinit, struct symtable *stab,
-		struct type *expected, struct expr **nonstd);
+		struct type *expected, struct expr **nonstd, struct expr **nonconst);
 
 int decl_init_is_zero(decl_init *dinit);
 
