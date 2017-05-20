@@ -34,6 +34,13 @@ void const_fold(expr *e, consty *k)
 			e->const_eval.const_folded = 1;
 			e->f_const_fold(e, &e->const_eval.k);
 			e->const_eval.const_folded = 2;
+
+			if((e->const_eval.k.type == CONST_ADDR
+			|| e->const_eval.k.type == CONST_NEED_ADDR)
+			&& e->const_eval.k.bits.addr.is_lbl)
+			{
+				assert(e->const_eval.k.bits.addr.bits.lbl);
+			}
 		}else if(e->const_eval.const_folded == 1){
 			ICW("const-folding a value during its own const-fold");
 		}
