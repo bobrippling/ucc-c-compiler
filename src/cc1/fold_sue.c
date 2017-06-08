@@ -482,7 +482,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 					fprintf(stderr, "      ");
 				}
 
-				fprintf(stderr, "| .%-10s", d->spel);
+				fprintf(stderr, "| .%-10s", d->spel ? d->spel : "<anon>");
 				if(type_is_complete(d->ref)){
 					fprintf(stderr, " size=%u align=%u",
 						type_size(d->ref, NULL),
