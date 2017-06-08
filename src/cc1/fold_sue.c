@@ -477,7 +477,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 					fprintf(stderr, ":%2u-%-2u",
 							d->bits.var.struct_offset_bitfield,
-							d->bits.var.struct_offset_bitfield + bits - 1);
+							d->bits.var.struct_offset_bitfield + (bits == 0 ? 0 : bits - 1));
 				}else{
 					fprintf(stderr, "      ");
 				}
