@@ -5,6 +5,9 @@ struct A
 	int : 0;
 	int a;
 	int : 0;
+	int : 0;
+	int : 0;
+	int : 0;
 	int b;
 	int : 0;
 };
