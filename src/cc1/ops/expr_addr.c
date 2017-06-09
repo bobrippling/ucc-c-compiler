@@ -79,6 +79,8 @@ void fold_expr_addr(expr *e, symtable *stab)
 		fold_check_expr(e->lhs, FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_BITFIELD,
 				"address-of");
 	}
+
+	e->tree_type = type_qualify(e->tree_type, qual_nonnull);
 }
 
 const out_val *gen_expr_addr(const expr *e, out_ctx *octx)
