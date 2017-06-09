@@ -189,6 +189,7 @@ static void warning_all(void)
 	cc1_warning.switch_default_covered =
 	cc1_warning.sym_never_read =
 	cc1_warning.system_headers =
+	cc1_warning.nullability =
 		W_OFF;
 }
 

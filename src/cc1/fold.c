@@ -949,6 +949,42 @@ static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
 	}
 }
 
+static void fold_decl_check_nullability_r(decl *d, type *t, enum type_qualifier q)
+{
+	if(t->type == type_ptr && (q & qual_mask_nullability) == 0){
+		cc1_warn_at(&d->where, nullability, "declaration is missing nullability specifier");
+		return;
+	}
+
+	switch(t->type){
+		case type_btype:
+			return;
+
+		case type_auto:
+		case type_func:
+		case type_array:
+		case type_ptr:
+		case type_block:
+			q = qual_none;
+			break;
+
+		default:
+			q |= type_qual(t);
+			break;
+	}
+
+	fold_decl_check_nullability_r(d, type_next_1(t), q);
+}
+
+static void fold_decl_check_nullability(decl *d)
+{
+	/* need to walk through the entire type tree */
+	if(!cc1_warning.nullability)
+		return;
+
+	fold_decl_check_nullability_r(d, d->ref, qual_none);
+}
+
 void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 {
 	/* this is called from wherever we can define a
@@ -978,6 +1014,8 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 
 		fold_type_w_attr(d->ref, NULL, type_loc(d->ref),
 				stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
+
+		fold_decl_check_nullability(d);
 
 		if(!su_member
 		&& d->spel
