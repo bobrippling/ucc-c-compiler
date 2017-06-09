@@ -11,5 +11,5 @@ f(int *p);
 
 main()
 {
-	f(a().ar); // CHECK: error: mismatching types, argument 1 to f:
+	f(a().ar); // CHECK: error: mismatching types, argument 1 to f
 }

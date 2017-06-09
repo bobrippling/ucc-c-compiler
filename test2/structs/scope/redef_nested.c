@@ -9,7 +9,7 @@ int f(struct A *p)
 		int x;
 	} a;
 
-	p = &a; // CHECK: warning: mismatching types, assignment:
+	p = &a; // CHECK: warning: mismatching types, assignment
 
 	return p->x; // CHECK: error: dereferencing pointer to incomplete type (struct A *)
 }

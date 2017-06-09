@@ -14,6 +14,6 @@ struct A
 
 main()
 {
-	f().x[1]; // CHECK: error: mismatching types, subscript:
-	*(f().x + 1); // CHECK: error: mismatching types, +:
+	f().x[1]; // CHECK: error: mismatching types, subscript
+	*(f().x + 1); // CHECK: error: mismatching types, +
 }

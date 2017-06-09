@@ -134,22 +134,23 @@ warning:
 		case TYPE_NOT_EQUAL:
 		{
 			char buf[TYPE_STATIC_BUFSIZ];
-			char wbuf[WHERE_BUF_SIZ];
+			int warned;
 
-#define common_warning                                    \
-			"mismatching %stypes, %s:\n%s: note: '%s' vs '%s'", \
-			detail, desc, where_str_r(wbuf, w),                 \
-			type_to_str_r(buf, tlhs),                           \
-			type_to_str(       trhs)
-
+#define common_warning "mismatching %stypes, %s", detail, desc
 			if(error){
 				warn_at_print_error(w, common_warning);
 				fold_had_error = 1;
+				warned = 1;
 			}else{
-				cc1_warn_at_w(w, pwarn, common_warning);
+				warned = cc1_warn_at_w(w, pwarn, common_warning);
 			}
-
 #undef common_warning
+
+			if(warned){
+				note_at(NULL, "'%s' vs '%s'",
+						type_to_str_r(buf, tlhs),
+						type_to_str(trhs));
+			}
 
 			if(error){
 				fold_had_error = 1;
