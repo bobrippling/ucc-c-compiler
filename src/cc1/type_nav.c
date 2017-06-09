@@ -535,18 +535,18 @@ type *type_nav_int_enum(struct type_nav *root, struct_union_enum_st *enu)
 type *type_unqualify(type *const qualified)
 {
 	attribute **attr = NULL, **attr_i;
-	type *t_restrict = NULL, *prev = NULL;
+	type *t_restrict_nullability = NULL, *prev = NULL;
 	type *i, *ret;
 
 	for(i = qualified; i; i = type_next_1(i)){
 		switch(i->type){
 			case type_cast:
 			{
-				/* restrict qualifier is special, and is only on pointer
+				/* restrict and nullability qualifiers are special, and is only on pointer
 				 * types and doesn't really apply to the expression itself
 				 */
-				if(i->bits.cast.qual & qual_restrict)
-					t_restrict = i;
+				if(i->bits.cast.qual & (qual_restrict | qual_mask_nullability))
+					t_restrict_nullability = i;
 
 				prev = i;
 				break;
@@ -571,15 +571,15 @@ type *type_unqualify(type *const qualified)
 done:;
 	assert(i);
 
-	if(t_restrict){
+	if(t_restrict_nullability){
 		assert(prev);
-		if(prev == t_restrict){
-			/* fine - we can just return this, preserving restrictness,
+		if(prev == t_restrict_nullability){
+			/* fine - we can just return this, preserving restrictness and nullability,
 			 * as nothing below it is a qualifier */
-			ret = t_restrict;
+			ret = t_restrict_nullability;
 		}else{
-			/* preserve restrict */
-			ret = type_qualify(i, qual_restrict);
+			/* preserve restrict/nullability */
+			ret = type_qualify(i, type_qual(t_restrict_nullability));
 		}
 	}else{
 		ret = i;
