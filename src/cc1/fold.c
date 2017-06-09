@@ -699,7 +699,7 @@ static void fold_decl_func_retty(decl *d)
 
 	enum type_qualifier qual = type_qual(retty);
 
-	if(qual){
+	if(qual & ~qual_mask_nullability){
 		cc1_warn_at(&d->where, ignored_qualifiers,
 				type_is_void(type_skip_all(retty))
 				? "function has qualified void return type (%s)"
