@@ -171,8 +171,7 @@ void vwarn(const struct where *w, enum warn_type ty,
 {
 	const int had_w = !!w;
 
-	include_bt(stderr);
-
+	include_bt(stderr); /* FIXME: include_bt has nothing to do with location */
 
 	w = default_where(w);
 
