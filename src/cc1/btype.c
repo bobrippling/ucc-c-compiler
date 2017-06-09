@@ -380,13 +380,16 @@ const char *type_cmp_to_str(enum type_cmp cmp)
 
 const char *type_qual_to_str(const enum type_qualifier qual, int trailing_space)
 {
-	static char buf[32];
+	static char buf[6 + 9 + 9 + 10 + 9 + 1];
 
 	/* trailing space is purposeful */
-	snprintf(buf, sizeof buf, "%s%s%s",
+	snprintf(buf, sizeof buf, "%s%s%s%s%s",
 		qual & qual_const    ? "const "    : "",
 		qual & qual_volatile ? "volatile " : "",
-		qual & qual_restrict ? "restrict " : "");
+		qual & qual_restrict ? "restrict " : "",
+		qual & qual_nullable ? "_Nullable " : "",
+		qual & qual_nonnull ? "_Nonnull " : ""
+		);
 
 	if(!trailing_space){
 		char *last = strrchr(buf, ' ');

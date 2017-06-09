@@ -54,6 +54,8 @@ enum token
 	token_volatile,
 	/**/
 	token_restrict, /* sort of a type-qual */
+	token__Nullable,
+	token__Nonnull,
 	/**/
 	token_signed,
 	token_unsigned,

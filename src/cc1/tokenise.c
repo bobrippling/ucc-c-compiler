@@ -75,6 +75,8 @@ static const struct keyword
 	KEYWORD__ALL(KW_ALL, const),
 	KEYWORD__ALL(KW_ALL, volatile),
 	KEYWORD__ALL(KW_C99, restrict),
+	KEYWORD__ALL(KW_ALL, _Nonnull), /* reserved namespace - fine for C89 */
+	KEYWORD__ALL(KW_ALL, _Nullable),
 
 	KEYWORD__ALL(KW_ALL, signed),
 	KEYWORD__ALL(KW_ALL, unsigned),

@@ -564,7 +564,8 @@ static type *parse_btype(
 		decl *tdef_decl_test;
 
 		if(curtok_is_type_qual()){
-			qual |= curtok_to_type_qualifier();
+			enum type_qualifier q = curtok_to_type_qualifier();
+			qual |= q;
 			EAT(curtok);
 
 		}else if(curtok_is_decl_store()){

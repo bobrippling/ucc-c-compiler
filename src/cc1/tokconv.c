@@ -39,6 +39,8 @@ enum type_qualifier curtok_to_type_qualifier()
 		case token_const:    return qual_const;
 		case token_volatile: return qual_volatile;
 		case token_restrict: return qual_restrict;
+		case token__Nullable: return qual_nullable;
+		case token__Nonnull: return qual_nonnull;
 		default:             return qual_none;
 	}
 }
@@ -171,6 +173,8 @@ char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  const);
 		CASE_STR_PREFIX(token,  volatile);
 		CASE_STR_PREFIX(token,  restrict);
+		CASE_STR_PREFIX(token,  _Nullable);
+		CASE_STR_PREFIX(token,  _Nonnull);
 
 		/* type */
 		CASE_STR_PREFIX(token,  void);
@@ -290,6 +294,8 @@ char *curtok_to_identifier(int *alloc)
 		case token_const:
 		case token_volatile:
 		case token_restrict:
+		case token__Nullable:
+		case token__Nonnull:
 		case token_void:
 		case token_char:
 		case token_short:
