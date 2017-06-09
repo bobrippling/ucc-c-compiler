@@ -169,6 +169,8 @@ static const char *vwarn_str(enum warn_type ty)
 void vwarn(const struct where *w, enum warn_type ty,
 		const char *fmt, va_list l)
 {
+	const int had_w = !!w;
+
 	include_bt(stderr);
 
 
@@ -192,7 +194,8 @@ void vwarn(const struct where *w, enum warn_type ty,
 		fputc('\n', stderr);
 	}
 
-	warn_show_line(w);
+	if(ty != VWARN_NOTE || had_w)
+		warn_show_line(w);
 }
 
 void warn_at_print_error(const struct where *w, const char *fmt, ...)
