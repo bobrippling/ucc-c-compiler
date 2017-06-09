@@ -517,7 +517,7 @@ type *type_func_call(type *fp, funcargs **pfuncargs)
 				*pfuncargs = fp->bits.func.args;
 			fp = fp->ref;
 			UCC_ASSERT(fp, "no ref for func");
-			fp = type_skip_all(fp); /* no top-level quals */
+			fp = type_unattribute(type_unqualify(fp));
 			break;
 
 		default:
