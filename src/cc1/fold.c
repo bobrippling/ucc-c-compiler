@@ -527,6 +527,14 @@ static void fold_type_w_attr(
 		}
 	}
 
+	if(q_to_check & qual_mask_nullability && !type_is_ptr(r)){
+		warn_at_print_error(
+				loc,
+				"nullability specified on non-pointer type '%s'",
+				type_to_str(r));
+		fold_had_error = 1;
+	}
+
 	fold_type_w_attr(r->ref, r,
 			loc, stab, this_attr ? this_attr : attr,
 			chk);

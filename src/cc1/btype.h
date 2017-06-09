@@ -68,6 +68,8 @@ enum type_qualifier
 
 	qual_nullable = 1 << 3,
 	qual_nonnull  = 1 << 4,
+
+	qual_mask_nullability = qual_nullable | qual_nonnull
 };
 
 typedef struct btype btype;
