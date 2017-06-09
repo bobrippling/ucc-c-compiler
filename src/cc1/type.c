@@ -257,6 +257,11 @@ static enum type_cmp type_cmp_r(
 		}else if(b_qual){
 			ret = TYPE_QUAL_SUB;
 		} /* else neither are casts */
+
+		if(ret == TYPE_QUAL_ADD && ((a_qual & ~b_qual) & qual_nonnull)){
+			/* adding a nullability qualifier is an explicit conversion */
+			ret = TYPE_CONVERTIBLE_EXPLICIT;
+		}
 	}
 
 	/* check attributes */
