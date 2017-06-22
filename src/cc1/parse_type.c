@@ -922,6 +922,11 @@ static type *parse_btype(
 			}
 		}
 
+		if((qual & qual_mask_nullability) == qual_mask_nullability){
+			warn_at_print_error(NULL, "cannot have multiple nullability qualifiers");
+			fold_had_error = 1;
+		}
+
 		return parse_btype_end(r, qual, is_noreturn, attr, scope, &w);
 	}else{
 		return NULL;
