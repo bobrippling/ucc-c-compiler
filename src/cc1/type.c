@@ -45,7 +45,8 @@ static int type_qual_cmp_1(
 
 static int type_qual_cmp(enum type_qualifier a, enum type_qualifier b)
 {
-	int r;
+	int i;
+	int added = 0;
 
 	a &= ~qual_restrict,
 	b &= ~qual_restrict;
@@ -53,17 +54,18 @@ static int type_qual_cmp(enum type_qualifier a, enum type_qualifier b)
 	if(a == b)
 		return 0;
 
-	/* check const, then volatile */
-	r = type_qual_cmp_1(a, b, qual_const);
-	if(r)
-		return r;
+	for(i = qual_MIN; i <= qual_MAX; i <<= 1){
+		int r = type_qual_cmp_1(a, b, i);
+		/* prioritise detecting the subtraction of a qualifier first */
+		if(r < 0)
+			return r;
+		if(r > 0)
+			added = r;
+	}
+	if(added)
+		return added;
 
-	r = type_qual_cmp_1(a, b, qual_volatile);
-	if(r)
-		return r;
-
-	/* should be unreachable, or we've missed a qual_* */
-	return 0;
+	assert(0 && "missed a type qual case");
 }
 
 static int type_attribute_missing1(type *ta, type *tb, enum attribute_type attr)
