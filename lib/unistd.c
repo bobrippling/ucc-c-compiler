@@ -2,6 +2,10 @@
 #include "syscalls.h"
 #include "sys/time.h"
 #include "sys/select.h"
+#include "stdlib.h" /* __progname */
+
+char **environ;
+char *__progname;
 
 #ifdef SYS_brk
 static void *ucc_brk(void *p)
