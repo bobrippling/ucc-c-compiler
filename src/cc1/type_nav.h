@@ -39,7 +39,7 @@ type *type_called(type *, struct funcargs **pfuncargs);
 
 type *type_tdef_of(expr *, decl *);
 
-type *type_unqualify(type *);
+type *type_unqualify(type *, int keep_restrict_nullability);
 type *type_sign(struct type_nav *root, type *ty, int make_signed);
 type *type_qualify(type *unqualified, enum type_qualifier qual);
 type *type_qualify_transform_array(

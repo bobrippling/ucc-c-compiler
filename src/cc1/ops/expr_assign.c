@@ -124,7 +124,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	 * to propagate, as we are now an rvalue, and don't want our value read
 	 * as we decay
 	 */
-	e->tree_type = type_unqualify(e->lhs->tree_type);
+	e->tree_type = type_unqualify(e->lhs->tree_type, 1);
 
 	/* type check */
 	fold_type_chk_and_cast_ty(

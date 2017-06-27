@@ -532,7 +532,7 @@ type *type_nav_int_enum(struct type_nav *root, struct_union_enum_st *enu)
 	return ent;
 }
 
-type *type_unqualify(type *const qualified)
+type *type_unqualify(type *const qualified, const int keep_restrict_nullability)
 {
 	attribute **attr = NULL, **attr_i;
 	type *t_restrict_nullability = NULL, *prev = NULL;
@@ -545,7 +545,7 @@ type *type_unqualify(type *const qualified)
 				/* restrict and nullability qualifiers are special, and is only on pointer
 				 * types and doesn't really apply to the expression itself
 				 */
-				if(i->bits.cast.qual & (qual_restrict | qual_mask_nullability))
+				if(keep_restrict_nullability && i->bits.cast.qual & (qual_restrict | qual_mask_nullability))
 					t_restrict_nullability = i;
 
 				prev = i;

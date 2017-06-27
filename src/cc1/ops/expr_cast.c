@@ -385,7 +385,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 		e->tree_type = type_unattribute(
 				type_unqualify(
 					type_decay(
-						expr_cast_child(e)->tree_type)));
+						expr_cast_child(e)->tree_type), 1));
 
 	}else{
 		/* casts remove restrict qualifiers */
@@ -556,7 +556,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 		/* removes cv-qualifiers:
 		 * (const int)3 has type int, not const int */
-		e->tree_type = type_unqualify(e->tree_type);
+		e->tree_type = type_unqualify(e->tree_type, 1);
 	}
 }
 

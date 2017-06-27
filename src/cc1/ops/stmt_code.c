@@ -51,7 +51,7 @@ static void cleanup_check(decl *d, attribute *cleanup)
 		return;
 	}
 
-	expected = type_unqualify(args->arglist[0]->ref);
+	expected = type_unqualify(args->arglist[0]->ref, 1);
 	targ = type_ptr_to(d->ref);
 
 	switch(type_cmp(expected, targ, 0)){
