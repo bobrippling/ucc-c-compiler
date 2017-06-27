@@ -102,6 +102,7 @@ const char *decl_asm_spel(decl *);
 decl        *decl_new(void);
 decl        *decl_new_w(const where *);
 decl        *decl_new_ty_sp(struct type *, char *);
+decl        *decl_new_w_ty_sp(const where *, struct type *, char *);
 void         decl_replace_with(decl *, decl *);
 void         decl_free(decl *);
 

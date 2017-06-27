@@ -20,6 +20,10 @@
 
 #include "fold.h"
 
+/* nullability */
+#include "type_is.h"
+#include "type_nav.h"
+
 struct stmt_ctx
 {
 	stmt *continue_target,
@@ -89,6 +93,28 @@ static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 	EAT(token_close_paren);
 }
 
+static void introduce_nonnull(expr *tested, symtable *scope)
+{
+	/* FIXME: check if(!x) return */
+	decl *d = expr_to_declref(tested, NULL);
+	decl *new;
+	enum type_qualifier q;
+
+	if(!d || !type_is_ptr(d->ref))
+		return;
+
+	q = (type_qual(d->ref) & ~qual_nullable) | qual_nonnull;
+
+	new = decl_new_w_ty_sp(
+			&d->where,
+			type_qualify(type_unqualify(d->ref, 0), q),
+			ustrdup(d->spel));
+
+	new->sym = d->sym;
+
+	symtab_add_to_scope(scope, new);
+}
+
 static stmt *parse_if(const struct stmt_ctx *const ctx)
 {
 	stmt *t = stmt_new_wrapper(if, ctx->scope);
@@ -100,6 +126,7 @@ static stmt *parse_if(const struct stmt_ctx *const ctx)
 	subctx.parsing_unbraced_if = (curtok != token_open_block);
 
 	parse_test_init_expr(t, &subctx);
+	introduce_nonnull(t->expr, subctx.scope);
 
 	t->lhs = parse_stmt(&subctx);
 

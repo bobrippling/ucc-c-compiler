@@ -45,6 +45,14 @@ decl *decl_new_ty_sp(type *ty, char *sp)
 	return d;
 }
 
+decl *decl_new_w_ty_sp(const where *w, type *ty, char *sp)
+{
+	decl *d = decl_new_w(w);
+	d->ref = ty;
+	d->spel = sp;
+	return d;
+}
+
 void decl_replace_with(decl *to, decl *from)
 {
 	/* XXX: memleak of .ref */
