@@ -147,7 +147,7 @@ static char *spec_interpolate(char *line, const struct specvars *vars)
 			line = new;
 		}else{
 			*close = '}';
-			anchor++;
+			anchor += strlen(varname) + /* %{} */3;
 		}
 	}
 
