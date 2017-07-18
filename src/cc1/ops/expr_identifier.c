@@ -115,6 +115,8 @@ static int find_identifier(expr *expr_ident, symtable *stab)
 
 	found = symtab_search(stab, sp, NULL, &ent);
 
+	fprintf(stderr, "found \"%s\" @ %p\n", sp, ent.bits.decl);
+
 	if(!found)
 		return attempt_func_keyword(expr_ident, stab);
 

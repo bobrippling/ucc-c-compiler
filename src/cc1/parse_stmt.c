@@ -105,6 +105,8 @@ static void introduce_nonnull(expr *tested, symtable *scope)
 
 	q = (type_qual(d->ref) & ~qual_nullable) | qual_nonnull;
 
+	fprintf(stderr, "HERE\n");
+
 	new = decl_new_w_ty_sp(
 			&d->where,
 			type_qualify(type_unqualify(d->ref, 0), q),

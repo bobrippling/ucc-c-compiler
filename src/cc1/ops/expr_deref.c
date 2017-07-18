@@ -31,7 +31,9 @@ void fold_expr_deref(expr *e, symtable *stab)
 
 	if(type_qual(ptr->tree_type) & qual_nullable)
 		cc1_warn_at(&ptr->where, nullability_deref,
-				"dereference of nullable expression");
+				"dereference of nullable expression (expr %p decl %p)",
+				(void *)expr_deref_what(e),
+				(void *)expr_to_declref(expr_deref_what(e), 0));
 
 	fold_check_bounds(ptr, 0);
 
