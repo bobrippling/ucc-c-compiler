@@ -776,7 +776,11 @@ static struct DIE *dwarf_type_die(
 				tag = DW_TAG_volatile_type;
 			else if(q & qual_restrict)
 				tag = DW_TAG_restrict_type;
-			else
+			else if(q & qual_mask_nullability){
+				/* skip */
+				tydie = dwarf_type_die(cu, parent, ty->ref);
+				break;
+			}else
 				ucc_unreach(NULL);
 
 			tydie = dwarf_tydie_new(cu, ty, tag);
