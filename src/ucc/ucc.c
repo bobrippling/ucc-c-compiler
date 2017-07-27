@@ -501,6 +501,12 @@ static void parse_argv(
 				case 'P':
 arg_cpp:
 					ADD_ARG(mode_preproc);
+					if(!strcmp(argv[i] + 1, "M")){
+						/* cc -M *.c implies -E -w */
+						state->mode = mode_preproc;
+						dynarray_add(&state->args[mode_preproc], ustrdup("-w"));
+						dynarray_add(&state->args[mode_compile], ustrdup("-w"));
+					}
 					if(!strcmp(argv[i] + 1, "MM"))
 						state->mode = mode_preproc; /* cc -MM *.c stops after preproc */
 
