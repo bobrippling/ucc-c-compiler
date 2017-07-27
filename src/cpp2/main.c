@@ -215,7 +215,7 @@ static void macro_add_limits(void)
 
 int main(int argc, char **argv)
 {
-	char *infname, *outfname;
+	char *infname, *outfname, *depfname;
 	int ret = 0;
 	enum { NONE, MACROS, MACROS_WHERE, STATS, DEPS } dump = NONE;
 	int i;
@@ -224,7 +224,7 @@ int main(int argc, char **argv)
 	int m32 = 0;
 	int offsetof_macro = 0;
 
-	infname = outfname = NULL;
+	infname = outfname = depfname = NULL;
 
 	current_line = 1;
 	set_current_fname(FNAME_BUILTIN);
@@ -309,6 +309,10 @@ int main(int argc, char **argv)
 					no_output = 1;
 				}else if(!strcmp(argv[i] + 2, "G")){
 					missing_header_error = 0;
+				}else if(!strcmp(argv[i] + 2, "F")){
+					depfname = argv[i + 1];
+					if(!depfname)
+						goto usage;
 				}else{
 					goto usage;
 				}
@@ -554,7 +558,7 @@ defaul:
 			macros_stats();
 			break;
 		case DEPS:
-			deps_dump(infname);
+			deps_dump(infname, depfname);
 			break;
 	}
 
