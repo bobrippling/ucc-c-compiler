@@ -315,6 +315,8 @@ int main(int argc, char **argv)
 					emit &= ~PREPROCESSED;
 				}else if(!strcmp(argv[i] + 2, "G")){
 					missing_header_error = 0;
+				}else if(!strcmp(argv[i] + 2, "D")){
+					emit |= DEPS;
 				}else if(!strcmp(argv[i] + 2, "F")){
 					depfname = argv[i + 1];
 					if(!depfname)
