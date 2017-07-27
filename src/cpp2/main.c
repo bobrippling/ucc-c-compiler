@@ -218,12 +218,12 @@ int main(int argc, char **argv)
 	char *infname, *outfname, *depfname;
 	int ret = 0;
 	enum {
-		NONE,
-		MACROS = 1 << 0,
-		MACROS_WHERE = 1 << 1,
-		STATS = 1 << 2,
-		DEPS = 1 << 3
-	} dump = NONE;
+		PREPROCESSED = 1 << 0,
+		MACROS = 1 << 1,
+		MACROS_WHERE = 1 << 2,
+		STATS = 1 << 3,
+		DEPS = 1 << 4
+	} emit = PREPROCESSED;
 	int i;
 	int platform_win32 = 0;
 	int freestanding = 0;
@@ -311,8 +311,8 @@ int main(int argc, char **argv)
 
 			case 'M':
 				if(!strcmp(argv[i] + 2, "M")){
-					dump |= DEPS;
-					no_output = 1;
+					emit |= DEPS;
+					emit &= ~PREPROCESSED;
 				}else if(!strcmp(argv[i] + 2, "G")){
 					missing_header_error = 0;
 				}else if(!strcmp(argv[i] + 2, "F")){
@@ -367,12 +367,12 @@ int main(int argc, char **argv)
 					case 'S':
 					case 'W':
 						/* list #defines */
-						dump |= (
+						emit |= (
 								argv[i][2] == 'M' ? MACROS :
 								argv[i][2] == 'S' ? STATS :
 								MACROS_WHERE);
 
-						no_output = 1;
+						emit &= ~PREPROCESSED;
 						break;
 					case '\0':
 						option_trace = 1;
@@ -468,7 +468,9 @@ defaul:
 		}
 	}
 
-	if(!missing_header_error && !(dump & DEPS)){
+	no_output = !(emit & PREPROCESSED);
+
+	if(!missing_header_error && !(emit & DEPS)){
 		fprintf(stderr, "%s: -MG requires -MM\n", *argv);
 		return 1;
 	}
@@ -553,11 +555,11 @@ defaul:
 	if(wmode & WUNUSED)
 		macros_warn_unused();
 
-	if(dump & (MACROS | MACROS_WHERE))
-		macros_dump(dump == MACROS_WHERE);
-	if(dump & STATS)
+	if(emit & (MACROS | MACROS_WHERE))
+		macros_dump(emit == MACROS_WHERE);
+	if(emit & STATS)
 		macros_stats();
-	if(dump & DEPS)
+	if(emit & DEPS)
 		deps_dump(infname, depfname);
 
 	free(dirname_pop());
