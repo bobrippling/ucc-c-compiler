@@ -392,7 +392,13 @@ int decl_is_pure_inline(decl *const d)
 int decl_should_emit_code(decl *d)
 {
 	assert(type_is(d->ref, type_func));
-	return d->bits.func.code && !decl_unused_and_internal(d) && !decl_is_pure_inline(d);
+	if(!d->bits.func.code)
+		return 0;
+	if(decl_is_pure_inline(d))
+		return 0;
+	if(decl_unused_and_internal(d) && !attribute_present(d, attr_used))
+		return 0;
+	return 1;
 }
 
 int decl_unused_and_internal(decl *d)
