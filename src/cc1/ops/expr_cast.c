@@ -824,7 +824,7 @@ static irval *gen_ir_lval2rval(irval *sub, const expr *e, irctx *ctx)
 
 	if(type_is(tnext, type_array)){
 		/* int[] -> int* */
-		printf("$%u = elem %s, i1 0\n", tmp, irval_str(sub, ctx));
+		printf("$%u = elem %s, i%d 0\n", tmp, irval_str(sub, ctx), platform_word_size());
 	}else{
 		printf("$%u = load %s\n", tmp, irval_str(sub, ctx));
 
