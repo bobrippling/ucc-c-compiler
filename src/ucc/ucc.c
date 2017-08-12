@@ -378,6 +378,37 @@ static void pass_warning(char **args[4], const char *arg)
 	}
 }
 
+static char *generate_depfile(struct ucc *const state, const char *fromflag)
+{
+	const char *in;
+	char *buf;
+	char *dot;
+
+	if(dynarray_count(state->inputs) != 1)
+		die("cannot specify %s and multiple inputs", fromflag);
+	in = strrchr(state->inputs[0], '/');
+	if(in)
+		in++;
+	else
+		in = state->inputs[0];
+
+	dot = strrchr(in, '.');
+	if(dot){
+		const size_t i = dot - in;
+
+		/* +2 in case in="abc.", so we have room for the ext */
+		buf = umalloc(strlen(in) + 2);
+
+		strcpy(buf, in);
+		buf[i + 1] = 'd';
+		buf[i + 2] = '\0';
+	}else{
+		buf = ustrprintf("%s.d", in);
+	}
+
+	return buf;
+}
+
 static void parse_argv(
 		int argc, char **argv,
 		struct ucc *const state,
@@ -386,6 +417,7 @@ static void parse_argv(
 		int *const current_assumption,
 		const char **const specpath)
 {
+	int had_MD = 0, had_MF = 0;
 	int i;
 
 	for(i = 0; i < argc; i++){
@@ -501,8 +533,30 @@ static void parse_argv(
 				case 'P':
 arg_cpp:
 					ADD_ARG(mode_preproc);
+					if(!strcmp(argv[i] + 1, "M")){
+						/* cc -M *.c implies -E -w */
+						state->mode = mode_preproc;
+						dynarray_add(&state->args[mode_preproc], ustrdup("-w"));
+						dynarray_add(&state->args[mode_compile], ustrdup("-w"));
+					}
 					if(!strcmp(argv[i] + 1, "MM"))
 						state->mode = mode_preproc; /* cc -MM *.c stops after preproc */
+					if(!strcmp(argv[i] + 1, "MD")){
+						/* like -M -MF ..., but without implied -E */
+						dynarray_add(&state->args[mode_preproc], ustrdup("-w"));
+						dynarray_add(&state->args[mode_compile], ustrdup("-w"));
+
+						had_MD = 1;
+					}
+					if(!strcmp(argv[i] + 1, "MF")){
+						i++;
+						arg = argv[i];
+						if(!arg)
+							die("-MF needs an argument");
+						ADD_ARG(mode_preproc);
+						had_MF = 1;
+						continue;
+					}
 
 					if(found){
 						if(!arg[2]){
@@ -697,6 +751,23 @@ input:
 			dynarray_add(&state->inputs, argv[i]);
 			assumptions[n] = *current_assumption;
 		}
+	}
+
+	if(had_MD && !had_MF){
+		char *depfile;
+
+		if(specvars->output){
+			if(state->mode == mode_preproc){
+				depfile = ustrdup(specvars->output);
+			}else{
+				depfile = ustrprintf("%s.d", specvars->output);
+			}
+		}else{
+			depfile = generate_depfile(state, "-MD");
+		}
+
+		dynarray_add(&state->args[mode_preproc], ustrdup("-MF"));
+		dynarray_add(&state->args[mode_preproc], depfile);
 	}
 }
 
