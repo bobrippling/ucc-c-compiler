@@ -11,6 +11,7 @@
 #include "../../util/math.h"
 
 #include "../type.h"
+#include "../type_nav.h"
 #include "../decl.h"
 #include "../strings.h"
 
@@ -479,7 +480,7 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 	}
 }
 
-void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align)
+static void asm_out_align(enum section_type sec, unsigned align)
 {
 	if(mopt_mode & MOPT_ALIGN_IS_POW2){
 		align = log2i(align);
@@ -487,7 +488,11 @@ void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align)
 
 	if(align)
 		asm_out_section(sec, ".align %u\n", align);
+}
 
+void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align)
+{
+	asm_out_align(sec, align);
 	asm_out_section(sec, "%s:\n", lbl);
 }
 
@@ -527,6 +532,26 @@ void asm_predeclare_global(decl *d)
 void asm_predeclare_weak(decl *d)
 {
 	asm_predecl(ASM_WEAK_DIRECTIVE, d);
+}
+
+static void asm_declare_ctor_dtor(decl *d, enum section_type sec)
+{
+	type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
+	const char *directive = asm_type_directive(intptr_ty);
+
+	if(asm_section_empty(sec))
+		asm_out_align(sec, type_align(intptr_ty, NULL));
+	asm_out_section(sec, ".%s %s\n", directive, decl_asm_spel(d));
+}
+
+void asm_declare_constructor(decl *d)
+{
+	asm_declare_ctor_dtor(d, SECTION_CTORS);
+}
+
+void asm_declare_destructor(decl *d)
+{
+	asm_declare_ctor_dtor(d, SECTION_DTORS);
 }
 
 void asm_declare_stringlit(enum section_type sec, const stringlit *lit)

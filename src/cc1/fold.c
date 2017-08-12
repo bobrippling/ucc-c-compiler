@@ -615,7 +615,32 @@ static int fold_align(int al, int min, int max, where *w)
 	return max;
 }
 
-static void fold_func_attr(decl *d)
+static void fold_ctor_dtor(
+		decl *d, symtable *stab, enum attribute_type ty, const char *desc)
+{
+	attribute *attr;
+
+	if(!(attr = attribute_present(d, ty)))
+		return;
+
+	if(attr->bits.priority){
+		consty k;
+
+		FOLD_EXPR(attr->bits.priority, stab);
+		const_fold(attr->bits.priority, &k);
+
+		if(!type_is_integral(attr->bits.priority->tree_type)
+		|| k.type != CONST_NUM
+		|| !K_INTEGRAL(k.bits.num))
+		{
+			warn_at_print_error(&attr->bits.priority->where,
+					"%s priority not integral", desc);
+			fold_had_error = 1;
+		}
+	}
+}
+
+static void fold_func_attr(decl *d, symtable *stab)
 {
 	funcargs *fa = type_funcargs(d->ref);
 	attribute *da;
@@ -633,6 +658,9 @@ static void fold_func_attr(decl *d)
 		cc1_warn_at(&d->where, attr_unused_voidfn,
 				"warn_unused attribute on function returning void");
 	}
+
+	fold_ctor_dtor(d, stab, attr_constructor, "constructor");
+	fold_ctor_dtor(d, stab, attr_destructor, "destructor");
 }
 
 static void fold_check_enum_bitfield(
@@ -733,7 +761,7 @@ static void fold_decl_func(decl *d, symtable *stab)
 			die_at(&d->where, "block-scoped function cannot have static storage");
 	}
 
-	fold_func_attr(d);
+	fold_func_attr(d, stab);
 }
 
 static void fold_decl_var_align(decl *d, symtable *stab)
@@ -940,6 +968,31 @@ static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
 	}
 }
 
+static void fold_decl_check_ctor_dtor(decl *d, symtable *stab)
+{
+	attribute *ctor, *dtor;
+
+	ctor = attribute_present(d, attr_constructor);
+	dtor = attribute_present(d, attr_destructor);
+
+	if(!ctor && !dtor)
+		return;
+
+	decl_use(d);
+
+	if(!type_is(d->ref, type_func)){
+		cc1_warn_at(&(ctor ? ctor : dtor)->where,
+				attr_ctor_dtor_bad,
+				"%s attribute on non-function",
+				ctor ? "constructor" : "destructor");
+	}else if(stab->parent){
+		cc1_warn_at(&(ctor ? ctor : dtor)->where,
+				attr_ctor_dtor_bad,
+				"%s attribute on non-global function",
+				ctor ? "constructor" : "destructor");
+	}
+}
+
 void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 {
 	/* this is called from wherever we can define a
@@ -986,6 +1039,8 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 					"weak attribute on declaration without external linkage");
 			fold_had_error = 1;
 		}
+
+		fold_decl_check_ctor_dtor(d, stab);
 	}
 
 	/* name static decls - do this before handling init,

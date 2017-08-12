@@ -60,6 +60,8 @@ section_text=".text"
 section_data=".data"
 section_bss=".bss"
 section_rodata=".rodata"
+section_ctors=".init_array,\"aw\""
+section_dtors=".fini_array,\"aw\""
 section_dbg_abbrev=".debug_abbrev"
 section_dbg_info=".debug_info"
 section_dbg_line=".debug_line"
@@ -181,6 +183,8 @@ case "$target" in
 		section_data="__DATA,__data"
 		section_bss="__BSS,__bss"
 		section_rodata="__DATA,__const"
+		section_ctors="__DATA,__mod_init_func,mod_init_funcs"
+		section_dtors="__DATA,__mod_term_func,mod_term_funcs"
 		section_dbg_abbrev="__DWARF,__debug_abbrev,regular,debug"
 		section_dbg_info="__DWARF,__debug_info,regular,debug"
 		section_dbg_line="__DWARF,__debug_line,regular,debug"
@@ -205,6 +209,8 @@ case "$target" in
 
 	CYGWIN_NT-* | *-pc-cygwin)
 		default_leading_underscore=1
+		section_ctors=".ctors,\"w\""
+		section_dtors=".dtors,\"w\""
 		if test "$arch" = i686
 		then arch=x86_64
 		fi
@@ -327,6 +333,8 @@ cat > src/config_as.h <<!
 #define SECTION_NAME_DATA $section_data
 #define SECTION_NAME_BSS  $section_bss
 #define SECTION_NAME_RODATA $section_rodata
+#define SECTION_NAME_CTORS $section_ctors
+#define SECTION_NAME_DTORS $section_dtors
 #define SECTION_NAME_DBG_ABBREV $section_dbg_abbrev
 #define SECTION_NAME_DBG_INFO $section_dbg_info
 #define SECTION_NAME_DBG_LINE $section_dbg_line

@@ -21,6 +21,7 @@
 #include "type_is.h"
 #include "out/dbg.h"
 #include "gen_asm.h"
+#include "gen_asm_ctors.h"
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
@@ -413,6 +414,7 @@ void gen_asm(
 		const char *fname, const char *compdir,
 		struct out_dbg_filelist **pfilelist)
 {
+	decl **inits = NULL, **terms = NULL;
 	decl **diter;
 	struct symtable_gasm **iasm = globs->gasms;
 	out_ctx *octx = out_ctx_new();
@@ -433,12 +435,23 @@ void gen_asm(
 		}
 
 		gen_asm_global_w_store(d, 0, octx);
+
+		if(type_is(d->ref, type_func) && d->bits.func.code){
+			if(attribute_present(d, attr_constructor))
+				dynarray_add(&inits, d);
+			if(attribute_present(d, attr_destructor))
+				dynarray_add(&terms, d);
+		}
 	}
 
 	for(; iasm && *iasm; ++iasm)
 		gen_gasm((*iasm)->asm_str);
 
 	gen_stringlits(globs->literals);
+
+	gen_inits_terms(inits, terms);
+	dynarray_free(decl **, inits, NULL);
+	dynarray_free(decl **, terms, NULL);
 
 	if(cc1_gdebug){
 		out_dbg_end(octx);

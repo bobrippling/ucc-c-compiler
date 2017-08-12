@@ -83,6 +83,8 @@ X("asm-badchar", asm_badchar)
 
 X("attr-badcleanup", attr_badcleanup)
 
+X("attr-bad-ctor-dtor", attr_ctor_dtor_bad)
+
 X("attr-format-unknown", attr_format_unknown)
 X("attr-format-baddecl", attr_format_baddecl)
 X("attr-printf-bad", attr_printf_bad)

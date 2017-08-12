@@ -192,6 +192,8 @@ const char *attribute_to_str(attribute *da)
 		CASE_STR_PREFIX(attr, desig_init);
 		CASE_STR_PREFIX(attr, always_inline);
 		CASE_STR_PREFIX(attr, noinline);
+		CASE_STR_PREFIX(attr, constructor);
+		CASE_STR_PREFIX(attr, destructor);
 		CASE_STR_PREFIX(attr, ucc_debug);
 
 		case attr_call_conv:
@@ -262,6 +264,12 @@ int attribute_equal(attribute *a, attribute *b)
 
 				case attr_nonnull:
 					if(a->bits.nonnull_args != b->bits.nonnull_args)
+						return 0;
+					break;
+
+				case attr_constructor:
+				case attr_destructor:
+					if(a->bits.priority != b->bits.priority)
 						return 0;
 					break;
 

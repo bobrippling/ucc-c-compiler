@@ -139,6 +139,8 @@ struct section sections[NUM_SECTIONS] = {
 	{ "data", QUOTE(SECTION_NAME_DATA) },
 	{ "bss",  QUOTE(SECTION_NAME_BSS) },
 	{ "rodata", QUOTE(SECTION_NAME_RODATA) },
+	{ "ctors", QUOTE(SECTION_NAME_CTORS) },
+	{ "dtors", QUOTE(SECTION_NAME_DTORS) },
 	{ "dbg_abrv", QUOTE(SECTION_NAME_DBG_ABBREV) },
 	{ "dbg_info", QUOTE(SECTION_NAME_DBG_INFO) },
 	{ "dbg_line", QUOTE(SECTION_NAME_DBG_LINE) },

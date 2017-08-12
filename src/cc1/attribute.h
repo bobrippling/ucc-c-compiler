@@ -53,7 +53,7 @@ struct attribute
 			conv_fastcall  /* Windows x86, ecx, edx, caller cleanup */
 		} conv;
 		unsigned long nonnull_args; /* limits to sizeof(long)*8 args, i.e. 64 */
-		struct expr *align, *sentinel;
+		struct expr *align, *sentinel, *priority;
 		struct decl *cleanup;
 		int ucc_debugged;
 	} bits;
