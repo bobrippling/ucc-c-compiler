@@ -280,7 +280,10 @@ irval *gen_ir_expr_if(const expr *e, irctx *ctx)
 
 	printf("$%u:\n", blk_true);
 	{
-		lval = gen_ir_expr(e->lhs, ctx);
+		if(e->lhs)
+			lval = gen_ir_expr(e->lhs, ctx);
+		else
+			lval = orig_cond;
 	}
 
 	if(e->rhs){
@@ -300,7 +303,8 @@ irval *gen_ir_expr_if(const expr *e, irctx *ctx)
 			blk_true, irval_str_r(&strbuf_l, lval, ctx),
 			blk_false, irval_str_r(&strbuf_r, rval, ctx));
 
-	irval_free(lval);
+	if(lval != orig_cond)
+		irval_free(lval);
 	irval_free(orig_cond);
 
 	if(rval != orig_cond)
