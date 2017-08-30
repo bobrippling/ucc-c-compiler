@@ -47,7 +47,7 @@ struct irval
 		struct
 		{
 			type *ty;
-			integral_t val;
+			union numeric_bits num;
 		} lit;
 		irid id;
 		decl *decl;
@@ -1374,7 +1374,10 @@ const char *irval_str_r(strbuf_fixed *buf, irval *v, irctx *ctx)
 	switch(v->type){
 		case IRVAL_LITERAL:
 			irtype_str_r(buf, v->bits.lit.ty, ctx);
-			strbuf_fixed_printf(buf, " %" NUMERIC_FMT_D, v->bits.lit.val);
+			if(type_is_floating(v->bits.lit.ty))
+				strbuf_fixed_printf(buf, " %" NUMERIC_FMT_LD, v->bits.lit.num.f);
+			else
+				strbuf_fixed_printf(buf, " %" NUMERIC_FMT_D, v->bits.lit.num.i);
 			break;
 
 		case IRVAL_LBL:
@@ -1418,7 +1421,15 @@ irval *irval_from_id(irid id)
 irval *irval_from_l(type *ty, integral_t l)
 {
 	irval *v = irval_new(IRVAL_LITERAL);
-	v->bits.lit.val = l;
+	v->bits.lit.num.i = l;
+	v->bits.lit.ty = ty;
+	return v;
+}
+
+irval *irval_from_f(type *ty, floating_t f)
+{
+	irval *v = irval_new(IRVAL_LITERAL);
+	v->bits.lit.num.f = f;
 	v->bits.lit.ty = ty;
 	return v;
 }

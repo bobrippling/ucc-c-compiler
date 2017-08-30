@@ -39,6 +39,7 @@ typedef unsigned irid;
 
 irval *irval_from_id(irid);
 irval *irval_from_l(type *, integral_t);
+irval *irval_from_f(type *, floating_t);
 struct sym;
 irval *irval_from_sym(irctx *, struct sym *);
 irval *irval_from_lbl(irctx *, char *);

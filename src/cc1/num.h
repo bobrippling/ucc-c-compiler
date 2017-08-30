@@ -17,7 +17,7 @@ typedef        long double floating_t;
 #define INTEGRAL_BITS (sizeof(integral_t) * CHAR_BIT)
 struct numeric
 {
-	union
+	union numeric_bits
 	{
 		integral_t i;
 		floating_t   f;
