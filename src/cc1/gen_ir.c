@@ -148,9 +148,7 @@ static void gen_ir_init_scalar(decl_init *init)
 
 		case CONST_NUM:
 			if(K_FLOATING(k.bits.num)){
-				/* asm fp const */
-				IRTODO("floating static constant");
-				printf("<TODO: float constant>");
+				printf("%La", k.bits.num.val.f);
 			}else{
 				gen_ir_integral(k.bits.num.val.i, e->tree_type);
 			}
