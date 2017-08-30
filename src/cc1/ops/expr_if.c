@@ -260,18 +260,7 @@ irval *gen_ir_expr_if(const expr *e, irctx *ctx)
 	strbuf_fixed strbuf_l = STRBUF_FIXED_INIT_ARRAY(buf_l);
 	strbuf_fixed strbuf_r = STRBUF_FIXED_INIT_ARRAY(buf_r);
 
-	orig_cond = cond = gen_ir_expr(e->expr, ctx);
-
-	if(type_size(e->expr->tree_type, NULL) > 1){
-		irid i1_tmp = ctx->curval++;
-
-		printf("$%u = ne %s 0, %s\n",
-				i1_tmp,
-				irtype_str(e->expr->tree_type, ctx),
-				irval_str(cond, ctx));
-
-		cond = irval_from_id(i1_tmp);
-	}
+	cond = gen_ir_expr_i1_trunc(e->expr, ctx, &orig_cond);
 
 	printf("br %s, $%u, $%u\n",
 			irval_str(cond, ctx),

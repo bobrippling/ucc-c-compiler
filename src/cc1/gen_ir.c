@@ -73,6 +73,27 @@ irval *gen_ir_expr(const struct expr *expr, irctx *ctx)
 	return expr->f_ir(expr, ctx);
 }
 
+irval *gen_ir_expr_i1_trunc(const struct expr *expr, irctx *ctx, irval **const untrunc)
+{
+	irval *v = gen_ir_expr(expr, ctx);
+
+	if(untrunc)
+		*untrunc = v;
+
+	if(type_size(expr->tree_type, NULL) > 1){
+		irid i1_tmp = ctx->curval++;
+
+		printf("$%u = ne %s 0, %s\n",
+				i1_tmp,
+				irtype_str(expr->tree_type, ctx),
+				irval_str(v, ctx));
+
+		return irval_from_id(i1_tmp);
+	}
+
+	return v;
+}
+
 void gen_ir_stmt(const struct stmt *stmt, irctx *ctx)
 {
 	stmt->f_ir(stmt, ctx);

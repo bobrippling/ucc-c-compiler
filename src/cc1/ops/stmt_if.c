@@ -144,7 +144,6 @@ void gen_ir_stmt_if(const stmt *s, irctx *ctx)
 	const unsigned blk_true = ctx->curlbl++;
 	const unsigned blk_fin = ctx->curlbl++;
 	unsigned blk_false;
-	unsigned i1_tmp;
 
 	flow_ir_gen(s->flow, s->symtab, ctx);
 
@@ -154,19 +153,7 @@ void gen_ir_stmt_if(const stmt *s, irctx *ctx)
 		blk_false = blk_fin;
 	}
 
-	cond = gen_ir_expr(s->expr, ctx);
-
-	if(type_size(s->expr->tree_type, NULL) > 1){
-		i1_tmp = ctx->curval++;
-
-		printf("$%u = ne %s 0, %s\n",
-				i1_tmp,
-				irtype_str(s->expr->tree_type, ctx),
-				irval_str(cond, ctx));
-
-		irval_free(cond);
-		cond = irval_from_id(i1_tmp);
-	}
+	cond = gen_ir_expr_i1_trunc(s->expr, ctx, NULL);
 
 	printf("br %s, $%u, $%u\n",
 			irval_str(cond, ctx),

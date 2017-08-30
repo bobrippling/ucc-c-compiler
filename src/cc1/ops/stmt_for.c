@@ -94,19 +94,14 @@ void gen_ir_stmt_for(const stmt *s, irctx *ctx)
 
 	printf("$%u:\n", blk_test);
 	if(s->flow->for_while){
-		const unsigned val_test = ctx->curval++;
+		irval *for_cond = gen_ir_expr_i1_trunc(s->flow->for_while, ctx, NULL);
 
-		irval *for_cond = gen_ir_expr(s->flow->for_while, ctx);
-
-		printf("$%u = ne %s 0, %s\n",
-				val_test,
-				irtype_str(s->flow->for_while->tree_type, ctx),
-				irval_str(for_cond, ctx));
-
-		printf("br $%u, $%u, $%u\n",
-				val_test,
+		printf("br %s, $%u, $%u\n",
+				irval_str(for_cond, ctx),
 				blk_code,
 				blk_fin);
+
+		irval_free(for_cond);
 	}
 
 	printf("$%u:\n", blk_code);
