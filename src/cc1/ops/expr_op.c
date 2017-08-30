@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include <strbuf_fixed.h>
+
 #include "../defs.h"
 #include "ops.h"
 #include "expr_op.h"
@@ -1295,6 +1297,42 @@ static void unary_op_gen(const expr *e, irval *lhs, irctx *ctx, unsigned const e
 	}
 }
 
+static irval *gen_ir_shortcircuit(const expr *e, irctx *ctx, const unsigned evali)
+{
+	irval *lval, *rval;
+	const unsigned blk_lhs = ctx->curlbl++;
+	const unsigned blk_fin = ctx->curlbl++;
+	const unsigned blk_rhs = ctx->curlbl++;
+	char buf_l[32], buf_r[32];
+	strbuf_fixed strbuf_l = STRBUF_FIXED_INIT_ARRAY(buf_l);
+	strbuf_fixed strbuf_r = STRBUF_FIXED_INIT_ARRAY(buf_r);
+
+	printf("$%u:\n", blk_lhs);
+	lval = gen_ir_expr_i1_trunc(e->lhs, ctx, NULL);
+
+	printf("br %s, $%u, $%u\n",
+			irval_str(lval, ctx),
+			e->bits.op.op == op_orsc ? blk_fin : blk_rhs,
+			e->bits.op.op == op_orsc ? blk_rhs : blk_fin);
+
+	printf("$%u:\n", blk_rhs);
+	{
+		rval = gen_ir_expr_i1_trunc(e->rhs, ctx, NULL);
+	}
+
+	printf("$%u:\n", blk_fin);
+
+	printf("$%u = phi [$%u, %s], [$%u, %s]\n",
+			evali,
+			blk_lhs, irval_str_r(&strbuf_l, lval, ctx),
+			blk_rhs, irval_str_r(&strbuf_r, rval, ctx));
+
+	irval_free(lval);
+	irval_free(rval);
+
+	return irval_from_id(evali);
+}
+
 irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 {
 	irval *lhs;
@@ -1303,7 +1341,7 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 	switch(e->bits.op.op){
 		case op_orsc:
 		case op_andsc:
-			IRTODO("shortcircuit");
+			return gen_ir_shortcircuit(e, ctx, evali);
 
 		case op_unknown:
 			ICE("asm_operate: unknown operator got through");

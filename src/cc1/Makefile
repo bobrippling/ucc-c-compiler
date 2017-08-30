@@ -72,7 +72,7 @@ out/alloca.o out/ctrl.o out/func.o out/impl.o out/mipsel_32.o \
 	out/x86_64.o out/dbg.o : \
 	CFLAGS += -DCC1_IMPL_FNAME=\"${ARCH}.h\"
 
-gen_ir.o: CFLAGS += -I${STRBUF_PATH}
+gen_ir.o ops/expr_op.o: CFLAGS += -I${STRBUF_PATH}
 
 # extra deps
 out/impl.h: out/x86_64.h out/mipsel_32.h
