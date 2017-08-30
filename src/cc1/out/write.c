@@ -131,5 +131,6 @@ void out_dbg_flush(out_ctx *octx, out_blk *blk)
 
 void out_dbg_where(out_ctx *octx, const where *w)
 {
-	memcpy_safe(&octx->dbg.where, w);
+	if(octx)
+		memcpy_safe(&octx->dbg.where, w);
 }
