@@ -628,7 +628,7 @@ static void irctx_run_dtor(decl *d, attribute *cleanup, void *vctx)
 
 static void irctx_vla_restore(decl *d, void *vctx)
 {
-	ICE("TODO: irctx vla restore");
+	IRTODO("irctx vla restore");
 }
 
 void gen_ir_scope_leave(symtable *s_from, symtable *s_to, struct irctx *ctx)

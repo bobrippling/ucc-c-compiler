@@ -179,7 +179,7 @@ static void gen_ir_zeroinit(irctx *ctx, type *ty)
 {
 	type *test;
 	if((test = type_is_primitive(ty, type_struct))){
-		ICE("TODO: zeroinit: struct");
+		IRTODO("zeroinit: struct");
 	}else if((test = type_is(ty, type_array))){
 		type *elem = type_next(test);
 		size_t i;
@@ -195,7 +195,7 @@ static void gen_ir_zeroinit(irctx *ctx, type *ty)
 		printf("}");
 
 	}else if((test = type_is_primitive(ty, type_union))){
-		ICE("TODO: zeroinit: union");
+		IRTODO("zeroinit: union");
 	}else{
 		printf("0");
 	}

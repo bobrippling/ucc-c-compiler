@@ -51,7 +51,7 @@ void gen_stmt_goto(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_goto(const stmt *s, irctx *ctx)
 {
-	ICE("TODO: goto");
+	IRTODO("goto");
 }
 
 void dump_stmt_goto(const stmt *s, dump *ctx)

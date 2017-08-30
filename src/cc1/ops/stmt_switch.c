@@ -307,7 +307,7 @@ void gen_stmt_switch(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_switch(const stmt *s, irctx *ctx)
 {
-	ICE("TODO: switch");
+	IRTODO("switch");
 }
 
 void dump_stmt_switch(const stmt *s, dump *ctx)

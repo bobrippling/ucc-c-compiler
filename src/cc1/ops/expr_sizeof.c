@@ -190,8 +190,7 @@ irval *gen_ir_expr_sizeof(const expr *e, irctx *ctx)
 	type *ty = SIZEOF_WHAT(e);
 
 	if(NEED_RUNTIME_SIZEOF(ty)){
-#warning runtime sizeof
-		ICE("TODO: ir runtime sizeof");
+		IRTODO("runtime sizeof");
 
 		if(e->expr)
 			irval_free(gen_ir_expr(e->expr, ctx));

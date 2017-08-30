@@ -1303,7 +1303,7 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 	switch(e->bits.op.op){
 		case op_orsc:
 		case op_andsc:
-			ICE("TODO: shortcircuit");
+			IRTODO("shortcircuit");
 
 		case op_unknown:
 			ICE("asm_operate: unknown operator got through");
