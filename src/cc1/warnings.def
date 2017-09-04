@@ -166,6 +166,7 @@ X("gnu-attribute", gnu_attribute)
 X("gnu-typeof", gnu_typeof)
 X("gnu-function", gnu__function)
 X("gnu-case-range", gnu_case_range)
+X("gnu-designator", gnu_desig)
 
 X("call-argcount", funcall_argcount)
 
