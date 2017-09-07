@@ -1554,9 +1554,9 @@ static void parse_add_asm(decl *d)
 						"decl \"%s\" already has an asm() name (\"%s\")",
 						d->spel, d->spel_asm);
 				parse_had_error = 1;
-			}else{
-				free(rename);
 			}
+			free(rename);
+			rename = NULL;
 		}else{
 			d->spel_asm = rename;
 		}
