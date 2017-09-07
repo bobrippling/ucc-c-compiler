@@ -1524,6 +1524,7 @@ type **parse_type_list(symtable *scope)
 static void parse_add_asm(decl *d)
 {
 	if(accept(token_asm)){
+		decl *const proto = decl_proto(d);
 		char *rename, *p;
 		struct cstring *cstr;
 
@@ -1553,6 +1554,8 @@ static void parse_add_asm(decl *d)
 				warn_at_print_error(&d->where,
 						"decl \"%s\" already has an asm() name (\"%s\")",
 						d->spel, d->spel_asm);
+				if(proto && proto != d)
+					note_at(&proto->where, "previous declaration here");
 				parse_had_error = 1;
 			}
 			free(rename);
