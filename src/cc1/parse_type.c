@@ -1964,17 +1964,9 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 		}
 	}
 
-	if(d_this->spel_asm){
-		if(d_prev->spel_asm){
-			parse_had_error = 1;
-			warn_at_print_error(&d_this->where,
-					"second asm() rename on \"%s\"\n"
-					"%s: note: previous definition here",
-					d_this->spel, where_str_r(wbuf, &d_prev->where));
-		}
-	}else if(d_prev->spel_asm){
+	assert(!d_this->spel_asm && "shouldn't have parsed asm at this point");
+	if(d_prev->spel_asm)
 		d_this->spel_asm = d_prev->spel_asm;
-	}
 
 	/* update the f(void) bools */
 	{
