@@ -69,6 +69,7 @@ static int gdebug = 0, generated_temp_obj = 0;
 const char *argv0;
 char *wrapper;
 int fsystem_cpp;
+const char *binpath_ir;
 
 static const char *mode_arg_str(enum mode mode)
 {
@@ -548,6 +549,10 @@ int main(int argc, char **argv)
 					}
 					if(!strcmp(argv[i], "-fsystem-cpp")){
 						fsystem_cpp = 1;
+						continue;
+					}
+					if(!strncmp(argv[i], "-fuse-ir=", 9)){
+						binpath_ir = argv[i] + 9;
 						continue;
 					}
 
