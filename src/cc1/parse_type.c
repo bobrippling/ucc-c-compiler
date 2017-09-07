@@ -1563,6 +1563,13 @@ static void parse_add_asm(decl *d)
 		}else{
 			d->spel_asm = rename;
 		}
+
+		if(proto && proto != d && proto->used){
+			warn_at_print_error(&d->where,
+					"cannot annotate \"%s\" with an asm() label after use",
+					d->spel);
+			parse_had_error = 1;
+		}
 	}
 }
 
