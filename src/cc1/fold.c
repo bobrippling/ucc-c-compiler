@@ -533,7 +533,7 @@ static void fold_type_w_attr(
 	 * since typedef int *intptr; intptr restrict a; is valid
 	 */
 	if(q_to_check & qual_restrict){
-		if(!type_is_ptr(r)){
+		if(!type_is_ptr(r) && !type_is(r, type_array)){
 			cc1_warn_at(loc,
 					bad_restrict,
 					"restrict on non-pointer type '%s'",
