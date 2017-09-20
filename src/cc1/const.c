@@ -365,6 +365,6 @@ void const_ensure_num_or_memaddr(
 	}
 
 	/* not a constant but we treat it as such, as an extension */
-	if(owner && !k->nonstandard_const)
+	if(!k->nonstandard_const)
 		k->nonstandard_const = owner;
 }

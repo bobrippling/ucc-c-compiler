@@ -81,7 +81,8 @@ integral_t const_fold_val_i(struct expr *e);
 
 void const_ensure_num_or_memaddr(
 		consty *k, struct type *from, struct type *to,
-		struct expr *owner);
+		struct expr *owner)
+	ucc_nonnull();
 
 integral_t const_op_exec(
 		/* rval is optional */
