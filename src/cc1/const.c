@@ -348,8 +348,8 @@ void const_ensure_num_or_memaddr(
 		consty *k, type *from, type *to,
 		expr *owner)
 {
-	const int from_ptr = !!type_is_ptr(from);
-	const int to_ptr = !!type_is_ptr(to);
+	const int from_ptr = type_is_ptr(from) || type_is_array(from);
+	const int to_ptr = type_is_ptr(to) || type_is_array(to);
 
 	if(from_ptr == to_ptr)
 		return;
