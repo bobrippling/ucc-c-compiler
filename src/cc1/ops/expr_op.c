@@ -1035,13 +1035,27 @@ static int array_subscript_tycheck(expr *e)
 			"array subscript is of type 'char'");
 }
 
+static int is_lval_decay_followed_by_ext(expr *e)
+{
+	expr *child;
+
+	if(!expr_kind(e, cast))
+		return 0;
+	child = expr_cast_child(e);
+
+	if(!expr_cast_is_lval2rval(child))
+		return 0;
+
+	return 1;
+}
+
 static int op_int_promotion_check(expr *e)
 {
 	type *tlhs, *trhs;
 
-	if(!expr_kind(e->lhs, cast) || !expr_cast_is_lval2rval(expr_cast_child(e->lhs)))
+	if(!is_lval_decay_followed_by_ext(e->lhs))
 		return 0;
-	if(!expr_kind(e->rhs, cast) || !expr_cast_is_lval2rval(expr_cast_child(e->rhs)))
+	if(!is_lval_decay_followed_by_ext(e->rhs))
 		return 0;
 
 	tlhs = expr_cast_child(e->lhs)->tree_type;
