@@ -1043,7 +1043,7 @@ static int is_lval_decay_followed_by_ext(expr *e)
 		return 0;
 	child = expr_cast_child(e);
 
-	if(!expr_cast_is_lval2rval(child))
+	if(!expr_kind(child, cast) || !expr_cast_is_lval2rval(child))
 		return 0;
 
 	return 1;
