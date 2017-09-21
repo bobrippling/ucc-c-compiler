@@ -270,6 +270,9 @@ try_cflag -Wno-missing-braces
 try_cflag -Wno-missing-field-initializers
 try_cflag -Wno-logical-not-parentheses
 
+try_cflag -Wsuggest-attribute=pure
+try_cflag -Wsuggest-attribute=const
+
 if test $debug = 1
 then
 	try_cflag -g
