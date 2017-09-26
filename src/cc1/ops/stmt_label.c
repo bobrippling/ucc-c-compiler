@@ -36,7 +36,7 @@ void fold_stmt_label(stmt *s)
 
 void gen_stmt_label(const stmt *s, out_ctx *octx)
 {
-	out_blk *thisblk = label_getblk(s->bits.lbl.label, octx);
+	out_blk *thisblk = label_getblk_octx(s->bits.lbl.label, octx);
 
 	if(s->bits.lbl.label->mustgen_spel)
 		out_blk_mustgen(octx, thisblk, s->bits.lbl.label->mustgen_spel);
@@ -48,7 +48,11 @@ void gen_stmt_label(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_label(const stmt *s, irctx *ctx)
 {
-	IRTODO("explicit-ify fallthrough?");
+	printf("$%u: # %s\n", label_getblk_irctx(s->bits.lbl.label, ctx), s->bits.lbl.spel);
+
+	if(s->bits.lbl.label->mustgen_spel)
+		printf("$%s: # mustgen\n", s->bits.lbl.label->mustgen_spel);
+
 	gen_ir_stmt(s->lhs, ctx);
 }
 

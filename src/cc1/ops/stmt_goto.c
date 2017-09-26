@@ -43,7 +43,7 @@ void gen_stmt_goto(const stmt *s, out_ctx *octx)
 
 		gen_scope_leave(s->symtab, s->bits.lbl.label->scope, octx);
 
-		target = label_getblk(s->bits.lbl.label, octx);
+		target = label_getblk_octx(s->bits.lbl.label, octx);
 
 		out_ctrl_transfer(octx, target, NULL, NULL);
 	}
@@ -51,7 +51,10 @@ void gen_stmt_goto(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_goto(const stmt *s, irctx *ctx)
 {
-	IRTODO("goto");
+	if(s->expr)
+		IRTODO("computed goto");
+	else
+		printf("jmp $%u # %s\n", label_getblk_irctx(s->bits.lbl.label, ctx), s->bits.lbl.spel);
 }
 
 void dump_stmt_goto(const stmt *s, dump *ctx)

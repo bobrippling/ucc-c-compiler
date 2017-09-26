@@ -11,6 +11,7 @@ struct label
 	symtable *scope;
 	struct stmt **jumpers; /* gotos that target us */
 	struct stmt *next_stmt;
+	unsigned blk;
 	unsigned uses;
 	unsigned complete : 1, unused : 1, doing_passable_check : 1;
 };
@@ -19,7 +20,11 @@ typedef struct label label;
 label *label_new(where *, char *id, int complete, symtable *scope);
 void label_free(label *);
 
-out_blk *label_getblk(label *, out_ctx *);
 void label_cleanup(out_ctx *);
+
+out_blk *label_getblk_octx(label *, out_ctx *);
+
+struct irctx;
+unsigned label_getblk_irctx(label *, struct irctx *);
 
 #endif

@@ -6,6 +6,7 @@
 #include "../util/dynarray.h"
 
 #include "sym.h"
+#include "gen_ir_internal.h"
 
 #include "label.h"
 
@@ -27,7 +28,7 @@ static unsigned label_hash(const label *l)
 	return dynmap_strhash(l->spel);
 }
 
-out_blk *label_getblk(label *l, out_ctx *octx)
+out_blk *label_getblk_octx(label *l, out_ctx *octx)
 {
 	struct cc1_out_ctx *cc1_octx = cc1_out_ctx_or_new(octx);
 	out_blk *blk;
@@ -50,6 +51,14 @@ out_blk *label_getblk(label *l, out_ctx *octx)
 	}
 
 	return blk;
+}
+
+unsigned label_getblk_irctx(label *l, struct irctx *ctx)
+{
+	if(!l->blk)
+		l->blk = 1 + ctx->curlbl++;
+
+	return l->blk - 1;
 }
 
 void label_cleanup(out_ctx *octx)
