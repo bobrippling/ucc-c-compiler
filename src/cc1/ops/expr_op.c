@@ -1247,7 +1247,7 @@ void gen_op_trapv(
 		out_blk *blk_undef = out_blk_new(octx, "trapv_bad");
 
 		out_ctrl_branch(octx,
-				out_new_overflow(octx, eval),
+				out_annotate_likely(octx, out_new_overflow(octx, eval), 1),
 				blk_undef,
 				land);
 
