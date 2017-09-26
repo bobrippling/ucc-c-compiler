@@ -198,28 +198,9 @@ static void gen_ir_init_scalar(decl_init *init)
 
 static void gen_ir_zeroinit(irctx *ctx, type *ty)
 {
-	type *test;
-	if((test = type_is_primitive(ty, type_struct))){
-		IRTODO("zeroinit: struct");
-	}else if((test = type_is(ty, type_array))){
-		type *elem = type_next(test);
-		size_t i;
-		const size_t len = type_array_len(test);
-
-		printf("{");
-		for(i = 0; i < len; i++){
-			gen_ir_init_r(ctx, NULL, elem);
-
-			if(i < len - 1)
-				printf(", ");
-		}
-		printf("}");
-
-	}else if((test = type_is_primitive(ty, type_union))){
-		IRTODO("zeroinit: union");
-	}else{
-		printf("0");
-	}
+	(void)ctx;
+	(void)ty;
+	printf("aliasinit i1 0");
 }
 
 static void gen_ir_out_bitfields(
@@ -465,6 +446,8 @@ static void gen_ir_init_r(irctx *ctx, decl_init *init, type *ty)
 
 static void gen_ir_init(irctx *ctx, decl *d)
 {
+	const int is_zero = decl_init_is_zero(d->bits.var.init.dinit);
+
 	printf(" %s ", decl_linkage(d) == linkage_internal ? "internal" : "global");
 
 	if(attribute_present(d, attr_weak))
@@ -474,14 +457,17 @@ static void gen_ir_init(irctx *ctx, decl *d)
 		printf("const ");
 
 	if(decl_linkage(d) == linkage_external
-	&& decl_init_is_zero(d->bits.var.init.dinit)
+	&& is_zero
 	&& d->bits.var.init.compiler_generated
 	&& fopt_mode & FOPT_COMMON)
 	{
 		printf("common ");
 	}
 
-	gen_ir_init_r(ctx, d->bits.var.init.dinit, d->ref);
+	if(is_zero)
+		gen_ir_zeroinit(ctx, d->ref);
+	else
+		gen_ir_init_r(ctx, d->bits.var.init.dinit, d->ref);
 }
 
 static void gen_ir_dump_su(struct_union_enum_st *su, irctx *ctx)
