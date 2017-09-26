@@ -219,6 +219,10 @@ void warning_init(void)
 
 	/* but disable others */
 	cc1_warning.char_subscript = W_OFF;
+
+	/* mostly harmless type warnings */
+	cc1_warning.int_op_promotion = W_OFF;
+	cc1_warning.sign_compare = W_OFF;
 }
 
 static void warning_special(enum warning_special special, enum warning_fatality fatality)
@@ -238,7 +242,6 @@ static void warning_special(enum warning_special special, enum warning_fatality 
 			cc1_warning.init_missing_braces =
 			cc1_warning.init_missing_struct =
 			cc1_warning.unused_param =
-			cc1_warning.sign_compare =
 				fatality;
 			break;
 		case W_GNU:
