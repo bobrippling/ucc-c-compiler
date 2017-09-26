@@ -59,6 +59,7 @@ struct stmt
 
 		/* for a case/default */
 		out_blk *case_blk;
+		unsigned case_blk_ir;
 
 		/* for a code block */
 		struct

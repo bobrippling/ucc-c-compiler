@@ -1,6 +1,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <strbuf_fixed.h>
+
 #include "ops.h"
 #include "stmt_switch.h"
 #include "../sue.h"
@@ -307,7 +309,69 @@ void gen_stmt_switch(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_switch(const stmt *s, irctx *ctx)
 {
-	IRTODO("switch");
+	char typestr[8];
+	strbuf_fixed typestrbuf = STRBUF_FIXED_INIT_ARRAY(typestr);
+	irval *cond;
+	stmt **iter, *pdefault;
+	const unsigned blk_switch_end = ctx->curlbl++;
+
+	irtype_str_r(&typestrbuf, s->expr->tree_type, ctx);
+
+	stmt_init_ir_blks(s, -1, blk_switch_end);
+	flow_ir_gen(s->flow, s->symtab, ctx);
+	cond = gen_ir_expr(s->expr, ctx);
+
+	for(iter = s->bits.switch_.cases; iter && *iter; iter++){
+		const unsigned blk_next = ctx->curlbl++;
+		stmt *cse = *iter;
+		numeric iv;
+
+		const_fold_integral(cse->expr, &iv);
+
+		/* create the case blocks here,
+		 * since we need the jumps before we code-gen them */
+		cse->bits.case_blk_ir = ctx->curlbl++;
+
+		if(stmt_kind(cse, case_range)){
+			numeric max;
+			const unsigned blk_test2 = ctx->curlbl++;
+			const unsigned blk_pass = cse->bits.case_blk_ir;
+			const unsigned cond1 = ctx->curval++;
+			const unsigned cond2 = ctx->curval++;
+
+			const_fold_integral(cse->expr2, &max);
+
+			printf("$%u = lt %s, %s %lld\n", cond1, irval_str(cond, ctx), typestr, iv.val.i);
+			printf("br $%u, $%u, $%u\n", cond1, blk_next, blk_test2);
+
+			printf("$%u:\n", blk_test2);
+			printf("$%u = gt %s, %s %lld\n", cond2, irval_str(cond, ctx), typestr, max.val.i);
+			printf("br $%u, $%u, $%u\n", cond1, blk_next, blk_pass);
+
+		}else{
+			const unsigned cond1 = ctx->curval++;
+
+			printf("$%u = eq %s, %s %lld\n", cond1, irval_str(cond, ctx), typestr, iv.val.i);
+			printf("br $%u, $%u, $%u\n", cond1, cse->bits.case_blk_ir, blk_next);
+		}
+
+		/* implicitly linked to next */
+		printf("$%u:\n", blk_next);
+	}
+
+	irval_free(cond);
+
+	pdefault = s->bits.switch_.default_case;
+	if(pdefault)
+		pdefault->bits.case_blk_ir = ctx->curlbl++;
+
+	/* no matches - branch to default/end */
+	printf("jmp $%u\n", pdefault ? pdefault->bits.case_blk_ir : blk_switch_end);
+
+	gen_ir_stmt(s->lhs, ctx); /* the actual code inside the switch */
+
+	printf("$%u:\n", blk_switch_end);
+	flow_ir_end(s->flow, s->symtab, ctx);
 }
 
 void dump_stmt_switch(const stmt *s, dump *ctx)

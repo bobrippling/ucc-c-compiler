@@ -25,6 +25,7 @@ void gen_stmt_case(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_case(const stmt *s, irctx *ctx)
 {
+	printf("$%u:\n", s->bits.case_blk_ir);
 	gen_ir_stmt(s->lhs, ctx);
 }
 

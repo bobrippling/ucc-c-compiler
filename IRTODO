@@ -5,10 +5,9 @@ Difficult:
 	__builtin_frame_address()
 
 Medium:
-	switch
 	__builtin_nan[fl]?()
+	goto
 
 Easy:
-	goto
 	global __asm__
 	locally scoped static compound literals
