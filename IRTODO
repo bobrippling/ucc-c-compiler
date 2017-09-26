@@ -1,0 +1,14 @@
+Difficult:
+	VLAs
+	va_*
+	function __asm__
+	__builtin_frame_address()
+
+Medium:
+	switch
+	__builtin_nan[fl]?()
+
+Easy:
+	goto
+	global __asm__
+	locally scoped static compound literals
