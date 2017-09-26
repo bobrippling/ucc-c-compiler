@@ -1053,6 +1053,9 @@ static int op_int_promotion_check(expr *e)
 {
 	type *tlhs, *trhs;
 
+	if(op_is_shortcircuit(e->bits.op.op))
+		return 0;
+
 	if(!is_lval_decay_followed_by_ext(e->lhs))
 		return 0;
 	if(!is_lval_decay_followed_by_ext(e->rhs))
