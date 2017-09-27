@@ -56,7 +56,7 @@ out_blk *label_getblk_octx(label *l, out_ctx *octx)
 unsigned label_getblk_irctx(label *l, struct irctx *ctx)
 {
 	if(!l->blk)
-		l->blk = 1 + ctx->curlbl++;
+		l->blk = 1 + ctx->curval++;
 
 	return l->blk - 1;
 }

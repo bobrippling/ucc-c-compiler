@@ -141,14 +141,14 @@ void gen_stmt_if(const stmt *s, out_ctx *octx)
 void gen_ir_stmt_if(const stmt *s, irctx *ctx)
 {
 	irval *cond;
-	const unsigned blk_true = ctx->curlbl++;
-	const unsigned blk_fin = ctx->curlbl++;
+	const unsigned blk_true = ctx->curval++;
+	const unsigned blk_fin = ctx->curval++;
 	unsigned blk_false;
 
 	flow_ir_gen(s->flow, s->symtab, ctx);
 
 	if(s->rhs){
-		blk_false = ctx->curlbl++;
+		blk_false = ctx->curval++;
 	}else{
 		blk_false = blk_fin;
 	}

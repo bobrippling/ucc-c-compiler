@@ -313,7 +313,7 @@ void gen_ir_stmt_switch(const stmt *s, irctx *ctx)
 	strbuf_fixed typestrbuf = STRBUF_FIXED_INIT_ARRAY(typestr);
 	irval *cond;
 	stmt **iter, *pdefault;
-	const unsigned blk_switch_end = ctx->curlbl++;
+	const unsigned blk_switch_end = ctx->curval++;
 
 	irtype_str_r(&typestrbuf, s->expr->tree_type, ctx);
 
@@ -322,7 +322,7 @@ void gen_ir_stmt_switch(const stmt *s, irctx *ctx)
 	cond = gen_ir_expr(s->expr, ctx);
 
 	for(iter = s->bits.switch_.cases; iter && *iter; iter++){
-		const unsigned blk_next = ctx->curlbl++;
+		const unsigned blk_next = ctx->curval++;
 		stmt *cse = *iter;
 		numeric iv;
 
@@ -330,11 +330,11 @@ void gen_ir_stmt_switch(const stmt *s, irctx *ctx)
 
 		/* create the case blocks here,
 		 * since we need the jumps before we code-gen them */
-		cse->bits.case_blk_ir = ctx->curlbl++;
+		cse->bits.case_blk_ir = ctx->curval++;
 
 		if(stmt_kind(cse, case_range)){
 			numeric max;
-			const unsigned blk_test2 = ctx->curlbl++;
+			const unsigned blk_test2 = ctx->curval++;
 			const unsigned blk_pass = cse->bits.case_blk_ir;
 			const unsigned cond1 = ctx->curval++;
 			const unsigned cond2 = ctx->curval++;
@@ -363,7 +363,7 @@ void gen_ir_stmt_switch(const stmt *s, irctx *ctx)
 
 	pdefault = s->bits.switch_.default_case;
 	if(pdefault)
-		pdefault->bits.case_blk_ir = ctx->curlbl++;
+		pdefault->bits.case_blk_ir = ctx->curval++;
 
 	/* no matches - branch to default/end */
 	printf("jmp $%u\n", pdefault ? pdefault->bits.case_blk_ir : blk_switch_end);

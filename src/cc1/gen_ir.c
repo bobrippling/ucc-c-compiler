@@ -574,8 +574,8 @@ static void gen_ir_memset_small(irctx *ctx, irval *v, char ch, size_t len)
 static void gen_ir_memset_large(
 		irctx *ctx, irval *const iter, char ch, size_t len, unsigned word_size)
 {
-	const unsigned blk_loop = ctx->curlbl++;
-	const unsigned blk_fin = ctx->curlbl++;
+	const unsigned blk_loop = ctx->curval++;
+	const unsigned blk_fin = ctx->curval++;
 	const unsigned byte_cnt = ctx->curval++;
 	const unsigned byte_tmp = ctx->curval++;
 	const unsigned byte_load = ctx->curval++;
@@ -692,8 +692,8 @@ static void gen_ir_memcpy_small(
 static void gen_ir_memcpy_large(
 		irctx *ctx, irval *dest_iter, irval *src_iter, size_t len, unsigned word_size)
 {
-	const unsigned blk_loop = ctx->curlbl++;
-	const unsigned blk_fin = ctx->curlbl++;
+	const unsigned blk_loop = ctx->curval++;
+	const unsigned blk_fin = ctx->curval++;
 	const unsigned byte_cnt = ctx->curval++;
 	const unsigned byte_tmp = ctx->curval++;
 	const unsigned byte_load = ctx->curval++;

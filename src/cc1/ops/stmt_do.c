@@ -43,9 +43,9 @@ void gen_stmt_do(const stmt *s, out_ctx *octx)
 
 void gen_ir_stmt_do(const stmt *s, irctx *ctx)
 {
-	const unsigned blk_begin = ctx->curlbl++;
-	const unsigned blk_continue = ctx->curlbl++;
-	const unsigned blk_break = ctx->curlbl++;
+	const unsigned blk_begin = ctx->curval++;
+	const unsigned blk_continue = ctx->curval++;
+	const unsigned blk_break = ctx->curval++;
 
 	stmt_init_ir_blks(s, blk_continue, blk_break);
 
@@ -57,7 +57,7 @@ void gen_ir_stmt_do(const stmt *s, irctx *ctx)
 
 	printf("$%u:\n", blk_continue);
 	{
-		const unsigned val_test = ctx->curlbl++;
+		const unsigned val_test = ctx->curval++;
 		irval *cond = gen_ir_expr(s->expr, ctx);
 
 		printf("$%u = ne %s 0, %s\n",

@@ -253,9 +253,9 @@ irval *gen_ir_expr_if(const expr *e, irctx *ctx)
 {
 	const irid evali = ctx->curval++;
 	irval *cond, *orig_cond, *lval, *rval;
-	const unsigned blk_true = ctx->curlbl++;
-	const unsigned blk_fin = ctx->curlbl++;
-	const unsigned blk_false = ctx->curlbl++;
+	const unsigned blk_true = ctx->curval++;
+	const unsigned blk_fin = ctx->curval++;
+	const unsigned blk_false = ctx->curval++;
 	char buf_l[32], buf_r[32];
 	strbuf_fixed strbuf_l = STRBUF_FIXED_INIT_ARRAY(buf_l);
 	strbuf_fixed strbuf_r = STRBUF_FIXED_INIT_ARRAY(buf_r);

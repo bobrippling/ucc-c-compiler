@@ -1300,9 +1300,9 @@ static void unary_op_gen(const expr *e, irval *lhs, irctx *ctx, unsigned const e
 static irval *gen_ir_shortcircuit(const expr *e, irctx *ctx, const unsigned evali)
 {
 	irval *lval, *rval;
-	const unsigned blk_lhs = ctx->curlbl++;
-	const unsigned blk_fin = ctx->curlbl++;
-	const unsigned blk_rhs = ctx->curlbl++;
+	const unsigned blk_lhs = ctx->curval++;
+	const unsigned blk_fin = ctx->curval++;
+	const unsigned blk_rhs = ctx->curval++;
 	char buf_l[32], buf_r[32];
 	strbuf_fixed strbuf_l = STRBUF_FIXED_INIT_ARRAY(buf_l);
 	strbuf_fixed strbuf_r = STRBUF_FIXED_INIT_ARRAY(buf_r);
