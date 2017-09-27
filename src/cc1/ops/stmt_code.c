@@ -612,6 +612,7 @@ static void irctx_run_dtor(decl *d, attribute *cleanup, void *vctx)
 {
 	irctx *ctx = vctx;
 	irid casted = ctx->curval++;
+	irid discard = ctx->curval++;
 	type *argty
 		= type_funcargs(type_is_func_or_block(cleanup->bits.cleanup->ref))->arglist[0]->ref;
 
@@ -621,7 +622,8 @@ static void irctx_run_dtor(decl *d, attribute *cleanup, void *vctx)
 			irtype_str(argty, ctx),
 			decl_asm_spel(d));
 
-	printf("call $%s($%u)\n",
+	printf("$%u = call $%s($%u)\n",
+			discard,
 			decl_asm_spel(cleanup->bits.cleanup),
 			casted);
 }
