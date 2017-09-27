@@ -26,6 +26,7 @@
 #include "bitfields.h"
 #include "fold.h"
 #include "pack.h"
+#include "label.h"
 
 #include "gen_ir.h"
 #include "gen_ir_internal.h"
@@ -783,6 +784,32 @@ void gen_ir_memcpy(irctx *ctx, irval *dest, irval *src, size_t len)
 	printf("# memcpy complete\n");
 }
 
+static void gen_ir_labels_r(symtable *symtab, irctx *ctx)
+{
+	size_t i;
+	label *lbl;
+	symtable **siter;
+
+	for(i = 0; (lbl = dynmap_value(label *, symtab->labels, i)); i++){
+		irid lblid = label_getblk_irctx(lbl, ctx);
+
+		printf("label $%u # %s\n", lblid, lbl->spel);
+
+		if(lbl->mustgen_spel)
+			printf("label $%u # %s\n", lblid, lbl->mustgen_spel);
+	}
+
+	for(siter = symtab->children; siter && *siter; siter++)
+		gen_ir_labels_r(*siter, ctx);
+}
+
+static void gen_ir_labels(stmt *code, irctx *ctx)
+{
+	symtable *symtab = symtab_func_root(code->symtab);
+
+	gen_ir_labels_r(symtab, ctx);
+}
+
 static void gen_ir_decl(decl *d, irctx *ctx)
 {
 	funcargs *args = type_is(d->ref, type_func) ? type_funcargs(d->ref) : NULL;
@@ -808,6 +835,7 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 			type *retty = type_called(d->ref, NULL);
 
 			printf("{\n");
+			gen_ir_labels(d->bits.func.code, ctx);
 			gen_ir_spill_args(ctx, args);
 			gen_ir_stmt(d->bits.func.code, ctx);
 

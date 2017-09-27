@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include "../../util/alloc.h"
+
 #include "ops.h"
 #include "expr_addr.h"
 
@@ -182,5 +184,13 @@ const out_val *gen_expr_style_addr(const expr *e, out_ctx *octx)
 
 irval *gen_ir_expr_addr(const expr *e, irctx *ctx)
 {
-	return gen_ir_expr(e->lhs, ctx);
+	if(e->bits.lbl.spel){
+		/* GNU &&lbl */
+		irid lbl = label_getblk_irctx(e->bits.lbl.label, ctx);
+		char *strlbl = ustrprintf("%u", lbl);
+
+		return irval_from_lbl(ctx, strlbl);
+	}else{
+		return gen_ir_expr(e->lhs, ctx);
+	}
 }
