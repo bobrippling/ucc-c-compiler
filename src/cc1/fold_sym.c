@@ -303,7 +303,7 @@ void symtab_fold_decls(symtable *tab)
 			NEW_DECL(d);
 
 		/* asm rename checks */
-		if(d->sym && d->sym->type != sym_global){
+		if(d->sym && d->sym->type != sym_global && !type_is(d->ref, type_func)){
 			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 				case store_register:
 				case store_extern:
