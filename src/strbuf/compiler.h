@@ -1,7 +1,9 @@
 #ifndef SHARED_COMPILER_H
 #define SHARED_COMPILER_H
 
-#define countof(x) (sizeof(x) / sizeof*(x))
+#ifndef countof
+#  define countof(x) (sizeof(x) / sizeof*(x))
+#endif
 
 #ifdef __GNUC__
 #  define compiler_printf(x, y) __attribute__((format(printf, x, y)))
