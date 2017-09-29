@@ -6,6 +6,7 @@
 #include "../util/where.h"
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "../strbuf/strbuf_fixed.h"
 
 #include "macros.h"
 
@@ -436,13 +437,13 @@ where *type_has_loc(type *t)
 	return NULL;
 }
 
-#define BUF_ADD(...) \
-	do{ int n = snprintf(*bufp, *sz, __VA_ARGS__); *bufp += n, *sz -= n; }while(0)
+#define BUF_ADD(...) strbuf_fixed_printf(buf, __VA_ARGS__)
+
 #define ADD_SPC() do{ if(*need_spc) BUF_ADD(" "); *need_spc = 0; }while(0)
 static void type_add_funcargs(
 		funcargs *args,
 		int *need_spc,
-		char **bufp, int *sz)
+		strbuf_fixed *buf)
 {
 	const char *comma = "";
 	decl **i;
@@ -477,7 +478,7 @@ static void type_add_funcargs(
 static void type_add_str_pre(
 		type *r,
 		int *need_paren, int *need_spc,
-		char **bufp, int *sz)
+		strbuf_fixed *buf)
 {
 	type *prev_skipped;
 	enum type_qualifier q = qual_none;
@@ -537,7 +538,7 @@ static void type_add_str_pre(
 static void type_add_str(
 		type *r, const char *spel,
 		int *need_spc,
-		char **bufp, int *sz,
+		strbuf_fixed *buf,
 		type *stop_at)
 {
 	int need_paren;
@@ -554,11 +555,11 @@ static void type_add_str(
 	}
 
 	if(stop_at && r->tmp == stop_at){
-		type_add_str(r->tmp, spel, need_spc, bufp, sz, stop_at);
+		type_add_str(r->tmp, spel, need_spc, buf, stop_at);
 		return;
 	}
 
-	type_add_str_pre(r, &need_paren, need_spc, bufp, sz);
+	type_add_str_pre(r, &need_paren, need_spc, buf);
 
 	next_ty = r->tmp;
 	if(r->type == type_array && r->tmp && r->tmp->type == type_cast){
@@ -566,7 +567,7 @@ static void type_add_str(
 		next_ty = array_qual->tmp;
 	}
 
-	type_add_str(next_ty, spel, need_spc, bufp, sz, stop_at);
+	type_add_str(next_ty, spel, need_spc, buf, stop_at);
 
 	switch(r->type){
 		case type_auto:
@@ -584,7 +585,7 @@ static void type_add_str(
 			break;
 
 		case type_func:
-			type_add_funcargs(r->bits.func.args, need_spc, bufp, sz);
+			type_add_funcargs(r->bits.func.args, need_spc, buf);
 			break;
 
 		case type_ptr:
@@ -637,18 +638,16 @@ static void type_add_str(
 
 static
 const char *type_to_str_r_spel_opts(
-		char buf[BTYPE_STATIC_BUFSIZ], type *r,
-		const char *spel, enum type_str_opts);
+		strbuf_fixed *buf, type *r, const char *spel, enum type_str_opts);
 
 static
 type *type_add_type_str(type *r,
-		char **bufp, int *sz,
+		strbuf_fixed *buf,
 		enum type_str_opts const opts)
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
 	type *ty;
 
-	**bufp = '\0';
 	for(ty = r;
 			ty && ty->type != type_btype;
 			ty = ty->ref)
@@ -661,7 +660,8 @@ type *type_add_type_str(type *r,
 		return NULL;
 
 	if(ty->type == type_tdef){
-		char buf[BTYPE_STATIC_BUFSIZ];
+		char localbuf_backing[BTYPE_STATIC_BUFSIZ];
+		strbuf_fixed localbuf = STRBUF_FIXED_INIT_ARRAY(localbuf_backing);
 		decl *d = ty->bits.tdef.decl;
 		type *of;
 
@@ -676,7 +676,7 @@ type *type_add_type_str(type *r,
 			BUF_ADD("typeof(%s%s)",
 					/* e is always expr_sizeof() */
 					is_type ? "" : "expr: ",
-					is_type ? type_to_str_r_spel_opts(buf, e->tree_type, NULL, TY_STR_NOOPT)
+					is_type ? type_to_str_r_spel_opts(&localbuf, e->tree_type, NULL, TY_STR_NOOPT)
 						: e->expr->f_str());
 
 			/* don't show aka for typeof types - it's there already */
@@ -690,7 +690,7 @@ type *type_add_type_str(type *r,
 
 			BUF_ADD(" (aka '%s')",
 					t ? btype_to_str(t)
-					: type_to_str_r_spel_opts(buf, type_skip_tdefs(of), NULL, TY_STR_NOOPT));
+					: type_to_str_r_spel_opts(&localbuf, type_skip_tdefs(of), NULL, TY_STR_NOOPT));
 		}
 
 		return ty;
@@ -715,13 +715,11 @@ static type *type_set_parent(type *r, type *parent)
 
 static
 const char *type_to_str_r_spel_opts(
-		char buf[TYPE_STATIC_BUFSIZ], type *r,
+		strbuf_fixed *buf, type *r,
 		const char *spel, enum type_str_opts const opts)
 {
-	char *bufp = buf;
 	int spc = 1;
 	type *stop_at;
-	int sz = TYPE_STATIC_BUFSIZ;
 	enum type_str_opts local_opts = opts;
 
 	if((fopt_mode & FOPT_PRINT_TYPEDEFS) == 0)
@@ -729,25 +727,24 @@ const char *type_to_str_r_spel_opts(
 	if((fopt_mode & FOPT_PRINT_AKA) == 0)
 		local_opts &= ~TY_STR_AKA;
 
-	stop_at = type_add_type_str(r, &bufp, &sz, local_opts);
-
-	assert(sz == (TYPE_STATIC_BUFSIZ - (bufp - buf)));
+	stop_at = type_add_type_str(r, buf, local_opts);
 
 	/* print in reverse order */
 	r = type_set_parent(r, NULL);
 	/* use r->tmp, since r is type_t{ype,def} */
-	type_add_str(r->tmp, spel, &spc, &bufp, &sz, stop_at);
+	type_add_str(r->tmp, spel, &spc, buf, stop_at);
 
 	/* trim trailing space */
-	if(bufp > buf && bufp[-1] == ' ')
-		bufp[-1] = '\0';
+	if(buf->current > 0 && buf->str[buf->current - 1] == ' ')
+		buf->str[buf->current - 1] = '\0';
 
-	return buf;
+	return strbuf_fixed_detach(buf);
 }
 
 const char *type_to_str_r_spel(char buf[TYPE_STATIC_BUFSIZ], type *r, const char *spel)
 {
-	return type_to_str_r_spel_opts(buf, r, spel, TY_STR_AKA);
+	strbuf_fixed sbuf = STRBUF_FIXED_INIT(buf, TYPE_STATIC_BUFSIZ);
+	return type_to_str_r_spel_opts(&sbuf, r, spel, TY_STR_AKA);
 }
 
 const char *type_to_str_r(char buf[TYPE_STATIC_BUFSIZ], type *r)
