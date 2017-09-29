@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdarg.h>
 #include <assert.h>
 
@@ -713,6 +714,18 @@ static type *type_set_parent(type *r, type *parent)
 	return type_set_parent(r->ref, r);
 }
 
+static const char *charptr_from_strbuf(strbuf_fixed *buf)
+{
+	int overflow = buf->current == buf->max;
+	int fixup = overflow && buf->current > 4;
+
+	if(fixup){
+		strcpy(&buf->str[buf->current - 4], "...");
+	}
+
+	return strbuf_fixed_detach(buf);
+}
+
 static
 const char *type_to_str_r_spel_opts(
 		strbuf_fixed *buf, type *r,
@@ -738,7 +751,7 @@ const char *type_to_str_r_spel_opts(
 	if(buf->current > 0 && buf->str[buf->current - 1] == ' ')
 		buf->str[buf->current - 1] = '\0';
 
-	return strbuf_fixed_detach(buf);
+	return charptr_from_strbuf(buf);
 }
 
 const char *type_to_str_r_spel(char buf[TYPE_STATIC_BUFSIZ], type *r, const char *spel)
