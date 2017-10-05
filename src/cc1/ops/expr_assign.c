@@ -243,20 +243,20 @@ irval *gen_ir_assign_bitfield(irval *lhs, irval *rhs, expr *estruct, irctx *ctx)
 
 	lit_ty_str = irtype_str(estruct->tree_type, ctx);
 
-	printf("$%u = load %s\n", loaded, irval_str(lhs, ctx));
+	printf("\t$%u = load %s\n", loaded, irval_str(lhs, ctx));
 
-	printf("$%u = and $%u, %s %" NUMERIC_FMT_U "\n",
+	printf("\t$%u = and $%u, %s %" NUMERIC_FMT_U "\n",
 			masked_loaded, loaded, lit_ty_str,
 			integral_truncate_bits(mask_loaded, 8 * type_size(estruct->tree_type, NULL), NULL));
 
-	printf("$%u = and %s, %s %" NUMERIC_FMT_U "\n",
+	printf("\t$%u = and %s, %s %" NUMERIC_FMT_U "\n",
 			masked_input, irval_str(rhs, ctx), lit_ty_str,
 			integral_truncate_bits(mask_input, 8 * type_size(estruct->tree_type, NULL), NULL));
 
-	printf("$%u = shiftl $%u, %s %u\n",
+	printf("\t$%u = shiftl $%u, %s %u\n",
 			shifted_input, masked_input, lit_ty_str, nshift);
 
-	printf("$%u = or $%u, $%u\n", ored, masked_loaded, shifted_input);
+	printf("\t$%u = or $%u, $%u\n", ored, masked_loaded, shifted_input);
 
 	return irval_from_id(ored);
 }
@@ -281,7 +281,7 @@ irval *gen_ir_expr_assign(const expr *e, irctx *ctx)
 	else
 		to_store = rhs;
 
-	printf("store %s, ", irval_str(lhs, ctx));
+	printf("\tstore %s, ", irval_str(lhs, ctx));
 	printf("%s\n", irval_str(to_store, ctx));
 
 	irval_free(lhs);

@@ -54,9 +54,9 @@ void gen_ir_stmt_goto(const stmt *s, irctx *ctx)
 	if(s->expr){
 		irval *target = gen_ir_expr(s->expr, ctx);
 
-		printf("jmp *%s # computed goto\n", irval_str(target, ctx), s->bits.lbl.spel);
+		printf("\tjmp *%s # computed goto\n", irval_str(target, ctx), s->bits.lbl.spel);
 	}else{
-		printf("jmp $%u # %s\n",
+		printf("\tjmp $%u # %s\n",
 				label_getblk_irctx(s->bits.lbl.label, ctx), s->bits.lbl.spel);
 	}
 }

@@ -74,12 +74,12 @@ void gen_ir_stmt_while(const stmt *s, irctx *ctx)
 
 		cond = gen_ir_expr(s->expr, ctx);
 
-		printf("$%u = ne %s 0, %s\n",
+		printf("\t$%u = ne %s 0, %s\n",
 				cond_bool,
 				irtype_str(s->expr->tree_type, ctx),
 				irval_str(cond, ctx));
 
-		printf("br $%u, $%u, $%u\n",
+		printf("\tbr $%u, $%u, $%u\n",
 				cond_bool,
 				blk_body,
 				blk_fin);
@@ -89,7 +89,7 @@ void gen_ir_stmt_while(const stmt *s, irctx *ctx)
 		printf("$%u:\n", blk_body);
 		gen_ir_stmt(s->lhs, ctx);
 
-		printf("jmp $%u\n", blk_test);
+		printf("\tjmp $%u\n", blk_test);
 	}
 
 	{

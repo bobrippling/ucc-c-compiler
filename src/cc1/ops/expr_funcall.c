@@ -512,7 +512,7 @@ static irval *funcall_ir_correct_type(const expr *e, irval *fnv, irctx *ctx)
 
 	casted_val = ctx->curval++;
 
-	printf("$%u = ptrcast %s(...)*, %s\n",
+	printf("\t$%u = ptrcast %s(...)*, %s\n",
 			casted_val,
 			irtype_str(e->tree_type, ctx),
 			irval_str(fnv, ctx));
@@ -539,7 +539,7 @@ irval *gen_ir_expr_funcall(const expr *e, irctx *ctx)
 	fnv = funcall_ir_correct_type(e, gen_ir_expr(e->expr, ctx), ctx);
 
 	reti = ctx->curval++;
-	printf("$%u = call %s(", reti, irval_str(fnv, ctx));
+	printf("\t$%u = call %s(", reti, irval_str(fnv, ctx));
 
 	for(irarg = args; irarg && *irarg; irarg++){
 		printf("%s%s", comma, irval_str(*irarg, ctx));

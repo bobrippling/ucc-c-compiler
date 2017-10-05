@@ -225,7 +225,7 @@ static irid gen_ir_expr_struct_elem_r(
 	assert(found);
 
 	if(index_count > 1)
-		printf("# ir indexing, index_count=%u, indexes:\n", index_count);
+		printf("\t# ir indexing, index_count=%u, indexes:\n", index_count);
 
 	for(i = index_count; i > 0; i--){
 		const irid previd = id;
@@ -234,9 +234,9 @@ static irid gen_ir_expr_struct_elem_r(
 		id = ctx->curval++;
 
 		if(i == index_count)
-			printf("$%u = elem %s, i4 %u\n", id, irval_str(struct_val, ctx), memb_idx);
+			printf("\t$%u = elem %s, i4 %u\n", id, irval_str(struct_val, ctx), memb_idx);
 		else
-			printf("$%u = elem $%u, i4 %u\n", id, previd, memb_idx);
+			printf("\t$%u = elem $%u, i4 %u\n", id, previd, memb_idx);
 	}
 	free(indexes);
 
@@ -261,7 +261,7 @@ irval *gen_ir_expr_struct(const expr *e, irctx *ctx)
 	if(su->primitive == type_union){
 		retid = ctx->curval++;
 
-		printf("$%u = ptrcast %s, %s\n",
+		printf("\t$%u = ptrcast %s, %s\n",
 				retid,
 				irtype_str(type_ptr_to(d->ref), ctx),
 				irval_str(struct_exp, ctx));

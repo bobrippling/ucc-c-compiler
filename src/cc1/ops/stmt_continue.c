@@ -22,7 +22,7 @@ void gen_ir_stmt_continue(const stmt *s, irctx *ctx)
 {
 	gen_ir_scope_leave(s->symtab, s->parent->symtab, ctx);
 
-	printf("jmp $%u\n", s->parent->blk_continue_ir);
+	printf("\tjmp $%u\n", s->parent->blk_continue_ir);
 }
 
 void dump_stmt_continue(const stmt *s, dump *ctx)

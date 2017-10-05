@@ -155,7 +155,7 @@ void gen_ir_stmt_if(const stmt *s, irctx *ctx)
 
 	cond = gen_ir_expr_i1_trunc(s->expr, ctx, NULL);
 
-	printf("br %s, $%u, $%u\n",
+	printf("\tbr %s, $%u, $%u\n",
 			irval_str(cond, ctx),
 			blk_true,
 			blk_false);
@@ -167,7 +167,7 @@ void gen_ir_stmt_if(const stmt *s, irctx *ctx)
 	}
 
 	if(s->rhs){
-		printf("jmp $%u\n", blk_fin);
+		printf("\tjmp $%u\n", blk_fin);
 
 		printf("$%u:\n", blk_false);
 		{

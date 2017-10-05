@@ -341,18 +341,18 @@ void gen_ir_stmt_switch(const stmt *s, irctx *ctx)
 
 			const_fold_integral(cse->expr2, &max);
 
-			printf("$%u = lt %s, %s %lld\n", cond1, irval_str(cond, ctx), typestr, iv.val.i);
-			printf("br $%u, $%u, $%u\n", cond1, blk_next, blk_test2);
+			printf("\t$%u = lt %s, %s %lld\n", cond1, irval_str(cond, ctx), typestr, iv.val.i);
+			printf("\tbr $%u, $%u, $%u\n", cond1, blk_next, blk_test2);
 
 			printf("$%u:\n", blk_test2);
-			printf("$%u = gt %s, %s %lld\n", cond2, irval_str(cond, ctx), typestr, max.val.i);
-			printf("br $%u, $%u, $%u\n", cond1, blk_next, blk_pass);
+			printf("\t$%u = gt %s, %s %lld\n", cond2, irval_str(cond, ctx), typestr, max.val.i);
+			printf("\tbr $%u, $%u, $%u\n", cond1, blk_next, blk_pass);
 
 		}else{
 			const unsigned cond1 = ctx->curval++;
 
-			printf("$%u = eq %s, %s %lld\n", cond1, irval_str(cond, ctx), typestr, iv.val.i);
-			printf("br $%u, $%u, $%u\n", cond1, cse->bits.case_blk_ir, blk_next);
+			printf("\t$%u = eq %s, %s %lld\n", cond1, irval_str(cond, ctx), typestr, iv.val.i);
+			printf("\tbr $%u, $%u, $%u\n", cond1, cse->bits.case_blk_ir, blk_next);
 		}
 
 		/* implicitly linked to next */
@@ -366,7 +366,7 @@ void gen_ir_stmt_switch(const stmt *s, irctx *ctx)
 		pdefault->bits.case_blk_ir = ctx->curval++;
 
 	/* no matches - branch to default/end */
-	printf("jmp $%u\n", pdefault ? pdefault->bits.case_blk_ir : blk_switch_end);
+	printf("\tjmp $%u\n", pdefault ? pdefault->bits.case_blk_ir : blk_switch_end);
 
 	gen_ir_stmt(s->lhs, ctx); /* the actual code inside the switch */
 

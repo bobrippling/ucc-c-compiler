@@ -52,7 +52,7 @@ void gen_ir_stmt_do(const stmt *s, irctx *ctx)
 	printf("$%u:\n", blk_begin);
 	{
 		gen_ir_stmt(s->lhs, ctx);
-		printf("jmp $%u\n", blk_continue);
+		printf("\tjmp $%u\n", blk_continue);
 	}
 
 	printf("$%u:\n", blk_continue);
@@ -60,12 +60,12 @@ void gen_ir_stmt_do(const stmt *s, irctx *ctx)
 		const unsigned val_test = ctx->curval++;
 		irval *cond = gen_ir_expr(s->expr, ctx);
 
-		printf("$%u = ne %s 0, %s\n",
+		printf("\t$%u = ne %s 0, %s\n",
 				val_test,
 				irtype_str(s->expr->tree_type, ctx),
 				irval_str(cond, ctx));
 
-		printf("br $%u, $%u, $%u\n",
+		printf("\tbr $%u, $%u, $%u\n",
 				val_test,
 				blk_begin,
 				blk_break);

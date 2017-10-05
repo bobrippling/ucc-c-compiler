@@ -697,7 +697,7 @@ static irval *gen_ir_cast_ptr2ptr(const expr *e, irval *sub, irctx *ctx)
 {
 	int const to = ctx->curval++;
 
-	printf("$%u = ptrcast %s, %s\n",
+	printf("\t$%u = ptrcast %s, %s\n",
 			to,
 			irtype_str(e->tree_type, ctx),
 			irval_str(sub, ctx));
@@ -713,7 +713,7 @@ static irval *gen_ir_cast_int_ptr_swap(
 {
 	int const to = ctx->curval++;
 
-	printf("$%u = %s %s, %s\n",
+	printf("\t$%u = %s %s, %s\n",
 			to,
 			sub_ptr ? "ptr2int" : "int2ptr",
 			irtype_str(e->tree_type, ctx),
@@ -736,7 +736,7 @@ static irval *gen_ir_cast_int_ext_trunc(const expr *e, irval *sub, irctx *ctx)
 
 	to = ctx->curval++;
 
-	printf("$%u = %s %s, %s\n",
+	printf("\t$%u = %s %s, %s\n",
 			to,
 			is_trunc ? "trunc" : zext ? "zext" : "sext",
 			irtype_str(e->tree_type, ctx),
@@ -792,8 +792,8 @@ irid gen_ir_lval2rval_bitfield(
 
 	lit_ty_str = irtype_str(arith_ty, ctx);
 
-	printf("$%u = shiftr_arith $%u, %s %u\n", bfid[0], tmp, lit_ty_str, nshift);
-	printf("$%u = and $%u, %s %" NUMERIC_FMT_U "\n", bfid[1], bfid[0], lit_ty_str, mask);
+	printf("\t$%u = shiftr_arith $%u, %s %u\n", bfid[0], tmp, lit_ty_str, nshift);
+	printf("\t$%u = and $%u, %s %" NUMERIC_FMT_U "\n", bfid[1], bfid[0], lit_ty_str, mask);
 
 	/* if signed, need to sign extend */
 	if(!type_is_signed(arith_ty))
@@ -804,8 +804,8 @@ irid gen_ir_lval2rval_bitfield(
 	sext[0] = ctx->curval++;
 	sext[1] = ctx->curval++;
 
-	printf("$%u = shiftl $%u, %s %u\n", sext[0], bfid[1], lit_ty_str, sext_nbits);
-	printf("$%u = shiftr_arith $%u, %s %u\n", sext[1], sext[0], lit_ty_str, sext_nbits);
+	printf("\t$%u = shiftl $%u, %s %u\n", sext[0], bfid[1], lit_ty_str, sext_nbits);
+	printf("\t$%u = shiftr_arith $%u, %s %u\n", sext[1], sext[0], lit_ty_str, sext_nbits);
 
 	return sext[1];
 }
@@ -824,9 +824,9 @@ static irval *gen_ir_lval2rval(irval *sub, const expr *e, irctx *ctx)
 
 	if(type_is(tnext, type_array)){
 		/* int[] -> int* */
-		printf("$%u = elem %s, i%d 0\n", tmp, irval_str(sub, ctx), platform_word_size());
+		printf("\t$%u = elem %s, i%d 0\n", tmp, irval_str(sub, ctx), platform_word_size());
 	}else{
-		printf("$%u = load %s\n", tmp, irval_str(sub, ctx));
+		printf("\t$%u = load %s\n", tmp, irval_str(sub, ctx));
 
 		/* special case bitfield loading */
 		if(expr_kind(child, struct)){

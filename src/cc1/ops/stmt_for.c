@@ -96,7 +96,7 @@ void gen_ir_stmt_for(const stmt *s, irctx *ctx)
 	if(s->flow->for_while){
 		irval *for_cond = gen_ir_expr_i1_trunc(s->flow->for_while, ctx, NULL);
 
-		printf("br %s, $%u, $%u\n",
+		printf("\tbr %s, $%u, $%u\n",
 				irval_str(for_cond, ctx),
 				blk_code,
 				blk_fin);
@@ -115,7 +115,7 @@ void gen_ir_stmt_for(const stmt *s, irctx *ctx)
 			irval *inc = gen_ir_expr(s->flow->for_inc, ctx);
 			irval_free(inc);
 		}
-		printf("jmp $%u\n", blk_test);
+		printf("\tjmp $%u\n", blk_test);
 	}
 
 	printf("$%u:\n", blk_fin);

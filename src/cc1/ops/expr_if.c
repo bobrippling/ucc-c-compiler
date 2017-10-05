@@ -262,7 +262,7 @@ irval *gen_ir_expr_if(const expr *e, irctx *ctx)
 
 	cond = gen_ir_expr_i1_trunc(e->expr, ctx, &orig_cond);
 
-	printf("br %s, $%u, $%u\n",
+	printf("\tbr %s, $%u, $%u\n",
 			irval_str(cond, ctx),
 			blk_true,
 			blk_false);
@@ -276,7 +276,7 @@ irval *gen_ir_expr_if(const expr *e, irctx *ctx)
 	}
 
 	if(e->rhs){
-		printf("jmp $%u\n", blk_fin);
+		printf("\tjmp $%u\n", blk_fin);
 
 		printf("$%u:\n", blk_false);
 		{
@@ -287,7 +287,7 @@ irval *gen_ir_expr_if(const expr *e, irctx *ctx)
 	}
 	printf("$%u:\n", blk_fin);
 
-	printf("$%u = phi [$%u, %s], [$%u, %s]\n",
+	printf("\t$%u = phi [$%u, %s], [$%u, %s]\n",
 			evali,
 			blk_true, irval_str_r(&strbuf_l, lval, ctx),
 			blk_false, irval_str_r(&strbuf_r, rval, ctx));

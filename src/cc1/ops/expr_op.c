@@ -1250,7 +1250,7 @@ static void unary_op_gen(const expr *e, irval *lhs, irctx *ctx, unsigned const e
 	switch(e->bits.op.op){
 		case op_plus:
 		case op_minus:
-			printf("$%u = %s %s 0, %s\n",
+			printf("\t$%u = %s %s 0, %s\n",
 					evali,
 					e->bits.op.op == op_plus ? "add" : "sub",
 					irtype_str(e->lhs->tree_type, ctx),
@@ -1269,13 +1269,13 @@ static void unary_op_gen(const expr *e, irval *lhs, irctx *ctx, unsigned const e
 			}
 
 			/* compare with zero (maybe float), zext */
-			printf("$%u = eq %s 0, %s\n",
+			printf("\t$%u = eq %s 0, %s\n",
 					evaltmp,
 					irtype_str(e->lhs->tree_type, ctx),
 					irval_str(lhs, ctx));
 
 			if(need_ext){
-				printf("$%u = zext %s, $%u\n",
+				printf("\t$%u = zext %s, $%u\n",
 						evali,
 						irtype_str(e->tree_type, ctx),
 						evaltmp);
@@ -1285,7 +1285,7 @@ static void unary_op_gen(const expr *e, irval *lhs, irctx *ctx, unsigned const e
 
 		case op_bnot:
 		{
-			printf("$%u = xor %s -1, %s\n",
+			printf("\t$%u = xor %s -1, %s\n",
 					evali,
 					irtype_str(e->lhs->tree_type, ctx),
 					irval_str(lhs, ctx));
@@ -1307,22 +1307,22 @@ static irval *gen_ir_shortcircuit(const expr *e, irctx *ctx, const unsigned eval
 	strbuf_fixed strbuf_l = STRBUF_FIXED_INIT_ARRAY(buf_l);
 	strbuf_fixed strbuf_r = STRBUF_FIXED_INIT_ARRAY(buf_r);
 
-	printf("$%u:\n", blk_lhs);
+	printf("\t$%u:\n", blk_lhs);
 	lval = gen_ir_expr_i1_trunc(e->lhs, ctx, NULL);
 
-	printf("br %s, $%u, $%u\n",
+	printf("\tbr %s, $%u, $%u\n",
 			irval_str(lval, ctx),
 			e->bits.op.op == op_orsc ? blk_fin : blk_rhs,
 			e->bits.op.op == op_orsc ? blk_rhs : blk_fin);
 
-	printf("$%u:\n", blk_rhs);
+	printf("\t$%u:\n", blk_rhs);
 	{
 		rval = gen_ir_expr_i1_trunc(e->rhs, ctx, NULL);
 	}
 
-	printf("$%u:\n", blk_fin);
+	printf("\t$%u:\n", blk_fin);
 
-	printf("$%u = phi [$%u, %s], [$%u, %s]\n",
+	printf("\t$%u = phi [$%u, %s], [$%u, %s]\n",
 			evali,
 			blk_lhs, irval_str_r(&strbuf_l, lval, ctx),
 			blk_rhs, irval_str_r(&strbuf_r, rval, ctx));
@@ -1374,7 +1374,7 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 			if(e->bits.op.op == op_minus){
 				int const addi = ctx->curval++;
 
-				printf("$%u = sub %s 0, %s # ptrsub\n",
+				printf("\t$%u = sub %s 0, %s # ptrsub\n",
 						addi,
 						irtype_str((is_ptr_lhs ? e->rhs : e->lhs)->tree_type, ctx),
 						irval_str(add, ctx));
@@ -1383,11 +1383,11 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 				add = irval_from_id(addi);
 			}
 
-			printf("$%u = ptradd %s, ", op_result, irval_str(ptr, ctx));
+			printf("\t$%u = ptradd %s, ", op_result, irval_str(ptr, ctx));
 			printf("%s\n", irval_str(add, ctx));
 
 		}else{
-			printf("$%u = %s %s, ",
+			printf("\t$%u = %s %s, ",
 					op_result,
 					ir_op_str(e->bits.op.op, rshift_is_arith),
 					irval_str(lhs, ctx));
@@ -1397,7 +1397,7 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 			if(fixup_type){
 				assert(op_result != evali);
 
-				printf("$%u = zext %s, $%u # C type fixup\n",
+				printf("\t$%u = zext %s, $%u # C type fixup\n",
 						evali, irtype_str(e->tree_type, ctx), op_result);
 			}
 		}

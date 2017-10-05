@@ -374,7 +374,7 @@ static const out_val *builtin_gen_unreachable(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_unreachable(const expr *e, irctx *ctx)
 {
-	printf("unreachable\n");
+	printf("\tunreachable\n");
 	return irval_from_noop();
 }
 

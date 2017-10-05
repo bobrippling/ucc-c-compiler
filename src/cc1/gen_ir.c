@@ -84,7 +84,7 @@ irval *gen_ir_expr_i1_trunc(const struct expr *expr, irctx *ctx, irval **const u
 	if(type_size(expr->tree_type, NULL) > 1){
 		irid i1_tmp = ctx->curval++;
 
-		printf("$%u = ne %s 0, %s\n",
+		printf("\t$%u = ne %s 0, %s\n",
 				i1_tmp,
 				irtype_str(expr->tree_type, ctx),
 				irval_str(v, ctx));
@@ -105,7 +105,7 @@ static void gen_ir_comment_opts_v(
 {
 	(void)ctx;
 	if(opts & IR_COMMENT_CHAR)
-		printf("# ");
+		printf("\t# ");
 	vprintf(fmt, l);
 	if(opts & IR_COMMENT_NEWLINE)
 		putchar('\n');
@@ -138,8 +138,8 @@ static void gen_ir_spill_args(irctx *ctx, funcargs *args)
 		decl *d = *i;
 		const char *asm_spel = decl_asm_spel(d);
 
-		printf("$%s = alloca %s\n", asm_spel, irtype_str(d->ref, ctx));
-		printf("store $%s, $%s\n", asm_spel, d->spel);
+		printf("\t$%s = alloca %s\n", asm_spel, irtype_str(d->ref, ctx));
+		printf("\tstore $%s, $%s\n", asm_spel, d->spel);
 	}
 }
 
@@ -530,11 +530,11 @@ static void gen_ir_memset_small(irctx *ctx, irval *v, char ch, size_t len)
 		/* easy */
 		const unsigned cast_tmp = ctx->curval++;
 
-		printf("$%u = ptrcast i%d*, %s\n",
+		printf("\t$%u = ptrcast i%d*, %s\n",
 				cast_tmp, (int)len,
 				irval_str(v, ctx));
 
-		printf("store $%u, i%d 0x%x\n",
+		printf("\tstore $%u, i%d 0x%x\n",
 				cast_tmp, (int)len, ch);
 
 	}else{
@@ -562,8 +562,8 @@ static void gen_ir_memset_small(irctx *ctx, irval *v, char ch, size_t len)
 			casttmp = ctx->curval++;
 			addtmp = ctx->curval++;
 
-			printf("$%u = ptrcast i%d, %s\n", casttmp, rounded, irval_str(iter, ctx));
-			printf("$%u = ptradd $%u, i4 1\n", addtmp, casttmp);
+			printf("\t$%u = ptrcast i%d, %s\n", casttmp, rounded, irval_str(iter, ctx));
+			printf("\t$%u = ptradd $%u, i4 1\n", addtmp, casttmp);
 
 			iter_tmp.type = IRVAL_ID;
 			iter_tmp.bits.id = addtmp;
@@ -591,36 +591,36 @@ static void gen_ir_memset_large(
 
 	assert(len > word_size);
 
-	printf("$%u = alloca i%d\n", byte_cnt, word_size);
-	printf("store $%u, i%d 0x%x\n", byte_cnt, word_size, (unsigned)len);
-	printf("$%u = alloca void*\n", iter_store);
-	printf("$%u = ptrcast void*, %s\n", iter_voidp, irval_str(iter, ctx));
-	printf("store $%u, $%u\n", iter_store, iter_voidp);
+	printf("\t$%u = alloca i%d\n", byte_cnt, word_size);
+	printf("\tstore $%u, i%d 0x%x\n", byte_cnt, word_size, (unsigned)len);
+	printf("\t$%u = alloca void*\n", iter_store);
+	printf("\t$%u = ptrcast void*, %s\n", iter_voidp, irval_str(iter, ctx));
+	printf("\tstore $%u, $%u\n", iter_store, iter_voidp);
 
 	printf("$%u:\n", blk_loop);
-	printf("$%u = load $%u\n", iter_tmp, iter_store);
+	printf("\t$%u = load $%u\n", iter_tmp, iter_store);
 
 	iter_passtmp.type = IRVAL_ID;
 	iter_passtmp.bits.id = iter_tmp;
 
 	gen_ir_memset_small(ctx, &iter_passtmp, ch, word_size);
 
-	printf("$%u = load $%u\n", byte_load, byte_cnt);
-	printf("$%u = sub $%u, i%d 0x%x\n", byte_tmp, byte_load, word_size, word_size);
-	printf("store $%u, $%u\n", byte_cnt, byte_tmp);
+	printf("\t$%u = load $%u\n", byte_load, byte_cnt);
+	printf("\t$%u = sub $%u, i%d 0x%x\n", byte_tmp, byte_load, word_size, word_size);
+	printf("\tstore $%u, $%u\n", byte_cnt, byte_tmp);
 
-	printf("$%u = ptrcast i%d*, $%u\n", iter_cast, word_size, iter_tmp);
-	printf("$%u = ptradd $%u, i4 1\n", iter_add, iter_cast);
-	printf("$%u = ptrcast void*, $%u\n", iter_storeback, iter_add);
-	printf("store $%u, $%u\n", iter_store, iter_storeback);
+	printf("\t$%u = ptrcast i%d*, $%u\n", iter_cast, word_size, iter_tmp);
+	printf("\t$%u = ptradd $%u, i4 1\n", iter_add, iter_cast);
+	printf("\t$%u = ptrcast void*, $%u\n", iter_storeback, iter_add);
+	printf("\tstore $%u, $%u\n", iter_store, iter_storeback);
 
 	/* byte_cnt must be > 0 here, since initial len is > word_size
 	 * if it's > 8, we continue, otherwise we break and copy the remaining bytes
 	 */
-	printf("$%u = gt $%u, i%d 0x%x\n",
+	printf("\t$%u = gt $%u, i%d 0x%x\n",
 			byte_cmp, byte_tmp, word_size, word_size);
 
-	printf("br $%u, $%u, $%u\n", byte_cmp, blk_loop, blk_fin);
+	printf("\tbr $%u, $%u, $%u\n", byte_cmp, blk_loop, blk_fin);
 
 	printf("$%u:\n", blk_fin);
 
@@ -641,17 +641,17 @@ static void gen_ir_memcpy_small(
 		const unsigned src_cast = ctx->curval++;
 		const unsigned load = ctx->curval++;
 
-		printf("$%u = ptrcast i%d*, %s\n",
+		printf("\t$%u = ptrcast i%d*, %s\n",
 				dest_cast, (int)len,
 				irval_str(dest_iter, ctx));
 
-		printf("$%u = ptrcast i%d*, %s\n",
+		printf("\t$%u = ptrcast i%d*, %s\n",
 				src_cast, (int)len,
 				irval_str(src_iter, ctx));
 
-		printf("$%u = load $%u\n", load, src_cast);
+		printf("\t$%u = load $%u\n", load, src_cast);
 
-		printf("store $%u, $%u\n", dest_cast, load);
+		printf("\tstore $%u, $%u\n", dest_cast, load);
 
 	}else{
 		/* as with memset(), just emit unrolled assignments */
@@ -676,8 +676,8 @@ static void gen_ir_memcpy_small(
 			addtmp_dest = ctx->curval++;
 			addtmp_src = ctx->curval++;
 
-			printf("$%u = ptradd %s, i4 1\n", addtmp_dest, irval_str(iter_dest, ctx));
-			printf("$%u = ptradd %s, i4 1\n", addtmp_src, irval_str(iter_src, ctx));
+			printf("\t$%u = ptradd %s, i4 1\n", addtmp_dest, irval_str(iter_dest, ctx));
+			printf("\t$%u = ptradd %s, i4 1\n", addtmp_src, irval_str(iter_src, ctx));
 
 			iter_tmp_dest.type = IRVAL_ID;
 			iter_tmp_dest.bits.id = addtmp_dest;
@@ -709,26 +709,26 @@ static void gen_ir_memcpy_large(
 
 	assert(len > word_size);
 
-	printf("$%u = alloca i%d\n", byte_cnt, word_size);
-	printf("store $%u, i%d 0x%x\n", byte_cnt, word_size, (unsigned)len);
+	printf("\t$%u = alloca i%d\n", byte_cnt, word_size);
+	printf("\tstore $%u, i%d 0x%x\n", byte_cnt, word_size, (unsigned)len);
 
 	/* alloca the pointers as T*, where T is a word_size int,
 	 * since we'll be performing most assignments through
 	 * that type
 	 */
-	printf("$%u = alloca %s*\n", iter_dest_store, word_size_type_str);
-	printf("$%u = ptrcast %s*, %s\n",
+	printf("\t$%u = alloca %s*\n", iter_dest_store, word_size_type_str);
+	printf("\t$%u = ptrcast %s*, %s\n",
 			iter_dest_voidp, word_size_type_str, irval_str(dest_iter, ctx));
-	printf("store $%u, $%u\n", iter_dest_store, iter_dest_voidp);
+	printf("\tstore $%u, $%u\n", iter_dest_store, iter_dest_voidp);
 
-	printf("$%u = alloca %s*\n", iter_src_store, word_size_type_str);
-	printf("$%u = ptrcast %s*, %s\n",
+	printf("\t$%u = alloca %s*\n", iter_src_store, word_size_type_str);
+	printf("\t$%u = ptrcast %s*, %s\n",
 			iter_src_voidp, word_size_type_str, irval_str(src_iter, ctx));
-	printf("store $%u, $%u\n", iter_src_store, iter_src_voidp);
+	printf("\tstore $%u, $%u\n", iter_src_store, iter_src_voidp);
 
 	printf("$%u:\n", blk_loop);
-	printf("$%u = load $%u\n", iter_dest_tmp, iter_dest_store);
-	printf("$%u = load $%u\n", iter_src_tmp, iter_src_store);
+	printf("\t$%u = load $%u\n", iter_dest_tmp, iter_dest_store);
+	printf("\t$%u = load $%u\n", iter_src_tmp, iter_src_store);
 
 	iter_dest_passtmp.type = IRVAL_ID;
 	iter_dest_passtmp.bits.id = iter_dest_tmp;
@@ -737,22 +737,22 @@ static void gen_ir_memcpy_large(
 
 	gen_ir_memcpy_small(ctx, &iter_dest_passtmp, &iter_src_passtmp, word_size);
 
-	printf("$%u = load $%u\n", byte_load, byte_cnt);
-	printf("$%u = sub $%u, i%d 0x%x\n", byte_tmp, byte_load, word_size, word_size);
-	printf("store $%u, $%u\n", byte_cnt, byte_tmp);
+	printf("\t$%u = load $%u\n", byte_load, byte_cnt);
+	printf("\t$%u = sub $%u, i%d 0x%x\n", byte_tmp, byte_load, word_size, word_size);
+	printf("\tstore $%u, $%u\n", byte_cnt, byte_tmp);
 
-	printf("$%u = ptradd $%u, i4 1\n", iter_dest_add, iter_dest_tmp);
-	printf("store $%u, $%u\n", iter_dest_store, iter_dest_add);
-	printf("$%u = ptradd $%u, i4 1\n", iter_src_add, iter_src_tmp);
-	printf("store $%u, $%u\n", iter_src_store, iter_src_add);
+	printf("\t$%u = ptradd $%u, i4 1\n", iter_dest_add, iter_dest_tmp);
+	printf("\tstore $%u, $%u\n", iter_dest_store, iter_dest_add);
+	printf("\t$%u = ptradd $%u, i4 1\n", iter_src_add, iter_src_tmp);
+	printf("\tstore $%u, $%u\n", iter_src_store, iter_src_add);
 
 	/* byte_cnt must be > 0 here, since initial len is > word_size
 	 * if it's > 8, we continue, otherwise we break and copy the remaining bytes
 	 */
-	printf("$%u = gt $%u, i%d 0x%x\n",
+	printf("\t$%u = gt $%u, i%d 0x%x\n",
 			byte_cmp, byte_tmp, word_size, word_size);
 
-	printf("br $%u, $%u, $%u\n", byte_cmp, blk_loop, blk_fin);
+	printf("\tbr $%u, $%u, $%u\n", byte_cmp, blk_loop, blk_fin);
 
 	printf("$%u:\n", blk_fin);
 
@@ -773,7 +773,7 @@ void gen_ir_memcpy(irctx *ctx, irval *dest, irval *src, size_t len)
 {
 	unsigned ws = platform_word_size();
 
-	printf("# memcpy %s -> ", irval_str(src, ctx));
+	printf("\t# memcpy %s -> ", irval_str(src, ctx));
 	printf("%s, size %lu\n", irval_str(dest, ctx), len);
 
 	if(len <= ws)
@@ -781,7 +781,7 @@ void gen_ir_memcpy(irctx *ctx, irval *dest, irval *src, size_t len)
 	else
 		gen_ir_memcpy_large(ctx, dest, src, len, ws);
 
-	printf("# memcpy complete\n");
+	printf("\t# memcpy complete\n");
 }
 
 static void gen_ir_labels_r(symtable *symtab, irctx *ctx)
@@ -793,10 +793,10 @@ static void gen_ir_labels_r(symtable *symtab, irctx *ctx)
 	for(i = 0; (lbl = dynmap_value(label *, symtab->labels, i)); i++){
 		irid lblid = label_getblk_irctx(lbl, ctx);
 
-		printf("label $%u # %s\n", lblid, lbl->spel);
+		printf("\tlabel $%u # %s\n", lblid, lbl->spel);
 
 		if(lbl->mustgen_spel)
-			printf("label $%u # %s\n", lblid, lbl->mustgen_spel);
+			printf("\tlabel $%u # %s\n", lblid, lbl->mustgen_spel);
 	}
 
 	for(siter = symtab->children; siter && *siter; siter++)
@@ -841,9 +841,9 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 
 			/* if non-void function and function may fall off the end, dummy a return */
 			if(d->bits.func.control_returns_undef){
-				printf("ret %s undef\n", irtype_str(retty, ctx));
+				printf("\tret %s undef\n", irtype_str(retty, ctx));
 			}else if(type_is_void(retty)){
-				printf("ret void\n");
+				printf("\tret void\n");
 			}
 
 			printf("}\n");
