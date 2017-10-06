@@ -805,6 +805,8 @@ static type *parse_btype(
 			}
 			primitive_mode = AUTOTYPE;
 
+			cc1_warn_at(&autotype_loc, gnu_autotype, "__auto_type is a GNU extension");
+
 		}else{
 			break;
 		}

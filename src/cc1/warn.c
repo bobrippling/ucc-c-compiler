@@ -131,6 +131,7 @@ static void warning_gnu(enum warning_fatality set)
 	cc1_warning.gnu_addr_lbl =
 	cc1_warning.gnu_expr_stmt =
 	cc1_warning.gnu_typeof =
+	cc1_warning.gnu_autotype =
 	cc1_warning.gnu_attribute =
 	cc1_warning.gnu_init_array_range =
 	cc1_warning.gnu_case_range =
