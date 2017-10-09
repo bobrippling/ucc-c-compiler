@@ -431,4 +431,8 @@ void gen_dump(symtable_global *globs)
 
 		dump_decl(d, &dump, NULL);
 	}
+
+	for(; iasm && *iasm; iasm++){
+		dump_gasm(*iasm, &dump);
+	}
 }
