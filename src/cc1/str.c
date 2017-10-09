@@ -16,31 +16,22 @@
 #include "warn.h"
 #include "parse_fold_error.h"
 
-void cstring_init_ascii(struct cstring *out, const char *start, size_t in_len)
+void cstring_init(struct cstring *out, enum cstring_type t, const char *start, size_t len)
 {
-	out->type = CSTRING_RAW;
-	out->count = in_len + 1 /* for nul byte */;
+	/* length doesn't include the nul byte, but we still nul-terminate */
+	out->type = t;
+	out->count = len;
 
-	out->bits.ascii = umalloc(out->count);
-
-	memcpy(out->bits.ascii, start, in_len);
-	out->bits.ascii[in_len] = '\0';
+	out->bits.ascii = umalloc(len + 1);
+	memcpy(out->bits.ascii, start, len);
+	out->bits.ascii[len] = '\0';
 }
 
-struct cstring *cstring_new_raw_from_ascii(const char *start, const char *end)
+struct cstring *cstring_new(enum cstring_type t, const char *start, size_t len)
 {
-	struct cstring *alloc = umalloc(sizeof *alloc);
+	struct cstring *cstr = umalloc(sizeof *cstr);
 
-	cstring_init_ascii(alloc, start, end - start + 1);
-
-	return alloc;
-}
-
-struct cstring *cstring_new_ascii_from_ascii(const char *start, const char *end)
-{
-	struct cstring *cstr = cstring_new_raw_from_ascii(start, end);
-
-	cstr->type = CSTRING_ASCII;
+	cstring_init(cstr, t, start, len);
 
 	return cstr;
 }

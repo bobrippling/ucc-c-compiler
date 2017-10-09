@@ -10,16 +10,16 @@ struct cstring
 
 	size_t count;
 
-	enum {
+	enum cstring_type
+	{
 		CSTRING_RAW, /* .bits.ascii active, but not escaped */
 		CSTRING_ASCII,
 		CSTRING_WIDE
 	} type;
 };
 
-struct cstring *cstring_new_raw_from_ascii(const char *start, const char *end);
-struct cstring *cstring_new_ascii_from_ascii(const char *start, const char *end);
-void cstring_init_ascii(struct cstring *, const char *, size_t);
+struct cstring *cstring_new(enum cstring_type, const char *start, size_t);
+void cstring_init(struct cstring *, enum cstring_type, const char *start, size_t);
 
 int cstring_char_at(const struct cstring *, size_t);
 

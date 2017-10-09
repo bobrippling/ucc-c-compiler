@@ -717,6 +717,7 @@ static struct cstring *read_string(int is_wide)
 	const char *start = bufferpos;
 	const char *end = str_quotefin((char *)start);
 	struct cstring *ret;
+	size_t len;
 
 	if(!end){
 		const char *empty = "";
@@ -731,9 +732,11 @@ static struct cstring *read_string(int is_wide)
 		end = empty + 1;
 	}
 
-	ret = cstring_new_raw_from_ascii(start, end - 1);
+	len = end - start;
 
-	update_bufferpos(bufferpos + ret->count);
+	ret = cstring_new(CSTRING_RAW, start, len);
+
+	update_bufferpos(bufferpos + len + 1);
 
 	cstring_escape(ret, is_wide, handle_escape_warn_err, NULL);
 
