@@ -561,6 +561,7 @@ void gen_ir_block_decls(symtable *symtab, irctx *ctx)
 	/* gen_block_decls() */
 	for(diter = symtab_decls(symtab); diter && *diter; diter++){
 		decl *d = *diter;
+		sym *s = d->sym;
 
 #warning todo: static constants + string constants
 		if(type_is(d->ref, type_func)){
@@ -570,6 +571,9 @@ void gen_ir_block_decls(symtable *symtab, irctx *ctx)
 			IRTODO("string constant/complit?");
 			continue;
 		}
+
+		if(!s || s->type != sym_local)
+			continue;
 
 		printf("\t$%s = alloca %s\n", decl_asm_spel(d), irtype_str(d->ref, ctx));
 
