@@ -1,6 +1,8 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#include "../../util/platform.h"
+
 #include "ops.h"
 #include "expr_struct.h"
 #include "../sue.h"
@@ -234,9 +236,9 @@ static irid gen_ir_expr_struct_elem_r(
 		id = ctx->curval++;
 
 		if(i == index_count)
-			printf("\t$%u = elem %s, i4 %u\n", id, irval_str(struct_val, ctx), memb_idx);
+			printf("\t$%u = elem %s, i%d %u\n", id, irval_str(struct_val, ctx), platform_word_size(), memb_idx);
 		else
-			printf("\t$%u = elem $%u, i4 %u\n", id, previd, memb_idx);
+			printf("\t$%u = elem $%u, i%d %u\n", id, previd, platform_word_size(), memb_idx);
 	}
 	free(indexes);
 
