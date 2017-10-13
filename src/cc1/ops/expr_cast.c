@@ -819,6 +819,8 @@ static irval *gen_ir_lval2rval(irval *sub, const expr *e, irctx *ctx)
 	/* if the pointed-to object is not an lvalue, don't deref */
 	if(type_is(tnext, type_func))
 		return sub;
+	if(type_is_s_or_u(tnext))
+		return sub; /* LVALUE_STRUCT - pass through */
 
 	tmp = ctx->curval++;
 
