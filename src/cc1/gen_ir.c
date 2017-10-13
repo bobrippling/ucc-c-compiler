@@ -860,6 +860,9 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 	gen_ir_decl_start(d, args, ctx);
 
 	if(args){
+		if(decl_linkage(d) == linkage_internal)
+			printf(" internal");
+
 		putchar('\n');
 		if(decl_should_emit_code(d)){
 			type *retty = type_called(d->ref, NULL);
