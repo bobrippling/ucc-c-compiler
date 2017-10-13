@@ -150,6 +150,11 @@ static void gen_ir_integral(integral_t i, type *ty)
 	fputs(buf, stdout);
 }
 
+static void gen_ir_decl_start(decl *d, funcargs *args, irctx *ctx)
+{
+	printf("$%s = %s", decl_asm_spel(d), irtype_str_maybe_fn(d->ref, args, ctx));
+}
+
 static void gen_ir_init_scalar(decl_init *init)
 {
 	int anyptr = 0;
@@ -827,7 +832,7 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 		return;
 	}
 
-	printf("$%s = %s", decl_asm_spel(d), irtype_str_maybe_fn(d->ref, args, ctx));
+	gen_ir_decl_start(d, args, ctx);
 
 	if(args){
 		putchar('\n');
