@@ -815,6 +815,27 @@ static void gen_ir_labels(stmt *code, irctx *ctx)
 	gen_ir_labels_r(symtab, ctx);
 }
 
+static void gen_ir_predeclare_static_locals(stmt *code, irctx *ctx)
+{
+	decl **diter;
+
+	for(diter = symtab_decls(code->symtab); diter && *diter; diter++){
+		decl *d = *diter;
+		sym *s = d->sym;
+
+		if(s->type != sym_global
+		|| (d->store & STORE_MASK_STORE) != store_static
+		|| type_is(d->ref, type_func))
+		{
+			continue;
+		}
+
+		gen_ir_decl_start(d, NULL, ctx);
+		gen_ir_init(ctx, d);
+		printf("\n");
+	}
+}
+
 static void gen_ir_decl(decl *d, irctx *ctx)
 {
 	funcargs *args = type_is(d->ref, type_func) ? type_funcargs(d->ref) : NULL;
@@ -830,6 +851,10 @@ static void gen_ir_decl(decl *d, irctx *ctx)
 		}
 
 		return;
+	}
+
+	if(args && decl_should_emit_code(d)){
+		gen_ir_predeclare_static_locals(d->bits.func.code, ctx);
 	}
 
 	gen_ir_decl_start(d, args, ctx);

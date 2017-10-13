@@ -563,12 +563,10 @@ void gen_ir_block_decls(symtable *symtab, irctx *ctx)
 		decl *d = *diter;
 		sym *s = d->sym;
 
-#warning todo: static constants + string constants
 		if(type_is(d->ref, type_func)){
 			continue;
 		}
 		if(decl_store_duration_is_static(d)){
-			IRTODO("string constant/complit?");
 			continue;
 		}
 

@@ -10,4 +10,3 @@ Medium:
 
 Easy:
 	global __asm__
-	locally scoped static compound literals
