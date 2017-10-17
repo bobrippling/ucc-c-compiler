@@ -568,6 +568,9 @@ static void fold_type_w_attr(
 						r->type == type_func
 							? "function returning a function"
 							: "array of functions");
+			}else if(r->type == type_func && type_is(r->ref, type_array)){
+				fold_had_error = 1;
+				warn_at_print_error(loc, "function returning an array");
 			}
 			break;
 
