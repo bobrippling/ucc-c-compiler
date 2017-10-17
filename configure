@@ -282,6 +282,8 @@ try_cflag -Wno-logical-not-parentheses
 try_cflag -Wsuggest-attribute=pure
 try_cflag -Wsuggest-attribute=const
 
+try_cflag -Werror=incompatible-pointer-types
+
 if test $debug = 1
 then
 	try_cflag -g
