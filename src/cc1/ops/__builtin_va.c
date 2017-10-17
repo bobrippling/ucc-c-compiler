@@ -543,7 +543,7 @@ expr *parse_va_arg(const char *ident, symtable *scope)
 
 static const out_val *builtin_gen_va_end(const expr *e, out_ctx *octx)
 {
-	(void)e;
+	out_val_release(octx, gen_expr(e->funcargs[0], octx));
 	return out_new_noop(octx);
 }
 
