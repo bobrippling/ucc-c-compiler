@@ -109,14 +109,19 @@ const out_val *gen_expr_assign_compound(const expr *e, out_ctx *octx)
 
 irval *gen_ir_expr_assign_compound(const expr *e, irctx *ctx)
 {
-#warning TODO: post-increment, etc
 	irval *lhs = gen_ir_expr(e->lhs, ctx);
 	irval *rhs = gen_ir_expr(e->rhs, ctx);
-	irval *ret;
+	irval *ret, *ret_post = NULL;
 	const irid tmp_val = ctx->curval++;
 	int const rshift_is_arith = type_is_signed(e->lhs->tree_type);
 
 	printf("\t$%u = load %s\n", tmp_val, irval_str(lhs, ctx));
+
+	if(e->assign_is_post){
+		const irid ret_post_id = ctx->curval++;
+		printf("\t$%u = $%u\n", ret_post_id, tmp_val);
+		ret_post = irval_from_id(ret_post_id);
+	}
 
 	/* special case bitfield storing */
 	if(expr_kind(e->lhs, struct)){
@@ -158,7 +163,12 @@ irval *gen_ir_expr_assign_compound(const expr *e, irctx *ctx)
 	if(rhs != ret)
 		irval_free(rhs);
 
-	return ret;
+	if(ret_post){
+		irval_free(ret);
+		return ret_post;
+	}else{
+		return ret;
+	}
 }
 
 void dump_expr_assign_compound(const expr *e, dump *ctx)
