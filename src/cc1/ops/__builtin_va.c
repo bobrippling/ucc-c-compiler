@@ -194,7 +194,7 @@ static irval *builtin_gen_ir_va_start(const expr *e, irctx *ctx)
 
 	irval_free(list);
 
-	return NULL;
+	return irval_from_noop();
 }
 
 expr *parse_va_start(const char *ident, symtable *scope)
@@ -561,7 +561,7 @@ static irval *builtin_gen_ir_va_end(const expr *e, irctx *ctx)
 	irval *list = gen_ir_expr(e->funcargs[0], ctx);
 	printf("\tva_end %s\n", irval_str(list, ctx));
 	irval_free(list);
-	return NULL;
+	return irval_from_noop();
 }
 
 static void fold_va_end(expr *e, symtable *stab)
