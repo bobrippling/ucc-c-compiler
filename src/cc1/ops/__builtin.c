@@ -374,6 +374,8 @@ static const out_val *builtin_gen_unreachable(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_unreachable(const expr *e, irctx *ctx)
 {
+	(void)e;
+	(void)ctx;
 	printf("\tunreachable\n");
 	return irval_from_noop();
 }
@@ -515,6 +517,8 @@ static const out_val *builtin_gen_frame_address(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_frame_address(const expr *e, irctx *ctx)
 {
+	(void)e;
+	(void)ctx;
 	IRTODO("TODO: %s", __func__);
 	return NULL;
 }
@@ -558,6 +562,8 @@ static const out_val *builtin_gen_reg_save_area(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_reg_save_area(const expr *e, irctx *ctx)
 {
+	(void)e;
+	(void)ctx;
 	IRTODO("va_list setup in IR");
 	return NULL;
 }
@@ -793,6 +799,8 @@ static const out_val *builtin_gen_nan(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_nan(const expr *e, irctx *ctx)
 {
+	(void)e;
+	(void)ctx;
 	IRTODO("TODO: %s", __func__);
 	return NULL;
 }

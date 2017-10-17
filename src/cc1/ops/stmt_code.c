@@ -632,6 +632,8 @@ static void irctx_run_dtor(decl *d, attribute *cleanup, void *vctx)
 
 static void irctx_vla_restore(decl *d, void *vctx)
 {
+	(void)d;
+	(void)vctx;
 	IRTODO("irctx vla restore");
 }
 

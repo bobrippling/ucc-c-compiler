@@ -162,6 +162,7 @@ const out_val *gen_expr_val(const expr *e, out_ctx *octx)
 
 irval *gen_ir_expr_val(const expr *e, irctx *ctx)
 {
+	(void)ctx;
 	if(e->bits.num.suffix & VAL_FLOATING){
 		return irval_from_f(e->tree_type, e->bits.num.val.f);
 	}else{
