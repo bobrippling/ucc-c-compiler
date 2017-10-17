@@ -13,6 +13,7 @@
 #include "../fold.h"
 #include "../gen_asm.h"
 #include "../gen_ir.h"
+#include "../gen_ir_internal.h"
 #include "../out/out.h"
 #include "../out/lbl.h"
 #include "../pack.h"
@@ -187,7 +188,12 @@ static const out_val *builtin_gen_va_start(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_va_start(const expr *e, irctx *ctx)
 {
-	IRTODO("TODO: %s", __func__);
+	irval *list = gen_ir_expr(e->funcargs[0], ctx);
+
+	printf("\tva_start %s\n", irval_str(list, ctx));
+
+	irval_free(list);
+
 	return NULL;
 }
 
@@ -485,8 +491,14 @@ stack:
 
 static irval *builtin_gen_ir_va_arg(const expr *e, irctx *ctx)
 {
-	IRTODO("TODO: %s", __func__);
-	return NULL;
+	irval *sub = gen_ir_expr(e->lhs, ctx);
+	const unsigned evali = ctx->curval++;
+
+	printf("\t$%u = va_arg %s, %s\n", evali, irtype_str(e->bits.va_arg_type, ctx), irval_str(sub, ctx));
+
+	irval_free(sub);
+
+	return irval_from_id(evali);
 }
 
 static void fold_va_arg(expr *e, symtable *stab)
@@ -546,7 +558,9 @@ static const out_val *builtin_gen_va_end(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_va_end(const expr *e, irctx *ctx)
 {
-	IRTODO("TODO: %s", __func__);
+	irval *list = gen_ir_expr(e->funcargs[0], ctx);
+	printf("\tva_end %s\n", irval_str(list, ctx));
+	irval_free(list);
 	return NULL;
 }
 
@@ -579,8 +593,7 @@ static const out_val *builtin_gen_va_copy(const expr *e, out_ctx *octx)
 
 static irval *builtin_gen_ir_va_copy(const expr *e, irctx *ctx)
 {
-	IRTODO("TODO: %s", __func__);
-	return NULL;
+	return gen_ir_expr(e->lhs, ctx);
 }
 
 static void fold_va_copy(expr *e, symtable *stab)
