@@ -144,13 +144,14 @@ void cstring_free(struct cstring *cstr)
 
 int cstring_eq(const struct cstring *a, const struct cstring *b)
 {
+	enum { EQUAL, NOT_EQUAL };
 	size_t sz;
 	void *ap, *bp;
 
 	if(a->type != b->type)
-		return 0;
+		return NOT_EQUAL;
 	if(a->count != b->count)
-		return 0;
+		return NOT_EQUAL;
 
 	switch(a->type){
 		case CSTRING_WIDE:
@@ -166,7 +167,7 @@ int cstring_eq(const struct cstring *a, const struct cstring *b)
 			break;
 	}
 
-	return !memcmp(ap, bp, sz * a->count);
+	return memcmp(ap, bp, sz * a->count);
 
 }
 
