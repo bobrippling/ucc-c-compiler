@@ -18,8 +18,8 @@ struct cstring
 	} type;
 };
 
-struct cstring *cstring_new(enum cstring_type, const char *start, size_t);
-void cstring_init(struct cstring *, enum cstring_type, const char *start, size_t);
+struct cstring *cstring_new(enum cstring_type, const char *start, size_t, int include_nul);
+void cstring_init(struct cstring *, enum cstring_type, const char *start, size_t, int include_nul);
 
 int cstring_char_at(const struct cstring *, size_t);
 

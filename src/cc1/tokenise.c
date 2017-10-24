@@ -734,7 +734,7 @@ static struct cstring *read_string(int is_wide)
 
 	len = end - start;
 
-	ret = cstring_new(CSTRING_RAW, start, len);
+	ret = cstring_new(CSTRING_RAW, start, len, 1);
 
 	update_bufferpos(bufferpos + len + 1);
 

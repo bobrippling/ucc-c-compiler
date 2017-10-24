@@ -16,22 +16,21 @@
 #include "warn.h"
 #include "parse_fold_error.h"
 
-void cstring_init(struct cstring *out, enum cstring_type t, const char *start, size_t len)
+void cstring_init(struct cstring *out, enum cstring_type t, const char *start, size_t len, int include_nul)
 {
-	/* length doesn't include the nul byte, but we still nul-terminate */
 	out->type = t;
-	out->count = len;
+	out->count = len + !!include_nul;
 
 	out->bits.ascii = umalloc(len + 1);
 	memcpy(out->bits.ascii, start, len);
 	out->bits.ascii[len] = '\0';
 }
 
-struct cstring *cstring_new(enum cstring_type t, const char *start, size_t len)
+struct cstring *cstring_new(enum cstring_type t, const char *start, size_t len, int include_nul)
 {
 	struct cstring *cstr = umalloc(sizeof *cstr);
 
-	cstring_init(cstr, t, start, len);
+	cstring_init(cstr, t, start, len, include_nul);
 
 	return cstr;
 }
@@ -63,10 +62,10 @@ void cstring_escape(
 	assert(cstr->type == CSTRING_RAW);
 
 	if(is_wide){
-		tmpout.bits.wides = umalloc(cstr->count * sizeof(tmpout.bits.wides[0]));
+		tmpout.bits.wides = umalloc((cstr->count + 1) * sizeof(tmpout.bits.wides[0]));
 		tmpout.type = CSTRING_WIDE;
 	}else{
-		tmpout.bits.ascii = umalloc(cstr->count);
+		tmpout.bits.ascii = umalloc(cstr->count + 1);
 		tmpout.type = CSTRING_ASCII;
 	}
 
@@ -175,12 +174,12 @@ unsigned cstring_hash(const struct cstring *cstr)
 
 static void cstring_widen(struct cstring *cstr)
 {
-	int *wides = umalloc(sizeof(*wides) * cstr->count);
+	int *wides = umalloc(sizeof(*wides) * (cstr->count + 1));
 	size_t i;
 
 	assert(cstr->type == CSTRING_RAW || cstr->type == CSTRING_ASCII);
 
-	for(i = 0; i < cstr->count; i++)
+	for(i = 0; i < cstr->count + 1; i++)
 		wides[i] = cstr->bits.ascii[i];
 
 	free(cstr->bits.ascii);
@@ -190,6 +189,16 @@ static void cstring_widen(struct cstring *cstr)
 
 void cstring_append(struct cstring *out, struct cstring *addend)
 {
+	/* assumes if `out` ends with a nul, we remove it and maintain the nul-ness later */
+	const size_t orig_out_count = out->count;
+	int last_is_nul;
+
+	if(out->type == CSTRING_WIDE){
+		last_is_nul = out->bits.wides[orig_out_count - 1] == '\0';
+	}else{
+		last_is_nul = out->bits.ascii[orig_out_count - 1] == '\0';
+	}
+
 	if(addend->type != out->type){
 		assert(addend->type == CSTRING_WIDE || out->type == CSTRING_WIDE);
 
@@ -199,26 +208,29 @@ void cstring_append(struct cstring *out, struct cstring *addend)
 			cstring_widen(addend);
 	}
 
-	out->count += addend->count /* ignore trailing \0 on ours */ - 1;
+	out->count += addend->count;
 
 	if(out->type == CSTRING_WIDE){
 		out->bits.wides = urealloc1(
 				out->bits.wides,
-				sizeof(out->bits.wides[0]) * out->count);
+				sizeof(out->bits.wides[0]) * (out->count + 1));
 
 		memcpy(
-				out->bits.wides + out->count - addend->count,
+				out->bits.wides + out->count - addend->count - !!last_is_nul,
 				addend->bits.wides,
-				sizeof(addend->bits.wides[0]) * addend->count);
+				sizeof(addend->bits.wides[0]) * (addend->count + 1));
 
 	}else{
-		out->bits.ascii = urealloc1(out->bits.ascii, out->count);
+		out->bits.ascii = urealloc1(out->bits.ascii, out->count + 1);
 
 		memcpy(
-				out->bits.ascii + out->count - addend->count,
+				out->bits.ascii + out->count - addend->count - !!last_is_nul,
 				addend->bits.ascii,
-				addend->count);
+				addend->count + 1);
 	}
+
+	if(last_is_nul)
+		out->count--;
 }
 
 char *str_add_escape(struct cstring *cstr)

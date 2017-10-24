@@ -182,7 +182,7 @@ void dump_strliteral(dump *ctx, const char *str, size_t len)
 {
 	struct cstring cstr;
 
-	cstring_init(&cstr, CSTRING_ASCII, str, len);
+	cstring_init(&cstr, CSTRING_ASCII, str, len, 0);
 
 	dump_strliteral_indent(ctx, 1, &cstr);
 
