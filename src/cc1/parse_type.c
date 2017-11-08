@@ -917,10 +917,11 @@ static type *parse_btype(
 				if(primitive_mode != NONE && primitive == type_llong)
 					C99_LONGLONG();
 
-				if(primitive_mode == NONE && !signed_set)
-					primitive = type_int;
-
-				r = type_nav_btype(cc1_type_nav, primitive);
+				if(primitive_mode == NONE && !signed_set){
+					r = default_type();
+				}else{
+					r = type_nav_btype(cc1_type_nav, primitive);
+				}
 				break;
 		}
 
@@ -1490,7 +1491,7 @@ type *parse_type(int newdecl, symtable *scope)
 		if(parse_at_decl(scope, 1)){
 			uneat(token_auto);
 		}else{
-			btype = type_nav_btype(cc1_type_nav, type_int);
+			btype = default_type();
 			try_trail = 1;
 		}
 	}
