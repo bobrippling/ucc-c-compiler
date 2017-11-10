@@ -15,7 +15,7 @@ char *func_mangle(const char *name, type *fnty)
 {
 	char *pre, suff[8];
 
-	pre = fopt_mode & FOPT_LEADING_UNDERSCORE ? "_" : "";
+	pre = (cc1_backend != BACKEND_IR && fopt_mode & FOPT_LEADING_UNDERSCORE) ? "_" : "";
 	*suff = '\0';
 
 	if(fnty){
