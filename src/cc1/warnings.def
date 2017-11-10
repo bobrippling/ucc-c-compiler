@@ -207,6 +207,7 @@ X("missing-empty-struct-brace-init", missing_empty_struct_brace_init)
 
 X("missing-prototypes", missing_prototype)
 X("missing-variable-declarations", missing_variable_decls)
+ALIAS("missing-declarations", missing_variable_decls)
 GROUP("missing-forwards", &cc1_warning.missing_variable_decls, &cc1_warning.missing_prototype)
 ALIAS("strict-prototypes", implicit_old_func)/* gcc/clang */
 
