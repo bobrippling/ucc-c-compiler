@@ -473,38 +473,54 @@ char *eval_expand_macros(char *line)
 	return anchor;
 }
 
-char *eval_expand_defined(char *w)
+static char *eval_expand(char *w, const char *from, int eval(char *))
 {
-	char *defined;
+	char *entry;
 
-	while((defined = word_find(w, DEFINED_STR))){
-		char *s = str_spc_skip(word_end(defined));
-		char *ident;
-		char buf[2], save;
-		int with_paren;
+	while((entry = word_find(w, from))){
+		char *const entry_end = str_spc_skip(word_end(entry));
+		char *closeparen;
+		char buf[2];
+		int replace;
 
-		if((with_paren = *s == '('))
-			s = str_spc_skip(s+1);
+		if((*entry_end != '('))
+			CPP_DIE("open paren expected for \"%s\"", from);
 
-		if(!iswordpart(*s))
-			CPP_DIE("identifier expected for \"" DEFINED_STR "\"");
+		closeparen = strchr_nest(entry_end, ')');
+		if(!closeparen)
+			CPP_DIE("close paren expected for \"%s\"", from);
 
-		ident = s;
-		s = word_end(s);
+		*closeparen = '\0';
 
-		save = *s, *s = '\0';
-		snprintf(buf, sizeof buf, "%d", !!macro_find(ident));
-		*s = save;
+		replace = eval(entry_end+1);
+		snprintf(buf, sizeof buf, "%d", replace);
 
-		if(with_paren){
-			s = str_spc_skip(s);
-			if(*s != ')')
-				CPP_DIE("')' expected for \"" DEFINED_STR "\"");
-			s++;
-		}
+		*closeparen = ')';
 
-		w = str_replace(w, defined, s, buf);
+		w = str_replace(w, entry, closeparen + 1, buf);
 	}
 
 	return w;
+}
+
+static int defined_macro_find(char *ident)
+{
+	char *end;
+	char save;
+	int ret;
+
+	ident = word_find_any(ident);
+	end = word_end(ident);
+	assert(end);
+	save = *end;
+	*end = '\0';
+
+	ret = !!macro_find(ident);
+	*end = save;
+	return ret;
+}
+
+char *eval_expand_defined(char *w)
+{
+	return eval_expand(w, DEFINED_STR, defined_macro_find);
 }
