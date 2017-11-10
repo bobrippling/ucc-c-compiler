@@ -76,6 +76,7 @@ static const struct
 	SPECIAL("__has_extension"),
 	SPECIAL("__has_attribute"),
 	SPECIAL("__has_builtin"),
+	SPECIAL("__has_include"),
 #undef SPECIAL
 
 	{ NULL, NULL, 0 }

@@ -20,6 +20,10 @@
 #include "preproc.h"
 #include "has.h"
 
+/* for __has_include() */
+#include "directive.h"
+#include "include.h"
+
 #define VA_ARGS_STR "__VA_ARGS__"
 
 static char **split_func_args(char *args_str)
@@ -523,4 +527,28 @@ static int defined_macro_find(char *ident)
 char *eval_expand_defined(char *w)
 {
 	return eval_expand(w, DEFINED_STR, defined_macro_find);
+}
+
+static int has_include(char *arg)
+{
+	int angle;
+	const char *fname = include_parse(arg, &angle, 1);
+	const char *curdir = cd_stack[dynarray_count(cd_stack) - 1];
+	char *path;
+	int sysh;
+	FILE *f = include_fopen(curdir, fname, angle, &path, &sysh);
+	int ret = 0;
+
+	free(path);
+	if(f){
+		fclose(f);
+		ret = 1;
+	}
+
+	return ret;
+}
+
+char *eval_expand_has_include(char *w)
+{
+	return eval_expand(w, HAS_INCLUDE_STR, has_include);
 }

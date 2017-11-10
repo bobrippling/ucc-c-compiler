@@ -222,7 +222,7 @@ static void handle_error(token **tokens)
 	handle_error_warning(tokens, 1);
 }
 
-static char *include_parse(
+char *include_parse(
 		char *include_arg_anchor, int *const is_lib,
 		int may_expand_macros)
 {
@@ -365,6 +365,7 @@ static int /*bool*/ if_eval(token **tokens, const char *type)
 	for(;;){
 		/* first we need to filter out defined() */
 		w = eval_expand_defined(w);
+		w = eval_expand_has_include(w);
 
 		/* then macros */
 		w = eval_expand_macros(w);
