@@ -957,6 +957,7 @@ void gen_ir(symtable_global *globs)
 				iasm = NULL;
 		}
 
+		ctx.curval = 0;
 		gen_ir_decl(d, &ctx);
 	}
 
