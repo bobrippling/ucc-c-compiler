@@ -1307,7 +1307,7 @@ static irval *gen_ir_shortcircuit(const expr *e, irctx *ctx, const unsigned eval
 	strbuf_fixed strbuf_l = STRBUF_FIXED_INIT_ARRAY(buf_l);
 	strbuf_fixed strbuf_r = STRBUF_FIXED_INIT_ARRAY(buf_r);
 
-	printf("\t$%u:\n", blk_lhs);
+	printf("$%u:\n", blk_lhs);
 	lval = gen_ir_expr_i1_trunc(e->lhs, ctx, NULL);
 
 	printf("\tbr %s, $%u, $%u\n",
@@ -1315,12 +1315,12 @@ static irval *gen_ir_shortcircuit(const expr *e, irctx *ctx, const unsigned eval
 			e->bits.op.op == op_orsc ? blk_fin : blk_rhs,
 			e->bits.op.op == op_orsc ? blk_rhs : blk_fin);
 
-	printf("\t$%u:\n", blk_rhs);
+	printf("$%u:\n", blk_rhs);
 	{
 		rval = gen_ir_expr_i1_trunc(e->rhs, ctx, NULL);
 	}
 
-	printf("\t$%u:\n", blk_fin);
+	printf("$%u:\n", blk_fin);
 
 	printf("\t$%u = phi [$%u, %s], [$%u, %s]\n",
 			evali,
