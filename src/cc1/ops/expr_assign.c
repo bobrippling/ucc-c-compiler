@@ -169,11 +169,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 		FOLD_EXPR(e->expr, stab);
 
 		/* set is_lval, so we can participate in struct-copy chains
-		 * FIXME: don't interpret as an lvalue, e.g. (a = b) = c;
-		 * this is currently special cased in expr_is_lval()
-		 *
-		 * CHECK THIS
-		 */
+		 * - this isn't interpreted as an lvalue, e.g. (a = b) = c; */
 		if(cc1_backend == BACKEND_ASM)
 			e->f_gen = lea_assign_lhs;
 		e->f_islval = expr_is_lval_struct;
