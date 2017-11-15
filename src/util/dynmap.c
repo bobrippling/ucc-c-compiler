@@ -213,6 +213,14 @@ void *dynmap_nochk_rm(dynmap *map, void *key)
 	return value;
 }
 
+void dynmap_clear(dynmap *map)
+{
+	if(!map)
+		return;
+
+	memset(map->pairs, 0, sizeof(map->pairs));
+}
+
 void dynmap_dump(dynmap *map)
 {
 	int i;

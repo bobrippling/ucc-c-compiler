@@ -142,6 +142,12 @@ static void test_dynmap_normal(void)
 	while((key = dynmap_key(char *, map, 0)))
 		free(dynmap_rm(char *, int *, map, key));
 
+	dynmap_clear(map);
+	if(dynmap_exists(char *, map, (char *)"one"))
+		BAD("dynmap_clear");
+	if(dynmap_get(char *, int *, map, (char *)"one"))
+		BAD("dynmap_clear");
+
 	dynmap_free(map);
 }
 

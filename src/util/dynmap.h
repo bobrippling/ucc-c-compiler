@@ -7,7 +7,8 @@ typedef int dynmap_cmp_f(void *, void *);
 typedef unsigned dynmap_hash_f(const void *);
 
 dynmap *dynmap_nochk_new(dynmap_cmp_f, dynmap_hash_f);
-void    dynmap_free(dynmap *);
+void dynmap_free(dynmap *);
+void dynmap_clear(dynmap *);
 
 void *dynmap_nochk_get(dynmap *, void *key);
 void *dynmap_nochk_set(dynmap *, void *key, void *val);
