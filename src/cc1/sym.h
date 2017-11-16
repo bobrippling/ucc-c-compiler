@@ -102,7 +102,7 @@ struct symtable_global
 {
 	symtable stab; /* ABI compatible with struct symtable */
 	symtable_gasm **gasms;
-	dynmap *literals;
+	dynmap *literals; /* strings */
 	dynmap *unrecog_attrs;
 	dynmap *unsequenced_syms; /* sym* => enum sym_rw */
 };
