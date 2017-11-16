@@ -90,6 +90,13 @@ struct symtable_gasm
 	char *asm_str;
 };
 
+enum sym_rw
+{
+	SYM_UNSEQUENCED_UNSET,
+	SYM_UNSEQUENCED_READ,
+	SYM_UNSEQUENCED_WRITE
+};
+
 typedef struct symtable_global symtable_global;
 struct symtable_global
 {
@@ -97,6 +104,7 @@ struct symtable_global
 	symtable_gasm **gasms;
 	dynmap *literals;
 	dynmap *unrecog_attrs;
+	dynmap *unsequenced_syms; /* sym* => enum sym_rw */
 };
 
 sym *sym_new(decl *d, enum sym_type t);

@@ -3,6 +3,7 @@
 
 #include "expr_assign.h"
 #include "expr_op.h"
+#include "../sequence.h"
 
 const char *str_expr_assign_compound()
 {
@@ -12,9 +13,11 @@ const char *str_expr_assign_compound()
 void fold_expr_assign_compound(expr *e, symtable *stab)
 {
 	const char *const desc = "compound assignment";
+	sym *sym;
 #define lvalue e->lhs
 
-	fold_inc_writes_if_sym(lvalue, stab);
+	sym = fold_inc_writes_if_sym(lvalue, stab);
+	sequence_write(e->lhs, sym, stab);
 
 	fold_expr_nodecay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);

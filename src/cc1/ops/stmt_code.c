@@ -15,6 +15,7 @@
 #include "../type_nav.h"
 #include "../vla.h"
 #include "../label.h"
+#include "../sequence.h"
 
 #include "../out/lbl.h"
 #include "../out/dbg.h"
@@ -100,6 +101,8 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 
 		/* block decls must be complete */
 		fold_check_decl_complete(d);
+
+		sequence_point(stab);
 
 		if((attr = attribute_present(d, attr_cleanup)))
 			cleanup_check(d, attr);

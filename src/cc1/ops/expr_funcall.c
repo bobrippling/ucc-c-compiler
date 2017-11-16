@@ -16,6 +16,7 @@
 #include "../type_nav.h"
 #include "../c_funcs.h"
 #include "../fopt.h"
+#include "../sequence.h"
 
 #include "expr_identifier.h"
 #include "expr_op.h"
@@ -453,6 +454,8 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 	if(sp && !(cc1_fopt.freestanding))
 		check_standard_funcs(sp, e->funcargs);
+
+	sequence_point(stab);
 }
 
 const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)

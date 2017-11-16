@@ -1,6 +1,7 @@
 #include "ops.h"
 #include "expr_comma.h"
 #include "../type_is.h"
+#include "../sequence.h"
 
 const char *str_expr_comma()
 {
@@ -35,6 +36,8 @@ void fold_expr_comma(expr *e, symtable *stab)
 			e->lhs,
 			FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
 			"comma-expr");
+
+	sequence_point(stab);
 
 	e->rhs = fold_expr_nonstructdecay(e->rhs, stab);
 	fold_check_expr(

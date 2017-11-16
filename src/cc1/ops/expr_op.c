@@ -11,6 +11,7 @@
 #include "../type_nav.h"
 #include "../sanitize.h"
 #include "../fopt.h"
+#include "../sequence.h"
 
 #include "expr_cast.h"
 #include "expr_val.h"
@@ -1140,6 +1141,9 @@ void fold_expr_op(expr *e, symtable *stab)
 				op_sizeof_div_check(e) ||
 				array_subscript_tycheck(e) ||
 				op_int_promotion_check(e));
+
+		if(op_is_shortcircuit(e->bits.op.op))
+			sequence_point(stab);
 
 	}else{
 		/* (except unary-not) can only have operations on integers,

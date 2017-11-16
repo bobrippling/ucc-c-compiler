@@ -69,6 +69,7 @@ X("unused-variable", unused_var)
 GROUP("unused", &cc1_warning.unused_param, &cc1_warning.unused_var)
 
 X("uninitialised", uninitialised)
+X("unsequenced", unsequenced_access)
 
 X("int-ptr-conversion", int_ptr_conv)
 ALIAS("ptr-int-conversion", int_ptr_conv)

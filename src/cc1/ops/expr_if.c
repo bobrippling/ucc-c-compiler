@@ -8,6 +8,7 @@
 #include "../out/lbl.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../sequence.h"
 
 #include "expr_op.h"
 
@@ -245,6 +246,8 @@ void fold_expr_if(expr *e, symtable *stab)
 			try_pointer_propagate(e, cmp, tt_l, tt_r);
 		}
 	}
+
+	sequence_point(stab);
 }
 
 const out_val *gen_expr_if(const expr *e, out_ctx *octx)

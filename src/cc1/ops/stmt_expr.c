@@ -8,6 +8,7 @@
 #include "expr_stmt.h"
 #include "expr_cast.h"
 #include "__builtin.h"
+#include "../sequence.h"
 
 const char *str_stmt_expr()
 {
@@ -40,6 +41,8 @@ void fold_stmt_expr(stmt *s)
 		/* must generate a read */
 		FOLD_EXPR(s->expr, s->symtab);
 	}
+
+	sequence_point(s->symtab);
 
 	if(!folded
 	&& !s->freestanding

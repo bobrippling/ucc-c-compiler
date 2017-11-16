@@ -12,6 +12,7 @@
 #include "../type_nav.h"
 #include "../out/dbg.h"
 #include "../fopt.h"
+#include "../sequence.h"
 
 #include "expr_val.h"
 
@@ -385,6 +386,8 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 	}
 
 	if(expr_cast_is_lval2rval(e)){
+		sequence_read(e, NULL, stab);
+
 		e->tree_type = type_unattribute(
 				type_unqualify(
 					type_decay(

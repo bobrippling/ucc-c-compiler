@@ -7,6 +7,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../c_funcs.h"
+#include "../sequence.h"
 
 #include "expr_cast.h"
 #include "expr_struct.h"
@@ -101,6 +102,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 	expr *rhs_nocast;
 
 	lhs_sym = fold_inc_writes_if_sym(e->lhs, stab);
+	sequence_write(e->lhs, lhs_sym, stab);
 
 	fold_expr_nodecay(e->lhs, stab);
 	fold_expr_nodecay(e->rhs, stab);
