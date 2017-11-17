@@ -95,7 +95,9 @@ static const out_val *lea_assign_lhs(const expr *e, out_ctx *octx)
 	return gen_expr(e->lhs, octx);
 }
 
-static void merge_sequence_states(expr *e, sym *lhs_sym, symtable *stab, enum sym_rw sequence_prev_state)
+void expr_assign_merge_sequence_state(
+		expr *e, sym *lhs_sym,
+		symtable *stab, enum sym_rw sequence_prev_state)
 {
 	enum sym_rw child_state = sequence_state(e, lhs_sym, stab);
 
@@ -194,7 +196,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 		e->f_islval = expr_is_lval_struct;
 	}
 
-	merge_sequence_states(e, lhs_sym, stab, sequence_prev_state);
+	expr_assign_merge_sequence_state(e, lhs_sym, stab, sequence_prev_state);
 }
 
 const out_val *gen_expr_assign(const expr *e, out_ctx *octx)

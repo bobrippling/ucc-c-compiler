@@ -14,10 +14,11 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 {
 	const char *const desc = "compound assignment";
 	sym *sym;
+	enum sym_rw sequence_prev_state;
 #define lvalue e->lhs
 
 	sym = fold_inc_writes_if_sym(lvalue, stab);
-	sequence_write(e->lhs, sym, stab);
+	sequence_prev_state = sequence_state(e, sym, stab);
 
 	fold_expr_nodecay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
@@ -67,6 +68,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 
 	/* type check is done in op_required_promotion() */
 #undef lvalue
+
+	expr_assign_merge_sequence_state(e, sym, stab, sequence_prev_state);
 }
 
 const out_val *gen_expr_assign_compound(const expr *e, out_ctx *octx)
