@@ -95,14 +95,31 @@ static const out_val *lea_assign_lhs(const expr *e, out_ctx *octx)
 	return gen_expr(e->lhs, octx);
 }
 
+static void merge_sequence_states(expr *e, sym *lhs_sym, symtable *stab, enum sym_rw sequence_prev_state)
+{
+	enum sym_rw child_state = sequence_state(e, lhs_sym, stab);
+
+	/* restore state - this allows reads from the symbol followed by our assignment write */
+	sequence_set_state(e, lhs_sym, stab, sequence_prev_state);
+	sequence_write(e->lhs, lhs_sym, stab);
+
+	if(child_state == SYM_UNSEQUENCED_WRITE
+	&& sequence_prev_state != SYM_UNSEQUENCED_WRITE)
+	{
+		/* sub-expr wrote to the sym, we're also writing - simulate */
+		sequence_write(e->lhs, lhs_sym, stab);
+	}
+}
+
 void fold_expr_assign(expr *e, symtable *stab)
 {
 	sym *lhs_sym = NULL;
 	int is_struct_cpy = 0;
 	expr *rhs_nocast;
+	enum sym_rw sequence_prev_state;
 
 	lhs_sym = fold_inc_writes_if_sym(e->lhs, stab);
-	sequence_write(e->lhs, lhs_sym, stab);
+	sequence_prev_state = sequence_state(e, lhs_sym, stab);
 
 	fold_expr_nodecay(e->lhs, stab);
 	fold_expr_nodecay(e->rhs, stab);
@@ -176,6 +193,8 @@ void fold_expr_assign(expr *e, symtable *stab)
 			e->f_gen = lea_assign_lhs;
 		e->f_islval = expr_is_lval_struct;
 	}
+
+	merge_sequence_states(e, lhs_sym, stab, sequence_prev_state);
 }
 
 const out_val *gen_expr_assign(const expr *e, out_ctx *octx)
