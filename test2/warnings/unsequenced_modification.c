@@ -9,14 +9,19 @@ int main()
 
 	// ensure init-then-assign doesn't warn
 	i = 1; // CHECK: !/warn/
+	i += 1; // CHECK: !/warn/
 
 	f(i, i = 2); // CHECK: warning: unsequenced modification of "i"
+	f(i, i += 2); // CHECK: warning: unsequenced modification of "i"
 
 	g(i, i, i, i); // CHECK: !/warn/
 
 	i = 1, i = 2; // CHECK: !/warn/
+	i += 1, i += 2; // CHECK: !/warn/
 
 	i = i++; // CHECK: warning: unsequenced modification of "i"
+	i += i++; // CHECK: warning: unsequenced modification of "i"
 
 	i = i + 1; // CHECK: !/warn/
+	i += i + 1; // CHECK: !/warn/
 }
