@@ -1357,7 +1357,7 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 
 	}else{
 		irval *rhs = gen_ir_expr(e->rhs, ctx);
-		int const rshift_is_arith = type_is_signed(e->lhs->tree_type);
+		int const is_signed = type_is_signed(e->lhs->tree_type);
 		int const fixup_type = op_is_comparison(e->bits.op.op);
 		unsigned const op_result = (fixup_type ? ctx->curval++ : evali);
 
@@ -1389,7 +1389,7 @@ irval *gen_ir_expr_op(const expr *e, irctx *ctx)
 		}else{
 			printf("\t$%u = %s %s, ",
 					op_result,
-					ir_op_str(e->bits.op.op, rshift_is_arith),
+					ir_op_str(e->bits.op.op, is_signed),
 					irval_str(lhs, ctx));
 			printf("%s\n", irval_str(rhs, ctx));
 

@@ -22,7 +22,7 @@ const char *irtype_str_r(struct strbuf_fixed *, type *, irctx *);
 const char *irval_str(irval *, irctx *);
 const char *irval_str_r(struct strbuf_fixed *, irval *, irctx *);
 
-const char *ir_op_str(enum op_type, int arith_rshift);
+const char *ir_op_str(enum op_type, int is_signed);
 
 int irtype_struct_decl_index(
 		struct struct_union_enum_st *su,

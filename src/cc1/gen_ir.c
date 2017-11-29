@@ -881,12 +881,12 @@ static const char *irtype_btype_str(const btype *bt)
 	}
 }
 
-const char *ir_op_str(enum op_type op, int arith_rshift)
+const char *ir_op_str(enum op_type op, int is_signed)
 {
 	switch(op){
 		case op_multiply: return "mul";
-		case op_divide:   return "div";
-		case op_modulus:  return "mod";
+		case op_divide:   return is_signed ? "sdiv" : "udiv";
+		case op_modulus:  return is_signed ? "smod" : "umod";
 		case op_plus:     return "add";
 		case op_minus:    return "sub";
 		case op_xor:      return "xor";
@@ -894,7 +894,7 @@ const char *ir_op_str(enum op_type op, int arith_rshift)
 		case op_and:      return "and";
 		case op_shiftl:   return "shiftl";
 		case op_shiftr:
-			return arith_rshift ? "shiftr_arith" : "shiftr_logic";
+			return is_signed ? "shiftr_arith" : "shiftr_logic";
 
 		case op_eq:       return "eq";
 		case op_ne:       return "ne";
