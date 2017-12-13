@@ -26,6 +26,7 @@
 #include "type_is.h"
 #include "type_nav.h"
 #include "fopt.h"
+#include "sequence.h"
 
 #include "ops/expr_cast.h"
 #include "ops/expr_identifier.h"
@@ -918,6 +919,8 @@ static void fold_decl_var_dinit(
 			}else{
 				ICE("fold_decl(%s) with no pinit_code?", d->spel);
 			}
+
+			sequence_point(stab);
 		}
 	}
 }

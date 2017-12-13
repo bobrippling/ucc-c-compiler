@@ -2,10 +2,14 @@
 
 void f(int, int);
 void g(int, int, int, int);
+int h(int);
 
 int main()
 {
 	int i = 0; // CHECK: !/warn/
+	int a = 3; // CHECK: !/warn/
+	int b = h(a); /* used to get a unseq for 'a' here */ // CHECK: !/warn/
+	int c = (b = b++); // CHECK: unsequenced modification of "b"
 
 	// ensure init-then-assign doesn't warn
 	i = 1; // CHECK: !/warn/
