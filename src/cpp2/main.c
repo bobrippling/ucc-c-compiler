@@ -489,6 +489,11 @@ defaul:
 
 		case PLATFORM_mipsel_32:
 			macro_add("__MIPS__", "1", 0);
+			break;
+
+		case PLATFORM_chip8:
+			macro_add("__CHIP8__", "1", 0);
+			break;
 	}
 
 	set_current_fname(FNAME_BUILTIN);

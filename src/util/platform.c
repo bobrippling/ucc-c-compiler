@@ -44,6 +44,8 @@ unsigned platform_word_size()
 {
 	INIT();
 	switch(platform_t){
+		case PLATFORM_chip8:
+			return 2;
 		case PLATFORM_mipsel_32:
 		 return 4;
 		case PLATFORM_x86_64:
@@ -60,6 +62,8 @@ int platform_32bit(void)
 unsigned platform_align_max()
 {
 	switch(platform_word_size()){
+		case 2:
+			return 2;
 		case 4:
 			return 8;
 		case 8:
