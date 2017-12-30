@@ -161,7 +161,7 @@ static void const_op_num_int(
 			else
 				assert(0 && "unreachable");
 
-			/* label and num - only + and -, or comparison */
+			/* label and num - only + and -, shortcircuit or comparison */
 			switch(e->bits.op.op){
 				case op_not:
 					/* !&lbl */
@@ -200,6 +200,19 @@ static void const_op_num_int(
 					else if(e->bits.op.op == op_minus)
 						k->offset -= num_side->offset;
 					break;
+
+				case op_andsc:
+				case op_orsc:
+				{
+					int bool_l = l.lbl || l.offset;
+					int bool_r = r.lbl || r.offset;
+
+					k->type = CONST_NUM;
+					k->bits.num.val.i = (e->bits.op.op == op_andsc
+							? bool_l && bool_r
+							: bool_l || bool_r);
+					break;
+				}
 			}
 			break;
 		}
