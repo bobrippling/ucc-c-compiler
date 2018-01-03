@@ -1243,9 +1243,8 @@ void nexttoken()
 					int c = rawnextchar();
 					if(c == '*' && *bufferpos == '/'){
 						rawnextchar(); /* eat the / */
+						in_comment = 0; /* ensure we set this before parsing next token */
 						nexttoken();
-
-						in_comment = 0;
 						return;
 					}
 				}
