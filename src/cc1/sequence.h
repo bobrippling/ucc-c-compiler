@@ -3,6 +3,8 @@
 
 #include "../util/compiler.h"
 
+/* which symtable is unimportant, so long as we can get to the global symtable */
+
 void sequence_read(expr *, sym *, symtable *)
 	ucc_nonnull((1, 3));
 void sequence_write(expr *, sym *, symtable *)

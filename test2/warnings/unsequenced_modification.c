@@ -28,4 +28,6 @@ int main()
 
 	i = i + 1; // CHECK: !/warn/
 	i += i + 1; // CHECK: !/warn/
+
+	for(i = 0; i < 10; i++); // CHECK: !/warn/
 }

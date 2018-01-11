@@ -20,6 +20,7 @@
 #include "parse_expr.h"
 
 #include "fold.h"
+#include "sequence.h"
 
 #include "ops/expr_identifier.h"
 
@@ -222,18 +223,21 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 		}
 
 		/* ';' eaten by parse_decls_single_type() */
+		sequence_point(s->symtab);
 	}
 
 	if(!accept(token_semicolon)){
 		sf->for_while = parse_expr_exp(subctx.scope, 0);
 		FOLD_EXPR(sf->for_while, subctx.scope);
 		EAT(token_semicolon);
+		sequence_point(s->symtab);
 	}
 
 	if(!accept(token_close_paren)){
 		sf->for_inc = parse_expr_exp(subctx.scope, 0);
 		FOLD_EXPR(sf->for_inc, subctx.scope);
 		EAT(token_close_paren);
+		sequence_point(s->symtab);
 	}
 
 	s->lhs = parse_stmt(&subctx);
