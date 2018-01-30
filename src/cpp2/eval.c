@@ -477,31 +477,40 @@ char *eval_expand_macros(char *line)
 	return anchor;
 }
 
-static char *eval_expand(char *w, const char *from, int eval(char *))
+static char *eval_expand(char *w, const char *from, int eval(char *), int paren_optional)
 {
 	char *entry;
 
 	while((entry = word_find(w, from))){
 		char *const entry_end = str_spc_skip(word_end(entry));
-		char *closeparen;
+		char *def_end, def_save;
+		char *replace_end;
 		char buf[2];
 		int replace;
+		const int got_paren = *entry_end == '(';
 
-		if((*entry_end != '('))
+		if(!got_paren && !paren_optional)
 			CPP_DIE("open paren expected for \"%s\"", from);
 
-		closeparen = strchr_nest(entry_end, ')');
-		if(!closeparen)
-			CPP_DIE("close paren expected for \"%s\"", from);
+		if(got_paren){
+			def_end = strchr_nest(entry_end, ')');
+			if(!def_end)
+				CPP_DIE("close paren expected for \"%s\"", from);
+			replace_end = def_end + 1;
+		}else{
+			def_end = word_end(entry_end);
+			replace_end = def_end;
+		}
 
-		*closeparen = '\0';
+		def_save = *def_end;
+		*def_end = '\0';
 
-		replace = eval(entry_end+1);
+		replace = eval(entry_end + got_paren);
 		snprintf(buf, sizeof buf, "%d", replace);
 
-		*closeparen = ')';
+		*def_end = def_save;
 
-		w = str_replace(w, entry, closeparen + 1, buf);
+		w = str_replace(w, entry, replace_end, buf);
 	}
 
 	return w;
@@ -526,7 +535,7 @@ static int defined_macro_find(char *ident)
 
 char *eval_expand_defined(char *w)
 {
-	return eval_expand(w, DEFINED_STR, defined_macro_find);
+	return eval_expand(w, DEFINED_STR, defined_macro_find, 1);
 }
 
 static int has_include(char *arg)
@@ -550,5 +559,5 @@ static int has_include(char *arg)
 
 char *eval_expand_has_include(char *w)
 {
-	return eval_expand(w, HAS_INCLUDE_STR, has_include);
+	return eval_expand(w, HAS_INCLUDE_STR, has_include, 0);
 }
