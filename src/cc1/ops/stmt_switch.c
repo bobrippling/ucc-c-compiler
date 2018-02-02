@@ -199,8 +199,11 @@ void fold_stmt_and_add_to_curswitch(stmt *cse)
 
 	fold_stmt(cse->lhs); /* compound */
 
-	if(!sw)
-		die_at(&cse->where, "%s not inside switch", cse->f_str());
+	if(!sw){
+		warn_at_print_error(&cse->where, "%s not inside switch", cse->f_str());
+		fold_had_error = 1;
+		return;
+	}
 
 	if(cse->expr){
 		/* promote to the controlling statement */
