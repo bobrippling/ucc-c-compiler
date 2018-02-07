@@ -240,42 +240,14 @@ static void fold_memcpy(expr *e, symtable *stab)
 	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
 
-#ifdef BUILTIN_USE_LIBC
-static decl *decl_new_tref(char *sp, type *ref)
-{
-	decl *d = decl_new();
-	d->ref = ref;
-	d->spel = sp;
-	return d;
-}
-#endif
-
 static const out_val *builtin_gen_memcpy(const expr *e, out_ctx *octx)
 {
-#ifdef BUILTIN_USE_LIBC
-	/* TODO - also with memset */
-	funcargs *fargs = funcargs_new();
-
-	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_cached_VOID_PTR()));
-	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_cached_VOID_PTR()));
-	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_cached_INTPTR_T()));
-
-	type *ctype = type_new_func(
-			e->tree_type, fargs);
-
-	out_push_lbl("memcpy", 0);
-	out_push_l(type_cached_INTPTR_T(), e->bits.num.val);
-	lea_expr(e->rhs, stab);
-	lea_expr(e->lhs, stab);
-	out_call(3, e->tree_type, ctype);
-#else
 	const out_val *dest, *src;
 
 	dest = gen_expr(e->lhs, octx);
 	src = gen_expr(e->rhs, octx);
 
 	return out_memcpy(octx, dest, src, e->bits.num.val.i);
-#endif
 }
 
 expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
