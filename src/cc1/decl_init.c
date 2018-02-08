@@ -1591,7 +1591,7 @@ void decl_init_create_assignments_base(
 		symtable *stab,
 		const int aggregate)
 {
-	if(!init){
+	if(!init || decl_init_is_zero(init)){
 		expr *zero;
 
 zero_init:
