@@ -35,6 +35,7 @@
 #include "pass1.h"
 #include "type_nav.h"
 #include "cc1_where.h"
+#include "fopt.h"
 
 #include "../config_as.h"
 
@@ -45,42 +46,7 @@ static struct
 	char type;
 	const char *arg;
 	int mask;
-} fopts[] = {
-	{ 'f',  "enable-asm",    FOPT_ENABLE_ASM      },
-	{ 'f',  "const-fold",    FOPT_CONST_FOLD      },
-	{ 'f',  "english",       FOPT_ENGLISH         },
-	{ 'f',  "show-line",     FOPT_SHOW_LINE       },
-	{ 'f',  "pic",           FOPT_PIC             },
-	{ 'f',  "PIC",           FOPT_PIC             },
-	{ 'f',  "builtin",       FOPT_BUILTIN         },
-	{ 'f',  "ms-extensions",    FOPT_MS_EXTENSIONS    },
-	{ 'f',  "plan9-extensions", FOPT_PLAN9_EXTENSIONS },
-	{ 'f',  "leading-underscore", FOPT_LEADING_UNDERSCORE },
-	{ 'f',  "trapv",              FOPT_TRAPV },
-	{ 'f',  "track-initial-fname", FOPT_TRACK_INITIAL_FNAM },
-	{ 'f',  "freestanding",        FOPT_FREESTANDING },
-	{ 'f',  "show-static-asserts", FOPT_SHOW_STATIC_ASSERTS },
-	{ 'f',  "verbose-asm",         FOPT_VERBOSE_ASM },
-	{ 'f',  "integral-float-load", FOPT_INTEGRAL_FLOAT_LOAD },
-	{ 'f',  "symbol-arith",        FOPT_SYMBOL_ARITH },
-	{ 'f',  "signed-char",         FOPT_SIGNED_CHAR },
-	{ 'f',  "unsigned-char",      ~FOPT_SIGNED_CHAR },
-	{ 'f',  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
-	{ 'f',  "dump-type-tree", FOPT_DUMP_TYPE_TREE },
-	{ 'f',  "asm", FOPT_EXT_KEYWORDS },
-	{ 'f',  "gnu-keywords", FOPT_EXT_KEYWORDS },
-	{ 'f',  "fold-const-vlas", FOPT_FOLD_CONST_VLAS },
-	{ 'f',  "show-warning-option", FOPT_SHOW_WARNING_OPTION },
-	{ 'f',  "print-typedefs", FOPT_PRINT_TYPEDEFS },
-	{ 'f',  "print-aka", FOPT_PRINT_AKA },
-	{ 'f',  "show-inlined", FOPT_SHOW_INLINED },
-	{ 'f',  "inline-functions", FOPT_INLINE_FUNCTIONS },
-	{ 'f',  "dump-bblocks", FOPT_DUMP_BASIC_BLOCKS },
-	{ 'f',  "dump-symtab", FOPT_DUMP_SYMTAB },
-	{ 'f',  "dump-init", FOPT_DUMP_INIT },
-	{ 'f',  "common", FOPT_COMMON },
-	{ 'f',  "short-enums", FOPT_SHORT_ENUMS },
-
+} mopts[] = {
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
 	{ 'm',  "32", MOPT_32 },
 	{ 'm',  "64", ~MOPT_32 },
@@ -97,6 +63,7 @@ static struct
 } val_args[] = {
 	{ 'f', "error-limit", &cc1_error_limit },
 	{ 'f', "message-length", &warning_length },
+
 	{ 'm', "preferred-stack-boundary", &cc1_mstack_align },
 	{ 0, NULL, NULL }
 };
@@ -104,18 +71,6 @@ static struct
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
 FILE *cc1_out;                  /* final output */
 char *cc1_first_fname;
-
-enum fopt fopt_mode = FOPT_CONST_FOLD
-                    | FOPT_SHOW_LINE
-                    | FOPT_BUILTIN
-                    | FOPT_TRACK_INITIAL_FNAM
-                    | FOPT_INTEGRAL_FLOAT_LOAD
-                    | FOPT_SYMBOL_ARITH
-                    | FOPT_SIGNED_CHAR
-                    | FOPT_CAST_W_BUILTIN_TYPES
-                    | FOPT_PRINT_TYPEDEFS
-                    | FOPT_PRINT_AKA
-                    | FOPT_COMMON;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
@@ -134,6 +89,8 @@ static int caught_sig = 0;
 
 int show_current_line;
 
+struct cc1_fopt cc1_fopt;
+
 struct section sections[NUM_SECTIONS] = {
 	{ "text", QUOTE(SECTION_NAME_TEXT) },
 	{ "data", QUOTE(SECTION_NAME_DATA) },
@@ -148,13 +105,9 @@ struct section sections[NUM_SECTIONS] = {
 
 static FILE *infile;
 
-/* compile time check for enum <-> int compat */
-#define COMP_CHECK(pre, test) \
-struct unused_ ## pre { char check[test ? -1 : 1]; }
-COMP_CHECK(b, sizeof fopt_mode != sizeof(int));
-
-
-static void ccdie(int verbose, const char *fmt, ...)
+ucc_printflike(1, 2)
+ucc_noreturn
+static void ccdie(const char *fmt, ...)
 {
 	int i = strlen(fmt);
 	va_list l;
@@ -168,14 +121,6 @@ static void ccdie(int verbose, const char *fmt, ...)
 		perror(NULL);
 	}else{
 		fputc('\n', stderr);
-	}
-
-	if(verbose){
-		fputs("warnings + options:\n", stderr);
-		for(i = 0; fopts[i].arg; i++)
-			fprintf(stderr, "  -%c%s\n", fopts[i].type, fopts[i].arg);
-		for(i = 0; val_args[i].arg; i++)
-			fprintf(stderr, "  -%c%s=value\n", val_args[i].pref, val_args[i].arg);
 	}
 
 	exit(1);
@@ -223,7 +168,7 @@ static void io_setup(void)
 		int fd = tmpfile_prefix_out("cc1_", &fname);
 
 		if(fd < 0)
-			ccdie(0, "tmpfile(%s):", fname);
+			ccdie("tmpfile(%s):", fname);
 
 		if(remove(fname) != 0)
 			fprintf(stderr, "remove %s: %s\n", fname, strerror(errno));
@@ -258,28 +203,28 @@ static void io_fin(int do_sections, const char *fname)
 			long last = ftell(cc_out[i]);
 
 			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
-				ccdie(0, "seeking on section file %d:", i);
+				ccdie("seeking on section file %d:", i);
 
 			if(fprintf(cc1_out, ".section %s\n", sections[i].name) < 0
 			|| fprintf(cc1_out, "%s%s:\n", SECTION_BEGIN, sections[i].desc) < 0)
 			{
-				ccdie(0, "write to cc1 output:");
+				ccdie("write to cc1 output:");
 			}
 
 			while(fgets(buf, sizeof buf, cc_out[i]))
 				if(fputs(buf, cc1_out) == EOF)
-					ccdie(0, "write to cc1 output:");
+					ccdie("write to cc1 output:");
 
 			if(ferror(cc_out[i]))
-				ccdie(0, "read from section file %d:", i);
+				ccdie("read from section file %d:", i);
 
 			if(fprintf(cc1_out, "%s%s:\n", SECTION_END, sections[i].desc) < 0)
-				ccdie(0, "terminating section %d:", i);
+				ccdie("terminating section %d:", i);
 		}
 	}
 
 	if(fclose(cc1_out))
-		ccdie(0, "close cc1 output");
+		ccdie("close cc1 output");
 }
 
 static void sigh(int sig)
@@ -356,16 +301,26 @@ static void gen_backend(symtable_global *globs, const char *fname)
 	io_fin(gf == NULL, fname);
 }
 
+ucc_printflike(2, 3)
+ucc_noreturn
+static void usage(const char *argv0, const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	vfprintf(stderr, fmt, l);
+	va_end(l);
+
+	ccdie(
+			"Usage: %s [-W[no-]warning] [-f[no-]option] [-m[no-]machine] [-o output] file",
+			argv0);
+}
+
 static int optimise(const char *argv0, const char *arg)
 {
 	/* TODO: -fdce, -fthread-jumps, -falign-{functions,jumps,loops,labels}
 	 * -fdelete-null-pointer-checks, -freorder-blocks
 	 */
 	enum { O0, O1, O2, O3, Os } opt = O0;
-	struct
-	{
-		unsigned enable, disable;
-	} mask = { 0, 0 };
 
 	if(!*arg){
 		/* -O means -O2 */
@@ -389,22 +344,19 @@ static int optimise(const char *argv0, const char *arg)
 
 		case Os:
 			/* same as -O2 but disable inlining and int-float-load */
-			mask.disable = FOPT_INLINE_FUNCTIONS
-				| FOPT_INTEGRAL_FLOAT_LOAD;
-			/* fall */
+			cc1_fopt.fold_const_vlas = 1;
+			cc1_fopt.inline_functions = 0;
+			cc1_fopt.integral_float_load = 0;
+			break;
 
 		case O1:
 		case O2:
 		case O3:
-			mask.enable = FOPT_FOLD_CONST_VLAS
-				| FOPT_INLINE_FUNCTIONS
-				| FOPT_INTEGRAL_FLOAT_LOAD;
+			cc1_fopt.fold_const_vlas = 1;
+			cc1_fopt.inline_functions = 1;
+			cc1_fopt.integral_float_load = 1;
 			break;
 	}
-
-	/* enable, then disable (to allow -Os to turn bits off from -O2 etc) */
-	fopt_mode |= mask.enable;
-	fopt_mode &= ~mask.disable;
 
 	return 0;
 unrecog:
@@ -416,7 +368,7 @@ static void add_sanitize_option(const char *argv0, const char *san)
 {
 	if(!strcmp(san, "undefined")){
 		cc1_sanitize |= CC1_UBSAN;
-		fopt_mode |= FOPT_TRAPV;
+		cc1_fopt.trapv = 1;
 	}else{
 		fprintf(stderr, "%s: unknown sanitize option '%s'\n", argv0, san);
 		exit(1);
@@ -444,6 +396,115 @@ static void set_sanitize_error(const char *argv0, const char *handler)
 	}
 }
 
+static int parse_mf_equals(
+		const char *argv0,
+		char arg_ty,
+		const char *arg_substr,
+		char *equal,
+		int invert)
+{
+	int found = 0;
+	int i;
+	int new_val;
+
+	if(invert){
+		usage(argv0, "\"no-\" unexpected for value-argument\n");
+	}
+
+	if(!strncmp(arg_substr, "sanitize=", 9)){
+		add_sanitize_option(argv0, arg_substr + 9);
+		return 1;
+	}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
+		set_sanitize_error(argv0, arg_substr + 15);
+		return 1;
+	}
+
+	if(sscanf(equal + 1, "%d", &new_val) != 1){
+		usage(argv0, "need number for %s\n", arg_substr);
+	}
+
+	*equal = '\0';
+	for(i = 0; val_args[i].arg; i++){
+		if(val_args[i].pref == arg_ty && !strcmp(arg_substr, val_args[i].arg)){
+			*val_args[i].pval = new_val;
+			found = 1;
+			break;
+		}
+	}
+
+	return found;
+}
+
+static int mopt_on(const char *argument, int invert)
+{
+	int i;
+	for(i = 0; mopts[i].arg; i++){
+		if(!strcmp(argument, mopts[i].arg)){
+			/* if the mask isn't a single bit, treat it as an unmask */
+			const int unmask = mopts[i].mask & (mopts[i].mask - 1);
+
+			if(invert){
+				if(unmask)
+					mopt_mode |= ~mopts[i].mask;
+				else
+					mopt_mode &= ~mopts[i].mask;
+			}else{
+				if(unmask)
+					mopt_mode &= mopts[i].mask;
+				else
+					mopt_mode |= mopts[i].mask;
+			}
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static void parse_Wmf_option(
+		const char *argv0,
+		char *argument,
+		int *const werror,
+		dynmap *unknown_warnings)
+{
+	const char arg_ty = argument[1];
+	const char *arg_substr = argument + 2;
+	int invert = 0;
+	char *equal;
+
+	if(!strncmp(arg_substr, "no-", 3)){
+		arg_substr += 3;
+		invert = 1;
+	}
+
+	/* -f and -m may accept values. -W doesn't, so check that first */
+	if(arg_ty == 'W'){
+		warning_on(arg_substr, invert ? W_OFF : W_WARN, werror, unknown_warnings);
+		return;
+	}
+
+	equal = strchr(argument, '=');
+	if(equal){
+		if(!parse_mf_equals(argv0, arg_ty, arg_substr, equal, invert))
+			goto unknown;
+		return;
+	}
+
+	if(arg_ty == 'f'){
+		if(fopt_on(&cc1_fopt, arg_substr, invert))
+			return;
+		goto unknown;
+	}
+
+	if(arg_ty == 'm'){
+		if(mopt_on(arg_substr, invert))
+			return;
+		goto unknown;
+	}
+
+unknown:
+	usage(argv0, "unrecognised warning/feature/machine option \"%s\"\n", argument);
+}
+
 int main(int argc, char **argv)
 {
 	int failure;
@@ -465,6 +526,7 @@ int main(int argc, char **argv)
 	/* defaults */
 	cc1_mstack_align = log2i(platform_word_size());
 	warning_init();
+	fopt_default(&cc1_fopt);
 
 	for(i = 1; i < argc; i++){
 		if(!strncmp(argv[i], "-emit", 5)){
@@ -477,12 +539,12 @@ int main(int argc, char **argv)
 
 				case '\0':
 					if(++i == argc)
-						goto usage;
+						usage(argv[0], "-emit needs an argument");
 					emit = argv[i];
 					break;
 
 				default:
-					goto usage;
+					usage(argv[0], "unrecognised argument \"%s\" (did you mean -emit=...?)\n", argv[i]);
 			}
 
 
@@ -493,19 +555,19 @@ int main(int argc, char **argv)
 			else if(!strcmp(emit, "style"))
 				cc1_backend = BACKEND_STYLE;
 			else
-				goto usage;
+				usage(argv[0], "unknown emit backend \"%s\"", emit);
 
 		}else if(!strcmp(argv[i], "-g")){
 			cc1_gdebug = 1;
 
 		}else if(!strcmp(argv[i], "-o")){
 			if(++i == argc)
-				goto usage;
+				usage(argv[0], "-o needs an argument");
 
 			if(strcmp(argv[i], "-")){
 				cc1_out = fopen(argv[i], "w");
 				if(!cc1_out){
-					ccdie(0, "open %s:", argv[i]);
+					ccdie("open %s:", argv[i]);
 					goto out;
 				}
 			}
@@ -514,12 +576,12 @@ int main(int argc, char **argv)
 			int gnu;
 
 			if(std_from_str(argv[i], &cc1_std, &gnu))
-				ccdie(0, "-std argument \"%s\" not recognised", argv[i]);
+				ccdie("-std argument \"%s\" not recognised", argv[i]);
 
 			if(gnu)
-				fopt_mode |= FOPT_EXT_KEYWORDS;
+				cc1_fopt.ext_keywords = 1;
 			else
-				fopt_mode &= ~FOPT_EXT_KEYWORDS;
+				cc1_fopt.ext_keywords = 0;
 
 		}else if(!strcmp(argv[i], "-w")){
 			warnings_set(W_OFF);
@@ -534,98 +596,7 @@ int main(int argc, char **argv)
 
 		}else if(argv[i][0] == '-'
 		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
-			const char arg_ty = argv[i][1];
-			char *arg = argv[i] + 2;
-			int *mask;
-			int j, found, rev;
-
-			rev = found = 0;
-
-			if(!strncmp(arg, "no-", 3)){
-				arg += 3;
-				rev = 1;
-			}
-
-			if(arg_ty != 'W'){
-				char *equal = strchr(arg, '=');
-
-				if(equal){
-					int new_val;
-
-					if(rev){
-						fprintf(stderr, "\"no-\" unexpected for value-argument\n");
-						goto usage;
-					}
-
-					if(!strncmp(arg, "sanitize=", 9)){
-						add_sanitize_option(*argv, arg + 9);
-						continue;
-					}else if(!strncmp(arg, "sanitize-error=", 15)){
-						set_sanitize_error(*argv, arg + 15);
-						continue;
-					}
-
-					*equal = '\0';
-					if(sscanf(equal + 1, "%d", &new_val) != 1){
-						fprintf(stderr, "need number for %s\n", arg);
-						goto usage;
-					}
-
-					for(j = 0; val_args[j].arg; j++)
-						if(val_args[j].pref == arg_ty && !strcmp(arg, val_args[j].arg)){
-							*val_args[j].pval = new_val;
-							found = 1;
-							break;
-						}
-
-					if(!found)
-						goto unrecognised;
-					continue;
-				}
-			}
-
-			switch(arg_ty){
-				case 'f':
-					mask = (int *)&fopt_mode;
-					break;
-				case 'm':
-					mask = (int *)&mopt_mode;
-					break;
-				default:
-					ucc_unreach(1);
-
-				case 'W':
-					warning_on(arg, rev ? W_OFF : W_WARN, &werror, unknown_warnings);
-					continue;
-			}
-
-			for(j = 0; fopts[j].arg; j++)
-				if(fopts[j].type == arg_ty && !strcmp(arg, fopts[j].arg)){
-					/* if the mask isn't a single bit, treat it as
-					 * an unmask, e.g. -funsigned-char unmasks FOPT_SIGNED_CHAR
-					 */
-					const int unmask = fopts[j].mask & (fopts[j].mask - 1);
-
-					if(rev){
-						if(unmask)
-							*mask |= ~fopts[j].mask;
-						else
-							*mask &= ~fopts[j].mask;
-					}else{
-						if(unmask)
-							*mask &= fopts[j].mask;
-						else
-							*mask |= fopts[j].mask;
-					}
-					found = 1;
-					break;
-				}
-
-			if(!found){
-unrecognised:
-				fprintf(stderr, "\"%s\" unrecognised\n", argv[i]);
-				goto usage;
-			}
+			parse_Wmf_option(*argv, argv[i], &werror, unknown_warnings);
 
 		}else if(!strncmp(argv[i], "-I", 2)){
 			/* these are system headers only - we don't get the full set */
@@ -638,8 +609,7 @@ unrecognised:
 		}else if(!fname){
 			fname = argv[i];
 		}else{
-usage:
-			ccdie(1, "Usage: %s [-W[no-]warning] [-f[no-]option] [-X backend] [-m[32|64]] [-o output] file", *argv);
+			usage(argv[0], "unknown argument %s", argv[i]);
 		}
 	}
 
@@ -647,7 +617,7 @@ usage:
 	{
 		const unsigned new = powf(2, cc1_mstack_align);
 		if(new < platform_word_size())
-			ccdie(0, "stack alignment must be >= platform word size (2^%d)",
+			ccdie("stack alignment must be >= platform word size (2^%d)",
 					log2i(platform_word_size()));
 
 		cc1_mstack_align = new;
@@ -664,7 +634,7 @@ usage:
 	if(fname && strcmp(fname, "-")){
 		infile = fopen(fname, "r");
 		if(!infile)
-			ccdie(0, "open %s:", fname);
+			ccdie("open %s:", fname);
 	}else{
 		infile = stdin;
 		fname = "-";
@@ -672,12 +642,12 @@ usage:
 
 	io_setup();
 
-	show_current_line = fopt_mode & FOPT_SHOW_LINE;
+	show_current_line = cc1_fopt.show_line;
 
 	cc1_type_nav = type_nav_init();
 
 	tokenise_set_mode(
-			(fopt_mode & FOPT_EXT_KEYWORDS ? KW_EXT : 0) |
+			(cc1_fopt.ext_keywords ? KW_EXT : 0) |
 			(cc1_std >= STD_C99 ? KW_C99 : 0));
 
 	tokenise_set_input(next_line, fname);
@@ -696,7 +666,7 @@ usage:
 			failure = 1;
 	}
 
-	if(fopt_mode & FOPT_DUMP_TYPE_TREE)
+	if(cc1_fopt.dump_type_tree)
 		type_nav_dump(cc1_type_nav);
 
 out:

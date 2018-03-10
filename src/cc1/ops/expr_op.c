@@ -10,6 +10,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../sanitize.h"
+#include "../fopt.h"
 
 /*
  * usual arithmetic conversions:
@@ -1185,7 +1186,7 @@ void gen_op_trapv(
 		out_ctx *octx,
 		enum op_type op)
 {
-	if((fopt_mode & FOPT_TRAPV) == 0)
+	if((cc1_fopt.trapv) == 0)
 		return;
 
 	if(!type_is_integral(evaltt) || !type_is_signed(evaltt))

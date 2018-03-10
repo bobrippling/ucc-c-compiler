@@ -32,6 +32,7 @@
 #include "inline.h"
 #include "type_nav.h"
 #include "label.h"
+#include "fopt.h"
 
 int gen_had_error;
 
@@ -45,7 +46,7 @@ const out_val *gen_expr(const expr *e, out_ctx *octx)
 	consty k;
 
 	/* always const_fold functions, i.e. builtins */
-	if(expr_kind(e, funcall) || fopt_mode & FOPT_CONST_FOLD)
+	if(expr_kind(e, funcall) || cc1_fopt.const_fold)
 		const_fold((expr *)e, &k);
 	else
 		k.type = CONST_NO;
@@ -83,7 +84,7 @@ static void assign_arg_vals(decl **decls, const out_val *argvals[], out_ctx *oct
 		if(s && s->type == sym_arg){
 			gen_set_sym_outval(octx, s, argvals[j++]);
 
-			if(fopt_mode & FOPT_VERBOSE_ASM){
+			if(cc1_fopt.verbose_asm){
 				out_comment(octx, "arg %s @ %s",
 						decls[i]->spel,
 						out_val_str(sym_outval(s), 1));
@@ -265,7 +266,7 @@ const out_val *gen_call(
 			maybe_exp, maybe_dfn, fnval, args, octx, &whynot, loc);
 
 	if(fn_ret){
-		if(fopt_mode & FOPT_SHOW_INLINED)
+		if(cc1_fopt.show_inlined)
 			note_at(loc, "function inlined");
 
 	}else{

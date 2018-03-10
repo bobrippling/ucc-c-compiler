@@ -23,6 +23,7 @@
 
 #include "asm.h" /* cc_out */
 #include "../cc1.h" /* fopt_mode */
+#include "../fopt.h"
 
 #define JMP_THREAD_LIM 10
 
@@ -52,7 +53,7 @@ static void blk_jmpthread(struct flush_state *st)
 			lim++; /* prevent circulars */
 	}
 
-	if(lim && fopt_mode & FOPT_VERBOSE_ASM)
+	if(lim && cc1_fopt.verbose_asm)
 		fprintf(st->f, "\t# jump threaded through %d blocks\n", lim);
 
 	impl_jmp(st->f, to->lbl);
@@ -68,7 +69,7 @@ static void blk_codegen(out_blk *blk, struct flush_state *st)
 	if(st->jmpto){
 		if(st->jmpto != blk)
 			blk_jmpthread(st);
-		else if(fopt_mode & FOPT_VERBOSE_ASM)
+		else if(cc1_fopt.verbose_asm)
 			fprintf(st->f, "\t# implicit jump to next line\n");
 		st->jmpto = NULL;
 	}
@@ -158,7 +159,7 @@ void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl)
 	struct flush_state st = { 0 };
 	out_blk **must_i;
 
-	if(fopt_mode & FOPT_DUMP_BASIC_BLOCKS)
+	if(cc1_fopt.dump_basic_blocks)
 		dot_blocks(first);
 
 	mark_reachable_blocks(first);

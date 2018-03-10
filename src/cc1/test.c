@@ -6,6 +6,7 @@
 #include "cc1.h"
 #include "cc1_where.h"
 #include "out/asm.h"
+#include "fopt.h"
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 int cc1_error_limit = 16;
@@ -15,7 +16,7 @@ int cc1_mstack_align;
 enum c_std cc1_std = STD_C99;
 struct cc1_warning cc1_warning;
 FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
-enum fopt fopt_mode;
+struct cc1_fopt cc1_fopt;
 enum mopt mopt_mode;
 struct section sections[NUM_SECTIONS];
 int show_current_line;

@@ -19,6 +19,7 @@
 #include "../defs.h"
 #include "../pack.h"
 
+#include "../fopt.h"
 #include "../cc1.h"
 
 #include "../../config_as.h"
@@ -424,7 +425,7 @@ const char *impl_val_str_r(
 			const char *pre = deref ? "" : "$";
 			const char *picstr = "";
 
-			if(deref && (vs->bits.lbl.pic_type & OUT_LBL_PIC) && fopt_mode & FOPT_PIC){
+			if(deref && (vs->bits.lbl.pic_type & OUT_LBL_PIC) && cc1_fopt.pic){
 				int local_sym = vs->bits.lbl.pic_type & OUT_LBL_PICLOCAL;
 
 				/* if it's local, we can access the symbol at a fixed offset.
@@ -722,7 +723,7 @@ pass_via_stack:
 					"save call regs push-version");
 		}
 
-		if(octx->current_stret && fopt_mode & FOPT_VERBOSE_ASM){
+		if(octx->current_stret && cc1_fopt.verbose_asm){
 			const out_val *stret = octx->current_stret;
 
 			out_comment(octx, "stret pointer '%s' @ %s",
@@ -824,7 +825,7 @@ void impl_func_epilogue(out_ctx *octx, type *rf, int clean_stack)
 	if(clean_stack)
 		out_asm(octx, "leaveq");
 
-	if(fopt_mode & FOPT_VERBOSE_ASM)
+	if(cc1_fopt.verbose_asm)
 		out_comment(octx, "stack at %lu bytes", octx->cur_stack_sz);
 
 	/* callee cleanup */
@@ -990,7 +991,7 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 		case V_CONST_F:
 			/* if it's an int-const, we can load without a label */
 			if(from->bits.val_f == (integral_t)from->bits.val_f
-			&& fopt_mode & FOPT_INTEGRAL_FLOAT_LOAD)
+			&& cc1_fopt.integral_float_load)
 			{
 				type *const ty_fp = from->t;
 				out_val *mut = v_dup_or_reuse(octx, from, from->t);
@@ -1161,7 +1162,7 @@ lea:
 			const int fp = type_is_floating(from->t);
 			type *chosen_ty = fp ? from->t : NULL;
 			const int from_GOT = from->type == V_LBL
-				&& fopt_mode & FOPT_PIC
+				&& cc1_fopt.pic
 				&& !(from->bits.lbl.pic_type & OUT_LBL_PICLOCAL);
 			out_val *from_mut = (out_val *)from;
 			long saved_offset = 0;
@@ -1687,7 +1688,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				r = v_to_reg(octx, r);
 		}
 
-		if(fopt_mode & FOPT_PIC){
+		if(cc1_fopt.pic){
 			l = v_to(octx, l, TO_REG);
 			r = v_to(octx, r, TO_REG | TO_CONST);
 		}
@@ -2306,7 +2307,7 @@ const out_val *impl_call(
 		const struct vreg *stret_reg = &call_iregs[nints];
 		nints++;
 
-		if(fopt_mode & FOPT_VERBOSE_ASM){
+		if(cc1_fopt.verbose_asm){
 			out_comment(octx, "stret spill space '%s' @ %s, %u bytes",
 					type_to_str(stret_spill->t),
 					out_val_str(stret_spill, 1),

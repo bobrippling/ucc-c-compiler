@@ -7,6 +7,7 @@
 
 #include "../type.h"
 #include "../type_nav.h"
+#include "../fopt.h"
 
 #include "../macros.h"
 
@@ -318,7 +319,7 @@ void v_try_stack_reclaim(out_ctx *octx)
 
 	v_stackt reclaim = octx->cur_stack_sz - lowest;
 	if(reclaim > 0){
-		if(fopt_mode & FOPT_VERBOSE_ASM)
+		if(cc1_fopt.verbose_asm)
 			out_comment(octx, "reclaim %ld (%ld start %ld lowest)",
 					reclaim, octx->initial_stack_sz, lowest);
 

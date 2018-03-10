@@ -16,6 +16,7 @@
 #include "type_is.h"
 #include "sue.h"
 #include "funcargs.h"
+#include "fopt.h"
 
 #include "gen_dump.h"
 

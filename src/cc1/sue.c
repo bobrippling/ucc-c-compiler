@@ -15,6 +15,7 @@
 #include "expr.h"
 #include "decl.h"
 #include "type_is.h"
+#include "fopt.h"
 
 static void sue_set_spel(struct_union_enum_st *sue, char *spel)
 {
@@ -301,13 +302,13 @@ static void *sue_member_find(
 				/* C11 anonymous struct/union */
 				decl *dsub = NULL;
 				decl *tdef;
-				const int allow_tag = fopt_mode & FOPT_TAG_ANON_STRUCT_EXT;
+				const int allow_tag = FOPT_TAG_ANON_STRUCT_EXT(&cc1_fopt);
 
 				/* don't check spel - <anon struct ...> etc */
 				if(!(allow_tag || sub->anon))
 					continue;
 
-				if((fopt_mode & FOPT_PLAN9_EXTENSIONS)
+				if((cc1_fopt.plan9_extensions)
 				&& (tdef = type_is_tdef(d->ref))
 				&& !strcmp(tdef->spel, spel))
 				{

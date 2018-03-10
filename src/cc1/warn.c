@@ -9,6 +9,7 @@
 #include "../util/alloc.h"
 
 #include "warn.h"
+#include "fopt.h"
 
 /* int *_had_error */
 #include "fold.h"
@@ -114,7 +115,7 @@ int cc1_warn_at_w(
 	vwarn(where, warn_type, fmt, l);
 	va_end(l);
 
-	if(fopt_mode & FOPT_SHOW_WARNING_OPTION)
+	if(cc1_fopt.show_warning_option)
 		show_warn_options(pwarn);
 
 	return 1;

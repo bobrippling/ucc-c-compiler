@@ -4,6 +4,7 @@
 #include "../out/asm.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../fopt.h"
 
 #define struct_offset(e) (                            \
 	 (e)->bits.struct_mem.d->bits.var.struct_offset +   \
@@ -134,7 +135,7 @@ const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 					type_nav_btype(cc1_type_nav, type_intptr_t),
 					struct_offset(e)));
 
-	if(fopt_mode & FOPT_VERBOSE_ASM)
+	if(cc1_fopt.verbose_asm)
 		out_comment(octx, "struct member %s", e->bits.struct_mem.d->spel);
 
 

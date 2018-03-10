@@ -9,6 +9,7 @@
 #include "__builtin.h"
 
 #include "../cc1.h"
+#include "../fopt.h"
 #include "../tokenise.h"
 #include "../fold.h"
 #include "../funcargs.h"
@@ -117,7 +118,7 @@ expr *builtin_parse(const char *sp, symtable *scope)
 {
 	builtin_table *b;
 
-	if((fopt_mode & FOPT_BUILTIN) && (b = builtin_find(sp))){
+	if((cc1_fopt.builtin) && (b = builtin_find(sp))){
 		expr *(*f)(const char *, symtable *) = b->parser;
 
 		if(f)

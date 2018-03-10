@@ -25,6 +25,7 @@
 #include "format_chk.h"
 #include "type_is.h"
 #include "type_nav.h"
+#include "fopt.h"
 
 enum fold_type_chk
 {

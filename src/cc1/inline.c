@@ -10,7 +10,8 @@
 #include "expr.h"
 #include "stmt.h"
 #include "gen_asm.h"
-#include "cc1.h" /* fopt_mode */
+#include "cc1.h" /* fopt_mode, cc1_gdebug */
+#include "fopt.h"
 
 /* inline emission */
 #include "out/dbg.h"
@@ -270,7 +271,7 @@ static int heuristic_should_inline(
 
 	/* as with clang and gcc, -fno-inline-functions affects just the heuristic
 	 * __attribute((always_inline)) overrides it */
-	if((fopt_mode & FOPT_INLINE_FUNCTIONS) == 0)
+	if((cc1_fopt.inline_functions) == 0)
 		return 0;
 
 	/* if it's marked inline, inline it
@@ -421,7 +422,7 @@ const out_val *inline_func_try_gen(
 			&iouts, dynarray_count(args));
 
 	if(*whynot){
-		if(fopt_mode & FOPT_VERBOSE_ASM)
+		if(cc1_fopt.verbose_asm)
 			out_comment(octx, "can't inline call: %s", *whynot);
 		if(iouts.fndecl && iouts.fndecl->store & store_inline)
 			cc1_warn_at(call_loc, inline_failed, "can't inline call: %s", *whynot);

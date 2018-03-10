@@ -6,8 +6,9 @@
 
 #include "type.h"
 #include "type_is.h"
-#include "cc1.h"
 #include "funcargs.h"
+#include "fopt.h"
+#include "cc1.h"
 
 #include "mangle.h"
 
@@ -15,7 +16,7 @@ char *func_mangle(const char *name, type *fnty)
 {
 	char *pre, suff[8];
 
-	pre = fopt_mode & FOPT_LEADING_UNDERSCORE ? "_" : "";
+	pre = cc1_fopt.leading_underscore ? "_" : "";
 	*suff = '\0';
 
 	if(fnty){
