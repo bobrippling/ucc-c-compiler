@@ -487,12 +487,12 @@ static void parse_Wmf_option(
 	}
 
 	if(arg_ty == 'W'){
-		warning_on(argument, invert ? W_OFF : W_WARN, werror, unknown_warnings);
+		warning_on(arg_substr, invert ? W_OFF : W_WARN, werror, unknown_warnings);
 		return;
 	}
 
 	if(arg_ty == 'm'){
-		if(mopt_on(argument, invert))
+		if(mopt_on(arg_substr, invert))
 			return;
 		goto unknown;
 	}
