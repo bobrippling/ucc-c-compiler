@@ -27,5 +27,5 @@ unsigned round_down_pow2(unsigned u)
 	if(is_pow2(u))
 		return u;
 
-	return pow2i(flsl(u) - 1);
+	return pow2i(log2i(u));
 }

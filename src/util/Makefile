@@ -1,5 +1,7 @@
 include ../config.mk
 
+LDFLAGS_TEST = ${LDFLAGS} -lm
+
 OBJ = platform.o util.o alloc.o dynarray.o dynmap.o where.o str.o \
 			std.o escape.o math.o warn.o path.o tmpfile.o
 SRC = $(OBJ:.o=.c)
@@ -18,7 +20,7 @@ deps: Makefile.dep
 
 OBJ_TEST = test.o path.o dynarray.o alloc.o dynmap.o math.o
 test: ${OBJ_TEST}
-	${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
+	${CC} -o $@ ${OBJ_TEST} ${LDFLAGS_TEST}
 
 check: test
 	./test
