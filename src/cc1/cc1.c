@@ -393,7 +393,7 @@ static void set_sanitize_error(const char *argv0, const char *handler)
 	}
 }
 
-static int parse_Wmf_equals(
+static int parse_mf_equals(
 		const char *argv0,
 		char arg_ty,
 		const char *arg_substr,
@@ -473,9 +473,15 @@ static void parse_Wmf_option(
 		invert = 1;
 	}
 
+	/* -f and -m may accept values. -W doesn't, so check that first */
+	if(arg_ty == 'W'){
+		warning_on(arg_substr, invert ? W_OFF : W_WARN, werror, unknown_warnings);
+		return;
+	}
+
 	equal = strchr(argument, '=');
 	if(equal){
-		if(!parse_Wmf_equals(argv0, arg_ty, arg_substr, equal, invert))
+		if(!parse_mf_equals(argv0, arg_ty, arg_substr, equal, invert))
 			goto unknown;
 		return;
 	}
@@ -484,11 +490,6 @@ static void parse_Wmf_option(
 		if(fopt_on(&cc1_fopt, arg_substr, invert))
 			return;
 		goto unknown;
-	}
-
-	if(arg_ty == 'W'){
-		warning_on(arg_substr, invert ? W_OFF : W_WARN, werror, unknown_warnings);
-		return;
 	}
 
 	if(arg_ty == 'm'){
