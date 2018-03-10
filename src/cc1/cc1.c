@@ -393,7 +393,7 @@ static void set_sanitize_error(const char *argv0, const char *handler)
 	}
 }
 
-static void parse_Wmf_equals(
+static int parse_Wmf_equals(
 		const char *argv0,
 		char arg_ty,
 		const char *arg_substr,
@@ -410,10 +410,10 @@ static void parse_Wmf_equals(
 
 	if(!strncmp(arg_substr, "sanitize=", 9)){
 		add_sanitize_option(argv0, arg_substr + 9);
-		return;
+		return 1;
 	}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
 		set_sanitize_error(argv0, arg_substr + 15);
-		return;
+		return 1;
 	}
 
 	if(sscanf(equal + 1, "%d", &new_val) != 1){
@@ -429,8 +429,7 @@ static void parse_Wmf_equals(
 		}
 	}
 
-	if(!found)
-		usage(argv0, "\"-%c%s\" unrecognised", arg_ty, arg_substr);
+	return found;
 }
 
 static int mopt_on(const char *argument, int invert)
@@ -476,7 +475,8 @@ static void parse_Wmf_option(
 
 	equal = strchr(argument, '=');
 	if(equal){
-		parse_Wmf_equals(argv0, arg_ty, arg_substr, equal, invert);
+		if(!parse_Wmf_equals(argv0, arg_ty, arg_substr, equal, invert))
+			goto unknown;
 		return;
 	}
 
@@ -498,7 +498,7 @@ static void parse_Wmf_option(
 	}
 
 unknown:
-	usage(argv0, "\"%s\" unrecognised\n", argument);
+	usage(argv0, "unrecognised warning/feature/machine option \"%s\"\n", argument);
 }
 
 int main(int argc, char **argv)
@@ -540,7 +540,7 @@ int main(int argc, char **argv)
 					break;
 
 				default:
-					usage(argv[0], "\"%s\" unrecognised\n", argv[i]);
+					usage(argv[0], "unrecognised argument \"%s\" (did you mean -emit=...?)\n", argv[i]);
 			}
 
 
