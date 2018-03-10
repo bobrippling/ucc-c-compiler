@@ -238,13 +238,15 @@ static attribute *parse_attr_ctor_dtor(
 	return ctor;
 }
 
-static attribute *parse_attr_constructor(symtable *scope)
+static attribute *parse_attr_constructor(symtable *scope, const char *ident)
 {
+	(void)ident;
 	return parse_attr_ctor_dtor(attr_constructor, scope);
 }
 
-static attribute *parse_attr_destructor(symtable *scope)
+static attribute *parse_attr_destructor(symtable *scope, const char *ident)
 {
+	(void)ident;
 	return parse_attr_ctor_dtor(attr_destructor, scope);
 }
 

@@ -51,6 +51,10 @@ attribute *attribute_copy(attribute *attr)
 			ret->bits.section = ustrdup(attr->bits.section);
 			break;
 
+		case attr_destructor:
+			ret->bits.priority = attr->bits.priority; /* TODO: retain expr */
+			break;
+
 		case attr_format:
 		case attr_unused:
 		case attr_warn_unused:
@@ -68,6 +72,7 @@ attribute *attribute_copy(attribute *attr)
 		case attr_desig_init:
 		case attr_ucc_debug:
 		case attr_call_conv:
+		case attr_constructor:
 			break;
 		case attr_LAST:
 			assert(0);
