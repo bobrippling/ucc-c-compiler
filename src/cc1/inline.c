@@ -319,7 +319,7 @@ static stmt *try_resolve_val_to_func(
 	return NULL;
 }
 
-ucc_nonnull()
+ucc_nonnull((3, 4, 5))
 static const char *check_and_ret_inline(
 		expr *maybe_call_expr, decl *maybe_decl,
 		out_ctx *octx,
