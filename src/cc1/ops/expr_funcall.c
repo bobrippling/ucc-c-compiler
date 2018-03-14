@@ -480,7 +480,7 @@ const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 
 static irval *funcall_ir_correct_type(const expr *e, irval *fnv, irctx *ctx)
 {
-	funcargs *args = type_funcargs(type_is_ptr(e->expr->tree_type));
+	funcargs *args = type_funcargs(type_is_ptr_or_block(e->expr->tree_type));
 	unsigned casted_val;
 
 	if(!args->args_old_proto){
