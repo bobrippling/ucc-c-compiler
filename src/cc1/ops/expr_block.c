@@ -37,7 +37,7 @@ void expr_block_got_params(
 
 	/* add a global symbol for the block */
 	e->bits.block.sym = sym_new(df, sym_global);
-	symtab_add_to_scope(symtab_root(symtab), df);
+	symtab_add_to_scope_pre(symtab_root(symtab), df);
 }
 
 void expr_block_got_code(expr *e, stmt *code)
