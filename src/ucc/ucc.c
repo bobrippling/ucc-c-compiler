@@ -17,6 +17,7 @@
 #include "../util/tmpfile.h"
 #include "../util/str.h"
 #include "../util/triple.h"
+#include "../util/macros.h"
 #include "str.h"
 #include "warning.h"
 #include "filemodes.h"
@@ -1225,6 +1226,9 @@ int main(int argc, char **argv)
 	int output_given;
 	struct triple triple;
 	char **additional_argv = NULL;
+
+	ucc_static_assert(tag1, countof(argstate.args) == mode_link + 1);
+	(void)(check_tag1 *)0;
 
 	argv0 = argv[0];
 	if(argc <= 1){
