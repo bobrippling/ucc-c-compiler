@@ -247,7 +247,7 @@ after_compile:
 }
 
 static void gen_obj_file(
-		struct cc_file *file, char **args[4], enum mode mode, const char *as)
+		struct cc_file *file, char **args[], enum mode mode, const char *as)
 {
 	char *in = file->in.fname;
 
@@ -432,7 +432,7 @@ void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 	abort();
 }
 
-static void pass_warning(char **args[4], const char *arg)
+static void pass_warning(char **args[], const char *arg)
 {
 	enum warning_owner owner;
 
@@ -973,10 +973,10 @@ input:
 
 static void merge_states(struct ucc *state, struct ucc *append)
 {
-	int i;
+	size_t i;
 	dynarray_add_tmparray(&state->inputs, append->inputs);
 
-	for(i = 0; i < 4; i++)
+	for(i = 0; i < countof(state->args); i++)
 		dynarray_add_tmparray(&state->args[i], append->args[i]);
 
 	dynarray_add_tmparray(&state->includes, append->includes);
@@ -1217,7 +1217,7 @@ static void usage(void)
 
 int main(int argc, char **argv)
 {
-	int i;
+	size_t i;
 	struct ucc state = { 0 };
 	struct ucc argstate = { 0 };
 	struct uccvars vars = { 0 };
@@ -1353,7 +1353,7 @@ usage:
 	/* got arguments, a mode, and files to link */
 	process_files(&state, assumptions, vars.output);
 
-	for(i = 0; i < 4; i++)
+	for(i = 0; i < countof(state.args); i++)
 		dynarray_free(char **, state.args[i], free);
 	dynarray_free(char **, state.inputs, NULL);
 	dynarray_free(char **, state.ldflags_pre_user, free);
