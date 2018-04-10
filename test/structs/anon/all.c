@@ -10,12 +10,6 @@ struct C99
 	int k;
 };
 
-struct ambig
-{
-	A;
-	int a_sub;
-};
-
 plan_9();
 
 main()

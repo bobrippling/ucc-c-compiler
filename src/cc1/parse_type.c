@@ -168,8 +168,7 @@ static struct_union_enum_st *parse_sue_definition(
 		decl **i;
 
 		while(parse_decl_group(
-					DECL_MULTI_CAN_DEFAULT
-					| DECL_MULTI_ACCEPT_FIELD_WIDTH
+					DECL_MULTI_ACCEPT_FIELD_WIDTH
 					| DECL_MULTI_NAMELESS
 					| DECL_MULTI_IS_STRUCT_UN_MEMB
 					| DECL_MULTI_ALLOW_ALIGNAS,
