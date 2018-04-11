@@ -208,7 +208,9 @@ void warning_init(void)
 	/* but with warnings about std compatability on too */
 	cc1_warning.typedef_redef =
 	cc1_warning.c89_parse_trailingcomma =
-	cc1_warning.unnamed_struct_memb =
+	cc1_warning.unnamed_struct_memb_ext_tagged =
+	cc1_warning.unnamed_struct_memb_ignored =
+	cc1_warning.unnamed_struct_memb_ext_c11 =
 	cc1_warning.c89_for_init =
 	cc1_warning.mixed_code_decls =
 	cc1_warning.c89_init_constexpr =

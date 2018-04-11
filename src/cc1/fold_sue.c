@@ -189,31 +189,53 @@ static int fold_sue_check_unnamed(
 			/* fine */
 		}else if(sub_sue){
 			/* anon */
-			char *prob = NULL;
-			int ignore = 0;
+			int drop_member = 0;
 
 			if(FOPT_TAG_ANON_STRUCT_EXT(&cc1_fopt)){
-				/* fine */
+				/*
+				 * cc -fms-extensions/-fplan9-extensions
+				 * struct A { ... };
+				 * struct B { struct A; }; // struct B contains all of struct A's members
+				 *            ^~~~~~~~
+				 */
+				cc1_warn_at(&d->where,
+						unnamed_struct_memb_ext_tagged,
+						"tagged struct '%s' is a Microsoft/Plan 9 extension",
+						decl_to_str(d));
+
 			}else if(!sub_sue->anon){
-				prob = "ignored - tagged";
-				ignore = 1;
+				/*
+				 * struct A { ... };
+				 * struct B { struct A; }; // declaration does not declare anything
+				 *            ^~~~~~~~
+				 */
+				drop_member = 1;
+
+				cc1_warn_at(&d->where,
+						unnamed_struct_memb_ignored,
+						"unnamed member '%s' ignored (untagged would be accepted in C11)",
+						decl_to_str(d));
+
 			}else if(cc1_std < STD_C11){
-				prob = "is a C11 extension";
+				/*
+				 * struct B {
+				 *   struct { ... }; // struct B contains all of anon struct's members
+				 *          ^~~~~~~~
+				 * };
+				 */
+				cc1_warn_at(&d->where,
+						unnamed_struct_memb_ext_c11,
+						"unnamed member '%s' is a C11 extension",
+						decl_to_str(d));
 			}
 
-			if(prob){
-				cc1_warn_at(&d->where,
-						unnamed_struct_memb,
-						"unnamed member '%s' %s",
-						decl_to_str(d), prob);
-				if(ignore){
-					/* drop the decl */
-					sue_member *dropped = sue_drop(sue, *pi);
-					--*pi;
-					decl_free(dropped->struct_member);
-					free(dropped);
-					return 1;
-				}
+			if(drop_member){
+				/* drop the decl */
+				sue_member *dropped = sue_drop(sue, *pi);
+				--*pi;
+				decl_free(dropped->struct_member);
+				free(dropped);
+				return 1;
 			}
 		}
 	}
