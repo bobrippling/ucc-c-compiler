@@ -143,7 +143,7 @@ ucc_wur const out_val *out_ctrl_merge_n(out_ctx *, out_blk **rets);
 /* function setup */
 void out_func_prologue(
 		out_ctx *, const char *sp,
-		type *fnty,
+		decl *fndecl,
 		int nargs, int variadic, int stack_protector,
 		const out_val *argvals[]);
 

@@ -261,8 +261,9 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 
 		is_vari = type_is_variadic_func(d->ref);
 
-		out_func_prologue(octx, sp, d->ref,
-				nargs, is_vari,
+		out_func_prologue(octx, sp, d,
+				nargs,
+				is_vari,
 				should_stack_protect(d),
 				argvals);
 
