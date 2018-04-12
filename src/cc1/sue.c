@@ -255,8 +255,9 @@ void sue_member_init_dup_check(sue_member **members)
 		{
 			char buf[WHERE_BUF_SIZ];
 
-			die_at(&d2->where, "duplicate member %s (from %s)",
+			warn_at_print_error(&d2->where, "duplicate member %s (from %s)",
 					d->spel, where_str_r(buf, &d->where));
+			fold_had_error = 1;
 		}
 	}
 
