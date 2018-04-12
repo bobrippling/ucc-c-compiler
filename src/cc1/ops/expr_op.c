@@ -44,6 +44,11 @@ static void const_op_num_fp(
 
 	assert(lhs->type == CONST_NUM && (!rhs || rhs->type == CONST_NUM));
 
+	if(cc1_fopt.rounding_math){ /* aka #pragma STDC FENV ACCESS ON (TODO) */
+		k->type = CONST_NO;
+		return;
+	}
+
 	fp_r = const_op_exec_fp(
 			lhs->bits.num.val.f,
 			rhs ? &rhs->bits.num.val.f : NULL,
