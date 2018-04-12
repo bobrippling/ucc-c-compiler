@@ -203,7 +203,7 @@ static int fold_sue_check_unnamed(
 						"tagged struct '%s' is a Microsoft/Plan 9 extension",
 						decl_to_str(d));
 
-			}else if(!sub_sue->anon){
+			}else if(!sub_sue->anon || type_is_tdef(d->ref)){
 				/*
 				 * struct A { ... };
 				 * struct B { struct A; }; // declaration does not declare anything
@@ -213,8 +213,9 @@ static int fold_sue_check_unnamed(
 
 				cc1_warn_at(&d->where,
 						unnamed_struct_memb_ignored,
-						"unnamed member '%s' ignored (untagged would be accepted in C11)",
-						decl_to_str(d));
+						"unnamed member '%s' ignored (untagged %swould be accepted in C11)",
+						decl_to_str(d),
+						type_is_tdef(d->ref) ? "and untypedef'd " : "");
 
 			}else if(cc1_std < STD_C11){
 				/*
