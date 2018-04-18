@@ -134,7 +134,7 @@ expr *builtin_parse(const char *sp, symtable *scope)
 {
 	builtin_table *b;
 
-	if((cc1_fopt.builtin) && (b = builtin_find(sp))){
+	if(cc1_fopt.builtin && (b = builtin_find(sp))){
 		expr *(*f)(const char *, symtable *) = b->parser;
 
 		if(f)

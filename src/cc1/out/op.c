@@ -67,7 +67,7 @@ static out_val *try_mem_offset(
 
 	/* if it's a minus, we enforce an order */
 	if((binop == op_plus || (binop == op_minus && vconst == rhs))
-	&& (vregp_or_lbl->type != V_LBL || (cc1_fopt.symbol_arith))
+	&& (vregp_or_lbl->type != V_LBL || cc1_fopt.symbol_arith)
 	&& (step = calc_ptr_step(vregp_or_lbl->t)) != -1)
 	{
 		out_val *mut_vregp_or_lbl = v_dup_or_reuse(
@@ -316,7 +316,7 @@ const out_val *out_op(
 		return consume_one(octx, vconst == lhs ? rhs : lhs, lhs, rhs);
 
 	/* constant folding */
-	if(vconst && (cc1_fopt.const_fold)){
+	if(vconst && cc1_fopt.const_fold){
 		const out_val *oconst = (vconst == lhs ? rhs : lhs);
 
 		if(oconst->type == V_CONST_I){
@@ -341,7 +341,7 @@ const out_val *out_op(
 			break;
 		case op_multiply:
 		case op_divide:
-			if(vconst && (cc1_fopt.trapv) == 0)
+			if(vconst && !cc1_fopt.trapv)
 				try_shift_conv(octx, &binop, &lhs, &rhs);
 			break;
 		default:

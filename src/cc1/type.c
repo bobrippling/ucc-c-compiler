@@ -771,9 +771,9 @@ const char *type_to_str_r_spel_opts(
 	int sz = TYPE_STATIC_BUFSIZ;
 	enum type_str_opts local_opts = opts;
 
-	if((cc1_fopt.print_typedefs) == 0)
+	if(!cc1_fopt.print_typedefs)
 		local_opts |= TY_STR_NO_TDEF;
-	if((cc1_fopt.print_aka) == 0)
+	if(!cc1_fopt.print_aka)
 		local_opts &= ~TY_STR_AKA;
 
 	stop_at = type_add_type_str(r, &bufp, &sz, local_opts);

@@ -169,7 +169,7 @@ const char *decl_store_spel_type_to_str_r(
 	((d)->bits.var.field_width && !(d)->spel)
 
 #define DECL_IS_HOSTED_MAIN(fdecl) \
-			((cc1_fopt.freestanding) == 0 \
+			(!cc1_fopt.freestanding \
 			&& !strcmp(fdecl->spel, "main"))
 
 #endif

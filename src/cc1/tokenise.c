@@ -472,7 +472,7 @@ static void tokenise_next_line(void)
 		SET_CURRENT_LINE_STR(ustrdup(new));
 
 	if(buffer){
-		if((cc1_fopt.show_line) == 0)
+		if(!cc1_fopt.show_line)
 			free(buffer);
 	}
 

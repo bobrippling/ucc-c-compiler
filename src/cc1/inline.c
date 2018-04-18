@@ -272,7 +272,7 @@ static int heuristic_should_inline(
 
 	/* as with clang and gcc, -fno-inline-functions affects just the heuristic
 	 * __attribute((always_inline)) overrides it */
-	if((cc1_fopt.inline_functions) == 0)
+	if(!cc1_fopt.inline_functions)
 		return 0;
 
 	/* if it's marked inline, inline it

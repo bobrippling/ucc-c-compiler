@@ -1270,7 +1270,7 @@ void gen_op_trapv(
 		out_ctx *octx,
 		enum op_type op)
 {
-	if((cc1_fopt.trapv) == 0)
+	if(!cc1_fopt.trapv)
 		return;
 
 	if(!type_is_integral(evaltt) || !type_is_signed(evaltt))

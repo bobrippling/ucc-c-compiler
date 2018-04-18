@@ -82,7 +82,7 @@ static void init_debug(const char *fmt, ...)
 {
 	va_list l;
 
-	if(!(cc1_fopt.dump_init))
+	if(!cc1_fopt.dump_init)
 		return;
 
 	init_indent_out();
@@ -96,7 +96,7 @@ static void init_debug_noindent(const char *fmt, ...)
 {
 	va_list l;
 
-	if(!(cc1_fopt.dump_init))
+	if(!cc1_fopt.dump_init)
 		return;
 
 	va_start(l, fmt);
@@ -108,7 +108,7 @@ static void init_debug_dinit(init_iter *init_iter, type *tfor)
 {
 	where dummy_where = { 0 };
 
-	if(!(cc1_fopt.dump_init))
+	if(!cc1_fopt.dump_init)
 		return;
 
 	dummy_where.fname = "<n/a>";
@@ -123,7 +123,7 @@ static void init_debug_dinit(init_iter *init_iter, type *tfor)
 
 static void init_debug_desig(struct desig *desig, symtable *stab)
 {
-	if(!(cc1_fopt.dump_init))
+	if(!cc1_fopt.dump_init)
 		return;
 
 	if(!desig)

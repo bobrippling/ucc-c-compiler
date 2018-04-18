@@ -1263,7 +1263,7 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 					 * (and we don't have the fold-const-vlas setting), then treat
 					 * as a vla */
 					if(k.type != CONST_NUM
-					|| (k.nonstandard_const && !(cc1_fopt.fold_const_vlas)))
+					|| (k.nonstandard_const && !cc1_fopt.fold_const_vlas))
 					{
 						is_vla = VLA;
 					}

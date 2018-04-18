@@ -457,7 +457,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	if(func_or_builtin_attr_present(e, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 
-	if(sp && !(cc1_fopt.freestanding))
+	if(sp && !cc1_fopt.freestanding)
 		check_standard_funcs(sp, e->funcargs);
 }
 
