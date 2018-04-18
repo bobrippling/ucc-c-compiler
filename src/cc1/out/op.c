@@ -373,23 +373,25 @@ const out_val *out_op_unary(out_ctx *octx, enum op_type uop, const out_val *val)
 			break;
 
 		case V_CONST_I:
-			switch(uop){
+			if(cc1_fopt.const_fold){
+				switch(uop){
 #define OP(op, tok) \
-				case op_ ## op: {                        \
-					out_val *dup = v_dup_or_reuse(         \
-							octx, val, val->t);                \
-					dup->bits.val_i = tok dup->bits.val_i; \
-					return dup;                            \
-				}
+					case op_ ## op: {                        \
+						out_val *dup = v_dup_or_reuse(         \
+								octx, val, val->t);                \
+						dup->bits.val_i = tok dup->bits.val_i; \
+						return dup;                            \
+					}
 
-				OP(not, !);
-				OP(minus, -);
-				OP(bnot, ~);
+					OP(not, !);
+					OP(minus, -);
+					OP(bnot, ~);
 
 #undef OP
 
-				default:
-				assert(0 && "invalid unary op");
+					default:
+					assert(0 && "invalid unary op");
+				}
 			}
 			break;
 
