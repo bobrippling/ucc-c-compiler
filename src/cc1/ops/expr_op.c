@@ -44,7 +44,7 @@ static void const_op_num_fp(
 
 	assert(lhs->type == CONST_NUM && (!rhs || rhs->type == CONST_NUM));
 
-	if(cc1_fopt.rounding_math){ /* aka #pragma STDC FENV ACCESS ON (TODO) */
+	if(cc1_fopt.rounding_math && rhs){ /* aka #pragma STDC FENV ACCESS ON (TODO) */
 		k->type = CONST_NO;
 		return;
 	}
