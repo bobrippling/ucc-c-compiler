@@ -787,6 +787,7 @@ static int getungetchar(void)
 static void read_string_multiple(int is_wide)
 {
 	struct cstring *cstr;
+	const unsigned max = cc1_std >= STD_C99 ? STD_LIMIT_STRLENGTH_C99 : STD_LIMIT_STRLENGTH_C89;
 
 	where_cc1_current(&currentstringwhere);
 
@@ -820,6 +821,15 @@ static void read_string_multiple(int is_wide)
 	}
 
 	currentstring = cstr;
+	if(currentstring->count > max + 1 /* +1 - don't account for nul in limit */){
+		cc1_warn_at(
+				NULL,
+				overlength_strings,
+				"string literal of length %zu is longer than the maximum length of %d required by C%d",
+				currentstring->count - 1,
+				max,
+				cc1_std == STD_C89 ? 89 : 99);
+	}
 }
 
 static void read_char(int is_wide)

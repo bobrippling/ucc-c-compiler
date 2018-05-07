@@ -190,6 +190,7 @@ ALIAS("missing-field-initializers", init_missing_struct)/* gcc/clang */
 X("init-missing-struct-zero", init_missing_struct_zero)
 X("init-obj-discard", init_obj_discard)
 X("init-overlong-string", init_overlong_strliteral)
+X("overlength-strings", overlength_strings)
 X("init-override", init_override)
 X("designated-init", init_undesignated)
 X("init-array-range", gnu_init_array_range)
