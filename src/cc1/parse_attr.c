@@ -65,13 +65,13 @@ static attribute *parse_attr_format(symtable *symtab, const char *ident)
 
 	EAT(token_comma);
 
-	da->bits.format.fmt_idx = currentval.val.i - 1;
-	EAT(token_integer);
+	da->bits.format.fmt_idx = PARSE_EXPR_NO_COMMA(symtab, 1);
+	FOLD_EXPR(da->bits.format.fmt_idx, symtab);
 
 	EAT(token_comma);
 
-	da->bits.format.var_idx = currentval.val.i - 1;
-	EAT(token_integer);
+	da->bits.format.var_idx = PARSE_EXPR_NO_COMMA(symtab, 1);
+	FOLD_EXPR(da->bits.format.var_idx, symtab);
 
 	EAT(token_close_paren);
 

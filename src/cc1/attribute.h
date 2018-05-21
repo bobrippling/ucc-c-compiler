@@ -38,11 +38,11 @@ struct attribute
 			{
 				attr_fmt_printf, attr_fmt_scanf
 			} fmt_func;
-			int fmt_idx, var_idx;
 			enum
 			{
 				fmt_unchecked, fmt_valid, fmt_invalid
 			} validity;
+			struct expr  *fmt_idx, *var_idx;
 		} format;
 		char *section;
 		enum calling_conv
