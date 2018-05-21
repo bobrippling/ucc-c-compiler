@@ -89,6 +89,7 @@ static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 		t->expr = parse_expr_exp(t->symtab, 0);
 	}
 	FOLD_EXPR(t->expr, t->symtab);
+	sequence_point(t->symtab);
 
 	EAT(token_close_paren);
 }
