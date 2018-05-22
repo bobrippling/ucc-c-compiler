@@ -144,7 +144,8 @@ static attribute *parse_attr_nonnull(symtable *symtab, const char *ident)
 				}else{
 					/* implicitly disallow functions with >32 args */
 					/* n-1, since we convert from 1-base to 0-base */
-					l |= 1 << (n - 1);
+					if(n < sizeof(l) * CHAR_BIT)
+						l |= 1 << (n - 1);
 				}
 			}else{
 				EAT(token_integer); /* raise error */
