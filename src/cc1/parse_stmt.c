@@ -540,6 +540,7 @@ stmt *parse_stmt(const struct stmt_ctx *ctx)
 				if(curtok != token_semicolon){
 					t->expr = parse_expr_exp(ctx->scope, 0);
 					fold_expr_nodecay(t->expr, ctx->scope);
+					sequence_point(ctx->scope);
 				}
 			}else{
 				t = stmt_new_wrapper(goto, ctx->scope);

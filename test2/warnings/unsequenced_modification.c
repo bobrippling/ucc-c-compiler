@@ -31,3 +31,28 @@ int main()
 
 	for(i = 0; i < 10; i++); // CHECK: !/warn/
 }
+
+char *f2(char *a)
+{
+	while(*a)
+		if(*a == 'a')
+			return (char*)a;
+		else
+			a++; // CHECK: !/warn/
+	return 0;
+}
+
+g2()
+{
+	void **p = 0;
+	p++; // CHECK: !/warn/
+	goto *p++; // CHECK: !/warn/
+	p++; // CHECK: !/warn.*sequenced/
+}
+
+h2()
+{
+	int i = 3;
+	if(i--) // CHECK: !/warn/
+		i = 3; // CHECK: !/warn/
+}
