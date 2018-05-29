@@ -189,6 +189,7 @@ static void warning_all(enum warning_fatality set)
 	cc1_warning.null_zero_literal =
 	cc1_warning.enum_out_of_range =
 	cc1_warning.enum_mismatch_int =
+	cc1_warning.mismatch_ptr_explicit =
 	cc1_warning.inline_failed =
 	cc1_warning.switch_default =
 	cc1_warning.switch_default_covered =

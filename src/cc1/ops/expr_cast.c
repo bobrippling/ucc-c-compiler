@@ -551,9 +551,13 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			/* allow cast from NULL to func ptr */
 			if(!expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_VOID_PTR)){
 				char buf[TYPE_STATIC_BUFSIZ];
+				const unsigned char *pwarn = &cc1_warning.mismatch_ptr;
 
-				cc1_warn_at(&e->where,
-						mismatch_ptr,
+				if(expr_cast_is_explicit(e))
+					pwarn = &cc1_warning.mismatch_ptr_explicit;
+
+				cc1_warn_at_w(&e->where,
+						pwarn,
 						"%scast from %spointer to %spointer\n"
 						"%s <- %s",
 						IMPLICIT_STR(e),
