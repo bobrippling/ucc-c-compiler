@@ -257,6 +257,12 @@ struct cstring *parse_asciz_str(void)
 	struct cstring *cstr = token_get_current_str(NULL);
 	char *nul;
 
+	if(!cstr){
+		warn_at_print_error(NULL, "string expected, got %s", token_to_str(curtok));
+		parse_had_error = 1;
+		return NULL;
+	}
+
 	if(cstr->type == CSTRING_WIDE){
 		warn_at_print_error(NULL, "wide string not wanted");
 		parse_had_error = 1;
