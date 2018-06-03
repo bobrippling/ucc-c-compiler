@@ -13,6 +13,7 @@
 #include "macros.h"
 #include "cc1_where.h"
 #include "warn.h"
+#include "parse_fold_error.h"
 
 void escape_string(char *old_str, size_t *plen)
 {
@@ -46,8 +47,8 @@ void escape_string(char *old_str, size_t *plen)
 							"escape sequence out of range (larger than 0xff)");
 					break;
 				case EINVAL:
-					cc1_warn_at(&loc, escape_char,
-							"invalid escape character");
+					warn_at_print_error(&loc, "invalid escape character");
+					parse_had_error = 1;
 					break;
 			}
 
