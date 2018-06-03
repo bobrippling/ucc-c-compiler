@@ -145,9 +145,7 @@ numeric currentval = { { 0 } }; /* an integer literal */
 
 char *currentspelling = NULL; /* e.g. name of a variable */
 
-char *currentstring   = NULL; /* a string literal */
-size_t currentstringlen = 0;
-int   currentstringwide = 0;
+struct cstring *currentstring = NULL; /* a string literal */
 where currentstringwhere;
 
 /* where the parser is, and where the last parsed token was */
@@ -455,12 +453,18 @@ static int rawnextchar(void)
 	return *bufferpos++;
 }
 
+static int char_is_cspace(int ch)
+{
+	/* C allows ^L aka '\f' anywhere in the code */
+	return isspace(ch) || ch == '\f';
+}
+
 static int nextchar(void)
 {
 	int c;
 	do
 		c = rawnextchar();
-	while(isspace(c) || c == '\f'); /* C allows ^L aka '\f' anywhere in the code */
+	while(char_is_cspace(c));
 	return c;
 }
 
@@ -502,7 +506,7 @@ static void read_integer(const enum base mode)
 		case DEC: currentval.suffix = 0; break;
 	}
 
-	currentval.val.i = char_seq_to_ullong(bufferpos, &end, mode, &of);
+	currentval.val.i = char_seq_to_ullong(bufferpos, &end, /*apply_limit*/0, mode, &of);
 
 	if(of){
 		/* force unsigned long long ULLONG_MAX */
@@ -668,30 +672,76 @@ static int curtok_is_xequal(void)
 	return curtok_to_xequal() != token_unknown;
 }
 
-static void read_string(char **sptr, size_t *plen)
+static void handle_escape_warn_err(int warn, int err, int escape_offset, void *ctx)
 {
-	char *const start = bufferpos;
-	char *const end = str_quotefin(start);
-	size_t size;
+	extern int parse_had_error;
+	const where *loc = ctx;
+	where loc_;
+
+	if(!loc){
+		where_cc1_current(&loc_);
+		loc = &loc_;
+		loc_.chr += escape_offset;
+	}
+
+	switch(err){
+		case 0:
+			break;
+		case EILSEQ:
+			warn_at_print_error(loc, "empty escape sequence");
+			parse_had_error = 1;
+			break;
+		case ERANGE:
+			warn_at_print_error(loc, "escape sequence out of range");
+			parse_had_error = 1;
+			break;
+		default:
+			assert(0 && "unhandled escape error");
+	}
+	switch(warn){
+		case 0:
+			break;
+		case E2BIG:
+			cc1_warn_at(loc, char_toolarge, "ignoring extraneous characters in literal");
+			break;
+		case EINVAL:
+			warn_at_print_error(loc, "invalid escape character");
+			parse_had_error = 1;
+			break;
+		default:
+			assert(0 && "unhandled escape warning");
+	}
+}
+
+static struct cstring *read_string(int is_wide)
+{
+	const char *start = bufferpos;
+	const char *end = str_quotefin((char *)start);
+	struct cstring *ret;
+	size_t len;
 
 	if(!end){
+		const char *empty = "";
+
 		char *p;
 		if((p = strchr(bufferpos, '\n')))
 			*p = '\0';
-		die_at(NULL, "Couldn't find terminating quote to \"%s\"", bufferpos);
+		warn_at_print_error(NULL, "no terminating quote to string");
+		parse_had_error = 1;
+
+		start = empty;
+		end = empty + 1;
 	}
 
-	size = end - start + 1;
+	len = end - start;
 
-	*sptr = umalloc(size);
-	*plen = size;
+	ret = cstring_new(CSTRING_RAW, start, len, 1);
 
-	strncpy(*sptr, start, size);
-	(*sptr)[size-1] = '\0';
+	update_bufferpos(bufferpos + len + 1);
 
-	escape_string(*sptr, plen);
+	cstring_escape(ret, is_wide, handle_escape_warn_err, NULL);
 
-	update_bufferpos(bufferpos + size);
+	return ret;
 }
 
 static void ungetchar(char ch)
@@ -709,88 +759,92 @@ static int getungetchar(void)
 	return ch;
 }
 
-static void read_string_multiple(const int is_wide)
+static void read_string_multiple(int is_wide)
 {
-	/* TODO: read in "hello\\" - parse string char by char, rather than guessing and escaping later */
-	char *str;
-	size_t len;
+	struct cstring *cstr;
 
 	where_cc1_current(&currentstringwhere);
 
-	read_string(&str, &len);
+	cstr = read_string(is_wide);
 
 	curtok = token_string;
 
 	for(;;){
+		/* look for '"' or "L\"" */
 		int c = nextchar();
-		if(c == '"'){
+
+		if(c == '"' || (c == 'L' && *bufferpos == '"')){
 			/* "abc" "def"
 			 *       ^
 			 */
-			char *new, *alloc;
-			size_t newlen;
+			struct cstring *appendstr;
 
-			read_string(&new, &newlen);
+			if(c == 'L'){
+				is_wide = 1;
+				bufferpos++;
+			}
 
-			alloc = umalloc(newlen + len);
+			appendstr = read_string(is_wide);
 
-			memcpy(alloc, str, len);
-			memcpy(alloc + len - 1, new, newlen);
-
-			free(str);
-			free(new);
-
-			str = alloc;
-			len += newlen - 1;
+			cstring_append(cstr, appendstr);
+			cstring_free(appendstr);
 		}else{
 			ungetchar(c);
 			break;
 		}
 	}
 
-	currentstring    = str;
-	currentstringlen = len;
-	currentstringwide = is_wide;
+	currentstring = cstr;
 }
 
-static void cc1_read_quoted_char(const int is_wide)
+static void read_char(int is_wide)
 {
-	int multichar;
-	char *p;
-	const char *err;
-	int warn;
-	long ch = read_quoted_char(
-			bufferpos, &p, &multichar, /*256*/!is_wide,
-			&err, &warn);
+	char *begin = bufferpos;
+	char *end = char_quotefin(begin);
+	int ch = 0;
+	int multichar = 0;
 
-	if(err){
-		/* empty char or no finishing quote */
-		warn_at_print_error(NULL, "%s", err);
+	if(end){
+		const size_t len = (end - begin);
+		int warn, err;
+		char *endesc;
+
+		warn = err = 0;
+		ch = escape_char(begin, end, &endesc, is_wide, &multichar, &warn, &err);
+
+		if(endesc != end){
+			warn_at_print_error(NULL, "invalid characters in literal");
+			parse_had_error = 1;
+		}
+
+		if(multichar){
+			if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
+				cc1_warn_at(NULL, char_toolarge, "multi-char constant too large");
+			else
+				cc1_warn_at(NULL, multichar, "multi-char constant");
+		}else if(len == 0){
+			warn_at_print_error(NULL, "empty char constant");
+			parse_had_error = 1;
+			goto out;
+		}
+
+		handle_escape_warn_err(warn, err, 0, NULL);
+	}else{
+		warn_at_print_error(NULL, "no terminating quote to character literal");
 		parse_had_error = 1;
 	}
 
-	if(multichar){
-		if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
-			cc1_warn_at(NULL, multichar_toolarge, "multi-char constant too large");
-		else
-			cc1_warn_at(NULL, multichar, "multi-char constant");
-	}
-	switch(warn){
-		case 0:
-			break;
-		case ERANGE:
-			cc1_warn_at(NULL, escape_char, "escape character out of range (larger than 0xff)");
-			break;
-		case EINVAL:
-			cc1_warn_at(NULL, escape_char, "invalid escape character");
-			break;
-	}
+out:
+	if(end)
+		update_bufferpos(end + 1);
 
-	currentval.val.i = ch;
+	if(is_wide || multichar)
+		currentval.val.i = (int)ch;
+	else
+		currentval.val.i = (char)ch; /* ensure we sign extend from char */
+
 	currentval.suffix = 0;
 	curtok = is_wide ? token_integer : token_character;
-
-	update_bufferpos(p);
 }
 
 static void read_number(const int first)
@@ -941,7 +995,7 @@ void nexttoken()
 			return;
 		case '\'':
 			nextchar();
-			cc1_read_quoted_char(1);
+			read_char(1);
 			return;
 	}
 
@@ -983,7 +1037,7 @@ void nexttoken()
 			break;
 
 		case '\'':
-			cc1_read_quoted_char(0);
+			read_char(0);
 			break;
 
 		case '(':

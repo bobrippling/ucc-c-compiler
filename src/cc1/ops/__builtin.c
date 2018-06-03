@@ -16,6 +16,7 @@
 #include "../type_nav.h"
 #include "../type_is.h"
 #include "../tokconv.h"
+#include "../str.h"
 
 #include "../const.h"
 #include "../gen_asm.h"
@@ -807,14 +808,24 @@ static void const_strlen(expr *e, consty *k)
 		const_fold(s, &subk);
 		if(subk.type == CONST_STRK){
 			stringlit *lit = subk.bits.str->lit;
-			const char *s = lit->str;
-			const char *p = memchr(s, '\0', lit->len);
 
-			if(p){
-				CONST_FOLD_LEAF(k);
-				k->type = CONST_NUM;
-				k->bits.num.val.i = p - s;
-				k->bits.num.suffix = VAL_UNSIGNED;
+			switch(lit->cstr->type){
+				case CSTRING_RAW:
+				case CSTRING_ASCII:
+				{
+					const char *s = lit->cstr->bits.ascii;
+					const char *p = memchr(s, '\0', lit->cstr->count);
+
+					if(p){
+						CONST_FOLD_LEAF(k);
+						k->type = CONST_NUM;
+						k->bits.num.val.i = p - s;
+						k->bits.num.suffix = VAL_UNSIGNED;
+					}
+					break;
+				}
+				case CSTRING_WIDE:
+					break;
 			}
 		}
 	}

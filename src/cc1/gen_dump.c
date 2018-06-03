@@ -159,18 +159,34 @@ void dump_desc_expr(dump *ctx, const char *desc, const expr *e)
 	dump_desc_expr_newline(ctx, desc, e, 1);
 }
 
-void dump_strliteral_indent(dump *ctx, int indent, const char *str, size_t len)
+void dump_strliteral_indent(dump *ctx, int indent, struct cstring *str)
 {
 	if(indent)
 		dump_indent(ctx);
-	fprintf(ctx->fout, "%s\"", maybe_colour(ctx->fout, col_strlit));
-	literal_print(ctx->fout, str, len);
+	fprintf(ctx->fout, "%s%s\"",
+			maybe_colour(ctx->fout, col_strlit),
+			str->type == CSTRING_WIDE ? "L" : "");
+
+	if(str->type == CSTRING_WIDE){
+		size_t i;
+		for(i = 0; i < str->count; i++)
+			fwrite(&str->bits.wides[i], sizeof(int), 1, ctx->fout);
+	}else{
+		literal_print(ctx->fout, str);
+	}
+
 	fprintf(ctx->fout, "\"%s\n", maybe_colour(ctx->fout, col_off));
 }
 
 void dump_strliteral(dump *ctx, const char *str, size_t len)
 {
-	dump_strliteral_indent(ctx, 1, str, len);
+	struct cstring cstr;
+
+	cstring_init(&cstr, CSTRING_ASCII, str, len, 0);
+
+	dump_strliteral_indent(ctx, 1, &cstr);
+
+	cstring_deinit(&cstr);
 }
 
 void dump_expr(expr *e, dump *ctx)

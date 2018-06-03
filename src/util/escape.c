@@ -4,6 +4,8 @@
 #include <string.h>
 #include <ctype.h>
 #include <errno.h>
+#include <limits.h>
+#include <assert.h>
 
 #include "escape.h"
 #include "str.h"
@@ -12,7 +14,7 @@
 typedef int digit_test(int);
 
 
-int escape_char(int c)
+static int escape_char1(int c)
 {
 	struct
 	{
@@ -68,10 +70,12 @@ static void overflow_handle(char *s, char **end, digit_test *test)
 }
 
 static unsigned long long read_ap_num(
-		digit_test test, char *s, int base,
+		digit_test test, char *s,
+		int base, int max_chars,
 		char **const end, int *const of)
 {
 	unsigned long long val = 0;
+	int i = 0;
 
 	*of = 0;
 
@@ -82,13 +86,17 @@ static unsigned long long read_ap_num(
 			/* advance over what's left, etc */
 			overflow_handle(s, end, test);
 			*of = 1;
-			while(test(*s) || *s == '_')
+			while((test(*s) || *s == '_'))
 				s++;
 			break;
 		}
 		s++;
 		while(*s == '_')
 			s++;
+		if(max_chars > 0 && --max_chars == 0)
+			break;
+
+		i++;
 	}
 
 	*end = s;
@@ -107,114 +115,138 @@ static int isodigit(int c)
 }
 
 unsigned long long char_seq_to_ullong(
-		char *s, char **const eptr, enum base mode, int *const of)
+		char *s, char **const eptr, int apply_limit, enum base mode, int *const of)
 {
 	static const struct
 	{
 		int base;
+		int max_chars;
 		digit_test *test;
 	} bases[] = {
-		{    2, isbdigit },
-		{  010, isodigit },
-		{   10, isdigit  },
-		{ 0x10, isxdigit },
+		{    2, -1, isbdigit },
+		{  010,  3, isodigit },
+		{   10, -1, isdigit  },
+		{ 0x10, -1, isxdigit },
 	};
 
 	return read_ap_num(
 			bases[mode].test,
 			s,
 			bases[mode].base,
+			apply_limit ? bases[mode].max_chars : -1,
 			eptr,
 			of);
 }
 
-long read_char_single(char *start, char **end, int *const warn)
+int escape_char_1(
+		char *start, char **const end,
+		int is_wide,
+		int *const warn, int *const err)
 {
-	long c = *start++;
+	/* no binary here - only in numeric constants */
+	char esc = *start;
 
-	*warn = 0;
+	if(esc == 'x' || isoct(esc)){
+		unsigned long long parsed;
+		int overflow;
 
-	if(c == '\\'){
-		char esc = tolower(*start);
+		if(esc == 'x')
+			start++;
 
-		/* no binary here - only in numeric constants */
-		if(esc == 'x' || isoct(esc)){
-			long parsed;
-			int of;
+		parsed = char_seq_to_ullong(
+				start,
+				end,
+				/*apply_limit*/1,
+				esc == 'x' ? HEX : OCT,
+				&overflow);
 
-			if(esc == 'x' || esc == 'b')
-				start++;
+		if(overflow)
+			*err = ERANGE;
+		if(start == *end)
+			*err = EILSEQ;
+		if(parsed > (is_wide ? 0x7fffffff : 0xff))
+			*err = ERANGE;
 
-			parsed = char_seq_to_ullong(
-					start,
-					end,
-					esc == 'x' ? HEX : esc == 'b' ? BIN : OCT,
-					&of);
+		return parsed;
 
-			if((unsigned)parsed > 0xff)
-				*warn = ERANGE;
-
-			return parsed;
-
-		}else{
-			/* special parsing */
-			c = escape_char(esc);
-
-			if(c == -1)
-				*warn = EINVAL;
-
-			*end = start + 1;
-		}
 	}else{
-		*end = start;
-	}
+		/* special parsing */
+		int c = escape_char1(esc);
 
-	return c;
+		if(c == -1)
+			*warn = EINVAL;
+
+		*end = start + 1;
+
+		return c;
+	}
 }
 
-long read_quoted_char(
-		char *start, char **end,
-		int *multichar, int clip_256,
-		const char **const err,
-		int *const warn)
+int escape_char(
+		char *start,
+		char *limit,
+		char **const end,
+		int is_wide,
+		int *const multi,
+		int *const warn,
+		int *const err)
 {
-	unsigned long total = 0;
-	unsigned i;
+	int ret = 0;
+	char *i;
+	size_t n = 0;
 
-	*multichar = 0;
-	*err = NULL;
+	assert(limit);
 
-	if(*start == '\''){
-		/* '' */
-		*err = "empty char constant";
-		goto out;
-	}
+	/* assuming start..end doesn't contain nuls */
+	for(i = start; i != limit && *i; i++){
+		int this;
 
-	for(i = 0;; i++){
-		int ch;
+		if(*i == '\\'){
+			char *escfin;
 
-		if(!*start){
-			*err = "no terminating quote to character";
-			goto out;
+			i++;
+			if(i == limit){
+				*err = EILSEQ;
+				break;
+			}
+
+			this = escape_char_1(i, &escfin, is_wide, warn, err);
+
+			i = escfin /*for inc:*/- 1;
+		}else{
+			this = *i;
 		}
 
-		ch = read_char_single(start, &start, warn);
+		if(is_wide){
+			ret = this; /* truncate to last parsed char */
+			if(ret)
+				*warn = E2BIG;
+		}else{
+			/* overflow? */
+			int of = 0;
+			if((unsigned)ret > UINT_MAX / 256u)
+				of = 1;
+			ret *= 256u;
+			if((unsigned)ret > UINT_MAX - this)
+				of = 1;
+			ret += this;
 
-		if(clip_256)
-			total = (total * 256) + (0xff & ch);
-		else
-			total += ch;
+			if(of)
+				*warn = E2BIG;
+		}
 
-		if(*start == '\'')
-			break;
-
-
-		*multichar = 1;
+		n++;
 	}
 
-out:
-	*end = start + 1;
-	return total;
+	if(multi)
+		*multi = n > 1;
+
+	if(i == limit)
+		*end = i;
+	else
+		*end = i - 1;
+
+	return ret;
 }
 
 const char *base_to_str(enum base b)

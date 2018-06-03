@@ -1,9 +1,11 @@
 #include <string.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "expr_deref.h"
 #include "../type_nav.h"
 #include "../type_is.h"
+#include "../str.h"
 
 #include "expr_op.h"
 
@@ -79,19 +81,26 @@ static void const_expr_deref(expr *e, consty *k)
 				break;
 			}
 
-			if(k->offset < 0 || (unsigned)k->offset >= sv->len){
+			if(k->offset < 0 || (unsigned)k->offset >= sv->cstr->count){
+				/* undefined - we define as */
 				CONST_FOLD_NO(k, e);
 			}else{
 				const long offset = k->offset;
 
-				UCC_ASSERT(!sv->wide, "TODO: constant wchar_t[] deref");
-
-				/* need to preserve original string for lvalue-ness -> CONST_NEED_ADDR */
-				CONST_FOLD_LEAF(k);
-				k->type = CONST_NEED_ADDR;
-				k->bits.addr.is_lbl = 1;
-				k->bits.addr.bits.lbl = sv->lbl;
-				k->offset = offset;
+				switch(sv->cstr->type){
+					case CSTRING_ASCII:
+						/* need to preserve original string for lvalue-ness -> CONST_NEED_ADDR */
+						CONST_FOLD_LEAF(k);
+						k->type = CONST_NEED_ADDR;
+						k->bits.addr.is_lbl = 1;
+						k->bits.addr.bits.lbl = sv->lbl;
+						k->offset = offset;
+						break;
+					case CSTRING_RAW:
+						assert(0 && "raw string in code gen");
+					case CSTRING_WIDE:
+						assert(0 && "TODO: wide string gen");
+				}
 
 				stringlit_use(sv); /* ensure emit */
 			}
