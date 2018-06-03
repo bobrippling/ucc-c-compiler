@@ -5,12 +5,12 @@ const char *p = "\xff""f"; // CHECK: !/error/
 // ^ the literal is const char[3] holding {'\xff','f','\0'}
 
 #ifdef FAIL
-const char *q = "\xfff"; // CHECK: error: escape sequence out of range (larger than 0xff)
+const char *q = "\xfff"; // CHECK: error: escape sequence out of range
 
-const char *r = "\777"; // CHECK: error: escape sequence out of range (larger than 0xff)
+const char *r = "\777"; // CHECK: error: escape sequence out of range
 const char *s = "\77""7"; // CHECK: !/error/
 
-unsigned char a = '\xfff'; // CHECK: error: escape character out of range (larger than 0xff)
+unsigned char a = '\xfff'; // CHECK: error: escape sequence out of range
 unsigned char b = '\xff'; // CHECK: !/error/
 #endif
 
