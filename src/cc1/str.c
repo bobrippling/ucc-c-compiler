@@ -31,7 +31,7 @@ void escape_string(char *old_str, size_t *plen)
 			int warn;
 
 			where_cc1_current(&loc);
-			loc.chr += i;
+			loc.chr += i + 1;
 
 			add = read_char_single(old_str + i, &end, &warn);
 

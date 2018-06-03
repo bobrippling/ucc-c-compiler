@@ -2,4 +2,4 @@
 
 char x[] = "hello \. yo";
 // CARETS:
-//                ^ unrecognised escape character '.'
+//                ^ invalid escape character
