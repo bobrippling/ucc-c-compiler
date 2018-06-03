@@ -17,6 +17,7 @@ int escape_char(int c);
 unsigned long long char_seq_to_ullong(
 		char *s,
 		char **eptr,
+		int apply_limit,
 		enum base mode,
 		int *of)
 	ucc_nonnull();

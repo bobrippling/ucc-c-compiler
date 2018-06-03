@@ -68,7 +68,8 @@ static void overflow_handle(char *s, char **end, digit_test *test)
 }
 
 static unsigned long long read_ap_num(
-		digit_test test, char *s, int base,
+		digit_test test, char *s,
+		int base, int max_chars,
 		char **const end, int *const of)
 {
 	unsigned long long val = 0;
@@ -89,6 +90,8 @@ static unsigned long long read_ap_num(
 		s++;
 		while(*s == '_')
 			s++;
+		if(max_chars > 0 && --max_chars == 0)
+			break;
 	}
 
 	*end = s;
@@ -107,23 +110,25 @@ static int isodigit(int c)
 }
 
 unsigned long long char_seq_to_ullong(
-		char *s, char **const eptr, enum base mode, int *const of)
+		char *s, char **const eptr, int apply_limit, enum base mode, int *const of)
 {
 	static const struct
 	{
 		int base;
+		int max_chars;
 		digit_test *test;
 	} bases[] = {
-		{    2, isbdigit },
-		{  010, isodigit },
-		{   10, isdigit  },
-		{ 0x10, isxdigit },
+		{    2, -1, isbdigit },
+		{  010,  3, isodigit },
+		{   10, -1, isdigit  },
+		{ 0x10, -1, isxdigit },
 	};
 
 	return read_ap_num(
 			bases[mode].test,
 			s,
 			bases[mode].base,
+			apply_limit ? bases[mode].max_chars : -1,
 			eptr,
 			of);
 }
@@ -148,6 +153,7 @@ long read_char_single(char *start, char **end, int *const warn)
 			parsed = char_seq_to_ullong(
 					start,
 					end,
+					/*apply_limit*/1,
 					esc == 'x' ? HEX : esc == 'b' ? BIN : OCT,
 					&of);
 
