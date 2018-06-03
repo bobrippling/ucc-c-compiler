@@ -171,7 +171,6 @@ warning:
 			}
 
 			if(error){
-				fold_had_error = 1;
 				return 0; /* don't cast - we don't want duplicate errors */
 			}
 			return 1; /* need cast */

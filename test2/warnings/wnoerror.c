@@ -1,4 +1,4 @@
-// RUN: %check %s -Werror -Wno-error=mismatching-types
+// RUN: %check %s -Werror -Wno-error=incompatible-pointer-types
 
 int main(void)
 {
