@@ -37,7 +37,7 @@ void cstring_free(struct cstring *);
 void cstring_deinit(struct cstring *);
 char *cstring_detach(struct cstring *);
 
-char *str_add_escape(struct cstring *);
-int literal_print(FILE *f, struct cstring *);
+char *str_add_escape(const struct cstring *);
+int literal_print(FILE *f, const struct cstring *);
 
 #endif

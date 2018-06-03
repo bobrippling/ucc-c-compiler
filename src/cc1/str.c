@@ -233,7 +233,7 @@ void cstring_append(struct cstring *out, struct cstring *addend)
 		out->count--;
 }
 
-char *str_add_escape(struct cstring *cstr)
+char *str_add_escape(const struct cstring *cstr)
 {
 	size_t nlen = 0, i;
 	char *new, *p;
@@ -271,7 +271,7 @@ char *str_add_escape(struct cstring *cstr)
 	return new;
 }
 
-int literal_print(FILE *f, struct cstring *cstr)
+int literal_print(FILE *f, const struct cstring *cstr)
 {
 	char *literal = str_add_escape(cstr);
 	int r = fprintf(f, "%s", literal);
