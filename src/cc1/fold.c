@@ -154,7 +154,7 @@ warning:
 				pwarn = &cc1_warning.mismatch_ptr;
 			}
 
-#define common_warning "mismatching %stypes, %s:", detail, desc
+#define common_warning "mismatching %stypes, %s", detail, desc
 			if(error){
 				warn_at_print_error(w, common_warning);
 				fold_had_error = 1;
