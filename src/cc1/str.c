@@ -53,7 +53,7 @@ static void cstring_char_set(struct cstring *cstr, size_t i, int to)
 
 void cstring_escape(
 		struct cstring *cstr, int is_wide,
-		void handle_escape_warn_err(int w, int e, void *),
+		void handle_escape_warn_err(int w, int e, int escape_offset, void *),
 		void *ctx)
 {
 	struct cstring tmpout = { 0 };
@@ -75,6 +75,7 @@ void cstring_escape(
 
 		if(cstr->bits.ascii[i] == '\\'){
 			int warn, err;
+			const int escape_loc = i + 1;
 			char *end;
 
 			warn = err = 0;
@@ -84,7 +85,7 @@ void cstring_escape(
 
 			i = (end - cstr->bits.ascii) /*for the loop inc:*/- 1;
 
-			handle_escape_warn_err(warn, err, ctx);
+			handle_escape_warn_err(warn, err, escape_loc, ctx);
 		}else{
 			add = cstr->bits.ascii[i];
 		}

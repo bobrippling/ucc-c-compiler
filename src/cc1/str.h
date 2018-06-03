@@ -25,7 +25,7 @@ int cstring_char_at(const struct cstring *, size_t);
 
 void cstring_escape(
 		struct cstring *cstr, int is_wide,
-		void handle_escape_warn_err(int w, int e, void *),
+		void handle_escape_warn_err(int w, int e, int escape_offset, void *),
 		void *ctx);
 
 void cstring_append(struct cstring *, struct cstring *);

@@ -672,7 +672,7 @@ static int curtok_is_xequal(void)
 	return curtok_to_xequal() != token_unknown;
 }
 
-static void handle_escape_warn_err(int warn, int err, void *ctx)
+static void handle_escape_warn_err(int warn, int err, int escape_offset, void *ctx)
 {
 	extern int parse_had_error;
 	const where *loc = ctx;
@@ -681,6 +681,7 @@ static void handle_escape_warn_err(int warn, int err, void *ctx)
 	if(!loc){
 		where_cc1_current(&loc_);
 		loc = &loc_;
+		loc_.chr += escape_offset;
 	}
 
 	switch(err){
@@ -827,7 +828,7 @@ static void read_char(int is_wide)
 			goto out;
 		}
 
-		handle_escape_warn_err(warn, err, NULL);
+		handle_escape_warn_err(warn, err, 0, NULL);
 	}else{
 		warn_at_print_error(NULL, "no terminating quote to character literal");
 		parse_had_error = 1;
