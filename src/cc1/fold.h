@@ -87,6 +87,6 @@ int fold_passable(stmt *s);
 int fold_passable_yes(stmt *s);
 int fold_passable_no( stmt *s);
 
-extern int fold_had_error;
+#include "parse_fold_error.h"
 
 #endif

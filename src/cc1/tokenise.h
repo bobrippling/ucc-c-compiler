@@ -145,6 +145,6 @@ int tok_at_label(void);
 
 extern numeric currentval;
 extern enum token curtok;
-extern int parse_had_error;
+#include "parse_fold_error.h"
 
 #endif

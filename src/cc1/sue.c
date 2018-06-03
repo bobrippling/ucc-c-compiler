@@ -16,6 +16,7 @@
 #include "decl.h"
 #include "type_is.h"
 #include "fopt.h"
+#include "parse_fold_error.h"
 
 static void sue_set_spel(struct_union_enum_st *sue, char *spel)
 {
@@ -73,7 +74,6 @@ int enum_nentries(struct_union_enum_st *e)
 int sue_incomplete_chk(struct_union_enum_st *st, const where *w)
 {
 	if(!sue_is_complete(st)){
-		extern int fold_had_error;
 		fold_had_error = 1;
 		warn_at_print_error(w, "%s %s is incomplete", sue_str(st), st->spel);
 		note_at(&st->where, "forward declared here");

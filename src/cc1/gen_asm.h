@@ -17,7 +17,7 @@ void gen_asm(
 		struct out_dbg_filelist **pfilelist);
 #endif
 
-extern int gen_had_error;
+#include "parse_fold_error.h"
 
 /* easy-to-search-for macro for non-const use inside the gen functions */
 #define GEN_CONST_CAST(T, expr) ((T)(e))
