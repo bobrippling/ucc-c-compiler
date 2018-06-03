@@ -23,7 +23,7 @@ const char *base_to_str(enum base);
  */
 int escape_char(
 		char *start,
-		/*nullable*/char *limit,
+		char *limit,
 		char **end,
 		int is_wide,
 		/*nullable*/int *multi,

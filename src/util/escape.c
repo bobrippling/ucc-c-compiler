@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <limits.h>
+#include <assert.h>
 
 #include "escape.h"
 #include "str.h"
@@ -183,7 +184,7 @@ int escape_char_1(
 
 int escape_char(
 		char *start,
-		/*nullable*/char *limit,
+		char *limit,
 		char **const end,
 		int is_wide,
 		int *const multi,
@@ -193,6 +194,8 @@ int escape_char(
 	int ret = 0;
 	char *i;
 	size_t n = 0;
+
+	assert(limit);
 
 	/* assuming start..end doesn't contain nuls */
 	for(i = start; i != limit && *i; i++){

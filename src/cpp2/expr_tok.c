@@ -66,14 +66,17 @@ end_ty:
 		const int wide = (*tok_pos == 'L');
 		int warn;
 		int err;
+		char *limit;
 
 		if(wide)
 			tok_pos++;
 
 		tok_pos++;
+		limit = char_quotefin(tok_pos);
+
 		warn = err = 0;
 		tok_cur_num = escape_char(
-				tok_pos, NULL, &tok_pos, wide,
+				tok_pos, limit, &tok_pos, wide,
 				&mchar, &warn, &err);
 
 		switch(err){
@@ -87,6 +90,7 @@ end_ty:
 
 		if(!tok_pos)
 			CPP_DIE("missing terminating single quote (\"%s\")", tok_pos);
+		tok_pos++;
 
 		if(mchar)
 			CPP_WARN(WMULTICHAR, "multi-char constant");
