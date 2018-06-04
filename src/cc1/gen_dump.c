@@ -136,6 +136,7 @@ void dump_desc_expr_newline(
 		const_fold((expr *)e, &k);
 		if(k.type != CONST_NO)
 			fprintf(ctx->fout, " %s%s%s", col_const, constyness_strs[k.type], col_off);
+		/* TODO: dump label type */
 	}
 
 	dump_newline(ctx, newline);

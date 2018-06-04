@@ -321,10 +321,12 @@ static void stack_realign(out_ctx *octx, unsigned align)
 	if(to_add == 0)
 		to_add = align;
 
+	fprintf(stderr, "stack_realign(..., align=%u)\n", align);
+
 	sp = out_op(octx, op_minus,
 			sp, out_new_l(octx, arithty, to_add));
 
-	sp = out_op(octx, op_and, sp, out_new_l(octx, arithty, align - 1));
+	sp = out_op(octx, op_and, sp, out_new_l(octx, arithty, ~(align - 1)));
 
 	out_val_release(octx, sp);
 	assert(sp->retains == 0);
