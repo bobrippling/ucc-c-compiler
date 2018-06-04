@@ -120,6 +120,7 @@ static struct fnam_stack
 {
 	char *fnam;
 	int    lno;
+	int in_sysh;
 } current_fname_stack[FNAME_STACK_N];
 
 static int current_fname_stack_cnt;
@@ -136,6 +137,8 @@ static struct line_list
 	char *line;
 	struct line_list *next;
 } *store_lines, **store_line_last = &store_lines;
+
+static int in_sysh;
 
 /* -- */
 enum token curtok, curtok_uneat;
@@ -172,6 +175,7 @@ struct where *where_cc1_current(struct where *w)
 
 	/* XXX: current_chr positions at the end of the current token */
 	where_current(w);
+	w->is_sysh = in_sysh;
 
 	current_fname_used = 1;
 	current_line_str_used = 1;
@@ -185,13 +189,15 @@ void where_cc1_adj_identifier(where *w, const char *sp)
 }
 
 
-static void push_fname(char *fn, int lno)
+static void push_fname(char *fn, int lno, int sysh)
 {
 	current_fname = fn;
+	in_sysh = sysh;
 	if(current_fname_stack_cnt < FNAME_STACK_N){
 		struct fnam_stack *p = &current_fname_stack[current_fname_stack_cnt++];
 		p->fnam = ustrdup(fn);
 		p->lno = lno;
+		p->in_sysh = in_sysh;
 	}
 }
 
@@ -203,7 +209,7 @@ static void pop_fname(void)
 	}
 }
 
-static void handle_line_file_directive(char *fnam, int lno)
+static void handle_line_file_directive(char *fnam, int lno, char *flags)
 {
 	/*
 # 1 "inc.c"
@@ -211,27 +217,48 @@ static void handle_line_file_directive(char *fnam, int lno)
             // if we get an error here,
             // we want to know we're included from inc.c:1
 # 2 "inc.c" // include end - the line no. doesn't have to be prev+1
+            // we used to detect via strcmp, we now use flags
 	 */
 
 	/* logic for knowing when to pop and when to push */
-	int i;
+	char *tok;
+	enum { SOF = 1, RTF = 2, SYSH = 4 } iflag = 0;
+
+	for(tok = strtok(flags, " "); tok; tok = strtok(NULL, " ")){
+#define START_OF_FILE "1"
+#define RETURN_TO_FILE "2"
+#define SYSHEADER "3"
+		if(!strcmp(tok, START_OF_FILE)){
+			iflag |= SOF;
+		}else if(!strcmp(tok, RETURN_TO_FILE)){
+			iflag |= RTF;
+		}else if(!strcmp(tok, SYSHEADER)){
+			iflag |= SYSH;
+		}
+#undef START_OF_FILE
+#undef RETURN_TO_FILE
+#undef SYSHEADER
+	}
 
 	if(!cc1_first_fname)
 		cc1_first_fname = ustrdup(fnam);
 
-	for(i = current_fname_stack_cnt - 1; i >= 0; i--){
-		struct fnam_stack *stk = &current_fname_stack[i];
+	if(iflag & RTF){
+		int i;
+		for(i = current_fname_stack_cnt - 1; i >= 0; i--){
+			struct fnam_stack *stk = &current_fname_stack[i];
 
-		if(!strcmp(fnam, stk->fnam)){
-			/* found another "inc.c" */
-			/* pop `n` stack entries, then push our new one */
-			while(current_fname_stack_cnt > i)
-				pop_fname();
-			break;
+			if(!strcmp(fnam, stk->fnam)){
+				/* found another "inc.c" */
+				/* pop `n` stack entries, then push our new one */
+				while(current_fname_stack_cnt > i)
+					pop_fname();
+				break;
+			}
 		}
 	}
 
-	push_fname(fnam, lno);
+	push_fname(fnam, lno, !!(iflag & SYSH));
 }
 
 static void parse_line_directive(char *l)
@@ -263,6 +290,7 @@ static void parse_line_directive(char *l)
 		case '"':
 			{
 				char *p = str_quotefin(++ep);
+				char *flags;
 				if(!p){
 					cc1_warn_at(NULL, cpp_line_parsing,
 							"no terminating quote to #line directive (%s)",
@@ -270,11 +298,8 @@ static void parse_line_directive(char *l)
 					return;
 				}
 
-				handle_line_file_directive(ustrdup2(ep, p), lno);
-				/*l = str_spc_skip(p + 1);
-					if(*l)
-					die("characters after #line?");
-					- gcc puts characters after the string */
+				flags = str_spc_skip(p + 1);
+				handle_line_file_directive(ustrdup2(ep, p), lno, flags);
 				break;
 			}
 		case '\0':
@@ -367,7 +392,7 @@ void tokenise_set_input(tokenise_line_f *func, const char *nam)
 	in_func = func;
 
 	if(cc1_fopt.track_initial_fnam)
-		push_fname(nam_dup, 1);
+		push_fname(nam_dup, 1, 0);
 	else
 		current_fname = nam_dup;
 

@@ -52,3 +52,12 @@ unsigned long long round2(unsigned long long v)
 		return v;
 	return pow2i(last_bit_index(v) + 1);
 }
+
+unsigned extractbottombit(unsigned *const bitset)
+{
+	unsigned next = *bitset & (*bitset - 1);
+	unsigned bit = *bitset & ~next;
+
+	*bitset = next;
+	return bit;
+}

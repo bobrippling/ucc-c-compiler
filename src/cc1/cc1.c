@@ -128,16 +128,7 @@ static void ccdie(const char *fmt, ...)
 
 int where_in_sysheader(const where *w)
 {
-	const char **i;
-
-	if(!w->fname)
-		return 0;
-
-	for(i = system_includes; i && *i; i++)
-		if(!strncmp(w->fname, *i, strlen(*i)))
-			return 1;
-
-	return 0;
+	return w->is_sysh;
 }
 
 static void io_cleanup(void)
@@ -611,10 +602,6 @@ int main(int argc, char **argv)
 		}else if(argv[i][0] == '-'
 		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
 			parse_Wmf_option(*argv, argv[i], &werror, unknown_warnings);
-
-		}else if(!strncmp(argv[i], "-I", 2)){
-			/* these are system headers only - we don't get the full set */
-			dynarray_add(&system_includes, (const char *)argv[i] + 2);
 
 		}else if(!strncmp(argv[i], "-O", 2)){
 			if(optimise(*argv, argv[i] + 2))

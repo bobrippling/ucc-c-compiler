@@ -7,6 +7,7 @@ OBJ = preproc.o main.o macro.o str.o \
       snapshot.o include.o deps.o    \
       expr.o expr_tok.o has.o        \
       ../util/util.o ../util/alloc.o \
+      ../util/math.o                 \
       ../util/platform.o             \
       ../util/where.o ../util/str.o  \
       ../util/dynarray.o             \

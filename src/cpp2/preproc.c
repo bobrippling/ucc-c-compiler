@@ -10,6 +10,7 @@
 #include "../util/alloc.h"
 #include "../util/str.h"
 #include "../util/macros.h"
+#include "../util/math.h"
 
 #include "main.h"
 #include "preproc.h"
@@ -44,11 +45,31 @@ void include_bt(FILE *f)
 	}
 }
 
-static void preproc_out_info(void)
+void preproc_emit_line_info(int lineno, const char *fname, enum lineinfo lineinfo)
 {
+	unsigned lineinfobits = lineinfo;
 	/* output PP info */
-	if(!no_output && option_line_info)
-		printf("# %d \"%s\"\n", file_stack[file_stack_idx].line_no, file_stack[file_stack_idx].fname);
+	if(no_output || !option_line_info)
+		return;
+
+	printf("# %d \"%s\"", lineno, fname);
+
+	while(lineinfobits){
+		unsigned bit = extractbottombit(&lineinfobits);
+		int n = log2i(bit);
+
+		printf(" %d", n);
+	}
+
+	putchar('\n');
+}
+
+static void preproc_emit_line_info_top(enum lineinfo lineinfo)
+{
+	preproc_emit_line_info(
+			file_stack[file_stack_idx].line_no,
+			file_stack[file_stack_idx].fname,
+			lineinfo | (file_stack[file_stack_idx].is_sysh ? LINEINFO_SYSHEADER : 0));
 }
 
 int preproc_in_include()
@@ -56,7 +77,7 @@ int preproc_in_include()
 	return file_stack_idx > 0;
 }
 
-void preproc_push(FILE *f, const char *fname)
+void preproc_push(FILE *f, const char *fname, int is_sysh)
 {
 	if(file_stack_idx >= 0)
 		file_stack[file_stack_idx].line_no = current_line; /* save state */
@@ -85,8 +106,9 @@ void preproc_push(FILE *f, const char *fname)
 	file_stack[file_stack_idx].file    = f;
 	file_stack[file_stack_idx].fname   = ustrdup(fname);
 	file_stack[file_stack_idx].line_no = current_line = 1;
+	file_stack[file_stack_idx].is_sysh = is_sysh;
 
-	preproc_out_info();
+	preproc_emit_line_info_top(LINEINFO_START_OF_FILE);
 }
 
 static void preproc_pop(void)
@@ -110,7 +132,7 @@ static void preproc_pop(void)
 	current_line  = file_stack[file_stack_idx].line_no;
 	set_current_fname(file_stack[file_stack_idx].fname);
 
-	preproc_out_info();
+	preproc_emit_line_info_top(LINEINFO_RETURN_TO_FILE);
 }
 
 static char *read_line(void)
@@ -390,7 +412,7 @@ void preprocess(void)
 	char *line;
 	int eof = 0;
 
-	preproc_push(stdin, current_fname);
+	preproc_push(stdin, current_fname, /*sysh:*/0);
 
 	while(!eof && (line = splice_lines(&eof))){
 		debug_push_line(line);
