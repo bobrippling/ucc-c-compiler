@@ -293,6 +293,17 @@ static void const_op_num_int(
 					k->bits.num.val.i = ((e->bits.op.op == op_eq) == same);
 					break;
 				}
+
+				case op_minus:
+					if(!strcmp(l.lbl, r.lbl)){
+						type *tnext = type_is_ptr(e->lhs->tree_type);
+						assert(tnext);
+
+						k->type = CONST_NUM;
+						k->bits.num.val.i = (l.offset - r.offset) / type_size(tnext, NULL);
+						k->nonstandard_const = e;
+					}
+					break;
 			}
 			break;
 	}
