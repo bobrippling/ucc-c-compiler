@@ -230,6 +230,24 @@ static void test_dynarray(void)
 		test(dynarray_count(ints) == 0);
 		test(ints == NULL);
 	}
+
+	typedef struct A { int i; } A;
+	A **as = NULL;
+	int i;
+
+	for(i = 0; i < 10; i++){
+		A *a = umalloc(sizeof *a);
+		a->i = i;
+		dynarray_add(&as, a);
+	}
+
+	test(dynarray_count(as) == 10);
+
+	test(as[3]->i == 3);
+	test(as[10] == NULL);
+
+	dynarray_free(A **, as, free);
+	test(as == NULL);
 }
 
 static void test_math(void)
