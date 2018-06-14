@@ -232,7 +232,7 @@ static void test_dynarray(void)
 	}
 
 	typedef struct A { int i; } A;
-	A **as = NULL;
+	A **as = NULL, *insert;
 	int i;
 
 	for(i = 0; i < 10; i++){
@@ -245,6 +245,31 @@ static void test_dynarray(void)
 
 	test(as[3]->i == 3);
 	test(as[10] == NULL);
+
+	insert = umalloc(sizeof *insert);
+	insert->i = 53;
+	dynarray_insert(&as, 3, insert);
+
+	test(dynarray_count(as) == 11);
+	test(as[3]->i == 53);
+	test(as[4]->i == 3);
+	test(as[9]->i == 8);
+	test(as[10]->i == 9);
+	test(as[11] == NULL);
+
+	insert = umalloc(sizeof *insert);
+	insert->i = -1;
+	dynarray_insert(&as, 0, insert);
+
+	test(dynarray_count(as) == 12);
+	test(as[0]->i == -1);
+	test(as[1]->i == 0);
+	test(as[2]->i == 1);
+	test(as[4]->i == 53);
+	test(as[5]->i == 3);
+	test(as[10]->i == 8);
+	test(as[11]->i == 9);
+	test(as[12] == NULL);
 
 	dynarray_free(A **, as, free);
 	test(as == NULL);
