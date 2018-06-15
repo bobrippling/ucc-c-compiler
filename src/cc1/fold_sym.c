@@ -228,6 +228,9 @@ struct ident_loc
 	 ? (il)->bits.decl->spel \
 	 : (il)->bits.spel)
 
+#define IDENT_LOC_IS_IMPLICIT(il) \
+	((il)->has_decl && (il)->bits.decl->flags & DECL_FLAGS_IMPLICIT)
+
 static int strcmp_or_null(const char *a, const char *b)
 {
 	if(a && b)
@@ -499,8 +502,15 @@ void symtab_fold_decls(symtable *tab)
 			}
 
 			if(clash){
+				if(IDENT_LOC_IS_IMPLICIT(b) && !IDENT_LOC_IS_IMPLICIT(a)){
+					struct ident_loc *tmp = a;
+					a = b;
+					b = tmp;
+				}
+
 				warn_at_print_error(b->w, "%s definitions of \"%s\"", clash, IDENT_LOC_SPEL(a));
-				note_at(a->w, "previous definition");
+				note_at(a->w, "previous %sdefinition",
+						IDENT_LOC_IS_IMPLICIT(a) ? "implicit " : "");
 				fold_had_error = 1;
 			}
 		}

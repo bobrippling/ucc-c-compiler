@@ -180,8 +180,10 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **const psp)
 			"implicit declaration of function \"%s\"", *psp);
 
 	df = decl_new();
+	memcpy_safe(&df->where, &e->where);
 	df->ref = func_ty;
 	df->spel = e->expr->bits.ident.bits.ident.spel;
+	df->flags |= DECL_FLAGS_IMPLICIT;
 
 	fold_decl(df, stab); /* update calling conv, for e.g. */
 
