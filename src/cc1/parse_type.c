@@ -1579,7 +1579,7 @@ static void parse_add_asm(decl *d)
 			d->spel_asm = rename;
 		}
 
-		if(proto && proto != d && proto->used){
+		if(proto && proto != d && proto->flags & DECL_FLAGS_USED){
 			warn_at_print_error(&d->where,
 					"cannot annotate \"%s\" with an asm() label after use",
 					d->spel);

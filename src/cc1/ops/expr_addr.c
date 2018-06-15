@@ -77,7 +77,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 					fold_had_error = 1;
 				}
 
-				d->addressed = 1;
+				d->flags |= DECL_FLAGS_ADDRESSED;
 			}
 		}
 

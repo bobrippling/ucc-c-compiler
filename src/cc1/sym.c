@@ -277,7 +277,7 @@ unsigned symtab_decl_bytes(
 	for(di = stab->decls; di && *di; di++){
 		decl *d = *di;
 
-		if(d->addressed && addr_taken)
+		if((d->flags & DECL_FLAGS_ADDRESSED) && addr_taken)
 			*addr_taken = 1;
 
 		if(array_only && !type_is_array(d->ref))
