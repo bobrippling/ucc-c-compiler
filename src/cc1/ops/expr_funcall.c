@@ -189,6 +189,8 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **const psp)
 
 	e->expr->bits.ident.bits.ident.sym = df->sym;
 	e->expr->tree_type = func_ty;
+
+	symtab_insert_before(symtab_root(stab), symtab_func(stab), df);
 }
 
 static int check_arg_counts(

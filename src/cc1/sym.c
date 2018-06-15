@@ -40,6 +40,25 @@ void symtab_add_to_scope(symtable *symtab, decl *d)
 	symtab_add_to_scope2(symtab, d, 0);
 }
 
+void symtab_insert_before(symtable *symtab, decl *at, decl *to_insert)
+{
+	size_t i;
+	int found = 0;
+
+	symtab = symtab_add_target(symtab);
+
+	for(i = 0; i < dynarray_count(symtab->decls); i++){
+		if(symtab->decls[i] == at){
+			found = 1;
+			break;
+		}
+	}
+
+	UCC_ASSERT(found, "can't find insert location");
+
+	dynarray_insert(&symtab->decls, i, to_insert);
+}
+
 void symtab_add_sue(symtable *symtab, struct_union_enum_st *sue)
 {
 	symtab = symtab_add_target(symtab);

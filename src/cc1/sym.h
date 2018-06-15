@@ -131,6 +131,7 @@ unsigned symtab_decl_bytes(
 		int *const addr_taken);
 
 void symtab_add_to_scope(symtable *, decl *);
+void symtab_insert_before(symtable *, decl *at, decl *to_insert);
 void symtab_add_sue(symtable *, struct struct_union_enum_st *);
 #define symtab_decls(stab) ((stab)->decls)
 
