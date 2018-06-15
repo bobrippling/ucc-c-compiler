@@ -50,15 +50,19 @@
 
 #define DECL_HAS_FUNC_CODE(d) (type_is(d->ref, type_func) && (d)->bits.func.code)
 
+static void dump_indent(int indent)
+{
+	int i;
+	for(i = 0; i < indent; i++)
+		fputs("  ", stderr);
+}
+
 static void dump_symtab(symtable *st, unsigned indent)
 {
 	symtable **si;
 	decl **di;
-	unsigned i;
 
-#define STAB_INDENT() for(i = 0; i < indent; i++) fputs("  ", stderr)
-	STAB_INDENT();
-
+	dump_indent(indent);
 	fprintf(stderr, "symtab %p = { .are_params=%d, .in_func=%s }\n",
 			(void *)st,
 			st->are_params,
@@ -67,7 +71,7 @@ static void dump_symtab(symtable *st, unsigned indent)
 	for(di = st->decls; di && *di; di++){
 		decl *d = *di;
 
-		STAB_INDENT();
+		dump_indent(indent);
 		fprintf(stderr, "  %s, %s %p",
 				d->sym ? sym_to_str(d->sym->type) : "<nosym>",
 				decl_to_str(d),
@@ -91,9 +95,13 @@ static void dump_symtab(symtable *st, unsigned indent)
 		fputc('\n', stderr);
 	}
 
+	if(st->decls && st->children){
+		dump_indent(indent);
+		fputs("  ---\n", stderr);
+	}
+
 	for(si = st->children; si && *si; si++)
 		dump_symtab(*si, indent + 1);
-#undef STAB_INDENT
 }
 
 static void symtab_iter_children(symtable *stab, void f(symtable *))
