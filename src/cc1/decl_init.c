@@ -1489,7 +1489,7 @@ static void maybe_complete_array_from_prev(decl *d)
 
 void decl_init_brace_up_fold(decl *d, symtable *stab)
 {
-	init_debug("top level: %s\n", decl_to_str(d));
+	init_debug("top level: %s%s\n", decl_to_str(d), d->spel ? "" : " [anon]");
 
 	assert(!type_is(d->ref, type_func));
 	if(!d->bits.var.init.normalised){
