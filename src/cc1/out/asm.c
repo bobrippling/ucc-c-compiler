@@ -303,6 +303,32 @@ static void static_val(const struct section *sec, type *ty, expr *e)
 	asm_out_section(sec, "\n");
 }
 
+ucc_nonnull()
+static decl_init **skip_compound_literal(decl_init *init, struct_union_enum_st *sue)
+{
+	decl_init **i = init->bits.ar.inits;
+	expr *copy_from_exp;
+
+	/* check for compound-literal copy-init */
+	if((copy_from_exp = decl_init_is_struct_copy(init, sue))){
+		decl_init *copy_from_init;
+
+		copy_from_exp = expr_skip_lval2rval(copy_from_exp);
+
+		/* the only struct-expression that's possible
+		 * in static context is a compound literal */
+		assert(expr_kind(copy_from_exp, compound_lit)
+				&& "unhandled expression init");
+
+		copy_from_init = expr_comp_lit_init(copy_from_exp);
+		assert(copy_from_init->type == decl_init_brace);
+
+		i = copy_from_init->bits.ar.inits;
+	}
+
+	return i;
+}
+
 static void asm_declare_init(const struct section *sec, decl_init *init, type *tfor)
 {
 	type *r;
@@ -330,28 +356,10 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 		struct bitfield_val *bitfields = NULL;
 		unsigned nbitfields = 0;
 		decl *first_bf = NULL;
-		expr *copy_from_exp;
 
 		UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
 
-		i = init->bits.ar.inits;
-
-		/* check for compound-literal copy-init */
-		if((copy_from_exp = decl_init_is_struct_copy(init, sue))){
-			decl_init *copy_from_init;
-
-			copy_from_exp = expr_skip_lval2rval(copy_from_exp);
-
-			/* the only struct-expression that's possible
-			 * in static context is a compound literal */
-			assert(expr_kind(copy_from_exp, compound_lit)
-					&& "unhandled expression init");
-
-			copy_from_init = expr_comp_lit_init(copy_from_exp);
-			assert(copy_from_init->type == decl_init_brace);
-
-			i = copy_from_init->bits.ar.inits;
-		}
+		i = skip_compound_literal(init, sue);
 
 		/* iterate using members, not inits */
 		for(mem = sue->members;
