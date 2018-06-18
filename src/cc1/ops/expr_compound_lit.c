@@ -146,7 +146,7 @@ void dump_expr_compound_lit(const expr *e, dump *ctx)
 const out_val *gen_expr_style_compound_lit(const expr *e, out_ctx *octx)
 {
 	stylef("(%s)", type_to_str(e->bits.complit.decl->ref));
-	gen_style_dinit(e->bits.complit.decl->bits.var.init.dinit);
+	gen_style_dinit(expr_comp_lit_init(e));
 	UNUSED_OCTX();
 }
 
