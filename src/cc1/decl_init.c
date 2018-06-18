@@ -1427,6 +1427,8 @@ static decl_init *decl_init_brace_up_start(
 
 			if(for_array && is_char_init(tfor, &it, stab, &str_mismatch)){
 				/* fine */
+			}else if(for_array && type_cmp(type_is_array(e->tree_type), type_is_array(tfor), 0) & TYPE_EQUAL_ANY){
+				/* T[A] <-- T[B] - copy init will be attempted */
 			}else{
 				fold_had_error = 1;
 
