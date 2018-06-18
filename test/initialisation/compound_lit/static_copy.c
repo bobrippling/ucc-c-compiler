@@ -38,6 +38,14 @@ struct Nested ns[] = { // CHECK: warning: global brace initialiser contains non-
 	}
 };
 
+union U
+{
+	double d;
+	long i;
+} u = (union U){
+	.i = 3
+};
+
 void check_a(struct A *p, int i, int j)
 {
 	if(p->i != i)
@@ -61,6 +69,9 @@ int main()
 
 	check_n(&ns[0], (int[]){ 1, 2, 3, 9, 5, 6 });
 	check_n(&ns[1], (int[]){ 1, 2, 9, 4, 5, 6 });
+
+	if(u.i != 3)
+		abort();
 
 	return 0;
 }

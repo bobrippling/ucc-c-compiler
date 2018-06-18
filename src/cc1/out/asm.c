@@ -499,13 +499,14 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 		struct_union_enum_st *sue = type_is_s_or_u(r);
 		unsigned i, sub = 0;
 		decl_init *u_init;
+		decl_init **const inits = skip_compound_literal(init, sue);
 
 		UCC_ASSERT(init->type == decl_init_brace, "brace init expected");
 
 		/* skip the empties until we get to one */
-		for(i = 0; init->bits.ar.inits[i] == DYNARRAY_NULL; i++);
+		for(i = 0; inits[i] == DYNARRAY_NULL; i++);
 
-		if((u_init = init->bits.ar.inits[i])){
+		if((u_init = inits[i])){
 			decl *mem = sue->members[i]->struct_member;
 			type *mem_r = mem->ref;
 
