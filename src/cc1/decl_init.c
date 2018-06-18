@@ -1425,11 +1425,9 @@ static decl_init *decl_init_brace_up_start(
 			/* allow special case of char [] with "..." */
 			int str_mismatch = 0;
 
-			/* if not initialising an array, type mismatch.
-			 * if initialising array, but isn't char[] init, mismatch */
-			if(!for_array
-			|| !is_char_init(tfor, &it, stab, &str_mismatch))
-			{
+			if(for_array && is_char_init(tfor, &it, stab, &str_mismatch)){
+				/* fine */
+			}else{
 				fold_had_error = 1;
 
 				warn_at_print_error(&init->where,
@@ -1438,15 +1436,15 @@ static decl_init *decl_init_brace_up_start(
 							: "%s must be initialised with an initialiser list",
 						type_to_str(tfor));
 				return init;
-			}else{
-				e = expr_skip_lval2rval(e);
-				if(expr_kind(e, str) && e->bits.strlit.is_func){
-					cc1_warn_at(&init->where,
-							x__func__init,
-							"initialisation of %s from %s is an extension",
-							type_to_str(tfor),
-							e->bits.strlit.is_func == 1 ? "__func__" : "__FUNCTION__");
-				}
+			}
+
+			e = expr_skip_lval2rval(e);
+			if(expr_kind(e, str) && e->bits.strlit.is_func){
+				cc1_warn_at(&init->where,
+						x__func__init,
+						"initialisation of %s from %s is an extension",
+						type_to_str(tfor),
+						e->bits.strlit.is_func == 1 ? "__func__" : "__FUNCTION__");
 			}
 		}
 		/* else struct copy init */
