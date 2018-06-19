@@ -66,6 +66,11 @@ const out_val *out_memcpy(
 		const out_val *dest, const out_val *src,
 		unsigned long nbytes)
 {
+	if(nbytes == 0){
+		out_val_release(octx, src);
+		return dest;
+	}
+
 	if(BUILTIN_USE_LIBC && !cc1_fopt.freestanding && size_sufficient_for_libc(nbytes)){
 		const out_val *nbytes_val = out_new_l(octx, type_nav_btype(cc1_type_nav, type_uintptr_t), nbytes);
 
@@ -109,6 +114,12 @@ void out_memset(
 		unsigned char byte,
 		unsigned long nbytes)
 {
+	if(nbytes == 0){
+		out_val_release(octx, v_ptr);
+		return;
+	}
+
+
 	if(BUILTIN_USE_LIBC && !cc1_fopt.freestanding && size_sufficient_for_libc(nbytes)){
 		const out_val *byte_val = out_new_l(octx, type_nav_btype(cc1_type_nav, type_uchar), byte);
 		const out_val *nbytes_val = out_new_l(octx, type_nav_btype(cc1_type_nav, type_uintptr_t), nbytes);
