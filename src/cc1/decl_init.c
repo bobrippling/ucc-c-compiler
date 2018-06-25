@@ -547,6 +547,36 @@ static decl_init **decl_init_brace_up_array2(
 
 	(void)allow_struct_copy;
 
+	/* check for copy-init */
+	if((this = *iter->pos) && this->type == decl_init_scalar){
+		expr *e;
+
+		fold_expr_nodecay(e = this->bits.expr, stab);
+
+		/* it's an array and either we have no size, or the sizes match */
+		if(expr_kind(e, compound_lit)
+		&& type_is_array(e->tree_type)
+		&& (limit == -1 || (unsigned)limit == type_array_len(e->tree_type)))
+		{
+			decl_init *init = expr_comp_lit_init(e), **subinits;
+			size_t i;
+			unsigned n;
+
+			assert(init->type == decl_init_brace);
+			subinits = init->bits.ar.inits;
+
+			n = dynarray_count(current);
+			for(i = 0; subinits && subinits[i]; i++)
+				dynarray_padinsert(&current, i, &n, subinits[i]);
+
+			++iter->pos;
+
+			init_debug("array copy-init\n");
+
+			return current;
+		}
+	}
+
 	while((this = *iter->pos)){
 		desig *des;
 		unsigned j = i;
@@ -1041,6 +1071,8 @@ static int find_desig(decl_init **const ar)
 	return -1;
 }
 
+/* expects the braced-up init, since we can still tell as we save the
+ * compound literal expression until code emission */
 expr *decl_init_is_struct_copy(decl_init *di, struct_union_enum_st *constraint)
 {
 	decl_init *sub;
@@ -1067,6 +1099,31 @@ expr *decl_init_is_struct_copy(decl_init *di, struct_union_enum_st *constraint)
 		return NULL;
 
 	return sub->bits.expr;
+}
+
+/* expects the pre-braced up init, since we can't tell post-brace-up whether
+ * it was an array-copy or not, since we copy the array inits across */
+static int decl_init_is_array_copy(decl_init *di)
+{
+	decl_init *sub;
+
+	if(!di)
+		return 0;
+
+	if(di->type != decl_init_brace)
+		return 0;
+
+	if(dynarray_count(di->bits.ar.inits) != 1)
+		return 0;
+
+	sub = di->bits.ar.inits[0];
+	if(sub == DYNARRAY_NULL)
+		return 0;
+
+	if(sub->type != decl_init_scalar)
+		return 0;
+
+	return !!type_is_array(sub->bits.expr->tree_type);
 }
 
 static decl_init *decl_init_brace_up_aggregate(
@@ -1207,7 +1264,9 @@ static decl_init *decl_init_brace_up_aggregate(
 
 		/* only warn if it's not designated
 		 * and it's not a struct copy */
-		if(!was_desig && !decl_init_is_struct_copy(r, NULL)){
+		if(!was_desig
+		&& !decl_init_is_struct_copy(r, NULL)
+		&& !decl_init_is_array_copy(current)){
 			cc1_warn_at(loc,
 					init_missing_braces,
 					"missing braces for initialisation of sub-object '%s'",
