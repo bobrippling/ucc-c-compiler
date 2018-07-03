@@ -1,6 +1,7 @@
 // RUN: %layout_check %s
 
 char abc[] = "abc";
+char abc2[3] = { "abc" };
 
 char *p = "hi";
 
