@@ -64,11 +64,15 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 		if(!(sue = type_is_s_or_u(r))){
 err:
-			die_at(&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
+			warn_at_print_error(
+					&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
 					type_to_str(e->lhs->tree_type),
 					expr_str_friendly(e->lhs),
 					ptr_expect ? "pointer to " : "",
 					spel);
+			fold_had_error = 1;
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
 		}
 	}
 
@@ -93,9 +97,13 @@ err:
 		decl *d_mem = struct_union_member_find(sue, spel,
 				&e->bits.struct_mem.extra_off, NULL);
 
-		if(!d_mem)
-			die_at(&e->where, "%s %s has no member named \"%s\"",
+		if(!d_mem){
+			warn_at_print_error(&e->where, "%s %s has no member named \"%s\"",
 					sue_str(sue), sue->spel, spel);
+			fold_had_error = 1;
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
+		}
 
 		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
 	}/* else already have the member */
