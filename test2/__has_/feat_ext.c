@@ -3,3 +3,4 @@
 
 _Static_assert(__has_feature(c_alignas) == EXPECTED_FEAT_ALIGNAS, "should have c_alignas in C11 mode");
 _Static_assert(__has_extension(c_alignas), "should always have c_alignas extension");
+_Static_assert(__has_feature(nullability), "should always have nullability feature");

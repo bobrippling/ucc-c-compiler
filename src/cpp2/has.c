@@ -67,6 +67,7 @@ static int has_feat_ext(const char *nam, int as_ext)
 		/* compat with clang */
 		{ STD_C89, "address_sanitizer", 0 },
 		{ STD_C89, "enumerator_attributes", 1 },
+		{ STD_C89, "nullability", 1 },
 
 		{ STD_C89, "blocks", 1 },
 
