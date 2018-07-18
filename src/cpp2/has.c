@@ -28,6 +28,7 @@ static const struct has_tbl
 	HAS(extension),
 	HAS(attribute),
 	HAS(builtin),
+	/* no __has_include - dealt with like defined() */
 #undef HAS
 	{ NULL, NULL }
 };

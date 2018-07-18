@@ -78,6 +78,8 @@ static const struct
 	SPECIAL("__has_extension"),
 	SPECIAL("__has_attribute"),
 	SPECIAL("__has_builtin"),
+
+	/* here for defined(__has_include), then special cased to prevent expansion outside of #if */
 	SPECIAL("__has_include"),
 #undef SPECIAL
 

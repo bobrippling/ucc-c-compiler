@@ -375,6 +375,11 @@ static char *eval_macro_r(macro *m, char *start, char **pat)
 		if(!close_b)
 			CPP_DIE("unterminated function-macro '%s'", m->nam);
 
+		if(!strcmp(m->nam, HAS_INCLUDE_STR)){
+			/* noop - not in #if mode */
+			return start;
+		}
+
 		{
 			char *all_args = ustrdup2(open_b + 1, close_b);
 			char *eval_d = eval_func_macro(m, all_args);
