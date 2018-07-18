@@ -144,6 +144,8 @@ static char *eval_func_macro(macro *m, char *args_str)
 
 		/* we don't want macro-substitution of the argument */
 		ret = has_func(m->nam, args[0]);
+		if(ret == -1)
+			CPP_DIE("unknown builtin macro \"%s\"", m->nam);
 
 		dynarray_free(char **, args, free);
 
