@@ -278,6 +278,7 @@ try_cflag -Wno-format-extra-args
 try_cflag -Wno-missing-braces
 try_cflag -Wno-missing-field-initializers
 try_cflag -Wno-logical-not-parentheses
+try_cflag -Wno-implicit-fallthrough
 
 try_cflag -Wsuggest-attribute=pure
 try_cflag -Wsuggest-attribute=const
