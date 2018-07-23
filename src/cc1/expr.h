@@ -149,6 +149,7 @@ struct expr
 		{
 			struct funcargs *args;
 			type *retty;
+			attribute **attr;
 			sym *sym;
 		} block;
 

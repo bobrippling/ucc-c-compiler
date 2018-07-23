@@ -1000,6 +1000,13 @@ funcargs *parse_func_arglist(symtable *scope)
 	 *
 	 * f( <here>  (int)) = f(int (int)) = f(int (*)(int))
 	 * f( <here> ident) -> old function
+	 *
+	 * int( <here> __attribute__ ... )
+	 * -> could be either:
+	 *     int(__attribute(()) *)()  aka  int (*)()
+	 *    or
+	 *     int(__attribute(()) int)  aka  int (int)
+	 * ... this is handled by the caller (parsed_type_func)
 	 */
 	if(curtok != token_identifier || parse_at_tdef(scope)){
 		decl *argdecl = parse_arg_decl(scope);
@@ -1305,7 +1312,23 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 static type_parsed *parsed_type_func(type_parsed *base, symtable *scope)
 {
 	while(accept(token_open_paren)){
-		symtable *subscope = symtab_new(scope, where_cc1_current(NULL));
+		symtable *subscope;
+
+		/* see notes in parse_func_arglist() */
+		if(curtok == token_attribute){
+			attribute **attr = NULL;
+
+			parse_add_attr(&attr, scope);
+
+			if(curtok == token_multiply){
+				/* not a func, parse pointer */
+#if 0
+				type_parsed *ptr = parsed_type_ptr(0, dfor, sub, ...)
+#endif
+			}
+		}
+
+		subscope = symtab_new(scope, where_cc1_current(NULL));
 
 		subscope->are_params = 1;
 
