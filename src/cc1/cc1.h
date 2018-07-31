@@ -13,6 +13,13 @@ enum mopt
 };
 #define IS_32_BIT() (platform_word_size() == 4)
 
+enum stringop_strategy
+{
+	STRINGOP_STRATEGY_LIBCALL,
+	STRINGOP_STRATEGY_LOOP,
+	STRINGOP_STRATEGY_THRESHOLD,
+};
+
 enum cc1_backend
 {
 	BACKEND_ASM,
@@ -31,6 +38,9 @@ extern enum cc1_backend cc1_backend;
 extern enum san_opts cc1_sanitize;
 extern char *cc1_sanitize_handler_fn;
 extern enum visibility cc1_visibility_default;
+
+extern enum stringop_strategy cc1_mstringop_strategy;
+extern unsigned cc1_mstringop_threshold;
 
 extern enum c_std cc1_std;
 #define C99_LONGLONG() \

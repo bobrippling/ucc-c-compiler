@@ -13,8 +13,6 @@
 #include "../mangle.h"
 #include "../fopt.h"
 
-#define BUILTIN_USE_LIBC 1
-
 static void out_memcpy_single(
 		out_ctx *octx,
 		const out_val **dst, const out_val **src)
@@ -29,9 +27,19 @@ static void out_memcpy_single(
 	*src = out_op(octx, op_plus, *src, out_new_l(octx, t1, 1));
 }
 
-static int size_sufficient_for_libc(unsigned long nbytes)
+static int should_use_libc(unsigned long nbytes)
 {
-	return nbytes > 16;
+	if(cc1_fopt.freestanding)
+		return 0;
+
+	switch(cc1_mstringop_strategy){
+		case STRINGOP_STRATEGY_LIBCALL:
+			return 1;
+		case STRINGOP_STRATEGY_LOOP:
+			return 0;
+		case STRINGOP_STRATEGY_THRESHOLD:
+			return nbytes >= cc1_mstringop_threshold;
+	}
 }
 
 static const out_val *emit_libc_call(
@@ -71,7 +79,7 @@ const out_val *out_memcpy(
 		return dest;
 	}
 
-	if(BUILTIN_USE_LIBC && !cc1_fopt.freestanding && size_sufficient_for_libc(nbytes)){
+	if(should_use_libc(nbytes)){
 		const out_val *nbytes_val = out_new_l(octx, type_nav_btype(cc1_type_nav, type_uintptr_t), nbytes);
 
 		return emit_libc_call(octx, "memcpy", dest, src, nbytes_val);
@@ -119,8 +127,7 @@ void out_memset(
 		return;
 	}
 
-
-	if(BUILTIN_USE_LIBC && !cc1_fopt.freestanding && size_sufficient_for_libc(nbytes)){
+	if(should_use_libc(nbytes)){
 		const out_val *byte_val = out_new_l(octx, type_nav_btype(cc1_type_nav, type_uchar), byte);
 		const out_val *nbytes_val = out_new_l(octx, type_nav_btype(cc1_type_nav, type_uintptr_t), nbytes);
 
