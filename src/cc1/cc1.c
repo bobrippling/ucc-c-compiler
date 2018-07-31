@@ -49,14 +49,13 @@ struct version
 
 static struct
 {
-	char type;
 	const char *arg;
 	int mask;
 } mopts[] = {
-	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
-	{ 'm',  "align-is-p2", MOPT_ALIGN_IS_POW2 },
+	{ "stackrealign", MOPT_STACK_REALIGN },
+	{ "align-is-p2", MOPT_ALIGN_IS_POW2 },
 
-	{ 0,  NULL, 0 }
+	{ NULL, 0 }
 };
 
 static struct
