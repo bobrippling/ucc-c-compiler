@@ -41,6 +41,11 @@
 
 static const char **system_includes;
 
+struct version
+{
+	int maj, min;
+};
+
 static struct
 {
 	char type;
@@ -228,10 +233,21 @@ static int should_emit_gnu_stack_note(void)
 	return platform_sys() == PLATFORM_LINUX;
 }
 
+static int should_emit_macosx_version_min(struct version *const min)
+{
+	if(platform_sys() != PLATFORM_DARWIN)
+		return 0;
+
+	min->maj = 10;
+	min->min = 5;
+	return 1;
+}
+
 static void io_fin(int do_sections, const char *fname)
 {
 	const int execstack = 0;
 	int i;
+	struct version macosx_version_min;
 
 	(void)fname;
 
@@ -276,6 +292,15 @@ static void io_fin(int do_sections, const char *fname)
 			execstack ? "x" : "") < 0)
 	{
 		ccdie(0, "write to cc1 output:");
+	}
+
+	if(should_emit_macosx_version_min(&macosx_version_min)
+	&& fprintf(cc1_out,
+		".macosx_version_min %d, %d\n",
+		macosx_version_min.maj,
+		macosx_version_min.min) < 0)
+	{
+		ccdie("write to cc1 output:");
 	}
 
 	if(fclose(cc1_out))
