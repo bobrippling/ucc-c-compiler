@@ -292,7 +292,7 @@ static void io_fin(int do_sections, const char *fname)
 			".section .note.GNU-stack,\"%s\",@progbits\n",
 			execstack ? "x" : "") < 0)
 	{
-		ccdie(0, "write to cc1 output:");
+		ccdie("write to cc1 output:");
 	}
 
 	if(should_emit_macosx_version_min(&macosx_version_min)
