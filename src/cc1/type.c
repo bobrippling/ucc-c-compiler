@@ -401,9 +401,11 @@ unsigned type_align(type *r, const where *from)
 		return platform_align_max();
 	}
 
-	if((sue = type_is_s_or_u(r)))
+	if((sue = type_is_s_or_u(r))){
 		/* safe - can't have an instance without a ->sue */
-		return sue->align;
+		assert(sue->foldprog == SUE_FOLDED_FULLY);
+		return sue_align(sue, from);
+	}
 
 	if(type_is(r, type_ptr)
 	|| type_is(r, type_block))
