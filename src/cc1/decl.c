@@ -155,8 +155,8 @@ unsigned decl_align(decl *d)
 {
 	unsigned al = 0;
 
-	if(!type_is(d->ref, type_func) && d->bits.var.align)
-		al = d->bits.var.align->resolved;
+	if(!type_is(d->ref, type_func) && d->bits.var.align.resolved)
+		al = d->bits.var.align.resolved;
 
 	return al ? al : type_align(d->ref, &d->where);
 }

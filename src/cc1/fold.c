@@ -819,7 +819,7 @@ static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 		die_at(&d->where, "can't align %s", decl_to_str(d));
 	}
 
-	for(i = d->bits.var.align; i; i = i->next){
+	for(i = d->bits.var.align.first; i; i = i->next){
 		int al;
 
 		if(i->as_int){
@@ -864,11 +864,8 @@ static void fold_decl_var_align(decl *d, symtable *stab)
 {
 	attribute *attrib = attribute_present(d, attr_aligned);
 
-	if(d->bits.var.align || attrib){
-		if(!d->bits.var.align)
-			d->bits.var.align = umalloc(sizeof *d->bits.var.align);
-
-		d->bits.var.align->resolved = fold_decl_resolve_align(d, stab, attrib);
+	if(d->bits.var.align.first || attrib){
+		d->bits.var.align.resolved = fold_decl_resolve_align(d, stab, attrib);
 	}
 }
 

@@ -1706,7 +1706,8 @@ static decl *parse_decl_stored_aligned(
 	}
 
 	if(!type_is(d->ref, type_func)){
-		d->bits.var.align = align;
+		assert(!d->bits.var.align.first);
+		d->bits.var.align.first = align;
 	}else if(align){
 		warn_at_print_error(&d->where,
 				"alignment specified for function '%s'",
