@@ -315,11 +315,18 @@ static void fold_sue_calc_fieldwidth(
 	}
 }
 
+static void populate_size_align(struct pack_state *pack_state)
+{
+	decl *d = pack_state->d;
+	pack_state->sz = decl_size(d);
+	pack_state->align = decl_align(d);
+}
+
 static void fold_sue_calc_normal(struct pack_state *const pack_state)
 {
 	decl *const d = pack_state->d;
 
-	pack_state->align = decl_align(d);
+	populate_size_align(pack_state);
 
 	if(type_is_incomplete_array(d->ref)){
 		if(pack_state->iter[1])
@@ -332,8 +339,6 @@ static void fold_sue_calc_normal(struct pack_state *const pack_state)
 
 		pack_state->sue->flexarr = 1;
 		pack_state->sz = 0; /* not counted in struct size */
-	}else{
-		pack_state->sz = decl_size(d);
 	}
 }
 
@@ -393,8 +398,7 @@ static void fold_sue_calc_substrut(
 				"embedded struct with flex-array not final member");
 	}
 
-	pack_state->sz = sue_size(sub_sue, &pack_state->d->where);
-	pack_state->align = sue_align(sub_sue, &pack_state->d->where);
+	populate_size_align(pack_state);
 }
 
 static void check_sue_align_attr(struct_union_enum_st *sue, symtable *stab)
