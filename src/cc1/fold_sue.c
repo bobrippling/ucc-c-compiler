@@ -25,8 +25,6 @@
 
 #include "ops/expr_val.h"
 
-#define DUMP_RECORD_LAYOUT 0
-
 struct bitfield_state
 {
 	type *master_ty;
@@ -420,7 +418,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 		memset(&bitfield, 0, sizeof bitfield);
 
-		if(DUMP_RECORD_LAYOUT)
+		if(cc1_fopt.dump_layouts)
 			fprintf(stderr, "Record layout for %s:\n", sue->spel);
 
 		for(i = sue->members; i && *i; i++){
@@ -469,7 +467,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				fold_sue_apply_normal_offset(&pack_state, &offset, &bitfield);
 			}
 
-			if(DUMP_RECORD_LAYOUT){
+			if(cc1_fopt.dump_layouts){
 				fprintf(stderr, " %2u", d->bits.var.struct_offset);
 
 				if(d->bits.var.field_width){
@@ -517,7 +515,7 @@ warn:
 				sue->primitive == type_struct ? offset : sz_max,
 				align_max);
 
-		if(DUMP_RECORD_LAYOUT)
+		if(cc1_fopt.dump_layouts)
 			fprintf(stderr, "         | record size=%u align=%u\n", sue->size, sue->align);
 	}
 
