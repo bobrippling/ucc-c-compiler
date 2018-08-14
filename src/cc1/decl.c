@@ -220,12 +220,10 @@ int decl_store_static_or_extern(enum decl_storage s)
 enum linkage decl_linkage(decl *d)
 {
 	/* global scoped or extern */
-	decl *i;
+	decl *p = decl_proto(d);
 
 	/* if first instance is static, we're internal */
-	for(i = d; i->proto; i = i->proto);
-
-	switch((enum decl_storage)(i->store & STORE_MASK_STORE)){
+	switch((enum decl_storage)(p->store & STORE_MASK_STORE)){
 		case store_extern: return linkage_external;
 		case store_static: return linkage_internal;
 
