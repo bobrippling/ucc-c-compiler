@@ -151,7 +151,7 @@ void decl_size_align_inc_bitfield(decl *d, unsigned *const sz, unsigned *const a
 	*align = type_align(ty, NULL);
 }
 
-unsigned decl_align(decl *d)
+static unsigned decl_align1(decl *d)
 {
 	unsigned al = 0;
 
@@ -159,6 +159,21 @@ unsigned decl_align(decl *d)
 		al = d->bits.var.align.resolved;
 
 	return al ? al : type_align(d->ref, &d->where);
+}
+
+unsigned decl_align(decl *d)
+{
+	unsigned max = 0;
+	decl *i = decl_proto(d);
+
+	for(; i; i = i->impl){
+		unsigned cur = decl_align1(i);
+		if(cur > max){
+			max = cur;
+		}
+	}
+
+	return max;
 }
 
 enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts)
