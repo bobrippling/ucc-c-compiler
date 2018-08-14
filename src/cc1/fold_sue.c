@@ -399,7 +399,7 @@ static void fold_sue_calc_substrut(
 
 static void check_sue_align_attr(struct_union_enum_st *sue, symtable *stab)
 {
-	sue->align = fold_resolve_align(sue->attr, stab, sue->align);
+	sue->align = fold_align_attributes(sue->attr, stab, sue->align);
 }
 
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)

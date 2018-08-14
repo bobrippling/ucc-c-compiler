@@ -36,7 +36,7 @@ void fold_check_embedded_flexar(
 
 void fold_funcargs(funcargs *fargs, symtable *stab, attribute **);
 
-int fold_resolve_align(attribute **attribs, symtable *stab, int max_al);
+int fold_align_attributes(attribute **attribs, symtable *stab, int min_align);
 
 /* cast insertion */
 void fold_insert_casts(type *tlhs, expr **prhs, symtable *stab);

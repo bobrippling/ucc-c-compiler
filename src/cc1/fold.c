@@ -617,7 +617,7 @@ void fold_type_ondecl_w(decl *d, symtable *scope, where const *w, int is_arg)
 	fold_type_w_attr(d->ref, NULL, w, scope, d->attr, fold_flags);
 }
 
-static int fold_align(int al, int min, int max, where *w)
+static int check_and_minmax_align(int al, int min, int max, where *w)
 {
 	/* allow zero */
 	if(al & (al - 1))
@@ -783,8 +783,10 @@ static void fold_decl_func(decl *d, symtable *stab)
 	fold_func_attr(d, stab);
 }
 
-int fold_resolve_align(attribute **attribs, symtable *stab, int max_al)
+int fold_align_attributes(attribute **attribs, symtable *stab, int min_align)
 {
+	int max_al = 1;
+
 	for(; attribs && *attribs; attribs++){
 		attribute *attrib = *attribs;
 		unsigned long al;
@@ -800,10 +802,10 @@ int fold_resolve_align(attribute **attribs, symtable *stab, int max_al)
 			die_at(&attrib->where, "aligned attribute not reducible to integer constant");
 		al = k.bits.num.val.i;
 
-		max_al = fold_align(al, max_al, max_al, &attrib->where);
+		max_al = check_and_minmax_align(al, min_align, max_al, &attrib->where);
 	}
 
-	return max_al;
+	return MAX(max_al, min_align);
 }
 
 static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
@@ -811,7 +813,7 @@ static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 	const int tal = type_align(d->ref, &d->where);
 
 	struct decl_align *i;
-	int max_al = 0;
+	unsigned max_al = 1;
 
 	if((d->store & STORE_MASK_STORE) == store_register
 	|| d->bits.var.field_width)
@@ -820,7 +822,7 @@ static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 	}
 
 	for(i = d->bits.var.align.first; i; i = i->next){
-		int al;
+		unsigned al;
 
 		if(i->as_int){
 			consty k;
@@ -845,16 +847,19 @@ static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 			al = type_align(ty, &d->where);
 		}
 
-		if(al == 0)
-			al = decl_size(d);
-		max_al = fold_align(al, tal, max_al, &d->where);
+		max_al = check_and_minmax_align(al, tal, max_al, &d->where);
 	}
 
 	if(attrib){
 		attribute *stash[2];
+		unsigned attrib_max;
+
 		stash[0] = attrib;
 		stash[1] = NULL;
-		max_al = fold_resolve_align(stash, stab, max_al);
+		attrib_max = fold_align_attributes(stash, stab, tal);
+
+		if(attrib_max > max_al)
+			max_al = attrib_max;
 	}
 
 	return max_al;
