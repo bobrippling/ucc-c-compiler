@@ -12,7 +12,6 @@
 X("asm", ext_keywords)
 ALIAS("gnu-keywords", ext_keywords)
 X("builtin", builtin)
-X("enable-asm", enable_asm)
 X("freestanding", freestanding)
 X("ms-extensions", ms_extensions)
 X("plan9-extensions", plan9_extensions)
