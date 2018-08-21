@@ -146,7 +146,7 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **const psp)
 {
 	struct symtab_entry ent;
 	funcargs *args;
-	decl *df;
+	decl *df, *owning_func;
 	type *func_ty;
 
 	if(e->expr->in_parens
@@ -192,7 +192,11 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **const psp)
 	e->expr->bits.ident.bits.ident.sym = df->sym;
 	e->expr->tree_type = func_ty;
 
-	symtab_insert_before(symtab_root(stab), symtab_func(stab), df);
+	owning_func = symtab_func(stab);
+	if(owning_func)
+		symtab_insert_before(symtab_root(stab), owning_func, df);
+	else
+		symtab_add_to_scope(symtab_root(stab), df); /* function call at global scope */
 }
 
 static int check_arg_counts(
