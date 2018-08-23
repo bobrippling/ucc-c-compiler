@@ -41,7 +41,14 @@ extern enum c_std cc1_std;
 extern int cc1_error_limit;
 
 extern int cc1_mstack_align; /* 2^n */
-extern int cc1_gdebug; /* -g */
+
+enum debug_level
+{
+	DEBUG_OFF,
+	DEBUG_FULL,
+	DEBUG_LINEONLY
+};
+extern enum debug_level cc1_gdebug; /* -g */
 
 extern char *cc1_first_fname;
 

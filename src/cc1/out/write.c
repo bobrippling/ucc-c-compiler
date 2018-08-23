@@ -98,8 +98,9 @@ void out_dbg_flush(out_ctx *octx, out_blk *blk)
 	 * .loc <fileidx> <line> <col>
 	 */
 	unsigned idx;
+	char *location;
 
-	if(!octx->dbg.where.fname || !cc1_gdebug)
+	if(!octx->dbg.where.fname || cc1_gdebug == DEBUG_OFF)
 		return;
 
 	/* .file is output later */

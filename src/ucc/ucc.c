@@ -625,18 +625,10 @@ arg_ld:
 
 				case 'g':
 					/* debug */
-					switch(argv[i][2]){
-						case '0':
-							if(argv[i][3]){
-						default:
-								die("-g extra argument unexpected");
-							}
-							specvars->debug = 0;
-							break;
-						case '\0':
-							specvars->debug = 1;
-							break;
-					}
+					if(!strcmp(argv[i], "-g0"))
+						specvars->debug = 0;
+					else /* some debug option - enable debug spec */
+						specvars->debug = 1;
 					ADD_ARG(mode_compile);
 					/* don't pass to the assembler */
 					continue;

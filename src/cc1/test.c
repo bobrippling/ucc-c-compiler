@@ -12,7 +12,7 @@
 enum cc1_backend cc1_backend = BACKEND_ASM;
 int cc1_error_limit = 16;
 char *cc1_first_fname;
-int cc1_gdebug;
+enum debug_level cc1_gdebug = DEBUG_OFF;
 int cc1_mstack_align;
 enum c_std cc1_std = STD_C99;
 struct cc1_warning cc1_warning;
