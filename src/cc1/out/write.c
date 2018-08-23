@@ -92,6 +92,16 @@ unsigned dbg_add_file(struct out_dbg_filelist **files, const char *nam)
 	return i;
 }
 
+static int update_dbg_location(out_ctx *octx, unsigned fileidx, unsigned lineno)
+{
+	if(octx->dbg.last_file == fileidx && octx->dbg.last_line == lineno)
+		return 0;
+
+	octx->dbg.last_file = fileidx;
+	octx->dbg.last_line = lineno;
+	return 1;
+}
+
 void out_dbg_flush(out_ctx *octx, out_blk *blk)
 {
 	/* .file <fileidx> "<name>"
@@ -106,11 +116,9 @@ void out_dbg_flush(out_ctx *octx, out_blk *blk)
 	/* .file is output later */
 	idx = dbg_add_file(&octx->dbg.file_head, octx->dbg.where.fname);
 
-	if(octx->dbg.last_file == idx && octx->dbg.last_line == octx->dbg.where.line)
-		return;
 	/* XXX: prevents recursion as well as collapsing multiples */
-	octx->dbg.last_file = idx;
-	octx->dbg.last_line = octx->dbg.where.line;
+	if(!update_dbg_location(octx, idx, octx->dbg.where.line))
+		return;
 
 	if(cc1_gdebug_columninfo)
 		location = ustrprintf(".loc %d %d %d\n", idx, octx->dbg.where.line, octx->dbg.where.chr);
