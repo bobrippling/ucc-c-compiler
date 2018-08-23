@@ -624,14 +624,23 @@ arg_ld:
 					continue;
 
 				case 'g':
+				{
 					/* debug */
-					if(!strcmp(argv[i], "-g0"))
+					const char *debugopt = argv[i] + 2;
+
+					if(!strcmp(strncmp(debugopt, "no-", 3) ? debugopt : debugopt + 3, "column-info")){
+						/* doesn't affect debug output */
+					}else if(!strcmp(argv[i], "-g0")){
 						specvars->debug = 0;
-					else /* some debug option - enable debug spec */
+					}else{
+						/* some debug option - tell spec we're generating debug code */
 						specvars->debug = 1;
+					}
+
 					ADD_ARG(mode_compile);
 					/* don't pass to the assembler */
 					continue;
+				}
 
 				case 'M':
 				case 'd':

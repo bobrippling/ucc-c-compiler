@@ -49,6 +49,7 @@ enum debug_level
 	DEBUG_LINEONLY
 };
 extern enum debug_level cc1_gdebug; /* -g */
+extern int cc1_gdebug_columninfo;
 
 extern char *cc1_first_fname;
 

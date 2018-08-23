@@ -112,12 +112,12 @@ void out_dbg_flush(out_ctx *octx, out_blk *blk)
 	octx->dbg.last_file = idx;
 	octx->dbg.last_line = octx->dbg.where.line;
 
-	blk_add_insn(
-			blk,
-			ustrprintf(".loc %d %d %d\n",
-				idx,
-				octx->dbg.where.line,
-				octx->dbg.where.chr));
+	if(cc1_gdebug_columninfo)
+		location = ustrprintf(".loc %d %d %d\n", idx, octx->dbg.where.line, octx->dbg.where.chr);
+	else
+		location = ustrprintf(".loc %d %d\n", idx, octx->dbg.where.line);
+
+	blk_add_insn(blk, location);
 }
 
 void out_dbg_where(out_ctx *octx, const where *w)
