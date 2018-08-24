@@ -1246,7 +1246,6 @@ static decl_init *decl_init_brace_up_aggregate(
 		}else{
 			/* {} */
 			first->bits.ar.inits = NULL;
-			dynarray_add(&first->bits.ar.inits, (decl_init *)DYNARRAY_NULL);
 		}
 
 		++iter->pos;
