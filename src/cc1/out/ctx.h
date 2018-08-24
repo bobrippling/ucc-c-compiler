@@ -60,7 +60,7 @@ struct out_ctx
 		struct out_dbg_filelist *file_head;
 
 		where where;
-		unsigned last_file, last_line;
+		unsigned last_file, last_line, last_col;
 	} dbg;
 };
 
