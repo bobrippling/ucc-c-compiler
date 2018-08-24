@@ -584,10 +584,12 @@ static decl_init **decl_init_brace_up_array2(
 
 			++iter->pos;
 
-			init_debug("array copy-init\n");
+			init_debug("scalar init, treating as array copy-init (count=%d) from %s-expr @ %s\n",
+					dynarray_count(subinits), e->f_str(), where_str(&e->where));
 
 			return current;
 		}
+		init_debug("scalar init, not array copy\n");
 	}
 
 	while((this = *iter->pos)){
@@ -1179,6 +1181,8 @@ static decl_init *decl_init_brace_up_aggregate(
 		decl_init *first = iter->pos[0];
 		decl_init **const braced_inits = first->bits.ar.inits;
 
+		init_debug("brace init found, count=%d\n", dynarray_count(braced_inits));
+
 		if(braced_inits){
 			/* the brace contains some inits { 1, .x = 2, 3 } */
 			init_iter it;
@@ -1271,11 +1275,17 @@ static decl_init *decl_init_brace_up_aggregate(
 		decl_init *r = decl_init_new_w(decl_init_brace, loc);
 		int was_desig = !!iter->pos[0]->desig;
 
+		init_debug("brace up aggregate\n");
+		init_indent++;
+
 		/* we need to pull from iter, bracing up our children inits */
 		r->bits.ar.inits = brace_up_f(
 				current ? current->bits.ar.inits : NULL,
 				&r->bits.ar.range_inits,
 				iter, stab, arg1, arg2, allow_struct_copy);
+
+		init_indent--;
+		init_debug("brace up aggregate complete\n");
 
 		/* only warn if it's not designated
 		 * and it's not a struct copy */
@@ -1356,6 +1366,8 @@ static decl_init *decl_init_brace_up_array_chk_char(
 		decl_init *current, init_iter *iter,
 		type *const next_type, symtable *stab)
 {
+	decl_init *ret;
+	decl_init **olditerpos;
 	const int limit = type_is_incomplete_array(next_type)
 		? -1 : (signed)type_array_len(next_type);
 
@@ -1364,9 +1376,11 @@ static decl_init *decl_init_brace_up_array_chk_char(
 	decl_init *strk;
 
 	init_debug("brace-up-array: of=%s\n", type_to_str(next_type));
+	init_indent++;
 
 	if(!type_is_complete(array_of)){
 		emit_incomplete_error(iter, next_type);
+		init_indent--;
 		return decl_init_dummy(current);
 	}
 
@@ -1417,16 +1431,25 @@ static decl_init *decl_init_brace_up_array_chk_char(
 
 			++iter->pos;
 
-			init_debug("array via char-init\n");
+			init_debug("array via char-init (count=%d)\n", count);
 
+			init_indent--;
 			return braced;
 		}
 	}
 
-	return decl_init_brace_up_aggregate(
+	olditerpos = iter ? iter->pos : NULL;
+
+	ret = decl_init_brace_up_aggregate(
 			current, iter, stab, next_type,
 			(aggregate_brace_f *)&decl_init_brace_up_array2,
 			array_of, limit);
+
+	init_indent--;
+	init_debug("array via %s aggregate (count=%d)\n",
+			olditerpos && olditerpos[0] && olditerpos[0] != DYNARRAY_NULL ? decl_init_to_str(olditerpos[0]->type) : "<null>",
+			dynarray_count(ret->bits.ar.inits));
+	return ret;
 }
 
 
