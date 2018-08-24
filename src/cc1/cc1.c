@@ -675,7 +675,7 @@ int main(int argc, char **argv)
 				if(!strcmp(arg, "column-info"))
 					cc1_gdebug_columninfo = on;
 				else
-					die("-g extra argument unexpected");
+					die("Unknown -g switch: \"%s\"", argv[i] + 2);
 			}
 
 		}else if(!strcmp(argv[i], "-o")){
