@@ -546,6 +546,19 @@ static decl_init **decl_init_brace_up_array2(
 	decl_init *this;
 
 	(void)allow_struct_copy;
+	/* Unused - this is set if we can copy a struct, e.g.
+	 *
+	 * struct Container {
+	 *   struct A { int i; } a;
+	 * } a = {
+	 *   (struct Container){ ... }
+	 * };
+	 *
+	 * Here we can't copy-init Container, because we're already inside braces for `a`.
+	 * If, instead of braces, `a` had been initialised directly with a scalar init, we would be allowed to copy.
+	 *
+	 * None of this applies for arrays (and we check for a scalar-init anyway), so we ignore it.
+	 */
 
 	/* check for copy-init */
 	if((this = *iter->pos) && this->type == decl_init_scalar){
@@ -1156,6 +1169,8 @@ static decl_init *decl_init_brace_up_aggregate(
 	 * };
 	 */
 	int desig_index;
+
+	/* see allow_struct_copy docs further up */
 	const int allow_struct_copy = iter->pos
 			&& iter->pos[0] && iter->pos[0]->type == decl_init_scalar;
 
