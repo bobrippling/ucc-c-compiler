@@ -122,7 +122,7 @@ void out_dbg_flush(out_ctx *octx, out_blk *blk)
 		return;
 
 	if(cc1_gdebug_columninfo)
-		location = ustrprintf(".loc %d %d %d\n", idx, octx->dbg.where.line, octx->dbg.where.chr);
+		location = ustrprintf(".loc %d %d %d\n", idx, octx->dbg.where.line, octx->dbg.where.chr + 1);
 	else
 		location = ustrprintf(".loc %d %d\n", idx, octx->dbg.where.line);
 
