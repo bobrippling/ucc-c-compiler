@@ -551,6 +551,9 @@ void asm_predeclare_visibility(decl *d, attribute *attr)
 {
 	enum visibility v = cc1_visibility_default;
 
+	if(decl_linkage(d) == linkage_internal)
+		return;
+
 	if(attr){
 		assert(attr->type == attr_visibility);
 		v = attr->bits.visibility;
