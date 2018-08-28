@@ -4,6 +4,7 @@
 #include "../util/std.h"
 
 #include "warn.h"
+#include "visibility.h"
 
 enum mopt
 {
@@ -30,6 +31,7 @@ extern enum mopt mopt_mode;
 extern enum cc1_backend cc1_backend;
 extern enum san_opts cc1_sanitize;
 extern char *cc1_sanitize_handler_fn;
+extern enum visibility cc1_visibility_default;
 
 extern enum c_std cc1_std;
 #define C99_LONGLONG() \

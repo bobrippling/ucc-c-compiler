@@ -334,6 +334,7 @@ void gen_asm_emit_type(out_ctx *octx, type *ty)
 
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
+	attribute *attr = NULL;
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
 
@@ -407,8 +408,12 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			out_dbg_emit_global_var(octx, d);
 	}
 
+	if((attr = attribute_present(d, attr_visibility)) || cc1_visibility_default != VISIBILITY_DEFAULT)
+		asm_predeclare_visibility(d, attr);
+
 	if(!emitted_type && decl_linkage(d) == linkage_external)
 		asm_predeclare_global(d);
+
 	gen_asm_global(d, octx);
 }
 

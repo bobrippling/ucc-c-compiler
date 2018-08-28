@@ -547,6 +547,27 @@ void asm_predeclare_weak(decl *d)
 	asm_predecl(ASM_WEAK_DIRECTIVE, d);
 }
 
+void asm_predeclare_visibility(decl *d, attribute *attr)
+{
+	enum visibility v = cc1_visibility_default;
+
+	if(attr){
+		assert(attr->type == attr_visibility);
+		v = attr->bits.visibility;
+	}
+
+	switch(v){
+		case VISIBILITY_DEFAULT:
+			break;
+		case VISIBILITY_HIDDEN:
+			asm_predecl(ASM_VISIBILITY_HIDDEN_DIRECTIVE, d);
+			break;
+		case VISIBILITY_PROTECTED:
+			asm_predecl("protected", d);
+			break;
+	}
+}
+
 static void asm_declare_ctor_dtor(decl *d, enum section_type sec)
 {
 	type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
