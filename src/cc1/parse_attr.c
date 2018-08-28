@@ -298,6 +298,45 @@ static attribute *parse_attr_call_conv(symtable *symtab, const char *ident)
 	return a;
 }
 
+static attribute *parse_attr_visibility(symtable *symtab, const char *ident)
+{
+	attribute *attr = NULL;
+	enum visibility v = VISIBILITY_DEFAULT;
+	struct cstring *asciz;
+	where str_loc;
+
+	(void)symtab;
+	(void)ident;
+
+	EAT(token_open_paren);
+
+	if(curtok != token_string)
+		die_at(NULL, "string expected for visibility");
+
+	where_cc1_current(&str_loc);
+	asciz = parse_asciz_str();
+
+	EAT(token_string);
+
+	if(asciz){
+		char *str = cstring_detach(asciz);
+
+		if(visibility_parse(&v, str)){
+			attr = attribute_new(attr_visibility);
+			attr->bits.visibility = v;
+		}else{
+			warn_at_print_error(&str_loc, "unknown/unsupported visibility \"%s\"", str);
+			fold_had_error = 1;
+		}
+
+		free(str);
+	}
+
+	EAT(token_close_paren);
+
+	return attr;
+}
+
 static struct
 {
 	const char *ident;

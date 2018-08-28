@@ -23,6 +23,7 @@
 		NAME(noinline, 0)       \
 		NAME(constructor, 0)    \
 		NAME(destructor, 0)     \
+		NAME(visibility, 0)     \
 		ALIAS("designated_init", desig_init, 0)     \
 		ALIAS("__ucc_debug", ucc_debug, 0) /* logs out a message when handled */ \
 		ALIAS("__cdecl", call_conv, 0)        \

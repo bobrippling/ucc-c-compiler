@@ -4,6 +4,7 @@
 #include "type.h"
 #include "retain.h"
 #include "attributes.h"
+#include "visibility.h"
 
 typedef struct attribute attribute;
 struct attribute
@@ -56,6 +57,7 @@ struct attribute
 		struct expr *align, *sentinel, *priority;
 		struct decl *cleanup;
 		int ucc_debugged;
+		enum visibility visibility;
 	} bits;
 };
 
