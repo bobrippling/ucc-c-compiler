@@ -1275,7 +1275,7 @@ static decl_init *decl_init_brace_up_aggregate(
 		int was_desig = !!iter->pos[0]->desig;
 
 		init_debug("brace up aggregate\n");
-		init_indent++;
+		init_debug_indent(++);
 
 		/* we need to pull from iter, bracing up our children inits */
 		r->bits.ar.inits = brace_up_f(
@@ -1283,7 +1283,7 @@ static decl_init *decl_init_brace_up_aggregate(
 				&r->bits.ar.range_inits,
 				iter, stab, arg1, arg2, allow_struct_copy);
 
-		init_indent--;
+		init_debug_indent(--);
 		init_debug("brace up aggregate complete\n");
 
 		/* only warn if it's not designated
@@ -1375,11 +1375,11 @@ static decl_init *decl_init_brace_up_array_chk_char(
 	decl_init *strk;
 
 	init_debug("brace-up-array: of=%s\n", type_to_str(next_type));
-	init_indent++;
+	init_debug_indent(++);
 
 	if(!type_is_complete(array_of)){
 		emit_incomplete_error(iter, next_type);
-		init_indent--;
+		init_debug_indent(--);
 		return decl_init_dummy(current);
 	}
 
@@ -1432,7 +1432,7 @@ static decl_init *decl_init_brace_up_array_chk_char(
 
 			init_debug("array via char-init (count=%d)\n", count);
 
-			init_indent--;
+			init_debug_indent(--);
 			return braced;
 		}
 	}
@@ -1444,7 +1444,7 @@ static decl_init *decl_init_brace_up_array_chk_char(
 			(aggregate_brace_f *)&decl_init_brace_up_array2,
 			array_of, limit);
 
-	init_indent--;
+	init_debug_indent(--);
 	init_debug("array via %s aggregate (count=%d)\n",
 			olditerpos && olditerpos[0] && olditerpos[0] != DYNARRAY_NULL ? decl_init_to_str(olditerpos[0]->type) : "<null>",
 			dynarray_count(ret->bits.ar.inits));
