@@ -451,6 +451,17 @@ static decl_init *decl_init_brace_up_scalar(
 		die_at(&first_init->where, "initialising scalar with %s designator",
 				DESIG_TO_STR(first_init->desig->type));
 
+	if(first_init->type == decl_init_scalar
+	&& expr_kind(first_init->bits.expr, compound_lit))
+	{
+		decl_init *complitinit = expr_comp_lit_init(first_init->bits.expr);
+
+		assert(complitinit->type == decl_init_brace);
+		first_init = complitinit;
+
+		init_debug("scalar initialised with compound literal, unwrapped\n");
+	}
+
 	if(first_init->type == decl_init_brace){
 		init_iter it;
 		decl_init *ret;
