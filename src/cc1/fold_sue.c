@@ -397,6 +397,11 @@ static void fold_sue_calc_substrut(
 	pack_state->align = sub_sue->align;
 }
 
+static void check_sue_align_attr(struct_union_enum_st *sue, symtable *stab)
+{
+	sue->align = fold_resolve_align(sue->attr, stab, sue->align);
+}
+
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
 	if(sue->foldprog != SUE_FOLDED_NO || !sue->got_membs)
@@ -514,6 +519,8 @@ warn:
 		sue->size = pack_to_align(
 				sue->primitive == type_struct ? offset : sz_max,
 				align_max);
+
+		check_sue_align_attr(sue, stab);
 
 		if(cc1_fopt.dump_layouts)
 			fprintf(stderr, "         | record size=%u align=%u\n", sue->size, sue->align);
