@@ -394,7 +394,7 @@ static void fold_sue_calc_substrut(
 	}
 
 	pack_state->sz = sue_size(sub_sue, &pack_state->d->where);
-	pack_state->align = sub_sue->align;
+	pack_state->align = sue_align(sub_sue, &pack_state->d->where);
 }
 
 static void check_sue_align_attr(struct_union_enum_st *sue, symtable *stab)
