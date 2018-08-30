@@ -671,9 +671,6 @@ int main(int argc, char **argv)
 
 			warning_pedantic(errors ? W_ERROR : W_WARN);
 
-		}else if(!strcmp(argv[i], "-pedantic-errors")){
-			warning_pedantic(W_ERROR);
-
 		}else if(argv[i][0] == '-'
 		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
 			parse_Wmf_option(*argv, argv[i], &werror, unknown_warnings);
