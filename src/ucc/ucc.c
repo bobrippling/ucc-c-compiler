@@ -64,6 +64,7 @@ struct ucc
 
 	int syntax_only;
 	enum mode mode;
+	int help;
 };
 
 static char **remove_these;
@@ -177,7 +178,7 @@ static void gen_obj_file(
 		if(file->preproc_asm)
 			dynarray_add(&args[mode_preproc], ustrdup("-D__ASSEMBLER__=1"));
 
-		preproc(in, file->preproc.fname, args[mode_preproc]);
+		preproc(in, file->preproc.fname, args[mode_preproc], 0);
 
 		in = file->preproc.fname;
 	}
@@ -186,7 +187,7 @@ static void gen_obj_file(
 		return;
 
 	if(file->compile.fname){
-		compile(in, file->compile.fname, args[mode_compile]);
+		compile(in, file->compile.fname, args[mode_compile], 0);
 
 		in = file->compile.fname;
 	}
@@ -767,6 +768,10 @@ word:
 					continue;
 			}
 
+			if(!strcmp(argv[i], "--help")){
+				state->help = 1;
+				continue;
+			}
 unrec:
 			die("unrecognised option \"%s\"", argv[i]);
 missing_arg:
@@ -885,6 +890,14 @@ usage:
 	 * then we can parse the spec file, then we need to
 	 * append argv's inputs, etc onto the state from the spec file */
 	parse_argv(argc - 1, argv + 1, &argstate, &specvars, assumptions, &current_assumption, &specpath);
+	if(argstate.help){
+		fprintf(stderr, "dumping help:\n");
+		fprintf(stderr, "--- cpp ---\n");
+		preproc("--help", "/dev/null", NULL, 1);
+		fprintf(stderr, "--- cc1 ---\n");
+		compile("--help", "/dev/null", NULL, 1);
+		return 2;
+	}
 
 	output_given = !!specvars.output;
 	if(!specvars.output && argstate.mode == mode_link)

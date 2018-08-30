@@ -11,8 +11,8 @@ char *ucc_where(void);
 
 void execute(char *path, char **args);
 
-void preproc( char *in,    const char *out, char **args);
-void compile( char *in,    const char *out, char **args);
+int preproc(char *in, const char *out, char **args, int return_ec);
+int compile(char *in, const char *out, char **args, int return_ec);
 void assemble(char *in,    const char *out, char **args, char *as);
 void link_all(char **objs, const char *out, char **args, char *ld);
 
