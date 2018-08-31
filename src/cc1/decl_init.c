@@ -419,6 +419,7 @@ static decl_init *decl_init_brace_up_scalar(
 {
 	decl_init *first_init;
 	where *const w = ITER_WHERE(iter, &stab->where);
+	expr *e;
 
 	if(current){
 		override_warn(tfor, &current->where, w, 0);
@@ -473,21 +474,19 @@ static decl_init *decl_init_brace_up_scalar(
 	}
 
 	/* fold */
-	{
-		expr *e = FOLD_EXPR(first_init->bits.expr, stab);
+	e = FOLD_EXPR(first_init->bits.expr, stab);
 
-		if(type_is_primitive(e->tree_type, type_void)){
-			warn_at_print_error(&e->where, "initialisation from void expression");
-			fold_had_error = 1;
-		}else{
-			fold_type_chk_and_cast_ty(
-					tfor, &first_init->bits.expr,
-					stab, &first_init->bits.expr->where,
-					"initialisation");
-		}
-
-		init_debug("init scalar with %s expr\n", e->f_str());
+	if(type_is_primitive(e->tree_type, type_void)){
+		warn_at_print_error(&e->where, "initialisation from void expression");
+		fold_had_error = 1;
+	}else{
+		fold_type_chk_and_cast_ty(
+				tfor, &first_init->bits.expr,
+				stab, &first_init->bits.expr->where,
+				"initialisation");
 	}
+
+	init_debug("init scalar with %s expr\n", e->f_str());
 
 	init_debug_indent(--);
 
