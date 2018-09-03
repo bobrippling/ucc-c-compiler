@@ -34,6 +34,7 @@
 #include "write.h"
 #include "../defs.h"
 #include "virt.h"
+#include "common.h"
 
 #include "ctx.h"
 #include "blk.h"
@@ -1072,6 +1073,34 @@ static int x86_need_fp_parity_p(
 	}
 }
 
+static long remove_label_offset(
+		out_ctx *octx,
+		int from_GOT,
+		const out_val *vp,
+		out_val **const vp_mut)
+{
+	long saved_offset = 0;
+	if(from_GOT && vp->type == V_LBL && vp->bits.lbl.offset){
+		saved_offset = vp->bits.lbl.offset;
+		*vp_mut = v_dup_or_reuse(octx, vp, vp->t);
+		(*vp_mut)->bits.lbl.offset = 0;
+	}
+	return saved_offset;
+}
+
+static out_val *restore_label_offset(
+		out_ctx *octx,
+		out_val *vp_mut,
+		type *ty,
+		const struct vreg *reg,
+		long saved_offset)
+{
+	vp_mut = v_new_reg(octx, vp_mut, ty, reg);
+	assert(vp_mut->type == V_REG);
+	vp_mut->bits.regoff.offset = saved_offset;
+	return vp_mut;
+}
+
 const out_val *impl_load(
 		out_ctx *octx,
 		const out_val *from,
@@ -1165,14 +1194,9 @@ lea:
 				&& cc1_fopt.pic
 				&& !(from->bits.lbl.pic_type & OUT_LBL_PICLOCAL);
 			out_val *from_mut = (out_val *)from;
-			long saved_offset = 0;
+			long saved_offset;
 
-			/* code duplication of impl_deref_nodoubleindir() */
-			if(from_GOT && from->type == V_LBL && from->bits.lbl.offset){
-				saved_offset = from->bits.lbl.offset;
-				from_mut = v_dup_or_reuse(octx, from, from->t);
-				from_mut->bits.lbl.offset = 0;
-			}
+			saved_offset = remove_label_offset(octx, from_GOT, from, &from_mut);
 
 			/* just go with leaq for small sizes */
 
@@ -1183,10 +1207,8 @@ lea:
 					x86_reg_str(reg, from_GOT ? NULL : chosen_ty));
 
 			if(saved_offset){
-				out_val *ret = v_new_reg(octx, from, from->t, reg);
-				assert(ret->type == V_REG);
-				ret->bits.regoff.offset = saved_offset;
-				return ret;
+				out_val *ret = from_mut;
+				return restore_label_offset(octx, ret, ret->t, reg, saved_offset);
 			}
 			break;
 		}
@@ -1744,14 +1766,10 @@ static const out_val *impl_deref_nodoubleindir(
 		int transfer_offset_for_got)
 {
 	/* need to ensure we move any offsets to after we've got the pointer */
-	long saved_offset = 0;
+	long saved_offset;
 	out_val *vp_mut = (out_val *)vp;
 
-	if(transfer_offset_for_got && vp->type == V_LBL && vp->bits.lbl.offset){
-		saved_offset = vp->bits.lbl.offset;
-		vp_mut = v_dup_or_reuse(octx, vp, vp->t);
-		vp_mut->bits.lbl.offset = 0;
-	}
+	saved_offset = remove_label_offset(octx, transfer_offset_for_got, vp, &vp_mut);
 
 	out_asm(octx, "mov%s %s, %%%s",
 			x86_suffix(tpointed_to),
@@ -1759,9 +1777,7 @@ static const out_val *impl_deref_nodoubleindir(
 			x86_reg_str(reg, tpointed_to),
 			saved_offset);
 
-	vp_mut = v_new_reg(octx, vp_mut, tpointed_to, reg);
-	assert(vp_mut->type == V_REG);
-	vp_mut->bits.regoff.offset = saved_offset;
+	vp_mut = restore_label_offset(octx, vp_mut, tpointed_to, reg, saved_offset);
 
 	return vp_mut;
 }
@@ -1985,19 +2001,31 @@ const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *from, type *to)
 			x86_suffix(to));
 }
 
-static const char *x86_call_jmp_target(
+static char *x86_call_jmp_target(
 		out_ctx *octx, const out_val **pvp,
-		int prevent_rax, int *const use_plt)
+		int prevent_rax,
+		int *const use_plt, int *const is_alloc)
 {
 	static char buf[VAL_STR_SZ + 2];
 
 	*use_plt = 0;
+	*is_alloc = 0;
 
 	switch((*pvp)->type){
 		case V_LBL:
 			assert((*pvp)->bits.lbl.offset == 0 && "non-zero label offset in call");
-			*use_plt = LD_INDIRECT_CALL_VIA_PLT && v_needs_GOT(*pvp);
-			return (*pvp)->bits.lbl.str;
+
+			if(LD_INDIRECT_CALL_VIA_PLT && v_needs_GOT(*pvp)){
+				if(!cc1_fopt.plt){
+					/* must load from GOT */
+					*is_alloc = 1;
+					return ustrprintf("*%s", impl_val_str(*pvp, 1));
+				}
+
+				*use_plt = 1;
+			}
+
+			return (char *)(*pvp)->bits.lbl.str;
 
 		case V_CONST_F:
 		case V_FLAG:
@@ -2040,11 +2068,13 @@ void impl_jmp(FILE *f, const char *lbl)
 
 void impl_jmp_expr(out_ctx *octx, const out_val *v)
 {
-	int use_plt;
-	const char *jmp = x86_call_jmp_target(octx, &v, 0, &use_plt);
+	int use_plt, is_alloc;
+	char *jmp = x86_call_jmp_target(octx, &v, 0, &use_plt, &is_alloc);
 	assert(!use_plt && "local jumps shouldn't be PIC");
 	out_asm(octx, "jmp %s", jmp);
 	out_val_consume(octx, v);
+	if(is_alloc)
+		free(jmp);
 }
 
 void impl_branch(
@@ -2380,8 +2410,8 @@ const out_val *impl_call(
 			args->variadic
 			|| FUNCARGS_EMPTY_NOVOID(args);
 		/* jtarget must be assigned before "movb $0, %al" */
-		int use_plt;
-		const char *jtarget = x86_call_jmp_target(octx, &fn, need_float_count, &use_plt);
+		int use_plt, is_alloc;
+		char *jtarget = x86_call_jmp_target(octx, &fn, need_float_count, &use_plt, &is_alloc);
 
 		/* if x(...) or x() */
 		if(need_float_count){
@@ -2405,6 +2435,8 @@ const out_val *impl_call(
 		}
 
 		out_asm(octx, "callq %s%s", jtarget, use_plt ? "@PLT" : "");
+		if(is_alloc)
+			free(jtarget);
 	}
 
 	if(arg_stack.bytesz){

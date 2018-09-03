@@ -78,6 +78,8 @@ enum mopt mopt_mode = 0;
 enum san_opts cc1_sanitize = 0;
 char *cc1_sanitize_handler_fn;
 
+enum visibility cc1_visibility_default;
+
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
 int cc1_gdebug;
 
@@ -403,6 +405,14 @@ static void set_sanitize_error(const char *argv0, const char *handler)
 	}
 }
 
+static void set_default_visibility(const char *argv0, const char *visibility)
+{
+	if(!visibility_parse(&cc1_visibility_default, visibility)){
+		fprintf(stderr, "%s: unknown/unsupported visibility \"%s\"\n", argv0, visibility);
+		exit(1);
+	}
+}
+
 static int parse_mf_equals(
 		const char *argv0,
 		char arg_ty,
@@ -423,6 +433,9 @@ static int parse_mf_equals(
 		return 1;
 	}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
 		set_sanitize_error(argv0, arg_substr + 15);
+		return 1;
+	}else if(!strncmp(arg_substr, "visibility=", 11)){
+		set_default_visibility(argv0, arg_substr + 11);
 		return 1;
 	}
 
@@ -644,6 +657,14 @@ int main(int argc, char **argv)
 		failure = 1;
 		goto out;
 	}
+
+	if(cc1_fopt.pie){
+		/* -fpie/PIE implies -fpic/PIC and __attribute__((visibility("protected"))) for all symbols */
+		cc1_fopt.pic = 1;
+		if(AS_SUPPORTS_VISIBILITY_PROTECTED)
+			cc1_visibility_default = VISIBILITY_PROTECTED;
+	}
+
 
 	if(fname && strcmp(fname, "-")){
 		infile = fopen(fname, "r");

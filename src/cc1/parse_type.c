@@ -1897,6 +1897,38 @@ static void check_function_storage_redef(decl *new, decl *old)
 	}
 }
 
+static void check_function_visibility_redef(decl *new, decl *old)
+{
+	/* decls are already linked */
+	decl *d = new;
+	attribute *attr = attribute_present(new, attr_visibility);
+	attribute *old_attr = NULL;
+
+	if(!attr)
+		return;
+
+	while((d = decl_proto(d))){
+		old_attr = attribute_present(old, attr_visibility);
+		if(old_attr)
+			break;
+	}
+
+	if(!old_attr)
+		return;
+
+	if(!attribute_equal(attr, old_attr)){
+		warn_at_print_error(
+				&new->where,
+				"visibility of \"%s\" (%s) does not match previous declaration",
+				new->spel,
+				visibility_to_str(attr->bits.visibility));
+
+		fold_had_error = 1;
+
+		note_at(&old->where, "previous declaration here (%s)", visibility_to_str(old_attr->bits.visibility));
+	}
+}
+
 static void check_var_storage_redef(decl *new, decl *old)
 {
 	/* C99 6.2.2
@@ -1950,6 +1982,7 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 		return; /* error caught later */
 
 	check_function_storage_redef(d_this, d_prev);
+	check_function_visibility_redef(d_this, d_prev);
 
 	if(d_prev->bits.func.code){
 		/* just warn that we have a declaration

@@ -229,6 +229,11 @@ int attribute_equal(attribute *a, attribute *b)
 				return 0;
 			break;
 
+		case attr_visibility:
+			if(a->bits.visibility != b->bits.visibility)
+				return 0;
+			break;
+
 		case attr_unused:
 		case attr_warn_unused:
 		case attr_enum_bitmask:

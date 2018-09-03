@@ -289,9 +289,44 @@ const out_val *gen_call(
 	return fn_ret;
 }
 
-const out_val *gen_decl_addr(out_ctx *octx, decl *d)
+static int gen_decl_is_local(decl *d)
 {
 	int local = decl_linkage(d) == linkage_internal;
+	attribute *visibility = attribute_present(d, attr_visibility);
+
+	if(visibility){
+		/*
+		 *            interposition       | must call via GOT/PLT
+		 * default         y                       y
+		 * hidden          n (forced)              n
+		 * protected       n (*)                   n
+		 *
+		 * (*) - this allows sharing of a symbol across modules, in a pseudo private manner
+		 *
+		 * "default":
+		 *   the (non-static) symbol may be interposed (so must be loaded via
+		 *   GOT/PLT-call).
+		 *
+		 * "hidden":
+		 *   the (non-static) symbol is private to this module and won't be
+		 *   interposed (so may be called/loaded directly / via f@(%rip)). Said
+		 *   symbol won't be exposed to other modules.
+		 *
+		 * "protected":
+		 *   same as hidden, except the symbol will be exposed to other modules
+		 *   (same as -Bsymbolic{,-functions}). Must take care to ensure it is
+		 *   never interposed.
+		 */
+
+		switch(visibility->bits.visibility){
+			case VISIBILITY_DEFAULT:
+				break;
+			case VISIBILITY_HIDDEN:
+			case VISIBILITY_PROTECTED:
+				local = 1;
+				break;
+		}
+	}
 
 	if(!local){
 		if(type_is(d->ref, type_func)){
@@ -302,6 +337,13 @@ const out_val *gen_decl_addr(out_ctx *octx, decl *d)
 			local = d->bits.var.init.dinit && !d->bits.var.init.compiler_generated;
 		}
 	}
+
+	return local;
+}
+
+const out_val *gen_decl_addr(out_ctx *octx, decl *d)
+{
+	const int local = gen_decl_is_local(d);
 
 	return out_new_lbl(
 			octx,
@@ -334,6 +376,7 @@ void gen_asm_emit_type(out_ctx *octx, type *ty)
 
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
+	attribute *attr = NULL;
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
 
@@ -407,8 +450,12 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			out_dbg_emit_global_var(octx, d);
 	}
 
+	if((attr = attribute_present(d, attr_visibility)) || cc1_visibility_default != VISIBILITY_DEFAULT)
+		asm_predeclare_visibility(d, attr);
+
 	if(!emitted_type && decl_linkage(d) == linkage_external)
 		asm_predeclare_global(d);
+
 	gen_asm_global(d, octx);
 }
 

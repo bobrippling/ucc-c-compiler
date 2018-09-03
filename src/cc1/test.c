@@ -22,6 +22,7 @@ struct section sections[NUM_SECTIONS];
 int show_current_line;
 enum san_opts cc1_sanitize;
 char *cc1_sanitize_handler_fn;
+enum visibility cc1_visibility_default;
 
 int where_in_sysheader(const where *w)
 {
