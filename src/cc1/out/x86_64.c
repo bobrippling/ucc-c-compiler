@@ -1073,6 +1073,34 @@ static int x86_need_fp_parity_p(
 	}
 }
 
+static long remove_label_offset(
+		out_ctx *octx,
+		int from_GOT,
+		const out_val *vp,
+		out_val **const vp_mut)
+{
+	long saved_offset = 0;
+	if(from_GOT && vp->type == V_LBL && vp->bits.lbl.offset){
+		saved_offset = vp->bits.lbl.offset;
+		*vp_mut = v_dup_or_reuse(octx, vp, vp->t);
+		(*vp_mut)->bits.lbl.offset = 0;
+	}
+	return saved_offset;
+}
+
+static out_val *restore_label_offset(
+		out_ctx *octx,
+		out_val *vp_mut,
+		type *ty,
+		const struct vreg *reg,
+		long saved_offset)
+{
+	vp_mut = v_new_reg(octx, vp_mut, ty, reg);
+	assert(vp_mut->type == V_REG);
+	vp_mut->bits.regoff.offset = saved_offset;
+	return vp_mut;
+}
+
 const out_val *impl_load(
 		out_ctx *octx,
 		const out_val *from,
@@ -1166,14 +1194,9 @@ lea:
 				&& cc1_fopt.pic
 				&& !(from->bits.lbl.pic_type & OUT_LBL_PICLOCAL);
 			out_val *from_mut = (out_val *)from;
-			long saved_offset = 0;
+			long saved_offset;
 
-			/* code duplication of impl_deref_nodoubleindir() */
-			if(from_GOT && from->type == V_LBL && from->bits.lbl.offset){
-				saved_offset = from->bits.lbl.offset;
-				from_mut = v_dup_or_reuse(octx, from, from->t);
-				from_mut->bits.lbl.offset = 0;
-			}
+			saved_offset = remove_label_offset(octx, from_GOT, from, &from_mut);
 
 			/* just go with leaq for small sizes */
 
@@ -1184,10 +1207,8 @@ lea:
 					x86_reg_str(reg, from_GOT ? NULL : chosen_ty));
 
 			if(saved_offset){
-				out_val *ret = v_new_reg(octx, from, from->t, reg);
-				assert(ret->type == V_REG);
-				ret->bits.regoff.offset = saved_offset;
-				return ret;
+				out_val *ret = from_mut;
+				return restore_label_offset(octx, ret, ret->t, reg, saved_offset);
 			}
 			break;
 		}
@@ -1745,14 +1766,10 @@ static const out_val *impl_deref_nodoubleindir(
 		int transfer_offset_for_got)
 {
 	/* need to ensure we move any offsets to after we've got the pointer */
-	long saved_offset = 0;
+	long saved_offset;
 	out_val *vp_mut = (out_val *)vp;
 
-	if(transfer_offset_for_got && vp->type == V_LBL && vp->bits.lbl.offset){
-		saved_offset = vp->bits.lbl.offset;
-		vp_mut = v_dup_or_reuse(octx, vp, vp->t);
-		vp_mut->bits.lbl.offset = 0;
-	}
+	saved_offset = remove_label_offset(octx, transfer_offset_for_got, vp, &vp_mut);
 
 	out_asm(octx, "mov%s %s, %%%s",
 			x86_suffix(tpointed_to),
@@ -1760,9 +1777,7 @@ static const out_val *impl_deref_nodoubleindir(
 			x86_reg_str(reg, tpointed_to),
 			saved_offset);
 
-	vp_mut = v_new_reg(octx, vp_mut, tpointed_to, reg);
-	assert(vp_mut->type == V_REG);
-	vp_mut->bits.regoff.offset = saved_offset;
+	vp_mut = restore_label_offset(octx, vp_mut, tpointed_to, reg, saved_offset);
 
 	return vp_mut;
 }
