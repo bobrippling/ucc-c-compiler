@@ -563,6 +563,7 @@ void asm_predeclare_visibility(decl *d, attribute *attr)
 			asm_predecl(ASM_VISIBILITY_HIDDEN_DIRECTIVE, d);
 			break;
 		case VISIBILITY_PROTECTED:
+			assert(AS_SUPPORTS_VISIBILITY_PROTECTED);
 			asm_predecl("protected", d);
 			break;
 	}

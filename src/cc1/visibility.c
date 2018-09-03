@@ -9,7 +9,7 @@ int visibility_parse(enum visibility *const e, const char *s)
 		*e = VISIBILITY_DEFAULT;
 	else if(!strcmp(s, "hidden"))
 		*e = VISIBILITY_HIDDEN;
-	else if(!strcmp(s, "protected"))
+	else if(!strcmp(s, "protected") && AS_SUPPORTS_VISIBILITY_PROTECTED)
 		*e = VISIBILITY_PROTECTED;
 	else
 		return 0;

@@ -69,6 +69,7 @@ dwarf_indirect_section_links=0
 asm_weak_directive='weak'
 asm_visibility_hidden_directive='hidden'
 as_supports_local_common=1
+asm_supports_visibility_protected=1
 ld_indirect_call_via_plt=1
 default_leading_underscore=0
 default_fpic=0
@@ -197,6 +198,7 @@ case "$target" in
 		asm_visibility_hidden_directive='private_extern'
 		# Darwin also needs "-flat_namespace -undefined suppress"
 		as_supports_local_common=0
+		asm_supports_visibility_protected=0
 		ld_indirect_call_via_plt=0
 		ucc_initflags='-mpreferred-stack-boundary=4 -malign-is-p2' # 2^4 = 16 byte aligned
 		ucc_stdlib='-lSystem'
@@ -353,6 +355,7 @@ cat > src/config_as.h <<!
 #define ASM_PLBL_PRE "$local_label_prefix"
 #define ASM_WEAK_DIRECTIVE "$asm_weak_directive"
 #define ASM_VISIBILITY_HIDDEN_DIRECTIVE "$asm_visibility_hidden_directive"
+#define AS_SUPPORTS_VISIBILITY_PROTECTED $asm_supports_visibility_protected
 #define AS_SUPPORTS_LOCAL_COMMON $as_supports_local_common
 #define LD_INDIRECT_CALL_VIA_PLT $ld_indirect_call_via_plt
 !
