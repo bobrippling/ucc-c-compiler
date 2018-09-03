@@ -9,5 +9,6 @@ enum visibility
 };
 
 int visibility_parse(enum visibility *, const char *);
+const char *visibility_to_str(enum visibility);
 
 #endif
