@@ -460,8 +460,10 @@ static decl_init *decl_init_brace_up_scalar(
 		it.pos = first_init->bits.ar.inits;
 
 		n = dynarray_count(it.pos);
-		if(n > 1)
-			excess_init(&first_init->where, tfor);
+		if(n > 1){
+			decl_init *second_init = it.pos[1];
+			excess_init(&second_init->where, tfor);
+		}
 
 		ret = decl_init_brace_up_r(current, &it, tfor, stab);
 
