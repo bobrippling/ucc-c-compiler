@@ -37,7 +37,7 @@ struct pack_state
 	decl *d;
 	struct_union_enum_st *sue;
 	sue_member **iter;
-	unsigned sz, align;
+	int sz, align;
 };
 
 static void struct_pack(
@@ -49,6 +49,11 @@ static void struct_pack(
 	/* offset is the end of the decl, after_space is the start */
 
 	d->bits.var.struct_offset = after_space;
+}
+
+static void round_size_to_align(int *const size, int align)
+{
+	*size = pack_to_align(*size, align);
 }
 
 static void struct_pack_finish_bitfield(
@@ -163,6 +168,7 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 
 	en->size = type_size(contained_ty, NULL);
 	en->align = type_align(contained_ty, NULL);
+	round_size_to_align(&en->size, en->align);
 }
 
 static int fold_sue_check_unnamed(
@@ -285,6 +291,7 @@ static void fold_sue_calc_fieldwidth(
 		 * of the struct and the size of this field
 		 */
 		decl_size_align_inc_bitfield(d, &pack_state->sz, &pack_state->align);
+		round_size_to_align(&pack_state->sz, pack_state->align);
 
 		/* we are onto the beginning of a new group */
 		struct_pack(d, offset, pack_state->sz, pack_state->align);
@@ -320,6 +327,7 @@ static void populate_size_align(struct pack_state *pack_state)
 	decl *d = pack_state->d;
 	pack_state->sz = decl_size(d);
 	pack_state->align = decl_align(d);
+	round_size_to_align(&pack_state->sz, pack_state->align);
 }
 
 static void fold_sue_calc_normal(struct pack_state *const pack_state)
@@ -404,6 +412,7 @@ static void fold_sue_calc_substrut(
 static void check_sue_align_attr(struct_union_enum_st *sue, symtable *stab)
 {
 	sue->align = fold_align_attributes(sue->attr, stab, sue->align);
+	round_size_to_align(&sue->size, sue->align);
 }
 
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)
@@ -416,8 +425,8 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		fold_enum(sue, stab);
 
 	}else{
-		unsigned align_max = 1;
-		unsigned sz_max = 0;
+		int align_max = 1;
+		int sz_max = 0;
 		unsigned long offset = 0;
 		int realign_next = 0;
 		int submemb_const = 0;
@@ -523,6 +532,7 @@ warn:
 		sue->size = pack_to_align(
 				sue->primitive == type_struct ? offset : sz_max,
 				align_max);
+		round_size_to_align(&sue->size, sue->align);
 
 		check_sue_align_attr(sue, stab);
 
