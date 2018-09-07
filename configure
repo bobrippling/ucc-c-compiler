@@ -203,7 +203,8 @@ case "$target" in
 		ucc_initflags='-mpreferred-stack-boundary=4 -malign-is-p2' # 2^4 = 16 byte aligned
 		ucc_stdlib='-lSystem'
 		ucc_startfiles=''
-		ucc_ldflags="-macosx_version_min 10.11"
+		syslibroot=$(ls -d /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX*.sdk | head -1)
+		ucc_ldflags="-macosx_version_min 10.5 -syslibroot $syslibroot"
 		local_label_prefix=L
 		need_dsym=1
 		default_leading_underscore=1
