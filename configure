@@ -204,6 +204,7 @@ case "$target" in
 		ucc_stdlib='-lSystem'
 		ucc_startfiles=''
 		syslibroot=$(ls -d /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX*.sdk | head -1)
+		try_path ucc_stdinc ' -isystem ' "$syslibroot/usr/include"
 		ucc_ldflags="-macosx_version_min 10.5 -syslibroot $syslibroot"
 		local_label_prefix=L
 		need_dsym=1
