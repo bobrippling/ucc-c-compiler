@@ -325,7 +325,11 @@ static void fold_sue_calc_fieldwidth(
 static void populate_size_align(struct pack_state *pack_state)
 {
 	decl *d = pack_state->d;
-	pack_state->sz = decl_size(d);
+	if(!type_is_incomplete_array(d->ref))
+		pack_state->sz = decl_size(d);
+	else
+		pack_state->sz = 0;
+
 	pack_state->align = decl_align(d);
 	/* don't round size up to align here, we're still packing inside a struct */
 }
