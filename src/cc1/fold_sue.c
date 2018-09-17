@@ -37,7 +37,7 @@ struct pack_state
 	decl *d;
 	struct_union_enum_st *sue;
 	sue_member **iter;
-	int sz, align;
+	unsigned sz, align;
 };
 
 static void struct_pack(
@@ -51,7 +51,7 @@ static void struct_pack(
 	d->bits.var.struct_offset = after_space;
 }
 
-static void round_size_to_align(int *const size, int align)
+static void round_size_to_align(unsigned *const size, unsigned align)
 {
 	*size = pack_to_align(*size, align);
 }
@@ -425,8 +425,8 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		fold_enum(sue, stab);
 
 	}else{
-		int align_max = 1;
-		int sz_max = 0;
+		unsigned align_max = 1;
+		unsigned sz_max = 0;
 		unsigned long offset = 0;
 		int realign_next = 0;
 		int submemb_const = 0;

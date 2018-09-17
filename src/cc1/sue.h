@@ -37,7 +37,7 @@ struct struct_union_enum_st
 #define SUE_FOLDED_PARTIAL 1
 #define SUE_FOLDED_FULLY 2
 
-	int align, size;
+	unsigned align, size;
 
 	sue_member **members;
 };
