@@ -379,15 +379,13 @@ unsigned type_size(type *r, const where *from)
 	ucc_unreach(0);
 }
 
-unsigned type_align(type *r, const where *from)
+static unsigned type_align_with_attr(type *r, const where *from, int with_attributes)
 {
 	struct_union_enum_st *sue;
 	type *test;
 	attribute *align;
 
-	align = type_attr_present(r, attr_aligned);
-
-	if(align){
+	if(with_attributes && (align = type_attr_present(r, attr_aligned))){
 		if(align->bits.align){
 			consty k;
 
@@ -417,9 +415,19 @@ unsigned type_align(type *r, const where *from)
 		return btype_align(test->bits.type, from);
 
 	if((test = type_is(r, type_array)))
-		return type_align(test->ref, from);
+		return type_align(test->ref, from /* attributes apply from here on */);
 
 	return 1;
+}
+
+unsigned type_align_no_attr(type *r, where const *from)
+{
+	return type_align_with_attr(r, from, 0);
+}
+
+unsigned type_align(type *r, where const *from)
+{
+	return type_align_with_attr(r, from, 1);
 }
 
 where *type_loc(type *t)
