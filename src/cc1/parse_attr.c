@@ -174,8 +174,6 @@ static expr *optional_parened_expr(symtable *scope)
 		e = PARSE_EXPR_NO_COMMA(scope, 0);
 		FOLD_EXPR(e, scope);
 
-		FOLD_EXPR(e, scope);
-
 		EAT(token_close_paren);
 
 		return e;
