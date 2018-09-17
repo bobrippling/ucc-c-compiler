@@ -25,8 +25,6 @@
 
 #include "ops/expr_val.h"
 
-#define DUMP_RECORD_LAYOUT 0
-
 struct bitfield_state
 {
 	type *master_ty;
@@ -51,6 +49,11 @@ static void struct_pack(
 	/* offset is the end of the decl, after_space is the start */
 
 	d->bits.var.struct_offset = after_space;
+}
+
+static void round_size_to_align(unsigned *const size, unsigned align)
+{
+	*size = pack_to_align(*size, align);
 }
 
 static void struct_pack_finish_bitfield(
@@ -165,6 +168,7 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 
 	en->size = type_size(contained_ty, NULL);
 	en->align = type_align(contained_ty, NULL);
+	round_size_to_align(&en->size, en->align);
 }
 
 static int fold_sue_check_unnamed(
@@ -287,6 +291,7 @@ static void fold_sue_calc_fieldwidth(
 		 * of the struct and the size of this field
 		 */
 		decl_size_align_inc_bitfield(d, &pack_state->sz, &pack_state->align);
+		round_size_to_align(&pack_state->sz, pack_state->align);
 
 		/* we are onto the beginning of a new group */
 		struct_pack(d, offset, pack_state->sz, pack_state->align);
@@ -317,11 +322,23 @@ static void fold_sue_calc_fieldwidth(
 	}
 }
 
+static void populate_size_align(struct pack_state *pack_state)
+{
+	decl *d = pack_state->d;
+	if(!type_is_incomplete_array(d->ref))
+		pack_state->sz = decl_size(d);
+	else
+		pack_state->sz = 0;
+
+	pack_state->align = decl_align(d);
+	/* don't round size up to align here, we're still packing inside a struct */
+}
+
 static void fold_sue_calc_normal(struct pack_state *const pack_state)
 {
 	decl *const d = pack_state->d;
 
-	pack_state->align = decl_align(d);
+	populate_size_align(pack_state);
 
 	if(type_is_incomplete_array(d->ref)){
 		if(pack_state->iter[1])
@@ -334,8 +351,6 @@ static void fold_sue_calc_normal(struct pack_state *const pack_state)
 
 		pack_state->sue->flexarr = 1;
 		pack_state->sz = 0; /* not counted in struct size */
-	}else{
-		pack_state->sz = decl_size(d);
 	}
 }
 
@@ -395,8 +410,13 @@ static void fold_sue_calc_substrut(
 				"embedded struct with flex-array not final member");
 	}
 
-	pack_state->sz = sue_size(sub_sue, &pack_state->d->where);
-	pack_state->align = sub_sue->align;
+	populate_size_align(pack_state);
+}
+
+static void check_sue_align_attr(struct_union_enum_st *sue, symtable *stab)
+{
+	sue->align = fold_get_max_align_attribute(sue->attr, stab, sue->align);
+	round_size_to_align(&sue->size, sue->align);
 }
 
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)
@@ -420,7 +440,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 		memset(&bitfield, 0, sizeof bitfield);
 
-		if(DUMP_RECORD_LAYOUT)
+		if(cc1_fopt.dump_layouts)
 			fprintf(stderr, "Record layout for %s:\n", sue->spel);
 
 		for(i = sue->members; i && *i; i++){
@@ -469,7 +489,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				fold_sue_apply_normal_offset(&pack_state, &offset, &bitfield);
 			}
 
-			if(DUMP_RECORD_LAYOUT){
+			if(cc1_fopt.dump_layouts){
 				fprintf(stderr, " %2u", d->bits.var.struct_offset);
 
 				if(d->bits.var.field_width){
@@ -516,8 +536,11 @@ warn:
 		sue->size = pack_to_align(
 				sue->primitive == type_struct ? offset : sz_max,
 				align_max);
+		round_size_to_align(&sue->size, sue->align);
 
-		if(DUMP_RECORD_LAYOUT)
+		check_sue_align_attr(sue, stab);
+
+		if(cc1_fopt.dump_layouts)
 			fprintf(stderr, "         | record size=%u align=%u\n", sue->size, sue->align);
 	}
 

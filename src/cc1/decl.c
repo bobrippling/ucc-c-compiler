@@ -151,14 +151,29 @@ void decl_size_align_inc_bitfield(decl *d, unsigned *const sz, unsigned *const a
 	*align = type_align(ty, NULL);
 }
 
-unsigned decl_align(decl *d)
+static unsigned decl_align1(decl *d)
 {
 	unsigned al = 0;
 
-	if(!type_is(d->ref, type_func) && d->bits.var.align)
-		al = d->bits.var.align->resolved;
+	if(!type_is(d->ref, type_func) && d->bits.var.align.resolved)
+		al = d->bits.var.align.resolved;
 
 	return al ? al : type_align(d->ref, &d->where);
+}
+
+unsigned decl_align(decl *d)
+{
+	unsigned max = 0;
+	decl *i = decl_proto(d);
+
+	for(; i; i = i->impl){
+		unsigned cur = decl_align1(i);
+		if(cur > max){
+			max = cur;
+		}
+	}
+
+	return max;
 }
 
 enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts)
@@ -220,12 +235,10 @@ int decl_store_static_or_extern(enum decl_storage s)
 enum linkage decl_linkage(decl *d)
 {
 	/* global scoped or extern */
-	decl *i;
+	decl *p = decl_proto(d);
 
 	/* if first instance is static, we're internal */
-	for(i = d; i->proto; i = i->proto);
-
-	switch((enum decl_storage)(i->store & STORE_MASK_STORE)){
+	switch((enum decl_storage)(p->store & STORE_MASK_STORE)){
 		case store_extern: return linkage_external;
 		case store_static: return linkage_internal;
 

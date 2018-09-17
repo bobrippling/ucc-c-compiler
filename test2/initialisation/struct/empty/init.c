@@ -17,12 +17,12 @@ struct Pre
 	int j;
 };
 
-struct Pre p = { 1, /* warn */ 2 }; // CHECK: /warning: missing {} initialiser for empty struct/
+struct Pre p = { 1, /* warn */ 2 }; // CHECK: warning: missing {} initialiser for empty struct
 struct Pre q = { 1, {}, 2 };
 
 main()
 {
-	struct A a = { 5 }; // CHECK: /warning: missing {} initialiser for empty struct/
+	struct A a = { 5 }; // CHECK: warning: missing {} initialiser for empty struct
 	struct A b = {};
 
 	struct Container c = {{}};

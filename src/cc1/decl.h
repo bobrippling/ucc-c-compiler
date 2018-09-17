@@ -52,17 +52,20 @@ struct decl
 			unsigned struct_offset_bitfield; /* add onto struct_offset */
 			int first_bitfield; /* marker for the first bitfield in a set */
 
-			struct decl_align
+			struct
 			{
-				int as_int;
-				unsigned resolved;
-				union
+				struct decl_align
 				{
-					struct expr *align_intk;
-					struct type *align_ty;
-				} bits;
-				struct decl_align *next;
-			} *align;
+					int as_int;
+					union
+					{
+						struct expr *align_intk;
+						struct type *align_ty;
+					} bits;
+					struct decl_align *next;
+				} *first;
+				unsigned resolved;
+			} align;
 
 			/* initialiser - converted to an assignment for non-globals */
 			struct decl_init_expr init;

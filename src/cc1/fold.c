@@ -617,21 +617,17 @@ void fold_type_ondecl_w(decl *d, symtable *scope, where const *w, int is_arg)
 	fold_type_w_attr(d->ref, NULL, w, scope, d->attr, fold_flags);
 }
 
-static int fold_align(int al, int min, int max, where *w)
+static void check_valid_align_within_min(int const al, int const min, where *w)
 {
 	/* allow zero */
 	if(al & (al - 1))
 		die_at(w, "alignment %d isn't a power of 2", al);
 
-	UCC_ASSERT(al > 0, "zero align");
-	if(al < min)
-		die_at(w,
-				"can't reduce alignment (%d -> %d)",
-				min, al);
+	if(al == 0) /* 0 ignored as special case */
+		return;
 
-	if(al > max)
-		max = al;
-	return max;
+	if(al < min)
+		die_at(w, "can't reduce alignment (%d -> %d)", min, al);
 }
 
 static void fold_ctor_dtor(
@@ -783,74 +779,98 @@ static void fold_decl_func(decl *d, symtable *stab)
 	fold_func_attr(d, stab);
 }
 
+int fold_get_max_align_attribute(attribute **attribs, symtable *stab, const int min)
+{
+	int max = min;
+
+	for(; attribs && *attribs; attribs++){
+		attribute *attrib = *attribs;
+		unsigned long al;
+		consty k;
+
+		if(attrib->type != attr_aligned || !attrib->bits.align)
+			continue;
+
+		FOLD_EXPR(attrib->bits.align, stab);
+		const_fold(attrib->bits.align, &k);
+
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
+			die_at(&attrib->where, "aligned attribute not reducible to integer constant");
+		al = k.bits.num.val.i;
+
+		check_valid_align_within_min(al, min, &attrib->where);
+		if((int)al > max)
+			max = al;
+	}
+
+	return max;
+}
+
+static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
+{
+	const unsigned min = type_align_no_attr(d->ref, &d->where);
+	unsigned max = type_align(d->ref, &d->where); /* maybe with attr */
+
+	struct decl_align *i;
+
+	if((d->store & STORE_MASK_STORE) == store_register
+	|| d->bits.var.field_width)
+	{
+		die_at(&d->where, "can't align %s", decl_to_str(d));
+	}
+
+	for(i = d->bits.var.align.first; i; i = i->next){
+		unsigned al;
+
+		if(i->as_int){
+			consty k;
+
+			const_fold(
+					FOLD_EXPR(i->bits.align_intk, stab),
+					&k);
+
+			if(k.type != CONST_NUM)
+				die_at(&d->where, "alignment must be a constant");
+			if(K_FLOATING(k.bits.num))
+				die_at(&d->where, "non-integral alignment");
+
+			al = k.bits.num.val.i;
+		}else{
+			type *ty = i->bits.align_ty;
+			UCC_ASSERT(ty, "no type");
+
+			fold_type_w_attr(ty, NULL, type_loc(d->ref),
+					stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
+
+			al = type_align(ty, &d->where);
+		}
+
+		check_valid_align_within_min(al, min, &attrib->where);
+		if(al > max)
+			max = al;
+	}
+
+	if(attrib){
+		attribute *stash[2];
+		unsigned attrib_max;
+
+		stash[0] = attrib;
+		stash[1] = NULL;
+		attrib_max = fold_get_max_align_attribute(stash, stab, min);
+
+		if(attrib_max > max)
+			max = attrib_max;
+	}
+
+	return max;
+}
+
 static void fold_decl_var_align(decl *d, symtable *stab)
 {
-	attribute *attrib = NULL;
-	if(d->bits.var.align || (attrib = attribute_present(d, attr_aligned))){
-		const int tal = type_align(d->ref, &d->where);
+	attribute *attrib = attribute_present(d, attr_aligned);
 
-		struct decl_align *i;
-		int max_al = 0;
-
-		if((d->store & STORE_MASK_STORE) == store_register
-		|| d->bits.var.field_width)
-		{
-			die_at(&d->where, "can't align %s", decl_to_str(d));
-		}
-
-		for(i = d->bits.var.align; i; i = i->next){
-			int al;
-
-			if(i->as_int){
-				consty k;
-
-				const_fold(
-						FOLD_EXPR(i->bits.align_intk, stab),
-						&k);
-
-				if(k.type != CONST_NUM)
-					die_at(&d->where, "alignment must be a constant");
-				if(K_FLOATING(k.bits.num))
-					die_at(&d->where, "non-integral alignment");
-
-				al = k.bits.num.val.i;
-			}else{
-				type *ty = i->bits.align_ty;
-				UCC_ASSERT(ty, "no type");
-
-				fold_type_w_attr(ty, NULL, type_loc(d->ref),
-						stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
-
-				al = type_align(ty, &d->where);
-			}
-
-			if(al == 0)
-				al = decl_size(d);
-			max_al = fold_align(al, tal, max_al, &d->where);
-		}
-
-		if(attrib){
-			unsigned long al;
-
-			if(attrib->bits.align){
-				consty k;
-
-				FOLD_EXPR(attrib->bits.align, stab);
-				const_fold(attrib->bits.align, &k);
-
-				if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
-					die_at(&attrib->where, "aligned attribute not reducible to integer constant");
-				al = k.bits.num.val.i;
-			}else{
-				al = platform_align_max();
-			}
-
-			max_al = fold_align(al, tal, max_al, &attrib->where);
-			if(!d->bits.var.align)
-				d->bits.var.align = umalloc(sizeof *d->bits.var.align);
-		}
-
-		d->bits.var.align->resolved = max_al;
+	if(d->bits.var.align.first || attrib){
+		d->bits.var.align.resolved = fold_decl_resolve_align(d, stab, attrib);
 	}
 }
 
