@@ -617,21 +617,17 @@ void fold_type_ondecl_w(decl *d, symtable *scope, where const *w, int is_arg)
 	fold_type_w_attr(d->ref, NULL, w, scope, d->attr, fold_flags);
 }
 
-static int check_and_minmax_align(int al, int min, int max, where *w)
+static void check_valid_align_within_min(int const al, int const min, where *w)
 {
 	/* allow zero */
 	if(al & (al - 1))
 		die_at(w, "alignment %d isn't a power of 2", al);
 
-	UCC_ASSERT(al > 0, "zero align");
-	if(al < min)
-		die_at(w,
-				"can't reduce alignment (%d -> %d)",
-				min, al);
+	if(al == 0) /* 0 ignored as special case */
+		return;
 
-	if(al > max)
-		max = al;
-	return max;
+	if(al < min)
+		die_at(w, "can't reduce alignment (%d -> %d)", min, al);
 }
 
 static void fold_ctor_dtor(
@@ -783,9 +779,9 @@ static void fold_decl_func(decl *d, symtable *stab)
 	fold_func_attr(d, stab);
 }
 
-int fold_align_attributes(attribute **attribs, symtable *stab, int min_align)
+int fold_get_max_align_attribute(attribute **attribs, symtable *stab, const int min)
 {
-	int max_al = 1;
+	int max = min;
 
 	for(; attribs && *attribs; attribs++){
 		attribute *attrib = *attribs;
@@ -802,18 +798,20 @@ int fold_align_attributes(attribute **attribs, symtable *stab, int min_align)
 			die_at(&attrib->where, "aligned attribute not reducible to integer constant");
 		al = k.bits.num.val.i;
 
-		max_al = check_and_minmax_align(al, min_align, max_al, &attrib->where);
+		check_valid_align_within_min(al, min, &attrib->where);
+		if((int)al > max)
+			max = al;
 	}
 
-	return MAX(max_al, min_align);
+	return max;
 }
 
 static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 {
-	const int tal = type_align(d->ref, &d->where);
+	const unsigned min = type_align_no_attr(d->ref, &d->where);
+	unsigned max = type_align(d->ref, &d->where); /* maybe with attr */
 
 	struct decl_align *i;
-	unsigned max_al = 1;
 
 	if((d->store & STORE_MASK_STORE) == store_register
 	|| d->bits.var.field_width)
@@ -847,7 +845,9 @@ static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 			al = type_align(ty, &d->where);
 		}
 
-		max_al = check_and_minmax_align(al, tal, max_al, &d->where);
+		check_valid_align_within_min(al, min, &attrib->where);
+		if(al > max)
+			max = al;
 	}
 
 	if(attrib){
@@ -856,13 +856,13 @@ static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 
 		stash[0] = attrib;
 		stash[1] = NULL;
-		attrib_max = fold_align_attributes(stash, stab, tal);
+		attrib_max = fold_get_max_align_attribute(stash, stab, min);
 
-		if(attrib_max > max_al)
-			max_al = attrib_max;
+		if(attrib_max > max)
+			max = attrib_max;
 	}
 
-	return max_al;
+	return max;
 }
 
 static void fold_decl_var_align(decl *d, symtable *stab)

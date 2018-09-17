@@ -411,7 +411,7 @@ static void fold_sue_calc_substrut(
 
 static void check_sue_align_attr(struct_union_enum_st *sue, symtable *stab)
 {
-	sue->align = fold_align_attributes(sue->attr, stab, sue->align);
+	sue->align = fold_get_max_align_attribute(sue->attr, stab, sue->align);
 	round_size_to_align(&sue->size, sue->align);
 }
 
