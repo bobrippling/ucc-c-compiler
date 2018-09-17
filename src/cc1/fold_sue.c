@@ -327,7 +327,7 @@ static void populate_size_align(struct pack_state *pack_state)
 	decl *d = pack_state->d;
 	pack_state->sz = decl_size(d);
 	pack_state->align = decl_align(d);
-	round_size_to_align(&pack_state->sz, pack_state->align);
+	/* don't round size up to align here, we're still packing inside a struct */
 }
 
 static void fold_sue_calc_normal(struct pack_state *const pack_state)
