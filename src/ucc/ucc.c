@@ -851,6 +851,44 @@ static void merge_states(struct ucc *state, struct ucc *append)
 	state->mode = append->mode;
 }
 
+static void usage(void)
+{
+	fprintf(stderr, "Staging\n");
+	fprintf(stderr, "  -fsyntax-only: Only run preprocessor and compiler, with no output\n");
+	fprintf(stderr, "  -E: Only run preprocessor\n");
+	fprintf(stderr, "  -S: Only run preprocessor and compiler\n");
+	fprintf(stderr, "  -c: Only run preprocessor, compiler and assembler\n");
+	fprintf(stderr, "  -fuse-cpp=...: Specify a preprocessor executable to use\n");
+	fprintf(stderr, "  -time: Output time for each stage\n");
+	fprintf(stderr, "  -wrapper exe,arg1,...: Prefix stage commands with this executable and arguments\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Input options\n");
+	fprintf(stderr, "  -xc: Treat input as C\n");
+	fprintf(stderr, "  -xcpp-output: Treat input as preprocessor output\n");
+	fprintf(stderr, "  -xasm, -xassembler: Treat input as assembly\n");
+	fprintf(stderr, "  -xnone: Revert to inferring input based on file extension\n");
+	fprintf(stderr, "  -specs file: Specify spec file (contains default flags for stages, etc)\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Output options\n");
+	fprintf(stderr, "  -o file: Output file\n");
+	fprintf(stderr, "  -shared: Output a shared library\n");
+	fprintf(stderr, "  -static: Output a staticly linked executable\n");
+	fprintf(stderr, "  -###: Output what would be done, do nothing\n");
+	fprintf(stderr, "  -v: Output commands before invoking them\n");
+	fprintf(stderr, "  -save-temps: Save temporary files for each stage\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Argument passing\n");
+	fprintf(stderr, "  -Wp,... -Xpreprocessor: Pass to preprocessor\n");
+	fprintf(stderr, "  -Wc,...                 Pass to compiler\n");
+	fprintf(stderr, "  -Wa,... -Xassembler:    Pass to assembler\n");
+	fprintf(stderr, "  -Wl,... -Xlinker:       Pass to linker\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Disabling standard inputs\n");
+	fprintf(stderr, "  -nostdlib: Don't link with the standard libraries\n");
+	fprintf(stderr, "  -nostartfiles: Don't link with the startup runtime\n");
+	fprintf(stderr, "  -nostdinc: Don't include the standard header path\n");
+}
+
 int main(int argc, char **argv)
 {
 	int i;
@@ -896,6 +934,8 @@ usage:
 		preproc("--help", "/dev/null", NULL, 1);
 		fprintf(stderr, "--- cc1 ---\n");
 		compile("--help", "/dev/null", NULL, 1);
+		fprintf(stderr, "--- ucc ---\n");
+		usage();
 		return 2;
 	}
 
