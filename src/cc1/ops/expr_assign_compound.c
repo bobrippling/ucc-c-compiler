@@ -4,6 +4,8 @@
 #include "expr_assign.h"
 #include "expr_op.h"
 
+#include "../type_nav.h"
+
 const char *str_expr_assign_compound()
 {
 	return "compound-assignment";
@@ -56,7 +58,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 			fold_insert_casts(trhs, &e->rhs, stab);
 		}
 
-		e->tree_type = lvalue->tree_type;
+		/* see the same code in expr_assign.c */
+		e->tree_type = type_unqualify(lvalue->tree_type);
 
 		(void)resolved;
 		/*type_free_1(resolved); XXX: memleak */
