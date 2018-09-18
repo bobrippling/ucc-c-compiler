@@ -299,8 +299,8 @@ int preproc(char *in, const char *out, char **args, int return_ec)
 			free(this);
 	}
 
-	if(fsystem_cpp)
-		ret = runner_1(0, fsystem_cpp, in, out, all, return_ec);
+	if(binpath_cpp)
+		ret = runner_1(0, binpath_cpp, in, out, all, return_ec);
 	else
 		ret = runner_1(1, "cpp2/cpp", in, out, all, return_ec);
 

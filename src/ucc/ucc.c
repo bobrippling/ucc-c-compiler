@@ -71,7 +71,7 @@ static char **remove_these;
 static int unlink_tmps = 1;
 const char *argv0;
 char *wrapper;
-const char *fsystem_cpp;
+const char *binpath_cpp;
 
 static void unlink_files(void)
 {
@@ -467,17 +467,17 @@ static void parse_argv(
 						state->syntax_only = 1;
 						continue;
 					}
-					if(!strncmp(argv[i], "-fsystem-cpp", 12)){
-						const char *arg = argv[i] + 12;
+					if(!strncmp(argv[i], "-fuse-cpp", 9)){
+						const char *arg = argv[i] + 9;
 						switch(*arg){
 							case '\0':
-								fsystem_cpp = "cpp";
+								binpath_cpp = "cpp";
 								break;
 							case '=':
-								fsystem_cpp = arg + 1;
+								binpath_cpp = arg + 1;
 								break;
 							default:
-								die("%s: -fsystem-cpp should have no argument, or \"=path/to/cpp\"\n",
+								die("%s: -fuse-cpp should have no argument, or \"=path/to/cpp\"\n",
 										argv[0]);
 						}
 						continue;
