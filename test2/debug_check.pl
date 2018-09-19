@@ -81,7 +81,7 @@ sub assert_arrays_eq
 		write_file($f_got, @{$got->{$type}});
 		write_file($f_exp, @{$expected->{$type}});
 
-		system("diff", "-u", $f_got, $f_exp);
+		system("diff", "-u", $f_exp, $f_got);
 		unlink($f_got, $f_exp);
 
 		$ec = 1;
@@ -98,7 +98,8 @@ my $ucc = $ENV{UCC} or die "no \$UCC";
 # format $in - remove any components up until dir/file.c
 $in =~ s;^\./;;;
 
-my @output = map { chomp; $_ } `'$ucc' -g -S -o- '$in'`;
+# FIXME: -target x86_64-linux-gnu
+my @output = map { chomp; $_ } `'$ucc' -fno-leading-underscore -fdebug-compilation-dir=/tmp/ -g -S -o- '$in'`;
 if($?){
 	die "$0: compile failed ($?)";
 }
