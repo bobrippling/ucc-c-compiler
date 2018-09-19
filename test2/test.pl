@@ -81,7 +81,7 @@ my %vars = (
 
 if($verbose){
 	my @verbose_support = (
-		'check', 'ocheck', 'debug_check', 'layout_check'
+		'check', 'ocheck', 'layout_check'
 	);
 
 	$vars{$_} .=  " -v" for @verbose_support;

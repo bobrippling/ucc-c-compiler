@@ -1,91 +1,110 @@
 #!/usr/bin/perl
 use warnings;
+use strict;
 
-use constant
+my $ec;
+
+sub filter
 {
-	ENOENT => 2
-};
+	my @lines = @_;
+	my @relevant;
+	my @files;
+	my $in_dbg = 0;
 
-my %exes;
-my $exes_init = 0;
-sub can_exec
-{
-	if(!$exes_init){
-		$exes_init = 1;
+	for(@lines){
+		if(/\.file.*"/){
+			push @files, $_;
+			next;
+		}
 
-		for my $d (split /:/, $ENV{PATH}){
-			opendir D, $d or next;
-			map { $exes{$_} = 1 } readdir D;
-			closedir D;
+		if(/section_(begin|end)_dbg/){
+			$in_dbg = ($1 eq 'begin');
+		}
+
+		if($in_dbg){
+			push @relevant, $_;
 		}
 	}
 
-	my $e = shift;
-	return exists $exes{$e};
+	return (
+		files => \@files,
+		lines => \@relevant,
+	);
 }
 
-my $verbose = 0;
-if($ARGV[0] eq '-v'){
-	$verbose = 1;
-	shift;
+sub read_file
+{
+	my $f = shift();
+	open(my $fh, '<', $f) or die "open $f: $!\n";
+	my @contents = map { chomp; $_ } <$fh>;
+	close($fh) or die "close $f: $!\n";
+	return @contents;
+}
+
+sub write_file
+{
+	my($f, @contents) = @_;
+	open(my $fh, '>', $f) or die "open $f: $!\n";
+	for(@contents){
+		print $fh "$_\n";
+	}
+	close($fh) or die "close $f: $!\n";
+}
+
+sub arrays_eq
+{
+	my($a, $b) = @_;
+
+	if(scalar(@$a) != scalar(@$b)){
+		return 0;
+	}
+
+	for(my $i = 0; $i < scalar(@$a); $i++){
+		if(!(${$a}[$i] eq ${$b}[$i])){
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+sub assert_arrays_eq
+{
+	my($got, $expected, $type) = @_;
+
+	if(!arrays_eq($got->{$type}, $expected->{$type})){
+		print STDERR "mismatching $type entries:\n";
+
+		my $f_got = "./debug_check_diff_got";
+		my $f_exp = "./debug_check_diff_expected";
+
+		write_file($f_got, @{$got->{$type}});
+		write_file($f_exp, @{$expected->{$type}});
+
+		system("diff", "-u", $f_got, $f_exp);
+		unlink($f_got, $f_exp);
+
+		$ec = 1;
+	}
 }
 
 if(@ARGV != 1){
-	die "Usage: $0 [-v] path/to/source\n";
+	die "Usage: $0 path/to/source\n";
 }
 my $in = shift;
-my $out = '/tmp/ucc.test/debug.out';
-
-END
-{
-	my $r = $?;
-	unlink $out;
-	$? = $r;
-}
-
+my $expected = "$in.dwarf";
 my $ucc = $ENV{UCC} or die "no \$UCC";
 
-# full link
-if(system($ucc, '-g', '-o', $out, $in)){
-	die "$0: compile failed";
+my @output = map { chomp; $_ } `'$ucc' -g -S -o- '$in'`;
+if($?){
+	die "$0: compile failed ($?)";
 }
 
-my @dumpers = (
-	{ exe => 'gdb', input => "q\n" },
-	#{ exe => 'lldb', input => "q\n" },
-	{ exe => 'objdump', args => ['-W'] },
-	{ exe => 'dwarfdump' },
-);
+my %got = filter(@output);
+my %expected = filter(read_file($expected));
+$ec = 0;
 
-my $bad = 0;
-for my $dumper (@dumpers){
-	my $cmd = $dumper->{exe};
+assert_arrays_eq(\%got, \%expected, "files");
+assert_arrays_eq(\%got, \%expected, "lines");
 
-	if($dumper->{args}){
-		$cmd .= ' ' . join(' ', @{$dumper->{args}});
-	}
-	$cmd .= " $out >/dev/null";
-
-	next unless can_exec($dumper->{exe});
-
-	if($verbose){
-		print STDERR "$0: exec($cmd)\n";
-	}
-
-	open SUB, '|-', $cmd or die "exec $dumper->{exe}: $!";
-	{
-		my $to_write = $dumper->{input};
-		if(defined($to_write)){
-			print SUB $to_write;
-		}
-	}
-	close SUB;
-
-	my $ret = $?;
-	if($ret){
-		warn "running '$dumper->{exe}' on $in returned $ret\n";
-		$bad = 1;
-	}
-}
-
-exit $bad;
+exit($ec);
