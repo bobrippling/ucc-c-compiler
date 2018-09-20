@@ -215,8 +215,13 @@ void cat(char *fnin, const char *fnout, int append)
 	char buf[1024];
 	size_t n;
 
-	if(show)
-		fprintf(stderr, "cat %s >%s %s\n", fnin, append ? ">" : "", fnout ? fnout : "<stdout>");
+	if(show){
+		fprintf(stderr, "cat %s%s%s\n",
+				fnin,
+				fnout && append ? " >>" : "",
+				fnout ? fnout : "");
+	}
+
 	if(noop)
 		return;
 
