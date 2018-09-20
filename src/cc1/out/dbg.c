@@ -1119,6 +1119,8 @@ static struct DIE_compile_unit *dwarf_cu(
 	dwarf_attr(&cu->die, DW_AT_language, DW_FORM_data2,
 			((attrv = dw_lang_from_c_std(lang)), &attrv));
 
+	/* (char *) casts are purely to get through the void* parameter,
+	 * not to change the borrowed ownership of the strings */
 	dwarf_attr(&cu->die, DW_AT_name, DW_FORM_string, (char *)fname);
 
 	dwarf_attr(&cu->die, DW_AT_comp_dir, DW_FORM_string, (char *)compdir);
