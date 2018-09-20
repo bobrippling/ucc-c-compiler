@@ -9,6 +9,7 @@
 
 #include "sym.h"
 #include "cc1.h"
+#include "cc1_where.h"
 
 #include "parse_init.h"
 #include "parse_expr.h"
@@ -45,11 +46,13 @@ decl_init *parse_init(symtable *scope, int static_ctx)
 					plast = &d->next;
 
 					if(is_label){
+						where colon_loc;
 						d->type = desig_struct;
 						d->bits.member = token_current_spel();
 						EAT(token_identifier);
+						where_cc1_current(&colon_loc);
 						EAT(token_colon);
-						cc1_warn_at(NULL, gnu_desig, "use of old-style GNU designator");
+						cc1_warn_at(&colon_loc, gnu_desig, "use of old-style GNU designator");
 						assign = DISALLOWED;
 						break;
 					}
