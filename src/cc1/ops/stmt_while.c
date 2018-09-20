@@ -27,9 +27,11 @@ void gen_stmt_while(const stmt *s, out_ctx *octx)
 	struct out_dbg_lbl *endlbls[2][2];
 	out_blk *blk_body = out_blk_new(octx, "while_body");
 
-	stmt_init_blks(s,
-			out_blk_new(octx, "while_cont"),
-			out_blk_new(octx, "while_break"));
+	{
+		out_blk *blk_cont = out_blk_new(octx, "while_cont");
+		out_blk *blk_break = out_blk_new(octx, "while_break");
+		stmt_init_blks(s, blk_cont, blk_break);
+	}
 
 	out_ctrl_transfer(octx, s->blk_continue, NULL, NULL);
 
