@@ -95,6 +95,9 @@ my $in = shift;
 my $expected = "$in.dwarf";
 my $ucc = $ENV{UCC} or die "no \$UCC";
 
+# format $in - remove any components up until dir/file.c
+$in =~ s;^\./;;;
+
 my @output = map { chomp; $_ } `'$ucc' -g -S -o- '$in'`;
 if($?){
 	die "$0: compile failed ($?)";
