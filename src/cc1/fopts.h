@@ -31,6 +31,7 @@ X("show-inlined", show_inlined)
 X("show-line", show_line)
 X("show-static-asserts", show_static_asserts)
 X("show-warning-option", show_warning_option)
+ALIAS("diagnostics-show-option", show_warning_option)
 X("track-initial-fname", track_initial_fnam)
 X("verbose-asm", verbose_asm)
 
