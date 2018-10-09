@@ -231,17 +231,28 @@ static void const_op_num_int(
 					e->bits.op.op, e->tree_type, &err);
 
 			if(SHOW_CONST_OP){
+				char tbufs[2][TYPE_STATIC_BUFSIZ];
+
 				if(rhs){
 					fprintf(stderr,
-							"const op: (%s) %lld %s %lld = %lld, is_signed=%d\n",
+							"const op: (%s)%lld %s (%s)%lld   -->   (%s)%lld, is_signed=%d\n",
+							type_to_str_r(tbufs[0], e->lhs->tree_type),
+							l.offset,
+							op_to_str(e->bits.op.op),
+							type_to_str_r(tbufs[1], e->rhs->tree_type),
+							r.offset,
 							type_to_str(e->tree_type),
-							l.offset, op_to_str(e->bits.op.op), r.offset,
-							int_r, is_signed);
+							int_r,
+							is_signed);
 				}else{
 					fprintf(stderr,
-							"const op: (%s) %s %lld = %lld, is_signed=%d\n",
+							"const op: (%s)%s%lld --> (%s)%lld, is_signed=%d\n",
+							type_to_str_r(tbufs[0], e->lhs->tree_type),
+							op_to_str(e->bits.op.op),
+							l.offset,
 							type_to_str(e->tree_type),
-							op_to_str(e->bits.op.op), l.offset, int_r, is_signed);
+							int_r,
+							is_signed);
 				}
 			}
 
