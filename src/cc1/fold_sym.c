@@ -140,8 +140,10 @@ void symtab_check_static_asserts(symtable *stab)
 		if(!k.bits.num.val.i){
 			warn_at_print_error(&sa->e->where, "static assertion failure: %s", sa->s);
 			fold_had_error = 1;
+			continue;
+		}
 
-		}else if(cc1_fopt.show_static_asserts){
+		if(cc1_fopt.show_static_asserts){
 			fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
 					where_str(&sa->e->where), expr_str_friendly(sa->e), sa->s);
 		}
