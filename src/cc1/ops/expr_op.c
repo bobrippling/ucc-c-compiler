@@ -896,7 +896,7 @@ static int str_cmp_check(expr *e)
 		if(kl.type == CONST_STRK || kr.type == CONST_STRK){
 			return cc1_warn_at(&e->rhs->where,
 					undef_strlitcmp,
-					"comparison with string literal is undefined");
+					"comparison with string literal is unspecified");
 		}
 	}
 	return 0;
