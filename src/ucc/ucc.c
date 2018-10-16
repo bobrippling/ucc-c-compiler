@@ -64,13 +64,14 @@ struct ucc
 
 	int syntax_only;
 	enum mode mode;
+	int help;
 };
 
 static char **remove_these;
 static int unlink_tmps = 1;
 const char *argv0;
 char *wrapper;
-const char *fsystem_cpp;
+const char *binpath_cpp;
 
 static void unlink_files(void)
 {
@@ -177,7 +178,7 @@ static void gen_obj_file(
 		if(file->preproc_asm)
 			dynarray_add(&args[mode_preproc], ustrdup("-D__ASSEMBLER__=1"));
 
-		preproc(in, file->preproc.fname, args[mode_preproc]);
+		preproc(in, file->preproc.fname, args[mode_preproc], 0);
 
 		in = file->preproc.fname;
 	}
@@ -186,7 +187,7 @@ static void gen_obj_file(
 		return;
 
 	if(file->compile.fname){
-		compile(in, file->compile.fname, args[mode_compile]);
+		compile(in, file->compile.fname, args[mode_compile], 0);
 
 		in = file->compile.fname;
 	}
@@ -466,17 +467,17 @@ static void parse_argv(
 						state->syntax_only = 1;
 						continue;
 					}
-					if(!strncmp(argv[i], "-fsystem-cpp", 12)){
-						const char *arg = argv[i] + 12;
+					if(!strncmp(argv[i], "-fuse-cpp", 9)){
+						const char *arg = argv[i] + 9;
 						switch(*arg){
 							case '\0':
-								fsystem_cpp = "cpp";
+								binpath_cpp = "cpp";
 								break;
 							case '=':
-								fsystem_cpp = arg + 1;
+								binpath_cpp = arg + 1;
 								break;
 							default:
-								die("%s: -fsystem-cpp should have no argument, or \"=path/to/cpp\"\n",
+								die("%s: -fuse-cpp should have no argument, or \"=path/to/cpp\"\n",
 										argv[0]);
 						}
 						continue;
@@ -767,6 +768,10 @@ word:
 					continue;
 			}
 
+			if(!strcmp(argv[i], "--help")){
+				state->help = 1;
+				continue;
+			}
 unrec:
 			die("unrecognised option \"%s\"", argv[i]);
 missing_arg:
@@ -846,6 +851,44 @@ static void merge_states(struct ucc *state, struct ucc *append)
 	state->mode = append->mode;
 }
 
+static void usage(void)
+{
+	fprintf(stderr, "Staging\n");
+	fprintf(stderr, "  -fsyntax-only: Only run preprocessor and compiler, with no output\n");
+	fprintf(stderr, "  -E: Only run preprocessor\n");
+	fprintf(stderr, "  -S: Only run preprocessor and compiler\n");
+	fprintf(stderr, "  -c: Only run preprocessor, compiler and assembler\n");
+	fprintf(stderr, "  -fuse-cpp=...: Specify a preprocessor executable to use\n");
+	fprintf(stderr, "  -time: Output time for each stage\n");
+	fprintf(stderr, "  -wrapper exe,arg1,...: Prefix stage commands with this executable and arguments\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Input options\n");
+	fprintf(stderr, "  -xc: Treat input as C\n");
+	fprintf(stderr, "  -xcpp-output: Treat input as preprocessor output\n");
+	fprintf(stderr, "  -xasm, -xassembler: Treat input as assembly\n");
+	fprintf(stderr, "  -xnone: Revert to inferring input based on file extension\n");
+	fprintf(stderr, "  -specs file: Specify spec file (contains default flags for stages, etc)\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Output options\n");
+	fprintf(stderr, "  -o file: Output file\n");
+	fprintf(stderr, "  -shared: Output a shared library\n");
+	fprintf(stderr, "  -static: Output a staticly linked executable\n");
+	fprintf(stderr, "  -###: Output what would be done, do nothing\n");
+	fprintf(stderr, "  -v: Output commands before invoking them\n");
+	fprintf(stderr, "  -save-temps: Save temporary files for each stage\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Argument passing\n");
+	fprintf(stderr, "  -Wp,... -Xpreprocessor: Pass to preprocessor\n");
+	fprintf(stderr, "  -Wc,...                 Pass to compiler\n");
+	fprintf(stderr, "  -Wa,... -Xassembler:    Pass to assembler\n");
+	fprintf(stderr, "  -Wl,... -Xlinker:       Pass to linker\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Disabling standard inputs\n");
+	fprintf(stderr, "  -nostdlib: Don't link with the standard libraries\n");
+	fprintf(stderr, "  -nostartfiles: Don't link with the startup runtime\n");
+	fprintf(stderr, "  -nostdinc: Don't include the standard header path\n");
+}
+
 int main(int argc, char **argv)
 {
 	int i;
@@ -885,6 +928,16 @@ usage:
 	 * then we can parse the spec file, then we need to
 	 * append argv's inputs, etc onto the state from the spec file */
 	parse_argv(argc - 1, argv + 1, &argstate, &specvars, assumptions, &current_assumption, &specpath);
+	if(argstate.help){
+		fprintf(stderr, "dumping help:\n");
+		fprintf(stderr, "--- cpp ---\n");
+		preproc("--help", "/dev/null", NULL, 1);
+		fprintf(stderr, "--- cc1 ---\n");
+		compile("--help", "/dev/null", NULL, 1);
+		fprintf(stderr, "--- ucc ---\n");
+		usage();
+		return 2;
+	}
 
 	output_given = !!specvars.output;
 	if(!specvars.output && argstate.mode == mode_link)

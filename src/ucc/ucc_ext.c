@@ -75,7 +75,7 @@ char *actual_path(const char *prefix, const char *path)
 	return buf;
 }
 
-static void runner(int local, const char *path, char **args)
+static int runner(int local, const char *path, char **args, int return_ec)
 {
 	pid_t pid;
 
@@ -92,7 +92,7 @@ static void runner(int local, const char *path, char **args)
 	}
 
 	if(noop)
-		return;
+		return 0;
 
 
 	/* if this were to be vfork, all the code in case-0 would need to be done in the parent */
@@ -164,7 +164,8 @@ static void runner(int local, const char *path, char **args)
 				die("wait()");
 
 			if(WIFEXITED(status) && (i = WEXITSTATUS(status)) != 0){
-				die("%s returned %d", path, i);
+				if(!return_ec)
+					die("%s returned %d", path, i);
 			}else if(WIFSIGNALED(status)){
 				int sig = WTERMSIG(status);
 
@@ -173,13 +174,15 @@ static void runner(int local, const char *path, char **args)
 				/* exit with propagating status */
 				exit(128 + sig);
 			}
+
+			return i;
 		}
 	}
 }
 
 void execute(char *path, char **args)
 {
-	runner(0, path, args);
+	runner(0, path, args, 0);
 }
 
 void rename_or_move(char *old, char *new)
@@ -204,7 +207,7 @@ void rename_or_move(char *old, char *new)
 	fixed[1] = cmd;
 	fixed[2] = NULL;
 
-	runner(0, "sh", fixed);
+	runner(0, "sh", fixed, 0);
 
 	free(cmd);
 }
@@ -250,8 +253,9 @@ void cat(char *fnin, const char *fnout, int append)
 		die("close():");
 }
 
-static void runner_1(int local, const char *path, char *in, const char *out, char **args)
+static int runner_1(int local, const char *path, char *in, const char *out, char **args, int return_ec)
 {
+	int ret;
 	char **all = NULL;
 
 	if(args)
@@ -262,13 +266,16 @@ static void runner_1(int local, const char *path, char *in, const char *out, cha
 
 	dynarray_add(&all, in);
 
-	runner(local, path, all);
+	ret = runner(local, path, all, return_ec);
 
 	dynarray_free(char **, all, NULL);
+
+	return ret;
 }
 
-void preproc(char *in, const char *out, char **args)
+int preproc(char *in, const char *out, char **args, int return_ec)
 {
+	int ret;
 	char **all = NULL;
 	char **i;
 
@@ -292,17 +299,19 @@ void preproc(char *in, const char *out, char **args)
 			free(this);
 	}
 
-	if(fsystem_cpp)
-		runner_1(0, fsystem_cpp, in, out, all);
+	if(binpath_cpp)
+		ret = runner_1(0, binpath_cpp, in, out, all, return_ec);
 	else
-		runner_1(1, "cpp2/cpp", in, out, all);
+		ret = runner_1(1, "cpp2/cpp", in, out, all, return_ec);
 
 	dynarray_free(char **, all, NULL);
+
+	return ret;
 }
 
-void compile(char *in, const char *out, char **args)
+int compile(char *in, const char *out, char **args, int return_ec)
 {
-	runner_1(1, "cc1/cc1", in, out, args);
+	return runner_1(1, "cc1/cc1", in, out, args, return_ec);
 }
 
 void assemble(char *in, const char *out, char **args, char *as)
@@ -312,7 +321,7 @@ void assemble(char *in, const char *out, char **args, char *as)
 	if(args)
 		dynarray_add_array(&copy, args);
 
-	runner_1(0, as, in, out, copy);
+	runner_1(0, as, in, out, copy, 0);
 
 	dynarray_free(char **, copy, NULL);
 }
@@ -329,7 +338,7 @@ void link_all(char **objs, const char *out, char **args, char *ld)
 	if(args)
 		dynarray_add_array(&all, args);
 
-	runner(0, ld, all);
+	runner(0, ld, all, 0);
 
 	dynarray_free(char **, all, NULL);
 }
