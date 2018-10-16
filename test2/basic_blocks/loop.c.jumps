@@ -1,6 +1,6 @@
 f:
-	jmp Lblk.5
+	jmp Lblk.4
 Lblk.3:
-Lblk.5:
+Lblk.4:
 	/* constant jmp condition taken */
 	jmp Lblk.3

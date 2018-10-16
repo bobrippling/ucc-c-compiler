@@ -105,6 +105,8 @@ struct section sections[NUM_SECTIONS] = {
 	{ "dbg_line", QUOTE(SECTION_NAME_DBG_LINE) },
 };
 
+static const char *debug_compilation_dir;
+
 static FILE *infile;
 
 ucc_printflike(1, 2)
@@ -280,7 +282,9 @@ static void gen_backend(symtable_global *globs, const char *fname)
 			char *compdir;
 			struct out_dbg_filelist *filelist;
 
-			compdir = getcwd(NULL, 0);
+			compdir = (char *)debug_compilation_dir;
+			if(!compdir)
+				compdir = getcwd(NULL, 0);
 			if(!compdir){
 				/* no auto-malloc */
 				compdir = getcwd(buf, sizeof(buf)-1);
@@ -299,7 +303,7 @@ static void gen_backend(symtable_global *globs, const char *fname)
 				dbg_out_filelist(filelist, cc1_out);
 
 
-			if(compdir != buf)
+			if(compdir != buf && compdir != debug_compilation_dir)
 				free(compdir);
 
 			io_fin(gf == NULL, fname);
@@ -436,6 +440,9 @@ static int parse_mf_equals(
 		return 1;
 	}else if(!strncmp(arg_substr, "visibility=", 11)){
 		set_default_visibility(argv0, arg_substr + 11);
+		return 1;
+	}else if(!strncmp(arg_substr, "debug-compilation-dir=", 22)){
+		debug_compilation_dir = arg_substr + 22;
 		return 1;
 	}
 
