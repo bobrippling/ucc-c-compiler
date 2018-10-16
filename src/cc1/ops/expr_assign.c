@@ -130,6 +130,8 @@ void fold_expr_assign(expr *e, symtable *stab)
 	 * if we assign to a volatile lvalue, we don't want the volatile-ness
 	 * to propagate, as we are now an rvalue, and don't want our value read
 	 * as we decay
+	 *
+	 * (see the same code in expr_assign_compound.c)
 	 */
 	e->tree_type = type_unqualify(e->lhs->tree_type);
 

@@ -27,4 +27,3 @@ f(volatile int x)
 	x;
 }
 #endif
-
