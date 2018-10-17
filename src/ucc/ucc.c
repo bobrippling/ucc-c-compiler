@@ -19,6 +19,7 @@
 #include "../util/platform.h"
 #include "../util/tmpfile.h"
 #include "../util/str.h"
+#include "../util/target.h"
 #include "str.h"
 #include "warning.h"
 
@@ -64,7 +65,7 @@ struct ucc
 
 	int syntax_only;
 	enum mode mode;
-	int help;
+	int help, dumpmachine;
 };
 
 static char **remove_these;
@@ -641,8 +642,12 @@ arg_ld:
 					/* don't pass to the assembler */
 					continue;
 
-				case 'M':
 				case 'd':
+					if(!strcmp(argv[i], "-dumpmachine")){
+						state->dumpmachine = 1;
+						continue;
+					}
+				case 'M':
 				case 'C': /* -C and -CC */
 					goto arg_cpp;
 
@@ -861,6 +866,7 @@ static void usage(void)
 	fprintf(stderr, "  -fuse-cpp=...: Specify a preprocessor executable to use\n");
 	fprintf(stderr, "  -time: Output time for each stage\n");
 	fprintf(stderr, "  -wrapper exe,arg1,...: Prefix stage commands with this executable and arguments\n");
+	fprintf(stderr, "  -dumpmachine: Display the current machine's detected target triple\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Input options\n");
 	fprintf(stderr, "  -xc: Treat input as C\n");
@@ -937,6 +943,15 @@ usage:
 		fprintf(stderr, "--- ucc ---\n");
 		usage();
 		return 2;
+	}
+	if(argstate.dumpmachine){
+		struct triple triple;
+		if(!triple_default(&triple)){
+			fprintf(stderr, "couldn't get target triple\n");
+			return 2;
+		}
+		printf("%s\n", triple_to_str(&triple));
+		return 0;
 	}
 
 	output_given = !!specvars.output;
