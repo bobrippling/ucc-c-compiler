@@ -30,7 +30,8 @@ Examples:
 
 #define TARGET_ARCHES \
 	X(ARCH, x86_64) \
-	X(ARCH, i386)
+	X(ARCH, i386)   \
+	ALIAS(ARCH, amd64, x86_64)
 
 #define TARGET_VENDORS \
 	X(VENDOR, pc) \
@@ -48,6 +49,7 @@ Examples:
 
 #define X(pre, post) pre ## _ ## post,
 #define X_ncmp(pre, post, n) X(pre, post)
+#define ALIAS(...)
 enum arch
 {
 	TARGET_ARCHES
@@ -69,6 +71,7 @@ enum abi
 };
 #undef X
 #undef X_ncmp
+#undef ALIAS
 
 struct triple
 {

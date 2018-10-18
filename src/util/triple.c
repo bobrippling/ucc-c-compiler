@@ -19,6 +19,12 @@
 		return 1;                 \
 	}
 
+#define ALIAS(pre, from, to) \
+	if(!strcmp(in, #from)){    \
+		*out = pre ## _ ## to;   \
+		return 1;                \
+	}
+
 static int parse_arch(const char *in, enum arch *out)
 {
 	TARGET_ARCHES
@@ -44,6 +50,7 @@ static int parse_abi(const char *in, enum abi *out)
 }
 #undef X
 #undef X_ncmp
+#undef ALIAS
 
 static enum vendor infer_vendor(enum sys sys)
 {
