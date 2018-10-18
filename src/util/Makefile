@@ -9,9 +9,6 @@ SRC = ${OBJ:.o=.c} ${OBJ_TEST:.o=.c}
 
 all: ${OBJ} tags check
 
-platform.o: \
-	CFLAGS += -DUCC_PLATFORM=PLATFORM_${ARCH}
-
 test: ${OBJ_TEST}
 	@echo link $@
 	$Q${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
