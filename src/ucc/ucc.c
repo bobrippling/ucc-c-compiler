@@ -767,6 +767,15 @@ word:
 						if(!*specpath)
 							goto missing_arg;
 					}
+					else if(!strcmp(argv[i], "-target")){
+						const char *target = argv[i + 1];
+						if(!target)
+							goto missing_arg;
+
+						ADD_ARG(mode_compile);
+						arg = argv[++i];
+						ADD_ARG(mode_compile);
+					}
 					else
 						break;
 
@@ -866,6 +875,7 @@ static void usage(void)
 	fprintf(stderr, "  -fuse-cpp=...: Specify a preprocessor executable to use\n");
 	fprintf(stderr, "  -time: Output time for each stage\n");
 	fprintf(stderr, "  -wrapper exe,arg1,...: Prefix stage commands with this executable and arguments\n");
+	fprintf(stderr, "  -target target: Compile as-if for the given target (specified as a partial target-triple)\n");
 	fprintf(stderr, "  -dumpmachine: Display the current machine's detected target triple\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Input options\n");
