@@ -214,6 +214,51 @@ static void macro_add_limits(void)
 #undef QUOTE_
 }
 
+static void add_platform_dependant_macros(void)
+{
+	int platform_win32 = 0;
+	if(platform_bigendian())
+		macro_add("__BYTE_ORDER__", "__ORDER_BIG_ENDIAN__", 0);
+	else
+		macro_add("__BYTE_ORDER__", "__ORDER_LITTLE_ENDIAN__", 0);
+
+	switch(platform_sys()){
+		case SYS_linux:
+			macro_add("__linux__", "1", 0);
+			break;
+
+		case SYS_darwin:
+			macro_add("__DARWIN__", "1", 0);
+			macro_add("__MACH__", "1", 0); /* TODO: proper detection for these */
+			macro_add("__APPLE__", "1", 0);
+			break;
+
+		case SYS_cygwin:
+			macro_add("__CYGWIN__", "1", 0);
+			platform_win32 = 1;
+			break;
+	}
+
+	macro_add("__WCHAR_TYPE__",
+			platform_win32 ? "short" : "int", 0);
+
+	macro_add_sprintf("__BIGGEST_ALIGNMENT__", "%u", platform_align_max());
+
+	switch(platform_type()){
+		case ARCH_x86_64:
+			macro_add("__LP64__", "1", 0);
+			macro_add("__x86_64__", "1", 0);
+			break;
+
+		case ARCH_i386:
+			macro_add("__i386__", "1", 0);
+			break;
+
+		/*case PLATFORM_mipsel_32:
+			macro_add("__MIPS__", "1", 0);*/
+	}
+}
+
 int main(int argc, char **argv)
 {
 	char *infname, *outfname, *depfname;
@@ -226,7 +271,6 @@ int main(int argc, char **argv)
 		DEPS = 1 << 4
 	} emit = PREPROCESSED;
 	int i;
-	int platform_win32 = 0;
 	int freestanding = 0;
 	int m32 = 0;
 	int offsetof_macro = 0;
@@ -244,34 +288,6 @@ int main(int argc, char **argv)
 		else
 			macro_add(initial_defs[i].nam, initial_defs[i].val, 0);
 	}
-
-	if(platform_bigendian())
-		macro_add("__BYTE_ORDER__", "__ORDER_BIG_ENDIAN__", 0);
-	else
-		macro_add("__BYTE_ORDER__", "__ORDER_LITTLE_ENDIAN__", 0);
-
-	switch(platform_sys()){
-#define MAP(t, s) case t: macro_add(s, "1", 0); break
-		MAP(PLATFORM_LINUX,   "__linux__");
-		MAP(PLATFORM_FREEBSD, "__FreeBSD__");
-#undef MAP
-
-		case PLATFORM_DARWIN:
-			macro_add("__DARWIN__", "1", 0);
-			macro_add("__MACH__", "1", 0); /* TODO: proper detection for these */
-			macro_add("__APPLE__", "1", 0);
-			break;
-
-		case PLATFORM_CYGWIN:
-			macro_add("__CYGWIN__", "1", 0);
-			platform_win32 = 1;
-			break;
-	}
-
-	macro_add("__WCHAR_TYPE__",
-			platform_win32 ? "short" : "int", 0);
-
-	macro_add_sprintf("__BIGGEST_ALIGNMENT__", "%u", platform_align_max());
 
 	set_current_fname(FNAME_CMDLINE);
 
@@ -484,19 +500,7 @@ defaul:
 		return 1;
 	}
 
-	switch(platform_type()){
-		case PLATFORM_x86_64:
-			if(m32){
-				macro_add("__i386__", "1", 0);
-			}else{
-				macro_add("__LP64__", "1", 0);
-				macro_add("__x86_64__", "1", 0);
-			}
-			break;
-
-		case PLATFORM_mipsel_32:
-			macro_add("__MIPS__", "1", 0);
-	}
+	add_platform_dependant_macros();
 
 	set_current_fname(FNAME_BUILTIN);
 
