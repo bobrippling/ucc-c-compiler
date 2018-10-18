@@ -31,10 +31,10 @@
 #include "../decl_init.h"
 #include "../pack.h"
 #include "../str.h"
+#include "../cc1_target.h"
+#include "../cc1_out.h"
 
 #include "../ops/expr_compound_lit.h"
-
-#include "../../config_as.h" /* weak directive */
 
 #define ASSERT_SCALAR(di)                  \
 	UCC_ASSERT(di->type == decl_init_scalar, \
@@ -48,13 +48,35 @@
 	if(INIT_DEBUG) fprintf(stderr, "\033[35m" s "\033[m\n", __VA_ARGS__); \
 }while(0)
 
-
 struct bitfield_val
 {
 	integral_t val;
 	unsigned offset;
 	unsigned width;
 };
+
+static void asm_switch_section(enum section_type t)
+{
+	const char *name;
+
+	if(t == cc1_current_section)
+		return;
+	cc1_current_section = t;
+
+	name = NULL;
+	switch(t){
+		case SECTION_TEXT: name = cc1_target_details.section_names.section_name_text; break;
+		case SECTION_DATA: name = cc1_target_details.section_names.section_name_data; break;
+		case SECTION_BSS: name = cc1_target_details.section_names.section_name_bss; break;
+		case SECTION_RODATA: name = cc1_target_details.section_names.section_name_rodata; break;
+		case SECTION_CTORS: name = cc1_target_details.section_names.section_name_ctors; break;
+		case SECTION_DTORS: name = cc1_target_details.section_names.section_name_dtors; break;
+		case SECTION_DBG_ABBREV: name = cc1_target_details.section_names.section_name_dbg_abbrev; break;
+		case SECTION_DBG_INFO: name = cc1_target_details.section_names.section_name_dbg_info; break;
+		case SECTION_DBG_LINE: name = cc1_target_details.section_names.section_name_dbg_line; break;
+	}
+	fprintf(cc1_out, ".section %s\n", name);
+}
 
 int asm_table_lookup(type *r)
 {
@@ -505,6 +527,7 @@ static void asm_out_align(enum section_type sec, unsigned align)
 
 void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align)
 {
+	asm_switch_section(sec);
 	asm_out_align(sec, align);
 	asm_out_section(sec, "%s:\n", lbl);
 }
@@ -544,7 +567,7 @@ void asm_predeclare_global(decl *d)
 
 void asm_predeclare_weak(decl *d)
 {
-	asm_predecl(ASM_WEAK_DIRECTIVE, d);
+	asm_predecl(cc1_target_details.as.directives.weak, d);
 }
 
 void asm_predeclare_visibility(decl *d, attribute *attr)
@@ -563,10 +586,10 @@ void asm_predeclare_visibility(decl *d, attribute *attr)
 		case VISIBILITY_DEFAULT:
 			break;
 		case VISIBILITY_HIDDEN:
-			asm_predecl(ASM_VISIBILITY_HIDDEN_DIRECTIVE, d);
+			asm_predecl(cc1_target_details.as.directives.visibility_hidden, d);
 			break;
 		case VISIBILITY_PROTECTED:
-			assert(AS_SUPPORTS_VISIBILITY_PROTECTED);
+			assert(cc1_target_details.as.supports_visibility_protected);
 			asm_predecl("protected", d);
 			break;
 	}
@@ -577,8 +600,11 @@ static void asm_declare_ctor_dtor(decl *d, enum section_type sec)
 	type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 	const char *directive = asm_type_directive(intptr_ty);
 
-	if(asm_section_empty(sec))
+	/*if(asm_section_empty(sec))
 		asm_out_align(sec, type_align(intptr_ty, NULL));
+
+		// should be aligned by the linker, the above should be a no-op
+	*/
 	asm_out_section(sec, ".%s %s\n", directive, decl_asm_spel(d));
 }
 
@@ -594,8 +620,6 @@ void asm_declare_destructor(decl *d)
 
 void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
 {
-	FILE *const f = cc_out[sec];
-
 	/* could be SECTION_RODATA */
 	asm_nam_begin3(sec, lit->lbl, /*align:*/1);
 
@@ -604,9 +628,9 @@ void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
 		{
 			const char *join = "";
 			size_t i;
-			fprintf(f, ".long ");
+			asm_out_section(sec, ".long ");
 			for(i = 0; i < lit->cstr->count; i++){
-				fprintf(f, "%s%d", join, lit->cstr->bits.wides[i]);
+				asm_out_section(sec, "%s%d", join, lit->cstr->bits.wides[i]);
 				join = ", ";
 			}
 			break;
@@ -616,13 +640,13 @@ void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
 			assert(0 && "raw string in code gen");
 
 		case CSTRING_ASCII:
-			fprintf(f, ".ascii \"");
-			literal_print(f, lit->cstr);
-			fputc('"', f);
+			asm_out_section(sec, ".ascii \"");
+			literal_print(cc1_out, lit->cstr);
+			fputc('"', cc1_out);
 			break;
 	}
 
-	fputc('\n', f);
+	asm_out_section(sec, "\n");
 }
 
 void asm_declare_decl_init(decl *d)
@@ -656,7 +680,7 @@ void asm_declare_decl_init(decl *d)
 		unsigned align;
 
 		if(decl_linkage(d) == linkage_internal){
-			if(AS_SUPPORTS_LOCAL_COMMON){
+			if(cc1_target_details.as.supports_local_common){
 				asm_out_section(sec, ".local %s\n", decl_asm_spel(d));
 			}else{
 				common_prefix = "zerofill __DATA,__bss,";
@@ -681,7 +705,8 @@ void asm_declare_decl_init(decl *d)
 
 void asm_out_sectionv(enum section_type t, const char *fmt, va_list l)
 {
-	vfprintf(cc_out[t], fmt, l);
+	asm_switch_section(t);
+	vfprintf(cc1_out, fmt, l);
 }
 
 void asm_out_section(enum section_type t, const char *fmt, ...)
@@ -690,9 +715,4 @@ void asm_out_section(enum section_type t, const char *fmt, ...)
 	va_start(l, fmt);
 	asm_out_sectionv(t, fmt, l);
 	va_end(l);
-}
-
-int asm_section_empty(enum section_type t)
-{
-	return ftell(cc_out[t]) == 0;
 }

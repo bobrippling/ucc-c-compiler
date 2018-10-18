@@ -11,23 +11,20 @@ enum section_type
 	SECTION_DTORS,
 	SECTION_DBG_ABBREV,
 	SECTION_DBG_INFO,
-	SECTION_DBG_LINE,
-	NUM_SECTIONS
+	SECTION_DBG_LINE
 };
 
-#define SECTION_BEGIN ASM_PLBL_PRE "section_begin_"
-#define SECTION_END   ASM_PLBL_PRE "section_end_"
-#define QUOTE_(...) #__VA_ARGS__
-#define QUOTE(y) QUOTE_(y)
-
-extern struct section
-{
-	const char *desc;
-	const char *name;
-} sections[];
-
-extern FILE *cc_out[NUM_SECTIONS];
-extern FILE *cc1_out;
+#define SECTION_BEGIN "section_begin_"
+#define SECTION_END   "section_end_"
+#define SECTION_DESC_TEXT "text"
+#define SECTION_DESC_DATA "data"
+#define SECTION_DESC_BSS "bss"
+#define SECTION_DESC_RODATA "rodata"
+#define SECTION_DESC_CTORS "ctors"
+#define SECTION_DESC_DTORS "dtors"
+#define SECTION_DESC_DBG_ABBREV "dbg_abbrev"
+#define SECTION_DESC_DBG_INFO "dbg_info"
+#define SECTION_DESC_DBG_LINE "dbg_line"
 
 void asm_out_section(enum section_type, const char *fmt, ...);
 void asm_out_sectionv(enum section_type t, const char *fmt, va_list l);

@@ -176,7 +176,7 @@ unsigned btype_align(const btype *t, const where *from)
 		case type_double:
 			if(IS_32_BIT()){
 				/* 8 on Win32, 4 on Linux32 */
-				if(platform_sys() == PLATFORM_CYGWIN)
+				if(platform_sys() == SYS_cygwin)
 					return 8;
 				return 4;
 			}

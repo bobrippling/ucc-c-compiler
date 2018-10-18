@@ -36,8 +36,8 @@
 #include "type_nav.h"
 #include "cc1_where.h"
 #include "fopt.h"
-
-#include "../config_as.h"
+#include "cc1_target.h"
+#include "cc1_out.h"
 
 static const char **system_includes;
 
@@ -68,8 +68,8 @@ static struct
 	{ 0, NULL, NULL }
 };
 
-FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
-FILE *cc1_out;                  /* final output */
+FILE *cc1_out;
+enum section_type cc1_current_section = -1;
 char *cc1_first_fname;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
@@ -87,23 +87,11 @@ enum c_std cc1_std = STD_C99;
 
 int cc1_error_limit = 16;
 
-static int caught_sig = 0;
-
 int show_current_line;
 
 struct cc1_fopt cc1_fopt;
 
-struct section sections[NUM_SECTIONS] = {
-	{ "text", QUOTE(SECTION_NAME_TEXT) },
-	{ "data", QUOTE(SECTION_NAME_DATA) },
-	{ "bss",  QUOTE(SECTION_NAME_BSS) },
-	{ "rodata", QUOTE(SECTION_NAME_RODATA) },
-	{ "ctors", QUOTE(SECTION_NAME_CTORS) },
-	{ "dtors", QUOTE(SECTION_NAME_DTORS) },
-	{ "dbg_abrv", QUOTE(SECTION_NAME_DBG_ABBREV) },
-	{ "dbg_info", QUOTE(SECTION_NAME_DBG_INFO) },
-	{ "dbg_line", QUOTE(SECTION_NAME_DBG_LINE) },
-};
+struct target_details cc1_target_details;
 
 static const char *debug_compilation_dir;
 
@@ -177,94 +165,14 @@ int where_in_sysheader(const where *w)
 	return w->is_sysh;
 }
 
-static void io_cleanup(void)
-{
-	int i;
-
-	if(caught_sig)
-		return;
-
-	for(i = 0; i < NUM_SECTIONS; i++){
-		if(!cc_out[i])
-			continue;
-
-		if(fclose(cc_out[i]) == EOF)
-			fprintf(stderr, "close tmpfile: %s\n", strerror(errno));
-	}
-}
-
-static void io_setup(void)
-{
-	int i;
-
-	if(!cc1_out)
-		cc1_out = stdout;
-
-	for(i = 0; i < NUM_SECTIONS; i++){
-		char *fname;
-		int fd = tmpfile_prefix_out("cc1_", &fname);
-
-		if(fd < 0)
-			ccdie("tmpfile(%s):", fname);
-
-		if(remove(fname) != 0)
-			fprintf(stderr, "remove %s: %s\n", fname, strerror(errno));
-
-		cc_out[i] = fdopen(fd, "w+"); /* need to seek */
-		assert(cc_out[i]);
-
-		free(fname);
-	}
-
-	atexit(io_cleanup);
-}
-
 static int should_emit_gnu_stack_note(void)
 {
-	return platform_sys() == PLATFORM_LINUX;
+	return platform_sys() == SYS_linux;
 }
 
-static void io_fin(int do_sections, const char *fname)
+static void io_fin(void)
 {
 	const int execstack = 0;
-	int i;
-
-	(void)fname;
-
-	for(i = 0; i < NUM_SECTIONS; i++){
-		/* cat cc_out[i] to cc1_out, with section headers */
-		int emit_this_section = 1;
-
-		if(cc1_gdebug && (i == SECTION_TEXT || i == SECTION_DBG_LINE)){
-			/* need .text for debug to reference */
-		}else if(asm_section_empty(i)){
-			emit_this_section = 0;
-		}
-
-		if(do_sections && emit_this_section){
-			char buf[256];
-			long last = ftell(cc_out[i]);
-
-			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
-				ccdie("seeking on section file %d:", i);
-
-			if(fprintf(cc1_out, ".section %s\n", sections[i].name) < 0
-			|| fprintf(cc1_out, "%s%s:\n", SECTION_BEGIN, sections[i].desc) < 0)
-			{
-				ccdie("write to cc1 output:");
-			}
-
-			while(fgets(buf, sizeof buf, cc_out[i]))
-				if(fputs(buf, cc1_out) == EOF)
-					ccdie("write to cc1 output:");
-
-			if(ferror(cc_out[i]))
-				ccdie("read from section file %d:", i);
-
-			if(fprintf(cc1_out, "%s%s:\n", SECTION_END, sections[i].desc) < 0)
-				ccdie("terminating section %d:", i);
-		}
-	}
 
 	if(should_emit_gnu_stack_note()
 	&& fprintf(cc1_out,
@@ -276,13 +184,6 @@ static void io_fin(int do_sections, const char *fname)
 
 	if(fclose(cc1_out))
 		ccdie("close cc1 output");
-}
-
-static void sigh(int sig)
-{
-	(void)sig;
-	caught_sig = 1;
-	io_cleanup();
 }
 
 static char *next_line(void)
@@ -348,7 +249,7 @@ static void gen_backend(symtable_global *globs, const char *fname)
 			if(compdir != buf && compdir != debug_compilation_dir)
 				free(compdir);
 
-			io_fin(gf == NULL, fname);
+			io_fin();
 			break;
 		}
 	}
@@ -453,7 +354,7 @@ static void set_sanitize_error(const char *argv0, const char *handler)
 
 static void set_default_visibility(const char *argv0, const char *visibility)
 {
-	if(!visibility_parse(&cc1_visibility_default, visibility)){
+	if(!visibility_parse(&cc1_visibility_default, visibility, cc1_target_details.as.supports_visibility_protected)){
 		fprintf(stderr, "%s: unknown/unsupported visibility \"%s\"\n", argv0, visibility);
 		exit(1);
 	}
@@ -574,26 +475,42 @@ unknown:
 	usage(argv0, "unrecognised warning/feature/machine option \"%s\"\n", argument);
 }
 
+static int init_target(const char *target)
+{
+	struct triple triple;
+
+	if(target){
+		const char *bad;
+		if(!triple_parse(target, &triple, &bad)){
+			fprintf(stderr, "Couldn't parse triple: %s\n", bad);
+			return 0;
+		}
+	}else{
+		if(!triple_default(&triple)){
+			fprintf(stderr, "couldn't get target triple\n");
+			return 0;
+		}
+	}
+
+	platform_init(triple.arch, triple.sys);
+	target_details_from_triple(&triple, &cc1_target_details);
+
+	return 1;
+}
+
 int main(int argc, char **argv)
 {
 	int failure;
 	where loc_start;
 	static symtable_global *globs;
-	const char *fname;
+	const char *fname = NULL;
+	const char *target = NULL;
 	int i;
 	int werror = 0;
 	dynmap *unknown_warnings = dynmap_new(char *, strcmp, dynmap_strhash);
 
-	/*signal(SIGINT , sigh);*/
-	signal(SIGQUIT, sigh);
-	signal(SIGTERM, sigh);
-	signal(SIGABRT, sigh);
-	signal(SIGSEGV, sigh);
-
-	fname = NULL;
-
 	/* defaults */
-	cc1_mstack_align = log2i(platform_word_size());
+	cc1_mstack_align = -1;
 	warning_init();
 	fopt_default(&cc1_fopt);
 
@@ -679,6 +596,13 @@ int main(int argc, char **argv)
 			if(optimise(*argv, argv[i] + 2))
 				exit(1);
 
+		}else if(!strcmp(argv[i], "-target")){
+			i++;
+			if(!argv[i]){
+				usage(argv[0], "-target requires an argument");
+			}
+			target = argv[i];
+
 		}else if(!strcmp(argv[i], "--help")){
 			dump_options();
 			usage(argv[0], "");
@@ -690,13 +614,17 @@ int main(int argc, char **argv)
 		}
 	}
 
-	/* sanity checks */
-	{
-		const unsigned new = powf(2, cc1_mstack_align);
-		if(new < platform_word_size())
+	if(!init_target(target))
+		return 1;
+
+	if(cc1_mstack_align == -1){
+		cc1_mstack_align = log2i(platform_word_size());
+	}else{
+		unsigned new = powf(2, cc1_mstack_align);
+		if(new < platform_word_size()){
 			ccdie("stack alignment must be >= platform word size (2^%d)",
 					log2i(platform_word_size()));
-
+		}
 		cc1_mstack_align = new;
 	}
 
@@ -711,10 +639,9 @@ int main(int argc, char **argv)
 	if(cc1_fopt.pie){
 		/* -fpie/PIE implies -fpic/PIC and __attribute__((visibility("protected"))) for all symbols */
 		cc1_fopt.pic = 1;
-		if(AS_SUPPORTS_VISIBILITY_PROTECTED)
+		if(cc1_target_details.as.supports_visibility_protected)
 			cc1_visibility_default = VISIBILITY_PROTECTED;
 	}
-
 
 	if(fname && strcmp(fname, "-")){
 		infile = fopen(fname, "r");
@@ -725,7 +652,8 @@ int main(int argc, char **argv)
 		fname = "-";
 	}
 
-	io_setup();
+	if(!cc1_out)
+		cc1_out = stdout;
 
 	show_current_line = cc1_fopt.show_line;
 

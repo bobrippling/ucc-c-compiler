@@ -6,7 +6,7 @@
 #include "../../util/util.h"
 #include "common.h"
 #include "lbl.h"
-#include "../../config_as.h"
+#include "../cc1_target.h"
 
 static int label_last    = 1,
 					 str_last      = 1,
@@ -18,7 +18,7 @@ static int label_last    = 1,
 char *out_label_bblock(unsigned long n)
 {
 	char *buf = umalloc(16);
-	SNPRINTF(buf, 16, ASM_PLBL_PRE "blk.%lu", (unsigned long)n);
+	SNPRINTF(buf, 16, "%sblk.%lu", cc1_target_details.as.privatelbl_prefix, (unsigned long)n);
 	return buf;
 }
 
@@ -43,7 +43,7 @@ char *out_label_code(const char *fmt)
 	len = strlen(fmt) + 10;
 	ret = umalloc(len + 1);
 
-	SNPRINTF(ret, len, ASM_PLBL_PRE "%s.%d", fmt, label_last++);
+	SNPRINTF(ret, len, "%s%s.%d", cc1_target_details.as.privatelbl_prefix, fmt, label_last++);
 
 	return ret;
 }
@@ -79,7 +79,7 @@ char *out_label_goto(char *func, char *lbl)
 {
 	int len = strlen(func) + strlen(lbl) + 6;
 	char *ret = umalloc(len);
-	SNPRINTF(ret, len, ASM_PLBL_PRE "%s.%s", func, lbl);
+	SNPRINTF(ret, len, "%s%s.%s", cc1_target_details.as.privatelbl_prefix, func, lbl);
 	return ret;
 }
 
@@ -89,7 +89,7 @@ char *out_label_case(enum out_label_type lbltype, int val)
 	char *ret = umalloc(len = 15 + 32);
 	switch(lbltype){
 		case CASE_DEF:
-			SNPRINTF(ret, len, ASM_PLBL_PRE "case_%d_default", switch_last);
+			SNPRINTF(ret, len, "%scase_%d_default", cc1_target_details.as.privatelbl_prefix, switch_last);
 			break;
 
 		case CASE_CASE:
@@ -100,7 +100,7 @@ char *out_label_case(enum out_label_type lbltype, int val)
 				val = -val;
 				extra = "m";
 			}
-			SNPRINTF(ret, len, ASM_PLBL_PRE "case%s_%d_%s%d", lbltype == CASE_RANGE ? "_rng" : "", switch_last, extra, val);
+			SNPRINTF(ret, len, "%scase%s_%d_%s%d", lbltype == CASE_RANGE ? "_rng" : "", cc1_target_details.as.privatelbl_prefix, switch_last, extra, val);
 			break;
 		}
 	}
@@ -113,11 +113,11 @@ char *out_label_flow(const char *fmt)
 {
 	int len = 16 + strlen(fmt);
 	char *ret = umalloc(len);
-	SNPRINTF(ret, len, ASM_PLBL_PRE "flow_%s_%d", fmt, flow_last++);
+	SNPRINTF(ret, len, "%sflow_%s_%d", cc1_target_details.as.privatelbl_prefix, fmt, flow_last++);
 	return ret;
 }
 
 char *out_dbg_func_end(const char *fn)
 {
-	return ustrprintf(ASM_PLBL_PRE "funcend_%s", fn);
+	return ustrprintf("%sfuncend_%s", cc1_target_details.as.privatelbl_prefix, fn);
 }

@@ -363,7 +363,7 @@ static void fold_calling_conv(type *r)
 				def_conv = conv_cdecl;
 			}else{
 				/* 64-bit - MS or SYSV */
-				if(platform_sys() == PLATFORM_CYGWIN)
+				if(platform_sys() == SYS_cygwin)
 					def_conv = conv_x64_ms;
 				else
 					def_conv = conv_x64_sysv;

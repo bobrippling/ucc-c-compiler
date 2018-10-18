@@ -4,6 +4,7 @@
 #include "../../util/compiler.h"
 #include "forwards.h"
 #include "dbg.h"
+#include "asm.h"
 
 enum p_opts
 {
