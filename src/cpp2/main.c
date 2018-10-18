@@ -259,6 +259,27 @@ static void add_platform_dependant_macros(void)
 	}
 }
 
+static int init_target(const char *target)
+{
+	struct triple triple;
+
+	if(target){
+		const char *bad;
+		if(!triple_parse(target, &triple, &bad)){
+			fprintf(stderr, "Couldn't parse triple: %s\n", bad);
+			return 0;
+		}
+	}else{
+		if(!triple_default(&triple)){
+			fprintf(stderr, "couldn't get target triple\n");
+			return 0;
+		}
+	}
+
+	platform_init(triple.arch, triple.sys);
+	return 1;
+}
+
 int main(int argc, char **argv)
 {
 	char *infname, *outfname, *depfname;
@@ -274,6 +295,7 @@ int main(int argc, char **argv)
 	int freestanding = 0;
 	int m32 = 0;
 	int offsetof_macro = 0;
+	const char *target = NULL;
 
 	infname = outfname = depfname = NULL;
 
@@ -486,6 +508,13 @@ defaul:
 					option_trigraphs = 1;
 				}else if(!strcmp(argv[i], "-digraphs")){
 					option_digraphs = 1;
+				}else if(!strcmp(argv[i], "-target")){
+					i++;
+					if(!argv[i]){
+						fprintf(stderr, "-target requires an argument\n");
+						goto usage;
+					}
+					target = argv[i];
 				}else{
 					fprintf(stderr, "unrecognised option \"%s\"\n", argv[i]);
 					goto usage;
@@ -499,6 +528,9 @@ defaul:
 		fprintf(stderr, "%s: -MG requires -MM\n", *argv);
 		return 1;
 	}
+
+	if(!init_target(target))
+		return 1;
 
 	add_platform_dependant_macros();
 
