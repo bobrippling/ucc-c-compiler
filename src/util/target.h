@@ -28,31 +28,47 @@ Examples:
 
 */
 
+#define TARGET_ARCHES \
+	X(ARCH, x86_64) \
+	X(ARCH, i386)
+
+#define TARGET_VENDORS \
+	X(VENDOR, pc) \
+	X(VENDOR, apple)
+
+#define TARGET_SYSES \
+	X(SYS, linux) \
+	X_ncmp(SYS, darwin, 6) \
+	X_ncmp(SYS, cygwin, 6)
+
+#define TARGET_ABIS \
+	X(ABI, gnu) \
+	X(ABI, macho) \
+	X(ABI, elf)
+
+#define X(pre, post) pre ## _ ## post,
+#define X_ncmp(pre, post, n) X(pre, post)
 enum arch
 {
-	ARCH_x86_64,
-	ARCH_i386,
+	TARGET_ARCHES
 };
 
 enum vendor
 {
-	VENDOR_pc,
-	VENDOR_apple,
+	TARGET_VENDORS
 };
 
 enum sys
 {
-	SYS_linux,
-	SYS_darwin,
-	SYS_cygwin,
+	TARGET_SYSES
 };
 
 enum abi
 {
-	ABI_gnu,
-	ABI_macho,
-	ABI_elf,
+	TARGET_ABIS
 };
+#undef X
+#undef X_ncmp
 
 struct triple
 {

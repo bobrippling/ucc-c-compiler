@@ -7,61 +7,43 @@
 #include "target.h"
 #include "alloc.h"
 
-static int parse_arch(const char *arch, enum arch *out)
+#define X(pre, post)         \
+	if(!strcmp(in, #post)){    \
+		*out = pre ## _ ## post; \
+		return 1;                \
+	}
+
+#define X_ncmp(pre, post, n)  \
+	if(!strncmp(in, #post, n)){ \
+		*out = pre ## _ ## post;  \
+		return 1;                 \
+	}
+
+static int parse_arch(const char *in, enum arch *out)
 {
-	if(!strcmp(arch, "x86_64")){
-		*out = ARCH_x86_64;
-		return 1;
-	}
-	if(!strcmp(arch, "i386")){
-		*out = ARCH_i386;
-		return 1;
-	}
+	TARGET_ARCHES
 	return 0;
 }
 
-static int parse_vendor(const char *vendor, enum vendor *out)
+static int parse_vendor(const char *in, enum vendor *out)
 {
-	if(!strcmp(vendor, "pc")){
-		*out = VENDOR_pc;
-		return 1;
-	}
-	if(!strcmp(vendor, "apple")){
-		*out = VENDOR_apple;
-		return 1;
-	}
+	TARGET_VENDORS
 	return 0;
 }
 
-static int parse_sys(const char *sys, enum sys *out)
+static int parse_sys(const char *in, enum sys *out)
 {
-	if(!strcmp(sys, "linux")){
-		*out = SYS_linux;
-		return 1;
-	}
-	if(!strncmp(sys, "darwin", 6)){
-		*out = SYS_darwin;
-		return 1;
-	}
+	TARGET_SYSES
 	return 0;
 }
 
-static int parse_abi(const char *abi, enum abi *out)
+static int parse_abi(const char *in, enum abi *out)
 {
-	if(!strcmp(abi, "gnu")){
-		*out = ABI_gnu;
-		return 1;
-	}
-	if(!strcmp(abi, "macho")){
-		*out = ABI_macho;
-		return 1;
-	}
-	if(!strcmp(abi, "elf")){
-		*out = ABI_elf;
-		return 1;
-	}
+	TARGET_ABIS
 	return 0;
 }
+#undef X
+#undef X_ncmp
 
 static enum vendor infer_vendor(enum sys sys)
 {
