@@ -2,7 +2,7 @@
 #define PLATFORM_H
 
 #include "compiler.h"
-#include "target.h"
+#include "triple.h"
 
 enum arch platform_type(void);
 enum sys platform_sys(void);

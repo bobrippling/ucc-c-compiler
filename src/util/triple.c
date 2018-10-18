@@ -4,7 +4,7 @@
 
 #include <sys/utsname.h>
 
-#include "target.h"
+#include "triple.h"
 #include "alloc.h"
 
 #define X(pre, post)         \

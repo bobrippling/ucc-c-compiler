@@ -19,7 +19,7 @@
 #include "../util/platform.h"
 #include "../util/tmpfile.h"
 #include "../util/str.h"
-#include "../util/target.h"
+#include "../util/triple.h"
 #include "str.h"
 #include "warning.h"
 
