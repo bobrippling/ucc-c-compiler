@@ -20,6 +20,7 @@ void fopt_default(struct cc1_fopt *opt)
 	opt->integral_float_load = 1;
 	opt->pic = 1;
 	opt->plt = 1;
+	opt->semantic_interposition = 1; /* default to -fsemantic-interposition to match gcc */
 	opt->symbol_arith = 1;
 	opt->thread_jumps = 1;
 }

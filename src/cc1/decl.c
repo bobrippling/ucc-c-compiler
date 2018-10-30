@@ -10,6 +10,7 @@
 #include "../util/dynarray.h"
 
 #include "cc1_where.h"
+#include "fopt.h"
 
 #include "macros.h"
 #include "sue.h"
@@ -383,4 +384,67 @@ int decl_is_bitfield(decl *d)
 		return 0;
 
 	return !!d->bits.var.field_width;
+}
+
+int decl_interposable(decl *d)
+{
+	/*
+	 * 1: Match gcc's -fsemantic-interposition default, where:
+	 *
+	 * -fpic -fpie -fsemantic-interposition function-visibility  |  can-inline-non-static function?
+	 *   0     0              0                 default                     yes (-fno-pic)
+	 *   0     0              1                 default                     yes (-fno-pic)
+	 *   0     1              0                 default                     yes (-fno-pic)
+	 *   0     1              1                 default                     yes (-fno-pic)
+	 *   0     0              0             protected/hidden                yes (-fno-pic)
+	 *   0     0              1             protected/hidden                yes (-fno-pic)
+	 *   0     1              0             protected/hidden                yes (-fno-pic)
+	 *   0     1              1             protected/hidden                yes (-fno-pic)
+	 *
+	 *   1     1              1             protected/hidden                yes (-fvisibility=protected/hidden)
+	 *   1     1              0             protected/hidden                yes (-fvisibility=protected/hidden)
+	 *   1     0              1             protected/hidden                yes (-fvisibility=protected/hidden)
+	 *   1     0              0             protected/hidden                yes (-fvisibility=protected/hidden)
+	 *
+	 *   1     1              1                 default                     yes (-fpie)
+	 *   1     1              0                 default                     yes (-fpie)
+	 *   1     0              1                 default                     no
+	 *   1     0              0                 default                     yes (-fno-semantic-interposition)
+	 *
+	 * -fno-pic: -fsemantic-interposition and -fvisibility=... have no effect
+	 *
+	 * -fpic:    We can inline non-static, default-visibility functions when
+	 *           -fno-semantic-interposition is set otherwise, the ELF abi says a
+	 *           non-static default-visibility function may be overridden.
+	 */
+
+	attribute *visibility;
+
+	if(!cc1_fopt.pic)
+		return 0; /* not compiling for interposable shared library */
+
+	if(cc1_fopt.fpie)
+		return 0; /* pie, this is the main program, can't have its symbols interposed */
+
+	switch(decl_linkage(d)){
+		case linkage_internal:
+		case linkage_none:
+			return 0; /* static decl, fixed */
+		case linkage_external:
+			break;
+	}
+
+	visibility = attribute_present(d, attr_visibility);
+	if(visibility){
+		switch(visibility->bits.visibility){
+			case VISIBILITY_DEFAULT:
+				break;
+			case VISIBILITY_PROTECTED:
+				return 0; /* symbol visible, but not interposable by contract */
+			case VISIBILITY_HIDDEN:
+				return 0; /* symbol not visible, so not interposable */
+		}
+	}
+
+	return cc1_fopt.semantic_interposition;
 }
