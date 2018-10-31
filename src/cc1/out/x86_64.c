@@ -1711,6 +1711,11 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		}
 
 		if(cc1_fopt.pic){
+			/* pic mode - can't have direct memory references in add, etc
+			 * e.g. addl $a, %eax
+			 *
+			 * This could be fixed by emitting addl a@GOTPCREL(%rip), %eax further down
+			 */
 			l = v_to(octx, l, TO_REG);
 			r = v_to(octx, r, TO_REG | TO_CONST);
 		}
