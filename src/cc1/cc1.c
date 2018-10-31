@@ -156,10 +156,14 @@ static void dump_options(void)
 #define X(flag, memb) fprintf(stderr, "  -f[no-]" flag "\n");
 #define ALIAS X
 #define INVERT X
+#define EXCLUSIVE(flag, name, excl) X(flag, name)
+#define ALIAS_EXCLUSIVE(flag, name, excl) X(flag, name)
 #include "fopts.h"
 #undef X
 #undef ALIAS
 #undef INVERT
+#undef EXCLUSIVE
+#undef ALIAS_EXCLUSIVE
 
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Machine options\n");
