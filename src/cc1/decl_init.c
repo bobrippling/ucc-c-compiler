@@ -524,6 +524,19 @@ static void range_store_add(
 	free(offsets);
 }
 
+static void warn_if_replacing_with_sideeffects(decl_init *replacing, decl_init *with)
+{
+	if(!replacing || replacing == DYNARRAY_NULL)
+		return;
+
+	if(!decl_init_has_sideeffects(replacing))
+		return;
+
+	if(cc1_warn_at(&with->where, initialiser_overrides, "initialiser with side-effects overwritten")){
+		note_at(&replacing->where, "overwritten initialiser here");
+	}
+}
+
 static decl_init **decl_init_brace_up_array2(
 		decl_init **current, struct init_cpy ***range_store,
 		init_iter *iter,
@@ -587,13 +600,14 @@ static decl_init **decl_init_brace_up_array2(
 		}
 
 		{
-			decl_init *replacing = NULL, *replace_save = NULL;
+			decl_init *replacing = NULL, *replaced = NULL, *replace_save = NULL;
 			unsigned replace_idx;
 			decl_init *braced;
 			int partial_replace = 0;
 
 			if(i < n && current[i] != DYNARRAY_NULL){
 				replacing = current[i]; /* replacing object `i' */
+				replaced = replacing;
 
 				/* we can't designate sub parts of a [x ... y] subobject yet,
 				 * as this requires being able to copy the init from x to y,
@@ -648,6 +662,9 @@ static decl_init **decl_init_brace_up_array2(
 			braced = decl_init_brace_up_r(replacing, iter, next_type, stab);
 
 			dynarray_padinsert(&current, i, &n, braced);
+
+			if(replaced)
+				warn_if_replacing_with_sideeffects(replaced, braced);
 
 			if(i < j){ /* then we have a range to copy */
 				const size_t copy_idx = dynarray_count(*range_store);
@@ -875,6 +892,8 @@ static decl_init **decl_init_brace_up_sue2(
 								(aggregate_brace_f *)&decl_init_brace_up_sue2, in,
 								/*anon:*/1);
 
+						warn_if_replacing_with_sideeffects(replacing, braced_sub);
+
 						found = 1;
 					}
 				}
@@ -947,6 +966,8 @@ static decl_init **decl_init_brace_up_sue2(
 						replacing, iter,
 						d_mem->ref, stab);
 			}
+
+			warn_if_replacing_with_sideeffects(replacing, braced_sub);
 
 			init_debug("done sue member %s\n", d_mem->spel);
 
