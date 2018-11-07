@@ -150,11 +150,17 @@ const out_val *gen_expr_style_compound_lit(const expr *e, out_ctx *octx)
 	UNUSED_OCTX();
 }
 
+static int expr_compound_lit_has_sideeffects(const expr *e)
+{
+	return decl_init_has_sideeffects(expr_comp_lit_init(e));
+}
+
 void mutate_expr_compound_lit(expr *e)
 {
 	/* unconditionally an lvalue */
 	e->f_islval = expr_is_lval_always;
 	e->f_const_fold = const_expr_compound_lit;
+	e->f_has_sideeffects = expr_compound_lit_has_sideeffects;
 }
 
 static decl *compound_lit_decl(type *t, decl_init *init)

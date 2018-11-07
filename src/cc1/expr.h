@@ -24,6 +24,7 @@ typedef void func_const(struct expr *, consty *);
 typedef const char *func_str(void);
 typedef void func_mutate_expr(struct expr *);
 typedef enum lvalue_kind func_is_lval(struct expr *);
+typedef int func_bool(const struct expr *);
 
 typedef ucc_wur const out_val *func_gen(const struct expr *, out_ctx *);
 
@@ -41,6 +42,7 @@ struct expr
 	func_gen *f_gen;
 	func_dump *f_dump;
 	func_str *f_str;
+	func_bool *f_has_sideeffects; /* optional */
 
 	func_const *f_const_fold; /* optional, used in static/global init */
 
@@ -273,6 +275,8 @@ enum lvalue_kind expr_is_lval_always(expr *);
 enum lvalue_kind expr_is_lval_struct(expr *);
 
 int expr_is_struct_bitfield(const expr *); /* a->b where b is bitfield */
+func_bool expr_has_sideeffects;
+func_bool expr_bool_always;
 
 void expr_set_const(expr *, consty *);
 

@@ -244,10 +244,16 @@ static enum lvalue_kind struct_is_lval(expr *e)
 	}
 }
 
+static int expr_struct_has_sideeffects(const expr *e)
+{
+	return expr_has_sideeffects(e->lhs);
+}
+
 void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
 	e->f_islval = struct_is_lval;
+	e->f_has_sideeffects = expr_struct_has_sideeffects;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;

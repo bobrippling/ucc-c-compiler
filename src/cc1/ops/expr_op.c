@@ -1332,9 +1332,15 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 	return eval;
 }
 
+static int expr_op_has_sideeffects(const expr *e)
+{
+	return expr_has_sideeffects(e->lhs) || (e->rhs && expr_has_sideeffects(e->rhs));
+}
+
 void mutate_expr_op(expr *e)
 {
 	e->f_const_fold = fold_const_expr_op;
+	e->f_has_sideeffects = expr_op_has_sideeffects;
 }
 
 expr *expr_new_op(enum op_type op)

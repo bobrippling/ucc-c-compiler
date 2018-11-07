@@ -77,7 +77,7 @@ void dump_expr_stmt(const expr *e, dump *ctx)
 
 void mutate_expr_stmt(expr *e)
 {
-	(void)e;
+	e->f_has_sideeffects = expr_bool_always;
 }
 
 expr *expr_new_stmt(stmt *code)

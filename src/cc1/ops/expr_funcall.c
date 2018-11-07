@@ -518,7 +518,7 @@ void dump_expr_funcall(const expr *e, dump *ctx)
 
 void mutate_expr_funcall(expr *e)
 {
-	(void)e;
+	e->f_has_sideeffects = expr_bool_always;
 }
 
 int expr_func_passable(expr *e)
