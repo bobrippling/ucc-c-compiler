@@ -201,6 +201,8 @@ void dump_stmt(stmt *s, dump *ctx)
 
 void dump_init(dump *ctx, decl_init *dinit)
 {
+	const int sideeffects = decl_init_has_sideeffects(dinit);
+
 	if(dinit == DYNARRAY_NULL){
 		dump_printf(ctx, "<null init>\n");
 		return;
@@ -210,14 +212,21 @@ void dump_init(dump *ctx, decl_init *dinit)
 		case decl_init_scalar:
 		{
 			dump_expr(dinit->bits.expr, ctx);
+			if(sideeffects){
+				dump_inc(ctx);
+				dump_desc(ctx, "(side effects)", dinit, &dinit->where);
+				dump_dec(ctx);
+			}
 			break;
 		}
 
 		case decl_init_brace:
 		{
 			decl_init **i;
+			char desc[32];
 
-			dump_desc(ctx, "brace init", dinit, &dinit->where);
+			snprintf(desc, sizeof(desc), "brace init%s", sideeffects ? " (side effects)" : "");
+			dump_desc(ctx, desc, dinit, &dinit->where);
 
 			dump_inc(ctx);
 

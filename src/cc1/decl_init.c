@@ -283,6 +283,33 @@ int decl_init_is_zero(decl_init *dinit)
 	return -1;
 }
 
+int decl_init_has_sideeffects(decl_init *dinit)
+{
+	DINIT_NULL_CHECK(dinit, return 0);
+
+	switch(dinit->type){
+		case decl_init_scalar:
+			return expr_has_sideeffects(dinit->bits.expr);
+
+		case decl_init_brace:
+		{
+			decl_init **i;
+
+			for(i = dinit->bits.ar.inits; i && *i; i++)
+				if(decl_init_has_sideeffects(*i))
+					return 1;
+
+			return 0;
+		}
+
+		case decl_init_copy:
+		{
+			struct init_cpy *cpy = *dinit->bits.range_copy;
+			return decl_init_has_sideeffects(cpy->range_init);
+		}
+	}
+}
+
 decl_init *decl_init_new_w(enum decl_init_type t, where *w)
 {
 	decl_init *di = umalloc(sizeof *di);

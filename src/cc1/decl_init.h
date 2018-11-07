@@ -69,6 +69,7 @@ int decl_init_is_const(
 		struct type *expected, struct expr **nonstd, struct expr **nonconst);
 
 int decl_init_is_zero(decl_init *dinit);
+int decl_init_has_sideeffects(decl_init *dinit);
 
 struct struct_union_enum_st;
 struct expr *decl_init_is_struct_copy(
