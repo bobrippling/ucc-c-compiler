@@ -42,11 +42,10 @@ struct expr
 	func_gen *f_gen;
 	func_dump *f_dump;
 	func_str *f_str;
+	func_is_lval *f_islval;
 	func_bool *f_has_sideeffects; /* optional */
 
 	func_const *f_const_fold; /* optional, used in static/global init */
-
-	func_is_lval *f_islval; /* optional */
 
 	int freestanding; /* e.g. 1; needs use, whereas x(); doesn't - freestanding */
 	struct
@@ -202,13 +201,21 @@ struct expr
 
 
 expr *expr_new(
-		func_mutate_expr *, func_fold *, func_str *,
-		func_gen *, func_dump *, func_gen *);
+		func_mutate_expr *,
+		func_fold *,
+		func_str *,
+		func_gen *,
+		func_dump *,
+		func_gen *);
 
 void expr_mutate(
 		expr *,
-		func_mutate_expr *, func_fold *, func_str *,
-		func_gen *, func_dump *, func_gen *);
+		func_mutate_expr *,
+		func_fold *,
+		func_str *,
+		func_gen *,
+		func_dump *,
+		func_gen *);
 
 /* sets e->where */
 expr *expr_set_where(expr *, where const *);
@@ -269,12 +276,12 @@ enum null_strictness
 
 int expr_is_null_ptr(expr *, enum null_strictness);
 
-enum lvalue_kind expr_is_lval(expr *e);
+func_is_lval expr_is_lval;
+func_is_lval expr_is_lval_always;
+func_is_lval expr_is_lval_struct;
 
-enum lvalue_kind expr_is_lval_always(expr *);
-enum lvalue_kind expr_is_lval_struct(expr *);
+func_bool expr_is_struct_bitfield; /* a->b where b is bitfield */
 
-int expr_is_struct_bitfield(const expr *); /* a->b where b is bitfield */
 func_bool expr_has_sideeffects;
 func_bool expr_bool_always;
 
