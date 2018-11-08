@@ -194,15 +194,9 @@ void dump_expr_sizeof(const expr *e, dump *ctx)
 	}
 }
 
-static int expr_sizeof_has_sideeffects(const expr *e)
-{
-	return NEED_RUNTIME_SIZEOF(SIZEOF_WHAT(e));
-}
-
 void mutate_expr_sizeof(expr *e)
 {
 	e->f_const_fold = const_expr_sizeof;
-	e->f_has_sideeffects = expr_sizeof_has_sideeffects;
 	e->bits.size_of.vm = NULL;
 }
 
