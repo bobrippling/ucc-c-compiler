@@ -505,8 +505,7 @@ static void parse_argv(
 								binpath_cpp = arg + 1;
 								break;
 							default:
-								die("%s: -fuse-cpp should have no argument, or \"=path/to/cpp\"\n",
-										argv[0]);
+								die("-fuse-cpp should have no argument, or \"=path/to/cpp\"");
 						}
 						continue;
 					}
