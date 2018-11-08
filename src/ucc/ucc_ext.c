@@ -216,6 +216,9 @@ void rename_or_move(char *old, char *new)
 	};
 	char *fixed[3];
 
+	if(!strcmp(old, new))
+		return;
+
 	for(i = 0, len = 1; args[i]; i++)
 		len += strlen(args[i]) + 1; /* space */
 
