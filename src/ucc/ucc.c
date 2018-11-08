@@ -559,6 +559,9 @@ static void parse_argv(
 						continue;
 					}
 
+					if(!strncmp(argv[i], "-fsystem-cpp", 12))
+						die("-fsystem-cpp has been removed, use -fuse-cpp[=path/to/cpp] instead");
+
 					/* pass the rest onto cc1 */
 					ADD_ARG(mode_compile);
 					continue;
