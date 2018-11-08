@@ -676,6 +676,14 @@ static void fold_func_attr(decl *d, symtable *stab)
 
 	fold_ctor_dtor(d, stab, attr_constructor, "constructor");
 	fold_ctor_dtor(d, stab, attr_destructor, "destructor");
+
+	/* copy calling convention from decl/type to funcargs */
+	if((da = attribute_present(d, attr_call_conv))){
+		assert(type_is_func_or_block(d->ref));
+
+		/* this is safe - each function decl has its own funcargs */
+		type_funcargs(d->ref)->conv = da->bits.conv;
+	}
 }
 
 static void fold_check_enum_bitfield(
