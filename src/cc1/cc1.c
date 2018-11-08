@@ -275,7 +275,7 @@ static void io_fin(int do_sections, const char *fname)
 	}
 
 	if(fclose(cc1_out))
-		ccdie("close cc1 output");
+		ccdie("close cc1 output:");
 }
 
 static void sigh(int sig)
