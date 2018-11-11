@@ -62,6 +62,7 @@ struct ucc
 	char **includes;
 	char *backend;
 	const char **isystems;
+	const char *target;
 
 	int syntax_only;
 	enum mode mode;
@@ -768,8 +769,8 @@ word:
 							goto missing_arg;
 					}
 					else if(!strcmp(argv[i], "-target")){
-						const char *target = argv[i + 1];
-						if(!target)
+						state->target = argv[i + 1];
+						if(!state->target)
 							goto missing_arg;
 
 						ADD_ARG(mode_compile);
@@ -956,10 +957,20 @@ usage:
 	}
 	if(argstate.dumpmachine){
 		struct triple triple;
-		if(!triple_default(&triple)){
-			fprintf(stderr, "couldn't get target triple\n");
-			return 2;
+
+		if(argstate.target){
+			const char *bad;
+			if(!triple_parse(argstate.target, &triple, &bad)){
+				fprintf(stderr, "couldn't parse target triple: %s\n", bad);
+				return 1;
+			}
+		}else{
+			if(!triple_default(&triple)){
+				fprintf(stderr, "couldn't get target triple\n");
+				return 1;
+			}
 		}
+
 		printf("%s\n", triple_to_str(&triple));
 		return 0;
 	}
