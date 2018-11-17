@@ -84,9 +84,15 @@ static char *spec_interpolate(char *line, const struct specvars *vars)
 	while((percent = strstr(line + anchor, "%{"))){
 		char *close, *colon;
 		char *varname = percent + 2;
+		int wanted_value = 1;
 		const char *replacewith = NULL;
 
 		anchor = (percent - line);
+
+		if(*varname == '!'){
+			wanted_value = 0;
+			varname++;
+		}
 
 		close = nested_close_curly(varname);
 		if(!close){
@@ -104,7 +110,7 @@ static char *spec_interpolate(char *line, const struct specvars *vars)
 			*colon = '\0';
 
 			if(var_lookup_bool(varname, &varvalue, vars)){
-				if(varvalue){
+				if(varvalue == wanted_value){
 					replacewith = colon + 1;
 				}else{
 					replacewith = "";
@@ -116,6 +122,10 @@ static char *spec_interpolate(char *line, const struct specvars *vars)
 
 		}else{
 			const char *varvalue;
+
+			if(!wanted_value){
+				fprintf(stderr, "can't invert a string spec var \"%s\"\n", varname);
+			}
 
 			if(var_lookup_str(varname, &varvalue, vars)){
 				replacewith = varvalue;
