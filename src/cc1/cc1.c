@@ -712,14 +712,6 @@ int main(int argc, char **argv)
 		goto out;
 	}
 
-	if(cc1_fopt.pie){
-		/* -fpie/PIE implies -fpic/PIC and __attribute__((visibility("protected"))) for all symbols */
-		cc1_fopt.pic = 1;
-		if(AS_SUPPORTS_VISIBILITY_PROTECTED)
-			cc1_visibility_default = VISIBILITY_PROTECTED;
-	}
-
-
 	if(fname && strcmp(fname, "-")){
 		infile = fopen(fname, "r");
 		if(!infile)

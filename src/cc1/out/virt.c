@@ -50,8 +50,7 @@ int v_needs_GOT(const out_val *v)
 {
 	return v->type == V_LBL
 		&& v->bits.lbl.pic_type & OUT_LBL_PIC
-		&& !(v->bits.lbl.pic_type & OUT_LBL_PICLOCAL)
-		&& cc1_fopt.pic;
+		&& !(v->bits.lbl.pic_type & OUT_LBL_PICLOCAL);
 }
 
 const out_val *v_to_stack_mem(

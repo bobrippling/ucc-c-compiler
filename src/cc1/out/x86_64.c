@@ -426,7 +426,7 @@ const char *impl_val_str_r(
 			const char *pre = deref ? "" : "$";
 			const char *picstr = "";
 
-			if(deref && (vs->bits.lbl.pic_type & OUT_LBL_PIC) && cc1_fopt.pic){
+			if(deref && (vs->bits.lbl.pic_type & OUT_LBL_PIC)){
 				int local_sym = vs->bits.lbl.pic_type & OUT_LBL_PICLOCAL;
 
 				/* if it's local, we can access the symbol at a fixed offset.
@@ -1191,7 +1191,7 @@ lea:
 			const int fp = type_is_floating(from->t);
 			type *chosen_ty = fp ? from->t : NULL;
 			const int from_GOT = from->type == V_LBL
-				&& cc1_fopt.pic
+				&& (from->bits.lbl.pic_type & OUT_LBL_PIC)
 				&& !(from->bits.lbl.pic_type & OUT_LBL_PICLOCAL);
 			out_val *from_mut = (out_val *)from;
 			long saved_offset;
@@ -1710,7 +1710,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				r = v_to_reg(octx, r);
 		}
 
-		if(cc1_fopt.pic){
+		if(FOPT_PIC(&cc1_fopt)){
 			/* pic mode - can't have direct memory references in add, etc
 			 * e.g. addl $a, %eax
 			 *

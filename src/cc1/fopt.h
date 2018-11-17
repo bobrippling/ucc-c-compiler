@@ -22,4 +22,6 @@ void fopt_default(struct cc1_fopt *);
 
 int fopt_on(struct cc1_fopt *, const char *argument, int invert);
 
+#define FOPT_PIC(fopt) ((fopt)->pic || (fopt)->pie)
+
 #endif
