@@ -89,6 +89,7 @@ ucc_ldflags=
 ucc_postlink=
 ucc_paramshared=-shared
 ucc_paramstatic=-static
+ucc_piespec=
 
 CFLAGS_CONFIGURE=
 
@@ -165,6 +166,7 @@ case "$target" in
 		# assume gcc
 		ucc_dyn="-dynamic-linker /lib64/ld-linux-x86-64.so.2"
 		ucc_stdlib="-lc"
+		ucc_piespec='%{pie:-pie}'
 
 		try_path ucc_startfiles ' ' /usr/lib/"${target}"/crt1.o
 		try_path ucc_startfiles ' ' /usr/lib/"${target}"/crti.o
@@ -203,6 +205,7 @@ case "$target" in
 		ucc_initflags='-mpreferred-stack-boundary=4 -malign-is-p2' # 2^4 = 16 byte aligned
 		ucc_stdlib='-lSystem'
 		ucc_startfiles=''
+		ucc_piespec='%{pie:-pie} %{!pie:-no_pie}'
 		syslibroot=$(ls -d /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX*.sdk | head -1)
 		try_path ucc_stdinc ' -isystem ' "$syslibroot/usr/include"
 		ucc_ldflags="-macosx_version_min 10.8 -syslibroot $syslibroot"
@@ -305,7 +308,7 @@ echo 'done'
 
 printf 'writing ucc.spec... '
 cat > src/ucc.spec <<!
-# available for %{bool:str}: static, shared, startfiles, debug, stdlib, stdinc
+# available for %{bool:str}: static, shared, startfiles, debug, stdlib, stdinc, pie
 # available for %{name}: out, bindir
 
 initflags:
@@ -326,6 +329,7 @@ ldflags_pre_user:
 	$ucc_ldflags
 	%{shared:$ucc_paramshared}
 	%{static:$ucc_paramstatic}
+	$ucc_piespec
 
 	# An object file's unresolved symbols must
 	# be _later_ in the linker's argv array.

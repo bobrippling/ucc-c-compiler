@@ -55,6 +55,10 @@ static int var_lookup_bool(
 		*varvalue = vars->static_;
 		return 1;
 	}
+	if(!strcmp(varname, "pie")){
+		*varvalue = vars->pie;
+		return 1;
+	}
 	return 0;
 }
 
