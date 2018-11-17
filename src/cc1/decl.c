@@ -386,6 +386,15 @@ int decl_is_bitfield(decl *d)
 	return !!d->bits.var.field_width;
 }
 
+enum visibility decl_visibility(decl *d)
+{
+	attribute *visibility = attribute_present(d, attr_visibility);
+	if(visibility)
+		return visibility->bits.visibility;
+
+	return cc1_visibility_default;
+}
+
 int decl_interposable(decl *d)
 {
 	/*
