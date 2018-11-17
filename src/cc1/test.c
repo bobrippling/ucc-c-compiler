@@ -7,6 +7,7 @@
 #include "cc1_where.h"
 #include "out/asm.h"
 #include "fopt.h"
+#include "funcargs.h"
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 int cc1_error_limit = 16;
@@ -53,11 +54,95 @@ static void test_quals(void)
 	test(tconstint == type_qualify(tconstint, qual_const));
 }
 
+static void test_decl_interposability(void)
+{
+	sym s = { 0 };
+	decl d = { 0 };
+	struct type_nav *types = type_nav_init();
+	funcargs args = { 0 };
+
+	d.sym = &s;
+	s.decl = &d;
+	s.type = sym_global;
+
+	d.ref = type_func_of(
+			type_nav_btype(types, type_int),
+			&args, NULL);
+
+	cc1_fopt.pic = 0;
+	cc1_fopt.pie = 0;
+	cc1_fopt.semantic_interposition = 1;
+
+	test(decl_visibility(&d) == VISIBILITY_DEFAULT);
+	test(decl_linkage(&d) == linkage_external);
+	test(!decl_interposable(&d));
+
+	d.store = store_static;
+	{
+		test(decl_visibility(&d) == VISIBILITY_DEFAULT);
+		test(decl_linkage(&d) == linkage_internal);
+		test(!decl_interposable(&d));
+	}
+	d.store = store_default;
+
+	cc1_visibility_default = VISIBILITY_PROTECTED;
+	{
+		test(decl_visibility(&d) == VISIBILITY_PROTECTED);
+		test(decl_linkage(&d) == linkage_external);
+		test(!decl_interposable(&d));
+	}
+	cc1_visibility_default = VISIBILITY_DEFAULT;
+
+	cc1_visibility_default = VISIBILITY_PROTECTED;
+	cc1_fopt.pic = 1;
+	{
+		test(decl_visibility(&d) == VISIBILITY_PROTECTED);
+		test(decl_linkage(&d) == linkage_external);
+		test(!decl_interposable(&d));
+	}
+	cc1_visibility_default = VISIBILITY_DEFAULT;
+	cc1_fopt.pic = 0;
+
+	cc1_fopt.pic = 1;
+	{
+		test(decl_visibility(&d) == VISIBILITY_DEFAULT);
+		test(decl_linkage(&d) == linkage_external);
+		test(decl_interposable(&d));
+	}
+	cc1_fopt.pic = 0;
+
+	cc1_visibility_default = VISIBILITY_HIDDEN;
+	cc1_fopt.pic = 1;
+	{
+		test(decl_linkage(&d) == linkage_external);
+		test(!decl_interposable(&d));
+	}
+	cc1_fopt.pic = 0;
+	cc1_visibility_default = VISIBILITY_DEFAULT;
+
+	cc1_fopt.pie = 1;
+	{
+		test(decl_linkage(&d) == linkage_external);
+		test(!decl_interposable(&d));
+	}
+	cc1_fopt.pie = 0;
+
+	cc1_fopt.pic = 1;
+	cc1_fopt.semantic_interposition = 0;
+	{
+		test(decl_linkage(&d) == linkage_external);
+		test(!decl_interposable(&d));
+	}
+	cc1_fopt.pic = 0;
+	cc1_fopt.semantic_interposition = 1;
+}
+
 int main(void)
 {
 	cc1_type_nav = type_nav_init();
 
 	test_quals();
+	test_decl_interposability();
 
 	return ec;
 }
