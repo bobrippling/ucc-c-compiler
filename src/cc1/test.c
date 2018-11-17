@@ -36,14 +36,14 @@ int where_in_sysheader(const where *w)
 
 static int ec;
 
-static void test(int cond, const char *expr)
+static void test(int cond, const char *expr, int line)
 {
 	if(!cond){
 		ec = 1;
-		fprintf(stderr, "test failed: %s\n", expr);
+		fprintf(stderr, "%s:%d: test failed: %s\n", __FILE__, line, expr);
 	}
 }
-#define test(exp) test((exp), #exp)
+#define test(exp) test((exp), #exp, __LINE__)
 
 static void test_quals(void)
 {
