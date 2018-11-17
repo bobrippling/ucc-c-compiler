@@ -398,7 +398,7 @@ enum visibility decl_visibility(decl *d)
 int decl_interposable(decl *d)
 {
 	/*
-	 * 1: Match gcc's -fsemantic-interposition default, where:
+	 * Match gcc's -fsemantic-interposition default, where:
 	 *
 	 * -fpic -fpie -fsemantic-interposition function-visibility  |  can-inline-non-static function?
 	 *   0     0              0                 default                     yes (-fno-pic)
@@ -427,13 +427,11 @@ int decl_interposable(decl *d)
 	 *           non-static default-visibility function may be overridden.
 	 */
 
-	attribute *visibility;
-
-	if(!cc1_fopt.pic)
-		return 0; /* not compiling for interposable shared library */
-
-	if(cc1_fopt.fpie)
-		return 0; /* pie, this is the main program, can't have its symbols interposed */
+	if(!cc1_fopt.pic || cc1_fopt.pie){
+		/* !pic - not compiling for interposable shared library */
+		/* pie, this is the main program, can't have its symbols interposed */
+		return 0;
+	}
 
 	switch(decl_linkage(d)){
 		case linkage_internal:
@@ -443,16 +441,13 @@ int decl_interposable(decl *d)
 			break;
 	}
 
-	visibility = attribute_present(d, attr_visibility);
-	if(visibility){
-		switch(visibility->bits.visibility){
-			case VISIBILITY_DEFAULT:
-				break;
-			case VISIBILITY_PROTECTED:
-				return 0; /* symbol visible, but not interposable by contract */
-			case VISIBILITY_HIDDEN:
-				return 0; /* symbol not visible, so not interposable */
-		}
+	switch(decl_visibility(d)){
+		case VISIBILITY_DEFAULT:
+			break;
+		case VISIBILITY_PROTECTED:
+			return 0; /* symbol visible, but not interposable by contract */
+		case VISIBILITY_HIDDEN:
+			return 0; /* symbol not visible, so not interposable */
 	}
 
 	return cc1_fopt.semantic_interposition;
