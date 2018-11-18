@@ -86,7 +86,8 @@ char *cc1_sanitize_handler_fn;
 enum visibility cc1_visibility_default;
 
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
-int cc1_gdebug;
+enum debug_level cc1_gdebug = DEBUG_OFF;
+int cc1_gdebug_columninfo = 1;
 
 enum c_std cc1_std = STD_C99;
 
@@ -255,7 +256,7 @@ static void io_fin(int do_sections, const char *fname)
 		/* cat cc_out[i] to cc1_out, with section headers */
 		int emit_this_section = 1;
 
-		if(cc1_gdebug && (i == SECTION_TEXT || i == SECTION_DBG_LINE)){
+		if(cc1_gdebug != DEBUG_OFF && (i == SECTION_TEXT || i == SECTION_DBG_LINE)){
 			/* need .text for debug to reference */
 		}else if(asm_section_empty(i)){
 			emit_this_section = 0;
@@ -370,7 +371,7 @@ static void gen_backend(symtable_global *globs, const char *fname)
 					&filelist);
 
 			/* filelist needs to be output first */
-			if(filelist && cc1_gdebug)
+			if(filelist && cc1_gdebug != DEBUG_OFF)
 				dbg_out_filelist(filelist, cc1_out);
 
 
@@ -656,17 +657,25 @@ int main(int argc, char **argv)
 				usage(argv[0], "unknown emit backend \"%s\"", emit);
 
 		}else if(!strncmp(argv[i], "-g", 2)){
-			switch(argv[i][2]){
-				case '0':
-					if(argv[i][3]){
-				default:
-						die("-g extra argument unexpected");
-					}
-					cc1_gdebug = 0;
-					break;
-				case '\0':
-					cc1_gdebug = 1;
-					break;
+			if(argv[i][2] == '\0'){
+				cc1_gdebug = DEBUG_FULL;
+			}else if(!strcmp(argv[i], "-g0")){
+				cc1_gdebug = DEBUG_OFF;
+			}else if(!strcmp(argv[i], "-gline-tables-only")){
+				cc1_gdebug = DEBUG_LINEONLY;
+			}else{
+				const char *arg = argv[i] + 2;
+				int on = 1;
+
+				if(!strncmp(arg, "no-", 3)){
+					arg += 3;
+					on = 0;
+				}
+
+				if(!strcmp(arg, "column-info"))
+					cc1_gdebug_columninfo = on;
+				else
+					die("Unknown -g switch: \"%s\"", argv[i] + 2);
 			}
 
 		}else if(!strcmp(argv[i], "-o")){

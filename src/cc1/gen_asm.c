@@ -167,7 +167,7 @@ void gen_set_sym_outval(out_ctx *octx, sym *sym, const out_val *v)
 {
 	sym_setoutval(sym, v);
 
-	if(v && cc1_gdebug)
+	if(v && cc1_gdebug == DEBUG_FULL)
 		out_dbg_emit_decl(octx, sym->decl, v);
 }
 
@@ -216,7 +216,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		allocate_vla_args(octx, arg_symtab);
 		free(argvals), argvals = NULL;
 
-		if(cc1_gdebug)
+		if(cc1_gdebug == DEBUG_FULL)
 			out_dbg_emit_args_done(octx, type_funcargs(d->ref));
 
 		gen_func_stmt(d->bits.func.code, octx);
@@ -318,7 +318,7 @@ void gen_asm_emit_type(out_ctx *octx, type *ty)
 {
 	/* for types that aren't on variables (e.g. in exprs),
 	 * that debug info may not find out about normally */
-	if(cc1_gdebug && type_is_s_or_u(ty))
+	if(cc1_gdebug == DEBUG_FULL && type_is_s_or_u(ty))
 		out_dbg_emit_type(octx, ty);
 }
 
@@ -379,7 +379,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			return;
 		}
 
-		if(cc1_gdebug)
+		if(cc1_gdebug != DEBUG_OFF)
 			out_dbg_emit_func(octx, d);
 	}else{
 		/* variable - if there's no init,
@@ -393,7 +393,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			return;
 		}
 
-		if(cc1_gdebug)
+		if(cc1_gdebug == DEBUG_FULL)
 			out_dbg_emit_global_var(octx, d);
 	}
 
@@ -417,7 +417,7 @@ void gen_asm(
 
 	*pfilelist = NULL;
 
-	if(cc1_gdebug)
+	if(cc1_gdebug != DEBUG_OFF)
 		out_dbg_begin(octx, &octx->dbg.file_head, fname, compdir, cc1_std);
 
 	for(diter = symtab_decls(&globs->stab); diter && *diter; diter++){
@@ -449,7 +449,7 @@ void gen_asm(
 	dynarray_free(decl **, inits, NULL);
 	dynarray_free(decl **, terms, NULL);
 
-	if(cc1_gdebug){
+	if(cc1_gdebug != DEBUG_OFF){
 		out_dbg_end(octx);
 
 		*pfilelist = octx->dbg.file_head;

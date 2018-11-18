@@ -139,7 +139,7 @@ static void inline_sym_map_save(
 			pushed_vals[i].map_val = was_set;
 		}
 
-		if(cc1_gdebug){
+		if(cc1_gdebug == DEBUG_FULL){
 			/* sym_outval() may be null, in which case the debugger
 			 * will show "argument optimised out" etc etc.. */
 			out_dbg_emit_decl(octx, *diter, sym_outval(s));
@@ -209,7 +209,7 @@ static const out_val *gen_inline_func(
 	inline_vars_push(cc1_octx, &saved, &nested_label_map);
 	cc1_octx->inline_.phi = out_blk_new(octx, "inline_phi");
 
-	if(cc1_gdebug){
+	if(cc1_gdebug != DEBUG_OFF){
 		struct out_dbg_lbl *dbg_startlbl;
 		char *dbg_lbls[2];
 
@@ -234,7 +234,7 @@ static const out_val *gen_inline_func(
 
 	inline_sym_map_restore(arg_symtab, pushed_vals, cc1_octx, octx);
 
-	if(cc1_gdebug){
+	if(cc1_gdebug != DEBUG_OFF){
 		out_dbg_label_pop(octx, dbg_endlbl);
 		out_dbg_inline_end(octx);
 	}
