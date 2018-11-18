@@ -94,9 +94,15 @@ expr *expr_new_comma2(expr *lhs, expr *rhs, int compiler_gen)
 	return e;
 }
 
+static int expr_comma_has_sideeffects(const expr *e)
+{
+	return expr_has_sideeffects(e->lhs) || expr_has_sideeffects(e->rhs);
+}
+
 void mutate_expr_comma(expr *e)
 {
 	e->f_const_fold = fold_const_expr_comma;
+	e->f_has_sideeffects = expr_comma_has_sideeffects;
 }
 
 const out_val *gen_expr_style_comma(const expr *e, out_ctx *octx)

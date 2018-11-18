@@ -126,11 +126,17 @@ static void const_expr_deref(expr *e, consty *k)
 	}
 }
 
+static int expr_deref_has_sideeffects(const expr *e)
+{
+	return expr_has_sideeffects(expr_deref_what(e));
+}
+
 void mutate_expr_deref(expr *e)
 {
 	e->f_const_fold = const_expr_deref;
 
 	e->f_islval = expr_is_lval_always;
+	e->f_has_sideeffects = expr_deref_has_sideeffects;
 }
 
 expr *expr_new_deref(expr *of)

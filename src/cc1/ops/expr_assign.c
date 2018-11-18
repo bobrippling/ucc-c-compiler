@@ -210,6 +210,7 @@ void dump_expr_assign(const expr *e, dump *ctx)
 
 void mutate_expr_assign(expr *e)
 {
+	e->f_has_sideeffects = expr_bool_always;
 	e->freestanding = 1;
 }
 

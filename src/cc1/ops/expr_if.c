@@ -295,9 +295,17 @@ void dump_expr_if(const expr *e, dump *ctx)
 	dump_dec(ctx);
 }
 
+static int expr_if_has_sideeffects(const expr *e)
+{
+	return expr_has_sideeffects(e->expr)
+		|| (e->lhs && expr_has_sideeffects(e->lhs))
+		|| expr_has_sideeffects(e->rhs);
+}
+
 void mutate_expr_if(expr *e)
 {
 	e->f_const_fold = fold_const_expr_if;
+	e->f_has_sideeffects = expr_if_has_sideeffects;
 }
 
 expr *expr_new_if(expr *test)

@@ -295,7 +295,7 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 			assert(expr_kind(copy_from_exp, compound_lit)
 					&& "unhandled expression init");
 
-			copy_from_init = copy_from_exp->bits.complit.decl->bits.var.init.dinit;
+			copy_from_init = expr_comp_lit_init(copy_from_exp);
 			assert(copy_from_init->type == decl_init_brace);
 
 			i = copy_from_init->bits.ar.inits;

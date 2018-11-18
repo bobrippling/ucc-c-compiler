@@ -194,6 +194,7 @@ X("overlength-strings", overlength_strings)
 X("init-override", init_override)
 X("designated-init", init_undesignated)
 X("init-array-range", gnu_init_array_range)
+X("initialiser-overrides", initialiser_overrides)
 
 X("unknown-attribute", attr_unknown)
 

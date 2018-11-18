@@ -225,3 +225,14 @@ expr *expr_compiler_generated(expr *e)
 	e->freestanding = 1;
 	return e;
 }
+
+int expr_bool_always(const expr *e)
+{
+	(void)e;
+	return 1;
+}
+
+int expr_has_sideeffects(const expr *e)
+{
+	return e->f_has_sideeffects && e->f_has_sideeffects(e);
+}
