@@ -1172,7 +1172,7 @@ const out_val *impl_load(
 
 		case V_REG_SPILT:
 			/* actually a pointer to T */
-			return impl_deref(octx, from, reg);
+			return impl_deref(octx, from, reg, NULL);
 
 		case V_REG:
 			if(from->bits.regoff.offset)
@@ -1787,7 +1787,11 @@ static const out_val *impl_deref_nodoubleindir(
 	return vp_mut;
 }
 
-const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *reg)
+const out_val *impl_deref(
+		out_ctx *octx,
+		const out_val *vp,
+		const struct vreg *reg,
+		int *const done_out_deref)
 {
 	type *tpointed_to = type_dereference_decay(vp->t);
 
@@ -1806,6 +1810,11 @@ const out_val *impl_deref(out_ctx *octx, const out_val *vp, const struct vreg *r
 	if(stash){
 		ret = out_change_type(octx, ret, stash);
 		ret = out_deref(octx, ret);
+		if(done_out_deref)
+			*done_out_deref = 1;
+	}else{
+		if(done_out_deref)
+			*done_out_deref = 0;
 	}
 
 	return ret;
