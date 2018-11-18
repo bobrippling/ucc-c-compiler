@@ -308,6 +308,8 @@ int decl_init_has_sideeffects(decl_init *dinit)
 			return decl_init_has_sideeffects(cpy->range_init);
 		}
 	}
+
+	return 0;
 }
 
 decl_init *decl_init_new_w(enum decl_init_type t, where *w)
