@@ -1,4 +1,4 @@
-// RUN: %ocheck 10 %s
+// RUN: %ocheck 10 %s -fno-semantic-interposition
 
 typedef struct A { long i, j, k; } A;
 

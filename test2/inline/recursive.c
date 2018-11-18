@@ -1,4 +1,4 @@
-// RUN: %check -e %s -fshow-inlined
+// RUN: %check -e %s -fshow-inlined -fno-semantic-interposition
 
 #define ai __attribute((always_inline))
 

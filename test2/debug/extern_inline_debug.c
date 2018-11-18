@@ -1,4 +1,4 @@
-// RUN: %debug_scope %s -c
+// RUN: %debug_scope %s -c -fno-semantic-interposition
 
 void f_indirect(void); // this would call 'extern int f()'
 

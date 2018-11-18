@@ -1,5 +1,5 @@
-// RUN: %check %s -fshow-inlined
-// RUN: %ocheck 10 %s
+// RUN: %check %s -fshow-inlined -fno-semantic-interposition
+// RUN: %ocheck 10 %s -fno-semantic-interposition
 
 __attribute((noinline))
 void clean_int_ni(int *p)
