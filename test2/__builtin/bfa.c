@@ -1,5 +1,5 @@
-// RUN: %ocheck 0 %s -fno-inline-functions
-// RUN: %check %s -finline-functions
+// RUN: %ocheck 0 %s -fno-inline-functions -fno-semantic-interposition
+// RUN: %check %s -finline-functions -fno-semantic-interposition
 
 void *func(int x)
 {

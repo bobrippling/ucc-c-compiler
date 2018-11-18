@@ -1,5 +1,5 @@
-// RUN: %ocheck 3 %s -finline-functions
-// RUN: %check %s -fshow-inlined -finline-functions
+// RUN: %ocheck 3 %s -finline-functions -fno-semantic-interposition
+// RUN: %check %s -fshow-inlined -finline-functions -fno-semantic-interposition
 
 inc(int x)
 {

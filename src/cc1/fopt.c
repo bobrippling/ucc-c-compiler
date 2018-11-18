@@ -20,6 +20,7 @@ void fopt_default(struct cc1_fopt *opt)
 	opt->integral_float_load = 1;
 	opt->pic = 1;
 	opt->plt = 1;
+	opt->semantic_interposition = 1; /* default to -fsemantic-interposition to match gcc */
 	opt->symbol_arith = 1;
 	opt->thread_jumps = 1;
 }
@@ -29,11 +30,21 @@ int fopt_on(struct cc1_fopt *fopt, const char *argument, int invert)
 #define X(arg, memb) else if(!strcmp(argument, arg)){ fopt->memb = !invert; return 1; }
 #define ALIAS(arg, memb) X(arg, memb)
 #define INVERT(arg, memb) else if(!strcmp(argument, arg)){ fopt->memb = invert; return 1; }
+#define EXCLUSIVE(arg, memb, excl) \
+	if(!strcmp(argument, arg)){      \
+		fopt->memb = !invert;          \
+		fopt->excl = 0;                \
+		return 1;                      \
+	} /* -fpic -fno-pie is equivalent to -fno-pie - any prior pic options are overwritten */
+#define ALIAS_EXCLUSIVE(arg, memb, excl) EXCLUSIVE(arg, memb, excl)
+
 	if(0);
 #include "fopts.h"
 #undef X
 #undef ALIAS
 #undef INVERT
+#undef EXCLUSIVE
+#undef ALIAS_EXCLUSIVE
 
 	return 0;
 }

@@ -125,6 +125,8 @@ enum linkage
 };
 enum linkage decl_linkage(decl *d);
 int decl_store_duration_is_static(decl *d); /* i.e. not argument/typedef/local */
+int decl_interposable(decl *d);
+int decl_needs_GOTPLT(decl *d);
 
 int decl_conv_array_func_to_ptr(decl *d);
 struct type *decl_is_decayed_array(decl *);
@@ -135,6 +137,7 @@ decl *decl_impl(decl *); /* fast-forwards to the impl */
 int decl_is_pure_inline(decl *);
 int decl_should_emit_code(decl *);
 int decl_unused_and_internal(decl *);
+enum visibility decl_visibility(decl *);
 
 int decl_is_bitfield(decl *);
 

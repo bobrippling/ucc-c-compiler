@@ -204,6 +204,7 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 	int is_fp;
 	struct vbitfield bf = target->bitfield;
 	const out_val *dval;
+	int done_out_deref;
 
 	/* if the pointed-to object is not an lvalue, don't deref */
 	if(type_is(tnext, type_array)
@@ -223,8 +224,9 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 		target = out_cast(octx, target, type_ptr_to(bf.master_ty), 0);
 	}
 
-	dval = impl_deref(octx, target, reg);
-	if(bf.nbits)
+	dval = impl_deref(octx, target, reg, &done_out_deref);
+
+	if(bf.nbits && !done_out_deref)
 		dval = out_bitfield_to_scalar(octx, &bf, dval);
 
 	return dval;

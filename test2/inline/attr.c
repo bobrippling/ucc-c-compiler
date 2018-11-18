@@ -1,4 +1,4 @@
-// RUN: %check %s -fshow-inlined
+// RUN: %check %s -fshow-inlined -fno-semantic-interposition
 
 __attribute((always_inline))
 void f()

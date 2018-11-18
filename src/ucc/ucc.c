@@ -720,6 +720,10 @@ word:
 						specvars->shared = 1;
 					else if(!strcmp(argv[i], "-static"))
 						specvars->static_ = 1;
+					else if(!strcmp(argv[i], "-pie"))
+						specvars->pie = 1;
+					else if(!strcmp(argv[i], "-no-pie"))
+						specvars->pie = 0;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
@@ -909,6 +913,14 @@ int main(int argc, char **argv)
 	specvars.stdinc = 1;
 	specvars.stdlib = 1;
 	specvars.startfiles = 1;
+
+	switch(platform_sys()){
+		case PLATFORM_DARWIN: /* default for 10.7 and later */
+		case PLATFORM_LINUX:
+			specvars.pie = 1;
+		default:
+			break;
+	}
 
 	umask(0077); /* prevent reading of the temporary files we create */
 

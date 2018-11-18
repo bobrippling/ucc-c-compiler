@@ -547,19 +547,12 @@ void asm_predeclare_weak(decl *d)
 	asm_predecl(ASM_WEAK_DIRECTIVE, d);
 }
 
-void asm_predeclare_visibility(decl *d, attribute *attr)
+void asm_predeclare_visibility(decl *d)
 {
-	enum visibility v = cc1_visibility_default;
-
 	if(decl_linkage(d) == linkage_internal)
 		return;
 
-	if(attr){
-		assert(attr->type == attr_visibility);
-		v = attr->bits.visibility;
-	}
-
-	switch(v){
+	switch(decl_visibility(d)){
 		case VISIBILITY_DEFAULT:
 			break;
 		case VISIBILITY_HIDDEN:

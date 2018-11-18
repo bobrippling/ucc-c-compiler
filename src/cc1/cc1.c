@@ -156,10 +156,14 @@ static void dump_options(void)
 #define X(flag, memb) fprintf(stderr, "  -f[no-]" flag "\n");
 #define ALIAS X
 #define INVERT X
+#define EXCLUSIVE(flag, name, excl) X(flag, name)
+#define ALIAS_EXCLUSIVE(flag, name, excl) X(flag, name)
 #include "fopts.h"
 #undef X
 #undef ALIAS
 #undef INVERT
+#undef EXCLUSIVE
+#undef ALIAS_EXCLUSIVE
 
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Machine options\n");
@@ -707,14 +711,6 @@ int main(int argc, char **argv)
 		failure = 1;
 		goto out;
 	}
-
-	if(cc1_fopt.pie){
-		/* -fpie/PIE implies -fpic/PIC and __attribute__((visibility("protected"))) for all symbols */
-		cc1_fopt.pic = 1;
-		if(AS_SUPPORTS_VISIBILITY_PROTECTED)
-			cc1_visibility_default = VISIBILITY_PROTECTED;
-	}
-
 
 	if(fname && strcmp(fname, "-")){
 		infile = fopen(fname, "r");

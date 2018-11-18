@@ -10,6 +10,7 @@
 #include "../util/dynarray.h"
 
 #include "cc1_where.h"
+#include "fopt.h"
 
 #include "macros.h"
 #include "sue.h"
@@ -383,4 +384,132 @@ int decl_is_bitfield(decl *d)
 		return 0;
 
 	return !!d->bits.var.field_width;
+}
+
+enum visibility decl_visibility(decl *d)
+{
+	attribute *visibility = attribute_present(d, attr_visibility);
+	if(visibility)
+		return visibility->bits.visibility;
+
+	return cc1_visibility_default;
+}
+
+static int decl_defined(decl *d)
+{
+	if(type_is(d->ref, type_func)){
+		return !!d->bits.func.code;
+
+	}else{
+		/* variable - defined if initialised or non-extern
+		 * (check initialisation first, as "extern int x = 3;" is actually "int x = 3;" */
+		int explicitly_initialised = d->bits.var.init.dinit && !d->bits.var.init.compiler_generated;
+
+		if(explicitly_initialised)
+			return 1;
+
+		if((d->store & STORE_MASK_STORE) == store_extern)
+			return 0;
+		return 1;
+	}
+}
+
+int decl_interposable(decl *d)
+{
+	/*
+	 * Match gcc's -fsemantic-interposition default, where:
+	 *
+	 * -fpic -fpie -fsemantic-interposition function-visibility  |  can-inline-non-static function?
+	 *   0     0              0                 default                     yes (-fno-pic)
+	 *   0     0              1                 default                     yes (-fno-pic)
+	 *   0     1              0                 default                     yes (-fno-pic)
+	 *   0     1              1                 default                     yes (-fno-pic)
+	 *   0     0              0             protected/hidden                yes (-fno-pic)
+	 *   0     0              1             protected/hidden                yes (-fno-pic)
+	 *   0     1              0             protected/hidden                yes (-fno-pic)
+	 *   0     1              1             protected/hidden                yes (-fno-pic)
+	 *
+	 *   1     1              1             protected/hidden                yes (-fvisibility=protected/hidden)
+	 *   1     1              0             protected/hidden                yes (-fvisibility=protected/hidden)
+	 *   1     0              1             protected/hidden                yes (-fvisibility=protected/hidden)
+	 *   1     0              0             protected/hidden                yes (-fvisibility=protected/hidden)
+	 *
+	 *   1     1              1                 default                     yes (-fpie)
+	 *   1     1              0                 default                     yes (-fpie)
+	 *   1     0              1                 default                     no
+	 *   1     0              0                 default                     yes (-fno-semantic-interposition)
+	 *
+	 * -fno-pic: -fsemantic-interposition and -fvisibility=... have no effect
+	 *
+	 * -fpic:    We can inline non-static, default-visibility functions when
+	 *           -fno-semantic-interposition is set otherwise, the ELF abi says a
+	 *           non-static default-visibility function may be overridden.
+	 */
+
+	if(!cc1_fopt.pic || cc1_fopt.pie){
+		/* !pic - not compiling for interposable shared library */
+		/* pie, this is the main program, can't have its symbols interposed */
+		return 0;
+	}
+
+	switch(decl_linkage(d)){
+		case linkage_internal:
+		case linkage_none:
+			return 0; /* static decl, fixed */
+		case linkage_external:
+			break;
+	}
+
+	switch(decl_visibility(d)){
+		case VISIBILITY_DEFAULT:
+			break;
+		case VISIBILITY_PROTECTED:
+			return 0; /* symbol visible, but not interposable by contract */
+		case VISIBILITY_HIDDEN:
+			return 0; /* symbol not visible, so not interposable */
+	}
+
+	return cc1_fopt.semantic_interposition;
+}
+
+int decl_needs_GOTPLT(decl *d)
+{
+	/* need to differentiate:
+	 * extern int x; // always pic (aka x@GOTPCREL(%rip))
+	 *
+	 * __attribute__((visibility("hidden/protected")))
+	 * extern int x; // pic but we can avoid the GOT, e.g. x(%rip)
+	 *
+	 * int x = 3; // pic, must go via GOT
+	 *
+	 * -fno-semantic-interposition / -fpie
+	 * int x = 3; // pic, can avoid the GOT because it's effectively hidden/protected
+	 *
+	 * -fno-semantic-interposition / -fno-pie (but -fpic)
+	 * extern int x; // pic, must use GOT as we don't know if it's in our module
+	 */
+
+	if(!cc1_fopt.pic && !cc1_fopt.pie)
+		return 0;
+
+	if(decl_linkage(d) == linkage_internal)
+		return 0;
+
+	if(cc1_fopt.pie){
+		/* gcc acts as if variables are always local/accessible without the GOT in pie-code */
+		int is_var = 0; /* !type_is(d->ref, type_func) */
+
+		if((is_var || decl_defined(d)) && !attribute_present(d, attr_weak))
+			return 0;
+	}
+
+	switch(decl_visibility(d)){
+		case VISIBILITY_DEFAULT:
+			break;
+		case VISIBILITY_HIDDEN:
+		case VISIBILITY_PROTECTED:
+			return 0;
+	}
+
+	return 1;
 }
