@@ -53,13 +53,6 @@
 
 #define REG_STR_SZ 8
 
-struct saved_val_additions
-{
-	struct vbitfield bitfield;
-	long offset;
-	int active;
-};
-
 static const out_val *impl_deref_nodoubleindir(
 		out_ctx *octx, const out_val *vp,
 		const struct vreg *reg, type *tpointed_to,
@@ -1080,50 +1073,31 @@ static int x86_need_fp_parity_p(
 	}
 }
 
-static int should_save_val_additions(const out_val *v)
-{
-	return v->bits.lbl.offset || v->bitfield.nbits;
-}
-
-static void remove_val_additions(
+static long remove_label_offset(
 		out_ctx *octx,
 		int from_GOT,
 		const out_val *vp,
-		/* outputs: */
-		const out_val **const vp_new,
-		struct saved_val_additions *save)
+		out_val **const vp_mut)
 {
-	if(from_GOT && vp->type == V_LBL && should_save_val_additions(vp)){
-		out_val *mut;
-
-		save->offset = vp->bits.lbl.offset;
-		memcpy_safe(&save->bitfield, &vp->bitfield);
-
-		mut = v_dup_or_reuse(octx, vp, vp->t);
-
-		mut->bits.lbl.offset = 0;
-		mut->bitfield.nbits = 0;
-
-		*vp_new = mut;
-	}else{
-		memset(save, 0, sizeof(*save));
-		*vp_new = vp;
+	long saved_offset = 0;
+	if(from_GOT && vp->type == V_LBL && vp->bits.lbl.offset){
+		saved_offset = vp->bits.lbl.offset;
+		*vp_mut = v_dup_or_reuse(octx, vp, vp->t);
+		(*vp_mut)->bits.lbl.offset = 0;
 	}
+	return saved_offset;
 }
 
-static out_val *restore_val_additions(
+static out_val *restore_label_offset(
 		out_ctx *octx,
-		const out_val *vp,
+		out_val *vp_mut,
 		type *ty,
 		const struct vreg *reg,
-		const struct saved_val_additions *save)
+		long saved_offset)
 {
-	out_val *vp_mut = v_new_reg(octx, vp, ty, reg);
+	vp_mut = v_new_reg(octx, vp_mut, ty, reg);
 	assert(vp_mut->type == V_REG);
-
-	vp_mut->bits.regoff.offset = save->offset;
-	memcpy_safe(&vp_mut->bitfield, &save->bitfield);
-
+	vp_mut->bits.regoff.offset = saved_offset;
 	return vp_mut;
 }
 
@@ -1219,20 +1193,24 @@ lea:
 			const int from_GOT = from->type == V_LBL
 				&& (from->bits.lbl.pic_type & OUT_LBL_PIC)
 				&& !(from->bits.lbl.pic_type & OUT_LBL_PICLOCAL);
-			const out_val *from_new;
-			struct saved_val_additions save;
+			out_val *from_mut = (out_val *)from;
+			long saved_offset;
 
-			remove_val_additions(octx, from_GOT, from, &from_new, &save);
+			saved_offset = remove_label_offset(octx, from_GOT, from, &from_mut);
 
 			/* just go with leaq for small sizes */
 
 			out_asm(octx, "%s%s %s, %%%s",
 					fp || from_GOT ? "mov" : "lea",
 					x86_suffix(NULL),
-					impl_val_str(from_new, 1),
+					impl_val_str(from_mut, 1),
 					x86_reg_str(reg, from_GOT ? NULL : chosen_ty));
 
-			return restore_val_additions(octx, from_new, from_new->t, reg, &save);
+			if(saved_offset){
+				out_val *ret = from_mut;
+				return restore_label_offset(octx, ret, ret->t, reg, saved_offset);
+			}
+			break;
 		}
 
 		case V_CONST_F:
@@ -1792,18 +1770,21 @@ static const out_val *impl_deref_nodoubleindir(
 		type *tpointed_to,
 		int transfer_offset_for_got)
 {
-	/* need to ensure we move any offsets/bitfield bits to after we've got the pointer */
-	struct saved_val_additions save;
-	const out_val *vp_new;
+	/* need to ensure we move any offsets to after we've got the pointer */
+	long saved_offset;
+	out_val *vp_mut = (out_val *)vp;
 
-	remove_val_additions(octx, transfer_offset_for_got, vp, &vp_new, &save);
+	saved_offset = remove_label_offset(octx, transfer_offset_for_got, vp, &vp_mut);
 
 	out_asm(octx, "mov%s %s, %%%s",
 			x86_suffix(tpointed_to),
-			impl_val_str(vp_new, 1),
-			x86_reg_str(reg, tpointed_to));
+			impl_val_str(vp_mut, 1),
+			x86_reg_str(reg, tpointed_to),
+			saved_offset);
 
-	return restore_val_additions(octx, vp_new, tpointed_to, reg, &save);
+	vp_mut = restore_label_offset(octx, vp_mut, tpointed_to, reg, saved_offset);
+
+	return vp_mut;
 }
 
 const out_val *impl_deref(
