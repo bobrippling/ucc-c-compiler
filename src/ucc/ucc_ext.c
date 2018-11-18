@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <stdarg.h>
+#include <sys/time.h>
+#include <errno.h>
 
 #include "ucc_ext.h"
 #include "ucc.h"
@@ -14,6 +16,7 @@
 #include "str.h"
 
 char **include_paths;
+int time_subcmds;
 
 static int show, noop;
 
@@ -78,6 +81,7 @@ char *actual_path(const char *prefix, const char *path)
 static int runner(int local, const char *path, char **args, int return_ec)
 {
 	pid_t pid;
+	struct timeval time_start, time_end;
 
 	if(show){
 		int i;
@@ -94,6 +98,8 @@ static int runner(int local, const char *path, char **args, int return_ec)
 	if(noop)
 		return 0;
 
+	if(time_subcmds && gettimeofday(&time_start, NULL) < 0)
+		fprintf(stderr, "gettimeofday(): %s\n", strerror(errno));
 
 	/* if this were to be vfork, all the code in case-0 would need to be done in the parent */
 	pid = fork();
@@ -163,6 +169,9 @@ static int runner(int local, const char *path, char **args, int return_ec)
 			if(wait(&status) == -1)
 				die("wait()");
 
+			if(time_subcmds && gettimeofday(&time_end, NULL) < 0)
+				fprintf(stderr, "gettimeofday(): %s\n", strerror(errno));
+
 			if(WIFEXITED(status) && (i = WEXITSTATUS(status)) != 0){
 				if(!return_ec)
 					die("%s returned %d", path, i);
@@ -173,6 +182,18 @@ static int runner(int local, const char *path, char **args, int return_ec)
 
 				/* exit with propagating status */
 				exit(128 + sig);
+			}
+
+			if(time_subcmds){
+				time_t secdiff = time_end.tv_sec - time_start.tv_sec;
+				suseconds_t usecdiff = time_end.tv_usec - time_start.tv_usec;
+
+				if(usecdiff < 0){
+					secdiff--;
+					usecdiff += 1000000L;
+				}
+
+				printf("%s %ld.%ld\n", path, (long)secdiff, (long)usecdiff);
 			}
 
 			return i;
@@ -194,6 +215,9 @@ void rename_or_move(char *old, char *new)
 		"cat", old, ">", new, NULL
 	};
 	char *fixed[3];
+
+	if(!strcmp(old, new))
+		return;
 
 	for(i = 0, len = 1; args[i]; i++)
 		len += strlen(args[i]) + 1; /* space */

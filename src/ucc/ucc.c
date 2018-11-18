@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 /* umask */
 #include <sys/types.h>
@@ -68,7 +69,7 @@ struct ucc
 };
 
 static char **remove_these;
-static int unlink_tmps = 1;
+static int save_temps = 0;
 const char *argv0;
 char *wrapper;
 const char *binpath_cpp;
@@ -77,25 +78,63 @@ static void unlink_files(void)
 {
 	int i;
 	for(i = 0; remove_these[i]; i++){
-		if(unlink_tmps)
-			remove(remove_these[i]);
+		remove(remove_these[i]);
 		free(remove_these[i]);
 	}
 	free(remove_these);
 }
 
-static void tmpfilenam(struct fd_name_pair *pair)
+static char *expected_filename(const char *in, enum mode mode)
+{
+	const char *base = strrchr(in, '/');
+	size_t len;
+	char *new;
+
+	if(!base++)
+		base = in;
+
+	new = ustrdup(base);
+	len = strlen(new);
+	if(len > 2 && new[len - 2] == '.'){
+		char ext;
+		switch(mode){
+			case mode_preproc: ext = 'i'; break;
+			case mode_compile: ext = 's'; break;
+			case mode_assemb: ext = 'o'; break;
+			case mode_link: ext = '?'; break;
+		}
+
+		new[len - 1] = ext;
+	}
+	/* else stick with what we were given */
+
+	return new;
+}
+
+static void tmpfilenam(
+		struct fd_name_pair *pair,
+		enum mode const mode,
+		const char *in)
 {
 	char *path;
-	int fd = tmpfile_prefix_out("ucc.", &path);
+	int fd;
 
-	if(fd == -1)
-		die("tmpfile(%s):", path);
+	if(save_temps){
+		path = expected_filename(in, mode);
+		fd = open(path, O_RDWR | O_TRUNC | O_CREAT, 0600);
+		if(fd < 0)
+			die("open (for -save-temps) %s:", path);
 
-	if(!remove_these) /* only register once */
-		atexit(unlink_files);
+	}else{
+		fd = tmpfile_prefix_out("ucc.", &path);
 
-	dynarray_add(&remove_these, path);
+		if(fd == -1)
+			die("tmpfile(%s):", path);
+
+		if(!remove_these) /* only register once */
+			atexit(unlink_files);
+		dynarray_add(&remove_these, path);
+	}
 
 	pair->fname = path;
 	pair->fd = fd;
@@ -125,7 +164,7 @@ static void create_file(
 
 #define FILL_WITH_TMP(x)         \
 			if(!file->x.fname){        \
-				tmpfilenam(&file->x);    \
+				tmpfilenam(&file->x, mode_##x, in); \
 				if(mode == mode_ ## x){  \
 					file->out = file->x;   \
 					return;                \
@@ -242,19 +281,8 @@ static void rename_files(struct cc_file *files, int nfiles, const char *output, 
 
 				case mode_compile:
 				case mode_assemb:
-				{
-					int len;
-					const char *base = strrchr(files[i].in.fname, '/');
-					if(!base++)
-						base = files[i].in.fname;
-
-					new = ustrdup(base);
-					len = strlen(new);
-					if(len > 2 && new[len - 2] == '.')
-						new[len - 1] = mode == mode_compile ? 's' : 'o';
-					/* else stick with what we were given */
+					new = expected_filename(files[i].in.fname, mode);
 					break;
-				}
 			}
 		}
 
@@ -755,7 +783,7 @@ word:
 					else if(!strcmp(argv[i], "-digraphs"))
 						ADD_ARG(mode_preproc);
 					else if(!strcmp(argv[i], "-save-temps"))
-						unlink_tmps = 0;
+						save_temps = 1;
 					else if(!strcmp(argv[i], "-isystem")){
 						const char *sysinc = argv[++i];
 						if(!sysinc)
@@ -767,6 +795,8 @@ word:
 						if(!*specpath)
 							goto missing_arg;
 					}
+					else if(!strcmp(argv[i], "-time"))
+						time_subcmds = 1;
 					else
 						break;
 
