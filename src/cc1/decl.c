@@ -307,6 +307,8 @@ decl *decl_impl(decl *const d)
 {
 	decl *i;
 
+	assert(type_is(d->ref, type_func));
+
 	for(i = d; i; i = i->proto)
 		if(i->bits.func.code)
 			return i;
