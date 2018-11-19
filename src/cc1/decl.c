@@ -488,12 +488,11 @@ int decl_interposable(decl *d)
 	 *           -fno-semantic-interposition is set otherwise, the ELF abi says a
 	 *           non-static default-visibility function may be overridden.
 	 */
+	if(!cc1_fopt.pic && !cc1_fopt.pie)
+		return 0; /* not compiling for interposable shared library */
 
-	if(!cc1_fopt.pic || cc1_fopt.pie){
-		/* !pic - not compiling for interposable shared library */
-		/* pie, this is the main program, can't have its symbols interposed */
-		return 0;
-	}
+	if(cc1_fopt.pie && decl_defined(d))
+		return 0; /* pie, this is the main program, can't have its symbols interposed */
 
 	switch(decl_linkage(d)){
 		case linkage_internal:
