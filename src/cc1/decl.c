@@ -433,6 +433,27 @@ enum visibility decl_visibility(decl *d)
 	if(visibility)
 		return visibility->bits.visibility;
 
+	switch((d->store & STORE_MASK_STORE)){
+		case store_extern:
+			/* no explicit visibility, -fvisibility doesn't affect extern decls */
+			return VISIBILITY_DEFAULT;
+
+		case store_default:
+			/* if it's not in this translation unit it's essentially an extern decl */
+			if(!decl_defined(d))
+				return VISIBILITY_DEFAULT;
+			break;
+
+		case store_static:
+			break;
+
+		case store_auto:
+		case store_register:
+		case store_typedef:
+			ICE("shouldn't be calling decl_visibility() on a %s decl",
+					decl_store_to_str(d->store & STORE_MASK_STORE));
+	}
+
 	return cc1_visibility_default;
 }
 
