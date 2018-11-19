@@ -718,23 +718,33 @@ enum type_primitive type_primitive(type *ty)
 	return ty->bits.type->primitive;
 }
 
-funcargs *type_funcargs(type *r)
+static type *type_resolve_func(type *t)
 {
 	type *test;
 
-	r = type_skip_all(r);
+	t = type_skip_all(t);
 
-	if((test = type_is(r, type_ptr))
-	|| (test = type_is(r, type_block)))
+	if((test = type_is(t, type_ptr))
+	|| (test = type_is(t, type_block)))
 	{
-		r = type_skip_all(test->ref); /* jump down past the (*)() */
+		t = type_skip_all(test->ref); /* jump down past the (*)() */
 	}
 
-	UCC_ASSERT(r && r->type == type_func,
+	UCC_ASSERT(t && t->type == type_func,
 			"not a function type - %s",
-			type_kind_to_str(r->type));
+			type_kind_to_str(t->type));
 
-	return r->bits.func.args;
+	return t;
+}
+
+funcargs *type_funcargs(type *r)
+{
+	return type_resolve_func(r)->bits.func.args;
+}
+
+symtable *type_funcsymtable(type *t)
+{
+	return type_resolve_func(t)->bits.func.arg_scope;
 }
 
 int type_is_callable(type *r)

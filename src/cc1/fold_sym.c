@@ -63,7 +63,6 @@ static void dump_symtab(symtable *st, unsigned indent)
 
 	for(di = st->decls; di && *di; di++){
 		decl *d = *di;
-		decl *impl;
 
 		STAB_INDENT();
 		fprintf(stderr, "  %s, %s %p",
@@ -76,9 +75,15 @@ static void dump_symtab(symtable *st, unsigned indent)
 		if(d->impl)
 			fprintf(stderr, ", next %p", (void *)d->impl);
 
-		impl = decl_impl(d);
-		if(impl && impl != d)
-			fprintf(stderr, ", impl %p", (void *)impl);
+		if(type_is(d->ref, type_func)){
+			decl *impl = decl_impl(d);
+			if(impl && impl != d)
+				fprintf(stderr, ", impl %p", (void *)impl);
+		}else{
+			decl *init = decl_impl(d);
+			if(init && init != d)
+				fprintf(stderr, ", init-decl %p", (void *)init);
+		}
 
 		fputc('\n', stderr);
 	}

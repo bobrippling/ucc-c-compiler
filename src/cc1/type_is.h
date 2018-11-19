@@ -27,6 +27,7 @@ enum type_qualifier type_qual(const type *r);
 enum type_primitive type_primitive(type *ty);
 
 struct funcargs *type_funcargs(type *r);
+struct symtable *type_funcsymtable(type *);
 
 unsigned type_array_len(type *r);
 type *type_next(type *r);

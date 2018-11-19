@@ -331,6 +331,7 @@ static const char *check_and_ret_inline(
 	const char *why;
 	struct cc1_out_ctx *cc1_octx;
 	decl **arg_iter;
+	int is_func; /* else it's a function pointer */
 
 	if(maybe_decl){
 		iouts->fndecl = maybe_decl;
@@ -340,9 +341,11 @@ static const char *check_and_ret_inline(
 			return why;
 	}
 
-	iouts->fndecl = decl_impl(iouts->fndecl);
+	is_func = !!type_is(iouts->fndecl->ref, type_func);
+	if(is_func)
+		iouts->fndecl = decl_impl(iouts->fndecl);
 
-	if(iouts->fndecl->bits.func.contains_static_label_addr)
+	if(is_func && iouts->fndecl->bits.func.contains_static_label_addr)
 		return "function contains static-address-of-label expression";
 
 	/* check for noinline before we potentially change the decl */
@@ -358,7 +361,7 @@ static const char *check_and_ret_inline(
 	if(decl_interposable(iouts->fndecl))
 		return "function is interposable at load time";
 
-	if(!(iouts->fncode = iouts->fndecl->bits.func.code)){
+	if(!is_func || !(iouts->fncode = iouts->fndecl->bits.func.code)){
 		/* may change the decl from fnptr -> function */
 		iouts->fncode = try_resolve_val_to_func(octx, fnval, &iouts->fndecl);
 
@@ -371,7 +374,11 @@ static const char *check_and_ret_inline(
 		 * disallow inline attributes on function pointers */
 	}
 
-	iouts->arg_symtab = DECL_FUNC_ARG_SYMTAB(iouts->fndecl);
+	if(is_func)
+		iouts->arg_symtab = DECL_FUNC_ARG_SYMTAB(iouts->fndecl);
+	else
+		iouts->arg_symtab = type_funcsymtable(iouts->fndecl->ref);
+
 	fargs = type_funcargs(iouts->fndecl->ref);
 
 	if(fargs->variadic){
@@ -401,8 +408,7 @@ static const char *check_and_ret_inline(
 	}
 
 	if(!attribute_present(iouts->fndecl, attr_always_inline)
-	&& !heuristic_should_inline(iouts->fndecl,
-		iouts->fncode, iouts->arg_symtab->children[0], octx))
+	&& !heuristic_should_inline(iouts->fndecl, iouts->fncode, iouts->arg_symtab, octx))
 	{
 		return "heuristic denied";
 	}
