@@ -59,16 +59,26 @@ static void test_decl_interposability(void)
 {
 	sym s = { 0 };
 	decl d = { 0 };
+	decl d_fn = { 0 };
+	decl d_extern = { 0 };
+	decl d_extern_fn = { 0 };
 	struct type_nav *types = type_nav_init();
 	funcargs args = { 0 };
 
-	d.sym = &s;
-	s.decl = &d;
 	s.type = sym_global;
 
-	d.ref = type_func_of(
-			type_nav_btype(types, type_int),
-			&args, NULL);
+	d.sym = &s;
+	d_fn.sym = &s;
+	d_extern.sym = &s;
+	d_extern_fn.sym = &s;
+
+	d.ref = type_nav_btype(types, type_int);
+	d_fn.ref = type_func_of(type_nav_btype(types, type_int), &args, NULL);
+	d_extern.ref = type_nav_btype(types, type_int);
+	d_extern_fn.ref = type_func_of(type_nav_btype(types, type_int), &args, NULL);
+
+	d_fn.bits.func.code = (void *)1;
+	d_extern.store = store_extern;
 
 	cc1_fopt.pic = 0;
 	cc1_fopt.pie = 0;
@@ -79,18 +89,33 @@ static void test_decl_interposability(void)
 	test(!decl_interposable(&d));
 
 	d.store = store_static;
+	d_fn.store = store_static;
 	{
 		test(decl_visibility(&d) == VISIBILITY_DEFAULT);
 		test(decl_linkage(&d) == linkage_internal);
 		test(!decl_interposable(&d));
+
+		test(decl_visibility(&d_fn) == VISIBILITY_DEFAULT);
+		test(decl_linkage(&d_fn) == linkage_internal);
+		test(!decl_interposable(&d_fn));
 	}
 	d.store = store_default;
+	d_fn.store = store_default;
 
 	cc1_visibility_default = VISIBILITY_PROTECTED;
 	{
 		test(decl_visibility(&d) == VISIBILITY_PROTECTED);
 		test(decl_linkage(&d) == linkage_external);
 		test(!decl_interposable(&d));
+
+		test(decl_visibility(&d_fn) == VISIBILITY_PROTECTED);
+		test(!decl_interposable(&d_fn));
+
+		test(decl_visibility(&d_extern) == VISIBILITY_DEFAULT);
+		test(!decl_interposable(&d_extern));
+
+		test(decl_visibility(&d_extern_fn) == VISIBILITY_DEFAULT);
+		test(!decl_interposable(&d_extern_fn));
 	}
 	cc1_visibility_default = VISIBILITY_DEFAULT;
 
@@ -100,6 +125,15 @@ static void test_decl_interposability(void)
 		test(decl_visibility(&d) == VISIBILITY_PROTECTED);
 		test(decl_linkage(&d) == linkage_external);
 		test(!decl_interposable(&d));
+
+		test(decl_visibility(&d_fn) == VISIBILITY_PROTECTED);
+		test(!decl_interposable(&d_fn));
+
+		test(decl_visibility(&d_extern) == VISIBILITY_DEFAULT);
+		test(decl_interposable(&d_extern));
+
+		test(decl_visibility(&d_extern_fn) == VISIBILITY_DEFAULT);
+		test(decl_interposable(&d_extern_fn));
 	}
 	cc1_visibility_default = VISIBILITY_DEFAULT;
 	cc1_fopt.pic = 0;
@@ -109,30 +143,69 @@ static void test_decl_interposability(void)
 		test(decl_visibility(&d) == VISIBILITY_DEFAULT);
 		test(decl_linkage(&d) == linkage_external);
 		test(decl_interposable(&d));
+
+		test(decl_visibility(&d_fn) == VISIBILITY_DEFAULT);
+		test(decl_interposable(&d_fn));
+
+		test(decl_visibility(&d_extern) == VISIBILITY_DEFAULT);
+		test(decl_interposable(&d_extern));
+
+		test(decl_visibility(&d_extern_fn) == VISIBILITY_DEFAULT);
+		test(decl_interposable(&d_extern_fn));
 	}
 	cc1_fopt.pic = 0;
 
 	cc1_visibility_default = VISIBILITY_HIDDEN;
 	cc1_fopt.pic = 1;
 	{
+		test(decl_visibility(&d) == VISIBILITY_HIDDEN);
 		test(decl_linkage(&d) == linkage_external);
 		test(!decl_interposable(&d));
+
+		test(decl_visibility(&d_fn) == VISIBILITY_HIDDEN);
+		test(!decl_interposable(&d_fn));
+
+		test(decl_visibility(&d_extern) == VISIBILITY_DEFAULT);
+		test(decl_interposable(&d_extern));
+
+		test(decl_visibility(&d_extern_fn) == VISIBILITY_DEFAULT);
+		test(decl_interposable(&d_extern_fn));
 	}
 	cc1_fopt.pic = 0;
 	cc1_visibility_default = VISIBILITY_DEFAULT;
 
 	cc1_fopt.pie = 1;
 	{
+		test(decl_visibility(&d) == VISIBILITY_DEFAULT);
 		test(decl_linkage(&d) == linkage_external);
 		test(!decl_interposable(&d));
+
+		test(decl_visibility(&d_fn) == VISIBILITY_DEFAULT);
+		test(!decl_interposable(&d_fn));
+
+		test(decl_visibility(&d_extern) == VISIBILITY_DEFAULT);
+		test(decl_interposable(&d_extern));
+
+		test(decl_visibility(&d_extern_fn) == VISIBILITY_DEFAULT);
+		test(decl_interposable(&d_extern_fn));
 	}
 	cc1_fopt.pie = 0;
 
 	cc1_fopt.pic = 1;
 	cc1_fopt.semantic_interposition = 0;
 	{
+		test(decl_visibility(&d) == VISIBILITY_DEFAULT);
 		test(decl_linkage(&d) == linkage_external);
 		test(!decl_interposable(&d));
+
+		test(decl_visibility(&d_fn) == VISIBILITY_DEFAULT);
+		test(!decl_interposable(&d_fn));
+
+		test(decl_visibility(&d_extern) == VISIBILITY_DEFAULT);
+		test(decl_interposable(&d_extern));
+
+		test(decl_visibility(&d_extern_fn) == VISIBILITY_DEFAULT);
+		test(decl_interposable(&d_extern_fn));
 	}
 	cc1_fopt.pic = 0;
 	cc1_fopt.semantic_interposition = 1;
@@ -215,6 +288,19 @@ static void test_decl_needs_GOTPLT(void)
 		test(!decl_needs_GOTPLT(&d_fn_protected));
 	}
 	cc1_fopt.pie = 0;
+
+	cc1_fopt.pic = 1;
+	cc1_visibility_default = VISIBILITY_HIDDEN;
+	{
+		test(decl_needs_GOTPLT(&d_extern));
+		test(!decl_needs_GOTPLT(&d_normal));
+		test(decl_needs_GOTPLT(&d_fn_undef));
+		test(!decl_needs_GOTPLT(&d_fn_defined));
+		test(!decl_needs_GOTPLT(&d_protected));
+		test(!decl_needs_GOTPLT(&d_fn_protected));
+	}
+	cc1_fopt.pic = 0;
+	cc1_visibility_default = VISIBILITY_DEFAULT;
 }
 
 int main(void)

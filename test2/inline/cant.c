@@ -2,6 +2,8 @@
 
 #define always_inline __attribute((always_inline))
 
+// necessary as -fno-semantic-interposition doesn't affect extern decls:
+__attribute((visibility("hidden")))
 always_inline hidden(int);
 
 void always_inline __attribute((noinline)) noinline(void)

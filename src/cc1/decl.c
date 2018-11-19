@@ -307,12 +307,31 @@ decl *decl_impl(decl *const d)
 {
 	decl *i;
 
+	assert(type_is(d->ref, type_func));
+
 	for(i = d; i; i = i->proto)
 		if(i->bits.func.code)
 			return i;
 
 	for(i = d; i; i = i->impl)
 		if(i->bits.func.code)
+			return i;
+
+	return d;
+}
+
+static decl *decl_with_init(decl *const d)
+{
+	decl *i;
+
+	assert(!type_is(d->ref, type_func));
+
+	for(i = d; i; i = i->proto)
+		if(i->bits.var.init.dinit)
+			return i;
+
+	for(i = d; i; i = i->impl)
+		if(i->bits.var.init.dinit)
 			return i;
 
 	return d;
@@ -386,24 +405,18 @@ int decl_is_bitfield(decl *d)
 	return !!d->bits.var.field_width;
 }
 
-enum visibility decl_visibility(decl *d)
-{
-	attribute *visibility = attribute_present(d, attr_visibility);
-	if(visibility)
-		return visibility->bits.visibility;
-
-	return cc1_visibility_default;
-}
-
 static int decl_defined(decl *d)
 {
 	if(type_is(d->ref, type_func)){
-		return !!d->bits.func.code;
+		return !!decl_impl(d)->bits.func.code;
 
 	}else{
 		/* variable - defined if initialised or non-extern
 		 * (check initialisation first, as "extern int x = 3;" is actually "int x = 3;" */
-		int explicitly_initialised = d->bits.var.init.dinit && !d->bits.var.init.compiler_generated;
+		int explicitly_initialised;
+
+		d = decl_with_init(d);
+		explicitly_initialised = d->bits.var.init.dinit && !d->bits.var.init.compiler_generated;
 
 		if(explicitly_initialised)
 			return 1;
@@ -412,6 +425,36 @@ static int decl_defined(decl *d)
 			return 0;
 		return 1;
 	}
+}
+
+enum visibility decl_visibility(decl *d)
+{
+	attribute *visibility = attribute_present(d, attr_visibility);
+	if(visibility)
+		return visibility->bits.visibility;
+
+	switch((d->store & STORE_MASK_STORE)){
+		case store_extern:
+			/* no explicit visibility, -fvisibility doesn't affect extern decls */
+			return VISIBILITY_DEFAULT;
+
+		case store_default:
+			/* if it's not in this translation unit it's essentially an extern decl */
+			if(!decl_defined(d))
+				return VISIBILITY_DEFAULT;
+			break;
+
+		case store_static:
+			break;
+
+		case store_auto:
+		case store_register:
+		case store_typedef:
+			ICE("shouldn't be calling decl_visibility() on a %s decl",
+					decl_store_to_str(d->store & STORE_MASK_STORE));
+	}
+
+	return cc1_visibility_default;
 }
 
 int decl_interposable(decl *d)
@@ -445,12 +488,11 @@ int decl_interposable(decl *d)
 	 *           -fno-semantic-interposition is set otherwise, the ELF abi says a
 	 *           non-static default-visibility function may be overridden.
 	 */
+	if(!cc1_fopt.pic && !cc1_fopt.pie)
+		return 0; /* not compiling for interposable shared library */
 
-	if(!cc1_fopt.pic || cc1_fopt.pie){
-		/* !pic - not compiling for interposable shared library */
-		/* pie, this is the main program, can't have its symbols interposed */
-		return 0;
-	}
+	if(cc1_fopt.pie && decl_defined(d))
+		return 0; /* pie, this is the main program, can't have its symbols interposed */
 
 	switch(decl_linkage(d)){
 		case linkage_internal:
@@ -468,6 +510,10 @@ int decl_interposable(decl *d)
 		case VISIBILITY_HIDDEN:
 			return 0; /* symbol not visible, so not interposable */
 	}
+
+	/* extern decls (that aren't explicitly visibility-attributed) are interposable */
+	if(!decl_defined(d))
+		return 1;
 
 	return cc1_fopt.semantic_interposition;
 }
