@@ -241,6 +241,7 @@ X("overlarge-enumerator-bitfield", overlarge_enumerator_bitfield)
 X("overlarge-enumerator-int", overlarge_enumerator_int)
 
 X("overflow", overflow)
+X("constant-conversion", constant_conversion)
 
 X("operator-precedence", parse_precedence)
 X("visibility", private_struct)

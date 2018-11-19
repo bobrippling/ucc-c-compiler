@@ -124,7 +124,7 @@ static void warn_value_changed_at(
 		}
 	}
 
-	cc1_warn_at(w, overflow, fmt, a, b);
+	cc1_warn_at(w, constant_conversion, fmt, a, b);
 	free(fmt);
 }
 
