@@ -511,6 +511,10 @@ int decl_interposable(decl *d)
 			return 0; /* symbol not visible, so not interposable */
 	}
 
+	/* extern decls (that aren't explicitly visibility-attributed) are interposable */
+	if(!decl_defined(d))
+		return 1;
+
 	return cc1_fopt.semantic_interposition;
 }
 
