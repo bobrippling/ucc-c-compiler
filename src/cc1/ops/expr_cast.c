@@ -159,6 +159,7 @@ static integral_t convert_integral_to_integral_warn(
 	 */
 
 	const unsigned sz_out = type_size(tout, w);
+	const unsigned sz_in = type_size(tin, w);
 	const int signed_in = type_is_signed(tin);
 	const int signed_out = type_is_signed(tout);
 	sintegral_t to_iv_sign_ext;
@@ -166,7 +167,7 @@ static integral_t convert_integral_to_integral_warn(
 	integral_t ret;
 
 	if(!signed_out && signed_in){
-		const unsigned sz_in_bits = CHAR_BIT * type_size(tin, w);
+		const unsigned sz_in_bits = CHAR_BIT * sz_in;
 		const unsigned sz_out_bits = CHAR_BIT * sz_out;
 
 		/* e.g. "(unsigned)-1". Pick to_iv, i.e. the unsigned truncated repr
@@ -195,6 +196,11 @@ static integral_t convert_integral_to_integral_warn(
 	}else{
 		/* unsigned to unsigned */
 		ret = to_iv_sign_ext;
+	}
+
+	if(sz_in == sz_out){
+		/* representable, don't warn */
+		return ret;
 	}
 
 	if(do_warn){
