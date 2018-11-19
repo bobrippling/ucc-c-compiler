@@ -422,7 +422,10 @@ static int decl_defined(decl *d)
 	}else{
 		/* variable - defined if initialised or non-extern
 		 * (check initialisation first, as "extern int x = 3;" is actually "int x = 3;" */
-		int explicitly_initialised = d->bits.var.init.dinit && !d->bits.var.init.compiler_generated;
+		int explicitly_initialised;
+
+		d = decl_with_init(d);
+		explicitly_initialised = d->bits.var.init.dinit && !d->bits.var.init.compiler_generated;
 
 		if(explicitly_initialised)
 			return 1;
