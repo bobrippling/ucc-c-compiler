@@ -320,6 +320,23 @@ decl *decl_impl(decl *const d)
 	return d;
 }
 
+static decl *decl_with_init(decl *const d)
+{
+	decl *i;
+
+	assert(!type_is(d->ref, type_func));
+
+	for(i = d; i; i = i->proto)
+		if(i->bits.var.init.dinit)
+			return i;
+
+	for(i = d; i; i = i->impl)
+		if(i->bits.var.init.dinit)
+			return i;
+
+	return d;
+}
+
 int decl_is_pure_inline(decl *const d)
 {
 	/*
