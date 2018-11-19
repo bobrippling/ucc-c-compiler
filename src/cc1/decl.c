@@ -417,7 +417,7 @@ enum visibility decl_visibility(decl *d)
 static int decl_defined(decl *d)
 {
 	if(type_is(d->ref, type_func)){
-		return !!d->bits.func.code;
+		return !!decl_impl(d)->bits.func.code;
 
 	}else{
 		/* variable - defined if initialised or non-extern
