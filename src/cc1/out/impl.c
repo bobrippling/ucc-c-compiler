@@ -18,9 +18,9 @@
 
 void impl_comment(out_ctx *octx, const char *fmt, va_list l)
 {
-	out_asm2(octx, SECTION_TEXT, P_NO_NL, "/* ");
-	out_asmv(octx, SECTION_TEXT, P_NO_INDENT | P_NO_NL, fmt, l);
-	out_asm2(octx, SECTION_TEXT, P_NO_INDENT, " */");
+	out_asm2(octx, SECTION_TEXT, P_NO_LIVEDUMP | P_NO_NL, "/* ");
+	out_asmv(octx, SECTION_TEXT, P_NO_LIVEDUMP | P_NO_INDENT | P_NO_NL, fmt, l);
+	out_asm2(octx, SECTION_TEXT, P_NO_LIVEDUMP | P_NO_INDENT, " */");
 }
 
 enum flag_cmp op_to_flag(enum op_type op)
