@@ -79,11 +79,12 @@ int out_dump_retained(out_ctx *octx, const char *desc)
 			done_desc = 1;
 		}
 
-		fprintf(stderr, "retained(%d) %s { %d %d } %p\n",
+		fprintf(stderr, "retained(%d) %s { %d %d } %s%p\n",
 				l->val.retains,
 				v_store_to_str(l->val.type),
 				l->val.bits.regoff.reg.is_float,
 				l->val.bits.regoff.reg.idx,
+				l->val.flags & VAL_IS_PHI ? "(phi) " : "",
 				(void *)&l->val);
 	}
 
