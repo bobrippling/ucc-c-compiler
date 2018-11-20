@@ -84,7 +84,7 @@ int out_dump_retained(out_ctx *octx, const char *desc)
 				v_store_to_str(l->val.type),
 				l->val.bits.regoff.reg.is_float,
 				l->val.bits.regoff.reg.idx,
-				l->val.flags & VAL_IS_PHI ? "(phi) " : "",
+				l->val.phiblock ? "(phi) " : "",
 				(void *)&l->val);
 	}
 

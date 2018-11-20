@@ -57,7 +57,7 @@ void out_ctrl_end_undefined(out_ctx *octx)
 
 static out_val *unphi(out_val *phival)
 {
-	phival->flags &= ~VAL_IS_PHI;
+	phival->phiblock = NULL;
 	return phival;
 }
 
@@ -182,7 +182,7 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 		/* we're keeping a hold of phi, and setting VAL_IS_PHI on it,
 		 * so we need our own modifiable copy */
 		out_val *phi_mut = v_dup_or_reuse(octx, phi, phi->t);
-		phi_mut->flags |= VAL_IS_PHI;
+		phi_mut->phiblock = from;
 
 		from->phi_val = phi_mut;
 	}else{

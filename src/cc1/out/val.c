@@ -95,7 +95,7 @@ void v_decay_flags_except(out_ctx *octx, const out_val *except[])
 				const out_val **vi;
 				int found = 0;
 
-				assert(!(v->flags & VAL_IS_PHI) && "phis should never be created as flags");
+				assert(!v->phiblock && "phis should never be created as flags");
 
 				for(vi = except; vi && *vi; vi++){
 					if(v == *vi){
@@ -300,7 +300,7 @@ void v_try_stack_reclaim(out_ctx *octx)
 	for(iter = octx->val_head; iter; iter = iter->next){
 		if(iter->val.retains == 0)
 			continue;
-		if(iter->val.flags & VAL_IS_PHI)
+		if(iter->val.phiblock)
 			continue;
 		switch(iter->val.type){
 			case V_REG:
