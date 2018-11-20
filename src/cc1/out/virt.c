@@ -434,12 +434,15 @@ void v_save_regs(
 		if(v->phiblock)
 			continue; /* phi values are special and don't need to be spilt across jumps */
 
+		if(v == fnval || val_present(v, ignores)){
+			/* don't save */
+			continue;
+		}
+
 		switch(v->type){
 			case V_REG_SPILT:
 			case V_REG:
-				if(v == fnval || val_present(v, ignores)){
-					/* don't save */
-				}else if(!impl_reg_savable(&v->bits.regoff.reg)){
+				if(!impl_reg_savable(&v->bits.regoff.reg)){
 					/* don't save stack references */
 
 				}else if(func_ty
