@@ -14,6 +14,7 @@
 #include "../gen_asm.h"
 #include "../out/out.h"
 #include "../out/lbl.h"
+#include "../out/ctrl.h"
 #include "../pack.h"
 #include "../sue.h"
 #include "../funcargs.h"
@@ -238,8 +239,16 @@ static const out_val *va_arg_gen_read(
 			type_ptr_to(valist_off_ty));
 
 	out_val_retain(octx, gpoff_addr);
+
 	gpoff_val = out_deref(octx, gpoff_addr);
 
+
+	/* gpoff_val, gpoff_addr and valist live across blocks, but don't need to be
+	 * spilt because we look after them and ensure they remain alive/valid and
+	 * not clobbered (whether because of a function call or register pressure) */
+	gpoff_val = out_val_blockphi_make(octx, gpoff_val, NULL);
+	gpoff_addr = out_val_blockphi_make(octx, gpoff_addr, NULL);
+	valist = out_val_blockphi_make(octx, valist, NULL);
 
 	out_val_retain(octx, gpoff_val);
 	out_ctrl_branch(
