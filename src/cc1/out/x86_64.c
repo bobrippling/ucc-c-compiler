@@ -1582,7 +1582,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 #define OP_MATCH(vp, op) (   \
 		vp->type == ops[i].op && \
-		(vp->type != V_REG || !vp->bits.regoff.offset))
+		((vp->type != V_REG && vp->type != V_REG_SPILT) || !vp->bits.regoff.offset))
 
 		for(i = 0; i < ops_n; i++){
 			if(OP_MATCH(l, l) && OP_MATCH(r, r)){
