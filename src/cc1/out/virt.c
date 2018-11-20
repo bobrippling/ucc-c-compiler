@@ -253,6 +253,7 @@ static int v_unused_reg2(
 	 * if we have other references to it */
 	if(to_replace
 	&& to_replace->retains == 1
+	&& !out_val_is_blockphi(to_replace, NULL)
 	&& to_replace->type == V_REG
 	&& to_replace->bits.regoff.reg.is_float == fp
 	&& !impl_reg_frame_const(&to_replace->bits.regoff.reg, /*sp*/1))
@@ -278,6 +279,9 @@ static int v_unused_reg2(
 	for(it = octx->val_head; it; it = it->next){
 		const out_val *this = &it->val;
 		if(this->retains
+		/*&& !out_val_is_blockphi(this, octx->current_blk)
+		 * we don't want to overwrite phiblock values (so check them in this loop),
+		 * even if we ignore them in other parts of the register liveness code */
 		&& this->type == V_REG
 		&& this->bits.regoff.reg.is_float == fp
 		&& regtest(octx->current_fnty, &this->bits.regoff.reg))
