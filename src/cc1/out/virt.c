@@ -18,6 +18,7 @@
 #include "ctx.h"
 #include "asm.h"
 #include "impl.h"
+#include "ctrl.h"
 
 #define REMOVE_CONST(t, exp) ((t)(exp))
 
@@ -215,7 +216,7 @@ static const out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
 
 		if(!v->retains)
 			continue;
-		if(v->phiblock && v->phiblock != octx->current_blk){
+		if(out_val_is_blockphi(v, octx->current_blk)){
 			/* if it's the same block, we've found the reg, else ignore and continue */
 			continue;
 		}

@@ -15,6 +15,8 @@
 #include "ctx.h"
 #include "virt.h"
 
+#include "ctrl.h"
+
 static void v_transfer_spill(out_ctx *octx, const out_val *skip)
 {
 	/* all active regs must be spilt here since we don't know if they'll be spilt
@@ -59,6 +61,11 @@ static out_val *unphi(out_val *phival)
 {
 	phival->phiblock = NULL;
 	return phival;
+}
+
+int out_val_is_blockphi(const out_val *v, out_blk *blk /*optional*/)
+{
+	return v->phiblock && v->phiblock != blk;
 }
 
 const out_val *out_ctrl_merge_n(out_ctx *octx, out_blk **rets)
@@ -149,6 +156,17 @@ void out_current_blk(out_ctx *octx, out_blk *new_blk)
 	octx->current_blk = new_blk;
 }
 
+out_val *out_val_blockphi_make(out_ctx *octx, const out_val *phi, out_blk *blk)
+{
+	out_val *mut = v_dup_or_reuse(octx, phi, phi->t);
+
+	if(!blk)
+		blk = octx->current_blk;
+	mut->phiblock = blk;
+
+	return mut;
+}
+
 void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 		const out_val *phi /* optional */, out_blk **mergee)
 {
@@ -181,8 +199,7 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 	if(phi){
 		/* we're keeping a hold of phi, and setting VAL_IS_PHI on it,
 		 * so we need our own modifiable copy */
-		out_val *phi_mut = v_dup_or_reuse(octx, phi, phi->t);
-		phi_mut->phiblock = from;
+		out_val *phi_mut = out_val_blockphi_make(octx, phi, from);
 
 		from->phi_val = phi_mut;
 	}else{
