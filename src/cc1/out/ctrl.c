@@ -158,6 +158,21 @@ void out_current_blk(out_ctx *octx, out_blk *new_blk)
 
 out_val *out_val_blockphi_make(out_ctx *octx, const out_val *phi, out_blk *blk)
 {
+	/*
+	 * In C, there is no way to hold onto an rvalue (and nor in C++, from a
+	 * compiler's standpoint, as rvalue-references are spilt and their address
+	 * taken), so we only need consider the code-generator logic for the
+	 * following use cases. When an rvalue is held across a jump, it will usually
+	 * be spilt. We want to avoid spilling this in certain cases, as the spill
+	 * code isn't perfect and assumes registers are only live in a single block
+	 * (actually a single expression).
+	 *
+	 * So, the times when registers are live across blocks is tuned to work for
+	 * certain situations only. The times when this is the case include (but
+	 * aren't limited to):
+	 * - phi-nodes
+	 * - __builtin_va_arg()'s reg-vs-stack branching
+	 */
 	out_val *mut = v_dup_or_reuse(octx, phi, phi->t);
 
 	if(!blk)
