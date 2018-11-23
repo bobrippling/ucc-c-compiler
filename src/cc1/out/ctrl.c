@@ -85,6 +85,9 @@ const out_val *out_ctrl_merge_n(out_ctx *octx, out_blk **rets)
 	if(!rets[1]){
 		/* we only need to use unphi() here (as opposed to for unphi'ing all the
 		 * phi vals), because this is the only escapable phi val */
+
+		/* value magically becomes live, thanks to phis
+		 * (and it suddenly being in "scope", post jump) */
 		return unphi(rets[0]->phi_val);
 	}
 

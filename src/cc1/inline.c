@@ -258,7 +258,7 @@ void inline_ret_add(out_ctx *octx, const out_val *v)
 			octx,
 			cc1_octx->inline_.phi,
 			v, v ? &mergee : NULL,
-			/*stash phi value:*/0);
+			/*stash phi value:*/1);
 
 	if(mergee)
 		dynarray_add(&cc1_octx->inline_.rets, mergee);
