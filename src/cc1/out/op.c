@@ -147,13 +147,18 @@ static out_val *try_const_fold(
 	return NULL;
 }
 
+static int is_val_ptr(const out_val *v)
+{
+	return !!type_is(v->t, type_ptr);
+}
+
 static void apply_ptr_step(
 		out_ctx *octx,
 		const out_val **lhs, const out_val **rhs,
 		const out_val **div_out)
 {
-	int l_ptr = !!type_is((*lhs)->t, type_ptr);
-	int r_ptr = !!type_is((*rhs)->t, type_ptr);
+	int l_ptr = is_val_ptr(*lhs);
+	int r_ptr = is_val_ptr(*rhs);
 	int ptr_step;
 
 	if(!l_ptr && !r_ptr)
