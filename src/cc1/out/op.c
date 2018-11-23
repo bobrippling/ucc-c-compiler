@@ -149,7 +149,14 @@ static out_val *try_const_fold(
 
 static int is_val_ptr(const out_val *v)
 {
-	return !!type_is(v->t, type_ptr);
+	type *next = type_is_ptr(v->t);
+	if(!next)
+		return 0;
+
+	if(v->type == V_REG_SPILT)
+		return !!type_is_ptr(next);
+
+	return 1;
 }
 
 static void apply_ptr_step(
