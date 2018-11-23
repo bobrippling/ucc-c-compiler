@@ -191,6 +191,7 @@ static void apply_ptr_step(
 			case V_REG_SPILT:
 				assert(mut_incdec->retains == 1);
 				*incdec = (out_val *)v_to_reg(octx, *incdec);
+				assert((*incdec)->retains == 1);
 
 			case V_REG:
 			{
@@ -207,6 +208,7 @@ static void apply_ptr_step(
 				}
 
 				*incdec = (out_val *)out_op(octx, op_multiply, *incdec, n);
+				assert((*incdec)->retains == 1);
 				break;
 			}
 		}
