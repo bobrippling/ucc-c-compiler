@@ -25,7 +25,7 @@ void gen_stmt_break(const stmt *s, out_ctx *octx)
 {
 	gen_scope_leave(s->symtab, s->parent->symtab, octx);
 
-	out_ctrl_transfer(octx, s->parent->blk_break, NULL, NULL);
+	out_ctrl_transfer(octx, s->parent->blk_break, NULL, NULL, 0);
 }
 
 void dump_stmt_break(const stmt *s, dump *ctx)

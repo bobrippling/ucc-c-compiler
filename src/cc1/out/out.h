@@ -110,9 +110,16 @@ void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
 void out_ctrl_end_undefined(out_ctx *);
 void out_ctrl_end_ret(out_ctx *, const out_val *, type *) ucc_nonnull((1));
 
+/* Will the value be used only in *mergee? (/ not immediately afterwards, in
+ * the current block)
+ * If so, stash_phi_value, otherwise, keep live
+ * (this allows us to prevent later-spills of the value
+ * not being reflected in sub-blocks of *mergee)
+ */
 void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 		/* optional: */
-		const out_val *phi, out_blk **mergee);
+		const out_val *phi, out_blk **mergee,
+		int stash_phi_value);
 
 void out_ctrl_transfer_make_current(out_ctx *octx, out_blk *to);
 

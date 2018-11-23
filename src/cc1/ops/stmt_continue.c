@@ -15,7 +15,7 @@ void fold_stmt_continue(stmt *t)
 void gen_stmt_continue(const stmt *s, out_ctx *octx)
 {
 	gen_scope_leave(s->symtab, s->parent->symtab, octx);
-	out_ctrl_transfer(octx, s->parent->blk_continue, NULL, NULL);
+	out_ctrl_transfer(octx, s->parent->blk_continue, NULL, NULL, 0);
 }
 
 void dump_stmt_continue(const stmt *s, dump *ctx)

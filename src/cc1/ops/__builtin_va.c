@@ -301,7 +301,7 @@ static const out_val *va_arg_gen_read(
 					gpoff_val, /* promote from unsigned to long/intptr_t */
 					type_ptr_to(ty_long)));
 
-		out_ctrl_transfer(octx, blk_fin, reg_save_area_value, &blk_reg);
+		out_ctrl_transfer(octx, blk_fin, reg_save_area_value, &blk_reg, 1);
 	}
 
 	/* stack code */
@@ -332,7 +332,7 @@ static const out_val *va_arg_gen_read(
 					out_change_type(octx, out_deref(octx, overflow_addr), voidp),
 					out_new_l(octx, valist_off_ty, ws)));
 
-		out_ctrl_transfer(octx, blk_fin, overflow_val, &blk_stack);
+		out_ctrl_transfer(octx, blk_fin, overflow_val, &blk_stack, 1);
 	}
 
 	out_current_blk(octx, blk_fin);

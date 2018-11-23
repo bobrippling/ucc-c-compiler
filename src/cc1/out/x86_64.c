@@ -2148,7 +2148,7 @@ void impl_branch(
 
 			out_val_consume(octx, cond);
 
-			out_ctrl_transfer(octx, flag ? bt : bf, NULL, NULL);
+			out_ctrl_transfer(octx, flag ? bt : bf, NULL, NULL, 0);
 			break;
 
 		case V_LBL:

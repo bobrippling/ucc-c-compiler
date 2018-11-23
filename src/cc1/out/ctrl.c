@@ -47,7 +47,7 @@ void out_ctrl_end_ret(out_ctx *octx, const out_val *ret, type *ty)
 {
 	if(ret)
 		impl_to_retreg(octx, ret, ty);
-	out_ctrl_transfer(octx, octx->epilogue_blk, NULL, NULL);
+	out_ctrl_transfer(octx, octx->epilogue_blk, NULL, NULL, 0);
 	octx->current_blk = NULL;
 }
 
@@ -189,7 +189,8 @@ out_val *out_val_blockphi_make(out_ctx *octx, const out_val *phi, out_blk *blk)
 }
 
 void out_ctrl_transfer(out_ctx *octx, out_blk *to,
-		const out_val *phi /* optional */, out_blk **mergee)
+		const out_val *phi /* optional */, out_blk **mergee,
+		int stash_phi_value)
 {
 	out_blk *from = octx->current_blk;
 
@@ -218,9 +219,16 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 
 	assert(!from->phi_val);
 	if(phi){
-		/* we're keeping a hold of phi, and setting VAL_IS_PHI on it,
-		 * so we need our own modifiable copy */
-		out_val *phi_mut = out_val_blockphi_make(octx, phi, from);
+		out_val *phi_mut;
+
+		if(stash_phi_value){
+			/* we're keeping a hold of phi, and setting VAL_IS_PHI on it,
+			 * so we need our own modifiable copy */
+			phi_mut = out_val_blockphi_make(octx, phi, from);
+		}else{
+			phi_mut = v_dup_or_reuse(octx, phi, phi->t);
+		}
+		phi = NULL;
 
 		from->phi_val = phi_mut;
 	}else{
@@ -236,7 +244,7 @@ void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 
 void out_ctrl_transfer_make_current(out_ctx *octx, out_blk *to)
 {
-	out_ctrl_transfer(octx, to, NULL, NULL);
+	out_ctrl_transfer(octx, to, NULL, NULL, 0);
 	out_current_blk(octx, to);
 }
 

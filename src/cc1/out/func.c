@@ -99,7 +99,7 @@ void out_func_epilogue(
 	out_blk *to_flush;
 
 	if(octx->current_blk && octx->current_blk->type == BLK_UNINIT)
-		out_ctrl_transfer(octx, octx->epilogue_blk, NULL, NULL);
+		out_ctrl_transfer(octx, octx->epilogue_blk, NULL, NULL, 0);
 
 	assert(octx->alloca_count == 0 && "allocas after func gen?");
 
@@ -163,12 +163,12 @@ void out_func_epilogue(
 			if(call_save_spill_blk){
 				out_ctrl_transfer_make_current(octx, call_save_spill_blk);
 			}
-			out_ctrl_transfer(octx, octx->prologue_postjoin_blk, NULL, NULL);
+			out_ctrl_transfer(octx, octx->prologue_postjoin_blk, NULL, NULL, 0);
 		}
 	}else{
 		to_flush = octx->prologue_postjoin_blk;
 
-		/* need to attach the label to second_blk */
+		/* need to attach the label to prologue_postjoin_blk */
 		free(to_flush->lbl);
 		to_flush->lbl = octx->entry_blk->lbl;
 		octx->entry_blk->lbl = NULL;

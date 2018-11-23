@@ -45,7 +45,7 @@ void gen_stmt_goto(const stmt *s, out_ctx *octx)
 
 		target = label_getblk(s->bits.lbl.label, octx);
 
-		out_ctrl_transfer(octx, target, NULL, NULL);
+		out_ctrl_transfer(octx, target, NULL, NULL, 0);
 	}
 }
 
