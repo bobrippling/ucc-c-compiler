@@ -67,6 +67,20 @@ expr *expr_new(func_mutate_expr *f,
 	return e;
 }
 
+void expr_free(expr *e)
+{
+	if(!e)
+		return;
+
+	/* TODO: other parts, recursive, etc */
+	free(e);
+}
+
+void expr_free_abi(void *e)
+{
+	expr_free(e);
+}
+
 const char *expr_str_friendly(expr *e)
 {
 	return expr_skip_generated_casts(e)->f_str();
