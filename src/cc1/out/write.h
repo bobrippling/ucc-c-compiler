@@ -8,7 +8,8 @@
 enum p_opts
 {
 	P_NO_INDENT = 1 << 0,
-	P_NO_NL     = 1 << 1
+	P_NO_NL     = 1 << 1,
+	P_NO_LIVEDUMP = 1 << 2,
 };
 
 void out_asmv(

@@ -1,7 +1,21 @@
 #!/usr/bin/perl
 use warnings;
+use Config '%Config';
 
 my $verbose = 0;
+my %sigmap;
+my @signames = split " ", $Config{sig_name};
+for my $n (split " ", $Config{sig_num}){
+	$sigmap{$n} = $signames[$n];
+}
+
+sub signame
+{
+	my $n = shift();
+	my $name = $sigmap{$n};
+	return $name if $name;
+	return "<unknown signal>";
+}
 
 sub dirname
 {
@@ -13,11 +27,7 @@ sub dirname
 sub system_v
 {
 	print "$0: run: @_\n" if $verbose;
-	my $r = system @_;
-	if($r & 127){
-		die "$0 $_[0] killed with " . ($r & 127) . "\n";
-	}
-	return $r;
+	return system @_;
 }
 
 if($ARGV[0] eq '-v'){
@@ -25,11 +35,17 @@ if($ARGV[0] eq '-v'){
 	shift;
 }
 
-my $exp = shift;
+my $expected = shift();
+my $expected_signal = 0;
 my @unlinks;
 
-if($exp !~ /^[0-9]+$/){
-	die "$exp not numeric";
+if($expected =~ /^SIG[A-Z]+$/){
+	$expected_signal = 1;
+	$expected =~ s/^SIG//;
+}elsif($expected =~ /^[0-9]+$/){
+	# fine
+}else{
+	die "\"$expected\" not numeric, nor a signal";
 }
 
 unless(-x $ARGV[0]){
@@ -50,11 +66,29 @@ unless(-x $ARGV[0]){
 }
 
 my $r = system_v(@ARGV);
+my $got_exitcode = $r >> 8;
+my $got_signal = $r & 127;
+if($got_signal){
+	my $SAVE = $got_signal;
+	$got_signal = signame($got_signal);
+}
 
-$r >>= 8;
+if($expected_signal){
+	if(!$got_signal){
+		die "$0: expected signal $expected, got exit code $got_exitcode, from @ARGV\n";
+	}
 
-if($exp != $r){
-	die "$0: expected $exp, got $r, from @ARGV\n";
+	if(!($got_signal eq $expected)){
+		die "$0: expected signal $expected, got signal $got_signal, from @ARGV\n";
+	}
+}else{
+	if($got_signal){
+		die "$0: expected exit code $expected, got signal $got_signal, from @ARGV\n";
+	}
+
+	if($expected != $got_exitcode){
+		die "$0: expected exit code $expected, got exit code $got_exitcode, from @ARGV\n";
+	}
 }
 
 END

@@ -79,11 +79,12 @@ int out_dump_retained(out_ctx *octx, const char *desc)
 			done_desc = 1;
 		}
 
-		fprintf(stderr, "retained(%d) %s { %d %d } %p\n",
+		fprintf(stderr, "retained(%d) %s { %d %d } %s%p\n",
 				l->val.retains,
 				v_store_to_str(l->val.type),
 				l->val.bits.regoff.reg.is_float,
 				l->val.bits.regoff.reg.idx,
+				l->val.phiblock ? "(phi) " : "",
 				(void *)&l->val);
 	}
 
@@ -110,13 +111,19 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 
 	switch(val->type){
 		case V_REG:
-		case V_REG_SPILT:
 			if(val->bits.regoff.offset
 			&& type_size(val->t, NULL) != type_size(to, NULL))
 			{
 				/* must apply the offset in the current type */
 				val = v_reg_apply_offset(octx, val);
 			}
+			break;
+
+		case V_REG_SPILT:
+			/* must load the value for a sensible conversion */
+			val = v_to_reg(octx, val);
+			break;
+
 		default:
 			break;
 	}

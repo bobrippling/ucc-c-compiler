@@ -147,13 +147,25 @@ static out_val *try_const_fold(
 	return NULL;
 }
 
+static int is_val_ptr(const out_val *v)
+{
+	type *next = type_is_ptr(v->t);
+	if(!next)
+		return 0;
+
+	if(v->type == V_REG_SPILT)
+		return !!type_is_ptr(next);
+
+	return 1;
+}
+
 static void apply_ptr_step(
 		out_ctx *octx,
 		const out_val **lhs, const out_val **rhs,
 		const out_val **div_out)
 {
-	int l_ptr = !!type_is((*lhs)->t, type_ptr);
-	int r_ptr = !!type_is((*rhs)->t, type_ptr);
+	int l_ptr = is_val_ptr(*lhs);
+	int r_ptr = is_val_ptr(*rhs);
 	int ptr_step;
 
 	if(!l_ptr && !r_ptr)
@@ -191,6 +203,7 @@ static void apply_ptr_step(
 			case V_REG_SPILT:
 				assert(mut_incdec->retains == 1);
 				*incdec = (out_val *)v_to_reg(octx, *incdec);
+				assert((*incdec)->retains == 1);
 
 			case V_REG:
 			{
@@ -207,6 +220,7 @@ static void apply_ptr_step(
 				}
 
 				*incdec = (out_val *)out_op(octx, op_multiply, *incdec, n);
+				assert((*incdec)->retains == 1);
 				break;
 			}
 		}
@@ -359,23 +373,25 @@ const out_val *out_op_unary(out_ctx *octx, enum op_type uop, const out_val *val)
 			break;
 
 		case V_CONST_I:
-			switch(uop){
+			if(cc1_fopt.const_fold){
+				switch(uop){
 #define OP(op, tok) \
-				case op_ ## op: {                        \
-					out_val *dup = v_dup_or_reuse(         \
-							octx, val, val->t);                \
-					dup->bits.val_i = tok dup->bits.val_i; \
-					return dup;                            \
-				}
+					case op_ ## op: {                        \
+						out_val *dup = v_dup_or_reuse(         \
+								octx, val, val->t);                \
+						dup->bits.val_i = tok dup->bits.val_i; \
+						return dup;                            \
+					}
 
-				OP(not, !);
-				OP(minus, -);
-				OP(bnot, ~);
+					OP(not, !);
+					OP(minus, -);
+					OP(bnot, ~);
 
 #undef OP
 
-				default:
-				assert(0 && "invalid unary op");
+					default:
+					assert(0 && "invalid unary op");
+				}
 			}
 			break;
 

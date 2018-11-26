@@ -18,8 +18,47 @@
 #include "val.h"
 #include "ctx.h"
 #include "blk.h"
+#include "out.h"
 
 #include "../cc1.h" /* cc_out */
+
+#define DUMP_LIVE_VALS 0
+
+static void add_live_vals(out_ctx *octx)
+{
+	out_val_list *l;
+	int at_least_one = 0;
+	char *buf;
+	const char *sep;
+
+	for(l = octx->val_head; l; l = l->next){
+		if(l->val.retains > 0){
+			at_least_one = 1;
+			break;
+		}
+	}
+	if(!at_least_one)
+		return;
+
+	buf = umalloc(1);
+	sep = "";
+	for(l = octx->val_head; l; l = l->next){
+		char *old = buf;
+
+		if(l->val.retains == 0)
+			continue;
+
+		buf = ustrprintf("%s%s%s", buf, sep, out_val_str(&l->val, 0));
+		sep = ", ";
+		free(old);
+	}
+
+	char *old = buf;
+	buf = ustrprintf("\t/* live: %s */\n", buf);
+	free(old);
+
+	dynarray_add(&octx->current_blk->insns, buf);
+}
 
 void out_asmv(
 		out_ctx *octx,
@@ -53,6 +92,9 @@ void out_asmv(
 
 		insn = new;
 	}
+
+	if((opts & P_NO_LIVEDUMP) == 0 && DUMP_LIVE_VALS)
+		add_live_vals(octx);
 
 	dynarray_add(&octx->current_blk->insns, insn);
 }

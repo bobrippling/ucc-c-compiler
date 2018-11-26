@@ -6,6 +6,7 @@
 #include "cc1.h"
 #include "funcargs.h"
 #include "mangle.h"
+#include "out/ctrl.h"
 
 #include "sanitize.h"
 
@@ -116,21 +117,31 @@ void sanitize_shift(
 		expr *elhs, expr *erhs,
 		enum op_type op,
 		out_ctx *octx,
-		const out_val *lhs, const out_val *rhs)
+		const out_val **const lhs, const out_val **const rhs)
 {
 	/* rhs must be < bit-size of lhs' type */
 	const unsigned max = CHAR_BIT * type_size(elhs->tree_type, NULL);
+	out_blk *current;
 
 	if(!(cc1_sanitize & CC1_UBSAN))
 		return;
 
+	current = out_ctx_current_blk(octx);
+
+	/* keep lhs/rhs alive no matter what */
+	*lhs = out_val_blockphi_make(octx, *lhs, current);
+	*rhs = out_val_blockphi_make(octx, *rhs, current);
+
 	out_comment(octx, "rhs less than %u", max);
-	sanitize_assert_order(rhs, op_lt, max, uintptr_ty(), octx, "shift rhs size");
+	sanitize_assert_order(*rhs, op_lt, max, uintptr_ty(), octx, "shift rhs size");
 
 	/* rhs must not be negative */
-	sanitize_assert_order(rhs, op_ge, 0, erhs->tree_type, octx, "shift rhs negative");
+	sanitize_assert_order(*rhs, op_ge, 0, erhs->tree_type, octx, "shift rhs negative");
 
 	/* if left shift, lhs must not be negative */
 	if(op == op_shiftl)
-		sanitize_assert_order(lhs, op_ge, 0, elhs->tree_type, octx, "shift lhs negative");
+		sanitize_assert_order(*lhs, op_ge, 0, elhs->tree_type, octx, "shift lhs negative");
+
+	*lhs = out_val_unphi(octx, *lhs);
+	*rhs = out_val_unphi(octx, *rhs);
 }

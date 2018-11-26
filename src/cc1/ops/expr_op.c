@@ -1230,7 +1230,7 @@ static const out_val *op_shortcircuit(const expr *e, out_ctx *octx)
 		const out_val *rhs = gen_expr(e->rhs, octx);
 		rhs = out_normalise(octx, rhs);
 
-		out_ctrl_transfer(octx, landing, rhs, &blk_rhs);
+		out_ctrl_transfer(octx, landing, rhs, &blk_rhs, 1);
 	}
 
 	out_current_blk(octx, blk_empty);
@@ -1242,7 +1242,8 @@ static const out_val *op_shortcircuit(const expr *e, out_ctx *octx)
 					octx,
 					type_nav_btype(cc1_type_nav, BOOLEAN_TYPE),
 					e->bits.op.op == op_orsc ? 1 : 0),
-				&blk_empty);
+				&blk_empty,
+				1);
 
 	}
 
@@ -1314,7 +1315,7 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 				break;
 			case op_shiftl:
 			case op_shiftr:
-				sanitize_shift(e->lhs, e->rhs, e->bits.op.op, octx, lhs, rhs);
+				sanitize_shift(e->lhs, e->rhs, e->bits.op.op, octx, &lhs, &rhs);
 				break;
 			default:
 				break;
