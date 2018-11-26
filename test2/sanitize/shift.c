@@ -7,10 +7,12 @@
 int printf(const char *, ...) __attribute((format(printf,1,2)));
 void exit(int);
 
+//__attribute__((used)) TODO
 static void san_err(void)
 {
 	exit(5);
 }
+void (*used)(void) = san_err;
 
 toobig_1(int amt)
 {

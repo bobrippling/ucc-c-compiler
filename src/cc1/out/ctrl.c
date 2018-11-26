@@ -57,10 +57,11 @@ void out_ctrl_end_undefined(out_ctx *octx)
 	octx->current_blk = NULL;
 }
 
-static out_val *unphi(out_val *phival)
+out_val *out_val_unphi(out_ctx *octx, const out_val *phi)
 {
-	phival->phiblock = NULL;
-	return phival;
+	out_val *mut = v_dup_or_reuse(octx, phi, phi->t);
+	mut->phiblock = NULL;
+	return mut;
 }
 
 int out_val_is_blockphi(const out_val *v, out_blk *blk /*optional*/)
@@ -83,12 +84,12 @@ const out_val *out_ctrl_merge_n(out_ctx *octx, out_blk **rets)
 	/* optimisation: if we only have one (e.g. single inline ret),
 	 * then we can just returns its phi */
 	if(!rets[1]){
-		/* we only need to use unphi() here (as opposed to for unphi'ing all the
+		/* we only need to use out_val_unphi() here (as opposed to for unphi'ing all the
 		 * phi vals), because this is the only escapable phi val */
 
 		/* value magically becomes live, thanks to phis
 		 * (and it suddenly being in "scope", post jump) */
-		return unphi(rets[0]->phi_val);
+		return out_val_unphi(octx, rets[0]->phi_val);
 	}
 
 	/* get the largest size */
@@ -163,6 +164,11 @@ void out_current_blk(out_ctx *octx, out_blk *new_blk)
 	octx->last_used_blk = new_blk;
 
 	octx->current_blk = new_blk;
+}
+
+out_blk *out_ctx_current_blk(out_ctx *octx)
+{
+	return octx->current_blk;
 }
 
 out_val *out_val_blockphi_make(out_ctx *octx, const out_val *phi, out_blk *blk)
