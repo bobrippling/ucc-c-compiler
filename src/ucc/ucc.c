@@ -34,8 +34,8 @@ enum mode
 struct
 {
 	enum mode assume;
-	int nodefaultlibs;
-	int nostartfiles;
+	int defaultlibs; /* -lc, etc */
+	int startfiles; /* crt, etc */
 } gopts;
 
 
@@ -274,7 +274,7 @@ static void process_files(enum mode mode, char **inputs, char *output, char **ar
 	files = umalloc(ninputs * sizeof *files);
 
 	/* crt must come first */
-	if(!gopts.nostartfiles)
+	if(gopts.startfiles)
 		dynarray_add_array(&links, ld_crt_args());
 
 
@@ -296,7 +296,7 @@ static void process_files(enum mode mode, char **inputs, char *output, char **ar
 		 * be _later_ in the linker's argv array.
 		 * crt, user files, then stdlib
 		 */
-		if(!gopts.nodefaultlibs)
+		if(gopts.defaultlibs)
 			/* ld_crt_args() refers to static memory */
 			dynarray_add_array(&links, ld_stdlib_args());
 
@@ -384,6 +384,8 @@ int main(int argc, char **argv)
 	umask(0077); /* prevent reading of the temporary files we create */
 
 	gopts.assume = -1;
+	gopts.defaultlibs = 1;
+	gopts.startfiles = 1;
 	argv0 = argv[0];
 
 	if(argc <= 1){
@@ -601,11 +603,11 @@ word:
 
 					/* nostdlib = nostartfiles and nodefaultlibs */
 					else if(!strcmp(argv[i], "-nostdlib"))
-						gopts.nostartfiles = 1, gopts.nodefaultlibs = 1;
+						gopts.startfiles = 0, gopts.defaultlibs = 0;
 					else if(!strcmp(argv[i], "-nostartfiles"))
-						gopts.nostartfiles = 1;
+						gopts.startfiles = 0;
 					else if(!strcmp(argv[i], "-nodefaultlibs"))
-						gopts.nostartfiles = 1;
+						gopts.defaultlibs = 0;
 
 					/* nostdinc = nostdlibinc and nobuiltininc */
 					else if(!strcmp(argv[i], "-nostdinc"))
