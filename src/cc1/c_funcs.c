@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "../util/dynarray.h"
 
@@ -14,6 +15,7 @@
 #include "ops/expr_addr.h"
 #include "ops/expr_sizeof.h"
 #include "ops/expr_op.h"
+#include "ops/expr_funcall.h"
 
 void c_func_check_free(expr *arg)
 {
@@ -106,6 +108,8 @@ void c_func_check_mem(expr *ptr_args[], expr *sizeof_arg, const char *func)
 void c_func_check_malloc(expr *malloc_call_expr, type *assigned_to)
 {
 	type *sizeof_type;
+
+	assert(expr_kind(malloc_call_expr, funcall));
 
 	if(dynarray_count(malloc_call_expr->funcargs) != 1)
 		return;
