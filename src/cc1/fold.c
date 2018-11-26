@@ -217,19 +217,12 @@ void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w)
 
 sym *fold_inc_writes_if_sym(expr *e, symtable *stab)
 {
-	if(expr_kind(e, identifier)){
-		struct symtab_entry ent;
-		if(symtab_search(stab, e->bits.ident.bits.ident.spel, NULL, &ent)
-		&& ent.type == SYMTAB_ENT_DECL
-		&& ent.bits.decl->sym)
-		{
-			sym *sym = ent.bits.decl->sym;
-			sym->nwrites++;
-			return sym;
-		}
-	}
+	sym *sym = expr_to_symref(e, stab);
 
-	return NULL;
+	if(sym)
+		sym->nwrites++;
+
+	return sym;
 }
 
 void fold_expr_nodecay(expr *e, symtable *stab)
