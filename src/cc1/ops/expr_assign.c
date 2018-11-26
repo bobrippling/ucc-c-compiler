@@ -155,7 +155,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 
 	rhs_nocast = expr_skip_implicit_casts(e->rhs);
 	if(expr_kind(rhs_nocast, funcall)){
-		expr *callexpr = e->rhs->expr;
+		expr *callexpr = rhs_nocast;
 		decl *rhs_call_decl = expr_to_declref(callexpr->expr, NULL);
 
 		if(rhs_call_decl && rhs_call_decl->spel && !strcmp(rhs_call_decl->spel, "malloc")){
