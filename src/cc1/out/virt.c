@@ -20,8 +20,6 @@
 #include "impl.h"
 #include "ctrl.h"
 
-#define REMOVE_CONST(t, exp) ((t)(exp))
-
 static int v_unused_reg2(
 		out_ctx *octx,
 		int stack_as_backup, const int fp,
@@ -46,6 +44,13 @@ int v_is_const_reg(const out_val *v)
 {
 	return v->type == V_REG
 		&& impl_reg_frame_const(&v->bits.regoff.reg, 0);
+}
+
+int v_needs_GOT(const out_val *v)
+{
+	return v->type == V_LBL
+		&& v->bits.lbl.pic_type & OUT_LBL_PIC
+		&& !(v->bits.lbl.pic_type & OUT_LBL_PICLOCAL);
 }
 
 const out_val *v_to_stack_mem(
@@ -407,9 +412,9 @@ const out_val *v_reg_apply_offset(out_ctx *octx, const out_val *const orig)
 	REMOVE_CONST(out_val *, vreg)->bits.regoff.offset = 0;
 
 	/* use impl_op as it doesn't do reg offsetting */
-	return impl_op(octx, op_plus,
+	return impl_op(octx, off > 0 ? op_plus : op_minus,
 			vreg,
-			out_new_l(octx, vreg->t, off));
+			out_new_l(octx, vreg->t, labs(off)));
 }
 
 static int val_present(const out_val *v, const out_val **ignores)

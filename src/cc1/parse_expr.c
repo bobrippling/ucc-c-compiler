@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -14,6 +15,7 @@
 
 #include "tokenise.h"
 #include "tokconv.h"
+#include "str.h"
 
 #include "parse_type.h"
 #include "parse_init.h"
@@ -22,51 +24,79 @@
 #include "funcargs.h"
 #include "type_is.h"
 
+#include "ops/expr__Generic.h"
+#include "ops/expr_addr.h"
+#include "ops/expr_assign.h"
+#include "ops/expr_assign_compound.h"
 #include "ops/expr_block.h"
+#include "ops/expr_cast.h"
+#include "ops/expr_comma.h"
+#include "ops/expr_compound_lit.h"
+#include "ops/expr_deref.h"
+#include "ops/expr_funcall.h"
+#include "ops/expr_identifier.h"
+#include "ops/expr_op.h"
+#include "ops/expr_sizeof.h"
+#include "ops/expr_stmt.h"
+#include "ops/expr_string.h"
+#include "ops/expr_struct.h"
+#include "ops/expr_val.h"
+#include "ops/expr_if.h"
 
 expr *parse_expr_unary(symtable *scope, int static_ctx);
 #define PARSE_EXPR_CAST(s, static_ctx) parse_expr_unary(s, static_ctx)
 
-expr *parse_expr_sizeof_typeof_alignof(
-		enum what_of what_of, symtable *scope)
+static expr *parse_expr_postfix_with(symtable *, int static_ctx, expr *);
+
+expr *parse_expr_sizeof_typeof_alignof(symtable *scope)
 {
 	const int static_ctx = /*doesn't matter:*/0;
 	expr *e;
 	where w;
 	int is_expr = 1;
+	enum what_of what_of;
 
 	where_cc1_current(&w);
 
-	switch(what_of){
-			enum token t;
-		case what_alignof:
-			t = token__Alignof;
-			if(0)
-		case what_typeof:
-			t = token_typeof;
-			if(0)
-		case what_sizeof:
-			t = token_sizeof;
+	switch(curtok){
+		default:
+			assert(0 && "unreachable sizeof parse");
 
-			w.chr -= strlen(token_to_str(t));
+		case token__Alignof:
+			what_of = what_alignof;
+			if(0)
+		case token_typeof:
+			what_of = what_typeof;
+			if(0)
+		case token_sizeof:
+			what_of = what_sizeof;
 	}
+	EAT(curtok);
 
 	if(accept(token_open_paren)){
-		type *r = parse_type(0, scope);
+		type *ty = parse_type(0, scope);
 
-		if(r){
+		if(ty){
 			EAT(token_close_paren);
 
-			/* check for sizeof(int){...} */
+			/* check for sizeof(int){...}.x[0]->q... */
+
 			if(curtok == token_open_block){
-				e = expr_new_sizeof_expr(
-							expr_new_compound_lit(
-								r,
-								parse_init(scope, static_ctx),
-								static_ctx),
-							what_of);
+				decl_init *complit_init = parse_init(scope, static_ctx);
+				/* got the { 1, 2, ... } */
+
+				expr *complit = expr_new_compound_lit(ty, complit_init, static_ctx);
+				/* got the (int){ 1, 2, ... } */
+
+				expr *entire_sizeof_primary = parse_expr_postfix_with(
+						scope, static_ctx, complit);
+				/* got the (int){ 1, 2, ... }.x[0]->q... */
+
+				e = expr_new_sizeof_expr(entire_sizeof_primary, what_of);
+				/* got the sizeof(int){...}.x[0]->q... */
+
 			}else{
-				e = expr_new_sizeof_type(r, what_of);
+				e = expr_new_sizeof_type(ty, what_of);
 				is_expr = 0;
 			}
 
@@ -143,14 +173,13 @@ static expr *parse_expr__Generic(symtable *scope, int static_ctx)
 			expr_new__Generic(test, lbls), &w);
 }
 
-static expr *parse_expr_identifier(void)
+expr *parse_expr_identifier(void)
 {
 	expr *e;
 	char *sp;
 
 	if(curtok != token_identifier)
-		die_at(NULL, "identifier expected, got %s (%s:%d)",
-				token_to_str(curtok), __FILE__, __LINE__);
+		die_at(NULL, "identifier expected, got %s", token_to_str(curtok));
 
 	sp = token_current_spel();
 
@@ -223,6 +252,31 @@ def_args:
 	}
 }
 
+struct cstring *parse_asciz_str(void)
+{
+	struct cstring *cstr = token_get_current_str(NULL);
+	char *nul;
+
+	if(!cstr){
+		warn_at_print_error(NULL, "string expected, got %s", token_to_str(curtok));
+		parse_had_error = 1;
+		return NULL;
+	}
+
+	if(cstr->type == CSTRING_WIDE){
+		warn_at_print_error(NULL, "wide string not wanted");
+		parse_had_error = 1;
+		return NULL;
+	}
+
+	nul = memchr(cstr->bits.ascii, '\0', cstr->count);
+	if(nul && nul < cstr->bits.ascii + cstr->count - 1){
+		cc1_warn_at(NULL, str_contain_nul, "nul-character terminates string early");
+	}
+
+	return cstr;
+}
+
 static expr *parse_expr_primary(symtable *scope, int static_ctx)
 {
 	switch(curtok){
@@ -238,14 +292,11 @@ static expr *parse_expr_primary(symtable *scope, int static_ctx)
 		case token_string:
 		{
 			where w;
-			char *s;
-			size_t l;
-			int wide;
+			struct cstring *str = token_get_current_str(&w);
 
-			token_get_current_str(&s, &l, &wide, &w);
 			EAT(token_string);
 
-			return expr_new_str(s, l, wide, &w, scope);
+			return expr_new_str(str, &w, scope);
 		}
 
 		case token__Generic:
@@ -302,8 +353,7 @@ static expr *parse_expr_primary(symtable *scope, int static_ctx)
 
 				if(curtok != token_identifier){
 					/* TODO? cc1_error = 1, return expr_new_val(0) */
-					die_at(NULL, "expression expected, got %s (%s:%d)",
-							token_to_str(curtok), __FILE__, __LINE__);
+					die_at(NULL, "expression expected, got %s", token_to_str(curtok));
 				}
 
 				return parse_expr_identifier();
@@ -313,12 +363,10 @@ static expr *parse_expr_primary(symtable *scope, int static_ctx)
 	}
 }
 
-static expr *parse_expr_postfix(symtable *scope, int static_ctx)
+static expr *parse_expr_postfix_with(
+		symtable *scope, int static_ctx, expr *e)
 {
-	expr *e;
 	int flag;
-
-	e = parse_expr_primary(scope, static_ctx);
 
 	for(;;){
 		where w;
@@ -379,6 +427,12 @@ static expr *parse_expr_postfix(symtable *scope, int static_ctx)
 	return e;
 }
 
+static expr *parse_expr_postfix(symtable *scope, int static_ctx)
+{
+	return parse_expr_postfix_with(
+			scope, static_ctx, parse_expr_primary(scope, static_ctx));
+}
+
 expr *parse_expr_unary(symtable *scope, int static_ctx)
 {
 	int set_w = 1;
@@ -404,7 +458,7 @@ expr *parse_expr_unary(symtable *scope, int static_ctx)
 				/* GNU &&label */
 				cc1_warn_at(NULL, gnu_addr_lbl, "use of GNU address-of-label");
 				EAT(curtok);
-				e = expr_new_addr_lbl(token_current_spel());
+				e = expr_new_addr_lbl(token_current_spel(), static_ctx);
 				EAT(token_identifier);
 				break;
 
@@ -429,14 +483,12 @@ expr *parse_expr_unary(symtable *scope, int static_ctx)
 
 			case token_sizeof:
 				set_w = 0; /* no need since there's no sub-parsing here */
-				EAT(token_sizeof);
-				e = parse_expr_sizeof_typeof_alignof(what_sizeof, scope);
+				e = parse_expr_sizeof_typeof_alignof(scope);
 				break;
 
 			case token__Alignof:
 				set_w = 0;
-				EAT(token__Alignof);
-				e = parse_expr_sizeof_typeof_alignof(what_alignof, scope);
+				e = parse_expr_sizeof_typeof_alignof(scope);
 				break;
 
 			case token___extension__:
@@ -583,15 +635,14 @@ expr **parse_funcargs(symtable *scope, int static_ctx)
 {
 	expr **args = NULL;
 
-	while(curtok != token_close_paren){
+	if(curtok == token_close_paren)
+		return NULL;
+
+	do{
 		expr *arg = PARSE_EXPR_NO_COMMA(scope, static_ctx);
 		UCC_ASSERT(arg, "no arg?");
 		dynarray_add(&args, arg);
-
-		if(curtok == token_close_paren)
-			break;
-		EAT(token_comma);
-	}
+	}while(accept(token_comma));
 
 	return args;
 }

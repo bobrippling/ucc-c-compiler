@@ -15,14 +15,16 @@ sub file_contents
 	return mapchomper @l;
 }
 
-my $src = shift;
+if(@ARGV == 0){
+	die "Usage: $0 src [cflags]\n"
+}
 
-die "Usage: $0 src\n" unless @ARGV == 0 and defined($src);
+my $src = shift;
 
 (my $chk = $src) =~ s/c$/chk.s/;
 
 die "no \$UCC" unless exists $ENV{UCC};
-my @src = mapchomper `$ENV{UCC} -S -o- $src 2>/dev/null`;
+my @src = mapchomper `$ENV{UCC} -S -o- $src 2>/dev/null @ARGV`;
 my @chk = file_contents($chk);
 
 # @chk is a list of strings:

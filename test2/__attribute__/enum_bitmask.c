@@ -1,10 +1,10 @@
 // RUN: %ucc %s
 // RUN: %check %s
 
-enum e
+enum __attribute__((enum_bitmask)) e
 {
 	A, B, C
-} __attribute__((enum_bitmask));
+};
 
 main()
 {

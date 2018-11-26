@@ -1,4 +1,4 @@
-#include "../../../src/as_cfg.h"
+#include "../../../src/config_as.h"
 #include "defs.h"
 .section SECTION_NAME_BSS
 	.globl SYMBL(errno)

@@ -3,15 +3,18 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
+#include <assert.h>
 
 #include "escape.h"
-#include "util.h"
 #include "str.h"
+#include "macros.h"
 
 typedef int digit_test(int);
 
 
-int escape_char(int c)
+static int escape_char1(int c)
 {
 	struct
 	{
@@ -33,7 +36,7 @@ int escape_char(int c)
 	};
 	unsigned int i;
 
-	for(i = 0; i < sizeof(escapechars) / sizeof(escapechars[0]); i++)
+	for(i = 0; i < countof(escapechars); i++)
 		if(escapechars[i].from == c)
 			return escapechars[i].to;
 
@@ -60,8 +63,6 @@ static int inc_and_chk(unsigned long long *const val, unsigned base, unsigned in
 
 static void overflow_handle(char *s, char **end, digit_test *test)
 {
-	warn_at(NULL, "overflow parsing integer, truncating to unsigned long long");
-
 	while(test(*s))
 		s++;
 
@@ -69,29 +70,33 @@ static void overflow_handle(char *s, char **end, digit_test *test)
 }
 
 static unsigned long long read_ap_num(
-		digit_test test, char *s, int base,
-		int max_n,
-		char **end, int *of)
+		digit_test test, char *s,
+		int base, int max_chars,
+		char **const end, int *const of)
 {
 	unsigned long long val = 0;
 	int i = 0;
 
 	*of = 0;
 
-	while(test(*s) && (max_n == -1 || i++ < max_n)){
+	while(test(*s)){
 		int dv = isdigit(*s) ? *s - '0' : tolower(*s) - 'a' + 10;
 
 		if(inc_and_chk(&val, base, dv)){
 			/* advance over what's left, etc */
 			overflow_handle(s, end, test);
 			*of = 1;
-			while(test(*s) || *s == '_')
+			while((test(*s) || *s == '_'))
 				s++;
 			break;
 		}
 		s++;
 		while(*s == '_')
 			s++;
+		if(max_chars > 0 && --max_chars == 0)
+			break;
+
+		i++;
 	}
 
 	*end = s;
@@ -110,12 +115,12 @@ static int isodigit(int c)
 }
 
 unsigned long long char_seq_to_ullong(
-		char *s, char **eptr, enum base mode,
-		int limit, int *of)
+		char *s, char **const eptr, int apply_limit, enum base mode, int *const of)
 {
 	static const struct
 	{
-		int base, max_n;
+		int base;
+		int max_chars;
 		digit_test *test;
 	} bases[] = {
 		{    2, -1, isbdigit },
@@ -123,92 +128,125 @@ unsigned long long char_seq_to_ullong(
 		{   10, -1, isdigit  },
 		{ 0x10, -1, isxdigit },
 	};
-	unsigned long long val;
 
-	val = read_ap_num(
-			bases[mode].test, s, bases[mode].base,
-			limit ? bases[mode].max_n : -1,
-			eptr, of);
-
-	if(s == *eptr)
-		die_at(NULL, "invalid number (read 0 chars, at \"%s\")", s);
-
-	return val;
+	return read_ap_num(
+			bases[mode].test,
+			s,
+			bases[mode].base,
+			apply_limit ? bases[mode].max_chars : -1,
+			eptr,
+			of);
 }
 
-long read_char_single(char *start, char **end, unsigned off)
+int escape_char_1(
+		char *start, char **const end,
+		int is_wide,
+		int *const warn, int *const err)
 {
-	long c = *start++;
+	/* no binary here - only in numeric constants */
+	char esc = *start;
 
-	if(c == '\\'){
-		char esc = tolower(*start);
+	if(esc == 'x' || isoct(esc)){
+		unsigned long long parsed;
+		int overflow;
 
-		/* no binary here - only in numeric constants */
-		if(esc == 'x' || isoct(esc)){
-			int of; /* XXX: overflow ignored */
+		if(esc == 'x')
+			start++;
 
-			if(esc == 'x' || esc == 'b')
-				start++;
+		parsed = char_seq_to_ullong(
+				start,
+				end,
+				/*apply_limit*/1,
+				esc == 'x' ? HEX : OCT,
+				&overflow);
 
-			return char_seq_to_ullong(
-					start, end,
-					esc == 'x' ? HEX : esc == 'b' ? BIN : OCT,
-					1, &of);
+		if(overflow)
+			*err = ERANGE;
+		if(start == *end)
+			*err = EILSEQ;
+		if(parsed > (is_wide ? 0x7fffffff : 0xff))
+			*err = ERANGE;
 
-		}else{
-			/* special parsing */
-			c = escape_char(esc);
+		return parsed;
 
-			if(c == -1){
-				where loc;
+	}else{
+		/* special parsing */
+		int c = escape_char1(esc);
 
-				where_current(&loc);
-				loc.chr += off + 1;
-				loc.len = 2;
+		if(c == -1)
+			*warn = EINVAL;
 
-				warn_at(&loc, "unrecognised escape character '%c'", esc);
-				c = esc;
+		*end = start + 1;
+
+		return c;
+	}
+}
+
+int escape_char(
+		char *start,
+		char *limit,
+		char **const end,
+		int is_wide,
+		int *const multi,
+		int *const warn,
+		int *const err)
+{
+	int ret = 0;
+	char *i;
+	size_t n = 0;
+
+	assert(limit);
+
+	/* assuming start..end doesn't contain nuls */
+	for(i = start; i != limit && *i; i++){
+		int this;
+
+		if(*i == '\\'){
+			char *escfin;
+
+			i++;
+			if(i == limit){
+				*err = EILSEQ;
+				break;
 			}
 
-			*end = start + 1;
+			this = escape_char_1(i, &escfin, is_wide, warn, err);
+
+			i = escfin /*for inc:*/- 1;
+		}else{
+			this = *i;
 		}
-	}else{
-		*end = start;
+
+		if(is_wide){
+			ret = this; /* truncate to last parsed char */
+			if(ret)
+				*warn = E2BIG;
+		}else{
+			/* overflow? */
+			int of = 0;
+			if((unsigned)ret > UINT_MAX / 256u)
+				of = 1;
+			ret *= 256u;
+			if((unsigned)ret > UINT_MAX - this)
+				of = 1;
+			ret += this;
+
+			if(of)
+				*warn = E2BIG;
+		}
+
+		n++;
 	}
 
-	return c;
-}
+	if(multi)
+		*multi = n > 1;
 
-long read_quoted_char(
-		char *start, char **end,
-		int *multichar)
-{
-	unsigned long total = 0;
-	unsigned i;
+	if(i == limit)
+		*end = i;
+	else
+		*end = i - 1;
 
-	*multichar = 0;
-
-	if(*start == '\'') /* '' */
-		die_at(NULL, "empty char constant");
-
-	for(i = 0;; i++){
-		int ch;
-
-		if(!*start)
-			die_at(NULL, "no terminating quote to character");
-
-		ch = read_char_single(start, &start, i);
-		total = (total * 256) + (0xff & ch);
-
-		if(*start == '\'')
-			break;
-
-
-		*multichar = 1;
-	}
-
-	*end = start + 1;
-	return total;
+	return ret;
 }
 
 const char *base_to_str(enum base b)

@@ -1,4 +1,4 @@
-// RUN: %ucc -g %s
+// RUN: %ucc -g %s -fno-semantic-interposition
 
 __attribute((always_inline))
 _Noreturn inline void abort()

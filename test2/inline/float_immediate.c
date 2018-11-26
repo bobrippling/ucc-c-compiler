@@ -1,4 +1,4 @@
-// RUN: %ocheck 1 %s
+// RUN: %ocheck 1 %s -fno-semantic-interposition
 
 __attribute((always_inline))
 inline or(float a)

@@ -1,6 +1,4 @@
-// RUN: %ucc -o %t %s -g
-// RUN: %t
-// RUN: echo ptype struct A | gdb %t | grep 'int i;'
+// RUN: %debug_check %s
 
 main()
 {

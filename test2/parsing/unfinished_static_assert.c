@@ -2,4 +2,4 @@
 
 _Static_assert(1,"");
 
-_Static_assert(1, // CHECK: error: expecting token string
+_Static_assert(1, // CHECK: error: string expected, got eof

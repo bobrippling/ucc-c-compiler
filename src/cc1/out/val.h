@@ -57,12 +57,13 @@ struct out_val
 		{
 			const char *str;
 			long offset;
-			int pic;
+			enum out_pic_type pic_type;
 		} lbl;
 	} bits;
 
 	struct vbitfield
 	{
+		type *master_ty;
 		unsigned short off, nbits;
 	} bitfield; /* !!width iif bitfield */
 	unsigned char flags;

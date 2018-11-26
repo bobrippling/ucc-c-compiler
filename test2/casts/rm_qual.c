@@ -5,6 +5,8 @@ struct A
 	int i;
 };
 
+void take(void *);
+
 int f(const void *p)
 {
 	struct A *a = p; // CHECK: warning: implicit cast removes qualifiers (const)
@@ -12,4 +14,7 @@ int f(const void *p)
 
 	(void)a;
 	(void)b;
+
+	const char c = 5;
+	take(&c); // CHECK: warning: implicit cast removes qualifiers (const)
 }

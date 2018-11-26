@@ -17,7 +17,7 @@ static enum platform_sys platform_s; /* TODO: sys is decided at compile time */
 		} \
 	}while(0)
 
-static void platform_init()
+static void platform_init(void)
 {
 	struct utsname u;
 

@@ -1,4 +1,4 @@
-// RUN: %check %s -Wsigned-unsigned
+// RUN: %check %s -Wsign-compare
 
 f(signed s, unsigned u)
 {

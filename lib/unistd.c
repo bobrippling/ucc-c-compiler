@@ -2,6 +2,10 @@
 #include "syscalls.h"
 #include "sys/time.h"
 #include "sys/select.h"
+#include "stdlib.h" /* __progname */
+
+char **environ;
+char *__progname;
 
 #ifdef SYS_brk
 static void *ucc_brk(void *p)
@@ -63,7 +67,7 @@ int usleep(useconds_t usec)
 	return select(0, NULL, NULL, NULL, &tv);
 }
 
-pid_t getpid()
+pid_t getpid(void)
 {
 	return __syscall(SYS_getpid);
 }

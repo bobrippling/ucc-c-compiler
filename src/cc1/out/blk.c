@@ -23,6 +23,7 @@
 
 #include "asm.h" /* cc_out */
 #include "../cc1.h" /* fopt_mode */
+#include "../fopt.h"
 
 #define JMP_THREAD_LIM 10
 
@@ -44,16 +45,19 @@ static void blk_jmpnext(out_blk *to, struct flush_state *st)
 
 static void blk_jmpthread(struct flush_state *st)
 {
-	int lim = 0;
 	out_blk *to = st->jmpto;
 
-	while(!to->insns && to->type == BLK_NEXT_BLOCK && lim < JMP_THREAD_LIM){
+	if(cc1_fopt.thread_jumps){
+		int lim = 0;
+
+		while(!to->insns && to->type == BLK_NEXT_BLOCK && lim < JMP_THREAD_LIM){
 			to = to->bits.next;
 			lim++; /* prevent circulars */
-	}
+		}
 
-	if(lim && fopt_mode & FOPT_VERBOSE_ASM)
-		fprintf(st->f, "\t# jump threaded through %d blocks\n", lim);
+		if(lim && cc1_fopt.verbose_asm)
+			fprintf(st->f, "\t# jump threaded through %d blocks\n", lim);
+	}
 
 	impl_jmp(st->f, to->lbl);
 }
@@ -68,12 +72,14 @@ static void blk_codegen(out_blk *blk, struct flush_state *st)
 	if(st->jmpto){
 		if(st->jmpto != blk)
 			blk_jmpthread(st);
-		else if(fopt_mode & FOPT_VERBOSE_ASM)
+		else if(cc1_fopt.verbose_asm)
 			fprintf(st->f, "\t# implicit jump to next line\n");
 		st->jmpto = NULL;
 	}
 
 	fprintf(st->f, "%s: # %s\n", blk->lbl, blk->desc);
+	if(blk->force_lbl)
+		fprintf(st->f, "%s: # mustgen_spel\n", blk->force_lbl);
 
 	out_dbg_labels_emit_release_v(st->f, &blk->labels.start);
 
@@ -156,7 +162,7 @@ void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl)
 	struct flush_state st = { 0 };
 	out_blk **must_i;
 
-	if(fopt_mode & FOPT_DUMP_BASIC_BLOCKS)
+	if(cc1_fopt.dump_basic_blocks)
 		dot_blocks(first);
 
 	mark_reachable_blocks(first);
@@ -285,4 +291,12 @@ out_blk *out_blk_new_lbl(out_ctx *octx, const char *lbl)
 out_blk *out_blk_new(out_ctx *octx, const char *desc)
 {
 	return blk_new_common(octx, out_label_bblock(octx->nblks++), desc);
+}
+
+void out_blk_mustgen(out_ctx *octx, out_blk *blk, char *force_lbl)
+{
+	if(force_lbl)
+		blk->force_lbl = force_lbl;
+
+	dynarray_add(&octx->mustgen, blk);
 }

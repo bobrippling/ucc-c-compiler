@@ -143,6 +143,12 @@ const out_val *out_ctrl_merge_n(out_ctx *octx, out_blk **rets)
 const out_val *out_ctrl_merge(out_ctx *octx, out_blk *from_a, out_blk *from_b)
 {
 	out_blk *rets[] = { from_a, from_b, NULL };
+
+	if(!from_a){
+		rets[0] = rets[1];
+		rets[1] = NULL;
+	}
+
 	return out_ctrl_merge_n(octx, rets);
 }
 

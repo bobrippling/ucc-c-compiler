@@ -19,8 +19,9 @@ ucc_wur const out_val *impl_op_unary(out_ctx *octx, enum op_type, const out_val 
 
 ucc_wur const out_val *impl_deref(
 		out_ctx *octx, const out_val *vp,
-		const struct vreg *reg)
-	ucc_nonnull();
+		const struct vreg *reg,
+		int *done_out_deref)
+	ucc_nonnull((1, 2, 3));
 
 void impl_branch(out_ctx *, const out_val *,
 		out_blk *bt, out_blk *bf, int unlikely);

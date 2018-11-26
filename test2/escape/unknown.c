@@ -1,9 +1,7 @@
-// RUN: %ocheck 0 %s
+// RUN: %check -e %s
 
 main()
 {
-	char *s = "\890";
-	if(s[0] != '8' || s[1] != '9' || s[2] != '0' || s[3])
-		abort();
+	char *s = "\890"; // CHECK: error: invalid escape character
 	return 0;
 }

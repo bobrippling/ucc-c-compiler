@@ -1,4 +1,4 @@
-// RUN: %ucc -o %t %s
+// RUN: %ucc -o %t %s -fno-semantic-interposition
 
 __attribute((always_inline))
 f(int ok)

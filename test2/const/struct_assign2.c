@@ -11,7 +11,7 @@ int main()
 	struct A a = { 1, 2 };
 
 	a.x = 3; // CHECK: !/warn|error/
-	a.c = 2; // CHECK: error: can't modify const expression struct
+	a.c = 2; // CHECK: error: can't modify const expression member-access
 
 	struct A cpy;
 

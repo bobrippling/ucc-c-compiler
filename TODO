@@ -4,8 +4,6 @@ General
 -Wredundant-decls
 -Wnested-externs
 
-"note:" output, instead of DIE_AT(..., "...\n%s here", where_str(...))
-
 Major C Features
 ################
 
@@ -19,14 +17,10 @@ cc1
 -fno-builtin
 default to external memset calls, -ffreestanding to use builtin on
 
-rewrite the warning system - enum is not enough
-
--fcommon: .comm nam,sz,align
+-f{function,data}-sections
 
 out/gen-optimisations:
 	rearrangement of 1+f()+1 to f() + 1 + 1 - avoid pre-call reg saves
-
-X-Macros instead of switches for enums
 
 __attribute__((pure))
 - function with no side effects (e.g. strlen())
@@ -37,6 +31,9 @@ __attribute__((fastcall)), cdecl, etc
 
 code gen:
 	Treat %rsp as a frame constant if alloca() and vlas aren't used (impl_reg_frame_const)
+
+attempt to build:
+	https://github.com/mit-pdos/xv6-public
 
 cpp
 ###

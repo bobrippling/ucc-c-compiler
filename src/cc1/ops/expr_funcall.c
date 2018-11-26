@@ -6,6 +6,7 @@
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
+#include "../../util/macros.h"
 
 #include "ops.h"
 #include "expr_funcall.h"
@@ -13,6 +14,12 @@
 #include "../format_chk.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../c_funcs.h"
+#include "../fopt.h"
+
+#include "expr_identifier.h"
+#include "expr_op.h"
+#include "expr_cast.h"
 
 #define ARG_BUF(buf, i, sp)       \
 	snprintf(buf, sizeof buf,       \
@@ -21,10 +28,10 @@
 
 const char *str_expr_funcall()
 {
-	return "funcall";
+	return "function-call";
 }
 
-static attribute *func_attr_present(expr *e, enum attribute_type t)
+attribute *func_or_builtin_attr_present(expr *e, enum attribute_type t)
 {
 	attribute *a;
 	a = expr_attr_present(e, t);
@@ -39,7 +46,7 @@ static void sentinel_check(where *w, expr *e, expr **args,
 #define ATTR_WARN_RET(w, ...) \
 	do{ cc1_warn_at(w, attr_sentinel, __VA_ARGS__); return; }while(0)
 
-	attribute *attr = func_attr_present(e, attr_sentinel);
+	attribute *attr = func_or_builtin_attr_present(e, attr_sentinel);
 	int i, nvs;
 	expr *sentinel;
 
@@ -135,22 +142,29 @@ static void static_array_check(
 	/* else it's a random pointer, just be quiet */
 }
 
-static void check_implicit_funcall(expr *e, symtable *stab, char **psp)
+static void check_implicit_funcall(expr *e, symtable *stab, char **const psp)
 {
+	struct symtab_entry ent;
 	funcargs *args;
 	decl *df;
 	type *func_ty;
 
 	if(e->expr->in_parens
 	|| !expr_kind(e->expr, identifier)
+	/* not folded yet, hence no 'e->expr->bits.ident.type != IDENT_NORM' */
+	/* get the spel that parse stashes in the identifier expr: */
 	|| !((*psp) = e->expr->bits.ident.bits.ident.spel))
 	{
 		return;
 	}
 
 	/* check for implicit function */
-	if((e->expr->bits.ident.bits.ident.sym = symtab_search(stab, *psp)))
+	if(symtab_search(stab, *psp, NULL, &ent)
+	&& ent.type == SYMTAB_ENT_DECL)
+	{
+		e->expr->bits.ident.bits.ident.sym = ent.bits.decl->sym;
 		return;
+	}
 
 	args = funcargs_new();
 
@@ -181,8 +195,10 @@ static int check_arg_counts(
 		funcargs *args_from_decl,
 		unsigned count_decl,
 		expr **exprargs,
-		where *loc, char *sp)
+		expr *fnexpr, char *sp)
 {
+	where *const loc = &fnexpr->where;
+
 	/* this block is purely count checking */
 	if(!FUNCARGS_EMPTY_NOVOID(args_from_decl)){
 		const unsigned count_arg  = dynarray_count(exprargs);
@@ -190,7 +206,12 @@ static int check_arg_counts(
 		if(count_decl != count_arg
 		&& (args_from_decl->variadic ? count_arg < count_decl : 1))
 		{
-			int warn = args_from_decl->args_old_proto;
+			decl *call_decl;
+			/* may be args_old_proto but also args_void if copied from
+			 * another prototype elsewhere */
+			int warn = args_from_decl->args_old_proto
+				&& !args_from_decl->args_void;
+			int warning_emitted = 1;
 
 #define common_warning                                         \
 					"too %s arguments to function %s%s(got %d, need %d)",\
@@ -200,12 +221,18 @@ static int check_arg_counts(
 					count_arg, count_decl
 
 			if(warn){
-				cc1_warn_at(loc, funcall_argcount, common_warning);
+				warning_emitted = cc1_warn_at(loc, funcall_argcount, common_warning);
 			}else{
 				warn_at_print_error(loc, common_warning);
 			}
 
 #undef common_warning
+
+			if(warning_emitted
+			&& (call_decl = expr_to_declref(fnexpr->expr, NULL)))
+			{
+				note_at(&call_decl->where, "'%s' declared here", call_decl->spel);
+			}
 
 			if(!warn){
 				fold_had_error = 1;
@@ -229,7 +256,7 @@ static void check_arg_voidness_and_nonnulls(
 	unsigned i;
 	attribute *da;
 
-	if((da = func_attr_present(callexpr, attr_nonnull)))
+	if((da = func_or_builtin_attr_present(callexpr, attr_nonnull)))
 		nonnulls = da->bits.nonnull_args;
 
 	for(i = 0; exprargs[i]; i++){
@@ -257,9 +284,10 @@ static void check_arg_types(
 		expr **exprargs, symtable *stab,
 		char *sp, where *const exprloc)
 {
-	if(exprargs){
+	if(exprargs && args_from_decl->arglist){
 		int i;
 		char buf[64];
+		int finished_expr_args = 0;
 
 		for(i = 0; ; i++){
 			decl *decl_arg = args_from_decl->arglist[i];
@@ -268,22 +296,23 @@ static void check_arg_types(
 				break;
 
 			if(!type_is_complete(decl_arg->ref)){
-				char wbuf[WHERE_BUF_SIZ];
 				warn_at_print_error(&decl_arg->where,
-						"incomplete parameter type '%s'\n"
-						"%s: note: in call here",
-						type_to_str(decl_arg->ref),
-						where_str_r(wbuf, exprloc));
+						"incomplete parameter type '%s'",
+						type_to_str(decl_arg->ref));
 				fold_had_error = 1;
+
+				note_at(exprloc, "in call here");
 			}
 
 			/* exprargs[i] may be NULL - old style function */
-			if(!exprargs[i])
+			if(finished_expr_args || !exprargs[i]){
+				finished_expr_args = 1;
 				continue;
+			}
 
 			ARG_BUF(buf, i, sp);
 
-			fold_type_chk_and_cast(
+			fold_type_chk_and_cast_ty(
 					decl_arg->ref, &exprargs[i],
 					stab, &exprargs[i]->where,
 					buf);
@@ -310,6 +339,46 @@ static void default_promote_args(
 			expr_promote_default(&args[i], stab);
 }
 
+static void check_standard_funcs(const char *name, expr **args)
+{
+	const size_t nargs = dynarray_count(args);
+
+	if(!strcmp(name, "free") && nargs == 1){
+		c_func_check_free(args[0]);
+	}else{
+		static const struct {
+			const char *name;
+			unsigned nargs;
+			int szarg;
+			int ptrargs[2];
+		} memfuncs[] = {
+			{ "memcpy", 3, 2, { 0, 1 } },
+			{ "memset", 3, 2, { 0, -1 } },
+			{ "memmove", 3, 2, { 0, 1 } },
+			{ "memcmp", 3, 2, { 0, 1 } },
+
+			{ 0 }
+		};
+
+		for(int i = 0; memfuncs[i].name; i++){
+			if(nargs == memfuncs[i].nargs && !strcmp(name, memfuncs[i].name)){
+				expr *ptrargs[countof(memfuncs[0].ptrargs) + 1] = { 0 };
+				unsigned arg;
+
+				for(arg = 0; arg < countof(memfuncs[0].ptrargs); arg++){
+					if(memfuncs[i].ptrargs[arg] == -1)
+						break;
+
+					ptrargs[arg] = args[memfuncs[i].ptrargs[arg]];
+				}
+
+				c_func_check_mem(ptrargs, args[memfuncs[i].szarg], memfuncs[i].name);
+				break;
+			}
+		}
+	}
+}
+
 void fold_expr_funcall(expr *e, symtable *stab)
 {
 	type *func_ty;
@@ -323,8 +392,10 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	func_ty = e->expr->tree_type;
 
 	if(!type_is_callable(func_ty)){
-		warn_at_print_error(&e->expr->where, "%s-expression (type '%s') not callable",
-				e->expr->f_str(), type_to_str(func_ty));
+		warn_at_print_error(&e->expr->where,
+				"%s-expression (type '%s') not callable",
+				expr_str_friendly(e->expr),
+				type_to_str(func_ty));
 
 		fold_had_error = 1;
 
@@ -339,7 +410,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 
 	count_decl = dynarray_count(args_from_decl->arglist);
 
-	if(check_arg_counts(args_from_decl, count_decl, e->funcargs, &e->where, sp))
+	if(check_arg_counts(args_from_decl, count_decl, e->funcargs, e, sp))
 		return;
 
 	if(e->funcargs){
@@ -364,6 +435,10 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	{
 		type *fnty = e->expr->tree_type;
 
+		/* look through decays */
+		if(expr_kind(e->expr, cast) && expr_cast_is_lval2rval(e->expr))
+			fnty = expr_cast_child(e->expr)->tree_type;
+
 		format_check_call(fnty, e->funcargs, args_from_decl->variadic);
 
 		sentinel_check(
@@ -373,8 +448,11 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	}
 
 	/* check the subexp tree type to get the funcall attributes */
-	if(func_attr_present(e, attr_warn_unused))
+	if(func_or_builtin_attr_present(e, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
+
+	if(sp && !(cc1_fopt.freestanding))
+		check_standard_funcs(sp, e->funcargs);
 }
 
 const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
@@ -421,49 +499,38 @@ const out_val *gen_expr_funcall(const expr *e, out_ctx *octx)
 	return fn_ret;
 }
 
-const out_val *gen_expr_str_funcall(const expr *e, out_ctx *octx)
+void dump_expr_funcall(const expr *e, dump *ctx)
 {
 	expr **iter;
 
-	idt_printf("funcall, calling:\n");
+	dump_desc_expr(ctx, "call", e);
 
-	gen_str_indent++;
-	print_expr(e->expr);
-	gen_str_indent--;
+	dump_inc(ctx);
+	dump_expr(e->expr, ctx);
+	dump_dec(ctx);
 
-	if(e->funcargs){
-		int i;
-		idt_printf("args:\n");
-		gen_str_indent++;
-		for(i = 1, iter = e->funcargs; *iter; iter++, i++){
-			idt_printf("arg %d:\n", i);
-			gen_str_indent++;
-			print_expr(*iter);
-			gen_str_indent--;
-		}
-		gen_str_indent--;
-	}else{
-		idt_printf("no args\n");
-	}
+	dump_inc(ctx);
+	for(iter = e->funcargs; iter && *iter; iter++)
+		dump_expr(*iter, ctx);
 
-	UNUSED_OCTX();
+	dump_dec(ctx);
 }
 
 void mutate_expr_funcall(expr *e)
 {
-	(void)e;
+	e->f_has_sideeffects = expr_bool_always;
 }
 
 int expr_func_passable(expr *e)
 {
 	/* need to check the sub-expr, i.e. the function */
-	return !func_attr_present(e, attr_noreturn);
+	return !func_or_builtin_attr_present(e, attr_noreturn);
 }
 
 expr *expr_new_funcall()
 {
 	expr *e = expr_new_wrapper(funcall);
-	e->freestanding = 1;
+	e->freestanding = !cc1_warning.unused_fnret;
 	return e;
 }
 

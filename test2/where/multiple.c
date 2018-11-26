@@ -20,7 +20,7 @@ return p_name += a_name;
 // initialisation
 int *p_name = (char *)0;
 // CARETS:
-//            ^ note:
+//            ^ warning
 
 // init 2
 int func()
@@ -38,12 +38,12 @@ main()
 // argument
 f_name((void *)0, (int *)5);
 // CARETS:
-//                ^ note:
+//                ^ warning
 
 int integer = 2;
 f_name(integer, 3);
 // CARETS:
-//     ^ note:
+//     ^ warning
 }
 
 f(int *);
@@ -53,25 +53,25 @@ func2()
 int abcdef = 0;
 f(1234);
 // CARETS:
-//^ note:
+//^ warning
 f(abcdef);
 
 char c;
 char *p = 0;
 f(c);
 // CARETS:
-//^ note:
+//^ warning
 f(&c);
 // CARETS:
-//^ note:
+//^ warning
 f(  *p);
 // CARETS:
-//  ^ note:
+//  ^ warning
 f(5 + 2);
 // CARETS:
-//  ^ note:
+//  ^ warning
 
 f(    sizeof(__typeof(int)));
 // CARETS:
-//    ^ note:
+//    ^ warning
 }

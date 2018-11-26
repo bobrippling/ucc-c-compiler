@@ -122,7 +122,7 @@ void free(void *p __unused)
 	/* no op... :C */
 }
 
-void abort()
+void abort(void)
 {
 	// TODO: unblock SIGABRT
 	raise(SIGABRT);

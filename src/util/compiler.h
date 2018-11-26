@@ -1,6 +1,10 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
+#if __STDC__ >= 201112L
+#  define ucc_noreturn _Noreturn
+#endif
+
 #ifdef __GNUC__
 
 #  define ucc_printflike(fmtarg, firstvararg) \
@@ -11,6 +15,9 @@
 #  define ucc_nonnull(args) __attribute__((nonnull args))
 #  define ucc_static_param static
 #  define ucc_const __attribute__((const))
+#  ifndef ucc_noreturn
+#    define ucc_noreturn __attribute__((noreturn))
+#  endif
 
 #else
 #  define ucc_printflike(a, b)
@@ -21,6 +28,11 @@
 #  define ucc_const
 #endif
 
+#ifndef ucc_noreturn
+#  define ucc_noreturn
+#endif
+
 #define memcpy_safe(a, b) (*(a) = *(b))
+#define REMOVE_CONST(t, exp) ((t)(exp))
 
 #endif

@@ -58,8 +58,9 @@ static void out_wipe_blks(out_ctx *octx)
 		blk_free(b);
 	}
 
-	octx->first_blk =
-	octx->second_blk =
+	octx->entry_blk =
+	octx->prologue_prejoin_blk =
+	octx->prologue_postjoin_blk =
 	octx->current_blk =
 	octx->epilogue_blk =
 	octx->last_used_blk =

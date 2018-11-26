@@ -6,7 +6,7 @@
 
 const char *str_stmt_case_range()
 {
-	return "case_range";
+	return "case-range";
 }
 
 void fold_stmt_case_range(stmt *s)
@@ -38,6 +38,20 @@ void gen_stmt_case_range(const stmt *s, out_ctx *octx)
 {
 	out_ctrl_transfer_make_current(octx, s->bits.case_blk);
 	gen_stmt(s->lhs, octx);
+}
+
+void dump_stmt_case_range(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "case-range", s);
+
+	dump_inc(ctx);
+	dump_expr(s->expr, ctx);
+	dump_expr(s->expr2, ctx);
+	dump_dec(ctx);
+
+	dump_inc(ctx);
+	dump_stmt(s->lhs, ctx);
+	dump_dec(ctx);
 }
 
 void style_stmt_case_range(const stmt *s, out_ctx *octx)

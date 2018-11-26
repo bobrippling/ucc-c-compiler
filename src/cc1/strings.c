@@ -1,62 +1,37 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 #include <assert.h>
 
 #include "strings.h"
+#include "str.h"
 
 #include "../util/dynmap.h"
 #include "../util/alloc.h"
 
 #include "out/lbl.h"
 
-struct string_key
-{
-	char *str;
-	int is_wide;
-};
-
-static int strings_key_eq(
-		const struct string_key *ka,
-		const struct string_key *kb)
-{
-	if(ka->is_wide != kb->is_wide)
-		return 1;
-	return strcmp(ka->str, kb->str);
-}
-
-static unsigned strings_hash(const struct string_key *k)
-{
-	return dynmap_strhash(k->str);
-}
-
-stringlit *strings_lookup(
-		dynmap **plit_tbl, char *s, size_t len, int wide)
+stringlit *strings_lookup(dynmap **plit_tbl, struct cstring *cstr)
 {
 	stringlit *lit;
 	dynmap *lit_tbl;
-	struct string_key key = { s, wide };
 
 	if(!*plit_tbl)
-		*plit_tbl = dynmap_new(struct string_key *, strings_key_eq, strings_hash);
+		*plit_tbl = dynmap_new(struct cstring *, cstring_eq, cstring_hash);
 	lit_tbl = *plit_tbl;
 
-	lit = dynmap_get(struct string_key *, stringlit *, lit_tbl, &key);
+	lit = dynmap_get(struct cstring *, stringlit *, lit_tbl, cstr);
 
 	if(!lit){
-		struct string_key *alloc_key;
 		stringlit *prev;
 
 		lit = umalloc(sizeof *lit);
-		lit->str = s;
-		lit->len = len;
-		lit->wide = wide;
+		lit->cstr = cstr;
 		/* create the label immediately - used in const folding */
-		lit->lbl = out_label_data_store(wide ? STORE_P_WCHAR : STORE_P_CHAR);
+		lit->lbl = out_label_data_store(cstr->type == CSTRING_WIDE ? STORE_P_WCHAR : STORE_P_CHAR);
 
-		alloc_key = umalloc(sizeof *alloc_key);
-		*alloc_key = key;
-		prev = dynmap_set(struct string_key *, stringlit *, lit_tbl, alloc_key, lit);
+		prev = dynmap_set(struct cstring *, stringlit *, lit_tbl, cstr, lit);
 		assert(!prev);
 	}
 
@@ -70,11 +45,13 @@ void stringlit_use(stringlit *s)
 
 int stringlit_empty(const stringlit *str)
 {
-	switch(str->len){
+	struct cstring *cstr = str->cstr;
+
+	switch(cstr->count){
 		case 0:
 			return 1;
 		case 1:
-			return *str->str == '\0';
+			return cstring_char_at(cstr, 0) == 0;
 	}
 	return 0;
 }

@@ -7,4 +7,5 @@ enum E
 };
 
 _Static_assert(_Generic(A, int: 1) == 1, "bad enum");
-_Static_assert(_Generic((enum E)0, enum E: 1) == 1, "bad enum");
+_Static_assert(_Generic((enum E)0, enum E: 1, int: 2) == 1, "bad enum");
+_Static_assert(_Generic((enum E)0, int: 2, default: 1) == 1, "bad enum");

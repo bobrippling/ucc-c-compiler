@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <assert.h>
 
 #include "../type.h"
 #include "../type_is.h"
@@ -16,6 +17,8 @@ const out_val *out_bitfield_to_scalar(
 		const out_val *scalar)
 {
 	type *const ty = scalar->t;
+
+	assert(type_cmp(ty, bf->master_ty, 0) & TYPE_EQUAL_ANY);
 
 	/* shift right, then mask */
 	scalar = out_op(
@@ -62,7 +65,7 @@ const out_val *out_bitfield_scalar_merge(out_ctx *octx,
 
 	struct vbitfield bf = *in_bf;
 	/* we get the lvalue type - change to pointer */
-	type *const ty = scalar->t, *ty_ptr = type_ptr_to(ty);
+	type *const ty = in_bf->master_ty;
 	unsigned long mask_leading_1s, mask_back_0s, mask_rm;
 	out_val *mut_pword;
 	const out_val *scratch;
@@ -70,7 +73,7 @@ const out_val *out_bitfield_scalar_merge(out_ctx *octx,
 	scalar = out_cast(octx, scalar, ty, /*normalise:*/0);
 
 	/* load the pointer to the store, forgetting the bitfield */
-	pword = out_change_type(octx, pword, ty_ptr);
+	pword = out_change_type(octx, pword, type_ptr_to(ty));
 	pword = mut_pword = v_dup_or_reuse(octx, pword, pword->t);
 	mut_pword->bitfield.nbits = 0;
 

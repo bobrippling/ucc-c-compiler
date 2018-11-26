@@ -8,6 +8,9 @@ typedef void        func_fold_stmt(struct stmt *);
 typedef void        func_gen_stmt(const struct stmt *, struct out_ctx *);
 typedef const char *func_str_stmt(void);
 
+struct dump;
+typedef void func_dump_stmt(const struct stmt *, struct dump *);
+
 /* non-critical */
 typedef int         func_passable_stmt(struct stmt *);
 
@@ -19,6 +22,7 @@ struct stmt
 
 	func_fold_stmt     *f_fold;
 	func_gen_stmt      *f_gen;
+	func_dump_stmt     *f_dump;
 	func_str_stmt      *f_str;
 	func_passable_stmt *f_passable; /* can code get past this statement:
 	                                   no for return + things containing return, etc */
@@ -84,6 +88,7 @@ struct stmt_flow
 	func_str_stmt    str_stmt_ ## ty;    \
 	func_gen_stmt    style_stmt_ ## ty;  \
 	func_gen_stmt    gen_stmt_ ## ty;    \
+	func_dump_stmt   dump_stmt_ ## ty;   \
 	void   init_stmt_ ## ty(stmt *)
 
 #include "ops/stmt_break.h"
@@ -103,18 +108,22 @@ struct stmt_flow
 #include "ops/stmt_while.h"
 #include "ops/stmt_continue.h"
 
-#define stmt_new_wrapper(type, stab) stmt_new(                \
-                                        fold_stmt_ ## type,   \
-                                        gen_stmt_ ## type,    \
-                                        style_stmt_ ## type,  \
-                                        str_stmt_ ## type,    \
-                                        init_stmt_ ## type,   \
-                                        stab)
+#define stmt_new_wrapper(type, stab) \
+	stmt_new(               \
+		fold_stmt_ ## type,   \
+		gen_stmt_ ## type,    \
+		dump_stmt_ ## type,   \
+		style_stmt_ ## type,  \
+		str_stmt_ ## type,    \
+		init_stmt_ ## type,   \
+		stab)
 
 #define stmt_kind(st, kind) ((st)->f_fold == fold_stmt_ ## kind)
 
-stmt *stmt_new(func_fold_stmt *,
+stmt *stmt_new(
+		func_fold_stmt *,
 		func_gen_stmt *g_asm,
+		func_dump_stmt *g_dump,
 		func_gen_stmt *g_style,
 		func_str_stmt *,
 		void (*init)(stmt *),

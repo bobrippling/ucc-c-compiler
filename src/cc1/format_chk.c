@@ -14,20 +14,26 @@
 #include "funcargs.h"
 #include "type_is.h"
 #include "warn.h"
+#include "str.h"
 
 #include "format_chk.h"
+
+#include "ops/expr_if.h"
 
 enum printf_attr
 {
 	printf_attr_long = 1 << 0,
 	printf_attr_llong = 1 << 1,
-	printf_attr_size_t = 1 << 2
+	printf_attr_size_t = 1 << 2,
+	printf_attr_ptrdiff_t = 1 << 3
 };
 
 static const char *printf_attr_to_str(enum printf_attr attr)
 {
 	if(attr & printf_attr_size_t)
 		return "z";
+	if(attr & printf_attr_ptrdiff_t)
+		return "t";
 	if(attr & printf_attr_llong)
 		return "ll";
 	if(attr & printf_attr_long)
@@ -40,6 +46,19 @@ static void warn_printf_attr(char fmt, where *w, enum printf_attr attr)
 	cc1_warn_at(w, attr_printf_bad,
 			"unexpected printf modifier '%s' for %%%c",
 			printf_attr_to_str(attr), fmt);
+}
+
+static int attr_check(
+		enum printf_attr attr, enum printf_attr mask,
+		enum type_primitive primitive, type *ty,
+		char expected[BTYPE_STATIC_BUFSIZ], const char *str)
+{
+	int present = !!(attr & mask);
+
+	if(present && !type_is_primitive_anysign(ty, primitive))
+		strcpy(expected, str);
+
+	return present;
 }
 
 static void format_check_printf_1(char fmt, type *const t_in,
@@ -58,15 +77,15 @@ static void format_check_printf_1(char fmt, type *const t_in,
 		case 'p':
 			prim = type_void;
 
-			/* emit the right warning flag */
-			warningp = &cc1_warning.attr_printf_voidp;
-
 			if(cc1_warning.attr_printf_voidp){
-				/* strict %p / void* check */
+				/* strict %p / void* check - emitted with voidp flag */
+				warningp = &cc1_warning.attr_printf_voidp;
 			}else{
 				/* allow any* */
 				if(type_is_ptr(t_in))
 					break;
+
+				/* not a pointer - emit with the default-warning flag */
 			}
 			goto ptr;
 
@@ -100,23 +119,30 @@ ptr:
 				break;
 			}
 
-			if(attr & printf_attr_size_t){
-				if(!type_is_primitive_anysign(t_in, type_intptr_t))
+			if(attr & (printf_attr_size_t | printf_attr_ptrdiff_t)){
+				/* just do size checks for size_t, since it
+				 * could be long, or long-long */
+
+				if(type_size(t_in, loc_expr) != type_primitive_size(type_intptr_t))
 					strcpy(expected, "'size_t/intptr_t'");
+
 				break;
 			}
 
-#define ATTR_CHECK(suff, str)                             \
-			if(attr & printf_attr_##suff){                      \
-				if(!type_is_primitive_anysign(t_in, type_##suff)) \
-					strcpy(expected, str);                          \
-				break;                                            \
-			}
+			/* check %ld and %lld */
+#define ATTR_CHECK(suff, str) \
+			attr_check(attr, printf_attr_##suff, type_##suff, t_in, expected, str)
 
-			ATTR_CHECK(llong, "'long long'")
-			ATTR_CHECK(long, "'long'")
+			if(ATTR_CHECK(llong, "'long long'"))
+				break;
+			if(ATTR_CHECK(long, "'long'"))
+				break;
 
 #undef ATTR_CHECK
+
+			/* check int doesn't have anything greater */
+			if(!type_is_primitive_anysign(t_in, type_int))
+				strcpy(expected, "'int'");
 			break;
 
 		case 'e':
@@ -177,7 +203,11 @@ static enum printf_attr printf_modifiers(
 			break;
 
 		case 'z':
-			attr |= printf_attr_size_t;
+		case 't':
+			attr |= (fmt[*index] == 'z'
+					? printf_attr_size_t
+					: printf_attr_ptrdiff_t);
+
 			++*index;
 			break;
 
@@ -244,6 +274,8 @@ static void format_check_printf_str(
 						&current_arg,
 						attr);
 				i++;
+				if(i >= len)
+					continue;
 			}
 
 			if(fmt[i] == '*'){
@@ -260,6 +292,9 @@ static void format_check_printf_str(
 			}
 		}
 	}
+
+	if(i > len)
+		i = len;
 
 	if(var_idx != -1 && (!fmt[i] || i == len) && *current_arg){
 		cc1_warn_at(&(*current_arg)->where, attr_printf_toomany,
@@ -309,9 +344,9 @@ not_string:
 			break;
 	}
 
-	{
-		const char *fmt = fmt_str->str;
-		const int   len = fmt_str->len - 1;
+	if(fmt_str->cstr->type != CSTRING_WIDE){
+		const char *fmt = fmt_str->cstr->bits.ascii;
+		const int   len = fmt_str->cstr->count - 1;
 
 		if(len <= 0)
 			;

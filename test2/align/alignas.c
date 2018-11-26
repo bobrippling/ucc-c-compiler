@@ -8,6 +8,9 @@ char _Alignas(void *) p;
 
 ALIGN(p, 8);
 
+// shouldn't error about subsequent smaller alignments
+_Alignas(8) _Alignas(32) __attribute((aligned)) _Alignas(4) int x;
+
 main()
 {
 	int _Alignas(8) i; // 8

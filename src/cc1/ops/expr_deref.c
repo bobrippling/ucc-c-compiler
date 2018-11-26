@@ -1,9 +1,13 @@
 #include <string.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "expr_deref.h"
 #include "../type_nav.h"
 #include "../type_is.h"
+#include "../str.h"
+
+#include "expr_op.h"
 
 const char *str_expr_deref()
 {
@@ -40,13 +44,22 @@ const out_val *gen_expr_deref(const expr *e, out_ctx *octx)
 	return gen_expr(expr_deref_what(e), octx);
 }
 
-const out_val *gen_expr_str_deref(const expr *e, out_ctx *octx)
+void dump_expr_deref(const expr *e, dump *ctx)
 {
-	idt_printf("deref, size: %s\n", type_to_str(e->tree_type));
-	gen_str_indent++;
-	print_expr(expr_deref_what(e));
-	gen_str_indent--;
-	UNUSED_OCTX();
+	expr *what = expr_deref_what(e);
+
+	if(expr_kind(what, op) && what->bits.op.array_notation){
+		dump_desc_expr(ctx, "array subscript", e);
+		dump_inc(ctx);
+		dump_expr(what->lhs, ctx);
+		dump_expr(what->rhs, ctx);
+		dump_dec(ctx);
+	}else{
+		dump_desc_expr(ctx, "dereference", e);
+		dump_inc(ctx);
+		dump_expr(what, ctx);
+		dump_dec(ctx);
+	}
 }
 
 static void const_expr_deref(expr *e, consty *k)
@@ -64,25 +77,37 @@ static void const_expr_deref(expr *e, consty *k)
 			 * should be char *
 			 */
 			if(!type_is_primitive_anysign(type_is_ptr(from->tree_type), type_nchar)){
-				k->type = CONST_NO;
+				CONST_FOLD_NO(k, e);
 				break;
 			}
 
-			if(k->offset < 0 || (unsigned)k->offset >= sv->len){
-				k->type = CONST_NO;
+			if(k->offset < 0 || (unsigned)k->offset >= sv->cstr->count){
+				/* undefined - we define as */
+				CONST_FOLD_NO(k, e);
 			}else{
-				long off = k->offset;
+				const long offset = k->offset;
 
-				UCC_ASSERT(!sv->wide, "TODO: constant wchar_t[] deref");
+				switch(sv->cstr->type){
+					case CSTRING_ASCII:
+						/* need to preserve original string for lvalue-ness -> CONST_NEED_ADDR */
+						CONST_FOLD_LEAF(k);
+						k->type = CONST_NEED_ADDR;
+						k->bits.addr.is_lbl = 1;
+						k->bits.addr.bits.lbl = sv->lbl;
+						k->offset = offset;
+						break;
+					case CSTRING_RAW:
+						assert(0 && "raw string in code gen");
+					case CSTRING_WIDE:
+						assert(0 && "TODO: wide string gen");
+				}
 
-				CONST_FOLD_LEAF(k);
-				k->type = CONST_NUM;
-				k->bits.num.val.i = sv->str[off];
+				stringlit_use(sv); /* ensure emit */
 			}
 			break;
 		}
 		case CONST_NEED_ADDR:
-			k->type = CONST_NO;
+			CONST_FOLD_NO(k, e);
 			break;
 
 		case CONST_NUM:
@@ -101,11 +126,17 @@ static void const_expr_deref(expr *e, consty *k)
 	}
 }
 
+static int expr_deref_has_sideeffects(const expr *e)
+{
+	return expr_has_sideeffects(expr_deref_what(e));
+}
+
 void mutate_expr_deref(expr *e)
 {
 	e->f_const_fold = const_expr_deref;
 
 	e->f_islval = expr_is_lval_always;
+	e->f_has_sideeffects = expr_deref_has_sideeffects;
 }
 
 expr *expr_new_deref(expr *of)

@@ -124,7 +124,7 @@ static void impl_overlay_mem_reg(
 					memsz > 4 ? type_double : type_float);
 
 		}else{
-			this_ty = type_nav_MAX_FOR(cc1_type_nav, memsz);
+			this_ty = type_nav_MAX_FOR(cc1_type_nav, memsz, 0);
 		}
 		this_sz = type_size(this_ty, NULL);
 
@@ -142,7 +142,7 @@ static void impl_overlay_mem_reg(
 			 *
 			 * this means we can load straight into the desired register
 			 */
-			fetched = impl_deref(octx, ptr, cur_reg);
+			fetched = impl_deref(octx, ptr, cur_reg, NULL);
 
 			UCC_ASSERT(reg_i < nregs, "reg oob");
 

@@ -11,6 +11,6 @@ void f(struct A *p)
 {
 	struct A a = *p; // CHECK: !/error/
 
-	g(&(struct A){*p}); // CHECK: error: mismatching types, initialisation:
+	g(&(struct A){*p}); // CHECK: error: mismatching types, initialisation
                       // CHECK:^ note: 'int' vs 'struct A'
 }

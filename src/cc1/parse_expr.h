@@ -9,12 +9,15 @@
 
 expr *parse_expr_assignment(symtable *, int static_ctx);
 
-expr *parse_expr_sizeof_typeof_alignof(
-		enum what_of what_of, symtable *scope);
+expr *parse_expr_sizeof_typeof_alignof(symtable *scope);
 
 expr *parse_expr_exp(symtable *, int static_ctx);
 
 expr **parse_funcargs(symtable *, int static_ctx);
 symtable_gasm *parse_gasm(void);
+
+expr *parse_expr_identifier(void);
+
+struct cstring *parse_asciz_str(void);
 
 #endif

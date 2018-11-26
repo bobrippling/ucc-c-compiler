@@ -155,7 +155,7 @@ iter_lines(
 # ---------------------------
 # make sure we have at least one check
 if($nchecks == 0){
-	die "$0: no checks";
+	die("$0: no checks" . ($prefix ? " for prefix \"$prefix\"" : ""));
 }
 
 # ---------------------------

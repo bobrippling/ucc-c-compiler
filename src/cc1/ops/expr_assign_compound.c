@@ -1,9 +1,14 @@
 #include "ops.h"
 #include "expr_assign_compound.h"
 
+#include "expr_assign.h"
+#include "expr_op.h"
+
+#include "../type_nav.h"
+
 const char *str_expr_assign_compound()
 {
-	return "assign_compound";
+	return "compound-assignment";
 }
 
 void fold_expr_assign_compound(expr *e, symtable *stab)
@@ -53,7 +58,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 			fold_insert_casts(trhs, &e->rhs, stab);
 		}
 
-		e->tree_type = lvalue->tree_type;
+		/* see the same code in expr_assign.c */
+		e->tree_type = type_unqualify(lvalue->tree_type);
 
 		(void)resolved;
 		/*type_free_1(resolved); XXX: memleak */
@@ -91,7 +97,7 @@ const out_val *gen_expr_assign_compound(const expr *e, out_ctx *octx)
 		lhs = out_cast(octx, lhs, e->bits.compoundop.upcast_ty, /*normalise_bool:*/1);
 
 	result = out_op(octx, e->bits.compoundop.op, lhs, rhs);
-	gen_op_trapv(e->tree_type, &result, octx);
+	gen_op_trapv(e->tree_type, &result, octx, e->bits.compoundop.op);
 
 	if(e->bits.compoundop.upcast_ty) /* need to cast back down to store */
 		result = out_cast(octx, result, e->tree_type, /*normalise_bool:*/1);
@@ -105,26 +111,30 @@ const out_val *gen_expr_assign_compound(const expr *e, out_ctx *octx)
 	return saved_post;
 }
 
-const out_val *gen_expr_str_assign_compound(const expr *e, out_ctx *octx)
+void dump_expr_assign_compound(const expr *e, dump *ctx)
 {
-	idt_printf("compound %s%s-assignment expr:\n",
-			e->assign_is_post ? "post-" : "",
+	dump_desc_expr_newline(ctx, "compound assignment", e, 0);
+
+	dump_printf_indent(ctx, 0, " %s%s=",
+			e->assign_is_post ? "post-assignment " : "",
 			op_to_str(e->bits.compoundop.op));
 
-	idt_printf("assign to:\n");
-	gen_str_indent++;
-	print_expr(e->lhs);
-	gen_str_indent--;
-	idt_printf("assign from:\n");
-	gen_str_indent++;
-	print_expr(e->rhs);
-	gen_str_indent--;
+	if(e->bits.compoundop.upcast_ty){
+		dump_printf_indent(ctx, 0, " upcast='%s'",
+				type_to_str(e->bits.compoundop.upcast_ty));
+	}
 
-	UNUSED_OCTX();
+	dump_printf_indent(ctx, 0, "\n");
+
+	dump_inc(ctx);
+	dump_expr(e->lhs, ctx);
+	dump_expr(e->rhs, ctx);
+	dump_dec(ctx);
 }
 
 void mutate_expr_assign_compound(expr *e)
 {
+	e->f_has_sideeffects = expr_bool_always;
 	e->freestanding = 1;
 }
 

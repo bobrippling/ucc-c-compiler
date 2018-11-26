@@ -6,8 +6,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <stdarg.h>
-
-#include "cfg.h"
+#include <sys/time.h>
+#include <errno.h>
 
 #include "ucc_ext.h"
 #include "ucc.h"
@@ -15,11 +15,8 @@
 #include "../util/dynarray.h"
 #include "str.h"
 
-#ifndef UCC_AS
-# error "ucc needs reconfiguring"
-#endif
-
 char **include_paths;
+int time_subcmds;
 
 static int show, noop;
 
@@ -38,8 +35,7 @@ bname(char *path)
 		p[1] = '\0';
 }
 
-static char *
-where()
+char *ucc_where(void)
 {
 	static char where[1024];
 
@@ -72,7 +68,7 @@ where()
 
 char *actual_path(const char *prefix, const char *path)
 {
-	char *w = where();
+	char *w = ucc_where();
 	char *buf;
 
 	buf = umalloc(strlen(w) + strlen(prefix) + strlen(path) + 2);
@@ -82,9 +78,10 @@ char *actual_path(const char *prefix, const char *path)
 	return buf;
 }
 
-static void runner(int local, char *path, char **args)
+static int runner(int local, const char *path, char **args, int return_ec)
 {
 	pid_t pid;
+	struct timeval time_start, time_end;
 
 	if(show){
 		int i;
@@ -99,8 +96,10 @@ static void runner(int local, char *path, char **args)
 	}
 
 	if(noop)
-		return;
+		return 0;
 
+	if(time_subcmds && gettimeofday(&time_start, NULL) < 0)
+		fprintf(stderr, "gettimeofday(): %s\n", strerror(errno));
 
 	/* if this were to be vfork, all the code in case-0 would need to be done in the parent */
 	pid = fork();
@@ -144,7 +143,7 @@ static void runner(int local, char *path, char **args)
 					argv[i_out++] = last;
 			}
 
-			argv[i_out++] = local ? actual_path("../", path) : path;
+			argv[i_out++] = local ? actual_path("../", path) : (char *)path;
 
 			while(args[i_in])
 				argv[i_out++] = args[i_in++];
@@ -170,15 +169,41 @@ static void runner(int local, char *path, char **args)
 			if(wait(&status) == -1)
 				die("wait()");
 
+			if(time_subcmds && gettimeofday(&time_end, NULL) < 0)
+				fprintf(stderr, "gettimeofday(): %s\n", strerror(errno));
+
 			if(WIFEXITED(status) && (i = WEXITSTATUS(status)) != 0){
-				die("%s returned %d", path, i);
+				if(!return_ec)
+					die("%s returned %d", path, i);
 			}else if(WIFSIGNALED(status)){
-				fprintf(stderr, "%s caught signal %d\n", path, WTERMSIG(status));
-				/* exit with abort status */
-				exit(134);
+				int sig = WTERMSIG(status);
+
+				fprintf(stderr, "%s caught signal %d\n", path, sig);
+
+				/* exit with propagating status */
+				exit(128 + sig);
 			}
+
+			if(time_subcmds){
+				time_t secdiff = time_end.tv_sec - time_start.tv_sec;
+				suseconds_t usecdiff = time_end.tv_usec - time_start.tv_usec;
+
+				if(usecdiff < 0){
+					secdiff--;
+					usecdiff += 1000000L;
+				}
+
+				printf("%s %ld.%ld\n", path, (long)secdiff, (long)usecdiff);
+			}
+
+			return i;
 		}
 	}
+}
+
+void execute(char *path, char **args)
+{
+	runner(0, path, args, 0);
 }
 
 void rename_or_move(char *old, char *new)
@@ -190,6 +215,9 @@ void rename_or_move(char *old, char *new)
 		"cat", old, ">", new, NULL
 	};
 	char *fixed[3];
+
+	if(!strcmp(old, new))
+		return;
 
 	for(i = 0, len = 1; args[i]; i++)
 		len += strlen(args[i]) + 1; /* space */
@@ -203,19 +231,24 @@ void rename_or_move(char *old, char *new)
 	fixed[1] = cmd;
 	fixed[2] = NULL;
 
-	runner(0, "sh", fixed);
+	runner(0, "sh", fixed, 0);
 
 	free(cmd);
 }
 
-void cat(char *fnin, char *fnout, int append)
+void cat(char *fnin, const char *fnout, int append)
 {
 	FILE *in, *out;
 	char buf[1024];
 	size_t n;
 
-	if(show)
-		fprintf(stderr, "cat %s >%s %s\n", fnin, append ? ">" : "", fnout ? fnout : "<stdout>");
+	if(show){
+		fprintf(stderr, "cat %s%s%s\n",
+				fnin,
+				fnout && append ? " >>" : "",
+				fnout ? fnout : "");
+	}
+
 	if(noop)
 		return;
 
@@ -244,25 +277,29 @@ void cat(char *fnin, char *fnout, int append)
 		die("close():");
 }
 
-static void runner_1(int local, char *path, char *in, char *out, char **args)
+static int runner_1(int local, const char *path, char *in, const char *out, char **args, int return_ec)
 {
+	int ret;
 	char **all = NULL;
 
 	if(args)
 		dynarray_add_array(&all, args);
 
 	dynarray_add(&all, (char *)"-o");
-	dynarray_add(&all, out);
+	dynarray_add(&all, (char *)out);
 
 	dynarray_add(&all, in);
 
-	runner(local, path, all);
+	ret = runner(local, path, all, return_ec);
 
 	dynarray_free(char **, all, NULL);
+
+	return ret;
 }
 
-void preproc(char *in, char *out, char **args)
+int preproc(char *in, const char *out, char **args, int return_ec)
 {
+	int ret;
 	char **all = NULL;
 	char **i;
 
@@ -286,56 +323,46 @@ void preproc(char *in, char *out, char **args)
 			free(this);
 	}
 
-	if(fsystem_cpp)
-		runner_1(0, "cpp", in, out, all);
+	if(binpath_cpp)
+		ret = runner_1(0, binpath_cpp, in, out, all, return_ec);
 	else
-		runner_1(1, "cpp2/cpp", in, out, all);
+		ret = runner_1(1, "cpp2/cpp", in, out, all, return_ec);
 
 	dynarray_free(char **, all, NULL);
+
+	return ret;
 }
 
-void compile(char *in, char *out, char **args)
+int compile(char *in, const char *out, char **args, int return_ec)
 {
-	runner_1(1, "cc1/cc1", in, out, args);
+	return runner_1(1, "cc1/cc1", in, out, args, return_ec);
 }
 
-void assemble(char *in, char *out, char **args)
+void assemble(char *in, const char *out, char **args, char *as)
 {
 	char **copy = NULL;
 
 	if(args)
 		dynarray_add_array(&copy, args);
 
-	runner_1(0, UCC_AS, in, out, copy);
+	runner_1(0, as, in, out, copy, 0);
 
 	dynarray_free(char **, copy, NULL);
 }
 
-void link_all(char **objs, char *out, char **args)
+void link_all(char **objs, const char *out, char **args, char *ld)
 {
 	char **all = NULL;
 
 	dynarray_add(&all, (char *)"-o");
-	dynarray_add(&all, out);
-
-	/* note: order is important - can't just group all objs at the end
-	 * this is handled in configure
-	 */
-
-	dynarray_add_tmparray(&all, strsplit(UCC_LDFLAGS, " "));
+	dynarray_add(&all, (char *)out);
 
 	dynarray_add_array(&all, objs);
 
 	if(args)
 		dynarray_add_array(&all, args);
 
-	runner(0, "ld", all);
+	runner(0, ld, all, 0);
 
 	dynarray_free(char **, all, NULL);
-}
-
-void dsym(char *exe)
-{
-	char *args[] = { exe, NULL };
-	runner(0, "dsymutil", args);
 }

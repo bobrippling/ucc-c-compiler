@@ -205,6 +205,7 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 	int is_fp;
 	struct vbitfield bf = target->bitfield;
 	const out_val *dval;
+	int done_out_deref;
 
 	/* if the pointed-to object is not an lvalue, don't deref */
 	if(type_is(tnext, type_array)
@@ -219,8 +220,14 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 
 	v_unused_reg(octx, 1, is_fp, &reg_store, target);
 
-	dval = impl_deref(octx, target, reg);
-	if(bf.nbits)
+	if(bf.nbits){
+		/* need to ensure we load using the bitfield's master type */
+		target = out_cast(octx, target, type_ptr_to(bf.master_ty), 0);
+	}
+
+	dval = impl_deref(octx, target, reg, &done_out_deref);
+
+	if(bf.nbits && !done_out_deref)
 		dval = out_bitfield_to_scalar(octx, &bf, dval);
 
 	return dval;
@@ -267,12 +274,14 @@ const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 
 const out_val *out_set_bitfield(
 		out_ctx *octx, const out_val *val,
-		unsigned off, unsigned nbits)
+		unsigned off, unsigned nbits,
+		type *master_ty)
 {
 	out_val *mut = v_dup_or_reuse(octx, val, val->t);
 
 	mut->bitfield.off = off;
 	mut->bitfield.nbits = nbits;
+	mut->bitfield.master_ty = master_ty;
 
 	return mut;
 }
@@ -285,4 +294,13 @@ void out_store(out_ctx *octx, const out_val *dest, const out_val *val)
 	}
 
 	impl_store(octx, dest, val);
+}
+
+void out_force_read(out_ctx *octx, type *ty, const out_val *v)
+{
+	/* must read */
+	const out_val *target = out_aalloct(octx, ty);
+
+	out_val_consume(octx,
+			out_memcpy(octx, target, v, type_size(ty, NULL)));
 }

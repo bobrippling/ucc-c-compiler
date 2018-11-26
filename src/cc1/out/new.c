@@ -10,6 +10,7 @@
 #include "../type_is.h"
 #include "../sym.h"
 #include "../vla.h"
+#include "../gen_asm.h"
 
 #include "../cc1_out_ctx.h"
 
@@ -22,8 +23,9 @@
 out_val *out_new_blk_addr(out_ctx *octx, out_blk *blk)
 {
 	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+	out_blk_mustgen(octx, blk, 0);
 	dynarray_add(&octx->mustgen, blk);
-	return out_new_lbl(octx, voidp, blk->lbl, 1);
+	return out_new_lbl(octx, voidp, blk->lbl, OUT_LBL_PIC | OUT_LBL_PICLOCAL);
 }
 
 static out_val *out_new_bp_off(out_ctx *octx, long off)
@@ -80,14 +82,17 @@ out_val *out_new_l(out_ctx *octx, type *ty, long val)
 	return out_new_num(octx, ty, &n);
 }
 
-out_val *out_new_lbl(out_ctx *octx, type *ty, const char *s, int pic)
+out_val *out_new_lbl(
+		out_ctx *octx, type *ty,
+		const char *s,
+		enum out_pic_type pic_type)
 {
 	out_val *v = v_new(octx, ty);
 
 	v->type = V_LBL;
 	v->bits.lbl.str = s;
-	v->bits.lbl.pic = pic;
 	v->bits.lbl.offset = 0;
+	v->bits.lbl.pic_type = pic_type;
 
 	return v;
 }
@@ -135,12 +140,11 @@ static const out_val *sym_inline_val(out_ctx *octx, sym *sym)
 const out_val *out_new_sym(out_ctx *octx, sym *sym)
 {
 	/* this function shouldn't be in out/ */
-	type *ty = type_ptr_to(sym->decl->ref);
 
 	switch(sym->type){
 		case sym_global:
 label:
-			return out_new_lbl(octx, ty, decl_asm_spel(sym->decl), 1);
+			return gen_decl_addr(octx, sym->decl);
 
 		case sym_local:
 		{
@@ -188,10 +192,10 @@ const out_val *out_new_sym_val(out_ctx *octx, sym *sym)
 
 out_val *out_new_zero(out_ctx *octx, type *ty)
 {
-	numeric n;
+	numeric n = { 0 };
 
-	n.val.f = 0;
-	n.suffix = VAL_FLOATING; /* sufficient for V_CONST_F */
+	if(type_is_floating(ty))
+		n.suffix = VAL_FLOATING; /* sufficient for V_CONST_F */
 
 	return out_new_num(octx, ty, &n);
 }

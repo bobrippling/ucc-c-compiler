@@ -28,6 +28,6 @@ void out_asm2(
 
 void out_dbg_flush(out_ctx *, out_blk *);
 
-int dbg_add_file(struct out_dbg_filelist **files, const char *nam);
+unsigned dbg_add_file(struct out_dbg_filelist **files, const char *nam);
 
 #endif

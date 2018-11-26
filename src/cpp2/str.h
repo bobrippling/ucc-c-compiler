@@ -13,7 +13,7 @@ void  str_trim(char *);
 char *str_replace(char *line, char *start, char *end, const char *replace);
 
 char *word_replace(char *line, char *pos, size_t len, const char *replace);
-char *word_find(   char *line, char *word);
+char *word_find(   char *line, const char *word);
 
 char *strchr_nest(char *start, char find);
 

@@ -1,4 +1,4 @@
-// RUN: %check %s -fgnu-keywords -w -pedantic -ffold-const-vlas
+// RUN: %check %s -fgnu-keywords -w -pedantic -Wgnu -ffold-const-vlas -std=gnu89
 
 typedef int fn();
 
@@ -26,6 +26,8 @@ main()
 	char ar[(0, 1)]; // CHECK: warning: comma-expr is a non-standard constant expression (for array size)
 
 	char fn_name[] = __func__; // CHECK: warning: initialisation of char[] from __func__ is an extension
+
+	char fn_name2[] = __FUNCTION__; // CHECK: warning: initialisation of char[] from __FUNCTION__ is an extension
 
 	struct A
 	{

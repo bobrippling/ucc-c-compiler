@@ -1,4 +1,4 @@
-// RUN: %ocheck 0 %s
+// RUN: %ocheck 0 %s -fno-semantic-interposition
 
 __attribute((always_inline))
 inline ge(float a, float b)

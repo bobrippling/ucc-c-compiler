@@ -1,4 +1,4 @@
-// RUN: %archgen %s 'x86_64,x86:movl $13, %%eax' -finline-functions
+// RUN: %archgen %s 'x86_64,x86:movl $13, %%eax' -finline-functions -fno-semantic-interposition
 
 g(int i)
 {

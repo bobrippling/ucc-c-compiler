@@ -41,6 +41,7 @@ struct numeric
 		VAL_BIN         = 1 << 5,
 		VAL_NON_DECIMAL = VAL_OCTAL | VAL_HEX | VAL_BIN,
 		VAL_PREFIX_MASK = VAL_NON_DECIMAL,
+		VAL_SUFFIXED_MASK = VAL_UNSIGNED | VAL_LONG | VAL_LLONG
 	} suffix;
 };
 

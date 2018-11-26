@@ -6,7 +6,7 @@ int a = 0, *b = (void *)0, c = 0;
 
 a = b;
 // CARETS:
-//^ note:
+//^ warning
 
 if(a = c);
 // CARETS:

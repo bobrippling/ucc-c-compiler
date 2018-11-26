@@ -14,6 +14,7 @@
 #include "sue.h"
 #include "btype.h"
 #include "cc1.h"
+#include "fopt.h"
 
 static int type_convertible(enum type_primitive p)
 {
@@ -58,9 +59,6 @@ enum type_cmp btype_cmp(const btype *a, const btype *b)
 		case type_enum:
 			if(a->sue == b->sue)
 				return TYPE_EQUAL;
-			/* enums members _are_ ints */
-			if(b->primitive == type_int)
-				return TYPE_EQUAL;
 			break; /* convertible check */
 
 		default:
@@ -76,13 +74,13 @@ enum type_cmp btype_cmp(const btype *a, const btype *b)
 	return TYPE_NOT_EQUAL;
 }
 
-int type_primitive_is_signed(enum type_primitive p)
+int type_primitive_is_signed(enum type_primitive p, int hard_err_on_su)
 {
 	switch(p){
 		case type_nchar:
 			/* XXX: note we treat char as signed */
 			/* -fsigned-char */
-			return !!(fopt_mode & FOPT_SIGNED_CHAR);
+			return !!(cc1_fopt.signed_char);
 
 		case type_schar:
 		case type_int:
@@ -96,9 +94,12 @@ int type_primitive_is_signed(enum type_primitive p)
 
 		case type_struct:
 		case type_union:
-			ICE("%s(%s)",
-					__func__,
-					type_primitive_to_str(p));
+			if(hard_err_on_su){
+				ICE("%s(%s)",
+						__func__,
+						type_primitive_to_str(p));
+			}
+			return 0;
 
 		case type_enum:
 			return 0; /* for now - enum types coming later */
@@ -121,7 +122,37 @@ int type_primitive_is_signed(enum type_primitive p)
 
 int btype_is_signed(const btype *t)
 {
-	return type_primitive_is_signed(t->primitive);
+	return type_primitive_is_signed(t->primitive, 1);
+}
+
+int type_intrank(enum type_primitive p)
+{
+	switch(p){
+		default:
+			return -1;
+
+		case type_nchar:
+		case type_schar:
+		case type_uchar:
+		case type_int:
+		case type_uint:
+		case type_short:
+		case type_ushort:
+		case type_long:
+		case type_ulong:
+		case type_llong:
+		case type_ullong:
+			return p;
+	}
+
+#define static_assert(tag, exp) ((void)sizeof(char[(exp) ? 1 : -1]))
+	/* check special case: char */
+	static_assert(a, type_nchar < type_schar);
+	static_assert(b, type_schar < type_uchar);
+
+	/* rest follow on from type_int */
+	static_assert(c, type_int < type_uint);
+#undef static_assert
 }
 
 unsigned btype_size(const btype *t, const where *from)
