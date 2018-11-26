@@ -1,4 +1,4 @@
-// RUN: %ocheck 0 %s
+// RUN: %ocheck 0 %s -fno-semantic-interposition
 
 extern __attribute((format(printf, 1, 2))) int printf(char *, ...);
 

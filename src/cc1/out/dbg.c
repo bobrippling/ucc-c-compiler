@@ -27,7 +27,7 @@
 #include "asm.h" /* cc_out[] */
 
 #include "../defs.h" /* CHAR_BIT */
-#include "../../as_cfg.h" /* section names, private label */
+#include "../../config_as.h" /* section names, private label */
 
 #include "leb.h" /* leb128 */
 
@@ -52,6 +52,8 @@
 	X(DW_TAG_array_type, 0x1)            \
 	X(DW_TAG_subrange_type, 0x21)        \
 	X(DW_TAG_const_type, 0x26)           \
+	X(DW_TAG_volatile_type, 0x35)        \
+	X(DW_TAG_restrict_type, 0x37)        \
 	X(DW_TAG_subroutine_type, 0x15)      \
 	X(DW_TAG_enumeration_type, 0x4)      \
 	X(DW_TAG_enumerator, 0x28)           \
@@ -469,19 +471,33 @@ static void dwarf_attr(
 			at->bits.value = *(form_data_t *)data;
 
 			if(enc == DW_FORM_ULEB){
-				switch(leb128_length(at->bits.value, 0)){
-					case 1: at->enc = DW_FORM_data1; break;
-					case 2: at->enc = DW_FORM_data2; break;
-					case 4: at->enc = DW_FORM_data4; break;
-					case 8: at->enc = DW_FORM_data8; break;
-					default: ucc_unreach();
-				}
+				unsigned len = leb128_length(at->bits.value, 0);
+
+				if(len <= 1)
+					at->enc = DW_FORM_data1;
+				else if(len <= 2)
+					at->enc = DW_FORM_data2;
+				else if(len <= 4)
+					at->enc = DW_FORM_data4;
+				else if(len <= 8)
+					at->enc = DW_FORM_data8;
+				else
+					ucc_unreach();
 			}
 			break;
 
 		case DW_FORM_string:
-			at->bits.str = str_add_escape(data, strlen(data));
+		{
+			char *s = data;
+			struct cstring local;
+
+			cstring_init(&local, CSTRING_ASCII, s, strlen(s), 0);
+
+			at->bits.str = str_add_escape(&local);
+
+			cstring_deinit(&local);
 			break;
+		}
 	}
 }
 
@@ -497,7 +513,7 @@ static struct DIE *dwarf_basetype(struct DIE_compile_unit *cu, type *ty)
 			break;
 
 		case type_nchar:
-			if(type_primitive_is_signed(prim)){
+			if(type_primitive_is_signed(prim, 1)){
 		case type_schar:
 				enc = DW_ATE_signed_char;
 			}else{
@@ -758,14 +774,22 @@ static struct DIE *dwarf_type_die(
 
 		case type_cast:
 		{
+			/* due to how types map to tydies,
+			 * we can only have a single qualifier */
+			enum type_qualifier q = ty->bits.cast.qual;
+			enum dwarf_tag tag;
 
-			if(ty->bits.cast.is_signed_cast){
-				/* skip */
-				tydie = dwarf_type_die(cu, parent, ty->ref);
-			}else{
-				tydie = dwarf_tydie_new(cu, ty, DW_TAG_const_type);
-				dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
-			}
+			if(q & qual_const)
+				tag = DW_TAG_const_type;
+			else if(q & qual_volatile)
+				tag = DW_TAG_volatile_type;
+			else if(q & qual_restrict)
+				tag = DW_TAG_restrict_type;
+			else
+				ucc_unreach(NULL);
+
+			tydie = dwarf_tydie_new(cu, ty, tag);
+			dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 			break;
 		}
 
@@ -791,7 +815,7 @@ static struct DIE *dwarf_sue_header(
 	if(!sue->anon)
 		dwarf_attr(suedie, DW_AT_name, DW_FORM_string, sue->spel);
 
-	if(sue_complete(sue)){
+	if(sue_is_complete(sue)){
 		form_data_t sz = sue_size(sue, NULL);
 
 		dwarf_attr(suedie, DW_AT_byte_size,
@@ -841,6 +865,7 @@ static struct DIE *dwarf_suetype(
 		case type_struct:
 		{
 			sue_member **si;
+			decl *current_bitfield = NULL;
 
 			suedie = dwarf_sue_header(
 					cu,
@@ -857,6 +882,9 @@ static struct DIE *dwarf_suetype(
 
 				struct dwarf_block *offset;
 				struct dwarf_block_ent *blkents;
+
+				if(dmem->bits.var.first_bitfield)
+					current_bitfield = dmem;
 
 				if(DECL_IS_ANON_BITFIELD(dmem)){
 					/* skip, otherwise dwarf thinks this decl's a field and messes up */
@@ -894,7 +922,7 @@ static struct DIE *dwarf_suetype(
 				/* bitfield */
 				if(dmem->bits.var.field_width){
 					form_data_t width = const_fold_val_i(dmem->bits.var.field_width);
-					form_data_t whole_sz = type_size(dmem->ref, NULL);
+					form_data_t whole_sz = type_size(current_bitfield->ref, NULL);
 
 					/* address of top-end */
 					form_data_t off =
@@ -1091,6 +1119,8 @@ static struct DIE_compile_unit *dwarf_cu(
 	dwarf_attr(&cu->die, DW_AT_language, DW_FORM_data2,
 			((attrv = dw_lang_from_c_std(lang)), &attrv));
 
+	/* (char *) casts are purely to get through the void* parameter,
+	 * not to change the borrowed ownership of the strings */
 	dwarf_attr(&cu->die, DW_AT_name, DW_FORM_string, (char *)fname);
 
 	dwarf_attr(&cu->die, DW_AT_comp_dir, DW_FORM_string, (char *)compdir);
@@ -1678,9 +1708,16 @@ void dbg_out_filelist(
 	unsigned idx;
 
 	for(i = head, idx = 1; i; i = i->next, idx++){
-		char *esc = str_add_escape(i->fname, strlen(i->fname));
+		struct cstring local;
+		char *esc;
+
+		cstring_init(&local, CSTRING_ASCII, i->fname, strlen(i->fname), 0);
+
+		esc = str_add_escape(&local);
 
 		fprintf(f, ".file %u \"%s\"\n", idx, esc);
+
+		cstring_deinit(&local);
 		free(esc);
 	}
 }

@@ -24,12 +24,12 @@ void gen_stmt_do(const stmt *s, out_ctx *octx)
 			out_blk_new(octx, "do_test"),
 			out_blk_new(octx, "do_end"));
 
-	out_ctrl_transfer(octx, begin, NULL, NULL);
+	out_ctrl_transfer(octx, begin, NULL, NULL, 0);
 
 	out_current_blk(octx, begin);
 	{
 		gen_stmt(s->lhs, octx);
-		out_ctrl_transfer(octx, s->blk_continue, NULL, NULL);
+		out_ctrl_transfer(octx, s->blk_continue, NULL, NULL, 0);
 	}
 
 	out_current_blk(octx, s->blk_continue);
@@ -39,6 +39,18 @@ void gen_stmt_do(const stmt *s, out_ctx *octx)
 	}
 
 	out_current_blk(octx, s->blk_break);
+}
+
+void dump_stmt_do(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "do-while", s);
+
+	dump_inc(ctx);
+
+	dump_stmt(s->lhs, ctx);
+	dump_expr(s->expr, ctx);
+
+	dump_dec(ctx);
 }
 
 void style_stmt_do(const stmt *s, out_ctx *octx)

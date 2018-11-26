@@ -9,5 +9,5 @@ main()
 {
 	__typeof((enum E)0) x;
 
-	x(); // CHECK: error: cast-expression (type 'int') not callable
+	x(); // CHECK: error: identifier-expression (type 'int') not callable
 }

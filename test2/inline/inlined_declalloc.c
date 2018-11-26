@@ -1,4 +1,4 @@
-// RUN: %ocheck 12 %s
+// RUN: %ocheck 12 %s -fno-semantic-interposition
 
 __attribute((always_inline))
 f(int x)

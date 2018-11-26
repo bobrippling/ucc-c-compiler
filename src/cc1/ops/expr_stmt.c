@@ -67,18 +67,17 @@ const out_val *gen_expr_stmt(const expr *e, out_ctx *octx)
 	return ret;
 }
 
-const out_val *gen_expr_str_stmt(const expr *e, out_ctx *octx)
+void dump_expr_stmt(const expr *e, dump *ctx)
 {
-	idt_printf("statement:\n");
-	gen_str_indent++;
-	print_stmt(e->code);
-	gen_str_indent--;
-	UNUSED_OCTX();
+	dump_desc_expr(ctx, "statement expression", e);
+	dump_inc(ctx);
+	dump_stmt(e->code, ctx);
+	dump_dec(ctx);
 }
 
 void mutate_expr_stmt(expr *e)
 {
-	(void)e;
+	e->f_has_sideeffects = expr_bool_always;
 }
 
 expr *expr_new_stmt(stmt *code)

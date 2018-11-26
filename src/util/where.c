@@ -28,6 +28,7 @@ void where_current(where *w)
 	w->chr      = loc_tok.chr;
 	w->line_str = current_line_str;
 	w->len      = 0;
+	w->is_sysh = 0;
 }
 
 int where_equal(where *a, where *b)

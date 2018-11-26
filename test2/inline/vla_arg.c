@@ -1,4 +1,4 @@
-// RUN: %ocheck 10 %s -finline-functions
+// RUN: %ocheck 10 %s -finline-functions -fno-semantic-interposition
 
 void abort(void);
 

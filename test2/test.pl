@@ -13,10 +13,15 @@ sub usage
 	die "Usage: $0 [--ucc=path] file\n";
 }
 
+sub wexitstatus
+{
+	return (shift >> 8) & 0xff
+}
+
 sub timeout
 {
-	my $r = system("./timeout", $timeout, @_);
-	return $r;
+	system("../tools/timeout", $timeout, @_);
+	return $?;
 }
 
 sub basename
@@ -76,7 +81,7 @@ my %vars = (
 
 if($verbose){
 	my @verbose_support = (
-		'check', 'ocheck', 'debug_check', 'layout_check'
+		'check', 'ocheck', 'layout_check'
 	);
 
 	$vars{$_} .=  " -v" for @verbose_support;
@@ -144,7 +149,14 @@ while(<F>){
 
 			my $ec = timeout($subst_sh);
 
-			die2 "command '$subst_sh' failed" if ($want_err == !$ec);
+			if($ec & 127){
+				# signal death - always a failure
+				die2 "command '$subst_sh' caught signal " . ($ec - 128);
+			}
+
+			my $unexpected = ($want_err ? "passed" : "failed");
+
+			die2 "command '$subst_sh' $unexpected" if ($want_err == !$ec);
 		}elsif($command eq 'CHECK'){
 			$want_check = 1;
 

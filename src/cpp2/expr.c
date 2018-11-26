@@ -4,6 +4,7 @@
 
 #include "../util/alloc.h"
 #include "../util/util.h"
+#include "../util/macros.h"
 
 #include "expr.h"
 #include "expr_tok.h"
@@ -151,7 +152,7 @@ static void expr_init(void)
 		return;
 	init = 1;
 
-	for(i = 0; i < sizeof(preds)/sizeof(*preds); i++)
+	for(i = 0; i < countof(preds); i++)
 		preds[i] = MAX_PRI; /* any large value */
 
 #define PRED_SET(op, n) PRECEDENCE(tok_ ## op) = n
@@ -256,7 +257,7 @@ expr *expr_parse(char *str)
 }
 
 /* eval */
-expr_n expr_eval(expr *e_, int *had_ident)
+expr_n expr_eval(expr *e_, int *had_ident, int noop)
 {
 	const expr ke = *e_;
 	free(e_);
@@ -269,7 +270,9 @@ expr_n expr_eval(expr *e_, int *had_ident)
 			return ke.bits.num;
 		case E_UOP:
 		{
-			expr_n n = expr_eval(ke.bits.uop.e, had_ident);
+			expr_n n = expr_eval(ke.bits.uop.e, had_ident, noop);
+			if(noop)
+				return 0;
 			switch(ke.bits.op.op){
 #define UNARY(ch, o) case ch: return o n
 				UNARY('-', -);
@@ -283,12 +286,30 @@ expr_n expr_eval(expr *e_, int *had_ident)
 		case E_OP:
 		{
 			expr_n nums[2];
+			int skip_rhs = 0;
 
-			nums[0] = expr_eval(ke.bits.op.lhs, had_ident);
-			nums[1] = expr_eval(ke.bits.op.rhs, had_ident);
+			nums[0] = expr_eval(ke.bits.op.lhs, had_ident, noop);
 
 			switch(ke.bits.op.op){
-				case '*':
+				case tok_andsc:
+					if(!nums[0]){
+						skip_rhs = 1;
+					}
+					break;
+				case tok_orsc:
+					if(nums[0]){
+						skip_rhs = 1;
+					}
+					break;
+			}
+
+			nums[1] = expr_eval(ke.bits.op.rhs, had_ident, skip_rhs);
+
+			if(noop)
+				return 0;
+
+			switch(ke.bits.op.op){
+				case '%':
 				case '/':
 					if(nums[1] == 0)
 						CPP_DIE("%s by zero",
@@ -328,9 +349,9 @@ expr_n expr_eval(expr *e_, int *had_ident)
 		{
 			expr_n a, b, c;
 			/* must evaluate all - free the expressions */
-			a = expr_eval(ke.bits.top.e, had_ident);
-			b = expr_eval(ke.bits.top.if_true, had_ident);
-			c = expr_eval(ke.bits.top.if_false, had_ident);
+			a = expr_eval(ke.bits.top.e, had_ident, noop);
+			b = expr_eval(ke.bits.top.if_true, had_ident, !a);
+			c = expr_eval(ke.bits.top.if_false, had_ident, !!a);
 			return a ? b : c;
 		}
 	}

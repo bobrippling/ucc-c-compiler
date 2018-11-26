@@ -10,7 +10,8 @@
 #include "expr.h"
 #include "stmt.h"
 #include "gen_asm.h"
-#include "cc1.h" /* fopt_mode */
+#include "cc1.h" /* fopt_mode, cc1_gdebug */
+#include "fopt.h"
 
 /* inline emission */
 #include "out/dbg.h"
@@ -118,7 +119,7 @@ static void inline_sym_map_save(
 		pushed_vals[i].sym_outval = sym_outval(s);
 
 		/* if the symbol is addressed we need to spill it */
-		if(s->nwrites || out_is_nonconst_temporary(args[i])){
+		if(s->nwrites || out_is_nonconst_temporary(args[i]) || (type_qual(s->decl->ref) & qual_volatile)){
 			/* registers can't persist across inlining in the case of
 			 * function calls, etc etc - need to spill, hence
 			 * non-const temporary */
@@ -138,7 +139,7 @@ static void inline_sym_map_save(
 			pushed_vals[i].map_val = was_set;
 		}
 
-		if(cc1_gdebug){
+		if(cc1_gdebug == DEBUG_FULL){
 			/* sym_outval() may be null, in which case the debugger
 			 * will show "argument optimised out" etc etc.. */
 			out_dbg_emit_decl(octx, *diter, sym_outval(s));
@@ -208,7 +209,7 @@ static const out_val *gen_inline_func(
 	inline_vars_push(cc1_octx, &saved, &nested_label_map);
 	cc1_octx->inline_.phi = out_blk_new(octx, "inline_phi");
 
-	if(cc1_gdebug){
+	if(cc1_gdebug != DEBUG_OFF){
 		struct out_dbg_lbl *dbg_startlbl;
 		char *dbg_lbls[2];
 
@@ -233,7 +234,7 @@ static const out_val *gen_inline_func(
 
 	inline_sym_map_restore(arg_symtab, pushed_vals, cc1_octx, octx);
 
-	if(cc1_gdebug){
+	if(cc1_gdebug != DEBUG_OFF){
 		out_dbg_label_pop(octx, dbg_endlbl);
 		out_dbg_inline_end(octx);
 	}
@@ -256,7 +257,8 @@ void inline_ret_add(out_ctx *octx, const out_val *v)
 	out_ctrl_transfer(
 			octx,
 			cc1_octx->inline_.phi,
-			v, v ? &mergee : NULL);
+			v, v ? &mergee : NULL,
+			/*stash phi value:*/1);
 
 	if(mergee)
 		dynarray_add(&cc1_octx->inline_.rets, mergee);
@@ -270,7 +272,7 @@ static int heuristic_should_inline(
 
 	/* as with clang and gcc, -fno-inline-functions affects just the heuristic
 	 * __attribute((always_inline)) overrides it */
-	if((fopt_mode & FOPT_INLINE_FUNCTIONS) == 0)
+	if((cc1_fopt.inline_functions) == 0)
 		return 0;
 
 	/* if it's marked inline, inline it
@@ -319,7 +321,7 @@ static stmt *try_resolve_val_to_func(
 	return NULL;
 }
 
-ucc_nonnull()
+ucc_nonnull((3, 4, 5))
 static const char *check_and_ret_inline(
 		expr *maybe_call_expr, decl *maybe_decl,
 		out_ctx *octx,
@@ -330,6 +332,7 @@ static const char *check_and_ret_inline(
 	const char *why;
 	struct cc1_out_ctx *cc1_octx;
 	decl **arg_iter;
+	int is_func; /* else it's a function pointer */
 
 	if(maybe_decl){
 		iouts->fndecl = maybe_decl;
@@ -339,7 +342,12 @@ static const char *check_and_ret_inline(
 			return why;
 	}
 
-	iouts->fndecl = decl_impl(iouts->fndecl);
+	is_func = !!type_is(iouts->fndecl->ref, type_func);
+	if(is_func)
+		iouts->fndecl = decl_impl(iouts->fndecl);
+
+	if(is_func && iouts->fndecl->bits.func.contains_static_label_addr)
+		return "function contains static-address-of-label expression";
 
 	/* check for noinline before we potentially change the decl */
 	if(attribute_present(iouts->fndecl, attr_noinline)){
@@ -351,7 +359,10 @@ static const char *check_and_ret_inline(
 	if(attribute_present(iouts->fndecl, attr_weak))
 		return "weak-function overridable at link time";
 
-	if(!(iouts->fncode = iouts->fndecl->bits.func.code)){
+	if(decl_interposable(iouts->fndecl))
+		return "function is interposable at load time";
+
+	if(!is_func || !(iouts->fncode = iouts->fndecl->bits.func.code)){
 		/* may change the decl from fnptr -> function */
 		iouts->fncode = try_resolve_val_to_func(octx, fnval, &iouts->fndecl);
 
@@ -364,7 +375,11 @@ static const char *check_and_ret_inline(
 		 * disallow inline attributes on function pointers */
 	}
 
-	iouts->arg_symtab = DECL_FUNC_ARG_SYMTAB(iouts->fndecl);
+	if(is_func)
+		iouts->arg_symtab = DECL_FUNC_ARG_SYMTAB(iouts->fndecl);
+	else
+		iouts->arg_symtab = type_funcsymtable(iouts->fndecl->ref);
+
 	fargs = type_funcargs(iouts->fndecl->ref);
 
 	if(fargs->variadic){
@@ -394,8 +409,7 @@ static const char *check_and_ret_inline(
 	}
 
 	if(!attribute_present(iouts->fndecl, attr_always_inline)
-	&& !heuristic_should_inline(iouts->fndecl,
-		iouts->fncode, iouts->arg_symtab->children[0], octx))
+	&& !heuristic_should_inline(iouts->fndecl, iouts->fncode, iouts->arg_symtab, octx))
 	{
 		return "heuristic denied";
 	}
@@ -418,8 +432,10 @@ const out_val *inline_func_try_gen(
 			&iouts, dynarray_count(args));
 
 	if(*whynot){
-		if(fopt_mode & FOPT_VERBOSE_ASM)
+		if(cc1_fopt.verbose_asm)
 			out_comment(octx, "can't inline call: %s", *whynot);
+		if(iouts.fndecl && iouts.fndecl->store & store_inline)
+			cc1_warn_at(call_loc, inline_failed, "can't inline call: %s", *whynot);
 		return NULL;
 	}
 

@@ -4,6 +4,9 @@
 #include "../out/asm.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../fopt.h"
+
+#include "expr_identifier.h"
 
 #define struct_offset(e) (                            \
 	 (e)->bits.struct_mem.d->bits.var.struct_offset +   \
@@ -12,7 +15,7 @@
 
 const char *str_expr_struct()
 {
-	return "struct";
+	return "member-access";
 }
 
 void fold_expr_struct(expr *e, symtable *stab)
@@ -25,6 +28,8 @@ void fold_expr_struct(expr *e, symtable *stab)
 	struct_union_enum_st *sue;
 	char *spel;
 	enum type_qualifier struct_qual;
+	attribute **struct_attr;
+	type *struct_type;
 
 	if(ptr_expect)
 		FOLD_EXPR(e->lhs, stab);
@@ -59,24 +64,32 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 		if(!(sue = type_is_s_or_u(r))){
 err:
-			die_at(&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
+			warn_at_print_error(
+					&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
 					type_to_str(e->lhs->tree_type),
-					e->lhs->f_str(),
+					expr_str_friendly(e->lhs),
 					ptr_expect ? "pointer to " : "",
 					spel);
+			fold_had_error = 1;
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
 		}
 	}
 
-	if(!sue_complete(sue)){
-		char wbuf[WHERE_BUF_SIZ];
+	if(!sue_is_complete(sue)){
+		fold_had_error = 1;
 
-		die_at(&e->lhs->where, "%s incomplete type (%s)\n"
-				"%s: note: forward declared here",
+		warn_at_print_error(
+				&e->lhs->where, "%s incomplete type (%s)",
 				ptr_expect
 					? "dereferencing pointer to"
 					: "accessing member of",
-				type_to_str(e->lhs->tree_type),
-				where_str_r(wbuf, &sue->where));
+				type_to_str(e->lhs->tree_type));
+
+		note_at(&sue->where, "forward declared here");
+
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
 	}
 
 	if(spel){
@@ -84,22 +97,34 @@ err:
 		decl *d_mem = struct_union_member_find(sue, spel,
 				&e->bits.struct_mem.extra_off, NULL);
 
-		if(!d_mem)
-			die_at(&e->where, "%s %s has no member named \"%s\"",
+		if(!d_mem){
+			warn_at_print_error(&e->where, "%s %s has no member named \"%s\"",
 					sue_str(sue), sue->spel, spel);
+			fold_had_error = 1;
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
+		}
 
 		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
 	}/* else already have the member */
 
-	/* pointer to struct - skip the pointer type and pull the quals
-	 * off the struct type */
-	struct_qual = type_qual(
-			ptr_expect
+	/* pointer to struct - skip the pointer type and
+	 * pull the quals and attrs off the struct type */
+	struct_type = ptr_expect
 			? type_dereference_decay(e->lhs->tree_type)
-			: e->lhs->tree_type);
+			: e->lhs->tree_type;
 
-	/* pull qualifiers from the struct to the member */
-	e->tree_type = type_qualify(e->bits.struct_mem.d->ref, struct_qual);
+	struct_qual = type_qual(struct_type);
+	struct_attr = type_get_attrs_toplvl(struct_type);
+
+	/* pull qualifiers and attributes from the struct to the member */
+	e->tree_type = type_attributed(
+			type_qualify(
+				e->bits.struct_mem.d->ref,
+				struct_qual),
+			struct_attr);
+
+	attribute_array_release(&struct_attr);
 }
 
 const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
@@ -122,7 +147,7 @@ const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 					type_nav_btype(cc1_type_nav, type_intptr_t),
 					struct_offset(e)));
 
-	if(fopt_mode & FOPT_VERBOSE_ASM)
+	if(cc1_fopt.verbose_asm)
 		out_comment(octx, "struct member %s", e->bits.struct_mem.d->spel);
 
 
@@ -138,7 +163,11 @@ const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 			unsigned w = const_fold_val_i(d->bits.var.field_width);
 
 			off = out_set_bitfield(
-					octx, off, d->bits.var.struct_offset_bitfield, w);
+					octx,
+					off,
+					d->bits.var.struct_offset_bitfield,
+					w,
+					d->bits.var.bitfield_master_ty);
 
 			out_comment(octx, "struct bitfield lea");
 		}
@@ -147,23 +176,17 @@ const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 	return off;
 }
 
-const out_val *gen_expr_str_struct(const expr *e, out_ctx *octx)
+void dump_expr_struct(const expr *e, dump *ctx)
 {
-	decl *mem = e->bits.struct_mem.d;
+	dump_desc_expr_newline(ctx, "member-access", e, 0);
 
-	idt_printf("struct/union member %s offset %d\n",
-			mem->spel, struct_offset(e));
+	dump_printf_indent(ctx, 0, " %s%s\n",
+			e->expr_is_st_dot ? "." : "->",
+			e->bits.struct_mem.d ? e->bits.struct_mem.d->spel : "<error>");
 
-	if(mem->bits.var.field_width)
-		idt_printf("bitfield offset %u, width %u\n",
-				mem->bits.var.struct_offset_bitfield,
-				(unsigned)const_fold_val_i(mem->bits.var.field_width));
-
-	gen_str_indent++;
-	print_expr(e->lhs);
-	gen_str_indent--;
-
-	UNUSED_OCTX();
+	dump_inc(ctx);
+	dump_expr(e->lhs, ctx);
+	dump_dec(ctx);
 }
 
 static void fold_const_expr_struct(expr *e, consty *k)
@@ -172,10 +195,15 @@ static void fold_const_expr_struct(expr *e, consty *k)
 	 * const fold to struct offset, (obv. if !dot, which is taken care of in fold) */
 	const_fold(e->lhs, k);
 
+	if(!e->bits.struct_mem.d){
+		CONST_FOLD_NO(k, e);
+		return;
+	}
+
 	switch(k->type){
 		case CONST_NO:
 		case CONST_STRK:
-			k->type = CONST_NO;
+			CONST_FOLD_NO(k, e);
 			break;
 
 		case CONST_NEED_ADDR:
@@ -196,14 +224,7 @@ static void fold_const_expr_struct(expr *e, consty *k)
 			break;
 
 		case CONST_NUM:
-			k->type = CONST_NEED_ADDR; /* e.g. &((A *)0)->b */
-
-			/* convert the val to a memaddr */
-			/* read num.val before we clobber it */
-			k->bits.addr.bits.memaddr = k->bits.num.val.i + struct_offset(e);
-			k->offset = 0;
-
-			k->bits.addr.is_lbl = 0;
+			ICE("const expr struct - address expected");
 			break;
 	}
 }
@@ -223,10 +244,16 @@ static enum lvalue_kind struct_is_lval(expr *e)
 	}
 }
 
+static int expr_struct_has_sideeffects(const expr *e)
+{
+	return expr_has_sideeffects(e->lhs);
+}
+
 void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
 	e->f_islval = struct_is_lval;
+	e->f_has_sideeffects = expr_struct_has_sideeffects;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;

@@ -1,27 +1,29 @@
 likely:
-Lblk.0:
+Lblk.1:
 Lblk.2:
 	# jfalse Lblk.3
 	# <true block>
-	jmp Lblk.1 # one jump needed if the test fails
 Lblk.3:
+	jmp Lblk.0 # one jump needed if the test fails
 	# <false block>
 Lblk.4:
-Lblk.1:
+Lblk.5:
+Lblk.0:
 
 
 
 unlikely:
-Lblk.5:
+Lblk.7:
 	# jfalse Lblk.8
-	jmp Lblk.7 # jump if the test fails to the true block
 
 Lblk.8:
+	jmp Lblk.9 # jump if the test fails to the true block
 	# <false block>
+Lblk.10:
 	jmp Lblk.6 #
 
-Lblk.7:
 	# <true block>
 
 Lblk.9:
+Lblk.11:
 Lblk.6:

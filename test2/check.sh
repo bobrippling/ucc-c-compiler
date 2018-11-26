@@ -33,7 +33,11 @@ e=/tmp/check.$$
 
 trap "rm -f $e" EXIT
 
-$ucc -o/dev/null -c "$@" 2>$e
+# ensure "$f" comes after other args, to allow for things like -x ...
+f="$1"
+shift
+
+$ucc -o/dev/null -c "$@" "$f" 2>$e
 r=$?
 
 # check for abort
@@ -57,5 +61,5 @@ then
 	cat $e
 	exit 1
 fi >&2
-./check.pl $prefix $verbose < $e "$1"
+./check.pl $prefix $verbose < $e "$f"
 exit $?

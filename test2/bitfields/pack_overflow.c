@@ -17,8 +17,7 @@ main()
 	s.b = 3; // loads 1[(int *)s]
 	s.c = 4; // loads 2[(int *)s]
 
-	if(sizeof(s) != 3 * sizeof(int))
-		return 4;
+	_Static_assert(sizeof(s) == 3 * sizeof(int), "");
 
 	// ensure we pad to 3 ints
 	if(0[(int *)&s] != 2) return 1;

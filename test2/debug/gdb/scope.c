@@ -1,5 +1,4 @@
-// RUN: %ucc -w -g -o %t %s
-// RUN: %gdbcheck %t %s.cmds %s.expected
+// RUN: %debug_check %s
 
 char a;
 

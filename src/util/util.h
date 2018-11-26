@@ -5,7 +5,6 @@
 
 #include "warn.h"
 
-char *fline(FILE *f);
 char *udirname(const char *);
 char *ext_replace(const char *str, const char *ext);
 

@@ -4,3 +4,12 @@ glob:
 .byte 2
 .byte 3
 .zero 14
+
+glob_s:
+.byte 1
+.zero 15
+.byte 2
+.byte 3
+.byte 4
+.byte 5
+.zero 12

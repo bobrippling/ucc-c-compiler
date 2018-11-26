@@ -1,4 +1,4 @@
-// RUN: %check -e %s
+// RUN: %check -e %s -fno-semantic-interposition
 
 int g();
 

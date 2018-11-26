@@ -14,6 +14,7 @@
 #include "../gen_asm.h"
 #include "../out/out.h"
 #include "../out/lbl.h"
+#include "../out/ctrl.h"
 #include "../pack.h"
 #include "../sue.h"
 #include "../funcargs.h"
@@ -27,6 +28,15 @@
 #include "../type_nav.h"
 
 #include "../parse_expr.h"
+#include "__builtin_va.h"
+
+#include "../ops/expr_identifier.h"
+#include "../ops/expr_assign.h"
+#include "../ops/expr_struct.h"
+#include "../ops/expr_deref.h"
+#include "../ops/expr_val.h"
+#include "../ops/expr_op.h"
+#include "../ops/expr_funcall.h"
 
 static void va_type_check(
 		expr *va_l, expr *in, symtable *stab, int expect_decay)
@@ -86,7 +96,7 @@ static void fold_va_start(expr *e, symtable *stab)
 		sym *second = NULL;
 		decl **args = symtab_decls(symtab_func_root(stab));
 		sym *arg = args[dynarray_count(args) - 1]->sym;
-		expr *last_exp = expr_skip_casts(e->funcargs[1]);
+		expr *last_exp = expr_skip_lval2rval(e->funcargs[1]);
 
 		if(expr_kind(last_exp, identifier))
 			second = last_exp->bits.ident.bits.ident.sym;
@@ -190,7 +200,7 @@ expr *parse_va_start(const char *ident, symtable *scope)
 	 */
 	expr *fcall = parse_any_args(scope);
 	(void)ident;
-	expr_mutate_builtin_gen(fcall, va_start);
+	expr_mutate_builtin(fcall, va_start);
 	return fcall;
 }
 
@@ -232,8 +242,16 @@ static const out_val *va_arg_gen_read(
 			type_ptr_to(valist_off_ty));
 
 	out_val_retain(octx, gpoff_addr);
+
 	gpoff_val = out_deref(octx, gpoff_addr);
 
+
+	/* gpoff_val, gpoff_addr and valist live across blocks, but don't need to be
+	 * spilt because we look after them and ensure they remain alive/valid and
+	 * not clobbered (whether because of a function call or register pressure) */
+	gpoff_val = out_val_blockphi_make(octx, gpoff_val, NULL);
+	gpoff_addr = out_val_blockphi_make(octx, gpoff_addr, NULL);
+	valist = out_val_blockphi_make(octx, valist, NULL);
 
 	out_val_retain(octx, gpoff_val);
 	out_ctrl_branch(
@@ -283,7 +301,7 @@ static const out_val *va_arg_gen_read(
 					gpoff_val, /* promote from unsigned to long/intptr_t */
 					type_ptr_to(ty_long)));
 
-		out_ctrl_transfer(octx, blk_fin, reg_save_area_value, &blk_reg);
+		out_ctrl_transfer(octx, blk_fin, reg_save_area_value, &blk_reg, 1);
 	}
 
 	/* stack code */
@@ -314,7 +332,7 @@ static const out_val *va_arg_gen_read(
 					out_change_type(octx, out_deref(octx, overflow_addr), voidp),
 					out_new_l(octx, valist_off_ty, ws)));
 
-		out_ctrl_transfer(octx, blk_fin, overflow_val, &blk_stack);
+		out_ctrl_transfer(octx, blk_fin, overflow_val, &blk_stack, 1);
 	}
 
 	out_current_blk(octx, blk_fin);
@@ -479,6 +497,7 @@ static void fold_va_arg(expr *e, symtable *stab)
 {
 	type *const ty = e->bits.va_arg_type;
 	type *to;
+	const char *warning = NULL;
 
 	FOLD_EXPR(e->lhs, stab);
 	fold_type(ty, stab);
@@ -486,12 +505,19 @@ static void fold_va_arg(expr *e, symtable *stab)
 	va_type_check(e->lhs, e->expr, stab, 1);
 
 	if(type_is_promotable(ty, &to)){
+		warning = "";
+	}else if(type_is_enum(ty)){
+		warning = "when enums are short ";
+		to = type_nav_btype(cc1_type_nav, type_int);
+	}
+
+	if(warning){
 		char tbuf[TYPE_STATIC_BUFSIZ];
 
 		cc1_warn_at(&e->where,
 				builtin_va_arg,
-				"va_arg(..., %s) has undefined behaviour - promote to %s",
-				type_to_str(ty), type_to_str_r(tbuf, to));
+				"va_arg(..., %s) has undefined behaviour %s- promote to %s",
+				type_to_str(ty), warning, type_to_str_r(tbuf, to));
 	}
 
 	e->tree_type = ty;
@@ -519,14 +545,14 @@ expr *parse_va_arg(const char *ident, symtable *scope)
 	fcall->lhs = list;
 	fcall->bits.va_arg_type = ty;
 
-	expr_mutate_builtin_gen(fcall, va_arg);
+	expr_mutate_builtin(fcall, va_arg);
 
 	return fcall;
 }
 
 static const out_val *builtin_gen_va_end(const expr *e, out_ctx *octx)
 {
-	(void)e;
+	out_val_release(octx, gen_expr(e->funcargs[0], octx));
 	return out_new_noop(octx);
 }
 
@@ -548,7 +574,7 @@ expr *parse_va_end(const char *ident, symtable *scope)
 	expr *fcall = parse_any_args(scope);
 
 	(void)ident;
-	expr_mutate_builtin_gen(fcall, va_end);
+	expr_mutate_builtin(fcall, va_end);
 	return fcall;
 }
 
@@ -584,6 +610,6 @@ expr *parse_va_copy(const char *ident, symtable *scope)
 {
 	expr *fcall = parse_any_args(scope);
 	(void)ident;
-	expr_mutate_builtin_gen(fcall, va_copy);
+	expr_mutate_builtin(fcall, va_copy);
 	return fcall;
 }

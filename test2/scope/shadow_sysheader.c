@@ -1,12 +1,12 @@
-// RUN: %check --prefix=ALL   %s -Wshadow-global-all -nostdinc -isystem sysheader
-// RUN: %check --prefix=USR   %s -Wshadow-global     -nostdinc -isystem sysheader
-// RUN: %check --prefix=NOSYS %s -Wshadow-global
+// RUN: %check --prefix=ALL   %s -x cpp-output -Wshadow-global-sysheaders -nostdinc -isystem sysheader
+// RUN: %check --prefix=USR   %s -x cpp-output -Wshadow-global            -nostdinc -isystem sysheader
+// RUN: %check --prefix=NOSYS %s               -Wshadow-global
 
-# 1 "sysheader/hi.h"
+# 1 "sysheader/hi.h" 3
 
 int glob;
 
-# 10 "here.c"
+# 10 "here.c" 2
 // XXX: ^ remember to update this if adding anything
 
 main()

@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check %s -Wsym-never-read
 
 f(int i); // CHECK: !/warn/
 g(int (*pf)(int x, int y)); // CHECK: !/warn/

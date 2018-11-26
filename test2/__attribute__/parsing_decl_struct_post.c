@@ -1,9 +1,9 @@
 // RUN: %ucc -fsyntax-only %s
 
-struct A
+struct __attribute((aligned(8))) A
 {
 	char i, j;
-} __attribute((aligned(8)));
+};
 
 struct A a;
 

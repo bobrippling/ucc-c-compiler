@@ -1,13 +1,13 @@
-// RUN: %check %s -Weverything -xcpp-output -nostdinc -isystem sysheader
+// RUN: %check %s -Wimplicit-int -xcpp-output -nostdinc -isystem sysheader
 
-# 1 "sysheader/systemfile.h"
+# 1 "sysheader/systemfile.h" 3
 
 __attribute((bad_attribute)) extern int __abc; // CHECK: !/warn/
 
 a; // CHECK: !/warn/
 f(); // CHECK: !/warn/
 
-# 11 "hello.c"
+# 11 "hello.c" 2
 
 __attribute((bad_attribute)) extern int __xyz; // CHECK: /warn/
 

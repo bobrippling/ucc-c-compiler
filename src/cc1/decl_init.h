@@ -65,9 +65,16 @@ const char *decl_init_to_str(enum decl_init_type);
  * *nonstd is set if nonstd isn't NULL
  */
 int decl_init_is_const(
-		decl_init *dinit, struct symtable *stab, struct expr **nonstd);
+		decl_init *dinit, struct symtable *stab,
+		struct type *expected, struct expr **nonstd, struct expr **nonconst);
 
 int decl_init_is_zero(decl_init *dinit);
+int decl_init_has_sideeffects(decl_init *dinit);
+
+struct struct_union_enum_st;
+struct expr *decl_init_is_struct_copy(
+		decl_init *,
+		struct struct_union_enum_st *constraint);
 
 /* normalises braces */
 void decl_init_brace_up_fold(struct decl *d, struct symtable *stab);

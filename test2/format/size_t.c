@@ -13,4 +13,7 @@ void f()
 
 	printf("%lu\n", (signed long)0); // CHECK: !/warn/
 	printf("%ld\n", (unsigned long)0); // CHECK: !/warn/
+
+	printf("%zu\n", (long long)3); // CHECK: !/warn/
+	printf("%zu\n", (long)3); // CHECK: !/warn/
 }

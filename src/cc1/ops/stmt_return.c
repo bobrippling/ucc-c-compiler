@@ -55,7 +55,7 @@ void fold_stmt_return(stmt *s)
 
 			}else{
 				/* void return handled implicitly with a cast to void */
-				fold_type_chk_and_cast(
+				fold_type_chk_and_cast_ty(
 						ret_ty, &s->expr,
 						s->symtab, &s->where, "return type");
 
@@ -100,6 +100,17 @@ void gen_stmt_return(const stmt *s, out_ctx *octx)
 		inline_ret_add(octx, ret_exp);
 	else
 		out_ctrl_end_ret(octx, ret_exp, s->expr ? s->expr->tree_type : NULL);
+}
+
+void dump_stmt_return(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "return", s);
+
+	if(s->expr){
+		dump_inc(ctx);
+		dump_expr(s->expr, ctx);
+		dump_dec(ctx);
+	}
 }
 
 void style_stmt_return(const stmt *s, out_ctx *octx)

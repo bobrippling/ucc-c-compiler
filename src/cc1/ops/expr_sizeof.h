@@ -1,6 +1,6 @@
-func_fold    fold_expr_sizeof;
-func_gen     gen_expr_sizeof;
-func_str     str_expr_sizeof;
-func_gen     gen_expr_str_sizeof;
-func_mutate_expr mutate_expr_sizeof;
-func_gen     gen_expr_style_sizeof;
+EXPR_DEFS(sizeof);
+
+type *expr_sizeof_type(expr *);
+
+expr *expr_new_sizeof_type(type *, enum what_of what_of);
+expr *expr_new_sizeof_expr(expr *, enum what_of what_of);

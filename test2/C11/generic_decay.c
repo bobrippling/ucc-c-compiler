@@ -2,5 +2,5 @@
 
 static int x[2];
 _Static_assert(
-	_Generic(x, int *: 1, int[2]: 2) == 1,
-	"not decaying _Generic expr?");
+	_Generic(x, int *: 1, int[2]: 2) == 2,
+	"decaying _Generic expr?");

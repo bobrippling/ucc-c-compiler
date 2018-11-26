@@ -20,6 +20,6 @@ test()
 	ifp = f; // CHECK: !/warn/
 	cpfp = h; // CHECK: !/warn/
 
-	cpfp = f; // CHECK: warning: mismatching types, assignment:
-	ifp = h; // CHECK: warning: mismatching types, assignment:
+	cpfp = f; // CHECK: warning: mismatching types, assignment
+	ifp = h; // CHECK: warning: mismatching types, assignment
 }

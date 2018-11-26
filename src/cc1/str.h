@@ -1,9 +1,43 @@
 #ifndef STR_H
 #define STR_H
 
-void escape_string(char *str, size_t *len);
+struct cstring
+{
+	union {
+		char *ascii;
+		int *wides;
+	} bits;
 
-char *str_add_escape(const char *s, const size_t len);
-int literal_print(FILE *f, const char *s, size_t len);
+	size_t count;
+
+	enum cstring_type
+	{
+		CSTRING_RAW, /* .bits.ascii active, but not escaped */
+		CSTRING_ASCII,
+		CSTRING_WIDE
+	} type;
+};
+
+struct cstring *cstring_new(enum cstring_type, const char *start, size_t, int include_nul);
+void cstring_init(struct cstring *, enum cstring_type, const char *start, size_t, int include_nul);
+
+int cstring_char_at(const struct cstring *, size_t);
+
+void cstring_escape(
+		struct cstring *cstr, int is_wide,
+		void handle_escape_warn_err(int w, int e, int escape_offset, void *),
+		void *ctx);
+
+void cstring_append(struct cstring *, struct cstring *);
+
+int cstring_eq(const struct cstring *, const struct cstring *);
+unsigned cstring_hash(const struct cstring *);
+
+void cstring_free(struct cstring *);
+void cstring_deinit(struct cstring *);
+char *cstring_detach(struct cstring *);
+
+char *str_add_escape(const struct cstring *);
+int literal_print(FILE *f, const struct cstring *);
 
 #endif

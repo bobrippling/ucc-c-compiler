@@ -10,16 +10,14 @@
 #include "ucc_path.h"
 #include "../util/alloc.h"
 
-static void
-bname(char *path)
+static void bname(char *path)
 {
 	char *p = strrchr(path, '/');
 	if(p)
 		p[1] = '\0';
 }
 
-static char *
-dirname_ucc(void)
+char *dirname_ucc(void)
 {
 	static char where[1024];
 

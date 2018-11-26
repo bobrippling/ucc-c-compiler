@@ -25,4 +25,6 @@ char *cmdpath_resolve(const struct cmdpath *, cmdpath_exec_fn **);
 /* free()s argument */
 char *path_prepend_relative(char *);
 
+char *dirname_ucc(void);
+
 #endif

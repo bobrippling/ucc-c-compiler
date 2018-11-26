@@ -1,6 +1,6 @@
-// RUN: %ucc -c -o %t.o %s
+// RUN: %ucc -c -o %t.o %s -fpic
 // below ensures we link with the system libs
-// RUN: cc -o %t %t.o
+// RUN: cc -o %t %t.o -fpic
 // RUN: %t | %output_check before 'hi 5 hello' after
 
 #define va_list __builtin_va_list

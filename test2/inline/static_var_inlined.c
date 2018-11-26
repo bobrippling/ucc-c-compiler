@@ -1,5 +1,5 @@
-// RUN: %ocheck 0 %s
-// RUN: %check %s
+// RUN: %ocheck 0 %s -fno-semantic-interposition
+// RUN: %check %s -fno-semantic-interposition
 
 __attribute((always_inline))
 inline void *f(unsigned size)

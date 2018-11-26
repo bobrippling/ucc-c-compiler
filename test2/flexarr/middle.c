@@ -11,8 +11,8 @@ struct Cont
 	int a, b, c;
 };
 
-struct Fine
+struct ContNested
 {
 	int yo;
-	struct Flex f; // CHECK: !/warn/
+	struct Flex f; // CHECK: warning: embedded flexible-array as nested in struct
 };

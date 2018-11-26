@@ -5,6 +5,7 @@
 #include "sys/types.h"
 
 size_t strlen(const char *);
+size_t strnlen(const char *s, size_t lim);
 const char *strerror(int eno);
 
 int strcmp( const char *, const char *);

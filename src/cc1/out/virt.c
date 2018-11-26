@@ -18,8 +18,7 @@
 #include "ctx.h"
 #include "asm.h"
 #include "impl.h"
-
-#define REMOVE_CONST(t, exp) ((t)(exp))
+#include "ctrl.h"
 
 static int v_unused_reg2(
 		out_ctx *octx,
@@ -45,6 +44,13 @@ int v_is_const_reg(const out_val *v)
 {
 	return v->type == V_REG
 		&& impl_reg_frame_const(&v->bits.regoff.reg, 0);
+}
+
+int v_needs_GOT(const out_val *v)
+{
+	return v->type == V_LBL
+		&& v->bits.lbl.pic_type & OUT_LBL_PIC
+		&& !(v->bits.lbl.pic_type & OUT_LBL_PICLOCAL);
 }
 
 const out_val *v_to_stack_mem(
@@ -215,6 +221,10 @@ static const out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
 
 		if(!v->retains)
 			continue;
+		if(out_val_is_blockphi(v, octx->current_blk)){
+			/* if it's the same block, we've found the reg, else ignore and continue */
+			continue;
+		}
 
 		if(v->type == V_REG && vreg_eq(&v->bits.regoff.reg, reg))
 			return v;
@@ -248,6 +258,7 @@ static int v_unused_reg2(
 	 * if we have other references to it */
 	if(to_replace
 	&& to_replace->retains == 1
+	&& !out_val_is_blockphi(to_replace, NULL)
 	&& to_replace->type == V_REG
 	&& to_replace->bits.regoff.reg.is_float == fp
 	&& !impl_reg_frame_const(&to_replace->bits.regoff.reg, /*sp*/1))
@@ -273,6 +284,9 @@ static int v_unused_reg2(
 	for(it = octx->val_head; it; it = it->next){
 		const out_val *this = &it->val;
 		if(this->retains
+		/*&& !out_val_is_blockphi(this, octx->current_blk)
+		 * we don't want to overwrite phiblock values (so check them in this loop),
+		 * even if we ignore them in other parts of the register liveness code */
 		&& this->type == V_REG
 		&& this->bits.regoff.reg.is_float == fp
 		&& regtest(octx->current_fnty, &this->bits.regoff.reg))
@@ -427,13 +441,18 @@ void v_save_regs(
 
 		if(v->retains == 0)
 			continue;
+		if(v->phiblock)
+			continue; /* phi values are special and don't need to be spilt across jumps */
+
+		if(v == fnval || val_present(v, ignores)){
+			/* don't save */
+			continue;
+		}
 
 		switch(v->type){
 			case V_REG_SPILT:
 			case V_REG:
-				if(v == fnval || val_present(v, ignores)){
-					/* don't save */
-				}else if(!impl_reg_savable(&v->bits.regoff.reg)){
+				if(!impl_reg_savable(&v->bits.regoff.reg)){
 					/* don't save stack references */
 
 				}else if(func_ty

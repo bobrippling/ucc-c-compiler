@@ -15,7 +15,7 @@
 label *label_new(where *w, char *id, int complete, symtable *scope)
 {
 	label *l = umalloc(sizeof *l);
-	l->pw = w;
+	memcpy_safe(&l->where, w);
 	l->spel = id;
 	l->complete = complete;
 	l->scope = scope;
@@ -64,5 +64,6 @@ void label_cleanup(out_ctx *octx)
 void label_free(label *l)
 {
 	dynarray_free(struct stmt **, l->jumpers, NULL);
+	free(l->mustgen_spel);
 	free(l);
 }

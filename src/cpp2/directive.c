@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <assert.h>
 #include <errno.h>
 
 #include "../util/util.h"
@@ -183,12 +184,11 @@ static void handle_error_warning(token **tokens, int err)
 
 	s = tokens_join(tokens);
 
-	preproc_backtrace();
-
 	warn_colour(1, err);
 
 	/* we're already on the next line */
 	where_current(&w);
+	w.fname = file_stack[file_stack_idx].fname;
 	w.line--;
 
 #ifdef __clang__
@@ -222,74 +222,85 @@ static void handle_error(token **tokens)
 	handle_error_warning(tokens, 1);
 }
 
-static void handle_include(token **tokens)
+char *include_parse(
+		char *include_arg_anchor, int *const is_lib,
+		int may_expand_macros)
 {
+	char *include_arg = str_spc_skip(include_arg_anchor);
+	char *fin;
+
+	*is_lib = 0;
+
+	switch(*include_arg){
+		case '<':
+			*is_lib = 1;
+			include_arg++;
+			fin = str_quotefin2(include_arg, '>');
+			break;
+
+		case '"':
+			include_arg++;
+			fin = str_quotefin(include_arg);
+			break;
+
+		default:
+			if(may_expand_macros){
+				char *expanded = eval_expand_macros(ustrdup(include_arg));
+				str_trim(expanded);
+				return include_parse(expanded, is_lib, 0);
+			}else{
+				CPP_DIE("bad include start: %c", *include_arg);
+			}
+	}
+
+	if(!fin)
+		CPP_DIE("unterminated #include directive");
+
+	*fin = '\0';
+
+	return ustrdup(include_arg);
+}
+
+static void handle_include(char *include_arg)
+{
+	int is_angle, is_sysh;
+
 	const char *curdir;
-	char *fname, *final_path, *fin;
-	size_t fname_len;
-	int is_lib = 0;
+	char *fname, *final_path;
+
 	FILE *f = NULL;
 
 	NOOP_RET();
 
-	fname = eval_expand_macros(tokens_join(tokens));
-	str_trim(fname);
-	fname_len = strlen(fname);
-
-	switch(*fname){
-		case '<':
-			is_lib = 1;
-			fin = strchr(fname, '>');
-			break;
-		case '"':
-			fin = strchr(fname + 1, '"');
-			break;
-		default:
-			CPP_DIE("bad include start: %c", *fname);
-	}
-	if(!fin)
-		CPP_DIE("invalid include end '%c'", fname[fname_len-1]);
-
-	*fin = '\0';
-	fname++;
-
+	fname = include_parse(include_arg, &is_angle, 1);
 	curdir = cd_stack[dynarray_count(cd_stack) - 1];
 
-	if(*fname == '/' || !is_lib){
-		/* absolute path */
-		if(*fname == '/')
-			final_path = ustrdup(fname);
-		else
-			final_path = ustrprintf("%s/%s", curdir, fname);
-
-		f = include_fopen(final_path);
-		/* if it fails, try lib */
-		if(!f){
-			free(final_path);
-			final_path = NULL;
-		}
-	}
-
+	f = include_fopen(curdir, fname, is_angle, &final_path, &is_sysh);
 	if(!f){
-		f = include_search_fopen(curdir, fname, &final_path);
-
-		if(!f){
+		if(missing_header_error){
 			CPP_DIE("can't find include file %c%s%c",
-					"\"<"[is_lib], fname, "\">"[is_lib]);
+					"\"<"[is_angle], fname, "\">"[is_angle]);
+		}else{
+			/* okay - ignored except for dep */
+			deps_add(fname);
+			goto out;
 		}
+		/* unreachable */
 	}
 
 	/* successfully opened */
 	canonicalise_path(final_path);
 
-	if(!is_lib)
+	if(!is_angle)
 		deps_add(final_path);
 
-	preproc_push(f, final_path);
+	preproc_push(f, final_path, is_sysh);
 	dirname_push(udirname(final_path));
+
+out:
 	free(final_path);
 
-	free(fname - 1);
+	free(fname);
 }
 
 static void if_push(int is_true)
@@ -354,6 +365,7 @@ static int /*bool*/ if_eval(token **tokens, const char *type)
 	for(;;){
 		/* first we need to filter out defined() */
 		w = eval_expand_defined(w);
+		w = eval_expand_has_include(w);
 
 		/* then macros */
 		w = eval_expand_macros(w);
@@ -370,7 +382,7 @@ static int /*bool*/ if_eval(token **tokens, const char *type)
 	/* and eval (this also frees e) */
 	{
 		int had_ident = 0;
-		const int r = !!expr_eval(e, &had_ident);
+		const int r = !!expr_eval(e, &had_ident, 0);
 
 		if(had_ident)
 			CPP_WARN(WUNDEF_IN_IF,
@@ -455,6 +467,7 @@ static int handle_line_directive(char *line)
 	int need_line = 0;
 	int n;
 	char *endp;
+	char *output_anchor;
 
 	line = str_spc_skip(line);
 
@@ -466,6 +479,7 @@ static int handle_line_directive(char *line)
 		line += 4;
 		need_line = 1;
 	}
+	line = str_spc_skip(line);
 
 	n = strtol(line, &endp, 0);
 	if(endp == line){
@@ -478,11 +492,33 @@ static int handle_line_directive(char *line)
 	if(n < 0)
 		CPP_DIE("#line directive with a negative argument");
 
+	/* parse the filename, if given */
+	output_anchor = line;
+	line = str_spc_skip(endp);
+	*endp = '\0';
+	if(*line == '"'){
+		char *fname = line + 1;
+		char *end = strchr(fname, '"');
+
+		if(!*fname || !end)
+			CPP_DIE("#line directive has unterminated double-quote");
+
+		*line = '\0';
+		*end = '\0';
+		set_current_fname(fname);
+	}
+
 	/* don't care about the filename - that's for cc1 */
-	if(option_line_info && !no_output)
-		printf("# %s\n", line);
+	preproc_emit_line_info(atoi(output_anchor), current_fname, /* no line-info */0);
+	current_line = n - 1;
 
 	return 1;
+}
+
+static void directive_sync(void)
+{
+	if(!no_output)
+		putchar('\n'); /* keep line-no.s in sync */
 }
 
 void parse_directive(char *line)
@@ -492,6 +528,27 @@ void parse_directive(char *line)
 	/* check for /# *[0-9]+ *( +"...")?/ */
 	if(handle_line_directive(line))
 		goto fin;
+
+	/* check for include - we handle it specially
+	 * because <> need to be handled like quotes */
+	if(!parse_should_noop()){
+		const char *const inc = "include";
+		char *start = str_spc_skip(line);
+		char *end = word_end(start);
+		char save = *end;
+		int is_inc;
+
+		*end = '\0';
+		is_inc = !strcmp(start, inc);
+		*end = save;
+
+		if(is_inc){
+			directive_sync();
+
+			handle_include(start + strlen(inc));
+			return;
+		}
+	}
 
 	tokens = tokenise(line);
 
@@ -505,8 +562,7 @@ void parse_directive(char *line)
 		CPP_DIE("invalid preproc token");
 	}
 
-	if(!no_output)
-		putchar('\n'); /* keep line-no.s in sync */
+	directive_sync();
 
 #define HANDLE(s)                \
 	if(!strcmp(tokens[0]->w, #s)){ \
@@ -523,8 +579,6 @@ void parse_directive(char *line)
 
 	if(parse_should_noop())
 		goto fin; /* checked for flow control, nothing else so noop */
-
-	HANDLE(include)
 
 	HANDLE(define)
 	HANDLE(undef)

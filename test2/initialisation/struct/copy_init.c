@@ -8,5 +8,5 @@ struct A
 f()
 {
 	struct A b = a; // CHECK: !/error/
-	struct A c = { a }; // CHECK: error: mismatching types, initialisation:
+	struct A c = { a }; // CHECK: error: mismatching types, initialisation
 }

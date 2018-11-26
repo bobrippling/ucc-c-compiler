@@ -26,7 +26,11 @@ out_val *out_new_l(out_ctx *, type *, long) ucc_nonnull((1))
 out_val *out_new_zero(out_ctx *, type *) ucc_nonnull((1))
 	ucc_wur;
 
-out_val *out_new_lbl(out_ctx *, type *, const char *s, int pic)
+/* pic: generate position independent accesses to the label
+ * local_sym: symbol/label is present in the current C.U.
+ *            pass false if unsure
+ */
+out_val *out_new_lbl(out_ctx *, type *, const char *s, enum out_pic_type)
 	ucc_wur;
 
 out_val *out_new_blk_addr(out_ctx *, out_blk *) ucc_wur;
@@ -54,7 +58,12 @@ const out_val *out_val_release(out_ctx *, const out_val *);
 
 
 /* value use */
-const out_val *out_set_bitfield(out_ctx *, const out_val *, unsigned off, unsigned nbits)
+const out_val *out_set_bitfield(
+		out_ctx *,
+		const out_val *,
+		unsigned off,
+		unsigned nbits,
+		type *master_ty)
 	ucc_wur;
 
 void out_store(out_ctx *, const out_val *dest, const out_val *val);
@@ -72,6 +81,12 @@ ucc_wur const out_val *out_memcpy(
 		out_ctx *octx,
 		const out_val *dest, const out_val *src,
 		unsigned long bytes);
+
+void out_memset(
+		out_ctx *octx,
+		const out_val *dest,
+		unsigned char byte,
+		unsigned long nbytes);
 
 ucc_wur const out_val *out_deref(out_ctx *, const out_val *) ucc_wur;
 
@@ -91,13 +106,21 @@ ucc_wur const out_val *out_call(out_ctx *,
 /* control flow */
 ucc_wur out_blk *out_blk_new(out_ctx *, const char *desc);
 void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
+ucc_wur out_blk *out_ctx_current_blk(out_ctx *);
 
 void out_ctrl_end_undefined(out_ctx *);
 void out_ctrl_end_ret(out_ctx *, const out_val *, type *) ucc_nonnull((1));
 
+/* Will the value be used only in *mergee? (/ not immediately afterwards, in
+ * the current block)
+ * If so, stash_phi_value, otherwise, keep live
+ * (this allows us to prevent later-spills of the value
+ * not being reflected in sub-blocks of *mergee)
+ */
 void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 		/* optional: */
-		const out_val *phi, out_blk **mergee);
+		const out_val *phi, out_blk **mergee,
+		int stash_phi_value);
 
 void out_ctrl_transfer_make_current(out_ctx *octx, out_blk *to);
 
@@ -108,6 +131,8 @@ void out_ctrl_branch(
 		out_ctx *octx,
 		const out_val *cond,
 		out_blk *if_true, out_blk *if_false);
+
+void out_blk_mustgen(out_ctx *octx, out_blk *blk, char *force_lbl);
 
 /* maybe ret null */
 ucc_wur const out_val *out_ctrl_merge(out_ctx *, out_blk *, out_blk *);
@@ -137,6 +162,7 @@ const out_val *out_aalloc(out_ctx *, unsigned sz, unsigned align, type *);
 const out_val *out_aalloct(out_ctx *, type *);
 void out_adealloc(out_ctx *, const out_val **);
 
+void out_force_read(out_ctx *octx, type *, const out_val *);
 
 const char *out_get_lbl(const out_val *) ucc_nonnull();
 int out_is_nonconst_temporary(const out_val *) ucc_nonnull();

@@ -11,8 +11,7 @@ struct half_bytes
 
 chk_bf(struct half_bytes *p)
 {
-	if(sizeof(*p) != 16)
-		abort();
+	_Static_assert(sizeof(*p) == 16, "");
 	if(p->f_1 != -1)
 		abort();
 	if(p->bf_1 != -1)

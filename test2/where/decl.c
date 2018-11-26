@@ -1,4 +1,4 @@
-// RUN: %caret_check %s
+// RUN: %caret_check %s -Wsym-never-read
 
 typedef unsigned long size_t;
 

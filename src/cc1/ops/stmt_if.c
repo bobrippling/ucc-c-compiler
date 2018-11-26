@@ -102,18 +102,33 @@ void gen_stmt_if(const stmt *s, out_ctx *octx)
 	out_current_blk(octx, blk_true);
 	{
 		gen_stmt(s->lhs, octx);
-		out_ctrl_transfer(octx, blk_fi, NULL, NULL);
+		out_ctrl_transfer(octx, blk_fi, NULL, NULL, 0);
 	}
 
 	out_current_blk(octx, blk_false);
 	{
 		if(s->rhs)
 			gen_stmt(s->rhs, octx);
-		out_ctrl_transfer(octx, blk_fi, NULL, NULL);
+		out_ctrl_transfer(octx, blk_fi, NULL, NULL, 0);
 	}
 
 	out_current_blk(octx, blk_fi);
 	flow_end(s->flow, s->symtab, el, octx);
+}
+
+void dump_stmt_if(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "if", s);
+
+	dump_inc(ctx);
+
+	dump_flow(s->flow, ctx);
+
+	dump_expr(s->expr, ctx);
+	dump_stmt(s->lhs, ctx);
+	if(s->rhs)
+		dump_stmt(s->rhs, ctx);
+	dump_dec(ctx);
 }
 
 void style_stmt_if(const stmt *s, out_ctx *octx)

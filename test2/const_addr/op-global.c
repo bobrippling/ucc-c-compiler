@@ -6,6 +6,8 @@ int glob, glob2;
 int zero = !&glob;
 int one = !!&glob;
 
+int eq = &glob == 0;
+
 // binary
 int tru = &glob == &glob;
 int fals = &glob != &glob;
@@ -32,6 +34,7 @@ main()
 	assert(!zero);
 	assert(!fals);
 	assert(!fals2);
+	assert(!eq);
 
 	assert(one);
 	assert(tru);

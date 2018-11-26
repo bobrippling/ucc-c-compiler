@@ -1,4 +1,5 @@
 // RUN: %archgen %s 'x86_64:movq (%%rax), %%rcx'
+// RUN: %archgen %s 'x86_64:movq (%%rax), %%rcx' -DTO_VOID
 
 struct A
 {
@@ -7,6 +8,9 @@ struct A
 
 f(volatile struct A *p)
 {
+#ifdef TO_VOID
+	(void)
+#endif
 	*p;
 }
 

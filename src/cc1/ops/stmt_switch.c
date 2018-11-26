@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "stmt_switch.h"
@@ -8,6 +9,8 @@
 #include "../out/lbl.h"
 #include "../type_is.h"
 #include "../../util/dynarray.h"
+
+#include "expr_op.h"
 
 #define ITER_SWITCH(sw, iter) \
 	for(iter = sw->bits.switch_.cases; iter && *iter; iter++)
@@ -61,17 +64,17 @@ static void fold_switch_dups(stmt *sw)
 		const long first_this = vals[i].start.val.i;
 
 		if(last_prev >= first_this){
-			char buf[WHERE_BUF_SIZ];
 			const int overlap = vals[i  ].end.val.i != vals[i  ].start.val.i
 				               || vals[i-1].end.val.i != vals[i-1].start.val.i;
 
-			die_at(&vals[i-1].cse->where,
-					"%s case statements %s %ld\n"
-					"%s: note: other case",
+			fold_had_error = 1;
+			warn_at_print_error(&vals[i-1].cse->where,
+					"%s case statements %s %ld",
 					overlap ? "overlapping" : "duplicate",
 					overlap ? "starting at" : "for",
-					(long)vals[i].start.val.i,
-					where_str_r(buf, &vals[i].cse->where));
+					(long)vals[i].start.val.i);
+
+			note_at(&vals[i].cse->where, "other case");
 		}
 	}
 
@@ -82,19 +85,31 @@ static void fold_switch_enum(
 		stmt *sw, struct_union_enum_st *enum_sue)
 {
 	stmt **iter;
-	char *marks;
+	char *marks = NULL;
 	int nents;
 	int midx;
+	int covered = 1;
+	const unsigned char *switch_warnp = &cc1_warning.switch_enum_even_when_default_lbl;
 
-	if(sw->bits.switch_.default_case)
-		return;
+	if(!*switch_warnp){
+		switch_warnp = &cc1_warning.switch_enum;
+		if(!*switch_warnp)
+			return;
+	}
 
 	nents = enum_nentries(enum_sue);
-	marks = umalloc(nents * sizeof *marks);
+
+	/* if there's no default case or we're on the even_when_default
+	 * warning then warn about missing entries */
+	if(!sw->bits.switch_.default_case
+	|| cc1_warning.switch_enum_even_when_default_lbl)
+	{
+		marks = umalloc(nents * sizeof *marks);
+	}
 
 	/* warn if we switch on an enum bitmask */
 	if(expr_attr_present(sw->expr, attr_enum_bitmask))
-		cc1_warn_at(&sw->where, enum_switch_bitmask,
+		cc1_warn_at(&sw->where, switch_enum_bitmask,
 				"switch on enum with enum_bitmask attribute");
 
 	/* for each case/default/case_range... */
@@ -124,24 +139,46 @@ static void fold_switch_enum(
 			for(midx = 0, mi = enum_sue->members; *mi; midx++, mi++){
 				enum_member *m = (*mi)->enum_member;
 
-				if(v == const_fold_val_i(m->val))
-					marks[midx]++, found = 1;
+				if(v == const_fold_val_i(m->val)){
+					found = 1;
+
+					if(marks)
+						marks[midx]++;
+					else
+						break;
+				}
 			}
 
-			if(!found)
-				cc1_warn_at(&cse->where,
-						enum_switch_imposter,
+			if(!found){
+				cc1_warn_at_w(&cse->where,
+						switch_warnp,
 						"'case %ld' not a member of enum %s",
 						(long)v, enum_sue->spel);
+			}
+
+			if(v == NUMERIC_T_MAX){
+				assert(w == NUMERIC_T_MAX);
+				break;
+			}
 		}
 	}
 
-	for(midx = 0; midx < nents; midx++)
-		if(!marks[midx])
-			cc1_warn_at(&sw->where, switch_enum,
-					"enum %s::%s not handled in switch",
-					enum_sue->anon ? "" : enum_sue->spel,
-					enum_sue->members[midx]->enum_member->spel);
+	if(marks){
+		for(midx = 0; midx < nents; midx++){
+			if(!marks[midx]){
+				cc1_warn_at_w(&sw->where, switch_warnp,
+						"enum %s::%s not handled in switch",
+						enum_sue->anon ? "" : enum_sue->spel,
+						enum_sue->members[midx]->enum_member->spel);
+
+				covered = 0;
+			}
+		}
+	}
+
+	if(sw->bits.switch_.default_case && covered)
+		cc1_warn_at(&sw->bits.switch_.default_case->where, switch_default_covered,
+				"default label in switch covering all enum values");
 
 	free(marks);
 }
@@ -162,12 +199,9 @@ void fold_stmt_and_add_to_curswitch(stmt *cse)
 		dynarray_add(&sw->bits.switch_.cases, cse);
 	}else{
 		if(sw->bits.switch_.default_case){
-			char buf[WHERE_BUF_SIZ];
-
-			die_at(&cse->where,
-					"duplicate default statement\n"
-					"%s: note: other default here",
-					where_str_r(buf, &sw->bits.switch_.default_case->where));
+			fold_had_error = 1;
+			warn_at_print_error(&cse->where, "duplicate default statement");
+			note_at(&sw->bits.switch_.default_case->where, "other default here");
 
 			return;
 		}
@@ -218,6 +252,9 @@ void fold_stmt_switch(stmt *s)
 		if(sue)
 			fold_switch_enum(s, sue);
 	}
+
+	if(!s->bits.switch_.default_case)
+		cc1_warn_at(&s->where, switch_default, "switch has no default label");
 }
 
 void gen_stmt_switch(const stmt *s, out_ctx *octx)
@@ -292,17 +329,27 @@ void gen_stmt_switch(const stmt *s, out_ctx *octx)
 	/* no matches - branch to default/end */
 	out_ctrl_transfer(octx,
 			pdefault ? pdefault->bits.case_blk : blk_switch_end,
-			NULL, NULL);
+			NULL, NULL, 0);
 
 	{
 		out_blk *body = out_blk_new(octx, "switch_body");
 		out_current_blk(octx, body);
 		gen_stmt(s->lhs, octx); /* the actual code inside the switch */
-		out_ctrl_transfer(octx, blk_switch_end, NULL, NULL);
+		out_ctrl_transfer(octx, blk_switch_end, NULL, NULL, 0);
 		out_current_blk(octx, blk_switch_end);
 	}
 
 	flow_end(s->flow, s->symtab, el, octx);
+}
+
+void dump_stmt_switch(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "switch", s);
+
+	dump_inc(ctx);
+	dump_expr(s->expr, ctx);
+	dump_stmt(s->lhs, ctx);
+	dump_dec(ctx);
 }
 
 void style_stmt_switch(const stmt *s, out_ctx *octx)
