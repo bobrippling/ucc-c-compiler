@@ -15,6 +15,9 @@
 	BUILTIN("nanl", nan)                          \
 	BUILTIN("choose_expr", choose_expr)           \
 	BUILTIN("has_attribute", has_attribute)       \
+	BUILTIN("add_overflow", add_overflow)         \
+	BUILTIN("sub_overflow", sub_overflow)         \
+	BUILTIN("mul_overflow", mul_overflow)         \
 	BUILTIN("va_start", va_start)                 \
 	BUILTIN("va_arg", va_arg)                     \
 	BUILTIN("va_end", va_end)                     \

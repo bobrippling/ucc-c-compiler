@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
@@ -36,6 +37,7 @@
 #include "../ops/expr_val.h"
 #include "../ops/expr_struct.h"
 #include "../ops/expr_cast.h"
+#include "../ops/expr_op.h"
 
 #define PREFIX "__builtin_"
 
@@ -53,6 +55,9 @@ static func_builtin_parse parse_unreachable
                           , parse_choose_expr
                           , parse_offsetof
                           , parse_has_attribute
+                          , parse_add_overflow
+                          , parse_sub_overflow
+                          , parse_mul_overflow
 #ifdef BUILTIN_LIBC_FUNCTIONS
                           , parse_memset
                           , parse_memcpy
@@ -948,4 +953,86 @@ static expr *parse_offsetof(const char *ident, symtable *scope)
 	fcall->f_gen = builtin_gen_offsetof;
 
 	return fcall;
+}
+
+/* --- {add,sub,mul}_overflow */
+
+static void fold_arith_overflow(expr *e, symtable *stab)
+{
+	const char *name = BUILTIN_SPEL(e->expr);
+	int i;
+	type *last;
+	expr *last_e;
+
+	/* gcc has __builtin_add_overflow return int, clang, _Bool */
+	e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+	wur_builtin(e);
+
+	if(dynarray_count(e->funcargs) != 3){
+		warn_at_print_error(&e->where, "%s takes a three arguments", name);
+		fold_had_error = 1;
+		return;
+	}
+
+	for(i = 0; i < 3; i++)
+		FOLD_EXPR(e->funcargs[i], stab);
+
+	for(i = 0; i < 2; i++)
+		fold_check_expr(e->funcargs[i], FOLD_CHK_INTEGRAL, name);
+
+	last_e = e->funcargs[2];
+	last = type_is_ptr(last_e->tree_type);
+	if(!last || !type_is_integral(last)){
+		warn_at_print_error(&e->where, "%s's third argument isn't pointer-to-integral-type", name);
+		fold_had_error = 1;
+		return;
+	}
+
+}
+
+static const out_val *gen_arith_overflow(const expr *e, out_ctx *octx)
+{
+	const out_val *lhs, *rhs, *result;
+	const out_val *of;
+	const out_val *store;
+
+	lhs = gen_expr(e->funcargs[0], octx);
+	rhs = gen_expr(e->funcargs[1], octx);
+	result = out_op(octx, e->bits.op.op, lhs, rhs);
+
+	of = out_new_overflow(octx, &result);
+
+	store = gen_expr(e->funcargs[2], octx);
+	out_store(octx, store, result);
+
+	return of;
+}
+
+static expr *parse_arith_overflow(const char *ident, symtable *scope, enum op_type op)
+{
+	expr *fcall = parse_any_args(scope);
+
+	(void)ident;
+
+	fcall->bits.op.op = op;
+
+	fcall->f_fold = fold_arith_overflow;
+	fcall->f_gen = gen_arith_overflow;
+
+	return fcall;
+}
+
+static expr *parse_add_overflow(const char *ident, symtable *scope)
+{
+	return parse_arith_overflow(ident, scope, op_plus);
+}
+
+static expr *parse_sub_overflow(const char *ident, symtable *scope)
+{
+	return parse_arith_overflow(ident, scope, op_minus);
+}
+
+static expr *parse_mul_overflow(const char *ident, symtable *scope)
+{
+	return parse_arith_overflow(ident, scope, op_multiply);
 }
