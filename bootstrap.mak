@@ -18,15 +18,15 @@ stage1: bootstrap/stage1/${CONFIGURE_OUTPUT}
 
 bootstrap/stage2/${CONFIGURE_OUTPUT}:
 	mkdir -p bootstrap/stage2
-	cd bootstrap/stage2 && ../../configure
+	cd bootstrap/stage2 && ../../configure CC=${PWD}/bootstrap/stage1/src/ucc/ucc\ -fuse-cpp=${PWD}/tools/syscpp
 stage2: stage1 bootstrap/stage2/${CONFIGURE_OUTPUT}
-	make -Cbootstrap/stage2/src CC=${PWD}/bootstrap/stage1/src/ucc/ucc\ -fuse-cpp=${PWD}/tools/syscpp
+	make -Cbootstrap/stage2/src
 
 bootstrap/stage3/${CONFIGURE_OUTPUT}:
 	mkdir -p bootstrap/stage3
-	cd bootstrap/stage3 && ../../configure
+	cd bootstrap/stage3 && ../../configure CC=${PWD}/bootstrap/stage2/src/ucc/ucc\ -fuse-cpp=${PWD}/tools/syscpp
 stage3: stage2 bootstrap/stage3/${CONFIGURE_OUTPUT}
-	make -Cbootstrap/stage3/src CC=${PWD}/bootstrap/stage2/src/ucc/ucc\ -fuse-cpp=${PWD}/tools/syscpp
+	make -Cbootstrap/stage3/src
 
 tools/link_r: tools/link_r.c
 	${CC} -o $@ $<
