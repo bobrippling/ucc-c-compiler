@@ -8,9 +8,7 @@ bootstrap: stage3
 clean-bootstrap:
 	rm -rf bootstrap
 
-stage1 stage2 stage3: tools/link_r
-
-bootstrap/stage1/${CONFIGURE_OUTPUT}:
+bootstrap/stage1/${CONFIGURE_OUTPUT}: tools/link_r
 	mkdir -p bootstrap/stage1
 	cd bootstrap/stage1 && ../../configure
 stage1: bootstrap/stage1/${CONFIGURE_OUTPUT}
