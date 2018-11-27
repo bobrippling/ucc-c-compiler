@@ -910,6 +910,7 @@ static void usage(void)
 	fprintf(stderr, "  -o file: Output file\n");
 	fprintf(stderr, "  -shared: Output a shared library\n");
 	fprintf(stderr, "  -static: Output a staticly linked executable\n");
+	fprintf(stderr, "  -pie/-no-pie: Tell the linker to emit a position independent executable (or not)\n");
 	fprintf(stderr, "  -###: Output what would be done, do nothing\n");
 	fprintf(stderr, "  -v: Output commands before invoking them\n");
 	fprintf(stderr, "  -save-temps: Save temporary files for each stage\n");
