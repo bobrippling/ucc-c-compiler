@@ -193,6 +193,8 @@ void spec_parse(
 		if(p)
 			*p = '\0';
 
+		rtrim(line);
+
 		p = str_spc_skip(line);
 		if(!*p)
 			continue;

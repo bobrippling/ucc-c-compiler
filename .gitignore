@@ -14,6 +14,7 @@ src/ucc/ucc
 
 src/cc1/test
 src/util/test
+src/ucc/test
 
 lib/libc.a
 lib/crt.a
