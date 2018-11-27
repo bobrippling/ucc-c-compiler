@@ -988,6 +988,12 @@ static void fold_arith_overflow(expr *e, symtable *stab)
 		return;
 	}
 
+	if(type_qual(last) & qual_const){
+		warn_at_print_error(&e->where, "%s's third argument is const-qualified (%s)", name, type_to_str(last));
+		fold_had_error = 1;
+		return;
+	}
+
 	if(expr_kind(last_e, addr)){
 		expr *lval = expr_addr_target(last_e);
 		fold_inc_writes_if_sym(lval, stab);
