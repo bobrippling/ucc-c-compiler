@@ -1025,6 +1025,7 @@ static const out_val *gen_arith_overflow(const expr *e, out_ctx *octx)
 	const out_val *of;
 	const out_val *store;
 	type *largest = arith_overflow_largest_type(e);
+	int smaller_than_int = type_size(largest, NULL) < type_primitive_size(type_int);
 
 	lhs = gen_expr(e->funcargs[0], octx);
 	rhs = gen_expr(e->funcargs[1], octx);
@@ -1037,7 +1038,22 @@ static const out_val *gen_arith_overflow(const expr *e, out_ctx *octx)
 	of = out_new_overflow(octx, &result);
 
 	store = gen_expr(e->funcargs[2], octx);
+	if(smaller_than_int)
+		out_val_retain(octx, result);
 	out_store(octx, store, result);
+
+	if(smaller_than_int){
+		type *intty = type_nav_btype(cc1_type_nav, type_int);
+		const out_val *extended;
+		const out_val *hasdiff;
+
+		out_val_retain(octx, result);
+		extended = out_cast(octx, result, intty, 0);
+		extended = out_cast(octx, extended, largest, 0);
+		hasdiff = out_op(octx, op_ne, extended, result);
+
+		of = out_op(octx, op_or, of, hasdiff);
+	}
 
 	return of;
 }
