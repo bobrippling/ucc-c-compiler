@@ -302,7 +302,7 @@ if test "$srcdir" != .
 then
 	echo "Linking Makefile for out-of-tree build ($srcdir)"
 
-	tools/symlink_r "$srcdir"/src src
+	"$srcdir"/tools/link_r "$srcdir"/src src
 	ln -sf "$srcdir"/Makefile
 fi
 
