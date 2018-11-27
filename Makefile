@@ -30,6 +30,6 @@ ALL_SRC = $(shell find . -iname '*.[ch]')
 tags: ${ALL_SRC}
 	ctags '--exclude=_*' -R .
 
--include bootstrap.mak
+include Bootstrap.mk
 
 .PHONY: all clean cleanall src
