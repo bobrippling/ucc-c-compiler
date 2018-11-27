@@ -302,10 +302,14 @@ out_of_tree=0
 if test "$srcdir" != .
 then
 	out_of_tree=1
-	echo "Linking Makefile for out-of-tree build ($srcdir)"
+	printf 'Linking for out-of-tree build (%s)... ' "$srcdir"
 
 	"$srcdir"/tools/link_r "$srcdir"/src src
 	ln -sf "$srcdir"/Makefile
+
+	# we don't want the  new config definitions to write through the links:
+	rm src/config.mk src/ucc.spec src/config_as.h
+	echo 'done'
 fi
 
 # write configs
