@@ -1,11 +1,11 @@
 PWD = $(shell pwd)
 CONFIGURE_OUTPUT = src/config.mk
 
-.PHONY: bootstrap bootstrap_clean
+.PHONY: bootstrap clean-bootstrap
 
 bootstrap: stage3
 
-bootstrap_clean:
+clean-bootstrap:
 	rm -rf bootstrap
 
 stage1 stage2 stage3: tools/link_r
