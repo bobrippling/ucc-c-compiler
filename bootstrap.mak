@@ -1,4 +1,5 @@
 PWD = $(shell pwd)
+CONFIGURE_OUTPUT = src/config.mk
 
 .PHONY: bootstrap bootstrap_clean
 
@@ -9,22 +10,22 @@ bootstrap_clean:
 
 stage1 stage2 stage3: tools/link_r
 
-bootstrap/stage1/config.mk:
+bootstrap/stage1/${CONFIGURE_OUTPUT}:
 	mkdir -p bootstrap/stage1
 	cd bootstrap/stage1 && ../../configure
-stage1: bootstrap/stage1/config.mk
+stage1: bootstrap/stage1/${CONFIGURE_OUTPUT}
 	make -Cbootstrap/stage1/src
 
-bootstrap/stage2/config.mk:
+bootstrap/stage2/${CONFIGURE_OUTPUT}:
 	mkdir -p bootstrap/stage2
 	cd bootstrap/stage2 && ../../configure
-stage2: stage1 bootstrap/stage2/config.mk
+stage2: stage1 bootstrap/stage2/${CONFIGURE_OUTPUT}
 	make -Cbootstrap/stage2/src CC=${PWD}/bootstrap/stage1/src/ucc/ucc\ -fuse-cpp=${PWD}/tools/syscpp
 
-bootstrap/stage3/config.mk:
+bootstrap/stage3/${CONFIGURE_OUTPUT}:
 	mkdir -p bootstrap/stage3
 	cd bootstrap/stage3 && ../../configure
-stage3: stage2 bootstrap/stage3/config.mk
+stage3: stage2 bootstrap/stage3/${CONFIGURE_OUTPUT}
 	make -Cbootstrap/stage3/src CC=${PWD}/bootstrap/stage2/src/ucc/ucc\ -fuse-cpp=${PWD}/tools/syscpp
 
 tools/link_r: tools/link_r.c
