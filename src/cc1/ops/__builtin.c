@@ -988,6 +988,10 @@ static void fold_arith_overflow(expr *e, symtable *stab)
 		return;
 	}
 
+	if(expr_kind(last_e, addr)){
+		expr *lval = expr_addr_target(last_e);
+		fold_inc_writes_if_sym(lval, stab);
+	}
 }
 
 static const out_val *gen_arith_overflow(const expr *e, out_ctx *octx)
