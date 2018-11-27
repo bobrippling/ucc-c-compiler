@@ -30,3 +30,5 @@ src/cc1/cc1.exe
 src/cpp2/cpp.exe
 src/ucc/ucc.exe
 *.obj
+
+tools/link_r

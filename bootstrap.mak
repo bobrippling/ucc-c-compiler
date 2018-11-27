@@ -7,6 +7,8 @@ bootstrap: stage3
 bootstrap_clean:
 	rm -rf bootstrap
 
+stage1 stage2 stage3: tools/link_r
+
 bootstrap/stage1/config.mk:
 	mkdir -p bootstrap/stage1
 	cd bootstrap/stage1 && ../../configure
@@ -24,3 +26,6 @@ bootstrap/stage3/config.mk:
 	cd bootstrap/stage3 && ../../configure
 stage3: stage2 bootstrap/stage3/config.mk
 	cd bootstrap/stage3 && make -Csrc CC=${PWD}/bootstrap/stage2/src/ucc/ucc\ -fuse-cpp=${PWD}/tools/syscpp
+
+tools/link_r: tools/link_r.c
+	${CC} -o $@ $<
