@@ -66,7 +66,7 @@ struct ucc
 
 	int syntax_only;
 	enum mode mode;
-	int help;
+	int help, dumpmachine;
 };
 
 static char **remove_these;
@@ -674,8 +674,12 @@ arg_ld:
 					continue;
 				}
 
-				case 'M':
 				case 'd':
+					if(!strcmp(argv[i], "-dumpmachine")){
+						state->dumpmachine = 1;
+						continue;
+					}
+				case 'M':
 				case 'C': /* -C and -CC */
 					goto arg_cpp;
 
@@ -939,6 +943,7 @@ static void usage(void)
 	fprintf(stderr, "  -fuse-cpp=...: Specify a preprocessor executable to use\n");
 	fprintf(stderr, "  -time: Output time for each stage\n");
 	fprintf(stderr, "  -wrapper exe,arg1,...: Prefix stage commands with this executable and arguments\n");
+	fprintf(stderr, "  -dumpmachine: Display the current machine's detected target triple\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Input options\n");
 	fprintf(stderr, "  -xc: Treat input as C\n");
@@ -1026,6 +1031,10 @@ usage:
 		fprintf(stderr, "--- ucc ---\n");
 		usage();
 		return 2;
+	}
+	if(argstate.dumpmachine){
+		printf("%s\n", platform_name());
+		return 0;
 	}
 
 	output_given = !!specvars.output;

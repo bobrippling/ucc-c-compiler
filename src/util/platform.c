@@ -79,3 +79,26 @@ enum platform_sys platform_sys()
 	INIT();
 	return platform_s;
 }
+
+const char *platform_name(void)
+{
+	static char buf[32];
+	INIT();
+
+	if(*buf)
+		return buf;
+
+	switch(platform_t){
+		case PLATFORM_mipsel_32: strcpy(buf, "mipsel"); break;
+		case PLATFORM_x86_64: strcpy(buf, "x86_64"); break;
+	}
+
+	switch(platform_s){
+		case PLATFORM_LINUX: strcat(buf, "-linux-gnu"); break;
+		case PLATFORM_FREEBSD: strcat(buf, "-freebsd-gnu"); break;
+		case PLATFORM_DARWIN: strcat(buf, "-apple-darwin"); break;
+		case PLATFORM_CYGWIN: strcat(buf, "-cygwin-gnu"); break;
+	}
+
+	return buf;
+}

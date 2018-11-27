@@ -28,4 +28,6 @@ unsigned platform_align_max(void) ucc_const;
 /* no big endian support */
 #define platform_bigendian() 0
 
+const char *platform_name(void) ucc_const;
+
 #endif
