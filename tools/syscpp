@@ -1,0 +1,3 @@
+#!/bin/sh
+
+exec cc -E -U__GNUC__ -D__UCC__ "$@"

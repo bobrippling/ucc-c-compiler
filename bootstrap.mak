@@ -17,10 +17,10 @@ bootstrap/stage2/config.mk:
 	mkdir -p bootstrap/stage2
 	cd bootstrap/stage2 && ../../configure
 stage2: stage1 bootstrap/stage2/config.mk
-	cd bootstrap/stage2 && make -Csrc CC=${PWD}/bootstrap/stage1/src/ucc/ucc\ -fsystem-cpp\ -U__GNUC__\ -D__UCC__
+	cd bootstrap/stage2 && make -Csrc CC=${PWD}/bootstrap/stage1/src/ucc/ucc\ -fuse-cpp=${PWD}/tools/syscpp
 
 bootstrap/stage3/config.mk:
 	mkdir -p bootstrap/stage3
 	cd bootstrap/stage3 && ../../configure
 stage3: stage2 bootstrap/stage3/config.mk
-	cd bootstrap/stage3 && make -Csrc CC=${PWD}/bootstrap/stage2/src/ucc/ucc\ -fsystem-cpp\ -U__GNUC__\ -D__UCC__
+	cd bootstrap/stage3 && make -Csrc CC=${PWD}/bootstrap/stage2/src/ucc/ucc\ -fuse-cpp=${PWD}/tools/syscpp
