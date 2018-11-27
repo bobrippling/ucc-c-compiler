@@ -993,6 +993,16 @@ static void fold_arith_overflow(expr *e, symtable *stab)
 		fold_had_error = 1;
 		return;
 	}
+	if(type_is_enum(last)){
+		warn_at_print_error(&e->where, "%s's third argument is an enum (%s)", name, type_to_str(last));
+		fold_had_error = 1;
+		return;
+	}
+	if(type_is_primitive(last, type__Bool)){
+		warn_at_print_error(&e->where, "%s's third argument is a boolean", name, type_to_str(last));
+		fold_had_error = 1;
+		return;
+	}
 
 	if(expr_kind(last_e, addr)){
 		expr *lval = expr_addr_target(last_e);
