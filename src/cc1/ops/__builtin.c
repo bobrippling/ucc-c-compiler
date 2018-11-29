@@ -964,8 +964,7 @@ static void fold_arith_overflow(expr *e, symtable *stab)
 	type *last;
 	expr *last_e;
 
-	/* gcc has __builtin_add_overflow return int, clang, _Bool */
-	e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+	e->tree_type = type_nav_btype(cc1_type_nav, type__Bool);
 	wur_builtin(e);
 
 	if(dynarray_count(e->funcargs) != 3){
