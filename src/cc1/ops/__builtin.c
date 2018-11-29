@@ -1061,7 +1061,7 @@ static const out_val *gen_arith_overflow(const expr *e, out_ctx *octx)
 
 		out_val_retain(octx, result);
 		extended = out_cast(octx, result, intty, 0);
-		shortened = out_cast(octx, extended, largest, 0);
+		shortened = out_cast(octx, extended, storety, 0);
 		hasdiff = out_op(octx, op_ne, shortened, result);
 
 		of = out_op(octx, op_or, of, hasdiff);
