@@ -1034,7 +1034,8 @@ static const out_val *gen_arith_overflow(const expr *e, out_ctx *octx)
 	const out_val *of;
 	const out_val *store;
 	type *largest = arith_overflow_largest_type(e);
-	int smaller_than_int = type_size(largest, NULL) < type_primitive_size(type_int);
+	type *storety = type_is_ptr(e->funcargs[2]->tree_type);
+	int smaller_than_int = type_size(storety, NULL) < type_primitive_size(type_int);
 
 	lhs = gen_expr(e->funcargs[0], octx);
 	rhs = gen_expr(e->funcargs[1], octx);
