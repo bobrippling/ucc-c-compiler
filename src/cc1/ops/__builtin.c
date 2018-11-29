@@ -1056,13 +1056,13 @@ static const out_val *gen_arith_overflow(const expr *e, out_ctx *octx)
 
 	if(smaller_than_int){
 		type *intty = type_nav_btype(cc1_type_nav, type_int);
-		const out_val *extended;
+		const out_val *extended, *shortened;
 		const out_val *hasdiff;
 
 		out_val_retain(octx, result);
 		extended = out_cast(octx, result, intty, 0);
-		extended = out_cast(octx, extended, largest, 0);
-		hasdiff = out_op(octx, op_ne, extended, result);
+		shortened = out_cast(octx, extended, largest, 0);
+		hasdiff = out_op(octx, op_ne, shortened, result);
 
 		of = out_op(octx, op_or, of, hasdiff);
 	}
