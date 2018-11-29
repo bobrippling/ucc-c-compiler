@@ -1030,7 +1030,7 @@ static type *arith_overflow_largest_type(const expr *e)
 
 static const out_val *gen_arith_overflow(const expr *e, out_ctx *octx)
 {
-	const out_val *lhs, *rhs, *result;
+	const out_val *lhs, *rhs, *result, *result_trunc;
 	const out_val *of;
 	const out_val *store;
 	type *largest = arith_overflow_largest_type(e);
@@ -1050,7 +1050,9 @@ static const out_val *gen_arith_overflow(const expr *e, out_ctx *octx)
 	store = gen_expr(e->funcargs[2], octx);
 	if(smaller_than_int)
 		out_val_retain(octx, result);
-	out_store(octx, store, result);
+
+	result_trunc = out_cast(octx, result, storety, 0);
+	out_store(octx, store, result_trunc);
 
 	if(smaller_than_int){
 		type *intty = type_nav_btype(cc1_type_nav, type_int);
