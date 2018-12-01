@@ -122,6 +122,11 @@ static void tmpfilenam(
 	int fd;
 
 	if(save_temps){
+		/* this ignores any directories, e.g.
+		 * ucc -save-temps path/to/a.c
+		 * will generate ./a.[iso], not path/to/a.[iso]
+		 * (like gcc and clang)
+		 */
 		path = expected_filename(in, mode);
 		fd = open(path, O_RDWR | O_TRUNC | O_CREAT, 0600);
 		if(fd < 0)
