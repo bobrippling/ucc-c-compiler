@@ -774,8 +774,10 @@ word:
 							goto missing_arg;
 
 						ADD_ARG(mode_compile);
+						ADD_ARG(mode_preproc);
 						arg = argv[++i];
 						ADD_ARG(mode_compile);
+						ADD_ARG(mode_preproc);
 					}
 					else
 						break;
