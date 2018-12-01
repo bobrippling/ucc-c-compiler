@@ -164,16 +164,42 @@ void set_current_fname(const char *new)
 	current_fname = ustrdup(new);
 }
 
+static struct tm *current_time(int *const using_env)
+{
+	const char *source_date_epoch = getenv("SOURCE_DATE_EPOCH");
+	struct tm *build_time;
+	time_t t;
+
+	*using_env = !!source_date_epoch;
+
+	if (source_date_epoch) {
+		unsigned long epoch;
+		char *end;
+
+		errno = 0;
+		epoch = strtoul(source_date_epoch, &end, 10);
+
+		if(errno)
+			die("couldn't parse $SOURCE_DATE_EPOCH:");
+
+		if(*end)
+			die("$SOURCE_DATE_EPOCH isn't a number");
+
+		t = epoch;
+	}else{
+		t = time(NULL);
+	}
+
+	build_time = gmtime(&t);
+	if(!build_time)
+		die("gmtime():");
+	return build_time;
+}
+
 static void calctime(const char *fname)
 {
-	time_t t;
-	struct tm *now;
-
-	t = time(NULL);
-	now = localtime(&t);
-
-	if(!now)
-		die("localtime():");
+	int using_env;
+	struct tm *now = current_time(&using_env);
 
 #define FTIME(s, fmt) \
 	if(!strftime(s, sizeof s, fmt, now)) \
@@ -182,7 +208,7 @@ static void calctime(const char *fname)
 	FTIME(cpp_time, "\"%H:%M:%S\"");
 	FTIME(cpp_date, "\"%b %d %G\"");
 
-	if(fname){
+	if(fname && !using_env){
 		struct stat st;
 		if(stat(fname, &st) == 0){
 			now = localtime(&st.st_mtime);
