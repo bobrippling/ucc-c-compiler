@@ -167,7 +167,6 @@ case "$target" in
 		;;
 
 	*-apple-*)
-		# Darwin also needs "-flat_namespace -undefined suppress"
 		ucc_initflags='-mpreferred-stack-boundary=4 -malign-is-p2' # 2^4 = 16 byte aligned
 		ucc_stdlib='-lSystem'
 		ucc_startfiles=''

@@ -50,7 +50,7 @@ static const struct target_as asconfig[] = {
 	},
 	{
 		{
-			"weak_reference",
+			"weak_reference", /* Darwin also needs "-flat_namespace -undefined suppress" */
 			"private_extern",
 		},
 		"L",
