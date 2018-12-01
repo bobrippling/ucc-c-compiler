@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
-#include <assert.h>
 
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
