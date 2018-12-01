@@ -590,12 +590,12 @@ static void parse_argv(
 {
 	int had_MD = 0, had_MF = 0;
 	int i;
+	int seen_double_dash = 0;
 
 	for(i = 0; i < argc; i++){
-		if(!strcmp(argv[i], "--")){
-			while(++i < argc)
-				dynarray_add(&state->inputs, argv[i]);
-			break;
+		if(seen_double_dash || !strcmp(argv[i], "--")){
+			seen_double_dash = 1;
+			goto input;
 
 		}else if(*argv[i] == '-'){
 			int found = 0;
