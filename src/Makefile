@@ -1,6 +1,5 @@
 MAKE_DIR = make -C $@
 
-Q = @
 
 all: cc1 cpp2 ucc
 
