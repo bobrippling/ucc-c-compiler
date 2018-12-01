@@ -545,6 +545,21 @@ static void parse_argv(
 						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
 						continue;
 					}
+					if(!strcmp(argv[i], "-fsigned-char")
+					|| !strcmp(argv[i], "-fno-signed-char")
+					|| !strcmp(argv[i], "-funsigned-char")
+					|| !strcmp(argv[i], "-fno-unsigned-char"))
+					{
+						const int is_signed = (argv[i][2] == 's' || argv[i][5] == 'u');
+
+						dynarray_add(&state->args[mode_preproc], ustrprintf(
+									"-%c__CHAR_UNSIGNED__%s",
+									is_signed ? 'U' : 'D',
+									is_signed ? "" : "=1"));
+
+						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
+						continue;
+					}
 
 					/* pull out some that cpp wants too: */
 					if(!strcmp(argv[i], "-ffreestanding")
