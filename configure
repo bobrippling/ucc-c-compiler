@@ -328,7 +328,7 @@ ld:
 	ld
 
 ldflags_pre_user:
-	$ucc_dyn
+	%{!static:$ucc_dyn}
 	$ucc_ldflags
 	%{shared:$ucc_paramshared}
 	%{static:$ucc_paramstatic}
