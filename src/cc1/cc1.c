@@ -388,10 +388,12 @@ ucc_printflike(2, 3)
 ucc_noreturn
 static void usage(const char *argv0, const char *fmt, ...)
 {
-	va_list l;
-	va_start(l, fmt);
-	vfprintf(stderr, fmt, l);
-	va_end(l);
+	if(fmt){
+		va_list l;
+		va_start(l, fmt);
+		vfprintf(stderr, fmt, l);
+		va_end(l);
+	}
 
 	ccdie(
 			"Usage: %s [-W[no-]warning] [-f[no-]option] [-m[no-]machine] [-o output] file",
@@ -719,7 +721,7 @@ int main(int argc, char **argv)
 
 		}else if(!strcmp(argv[i], "--help")){
 			dump_options();
-			usage(argv[0], "");
+			usage(argv[0], NULL);
 
 		}else if(!fname){
 			fname = argv[i];
