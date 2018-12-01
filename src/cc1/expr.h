@@ -254,14 +254,8 @@ expr *expr_new_numeric(numeric *);
 expr *expr_ptr_multiply(expr *, decl *);
 expr *expr_new_decl_init(decl *d, struct decl_init *di);
 
-/* XXX: memleak */
-#define expr_free(x) do{                 \
-		if(x){                               \
-			/*if((x)->tree_type)*/             \
-			/*type_free((x)->tree_type);*/ \
-			free(x);                           \
-		}                                    \
-	}while(0)
+void expr_free(expr *);
+void expr_free_abi(void *);
 
 #define expr_kind(exp, kind) ((exp)->f_str == str_expr_ ## kind)
 
@@ -299,5 +293,6 @@ expr *expr_skip_generated_casts(expr *);
 const char *expr_str_friendly(expr *);
 
 decl *expr_to_declref(expr *e, const char **whynot);
+sym *expr_to_symref(expr *e, symtable * /*optional, will search if given*/);
 
 #endif
