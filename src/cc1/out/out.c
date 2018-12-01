@@ -287,8 +287,6 @@ const out_val *out_set_bitfield(
 
 void out_store(out_ctx *octx, const out_val *dest, const out_val *val)
 {
-	assert(type_size(type_is_ptr(dest->t), NULL) == type_size(val->t, NULL));
-
 	if(dest->bitfield.nbits){
 		out_val_retain(octx, dest);
 		val = out_bitfield_scalar_merge(octx, &dest->bitfield, val, dest);
