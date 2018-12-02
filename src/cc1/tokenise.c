@@ -188,6 +188,14 @@ void where_cc1_adj_identifier(where *w, const char *sp)
 	w->len = strlen(sp);
 }
 
+static void set_current_fname(char *fnam, int need_copy)
+{
+	if(!current_fname_used)
+		free(current_fname);
+	current_fname = need_copy ? ustrdup(fnam) : fnam;
+	current_fname_used = 0;
+}
+
 static void update_stack(int lno, int sysh)
 {
 	struct fnam_stack *p = &current_fname_stack[current_fname_stack_cnt - 1];
@@ -198,7 +206,7 @@ static void update_stack(int lno, int sysh)
 
 static void push_fname(char *fn, int lno, int sysh)
 {
-	current_fname = fn;
+	set_current_fname(fn, 0);
 	in_sysh = sysh;
 	if(current_fname_stack_cnt < FNAME_STACK_N){
 		struct fnam_stack *p = &current_fname_stack[current_fname_stack_cnt++];
@@ -417,7 +425,7 @@ void tokenise_set_input(tokenise_line_f *func, const char *nam)
 	if(cc1_fopt.track_initial_fnam)
 		push_fname(nam_dup, 1, 0);
 	else
-		current_fname = nam_dup;
+		set_current_fname(nam_dup, 0);
 
 	SET_CURRENT_LINE_STR(NULL);
 
