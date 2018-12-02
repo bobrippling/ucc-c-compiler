@@ -204,6 +204,7 @@ static void update_stack(int lno, int sysh)
 
 	p->lno = lno;
 	p->in_sysh = sysh;
+	in_sysh = sysh;
 }
 
 static void push_fname(char *fn, int lno, int sysh)
