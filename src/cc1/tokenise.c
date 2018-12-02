@@ -188,6 +188,13 @@ void where_cc1_adj_identifier(where *w, const char *sp)
 	w->len = strlen(sp);
 }
 
+static void update_stack(int lno, int sysh)
+{
+	struct fnam_stack *p = &current_fname_stack[current_fname_stack_cnt - 1];
+
+	p->lno = lno;
+	p->in_sysh = sysh;
+}
 
 static void push_fname(char *fn, int lno, int sysh)
 {
@@ -196,8 +203,7 @@ static void push_fname(char *fn, int lno, int sysh)
 	if(current_fname_stack_cnt < FNAME_STACK_N){
 		struct fnam_stack *p = &current_fname_stack[current_fname_stack_cnt++];
 		p->fnam = ustrdup(fn);
-		p->lno = lno;
-		p->in_sysh = in_sysh;
+		update_stack(lno, in_sysh);
 	}
 }
 
@@ -223,6 +229,9 @@ static void handle_line_file_directive(char *fnam, int lno, char *flags)
 	/* logic for knowing when to pop and when to push */
 	char *tok;
 	enum { SOF = 1, RTF = 2, SYSH = 4 } iflag = 0;
+	struct fnam_stack *top = NULL;
+	if(current_fname_stack_cnt)
+		top = &current_fname_stack[current_fname_stack_cnt - 1];
 
 	for(tok = strtok(flags, " "); tok; tok = strtok(NULL, " ")){
 #define START_OF_FILE "1"
@@ -243,22 +252,29 @@ static void handle_line_file_directive(char *fnam, int lno, char *flags)
 	if(!cc1_first_fname)
 		cc1_first_fname = ustrdup(fnam);
 
-	if(iflag & RTF){
+	if(iflag & SOF || ((iflag & RTF) == 0 && (!top || strcmp(top->fnam, fnam)))){
+		push_fname(fnam, lno, !!(iflag & SYSH));
+	}else if(iflag & RTF){
 		int i;
 		for(i = current_fname_stack_cnt - 1; i >= 0; i--){
 			struct fnam_stack *stk = &current_fname_stack[i];
 
 			if(!strcmp(fnam, stk->fnam)){
-				/* found another "inc.c" */
-				/* pop `n` stack entries, then push our new one */
-				while(current_fname_stack_cnt > i)
+				int n_to_pop = current_fname_stack_cnt - i - 1;
+
+				while(n_to_pop --> 0){
 					pop_fname();
+				}
 				break;
 			}
 		}
+		if(!current_fname_stack_cnt || top >= &current_fname_stack[current_fname_stack_cnt])
+			top = NULL;
 	}
 
-	push_fname(fnam, lno, !!(iflag & SYSH));
+	if(!(iflag & SOF) && top && !strcmp(top->fnam, fnam)){
+		update_stack(lno, !!(iflag & SYSH));
+	}
 }
 
 static void parse_line_directive(char *l)
