@@ -224,8 +224,12 @@ static void pop_fname(void)
 		struct fnam_stack *p = &current_fname_stack[--current_fname_stack_cnt];
 		free(p->fnam);
 
-		if(current_fname_stack_cnt > 0)
-			set_current_fname(current_fname_stack[current_fname_stack_cnt - 1].fnam, 1);
+		if(current_fname_stack_cnt > 0){
+			struct fnam_stack *top = &current_fname_stack[current_fname_stack_cnt - 1];
+
+			set_current_fname(top->fnam, 1);
+			in_sysh = top->in_sysh;
+		}
 	}
 }
 
