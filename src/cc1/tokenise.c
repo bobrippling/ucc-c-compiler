@@ -223,7 +223,7 @@ static void pop_fname(void)
 	}
 }
 
-static void handle_line_file_directive(char *fnam, int lno, char *flags)
+static void handle_line_file_directive(char *fnam /*owned by us*/, int lno, char *flags)
 {
 	/*
 # 1 "inc.c"
@@ -238,6 +238,8 @@ static void handle_line_file_directive(char *fnam, int lno, char *flags)
 	char *tok;
 	enum { SOF = 1, RTF = 2, SYSH = 4 } iflag = 0;
 	struct fnam_stack *top = NULL;
+	int free_fnam = 1;
+
 	if(current_fname_stack_cnt)
 		top = &current_fname_stack[current_fname_stack_cnt - 1];
 
@@ -262,6 +264,7 @@ static void handle_line_file_directive(char *fnam, int lno, char *flags)
 
 	if(iflag & SOF || ((iflag & RTF) == 0 && (!top || strcmp(top->fnam, fnam)))){
 		push_fname(fnam, lno, !!(iflag & SYSH));
+		free_fnam = 0;
 	}else if(iflag & RTF){
 		int i;
 		int found = 0;
@@ -290,6 +293,8 @@ static void handle_line_file_directive(char *fnam, int lno, char *flags)
 	if(!(iflag & SOF) && top && !strcmp(top->fnam, fnam)){
 		update_stack(lno, !!(iflag & SYSH));
 	}
+	if(free_fnam)
+		free(fnam);
 }
 
 static void parse_line_directive(char *l)
