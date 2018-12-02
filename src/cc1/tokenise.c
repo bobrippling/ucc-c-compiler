@@ -19,6 +19,8 @@
 #include "btype.h"
 #include "fopt.h"
 
+#define DEBUG_LINE_DIRECTIVE 0
+
 #ifndef CHAR_BIT
 #  define CHAR_BIT 8
 #endif
@@ -188,16 +190,31 @@ void where_cc1_adj_identifier(where *w, const char *sp)
 	w->len = strlen(sp);
 }
 
+static void set_current_fname(char *fnam, int need_copy)
+{
+	if(!current_fname_used)
+		free(current_fname);
+	current_fname = need_copy ? ustrdup(fnam) : fnam;
+	current_fname_used = 0;
+}
+
+static void update_stack(int lno, int sysh)
+{
+	struct fnam_stack *p = &current_fname_stack[current_fname_stack_cnt - 1];
+
+	p->lno = lno;
+	p->in_sysh = sysh;
+	in_sysh = sysh;
+}
 
 static void push_fname(char *fn, int lno, int sysh)
 {
-	current_fname = fn;
+	set_current_fname(fn, 0);
 	in_sysh = sysh;
 	if(current_fname_stack_cnt < FNAME_STACK_N){
 		struct fnam_stack *p = &current_fname_stack[current_fname_stack_cnt++];
 		p->fnam = ustrdup(fn);
-		p->lno = lno;
-		p->in_sysh = in_sysh;
+		update_stack(lno, in_sysh);
 	}
 }
 
@@ -206,10 +223,17 @@ static void pop_fname(void)
 	if(current_fname_stack_cnt > 0){
 		struct fnam_stack *p = &current_fname_stack[--current_fname_stack_cnt];
 		free(p->fnam);
+
+		if(current_fname_stack_cnt > 0){
+			struct fnam_stack *top = &current_fname_stack[current_fname_stack_cnt - 1];
+
+			set_current_fname(top->fnam, 1);
+			in_sysh = top->in_sysh;
+		}
 	}
 }
 
-static void handle_line_file_directive(char *fnam, int lno, char *flags)
+static void handle_line_file_directive(char *fnam /*owned by us*/, int lno, char *flags)
 {
 	/*
 # 1 "inc.c"
@@ -223,6 +247,14 @@ static void handle_line_file_directive(char *fnam, int lno, char *flags)
 	/* logic for knowing when to pop and when to push */
 	char *tok;
 	enum { SOF = 1, RTF = 2, SYSH = 4 } iflag = 0;
+	struct fnam_stack *top = NULL;
+	int free_fnam = 1;
+
+	if(current_fname_stack_cnt)
+		top = &current_fname_stack[current_fname_stack_cnt - 1];
+
+	if(DEBUG_LINE_DIRECTIVE)
+		fprintf(stderr, "line directive: fnam=\"%s\", lno=%d, flags=\"%s\"\n", fnam, lno, flags);
 
 	for(tok = strtok(flags, " "); tok; tok = strtok(NULL, " ")){
 #define START_OF_FILE "1"
@@ -243,22 +275,74 @@ static void handle_line_file_directive(char *fnam, int lno, char *flags)
 	if(!cc1_first_fname)
 		cc1_first_fname = ustrdup(fnam);
 
-	if(iflag & RTF){
+	if(iflag & SOF || ((iflag & RTF) == 0 && (!top || strcmp(top->fnam, fnam)))){
+		push_fname(fnam, lno, !!(iflag & SYSH));
+		free_fnam = 0;
+
+		if(DEBUG_LINE_DIRECTIVE)
+			fprintf(stderr, "  push_fname(\"%s\", lno=%d, sysh=%d)\n", fnam, lno, !!(iflag & SYSH));
+
+	}else if(iflag & RTF){
 		int i;
+		int found = 0;
 		for(i = current_fname_stack_cnt - 1; i >= 0; i--){
 			struct fnam_stack *stk = &current_fname_stack[i];
 
 			if(!strcmp(fnam, stk->fnam)){
-				/* found another "inc.c" */
-				/* pop `n` stack entries, then push our new one */
-				while(current_fname_stack_cnt > i)
+				int n_to_pop = current_fname_stack_cnt - i - 1;
+
+				while(n_to_pop --> 0){
+					if(DEBUG_LINE_DIRECTIVE)
+						fprintf(stderr, "  pop_fname(): \"%s\"\n", current_fname_stack[current_fname_stack_cnt-1].fnam);
+
 					pop_fname();
+				}
+
+				found = 1;
 				break;
 			}
 		}
+
+		if(!found)
+			ICW("return-to-file line directive doesn't have file \"%s\" on stack", fnam);
+
+		if(!current_fname_stack_cnt || top >= &current_fname_stack[current_fname_stack_cnt])
+			top = NULL;
 	}
 
-	push_fname(fnam, lno, !!(iflag & SYSH));
+	if(!(iflag & SOF) && top){
+		/* just a line-number update, but first, if this file is our initial file
+		 * and on the same line, we pop everything to handle a gcc bug(?) where it
+		 * omits a return-to-file marker */
+		struct fnam_stack *first = &current_fname_stack[0];
+		if(iflag == 0 && first != top && first->lno == lno && !strcmp(first->fnam, fnam)){
+			int n_to_pop = current_fname_stack_cnt - 1;
+			while(n_to_pop --> 0)
+				pop_fname();
+
+			if(DEBUG_LINE_DIRECTIVE)
+				fprintf(stderr, "  pop-to-first and update_stack(%d, %d) [\"%s\"]\n", lno, !!(iflag & SYSH), first->fnam);
+
+			top = NULL;
+
+		}else if(!strcmp(top->fnam, fnam)){
+			update_stack(lno, !!(iflag & SYSH));
+
+			if(DEBUG_LINE_DIRECTIVE)
+				fprintf(stderr, "  update_stack(%d, %d) [\"%s\"]\n", lno, !!(iflag & SYSH), top->fnam);
+		}
+	}
+
+	if(DEBUG_LINE_DIRECTIVE){
+		int i;
+		for(i = current_fname_stack_cnt - 1; i >= 0; i--){
+			struct fnam_stack *stk = &current_fname_stack[i];
+			fprintf(stderr, "  stack: \"%s\" lno=%d sysh=%d\n", stk->fnam, stk->lno, stk->in_sysh);
+		}
+	}
+
+	if(free_fnam)
+		free(fnam);
 }
 
 static void parse_line_directive(char *l)
@@ -394,7 +478,7 @@ void tokenise_set_input(tokenise_line_f *func, const char *nam)
 	if(cc1_fopt.track_initial_fnam)
 		push_fname(nam_dup, 1, 0);
 	else
-		current_fname = nam_dup;
+		set_current_fname(nam_dup, 0);
 
 	SET_CURRENT_LINE_STR(NULL);
 
