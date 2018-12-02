@@ -220,6 +220,9 @@ static void pop_fname(void)
 	if(current_fname_stack_cnt > 0){
 		struct fnam_stack *p = &current_fname_stack[--current_fname_stack_cnt];
 		free(p->fnam);
+
+		if(current_fname_stack_cnt > 0)
+			set_current_fname(current_fname_stack[current_fname_stack_cnt - 1].fnam, 1);
 	}
 }
 
