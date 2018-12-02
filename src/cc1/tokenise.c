@@ -19,6 +19,8 @@
 #include "btype.h"
 #include "fopt.h"
 
+#define DEBUG_LINE_DIRECTIVE 0
+
 #ifndef CHAR_BIT
 #  define CHAR_BIT 8
 #endif
@@ -246,6 +248,9 @@ static void handle_line_file_directive(char *fnam /*owned by us*/, int lno, char
 	if(current_fname_stack_cnt)
 		top = &current_fname_stack[current_fname_stack_cnt - 1];
 
+	if(DEBUG_LINE_DIRECTIVE)
+		fprintf(stderr, "line directive: fnam=\"%s\", lno=%d, flags=\"%s\"\n", fnam, lno, flags);
+
 	for(tok = strtok(flags, " "); tok; tok = strtok(NULL, " ")){
 #define START_OF_FILE "1"
 #define RETURN_TO_FILE "2"
@@ -268,6 +273,10 @@ static void handle_line_file_directive(char *fnam /*owned by us*/, int lno, char
 	if(iflag & SOF || ((iflag & RTF) == 0 && (!top || strcmp(top->fnam, fnam)))){
 		push_fname(fnam, lno, !!(iflag & SYSH));
 		free_fnam = 0;
+
+		if(DEBUG_LINE_DIRECTIVE)
+			fprintf(stderr, "  push_fname(\"%s\", lno=%d, sysh=%d)\n", fnam, lno, !!(iflag & SYSH));
+
 	}else if(iflag & RTF){
 		int i;
 		int found = 0;
@@ -278,6 +287,9 @@ static void handle_line_file_directive(char *fnam /*owned by us*/, int lno, char
 				int n_to_pop = current_fname_stack_cnt - i - 1;
 
 				while(n_to_pop --> 0){
+					if(DEBUG_LINE_DIRECTIVE)
+						fprintf(stderr, "  pop_fname(): \"%s\"\n", current_fname_stack[current_fname_stack_cnt-1].fnam);
+
 					pop_fname();
 				}
 
@@ -295,7 +307,19 @@ static void handle_line_file_directive(char *fnam /*owned by us*/, int lno, char
 
 	if(!(iflag & SOF) && top && !strcmp(top->fnam, fnam)){
 		update_stack(lno, !!(iflag & SYSH));
+
+		if(DEBUG_LINE_DIRECTIVE)
+			fprintf(stderr, "  update_stack(%d, %d) [\"%s\"]\n", lno, !!(iflag & SYSH), top->fnam);
 	}
+
+	if(DEBUG_LINE_DIRECTIVE){
+		int i;
+		for(i = current_fname_stack_cnt - 1; i >= 0; i--){
+			struct fnam_stack *stk = &current_fname_stack[i];
+			fprintf(stderr, "  stack: \"%s\" lno=%d sysh=%d\n", stk->fnam, stk->lno, stk->in_sysh);
+		}
+	}
+
 	if(free_fnam)
 		free(fnam);
 }
