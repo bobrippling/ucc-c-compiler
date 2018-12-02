@@ -305,11 +305,27 @@ static void handle_line_file_directive(char *fnam /*owned by us*/, int lno, char
 			top = NULL;
 	}
 
-	if(!(iflag & SOF) && top && !strcmp(top->fnam, fnam)){
-		update_stack(lno, !!(iflag & SYSH));
+	if(!(iflag & SOF) && top){
+		/* just a line-number update, but first, if this file is our initial file
+		 * and on the same line, we pop everything to handle a gcc bug(?) where it
+		 * omits a return-to-file marker */
+		struct fnam_stack *first = &current_fname_stack[0];
+		if(iflag == 0 && first != top && first->lno == lno && !strcmp(first->fnam, fnam)){
+			int n_to_pop = current_fname_stack_cnt - 1;
+			while(n_to_pop --> 0)
+				pop_fname();
 
-		if(DEBUG_LINE_DIRECTIVE)
-			fprintf(stderr, "  update_stack(%d, %d) [\"%s\"]\n", lno, !!(iflag & SYSH), top->fnam);
+			if(DEBUG_LINE_DIRECTIVE)
+				fprintf(stderr, "  pop-to-first and update_stack(%d, %d) [\"%s\"]\n", lno, !!(iflag & SYSH), first->fnam);
+
+			top = NULL;
+
+		}else if(!strcmp(top->fnam, fnam)){
+			update_stack(lno, !!(iflag & SYSH));
+
+			if(DEBUG_LINE_DIRECTIVE)
+				fprintf(stderr, "  update_stack(%d, %d) [\"%s\"]\n", lno, !!(iflag & SYSH), top->fnam);
+		}
 	}
 
 	if(DEBUG_LINE_DIRECTIVE){
