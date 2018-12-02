@@ -256,6 +256,7 @@ static void handle_line_file_directive(char *fnam, int lno, char *flags)
 		push_fname(fnam, lno, !!(iflag & SYSH));
 	}else if(iflag & RTF){
 		int i;
+		int found = 0;
 		for(i = current_fname_stack_cnt - 1; i >= 0; i--){
 			struct fnam_stack *stk = &current_fname_stack[i];
 
@@ -265,9 +266,15 @@ static void handle_line_file_directive(char *fnam, int lno, char *flags)
 				while(n_to_pop --> 0){
 					pop_fname();
 				}
+
+				found = 1;
 				break;
 			}
 		}
+
+		if(!found)
+			ICW("return-to-file line directive doesn't have file \"%s\" on stack", fnam);
+
 		if(!current_fname_stack_cnt || top >= &current_fname_stack[current_fname_stack_cnt])
 			top = NULL;
 	}
