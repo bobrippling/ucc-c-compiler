@@ -24,8 +24,8 @@ char *str_quotefin(char *s)
 	return str_quotefin2(s, '"');
 }
 
-char *str_spc_skip(char *s)
+char *str_spc_skip(const char *s)
 {
 	for(; isspace(*s); s++);
-	return s;
+	return (char *)s;
 }
