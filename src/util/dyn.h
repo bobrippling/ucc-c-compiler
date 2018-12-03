@@ -10,7 +10,7 @@
 #ifndef NO_DYN_CHECKS
 #  define UCC_TYPEOF(e) __typeof(e)
 #  define UCC_TYPECHECK(t, arg) \
-	UCC_STATIC_ASSERT(__builtin_types_compatible_p(t, __typeof(arg)))
+	UCC_STATIC_ASSERT(__builtin_types_compatible_p(t, __typeof((void)0, arg)))
 
 #else
 #  define UCC_TYPEOF(e) (void)0
