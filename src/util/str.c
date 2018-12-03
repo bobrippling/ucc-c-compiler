@@ -1,4 +1,5 @@
 #include <stdlib.h> /* NULL */
+#include <string.h>
 #include <ctype.h>
 
 #include "str.h"
@@ -28,4 +29,15 @@ char *str_spc_skip(const char *s)
 {
 	for(; isspace(*s); s++);
 	return (char *)s;
+}
+
+int str_endswith(const char *haystack, const char *needle)
+{
+	size_t h_l = strlen(haystack);
+	size_t n_l = strlen(needle);
+
+	if(n_l > h_l)
+		return 0;
+
+	return !strcmp(haystack + h_l - n_l, needle);
 }

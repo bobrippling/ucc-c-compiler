@@ -7,4 +7,6 @@ char *str_spc_skip(const char *);
 char *str_quotefin(char *);
 char *char_quotefin(char *);
 
+int str_endswith(const char *, const char *);
+
 #endif
