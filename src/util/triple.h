@@ -39,6 +39,7 @@ Examples:
 
 #define TARGET_SYSES \
 	X(SYS, linux) \
+	X(SYS, freebsd) \
 	X_ncmp(SYS, darwin, 6) \
 	X_ncmp(SYS, cygwin, 6)
 

@@ -237,6 +237,9 @@ static void add_platform_dependant_macros(void)
 			macro_add("__CYGWIN__", "1", 0);
 			platform_win32 = 1;
 			break;
+
+		case SYS_freebsd:
+			break;
 	}
 
 	macro_add("__WCHAR_TYPE__",

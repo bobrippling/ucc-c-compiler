@@ -58,6 +58,7 @@ static enum vendor infer_vendor(enum sys sys)
 		case SYS_linux: return VENDOR_pc;
 		case SYS_darwin: return VENDOR_apple;
 		case SYS_cygwin: return VENDOR_pc;
+		case SYS_freebsd: return VENDOR_pc;
 	}
 	return -1;
 }
@@ -68,6 +69,7 @@ static enum abi infer_abi(enum sys sys)
 		case SYS_linux: return ABI_elf;
 		case SYS_darwin: return ABI_macho;
 		case SYS_cygwin: return ABI_elf;
+		case SYS_freebsd: return ABI_elf;
 	}
 	return -1;
 }
