@@ -315,7 +315,7 @@ int compile(char *in, const char *out, char **args, int return_ec)
 	return runner_1(1, "cc1/cc1", in, out, args, return_ec);
 }
 
-void assemble(char *in, const char *out, char **args, char *as)
+void assemble(char *in, const char *out, char **args, const char *as)
 {
 	char **copy = NULL;
 
@@ -327,7 +327,7 @@ void assemble(char *in, const char *out, char **args, char *as)
 	dynarray_free(char **, copy, NULL);
 }
 
-void link_all(char **objs, const char *out, char **args, char *ld)
+void link_all(char **objs, const char *out, char **args, const char *ld)
 {
 	char **all = NULL;
 

@@ -54,26 +54,9 @@ CC, CFLAGS and LDFLAGS are pulled from the environment if not specified
 }
 
 # globals
-need_dsym=0
-default_leading_underscore=0
-default_fpic=0
-local_lib=0
-
 debug=1
 optimise=0
-
 target=
-
-ucc_initflags=
-ucc_startfiles=
-ucc_dyn=
-ucc_stdinc=
-ucc_stdlib=
-ucc_ldflags=
-ucc_postlink=
-ucc_paramshared=-shared
-ucc_paramstatic=-static
-
 CFLAGS_CONFIGURE=
 
 for arg
@@ -81,10 +64,6 @@ do
 	case "$arg" in
 		--target=*|--host=*)
 			target=${arg#*=}
-			;;
-
-		--with-ucc-lib)
-			local_lib=1
 			;;
 
 		--enable-debug|--enable-debug=yes) debug=1 ;;
@@ -140,84 +119,6 @@ test -n "$target" || target=$($CC -dumpmachine) || target=unknown
 printf '%s\n' "$target"
 arch="${target%%-*}"
 
-try_path ucc_stdinc ' -isystem ' "/usr/include"
-try_path ucc_stdinc ' -isystem ' "/usr/local/include"
-
-# OS defaults
-case "$target" in
-	*linux*)
-		# assume gcc
-		ucc_dyn="-dynamic-linker /lib64/ld-linux-x86-64.so.2"
-		ucc_stdlib="-lc"
-
-		try_path ucc_startfiles ' ' /usr/lib/"${target}"/crt1.o
-		try_path ucc_startfiles ' ' /usr/lib/"${target}"/crti.o
-		try_path ucc_startfiles ' ' /usr/lib/"${target}"/crtn.o
-
-		gcc_inc=$(echo /usr/lib/gcc/$target/*/ | tr ' ' '\n' | sort | tail -1)
-		echo "Borrowing gcc-$(basename "$gcc_inc")'s include/"
-
-		try_path ucc_stdinc ' -isystem ' "/usr/include/$target"
-		try_path ucc_stdinc ' -isystem ' "$gcc_inc/include"
-		;;
-
-	*freebsd*)
-		ucc_startfiles="/usr/lib/crt1.o /usr/lib/crti.o /usr/lib/crtbegin.o /usr/lib/crtend.o /usr/lib/crtn.o"
-		ucc_stdlib="-lc"
-		;;
-
-	*-apple-*)
-		ucc_initflags='-mpreferred-stack-boundary=4 -malign-is-p2' # 2^4 = 16 byte aligned
-		ucc_stdlib='-lSystem'
-		ucc_startfiles=''
-		syslibroot=$(ls -d /Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX*.sdk | head -1)
-		try_path ucc_stdinc ' -isystem ' "$syslibroot/usr/include"
-		ucc_ldflags="-macosx_version_min 10.8 -syslibroot $syslibroot"
-		need_dsym=1
-		default_leading_underscore=1
-		default_fpic=1
-		ucc_postlink='%{debug:dsymutil %{out}}'
-		ucc_paramshared=-dylib
-		;;
-
-	CYGWIN_NT-* | *-pc-cygwin)
-		default_leading_underscore=1
-		if test "$arch" = i686
-		then arch=x86_64
-		fi
-		;;
-
-	*)
-		echo "$0: unknown target ($target)" >&2
-		exit 1
-		;;
-esac
-
-# platform/ABI setup
-if test $default_leading_underscore = 1
-then
-	ucc_initflags="-fleading-underscore $ucc_initflags"
-fi
-if test $default_fpic = 1
-then
-	ucc_initflags="-fpic $ucc_initflags"
-fi
-
-case "$target" in
-	*arm*)
-		ucc_initflags="-fshort-enums $ucc_initflags"
-		;;
-esac
-
-if test $local_lib = 1
-then
-	ucc_stdinc="-isystem %{bindir}/../../lib/"
-	ucc_startfiles="%{bindir}/../../lib/crt.a"
-	ucc_stdlib="%{bindir}/../../lib/libc.a"
-	ucc_ldflags="$ucc_ldflags -static"
-	ucc_dyn=''
-fi
-
 test_cflag -Werror=unknown-warning-option 2>/dev/null \
 	&& CFLAGS_CONFIGURE="$CFLAGS_CONFIGURE -Werror=unknown-warning-option"
 
@@ -263,43 +164,6 @@ CFLAGS = ${CFLAGS}
 LDFLAGS = ${LDFLAGS}
 
 ARCH = $arch
-!
-echo 'done'
-
-printf 'writing ucc.spec... '
-cat > src/ucc.spec <<!
-# available for %{bool:str}: static, shared, startfiles, debug, stdlib, stdinc
-# available for %{name}: out, bindir
-
-initflags:
-	$ucc_initflags
-	%{stdinc:$ucc_stdinc}
-	%{stdinc:-isystem %{bindir}/../../include}
-
-as:
-	as
-
-asflags:
-
-ld:
-	ld
-
-ldflags_pre_user:
-	$ucc_dyn
-	$ucc_ldflags
-	%{shared:$ucc_paramshared}
-	%{static:$ucc_paramstatic}
-
-	# An object file's unresolved symbols must
-	# be _later_ in the linker's argv array.
-	# crt, user files, then stdlib
-	%{startfiles:$ucc_startfiles}
-
-ldflags_post_user:
-	%{stdlib:$ucc_stdlib}
-
-post-link:
-	$ucc_postlink
 !
 echo 'done'
 
