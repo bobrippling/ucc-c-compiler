@@ -492,6 +492,11 @@ static int init_target(const char *target)
 		}
 	}
 
+	if(triple.arch != ARCH_x86_64){
+		fprintf(stderr, "Only x86_64 architecture is compiled in\n");
+		return 0;
+	}
+
 	platform_init(triple.arch, triple.sys);
 	target_details_from_triple(&triple, &cc1_target_details);
 
