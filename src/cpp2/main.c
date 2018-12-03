@@ -296,7 +296,6 @@ int main(int argc, char **argv)
 	} emit = PREPROCESSED;
 	int i;
 	int freestanding = 0;
-	int m32 = 0;
 	int offsetof_macro = 0;
 	const char *target = NULL;
 
@@ -441,13 +440,6 @@ int main(int argc, char **argv)
 				}else{
 					goto usage;
 				}
-				break;
-
-			case 'm':
-				if(!strcmp(argv[i]+2, "32"))
-					m32 = 1;
-				else if(!strcmp(argv[i]+2, "64"))
-					m32 = 0;
 				break;
 
 			case 'W':
