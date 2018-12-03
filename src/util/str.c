@@ -1,4 +1,6 @@
-#include <stdlib.h> /* NULL */
+#include <stdio.h>
+#include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
 
@@ -40,4 +42,21 @@ int str_endswith(const char *haystack, const char *needle)
 		return 0;
 
 	return !strcmp(haystack + h_l - n_l, needle);
+}
+
+int xsnprintf(char *buf, size_t len, const char *fmt, ...)
+{
+	va_list l;
+	int desired_space;
+
+	va_start(l, fmt);
+	desired_space = vsnprintf(buf, len, fmt, l);
+	va_end(l);
+
+	if(desired_space < 0 || desired_space >= (int)len){
+		fprintf(stderr, "snprintf() overflow\n");
+		abort();
+	}
+
+	return desired_space;
 }

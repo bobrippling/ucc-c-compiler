@@ -11,6 +11,7 @@
 #include "ucc.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/str.h"
 #include "str.h"
 
 char **include_paths;
@@ -41,7 +42,7 @@ char *ucc_where(void)
 		ssize_t nb;
 
 		if((nb = readlink(argv0, link, sizeof link)) == -1){
-			snprintf(where, sizeof where, "%s", argv0);
+			xsnprintf(where, sizeof where, "%s", argv0);
 		}else{
 			char *argv_dup;
 
@@ -51,7 +52,7 @@ char *ucc_where(void)
 
 			bname(argv_dup);
 
-			snprintf(where, sizeof where, "%s/%s", argv_dup, link);
+			xsnprintf(where, sizeof where, "%s/%s", argv_dup, link);
 
 			free(argv_dup);
 		}

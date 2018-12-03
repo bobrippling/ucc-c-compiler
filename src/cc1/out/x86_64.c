@@ -9,6 +9,7 @@
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/macros.h"
+#include "../../util/str.h"
 
 #include "../op.h"
 #include "../decl.h"
@@ -27,13 +28,11 @@
 #include "asm.h"
 #include "impl.h"
 #include "impl_jmp.h"
-#include "common.h"
 #include "out.h"
 #include "lbl.h"
 #include "write.h"
 #include "../defs.h"
 #include "virt.h"
-#include "common.h"
 
 #include "ctx.h"
 #include "blk.h"
@@ -435,13 +434,13 @@ const char *impl_val_str_r(
 			}
 
 			if(vs->bits.lbl.offset){
-				SNPRINTF(buf, VAL_STR_SZ, "%s%s+%ld%s",
+				xsnprintf(buf, VAL_STR_SZ, "%s%s+%ld%s",
 						pre,
 						vs->bits.lbl.str,
 						vs->bits.lbl.offset,
 						picstr);
 			}else{
-				SNPRINTF(buf, VAL_STR_SZ, "%s%s%s",
+				xsnprintf(buf, VAL_STR_SZ, "%s%s%s",
 						pre, vs->bits.lbl.str, picstr);
 			}
 			break;
@@ -462,13 +461,13 @@ const char *impl_val_str_r(
 						"can't add to a register in %s",
 						__func__);
 
-				SNPRINTF(buf, VAL_STR_SZ,
+				xsnprintf(buf, VAL_STR_SZ,
 						"%s" NUM_FMT "(%%%s)",
 						off < 0 ? "-" : "",
 						llabs(off),
 						rstr);
 			}else{
-				SNPRINTF(buf, VAL_STR_SZ,
+				xsnprintf(buf, VAL_STR_SZ,
 						"%s%%%s%s",
 						deref ? "(" : "",
 						rstr,
