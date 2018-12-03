@@ -66,7 +66,7 @@ static enum vendor infer_vendor(enum sys sys)
 static enum abi infer_abi(enum sys sys)
 {
 	switch(sys){
-		case SYS_linux: return ABI_elf;
+		case SYS_linux: return ABI_gnu;
 		case SYS_darwin: return ABI_macho;
 		case SYS_cygwin: return ABI_elf;
 		case SYS_freebsd: return ABI_elf;
