@@ -1347,7 +1347,7 @@ struct DIE_flush
 {
 	struct DIE_flush_file
 	{
-		enum section_type sec;
+		enum section_builtin sec;
 		unsigned long byte_cnt;
 	} abbrev, info;
 };

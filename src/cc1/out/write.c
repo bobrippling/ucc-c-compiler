@@ -23,7 +23,7 @@
 
 void out_asmv(
 		out_ctx *octx,
-		enum section_type sec, enum p_opts opts,
+		enum section_builtin sec, enum p_opts opts,
 		const char *fmt, va_list l)
 {
 	char *insn;
@@ -67,7 +67,7 @@ void out_asm(out_ctx *octx, const char *fmt, ...)
 
 void out_asm2(
 		out_ctx *octx,
-		enum section_type sec, enum p_opts opts,
+		enum section_builtin sec, enum p_opts opts,
 		const char *fmt, ...)
 {
 	va_list l;

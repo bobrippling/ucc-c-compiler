@@ -26,6 +26,6 @@ void out_dbg_label_pop(out_ctx *octx, struct out_dbg_lbl *);
 int out_dbg_label_emitted(struct out_dbg_lbl *, const char **out_lbl);
 int out_dbg_label_shouldemit(struct out_dbg_lbl *, const char **out_lbl);
 
-void out_dbg_labels_emit_release_v(enum section_type, struct out_dbg_lbl ***);
+void out_dbg_labels_emit_release_v(enum section_builtin, struct out_dbg_lbl ***);
 
 #endif

@@ -69,7 +69,7 @@ static struct
 };
 
 FILE *cc1_out;
-enum section_type cc1_current_section = -1;
+enum section_builtin cc1_current_section = -1;
 char *cc1_first_fname;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;

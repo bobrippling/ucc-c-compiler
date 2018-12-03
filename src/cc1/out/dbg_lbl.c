@@ -90,7 +90,7 @@ int out_dbg_label_shouldemit(struct out_dbg_lbl *lbl, const char **out_lbl)
 	return !out_dbg_label_emitted(lbl, out_lbl);
 }
 
-static void emit_lbl(enum section_type t, struct out_dbg_lbl *lbl)
+static void emit_lbl(enum section_builtin t, struct out_dbg_lbl *lbl)
 {
 	/* if we haven't emitted the label yet, and its
 	 * pair start label/start block was emitted */
@@ -101,7 +101,7 @@ static void emit_lbl(enum section_type t, struct out_dbg_lbl *lbl)
 	RELEASE(lbl);
 }
 
-void out_dbg_labels_emit_release_v(enum section_type t, struct out_dbg_lbl ***pv)
+void out_dbg_labels_emit_release_v(enum section_builtin t, struct out_dbg_lbl ***pv)
 {
 	struct out_dbg_lbl **v = *pv;
 

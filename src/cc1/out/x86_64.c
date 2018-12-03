@@ -2059,7 +2059,7 @@ static char *x86_call_jmp_target(
 	return NULL;
 }
 
-void impl_jmp(enum section_type sec, const char *lbl)
+void impl_jmp(enum section_builtin sec, const char *lbl)
 {
 	asm_out_section(sec, "\tjmp %s\n", lbl);
 }

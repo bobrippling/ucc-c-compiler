@@ -4,6 +4,6 @@
 #include "out/asm.h"
 
 extern FILE *cc1_out;
-extern enum section_type cc1_current_section;
+extern enum section_builtin cc1_current_section;
 
 #endif

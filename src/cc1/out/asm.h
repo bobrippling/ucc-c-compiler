@@ -1,7 +1,7 @@
 #ifndef OUT_ASM_H
 #define OUT_ASM_H
 
-enum section_type
+enum section_builtin
 {
 	SECTION_TEXT,
 	SECTION_DATA,
@@ -26,21 +26,21 @@ enum section_type
 #define SECTION_DESC_DBG_INFO "dbg_info"
 #define SECTION_DESC_DBG_LINE "dbg_line"
 
-void asm_out_section(enum section_type, const char *fmt, ...);
-void asm_out_sectionv(enum section_type t, const char *fmt, va_list l);
+void asm_out_section(enum section_builtin, const char *fmt, ...);
+void asm_out_sectionv(enum section_builtin t, const char *fmt, va_list l);
 
-int asm_section_empty(enum section_type);
+int asm_section_empty(enum section_builtin);
 
-void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align);
+void asm_nam_begin3(enum section_builtin sec, const char *lbl, unsigned align);
 
-void out_comment_sec(enum section_type sec, const char *fmt, ...);
+void out_comment_sec(enum section_builtin sec, const char *fmt, ...);
 
 #ifdef TYPE_H
-void asm_out_fp(enum section_type sec, type *ty, floating_t f);
+void asm_out_fp(enum section_builtin sec, type *ty, floating_t f);
 #endif
 
 #ifdef STRINGS_H
-void asm_declare_stringlit(enum section_type, const stringlit *);
+void asm_declare_stringlit(enum section_builtin, const stringlit *);
 #endif
 
 #ifdef DECL_H

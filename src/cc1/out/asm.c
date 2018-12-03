@@ -55,7 +55,7 @@ struct bitfield_val
 	unsigned width;
 };
 
-static void asm_switch_section(enum section_type t)
+static void asm_switch_section(enum section_builtin t)
 {
 	const char *name;
 
@@ -109,19 +109,19 @@ int asm_type_size(type *r)
 	return asm_type_table[asm_table_lookup(r)].sz;
 }
 
-static void asm_declare_pad(enum section_type sec, unsigned pad, const char *why)
+static void asm_declare_pad(enum section_builtin sec, unsigned pad, const char *why)
 {
 	if(pad)
 		asm_out_section(sec, ".space %u " ASM_COMMENT " %s\n", pad, why);
 }
 
-static void asm_declare_init_type(enum section_type sec, type *ty)
+static void asm_declare_init_type(enum section_builtin sec, type *ty)
 {
 	asm_out_section(sec, ".%s ", asm_type_directive(ty));
 }
 
 static void asm_declare_init_bitfields(
-		enum section_type sec,
+		enum section_builtin sec,
 		struct bitfield_val *vals, unsigned n,
 		type *ty)
 {
@@ -158,7 +158,7 @@ static void asm_declare_init_bitfields(
 }
 
 static void bitfields_out(
-		enum section_type sec,
+		enum section_builtin sec,
 		struct bitfield_val *bfs, unsigned *pn,
 		type *ty)
 {
@@ -194,7 +194,7 @@ static struct bitfield_val *bitfields_add(
 	return bfs;
 }
 
-void asm_out_fp(enum section_type sec, type *ty, floating_t f)
+void asm_out_fp(enum section_builtin sec, type *ty, floating_t f)
 {
 	switch(type_primitive(ty)){
 		case type_float:
@@ -219,7 +219,7 @@ void asm_out_fp(enum section_type sec, type *ty, floating_t f)
 	}
 }
 
-static void static_val(enum section_type sec, type *ty, expr *e)
+static void static_val(enum section_builtin sec, type *ty, expr *e)
 {
 	consty k;
 
@@ -273,7 +273,7 @@ static void static_val(enum section_type sec, type *ty, expr *e)
 	asm_out_section(sec, "\n");
 }
 
-static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
+static void asm_declare_init(enum section_builtin sec, decl_init *init, type *tfor)
 {
 	type *r;
 
@@ -515,7 +515,7 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 	}
 }
 
-static void asm_out_align(enum section_type sec, unsigned align)
+static void asm_out_align(enum section_builtin sec, unsigned align)
 {
 	if(mopt_mode & MOPT_ALIGN_IS_POW2){
 		align = log2i(align);
@@ -525,19 +525,19 @@ static void asm_out_align(enum section_type sec, unsigned align)
 		asm_out_section(sec, ".align %u\n", align);
 }
 
-void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align)
+void asm_nam_begin3(enum section_builtin sec, const char *lbl, unsigned align)
 {
 	asm_switch_section(sec);
 	asm_out_align(sec, align);
 	asm_out_section(sec, "%s:\n", lbl);
 }
 
-static void asm_nam_begin(enum section_type sec, decl *d)
+static void asm_nam_begin(enum section_builtin sec, decl *d)
 {
 	asm_nam_begin3(sec, decl_asm_spel(d), decl_align(d));
 }
 
-static void asm_reserve_bytes(enum section_type sec, unsigned nbytes)
+static void asm_reserve_bytes(enum section_builtin sec, unsigned nbytes)
 {
 	/*
 	 * TODO: .comm buf,512,5
@@ -595,7 +595,7 @@ void asm_predeclare_visibility(decl *d, attribute *attr)
 	}
 }
 
-static void asm_declare_ctor_dtor(decl *d, enum section_type sec)
+static void asm_declare_ctor_dtor(decl *d, enum section_builtin sec)
 {
 	type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 	const char *directive = asm_type_directive(intptr_ty);
@@ -618,7 +618,7 @@ void asm_declare_destructor(decl *d)
 	asm_declare_ctor_dtor(d, SECTION_DTORS);
 }
 
-void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
+void asm_declare_stringlit(enum section_builtin sec, const stringlit *lit)
 {
 	/* could be SECTION_RODATA */
 	asm_nam_begin3(sec, lit->lbl, /*align:*/1);
@@ -652,7 +652,7 @@ void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
 void asm_declare_decl_init(decl *d)
 {
 	int is_const, nonzero_init;
-	enum section_type sec;
+	enum section_builtin sec;
 
 	if((d->store & STORE_MASK_STORE) == store_extern){
 		asm_predeclare_extern(d);
@@ -703,13 +703,13 @@ void asm_declare_decl_init(decl *d)
 	}
 }
 
-void asm_out_sectionv(enum section_type t, const char *fmt, va_list l)
+void asm_out_sectionv(enum section_builtin t, const char *fmt, va_list l)
 {
 	asm_switch_section(t);
 	vfprintf(cc1_out, fmt, l);
 }
 
-void asm_out_section(enum section_type t, const char *fmt, ...)
+void asm_out_section(enum section_builtin t, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
