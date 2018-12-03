@@ -2,11 +2,12 @@ include ../config.mk
 
 CFLAGS += -Wmissing-prototypes
 
-OBJ = preproc.o main.o macro.o str.o \
+OBJ_CPP = preproc.o main.o macro.o str.o \
       directive.o tokenise.o eval.o  \
       snapshot.o include.o deps.o    \
-      expr.o expr_tok.o has.o        \
-      ../util/util.o ../util/alloc.o \
+      expr.o expr_tok.o has.o
+
+OBJ_DEP = ../util/util.o ../util/alloc.o \
       ../util/math.o                 \
       ../util/platform.o             \
       ../util/where.o ../util/str.o  \
@@ -19,6 +20,8 @@ OBJ = preproc.o main.o macro.o str.o \
       ../util/path.o                 \
       ../util/triple.o
 
+OBJ = ${OBJ_CPP} ${OBJ_DEP}
+
 SRC = ${OBJ:.o=.c}
 
 all: cpp tags
@@ -29,7 +32,7 @@ cpp: ${OBJ}
 
 clean:
 	@echo clean cpp
-	$Qrm -f ${OBJ} cpp
+	$Qrm -f ${OBJ_CPP} cpp
 
 .PHONY: clean all
 

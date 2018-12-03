@@ -3,10 +3,12 @@ include ../config.mk
 # mkstemp
 CFLAGS += -D_XOPEN_SOURCE=500
 
-OBJ = ucc.o ucc_ext.o str.o warning.o spec.o \
-			../util/alloc.o ../util/dynarray.o \
-			../util/platform.o ../util/tmpfile.o \
-			../util/str.o ../util/io.o ../util/triple.o
+OBJ_UCC = ucc.o ucc_ext.o str.o warning.o spec.o
+OBJ_DEP = ../util/alloc.o ../util/dynarray.o \
+		../util/platform.o ../util/tmpfile.o \
+		../util/str.o ../util/io.o ../util/triple.o
+
+OBJ = ${OBJ_UCC} ${OBJ_DEP}
 
 SRC = ${OBJ:.o=.c}
 
@@ -18,7 +20,7 @@ ucc: ${OBJ}
 
 clean:
 	@echo clean ucc
-	$Qrm -f ${OBJ} ucc
+	$Qrm -f ${OBJ_UCC} ucc
 
 .PHONY: clean all
 
