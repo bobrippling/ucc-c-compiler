@@ -162,13 +162,14 @@ static const char *abi_to_str(enum abi a)
 	return NULL;
 }
 
-char *triple_to_str(const struct triple *triple)
+char *triple_to_str(const struct triple *triple, int showvendor)
 {
 	static char buf[32];
 
-	snprintf(buf, sizeof(buf), "%s-%s-%s-%s",
+	snprintf(buf, sizeof(buf), "%s%s%s-%s-%s",
 			arch_to_str(triple->arch),
-			vendor_to_str(triple->vendor),
+			showvendor ? "-" : "",
+			showvendor ? vendor_to_str(triple->vendor) : "",
 			sys_to_str(triple->sys),
 			abi_to_str(triple->abi));
 

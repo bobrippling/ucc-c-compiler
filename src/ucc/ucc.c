@@ -881,7 +881,7 @@ static void state_from_triple(
 	switch(triple->sys){
 		case SYS_linux:
 		{
-			const char *target = triple_to_str(triple);
+			const char *target = triple_to_str(triple, 0);
 
 			if(!vars->static_){
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-dynamic-linker"));
@@ -1089,7 +1089,7 @@ usage:
 		}
 	}
 	if(vars.dumpmachine){
-		printf("%s\n", triple_to_str(&triple));
+		printf("%s\n", triple_to_str(&triple, /* no vendor */0));
 		return 0;
 	}
 
