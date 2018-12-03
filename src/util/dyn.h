@@ -9,8 +9,14 @@
 
 #ifndef NO_DYN_CHECKS
 #  define UCC_TYPEOF(e) __typeof(e)
-#  define UCC_TYPECHECK(t, arg) \
+
+#  define UCC_TYPECHECK_BUILTIN(t, arg) \
 	UCC_STATIC_ASSERT(__builtin_types_compatible_p(t, __typeof((void)0, arg)))
+
+#  define UCC_TYPECHECK_VERBOSE(t, arg) \
+	UCC_STATIC_ASSERT(_Generic((t)0, __typeof(arg): 1) == 1)
+
+#define UCC_TYPECHECK UCC_TYPECHECK_BUILTIN
 
 #else
 #  define UCC_TYPEOF(e) (void)0
