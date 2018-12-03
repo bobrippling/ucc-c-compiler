@@ -22,7 +22,7 @@ OBJ_DEP = ../util/util.o ../util/alloc.o \
 
 OBJ = ${OBJ_CPP} ${OBJ_DEP}
 
-SRC = ${OBJ:.o=.c}
+SRC = ${OBJ_CPP:.o=.c}
 
 all: cpp tags
 

@@ -10,7 +10,7 @@ OBJ_DEP = ../util/alloc.o ../util/dynarray.o \
 
 OBJ = ${OBJ_UCC} ${OBJ_DEP}
 
-SRC = ${OBJ:.o=.c}
+SRC = ${OBJ_UCC:.o=.c}
 
 all: ucc tags
 
