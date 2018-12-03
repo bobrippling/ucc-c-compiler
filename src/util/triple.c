@@ -121,35 +121,45 @@ int triple_parse(const char *str, struct triple *triple, const char **const bad)
 static const char *arch_to_str(enum arch a)
 {
 	switch(a){
-		case ARCH_x86_64: return "x86_64";
-		case ARCH_i386: return "i386";
+#define X(pre, name) case pre ## _ ## name: return #name;
+#define ALIAS(...)
+		TARGET_ARCHES
+#undef ALIAS
+#undef X
 	}
+	return NULL;
 }
 
 static const char *vendor_to_str(enum vendor v)
 {
 	switch(v){
-		case VENDOR_pc: return "pc";
-		case VENDOR_apple: return "apple";
+#define X(pre, name) case pre ## _ ## name: return #name;
+		TARGET_VENDORS
+#undef X
 	}
+	return NULL;
 }
 
 static const char *sys_to_str(enum sys s)
 {
 	switch(s){
-		case SYS_linux: return "linux";
-		case SYS_darwin: return "darwin";
-		case SYS_cygwin: return "cygwin";
+#define X(pre, name) case pre ## _ ## name: return #name;
+#define X_ncmp(pre, name, n) X(pre, name)
+		TARGET_SYSES
+#undef X_ncmp
+#undef X
 	}
+	return NULL;
 }
 
 static const char *abi_to_str(enum abi a)
 {
 	switch(a){
-		case ABI_gnu: return "gnu";
-		case ABI_macho: return "macho";
-		case ABI_elf: return "elf";
+#define X(pre, name) case pre ## _ ## name: return #name;
+		TARGET_ABIS
+#undef X
 	}
+	return NULL;
 }
 
 char *triple_to_str(const struct triple *triple)
