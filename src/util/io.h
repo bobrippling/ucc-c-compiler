@@ -3,4 +3,6 @@
 
 char *fline(FILE *f, int *const newline);
 
+int cat(FILE *from, FILE *to);
+
 #endif

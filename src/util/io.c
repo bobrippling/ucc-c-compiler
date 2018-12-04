@@ -48,3 +48,18 @@ char *fline(FILE *f, int *const newline)
 		}
 	}while(1);
 }
+
+int cat(FILE *from, FILE *to)
+{
+	char buf[1024];
+	size_t n;
+
+	while((n = fread(buf, sizeof *buf, sizeof buf, from)) > 0)
+		if(fwrite(buf, sizeof *buf, n, to) != n)
+			return 1;
+
+	if(ferror(from))
+		return 1;
+
+	return 0;
+}

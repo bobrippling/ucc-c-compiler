@@ -12,6 +12,7 @@
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "../util/str.h"
+#include "../util/io.h"
 #include "str.h"
 
 char **include_paths;
@@ -213,11 +214,9 @@ void rename_or_move(char *old, char *new)
 	free(cmd);
 }
 
-void cat(char *fnin, const char *fnout, int append)
+void cat_fnames(char *fnin, const char *fnout, int append)
 {
 	FILE *in, *out;
-	char buf[1024];
-	size_t n;
 
 	if(show){
 		fprintf(stderr, "cat %s%s%s\n",
@@ -241,14 +240,11 @@ void cat(char *fnin, const char *fnout, int append)
 		out = stdout;
 	}
 
-	while((n = fread(buf, sizeof *buf, sizeof buf, in)) > 0)
-		if(fwrite(buf, sizeof *buf, n, out) != n)
-			die("write():");
+	if(cat(in, out))
+		die("write():");
 
-	if(ferror(in))
-		die("read():");
-
-	fclose(in);
+	if(fclose(in))
+		die("close():");
 
 	if(fnout && fclose(out) == EOF)
 		die("close():");

@@ -232,12 +232,12 @@ static void rename_files(struct cc_file *files, int nfiles, const char *output, 
 			if(mode == mode_preproc){
 				/* append to current */
 				if(files[i].preproc.fname)
-					cat(files[i].preproc.fname, output, i);
+					cat_fnames(files[i].preproc.fname, output, i);
 				continue;
 			}else if(mode == mode_compile && !strcmp(output, "-")){
 				/* -S -o- */
 				if(files[i].compile.fname)
-					cat(files[i].compile.fname, NULL, 0);
+					cat_fnames(files[i].compile.fname, NULL, 0);
 				continue;
 			}
 
@@ -249,7 +249,7 @@ static void rename_files(struct cc_file *files, int nfiles, const char *output, 
 
 				case mode_preproc:
 					if(files[i].preproc.fname)
-						cat(files[i].preproc.fname, NULL, 0);
+						cat_fnames(files[i].preproc.fname, NULL, 0);
 					continue;
 
 				case mode_compile:
