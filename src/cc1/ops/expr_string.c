@@ -109,7 +109,7 @@ expr *expr_new_str(struct cstring *str, where *w, symtable *stab)
 
 const out_val *gen_expr_style_str(const expr *e, out_ctx *octx)
 {
-	literal_print(cc1_out, e->bits.strlit.lit_at.lit->cstr);
+	literal_print(stdout, e->bits.strlit.lit_at.lit->cstr);
 
 	UNUSED_OCTX();
 }

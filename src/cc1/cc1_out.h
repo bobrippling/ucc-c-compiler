@@ -3,7 +3,7 @@
 
 #include "out/asm.h"
 
-extern FILE *cc1_out;
 extern enum section_builtin cc1_current_section;
+extern FILE *cc1_current_section_file;
 
 #endif

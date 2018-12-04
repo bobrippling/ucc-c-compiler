@@ -38,6 +38,7 @@
 #include "fopt.h"
 #include "cc1_target.h"
 #include "cc1_out.h"
+#include "cc1_sections.h"
 
 static const char **system_includes;
 
@@ -68,8 +69,10 @@ static struct
 	{ 0, NULL, NULL }
 };
 
-FILE *cc1_out;
+static FILE *cc1_out;
+dynmap *cc1_out_persection; /* char* => FILE* */
 enum section_builtin cc1_current_section = -1;
+FILE *cc1_current_section_file;
 char *cc1_first_fname;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
@@ -170,7 +173,7 @@ static int should_emit_gnu_stack_note(void)
 	return platform_sys() == SYS_linux;
 }
 
-static void io_fin(void)
+static void io_fin_gnustack(void)
 {
 	const int execstack = 0;
 
@@ -181,6 +184,37 @@ static void io_fin(void)
 	{
 		ccdie(0, "write to cc1 output:");
 	}
+}
+
+static void io_fin_sections(void)
+{
+	FILE *section;
+	size_t i;
+
+	if(!cc1_out_persection)
+		return;
+
+	for(i = 0; (section = dynmap_value(FILE *, cc1_out_persection, i)); i++){
+		char *name = dynmap_key(char *, cc1_out_persection, i);
+		free(name);
+
+		if(fseek(section, 0, SEEK_SET))
+			ccdie(0, "seeking in section tmpfile:");
+
+		if(cat(section, cc1_out))
+			ccdie(0, "concatenating section tmpfile:");
+
+		if(fclose(section))
+			ccdie(0, "closing section tmpfile:");
+	}
+
+	dynmap_free(cc1_out_persection);
+}
+
+static void io_fin(void)
+{
+	io_fin_sections();
+	io_fin_gnustack();
 
 	if(fclose(cc1_out))
 		ccdie("close cc1 output");
@@ -567,6 +601,8 @@ int main(int argc, char **argv)
 				usage(argv[0], "-o needs an argument");
 
 			if(strcmp(argv[i], "-")){
+				if(cc1_out)
+					fclose(cc1_out);
 				cc1_out = fopen(argv[i], "w");
 				if(!cc1_out){
 					ccdie("open %s:", argv[i]);

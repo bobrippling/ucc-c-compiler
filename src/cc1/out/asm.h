@@ -1,6 +1,8 @@
 #ifndef OUT_ASM_H
 #define OUT_ASM_H
 
+#include <stdio.h>
+
 enum section_builtin
 {
 	SECTION_TEXT,
@@ -25,6 +27,8 @@ enum section_builtin
 #define SECTION_DESC_DBG_ABBREV "dbg_abbrev"
 #define SECTION_DESC_DBG_INFO "dbg_info"
 #define SECTION_DESC_DBG_LINE "dbg_line"
+
+FILE *asm_section_file(enum section_builtin);
 
 void asm_out_section(enum section_builtin, const char *fmt, ...);
 void asm_out_sectionv(enum section_builtin t, const char *fmt, va_list l);

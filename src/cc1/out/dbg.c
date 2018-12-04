@@ -1388,8 +1388,10 @@ static void dwarf_leb_printf(
 		struct DIE_flush_file *f,
 		unsigned long uleb, int is_sig)
 {
+	FILE *file = asm_section_file(f->sec);
+
 	asm_out_section(f->sec, "\t.byte ");
-	f->byte_cnt += leb128_out(cc1_out, uleb, is_sig);
+	f->byte_cnt += leb128_out(file, uleb, is_sig);
 }
 
 static void dwarf_flush_die_block(

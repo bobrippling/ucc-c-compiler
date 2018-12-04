@@ -33,6 +33,7 @@
 #include "../str.h"
 #include "../cc1_target.h"
 #include "../cc1_out.h"
+#include "../cc1_sections.h"
 
 #include "../ops/expr_compound_lit.h"
 
@@ -55,27 +56,48 @@ struct bitfield_val
 	unsigned width;
 };
 
-static void asm_switch_section(enum section_builtin t)
+static const char *name_for_section(enum section_builtin sec)
 {
-	const char *name;
-
-	if(t == cc1_current_section)
-		return;
-	cc1_current_section = t;
-
-	name = NULL;
-	switch(t){
-		case SECTION_TEXT: name = cc1_target_details.section_names.section_name_text; break;
-		case SECTION_DATA: name = cc1_target_details.section_names.section_name_data; break;
-		case SECTION_BSS: name = cc1_target_details.section_names.section_name_bss; break;
-		case SECTION_RODATA: name = cc1_target_details.section_names.section_name_rodata; break;
-		case SECTION_CTORS: name = cc1_target_details.section_names.section_name_ctors; break;
-		case SECTION_DTORS: name = cc1_target_details.section_names.section_name_dtors; break;
-		case SECTION_DBG_ABBREV: name = cc1_target_details.section_names.section_name_dbg_abbrev; break;
-		case SECTION_DBG_INFO: name = cc1_target_details.section_names.section_name_dbg_info; break;
-		case SECTION_DBG_LINE: name = cc1_target_details.section_names.section_name_dbg_line; break;
+	switch(sec){
+		case SECTION_TEXT: return cc1_target_details.section_names.section_name_text;
+		case SECTION_DATA: return cc1_target_details.section_names.section_name_data;
+		case SECTION_BSS: return cc1_target_details.section_names.section_name_bss;
+		case SECTION_RODATA: return cc1_target_details.section_names.section_name_rodata;
+		case SECTION_CTORS: return cc1_target_details.section_names.section_name_ctors;
+		case SECTION_DTORS: return cc1_target_details.section_names.section_name_dtors;
+		case SECTION_DBG_ABBREV: return cc1_target_details.section_names.section_name_dbg_abbrev;
+		case SECTION_DBG_INFO: return cc1_target_details.section_names.section_name_dbg_info;
+		case SECTION_DBG_LINE: return cc1_target_details.section_names.section_name_dbg_line;
 	}
-	fprintf(cc1_out, ".section %s\n", name);
+	return NULL;
+}
+
+FILE *asm_section_file(enum section_builtin sec)
+{
+	FILE *f;
+	const char *name = name_for_section(sec);
+
+	if(!cc1_out_persection)
+		cc1_out_persection = dynmap_new(char *, strcmp, dynmap_strhash);
+
+	f = dynmap_get(char *, FILE *, cc1_out_persection, (char *)name);
+	if(!f){
+		f = tmpfile();
+		dynmap_set(char *, FILE *, cc1_out_persection, ustrdup(name), f);
+
+		fprintf(f, ".section %s\n", name);
+	}
+
+	return f;
+}
+
+static void asm_switch_section(enum section_builtin sec)
+{
+	if(sec == cc1_current_section)
+		return;
+
+	cc1_current_section = sec;
+	cc1_current_section_file = asm_section_file(sec);
 }
 
 int asm_table_lookup(type *r)
@@ -640,10 +662,13 @@ void asm_declare_stringlit(enum section_builtin sec, const stringlit *lit)
 			assert(0 && "raw string in code gen");
 
 		case CSTRING_ASCII:
+		{
+			FILE *f = asm_section_file(sec);
 			asm_out_section(sec, ".ascii \"");
-			literal_print(cc1_out, lit->cstr);
-			fputc('"', cc1_out);
+			literal_print(f, lit->cstr);
+			fputc('"', f);
 			break;
+		}
 	}
 
 	asm_out_section(sec, "\n");
@@ -705,8 +730,8 @@ void asm_declare_decl_init(decl *d)
 
 void asm_out_sectionv(enum section_builtin t, const char *fmt, va_list l)
 {
-	asm_switch_section(t);
-	vfprintf(cc1_out, fmt, l);
+	FILE *f = asm_section_file(t);
+	vfprintf(f, fmt, l);
 }
 
 void asm_out_section(enum section_builtin t, const char *fmt, ...)
