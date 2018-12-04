@@ -202,7 +202,7 @@ case "$target" in
 		as_supports_local_common=0
 		asm_supports_visibility_protected=0
 		ld_indirect_call_via_plt=0
-		ucc_initflags='-mpreferred-stack-boundary=4 -malign-is-p2' # 2^4 = 16 byte aligned
+		ucc_initflags='-mpreferred-stack-boundary=4 -malign-is-p2 -fno-semantic-interposition' # 2^4 = 16 byte aligned
 		ucc_stdlib='-lSystem'
 		ucc_startfiles=''
 		ucc_piespec='%{pie:-pie} %{!pie:-no_pie}'
