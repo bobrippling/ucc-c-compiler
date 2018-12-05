@@ -108,16 +108,79 @@ void out_func_epilogue(
 	if(octx->used_callee_saved){
 		call_save_spill_blk = out_blk_new(octx, "call_save");
 
-		/* ensure callee save doesn't overlap other parts of
-		 * the stack, namely arguments. this is needed because
-		 * even though cur_stack_sz is zero, we insert the callee
-		 * save basic-block after argument handling, where cur_stack_sz
-		 * is non-zero
+		/* Ensure callee save doesn't overlap other parts of the stack, namely
+		 * arguments (i.e. things stored closest to the base, aka offset-zero).
+		 *
+		 * This is needed because even though cur_stack_sz is zero at this point
+		 * in code, we insert the callee save basic-block after argument handling,
+		 * where cur_stack_sz is non-zero (due to stored arguments, etc).
+		 *
+		 * Additionally, we don't want to stash the callee saved arguments at
+		 * the bottom of the stack, because that's where arguments for
+		 * many-parameter-functions live, so the callee saves need to be just
+		 * before that.
+		 *
+		 * <extra arguments>
+		 * <saved ret>
+		 * <saved rsp>
+		 * <saved arguments>
+		 * <local variables>
+		 * <callee saves> <---- this (or similar) is what we want, with no overlap
+		 *                     \ either way
+		 * <spill space / overflow arg space for child calls and vlas>
+		 *
+		 * this is what we get, which works too:
+		 * <local variables>
+		 * <spill space>
+		 * <callee saves>
+		 * <overflow arg space for child calls and vlas>
 		 */
 		octx->in_prologue = 1;
 		{
-			octx->cur_stack_sz = octx->max_stack_sz - octx->stack_callspace;
+			/* Here, we bring cur_stack_sz up to max_stack_sz (which is the maximum
+			 * stack usage for the current function), less the volatile
+			 * spill/stack_callspace.
+			 *
+			 * We then perform callee_save_or_restore(), which allocates space,
+			 * adjusting max_stack_sz in the process, from our offset.
+			 *
+			 * If we ignore stack_callspace, then this works fine, because
+			 * max_stack_sz is now the function's stack size, plus that for
+			 * callee save register.
+			 *
+			 * However, when stack_callspace is taken into account, we suddenly
+			 * allocate our callee save registers in the same space as the temporary
+			 * space used for stack_callspace (or whatever else uses this space
+			 * after stack-reclaimation, such as spills).
+			 *
+			 * So we want to insert our callee-save registers, not at the bottom of
+			 * the stack (because this would unconditionally collide them with the
+			 * stack_callspace area, or the vla expansion area), but before this.
+			 * However, we can't just set
+			 *   cur_stack_sz = max_stack_sz - stack_callspace
+			 * ... because then we overlap the stack_callspace with callee-save
+			 * registers. Unfortuantely it's slightly chicken-and-egg, in that
+			 * the vla-space, spill code and stack_callspace code has already run.
+			 *
+			 * Fortunately, similar problems have been encountered before, and
+			 * both the vla-space and stack_callspace logic offset themselves
+			 * based on the runtime-bottom of the stack (%rsp) instead of the stack
+			 * base (%rbp). So all that remains for us to do, is increase the
+			 * runtime-bottom of the stack by the difference that the callee
+			 * saves take up, done below.
+			 */
+			const v_stackt old_max_stack_sz = octx->max_stack_sz;
+			long diff;
+
+			octx->cur_stack_sz = octx->max_stack_sz;
+
 			callee_save_or_restore(octx, call_save_spill_blk);
+
+			diff = octx->max_stack_sz - old_max_stack_sz;
+			if(diff){
+				assert(diff > 0);
+				octx->max_stack_sz += diff;
+			}
 		}
 		octx->in_prologue = 0;
 	}
