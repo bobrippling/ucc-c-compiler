@@ -180,6 +180,7 @@ void out_func_epilogue(
 			if(diff){
 				assert(diff > 0);
 				octx->max_stack_sz += diff;
+				octx->stack_calleesave_space = diff;
 			}
 		}
 		octx->in_prologue = 0;
@@ -208,10 +209,12 @@ void out_func_epilogue(
 			assert(octx->max_stack_sz >= octx->stack_n_alloc);
 
 			out_comment(octx,
-					"stack_sz{cur=%lu,max=%lu} stack_n_alloc=%lu (total=%lu) call_spc=%lu max_align=%u",
-					octx->cur_stack_sz, octx->max_stack_sz, octx->stack_n_alloc,
-					octx->cur_stack_sz + octx->stack_n_alloc,
+					"stack_sz{cur=%lu,max=%lu} n_alloc=%lu call_spc=%lu calleesve=%lu max_align=%u",
+					octx->cur_stack_sz,
+					octx->max_stack_sz,
+					octx->stack_n_alloc,
 					octx->stack_callspace,
+					octx->stack_calleesave_space,
 					octx->max_align);
 
 			if(octx->max_align){
@@ -257,6 +260,7 @@ void out_func_epilogue(
 		octx->max_stack_sz =
 		octx->max_align =
 		octx->stack_callspace =
+		octx->stack_calleesave_space =
 		octx->stack_n_alloc = 0;
 }
 
