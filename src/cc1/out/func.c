@@ -173,7 +173,7 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 			 * saves take up, done below.
 			 */
 			const v_stackt old_max_stack_sz = octx->max_stack_sz;
-			long diff;
+			long callee_stack_diff;
 			where func_end;
 			memcpy_safe(&func_end, &octx->dbg.where);
 
@@ -181,11 +181,11 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 
 			callee_save_or_restore(octx, call_save_spill_blk, func_begin, &func_end);
 
-			diff = octx->max_stack_sz - old_max_stack_sz;
-			if(diff){
-				assert(diff > 0);
-				octx->max_stack_sz += diff;
-				octx->stack_calleesave_space = diff;
+			callee_stack_diff = octx->max_stack_sz - old_max_stack_sz;
+			if(callee_stack_diff){
+				assert(callee_stack_diff > 0);
+				octx->max_stack_sz += callee_stack_diff;
+				octx->stack_calleesave_space = callee_stack_diff;
 			}
 		}
 		octx->in_prologue = 0;
