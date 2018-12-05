@@ -146,9 +146,7 @@ void out_func_prologue(
 		int nargs, int variadic,
 		const out_val *argvals[]);
 
-void out_func_epilogue(
-		out_ctx *, type *, char *end_dbg_lbl,
-		int *out_usedstack);
+void out_func_epilogue(out_ctx *, type *, char *end_dbg_lbl);
 
 
 /* returns a pointer to allocated storage: */
