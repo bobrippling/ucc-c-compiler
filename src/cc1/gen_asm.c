@@ -233,7 +233,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
-			out_func_epilogue(octx, d->ref, end);
+			out_func_epilogue(octx, d->ref, &d->bits.func.code->where, end);
 			free(end);
 		}
 

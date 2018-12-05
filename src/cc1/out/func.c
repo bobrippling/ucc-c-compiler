@@ -36,7 +36,8 @@ const out_val *out_call(out_ctx *octx,
 static void callee_save_or_restore_1(
 		out_ctx *octx, out_blk *in_blk,
 		struct vreg *cs, const out_val *stack_pos,
-		type *voidpp, int reg2mem)
+		type *voidpp, int reg2mem,
+		const where *fnstart, const where *fnend)
 {
 	out_current_blk(octx, in_blk);
 	{
@@ -45,16 +46,20 @@ static void callee_save_or_restore_1(
 		stk = out_change_type(octx, stk, voidpp);
 
 		if(reg2mem){
-			const out_val *reg = v_new_reg(octx, NULL, type_is_ptr(voidpp), cs);
+			const out_val *reg;
+			out_dbg_where(octx, fnstart);
+			reg = v_new_reg(octx, NULL, type_is_ptr(voidpp), cs);
 			out_store(octx, stk, reg);
 		}else{
+			out_dbg_where(octx, fnend);
 			out_flush_volatile(octx, impl_deref(octx, stk, cs, NULL));
 		}
 	}
 }
 
 static void callee_save_or_restore(
-		out_ctx *octx, out_blk *spill_blk)
+		out_ctx *octx, out_blk *spill_blk,
+		const where *fnstart, const where *fnend)
 {
 	struct vreg *i;
 	long stack_n = 0;
@@ -81,8 +86,8 @@ static void callee_save_or_restore(
 	restore_blk = octx->epilogue_blk;
 
 	for(i = octx->used_callee_saved; i && i->is_float != 2; i++){
-		callee_save_or_restore_1(octx, spill_blk, i, stack_locn, voidpp, 1);
-		callee_save_or_restore_1(octx, restore_blk, i, stack_locn, voidpp, 0);
+		callee_save_or_restore_1(octx, spill_blk, i, stack_locn, voidpp, 1, fnstart, fnend);
+		callee_save_or_restore_1(octx, restore_blk, i, stack_locn, voidpp, 0, fnstart, fnend);
 
 		stack_locn = out_op(octx, op_plus, stack_locn,
 				out_new_l(octx, arithty, voidpsz));
@@ -91,7 +96,7 @@ static void callee_save_or_restore(
 	out_val_release(octx, stack_locn);
 }
 
-void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
+void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *end_dbg_lbl)
 {
 	out_blk *call_save_spill_blk = NULL;
 	out_blk *to_flush;
@@ -169,10 +174,12 @@ void out_func_epilogue(out_ctx *octx, type *ty, char *end_dbg_lbl)
 			 */
 			const v_stackt old_max_stack_sz = octx->max_stack_sz;
 			long diff;
+			where func_end;
+			memcpy_safe(&func_end, &octx->dbg.where);
 
 			octx->cur_stack_sz = octx->max_stack_sz;
 
-			callee_save_or_restore(octx, call_save_spill_blk);
+			callee_save_or_restore(octx, call_save_spill_blk, func_begin, &func_end);
 
 			diff = octx->max_stack_sz - old_max_stack_sz;
 			if(diff){
