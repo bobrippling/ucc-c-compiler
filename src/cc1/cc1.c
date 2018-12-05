@@ -229,7 +229,7 @@ static char *next_line(void)
 		if(feof(infile))
 			return NULL;
 		else
-			die("read():");
+			ccdie("read():");
 	}
 
 	for(p = s; *p; p++)
@@ -267,7 +267,7 @@ static void gen_backend(symtable_global *globs, const char *fname)
 				compdir = getcwd(buf, sizeof(buf)-1);
 				/* PATH_MAX may not include the  ^ nul byte */
 				if(!compdir)
-					die("getcwd():");
+					ccdie("getcwd():");
 			}
 
 			gen_asm(globs,
@@ -587,7 +587,7 @@ int main(int argc, char **argv)
 				case '0':
 					if(argv[i][3]){
 				default:
-						die("-g extra argument unexpected");
+						ccdie("-g extra argument unexpected");
 					}
 					cc1_gdebug = 0;
 					break;
