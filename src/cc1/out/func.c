@@ -184,7 +184,44 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 			callee_stack_diff = octx->max_stack_sz - old_max_stack_sz;
 			if(callee_stack_diff){
 				assert(callee_stack_diff > 0);
-				octx->max_stack_sz += callee_stack_diff;
+				/*
+				 * We are now in this situation:
+				 *
+				 * <extra arguments>
+				 * <saved ret>
+				 * <saved rsp>
+				 * <saved arguments>
+				 * <local variables>
+				 * <
+				 *  callee saves
+				 *  AND
+				 *  spill space / overflow arg space for child calls and vlas
+				 *  (shared because of stack-reclaim)
+				 * >
+				 *
+				 * Now the spill-space logic saves values at fixes offsets from
+				 * the stack base, so we can't place our callee-saves there.
+				 * So we bump the max-stack to end up like so:
+				 *
+				 * ...
+				 * <local variables>
+				 * <spill space>
+				 * <callee saves>
+				 * <overflow arg space for child calls and vlas>
+				 *
+				 * However, there is still overlap between the callee-saves and the
+				 * overflow arg space / vla space, because this was previously shared
+				 * between that and the spills. We now can't make use of this sharing
+				 * any more, so must ensure the stack-callspace is entirely separate
+				 * from the callee-saves (as it overlaps them by the amount it shared
+				 * with the spill space).
+				 *
+				 * Hence, max-stack-sz += callee_stack_diff + stack-callspace;
+				 * This is a little wasteful, but to fix, we would have to move the
+				 * callee saves to before the spill space, which would require a larger
+				 * restructure.
+				 */
+				octx->max_stack_sz += callee_stack_diff + octx->stack_callspace;
 				octx->stack_calleesave_space = callee_stack_diff;
 			}
 		}
