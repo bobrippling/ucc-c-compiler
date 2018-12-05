@@ -69,7 +69,6 @@ static struct
 	{ 0, NULL, NULL }
 };
 
-static FILE *cc1_out;
 dynmap *cc1_out_persection; /* char* => FILE* */
 enum section_builtin cc1_current_section = -1;
 FILE *cc1_current_section_file;
@@ -173,12 +172,12 @@ static int should_emit_gnu_stack_note(void)
 	return platform_sys() == SYS_linux;
 }
 
-static void io_fin_gnustack(void)
+static void io_fin_gnustack(FILE *out)
 {
 	const int execstack = 0;
 
 	if(should_emit_gnu_stack_note()
-	&& fprintf(cc1_out,
+	&& fprintf(out,
 			".section .note.GNU-stack,\"%s\",@progbits\n",
 			execstack ? "x" : "") < 0)
 	{
@@ -186,7 +185,7 @@ static void io_fin_gnustack(void)
 	}
 }
 
-static void io_fin_sections(void)
+static void io_fin_sections(FILE *out)
 {
 	FILE *section;
 	size_t i;
@@ -201,7 +200,7 @@ static void io_fin_sections(void)
 		if(fseek(section, 0, SEEK_SET))
 			ccdie(0, "seeking in section tmpfile:");
 
-		if(cat(section, cc1_out))
+		if(cat(section, out))
 			ccdie(0, "concatenating section tmpfile:");
 
 		if(fclose(section))
@@ -211,13 +210,10 @@ static void io_fin_sections(void)
 	dynmap_free(cc1_out_persection);
 }
 
-static void io_fin(void)
+static void io_fin(FILE *out)
 {
-	io_fin_sections();
-	io_fin_gnustack();
-
-	if(fclose(cc1_out))
-		ccdie("close cc1 output");
+	io_fin_sections(out);
+	io_fin_gnustack(out);
 }
 
 static char *next_line(void)
@@ -239,7 +235,7 @@ static char *next_line(void)
 	return s;
 }
 
-static void gen_backend(symtable_global *globs, const char *fname)
+static void gen_backend(symtable_global *globs, const char *fname, FILE *out)
 {
 	void (*gf)(symtable_global *) = NULL;
 
@@ -277,13 +273,12 @@ static void gen_backend(symtable_global *globs, const char *fname)
 
 			/* filelist needs to be output first */
 			if(filelist && cc1_gdebug)
-				dbg_out_filelist(filelist, cc1_out);
+				dbg_out_filelist(filelist, out);
 
+			io_fin(out);
 
 			if(compdir != buf && compdir != debug_compilation_dir)
 				free(compdir);
-
-			io_fin();
 			break;
 		}
 	}
@@ -542,7 +537,9 @@ int main(int argc, char **argv)
 	int failure;
 	where loc_start;
 	static symtable_global *globs;
-	const char *fname = NULL;
+	const char *in_fname = NULL;
+	const char *out_fname = NULL;
+	FILE *outfile;
 	const char *target = NULL;
 	int i;
 	int werror = 0;
@@ -600,15 +597,8 @@ int main(int argc, char **argv)
 			if(++i == argc)
 				usage(argv[0], "-o needs an argument");
 
-			if(strcmp(argv[i], "-")){
-				if(cc1_out)
-					fclose(cc1_out);
-				cc1_out = fopen(argv[i], "w");
-				if(!cc1_out){
-					ccdie("open %s:", argv[i]);
-					goto out;
-				}
-			}
+			if(strcmp(argv[i], "-"))
+				out_fname = argv[i];
 
 		}else if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
 			int gnu;
@@ -648,8 +638,8 @@ int main(int argc, char **argv)
 			dump_options();
 			usage(argv[0], "");
 
-		}else if(!fname){
-			fname = argv[i];
+		}else if(!in_fname){
+			in_fname = argv[i];
 		}else{
 			usage(argv[0], "unknown argument: '%s'", argv[i]);
 		}
@@ -684,17 +674,22 @@ int main(int argc, char **argv)
 			cc1_visibility_default = VISIBILITY_PROTECTED;
 	}
 
-	if(fname && strcmp(fname, "-")){
-		infile = fopen(fname, "r");
+	if(in_fname && strcmp(in_fname, "-")){
+		infile = fopen(in_fname, "r");
 		if(!infile)
-			ccdie("open %s:", fname);
+			ccdie("open %s:", in_fname);
 	}else{
 		infile = stdin;
-		fname = "-";
+		in_fname = "-";
 	}
 
-	if(!cc1_out)
-		cc1_out = stdout;
+	if(out_fname){
+		outfile = fopen(out_fname, "w");
+		if(!outfile)
+			ccdie("open %s:", out_fname);
+	}else{
+		outfile = stdout;
+	}
 
 	show_current_line = cc1_fopt.show_line;
 
@@ -704,24 +699,28 @@ int main(int argc, char **argv)
 			(cc1_fopt.ext_keywords ? KW_EXT : 0) |
 			(cc1_std >= STD_C99 ? KW_C99 : 0));
 
-	tokenise_set_input(next_line, fname);
+	tokenise_set_input(next_line, in_fname);
 
 	where_cc1_current(&loc_start);
 	globs = symtabg_new(&loc_start);
 
 	failure = parse_and_fold(globs);
 
-	if(infile != stdin)
-		fclose(infile), infile = NULL;
+	if(fclose(infile))
+		ccdie("close input (%s):", in_fname);
+	infile = NULL;
 
 	if(failure == 0 || /* attempt dump anyway */cc1_backend == BACKEND_DUMP){
-		gen_backend(globs, fname);
+		gen_backend(globs, in_fname, outfile);
 		if(gen_had_error)
 			failure = 1;
 	}
 
 	if(cc1_fopt.dump_type_tree)
 		type_nav_dump(cc1_type_nav);
+
+	if(fclose(outfile))
+		ccdie("close output (%s):", out_fname);
 
 out:
 	dynarray_free(const char **, system_includes, NULL);
