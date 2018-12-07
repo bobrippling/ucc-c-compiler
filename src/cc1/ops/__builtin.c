@@ -195,7 +195,7 @@ static const out_val *builtin_gen_memset(const expr *e, out_ctx *octx)
 			e->bits.builtin_memset.ch,
 			e->bits.builtin_memset.len);
 
-	return addr;
+	return out_change_type(octx, addr, e->tree_type);
 }
 
 expr *builtin_new_memset(expr *p, int ch, size_t len)
@@ -271,7 +271,9 @@ static const out_val *builtin_gen_memcpy(const expr *e, out_ctx *octx)
 	dest = gen_expr(e->lhs, octx);
 	src = gen_expr(e->rhs, octx);
 
-	return out_memcpy(octx, dest, src, e->bits.num.val.i);
+	return out_change_type(octx,
+			out_memcpy(octx, dest, src, e->bits.num.val.i),
+			e->tree_type);
 #endif
 }
 
