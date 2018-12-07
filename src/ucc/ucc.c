@@ -38,7 +38,7 @@ struct cc_file
 	struct fd_name_pair
 	{
 		char *fname;
-		int fd;
+		int fd; /* used to generate and hold onto a temp-file-name */
 	} in;
 
 	struct fd_name_pair preproc, compile, assemb;
@@ -121,10 +121,10 @@ static void tmpfilenam(
 
 	if(save_temps){
 		path = expected_filename(in, mode);
-		fd = open(path, O_RDWR | O_TRUNC | O_CREAT, 0600);
-		if(fd < 0)
-			die("open (for -save-temps) %s:", path);
-
+		fd = FILE_UNINIT;
+		/* we don't create the temp files for -save-temps because there's no need
+		 * to create and hold onto some temporary file - we have the fixed file
+		 * output name already */
 	}else{
 		fd = tmpfile_prefix_out("ucc.", &path);
 
@@ -292,6 +292,14 @@ static void rename_files(struct cc_file *files, int nfiles, const char *output, 
 	}
 }
 
+static void fd_name_close(struct fd_name_pair *f)
+{
+	if(f->fd < 0)
+		return;
+	close(f->fd);
+	f->fd = FILE_UNINIT;
+}
+
 static void process_files(
 		enum mode mode,
 		char **inputs,
@@ -345,10 +353,10 @@ static void process_files(
 	dynarray_free(char **, links, free);
 
 	for(i = 0; i < ninputs; i++){
-		close(files[i].in.fd);
-		close(files[i].preproc.fd);
-		close(files[i].compile.fd);
-		close(files[i].assemb.fd);
+		fd_name_close(&files[i].in);
+		fd_name_close(&files[i].preproc);
+		fd_name_close(&files[i].compile);
+		fd_name_close(&files[i].assemb);
 	}
 
 	free(files);
