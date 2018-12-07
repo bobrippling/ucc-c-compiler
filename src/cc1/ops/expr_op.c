@@ -1306,6 +1306,18 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 
 	if(!e->rhs){
 		eval = out_op_unary(octx, e->bits.op.op, lhs);
+
+		/* ensure flags, etc get extended up to our type */
+		eval = out_change_type(octx, eval, e->tree_type);
+
+		/* this doesn't do the extension here, but tags it with the type.
+		 * then when/if we come to do things like decaying a flag to a register,
+		 * we'll spot that the type isn't a 1-byte type, and extend then.
+		 *
+		 * this allows flags to propagate through and be optimised with subsequent
+		 * flag operations, without instantly promoting to int
+		 */
+
 	}else{
 		const out_val *rhs = gen_expr(e->rhs, octx);
 
