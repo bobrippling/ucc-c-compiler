@@ -185,6 +185,18 @@ static void io_fin_gnustack(FILE *out)
 	}
 }
 
+static void io_fin_section(FILE *section, FILE *out, const char *name)
+{
+	if(fseek(section, 0, SEEK_SET))
+		ccdie("seeking in section tmpfile:");
+
+	if(cat(section, out))
+		ccdie("concatenating section tmpfile:");
+
+	if(fclose(section))
+		ccdie("closing section tmpfile:");
+}
+
 static void io_fin_sections(FILE *out)
 {
 	FILE *section;
@@ -201,16 +213,10 @@ static void io_fin_sections(FILE *out)
 
 	for(i = 0; (section = dynmap_value(FILE *, cc1_out_persection, i)); i++){
 		char *name = dynmap_key(char *, cc1_out_persection, i);
+
+		io_fin_section(section, out, name);
+
 		free(name);
-
-		if(fseek(section, 0, SEEK_SET))
-			ccdie("seeking in section tmpfile:");
-
-		if(cat(section, out))
-			ccdie("concatenating section tmpfile:");
-
-		if(fclose(section))
-			ccdie("closing section tmpfile:");
 	}
 
 	dynmap_free(cc1_out_persection);
