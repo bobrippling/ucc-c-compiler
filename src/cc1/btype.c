@@ -145,14 +145,12 @@ int type_intrank(enum type_primitive p)
 			return p;
 	}
 
-#define static_assert(tag, exp) ((void)sizeof(char[(exp) ? 1 : -1]))
 	/* check special case: char */
-	static_assert(a, type_nchar < type_schar);
-	static_assert(b, type_schar < type_uchar);
+	ucc_static_assert(a, type_nchar < type_schar);
+	ucc_static_assert(b, type_schar < type_uchar);
 
 	/* rest follow on from type_int */
-	static_assert(c, type_int < type_uint);
-#undef static_assert
+	ucc_static_assert(c, type_int < type_uint);
 }
 
 unsigned btype_size(const btype *t, const where *from)

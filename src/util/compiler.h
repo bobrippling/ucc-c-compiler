@@ -3,6 +3,7 @@
 
 #if __STDC__ >= 201112L
 #  define ucc_noreturn _Noreturn
+#  define ucc_static_assert(tag, test) _Static_assert(test, #test " (" #tag ")")
 #endif
 
 #ifdef __GNUC__
@@ -32,6 +33,10 @@
 
 #ifndef ucc_noreturn
 #  define ucc_noreturn
+#endif
+
+#ifndef ucc_static_assert
+#  define ucc_static_assert(tag, test) typedef char check_ ## tag[(test) ? 1 : -1]
 #endif
 
 #define memcpy_safe(a, b) (*(a) = *(b))
