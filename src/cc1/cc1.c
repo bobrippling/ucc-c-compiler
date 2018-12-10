@@ -187,13 +187,25 @@ static void io_fin_gnustack(FILE *out)
 
 static void io_fin_section(FILE *section, FILE *out, const char *name)
 {
+	enum section_builtin sec = asm_builtin_section_from_str(name);
+	const char *desc = NULL;
+
+	if((int)sec != -1)
+		desc = asm_section_desc(sec);
+
 	if(fseek(section, 0, SEEK_SET))
 		ccdie("seeking in section tmpfile:");
 
 	xfprintf(out, ".section %s\n", name);
 
+	if(desc)
+		xfprintf(out, "%s%s:\n", SECTION_BEGIN, desc);
+
 	if(cat(section, out))
 		ccdie("concatenating section tmpfile:");
+
+	if(desc)
+		xfprintf(out, "%s%s:\n", SECTION_END, desc);
 
 	if(fclose(section))
 		ccdie("closing section tmpfile:");

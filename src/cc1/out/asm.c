@@ -72,6 +72,46 @@ static const char *name_for_section(enum section_builtin sec)
 	return NULL;
 }
 
+const char *asm_section_desc(enum section_builtin sec)
+{
+	switch(sec){
+		case SECTION_TEXT: return SECTION_DESC_TEXT;
+		case SECTION_DATA: return SECTION_DESC_DATA;
+		case SECTION_BSS: return SECTION_DESC_BSS;
+		case SECTION_RODATA: return SECTION_DESC_RODATA;
+		case SECTION_CTORS: return SECTION_DESC_CTORS;
+		case SECTION_DTORS: return SECTION_DESC_DTORS;
+		case SECTION_DBG_ABBREV: return SECTION_DESC_DBG_ABBREV;
+		case SECTION_DBG_INFO: return SECTION_DESC_DBG_INFO;
+		case SECTION_DBG_LINE: return SECTION_DESC_DBG_LINE;
+	}
+	return NULL;
+}
+
+enum section_builtin asm_builtin_section_from_str(const char *s)
+{
+	if(!strcmp(s, cc1_target_details.section_names.section_name_text))
+		return SECTION_TEXT;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_data))
+		return SECTION_DATA;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_bss))
+		return SECTION_BSS;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_rodata))
+		return SECTION_RODATA;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_ctors))
+		return SECTION_CTORS;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_dtors))
+		return SECTION_DTORS;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_dbg_abbrev))
+		return SECTION_DBG_ABBREV;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_dbg_info))
+		return SECTION_DBG_INFO;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_dbg_line))
+		return SECTION_DBG_LINE;
+
+	return -1;
+}
+
 FILE *asm_section_file(enum section_builtin sec)
 {
 	FILE *f;

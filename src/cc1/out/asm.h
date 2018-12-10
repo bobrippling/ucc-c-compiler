@@ -28,6 +28,13 @@ enum section_builtin
 #define SECTION_DESC_DBG_INFO "dbg_info"
 #define SECTION_DESC_DBG_LINE "dbg_line"
 
+const char *asm_section_desc(enum section_builtin);
+
+/* this is temporary, until the __attribute__((section("..."))) branch
+ * comes in, when its struct { builtin | name } will be used as a key,
+ * instead of just a string */
+enum section_builtin asm_builtin_section_from_str(const char *);
+
 FILE *asm_section_file(enum section_builtin);
 
 void asm_out_section(enum section_builtin, const char *fmt, ...);
