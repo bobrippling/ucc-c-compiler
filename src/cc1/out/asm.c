@@ -84,8 +84,6 @@ FILE *asm_section_file(enum section_builtin sec)
 	if(!f){
 		f = tmpfile();
 		dynmap_set(char *, FILE *, cc1_out_persection, ustrdup(name), f);
-
-		fprintf(f, ".section %s\n", name);
 	}
 
 	return f;

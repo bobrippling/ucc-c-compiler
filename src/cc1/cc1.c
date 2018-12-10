@@ -190,6 +190,8 @@ static void io_fin_section(FILE *section, FILE *out, const char *name)
 	if(fseek(section, 0, SEEK_SET))
 		ccdie("seeking in section tmpfile:");
 
+	xfprintf(out, ".section %s\n", name);
+
 	if(cat(section, out))
 		ccdie("concatenating section tmpfile:");
 
