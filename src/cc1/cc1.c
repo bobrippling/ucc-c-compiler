@@ -181,7 +181,7 @@ static void io_fin_gnustack(FILE *out)
 			".section .note.GNU-stack,\"%s\",@progbits\n",
 			execstack ? "x" : "") < 0)
 	{
-		ccdie(0, "write to cc1 output:");
+		ccdie("write to cc1 output:");
 	}
 }
 
@@ -198,13 +198,13 @@ static void io_fin_sections(FILE *out)
 		free(name);
 
 		if(fseek(section, 0, SEEK_SET))
-			ccdie(0, "seeking in section tmpfile:");
+			ccdie("seeking in section tmpfile:");
 
 		if(cat(section, out))
-			ccdie(0, "concatenating section tmpfile:");
+			ccdie("concatenating section tmpfile:");
 
 		if(fclose(section))
-			ccdie(0, "closing section tmpfile:");
+			ccdie("closing section tmpfile:");
 	}
 
 	dynmap_free(cc1_out_persection);
