@@ -193,6 +193,12 @@ static void io_fin_sections(FILE *out)
 	if(!cc1_out_persection)
 		return;
 
+	if(cc1_gdebug){
+		/* ensure we have text and debug-line sections for the debug to reference */
+		(void)asm_section_file(SECTION_TEXT);
+		(void)asm_section_file(SECTION_DBG_LINE);
+	}
+
 	for(i = 0; (section = dynmap_value(FILE *, cc1_out_persection, i)); i++){
 		char *name = dynmap_key(char *, cc1_out_persection, i);
 		free(name);
