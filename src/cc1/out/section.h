@@ -20,14 +20,15 @@ struct section
 	int builtin;
 	/*
 	 * if(builtin == SECTION_UNINIT), this is uninitialised,
-	 * if(builtin == SECTION_FUNCDATA), this is a function/data sec with .name being the spel
+	 * if(builtin == SECTION_FUNC/DATA), this is a function/data sec with .name being the spel
 	 * if(name), this is a custom named section
 	 * else, this is a builtin section
 	 */
 };
 
 #define SECTION_UNINIT -1
-#define SECTION_FUNCDATA -2
+#define SECTION_FUNCDATA_FUNC -2
+#define SECTION_FUNCDATA_DATA -3
 
 #define SECTION_INIT(builtin) { NULL, builtin }
 
@@ -43,7 +44,12 @@ struct section
 
 #define SECTION_FROM_FUNCDECL(sec, spel) do{ \
 	(sec)->name = (spel); \
-	(sec)->builtin = SECTION_FUNCDATA; \
+	(sec)->builtin = SECTION_FUNCDATA_FUNC; \
+}while(0)
+
+#define SECTION_FROM_DATADECL(sec, spel) do{ \
+	(sec)->name = (spel); \
+	(sec)->builtin = SECTION_FUNCDATA_DATA; \
 }while(0)
 
 #define SECTION_BEGIN "section_begin_"

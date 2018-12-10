@@ -27,10 +27,13 @@ const struct section section_dbg_line = SECTION_INIT(SECTION_DBG_LINE);
 int section_is_builtin(const struct section *sec)
 {
 	assert(sec->builtin != SECTION_UNINIT);
-	if(sec->builtin == SECTION_FUNCDATA)
-		return 0;
-
-	return !sec->name;
+	switch(sec->builtin){
+		case SECTION_FUNCDATA_FUNC:
+		case SECTION_FUNCDATA_DATA:
+			return 0;
+		default:
+			return !sec->name;
+	}
 }
 
 char *section_name(const struct section *sec, int *const allocated)
@@ -39,9 +42,14 @@ char *section_name(const struct section *sec, int *const allocated)
 
 	assert(sec->builtin != SECTION_UNINIT);
 
-	if(sec->builtin == SECTION_FUNCDATA){
+	if(sec->builtin == SECTION_FUNCDATA_FUNC || sec->builtin == SECTION_FUNCDATA_DATA){
 		*allocated = 1;
-		return ustrprintf("%s.%s", cc1_target_details.section_names.section_name_text, sec->name);
+		return ustrprintf(
+				"%s.%s",
+				sec->builtin == SECTION_FUNCDATA_FUNC
+				? cc1_target_details.section_names.section_name_text
+				: cc1_target_details.section_names.section_name_data,
+				sec->name);
 	}
 
 	if(sec->name)
@@ -67,8 +75,13 @@ char *section_name(const struct section *sec, int *const allocated)
 static enum section_cmp_type to_type(const struct section *sec)
 {
 	assert(sec->builtin != SECTION_UNINIT);
-	if(sec->builtin == SECTION_FUNCDATA)
-		return FUNCDATA;
+	switch(sec->builtin){
+		case SECTION_FUNCDATA_FUNC:
+		case SECTION_FUNCDATA_DATA:
+			return FUNCDATA;
+		default:
+			break;
+	}
 	if(sec->name)
 		return NAMED;
 

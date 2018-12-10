@@ -337,7 +337,7 @@ static void infer_decl_section(decl *d, struct section *sec)
 	}
 
 	if(cc1_fopt.data_sections){
-		SECTION_FROM_FUNCDECL(sec, decl_asm_spel(d));
+		SECTION_FROM_DATADECL(sec, decl_asm_spel(d));
 		return;
 	}
 
