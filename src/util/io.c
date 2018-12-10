@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include <errno.h>
 
@@ -62,4 +63,19 @@ int cat(FILE *from, FILE *to)
 		return 1;
 
 	return 0;
+}
+
+void xfprintf(FILE *f, const char *fmt, ...)
+{
+	va_list l;
+	int r;
+
+	va_start(l, fmt);
+	r = vfprintf(f, fmt, l);
+	va_end(l);
+
+	if(r < 0){
+		fprintf(stderr, "fprintf(): %s\n", strerror(errno));
+		abort();
+	}
 }
