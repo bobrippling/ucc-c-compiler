@@ -73,7 +73,7 @@ static struct
 };
 
 dynmap *cc1_out_persection;
-struct section_output cc1_current_section_output = SECTION_UNINIT;
+struct section_output cc1_current_section_output = SECTION_OUTPUT_UNINIT;
 char *cc1_first_fname;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
@@ -218,6 +218,8 @@ static void io_fin_macosx_version(FILE *out)
 static void io_fin_section(FILE *section, FILE *out, const struct section *sec)
 {
 	const char *desc = NULL;
+	char *name;
+	int allocated;
 
 	if(section_is_builtin(sec))
 		desc = asm_section_desc(sec->builtin);
@@ -225,7 +227,10 @@ static void io_fin_section(FILE *section, FILE *out, const struct section *sec)
 	if(fseek(section, 0, SEEK_SET))
 		ccdie("seeking in section tmpfile:");
 
-	xfprintf(out, ".section %s\n", section_name(sec));
+	name = section_name(sec, &allocated);
+	xfprintf(out, ".section %s\n", name);
+	if(allocated)
+		free(name);
 
 	if(desc)
 		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, desc);

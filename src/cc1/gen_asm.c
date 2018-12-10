@@ -327,10 +327,21 @@ static void infer_decl_section(decl *d, struct section *sec)
 	}
 
 	if(type_is(d->ref, type_func)){
+		if(cc1_fopt.function_sections){
+			SECTION_FROM_FUNCDECL(sec, decl_asm_spel(d));
+			return;
+		}
+
 		SECTION_FROM_BUILTIN(sec, SECTION_TEXT);
 		return;
 	}
 
+	if(cc1_fopt.data_sections){
+		SECTION_FROM_FUNCDECL(sec, decl_asm_spel(d));
+		return;
+	}
+
+	/* prefer rodata over bss */
 	if(type_is_const(d->ref)){
 		SECTION_FROM_BUILTIN(sec, SECTION_RODATA);
 		return;
@@ -391,8 +402,14 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 
 	infer_decl_section(d, &section);
 	asm_switch_section(&section);
-	if(cc1_fopt.dump_decl_sections)
-		fprintf(stderr, "%s --> section \"%s\"\n", decl_to_str(d), section_name(&section));
+	if(cc1_fopt.dump_decl_sections){
+		int allocated;
+		char *name = section_name(&section, &allocated);
+		fprintf(stderr, "%s --> section \"%s\"\n", decl_to_str(d), name);
+		if(allocated)
+			free(name);
+	}
+
 
 	if(attribute_present(d, attr_weak)){
 		asm_predeclare_weak(&section, d);

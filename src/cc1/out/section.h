@@ -16,9 +16,35 @@ enum section_builtin
 
 struct section
 {
-	const char *name; /* used if present, else builtin */
+	const char *name;
 	int builtin;
+	/*
+	 * if(builtin == SECTION_UNINIT), this is uninitialised,
+	 * if(builtin == SECTION_FUNCDATA), this is a function/data sec with .name being the spel
+	 * if(name), this is a custom named section
+	 * else, this is a builtin section
+	 */
 };
+
+#define SECTION_UNINIT -1
+#define SECTION_FUNCDATA -2
+
+#define SECTION_INIT(builtin) { NULL, builtin }
+
+#define SECTION_FROM_BUILTIN(sec, sbuiltin) do{ \
+	(sec)->builtin = (sbuiltin); \
+	(sec)->name = NULL; \
+}while(0)
+
+#define SECTION_FROM_NAME(sec, str) do{ \
+	(sec)->name = (str); \
+	(sec)->builtin = 0; \
+}while(0)
+
+#define SECTION_FROM_FUNCDECL(sec, spel) do{ \
+	(sec)->name = (spel); \
+	(sec)->builtin = SECTION_FUNCDATA; \
+}while(0)
 
 #define SECTION_BEGIN "section_begin_"
 #define SECTION_END   "section_end_"
@@ -32,20 +58,7 @@ struct section
 #define SECTION_DESC_DBG_INFO "dbg_info"
 #define SECTION_DESC_DBG_LINE "dbg_line"
 
-#define SECTION_FROM_BUILTIN(sec, sbuiltin) do{ \
-	(sec)->builtin = (sbuiltin); \
-	(sec)->name = NULL; \
-}while(0)
-
-#define SECTION_FROM_NAME(sec, str) do{ \
-	(sec)->name = (str); \
-	(sec)->builtin = 0; \
-}while(0)
-
-#define SECTION_INIT(builtin) { NULL, builtin }
-
-
-const char *section_name(const struct section *);
+char *section_name(const struct section *, int *const allocated);
 int section_eq(const struct section *, const struct section *);
 
 int section_hash(const struct section *);

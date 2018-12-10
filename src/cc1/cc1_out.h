@@ -9,6 +9,6 @@ extern struct section_output
 	FILE *file;
 } cc1_current_section_output;
 
-#define SECTION_UNINIT { { NULL, -1 }, NULL }
+#define SECTION_OUTPUT_UNINIT { { NULL, SECTION_UNINIT }, NULL }
 
 #endif
