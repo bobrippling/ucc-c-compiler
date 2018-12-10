@@ -15,6 +15,7 @@
 #  define ucc_nonnull(args) __attribute__((nonnull args))
 #  define ucc_static_param static
 #  define ucc_const __attribute__((const))
+#  define ucc_unused __attribute__((unused))
 #  ifndef ucc_noreturn
 #    define ucc_noreturn __attribute__((noreturn))
 #  endif
@@ -26,6 +27,7 @@
 #  define ucc_nonnull(a)
 #  define ucc_static_param
 #  define ucc_const
+#  define ucc_unused
 #endif
 
 #ifndef ucc_noreturn
