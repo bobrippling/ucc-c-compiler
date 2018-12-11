@@ -4,6 +4,7 @@
 #include "../../util/compiler.h"
 #include "forwards.h"
 #include "dbg.h"
+#include "asm.h"
 
 enum p_opts
 {
@@ -14,7 +15,7 @@ enum p_opts
 
 void out_asmv(
 		out_ctx *,
-		enum section_type sec,
+		enum section_builtin sec,
 		enum p_opts opts,
 		const char *fmt, va_list l);
 
@@ -22,7 +23,7 @@ void out_asm(out_ctx *, const char *fmt, ...) ucc_printflike(2, 3);
 
 void out_asm2(
 		out_ctx *,
-		enum section_type,
+		enum section_builtin,
 		enum p_opts opts,
 		const char *fmt, ...) ucc_printflike(4, 5);
 

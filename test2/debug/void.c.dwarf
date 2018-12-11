@@ -1,5 +1,5 @@
 .file 1 "debug/void.c"
-.Lsection_begin_dbg_abrv:
+.Lsection_begin_dbg_abbrev:
 	.byte 1  # Abbrev. Code 1
 	.byte 17  # DW_TAG_compile_unit
 	.byte 1  # DW_CHILDREN_yes
@@ -100,8 +100,9 @@
 	.byte 0, 0 # name/val abbrev 7 end
 
 	.byte 0 # end
+.Lsection_begin_dbg_line:
 .Lsection_begin_dbg_info:
-	.long .Lsection_begin_dbg_abrv  # abbrev offset
+	.long .Lsection_begin_dbg_abbrev  # abbrev offset
 	.byte 8  # sizeof(void *)
 	.byte 1  # Abbrev. Code 1 DW_TAG_compile_unit
 	.ascii "ucc development version"
@@ -161,4 +162,3 @@
 	.byte 0 # DW_AT_name
 
 	.byte 0 # end of children
-.Lsection_begin_dbg_line:

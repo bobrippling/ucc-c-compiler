@@ -1,15 +1,14 @@
 #include <string.h>
 
 #include "visibility.h"
-#include "../config_as.h"
 
-int visibility_parse(enum visibility *const e, const char *s)
+int visibility_parse(enum visibility *const e, const char *s, int allow_protected)
 {
 	if(!strcmp(s, "default"))
 		*e = VISIBILITY_DEFAULT;
 	else if(!strcmp(s, "hidden"))
 		*e = VISIBILITY_HIDDEN;
-	else if(!strcmp(s, "protected") && AS_SUPPORTS_VISIBILITY_PROTECTED)
+	else if(!strcmp(s, "protected") && allow_protected)
 		*e = VISIBILITY_PROTECTED;
 	else
 		return 0;

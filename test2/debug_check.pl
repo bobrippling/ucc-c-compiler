@@ -98,8 +98,7 @@ my $ucc = $ENV{UCC} or die "no \$UCC";
 # format $in - remove any components up until dir/file.c
 $in =~ s;^\./;;;
 
-# FIXME: -target x86_64-linux-gnu
-my @output = map { chomp; $_ } `'$ucc' -fno-leading-underscore -fdebug-compilation-dir=/tmp/ -g -S -o- '$in'`;
+my @output = map { chomp; $_ } `'$ucc' -target x86_64-linux-gnu -fno-leading-underscore -fdebug-compilation-dir=/tmp/ -g -S -o- '$in'`;
 if($?){
 	die "$0: compile failed ($?)";
 }

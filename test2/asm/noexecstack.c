@@ -1,5 +1,4 @@
-// TEST: target linux
-// RUN: %ucc -S -o- %s | grep -Fi '.note.GNU-stack'
+// RUN: %ucc -S -o- %s -target x86_64-linux | grep -Fi '.note.GNU-stack'
 main()
 {
 }

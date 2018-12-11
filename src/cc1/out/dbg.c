@@ -23,11 +23,11 @@
 #include "../type_is.h"
 #include "../vla.h"
 #include "../cc1_out_ctx.h"
+#include "../cc1_target.h"
 
-#include "asm.h" /* cc_out[] */
+#include "../cc1_out.h"
 
 #include "../defs.h" /* CHAR_BIT */
-#include "../../config_as.h" /* section names, private label */
 
 #include "leb.h" /* leb128 */
 
@@ -1127,56 +1127,61 @@ static struct DIE_compile_unit *dwarf_cu(
 
 	dwarf_attr(&cu->die, DW_AT_stmt_list,
 			DW_FORM_ADDR4,
-			DWARF_INDIRECT_SECTION_LINKS
+			cc1_target_details.dwarf_indirect_section_links
 				? NULL
 				: ustrprintf(
-						"%s%s",
+						"%s%s%s",
+						cc1_target_details.as.privatelbl_prefix,
 						SECTION_BEGIN,
-						sections[SECTION_DBG_LINE].desc));
+						SECTION_DESC_DBG_LINE));
 
 	dwarf_attr(&cu->die, DW_AT_low_pc, DW_FORM_addr,
-			ustrprintf("%s%s", SECTION_BEGIN,
-				sections[SECTION_TEXT].desc));
+			ustrprintf("%s%s%s",
+				cc1_target_details.as.privatelbl_prefix,
+				SECTION_BEGIN,
+				SECTION_DESC_TEXT));
 
 	dwarf_attr(&cu->die, DW_AT_high_pc, DW_FORM_addr,
-			ustrprintf("%s%s", SECTION_END,
-				sections[SECTION_TEXT].desc));
+			ustrprintf("%s%s%s",
+				cc1_target_details.as.privatelbl_prefix,
+				SECTION_END,
+				SECTION_DESC_TEXT));
 
 	return cu;
 }
 
-static long dwarf_info_header(FILE *f)
+static long dwarf_info_header(void)
 {
-#if DWARF_INDIRECT_SECTION_LINKS
-#  define VAR_LEN ASM_PLBL_PRE "info_len"
-#  define VAR_OFF ASM_PLBL_PRE "abrv_off"
-
-	fprintf(f,
-			/* -4: don't include the length spec itself */
-			VAR_LEN " = %s%s - %s%s - 4\n"
-			VAR_OFF " = %s%s - %s%s\n"
-			"\t.long " VAR_LEN "\n"
-			"\t.short 2 # DWARF 2\n"
-			"\t.long " VAR_OFF "  # abbrev offset\n"
-			"\t.byte %d  # sizeof(void *)\n",
-			SECTION_END, sections[SECTION_DBG_INFO].desc,
-			SECTION_BEGIN, sections[SECTION_DBG_INFO].desc,
-			SECTION_BEGIN, sections[SECTION_DBG_ABBREV].desc,
-			SECTION_BEGIN, sections[SECTION_DBG_ABBREV].desc,
-			platform_word_size());
-#else
-	fprintf(f,
-			"\t.long %s%s - %s%s - 4\n"
-			"\t.short 2 # DWARF 2\n"
-			"\t.long %s%s  # abbrev offset\n"
-			"\t.byte %d  # sizeof(void *)\n",
-			SECTION_END, sections[SECTION_DBG_INFO].desc,
-			SECTION_BEGIN, sections[SECTION_DBG_INFO].desc,
-			SECTION_BEGIN, sections[SECTION_DBG_ABBREV].desc,
-			platform_word_size());
-#endif
+#define VAR_LEN "info_len"
+	if(cc1_target_details.dwarf_indirect_section_links){
+		asm_out_section(SECTION_DBG_INFO,
+				/* -4: don't include the length spec itself */
+				"%s" VAR_LEN " = %s%s%s - %s%s%s - 4\n"
+				"\t.long %s" VAR_LEN "\n"
+				"\t.short 2 # DWARF 2\n"
+				"\t.long 0  # abbrev offset\n"
+				"\t.byte %d  # sizeof(void *)\n",
+				cc1_target_details.as.privatelbl_prefix,
+				cc1_target_details.as.privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
+				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO
+				,
+				cc1_target_details.as.privatelbl_prefix
+				,
+				platform_word_size());
+	}else{
+		asm_out_section(SECTION_DBG_INFO,
+				"\t.long %s%s%s - %s%s%s - 4\n"
+				"\t.short 2 # DWARF 2\n"
+				"\t.long %s%s%s  # abbrev offset\n"
+				"\t.byte %d  # sizeof(void *)\n",
+				cc1_target_details.as.privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
+				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO,
+				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_ABBREV,
+				platform_word_size());
+	}
 
 	return 4 + 2 + 4 + 1;
+#undef VAR_LEN
 }
 
 static void dwarf_attr_decl(
@@ -1340,7 +1345,7 @@ struct DIE_flush
 {
 	struct DIE_flush_file
 	{
-		FILE *f;
+		enum section_builtin sec;
 		unsigned long byte_cnt;
 	} abbrev, info;
 };
@@ -1368,10 +1373,10 @@ static void ucc_printflike(3, 4)
 		case QUAD: ty = "quad"; break;
 	}
 
-	fprintf(f->f, "\t.%s ", ty);
+	asm_out_section(f->sec, "\t.%s ", ty);
 
 	va_start(l, fmt);
-	vfprintf(f->f, fmt, l);
+	asm_out_sectionv(f->sec, fmt, l);
 	va_end(l);
 
 	f->byte_cnt += sz;
@@ -1381,8 +1386,10 @@ static void dwarf_leb_printf(
 		struct DIE_flush_file *f,
 		unsigned long uleb, int is_sig)
 {
-	fprintf(f->f, "\t.byte ");
-	f->byte_cnt += leb128_out(f->f, uleb, is_sig);
+	FILE *file = asm_section_file(f->sec);
+
+	asm_out_section(f->sec, "\t.byte ");
+	f->byte_cnt += leb128_out(file, uleb, is_sig);
 }
 
 static void dwarf_flush_die_block(
@@ -1400,7 +1407,7 @@ static void dwarf_flush_die_block(
 			dwarf_leb_printf(&state->info,
 					e->bits.v, e->type == BLOCK_LEB128_S);
 
-			fprintf(state->info.f,
+			asm_out_section(state->info.sec,
 					" # DW_FORM_block, LEB%c 0x%lx\n",
 					"US"[e->type == BLOCK_LEB128_S],
 					e->bits.v);
@@ -1440,11 +1447,11 @@ static void dwarf_flush_die_1(
 			die->locn, state->info.byte_cnt);
 
 	dwarf_leb_printf(&state->abbrev, die->abbrev_code, 0),
-		fprintf(state->abbrev.f, "  # Abbrev. Code %lu\n",
+		asm_out_section(state->abbrev.sec, "  # Abbrev. Code %lu\n",
 				die->abbrev_code);
 
 	dwarf_leb_printf(&state->info, die->abbrev_code, 0),
-		fprintf(state->info.f, "  # Abbrev. Code %lu %s\n",
+		asm_out_section(state->info.sec, "  # Abbrev. Code %lu %s\n",
 				die->abbrev_code, die_tag_to_str(die->tag));
 
 	/* tags are technically ULEBs */
@@ -1495,7 +1502,7 @@ form_data:
 
 			case DW_FORM_ULEB:
 				dwarf_leb_printf(&state->info, a->bits.value, 0);
-				fputc('\n', state->info.f);
+				asm_out_section(state->info.sec, "\n");
 				break;
 
 			case DW_FORM_ADDR4: fty = LONG; goto addr;
@@ -1515,7 +1522,7 @@ addr:
 			}
 
 			case DW_FORM_string:
-				fprintf(state->info.f, "\t.ascii \"%s\"\n", a->bits.str);
+				asm_out_section(state->info.sec, "\t.ascii \"%s\"\n", a->bits.str);
 				state->info.byte_cnt += strlen(a->bits.str);
 
 				dwarf_printf(&state->info, BYTE, "0");
@@ -1567,15 +1574,15 @@ addr:
 				break;
 			}
 		}
-		fprintf(state->info.f, " # %s\n", s_attr);
+		asm_out_section(state->info.sec, " # %s\n", s_attr);
 	}
 
-	fprintf(state->abbrev.f,
+	asm_out_section(state->abbrev.sec,
 			"\t.byte 0, 0 # name/val abbrev %lu end\n\n",
 			die->abbrev_code);
 	state->abbrev.byte_cnt += 2;
 
-	fprintf(state->info.f, "\n");
+	asm_out_section(state->info.sec, "\n");
 }
 
 static void dwarf_flush_die(
@@ -1585,18 +1592,17 @@ static void dwarf_flush_die(
 	dwarf_flush_die_children(die, state);
 }
 
-static void dwarf_flush(struct DIE_compile_unit *cu,
-		FILE *abbrev, FILE *info, long initial_offset)
+static void dwarf_flush(struct DIE_compile_unit *cu, long initial_offset)
 {
 	struct DIE_flush flush = {{ 0 }};
 
 	flush.info.byte_cnt = initial_offset;
-	flush.info.f = info;
-	flush.abbrev.f = abbrev;
+	flush.info.sec = SECTION_DBG_INFO;
+	flush.abbrev.sec = SECTION_DBG_ABBREV;
 
 	dwarf_flush_die(&cu->die, &flush);
 
-	fprintf(abbrev, "\t.byte 0 # end\n");
+	asm_out_section(SECTION_DBG_ABBREV, "\t.byte 0 # end\n");
 }
 
 static unsigned long dwarf_offset_die(
@@ -1738,7 +1744,7 @@ void out_dbg_begin(
 
 void out_dbg_end(out_ctx *octx)
 {
-	long info_offset = dwarf_info_header(cc_out[SECTION_DBG_INFO]);
+	long info_offset = dwarf_info_header();
 	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
 	struct DIE_compile_unit *compile_unit = dbg->compile_unit;
 	unsigned long abbrev = 0;
@@ -1758,10 +1764,7 @@ void out_dbg_end(out_ctx *octx)
 
 	dwarf_offset_die(&compile_unit->die, &abbrev, info_offset);
 
-	dwarf_flush(compile_unit,
-			cc_out[SECTION_DBG_ABBREV],
-			cc_out[SECTION_DBG_INFO],
-			info_offset);
+	dwarf_flush(compile_unit, info_offset);
 
 	/* no need to dwarf_die_free_1() type dies - they're children of the CU */
 	dynmap_free(compile_unit->types_to_dies);

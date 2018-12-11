@@ -13,6 +13,8 @@
 #include "ucc.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/str.h"
+#include "../util/io.h"
 #include "str.h"
 
 char **include_paths;
@@ -44,7 +46,7 @@ char *ucc_where(void)
 		ssize_t nb;
 
 		if((nb = readlink(argv0, link, sizeof link)) == -1){
-			snprintf(where, sizeof where, "%s", argv0);
+			xsnprintf(where, sizeof where, "%s", argv0);
 		}else{
 			char *argv_dup;
 
@@ -54,7 +56,7 @@ char *ucc_where(void)
 
 			bname(argv_dup);
 
-			snprintf(where, sizeof where, "%s/%s", argv_dup, link);
+			xsnprintf(where, sizeof where, "%s/%s", argv_dup, link);
 
 			free(argv_dup);
 		}
@@ -241,11 +243,9 @@ void rename_or_move(char *old, char *new)
 	free(cmd);
 }
 
-void cat(char *fnin, const char *fnout, int append)
+void cat_fnames(char *fnin, const char *fnout, int append)
 {
 	FILE *in, *out;
-	char buf[1024];
-	size_t n;
 
 	if(show){
 		fprintf(stderr, "cat %s%s%s\n",
@@ -269,14 +269,11 @@ void cat(char *fnin, const char *fnout, int append)
 		out = stdout;
 	}
 
-	while((n = fread(buf, sizeof *buf, sizeof buf, in)) > 0)
-		if(fwrite(buf, sizeof *buf, n, out) != n)
-			die("write():");
+	if(cat(in, out))
+		die("write():");
 
-	if(ferror(in))
-		die("read():");
-
-	fclose(in);
+	if(fclose(in))
+		die("close():");
 
 	if(fnout && fclose(out) == EOF)
 		die("close():");
@@ -343,7 +340,7 @@ int compile(char *in, const char *out, char **args, int return_ec)
 	return runner_1(1, "cc1/cc1", in, out, args, return_ec);
 }
 
-void assemble(char *in, const char *out, char **args, char *as)
+void assemble(char *in, const char *out, char **args, const char *as)
 {
 	char **copy = NULL;
 
@@ -355,7 +352,7 @@ void assemble(char *in, const char *out, char **args, char *as)
 	dynarray_free(char **, copy, NULL);
 }
 
-void link_all(char **objs, const char *out, char **args, char *ld)
+void link_all(char **objs, const char *out, char **args, const char *ld)
 {
 	char **all = NULL;
 

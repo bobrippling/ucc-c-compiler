@@ -18,7 +18,7 @@ void *dynarray_nochk_padinsert(void ***par,
 #include "dyn.h"
 
 #define DYNARRAY_CHECK(ar, arg, func, ...) \
-	(UCC_TYPECHECK(__typeof(arg) **, ar),    \
+	(UCC_TYPECHECK(__typeof((void)0, arg) **, ar),    \
 	func(__VA_ARGS__))
 
 #define dynarray_add(ar, p)     DYNARRAY_CHECK(ar, p, dynarray_nochk_add,     (void ***)(ar), (void *)(p))

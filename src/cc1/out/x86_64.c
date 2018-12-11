@@ -9,6 +9,7 @@
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/macros.h"
+#include "../../util/str.h"
 
 #include "../op.h"
 #include "../decl.h"
@@ -21,20 +22,17 @@
 
 #include "../fopt.h"
 #include "../cc1.h"
-
-#include "../../config_as.h"
+#include "../cc1_target.h"
 
 #include "val.h"
 #include "asm.h"
 #include "impl.h"
 #include "impl_jmp.h"
-#include "common.h"
 #include "out.h"
 #include "lbl.h"
 #include "write.h"
 #include "../defs.h"
 #include "virt.h"
-#include "common.h"
 
 #include "ctx.h"
 #include "blk.h"
@@ -433,13 +431,13 @@ const char *impl_val_str_r(
 			}
 
 			if(vs->bits.lbl.offset){
-				SNPRINTF(buf, VAL_STR_SZ, "%s%s+%ld%s",
+				xsnprintf(buf, VAL_STR_SZ, "%s%s+%ld%s",
 						pre,
 						vs->bits.lbl.str,
 						vs->bits.lbl.offset,
 						picstr);
 			}else{
-				SNPRINTF(buf, VAL_STR_SZ, "%s%s%s",
+				xsnprintf(buf, VAL_STR_SZ, "%s%s%s",
 						pre, vs->bits.lbl.str, picstr);
 			}
 			break;
@@ -460,13 +458,13 @@ const char *impl_val_str_r(
 						"can't add to a register in %s",
 						__func__);
 
-				SNPRINTF(buf, VAL_STR_SZ,
+				xsnprintf(buf, VAL_STR_SZ,
 						"%s" NUM_FMT "(%%%s)",
 						off < 0 ? "-" : "",
 						llabs(off),
 						rstr);
 			}else{
-				SNPRINTF(buf, VAL_STR_SZ,
+				xsnprintf(buf, VAL_STR_SZ,
 						"%s%%%s%s",
 						deref ? "(" : "",
 						rstr,
@@ -2008,7 +2006,7 @@ static char *x86_call_jmp_target(
 		case V_LBL:
 			assert((*pvp)->bits.lbl.offset == 0 && "non-zero label offset in call");
 
-			if(LD_INDIRECT_CALL_VIA_PLT && v_needs_GOT(*pvp)){
+			if(cc1_target_details.ld_indirect_call_via_plt && v_needs_GOT(*pvp)){
 				if(!cc1_fopt.plt){
 					/* must load from GOT */
 					*is_alloc = 1;
@@ -2054,9 +2052,9 @@ static char *x86_call_jmp_target(
 	return NULL;
 }
 
-void impl_jmp(FILE *f, const char *lbl)
+void impl_jmp(enum section_builtin sec, const char *lbl)
 {
-	fprintf(f, "\tjmp %s\n", lbl);
+	asm_out_section(sec, "\tjmp %s\n", lbl);
 }
 
 void impl_jmp_expr(out_ctx *octx, const out_val *v)

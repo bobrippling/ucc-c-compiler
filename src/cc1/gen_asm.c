@@ -302,7 +302,7 @@ const out_val *gen_decl_addr(out_ctx *octx, decl *d)
 
 static void gen_gasm(char *asm_str)
 {
-	fprintf(cc_out[SECTION_TEXT], "%s\n", asm_str);
+	asm_out_section(SECTION_TEXT, "%s\n", asm_str);
 }
 
 static void gen_stringlits(dynmap *litmap)
