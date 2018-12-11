@@ -69,10 +69,10 @@ const out_val *gen_expr(const expr *e, out_ctx *octx)
 		generated = e->f_gen(e, octx);
 	}
 
-	if(UCC_DEBUG_BUILD){
+	if(UCC_DEBUG_BUILD && 0/* this is too brittle and coupled to lval decay, etc */){
 		type *expected = e->tree_type;
 		if(expr_is_lval(e) != LVALUE_NO)
-			expected = type_ptr_to(expected);
+			expected = type_decay(expected);
 
 		if(type_cmp(generated->t, expected, 0) & TYPE_NOT_EQUAL){
 			char buf[TYPE_STATIC_BUFSIZ];
