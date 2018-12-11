@@ -34,7 +34,7 @@ OBJ_REST = \
 	ops/expr_assign_compound.o ops/expr_string.o \
 	${OBJ_ARCH}
 
-BACKEND_SRC = \
+BACKEND_TARGETTED = \
 		out/alloca.c out/ctrl.c out/func.c out/impl.c out/mipsel_32.c \
 		out/new.c out/op.c out/out.c out/val.c out/virt.c out/vm.c \
 		out/x86_64.c out/dbg.c
@@ -67,10 +67,10 @@ ${OBJ_UTIL}:
 	false
 
 # files that need target info
-${BACKEND_SRC:.c=.o} : \
+${BACKEND_TARGETTED:.c=.o} : \
 	CFLAGS += -DCC1_IMPL_FNAME=\"${ARCH}.h\"
 
-${BACKEND_SRC:.c=.d} : \
+${BACKEND_TARGETTED:.c=.d} : \
 	CPPFLAGS += -DCC1_IMPL_FNAME=\"${ARCH}.h\"
 
 # extra deps
