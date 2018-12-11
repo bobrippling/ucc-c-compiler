@@ -16,6 +16,13 @@
 #include "cc1.h"
 #include "fopt.h"
 
+/* check special case: char */
+ucc_static_assert(a, type_nchar < type_schar);
+ucc_static_assert(b, type_schar < type_uchar);
+
+/* rest follow on from type_int */
+ucc_static_assert(c, type_int < type_uint);
+
 static int type_convertible(enum type_primitive p)
 {
 	switch(p){
@@ -144,13 +151,6 @@ int type_intrank(enum type_primitive p)
 		case type_ullong:
 			return p;
 	}
-
-	/* check special case: char */
-	ucc_static_assert(a, type_nchar < type_schar);
-	ucc_static_assert(b, type_schar < type_uchar);
-
-	/* rest follow on from type_int */
-	ucc_static_assert(c, type_int < type_uint);
 }
 
 unsigned btype_size(const btype *t, const where *from)
