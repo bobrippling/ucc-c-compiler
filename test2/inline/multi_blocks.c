@@ -1,4 +1,4 @@
-// RUN: %check %s -fshow-inlined -finline-functions
+// RUN: %check %s -fshow-inlined -finline-functions -fno-semantic-interposition
 
 main()
 {

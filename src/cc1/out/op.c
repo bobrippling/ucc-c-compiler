@@ -147,24 +147,42 @@ static out_val *try_const_fold(
 	return NULL;
 }
 
+static type *is_val_ptr(const out_val *v)
+{
+	type *pointee = type_is_ptr(v->t);
+	switch(v->type){
+		case V_REG_SPILT:
+			if(pointee){
+				type *next = type_is_ptr(pointee);
+				if(next)
+					return next;
+			}
+			return NULL;
+
+		default:
+			return pointee ? v->t : NULL;
+	}
+}
+
 static void apply_ptr_step(
 		out_ctx *octx,
 		const out_val **lhs, const out_val **rhs,
 		const out_val **div_out)
 {
-	int l_ptr = !!type_is((*lhs)->t, type_ptr);
-	int r_ptr = !!type_is((*rhs)->t, type_ptr);
+	type *l_ptr = is_val_ptr(*lhs);
+	type *r_ptr = is_val_ptr(*rhs);
 	int ptr_step;
 
 	if(!l_ptr && !r_ptr)
 		return;
 
-	ptr_step = calc_ptr_step((l_ptr ? *lhs : *rhs)->t);
+	ptr_step = calc_ptr_step(l_ptr ? l_ptr : r_ptr);
 
-	if(l_ptr ^ r_ptr){
+	if(!!l_ptr ^ !!r_ptr){
 		/* ptr +/- int, adjust the non-ptr by sizeof *ptr */
 		const out_val **incdec = (l_ptr ? rhs : lhs);
 		out_val *mut_incdec;
+		type *ptrty = l_ptr ? l_ptr : r_ptr;
 
 		*incdec = mut_incdec = v_dup_or_reuse(octx, *incdec, (*incdec)->t);
 
@@ -174,7 +192,7 @@ static void apply_ptr_step(
 					*incdec = out_op(octx, op_multiply,
 							*incdec,
 							vla_size(
-								type_next((l_ptr ? *lhs : *rhs)->t),
+								type_next(ptrty),
 								octx));
 
 					mut_incdec = NULL; /* safety */
@@ -191,13 +209,14 @@ static void apply_ptr_step(
 			case V_REG_SPILT:
 				assert(mut_incdec->retains == 1);
 				*incdec = (out_val *)v_to_reg(octx, *incdec);
+				assert((*incdec)->retains == 1);
 
 			case V_REG:
 			{
 				const out_val *n;
 				if(ptr_step == -1){
 					n = vla_size(
-							type_next((l_ptr ? *lhs : *rhs)->t),
+							type_next(ptrty),
 							octx);
 				}else{
 					n = out_new_l(
@@ -207,6 +226,7 @@ static void apply_ptr_step(
 				}
 
 				*incdec = (out_val *)out_op(octx, op_multiply, *incdec, n);
+				assert((*incdec)->retains == 1);
 				break;
 			}
 		}
@@ -214,7 +234,7 @@ static void apply_ptr_step(
 	}else if(l_ptr && r_ptr){
 		/* difference - divide afterwards */
 		if(ptr_step == -1){
-			*div_out = vla_size(type_next((*lhs)->t), octx);
+			*div_out = vla_size(type_next(l_ptr), octx);
 		}else{
 			*div_out = out_new_l(octx,
 					type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
@@ -359,23 +379,25 @@ const out_val *out_op_unary(out_ctx *octx, enum op_type uop, const out_val *val)
 			break;
 
 		case V_CONST_I:
-			switch(uop){
+			if(cc1_fopt.const_fold){
+				switch(uop){
 #define OP(op, tok) \
-				case op_ ## op: {                        \
-					out_val *dup = v_dup_or_reuse(         \
-							octx, val, val->t);                \
-					dup->bits.val_i = tok dup->bits.val_i; \
-					return dup;                            \
-				}
+					case op_ ## op: {                        \
+						out_val *dup = v_dup_or_reuse(         \
+								octx, val, val->t);                \
+						dup->bits.val_i = tok dup->bits.val_i; \
+						return dup;                            \
+					}
 
-				OP(not, !);
-				OP(minus, -);
-				OP(bnot, ~);
+					OP(not, !);
+					OP(minus, -);
+					OP(bnot, ~);
 
 #undef OP
 
-				default:
-				assert(0 && "invalid unary op");
+					default:
+					assert(0 && "invalid unary op");
+				}
 			}
 			break;
 

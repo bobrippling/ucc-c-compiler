@@ -283,6 +283,35 @@ int decl_init_is_zero(decl_init *dinit)
 	return -1;
 }
 
+int decl_init_has_sideeffects(decl_init *dinit)
+{
+	DINIT_NULL_CHECK(dinit, return 0);
+
+	switch(dinit->type){
+		case decl_init_scalar:
+			return expr_has_sideeffects(dinit->bits.expr);
+
+		case decl_init_brace:
+		{
+			decl_init **i;
+
+			for(i = dinit->bits.ar.inits; i && *i; i++)
+				if(decl_init_has_sideeffects(*i))
+					return 1;
+
+			return 0;
+		}
+
+		case decl_init_copy:
+		{
+			struct init_cpy *cpy = *dinit->bits.range_copy;
+			return decl_init_has_sideeffects(cpy->range_init);
+		}
+	}
+
+	return 0;
+}
+
 decl_init *decl_init_new_w(enum decl_init_type t, where *w)
 {
 	decl_init *di = umalloc(sizeof *di);
@@ -497,6 +526,16 @@ static void range_store_add(
 	free(offsets);
 }
 
+static void warn_replacing_with_sideeffects(where *replacing_location, decl_init *with)
+{
+	/* we can't check decl_init_has_sideeffects() here - may have replaced,
+	 * and hence altered replacing->bits.ar.inits */
+
+	if(cc1_warn_at(&with->where, initialiser_overrides, "initialiser with side-effects overwritten")){
+		note_at(replacing_location, "overwritten initialiser here");
+	}
+}
+
 static decl_init **decl_init_brace_up_array2(
 		decl_init **current, struct init_cpy ***range_store,
 		init_iter *iter,
@@ -564,9 +603,16 @@ static decl_init **decl_init_brace_up_array2(
 			unsigned replace_idx;
 			decl_init *braced;
 			int partial_replace = 0;
+			where *replaced_sideeffects_location = NULL;
 
 			if(i < n && current[i] != DYNARRAY_NULL){
 				replacing = current[i]; /* replacing object `i' */
+
+				replaced_sideeffects_location = replacing
+					&& replacing != DYNARRAY_NULL
+					&& decl_init_has_sideeffects(replacing)
+					? &replacing->where
+					: NULL;
 
 				/* we can't designate sub parts of a [x ... y] subobject yet,
 				 * as this requires being able to copy the init from x to y,
@@ -621,6 +667,9 @@ static decl_init **decl_init_brace_up_array2(
 			braced = decl_init_brace_up_r(replacing, iter, next_type, stab);
 
 			dynarray_padinsert(&current, i, &n, braced);
+
+			if(replaced_sideeffects_location)
+				warn_replacing_with_sideeffects(replaced_sideeffects_location, braced);
 
 			if(i < j){ /* then we have a range to copy */
 				const size_t copy_idx = dynarray_count(*range_store);
@@ -836,6 +885,7 @@ static decl_init **decl_init_brace_up_sue2(
 					struct_union_enum_st *jmem_sue = type_is_s_or_u(jmem->ref);
 					if(jmem_sue == in){
 						decl_init *replacing;
+						where *replaced_sideeffects_location = NULL;
 
 						/* anon struct/union, sub init it, restoring the desig. */
 						this->desig = des;
@@ -843,10 +893,16 @@ static decl_init **decl_init_brace_up_sue2(
 						replacing = j < n
 							&& current[j] != DYNARRAY_NULL ? current[j] : NULL;
 
+						if(replacing && decl_init_has_sideeffects(replacing))
+							replaced_sideeffects_location = &replacing->where;
+
 						braced_sub = decl_init_brace_up_aggregate(
 								replacing, iter, stab, jmem->ref,
 								(aggregate_brace_f *)&decl_init_brace_up_sue2, in,
 								/*anon:*/1);
+
+						if(replaced_sideeffects_location)
+							warn_replacing_with_sideeffects(replaced_sideeffects_location, braced_sub);
 
 						found = 1;
 					}
@@ -867,6 +923,7 @@ static decl_init **decl_init_brace_up_sue2(
 		if(i < sue_nmem){
 			sue_member *mem = sue->members[i];
 			decl_init *replacing = NULL;
+			where *replaced_sideeffects_location = NULL;
 			decl *d_mem;
 
 			if(!mem)
@@ -908,6 +965,11 @@ static decl_init **decl_init_brace_up_sue2(
 					replacing = NULL;
 					current[i] = DYNARRAY_NULL;
 				}
+				else
+				{
+					if(decl_init_has_sideeffects(replacing))
+						replaced_sideeffects_location = &replacing->where;
+				}
 			}
 
 			if(type_is_incomplete_array(d_mem->ref)){
@@ -920,6 +982,9 @@ static decl_init **decl_init_brace_up_sue2(
 						replacing, iter,
 						d_mem->ref, stab);
 			}
+
+			if(replaced_sideeffects_location)
+				warn_replacing_with_sideeffects(replaced_sideeffects_location, braced_sub);
 
 			init_debug("done sue member %s\n", d_mem->spel);
 

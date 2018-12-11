@@ -64,11 +64,15 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 		if(!(sue = type_is_s_or_u(r))){
 err:
-			die_at(&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
+			warn_at_print_error(
+					&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
 					type_to_str(e->lhs->tree_type),
 					expr_str_friendly(e->lhs),
 					ptr_expect ? "pointer to " : "",
 					spel);
+			fold_had_error = 1;
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
 		}
 	}
 
@@ -93,9 +97,13 @@ err:
 		decl *d_mem = struct_union_member_find(sue, spel,
 				&e->bits.struct_mem.extra_off, NULL);
 
-		if(!d_mem)
-			die_at(&e->where, "%s %s has no member named \"%s\"",
+		if(!d_mem){
+			warn_at_print_error(&e->where, "%s %s has no member named \"%s\"",
 					sue_str(sue), sue->spel, spel);
+			fold_had_error = 1;
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
+		}
 
 		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
 	}/* else already have the member */
@@ -236,10 +244,16 @@ static enum lvalue_kind struct_is_lval(expr *e)
 	}
 }
 
+static int expr_struct_has_sideeffects(const expr *e)
+{
+	return expr_has_sideeffects(e->lhs);
+}
+
 void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
 	e->f_islval = struct_is_lval;
+	e->f_has_sideeffects = expr_struct_has_sideeffects;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;

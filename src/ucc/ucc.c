@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 /* umask */
 #include <sys/types.h>
@@ -37,7 +38,7 @@ struct cc_file
 	struct fd_name_pair
 	{
 		char *fname;
-		int fd;
+		int fd; /* used to generate and hold onto a temp-file-name */
 	} in;
 
 	struct fd_name_pair preproc, compile, assemb;
@@ -75,12 +76,12 @@ struct uccvars
 	const char *target;
 	const char *output;
 
-	int static_, shared, startfiles, debug, stdlib, stdinc;
+	int static_, shared, startfiles, debug, stdlib, stdinc, pie;
 	int help, dumpmachine;
 };
 
 static char **remove_these;
-static int unlink_tmps = 1;
+static int save_temps = 0;
 const char *argv0;
 char *wrapper;
 const char *binpath_cpp;
@@ -89,25 +90,63 @@ static void unlink_files(void)
 {
 	int i;
 	for(i = 0; remove_these[i]; i++){
-		if(unlink_tmps)
-			remove(remove_these[i]);
+		remove(remove_these[i]);
 		free(remove_these[i]);
 	}
 	free(remove_these);
 }
 
-static void tmpfilenam(struct fd_name_pair *pair)
+static char *expected_filename(const char *in, enum mode mode)
+{
+	const char *base = strrchr(in, '/');
+	size_t len;
+	char *new;
+
+	if(!base++)
+		base = in;
+
+	new = ustrdup(base);
+	len = strlen(new);
+	if(len > 2 && new[len - 2] == '.'){
+		char ext;
+		switch(mode){
+			case mode_preproc: ext = 'i'; break;
+			case mode_compile: ext = 's'; break;
+			case mode_assemb: ext = 'o'; break;
+			case mode_link: ext = '?'; break;
+		}
+
+		new[len - 1] = ext;
+	}
+	/* else stick with what we were given */
+
+	return new;
+}
+
+static void tmpfilenam(
+		struct fd_name_pair *pair,
+		enum mode const mode,
+		const char *in)
 {
 	char *path;
-	int fd = tmpfile_prefix_out("ucc.", &path);
+	int fd;
 
-	if(fd == -1)
-		die("tmpfile(%s):", path);
+	if(save_temps){
+		path = expected_filename(in, mode);
+		fd = FILE_UNINIT;
+		/* we don't create the temp files for -save-temps because there's no need
+		 * to create and hold onto some temporary file - we have the fixed file
+		 * output name already */
+	}else{
+		fd = tmpfile_prefix_out("ucc.", &path);
 
-	if(!remove_these) /* only register once */
-		atexit(unlink_files);
+		if(fd == -1)
+			die("tmpfile(%s):", path);
 
-	dynarray_add(&remove_these, path);
+		if(!remove_these) /* only register once */
+			atexit(unlink_files);
+		dynarray_add(&remove_these, path);
+	}
 
 	pair->fname = path;
 	pair->fd = fd;
@@ -137,7 +176,7 @@ static void create_file(
 
 #define FILL_WITH_TMP(x)         \
 			if(!file->x.fname){        \
-				tmpfilenam(&file->x);    \
+				tmpfilenam(&file->x, mode_##x, in); \
 				if(mode == mode_ ## x){  \
 					file->out = file->x;   \
 					return;                \
@@ -254,19 +293,8 @@ static void rename_files(struct cc_file *files, int nfiles, const char *output, 
 
 				case mode_compile:
 				case mode_assemb:
-				{
-					int len;
-					const char *base = strrchr(files[i].in.fname, '/');
-					if(!base++)
-						base = files[i].in.fname;
-
-					new = ustrdup(base);
-					len = strlen(new);
-					if(len > 2 && new[len - 2] == '.')
-						new[len - 1] = mode == mode_compile ? 's' : 'o';
-					/* else stick with what we were given */
+					new = expected_filename(files[i].in.fname, mode);
 					break;
-				}
 			}
 		}
 
@@ -274,6 +302,14 @@ static void rename_files(struct cc_file *files, int nfiles, const char *output, 
 
 		free(new);
 	}
+}
+
+static void fd_name_close(struct fd_name_pair *f)
+{
+	if(f->fd < 0)
+		return;
+	close(f->fd);
+	f->fd = FILE_UNINIT;
 }
 
 static void process_files(
@@ -327,10 +363,10 @@ static void process_files(
 	dynarray_free(char **, links, free);
 
 	for(i = 0; i < ninputs; i++){
-		close(files[i].in.fd);
-		close(files[i].preproc.fd);
-		close(files[i].compile.fd);
-		close(files[i].assemb.fd);
+		fd_name_close(&files[i].in);
+		fd_name_close(&files[i].preproc);
+		fd_name_close(&files[i].compile);
+		fd_name_close(&files[i].assemb);
 	}
 
 	free(files);
@@ -487,8 +523,7 @@ static void parse_argv(
 								binpath_cpp = arg + 1;
 								break;
 							default:
-								die("%s: -fuse-cpp should have no argument, or \"=path/to/cpp\"\n",
-										argv[0]);
+								die("-fuse-cpp should have no argument, or \"=path/to/cpp\"");
 						}
 						continue;
 					}
@@ -528,6 +563,21 @@ static void parse_argv(
 						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
 						continue;
 					}
+					if(!strcmp(argv[i], "-fsigned-char")
+					|| !strcmp(argv[i], "-fno-signed-char")
+					|| !strcmp(argv[i], "-funsigned-char")
+					|| !strcmp(argv[i], "-fno-unsigned-char"))
+					{
+						const int is_signed = (argv[i][2] == 's' || argv[i][5] == 'u');
+
+						dynarray_add(&state->args[mode_preproc], ustrprintf(
+									"-%c__CHAR_UNSIGNED__%s",
+									is_signed ? 'U' : 'D',
+									is_signed ? "" : "=1"));
+
+						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
+						continue;
+					}
 
 					/* pull out some that cpp wants too: */
 					if(!strcmp(argv[i], "-ffreestanding")
@@ -541,6 +591,9 @@ static void parse_argv(
 						ADD_ARG(mode_preproc);
 						continue;
 					}
+
+					if(!strncmp(argv[i], "-fsystem-cpp", 12))
+						die("-fsystem-cpp has been removed, use -fuse-cpp[=path/to/cpp] instead");
 
 					/* pass the rest onto cc1 */
 					ADD_ARG(mode_compile);
@@ -634,22 +687,23 @@ arg_ld:
 					continue;
 
 				case 'g':
+				{
 					/* debug */
-					switch(argv[i][2]){
-						case '0':
-							if(argv[i][3]){
-						default:
-								die("-g extra argument unexpected");
-							}
-							vars->debug = 0;
-							break;
-						case '\0':
-							vars->debug = 1;
-							break;
+					const char *debugopt = argv[i] + 2;
+
+					if(!strcmp(strncmp(debugopt, "no-", 3) ? debugopt : debugopt + 3, "column-info")){
+						/* doesn't affect debug output */
+					}else if(!strcmp(argv[i], "-g0")){
+						vars->debug = 0;
+					}else{
+						/* some debug option - we're generating debug code */
+						vars->debug = 1;
 					}
+
 					ADD_ARG(mode_compile);
 					/* don't pass to the assembler */
 					continue;
+				}
 
 				case 'd':
 					if(!strcmp(argv[i], "-dumpmachine")){
@@ -734,6 +788,10 @@ word:
 						vars->shared = 1;
 					else if(!strcmp(argv[i], "-static"))
 						vars->static_ = 1;
+					else if(!strcmp(argv[i], "-pie"))
+						vars->pie = 1;
+					else if(!strcmp(argv[i], "-no-pie"))
+						vars->pie = 0;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
@@ -764,7 +822,7 @@ word:
 					else if(!strcmp(argv[i], "-digraphs"))
 						ADD_ARG(mode_preproc);
 					else if(!strcmp(argv[i], "-save-temps"))
-						unlink_tmps = 0;
+						save_temps = 1;
 					else if(!strcmp(argv[i], "-isystem")){
 						const char *sysinc = argv[++i];
 						if(!sysinc)
@@ -782,6 +840,8 @@ word:
 						ADD_ARG(mode_compile);
 						ADD_ARG(mode_preproc);
 					}
+					else if(!strcmp(argv[i], "-time"))
+						time_subcmds = 1;
 					else
 						break;
 
@@ -854,6 +914,14 @@ static void vars_default(struct uccvars *vars)
 	vars->stdinc = 1;
 	vars->stdlib = 1;
 	vars->startfiles = 1;
+
+	switch(platform_sys()){
+		case SYS_darwin: /* default for 10.7 and later */
+		case SYS_linux:
+			vars->pie = 1;
+		default:
+			break;
+	}
 }
 
 static void state_from_triple(
@@ -909,6 +977,10 @@ static void state_from_triple(
 				dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
 			}
 
+			if(vars->pie){
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
+			}
+
 			if(vars->stdinc){
 				dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
 				dynarray_add(&state->args[mode_preproc], ustrprintf("/usr/include/%s", target));
@@ -956,6 +1028,12 @@ static void state_from_triple(
 
 			if(vars->debug && vars->output){
 				state->post_link = ustrprintf("dsymutil %s", vars->output);
+			}
+
+			if(vars->pie){
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
+			}else{
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-no_pie"));
 			}
 
 			paramshared = "-dylib";
@@ -1007,6 +1085,7 @@ static void usage(void)
 	fprintf(stderr, "  -o file: Output file\n");
 	fprintf(stderr, "  -shared: Output a shared library\n");
 	fprintf(stderr, "  -static: Output a staticly linked executable\n");
+	fprintf(stderr, "  -pie/-no-pie: Tell the linker to emit a position independent executable (or not)\n");
 	fprintf(stderr, "  -###: Output what would be done, do nothing\n");
 	fprintf(stderr, "  -v: Output commands before invoking them\n");
 	fprintf(stderr, "  -save-temps: Save temporary files for each stage\n");

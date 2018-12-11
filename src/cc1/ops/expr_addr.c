@@ -155,6 +155,11 @@ static void const_expr_addr(expr *e, consty *k)
 	}
 }
 
+static int expr_addr_has_sideeffects(const expr *e)
+{
+	return e->lhs && expr_has_sideeffects(e->lhs);
+}
+
 expr *expr_new_addr(expr *sub)
 {
 	expr *e = expr_new_wrapper(addr);
@@ -173,6 +178,7 @@ expr *expr_new_addr_lbl(char *lbl, int static_ctx)
 void mutate_expr_addr(expr *e)
 {
 	e->f_const_fold = const_expr_addr;
+	e->f_has_sideeffects = expr_addr_has_sideeffects;
 }
 
 const out_val *gen_expr_style_addr(const expr *e, out_ctx *octx)

@@ -16,6 +16,11 @@
 #error x
 #endif
 
+/* test aliases */
+#if !__has_attribute(warn_unused_result)
+#error x
+#endif
+
 #define attr always_inline
 
 int not_present = __has_attribute(attr);

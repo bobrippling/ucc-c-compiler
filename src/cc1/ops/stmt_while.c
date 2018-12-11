@@ -33,7 +33,7 @@ void gen_stmt_while(const stmt *s, out_ctx *octx)
 		stmt_init_blks(s, blk_cont, blk_break);
 	}
 
-	out_ctrl_transfer(octx, s->blk_continue, NULL, NULL);
+	out_ctrl_transfer(octx, s->blk_continue, NULL, NULL, 0);
 
 	out_current_blk(octx, s->blk_continue);
 	{
@@ -49,7 +49,7 @@ void gen_stmt_while(const stmt *s, out_ctx *octx)
 	{
 		gen_stmt(s->lhs, octx);
 
-		out_ctrl_transfer(octx, s->blk_continue, NULL, NULL);
+		out_ctrl_transfer(octx, s->blk_continue, NULL, NULL, 0);
 	}
 
 	out_current_blk(octx, s->blk_break);

@@ -39,6 +39,10 @@ enum warning_owner warning_owner(const char *arg)
 	if(!strncmp(arg, "no-", 3))
 		arg += 3;
 
+	/* handle error=... */
+	if(!strncmp(arg, "error=", 6))
+		arg += 6;
+
 	/* handle all, extra and everything and error */
 	if(!strcmp(arg, "all")
 	|| !strcmp(arg, "extra")
@@ -51,10 +55,6 @@ enum warning_owner warning_owner(const char *arg)
 	/* handle gnu */
 	if(!strcmp(arg, "gnu"))
 		return W_OWNER_CC1;
-
-	/* handle error=... */
-	if(!strncmp(arg, "error=", 6))
-		arg += 6;
 
 	if(in_array(arg, wcpp))
 		owner |= W_OWNER_CPP;

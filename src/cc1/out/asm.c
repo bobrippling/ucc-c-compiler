@@ -377,7 +377,7 @@ static void asm_declare_init(enum section_builtin sec, decl_init *init, type *tf
 			assert(expr_kind(copy_from_exp, compound_lit)
 					&& "unhandled expression init");
 
-			copy_from_init = copy_from_exp->bits.complit.decl->bits.var.init.dinit;
+			copy_from_init = expr_comp_lit_init(copy_from_exp);
 			assert(copy_from_init->type == decl_init_brace);
 
 			i = copy_from_init->bits.ar.inits;
@@ -630,19 +630,12 @@ void asm_predeclare_weak(decl *d)
 	asm_predecl(cc1_target_details.as.directives.weak, d);
 }
 
-void asm_predeclare_visibility(decl *d, attribute *attr)
+void asm_predeclare_visibility(decl *d)
 {
-	enum visibility v = cc1_visibility_default;
-
 	if(decl_linkage(d) == linkage_internal)
 		return;
 
-	if(attr){
-		assert(attr->type == attr_visibility);
-		v = attr->bits.visibility;
-	}
-
-	switch(v){
+	switch(decl_visibility(d)){
 		case VISIBILITY_DEFAULT:
 			break;
 		case VISIBILITY_HIDDEN:

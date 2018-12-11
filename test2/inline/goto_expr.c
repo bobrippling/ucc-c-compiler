@@ -1,4 +1,4 @@
-// RUN: %ocheck 0 %s -finline-functions
+// RUN: %ocheck 0 %s -finline-functions -fno-semantic-interposition
 
 __attribute((always_inline))
 int f(int x)

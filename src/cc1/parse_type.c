@@ -1207,11 +1207,8 @@ static type_parsed *parsed_type_nest(
 	return base;
 }
 
-static type_parsed *parsed_type_array(
-		enum decl_mode mode, decl *dfor, type_parsed *base, symtable *scope)
+static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 {
-	type_parsed *r = parsed_type_nest(mode, dfor, base, scope);
-
 	while(accept(token_open_square)){
 		expr *size = NULL;
 		enum type_qualifier q = qual_none;
@@ -1282,34 +1279,49 @@ static type_parsed *parsed_type_array(
 		if(is_static > 1)
 			die_at(NULL, "multiple static specifiers in array size");
 
-		r = type_parsed_new(PARSED_ARRAY, r);
-		r->bits.array.size = size;
-		r->bits.array.qual = q;
-		r->bits.array.is_static = is_static;
-		r->bits.array.is_vla = is_vla;
+		base = type_parsed_new(PARSED_ARRAY, base);
+		base->bits.array.size = size;
+		base->bits.array.qual = q;
+		base->bits.array.is_static = is_static;
+		base->bits.array.is_vla = is_vla;
 	}
 
-	return r;
+	return base;
 }
 
-static type_parsed *parsed_type_func(
-		enum decl_mode mode, decl *dfor, type_parsed *base, symtable *scope)
+static type_parsed *parsed_type_func(type_parsed *base, symtable *scope)
 {
-	type_parsed *sub = parsed_type_array(mode, dfor, base, scope);
-
 	while(accept(token_open_paren)){
 		symtable *subscope = symtab_new(scope, where_cc1_current(NULL));
 
 		subscope->are_params = 1;
 
-		sub = type_parsed_new(PARSED_FUNC, sub);
-		sub->bits.func.arglist = parse_func_arglist(subscope);
-		sub->bits.func.scope = subscope;
+		base = type_parsed_new(PARSED_FUNC, base);
+		base->bits.func.arglist = parse_func_arglist(subscope);
+		base->bits.func.scope = subscope;
 
 		EAT(token_close_paren);
 	}
 
-	return sub;
+	return base;
+}
+
+static type_parsed *parsed_type_func_or_array(
+		enum decl_mode mode, decl *dfor, type_parsed *base, symtable *scope)
+{
+	type_parsed *parsed = parsed_type_nest(mode, dfor, base, scope);
+
+	for(;;){
+		if(curtok == token_open_paren){
+			parsed = parsed_type_func(parsed, scope);
+		}else if(curtok == token_open_square){
+			parsed = parsed_type_array(parsed, scope);
+		}else{
+			break;
+		}
+	}
+
+	return parsed;
 }
 
 static type_parsed *parsed_type_ptr(
@@ -1358,7 +1370,7 @@ static type_parsed *parsed_type_ptr(
 			return r_ptr;
 		}
 	}else{
-		return parsed_type_func(mode, dfor, base, scope);
+		return parsed_type_func_or_array(mode, dfor, base, scope);
 	}
 }
 

@@ -6,6 +6,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <stdarg.h>
+#include <sys/time.h>
+#include <errno.h>
 
 #include "ucc_ext.h"
 #include "ucc.h"
@@ -16,6 +18,7 @@
 #include "str.h"
 
 char **include_paths;
+int time_subcmds;
 
 static int show, noop;
 
@@ -77,9 +80,10 @@ char *actual_path(const char *prefix, const char *path)
 	return buf;
 }
 
-static int runner(int local, const char *path, char **args, int return_ec)
+static int runner(int local, const char *path, char **args, int return_ec, const char *to_remove)
 {
 	pid_t pid;
+	struct timeval time_start, time_end;
 
 	if(show){
 		int i;
@@ -96,6 +100,8 @@ static int runner(int local, const char *path, char **args, int return_ec)
 	if(noop)
 		return 0;
 
+	if(time_subcmds && gettimeofday(&time_start, NULL) < 0)
+		fprintf(stderr, "gettimeofday(): %s\n", strerror(errno));
 
 	/* if this were to be vfork, all the code in case-0 would need to be done in the parent */
 	pid = fork();
@@ -165,7 +171,12 @@ static int runner(int local, const char *path, char **args, int return_ec)
 			if(wait(&status) == -1)
 				die("wait()");
 
+			if(time_subcmds && gettimeofday(&time_end, NULL) < 0)
+				fprintf(stderr, "gettimeofday(): %s\n", strerror(errno));
+
 			if(WIFEXITED(status) && (i = WEXITSTATUS(status)) != 0){
+				if(to_remove)
+					remove(to_remove);
 				if(!return_ec)
 					die("%s returned %d", path, i);
 			}else if(WIFSIGNALED(status)){
@@ -173,8 +184,23 @@ static int runner(int local, const char *path, char **args, int return_ec)
 
 				fprintf(stderr, "%s caught signal %d\n", path, sig);
 
+				if(to_remove)
+					remove(to_remove);
+
 				/* exit with propagating status */
 				exit(128 + sig);
+			}
+
+			if(time_subcmds){
+				time_t secdiff = time_end.tv_sec - time_start.tv_sec;
+				suseconds_t usecdiff = time_end.tv_usec - time_start.tv_usec;
+
+				if(usecdiff < 0){
+					secdiff--;
+					usecdiff += 1000000L;
+				}
+
+				printf("%s %ld.%ld\n", path, (long)secdiff, (long)usecdiff);
 			}
 
 			return i;
@@ -184,7 +210,7 @@ static int runner(int local, const char *path, char **args, int return_ec)
 
 void execute(char *path, char **args)
 {
-	runner(0, path, args, 0);
+	runner(0, path, args, 0, NULL);
 }
 
 void rename_or_move(char *old, char *new)
@@ -196,6 +222,9 @@ void rename_or_move(char *old, char *new)
 		"cat", old, ">", new, NULL
 	};
 	char *fixed[3];
+
+	if(!strcmp(old, new))
+		return;
 
 	for(i = 0, len = 1; args[i]; i++)
 		len += strlen(args[i]) + 1; /* space */
@@ -209,7 +238,7 @@ void rename_or_move(char *old, char *new)
 	fixed[1] = cmd;
 	fixed[2] = NULL;
 
-	runner(0, "sh", fixed, 0);
+	runner(0, "sh", fixed, 0, new);
 
 	free(cmd);
 }
@@ -263,7 +292,7 @@ static int runner_1(int local, const char *path, char *in, const char *out, char
 
 	dynarray_add(&all, in);
 
-	ret = runner(local, path, all, return_ec);
+	ret = runner(local, path, all, return_ec, out);
 
 	dynarray_free(char **, all, NULL);
 
@@ -335,7 +364,7 @@ void link_all(char **objs, const char *out, char **args, const char *ld)
 	if(args)
 		dynarray_add_array(&all, args);
 
-	runner(0, ld, all, 0);
+	runner(0, ld, all, 0, out);
 
 	dynarray_free(char **, all, NULL);
 }

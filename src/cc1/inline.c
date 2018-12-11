@@ -139,7 +139,7 @@ static void inline_sym_map_save(
 			pushed_vals[i].map_val = was_set;
 		}
 
-		if(cc1_gdebug){
+		if(cc1_gdebug == DEBUG_FULL){
 			/* sym_outval() may be null, in which case the debugger
 			 * will show "argument optimised out" etc etc.. */
 			out_dbg_emit_decl(octx, *diter, sym_outval(s));
@@ -209,7 +209,7 @@ static const out_val *gen_inline_func(
 	inline_vars_push(cc1_octx, &saved, &nested_label_map);
 	cc1_octx->inline_.phi = out_blk_new(octx, "inline_phi");
 
-	if(cc1_gdebug){
+	if(cc1_gdebug != DEBUG_OFF){
 		struct out_dbg_lbl *dbg_startlbl;
 		char *dbg_lbls[2];
 
@@ -234,7 +234,7 @@ static const out_val *gen_inline_func(
 
 	inline_sym_map_restore(arg_symtab, pushed_vals, cc1_octx, octx);
 
-	if(cc1_gdebug){
+	if(cc1_gdebug != DEBUG_OFF){
 		out_dbg_label_pop(octx, dbg_endlbl);
 		out_dbg_inline_end(octx);
 	}
@@ -257,7 +257,8 @@ void inline_ret_add(out_ctx *octx, const out_val *v)
 	out_ctrl_transfer(
 			octx,
 			cc1_octx->inline_.phi,
-			v, v ? &mergee : NULL);
+			v, v ? &mergee : NULL,
+			/*stash phi value:*/1);
 
 	if(mergee)
 		dynarray_add(&cc1_octx->inline_.rets, mergee);
@@ -331,6 +332,7 @@ static const char *check_and_ret_inline(
 	const char *why;
 	struct cc1_out_ctx *cc1_octx;
 	decl **arg_iter;
+	int is_func; /* else it's a function pointer */
 
 	if(maybe_decl){
 		iouts->fndecl = maybe_decl;
@@ -340,9 +342,11 @@ static const char *check_and_ret_inline(
 			return why;
 	}
 
-	iouts->fndecl = decl_impl(iouts->fndecl);
+	is_func = !!type_is(iouts->fndecl->ref, type_func);
+	if(is_func)
+		iouts->fndecl = decl_impl(iouts->fndecl);
 
-	if(iouts->fndecl->bits.func.contains_static_label_addr)
+	if(is_func && iouts->fndecl->bits.func.contains_static_label_addr)
 		return "function contains static-address-of-label expression";
 
 	/* check for noinline before we potentially change the decl */
@@ -355,7 +359,10 @@ static const char *check_and_ret_inline(
 	if(attribute_present(iouts->fndecl, attr_weak))
 		return "weak-function overridable at link time";
 
-	if(!(iouts->fncode = iouts->fndecl->bits.func.code)){
+	if(decl_interposable(iouts->fndecl))
+		return "function is interposable at load time";
+
+	if(!is_func || !(iouts->fncode = iouts->fndecl->bits.func.code)){
 		/* may change the decl from fnptr -> function */
 		iouts->fncode = try_resolve_val_to_func(octx, fnval, &iouts->fndecl);
 
@@ -368,7 +375,11 @@ static const char *check_and_ret_inline(
 		 * disallow inline attributes on function pointers */
 	}
 
-	iouts->arg_symtab = DECL_FUNC_ARG_SYMTAB(iouts->fndecl);
+	if(is_func)
+		iouts->arg_symtab = DECL_FUNC_ARG_SYMTAB(iouts->fndecl);
+	else
+		iouts->arg_symtab = type_funcsymtable(iouts->fndecl->ref);
+
 	fargs = type_funcargs(iouts->fndecl->ref);
 
 	if(fargs->variadic){
@@ -398,8 +409,7 @@ static const char *check_and_ret_inline(
 	}
 
 	if(!attribute_present(iouts->fndecl, attr_always_inline)
-	&& !heuristic_should_inline(iouts->fndecl,
-		iouts->fncode, iouts->arg_symtab->children[0], octx))
+	&& !heuristic_should_inline(iouts->fndecl, iouts->fncode, iouts->arg_symtab, octx))
 	{
 		return "heuristic denied";
 	}

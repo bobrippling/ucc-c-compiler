@@ -42,6 +42,11 @@
 
 static const char **system_includes;
 
+struct version
+{
+	int maj, min;
+};
+
 static struct
 {
 	char type;
@@ -83,7 +88,8 @@ char *cc1_sanitize_handler_fn;
 enum visibility cc1_visibility_default;
 
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
-int cc1_gdebug;
+enum debug_level cc1_gdebug = DEBUG_OFF;
+int cc1_gdebug_columninfo = 1;
 
 enum c_std cc1_std = STD_C99;
 
@@ -146,10 +152,14 @@ static void dump_options(void)
 #define X(flag, memb) fprintf(stderr, "  -f[no-]" flag "\n");
 #define ALIAS X
 #define INVERT X
+#define EXCLUSIVE(flag, name, excl) X(flag, name)
+#define ALIAS_EXCLUSIVE(flag, name, excl) X(flag, name)
 #include "fopts.h"
 #undef X
 #undef ALIAS
 #undef INVERT
+#undef EXCLUSIVE
+#undef ALIAS_EXCLUSIVE
 
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Machine options\n");
@@ -172,6 +182,16 @@ static int should_emit_gnu_stack_note(void)
 	return platform_sys() == SYS_linux;
 }
 
+static int should_emit_macosx_version_min(struct version *const min)
+{
+	if(platform_sys() != SYS_darwin)
+		return 0;
+
+	min->maj = 10;
+	min->min = 5;
+	return 1;
+}
+
 static void io_fin_gnustack(FILE *out)
 {
 	const int execstack = 0;
@@ -180,6 +200,19 @@ static void io_fin_gnustack(FILE *out)
 	&& fprintf(out,
 			".section .note.GNU-stack,\"%s\",@progbits\n",
 			execstack ? "x" : "") < 0)
+	{
+		ccdie("write to cc1 output:");
+	}
+}
+
+static void io_fin_macosx_version(FILE *out)
+{
+	struct version macosx_version_min;
+	if(should_emit_macosx_version_min(&macosx_version_min)
+	&& fprintf(out,
+		".macosx_version_min %d, %d\n",
+		macosx_version_min.maj,
+		macosx_version_min.min) < 0)
 	{
 		ccdie("write to cc1 output:");
 	}
@@ -229,7 +262,6 @@ static void io_fin_sections(FILE *out)
 		char *name = dynmap_key(char *, cc1_out_persection, i);
 
 		io_fin_section(section, out, name);
-
 		free(name);
 	}
 
@@ -240,6 +272,7 @@ static void io_fin(FILE *out)
 {
 	io_fin_sections(out);
 	io_fin_gnustack(out);
+	io_fin_macosx_version(out);
 }
 
 static char *next_line(void)
@@ -298,7 +331,7 @@ static void gen_backend(symtable_global *globs, const char *fname, FILE *out)
 					&filelist);
 
 			/* filelist needs to be output first */
-			if(filelist && cc1_gdebug)
+			if(filelist && cc1_gdebug != DEBUG_OFF)
 				dbg_out_filelist(filelist, out);
 
 			io_fin(out);
@@ -314,10 +347,12 @@ ucc_printflike(2, 3)
 ucc_noreturn
 static void usage(const char *argv0, const char *fmt, ...)
 {
-	va_list l;
-	va_start(l, fmt);
-	vfprintf(stderr, fmt, l);
-	va_end(l);
+	if(fmt){
+		va_list l;
+		va_start(l, fmt);
+		vfprintf(stderr, fmt, l);
+		va_end(l);
+	}
 
 	ccdie(
 			"Usage: %s [-W[no-]warning] [-f[no-]option] [-m[no-]machine] [-o output] file",
@@ -606,17 +641,25 @@ int main(int argc, char **argv)
 				usage(argv[0], "unknown emit backend \"%s\"", emit);
 
 		}else if(!strncmp(argv[i], "-g", 2)){
-			switch(argv[i][2]){
-				case '0':
-					if(argv[i][3]){
-				default:
-						ccdie("-g extra argument unexpected");
-					}
-					cc1_gdebug = 0;
-					break;
-				case '\0':
-					cc1_gdebug = 1;
-					break;
+			if(argv[i][2] == '\0'){
+				cc1_gdebug = DEBUG_FULL;
+			}else if(!strcmp(argv[i], "-g0")){
+				cc1_gdebug = DEBUG_OFF;
+			}else if(!strcmp(argv[i], "-gline-tables-only")){
+				cc1_gdebug = DEBUG_LINEONLY;
+			}else{
+				const char *arg = argv[i] + 2;
+				int on = 1;
+
+				if(!strncmp(arg, "no-", 3)){
+					arg += 3;
+					on = 0;
+				}
+
+				if(!strcmp(arg, "column-info"))
+					cc1_gdebug_columninfo = on;
+				else
+					ccdie("Unknown -g switch: \"%s\"", argv[i] + 2);
 			}
 
 		}else if(!strcmp(argv[i], "-o")){
@@ -662,7 +705,7 @@ int main(int argc, char **argv)
 
 		}else if(!strcmp(argv[i], "--help")){
 			dump_options();
-			usage(argv[0], "");
+			usage(argv[0], NULL);
 
 		}else if(!in_fname){
 			in_fname = argv[i];
@@ -691,13 +734,6 @@ int main(int argc, char **argv)
 	if(warnings_check_unknown(unknown_warnings)){
 		failure = 1;
 		goto out;
-	}
-
-	if(cc1_fopt.pie){
-		/* -fpie/PIE implies -fpic/PIC and __attribute__((visibility("protected"))) for all symbols */
-		cc1_fopt.pic = 1;
-		if(cc1_target_details.as.supports_visibility_protected)
-			cc1_visibility_default = VISIBILITY_PROTECTED;
 	}
 
 	if(in_fname && strcmp(in_fname, "-")){

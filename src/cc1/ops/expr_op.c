@@ -293,6 +293,17 @@ static void const_op_num_int(
 					k->bits.num.val.i = ((e->bits.op.op == op_eq) == same);
 					break;
 				}
+
+				case op_minus:
+					if(!strcmp(l.lbl, r.lbl)){
+						type *tnext = type_is_ptr(e->lhs->tree_type);
+						assert(tnext);
+
+						k->type = CONST_NUM;
+						k->bits.num.val.i = (l.offset - r.offset) / type_size(tnext, NULL);
+						k->nonstandard_const = e;
+					}
+					break;
 			}
 			break;
 	}
@@ -885,7 +896,7 @@ static int str_cmp_check(expr *e)
 		if(kl.type == CONST_STRK || kr.type == CONST_STRK){
 			return cc1_warn_at(&e->rhs->where,
 					undef_strlitcmp,
-					"comparison with string literal is undefined");
+					"comparison with string literal is unspecified");
 		}
 	}
 	return 0;
@@ -1219,7 +1230,7 @@ static const out_val *op_shortcircuit(const expr *e, out_ctx *octx)
 		const out_val *rhs = gen_expr(e->rhs, octx);
 		rhs = out_normalise(octx, rhs);
 
-		out_ctrl_transfer(octx, landing, rhs, &blk_rhs);
+		out_ctrl_transfer(octx, landing, rhs, &blk_rhs, 1);
 	}
 
 	out_current_blk(octx, blk_empty);
@@ -1231,7 +1242,8 @@ static const out_val *op_shortcircuit(const expr *e, out_ctx *octx)
 					octx,
 					type_nav_btype(cc1_type_nav, BOOLEAN_TYPE),
 					e->bits.op.op == op_orsc ? 1 : 0),
-				&blk_empty);
+				&blk_empty,
+				1);
 
 	}
 
@@ -1303,7 +1315,7 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 				break;
 			case op_shiftl:
 			case op_shiftr:
-				sanitize_shift(e->lhs, e->rhs, e->bits.op.op, octx, lhs, rhs);
+				sanitize_shift(e->lhs, e->rhs, e->bits.op.op, octx, &lhs, &rhs);
 				break;
 			default:
 				break;
@@ -1321,9 +1333,15 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 	return eval;
 }
 
+static int expr_op_has_sideeffects(const expr *e)
+{
+	return expr_has_sideeffects(e->lhs) || (e->rhs && expr_has_sideeffects(e->rhs));
+}
+
 void mutate_expr_op(expr *e)
 {
 	e->f_const_fold = fold_const_expr_op;
+	e->f_has_sideeffects = expr_op_has_sideeffects;
 }
 
 expr *expr_new_op(enum op_type op)

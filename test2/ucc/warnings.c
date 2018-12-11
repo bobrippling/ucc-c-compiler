@@ -1,4 +1,4 @@
-// RUN: %ucc -Wall -Wno-extra -Weverything -Wgnu -Werror -Wcpp -Wpaste -Wno-traditional -Wunused -Wno-implicit -Werror=overflow -Wno-error=vla %s -'###' >%t 2>&1
+// RUN: %ucc -Wall -Wno-extra -Weverything -Wgnu -Werror -Wcpp -Wpaste -Wno-traditional -Wunused -Wno-implicit -Werror=overflow -Wno-error=vla -Werror=everything %s -'###' >%t 2>&1
 
 // true and false groups:
 // -Wall
@@ -19,6 +19,7 @@
 // -Wno-implicit
 // -Werror=overflow
 // -Wno-error=vla
+// -Werror=everything // this is special because it's a pseudo warning inside -Werror
 
 // RUN:   grep -q "/cpp .*-Wall" %t
 // RUN:   grep -q "/cpp .*-Wno-extra" %t
@@ -32,6 +33,7 @@
 // RUN: ! grep -q "/cpp .*-Wno-implicit" %t
 // RUN: ! grep -q "/cpp .*-Werror=overflow" %t
 // RUN: ! grep -q "/cpp .*-Wno-error=vla" %t
+// RUN:   grep -q "/cpp .*-Werror=everything" %t
 
 // RUN:   grep -q "/cc1 .*-Wall" %t
 // RUN:   grep -q "/cc1 .*-Wno-extra" %t
@@ -45,3 +47,4 @@
 // RUN:   grep -q "/cc1 .*-Wno-implicit" %t
 // RUN:   grep -q "/cc1 .*-Werror=overflow" %t
 // RUN:   grep -q "/cc1 .*-Wno-error=vla" %t
+// RUN:   grep -q "/cc1 .*-Werror=everything" %t

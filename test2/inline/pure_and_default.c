@@ -1,4 +1,4 @@
-// RUN: %layout_check %s
+// RUN: %layout_check %s -fno-semantic-interposition
 
 __attribute((always_inline))
 inline int f(int x);

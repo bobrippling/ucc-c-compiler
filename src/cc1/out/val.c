@@ -19,6 +19,7 @@
 #include "asm.h"
 #include "impl.h"
 #include "out.h" /* retain/release prototypes */
+#include "ctrl.h"
 
 #include "../cc1.h" /* cc1_type_nav */
 
@@ -92,7 +93,7 @@ void v_decay_flags_except(out_ctx *octx, const out_val *except[])
 		for(iter = octx->val_head; iter; iter = iter->next){
 			out_val *v = &iter->val;
 
-			if(v->retains > 0 && v->type == V_FLAG){
+			if(v->retains > 0 && v->type == V_FLAG && !out_val_is_blockphi(v, octx->current_blk)){
 				const out_val **vi;
 				int found = 0;
 
@@ -298,6 +299,8 @@ void v_try_stack_reclaim(out_ctx *octx)
 	/* only reclaim if we have an empty val list */
 	for(iter = octx->val_head; iter; iter = iter->next){
 		if(iter->val.retains == 0)
+			continue;
+		if(iter->val.phiblock)
 			continue;
 		switch(iter->val.type){
 			case V_REG:

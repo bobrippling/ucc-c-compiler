@@ -67,6 +67,20 @@ expr *expr_new(func_mutate_expr *f,
 	return e;
 }
 
+void expr_free(expr *e)
+{
+	if(!e)
+		return;
+
+	/* TODO: other parts, recursive, etc */
+	free(e);
+}
+
+void expr_free_abi(void *e)
+{
+	expr_free(e);
+}
+
 const char *expr_str_friendly(expr *e)
 {
 	return expr_skip_generated_casts(e)->f_str();
@@ -220,8 +234,38 @@ decl *expr_to_declref(expr *e, const char **whynot)
 	return NULL;
 }
 
+sym *expr_to_symref(expr *e, symtable *stab)
+{
+	if(expr_kind(e, identifier)){
+		struct symtab_entry ent;
+
+		if(e->bits.ident.bits.ident.sym)
+			return e->bits.ident.bits.ident.sym;
+
+		if(stab
+		&& symtab_search(stab, e->bits.ident.bits.ident.spel, NULL, &ent)
+		&& ent.type == SYMTAB_ENT_DECL
+		&& ent.bits.decl->sym)
+		{
+			return ent.bits.decl->sym;
+		}
+	}
+	return NULL;
+}
+
 expr *expr_compiler_generated(expr *e)
 {
 	e->freestanding = 1;
 	return e;
+}
+
+int expr_bool_always(const expr *e)
+{
+	(void)e;
+	return 1;
+}
+
+int expr_has_sideeffects(const expr *e)
+{
+	return e->f_has_sideeffects && e->f_has_sideeffects(e);
 }

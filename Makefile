@@ -28,6 +28,6 @@ check: all
 ALL_SRC = $(shell find . -iname '*.[ch]')
 
 tags: ${ALL_SRC}
-	ctags -R .
+	ctags '--exclude=_*' -R .
 
 .PHONY: all clean cleanall src

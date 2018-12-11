@@ -20,6 +20,7 @@ struct out_val
 	unsigned retains;
 
 	type *t;
+	out_blk *phiblock; /* nonnull only for phi values, reference to originating block */
 
 	union
 	{

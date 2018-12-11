@@ -217,19 +217,12 @@ void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w)
 
 sym *fold_inc_writes_if_sym(expr *e, symtable *stab)
 {
-	if(expr_kind(e, identifier)){
-		struct symtab_entry ent;
-		if(symtab_search(stab, e->bits.ident.bits.ident.spel, NULL, &ent)
-		&& ent.type == SYMTAB_ENT_DECL
-		&& ent.bits.decl->sym)
-		{
-			sym *sym = ent.bits.decl->sym;
-			sym->nwrites++;
-			return sym;
-		}
-	}
+	sym *sym = expr_to_symref(e, stab);
 
-	return NULL;
+	if(sym)
+		sym->nwrites++;
+
+	return sym;
 }
 
 void fold_expr_nodecay(expr *e, symtable *stab)
@@ -568,6 +561,9 @@ static void fold_type_w_attr(
 						r->type == type_func
 							? "function returning a function"
 							: "array of functions");
+			}else if(r->type == type_func && type_is(r->ref, type_array)){
+				fold_had_error = 1;
+				warn_at_print_error(loc, "function returning an array");
 			}
 			break;
 
@@ -676,6 +672,14 @@ static void fold_func_attr(decl *d, symtable *stab)
 
 	fold_ctor_dtor(d, stab, attr_constructor, "constructor");
 	fold_ctor_dtor(d, stab, attr_destructor, "destructor");
+
+	/* copy calling convention from decl/type to funcargs */
+	if((da = attribute_present(d, attr_call_conv))){
+		assert(type_is_func_or_block(d->ref));
+
+		/* this is safe - each function decl has its own funcargs */
+		type_funcargs(d->ref)->conv = da->bits.conv;
+	}
 }
 
 static void fold_check_enum_bitfield(

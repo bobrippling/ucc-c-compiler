@@ -1,4 +1,4 @@
-// RUN: %check %s -Winline
+// RUN: %check %s -Winline -fno-semantic-interposition
 
 inline int f(int a, ...)
 {

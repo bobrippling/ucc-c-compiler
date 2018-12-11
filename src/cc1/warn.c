@@ -156,6 +156,8 @@ void warning_pedantic(enum warning_fatality set)
 
 	cc1_warning.return_void =
 	cc1_warning.binary_literal =
+
+	cc1_warning.overlength_strings =
 		set;
 }
 
@@ -192,6 +194,7 @@ static void warning_all(enum warning_fatality set)
 	cc1_warning.sym_never_read =
 	cc1_warning.system_headers =
 	cc1_warning.int_op_promotion =
+	cc1_warning.overlength_strings =
 		W_OFF;
 }
 
