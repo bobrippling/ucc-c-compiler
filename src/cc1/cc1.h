@@ -8,11 +8,10 @@
 
 enum mopt
 {
-	MOPT_32            = 1 << 0,
-	MOPT_STACK_REALIGN = 1 << 1,
-	MOPT_ALIGN_IS_POW2   = 1 << 2,
+	MOPT_STACK_REALIGN = 1 << 0,
+	MOPT_ALIGN_IS_POW2   = 1 << 1,
 };
-#define IS_32_BIT() (!!(mopt_mode & MOPT_32))
+#define IS_32_BIT() (platform_word_size() == 4)
 
 enum cc1_backend
 {

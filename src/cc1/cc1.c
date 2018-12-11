@@ -54,8 +54,6 @@ static struct
 	int mask;
 } mopts[] = {
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
-	{ 'm',  "32", MOPT_32 },
-	{ 'm',  "64", ~MOPT_32 },
 	{ 'm',  "align-is-p2", MOPT_ALIGN_IS_POW2 },
 
 	{ 0,  NULL, 0 }
@@ -582,9 +580,13 @@ static int init_target(const char *target)
 		}
 	}
 
-	if(triple.arch != ARCH_x86_64){
-		fprintf(stderr, "Only x86_64 architecture is compiled in\n");
-		return 0;
+	switch(triple.arch){
+		case ARCH_x86_64:
+		case ARCH_i386:
+			break;
+		default:
+			fprintf(stderr, "Only x86_64 architecture is compiled in\n");
+			return 0;
 	}
 
 	platform_init(triple.arch, triple.sys);

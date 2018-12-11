@@ -1,5 +1,5 @@
-// RUN: %ucc -fsyntax-only %s -std=c89 -m32
-// RUN: %ucc -fsyntax-only %s -std=c99 -m32
+// RUN: %ucc -fsyntax-only %s -std=c89 -target i386-linux
+// RUN: %ucc -fsyntax-only %s -std=c99 -target i386-linux
 
 _Static_assert(sizeof(long) == 4, "need to be 32-bit");
 
