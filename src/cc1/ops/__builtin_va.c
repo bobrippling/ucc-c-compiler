@@ -580,7 +580,8 @@ expr *parse_va_end(const char *ident, symtable *scope)
 
 static const out_val *builtin_gen_va_copy(const expr *e, out_ctx *octx)
 {
-	return gen_expr(e->lhs, octx);
+	out_val_release(octx, gen_expr(e->lhs, octx));
+	return out_new_noop(octx);
 }
 
 static void fold_va_copy(expr *e, symtable *stab)
