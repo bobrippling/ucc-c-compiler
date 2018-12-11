@@ -1,0 +1,22 @@
+.section .rodata
+.comm ro_tenative,4,4
+ro_initialised:
+.long 4
+.section .text
+main:
+.section a
+tenative2:
+.zero 4
+initialised2:
+.long 3
+ro_tenative2:
+.zero 4
+ro_initialised2:
+.long 4
+f:
+.section .data
+initialised:
+.long 3
+.section .bss
+.comm tenative,4,4
+.section .note.GNU-stack,"",@progbits
