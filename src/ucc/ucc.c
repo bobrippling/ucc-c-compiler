@@ -949,6 +949,10 @@ static void state_from_triple(
 		case SYS_linux:
 		{
 			const char *target = triple_to_str(triple, 0);
+			int is_pie = vars->pie != TRI_FALSE;
+
+			if(is_pie)
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
 
 			if(!vars->static_){
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-dynamic-linker"));
@@ -961,28 +965,29 @@ static void state_from_triple(
 
 			if(vars->startfiles){
 				char usrlib[64];
-				char *dot;
 
-				xsnprintf(usrlib, sizeof(usrlib), "/usr/lib/%s/crt1.o", target);
-				dot = strrchr(usrlib, '.');
-				assert(dot && dot > usrlib);
-
+				if(is_pie){
+					if(vars->static_)
+						xsnprintf(usrlib, sizeof(usrlib), "/usr/lib/%s/rcrt1.o", target);
+					else
+						xsnprintf(usrlib, sizeof(usrlib), "/usr/lib/%s/Scrt1.o", target);
+				}else{
+					xsnprintf(usrlib, sizeof(usrlib), "/usr/lib/%s/crt1.o", target);
+				}
 				dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
 
-				dot[-1] = 'i';
-				dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
+				{
+					char *dot;
 
-				dot[-1] = 'n';
-				dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
-			}
+					xsnprintf(usrlib, sizeof(usrlib), "/usr/lib/%s/crti.o", target);
+					dot = strrchr(usrlib, '.');
+					assert(dot && dot > usrlib);
 
-			switch(vars->pie){
-				case TRI_UNSET:
-				case TRI_TRUE:
-					dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
-					break;
-				case TRI_FALSE:
-					break;
+					dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
+
+					dot[-1] = 'n';
+					dynarray_add(&state->ldflags_post_user, ustrdup(usrlib));
+				}
 			}
 
 			if(vars->stdinc){
