@@ -23,6 +23,8 @@
 #include "str.h"
 #include "warning.h"
 
+#define LINUX_LIBC_PREFIX "/usr/lib/"
+
 enum mode
 {
 	mode_preproc,
@@ -959,6 +961,8 @@ static void state_from_triple(
 				dynarray_add(&state->ldflags_pre_user, ustrdup("/lib64/ld-linux-x86-64.so.2"));
 			}
 
+			dynarray_add(&state->ldflags_post_user, ustrdup("-L" LINUX_LIBC_PREFIX));
+
 			if(vars->stdlib){
 				dynarray_add(&state->ldflags_post_user, ustrdup("-lc"));
 			}
@@ -968,18 +972,18 @@ static void state_from_triple(
 
 				if(is_pie){
 					if(vars->static_)
-						xsnprintf(usrlib, sizeof(usrlib), "/usr/lib/%s/rcrt1.o", target);
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/rcrt1.o", target);
 					else
-						xsnprintf(usrlib, sizeof(usrlib), "/usr/lib/%s/Scrt1.o", target);
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/Scrt1.o", target);
 				}else{
-					xsnprintf(usrlib, sizeof(usrlib), "/usr/lib/%s/crt1.o", target);
+					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crt1.o", target);
 				}
 				dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
 
 				{
 					char *dot;
 
-					xsnprintf(usrlib, sizeof(usrlib), "/usr/lib/%s/crti.o", target);
+					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crti.o", target);
 					dot = strrchr(usrlib, '.');
 					assert(dot && dot > usrlib);
 
