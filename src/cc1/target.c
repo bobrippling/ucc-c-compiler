@@ -51,47 +51,33 @@ static const struct target_section_names section_names[] = {
 	},
 };
 
-static const struct target_as asconfig[] = {
+static const struct target_as toolchain_gnu = {
 	{
-		{
-			"weak",
-			"hidden",
-		},
-		".L",
-		1, /* visibility protected */
-		1, /* local common */
-		1, /* expr inline */
+		"weak",
+		"hidden",
 	},
+	".L",
+	1, /* visibility protected */
+	1, /* local common */
+	1, /* expr inline */
+};
+
+static const struct target_as toolchain_darwin = {
 	{
-		{
-			"weak",
-			"hidden",
-		},
-		".L",
-		1, /* visibility protected */
-		1, /* local common */
-		1, /* expr inline */
+		"weak_reference", /* Darwin also needs "-flat_namespace -undefined suppress" */
+		"private_extern",
 	},
-	{
-		{
-			"weak_reference", /* Darwin also needs "-flat_namespace -undefined suppress" */
-			"private_extern",
-		},
-		"L",
-		0, /* visibility protected */
-		0, /* local common */
-		0, /* expr inline */
-	},
-	{
-		{
-			"weak",
-			"hidden",
-		},
-		".L",
-		1, /* visibility protected */
-		1, /* local common */
-		1, /* expr inline */
-	},
+	"L",
+	0, /* visibility protected */
+	0, /* local common */
+	0, /* expr inline */
+};
+
+static const struct target_as *const asconfig[] = {
+	&toolchain_gnu,
+	&toolchain_gnu,
+	&toolchain_darwin,
+	&toolchain_gnu,
 };
 
 static const int dwarf_link_stmt_list[] = {
@@ -117,7 +103,7 @@ ucc_static_assert(size_match4, countof(syses) == countof(dwarf_link_stmt_list));
 void target_details_from_triple(const struct triple *triple, struct target_details *details)
 {
 	memcpy(&details->section_names, &section_names[triple->sys], sizeof(details->section_names));
-	memcpy(&details->as, &asconfig[triple->sys], sizeof(details->as));
+	memcpy(&details->as, asconfig[triple->sys], sizeof(details->as));
 
 	details->dwarf_link_stmt_list = dwarf_link_stmt_list[triple->sys];
 }
