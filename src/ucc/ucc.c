@@ -959,6 +959,8 @@ static void state_from_triple(
 			if(!vars->static_){
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-dynamic-linker"));
 				dynarray_add(&state->ldflags_pre_user, ustrdup("/lib64/ld-linux-x86-64.so.2"));
+			}else{
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-no-dynamic-linker"));
 			}
 
 			dynarray_add(&state->ldflags_post_user, ustrdup("-L" LINUX_LIBC_PREFIX));
