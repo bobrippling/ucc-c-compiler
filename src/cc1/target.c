@@ -60,6 +60,7 @@ static const struct target_as asconfig[] = {
 		".L",
 		1, /* visibility protected */
 		1, /* local common */
+		1, /* expr inline */
 	},
 	{
 		{
@@ -69,6 +70,7 @@ static const struct target_as asconfig[] = {
 		".L",
 		1, /* visibility protected */
 		1, /* local common */
+		1, /* expr inline */
 	},
 	{
 		{
@@ -78,6 +80,7 @@ static const struct target_as asconfig[] = {
 		"L",
 		0, /* visibility protected */
 		0, /* local common */
+		0, /* expr inline */
 	},
 	{
 		{
@@ -87,17 +90,11 @@ static const struct target_as asconfig[] = {
 		".L",
 		1, /* visibility protected */
 		1, /* local common */
+		1, /* expr inline */
 	},
 };
 
-static const int dwarf_indirect_section_linkss[] = {
-	0,
-	0,
-	1,
-	0,
-};
-
-static const int ld_indirect_call_via_plts[] = {
+static const int dwarf_link_stmt_list[] = {
 	1,
 	1,
 	0,
@@ -115,14 +112,12 @@ static char syses[] = {
 
 ucc_static_assert(size_match1, countof(syses) == countof(section_names));
 ucc_static_assert(size_match2, countof(syses) == countof(asconfig));
-ucc_static_assert(size_match3, countof(syses) == countof(dwarf_indirect_section_linkss));
-ucc_static_assert(size_match4, countof(syses) == countof(ld_indirect_call_via_plts));
+ucc_static_assert(size_match4, countof(syses) == countof(dwarf_link_stmt_list));
 
 void target_details_from_triple(const struct triple *triple, struct target_details *details)
 {
 	memcpy(&details->section_names, &section_names[triple->sys], sizeof(details->section_names));
 	memcpy(&details->as, &asconfig[triple->sys], sizeof(details->as));
 
-	details->dwarf_indirect_section_links = dwarf_indirect_section_linkss[triple->sys];
-	details->ld_indirect_call_via_plt = ld_indirect_call_via_plts[triple->sys];
+	details->dwarf_link_stmt_list = dwarf_link_stmt_list[triple->sys];
 }

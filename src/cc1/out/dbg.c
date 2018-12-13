@@ -1127,13 +1127,13 @@ static struct DIE_compile_unit *dwarf_cu(
 
 	dwarf_attr(&cu->die, DW_AT_stmt_list,
 			DW_FORM_ADDR4,
-			cc1_target_details.dwarf_indirect_section_links
-				? NULL
-				: ustrprintf(
+			cc1_target_details.dwarf_link_stmt_list
+				? ustrprintf(
 						"%s%s%s",
 						cc1_target_details.as.privatelbl_prefix,
 						SECTION_BEGIN,
-						SECTION_DESC_DBG_LINE));
+						SECTION_DESC_DBG_LINE)
+				: NULL);
 
 	dwarf_attr(&cu->die, DW_AT_low_pc, DW_FORM_addr,
 			ustrprintf("%s%s%s",
@@ -1152,36 +1152,30 @@ static struct DIE_compile_unit *dwarf_cu(
 
 static long dwarf_info_header(void)
 {
-#define VAR_LEN "info_len"
-	if(cc1_target_details.dwarf_indirect_section_links){
+	if(cc1_target_details.as.expr_inline){
 		asm_out_section(SECTION_DBG_INFO,
 				/* -4: don't include the length spec itself */
-				"%s" VAR_LEN " = %s%s%s - %s%s%s - 4\n"
-				"\t.long %s" VAR_LEN "\n"
-				"\t.short 2 # DWARF 2\n"
-				"\t.long 0  # abbrev offset\n"
-				"\t.byte %d  # sizeof(void *)\n",
-				cc1_target_details.as.privatelbl_prefix,
+				"\t.long %s%s%s - %s%s%s - 4\n",
 				cc1_target_details.as.privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
-				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO
-				,
-				cc1_target_details.as.privatelbl_prefix
-				,
-				platform_word_size());
+				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO);
 	}else{
 		asm_out_section(SECTION_DBG_INFO,
-				"\t.long %s%s%s - %s%s%s - 4\n"
-				"\t.short 2 # DWARF 2\n"
-				"\t.long %s%s%s  # abbrev offset\n"
-				"\t.byte %d  # sizeof(void *)\n",
+				/* -4: don't include the length spec itself */
+				"%sinfo_len = %s%s%s - %s%s%s - 4\n"
+				"\t.long %sinfo_len" "\n",
+				cc1_target_details.as.privatelbl_prefix,
 				cc1_target_details.as.privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
 				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO,
-				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_ABBREV,
-				platform_word_size());
+				cc1_target_details.as.privatelbl_prefix);
 	}
 
+	asm_out_section(SECTION_DBG_INFO,
+			"\t.short 2 # DWARF 2\n"
+			"\t.long 0  # abbrev offset\n"
+			"\t.byte %d  # sizeof(void *)\n",
+			platform_word_size());
+
 	return 4 + 2 + 4 + 1;
-#undef VAR_LEN
 }
 
 static void dwarf_attr_decl(

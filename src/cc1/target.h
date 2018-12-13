@@ -30,9 +30,10 @@ struct target_details
 
 		int supports_visibility_protected;
 		int supports_local_common;
+		int expr_inline;
 	} as;
 
-	int dwarf_indirect_section_links;
+	int dwarf_link_stmt_list;
 	int ld_indirect_call_via_plt;
 };
 
