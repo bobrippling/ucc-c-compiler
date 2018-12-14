@@ -27,7 +27,7 @@ enum type_primitive
 {
 	type_void,
 	type__Bool,
-#define type_wchar (platform_sys() == PLATFORM_CYGWIN ? type_short : type_int)
+#define TYPE_WCHAR() (platform_sys() == SYS_cygwin ? type_short : type_int)
 
 	/* signed, unsigned and 'normal' */
 	type_nchar,

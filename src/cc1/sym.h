@@ -62,7 +62,6 @@ struct symtable
 	 * transparent marks C99 for-statements creating a new scope
 	 * - see symtab_new_transparent()
 	 */
-	unsigned stack_used : 1; /* function symtab - used stack? */
 
 	decl *in_func; /* for r/w checks on args and return-type checks */
 

@@ -372,7 +372,7 @@ const out_val *out_op_unary(out_ctx *octx, enum op_type uop, const out_val *val)
 			if(uop == op_not){
 				out_val *reversed = v_dup_or_reuse(octx, val, val->t);
 
-				reversed->bits.flag.cmp = v_inv_cmp(reversed->bits.flag.cmp, 1);
+				reversed->bits.flag.cmp = v_not_cmp(reversed->bits.flag.cmp);
 
 				return reversed;
 			}

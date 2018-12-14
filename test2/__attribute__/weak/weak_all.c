@@ -1,12 +1,10 @@
-// TEST: target !darwin
-
-// RUN: %ucc -S -o %t %s
-// RUN: grep '\.weak _*f' %t
-// RUN: grep '\.weak _*g' %t
-// RUN: grep '\.weak _*x' %t
-// RUN: grep '\.weak _*tdef' %t
-// RUN: grep '\.weak _*extern_weak' %t
-// RUN: grep '\.weak _*local' %t
+// RUN: %ucc -S -o %t %s -target x86_64-linux
+// RUN: grep '\.weak f' %t
+// RUN: grep '\.weak g' %t
+// RUN: grep '\.weak x' %t
+// RUN: grep '\.weak tdef' %t
+// RUN: grep '\.weak extern_weak' %t
+// RUN: grep '\.weak local' %t
 // RUN: grep 'globl' %t | grep -v main; [ $? -ne 0 ]
 
 __attribute((weak))

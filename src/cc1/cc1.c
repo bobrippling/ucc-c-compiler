@@ -36,8 +36,9 @@
 #include "type_nav.h"
 #include "cc1_where.h"
 #include "fopt.h"
-
-#include "../config_as.h"
+#include "cc1_target.h"
+#include "cc1_out.h"
+#include "cc1_sections.h"
 
 static const char **system_includes;
 
@@ -53,8 +54,6 @@ static struct
 	int mask;
 } mopts[] = {
 	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
-	{ 'm',  "32", MOPT_32 },
-	{ 'm',  "64", ~MOPT_32 },
 	{ 'm',  "align-is-p2", MOPT_ALIGN_IS_POW2 },
 
 	{ 0,  NULL, 0 }
@@ -73,8 +72,9 @@ static struct
 	{ 0, NULL, NULL }
 };
 
-FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
-FILE *cc1_out;                  /* final output */
+dynmap *cc1_out_persection; /* char* => FILE* */
+enum section_builtin cc1_current_section = -1;
+FILE *cc1_current_section_file;
 char *cc1_first_fname;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
@@ -93,23 +93,11 @@ enum c_std cc1_std = STD_C99;
 
 int cc1_error_limit = 16;
 
-static int caught_sig = 0;
-
 int show_current_line;
 
 struct cc1_fopt cc1_fopt;
 
-struct section sections[NUM_SECTIONS] = {
-	{ "text", QUOTE(SECTION_NAME_TEXT) },
-	{ "data", QUOTE(SECTION_NAME_DATA) },
-	{ "bss",  QUOTE(SECTION_NAME_BSS) },
-	{ "rodata", QUOTE(SECTION_NAME_RODATA) },
-	{ "ctors", QUOTE(SECTION_NAME_CTORS) },
-	{ "dtors", QUOTE(SECTION_NAME_DTORS) },
-	{ "dbg_abrv", QUOTE(SECTION_NAME_DBG_ABBREV) },
-	{ "dbg_info", QUOTE(SECTION_NAME_DBG_INFO) },
-	{ "dbg_line", QUOTE(SECTION_NAME_DBG_LINE) },
-};
+struct target_details cc1_target_details;
 
 static const char *debug_compilation_dir;
 
@@ -187,56 +175,14 @@ int where_in_sysheader(const where *w)
 	return w->is_sysh;
 }
 
-static void io_cleanup(void)
-{
-	int i;
-
-	if(caught_sig)
-		return;
-
-	for(i = 0; i < NUM_SECTIONS; i++){
-		if(!cc_out[i])
-			continue;
-
-		if(fclose(cc_out[i]) == EOF)
-			fprintf(stderr, "close tmpfile: %s\n", strerror(errno));
-	}
-}
-
-static void io_setup(void)
-{
-	int i;
-
-	if(!cc1_out)
-		cc1_out = stdout;
-
-	for(i = 0; i < NUM_SECTIONS; i++){
-		char *fname;
-		int fd = tmpfile_prefix_out("cc1_", &fname);
-
-		if(fd < 0)
-			ccdie("tmpfile(%s):", fname);
-
-		if(remove(fname) != 0)
-			fprintf(stderr, "remove %s: %s\n", fname, strerror(errno));
-
-		cc_out[i] = fdopen(fd, "w+"); /* need to seek */
-		assert(cc_out[i]);
-
-		free(fname);
-	}
-
-	atexit(io_cleanup);
-}
-
 static int should_emit_gnu_stack_note(void)
 {
-	return platform_sys() == PLATFORM_LINUX;
+	return platform_sys() == SYS_linux;
 }
 
 static int should_emit_macosx_version_min(struct version *const min)
 {
-	if(platform_sys() != PLATFORM_DARWIN)
+	if(platform_sys() != SYS_darwin)
 		return 0;
 
 	min->maj = 10;
@@ -244,75 +190,87 @@ static int should_emit_macosx_version_min(struct version *const min)
 	return 1;
 }
 
-static void io_fin(int do_sections, const char *fname)
+static void io_fin_gnustack(FILE *out)
 {
 	const int execstack = 0;
-	int i;
-	struct version macosx_version_min;
-
-	(void)fname;
-
-	for(i = 0; i < NUM_SECTIONS; i++){
-		/* cat cc_out[i] to cc1_out, with section headers */
-		int emit_this_section = 1;
-
-		if(cc1_gdebug != DEBUG_OFF && (i == SECTION_TEXT || i == SECTION_DBG_LINE)){
-			/* need .text for debug to reference */
-		}else if(asm_section_empty(i)){
-			emit_this_section = 0;
-		}
-
-		if(do_sections && emit_this_section){
-			char buf[256];
-			long last = ftell(cc_out[i]);
-
-			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
-				ccdie("seeking on section file %d:", i);
-
-			if(fprintf(cc1_out, ".section %s\n", sections[i].name) < 0
-			|| fprintf(cc1_out, "%s%s:\n", SECTION_BEGIN, sections[i].desc) < 0)
-			{
-				ccdie("write to cc1 output:");
-			}
-
-			while(fgets(buf, sizeof buf, cc_out[i]))
-				if(fputs(buf, cc1_out) == EOF)
-					ccdie("write to cc1 output:");
-
-			if(ferror(cc_out[i]))
-				ccdie("read from section file %d:", i);
-
-			if(fprintf(cc1_out, "%s%s:\n", SECTION_END, sections[i].desc) < 0)
-				ccdie("terminating section %d:", i);
-		}
-	}
 
 	if(should_emit_gnu_stack_note()
-	&& fprintf(cc1_out,
+	&& fprintf(out,
 			".section .note.GNU-stack,\"%s\",@progbits\n",
 			execstack ? "x" : "") < 0)
 	{
 		ccdie("write to cc1 output:");
 	}
+}
 
+static void io_fin_macosx_version(FILE *out)
+{
+	struct version macosx_version_min;
 	if(should_emit_macosx_version_min(&macosx_version_min)
-	&& fprintf(cc1_out,
+	&& fprintf(out,
 		".macosx_version_min %d, %d\n",
 		macosx_version_min.maj,
 		macosx_version_min.min) < 0)
 	{
 		ccdie("write to cc1 output:");
 	}
-
-	if(fclose(cc1_out))
-		ccdie("close cc1 output:");
 }
 
-static void sigh(int sig)
+static void io_fin_section(FILE *section, FILE *out, const char *name)
 {
-	(void)sig;
-	caught_sig = 1;
-	io_cleanup();
+	enum section_builtin sec = asm_builtin_section_from_str(name);
+	const char *desc = NULL;
+
+	if((int)sec != -1)
+		desc = asm_section_desc(sec);
+
+	if(fseek(section, 0, SEEK_SET))
+		ccdie("seeking in section tmpfile:");
+
+	xfprintf(out, ".section %s\n", name);
+
+	if(desc)
+		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, desc);
+
+	if(cat(section, out))
+		ccdie("concatenating section tmpfile:");
+
+	if(desc)
+		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_END, desc);
+
+	if(fclose(section))
+		ccdie("closing section tmpfile:");
+}
+
+static void io_fin_sections(FILE *out)
+{
+	FILE *section;
+	size_t i;
+
+	if(!cc1_out_persection)
+		return;
+
+	if(cc1_gdebug){
+		/* ensure we have text and debug-line sections for the debug to reference */
+		(void)asm_section_file(SECTION_TEXT);
+		(void)asm_section_file(SECTION_DBG_LINE);
+	}
+
+	for(i = 0; (section = dynmap_value(FILE *, cc1_out_persection, i)); i++){
+		char *name = dynmap_key(char *, cc1_out_persection, i);
+
+		io_fin_section(section, out, name);
+		free(name);
+	}
+
+	dynmap_free(cc1_out_persection);
+}
+
+static void io_fin(FILE *out)
+{
+	io_fin_sections(out);
+	io_fin_gnustack(out);
+	io_fin_macosx_version(out);
 }
 
 static char *next_line(void)
@@ -324,7 +282,7 @@ static char *next_line(void)
 		if(feof(infile))
 			return NULL;
 		else
-			die("read():");
+			ccdie("read():");
 	}
 
 	for(p = s; *p; p++)
@@ -334,7 +292,7 @@ static char *next_line(void)
 	return s;
 }
 
-static void gen_backend(symtable_global *globs, const char *fname)
+static void gen_backend(symtable_global *globs, const char *fname, FILE *out)
 {
 	void (*gf)(symtable_global *) = NULL;
 
@@ -362,7 +320,7 @@ static void gen_backend(symtable_global *globs, const char *fname)
 				compdir = getcwd(buf, sizeof(buf)-1);
 				/* PATH_MAX may not include the  ^ nul byte */
 				if(!compdir)
-					die("getcwd():");
+					ccdie("getcwd():");
 			}
 
 			gen_asm(globs,
@@ -372,13 +330,12 @@ static void gen_backend(symtable_global *globs, const char *fname)
 
 			/* filelist needs to be output first */
 			if(filelist && cc1_gdebug != DEBUG_OFF)
-				dbg_out_filelist(filelist, cc1_out);
+				dbg_out_filelist(filelist, out);
 
+			io_fin(out);
 
 			if(compdir != buf && compdir != debug_compilation_dir)
 				free(compdir);
-
-			io_fin(gf == NULL, fname);
 			break;
 		}
 	}
@@ -485,7 +442,7 @@ static void set_sanitize_error(const char *argv0, const char *handler)
 
 static void set_default_visibility(const char *argv0, const char *visibility)
 {
-	if(!visibility_parse(&cc1_visibility_default, visibility)){
+	if(!visibility_parse(&cc1_visibility_default, visibility, cc1_target_details.as.supports_visibility_protected)){
 		fprintf(stderr, "%s: unknown/unsupported visibility \"%s\"\n", argv0, visibility);
 		exit(1);
 	}
@@ -606,26 +563,53 @@ unknown:
 	usage(argv0, "unrecognised warning/feature/machine option \"%s\"\n", argument);
 }
 
+static int init_target(const char *target)
+{
+	struct triple triple;
+
+	if(target){
+		const char *bad;
+		if(!triple_parse(target, &triple, &bad)){
+			fprintf(stderr, "Couldn't parse triple: %s\n", bad);
+			return 0;
+		}
+	}else{
+		if(!triple_default(&triple)){
+			fprintf(stderr, "couldn't get target triple\n");
+			return 0;
+		}
+	}
+
+	switch(triple.arch){
+		case ARCH_x86_64:
+		case ARCH_i386:
+			break;
+		default:
+			fprintf(stderr, "Only x86_64 architecture is compiled in\n");
+			return 0;
+	}
+
+	platform_init(triple.arch, triple.sys);
+	target_details_from_triple(&triple, &cc1_target_details);
+
+	return 1;
+}
+
 int main(int argc, char **argv)
 {
 	int failure;
 	where loc_start;
 	static symtable_global *globs;
-	const char *fname;
+	const char *in_fname = NULL;
+	const char *out_fname = NULL;
+	FILE *outfile;
+	const char *target = NULL;
 	int i;
 	int werror = 0;
 	dynmap *unknown_warnings = dynmap_new(char *, strcmp, dynmap_strhash);
 
-	/*signal(SIGINT , sigh);*/
-	signal(SIGQUIT, sigh);
-	signal(SIGTERM, sigh);
-	signal(SIGABRT, sigh);
-	signal(SIGSEGV, sigh);
-
-	fname = NULL;
-
 	/* defaults */
-	cc1_mstack_align = log2i(platform_word_size());
+	cc1_mstack_align = -1;
 	warning_init();
 	fopt_default(&cc1_fopt);
 
@@ -677,20 +661,15 @@ int main(int argc, char **argv)
 				if(!strcmp(arg, "column-info"))
 					cc1_gdebug_columninfo = on;
 				else
-					die("Unknown -g switch: \"%s\"", argv[i] + 2);
+					ccdie("Unknown -g switch: \"%s\"", argv[i] + 2);
 			}
 
 		}else if(!strcmp(argv[i], "-o")){
 			if(++i == argc)
 				usage(argv[0], "-o needs an argument");
 
-			if(strcmp(argv[i], "-")){
-				cc1_out = fopen(argv[i], "w");
-				if(!cc1_out){
-					ccdie("open %s:", argv[i]);
-					goto out;
-				}
-			}
+			if(strcmp(argv[i], "-"))
+				out_fname = argv[i];
 
 		}else if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
 			int gnu;
@@ -719,24 +698,35 @@ int main(int argc, char **argv)
 			if(optimise(*argv, argv[i] + 2))
 				exit(1);
 
+		}else if(!strcmp(argv[i], "-target")){
+			i++;
+			if(!argv[i]){
+				usage(argv[0], "-target requires an argument");
+			}
+			target = argv[i];
+
 		}else if(!strcmp(argv[i], "--help")){
 			dump_options();
 			usage(argv[0], NULL);
 
-		}else if(!fname){
-			fname = argv[i];
+		}else if(!in_fname){
+			in_fname = argv[i];
 		}else{
 			usage(argv[0], "unknown argument: '%s'", argv[i]);
 		}
 	}
 
-	/* sanity checks */
-	{
-		const unsigned new = powf(2, cc1_mstack_align);
-		if(new < platform_word_size())
+	if(!init_target(target))
+		return 1;
+
+	if(cc1_mstack_align == -1){
+		cc1_mstack_align = log2i(platform_word_size());
+	}else{
+		unsigned new = powf(2, cc1_mstack_align);
+		if(new < platform_word_size()){
 			ccdie("stack alignment must be >= platform word size (2^%d)",
 					log2i(platform_word_size()));
-
+		}
 		cc1_mstack_align = new;
 	}
 
@@ -748,16 +738,22 @@ int main(int argc, char **argv)
 		goto out;
 	}
 
-	if(fname && strcmp(fname, "-")){
-		infile = fopen(fname, "r");
+	if(in_fname && strcmp(in_fname, "-")){
+		infile = fopen(in_fname, "r");
 		if(!infile)
-			ccdie("open %s:", fname);
+			ccdie("open %s:", in_fname);
 	}else{
 		infile = stdin;
-		fname = "-";
+		in_fname = "-";
 	}
 
-	io_setup();
+	if(out_fname){
+		outfile = fopen(out_fname, "w");
+		if(!outfile)
+			ccdie("open %s:", out_fname);
+	}else{
+		outfile = stdout;
+	}
 
 	show_current_line = cc1_fopt.show_line;
 
@@ -767,24 +763,28 @@ int main(int argc, char **argv)
 			(cc1_fopt.ext_keywords ? KW_EXT : 0) |
 			(cc1_std >= STD_C99 ? KW_C99 : 0));
 
-	tokenise_set_input(next_line, fname);
+	tokenise_set_input(next_line, in_fname);
 
 	where_cc1_current(&loc_start);
 	globs = symtabg_new(&loc_start);
 
 	failure = parse_and_fold(globs);
 
-	if(infile != stdin)
-		fclose(infile), infile = NULL;
+	if(fclose(infile))
+		ccdie("close input (%s):", in_fname);
+	infile = NULL;
 
 	if(failure == 0 || /* attempt dump anyway */cc1_backend == BACKEND_DUMP){
-		gen_backend(globs, fname);
+		gen_backend(globs, in_fname, outfile);
 		if(gen_had_error)
 			failure = 1;
 	}
 
 	if(cc1_fopt.dump_type_tree)
 		type_nav_dump(cc1_type_nav);
+
+	if(fclose(outfile))
+		ccdie("close output (%s):", out_fname);
 
 out:
 	dynarray_free(const char **, system_includes, NULL);

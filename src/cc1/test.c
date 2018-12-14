@@ -8,6 +8,7 @@
 #include "out/asm.h"
 #include "fopt.h"
 #include "funcargs.h"
+#include "cc1_target.h"
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 int cc1_error_limit = 16;
@@ -17,14 +18,16 @@ int cc1_gdebug_columninfo;
 int cc1_mstack_align;
 enum c_std cc1_std = STD_C99;
 struct cc1_warning cc1_warning;
-FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
+dynmap *cc1_out_persection; /* char* => FILE* */
+enum section_builtin cc1_current_section = -1;
+FILE *cc1_current_section_file;
 struct cc1_fopt cc1_fopt;
 enum mopt mopt_mode;
-struct section sections[NUM_SECTIONS];
 int show_current_line;
 enum san_opts cc1_sanitize;
 char *cc1_sanitize_handler_fn;
 enum visibility cc1_visibility_default;
+struct target_details cc1_target_details;
 
 int where_in_sysheader(const where *w)
 {

@@ -14,15 +14,17 @@
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "ucc_path.h"
-#include "spec.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "../util/util.h"
 #include "../util/platform.h"
 #include "../util/tmpfile.h"
 #include "../util/str.h"
+#include "../util/triple.h"
 #include "str.h"
 #include "warning.h"
+
+#define LINUX_LIBC_PREFIX "/usr/lib/"
 
 enum mode
 {
@@ -39,7 +41,7 @@ struct cc_file
 	struct fd_name_pair
 	{
 		char *fname;
-		int fd;
+		int fd; /* used to generate and hold onto a temp-file-name */
 	} in;
 
 	struct fd_name_pair preproc, compile, assemb;
@@ -66,6 +68,27 @@ struct ucc
 
 	int syntax_only;
 	enum mode mode;
+
+	const char *as, *ld;
+	char **ldflags_pre_user, **ldflags_post_user;
+	const char *post_link;
+};
+
+enum tristate
+{
+	TRI_UNSET,
+	TRI_FALSE,
+	TRI_TRUE
+};
+
+struct uccvars
+{
+	const char *target;
+	const char *output;
+
+	int static_, shared, debug;
+	int stdlibinc, builtininc, defaultlibs, startfiles;
+	enum tristate pie;
 	int help, dumpmachine;
 };
 
@@ -128,10 +151,10 @@ static void tmpfilenam(
 		 * (like gcc and clang)
 		 */
 		path = expected_filename(in, mode);
-		fd = open(path, O_RDWR | O_TRUNC | O_CREAT, 0600);
-		if(fd < 0)
-			die("open (for -save-temps) %s:", path);
-
+		fd = FILE_UNINIT;
+		/* we don't create the temp files for -save-temps because there's no need
+		 * to create and hold onto some temporary file - we have the fixed file
+		 * output name already */
 	}else{
 		fd = tmpfile_prefix_out("ucc.", &path);
 
@@ -214,7 +237,7 @@ after_compile:
 }
 
 static void gen_obj_file(
-		struct cc_file *file, char **args[4], enum mode mode, const struct specopts *opts)
+		struct cc_file *file, char **args[4], enum mode mode, const char *as)
 {
 	char *in = file->in.fname;
 
@@ -242,7 +265,7 @@ static void gen_obj_file(
 		return;
 
 	if(file->assemb.fname){
-		assemble(in, file->assemb.fname, args[mode_assemb], opts->as);
+		assemble(in, file->assemb.fname, args[mode_assemb], as);
 	}
 }
 
@@ -266,12 +289,12 @@ static void rename_files(struct cc_file *files, int nfiles, const char *output, 
 			if(mode == mode_preproc){
 				/* append to current */
 				if(files[i].preproc.fname)
-					cat(files[i].preproc.fname, output, i);
+					cat_fnames(files[i].preproc.fname, output, i);
 				continue;
 			}else if(mode == mode_compile && !strcmp(output, "-")){
 				/* -S -o- */
 				if(files[i].compile.fname)
-					cat(files[i].compile.fname, NULL, 0);
+					cat_fnames(files[i].compile.fname, NULL, 0);
 				continue;
 			}
 
@@ -283,7 +306,7 @@ static void rename_files(struct cc_file *files, int nfiles, const char *output, 
 
 				case mode_preproc:
 					if(files[i].preproc.fname)
-						cat(files[i].preproc.fname, NULL, 0);
+						cat_fnames(files[i].preproc.fname, NULL, 0);
 					continue;
 
 				case mode_compile:
@@ -299,63 +322,69 @@ static void rename_files(struct cc_file *files, int nfiles, const char *output, 
 	}
 }
 
-static void process_files(
-		enum mode mode,
-		char **inputs,
-		int *assumptions,
-		const char *output,
-		char **args[4],
-		char *backend,
-		const struct specopts *opts)
+static void fd_name_close(struct fd_name_pair *f)
 {
-	const int ninputs = dynarray_count(inputs);
+	if(f->fd < 0)
+		return;
+	close(f->fd);
+	f->fd = FILE_UNINIT;
+}
+
+static void process_files(
+		struct ucc *state,
+		int *assumptions,
+		const char *output)
+{
+	const int ninputs = dynarray_count(state->inputs);
 	int i;
 	struct cc_file *files;
 	char **links = NULL;
 
 	files = umalloc(ninputs * sizeof *files);
 
-	dynarray_add_array(&links, ((struct specopts *)opts)->ldflags_pre_user);
+	dynarray_add_array(&links, state->ldflags_pre_user);
+	dynarray_free(char **, state->ldflags_pre_user, NULL);
 
-	if(backend){
-		dynarray_add(&args[mode_compile], ustrprintf("-emit=%s", backend));
+	if(state->backend){
+		dynarray_add(&state->args[mode_compile], ustrprintf("-emit=%s", state->backend));
 	}
 
 	for(i = 0; i < ninputs; i++){
-		create_file(&files[i], assumptions[i], mode, inputs[i]);
+		create_file(&files[i], assumptions[i], state->mode, state->inputs[i]);
 
-		gen_obj_file(&files[i], args, mode, opts);
+		gen_obj_file(&files[i], state->args, state->mode, state->as);
 
 		dynarray_add(&links, ustrdup(files[i].out.fname));
 	}
 
-	if(mode == mode_link){
+	if(state->mode == mode_link){
 		/* An object file's unresolved symbols must
 		 * be _later_ in the linker's argv array.
 		 * crt, user files, then stdlib
 		 */
-		dynarray_add_array(&links, ((struct specopts *)opts)->ldflags_post_user);
+		dynarray_add_array(&links, state->ldflags_post_user);
+		dynarray_free(char **, state->ldflags_post_user, NULL);
 
-		link_all(links, output, args[mode_link], opts->ld);
+		link_all(links, output, state->args[mode_link], state->ld);
 
-		if(opts->post_link && *str_spc_skip(opts->post_link)){
+		if(state->post_link && *str_spc_skip(state->post_link)){
 			char *exebuf[3];
 			exebuf[0] = "-c";
-			exebuf[1] = opts->post_link;
+			exebuf[1] = (char *)state->post_link;
 			exebuf[2] = NULL;
 			execute("sh", exebuf);
 		}
 	}else{
-		rename_files(files, ninputs, output, mode);
+		rename_files(files, ninputs, output, state->mode);
 	}
 
 	dynarray_free(char **, links, free);
 
 	for(i = 0; i < ninputs; i++){
-		close(files[i].in.fd);
-		close(files[i].preproc.fd);
-		close(files[i].compile.fd);
-		close(files[i].assemb.fd);
+		fd_name_close(&files[i].in);
+		fd_name_close(&files[i].preproc);
+		fd_name_close(&files[i].compile);
+		fd_name_close(&files[i].assemb);
 	}
 
 	free(files);
@@ -445,13 +474,83 @@ static char *generate_depfile(struct ucc *const state, const char *fromflag)
 	return buf;
 }
 
+static void remove_macro(struct ucc *const state, const char *a)
+{
+	dynarray_add(&state->args[mode_preproc], ustrprintf("-U%s", a));
+}
+
+static int handle_spanning_fopt(const char *fopt, struct ucc *const state)
+{
+	const char *name;
+	int no = 0;
+	int is_pie = 0;
+
+	assert(!strncmp(fopt, "-f", 2));
+	name = fopt + 2;
+	if(!strncmp(name, "no-", 3)){
+		no = 1;
+		name += 3;
+	}
+
+	if(!strcmp(name, "leading-underscore")){
+		dynarray_add(&state->args[mode_preproc], ustrprintf("-%c__LEADING_UNDERSCORE", no ? 'U' : 'D'));
+		dynarray_add(&state->args[mode_compile], ustrdup(fopt));
+
+		dynarray_add(
+				&state->args[mode_preproc],
+				ustrprintf(
+					"-%c__USER_LABEL_PREFIX__%s",
+					no ? 'U' : 'D',
+					no ? "" : "=_"));
+		return 1;
+	}
+
+	if(!strcmp(name, "pic") || !strcmp(name, "PIC")
+	|| (is_pie = !strcmp(name, "pie") || !strcmp(name, "PIE")))
+	{
+		if(no){
+			remove_macro(state, "__PIC__");
+			remove_macro(state, "__pic__");
+			remove_macro(state, "__PIE__");
+			remove_macro(state, "__pie__");
+		}else{
+			int piclevel = (name[0] == 'P' ? 2 : 1);
+
+			dynarray_add(&state->args[mode_preproc], ustrprintf("-D__PIC__=%d", piclevel));
+			dynarray_add(&state->args[mode_preproc], ustrprintf("-D__pic__=%d", piclevel));
+
+			if(is_pie){
+				dynarray_add(&state->args[mode_preproc], ustrprintf("-D__PIE__=%d", piclevel));
+				dynarray_add(&state->args[mode_preproc], ustrprintf("-D__pie__=%d", piclevel));
+			}
+		}
+
+		dynarray_add(&state->args[mode_compile], ustrdup(fopt));
+		return 1;
+	}
+
+	if(!strcmp(name, "signed-char") || !strcmp(name, "unsigned-char")){
+		const int is_signed = (fopt[2] == 's' || fopt[5] == 'u');
+
+		dynarray_add(&state->args[mode_preproc], ustrprintf(
+					"-%c__CHAR_UNSIGNED__%s",
+					is_signed ? 'U' : 'D',
+					is_signed ? "" : "=1"));
+
+		dynarray_add(&state->args[mode_compile], ustrdup(fopt));
+		return 1;
+	}
+
+	return 0;
+}
+
 static void parse_argv(
-		int argc, char **argv,
+		int argc,
+		char **argv,
 		struct ucc *const state,
-		struct specvars *specvars,
+		struct uccvars *vars,
 		int *const assumptions,
-		int *const current_assumption,
-		const char **const specpath)
+		int *const current_assumption)
 {
 	int had_MD = 0, had_MF = 0;
 	int i;
@@ -516,57 +615,8 @@ static void parse_argv(
 						}
 						continue;
 					}
-					if(!strcmp(argv[i], "-fleading-underscore")
-					|| !strcmp(argv[i], "-fno-leading-underscore"))
-					{
-						const int no = (argv[i][2] == 'n');
-
-						dynarray_add(&state->args[mode_preproc], ustrprintf("-%c__LEADING_UNDERSCORE", no ? 'U' : 'D'));
-						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
-
-						dynarray_add(
-								&state->args[mode_preproc],
-								ustrprintf(
-									"-%c__USER_LABEL_PREFIX__%s",
-									no ? 'U' : 'D',
-									no ? "" : "=_"));
+					if(handle_spanning_fopt(argv[i], state))
 						continue;
-					}
-					if(!strcmp(argv[i], "-fpic")
-					|| !strcmp(argv[i], "-fPIC")
-					|| !strcmp(argv[i], "-fno-pic")
-					|| !strcmp(argv[i], "-fno-PIC"))
-					{
-						const int no = (argv[i][2] == 'n');
-
-						if(no){
-							dynarray_add(&state->args[mode_preproc], ustrprintf("-U__PIC__"));
-							dynarray_add(&state->args[mode_preproc], ustrprintf("-U__pic__"));
-						}else{
-							int piclevel = (argv[i][2] == 'P' ? 2 : 1);
-
-							dynarray_add(&state->args[mode_preproc], ustrprintf("-D__PIC__=%d", piclevel));
-							dynarray_add(&state->args[mode_preproc], ustrprintf("-D__pic__=%d", piclevel));
-						}
-
-						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
-						continue;
-					}
-					if(!strcmp(argv[i], "-fsigned-char")
-					|| !strcmp(argv[i], "-fno-signed-char")
-					|| !strcmp(argv[i], "-funsigned-char")
-					|| !strcmp(argv[i], "-fno-unsigned-char"))
-					{
-						const int is_signed = (argv[i][2] == 's' || argv[i][5] == 'u');
-
-						dynarray_add(&state->args[mode_preproc], ustrprintf(
-									"-%c__CHAR_UNSIGNED__%s",
-									is_signed ? 'U' : 'D',
-									is_signed ? "" : "=1"));
-
-						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
-						continue;
-					}
 
 					/* pull out some that cpp wants too: */
 					if(!strcmp(argv[i], "-ffreestanding")
@@ -594,8 +644,6 @@ static void parse_argv(
 					ADD_ARG(mode_preproc); /* -w */
 				case 'm':
 					ADD_ARG(mode_compile);
-					if(!strcmp(argv[i] + 2, "32") || !strcmp(argv[i] + 2, "64"))
-						ADD_ARG(mode_preproc);
 					continue;
 
 				case 'D':
@@ -662,10 +710,10 @@ arg_ld:
 
 				case 'o':
 					if(argv[i][2]){
-						specvars->output = argv[i] + 2;
+						vars->output = argv[i] + 2;
 					}else{
-						specvars->output = argv[++i];
-						if(!specvars->output)
+						vars->output = argv[++i];
+						if(!vars->output)
 							goto missing_arg;
 					}
 					continue;
@@ -683,10 +731,10 @@ arg_ld:
 					if(!strcmp(strncmp(debugopt, "no-", 3) ? debugopt : debugopt + 3, "column-info")){
 						/* doesn't affect debug output */
 					}else if(!strcmp(argv[i], "-g0")){
-						specvars->debug = 0;
+						vars->debug = 0;
 					}else{
-						/* some debug option - tell spec we're generating debug code */
-						specvars->debug = 1;
+						/* some debug option - we're generating debug code */
+						vars->debug = 1;
 					}
 
 					ADD_ARG(mode_compile);
@@ -696,7 +744,7 @@ arg_ld:
 
 				case 'd':
 					if(!strcmp(argv[i], "-dumpmachine")){
-						state->dumpmachine = 1;
+						vars->dumpmachine = 1;
 						continue;
 					}
 				case 'M':
@@ -783,30 +831,30 @@ word:
 					else if(!strcmp(argv[i], "-pedantic") || !strcmp(argv[i], "-pedantic-errors"))
 						ADD_ARG(mode_compile);
 
-					/* nostdlib = nostartfiles and nodefaultlibs */
+					/* stdlib = startfiles and defaultlibs */
 					else if(!strcmp(argv[i], "-nostdlib"))
-						specvars->startfiles = 0, specvars->defaultlibs = 0;
+						vars->startfiles = 0, vars->defaultlibs = 0;
 					else if(!strcmp(argv[i], "-nostartfiles"))
-						specvars->startfiles = 0;
+						vars->startfiles = 0;
 					else if(!strcmp(argv[i], "-nodefaultlibs"))
-						specvars->defaultlibs = 0;
+						vars->defaultlibs = 0;
 
-					/* nostdinc = nostdlibinc and nobuiltininc */
+					/* stdinc = stdlibinc and builtininc */
 					else if(!strcmp(argv[i], "-nostdinc"))
-						specvars->stdlibinc = 0, specvars->builtininc = 0;
+						vars->stdlibinc = 0, vars->builtininc = 0;
 					else if(!strcmp(argv[i], "-nostdlibinc"))
-						specvars->stdlibinc = 0;
+						vars->stdlibinc = 0;
 					else if(!strcmp(argv[i], "-nobuiltininc"))
-						specvars->builtininc = 0;
+						vars->builtininc = 0;
 
 					else if(!strcmp(argv[i], "-shared"))
-						specvars->shared = 1;
+						vars->shared = 1;
 					else if(!strcmp(argv[i], "-static"))
-						specvars->static_ = 1;
+						vars->static_ = 1;
 					else if(!strcmp(argv[i], "-pie"))
-						specvars->pie = 1;
+						vars->pie = TRI_TRUE;
 					else if(!strcmp(argv[i], "-no-pie"))
-						specvars->pie = 0;
+						vars->pie = TRI_FALSE;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
@@ -844,10 +892,16 @@ word:
 							goto missing_arg;
 						dynarray_add(&state->isystems, sysinc);
 					}
-					else if(specpath && !strcmp(argv[i], "-specs")){
-						*specpath = argv[++i];
-						if(!*specpath)
+					else if(!strcmp(argv[i], "-target")){
+						vars->target = argv[i + 1];
+						if(!vars->target)
 							goto missing_arg;
+
+						ADD_ARG(mode_compile);
+						ADD_ARG(mode_preproc);
+						arg = argv[++i];
+						ADD_ARG(mode_compile);
+						ADD_ARG(mode_preproc);
 					}
 					else if(!strcmp(argv[i], "-time"))
 						time_subcmds = 1;
@@ -858,7 +912,7 @@ word:
 			}
 
 			if(!strcmp(argv[i], "--help")){
-				state->help = 1;
+				vars->help = 1;
 				continue;
 			}
 unrec:
@@ -877,11 +931,11 @@ input:
 	if(had_MD && !had_MF){
 		char *depfile;
 
-		if(specvars->output){
+		if(vars->output){
 			if(state->mode == mode_preproc){
-				depfile = ustrdup(specvars->output);
+				depfile = ustrdup(vars->output);
 			}else{
-				depfile = ustrprintf("%s.d", specvars->output);
+				depfile = ustrprintf("%s.d", vars->output);
 			}
 		}else{
 			depfile = generate_depfile(state, "-MD");
@@ -890,46 +944,6 @@ input:
 		dynarray_add(&state->args[mode_preproc], ustrdup("-MF"));
 		dynarray_add(&state->args[mode_preproc], depfile);
 	}
-}
-
-static void init_spec(
-	struct specopts *specopts,
-	const struct specvars *specvars,
-	const char *specpath)
-{
-	struct cmdpath path;
-	char *resolved_path;
-	FILE *f;
-
-	if(specpath){
-		path.path = specpath;
-		path.type = USE_PATH;
-	}else{
-		cmdpath_initrelative(&path, "ucc.spec", "../ucc.spec");
-	}
-
-	resolved_path = cmdpath_resolve(&path, NULL);
-	f = fopen(resolved_path, "r");
-
-	if(!f){
-		fprintf(stderr, "couldn't open \"%s\": %s\n", resolved_path, strerror(errno));
-
-		spec_default(specopts);
-	}else{
-		struct specerr err = { 0 };
-
-		spec_parse(specopts, specvars, f, &err);
-
-		fclose(f);
-
-		if(err.errstr){
-			fprintf(stderr, "%s:%u: spec error: %s\n",
-					resolved_path, err.errline, err.errstr);
-		}
-	}
-
-	if(resolved_path != specpath)
-		free((char *)resolved_path);
 }
 
 static void merge_states(struct ucc *state, struct ucc *append)
@@ -951,6 +965,178 @@ static void merge_states(struct ucc *state, struct ucc *append)
 	state->syntax_only = append->syntax_only;
 
 	state->mode = append->mode;
+
+	if(!state->as)
+		state->as = "as";
+	if(!state->ld)
+		state->ld = "ld";
+}
+
+static void vars_default(struct uccvars *vars)
+{
+	vars->stdlibinc = 1;
+	vars->builtininc = 1;
+	vars->defaultlibs = 1;
+	vars->startfiles = 1;
+	vars->pie = TRI_UNSET;
+}
+
+static void state_from_triple(
+		struct ucc *state,
+		char ***additional_argv,
+		const struct uccvars *vars,
+		const struct triple *triple)
+{
+	const char *paramshared = "-shared";
+	const char *paramstatic = "-static";
+
+	if(vars->builtininc){
+		struct cmdpath uccinc;
+		cmdpath_initrelative(&uccinc, "include", "../../");
+
+		dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
+		dynarray_add(&state->args[mode_preproc], cmdpath_resolve(&uccinc, NULL));
+	}
+	if(vars->stdlibinc){
+		dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
+		dynarray_add(&state->args[mode_preproc], ustrdup("/usr/include"));
+
+		dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
+		dynarray_add(&state->args[mode_preproc], ustrdup("/usr/local/include"));
+	}
+
+	switch(triple->sys){
+		case SYS_linux:
+		{
+			const char *target = triple_to_str(triple, 0);
+			int is_pie = vars->pie != TRI_FALSE;
+
+			if(is_pie)
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
+
+			if(!vars->static_){
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-dynamic-linker"));
+				dynarray_add(&state->ldflags_pre_user, ustrdup("/lib64/ld-linux-x86-64.so.2"));
+			}else{
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-no-dynamic-linker"));
+			}
+
+			dynarray_add(&state->ldflags_post_user, ustrdup("-L" LINUX_LIBC_PREFIX));
+
+			if(vars->defaultlibs){
+				dynarray_add(&state->ldflags_post_user, ustrdup("-lc"));
+			}
+
+			if(vars->startfiles){
+				char usrlib[64];
+
+				if(is_pie){
+					if(vars->static_)
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/rcrt1.o", target);
+					else
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/Scrt1.o", target);
+				}else{
+					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crt1.o", target);
+				}
+				dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
+
+				{
+					char *dot;
+
+					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crti.o", target);
+					dot = strrchr(usrlib, '.');
+					assert(dot && dot > usrlib);
+
+					dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
+
+					dot[-1] = 'n';
+					dynarray_add(&state->ldflags_post_user, ustrdup(usrlib));
+				}
+			}
+
+			if(vars->stdlibinc){
+				dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
+				dynarray_add(&state->args[mode_preproc], ustrprintf("/usr/include/%s", target));
+			}
+			break;
+		}
+
+		case SYS_freebsd:
+			if(vars->startfiles){
+				dynarray_add(&state->ldflags_pre_user, ustrdup("/usr/lib/crt1.o"));
+				dynarray_add(&state->ldflags_pre_user, ustrdup("/usr/lib/crti.o"));
+				dynarray_add(&state->ldflags_pre_user, ustrdup("/usr/lib/crtbegin.o"));
+				dynarray_add(&state->ldflags_post_user, ustrdup("/usr/lib/crtend.o"));
+				dynarray_add(&state->ldflags_post_user, ustrdup("/usr/lib/crtn.o"));
+			}
+			if(vars->defaultlibs){
+				dynarray_add(&state->ldflags_post_user, ustrdup("-lc"));
+			}
+			break;
+
+		case SYS_darwin:
+		{
+			char *syslibroot = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk";
+
+			dynarray_add(&state->args[mode_compile], ustrdup("-mpreferred-stack-boundary=4"));
+			dynarray_add(&state->args[mode_compile], ustrdup("-malign-is-p2")); /* 2^4 = 16 byte aligned */
+			dynarray_add(additional_argv, ustrdup("-fleading-underscore"));
+			dynarray_add(additional_argv, ustrdup("-fpic"));
+
+			/* no startfiles */
+			if(vars->defaultlibs){
+				dynarray_add(&state->ldflags_post_user, ustrdup("-lSystem"));
+			}
+			if(vars->stdlibinc && syslibroot){
+				dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
+				dynarray_add(&state->args[mode_preproc], ustrprintf("%s/usr/include", syslibroot));
+			}
+
+			if(syslibroot){
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-syslibroot"));
+				dynarray_add(&state->ldflags_pre_user, ustrdup(syslibroot));
+			}
+			dynarray_add(&state->ldflags_pre_user, ustrdup("-macosx_version_min"));
+			dynarray_add(&state->ldflags_pre_user, ustrdup("10.8"));
+
+			if(vars->debug && vars->output){
+				state->post_link = ustrprintf("dsymutil %s", vars->output);
+			}
+
+			switch(vars->pie){
+				case TRI_UNSET: /* default for 10.7 and later */
+				case TRI_TRUE:
+					dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
+					break;
+				case TRI_FALSE:
+					dynarray_add(&state->ldflags_pre_user, ustrdup("-no_pie"));
+					break;
+			}
+
+			paramshared = "-dylib";
+			break;
+		}
+
+		case SYS_cygwin:
+			dynarray_add(additional_argv, ustrdup("-fleading-underscore"));
+			break;
+	}
+
+	if(vars->shared)
+		dynarray_add(&state->ldflags_pre_user, ustrdup(paramshared));
+	if(vars->static_)
+		dynarray_add(&state->ldflags_pre_user, ustrdup(paramstatic));
+
+	/*
+	switch(triple->arch){
+		case ARCH_x86_64:
+		case ARCH_i386:
+			break;
+		case ARCH_arm:
+			ucc_initflags="-fshort-enums $ucc_initflags";
+			break;
+	}
+	*/
 }
 
 static void usage(void)
@@ -963,6 +1149,7 @@ static void usage(void)
 	fprintf(stderr, "  -fuse-cpp=...: Specify a preprocessor executable to use\n");
 	fprintf(stderr, "  -time: Output time for each stage\n");
 	fprintf(stderr, "  -wrapper exe,arg1,...: Prefix stage commands with this executable and arguments\n");
+	fprintf(stderr, "  -target target: Compile as-if for the given target (specified as a partial target-triple)\n");
 	fprintf(stderr, "  -dumpmachine: Display the current machine's detected target triple\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Input options\n");
@@ -970,7 +1157,6 @@ static void usage(void)
 	fprintf(stderr, "  -xcpp-output: Treat input as preprocessor output\n");
 	fprintf(stderr, "  -xasm, -xassembler: Treat input as assembly\n");
 	fprintf(stderr, "  -xnone: Revert to inferring input based on file extension\n");
-	fprintf(stderr, "  -specs file: Specify spec file (contains default flags for stages, etc)\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Output options\n");
 	fprintf(stderr, "  -o file: Output file\n");
@@ -1001,49 +1187,44 @@ int main(int argc, char **argv)
 	int i;
 	struct ucc state = { 0 };
 	struct ucc argstate = { 0 };
-	struct specopts specopts = { 0 };
-	struct specvars specvars = { 0 };
+	struct uccvars vars = { 0 };
 	int *assumptions;
 	int current_assumption;
-	const char *specpath = NULL;
 	int output_given;
-
-	argstate.mode = mode_link;
-	current_assumption = -1;
-	assumptions = umalloc((argc - 1) * sizeof(*assumptions));
-
-	specvars.stdlibinc = 1;
-	specvars.builtininc = 1;
-	specvars.startfiles = 1;
-	specvars.defaultlibs = 1;
-
-	switch(platform_sys()){
-		case PLATFORM_DARWIN: /* default for 10.7 and later */
-		case PLATFORM_LINUX:
-			specvars.pie = 1;
-		default:
-			break;
-	}
-
-	umask(0077); /* prevent reading of the temporary files we create */
+	struct triple triple;
+	char **additional_argv = NULL;
 
 	argv0 = argv[0];
-
 	if(argc <= 1){
 usage:
 		fprintf(stderr, "Usage: %s [options] input(s)\n", *argv);
 		return 1;
 	}
 
+	argstate.mode = mode_link;
+	current_assumption = -1;
+	assumptions = umalloc((argc - 1) * sizeof(*assumptions));
+
+	vars_default(&vars);
+
+	umask(0077); /* prevent reading of the temporary files we create */
+
 	/* we don't want the initial temporary fname "/tmp/tmp.xyz" tracked
 	 * or showing up in error messages */
 	dynarray_add(&state.args[mode_compile], ustrdup("-fno-track-initial-fname"));
 
-	/* we must parse argv first for things like -nostdinc.
-	 * then we can parse the spec file, then we need to
-	 * append argv's inputs, etc onto the state from the spec file */
-	parse_argv(argc - 1, argv + 1, &argstate, &specvars, assumptions, &current_assumption, &specpath);
-	if(argstate.help){
+	/* we must parse argv first for things like -nostdinc and -target.
+	 * then we can initialise based on -target, then we need to
+	 * append argv's inputs, etc onto the state from -target
+	 *
+	 * e.g.
+	 *   cc -fsigned-char -target x86_64-linux ...
+	 *
+	 * -fsigned-char still takes effect, so target defaults don't override based
+	 * on position on the command line
+	 */
+	parse_argv(argc - 1, argv + 1, &argstate, &vars, assumptions, &current_assumption);
+	if(vars.help){
 		fprintf(stderr, "dumping help:\n");
 		fprintf(stderr, "--- cpp ---\n");
 		preproc("--help", "/dev/null", NULL, 1);
@@ -1053,28 +1234,39 @@ usage:
 		usage();
 		return 2;
 	}
-	if(argstate.dumpmachine){
-		printf("%s\n", platform_name());
+
+	if(vars.target){
+		const char *bad;
+		if(!triple_parse(vars.target, &triple, &bad)){
+			fprintf(stderr, "couldn't parse target triple: %s\n", bad);
+			return 1;
+		}
+	}else{
+		if(!triple_default(&triple)){
+			fprintf(stderr, "couldn't get target triple\n");
+			return 1;
+		}
+	}
+	if(vars.dumpmachine){
+		printf("%s\n", triple_to_str(&triple, /* no vendor */0));
 		return 0;
 	}
 
-	output_given = !!specvars.output;
-	if(!specvars.output && argstate.mode == mode_link)
-		specvars.output = "a.out";
+	output_given = !!vars.output;
+	if(!vars.output && argstate.mode == mode_link)
+		vars.output = "a.out";
 
-	init_spec(&specopts, &specvars, specpath);
+	state_from_triple(&state, &additional_argv, &vars, &triple);
+	if(additional_argv){
+		parse_argv(
+				dynarray_count(additional_argv),
+				additional_argv,
+				&state,
+				&vars,
+				assumptions,
+				&current_assumption);
+	}
 
-	parse_argv(
-			dynarray_count(specopts.initflags),
-			specopts.initflags,
-			&state,
-			&specvars,
-			assumptions,
-			&current_assumption,
-			/*specpath*/NULL);
-
-	/* ensure argument state is appended to (spec)state,
-	 * allowing it to override things like initflags */
 	merge_states(&state, &argstate);
 
 	{
@@ -1086,10 +1278,10 @@ usage:
 		if(state.syntax_only){
 			if(output_given || state.mode != mode_link)
 				die("-%c specified in syntax-only mode",
-						specvars.output ? 'o' : MODE_ARG_CH(state.mode));
+						vars.output ? 'o' : MODE_ARG_CH(state.mode));
 
 			state.mode = mode_compile;
-			specvars.output = "/dev/null";
+			vars.output = "/dev/null";
 		}
 
 		if(ninputs == 0)
@@ -1097,15 +1289,15 @@ usage:
 	}
 
 
-	if(specvars.output && state.mode == mode_preproc && !strcmp(specvars.output, "-"))
-		specvars.output = NULL;
+	if(vars.output && state.mode == mode_preproc && !strcmp(vars.output, "-"))
+		vars.output = NULL;
 	/* other case is -S, which is handled in rename_files */
 
 	if(state.backend){
 		/* -emit=... stops early */
 		state.mode = mode_compile;
 		if(!output_given)
-			specvars.output = "-";
+			vars.output = "-";
 	}
 
 	if(state.isystems){
@@ -1123,18 +1315,13 @@ usage:
 		dynarray_add_tmparray(&state.args[mode_preproc], state.includes);
 
 	/* got arguments, a mode, and files to link */
-	process_files(
-			state.mode,
-			state.inputs,
-			assumptions,
-			specvars.output,
-			state.args,
-			state.backend,
-			&specopts);
+	process_files(&state, assumptions, vars.output);
 
 	for(i = 0; i < 4; i++)
 		dynarray_free(char **, state.args[i], free);
 	dynarray_free(char **, state.inputs, NULL);
+	dynarray_free(char **, state.ldflags_pre_user, free);
+	dynarray_free(char **, state.ldflags_post_user, free);
 	free(assumptions);
 
 	return 0;

@@ -9,10 +9,9 @@
 #include <sys/time.h>
 #include <errno.h>
 
-#include "ucc_ext.h"
-#include "ucc.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/io.h"
 
 #include "ucc.h"
 #include "ucc_ext.h"
@@ -30,7 +29,7 @@ void ucc_ext_cmds_show(int s)
 void ucc_ext_cmds_noop(int n)
 { noop = n; }
 
-static int runner(struct cmdpath *path, char **args, int return_ec)
+static int runner(struct cmdpath *path, char **args, int return_ec, const char *to_remove)
 {
 	pid_t pid;
 	struct timeval time_start, time_end;
@@ -124,12 +123,17 @@ static int runner(struct cmdpath *path, char **args, int return_ec)
 				fprintf(stderr, "gettimeofday(): %s\n", strerror(errno));
 
 			if(WIFEXITED(status) && (i = WEXITSTATUS(status)) != 0){
+				if(to_remove)
+					remove(to_remove);
 				if(!return_ec)
 					die("%s returned %d", path->path, i);
 			}else if(WIFSIGNALED(status)){
 				int sig = WTERMSIG(status);
 
 				fprintf(stderr, "%s caught signal %d\n", path->path, sig);
+
+				if(to_remove)
+					remove(to_remove);
 
 				/* exit with propagating status */
 				exit(128 + sig);
@@ -159,7 +163,7 @@ void execute(char *path, char **args)
 	cmdpath.path = path;
 	cmdpath.type = USE_PATH;
 
-	runner(&cmdpath, args, 0);
+	runner(&cmdpath, args, 0, NULL);
 }
 
 void rename_or_move(char *old, char *new)
@@ -190,16 +194,14 @@ void rename_or_move(char *old, char *new)
 
 	shpath.path = "sh";
 	shpath.type = USE_PATH;
-	runner(&shpath, fixed, 0);
+	runner(&shpath, fixed, 0, new);
 
 	free(cmd);
 }
 
-void cat(char *fnin, const char *fnout, int append)
+void cat_fnames(char *fnin, const char *fnout, int append)
 {
 	FILE *in, *out;
-	char buf[1024];
-	size_t n;
 
 	if(show){
 		fprintf(stderr, "cat %s%s%s\n",
@@ -223,14 +225,11 @@ void cat(char *fnin, const char *fnout, int append)
 		out = stdout;
 	}
 
-	while((n = fread(buf, sizeof *buf, sizeof buf, in)) > 0)
-		if(fwrite(buf, sizeof *buf, n, out) != n)
-			die("write():");
+	if(cat(in, out))
+		die("write():");
 
-	if(ferror(in))
-		die("read():");
-
-	fclose(in);
+	if(fclose(in))
+		die("close():");
 
 	if(fnout && fclose(out) == EOF)
 		die("close():");
@@ -254,7 +253,7 @@ static int runner_single_arg(
 
 	dynarray_add(&all, in);
 
-	ret = runner(path, all, return_ec);
+	ret = runner(path, all, return_ec, out);
 
 	dynarray_free(char **, all, NULL);
 
@@ -293,7 +292,7 @@ int compile(char *in, const char *out, char **args, int return_ec)
 	return runner_single_arg(&cc1path, in, out, args, return_ec);
 }
 
-void assemble(char *in, const char *out, char **args, char *as)
+void assemble(char *in, const char *out, char **args, const char *as)
 {
 	char **copy = NULL;
 	struct cmdpath aspath;
@@ -308,7 +307,7 @@ void assemble(char *in, const char *out, char **args, char *as)
 	dynarray_free(char **, copy, NULL);
 }
 
-void link_all(char **objs, const char *out, char **args, char *ld)
+void link_all(char **objs, const char *out, char **args, const char *ld)
 {
 	char **all = NULL;
 	struct cmdpath ldpath;
@@ -324,18 +323,7 @@ void link_all(char **objs, const char *out, char **args, char *ld)
 	ldpath.path = ld;
 	ldpath.type = USE_PATH;
 
-	runner(&ldpath, all, 0);
+	runner(&ldpath, all, 0, out);
 
 	dynarray_free(char **, all, NULL);
-}
-
-void dsym(char *exe)
-{
-	struct cmdpath dsymutil;
-	char *args[] = { exe, NULL };
-
-	dsymutil.path = "dsymutil";
-	dsymutil.type = USE_PATH;
-
-	runner(&dsymutil, args, 0);
 }

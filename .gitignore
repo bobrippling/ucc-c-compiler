@@ -3,7 +3,7 @@
 
 tags
 
-src/config.mk
+src/config.custom.mk
 src/config_as.h
 src/ucc.spec
 lib/config.mk

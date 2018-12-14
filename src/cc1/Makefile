@@ -8,11 +8,11 @@ OBJ_UTIL = \
 	../util/alloc.o ../util/util.o ../util/io.o ../util/platform.o \
 	../util/dynarray.o ../util/dynmap.o ../util/where.o \
 	../util/str.o ../util/std.o ../util/escape.o ../util/warn.o \
-	../util/math.o ../util/tmpfile.o \
+	../util/math.o ../util/tmpfile.o ../util/triple.o
 
 OBJ_REST = \
 	str.o num.o label.o strings.o \
-	warn.o fopt.o visibility.o pass1.o cc1_out_ctx.o \
+	warn.o fopt.o visibility.o pass1.o cc1_out_ctx.o target.o \
 	decl.o attribute.o decl_init.o funcargs.o expr.o stmt.o \
 	btype.o type.o type_is.o type_nav.o op.o c_types.o c_funcs.o \
 	tokconv.o tokenise.o \

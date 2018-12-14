@@ -23,6 +23,7 @@
 #include "fold.h"
 
 #include "parse_expr.h"
+#include "cc1_target.h"
 
 static void parse_attr_bracket_chomp(int had_open_paren);
 
@@ -319,7 +320,7 @@ static attribute *parse_attr_visibility(symtable *symtab, const char *ident)
 	if(asciz){
 		char *str = cstring_detach(asciz);
 
-		if(visibility_parse(&v, str)){
+		if(visibility_parse(&v, str, cc1_target_details.as.supports_visibility_protected)){
 			attr = attribute_new(attr_visibility);
 			attr->bits.visibility = v;
 		}else{

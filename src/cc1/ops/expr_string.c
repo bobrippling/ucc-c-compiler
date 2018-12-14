@@ -9,6 +9,7 @@
 #include "../str.h"
 #include "../out/lbl.h"
 #include "../type_nav.h"
+#include "../cc1_out.h"
 
 #include "expr_string.h"
 #include "expr_val.h"
@@ -31,7 +32,7 @@ void fold_expr_str(expr *e, symtable *stab)
 			type_qualify(
 				type_nav_btype(
 					cc1_type_nav,
-					strlit->cstr->type == CSTRING_WIDE ? type_wchar : type_nchar),
+					strlit->cstr->type == CSTRING_WIDE ? TYPE_WCHAR() : type_nchar),
 				e->bits.strlit.is_func ? qual_const : qual_none),
 			sz);
 }
@@ -108,9 +109,7 @@ expr *expr_new_str(struct cstring *str, where *w, symtable *stab)
 
 const out_val *gen_expr_style_str(const expr *e, out_ctx *octx)
 {
-	extern FILE *cc_out[];
-
-	literal_print(cc_out[0], e->bits.strlit.lit_at.lit->cstr);
+	literal_print(stdout, e->bits.strlit.lit_at.lit->cstr);
 
 	UNUSED_OCTX();
 }

@@ -63,6 +63,7 @@ X("unused-function", unused_function)
 X("unused-return-value", unused_fnret)
 X("unused-label", unused_label)
 X("unused-local-typedef", unused_local_typedef)
+ALIAS("unused-local-typedefs", unused_local_typedef) /* gcc compat */
 X("unused-parameter", unused_param)
 X("unused-variable", unused_var)
 
