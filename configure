@@ -166,8 +166,8 @@ then
 	"$srcdir"/tools/link_r "$srcdir"/src src
 	ln -sf "$srcdir"/Makefile
 
-	# we don't want the  new config definitions to write through the links:
-	rm src/config.mk src/ucc.spec src/config_as.h
+	# we don't want the new config definitions to write through the links:
+	rm src/config.custom.mk src/ucc.spec src/config_as.h
 	echo 'done'
 fi
 

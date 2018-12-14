@@ -1,5 +1,5 @@
 PWD = $(shell pwd)
-CONFIGURE_OUTPUT = src/config.mk
+CONFIGURE_OUTPUT = src/config.custom.mk
 
 .PHONY: bootstrap clean-bootstrap
 
