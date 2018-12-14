@@ -15,11 +15,11 @@ const char *proc_state_str(struct myproc *a)
 
 int max_unam_len, max_gnam_len;
 
-void noop()
+void noop(char *s, ...)
 {
 }
 
-const char *machine_proc_display_line_default(struct myproc *p)
+int machine_proc_display_line_default(struct myproc *p)
 {
 	static char buf[64];
 
@@ -46,7 +46,9 @@ b(){ return 'b'; }
 c(){ return 'c'; }
 d(){ return 'd'; }
 
-verify(int a, int b, int x, int c, int d)
+_Noreturn void abort(void);
+
+void verify(int a, int b, int x, int c, int d)
 {
 	if(a != 'a') abort();
 	if(b != 'b') abort();
