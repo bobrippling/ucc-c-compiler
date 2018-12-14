@@ -464,6 +464,11 @@ static char *generate_depfile(struct ucc *const state, const char *fromflag)
 	return buf;
 }
 
+static void remove_macro(struct ucc *const state, const char *a)
+{
+	dynarray_add(&state->args[mode_preproc], ustrprintf("-U%s", a));
+}
+
 static int handle_spanning_fopt(const char *fopt, struct ucc *const state)
 {
 	const char *name;
@@ -491,8 +496,8 @@ static int handle_spanning_fopt(const char *fopt, struct ucc *const state)
 
 	if(!strcmp(name, "pic") || !strcmp(name, "PIC")){
 		if(no){
-			dynarray_add(&state->args[mode_preproc], ustrprintf("-U__PIC__"));
-			dynarray_add(&state->args[mode_preproc], ustrprintf("-U__pic__"));
+			remove_macro(state, "__PIC__");
+			remove_macro(state, "__pic__");
 		}else{
 			int piclevel = (name[0] == 'P' ? 2 : 1);
 
