@@ -1,14 +1,13 @@
 all: src
-	make -C lib
 
-src: src/config.mk
+src:
 	make -C src
+
+lib: lib/config.mk
+	make -C lib
 
 deps:
 	make -Csrc deps
-
-src/config.mk:
-	echo ucc needs configuring >&2; exit 1
 
 clean:
 	make -C src clean
@@ -21,7 +20,7 @@ cleantest:
 	make -Ctest clean
 # no need to clean test2
 
-check: all
+check: all lib
 	cd test2; ./run_tests -q -i ignores .
 	# test/ pending
 

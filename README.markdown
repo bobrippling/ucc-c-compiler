@@ -90,12 +90,13 @@ Building
 --------
 
 ```sh
-./configure [CC=...] [CFLAGS=...] [LDFLAGS=...]
-make [check]
+make
 ```
 
-When the `feature/target-triple` branch is merged, `./configure` won't be necessary and `ucc` will support a `-target <target>` argument to specify the target system/architecture/ABI.
-
+If you plan on building the shim libc, or customising `CFLAGS`:
+```sh
+./configure [CC=...] [CFLAGS=...] [LDFLAGS=...]
+```
 
 Installing
 ----------
