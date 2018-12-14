@@ -466,6 +466,76 @@ static char *generate_depfile(struct ucc *const state, const char *fromflag)
 	return buf;
 }
 
+static void remove_macro(struct ucc *const state, const char *a)
+{
+	dynarray_add(&state->args[mode_preproc], ustrprintf("-U%s", a));
+}
+
+static int handle_spanning_fopt(const char *fopt, struct ucc *const state)
+{
+	const char *name;
+	int no = 0;
+	int is_pie = 0;
+
+	assert(!strncmp(fopt, "-f", 2));
+	name = fopt + 2;
+	if(!strncmp(name, "no-", 3)){
+		no = 1;
+		name += 3;
+	}
+
+	if(!strcmp(name, "leading-underscore")){
+		dynarray_add(&state->args[mode_preproc], ustrprintf("-%c__LEADING_UNDERSCORE", no ? 'U' : 'D'));
+		dynarray_add(&state->args[mode_compile], ustrdup(fopt));
+
+		dynarray_add(
+				&state->args[mode_preproc],
+				ustrprintf(
+					"-%c__USER_LABEL_PREFIX__%s",
+					no ? 'U' : 'D',
+					no ? "" : "=_"));
+		return 1;
+	}
+
+	if(!strcmp(name, "pic") || !strcmp(name, "PIC")
+	|| (is_pie = !strcmp(name, "pie") || !strcmp(name, "PIE")))
+	{
+		if(no){
+			remove_macro(state, "__PIC__");
+			remove_macro(state, "__pic__");
+			remove_macro(state, "__PIE__");
+			remove_macro(state, "__pie__");
+		}else{
+			int piclevel = (name[0] == 'P' ? 2 : 1);
+
+			dynarray_add(&state->args[mode_preproc], ustrprintf("-D__PIC__=%d", piclevel));
+			dynarray_add(&state->args[mode_preproc], ustrprintf("-D__pic__=%d", piclevel));
+
+			if(is_pie){
+				dynarray_add(&state->args[mode_preproc], ustrprintf("-D__PIE__=%d", piclevel));
+				dynarray_add(&state->args[mode_preproc], ustrprintf("-D__pie__=%d", piclevel));
+			}
+		}
+
+		dynarray_add(&state->args[mode_compile], ustrdup(fopt));
+		return 1;
+	}
+
+	if(!strcmp(name, "signed-char") || !strcmp(name, "unsigned-char")){
+		const int is_signed = (fopt[2] == 's' || fopt[5] == 'u');
+
+		dynarray_add(&state->args[mode_preproc], ustrprintf(
+					"-%c__CHAR_UNSIGNED__%s",
+					is_signed ? 'U' : 'D',
+					is_signed ? "" : "=1"));
+
+		dynarray_add(&state->args[mode_compile], ustrdup(fopt));
+		return 1;
+	}
+
+	return 0;
+}
+
 static void parse_argv(
 		int argc,
 		char **argv,
@@ -537,57 +607,8 @@ static void parse_argv(
 						}
 						continue;
 					}
-					if(!strcmp(argv[i], "-fleading-underscore")
-					|| !strcmp(argv[i], "-fno-leading-underscore"))
-					{
-						const int no = (argv[i][2] == 'n');
-
-						dynarray_add(&state->args[mode_preproc], ustrprintf("-%c__LEADING_UNDERSCORE", no ? 'U' : 'D'));
-						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
-
-						dynarray_add(
-								&state->args[mode_preproc],
-								ustrprintf(
-									"-%c__USER_LABEL_PREFIX__%s",
-									no ? 'U' : 'D',
-									no ? "" : "=_"));
+					if(handle_spanning_fopt(argv[i], state))
 						continue;
-					}
-					if(!strcmp(argv[i], "-fpic")
-					|| !strcmp(argv[i], "-fPIC")
-					|| !strcmp(argv[i], "-fno-pic")
-					|| !strcmp(argv[i], "-fno-PIC"))
-					{
-						const int no = (argv[i][2] == 'n');
-
-						if(no){
-							dynarray_add(&state->args[mode_preproc], ustrprintf("-U__PIC__"));
-							dynarray_add(&state->args[mode_preproc], ustrprintf("-U__pic__"));
-						}else{
-							int piclevel = (argv[i][2] == 'P' ? 2 : 1);
-
-							dynarray_add(&state->args[mode_preproc], ustrprintf("-D__PIC__=%d", piclevel));
-							dynarray_add(&state->args[mode_preproc], ustrprintf("-D__pic__=%d", piclevel));
-						}
-
-						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
-						continue;
-					}
-					if(!strcmp(argv[i], "-fsigned-char")
-					|| !strcmp(argv[i], "-fno-signed-char")
-					|| !strcmp(argv[i], "-funsigned-char")
-					|| !strcmp(argv[i], "-fno-unsigned-char"))
-					{
-						const int is_signed = (argv[i][2] == 's' || argv[i][5] == 'u');
-
-						dynarray_add(&state->args[mode_preproc], ustrprintf(
-									"-%c__CHAR_UNSIGNED__%s",
-									is_signed ? 'U' : 'D',
-									is_signed ? "" : "=1"));
-
-						dynarray_add(&state->args[mode_compile], ustrdup(argv[i]));
-						continue;
-					}
 
 					/* pull out some that cpp wants too: */
 					if(!strcmp(argv[i], "-ffreestanding")
