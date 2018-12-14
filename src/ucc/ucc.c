@@ -473,6 +473,7 @@ static int handle_spanning_fopt(const char *fopt, struct ucc *const state)
 {
 	const char *name;
 	int no = 0;
+	int is_pie = 0;
 
 	assert(!strncmp(fopt, "-f", 2));
 	name = fopt + 2;
@@ -494,15 +495,24 @@ static int handle_spanning_fopt(const char *fopt, struct ucc *const state)
 		return 1;
 	}
 
-	if(!strcmp(name, "pic") || !strcmp(name, "PIC")){
+	if(!strcmp(name, "pic") || !strcmp(name, "PIC")
+	|| (is_pie = !strcmp(name, "pie") || !strcmp(name, "PIE")))
+	{
 		if(no){
 			remove_macro(state, "__PIC__");
 			remove_macro(state, "__pic__");
+			remove_macro(state, "__PIE__");
+			remove_macro(state, "__pie__");
 		}else{
 			int piclevel = (name[0] == 'P' ? 2 : 1);
 
 			dynarray_add(&state->args[mode_preproc], ustrprintf("-D__PIC__=%d", piclevel));
 			dynarray_add(&state->args[mode_preproc], ustrprintf("-D__pic__=%d", piclevel));
+
+			if(is_pie){
+				dynarray_add(&state->args[mode_preproc], ustrprintf("-D__PIE__=%d", piclevel));
+				dynarray_add(&state->args[mode_preproc], ustrprintf("-D__pie__=%d", piclevel));
+			}
 		}
 
 		dynarray_add(&state->args[mode_compile], ustrdup(fopt));
