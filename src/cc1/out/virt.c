@@ -510,31 +510,34 @@ void v_unreserve_reg(out_ctx *octx, const struct vreg *r)
 	octx->reserved_regs[impl_reg_to_idx(r)]--;
 }
 
-enum flag_cmp v_inv_cmp(enum flag_cmp cmp, int invert_eq)
+#define CASE_SWAP(from, to) \
+		case flag_ ## from: return flag_ ## to; \
+		case flag_ ## to: return flag_ ## from
+
+enum flag_cmp v_not_cmp(enum flag_cmp cmp)
 {
 	switch(cmp){
-#define OPPOSITE2(from, to)    \
-		case flag_ ## from:        \
-			return flag_ ## to; \
-
-#define OPPOSITE(from, to) \
-		OPPOSITE2(from, to);   \
-		OPPOSITE2(to, from)
-
-		OPPOSITE(le, gt);
-		OPPOSITE(lt, ge);
-		OPPOSITE(overflow, no_overflow);
-
-		/*OPPOSITE(z, nz);
-		OPPOSITE(nz, z);*/
-#undef OPPOSITE
-#undef OPPOSITE2
-
-		case flag_eq:
-		case flag_ne:
-			if(invert_eq)
-				return (cmp == flag_eq ? flag_ne : flag_eq);
-			return cmp;
+		CASE_SWAP(le, gt);
+		CASE_SWAP(lt, ge);
+		CASE_SWAP(eq, ne);
+		CASE_SWAP(overflow, no_overflow);
 	}
 	assert(0 && "invalid op");
 }
+
+enum flag_cmp v_commute_cmp(enum flag_cmp cmp)
+{
+	switch(cmp){
+		CASE_SWAP(le, ge);
+		CASE_SWAP(lt, gt);
+
+		case flag_eq: return flag_eq;
+		case flag_ne: return flag_ne;
+
+		case flag_overflow:
+		case flag_no_overflow:
+			assert(0 && "shouldn't be called for [no_]overflow");
+	}
+	assert(0 && "invalid op");
+}
+#undef CASE_SWAP

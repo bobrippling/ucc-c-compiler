@@ -1600,7 +1600,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				 * i.e. 5 == 2 is the same as 2 == 5, but
 				 *      5 >= 2 is not the same as 2 >= 5
 				 */
-				cmp = v_inv_cmp(cmp, /*invert_eq:*/0);
+				cmp = v_commute_cmp(cmp);
 			}
 
 			return v_new_flag(
