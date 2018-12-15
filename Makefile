@@ -18,10 +18,10 @@ cleanall: clean
 
 cleantest:
 	make -Ctest clean
-# no need to clean test2
+# no need to clean test
 
 check: all lib
-	cd test2; ./run_tests -q -i ignores .
+	cd test; ./run_tests -q -i ignores .
 	# test/ pending
 
 ALL_SRC = $(shell find . -iname '*.[ch]')
