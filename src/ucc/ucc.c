@@ -1094,6 +1094,16 @@ static void state_from_triple(
 				}
 
 				{
+					struct cmdpath dso;
+					char *resolved;
+
+					cmdpath_initrelative(&dso, "../../dsohandle.o", "../../dsohandle.o");
+					resolved = cmdpath_resolve(&dso, NULL);
+
+					dynarray_add(&state->ldflags_pre_user, resolved);
+				}
+
+				{
 					char *dot;
 
 					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crti.o", target);
