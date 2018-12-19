@@ -232,13 +232,13 @@ static void io_fin_section(FILE *section, FILE *out, const char *name)
 	xfprintf(out, ".section %s\n", name);
 
 	if(desc)
-		xfprintf(out, "%s%s:\n", SECTION_BEGIN, desc);
+		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, desc);
 
 	if(cat(section, out))
 		ccdie("concatenating section tmpfile:");
 
 	if(desc)
-		xfprintf(out, "%s%s:\n", SECTION_END, desc);
+		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_END, desc);
 
 	if(fclose(section))
 		ccdie("closing section tmpfile:");
