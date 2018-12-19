@@ -1153,24 +1153,17 @@ static struct DIE_compile_unit *dwarf_cu(
 static long dwarf_info_header(void)
 {
 #define VAR_LEN "info_len"
-#define VAR_OFF "abrv_off"
-
 	if(cc1_target_details.dwarf_indirect_section_links){
 		asm_out_section(SECTION_DBG_INFO,
 				/* -4: don't include the length spec itself */
 				"%s" VAR_LEN " = %s%s%s - %s%s%s - 4\n"
-				"%s" VAR_OFF " = %s%s%s - %s%s%s\n"
 				"\t.long %s" VAR_LEN "\n"
 				"\t.short 2 # DWARF 2\n"
-				"\t.long " VAR_OFF "  # abbrev offset\n"
+				"\t.long 0  # abbrev offset\n"
 				"\t.byte %d  # sizeof(void *)\n",
 				cc1_target_details.as.privatelbl_prefix,
 				cc1_target_details.as.privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
 				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO
-				,
-				cc1_target_details.as.privatelbl_prefix,
-				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN /* FIXME: should this be _END? */, SECTION_DESC_DBG_ABBREV,
-				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_ABBREV
 				,
 				cc1_target_details.as.privatelbl_prefix
 				,
@@ -1188,6 +1181,7 @@ static long dwarf_info_header(void)
 	}
 
 	return 4 + 2 + 4 + 1;
+#undef VAR_LEN
 }
 
 static void dwarf_attr_decl(
