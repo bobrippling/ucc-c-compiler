@@ -329,7 +329,7 @@ static void static_val(enum section_builtin sec, type *ty, expr *e)
 
 	/* offset in bytes, no mul needed */
 	if(k.offset)
-		asm_out_section(sec, " + %ld", k.offset);
+		asm_out_section(sec, " + %" NUMERIC_FMT_D, k.offset);
 	asm_out_section(sec, "\n");
 }
 

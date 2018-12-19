@@ -37,6 +37,7 @@ enum section_builtin asm_builtin_section_from_str(const char *);
 
 FILE *asm_section_file(enum section_builtin);
 
+ucc_printflike(2, 3)
 void asm_out_section(enum section_builtin, const char *fmt, ...);
 void asm_out_sectionv(enum section_builtin t, const char *fmt, va_list l);
 

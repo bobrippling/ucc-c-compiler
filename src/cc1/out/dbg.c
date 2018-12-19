@@ -1166,10 +1166,14 @@ static long dwarf_info_header(void)
 				"\t.byte %d  # sizeof(void *)\n",
 				cc1_target_details.as.privatelbl_prefix,
 				cc1_target_details.as.privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
-				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO,
-				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN /* FIXME: should this be _END? */, SECTION_DESC_DBG_ABBREV,
-				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_ABBREV,
+				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO
+				,
 				cc1_target_details.as.privatelbl_prefix,
+				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN /* FIXME: should this be _END? */, SECTION_DESC_DBG_ABBREV,
+				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_ABBREV
+				,
+				cc1_target_details.as.privatelbl_prefix
+				,
 				platform_word_size());
 	}else{
 		asm_out_section(SECTION_DBG_INFO,
