@@ -71,12 +71,20 @@ struct ucc
 	const char *post_link;
 };
 
+enum tristate
+{
+	TRI_UNSET,
+	TRI_FALSE,
+	TRI_TRUE
+};
+
 struct uccvars
 {
 	const char *target;
 	const char *output;
 
-	int static_, shared, startfiles, debug, stdlib, stdinc, pie;
+	int static_, shared, startfiles, debug, stdlib, stdinc;
+	enum tristate pie;
 	int help, dumpmachine;
 };
 
@@ -789,9 +797,9 @@ word:
 					else if(!strcmp(argv[i], "-static"))
 						vars->static_ = 1;
 					else if(!strcmp(argv[i], "-pie"))
-						vars->pie = 1;
+						vars->pie = TRI_TRUE;
 					else if(!strcmp(argv[i], "-no-pie"))
-						vars->pie = 0;
+						vars->pie = TRI_FALSE;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
@@ -914,14 +922,7 @@ static void vars_default(struct uccvars *vars)
 	vars->stdinc = 1;
 	vars->stdlib = 1;
 	vars->startfiles = 1;
-
-	switch(platform_sys()){
-		case SYS_darwin: /* default for 10.7 and later */
-		case SYS_linux:
-			vars->pie = 1;
-		default:
-			break;
-	}
+	vars->pie = TRI_UNSET;
 }
 
 static void state_from_triple(
@@ -977,8 +978,13 @@ static void state_from_triple(
 				dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
 			}
 
-			if(vars->pie){
-				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
+			switch(vars->pie){
+				case TRI_UNSET:
+				case TRI_TRUE:
+					dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
+					break;
+				case TRI_FALSE:
+					break;
 			}
 
 			if(vars->stdinc){
@@ -1030,10 +1036,14 @@ static void state_from_triple(
 				state->post_link = ustrprintf("dsymutil %s", vars->output);
 			}
 
-			if(vars->pie){
-				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
-			}else{
-				dynarray_add(&state->ldflags_pre_user, ustrdup("-no_pie"));
+			switch(vars->pie){
+				case TRI_UNSET: /* default for 10.7 and later */
+				case TRI_TRUE:
+					dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
+					break;
+				case TRI_FALSE:
+					dynarray_add(&state->ldflags_pre_user, ustrdup("-no_pie"));
+					break;
 			}
 
 			paramshared = "-dylib";
