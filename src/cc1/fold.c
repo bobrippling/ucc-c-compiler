@@ -1347,29 +1347,37 @@ void fold_decl_global(decl *d, symtable *stab)
 		fold_global_func(d);
 }
 
-void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
+int fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 {
 	if(!e)
-		return;
+		return 0;
 
 	UCC_ASSERT(e->tree_type, "no tree type");
 
 	/* fatal ones first */
 
-	if((chk & FOLD_CHK_ALLOW_VOID) == 0 && type_is_void(e->tree_type))
-		die_at(&e->where, "%s requires non-void expression", desc);
+	if((chk & FOLD_CHK_ALLOW_VOID) == 0 && type_is_void(e->tree_type)){
+		warn_at_print_error(&e->where, "%s requires non-void expression", desc);
+		fold_had_error = 1;
+		return 1;
+	}
 
 	if(chk & FOLD_CHK_NO_ST_UN){
 		struct_union_enum_st *sue;
 
 		if((sue = type_is_s_or_u(e->tree_type))){
-			die_at(&e->where, "%s involved in %s",
+			warn_at_print_error(&e->where, "%s involved in %s",
 					sue_str(sue), desc);
+			fold_had_error = 1;
+			return 1;
 		}
 	}
 
-	if(chk & FOLD_CHK_NO_BITFIELD && expr_is_struct_bitfield(e))
-		die_at(&e->where, "bitfield in %s", desc);
+	if(chk & FOLD_CHK_NO_BITFIELD && expr_is_struct_bitfield(e)){
+		warn_at_print_error(&e->where, "bitfield in %s", desc);
+		fold_had_error = 1;
+		return 1;
+	}
 
 	if(chk & (FOLD_CHK_ARITHMETIC | FOLD_CHK_INTEGRAL)){
 		int (*chkfn)(type *) = chk & FOLD_CHK_ARITHMETIC
@@ -1384,6 +1392,7 @@ void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 						? "arithmetic"
 						: "integral",
 					type_to_str(e->tree_type));
+			return 1;
 		}
 	}
 
@@ -1416,9 +1425,14 @@ void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 		consty k;
 		const_fold((expr *)e, &k);
 
-		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
-			die_at(&e->where, "integral constant expected for %s", desc);
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num)){
+			warn_at_print_error(&e->where, "integral constant expected for %s", desc);
+			fold_had_error = 1;
+			return 1;
+		}
 	}
+
+	return 0;
 }
 
 void fold_stmt(stmt *t)

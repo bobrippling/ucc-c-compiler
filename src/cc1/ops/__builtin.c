@@ -976,7 +976,8 @@ static void fold_arith_overflow(expr *e, symtable *stab)
 		FOLD_EXPR(e->funcargs[i], stab);
 
 	for(i = 0; i < 2; i++)
-		fold_check_expr(e->funcargs[i], FOLD_CHK_INTEGRAL, name);
+		if(fold_check_expr(e->funcargs[i], FOLD_CHK_INTEGRAL, name))
+			return;
 
 	last_e = e->funcargs[2];
 	last = type_is_ptr(last_e->tree_type);

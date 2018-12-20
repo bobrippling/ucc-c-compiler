@@ -79,7 +79,7 @@ void flow_end(
 
 void fold_stmt_if(stmt *s)
 {
-	fold_check_expr(s->expr, FOLD_CHK_BOOL, s->f_str());
+	(void)!fold_check_expr(s->expr, FOLD_CHK_BOOL, s->f_str());
 
 	fold_stmt(s->lhs);
 	if(s->rhs)

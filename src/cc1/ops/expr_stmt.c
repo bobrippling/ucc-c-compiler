@@ -28,9 +28,12 @@ void fold_expr_stmt(expr *e, symtable *stab)
 		expr *last_expr = last_stmt->expr;
 
 		e->tree_type = last_expr->tree_type;
-		fold_check_expr(e,
+		if(fold_check_expr(e,
 				FOLD_CHK_ALLOW_VOID,
-				"({ ... }) statement");
+				"({ ... }) statement"))
+		{
+			return;
+		}
 
 		switch(expr_is_lval(last_expr)){
 			case LVALUE_NO:

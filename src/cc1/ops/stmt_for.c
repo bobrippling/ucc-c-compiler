@@ -20,7 +20,7 @@ void stmt_for_got_decls(stmt *s)
 void fold_stmt_for(stmt *s)
 {
 	if(s->flow->for_while){
-		fold_check_expr(
+		(void)!fold_check_expr(
 				s->flow->for_while,
 				FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
 				"for-test");

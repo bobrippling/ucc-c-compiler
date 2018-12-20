@@ -265,7 +265,8 @@ static void check_arg_voidness_and_nonnulls(
 
 		ARG_BUF(buf, i, sp);
 
-		fold_check_expr(arg, FOLD_CHK_NO_ST_UN, buf);
+		if(fold_check_expr(arg, FOLD_CHK_NO_ST_UN, buf))
+			continue;
 
 		if(i < count_decl && (nonnulls & (1 << i))
 		&& type_is_ptr(args_from_decl->arglist[i]->ref)

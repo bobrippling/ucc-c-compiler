@@ -12,7 +12,7 @@ const char *str_stmt_case()
 void fold_stmt_case(stmt *t)
 {
 	FOLD_EXPR(t->expr, t->symtab);
-	fold_check_expr(t->expr, FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I, "case");
+	(void)!fold_check_expr(t->expr, FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I, "case");
 
 	fold_stmt_and_add_to_curswitch(t);
 }

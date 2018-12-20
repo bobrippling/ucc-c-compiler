@@ -102,9 +102,12 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 
 			m->val = FOLD_EXPR(e, stab);
 
-			fold_check_expr(e,
+			if(fold_check_expr(e,
 					FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
-					"enum member");
+					"enum member"))
+			{
+				continue;
+			}
 
 			const_fold_integral(e, &n);
 

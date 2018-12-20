@@ -1114,14 +1114,19 @@ void fold_expr_op(expr *e, symtable *stab)
 			where_str(&e->where));
 
 	FOLD_EXPR(e->lhs, stab);
-	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_desc);
+	if(fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_desc)){
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	if(e->rhs){
 		FOLD_EXPR(e->rhs, stab);
-		fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_desc);
+		if(fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_desc)){
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
+		}
 
 		if(op_float_check(e)){
-			/* short circuit - TODO: error expr */
 			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
 			return;
 		}
@@ -1165,11 +1170,13 @@ void fold_expr_op(expr *e, symtable *stab)
 				ICE("bad unary op %s", op_desc);
 
 			case op_not:
-				fold_check_expr(e->lhs,
-						FOLD_CHK_NO_ST_UN,
-						op_desc);
-
 				e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+				if(fold_check_expr(e->lhs,
+						FOLD_CHK_NO_ST_UN,
+						op_desc))
+				{
+					return;
+				}
 				break;
 
 			case op_plus:
@@ -1183,9 +1190,11 @@ void fold_expr_op(expr *e, symtable *stab)
 				else
 					chk |= FOLD_CHK_ARITHMETIC;
 
-				fold_check_expr(e->lhs, chk, op_to_str(e->bits.op.op));
-
 				e->tree_type = type_unqualify(e->lhs->tree_type);
+
+				if(fold_check_expr(e->lhs, chk, op_to_str(e->bits.op.op))){
+					return;
+				}
 				break;
 			}
 		}

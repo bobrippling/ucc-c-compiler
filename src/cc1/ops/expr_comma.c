@@ -31,18 +31,24 @@ static void fold_const_expr_comma(expr *e, consty *k)
 void fold_expr_comma(expr *e, symtable *stab)
 {
 	e->lhs = fold_expr_nonstructdecay(e->lhs, stab);
-	fold_check_expr(
+	e->rhs = fold_expr_nonstructdecay(e->rhs, stab);
+	e->tree_type = e->rhs->tree_type;
+
+	if(fold_check_expr(
 			e->lhs,
 			FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
-			"comma-expr");
+			"comma-expr"))
+	{
+		return;
+	}
 
-	e->rhs = fold_expr_nonstructdecay(e->rhs, stab);
-	fold_check_expr(
+	if(fold_check_expr(
 			e->rhs,
 			FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
-			"comma-expr");
-
-	e->tree_type = e->rhs->tree_type;
+			"comma-expr"))
+	{
+		return;
+	}
 
 	if(!e->lhs->freestanding
 	&& !e->expr_comma_synthesized

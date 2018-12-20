@@ -77,6 +77,7 @@ int const_expr_and_zero(struct expr *e);
 int const_expr_and_non_zero(struct expr *e);
 
 void const_fold_integral(struct expr *e, numeric *);
+int const_fold_integral_try(struct expr *e, numeric *);
 integral_t const_fold_val_i(struct expr *e);
 
 void const_ensure_num_or_memaddr(

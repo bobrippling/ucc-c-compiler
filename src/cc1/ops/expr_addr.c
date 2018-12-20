@@ -72,13 +72,19 @@ void fold_expr_addr(expr *e, symtable *stab)
 			if(sym){
 				decl *d = sym->decl;
 
-				if((d->store & STORE_MASK_STORE) == store_register)
-					die_at(&e->lhs->where, "can't take the address of register");
+				if((d->store & STORE_MASK_STORE) == store_register){
+					warn_at_print_error(&e->lhs->where, "can't take the address of register");
+					fold_had_error = 1;
+				}
 			}
 		}
 
-		fold_check_expr(e->lhs, FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_BITFIELD,
-				"address-of");
+		if(fold_check_expr(e->lhs,
+					FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_BITFIELD,
+					"address-of"))
+		{
+			return;
+		}
 	}
 }
 
