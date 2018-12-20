@@ -41,9 +41,9 @@ $ucc -o/dev/null -c "$@" "$f" 2>$e
 r=$?
 
 # check for abort
-if [ $r -eq 134 ]
+if test $r -gt 5
 then
-	echo >&2 "abort: ucc on $@"
+	echo >&2 "unexpected ucc exit code '$r'"
 	exit 1
 fi
 
