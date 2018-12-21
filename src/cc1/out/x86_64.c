@@ -183,13 +183,15 @@ static const char *x86_fpreg_str(unsigned i)
 static const char *x86_suffix(type *ty)
 {
 	if(type_is_floating(ty)){
+		int is32bit = IS_32_BIT();
+
 		switch(type_primitive(ty)){
 			case type_float:
-				return "ss";
+				return IS_32_BIT() ? "s" : "ss";
 			case type_double:
-				return "sd";
+				return IS_32_BIT() ? "l" : "sd";
 			case type_ldouble:
-				ICE("TODO: ldouble");
+				return IS_32_BIT() ? "p" : (ICE("TODO: ldouble"), NULL);
 			default:
 				ICE("bad float");
 		}
@@ -1580,6 +1582,9 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		{
 			char b1[VAL_STR_SZ], b2[VAL_STR_SZ];
 
+			/* x86_64: addss, addsd, etc
+			 * x86:    fadds, faddl, faddp, etc */
+
 			out_asm(octx, "%s%s %s, %s",
 					opc, x86_suffix(l->t),
 					impl_val_str_r(b1, r, 0),
@@ -1972,17 +1977,36 @@ static const out_val *x86_fp_conv(
 	if(vp->type == V_CONST_F)
 		vp = x86_load_fp(octx, vp);
 
-	out_asm(octx, "cvt%s%s2%s%s %s, %%%s",
-			truncate ? "t" : "",
-			sfrom, sto,
-			/* if we're doing an int-float conversion,
-			 * see if we need to do 64 or 32 bit
-			 */
-			int_ty ? type_size(int_ty, NULL) == 8 ? "q" : "l" : "",
-			impl_val_str_r(vbuf, vp, vp->type == V_REG_SPILT),
-			x86_reg_str(r, tto));
+	if(IS_32_BIT()){
+		/* fild{,l,ll} -> word, long, long long */
+		const char *ext = "";
 
-	return v_new_reg(octx, vp, tto, r);
+		switch(type_ref_size(int_ty, NULL)){
+			case 1:
+				ICE("TODO: sign ext. to word"); /* TODO */
+			case 2:
+				break;
+			case 4: ext = "l"; break;
+			case 8: ext = "ll"; break;
+		}
+
+		/* vp is one of st(0...7) - TODO */
+
+		out_asm("fild%s %s", ext, vstack_str());
+		return todo;
+	}else{
+		out_asm(octx, "cvt%s%s2%s%s %s, %%%s",
+				truncate ? "t" : "",
+				sfrom, sto,
+				/* if we're doing an int-float conversion,
+				 * see if we need to do 64 or 32 bit
+				 */
+				int_ty ? type_size(int_ty, NULL) == 8 ? "q" : "l" : "",
+				impl_val_str_r(vbuf, vp, vp->type == V_REG_SPILT),
+				x86_reg_str(r, tto));
+
+		return v_new_reg(octx, vp, tto, r);
+	}
 }
 
 static const out_val *x86_xchg_lfi(
