@@ -1,0 +1,20 @@
+Lsection_begin_text:
+Lsection_end_text:
+
+Lsection_begin_bss:
+
+rw:
+.space 4
+
+.comm _rw_common,4,2
+
+Lsection_end_bss:
+
+Lsection_begin_rodata:
+
+ro:
+.space 4
+
+.comm _ro_common,4,2
+
+Lsection_end_rodata:

@@ -24,7 +24,8 @@ enum
 
 	colour_err  = colour_red,
 	colour_warn = colour_orange,
-	colour_note = colour_blue
+	colour_note = colour_blue,
+	colour_other = colour_white
 };
 
 static const char *const colour_strs[] = {
@@ -48,6 +49,7 @@ static const char *vwarn_colour(enum warn_type ty)
 		case VWARN_ERR: i = colour_err; break;
 		case VWARN_WARN: i = colour_warn; break;
 		case VWARN_NOTE: i = colour_note; break;
+		case VWARN_OTHER: i = colour_other; break;
 	}
 	return colour_strs[i];
 }
@@ -159,6 +161,7 @@ static const char *vwarn_str(enum warn_type ty)
 		case VWARN_ERR: return "error";
 		case VWARN_WARN: return "warning";
 		case VWARN_NOTE: return "note";
+		case VWARN_OTHER: return "other";
 	}
 	return NULL;
 }
@@ -168,11 +171,16 @@ void vwarn(const struct where *w, enum warn_type ty,
 {
 	include_bt(stderr);
 
-	warn_colour(1, ty);
 
 	w = default_where(w);
 
-	fprintf(stderr, "%s: %s: ", where_str(w), vwarn_str(ty));
+	warn_colour(1, VWARN_OTHER);
+	fprintf(stderr, "%s: ", where_str(w));
+
+	warn_colour(1, ty);
+	fprintf(stderr, "%s: ", vwarn_str(ty));
+
+	warn_colour(0, ty);
 	vfprintf(stderr, fmt, l);
 
 	warning_count++;
@@ -183,8 +191,6 @@ void vwarn(const struct where *w, enum warn_type ty,
 	}else{
 		fputc('\n', stderr);
 	}
-
-	warn_colour(0, ty);
 
 	warn_show_line(w);
 }

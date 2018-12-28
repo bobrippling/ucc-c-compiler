@@ -1,0 +1,66 @@
+ there
+yo
+
+x:
+.byte 104
+.byte 101
+.byte 108
+.byte 108
+.byte 111
+.zero 1
+
+p:
+.quad str.2
+
+joined:
+.quad str.3
+
+joined_a:
+.byte 104
+.byte 105
+.byte 116
+.byte 119
+.byte 111
+.byte 0
+
+pWIDE1:
+.quad wstr.5
+
+pWIDE2:
+.quad wstr.5
+
+pWIDE3:
+.quad wstr.5
+
+aWIDE1:
+.long 104
+.long 105
+.long 116
+.long 119
+.long 111
+.long 0
+
+aWIDE2:
+.long 104
+.long 105
+.long 116
+.long 119
+.long 111
+.long 0
+
+aWIDE3:
+.long 104
+.long 105
+.long 116
+.long 119
+.long 111
+.long 0
+
+str.3:
+.ascii "yosecond\000"
+
+wstr.5:
+.long 121, 111, 115, 101, 99, 111, 110, 100, 0
+
+str.2:
+.ascii "yo\000"

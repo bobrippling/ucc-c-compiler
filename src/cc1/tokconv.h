@@ -26,8 +26,9 @@ int curtok_is_decl_store(void);
 
 int curtok_in_list(va_list l);
 
-void token_get_current_str(
-		char **ps, size_t *pl, int *pwide, where *w);
+/* callers should check .is_wide matches and if .length is not wanted,
+ * that the string is nul-terminated */
+struct cstring *token_get_current_str(where *);
 
 enum op_type curtok_to_compound_op(void);
 int          curtok_is_compound_assignment(void);

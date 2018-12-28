@@ -21,6 +21,7 @@
 #include "label.h"
 #include "type_is.h"
 #include "vla.h"
+#include "fopt.h"
 
 
 #define RW_TEST(decl, var)                      \
@@ -62,10 +63,29 @@ static void dump_symtab(symtable *st, unsigned indent)
 
 	for(di = st->decls; di && *di; di++){
 		decl *d = *di;
+
 		STAB_INDENT();
-		fprintf(stderr, "  %s, %s\n",
+		fprintf(stderr, "  %s, %s %p",
 				d->sym ? sym_to_str(d->sym->type) : "<nosym>",
-				d->spel);
+				decl_to_str(d),
+				(void *)d);
+
+		if(d->proto)
+			fprintf(stderr, ", prev %p", (void *)d->proto);
+		if(d->impl)
+			fprintf(stderr, ", next %p", (void *)d->impl);
+
+		if(type_is(d->ref, type_func)){
+			decl *impl = decl_impl(d);
+			if(impl && impl != d)
+				fprintf(stderr, ", impl %p", (void *)impl);
+		}else{
+			decl *init = decl_impl(d);
+			if(init && init != d)
+				fprintf(stderr, ", init-decl %p", (void *)init);
+		}
+
+		fputc('\n', stderr);
 	}
 
 	for(si = st->children; si && *si; si++)
@@ -96,25 +116,31 @@ void symtab_check_static_asserts(symtable *stab)
 		sa->checked = 1;
 
 		FOLD_EXPR(sa->e, sa->scope);
-		if(!type_is_integral(sa->e->tree_type))
-			die_at(&sa->e->where,
+		if(!type_is_integral(sa->e->tree_type)){
+			warn_at_print_error(&sa->e->where,
 					"static assert: not an integral expression (%s)",
-					sa->e->f_str());
+					expr_str_friendly(sa->e));
+			fold_had_error = 1;
+			continue;
+		}
 
 		const_fold(sa->e, &k);
 
-		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
-			die_at(&sa->e->where,
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num)){
+			warn_at_print_error(&sa->e->where,
 					"static assert: not an integer constant expression (%s)",
-					sa->e->f_str());
+					expr_str_friendly(sa->e));
+			fold_had_error = 1;
+			continue;
+		}
 
 		if(!k.bits.num.val.i){
 			warn_at_print_error(&sa->e->where, "static assertion failure: %s", sa->s);
 			fold_had_error = 1;
 
-		}else if(fopt_mode & FOPT_SHOW_STATIC_ASSERTS){
+		}else if(cc1_fopt.show_static_asserts){
 			fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
-					where_str(&sa->e->where), sa->e->f_str(), sa->s);
+					where_str(&sa->e->where), expr_str_friendly(sa->e), sa->s);
 		}
 	}
 }
@@ -264,7 +290,7 @@ void symtab_fold_decls(symtable *tab)
 		  all_idents[nidents-1].bits.decl = d;  \
 		}while(0)
 
-	if(fopt_mode & FOPT_DUMP_SYMTAB && !tab->parent)
+	if(cc1_fopt.dump_symtab && !tab->parent)
 		dump_symtab(tab, 0);
 
 	symtab_iter_children(tab, symtab_fold_decls);
@@ -282,7 +308,7 @@ void symtab_fold_decls(symtable *tab)
 			NEW_DECL(d);
 
 		/* asm rename checks */
-		if(d->sym && d->sym->type != sym_global){
+		if(d->sym && d->sym->type != sym_global && !type_is(d->ref, type_func)){
 			switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 				case store_register:
 				case store_extern:
@@ -312,6 +338,18 @@ void symtab_fold_decls(symtable *tab)
 		{
 			cc1_warn_at(&d->where, undef_internal,
 					"function declared static but not defined");
+		}
+
+		if(!tab->parent && decl_unused_and_internal(d)){
+			int is_fn = !!type_is(d->ref, type_func);
+			unsigned char *pwarn = (is_fn
+					? &cc1_warning.unused_function
+					: &cc1_warning.unused_var);
+
+			cc1_warn_at_w(&d->where, pwarn,
+					"unused %s '%s'",
+					is_fn ? "function" : "variable",
+					d->spel);
 		}
 	}
 
@@ -384,8 +422,12 @@ void symtab_fold_decls(symtable *tab)
 						decl *db = b->bits.decl;
 
 						const int a_func = !!type_is(da->ref, type_func);
+						const int a_tdef = (da->store & STORE_MASK_STORE) == store_typedef;
+						const int b_tdef = (db->store & STORE_MASK_STORE) == store_typedef;
 
-						if(!!type_is(db->ref, type_func) != a_func){
+						if(a_tdef != b_tdef){
+							clash = "mismatching";
+						}else if(!!type_is(db->ref, type_func) != a_func){
 							clash = "mismatching";
 						}else switch(type_cmp(da->ref, db->ref, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
 							/* ^ type_cmp, since decl_cmp checks storage,
@@ -445,14 +487,9 @@ void symtab_fold_decls(symtable *tab)
 			}
 
 			if(clash){
-				/* XXX: note */
-				char wbuf[WHERE_BUF_SIZ];
-
-				die_at(b->w,
-						"%s definitions of \"%s\"\n"
-						"%s: note: previous definition",
-						clash, IDENT_LOC_SPEL(a),
-						where_str_r(wbuf, a->w));
+				warn_at_print_error(b->w, "%s definitions of \"%s\"", clash, IDENT_LOC_SPEL(a));
+				note_at(a->w, "previous definition");
+				fold_had_error = 1;
 			}
 		}
 	}
@@ -474,10 +511,12 @@ void symtab_chk_labels(symtable *stab)
 		{
 			stmt **si;
 
-			if(!l->complete)
-				die_at(l->pw, "label '%s' undefined", l->spel);
-			else if(!l->uses && !l->unused)
-				cc1_warn_at(l->pw, lbl_unused, "unused label '%s'", l->spel);
+			if(!l->complete){
+				warn_at_print_error(&l->where, "label '%s' undefined", l->spel);
+				fold_had_error = 1;
+			}else if(!l->uses && !l->unused){
+				cc1_warn_at(&l->where, unused_label, "unused label '%s'", l->spel);
+			}
 
 			for(si = l->jumpers; si && *si; si++){
 				stmt *s = *si;

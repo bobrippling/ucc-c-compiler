@@ -9,6 +9,7 @@
 
 #include "cc1_where.h"
 #include "cc1.h" /* cc1_std */
+#include "str.h"
 
 #include "tokenise.h"
 #include "tokconv.h"
@@ -20,12 +21,16 @@
 
 #include "fold.h"
 
+#include "ops/expr_identifier.h"
+
 struct stmt_ctx
 {
 	stmt *continue_target,
 	     *break_target,
 	     *switch_target;
 	symtable *scope;
+
+	int parsing_unbraced_if; /* dangling-else detection */
 };
 
 static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
@@ -91,15 +96,28 @@ static stmt *parse_if(const struct stmt_ctx *const ctx)
 {
 	stmt *t = stmt_new_wrapper(if, ctx->scope);
 	struct stmt_ctx subctx = *ctx;
+	where else_locn;
 
 	EAT(token_if);
+
+	subctx.parsing_unbraced_if = (curtok != token_open_block);
 
 	parse_test_init_expr(t, &subctx);
 
 	t->lhs = parse_stmt(&subctx);
 
-	if(accept(token_else))
+	if(accept_where(token_else, &else_locn)){
+		if(ctx->parsing_unbraced_if){
+			/* if we are already parsing an if-statement that hasn't got braces and run
+			 * into an else while pasing an inner-if statement, then we have a dangling
+			 * else
+			 */
+			cc1_warn_at(&else_locn, dangling_else, "dangling else statement");
+		}
+
+		subctx.parsing_unbraced_if = 0; /* parsing the else, can't be ambiguous now */
 		t->rhs = parse_stmt(&subctx);
+	}
 
 	return t;
 }
@@ -227,6 +245,7 @@ void parse_static_assert(symtable *scope)
 {
 	while(accept(token__Static_assert)){
 		static_assert *sa = umalloc(sizeof *sa);
+		struct cstring *str;
 
 		sa->scope = scope;
 
@@ -234,7 +253,13 @@ void parse_static_assert(symtable *scope)
 		sa->e = PARSE_EXPR_NO_COMMA(scope, 0);
 		EAT(token_comma);
 
-		token_get_current_str(&sa->s, NULL, NULL, NULL);
+		str = parse_asciz_str();
+		if(!str){
+			expr_free(sa->e);
+			free(sa);
+			continue;
+		}
+		sa->s = cstring_detach(str);
 
 		EAT(token_string);
 		EAT(token_close_paren);
@@ -264,7 +289,7 @@ static stmt *parse_label(const struct stmt_ctx *ctx)
 {
 	where w;
 	char *lbl;
-	attribute *attr = NULL, *ai;
+	attribute **attr = NULL, **ai;
 	stmt *lblstmt;
 
 	where_cc1_current(&w);
@@ -279,18 +304,45 @@ static stmt *parse_label(const struct stmt_ctx *ctx)
 	memcpy_safe(&lblstmt->where, &w);
 
 	parse_add_attr(&attr, ctx->scope);
-	for(ai = attr; ai; ai = ai->next)
-		if(ai->type == attr_unused)
+
+	for(ai = attr; ai && *ai; ai++)
+		if((*ai)->type == attr_unused)
 			lblstmt->bits.lbl.unused = 1;
 		else
-			cc1_warn_at(&ai->where,
+			cc1_warn_at(&(*ai)->where,
 					lbl_attr_unknown,
 					"ignoring attribute \"%s\" on label",
-					attribute_to_str(ai));
+					attribute_to_str(*ai));
 
-	attribute_free(attr);
+	attribute_array_release(&attr);
 
 	return parse_label_next(lblstmt, ctx);
+}
+
+static void parse_local_labels(const struct stmt_ctx *const ctx)
+{
+	while(accept(token___label__)){
+		for(;;){
+			char *spel = token_current_spel();
+			where loc;
+			int created;
+
+			where_cc1_current(&loc);
+			EAT(token_identifier);
+
+			created = symtab_label_add_local(ctx->scope, spel, &loc); 
+
+			if(!created){
+				warn_at_print_error(&loc, "local label \"%s\" already defined", spel);
+				fold_had_error = 1;
+				free(spel);
+			}
+
+			if(accept(token_semicolon))
+				break;
+			EAT(token_comma);
+		}
+	}
 }
 
 static stmt *parse_stmt_and_decls(
@@ -304,6 +356,8 @@ static stmt *parse_stmt_and_decls(
 	code_stmt->symtab->internal_nest = nested_scope;
 
 	subctx.scope = code_stmt->symtab;
+
+	parse_local_labels(&subctx);
 
 	parse_static_assert(subctx.scope);
 
@@ -523,8 +577,15 @@ flow:
 		}
 
 		case token_open_block:
-			t = parse_stmt_block(ctx->scope, ctx);
+		{
+			struct stmt_ctx subctx = *ctx;
+
+			/* we're in a block - if we find an else in here, it's unambiguous */
+			subctx.parsing_unbraced_if = 0;
+
+			t = parse_stmt_block(ctx->scope, &subctx);
 			break;
+		}
 
 		case token_switch:
 			t = parse_switch(ctx);
@@ -578,10 +639,22 @@ flow:
 
 symtable_gasm *parse_gasm(void)
 {
-	symtable_gasm *g = umalloc(sizeof *g);
+	symtable_gasm *g;
+	struct cstring *cstr;
+	where w;
+
+	where_cc1_current(&w);
 
 	EAT(token_open_paren);
-	token_get_current_str(&g->asm_str, NULL, NULL, NULL);
+
+	cstr = parse_asciz_str();
+	if(!cstr)
+		return NULL;
+
+	g = umalloc(sizeof *g);
+	g->asm_str = cstring_detach(cstr);
+	memcpy_safe(&g->where, &w);
+
 	EAT(token_string);
 	EAT(token_close_paren);
 	EAT(token_semicolon);

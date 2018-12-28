@@ -58,8 +58,10 @@ struct symtable
 	 * { int i; 5; { int j; } }
 	 *
 	 * internal_nest marks if it is so, for duplicate checking
+	 *
+	 * transparent marks C99 for-statements creating a new scope
+	 * - see symtab_new_transparent()
 	 */
-	unsigned stack_used : 1; /* function symtab - used stack? */
 
 	decl *in_func; /* for r/w checks on args and return-type checks */
 
@@ -82,6 +84,7 @@ struct symtable
 typedef struct symtable_gasm symtable_gasm;
 struct symtable_gasm
 {
+	where where;
 	decl *before; /* the decl this occurs before - NULL if last */
 	char *asm_str;
 };
@@ -127,10 +130,29 @@ void symtab_add_to_scope(symtable *, decl *);
 void symtab_add_sue(symtable *, struct struct_union_enum_st *);
 #define symtab_decls(stab) ((stab)->decls)
 
-sym  *symtab_search(symtable *, const char *);
-decl *symtab_search_d(symtable *, const char *, symtable **pin);
-decl *symtab_search_d_exclude(
-		symtable *, const char *, symtable **pin, decl *exclude);
+struct symtab_entry
+{
+	enum
+	{
+		SYMTAB_ENT_DECL,
+		SYMTAB_ENT_ENUM
+	} type;
+	union
+	{
+		decl *decl;
+		struct
+		{
+			struct struct_union_enum_st *sue;
+			struct enum_member *memb;
+		} enum_member;
+	} bits;
+	symtable *owning_symtab;
+};
+
+int symtab_search(symtable *, const char *, decl *exclude, struct symtab_entry *)
+	ucc_nonnull((2, 4));
+
+int symtab_is_transparent(symtable const *);
 
 const char *sym_to_str(enum sym_type);
 
@@ -138,6 +160,11 @@ const char *sym_to_str(enum sym_type);
 
 /* labels */
 struct label *symtab_label_find_or_new(symtable *, char *, where *);
+
+/* returns 1 if successful, 0 if said label already exists
+ * if 0 is returned, spel is not consumed */
+int symtab_label_add_local(symtable *, char *spel/*consumed*/, where *);
+
 void symtab_label_add(symtable *, struct label *);
 
 unsigned sym_hash(const sym *);

@@ -1,8 +1,0 @@
-main:
-	jmp .Lblk.4
-.Lblk.3: # b
-.Lblk.4: # c
-.Lblk.1: # epilogue
-	# ret
-.Lblk.2: # a
-	jmp .Lblk.3

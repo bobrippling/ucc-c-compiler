@@ -1,0 +1,7 @@
+f:
+	jmp Lblk.4
+Lblk.4:
+Lblk.5:
+.Lblk.3: # a
+	# implicit jump to next line
+	jmp Lblk.4

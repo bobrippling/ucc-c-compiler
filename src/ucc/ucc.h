@@ -3,7 +3,7 @@
 
 extern const char *argv0;
 extern char *wrapper; /* -wrapper gdb,--args */
-extern int fsystem_cpp;
+extern const char *binpath_cpp;
 void die(const char *s, ...);
 
 #endif

@@ -11,8 +11,8 @@
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
 #include "../util/platform.h"
-#include "../util/std.h"
 #include "../util/limits.h"
+#include "../util/macros.h"
 
 #include "main.h"
 #include "macro.h"
@@ -20,49 +20,66 @@
 #include "include.h"
 #include "directive.h"
 #include "deps.h"
-
-#define FNAME_BUILTIN "<builtin>"
-#define FNAME_CMDLINE "<command-line>"
+#include "feat.h"
 
 static const struct
 {
 	const char *nam, *val;
+	int is_fn;
+
 } initial_defs[] = {
 	/* standard */
-	{ "__unix__",       "1"  },
-	{ "__STDC__",       "1"  },
+	{ "__unix__",       "1", 0 },
+	{ "__STDC__",       "1", 0 },
 
-	{ "__STDC_NO_ATOMICS__" , "1" }, /* _Atomic */
-	{ "__STDC_NO_THREADS__" , "1" }, /* _Thread_local */
-	{ "__STDC_NO_COMPLEX__", "1" }, /* _Complex */
+#if !UCC_HAS_ATOMICS
+	{ "__STDC_NO_ATOMICS__" , "1", 0 }, /* _Atomic */
+#endif
+#if !UCC_HAS_THREADS
+	{ "__STDC_NO_THREADS__" , "1", 0 }, /* _Thread_local */
+#endif
+#if !UCC_HAS_COMPLEX
+	{ "__STDC_NO_COMPLEX__", "1", 0 }, /* _Complex */
+#endif
+#if !UCC_HAS_VLA
+	{ "__STDC_NO_VLA__", "1", 0 },
+#endif
 
-	/*{ "__STDC_NO_VLA__", "1" }, vla are implemented */
-
-#define TYPE(ty, c) { "__" #ty "_TYPE__", #c  }
+#define TYPE(ty, c) { "__" #ty "_TYPE__", #c, 0 }
 
 	TYPE(SIZE, unsigned long),
 	TYPE(PTRDIFF, unsigned long),
 	TYPE(WINT, unsigned),
 
-	{ "__ORDER_LITTLE_ENDIAN__", "1234" },
-	{ "__ORDER_BIG_ENDIAN__",    "4321" },
-	{ "__ORDER_PDP_ENDIAN__",    "3412" },
+	{ "__ORDER_LITTLE_ENDIAN__", "1234", 0 },
+	{ "__ORDER_BIG_ENDIAN__",    "4321", 0 },
+	{ "__ORDER_PDP_ENDIAN__",    "3412", 0 },
 
 	/* non-standard */
-	{ "__BLOCKS__",     "1"  },
+	{ "__BLOCKS__",     "1", 0 },
 
 	/* custom */
-	{ "__UCC__",        "1"  },
+	{ "__UCC__",        "1", 0 },
 
 	/* magic */
-	{ "__FILE__",       NULL },
-	{ "__LINE__",       NULL },
-	{ "__COUNTER__",    NULL },
-	{ "__DATE__",       NULL },
-	{ "__TIME__",       NULL },
-	{ "__TIMESTAMP__",  NULL },
+#define SPECIAL(x) { x, NULL, 0 }
+	SPECIAL("__FILE__"),
+	SPECIAL("__LINE__"),
+	SPECIAL("__COUNTER__"),
+	SPECIAL("__DATE__"),
+	SPECIAL("__TIME__"),
+	SPECIAL("__TIMESTAMP__"),
 
-	{ NULL,             NULL }
+#undef SPECIAL
+#define SPECIAL(x) { x, NULL, 1 }
+	SPECIAL("__has_feature"),
+	SPECIAL("__has_extension"),
+	SPECIAL("__has_attribute"),
+	SPECIAL("__has_builtin"),
+	SPECIAL("__has_include"),
+#undef SPECIAL
+
+	{ NULL, NULL, 0 }
 };
 
 struct loc loc_tok;
@@ -70,6 +87,7 @@ char *current_fname;
 char *current_line_str;
 int show_current_line = 1;
 int no_output = 0;
+int missing_header_error = 1;
 
 char cpp_time[16], cpp_date[16], cpp_timestamp[64];
 
@@ -78,6 +96,8 @@ char **cd_stack = NULL;
 int option_line_info = 1;
 int option_trigraphs = 0, option_digraphs = 0;
 static int option_trace = 0;
+
+enum c_std cpp_std = STD_C99;
 
 enum wmode wmode =
 	  WWHITESPACE
@@ -97,29 +117,13 @@ static const struct
 	const char *warn, *desc;
 	enum wmode or_mask;
 } warns[] = {
-	{ "traditional", "warn about # in the first column", WTRADITIONAL },
-	{ "undef", "warn about undefined macros in #if and #undef", WUNDEF_IN_IF | WUNDEF_NDEF },
-	{ "undef-in-if", "warn about undefined macros in #if/elif", WUNDEF_IN_IF },
-	{ "undef-noop", "warn about #undef <undefined macro>", WUNDEF_NDEF },
-	{ "unused-macros", "warn about unused macros", WUNUSED },
-	{ "redef", "warn about redefining macros", WREDEF },
-	{ "whitespace", "warn about no-whitespace after #define func(a)", WWHITESPACE },
-	{ "trailing", "warn about tokens after #else/endif", WTRAILING },
-	{ "empty-arg", "warn on empty argument to single-arg macro", WEMPTY_ARG },
-	{ "paste", "warn when pasting doesn't make a token", WPASTE },
-	{ "uncalled-macro", "warn when a function-macro is mentioned without ()", WUNCALLED_FN },
-	{ "#warning", "emit #warnings", WHASHWARNING },
-	{ "backslash-newline-space", "space between backslash and newline", WBACKSLASH_SPACE_NEWLINE },
 
-	{ "everything", "everything", ~0 },
-
-	{
-		"all", "Most warnings", WREDEF | WWHITESPACE | WTRAILING | WPASTE |
-			WFINALESCAPE | WMULTICHAR | WHASHWARNING
-	},
+#define X(arg, desc, flag) { arg, desc, flag },
+#include "warnings.def"
+#undef X
 };
 
-#define ITER_WARNS(j) for(j = 0; j < sizeof(warns)/sizeof(*warns); j++)
+#define ITER_WARNS(j) for(j = 0; j < countof(warns); j++)
 
 void trace(const char *fmt, ...)
 {
@@ -154,16 +158,48 @@ char *dirname_pop()
 	return dynarray_pop(char *, &cd_stack);
 }
 
+void set_current_fname(const char *new)
+{
+	free(current_fname);
+	current_fname = ustrdup(new);
+}
+
+static struct tm *current_time(int *const using_env)
+{
+	const char *source_date_epoch = getenv("SOURCE_DATE_EPOCH");
+	struct tm *build_time;
+	time_t t;
+
+	*using_env = !!source_date_epoch;
+
+	if (source_date_epoch) {
+		unsigned long epoch;
+		char *end;
+
+		errno = 0;
+		epoch = strtoul(source_date_epoch, &end, 10);
+
+		if(errno)
+			die("couldn't parse $SOURCE_DATE_EPOCH:");
+
+		if(*end)
+			die("$SOURCE_DATE_EPOCH isn't a number");
+
+		t = epoch;
+	}else{
+		t = time(NULL);
+	}
+
+	build_time = gmtime(&t);
+	if(!build_time)
+		die("gmtime():");
+	return build_time;
+}
+
 static void calctime(const char *fname)
 {
-	time_t t;
-	struct tm *now;
-
-	t = time(NULL);
-	now = localtime(&t);
-
-	if(!now)
-		die("localtime():");
+	int using_env;
+	struct tm *now = current_time(&using_env);
 
 #define FTIME(s, fmt) \
 	if(!strftime(s, sizeof s, fmt, now)) \
@@ -172,7 +208,7 @@ static void calctime(const char *fname)
 	FTIME(cpp_time, "\"%H:%M:%S\"");
 	FTIME(cpp_date, "\"%b %d %G\"");
 
-	if(fname){
+	if(fname && !using_env){
 		struct stat st;
 		if(stat(fname, &st) == 0){
 			now = localtime(&st.st_mtime);
@@ -204,57 +240,31 @@ static void macro_add_limits(void)
 #undef QUOTE_
 }
 
-int main(int argc, char **argv)
+static void add_platform_dependant_macros(void)
 {
-	char *infname, *outfname;
-	int ret = 0;
-	enum { NONE, MACROS, MACROS_WHERE, STATS, DEPS } dump = NONE;
-	int i;
 	int platform_win32 = 0;
-	int freestanding = 0;
-	enum c_std std = STD_C99;
-
-	infname = outfname = NULL;
-
-	current_line = 1;
-	current_fname = FNAME_BUILTIN;
-
-	macro_add_limits();
-
-	for(i = 0; initial_defs[i].nam; i++)
-		macro_add(initial_defs[i].nam, initial_defs[i].val, 0);
-
-	switch(platform_type()){
-		case PLATFORM_x86_64:
-			macro_add("__LP64__", "1", 0);
-			macro_add("__x86_64__", "1", 0);
-			/* TODO: __i386__ for 32 bit */
-			break;
-
-		case PLATFORM_mipsel_32:
-			macro_add("__MIPS__", "1", 0);
-	}
-
 	if(platform_bigendian())
 		macro_add("__BYTE_ORDER__", "__ORDER_BIG_ENDIAN__", 0);
 	else
 		macro_add("__BYTE_ORDER__", "__ORDER_LITTLE_ENDIAN__", 0);
 
 	switch(platform_sys()){
-#define MAP(t, s) case t: macro_add(s, "1", 0); break
-		MAP(PLATFORM_LINUX,   "__linux__");
-		MAP(PLATFORM_FREEBSD, "__FreeBSD__");
-#undef MAP
+		case SYS_linux:
+			macro_add("__linux__", "1", 0);
+			break;
 
-		case PLATFORM_DARWIN:
+		case SYS_darwin:
 			macro_add("__DARWIN__", "1", 0);
 			macro_add("__MACH__", "1", 0); /* TODO: proper detection for these */
 			macro_add("__APPLE__", "1", 0);
 			break;
 
-		case PLATFORM_CYGWIN:
+		case SYS_cygwin:
 			macro_add("__CYGWIN__", "1", 0);
 			platform_win32 = 1;
+			break;
+
+		case SYS_freebsd:
 			break;
 	}
 
@@ -263,7 +273,73 @@ int main(int argc, char **argv)
 
 	macro_add_sprintf("__BIGGEST_ALIGNMENT__", "%u", platform_align_max());
 
-	current_fname = FNAME_CMDLINE;
+	switch(platform_type()){
+		case ARCH_x86_64:
+			macro_add("__LP64__", "1", 0);
+			macro_add("__x86_64__", "1", 0);
+			break;
+
+		case ARCH_i386:
+			macro_add("__i386__", "1", 0);
+			break;
+
+		/*case PLATFORM_mipsel_32:
+			macro_add("__MIPS__", "1", 0);*/
+	}
+}
+
+static int init_target(const char *target)
+{
+	struct triple triple;
+
+	if(target){
+		const char *bad;
+		if(!triple_parse(target, &triple, &bad)){
+			fprintf(stderr, "Couldn't parse triple: %s\n", bad);
+			return 0;
+		}
+	}else{
+		if(!triple_default(&triple)){
+			fprintf(stderr, "couldn't get target triple\n");
+			return 0;
+		}
+	}
+
+	platform_init(triple.arch, triple.sys);
+	return 1;
+}
+
+int main(int argc, char **argv)
+{
+	char *infname, *outfname, *depfname;
+	int ret = 0;
+	enum {
+		PREPROCESSED = 1 << 0,
+		MACROS = 1 << 1,
+		MACROS_WHERE = 1 << 2,
+		STATS = 1 << 3,
+		DEPS = 1 << 4
+	} emit = PREPROCESSED;
+	int i;
+	int freestanding = 0;
+	int offsetof_macro = 0;
+	const char *target = NULL;
+
+	infname = outfname = depfname = NULL;
+
+	current_line = 1;
+	set_current_fname(FNAME_BUILTIN);
+
+	macro_add_limits();
+
+	for(i = 0; initial_defs[i].nam; i++){
+		if(initial_defs[i].is_fn)
+			macro_add_func(initial_defs[i].nam, initial_defs[i].val, NULL, 0, 1);
+		else
+			macro_add(initial_defs[i].nam, initial_defs[i].val, 0);
+	}
+
+	set_current_fname(FNAME_CMDLINE);
 
 	for(i = 1; i < argc && *argv[i] == '-'; i++){
 		if(!strcmp(argv[i]+1, "-"))
@@ -272,7 +348,7 @@ int main(int argc, char **argv)
 		switch(argv[i][1]){
 			case 'I':
 				if(argv[i][2])
-					include_add_dir(argv[i]+2);
+					include_add_dir(argv[i]+2, 0);
 				else
 					goto usage;
 				break;
@@ -302,8 +378,16 @@ int main(int argc, char **argv)
 
 			case 'M':
 				if(!strcmp(argv[i] + 2, "M")){
-					dump = DEPS;
-					no_output = 1;
+					emit |= DEPS;
+					emit &= ~PREPROCESSED;
+				}else if(!strcmp(argv[i] + 2, "G")){
+					missing_header_error = 0;
+				}else if(!strcmp(argv[i] + 2, "D")){
+					emit |= DEPS;
+				}else if(!strcmp(argv[i] + 2, "F")){
+					depfname = argv[i + 1];
+					if(!depfname)
+						goto usage;
 				}else{
 					goto usage;
 				}
@@ -352,12 +436,12 @@ int main(int argc, char **argv)
 					case 'S':
 					case 'W':
 						/* list #defines */
-						dump = (
+						emit |= (
 								argv[i][2] == 'M' ? MACROS :
 								argv[i][2] == 'S' ? STATS :
 								MACROS_WHERE);
 
-						no_output = 1;
+						emit &= ~PREPROCESSED;
 						break;
 					case '\0':
 						option_trace = 1;
@@ -377,6 +461,8 @@ int main(int argc, char **argv)
 				}else if(!strncmp(argv[i]+2, "message-length=", 15)){
 					const char *p = argv[i] + 17;
 					warning_length = atoi(p);
+				}else if(!strcmp(argv[i]+2, "cpp-offsetof")){
+					offsetof_macro = 1;
 				}else{
 					goto usage;
 				}
@@ -407,6 +493,20 @@ int main(int argc, char **argv)
 				break;
 			}
 
+			case 'O':
+			{
+				switch(argv[i][2]){
+					case '0':
+						break;
+					case 's':
+						macro_add("__OPTIMIZE_SIZE__",  "1", 0);
+						/* fallthru */
+					default:
+						macro_add("__OPTIMIZE__",  "1", 0);
+				}
+				break;
+			}
+
 			case 'w':
 				if(!argv[i][2]){
 					wmode = 0;
@@ -417,12 +517,25 @@ int main(int argc, char **argv)
 
 			default:
 defaul:
-				if(std_from_str(argv[i], &std, NULL) == 0){
+				if(!strcmp(argv[i], "-isystem")){
+					if(++i == argc){
+						fprintf(stderr, "-isystem needs a parameter");
+						goto usage;
+					}
+					include_add_dir(argv[i], 1);
+				}else if(std_from_str(argv[i], &cpp_std, NULL) == 0){
 					/* we have an std */
 				}else if(!strcmp(argv[i], "-trigraphs")){
 					option_trigraphs = 1;
 				}else if(!strcmp(argv[i], "-digraphs")){
 					option_digraphs = 1;
+				}else if(!strcmp(argv[i], "-target")){
+					i++;
+					if(!argv[i]){
+						fprintf(stderr, "-target requires an argument\n");
+						goto usage;
+					}
+					target = argv[i];
 				}else{
 					fprintf(stderr, "unrecognised option \"%s\"\n", argv[i]);
 					goto usage;
@@ -430,10 +543,22 @@ defaul:
 		}
 	}
 
-	current_fname = FNAME_BUILTIN;
+	no_output = !(emit & PREPROCESSED);
+
+	if(!missing_header_error && !(emit & DEPS)){
+		fprintf(stderr, "%s: -MG requires -MM\n", *argv);
+		return 1;
+	}
+
+	if(!init_target(target))
+		return 1;
+
+	add_platform_dependant_macros();
+
+	set_current_fname(FNAME_BUILTIN);
 
 	macro_add("__STDC_HOSTED__",  freestanding ? "0" : "1", 0);
-	switch(std){
+	switch(cpp_std){
 		case STD_C89:
 		case STD_C90:
 			/* no */
@@ -444,6 +569,18 @@ defaul:
 		case STD_C11:
 			macro_add("__STDC_VERSION__", "201112L", 0);
 	}
+
+	if(offsetof_macro){
+		char **args = umalloc(3 * sizeof *args);
+
+		args[0] = ustrdup("T");
+		args[1] = ustrdup("memb");
+
+		macro_add_func("__builtin_offsetof",
+				"(unsigned long)&((T *)0)->memb",
+				args, 0, 0);
+	}
+
 
 	if(i < argc){
 		infname = argv[i++];
@@ -477,27 +614,19 @@ defaul:
 		dirname_push(ustrdup("."));
 	}
 
-	current_fname = infname;
+	set_current_fname(infname);
 
 	preprocess();
 
 	if(wmode & WUNUSED)
 		macros_warn_unused();
 
-	switch(dump){
-		case NONE:
-			break;
-		case MACROS:
-		case MACROS_WHERE:
-			macros_dump(dump == MACROS_WHERE);
-			break;
-		case STATS:
-			macros_stats();
-			break;
-		case DEPS:
-			deps_dump(infname);
-			break;
-	}
+	if(emit & (MACROS | MACROS_WHERE))
+		macros_dump(emit == MACROS_WHERE);
+	if(emit & STATS)
+		macros_stats();
+	if(emit & DEPS)
+		deps_dump(infname, depfname);
 
 	free(dirname_pop());
 
@@ -518,6 +647,7 @@ usage:
 				"  -dM: debug output\n"
 				"  -dS: print macro usage stats\n"
 				"  -MM: generate Makefile dependencies\n"
+				"  -MG: ignore missing headers, count as dependency\n"
 				"  -C: don't discard comments, except in macros\n"
 				"  -CC: don't discard comments, even in macros\n"
 				"  -trigraphs: enable trigraphs\n"

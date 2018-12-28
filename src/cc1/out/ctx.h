@@ -7,7 +7,14 @@ typedef struct out_val_list out_val_list;
 
 struct out_ctx
 {
-	out_blk *first_blk, *second_blk, *current_blk, *epilogue_blk;
+	/* entry handles arg spill, etc.
+	 * prologue handles variadic spill, jumps, etc,
+	 * post_prologue is where user code goes
+	 */
+	out_blk *entry_blk, *prologue_prejoin_blk, *prologue_postjoin_blk;
+	out_blk *current_blk;
+	out_blk *epilogue_blk;
+
 	out_blk *last_used_blk; /* for appending debug labels */
 	out_blk **mustgen; /* goto *lbl; where lbl is otherwise unreachable */
 	struct out_dbg_lbl **pending_lbls; /* debug labels */
@@ -36,6 +43,8 @@ struct out_ctx
 	v_stackt cur_stack_sz;
 	v_stackt max_stack_sz;
 	v_stackt stack_n_alloc; /* just the alloc_n() part */
+	v_stackt stack_callspace; /* space used by extra call arguments */
+	v_stackt stack_calleesave_space; /* space used callee-save spills */
 	unsigned max_align;
 
 	unsigned check_flags : 1; /* decay flags? */
@@ -53,7 +62,7 @@ struct out_ctx
 		struct out_dbg_filelist *file_head;
 
 		where where;
-		int last_file, last_line;
+		unsigned last_file, last_line, last_col;
 	} dbg;
 };
 

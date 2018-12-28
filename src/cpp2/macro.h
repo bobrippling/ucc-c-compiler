@@ -2,6 +2,7 @@
 #define MACRO_H
 
 #define DEFINED_STR "defined"
+#define HAS_INCLUDE_STR "__has_include"
 /*#define EVAL_DEBUG*/
 
 typedef struct

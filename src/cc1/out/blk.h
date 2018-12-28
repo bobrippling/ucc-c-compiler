@@ -7,7 +7,7 @@ struct out_blk
 {
 	/* all blocks: */
 	const char *desc;
-	char *lbl;
+	char *lbl, *force_lbl;
 	char **insns;
 
 	struct
@@ -29,7 +29,7 @@ struct out_blk
 	} type;
 
 	/* phi terminators: */
-	const out_val *phi_val;
+	out_val *phi_val;
 
 	union
 	{

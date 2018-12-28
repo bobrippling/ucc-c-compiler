@@ -10,23 +10,21 @@
 #include "../type_nav.h"
 #include "../funcargs.h"
 
-static const out_val *stack_canary_seed(out_ctx *octx)
+static const out_val *stack_canary_address(out_ctx *octx, char **const tofree)
 {
 	const char *stack_chk_guard = "__stack_chk_guard";
 	char *mangled = func_mangle(stack_chk_guard, NULL);
 	type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
-	const out_val *pulled;
 
-	pulled = out_deref(
-			octx, out_new_lbl(
-				octx,
-				type_ptr_to(type_ptr_to(intptr_ty)),
-				mangled, 1));
-
+	*tofree = NULL;
 	if(mangled != stack_chk_guard)
-		free(mangled);
+		*tofree = mangled;
 
-	return pulled;
+	return out_new_lbl(
+			octx,
+			type_ptr_to(type_ptr_to(intptr_ty)),
+			mangled,
+			OUT_LBL_PIC);
 }
 
 static const out_val *stack_check_fail_func(
@@ -53,11 +51,14 @@ static const out_val *stack_check_fail_func(
 void out_init_stack_canary(
 		out_ctx *octx, const out_val *stack_prot_slot)
 {
-	const out_val *chk_guard = stack_canary_seed(octx);
+	char *tofree;
+	const out_val *chk_guard = stack_canary_address(octx, &tofree);
 
 	octx->stack_canary_ent = out_val_retain(octx, stack_prot_slot);
 
 	out_store(octx, stack_prot_slot, out_deref(octx, chk_guard));
+
+	free(tofree);
 }
 
 void out_check_stack_canary(out_ctx *octx)
@@ -65,6 +66,7 @@ void out_check_stack_canary(out_ctx *octx)
 	const out_val *sp_val;
 	const out_val *cond;
 	out_blk *bok, *bsmashed;
+	char *tofree;
 
 	if(!octx->stack_canary_ent)
 		return;
@@ -75,7 +77,8 @@ void out_check_stack_canary(out_ctx *octx)
 	sp_val = out_deref(octx, /*released:*/octx->stack_canary_ent);
 	octx->stack_canary_ent = NULL;
 
-	cond = out_op(octx, op_eq, sp_val, out_deref(octx, stack_canary_seed(octx)));
+	cond = out_op(octx, op_eq, sp_val, out_deref(octx, stack_canary_address(octx, &tofree)));
+	free(tofree), tofree = NULL;
 	out_ctrl_branch(octx, cond, bok, bsmashed);
 
 	out_current_blk(octx, bsmashed);

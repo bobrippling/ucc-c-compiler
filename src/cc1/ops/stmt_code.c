@@ -14,6 +14,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../vla.h"
+#include "../label.h"
 
 #include "../out/lbl.h"
 #include "../out/dbg.h"
@@ -50,20 +51,32 @@ static void cleanup_check(decl *d, attribute *cleanup)
 		return;
 	}
 
-	expected = args->arglist[0]->ref;
+	expected = type_unqualify(args->arglist[0]->ref);
 	targ = type_ptr_to(d->ref);
-	if(!(type_cmp(targ, expected, 0) & TYPE_EQUAL_ANY)
-	&& !type_is_void_ptr(expected))
-	{
-		char targ_buf[TYPE_STATIC_BUFSIZ];
-		char expected_buf[TYPE_STATIC_BUFSIZ];
 
-		fold_had_error = 1;
-		warn_at_print_error(&cleanup->where,
-				"type '%s' passed - cleanup needs '%s'",
-				type_to_str_r(targ_buf, targ),
-				type_to_str_r(expected_buf, expected));
-		return;
+	switch(type_cmp(expected, targ, 0)){
+		case TYPE_QUAL_ADD:
+		case TYPE_QUAL_SUB:
+			assert(0 && "shouldn't get top-level quals");
+		case TYPE_EQUAL:
+		case TYPE_EQUAL_TYPEDEF:
+		case TYPE_QUAL_POINTED_ADD:
+			/* passing the argument adds pointed-qualifiers, this is okay:
+			 * int* -> int const* */
+			break;
+
+		default:
+			if(!type_is_void_ptr(expected)){
+				char targ_buf[TYPE_STATIC_BUFSIZ];
+				char expected_buf[TYPE_STATIC_BUFSIZ];
+
+				fold_had_error = 1;
+				warn_at_print_error(&cleanup->where,
+						"type '%s' passed - cleanup needs '%s'",
+						type_to_str_r(targ_buf, targ),
+						type_to_str_r(expected_buf, expected));
+				return;
+			}
 	}
 }
 
@@ -78,9 +91,8 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 
 	/* check for invalid function redefinitions and shadows */
 	for(i = 0; symtab_decls(stab)[i]; i++){
+		struct symtab_entry ent;
 		decl *const d = symtab_decls(stab)[i];
-		decl *found;
-		symtable *above_scope;
 		int chk_shadow = 0, is_func = 0;
 		attribute *attr;
 
@@ -96,15 +108,18 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 			chk_shadow = 1;
 		}else if(cc1_warning.shadow_local
 				|| cc1_warning.shadow_global_user
-				|| cc1_warning.shadow_global_all)
+				|| cc1_warning.shadow_global_sysheaders)
 		{
 			chk_shadow = 1;
 		}
 
 		if(chk_shadow
 		&& d->spel
-		&& (found = symtab_search_d(stab->parent, d->spel, &above_scope)))
+		&& symtab_search(stab->parent, d->spel, NULL, &ent)
+		&& ent.type == SYMTAB_ENT_DECL)
 		{
+			symtable *above_scope = ent.owning_symtab;
+			decl *found = ent.bits.decl;
 			char buf[WHERE_BUF_SIZ];
 			int both_func = is_func && type_is(found->ref, type_func);
 			int both_extern = decl_linkage(d) == linkage_external
@@ -114,12 +129,13 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 			if((both_func || both_extern)
 			&& !(decl_cmp(d, found, 0) & TYPE_EQUAL_ANY))
 			{
-				die_at(&d->where,
-						"incompatible redefinition of \"%s\"\n"
-						"%s: note: previous definition",
-						d->spel, where_str_r(buf, &found->where));
+				fold_had_error = 1;
+				warn_at_print_error(&d->where, "incompatible redefinition of \"%s\"", d->spel);
+				note_at(&found->where, "previous definition");
 			}else{
 				const int same_scope = symtab_nested_internal(above_scope, stab);
+				unsigned char *pwarn = NULL;
+				const char *ty;
 
 				/* same scope? error unless they're both extern */
 				if(same_scope && !both_extern){
@@ -128,28 +144,34 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 							d->spel, where_str_r(buf, &found->where));
 				}
 
-				if(!cc1_warning.shadow_global_all
-				&& where_in_sysheader(&found->where))
-				{
-					/* system headers are excluded */
-				}
-				else if(above_scope->parent
-						? cc1_warning.shadow_local
-						: (cc1_warning.shadow_global_all || cc1_warning.shadow_global_user))
-					/* -Wshadow:
-					 * if it has a parent,
-					 * we found it in local scope, so check the local mask
-					 * and vice versa
-					 */
-				{
-					const char *ty = above_scope->parent ? "local" : "global";
+				/* -Wshadow:
+				 * if it has a parent,
+				 * we found it in local scope, so check the local mask
+				 * and vice versa
+				 */
+				if(where_in_sysheader(&found->where)){
+					/* system headers are included */
+					pwarn = &cc1_warning.shadow_global_sysheaders;
 
-					/* unconditional warning - checked above */
-					warn_at(&d->where,
-							"declaration of \"%s\" shadows %s declaration\n"
-							"%s: note: %s declaration here",
-							d->spel, ty,
-							where_str_r(buf, &found->where), ty);
+				}else if(above_scope->parent){
+					pwarn = &cc1_warning.shadow_local;
+
+				}else if(cc1_warning.shadow_global_user){
+					pwarn = &cc1_warning.shadow_global_user;
+
+				}else{
+					pwarn = &cc1_warning.shadow_global_sysheaders;
+				}
+
+				ty = above_scope->parent ? "local" : "global";
+
+				/* unconditional warning - checked above */
+				if(cc1_warn_at_w(&d->where,
+						pwarn,
+						"declaration of \"%s\" shadows %s declaration",
+						d->spel, ty))
+				{
+					note_at(&found->where, "%s declaration here", ty);
 				}
 			}
 		}
@@ -192,18 +214,15 @@ void fold_stmt_code(stmt *s)
 
 		fold_stmt(st);
 
-		/*
-		 * check for dead code
-		 */
 		if(!warned
 		&& st->kills_below_code
 		&& siter[1]
 		&& !stmt_kind(siter[1], label)
 		&& !stmt_kind(siter[1], case)
+		&& !stmt_kind(siter[1], case_range)
 		&& !stmt_kind(siter[1], default)
 		){
-			cc1_warn_at(&siter[1]->where, dead_code,
-					"dead code after %s (%s)", st->f_str(), siter[1]->f_str());
+			cc1_warn_at(&siter[1]->where, dead_code, "code will never be executed");
 			warned = 1;
 		}
 	}
@@ -270,7 +289,7 @@ void gen_block_decls(
 {
 	decl **diter;
 
-	if(cc1_gdebug && !stab->lbl_begin){
+	if(cc1_gdebug != DEBUG_OFF && !stab->lbl_begin){
 		char *dbg_lbls[2];
 
 		dbg_lbls[0] = out_label_code("dbg_begin");
@@ -285,7 +304,7 @@ void gen_block_decls(
 		pushed_lbls[0] = pushed_lbls[1] = NULL;
 	}
 
-	if(cc1_gdebug)
+	if(cc1_gdebug != DEBUG_OFF)
 		out_dbg_scope_enter(octx, stab);
 
 	/* declare strings, extern functions, blocks and vlas */
@@ -331,7 +350,7 @@ void gen_block_decls_dealloca(
 		const out_val *v;
 
 		if(!d->sym || d->sym->type != sym_local || type_is(d->ref, type_func)){
-			if(d->sym && cc1_gdebug){
+			if(d->sym && cc1_gdebug == DEBUG_FULL){
 				/* int a; f(){ int a; { extern a; ... } }
 				 *                      ^~~~~~~~~~~~~ need to say ::a is in scope
 				 */
@@ -358,7 +377,7 @@ void gen_block_decls_dealloca(
 		if(pushed_lbls[i])
 			out_dbg_label_pop(octx, pushed_lbls[i]);
 
-	if(cc1_gdebug)
+	if(cc1_gdebug != DEBUG_OFF)
 		out_dbg_scope_leave(octx, stab);
 }
 
@@ -384,7 +403,8 @@ static void gen_scope_destructors(symtable *scope, out_ctx *octx)
 
 				out_dbg_where(octx, &d->where);
 
-				fn = out_new_lbl(octx, NULL, decl_asm_spel(cleanup->bits.cleanup), 1);
+				fn = gen_decl_addr(octx, cleanup->bits.cleanup);
+
 				args[0] = out_new_sym(octx, d->sym);
 				args[1] = NULL;
 
@@ -512,6 +532,32 @@ void gen_stmt_code(const stmt *s, out_ctx *octx)
 	struct out_dbg_lbl *pushed_lbls[2];
 
 	gen_stmt_code_m1(s, 0, pushed_lbls, octx);
+}
+
+void dump_stmt_code(const stmt *s, dump *ctx)
+{
+	stmt **siter;
+	decl **di;
+
+	dump_desc_stmt(ctx, "code", s);
+
+	dump_inc(ctx);
+
+	/* local labels */
+	if(s->symtab->labels){
+		size_t i;
+		label *lbl;
+
+		for(i = 0; (lbl = dynmap_value(label *, s->symtab->labels, i)); i++)
+			dump_printf(ctx, "__label__ %s\n", lbl->spel);
+	}
+
+	for(di = symtab_decls(s->symtab); di && *di; di++)
+		dump_decl(*di, ctx, NULL);
+
+	for(siter = s->bits.code.stmts; siter && *siter; siter++)
+		dump_stmt(*siter, ctx);
+	dump_dec(ctx);
 }
 
 void style_stmt_code(const stmt *s, out_ctx *octx)

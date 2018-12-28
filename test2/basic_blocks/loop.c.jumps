@@ -1,6 +1,0 @@
-f:
-	jmp Lblk.4
-Lblk.2: # while_body
-Lblk.4: # while_cont
-	/* constant jmp condition taken */
-	jmp Lblk.2

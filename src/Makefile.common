@@ -1,0 +1,19 @@
+# requires ${SRC}
+
+Q = @
+
+%.o: %.c
+	@echo compile $<
+	$Q${CC} -c -o $@ $< ${CFLAGS}
+
+tags: ${SRC}
+	@echo ctags
+	$Q-ctags ${SRC} *.h
+
+%.d: %.c
+	@echo depend $<
+	$Q${CC} -MM ${CPPFLAGS} $< -o $@.tmp
+	$Q../depend_fixup $@.tmp > $@
+	$Qrm -f $@.tmp
+
+-include ${SRC:%.c=%.d}

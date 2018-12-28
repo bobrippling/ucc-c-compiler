@@ -17,7 +17,7 @@ void gen_asm(
 		struct out_dbg_filelist **pfilelist);
 #endif
 
-extern int gen_had_error;
+#include "parse_fold_error.h"
 
 /* easy-to-search-for macro for non-const use inside the gen functions */
 #define GEN_CONST_CAST(T, expr) ((T)(e))
@@ -32,6 +32,9 @@ const out_val *gen_call(
 		const out_val *fnval,
 		const out_val **args, out_ctx *octx,
 		const where *loc);
+
+ucc_wur
+const out_val *gen_decl_addr(out_ctx *, decl *);
 
 void gen_asm_emit_type(out_ctx *, type *);
 

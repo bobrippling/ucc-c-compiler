@@ -7,6 +7,7 @@
 
 #include "../type.h"
 #include "../type_nav.h"
+#include "../fopt.h"
 
 #include "../macros.h"
 
@@ -18,6 +19,7 @@
 #include "asm.h"
 #include "impl.h"
 #include "out.h" /* retain/release prototypes */
+#include "ctrl.h"
 
 #include "../cc1.h" /* cc1_type_nav */
 
@@ -91,7 +93,7 @@ void v_decay_flags_except(out_ctx *octx, const out_val *except[])
 		for(iter = octx->val_head; iter; iter = iter->next){
 			out_val *v = &iter->val;
 
-			if(v->retains > 0 && v->type == V_FLAG){
+			if(v->retains > 0 && v->type == V_FLAG && !out_val_is_blockphi(v, octx->current_blk)){
 				const out_val **vi;
 				int found = 0;
 
@@ -298,6 +300,8 @@ void v_try_stack_reclaim(out_ctx *octx)
 	for(iter = octx->val_head; iter; iter = iter->next){
 		if(iter->val.retains == 0)
 			continue;
+		if(iter->val.phiblock)
+			continue;
 		switch(iter->val.type){
 			case V_REG:
 			case V_REG_SPILT:
@@ -318,7 +322,7 @@ void v_try_stack_reclaim(out_ctx *octx)
 
 	v_stackt reclaim = octx->cur_stack_sz - lowest;
 	if(reclaim > 0){
-		if(fopt_mode & FOPT_VERBOSE_ASM)
+		if(cc1_fopt.verbose_asm)
 			out_comment(octx, "reclaim %ld (%ld start %ld lowest)",
 					reclaim, octx->initial_stack_sz, lowest);
 
