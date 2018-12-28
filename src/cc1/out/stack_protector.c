@@ -77,7 +77,13 @@ void out_check_stack_canary(out_ctx *octx)
 	sp_val = out_deref(octx, /*released:*/octx->stack_canary_ent);
 	octx->stack_canary_ent = NULL;
 
-	cond = out_op(octx, op_eq, sp_val, out_deref(octx, stack_canary_address(octx, &tofree)));
+	cond = out_annotate_likely(
+			octx,
+			out_op(
+				octx, op_eq, sp_val,
+				out_deref(octx, stack_canary_address(octx, &tofree))),
+			0);
+
 	free(tofree), tofree = NULL;
 	out_ctrl_branch(octx, cond, bok, bsmashed);
 
