@@ -96,6 +96,9 @@ const char *impl_val_str(const out_val *vs, int deref);
 const char *impl_val_str_r(
 		char buf[], const out_val *vs, const int deref);
 
+void impl_reserve_retregs(out_ctx *);
+void impl_unreserve_retregs(out_ctx *);
+
 /* can't do this for gen_deps.sh */
 #include "backend.h"
 

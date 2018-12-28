@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include "../type.h"
 #include "val.h"
@@ -9,6 +10,7 @@
 #include "../mangle.h"
 #include "../type_nav.h"
 #include "../funcargs.h"
+#include "impl.h"
 
 static const out_val *stack_canary_address(out_ctx *octx, char **const tofree)
 {
@@ -71,6 +73,8 @@ void out_check_stack_canary(out_ctx *octx)
 	if(!octx->stack_canary_ent)
 		return;
 
+	impl_reserve_retregs(octx);
+
 	bok = out_blk_new(octx, "stack_prot_ok");
 	bsmashed = out_blk_new(octx, "stack_prot_fail");
 
@@ -83,6 +87,8 @@ void out_check_stack_canary(out_ctx *octx)
 				octx, op_eq, sp_val,
 				out_deref(octx, stack_canary_address(octx, &tofree))),
 			0);
+
+	impl_unreserve_retregs(octx);
 
 	free(tofree), tofree = NULL;
 	out_ctrl_branch(octx, cond, bok, bsmashed);
@@ -101,4 +107,3 @@ void out_check_stack_canary(out_ctx *octx)
 
 	out_current_blk(octx, bok);
 }
-

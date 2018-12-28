@@ -38,7 +38,7 @@ OBJ_REST = \
 BACKEND_SRC = \
 		out/alloca.c out/ctrl.c out/func.c out/impl.c out/mipsel_32.c \
 		out/new.c out/op.c out/out.c out/val.c out/virt.c out/vm.c \
-		out/x86_64.c out/dbg.c
+		out/x86_64.c out/dbg.c out/stack_protector.c
 
 OBJ_TEST = test.o ${OBJ_REST} ${OBJ_UTIL}
 OBJ_CC1 = cc1.o ${OBJ_REST} ${OBJ_UTIL}

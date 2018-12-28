@@ -2509,3 +2509,32 @@ void impl_set_nan(out_ctx *octx, out_val *v)
 	v->type = V_CONST_F;
 	/*impl_load_fp(v);*/
 }
+
+static void reserve_unreserve_retregs(out_ctx *octx, int reserve)
+{
+	static const struct vreg retregs[] = {
+		{ X86_64_REG_RAX, 0 },
+		{ X86_64_REG_RDX, 0 },
+		{ X86_64_REG_XMM0, 1 },
+		{ X86_64_REG_XMM1, 1 },
+	};
+	unsigned i;
+
+	for(i = 0; i < countof(retregs); i++){
+		const struct vreg *r = &retregs[i];
+		if(reserve)
+			v_reserve_reg(octx, r);
+		else
+			v_unreserve_reg(octx, r);
+	}
+}
+
+void impl_reserve_retregs(out_ctx *octx)
+{
+	reserve_unreserve_retregs(octx, 1);
+}
+
+void impl_unreserve_retregs(out_ctx *octx)
+{
+	reserve_unreserve_retregs(octx, 0);
+}
