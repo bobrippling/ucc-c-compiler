@@ -245,6 +245,8 @@ int attribute_equal(attribute *a, attribute *b)
 		case attr_ucc_debug:
 		case attr_always_inline:
 		case attr_noinline:
+		case attr_no_stack_protector:
+		case attr_stack_protect:
 			/* equal */
 			break;
 	}

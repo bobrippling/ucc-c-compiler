@@ -276,6 +276,8 @@ EMPTY(attr_always_inline)
 EMPTY(attr_noinline)
 EMPTY(attr_ucc_debug)
 EMPTY(attr_desig_init)
+EMPTY(attr_stack_protect)
+EMPTY(attr_no_stack_protector)
 
 #undef EMPTY
 

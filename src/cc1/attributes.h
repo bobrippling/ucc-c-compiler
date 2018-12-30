@@ -24,6 +24,8 @@
 		NAME(constructor, 0)    \
 		NAME(destructor, 0)     \
 		NAME(visibility, 0)     \
+		NAME(stack_protect, 0) /* gcc */ \
+		NAME(no_stack_protector, 0) /* clang */ \
 		ALIAS("designated_init", desig_init, 0)     \
 		ALIAS("__ucc_debug", ucc_debug, 0) /* logs out a message when handled */ \
 		ALIAS("__cdecl", call_conv, 0)        \

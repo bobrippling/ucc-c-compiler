@@ -179,7 +179,16 @@ static int should_stack_protect(decl *d)
 
 	assert(type_is(d->ref, type_func));
 
+	if(attribute_present(d, attr_no_stack_protector))
+		return 0;
+
 	if(cc1_fopt.stack_protector_all)
+		return 1;
+
+	if(!cc1_fopt.stack_protector)
+		return 0;
+
+	if(attribute_present(d, attr_stack_protect))
 		return 1;
 
 	/* calls alloca() [TODO] or has an array, or local variable whose address is taken */
