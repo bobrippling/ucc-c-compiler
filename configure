@@ -65,6 +65,7 @@ section_dbg_info=".debug_info"
 section_dbg_line=".debug_line"
 dwarf_indirect_section_links=0
 asm_weak_directive='weak'
+asm_nodeadstrip_directive=''
 as_supports_local_common=1
 as_align_is_pow2=0
 ld_indirect_call_via_plt=1
@@ -189,6 +190,7 @@ case "$target" in
 
 		asm_weak_directive='weak_reference'
 		# Darwin also needs "-flat_namespace -undefined suppress"
+		asm_nodeadstrip_directive='no_dead_strip'
 		as_supports_local_common=0
 		as_align_is_pow2=1
 		ld_indirect_call_via_plt=0
@@ -335,6 +337,7 @@ cat > src/config_as.h <<!
 #define DWARF_INDIRECT_SECTION_LINKS $dwarf_indirect_section_links
 #define ASM_PLBL_PRE "$local_label_prefix"
 #define ASM_WEAK_DIRECTIVE "$asm_weak_directive"
+#define ASM_NO_DEAD_STRIP_DIRECTIVE "$asm_nodeadstrip_directive"
 #define AS_SUPPORTS_LOCAL_COMMON $as_supports_local_common
 #define AS_ALIGN_IS_POW2 $as_align_is_pow2
 #define LD_INDIRECT_CALL_VIA_PLT $ld_indirect_call_via_plt

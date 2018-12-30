@@ -332,6 +332,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
+	const int attr_used_present = !!attribute_present(d, attr_used);
 
 	/* in map? */
 	if(cc1_octx && dynmap_exists(decl *, cc1_octx->generated_decls, d))
@@ -369,7 +370,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		case store_static:
 			if(d->spel
 			&& d->sym && !d->sym->nreads && !d->sym->nwrites
-			&& !attribute_present(d, attr_used))
+			&& !attr_used_present)
 			{
 				int is_fn = !!type_is(d->ref, type_func);
 
@@ -419,6 +420,8 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			out_dbg_emit_global_var(octx, d);
 	}
 
+	if(attr_used_present)
+		asm_predeclare_used(d);
 	if(!emitted_type && decl_linkage(d) == linkage_external)
 		asm_predeclare_global(d);
 	gen_asm_global(d, octx);

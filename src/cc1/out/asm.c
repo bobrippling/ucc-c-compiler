@@ -516,6 +516,12 @@ void asm_predeclare_global(decl *d)
 	asm_predecl("globl", d);
 }
 
+void asm_predeclare_used(decl *d)
+{
+	if(ASM_NO_DEAD_STRIP_DIRECTIVE)
+		asm_predecl(ASM_NO_DEAD_STRIP_DIRECTIVE, d);
+}
+
 void asm_predeclare_weak(decl *d)
 {
 	asm_predecl(ASM_WEAK_DIRECTIVE, d);
