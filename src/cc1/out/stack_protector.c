@@ -10,9 +10,10 @@
 #include "../mangle.h"
 #include "../type_nav.h"
 #include "../funcargs.h"
+#include "../cc1_target.h"
 #include "impl.h"
 
-static const out_val *stack_canary_address(out_ctx *octx, char **const tofree)
+static const out_val *stack_canary_address_lbl(out_ctx *octx, char **const tofree)
 {
 	const char *stack_chk_guard = "__stack_chk_guard";
 	char *mangled = func_mangle(stack_chk_guard, NULL);
@@ -27,6 +28,28 @@ static const out_val *stack_canary_address(out_ctx *octx, char **const tofree)
 			type_ptr_to(type_ptr_to(intptr_ty)),
 			mangled,
 			OUT_LBL_PIC);
+}
+
+static const out_val *stack_canary_address_tls(out_ctx *octx)
+{
+	const char *tlsent = "%fs:40"; /* XXX: hack until tls support is available */
+	type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
+
+	return out_new_lbl(
+			octx,
+			type_ptr_to(type_ptr_to(intptr_ty)),
+			tlsent,
+			OUT_LBL_NOPIC);
+}
+
+static const out_val *stack_canary_address(out_ctx *octx, char **const tofree)
+{
+	if(cc1_target_details.as.stack_protector_via_tls){
+		*tofree = NULL;
+		return stack_canary_address_tls(octx);
+	}
+
+	return stack_canary_address_lbl(octx, tofree);
 }
 
 static const out_val *stack_check_fail_func(

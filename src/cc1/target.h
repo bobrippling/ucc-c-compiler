@@ -30,6 +30,7 @@ struct target_details
 
 		int supports_visibility_protected;
 		int supports_local_common;
+		int stack_protector_via_tls;
 	} as;
 
 	int dwarf_indirect_section_links;
