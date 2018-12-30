@@ -17,6 +17,7 @@
 #include "funcargs.h"
 #include "cc1.h" /* fopt_mode */
 #include "defs.h"
+#include "fopt.h"
 
 #include "type_is.h"
 
@@ -112,7 +113,9 @@ static enum type_cmp type_cmp_r(
 		if(type_is_primitive(a, type__Bool) && type_is_ptr(b))
 			return TYPE_CONVERTIBLE_IMPLICIT;
 
-		/* allow int <-> ptr (or block) */
+		/* allow int <-> ptr (or block)
+		 * note: this allows enum <--> pointers and vice versa
+		 */
 		if((type_is_ptr_or_block(a) && type_is_integral(b))
 		|| (type_is_ptr_or_block(b) && type_is_integral(a)))
 		{
@@ -201,7 +204,7 @@ static enum type_cmp type_cmp_r(
 
 	if(ret == TYPE_NOT_EQUAL
 	&& a->type == type_ptr
-	&& fopt_mode & FOPT_PLAN9_EXTENSIONS)
+	&& cc1_fopt.plan9_extensions)
 	{
 		/* allow b to be an anonymous member of a, if pointers */
 		struct_union_enum_st *a_sue = type_is_s_or_u(a),
@@ -376,15 +379,13 @@ unsigned type_size(type *r, const where *from)
 	ucc_unreach(0);
 }
 
-unsigned type_align(type *r, const where *from)
+static unsigned type_align_with_attr(type *r, const where *from, int with_attributes)
 {
 	struct_union_enum_st *sue;
 	type *test;
 	attribute *align;
 
-	align = type_attr_present(r, attr_aligned);
-
-	if(align){
+	if(with_attributes && (align = type_attr_present(r, attr_aligned))){
 		if(align->bits.align){
 			consty k;
 
@@ -398,9 +399,11 @@ unsigned type_align(type *r, const where *from)
 		return platform_align_max();
 	}
 
-	if((sue = type_is_s_or_u(r)))
+	if((sue = type_is_s_or_u(r))){
 		/* safe - can't have an instance without a ->sue */
-		return sue->align;
+		assert(sue->foldprog == SUE_FOLDED_FULLY);
+		return sue_align(sue, from);
+	}
 
 	if(type_is(r, type_ptr)
 	|| type_is(r, type_block))
@@ -412,9 +415,19 @@ unsigned type_align(type *r, const where *from)
 		return btype_align(test->bits.type, from);
 
 	if((test = type_is(r, type_array)))
-		return type_align(test->ref, from);
+		return type_align(test->ref, from /* attributes apply from here on */);
 
 	return 1;
+}
+
+unsigned type_align_no_attr(type *r, where const *from)
+{
+	return type_align_with_attr(r, from, 0);
+}
+
+unsigned type_align(type *r, where const *from)
+{
+	return type_align_with_attr(r, from, 1);
 }
 
 where *type_loc(type *t)
@@ -539,13 +552,18 @@ static void type_add_str_pre(
 			break;
 
 		case type_attr:
-			if(attribute_is_typrop(r->bits.attr)){
-				ADD_SPC();
-				BUF_ADD("__attribute__((%s))", attribute_to_str(r->bits.attr));
-				*need_spc = 1;
-				/* space after pseudo-qualifier */
+		{
+			attribute **i;
+			for(i = r->bits.attr; i && *i; i++){
+				if(attribute_is_typrop(*i)){
+					ADD_SPC();
+					BUF_ADD("__attribute__((%s))", attribute_to_str(*i));
+					*need_spc = 1;
+					/* space after pseudo-qualifier */
+				}
 			}
 			break;
+		}
 
 		default:break;
 	}
@@ -753,9 +771,9 @@ const char *type_to_str_r_spel_opts(
 	int sz = TYPE_STATIC_BUFSIZ;
 	enum type_str_opts local_opts = opts;
 
-	if((fopt_mode & FOPT_PRINT_TYPEDEFS) == 0)
+	if((cc1_fopt.print_typedefs) == 0)
 		local_opts |= TY_STR_NO_TDEF;
-	if((fopt_mode & FOPT_PRINT_AKA) == 0)
+	if((cc1_fopt.print_aka) == 0)
 		local_opts &= ~TY_STR_AKA;
 
 	stop_at = type_add_type_str(r, &bufp, &sz, local_opts);
@@ -895,8 +913,12 @@ static unsigned type_hash2(
 			break;
 
 		case type_attr:
-			hash |= t->bits.attr->type;
+		{
+			attribute **i;
+			for(i = t->bits.attr; i && *i; i++)
+				hash ^= (*i)->type;
 			break;
+		}
 	}
 
 	return hash;

@@ -9,6 +9,7 @@
 #include "../util/alloc.h"
 
 #include "warn.h"
+#include "fopt.h"
 
 /* int *_had_error */
 #include "fold.h"
@@ -114,7 +115,7 @@ int cc1_warn_at_w(
 	vwarn(where, warn_type, fmt, l);
 	va_end(l);
 
-	if(fopt_mode & FOPT_SHOW_WARNING_OPTION)
+	if(cc1_fopt.show_warning_option)
 		show_warn_options(pwarn);
 
 	return 1;
@@ -130,6 +131,7 @@ static void warning_gnu(enum warning_fatality set)
 	cc1_warning.gnu_addr_lbl =
 	cc1_warning.gnu_expr_stmt =
 	cc1_warning.gnu_typeof =
+	cc1_warning.gnu_autotype =
 	cc1_warning.gnu_attribute =
 	cc1_warning.gnu_init_array_range =
 	cc1_warning.gnu_case_range =
@@ -154,12 +156,14 @@ void warning_pedantic(enum warning_fatality set)
 
 	cc1_warning.return_void =
 	cc1_warning.binary_literal =
+
+	cc1_warning.overlength_strings =
 		set;
 }
 
-static void warning_all(void)
+static void warning_all(enum warning_fatality set)
 {
-	warnings_set(W_WARN);
+	warnings_set(set);
 
 	warning_gnu(W_OFF);
 
@@ -189,13 +193,15 @@ static void warning_all(void)
 	cc1_warning.switch_default_covered =
 	cc1_warning.sym_never_read =
 	cc1_warning.system_headers =
+	cc1_warning.int_op_promotion =
+	cc1_warning.overlength_strings =
 		W_OFF;
 }
 
 void warning_init(void)
 {
 	/* default to -Wall */
-	warning_all();
+	warning_all(W_WARN);
 	warning_pedantic(W_OFF);
 
 	/* but with warnings about std compatability on too */
@@ -217,30 +223,33 @@ void warning_init(void)
 
 	/* but disable others */
 	cc1_warning.char_subscript = W_OFF;
+
+	/* mostly harmless type warnings */
+	cc1_warning.int_op_promotion = W_OFF;
+	cc1_warning.sign_compare = W_OFF;
 }
 
-static void warning_special(enum warning_special type)
+static void warning_special(enum warning_special special, enum warning_fatality fatality)
 {
-	switch(type){
+	switch(special){
 		case W_EVERYTHING:
-			warnings_set(W_WARN);
+			warnings_set(fatality);
 			break;
 		case W_ALL:
-			warning_all();
+			warning_all(fatality);
 			break;
 		case W_EXTRA:
-			warning_all();
+			warning_all(fatality);
 			cc1_warning.implicit_int =
 			cc1_warning.shadow_global_user =
 			cc1_warning.cast_qual =
 			cc1_warning.init_missing_braces =
 			cc1_warning.init_missing_struct =
 			cc1_warning.unused_param =
-			cc1_warning.sign_compare =
-				W_WARN;
+				fatality;
 			break;
 		case W_GNU:
-			warning_gnu(W_WARN);
+			warning_gnu(fatality);
 			break;
 	}
 }
@@ -266,7 +275,7 @@ void warning_on(
 
 #define SPECIAL(str, w)   \
 	if(!strcmp(warn, str)){ \
-		warning_special(w);   \
+		warning_special(w, to); \
 		return;               \
 	}
 

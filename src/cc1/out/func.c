@@ -36,7 +36,8 @@ const out_val *out_call(out_ctx *octx,
 static void callee_save_or_restore_1(
 		out_ctx *octx, out_blk *in_blk,
 		struct vreg *cs, const out_val *stack_pos,
-		type *voidpp, int reg2mem)
+		type *voidpp, int reg2mem,
+		const where *fnstart, const where *fnend)
 {
 	out_current_blk(octx, in_blk);
 	{
@@ -45,16 +46,20 @@ static void callee_save_or_restore_1(
 		stk = out_change_type(octx, stk, voidpp);
 
 		if(reg2mem){
-			const out_val *reg = v_new_reg(octx, NULL, type_is_ptr(voidpp), cs);
+			const out_val *reg;
+			out_dbg_where(octx, fnstart);
+			reg = v_new_reg(octx, NULL, type_is_ptr(voidpp), cs);
 			out_store(octx, stk, reg);
 		}else{
-			out_flush_volatile(octx, impl_deref(octx, stk, cs));
+			out_dbg_where(octx, fnend);
+			out_flush_volatile(octx, impl_deref(octx, stk, cs, NULL));
 		}
 	}
 }
 
 static void callee_save_or_restore(
-		out_ctx *octx, out_blk *spill_blk)
+		out_ctx *octx, out_blk *spill_blk,
+		const where *fnstart, const where *fnend)
 {
 	struct vreg *i;
 	long stack_n = 0;
@@ -81,8 +86,8 @@ static void callee_save_or_restore(
 	restore_blk = octx->epilogue_blk;
 
 	for(i = octx->used_callee_saved; i && i->is_float != 2; i++){
-		callee_save_or_restore_1(octx, spill_blk, i, stack_locn, voidpp, 1);
-		callee_save_or_restore_1(octx, restore_blk, i, stack_locn, voidpp, 0);
+		callee_save_or_restore_1(octx, spill_blk, i, stack_locn, voidpp, 1, fnstart, fnend);
+		callee_save_or_restore_1(octx, restore_blk, i, stack_locn, voidpp, 0, fnstart, fnend);
 
 		stack_locn = out_op(octx, op_plus, stack_locn,
 				out_new_l(octx, arithty, voidpsz));
@@ -91,15 +96,13 @@ static void callee_save_or_restore(
 	out_val_release(octx, stack_locn);
 }
 
-void out_func_epilogue(
-		out_ctx *octx, type *ty, char *end_dbg_lbl,
-		int *out_usedstack)
+void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *end_dbg_lbl)
 {
 	out_blk *call_save_spill_blk = NULL;
 	out_blk *to_flush;
 
 	if(octx->current_blk && octx->current_blk->type == BLK_UNINIT)
-		out_ctrl_transfer(octx, octx->epilogue_blk, NULL, NULL);
+		out_ctrl_transfer(octx, octx->epilogue_blk, NULL, NULL, 0);
 
 	assert(octx->alloca_count == 0 && "allocas after func gen?");
 
@@ -108,16 +111,119 @@ void out_func_epilogue(
 	if(octx->used_callee_saved){
 		call_save_spill_blk = out_blk_new(octx, "call_save");
 
-		/* ensure callee save doesn't overlap other parts of
-		 * the stack, namely arguments. this is needed because
-		 * even though cur_stack_sz is zero, we insert the callee
-		 * save basic-block after argument handling, where cur_stack_sz
-		 * is non-zero
+		/* Ensure callee save doesn't overlap other parts of the stack, namely
+		 * arguments (i.e. things stored closest to the base, aka offset-zero).
+		 *
+		 * This is needed because even though cur_stack_sz is zero at this point
+		 * in code, we insert the callee save basic-block after argument handling,
+		 * where cur_stack_sz is non-zero (due to stored arguments, etc).
+		 *
+		 * Additionally, we don't want to stash the callee saved arguments at
+		 * the bottom of the stack, because that's where arguments for
+		 * many-parameter-functions live, so the callee saves need to be just
+		 * before that.
+		 *
+		 * <extra arguments>
+		 * <saved ret>
+		 * <saved rsp>
+		 * <saved arguments>
+		 * <local variables>
+		 * <callee saves> <---- this (or similar) is what we want, with no overlap
+		 *                     \ either way
+		 * <spill space / overflow arg space for child calls and vlas>
+		 *
+		 * this is what we get, which works too:
+		 * <local variables>
+		 * <spill space>
+		 * <callee saves>
+		 * <overflow arg space for child calls and vlas>
 		 */
 		octx->in_prologue = 1;
 		{
-			octx->cur_stack_sz = octx->max_stack_sz - octx->stack_callspace;
-			callee_save_or_restore(octx, call_save_spill_blk);
+			/* Here, we bring cur_stack_sz up to max_stack_sz (which is the maximum
+			 * stack usage for the current function), less the volatile
+			 * spill/stack_callspace.
+			 *
+			 * We then perform callee_save_or_restore(), which allocates space,
+			 * adjusting max_stack_sz in the process, from our offset.
+			 *
+			 * If we ignore stack_callspace, then this works fine, because
+			 * max_stack_sz is now the function's stack size, plus that for
+			 * callee save register.
+			 *
+			 * However, when stack_callspace is taken into account, we suddenly
+			 * allocate our callee save registers in the same space as the temporary
+			 * space used for stack_callspace (or whatever else uses this space
+			 * after stack-reclaimation, such as spills).
+			 *
+			 * So we want to insert our callee-save registers, not at the bottom of
+			 * the stack (because this would unconditionally collide them with the
+			 * stack_callspace area, or the vla expansion area), but before this.
+			 * However, we can't just set
+			 *   cur_stack_sz = max_stack_sz - stack_callspace
+			 * ... because then we overlap the stack_callspace with callee-save
+			 * registers. Unfortuantely it's slightly chicken-and-egg, in that
+			 * the vla-space, spill code and stack_callspace code has already run.
+			 *
+			 * Fortunately, similar problems have been encountered before, and
+			 * both the vla-space and stack_callspace logic offset themselves
+			 * based on the runtime-bottom of the stack (%rsp) instead of the stack
+			 * base (%rbp). So all that remains for us to do, is increase the
+			 * runtime-bottom of the stack by the difference that the callee
+			 * saves take up, done below.
+			 */
+			const v_stackt old_max_stack_sz = octx->max_stack_sz;
+			long callee_stack_diff;
+			where func_end;
+			memcpy_safe(&func_end, &octx->dbg.where);
+
+			octx->cur_stack_sz = octx->max_stack_sz;
+
+			callee_save_or_restore(octx, call_save_spill_blk, func_begin, &func_end);
+
+			callee_stack_diff = octx->max_stack_sz - old_max_stack_sz;
+			if(callee_stack_diff){
+				assert(callee_stack_diff > 0);
+				/*
+				 * We are now in this situation:
+				 *
+				 * <extra arguments>
+				 * <saved ret>
+				 * <saved rsp>
+				 * <saved arguments>
+				 * <local variables>
+				 * <
+				 *  callee saves
+				 *  AND
+				 *  spill space / overflow arg space for child calls and vlas
+				 *  (shared because of stack-reclaim)
+				 * >
+				 *
+				 * Now the spill-space logic saves values at fixes offsets from
+				 * the stack base, so we can't place our callee-saves there.
+				 * So we bump the max-stack to end up like so:
+				 *
+				 * ...
+				 * <local variables>
+				 * <spill space>
+				 * <callee saves>
+				 * <overflow arg space for child calls and vlas>
+				 *
+				 * However, there is still overlap between the callee-saves and the
+				 * overflow arg space / vla space, because this was previously shared
+				 * between that and the spills. We now can't make use of this sharing
+				 * any more, so must ensure the stack-callspace is entirely separate
+				 * from the callee-saves (as it overlaps them by the amount it shared
+				 * with the spill space).
+				 *
+				 * Hence, max-stack-sz += callee_stack_diff + stack-callspace;
+				 * This is a little wasteful, but to fix, we would have to move the
+				 * callee saves to before the spill space, which would require a larger
+				 * restructure.
+				 */
+				octx->max_stack_sz += callee_stack_diff + octx->stack_callspace;
+				octx->stack_calleesave_space = callee_stack_diff;
+			}
 		}
 		octx->in_prologue = 0;
 	}
@@ -129,8 +235,6 @@ void out_func_epilogue(
 		assert(octx->current_blk->type == BLK_UNINIT);
 		octx->current_blk->type = BLK_TERMINAL;
 	}
-
-	*out_usedstack = octx->used_stack;
 
 	/* space for spills */
 	if(octx->used_stack){
@@ -145,10 +249,12 @@ void out_func_epilogue(
 			assert(octx->max_stack_sz >= octx->stack_n_alloc);
 
 			out_comment(octx,
-					"stack_sz{cur=%lu,max=%lu} stack_n_alloc=%lu (total=%lu) call_spc=%lu max_align=%u",
-					octx->cur_stack_sz, octx->max_stack_sz, octx->stack_n_alloc,
-					octx->cur_stack_sz + octx->stack_n_alloc,
+					"stack_sz{cur=%lu,max=%lu} n_alloc=%lu call_spc=%lu calleesve=%lu max_align=%u",
+					octx->cur_stack_sz,
+					octx->max_stack_sz,
+					octx->stack_n_alloc,
 					octx->stack_callspace,
+					octx->stack_calleesave_space,
 					octx->max_align);
 
 			if(octx->max_align){
@@ -163,12 +269,12 @@ void out_func_epilogue(
 			if(call_save_spill_blk){
 				out_ctrl_transfer_make_current(octx, call_save_spill_blk);
 			}
-			out_ctrl_transfer(octx, octx->prologue_postjoin_blk, NULL, NULL);
+			out_ctrl_transfer(octx, octx->prologue_postjoin_blk, NULL, NULL, 0);
 		}
 	}else{
 		to_flush = octx->prologue_postjoin_blk;
 
-		/* need to attach the label to second_blk */
+		/* need to attach the label to prologue_postjoin_blk */
 		free(to_flush->lbl);
 		to_flush->lbl = octx->entry_blk->lbl;
 		octx->entry_blk->lbl = NULL;
@@ -194,6 +300,7 @@ void out_func_epilogue(
 		octx->max_stack_sz =
 		octx->max_align =
 		octx->stack_callspace =
+		octx->stack_calleesave_space =
 		octx->stack_n_alloc = 0;
 }
 

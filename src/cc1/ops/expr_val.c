@@ -133,9 +133,11 @@ void fold_expr_val(expr *e, symtable *stab)
 		/* we get here if we're forcing it to ull,
 		 * not if the user says, so we can warn unconditionally */
 		if(is_signed){
-			cc1_warn_at(&e->where,
-					constant_large_unsigned,
-					"integer constant is so large it is unsigned");
+			if(!e->freestanding){
+				cc1_warn_at(&e->where,
+						constant_large_unsigned,
+						"integer constant is so large it is unsigned");
+			}
 			is_signed = 0;
 		}
 		p = type_llong;
@@ -171,13 +173,23 @@ const out_val *gen_expr_val(const expr *e, out_ctx *octx)
 
 void dump_expr_val(const expr *e, dump *ctx)
 {
-	dump_desc_expr_newline(ctx, "integer literal", e, 0);
+	if(e->bits.num.suffix & VAL_FLOATING){
+		dump_desc_expr_newline(ctx, "floating literal", e, 0);
 
-	dump_printf_indent(
-			ctx,
-			0,
-			" 0x%" NUMERIC_FMT_X "\n",
-			(integral_t)e->bits.num.val.i);
+		dump_printf_indent(
+				ctx,
+				0,
+				" %" NUMERIC_FMT_LD "\n",
+				(floating_t)e->bits.num.val.f);
+	}else{
+		dump_desc_expr_newline(ctx, "integer literal", e, 0);
+
+		dump_printf_indent(
+				ctx,
+				0,
+				" 0x%" NUMERIC_FMT_X "\n",
+				(integral_t)e->bits.num.val.i);
+	}
 }
 
 static void const_expr_val(expr *e, consty *k)

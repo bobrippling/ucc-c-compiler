@@ -5,7 +5,7 @@ UCC_CC = ../src/ucc/ucc
 LIBC   = libc.a
 CRT    = crt.a
 
-OBJ_LIBC_C = begin.o                                      \
+OBJ_LIBC_C =                                              \
            stdio.o stdlib.o string.o unistd.o signal.o    \
            assert.o ctype.o dirent.o stdarg.o             \
            sys/fcntl.o sys/wait.o sys/mman.o              \
@@ -14,7 +14,7 @@ OBJ_LIBC_C = begin.o                                      \
 
 OBJ_LIBC_S = syscall.o alloca.o
 
-OBJ_CRT  = crt.o
+OBJ_CRT  = crt.o begin.o
 OBJ_LIBC = ${OBJ_LIBC_C} ${OBJ_LIBC_S}
 
 CPPFLAGS = -nostdinc

@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "expr_if.h"
@@ -7,6 +8,8 @@
 #include "../out/lbl.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+
+#include "expr_op.h"
 
 const char *str_expr_if()
 {
@@ -28,7 +31,7 @@ static void fold_const_expr_if(expr *e, consty *k)
 
 	/* only evaluate lhs/rhs' constness if we need to */
 	if(!CONST_AT_COMPILE_TIME(consts[0].type)){
-		k->type = CONST_NO;
+		CONST_FOLD_NO(k, e);
 		return;
 	}
 
@@ -52,17 +55,44 @@ static void fold_const_expr_if(expr *e, consty *k)
 	res = res ? 1 : 2; /* index into consts */
 
 	if(!CONST_AT_COMPILE_TIME(consts[res].type)){
-		k->type = CONST_NO;
+		const_fold_no(k,
+				&consts[1], e->lhs ? e->lhs : e->expr,
+				&consts[2], e->rhs);
+
 	}else{
 		memcpy_safe(k, &consts[res]);
 		k->nonstandard_const = consts[res == 1 ? 2 : 1].nonstandard_const;
 	}
 }
 
+static type *remove_function_noreturn(type *const t)
+{
+	type *ret;
+	funcargs *args;
+	type *test;
+
+	if(!(test = type_is(t, type_func)))
+		return t;
+
+	ret = type_called(t, &args);
+
+	ret = type_skip_all(ret);
+
+	assert(test->type == type_func);
+
+	args->retains++;
+	return type_func_of(ret, args, test->bits.func.arg_scope);
+}
+
 static type *pointer_to_qualified(type *base, type *lhs, type *rhs)
 {
 	enum type_qualifier qlhs = lhs ? type_qual(type_next(lhs)) : qual_none;
 	enum type_qualifier qrhs = rhs ? type_qual(type_next(rhs)) : qual_none;
+
+	/* special case: prevent merging noreturn attributes on pointers to functions */
+	if(!!type_attr_present(lhs, attr_noreturn) ^ !!type_attr_present(rhs, attr_noreturn)){
+		base = remove_function_noreturn(base);
+	}
 
 	return type_ptr_to(type_qualify(base, qlhs | qrhs));
 }
@@ -153,19 +183,30 @@ void fold_expr_if(expr *e, symtable *stab)
 	FOLD_EXPR(e->expr, stab);
 	const_fold(e->expr, &konst);
 
-	fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, desc);
+	if(fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, desc)){
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	if(e->lhs){
 		e->lhs = fold_expr_nonstructdecay(e->lhs, stab);
-		fold_check_expr(e->lhs,
+		if(fold_check_expr(e->lhs,
 				FOLD_CHK_ALLOW_VOID,
-				"?: left operand");
+				"?: left operand"))
+		{
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
+		}
 	}
 
 	e->rhs = fold_expr_nonstructdecay(e->rhs, stab);
-	fold_check_expr(e->rhs,
+	if(fold_check_expr(e->rhs,
 			FOLD_CHK_ALLOW_VOID,
-			"?: right operand");
+			"?: right operand"))
+	{
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	e->freestanding = (e->lhs ? e->lhs : e->expr)->freestanding || e->rhs->freestanding;
 
@@ -233,14 +274,14 @@ const out_val *gen_expr_if(const expr *e, out_ctx *octx)
 	{
 		out_ctrl_transfer(octx, landing,
 				e->lhs ? gen_expr(e->lhs, octx) : cond,
-				&blk_lhs);
+				&blk_lhs, 1);
 	}
 
 	out_current_blk(octx, blk_rhs);
 	{
 		out_ctrl_transfer(octx, landing,
 				gen_expr(e->rhs, octx),
-				&blk_rhs);
+				&blk_rhs, 1);
 	}
 
 	out_current_blk(octx, landing);
@@ -265,9 +306,17 @@ void dump_expr_if(const expr *e, dump *ctx)
 	dump_dec(ctx);
 }
 
+static int expr_if_has_sideeffects(const expr *e)
+{
+	return expr_has_sideeffects(e->expr)
+		|| (e->lhs && expr_has_sideeffects(e->lhs))
+		|| expr_has_sideeffects(e->rhs);
+}
+
 void mutate_expr_if(expr *e)
 {
 	e->f_const_fold = fold_const_expr_if;
+	e->f_has_sideeffects = expr_if_has_sideeffects;
 }
 
 expr *expr_new_if(expr *test)

@@ -263,35 +263,28 @@ enum type_primitive type_get_primitive(type *t)
 	return bt ? bt->primitive : type_unknown;
 }
 
-struct attribute *type_get_attrs_toplvl(type *t)
+attribute **type_get_attrs_toplvl(type *t)
 {
-	attribute *attr = NULL;
+	attribute **attrs = NULL;
 	type *const end = type_next(t);
-	int copied = 0;
 
 	for(; t && t != end; t = type_next_1(t)){
-		attribute *this_attr;
+		attribute **i;
 
 		if(t->type != type_attr)
 			continue;
 
-		this_attr = t->bits.attr;
+		for(i = t->bits.attr; i && *i; i++){
+			attribute *this_attr = *i;
 
-		if(!attribute_is_typrop(this_attr))
-			continue;
+			if(!attribute_is_typrop(this_attr))
+				continue;
 
-		if(!attr){
-			attr = RETAIN(this_attr);
-		}else if(!copied){
-			attribute *new = attribute_copy(attr);
-			RELEASE(attr);
-			attr = new;
-		}else{
-			attribute_append(&attr, attribute_copy(this_attr));
+			dynarray_add(&attrs, RETAIN(this_attr));
 		}
 	}
 
-	return attr;
+	return attrs;
 }
 
 int type_is_bool_ish(type *r)
@@ -540,10 +533,7 @@ int type_decayable(type *r)
 
 static type *type_keep_w_attr(type *t, where *loc, attribute **attr)
 {
-	attribute **i;
-
-	for(i = attr; i && *i; i++)
-		t = type_attributed(t, RETAIN(*i));
+	t = type_attributed(t, attr);
 
 	if(loc && !type_has_loc(t))
 		t = type_at_where(t, loc);
@@ -571,7 +561,8 @@ type *type_decay(type *const ty)
 				break;
 
 			case type_attr:
-				dynarray_add(&attr, test->bits.attr);
+				attribute_array_retain(test->bits.attr);
+				dynarray_add_array(&attr, test->bits.attr);
 				break;
 
 			case type_cast:
@@ -609,7 +600,7 @@ type *type_decay(type *const ty)
 	}
 
 out:
-	dynarray_free(attribute **, attr, NULL);
+	attribute_array_release(&attr);
 	return ret;
 }
 
@@ -727,23 +718,33 @@ enum type_primitive type_primitive(type *ty)
 	return ty->bits.type->primitive;
 }
 
-funcargs *type_funcargs(type *r)
+static type *type_resolve_func(type *t)
 {
 	type *test;
 
-	r = type_skip_all(r);
+	t = type_skip_all(t);
 
-	if((test = type_is(r, type_ptr))
-	|| (test = type_is(r, type_block)))
+	if((test = type_is(t, type_ptr))
+	|| (test = type_is(t, type_block)))
 	{
-		r = type_skip_all(test->ref); /* jump down past the (*)() */
+		t = type_skip_all(test->ref); /* jump down past the (*)() */
 	}
 
-	UCC_ASSERT(r && r->type == type_func,
+	UCC_ASSERT(t && t->type == type_func,
 			"not a function type - %s",
-			type_kind_to_str(r->type));
+			type_kind_to_str(t->type));
 
-	return r->bits.func.args;
+	return t;
+}
+
+funcargs *type_funcargs(type *r)
+{
+	return type_resolve_func(r)->bits.func.args;
+}
+
+symtable *type_funcsymtable(type *t)
+{
+	return type_resolve_func(t)->bits.func.arg_scope;
 }
 
 int type_is_callable(type *r)

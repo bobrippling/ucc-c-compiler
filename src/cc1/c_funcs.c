@@ -1,10 +1,21 @@
 #include <stddef.h>
+#include <stdio.h>
+#include <assert.h>
+
+#include "../util/dynarray.h"
 
 #include "expr.h"
 #include "c_funcs.h"
 
+#include "type_nav.h"
 #include "type_is.h"
 #include "cc1.h"
+
+#include "ops/expr_identifier.h"
+#include "ops/expr_addr.h"
+#include "ops/expr_sizeof.h"
+#include "ops/expr_op.h"
+#include "ops/expr_funcall.h"
 
 void c_func_check_free(expr *arg)
 {
@@ -46,7 +57,10 @@ static type *find_sizeof(expr *e)
 	return NULL;
 }
 
-static int warn_if_type_mismatch(type *a, type *b, where *loc, const char *fn)
+static int warn_if_type_mismatch(
+		type *a, type *b,
+		where *loc, const char *fn,
+		const unsigned char *warnp)
 {
 	char buf[TYPE_STATIC_BUFSIZ];
 
@@ -57,7 +71,7 @@ static int warn_if_type_mismatch(type *a, type *b, where *loc, const char *fn)
 	if(type_is_void(a) || type_is_void(b))
 		return 0;
 
-	cc1_warn_at(loc, sizeof_pointer_memaccess,
+	cc1_warn_at_w(loc, warnp,
 			"%s with different types '%s' and '%s'",
 			fn,
 			type_to_str_r(buf, a),
@@ -81,7 +95,32 @@ void c_func_check_mem(expr *ptr_args[], expr *sizeof_arg, const char *func)
 		if(!ptr_ty)
 			continue;
 
-		if(warn_if_type_mismatch(ptr_ty, sztype, &e->where, func))
+		if(warn_if_type_mismatch(
+					ptr_ty, sztype,
+					&e->where, func,
+					&cc1_warning.sizeof_pointer_memaccess))
+		{
 			break;
+		}
 	}
+}
+
+void c_func_check_malloc(expr *malloc_call_expr, type *assigned_to)
+{
+	type *sizeof_type;
+
+	assert(expr_kind(malloc_call_expr, funcall));
+
+	if(dynarray_count(malloc_call_expr->funcargs) != 1)
+		return;
+
+	sizeof_type = find_sizeof(malloc_call_expr->funcargs[0]);
+	if(!sizeof_type)
+		return;
+
+	warn_if_type_mismatch(
+			assigned_to, type_ptr_to(sizeof_type),
+			&malloc_call_expr->where,
+			"malloc assignment",
+			&cc1_warning.malloc_type_mismatch);
 }

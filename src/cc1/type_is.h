@@ -3,6 +3,7 @@
 
 struct decl;
 
+/* see type_unattribute and type_unqualify for removing specific entries */
 type *type_skip_all(type *r);
 type *type_skip_non_tdefs(type *);
 type *type_skip_non_attr(type *);
@@ -14,7 +15,7 @@ type *type_skip_tdefs(type *);
 
 const btype *type_get_type(type *r);
 enum type_primitive type_get_primitive(type *);
-struct attribute *type_get_attrs_toplvl(type *);
+struct attribute **type_get_attrs_toplvl(type *);
 
 type *type_complete_array(type *r, struct expr *sz);
 
@@ -26,6 +27,7 @@ enum type_qualifier type_qual(const type *r);
 enum type_primitive type_primitive(type *ty);
 
 struct funcargs *type_funcargs(type *r);
+struct symtable *type_funcsymtable(type *);
 
 unsigned type_array_len(type *r);
 type *type_next(type *r);

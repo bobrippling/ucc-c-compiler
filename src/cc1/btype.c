@@ -14,6 +14,14 @@
 #include "sue.h"
 #include "btype.h"
 #include "cc1.h"
+#include "fopt.h"
+
+/* check special case: char */
+ucc_static_assert(a, type_nchar < type_schar);
+ucc_static_assert(b, type_schar < type_uchar);
+
+/* rest follow on from type_int */
+ucc_static_assert(c, type_int < type_uint);
 
 static int type_convertible(enum type_primitive p)
 {
@@ -79,7 +87,7 @@ int type_primitive_is_signed(enum type_primitive p, int hard_err_on_su)
 		case type_nchar:
 			/* XXX: note we treat char as signed */
 			/* -fsigned-char */
-			return !!(fopt_mode & FOPT_SIGNED_CHAR);
+			return !!(cc1_fopt.signed_char);
 
 		case type_schar:
 		case type_int:
@@ -143,15 +151,6 @@ int type_intrank(enum type_primitive p)
 		case type_ullong:
 			return p;
 	}
-
-#define static_assert(tag, exp) ((void)sizeof(char[(exp) ? 1 : -1]))
-	/* check special case: char */
-	static_assert(a, type_nchar < type_schar);
-	static_assert(b, type_schar < type_uchar);
-
-	/* rest follow on from type_int */
-	static_assert(c, type_int < type_uint);
-#undef static_assert
 }
 
 unsigned btype_size(const btype *t, const where *from)
@@ -175,7 +174,7 @@ unsigned btype_align(const btype *t, const where *from)
 		case type_double:
 			if(IS_32_BIT()){
 				/* 8 on Win32, 4 on Linux32 */
-				if(platform_sys() == PLATFORM_CYGWIN)
+				if(platform_sys() == SYS_cygwin)
 					return 8;
 				return 4;
 			}

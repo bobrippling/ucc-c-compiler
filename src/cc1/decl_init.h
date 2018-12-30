@@ -66,9 +66,10 @@ const char *decl_init_to_str(enum decl_init_type);
  */
 int decl_init_is_const(
 		decl_init *dinit, struct symtable *stab,
-		struct type *expected, struct expr **nonstd);
+		struct type *expected, struct expr **nonstd, struct expr **nonconst);
 
 int decl_init_is_zero(decl_init *dinit);
+int decl_init_has_sideeffects(decl_init *dinit);
 
 struct struct_union_enum_st;
 struct expr *decl_init_is_struct_copy(

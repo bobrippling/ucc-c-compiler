@@ -1,0 +1,726 @@
+.file 1 "debug/gdb/scope.c"
+.Lsection_begin_dbg_abbrev:
+	.byte 1  # Abbrev. Code 1
+	.byte 17  # DW_TAG_compile_unit
+	.byte 1  # DW_CHILDREN_yes
+	.byte 37  # DW_AT_producer
+	.byte 8  # DW_FORM_string
+	.byte 19  # DW_AT_language
+	.byte 5  # DW_FORM_data2
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 27  # DW_AT_comp_dir
+	.byte 8  # DW_FORM_string
+	.byte 16  # DW_AT_stmt_list
+	.byte 6  # DW_FORM_ADDR4
+	.byte 17  # DW_AT_low_pc
+	.byte 1  # DW_FORM_addr
+	.byte 18  # DW_AT_high_pc
+	.byte 1  # DW_FORM_addr
+	.byte 0, 0 # name/val abbrev 1 end
+
+	.byte 2  # Abbrev. Code 2
+	.byte 52  # DW_TAG_variable
+	.byte 0  # DW_CHILDREN_no
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 58  # DW_AT_decl_file
+	.byte 11  # DW_FORM_data1
+	.byte 59  # DW_AT_decl_line
+	.byte 11  # DW_FORM_data1
+	.byte 63  # DW_AT_external
+	.byte 12  # DW_FORM_flag
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 2 end
+
+	.byte 3  # Abbrev. Code 3
+	.byte 46  # DW_TAG_subprogram
+	.byte 1  # DW_CHILDREN_yes
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 58  # DW_AT_decl_file
+	.byte 11  # DW_FORM_data1
+	.byte 59  # DW_AT_decl_line
+	.byte 11  # DW_FORM_data1
+	.byte 63  # DW_AT_external
+	.byte 12  # DW_FORM_flag
+	.byte 17  # DW_AT_low_pc
+	.byte 1  # DW_FORM_addr
+	.byte 18  # DW_AT_high_pc
+	.byte 1  # DW_FORM_addr
+	.byte 0, 0 # name/val abbrev 3 end
+
+	.byte 4  # Abbrev. Code 4
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 4 end
+
+	.byte 5  # Abbrev. Code 5
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 5 end
+
+	.byte 6  # Abbrev. Code 6
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 6 end
+
+	.byte 7  # Abbrev. Code 7
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 7 end
+
+	.byte 8  # Abbrev. Code 8
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 8 end
+
+	.byte 9  # Abbrev. Code 9
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 9 end
+
+	.byte 10  # Abbrev. Code 10
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 10 end
+
+	.byte 11  # Abbrev. Code 11
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 11 end
+
+	.byte 12  # Abbrev. Code 12
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 12 end
+
+	.byte 13  # Abbrev. Code 13
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 13 end
+
+	.byte 14  # Abbrev. Code 14
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 14 end
+
+	.byte 15  # Abbrev. Code 15
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 15 end
+
+	.byte 16  # Abbrev. Code 16
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 16 end
+
+	.byte 17  # Abbrev. Code 17
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 17 end
+
+	.byte 18  # Abbrev. Code 18
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 18 end
+
+	.byte 19  # Abbrev. Code 19
+	.byte 5  # DW_TAG_formal_parameter
+	.byte 0  # DW_CHILDREN_no
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 19 end
+
+	.byte 20  # Abbrev. Code 20
+	.byte 52  # DW_TAG_variable
+	.byte 0  # DW_CHILDREN_no
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 58  # DW_AT_decl_file
+	.byte 11  # DW_FORM_data1
+	.byte 59  # DW_AT_decl_line
+	.byte 11  # DW_FORM_data1
+	.byte 0, 0 # name/val abbrev 20 end
+
+	.byte 21  # Abbrev. Code 21
+	.byte 11  # DW_TAG_lexical_block
+	.byte 1  # DW_CHILDREN_yes
+	.byte 17  # DW_AT_low_pc
+	.byte 1  # DW_FORM_addr_lbl
+	.byte 18  # DW_AT_high_pc
+	.byte 1  # DW_FORM_addr_lbl
+	.byte 0, 0 # name/val abbrev 21 end
+
+	.byte 22  # Abbrev. Code 22
+	.byte 52  # DW_TAG_variable
+	.byte 0  # DW_CHILDREN_no
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 58  # DW_AT_decl_file
+	.byte 11  # DW_FORM_data1
+	.byte 59  # DW_AT_decl_line
+	.byte 11  # DW_FORM_data1
+	.byte 0, 0 # name/val abbrev 22 end
+
+	.byte 23  # Abbrev. Code 23
+	.byte 11  # DW_TAG_lexical_block
+	.byte 0  # DW_CHILDREN_no
+	.byte 17  # DW_AT_low_pc
+	.byte 1  # DW_FORM_addr_lbl
+	.byte 18  # DW_AT_high_pc
+	.byte 1  # DW_FORM_addr_lbl
+	.byte 0, 0 # name/val abbrev 23 end
+
+	.byte 24  # Abbrev. Code 24
+	.byte 11  # DW_TAG_lexical_block
+	.byte 1  # DW_CHILDREN_yes
+	.byte 17  # DW_AT_low_pc
+	.byte 1  # DW_FORM_addr_lbl
+	.byte 18  # DW_AT_high_pc
+	.byte 1  # DW_FORM_addr_lbl
+	.byte 0, 0 # name/val abbrev 24 end
+
+	.byte 25  # Abbrev. Code 25
+	.byte 11  # DW_TAG_lexical_block
+	.byte 0  # DW_CHILDREN_no
+	.byte 17  # DW_AT_low_pc
+	.byte 1  # DW_FORM_addr_lbl
+	.byte 18  # DW_AT_high_pc
+	.byte 1  # DW_FORM_addr_lbl
+	.byte 0, 0 # name/val abbrev 25 end
+
+	.byte 26  # Abbrev. Code 26
+	.byte 52  # DW_TAG_variable
+	.byte 0  # DW_CHILDREN_no
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 58  # DW_AT_decl_file
+	.byte 11  # DW_FORM_data1
+	.byte 59  # DW_AT_decl_line
+	.byte 11  # DW_FORM_data1
+	.byte 63  # DW_AT_external
+	.byte 12  # DW_FORM_flag
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 26 end
+
+	.byte 27  # Abbrev. Code 27
+	.byte 46  # DW_TAG_subprogram
+	.byte 1  # DW_CHILDREN_yes
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 58  # DW_AT_decl_file
+	.byte 11  # DW_FORM_data1
+	.byte 59  # DW_AT_decl_line
+	.byte 11  # DW_FORM_data1
+	.byte 63  # DW_AT_external
+	.byte 12  # DW_FORM_flag
+	.byte 17  # DW_AT_low_pc
+	.byte 1  # DW_FORM_addr
+	.byte 18  # DW_AT_high_pc
+	.byte 1  # DW_FORM_addr
+	.byte 0, 0 # name/val abbrev 27 end
+
+	.byte 28  # Abbrev. Code 28
+	.byte 52  # DW_TAG_variable
+	.byte 0  # DW_CHILDREN_no
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 58  # DW_AT_decl_file
+	.byte 11  # DW_FORM_data1
+	.byte 59  # DW_AT_decl_line
+	.byte 11  # DW_FORM_data1
+	.byte 0, 0 # name/val abbrev 28 end
+
+	.byte 29  # Abbrev. Code 29
+	.byte 11  # DW_TAG_lexical_block
+	.byte 1  # DW_CHILDREN_yes
+	.byte 17  # DW_AT_low_pc
+	.byte 1  # DW_FORM_addr_lbl
+	.byte 18  # DW_AT_high_pc
+	.byte 1  # DW_FORM_addr_lbl
+	.byte 0, 0 # name/val abbrev 29 end
+
+	.byte 30  # Abbrev. Code 30
+	.byte 52  # DW_TAG_variable
+	.byte 0  # DW_CHILDREN_no
+	.byte 2  # DW_AT_location
+	.byte 10  # DW_FORM_block1
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 58  # DW_AT_decl_file
+	.byte 11  # DW_FORM_data1
+	.byte 59  # DW_AT_decl_line
+	.byte 11  # DW_FORM_data1
+	.byte 0, 0 # name/val abbrev 30 end
+
+	.byte 31  # Abbrev. Code 31
+	.byte 15  # DW_TAG_pointer_type
+	.byte 0  # DW_CHILDREN_no
+	.byte 11  # DW_AT_byte_size
+	.byte 6  # DW_FORM_data4
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 0, 0 # name/val abbrev 31 end
+
+	.byte 32  # Abbrev. Code 32
+	.byte 36  # DW_TAG_base_type
+	.byte 0  # DW_CHILDREN_no
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 62  # DW_AT_encoding
+	.byte 11  # DW_FORM_data1
+	.byte 11  # DW_AT_byte_size
+	.byte 6  # DW_FORM_data4
+	.byte 0, 0 # name/val abbrev 32 end
+
+	.byte 33  # Abbrev. Code 33
+	.byte 36  # DW_TAG_base_type
+	.byte 0  # DW_CHILDREN_no
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 62  # DW_AT_encoding
+	.byte 11  # DW_FORM_data1
+	.byte 11  # DW_AT_byte_size
+	.byte 6  # DW_FORM_data4
+	.byte 0, 0 # name/val abbrev 33 end
+
+	.byte 34  # Abbrev. Code 34
+	.byte 36  # DW_TAG_base_type
+	.byte 0  # DW_CHILDREN_no
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 62  # DW_AT_encoding
+	.byte 11  # DW_FORM_data1
+	.byte 11  # DW_AT_byte_size
+	.byte 6  # DW_FORM_data4
+	.byte 0, 0 # name/val abbrev 34 end
+
+	.byte 35  # Abbrev. Code 35
+	.byte 15  # DW_TAG_pointer_type
+	.byte 0  # DW_CHILDREN_no
+	.byte 11  # DW_AT_byte_size
+	.byte 6  # DW_FORM_data4
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 0, 0 # name/val abbrev 35 end
+
+	.byte 0 # end
+.Lsection_begin_dbg_line:
+.Lsection_begin_dbg_info:
+	.long .Lsection_begin_dbg_abbrev  # abbrev offset
+	.byte 8  # sizeof(void *)
+	.byte 1  # Abbrev. Code 1 DW_TAG_compile_unit
+	.ascii "ucc development version"
+	.byte 0 # DW_AT_producer
+	.word 12 # DW_AT_language
+	.ascii "debug/gdb/scope.c"
+	.byte 0 # DW_AT_name
+	.ascii "/tmp/"
+	.byte 0 # DW_AT_comp_dir
+	.long .Lsection_begin_dbg_line # DW_AT_stmt_list
+	.quad .Lsection_begin_text # DW_AT_low_pc
+	.quad .Lsection_end_text # DW_AT_high_pc
+
+	.byte 2  # Abbrev. Code 2 DW_TAG_variable
+	.ascii "a"
+	.byte 0 # DW_AT_name
+	.long 513 # DW_AT_type
+	.byte 1 # DW_AT_decl_file
+	.byte 3 # DW_AT_decl_line
+	.byte 1 # DW_AT_external
+	.byte 9 # block count
+	.byte 3 # DW_FORM_block DW_OP_addr
+	.quad a # DW_FORM_block, address
+ # DW_AT_location
+
+	.byte 3  # Abbrev. Code 3 DW_TAG_subprogram
+	.ascii "f"
+	.byte 0 # DW_AT_name
+	.long 536 # DW_AT_type
+	.byte 1 # DW_AT_decl_file
+	.byte 5 # DW_AT_decl_line
+	.byte 1 # DW_AT_external
+	.quad f # DW_AT_low_pc
+	.quad .Lfuncend_f # DW_AT_high_pc
+
+	.byte 4  # Abbrev. Code 4 DW_TAG_formal_parameter
+	.long 536 # DW_AT_type
+	.ascii "a"
+	.byte 0 # DW_AT_name
+	.byte 3 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 144, 127 # DW_FORM_block, LEBS 0xffffffffffffff90
+ # DW_AT_location
+
+	.byte 5  # Abbrev. Code 5 DW_TAG_formal_parameter
+	.long 536 # DW_AT_type
+	.ascii "b"
+	.byte 0 # DW_AT_name
+	.byte 3 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 152, 127 # DW_FORM_block, LEBS 0xffffffffffffff98
+ # DW_AT_location
+
+	.byte 6  # Abbrev. Code 6 DW_TAG_formal_parameter
+	.long 536 # DW_AT_type
+	.ascii "c"
+	.byte 0 # DW_AT_name
+	.byte 3 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 160, 127 # DW_FORM_block, LEBS 0xffffffffffffffa0
+ # DW_AT_location
+
+	.byte 7  # Abbrev. Code 7 DW_TAG_formal_parameter
+	.long 536 # DW_AT_type
+	.ascii "d"
+	.byte 0 # DW_AT_name
+	.byte 3 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 168, 127 # DW_FORM_block, LEBS 0xffffffffffffffa8
+ # DW_AT_location
+
+	.byte 8  # Abbrev. Code 8 DW_TAG_formal_parameter
+	.long 536 # DW_AT_type
+	.ascii "e"
+	.byte 0 # DW_AT_name
+	.byte 3 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 176, 127 # DW_FORM_block, LEBS 0xffffffffffffffb0
+ # DW_AT_location
+
+	.byte 9  # Abbrev. Code 9 DW_TAG_formal_parameter
+	.long 536 # DW_AT_type
+	.ascii "f"
+	.byte 0 # DW_AT_name
+	.byte 3 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 184, 127 # DW_FORM_block, LEBS 0xffffffffffffffb8
+ # DW_AT_location
+
+	.byte 10  # Abbrev. Code 10 DW_TAG_formal_parameter
+	.long 524 # DW_AT_type
+	.ascii "g"
+	.byte 0 # DW_AT_name
+	.byte 2 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 64 # DW_FORM_block, LEBS 0xffffffffffffffc0
+ # DW_AT_location
+
+	.byte 11  # Abbrev. Code 11 DW_TAG_formal_parameter
+	.long 524 # DW_AT_type
+	.ascii "h"
+	.byte 0 # DW_AT_name
+	.byte 2 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 72 # DW_FORM_block, LEBS 0xffffffffffffffc8
+ # DW_AT_location
+
+	.byte 12  # Abbrev. Code 12 DW_TAG_formal_parameter
+	.long 524 # DW_AT_type
+	.ascii "i"
+	.byte 0 # DW_AT_name
+	.byte 2 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 80 # DW_FORM_block, LEBS 0xffffffffffffffd0
+ # DW_AT_location
+
+	.byte 13  # Abbrev. Code 13 DW_TAG_formal_parameter
+	.long 524 # DW_AT_type
+	.ascii "j"
+	.byte 0 # DW_AT_name
+	.byte 2 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 88 # DW_FORM_block, LEBS 0xffffffffffffffd8
+ # DW_AT_location
+
+	.byte 14  # Abbrev. Code 14 DW_TAG_formal_parameter
+	.long 524 # DW_AT_type
+	.ascii "k"
+	.byte 0 # DW_AT_name
+	.byte 2 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 96 # DW_FORM_block, LEBS 0xffffffffffffffe0
+ # DW_AT_location
+
+	.byte 15  # Abbrev. Code 15 DW_TAG_formal_parameter
+	.long 524 # DW_AT_type
+	.ascii "l"
+	.byte 0 # DW_AT_name
+	.byte 2 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 104 # DW_FORM_block, LEBS 0xffffffffffffffe8
+ # DW_AT_location
+
+	.byte 16  # Abbrev. Code 16 DW_TAG_formal_parameter
+	.long 524 # DW_AT_type
+	.ascii "m"
+	.byte 0 # DW_AT_name
+	.byte 2 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 112 # DW_FORM_block, LEBS 0xfffffffffffffff0
+ # DW_AT_location
+
+	.byte 17  # Abbrev. Code 17 DW_TAG_formal_parameter
+	.long 524 # DW_AT_type
+	.ascii "n"
+	.byte 0 # DW_AT_name
+	.byte 2 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 120 # DW_FORM_block, LEBS 0xfffffffffffffff8
+ # DW_AT_location
+
+	.byte 18  # Abbrev. Code 18 DW_TAG_formal_parameter
+	.long 546 # DW_AT_type
+	.ascii "pt"
+	.byte 0 # DW_AT_name
+	.byte 2 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 16 # DW_FORM_block, LEBS 0x10
+ # DW_AT_location
+
+	.byte 19  # Abbrev. Code 19 DW_TAG_formal_parameter
+	.long 524 # DW_AT_type
+	.ascii "fp"
+	.byte 0 # DW_AT_name
+	.byte 2 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 24 # DW_FORM_block, LEBS 0x18
+ # DW_AT_location
+
+	.byte 20  # Abbrev. Code 20 DW_TAG_variable
+	.byte 3 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 136, 127 # DW_FORM_block, LEBS 0xffffffffffffff88
+ # DW_AT_location
+	.ascii "pt_local"
+	.byte 0 # DW_AT_name
+	.long 546 # DW_AT_type
+	.byte 1 # DW_AT_decl_file
+	.byte 15 # DW_AT_decl_line
+
+	.byte 21  # Abbrev. Code 21 DW_TAG_lexical_block
+	.quad .Ldbg_begin.3 # DW_AT_low_pc
+	.quad .Ldbg_end.4 # DW_AT_high_pc
+
+	.byte 22  # Abbrev. Code 22 DW_TAG_variable
+	.byte 3 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 128, 127 # DW_FORM_block, LEBS 0xffffffffffffff80
+ # DW_AT_location
+	.ascii "pfp"
+	.byte 0 # DW_AT_name
+	.long 504 # DW_AT_type
+	.byte 1 # DW_AT_decl_file
+	.byte 19 # DW_AT_decl_line
+
+	.byte 23  # Abbrev. Code 23 DW_TAG_lexical_block
+	.quad .Ldbg_begin.5 # DW_AT_low_pc
+	.quad .Ldbg_end.6 # DW_AT_high_pc
+
+	.byte 24  # Abbrev. Code 24 DW_TAG_lexical_block
+	.quad .Ldbg_begin.7 # DW_AT_low_pc
+	.quad .Ldbg_end.8 # DW_AT_high_pc
+
+	.byte 25  # Abbrev. Code 25 DW_TAG_lexical_block
+	.quad .Ldbg_begin.9 # DW_AT_low_pc
+	.quad .Ldbg_end.10 # DW_AT_high_pc
+
+	.byte 26  # Abbrev. Code 26 DW_TAG_variable
+	.ascii "a"
+	.byte 0 # DW_AT_name
+	.long 513 # DW_AT_type
+	.byte 1 # DW_AT_decl_file
+	.byte 24 # DW_AT_decl_line
+	.byte 1 # DW_AT_external
+	.byte 9 # block count
+	.byte 3 # DW_FORM_block DW_OP_addr
+	.quad a # DW_FORM_block, address
+ # DW_AT_location
+
+	.byte 0 # end of children
+	.byte 0 # end of children
+	.byte 0 # end of children
+	.byte 27  # Abbrev. Code 27 DW_TAG_subprogram
+	.ascii "main"
+	.byte 0 # DW_AT_name
+	.long 536 # DW_AT_type
+	.byte 1 # DW_AT_decl_file
+	.byte 30 # DW_AT_decl_line
+	.byte 1 # DW_AT_external
+	.quad main # DW_AT_low_pc
+	.quad .Lfuncend_main # DW_AT_high_pc
+
+	.byte 28  # Abbrev. Code 28 DW_TAG_variable
+	.byte 2 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 124 # DW_FORM_block, LEBS 0xfffffffffffffffc
+ # DW_AT_location
+	.ascii "local1"
+	.byte 0 # DW_AT_name
+	.long 536 # DW_AT_type
+	.byte 1 # DW_AT_decl_file
+	.byte 32 # DW_AT_decl_line
+
+	.byte 29  # Abbrev. Code 29 DW_TAG_lexical_block
+	.quad .Ldbg_begin.13 # DW_AT_low_pc
+	.quad .Ldbg_end.14 # DW_AT_high_pc
+
+	.byte 30  # Abbrev. Code 30 DW_TAG_variable
+	.byte 2 # block count
+	.byte 118 # DW_FORM_block DW_OP_breg6
+	.byte 120 # DW_FORM_block, LEBS 0xfffffffffffffff8
+ # DW_AT_location
+	.ascii "local5"
+	.byte 0 # DW_AT_name
+	.long 536 # DW_AT_type
+	.byte 1 # DW_AT_decl_file
+	.byte 36 # DW_AT_decl_line
+
+	.byte 0 # end of children
+	.byte 0 # end of children
+	.byte 31  # Abbrev. Code 31 DW_TAG_pointer_type
+	.long 8 # DW_AT_byte_size
+	.long 524 # DW_AT_type
+
+	.byte 32  # Abbrev. Code 32 DW_TAG_base_type
+	.ascii "char"
+	.byte 0 # DW_AT_name
+	.byte 6 # DW_AT_encoding
+	.long 1 # DW_AT_byte_size
+
+	.byte 33  # Abbrev. Code 33 DW_TAG_base_type
+	.ascii "float"
+	.byte 0 # DW_AT_name
+	.byte 4 # DW_AT_encoding
+	.long 4 # DW_AT_byte_size
+
+	.byte 34  # Abbrev. Code 34 DW_TAG_base_type
+	.ascii "int"
+	.byte 0 # DW_AT_name
+	.byte 5 # DW_AT_encoding
+	.long 4 # DW_AT_byte_size
+
+	.byte 35  # Abbrev. Code 35 DW_TAG_pointer_type
+	.long 8 # DW_AT_byte_size
+	.long 513 # DW_AT_type
+
+	.byte 0 # end of children

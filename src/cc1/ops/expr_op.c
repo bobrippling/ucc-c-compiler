@@ -10,6 +10,11 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../sanitize.h"
+#include "../fopt.h"
+
+#include "expr_cast.h"
+#include "expr_val.h"
+#include "expr_sizeof.h"
 
 /*
  * usual arithmetic conversions:
@@ -72,12 +77,8 @@ static void const_op_num_fp(
 
 typedef struct
 {
-	int is_lbl;
-	union
-	{
-		integral_t i;
-		const char *lbl;
-	} bits;
+	const char *lbl; /* null if not label */
+	integral_t offset;
 } collapsed_consty;
 
 static void collapse_const(collapsed_consty *out, const consty *in)
@@ -87,23 +88,23 @@ static void collapse_const(collapsed_consty *out, const consty *in)
 			assert(0);
 
 		case CONST_NUM:
-			out->is_lbl = 0;
-			out->bits.i = in->bits.num.val.i;
+			out->lbl = NULL;
+			out->offset = in->bits.num.val.i + in->offset;
 			break;
 
 		case CONST_STRK:
-			out->is_lbl = 1;
-			out->bits.lbl = in->bits.str->lit->lbl;
+			out->lbl = in->bits.str->lit->lbl;
+			out->offset = in->offset;
 			break;
 
 		case CONST_NEED_ADDR:
 		case CONST_ADDR:
 			if(in->bits.addr.is_lbl){
-				out->is_lbl = 1;
-				out->bits.lbl = in->bits.addr.bits.lbl;
+				out->lbl = in->bits.addr.bits.lbl;
+				out->offset = in->offset;
 			}else{
-				out->is_lbl = 0;
-				out->bits.i = in->bits.addr.bits.memaddr;
+				out->lbl = NULL;
+				out->offset = in->bits.addr.bits.memaddr + in->offset;
 			}
 			break;
 	}
@@ -130,35 +131,37 @@ static void const_op_num_int(
 		collapse_const(&r, rhs);
 
 		/* need to apply pointer arithmetic */
-		if(l.is_lbl + r.is_lbl < 2 /* at least one side is a number */
+		if(!!l.lbl + !!r.lbl < 2 /* at least one side is a number */
 		&& (e->bits.op.op == op_plus || e->bits.op.op == op_minus) /* +/- */
 		&& ((ptr = type_is_ptr(e->lhs->tree_type))
 			|| (ptr_r = 1, ptr = type_is_ptr(e->rhs->tree_type))))
 		{
 			unsigned step = type_size(ptr, &e->where);
 
-			assert(!(ptr_r ? &l : &r)->is_lbl);
+			assert(!(ptr_r ? &l : &r)->lbl);
 
-			*(ptr_r ? &l.bits.i : &r.bits.i) *= step;
+			*(ptr_r ? &l.offset : &r.offset) *= step;
 		}
 	}else{
 		memset(&r, 0, sizeof r);
 	}
 
 	CONST_FOLD_LEAF(k);
-	switch(l.is_lbl + r.is_lbl){
+	switch(!!l.lbl + !!r.lbl){
 		default:
 			assert(0);
 
 		case 1:
 		{
 			collapsed_consty *num_side = NULL;
-			if(lhs->type == CONST_NUM)
+			if(!l.lbl)
 				num_side = &l;
-			else if(rhs)
+			else if(!r.lbl)
 				num_side = &r;
+			else
+				assert(0 && "unreachable");
 
-			/* label and num - only + and -, or comparison */
+			/* label and num - only + and -, shortcircuit or comparison */
 			switch(e->bits.op.op){
 				case op_not:
 					/* !&lbl */
@@ -170,7 +173,7 @@ static void const_op_num_int(
 				case op_eq:
 				case op_ne:
 					assert(num_side && "binary two labels shouldn't be here");
-					if(num_side->bits.i == 0){
+					if(num_side->offset == 0){
 						/* &x == 0, etc */
 						k->type = CONST_NUM;
 						k->bits.num.val.i = (e->bits.op.op != op_eq);
@@ -180,23 +183,36 @@ static void const_op_num_int(
 
 				default:
 					/* ~&lbl, 5 == &lbl, 6 > &lbl etc */
-					k->type = CONST_NO;
+					CONST_FOLD_NO(k, e);
 					break;
 
 				case op_plus:
 				case op_minus:
 					if(!rhs){
 						/* unary +/- on label */
-						k->type = CONST_NO;
+						CONST_FOLD_NO(k, e);
 						break;
 					}
 
 					memcpy_safe(k, num_side == &l ? rhs : lhs);
 					if(e->bits.op.op == op_plus)
-						k->offset += num_side->bits.i;
+						k->offset += num_side->offset;
 					else if(e->bits.op.op == op_minus)
-						k->offset -= num_side->bits.i;
+						k->offset -= num_side->offset;
 					break;
+
+				case op_andsc:
+				case op_orsc:
+				{
+					int bool_l = l.lbl || l.offset;
+					int bool_r = r.lbl || r.offset;
+
+					k->type = CONST_NUM;
+					k->bits.num.val.i = (e->bits.op.op == op_andsc
+							? bool_l && bool_r
+							: bool_l || bool_r);
+					break;
+				}
 			}
 			break;
 		}
@@ -206,7 +222,7 @@ static void const_op_num_int(
 			integral_t int_r;
 
 			int_r = const_op_exec(
-					l.bits.i, rhs ? &r.bits.i : NULL,
+					l.offset, rhs ? &r.offset : NULL,
 					e->bits.op.op, e->tree_type, &err);
 
 			if(SHOW_CONST_OP){
@@ -214,19 +230,19 @@ static void const_op_num_int(
 					fprintf(stderr,
 							"const op: (%s) %lld %s %lld = %lld, is_signed=%d\n",
 							type_to_str(e->tree_type),
-							l.bits.i, op_to_str(e->bits.op.op), r.bits.i,
+							l.offset, op_to_str(e->bits.op.op), r.offset,
 							int_r, is_signed);
 				}else{
 					fprintf(stderr,
 							"const op: (%s) %s %lld = %lld, is_signed=%d\n",
 							type_to_str(e->tree_type),
-							op_to_str(e->bits.op.op), l.bits.i, int_r, is_signed);
+							op_to_str(e->bits.op.op), l.offset, int_r, is_signed);
 				}
 			}
 
 			if(err){
 				cc1_warn_at(&e->where, constop_bad, "%s", err);
-				k->type = CONST_NO;
+				CONST_FOLD_NO(k, e);
 			}else{
 				const btype *bt;
 
@@ -259,7 +275,7 @@ static void const_op_num_int(
 				case op_unknown:
 					assert(0);
 				default:
-					k->type = CONST_NO;
+					CONST_FOLD_NO(k, e);
 					break;
 
 				case op_orsc:
@@ -271,12 +287,23 @@ static void const_op_num_int(
 				case op_eq:
 				case op_ne:
 				{
-					int same = !strcmp(l.bits.lbl, r.bits.lbl);
+					int same = !strcmp(l.lbl, r.lbl);
 					k->type = CONST_NUM;
 
 					k->bits.num.val.i = ((e->bits.op.op == op_eq) == same);
 					break;
 				}
+
+				case op_minus:
+					if(!strcmp(l.lbl, r.lbl)){
+						type *tnext = type_is_ptr(e->lhs->tree_type);
+						assert(tnext);
+
+						k->type = CONST_NUM;
+						k->bits.num.val.i = (l.offset - r.offset) / type_size(tnext, NULL);
+						k->nonstandard_const = e;
+					}
+					break;
 			}
 			break;
 	}
@@ -319,7 +346,7 @@ static void const_shortcircuit(
   assert(!CONST_AT_COMPILE_TIME(rhs->type));
 
 	collapse_const(&clhs, lhs);
-	truth = clhs.is_lbl ? 1 : clhs.bits.i;
+	truth = clhs.lbl ? 1 : clhs.offset;
 
 	if(e->bits.op.op == op_andsc){
 		if(truth){
@@ -361,10 +388,17 @@ static void fold_const_expr_op(expr *e, consty *k)
 	if(!CONST_AT_COMPILE_TIME(lhs.type) /* catch need_addr */
 	|| !CONST_AT_COMPILE_TIME(rhs.type))
 	{
+		const_fold_no(k, &lhs, e->lhs, &rhs, e->rhs);
+
 		/* allow shortcircuit */
-		k->type = CONST_NO;
-		if(e->bits.op.op == op_andsc || e->bits.op.op == op_orsc)
+		if(e->bits.op.op == op_andsc || e->bits.op.op == op_orsc){
 			const_shortcircuit(e, k, &lhs, &rhs);
+
+			/* undo CONST_FOLD_NO() above */
+			if(k->type != CONST_NO)
+				k->nonconst = NULL;
+		}
+
 		return;
 	}
 
@@ -649,6 +683,7 @@ ptr_relation:
 			}else{
 				/* can the signed type represent all of the unsigned type's values?
 				 * this is true if signed_type_size > unsigned_type_size
+				 * (for 2's complement, which we assume)
 				 * if so - convert unsigned to signed type */
 				const int l_sz = type_size(tlhs, &lhs->where),
 				          r_sz = type_size(trhs, &rhs->where);
@@ -754,15 +789,15 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 			if((sintegral_t)idx.val.i < 0
 			|| (chk_one_past_end ? idx.val.i > sz : idx.val.i == sz))
 			{
-				/* XXX: note */
-				char buf[WHERE_BUF_SIZ];
-
-				return cc1_warn_at(&e->where,
+				int warned = cc1_warn_at(&e->where,
 						array_oob,
-						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld\n"
-						"%s: note: array declared here",
-						idx.val.i, (long)sz,
-						where_str_r(buf, type_loc(array->tree_type)));
+						"index %" NUMERIC_FMT_D " out of bounds of array, size %ld",
+						idx.val.i, (long)sz);
+
+				if(warned)
+					note_at(type_loc(array->tree_type), "array declared here");
+
+				return warned;
 			}
 #undef idx
 		}
@@ -861,7 +896,7 @@ static int str_cmp_check(expr *e)
 		if(kl.type == CONST_STRK || kr.type == CONST_STRK){
 			return cc1_warn_at(&e->rhs->where,
 					undef_strlitcmp,
-					"comparison with string literal is undefined");
+					"comparison with string literal is unspecified");
 		}
 	}
 	return 0;
@@ -908,7 +943,7 @@ static int op_shift_check(expr *e)
 					k.type = CONST_NUM;
 					k.bits.num.val.i = 0;
 				}else{
-					k.type = CONST_NO;
+					CONST_FOLD_NO(&k, e);
 				}
 
 				expr_set_const(e, &k);
@@ -1024,6 +1059,51 @@ static int array_subscript_tycheck(expr *e)
 			"array subscript is of type 'char'");
 }
 
+static int is_lval_decay_followed_by_ext(expr *e)
+{
+	expr *child;
+
+	if(!expr_kind(e, cast))
+		return 0;
+	child = expr_cast_child(e);
+
+	if(!expr_kind(child, cast) || !expr_cast_is_lval2rval(child))
+		return 0;
+
+	return 1;
+}
+
+static int op_int_promotion_check(expr *e)
+{
+	type *tlhs, *trhs;
+
+	if(op_is_shortcircuit(e->bits.op.op))
+		return 0;
+
+	if(!is_lval_decay_followed_by_ext(e->lhs))
+		return 0;
+	if(!is_lval_decay_followed_by_ext(e->rhs))
+		return 0;
+
+	tlhs = expr_cast_child(e->lhs)->tree_type;
+	trhs = expr_cast_child(e->rhs)->tree_type;
+
+	/* guard against non-integer types (e.g. vlas) */
+	if(!type_is_integral(tlhs) || !type_is_integral(trhs))
+		return 0;
+
+	if(type_size(tlhs, NULL) < type_primitive_size(type_int)
+	&& type_size(trhs, NULL) < type_primitive_size(type_int))
+	{
+		return cc1_warn_at(&e->where,
+				int_op_promotion,
+				"operands promoted to int for '%s'",
+				op_to_str(e->bits.op.op));
+	}
+
+	return 0;
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	const char *op_desc = e->bits.op.array_notation
@@ -1034,14 +1114,19 @@ void fold_expr_op(expr *e, symtable *stab)
 			where_str(&e->where));
 
 	FOLD_EXPR(e->lhs, stab);
-	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_desc);
+	if(fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_desc)){
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	if(e->rhs){
 		FOLD_EXPR(e->rhs, stab);
-		fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_desc);
+		if(fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_desc)){
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
+		}
 
 		if(op_float_check(e)){
-			/* short circuit - TODO: error expr */
 			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
 			return;
 		}
@@ -1069,7 +1154,8 @@ void fold_expr_op(expr *e, symtable *stab)
 				op_shift_check(e) ||
 				str_cmp_check(e) ||
 				op_sizeof_div_check(e) ||
-				array_subscript_tycheck(e));
+				array_subscript_tycheck(e) ||
+				op_int_promotion_check(e));
 
 	}else{
 		/* (except unary-not) can only have operations on integers,
@@ -1084,11 +1170,13 @@ void fold_expr_op(expr *e, symtable *stab)
 				ICE("bad unary op %s", op_desc);
 
 			case op_not:
-				fold_check_expr(e->lhs,
-						FOLD_CHK_NO_ST_UN,
-						op_desc);
-
 				e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+				if(fold_check_expr(e->lhs,
+						FOLD_CHK_NO_ST_UN,
+						op_desc))
+				{
+					return;
+				}
 				break;
 
 			case op_plus:
@@ -1102,9 +1190,11 @@ void fold_expr_op(expr *e, symtable *stab)
 				else
 					chk |= FOLD_CHK_ARITHMETIC;
 
-				fold_check_expr(e->lhs, chk, op_to_str(e->bits.op.op));
-
 				e->tree_type = type_unqualify(e->lhs->tree_type);
+
+				if(fold_check_expr(e->lhs, chk, op_to_str(e->bits.op.op))){
+					return;
+				}
 				break;
 			}
 		}
@@ -1149,7 +1239,7 @@ static const out_val *op_shortcircuit(const expr *e, out_ctx *octx)
 		const out_val *rhs = gen_expr(e->rhs, octx);
 		rhs = out_normalise(octx, rhs);
 
-		out_ctrl_transfer(octx, landing, rhs, &blk_rhs);
+		out_ctrl_transfer(octx, landing, rhs, &blk_rhs, 1);
 	}
 
 	out_current_blk(octx, blk_empty);
@@ -1161,7 +1251,8 @@ static const out_val *op_shortcircuit(const expr *e, out_ctx *octx)
 					octx,
 					type_nav_btype(cc1_type_nav, BOOLEAN_TYPE),
 					e->bits.op.op == op_orsc ? 1 : 0),
-				&blk_empty);
+				&blk_empty,
+				1);
 
 	}
 
@@ -1179,7 +1270,7 @@ void gen_op_trapv(
 		out_ctx *octx,
 		enum op_type op)
 {
-	if((fopt_mode & FOPT_TRAPV) == 0)
+	if((cc1_fopt.trapv) == 0)
 		return;
 
 	if(!type_is_integral(evaltt) || !type_is_signed(evaltt))
@@ -1193,7 +1284,7 @@ void gen_op_trapv(
 		out_blk *blk_undef = out_blk_new(octx, "trapv_bad");
 
 		out_ctrl_branch(octx,
-				out_new_overflow(octx, eval),
+				out_annotate_likely(octx, out_new_overflow(octx, eval), 1),
 				blk_undef,
 				land);
 
@@ -1233,7 +1324,7 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 				break;
 			case op_shiftl:
 			case op_shiftr:
-				sanitize_shift(e->lhs, e->rhs, e->bits.op.op, octx, lhs, rhs);
+				sanitize_shift(e->lhs, e->rhs, e->bits.op.op, octx, &lhs, &rhs);
 				break;
 			default:
 				break;
@@ -1251,9 +1342,15 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 	return eval;
 }
 
+static int expr_op_has_sideeffects(const expr *e)
+{
+	return expr_has_sideeffects(e->lhs) || (e->rhs && expr_has_sideeffects(e->rhs));
+}
+
 void mutate_expr_op(expr *e)
 {
 	e->f_const_fold = fold_const_expr_op;
+	e->f_has_sideeffects = expr_op_has_sideeffects;
 }
 
 expr *expr_new_op(enum op_type op)

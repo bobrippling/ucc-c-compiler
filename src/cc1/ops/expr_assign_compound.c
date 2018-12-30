@@ -1,6 +1,11 @@
 #include "ops.h"
 #include "expr_assign_compound.h"
 
+#include "expr_assign.h"
+#include "expr_op.h"
+
+#include "../type_nav.h"
+
 const char *str_expr_assign_compound()
 {
 	return "compound-assignment";
@@ -16,8 +21,12 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	fold_expr_nodecay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
-	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, desc);
-	fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, desc);
+	if(fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, desc)
+	|| fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, desc))
+	{
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	/* skip the addr we inserted */
 	if(!expr_must_lvalue(lvalue, desc)){
@@ -53,7 +62,8 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 			fold_insert_casts(trhs, &e->rhs, stab);
 		}
 
-		e->tree_type = lvalue->tree_type;
+		/* see the same code in expr_assign.c */
+		e->tree_type = type_unqualify(lvalue->tree_type);
 
 		(void)resolved;
 		/*type_free_1(resolved); XXX: memleak */
@@ -128,6 +138,7 @@ void dump_expr_assign_compound(const expr *e, dump *ctx)
 
 void mutate_expr_assign_compound(expr *e)
 {
+	e->f_has_sideeffects = expr_bool_always;
 	e->freestanding = 1;
 }
 

@@ -1,8 +1,5 @@
-#include "unistd.h" /* environ */
+#include "unistd.h" /* environ, __progname */
 #include "stdlib.h" /* exit() */
-
-char **environ;
-char *__progname;
 
 _Noreturn
 void __libc_start_main(

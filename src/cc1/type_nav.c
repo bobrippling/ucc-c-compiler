@@ -16,6 +16,8 @@
 #include "funcargs.h"
 #include "c_types.h"
 
+#define TYPE_UNIQ_DEBUG 0
+
 struct type_nav
 {
 	type **btypes; /* indexed by type_primitive */
@@ -80,14 +82,27 @@ type *type_uptree_find_or_new(
 
 	to = type_skip_wheres(to);
 
-	if(!to->uptree)
+	if(!to->uptree){
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "no uptree for %s\n", type_to_str(to));
+
 		to->uptree = umalloc(sizeof *to->uptree);
+	}
 
 	for(ent = &to->uptree->ups[idx]; *ent; ent = &(*ent)->next){
 		type *candidate = (*ent)->t;
+		int is_candidate;
 		assert(candidate->type == idx);
 
-		if(eq(candidate, ctx))
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "candidate? '%s'... ", type_to_str(candidate));
+
+		is_candidate = eq(candidate, ctx);
+
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, " ... candidate=%s\n", is_candidate ? "yes" : "no");
+
+		if(is_candidate)
 			return candidate;
 	}
 
@@ -99,6 +114,10 @@ type *type_uptree_find_or_new(
 
 		*ent = umalloc(sizeof **ent);
 		(*ent)->t = new_t;
+
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "no candidates - created new: '%s'\n", type_to_str(new_t));
+
 		return new_t;
 	}
 }
@@ -218,10 +237,15 @@ static int eq_func(type *ty, void *ctx)
 {
 	struct ctx_func *c = ctx;
 
-	if(c->arg_scope != ty->bits.func.arg_scope)
+	if(c->arg_scope != ty->bits.func.arg_scope){
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "mismatching arg_scope");
 		return 0;
+	}
 
 	if(funcargs_cmp(ty->bits.func.args, c->args) == FUNCARGS_EXACT_EQUAL){
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "mismatching funcargs");
 		funcargs_free(c->args, 0);
 		return 1;
 	}
@@ -252,27 +276,42 @@ type *type_block_of(type *fn)
 
 static int eq_attr(type *candidate, void *ctx)
 {
-	return attribute_equal(candidate->bits.attr, ctx);
+	attribute **cand = candidate->bits.attr;
+	attribute **other = ctx;
+
+	for(; *cand; cand++){
+		attribute **i;
+
+		for(i = other; *i; i++)
+			if(attribute_equal(*cand, *i))
+				break;
+
+		if(!*i)
+			return 0; /* not found */
+	}
+
+	return 1;
 }
 
 static void init_attr(type *ty, void *ctx)
 {
-	ty->bits.attr = RETAIN((attribute *)ctx);
+	attribute **other = ctx;
+
+	attribute_array_retain(other);
+	dynarray_add_array(&ty->bits.attr, other);
 }
 
-type *type_attributed(type *ty, attribute *attr)
+type *type_attributed(type *ty, attribute **attrs)
 {
 	type *attributed;
 
-	if(!attr)
+	if(!attrs)
 		return ty;
 
 	attributed = type_uptree_find_or_new(
 			ty, type_attr,
 			eq_attr, init_attr,
-			attr);
-
-	RELEASE(attr);
+			attrs);
 
 	return attributed;
 }
@@ -534,7 +573,7 @@ type *type_nav_int_enum(struct type_nav *root, struct_union_enum_st *enu)
 
 type *type_unqualify(type *const qualified)
 {
-	attribute **attr = NULL, **attr_i;
+	attribute **attr = NULL;
 	type *t_restrict = NULL, *prev = NULL;
 	type *i, *ret;
 
@@ -553,10 +592,8 @@ type *type_unqualify(type *const qualified)
 			}
 
 			case type_attr:
-			{
-				dynarray_add(&attr, i->bits.attr);
+				dynarray_add_array(&attr, attribute_array_retain(i->bits.attr));
 				break;
-			}
 
 			case_CONCRETE_TYPE:
 			{
@@ -585,20 +622,19 @@ done:;
 		ret = i;
 	}
 
-	for(attr_i = attr; attr_i && *attr_i; attr_i++)
-		ret = type_attributed(ret, RETAIN(*attr_i));
-
-	dynarray_free(attribute **, attr, NULL);
+	ret = type_attributed(ret, attr);
+	attribute_array_release(&attr);
 
 	return ret;
 }
 
 type *type_at_where(type *t, where *w)
 {
-	if(t->type != type_where || !where_equal(w, &t->bits.where)){
-		t = type_new(type_where, t);
-		memcpy_safe(&t->bits.where, w);
-	}
+	if(t->type == type_where && where_equal(w, &t->bits.where))
+		return t;
+
+	t = type_new(type_where, type_skip_wheres(t));
+	memcpy_safe(&t->bits.where, w);
 	return t;
 }
 

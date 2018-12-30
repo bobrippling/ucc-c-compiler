@@ -34,7 +34,9 @@ void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
 void fold_check_embedded_flexar(
 		struct struct_union_enum_st *, const where *, const char *desc);
 
-void fold_funcargs(funcargs *fargs, symtable *stab, attribute *);
+void fold_funcargs(funcargs *fargs, symtable *stab, attribute **);
+
+int fold_get_max_align_attribute(attribute **attribs, symtable *stab, const int min);
 
 /* cast insertion */
 void fold_insert_casts(type *tlhs, expr **prhs, symtable *stab);
@@ -68,7 +70,9 @@ enum fold_chk
 	FOLD_CHK_NOWARN_ASSIGN = 1 << 6, /* if(a = b){ ... } */
 	FOLD_CHK_ARITHMETIC = 1 << 7,
 };
-void fold_check_expr(const expr *e, enum fold_chk, const char *desc);
+
+ucc_wur
+int fold_check_expr(const expr *e, enum fold_chk, const char *desc);
 
 /* expression + statement folding */
 /*   decay */
@@ -87,6 +91,6 @@ int fold_passable(stmt *s);
 int fold_passable_yes(stmt *s);
 int fold_passable_no( stmt *s);
 
-extern int fold_had_error;
+#include "parse_fold_error.h"
 
 #endif

@@ -47,7 +47,7 @@ struct type
 		const btype *type;
 
 		/* type_attr */
-		struct attribute *attr;
+		struct attribute **attr;
 
 		/* type_tdef */
 		struct type_tdef
@@ -112,6 +112,7 @@ int type_eq_nontdef(type *, type *);
 
 unsigned type_size(type *r, where const *from);
 unsigned type_align(type *r, where const *from);
+unsigned type_align_no_attr(type *r, where const *from);
 
 const char *type_kind_to_str(enum type_kind);
 

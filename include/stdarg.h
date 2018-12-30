@@ -11,4 +11,11 @@ typedef __builtin_va_list va_list;
 #  define va_copy(d, s)    __builtin_va_copy(d, s)
 #endif
 
+#define __va_copy(d, s) __builtin_va_copy(d, s)
+
+/* bug fix for glibc, which assumes gcc's stdarg.h
+ * and directly uses __gnuc_va_list */
+#define __GNUC_VA_LIST 1
+typedef __builtin_va_list __gnuc_va_list;
+
 #endif

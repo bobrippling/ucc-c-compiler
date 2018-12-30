@@ -76,9 +76,10 @@ static int has_feat_ext(const char *nam, int as_ext)
 
 	for(p = tbl; p->nam; p++){
 		if(!strcmp(p->nam, nam)){
-			/* always have a name as an extension */
+			/* always have a name as an extension, or at least,
+			 * we don't depend on the C standard version */
 			if(as_ext)
-				return 1;
+				return p->has;
 
 			/* we have it as a feature if it's in our standard
 			 * and actually has the .has member set to non-zero */
@@ -103,7 +104,7 @@ static int has_attribute(const char *nam)
 {
 #define NAME(x, t) if(!strcmp(nam, #x) || !strcmp("__" #x "__", nam)) return 1;
 #define ALIAS(s, x, t) if(!strcmp(nam, s) || !strcmp("__" s "__", nam)) return 1;
-#define EXTRA_ALIAS(s, x)
+#define EXTRA_ALIAS(s, x) ALIAS(s, x, 0)
 	ATTRIBUTES
 #undef NAME
 #undef ALIAS

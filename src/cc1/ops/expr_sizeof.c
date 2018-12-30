@@ -51,12 +51,16 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 	chosen = SIZEOF_WHAT(e);
 
-	fold_check_expr(e->expr,
+	if(fold_check_expr(e->expr,
 			FOLD_CHK_NO_BITFIELD
 			| (e->what_of == what_typeof || e->what_of == what_sizeof
 					? FOLD_CHK_ALLOW_VOID
 					: 0),
-			sizeof_what(e->what_of));
+			sizeof_what(e->what_of)))
+	{
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	switch(e->what_of){
 		case what_typeof:
@@ -123,7 +127,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 static void const_expr_sizeof(expr *e, consty *k)
 {
 	if(NEED_RUNTIME_SIZEOF(SIZEOF_WHAT(e))){
-		k->type = CONST_NO;
+		CONST_FOLD_NO(k, e);
 		return;
 	}
 

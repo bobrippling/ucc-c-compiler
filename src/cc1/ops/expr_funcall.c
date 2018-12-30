@@ -15,6 +15,11 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../c_funcs.h"
+#include "../fopt.h"
+
+#include "expr_identifier.h"
+#include "expr_op.h"
+#include "expr_cast.h"
 
 #define ARG_BUF(buf, i, sp)       \
 	snprintf(buf, sizeof buf,       \
@@ -26,7 +31,7 @@ const char *str_expr_funcall()
 	return "function-call";
 }
 
-static attribute *func_attr_present(expr *e, enum attribute_type t)
+attribute *func_or_builtin_attr_present(expr *e, enum attribute_type t)
 {
 	attribute *a;
 	a = expr_attr_present(e, t);
@@ -41,7 +46,7 @@ static void sentinel_check(where *w, expr *e, expr **args,
 #define ATTR_WARN_RET(w, ...) \
 	do{ cc1_warn_at(w, attr_sentinel, __VA_ARGS__); return; }while(0)
 
-	attribute *attr = func_attr_present(e, attr_sentinel);
+	attribute *attr = func_or_builtin_attr_present(e, attr_sentinel);
 	int i, nvs;
 	expr *sentinel;
 
@@ -206,6 +211,7 @@ static int check_arg_counts(
 			 * another prototype elsewhere */
 			int warn = args_from_decl->args_old_proto
 				&& !args_from_decl->args_void;
+			int warning_emitted = 1;
 
 #define common_warning                                         \
 					"too %s arguments to function %s%s(got %d, need %d)",\
@@ -215,15 +221,18 @@ static int check_arg_counts(
 					count_arg, count_decl
 
 			if(warn){
-				cc1_warn_at(loc, funcall_argcount, common_warning);
+				warning_emitted = cc1_warn_at(loc, funcall_argcount, common_warning);
 			}else{
 				warn_at_print_error(loc, common_warning);
 			}
 
 #undef common_warning
 
-			if((call_decl = expr_to_declref(fnexpr->expr, NULL)))
+			if(warning_emitted
+			&& (call_decl = expr_to_declref(fnexpr->expr, NULL)))
+			{
 				note_at(&call_decl->where, "'%s' declared here", call_decl->spel);
+			}
 
 			if(!warn){
 				fold_had_error = 1;
@@ -247,7 +256,7 @@ static void check_arg_voidness_and_nonnulls(
 	unsigned i;
 	attribute *da;
 
-	if((da = func_attr_present(callexpr, attr_nonnull)))
+	if((da = func_or_builtin_attr_present(callexpr, attr_nonnull)))
 		nonnulls = da->bits.nonnull_args;
 
 	for(i = 0; exprargs[i]; i++){
@@ -256,7 +265,8 @@ static void check_arg_voidness_and_nonnulls(
 
 		ARG_BUF(buf, i, sp);
 
-		fold_check_expr(arg, FOLD_CHK_NO_ST_UN, buf);
+		if(fold_check_expr(arg, FOLD_CHK_NO_ST_UN, buf))
+			continue;
 
 		if(i < count_decl && (nonnulls & (1 << i))
 		&& type_is_ptr(args_from_decl->arglist[i]->ref)
@@ -287,13 +297,12 @@ static void check_arg_types(
 				break;
 
 			if(!type_is_complete(decl_arg->ref)){
-				char wbuf[WHERE_BUF_SIZ];
 				warn_at_print_error(&decl_arg->where,
-						"incomplete parameter type '%s'\n"
-						"%s: note: in call here",
-						type_to_str(decl_arg->ref),
-						where_str_r(wbuf, exprloc));
+						"incomplete parameter type '%s'",
+						type_to_str(decl_arg->ref));
 				fold_had_error = 1;
+
+				note_at(exprloc, "in call here");
 			}
 
 			/* exprargs[i] may be NULL - old style function */
@@ -440,10 +449,10 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	}
 
 	/* check the subexp tree type to get the funcall attributes */
-	if(func_attr_present(e, attr_warn_unused))
+	if(func_or_builtin_attr_present(e, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 
-	if(sp && !(fopt_mode & FOPT_FREESTANDING))
+	if(sp && !(cc1_fopt.freestanding))
 		check_standard_funcs(sp, e->funcargs);
 }
 
@@ -510,13 +519,13 @@ void dump_expr_funcall(const expr *e, dump *ctx)
 
 void mutate_expr_funcall(expr *e)
 {
-	(void)e;
+	e->f_has_sideeffects = expr_bool_always;
 }
 
 int expr_func_passable(expr *e)
 {
 	/* need to check the sub-expr, i.e. the function */
-	return !func_attr_present(e, attr_noreturn);
+	return !func_or_builtin_attr_present(e, attr_noreturn);
 }
 
 expr *expr_new_funcall()

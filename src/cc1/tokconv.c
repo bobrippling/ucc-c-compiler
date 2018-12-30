@@ -446,35 +446,16 @@ int curtok_in_list(va_list l)
 	return 0;
 }
 
-void token_get_current_str(
-		char **ps, size_t *pl, int *pwide, where *w)
+struct cstring *token_get_current_str(where *w)
 {
-	extern char *currentstring;
-	extern size_t currentstringlen;
-	extern int   currentstringwide;
-
-	*ps = currentstring;
-
-	if(pwide)
-		*pwide = currentstringwide;
-	else if(currentstringwide)
-		die_at(NULL, "wide string not wanted");
+	extern struct cstring *currentstring;
+	struct cstring *ret = currentstring;
 
 	if(w){
 		extern where currentstringwhere;
 		memcpy_safe(w, &currentstringwhere);
 	}
 
-	if(pl){
-		*pl = currentstringlen;
-	}else{
-		char *p = memchr(currentstring, '\0', currentstringlen);
-
-		if(p && p < currentstring + currentstringlen - 1)
-			cc1_warn_at(NULL, str_contain_nul,
-					"nul-character terminates string early (%s)", p + 1);
-	}
-
 	currentstring = NULL;
-	currentstringlen = 0;
+	return ret;
 }

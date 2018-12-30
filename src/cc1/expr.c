@@ -15,6 +15,14 @@
 
 #include "cc1_where.h"
 
+#include "ops/expr_op.h"
+#include "ops/expr_deref.h"
+#include "ops/expr_val.h"
+#include "ops/expr_cast.h"
+#include "ops/expr_identifier.h"
+#include "ops/expr_struct.h"
+#include "ops/expr_block.h"
+
 void expr_mutate(expr *e, func_mutate_expr *f,
 		func_fold *f_fold,
 		func_str *f_str,
@@ -57,6 +65,20 @@ expr *expr_new(func_mutate_expr *f,
 	where_cc1_current(&e->where);
 	expr_mutate(e, f, f_fold, f_str, f_gen, f_dump, f_gen_style);
 	return e;
+}
+
+void expr_free(expr *e)
+{
+	if(!e)
+		return;
+
+	/* TODO: other parts, recursive, etc */
+	free(e);
+}
+
+void expr_free_abi(void *e)
+{
+	expr_free(e);
 }
 
 const char *expr_str_friendly(expr *e)
@@ -137,6 +159,13 @@ enum lvalue_kind expr_is_lval_struct(expr *e)
 	return LVALUE_STRUCT;
 }
 
+int expr_is_struct_bitfield(const expr *e)
+{
+	return expr_kind(e, struct)
+		&& e->bits.struct_mem.d /* may be null from a bad struct access */
+		&& decl_is_bitfield(e->bits.struct_mem.d);
+}
+
 expr *expr_new_array_idx_e(expr *base, expr *idx)
 {
 	expr *op = expr_new_op(op_plus);
@@ -183,10 +212,14 @@ decl *expr_to_declref(expr *e, const char **whynot)
 	e = expr_skip_all_casts(e);
 
 	if(expr_kind(e, identifier)){
-		if(e->bits.ident.type == IDENT_NORM)
-			return e->bits.ident.bits.ident.sym->decl;
-		else if(whynot)
+		if(whynot)
 			*whynot = "not normal identifier";
+
+		if(e->bits.ident.type == IDENT_NORM){
+			sym *s = e->bits.ident.bits.ident.sym;
+			if(s)
+				return s->decl;
+		}
 
 	}else if(expr_kind(e, struct)){
 		return e->bits.struct_mem.d;
@@ -201,8 +234,38 @@ decl *expr_to_declref(expr *e, const char **whynot)
 	return NULL;
 }
 
+sym *expr_to_symref(expr *e, symtable *stab)
+{
+	if(expr_kind(e, identifier)){
+		struct symtab_entry ent;
+
+		if(e->bits.ident.bits.ident.sym)
+			return e->bits.ident.bits.ident.sym;
+
+		if(stab
+		&& symtab_search(stab, e->bits.ident.bits.ident.spel, NULL, &ent)
+		&& ent.type == SYMTAB_ENT_DECL
+		&& ent.bits.decl->sym)
+		{
+			return ent.bits.decl->sym;
+		}
+	}
+	return NULL;
+}
+
 expr *expr_compiler_generated(expr *e)
 {
 	e->freestanding = 1;
 	return e;
+}
+
+int expr_bool_always(const expr *e)
+{
+	(void)e;
+	return 1;
+}
+
+int expr_has_sideeffects(const expr *e)
+{
+	return e->f_has_sideeffects && e->f_has_sideeffects(e);
 }

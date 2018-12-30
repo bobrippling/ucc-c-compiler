@@ -79,7 +79,7 @@ void flow_end(
 
 void fold_stmt_if(stmt *s)
 {
-	fold_check_expr(s->expr, FOLD_CHK_BOOL, s->f_str());
+	(void)!fold_check_expr(s->expr, FOLD_CHK_BOOL, s->f_str());
 
 	fold_stmt(s->lhs);
 	if(s->rhs)
@@ -102,14 +102,14 @@ void gen_stmt_if(const stmt *s, out_ctx *octx)
 	out_current_blk(octx, blk_true);
 	{
 		gen_stmt(s->lhs, octx);
-		out_ctrl_transfer(octx, blk_fi, NULL, NULL);
+		out_ctrl_transfer(octx, blk_fi, NULL, NULL, 0);
 	}
 
 	out_current_blk(octx, blk_false);
 	{
 		if(s->rhs)
 			gen_stmt(s->rhs, octx);
-		out_ctrl_transfer(octx, blk_fi, NULL, NULL);
+		out_ctrl_transfer(octx, blk_fi, NULL, NULL, 0);
 	}
 
 	out_current_blk(octx, blk_fi);

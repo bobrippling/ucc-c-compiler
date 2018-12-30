@@ -10,6 +10,8 @@
 #include "../type_is.h"
 #include "../../util/dynarray.h"
 
+#include "expr_op.h"
+
 #define ITER_SWITCH(sw, iter) \
 	for(iter = sw->bits.switch_.cases; iter && *iter; iter++)
 
@@ -43,12 +45,15 @@ static void fold_switch_dups(stmt *sw)
 
 		vals[i].cse = cse;
 
-		const_fold_integral(cse->expr, &vals[i].start);
+		if(!const_fold_integral_try(cse->expr, &vals[i].start))
+			goto out;
 
-		if(stmt_kind(cse, case_range))
-			const_fold_integral(cse->expr2, &vals[i].end);
-		else
+		if(stmt_kind(cse, case_range)){
+			if(!const_fold_integral_try(cse->expr2, &vals[i].end))
+				goto out;
+		}else{
 			memcpy(&vals[i].end, &vals[i].start, sizeof vals[i].end);
+		}
 
 		i++;
 	}
@@ -62,20 +67,21 @@ static void fold_switch_dups(stmt *sw)
 		const long first_this = vals[i].start.val.i;
 
 		if(last_prev >= first_this){
-			char buf[WHERE_BUF_SIZ];
 			const int overlap = vals[i  ].end.val.i != vals[i  ].start.val.i
 				               || vals[i-1].end.val.i != vals[i-1].start.val.i;
 
-			die_at(&vals[i-1].cse->where,
-					"%s case statements %s %ld\n"
-					"%s: note: other case",
+			fold_had_error = 1;
+			warn_at_print_error(&vals[i-1].cse->where,
+					"%s case statements %s %ld",
 					overlap ? "overlapping" : "duplicate",
 					overlap ? "starting at" : "for",
-					(long)vals[i].start.val.i,
-					where_str_r(buf, &vals[i].cse->where));
+					(long)vals[i].start.val.i);
+
+			note_at(&vals[i].cse->where, "other case");
 		}
 	}
 
+out:
 	free(vals);
 }
 
@@ -115,15 +121,21 @@ static void fold_switch_enum(
 		stmt *cse = *iter;
 		integral_t v, w;
 
-		fold_check_expr(cse->expr,
+		if(fold_check_expr(cse->expr,
 				FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
-				"case value");
+				"case value"))
+		{
+			continue;
+		}
 		v = const_fold_val_i(cse->expr);
 
 		if(stmt_kind(cse, case_range)){
-			fold_check_expr(cse->expr2,
+			if(fold_check_expr(cse->expr2,
 					FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
-					"case range value");
+					"case range value"))
+			{
+				continue;
+			}
 
 			w =  const_fold_val_i(cse->expr2);
 		}else{
@@ -197,12 +209,9 @@ void fold_stmt_and_add_to_curswitch(stmt *cse)
 		dynarray_add(&sw->bits.switch_.cases, cse);
 	}else{
 		if(sw->bits.switch_.default_case){
-			char buf[WHERE_BUF_SIZ];
-
-			die_at(&cse->where,
-					"duplicate default statement\n"
-					"%s: note: other default here",
-					where_str_r(buf, &sw->bits.switch_.default_case->where));
+			fold_had_error = 1;
+			warn_at_print_error(&cse->where, "duplicate default statement");
+			note_at(&sw->bits.switch_.default_case->where, "other default here");
 
 			return;
 		}
@@ -229,7 +238,8 @@ void fold_stmt_switch(stmt *s)
 {
 	FOLD_EXPR(s->expr, s->symtab);
 
-	fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch");
+	if(fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch"))
+		return;
 
 	/* default integer promotions */
 	expr_promote_default(&s->expr, s->symtab);
@@ -330,13 +340,13 @@ void gen_stmt_switch(const stmt *s, out_ctx *octx)
 	/* no matches - branch to default/end */
 	out_ctrl_transfer(octx,
 			pdefault ? pdefault->bits.case_blk : blk_switch_end,
-			NULL, NULL);
+			NULL, NULL, 0);
 
 	{
 		out_blk *body = out_blk_new(octx, "switch_body");
 		out_current_blk(octx, body);
 		gen_stmt(s->lhs, octx); /* the actual code inside the switch */
-		out_ctrl_transfer(octx, blk_switch_end, NULL, NULL);
+		out_ctrl_transfer(octx, blk_switch_end, NULL, NULL, 0);
 		out_current_blk(octx, blk_switch_end);
 	}
 

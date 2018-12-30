@@ -6,3 +6,6 @@ EXPR_DEFS(cast);
 
 void fold_expr_cast_descend(
 		expr *e, symtable *stab, int descend);
+
+expr *expr_new_cast(expr *, type *cast_to, int implicit);
+expr *expr_new_cast_lval_decay(expr *);

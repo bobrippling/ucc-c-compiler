@@ -15,6 +15,9 @@
 #include "expr.h"
 #include "decl.h"
 #include "type_is.h"
+#include "fopt.h"
+#include "parse_fold_error.h"
+#include "fold.h"
 
 static void sue_set_spel(struct_union_enum_st *sue, char *spel)
 {
@@ -46,7 +49,7 @@ void enum_vals_add(
 		sue_member ***pmembers,
 		where *w,
 		char *sp, expr *e,
-		attribute *attr)
+		attribute **attr)
 {
 	enum_member *emem = umalloc(sizeof *emem);
 	sue_member *mem = umalloc(sizeof *mem);
@@ -56,7 +59,7 @@ void enum_vals_add(
 
 	emem->spel = sp;
 	emem->val  = e;
-	emem->attr = RETAIN(attr);
+	dynarray_add_tmparray(&emem->attr, attr);
 	memcpy_safe(&emem->where, w);
 
 	mem->enum_member = emem;
@@ -72,7 +75,6 @@ int enum_nentries(struct_union_enum_st *e)
 int sue_incomplete_chk(struct_union_enum_st *st, const where *w)
 {
 	if(!sue_is_complete(st)){
-		extern int fold_had_error;
 		fold_had_error = 1;
 		warn_at_print_error(w, "%s %s is incomplete", sue_str(st), st->spel);
 		note_at(&st->where, "forward declared here");
@@ -241,8 +243,10 @@ void sue_member_init_dup_check(sue_member **members)
 	for(i = 0; decls && decls[i]; i++){
 		decl *d2, *d = decls[i]->struct_member;
 
-		if(d->bits.var.init.dinit)
-			die_at(&d->where, "member %s is initialised", d->spel);
+		if(d->bits.var.init.dinit){
+			warn_at_print_error(&d->where, "member %s is initialised", d->spel);
+			fold_had_error = 1;
+		}
 
 		if(decls[i + 1]
 				&& (d2 = decls[i + 1]->struct_member,
@@ -301,13 +305,13 @@ static void *sue_member_find(
 				/* C11 anonymous struct/union */
 				decl *dsub = NULL;
 				decl *tdef;
-				const int allow_tag = fopt_mode & FOPT_TAG_ANON_STRUCT_EXT;
+				const int allow_tag = FOPT_TAG_ANON_STRUCT_EXT(&cc1_fopt);
 
 				/* don't check spel - <anon struct ...> etc */
 				if(!(allow_tag || sub->anon))
 					continue;
 
-				if((fopt_mode & FOPT_PLAN9_EXTENSIONS)
+				if((cc1_fopt.plan9_extensions)
 				&& (tdef = type_is_tdef(d->ref))
 				&& !strcmp(tdef->spel, spel))
 				{

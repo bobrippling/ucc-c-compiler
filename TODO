@@ -17,6 +17,8 @@ cc1
 -fno-builtin
 default to external memset calls, -ffreestanding to use builtin on
 
+-f{function,data}-sections
+
 out/gen-optimisations:
 	rearrangement of 1+f()+1 to f() + 1 + 1 - avoid pre-call reg saves
 
@@ -29,6 +31,9 @@ __attribute__((fastcall)), cdecl, etc
 
 code gen:
 	Treat %rsp as a frame constant if alloca() and vlas aren't used (impl_reg_frame_const)
+
+attempt to build:
+	https://github.com/mit-pdos/xv6-public
 
 cpp
 ###

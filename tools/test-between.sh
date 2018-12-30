@@ -15,20 +15,22 @@ log(){
 
 git rev-list "$1" | tac | while read hash
 do
-	if ! git checkout "$hash"
+	printf '%s...\r' "$hash"
+	if ! git checkout -q "$hash"
 	then exit 1
 	fi
-	if ! ./configure $CONFIGURE_ARGS >/dev/null 2>&1
+	thislog="test-between-$hash"
+	if ! ./configure $CONFIGURE_ARGS >"$thislog" 2>&1
 	then
 		log "$hash" "configure failure"
 		continue
 	fi
-	if ! make -Csrc $MAKE_ARGS >/dev/null 2>&1
+	if ! make -Csrc $MAKE_ARGS >>"$thislog" 2>&1
 	then
 		log "$hash" "make failure"
 		continue
 	fi
-	if ! (cd test2; ./run_tests -i ignores .) >/dev/null 2>&1
+	if ! (cd test; ./run_tests -i ignores .) >>"$thislog" 2>&1
 	then
 		log "$hash" "test failure"
 		continue

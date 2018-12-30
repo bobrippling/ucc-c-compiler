@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/util.h"
@@ -10,6 +11,14 @@
 #include "expr.h"
 #include "cc1.h"
 #include "type_is.h"
+
+const char *constyness_strs[] = {
+	"CONST_NO",
+	"CONST_NUM",
+	"CONST_ADDR",
+	"CONST_STRK",
+	"CONST_NEED_ADDR"
+};
 
 void const_fold(expr *e, consty *k)
 {
@@ -25,12 +34,34 @@ void const_fold(expr *e, consty *k)
 			e->const_eval.const_folded = 1;
 			e->f_const_fold(e, &e->const_eval.k);
 			e->const_eval.const_folded = 2;
+
+			if((e->const_eval.k.type == CONST_ADDR
+			|| e->const_eval.k.type == CONST_NEED_ADDR)
+			&& e->const_eval.k.bits.addr.is_lbl)
+			{
+				assert(e->const_eval.k.bits.addr.bits.lbl);
+			}
 		}else if(e->const_eval.const_folded == 1){
 			ICW("const-folding a value during its own const-fold");
 		}
 
 		memcpy_safe(k, &e->const_eval.k);
 	}
+
+	if(k->type == CONST_NO && !k->nonconst)
+		k->nonconst = e;
+}
+
+void const_fold_no(
+		consty *k,
+		consty *klhs, expr *lhs,
+		consty *krhs, expr *rhs)
+{
+	k->type = CONST_NO;
+
+	k->nonconst = CONST_AT_COMPILE_TIME(klhs->type)
+		? (krhs->nonconst ? krhs->nonconst : rhs)
+		: (klhs->nonconst ? klhs->nonconst : lhs);
 }
 
 #if 0
@@ -66,25 +97,43 @@ static int const_expr_zero(expr *e, int zero)
 
 	const_fold(e, &k);
 
-	if(k.type != CONST_NUM)
-		return 0;
+	switch(k.type){
+		case CONST_NUM:
+			if(K_FLOATING(k.bits.num))
+				return !k.bits.num.val.f == zero;
+			return !k.bits.num.val.i == zero;
 
-	if(K_FLOATING(k.bits.num))
-		return !k.bits.num.val.f == zero;
+		case CONST_ADDR:
+			return !k.bits.addr.is_lbl && k.bits.addr.bits.memaddr == 0;
 
-	return !k.bits.num.val.i == zero;
+		case CONST_NEED_ADDR:
+		case CONST_STRK:
+		case CONST_NO:
+			break;
+	}
+
+	return 0;
 }
 
-void const_fold_integral(expr *e, numeric *piv)
+int const_fold_integral_try(expr *e, numeric *piv)
 {
 	consty k;
 	const_fold(e, &k);
 
-	UCC_ASSERT(k.type == CONST_NUM, "not const");
-	UCC_ASSERT(k.offset == 0, "got offset for val?");
-	UCC_ASSERT(K_INTEGRAL(k.bits.num), "fp?");
+	if(k.type != CONST_NUM)
+		return 0;
+	if(k.offset != 0)
+		return 0;
+	if(!K_INTEGRAL(k.bits.num))
+		return 0;
 
 	memcpy_safe(piv, &k.bits.num);
+	return 1;
+}
+
+void const_fold_integral(expr *e, numeric *piv)
+{
+	UCC_ASSERT(const_fold_integral_try(e, piv), "not an integer constant");
 }
 
 integral_t const_fold_val_i(expr *e)
@@ -246,4 +295,85 @@ floating_t const_op_exec_fp(
 	}
 
 	ucc_unreach(-1);
+}
+
+static void const_intify(consty *k, expr *owner)
+{
+	switch(k->type){
+		case CONST_NO:
+			CONST_FOLD_NO(k, owner);
+		case CONST_NUM:
+			break;
+
+		case CONST_STRK:
+			return;
+
+		case CONST_NEED_ADDR:
+		case CONST_ADDR:
+		{
+			integral_t memaddr;
+
+			if(k->bits.addr.is_lbl){
+				/* can't do (int)&x */
+				return;
+			}
+
+			memaddr = k->bits.addr.bits.memaddr + k->offset;
+
+			CONST_FOLD_LEAF(k);
+
+			k->type = CONST_NUM;
+			k->bits.num.val.i = memaddr;
+			break;
+		}
+	}
+}
+
+static void const_memify(consty *k)
+{
+	switch(k->type){
+		case CONST_STRK:
+		case CONST_NEED_ADDR:
+		case CONST_ADDR:
+			break;
+
+		case CONST_NO:
+			break;
+
+		case CONST_NUM:
+		{
+			integral_t memaddr = k->bits.num.val.i + k->offset;
+
+			CONST_FOLD_LEAF(k);
+
+			k->type = CONST_ADDR;
+			k->bits.addr.bits.memaddr = memaddr;
+			break;
+		}
+	}
+}
+
+void const_ensure_num_or_memaddr(
+		consty *k, type *from, type *to,
+		expr *owner)
+{
+	const int from_ptr = type_is_ptr(from) || type_is_array(from);
+	const int to_ptr = type_is_ptr(to) || type_is_array(to);
+
+	if(from_ptr == to_ptr)
+		return;
+
+	if(from_ptr && !to_ptr){
+		/* casting from pointer to int */
+		const_intify(k, owner);
+
+	}else{
+		assert(to_ptr && !from_ptr);
+
+		const_memify(k);
+	}
+
+	/* not a constant but we treat it as such, as an extension */
+	if(!k->nonstandard_const)
+		k->nonstandard_const = owner;
 }

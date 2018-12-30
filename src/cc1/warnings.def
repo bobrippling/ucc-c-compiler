@@ -11,6 +11,8 @@ X("implicit-int", implicit_int)
 X("implicit-function-declaration", implicit_func)
 GROUP("implicit", &cc1_warning.implicit_func, &cc1_warning.implicit_int)
 
+X("escape-char", escape_char)
+
 /* switch on enum type without default label:
  * warn on missing enum entry
  * warn on case labels outside of range */
@@ -61,6 +63,7 @@ X("unused-function", unused_function)
 X("unused-return-value", unused_fnret)
 X("unused-label", unused_label)
 X("unused-local-typedef", unused_local_typedef)
+ALIAS("unused-local-typedefs", unused_local_typedef) /* gcc compat */
 X("unused-parameter", unused_param)
 X("unused-variable", unused_var)
 
@@ -82,6 +85,8 @@ X("char-subscripts", char_subscript)/* gcc/clang */
 X("asm-badchar", asm_badchar)
 
 X("attr-badcleanup", attr_badcleanup)
+
+X("attr-bad-ctor-dtor", attr_ctor_dtor_bad)
 
 X("attr-format-unknown", attr_format_unknown)
 X("attr-format-baddecl", attr_format_baddecl)
@@ -115,6 +120,7 @@ X("restrict-non-ptr", bad_restrict)
 X("bitfield-boundary", bitfield_boundary)
 X("bitfield-onebit-int", bitfield_onebit_int)
 X("bitfield-trunc", bitfield_trunc)
+X("bitfield-promotion", bitfield_promotion)
 
 X("builtin-expect-nonconst", builtin_expect_nonconst)
 X("builtin-memset-bad", builtin_memset_bad)
@@ -131,6 +137,7 @@ X("constant-large-unsigned", constant_large_unsigned)
 X("div-zero", constop_bad)
 X("declaration-noop", decl_nodecl)
 X("empty-struct", empty_struct)
+X("integer-op-promotion", int_op_promotion)
 
 X("empty-init", gnu_empty_init)
 
@@ -146,7 +153,10 @@ X("embedded-flexarr", flexarr_embed)
 X("flexarr-single-member", flexarr_only)
 X("flexarr-init", flexarr_init)
 
+X("extended-offsetof", offsetof_extended)
+
 X("free-nonheap-object", free_nonheap)
+X("malloc-type-mismatch", malloc_type_mismatch)
 
 X("gcc-compat", gnu_gcc_compat)
 
@@ -155,8 +165,11 @@ X("gnu-statement-expression", gnu_expr_stmt)
 X("gnu-label-as-value", gnu_addr_lbl)
 X("gnu-attribute", gnu_attribute)
 X("gnu-typeof", gnu_typeof)
+X("gnu-auto-type", gnu_autotype)
+ALIAS("gnu-autotype", gnu_autotype)
 X("gnu-function", gnu__function)
 X("gnu-case-range", gnu_case_range)
+X("gnu-designator", gnu_desig)
 
 X("call-argcount", funcall_argcount)
 
@@ -167,6 +180,7 @@ X("ignored-attributes", ignored_attribute)
 X("ignored-late-decl", ignored_late_decl)
 
 X("ignored-qualifiers", ignored_qualifiers)
+X("duplicate-decl-specifier", duplicate_declspec)
 
 X("implicit-old-func", implicit_old_func)
 
@@ -177,9 +191,11 @@ ALIAS("missing-field-initializers", init_missing_struct)/* gcc/clang */
 X("init-missing-struct-zero", init_missing_struct_zero)
 X("init-obj-discard", init_obj_discard)
 X("init-overlong-string", init_overlong_strliteral)
+X("overlength-strings", overlength_strings)
 X("init-override", init_override)
 X("designated-init", init_undesignated)
 X("init-array-range", gnu_init_array_range)
+X("initialiser-overrides", initialiser_overrides)
 
 X("unknown-attribute", attr_unknown)
 
@@ -187,17 +203,19 @@ X("long-long", long_long)
 
 X("mismatch-conditional", mismatch_conditional)
 X("mismatch-ptr", mismatch_ptr)
+ALIAS("incompatible-pointer-types", mismatch_ptr)
 X("mismatching-types", mismatching_types)
 
 X("missing-empty-struct-brace-init", missing_empty_struct_brace_init)
 
 X("missing-prototypes", missing_prototype)
 X("missing-variable-declarations", missing_variable_decls)
+ALIAS("missing-declarations", missing_variable_decls)
 GROUP("missing-forwards", &cc1_warning.missing_variable_decls, &cc1_warning.missing_prototype)
 ALIAS("strict-prototypes", implicit_old_func)/* gcc/clang */
 
 X("multichar", multichar)
-X("multichar-too-large", multichar_toolarge)
+X("char-too-large", char_toolarge)
 
 X("nonstandard-array-size", nonstd_arraysz)
 X("nonstandard-init", nonstd_init)
@@ -218,7 +236,7 @@ X("pure-inline", pure_inline)
 X("inline", inline_failed)
 X("restrict-ptrs", restrict_ptrs)
 X("return-undef", return_undef)
-X("sizeof-decayed", sizeof_decayed)
+X("sizeof-array-argument", sizeof_decayed)
 X("sizeof-ptr-divide", sizeof_ptr_div)
 X("sizeof-pointer-memaccess", sizeof_pointer_memaccess)
 X("static-array-size", static_array_bad)

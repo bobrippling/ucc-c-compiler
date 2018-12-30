@@ -1,8 +1,14 @@
 #include <string.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "stmt_expr.h"
 #include "../type_is.h"
+
+#include "expr_funcall.h"
+#include "expr_stmt.h"
+#include "expr_cast.h"
+#include "__builtin.h"
 
 const char *str_stmt_expr()
 {
@@ -46,24 +52,24 @@ void fold_stmt_expr(stmt *s)
 	}
 }
 
-static int expr_volatile_skipcasts(expr *e)
-{
-	if(type_qual(e->tree_type) & qual_volatile)
-		return 1;
-
-	return expr_kind(e, cast)
-		&& expr_cast_is_lval2rval(e)
-		&& type_qual(expr_cast_child(e)->tree_type) & qual_volatile;
-}
-
 void gen_stmt_expr(const stmt *s, out_ctx *octx)
 {
 	const out_val *v = gen_expr(s->expr, octx);
 
-	if(expr_volatile_skipcasts(s->expr))
+	expr *const lvalue = expr_kind(s->expr, cast) && expr_cast_is_lval2rval(s->expr)
+		? expr_cast_child(s->expr)
+		: NULL;
+
+	const int is_volatile = type_qual(s->expr->tree_type) & qual_volatile
+		|| (lvalue && type_qual(lvalue->tree_type) & qual_volatile);
+
+	if(is_volatile){
+		assert(lvalue && "only lvalues can be the source of volatile");
+
 		out_force_read(octx, s->expr->tree_type, v);
-	else
+	}else{
 		out_val_consume(octx, v);
+	}
 }
 
 void dump_stmt_expr(const stmt *s, dump *ctx)
@@ -94,6 +100,9 @@ static int expr_passable(stmt *s)
 
 	if(expr_kind(s->expr, stmt))
 		return fold_passable(s->expr->code);
+
+	if(expr_kind(s->expr, builtin))
+		return !func_or_builtin_attr_present(s->expr, attr_noreturn);
 
 	return 1;
 }

@@ -16,6 +16,7 @@
 #include "type_is.h"
 #include "sue.h"
 #include "funcargs.h"
+#include "fopt.h"
 
 #include "gen_dump.h"
 
@@ -27,6 +28,7 @@ static const char *const col_ptr = "\x1b[0;33m";
 static const char *const col_where = "\x1b[0;33m";
 static const char *const col_type = "\x1b[0;32m";
 static const char *const col_strlit = "\x1b[1;36m";
+static const char *const col_const = "\x1b[0;36m";
 static const char *const col_off = "\x1b[m";
 
 struct dump
@@ -126,8 +128,15 @@ void dump_desc_expr_newline(
 	dump_desc_colour_newline(ctx, desc, e, &e->where,
 			maybe_colour(ctx->fout, col_desc_expr), 0);
 
-	if(e->tree_type)
+	if(e->tree_type){
+		consty k;
+
 		dump_type(ctx, e->tree_type);
+
+		const_fold((expr *)e, &k);
+		if(k.type != CONST_NO)
+			fprintf(ctx->fout, " %s%s%s", col_const, constyness_strs[k.type], col_off);
+	}
 
 	dump_newline(ctx, newline);
 }
@@ -150,18 +159,34 @@ void dump_desc_expr(dump *ctx, const char *desc, const expr *e)
 	dump_desc_expr_newline(ctx, desc, e, 1);
 }
 
-void dump_strliteral_indent(dump *ctx, int indent, const char *str, size_t len)
+void dump_strliteral_indent(dump *ctx, int indent, struct cstring *str)
 {
 	if(indent)
 		dump_indent(ctx);
-	fprintf(ctx->fout, "%s\"", maybe_colour(ctx->fout, col_strlit));
-	literal_print(ctx->fout, str, len);
+	fprintf(ctx->fout, "%s%s\"",
+			maybe_colour(ctx->fout, col_strlit),
+			str->type == CSTRING_WIDE ? "L" : "");
+
+	if(str->type == CSTRING_WIDE){
+		size_t i;
+		for(i = 0; i < str->count; i++)
+			fwrite(&str->bits.wides[i], sizeof(int), 1, ctx->fout);
+	}else{
+		literal_print(ctx->fout, str);
+	}
+
 	fprintf(ctx->fout, "\"%s\n", maybe_colour(ctx->fout, col_off));
 }
 
 void dump_strliteral(dump *ctx, const char *str, size_t len)
 {
-	dump_strliteral_indent(ctx, 1, str, len);
+	struct cstring cstr;
+
+	cstring_init(&cstr, CSTRING_ASCII, str, len, 0);
+
+	dump_strliteral_indent(ctx, 1, &cstr);
+
+	cstring_deinit(&cstr);
 }
 
 void dump_expr(expr *e, dump *ctx)
@@ -176,6 +201,8 @@ void dump_stmt(stmt *s, dump *ctx)
 
 void dump_init(dump *ctx, decl_init *dinit)
 {
+	const int sideeffects = decl_init_has_sideeffects(dinit);
+
 	if(dinit == DYNARRAY_NULL){
 		dump_printf(ctx, "<null init>\n");
 		return;
@@ -185,14 +212,21 @@ void dump_init(dump *ctx, decl_init *dinit)
 		case decl_init_scalar:
 		{
 			dump_expr(dinit->bits.expr, ctx);
+			if(sideeffects){
+				dump_inc(ctx);
+				dump_desc(ctx, "(side effects)", dinit, &dinit->where);
+				dump_dec(ctx);
+			}
 			break;
 		}
 
 		case decl_init_brace:
 		{
 			decl_init **i;
+			char desc[32];
 
-			dump_desc(ctx, "brace init", dinit, &dinit->where);
+			snprintf(desc, sizeof(desc), "brace init%s", sideeffects ? " (side effects)" : "");
+			dump_desc(ctx, desc, dinit, &dinit->where);
 
 			dump_inc(ctx);
 
@@ -256,9 +290,12 @@ static void dump_gasm(symtable_gasm *gasm, dump *ctx)
 	dump_dec(ctx);
 }
 
-static void dump_attributes(attribute *da, dump *ctx)
+static void dump_attributes(attribute **attrs, dump *ctx)
 {
-	for(; da; da = da->next){
+	attribute **i;
+	for(i = attrs; i && *i; i++){
+		attribute *da = *i;
+
 		dump_desc_colour_newline(ctx, "attribute",
 				da, &da->where,
 				maybe_colour(ctx->fout, col_desc), 0);
@@ -299,6 +336,8 @@ static void dump_sue(dump *ctx, type *ty)
 			dump_sue(ctx, d->ref);
 		}
 	}
+
+	dump_attributes(sue->attr, ctx);
 
 	dump_dec(ctx);
 }
@@ -400,5 +439,9 @@ void gen_dump(symtable_global *globs)
 		}
 
 		dump_decl(d, &dump, NULL);
+	}
+
+	for(; iasm && *iasm; iasm++){
+		dump_gasm(*iasm, &dump);
 	}
 }

@@ -9,6 +9,7 @@
 
 #include "cc1_where.h"
 #include "cc1.h" /* cc1_std */
+#include "str.h"
 
 #include "tokenise.h"
 #include "tokconv.h"
@@ -19,6 +20,8 @@
 #include "parse_expr.h"
 
 #include "fold.h"
+
+#include "ops/expr_identifier.h"
 
 struct stmt_ctx
 {
@@ -242,6 +245,7 @@ void parse_static_assert(symtable *scope)
 {
 	while(accept(token__Static_assert)){
 		static_assert *sa = umalloc(sizeof *sa);
+		struct cstring *str;
 
 		sa->scope = scope;
 
@@ -249,7 +253,13 @@ void parse_static_assert(symtable *scope)
 		sa->e = PARSE_EXPR_NO_COMMA(scope, 0);
 		EAT(token_comma);
 
-		token_get_current_str(&sa->s, NULL, NULL, NULL);
+		str = parse_asciz_str();
+		if(!str){
+			expr_free(sa->e);
+			free(sa);
+			continue;
+		}
+		sa->s = cstring_detach(str);
 
 		EAT(token_string);
 		EAT(token_close_paren);
@@ -279,7 +289,7 @@ static stmt *parse_label(const struct stmt_ctx *ctx)
 {
 	where w;
 	char *lbl;
-	attribute *attr = NULL, *ai;
+	attribute **attr = NULL, **ai;
 	stmt *lblstmt;
 
 	where_cc1_current(&w);
@@ -294,16 +304,17 @@ static stmt *parse_label(const struct stmt_ctx *ctx)
 	memcpy_safe(&lblstmt->where, &w);
 
 	parse_add_attr(&attr, ctx->scope);
-	for(ai = attr; ai; ai = ai->next)
-		if(ai->type == attr_unused)
+
+	for(ai = attr; ai && *ai; ai++)
+		if((*ai)->type == attr_unused)
 			lblstmt->bits.lbl.unused = 1;
 		else
-			cc1_warn_at(&ai->where,
+			cc1_warn_at(&(*ai)->where,
 					lbl_attr_unknown,
 					"ignoring attribute \"%s\" on label",
-					attribute_to_str(ai));
+					attribute_to_str(*ai));
 
-	attribute_free(attr);
+	attribute_array_release(&attr);
 
 	return parse_label_next(lblstmt, ctx);
 }
@@ -628,12 +639,22 @@ flow:
 
 symtable_gasm *parse_gasm(void)
 {
-	symtable_gasm *g = umalloc(sizeof *g);
+	symtable_gasm *g;
+	struct cstring *cstr;
+	where w;
 
-	where_cc1_current(&g->where);
+	where_cc1_current(&w);
 
 	EAT(token_open_paren);
-	token_get_current_str(&g->asm_str, NULL, NULL, NULL);
+
+	cstr = parse_asciz_str();
+	if(!cstr)
+		return NULL;
+
+	g = umalloc(sizeof *g);
+	g->asm_str = cstring_detach(cstr);
+	memcpy_safe(&g->where, &w);
+
 	EAT(token_string);
 	EAT(token_close_paren);
 	EAT(token_semicolon);

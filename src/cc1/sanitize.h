@@ -12,6 +12,6 @@ void sanitize_shift(
 		expr *elhs, expr *erhs,
 		enum op_type,
 		out_ctx *octx,
-		const out_val *lhs, const out_val *rhs);
+		const out_val **lhs, const out_val **rhs);
 
 #endif

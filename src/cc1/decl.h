@@ -37,7 +37,7 @@ struct decl
 
 	struct type *ref; /* should never be null - we always have a ref to a type */
 
-	attribute *attr;
+	attribute **attr;
 
 	char *spel, *spel_asm;
 	int used;
@@ -47,21 +47,25 @@ struct decl
 		struct
 		{
 			struct expr *field_width;
+			type *bitfield_master_ty;
 			unsigned struct_offset;
 			unsigned struct_offset_bitfield; /* add onto struct_offset */
 			int first_bitfield; /* marker for the first bitfield in a set */
 
-			struct decl_align
+			struct
 			{
-				int as_int;
-				unsigned resolved;
-				union
+				struct decl_align
 				{
-					struct expr *align_intk;
-					struct type *align_ty;
-				} bits;
-				struct decl_align *next;
-			} *align;
+					int as_int;
+					union
+					{
+						struct expr *align_intk;
+						struct type *align_ty;
+					} bits;
+					struct decl_align *next;
+				} *first;
+				unsigned resolved;
+			} align;
 
 			/* initialiser - converted to an assignment for non-globals */
 			struct decl_init_expr init;
@@ -106,7 +110,9 @@ void         decl_free(decl *);
 
 unsigned decl_size(decl *);
 unsigned decl_align(decl *);
-#define decl_check_size(d) decl_size(d)
+#define decl_check_size(d) (void)decl_size(d)
+void decl_size_align_inc_bitfield(decl *, unsigned *const sz, unsigned *const align);
+type *decl_type_for_bitfield(decl *);
 
 enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts);
 unsigned decl_hash(const decl *);
@@ -120,15 +126,21 @@ enum linkage
 };
 enum linkage decl_linkage(decl *d);
 int decl_store_duration_is_static(decl *d); /* i.e. not argument/typedef/local */
+int decl_interposable(decl *d);
+int decl_needs_GOTPLT(decl *d);
 
 int decl_conv_array_func_to_ptr(decl *d);
 struct type *decl_is_decayed_array(decl *);
 
+decl *decl_proto(decl *); /* rewinds to the proto */
 decl *decl_impl(decl *); /* fast-forwards to the impl */
 
 int decl_is_pure_inline(decl *);
 int decl_should_emit_code(decl *);
 int decl_unused_and_internal(decl *);
+enum visibility decl_visibility(decl *);
+
+int decl_is_bitfield(decl *);
 
 #define DECL_STATIC_BUFSIZ 512
 
@@ -151,7 +163,7 @@ const char *decl_store_spel_type_to_str_r(
 	((d)->bits.var.field_width && !(d)->spel)
 
 #define DECL_IS_HOSTED_MAIN(fdecl) \
-			((fopt_mode & FOPT_FREESTANDING) == 0 \
+			((cc1_fopt.freestanding) == 0 \
 			&& !strcmp(fdecl->spel, "main"))
 
 #endif

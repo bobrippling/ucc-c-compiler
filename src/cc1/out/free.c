@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include "../../util/dynmap.h"
 #include "../../util/dynarray.h"

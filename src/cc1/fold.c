@@ -25,6 +25,14 @@
 #include "format_chk.h"
 #include "type_is.h"
 #include "type_nav.h"
+#include "fopt.h"
+
+#include "ops/expr_cast.h"
+#include "ops/expr_identifier.h"
+#include "ops/expr_val.h"
+#include "ops/expr_struct.h"
+#include "ops/expr_assign.h"
+#include "ops/expr_addr.h"
 
 enum fold_type_chk
 {
@@ -70,7 +78,8 @@ int fold_type_chk_warn(
 		expr *maybe_lhs, type *tlhs, expr *rhs,
 		where *w, const char *desc)
 {
-	unsigned char *pwarn = &cc1_warning.mismatching_types;
+	unsigned char *const pwarn_mismatch = &cc1_warning.mismatching_types;
+	unsigned char *pwarn = pwarn_mismatch;
 	type *const trhs = rhs->tree_type;
 	int error = 1;
 	const char *detail = "";
@@ -84,15 +93,16 @@ int fold_type_chk_warn(
 			/* attempt to insert regardless, e.g. _Bool x = 5;
 			 *  - they match but we need the _Bool cast */
 			return 1;
+
 		case TYPE_EQUAL:
 			/* for enum types, we still want the cast, for warnings' sake */
-			if(check_enum_cmp(tlhs, trhs, w, desc))
-				return 1;
+			return check_enum_cmp(tlhs, trhs, w, desc);
+
 		case TYPE_QUAL_ADD: /* const int <- int */
 		case TYPE_QUAL_SUB: /* int <- const int */
 		case TYPE_QUAL_POINTED_ADD: /* const char * <- char * */
 		case TYPE_EQUAL_TYPEDEF:
-			break;
+			return 0;
 
 		case TYPE_CONVERTIBLE_EXPLICIT:
 		{
@@ -134,30 +144,39 @@ warning:
 		case TYPE_NOT_EQUAL:
 		{
 			char buf[TYPE_STATIC_BUFSIZ];
-			char wbuf[WHERE_BUF_SIZ];
+			int show_note = 1;
 
-#define common_warning                                    \
-			"mismatching %stypes, %s:\n%s: note: '%s' vs '%s'", \
-			detail, desc, where_str_r(wbuf, w),                 \
-			type_to_str_r(buf, tlhs),                           \
-			type_to_str(       trhs)
+			/* still default? -> change to mismatching pointers if pointer types */
+			if(pwarn == pwarn_mismatch
+			&& type_is_ptr_or_block(tlhs)
+			&& type_is_ptr_or_block(trhs))
+			{
+				pwarn = &cc1_warning.mismatch_ptr;
+			}
 
+#define common_warning "mismatching %stypes, %s", detail, desc
 			if(error){
 				warn_at_print_error(w, common_warning);
 				fold_had_error = 1;
 			}else{
-				cc1_warn_at_w(w, pwarn, common_warning);
+				show_note = cc1_warn_at_w(w, pwarn, common_warning);
 			}
-
 #undef common_warning
 
+			if(show_note){
+				/* don't show line with this note */
+				where loc = *w;
+				loc.line_str = NULL;
+				note_at(&loc, "'%s' vs '%s'", type_to_str_r(buf, tlhs), type_to_str(trhs));
+			}
+
 			if(error){
-				fold_had_error = 1;
 				return 0; /* don't cast - we don't want duplicate errors */
 			}
 			return 1; /* need cast */
 		}
 	}
+
 	return 0;
 }
 
@@ -198,19 +217,12 @@ void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w)
 
 sym *fold_inc_writes_if_sym(expr *e, symtable *stab)
 {
-	if(expr_kind(e, identifier)){
-		struct symtab_entry ent;
-		if(symtab_search(stab, e->bits.ident.bits.ident.spel, NULL, &ent)
-		&& ent.type == SYMTAB_ENT_DECL
-		&& ent.bits.decl->sym)
-		{
-			sym *sym = ent.bits.decl->sym;
-			sym->nwrites++;
-			return sym;
-		}
-	}
+	sym *sym = expr_to_symref(e, stab);
 
-	return NULL;
+	if(sym)
+		sym->nwrites++;
+
+	return sym;
 }
 
 void fold_expr_nodecay(expr *e, symtable *stab)
@@ -265,12 +277,44 @@ expr *fold_expr_lval2rval(expr *e, symtable *stab)
 
 	if(should_lval2rval || type_is(e->tree_type, type_func)){
 		struct_union_enum_st *enum_ty;
+		expr *const orig_e = e;
 
 		e = expr_set_where(
 				expr_new_cast_lval_decay(e),
 				&e->where);
 
 		fold_expr_cast_descend(e, stab, 0);
+
+		/* if we've just lval2rval'd a bitfield, we may need to promote it */
+		if(expr_kind(orig_e, struct)
+		&& orig_e->bits.struct_mem.d
+		&& orig_e->bits.struct_mem.d->bits.var.field_width)
+		{
+			/*
+			 * If an int can represent all values of the original type (as restricted
+			 * by the width, for a bit-field), the value is converted to an int;
+			 * otherwise, it is converted to an unsigned int.
+			 */
+			decl *bitfield = orig_e->bits.struct_mem.d;
+			unsigned bf_nbits = const_fold_val_i(bitfield->bits.var.field_width);
+			unsigned uint_nbits = type_primitive_size(type_int) * CHAR_BIT;
+			unsigned sint_nbits = uint_nbits - 1; /* we assume 2's complement: */
+			type *prom;
+
+			if(bf_nbits <= sint_nbits){
+				/* can be represented in int */
+				if(!type_is_signed(bitfield->ref)){
+					cc1_warn_at(&orig_e->where, bitfield_promotion,
+							"promoting unsigned bitfield to int");
+				}
+				prom = type_nav_btype(cc1_type_nav, type_int);
+			}else{
+				/* must be represented in unsigned int */
+				prom = type_nav_btype(cc1_type_nav, type_uint);
+			}
+
+			fold_insert_casts(prom, &e, stab);
+		}
 
 		if((enum_ty = type_is_enum(e->tree_type))){
 			/* enums always become ints */
@@ -312,7 +356,7 @@ static void fold_calling_conv(type *r)
 				def_conv = conv_cdecl;
 			}else{
 				/* 64-bit - MS or SYSV */
-				if(platform_sys() == PLATFORM_CYGWIN)
+				if(platform_sys() == SYS_cygwin)
 					def_conv = conv_x64_ms;
 				else
 					def_conv = conv_x64_sysv;
@@ -337,9 +381,9 @@ void fold_check_embedded_flexar(
 
 static void fold_type_w_attr(
 		type *const r, type *const parent, const where *loc,
-		symtable *stab, attribute *attr, const enum fold_type_chk chk)
+		symtable *stab, attribute **attr, const enum fold_type_chk chk)
 {
-	attribute *this_attr = NULL;
+	attribute **this_attr = NULL;
 	enum type_qualifier q_to_check = qual_none;
 
 	/* must be above the .folded check,
@@ -482,7 +526,7 @@ static void fold_type_w_attr(
 	 * since typedef int *intptr; intptr restrict a; is valid
 	 */
 	if(q_to_check & qual_restrict){
-		if(!type_is_ptr(r)){
+		if(!type_is_ptr(r) && !type_is(r, type_array)){
 			cc1_warn_at(loc,
 					bad_restrict,
 					"restrict on non-pointer type '%s'",
@@ -517,6 +561,9 @@ static void fold_type_w_attr(
 						r->type == type_func
 							? "function returning a function"
 							: "array of functions");
+			}else if(r->type == type_func && type_is(r->ref, type_array)){
+				fold_had_error = 1;
+				warn_at_print_error(loc, "function returning an array");
 			}
 			break;
 
@@ -566,24 +613,45 @@ void fold_type_ondecl_w(decl *d, symtable *scope, where const *w, int is_arg)
 	fold_type_w_attr(d->ref, NULL, w, scope, d->attr, fold_flags);
 }
 
-static int fold_align(int al, int min, int max, where *w)
+static void check_valid_align_within_min(int const al, int const min, where *w)
 {
 	/* allow zero */
 	if(al & (al - 1))
 		die_at(w, "alignment %d isn't a power of 2", al);
 
-	UCC_ASSERT(al > 0, "zero align");
-	if(al < min)
-		die_at(w,
-				"can't reduce alignment (%d -> %d)",
-				min, al);
+	if(al == 0) /* 0 ignored as special case */
+		return;
 
-	if(al > max)
-		max = al;
-	return max;
+	if(al < min)
+		die_at(w, "can't reduce alignment (%d -> %d)", min, al);
 }
 
-static void fold_func_attr(decl *d)
+static void fold_ctor_dtor(
+		decl *d, symtable *stab, enum attribute_type ty, const char *desc)
+{
+	attribute *attr;
+
+	if(!(attr = attribute_present(d, ty)))
+		return;
+
+	if(attr->bits.priority){
+		consty k;
+
+		FOLD_EXPR(attr->bits.priority, stab);
+		const_fold(attr->bits.priority, &k);
+
+		if(!type_is_integral(attr->bits.priority->tree_type)
+		|| k.type != CONST_NUM
+		|| !K_INTEGRAL(k.bits.num))
+		{
+			warn_at_print_error(&attr->bits.priority->where,
+					"%s priority not integral", desc);
+			fold_had_error = 1;
+		}
+	}
+}
+
+static void fold_func_attr(decl *d, symtable *stab)
 {
 	funcargs *fa = type_funcargs(d->ref);
 	attribute *da;
@@ -600,6 +668,17 @@ static void fold_func_attr(decl *d)
 	{
 		cc1_warn_at(&d->where, attr_unused_voidfn,
 				"warn_unused attribute on function returning void");
+	}
+
+	fold_ctor_dtor(d, stab, attr_constructor, "constructor");
+	fold_ctor_dtor(d, stab, attr_destructor, "destructor");
+
+	/* copy calling convention from decl/type to funcargs */
+	if((da = attribute_present(d, attr_call_conv))){
+		assert(type_is_func_or_block(d->ref));
+
+		/* this is safe - each function decl has its own funcargs */
+		type_funcargs(d->ref)->conv = da->bits.conv;
 	}
 }
 
@@ -708,77 +787,101 @@ static void fold_decl_func(decl *d, symtable *stab)
 			die_at(&d->where, "block-scoped function cannot have static storage");
 	}
 
-	fold_func_attr(d);
+	fold_func_attr(d, stab);
+}
+
+int fold_get_max_align_attribute(attribute **attribs, symtable *stab, const int min)
+{
+	int max = min;
+
+	for(; attribs && *attribs; attribs++){
+		attribute *attrib = *attribs;
+		unsigned long al;
+		consty k;
+
+		if(attrib->type != attr_aligned || !attrib->bits.align)
+			continue;
+
+		FOLD_EXPR(attrib->bits.align, stab);
+		const_fold(attrib->bits.align, &k);
+
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
+			die_at(&attrib->where, "aligned attribute not reducible to integer constant");
+		al = k.bits.num.val.i;
+
+		check_valid_align_within_min(al, min, &attrib->where);
+		if((int)al > max)
+			max = al;
+	}
+
+	return max;
+}
+
+static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
+{
+	const unsigned min = type_align_no_attr(d->ref, &d->where);
+	unsigned max = type_align(d->ref, &d->where); /* maybe with attr */
+
+	struct decl_align *i;
+
+	if((d->store & STORE_MASK_STORE) == store_register
+	|| d->bits.var.field_width)
+	{
+		die_at(&d->where, "can't align %s", decl_to_str(d));
+	}
+
+	for(i = d->bits.var.align.first; i; i = i->next){
+		unsigned al;
+
+		if(i->as_int){
+			consty k;
+
+			const_fold(
+					FOLD_EXPR(i->bits.align_intk, stab),
+					&k);
+
+			if(k.type != CONST_NUM)
+				die_at(&d->where, "alignment must be a constant");
+			if(K_FLOATING(k.bits.num))
+				die_at(&d->where, "non-integral alignment");
+
+			al = k.bits.num.val.i;
+		}else{
+			type *ty = i->bits.align_ty;
+			UCC_ASSERT(ty, "no type");
+
+			fold_type_w_attr(ty, NULL, type_loc(d->ref),
+					stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
+
+			al = type_align(ty, &d->where);
+		}
+
+		check_valid_align_within_min(al, min, &attrib->where);
+		if(al > max)
+			max = al;
+	}
+
+	if(attrib){
+		attribute *stash[2];
+		unsigned attrib_max;
+
+		stash[0] = attrib;
+		stash[1] = NULL;
+		attrib_max = fold_get_max_align_attribute(stash, stab, min);
+
+		if(attrib_max > max)
+			max = attrib_max;
+	}
+
+	return max;
 }
 
 static void fold_decl_var_align(decl *d, symtable *stab)
 {
-	attribute *attrib = NULL;
-	if(d->bits.var.align || (attrib = attribute_present(d, attr_aligned))){
-		const int tal = type_align(d->ref, &d->where);
+	attribute *attrib = attribute_present(d, attr_aligned);
 
-		struct decl_align *i;
-		int max_al = 0;
-
-		if((d->store & STORE_MASK_STORE) == store_register
-		|| d->bits.var.field_width)
-		{
-			die_at(&d->where, "can't align %s", decl_to_str(d));
-		}
-
-		for(i = d->bits.var.align; i; i = i->next){
-			int al;
-
-			if(i->as_int){
-				consty k;
-
-				const_fold(
-						FOLD_EXPR(i->bits.align_intk, stab),
-						&k);
-
-				if(k.type != CONST_NUM)
-					die_at(&d->where, "alignment must be a constant");
-				if(K_FLOATING(k.bits.num))
-					die_at(&d->where, "non-integral alignment");
-
-				al = k.bits.num.val.i;
-			}else{
-				type *ty = i->bits.align_ty;
-				UCC_ASSERT(ty, "no type");
-
-				fold_type_w_attr(ty, NULL, type_loc(d->ref),
-						stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
-
-				al = type_align(ty, &d->where);
-			}
-
-			if(al == 0)
-				al = decl_size(d);
-			max_al = fold_align(al, tal, max_al, &d->where);
-		}
-
-		if(attrib){
-			unsigned long al;
-
-			if(attrib->bits.align){
-				consty k;
-
-				FOLD_EXPR(attrib->bits.align, stab);
-				const_fold(attrib->bits.align, &k);
-
-				if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
-					die_at(&attrib->where, "aligned attribute not reducible to integer constant");
-				al = k.bits.num.val.i;
-			}else{
-				al = platform_align_max();
-			}
-
-			max_al = fold_align(al, tal, max_al, &attrib->where);
-			if(!d->bits.var.align)
-				d->bits.var.align = umalloc(sizeof *d->bits.var.align);
-		}
-
-		d->bits.var.align->resolved = max_al;
+	if(d->bits.var.align.first || attrib){
+		d->bits.var.align.resolved = fold_decl_resolve_align(d, stab, attrib);
 	}
 }
 
@@ -915,6 +1018,31 @@ static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
 	}
 }
 
+static void fold_decl_check_ctor_dtor(decl *d, symtable *stab)
+{
+	attribute *ctor, *dtor;
+
+	ctor = attribute_present(d, attr_constructor);
+	dtor = attribute_present(d, attr_destructor);
+
+	if(!ctor && !dtor)
+		return;
+
+	decl_use(d);
+
+	if(!type_is(d->ref, type_func)){
+		cc1_warn_at(&(ctor ? ctor : dtor)->where,
+				attr_ctor_dtor_bad,
+				"%s attribute on non-function",
+				ctor ? "constructor" : "destructor");
+	}else if(stab->parent){
+		cc1_warn_at(&(ctor ? ctor : dtor)->where,
+				attr_ctor_dtor_bad,
+				"%s attribute on non-global function",
+				ctor ? "constructor" : "destructor");
+	}
+}
+
 void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 {
 	/* this is called from wherever we can define a
@@ -961,6 +1089,8 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 					"weak attribute on declaration without external linkage");
 			fold_had_error = 1;
 		}
+
+		fold_decl_check_ctor_dtor(d, stab);
 	}
 
 	/* name static decls - do this before handling init,
@@ -1032,7 +1162,7 @@ void fold_check_decl_complete(decl *d)
 
 void fold_decl_global_init(decl *d, symtable *stab)
 {
-	expr *nonstd = NULL;
+	expr *nonstd = NULL, *nonconst = NULL;
 	const char *type;
 
 	if(!type_is(d->ref, type_func) && !d->bits.var.init.dinit)
@@ -1042,14 +1172,18 @@ void fold_decl_global_init(decl *d, symtable *stab)
 	decl_init_brace_up_fold(d, stab);
 
 	type = stab->parent ? "static" : "global";
-	if(!decl_init_is_const(d->bits.var.init.dinit, stab, d->ref, &nonstd)){
-
+	if(!decl_init_is_const(d->bits.var.init.dinit, stab, d->ref, &nonstd, &nonconst)){
 		warn_at_print_error(&d->bits.var.init.dinit->where,
 				"%s %s initialiser not constant",
-				type, decl_init_to_str(d->bits.var.init.dinit->type));
+				type, decl_init_to_str(d->bits.var.init.dinit->type), nonconst);
 
 		fold_had_error = 1;
 
+		if(nonconst){
+			note_at(&nonconst->where,
+				"first non-constant expression here (%s)",
+				nonconst->f_str());
+		}
 	}else if(nonstd){
 		char wbuf[WHERE_BUF_SIZ];
 
@@ -1220,39 +1354,36 @@ void fold_decl_global(decl *d, symtable *stab)
 		fold_global_func(d);
 }
 
-void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
+int fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 {
 	if(!e)
-		return;
+		return 0;
 
 	UCC_ASSERT(e->tree_type, "no tree type");
 
 	/* fatal ones first */
 
-	if((chk & FOLD_CHK_ALLOW_VOID) == 0 && type_is_void(e->tree_type))
-		die_at(&e->where, "%s requires non-void expression", desc);
+	if((chk & FOLD_CHK_ALLOW_VOID) == 0 && type_is_void(e->tree_type)){
+		warn_at_print_error(&e->where, "%s requires non-void expression", desc);
+		fold_had_error = 1;
+		return 1;
+	}
 
 	if(chk & FOLD_CHK_NO_ST_UN){
 		struct_union_enum_st *sue;
 
 		if((sue = type_is_s_or_u(e->tree_type))){
-			die_at(&e->where, "%s involved in %s",
+			warn_at_print_error(&e->where, "%s involved in %s",
 					sue_str(sue), desc);
+			fold_had_error = 1;
+			return 1;
 		}
 	}
 
-	if(chk & FOLD_CHK_NO_BITFIELD){
-		if(e && expr_kind(e, struct)){
-			decl *d = e->bits.struct_mem.d;
-
-			/* may be null from a bad struct access */
-			if(d){
-				assert(!type_is(d->ref, type_func));
-
-				if(d->bits.var.field_width)
-					die_at(&e->where, "bitfield in %s", desc);
-			}
-		}
+	if(chk & FOLD_CHK_NO_BITFIELD && expr_is_struct_bitfield(e)){
+		warn_at_print_error(&e->where, "bitfield in %s", desc);
+		fold_had_error = 1;
+		return 1;
 	}
 
 	if(chk & (FOLD_CHK_ARITHMETIC | FOLD_CHK_INTEGRAL)){
@@ -1268,6 +1399,7 @@ void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 						? "arithmetic"
 						: "integral",
 					type_to_str(e->tree_type));
+			return 1;
 		}
 	}
 
@@ -1300,9 +1432,14 @@ void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 		consty k;
 		const_fold((expr *)e, &k);
 
-		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
-			die_at(&e->where, "integral constant expected for %s", desc);
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num)){
+			warn_at_print_error(&e->where, "integral constant expected for %s", desc);
+			fold_had_error = 1;
+			return 1;
+		}
 	}
+
+	return 0;
 }
 
 void fold_stmt(stmt *t)
@@ -1312,7 +1449,7 @@ void fold_stmt(stmt *t)
 	t->f_fold(t);
 }
 
-void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
+void fold_funcargs(funcargs *fargs, symtable *stab, attribute **attr)
 {
 	attribute *nonnull_attr;
 	unsigned long nonnulls = 0;
@@ -1382,11 +1519,21 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute *attr)
 			is_ptr = type_is(d->ref, type_ptr) || type_is(d->ref, type_block);
 
 			/* ensure ptr, unless __attribute__((nonnull)) */
-			if(nonnulls != ~0UL && (nonnulls & (1 << i)) && !is_ptr){
-				cc1_warn_at(&fargs->arglist[i]->where,
-						attr_nonnull_nonptr,
-						"nonnull attribute applied to non-pointer argument '%s'",
-						type_to_str(d->ref));
+			if(nonnulls & (1 << i)){
+				attribute **nonnull_attr;
+
+				if(nonnulls != ~0UL && !is_ptr){
+					cc1_warn_at(&fargs->arglist[i]->where,
+							attr_nonnull_nonptr,
+							"nonnull attribute applied to non-pointer argument '%s'",
+							type_to_str(d->ref));
+				}
+
+				nonnull_attr = umalloc(2 * sizeof(*nonnull_attr));
+				nonnull_attr[0] = attribute_new(attr_nonnull);
+
+				/* apply nonnull attribute to decl type regardless */
+				d->ref = type_attributed(d->ref, nonnull_attr);
 			}
 
 			seen_ptr |= is_ptr;

@@ -7,6 +7,9 @@
 #include "expr_addr.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../str.h"
+
+#include "expr_string.h"
 
 const char *str_expr_identifier()
 {
@@ -19,7 +22,7 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 	 * if we are an array identifier, we are constant:
 	 * int x[];
 	 */
-	k->type = CONST_NO;
+	int set_no = 1;
 
 	/* may not have e->sym if we're the struct-member-identifier */
 	switch(e->bits.ident.type){
@@ -40,6 +43,8 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 
 					k->bits.addr.is_lbl = 1;
 					k->offset = 0;
+
+					set_no = 0;
 				}
 			}
 			break;
@@ -53,8 +58,12 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 			}
 
 			const_fold(e->bits.ident.bits.enum_mem->val, k);
+			set_no = 0;
 			break;
 	}
+
+	if(set_no)
+		CONST_FOLD_NO(k, e);
 }
 
 static int attempt_func_keyword(expr *expr_ident, symtable *stab)
@@ -64,6 +73,7 @@ static int attempt_func_keyword(expr *expr_ident, symtable *stab)
 
 	if(!strcmp(sp, "__func__") || (std = 0, !strcmp(sp, "__FUNCTION__"))){
 		char *fnsp;
+		struct cstring *cstr;
 		decl *in_fn = symtab_func(stab);
 
 		if(!std){
@@ -83,11 +93,11 @@ static int attempt_func_keyword(expr *expr_ident, symtable *stab)
 			fnsp = in_fn->spel;
 		}
 
+		cstr = cstring_new(CSTRING_ASCII, fnsp, strlen(fnsp), 1);
+
 		expr_mutate_str(
 				expr_ident,
-				fnsp,
-				strlen(fnsp) + 1,
-				/*wide:*/0,
+				cstr,
 				&expr_ident->where,
 				stab);
 
@@ -146,7 +156,7 @@ static int find_identifier(expr *expr_ident, symtable *stab)
 			}
 
 			expr_ident->bits.ident.type = IDENT_NORM;
-			expr_ident->tree_type = sym->decl->ref;
+			expr_ident->tree_type = type_attributed(sym->decl->ref, sym->decl->attr);
 
 			decl_use(sym->decl);
 

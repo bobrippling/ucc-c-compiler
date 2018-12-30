@@ -58,7 +58,12 @@ const out_val *out_val_release(out_ctx *, const out_val *);
 
 
 /* value use */
-const out_val *out_set_bitfield(out_ctx *, const out_val *, unsigned off, unsigned nbits)
+const out_val *out_set_bitfield(
+		out_ctx *,
+		const out_val *,
+		unsigned off,
+		unsigned nbits,
+		type *master_ty)
 	ucc_wur;
 
 void out_store(out_ctx *, const out_val *dest, const out_val *val);
@@ -76,6 +81,12 @@ ucc_wur const out_val *out_memcpy(
 		out_ctx *octx,
 		const out_val *dest, const out_val *src,
 		unsigned long bytes);
+
+void out_memset(
+		out_ctx *octx,
+		const out_val *dest,
+		unsigned char byte,
+		unsigned long nbytes);
 
 ucc_wur const out_val *out_deref(out_ctx *, const out_val *) ucc_wur;
 
@@ -95,13 +106,21 @@ ucc_wur const out_val *out_call(out_ctx *,
 /* control flow */
 ucc_wur out_blk *out_blk_new(out_ctx *, const char *desc);
 void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
+ucc_wur out_blk *out_ctx_current_blk(out_ctx *);
 
 void out_ctrl_end_undefined(out_ctx *);
 void out_ctrl_end_ret(out_ctx *, const out_val *, type *) ucc_nonnull((1));
 
+/* Will the value be used only in *mergee? (/ not immediately afterwards, in
+ * the current block)
+ * If so, stash_phi_value, otherwise, keep live
+ * (this allows us to prevent later-spills of the value
+ * not being reflected in sub-blocks of *mergee)
+ */
 void out_ctrl_transfer(out_ctx *octx, out_blk *to,
 		/* optional: */
-		const out_val *phi, out_blk **mergee);
+		const out_val *phi, out_blk **mergee,
+		int stash_phi_value);
 
 void out_ctrl_transfer_make_current(out_ctx *octx, out_blk *to);
 
@@ -127,9 +146,7 @@ void out_func_prologue(
 		int nargs, int variadic,
 		const out_val *argvals[]);
 
-void out_func_epilogue(
-		out_ctx *, type *, char *end_dbg_lbl,
-		int *out_usedstack);
+void out_func_epilogue(out_ctx *, type *, const where *func_begin, char *end_dbg_lbl);
 
 
 /* returns a pointer to allocated storage: */

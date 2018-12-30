@@ -134,10 +134,9 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 			if((both_func || both_extern)
 			&& !(decl_cmp(d, found, 0) & TYPE_EQUAL_ANY))
 			{
-				die_at(&d->where,
-						"incompatible redefinition of \"%s\"\n"
-						"%s: note: previous definition",
-						d->spel, where_str_r(buf, &found->where));
+				fold_had_error = 1;
+				warn_at_print_error(&d->where, "incompatible redefinition of \"%s\"", d->spel);
+				note_at(&found->where, "previous definition");
 			}else{
 				const int same_scope = symtab_nested_internal(above_scope, stab);
 				unsigned char *pwarn = NULL;
@@ -295,7 +294,7 @@ void gen_block_decls(
 {
 	decl **diter;
 
-	if(cc1_gdebug && !stab->lbl_begin){
+	if(cc1_gdebug != DEBUG_OFF && !stab->lbl_begin){
 		char *dbg_lbls[2];
 
 		dbg_lbls[0] = out_label_code("dbg_begin");
@@ -310,7 +309,7 @@ void gen_block_decls(
 		pushed_lbls[0] = pushed_lbls[1] = NULL;
 	}
 
-	if(cc1_gdebug)
+	if(cc1_gdebug != DEBUG_OFF)
 		out_dbg_scope_enter(octx, stab);
 
 	/* declare strings, extern functions, blocks and vlas */
@@ -356,7 +355,7 @@ void gen_block_decls_dealloca(
 		const out_val *v;
 
 		if(!d->sym || d->sym->type != sym_local || type_is(d->ref, type_func)){
-			if(d->sym && cc1_gdebug){
+			if(d->sym && cc1_gdebug == DEBUG_FULL){
 				/* int a; f(){ int a; { extern a; ... } }
 				 *                      ^~~~~~~~~~~~~ need to say ::a is in scope
 				 */
@@ -383,7 +382,7 @@ void gen_block_decls_dealloca(
 		if(pushed_lbls[i])
 			out_dbg_label_pop(octx, pushed_lbls[i]);
 
-	if(cc1_gdebug)
+	if(cc1_gdebug != DEBUG_OFF)
 		out_dbg_scope_leave(octx, stab);
 }
 

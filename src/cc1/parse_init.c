@@ -9,6 +9,7 @@
 
 #include "sym.h"
 #include "cc1.h"
+#include "cc1_where.h"
 
 #include "parse_init.h"
 #include "parse_expr.h"
@@ -34,13 +35,27 @@ decl_init *parse_init(symtable *scope, int static_ctx)
 			decl_init *sub;
 			struct desig *desig = NULL;
 
-			if(curtok == token_open_square || curtok == token_dot){
+			if(curtok == token_open_square || curtok == token_dot || tok_at_label()){
 				/* parse as many as we need */
 				struct desig **plast = &desig;
+				const int is_label = !(curtok == token_open_square || curtok == token_dot);
+				enum { REQUIRED, OPTIONAL, DISALLOWED } assign = REQUIRED;
 
 				do{
 					struct desig *d = *plast = umalloc(sizeof *d);
 					plast = &d->next;
+
+					if(is_label){
+						where colon_loc;
+						d->type = desig_struct;
+						d->bits.member = token_current_spel();
+						EAT(token_identifier);
+						where_cc1_current(&colon_loc);
+						EAT(token_colon);
+						cc1_warn_at(&colon_loc, gnu_desig, "use of old-style GNU designator");
+						assign = DISALLOWED;
+						break;
+					}
 
 					if(accept(token_dot)){
 						d->type = desig_struct;
@@ -55,13 +70,25 @@ decl_init *parse_init(symtable *scope, int static_ctx)
 							d->bits.range[1] = parse_expr_exp(scope, static_ctx);
 
 						EAT(token_close_square);
+						assign = OPTIONAL;
 
 					}else{
 						ICE("unreachable");
 					}
 				}while(curtok == token_dot || curtok == token_open_square);
 
-				EAT(token_assign);
+				switch(assign){
+					case REQUIRED:
+						EAT(token_assign);
+						break;
+					case DISALLOWED:
+						break;
+					case OPTIONAL:
+						if(!accept(token_assign)){
+							cc1_warn_at(NULL, gnu_desig, "use of GNU 'missing =' designator");
+						}
+						break;
+				}
 			}
 
 			sub = parse_init(scope, static_ctx);

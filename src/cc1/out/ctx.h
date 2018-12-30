@@ -43,6 +43,7 @@ struct out_ctx
 	v_stackt max_stack_sz;
 	v_stackt stack_n_alloc; /* just the alloc_n() part */
 	v_stackt stack_callspace; /* space used by extra call arguments */
+	v_stackt stack_calleesave_space; /* space used callee-save spills */
 	unsigned max_align;
 
 	unsigned check_flags : 1; /* decay flags? */
@@ -60,7 +61,7 @@ struct out_ctx
 		struct out_dbg_filelist *file_head;
 
 		where where;
-		unsigned last_file, last_line;
+		unsigned last_file, last_line, last_col;
 	} dbg;
 };
 

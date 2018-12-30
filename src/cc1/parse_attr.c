@@ -7,11 +7,13 @@
 
 #include "../util/util.h"
 #include "../util/alloc.h"
+#include "../util/dynarray.h"
 
 #include "parse_attr.h"
 
 #include "tokenise.h"
 #include "tokconv.h"
+#include "str.h"
 
 #include "fold.h"
 
@@ -21,6 +23,7 @@
 #include "fold.h"
 
 #include "parse_expr.h"
+#include "cc1_target.h"
 
 static void parse_attr_bracket_chomp(int had_open_paren);
 
@@ -79,6 +82,7 @@ static attribute *parse_attr_section(symtable *symtab, const char *ident)
 {
 	/* __attribute__((section ("sectionname"))) */
 	attribute *da;
+	struct cstring *str;
 	char *func;
 	size_t len, i;
 
@@ -90,8 +94,12 @@ static attribute *parse_attr_section(symtable *symtab, const char *ident)
 	if(curtok != token_string)
 		die_at(NULL, "string expected for section");
 
-	token_get_current_str(&func, &len, NULL, NULL);
+	str = parse_asciz_str();
 	EAT(token_string);
+	if(!str)
+		return NULL;
+	len = str->count;
+	func = cstring_detach(str);
 
 	for(i = 0; i < len; i++)
 		if(!isprint(func[i])){
@@ -167,8 +175,6 @@ static expr *optional_parened_expr(symtable *scope)
 		e = PARSE_EXPR_NO_COMMA(scope, 0);
 		FOLD_EXPR(e, scope);
 
-		FOLD_EXPR(e, scope);
-
 		EAT(token_close_paren);
 
 		return e;
@@ -230,6 +236,26 @@ static attribute *parse_attr_cleanup(symtable *scope, const char *ident)
 	return attr;
 }
 
+static attribute *parse_attr_ctor_dtor(
+		enum attribute_type ty, symtable *scope)
+{
+	attribute *ctor = attribute_new(ty);
+	ctor->bits.priority = optional_parened_expr(scope);
+	return ctor;
+}
+
+static attribute *parse_attr_constructor(symtable *scope, const char *ident)
+{
+	(void)ident;
+	return parse_attr_ctor_dtor(attr_constructor, scope);
+}
+
+static attribute *parse_attr_destructor(symtable *scope, const char *ident)
+{
+	(void)ident;
+	return parse_attr_ctor_dtor(attr_destructor, scope);
+}
+
 #define EMPTY(t)                                \
 static attribute *parse_ ## t(                  \
 		symtable *symtab, const char *ident)        \
@@ -270,6 +296,45 @@ static attribute *parse_attr_call_conv(symtable *symtab, const char *ident)
 		assert(0 && "unreachable");
 
 	return a;
+}
+
+static attribute *parse_attr_visibility(symtable *symtab, const char *ident)
+{
+	attribute *attr = NULL;
+	enum visibility v = VISIBILITY_DEFAULT;
+	struct cstring *asciz;
+	where str_loc;
+
+	(void)symtab;
+	(void)ident;
+
+	EAT(token_open_paren);
+
+	if(curtok != token_string)
+		die_at(NULL, "string expected for visibility");
+
+	where_cc1_current(&str_loc);
+	asciz = parse_asciz_str();
+
+	EAT(token_string);
+
+	if(asciz){
+		char *str = cstring_detach(asciz);
+
+		if(visibility_parse(&v, str, cc1_target_details.as.supports_visibility_protected)){
+			attr = attribute_new(attr_visibility);
+			attr->bits.visibility = v;
+		}else{
+			warn_at_print_error(&str_loc, "unknown/unsupported visibility \"%s\"", str);
+			fold_had_error = 1;
+		}
+
+		free(str);
+	}
+
+	EAT(token_close_paren);
+
+	return attr;
 }
 
 static struct
@@ -346,15 +411,22 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 	return NULL;
 }
 
-attribute *parse_attr(symtable *scope)
+attribute **parse_attr(symtable *scope)
 {
-	attribute *attr = NULL, **next = &attr;
+	attribute **attr = NULL;
 
 	for(;;){
 		attribute *this;
 		where w;
 		int alloc;
-		char *ident = curtok_to_identifier(&alloc);
+		char *ident;
+
+		if(accept(token_comma))
+			continue;
+		if(curtok == token_close_paren)
+			break;
+
+		ident = curtok_to_identifier(&alloc);
 
 		if(!ident){
 			parse_had_error = 1;
@@ -370,9 +442,11 @@ attribute *parse_attr(symtable *scope)
 
 		EAT(curtok);
 
-		if((this = *next = parse_attr_single(ident, scope))){
+		this = parse_attr_single(ident, scope);
+
+		if(this){
 			memcpy_safe(&this->where, &w);
-			next = &(*next)->next;
+			dynarray_add(&attr, this);
 		}
 
 		if(alloc)

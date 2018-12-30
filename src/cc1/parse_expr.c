@@ -15,6 +15,7 @@
 
 #include "tokenise.h"
 #include "tokconv.h"
+#include "str.h"
 
 #include "parse_type.h"
 #include "parse_init.h"
@@ -23,7 +24,24 @@
 #include "funcargs.h"
 #include "type_is.h"
 
+#include "ops/expr__Generic.h"
+#include "ops/expr_addr.h"
+#include "ops/expr_assign.h"
+#include "ops/expr_assign_compound.h"
 #include "ops/expr_block.h"
+#include "ops/expr_cast.h"
+#include "ops/expr_comma.h"
+#include "ops/expr_compound_lit.h"
+#include "ops/expr_deref.h"
+#include "ops/expr_funcall.h"
+#include "ops/expr_identifier.h"
+#include "ops/expr_op.h"
+#include "ops/expr_sizeof.h"
+#include "ops/expr_stmt.h"
+#include "ops/expr_string.h"
+#include "ops/expr_struct.h"
+#include "ops/expr_val.h"
+#include "ops/expr_if.h"
 
 expr *parse_expr_unary(symtable *scope, int static_ctx);
 #define PARSE_EXPR_CAST(s, static_ctx) parse_expr_unary(s, static_ctx)
@@ -155,7 +173,7 @@ static expr *parse_expr__Generic(symtable *scope, int static_ctx)
 			expr_new__Generic(test, lbls), &w);
 }
 
-static expr *parse_expr_identifier(void)
+expr *parse_expr_identifier(void)
 {
 	expr *e;
 	char *sp;
@@ -234,6 +252,31 @@ def_args:
 	}
 }
 
+struct cstring *parse_asciz_str(void)
+{
+	struct cstring *cstr = token_get_current_str(NULL);
+	char *nul;
+
+	if(!cstr){
+		warn_at_print_error(NULL, "string expected, got %s", token_to_str(curtok));
+		parse_had_error = 1;
+		return NULL;
+	}
+
+	if(cstr->type == CSTRING_WIDE){
+		warn_at_print_error(NULL, "wide string not wanted");
+		parse_had_error = 1;
+		return NULL;
+	}
+
+	nul = memchr(cstr->bits.ascii, '\0', cstr->count);
+	if(nul && nul < cstr->bits.ascii + cstr->count - 1){
+		cc1_warn_at(NULL, str_contain_nul, "nul-character terminates string early");
+	}
+
+	return cstr;
+}
+
 static expr *parse_expr_primary(symtable *scope, int static_ctx)
 {
 	switch(curtok){
@@ -249,14 +292,11 @@ static expr *parse_expr_primary(symtable *scope, int static_ctx)
 		case token_string:
 		{
 			where w;
-			char *s;
-			size_t l;
-			int wide;
+			struct cstring *str = token_get_current_str(&w);
 
-			token_get_current_str(&s, &l, &wide, &w);
 			EAT(token_string);
 
-			return expr_new_str(s, l, wide, &w, scope);
+			return expr_new_str(str, &w, scope);
 		}
 
 		case token__Generic:

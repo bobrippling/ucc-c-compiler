@@ -20,6 +20,7 @@ struct out_val
 	unsigned retains;
 
 	type *t;
+	out_blk *phiblock; /* nonnull only for phi values, reference to originating block */
 
 	union
 	{
@@ -62,6 +63,7 @@ struct out_val
 
 	struct vbitfield
 	{
+		type *master_ty;
 		unsigned short off, nbits;
 	} bitfield; /* !!width iif bitfield */
 	unsigned char flags;

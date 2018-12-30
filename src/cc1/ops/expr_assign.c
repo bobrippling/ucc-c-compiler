@@ -1,10 +1,16 @@
 #include <assert.h>
+#include <string.h>
 
 #include "ops.h"
 #include "expr_assign.h"
 #include "__builtin.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../c_funcs.h"
+
+#include "expr_cast.h"
+#include "expr_struct.h"
+#include "expr_funcall.h"
 
 const char *str_expr_assign()
 {
@@ -92,6 +98,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 {
 	sym *lhs_sym = NULL;
 	int is_struct_cpy = 0;
+	expr *rhs_nocast;
 
 	lhs_sym = fold_inc_writes_if_sym(e->lhs, stab);
 
@@ -123,6 +130,8 @@ void fold_expr_assign(expr *e, symtable *stab)
 	 * if we assign to a volatile lvalue, we don't want the volatile-ness
 	 * to propagate, as we are now an rvalue, and don't want our value read
 	 * as we decay
+	 *
+	 * (see the same code in expr_assign_compound.c)
 	 */
 	e->tree_type = type_unqualify(e->lhs->tree_type);
 
@@ -144,6 +153,15 @@ void fold_expr_assign(expr *e, symtable *stab)
 		}
 	}
 
+	rhs_nocast = expr_skip_implicit_casts(e->rhs);
+	if(expr_kind(rhs_nocast, funcall)){
+		expr *callexpr = rhs_nocast;
+		decl *rhs_call_decl = expr_to_declref(callexpr->expr, NULL);
+
+		if(rhs_call_decl && rhs_call_decl->spel && !strcmp(rhs_call_decl->spel, "malloc")){
+			c_func_check_malloc(callexpr, e->lhs->tree_type);
+		}
+	}
 
 	if(is_struct_cpy){
 		e->expr = builtin_new_memcpy(
@@ -153,11 +171,7 @@ void fold_expr_assign(expr *e, symtable *stab)
 		FOLD_EXPR(e->expr, stab);
 
 		/* set is_lval, so we can participate in struct-copy chains
-		 * FIXME: don't interpret as an lvalue, e.g. (a = b) = c;
-		 * this is currently special cased in expr_is_lval()
-		 *
-		 * CHECK THIS
-		 */
+		 * - this isn't interpreted as an lvalue, e.g. (a = b) = c; */
 		if(cc1_backend == BACKEND_ASM)
 			e->f_gen = lea_assign_lhs;
 		e->f_islval = expr_is_lval_struct;
@@ -196,6 +210,7 @@ void dump_expr_assign(const expr *e, dump *ctx)
 
 void mutate_expr_assign(expr *e)
 {
+	e->f_has_sideeffects = expr_bool_always;
 	e->freestanding = 1;
 }
 

@@ -21,6 +21,7 @@
 #include "type_is.h"
 #include "out/dbg.h"
 #include "gen_asm.h"
+#include "gen_asm_ctors.h"
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
@@ -31,6 +32,9 @@
 #include "inline.h"
 #include "type_nav.h"
 #include "label.h"
+#include "fopt.h"
+
+#include "ops/expr_funcall.h"
 
 int gen_had_error;
 
@@ -44,7 +48,7 @@ const out_val *gen_expr(const expr *e, out_ctx *octx)
 	consty k;
 
 	/* always const_fold functions, i.e. builtins */
-	if(expr_kind(e, funcall) || fopt_mode & FOPT_CONST_FOLD)
+	if(expr_kind(e, funcall) || cc1_fopt.const_fold)
 		const_fold((expr *)e, &k);
 	else
 		k.type = CONST_NO;
@@ -82,7 +86,7 @@ static void assign_arg_vals(decl **decls, const out_val *argvals[], out_ctx *oct
 		if(s && s->type == sym_arg){
 			gen_set_sym_outval(octx, s, argvals[j++]);
 
-			if(fopt_mode & FOPT_VERBOSE_ASM){
+			if(cc1_fopt.verbose_asm){
 				out_comment(octx, "arg %s @ %s",
 						decls[i]->spel,
 						out_val_str(sym_outval(s), 1));
@@ -163,7 +167,7 @@ void gen_set_sym_outval(out_ctx *octx, sym *sym, const out_val *v)
 {
 	sym_setoutval(sym, v);
 
-	if(v && cc1_gdebug)
+	if(v && cc1_gdebug == DEBUG_FULL)
 		out_dbg_emit_decl(octx, sym->decl, v);
 }
 
@@ -212,7 +216,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		allocate_vla_args(octx, arg_symtab);
 		free(argvals), argvals = NULL;
 
-		if(cc1_gdebug)
+		if(cc1_gdebug == DEBUG_FULL)
 			out_dbg_emit_args_done(octx, type_funcargs(d->ref));
 
 		gen_func_stmt(d->bits.func.code, octx);
@@ -229,9 +233,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
-			int stack_used;
-			out_func_epilogue(octx, d->ref, end, &stack_used);
-			arg_symtab->stack_used = stack_used;
+			out_func_epilogue(octx, d->ref, &d->bits.func.code->where, end);
 			free(end);
 		}
 
@@ -264,7 +266,7 @@ const out_val *gen_call(
 			maybe_exp, maybe_dfn, fnval, args, octx, &whynot, loc);
 
 	if(fn_ret){
-		if(fopt_mode & FOPT_SHOW_INLINED)
+		if(cc1_fopt.show_inlined)
 			note_at(loc, "function inlined");
 
 	}else{
@@ -287,28 +289,18 @@ const out_val *gen_call(
 
 const out_val *gen_decl_addr(out_ctx *octx, decl *d)
 {
-	int local = decl_linkage(d) == linkage_internal;
+	const int via_got = decl_needs_GOTPLT(d);
+	enum out_pic_type picmode;
 
-	if(!local){
-		if(type_is(d->ref, type_func)){
-			/* defined functions, even though exported, are local. unless weak */
-			local = d->bits.func.code && !attribute_present(d, attr_weak);
-		}else{
-			/* variable - if initialised then it's not interposable */
-			local = d->bits.var.init.dinit && !d->bits.var.init.compiler_generated;
-		}
-	}
+	picmode = (FOPT_PIC(&cc1_fopt) ? OUT_LBL_PIC : OUT_LBL_NOPIC)
+		| (via_got ? 0 : OUT_LBL_PICLOCAL);
 
-	return out_new_lbl(
-			octx,
-			type_ptr_to(d->ref),
-			decl_asm_spel(d),
-			OUT_LBL_PIC | (local ? OUT_LBL_PICLOCAL : 0));
+	return out_new_lbl(octx, type_ptr_to(d->ref), decl_asm_spel(d), picmode);
 }
 
 static void gen_gasm(char *asm_str)
 {
-	fprintf(cc_out[SECTION_TEXT], "%s\n", asm_str);
+	asm_out_section(SECTION_TEXT, "%s\n", asm_str);
 }
 
 static void gen_stringlits(dynmap *litmap)
@@ -324,7 +316,7 @@ void gen_asm_emit_type(out_ctx *octx, type *ty)
 {
 	/* for types that aren't on variables (e.g. in exprs),
 	 * that debug info may not find out about normally */
-	if(cc1_gdebug && type_is_s_or_u(ty))
+	if(cc1_gdebug == DEBUG_FULL && type_is_s_or_u(ty))
 		out_dbg_emit_type(octx, ty);
 }
 
@@ -368,20 +360,8 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			return;
 
 		case store_static:
-			if(d->spel
-			&& d->sym && !d->sym->nreads && !d->sym->nwrites
-			&& !attr_used_present)
-			{
-				int is_fn = !!type_is(d->ref, type_func);
-
-				/* only emit warnings for variables and bodied-functions */
-				if(!is_fn || d->bits.func.code){
-					warn_at(&d->where, "unused static %s '%s'",
-							is_fn ? "function" : "variable",
-							d->spel);
-				}
+			if(d->sym && !d->sym->nreads && !d->sym->nwrites && !attr_used_present)
 				return;
-			}
 			break;
 
 		case store_extern:
@@ -402,7 +382,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			return;
 		}
 
-		if(cc1_gdebug)
+		if(cc1_gdebug != DEBUG_OFF)
 			out_dbg_emit_func(octx, d);
 	}else{
 		/* variable - if there's no init,
@@ -416,14 +396,18 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			return;
 		}
 
-		if(cc1_gdebug)
+		if(cc1_gdebug == DEBUG_FULL)
 			out_dbg_emit_global_var(octx, d);
 	}
 
 	if(attr_used_present)
 		asm_predeclare_used(d);
+
+	asm_predeclare_visibility(d);
+
 	if(!emitted_type && decl_linkage(d) == linkage_external)
 		asm_predeclare_global(d);
+
 	gen_asm_global(d, octx);
 }
 
@@ -432,13 +416,14 @@ void gen_asm(
 		const char *fname, const char *compdir,
 		struct out_dbg_filelist **pfilelist)
 {
+	decl **inits = NULL, **terms = NULL;
 	decl **diter;
 	struct symtable_gasm **iasm = globs->gasms;
 	out_ctx *octx = out_ctx_new();
 
 	*pfilelist = NULL;
 
-	if(cc1_gdebug)
+	if(cc1_gdebug != DEBUG_OFF)
 		out_dbg_begin(octx, &octx->dbg.file_head, fname, compdir, cc1_std);
 
 	for(diter = symtab_decls(&globs->stab); diter && *diter; diter++){
@@ -452,6 +437,13 @@ void gen_asm(
 		}
 
 		gen_asm_global_w_store(d, 0, octx);
+
+		if(type_is(d->ref, type_func) && d->bits.func.code){
+			if(attribute_present(d, attr_constructor))
+				dynarray_add(&inits, d);
+			if(attribute_present(d, attr_destructor))
+				dynarray_add(&terms, d);
+		}
 	}
 
 	for(; iasm && *iasm; ++iasm)
@@ -459,7 +451,11 @@ void gen_asm(
 
 	gen_stringlits(globs->literals);
 
-	if(cc1_gdebug){
+	gen_inits_terms(inits, terms);
+	dynarray_free(decl **, inits, NULL);
+	dynarray_free(decl **, terms, NULL);
+
+	if(cc1_gdebug != DEBUG_OFF){
 		out_dbg_end(octx);
 
 		*pfilelist = octx->dbg.file_head;

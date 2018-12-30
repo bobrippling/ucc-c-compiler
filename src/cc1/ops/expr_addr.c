@@ -9,6 +9,7 @@
 #include "../label.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "expr_identifier.h"
 
 const char *str_expr_addr()
 {
@@ -71,13 +72,19 @@ void fold_expr_addr(expr *e, symtable *stab)
 			if(sym){
 				decl *d = sym->decl;
 
-				if((d->store & STORE_MASK_STORE) == store_register)
-					die_at(&e->lhs->where, "can't take the address of register");
+				if((d->store & STORE_MASK_STORE) == store_register){
+					warn_at_print_error(&e->lhs->where, "can't take the address of register");
+					fold_had_error = 1;
+				}
 			}
 		}
 
-		fold_check_expr(e->lhs, FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_BITFIELD,
-				"address-of");
+		if(fold_check_expr(e->lhs,
+					FOLD_CHK_ALLOW_VOID | FOLD_CHK_NO_BITFIELD,
+					"address-of"))
+		{
+			return;
+		}
 	}
 }
 
@@ -148,10 +155,15 @@ static void const_expr_addr(expr *e, consty *k)
 				break;
 
 			default:
-				k->type = CONST_NO;
+				CONST_FOLD_NO(k, e);
 				break;
 		}
 	}
+}
+
+static int expr_addr_has_sideeffects(const expr *e)
+{
+	return e->lhs && expr_has_sideeffects(e->lhs);
 }
 
 expr *expr_new_addr(expr *sub)
@@ -172,6 +184,7 @@ expr *expr_new_addr_lbl(char *lbl, int static_ctx)
 void mutate_expr_addr(expr *e)
 {
 	e->f_const_fold = const_expr_addr;
+	e->f_has_sideeffects = expr_addr_has_sideeffects;
 }
 
 const out_val *gen_expr_style_addr(const expr *e, out_ctx *octx)

@@ -20,7 +20,7 @@ void stmt_for_got_decls(stmt *s)
 void fold_stmt_for(stmt *s)
 {
 	if(s->flow->for_while){
-		fold_check_expr(
+		(void)!fold_check_expr(
 				s->flow->for_while,
 				FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
 				"for-test");
@@ -54,7 +54,7 @@ void gen_stmt_for(const stmt *s, out_ctx *octx)
 
 		out_ctrl_branch(octx, for_cond, blk_body, blk_end);
 	}else{
-		out_ctrl_transfer(octx, blk_body, NULL, NULL);
+		out_ctrl_transfer(octx, blk_body, NULL, NULL, 0);
 	}
 
 	stmt_init_blks(s, blk_inc, blk_end);
@@ -62,14 +62,14 @@ void gen_stmt_for(const stmt *s, out_ctx *octx)
 	out_current_blk(octx, blk_body);
 	{
 		gen_stmt(s->lhs, octx);
-		out_ctrl_transfer(octx, blk_inc, NULL, NULL);
+		out_ctrl_transfer(octx, blk_inc, NULL, NULL, 0);
 	}
 
 	out_current_blk(octx, blk_inc);
 	{
 		if(s->flow->for_inc)
 			out_val_consume(octx, gen_expr(s->flow->for_inc, octx));
-		out_ctrl_transfer(octx, blk_test, NULL, NULL);
+		out_ctrl_transfer(octx, blk_test, NULL, NULL, 0);
 	}
 
 	out_current_blk(octx, blk_end);

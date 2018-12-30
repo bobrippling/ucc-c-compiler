@@ -152,16 +152,24 @@ static void const_expr__Generic(expr *e, consty *k)
 	/* we're const if our chosen expr is */
 	if(!e->bits.generic.chosen){
 		UCC_ASSERT(fold_had_error, "_Generic const check before fold");
-		k->type = CONST_NO;
+		CONST_FOLD_NO(k, e);
 		return;
 	}
 
 	const_fold(e->bits.generic.chosen->e, k);
 }
 
+static int expr__Generic_has_sideeffects(const expr *e)
+{
+	struct generic_lbl *sub = e->bits.generic.chosen;
+	assert(sub);
+	return expr_has_sideeffects(sub->e);
+}
+
 void mutate_expr__Generic(expr *e)
 {
 	e->f_const_fold = const_expr__Generic;
+	e->f_has_sideeffects = expr__Generic_has_sideeffects;
 }
 
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls)
