@@ -124,7 +124,11 @@ symtable_global *symtab_global(symtable *);
 
 int symtab_nested_internal(symtable *parent, symtable *nest);
 
-unsigned symtab_decl_bytes(symtable *, unsigned const vla_cost);
+unsigned symtab_decl_bytes(
+		symtable *,
+		unsigned const vla_cost,
+		int array_only,
+		int *const addr_taken);
 
 void symtab_add_to_scope(symtable *, decl *);
 void symtab_add_sue(symtable *, struct struct_union_enum_st *);

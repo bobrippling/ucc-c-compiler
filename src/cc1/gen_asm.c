@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/dynarray.h"
@@ -171,6 +172,21 @@ void gen_set_sym_outval(out_ctx *octx, sym *sym, const out_val *v)
 		out_dbg_emit_decl(octx, sym->decl, v);
 }
 
+static int should_stack_protect(decl *d)
+{
+	unsigned bytes;
+	int addr_taken = 0;
+
+	assert(type_is(d->ref, type_func));
+
+	if(cc1_fopt.stack_protector_all)
+		return 1;
+
+	/* calls alloca() [TODO] or has an array, or local variable whose address is taken */
+	bytes = symtab_decl_bytes(d->bits.func.code->symtab, 8, 1, &addr_taken);
+	return bytes >= 8 || addr_taken;
+}
+
 static void gen_asm_global(decl *d, out_ctx *octx)
 {
 	attribute *sec;
@@ -210,7 +226,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		out_func_prologue(octx, sp, d->ref,
 				nargs, is_vari,
-				cc1_fopt.stack_protector,
+				should_stack_protect(d),
 				argvals);
 
 		assign_arg_vals(symtab_decls(arg_symtab), argvals, octx);

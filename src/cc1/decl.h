@@ -41,6 +41,7 @@ struct decl
 
 	char *spel, *spel_asm;
 	int used;
+	int addressed;
 
 	union
 	{
