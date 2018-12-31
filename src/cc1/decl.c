@@ -320,7 +320,7 @@ decl *decl_impl(decl *const d)
 	return d;
 }
 
-static decl *decl_with_init(decl *const d)
+decl *decl_with_init(decl *const d)
 {
 	decl *i;
 

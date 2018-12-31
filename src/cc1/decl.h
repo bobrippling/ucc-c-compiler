@@ -134,6 +134,7 @@ struct type *decl_is_decayed_array(decl *);
 
 decl *decl_proto(decl *); /* rewinds to the proto */
 decl *decl_impl(decl *); /* fast-forwards to the impl */
+decl *decl_with_init(decl *);
 
 int decl_is_pure_inline(decl *);
 int decl_should_emit_code(decl *);
