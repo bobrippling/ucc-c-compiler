@@ -1,4 +1,5 @@
 // RUN: %ocheck 28 %s
+// RUN: %ocheck 28 %s -fstack-protector-all
 
 f(int i, ...)
 {

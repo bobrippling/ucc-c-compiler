@@ -1,4 +1,5 @@
 // RUN: %ocheck 10 %s -finline-functions -fno-semantic-interposition
+// RUN: %ocheck 10 %s -finline-functions -fno-semantic-interposition -fstack-protector-all
 
 void abort(void);
 
