@@ -1188,7 +1188,7 @@ void nexttoken()
 			EAT(token_close_paren);
 
 			if(pragma){
-				char *s = cstring_detach(pragma);
+				char *s = cstring_converting_detach(pragma);
 				parse_pragma(s, &loc);
 				free(s);
 
