@@ -28,7 +28,7 @@ macro *macro_find(const char *sp)
 	return NULL;
 }
 
-macro *macro_add(const char *nam, const char *val, int depth)
+static macro *macro_add_nodup(const char *nam, char *val, int depth)
 {
 	macro *m;
 
@@ -38,13 +38,22 @@ macro *macro_add(const char *nam, const char *val, int depth)
 	m = macro_find(nam);
 
 	if(m){
-		/* only warn if they're different */
+		if(!m->val)
+			CPP_DIE("redefining \"%s\"", m->nam);
+
+		/* only warn if they're different
+		 * and if the override is in code (i.e. not cmdline) */
 		if(strcmp(val, m->val)){
+			where new_where;
 			char buf[WHERE_BUF_SIZ];
 
-			CPP_WARN(WREDEF, "cpp: warning: redefining \"%s\"\n"
-					"%s: note: previous definition here",
-					nam, where_str_r(buf, &m->where));
+			where_current(&new_where);
+
+			if(strcmp(new_where.fname, FNAME_CMDLINE)){
+				CPP_WARN(WREDEF, "redefining \"%s\"\n"
+						"%s: note: previous definition here",
+						nam, where_str_r(buf, &m->where));
+			}
 		}
 
 		free(m->val);
@@ -61,11 +70,16 @@ macro *macro_add(const char *nam, const char *val, int depth)
 		m->where.line_str = ustrdup(m->where.line_str);
 	}
 
-	m->val = val ? ustrdup(val) : NULL;
+	m->val = val;
 	m->type = MACRO;
 	m->include_depth = depth;
 
 	return m;
+}
+
+macro *macro_add(const char *nam, const char *val, int depth)
+{
+	return macro_add_nodup(nam, val ? ustrdup(val) : NULL, depth);
 }
 
 macro *macro_add_func(const char *nam, const char *val,
@@ -73,10 +87,22 @@ macro *macro_add_func(const char *nam, const char *val,
 {
 	macro *m  = macro_add(nam, val, depth);
 	if(m->args)
-		dynarray_free(char **, &m->args, free);
+		dynarray_free(char **, m->args, free);
 	m->args = args;
 	m->type = variadic ? VARIADIC : FUNC;
 	return m;
+}
+
+macro *macro_add_sprintf(const char *nam, const char *fmt, ...)
+{
+	va_list l;
+	char *buf;
+
+	va_start(l, fmt);
+	buf = ustrvprintf(fmt, l);
+	va_end(l);
+
+	return macro_add_nodup(nam, buf, 0);
 }
 
 int macro_remove(const char *nam)
@@ -86,8 +112,8 @@ int macro_remove(const char *nam)
 	if(m){
 		free(m->nam);
 		free(m->val);
-		dynarray_free(char **, &m->args, free);
-		dynarray_rm(macros, m);
+		dynarray_free(char **, m->args, free);
+		dynarray_rm(&macros, m);
 		free(m);
 		return 1;
 	}
@@ -100,10 +126,13 @@ void macro_use(macro *m, int adj)
 	m->use_dump += adj;
 }
 
-void macros_dump(void)
+void macros_dump(int show_where)
 {
 	ITER_MACROS(m){
 		if(m->val){
+			if(show_where)
+				printf("%s: ", where_str(&m->where));
+
 			printf("#define %s", m->nam);
 			switch(m->type){
 				case FUNC:
@@ -139,7 +168,6 @@ void macros_warn_unused(void)
 		&& m->include_depth == 0)
 		{
 			current_line--;
-			preproc_backtrace();
 			warn_at(&m->where, "unused macro \"%s\"", m->nam);
 			current_line++;
 		}

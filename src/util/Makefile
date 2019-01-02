@@ -1,48 +1,26 @@
-include ../src_config.mk
-include ../../config.mk
+include ../config.mk
 
 OBJ = platform.o util.o alloc.o dynarray.o dynmap.o where.o str.o \
-			std.o escape.o warn.o
-SRC = $(OBJ:.o=.c)
+			std.o escape.o math.o warn.o path.o tmpfile.o io.o triple.o
 
-BUILD_CC = ${CC} ${CFLAGS} -c -o $@ $<
+OBJ_TEST = test.o path.o dynarray.o alloc.o dynmap.o math.o
 
-all: ${OBJ}
+SRC = ${OBJ:.o=.c} ${OBJ_TEST:.o=.c}
 
-alloc.o: alloc.c
-	${BUILD_CC}
+all: ${OBJ} tags check
 
-platform.o: platform.c
-	${BUILD_CC} -DUCC_PLATFORM=PLATFORM_${UCC_CPU}
+test: ${OBJ_TEST}
+	@echo link $@
+	$Q${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
 
-util.o: util.c
-	${BUILD_CC}
-where.o: where.c
-	${BUILD_CC}
-str.o: str.c
-	${BUILD_CC}
-std.o: std.c
-	${BUILD_CC}
-escape.o: escape.c
-	${BUILD_CC}
-warn.o: warn.c
-	${BUILD_CC}
-
-dynarray.o: dynarray.c
-	${BUILD_CC}
-dynmap.o: dynmap.c
-	${BUILD_CC}
-
-deps: Makefile.dep
-
-Makefile.deps:
-	cc -MM ${SRC} > $@
+check: test
+	@echo test util
+	$Q./test
 
 clean:
-	rm -f *.o
+	@echo clean util
+	$Qrm -f ${OBJ} ${OBJ_TEST}
 
-.PHONY: all clean
+.PHONY: all clean check
 
-platform.o: platform.c ../../config.mk
-
-include Makefile.deps
+include ../Makefile.common

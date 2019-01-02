@@ -18,6 +18,11 @@
 #include "main.h"
 #include "snapshot.h"
 #include "preproc.h"
+#include "has.h"
+
+/* for __has_include() */
+#include "directive.h"
+#include "include.h"
 
 #define VA_ARGS_STR "__VA_ARGS__"
 
@@ -128,6 +133,23 @@ static char *eval_func_macro(macro *m, char *args_str)
 
 	int got = dynarray_count(args)
 		, exp = dynarray_count(m->args);
+
+	if(!m->val){
+		int ret;
+
+		if(got != 1){
+			CPP_DIE("too %s arguments to builtin macro \"%s\"",
+					args ? "many" : "few", m->nam);
+		}
+
+		/* we don't want macro-substitution of the argument */
+		ret = has_func(m->nam, args[0]);
+
+		dynarray_free(char **, args, free);
+
+		return ustrdup(ret ? "1" : "0");
+	}
+
 
 	if(m->type == VARIADIC ? got < exp : got != exp){
 		if(got == 0 && exp == 1){
@@ -282,7 +304,7 @@ static char *eval_func_macro(macro *m, char *args_str)
 		}
 
 
-		dynarray_free(char **, &args, free);
+		dynarray_free(char **, args, free);
 		tokens_free(toks);
 		return replace;
 	}
@@ -420,6 +442,12 @@ char *eval_expand_macros(char *line)
 			break;
 
 		end = word_end(line);
+
+		if(*end == '"' && line == end - 1 && *line == 'L'){
+			line = end;
+			continue;
+		}
+
 		save = *end, *end = '\0';
 		m = macro_find(line);
 		*end = save;
@@ -432,7 +460,7 @@ char *eval_expand_macros(char *line)
 				case '\'':
 				{
 					/* skip quotes */
-					char *p = str_quotefin(line + 1);
+					char *p = str_quotefin2(line + 1, *line);
 					UCC_ASSERT(p, "no matching quote on line '%s' @ '%s'", anchor, line);
 					break;
 				}
@@ -449,38 +477,87 @@ char *eval_expand_macros(char *line)
 	return anchor;
 }
 
-char *eval_expand_defined(char *w)
+static char *eval_expand(char *w, const char *from, int eval(char *), int paren_optional)
 {
-	char *defined;
+	char *entry;
 
-	while((defined = word_find(w, DEFINED_STR))){
-		char *s = str_spc_skip(word_end(defined));
-		char *ident;
-		char buf[2], save;
-		int with_paren;
+	while((entry = word_find(w, from))){
+		char *const entry_end = str_spc_skip(word_end(entry));
+		char *def_end, def_save;
+		char *replace_end;
+		char buf[2];
+		int replace;
+		const int got_paren = *entry_end == '(';
 
-		if((with_paren = *s == '('))
-			s = str_spc_skip(s+1);
+		if(!got_paren && !paren_optional)
+			CPP_DIE("open paren expected for \"%s\"", from);
 
-		if(!iswordpart(*s))
-			CPP_DIE("identifier expected for \"" DEFINED_STR "\"");
-
-		ident = s;
-		s = word_end(s);
-
-		save = *s, *s = '\0';
-		snprintf(buf, sizeof buf, "%d", !!macro_find(ident));
-		*s = save;
-
-		if(with_paren){
-			s = str_spc_skip(s);
-			if(*s != ')')
-				CPP_DIE("')' expected for \"" DEFINED_STR "\"");
-			s++;
+		if(got_paren){
+			def_end = strchr_nest(entry_end, ')');
+			if(!def_end)
+				CPP_DIE("close paren expected for \"%s\"", from);
+			replace_end = def_end + 1;
+		}else{
+			def_end = word_end(entry_end);
+			replace_end = def_end;
 		}
 
-		w = str_replace(w, defined, s, buf);
+		def_save = *def_end;
+		*def_end = '\0';
+
+		replace = eval(entry_end + got_paren);
+		snprintf(buf, sizeof buf, "%d", replace);
+
+		*def_end = def_save;
+
+		w = str_replace(w, entry, replace_end, buf);
 	}
 
 	return w;
+}
+
+static int defined_macro_find(char *ident)
+{
+	char *end;
+	char save;
+	int ret;
+
+	ident = word_find_any(ident);
+	end = word_end(ident);
+	assert(end);
+	save = *end;
+	*end = '\0';
+
+	ret = !!macro_find(ident);
+	*end = save;
+	return ret;
+}
+
+char *eval_expand_defined(char *w)
+{
+	return eval_expand(w, DEFINED_STR, defined_macro_find, 1);
+}
+
+static int has_include(char *arg)
+{
+	int angle;
+	const char *fname = include_parse(arg, &angle, 1);
+	const char *curdir = cd_stack[dynarray_count(cd_stack) - 1];
+	char *path;
+	int sysh;
+	FILE *f = include_fopen(curdir, fname, angle, &path, &sysh);
+	int ret = 0;
+
+	free(path);
+	if(f){
+		fclose(f);
+		ret = 1;
+	}
+
+	return ret;
+}
+
+char *eval_expand_has_include(char *w)
+{
+	return eval_expand(w, HAS_INCLUDE_STR, has_include, 0);
 }

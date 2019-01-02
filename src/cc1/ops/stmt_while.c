@@ -12,10 +12,9 @@ const char *str_stmt_while()
 
 void fold_stmt_while(stmt *s)
 {
-	s->lbl_break    = out_label_flow("while_break");
-	s->lbl_continue = out_label_flow("while_cont");
+	FOLD_EXPR(s->expr, s->symtab);
 
-	fold_check_expr(
+	(void)!fold_check_expr(
 			s->expr,
 			FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
 			s->f_str());
@@ -23,33 +22,59 @@ void fold_stmt_while(stmt *s)
 	fold_stmt(s->lhs);
 }
 
-void gen_stmt_while(stmt *s)
+void gen_stmt_while(const stmt *s, out_ctx *octx)
 {
-	const char *endlbls[2];
+	struct out_dbg_lbl *endlbls[2][2];
+	out_blk *blk_body = out_blk_new(octx, "while_body");
 
-	out_label(s->lbl_continue);
+	{
+		out_blk *blk_cont = out_blk_new(octx, "while_cont");
+		out_blk *blk_break = out_blk_new(octx, "while_break");
+		stmt_init_blks(s, blk_cont, blk_break);
+	}
 
-	flow_gen(s->flow, s->symtab, endlbls);
-	gen_expr(s->expr);
+	out_ctrl_transfer(octx, s->blk_continue, NULL, NULL, 0);
 
-	out_op_unary(op_not);
-	out_jtrue(s->lbl_break);
+	out_current_blk(octx, s->blk_continue);
+	{
+		const out_val *cond;
 
-	gen_stmt(s->lhs);
+		flow_gen(s->flow, s->symtab, endlbls, octx);
+		cond = gen_expr(s->expr, octx);
 
-	out_push_lbl(s->lbl_continue, 0);
-	out_jmp();
+		out_ctrl_branch(octx, cond, blk_body, s->blk_break);
+	}
 
-	flow_end(endlbls);
-	out_label(s->lbl_break);
+	out_current_blk(octx, blk_body);
+	{
+		gen_stmt(s->lhs, octx);
+
+		out_ctrl_transfer(octx, s->blk_continue, NULL, NULL, 0);
+	}
+
+	out_current_blk(octx, s->blk_break);
+	{
+		flow_end(s->flow, s->symtab, endlbls, octx);
+	}
 }
 
-void style_stmt_while(stmt *s)
+void dump_stmt_while(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "while", s);
+
+	dump_inc(ctx);
+	dump_flow(s->flow, ctx);
+	dump_expr(s->expr, ctx);
+	dump_stmt(s->lhs, ctx);
+	dump_dec(ctx);
+}
+
+void style_stmt_while(const stmt *s, out_ctx *octx)
 {
 	stylef("while(");
-	gen_expr(s->expr);
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(")");
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 }
 
 int while_passable(stmt *s)

@@ -14,6 +14,8 @@
 
 #define PRINTF_ENABLE_PADDING
 
+typedef __cleaned_va_list cleaned_va_list;
+
 struct __FILE
 {
 	int fd;
@@ -46,7 +48,7 @@ FILE *stdout = &_stdout;
 FILE *stderr = &_stderr;
 
 /* Private */
-static void fprintn_r(FILE *f, uintmax_t n, int base, int ty_sz)
+static void fprintn_r(FILE *f, uintmax_t n, int base, unsigned ty_sz)
 {
 	uintmax_t d = n / base;
 	if(d)
@@ -54,7 +56,7 @@ static void fprintn_r(FILE *f, uintmax_t n, int base, int ty_sz)
 	fwrite("0123456789abcdef" + n % base, sizeof(char), 1, f);
 }
 
-static void fprintn(FILE *f, uintmax_t n, int base, int is_signed, int ty_sz)
+static void fprintn(FILE *f, uintmax_t n, int base, int is_signed, unsigned ty_sz)
 {
 	if(is_signed){
 		// if we have an int/short/char, sign extend
@@ -73,17 +75,17 @@ static void fprintn(FILE *f, uintmax_t n, int base, int is_signed, int ty_sz)
 	fprintn_r(f, n, base, ty_sz);
 }
 
-static void fprintd(FILE *f, uintmax_t n, int is_signed, int ty_sz)
+static void fprintd(FILE *f, uintmax_t n, int is_signed, unsigned ty_sz)
 {
 	fprintn(f, n, 10, is_signed, ty_sz);
 }
 
-static void fprintx(FILE *f, uintmax_t n, int is_signed, int ty_sz)
+static void fprintx(FILE *f, uintmax_t n, int is_signed, unsigned ty_sz)
 {
 	fprintn(f, n, 16, is_signed, ty_sz);
 }
 
-static void fprinto(FILE *f, uintmax_t n, int is_signed, int ty_sz)
+static void fprinto(FILE *f, uintmax_t n, int is_signed, unsigned ty_sz)
 {
 	fprintn(f, n, 8, is_signed, ty_sz);
 }
@@ -407,7 +409,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 				case 'x':
 				case 'o':
 				{
-					static void (*printers[])(FILE *, uintmax_t, int, int) = {
+					static void (*printers[])(FILE *, uintmax_t, int, unsigned) = {
 						['u'] = fprintd,
 						['d'] = fprintd,
 						['x'] = fprintx,
@@ -500,43 +502,33 @@ int vprintf(const char *fmt, va_list l)
 
 int dprintf(int fd, const char *fmt, ...)
 {
-	va_list l;
-	int r;
-	FILE f;
-
-	memset(&f, 0, sizeof f);
-	f.fd = fd;
-	f.status = file_status_fine;
+	cleaned_va_list l;
 
 	va_start(l, fmt);
-	r = vfprintf(&f, fmt, l);
-	va_end(l);
 
-	return r;
+	return vfprintf(
+			&(FILE){
+				.fd = fd,
+				.status = file_status_fine,
+			},
+			fmt,
+			l);
 }
 
 int fprintf(FILE *file, const char *fmt, ...)
 {
-	va_list l;
-	int r;
+	cleaned_va_list l;
 
 	va_start(l, fmt);
-	r = vfprintf(file, fmt, l);
-	va_end(l);
-
-	return r;
+	return vfprintf(file, fmt, l);
 }
 
 int printf(const char *fmt, ...)
 {
-	va_list l;
-	int r;
+	cleaned_va_list l;
 
 	va_start(l, fmt);
-	r = vfprintf(stdout, fmt, l);
-	va_end(l);
-
-	return r;
+	return vfprintf(stdout, fmt, l);
 }
 
 int fputs(const char *s, FILE *f)
@@ -550,7 +542,7 @@ int puts(const char *s)
 	return printf("%s\n", s) > 0 ? 1 : EOF;
 }
 
-int getchar()
+int getchar(void)
 {
 	return fgetc(stdin);
 }

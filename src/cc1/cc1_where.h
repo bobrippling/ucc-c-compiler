@@ -6,4 +6,6 @@
 struct where *where_cc1_current(struct where *w);
 void where_cc1_adj_identifier(where *w, const char *sp);
 
+int where_in_sysheader(const where *w) ucc_nonnull();
+
 #endif

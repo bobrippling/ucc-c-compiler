@@ -2,6 +2,7 @@
 #define NUM_H
 
 #include <stdint.h>
+#include <limits.h>
 
 typedef struct numeric numeric;
 
@@ -13,6 +14,7 @@ typedef        long double floating_t;
 #define NUMERIC_FMT_X "llx"
 #define NUMERIC_FMT_LD "Lf"
 #define NUMERIC_T_MAX ULLONG_MAX
+#define INTEGRAL_BITS (sizeof(integral_t) * CHAR_BIT)
 struct numeric
 {
 	union
@@ -39,6 +41,7 @@ struct numeric
 		VAL_BIN         = 1 << 5,
 		VAL_NON_DECIMAL = VAL_OCTAL | VAL_HEX | VAL_BIN,
 		VAL_PREFIX_MASK = VAL_NON_DECIMAL,
+		VAL_SUFFIXED_MASK = VAL_UNSIGNED | VAL_LONG | VAL_LLONG
 	} suffix;
 };
 

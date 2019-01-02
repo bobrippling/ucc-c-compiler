@@ -10,32 +10,33 @@ const char *str_stmt_break()
 	return "break";
 }
 
-void fold_stmt_break_continue(stmt *t, char *lbl)
+void fold_stmt_break_continue(stmt *t, stmt *parent)
 {
-	if(!lbl)
+	if(!parent)
 		die_at(&t->where, "%s outside a flow-control statement", t->f_str());
-
-	t->expr = expr_new_identifier(lbl);
-	memcpy_safe(&t->expr->where, &t->where);
-
-	t->expr->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
 void fold_stmt_break(stmt *t)
 {
-	fold_stmt_break_continue(t, t->parent ? t->parent->lbl_break : NULL);
+	fold_stmt_break_continue(t, t->parent);
 }
 
-void gen_stmt_break(stmt *s)
+void gen_stmt_break(const stmt *s, out_ctx *octx)
 {
-	out_push_lbl(s->parent->lbl_break, 0);
-	out_jmp();
+	gen_scope_leave(s->symtab, s->parent->symtab, octx);
+
+	out_ctrl_transfer(octx, s->parent->blk_break, NULL, NULL, 0);
 }
 
-void style_stmt_break(stmt *s)
+void dump_stmt_break(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "break", s);
+}
+
+void style_stmt_break(const stmt *s, out_ctx *octx)
 {
 	stylef("break;");
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 }
 
 void init_stmt_break(stmt *s)

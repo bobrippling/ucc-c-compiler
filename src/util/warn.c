@@ -23,7 +23,9 @@ enum
 	colour_white,
 
 	colour_err  = colour_red,
-	colour_warn = colour_orange
+	colour_warn = colour_orange,
+	colour_note = colour_blue,
+	colour_other = colour_white
 };
 
 static const char *const colour_strs[] = {
@@ -37,11 +39,22 @@ static const char *const colour_strs[] = {
 	"\033[37m",
 };
 
-
 int warning_count = 0;
-int warning_length = 72 + 8;
+int warning_length = 80;
 
-void warn_colour(int on, int err)
+static const char *vwarn_colour(enum warn_type ty)
+{
+	int i = 0;
+	switch(ty){
+		case VWARN_ERR: i = colour_err; break;
+		case VWARN_WARN: i = colour_warn; break;
+		case VWARN_NOTE: i = colour_note; break;
+		case VWARN_OTHER: i = colour_other; break;
+	}
+	return colour_strs[i];
+}
+
+void warn_colour(int on, enum warn_type ty)
 {
 	static enum { f = 0, t = 1, need_init = 2 } is_tty = need_init;
 
@@ -50,7 +63,7 @@ void warn_colour(int on, int err)
 
 	if(is_tty){
 		if(on)
-			fputs(colour_strs[err ? colour_err : colour_warn], stderr);
+			fputs(vwarn_colour(ty), stderr);
 		else
 			fprintf(stderr, "\033[m");
 	}
@@ -64,7 +77,7 @@ static void warn_show_line_part(char *line, int pos, unsigned wlen)
 
 	int warning_length_normalise = INT_MAX;
 	if(warning_length > 0){
-		warning_length_normalise = warning_length - 8;
+		warning_length_normalise = warning_length - 10;
 		if(warning_length_normalise <= 0)
 			warning_length_normalise = 1;
 
@@ -142,55 +155,78 @@ static void warn_show_line(const struct where *w)
 	}
 }
 
-void vwarn(struct where *w, int err, const char *fmt, va_list l)
+static const char *vwarn_str(enum warn_type ty)
+{
+	switch(ty){
+		case VWARN_ERR: return "error";
+		case VWARN_WARN: return "warning";
+		case VWARN_NOTE: return "note";
+		case VWARN_OTHER: return "other";
+	}
+	return NULL;
+}
+
+void vwarn(const struct where *w, enum warn_type ty,
+		const char *fmt, va_list l)
 {
 	include_bt(stderr);
 
-	warn_colour(1, err);
 
 	w = default_where(w);
 
-	fprintf(stderr, "%s: %s: ", where_str(w), err ? "error" : "warning");
+	warn_colour(1, VWARN_OTHER);
+	fprintf(stderr, "%s: ", where_str(w));
+
+	warn_colour(1, ty);
+	fprintf(stderr, "%s: ", vwarn_str(ty));
+
+	warn_colour(0, ty);
 	vfprintf(stderr, fmt, l);
 
 	warning_count++;
 
-	if(fmt[strlen(fmt)-1] == ':'){
+	if(*fmt && fmt[strlen(fmt)-1] == ':'){
 		fputc(' ', stderr);
 		perror(NULL);
 	}else{
 		fputc('\n', stderr);
 	}
 
-	warn_colour(0, err);
-
 	warn_show_line(w);
 }
 
-void warn_at_print_error(struct where *w, const char *fmt, ...)
+void warn_at_print_error(const struct where *w, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vwarn(w, 1, fmt, l);
+	vwarn(w, VWARN_ERR, fmt, l);
 	va_end(l);
 }
 
 
-void vdie(struct where *w, const char *fmt, va_list l)
+void vdie(const struct where *w, const char *fmt, va_list l)
 {
-	vwarn(w, 1, fmt, l);
+	vwarn(w, VWARN_ERR, fmt, l);
 	exit(1);
 }
 
-void warn_at(struct where *w, const char *fmt, ...)
+void note_at(const struct where *w, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	vwarn(w, 0, fmt, l);
+	vwarn(w, VWARN_NOTE, fmt, l);
 	va_end(l);
 }
 
-void die_at(struct where *w, const char *fmt, ...)
+void warn_at(const struct where *w, const char *fmt, ...)
+{
+	va_list l;
+	va_start(l, fmt);
+	vwarn(w, VWARN_WARN, fmt, l);
+	va_end(l);
+}
+
+void die_at(const struct where *w, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);

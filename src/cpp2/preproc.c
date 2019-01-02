@@ -3,10 +3,14 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <ctype.h>
 
 #include "../util/util.h"
+#include "../util/io.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
+#include "../util/macros.h"
+#include "../util/math.h"
 
 #include "main.h"
 #include "preproc.h"
@@ -14,18 +18,18 @@
 #include "eval.h"
 #include "str.h"
 
-#define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
-
-static int strip_in_block = 0;
-
-struct
+static enum
 {
-	FILE *file;
-	char *fname;
-	int line_no;
-} file_stack[8] = { { NULL, NULL, 0 } };
+	NOT_IN_BLOCK,
+	IN_BLOCK_BEGIN,
+	IN_BLOCK_END,
+	IN_BLOCK_FULL
+} strip_in_block = NOT_IN_BLOCK;
+
+struct file_stack file_stack[64];
 
 int file_stack_idx = -1;
+static int prev_newline;
 
 void include_bt(FILE *f)
 {
@@ -41,16 +45,31 @@ void include_bt(FILE *f)
 	}
 }
 
-void preproc_backtrace()
+void preproc_emit_line_info(int lineno, const char *fname, enum lineinfo lineinfo)
 {
-	include_bt(stderr);
+	unsigned lineinfobits = lineinfo;
+	/* output PP info */
+	if(no_output || !option_line_info)
+		return;
+
+	printf("# %d \"%s\"", lineno, fname);
+
+	while(lineinfobits){
+		unsigned bit = extractbottombit(&lineinfobits);
+		int n = log2i(bit);
+
+		printf(" %d", n);
+	}
+
+	putchar('\n');
 }
 
-static void preproc_out_info(void)
+static void preproc_emit_line_info_top(enum lineinfo lineinfo)
 {
-	/* output PP info */
-	if(option_line_info)
-		printf("# %d \"%s\"\n", file_stack[file_stack_idx].line_no, file_stack[file_stack_idx].fname);
+	preproc_emit_line_info(
+			file_stack[file_stack_idx].line_no,
+			file_stack[file_stack_idx].fname,
+			lineinfo | (file_stack[file_stack_idx].is_sysh ? LINEINFO_SYSHEADER : 0));
 }
 
 int preproc_in_include()
@@ -58,14 +77,14 @@ int preproc_in_include()
 	return file_stack_idx > 0;
 }
 
-void preproc_push(FILE *f, const char *fname)
+void preproc_push(FILE *f, const char *fname, int is_sysh)
 {
 	if(file_stack_idx >= 0)
 		file_stack[file_stack_idx].line_no = current_line; /* save state */
 
 
 	file_stack_idx++;
-	if(file_stack_idx == ARRAY_LEN(file_stack))
+	if(file_stack_idx == countof(file_stack))
 		CPP_DIE("too many includes");
 
 #ifdef DO_CHDIR
@@ -87,8 +106,9 @@ void preproc_push(FILE *f, const char *fname)
 	file_stack[file_stack_idx].file    = f;
 	file_stack[file_stack_idx].fname   = ustrdup(fname);
 	file_stack[file_stack_idx].line_no = current_line = 1;
+	file_stack[file_stack_idx].is_sysh = is_sysh;
 
-	preproc_out_info();
+	preproc_emit_line_info_top(LINEINFO_START_OF_FILE);
 }
 
 static void preproc_pop(void)
@@ -110,22 +130,23 @@ static void preproc_pop(void)
 
 	/* restore state */
 	current_line  = file_stack[file_stack_idx].line_no;
-	current_fname = file_stack[file_stack_idx].fname;
+	set_current_fname(file_stack[file_stack_idx].fname);
 
-	preproc_out_info();
+	preproc_emit_line_info_top(LINEINFO_RETURN_TO_FILE);
 }
 
 static char *read_line(void)
 {
 	FILE *f;
 	char *line;
+	int newline;
 
 re_read:
 	if(file_stack_idx < 0)
 		ICE("file stack idx = 0 on read()");
 	f = file_stack[file_stack_idx].file;
 
-	line = fline(f);
+	line = fline(f, &newline);
 
 	if(!line){
 		if(ferror(f))
@@ -136,11 +157,16 @@ re_read:
 			free(dirname_pop());
 			preproc_pop();
 			goto re_read;
+		}else{
+			if(!prev_newline){
+				CPP_WARN(WNEWLINE, "no newline at end-of-file");
+			}
 		}
 
 		return NULL;
 	}
 
+	prev_newline = newline;
 	current_line++;
 
 	return line;
@@ -164,12 +190,15 @@ static char *expand_trigraphs(char *line)
 		{ 0, 0 }
 	};
 	int i;
+	char *anchor = line;
 
 	for(;;){
-		char *qmark = strstr(line, "??");
+		char *qmark = strstr(anchor, "??");
 
 		if(!qmark)
 			break;
+
+		anchor = qmark + 1;
 
 		for(i = 0; map[i].from; i++){
 			if(map[i].from == qmark[2]){
@@ -214,7 +243,8 @@ static char *splice_lines(int *peof)
 {
 	static int n_nls;
 	char *line;
-	size_t len;
+	char *last_backslash;
+	int splice = 0;
 
 	if(n_nls){
 		n_nls--;
@@ -229,21 +259,36 @@ static char *splice_lines(int *peof)
 	if(option_trigraphs)
 		line = expand_trigraphs(line);
 
-	len = strlen(line);
 
-	if(len && line[len - 1] == '\\'){
+	last_backslash = strrchr(line, '\\');
+	if(last_backslash){
+		char *i;
+		/* is this the end of the line? */
+		i = str_spc_skip(last_backslash + 1);
+		if(*i == '\0'){
+			splice = 1;
+
+			if(i > last_backslash + 1){
+				CPP_WARN(WBACKSLASH_SPACE_NEWLINE,
+						"backslash and newline separated by space");
+			}
+		}
+	}
+
+	if(splice){
 		char *next = splice_lines(peof);
 
 		/* remove in any case */
-		line[len - 1] = '\0';
+		*last_backslash = '\0';
 
 		if(next){
+			const size_t this_len = last_backslash - line;
 			const size_t next_len = strlen(next);
 
 			n_nls++;
 
-			line = urealloc1(line, len + next_len + 1);
-			strcpy(line + len - 1, next);
+			line = urealloc1(line, this_len + next_len + 1);
+			strcpy(line + this_len, next);
 			free(next);
 		}else{
 			/* backslash-newline at eof
@@ -263,12 +308,17 @@ static char *strip_comment(char *line)
 	const int is_directive = *str_spc_skip(line) == '#';
 	char *s;
 
+	if(strip_in_block == IN_BLOCK_BEGIN)
+		strip_in_block = IN_BLOCK_FULL;
+	else if(strip_in_block == IN_BLOCK_END)
+		strip_in_block = NOT_IN_BLOCK;
+
 	for(s = line; *s; s++){
-		if(strip_in_block){
+		if(strip_in_block == IN_BLOCK_FULL || strip_in_block == IN_BLOCK_BEGIN){
 			const int clear_comments = (strip_comments == STRIP_ALL);
 
 			if(*s == '*' && s[1] == '/'){
-				strip_in_block = 0;
+				strip_in_block = IN_BLOCK_END;
 				if(clear_comments)
 					*s++ = ' ';
 			}
@@ -288,7 +338,7 @@ static char *strip_comment(char *line)
 			}
 
 		}else if(*s == '/'){
-			if(s[1] == '/'){
+			if(cpp_std >= STD_C99 && s[1] == '/'){
 				switch(strip_comments){
 					case STRIP_EXCEPT_DIRECTIVE:
 						if(is_directive)
@@ -315,7 +365,7 @@ strip_1line:
 				}
 				break;
 			}else if(s[1] == '*'){
-				strip_in_block = 1;
+				strip_in_block = IN_BLOCK_BEGIN;
 
 				switch(strip_comments){
 					case STRIP_EXCEPT_DIRECTIVE:
@@ -362,7 +412,7 @@ void preprocess(void)
 	char *line;
 	int eof = 0;
 
-	preproc_push(stdin, current_fname);
+	preproc_push(stdin, current_fname, /*sysh:*/0);
 
 	while(!eof && (line = splice_lines(&eof))){
 		debug_push_line(line);
@@ -371,8 +421,14 @@ void preprocess(void)
 			line = expand_digraphs(line);
 
 		line = strip_comment(line);
-		if(!strip_in_block)
-			line = filter_macros(line);
+		switch(strip_in_block){
+			case NOT_IN_BLOCK:
+			case IN_BLOCK_BEGIN:
+			case IN_BLOCK_END:
+				line = filter_macros(line);
+			case IN_BLOCK_FULL: /* no thanks */
+				break;
+		}
 
 		debug_pop_line();
 
@@ -383,8 +439,14 @@ void preprocess(void)
 		}
 	}
 
-	if(strip_in_block)
-		CPP_DIE("no terminating block comment");
+	switch(strip_in_block){
+		case NOT_IN_BLOCK:
+		case IN_BLOCK_END:
+			break;
+		case IN_BLOCK_BEGIN:
+		case IN_BLOCK_FULL:
+			CPP_DIE("no terminating block comment");
+	}
 
 	parse_end_validate();
 }

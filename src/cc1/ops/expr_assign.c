@@ -1,11 +1,20 @@
+#include <assert.h>
+#include <string.h>
+
 #include "ops.h"
 #include "expr_assign.h"
 #include "__builtin.h"
 #include "../type_is.h"
+#include "../type_nav.h"
+#include "../c_funcs.h"
+
+#include "expr_cast.h"
+#include "expr_struct.h"
+#include "expr_funcall.h"
 
 const char *str_expr_assign()
 {
-	return "assign";
+	return "assignment";
 }
 
 void bitfield_trunc_check(decl *mem, expr *from)
@@ -37,7 +46,8 @@ void bitfield_trunc_check(decl *mem, expr *from)
 		{
 			sintegral_t kexp_to = kexp & ~(-1UL << k.bits.num.val.i);
 
-			warn_at(&from->where,
+			cc1_warn_at(&from->where,
+					bitfield_trunc,
 					"truncation in store to bitfield alters value: "
 					"%" NUMERIC_FMT_D " -> %" NUMERIC_FMT_D,
 					kexp, kexp_to);
@@ -45,60 +55,88 @@ void bitfield_trunc_check(decl *mem, expr *from)
 	}
 }
 
-void expr_must_lvalue(expr *e)
+int expr_must_lvalue(expr *e, const char *desc)
 {
-	if(!expr_is_lval(e)){
-		die_at(&e->where, "assignment to %s/%s - not an lvalue",
-				type_to_str(e->tree_type),
-				e->f_str());
-	}
-}
+	int lval = (expr_is_lval(e) == LVALUE_USER_ASSIGNABLE);
 
-static void lea_assign_lhs(expr *e)
-{
-	/* generate our assignment, then lea
-	 * our lhs, i.e. the struct identifier
-	 * we're assigning to */
-	gen_expr(e);
-	out_pop();
-	lea_expr(e->lhs);
+	if(!lval || type_is_array(e->tree_type)){
+		fold_had_error = 1;
+		warn_at_print_error(&e->where, "%s to %s - %s",
+				desc, type_to_str(e->tree_type),
+				lval ? "arrays not assignable" : "not an lvalue");
+
+		return 0;
+	}
+
+	return 1;
 }
 
 void expr_assign_const_check(expr *e, where *w)
 {
+	struct_union_enum_st *su;
+
 	if(type_is_const(e->tree_type)){
 		fold_had_error = 1;
 		warn_at_print_error(w, "can't modify const expression %s",
-				e->f_str());
+				expr_str_friendly(e));
+	}else if((su = type_is_s_or_u(e->tree_type)) && su->contains_const){
+		fold_had_error = 1;
+		warn_at_print_error(w, "can't assign struct - contains const member");
 	}
+}
+
+static const out_val *lea_assign_lhs(const expr *e, out_ctx *octx)
+{
+	/* generate our assignment (e->expr), then lea
+	 * our lhs, i.e. the struct identifier
+	 * we're assigning to */
+	out_val_consume(octx, gen_expr(e->expr, octx));
+	return gen_expr(e->lhs, octx);
 }
 
 void fold_expr_assign(expr *e, symtable *stab)
 {
 	sym *lhs_sym = NULL;
+	int is_struct_cpy = 0;
+	expr *rhs_nocast;
 
 	lhs_sym = fold_inc_writes_if_sym(e->lhs, stab);
 
-	fold_expr_no_decay(e->lhs, stab);
-	FOLD_EXPR(e->rhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
+	fold_expr_nodecay(e->rhs, stab);
 
 	if(lhs_sym)
 		lhs_sym->nreads--; /* cancel the read that fold_ident thinks it got */
 
-	if(type_is_primitive(e->rhs->tree_type, type_void))
-		die_at(&e->where, "assignment from void expression");
+	is_struct_cpy = !!type_is_s_or_u(e->lhs->tree_type);
+	if(!is_struct_cpy)
+		FOLD_EXPR(e->rhs, stab); /* lval2rval the rhs */
 
-	expr_must_lvalue(e->lhs);
+	if(type_is_primitive(e->rhs->tree_type, type_void)){
+		fold_had_error = 1;
+		warn_at_print_error(&e->where, "assignment from void expression");
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
+
+	expr_must_lvalue(e->lhs, "assignment");
 
 	if(!e->assign_is_init)
 		expr_assign_const_check(e->lhs, &e->where);
 
 	fold_check_restrict(e->lhs, e->rhs, "assignment", &e->where);
 
-	e->tree_type = e->lhs->tree_type;
+	/* this makes sense, but it's also critical for code-gen:
+	 * if we assign to a volatile lvalue, we don't want the volatile-ness
+	 * to propagate, as we are now an rvalue, and don't want our value read
+	 * as we decay
+	 *
+	 * (see the same code in expr_assign_compound.c)
+	 */
+	e->tree_type = type_unqualify(e->lhs->tree_type);
 
 	/* type check */
-	fold_type_chk_and_cast(
+	fold_type_chk_and_cast_ty(
 			e->lhs->tree_type, &e->rhs,
 			stab, &e->where, "assignment");
 
@@ -108,61 +146,71 @@ void fold_expr_assign(expr *e, symtable *stab)
 	{
 		decl *mem;
 		if(expr_kind(e->lhs, struct)
-		&& (mem = e->lhs->bits.struct_mem.d)->bits.var.field_width)
+		&& (mem = e->lhs->bits.struct_mem.d) /* maybe null from s->non_present_memb */
+		&& mem->bits.var.field_width)
 		{
 			bitfield_trunc_check(mem, e->rhs);
 		}
 	}
 
+	rhs_nocast = expr_skip_implicit_casts(e->rhs);
+	if(expr_kind(rhs_nocast, funcall)){
+		expr *callexpr = rhs_nocast;
+		decl *rhs_call_decl = expr_to_declref(callexpr->expr, NULL);
 
-	if(type_is_s_or_u(e->tree_type)){
+		if(rhs_call_decl && rhs_call_decl->spel && !strcmp(rhs_call_decl->spel, "malloc")){
+			c_func_check_malloc(callexpr, e->lhs->tree_type);
+		}
+	}
+
+	if(is_struct_cpy){
 		e->expr = builtin_new_memcpy(
 				e->lhs, e->rhs,
 				type_size(e->rhs->tree_type, &e->rhs->where));
 
 		FOLD_EXPR(e->expr, stab);
 
-		/* set f_lea, so we can participate in struct-copy chains
-		 * FIXME: don't interpret as an lvalue, e.g. (a = b) = c;
-		 * this is currently special cased in expr_is_lval()
-		 */
-		e->f_lea = lea_assign_lhs;
-
+		/* set is_lval, so we can participate in struct-copy chains
+		 * - this isn't interpreted as an lvalue, e.g. (a = b) = c; */
+		if(cc1_backend == BACKEND_ASM)
+			e->f_gen = lea_assign_lhs;
+		e->f_islval = expr_is_lval_struct;
 	}
 }
 
-void gen_expr_assign(expr *e)
+const out_val *gen_expr_assign(const expr *e, out_ctx *octx)
 {
+	const out_val *val, *store;
+
 	UCC_ASSERT(!e->assign_is_post, "assign_is_post set for non-compound assign");
 
-	if(type_is_s_or_u(e->tree_type)){
-		/* memcpy */
-		gen_expr(e->expr);
-	}else{
-		/* optimisation: do this first, since rhs might also be a store */
-		gen_expr(e->rhs);
-		lea_expr(e->lhs);
-		out_swap();
+	assert(!type_is_s_or_u(e->tree_type));
 
-		out_store();
-	}
+	val = gen_expr(e->rhs, octx);
+	store = gen_expr(e->lhs, octx);
+	out_val_retain(octx, store);
+
+	out_store(octx, store, val);
+
+	/* re-read from the store,
+	 * e.g. if the value has undergone bitfield truncation */
+	return out_deref(octx, store);
 }
 
-void gen_expr_str_assign(expr *e)
+void dump_expr_assign(const expr *e, dump *ctx)
 {
-	idt_printf("assignment, expr:\n");
-	idt_printf("assign to:\n");
-	gen_str_indent++;
-	print_expr(e->lhs);
-	gen_str_indent--;
-	idt_printf("assign from:\n");
-	gen_str_indent++;
-	print_expr(e->rhs);
-	gen_str_indent--;
+	dump_desc_expr(ctx, "assignment", e);
+	dump_inc(ctx);
+	dump_expr(e->lhs, ctx);
+	dump_dec(ctx);
+	dump_inc(ctx);
+	dump_expr(e->rhs, ctx);
+	dump_dec(ctx);
 }
 
 void mutate_expr_assign(expr *e)
 {
+	e->f_has_sideeffects = expr_bool_always;
 	e->freestanding = 1;
 }
 
@@ -183,9 +231,9 @@ expr *expr_new_assign_init(expr *to, expr *from)
 	return e;
 }
 
-void gen_expr_style_assign(expr *e)
+const out_val *gen_expr_style_assign(const expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs);
+	IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef(" = ");
-	gen_expr(e->rhs);
+	return gen_expr(e->rhs, octx);
 }

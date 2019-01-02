@@ -1,117 +1,144 @@
 #include "ops.h"
 #include "expr_assign_compound.h"
 
+#include "expr_assign.h"
+#include "expr_op.h"
+
+#include "../type_nav.h"
+
 const char *str_expr_assign_compound()
 {
-	return "assign_compound";
+	return "compound-assignment";
 }
 
 void fold_expr_assign_compound(expr *e, symtable *stab)
 {
-	expr *const lvalue = e->lhs;
+	const char *const desc = "compound assignment";
+#define lvalue e->lhs
 
 	fold_inc_writes_if_sym(lvalue, stab);
 
-	fold_expr_no_decay(e->lhs, stab);
+	fold_expr_nodecay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
-	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, "compound assignment");
-	fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, "compound assignment");
+	if(fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, desc)
+	|| fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, desc))
+	{
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	/* skip the addr we inserted */
-	expr_must_lvalue(lvalue);
+	if(!expr_must_lvalue(lvalue, desc)){
+		/* prevent ICE from type_size(vla), etc */
+		e->tree_type = lvalue->tree_type;
+		return;
+	}
 
 	expr_assign_const_check(lvalue, &e->where);
 
-	fold_check_restrict(lvalue, e->rhs, "compound assignment", &e->where);
+	fold_check_restrict(lvalue, e->rhs, desc, &e->where);
 
-	UCC_ASSERT(op_can_compound(e->op), "non-compound op in compound expr");
+	UCC_ASSERT(op_can_compound(e->bits.compoundop.op), "non-compound op in compound expr");
+
+	/*expr_promote_int_if_smaller(&e->lhs, stab);
+	 * lhs int promotion is handled in code-gen */
+	expr_promote_int_if_smaller(&e->rhs, stab);
 
 	{
 		type *tlhs, *trhs;
-		type *resolved = op_required_promotion(e->op, lvalue, e->rhs, &e->where, &tlhs, &trhs);
+		type *resolved = op_required_promotion(
+				e->bits.compoundop.op, lvalue, e->rhs,
+				&e->where, desc,
+				&tlhs, &trhs);
 
 		if(tlhs){
 			/* must cast the lvalue, then down cast once the operation is done
 			 * special handling for expr_kind(e->lhs, cast) is done in the gen-code
 			 */
-			fold_insert_casts(tlhs, &e->lhs, stab);
-
-			/* casts may be inserted anyway, and don't want to rely on
-			 * .implicit_cast stuff */
-			e->bits.compound_upcast = 1;
+			e->bits.compoundop.upcast_ty = tlhs;
 
 		}else if(trhs){
 			fold_insert_casts(trhs, &e->rhs, stab);
 		}
 
-		e->tree_type = lvalue->tree_type;
+		/* see the same code in expr_assign.c */
+		e->tree_type = type_unqualify(lvalue->tree_type);
 
 		(void)resolved;
 		/*type_free_1(resolved); XXX: memleak */
 	}
 
 	/* type check is done in op_required_promotion() */
+#undef lvalue
 }
 
-void gen_expr_assign_compound(expr *e)
+const out_val *gen_expr_assign_compound(const expr *e, out_ctx *octx)
 {
 	/* int += float
 	 * lea int, cast up to float, add, cast down to int, store
 	 */
-	lea_expr(e->bits.compound_upcast ? expr_cast_child(e->lhs) : e->lhs);
+	const out_val *saved_post = NULL, *addr_lhs, *rhs, *lhs, *result;
+
+	addr_lhs = gen_expr(e->lhs, octx);
+
+	out_val_retain(octx, addr_lhs); /* 2 */
 
 	if(e->assign_is_post){
-		out_dup();
-		out_deref();
-		out_flush_volatile();
-		out_swap();
-		out_comment("saved for compound op");
+		out_val_retain(octx, addr_lhs); /* 3 */
+		saved_post = out_deref(octx, addr_lhs); /* addr_lhs=2, saved_post=1 */
 	}
 
-	out_dup();
 	/* delay the dereference until after generating rhs.
 	 * this is fine, += etc aren't sequence points
 	 */
 
-	gen_expr(e->rhs);
+	rhs = gen_expr(e->rhs, octx);
 
 	/* here's the delayed dereference */
-	out_swap();
-	out_deref();
-	if(e->bits.compound_upcast)
-		out_cast(e->lhs->tree_type, /*normalise_bool:*/1);
-	out_swap();
+	lhs = out_deref(octx, addr_lhs); /* addr_lhs=1 */
+	if(e->bits.compoundop.upcast_ty)
+		lhs = out_cast(octx, lhs, e->bits.compoundop.upcast_ty, /*normalise_bool:*/1);
 
-	out_op(e->op);
+	result = out_op(octx, e->bits.compoundop.op, lhs, rhs);
+	gen_op_trapv(e->tree_type, &result, octx, e->bits.compoundop.op);
 
-	if(e->bits.compound_upcast) /* need to cast back down to store */
-		out_cast(e->tree_type, /*normalise_bool:*/1);
+	if(e->bits.compoundop.upcast_ty) /* need to cast back down to store */
+		result = out_cast(octx, result, e->tree_type, /*normalise_bool:*/1);
 
-	out_store();
+	if(!saved_post)
+		out_val_retain(octx, result);
+	out_store(octx, addr_lhs, result);
 
-	if(e->assign_is_post)
-		out_pop();
+	if(!saved_post)
+		return result;
+	return saved_post;
 }
 
-void gen_expr_str_assign_compound(expr *e)
+void dump_expr_assign_compound(const expr *e, dump *ctx)
 {
-	idt_printf("compound %s%s-assignment expr:\n",
-			e->assign_is_post ? "post-" : "",
-			op_to_str(e->op));
+	dump_desc_expr_newline(ctx, "compound assignment", e, 0);
 
-	idt_printf("assign to:\n");
-	gen_str_indent++;
-	print_expr(e->lhs);
-	gen_str_indent--;
-	idt_printf("assign from:\n");
-	gen_str_indent++;
-	print_expr(e->rhs);
-	gen_str_indent--;
+	dump_printf_indent(ctx, 0, " %s%s=",
+			e->assign_is_post ? "post-assignment " : "",
+			op_to_str(e->bits.compoundop.op));
+
+	if(e->bits.compoundop.upcast_ty){
+		dump_printf_indent(ctx, 0, " upcast='%s'",
+				type_to_str(e->bits.compoundop.upcast_ty));
+	}
+
+	dump_printf_indent(ctx, 0, "\n");
+
+	dump_inc(ctx);
+	dump_expr(e->lhs, ctx);
+	dump_expr(e->rhs, ctx);
+	dump_dec(ctx);
 }
 
 void mutate_expr_assign_compound(expr *e)
 {
+	e->f_has_sideeffects = expr_bool_always;
 	e->freestanding = 1;
 }
 
@@ -121,14 +148,15 @@ expr *expr_new_assign_compound(expr *to, expr *from, enum op_type op)
 
 	e->lhs = to;
 	e->rhs = from;
-	e->op = op;
+	e->bits.compoundop.op = op;
 
 	return e;
 }
 
-void gen_expr_style_assign_compound(expr *e)
+const out_val *gen_expr_style_assign_compound(const expr *e, out_ctx *octx)
 {
-	gen_expr(e->lhs->lhs);
-	stylef(" %s= ", op_to_str(e->op));
-	gen_expr(e->rhs);
+	IGNORE_PRINTGEN(gen_expr(e->lhs->lhs, octx));
+	stylef(" %s= ", op_to_str(e->bits.compoundop.op));
+	IGNORE_PRINTGEN(gen_expr(e->rhs, octx));
+	return NULL;
 }

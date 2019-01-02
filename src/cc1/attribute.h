@@ -3,6 +3,8 @@
 
 #include "type.h"
 #include "retain.h"
+#include "attributes.h"
+#include "visibility.h"
 
 typedef struct attribute attribute;
 struct attribute
@@ -13,19 +15,13 @@ struct attribute
 
 	enum attribute_type
 	{
-		attr_format,
-		attr_unused,
-		attr_warn_unused,
-		attr_section,
-		attr_enum_bitmask,
-		attr_noreturn,
-		attr_noderef,
-		attr_call_conv,
-		attr_nonnull,
-		attr_packed,
-		attr_sentinel,
-		attr_aligned,
-		attr_ucc_debug, /* logs out a message when handled */
+#define NAME(x, typrop) attr_ ## x,
+#define ALIAS(s, x, typrop) attr_ ## x,
+#define EXTRA_ALIAS(s, x)
+		ATTRIBUTES
+#undef NAME
+#undef ALIAS
+#undef EXTRA_ALIAS
 		attr_LAST
 		/*
 		 * TODO: warning
@@ -58,25 +54,28 @@ struct attribute
 			conv_fastcall  /* Windows x86, ecx, edx, caller cleanup */
 		} conv;
 		unsigned long nonnull_args; /* limits to sizeof(long)*8 args, i.e. 64 */
-		struct expr *align, *sentinel;
+		struct expr *align, *sentinel, *priority;
+		struct decl *cleanup;
 		int ucc_debugged;
+		enum visibility visibility;
 	} bits;
-
-	attribute *next;
 };
 
 attribute   *attribute_new(enum attribute_type);
-void         attribute_append(attribute **loc, attribute *new);
 const char  *attribute_to_str(attribute *da);
 
-attribute *attr_present(attribute *, enum attribute_type);
+attribute *attr_present(attribute **, enum attribute_type);
 attribute *type_attr_present(struct type *, enum attribute_type);
 attribute *attribute_present(struct decl *, enum attribute_type);
 attribute *expr_attr_present(struct expr *, enum attribute_type);
 
 int attribute_equal(attribute *, attribute *);
 
+int attribute_is_typrop(attribute *);
+
 void attribute_free(struct attribute *a);
-void attribute_debug_check(struct attribute *attr);
+struct attribute **attribute_array_retain(struct attribute **);
+void attribute_array_release(struct attribute ***);
+void attribute_debug_check(struct attribute **attr);
 
 #endif

@@ -8,6 +8,7 @@
 
 #include "cc1.h"
 #include "defs.h"
+#include "fopt.h"
 
 #include "num.h"
 
@@ -78,17 +79,20 @@ int integral_str(char *buf, size_t nbuf, integral_t v, type *ty)
 			is_signed
 				? "%" NUMERIC_FMT_D
 				: "%" NUMERIC_FMT_U,
-			v, is_signed);
+			v);
 }
 
 integral_t integral_truncate_bits(
 		integral_t val, unsigned bits,
 		sintegral_t *signed_iv)
 {
-	integral_t pos_mask = ~(~0ULL << bits);
+	integral_t pos_mask = bits < INTEGRAL_BITS
+		? ~(-1ULL << bits)
+		: -1ULL;
+
 	integral_t truncated = val & pos_mask;
 
-	if(fopt_mode & FOPT_CAST_W_BUILTIN_TYPES){
+	if(cc1_fopt.cast_w_builtin_types){
 		/* we use sizeof our types so our conversions match the target conversions */
 #define BUILTIN(type)                    \
 		if(bits == sizeof(type) * CHAR_BIT){ \

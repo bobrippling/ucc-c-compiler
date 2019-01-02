@@ -26,7 +26,7 @@ void gen_style_dinit(decl_init *di)
 {
 	switch(di->type){
 		case decl_init_scalar:
-			gen_expr(di->bits.expr);
+			IGNORE_PRINTGEN(gen_expr(di->bits.expr, NULL));
 			break;
 
 		case decl_init_copy:
@@ -64,13 +64,13 @@ void gen_style_decl(decl *d)
 	stylef("%s", decl_to_str(d));
 
 	if(type_is(d->ref, type_func)){
-		gen_stmt(d->bits.func.code);
+		gen_stmt(d->bits.func.code, NULL);
 		return;
 	}
 
-	if(d->bits.var.init){
+	if(d->bits.var.init.dinit){
 		stylef(" = ");
-		gen_style_dinit(d->bits.var.init);
+		gen_style_dinit(d->bits.var.init.dinit);
 	}
 	stylef(";\n");
 }
@@ -79,6 +79,6 @@ void gen_style(symtable_global *stab)
 {
 	decl **i;
 
-	for(i = stab->stab.decls; i && *i; i++)
+	for(i = symtab_decls(&stab->stab); i && *i; i++)
 		gen_style_decl(*i);
 }

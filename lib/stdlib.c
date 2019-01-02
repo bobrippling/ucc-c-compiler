@@ -32,6 +32,15 @@ int atoi(const char *s)
 	return i;
 }
 
+div_t div(int n, int denom)
+{
+	/* TODO: __asm__ */
+	return (div_t){
+		.quot = n / denom,
+		.rem = n % denom,
+	};
+}
+
 void *malloc(size_t size)
 {
 	/*
@@ -113,7 +122,7 @@ void free(void *p __unused)
 	/* no op... :C */
 }
 
-void abort()
+void abort(void)
 {
 	// TODO: unblock SIGABRT
 	raise(SIGABRT);

@@ -28,6 +28,7 @@ enum token
 	token_asm,
 	token_attribute,
 	token___extension__,
+	token___label__,
 
 	token_identifier,
 	token_integer,     /* aka [1-9] */
@@ -144,6 +145,6 @@ int tok_at_label(void);
 
 extern numeric currentval;
 extern enum token curtok;
-extern int parse_had_error;
+#include "parse_fold_error.h"
 
 #endif

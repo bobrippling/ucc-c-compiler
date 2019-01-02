@@ -1,15 +1,19 @@
 *.o
-
-config.mk
+*.d
 
 tags
+
+src/config.custom.mk
+src/config_as.h
+src/ucc.spec
+lib/config.mk
 
 src/cc1/cc1
 src/cpp2/cpp
 src/ucc/ucc
-src/ucc/cfg.h
-src/as_cfg.h
-src/src_config_platform.mk
+
+src/cc1/test
+src/util/test
 
 lib/libc.a
 lib/crt.a
@@ -18,6 +22,8 @@ lib/syscall.s
 lib/syscall_err.s
 lib/syscalls_darwin.h
 lib/string_strerrs.h
+lib/string_strerrs
+lib/.*.d
 
 src/cc1/cc1.exe
 src/cpp2/cpp.exe

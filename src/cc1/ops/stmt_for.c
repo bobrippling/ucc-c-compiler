@@ -19,74 +19,108 @@ void stmt_for_got_decls(stmt *s)
 
 void fold_stmt_for(stmt *s)
 {
-	s->lbl_break    = out_label_flow("for_start");
-	s->lbl_continue = out_label_flow("for_contiune");
-
-	if(s->flow->for_while)
-		fold_check_expr(
+	if(s->flow->for_while){
+		(void)!fold_check_expr(
 				s->flow->for_while,
 				FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
-				"for-while");
+				"for-test");
+	}
 
 	fold_stmt(s->lhs);
 }
 
-void gen_stmt_for(stmt *s)
+void gen_stmt_for(const stmt *s, out_ctx *octx)
 {
-	char *lbl_test = out_label_flow("for_test");
-	const char *el[2];
+	struct out_dbg_lbl *el[2][2];
+	out_blk *blk_test = out_blk_new(octx, "for_test"),
+	        *blk_body = out_blk_new(octx, "for_body"),
+	        *blk_end = out_blk_new(octx, "for_end"),
+	        *blk_inc = out_blk_new(octx, "for_inc");
 
-	flow_gen(s->flow, s->flow->for_init_symtab, el);
+	flow_gen(s->flow, s->flow->for_init_symtab, el, octx);
 
 	/* don't else-if, possible to have both (comma-exp for init) */
 	if(s->flow->for_init){
-		gen_expr(s->flow->for_init);
+		out_val_consume(octx, gen_expr(s->flow->for_init, octx));
 
-		out_pop();
-		out_comment("for-init");
+		out_comment(octx, "for-init");
 	}
 
-	out_label(lbl_test);
+	out_ctrl_transfer_make_current(octx, blk_test);
 	if(s->flow->for_while){
-		gen_expr(s->flow->for_while);
-		out_jfalse(s->lbl_break);
+		const out_val *for_cond;
+
+		for_cond = gen_expr(s->flow->for_while, octx);
+
+		out_ctrl_branch(octx, for_cond, blk_body, blk_end);
+	}else{
+		out_ctrl_transfer(octx, blk_body, NULL, NULL, 0);
 	}
 
-	gen_stmt(s->lhs);
-	out_label(s->lbl_continue);
-	if(s->flow->for_inc){
-		gen_expr(s->flow->for_inc);
+	stmt_init_blks(s, blk_inc, blk_end);
 
-		out_pop();
-		out_comment("unused for inc");
+	out_current_blk(octx, blk_body);
+	{
+		gen_stmt(s->lhs, octx);
+		out_ctrl_transfer(octx, blk_inc, NULL, NULL, 0);
 	}
 
-	out_push_lbl(lbl_test, 0);
-	out_jmp();
+	out_current_blk(octx, blk_inc);
+	{
+		if(s->flow->for_inc)
+			out_val_consume(octx, gen_expr(s->flow->for_inc, octx));
+		out_ctrl_transfer(octx, blk_test, NULL, NULL, 0);
+	}
 
-	out_label(s->lbl_break);
-	flow_end(el);
-
-	free(lbl_test);
+	out_current_blk(octx, blk_end);
+	flow_end(s->flow, s->flow->for_init_symtab, el, octx);
 }
 
-void style_stmt_for(stmt *s)
+void dump_flow(stmt_flow *flow, dump *ctx)
+{
+	decl **di;
+
+	if(!flow)
+		return;
+
+	for(di = flow->for_init_symtab->decls; di && *di; di++)
+		dump_decl(*di, ctx, NULL);
+}
+
+void dump_stmt_for(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "for", s);
+
+	dump_inc(ctx);
+
+	dump_flow(s->flow, ctx);
+
+	if(s->flow->for_init) dump_expr(s->flow->for_init, ctx);
+	if(s->flow->for_while) dump_expr(s->flow->for_while, ctx);
+	if(s->flow->for_inc) dump_expr(s->flow->for_inc, ctx);
+
+	dump_stmt(s->lhs, ctx);
+
+	dump_dec(ctx);
+}
+
+void style_stmt_for(const stmt *s, out_ctx *octx)
 {
 	stylef("for(");
 	if(s->flow->for_init)
-		gen_expr(s->flow->for_init);
+		IGNORE_PRINTGEN(gen_expr(s->flow->for_init, octx));
 
 	stylef("; ");
 	if(s->flow->for_while)
-		gen_expr(s->flow->for_while);
+		IGNORE_PRINTGEN(gen_expr(s->flow->for_while, octx));
 
 	stylef("; ");
 	if(s->flow->for_inc)
-		gen_expr(s->flow->for_inc);
+		IGNORE_PRINTGEN(gen_expr(s->flow->for_inc, octx));
 
 	stylef(")\n");
 
-	gen_stmt(s->lhs);
+	gen_stmt(s->lhs, octx);
 }
 
 struct walk_info
@@ -97,7 +131,7 @@ struct walk_info
 
 /* ??? change this so we set properties in fold() instead? */
 static void
-stmt_walk_first_break_goto_return(stmt *current, int *stop, int *descend, void *extra)
+stmt_walk_first_break_goto(stmt *current, int *stop, int *descend, void *extra)
 {
 	struct walk_info *wi = extra;
 	int found = 0;
@@ -106,7 +140,7 @@ stmt_walk_first_break_goto_return(stmt *current, int *stop, int *descend, void *
 
 	if(stmt_kind(current, break)){
 		found = wi->switch_depth == 0;
-	}else if(stmt_kind(current, return) || stmt_kind(current, goto)){
+	}else if(stmt_kind(current, goto)){
 		found = 1;
 	}else if(stmt_kind(current, switch)){
 		wi->switch_depth++;
@@ -133,9 +167,9 @@ int fold_code_escapable(stmt *s)
 
 	memset(&wi, 0, sizeof wi);
 
-	stmt_walk(s->lhs, stmt_walk_first_break_goto_return, stmt_walk_switch_leave, &wi);
+	stmt_walk(s->lhs, stmt_walk_first_break_goto, stmt_walk_switch_leave, &wi);
 
-	/* we only return if we find a break, goto or return statement */
+	/* we only return if we find a break or goto statement */
 	return !!wi.escape;
 }
 

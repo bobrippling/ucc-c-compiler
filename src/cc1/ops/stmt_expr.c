@@ -1,60 +1,91 @@
 #include <string.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "stmt_expr.h"
 #include "../type_is.h"
 
+#include "expr_funcall.h"
+#include "expr_stmt.h"
+#include "expr_cast.h"
+#include "__builtin.h"
+
 const char *str_stmt_expr()
 {
-	return "expr";
+	return "expression";
+}
+
+static int unused_expr_type(expr *e)
+{
+	type *t = e->tree_type;
+
+	if(type_is_void(t))
+		return 0;
+	if(type_qual(t) & qual_volatile)
+		return 0;
+
+	/* check decayed exprs */
+	if(expr_kind(e, cast) && expr_cast_is_lval2rval(e))
+		return unused_expr_type(expr_cast_child(e));
+
+	return 1;
 }
 
 void fold_stmt_expr(stmt *s)
 {
 	int folded = !s->expr->tree_type;
 
-	FOLD_EXPR(s->expr, s->symtab);
+	fold_expr_nodecay(s->expr, s->symtab);
+
+	if(type_qual(s->expr->tree_type) & qual_volatile){
+		/* must generate a read */
+		FOLD_EXPR(s->expr, s->symtab);
+	}
 
 	if(!folded
 	&& !s->freestanding
 	&& !s->expr->freestanding
-	&& !type_is_void(s->expr->tree_type))
+	&& unused_expr_type(s->expr))
 	{
-		cc1_warn_at(&s->expr->where, 0, WARN_UNUSED_EXPR,
-				"unused expression (%s)", expr_skip_casts(s->expr)->f_str());
+		cc1_warn_at(&s->expr->where, unused_expr,
+				"unused expression (%s)", expr_str_friendly(s->expr));
 	}
 }
 
-void gen_stmt_expr(stmt *s)
+void gen_stmt_expr(const stmt *s, out_ctx *octx)
 {
-	int pre_vcount = out_vcount();
-	char *sp;
+	const out_val *v = gen_expr(s->expr, octx);
 
-	gen_expr(s->expr);
+	expr *const lvalue = expr_kind(s->expr, cast) && expr_cast_is_lval2rval(s->expr)
+		? expr_cast_child(s->expr)
+		: NULL;
 
-	if((fopt_mode & FOPT_ENABLE_ASM) == 0
-	|| !s->expr
-	|| expr_kind(s->expr, funcall)
-	|| !(sp = s->expr->bits.ident.spel)
-	|| strcmp(sp, ASM_INLINE_FNAME))
-	{
-		if(s->expr_no_pop)
-			pre_vcount++;
-		else
-			out_pop(); /* cancel the implicit push from gen_expr() above */
+	const int is_volatile = type_qual(s->expr->tree_type) & qual_volatile
+		|| (lvalue && type_qual(lvalue->tree_type) & qual_volatile);
 
-		out_comment("end of %s-stmt", s->f_str());
+	if(is_volatile){
+		assert(lvalue && "only lvalues can be the source of volatile");
 
-		UCC_ASSERT(out_vcount() == pre_vcount,
-				"vcount changed over %s statement (%d -> %d)",
-				s->expr->f_str(),
-				out_vcount(), pre_vcount);
+		out_force_read(octx, s->expr->tree_type, v);
+	}else{
+		out_val_consume(octx, v);
 	}
 }
 
-void style_stmt_expr(stmt *s)
+void dump_stmt_expr(const stmt *s, dump *ctx)
 {
-	gen_expr(s->expr);
+	dump_desc_stmt(ctx, "expression", s);
+
+	dump_inc(ctx);
+
+	dump_expr(s->expr, ctx);
+
+	dump_dec(ctx);
+}
+
+void style_stmt_expr(const stmt *s, out_ctx *octx)
+{
+	IGNORE_PRINTGEN(gen_expr(s->expr, octx));
 	stylef(";\n");
 }
 
@@ -69,6 +100,9 @@ static int expr_passable(stmt *s)
 
 	if(expr_kind(s->expr, stmt))
 		return fold_passable(s->expr->code);
+
+	if(expr_kind(s->expr, builtin))
+		return !func_or_builtin_attr_present(s->expr, attr_noreturn);
 
 	return 1;
 }

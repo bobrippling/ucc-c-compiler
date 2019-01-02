@@ -65,22 +65,24 @@ const char *decl_init_to_str(enum decl_init_type);
  * *nonstd is set if nonstd isn't NULL
  */
 int decl_init_is_const(
-		decl_init *dinit, struct symtable *stab, struct expr **nonstd);
+		decl_init *dinit, struct symtable *stab,
+		struct type *expected, struct expr **nonstd, struct expr **nonconst);
 
 int decl_init_is_zero(decl_init *dinit);
+int decl_init_has_sideeffects(decl_init *dinit);
+
+struct struct_union_enum_st;
+struct expr *decl_init_is_struct_copy(
+		decl_init *,
+		struct struct_union_enum_st *constraint);
 
 /* normalises braces */
-void decl_init_brace_up_fold(
-		struct decl *d, struct symtable *stab,
-		const int allow_initial_struct_copy);
+void decl_init_brace_up_fold(struct decl *d, struct symtable *stab);
 
 /* used for default initialising tenatives */
 void decl_default_init(struct decl *d, struct symtable *stab);
 
-/* creates assignment exprs - only used for local inits */
-void decl_init_create_assignments_base(
-		decl_init *init,
-		struct type *tfor, struct expr *base,
-		struct stmt *code);
+void decl_init_create_assignments_base_and_fold(
+		struct decl *d, struct expr *base, struct symtable *scope);
 
 #endif
