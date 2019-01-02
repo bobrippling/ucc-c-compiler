@@ -27,6 +27,7 @@
 #include "parse_attr.h"
 #include "parse_init.h"
 #include "parse_stmt.h"
+#include "pragma.h"
 
 #include "expr.h"
 #include "type_nav.h"
@@ -2225,19 +2226,20 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 			warn_at_print_error(&d->where, "typedef storage on function");
 			fold_had_error = 1;
 		}
+	}
+}
 
-		if((d->store & STORE_MASK_STORE) != store_static){
-			extern char *ucc_namespace;
-
-			if(ucc_namespace && strncmp(
-						d->spel,
-						ucc_namespace,
-						strlen(ucc_namespace)))
-			{
-				warn_at(&d->where,
-						"non-static function not in \"%s\" namespace",
-						ucc_namespace);
-			}
+static void parse_post(decl *d)
+{
+	if((d->store & STORE_MASK_STORE) != store_static){
+		if(ucc_namespace && strncmp(
+					d->spel,
+					ucc_namespace,
+					strlen(ucc_namespace)))
+		{
+			warn_at(&d->where,
+					"non-static function not in \"%s\" namespace",
+					ucc_namespace);
 		}
 	}
 }
@@ -2508,6 +2510,8 @@ int parse_decl_group(
 		/* now we have the function in scope we parse its code */
 		if(type_is(d->ref, type_func))
 			parse_post_func(d, in_scope, attr_post_decl);
+		if((mode & DECL_MULTI_IS_STRUCT_UN_MEMB) == 0)
+			parse_post(d);
 
 		if(!in_scope->parent && !found_prev_proto && !(mode & DECL_MULTI_IS_OLD_ARGS))
 			check_missing_proto_extern(d);

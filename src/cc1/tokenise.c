@@ -19,6 +19,7 @@
 #include "btype.h"
 #include "fopt.h"
 #include "tokconv.h"
+#include "pragma.h"
 
 #define DEBUG_LINE_DIRECTIVE 0
 
@@ -153,8 +154,6 @@ char *currentspelling = NULL; /* e.g. name of a variable */
 
 struct cstring *currentstring = NULL; /* a string literal */
 where currentstringwhere;
-
-char *ucc_namespace;
 
 /* where the parser is, and where the last parsed token was */
 static struct loc loc_now;
@@ -348,28 +347,6 @@ static void handle_line_file_directive(char *fnam /*owned by us*/, int lno, char
 		free(fnam);
 }
 
-static void parse_pragma(const char *pragma, where *loc)
-{
-	if(!strncmp(pragma, "STDC", 4)){
-		warn_at(loc, "unhandled STDC pragma");
-		return;
-	}
-
-	if(strncmp(pragma, "ucc", 3)){
-		warn_at(loc, "unknown pragma '%s'", pragma);
-		return;
-	}
-
-	pragma = str_spc_skip(pragma + 3);
-
-	if(!strncmp(pragma, "namespace ", 10)){
-		free(ucc_namespace);
-		ucc_namespace = ustrdup(pragma + 10);
-	}else{
-		warn_at(loc, "unknown ucc pragma '%s'", pragma);
-	}
-}
-
 static void parse_line_directive(char *l)
 {
 	int lno;
@@ -384,7 +361,7 @@ static void parse_line_directive(char *l)
 		loc.line_str = NULL;
 
 		l = str_spc_skip(l + 6);
-		parse_pragma(l, &loc);
+		pragma_handle(l, &loc);
 		return;
 	}
 
@@ -1189,7 +1166,7 @@ void nexttoken()
 
 			if(pragma){
 				char *s = cstring_converting_detach(pragma);
-				parse_pragma(s, &loc);
+				pragma_handle(s, &loc);
 				free(s);
 
 			}else{
