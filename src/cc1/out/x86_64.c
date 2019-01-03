@@ -280,8 +280,8 @@ static void x86_overlay_regpair_1(
 
 			regs[*regpair_idx].idx =
 				(*regpair_idx == 0 || regs[0].is_float)
-				? X86_64_REG_RAX
-				: X86_64_REG_RDX;
+				? REG_RET_I_1
+				: REG_RET_I_2;
 			break;
 
 		case FLOAT:
@@ -289,8 +289,8 @@ static void x86_overlay_regpair_1(
 
 			regs[*regpair_idx].idx =
 				(*regpair_idx == 0 || !regs[0].is_float)
-				? X86_64_REG_XMM0
-				: X86_64_REG_XMM1;
+				? REG_RET_F_1
+				: REG_RET_F_2;
 			break;
 	}
 
@@ -820,7 +820,7 @@ x86_func_ret_memcpy(
 
 	/* return the stret pointer argument */
 	ret_reg->is_float = 0;
-	ret_reg->idx = REG_RET_I;
+	ret_reg->idx = REG_RET_I_1;
 
 	return out_deref(octx, out_val_retain(octx, octx->current_stret));
 }
@@ -851,7 +851,7 @@ void impl_to_retreg(out_ctx *octx, const out_val *val, type *called)
 
 		case stret_scalar:
 			r.is_float = type_is_floating(called);
-			r.idx = r.is_float ? REG_RET_F : REG_RET_I;
+			r.idx = r.is_float ? REG_RET_F_1 : REG_RET_I_1;
 			break;
 
 		case stret_regs:
@@ -2446,7 +2446,7 @@ const out_val *impl_call(
 		/* rax / xmm0, otherwise the return has
 		 * been set to a local stack address */
 		const int fp = type_is_floating(retty);
-		struct vreg rr = VREG_INIT(fp ? REG_RET_F : REG_RET_I, fp);
+		struct vreg rr = VREG_INIT(fp ? REG_RET_F_1 : REG_RET_I_1, fp);
 
 		return v_new_reg(octx, fn, retty, &rr);
 	}else{
@@ -2513,10 +2513,10 @@ void impl_set_nan(out_ctx *octx, out_val *v)
 static void reserve_unreserve_retregs(out_ctx *octx, int reserve)
 {
 	static const struct vreg retregs[] = {
-		{ X86_64_REG_RAX, 0 },
-		{ X86_64_REG_RDX, 0 },
-		{ X86_64_REG_XMM0, 1 },
-		{ X86_64_REG_XMM1, 1 },
+		{ REG_RET_I_1, 0 },
+		{ REG_RET_I_2, 0 },
+		{ REG_RET_I_1, 1 },
+		{ REG_RET_I_2, 1 },
 	};
 	unsigned i;
 
