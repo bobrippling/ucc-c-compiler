@@ -113,6 +113,11 @@ void out_asm2(
 	va_end(l);
 }
 
+void out_asm_label(out_ctx *octx, const char *lbl)
+{
+	out_asm(octx, "%s:\n", lbl);
+}
+
 /* -- dbg -- */
 
 unsigned dbg_add_file(struct out_dbg_filelist **files, const char *nam)
