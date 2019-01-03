@@ -216,8 +216,10 @@ static const out_val *gen_inline_func(
 		dbg_lbls[0] = out_label_code("dbg_inline_start");
 		dbg_lbls[1] = out_label_code("dbg_inline_end");
 
+		dbg_startlbl = dbg_lbl_new(dbg_lbls[0]);
+
 		/* free/release ownership of dbg_lbls[0 ... 1] */
-		out_dbg_label_push(octx, dbg_lbls, &dbg_startlbl, &dbg_endlbl);
+		out_dbg_label_push(octx, dbg_lbls, dbg_startlbl, &dbg_endlbl);
 
 		out_dbg_inlined_call(octx,
 				iouts->fndecl,

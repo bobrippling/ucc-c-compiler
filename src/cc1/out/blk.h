@@ -12,7 +12,7 @@ struct out_blk
 
 	struct
 	{
-		struct out_dbg_lbl **start, **end;
+		struct out_dbg_lbl **end;
 	} labels;
 
 	out_blk **merge_preds;

@@ -295,7 +295,9 @@ void gen_block_decls(
 		dbg_lbls[0] = out_label_code("dbg_begin");
 		dbg_lbls[1] = out_label_code("dbg_end");
 
-		out_dbg_label_push(octx, dbg_lbls, &pushed_lbls[0], &pushed_lbls[1]);
+		pushed_lbls[0] = dbg_lbl_new(dbg_lbls[0]);
+
+		out_dbg_label_push(octx, dbg_lbls, pushed_lbls[0], &pushed_lbls[1]);
 
 		stab->lbl_begin = pushed_lbls[0];
 		stab->lbl_end = pushed_lbls[1];

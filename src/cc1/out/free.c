@@ -31,7 +31,6 @@ static void blk_free(out_blk *blk)
 {
 	char **i;
 
-	blk_free_labels(&blk->labels.start);
 	blk_free_labels(&blk->labels.end);
 
 	free(blk->lbl);

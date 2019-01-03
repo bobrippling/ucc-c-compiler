@@ -1,4 +1,6 @@
 #include <stddef.h>
+#include <string.h>
+#include <assert.h>
 
 #include "../../util/dynarray.h"
 #include "../../util/alloc.h"
@@ -11,6 +13,7 @@
 /* needed defs */
 #include "val.h"
 #include "ctx.h"
+#include "write.h"
 
 /* functions */
 #include "blk.h"
@@ -30,7 +33,7 @@ static void out_dbg_label_free(struct out_dbg_lbl *lbl)
 	free(lbl);
 }
 
-static struct out_dbg_lbl *dbg_lbl_new(char *strlbl)
+struct out_dbg_lbl *dbg_lbl_new(char *strlbl)
 {
 	struct out_dbg_lbl *lbl = umalloc(sizeof *lbl);
 	RETAIN_INIT(lbl, &out_dbg_label_free);
@@ -41,27 +44,27 @@ static struct out_dbg_lbl *dbg_lbl_new(char *strlbl)
 void out_dbg_label_push(
 		out_ctx *octx,
 		char *lbl[ucc_static_param 2],
-		struct out_dbg_lbl **out_startlbl,
+		struct out_dbg_lbl *startlbl,
 		struct out_dbg_lbl **out_endlbl)
 {
 	out_blk *blk = octx->current_blk;
-	struct out_dbg_lbl *startlbl, *endlbl;
+	struct out_dbg_lbl *endlbl;
 
 	if(!blk)
 		blk = octx->last_used_blk;
 
-	startlbl = dbg_lbl_new(lbl[0]);
 	endlbl = dbg_lbl_new(lbl[1]);
 
 	/* add to current block */
-	add_lbl_to_blk(startlbl, &blk->labels.start);
+	assert(!strcmp(startlbl->lbl, lbl[0]));
+	out_asm_label(octx, startlbl->lbl);
+	startlbl->emitted = 1;
 
 	/* add to octx - octx emits this label at the end of the block gen if the
 	 * block containing it (set in out_dbg_label_pop()) hasn't been emitted */
 	dynarray_add(&octx->pending_lbls, RETAIN(endlbl));
 
 	/* out params */
-	*out_startlbl = startlbl;
 	*out_endlbl = endlbl;
 }
 

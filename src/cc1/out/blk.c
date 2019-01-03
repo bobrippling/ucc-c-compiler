@@ -79,7 +79,7 @@ static void blk_codegen(out_blk *blk, struct flush_state *st)
 	if(blk->force_lbl)
 		asm_out_section(NULL, "%s: # mustgen_spel\n", blk->force_lbl);
 
-	out_dbg_labels_emit_release_v(&blk->labels.start);
+	/* debug-start labels are emitted immediately */
 
 	for(i = blk->insns; i && *i; i++)
 		asm_out_section(NULL, "%s", *i);
