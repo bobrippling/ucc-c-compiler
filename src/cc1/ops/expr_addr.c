@@ -76,6 +76,8 @@ void fold_expr_addr(expr *e, symtable *stab)
 					warn_at_print_error(&e->lhs->where, "can't take the address of register");
 					fold_had_error = 1;
 				}
+
+				d->addressed = 1;
 			}
 		}
 

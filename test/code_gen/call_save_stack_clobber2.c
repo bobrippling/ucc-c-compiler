@@ -7,6 +7,7 @@
 //
 // then run the test:
 // RUN: %ocheck 0 %s
+// RUN: %ocheck 0 %s -fstack-protector-all
 
 long llabs(void)
 {

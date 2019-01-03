@@ -1,4 +1,5 @@
 // RUN: %ocheck 3 %s -fno-semantic-interposition
+// RUN: %ocheck 3 %s -fno-semantic-interposition -fstack-protector-all
 
 __attribute((always_inline))
 inline f(int x)

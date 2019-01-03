@@ -264,7 +264,11 @@ int symtab_is_transparent(symtable const *stab)
 		|| (stab->parent && stab->parent->are_params);
 }
 
-unsigned symtab_decl_bytes(symtable *stab, unsigned const vla_cost)
+unsigned symtab_decl_bytes(
+		symtable *stab,
+		unsigned const vla_cost,
+		int array_only,
+		int *const addr_taken)
 {
 	unsigned total = 0;
 	symtable **si;
@@ -273,6 +277,12 @@ unsigned symtab_decl_bytes(symtable *stab, unsigned const vla_cost)
 	for(di = stab->decls; di && *di; di++){
 		decl *d = *di;
 
+		if(d->addressed && addr_taken)
+			*addr_taken = 1;
+
+		if(array_only && !type_is_array(d->ref))
+			continue;
+
 		if(type_is_variably_modified(d->ref))
 			total += vla_cost;
 		else
@@ -280,7 +290,7 @@ unsigned symtab_decl_bytes(symtable *stab, unsigned const vla_cost)
 	}
 
 	for(si = stab->children; si && *si; si++)
-		total += symtab_decl_bytes(*si, vla_cost);
+		total += symtab_decl_bytes(*si, vla_cost, array_only, addr_taken);
 
 	return total;
 }

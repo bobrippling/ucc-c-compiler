@@ -1,11 +1,12 @@
 main:
-Lblk.1:
-# jz Lblk.3
-Lblk.2: # if_true
-Lblk.3: # if_false
-	jmp Lblk.0
-Lblk.4: # fi
-Lblk.5:
 Lblk.0:
+Lblk.1: # if_true
+Lblk.2: # if_false
+# jz Lblk.5
+Lblk.4:
+	jmp Lblk.3
+Lblk.5:
+Lblk.6:
+Lblk.3:
 
 # ordering - epilogue block should be last

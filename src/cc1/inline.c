@@ -282,7 +282,8 @@ static int heuristic_should_inline(
 	if(fndecl->store & store_inline)
 		return 1;
 
-	new_stack = symtab_decl_bytes(symtab, INLINE_VLA_COST) + out_current_stack(octx);
+	new_stack = symtab_decl_bytes(symtab, INLINE_VLA_COST, 0, NULL)
+		+ out_current_stack(octx);
 
 	if(new_stack > INLINE_MAX_STACK_BYTES)
 		return 0;

@@ -71,6 +71,12 @@ struct ucc
 	const char *as, *ld;
 	char **ldflags_pre_user, **ldflags_post_user;
 	const char *post_link;
+
+	struct
+	{
+		/* optimisations */
+		enum { SSP_NONE, SSP_ALL, SSP_NORMAL } ssp;
+	} spanning_fopt;
 };
 
 enum tristate
@@ -533,7 +539,32 @@ static int handle_spanning_fopt(const char *fopt, struct ucc *const state)
 		return 1;
 	}
 
+	if(!strcmp(name, "stack-protector")){
+		state->spanning_fopt.ssp = no ? SSP_NONE : SSP_NORMAL;
+		return 1;
+	}
+	if(!strcmp(name, "stack-protector-all")){
+		state->spanning_fopt.ssp = no ? SSP_NONE : SSP_ALL;
+		return 1;
+	}
+
 	return 0;
+}
+
+static void resolve_spanning_fopts(struct ucc *const state)
+{
+	switch(state->spanning_fopt.ssp){
+		case SSP_NONE:
+			break;
+		case SSP_NORMAL:
+			dynarray_add(&state->args[mode_preproc], ustrdup("-D__SSP__=1"));
+			dynarray_add(&state->args[mode_compile], ustrdup("-fstack-protector"));
+			break;
+		case SSP_ALL:
+			dynarray_add(&state->args[mode_preproc], ustrdup("-D__SSP_ALL__=2"));
+			dynarray_add(&state->args[mode_compile], ustrdup("-fstack-protector-all"));
+			break;
+	}
 }
 
 static void parse_argv(
@@ -893,6 +924,8 @@ input:
 			assumptions[n] = *current_assumption;
 		}
 	}
+
+	resolve_spanning_fopts(state);
 
 	if(had_MD && !had_MF){
 		char *depfile;

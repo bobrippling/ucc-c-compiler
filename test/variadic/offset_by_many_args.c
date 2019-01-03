@@ -1,4 +1,5 @@
 // RUN: %ocheck 0 %s
+// RUN: %ocheck 0 %s -fstack-protector-all
 
 typedef __builtin_va_list va_list;
 

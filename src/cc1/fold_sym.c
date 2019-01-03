@@ -80,7 +80,7 @@ static void dump_symtab(symtable *st, unsigned indent)
 			if(impl && impl != d)
 				fprintf(stderr, ", impl %p", (void *)impl);
 		}else{
-			decl *init = decl_impl(d);
+			decl *init = decl_with_init(d);
 			if(init && init != d)
 				fprintf(stderr, ", init-decl %p", (void *)init);
 		}

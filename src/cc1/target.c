@@ -60,6 +60,7 @@ static const struct target_as asconfig[] = {
 		".L",
 		1, /* visibility protected */
 		1, /* local common */
+		1, /* stackprotector via tls */
 	},
 	{
 		{
@@ -69,6 +70,7 @@ static const struct target_as asconfig[] = {
 		".L",
 		1, /* visibility protected */
 		1, /* local common */
+		1, /* stackprotector via tls */
 	},
 	{
 		{
@@ -78,6 +80,7 @@ static const struct target_as asconfig[] = {
 		"L",
 		0, /* visibility protected */
 		0, /* local common */
+		0, /* stackprotector via tls */
 	},
 	{
 		{
@@ -87,6 +90,7 @@ static const struct target_as asconfig[] = {
 		".L",
 		1, /* visibility protected */
 		1, /* local common */
+		1, /* stackprotector via tls */
 	},
 };
 

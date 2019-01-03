@@ -429,7 +429,7 @@
 	.byte 0 # DW_AT_name
 	.byte 2 # block count
 	.byte 118 # DW_FORM_block DW_OP_breg6
-	.byte 120 # DW_FORM_block, LEBS 0xfffffffffffffff8
+	.byte 112 # DW_FORM_block, LEBS 0xfffffffffffffff0
  # DW_AT_location
 
 	.byte 10  # Abbrev. Code 10 DW_TAG_formal_parameter
@@ -438,7 +438,7 @@
 	.byte 0 # DW_AT_name
 	.byte 2 # block count
 	.byte 118 # DW_FORM_block DW_OP_breg6
-	.byte 112 # DW_FORM_block, LEBS 0xfffffffffffffff0
+	.byte 120 # DW_FORM_block, LEBS 0xfffffffffffffff8
  # DW_AT_location
 
 	.byte 11  # Abbrev. Code 11 DW_TAG_variable

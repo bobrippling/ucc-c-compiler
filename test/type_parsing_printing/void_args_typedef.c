@@ -1,7 +1,7 @@
-// RUN: %ucc -c %s
-// RUN: %ucc -DNAMED -c %s; [ $? -ne 0 ]
-// RUN: %ucc -DFIRST -c %s; [ $? -ne 0 ]
-// RUN: %ucc -DFIRST_NAMED -c %s; [ $? -ne 0 ]
+// RUN:   %ucc -c %s
+// RUN: ! %ucc -c %s -DNAMED
+// RUN: ! %ucc -c %s -DFIRST
+// RUN: ! %ucc -c %s -DFIRST_NAMED
 
 typedef void v;
 f(v);

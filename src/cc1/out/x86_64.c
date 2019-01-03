@@ -280,8 +280,8 @@ static void x86_overlay_regpair_1(
 
 			regs[*regpair_idx].idx =
 				(*regpair_idx == 0 || regs[0].is_float)
-				? X86_64_REG_RAX
-				: X86_64_REG_RDX;
+				? REG_RET_I_1
+				: REG_RET_I_2;
 			break;
 
 		case FLOAT:
@@ -289,8 +289,8 @@ static void x86_overlay_regpair_1(
 
 			regs[*regpair_idx].idx =
 				(*regpair_idx == 0 || !regs[0].is_float)
-				? X86_64_REG_XMM0
-				: X86_64_REG_XMM1;
+				? REG_RET_F_1
+				: REG_RET_F_2;
 			break;
 	}
 
@@ -618,7 +618,7 @@ void impl_func_prologue_save_call_regs(
 		 * each argument takes a full word for now - subject to change
 		 * (e.g. long double, struct/union args, etc)
 		 */
-		if(n_call_f){
+		{
 			unsigned i_arg, i_arg_stk, i_i, i_f;
 			const out_val *stack_loc;
 			type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
@@ -681,42 +681,6 @@ pass_via_stack:
 			 * we're still in the prologue */
 			assert(octx->in_prologue);
 			out_adealloc(octx, &stack_loc);
-		}else{
-			long i;
-			for(i = 0; i < nargs; i++){
-				long off;
-				const out_val **store;
-				type *ty;
-
-				if(i < n_call_i){
-					out_asm(octx, "push%s %%%s",
-							x86_suffix(NULL),
-							x86_reg_str(&call_regs[i], NULL));
-
-					/* +1 to step over saved rbp */
-					off = -(i + 1) * ws;
-				}else{
-					/* +2 to step back over saved rbp and saved rip */
-					off = (i - n_call_i + 2) * ws;
-				}
-
-				if(is_stret && i == 0){
-					ty = type_ptr_to(retty);
-					assert(!octx->current_stret);
-					store = &octx->current_stret;
-				}else{
-					ty = fa->arglist[i - is_stret]->ref;
-					store = &arg_vals[i - is_stret];
-				}
-
-				*store = v_new_bp3_above(octx, NULL, type_ptr_to(ty), off);
-			}
-
-			/* this aligns the stack too */
-			v_aalloc_noop(octx,
-					n_call_i * ws,
-					ws,
-					"save call regs push-version");
 		}
 
 		if(octx->current_stret && cc1_fopt.verbose_asm){
@@ -856,7 +820,7 @@ x86_func_ret_memcpy(
 
 	/* return the stret pointer argument */
 	ret_reg->is_float = 0;
-	ret_reg->idx = REG_RET_I;
+	ret_reg->idx = REG_RET_I_1;
 
 	return out_deref(octx, out_val_retain(octx, octx->current_stret));
 }
@@ -887,7 +851,7 @@ void impl_to_retreg(out_ctx *octx, const out_val *val, type *called)
 
 		case stret_scalar:
 			r.is_float = type_is_floating(called);
-			r.idx = r.is_float ? REG_RET_F : REG_RET_I;
+			r.idx = r.is_float ? REG_RET_F_1 : REG_RET_I_1;
 			break;
 
 		case stret_regs:
@@ -2482,7 +2446,7 @@ const out_val *impl_call(
 		/* rax / xmm0, otherwise the return has
 		 * been set to a local stack address */
 		const int fp = type_is_floating(retty);
-		struct vreg rr = VREG_INIT(fp ? REG_RET_F : REG_RET_I, fp);
+		struct vreg rr = VREG_INIT(fp ? REG_RET_F_1 : REG_RET_I_1, fp);
 
 		return v_new_reg(octx, fn, retty, &rr);
 	}else{
@@ -2544,4 +2508,33 @@ void impl_set_nan(out_ctx *octx, out_val *v)
 
 	v->type = V_CONST_F;
 	/*impl_load_fp(v);*/
+}
+
+static void reserve_unreserve_retregs(out_ctx *octx, int reserve)
+{
+	static const struct vreg retregs[] = {
+		{ REG_RET_I_1, 0 },
+		{ REG_RET_I_2, 0 },
+		{ REG_RET_I_1, 1 },
+		{ REG_RET_I_2, 1 },
+	};
+	unsigned i;
+
+	for(i = 0; i < countof(retregs); i++){
+		const struct vreg *r = &retregs[i];
+		if(reserve)
+			v_reserve_reg(octx, r);
+		else
+			v_unreserve_reg(octx, r);
+	}
+}
+
+void impl_reserve_retregs(out_ctx *octx)
+{
+	reserve_unreserve_retregs(octx, 1);
+}
+
+void impl_unreserve_retregs(out_ctx *octx)
+{
+	reserve_unreserve_retregs(octx, 0);
 }

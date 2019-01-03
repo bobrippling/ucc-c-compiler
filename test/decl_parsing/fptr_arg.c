@@ -1,5 +1,5 @@
-// RUN: %ucc -o %t %s
-// RUN: %ocheck 6 %t
+// RUN: %ocheck 6 %s
+// RUN: %ocheck 6 %s -fstack-protector-all
 
 call_for_me(int (*f)(int), int arg)
 {
