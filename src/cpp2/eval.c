@@ -342,6 +342,9 @@ static char *eval_macro_r(macro *m, char *start, char **pat)
 			}else if(!strcmp(m->nam, "__TIMESTAMP__")){
 				free_val = 0;
 				val = cpp_timestamp;
+			}else if(!strcmp(m->nam, "__BASE_FILE__")){
+				free_val = 0;
+				val = cpp_basefile;
 			}else{
 				ICE("invalid macro");
 			}

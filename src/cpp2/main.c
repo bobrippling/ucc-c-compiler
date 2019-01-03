@@ -21,6 +21,7 @@
 #include "directive.h"
 #include "deps.h"
 #include "feat.h"
+#include "str.h"
 
 static const struct
 {
@@ -69,6 +70,7 @@ static const struct
 	SPECIAL("__DATE__"),
 	SPECIAL("__TIME__"),
 	SPECIAL("__TIMESTAMP__"),
+	SPECIAL("__BASE_FILE__"),
 
 #undef SPECIAL
 #define SPECIAL(x) { x, NULL, 1 }
@@ -90,6 +92,7 @@ int no_output = 0;
 int missing_header_error = 1;
 
 char cpp_time[16], cpp_date[16], cpp_timestamp[64];
+char *cpp_basefile;
 
 char **cd_stack = NULL;
 
@@ -160,6 +163,8 @@ char *dirname_pop()
 
 void set_current_fname(const char *new)
 {
+	if(current_fname == new)
+		return;
 	free(current_fname);
 	current_fname = ustrdup(new);
 }
@@ -615,6 +620,7 @@ defaul:
 	}
 
 	set_current_fname(infname);
+	cpp_basefile = str_quote(infname, 0);
 
 	preprocess();
 
@@ -629,6 +635,7 @@ defaul:
 		deps_dump(infname, depfname);
 
 	free(dirname_pop());
+	free(cpp_basefile);
 
 	errno = 0;
 	fclose(stdout);
@@ -637,7 +644,7 @@ defaul:
 
 	return ret;
 usage:
-	fprintf(stderr, "Usage: %s [options] files...\n", *argv);
+	fprintf(stderr, "Usage: %s [options] in-file out-file\n", *argv);
 	fputs(" Options:\n"
 				"  -Idir: Add search directory\n"
 				"  -Dxyz[=abc]: Define xyz (to equal abc)\n"

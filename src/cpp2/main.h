@@ -15,7 +15,7 @@ extern char **cd_stack;
 
 extern enum c_std cpp_std;
 
-extern char cpp_time[16], cpp_date[16], cpp_timestamp[64];
+extern char cpp_time[16], cpp_date[16], cpp_timestamp[64], *cpp_basefile;
 
 extern int option_line_info;
 extern int option_trigraphs, option_digraphs;
