@@ -1,14 +1,15 @@
 f:
-Lblk.1: # post_prologue
-Lblk.2: # post_prologue
-	/* constant jmp condition not taken */
-Lblk.4:
-	jmp Lblk.5
-Lblk.7:
-Lblk.6: # if_true
-	jmp Lblk.0
-Lblk.8:
-Lblk.9:
 Lblk.0:
-Lblk.5: # l
-	jmp Lblk.7
+Lblk.1:
+Lblk.2:
+	/* constant jmp condition not taken */
+Lblk.5:
+	jmp Lblk.6
+Lblk.8:
+Lblk.7:
+	jmp Lblk.3
+Lblk.9:
+Lblk.10:
+Lblk.3:
+Lblk.6:
+	jmp Lblk.8

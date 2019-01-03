@@ -102,7 +102,7 @@ static void callee_save_or_restore(
 void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *end_dbg_lbl)
 {
 	out_blk *call_save_spill_blk = NULL;
-	out_blk *to_flush;
+	out_blk *flush_root;
 
 	if(octx->current_blk && octx->current_blk->type == BLK_UNINIT)
 		out_ctrl_transfer(octx, octx->epilogue_blk, NULL, NULL, 0);
@@ -243,8 +243,9 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 
 	/* space for spills */
 	if(octx->used_stack){
-		to_flush = octx->entry_blk;
-		out_current_blk(octx, octx->prologue_prejoin_blk);
+		flush_root = octx->entry_blk;
+		out_current_blk(octx, octx->entry_blk);
+		out_ctrl_transfer_make_current(octx, octx->stacksub_blk);
 		{
 			v_stackt stack_adj;
 
@@ -270,23 +271,24 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 			stack_adj = octx->max_stack_sz - octx->stack_n_alloc;
 
 			v_stack_adj(octx, stack_adj, /*sub:*/1);
-
-			if(call_save_spill_blk){
-				out_ctrl_transfer_make_current(octx, call_save_spill_blk);
-			}
-			out_ctrl_transfer(octx, octx->prologue_postjoin_blk, NULL, NULL, 0);
 		}
+
+		out_ctrl_transfer(octx, octx->argspill_begin_blk, NULL, NULL, 0);
+		out_current_blk(octx, octx->argspill_done_blk);
+		if(call_save_spill_blk)
+			out_ctrl_transfer_make_current(octx, call_save_spill_blk);
+		out_ctrl_transfer(octx, octx->postprologue_blk, NULL, NULL, 0);
 	}else{
-		to_flush = octx->prologue_postjoin_blk;
+		flush_root = octx->postprologue_blk;
 
 		/* need to attach the label to prologue_postjoin_blk */
-		free(to_flush->lbl);
-		to_flush->lbl = octx->entry_blk->lbl;
+		free(flush_root->lbl);
+		flush_root->lbl = octx->entry_blk->lbl;
 		octx->entry_blk->lbl = NULL;
 	}
 	octx->current_blk = NULL;
 
-	blk_flushall(octx, to_flush, end_dbg_lbl);
+	blk_flushall(octx, flush_root, end_dbg_lbl);
 
 	free(octx->used_callee_saved), octx->used_callee_saved = NULL;
 
@@ -342,57 +344,57 @@ void out_func_prologue(
 
 	assert(octx->cur_stack_sz == 0 && "non-empty stack for new func");
 	assert(octx->alloca_count == 0 && "allocas left over?");
-
 	octx->check_flags = 1;
+
+	assert(!octx->current_blk);
+	octx->entry_blk = out_blk_new_lbl(octx, sp);
+	octx->stacksub_blk = out_blk_new(octx, "stacksub");
+	octx->argspill_begin_blk = out_blk_new(octx, "argspill");
+	octx->postprologue_blk = out_blk_new(octx, "post_prologue");
+	octx->epilogue_blk = out_blk_new(octx, "epilogue");
 
 	octx->in_prologue = 1;
 	{
 		const out_val *stack_prot_slot = NULL;
 
-		assert(!octx->current_blk);
-		octx->entry_blk = out_blk_new_lbl(octx, sp);
-		octx->epilogue_blk = out_blk_new(octx, "epilogue");
-
 		out_current_blk(octx, octx->entry_blk);
+		{
+			impl_func_prologue_save_fp(octx);
 
-		impl_func_prologue_save_fp(octx);
+			if(stack_protector){
+				type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 
-		if(stack_protector){
-			type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
+				stack_prot_slot = out_aalloct(octx, type_ptr_to(type_ptr_to(intptr_ty)));
+			}
 
-			stack_prot_slot = out_aalloct(octx, type_ptr_to(type_ptr_to(intptr_ty)));
+			if(mopt_mode & MOPT_STACK_REALIGN)
+				stack_realign(octx, cc1_mstack_align);
 		}
 
-		if(mopt_mode & MOPT_STACK_REALIGN)
-			stack_realign(octx, cc1_mstack_align);
+		out_current_blk(octx, octx->argspill_begin_blk);
+		{
+			impl_func_prologue_save_call_regs(octx, fnty, nargs, argvals);
 
-		impl_func_prologue_save_call_regs(octx, fnty, nargs, argvals);
+			if(variadic) /* save variadic call registers */
+				impl_func_prologue_save_variadic(octx, fnty);
 
-		if(variadic) /* save variadic call registers */
-			impl_func_prologue_save_variadic(octx, fnty);
+			octx->argspill_done_blk = octx->current_blk;
 
-		/* need to definitely be on a BLK_UNINIT block after
-		 * prologue setup (in prologue_blk) */
-		octx->prologue_prejoin_blk = out_blk_new(octx, "prologue");
-		out_ctrl_transfer_make_current(octx, octx->prologue_prejoin_blk);
+			/* setup "pointers" to the right place in the stack */
+			octx->stack_variadic_offset = octx->cur_stack_sz;
+			octx->initial_stack_sz = octx->cur_stack_sz;
 
-		/* setup "pointers" to the right place in the stack */
-		octx->stack_variadic_offset = octx->cur_stack_sz;
-		octx->initial_stack_sz = octx->cur_stack_sz;
-
-		if(stack_prot_slot){
-			/* now all registers are safe, init stack protector */
-			out_init_stack_canary(octx, stack_prot_slot);
+			if(stack_prot_slot){
+				/* now all registers are safe, init stack protector */
+				out_init_stack_canary(octx, stack_prot_slot);
+			}
 		}
 	}
 	octx->in_prologue = 0;
 
 	octx->used_stack = 0;
 
-	/* keep the end of the prologue block clear for a stack pointer adjustment,
-	 * in case any spills are needed */
-	octx->prologue_postjoin_blk = out_blk_new(octx, "post_prologue");
-	out_current_blk(octx, octx->prologue_postjoin_blk);
+	out_current_blk(octx, octx->postprologue_blk);
 }
 
 unsigned out_current_stack(out_ctx *octx)
