@@ -1,8 +1,8 @@
-// RUN: %check %s
+// RUN: %check %s -Wall
 
-static char c; // CHECK: warning: unused global variable 'c'
+static char c; // CHECK: warning: unused variable 'c'
 
-static int f() // CHECK: warning: unused global function 'f'
+static int f() // CHECK: warning: unused function 'f'
 {
 	return 3;
 }
