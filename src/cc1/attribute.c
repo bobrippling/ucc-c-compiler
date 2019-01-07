@@ -339,6 +339,51 @@ static enum attribute_category attribute_category(attribute *attr)
 	return attribute_cat_any;
 }
 
+static void append(char *buf, const char *str)
+{
+	if(*buf)
+		strcat(buf, "/");
+	strcat(buf, str);
+}
+
+static const char *attribute_category_to_str_r(int bufno, enum attribute_category mask)
+{
+	static char bufs[2][32];
+	char *buf = bufs[bufno];
+
+	*buf = '\0';
+
+	if(mask & attribute_cat_type_funconly){
+		append(buf, "function type");
+	}else if(mask & attribute_cat_type_enumonly){
+		append(buf, "enum");
+	}else if(mask & attribute_cat_type_enumentonly){
+		append(buf, "enum member");
+	}else if(mask & attribute_cat_type_ptronly){
+		append(buf, "pointer type");
+	}else if(mask & attribute_cat_type_structonly){
+		append(buf, "struct");
+	}else if(mask & attribute_cat_type){
+		append(buf, "type");
+	}
+
+	if(*buf)
+		return buf;
+
+	if(mask & attribute_cat_decl_funconly){
+		append(buf, "function");
+	}else if(mask & attribute_cat_decl_varonly){
+		append(buf, "variable");
+	}else if(mask & attribute_cat_decl){
+		append(buf, "declaration");
+	}
+
+	if(mask & attribute_cat_label)
+		append(buf, "label");
+
+	return buf;
+}
+
 int attribute_verify_cat(
 		enum attribute_category current,
 		enum attribute_category constraint,
@@ -346,33 +391,25 @@ int attribute_verify_cat(
 {
 	int is_okay = !!(current & constraint);
 
-	if(!is_okay)
-		cc1_warn_at(loc, ignored_attribute, "ignoring attribute");
+	if(!is_okay){
+		cc1_warn_at(loc, ignored_attribute,
+				"ignoring attribute - expected %s attribute, got %s attribute",
+				attribute_category_to_str_r(0, constraint),
+				attribute_category_to_str_r(1, current));
+	}
 
 	return is_okay;
 }
 
-void attribute_verify_type(attribute ***attrs, type *ty)
+static void attribute_verify(attribute ***attrs, enum attribute_category constraint)
 {
 	size_t i;
-	enum attribute_category constraint = 0;
 	attribute *attr;
 
 	if(!*attrs)
 		return;
 
-	if(type_is(ty, type_func))
-		constraint = attribute_cat_type_funconly;
-	else if(type_is_s_or_u(ty))
-		constraint = attribute_cat_type_structonly;
-	else if(type_is_ptr(ty))
-		constraint = attribute_cat_type_ptronly;
-	else if(type_is_enum(ty))
-		constraint = attribute_cat_type_enumonly;
-	else
-		constraint = attribute_cat_type;
-
-	for(i = 0; (attr = (*attrs)[i]); ){
+	for(i = 0; *attrs && (attr = (*attrs)[i]); ){
 		int is_okay = attribute_verify_cat(attribute_category(attr), constraint, &attr->where);
 
 		if(!is_okay){
@@ -384,11 +421,33 @@ void attribute_verify_type(attribute ***attrs, type *ty)
 	}
 }
 
-void attribute_verify_decl(attribute ***attr, decl *d)
+static enum attribute_category attribute_constraints_for_type(type *ty)
 {
-#warning todo
-	// need to free if bad
-	(void)d;
+	if(type_is(ty, type_func))
+		return attribute_cat_type_funconly;
+	if(type_is_s_or_u(ty))
+		return attribute_cat_type_structonly;
+	if(type_is_ptr(ty))
+		return attribute_cat_type_ptronly;
+	if(type_is_enum(ty))
+		return attribute_cat_type_enumonly;
 
-	attribute_verify_type(attr, d->ref);
+	return attribute_cat_type;
+}
+
+static enum attribute_category attribute_constraints_for_decl(decl *d)
+{
+	if(type_is(d->ref, type_func))
+		return attribute_cat_decl_funconly;
+	return attribute_cat_decl_varonly;
+}
+
+void attribute_verify_type(attribute ***attrs, type *ty)
+{
+	attribute_verify(attrs, attribute_constraints_for_type(ty));
+}
+
+void attribute_verify_decl(attribute ***attrs, decl *d)
+{
+	attribute_verify(attrs, attribute_constraints_for_type(d->ref) | attribute_constraints_for_decl(d));
 }

@@ -281,7 +281,7 @@ static type *parse_type_sue(
 	where_cc1_current(&sue_loc);
 
 	/* struct __attr__(()) name { ... } ... */
-	parse_add_attr(&this_sue_attr, scope, attribute_cat_type_structonly);
+	parse_add_attr(&this_sue_attr, scope, /*FIXME*/attribute_cat_type_structonly);
 
 	if(curtok == token_identifier){
 		/* update location to be the name, since we have one */
@@ -393,7 +393,7 @@ static type *parse_type_sue(
 	 *   attributes before sue_decl()
 	 * - these attributes also relate to the type
 	 */
-	parse_add_attr(&this_type_attr, scope, attribute_cat_type_structonly);
+	parse_add_attr(&this_type_attr, scope, /*FIXME*/attribute_cat_type_structonly);
 
 	retty = parse_sue_finish(
 			predecl_sue, members, is_definition,
@@ -538,7 +538,7 @@ static type *parse_btype_end(
 		attribute ***attr, symtable *scope, where *w)
 {
 	/* verified below */
-	parse_add_attr(attr, scope, attribute_cat_any); /* int/struct-A __attr__ */
+	parse_add_attr(attr, scope, /*FIXME*/attribute_cat_any); /* int/struct-A __attr__ */
 
 	btype = type_qualify(btype, qual);
 
@@ -786,7 +786,7 @@ static type *parse_btype(
 
 		}else if(curtok == token_attribute){
 			/* verified in parse_btype_end() */
-			parse_add_attr(&attr, scope, attribute_cat_any); /* __attr__ int ... */
+			parse_add_attr(&attr, scope, /*FIXME*/attribute_cat_any); /* __attr__ int ... */
 			may_default_type = 1;
 			/*
 			 * can't depend on !!attr, since it is null when:
@@ -1362,7 +1362,7 @@ static type_parsed *parsed_type_ptr(
 
 		while(curtok_is_type_qual() || curtok == token_attribute){
 			if(curtok == token_attribute){
-				parse_add_attr(&attr, scope, attribute_cat_type_ptronly);
+				parse_add_attr(&attr, scope, /*FIXME*/attribute_cat_type_ptronly);
 			}else{
 				qual |= curtok_to_type_qualifier();
 				EAT(curtok);
@@ -1804,8 +1804,7 @@ decl *parse_decl(
 	enum parse_btype_flags flags = PARSE_BTYPE_AUTOTYPE;
 	int got_attr;
 
-#warning todo
-	parse_add_attr_out(&decl_attr, scope, attribute_cat_any, &got_attr);
+	parse_add_attr_out(&decl_attr, scope, /*FIXME*/attribute_cat_any, &got_attr);
 
 	if(got_attr)
 		flags |= PARSE_BTYPE_DEFAULT_INT;

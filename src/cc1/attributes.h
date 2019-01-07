@@ -3,18 +3,18 @@
 
 enum attribute_category
 {
-	attribute_cat_type_funconly = 1 << 0,
-	attribute_cat_type_enumonly = 1 << 1,
-	attribute_cat_type_enumentonly = 1 << 2,
-	attribute_cat_type_ptronly = 1 << 3,
-	attribute_cat_type_structonly = 1 << 4,
+	attribute_cat_type = 1 << 0,
 
-	attribute_cat_type = 1 << 5,
+	attribute_cat_type_funconly = 1 << 1,
+	attribute_cat_type_enumonly = 1 << 2,
+	attribute_cat_type_enumentonly = 1 << 3,
+	attribute_cat_type_ptronly = 1 << 4,
+	attribute_cat_type_structonly = 1 << 5,
 
-	attribute_cat_decl_funconly = 1 << 6,
-	attribute_cat_decl_varonly = 1 << 7,
+	attribute_cat_decl = 1 << 6,
 
-	attribute_cat_decl = 1 << 8,
+	attribute_cat_decl_funconly = 1 << 7,
+	attribute_cat_decl_varonly = 1 << 8,
 
 	attribute_cat_label = 1 << 9,
 
@@ -33,7 +33,7 @@ enum attribute_category
 		NAME(warn_unused, 0, attribute_cat_type_funconly)                                                 \
 		NAME(section, 0, attribute_cat_decl)                                                              \
 		NAME(enum_bitmask, 0, attribute_cat_type_enumonly)                                                \
-		NAME(noreturn, 1, attribute_cat_type_funconly)                                                    \
+		NAME(noreturn, 1, attribute_cat_type_funconly | attribute_cat_decl_funconly)                      \
 		NAME(noderef, 1, attribute_cat_type_ptronly)                                                      \
 		NAME(nonnull, 1, attribute_cat_type_funconly | attribute_cat_type_ptronly)                        \
 		NAME(packed, 1, attribute_cat_type_structonly)                                                    \
