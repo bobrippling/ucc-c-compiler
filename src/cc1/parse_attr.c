@@ -351,7 +351,7 @@ static attribute *parse_attr_visibility(symtable *symtab, const char *ident)
 	return attr;
 }
 
-static struct
+static const struct
 {
 	const char *ident;
 	attribute *(*parser)(symtable *, const char *ident);
