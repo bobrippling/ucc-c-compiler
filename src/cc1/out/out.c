@@ -121,7 +121,8 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 			}
 			break;
 
-		case V_REG_SPILT:
+		case V_SPILT:
+		case V_REGOFF:
 			/* must load the value for a sensible conversion */
 			val = v_to_reg(octx, val);
 			from = val->t;
@@ -234,7 +235,7 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 		target = out_cast(octx, target, type_ptr_to(bf.master_ty), 0);
 	}
 
-	if(target->type == V_REG_SPILT){
+	if(target->type == V_SPILT){
 		if(cc1_fopt.verbose_asm)
 			out_comment(octx, "double-indir for spilt value");
 		target = impl_deref(octx, target, reg, NULL);

@@ -54,7 +54,8 @@ int v_needs_GOT(const out_val *v)
 }
 
 const out_val *v_to_stack_mem(
-		out_ctx *octx, const out_val *val, const out_val *stk)
+		out_ctx *octx, const out_val *val, const out_val *stk,
+		enum out_val_store type)
 {
 	out_val *spilt = v_dup_or_reuse(octx, stk, stk->t);
 
@@ -63,21 +64,23 @@ const out_val *v_to_stack_mem(
 	out_val_retain(octx, spilt);
 	out_store(octx, spilt, val);
 
-	spilt->type = V_REG_SPILT;
+	spilt->type = type;
 
 	return spilt;
 }
 
 const out_val *v_reg_to_stack_mem(
-		out_ctx *octx, struct vreg const *vr, const out_val *stk)
+		out_ctx *octx, struct vreg const *vr, const out_val *stk,
+		enum out_val_store type)
 {
 	const out_val *reg = v_new_reg(octx, NULL, stk->t, vr);
-	return v_to_stack_mem(octx, reg, stk);
+	return v_to_stack_mem(octx, reg, stk, type);
 }
 
 static int v_in(const out_val *vp, enum vto to)
 {
 	switch(vp->type){
+		case V_SPILT:
 		case V_FLAG:
 			break;
 
@@ -88,7 +91,7 @@ static int v_in(const out_val *vp, enum vto to)
 		case V_REG:
 			return (to & TO_REG) && vp->bits.regoff.offset == 0;
 
-		case V_REG_SPILT:
+		case V_REGOFF:
 		case V_LBL:
 			return !!(to & TO_MEM);
 	}
@@ -105,7 +108,7 @@ static ucc_wur const out_val *v_spill_reg(
 
 	{
 		const out_val *spilt = v_to_stack_mem(
-				octx, v_reg, stack_pos);
+				octx, v_reg, stack_pos, V_SPILT);
 
 		out_val_overwrite((out_val *)v_reg, spilt);
 
@@ -393,7 +396,7 @@ const out_val *v_reg_apply_offset(out_ctx *octx, const out_val *const orig)
 
 	switch(orig->type){
 		case V_REG:
-		case V_REG_SPILT:
+		case V_REGOFF:
 			break;
 		default:
 			assert(0 && "not a reg");
@@ -450,7 +453,7 @@ void v_save_regs(
 		}
 
 		switch(v->type){
-			case V_REG_SPILT:
+			case V_REGOFF:
 			case V_REG:
 				if(!impl_reg_savable(&v->bits.regoff.reg)){
 					/* don't save stack references */
@@ -471,6 +474,11 @@ void v_save_regs(
 			case V_CONST_I:
 			case V_CONST_F:
 			case V_LBL:
+				save = 0;
+				break;
+
+			case V_SPILT:
+				assert(!impl_reg_savable(&v->bits.regoff.reg));
 				save = 0;
 				break;
 

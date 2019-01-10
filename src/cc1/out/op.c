@@ -151,7 +151,7 @@ static type *is_val_ptr(const out_val *v)
 {
 	type *pointee = type_is_ptr(v->t);
 	switch(v->type){
-		case V_REG_SPILT:
+		case V_SPILT:
 			if(pointee){
 				type *next = type_is_ptr(pointee);
 				if(next)
@@ -206,7 +206,8 @@ static void apply_ptr_step(
 
 			case V_LBL:
 			case V_FLAG:
-			case V_REG_SPILT:
+			case V_REGOFF:
+			case V_SPILT:
 				assert(mut_incdec->retains == 1);
 				*incdec = (out_val *)v_to_reg(octx, *incdec);
 				assert((*incdec)->retains == 1);

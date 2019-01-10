@@ -444,7 +444,8 @@ const char *impl_val_str_r(
 		}
 
 		case V_REG:
-		case V_REG_SPILT:
+		case V_REGOFF:
+		case V_SPILT:
 		{
 			long off = vs->bits.regoff.offset;
 			const char *rstr = x86_reg_str(
@@ -662,7 +663,7 @@ void impl_func_prologue_save_call_regs(
 					out_val_retain(octx, stack_loc);
 
 					*store = out_change_type(octx,
-							v_reg_to_stack_mem(octx, rp, stack_loc),
+							v_reg_to_stack_mem(octx, rp, stack_loc, V_REGOFF),
 							type_ptr_to(ty));
 
 					stack_loc = out_op(octx, op_plus,
@@ -774,7 +775,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 				out_new_l(octx, ty_integral, i * pws));
 
 		/* integral args are at the lowest address */
-		out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr));
+		out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr, V_REGOFF));
 	}
 
 	{
@@ -807,7 +808,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 			stk_ptr = out_change_type(octx, stk_ptr, ty_dbl);
 
 			/* we go above the integral regs */
-			out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr));
+			out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr, V_REGOFF));
 		}
 
 		out_ctrl_transfer_make_current(octx, va_shortcircuit_join);
@@ -1137,8 +1138,8 @@ const out_val *impl_load(
 			break;
 		}
 
-		case V_REG_SPILT:
-			/* actually a pointer to T */
+		case V_SPILT: /* actually a pointer to T, impl_deref() handles this */
+		case V_REGOFF:
 			return impl_deref(octx, from, reg, NULL);
 
 		case V_REG:
@@ -1247,7 +1248,7 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 		case V_CONST_F:
 			ICE("invalid store lvalue 0x%x", to->type);
 
-		case V_REG_SPILT:
+		case V_SPILT:
 		{
 			struct vreg reg;
 			v_unused_reg(octx, 1, 0, &reg, to);
@@ -1255,6 +1256,7 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 			break;
 		}
 
+		case V_REGOFF:
 		case V_REG:
 		case V_LBL:
 			break;
@@ -1642,13 +1644,13 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			/* XXX: currently implicit here that V_REG means w/no offset */
 			{ V_REG, V_CONST_I },
 			{ V_LBL, V_CONST_I },
-			{ V_REG_SPILT, V_CONST_I },
+			{ V_REGOFF, V_CONST_I },
 
 			{ V_REG, V_LBL },
 			{ V_LBL, V_REG },
 
-			{ V_REG_SPILT, V_REG },
-			{ V_REG, V_REG_SPILT },
+			{ V_REGOFF, V_REG },
+			{ V_REG, V_REGOFF },
 
 			{ V_REG, V_REG },
 		};
@@ -1657,7 +1659,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 #define OP_MATCH(vp, op) (   \
 		vp->type == ops[i].op && \
-		((vp->type != V_REG && vp->type != V_REG_SPILT) || !vp->bits.regoff.offset))
+		((vp->type != V_REG && vp->type != V_REGOFF) || !vp->bits.regoff.offset))
 
 		for(i = 0; i < countof(ops); i++){
 			if(OP_MATCH(l, l) && OP_MATCH(r, r)){
@@ -1680,8 +1682,10 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			l = v_to(octx, l, TO_REG | TO_MEM);
 			r = v_to(octx, r, TO_REG | TO_MEM | TO_CONST);
 
+#define V_IS_MEM(ty) ((ty) == V_REGOFF || (ty) == V_LBL)
 			if(V_IS_MEM(l->type) && V_IS_MEM(r->type))
 				r = v_to_reg(octx, r);
+#undef V_IS_MEM
 		}
 
 		if(FOPT_PIC(&cc1_fopt)){
@@ -1863,7 +1867,8 @@ const out_val *impl_cast_load(
 
 		case V_CONST_I:
 		case V_LBL:
-		case V_REG_SPILT: /* could do something like movslq -8(%rbp), %rax */
+		case V_REGOFF: /* could do something like movslq -8(%rbp), %rax */
+		case V_SPILT:
 		case V_FLAG:
 			vp = v_to_reg(octx, vp);
 		case V_REG:
@@ -1918,8 +1923,20 @@ static const out_val *x86_fp_conv(
 	char vbuf[VAL_STR_SZ];
 	int truncate = type_is_integral(tto); /* going to int? */
 
-	if(vp->type == V_CONST_F)
-		vp = x86_load_fp(octx, vp);
+	switch(vp->type){
+		case V_CONST_F:
+			vp = x86_load_fp(octx, vp);
+			break;
+		case V_SPILT:
+			vp = v_to_reg(octx, vp);
+			break;
+		case V_CONST_I:
+		case V_REG:
+		case V_REGOFF:
+		case V_LBL:
+		case V_FLAG:
+			break;
+	}
 
 	out_asm(octx, "cvt%s%s2%s%s %s, %%%s",
 			truncate ? "t" : "",
@@ -1928,7 +1945,7 @@ static const out_val *x86_fp_conv(
 			 * see if we need to do 64 or 32 bit
 			 */
 			int_ty ? type_size(int_ty, NULL) == 8 ? "q" : "l" : "",
-			impl_val_str_r(vbuf, vp, vp->type == V_REG_SPILT),
+			impl_val_str_r(vbuf, vp, vp->type == V_REGOFF),
 			x86_reg_str(r, tto));
 
 	return v_new_reg(octx, vp, tto, r);
@@ -2033,7 +2050,8 @@ static char *x86_call_jmp_target(
 			snprintf(buf, sizeof buf, "*%s", impl_val_str((*pvp), 1));
 			return buf;
 
-		case V_REG_SPILT: /* load, then jmp */
+		case V_SPILT: /* load, then jmp */
+		case V_REGOFF: /* load, then jmp */
 		case V_REG: /* jmp *%rax */
 			*pvp = v_reg_apply_offset(octx, v_to_reg(octx, *pvp));
 
@@ -2157,11 +2175,12 @@ void impl_branch(
 			break;
 
 		case V_LBL:
-		case V_REG_SPILT:
+		case V_REGOFF:
+		case V_SPILT:
 			cond = v_to_reg(octx, cond);
 
-			UCC_ASSERT(cond->type != V_REG_SPILT,
-					"normalise remained as spilt reg");
+			UCC_ASSERT(cond->type == V_REG,
+					"normalise remained as spilt/stack/mem reg");
 
 			cond = out_normalise(octx, cond);
 			impl_branch(octx, cond, bt, bf, unlikely);
@@ -2221,7 +2240,7 @@ const out_val *impl_call(
 			local_args[i] = v_to_reg(octx, local_args[i]);
 
 		argty = local_args[i]->t;
-		if(local_args[i]->type == V_REG_SPILT)
+		if(local_args[i]->type == V_SPILT)
 			argty = type_dereference_decay(argty);
 
 		float_arg[i] = type_is_floating(argty);
@@ -2314,7 +2333,7 @@ const out_val *impl_call(
 
 				stack_iter = out_change_type(octx, stack_iter, storety);
 				out_val_retain(octx, stack_iter);
-				local_args[i] = v_to_stack_mem(octx, local_args[i], stack_iter);
+				local_args[i] = v_to_stack_mem(octx, local_args[i], stack_iter, V_REGOFF);
 
 				assert(local_args[i]->retains > 0);
 

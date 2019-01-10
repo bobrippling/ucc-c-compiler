@@ -28,7 +28,8 @@ const char *v_store_to_str(enum out_val_store store)
 	switch(store){
 		CASE_STR(V_CONST_I);
 		CASE_STR(V_REG);
-		CASE_STR(V_REG_SPILT);
+		CASE_STR(V_REGOFF);
+		CASE_STR(V_SPILT);
 		CASE_STR(V_LBL);
 		CASE_STR(V_CONST_F);
 		CASE_STR(V_FLAG);
@@ -152,7 +153,9 @@ copy:
 			/* fall */
 		}
 
-		case V_REG_SPILT:
+		case V_SPILT:
+			/* fall */
+		case V_REGOFF:
 		case V_REG:
 		{
 			struct vreg r;
@@ -304,7 +307,8 @@ void v_try_stack_reclaim(out_ctx *octx)
 			continue;
 		switch(iter->val.type){
 			case V_REG:
-			case V_REG_SPILT:
+			case V_REGOFF:
+			case V_SPILT:
 				if(!impl_reg_frame_const(&iter->val.bits.regoff.reg, 0))
 					return;
 				if(iter->val.bits.regoff.offset < lowest)
@@ -386,9 +390,10 @@ int out_is_nonconst_temporary(const out_val *v)
 		case V_CONST_I:
 		case V_CONST_F:
 		case V_LBL:
+		case V_SPILT:
 			break;
 		case V_REG:
-		case V_REG_SPILT:
+		case V_REGOFF:
 		case V_FLAG:
 			return 1;
 	}
