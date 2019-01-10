@@ -1248,6 +1248,13 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 			ICE("invalid store lvalue 0x%x", to->type);
 
 		case V_REG_SPILT:
+		{
+			struct vreg reg;
+			v_unused_reg(octx, 1, 0, &reg, to);
+			to = impl_load(octx, to, &reg);
+			break;
+		}
+
 		case V_REG:
 		case V_LBL:
 			break;
