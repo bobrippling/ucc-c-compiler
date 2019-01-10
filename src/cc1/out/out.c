@@ -232,6 +232,9 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 		target = out_cast(octx, target, type_ptr_to(bf.master_ty), 0);
 	}
 
+	if(target->type == V_REG_SPILT)
+		target = impl_deref(octx, target, reg, NULL);
+
 	dval = impl_deref(octx, target, reg, &done_out_deref);
 
 	if(bf.nbits && !done_out_deref)
