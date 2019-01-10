@@ -90,6 +90,9 @@ static void impl_overlay_mem_reg(
 	struct vreg *cur_reg = regs;
 	unsigned reg_i = 0;
 
+	if(ptr->type == V_REG_SPILT)
+		ICW("possible mishandling of spilt register for mem/reg overlay");
+
 	if(memsz == 0){
 		out_val_release(octx, ptr);
 		return;
