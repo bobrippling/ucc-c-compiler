@@ -1,12 +1,19 @@
 PWD = $(shell pwd)
 CONFIGURE_OUTPUT = src/config.custom.mk
 
-.PHONY: bootstrap clean-bootstrap
+.PHONY: bootstrap clean-bootstrap clean-stage1 clean-stage2 clean-stage3
 
 bootstrap: stage3
 
 clean-bootstrap:
 	rm -rf bootstrap
+
+clean-stage1:
+	rm -rf bootstrap/stage1
+clean-stage2:
+	rm -rf bootstrap/stage2
+clean-stage3:
+	rm -rf bootstrap/stage3
 
 bootstrap/stage1/${CONFIGURE_OUTPUT}: tools/link_r
 	mkdir -p bootstrap/stage1
