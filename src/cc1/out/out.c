@@ -122,6 +122,7 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 		case V_REG_SPILT:
 			/* must load the value for a sensible conversion */
 			val = v_to_reg(octx, val);
+			from = val->t;
 			break;
 
 		default:
