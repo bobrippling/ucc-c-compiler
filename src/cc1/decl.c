@@ -405,7 +405,7 @@ int decl_is_bitfield(decl *d)
 	return !!d->bits.var.field_width;
 }
 
-static int decl_defined(decl *d)
+int decl_defined(decl *d)
 {
 	if(type_is(d->ref, type_func)){
 		return !!decl_impl(d)->bits.func.code;
