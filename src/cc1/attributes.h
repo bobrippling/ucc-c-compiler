@@ -18,6 +18,7 @@
 		NAME(sentinel, 0)       \
 		NAME(aligned, 1)        \
 		NAME(weak, 0)           \
+		NAME(alias, 0)          \
 		NAME(cleanup, 0)        \
 		NAME(always_inline, 0)  \
 		NAME(noinline, 0)       \

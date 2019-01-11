@@ -351,6 +351,24 @@ static attribute *parse_attr_visibility(symtable *symtab, const char *ident)
 	return attr;
 }
 
+static attribute *parse_attr_alias(symtable *scope, const char *ident)
+{
+	where str_loc;
+	char *str = parse_single_string_attr("alias", &str_loc);
+	attribute *attr = NULL;
+
+	(void)scope;
+	(void)ident;
+
+	if(!str)
+		return NULL;
+
+	attr = attribute_new(attr_alias);
+	attr->bits.alias = str;
+
+	return attr;
+}
+
 static const struct
 {
 	const char *ident;
