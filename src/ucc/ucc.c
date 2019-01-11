@@ -1201,7 +1201,7 @@ usage:
 		const int ninputs = dynarray_count(state.inputs);
 
 		if(output_given && ninputs > 1 && (state.mode == mode_compile || state.mode == mode_assemb))
-			die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(state.mode));
+			die("can't specify an output with '-%c' and multiple inputs", MODE_ARG_CH(state.mode));
 
 		if(state.syntax_only){
 			if(output_given || state.mode != mode_link)
