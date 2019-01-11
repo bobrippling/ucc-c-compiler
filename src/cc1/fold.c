@@ -26,6 +26,7 @@
 #include "type_is.h"
 #include "type_nav.h"
 #include "fopt.h"
+#include "cc1_target.h"
 
 #include "ops/expr_cast.h"
 #include "ops/expr_identifier.h"
@@ -961,6 +962,11 @@ void fold_decl_alias(decl *d, symtable *scope)
 
 		if(decl_defined(d)){
 			warn_at_print_error(&d->where, "alias \"%s\" cannot be a definition", d->spel);
+			fold_had_error = 1;
+		}
+
+		if(!type_is(d->ref, type_func) && !cc1_target_details.alias_variables){
+			warn_at_print_error(&d->where, "__attribute__((alias(...))) not supported on this target (for variables)");
 			fold_had_error = 1;
 		}
 	}
