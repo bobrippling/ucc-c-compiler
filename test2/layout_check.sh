@@ -1,7 +1,7 @@
 #!/bin/sh
 
 usage(){
-	echo "Usage: $0 A [B] -- [cc-args]\n" >&2
+	echo "Usage: $0 [-v] [--sections] A [B] -- [cc-args]\n" >&2
 	exit 1
 }
 

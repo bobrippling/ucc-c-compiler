@@ -1,4 +1,4 @@
-// RUN: %layout_check --sections %s
+// RUN: %layout_check --sections %s -fno-common -target x86_64-linux
 
 // rodata
 const main = 195;
