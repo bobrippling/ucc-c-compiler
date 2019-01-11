@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <errno.h>
 
 #include "../../util/util.h"
 #include "../../util/platform.h"
@@ -86,6 +87,8 @@ FILE *asm_section_file(const struct section *sec)
 		memcpy_safe(secdup, sec);
 
 		f = tmpfile();
+		if(!f)
+			ICE("tmpfile: %s\n", strerror(errno));
 		dynmap_set(struct section *, FILE *, cc1_out_persection, secdup, f);
 	}
 
