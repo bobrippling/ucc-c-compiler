@@ -94,8 +94,11 @@ FILE *asm_section_file(const struct section *sec)
 
 void asm_switch_section(const struct section *section)
 {
-	if(section_eq(&cc1_current_section_output.sec, section))
+	if(cc1_current_section_output.sec.builtin != -1
+	&& section_eq(&cc1_current_section_output.sec, section))
+	{
 		return;
+	}
 
 	memcpy_safe(&cc1_current_section_output.sec, section);
 	cc1_current_section_output.file = asm_section_file(section);

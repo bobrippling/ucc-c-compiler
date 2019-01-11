@@ -73,7 +73,7 @@ static struct
 };
 
 dynmap *cc1_out_persection;
-struct section_output cc1_current_section_output;
+struct section_output cc1_current_section_output = SECTION_UNINIT;
 char *cc1_first_fname;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
