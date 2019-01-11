@@ -17,6 +17,7 @@ void fold_decl_add_sym(decl *d, symtable *stab);
 
 void fold_decl(decl *d, symtable *stab);
 void fold_decl_maybe_member(decl *d, symtable *stab, int su_member);
+void fold_decl_alias(decl *d, symtable *scope);
 
 void fold_check_decl_complete(decl *d);
 void fold_global_func(decl *);
