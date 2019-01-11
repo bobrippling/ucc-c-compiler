@@ -16,9 +16,9 @@ const struct section section_dbg_abbrev = SECTION_INIT(SECTION_DBG_ABBREV);
 const struct section section_dbg_info = SECTION_INIT(SECTION_DBG_INFO);
 const struct section section_dbg_line = SECTION_INIT(SECTION_DBG_LINE);
 
-static int is_builtin(const struct section *sec)
+int section_is_builtin(const struct section *sec)
 {
-	return SECTION_IS_BUILTIN(sec);
+	return !sec->name;
 }
 
 static int is_named(const struct section *sec)

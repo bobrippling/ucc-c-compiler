@@ -44,13 +44,14 @@ struct section
 
 #define SECTION_INIT(builtin) { NULL, builtin }
 
-#define SECTION_IS_BUILTIN(sec) (!(sec)->name)
 
 const char *section_name(const struct section *);
 int section_eq(const struct section *, const struct section *);
 
 int section_hash(const struct section *);
 int section_cmp(const struct section *, const struct section *);
+
+int section_is_builtin(const struct section *);
 
 extern const struct section section_text;
 extern const struct section section_data;

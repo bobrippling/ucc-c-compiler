@@ -219,7 +219,7 @@ static void io_fin_section(FILE *section, FILE *out, const struct section *sec)
 {
 	const char *desc = NULL;
 
-	if(SECTION_IS_BUILTIN(sec))
+	if(section_is_builtin(sec))
 		desc = asm_section_desc(sec->builtin);
 
 	if(fseek(section, 0, SEEK_SET))
