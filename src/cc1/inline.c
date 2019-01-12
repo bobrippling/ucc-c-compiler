@@ -316,7 +316,7 @@ static stmt *try_resolve_val_to_func(
 					lbl);
 
 			if(*out_decl)
-				return decl_impl(*out_decl)->bits.func.code;
+				return decl_impl(*out_decl, DECL_INCLUDE_ALIAS)->bits.func.code;
 		}
 	}
 	return NULL;
@@ -345,7 +345,7 @@ static const char *check_and_ret_inline(
 
 	is_func = !!type_is(iouts->fndecl->ref, type_func);
 	if(is_func)
-		iouts->fndecl = decl_impl(iouts->fndecl);
+		iouts->fndecl = decl_impl(iouts->fndecl, DECL_INCLUDE_ALIAS);
 
 	if(is_func && iouts->fndecl->bits.func.contains_static_label_addr)
 		return "function contains static-address-of-label expression";

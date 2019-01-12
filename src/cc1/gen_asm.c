@@ -351,6 +351,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
+	attribute *attr;
 
 	/* in map? */
 	if(cc1_octx && dynmap_exists(decl *, cc1_octx->generated_decls, d))
@@ -394,6 +395,11 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 	if(attribute_present(d, attr_weak)){
 		asm_predeclare_weak(d);
 		emitted_type = 1;
+	}
+	if((attr = attribute_present(d, attr_alias))){
+		assert(attr->type == attr_alias);
+		assert(!decl_defined(d, 0));
+		asm_declare_alias(d, attr->bits.alias);
 	}
 
 	if(type_is(d->ref, type_func)){

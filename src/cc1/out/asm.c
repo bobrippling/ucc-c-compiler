@@ -34,6 +34,7 @@
 #include "../cc1_target.h"
 #include "../cc1_out.h"
 #include "../cc1_sections.h"
+#include "../mangle.h"
 
 #include "../ops/expr_compound_lit.h"
 
@@ -628,6 +629,11 @@ void asm_predeclare_global(decl *d)
 void asm_predeclare_weak(decl *d)
 {
 	asm_predecl(cc1_target_details.as.directives.weak, d);
+}
+
+void asm_declare_alias(decl *d, decl *alias)
+{
+	asm_out_section(SECTION_TEXT, "%s = %s\n", decl_asm_spel(d), decl_asm_spel(alias));
 }
 
 void asm_predeclare_visibility(decl *d)

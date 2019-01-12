@@ -26,6 +26,7 @@
 #include "type_is.h"
 #include "type_nav.h"
 #include "fopt.h"
+#include "cc1_target.h"
 
 #include "ops/expr_cast.h"
 #include "ops/expr_identifier.h"
@@ -946,6 +947,23 @@ static void fold_decl_var_dinit(
 	}
 }
 
+void fold_decl_alias(decl *d)
+{
+	attribute *attr;
+
+	if((attr = attribute_present(d, attr_alias))){
+		if(decl_defined(d, 0)){
+			warn_at_print_error(&d->where, "alias \"%s\" cannot be a definition", d->spel);
+			fold_had_error = 1;
+		}
+
+		if(!type_is(d->ref, type_func) && !cc1_target_details.alias_variables){
+			warn_at_print_error(&d->where, "__attribute__((alias(...))) not supported on this target (for variables)");
+			fold_had_error = 1;
+		}
+	}
+}
+
 static void fold_decl_var(decl *d, symtable *stab)
 {
 	int is_static_duration = !stab->parent
@@ -1036,6 +1054,23 @@ static void fold_decl_check_ctor_dtor(decl *d, symtable *stab)
 	}
 }
 
+static void fold_decl_attrs(decl *d, symtable *stab)
+{
+	attribute *attr;
+
+	if(((d->store & STORE_MASK_STORE) != store_typedef)
+	/* __attribute__((weak)) is allowed on typedefs */
+	&& (attr = attribute_present(d, attr_weak))
+	&& decl_linkage(d) != linkage_external)
+	{
+		warn_at_print_error(&d->where,
+				"weak attribute on declaration without external linkage");
+		fold_had_error = 1;
+	}
+
+	fold_decl_check_ctor_dtor(d, stab);
+}
+
 void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 {
 	/* this is called from wherever we can define a
@@ -1061,8 +1096,6 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 	first_fold = !just_init;
 
 	if(first_fold){
-		attribute *attr;
-
 		fold_type_w_attr(d->ref, NULL, type_loc(d->ref),
 				stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
 
@@ -1073,17 +1106,7 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 			fold_decl_add_sym(d, stab);
 		}
 
-		if(((d->store & STORE_MASK_STORE) != store_typedef)
-		/* __attribute__((weak)) is allowed on typedefs */
-		&& (attr = attribute_present(d, attr_weak))
-		&& decl_linkage(d) != linkage_external)
-		{
-			warn_at_print_error(&d->where,
-					"weak attribute on declaration without external linkage");
-			fold_had_error = 1;
-		}
-
-		fold_decl_check_ctor_dtor(d, stab);
+		fold_decl_attrs(d, stab);
 	}
 
 	/* name static decls - do this before handling init,

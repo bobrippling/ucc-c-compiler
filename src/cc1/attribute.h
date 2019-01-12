@@ -58,6 +58,7 @@ struct attribute
 		struct decl *cleanup;
 		int ucc_debugged;
 		enum visibility visibility;
+		struct decl *alias;
 	} bits;
 };
 

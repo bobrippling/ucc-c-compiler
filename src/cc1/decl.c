@@ -294,6 +294,13 @@ const char *decl_to_str(decl *d)
 	return decl_to_str_r(buf, d);
 }
 
+static decl *decl_alias(decl *d, decl *fallback)
+{
+	attribute *attr = attribute_present(d, attr_alias);
+
+	return attr ? attr->bits.alias : fallback;
+}
+
 decl *decl_proto(decl *const d)
 {
 	decl *i;
@@ -303,7 +310,7 @@ decl *decl_proto(decl *const d)
 	return i;
 }
 
-decl *decl_impl(decl *const d)
+decl *decl_impl(decl *const d, enum decl_impl_flags flags)
 {
 	decl *i;
 
@@ -317,10 +324,17 @@ decl *decl_impl(decl *const d)
 		if(i->bits.func.code)
 			return i;
 
+	if(flags & DECL_INCLUDE_ALIAS){
+		decl *alias = decl_alias(d, d);
+
+		if(type_is(alias->ref, type_func) && alias->bits.func.code)
+			return alias;
+	}
+
 	return d;
 }
 
-decl *decl_with_init(decl *const d)
+decl *decl_with_init(decl *const d, enum decl_impl_flags flags)
 {
 	decl *i;
 
@@ -333,6 +347,13 @@ decl *decl_with_init(decl *const d)
 	for(i = d; i; i = i->impl)
 		if(i->bits.var.init.dinit)
 			return i;
+
+	if(flags & DECL_INCLUDE_ALIAS){
+		decl *alias = decl_alias(d, d);
+
+		if(!type_is(alias->ref, type_func) && alias->bits.var.init.dinit)
+			return alias;
+	}
 
 	return d;
 }
@@ -405,17 +426,17 @@ int decl_is_bitfield(decl *d)
 	return !!d->bits.var.field_width;
 }
 
-static int decl_defined(decl *d)
+int decl_defined(decl *d, enum decl_impl_flags flags)
 {
 	if(type_is(d->ref, type_func)){
-		return !!decl_impl(d)->bits.func.code;
+		return !!decl_impl(d, flags)->bits.func.code;
 
 	}else{
 		/* variable - defined if initialised or non-extern
 		 * (check initialisation first, as "extern int x = 3;" is actually "int x = 3;" */
 		int explicitly_initialised;
 
-		d = decl_with_init(d);
+		d = decl_with_init(d, flags);
 		explicitly_initialised = d->bits.var.init.dinit && !d->bits.var.init.compiler_generated;
 
 		if(explicitly_initialised)
@@ -440,7 +461,7 @@ enum visibility decl_visibility(decl *d)
 
 		case store_default:
 			/* if it's not in this translation unit it's essentially an extern decl */
-			if(!decl_defined(d))
+			if(!decl_defined(d, 0))
 				return VISIBILITY_DEFAULT;
 			break;
 
@@ -491,7 +512,7 @@ int decl_interposable(decl *d)
 	if(!cc1_fopt.pic && !cc1_fopt.pie)
 		return 0; /* not compiling for interposable shared library */
 
-	if(cc1_fopt.pie && decl_defined(d))
+	if(cc1_fopt.pie && decl_defined(d, 0))
 		return 0; /* pie, this is the main program, can't have its symbols interposed */
 
 	switch(decl_linkage(d)){
@@ -512,7 +533,7 @@ int decl_interposable(decl *d)
 	}
 
 	/* extern decls (that aren't explicitly visibility-attributed) are interposable */
-	if(!decl_defined(d))
+	if(!decl_defined(d, 0))
 		return 1;
 
 	return cc1_fopt.semantic_interposition;
@@ -545,7 +566,7 @@ int decl_needs_GOTPLT(decl *d)
 		/* gcc acts as if variables are always local/accessible without the GOT in pie-code */
 		int is_var = 0; /* !type_is(d->ref, type_func) */
 
-		if((is_var || decl_defined(d)) && !attribute_present(d, attr_weak))
+		if((is_var || decl_defined(d, 0)) && !attribute_present(d, attr_weak))
 			return 0;
 	}
 

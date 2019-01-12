@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -47,6 +48,8 @@
               }                       \
             }while(0)
 
+#define DECL_HAS_FUNC_CODE(d) (type_is(d->ref, type_func) && (d)->bits.func.code)
+
 static void dump_symtab(symtable *st, unsigned indent)
 {
 	symtable **si;
@@ -76,11 +79,11 @@ static void dump_symtab(symtable *st, unsigned indent)
 			fprintf(stderr, ", next %p", (void *)d->impl);
 
 		if(type_is(d->ref, type_func)){
-			decl *impl = decl_impl(d);
+			decl *impl = decl_impl(d, 0);
 			if(impl && impl != d)
 				fprintf(stderr, ", impl %p", (void *)impl);
 		}else{
-			decl *init = decl_with_init(d);
+			decl *init = decl_with_init(d, 0);
 			if(init && init != d)
 				fprintf(stderr, ", init-decl %p", (void *)init);
 		}
@@ -334,7 +337,7 @@ void symtab_fold_decls(symtable *tab)
 		/* direct check for static - only warn on the one instance */
 		if((d->store & STORE_MASK_STORE) == store_static
 		&& type_is(d->ref, type_func)
-		&& !decl_impl(d)->bits.func.code)
+		&& !decl_defined(d, DECL_INCLUDE_ALIAS))
 		{
 			cc1_warn_at(&d->where, undef_internal,
 					"function declared static but not defined");
@@ -468,6 +471,7 @@ void symtab_fold_decls(symtable *tab)
 									}
 								}else{
 									if(a_func){
+										assert(type_is(db->ref, type_func));
 										if(DECL_HAS_FUNC_CODE(da) && DECL_HAS_FUNC_CODE(db)){
 											clash = "duplicate";
 										}

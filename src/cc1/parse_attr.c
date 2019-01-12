@@ -299,46 +299,89 @@ static attribute *parse_attr_call_conv(symtable *symtab, const char *ident)
 	return a;
 }
 
-static attribute *parse_attr_visibility(symtable *symtab, const char *ident)
+static char *parse_single_string_attr(const char *desc, where *str_loc)
 {
-	attribute *attr = NULL;
-	enum visibility v = VISIBILITY_DEFAULT;
 	struct cstring *asciz;
-	where str_loc;
-
-	(void)symtab;
-	(void)ident;
+	char *str = NULL;
 
 	EAT(token_open_paren);
 
-	if(curtok != token_string)
-		die_at(NULL, "string expected for visibility");
+	if(curtok != token_string){
+		warn_at_print_error(NULL, "string expected for %s", desc);
+		parse_had_error = 1;
+		return str;
+	}
 
-	where_cc1_current(&str_loc);
+	where_cc1_current(str_loc);
 	asciz = parse_asciz_str();
 
 	EAT(token_string);
 
-	if(asciz){
-		char *str = cstring_detach(asciz);
-
-		if(visibility_parse(&v, str, cc1_target_details.as.supports_visibility_protected)){
-			attr = attribute_new(attr_visibility);
-			attr->bits.visibility = v;
-		}else{
-			warn_at_print_error(&str_loc, "unknown/unsupported visibility \"%s\"", str);
-			fold_had_error = 1;
-		}
-
-		free(str);
-	}
+	if(asciz)
+		str = cstring_detach(asciz);
 
 	EAT(token_close_paren);
+
+	return str;
+}
+
+static attribute *parse_attr_visibility(symtable *symtab, const char *ident)
+{
+	where str_loc;
+	char *str = parse_single_string_attr("visibility", &str_loc);
+	attribute *attr = NULL;
+	enum visibility v;
+
+	(void)symtab;
+	(void)ident;
+
+	if(!str)
+		return NULL;
+
+	if(visibility_parse(&v, str, cc1_target_details.as.supports_visibility_protected)){
+		attr = attribute_new(attr_visibility);
+		attr->bits.visibility = v;
+	}else{
+		warn_at_print_error(&str_loc, "unknown/unsupported visibility \"%s\"", str);
+		fold_had_error = 1;
+	}
+
+	free(str);
 
 	return attr;
 }
 
-static struct
+static attribute *parse_attr_alias(symtable *scope, const char *ident)
+{
+	where str_loc;
+	char *str = parse_single_string_attr("alias", &str_loc);
+	attribute *attr = NULL;
+	struct symtab_entry ent;
+
+	(void)ident;
+
+	if(!str)
+		return NULL;
+
+	if(symtab_search(scope, str, NULL, &ent)){
+		if(ent.type == SYMTAB_ENT_DECL){
+			attr = attribute_new(attr_alias);
+			attr->bits.alias = ent.bits.decl;
+		}else{
+			warn_at_print_error(&str_loc, "alias \"%s\" references an enum member", str);
+			fold_had_error = 1;
+		}
+	}else{
+		warn_at_print_error(&str_loc, "alias \"%s\" doesn't exist", str);
+		fold_had_error = 1;
+	}
+
+	free(str);
+
+	return attr;
+}
+
+static const struct
 {
 	const char *ident;
 	attribute *(*parser)(symtable *, const char *ident);
