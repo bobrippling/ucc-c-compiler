@@ -18,6 +18,8 @@
 #include "cc1_where.h"
 #include "btype.h"
 #include "fopt.h"
+#include "tokconv.h"
+#include "pragma.h"
 
 #define DEBUG_LINE_DIRECTIVE 0
 
@@ -351,6 +353,19 @@ static void parse_line_directive(char *l)
 	char *ep;
 
 	l = str_spc_skip(l + 1);
+
+	if(!strncmp(l, "pragma", 6)){
+		where loc;
+
+		where_cc1_current(&loc);
+		loc.line_str = NULL;
+
+		l = str_spc_skip(l + 6);
+		pragma_handle(l, &loc);
+		return;
+	}
+
+	/* # line */
 	if(!strncmp(l, "line", 4))
 		l += 4;
 
@@ -1139,6 +1154,27 @@ void nexttoken()
 				return;
 			}
 
+		if(len == 7 && !strncmp("_Pragma", start, len)){
+			struct cstring *pragma;
+			where loc;
+
+			nexttoken();
+			EAT(token_open_paren);
+			pragma = token_get_current_str(&loc);
+			nexttoken();
+			EAT(token_close_paren);
+
+			if(pragma){
+				char *s = cstring_converting_detach(pragma);
+				pragma_handle(s, &loc);
+				free(s);
+
+			}else{
+				warn_at_print_error(&loc, "string expected for _Pragma");
+				parse_had_error = 1;
+			}
+			return;
+		}
 
 		/* not found, wap into currentspelling */
 		free(currentspelling);
