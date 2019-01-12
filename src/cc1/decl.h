@@ -159,7 +159,6 @@ const char *decl_store_spel_type_to_str_r(
 #define decl_use(d) ((d)->used = 1)
 
 #define DECL_FUNC_ARG_SYMTAB(d) ((d)->bits.func.code->symtab->parent)
-#define DECL_HAS_FUNC_CODE(d) (type_is(d->ref, type_func) && d->bits.func.code)
 
 #define DECL_IS_ANON_BITFIELD(d) \
 	((d)->bits.var.field_width && !(d)->spel)

@@ -47,6 +47,8 @@
               }                       \
             }while(0)
 
+#define DECL_HAS_FUNC_CODE(d) (type_is(d->ref, type_func) && (d)->bits.func.code)
+
 static void dump_symtab(symtable *st, unsigned indent)
 {
 	symtable **si;
@@ -469,6 +471,7 @@ void symtab_fold_decls(symtable *tab)
 									}
 								}else{
 									if(a_func){
+										assert(type_is(db->ref, type_func));
 										if(DECL_HAS_FUNC_CODE(da) && DECL_HAS_FUNC_CODE(db)){
 											clash = "duplicate";
 										}
