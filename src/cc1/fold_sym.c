@@ -334,7 +334,7 @@ void symtab_fold_decls(symtable *tab)
 		/* direct check for static - only warn on the one instance */
 		if((d->store & STORE_MASK_STORE) == store_static
 		&& type_is(d->ref, type_func)
-		&& !decl_impl(d)->bits.func.code
+		&& !decl_defined(d)
 		&& !attribute_present(d, attr_alias))
 		{
 			cc1_warn_at(&d->where, undef_internal,
