@@ -947,20 +947,12 @@ static void fold_decl_var_dinit(
 	}
 }
 
-void fold_decl_alias(decl *d, symtable *scope)
+void fold_decl_alias(decl *d)
 {
 	attribute *attr;
 
 	if((attr = attribute_present(d, attr_alias))){
-		struct symtab_entry ent;
-		const char *alias = attr->bits.alias;
-
-		if(!symtab_search(scope, alias, NULL, &ent)){
-			warn_at_print_error(&d->where, "alias \"%s\" doesn't exist (before \"%s\")", alias, d->spel);
-			fold_had_error = 1;
-		}
-
-		if(decl_defined(d)){
+		if(decl_defined(d, 0)){
 			warn_at_print_error(&d->where, "alias \"%s\" cannot be a definition", d->spel);
 			fold_had_error = 1;
 		}

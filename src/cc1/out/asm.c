@@ -631,13 +631,9 @@ void asm_predeclare_weak(decl *d)
 	asm_predecl(cc1_target_details.as.directives.weak, d);
 }
 
-void asm_declare_alias(decl *d, const char *alias)
+void asm_declare_alias(decl *d, decl *alias)
 {
-	char *mangled = func_mangle(alias, NULL);
-	asm_out_section(SECTION_TEXT, "%s = %s\n", decl_asm_spel(d), mangled);
-
-	if(mangled != alias)
-		free(mangled);
+	asm_out_section(SECTION_TEXT, "%s = %s\n", decl_asm_spel(d), decl_asm_spel(alias));
 }
 
 void asm_predeclare_visibility(decl *d)

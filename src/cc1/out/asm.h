@@ -65,7 +65,7 @@ void asm_predeclare_extern(decl *d);
 void asm_predeclare_global(decl *d);
 void asm_predeclare_weak(decl *d);
 void asm_predeclare_visibility(decl *d);
-void asm_declare_alias(decl *d, const char *alias);
+void asm_declare_alias(decl *d, decl *alias);
 #endif
 
 /* in impl */

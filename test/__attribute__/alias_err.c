@@ -1,7 +1,7 @@
 // RUN: %check -e %s -target x86_64-linux
 // RUN: %check --prefix=darwin -e %s -target x86_64-darwin
 
-f() __attribute((alias("g"))); // CHECK: error: alias "g" doesn't exist (before "f")
+f() __attribute((alias("g"))); // CHECK: error: alias "g" doesn't exist
 int g;
 
 another() __attribute((alias("f"))) // CHECK: error: alias "another" cannot be a definition

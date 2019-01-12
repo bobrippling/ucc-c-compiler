@@ -2228,10 +2228,10 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 	}
 }
 
-static void parse_post(decl *d, symtable *scope)
+static void parse_post(decl *d)
 {
 	/* must do this here, where we have d.code / d.init */
-	fold_decl_alias(d, scope);
+	fold_decl_alias(d);
 }
 
 static void check_missing_proto_extern(decl *d)
@@ -2500,7 +2500,7 @@ int parse_decl_group(
 		/* now we have the function in scope we parse its code */
 		if(type_is(d->ref, type_func))
 			parse_post_func(d, in_scope, attr_post_decl);
-		parse_post(d, in_scope);
+		parse_post(d);
 
 		if(!in_scope->parent && !found_prev_proto && !(mode & DECL_MULTI_IS_OLD_ARGS))
 			check_missing_proto_extern(d);

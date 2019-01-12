@@ -356,15 +356,27 @@ static attribute *parse_attr_alias(symtable *scope, const char *ident)
 	where str_loc;
 	char *str = parse_single_string_attr("alias", &str_loc);
 	attribute *attr = NULL;
+	struct symtab_entry ent;
 
-	(void)scope;
 	(void)ident;
 
 	if(!str)
 		return NULL;
 
-	attr = attribute_new(attr_alias);
-	attr->bits.alias = str;
+	if(symtab_search(scope, str, NULL, &ent)){
+		if(ent.type == SYMTAB_ENT_DECL){
+			attr = attribute_new(attr_alias);
+			attr->bits.alias = ent.bits.decl;
+		}else{
+			warn_at_print_error(&str_loc, "alias \"%s\" references an enum member", str);
+			fold_had_error = 1;
+		}
+	}else{
+		warn_at_print_error(&str_loc, "alias \"%s\" doesn't exist", str);
+		fold_had_error = 1;
+	}
+
+	free(str);
 
 	return attr;
 }
