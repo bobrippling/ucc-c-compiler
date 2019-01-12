@@ -1154,7 +1154,7 @@ void nexttoken()
 				return;
 			}
 
-		if(!strncmp("_Pragma", start, len)){
+		if(len == 7 && !strncmp("_Pragma", start, len)){
 			struct cstring *pragma;
 			where loc;
 
