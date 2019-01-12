@@ -132,15 +132,20 @@ int decl_needs_GOTPLT(decl *d);
 int decl_conv_array_func_to_ptr(decl *d);
 struct type *decl_is_decayed_array(decl *);
 
+enum decl_impl_flags
+{
+	DECL_INCLUDE_ALIAS = 1 << 0,
+};
+
 decl *decl_proto(decl *); /* rewinds to the proto */
-decl *decl_impl(decl *); /* fast-forwards to the impl */
-decl *decl_with_init(decl *);
+decl *decl_impl(decl *, enum decl_impl_flags); /* fast-forwards to the impl */
+decl *decl_with_init(decl *, enum decl_impl_flags);
 
 int decl_is_pure_inline(decl *);
 int decl_should_emit_code(decl *);
 int decl_unused_and_internal(decl *);
 enum visibility decl_visibility(decl *);
-int decl_defined(decl *);
+int decl_defined(decl *, enum decl_impl_flags);
 
 int decl_is_bitfield(decl *);
 

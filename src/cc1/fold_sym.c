@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -78,11 +79,11 @@ static void dump_symtab(symtable *st, unsigned indent)
 			fprintf(stderr, ", next %p", (void *)d->impl);
 
 		if(type_is(d->ref, type_func)){
-			decl *impl = decl_impl(d);
+			decl *impl = decl_impl(d, 0);
 			if(impl && impl != d)
 				fprintf(stderr, ", impl %p", (void *)impl);
 		}else{
-			decl *init = decl_with_init(d);
+			decl *init = decl_with_init(d, 0);
 			if(init && init != d)
 				fprintf(stderr, ", init-decl %p", (void *)init);
 		}
@@ -336,8 +337,7 @@ void symtab_fold_decls(symtable *tab)
 		/* direct check for static - only warn on the one instance */
 		if((d->store & STORE_MASK_STORE) == store_static
 		&& type_is(d->ref, type_func)
-		&& !decl_defined(d)
-		&& !attribute_present(d, attr_alias))
+		&& !decl_defined(d, DECL_INCLUDE_ALIAS))
 		{
 			cc1_warn_at(&d->where, undef_internal,
 					"function declared static but not defined");

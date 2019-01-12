@@ -398,7 +398,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 	}
 	if((attr = attribute_present(d, attr_alias))){
 		assert(attr->type == attr_alias);
-		assert(!decl_defined(d));
+		assert(!decl_defined(d, 0));
 		asm_declare_alias(d, attr->bits.alias);
 	}
 
