@@ -7,6 +7,7 @@
 #include "path.h"
 #include "alloc.h"
 #include "dynmap.h"
+#include "dynarray.h"
 #include "math.h"
 
 #define DIE() ice(__FILE__, __LINE__, __func__, NULL)
@@ -180,6 +181,57 @@ static void test_dynmap(void)
 	test_dynmap_collision();
 }
 
+static void test_dynarray(void)
+{
+	int **ints = NULL;
+
+	dynarray_add(&ints, (int *)3);
+	dynarray_add(&ints, (int *)2);
+	dynarray_add(&ints, (int *)1);
+
+	test(dynarray_count(ints) == 3);
+	test(ints[0] == (int *)3);
+	test(ints[1] == (int *)2);
+	test(ints[2] == (int *)1);
+	test(ints[3] == NULL);
+
+	dynarray_rm(&ints, (int *)2);
+	{
+		test(dynarray_count(ints) == 2);
+		test(ints[0] == (int *)3);
+		test(ints[1] == (int *)1);
+		test(ints[2] == NULL);
+	}
+
+	test(dynarray_pop(int *, &ints) == (int *)1);
+	{
+		test(dynarray_count(ints) == 1);
+		test(ints[0] == (int *)3);
+		test(ints[1] == NULL);
+	}
+
+	dynarray_prepend(&ints, (int *)9);
+	{
+		test(dynarray_count(ints) == 2);
+		test(ints[0] == (int *)9);
+		test(ints[1] == (int *)3);
+		test(ints[2] == NULL);
+	}
+
+	dynarray_rm(&ints, (int *)3);
+	{
+		test(dynarray_count(ints) == 1);
+		test(ints[0] == (int *)9);
+		test(ints[1] == NULL);
+	}
+
+	dynarray_rm(&ints, (int *)9);
+	{
+		test(dynarray_count(ints) == 0);
+		test(ints == NULL);
+	}
+}
+
 static void test_math(void)
 {
 	/* 0b1011010 */
@@ -194,6 +246,7 @@ static void test_math(void)
 int main(void)
 {
 	test_dynmap();
+	test_dynarray();
 	test_canon_all();
 	test_math();
 
