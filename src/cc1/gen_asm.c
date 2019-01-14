@@ -294,7 +294,7 @@ const out_val *gen_decl_addr(out_ctx *octx, decl *d)
 
 static void gen_gasm(char *asm_str)
 {
-	struct section sec = SECTION_INIT(SECTION_TEXT);
+	struct section sec = SECTION_INIT(SECTION_TEXT); /* no option for global asm, always text */
 	asm_out_section(&sec, "%s\n", asm_str);
 }
 
