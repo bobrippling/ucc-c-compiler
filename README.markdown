@@ -59,7 +59,7 @@ There are some major additions, listed below:
 Extensions
 ----------
 
-Lambdas:
+### Lambdas:
 ```c
 ^(parameters, ...) { body }
 ^T (parameters, ...) { body }
@@ -74,7 +74,7 @@ Other forms with explicit return types, omitted parameters, and omitted paramete
 When the return type is omitted, the return type is inferred from the first return statement in the body, or `void`, if there are none.
 The result of the expression is a function block pointer (`T (^)(Args...)`), explicitly convertible to a function pointer.
 
-Namespace checking:
+### Namespace checking:
 ```c
 #pragma ucc namespace expr_
 ```
