@@ -50,6 +50,7 @@ There are some major additions, listed below:
 	- Position independent executable generation, permitting ASLR (`-fpie`)
 	- Overflow-trapping arithmetic (`-ftrapv`)
 	- Undefined behaviour trapping (`-fsanitize=undefined`)
+	- Stack protector (`-fstack-protector`, `-fstack-protector-all`)
 	- Symbol visibility (`-fvisibility=default/protected/hidden` / `-f[no-]semantic-interposition` / `__attribute__((visibility(...)))`)
 	- DWARF Debug Symbols (`-g` / `-gline-tables-only`)
 
