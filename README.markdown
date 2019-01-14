@@ -20,6 +20,7 @@ There are some major additions, listed below:
 	- Microsoft/Plan 9 struct extensions
 	- Lambdas/Objective-C style blocks
 	- Trailing return types on functions
+	- Namespace checking
 - Standard support (not exhaustive):
 	- C89, C99
 	- C11 `_Bool`, `_Noreturn`, `_Alignof`, `_Alignas` `_Generic`, `_Static_assert`
@@ -73,6 +74,14 @@ Other forms with explicit return types, omitted parameters, and omitted paramete
 When the return type is omitted, the return type is inferred from the first return statement in the body, or `void`, if there are none.
 The result of the expression is a function block pointer (`T (^)(Args...)`), explicitly convertible to a function pointer.
 
+Namespace checking:
+```c
+#pragma ucc namespace expr_
+```
+
+This ensures that any declarations after this `pragma` begin with `expr_`, allowing you to enforce a namespace exported by each translation unit (`.c` file).
+
+See [namespace.c](/test/pragma/namespace.c) for an example.
 
 Output/Targets
 --------------
