@@ -391,6 +391,8 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 
 	infer_decl_section(d, &section);
 	asm_switch_section(&section);
+	if(cc1_fopt.dump_decl_sections)
+		fprintf(stderr, "%s --> section \"%s\"\n", decl_to_str(d), section_name(&section));
 
 	if(attribute_present(d, attr_weak)){
 		asm_predeclare_weak(&section, d);
