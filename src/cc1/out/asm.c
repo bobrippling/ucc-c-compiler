@@ -94,11 +94,11 @@ FILE *asm_section_file(const struct section *sec)
 
 void asm_switch_section(const struct section *section)
 {
-	if(section_eq(&cc1_current_section, section))
+	if(section_eq(&cc1_current_section_output.sec, section))
 		return;
 
-	memcpy_safe(&cc1_current_section, section);
-	cc1_current_section_file = asm_section_file(section);
+	memcpy_safe(&cc1_current_section_output.sec, section);
+	cc1_current_section_output.file = asm_section_file(section);
 }
 
 int asm_table_lookup(type *r)
@@ -716,7 +716,7 @@ void asm_declare_decl_init(const struct section *sec, decl *d)
 
 void asm_out_sectionv(const struct section *sec, const char *fmt, va_list l)
 {
-	FILE *f = sec ? asm_section_file(sec) : cc1_current_section_file;
+	FILE *f = sec ? asm_section_file(sec) : cc1_current_section_output.file;
 	vfprintf(f, fmt, l);
 }
 

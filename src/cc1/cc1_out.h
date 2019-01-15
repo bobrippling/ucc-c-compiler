@@ -3,7 +3,10 @@
 
 #include "out/asm.h"
 
-extern struct section cc1_current_section;
-extern FILE *cc1_current_section_file;
+extern struct section_output
+{
+	struct section sec;
+	FILE *file;
+} cc1_current_section_output;
 
 #endif
