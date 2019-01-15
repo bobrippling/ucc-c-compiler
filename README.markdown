@@ -91,7 +91,7 @@ The code generator can target Linux-, Cygwin- and Darwin-based toolchains (handl
 
 Constant folding and some small amount of optimisation is done, but nothing heavy (the `feature/ir` branch plans to change this).
 
-The ABI matches GCC and Clang's, or more specifically, the System V x86-64 psABI (modulo bugs, of which there is currently one - see [`nested_ret.c`](/test/structs/function_passing/nested_ret.c)).
+The ABI matches GCC and Clang's, or more specifically, the System V x86-64 psABI (modulo bugs, of which there is currently one - see [nested_ret.c](/test/structs/function_passing/nested_ret.c)).
 
 `ucc` can also dump its AST, similarly to clang, with `-emit=dump`.
 
