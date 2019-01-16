@@ -11,6 +11,7 @@
 
 #include "ucc_ext.h"
 #include "ucc.h"
+#include "umask.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "../util/str.h"
@@ -160,6 +161,8 @@ static int runner(int local, const char *path, char **args, int return_ec, const
 
 			if(wrapper)
 				local = 0;
+
+			umask(orig_umask);
 
 			(local ? execv : execvp)(argv[0], argv);
 			die("execv(\"%s\"):", argv[0]);

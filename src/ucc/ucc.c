@@ -7,12 +7,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-/* umask */
-#include <sys/types.h>
-#include <sys/stat.h>
-
 #include "ucc.h"
 #include "ucc_ext.h"
+#include "umask.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "../util/util.h"
@@ -101,6 +98,7 @@ static int save_temps = 0;
 const char *argv0;
 char *wrapper;
 const char *binpath_cpp;
+mode_t orig_umask = 022;
 
 static void unlink_files(void)
 {
@@ -1200,7 +1198,7 @@ usage:
 
 	vars_default(&vars);
 
-	umask(0077); /* prevent reading of the temporary files we create */
+	orig_umask = umask(0077); /* prevent reading of the temporary files we create */
 
 	/* we don't want the initial temporary fname "/tmp/tmp.xyz" tracked
 	 * or showing up in error messages */
