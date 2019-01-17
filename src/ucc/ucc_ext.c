@@ -35,16 +35,19 @@ static int runner(struct cmdpath *path, char **args, int return_ec, const char *
 	struct timeval time_start, time_end;
 
 	if(show){
+		char *resolved = cmdpath_resolve(path, NULL);
 		int i;
 
 		if(wrapper)
 			fprintf(stderr, "WRAPPER='%s' ", wrapper);
 
-		fprintf(stderr, "%s ", path->path);
+		fprintf(stderr, "%s ", resolved);
 		for(i = 0; args[i]; i++)
 			fprintf(stderr, "%s ", args[i]);
 
 		fputc('\n', stderr);
+
+		free(resolved);
 	}
 
 	if(noop)
