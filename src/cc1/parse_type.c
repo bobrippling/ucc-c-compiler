@@ -1990,8 +1990,6 @@ static void check_var_storage_redef(decl *new, decl *old)
 
 static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 {
-	char wbuf[WHERE_BUF_SIZ];
-
 	if(!type_is(d_prev->ref, type_func))
 		return; /* error caught later */
 
@@ -2014,12 +2012,13 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 			 * type errors are caught later on in the decl folding stage
 			 */
 		}else{
-			cc1_warn_at(&d_this->where,
+			int warned = cc1_warn_at(&d_this->where,
 					ignored_late_decl,
-					"declaration of \"%s\" after definition is ignored\n"
-					"%s: note: definition here",
-					d_this->spel,
-					where_str_r(wbuf, &d_prev->where));
+					"declaration of \"%s\" after definition is ignored",
+					d_this->spel);
+
+			if(warned)
+				note_at(&d_prev->where, "definition here");
 			return;
 		}
 	}
