@@ -86,6 +86,7 @@ char *cc1_sanitize_handler_fn;
 enum visibility cc1_visibility_default;
 
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
+int cc1_profileg;
 enum debug_level cc1_gdebug = DEBUG_OFF;
 int cc1_gdebug_columninfo = 1;
 
@@ -708,6 +709,9 @@ int main(int argc, char **argv)
 		}else if(!strcmp(argv[i], "--help")){
 			dump_options();
 			usage(argv[0], NULL);
+
+		}else if(!strcmp(argv[i], "-pg")){
+			cc1_profileg = 1;
 
 		}else if(!in_fname){
 			in_fname = argv[i];

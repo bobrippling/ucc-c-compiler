@@ -90,7 +90,7 @@ void v_decay_flags_except(out_ctx *octx, const out_val *except[])
 	{
 		out_val_list *iter;
 
-		for(iter = octx->val_head; iter; iter = iter->next){
+		OCTX_ITER_VALS(octx, iter){
 			out_val *v = &iter->val;
 
 			if(v->retains > 0 && v->type == V_FLAG && !out_val_is_blockphi(v, octx->current_blk)){
@@ -297,7 +297,7 @@ void v_try_stack_reclaim(out_ctx *octx)
 		return;
 
 	/* only reclaim if we have an empty val list */
-	for(iter = octx->val_head; iter; iter = iter->next){
+	OCTX_ITER_VALS(octx, iter){
 		if(iter->val.retains == 0)
 			continue;
 		if(iter->val.phiblock)

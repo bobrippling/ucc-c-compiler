@@ -216,7 +216,7 @@ static const out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
 {
 	out_val_list *i;
 
-	for(i = octx->val_head; i; i = i->next){
+	OCTX_ITER_VALS(octx, i){
 		const out_val *v = &i->val;
 
 		if(!v->retains)
@@ -281,7 +281,7 @@ static int v_unused_reg2(
 
 	first = NULL;
 
-	for(it = octx->val_head; it; it = it->next){
+	OCTX_ITER_VALS(octx, it){
 		const out_val *this = &it->val;
 		if(this->retains
 		/*&& !out_val_is_blockphi(this, octx->current_blk)

@@ -88,7 +88,8 @@ struct uccvars
 	const char *target;
 	const char *output;
 
-	int static_, shared, startfiles, debug, stdlib, stdinc;
+	int static_, shared, startfiles, stdlib, stdinc;
+	int debug, profile;
 	enum tristate pie;
 	int help, dumpmachine;
 };
@@ -854,6 +855,10 @@ word:
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
 						ucc_ext_cmds_show(1);
+					else if(!strcmp(argv[i], "-pg")){
+						ADD_ARG(mode_compile);
+						vars->profile = 1;
+					}
 					else if(!strncmp(argv[i], "-emit", 5)){
 						switch(argv[i][5]){
 							case '=':
@@ -1024,7 +1029,9 @@ static void state_from_triple(
 			if(vars->startfiles){
 				char usrlib[64];
 
-				if(is_pie){
+				if(vars->profile){
+					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/gcrt1.o", target);
+				}else if(is_pie){
 					if(vars->static_)
 						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/rcrt1.o", target);
 					else
@@ -1080,6 +1087,10 @@ static void state_from_triple(
 			/* no startfiles */
 			if(vars->stdlib){
 				dynarray_add(&state->ldflags_post_user, ustrdup("-lSystem"));
+
+				if(vars->profile){
+					dynarray_add(&state->ldflags_post_user, ustrdup("-lgcrt1.o"));
+				}
 			}
 			if(vars->stdinc && syslibroot){
 				dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));

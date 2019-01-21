@@ -39,6 +39,9 @@
 
 int gen_had_error;
 
+#include "type_nav.h"
+#include "funcargs.h"
+
 void IGNORE_PRINTGEN(const out_val *v)
 {
 	(void)v;
@@ -196,6 +199,22 @@ static int should_stack_protect(decl *d)
 	return bytes >= 8 || addr_taken;
 }
 
+static void gen_profile(out_ctx *octx)
+{
+	type *mcount_ty = type_ptr_to(
+			type_func_of(
+				type_nav_btype(cc1_type_nav, type_void),
+				funcargs_new_void(),
+				NULL));
+	out_val *mcount = out_new_lbl(
+			octx,
+			mcount_ty,
+			"mcount", /* not subject to mangling */
+			OUT_LBL_PIC);
+
+	out_val_consume(octx, out_call(octx, mcount, NULL, mcount_ty));
+}
+
 static void gen_asm_global(decl *d, out_ctx *octx)
 {
 	attribute *sec;
@@ -239,6 +258,9 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 				argvals);
 
 		assign_arg_vals(symtab_decls(arg_symtab), argvals, octx);
+
+		if(cc1_profileg)
+			gen_profile(octx);
 
 		allocate_vla_args(octx, arg_symtab);
 		free(argvals), argvals = NULL;
