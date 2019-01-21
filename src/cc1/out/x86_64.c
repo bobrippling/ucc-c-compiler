@@ -23,6 +23,7 @@
 #include "../fopt.h"
 #include "../cc1.h"
 #include "../cc1_target.h"
+#include "../cc1_out.h"
 
 #include "val.h"
 #include "asm.h"
@@ -1010,9 +1011,14 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			struct vreg r;
 			out_val *mut;
 			struct section sec = SECTION_INIT(SECTION_DATA);
+			struct section_output orig_section;
 
-			asm_nam_begin3(&sec, lbl, type_align(from->t, NULL));
-			asm_out_fp(&sec, from->t, from->bits.val_f);
+			memcpy_safe(&orig_section, &cc1_current_section_output);
+			{
+				asm_nam_begin3(&sec, lbl, type_align(from->t, NULL));
+				asm_out_fp(&sec, from->t, from->bits.val_f);
+			}
+			memcpy_safe(&cc1_current_section_output, &orig_section);
 
 			from = mut = v_dup_or_reuse(octx, from, from->t);
 
