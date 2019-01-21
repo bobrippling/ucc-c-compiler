@@ -8,7 +8,7 @@ main:
 tenative2:
 .zero 4
 initialised2:
-.long 3
+.long 2
 ro_tenative2:
 .zero 4
 ro_initialised2:
@@ -17,6 +17,8 @@ f:
 .section .data
 initialised:
 .long 3
+f.static1_q:
+.long 5
 .section .bss
 .comm tenative,4,4
 .section .note.GNU-stack,"",@progbits

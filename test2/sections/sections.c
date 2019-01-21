@@ -8,7 +8,7 @@ const int ro_initialised = 4;
 __attribute((section("a")))
 int tenative2;
 __attribute((section("a")))
-int initialised2 = 3;
+int initialised2 = 2;
 __attribute((section("a")))
 const int ro_tenative2;
 __attribute((section("a")))
@@ -17,7 +17,8 @@ const int ro_initialised2 = 4;
 __attribute((section("a")))
 int f()
 {
-	return 3;
+	static int q = 5;
+	return q;
 }
 
 int main()

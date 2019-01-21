@@ -33,6 +33,7 @@
 #include "type_nav.h"
 #include "label.h"
 #include "fopt.h"
+#include "cc1_out.h"
 
 #include "ops/expr_funcall.h"
 
@@ -358,6 +359,7 @@ static void infer_decl_section(decl *d, struct section *sec)
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
 	struct section section;
+	struct section_output prev_section;
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
 
@@ -400,6 +402,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			break;
 	}
 
+	memcpy_safe(&prev_section, &cc1_current_section_output);
 	infer_decl_section(d, &section);
 	asm_switch_section(&section);
 	if(cc1_fopt.dump_decl_sections){
@@ -421,7 +424,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			/* inline only gets extern emitted anyway */
 			if(!emitted_type)
 				asm_predeclare_extern(&section, d);
-			return;
+			goto out;
 		}
 
 		if(cc1_gdebug != DEBUG_OFF)
@@ -435,7 +438,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		if(!emit_tenatives && !d->bits.var.init.dinit){
 			if(!emitted_type)
 				asm_predeclare_extern(&section, d);
-			return;
+			goto out;
 		}
 
 		if(cc1_gdebug == DEBUG_FULL)
@@ -448,6 +451,9 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		asm_predeclare_global(&section, d);
 
 	gen_asm_global(&section, d, octx);
+
+out:
+	memcpy_safe(&cc1_current_section_output, &prev_section);
 }
 
 void gen_asm(
