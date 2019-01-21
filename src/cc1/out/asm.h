@@ -12,6 +12,7 @@ FILE *asm_section_file(const struct section *);
 ucc_printflike(2, 3)
 void asm_out_section(const struct section *, const char *fmt, ...);
 void asm_out_sectionv(const struct section *, const char *fmt, va_list l);
+void asm_switch_section(const struct section *);
 
 int asm_section_empty(const struct section *);
 

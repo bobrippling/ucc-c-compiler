@@ -96,7 +96,7 @@ static void emit_lbl(struct out_dbg_lbl *lbl)
 	/* if we haven't emitted the label yet, and its
 	 * pair start label/start block was emitted */
 	if(out_dbg_label_shouldemit(lbl, NULL)){
-		asm_out_section(&section_text, "%s:\n", lbl->lbl);
+		asm_out_section(NULL, "%s:\n", lbl->lbl);
 		lbl->emitted = 1;
 	}
 	RELEASE(lbl);

@@ -92,7 +92,7 @@ FILE *asm_section_file(const struct section *sec)
 	return f;
 }
 
-static void asm_switch_section(const struct section *section)
+void asm_switch_section(const struct section *section)
 {
 	if(section_eq(&cc1_current_section, section))
 		return;
@@ -716,7 +716,7 @@ void asm_declare_decl_init(const struct section *sec, decl *d)
 
 void asm_out_sectionv(const struct section *sec, const char *fmt, va_list l)
 {
-	FILE *f = asm_section_file(sec);
+	FILE *f = sec ? asm_section_file(sec) : cc1_current_section_file;
 	vfprintf(f, fmt, l);
 }
 
