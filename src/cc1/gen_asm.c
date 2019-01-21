@@ -173,14 +173,6 @@ void gen_set_sym_outval(out_ctx *octx, sym *sym, const out_val *v)
 
 static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx)
 {
-	attribute *sec;
-
-	if((sec = attribute_present(d, attr_section))){
-		ICW("%s: TODO: section attribute \"%s\" on %s",
-				where_str(&sec->where),
-				sec->bits.section, d->spel);
-	}
-
 	/* order of the if matters */
 	if(type_is(d->ref, type_func)){
 		int nargs = 0, is_vari;
@@ -327,6 +319,13 @@ void gen_asm_emit_type(out_ctx *octx, type *ty)
 
 static void infer_decl_section(decl *d, struct section *sec)
 {
+	attribute *attr;
+
+	if((attr = attribute_present(d, attr_section))){
+		SECTION_FROM_NAME(sec, attr->bits.section);
+		return;
+	}
+
 	if(type_is(d->ref, type_func)){
 		SECTION_FROM_BUILTIN(sec, SECTION_TEXT);
 		return;
