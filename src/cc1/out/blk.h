@@ -7,16 +7,17 @@ struct out_blk
 {
 	/* all blocks: */
 	const char *desc;
-	char *lbl;
+	char *lbl, *force_lbl;
 	char **insns;
 
-	out_blk **merge_preds;
-	int flush_in_prog;
+	struct
+	{
+		struct out_dbg_lbl **start, **end;
+	} labels;
 
-#define BLK_IS_MERGE(b) ( \
-		b->merge_preds        \
-		&& b->merge_preds[0]  \
-		&& b->merge_preds[1])
+	out_blk **merge_preds;
+	out_blk *next;
+	unsigned reachable : 1, emitted : 1;
 
 	enum
 	{
@@ -28,7 +29,7 @@ struct out_blk
 	} type;
 
 	/* phi terminators: */
-	const out_val *phi_val;
+	out_val *phi_val;
 
 	union
 	{

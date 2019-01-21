@@ -2,6 +2,8 @@
 #include <assert.h>
 
 #include "../util/alloc.h"
+#include "../util/dynarray.h"
+#include "../util/util.h"
 #include "cc1_where.h"
 
 #include "btype.h"
@@ -13,6 +15,8 @@
 #include "const.h"
 #include "funcargs.h"
 #include "c_types.h"
+
+#define TYPE_UNIQ_DEBUG 0
 
 struct type_nav
 {
@@ -78,14 +82,27 @@ type *type_uptree_find_or_new(
 
 	to = type_skip_wheres(to);
 
-	if(!to->uptree)
+	if(!to->uptree){
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "no uptree for %s\n", type_to_str(to));
+
 		to->uptree = umalloc(sizeof *to->uptree);
+	}
 
 	for(ent = &to->uptree->ups[idx]; *ent; ent = &(*ent)->next){
 		type *candidate = (*ent)->t;
+		int is_candidate;
 		assert(candidate->type == idx);
 
-		if(eq(candidate, ctx))
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "candidate? '%s'... ", type_to_str(candidate));
+
+		is_candidate = eq(candidate, ctx);
+
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, " ... candidate=%s\n", is_candidate ? "yes" : "no");
+
+		if(is_candidate)
 			return candidate;
 	}
 
@@ -97,6 +114,10 @@ type *type_uptree_find_or_new(
 
 		*ent = umalloc(sizeof **ent);
 		(*ent)->t = new_t;
+
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "no candidates - created new: '%s'\n", type_to_str(new_t));
+
 		return new_t;
 	}
 }
@@ -216,10 +237,15 @@ static int eq_func(type *ty, void *ctx)
 {
 	struct ctx_func *c = ctx;
 
-	if(c->arg_scope != ty->bits.func.arg_scope)
+	if(c->arg_scope != ty->bits.func.arg_scope){
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "mismatching arg_scope");
 		return 0;
+	}
 
 	if(funcargs_cmp(ty->bits.func.args, c->args) == FUNCARGS_EXACT_EQUAL){
+		if(TYPE_UNIQ_DEBUG)
+			fprintf(stderr, "mismatching funcargs");
 		funcargs_free(c->args, 0);
 		return 1;
 	}
@@ -250,27 +276,42 @@ type *type_block_of(type *fn)
 
 static int eq_attr(type *candidate, void *ctx)
 {
-	return attribute_equal(candidate->bits.attr, ctx);
+	attribute **cand = candidate->bits.attr;
+	attribute **other = ctx;
+
+	for(; *cand; cand++){
+		attribute **i;
+
+		for(i = other; *i; i++)
+			if(attribute_equal(*cand, *i))
+				break;
+
+		if(!*i)
+			return 0; /* not found */
+	}
+
+	return 1;
 }
 
 static void init_attr(type *ty, void *ctx)
 {
-	ty->bits.attr = RETAIN((attribute *)ctx);
+	attribute **other = ctx;
+
+	attribute_array_retain(other);
+	dynarray_add_array(&ty->bits.attr, other);
 }
 
-type *type_attributed(type *ty, attribute *attr)
+type *type_attributed(type *ty, attribute **attrs)
 {
 	type *attributed;
 
-	if(!attr)
+	if(!attrs)
 		return ty;
 
 	attributed = type_uptree_find_or_new(
 			ty, type_attr,
 			eq_attr, init_attr,
-			attr);
-
-	RELEASE(attr);
+			attrs);
 
 	return attributed;
 }
@@ -347,8 +388,6 @@ type *type_decayed_ptr_to(type *pointee, type *array_from)
 
 static int eq_qual(type *candidate, void *ctx)
 {
-	if(candidate->bits.cast.is_signed_cast)
-		return 0;
 	return candidate->bits.cast.qual == *(enum type_qualifier *)ctx;
 }
 
@@ -357,14 +396,28 @@ static void init_qual(type *t, void *ctx)
 	t->bits.cast.qual = *(enum type_qualifier *)ctx;
 }
 
-type *type_qualify(type *unqualified, enum type_qualifier qual)
+static type *type_qualify3(
+		type *unqualified,
+		enum type_qualifier qual,
+		int transform_array_qual)
 {
 	type *ar_ty;
+	enum type_qualifier existing;
 
 	if(!qual)
 		return unqualified;
 
-	if((ar_ty = type_is(unqualified, type_array))){
+	/* if nothing new, no-op */
+	existing = type_qual(unqualified);
+
+	if(existing && (qual | existing) == existing){
+		return unqualified;
+	}
+
+	/* don't double up on qualifiers */
+	qual &= ~existing;
+
+	if(transform_array_qual && (ar_ty = type_is(unqualified, type_array))){
 		/* const -> array -> int
 		 * becomes
 		 * array -> const -> int
@@ -382,25 +435,45 @@ type *type_qualify(type *unqualified, enum type_qualifier qual)
 			&qual);
 }
 
-static int eq_sign(type *candidate, void *ctx)
+type *type_qualify_transform_array(
+		type *unqualified, enum type_qualifier qual,
+		int transform_array_qual)
 {
-	if(!candidate->bits.cast.is_signed_cast)
-		return 0;
-	return candidate->bits.cast.signed_true == *(int *)ctx;
+	return type_qualify3(unqualified, qual, transform_array_qual);
 }
 
-static void init_sign(type *t, void *ctx)
+type *type_qualify(type *unqualified, enum type_qualifier qual)
 {
-	t->bits.cast.is_signed_cast = 1;
-	t->bits.cast.signed_true = *(int *)ctx;
+	return type_qualify3(unqualified, qual, 1);
 }
 
-type *type_sign(type *ty, int is_signed)
+type *type_sign(struct type_nav *root, type *ty, int make_signed)
 {
-	return type_uptree_find_or_new(
-			ty, type_cast,
-			eq_sign, init_sign,
-			&is_signed);
+	enum type_primitive prim = type_get_primitive(ty);
+	int is_signed;
+
+	assert(prim != type_unknown);
+	assert(type_intrank(prim) != -1);
+
+	is_signed = type_primitive_is_signed(prim, 1);
+
+	if(make_signed){
+		if(!is_signed){
+			if(TYPE_PRIMITIVE_IS_CHAR(prim)){
+				prim = type_schar;
+			}else{
+				prim = TYPE_PRIMITIVE_TO_SIGNED(prim);
+			}
+		}
+	}else if(is_signed){
+		if(TYPE_PRIMITIVE_IS_CHAR(prim)){
+			prim = type_uchar;
+		}else{
+			prim = TYPE_PRIMITIVE_TO_UNSIGNED(prim);
+		}
+	}
+
+	return type_nav_btype(root, prim);
 }
 
 struct ctx_tdef
@@ -454,15 +527,20 @@ type *type_dereference_decay(type *const ty_ptr)
 	if(type_is(pointee, type_func))
 		return ty_ptr;
 
+	/* decay never returns an array type - decay to pointer */
+	if(type_is(pointee, type_array))
+		return type_decay(pointee);
+
 	return pointee;
 }
 
-type *type_nav_MAX_FOR(struct type_nav *root, unsigned sz)
+type *type_nav_MAX_FOR(struct type_nav *root, unsigned sz, int is_signed)
 {
-	enum type_primitive p = type_primitive_not_less_than_size(sz);
-	if(p != type_unknown)
-		return type_nav_btype(root, p);
-	assert(0 && "no type max");
+	enum type_primitive p = type_primitive_not_less_than_size(sz, is_signed);
+
+	UCC_ASSERT(p != type_unknown, "no type max for %u", sz);
+
+	return type_nav_btype(root, p);
 }
 
 type *type_nav_int_enum(struct type_nav *root, struct_union_enum_st *enu)
@@ -493,46 +571,70 @@ type *type_nav_int_enum(struct type_nav *root, struct_union_enum_st *enu)
 	return ent;
 }
 
-type *type_unqualify(type *t)
+type *type_unqualify(type *const qualified)
 {
+	attribute **attr = NULL;
 	type *t_restrict = NULL, *prev = NULL;
+	type *i, *ret;
 
-	while(t){
-		if(t->type == type_cast && !t->bits.cast.is_signed_cast){
-			/* restrict qualifier is special, and is only on pointer
-			 * types and doesn't really apply to the expression itself
-			 */
-			if(t->bits.cast.qual & qual_restrict)
-				t_restrict = t;
+	for(i = qualified; i; i = type_next_1(i)){
+		switch(i->type){
+			case type_cast:
+			{
+				/* restrict qualifier is special, and is only on pointer
+				 * types and doesn't really apply to the expression itself
+				 */
+				if(i->bits.cast.qual & qual_restrict)
+					t_restrict = i;
 
-			prev = t;
-			t = t->ref;
-		}else{
-			break;
+				prev = i;
+				break;
+			}
+
+			case type_attr:
+				dynarray_add_array(&attr, attribute_array_retain(i->bits.attr));
+				break;
+
+			case_CONCRETE_TYPE:
+			{
+				goto done;
+			}
+
+			default:
+				break;
 		}
 	}
+
+done:;
+	assert(i);
 
 	if(t_restrict){
 		assert(prev);
 		if(prev == t_restrict){
 			/* fine - we can just return this, preserving restrictness,
 			 * as nothing below it is a qualifier */
-			return t_restrict;
+			ret = t_restrict;
 		}else{
 			/* preserve restrict */
-			return type_qualify(t, qual_restrict);
+			ret = type_qualify(i, qual_restrict);
 		}
+	}else{
+		ret = i;
 	}
 
-	return t;
+	ret = type_attributed(ret, attr);
+	attribute_array_release(&attr);
+
+	return ret;
 }
 
 type *type_at_where(type *t, where *w)
 {
-	if(t->type != type_where || !where_equal(w, &t->bits.where)){
-		t = type_new(type_where, t);
-		memcpy_safe(&t->bits.where, w);
-	}
+	if(t->type == type_where && where_equal(w, &t->bits.where))
+		return t;
+
+	t = type_new(type_where, type_skip_wheres(t));
+	memcpy_safe(&t->bits.where, w);
 	return t;
 }
 
@@ -594,6 +696,60 @@ type *type_nav_va_list(struct type_nav *root, symtable *symtab)
 type *type_nav_voidptr(struct type_nav *root)
 {
     return type_ptr_to(type_nav_btype(root, type_void));
+}
+
+type *type_nav_changeauto(type *const ontop, type *trailing)
+{
+	type *base;
+
+	if(!ontop || ontop->type == type_btype)
+		return trailing; /* replace auto with proper trailing type */
+
+	/* use recursion to pop non-btypes on top of trailing */
+	base = type_nav_changeauto(type_next_1(ontop), trailing);
+
+	/* pop our type on top of trailing */
+	switch(ontop->type){
+		case type_btype:
+		case type_auto:
+			assert(0);
+
+		case type_ptr:
+			return type_ptr_to(base);
+
+		case type_block:
+			return type_block_of(base);
+
+		case type_array:
+		{
+			return type_array_of_static(
+					base,
+					ontop->bits.array.size,
+					ontop->bits.array.is_static);
+		}
+
+		case type_func:
+		{
+			funcargs *args = type_funcargs(ontop);
+			args->retains++;
+
+			return type_func_of(
+					base, args,
+					ontop->bits.func.arg_scope);
+		}
+
+		case type_tdef:
+		case type_cast:
+			return base;
+
+		case type_where:
+			return type_at_where(base, &ontop->bits.where);
+
+		case type_attr:
+			return type_attributed(base, ontop->bits.attr);
+	}
+
+	assert(0);
 }
 
 static void type_dump_t(type *t, FILE *f, int indent)

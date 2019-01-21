@@ -12,7 +12,7 @@
 
 int iswordpart(char c)
 {
-	return isalnum(c) || c == '_';
+	return isalnum(c) || c == '_' || c == '$';
 }
 
 char *word_end(char *s)
@@ -139,7 +139,7 @@ char *word_replace(char *line, char *pos, size_t len, const char *replace)
 	return str_replace(line, pos, pos + len, replace);
 }
 
-static char *word_strstr(char *haystack, char *needle)
+static char *word_strstr(char *haystack, const char *needle)
 {
 	const int nlen = strlen(needle);
 	char *i;
@@ -160,7 +160,7 @@ static char *word_strstr(char *haystack, char *needle)
 	return NULL;
 }
 
-char *word_find(char *line, char *word)
+char *word_find(char *line, const char *word)
 {
 	const int wordlen = strlen(word);
 	char *pos = line;

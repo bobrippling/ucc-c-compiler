@@ -1,14 +1,13 @@
 all: src
-	make -C lib
 
-src: configure
+src:
 	make -C src
+
+lib: lib/config.mk
+	make -C lib
 
 deps:
 	make -Csrc deps
-
-configure:
-	@if ! test -e config.mk; then echo ucc needs configuring; exit 1; fi
 
 clean:
 	make -C src clean
@@ -19,15 +18,15 @@ cleanall: clean
 
 cleantest:
 	make -Ctest clean
-# no need to clean test2
+# no need to clean test
 
-check: all
-	cd test2; ./run_tests -q -i ignores .
+check: all lib
+	cd test; ./run_tests -q -i ignores .
 	# test/ pending
 
 ALL_SRC = $(shell find . -iname '*.[ch]')
 
 tags: ${ALL_SRC}
-	ctags -R .
+	ctags '--exclude=_*' -R .
 
-.PHONY: all clean cleanall configure src
+.PHONY: all clean cleanall src

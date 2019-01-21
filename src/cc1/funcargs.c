@@ -15,6 +15,9 @@
 
 void funcargs_free(funcargs *args, int free_decls)
 {
+	if(--args->retains > 0)
+		return;
+
 	if(free_decls && args){
 		int i;
 		for(i = 0; args->arglist[i]; i++)
@@ -89,7 +92,15 @@ funcargs *funcargs_new()
 {
 	funcargs *r = umalloc(sizeof *funcargs_new());
 	where_cc1_current(&r->where);
+	r->retains = 1;
 	return r;
+}
+
+funcargs *funcargs_new_void()
+{
+	funcargs *args = funcargs_new();
+	args->args_void = 1;
+	return args;
 }
 
 void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)
@@ -103,4 +114,10 @@ void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)
 			++*n_fp;
 		else
 			++*n_int;
+}
+
+int funcargs_is_old_func(funcargs *fa)
+{
+	/* don't treat int f(); as an old function */
+	return fa->args_old_proto && fa->arglist;
 }

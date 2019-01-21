@@ -7,14 +7,17 @@
 #include "../out/asm.h"
 #include "../type_nav.h"
 
+#define DEBUG_VAL 0
+
 const char *str_expr_val()
 {
-	return "val";
+	return "value";
 }
 
 /*
 -- no suffix --
-[0-9]+ -> int, long int, long long int
+C89: [0-9]+ -> int, long int, unsigned long
+C99: [0-9]+ -> int, long int, long long int
 oct|hex -> int, unsigned int, long int, unsigned long int, long long int, unsigned long long int
 
 -- u suffix --
@@ -44,15 +47,17 @@ void fold_expr_val(expr *e, symtable *stab)
 	int is_signed = !(num->suffix & VAL_UNSIGNED);
 	const int can_change_sign = is_signed && (num->suffix & VAL_NON_DECIMAL);
 
-	const int long_max_bit = 63; /* TODO */
+	const int long_max_bit = 8 * type_primitive_size(type_long) - 1;
 	const int highest_bit = integral_high_bit(num->val.i, e->tree_type);
 	enum type_primitive p =
 		num->suffix & VAL_LLONG ? type_llong :
 		num->suffix & VAL_LONG  ? type_long  : type_int;
 
-	/*fprintf(stderr, "----\n0x%" NUMERIC_FMT_X
-	      ", highest bit = %d. suff = 0x%x\n",
-	      num->val.i, highest_bit, num->suffix);*/
+	if(DEBUG_VAL){
+		fprintf(stderr, "----\n0x%" NUMERIC_FMT_X
+				", highest bit = %d. suff = 0x%x\n",
+				num->val.i, highest_bit, num->suffix);
+	}
 
 	/* just bail for floats for now, apart from truncating it */
 	if(num->suffix & VAL_FLOATING){
@@ -104,7 +109,10 @@ void fold_expr_val(expr *e, symtable *stab)
 	}
 
 	/* ulong? */
-	if(p <= type_long && highest_bit == long_max_bit && (!is_signed || can_change_sign)){
+	if(p <= type_long && highest_bit == long_max_bit
+	&& (!is_signed || can_change_sign || cc1_std <= STD_C89))
+	{
+		/* in C89 we use a unsigned long for the large integer constants */
 		is_signed = 0;
 		p = type_long;
 		goto chosen;
@@ -125,9 +133,11 @@ void fold_expr_val(expr *e, symtable *stab)
 		/* we get here if we're forcing it to ull,
 		 * not if the user says, so we can warn unconditionally */
 		if(is_signed){
-			cc1_warn_at(&e->where,
-					constant_large_unsigned,
-					"integer constant is so large it is unsigned");
+			if(!e->freestanding){
+				cc1_warn_at(&e->where,
+						constant_large_unsigned,
+						"integer constant is so large it is unsigned");
+			}
 			is_signed = 0;
 		}
 		p = type_llong;
@@ -136,11 +146,12 @@ void fold_expr_val(expr *e, symtable *stab)
 	}
 
 chosen:
-	/*
-	fprintf(stderr, "%s -> %ssigned %s\n",
-			where_str(&e->where),
-			is_signed ? "" : "un",
-			type_primitive_to_str(p)); */
+	if(DEBUG_VAL){
+		fprintf(stderr, "%s -> %ssigned %s\n",
+				where_str(&e->where),
+				is_signed ? "" : "un",
+				type_primitive_to_str(p));
+	}
 
 	if(is_signed)
 		num->suffix &= ~VAL_UNSIGNED;
@@ -155,15 +166,30 @@ chosen:
 	(void)stab;
 }
 
-const out_val *gen_expr_val(expr *e, out_ctx *octx)
+const out_val *gen_expr_val(const expr *e, out_ctx *octx)
 {
 	return out_new_num(octx, e->tree_type, &e->bits.num);
 }
 
-const out_val *gen_expr_str_val(expr *e, out_ctx *octx)
+void dump_expr_val(const expr *e, dump *ctx)
 {
-	idt_printf("val.i: 0x%lx\n", (unsigned long)e->bits.num.val.i);
-	UNUSED_OCTX();
+	if(e->bits.num.suffix & VAL_FLOATING){
+		dump_desc_expr_newline(ctx, "floating literal", e, 0);
+
+		dump_printf_indent(
+				ctx,
+				0,
+				" %" NUMERIC_FMT_LD "\n",
+				(floating_t)e->bits.num.val.f);
+	}else{
+		dump_desc_expr_newline(ctx, "integer literal", e, 0);
+
+		dump_printf_indent(
+				ctx,
+				0,
+				" 0x%" NUMERIC_FMT_X "\n",
+				(integral_t)e->bits.num.val.i);
+	}
 }
 
 static void const_expr_val(expr *e, consty *k)
@@ -192,7 +218,7 @@ expr *expr_new_numeric(numeric *num)
 	return e;
 }
 
-const out_val *gen_expr_style_val(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_val(const expr *e, out_ctx *octx)
 {
 	if(K_FLOATING(e->bits.num))
 		stylef("%" NUMERIC_FMT_LD, e->bits.num.val.f);

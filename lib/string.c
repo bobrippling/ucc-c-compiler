@@ -92,7 +92,8 @@ void *memcpy(void *v_to, const void *v_from, size_t count)
 {
 	/* TODO: repnz movsb */
 	/* thank you duff */
-	char *to = v_to, *from = v_from;
+	char *to = v_to;
+	const char *from = v_from;
 	char *const ret = to;
 	size_t n = (count + 7) / 8;
 

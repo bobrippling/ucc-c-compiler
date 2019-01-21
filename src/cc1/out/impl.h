@@ -19,8 +19,9 @@ ucc_wur const out_val *impl_op_unary(out_ctx *octx, enum op_type, const out_val 
 
 ucc_wur const out_val *impl_deref(
 		out_ctx *octx, const out_val *vp,
-		const struct vreg *reg)
-	ucc_nonnull();
+		const struct vreg *reg,
+		int *done_out_deref)
+	ucc_nonnull((1, 2, 3));
 
 void impl_branch(out_ctx *, const out_val *,
 		out_blk *bt, out_blk *bf, int unlikely);
@@ -48,7 +49,7 @@ void impl_func_prologue_save_fp(out_ctx *octx);
 void impl_func_prologue_save_call_regs(
 		out_ctx *,
 		type *rf, unsigned nargs,
-		int arg_offsets[/*nargs*/]);
+		const out_val *arg_offsets[/*nargs*/]);
 
 void impl_func_prologue_save_variadic(out_ctx *octx, type *rf);
 void impl_func_epilogue(out_ctx *, type *, int clean_stack);
@@ -71,19 +72,34 @@ const int *impl_callee_save_regs(type *fnty, unsigned *pn);
 
 void impl_comment(out_ctx *, const char *fmt, va_list l);
 
+/* implicitly takes vtop as a pointer to the memory */
+void impl_overlay_mem2regs(
+		out_ctx *,
+		unsigned memsz, unsigned nregs,
+		struct vreg regs[],
+		const out_val *ptr);
+
+/* same - implicit vtop */
+void impl_overlay_regs2mem(
+		out_ctx *,
+		unsigned memsz, unsigned nregs,
+		struct vreg regs[],
+		const out_val *ptr);
+
 enum flag_cmp op_to_flag(enum op_type op);
 const char *flag_cmp_to_str(enum flag_cmp);
 
-/* can't do this for gen_deps.sh */
-#ifdef CC1_IMPL_FNAME
-#  include CC1_IMPL_FNAME
-#else
-#  warning "no impl defined"
-#endif
 
-#ifndef MIN
-#  define MIN(x, y) ((x) < (y) ? (x) : (y))
-#  define MAX(x, y) ((x) > (y) ? (x) : (y))
-#endif
+/* needed for inline asm code gen */
+const char *impl_val_str(const out_val *vs, int deref);
+
+const char *impl_val_str_r(
+		char buf[], const out_val *vs, const int deref);
+
+void impl_reserve_retregs(out_ctx *);
+void impl_unreserve_retregs(out_ctx *);
+
+/* can't do this for gen_deps.sh */
+#include "backend.h"
 
 #endif

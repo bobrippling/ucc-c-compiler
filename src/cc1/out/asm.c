@@ -2,19 +2,23 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "../../util/util.h"
 #include "../../util/platform.h"
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
+#include "../../util/math.h"
 
 #include "../type.h"
+#include "../type_nav.h"
 #include "../decl.h"
 #include "../strings.h"
 
 #include "asm.h"
 #include "out.h"
 
+#include "../fopt.h"
 #include "../cc1.h"
 #include "../sym.h"
 #include "../expr.h"
@@ -27,8 +31,12 @@
 #include "../decl_init.h"
 #include "../pack.h"
 #include "../str.h"
+#include "../cc1_target.h"
+#include "../cc1_out.h"
+#include "../cc1_sections.h"
+#include "../mangle.h"
 
-#include "../../as_cfg.h" /* weak directive */
+#include "../ops/expr_compound_lit.h"
 
 #define ASSERT_SCALAR(di)                  \
 	UCC_ASSERT(di->type == decl_init_scalar, \
@@ -36,12 +44,100 @@
 
 #define ASM_COMMENT "#"
 
+#define INIT_DEBUG 0
+
+#define DEBUG(s, ...) do{ \
+	if(INIT_DEBUG) fprintf(stderr, "\033[35m" s "\033[m\n", __VA_ARGS__); \
+}while(0)
+
 struct bitfield_val
 {
 	integral_t val;
 	unsigned offset;
 	unsigned width;
 };
+
+static const char *name_for_section(enum section_builtin sec)
+{
+	switch(sec){
+		case SECTION_TEXT: return cc1_target_details.section_names.section_name_text;
+		case SECTION_DATA: return cc1_target_details.section_names.section_name_data;
+		case SECTION_BSS: return cc1_target_details.section_names.section_name_bss;
+		case SECTION_RODATA: return cc1_target_details.section_names.section_name_rodata;
+		case SECTION_CTORS: return cc1_target_details.section_names.section_name_ctors;
+		case SECTION_DTORS: return cc1_target_details.section_names.section_name_dtors;
+		case SECTION_DBG_ABBREV: return cc1_target_details.section_names.section_name_dbg_abbrev;
+		case SECTION_DBG_INFO: return cc1_target_details.section_names.section_name_dbg_info;
+		case SECTION_DBG_LINE: return cc1_target_details.section_names.section_name_dbg_line;
+	}
+	return NULL;
+}
+
+const char *asm_section_desc(enum section_builtin sec)
+{
+	switch(sec){
+		case SECTION_TEXT: return SECTION_DESC_TEXT;
+		case SECTION_DATA: return SECTION_DESC_DATA;
+		case SECTION_BSS: return SECTION_DESC_BSS;
+		case SECTION_RODATA: return SECTION_DESC_RODATA;
+		case SECTION_CTORS: return SECTION_DESC_CTORS;
+		case SECTION_DTORS: return SECTION_DESC_DTORS;
+		case SECTION_DBG_ABBREV: return SECTION_DESC_DBG_ABBREV;
+		case SECTION_DBG_INFO: return SECTION_DESC_DBG_INFO;
+		case SECTION_DBG_LINE: return SECTION_DESC_DBG_LINE;
+	}
+	return NULL;
+}
+
+enum section_builtin asm_builtin_section_from_str(const char *s)
+{
+	if(!strcmp(s, cc1_target_details.section_names.section_name_text))
+		return SECTION_TEXT;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_data))
+		return SECTION_DATA;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_bss))
+		return SECTION_BSS;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_rodata))
+		return SECTION_RODATA;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_ctors))
+		return SECTION_CTORS;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_dtors))
+		return SECTION_DTORS;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_dbg_abbrev))
+		return SECTION_DBG_ABBREV;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_dbg_info))
+		return SECTION_DBG_INFO;
+	if(!strcmp(s, cc1_target_details.section_names.section_name_dbg_line))
+		return SECTION_DBG_LINE;
+
+	return -1;
+}
+
+FILE *asm_section_file(enum section_builtin sec)
+{
+	FILE *f;
+	const char *name = name_for_section(sec);
+
+	if(!cc1_out_persection)
+		cc1_out_persection = dynmap_new(char *, strcmp, dynmap_strhash);
+
+	f = dynmap_get(char *, FILE *, cc1_out_persection, (char *)name);
+	if(!f){
+		f = tmpfile();
+		dynmap_set(char *, FILE *, cc1_out_persection, ustrdup(name), f);
+	}
+
+	return f;
+}
+
+static void asm_switch_section(enum section_builtin sec)
+{
+	if(sec == cc1_current_section)
+		return;
+
+	cc1_current_section = sec;
+	cc1_current_section_file = asm_section_file(sec);
+}
 
 int asm_table_lookup(type *r)
 {
@@ -74,19 +170,19 @@ int asm_type_size(type *r)
 	return asm_type_table[asm_table_lookup(r)].sz;
 }
 
-static void asm_declare_pad(enum section_type sec, unsigned pad, const char *why)
+static void asm_declare_pad(enum section_builtin sec, unsigned pad, const char *why)
 {
 	if(pad)
 		asm_out_section(sec, ".space %u " ASM_COMMENT " %s\n", pad, why);
 }
 
-static void asm_declare_init_type(enum section_type sec, type *ty)
+static void asm_declare_init_type(enum section_builtin sec, type *ty)
 {
 	asm_out_section(sec, ".%s ", asm_type_directive(ty));
 }
 
 static void asm_declare_init_bitfields(
-		enum section_type sec,
+		enum section_builtin sec,
 		struct bitfield_val *vals, unsigned n,
 		type *ty)
 {
@@ -123,7 +219,7 @@ static void asm_declare_init_bitfields(
 }
 
 static void bitfields_out(
-		enum section_type sec,
+		enum section_builtin sec,
 		struct bitfield_val *bfs, unsigned *pn,
 		type *ty)
 {
@@ -159,7 +255,7 @@ static struct bitfield_val *bitfields_add(
 	return bfs;
 }
 
-void asm_out_fp(enum section_type sec, type *ty, floating_t f)
+void asm_out_fp(enum section_builtin sec, type *ty, floating_t f)
 {
 	switch(type_primitive(ty)){
 		case type_float:
@@ -184,7 +280,7 @@ void asm_out_fp(enum section_type sec, type *ty, floating_t f)
 	}
 }
 
-static void static_val(enum section_type sec, type *ty, expr *e)
+static void static_val(enum section_builtin sec, type *ty, expr *e)
 {
 	consty k;
 
@@ -208,7 +304,11 @@ static void static_val(enum section_type sec, type *ty, expr *e)
 			}else{
 				char buf[INTEGRAL_BUF_SIZ];
 				asm_declare_init_type(sec, ty);
-				integral_str(buf, sizeof buf, k.bits.num.val.i, e->tree_type);
+				/* use 'ty' here - e->tree_type will be the casted-from type,
+				 * e.g.
+				 * char x[] = { 5ull };
+				 * we want 'char', not 'unsigned long long' */
+				integral_str(buf, sizeof buf, k.bits.num.val.i, ty);
 				asm_out_section(sec, "%s", buf);
 			}
 			break;
@@ -230,11 +330,11 @@ static void static_val(enum section_type sec, type *ty, expr *e)
 
 	/* offset in bytes, no mul needed */
 	if(k.offset)
-		asm_out_section(sec, " + %ld", k.offset);
+		asm_out_section(sec, " + %" NUMERIC_FMT_D, k.offset);
 	asm_out_section(sec, "\n");
 }
 
-static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
+static void asm_declare_init(enum section_builtin sec, decl_init *init, type *tfor)
 {
 	type *r;
 
@@ -261,12 +361,29 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 		struct bitfield_val *bitfields = NULL;
 		unsigned nbitfields = 0;
 		decl *first_bf = NULL;
+		expr *copy_from_exp;
 
 		UCC_ASSERT(init->type == decl_init_brace, "unbraced struct");
 
-#define DEBUG(s, ...) /*fprintf(f, "\033[35m" s "\033[m\n", __VA_ARGS__)*/
-
 		i = init->bits.ar.inits;
+
+		/* check for compound-literal copy-init */
+		if((copy_from_exp = decl_init_is_struct_copy(init, sue))){
+			decl_init *copy_from_init;
+
+			copy_from_exp = expr_skip_lval2rval(copy_from_exp);
+
+			/* the only struct-expression that's possible
+			 * in static context is a compound literal */
+			assert(expr_kind(copy_from_exp, compound_lit)
+					&& "unhandled expression init");
+
+			copy_from_init = expr_comp_lit_init(copy_from_exp);
+			assert(copy_from_init->type == decl_init_brace);
+
+			i = copy_from_init->bits.ar.inits;
+		}
+
 		/* iterate using members, not inits */
 		for(mem = sue->members;
 				mem && *mem;
@@ -292,17 +409,18 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 
 			DEBUG("init for %ld/%s, %s",
 					mem - sue->members, d_mem->spel,
-					di_to_use ? di_to_use->bits.expr->f_str() : NULL);
+					di_to_use && di_to_use->type == decl_init_scalar
+					? di_to_use->bits.expr->f_str()
+					: NULL);
 
 			/* only pad if we're not on a bitfield or we're on the first bitfield */
 			if(!d_mem->bits.var.field_width || !first_bf){
 				DEBUG("prev padding, offset=%d, end_of_last=%d",
-						d_mem->struct_offset, end_of_last);
+						d_mem->bits.var.struct_offset, end_of_last);
 
 				UCC_ASSERT(
 						d_mem->bits.var.struct_offset >= end_of_last,
-						"negative struct pad, sue %s, member %s "
-						"offset %u, end_of_last %u",
+						"negative struct pad, %s::%s @ %u >= end_of_last @ %u",
 						sue->spel, decl_to_str(d_mem),
 						d_mem->bits.var.struct_offset, end_of_last);
 
@@ -312,6 +430,8 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 			}
 
 			if(d_mem->bits.var.field_width){
+				const int zero_width = const_fold_val_i(d_mem->bits.var.field_width) == 0;
+
 				if(!first_bf || d_mem->bits.var.first_bitfield){
 					if(first_bf){
 						DEBUG("new bitfield group (%s is new boundary), old:",
@@ -319,17 +439,21 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 						/* next bitfield group - store the current */
 						bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
 					}
-					first_bf = d_mem;
+					if(!zero_width)
+						first_bf = d_mem;
 				}
 
-				bitfields = bitfields_add(
-						bitfields, &nbitfields,
-						d_mem, di_to_use);
+				if(!zero_width){
+					bitfields = bitfields_add(
+							bitfields, &nbitfields,
+							d_mem, di_to_use);
+				}
 
 			}else{
 				if(nbitfields){
 					DEBUG("at non-bitfield, prev-bitfield out:", 0);
-					bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
+
+					bitfields_out(sec, bitfields, &nbitfields, decl_type_for_bitfield(first_bf));
 					first_bf = NULL;
 				}
 
@@ -340,9 +464,11 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 			if(type_is_incomplete_array(d_mem->ref)){
 				UCC_ASSERT(!mem[1], "flex-arr not at end");
 			}else if(!d_mem->bits.var.field_width || d_mem->bits.var.first_bitfield){
-				unsigned last_sz = type_size(d_mem->ref, NULL);
+				unsigned sz, align;
 
-				end_of_last = d_mem->bits.var.struct_offset + last_sz;
+				decl_size_align_inc_bitfield(d_mem, &sz, &align);
+
+				end_of_last = d_mem->bits.var.struct_offset + sz;
 				DEBUG("done with member \"%s\", end_of_last = %d",
 						d_mem->spel, end_of_last);
 			}
@@ -450,20 +576,29 @@ static void asm_declare_init(enum section_type sec, decl_init *init, type *tfor)
 	}
 }
 
-void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align)
+static void asm_out_align(enum section_builtin sec, unsigned align)
 {
-	asm_out_section(sec,
-			".align %u\n"
-			"%s:\n",
-			align, lbl);
+	if(mopt_mode & MOPT_ALIGN_IS_POW2){
+		align = log2i(align);
+	}
+
+	if(align)
+		asm_out_section(sec, ".align %u\n", align);
 }
 
-static void asm_nam_begin(enum section_type sec, decl *d)
+void asm_nam_begin3(enum section_builtin sec, const char *lbl, unsigned align)
+{
+	asm_switch_section(sec);
+	asm_out_align(sec, align);
+	asm_out_section(sec, "%s:\n", lbl);
+}
+
+static void asm_nam_begin(enum section_builtin sec, decl *d)
 {
 	asm_nam_begin3(sec, decl_asm_spel(d), decl_align(d));
 }
 
-static void asm_reserve_bytes(enum section_type sec, unsigned nbytes)
+static void asm_reserve_bytes(enum section_builtin sec, unsigned nbytes)
 {
 	/*
 	 * TODO: .comm buf,512,5
@@ -493,64 +628,150 @@ void asm_predeclare_global(decl *d)
 
 void asm_predeclare_weak(decl *d)
 {
-	asm_predecl(ASM_WEAK_DIRECTIVE, d);
+	asm_predecl(cc1_target_details.as.directives.weak, d);
 }
 
-void asm_declare_stringlit(enum section_type sec, const stringlit *lit)
+void asm_declare_alias(decl *d, decl *alias)
 {
-	FILE *const f = cc_out[sec];
+	asm_out_section(SECTION_TEXT, "%s = %s\n", decl_asm_spel(d), decl_asm_spel(alias));
+}
 
+void asm_predeclare_visibility(decl *d)
+{
+	if(decl_linkage(d) == linkage_internal)
+		return;
+
+	switch(decl_visibility(d)){
+		case VISIBILITY_DEFAULT:
+			break;
+		case VISIBILITY_HIDDEN:
+			asm_predecl(cc1_target_details.as.directives.visibility_hidden, d);
+			break;
+		case VISIBILITY_PROTECTED:
+			assert(cc1_target_details.as.supports_visibility_protected);
+			asm_predecl("protected", d);
+			break;
+	}
+}
+
+static void asm_declare_ctor_dtor(decl *d, enum section_builtin sec)
+{
+	type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
+	const char *directive = asm_type_directive(intptr_ty);
+
+	/*if(asm_section_empty(sec))
+		asm_out_align(sec, type_align(intptr_ty, NULL));
+
+		// should be aligned by the linker, the above should be a no-op
+	*/
+	asm_out_section(sec, ".%s %s\n", directive, decl_asm_spel(d));
+}
+
+void asm_declare_constructor(decl *d)
+{
+	asm_declare_ctor_dtor(d, SECTION_CTORS);
+}
+
+void asm_declare_destructor(decl *d)
+{
+	asm_declare_ctor_dtor(d, SECTION_DTORS);
+}
+
+void asm_declare_stringlit(enum section_builtin sec, const stringlit *lit)
+{
 	/* could be SECTION_RODATA */
 	asm_nam_begin3(sec, lit->lbl, /*align:*/1);
 
-	if(lit->wide){
-		const char *join = "";
-		size_t i;
-
-		fprintf(f, ".long ");
-		for(i = 0; i < lit->len; i++){
-			fprintf(f, "%s%d", join, lit->str[i]);
-			join = ", ";
+	switch(lit->cstr->type){
+		case CSTRING_WIDE:
+		{
+			const char *join = "";
+			size_t i;
+			asm_out_section(sec, ".long ");
+			for(i = 0; i < lit->cstr->count; i++){
+				asm_out_section(sec, "%s%d", join, lit->cstr->bits.wides[i]);
+				join = ", ";
+			}
+			break;
 		}
 
-	}else{
-		fprintf(f, ".ascii \"");
-		literal_print(f, lit->str, lit->len);
-		fputc('"', f);
+		case CSTRING_RAW:
+			assert(0 && "raw string in code gen");
+
+		case CSTRING_ASCII:
+		{
+			FILE *f = asm_section_file(sec);
+			asm_out_section(sec, ".ascii \"");
+			literal_print(f, lit->cstr);
+			fputc('"', f);
+			break;
+		}
 	}
 
-	fputc('\n', f);
+	asm_out_section(sec, "\n");
 }
 
 void asm_declare_decl_init(decl *d)
 {
-	enum section_type sec;
+	int is_const, nonzero_init;
+	enum section_builtin sec;
 
 	if((d->store & STORE_MASK_STORE) == store_extern){
 		asm_predeclare_extern(d);
 		return;
 	}
 
-	sec = type_is_const(d->ref) ? SECTION_RODATA : SECTION_DATA;
+	is_const = type_is_const(d->ref);
+	nonzero_init = d->bits.var.init.dinit && !decl_init_is_zero(d->bits.var.init.dinit);
 
-	if(d->bits.var.init.dinit && !decl_init_is_zero(d->bits.var.init.dinit)){
+	if(is_const){
+		sec = SECTION_RODATA;
+	}else if(nonzero_init){
+		sec = SECTION_DATA;
+	}else{
+		sec = SECTION_BSS;
+	}
+
+	if(nonzero_init){
 		asm_nam_begin(sec, d);
 		asm_declare_init(sec, d->bits.var.init.dinit, d->ref);
 		asm_out_section(sec, "\n");
 
+	}else if(d->bits.var.init.compiler_generated && cc1_fopt.common){
+		const char *common_prefix = "comm ";
+		unsigned align;
+
+		if(decl_linkage(d) == linkage_internal){
+			if(cc1_target_details.as.supports_local_common){
+				asm_out_section(sec, ".local %s\n", decl_asm_spel(d));
+			}else{
+				common_prefix = "zerofill __DATA,__bss,";
+			}
+		}
+
+		align = decl_align(d);
+		if(mopt_mode & MOPT_ALIGN_IS_POW2){
+			align = log2i(align);
+		}
+
+		asm_out_section(sec, ".%s%s,%u,%u\n",
+				common_prefix,
+				decl_asm_spel(d), decl_size(d), align);
+
 	}else{
 		/* always resB, since we use decl_size() */
-		asm_nam_begin(SECTION_BSS, d);
-		asm_reserve_bytes(SECTION_BSS, decl_size(d));
+		asm_nam_begin(sec, d);
+		asm_reserve_bytes(sec, decl_size(d));
 	}
 }
 
-void asm_out_sectionv(enum section_type t, const char *fmt, va_list l)
+void asm_out_sectionv(enum section_builtin t, const char *fmt, va_list l)
 {
-	vfprintf(cc_out[t], fmt, l);
+	FILE *f = asm_section_file(t);
+	vfprintf(f, fmt, l);
 }
 
-void asm_out_section(enum section_type t, const char *fmt, ...)
+void asm_out_section(enum section_builtin t, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);

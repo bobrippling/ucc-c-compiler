@@ -22,6 +22,8 @@ struct funcargs
 	decl **arglist;
 	int variadic;
 	enum calling_conv conv;
+
+	unsigned retains;
 };
 
 #define FUNCARGS_EMPTY_NOVOID(fa) \
@@ -31,8 +33,11 @@ enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from);
 
 
 funcargs *funcargs_new(void);
+funcargs *funcargs_new_void(void);
 void funcargs_empty(funcargs *func);
 void funcargs_free(funcargs *args, int free_decls);
+
+int funcargs_is_old_func(funcargs *);
 
 void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp);
 

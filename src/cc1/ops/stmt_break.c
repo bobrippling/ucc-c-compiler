@@ -21,14 +21,19 @@ void fold_stmt_break(stmt *t)
 	fold_stmt_break_continue(t, t->parent);
 }
 
-void gen_stmt_break(stmt *s, out_ctx *octx)
+void gen_stmt_break(const stmt *s, out_ctx *octx)
 {
 	gen_scope_leave(s->symtab, s->parent->symtab, octx);
 
-	out_ctrl_transfer(octx, s->parent->blk_break, NULL, NULL);
+	out_ctrl_transfer(octx, s->parent->blk_break, NULL, NULL, 0);
 }
 
-void style_stmt_break(stmt *s, out_ctx *octx)
+void dump_stmt_break(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "break", s);
+}
+
+void style_stmt_break(const stmt *s, out_ctx *octx)
 {
 	stylef("break;");
 	gen_stmt(s->lhs, octx);

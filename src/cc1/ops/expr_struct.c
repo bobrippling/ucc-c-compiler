@@ -4,19 +4,18 @@
 #include "../out/asm.h"
 #include "../type_is.h"
 #include "../type_nav.h"
+#include "../fopt.h"
 
-#define ASSERT_NOT_DOT() UCC_ASSERT(!e->expr_is_st_dot, "a.b should have been handled by now")
+#include "expr_identifier.h"
 
 #define struct_offset(e) (                            \
 	 (e)->bits.struct_mem.d->bits.var.struct_offset +   \
 	 (e)->bits.struct_mem.extra_off                     \
 	 )
 
-static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx);
-
 const char *str_expr_struct()
 {
-	return "struct";
+	return "member-access";
 }
 
 void fold_expr_struct(expr *e, symtable *stab)
@@ -28,10 +27,16 @@ void fold_expr_struct(expr *e, symtable *stab)
 	const int ptr_expect = !e->expr_is_st_dot;
 	struct_union_enum_st *sue;
 	char *spel;
+	enum type_qualifier struct_qual;
+	attribute **struct_attr;
+	type *struct_type;
 
-	fold_expr_no_decay(e->lhs, stab);
+	if(ptr_expect)
+		FOLD_EXPR(e->lhs, stab);
+	else
+		fold_expr_nodecay(e->lhs, stab);
+
 	/* don't fold the rhs - just a member name */
-
 	if(e->rhs){
 		UCC_ASSERT(expr_kind(e->rhs, identifier),
 				"struct/union member not identifier (%s)", e->rhs->f_str());
@@ -59,24 +64,32 @@ void fold_expr_struct(expr *e, symtable *stab)
 
 		if(!(sue = type_is_s_or_u(r))){
 err:
-			die_at(&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
+			warn_at_print_error(
+					&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
 					type_to_str(e->lhs->tree_type),
-					e->lhs->f_str(),
+					expr_str_friendly(e->lhs),
 					ptr_expect ? "pointer to " : "",
 					spel);
+			fold_had_error = 1;
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
 		}
 	}
 
-	if(!sue_complete(sue)){
-		char wbuf[WHERE_BUF_SIZ];
+	if(!sue_is_complete(sue)){
+		fold_had_error = 1;
 
-		die_at(&e->lhs->where, "%s incomplete type (%s)\n"
-				"%s: note: forward declared here",
+		warn_at_print_error(
+				&e->lhs->where, "%s incomplete type (%s)",
 				ptr_expect
 					? "dereferencing pointer to"
 					: "accessing member of",
-				type_to_str(e->lhs->tree_type),
-				where_str_r(wbuf, &sue->where));
+				type_to_str(e->lhs->tree_type));
+
+		note_at(&sue->where, "forward declared here");
+
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
 	}
 
 	if(spel){
@@ -84,47 +97,39 @@ err:
 		decl *d_mem = struct_union_member_find(sue, spel,
 				&e->bits.struct_mem.extra_off, NULL);
 
-		if(!d_mem)
-			die_at(&e->where, "%s %s has no member named \"%s\"",
+		if(!d_mem){
+			warn_at_print_error(&e->where, "%s %s has no member named \"%s\"",
 					sue_str(sue), sue->spel, spel);
+			fold_had_error = 1;
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
+		}
 
 		e->rhs->tree_type = (e->bits.struct_mem.d = d_mem)->ref;
 	}/* else already have the member */
 
-	/*
-	 * if it's a.b, convert to (&a)->b for asm gen
-	 * e = { lhs = "a", rhs = "b", type = dot }
-	 * e = {
-	 *   type = ptr,
-	 *   lhs = { cast<void *>, expr = { expr = "a", type = addr } },
-	 *   rhs = "b",
-	 * }
-	 */
-	if(!ptr_expect){
-		expr *cast, *addr;
+	/* pointer to struct - skip the pointer type and
+	 * pull the quals and attrs off the struct type */
+	struct_type = ptr_expect
+			? type_dereference_decay(e->lhs->tree_type)
+			: e->lhs->tree_type;
 
-		addr = expr_new_addr(e->lhs);
-		cast = expr_new_cast(addr,
-				type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
-				1);
+	struct_qual = type_qual(struct_type);
+	struct_attr = type_get_attrs_toplvl(struct_type);
 
-		e->lhs = cast;
-		e->expr_is_st_dot = 0;
+	/* pull qualifiers and attributes from the struct to the member */
+	e->tree_type = type_attributed(
+			type_qualify(
+				e->bits.struct_mem.d->ref,
+				struct_qual),
+			struct_attr);
 
-		FOLD_EXPR(e->lhs, stab);
-	}
-
-	/* pull qualifiers from the struct to the member */
-	e->tree_type = type_qualify(
-			e->bits.struct_mem.d->ref,
-			type_qual(e->lhs->tree_type));
+	attribute_array_release(&struct_attr);
 }
 
-static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
+const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 {
 	const out_val *struct_exp, *off;
-
-	ASSERT_NOT_DOT();
 
 	/* cast for void* arithmetic */
 
@@ -142,7 +147,7 @@ static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 					type_nav_btype(cc1_type_nav, type_intptr_t),
 					struct_offset(e)));
 
-	if(fopt_mode & FOPT_VERBOSE_ASM)
+	if(cc1_fopt.verbose_asm)
 		out_comment(octx, "struct member %s", e->bits.struct_mem.d->spel);
 
 
@@ -158,7 +163,11 @@ static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 			unsigned w = const_fold_val_i(d->bits.var.field_width);
 
 			off = out_set_bitfield(
-					octx, off, d->bits.var.struct_offset_bitfield, w);
+					octx,
+					off,
+					d->bits.var.struct_offset_bitfield,
+					w,
+					d->bits.var.bitfield_master_ty);
 
 			out_comment(octx, "struct bitfield lea");
 		}
@@ -167,73 +176,84 @@ static const out_val *gen_expr_struct_lea(expr *e, out_ctx *octx)
 	return off;
 }
 
-const out_val *gen_expr_struct(expr *e, out_ctx *octx)
+void dump_expr_struct(const expr *e, dump *ctx)
 {
-	ASSERT_NOT_DOT();
+	dump_desc_expr_newline(ctx, "member-access", e, 0);
 
-	return out_deref(octx, gen_expr_struct_lea(e, octx));
-}
+	dump_printf_indent(ctx, 0, " %s%s\n",
+			e->expr_is_st_dot ? "." : "->",
+			e->bits.struct_mem.d ? e->bits.struct_mem.d->spel : "<error>");
 
-const out_val *gen_expr_str_struct(expr *e, out_ctx *octx)
-{
-	decl *mem = e->bits.struct_mem.d;
-
-	idt_printf("struct/union member %s offset %d\n",
-			mem->spel, struct_offset(e));
-
-	if(mem->bits.var.field_width)
-		idt_printf("bitfield offset %u, width %u\n",
-				mem->bits.var.struct_offset_bitfield,
-				(unsigned)const_fold_val_i(mem->bits.var.field_width));
-
-	gen_str_indent++;
-	print_expr(e->lhs);
-	gen_str_indent--;
-
-	UNUSED_OCTX();
+	dump_inc(ctx);
+	dump_expr(e->lhs, ctx);
+	dump_dec(ctx);
 }
 
 static void fold_const_expr_struct(expr *e, consty *k)
 {
 	/* if lhs is NULL (or some pointer constant),
 	 * const fold to struct offset, (obv. if !dot, which is taken care of in fold) */
-	ASSERT_NOT_DOT();
-
 	const_fold(e->lhs, k);
+
+	if(!e->bits.struct_mem.d){
+		CONST_FOLD_NO(k, e);
+		return;
+	}
 
 	switch(k->type){
 		case CONST_NO:
-		case CONST_NEED_ADDR:
 		case CONST_STRK:
-			k->type = CONST_NO;
+			CONST_FOLD_NO(k, e);
 			break;
 
+		case CONST_NEED_ADDR:
 		case CONST_ADDR:
-			/* not constant unless addressed e.g. &a->b (unless array/func) */
-			k->type = CONST_ADDR_OR_NEED(e->bits.struct_mem.d);
-			/* don't touch k->bits.addr info */
+			/* a.b == (&a)->b, i.e. a.b wants a CONST_NEED_ADDR
+			 * a->b wants a CONST_ADDR
+			 */
+			if(k->type == (e->expr_is_st_dot ? CONST_NEED_ADDR : CONST_ADDR)){
+				/* not constant unless addressed e.g. &a->b (unless array/func) */
+				k->type = CONST_ADDR_OR_NEED(e->bits.struct_mem.d);
+				/* don't touch k->bits.addr info */
 
-			/* obviously we offset this */
-			k->offset += struct_offset(e);
+				/* obviously we offset this */
+				k->offset += struct_offset(e);
+			}else{
+				k->type = CONST_NO;
+			}
 			break;
 
 		case CONST_NUM:
-			k->type = CONST_NEED_ADDR; /* e.g. &((A *)0)->b */
-
-			/* convert the val to a memaddr */
-			/* read num.val before we clobber it */
-			k->bits.addr.bits.memaddr = k->bits.num.val.i + struct_offset(e);
-			k->offset = 0;
-
-			k->bits.addr.is_lbl = 0;
+			ICE("const expr struct - address expected");
 			break;
 	}
+}
+
+static enum lvalue_kind struct_is_lval(expr *e)
+{
+	if(e->expr_is_st_dot){
+		/* we're only an lvalue if our subexpression is a
+		 * non-internal/C-standard lvalue.
+		 *
+		 * unless we're being checked internally, in which
+		 * case we want lval2rval decay - hence yes
+		 */
+		return expr_is_lval(e->lhs);
+	}else{
+		return LVALUE_USER_ASSIGNABLE;
+	}
+}
+
+static int expr_struct_has_sideeffects(const expr *e)
+{
+	return expr_has_sideeffects(e->lhs);
 }
 
 void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
-	e->f_lea = gen_expr_struct_lea;
+	e->f_islval = struct_is_lval;
+	e->f_has_sideeffects = expr_struct_has_sideeffects;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;
@@ -258,7 +278,7 @@ expr *expr_new_struct_mem(expr *sub, int dot, decl *d)
 	return e;
 }
 
-const out_val *gen_expr_style_struct(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_struct(const expr *e, out_ctx *octx)
 {
 	IGNORE_PRINTGEN(gen_expr(e->lhs, octx));
 	stylef("->%s", e->bits.struct_mem.d->spel);

@@ -10,9 +10,9 @@ const char *str_expr__Generic()
 	return "_Generic";
 }
 
-static const out_val *generic_lea(expr *e, out_ctx *octx)
+static enum lvalue_kind is_lval_generic(expr *e)
 {
-	return lea_expr(e->bits.generic.chosen->e, octx);
+	return expr_is_lval(e->bits.generic.chosen->e);
 }
 
 void fold_expr__Generic(expr *e, symtable *stab)
@@ -22,14 +22,14 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 	def = NULL;
 
-	FOLD_EXPR(e->expr, stab);
+	fold_expr_nodecay(e->expr, stab);
 	/* strip top level qualifiers */
 	expr_ty = type_skip_all(e->expr->tree_type);
 
 	for(i = e->bits.generic.list; i && *i; i++){
 		struct generic_lbl **j, *l = *i;
 
-		fold_expr_no_decay(l->e, stab);
+		fold_expr_nodecay(l->e, stab);
 
 		/* duplicate default checked below */
 		for(j = i + 1; *j; j++){
@@ -50,32 +50,16 @@ void fold_expr__Generic(expr *e, symtable *stab)
 
 
 		if(l->t){
-			enum { OKAY, INCOMPLETE, VARIABLE, FUNC } prob = OKAY;
-			const char *sprob;
+			const char *sprob = NULL;
 
 			fold_type(l->t, stab);
 
 			if(!type_is_complete(l->t))
-				prob = INCOMPLETE;
+				sprob = "incomplete";
 			else if(type_is_variably_modified(l->t))
-				prob = VARIABLE;
+				sprob = "variably-modified";
 			else if(type_is_func_or_block(l->t))
-				prob = FUNC;
-
-			switch(prob){
-				case INCOMPLETE:
-					sprob = "incomplete";
-					break;
-				case VARIABLE:
-					sprob = "variably-modified";
-					break;
-				case FUNC:
-					sprob = "function";
-					break;
-				case OKAY:
-					sprob = NULL;
-					break;
-			}
+				sprob = "function";
 
 			if(sprob){
 				fold_had_error = 1;
@@ -124,8 +108,7 @@ void fold_expr__Generic(expr *e, symtable *stab)
 		}
 	}
 
-	if(expr_is_lval(e->bits.generic.chosen->e))
-		e->f_lea = generic_lea;
+	e->f_islval = is_lval_generic;
 
 	e->tree_type = e->bits.generic.chosen->e->tree_type;
 
@@ -133,45 +116,35 @@ void fold_expr__Generic(expr *e, symtable *stab)
 	memcpy_safe(&e->where, &e->bits.generic.chosen->e->where);
 }
 
-const out_val *gen_expr__Generic(expr *e, out_ctx *octx)
+const out_val *gen_expr__Generic(const expr *e, out_ctx *octx)
 {
 	return gen_expr(e->bits.generic.chosen->e, octx);
 }
 
-const out_val *gen_expr_str__Generic(expr *e, out_ctx *octx)
+void dump_expr__Generic(const expr *e, dump *ctx)
 {
 	struct generic_lbl **i;
 
-	idt_printf("_Generic expr:\n");
-	gen_str_indent++;
-	print_expr(e->expr);
-	gen_str_indent--;
+	dump_desc_expr(ctx, "generic selection", e);
+	dump_inc(ctx);
+	dump_expr(e->expr, ctx);
+	dump_dec(ctx);
 
-	idt_printf("_Generic choices:\n");
-	gen_str_indent++;
+	dump_inc(ctx);
 	for(i = e->bits.generic.list; i && *i; i++){
 		struct generic_lbl *l = *i;
 
-		if(e->bits.generic.chosen == l)
-			idt_printf("[Chosen]\n");
-
+		dump_inc(ctx);
 		if(l->t){
-			idt_printf("type: ");
-			gen_str_indent++;
-			print_type(l->t, NULL);
-			gen_str_indent--;
-			fprintf(gen_file(), "\n");
+			dump_printf(ctx, "%s:\n", type_to_str(l->t));
 		}else{
-			idt_printf("default:\n");
+			dump_printf(ctx, "default:\n");
 		}
-		idt_printf("expr:\n");
-		gen_str_indent++;
-		print_expr(l->e);
-		gen_str_indent--;
-	}
-	gen_str_indent--;
 
-	UNUSED_OCTX();
+		dump_expr(l->e, ctx);
+		dump_dec(ctx);
+	}
+	dump_dec(ctx);
 }
 
 static void const_expr__Generic(expr *e, consty *k)
@@ -179,16 +152,24 @@ static void const_expr__Generic(expr *e, consty *k)
 	/* we're const if our chosen expr is */
 	if(!e->bits.generic.chosen){
 		UCC_ASSERT(fold_had_error, "_Generic const check before fold");
-		k->type = CONST_NO;
+		CONST_FOLD_NO(k, e);
 		return;
 	}
 
 	const_fold(e->bits.generic.chosen->e, k);
 }
 
+static int expr__Generic_has_sideeffects(const expr *e)
+{
+	struct generic_lbl *sub = e->bits.generic.chosen;
+	assert(sub);
+	return expr_has_sideeffects(sub->e);
+}
+
 void mutate_expr__Generic(expr *e)
 {
 	e->f_const_fold = const_expr__Generic;
+	e->f_has_sideeffects = expr__Generic_has_sideeffects;
 }
 
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls)
@@ -199,7 +180,7 @@ expr *expr_new__Generic(expr *test, struct generic_lbl **lbls)
 	return e;
 }
 
-const out_val *gen_expr_style__Generic(expr *e, out_ctx *octx)
+const out_val *gen_expr_style__Generic(const expr *e, out_ctx *octx)
 {
 	struct generic_lbl **i;
 
@@ -209,8 +190,7 @@ const out_val *gen_expr_style__Generic(expr *e, out_ctx *octx)
 	for(i = e->bits.generic.list; i && *i; i++){
 		struct generic_lbl *l = *i;
 
-		idt_printf("%s: ",
-				l->t ? type_to_str(l->t) : "default");
+		printf("%s: ", l->t ? type_to_str(l->t) : "default");
 
 		IGNORE_PRINTGEN(gen_expr(l->e, octx));
 	}

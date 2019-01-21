@@ -11,6 +11,9 @@
 
 #include "c_types.h"
 
+#include "ops/expr_val.h"
+#include "ops/expr_sizeof.h"
+
 type *c_types_make_va_list(symtable *symtab)
 {
 	/* pointer to struct __builtin_va_list */
@@ -18,6 +21,10 @@ type *c_types_make_va_list(symtable *symtab)
 	sue_member **sue_members = NULL;
 
 	type *void_ptr = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+
+	expr *e_one = expr_compiler_generated(expr_new_val(1));
+
+	FOLD_EXPR(e_one, symtab);
 
 	/*
 	unsigned int gp_offset;
@@ -45,20 +52,25 @@ type *c_types_make_va_list(symtable *symtab)
 
 	/* typedef struct __va_list_struct __builtin_va_list[1]; */
 	{
+		where locn = { 0 };
+
+		struct_union_enum_st *sue = sue_predeclare(
+				symtab, ustrdup("__va_list_struct"), type_struct, &locn);
+
 		type *va_list_struct = type_nav_suetype(
 				cc1_type_nav,
-				sue_decl(NULL, ustrdup("__va_list_struct"),
-					sue_members, type_struct, 1, 1, NULL));
-
+				sue);
 
 		type *builtin_ar = type_array_of(
 				va_list_struct,
-				expr_new_val(1));
+				e_one);
 
 		decl *typedef_decl = decl_new_ty_sp(
 				builtin_ar, ustrdup("__builtin_va_list"));
 
-		expr *sz = expr_new_sizeof_type(builtin_ar, 1);
+		expr *sz = expr_compiler_generated(expr_new_sizeof_type(builtin_ar, 1));
+
+		sue_define(sue, sue_members);
 
 		fold_decl_global(typedef_decl, symtab);
 		FOLD_EXPR(sz, symtab);

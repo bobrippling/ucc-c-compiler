@@ -20,6 +20,7 @@ struct out_val
 	unsigned retains;
 
 	type *t;
+	out_blk *phiblock; /* nonnull only for phi values, reference to originating block */
 
 	union
 	{
@@ -56,12 +57,13 @@ struct out_val
 		{
 			const char *str;
 			long offset;
-			int pic;
+			enum out_pic_type pic_type;
 		} lbl;
 	} bits;
 
 	struct vbitfield
 	{
+		type *master_ty;
 		unsigned short off, nbits;
 	} bitfield; /* !!width iif bitfield */
 	unsigned char flags;
@@ -102,5 +104,7 @@ void out_val_overwrite(out_val *d, const out_val *s);
 void v_decay_flags_except(out_ctx *octx, const out_val *except[]);
 void v_decay_flags_except1(out_ctx *octx, const out_val *except);
 void v_decay_flags(out_ctx *octx);
+
+void v_try_stack_reclaim(out_ctx *octx);
 
 #endif

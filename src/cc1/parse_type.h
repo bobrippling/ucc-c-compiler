@@ -19,6 +19,10 @@ enum decl_multi_mode
 	DECL_MULTI_ALLOW_STORE        = 1 << 4,
 	DECL_MULTI_NAMELESS           = 1 << 5,
 	DECL_MULTI_ALLOW_ALIGNAS      = 1 << 6,
+	DECL_MULTI_IS_OLD_ARGS        = 1 << 7,
+
+	/* another name for field-width, for documentation/checking */
+	DECL_MULTI_IS_STRUCT_UN_MEMB  = DECL_MULTI_ACCEPT_FIELD_WIDTH
 };
 
 
@@ -40,9 +44,9 @@ int parse_decl_group(
 
 struct funcargs *parse_func_arglist(symtable *);
 
-int parse_at_decl(symtable *scope);
+int parse_at_decl(symtable *scope, int include_attribute);
 
-void parse_add_attr(attribute **append, symtable *scope);
+void parse_add_attr(attribute ***append, symtable *scope);
 
 type **parse_type_list(symtable *scope);
 

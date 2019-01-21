@@ -32,14 +32,16 @@ static void link_gasms(symtable_gasm ***plast_gasms, decl *prev)
 	for(i = *plast_gasms; i && *i; i++)
 		(*i)->before = prev;
 
-	dynarray_free(symtable_gasm **, plast_gasms, NULL);
+	dynarray_free(symtable_gasm **, *plast_gasms, NULL);
 }
 
 static int parse_add_gasms(symtable_gasm ***plast_gasms)
 {
 	int r = 0;
 	while(accept(token_asm)){
-		dynarray_add(plast_gasms, parse_gasm());
+		symtable_gasm *g = parse_gasm();
+		if(g)
+			dynarray_add(plast_gasms, g);
 		r = 1;
 	}
 	return r;
@@ -74,7 +76,7 @@ int parse_and_fold(symtable_global *globals)
 			for(di = new; di && *di; di++)
 				fold_decl_global(*di, &globals->stab);
 
-			dynarray_free(decl **, &new, NULL);
+			dynarray_free(decl **, new, NULL);
 
 			cont = 1;
 		}
@@ -82,8 +84,10 @@ int parse_and_fold(symtable_global *globals)
 		cont |= parse_add_gasms(&last_gasms);
 		dynarray_add_array(&globals->gasms, last_gasms);
 
-		while(accept_where(token_semicolon, &semi))
-			cc1_warn_at(NULL, parse_extra_semi, "extra ';' at global scope");
+		while(accept_where(token_semicolon, &semi)){
+			cc1_warn_at(&semi, parse_extra_semi, "extra ';' at global scope");
+			cont = 1;
+		}
 
 		if(!cont)
 			break;
@@ -99,7 +103,7 @@ int parse_and_fold(symtable_global *globals)
 
 	fold_merge_tenatives(&globals->stab);
 
-	dynarray_free(symtable_gasm **, &last_gasms, NULL);
+	dynarray_free(symtable_gasm **, last_gasms, NULL);
 
 	UCC_ASSERT(!globals->stab.parent, "scope leak during parse");
 

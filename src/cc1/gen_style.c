@@ -79,6 +79,6 @@ void gen_style(symtable_global *stab)
 {
 	decl **i;
 
-	for(i = stab->stab.decls; i && *i; i++)
+	for(i = symtab_decls(&stab->stab); i && *i; i++)
 		gen_style_decl(*i);
 }

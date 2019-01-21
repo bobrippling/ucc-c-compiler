@@ -49,17 +49,6 @@
  * variadic logic is in impl_func_prologue_save_variadic
  */
 
-void out_dbg_label(out_ctx *octx, const char *lbl)
-{
-	out_blk *blk = octx->current_blk;
-	if(!blk){
-		assert(octx->last_used_blk);
-		blk = octx->last_used_blk;
-	}
-	out_dbg_flush(octx, blk);
-	blk_add_insn(blk, ustrprintf("%s:\n", lbl));
-}
-
 out_ctx *out_ctx_new(void)
 {
 	out_ctx *ctx = umalloc(sizeof *ctx);
@@ -76,18 +65,7 @@ void **out_user_ctx(out_ctx *octx)
 	return &octx->userctx;
 }
 
-size_t out_expr_stack(out_ctx *octx)
-{
-	out_val_list *l;
-	size_t retains = 0;
-
-	OCTX_ITER_VALS(octx, l)
-		retains += l->val.retains;
-
-	return retains;
-}
-
-void out_dump_retained(out_ctx *octx, const char *desc)
+int out_dump_retained(out_ctx *octx, const char *desc)
 {
 	out_val_list *l;
 	int done_desc = 0;
@@ -101,13 +79,16 @@ void out_dump_retained(out_ctx *octx, const char *desc)
 			done_desc = 1;
 		}
 
-		fprintf(stderr, "retained(%d) %s { %d %d } %p\n",
+		fprintf(stderr, "retained(%d) %s { %d %d } %s%p\n",
 				l->val.retains,
 				v_store_to_str(l->val.type),
 				l->val.bits.regoff.reg.is_float,
 				l->val.bits.regoff.reg.idx,
+				l->val.phiblock ? "(phi) " : "",
 				(void *)&l->val);
 	}
+
+	return done_desc;
 }
 
 void out_comment(out_ctx *octx, const char *fmt, ...)
@@ -118,20 +99,31 @@ void out_comment(out_ctx *octx, const char *fmt, ...)
 	va_end(l);
 }
 
+const char *out_val_str(const out_val *v, int deref)
+{
+	return impl_val_str(v, deref);
+}
+
 const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normalise_bool)
 {
-	type *const from = val->t;
+	type *from = val->t;
 	char fp[2];
 
 	switch(val->type){
 		case V_REG:
-		case V_REG_SPILT:
 			if(val->bits.regoff.offset
 			&& type_size(val->t, NULL) != type_size(to, NULL))
 			{
 				/* must apply the offset in the current type */
 				val = v_reg_apply_offset(octx, val);
 			}
+			break;
+
+		case V_REG_SPILT:
+			/* must load the value for a sensible conversion */
+			val = v_to_reg(octx, val);
+			break;
+
 		default:
 			break;
 	}
@@ -146,6 +138,10 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 			out_comment(octx, "out_cast done via normalise");
 			return val;
 		}
+
+		/* val may have changed type, e.g. float -> _Bool.
+		 * update `from' */
+		from = val->t;
 	}
 
 	fp[0] = type_is_floating(from);
@@ -215,6 +211,7 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 	int is_fp;
 	struct vbitfield bf = target->bitfield;
 	const out_val *dval;
+	int done_out_deref;
 
 	/* if the pointed-to object is not an lvalue, don't deref */
 	if(type_is(tnext, type_array)
@@ -229,8 +226,14 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 
 	v_unused_reg(octx, 1, is_fp, &reg_store, target);
 
-	dval = impl_deref(octx, target, reg);
-	if(bf.nbits)
+	if(bf.nbits){
+		/* need to ensure we load using the bitfield's master type */
+		target = out_cast(octx, target, type_ptr_to(bf.master_ty), 0);
+	}
+
+	dval = impl_deref(octx, target, reg, &done_out_deref);
+
+	if(bf.nbits && !done_out_deref)
 		dval = out_bitfield_to_scalar(octx, &bf, dval);
 
 	return dval;
@@ -252,6 +255,8 @@ const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 		case V_CONST_F:
 			normalised->bits.val_i = !!normalised->bits.val_f;
 			normalised->type = V_CONST_I;
+			/* float to int - change .t */
+			normalised->t = type_nav_btype(cc1_type_nav, type__Bool);
 			break;
 
 		default:
@@ -275,12 +280,14 @@ const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 
 const out_val *out_set_bitfield(
 		out_ctx *octx, const out_val *val,
-		unsigned off, unsigned nbits)
+		unsigned off, unsigned nbits,
+		type *master_ty)
 {
 	out_val *mut = v_dup_or_reuse(octx, val, val->t);
 
 	mut->bitfield.off = off;
 	mut->bitfield.nbits = nbits;
+	mut->bitfield.master_ty = master_ty;
 
 	return mut;
 }
@@ -293,4 +300,13 @@ void out_store(out_ctx *octx, const out_val *dest, const out_val *val)
 	}
 
 	impl_store(octx, dest, val);
+}
+
+void out_force_read(out_ctx *octx, type *ty, const out_val *v)
+{
+	/* must read */
+	const out_val *target = out_aalloct(octx, ty);
+
+	out_val_consume(octx,
+			out_memcpy(octx, target, v, type_size(ty, NULL)));
 }

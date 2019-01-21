@@ -14,20 +14,26 @@
 #include "funcargs.h"
 #include "type_is.h"
 #include "warn.h"
+#include "str.h"
 
 #include "format_chk.h"
+
+#include "ops/expr_if.h"
 
 enum printf_attr
 {
 	printf_attr_long = 1 << 0,
 	printf_attr_llong = 1 << 1,
-	printf_attr_size_t = 1 << 2
+	printf_attr_size_t = 1 << 2,
+	printf_attr_ptrdiff_t = 1 << 3
 };
 
 static const char *printf_attr_to_str(enum printf_attr attr)
 {
 	if(attr & printf_attr_size_t)
 		return "z";
+	if(attr & printf_attr_ptrdiff_t)
+		return "t";
 	if(attr & printf_attr_llong)
 		return "ll";
 	if(attr & printf_attr_long)
@@ -42,9 +48,24 @@ static void warn_printf_attr(char fmt, where *w, enum printf_attr attr)
 			printf_attr_to_str(attr), fmt);
 }
 
+static int attr_check(
+		enum printf_attr attr, enum printf_attr mask,
+		enum type_primitive primitive, type *ty,
+		char expected[BTYPE_STATIC_BUFSIZ], const char *str)
+{
+	int present = !!(attr & mask);
+
+	if(present && !type_is_primitive_anysign(ty, primitive))
+		strcpy(expected, str);
+
+	return present;
+}
+
 static void format_check_printf_1(char fmt, type *const t_in,
 		where *loc_expr, where *loc_str, enum printf_attr attr)
 {
+	unsigned char *const default_warningp = &cc1_warning.attr_printf_bad;
+	unsigned char *warningp = default_warningp;
 	char expected[BTYPE_STATIC_BUFSIZ];
 
 	expected[0] = '\0';
@@ -53,15 +74,33 @@ static void format_check_printf_1(char fmt, type *const t_in,
 		enum type_primitive prim;
 		type *tt;
 
+		case 'p':
+			prim = type_void;
+
+			if(cc1_warning.attr_printf_voidp){
+				/* strict %p / void* check - emitted with voidp flag */
+				warningp = &cc1_warning.attr_printf_voidp;
+			}else{
+				/* allow any* */
+				if(type_is_ptr(t_in))
+					break;
+
+				/* not a pointer - emit with the default-warning flag */
+			}
+			goto ptr;
+
 		case 's': prim = type_nchar; goto ptr;
-		case 'p': prim = type_void; goto ptr;
 		case 'n': prim = type_int;  goto ptr;
 ptr:
 			tt = type_is_primitive_anysign(type_is_ptr(t_in), prim);
 			if(!tt){
+				if(prim == type_unknown)
+					prim = type_void;
+
 				snprintf(expected, sizeof expected,
 						"'%s *'", type_primitive_to_str(prim));
 			}else if(attr){
+				warningp = default_warningp;
 				warn_printf_attr(fmt, loc_str, attr);
 			}
 			break;
@@ -79,18 +118,31 @@ ptr:
 				strcpy(expected, "integral");
 				break;
 			}
-#define ATTR_CHECK(suff, str)                   \
-			if((attr & printf_attr_##suff)            \
-			&& !type_is_primitive_anysign(t_in, type_##suff)) \
-			{                                         \
-				strcpy(expected, str);                  \
+
+			if(attr & (printf_attr_size_t | printf_attr_ptrdiff_t)){
+				/* just do size checks for size_t, since it
+				 * could be long, or long-long */
+
+				if(type_size(t_in, loc_expr) != type_primitive_size(type_intptr_t))
+					strcpy(expected, "'size_t/intptr_t'");
+
+				break;
 			}
 
-			ATTR_CHECK(llong, "'long long'")
-			else
-			ATTR_CHECK(long, "'long'")
-			else
-			ATTR_CHECK(long, "'size_t'")
+			/* check %ld and %lld */
+#define ATTR_CHECK(suff, str) \
+			attr_check(attr, printf_attr_##suff, type_##suff, t_in, expected, str)
+
+			if(ATTR_CHECK(llong, "'long long'"))
+				break;
+			if(ATTR_CHECK(long, "'long'"))
+				break;
+
+#undef ATTR_CHECK
+
+			/* check int doesn't have anything greater */
+			if(!type_is_primitive_anysign(t_in, type_int))
+				strcpy(expected, "'int'");
 			break;
 
 		case 'e':
@@ -108,16 +160,22 @@ ptr:
 			break;
 
 		default:
-			cc1_warn_at(loc_str, attr_printf_unknown,
-					"unknown conversion character '%c' (0x%x)", fmt, fmt);
+			if(fmt){
+				cc1_warn_at(loc_str, attr_printf_unknown,
+						"unknown conversion character '%c' (0x%x)",
+						fmt, fmt);
+			}else{
+				cc1_warn_at(loc_str, attr_printf_bad,
+						"missing conversion character");
+			}
 			return;
 	}
 
 	if(*expected){
-		cc1_warn_at(loc_expr, attr_printf_bad,
+		cc1_warn_at_w(loc_expr, warningp,
 				"format %%%s%c expects %s argument (got %s)",
-				attr & printf_attr_long ? "l" : "", fmt,
-				expected, type_to_str(t_in));
+				attr & printf_attr_llong ? "ll" : attr & printf_attr_long ? "l" : "",
+				fmt, expected, type_to_str(t_in));
 	}
 }
 
@@ -145,7 +203,11 @@ static enum printf_attr printf_modifiers(
 			break;
 
 		case 'z':
-			attr |= printf_attr_size_t;
+		case 't':
+			attr |= (fmt[*index] == 'z'
+					? printf_attr_size_t
+					: printf_attr_ptrdiff_t);
+
 			++*index;
 			break;
 
@@ -212,6 +274,8 @@ static void format_check_printf_str(
 						&current_arg,
 						attr);
 				i++;
+				if(i >= len)
+					continue;
 			}
 
 			if(fmt[i] == '*'){
@@ -228,6 +292,9 @@ static void format_check_printf_str(
 			}
 		}
 	}
+
+	if(i > len)
+		i = len;
 
 	if(var_idx != -1 && (!fmt[i] || i == len) && *current_arg){
 		cc1_warn_at(&(*current_arg)->where, attr_printf_toomany,
@@ -277,9 +344,9 @@ not_string:
 			break;
 	}
 
-	{
-		const char *fmt = fmt_str->str;
-		const int   len = fmt_str->len - 1;
+	if(fmt_str->cstr->type != CSTRING_WIDE){
+		const char *fmt = fmt_str->cstr->bits.ascii;
+		const int   len = fmt_str->cstr->count - 1;
 
 		if(len <= 0)
 			;

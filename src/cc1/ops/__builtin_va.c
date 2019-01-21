@@ -14,6 +14,7 @@
 #include "../gen_asm.h"
 #include "../out/out.h"
 #include "../out/lbl.h"
+#include "../out/ctrl.h"
 #include "../pack.h"
 #include "../sue.h"
 #include "../funcargs.h"
@@ -27,8 +28,18 @@
 #include "../type_nav.h"
 
 #include "../parse_expr.h"
+#include "__builtin_va.h"
 
-static void va_type_check(expr *va_l, expr *in, symtable *stab)
+#include "../ops/expr_identifier.h"
+#include "../ops/expr_assign.h"
+#include "../ops/expr_struct.h"
+#include "../ops/expr_deref.h"
+#include "../ops/expr_val.h"
+#include "../ops/expr_op.h"
+#include "../ops/expr_funcall.h"
+
+static void va_type_check(
+		expr *va_l, expr *in, symtable *stab, int expect_decay)
 {
 	/* we need to check decayed, since we may have
 	 * f(va_list l)
@@ -36,13 +47,16 @@ static void va_type_check(expr *va_l, expr *in, symtable *stab)
 	 * f(__builtin_va_list *l) [the array has decayed]
 	 */
 	enum type_cmp cmp;
+	type *va_list_ty = type_nav_va_list(cc1_type_nav, stab);
 
 	if(!symtab_func(stab))
 		die_at(&in->where, "%s() outside a function",
 				BUILTIN_SPEL(in));
 
-	cmp = type_cmp(va_l->tree_type,
-			type_decay(type_nav_va_list(cc1_type_nav, stab)), 0);
+	if(expect_decay)
+		va_list_ty = type_decay(va_list_ty);
+
+	cmp = type_cmp(va_l->tree_type, va_list_ty, 0);
 
 	if(!(cmp & TYPE_EQUAL_ANY)){
 		die_at(&va_l->where,
@@ -69,20 +83,20 @@ static void fold_va_start(expr *e, symtable *stab)
 	va_l = e->funcargs[0];
 	fold_inc_writes_if_sym(va_l, stab);
 
-	FOLD_EXPR(e->funcargs[0], stab);
+	fold_expr_nodecay(e->funcargs[0], stab); /* prevent lval2rval */
 	FOLD_EXPR(e->funcargs[1], stab);
 
 	va_l = e->funcargs[0];
-	va_type_check(va_l, e->expr, stab);
+	va_type_check(va_l, e->expr, stab, 0);
 
 	va_ensure_variadic(e, stab);
 
 	/* second arg check */
 	{
 		sym *second = NULL;
-		decl **args = symtab_func_root(stab)->decls;
+		decl **args = symtab_decls(symtab_func_root(stab));
 		sym *arg = args[dynarray_count(args) - 1]->sym;
-		expr *last_exp = expr_skip_casts(e->funcargs[1]);
+		expr *last_exp = expr_skip_lval2rval(e->funcargs[1]);
 
 		if(expr_kind(last_exp, identifier))
 			second = last_exp->bits.ident.bits.ident.sym;
@@ -106,7 +120,8 @@ static void fold_va_start(expr *e, symtable *stab)
 #define ADD_ASSIGN(memb, exp)                     \
 		assign = W(expr_new_assign(                   \
 		        W(expr_new_struct(                    \
-		          va_l, 0 /* ->  since it's [1] */,   \
+		          expr_new_deref(va_l),               \
+		             1 /* ->  since it's *(exp) */,   \
 		            W(expr_new_identifier(memb)))),   \
 		        exp));                                \
                                                   \
@@ -133,13 +148,7 @@ static void fold_va_start(expr *e, symtable *stab)
 		ADD_ASSIGN_VAL("fp_offset", (6 + nargs.fp) * ws);
 		/* FIXME: x86_64::N_CALL_REGS_I reference above */
 
-		/* adjust to take the skip into account */
-		ADD_ASSIGN("reg_save_area",
-				W(expr_new_op2(op_minus,
-					W(builtin_new_reg_save_area()),
-					/* void arith - need _pws
-					 * total arg count * ws */
-					W(expr_new_val((nargs.gp + nargs.fp) * ws)))));
+		ADD_ASSIGN("reg_save_area", W(builtin_new_reg_save_area()));
 
 		ADD_ASSIGN("overflow_arg_area",
 				W(expr_new_op2(op_plus,
@@ -159,7 +168,7 @@ static void fold_va_start(expr *e, symtable *stab)
 	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
-static const out_val *builtin_gen_va_start(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_va_start(const expr *e, out_ctx *octx)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -191,12 +200,12 @@ expr *parse_va_start(const char *ident, symtable *scope)
 	 */
 	expr *fcall = parse_any_args(scope);
 	(void)ident;
-	expr_mutate_builtin_gen(fcall, va_start);
+	expr_mutate_builtin(fcall, va_start);
 	return fcall;
 }
 
 static const out_val *va_arg_gen_read(
-		expr *const e,
+		const expr *const e,
 		out_ctx *const octx,
 		type *const ty,
 		decl *const offset_decl, /* varies - float or integral */
@@ -233,8 +242,16 @@ static const out_val *va_arg_gen_read(
 			type_ptr_to(valist_off_ty));
 
 	out_val_retain(octx, gpoff_addr);
+
 	gpoff_val = out_deref(octx, gpoff_addr);
 
+
+	/* gpoff_val, gpoff_addr and valist live across blocks, but don't need to be
+	 * spilt because we look after them and ensure they remain alive/valid and
+	 * not clobbered (whether because of a function call or register pressure) */
+	gpoff_val = out_val_blockphi_make(octx, gpoff_val, NULL);
+	gpoff_addr = out_val_blockphi_make(octx, gpoff_addr, NULL);
+	valist = out_val_blockphi_make(octx, valist, NULL);
 
 	out_val_retain(octx, gpoff_val);
 	out_ctrl_branch(
@@ -284,7 +301,7 @@ static const out_val *va_arg_gen_read(
 					gpoff_val, /* promote from unsigned to long/intptr_t */
 					type_ptr_to(ty_long)));
 
-		out_ctrl_transfer(octx, blk_fin, reg_save_area_value, &blk_reg);
+		out_ctrl_transfer(octx, blk_fin, reg_save_area_value, &blk_reg, 1);
 	}
 
 	/* stack code */
@@ -315,7 +332,7 @@ static const out_val *va_arg_gen_read(
 					out_change_type(octx, out_deref(octx, overflow_addr), voidp),
 					out_new_l(octx, valist_off_ty, ws)));
 
-		out_ctrl_transfer(octx, blk_fin, overflow_val, &blk_stack);
+		out_ctrl_transfer(octx, blk_fin, overflow_val, &blk_stack, 1);
 	}
 
 	out_current_blk(octx, blk_fin);
@@ -328,7 +345,7 @@ static const out_val *va_arg_gen_read(
 				type_ptr_to(ty)));
 }
 
-static const out_val *builtin_gen_va_arg(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_va_arg(const expr *e, out_ctx *octx)
 {
 #ifdef UCC_VA_ABI
 	/*
@@ -480,19 +497,27 @@ static void fold_va_arg(expr *e, symtable *stab)
 {
 	type *const ty = e->bits.va_arg_type;
 	type *to;
+	const char *warning = NULL;
 
 	FOLD_EXPR(e->lhs, stab);
 	fold_type(ty, stab);
 
-	va_type_check(e->lhs, e->expr, stab);
+	va_type_check(e->lhs, e->expr, stab, 1);
 
 	if(type_is_promotable(ty, &to)){
+		warning = "";
+	}else if(type_is_enum(ty)){
+		warning = "when enums are short ";
+		to = type_nav_btype(cc1_type_nav, type_int);
+	}
+
+	if(warning){
 		char tbuf[TYPE_STATIC_BUFSIZ];
 
 		cc1_warn_at(&e->where,
 				builtin_va_arg,
-				"va_arg(..., %s) has undefined behaviour - promote to %s",
-				type_to_str(ty), type_to_str_r(tbuf, to));
+				"va_arg(..., %s) has undefined behaviour %s- promote to %s",
+				type_to_str(ty), warning, type_to_str_r(tbuf, to));
 	}
 
 	e->tree_type = ty;
@@ -520,14 +545,14 @@ expr *parse_va_arg(const char *ident, symtable *scope)
 	fcall->lhs = list;
 	fcall->bits.va_arg_type = ty;
 
-	expr_mutate_builtin_gen(fcall, va_arg);
+	expr_mutate_builtin(fcall, va_arg);
 
 	return fcall;
 }
 
-static const out_val *builtin_gen_va_end(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_va_end(const expr *e, out_ctx *octx)
 {
-	(void)e;
+	out_val_release(octx, gen_expr(e->funcargs[0], octx));
 	return out_new_noop(octx);
 }
 
@@ -537,7 +562,7 @@ static void fold_va_end(expr *e, symtable *stab)
 		die_at(&e->where, "%s requires one argument", BUILTIN_SPEL(e->expr));
 
 	FOLD_EXPR(e->funcargs[0], stab);
-	va_type_check(e->funcargs[0], e->expr, stab);
+	va_type_check(e->funcargs[0], e->expr, stab, 1);
 
 	/*va_ensure_variadic(e, stab); - va_end can be anywhere */
 
@@ -549,11 +574,11 @@ expr *parse_va_end(const char *ident, symtable *scope)
 	expr *fcall = parse_any_args(scope);
 
 	(void)ident;
-	expr_mutate_builtin_gen(fcall, va_end);
+	expr_mutate_builtin(fcall, va_end);
 	return fcall;
 }
 
-static const out_val *builtin_gen_va_copy(expr *e, out_ctx *octx)
+static const out_val *builtin_gen_va_copy(const expr *e, out_ctx *octx)
 {
 	return gen_expr(e->lhs, octx);
 }
@@ -567,7 +592,7 @@ static void fold_va_copy(expr *e, symtable *stab)
 
 	for(i = 0; i < 2; i++){
 		FOLD_EXPR(e->funcargs[i], stab);
-		va_type_check(e->funcargs[i], e->expr, stab);
+		va_type_check(e->funcargs[i], e->expr, stab, 1);
 	}
 
 	/* (*a) = (*b) */
@@ -585,6 +610,6 @@ expr *parse_va_copy(const char *ident, symtable *scope)
 {
 	expr *fcall = parse_any_args(scope);
 	(void)ident;
-	expr_mutate_builtin_gen(fcall, va_copy);
+	expr_mutate_builtin(fcall, va_copy);
 	return fcall;
 }

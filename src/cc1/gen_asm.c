@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/dynarray.h"
@@ -21,12 +22,22 @@
 #include "type_is.h"
 #include "out/dbg.h"
 #include "gen_asm.h"
+#include "gen_asm_ctors.h"
 #include "out/out.h"
 #include "out/lbl.h"
 #include "out/asm.h"
 #include "gen_style.h"
 #include "out/val.h"
 #include "out/ctx.h"
+#include "cc1_out_ctx.h"
+#include "inline.h"
+#include "type_nav.h"
+#include "label.h"
+#include "fopt.h"
+
+#include "ops/expr_funcall.h"
+
+int gen_had_error;
 
 #include "type_nav.h"
 #include "funcargs.h"
@@ -36,13 +47,13 @@ void IGNORE_PRINTGEN(const out_val *v)
 	(void)v;
 }
 
-const out_val *gen_expr(expr *e, out_ctx *octx)
+const out_val *gen_expr(const expr *e, out_ctx *octx)
 {
 	consty k;
 
 	/* always const_fold functions, i.e. builtins */
-	if(expr_kind(e, funcall) || fopt_mode & FOPT_CONST_FOLD)
-		const_fold(e, &k);
+	if(expr_kind(e, funcall) || cc1_fopt.const_fold)
+		const_fold((expr *)e, &k);
 	else
 		k.type = CONST_NO;
 
@@ -61,20 +72,7 @@ const out_val *gen_expr(expr *e, out_ctx *octx)
 	}
 }
 
-const out_val *lea_expr(expr *e, out_ctx *octx)
-{
-	char buf[WHERE_BUF_SIZ];
-
-	UCC_ASSERT(e->f_lea,
-			"invalid store expression expr-%s @ %s (no f_lea())",
-			e->f_str(), where_str_r(buf, &e->where));
-
-	out_dbg_where(octx, &e->where);
-
-	return e->f_lea(e, octx);
-}
-
-void gen_stmt(stmt *t, out_ctx *octx)
+void gen_stmt(const stmt *t, out_ctx *octx)
 {
 	if(octx) /* for other backends */
 		out_dbg_where(octx, &t->where);
@@ -82,9 +80,7 @@ void gen_stmt(stmt *t, out_ctx *octx)
 	t->f_gen(t, octx);
 }
 
-static void assign_arg_offsets(
-		out_ctx *octx,
-		decl **decls, int const offsets[])
+static void assign_arg_vals(decl **decls, const out_val *argvals[], out_ctx *octx)
 {
 	unsigned i, j;
 
@@ -92,25 +88,50 @@ static void assign_arg_offsets(
 		sym *s = decls[i]->sym;
 
 		if(s && s->type == sym_arg){
-			if(fopt_mode & FOPT_VERBOSE_ASM)
-				out_comment(octx, "%s @ offset %d", s->decl->spel, offsets[j]);
+			gen_set_sym_outval(octx, s, argvals[j++]);
 
-			s->loc.arg_offset = offsets[j++];
+			if(cc1_fopt.verbose_asm){
+				out_comment(octx, "arg %s @ %s",
+						decls[i]->spel,
+						out_val_str(sym_outval(s), 1));
+			}
 		}
 	}
 }
 
-static void allocate_vla_args(
-		out_ctx *octx, symtable *arg_symtab, unsigned const auto_space)
+static void release_arg_vals(decl **decls, out_ctx *octx)
 {
-	unsigned current_off = auto_space;
+	unsigned i;
+
+	for(i = 0; decls && decls[i]; i++){
+		sym *s = decls[i]->sym;
+
+		if(s && s->type == sym_arg){
+			out_val_release(octx, sym_outval(s));
+			gen_set_sym_outval(octx, s, NULL);
+		}
+	}
+}
+
+void gen_vla_arg_sideeffects(decl *d, out_ctx *octx)
+{
+	type *decayed;
+
+	if((decayed = type_is_decayed_array(d->ref))
+	&& (decayed = type_is_vla(decayed, VLA_TOP_DIMENSION)))
+	{
+		out_val_consume(octx, gen_expr(decayed->bits.array.size, octx));
+	}
+}
+
+static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
+{
 	decl **i;
 
-	for(i = arg_symtab->decls; i && *i; i++){
+	for(i = symtab_decls(arg_symtab); i && *i; i++){
 		const out_val *dest, *src;
 		decl *d = *i;
-		type *decayed;
-		int orig_off;
+		unsigned vla_space;
 
 		/* generate side-effects even if it's decayed, e.g.
 		 * f(int p[E1][E2])
@@ -119,11 +140,7 @@ static void allocate_vla_args(
 		 *
 		 * we still want E1 generated
 		 */
-		if((decayed = type_is_decayed_array(d->ref))
-		&& (decayed = type_is_vla(decayed, VLA_TOP_DIMENSION)))
-		{
-			out_val_consume(octx, gen_expr(decayed->bits.array.size, octx));
-		}
+		gen_vla_arg_sideeffects(d, octx);
 
 		if(!type_is_variably_modified(d->ref))
 			continue;
@@ -134,20 +151,68 @@ static void allocate_vla_args(
 		 * don't touch the original pointer value, which is all it needs */
 		src = out_new_sym_val(octx, d->sym);
 
-		orig_off = d->sym->loc.arg_offset;
+		out_comment(octx, "move vla argument %s", d->spel);
 
-		current_off += vla_decl_space(d);
-		d->sym->loc.arg_offset = -(int)current_off - octx->stack_local_offset;
+		vla_space = vla_decl_space(d);
 
-		out_comment(octx, "move vla argument %s (%d -> %d)",
-				d->spel, orig_off, d->sym->loc.arg_offset);
+		out_val_release(octx, sym_outval(d->sym));
+		gen_set_sym_outval(octx, d->sym, out_aalloc(
+					octx, vla_space, type_align(d->ref, NULL), d->ref));
 
 		dest = out_new_sym(octx, d->sym);
 		out_store(octx, dest, src);
 
 
-		vla_alloc_decl(d, octx);
+		vla_decl_init(d, octx);
 	}
+}
+
+void gen_set_sym_outval(out_ctx *octx, sym *sym, const out_val *v)
+{
+	sym_setoutval(sym, v);
+
+	if(v && cc1_gdebug == DEBUG_FULL)
+		out_dbg_emit_decl(octx, sym->decl, v);
+}
+
+static int should_stack_protect(decl *d)
+{
+	unsigned bytes;
+	int addr_taken = 0;
+
+	assert(type_is(d->ref, type_func));
+
+	if(attribute_present(d, attr_no_stack_protector))
+		return 0;
+
+	if(cc1_fopt.stack_protector_all)
+		return 1;
+
+	if(!cc1_fopt.stack_protector)
+		return 0;
+
+	if(attribute_present(d, attr_stack_protect))
+		return 1;
+
+	/* calls alloca() [TODO] or has an array, or local variable whose address is taken */
+	bytes = symtab_decl_bytes(d->bits.func.code->symtab, 8, 1, &addr_taken);
+	return bytes >= 8 || addr_taken;
+}
+
+static void gen_profile(out_ctx *octx)
+{
+	type *mcount_ty = type_ptr_to(
+			type_func_of(
+				type_nav_btype(cc1_type_nav, type_void),
+				funcargs_new_void(),
+				NULL));
+	out_val *mcount = out_new_lbl(
+			octx,
+			mcount_ty,
+			"mcount", /* not subject to mangling */
+			OUT_LBL_PIC);
+
+	out_val_consume(octx, out_call(octx, mcount, NULL, mcount_ty));
 }
 
 static void gen_asm_global(decl *d, out_ctx *octx)
@@ -165,10 +230,8 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		int nargs = 0, is_vari;
 		decl **aiter;
 		const char *sp;
-		int *offsets;
+		const out_val **argvals;
 		symtable *arg_symtab;
-		unsigned arg_vla_space = 0;
-		unsigned auto_space;
 
 		if(!d->bits.func.code)
 			return;
@@ -176,65 +239,55 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 		out_dbg_where(octx, &d->where);
 
 		arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
-		for(aiter = arg_symtab->decls; aiter && *aiter; aiter++){
+		for(aiter = symtab_decls(arg_symtab); aiter && *aiter; aiter++){
 			decl *d = *aiter;
 
-			if(d->sym->type == sym_arg){
+			if(d->sym->type == sym_arg)
 				nargs++;
-
-				if(type_is_variably_modified(d->ref))
-					arg_vla_space += vla_decl_space(d);
-			}
 		}
 
-		offsets = nargs ? umalloc(nargs * sizeof *offsets) : NULL;
+		argvals = nargs ? umalloc(nargs * sizeof *argvals) : NULL;
 
 		sp = decl_asm_spel(d);
 
-		auto_space = d->bits.func.code->symtab->auto_total_size;
+		is_vari = type_is_variadic_func(d->ref);
 
 		out_func_prologue(octx, sp, d->ref,
-				auto_space + arg_vla_space,
-				nargs,
-				is_vari = type_is_variadic_func(d->ref),
-				offsets, &d->bits.func.var_offset);
+				nargs, is_vari,
+				should_stack_protect(d),
+				argvals);
 
-		assign_arg_offsets(octx, arg_symtab->decls, offsets);
+		assign_arg_vals(symtab_decls(arg_symtab), argvals, octx);
 
-		if(cc1_profileg){
-			type *voidty = type_nav_btype(cc1_type_nav, type_void);
-			funcargs *args = funcargs_new();
-			args->args_void = 1;
+		if(cc1_profileg)
+			gen_profile(octx);
 
-			out_flush_volatile(octx,
-					out_call(octx,
-						out_new_lbl(octx,
-							type_ptr_to(voidty),
-							"mcount", 0),
-						NULL,
-						type_ptr_to(
-							type_func_of(
-								voidty, args,
-								symtab_root(arg_symtab)))));
-		}
+		allocate_vla_args(octx, arg_symtab);
+		free(argvals), argvals = NULL;
 
-		allocate_vla_args(octx, arg_symtab, auto_space);
+		if(cc1_gdebug == DEBUG_FULL)
+			out_dbg_emit_args_done(octx, type_funcargs(d->ref));
 
-		gen_stmt(d->bits.func.code, octx);
+		gen_func_stmt(d->bits.func.code, octx);
 
-		out_dump_retained(octx, d->spel);
+		release_arg_vals(symtab_decls(arg_symtab), octx);
+
+		/* vla cleanup for an entire function - inlined
+		 * VLAs need to retain their uniqueness across inline calls */
+		vla_cleanup(octx);
+
+		label_cleanup(octx);
 
 		out_dbg_where(octx, &d->bits.func.code->where_cbrace);
 
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
-			int stack_used;
-			out_func_epilogue(octx, d->ref, end, &stack_used);
-			arg_symtab->stack_used = stack_used;
+			out_func_epilogue(octx, d->ref, &d->bits.func.code->where, end);
 			free(end);
 		}
 
-		free(offsets);
+		if(out_dump_retained(octx, d->spel))
+			gen_had_error = 1;
 
 		out_ctx_wipe(octx);
 
@@ -244,9 +297,59 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 	}
 }
 
+const out_val *gen_call(
+		expr *maybe_exp, decl *maybe_dfn,
+		const out_val *fnval,
+		const out_val **args, out_ctx *octx,
+		const where *loc)
+{
+	const char *whynot;
+	const out_val *fn_ret;
+
+	/* (re-)emit line location - function calls are commonly split
+	 * over multiple lines, so we want the debugger to stop again
+	 * on the top line when we're about to emit the call */
+	out_dbg_where(octx, loc);
+
+	fn_ret = inline_func_try_gen(
+			maybe_exp, maybe_dfn, fnval, args, octx, &whynot, loc);
+
+	if(fn_ret){
+		if(cc1_fopt.show_inlined)
+			note_at(loc, "function inlined");
+
+	}else{
+		const int always_inline = !!(maybe_exp
+			? expr_attr_present(maybe_exp, attr_always_inline)
+			: attribute_present(maybe_dfn, attr_always_inline));
+
+		if(always_inline){
+			warn_at_print_error(loc, "couldn't always_inline call: %s", whynot);
+
+			gen_had_error = 1;
+		}
+
+		fn_ret = out_call(octx, fnval, args,
+				maybe_exp ? maybe_exp->tree_type : type_ptr_to(maybe_dfn->ref));
+	}
+
+	return fn_ret;
+}
+
+const out_val *gen_decl_addr(out_ctx *octx, decl *d)
+{
+	const int via_got = decl_needs_GOTPLT(d);
+	enum out_pic_type picmode;
+
+	picmode = (FOPT_PIC(&cc1_fopt) ? OUT_LBL_PIC : OUT_LBL_NOPIC)
+		| (via_got ? 0 : OUT_LBL_PICLOCAL);
+
+	return out_new_lbl(octx, type_ptr_to(d->ref), decl_asm_spel(d), picmode);
+}
+
 static void gen_gasm(char *asm_str)
 {
-	fprintf(cc_out[SECTION_TEXT], "%s\n", asm_str);
+	asm_out_section(SECTION_TEXT, "%s\n", asm_str);
 }
 
 static void gen_stringlits(dynmap *litmap)
@@ -255,12 +358,44 @@ static void gen_stringlits(dynmap *litmap)
 	size_t i;
 	for(i = 0; (lit = dynmap_value(stringlit *, litmap, i)); i++)
 		if(lit->use_cnt > 0)
-			asm_declare_stringlit(SECTION_DATA, lit);
+			asm_declare_stringlit(SECTION_RODATA, lit);
+}
+
+void gen_asm_emit_type(out_ctx *octx, type *ty)
+{
+	/* for types that aren't on variables (e.g. in exprs),
+	 * that debug info may not find out about normally */
+	if(cc1_gdebug == DEBUG_FULL && type_is_s_or_u(ty))
+		out_dbg_emit_type(octx, ty);
 }
 
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
+	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
+	attribute *attr;
+
+	/* in map? */
+	if(cc1_octx && dynmap_exists(decl *, cc1_octx->generated_decls, d))
+		return;
+
+	/* add to map */
+	cc1_octx = cc1_out_ctx_or_new(octx);
+	if(!cc1_octx->generated_decls)
+		cc1_octx->generated_decls = dynmap_new(decl *, /*ref*/NULL, decl_hash);
+	(void)dynmap_set(decl *, int *, cc1_octx->generated_decls, d, (int *)NULL);
+
+	if(decl_asm_spel(d)){
+		if(!cc1_octx->spel_to_fndecl){
+			cc1_octx->spel_to_fndecl = dynmap_new(
+					const char *, strcmp, dynmap_strhash);
+		}
+
+		(void)dynmap_set(
+				const char *, decl *,
+				cc1_octx->spel_to_fndecl,
+				decl_asm_spel(d), d);
+	}
 
 	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		case store_inline:
@@ -283,29 +418,22 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		asm_predeclare_weak(d);
 		emitted_type = 1;
 	}
+	if((attr = attribute_present(d, attr_alias))){
+		assert(attr->type == attr_alias);
+		assert(!decl_defined(d, 0));
+		asm_declare_alias(d, attr->bits.alias);
+	}
 
 	if(type_is(d->ref, type_func)){
-		if(d->store & store_inline){
-			/*
-			 * inline semantics
-			 *
-			 * "" = inline only
-			 * "static" = code emitted, decl is static
-			 * "extern" mentioned, or "inline" not mentioned = code emitted, decl is extern
-			 */
-			if((d->store & STORE_MASK_STORE) == store_default){
-				/* inline only - emit an extern for it anyway */
-				if(!emitted_type)
-					asm_predeclare_extern(d);
-				return;
-			}
-		}
-
-		if(!d->bits.func.code){
+		if(!decl_should_emit_code(d)){
+			/* inline only gets extern emitted anyway */
 			if(!emitted_type)
 				asm_predeclare_extern(d);
 			return;
 		}
+
+		if(cc1_gdebug != DEBUG_OFF)
+			out_dbg_emit_func(octx, d);
 	}else{
 		/* variable - if there's no init,
 		 * it's tenative and not output
@@ -317,10 +445,16 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 				asm_predeclare_extern(d);
 			return;
 		}
+
+		if(cc1_gdebug == DEBUG_FULL)
+			out_dbg_emit_global_var(octx, d);
 	}
 
-	if(!emitted_type && (d->store & STORE_MASK_STORE) != store_static)
+	asm_predeclare_visibility(d);
+
+	if(!emitted_type && decl_linkage(d) == linkage_external)
 		asm_predeclare_global(d);
+
 	gen_asm_global(d, octx);
 }
 
@@ -329,13 +463,17 @@ void gen_asm(
 		const char *fname, const char *compdir,
 		struct out_dbg_filelist **pfilelist)
 {
+	decl **inits = NULL, **terms = NULL;
 	decl **diter;
 	struct symtable_gasm **iasm = globs->gasms;
 	out_ctx *octx = out_ctx_new();
 
 	*pfilelist = NULL;
 
-	for(diter = globs->stab.decls; diter && *diter; diter++){
+	if(cc1_gdebug != DEBUG_OFF)
+		out_dbg_begin(octx, &octx->dbg.file_head, fname, compdir, cc1_std);
+
+	for(diter = symtab_decls(&globs->stab); diter && *diter; diter++){
 		decl *d = *diter;
 
 		while(iasm && d == (*iasm)->before){
@@ -346,6 +484,13 @@ void gen_asm(
 		}
 
 		gen_asm_global_w_store(d, 0, octx);
+
+		if(type_is(d->ref, type_func) && d->bits.func.code){
+			if(attribute_present(d, attr_constructor))
+				dynarray_add(&inits, d);
+			if(attribute_present(d, attr_destructor))
+				dynarray_add(&terms, d);
+		}
 	}
 
 	for(; iasm && *iasm; ++iasm)
@@ -353,10 +498,16 @@ void gen_asm(
 
 	gen_stringlits(globs->literals);
 
-	if(cc1_gdebug && globs->stab.decls){
+	gen_inits_terms(inits, terms);
+	dynarray_free(decl **, inits, NULL);
+	dynarray_free(decl **, terms, NULL);
+
+	if(cc1_gdebug != DEBUG_OFF){
+		out_dbg_end(octx);
+
 		*pfilelist = octx->dbg.file_head;
-		out_dbginfo(globs, &octx->dbg.file_head, fname, compdir);
 	}
 
+	cc1_out_ctx_free(octx);
 	out_ctx_end(octx);
 }

@@ -29,7 +29,7 @@ void fold_stmt_goto(stmt *s)
 	}
 }
 
-void gen_stmt_goto(stmt *s, out_ctx *octx)
+void gen_stmt_goto(const stmt *s, out_ctx *octx)
 {
 	if(s->expr){
 		/* no idea whether we're leaving scope - don't do anything */
@@ -39,15 +39,31 @@ void gen_stmt_goto(stmt *s, out_ctx *octx)
 		out_ctrl_transfer_exp(octx, target);
 
 	}else{
+		out_blk *target;
+
 		gen_scope_leave(s->symtab, s->bits.lbl.label->scope, octx);
 
-		label_makeblk(s->bits.lbl.label, octx);
+		target = label_getblk(s->bits.lbl.label, octx);
 
-		out_ctrl_transfer(octx, s->bits.lbl.label->bblock, NULL, NULL);
+		out_ctrl_transfer(octx, target, NULL, NULL, 0);
 	}
 }
 
-void style_stmt_goto(stmt *s, out_ctx *octx)
+void dump_stmt_goto(const stmt *s, dump *ctx)
+{
+	if(s->expr){
+		dump_desc_stmt(ctx, "computed-goto", s);
+
+		dump_inc(ctx);
+		dump_expr(s->expr, ctx);
+		dump_dec(ctx);
+	}else{
+		dump_desc_stmt_newline(ctx, "goto", s, 0);
+		dump_printf_indent(ctx, 0, " %s\n", s->bits.lbl.spel);
+	}
+}
+
+void style_stmt_goto(const stmt *s, out_ctx *octx)
 {
 	stylef("goto ");
 
@@ -61,7 +77,44 @@ void style_stmt_goto(stmt *s, out_ctx *octx)
 	stylef(";");
 }
 
+static int goto_passable(stmt *s)
+{
+	struct label *lbl;
+	int passable;
+
+	if(s->expr){
+		/* could jump anywhere - assume it's not passable */
+		return 0;
+	}
+
+	lbl = s->bits.lbl.label;
+	if(!lbl)
+		return 1; /* safety */
+
+	if(!lbl->next_stmt)
+		return 1;
+
+	if(lbl->doing_passable_check){
+		/* infinite loop */
+		return 0;
+	}
+
+	/* this isn't perfect as it doesn't detect things like:
+	 * x:
+	 * printf("hi\n");
+	 * goto x;
+	 *
+	 * but better to pessimise and warn/insert-main-return-0
+	 * than to miss.
+	 */
+
+	lbl->doing_passable_check = 1;
+	passable = fold_passable(lbl->next_stmt);
+	lbl->doing_passable_check = 0;
+	return passable;
+}
+
 void init_stmt_goto(stmt *s)
 {
-	s->f_passable = fold_passable_no;
+	s->f_passable = goto_passable;
 }

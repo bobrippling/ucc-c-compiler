@@ -14,14 +14,18 @@ void fold_stmt_label(stmt *s)
 			s->symtab, s->bits.lbl.spel, &s->where);
 
 	/* update its where */
-	l->pw = &s->where;
+	memcpy_safe(&l->where, &s->where);
 	/* update its scope */
 	l->scope = s->symtab;
+	/* update code the label uses */
+	l->next_stmt = s;
 
-	if(l->complete)
-		die_at(&s->where, "duplicate label '%s'", s->bits.lbl.spel);
-	else
+	if(l->complete){
+		warn_at_print_error(&s->where, "duplicate label '%s'", s->bits.lbl.spel);
+		fold_had_error = 1;
+	}else{
 		l->complete = 1;
+	}
 
 	s->bits.lbl.label = l;
 
@@ -30,18 +34,29 @@ void fold_stmt_label(stmt *s)
 	fold_stmt(s->lhs); /* compound */
 }
 
-void gen_stmt_label(stmt *s, out_ctx *octx)
+void gen_stmt_label(const stmt *s, out_ctx *octx)
 {
-	label *l = s->bits.lbl.label;
+	out_blk *thisblk = label_getblk(s->bits.lbl.label, octx);
 
-	label_makeblk(l, octx);
+	if(s->bits.lbl.label->mustgen_spel)
+		out_blk_mustgen(octx, thisblk, s->bits.lbl.label->mustgen_spel);
 
 	/* explicit fall through */
-	out_ctrl_transfer_make_current(octx, l->bblock);
+	out_ctrl_transfer_make_current(octx, thisblk);
 	gen_stmt(s->lhs, octx); /* the code-part of the compound statement */
 }
 
-void style_stmt_label(stmt *s, out_ctx *octx)
+void dump_stmt_label(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt_newline(ctx, "label", s, 0);
+	dump_printf_indent(ctx, 0, " %s\n", s->bits.lbl.spel);
+
+	dump_inc(ctx);
+	dump_stmt(s->lhs, ctx);
+	dump_dec(ctx);
+}
+
+void style_stmt_label(const stmt *s, out_ctx *octx)
 {
 	stylef("\n%s: ", s->bits.lbl.spel);
 	gen_stmt(s->lhs, octx);

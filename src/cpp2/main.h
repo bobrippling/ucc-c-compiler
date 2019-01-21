@@ -1,18 +1,28 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#include "../util/std.h"
+
+#define FNAME_BUILTIN "<builtin>"
+#define FNAME_CMDLINE "<command-line>"
+
 void dirname_push(char *d);
 char *dirname_pop(void);
 
+void set_current_fname(const char *);
+
 extern char **cd_stack;
 
-extern char cpp_time[16], cpp_date[16], cpp_timestamp[64];
+extern enum c_std cpp_std;
+
+extern char cpp_time[16], cpp_date[16], cpp_timestamp[64], *cpp_basefile;
 
 extern int option_line_info;
 extern int option_trigraphs, option_digraphs;
 
 extern char *current_fname;
 extern int no_output;
+extern int missing_header_error;
 
 extern struct loc loc_tok;
 #define current_line loc_tok.line
@@ -24,7 +34,6 @@ extern struct loc loc_tok;
   do{                          \
     if(wm == 0 || wm & wmode){ \
       current_line--;          \
-      preproc_backtrace();     \
       f(NULL, __VA_ARGS__);    \
       current_line++;          \
     }                          \
@@ -53,6 +62,10 @@ extern enum wmode
 	WFINALESCAPE = 1 << 10, /* backslash-esc at eof */
 	WMULTICHAR   = 1 << 11, /* duh */
 	WQUOTE       = 1 << 12, /* dodgy quoting */
+	WHASHWARNING = 1 << 13, /* #warning */
+	WBACKSLASH_SPACE_NEWLINE = 1 << 14,
+	WNEWLINE     = 1 << 15,
+	WESCAPE      = 1 << 16,
 } wmode;
 
 extern enum comment_strip
