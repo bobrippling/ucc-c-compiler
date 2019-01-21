@@ -104,6 +104,7 @@ int section_cmp(const struct section *a, const struct section *b)
 		case BUILTIN:
 			return a->builtin - b->builtin;
 	}
+	assert(0);
 }
 
 int section_eq(const struct section *a, const struct section *b)
@@ -127,4 +128,5 @@ int section_hash(const struct section *sec)
 		case NAMED:
 			return t ^ dynmap_strhash(sec->name);
 	}
+	assert(0);
 }
