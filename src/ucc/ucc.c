@@ -1032,17 +1032,21 @@ static void state_from_triple(
 			if(vars->startfiles){
 				char usrlib[64];
 
-				if(vars->profile){
-					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/gcrt1.o", target);
-				}else if(is_pie){
-					if(vars->static_)
-						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/rcrt1.o", target);
-					else
-						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/Scrt1.o", target);
+				if(vars->shared){
+					/* don't link to crt1 - don't want the startup files, just i[nit] and e[nd] */
 				}else{
-					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crt1.o", target);
+					if(vars->profile){
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/gcrt1.o", target);
+					}else if(is_pie){
+						if(vars->static_)
+							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/rcrt1.o", target);
+						else
+							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/Scrt1.o", target);
+					}else{
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crt1.o", target);
+					}
+					dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
 				}
-				dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
 
 				{
 					char *dot;
