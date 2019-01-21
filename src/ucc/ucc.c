@@ -221,6 +221,7 @@ after_compile:
 			default:
 			assume_obj:
 				fprintf(stderr, "assuming \"%s\" is object-file\n", in);
+			is_obj:
 			case 'o':
 			case 'a':
 				/* else assume it's already an object file */
@@ -229,6 +230,8 @@ after_compile:
 	}else{
 		if(!strcmp(in, "-"))
 			goto preproc;
+		if(ext && !strcmp(ext, ".so"))
+			goto is_obj;
 		goto assume_obj;
 	}
 }
