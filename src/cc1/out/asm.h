@@ -7,11 +7,6 @@
 
 const char *asm_section_desc(enum section_builtin);
 
-/* this is temporary, until the __attribute__((section("..."))) branch
- * comes in, when its struct { builtin | name } will be used as a key,
- * instead of just a string */
-enum section_builtin asm_builtin_section_from_str(const char *);
-
 FILE *asm_section_file(const struct section *);
 
 ucc_printflike(2, 3)

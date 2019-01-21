@@ -18,7 +18,7 @@ int cc1_gdebug_columninfo;
 int cc1_mstack_align;
 enum c_std cc1_std = STD_C99;
 struct cc1_warning cc1_warning;
-dynmap *cc1_out_persection; /* char* => FILE* */
+dynmap *cc1_out_persection;
 struct section cc1_current_section;
 FILE *cc1_current_section_file;
 struct cc1_fopt cc1_fopt;

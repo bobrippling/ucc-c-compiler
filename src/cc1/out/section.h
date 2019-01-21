@@ -49,6 +49,9 @@ struct section
 const char *section_name(const struct section *);
 int section_eq(const struct section *, const struct section *);
 
+int section_hash(const struct section *);
+int section_cmp(const struct section *, const struct section *);
+
 extern const struct section section_text;
 extern const struct section section_data;
 extern const struct section section_bss;

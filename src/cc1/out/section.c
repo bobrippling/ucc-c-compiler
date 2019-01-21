@@ -1,6 +1,8 @@
 #include <string.h>
 #include <assert.h>
 
+#include "../../util/dynmap.h"
+
 #include "section.h"
 #include "../cc1_target.h"
 
@@ -45,15 +47,29 @@ const char *section_name(const struct section *sec)
 	return NULL;
 }
 
-int section_eq(const struct section *a, const struct section *b)
+int section_cmp(const struct section *a, const struct section *b)
 {
 	int named_a = is_named(a);
 	int named_b = is_named(b);
 
 	if(named_a != named_b)
-		return !strcmp(section_name(a), section_name(b));
+		return strcmp(section_name(a), section_name(b));
 
 	if(named_a)
-		return !strcmp(a->name, b->name);
-	return a->builtin == b->builtin;
+		return strcmp(a->name, b->name);
+
+	if(a->builtin == b->builtin)
+		return 0;
+
+	return a->builtin - b->builtin;
+}
+
+int section_eq(const struct section *a, const struct section *b)
+{
+	return !section_cmp(a, b);
+}
+
+int section_hash(const struct section *sec)
+{
+	return dynmap_strhash(section_name(sec));
 }

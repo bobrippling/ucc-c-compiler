@@ -72,7 +72,7 @@ static struct
 	{ 0, NULL, NULL }
 };
 
-dynmap *cc1_out_persection; /* char* => FILE* */
+dynmap *cc1_out_persection;
 struct section cc1_current_section;
 FILE *cc1_current_section_file;
 char *cc1_first_fname;
@@ -216,18 +216,17 @@ static void io_fin_macosx_version(FILE *out)
 	}
 }
 
-static void io_fin_section(FILE *section, FILE *out, const char *name)
+static void io_fin_section(FILE *section, FILE *out, const struct section *sec)
 {
-	enum section_builtin sec = asm_builtin_section_from_str(name);
 	const char *desc = NULL;
 
-	if((int)sec != -1)
-		desc = asm_section_desc(sec);
+	if(SECTION_IS_BUILTIN(sec))
+		desc = asm_section_desc(sec->builtin);
 
 	if(fseek(section, 0, SEEK_SET))
 		ccdie("seeking in section tmpfile:");
 
-	xfprintf(out, ".section %s\n", name);
+	xfprintf(out, ".section %s\n", section_name(sec));
 
 	if(desc)
 		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, desc);
@@ -257,10 +256,11 @@ static void io_fin_sections(FILE *out)
 	}
 
 	for(i = 0; (section = dynmap_value(FILE *, cc1_out_persection, i)); i++){
-		char *name = dynmap_key(char *, cc1_out_persection, i);
+		struct section *sec = dynmap_key(struct section *, cc1_out_persection, i);
 
-		io_fin_section(section, out, name);
-		free(name);
+		io_fin_section(section, out, sec);
+
+		free(sec);
 	}
 
 	dynmap_free(cc1_out_persection);

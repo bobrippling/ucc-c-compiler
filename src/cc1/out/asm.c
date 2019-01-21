@@ -72,43 +72,21 @@ const char *asm_section_desc(enum section_builtin sec)
 	return NULL;
 }
 
-#warning remove below fn
-enum section_builtin asm_builtin_section_from_str(const char *s)
-{
-	if(!strcmp(s, cc1_target_details.section_names.section_name_text))
-		return SECTION_TEXT;
-	if(!strcmp(s, cc1_target_details.section_names.section_name_data))
-		return SECTION_DATA;
-	if(!strcmp(s, cc1_target_details.section_names.section_name_bss))
-		return SECTION_BSS;
-	if(!strcmp(s, cc1_target_details.section_names.section_name_rodata))
-		return SECTION_RODATA;
-	if(!strcmp(s, cc1_target_details.section_names.section_name_ctors))
-		return SECTION_CTORS;
-	if(!strcmp(s, cc1_target_details.section_names.section_name_dtors))
-		return SECTION_DTORS;
-	if(!strcmp(s, cc1_target_details.section_names.section_name_dbg_abbrev))
-		return SECTION_DBG_ABBREV;
-	if(!strcmp(s, cc1_target_details.section_names.section_name_dbg_info))
-		return SECTION_DBG_INFO;
-	if(!strcmp(s, cc1_target_details.section_names.section_name_dbg_line))
-		return SECTION_DBG_LINE;
-
-	return -1;
-}
-
 FILE *asm_section_file(const struct section *sec)
 {
 	FILE *f;
-	const char *name = section_name(sec);
 
 	if(!cc1_out_persection)
-		cc1_out_persection = dynmap_new(char *, strcmp, dynmap_strhash);
+		cc1_out_persection = dynmap_new(struct section *, section_cmp, section_hash);
 
-	f = dynmap_get(char *, FILE *, cc1_out_persection, (char *)name);
+	f = dynmap_get(const struct section *, FILE *, cc1_out_persection, sec);
 	if(!f){
+		struct section *secdup = umalloc(sizeof *secdup);
+
+		memcpy_safe(secdup, sec);
+
 		f = tmpfile();
-		dynmap_set(char *, FILE *, cc1_out_persection, ustrdup(name), f);
+		dynmap_set(struct section *, FILE *, cc1_out_persection, secdup, f);
 	}
 
 	return f;
