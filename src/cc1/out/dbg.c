@@ -42,7 +42,6 @@
 #define DEBUG_TYPE_SKIP type_skip_non_tdefs_consts
 #define DEBUG_TYPE_HASH type_hash_skip_nontdefs_consts
 
-
 #define DW_TAGS                        \
 	X(DW_TAG_compile_unit, 0x11)         \
 	X(DW_TAG_subprogram, 0x2e)           \
@@ -1153,8 +1152,10 @@ static struct DIE_compile_unit *dwarf_cu(
 static long dwarf_info_header(void)
 {
 #define VAR_LEN "info_len"
+	const struct section section_dbg_info = SECTION_INIT(SECTION_DBG_INFO);
+
 	if(cc1_target_details.dwarf_indirect_section_links){
-		asm_out_section(SECTION_DBG_INFO,
+		asm_out_section(&section_dbg_info,
 				/* -4: don't include the length spec itself */
 				"%s" VAR_LEN " = %s%s%s - %s%s%s - 4\n"
 				"\t.long %s" VAR_LEN "\n"
@@ -1169,7 +1170,7 @@ static long dwarf_info_header(void)
 				,
 				platform_word_size());
 	}else{
-		asm_out_section(SECTION_DBG_INFO,
+		asm_out_section(&section_dbg_info,
 				"\t.long %s%s%s - %s%s%s - 4\n"
 				"\t.short 2 # DWARF 2\n"
 				"\t.long %s%s%s  # abbrev offset\n"
@@ -1345,7 +1346,7 @@ struct DIE_flush
 {
 	struct DIE_flush_file
 	{
-		enum section_builtin sec;
+		const struct section *sec;
 		unsigned long byte_cnt;
 	} abbrev, info;
 };
@@ -1597,12 +1598,12 @@ static void dwarf_flush(struct DIE_compile_unit *cu, long initial_offset)
 	struct DIE_flush flush = {{ 0 }};
 
 	flush.info.byte_cnt = initial_offset;
-	flush.info.sec = SECTION_DBG_INFO;
-	flush.abbrev.sec = SECTION_DBG_ABBREV;
+	flush.info.sec = &section_dbg_info;
+	flush.abbrev.sec = &section_dbg_abbrev;
 
 	dwarf_flush_die(&cu->die, &flush);
 
-	asm_out_section(SECTION_DBG_ABBREV, "\t.byte 0 # end\n");
+	asm_out_section(&section_dbg_abbrev, "\t.byte 0 # end\n");
 }
 
 static unsigned long dwarf_offset_die(

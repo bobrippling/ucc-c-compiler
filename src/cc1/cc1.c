@@ -73,7 +73,7 @@ static struct
 };
 
 dynmap *cc1_out_persection; /* char* => FILE* */
-enum section_builtin cc1_current_section = -1;
+struct section cc1_current_section;
 FILE *cc1_current_section_file;
 char *cc1_first_fname;
 
@@ -252,8 +252,8 @@ static void io_fin_sections(FILE *out)
 
 	if(cc1_gdebug){
 		/* ensure we have text and debug-line sections for the debug to reference */
-		(void)asm_section_file(SECTION_TEXT);
-		(void)asm_section_file(SECTION_DBG_LINE);
+		(void)asm_section_file(&section_text);
+		(void)asm_section_file(&section_dbg_line);
 	}
 
 	for(i = 0; (section = dynmap_value(FILE *, cc1_out_persection, i)); i++){

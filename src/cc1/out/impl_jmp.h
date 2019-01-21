@@ -7,6 +7,6 @@
  * part of the backend (out.c and co) don't use this, it's just used by the
  * blk.c flow logic part */
 
-void impl_jmp(enum section_builtin, const char *lbl);
+void impl_jmp(const char *lbl);
 
 #endif
