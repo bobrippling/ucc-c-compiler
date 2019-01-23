@@ -1313,6 +1313,12 @@ void fold_global_func(decl *func_decl)
 					typedef_fnimpl,
 					"typedef function implementation is an extension");
 
+		if(type_is_s_or_u(func_ret))
+			cc1_warn_at(&func_decl->where,
+					aggregate_return,
+					"function returns aggregate (%s)",
+					type_to_str(func_ret));
+
 		if(!type_is_void(func_ret) && !type_is_complete(func_ret)){
 			warn_at_print_error(&func_decl->where, "incomplete return type");
 			fold_had_error = 1;

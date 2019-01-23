@@ -430,6 +430,11 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	if(type_is_s_or_u(e->tree_type)){
 		/* handled transparently by the backend */
 		e->f_islval = expr_is_lval_struct;
+
+		cc1_warn_at(&e->expr->where,
+				aggregate_return,
+				"called function returns aggregate (%s)",
+				type_to_str(e->tree_type));
 	}
 
 	/* attr */

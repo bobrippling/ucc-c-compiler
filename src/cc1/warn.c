@@ -195,6 +195,7 @@ static void warning_all(enum warning_fatality set)
 	cc1_warning.system_headers =
 	cc1_warning.int_op_promotion =
 	cc1_warning.overlength_strings =
+	cc1_warning.aggregate_return =
 		W_OFF;
 }
 
