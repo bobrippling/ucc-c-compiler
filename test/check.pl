@@ -161,7 +161,7 @@ if($nchecks == 0){
 # ---------------------------
 # make sure all checks are fulfilled. don't check all warnings have checks
 
-my $missing_warning = 0;
+my $ec = 0;
 
 iter_lines(
 	sub {
@@ -202,7 +202,7 @@ iter_lines(
 			if($found == $rev){
 				my $pre = ($prefix ? " (prefix '$prefix')" : "");
 
-				$missing_warning = 1;
+				$ec = 1;
 				warn "$check->{line}"
 				. ("^" x $check->{above_count})
 				. ": check \"$match\" "
@@ -214,4 +214,4 @@ iter_lines(
 	}
 );
 
-exit $missing_warning;
+exit $ec;
