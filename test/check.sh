@@ -10,7 +10,7 @@ do
 	then
 		shift
 		verbose=-v
-	elif [ "$1" = -e ]
+	elif [ "$arg" = -e ]
 	then
 		shift
 		error=1
