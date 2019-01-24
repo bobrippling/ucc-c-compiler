@@ -61,6 +61,9 @@ while(<>){
 		my $asciz = $1 eq 'z';
 		emit_string($asciz, $2);
 		$any = 1;
+	}elsif(/^\.comm\b/){
+		chomp;
+		emit({ str => $_ });
 	}elsif($check_sections and /^\.section/){
 		chomp;
 		emit({ str => $_ });
