@@ -33,7 +33,7 @@ then
 	then
 		in="$1"
 		shift
-		out="/tmp/chk.out.$$"
+		out="$UCC_TESTDIR/chk.out.$$"
 
 		rmfiles="$rmfiles $out"
 
@@ -64,8 +64,8 @@ then
 	exit 1
 fi
 
-a=/tmp/$$.chk.a
-b=/tmp/$$.chk.b
+a="$UCC_TESTDIR"/$$.chk.a
+b="$UCC_TESTDIR"/$$.chk.b
 rmfiles="$rmfiles $a $b"
 
 set -e
