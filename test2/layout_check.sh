@@ -37,8 +37,12 @@ done
 out="$UCC_TESTDIR/chk.out.$$"
 rmfiles="$rmfiles $out"
 
+if test $verbose -ne 0
+then set -x
+fi
 "$UCC" -S -o"$out" "$f" -fno-common $cc_args
 r=$?
+set +x
 if test $r -ne 0
 then exit $r
 fi
