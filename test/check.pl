@@ -20,6 +20,7 @@ sub lines
 
 my $verbose = 0;
 my $prefix = '';
+my $only = 0;
 
 my $shifts = 0;
 for my $arg (@ARGV){
@@ -31,6 +32,9 @@ for my $arg (@ARGV){
 		$prefix = $1;
 		die "no prefix given" unless length $prefix;
 		$shifts++;
+	}elsif($arg eq '--only'){
+		$only = 1;
+		$shifts++;
 	}else{
 		last;
 	}
@@ -39,7 +43,7 @@ for(; $shifts > 0; $shifts--){
 	shift @ARGV;
 }
 
-die "Usage: $0 [--prefix=...] [-v] file_with_checks.c\n" unless @ARGV == 1;
+die "Usage: $0 [--only] [--prefix=...] [-v] file_with_checks.c\n" unless @ARGV == 1;
 
 my @lines;
 my $line;
@@ -49,6 +53,7 @@ my $line;
 #   ...
 # )
 my $nchecks = 0;
+my $nwarnings = 0;
 
 # ---------------------------
 # read warnings in
@@ -58,6 +63,7 @@ for my $w (parse_warnings((<STDIN>))){
 
 	if($ln > 0){
 		push @{$lines[$ln - 1]->{warnings}}, $w;
+		$nwarnings++;
 	}
 }
 
@@ -161,7 +167,7 @@ if($nchecks == 0){
 # ---------------------------
 # make sure all checks are fulfilled. don't check all warnings have checks
 
-my $missing_warning = 0;
+my $ec = 0;
 
 iter_lines(
 	sub {
@@ -194,7 +200,7 @@ iter_lines(
 			for(@warns){
 				if($is_regex ? $_->{msg} =~ /$search/ : index($_->{msg}, $search) != -1){
 					$found = 1;
-					$_->{msg} = ''; # silence
+					$_->{msg} = ''; # silence message for below checks
 					last;
 				}
 			}
@@ -202,7 +208,7 @@ iter_lines(
 			if($found == $rev){
 				my $pre = ($prefix ? " (prefix '$prefix')" : "");
 
-				$missing_warning = 1;
+				$ec = 1;
 				warn "$check->{line}"
 				. ("^" x $check->{above_count})
 				. ": check \"$match\" "
@@ -214,4 +220,18 @@ iter_lines(
 	}
 );
 
-exit $missing_warning;
+if($only and $ec == 0 and $nchecks != $nwarnings){
+	iter_lines(sub {
+		my($line, $check_ref, $warn_ref) = @_;
+		my @warns  = @$warn_ref;
+
+		for(@warns){
+			if($_->{msg}){
+				warn "$_->{file}:$_->{line}:$_->{col}: unexpected output: \"$_->{msg}\"\n";
+				$ec = 1;
+			}
+		}
+	});
+}
+
+exit $ec;

@@ -3,13 +3,14 @@
 verbose=
 error=0
 prefix=
+only=
 for arg in "$@"
 do
 	if [ "$arg" = -v ]
 	then
 		shift
 		verbose=-v
-	elif [ "$1" = -e ]
+	elif [ "$arg" = -e ]
 	then
 		shift
 		error=1
@@ -17,13 +18,17 @@ do
 	then
 		shift
 		prefix="$arg"
+	elif [ "$arg" = '--only' ]
+	then
+		shift
+		only="$arg"
 	else
 		break
 	fi
 done
 
 usage(){
-	echo "Usage: $0 [-e] cc-params..." >&2
+	echo "Usage: $0 [-e] [--prefix=...] [--only] cc-params..." >&2
 	echo "-e: expect ucc to error" >&2
 	exit 1
 }
@@ -61,5 +66,5 @@ then
 	cat $e
 	exit 1
 fi >&2
-./check.pl $prefix $verbose < $e "$f"
+./check.pl $only $prefix $verbose < $e "$f"
 exit $?
