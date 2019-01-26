@@ -2,7 +2,7 @@ a:
 .long 0
 
 x:
-.quad _a + 1
+.quad a + 1
 
 y:
 .quad str.1 + 2
