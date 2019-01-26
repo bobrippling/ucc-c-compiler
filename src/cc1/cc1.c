@@ -72,9 +72,8 @@ static struct
 	{ 0, NULL, NULL }
 };
 
-dynmap *cc1_out_persection; /* char* => FILE* */
-enum section_builtin cc1_current_section = -1;
-FILE *cc1_current_section_file;
+dynmap *cc1_out_persection;
+struct section_output cc1_current_section_output = SECTION_OUTPUT_UNINIT;
 char *cc1_first_fname;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
@@ -217,18 +216,22 @@ static void io_fin_macosx_version(FILE *out)
 	}
 }
 
-static void io_fin_section(FILE *section, FILE *out, const char *name)
+static void io_fin_section(FILE *section, FILE *out, const struct section *sec)
 {
-	enum section_builtin sec = asm_builtin_section_from_str(name);
 	const char *desc = NULL;
+	char *name;
+	int allocated;
 
-	if((int)sec != -1)
-		desc = asm_section_desc(sec);
+	if(section_is_builtin(sec))
+		desc = asm_section_desc(sec->builtin);
 
 	if(fseek(section, 0, SEEK_SET))
 		ccdie("seeking in section tmpfile:");
 
+	name = section_name(sec, &allocated);
 	xfprintf(out, ".section %s\n", name);
+	if(allocated)
+		free(name);
 
 	if(desc)
 		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, desc);
@@ -253,15 +256,16 @@ static void io_fin_sections(FILE *out)
 
 	if(cc1_gdebug){
 		/* ensure we have text and debug-line sections for the debug to reference */
-		(void)asm_section_file(SECTION_TEXT);
-		(void)asm_section_file(SECTION_DBG_LINE);
+		(void)asm_section_file(&section_text);
+		(void)asm_section_file(&section_dbg_line);
 	}
 
 	for(i = 0; (section = dynmap_value(FILE *, cc1_out_persection, i)); i++){
-		char *name = dynmap_key(char *, cc1_out_persection, i);
+		struct section *sec = dynmap_key(struct section *, cc1_out_persection, i);
 
-		io_fin_section(section, out, name);
-		free(name);
+		io_fin_section(section, out, sec);
+
+		free(sec);
 	}
 
 	dynmap_free(cc1_out_persection);

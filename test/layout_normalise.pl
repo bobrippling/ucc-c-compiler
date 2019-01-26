@@ -51,22 +51,9 @@ while(<>){
 	}elsif(/(.*): *$/){
 		(my $lbl = $1) =~ s/^_//;
 
-		# ignore private labels
 		my $is_private = ($lbl =~ /^[ \t]*\.?L/);
-		my $emit = 1;
 
-		if($is_private){
-			if(!$check_sections){
-				$emit = 0;
-			}elsif($lbl !~ /^([ \t]*)\.?(Lsection_.*)/){
-				$emit = 0;
-			}else{
-				# remove the . from .Lsect..
-				$lbl = $1 . $2;
-			}
-		}
-
-		if($emit){
+		if(!$is_private){
 			emit({ lbl => $lbl });
 			$any = 1;
 		}
@@ -74,6 +61,12 @@ while(<>){
 		my $asciz = $1 eq 'z';
 		emit_string($asciz, $2);
 		$any = 1;
+	}elsif(/^\.comm\b/){
+		chomp;
+		emit({ str => $_ });
+	}elsif($check_sections and /^\.section/){
+		chomp;
+		emit({ str => $_ });
 	}
 }
 
@@ -132,6 +125,8 @@ sub emit2
 	my $m = shift;
 	if($m->{lbl}){
 		print "$m->{lbl}:$/";
+	}elsif($m->{str}){
+		print "$m->{str}$/";
 	}elsif($m->{value}){
 		print ".$sizes_r{$m->{size}} $m->{value}\n";
 	}else{
@@ -142,7 +137,7 @@ sub emit2
 sub emit
 {
 	my $m = shift;
-	if($m->{lbl}){
+	if($m->{lbl} or $m->{str}){
 		;
 	}elsif($m->{value} =~ /^[0-9]+$/ and $m->{value} == 0){
 		if($last){

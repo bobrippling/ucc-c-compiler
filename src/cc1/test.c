@@ -9,6 +9,7 @@
 #include "fopt.h"
 #include "funcargs.h"
 #include "cc1_target.h"
+#include "cc1_out.h"
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 int cc1_error_limit = 16;
@@ -19,9 +20,8 @@ int cc1_gdebug_columninfo;
 int cc1_mstack_align;
 enum c_std cc1_std = STD_C99;
 struct cc1_warning cc1_warning;
-dynmap *cc1_out_persection; /* char* => FILE* */
-enum section_builtin cc1_current_section = -1;
-FILE *cc1_current_section_file;
+dynmap *cc1_out_persection;
+struct section_output cc1_current_section_output;
 struct cc1_fopt cc1_fopt;
 enum mopt mopt_mode;
 int show_current_line;

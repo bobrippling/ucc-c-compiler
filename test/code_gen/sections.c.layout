@@ -1,18 +1,12 @@
-.Lsection_begin_text:
-f:
-.Lsection_end_text:
-
-.Lsection_begin_data:
-y:
-.long 1
-.Lsection_end_data:
-
-.Lsection_begin_bss:
-x:
-.zero 4
-.Lsection_end_bss:
-
-.Lsection_begin_rodata:
+.section .rodata
 main:
 .long 195
-.Lsection_end_rodata:
+.section .text
+f:
+.section .data
+y:
+.long 1
+.section .bss
+x:
+.zero 4
+.section .note.GNU-stack,"",@progbits

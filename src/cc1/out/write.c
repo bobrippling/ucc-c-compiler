@@ -61,19 +61,13 @@ static void add_live_vals(out_ctx *octx)
 }
 
 void out_asmv(
-		out_ctx *octx,
-		enum section_builtin sec, enum p_opts opts,
+		out_ctx *octx, enum p_opts opts,
 		const char *fmt, va_list l)
 {
 	char *insn;
 
 	if(!octx->current_blk)
 		return;
-
-	if(sec != SECTION_TEXT){
-		fprintf(stderr, "%s:%d: TODO: out_asmv() with section 0x%x",
-				__FILE__, __LINE__, sec);
-	}
 
 	out_dbg_flush(octx, octx->current_blk);
 
@@ -103,18 +97,19 @@ void out_asm(out_ctx *octx, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(octx, SECTION_TEXT, 0, fmt, l);
+	out_asmv(octx, 0, fmt, l);
 	va_end(l);
 }
 
 void out_asm2(
 		out_ctx *octx,
-		enum section_builtin sec, enum p_opts opts,
-		const char *fmt, ...)
+		enum p_opts opts,
+		const char *fmt,
+		...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(octx, sec, opts, fmt, l);
+	out_asmv(octx, opts, fmt, l);
 	va_end(l);
 }
 

@@ -1,20 +1,13 @@
-Lsection_begin_text:
-Lsection_end_text:
-
-Lsection_begin_bss:
-
-rw:
-.space 4
-
-.comm _rw_common,4,2
-
-Lsection_end_bss:
-
-Lsection_begin_rodata:
-
+.section .rodata
 ro:
-.space 4
+.zero 4
 
-.comm _ro_common,4,2
+.comm ro_common,4,4
 
-Lsection_end_rodata:
+.section .bss
+rw:
+.zero 4
+
+.comm rw_common,4,4
+
+.section .note.GNU-stack,"",@progbits

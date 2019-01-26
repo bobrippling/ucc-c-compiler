@@ -34,6 +34,7 @@
 #include "type_nav.h"
 #include "label.h"
 #include "fopt.h"
+#include "cc1_out.h"
 
 #include "ops/expr_funcall.h"
 
@@ -215,16 +216,8 @@ static void gen_profile(out_ctx *octx)
 	out_val_consume(octx, out_call(octx, mcount, NULL, mcount_ty));
 }
 
-static void gen_asm_global(decl *d, out_ctx *octx)
+static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx)
 {
-	attribute *sec;
-
-	if((sec = attribute_present(d, attr_section))){
-		ICW("%s: TODO: section attribute \"%s\" on %s",
-				where_str(&sec->where),
-				sec->bits.section, d->spel);
-	}
-
 	/* order of the if matters */
 	if(type_is(d->ref, type_func)){
 		int nargs = 0, is_vari;
@@ -293,7 +286,7 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 	}else{
 		/* asm takes care of .bss vs .data, etc */
-		asm_declare_decl_init(d);
+		asm_declare_decl_init(section, d);
 	}
 }
 
@@ -349,16 +342,19 @@ const out_val *gen_decl_addr(out_ctx *octx, decl *d)
 
 static void gen_gasm(char *asm_str)
 {
-	asm_out_section(SECTION_TEXT, "%s\n", asm_str);
+	struct section sec = SECTION_INIT(SECTION_TEXT); /* no option for global asm, always text */
+	asm_out_section(&sec, "%s\n", asm_str);
 }
 
 static void gen_stringlits(dynmap *litmap)
 {
 	const stringlit *lit;
 	size_t i;
+	struct section sec = SECTION_INIT(SECTION_RODATA);
+
 	for(i = 0; (lit = dynmap_value(stringlit *, litmap, i)); i++)
 		if(lit->use_cnt > 0)
-			asm_declare_stringlit(SECTION_RODATA, lit);
+			asm_declare_stringlit(&sec, lit);
 }
 
 void gen_asm_emit_type(out_ctx *octx, type *ty)
@@ -369,8 +365,48 @@ void gen_asm_emit_type(out_ctx *octx, type *ty)
 		out_dbg_emit_type(octx, ty);
 }
 
+static void infer_decl_section(decl *d, struct section *sec)
+{
+	attribute *attr;
+
+	if((attr = attribute_present(d, attr_section))){
+		SECTION_FROM_NAME(sec, attr->bits.section);
+		return;
+	}
+
+	if(type_is(d->ref, type_func)){
+		if(cc1_fopt.function_sections){
+			SECTION_FROM_FUNCDECL(sec, decl_asm_spel(d));
+			return;
+		}
+
+		SECTION_FROM_BUILTIN(sec, SECTION_TEXT);
+		return;
+	}
+
+	if(cc1_fopt.data_sections){
+		SECTION_FROM_DATADECL(sec, decl_asm_spel(d));
+		return;
+	}
+
+	/* prefer rodata over bss */
+	if(type_is_const(d->ref)){
+		SECTION_FROM_BUILTIN(sec, SECTION_RODATA);
+		return;
+	}
+
+	if(!d->bits.var.init.dinit || decl_init_is_zero(d->bits.var.init.dinit)){
+		SECTION_FROM_BUILTIN(sec, SECTION_BSS);
+		return;
+	}
+
+	SECTION_FROM_BUILTIN(sec, SECTION_DATA);
+}
+
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
+	struct section section;
+	struct section_output prev_section;
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
 	attribute *attr;
@@ -414,22 +450,34 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			break;
 	}
 
+	memcpy_safe(&prev_section, &cc1_current_section_output);
+	infer_decl_section(d, &section);
+	asm_switch_section(&section);
+	if(cc1_fopt.dump_decl_sections){
+		int allocated;
+		char *name = section_name(&section, &allocated);
+		fprintf(stderr, "%s --> section \"%s\"\n", decl_to_str(d), name);
+		if(allocated)
+			free(name);
+	}
+
+
 	if(attribute_present(d, attr_weak)){
-		asm_predeclare_weak(d);
+		asm_predeclare_weak(&section, d);
 		emitted_type = 1;
 	}
 	if((attr = attribute_present(d, attr_alias))){
 		assert(attr->type == attr_alias);
 		assert(!decl_defined(d, 0));
-		asm_declare_alias(d, attr->bits.alias);
+		asm_declare_alias(&section, d, attr->bits.alias);
 	}
 
 	if(type_is(d->ref, type_func)){
 		if(!decl_should_emit_code(d)){
 			/* inline only gets extern emitted anyway */
 			if(!emitted_type)
-				asm_predeclare_extern(d);
-			return;
+				asm_predeclare_extern(&section, d);
+			goto out;
 		}
 
 		if(cc1_gdebug != DEBUG_OFF)
@@ -442,20 +490,23 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		 */
 		if(!emit_tenatives && !d->bits.var.init.dinit){
 			if(!emitted_type)
-				asm_predeclare_extern(d);
-			return;
+				asm_predeclare_extern(&section, d);
+			goto out;
 		}
 
 		if(cc1_gdebug == DEBUG_FULL)
 			out_dbg_emit_global_var(octx, d);
 	}
 
-	asm_predeclare_visibility(d);
+	asm_predeclare_visibility(&section, d);
 
 	if(!emitted_type && decl_linkage(d) == linkage_external)
-		asm_predeclare_global(d);
+		asm_predeclare_global(&section, d);
 
-	gen_asm_global(d, octx);
+	gen_asm_global(&section, d, octx);
+
+out:
+	memcpy_safe(&cc1_current_section_output, &prev_section);
 }
 
 void gen_asm(

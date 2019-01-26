@@ -23,7 +23,7 @@ OBJ_REST = \
 	out/out.o out/asm.o out/lbl.o out/impl.o out/write.o out/dbg.o out/leb.o \
 	out/virt.o out/ctrl.o out/func.o out/new.o out/val.o out/blk.o out/op.o \
 	out/bitfield.o out/free.o out/alloca.o out/stack.o out/dbg_lbl.o out/mem.o \
-	out/stack_protector.o \
+	out/stack_protector.o out/section.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
 	ops/expr_funcall.o ops/expr_identifier.o ops/expr_if.o ops/expr_op.o \
 	ops/expr_sizeof.o ops/expr_val.o ops/expr_stmt.o ops/expr__Generic.o \
@@ -35,7 +35,7 @@ OBJ_REST = \
 	ops/expr_assign_compound.o ops/expr_string.o \
 	${OBJ_ARCH}
 
-BACKEND_SRC = \
+BACKEND_TARGETTED = \
 		out/alloca.c out/ctrl.c out/func.c out/impl.c out/mipsel_32.c \
 		out/new.c out/op.c out/out.c out/val.c out/virt.c out/vm.c \
 		out/x86_64.c out/dbg.c out/stack_protector.c
@@ -68,10 +68,10 @@ ${OBJ_UTIL}:
 	false
 
 # files that need target info
-${BACKEND_SRC:.c=.o} : \
+${BACKEND_TARGETTED:.c=.o} : \
 	CFLAGS += -DCC1_IMPL_FNAME=\"${ARCH}.h\"
 
-${BACKEND_SRC:.c=.d} : \
+${BACKEND_TARGETTED:.c=.d} : \
 	CPPFLAGS += -DCC1_IMPL_FNAME=\"${ARCH}.h\"
 
 # extra deps
