@@ -40,7 +40,7 @@ rmfiles="$rmfiles $out"
 if test $verbose -ne 0
 then set -x
 fi
-"$UCC" -S -o"$out" "$f" -fno-common $cc_args
+"$UCC" -target x86_64-linux -S -o"$out" "$f" -fno-common $cc_args
 r=$?
 set +x
 if test $r -ne 0
