@@ -34,13 +34,20 @@ do
 	fi
 done
 
+cc_layout_args=
+if test -n "$sec"
+then
+	# section tests target x86_64-linux to ensure section name consistency (and hash ordering consistency)
+	cc_layout_args='-target x86_64-linux'
+fi
+
 out="$UCC_TESTDIR/chk.out.$$"
 rmfiles="$rmfiles $out"
 
 if test $verbose -ne 0
 then set -x
 fi
-"$UCC" -target x86_64-linux -S -o"$out" "$f" -fno-common $cc_args
+"$UCC" $cc_layout_args -S -o"$out" "$f" -fno-common $cc_args
 r=$?
 set +x
 if test $r -ne 0
