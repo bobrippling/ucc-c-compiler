@@ -55,7 +55,15 @@ rmfiles="$rmfiles $a $b"
 
 set -e
 
-./layout_normalise.pl $sec "$out" | ./layout_sort.pl > $a
-./layout_normalise.pl $sec "$f_layout" | ./layout_sort.pl > $b
+if test -z "$sec"
+then
+	# no section relevance, sort (for convenience / non-brittle tests that don't rely on section name hash ordering)
+	./layout_normalise.pl $sec "$out" | ./layout_sort.pl > $a
+	./layout_normalise.pl $sec "$f_layout" | ./layout_sort.pl > $b
+else
+	# sections are relevant, so make order relevant too
+	./layout_normalise.pl $sec "$out" > $a
+	./layout_normalise.pl $sec "$f_layout" > $b
+fi
 
 diff -u $b $a
