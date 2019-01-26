@@ -5,64 +5,45 @@ usage(){
 	exit 1
 }
 
-verbose=0
-if [ "$1" = -v ]
-then
-	verbose=1
-	shift
-fi
-
-sec=
-if [ "$1" = '--help' ]
-then usage
-elif [ "$1" = '--sections' ]
-then
-	sec="$1"
-	shift
-fi
-
 rmfiles(){
 	test -z "$rmfiles" || rm -f $rmfiles
 }
 rmfiles=
 trap rmfiles EXIT
 
-if [ $# -ge 1 ]
-then
-	if echo "$1" | grep '\.c$' > /dev/null
+verbose=0
+sec=
+args=
+f=
+for arg
+do
+	if test "$arg" = -v
 	then
-		in="$1"
-		shift
-		out="$UCC_TESTDIR/chk.out.$$"
-
-		rmfiles="$rmfiles $out"
-
-		if [ $verbose -ne 0 ]
-		then echo "$0: ucc -S -o'$out' '$in' $@"
-		fi
-
-		# $@ are the optional compiler args
-		"$UCC" -S -o"$out" "$in" -fno-common "$@"
-		r=$?
-		if [ $r -ne 0 ]
-		then exit $r
-		fi
-
-		set -- "$out" "$in.layout"
+		verbose=1
+	elif test "$arg" = '--help'
+	then
+		usage
+	elif test "$arg" = '--sections'
+	then
+		sec="$arg"
+	elif test -z "$f"
+	then
+		f="$arg"
 	else
-		set -- "$1" "${1}.layout"
+		cc_args="$cc_args $arg"
 	fi
+done
+
+out="$UCC_TESTDIR/chk.out.$$"
+rmfiles="$rmfiles $out"
+
+"$UCC" -S -o"$out" "$f" -fno-common $cc_args
+r=$?
+if test $r -ne 0
+then exit $r
 fi
 
-if [ $# -ne 2 ]
-then usage
-fi
-
-if ! test -e "$2"
-then
-	echo >&2 "$0: $2 doesn't exist"
-	exit 1
-fi
+f_layout="$f.layout"
 
 a="$UCC_TESTDIR"/$$.chk.a
 b="$UCC_TESTDIR"/$$.chk.b
@@ -70,7 +51,7 @@ rmfiles="$rmfiles $a $b"
 
 set -e
 
-./layout_normalise.pl $sec "$1" | ./layout_sort.pl > $a
-./layout_normalise.pl $sec "$2" | ./layout_sort.pl > $b
+./layout_normalise.pl $sec "$out" | ./layout_sort.pl > $a
+./layout_normalise.pl $sec "$f_layout" | ./layout_sort.pl > $b
 
 diff -u $b $a
