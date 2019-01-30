@@ -56,6 +56,9 @@ enum type_primitive
 
 	type_unknown
 };
+#define type_intmax_t type_long
+#define type_size_t type_ulong
+#define type_ptrdiff_t type_long
 #define type_intptr_t type_long
 #define type_uintptr_t type_ulong
 
