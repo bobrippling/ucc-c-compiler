@@ -286,6 +286,9 @@ static void format_check_printf_arg(
 {
 	expr *e = **current_arg;
 
+	if(!expected_type)
+		return;
+
 	if(!e){
 		cc1_warn_at(strloc, attr_printf_bad,
 				"too few arguments for %s (%%%c)",
@@ -331,7 +334,7 @@ static void format_check_printf_str(
 					where_str(&strloc),
 					parsed.expected_field_width,
 					parsed.expected_precision,
-					type_to_str(parsed.expected_type));
+					parsed.expected_type ? type_to_str(parsed.expected_type) : "NULL");
 		}
 
 		if(err){
