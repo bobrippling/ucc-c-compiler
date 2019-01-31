@@ -49,6 +49,8 @@ r=$?
 if test $r -gt 5
 then
 	echo >&2 "unexpected ucc exit code '$r'"
+	echo >&2 "invocation flags: $@ $f"
+	cat >&2 <"$e"
 	exit 1
 fi
 
