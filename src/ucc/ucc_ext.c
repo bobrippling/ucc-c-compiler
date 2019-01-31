@@ -203,7 +203,7 @@ static int runner(int local, const char *path, char **args, int return_ec, const
 					usecdiff += 1000000L;
 				}
 
-				printf("%s %ld.%ld\n", path, (long)secdiff, (long)usecdiff);
+				printf("# %s %ld.%06ld\n", path, (long)secdiff, (long)usecdiff);
 			}
 
 			return i;
