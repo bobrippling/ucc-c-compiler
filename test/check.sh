@@ -42,7 +42,7 @@ trap "rm -f $e" EXIT
 f="$1"
 shift
 
-$ucc -o/dev/null -c "$@" "$f" 2>$e
+$ucc -fsyntax-only "$@" "$f" 2>$e
 r=$?
 
 # check for abort
