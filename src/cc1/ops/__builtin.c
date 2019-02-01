@@ -441,7 +441,7 @@ static void fold_frame_address(expr *e, symtable *stab)
 
 	memcpy_safe(&e->bits.num, &k.bits.num);
 
-	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar));
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 
 	wur_builtin(e);
 }
