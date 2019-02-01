@@ -34,16 +34,19 @@ static out_val *out_new_bp_off(out_ctx *octx, long off)
 	return v_new_bp3_below(octx, NULL, voidp, off);
 }
 
+static type *get_voidpp(void)
+{
+	return type_ptr_to(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
+}
+
 out_val *out_new_frame_ptr(out_ctx *octx, int nframes)
 {
 	type *voidpp = NULL;
 	out_val *fp = out_new_bp_off(octx, 0);
 
 	for(; nframes > 1; nframes--){
-		if(!voidpp){
-			voidpp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
-			voidpp = type_ptr_to(voidpp);
-		}
+		if(!voidpp)
+			voidpp = get_voidpp();
 
 		assert(fp->retains == 1);
 		fp = (out_val *)out_deref(octx, out_change_type(octx, fp, voidpp));
