@@ -426,8 +426,13 @@ static void fold_frame_address(expr *e, symtable *stab)
 {
 	consty k;
 
-	if(dynarray_count(e->funcargs) != 1)
-		die_at(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+
+	if(dynarray_count(e->funcargs) != 1){
+		warn_at_print_error(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
+	}
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
@@ -436,12 +441,12 @@ static void fold_frame_address(expr *e, symtable *stab)
 	|| (K_FLOATING(k.bits.num))
 	|| (sintegral_t)k.bits.num.val.i < 0)
 	{
-		die_at(&e->where, "%s needs a positive integral constant value argument", BUILTIN_SPEL(e->expr));
+		warn_at_print_error(&e->where, "%s needs a positive integral constant value argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
 	}
 
 	memcpy_safe(&e->bits.num, &k.bits.num);
-
-	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 
 	wur_builtin(e);
 }
