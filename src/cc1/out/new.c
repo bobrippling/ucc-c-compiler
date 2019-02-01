@@ -55,6 +55,21 @@ out_val *out_new_frame_ptr(out_ctx *octx, int nframes)
 	return fp;
 }
 
+const out_val *out_new_return_addr(out_ctx *octx, int nframes)
+{
+	const out_val *nth_frame = out_new_frame_ptr(octx, nframes);
+	const out_val *ret_addr;
+	type *voidpp = get_voidpp();
+
+	nth_frame = out_change_type(octx, nth_frame, voidpp);
+	ret_addr = out_op(octx,
+			op_plus,
+			nth_frame,
+			out_new_l(octx, type_nav_btype(cc1_type_nav, type_intptr_t), 1));
+
+	return out_deref(octx, ret_addr);
+}
+
 out_val *out_new_reg_save_ptr(out_ctx *octx)
 {
 	return out_new_bp_off(octx, octx->stack_variadic_offset);

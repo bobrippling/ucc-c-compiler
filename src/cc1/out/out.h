@@ -44,6 +44,7 @@ const out_val *out_new_sym_val(out_ctx *, sym *) ucc_wur;
 const out_val *out_new_overflow(out_ctx *, const out_val **) ucc_wur;
 
 out_val *out_new_frame_ptr(out_ctx *, int nframes) ucc_wur;
+const out_val *out_new_return_addr(out_ctx *octx, int nframes) ucc_wur;
 out_val *out_new_reg_save_ptr(out_ctx *) ucc_wur;
 out_val *out_new_nan(out_ctx *, type *ty) ucc_wur;
 
