@@ -448,6 +448,9 @@ static void fold_frame_address(expr *e, symtable *stab)
 		return;
 	}
 
+	if(k.bits.num.val.i > 0)
+		cc1_warn_at(&e->where, builtin_frame_addr, "calling '%s' with a non-zero argument is unsafe", BUILTIN_SPEL(e->expr));
+
 	memcpy_safe(&e->bits.num, &k.bits.num);
 
 	wur_builtin(e);
