@@ -48,6 +48,7 @@ static func_builtin_parse parse_unreachable
                           , parse_constant_p
                           , parse_frame_address
                           , parse_return_address
+                          , parse_extract_return_addr
                           , parse_expect
                           , parse_strlen
                           , parse_is_signed
@@ -514,6 +515,48 @@ static expr *parse_return_address(const char *ident, symtable *scope)
 	fcall->f_fold = fold_frame_address;
 	fcall->f_gen = builtin_gen_return_address;
 	fcall->f_str = str_expr_builtin;
+
+	return fcall;
+}
+
+/* --- extract_return_addr */
+
+static void fold_extract_return_addr(expr *e, symtable *stab)
+{
+	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+
+	e->tree_type = voidp;
+
+	if(dynarray_count(e->funcargs) != 1){
+		warn_at_print_error(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
+	}
+
+	FOLD_EXPR(e->funcargs[0], stab);
+
+	if(!(type_cmp(e->funcargs[0]->tree_type, voidp, 0) & TYPE_EQUAL_ANY)){
+		warn_at_print_error(&e->where, "%s expects a 'void *' argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
+	}
+
+	wur_builtin(e);
+}
+
+static const out_val *builtin_gen_extract_return_addr(const expr *e, out_ctx *octx)
+{
+	/* no translation needed */
+	return gen_expr(e->funcargs[0], octx);
+}
+
+static expr *parse_extract_return_addr(const char *ident, symtable *scope)
+{
+	expr *fcall = parse_any_args(scope);
+
+	(void)ident;
+
+	expr_mutate_builtin(fcall, extract_return_addr);
 
 	return fcall;
 }
