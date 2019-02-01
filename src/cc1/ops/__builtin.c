@@ -451,16 +451,22 @@ static void fold_frame_address(expr *e, symtable *stab)
 	wur_builtin(e);
 }
 
-static const out_val *builtin_gen_frame_address(const expr *e, out_ctx *octx)
+static void warn_inlining_frame_ret_addr(out_ctx *octx, const expr *e)
 {
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
-	const int depth = e->bits.num.val.i;
 
 	if(cc1_octx && cc1_octx->inline_.depth){
 		cc1_warn_at(&e->where, inline_builtin_frame_addr,
 				"inlining function with call to %s",
 				BUILTIN_SPEL(e->expr));
 	}
+}
+
+static const out_val *builtin_gen_frame_address(const expr *e, out_ctx *octx)
+{
+	const int depth = e->bits.num.val.i;
+
+	warn_inlining_frame_ret_addr(octx, e);
 
 	return out_new_frame_ptr(octx, depth + 1);
 }
