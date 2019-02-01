@@ -115,6 +115,7 @@ X("attr-unused-voidfn", attr_unused_voidfn)
 
 X("qualified-fntype", bad_funcqual)
 X("inline-builtin-frame-addr", inline_builtin_frame_addr)
+X("frame-address", builtin_frame_addr)
 X("restrict-non-ptr", bad_restrict)
 
 X("bitfield-boundary", bitfield_boundary)
