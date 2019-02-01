@@ -47,6 +47,7 @@ static func_builtin_parse parse_unreachable
                           , parse_compatible_p
                           , parse_constant_p
                           , parse_frame_address
+                          , parse_return_address
                           , parse_expect
                           , parse_strlen
                           , parse_is_signed
@@ -491,6 +492,30 @@ expr *builtin_new_frame_address(int depth)
 	dynarray_add(&e->funcargs, expr_compiler_generated(expr_new_val(depth)));
 
 	return builtin_frame_address_mutate(e);
+}
+
+/* --- return_address */
+
+static const out_val *builtin_gen_return_address(const expr *e, out_ctx *octx)
+{
+	const int depth = e->bits.num.val.i;
+
+	warn_inlining_frame_ret_addr(octx, e);
+
+	return out_new_return_addr(octx, depth + 1);
+}
+
+static expr *parse_return_address(const char *ident, symtable *scope)
+{
+	expr *fcall = parse_any_args(scope);
+
+	(void)ident;
+
+	fcall->f_fold = fold_frame_address;
+	fcall->f_gen = builtin_gen_return_address;
+	fcall->f_str = str_expr_builtin;
+
+	return fcall;
 }
 
 /* --- reg_save_area (a basic wrapper around out_push_reg_save_ptr()) */
