@@ -159,8 +159,8 @@ iter_lines(
 ) if $verbose;
 
 # ---------------------------
-# make sure we have at least one check
-if($nchecks == 0){
+# make sure we have at least one check (unless in --only mode)
+if($nchecks == 0 and not $only){
 	die("$0: no checks" . ($prefix ? " for prefix \"$prefix\"" : ""));
 }
 
