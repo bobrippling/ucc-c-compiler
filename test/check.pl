@@ -226,7 +226,7 @@ if($only and $ec == 0 and $nchecks != $nwarnings){
 		my @warns  = @$warn_ref;
 
 		for(@warns){
-			if($_->{msg}){
+			if($_->{msg} and $_->{msg} !~ /^note:/){
 				warn "$_->{file}:$_->{line}:$_->{col}: unexpected output: \"$_->{msg}\"\n";
 				$ec = 1;
 			}
