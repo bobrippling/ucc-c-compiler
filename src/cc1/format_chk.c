@@ -33,7 +33,8 @@ struct format_arg
 };
 
 static void format_check_printf_arg_type(
-		char fmt,
+		const char *fmtbegin,
+		const size_t fmtlen,
 		const char *desc,
 		type *const t_arg,
 		where *loc_expr,
@@ -65,9 +66,10 @@ static void format_check_printf_arg_type(
 		char buf2[TYPE_STATIC_BUFSIZ];
 
 		if(cc1_warn_at_w(loc_str, warningp,
-				"%s %%%c expects %s argument, not %s",
+				"%s for %.*s expects %s argument, not %s",
 				desc,
-				fmt,
+				(int)fmtlen,
+				fmtbegin,
 				type_to_str_r(buf1, t_expected),
 				type_to_str_r(buf2, t_arg)))
 		{
@@ -280,7 +282,8 @@ invalid_lengthmod:
 }
 
 static void format_check_printf_arg(
-		char fmt,
+		const char *fmtbegin,
+		const size_t fmtlen,
 		where *strloc,
 		expr ***current_arg,
 		type *expected_type,
@@ -293,13 +296,15 @@ static void format_check_printf_arg(
 
 	if(!e){
 		cc1_warn_at(strloc, attr_printf_bad,
-				"too few arguments for %s (%%%c)",
-				desc, fmt);
+				"too few arguments for %s (%.*s)",
+				desc,
+				(int)fmtlen,
+				fmtbegin);
 		return;
 	}
 
 	format_check_printf_arg_type(
-			fmt, desc,
+			fmtbegin, fmtlen, desc,
 			e->tree_type, &e->where, expected_type, strloc);
 
 	++*current_arg;
@@ -321,6 +326,7 @@ static void format_check_printf_str(
 		const char *err;
 		where strloc;
 		struct format_arg parsed;
+		const size_t begin = i;
 
 		if(fmt[i++] != '%')
 			continue;
@@ -353,7 +359,8 @@ static void format_check_printf_str(
 
 		if(parsed.expected_field_width){
 			format_check_printf_arg(
-					fmt[i],
+					&fmt[begin],
+					i - begin + 1,
 					&strloc,
 					&current_arg,
 					type_nav_btype(cc1_type_nav, type_int),
@@ -361,7 +368,8 @@ static void format_check_printf_str(
 		}
 		if(parsed.expected_precision){
 			format_check_printf_arg(
-					fmt[i],
+					&fmt[begin],
+					i - begin + 1,
 					&strloc,
 					&current_arg,
 					type_nav_btype(cc1_type_nav, type_int),
@@ -369,7 +377,8 @@ static void format_check_printf_str(
 		}
 
 		format_check_printf_arg(
-				fmt[i],
+				&fmt[begin],
+				i - begin + 1,
 				&strloc,
 				&current_arg,
 				parsed.expected_type,
