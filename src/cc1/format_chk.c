@@ -349,7 +349,7 @@ static void format_check_printf_str(
 					fmt[i],
 					&strloc,
 					&current_arg,
-					type_ptr_to(type_nav_btype(cc1_type_nav, type_int)),
+					type_nav_btype(cc1_type_nav, type_int),
 					"field width");
 		}
 		if(parsed.expected_precision){
@@ -357,7 +357,7 @@ static void format_check_printf_str(
 					fmt[i],
 					&strloc,
 					&current_arg,
-					type_ptr_to(type_nav_btype(cc1_type_nav, type_int)),
+					type_nav_btype(cc1_type_nav, type_int),
 					"precision");
 		}
 
