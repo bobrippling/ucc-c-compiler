@@ -34,6 +34,7 @@ struct format_arg
 
 static void format_check_printf_arg_type(
 		char fmt,
+		const char *desc,
 		type *const t_arg,
 		where *loc_expr,
 		type *const t_expected,
@@ -64,7 +65,8 @@ static void format_check_printf_arg_type(
 		char buf2[TYPE_STATIC_BUFSIZ];
 
 		if(cc1_warn_at_w(loc_str, warningp,
-				"format %%%c expects %s argument, not %s",
+				"%s %%%c expects %s argument, not %s",
+				desc,
 				fmt,
 				type_to_str_r(buf1, t_expected),
 				type_to_str_r(buf2, t_arg)))
@@ -296,7 +298,9 @@ static void format_check_printf_arg(
 		return;
 	}
 
-	format_check_printf_arg_type(fmt, e->tree_type, &e->where, expected_type, strloc);
+	format_check_printf_arg_type(
+			fmt, desc,
+			e->tree_type, &e->where, expected_type, strloc);
 
 	++*current_arg;
 }
