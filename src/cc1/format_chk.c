@@ -293,9 +293,6 @@ static void format_check_printf_arg(
 		return;
 	}
 
-	/* place us on the format char */
-	strloc->chr++;
-
 	format_check_printf_arg_type(fmt, e->tree_type, &e->where, expected_type, strloc);
 
 	++*current_arg;
