@@ -1,5 +1,5 @@
-// RUN: %check --prefix=strict %s -Wattr-printf-voidptr
-// RUN: %check --prefix=lax %s -Wno-attr-printf-voidptr
+// RUN: %check --only --prefix=strict %s -Wattr-printf-voidptr
+// RUN: %check --only --prefix=lax %s -Wno-attr-printf-voidptr
 
 int printf(const char *, ...)
 	__attribute((format(printf, 1, 2)));

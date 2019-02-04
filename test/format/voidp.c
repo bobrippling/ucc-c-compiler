@@ -1,4 +1,4 @@
-// RUN: %check %s -Wno-attr-printf-voidptr
+// RUN: %check --only %s -Wno-attr-printf-voidptr
 
 int printf(const char *, ...)
 	__attribute((format(printf,1,2)));

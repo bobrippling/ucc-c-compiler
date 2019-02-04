@@ -4,7 +4,6 @@
 // RUN: %ocheck 5 %s -fsanitize=undefined -fsanitize-error=call=san_err -DCALL='neg_rhs_2(-1)'
 // RUN: %ocheck 5 %s -fsanitize=undefined -fsanitize-error=call=san_err -DCALL='neg_lhs(-10)'
 
-int printf(const char *, ...) __attribute((format(printf,1,2)));
 void exit(int);
 
 //__attribute__((used)) TODO

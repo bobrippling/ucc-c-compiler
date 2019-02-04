@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check --only %s
 
 __attribute__((noreturn)) void
 	d0 (void),
@@ -8,18 +8,17 @@ __attribute__((noreturn)) void
 // noreturn applies to all
 // format applies to d1
 
-_Noreturn void a() // CHECK: !/warning: control reaches end of/
+_Noreturn void a()
 {
 	d0();
 }
 
-
-_Noreturn void b() // CHECK: !/warning: control reaches end of/
+_Noreturn void b()
 {
 	d2();
 }
 
-_Noreturn void c() // CHECK: !/warning: control reaches end of/
+_Noreturn void c()
 {
 	d1("hi %s"); // CHECK: warning: too few arguments for format (%s)
 }

@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check --only %s
 
 int printf(const char *, ...)
 	__attribute((format(printf, 1, 2)));

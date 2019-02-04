@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check --only %s
 
 f(int, int, char *, ...) __attribute__((format(printf, 3, 3))); // CHECK: warning: variadic argument out of bounds (should be 4)
 
