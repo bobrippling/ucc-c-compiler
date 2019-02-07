@@ -185,14 +185,15 @@ static const char *parse_format_arg(const char *fmt, size_t *const i, size_t con
 		case 'X':
 		case 'n':
 			switch(lengthmod){
+				/* these types must all be the signed variants - converted below */
 				case length_none: btype = type_int; break;
 				case length_hh:   btype = type_schar; break;
 				case length_h:    btype = type_short; break;
 				case length_l:    btype = type_long; break;
 				case length_ll:   btype = type_llong; break;
-				case length_j:    btype = type_intmax_t; break;
-				case length_z:    btype = type_size_t; break;
-				case length_t:    btype = type_ptrdiff_t; break;
+				case length_j:    btype = type_llong; /* intmax_t */ break;
+				case length_z:    btype = type_llong; /* size_t */ break;
+				case length_t:    btype = type_llong; /* ptrdiff_t */ break;
 				default:
 invalid_lengthmod:
 					return "invalid length modifier for integer format";
