@@ -7,5 +7,5 @@ main()
 {
 	// checks disabled for printf
 	printf1("hi %d\n", "yo");
-	printf2("hi %d\n", "yo"); // CHECK: warning: format %d expects int argument, not char *
+	printf2("hi %d\n", "yo"); // CHECK: warning: %d expects a 'int' argument, not 'char *'
 }

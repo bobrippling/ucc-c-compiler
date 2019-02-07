@@ -6,5 +6,5 @@ int printf(const char *, ...)
 int main(void)
 {
 	// should warn about this even without -Wattr-printf-voidptr
-	printf("%p\n", 0); // CHECK: warning: format argument for %p expects void * argument, not int
+	printf("%p\n", 0); // CHECK: warning: %p expects a 'void *' argument, not 'int'
 }

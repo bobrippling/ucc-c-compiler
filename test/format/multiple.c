@@ -17,9 +17,9 @@ bad_fmt_idx(char *, int, ...)
 main()
 {
 	printf("%d %s\n", 5, "hello"); 
-	printf("%d %s\n", 5, L"hello"); // CHECK: warning: format argument for %s expects char * argument, not int *
-	printf("%d %s\n", "hello", 5);  // CHECK: warning: format argument for %d expects int argument, not char *
-	// CHECK: ^warning: format argument for %s expects char * argument, not int
+	printf("%d %s\n", 5, L"hello"); // CHECK: warning: %s expects a 'char *' argument, not 'int *'
+	printf("%d %s\n", "hello", 5);  // CHECK: warning: %d expects a 'int' argument, not 'char *'
+	// CHECK: ^warning: %s expects a 'char *' argument, not 'int'
 
 	not_variadic("hi");
 

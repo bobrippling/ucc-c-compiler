@@ -51,6 +51,6 @@ int main()
 	printf("%'.*"); // CHECK-linux: warning: invalid precision
 	printf("%+*.1"); // CHECK-linux: warning: invalid precision
 
-	printf("%.*f\n", (size_t)5, 3.2); // CHECK-linux: warning: precision for %.*f expects int argument, not unsigned long
-	printf("%*s", 2l, ""); // CHECK-linux: warning: field width for %*s expects int argument, not long
+	printf("%.*f\n", (size_t)5, 3.2); // CHECK-linux: warning: %.*f expects a 'int' precision, not 'unsigned long'
+	printf("%*s", 2l, ""); // CHECK-linux: warning: %*s expects a 'int' field width, not 'long'
 }

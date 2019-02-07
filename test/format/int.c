@@ -5,8 +5,8 @@ int printf(const char *, ...)
 
 main()
 {
-	printf("%d %d\n", // CHECK: warning: format argument for %d expects int argument, not unsigned long
-	// CHECK: ^warning: format argument for %d expects int argument, not unsigned long
+	printf("%d %d\n", // CHECK: warning: %d expects a 'int' argument, not 'unsigned long'
+	// CHECK: ^warning: %d expects a 'int' argument, not 'unsigned long'
 			sizeof(0), // CHECK: note: argument here
 			sizeof(0)); // CHECK: note: argument here
 }

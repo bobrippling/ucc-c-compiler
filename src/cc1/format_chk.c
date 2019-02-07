@@ -67,11 +67,11 @@ static void format_check_printf_arg_type(
 		char buf2[TYPE_STATIC_BUFSIZ];
 
 		if(cc1_warn_at_w(loc_str, warningp,
-				"%s for %.*s expects %s argument, not %s",
-				desc,
+				"%.*s expects a '%s' %s, not '%s'",
 				(int)fmtlen,
 				fmtbegin,
 				type_to_str_r(buf1, t_expected),
+				desc,
 				type_to_str_r(buf2, t_arg)))
 		{
 			note_at(&e->where, "argument here");
@@ -389,7 +389,7 @@ static void format_check_printf_str(
 				&strloc,
 				&current_arg,
 				parsed.expected_type,
-				"format argument");
+				"argument");
 	}
 
 	if(i > len)
