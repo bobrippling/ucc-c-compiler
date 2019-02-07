@@ -49,22 +49,18 @@ static void format_check_printf_arg_type(
 
 	t_arg = e->tree_type;
 
-#if 0
-		case 'p':
-			prim = type_void;
+	if(t_expected == type_ptr_to(type_nav_btype(cc1_type_nav, type_void))){
+		if(cc1_warning.attr_printf_voidp){
+			/* strict %p / void* check - emitted with voidp flag */
+			warningp = &cc1_warning.attr_printf_voidp;
+		}else{
+			/* allow any* */
+			if(type_is_ptr(t_arg))
+				return;
 
-			if(cc1_warning.attr_printf_voidp){
-				/* strict %p / void* check - emitted with voidp flag */
-				warningp = &cc1_warning.attr_printf_voidp;
-			}else{
-				/* allow any* */
-				if(type_is_ptr(t_in))
-					break;
-
-				/* not a pointer - emit with the default-warning flag */
-			}
-			goto ptr;
-#endif
+			/* not a pointer - emit with the default-warning flag */
+		}
+	}
 
 	if(!(type_cmp(t_arg, t_expected, 0) & TYPE_EQUAL_ANY)){
 		char buf1[TYPE_STATIC_BUFSIZ];

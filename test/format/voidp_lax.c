@@ -13,6 +13,6 @@ main()
 	printf("%p\n", vp); // CHECK-strict: !/warn/
 	                    // CHECK-lax: ^ !/warn/
 
-	printf("%p\n", ip); // CHECK-strict: warning: format %p expects 'void *' argument (got int *)
+	printf("%p\n", ip); // CHECK-strict: warning: format argument for %p expects void * argument, not int *
 	                    // CHECK-lax: ^ !/warn/
 }
