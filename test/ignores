@@ -24,6 +24,9 @@ cpp/number_tokenisation.c
 # __attribute__ ignored on block types now
 inline/block_call.c
 
+# broken but not caught because warning checks were too narrow
+__attribute__/function_attr.c
+
 # waiting for fixed stret (passes by coincidence)
 #structs/function_passing/nested_ret.c
 
