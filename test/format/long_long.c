@@ -8,4 +8,6 @@ main()
 	long long ll = 0;
 
   printf("%lld\n", ll);
+
+  printf("%hhd\n", (signed char)3);
 }

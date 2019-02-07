@@ -36,13 +36,18 @@ static void format_check_printf_arg_type(
 		const char *fmtbegin,
 		const size_t fmtlen,
 		const char *desc,
-		type *const t_arg,
-		where *loc_expr,
+		expr *e,
 		type *const t_expected,
 		where *loc_str)
 {
 	unsigned char *const default_warningp = &cc1_warning.attr_printf_bad;
 	unsigned char *warningp = default_warningp;
+	type *t_arg;
+
+	if(type_is_promotable(t_expected, NULL))
+		e = expr_skip_implicit_casts(e);
+
+	t_arg = e->tree_type;
 
 #if 0
 		case 'p':
@@ -73,7 +78,7 @@ static void format_check_printf_arg_type(
 				type_to_str_r(buf1, t_expected),
 				type_to_str_r(buf2, t_arg)))
 		{
-			note_at(loc_expr, "argument here");
+			note_at(&e->where, "argument here");
 		}
 	}
 }
@@ -311,7 +316,7 @@ static void format_check_printf_arg(
 
 	format_check_printf_arg_type(
 			fmtbegin, fmtlen, desc,
-			e->tree_type, &e->where, expected_type, strloc);
+			e, expected_type, strloc);
 
 	++*current_arg;
 }
