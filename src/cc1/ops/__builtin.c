@@ -43,6 +43,8 @@
 typedef expr *func_builtin_parse(
 		const char *ident, symtable *);
 
+#define BUILTIN_LIBC_FUNCTIONS
+
 static func_builtin_parse parse_unreachable
                           , parse_compatible_p
                           , parse_constant_p
@@ -215,13 +217,13 @@ expr *builtin_new_memset(expr *p, int ch, size_t len)
 }
 
 #ifdef BUILTIN_LIBC_FUNCTIONS
-static expr *parse_memset(void)
+static expr *parse_memset(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 
 	ICE("TODO: builtin memset parsing");
 
-	expr_mutate_builtin_gen(fcall, memset);
+	expr_mutate_builtin(fcall, memset);
 
 	return fcall;
 }
@@ -231,10 +233,50 @@ static expr *parse_memset(void)
 
 static void fold_memcpy(expr *e, symtable *stab)
 {
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+
+	if(!e->lhs){
+		consty k;
+		int i;
+
+		/* parsed a user call */
+		if(dynarray_count(e->funcargs) != 3){
+			warn_at_print_error(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+			fold_had_error = 1;
+			return;
+		}
+
+		for(i = 0; i < 3; i++)
+			FOLD_EXPR(e->funcargs[i], stab);
+
+		if(!type_is_ptr(e->funcargs[0]->tree_type)
+		|| !type_is_ptr(e->funcargs[1]->tree_type)
+		|| !type_is_integral(e->funcargs[2]->tree_type))
+		{
+			warn_at_print_error(&e->where, "TODO: BAD TYPE ERROR for %s %d%d%d",
+					BUILTIN_SPEL(e->expr),
+					!!type_is_ptr(e->funcargs[0]->tree_type),
+					!!type_is_ptr(e->funcargs[1]->tree_type),
+					!!type_is_integral(e->funcargs[2]->tree_type));
+			fold_had_error = 1;
+			return;
+		}
+
+		e->lhs = e->funcargs[0];
+		e->rhs = e->funcargs[1];
+
+		const_fold(e->funcargs[2], &k);
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num)){
+			warn_at_print_error(&e->where, "TODO: BAD CONST NUM ERROR for %s", BUILTIN_SPEL(e->expr));
+			fold_had_error = 1;
+			return;
+		}
+
+		e->bits.num.val.i = k.bits.num.val.i;
+	}
+
 	fold_expr_nodecay(e->lhs, stab);
 	fold_expr_nodecay(e->rhs, stab);
-
-	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
 
 #ifdef BUILTIN_USE_LIBC
@@ -293,13 +335,13 @@ expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
 }
 
 #ifdef BUILTIN_LIBC_FUNCTIONS
-static expr *parse_memcpy(void)
+static expr *parse_memcpy(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 
-	ICE("TODO: builtin memcpy parsing");
+	//ICE("TODO: builtin memcpy parsing");
 
-	expr_mutate_builtin_gen(fcall, memcpy);
+	expr_mutate_builtin(fcall, memcpy);
 
 	return fcall;
 }
