@@ -147,16 +147,20 @@ static const char *parse_format_arg(const char *fmt, size_t *const i, size_t con
 	/* length modifier */
 	switch(fmt[*i]){
 		case 'h':
-			if(*i + 1 < len && fmt[*i+1] == 'h')
+			if(*i + 1 < len && fmt[*i+1] == 'h'){
 				lengthmod = length_hh;
-			else
+				++*i;
+			}else{
 				lengthmod = length_h;
+			}
 			break;
 		case 'l':
-			if(*i + 1 < len && fmt[*i+1] == 'l')
+			if(*i + 1 < len && fmt[*i+1] == 'l'){
 				lengthmod = length_ll;
-			else
+				++*i;
+			}else{
 				lengthmod = length_l;
+			}
 			break;
 		case 'L':
 			lengthmod = length_L;
