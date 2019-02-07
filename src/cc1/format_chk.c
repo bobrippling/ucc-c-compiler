@@ -195,7 +195,6 @@ static const char *parse_format_arg(const char *fmt, size_t *const i, size_t con
 				case length_z:    btype = type_llong; /* size_t */ break;
 				case length_t:    btype = type_llong; /* ptrdiff_t */ break;
 				default:
-invalid_lengthmod:
 					return "invalid length modifier for integer format";
 			}
 			switch(fmt[*i]){
@@ -235,7 +234,7 @@ invalid_lengthmod:
 					break;
 
 				default:
-					goto invalid_lengthmod;
+					return "invalid length modifier for float format";
 			}
 			out->expected_type = type_nav_btype(cc1_type_nav, btype);
 			break;
@@ -252,7 +251,9 @@ invalid_lengthmod:
 					break;
 
 				default:
-					goto invalid_lengthmod;
+					return fmt[*i] == 'c'
+						? "invalid length modifier for char format"
+						: "invalid length modifier for string format";
 			}
 			out->expected_type = type_nav_btype(cc1_type_nav, btype);
 			if(fmt[*i] == 's')
@@ -261,7 +262,7 @@ invalid_lengthmod:
 
 		case 'p':
 			if(lengthmod != length_none)
-				goto invalid_lengthmod;
+				return "invalid length modifier for pointer format";
 			out->expected_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 			break;
 
@@ -271,7 +272,7 @@ invalid_lengthmod:
 			/* fallthrough */
 		case '%':
 			if(lengthmod != length_none)
-				goto invalid_lengthmod;
+				return "invalid length modifier for '%%' format";
 			out->expected_type = NULL;
 			break;
 
