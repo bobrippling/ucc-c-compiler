@@ -2,7 +2,7 @@
 
 int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
-not_variadic(char *) __attribute__((format(printf, 1, 2))); // CHECK: /warning: variadic function required for format attribute/
+not_variadic(char *) __attribute__((format(printf, 1, 2))); // CHECK: warning: variadic function required for format attribute
 
 just_str_check(char *, ...) __attribute((format(printf, 1, 0)));
 
@@ -17,12 +17,13 @@ bad_fmt_idx(char *, int, ...)
 main()
 {
 	printf("%d %s\n", 5, "hello"); 
-	printf("%d %s\n", 5, L"hello"); // CHECK: /warn/
-	printf("%d %s\n", "hello", 5);  // CHECK: /warn/
+	printf("%d %s\n", 5, L"hello"); // CHECK: warning: format argument for %s expects char * argument, not int *
+	printf("%d %s\n", "hello", 5);  // CHECK: warning: format argument for %d expects int argument, not char *
+	// CHECK: ^warning: format argument for %s expects char * argument, not int
 
 	not_variadic("hi");
 
-	just_str_check("hi %"); // CHECK: /warn/
+	just_str_check("hi %"); // CHECK: warning: incomplete format specifier
 	just_str_check("hi %d");
 
 	bad_v_idx(1, 2, "hi %s", 3);

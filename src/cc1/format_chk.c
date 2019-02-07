@@ -393,7 +393,7 @@ static void format_check_printf_str(
 				&strloc,
 				&current_arg,
 				parsed.expected_type,
-				"format");
+				"format argument");
 	}
 
 	if(i > len)
