@@ -1083,6 +1083,14 @@ void nexttoken()
 {
 	int c;
 
+	if(curtok == token_string){
+		/* finished processing the string. i.e. token_current_spel() called,
+		 * parse code won't need (implicity - warn_at(NULL, ...)) the location of
+		 * the string any more */
+		memcpy_safe(&loc_tok, &loc_now);
+		loc_tok.chr--;
+	}
+
 	if(buffereof){
 		/* delay this until we are asked for token_eof */
 		parse_finished = 1;
