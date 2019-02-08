@@ -64,7 +64,14 @@ const out_val *v_to_stack_mem(
 	out_val_retain(octx, spilt);
 	out_store(octx, spilt, val);
 
-	spilt->type = type;
+	switch(type){
+		case V_SPILT:
+		case V_REGOFF:
+			spilt->type = type;
+			break;
+		default:
+			assert(0 && "can only store to stack mem for spill or regoff");
+	}
 
 	return spilt;
 }
