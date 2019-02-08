@@ -16,16 +16,28 @@ typedef struct A
 	long a, b, c;
 } A;
 
+static const A s1 = { 1, 2, 3 };
+static const A s2 = { 5, 6, 7 };
+static A s3;
+
 void g()
 {
-	A d;
-	A s1 = { 1, 2, 3 };
-	A s2 = { 5, 6, 7 };
-	A *p;
+	A *p = &s3;
 	int c = 3;
-	p = &d;
 
 	*p = *(c ? &s1 : &s2); // stage1 compiler balks on this
+}
+
+static const int i1, i2;
+static int i3;
+
+void g_does_the_bug_happen_without_lvaluestruct_logic()
+{
+	typedef int A;
+	A *p = &i3;
+	int c = 3;
+
+	__builtin_memcpy(p, (c ? &i1 : &i2), sizeof(*p));
 }
 
 /*
