@@ -184,7 +184,7 @@ static void apply_ptr_step(
 		out_val *mut_incdec;
 		type *ptrty = l_ptr ? l_ptr : r_ptr;
 
-		*incdec = mut_incdec = v_dup_or_reuse(octx, *incdec, (*incdec)->t);
+		*incdec = mut_incdec = v_mutable_copy(octx, *incdec);
 
 		switch(mut_incdec->type){
 			case V_CONST_I:

@@ -207,6 +207,7 @@ static out_val *v_reuse(out_ctx *octx, const out_val *from, type *ty)
 out_val *v_dup_or_reuse(out_ctx *octx, const out_val *from, type *ty)
 {
 	assert(from);
+	assert(from->type != V_SPILT && "v_dup_or_reuse() on a V_SPILT - likely a bug");
 
 	if(from->retains > 1){
 		out_val *r = v_dup(octx, from, ty);
@@ -215,6 +216,22 @@ out_val *v_dup_or_reuse(out_ctx *octx, const out_val *from, type *ty)
 	}
 
 	return v_reuse(octx, from, ty);
+}
+
+out_val *v_mutable_copy(out_ctx *octx, const out_val *val)
+{
+	if(val->type == V_SPILT){
+		/* A V_SPILT's type is a pointer to the value's real type, which is
+		 * unexpected in a lot of places where we assume the value is immediately
+		 * usable. Here we bring it into a register so we can make the type change
+		 * without having to think about keeping the double-indirection, or how
+		 * callers will handle a value that doesn't have the type they request
+		 * (when this is used in a out_change_type() or v_dup_or_reuse() context).
+		 */
+		val = v_to_reg(octx, val);
+	}
+
+	return v_dup_or_reuse(octx, val, val->t);
 }
 
 out_val *v_new_flag(

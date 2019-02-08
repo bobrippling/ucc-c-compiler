@@ -82,6 +82,7 @@ int vreg_eq(const struct vreg *, const struct vreg *);
 out_val *v_new(out_ctx *octx, type *);
 
 out_val *v_dup_or_reuse(out_ctx *octx, const out_val *from, type *ty);
+out_val *v_mutable_copy(out_ctx *octx, const out_val *val);
 
 out_val *v_new_flag(
 		out_ctx *octx, const out_val *from,

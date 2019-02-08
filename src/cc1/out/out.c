@@ -204,7 +204,8 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 
 const out_val *out_change_type(out_ctx *octx, const out_val *val, type *ty)
 {
-	return v_dup_or_reuse(octx, val, ty);
+	out_val *mut = v_mutable_copy(octx, val);
+	return v_dup_or_reuse(octx, mut, ty);
 }
 
 const out_val *out_deref(out_ctx *octx, const out_val *target)
@@ -222,7 +223,7 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 	|| type_is(tnext, type_func))
 	{
 		/* noop */
-		return v_dup_or_reuse(octx, target,
+		return out_change_type(octx, target,
 				type_dereference_decay(target->t));
 	}
 
@@ -251,7 +252,7 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 
 const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 {
-	out_val *normalised = v_dup_or_reuse(octx, unnormal, unnormal->t);
+	out_val *normalised = v_mutable_copy(octx, unnormal);
 
 	switch(normalised->type){
 		case V_FLAG:
@@ -293,7 +294,7 @@ const out_val *out_set_bitfield(
 		unsigned off, unsigned nbits,
 		type *master_ty)
 {
-	out_val *mut = v_dup_or_reuse(octx, val, val->t);
+	out_val *mut = v_mutable_copy(octx, val);
 
 	mut->bitfield.off = off;
 	mut->bitfield.nbits = nbits;
