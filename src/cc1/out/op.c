@@ -155,7 +155,7 @@ static type *is_val_ptr(const out_val *v)
 			if(pointee){
 				type *next = type_is_ptr(pointee);
 				if(next)
-					return next;
+					return pointee;
 			}
 			return NULL;
 
