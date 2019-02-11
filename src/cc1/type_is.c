@@ -289,7 +289,7 @@ attribute **type_get_attrs_toplvl(type *t)
 
 int type_is_bool_ish(type *r)
 {
-	if(type_is(r, type_ptr))
+	if(type_is_ptr_or_block(r))
 		return 1;
 
 	r = type_is(r, type_btype);
