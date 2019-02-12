@@ -4,26 +4,45 @@ verbose=
 error=0
 prefix=
 only=
+synonly=-fsyntax-only
+in_ucc_args=0
 for arg in "$@"
 do
-	if [ "$arg" = -v ]
+	if test $in_ucc_args -eq 0
 	then
-		shift
-		verbose=-v
-	elif [ "$arg" = -e ]
-	then
-		shift
-		error=1
-	elif echo "$arg" | grep '^--prefix=' >/dev/null
-	then
-		shift
-		prefix="$arg"
-	elif [ "$arg" = '--only' ]
-	then
-		shift
-		only="$arg"
+		case "$arg" in
+			-v)
+				shift
+				verbose=-v
+				;;
+			-e)
+				shift
+				error=1
+				;;
+			--prefix=*)
+				shift
+				prefix="$arg"
+				;;
+			--only)
+				shift
+				only="$arg"
+				;;
+			*)
+				# on the filename
+				in_ucc_args=1
+				;;
+		esac
 	else
-		break
+		case "$arg" in
+			-E)
+				# don't need a -fsyntax-only option
+				synonly=
+				;;
+			-[cS])
+				echo >&2 "Useless argument '$arg' passed to ucc via %check"
+				exit 2
+				;;
+		esac
 	fi
 done
 
@@ -42,7 +61,7 @@ trap "rm -f $e" EXIT
 f="$1"
 shift
 
-$ucc -fsyntax-only "$@" "$f" 2>$e
+$ucc $synonly "$@" "$f" 2>$e
 r=$?
 
 # check for abort

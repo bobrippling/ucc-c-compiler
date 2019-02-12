@@ -1,4 +1,4 @@
-// RUN: %check %s -c
+// RUN: %check %s
 void *_new(int sz, int n);
 #define new(ty, n) (ty *)_new(sizeof(ty), n)
 #define delete(x) free(x)
