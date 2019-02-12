@@ -61,7 +61,7 @@ trap "rm -f $e" EXIT
 f="$1"
 shift
 
-$ucc $synonly "$@" "$f" 2>$e
+$ucc -fno-show-line $synonly "$@" "$f" 2>$e
 r=$?
 
 # check for abort
