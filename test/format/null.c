@@ -1,10 +1,10 @@
-// RUN: %ucc %s
+// RUN: %check --only %s
 
 #include "printf.h"
 #define NULL (void *)0
 
 main()
 {
-	printf(NULL);
-	printf(0);
+	printf(NULL); // CHECK: warning: format argument isn't a string constant
+	printf(0); // CHECK: warning: format argument isn't a string constant
 }

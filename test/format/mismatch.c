@@ -1,10 +1,9 @@
-// RUN: %ucc %s
-// RUN: %check %s
+// RUN: %check --only %s
 
 #include "printf.h"
-main()
-{
-	printf("hello %d\n", "yo"); // CHECK: /warning: format %d expects integral argument/
-	printf("hello %s\n", 2); // CHECK: /warning: format %s expects 'char \*' argument/
-}
 
+int main()
+{
+	printf("hello %d\n", "yo"); // CHECK: warning: %d expects a 'int' argument, not 'char *'
+	printf("hello %s\n", 2); // CHECK: warning: %s expects a 'char *' argument, not 'int'
+}

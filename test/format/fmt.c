@@ -1,8 +1,13 @@
-// RUN: %ucc %s
-// RUN: %check %s
+// RUN: %check --only %s
 
 #include "printf.h"
-main()
+
+typedef struct A T;
+T *ext;
+
+int main()
 {
-	printf("hi %d\n", 5); // CHECK: !/warn/
+	printf("hi %d\n", 5);
+	printf("%s\n", "hi");
+	printf("%p\n", ext);
 }
