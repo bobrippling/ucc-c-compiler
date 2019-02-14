@@ -452,6 +452,12 @@ void v_save_regs(
 		}
 
 		switch(v->type){
+			case V_SPILT:
+				/* this is analogous to the V_REGOFF and V_REG cases */
+				assert(!impl_reg_savable(&v->bits.regoff.reg));
+				save = 0;
+				break;
+
 			case V_REGOFF:
 			case V_REG:
 				if(!impl_reg_savable(&v->bits.regoff.reg)){
@@ -473,11 +479,6 @@ void v_save_regs(
 			case V_CONST_I:
 			case V_CONST_F:
 			case V_LBL:
-				save = 0;
-				break;
-
-			case V_SPILT:
-				assert(!impl_reg_savable(&v->bits.regoff.reg));
 				save = 0;
 				break;
 
