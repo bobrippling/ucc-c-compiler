@@ -43,8 +43,6 @@
 typedef expr *func_builtin_parse(
 		const char *ident, symtable *);
 
-#define BUILTIN_LIBC_FUNCTIONS
-
 static func_builtin_parse parse_unreachable
                           , parse_compatible_p
                           , parse_constant_p
@@ -339,7 +337,7 @@ static expr *parse_memcpy(const char *ident, symtable *scope)
 {
 	expr *fcall = parse_any_args(scope);
 
-	//ICE("TODO: builtin memcpy parsing");
+	ICE("TODO: builtin memcpy parsing");
 
 	expr_mutate_builtin(fcall, memcpy);
 
