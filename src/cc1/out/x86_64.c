@@ -1644,13 +1644,13 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			/* XXX: currently implicit here that V_REG means w/no offset */
 			{ V_REG, V_CONST_I },
 			{ V_LBL, V_CONST_I },
-			{ V_REGOFF, V_CONST_I },
+			{ V_SPILT, V_CONST_I },
 
 			{ V_REG, V_LBL },
 			{ V_LBL, V_REG },
 
-			{ V_REGOFF, V_REG },
-			{ V_REG, V_REGOFF },
+			{ V_SPILT, V_REG },
+			{ V_REG, V_SPILT },
 
 			{ V_REG, V_REG },
 		};
@@ -1659,7 +1659,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 #define OP_MATCH(vp, op) (   \
 		vp->type == ops[i].op && \
-		((vp->type != V_REG && vp->type != V_REGOFF) || !vp->bits.regoff.offset))
+		((vp->type != V_REG && vp->type != V_SPILT) || !vp->bits.regoff.offset))
 
 		for(i = 0; i < countof(ops); i++){
 			if(OP_MATCH(l, l) && OP_MATCH(r, r)){
@@ -1682,7 +1682,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			l = v_to(octx, l, TO_REG | TO_MEM);
 			r = v_to(octx, r, TO_REG | TO_MEM | TO_CONST);
 
-#define V_IS_MEM(ty) ((ty) == V_REGOFF || (ty) == V_LBL)
+#define V_IS_MEM(ty) ((ty) == V_SPILT || (ty) == V_LBL)
 			if(V_IS_MEM(l->type) && V_IS_MEM(r->type))
 				r = v_to_reg(octx, r);
 #undef V_IS_MEM
