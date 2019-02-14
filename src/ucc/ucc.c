@@ -992,7 +992,7 @@ static void state_from_triple(
 
 	if(vars->builtininc){
 		struct cmdpath uccinc;
-		cmdpath_initrelative(&uccinc, "include", "../../");
+		cmdpath_initrelative(&uccinc, "include", "../include");
 
 		dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
 		dynarray_add(&state->args[mode_preproc], cmdpath_resolve(&uccinc, NULL));
