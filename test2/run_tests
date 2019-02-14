@@ -2,7 +2,7 @@
 use strict;
 
 my @ignores;
-
+my $ucc = undef;
 
 sub interrupt
 {
@@ -18,7 +18,7 @@ sub basename
 
 sub usage
 {
-	die "Usage: $0 [-q | -v] [-i ignore-file] [tests...]\n";
+	die "Usage: $0 [-q | -v] [-i ignore-file] [--ucc=...] [tests...]\n";
 }
 
 sub read_ignores
@@ -48,6 +48,7 @@ sub test
 
 		my @args = @args{file};
 		unshift @args, '-v' if $args{verbose};
+		unshift @args, "--ucc=$ucc" if defined($ucc);
 		exec './test.pl', @args;
 		die "exec: $!";
 	}
@@ -94,6 +95,8 @@ for(my $i = 0; $i < @ARGV; $i++){
 		my $f = $ARGV[++$i];
 		usage() unless $f;
 		$ign_file = $f;
+	}elsif($ARGV[$i] =~ /^--ucc=(.+)$/){
+		$ucc = $1;
 
 	}else{
 		push @tests, $ARGV[$i];
