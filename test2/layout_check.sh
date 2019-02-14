@@ -38,7 +38,7 @@ then
 		rmfiles="$rmfiles $out"
 
 		if [ $verbose -ne 0 ]
-		then echo "$0: ucc -S -o'$out' '$in' $@"
+		then echo "$0: $UCC -S -o'$out' '$in' -fno-common $@"
 		fi
 
 		# $@ are the optional compiler args
