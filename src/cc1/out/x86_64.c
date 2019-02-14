@@ -663,7 +663,7 @@ void impl_func_prologue_save_call_regs(
 					out_val_retain(octx, stack_loc);
 
 					*store = out_change_type(octx,
-							v_reg_to_stack_mem(octx, rp, stack_loc, V_REGOFF),
+							v_reg_to_stack_mem(octx, rp, stack_loc),
 							type_ptr_to(ty));
 
 					stack_loc = out_op(octx, op_plus,
@@ -775,7 +775,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 				out_new_l(octx, ty_integral, i * pws));
 
 		/* integral args are at the lowest address */
-		out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr, V_REGOFF));
+		out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr));
 	}
 
 	{
@@ -808,7 +808,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 			stk_ptr = out_change_type(octx, stk_ptr, ty_dbl);
 
 			/* we go above the integral regs */
-			out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr, V_REGOFF));
+			out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr));
 		}
 
 		out_ctrl_transfer_make_current(octx, va_shortcircuit_join);

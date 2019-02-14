@@ -70,11 +70,10 @@ const out_val *v_to_stack_mem(
 }
 
 const out_val *v_reg_to_stack_mem(
-		out_ctx *octx, struct vreg const *vr, const out_val *stk,
-		enum out_val_store type)
+		out_ctx *octx, struct vreg const *vr, const out_val *stk)
 {
 	const out_val *reg = v_new_reg(octx, NULL, stk->t, vr);
-	return v_to_stack_mem(octx, reg, stk, type);
+	return v_to_stack_mem(octx, reg, stk, V_REGOFF);
 }
 
 static int v_in(const out_val *vp, enum vto to)
