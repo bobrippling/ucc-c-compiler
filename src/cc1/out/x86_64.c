@@ -1867,8 +1867,8 @@ const out_val *impl_cast_load(
 
 		case V_CONST_I:
 		case V_LBL:
-		case V_REGOFF: /* could do something like movslq -8(%rbp), %rax */
-		case V_SPILT:
+		case V_REGOFF:
+		case V_SPILT: /* could do something like movslq -8(%rbp), %rax */
 		case V_FLAG:
 			vp = v_to_reg(octx, vp);
 		case V_REG:
