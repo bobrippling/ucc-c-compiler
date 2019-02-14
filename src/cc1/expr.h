@@ -23,7 +23,7 @@ typedef void func_fold(struct expr *, struct symtable *);
 typedef void func_const(struct expr *, consty *);
 typedef const char *func_str(void);
 typedef void func_mutate_expr(struct expr *);
-typedef enum lvalue_kind func_is_lval(struct expr *);
+typedef enum lvalue_kind func_is_lval(const struct expr *);
 typedef int func_bool(const struct expr *);
 
 typedef ucc_wur const out_val *func_gen(const struct expr *, out_ctx *);
