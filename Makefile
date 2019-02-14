@@ -24,6 +24,9 @@ check: all lib
 	cd test2; ./run_tests -q -i ignores .
 	# test/ pending
 
+check-bootstrap: bootstrap
+	cd test2; ./run_tests -q -i ignores --ucc=../bootstrap/stage3/src/ucc/ucc .
+
 ALL_SRC = $(shell find . -iname '*.[ch]')
 
 tags: ${ALL_SRC}
