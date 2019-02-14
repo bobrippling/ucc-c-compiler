@@ -28,7 +28,11 @@ usage(){
 	exit 1
 }
 
-ucc=../ucc
+if test -z "$UCC"
+then
+	echo >&2 "$0: need \$UCC"
+	exit 1
+fi
 e=/tmp/check.$$
 
 trap "rm -f $e" EXIT
@@ -37,7 +41,7 @@ trap "rm -f $e" EXIT
 f="$1"
 shift
 
-$ucc -o/dev/null -c "$@" "$f" 2>$e
+$UCC -o/dev/null -c "$@" "$f" 2>$e
 r=$?
 
 # check for abort
