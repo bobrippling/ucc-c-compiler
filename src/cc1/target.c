@@ -115,6 +115,13 @@ static const int alias_variables[] = {
 	1,
 };
 
+static const int supports_type_and_size_and_section_flags[] = {
+	1,
+	1,
+	0,
+	1,
+};
+
 ucc_unused
 static char syses[] = {
 #define X(pre, post) 0,
@@ -128,6 +135,7 @@ ucc_static_assert(size_match1, countof(syses) == countof(section_names));
 ucc_static_assert(size_match2, countof(syses) == countof(asconfig));
 ucc_static_assert(size_match3, countof(syses) == countof(dwarf_indirect_section_linkss));
 ucc_static_assert(size_match4, countof(syses) == countof(ld_indirect_call_via_plts));
+ucc_static_assert(size_match6, countof(syses) == countof(supports_type_and_size_and_section_flags));
 
 void target_details_from_triple(const struct triple *triple, struct target_details *details)
 {
@@ -137,4 +145,5 @@ void target_details_from_triple(const struct triple *triple, struct target_detai
 	details->dwarf_indirect_section_links = dwarf_indirect_section_linkss[triple->sys];
 	details->ld_indirect_call_via_plt = ld_indirect_call_via_plts[triple->sys];
 	details->alias_variables = alias_variables[triple->sys];
+	details->as.supports_type_and_size = supports_type_and_size_and_section_flags[triple->sys];
 }

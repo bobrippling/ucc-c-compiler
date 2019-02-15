@@ -35,6 +35,7 @@
 #include "label.h"
 #include "fopt.h"
 #include "cc1_out.h"
+#include "cc1_target.h"
 
 #include "ops/expr_funcall.h"
 
@@ -216,9 +217,20 @@ static void gen_profile(out_ctx *octx)
 	out_val_consume(octx, out_call(octx, mcount, NULL, mcount_ty));
 }
 
+static void gen_type_and_size(const struct section *section, decl *d)
+{
+	const int is_code = !!type_is(d->ref, type_func);
+	const char *spel = decl_asm_spel(d);
+
+	asm_out_section(section, ".type %s,@%s\n",
+			spel,
+			is_code ? "function" : "object");
+
+	asm_out_section(section, ".size %s, .-%s\n", spel, spel);
+}
+
 static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx)
 {
-	/* order of the if matters */
 	if(type_is(d->ref, type_func)){
 		int nargs = 0, is_vari;
 		decl **aiter;
@@ -288,6 +300,9 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 		/* asm takes care of .bss vs .data, etc */
 		asm_declare_decl_init(section, d);
 	}
+
+	if(cc1_target_details.as.supports_type_and_size)
+			gen_type_and_size(section, d);
 }
 
 const out_val *gen_call(
