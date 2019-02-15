@@ -128,6 +128,7 @@ ucc_static_assert(size_match1, countof(syses) == countof(section_names));
 ucc_static_assert(size_match2, countof(syses) == countof(asconfig));
 ucc_static_assert(size_match3, countof(syses) == countof(dwarf_indirect_section_linkss));
 ucc_static_assert(size_match4, countof(syses) == countof(ld_indirect_call_via_plts));
+ucc_static_assert(size_match5, countof(syses) == countof(alias_variables));
 
 void target_details_from_triple(const struct triple *triple, struct target_details *details)
 {
