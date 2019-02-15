@@ -146,4 +146,5 @@ void target_details_from_triple(const struct triple *triple, struct target_detai
 	details->ld_indirect_call_via_plt = ld_indirect_call_via_plts[triple->sys];
 	details->alias_variables = alias_variables[triple->sys];
 	details->as.supports_type_and_size = supports_type_and_size_and_section_flags[triple->sys];
+	details->as.supports_section_flags = supports_type_and_size_and_section_flags[triple->sys];
 }

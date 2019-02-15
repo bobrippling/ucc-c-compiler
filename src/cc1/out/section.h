@@ -24,32 +24,42 @@ struct section
 	 * if(name), this is a custom named section
 	 * else, this is a builtin section
 	 */
+
+	/* used for ELF targets to emit section flags */
+	enum section_flags {
+		SECTION_FLAG_EXECUTABLE = 1 << 0,
+		SECTION_FLAG_RO = 1 << 1,
+	} flags;
 };
 
 #define SECTION_UNINIT -1
 #define SECTION_FUNCDATA_FUNC -2
 #define SECTION_FUNCDATA_DATA -3
 
-#define SECTION_INIT(builtin) { NULL, builtin }
+#define SECTION_INIT(builtin) { NULL, builtin, -1 }
 
-#define SECTION_FROM_BUILTIN(sec, sbuiltin) do{ \
+#define SECTION_FROM_BUILTIN(sec, sbuiltin, flags) do{ \
 	(sec)->builtin = (sbuiltin); \
 	(sec)->name = NULL; \
+	(sec)->flags = flags; \
 }while(0)
 
-#define SECTION_FROM_NAME(sec, str) do{ \
+#define SECTION_FROM_NAME(sec, str, flags) do{ \
 	(sec)->name = (str); \
 	(sec)->builtin = 0; \
+	(sec)->flags = flags; \
 }while(0)
 
-#define SECTION_FROM_FUNCDECL(sec, spel) do{ \
+#define SECTION_FROM_FUNCDECL(sec, spel, flags) do{ \
 	(sec)->name = (spel); \
 	(sec)->builtin = SECTION_FUNCDATA_FUNC; \
+	(sec)->flags = flags; \
 }while(0)
 
-#define SECTION_FROM_DATADECL(sec, spel) do{ \
+#define SECTION_FROM_DATADECL(sec, spel, flags) do{ \
 	(sec)->name = (spel); \
 	(sec)->builtin = SECTION_FUNCDATA_DATA; \
+	(sec)->flags = flags; \
 }while(0)
 
 #define SECTION_BEGIN "section_begin_"

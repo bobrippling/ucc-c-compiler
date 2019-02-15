@@ -382,40 +382,43 @@ void gen_asm_emit_type(out_ctx *octx, type *ty)
 
 static void infer_decl_section(decl *d, struct section *sec)
 {
+	const int is_code = !!type_is(d->ref, type_func);
+	const int is_ro = is_code || type_is_const(d->ref);
+	const enum section_flags flags = (is_code ? SECTION_FLAG_EXECUTABLE : 0) | (is_ro ? SECTION_FLAG_RO : 0);
 	attribute *attr;
 
 	if((attr = attribute_present(d, attr_section))){
-		SECTION_FROM_NAME(sec, attr->bits.section);
+		SECTION_FROM_NAME(sec, attr->bits.section, flags);
 		return;
 	}
 
 	if(type_is(d->ref, type_func)){
 		if(cc1_fopt.function_sections){
-			SECTION_FROM_FUNCDECL(sec, decl_asm_spel(d));
+			SECTION_FROM_FUNCDECL(sec, decl_asm_spel(d), flags);
 			return;
 		}
 
-		SECTION_FROM_BUILTIN(sec, SECTION_TEXT);
+		SECTION_FROM_BUILTIN(sec, SECTION_TEXT, flags);
 		return;
 	}
 
 	if(cc1_fopt.data_sections){
-		SECTION_FROM_DATADECL(sec, decl_asm_spel(d));
+		SECTION_FROM_DATADECL(sec, decl_asm_spel(d), flags);
 		return;
 	}
 
 	/* prefer rodata over bss */
 	if(type_is_const(d->ref)){
-		SECTION_FROM_BUILTIN(sec, SECTION_RODATA);
+		SECTION_FROM_BUILTIN(sec, SECTION_RODATA, flags);
 		return;
 	}
 
 	if(!d->bits.var.init.dinit || decl_init_is_zero(d->bits.var.init.dinit)){
-		SECTION_FROM_BUILTIN(sec, SECTION_BSS);
+		SECTION_FROM_BUILTIN(sec, SECTION_BSS, flags);
 		return;
 	}
 
-	SECTION_FROM_BUILTIN(sec, SECTION_DATA);
+	SECTION_FROM_BUILTIN(sec, SECTION_DATA, flags);
 }
 
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
