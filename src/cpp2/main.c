@@ -502,6 +502,8 @@ int main(int argc, char **argv)
 			{
 				switch(argv[i][2]){
 					case '0':
+						macro_remove("__OPTIMIZE_SIZE__");
+						macro_remove("__OPTIMIZE__");
 						break;
 					case 's':
 						macro_add("__OPTIMIZE_SIZE__",  "1", 0);
