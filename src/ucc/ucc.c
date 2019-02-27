@@ -854,6 +854,10 @@ word:
 						vars->pie = TRI_TRUE;
 					else if(!strcmp(argv[i], "-no-pie"))
 						vars->pie = TRI_FALSE;
+					else if(!strcmp(argv[i], "-static-pie")){
+						vars->static_ = 1;
+						vars->pie = TRI_TRUE;
+					}
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
