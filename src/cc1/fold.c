@@ -1201,17 +1201,14 @@ void fold_decl_global_init(decl *d, symtable *stab)
 				nonconst->f_str());
 		}
 	}else if(nonstd){
-		char wbuf[WHERE_BUF_SIZ];
-
-		cc1_warn_at(&d->bits.var.init.dinit->where,
+		if(cc1_warn_at(&d->bits.var.init.dinit->where,
 				nonstd_init,
-				"%s %s initialiser contains non-standard constant expression\n"
-				"%s: note: %s expression here",
-				type, decl_init_to_str(d->bits.var.init.dinit->type),
-				where_str_r(wbuf, &nonstd->where),
-				expr_str_friendly(nonstd));
+				"%s %s initialiser contains non-standard constant expression",
+				type, decl_init_to_str(d->bits.var.init.dinit->type)))
+		{
+			note_at(&nonstd->where, "%s expression here", expr_str_friendly(nonstd));
+		}
 	}
-
 }
 
 static void warn_passable_func(decl *d)

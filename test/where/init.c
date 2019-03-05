@@ -2,11 +2,11 @@
 
 int i = (void *)0;
 // CARETS:
-//    ^ note: cast expr
-//      ^ warning
+//    ^ warning: global scalar initialiser contains non-standard constant expression
+//      ^ note: cast expression here
 
 // not a top-level init:
 int x[] = { (void *)0, 2 };
 // CARETS:
-//      ^ note: cast expr
-//          ^ warning
+//      ^ warning: global brace initialiser contains non-standard constant expression
+//          ^ note: cast expression here
