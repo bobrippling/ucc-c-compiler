@@ -426,8 +426,8 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 					type_to_str(tlhs));
 		}
 
-		ptr_lhs = type_is_ptr(tlhs);
-		ptr_rhs = type_is_ptr(trhs);
+		ptr_lhs = type_is_ptr_or_block(tlhs);
+		ptr_rhs = type_is_ptr_or_block(trhs);
 
 
 		if((flag = !!type_is(tlhs, type_func))
