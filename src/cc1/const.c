@@ -353,12 +353,17 @@ static void const_memify(consty *k)
 	}
 }
 
+static int is_lvalue_pointerish(type *t)
+{
+	return type_is_ptr(t) || type_is_array(t) || type_is_func_or_block(t);
+}
+
 void const_ensure_num_or_memaddr(
 		consty *k, type *from, type *to,
 		expr *owner)
 {
-	const int from_ptr = type_is_ptr(from) || type_is_array(from);
-	const int to_ptr = type_is_ptr(to) || type_is_array(to);
+	const int from_ptr = is_lvalue_pointerish(from);
+	const int to_ptr = is_lvalue_pointerish(to);
 
 	if(from_ptr == to_ptr)
 		return;
