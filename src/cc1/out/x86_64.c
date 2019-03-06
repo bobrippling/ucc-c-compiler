@@ -2522,8 +2522,8 @@ static void reserve_unreserve_retregs(out_ctx *octx, int reserve)
 	static const struct vreg retregs[] = {
 		{ REG_RET_I_1, 0 },
 		{ REG_RET_I_2, 0 },
-		{ REG_RET_I_1, 1 },
-		{ REG_RET_I_2, 1 },
+		{ REG_RET_F_1, 1 },
+		{ REG_RET_F_2, 1 },
 	};
 	unsigned i;
 
