@@ -1289,7 +1289,7 @@ void gen_op_trapv(
 				land);
 
 		out_current_blk(octx, blk_undef);
-		out_ctrl_end_undefined(octx);
+		sanitize_fail(octx, op_to_str(op));
 
 		out_current_blk(octx, land);
 	}
