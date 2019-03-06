@@ -332,12 +332,12 @@ const out_val *gen_call(
 const out_val *gen_decl_addr(out_ctx *octx, decl *d)
 {
 	const int via_got = decl_needs_GOTPLT(d);
-	enum out_pic_type picmode;
 
-	picmode = (FOPT_PIC(&cc1_fopt) ? OUT_LBL_PIC : OUT_LBL_NOPIC)
-		| (via_got ? 0 : OUT_LBL_PICLOCAL);
-
-	return out_new_lbl(octx, type_ptr_to(d->ref), decl_asm_spel(d), picmode);
+	return out_new_lbl(
+			octx,
+			type_ptr_to(d->ref),
+			decl_asm_spel(d),
+			OUT_LBL_PIC | (via_got ? 0 : OUT_LBL_PICLOCAL));
 }
 
 static void gen_gasm(char *asm_str)

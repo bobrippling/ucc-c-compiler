@@ -13,6 +13,8 @@
 #include "../gen_asm.h"
 
 #include "../cc1_out_ctx.h"
+#include "../cc1.h" /* cc1_fopt */
+#include "../fopt.h"
 
 #include "out.h" /* this file defs */
 #include "val.h"
@@ -100,6 +102,11 @@ out_val *out_new_l(out_ctx *octx, type *ty, long val)
 	return out_new_num(octx, ty, &n);
 }
 
+static enum out_pic_type picfilter(enum out_pic_type flags)
+{
+	return FOPT_PIC(&cc1_fopt) ? flags : OUT_LBL_NOPIC;
+}
+
 out_val *out_new_lbl(
 		out_ctx *octx, type *ty,
 		const char *s,
@@ -110,7 +117,7 @@ out_val *out_new_lbl(
 	v->type = V_LBL;
 	v->bits.lbl.str = s;
 	v->bits.lbl.offset = 0;
-	v->bits.lbl.pic_type = pic_type;
+	v->bits.lbl.pic_type = picfilter(pic_type);
 
 	return v;
 }

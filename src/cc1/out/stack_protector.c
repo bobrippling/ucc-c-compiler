@@ -27,7 +27,7 @@ static const out_val *stack_canary_address_lbl(out_ctx *octx, char **const tofre
 			octx,
 			type_ptr_to(type_ptr_to(intptr_ty)),
 			mangled,
-			OUT_LBL_PIC);
+			OUT_LBL_PIC); /* FIXME? */
 }
 
 static const out_val *stack_canary_address_tls(out_ctx *octx)
@@ -70,7 +70,7 @@ static const out_val *stack_check_fail_func(
 
 	*pfnty = fnty;
 
-	return out_new_lbl(octx, fnty, mangled, 1);
+	return out_new_lbl(octx, fnty, mangled, /* usually in libc */OUT_LBL_PIC);
 }
 
 void out_init_stack_canary(
