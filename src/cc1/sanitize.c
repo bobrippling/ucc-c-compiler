@@ -10,17 +10,8 @@
 
 #include "sanitize.h"
 
-static void sanitize_assert(const out_val *cond, out_ctx *octx, const char *desc)
+void sanitize_fail(out_ctx *octx, const char *desc)
 {
-	out_blk *land = out_blk_new(octx, "san_end");
-	out_blk *blk_undef = out_blk_new(octx, "san_bad");
-
-	out_ctrl_branch(octx,
-			cond,
-			land,
-			blk_undef);
-
-	out_current_blk(octx, blk_undef);
 	out_comment(octx, "sanitizer for %s", desc);
 	if(cc1_sanitize_handler_fn){
 		type *voidty = type_nav_btype(cc1_type_nav, type_void);
@@ -37,6 +28,20 @@ static void sanitize_assert(const out_val *cond, out_ctx *octx, const char *desc
 			free(mangled);
 	}
 	out_ctrl_end_undefined(octx);
+}
+
+static void sanitize_assert(const out_val *cond, out_ctx *octx, const char *desc)
+{
+	out_blk *land = out_blk_new(octx, "san_end");
+	out_blk *blk_undef = out_blk_new(octx, "san_bad");
+
+	out_ctrl_branch(octx,
+			cond,
+			land,
+			blk_undef);
+
+	out_current_blk(octx, blk_undef);
+	sanitize_fail(octx, desc);
 
 	out_current_blk(octx, land);
 }
