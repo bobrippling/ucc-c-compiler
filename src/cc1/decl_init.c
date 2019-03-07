@@ -398,15 +398,14 @@ static decl_init *decl_init_brace_up_r(decl_init *current, init_iter *,
 static void override_warn(
 		type *tfor, where *old, where *new, int whole)
 {
-	char buf[WHERE_BUF_SIZ];
-
-	cc1_warn_at(new,
+	if(cc1_warn_at(new,
 			init_override,
-			"overriding %sinitialisation of \"%s\"\n"
-			"%s: prior initialisation here",
+			"overriding %sinitialisation of \"%s\"",
 			whole ? "entire " : "",
-			type_to_str(tfor),
-			where_str_r(buf, old));
+			type_to_str(tfor)))
+	{
+		note_at(old, "prior initialisation here");
+	}
 }
 
 static void excess_init(where *w, type *ty)
