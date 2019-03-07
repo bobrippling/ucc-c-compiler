@@ -1,6 +1,8 @@
 #ifndef SANITIZE_H
 #define SANITIZE_H
 
+void sanitize_fail(out_ctx *, const char *desc);
+
 void sanitize_boundscheck(
 		expr *elhs, expr *erhs,
 		out_ctx *octx,
