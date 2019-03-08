@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check --only %s
 
 main()
 {
@@ -7,5 +7,7 @@ main()
 
 	long long ll = 0;
 
-  printf("%lld\n", ll); // CHECK: !/warn/
+  printf("%lld\n", ll);
+
+  printf("%hhd\n", (signed char)3);
 }

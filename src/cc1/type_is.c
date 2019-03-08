@@ -795,7 +795,8 @@ int type_is_promotable(type *const t, type **pto)
 		rsz = type_size(test, type_loc(t)); /* may be enum-int */
 
 		if(rsz < (fp ? sz_double : sz_int)){
-			*pto = type_nav_btype(cc1_type_nav, fp ? type_double : type_int);
+			if(pto)
+				*pto = type_nav_btype(cc1_type_nav, fp ? type_double : type_int);
 			return 1;
 		}
 	}

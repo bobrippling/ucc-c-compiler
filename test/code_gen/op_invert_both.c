@@ -1,8 +1,5 @@
 // RUN: %ocheck 0 %s
 
-extern int printf(const char *, ...)
-	__attribute((format(printf, 1, 2)));
-
 main()
 {
 	union

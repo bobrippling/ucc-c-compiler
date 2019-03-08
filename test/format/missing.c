@@ -1,9 +1,9 @@
-// RUN: %check %s
+// RUN: %check --only %s
 
 int printf(char *, ...)
 	__attribute((format(printf, 1, 2)));
 
-f()
+void f()
 {
-	printf("%z", 2); // CHECK: warning: missing conversion character
+	printf("%z", 2); // CHECK: warning: incomplete format specifier
 }
