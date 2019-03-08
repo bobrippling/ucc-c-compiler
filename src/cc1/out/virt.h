@@ -25,7 +25,7 @@ const out_val *v_to_reg_given(
 		out_ctx *octx, const out_val *from,
 		const struct vreg *given) ucc_wur;
 
-const out_val *v_to_reg_given_freeup(
+const out_val *v_to_reg_given_freeup_no_off(
 		out_ctx *octx, const out_val *from,
 		const struct vreg *given);
 

@@ -346,7 +346,7 @@ const out_val *v_to_reg_given(
 	return impl_load(octx, from, given);
 }
 
-const out_val *v_to_reg_given_freeup(
+const out_val *v_to_reg_given_freeup_no_off(
 		out_ctx *octx, const out_val *from,
 		const struct vreg *given)
 {

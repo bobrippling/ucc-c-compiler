@@ -1292,7 +1292,8 @@ static const out_val *x86_idiv(
 	{
 		/* need to move 'l' into eax
 		 * then sign extended later - cqto */
-		l = v_to_reg_given_freeup(octx, l, &rax);
+		l = v_to_reg_given_freeup_no_off(octx, l, &rax);
+		l = v_reg_apply_offset(octx, l);
 
 		/* idiv takes either a reg or memory address */
 		r = v_to(octx, r, TO_REG | TO_MEM);
@@ -1365,8 +1366,7 @@ static const out_val *x86_shift(
 		cl.is_float = 0;
 		cl.idx = X86_64_REG_RCX;
 
-		r = v_to_reg_given_freeup(octx, r, &cl);
-
+		r = v_to_reg_given_freeup_no_off(octx, r, &cl);
 		r = v_reg_apply_offset(octx, r);
 	}
 
