@@ -24,7 +24,7 @@ check: all lib
 	cd test; ./run_tests -q -i ignores .
 	# test/ pending
 
-ALL_SRC = $(shell find . -iname '*.[ch]')
+ALL_SRC = $(shell find src -iname '*.[ch]')
 
 tags: ${ALL_SRC}
 	ctags '--exclude=_*' -R .
