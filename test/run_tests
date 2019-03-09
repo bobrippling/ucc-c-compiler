@@ -93,7 +93,7 @@ sub file_status
 $SIG{INT} = \&interrupt;
 
 my $verbose = 0;
-my $quiet = 0;
+my $quiet = !$ENV{CI};
 my $ign_file = undef;
 my @tests;
 
