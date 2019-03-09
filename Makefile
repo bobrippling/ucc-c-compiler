@@ -21,7 +21,7 @@ cleantest:
 # no need to clean test
 
 check: all lib
-	cd test; ./run_tests -q -i ignores .
+	cd test; ./run_tests -i ignores .
 	# test/ pending
 
 ALL_SRC = $(shell find src -iname '*.[ch]')

@@ -1,8 +1,8 @@
 #!/usr/bin/perl
 use strict;
 
-my @ignores;
-
+my @expected_fails;
+my @skips;
 
 sub interrupt
 {
@@ -18,7 +18,9 @@ sub basename
 
 sub usage
 {
-	die "Usage: $0 [-q | -v] [-i ignore-file] [tests...]\n";
+	print STDERR "Usage: $0 [-q | -v] [-i ignore-file] [tests...]\n";
+	print STDERR "Specify UCC_CHECK_SKIP=path1,path2,... to skip paths\n";
+	exit 2;
 }
 
 sub read_ignores
@@ -67,10 +69,10 @@ sub cat_indent_file
 	close F;
 }
 
-sub ignored
+sub in_array
 {
 	my $f = shift;
-	for(@ignores){
+	for(@_){
 		if(index($f, $_) != -1){
 			return 1;
 		}
@@ -78,10 +80,20 @@ sub ignored
 	return 0;
 }
 
+sub file_status
+{
+	my $f = shift;
+
+	return "skip" if in_array($f, @skips);
+	return "fail" if in_array($f, @expected_fails);
+
+	return "pass";
+}
+
 $SIG{INT} = \&interrupt;
 
 my $verbose = 0;
-my $quiet = 0;
+my $quiet = !$ENV{CI};
 my $ign_file = undef;
 my @tests;
 
@@ -102,7 +114,8 @@ for(my $i = 0; $i < @ARGV; $i++){
 
 die "can't be quiet and verbose" if $quiet and $verbose;
 
-@ignores = read_ignores($ign_file) if $ign_file;
+push @expected_fails, read_ignores($ign_file) if $ign_file;
+push @skips, split /,/, $ENV{UCC_CHECK_SKIP};
 
 my $env_tmpdir = $ENV{TMPDIR} || '/tmp';
 my $tdir = "$env_tmpdir/ucc.test/";
@@ -144,12 +157,16 @@ for my $f (@test_files){
 		verbose => $verbose
 	);
 
-	my $rc = test(%args);
+	my $status = file_status($f);
+	my $rc = 2;
+	if(!($status eq 'skip')){
+		$rc = test(%args);
 
-	if($rc & 127){
-		die "test caught signal " . ($rc & 127) . "\n";
+		if($rc & 127){
+			die "test caught signal " . ($rc & 127) . "\n";
+		}
+		$rc >>= 8; # exit code
 	}
-	$rc >>= 8; # exit code
 
 	my $desc;
 	my $failed = 0;
@@ -163,13 +180,13 @@ for my $f (@test_files){
 		$desc = 'pass';
 	}
 
-	my $ignored = ignored($f);
+	my $should_fail = ($status eq 'fail');
 
 	print "$desc"
-	. ($ignored ? ' (fail expected)' : '')
+	. ($should_fail ? ' (fail expected)' : '')
 	. ": $f";
 
-	if($failed != $ignored){
+	if($failed != $should_fail){
 		print "\n";
 
 		$ec = 1;
