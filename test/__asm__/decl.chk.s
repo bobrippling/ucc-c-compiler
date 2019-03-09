@@ -1,4 +1,4 @@
 present: main
 present: hi
 absent: tim
-absent: y
+absent: \by\b

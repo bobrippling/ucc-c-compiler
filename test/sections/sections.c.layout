@@ -4,7 +4,7 @@ ro_initialised:
 .long 4
 .section .text
 main:
-.section a
+.section a,"aw",@progbits
 tenative2:
 .zero 4
 initialised2:

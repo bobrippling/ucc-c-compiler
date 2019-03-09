@@ -221,17 +221,26 @@ static void io_fin_section(FILE *section, FILE *out, const struct section *sec)
 	const char *desc = NULL;
 	char *name;
 	int allocated;
+	const int is_builtin = section_is_builtin(sec);
 
-	if(section_is_builtin(sec))
+	if(is_builtin)
 		desc = asm_section_desc(sec->builtin);
 
 	if(fseek(section, 0, SEEK_SET))
 		ccdie("seeking in section tmpfile:");
 
 	name = section_name(sec, &allocated);
-	xfprintf(out, ".section %s\n", name);
+	xfprintf(out, ".section %s", name);
 	if(allocated)
 		free(name);
+
+	if(cc1_target_details.as.supports_section_flags && !is_builtin){
+		const int is_code = sec->flags & SECTION_FLAG_EXECUTABLE;
+		const int is_rw = !(sec->flags & SECTION_FLAG_RO);
+
+		xfprintf(out, ",\"a%s\",@progbits", is_code ? "x" : is_rw ? "w" : "");
+	}
+	xfprintf(out, "\n");
 
 	if(desc)
 		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, desc);
