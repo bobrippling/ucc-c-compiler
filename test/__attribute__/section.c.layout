@@ -8,11 +8,11 @@ ro_initialised:
 .section .text
 main:
 
-.section a
+.section a,"aw",@progbits
 tenative2:
 .zero 4
 
-.section b
+.section b,"aw",@progbits
 initialised2:
 .long 3
 
@@ -20,14 +20,14 @@ initialised2:
 initialised:
 .long 3
 
-.section e
+.section e,"ax",@progbits
 f:
 
-.section c
+.section c,"a",@progbits
 ro_tenative2:
 .zero 4
 
-.section d
+.section d,"a",@progbits
 ro_initialised2:
 .long 4
 
