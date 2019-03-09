@@ -1,5 +1,7 @@
 A C Compiler written in C
 
+[![Build Status](https://travis-ci.org/bobrippling/ucc-c-compiler.svg?branch=master)](https://travis-ci.org/bobrippling/ucc-c-compiler)
+
 Dependencies
 ------------
 
