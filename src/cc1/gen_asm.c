@@ -226,7 +226,10 @@ static void gen_type_and_size(const struct section *section, decl *d)
 			spel,
 			is_code ? "function" : "object");
 
-	asm_out_section(section, ".size %s, .-%s\n", spel, spel);
+	if(is_code)
+		asm_out_section(section, ".size %s, .-%s\n", spel, spel);
+	else
+		asm_out_section(section, ".size %s, %u\n", spel, decl_size(d));
 }
 
 static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx)
