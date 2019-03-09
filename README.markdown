@@ -13,7 +13,7 @@ Features
 --------
 
 The compiler implements C89, C99 and C11 (controllable via `-std=c89/c99/c11`).
-System libraries are fully supported, including ABI compatibility with things like `va_list`.
+System libraries are fully supported, including ABI compatibility with constructs such as `va_list`.
 There are some major additions, listed below:
 
 - Features added:
@@ -45,10 +45,11 @@ There are some major additions, listed below:
 		- `__builtin_expect`
 		- `__builtin_choose_expr`
 		- `__builtin_add_overflow`, `__builtin_sub_overflow`, `__builtin_mul_overflow`
+		- `__builtin_frame_address`, `__builtin_return_address`
 - Code-generation Support/Optimisations:
 	- Function inlining (`__attribute__((always_inline/noinline))`)
 	- Position independent code generation (`-fpic`)
-	- Position independent executable generation, permitting ASLR (`-fpie`)
+	- Position independent executable generation, permitting ASLR (`-fpie` / `-pie`)
 	- Overflow-trapping arithmetic (`-ftrapv`)
 	- Undefined behaviour trapping (`-fsanitize=undefined`)
 	- Stack protector (`-fstack-protector`, `-fstack-protector-all`)
