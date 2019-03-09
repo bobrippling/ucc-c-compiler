@@ -8,6 +8,7 @@ __attribute__((noreturn)) void
 // noreturn applies to all
 // format applies to d1
 
+/* we're also checking that we don't get a "control reaches end of _Noreturn function" here, with --only */
 _Noreturn void a()
 {
 	d0();

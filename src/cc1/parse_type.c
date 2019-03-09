@@ -2482,8 +2482,6 @@ int parse_decl_group(
 				unused_attributes(d, attributed->bits.attr);
 		}
 
-		attribute_array_release(&decl_attr);
-
 		fold_type_ondecl_w(d, in_scope, NULL, 0);
 
 		if(!d->spel && !had_field_width){
@@ -2531,7 +2529,6 @@ int parse_decl_group(
 		if(done)
 			break;
 	}while(accept(token_comma));
-
 
 	if(last && (!type_is(last->ref, type_func) || !last->bits.func.code)){
 		/* end of type, if we have an identifier,
