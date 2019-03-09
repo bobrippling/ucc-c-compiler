@@ -6,5 +6,5 @@ main()
 {
 "hello", f((void *)0);
 // CARETS:
-//         ^ warning
+//         ^ warning: mismatching types, argument 1 to f
 }

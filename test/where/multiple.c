@@ -20,7 +20,7 @@ return p_name += a_name;
 // initialisation
 int *p_name = (char *)0;
 // CARETS:
-//            ^ warning
+//            ^ warning: mismatching types
 
 // init 2
 int func()
@@ -38,12 +38,12 @@ main()
 // argument
 f_name((void *)0, (int *)5);
 // CARETS:
-//                ^ warning
+//                ^ warning: mismatching types
 
 int integer = 2;
 f_name(integer, 3);
 // CARETS:
-//     ^ warning
+//     ^ warning: mismatching types
 }
 
 f(int *);
@@ -53,25 +53,25 @@ func2()
 int abcdef = 0;
 f(1234);
 // CARETS:
-//^ warning
+//^ warning: mismatching types
 f(abcdef);
 
 char c;
 char *p = 0;
 f(c);
 // CARETS:
-//^ warning
+//^ warning: "c" uninitialised on read
 f(&c);
 // CARETS:
-//^ warning
+//^ warning: mismatching types
 f(  *p);
 // CARETS:
-//  ^ warning
+//  ^ warning: mismatching types
 f(5 + 2);
 // CARETS:
-//  ^ warning
+//  ^ warning: mismatching types
 
 f(    sizeof(__typeof(int)));
 // CARETS:
-//    ^ warning
+//    ^ warning: mismatching types
 }

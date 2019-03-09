@@ -6,18 +6,18 @@ int a = 0, *b = (void *)0, c = 0;
 
 a = b;
 // CARETS:
-//^ warning
+//^ warning: mismatching types
 
 if(a = c);
 // CARETS:
-//   ^ assignment in
+//   ^ assignment in if
 while(a = c);
 // CARETS:
-//      ^ assignment in
+//      ^ assignment in while
 do ; while(a = c);
 // CARETS:
-//           ^ assignment in
+//           ^ assignment in do
 for(;a = c;);
 // CARETS:
-//     ^ assignment in
+//     ^ assignment in for-test
 }
