@@ -100,8 +100,10 @@ my @tests;
 for(my $i = 0; $i < @ARGV; $i++){
 	if($ARGV[$i] eq '-v'){
 		$verbose = 1;
+		$quiet = 0;
 	}elsif($ARGV[$i] eq '-q'){
 		$quiet = 1;
+		$verbose = 0;
 	}elsif($ARGV[$i] eq '-i'){
 		my $f = $ARGV[++$i];
 		usage() unless $f;
@@ -111,8 +113,6 @@ for(my $i = 0; $i < @ARGV; $i++){
 		push @tests, $ARGV[$i];
 	}
 }
-
-die "can't be quiet and verbose" if $quiet and $verbose;
 
 push @expected_fails, read_ignores($ign_file) if $ign_file;
 push @skips, split /,/, $ENV{UCC_CHECK_SKIP};
