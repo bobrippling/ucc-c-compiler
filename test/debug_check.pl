@@ -88,15 +88,29 @@ sub assert_arrays_eq
 	}
 }
 
-if(@ARGV != 1){
-	die "Usage: $0 path/to/source\n";
+sub usage
+{
+	die "Usage: $0 [--update] path/to/source\n";
 }
-my $in = shift;
+
+my $in;
+my $update = 0;
+for(@ARGV){
+	if($_ eq '--update'){
+		$update = 1;
+	}elsif(!$in){
+		$in = $_;
+	}else{
+		usage();
+	}
+}
+
 my $expected = "$in.dwarf";
 my $ucc = $ENV{UCC} or die "no \$UCC";
 
 # format $in - remove any components up until dir/file.c
 $in =~ s;^\./;;;
+$in =~ s;//+;/;g;
 
 my @output = map { chomp; $_ } `'$ucc' -target x86_64-linux-gnu -fno-leading-underscore -fdebug-compilation-dir=/tmp/ -g -S -o- '$in'`;
 if($?){
@@ -107,7 +121,18 @@ my %got = filter(@output);
 my %expected = filter(read_file($expected));
 $ec = 0;
 
-assert_arrays_eq(\%got, \%expected, "files");
-assert_arrays_eq(\%got, \%expected, "lines");
+if($update){
+	open(my $out, '>', $expected) or die "open $expected: $!";
+
+	print $out "$_\n" for @{$got{files}};
+	print $out "$_\n" for @{$got{lines}};
+
+	close($out) or die "close $expected: $!";
+
+	print STDERR "\x1b[1;31mwrote $expected\x1b[0;0m\n";
+}else{
+	assert_arrays_eq(\%got, \%expected, "files");
+	assert_arrays_eq(\%got, \%expected, "lines");
+}
 
 exit($ec);

@@ -73,15 +73,6 @@
 	.byte 0, 0 # name/val abbrev 4 end
 
 	.byte 5  # Abbrev. Code 5
-	.byte 15  # DW_TAG_pointer_type
-	.byte 0  # DW_CHILDREN_no
-	.byte 11  # DW_AT_byte_size
-	.byte 6  # DW_FORM_data4
-	.byte 73  # DW_AT_type
-	.byte 19  # DW_FORM_ref4
-	.byte 0, 0 # name/val abbrev 5 end
-
-	.byte 6  # Abbrev. Code 6
 	.byte 36  # DW_TAG_base_type
 	.byte 0  # DW_CHILDREN_no
 	.byte 3  # DW_AT_name
@@ -90,13 +81,22 @@
 	.byte 11  # DW_FORM_data1
 	.byte 11  # DW_AT_byte_size
 	.byte 6  # DW_FORM_data4
-	.byte 0, 0 # name/val abbrev 6 end
+	.byte 0, 0 # name/val abbrev 5 end
 
-	.byte 7  # Abbrev. Code 7
+	.byte 6  # Abbrev. Code 6
 	.byte 22  # DW_TAG_typedef
 	.byte 0  # DW_CHILDREN_no
 	.byte 3  # DW_AT_name
 	.byte 8  # DW_FORM_string
+	.byte 0, 0 # name/val abbrev 6 end
+
+	.byte 7  # Abbrev. Code 7
+	.byte 15  # DW_TAG_pointer_type
+	.byte 0  # DW_CHILDREN_no
+	.byte 11  # DW_AT_byte_size
+	.byte 6  # DW_FORM_data4
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
 	.byte 0, 0 # name/val abbrev 7 end
 
 	.byte 0 # end
@@ -119,7 +119,7 @@
 	.byte 2  # Abbrev. Code 2 DW_TAG_variable
 	.ascii "p"
 	.byte 0 # DW_AT_name
-	.long 148 # DW_AT_type
+	.long 161 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 5 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -140,25 +140,25 @@
 	.byte 4  # Abbrev. Code 4 DW_TAG_subprogram
 	.ascii "main"
 	.byte 0 # DW_AT_name
-	.long 157 # DW_AT_type
+	.long 148 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 11 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
 	.quad main # DW_AT_low_pc
 	.quad .Lfuncend_main # DW_AT_high_pc
 
-	.byte 5  # Abbrev. Code 5 DW_TAG_pointer_type
-	.long 8 # DW_AT_byte_size
-	.long 167 # DW_AT_type
-
-	.byte 6  # Abbrev. Code 6 DW_TAG_base_type
+	.byte 5  # Abbrev. Code 5 DW_TAG_base_type
 	.ascii "int"
 	.byte 0 # DW_AT_name
 	.byte 5 # DW_AT_encoding
 	.long 4 # DW_AT_byte_size
 
-	.byte 7  # Abbrev. Code 7 DW_TAG_typedef
+	.byte 6  # Abbrev. Code 6 DW_TAG_typedef
 	.ascii "V"
 	.byte 0 # DW_AT_name
+
+	.byte 7  # Abbrev. Code 7 DW_TAG_pointer_type
+	.long 8 # DW_AT_byte_size
+	.long 158 # DW_AT_type
 
 	.byte 0 # end of children

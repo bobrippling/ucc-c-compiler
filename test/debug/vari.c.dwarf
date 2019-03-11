@@ -131,117 +131,117 @@
 	.byte 0, 0 # name/val abbrev 10 end
 
 	.byte 11  # Abbrev. Code 11
+	.byte 36  # DW_TAG_base_type
+	.byte 0  # DW_CHILDREN_no
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 62  # DW_AT_encoding
+	.byte 11  # DW_FORM_data1
+	.byte 11  # DW_AT_byte_size
+	.byte 6  # DW_FORM_data4
+	.byte 0, 0 # name/val abbrev 11 end
+
+	.byte 12  # Abbrev. Code 12
+	.byte 36  # DW_TAG_base_type
+	.byte 0  # DW_CHILDREN_no
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 62  # DW_AT_encoding
+	.byte 11  # DW_FORM_data1
+	.byte 11  # DW_AT_byte_size
+	.byte 6  # DW_FORM_data4
+	.byte 0, 0 # name/val abbrev 12 end
+
+	.byte 13  # Abbrev. Code 13
+	.byte 15  # DW_TAG_pointer_type
+	.byte 0  # DW_CHILDREN_no
+	.byte 11  # DW_AT_byte_size
+	.byte 6  # DW_FORM_data4
+	.byte 0, 0 # name/val abbrev 13 end
+
+	.byte 14  # Abbrev. Code 14
+	.byte 1  # DW_TAG_array_type
+	.byte 1  # DW_CHILDREN_yes
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 0, 0 # name/val abbrev 14 end
+
+	.byte 15  # Abbrev. Code 15
+	.byte 33  # DW_TAG_subrange_type
+	.byte 0  # DW_CHILDREN_no
+	.byte 47  # DW_AT_upper_bound
+	.byte 6  # DW_FORM_data4
+	.byte 0, 0 # name/val abbrev 15 end
+
+	.byte 16  # Abbrev. Code 16
 	.byte 19  # DW_TAG_structure_type
 	.byte 1  # DW_CHILDREN_yes
 	.byte 3  # DW_AT_name
 	.byte 8  # DW_FORM_string
 	.byte 11  # DW_AT_byte_size
 	.byte 6  # DW_FORM_data4
-	.byte 0, 0 # name/val abbrev 11 end
-
-	.byte 12  # Abbrev. Code 12
-	.byte 13  # DW_TAG_member
-	.byte 0  # DW_CHILDREN_no
-	.byte 3  # DW_AT_name
-	.byte 8  # DW_FORM_string
-	.byte 73  # DW_AT_type
-	.byte 19  # DW_FORM_ref4
-	.byte 56  # DW_AT_data_member_location
-	.byte 10  # DW_FORM_block1
-	.byte 0, 0 # name/val abbrev 12 end
-
-	.byte 13  # Abbrev. Code 13
-	.byte 13  # DW_TAG_member
-	.byte 0  # DW_CHILDREN_no
-	.byte 3  # DW_AT_name
-	.byte 8  # DW_FORM_string
-	.byte 73  # DW_AT_type
-	.byte 19  # DW_FORM_ref4
-	.byte 56  # DW_AT_data_member_location
-	.byte 10  # DW_FORM_block1
-	.byte 0, 0 # name/val abbrev 13 end
-
-	.byte 14  # Abbrev. Code 14
-	.byte 13  # DW_TAG_member
-	.byte 0  # DW_CHILDREN_no
-	.byte 3  # DW_AT_name
-	.byte 8  # DW_FORM_string
-	.byte 73  # DW_AT_type
-	.byte 19  # DW_FORM_ref4
-	.byte 56  # DW_AT_data_member_location
-	.byte 10  # DW_FORM_block1
-	.byte 0, 0 # name/val abbrev 14 end
-
-	.byte 15  # Abbrev. Code 15
-	.byte 13  # DW_TAG_member
-	.byte 0  # DW_CHILDREN_no
-	.byte 3  # DW_AT_name
-	.byte 8  # DW_FORM_string
-	.byte 73  # DW_AT_type
-	.byte 19  # DW_FORM_ref4
-	.byte 56  # DW_AT_data_member_location
-	.byte 10  # DW_FORM_block1
-	.byte 0, 0 # name/val abbrev 15 end
-
-	.byte 16  # Abbrev. Code 16
-	.byte 15  # DW_TAG_pointer_type
-	.byte 0  # DW_CHILDREN_no
-	.byte 11  # DW_AT_byte_size
-	.byte 6  # DW_FORM_data4
 	.byte 0, 0 # name/val abbrev 16 end
 
 	.byte 17  # Abbrev. Code 17
-	.byte 36  # DW_TAG_base_type
+	.byte 13  # DW_TAG_member
 	.byte 0  # DW_CHILDREN_no
 	.byte 3  # DW_AT_name
 	.byte 8  # DW_FORM_string
-	.byte 62  # DW_AT_encoding
-	.byte 11  # DW_FORM_data1
-	.byte 11  # DW_AT_byte_size
-	.byte 6  # DW_FORM_data4
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 56  # DW_AT_data_member_location
+	.byte 10  # DW_FORM_block1
 	.byte 0, 0 # name/val abbrev 17 end
 
 	.byte 18  # Abbrev. Code 18
-	.byte 22  # DW_TAG_typedef
+	.byte 13  # DW_TAG_member
 	.byte 0  # DW_CHILDREN_no
 	.byte 3  # DW_AT_name
 	.byte 8  # DW_FORM_string
 	.byte 73  # DW_AT_type
 	.byte 19  # DW_FORM_ref4
+	.byte 56  # DW_AT_data_member_location
+	.byte 10  # DW_FORM_block1
 	.byte 0, 0 # name/val abbrev 18 end
 
 	.byte 19  # Abbrev. Code 19
+	.byte 13  # DW_TAG_member
+	.byte 0  # DW_CHILDREN_no
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 56  # DW_AT_data_member_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 19 end
+
+	.byte 20  # Abbrev. Code 20
+	.byte 13  # DW_TAG_member
+	.byte 0  # DW_CHILDREN_no
+	.byte 3  # DW_AT_name
+	.byte 8  # DW_FORM_string
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
+	.byte 56  # DW_AT_data_member_location
+	.byte 10  # DW_FORM_block1
+	.byte 0, 0 # name/val abbrev 20 end
+
+	.byte 21  # Abbrev. Code 21
 	.byte 22  # DW_TAG_typedef
 	.byte 0  # DW_CHILDREN_no
 	.byte 3  # DW_AT_name
 	.byte 8  # DW_FORM_string
 	.byte 73  # DW_AT_type
 	.byte 19  # DW_FORM_ref4
-	.byte 0, 0 # name/val abbrev 19 end
-
-	.byte 20  # Abbrev. Code 20
-	.byte 1  # DW_TAG_array_type
-	.byte 1  # DW_CHILDREN_yes
-	.byte 73  # DW_AT_type
-	.byte 19  # DW_FORM_ref4
-	.byte 0, 0 # name/val abbrev 20 end
-
-	.byte 21  # Abbrev. Code 21
-	.byte 33  # DW_TAG_subrange_type
-	.byte 0  # DW_CHILDREN_no
-	.byte 47  # DW_AT_upper_bound
-	.byte 6  # DW_FORM_data4
 	.byte 0, 0 # name/val abbrev 21 end
 
 	.byte 22  # Abbrev. Code 22
-	.byte 36  # DW_TAG_base_type
+	.byte 22  # DW_TAG_typedef
 	.byte 0  # DW_CHILDREN_no
 	.byte 3  # DW_AT_name
 	.byte 8  # DW_FORM_string
-	.byte 62  # DW_AT_encoding
-	.byte 11  # DW_FORM_data1
-	.byte 11  # DW_AT_byte_size
-	.byte 6  # DW_FORM_data4
+	.byte 73  # DW_AT_type
+	.byte 19  # DW_FORM_ref4
 	.byte 0, 0 # name/val abbrev 22 end
 
 	.byte 0 # end
@@ -264,7 +264,7 @@
 	.byte 2  # Abbrev. Code 2 DW_TAG_subprogram
 	.ascii "sum"
 	.byte 0 # DW_AT_name
-	.long 402 # DW_AT_type
+	.long 243 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 9 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -272,7 +272,7 @@
 	.quad .Lfuncend_sum # DW_AT_high_pc
 
 	.byte 3  # Abbrev. Code 3 DW_TAG_formal_parameter
-	.long 402 # DW_AT_type
+	.long 243 # DW_AT_type
 	.ascii "a"
 	.byte 0 # DW_AT_name
 	.byte 2 # block count
@@ -289,7 +289,7 @@
  # DW_AT_location
 	.ascii "l"
 	.byte 0 # DW_AT_name
-	.long 355 # DW_AT_type
+	.long 376 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 11 # DW_AT_decl_line
 
@@ -308,7 +308,7 @@
  # DW_AT_location
 	.ascii "t"
 	.byte 0 # DW_AT_name
-	.long 402 # DW_AT_type
+	.long 243 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 14 # DW_AT_decl_line
 
@@ -321,85 +321,85 @@
 	.byte 10  # Abbrev. Code 10 DW_TAG_subprogram
 	.ascii "main"
 	.byte 0 # DW_AT_name
-	.long 402 # DW_AT_type
+	.long 243 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 24 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
 	.quad main # DW_AT_low_pc
 	.quad .Lfuncend_main # DW_AT_high_pc
 
-	.byte 11  # Abbrev. Code 11 DW_TAG_structure_type
+	.byte 11  # Abbrev. Code 11 DW_TAG_base_type
+	.ascii "unsigned int"
+	.byte 0 # DW_AT_name
+	.byte 7 # DW_AT_encoding
+	.long 4 # DW_AT_byte_size
+
+	.byte 12  # Abbrev. Code 12 DW_TAG_base_type
+	.ascii "int"
+	.byte 0 # DW_AT_name
+	.byte 5 # DW_AT_encoding
+	.long 4 # DW_AT_byte_size
+
+	.byte 13  # Abbrev. Code 13 DW_TAG_pointer_type
+	.long 8 # DW_AT_byte_size
+
+	.byte 14  # Abbrev. Code 14 DW_TAG_array_type
+	.long 269 # DW_AT_type
+
+	.byte 15  # Abbrev. Code 15 DW_TAG_subrange_type
+	.long 0 # DW_AT_upper_bound
+
+	.byte 0 # end of children
+	.byte 16  # Abbrev. Code 16 DW_TAG_structure_type
 	.ascii "__va_list_struct"
 	.byte 0 # DW_AT_name
 	.long 24 # DW_AT_byte_size
 
-	.byte 12  # Abbrev. Code 12 DW_TAG_member
+	.byte 17  # Abbrev. Code 17 DW_TAG_member
 	.ascii "gp_offset"
 	.byte 0 # DW_AT_name
-	.long 336 # DW_AT_type
+	.long 224 # DW_AT_type
 	.byte 2 # block count
 	.byte 35 # DW_FORM_block DW_OP_plus_uconst
 	.byte 0 # DW_FORM_block, LEBU 0x0
  # DW_AT_data_member_location
 
-	.byte 13  # Abbrev. Code 13 DW_TAG_member
+	.byte 18  # Abbrev. Code 18 DW_TAG_member
 	.ascii "fp_offset"
 	.byte 0 # DW_AT_name
-	.long 336 # DW_AT_type
+	.long 224 # DW_AT_type
 	.byte 2 # block count
 	.byte 35 # DW_FORM_block DW_OP_plus_uconst
 	.byte 4 # DW_FORM_block, LEBU 0x4
  # DW_AT_data_member_location
 
-	.byte 14  # Abbrev. Code 14 DW_TAG_member
+	.byte 19  # Abbrev. Code 19 DW_TAG_member
 	.ascii "overflow_arg_area"
 	.byte 0 # DW_AT_name
-	.long 331 # DW_AT_type
+	.long 253 # DW_AT_type
 	.byte 2 # block count
 	.byte 35 # DW_FORM_block DW_OP_plus_uconst
 	.byte 8 # DW_FORM_block, LEBU 0x8
  # DW_AT_data_member_location
 
-	.byte 15  # Abbrev. Code 15 DW_TAG_member
+	.byte 20  # Abbrev. Code 20 DW_TAG_member
 	.ascii "reg_save_area"
 	.byte 0 # DW_AT_name
-	.long 331 # DW_AT_type
+	.long 253 # DW_AT_type
 	.byte 2 # block count
 	.byte 35 # DW_FORM_block DW_OP_plus_uconst
 	.byte 16 # DW_FORM_block, LEBU 0x10
  # DW_AT_data_member_location
 
 	.byte 0 # end of children
-	.byte 16  # Abbrev. Code 16 DW_TAG_pointer_type
-	.long 8 # DW_AT_byte_size
-
-	.byte 17  # Abbrev. Code 17 DW_TAG_base_type
-	.ascii "unsigned int"
-	.byte 0 # DW_AT_name
-	.byte 7 # DW_AT_encoding
-	.long 4 # DW_AT_byte_size
-
-	.byte 18  # Abbrev. Code 18 DW_TAG_typedef
+	.byte 21  # Abbrev. Code 21 DW_TAG_typedef
 	.ascii "va_list"
 	.byte 0 # DW_AT_name
-	.long 368 # DW_AT_type
+	.long 389 # DW_AT_type
 
-	.byte 19  # Abbrev. Code 19 DW_TAG_typedef
+	.byte 22  # Abbrev. Code 22 DW_TAG_typedef
 	.ascii "__builtin_va_list"
 	.byte 0 # DW_AT_name
-	.long 391 # DW_AT_type
-
-	.byte 20  # Abbrev. Code 20 DW_TAG_array_type
-	.long 224 # DW_AT_type
-
-	.byte 21  # Abbrev. Code 21 DW_TAG_subrange_type
-	.long 0 # DW_AT_upper_bound
-
-	.byte 0 # end of children
-	.byte 22  # Abbrev. Code 22 DW_TAG_base_type
-	.ascii "int"
-	.byte 0 # DW_AT_name
-	.byte 5 # DW_AT_encoding
-	.long 4 # DW_AT_byte_size
+	.long 258 # DW_AT_type
 
 	.byte 0 # end of children
