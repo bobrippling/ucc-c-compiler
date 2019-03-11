@@ -9,8 +9,6 @@ script: ./configure CFLAGS=-fsanitize=address LDFLAGS=-fsanitize=address && make
 env:
   global:
     - ASAN_OPTIONS=detect_leaks=0
-    # debug tests are too sensitive to the current platform:
-    - UCC_CHECK_SKIP=debug/
 
 matrix:
   include:
