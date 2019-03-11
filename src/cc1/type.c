@@ -866,7 +866,7 @@ unsigned sue_hash(const struct_union_enum_st *sue)
 static unsigned type_hash2(
 		const type *t, unsigned nest_hash(const type *))
 {
-	unsigned hash = t->type << 20 | (unsigned)(unsigned long)t;
+	unsigned hash = t->type << 20;
 
 	switch(t->type){
 		case type_auto:
