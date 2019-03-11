@@ -860,7 +860,7 @@ unsigned sue_hash(const struct_union_enum_st *sue)
 	if(!sue)
 		return 5;
 
-	return sue->primitive;
+	return sue->primitive ^ dynmap_strhash(sue->spel);
 }
 
 static unsigned type_hash2(
@@ -873,7 +873,7 @@ static unsigned type_hash2(
 			ICE("auto type");
 
 		case type_btype:
-			hash |= t->bits.type->primitive | sue_hash(t->bits.type->sue);
+			hash |= (t->bits.type->primitive << 1) | sue_hash(t->bits.type->sue);
 			break;
 
 		case type_tdef:
@@ -900,11 +900,11 @@ static unsigned type_hash2(
 
 		case type_func:
 		{
-			decl **i;
+			decl **const args = t->bits.func.args->arglist;
+			size_t i;
 
-			for(i = t->bits.func.args->arglist; i && *i; i++)
-				hash |= nest_hash((*i)->ref);
-
+			for(i = 0; args && args[i]; i++)
+				hash |= nest_hash(args[i]->ref) << (i % 8);
 			break;
 		}
 
@@ -914,9 +914,11 @@ static unsigned type_hash2(
 
 		case type_attr:
 		{
-			attribute **i;
-			for(i = t->bits.attr; i && *i; i++)
-				hash ^= (*i)->type;
+			attribute **const attr = t->bits.attr;
+			size_t i;
+
+			for(i = 0; attr && attr[i]; i++)
+				hash ^= attr[i]->type << (i % 8);
 			break;
 		}
 	}
