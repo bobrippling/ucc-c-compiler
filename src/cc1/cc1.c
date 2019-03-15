@@ -129,7 +129,7 @@ static void dump_options(void)
 	int i;
 
 	fprintf(stderr, "Output options\n");
-	fprintf(stderr, "  -g0, -gline-tables-only, -g[no-]column-info\n");
+	fprintf(stderr, "  -g[0|1|2|3], -gline-tables-only|mlt, -g[no-]column-info\n");
 	fprintf(stderr, "  -o output-file\n");
 	fprintf(stderr, "  -emit=(dump|print|asm|style)\n");
 	fprintf(stderr, "  -m(stringop-strategy=...|...)\n");
@@ -657,24 +657,41 @@ int main(int argc, char **argv)
 				usage(argv[0], "unknown emit backend \"%s\"", emit);
 
 		}else if(!strncmp(argv[i], "-g", 2)){
-			if(argv[i][2] == '\0'){
+			const char *mode = argv[i] + 2;
+			int imode;
+			char *end;
+
+			if(!*mode){
 				cc1_gdebug = DEBUG_FULL;
-			}else if(!strcmp(argv[i], "-g0")){
-				cc1_gdebug = DEBUG_OFF;
-			}else if(!strcmp(argv[i], "-gline-tables-only")){
+			}else if((imode = (int)strtol(mode, &end, 0)), !*end){
+				switch(imode){
+					case 0:
+						cc1_gdebug = DEBUG_OFF;
+						break;
+					case 1:
+						cc1_gdebug = DEBUG_LINEONLY;
+						break;
+					case 2:
+					case 3:
+						cc1_gdebug = DEBUG_FULL;
+						break;
+					default:
+						goto dbg_unknown;
+				}
+			}else if(!strcmp(mode, "line-tables-only") || !strcmp(mode, "mlt")){
 				cc1_gdebug = DEBUG_LINEONLY;
 			}else{
-				const char *arg = argv[i] + 2;
 				int on = 1;
 
-				if(!strncmp(arg, "no-", 3)){
-					arg += 3;
+				if(!strncmp(mode, "no-", 3)){
+					mode += 3;
 					on = 0;
 				}
 
-				if(!strcmp(arg, "column-info"))
+				if(!strcmp(mode, "column-info"))
 					cc1_gdebug_columninfo = on;
 				else
+dbg_unknown:
 					ccdie("Unknown -g switch: \"%s\"", argv[i] + 2);
 			}
 
