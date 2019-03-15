@@ -1,8 +1,9 @@
 #include "string.h"
 #include "limits.h"
 #include "stdlib.h" // MIN
+#include "errno.h"
 
-static const char *_errs[] = {
+static const char *errs[] = {
 #include "string_strerrs.h"
 };
 
@@ -23,8 +24,11 @@ size_t strlen(const char *s)
 
 const char *strerror(int eno)
 {
-	// TODO: bounds check + snprintf
-	return _errs[eno - 1];
+	if(eno > sizeof(errs) / sizeof(errs[0])){
+		errno = EINVAL;
+		return NULL;
+	}
+	return errs[eno - 1];
 }
 
 int memcmp(const void *va, const void *vb, size_t n)
