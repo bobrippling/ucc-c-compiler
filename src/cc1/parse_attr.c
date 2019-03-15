@@ -65,13 +65,13 @@ static attribute *parse_attr_format(symtable *symtab, const char *ident)
 
 	EAT(token_comma);
 
-	da->bits.format.fmt_idx = currentval.val.i - 1;
-	EAT(token_integer);
+	da->bits.format.fmt_idx = PARSE_EXPR_NO_COMMA(symtab, 1);
+	FOLD_EXPR(da->bits.format.fmt_idx, symtab);
 
 	EAT(token_comma);
 
-	da->bits.format.var_idx = currentval.val.i - 1;
-	EAT(token_integer);
+	da->bits.format.var_idx = PARSE_EXPR_NO_COMMA(symtab, 1);
+	FOLD_EXPR(da->bits.format.var_idx, symtab);
 
 	EAT(token_close_paren);
 
@@ -133,8 +133,19 @@ static attribute *parse_attr_nonnull(symtable *symtab, const char *ident)
 
 	if(accept(token_open_paren)){
 		while(curtok != token_close_paren){
-			if(curtok == token_integer){
-				int n = currentval.val.i;
+			expr *e = PARSE_EXPR_NO_COMMA(symtab, 1);
+			consty k;
+
+			FOLD_EXPR(e, symtab);
+			const_fold(e, &k);
+
+			if(k.type != CONST_NUM || k.bits.num.suffix & VAL_FLOATING){
+				cc1_warn_at(NULL,
+						attr_nonnull_bad,
+						"nonnull argument not an integer constant");
+				had_error = 1;
+			}else{
+				integral_t n = k.bits.num.val.i;
 				if(n <= 0){
 					/* shouldn't ever be negative */
 					cc1_warn_at(NULL,
@@ -144,12 +155,12 @@ static attribute *parse_attr_nonnull(symtable *symtab, const char *ident)
 				}else{
 					/* implicitly disallow functions with >32 args */
 					/* n-1, since we convert from 1-base to 0-base */
-					l |= 1 << (n - 1);
+					if(n < sizeof(l) * CHAR_BIT)
+						l |= 1 << (n - 1);
 				}
-			}else{
-				EAT(token_integer); /* raise error */
 			}
-			EAT(curtok);
+
+			expr_free(e);
 
 			if(accept(token_comma))
 				continue;

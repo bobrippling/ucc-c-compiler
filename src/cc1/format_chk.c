@@ -477,8 +477,8 @@ void format_check_call(
 			break;
 	}
 
-	fmt_idx = attr->bits.format.fmt_idx;
-	var_idx = attr->bits.format.var_idx;
+	fmt_idx = const_fold_val_i(attr->bits.format.fmt_idx) - 1;
+	var_idx = const_fold_val_i(attr->bits.format.var_idx) - 1;
 
 	n = dynarray_count(args);
 
@@ -511,6 +511,19 @@ void format_check_call(
 	}
 }
 
+static int extract_const(expr *e, int *const out)
+{
+	consty k;
+
+	const_fold(e, &k);
+
+	if(k.type != CONST_NUM || k.bits.num.suffix & VAL_FLOATING)
+		return 0;
+
+	*out = k.bits.num.val.i;
+	return 1;
+}
+
 void format_check_decl(decl *d, attribute *da)
 {
 	type *r_func;
@@ -521,6 +534,16 @@ void format_check_decl(decl *d, attribute *da)
 		/* i.e. checked */
 		return;
 	}
+
+	if(!extract_const(da->bits.format.fmt_idx, &fmt_idx)
+	|| !extract_const(da->bits.format.var_idx, &var_idx))
+	{
+		cc1_warn_at(&da->where, attr_printf_bad,
+				"format/variadic argument indexes must be integer constant expressions");
+		goto invalid;
+	}
+	fmt_idx--;
+	var_idx--;
 
 	r_func = type_is_func_or_block(d->ref);
 	assert(r_func);
@@ -533,7 +556,7 @@ void format_check_decl(decl *d, attribute *da)
 		 *
 		 * (-1, not zero, since we subtract one for format indexes)
 		 */
-		if(da->bits.format.var_idx >= 0){
+		if(var_idx >= 0){
 			cc1_warn_at(&da->where, attr_printf_bad,
 					"variadic function required for format attribute");
 		}
@@ -541,8 +564,6 @@ void format_check_decl(decl *d, attribute *da)
 	}
 
 	nargs = dynarray_count(fargs->arglist);
-	fmt_idx = da->bits.format.fmt_idx;
-	var_idx = da->bits.format.var_idx;
 
 	/* format string index must be < nargs */
 	if(fmt_idx >= nargs){
