@@ -462,7 +462,9 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 			if(!type_is_complete(d->ref)
 			&& !type_is_incomplete_array(d->ref)) /* allow flexarrays */
 			{
-				die_at(&d->where, "incomplete field '%s'", decl_to_str(d));
+				warn_at_print_error(&d->where, "incomplete field '%s'", decl_to_str(d));
+				fold_had_error = 1;
+				continue;
 			}
 
 			if(type_is_const(d->ref))
