@@ -1,14 +1,13 @@
-// RUN: %ucc -fsyntax-only %s
+// RUN: %check -e %s
 
 static int caller()
 {
-	/* should detect that this assumes a non-static f()...
-	 * but we don't at the moment
-	 */
-	return f();
+	/* this assumes a non-static f(),
+	 * which then mismatches with the actual definition */
+	return f(); // CHECK: note: previous definition here
 }
 
-static int f()
+static int f() // CHECK: error: static redefinition of non-static "f"
 {
 	return 3;
 }

@@ -3,6 +3,8 @@
 int printf(const char *, ...)
 	__attribute((format(printf, 1, 2)));
 
+void vla(int n);
+
 void f(int n)
 {
 	int b = 0; // b sym pushed/popped on inline
