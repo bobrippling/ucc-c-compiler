@@ -109,9 +109,11 @@ static builtin_table *builtin_find(const char *sp)
 	static unsigned prefix_len;
 	builtin_table *found;
 
-	found = builtin_table_search(no_prefix_builtins, sp);
-	if(found)
-		return found;
+	if(!cc1_fopt.freestanding){
+		found = builtin_table_search(no_prefix_builtins, sp);
+		if(found)
+			return found;
+	}
 
 	if(!prefix_len)
 		prefix_len = strlen(PREFIX);
