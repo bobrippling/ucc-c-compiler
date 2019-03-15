@@ -1579,7 +1579,7 @@ static void parse_add_asm(decl *d)
 			d->spel_asm = rename;
 		}
 
-		if(proto && proto != d && proto->used){
+		if(proto && proto != d && proto->flags & DECL_FLAGS_USED){
 			warn_at_print_error(&d->where,
 					"cannot annotate \"%s\" with an asm() label after use",
 					d->spel);
@@ -1900,12 +1900,10 @@ static void check_function_storage_redef(decl *new, decl *old)
 
 	/* can't redefine as static now */
 	if((new->store & STORE_MASK_STORE) == store_static){
-		char buf[WHERE_BUF_SIZ];
-
 		warn_at_print_error(&new->where,
-				"static redefinition of non-static \"%s\"\n"
-				"%s: note: previous definition",
-				new->spel, where_str_r(buf, &old->where));
+				"static redefinition of non-static \"%s\"",
+				new->spel);
+		note_at(&old->where, "previous definition here");
 		fold_had_error = 1;
 	}
 }

@@ -40,8 +40,11 @@ struct decl
 	attribute **attr;
 
 	char *spel, *spel_asm;
-	int used;
-	int addressed;
+	enum {
+		DECL_FLAGS_USED = 1 << 0,
+		DECL_FLAGS_ADDRESSED = 1 << 1,
+		DECL_FLAGS_IMPLICIT = 1 << 2
+	} flags;
 
 	union
 	{
@@ -161,7 +164,7 @@ const char *decl_store_spel_type_to_str_r(
 		const char *spel,
 		type *ty);
 
-#define decl_use(d) ((d)->used = 1)
+#define decl_use(d) ((d)->flags |= DECL_FLAGS_USED)
 
 #define DECL_FUNC_ARG_SYMTAB(d) ((d)->bits.func.code->symtab->parent)
 

@@ -50,15 +50,19 @@
 
 #define DECL_HAS_FUNC_CODE(d) (type_is(d->ref, type_func) && (d)->bits.func.code)
 
+static void dump_indent(int indent)
+{
+	int i;
+	for(i = 0; i < indent; i++)
+		fputs("  ", stderr);
+}
+
 static void dump_symtab(symtable *st, unsigned indent)
 {
 	symtable **si;
 	decl **di;
-	unsigned i;
 
-#define STAB_INDENT() for(i = 0; i < indent; i++) fputs("  ", stderr)
-	STAB_INDENT();
-
+	dump_indent(indent);
 	fprintf(stderr, "symtab %p = { .are_params=%d, .in_func=%s }\n",
 			(void *)st,
 			st->are_params,
@@ -67,7 +71,7 @@ static void dump_symtab(symtable *st, unsigned indent)
 	for(di = st->decls; di && *di; di++){
 		decl *d = *di;
 
-		STAB_INDENT();
+		dump_indent(indent);
 		fprintf(stderr, "  %s, %s %p",
 				d->sym ? sym_to_str(d->sym->type) : "<nosym>",
 				decl_to_str(d),
@@ -91,9 +95,13 @@ static void dump_symtab(symtable *st, unsigned indent)
 		fputc('\n', stderr);
 	}
 
+	if(st->decls && st->children){
+		dump_indent(indent);
+		fputs("  ---\n", stderr);
+	}
+
 	for(si = st->children; si && *si; si++)
 		dump_symtab(*si, indent + 1);
-#undef STAB_INDENT
 }
 
 static void symtab_iter_children(symtable *stab, void f(symtable *))
@@ -219,6 +227,9 @@ struct ident_loc
 	((il)->has_decl          \
 	 ? (il)->bits.decl->spel \
 	 : (il)->bits.spel)
+
+#define IDENT_LOC_IS_IMPLICIT(il) \
+	((il)->has_decl && (il)->bits.decl->flags & DECL_FLAGS_IMPLICIT)
 
 static int strcmp_or_null(const char *a, const char *b)
 {
@@ -491,8 +502,15 @@ void symtab_fold_decls(symtable *tab)
 			}
 
 			if(clash){
+				if(IDENT_LOC_IS_IMPLICIT(b) && !IDENT_LOC_IS_IMPLICIT(a)){
+					struct ident_loc *tmp = a;
+					a = b;
+					b = tmp;
+				}
+
 				warn_at_print_error(b->w, "%s definitions of \"%s\"", clash, IDENT_LOC_SPEL(a));
-				note_at(a->w, "previous definition");
+				note_at(a->w, "previous %sdefinition",
+						IDENT_LOC_IS_IMPLICIT(a) ? "implicit " : "");
 				fold_had_error = 1;
 			}
 		}

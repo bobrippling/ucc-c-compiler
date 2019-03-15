@@ -402,13 +402,13 @@ int decl_unused_and_internal(decl *d)
 	int used = 0;
 
 	for(i = d; i; i = i->proto){
-		if(i->used){
+		if(i->flags & DECL_FLAGS_USED){
 			used = 1;
 			goto fin;
 		}
 	}
 	for(i = d; i; i = i->impl){
-		if(i->used){
+		if(i->flags & DECL_FLAGS_USED){
 			used = 1;
 			goto fin;
 		}
