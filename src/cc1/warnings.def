@@ -1,3 +1,8 @@
+/* -Wgnu could be a GROUP(), but currently the maximum
+ * size for a group is 3, and extending it just for
+ * -Wgnu is a bit excessively wasteful
+ */
+
 X("mismatch-arg", arg_mismatch)
 X("return-type", return_type)
 X("return-void", return_void)
@@ -261,7 +266,11 @@ X("typedef-redefinition", typedef_redef)
 X("undef-string-comparison", undef_strlitcmp)
 X("undefined-internal", undef_internal)
 
-X("unnamed-struct-memb", unnamed_struct_memb)
+X("anon-tagged-struct-extension", unnamed_struct_memb_ext_tagged)
+X("anon-tagged-struct-empty-decl", unnamed_struct_memb_ignored)
+X("anon-untagged-c11-struct", unnamed_struct_memb_ext_c11)
+ALIAS("microsoft-anon-tag", unnamed_struct_memb_ext_tagged)
+ALIAS("microsoft", unnamed_struct_memb_ext_tagged)
 
 X("dangling-else", dangling_else)
 

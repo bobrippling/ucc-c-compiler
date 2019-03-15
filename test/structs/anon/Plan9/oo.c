@@ -31,9 +31,9 @@ main()
 	struct Dog dog;
 
 	cat.weight = 2;
-	dog.Animal.weight = 5; // needs typedef
+	dog.Animal.weight = 5; // Plan 9 ext 2
 
-	sum_weight(&cat);
+	sum_weight(&cat); // Plan 9 ext 1
 	sum_weight(&dog);
 
 	if(weights != 7)

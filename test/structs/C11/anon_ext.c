@@ -8,7 +8,7 @@ struct A
 	struct TAGGED
 	{
 		int i;
-	}; // CHECK: /warning: unnamed member 'struct TAGGED' ignored - tagged/
+	}; // CHECK: warning: unnamed member 'struct TAGGED' ignored (untagged would be accepted in C11)
 	int j;
 };
 
