@@ -1010,6 +1010,8 @@ static int x86_need_fp_parity_p(
 {
 	if(!(fopt->mods & flag_mod_float))
 		return 0;
+	if(cc1_fopt.finite_math_only)
+		return 0;
 
 	*flip_result = 0;
 
