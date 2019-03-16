@@ -1112,21 +1112,22 @@ const out_val *impl_load(
 		}
 
 		case V_SPILT: /* actually a pointer to T, impl_deref() handles this */
-		case V_REGOFF:
 			return impl_deref(octx, from, reg, NULL);
 
 		case V_REG:
-			if(from->bits.regoff.offset)
-				goto lea;
-
-			impl_reg_cp_no_off(octx, from, reg);
-			break;
+			if(from->bits.regoff.offset == 0){
+				/* optimisation: */
+				impl_reg_cp_no_off(octx, from, reg);
+				break;
+			}
+			goto lea;
 
 		case V_CONST_I:
 			from = x86_load_iv(octx, from, reg);
 			break;
 
 lea:
+		case V_REGOFF:
 		case V_LBL:
 		{
 			const int fp = type_is_floating(from->t);
