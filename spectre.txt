@@ -1,0 +1,18 @@
+These switches mitigate spectre v2 by ensuring only controlled speculation occurs at an indirect-call or return (aka retpolines).
+
+gcc:
+	-mindirect-branch=...
+		keep         - Don't modify
+		thunk        - Use a thunk emitted at the end of the unit
+		thunk-inline - Use a thunk inline
+		thunk-extern - Use a thunk elsewhere
+
+	-mfunction-return=...
+		<same options as -mindirect-branch>
+
+	-mindirect-branch-register
+		for indirect jumps/calls through memory, load memory to a register first
+
+clang:
+	-mretpoline
+		see gcc's -mindirect-branch=thunk
