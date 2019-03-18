@@ -115,16 +115,25 @@ static int const_expr_zero(expr *e, int zero)
 	return 0;
 }
 
-void const_fold_integral(expr *e, numeric *piv)
+int const_fold_integral_try(expr *e, numeric *piv)
 {
 	consty k;
 	const_fold(e, &k);
 
-	UCC_ASSERT(k.type == CONST_NUM, "not const");
-	UCC_ASSERT(k.offset == 0, "got offset for val?");
-	UCC_ASSERT(K_INTEGRAL(k.bits.num), "fp?");
+	if(k.type != CONST_NUM)
+		return 0;
+	if(k.offset != 0)
+		return 0;
+	if(!K_INTEGRAL(k.bits.num))
+		return 0;
 
 	memcpy_safe(piv, &k.bits.num);
+	return 1;
+}
+
+void const_fold_integral(expr *e, numeric *piv)
+{
+	UCC_ASSERT(const_fold_integral_try(e, piv), "not an integer constant");
 }
 
 integral_t const_fold_val_i(expr *e)
@@ -344,12 +353,17 @@ static void const_memify(consty *k)
 	}
 }
 
+static int is_lvalue_pointerish(type *t)
+{
+	return type_is_ptr(t) || type_is_array(t) || type_is_func_or_block(t);
+}
+
 void const_ensure_num_or_memaddr(
 		consty *k, type *from, type *to,
 		expr *owner)
 {
-	const int from_ptr = type_is_ptr(from) || type_is_array(from);
-	const int to_ptr = type_is_ptr(to) || type_is_array(to);
+	const int from_ptr = is_lvalue_pointerish(from);
+	const int to_ptr = is_lvalue_pointerish(to);
 
 	if(from_ptr == to_ptr)
 		return;

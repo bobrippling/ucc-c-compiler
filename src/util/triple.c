@@ -180,8 +180,13 @@ static void filter_unam(struct utsname *unam)
 {
 	char *p;
 
-	if(!strcmp(unam->machine, "amd64"))
-		strcpy(unam->machine, "x86_64");
+#define X(pre, name)
+#define ALIAS(pre, from, to) \
+	if(!strcmp(unam->machine, #from)) \
+		strcpy(unam->machine, #to);
+	TARGET_ARCHES
+#undef ALIAS
+#undef X
 
 	for(p = unam->sysname; *p; p++)
 		*p = tolower(*p);

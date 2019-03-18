@@ -58,6 +58,26 @@ void *dynarray_nochk_padinsert(
 	}
 }
 
+void dynarray_nochk_insert(
+		void ***par, unsigned i, void *to_insert)
+{
+	void **ar = *par;
+	size_t n = dynarray_nochk_count(ar);
+
+	UCC_ASSERT(i <= n, "oob dynarray insert");
+	if(i == n){
+		dynarray_nochk_add(par, to_insert);
+		return;
+	}
+
+	dynarray_nochk_add(par, to_insert); /* make space */
+	n++;
+
+	ar = *par;
+	memmove(&ar[i+1], &ar[i], (n - i - 1) * sizeof(void *));
+	ar[i] = to_insert;
+}
+
 void *dynarray_nochk_pop(void ***par)
 {
 	void **ar = *par;

@@ -26,6 +26,7 @@
 #include "type_is.h"
 #include "type_nav.h"
 #include "fopt.h"
+#include "cc1_target.h"
 
 #include "ops/expr_cast.h"
 #include "ops/expr_identifier.h"
@@ -946,6 +947,23 @@ static void fold_decl_var_dinit(
 	}
 }
 
+void fold_decl_alias(decl *d)
+{
+	attribute *attr;
+
+	if((attr = attribute_present(d, attr_alias))){
+		if(decl_defined(d, 0)){
+			warn_at_print_error(&d->where, "alias \"%s\" cannot be a definition", d->spel);
+			fold_had_error = 1;
+		}
+
+		if(!type_is(d->ref, type_func) && !cc1_target_details.alias_variables){
+			warn_at_print_error(&d->where, "__attribute__((alias(...))) not supported on this target (for variables)");
+			fold_had_error = 1;
+		}
+	}
+}
+
 static void fold_decl_var(decl *d, symtable *stab)
 {
 	int is_static_duration = !stab->parent
@@ -1036,6 +1054,23 @@ static void fold_decl_check_ctor_dtor(decl *d, symtable *stab)
 	}
 }
 
+static void fold_decl_attrs(decl *d, symtable *stab)
+{
+	attribute *attr;
+
+	if(((d->store & STORE_MASK_STORE) != store_typedef)
+	/* __attribute__((weak)) is allowed on typedefs */
+	&& (attr = attribute_present(d, attr_weak))
+	&& decl_linkage(d) != linkage_external)
+	{
+		warn_at_print_error(&d->where,
+				"weak attribute on declaration without external linkage");
+		fold_had_error = 1;
+	}
+
+	fold_decl_check_ctor_dtor(d, stab);
+}
+
 void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 {
 	/* this is called from wherever we can define a
@@ -1061,8 +1096,6 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 	first_fold = !just_init;
 
 	if(first_fold){
-		attribute *attr;
-
 		fold_type_w_attr(d->ref, NULL, type_loc(d->ref),
 				stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
 
@@ -1073,17 +1106,7 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 			fold_decl_add_sym(d, stab);
 		}
 
-		if(((d->store & STORE_MASK_STORE) != store_typedef)
-		/* __attribute__((weak)) is allowed on typedefs */
-		&& (attr = attribute_present(d, attr_weak))
-		&& decl_linkage(d) != linkage_external)
-		{
-			warn_at_print_error(&d->where,
-					"weak attribute on declaration without external linkage");
-			fold_had_error = 1;
-		}
-
-		fold_decl_check_ctor_dtor(d, stab);
+		fold_decl_attrs(d, stab);
 	}
 
 	/* name static decls - do this before handling init,
@@ -1178,17 +1201,14 @@ void fold_decl_global_init(decl *d, symtable *stab)
 				nonconst->f_str());
 		}
 	}else if(nonstd){
-		char wbuf[WHERE_BUF_SIZ];
-
-		cc1_warn_at(&d->bits.var.init.dinit->where,
+		if(cc1_warn_at(&d->bits.var.init.dinit->where,
 				nonstd_init,
-				"%s %s initialiser contains non-standard constant expression\n"
-				"%s: note: %s expression here",
-				type, decl_init_to_str(d->bits.var.init.dinit->type),
-				where_str_r(wbuf, &nonstd->where),
-				expr_str_friendly(nonstd));
+				"%s %s initialiser contains non-standard constant expression",
+				type, decl_init_to_str(d->bits.var.init.dinit->type)))
+		{
+			note_at(&nonstd->where, "%s expression here", expr_str_friendly(nonstd));
+		}
 	}
-
 }
 
 static void warn_passable_func(decl *d)
@@ -1290,6 +1310,12 @@ void fold_global_func(decl *func_decl)
 					typedef_fnimpl,
 					"typedef function implementation is an extension");
 
+		if(type_is_s_or_u(func_ret))
+			cc1_warn_at(&func_decl->where,
+					aggregate_return,
+					"function returns aggregate (%s)",
+					type_to_str(func_ret));
+
 		if(!type_is_void(func_ret) && !type_is_complete(func_ret)){
 			warn_at_print_error(&func_decl->where, "incomplete return type");
 			fold_had_error = 1;
@@ -1347,29 +1373,37 @@ void fold_decl_global(decl *d, symtable *stab)
 		fold_global_func(d);
 }
 
-void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
+int fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 {
 	if(!e)
-		return;
+		return 0;
 
 	UCC_ASSERT(e->tree_type, "no tree type");
 
 	/* fatal ones first */
 
-	if((chk & FOLD_CHK_ALLOW_VOID) == 0 && type_is_void(e->tree_type))
-		die_at(&e->where, "%s requires non-void expression", desc);
+	if((chk & FOLD_CHK_ALLOW_VOID) == 0 && type_is_void(e->tree_type)){
+		warn_at_print_error(&e->where, "%s requires non-void expression", desc);
+		fold_had_error = 1;
+		return 1;
+	}
 
 	if(chk & FOLD_CHK_NO_ST_UN){
 		struct_union_enum_st *sue;
 
 		if((sue = type_is_s_or_u(e->tree_type))){
-			die_at(&e->where, "%s involved in %s",
+			warn_at_print_error(&e->where, "%s involved in %s",
 					sue_str(sue), desc);
+			fold_had_error = 1;
+			return 1;
 		}
 	}
 
-	if(chk & FOLD_CHK_NO_BITFIELD && expr_is_struct_bitfield(e))
-		die_at(&e->where, "bitfield in %s", desc);
+	if(chk & FOLD_CHK_NO_BITFIELD && expr_is_struct_bitfield(e)){
+		warn_at_print_error(&e->where, "bitfield in %s", desc);
+		fold_had_error = 1;
+		return 1;
+	}
 
 	if(chk & (FOLD_CHK_ARITHMETIC | FOLD_CHK_INTEGRAL)){
 		int (*chkfn)(type *) = chk & FOLD_CHK_ARITHMETIC
@@ -1384,6 +1418,7 @@ void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 						? "arithmetic"
 						: "integral",
 					type_to_str(e->tree_type));
+			return 1;
 		}
 	}
 
@@ -1416,9 +1451,14 @@ void fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 		consty k;
 		const_fold((expr *)e, &k);
 
-		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num))
-			die_at(&e->where, "integral constant expected for %s", desc);
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num)){
+			warn_at_print_error(&e->where, "integral constant expected for %s", desc);
+			fold_had_error = 1;
+			return 1;
+		}
 	}
+
+	return 0;
 }
 
 void fold_stmt(stmt *t)

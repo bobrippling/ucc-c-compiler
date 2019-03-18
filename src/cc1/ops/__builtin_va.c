@@ -37,6 +37,7 @@
 #include "../ops/expr_val.h"
 #include "../ops/expr_op.h"
 #include "../ops/expr_funcall.h"
+#include "../ops/expr_cast.h"
 
 static void va_type_check(
 		expr *va_l, expr *in, symtable *stab, int expect_decay)
@@ -152,7 +153,10 @@ static void fold_va_start(expr *e, symtable *stab)
 
 		ADD_ASSIGN("overflow_arg_area",
 				W(expr_new_op2(op_plus,
-					W(builtin_new_frame_address(0)),
+					W(expr_new_cast(
+						W(builtin_new_frame_address(0)),
+						type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar)),
+						1)),
 					/* *2 to step over saved-rbp and saved-ret */
 					W(expr_new_val(ws * 2)))));
 

@@ -82,7 +82,7 @@ static void init_debug(const char *fmt, ...)
 {
 	va_list l;
 
-	if(!(cc1_fopt.dump_init))
+	if(!cc1_fopt.dump_init)
 		return;
 
 	init_indent_out();
@@ -96,7 +96,7 @@ static void init_debug_noindent(const char *fmt, ...)
 {
 	va_list l;
 
-	if(!(cc1_fopt.dump_init))
+	if(!cc1_fopt.dump_init)
 		return;
 
 	va_start(l, fmt);
@@ -108,7 +108,7 @@ static void init_debug_dinit(init_iter *init_iter, type *tfor)
 {
 	where dummy_where = { 0 };
 
-	if(!(cc1_fopt.dump_init))
+	if(!cc1_fopt.dump_init)
 		return;
 
 	dummy_where.fname = "<n/a>";
@@ -123,7 +123,7 @@ static void init_debug_dinit(init_iter *init_iter, type *tfor)
 
 static void init_debug_desig(struct desig *desig, symtable *stab)
 {
-	if(!(cc1_fopt.dump_init))
+	if(!cc1_fopt.dump_init)
 		return;
 
 	if(!desig)
@@ -398,15 +398,14 @@ static decl_init *decl_init_brace_up_r(decl_init *current, init_iter *,
 static void override_warn(
 		type *tfor, where *old, where *new, int whole)
 {
-	char buf[WHERE_BUF_SIZ];
-
-	cc1_warn_at(new,
+	if(cc1_warn_at(new,
 			init_override,
-			"overriding %sinitialisation of \"%s\"\n"
-			"%s: prior initialisation here",
+			"overriding %sinitialisation of \"%s\"",
 			whole ? "entire " : "",
-			type_to_str(tfor),
-			where_str_r(buf, old));
+			type_to_str(tfor)))
+	{
+		note_at(old, "prior initialisation here");
+	}
 }
 
 static void excess_init(where *w, type *ty)

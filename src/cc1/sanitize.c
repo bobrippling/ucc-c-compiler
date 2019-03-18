@@ -10,6 +10,26 @@
 
 #include "sanitize.h"
 
+void sanitize_fail(out_ctx *octx, const char *desc)
+{
+	out_comment(octx, "sanitizer for %s", desc);
+	if(cc1_sanitize_handler_fn){
+		type *voidty = type_nav_btype(cc1_type_nav, type_void);
+		funcargs *args = funcargs_new();
+		type *fnty_noptr = type_func_of(voidty, args, NULL);
+		type *fnty_ptr = type_ptr_to(fnty_noptr);
+		char *mangled = func_mangle(cc1_sanitize_handler_fn, fnty_noptr);
+
+		const out_val *fn = out_new_lbl(octx, fnty_ptr, mangled, /* could be in another module */OUT_LBL_PIC);
+
+		out_val_release(octx, out_call(octx, fn, NULL, fnty_ptr));
+
+		if(mangled != cc1_sanitize_handler_fn)
+			free(mangled);
+	}
+	out_ctrl_end_undefined(octx);
+}
+
 static void sanitize_assert(const out_val *cond, out_ctx *octx, const char *desc)
 {
 	out_blk *land = out_blk_new(octx, "san_end");
@@ -21,22 +41,7 @@ static void sanitize_assert(const out_val *cond, out_ctx *octx, const char *desc
 			blk_undef);
 
 	out_current_blk(octx, blk_undef);
-	out_comment(octx, "sanitizer for %s", desc);
-	if(cc1_sanitize_handler_fn){
-		type *voidty = type_nav_btype(cc1_type_nav, type_void);
-		funcargs *args = funcargs_new();
-		type *fnty_noptr = type_func_of(voidty, args, NULL);
-		type *fnty_ptr = type_ptr_to(fnty_noptr);
-		char *mangled = func_mangle(cc1_sanitize_handler_fn, fnty_noptr);
-
-		const out_val *fn = out_new_lbl(octx, fnty_ptr, mangled, OUT_LBL_NOPIC);
-
-		out_val_release(octx, out_call(octx, fn, NULL, fnty_ptr));
-
-		if(mangled != cc1_sanitize_handler_fn)
-			free(mangled);
-	}
-	out_ctrl_end_undefined(octx);
+	sanitize_fail(octx, desc);
 
 	out_current_blk(octx, land);
 }

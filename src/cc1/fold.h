@@ -17,6 +17,7 @@ void fold_decl_add_sym(decl *d, symtable *stab);
 
 void fold_decl(decl *d, symtable *stab);
 void fold_decl_maybe_member(decl *d, symtable *stab, int su_member);
+void fold_decl_alias(decl *d);
 
 void fold_check_decl_complete(decl *d);
 void fold_global_func(decl *);
@@ -70,7 +71,9 @@ enum fold_chk
 	FOLD_CHK_NOWARN_ASSIGN = 1 << 6, /* if(a = b){ ... } */
 	FOLD_CHK_ARITHMETIC = 1 << 7,
 };
-void fold_check_expr(const expr *e, enum fold_chk, const char *desc);
+
+ucc_wur
+int fold_check_expr(const expr *e, enum fold_chk, const char *desc);
 
 /* expression + statement folding */
 /*   decay */

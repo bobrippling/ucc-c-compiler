@@ -45,12 +45,15 @@ static void fold_switch_dups(stmt *sw)
 
 		vals[i].cse = cse;
 
-		const_fold_integral(cse->expr, &vals[i].start);
+		if(!const_fold_integral_try(cse->expr, &vals[i].start))
+			goto out;
 
-		if(stmt_kind(cse, case_range))
-			const_fold_integral(cse->expr2, &vals[i].end);
-		else
+		if(stmt_kind(cse, case_range)){
+			if(!const_fold_integral_try(cse->expr2, &vals[i].end))
+				goto out;
+		}else{
 			memcpy(&vals[i].end, &vals[i].start, sizeof vals[i].end);
+		}
 
 		i++;
 	}
@@ -78,6 +81,7 @@ static void fold_switch_dups(stmt *sw)
 		}
 	}
 
+out:
 	free(vals);
 }
 
@@ -117,15 +121,21 @@ static void fold_switch_enum(
 		stmt *cse = *iter;
 		integral_t v, w;
 
-		fold_check_expr(cse->expr,
+		if(fold_check_expr(cse->expr,
 				FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
-				"case value");
+				"case value"))
+		{
+			continue;
+		}
 		v = const_fold_val_i(cse->expr);
 
 		if(stmt_kind(cse, case_range)){
-			fold_check_expr(cse->expr2,
+			if(fold_check_expr(cse->expr2,
 					FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
-					"case range value");
+					"case range value"))
+			{
+				continue;
+			}
 
 			w =  const_fold_val_i(cse->expr2);
 		}else{
@@ -189,8 +199,11 @@ void fold_stmt_and_add_to_curswitch(stmt *cse)
 
 	fold_stmt(cse->lhs); /* compound */
 
-	if(!sw)
-		die_at(&cse->where, "%s not inside switch", cse->f_str());
+	if(!sw){
+		warn_at_print_error(&cse->where, "%s not inside switch", cse->f_str());
+		fold_had_error = 1;
+		return;
+	}
 
 	if(cse->expr){
 		/* promote to the controlling statement */
@@ -228,7 +241,8 @@ void fold_stmt_switch(stmt *s)
 {
 	FOLD_EXPR(s->expr, s->symtab);
 
-	fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch");
+	if(fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch"))
+		return;
 
 	/* default integer promotions */
 	expr_promote_default(&s->expr, s->symtab);
@@ -362,7 +376,20 @@ void style_stmt_switch(const stmt *s, out_ctx *octx)
 
 static int switch_passable(stmt *s)
 {
-	return fold_passable(s->lhs);
+	stmt **iter;
+
+	/* this isn't perfect - gotos may jump into s->lhs */
+	for(iter = s->bits.switch_.cases; iter && *iter; iter++){
+		/* if any of the entry points (i.e. cases) is passable, we're passable */
+		if(fold_passable(*iter))
+			return 1;
+	}
+
+	if(s->bits.switch_.default_case)
+		return fold_passable(s->bits.switch_.default_case);
+
+	/* no default case, assume switch is passable */
+	return 1;
 }
 
 void init_stmt_switch(stmt *s)

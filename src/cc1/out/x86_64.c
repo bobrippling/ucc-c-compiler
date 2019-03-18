@@ -23,6 +23,7 @@
 #include "../fopt.h"
 #include "../cc1.h"
 #include "../cc1_target.h"
+#include "../cc1_out.h"
 
 #include "val.h"
 #include "asm.h"
@@ -280,8 +281,8 @@ static void x86_overlay_regpair_1(
 
 			regs[*regpair_idx].idx =
 				(*regpair_idx == 0 || regs[0].is_float)
-				? X86_64_REG_RAX
-				: X86_64_REG_RDX;
+				? REG_RET_I_1
+				: REG_RET_I_2;
 			break;
 
 		case FLOAT:
@@ -289,8 +290,8 @@ static void x86_overlay_regpair_1(
 
 			regs[*regpair_idx].idx =
 				(*regpair_idx == 0 || !regs[0].is_float)
-				? X86_64_REG_XMM0
-				: X86_64_REG_XMM1;
+				? REG_RET_F_1
+				: REG_RET_F_2;
 			break;
 	}
 
@@ -619,7 +620,7 @@ void impl_func_prologue_save_call_regs(
 		 * each argument takes a full word for now - subject to change
 		 * (e.g. long double, struct/union args, etc)
 		 */
-		if(n_call_f){
+		{
 			unsigned i_arg, i_arg_stk, i_i, i_f;
 			const out_val *stack_loc;
 			type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
@@ -682,42 +683,6 @@ pass_via_stack:
 			 * we're still in the prologue */
 			assert(octx->in_prologue);
 			out_adealloc(octx, &stack_loc);
-		}else{
-			long i;
-			for(i = 0; i < nargs; i++){
-				long off;
-				const out_val **store;
-				type *ty;
-
-				if(i < n_call_i){
-					out_asm(octx, "push%s %%%s",
-							x86_suffix(NULL),
-							x86_reg_str(&call_regs[i], NULL));
-
-					/* +1 to step over saved rbp */
-					off = -(i + 1) * ws;
-				}else{
-					/* +2 to step back over saved rbp and saved rip */
-					off = (i - n_call_i + 2) * ws;
-				}
-
-				if(is_stret && i == 0){
-					ty = type_ptr_to(retty);
-					assert(!octx->current_stret);
-					store = &octx->current_stret;
-				}else{
-					ty = fa->arglist[i - is_stret]->ref;
-					store = &arg_vals[i - is_stret];
-				}
-
-				*store = v_new_bp3_above(octx, NULL, type_ptr_to(ty), off);
-			}
-
-			/* this aligns the stack too */
-			v_aalloc_noop(octx,
-					n_call_i * ws,
-					ws,
-					"save call regs push-version");
 		}
 
 		if(octx->current_stret && cc1_fopt.verbose_asm){
@@ -857,7 +822,7 @@ x86_func_ret_memcpy(
 
 	/* return the stret pointer argument */
 	ret_reg->is_float = 0;
-	ret_reg->idx = REG_RET_I;
+	ret_reg->idx = REG_RET_I_1;
 
 	return out_deref(octx, out_val_retain(octx, octx->current_stret));
 }
@@ -888,7 +853,7 @@ void impl_to_retreg(out_ctx *octx, const out_val *val, type *called)
 
 		case stret_scalar:
 			r.is_float = type_is_floating(called);
-			r.idx = r.is_float ? REG_RET_F : REG_RET_I;
+			r.idx = r.is_float ? REG_RET_F_1 : REG_RET_I_1;
 			break;
 
 		case stret_regs:
@@ -1010,9 +975,15 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			char *lbl = out_label_data_store(STORE_FLOAT);
 			struct vreg r;
 			out_val *mut;
+			struct section sec = SECTION_INIT(SECTION_DATA);
+			struct section_output orig_section;
 
-			asm_nam_begin3(SECTION_DATA, lbl, type_align(from->t, NULL));
-			asm_out_fp(SECTION_DATA, from->t, from->bits.val_f);
+			memcpy_safe(&orig_section, &cc1_current_section_output);
+			{
+				asm_nam_begin3(&sec, lbl, type_align(from->t, NULL));
+				asm_out_fp(&sec, from->t, from->bits.val_f);
+			}
+			memcpy_safe(&cc1_current_section_output, &orig_section);
 
 			from = mut = v_dup_or_reuse(octx, from, from->t);
 
@@ -1039,6 +1010,8 @@ static int x86_need_fp_parity_p(
 		struct flag_opts const *fopt, int *flip_result)
 {
 	if(!(fopt->mods & flag_mod_float))
+		return 0;
+	if(cc1_fopt.finite_math_only)
 		return 0;
 
 	*flip_result = 0;
@@ -1330,7 +1303,8 @@ static const out_val *x86_idiv(
 	{
 		/* need to move 'l' into eax
 		 * then sign extended later - cqto */
-		l = v_to_reg_given_freeup(octx, l, &rax);
+		l = v_to_reg_given_freeup_no_off(octx, l, &rax);
+		l = v_reg_apply_offset(octx, l);
 
 		/* idiv takes either a reg or memory address */
 		r = v_to(octx, r, TO_REG | TO_MEM);
@@ -1403,8 +1377,7 @@ static const out_val *x86_shift(
 		cl.is_float = 0;
 		cl.idx = X86_64_REG_RCX;
 
-		r = v_to_reg_given_freeup(octx, r, &cl);
-
+		r = v_to_reg_given_freeup_no_off(octx, r, &cl);
 		r = v_reg_apply_offset(octx, r);
 	}
 
@@ -2077,9 +2050,9 @@ static char *x86_call_jmp_target(
 	return NULL;
 }
 
-void impl_jmp(enum section_builtin sec, const char *lbl)
+void impl_jmp(const char *lbl)
 {
-	asm_out_section(sec, "\tjmp %s\n", lbl);
+	asm_out_section(&section_text, "\tjmp %s\n", lbl);
 }
 
 void impl_jmp_expr(out_ctx *octx, const out_val *v)
@@ -2508,7 +2481,7 @@ const out_val *impl_call(
 		/* rax / xmm0, otherwise the return has
 		 * been set to a local stack address */
 		const int fp = type_is_floating(retty);
-		struct vreg rr = VREG_INIT(fp ? REG_RET_F : REG_RET_I, fp);
+		struct vreg rr = VREG_INIT(fp ? REG_RET_F_1 : REG_RET_I_1, fp);
 
 		return v_new_reg(octx, fn, retty, &rr);
 	}else{
@@ -2570,4 +2543,33 @@ void impl_set_nan(out_ctx *octx, out_val *v)
 
 	v->type = V_CONST_F;
 	/*impl_load_fp(v);*/
+}
+
+static void reserve_unreserve_retregs(out_ctx *octx, int reserve)
+{
+	static const struct vreg retregs[] = {
+		{ REG_RET_I_1, 0 },
+		{ REG_RET_I_2, 0 },
+		{ REG_RET_F_1, 1 },
+		{ REG_RET_F_2, 1 },
+	};
+	unsigned i;
+
+	for(i = 0; i < countof(retregs); i++){
+		const struct vreg *r = &retregs[i];
+		if(reserve)
+			v_reserve_reg(octx, r);
+		else
+			v_unreserve_reg(octx, r);
+	}
+}
+
+void impl_reserve_retregs(out_ctx *octx)
+{
+	reserve_unreserve_retregs(octx, 1);
+}
+
+void impl_unreserve_retregs(out_ctx *octx)
+{
+	reserve_unreserve_retregs(octx, 0);
 }

@@ -1,5 +1,7 @@
 A C Compiler written in C
 
+[![Build Status](https://travis-ci.org/bobrippling/ucc-c-compiler.svg?branch=master)](https://travis-ci.org/bobrippling/ucc-c-compiler)
+
 Dependencies
 ------------
 
@@ -13,13 +15,14 @@ Features
 --------
 
 The compiler implements C89, C99 and C11 (controllable via `-std=c89/c99/c11`).
-System libraries are fully supported, including ABI compatibility with things like `va_list`.
+System libraries are fully supported, including ABI compatibility with constructs such as `va_list`.
 There are some major additions, listed below:
 
 - Features added:
 	- Microsoft/Plan 9 struct extensions
 	- Lambdas/Objective-C style blocks
 	- Trailing return types on functions
+	- Namespace checking
 - Standard support (not exhaustive):
 	- C89, C99
 	- C11 `_Bool`, `_Noreturn`, `_Alignof`, `_Alignas` `_Generic`, `_Static_assert`
@@ -44,12 +47,14 @@ There are some major additions, listed below:
 		- `__builtin_expect`
 		- `__builtin_choose_expr`
 		- `__builtin_add_overflow`, `__builtin_sub_overflow`, `__builtin_mul_overflow`
+		- `__builtin_frame_address`, `__builtin_return_address`
 - Code-generation Support/Optimisations:
 	- Function inlining (`__attribute__((always_inline/noinline))`)
 	- Position independent code generation (`-fpic`)
-	- Position independent executable generation, permitting ASLR (`-fpie`)
+	- Position independent executable generation, permitting ASLR (`-fpie` / `-pie`)
 	- Overflow-trapping arithmetic (`-ftrapv`)
 	- Undefined behaviour trapping (`-fsanitize=undefined`)
+	- Stack protector (`-fstack-protector`, `-fstack-protector-all`)
 	- Symbol visibility (`-fvisibility=default/protected/hidden` / `-f[no-]semantic-interposition` / `__attribute__((visibility(...)))`)
 	- DWARF Debug Symbols (`-g` / `-gline-tables-only`)
 
@@ -57,7 +62,7 @@ There are some major additions, listed below:
 Extensions
 ----------
 
-Lambdas:
+### Lambdas:
 ```c
 ^(parameters, ...) { body }
 ^T (parameters, ...) { body }
@@ -72,6 +77,14 @@ Other forms with explicit return types, omitted parameters, and omitted paramete
 When the return type is omitted, the return type is inferred from the first return statement in the body, or `void`, if there are none.
 The result of the expression is a function block pointer (`T (^)(Args...)`), explicitly convertible to a function pointer.
 
+### Namespace checking:
+```c
+#pragma ucc namespace expr_
+```
+
+This ensures that any declarations after this `pragma` begin with `expr_`, allowing you to enforce a namespace exported by each translation unit (`.c` file).
+
+See [namespace.c](/test/pragma/namespace.c) for an example.
 
 Output/Targets
 --------------
@@ -81,7 +94,7 @@ The code generator can target Linux-, Cygwin- and Darwin-based toolchains (handl
 
 Constant folding and some small amount of optimisation is done, but nothing heavy (the `feature/ir` branch plans to change this).
 
-The ABI matches GCC and Clang's, or more specifically, the System V x86-64 psABI (modulo bugs, of which there is currently one - see [`nested_ret.c`](/test2/structs/function_passing/nested_ret.c)).
+The ABI matches GCC and Clang's, or more specifically, the System V x86-64 psABI (modulo bugs, of which there is currently one - see [nested_ret.c](/test/structs/function_passing/nested_ret.c)).
 
 `ucc` can also dump its AST, similarly to clang, with `-emit=dump`.
 

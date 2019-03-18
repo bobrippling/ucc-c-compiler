@@ -33,6 +33,7 @@ enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from);
 
 
 funcargs *funcargs_new(void);
+funcargs *funcargs_new_void(void);
 void funcargs_empty(funcargs *func);
 void funcargs_free(funcargs *args, int free_decls);
 

@@ -72,9 +72,8 @@ static struct
 	{ 0, NULL, NULL }
 };
 
-dynmap *cc1_out_persection; /* char* => FILE* */
-enum section_builtin cc1_current_section = -1;
-FILE *cc1_current_section_file;
+dynmap *cc1_out_persection;
+struct section_output cc1_current_section_output = SECTION_OUTPUT_UNINIT;
 char *cc1_first_fname;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
@@ -86,6 +85,7 @@ char *cc1_sanitize_handler_fn;
 enum visibility cc1_visibility_default;
 
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
+int cc1_profileg;
 enum debug_level cc1_gdebug = DEBUG_OFF;
 int cc1_gdebug_columninfo = 1;
 
@@ -129,7 +129,7 @@ static void dump_options(void)
 	int i;
 
 	fprintf(stderr, "Output options\n");
-	fprintf(stderr, "  -g0, -gline-tables-only, -g[no-]column-info\n");
+	fprintf(stderr, "  -g[0|1|2|3], -gline-tables-only|mlt, -g[no-]column-info\n");
 	fprintf(stderr, "  -o output-file\n");
 	fprintf(stderr, "  -emit=(dump|print|asm|style)\n");
 	fprintf(stderr, "  -m(stringop-strategy=...|...)\n");
@@ -216,18 +216,31 @@ static void io_fin_macosx_version(FILE *out)
 	}
 }
 
-static void io_fin_section(FILE *section, FILE *out, const char *name)
+static void io_fin_section(FILE *section, FILE *out, const struct section *sec)
 {
-	enum section_builtin sec = asm_builtin_section_from_str(name);
 	const char *desc = NULL;
+	char *name;
+	int allocated;
+	const int is_builtin = section_is_builtin(sec);
 
-	if((int)sec != -1)
-		desc = asm_section_desc(sec);
+	if(is_builtin)
+		desc = asm_section_desc(sec->builtin);
 
 	if(fseek(section, 0, SEEK_SET))
 		ccdie("seeking in section tmpfile:");
 
-	xfprintf(out, ".section %s\n", name);
+	name = section_name(sec, &allocated);
+	xfprintf(out, ".section %s", name);
+	if(allocated)
+		free(name);
+
+	if(cc1_target_details.as.supports_section_flags && !is_builtin){
+		const int is_code = sec->flags & SECTION_FLAG_EXECUTABLE;
+		const int is_rw = !(sec->flags & SECTION_FLAG_RO);
+
+		xfprintf(out, ",\"a%s\",@progbits", is_code ? "x" : is_rw ? "w" : "");
+	}
+	xfprintf(out, "\n");
 
 	if(desc)
 		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, desc);
@@ -252,15 +265,16 @@ static void io_fin_sections(FILE *out)
 
 	if(cc1_gdebug){
 		/* ensure we have text and debug-line sections for the debug to reference */
-		(void)asm_section_file(SECTION_TEXT);
-		(void)asm_section_file(SECTION_DBG_LINE);
+		(void)asm_section_file(&section_text);
+		(void)asm_section_file(&section_dbg_line);
 	}
 
 	for(i = 0; (section = dynmap_value(FILE *, cc1_out_persection, i)); i++){
-		char *name = dynmap_key(char *, cc1_out_persection, i);
+		struct section *sec = dynmap_key(struct section *, cc1_out_persection, i);
 
-		io_fin_section(section, out, name);
-		free(name);
+		io_fin_section(section, out, sec);
+
+		free(sec);
 	}
 
 	dynmap_free(cc1_out_persection);
@@ -643,24 +657,41 @@ int main(int argc, char **argv)
 				usage(argv[0], "unknown emit backend \"%s\"", emit);
 
 		}else if(!strncmp(argv[i], "-g", 2)){
-			if(argv[i][2] == '\0'){
+			const char *mode = argv[i] + 2;
+			int imode;
+			char *end;
+
+			if(!*mode){
 				cc1_gdebug = DEBUG_FULL;
-			}else if(!strcmp(argv[i], "-g0")){
-				cc1_gdebug = DEBUG_OFF;
-			}else if(!strcmp(argv[i], "-gline-tables-only")){
+			}else if((imode = (int)strtol(mode, &end, 0)), !*end){
+				switch(imode){
+					case 0:
+						cc1_gdebug = DEBUG_OFF;
+						break;
+					case 1:
+						cc1_gdebug = DEBUG_LINEONLY;
+						break;
+					case 2:
+					case 3:
+						cc1_gdebug = DEBUG_FULL;
+						break;
+					default:
+						goto dbg_unknown;
+				}
+			}else if(!strcmp(mode, "line-tables-only") || !strcmp(mode, "mlt")){
 				cc1_gdebug = DEBUG_LINEONLY;
 			}else{
-				const char *arg = argv[i] + 2;
 				int on = 1;
 
-				if(!strncmp(arg, "no-", 3)){
-					arg += 3;
+				if(!strncmp(mode, "no-", 3)){
+					mode += 3;
 					on = 0;
 				}
 
-				if(!strcmp(arg, "column-info"))
+				if(!strcmp(mode, "column-info"))
 					cc1_gdebug_columninfo = on;
 				else
+dbg_unknown:
 					ccdie("Unknown -g switch: \"%s\"", argv[i] + 2);
 			}
 
@@ -708,6 +739,9 @@ int main(int argc, char **argv)
 		}else if(!strcmp(argv[i], "--help")){
 			dump_options();
 			usage(argv[0], NULL);
+
+		}else if(!strcmp(argv[i], "-pg")){
+			cc1_profileg = 1;
 
 		}else if(!in_fname){
 			in_fname = argv[i];

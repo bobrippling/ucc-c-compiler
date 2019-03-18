@@ -15,7 +15,6 @@ enum p_opts
 
 void out_asmv(
 		out_ctx *,
-		enum section_builtin sec,
 		enum p_opts opts,
 		const char *fmt, va_list l);
 
@@ -23,9 +22,8 @@ void out_asm(out_ctx *, const char *fmt, ...) ucc_printflike(2, 3);
 
 void out_asm2(
 		out_ctx *,
-		enum section_builtin,
 		enum p_opts opts,
-		const char *fmt, ...) ucc_printflike(4, 5);
+		const char *fmt, ...) ucc_printflike(3, 4);
 
 void out_dbg_flush(out_ctx *, out_blk *);
 

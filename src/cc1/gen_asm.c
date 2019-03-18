@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "../util/macros.h"
 #include "../util/util.h"
@@ -34,10 +35,15 @@
 #include "type_nav.h"
 #include "label.h"
 #include "fopt.h"
+#include "cc1_out.h"
+#include "cc1_target.h"
 
 #include "ops/expr_funcall.h"
 
 int gen_had_error;
+
+#include "type_nav.h"
+#include "funcargs.h"
 
 void IGNORE_PRINTGEN(const out_val *v)
 {
@@ -190,17 +196,63 @@ void gen_set_sym_outval(out_ctx *octx, sym *sym, const out_val *v)
 		out_dbg_emit_decl(octx, sym->decl, v);
 }
 
-static void gen_asm_global(decl *d, out_ctx *octx)
+static int should_stack_protect(decl *d)
 {
-	attribute *sec;
+	unsigned bytes;
+	int addr_taken = 0;
 
-	if((sec = attribute_present(d, attr_section))){
-		ICW("%s: TODO: section attribute \"%s\" on %s",
-				where_str(&sec->where),
-				sec->bits.section, d->spel);
-	}
+	assert(type_is(d->ref, type_func));
 
-	/* order of the if matters */
+	if(attribute_present(d, attr_no_stack_protector))
+		return 0;
+
+	if(cc1_fopt.stack_protector_all)
+		return 1;
+
+	if(!cc1_fopt.stack_protector)
+		return 0;
+
+	if(attribute_present(d, attr_stack_protect))
+		return 1;
+
+	/* calls alloca() [TODO] or has an array, or local variable whose address is taken */
+	bytes = symtab_decl_bytes(d->bits.func.code->symtab, 8, 1, &addr_taken);
+	return bytes >= 8 || addr_taken;
+}
+
+static void gen_profile(out_ctx *octx)
+{
+	type *mcount_ty = type_ptr_to(
+			type_func_of(
+				type_nav_btype(cc1_type_nav, type_void),
+				funcargs_new_void(),
+				NULL));
+	out_val *mcount = out_new_lbl(
+			octx,
+			mcount_ty,
+			"mcount", /* not subject to mangling */
+			OUT_LBL_PIC);
+
+	out_val_consume(octx, out_call(octx, mcount, NULL, mcount_ty));
+}
+
+static void gen_type_and_size(const struct section *section, decl *d)
+{
+	const int is_code = !!type_is(d->ref, type_func);
+	const char *spel = decl_asm_spel(d);
+
+	asm_out_section(section, ".type %s,@%s\n",
+			spel,
+			is_code ? "function" : "object");
+
+	if(is_code)
+		asm_out_section(section, ".size %s, .-%s\n", spel, spel);
+	else
+		asm_out_section(section, ".size %s, %u\n", spel, decl_size(d));
+}
+
+static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx)
+{
 	if(type_is(d->ref, type_func)){
 		int nargs = 0, is_vari;
 		decl **aiter;
@@ -225,12 +277,17 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 		sp = decl_asm_spel(d);
 
+		is_vari = type_is_variadic_func(d->ref);
+
 		out_func_prologue(octx, sp, d->ref,
-				nargs,
-				is_vari = type_is_variadic_func(d->ref),
+				nargs, is_vari,
+				should_stack_protect(d),
 				argvals);
 
 		assign_arg_vals(symtab_decls(arg_symtab), argvals, octx);
+
+		if(cc1_profileg)
+			gen_profile(octx);
 
 		allocate_vla_args(octx, arg_symtab);
 		free(argvals), argvals = NULL;
@@ -263,8 +320,11 @@ static void gen_asm_global(decl *d, out_ctx *octx)
 
 	}else{
 		/* asm takes care of .bss vs .data, etc */
-		asm_declare_decl_init(d);
+		asm_declare_decl_init(section, d);
 	}
+
+	if(cc1_target_details.as.supports_type_and_size)
+			gen_type_and_size(section, d);
 }
 
 const out_val *gen_call(
@@ -309,26 +369,29 @@ const out_val *gen_call(
 const out_val *gen_decl_addr(out_ctx *octx, decl *d)
 {
 	const int via_got = decl_needs_GOTPLT(d);
-	enum out_pic_type picmode;
 
-	picmode = (FOPT_PIC(&cc1_fopt) ? OUT_LBL_PIC : OUT_LBL_NOPIC)
-		| (via_got ? 0 : OUT_LBL_PICLOCAL);
-
-	return out_new_lbl(octx, type_ptr_to(d->ref), decl_asm_spel(d), picmode);
+	return out_new_lbl(
+			octx,
+			type_ptr_to(d->ref),
+			decl_asm_spel(d),
+			OUT_LBL_PIC | (via_got ? 0 : OUT_LBL_PICLOCAL));
 }
 
 static void gen_gasm(char *asm_str)
 {
-	asm_out_section(SECTION_TEXT, "%s\n", asm_str);
+	struct section sec = SECTION_INIT(SECTION_TEXT); /* no option for global asm, always text */
+	asm_out_section(&sec, "%s\n", asm_str);
 }
 
 static void gen_stringlits(dynmap *litmap)
 {
 	const stringlit *lit;
 	size_t i;
+	struct section sec = SECTION_INIT(SECTION_RODATA);
+
 	for(i = 0; (lit = dynmap_value(stringlit *, litmap, i)); i++)
 		if(lit->use_cnt > 0)
-			asm_declare_stringlit(SECTION_RODATA, lit);
+			asm_declare_stringlit(&sec, lit);
 }
 
 void gen_asm_emit_type(out_ctx *octx, type *ty)
@@ -339,10 +402,54 @@ void gen_asm_emit_type(out_ctx *octx, type *ty)
 		out_dbg_emit_type(octx, ty);
 }
 
+static void infer_decl_section(decl *d, struct section *sec)
+{
+	const int is_code = !!type_is(d->ref, type_func);
+	const int is_ro = is_code || type_is_const(d->ref);
+	const enum section_flags flags = (is_code ? SECTION_FLAG_EXECUTABLE : 0) | (is_ro ? SECTION_FLAG_RO : 0);
+	attribute *attr;
+
+	if((attr = attribute_present(d, attr_section))){
+		SECTION_FROM_NAME(sec, attr->bits.section, flags);
+		return;
+	}
+
+	if(type_is(d->ref, type_func)){
+		if(cc1_fopt.function_sections){
+			SECTION_FROM_FUNCDECL(sec, decl_asm_spel(d), flags);
+			return;
+		}
+
+		SECTION_FROM_BUILTIN(sec, SECTION_TEXT, flags);
+		return;
+	}
+
+	if(cc1_fopt.data_sections){
+		SECTION_FROM_DATADECL(sec, decl_asm_spel(d), flags);
+		return;
+	}
+
+	/* prefer rodata over bss */
+	if(type_is_const(d->ref)){
+		SECTION_FROM_BUILTIN(sec, SECTION_RODATA, flags);
+		return;
+	}
+
+	if(!d->bits.var.init.dinit || decl_init_is_zero(d->bits.var.init.dinit)){
+		SECTION_FROM_BUILTIN(sec, SECTION_BSS, flags);
+		return;
+	}
+
+	SECTION_FROM_BUILTIN(sec, SECTION_DATA, flags);
+}
+
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
+	struct section section;
+	struct section_output prev_section;
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
+	attribute *attr;
 
 	/* in map? */
 	if(cc1_octx && dynmap_exists(decl *, cc1_octx->generated_decls, d))
@@ -383,17 +490,34 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			break;
 	}
 
+	memcpy_safe(&prev_section, &cc1_current_section_output);
+	infer_decl_section(d, &section);
+	asm_switch_section(&section);
+	if(cc1_fopt.dump_decl_sections){
+		int allocated;
+		char *name = section_name(&section, &allocated);
+		fprintf(stderr, "%s --> section \"%s\"\n", decl_to_str(d), name);
+		if(allocated)
+			free(name);
+	}
+
+
 	if(attribute_present(d, attr_weak)){
-		asm_predeclare_weak(d);
+		asm_predeclare_weak(&section, d);
 		emitted_type = 1;
+	}
+	if((attr = attribute_present(d, attr_alias))){
+		assert(attr->type == attr_alias);
+		assert(!decl_defined(d, 0));
+		asm_declare_alias(&section, d, attr->bits.alias);
 	}
 
 	if(type_is(d->ref, type_func)){
 		if(!decl_should_emit_code(d)){
 			/* inline only gets extern emitted anyway */
 			if(!emitted_type)
-				asm_predeclare_extern(d);
-			return;
+				asm_predeclare_extern(&section, d);
+			goto out;
 		}
 
 		if(cc1_gdebug != DEBUG_OFF)
@@ -406,20 +530,23 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		 */
 		if(!emit_tenatives && !d->bits.var.init.dinit){
 			if(!emitted_type)
-				asm_predeclare_extern(d);
-			return;
+				asm_predeclare_extern(&section, d);
+			goto out;
 		}
 
 		if(cc1_gdebug == DEBUG_FULL)
 			out_dbg_emit_global_var(octx, d);
 	}
 
-	asm_predeclare_visibility(d);
+	asm_predeclare_visibility(&section, d);
 
 	if(!emitted_type && decl_linkage(d) == linkage_external)
-		asm_predeclare_global(d);
+		asm_predeclare_global(&section, d);
 
-	gen_asm_global(d, octx);
+	gen_asm_global(&section, d, octx);
+
+out:
+	memcpy_safe(&cc1_current_section_output, &prev_section);
 }
 
 void gen_asm(

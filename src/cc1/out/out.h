@@ -44,6 +44,7 @@ const out_val *out_new_sym_val(out_ctx *, sym *) ucc_wur;
 const out_val *out_new_overflow(out_ctx *, const out_val **) ucc_wur;
 
 out_val *out_new_frame_ptr(out_ctx *, int nframes) ucc_wur;
+const out_val *out_new_return_addr(out_ctx *octx, int nframes) ucc_wur;
 out_val *out_new_reg_save_ptr(out_ctx *) ucc_wur;
 out_val *out_new_nan(out_ctx *, type *ty) ucc_wur;
 
@@ -143,7 +144,7 @@ ucc_wur const out_val *out_ctrl_merge_n(out_ctx *, out_blk **rets);
 void out_func_prologue(
 		out_ctx *, const char *sp,
 		type *fnty,
-		int nargs, int variadic,
+		int nargs, int variadic, int stack_protector,
 		const out_val *argvals[]);
 
 void out_func_epilogue(out_ctx *, type *, const where *func_begin, char *end_dbg_lbl);

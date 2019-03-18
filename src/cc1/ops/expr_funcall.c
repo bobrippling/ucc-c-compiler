@@ -146,7 +146,7 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **const psp)
 {
 	struct symtab_entry ent;
 	funcargs *args;
-	decl *df;
+	decl *df, *owning_func;
 	type *func_ty;
 
 	if(e->expr->in_parens
@@ -180,8 +180,10 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **const psp)
 			"implicit declaration of function \"%s\"", *psp);
 
 	df = decl_new();
+	memcpy_safe(&df->where, &e->where);
 	df->ref = func_ty;
 	df->spel = e->expr->bits.ident.bits.ident.spel;
+	df->flags |= DECL_FLAGS_IMPLICIT;
 
 	fold_decl(df, stab); /* update calling conv, for e.g. */
 
@@ -189,6 +191,12 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **const psp)
 
 	e->expr->bits.ident.bits.ident.sym = df->sym;
 	e->expr->tree_type = func_ty;
+
+	owning_func = symtab_func(stab);
+	if(owning_func)
+		symtab_insert_before(symtab_root(stab), owning_func, df);
+	else
+		symtab_add_to_scope(symtab_root(stab), df); /* function call at global scope */
 }
 
 static int check_arg_counts(
@@ -265,7 +273,8 @@ static void check_arg_voidness_and_nonnulls(
 
 		ARG_BUF(buf, i, sp);
 
-		fold_check_expr(arg, FOLD_CHK_NO_ST_UN, buf);
+		if(fold_check_expr(arg, FOLD_CHK_NO_ST_UN, buf))
+			continue;
 
 		if(i < count_decl && (nonnulls & (1 << i))
 		&& type_is_ptr(args_from_decl->arglist[i]->ref)
@@ -429,6 +438,11 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	if(type_is_s_or_u(e->tree_type)){
 		/* handled transparently by the backend */
 		e->f_islval = expr_is_lval_struct;
+
+		cc1_warn_at(&e->expr->where,
+				aggregate_return,
+				"called function returns aggregate (%s)",
+				type_to_str(e->tree_type));
 	}
 
 	/* attr */
@@ -451,7 +465,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	if(func_or_builtin_attr_present(e, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 
-	if(sp && !(cc1_fopt.freestanding))
+	if(sp && !cc1_fopt.freestanding)
 		check_standard_funcs(sp, e->funcargs);
 }
 

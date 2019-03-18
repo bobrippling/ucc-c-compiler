@@ -416,9 +416,11 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			return;
 		}
 
-		fold_check_expr(expr_cast_child(e), check_flags, "cast");
+		if(fold_check_expr(expr_cast_child(e), check_flags, "cast"))
+			return;
 
-		fold_check_expr(e, check_flags, "cast-target");
+		if(fold_check_expr(e, check_flags, "cast-target"))
+			return;
 
 		if(!type_is_complete(tlhs)){
 			die_at(&e->where, "%scast to incomplete type %s",
@@ -426,8 +428,8 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 					type_to_str(tlhs));
 		}
 
-		ptr_lhs = type_is_ptr(tlhs);
-		ptr_rhs = type_is_ptr(trhs);
+		ptr_lhs = type_is_ptr_or_block(tlhs);
+		ptr_rhs = type_is_ptr_or_block(trhs);
 
 
 		if((flag = !!type_is(tlhs, type_func))

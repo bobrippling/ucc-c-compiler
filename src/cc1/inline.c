@@ -272,7 +272,7 @@ static int heuristic_should_inline(
 
 	/* as with clang and gcc, -fno-inline-functions affects just the heuristic
 	 * __attribute((always_inline)) overrides it */
-	if((cc1_fopt.inline_functions) == 0)
+	if(!cc1_fopt.inline_functions)
 		return 0;
 
 	/* if it's marked inline, inline it
@@ -282,7 +282,8 @@ static int heuristic_should_inline(
 	if(fndecl->store & store_inline)
 		return 1;
 
-	new_stack = symtab_decl_bytes(symtab, INLINE_VLA_COST) + out_current_stack(octx);
+	new_stack = symtab_decl_bytes(symtab, INLINE_VLA_COST, 0, NULL)
+		+ out_current_stack(octx);
 
 	if(new_stack > INLINE_MAX_STACK_BYTES)
 		return 0;
@@ -315,7 +316,7 @@ static stmt *try_resolve_val_to_func(
 					lbl);
 
 			if(*out_decl)
-				return decl_impl(*out_decl)->bits.func.code;
+				return decl_impl(*out_decl, DECL_INCLUDE_ALIAS)->bits.func.code;
 		}
 	}
 	return NULL;
@@ -344,7 +345,7 @@ static const char *check_and_ret_inline(
 
 	is_func = !!type_is(iouts->fndecl->ref, type_func);
 	if(is_func)
-		iouts->fndecl = decl_impl(iouts->fndecl);
+		iouts->fndecl = decl_impl(iouts->fndecl, DECL_INCLUDE_ALIAS);
 
 	if(is_func && iouts->fndecl->bits.func.contains_static_label_addr)
 		return "function contains static-address-of-label expression";

@@ -44,6 +44,11 @@ static void const_op_num_fp(
 
 	assert(lhs->type == CONST_NUM && (!rhs || rhs->type == CONST_NUM));
 
+	if(cc1_fopt.rounding_math && rhs){ /* aka #pragma STDC FENV ACCESS ON (TODO) */
+		k->type = CONST_NO;
+		return;
+	}
+
 	fp_r = const_op_exec_fp(
 			lhs->bits.num.val.f,
 			rhs ? &rhs->bits.num.val.f : NULL,
@@ -226,17 +231,28 @@ static void const_op_num_int(
 					e->bits.op.op, e->tree_type, &err);
 
 			if(SHOW_CONST_OP){
+				char tbufs[2][TYPE_STATIC_BUFSIZ];
+
 				if(rhs){
 					fprintf(stderr,
-							"const op: (%s) %lld %s %lld = %lld, is_signed=%d\n",
+							"const op: (%s)%lld %s (%s)%lld   -->   (%s)%lld, is_signed=%d\n",
+							type_to_str_r(tbufs[0], e->lhs->tree_type),
+							l.offset,
+							op_to_str(e->bits.op.op),
+							type_to_str_r(tbufs[1], e->rhs->tree_type),
+							r.offset,
 							type_to_str(e->tree_type),
-							l.offset, op_to_str(e->bits.op.op), r.offset,
-							int_r, is_signed);
+							int_r,
+							is_signed);
 				}else{
 					fprintf(stderr,
-							"const op: (%s) %s %lld = %lld, is_signed=%d\n",
+							"const op: (%s)%s%lld --> (%s)%lld, is_signed=%d\n",
+							type_to_str_r(tbufs[0], e->lhs->tree_type),
+							op_to_str(e->bits.op.op),
+							l.offset,
 							type_to_str(e->tree_type),
-							op_to_str(e->bits.op.op), l.offset, int_r, is_signed);
+							int_r,
+							is_signed);
 				}
 			}
 
@@ -1114,14 +1130,19 @@ void fold_expr_op(expr *e, symtable *stab)
 			where_str(&e->where));
 
 	FOLD_EXPR(e->lhs, stab);
-	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_desc);
+	if(fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_desc)){
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	if(e->rhs){
 		FOLD_EXPR(e->rhs, stab);
-		fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_desc);
+		if(fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_desc)){
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
+		}
 
 		if(op_float_check(e)){
-			/* short circuit - TODO: error expr */
 			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
 			return;
 		}
@@ -1165,11 +1186,13 @@ void fold_expr_op(expr *e, symtable *stab)
 				ICE("bad unary op %s", op_desc);
 
 			case op_not:
-				fold_check_expr(e->lhs,
-						FOLD_CHK_NO_ST_UN,
-						op_desc);
-
 				e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+				if(fold_check_expr(e->lhs,
+						FOLD_CHK_NO_ST_UN,
+						op_desc))
+				{
+					return;
+				}
 				break;
 
 			case op_plus:
@@ -1183,9 +1206,11 @@ void fold_expr_op(expr *e, symtable *stab)
 				else
 					chk |= FOLD_CHK_ARITHMETIC;
 
-				fold_check_expr(e->lhs, chk, op_to_str(e->bits.op.op));
-
 				e->tree_type = type_unqualify(e->lhs->tree_type);
+
+				if(fold_check_expr(e->lhs, chk, op_to_str(e->bits.op.op))){
+					return;
+				}
 				break;
 			}
 		}
@@ -1261,7 +1286,7 @@ void gen_op_trapv(
 		out_ctx *octx,
 		enum op_type op)
 {
-	if((cc1_fopt.trapv) == 0)
+	if(!cc1_fopt.trapv)
 		return;
 
 	if(!type_is_integral(evaltt) || !type_is_signed(evaltt))
@@ -1280,7 +1305,7 @@ void gen_op_trapv(
 				land);
 
 		out_current_blk(octx, blk_undef);
-		out_ctrl_end_undefined(octx);
+		sanitize_fail(octx, op_to_str(op));
 
 		out_current_blk(octx, land);
 	}

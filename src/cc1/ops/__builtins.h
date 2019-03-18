@@ -8,6 +8,8 @@
 	BUILTIN("types_compatible_p", compatible_p)   \
 	BUILTIN("constant_p", constant_p)             \
 	BUILTIN("frame_address", frame_address)       \
+	BUILTIN("return_address", return_address)     \
+	BUILTIN("extract_return_addr", extract_return_addr) \
 	BUILTIN("expect", expect)                     \
 	BUILTIN("is_signed", is_signed)               \
 	BUILTIN("nan",  nan)                          \

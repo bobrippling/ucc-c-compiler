@@ -14,7 +14,7 @@ void fold_stmt_while(stmt *s)
 {
 	FOLD_EXPR(s->expr, s->symtab);
 
-	fold_check_expr(
+	(void)!fold_check_expr(
 			s->expr,
 			FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
 			s->f_str());

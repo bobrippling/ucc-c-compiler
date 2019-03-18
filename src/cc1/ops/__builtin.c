@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
@@ -47,6 +48,8 @@ static func_builtin_parse parse_unreachable
                           , parse_compatible_p
                           , parse_constant_p
                           , parse_frame_address
+                          , parse_return_address
+                          , parse_extract_return_addr
                           , parse_expect
                           , parse_strlen
                           , parse_is_signed
@@ -106,9 +109,11 @@ static builtin_table *builtin_find(const char *sp)
 	static unsigned prefix_len;
 	builtin_table *found;
 
-	found = builtin_table_search(no_prefix_builtins, sp);
-	if(found)
-		return found;
+	if(!cc1_fopt.freestanding){
+		found = builtin_table_search(no_prefix_builtins, sp);
+		if(found)
+			return found;
+	}
 
 	if(!prefix_len)
 		prefix_len = strlen(PREFIX);
@@ -131,7 +136,7 @@ expr *builtin_parse(const char *sp, symtable *scope)
 {
 	builtin_table *b;
 
-	if((cc1_fopt.builtin) && (b = builtin_find(sp))){
+	if(cc1_fopt.builtin && (b = builtin_find(sp))){
 		expr *(*f)(const char *, symtable *) = b->parser;
 
 		if(f)
@@ -473,8 +478,13 @@ static void fold_frame_address(expr *e, symtable *stab)
 {
 	consty k;
 
-	if(dynarray_count(e->funcargs) != 1)
-		die_at(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+
+	if(dynarray_count(e->funcargs) != 1){
+		warn_at_print_error(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
+	}
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
@@ -483,26 +493,35 @@ static void fold_frame_address(expr *e, symtable *stab)
 	|| (K_FLOATING(k.bits.num))
 	|| (sintegral_t)k.bits.num.val.i < 0)
 	{
-		die_at(&e->where, "%s needs a positive integral constant value argument", BUILTIN_SPEL(e->expr));
+		warn_at_print_error(&e->where, "%s needs a positive integral constant value argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
 	}
 
-	memcpy_safe(&e->bits.num, &k.bits.num);
+	if(k.bits.num.val.i > 0)
+		cc1_warn_at(&e->where, builtin_frame_addr, "calling '%s' with a non-zero argument is unsafe", BUILTIN_SPEL(e->expr));
 
-	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar));
+	memcpy_safe(&e->bits.num, &k.bits.num);
 
 	wur_builtin(e);
 }
 
-static const out_val *builtin_gen_frame_address(const expr *e, out_ctx *octx)
+static void warn_inlining_frame_ret_addr(out_ctx *octx, const expr *e)
 {
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
-	const int depth = e->bits.num.val.i;
 
 	if(cc1_octx && cc1_octx->inline_.depth){
 		cc1_warn_at(&e->where, inline_builtin_frame_addr,
 				"inlining function with call to %s",
 				BUILTIN_SPEL(e->expr));
 	}
+}
+
+static const out_val *builtin_gen_frame_address(const expr *e, out_ctx *octx)
+{
+	const int depth = e->bits.num.val.i;
+
+	warn_inlining_frame_ret_addr(octx, e);
 
 	return out_new_frame_ptr(octx, depth + 1);
 }
@@ -527,6 +546,72 @@ expr *builtin_new_frame_address(int depth)
 	dynarray_add(&e->funcargs, expr_compiler_generated(expr_new_val(depth)));
 
 	return builtin_frame_address_mutate(e);
+}
+
+/* --- return_address */
+
+static const out_val *builtin_gen_return_address(const expr *e, out_ctx *octx)
+{
+	const int depth = e->bits.num.val.i;
+
+	warn_inlining_frame_ret_addr(octx, e);
+
+	return out_new_return_addr(octx, depth + 1);
+}
+
+static expr *parse_return_address(const char *ident, symtable *scope)
+{
+	expr *fcall = parse_any_args(scope);
+
+	(void)ident;
+
+	fcall->f_fold = fold_frame_address;
+	fcall->f_gen = builtin_gen_return_address;
+	fcall->f_str = str_expr_builtin;
+
+	return fcall;
+}
+
+/* --- extract_return_addr */
+
+static void fold_extract_return_addr(expr *e, symtable *stab)
+{
+	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+
+	e->tree_type = voidp;
+
+	if(dynarray_count(e->funcargs) != 1){
+		warn_at_print_error(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
+	}
+
+	FOLD_EXPR(e->funcargs[0], stab);
+
+	if(!(type_cmp(e->funcargs[0]->tree_type, voidp, 0) & TYPE_EQUAL_ANY)){
+		warn_at_print_error(&e->where, "%s expects a 'void *' argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
+	}
+
+	wur_builtin(e);
+}
+
+static const out_val *builtin_gen_extract_return_addr(const expr *e, out_ctx *octx)
+{
+	/* no translation needed */
+	return gen_expr(e->funcargs[0], octx);
+}
+
+static expr *parse_extract_return_addr(const char *ident, symtable *scope)
+{
+	expr *fcall = parse_any_args(scope);
+
+	(void)ident;
+
+	expr_mutate_builtin(fcall, extract_return_addr);
+
+	return fcall;
 }
 
 /* --- reg_save_area (a basic wrapper around out_push_reg_save_ptr()) */
@@ -815,6 +900,19 @@ need_char_p:
 	wur_builtin(e);
 }
 
+static void const_nan(expr *e, consty *k)
+{
+	CONST_FOLD_LEAF(k);
+	k->type = CONST_NUM;
+	k->bits.num.val.f = NAN;
+
+	switch(e->bits.builtin_nantype){
+		case builtin_nanf: k->bits.num.suffix = VAL_FLOAT; break;
+		case builtin_nan:  k->bits.num.suffix = VAL_DOUBLE; break;
+		case builtin_nanl: k->bits.num.suffix = VAL_LDOUBLE; break;
+	}
+}
+
 static const out_val *builtin_gen_nan(const expr *e, out_ctx *octx)
 {
 	return out_new_nan(octx, e->tree_type);
@@ -823,6 +921,7 @@ static const out_val *builtin_gen_nan(const expr *e, out_ctx *octx)
 static expr *builtin_nan_mutate(expr *e)
 {
 	expr_mutate_builtin(e, nan);
+	e->f_const_fold = const_nan;
 	return e;
 }
 
@@ -1023,7 +1122,8 @@ static void fold_arith_overflow(expr *e, symtable *stab)
 		FOLD_EXPR(e->funcargs[i], stab);
 
 	for(i = 0; i < 2; i++)
-		fold_check_expr(e->funcargs[i], FOLD_CHK_INTEGRAL, name);
+		if(fold_check_expr(e->funcargs[i], FOLD_CHK_INTEGRAL, name))
+			return;
 
 	last_e = e->funcargs[2];
 	last = type_is_ptr(last_e->tree_type);

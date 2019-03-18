@@ -21,6 +21,7 @@
 #include "directive.h"
 #include "deps.h"
 #include "feat.h"
+#include "str.h"
 
 static const struct
 {
@@ -69,6 +70,7 @@ static const struct
 	SPECIAL("__DATE__"),
 	SPECIAL("__TIME__"),
 	SPECIAL("__TIMESTAMP__"),
+	SPECIAL("__BASE_FILE__"),
 
 #undef SPECIAL
 #define SPECIAL(x) { x, NULL, 1 }
@@ -76,6 +78,8 @@ static const struct
 	SPECIAL("__has_extension"),
 	SPECIAL("__has_attribute"),
 	SPECIAL("__has_builtin"),
+
+	/* here for defined(__has_include), then special cased to prevent expansion outside of #if */
 	SPECIAL("__has_include"),
 #undef SPECIAL
 
@@ -90,6 +94,7 @@ int no_output = 0;
 int missing_header_error = 1;
 
 char cpp_time[16], cpp_date[16], cpp_timestamp[64];
+char *cpp_basefile;
 
 char **cd_stack = NULL;
 
@@ -160,6 +165,8 @@ char *dirname_pop()
 
 void set_current_fname(const char *new)
 {
+	if(current_fname == new)
+		return;
 	free(current_fname);
 	current_fname = ustrdup(new);
 }
@@ -505,6 +512,8 @@ int main(int argc, char **argv)
 			{
 				switch(argv[i][2]){
 					case '0':
+						macro_remove("__OPTIMIZE_SIZE__");
+						macro_remove("__OPTIMIZE__");
 						break;
 					case 's':
 						macro_add("__OPTIMIZE_SIZE__",  "1", 0);
@@ -611,6 +620,7 @@ defaul:
 	}
 
 	set_current_fname(infname);
+	cpp_basefile = str_quote(infname, 0);
 
 	preprocess();
 
@@ -625,6 +635,7 @@ defaul:
 		deps_dump(infname, depfname);
 
 	free(dirname_pop());
+	free(cpp_basefile);
 
 	errno = 0;
 	fclose(stdout);
@@ -633,21 +644,39 @@ defaul:
 
 	return ret;
 usage:
-	fprintf(stderr, "Usage: %s [options] files...\n", *argv);
+	fprintf(stderr, "Usage: %s [options] in-file out-file\n", *argv);
 	fputs(" Options:\n"
 				"  -Idir: Add search directory\n"
+				"  -isystem dir: Add system search directory\n"
 				"  -Dxyz[=abc]: Define xyz (to equal abc)\n"
 				"  -Uxyz: Undefine xyz\n"
 				"  -o output: output file\n"
 				"  -P: don't add #line directives\n"
-				"  -dM: debug output\n"
-				"  -dS: print macro usage stats\n"
-				"  -MM: generate Makefile dependencies\n"
-				"  -MG: ignore missing headers, count as dependency\n"
-				"  -C: don't discard comments, except in macros\n"
-				"  -CC: don't discard comments, even in macros\n"
 				"  -trigraphs: enable trigraphs\n"
 				"  -digraphs: enable digraphs\n"
+				"  -w: disable all warnings\n"
+				"\n"
+				"  -MM: generate Makefile dependencies\n"
+				"  -MG: ignore missing headers, count as dependency\n"
+				"  -MD: emit dependencies on standard out\n"
+				"  -MF: (with -MD) emit dependencies to given file\n"
+				"\n"
+				"  -f[no-]freestanding: control __STDC_HOSTED__\n"
+				"  -std=[standard]: control __STDC_VERSION__\n"
+				"  -fmessage-length=...: control warning message length\n"
+				"  -f[no-]cpp-offsetof: define __builtin_offsetof as a macro\n"
+				"\n"
+				"  -C: don't discard comments, except in macros\n"
+				"  -CC: don't discard comments, even in macros\n"
+				"\n"
+				"  -m32/-m64: control architecture specific definitions\n"
+				"  -O[opt]: control optimisation macro definitions\n"
+				"\n"
+				"  -dM: output macro debugging information\n"
+				"  -dS: output stats debugging information\n"
+				"  -dW: output macro location debugging information\n"
+				"  -d: output trace debugging information\n"
+				"\n"
 				, stderr);
 
 	{

@@ -289,7 +289,7 @@ attribute **type_get_attrs_toplvl(type *t)
 
 int type_is_bool_ish(type *r)
 {
-	if(type_is(r, type_ptr))
+	if(type_is_ptr_or_block(r))
 		return 1;
 
 	r = type_is(r, type_btype);
@@ -795,7 +795,8 @@ int type_is_promotable(type *const t, type **pto)
 		rsz = type_size(test, type_loc(t)); /* may be enum-int */
 
 		if(rsz < (fp ? sz_double : sz_int)){
-			*pto = type_nav_btype(cc1_type_nav, fp ? type_double : type_int);
+			if(pto)
+				*pto = type_nav_btype(cc1_type_nav, fp ? type_double : type_int);
 			return 1;
 		}
 	}

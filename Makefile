@@ -18,16 +18,16 @@ cleanall: clean
 
 cleantest:
 	make -Ctest clean
-# no need to clean test2
+# no need to clean test
 
 check: all lib
-	cd test2; ./run_tests -q -i ignores .
+	cd test; ./run_tests -i ignores .
 	# test/ pending
 
 check-bootstrap: bootstrap
-	cd test2; ./run_tests -q -i ignores --ucc=../bootstrap/stage3/src/ucc/ucc .
+	cd test; ./run_tests -i ignores --ucc=../bootstrap/stage3/src/ucc/ucc .
 
-ALL_SRC = $(shell find . -iname '*.[ch]')
+ALL_SRC = $(shell find src -iname '*.[ch]')
 
 tags: ${ALL_SRC}
 	ctags '--exclude=_*' -R .

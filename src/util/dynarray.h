@@ -13,6 +13,9 @@ void  dynarray_nochk_add_tmparray(void ***, void **);
 void *dynarray_nochk_padinsert(void ***par,
 		unsigned i, unsigned *pn, void *ins);
 
+void dynarray_nochk_insert(
+		void ***par, unsigned i, void *to_insert);
+
 #define DYNARRAY_NULL (void *)1
 
 #include "dyn.h"
@@ -28,6 +31,11 @@ void *dynarray_nochk_padinsert(void ***par,
 	DYNARRAY_CHECK(ar, p,                 \
 			dynarray_nochk_padinsert,         \
 			(void ***)(ar), i, n, (void *)(p))
+
+#define dynarray_insert(ar, i, p) \
+	DYNARRAY_CHECK(ar, p,           \
+			dynarray_nochk_insert,      \
+			(void ***)(ar), i, (void *)(p))
 
 #define dynarray_pop(t, ar)             \
 	(UCC_TYPECHECK(t **, ar),             \

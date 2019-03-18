@@ -60,10 +60,12 @@ static void out_wipe_blks(out_ctx *octx)
 	}
 
 	octx->entry_blk =
-	octx->prologue_prejoin_blk =
-	octx->prologue_postjoin_blk =
-	octx->current_blk =
+	octx->stacksub_blk =
+	octx->argspill_begin_blk =
+	octx->argspill_done_blk =
+	octx->postprologue_blk =
 	octx->epilogue_blk =
+	octx->current_blk =
 	octx->last_used_blk =
 	octx->mem_blk_head =
 		NULL;

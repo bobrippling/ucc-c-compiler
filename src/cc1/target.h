@@ -30,10 +30,14 @@ struct target_details
 
 		int supports_visibility_protected;
 		int supports_local_common;
+		int stack_protector_via_tls;
+		int supports_type_and_size;
+		int supports_section_flags;
 	} as;
 
 	int dwarf_indirect_section_links;
 	int ld_indirect_call_via_plt;
+	int alias_variables;
 };
 
 void target_details_from_triple(const struct triple *, struct target_details *);

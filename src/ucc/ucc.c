@@ -7,13 +7,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-/* umask */
-#include <sys/types.h>
-#include <sys/stat.h>
-
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "ucc_path.h"
+#include "umask.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
 #include "../util/util.h"
@@ -72,6 +69,12 @@ struct ucc
 	const char *as, *ld;
 	char **ldflags_pre_user, **ldflags_post_user;
 	const char *post_link;
+
+	struct
+	{
+		/* optimisations */
+		enum { SSP_NONE, SSP_ALL, SSP_NORMAL } ssp;
+	} spanning_fopt;
 };
 
 enum tristate
@@ -86,8 +89,9 @@ struct uccvars
 	const char *target;
 	const char *output;
 
-	int static_, shared, debug;
+	int static_, shared;
 	int stdlibinc, builtininc, defaultlibs, startfiles;
+	int debug, profile;
 	enum tristate pie;
 	int help, dumpmachine;
 };
@@ -98,6 +102,7 @@ const char *argv0;
 char *wrapper;
 char *Bprefix;
 const char *binpath_cpp;
+mode_t orig_umask = 022;
 
 static void unlink_files(void)
 {
@@ -224,6 +229,7 @@ after_compile:
 			default:
 			assume_obj:
 				fprintf(stderr, "assuming \"%s\" is object-file\n", in);
+			is_obj:
 			case 'o':
 			case 'a':
 				/* else assume it's already an object file */
@@ -232,6 +238,8 @@ after_compile:
 	}else{
 		if(!strcmp(in, "-"))
 			goto preproc;
+		if(ext && !strcmp(ext, ".so"))
+			goto is_obj;
 		goto assume_obj;
 	}
 }
@@ -541,7 +549,32 @@ static int handle_spanning_fopt(const char *fopt, struct ucc *const state)
 		return 1;
 	}
 
+	if(!strcmp(name, "stack-protector")){
+		state->spanning_fopt.ssp = no ? SSP_NONE : SSP_NORMAL;
+		return 1;
+	}
+	if(!strcmp(name, "stack-protector-all")){
+		state->spanning_fopt.ssp = no ? SSP_NONE : SSP_ALL;
+		return 1;
+	}
+
 	return 0;
+}
+
+static void resolve_spanning_fopts(struct ucc *const state)
+{
+	switch(state->spanning_fopt.ssp){
+		case SSP_NONE:
+			break;
+		case SSP_NORMAL:
+			dynarray_add(&state->args[mode_preproc], ustrdup("-D__SSP__=1"));
+			dynarray_add(&state->args[mode_compile], ustrdup("-fstack-protector"));
+			break;
+		case SSP_ALL:
+			dynarray_add(&state->args[mode_preproc], ustrdup("-D__SSP_ALL__=2"));
+			dynarray_add(&state->args[mode_compile], ustrdup("-fstack-protector-all"));
+			break;
+	}
 }
 
 static void parse_argv(
@@ -855,10 +888,18 @@ word:
 						vars->pie = TRI_TRUE;
 					else if(!strcmp(argv[i], "-no-pie"))
 						vars->pie = TRI_FALSE;
+					else if(!strcmp(argv[i], "-static-pie")){
+						vars->static_ = 1;
+						vars->pie = TRI_TRUE;
+					}
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
 						ucc_ext_cmds_show(1);
+					else if(!strcmp(argv[i], "-pg")){
+						ADD_ARG(mode_compile);
+						vars->profile = 1;
+					}
 					else if(!strncmp(argv[i], "-emit", 5)){
 						switch(argv[i][5]){
 							case '=':
@@ -927,6 +968,8 @@ input:
 			assumptions[n] = *current_assumption;
 		}
 	}
+
+	resolve_spanning_fopts(state);
 
 	if(had_MD && !had_MF){
 		char *depfile;
@@ -1014,11 +1057,15 @@ static void state_from_triple(
 			if(is_pie)
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
 
-			if(!vars->static_){
-				dynarray_add(&state->ldflags_pre_user, ustrdup("-dynamic-linker"));
-				dynarray_add(&state->ldflags_pre_user, ustrdup("/lib64/ld-linux-x86-64.so.2"));
+			if(vars->shared){
+				/* don't mention a dynamic linker - not used for generating a shared library */
 			}else{
-				dynarray_add(&state->ldflags_pre_user, ustrdup("-no-dynamic-linker"));
+				if(!vars->static_){
+					dynarray_add(&state->ldflags_pre_user, ustrdup("-dynamic-linker"));
+					dynarray_add(&state->ldflags_pre_user, ustrdup("/lib64/ld-linux-x86-64.so.2"));
+				}else{
+					dynarray_add(&state->ldflags_pre_user, ustrdup("-no-dynamic-linker"));
+				}
 			}
 
 			dynarray_add(&state->ldflags_post_user, ustrdup("-L" LINUX_LIBC_PREFIX));
@@ -1030,15 +1077,21 @@ static void state_from_triple(
 			if(vars->startfiles){
 				char usrlib[64];
 
-				if(is_pie){
-					if(vars->static_)
-						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/rcrt1.o", target);
-					else
-						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/Scrt1.o", target);
+				if(vars->shared){
+					/* don't link to crt1 - don't want the startup files, just i[nit] and e[nd] */
 				}else{
-					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crt1.o", target);
+					if(vars->profile){
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/gcrt1.o", target);
+					}else if(is_pie){
+						if(vars->static_)
+							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/rcrt1.o", target);
+						else
+							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/Scrt1.o", target);
+					}else{
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crt1.o", target);
+					}
+					dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
 				}
-				dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
 
 				{
 					char *dot;
@@ -1086,6 +1139,10 @@ static void state_from_triple(
 			/* no startfiles */
 			if(vars->defaultlibs){
 				dynarray_add(&state->ldflags_post_user, ustrdup("-lSystem"));
+
+				if(vars->profile){
+					dynarray_add(&state->ldflags_post_user, ustrdup("-lgcrt1.o"));
+				}
 			}
 			if(vars->stdlibinc && syslibroot){
 				dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
@@ -1207,7 +1264,7 @@ usage:
 
 	vars_default(&vars);
 
-	umask(0077); /* prevent reading of the temporary files we create */
+	orig_umask = umask(0077); /* prevent reading of the temporary files we create */
 
 	/* we don't want the initial temporary fname "/tmp/tmp.xyz" tracked
 	 * or showing up in error messages */
@@ -1273,7 +1330,7 @@ usage:
 		const int ninputs = dynarray_count(state.inputs);
 
 		if(output_given && ninputs > 1 && (state.mode == mode_compile || state.mode == mode_assemb))
-			die("can't specify '-o' with '-%c' and an output", MODE_ARG_CH(state.mode));
+			die("can't specify an output with '-%c' and multiple inputs", MODE_ARG_CH(state.mode));
 
 		if(state.syntax_only){
 			if(output_given || state.mode != mode_link)

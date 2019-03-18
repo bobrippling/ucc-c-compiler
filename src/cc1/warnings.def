@@ -1,3 +1,8 @@
+/* -Wgnu could be a GROUP(), but currently the maximum
+ * size for a group is 3, and extending it just for
+ * -Wgnu is a bit excessively wasteful
+ */
+
 X("mismatch-arg", arg_mismatch)
 X("return-type", return_type)
 X("return-void", return_void)
@@ -115,6 +120,7 @@ X("attr-unused-voidfn", attr_unused_voidfn)
 
 X("qualified-fntype", bad_funcqual)
 X("inline-builtin-frame-addr", inline_builtin_frame_addr)
+X("frame-address", builtin_frame_addr)
 X("restrict-non-ptr", bad_restrict)
 
 X("bitfield-boundary", bitfield_boundary)
@@ -174,6 +180,7 @@ X("gnu-designator", gnu_desig)
 X("call-argcount", funcall_argcount)
 
 X("cpp-line-parsing", cpp_line_parsing)
+X("unknown-pragmas", unknown_pragma)
 
 X("ignored-attributes", ignored_attribute)
 
@@ -236,6 +243,7 @@ X("pure-inline", pure_inline)
 X("inline", inline_failed)
 X("restrict-ptrs", restrict_ptrs)
 X("return-undef", return_undef)
+X("aggregate-return", aggregate_return)
 X("sizeof-array-argument", sizeof_decayed)
 X("sizeof-ptr-divide", sizeof_ptr_div)
 X("sizeof-pointer-memaccess", sizeof_pointer_memaccess)
@@ -258,7 +266,11 @@ X("typedef-redefinition", typedef_redef)
 X("undef-string-comparison", undef_strlitcmp)
 X("undefined-internal", undef_internal)
 
-X("unnamed-struct-memb", unnamed_struct_memb)
+X("anon-tagged-struct-extension", unnamed_struct_memb_ext_tagged)
+X("anon-tagged-struct-empty-decl", unnamed_struct_memb_ignored)
+X("anon-untagged-c11-struct", unnamed_struct_memb_ext_c11)
+ALIAS("microsoft-anon-tag", unnamed_struct_memb_ext_tagged)
+ALIAS("microsoft", unnamed_struct_memb_ext_tagged)
 
 X("dangling-else", dangling_else)
 

@@ -27,6 +27,7 @@
 #include "parse_attr.h"
 #include "parse_init.h"
 #include "parse_stmt.h"
+#include "pragma.h"
 
 #include "expr.h"
 #include "type_nav.h"
@@ -167,8 +168,7 @@ static struct_union_enum_st *parse_sue_definition(
 		decl **i;
 
 		while(parse_decl_group(
-					DECL_MULTI_CAN_DEFAULT
-					| DECL_MULTI_ACCEPT_FIELD_WIDTH
+					DECL_MULTI_ACCEPT_FIELD_WIDTH
 					| DECL_MULTI_NAMELESS
 					| DECL_MULTI_IS_STRUCT_UN_MEMB
 					| DECL_MULTI_ALLOW_ALIGNAS,
@@ -1262,7 +1262,7 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 					 * (and we don't have the fold-const-vlas setting), then treat
 					 * as a vla */
 					if(k.type != CONST_NUM
-					|| (k.nonstandard_const && !(cc1_fopt.fold_const_vlas)))
+					|| (k.nonstandard_const && !cc1_fopt.fold_const_vlas))
 					{
 						is_vla = VLA;
 					}
@@ -1579,7 +1579,7 @@ static void parse_add_asm(decl *d)
 			d->spel_asm = rename;
 		}
 
-		if(proto && proto != d && proto->used){
+		if(proto && proto != d && proto->flags & DECL_FLAGS_USED){
 			warn_at_print_error(&d->where,
 					"cannot annotate \"%s\" with an asm() label after use",
 					d->spel);
@@ -1900,12 +1900,10 @@ static void check_function_storage_redef(decl *new, decl *old)
 
 	/* can't redefine as static now */
 	if((new->store & STORE_MASK_STORE) == store_static){
-		char buf[WHERE_BUF_SIZ];
-
 		warn_at_print_error(&new->where,
-				"static redefinition of non-static \"%s\"\n"
-				"%s: note: previous definition",
-				new->spel, where_str_r(buf, &old->where));
+				"static redefinition of non-static \"%s\"",
+				new->spel);
+		note_at(&old->where, "previous definition here");
 		fold_had_error = 1;
 	}
 }
@@ -1989,8 +1987,6 @@ static void check_var_storage_redef(decl *new, decl *old)
 
 static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 {
-	char wbuf[WHERE_BUF_SIZ];
-
 	if(!type_is(d_prev->ref, type_func))
 		return; /* error caught later */
 
@@ -2013,12 +2009,13 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 			 * type errors are caught later on in the decl folding stage
 			 */
 		}else{
-			cc1_warn_at(&d_this->where,
+			int warned = cc1_warn_at(&d_this->where,
 					ignored_late_decl,
-					"declaration of \"%s\" after definition is ignored\n"
-					"%s: note: definition here",
-					d_this->spel,
-					where_str_r(wbuf, &d_prev->where));
+					"declaration of \"%s\" after definition is ignored",
+					d_this->spel);
+
+			if(warned)
+				note_at(&d_prev->where, "definition here");
 			return;
 		}
 	}
@@ -2224,6 +2221,24 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 		if(STORE_IS_TYPEDEF(d->store)){
 			warn_at_print_error(&d->where, "typedef storage on function");
 			fold_had_error = 1;
+		}
+	}
+}
+
+static void parse_post(decl *d)
+{
+	/* must do this here, where we have d.code / d.init */
+	fold_decl_alias(d);
+
+	if((d->store & STORE_MASK_STORE) != store_static){
+		if(ucc_namespace && strncmp(
+					d->spel,
+					ucc_namespace,
+					strlen(ucc_namespace)))
+		{
+			warn_at(&d->where,
+					"non-static function not in \"%s\" namespace",
+					ucc_namespace);
 		}
 	}
 }
@@ -2464,8 +2479,6 @@ int parse_decl_group(
 				unused_attributes(d, attributed->bits.attr);
 		}
 
-		attribute_array_release(&decl_attr);
-
 		fold_type_ondecl_w(d, in_scope, NULL, 0);
 
 		if(!d->spel && !had_field_width){
@@ -2494,6 +2507,8 @@ int parse_decl_group(
 		/* now we have the function in scope we parse its code */
 		if(type_is(d->ref, type_func))
 			parse_post_func(d, in_scope, attr_post_decl);
+		if((mode & DECL_MULTI_IS_STRUCT_UN_MEMB) == 0)
+			parse_post(d);
 
 		if(!in_scope->parent && !found_prev_proto && !(mode & DECL_MULTI_IS_OLD_ARGS))
 			check_missing_proto_extern(d);
@@ -2511,7 +2526,6 @@ int parse_decl_group(
 		if(done)
 			break;
 	}while(accept(token_comma));
-
 
 	if(last && (!type_is(last->ref, type_func) || !last->bits.func.code)){
 		/* end of type, if we have an identifier,

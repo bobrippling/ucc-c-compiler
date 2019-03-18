@@ -13,6 +13,8 @@
 #include "../gen_asm.h"
 
 #include "../cc1_out_ctx.h"
+#include "../cc1.h" /* cc1_fopt */
+#include "../fopt.h"
 
 #include "out.h" /* this file defs */
 #include "val.h"
@@ -34,22 +36,40 @@ static out_val *out_new_bp_off(out_ctx *octx, long off)
 	return v_new_bp3_below(octx, NULL, voidp, off);
 }
 
+static type *get_voidpp(void)
+{
+	return type_ptr_to(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
+}
+
 out_val *out_new_frame_ptr(out_ctx *octx, int nframes)
 {
 	type *voidpp = NULL;
 	out_val *fp = out_new_bp_off(octx, 0);
 
 	for(; nframes > 1; nframes--){
-		if(!voidpp){
-			voidpp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
-			voidpp = type_ptr_to(voidpp);
-		}
+		if(!voidpp)
+			voidpp = get_voidpp();
 
 		assert(fp->retains == 1);
 		fp = (out_val *)out_deref(octx, out_change_type(octx, fp, voidpp));
 	}
 
 	return fp;
+}
+
+const out_val *out_new_return_addr(out_ctx *octx, int nframes)
+{
+	const out_val *nth_frame = out_new_frame_ptr(octx, nframes);
+	const out_val *ret_addr;
+	type *voidpp = get_voidpp();
+
+	nth_frame = out_change_type(octx, nth_frame, voidpp);
+	ret_addr = out_op(octx,
+			op_plus,
+			nth_frame,
+			out_new_l(octx, type_nav_btype(cc1_type_nav, type_intptr_t), 1));
+
+	return out_deref(octx, ret_addr);
 }
 
 out_val *out_new_reg_save_ptr(out_ctx *octx)
@@ -82,6 +102,11 @@ out_val *out_new_l(out_ctx *octx, type *ty, long val)
 	return out_new_num(octx, ty, &n);
 }
 
+static enum out_pic_type picfilter(enum out_pic_type flags)
+{
+	return FOPT_PIC(&cc1_fopt) ? flags : OUT_LBL_NOPIC;
+}
+
 out_val *out_new_lbl(
 		out_ctx *octx, type *ty,
 		const char *s,
@@ -92,7 +117,7 @@ out_val *out_new_lbl(
 	v->type = V_LBL;
 	v->bits.lbl.str = s;
 	v->bits.lbl.offset = 0;
-	v->bits.lbl.pic_type = pic_type;
+	v->bits.lbl.pic_type = picfilter(pic_type);
 
 	return v;
 }

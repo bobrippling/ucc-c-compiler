@@ -21,8 +21,12 @@ void fold_expr_assign_compound(expr *e, symtable *stab)
 	fold_expr_nodecay(e->lhs, stab);
 	FOLD_EXPR(e->rhs, stab);
 
-	fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, desc);
-	fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, desc);
+	if(fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, desc)
+	|| fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, desc))
+	{
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	/* skip the addr we inserted */
 	if(!expr_must_lvalue(lvalue, desc)){

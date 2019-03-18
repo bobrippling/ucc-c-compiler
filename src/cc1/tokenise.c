@@ -18,6 +18,8 @@
 #include "cc1_where.h"
 #include "btype.h"
 #include "fopt.h"
+#include "tokconv.h"
+#include "pragma.h"
 
 #define DEBUG_LINE_DIRECTIVE 0
 
@@ -351,6 +353,19 @@ static void parse_line_directive(char *l)
 	char *ep;
 
 	l = str_spc_skip(l + 1);
+
+	if(!strncmp(l, "pragma", 6)){
+		where loc;
+
+		where_cc1_current(&loc);
+		loc.line_str = NULL;
+
+		l = str_spc_skip(l + 6);
+		pragma_handle(l, &loc);
+		return;
+	}
+
+	/* # line */
 	if(!strncmp(l, "line", 4))
 		l += 4;
 
@@ -457,7 +472,7 @@ static void tokenise_next_line(void)
 		SET_CURRENT_LINE_STR(ustrdup(new));
 
 	if(buffer){
-		if((cc1_fopt.show_line) == 0)
+		if(!cc1_fopt.show_line)
 			free(buffer);
 	}
 
@@ -1068,6 +1083,14 @@ void nexttoken()
 {
 	int c;
 
+	if(curtok == token_string){
+		/* finished processing the string. i.e. token_current_spel() called,
+		 * parse code won't need (implicity - warn_at(NULL, ...)) the location of
+		 * the string any more */
+		memcpy_safe(&loc_tok, &loc_now);
+		loc_tok.chr--;
+	}
+
 	if(buffereof){
 		/* delay this until we are asked for token_eof */
 		parse_finished = 1;
@@ -1139,6 +1162,27 @@ void nexttoken()
 				return;
 			}
 
+		if(len == 7 && !strncmp("_Pragma", start, len)){
+			struct cstring *pragma;
+			where loc;
+
+			nexttoken();
+			EAT(token_open_paren);
+			pragma = token_get_current_str(&loc);
+			nexttoken();
+			EAT(token_close_paren);
+
+			if(pragma){
+				char *s = cstring_converting_detach(pragma);
+				pragma_handle(s, &loc);
+				free(s);
+
+			}else{
+				warn_at_print_error(&loc, "string expected for _Pragma");
+				parse_had_error = 1;
+			}
+			return;
+		}
 
 		/* not found, wap into currentspelling */
 		free(currentspelling);
@@ -1199,9 +1243,8 @@ void nexttoken()
 					int c = rawnextchar();
 					if(c == '*' && *bufferpos == '/'){
 						rawnextchar(); /* eat the / */
+						in_comment = 0; /* ensure we set this before parsing next token */
 						nexttoken();
-
-						in_comment = 0;
 						return;
 					}
 				}

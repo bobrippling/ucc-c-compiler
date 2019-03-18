@@ -16,6 +16,7 @@
 #include "ucc.h"
 #include "ucc_ext.h"
 #include "ucc_path.h"
+#include "umask.h"
 
 #include "str.h"
 
@@ -112,6 +113,8 @@ static int runner(struct cmdpath *path, char **args, int return_ec, const char *
 				fprintf(stderr, "  [%d] = \"%s\",\n", i, argv[i]);
 #endif
 
+			umask(orig_umask);
+
 			(*execfn)(argv[0], argv);
 			die("execv(\"%s\"):", argv[0]);
 		}
@@ -151,7 +154,7 @@ static int runner(struct cmdpath *path, char **args, int return_ec, const char *
 					usecdiff += 1000000L;
 				}
 
-				printf("%s %ld.%ld\n", path->path, (long)secdiff, (long)usecdiff);
+				printf("# %s %ld.%06ld\n", path->path, (long)secdiff, (long)usecdiff);
 			}
 
 			return i;

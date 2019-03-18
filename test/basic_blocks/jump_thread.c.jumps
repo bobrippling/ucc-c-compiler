@@ -1,0 +1,6 @@
+f:
+	jmp Lblk.5
+Lblk.5:
+Lblk.6:
+Lblk.4:
+	jmp Lblk.5

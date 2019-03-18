@@ -144,6 +144,40 @@ const char *attribute_to_str(attribute *da)
 
 void attribute_free(attribute *a)
 {
+	switch(a->type){
+		case attr_LAST:
+			assert(0);
+
+		case attr_alias:
+			free(a->bits.alias);
+			break;
+
+		case attr_format:
+		case attr_cleanup:
+		case attr_section:
+		case attr_call_conv:
+		case attr_nonnull:
+		case attr_sentinel:
+		case attr_aligned:
+		case attr_constructor:
+		case attr_destructor:
+		case attr_visibility:
+		case attr_unused:
+		case attr_warn_unused:
+		case attr_enum_bitmask:
+		case attr_noreturn:
+		case attr_noderef:
+		case attr_packed:
+		case attr_weak:
+		case attr_desig_init:
+		case attr_ucc_debug:
+		case attr_always_inline:
+		case attr_noinline:
+		case attr_no_stack_protector:
+		case attr_stack_protect:
+			break;
+	}
+
 	free(a);
 }
 
@@ -241,10 +275,13 @@ int attribute_equal(attribute *a, attribute *b)
 		case attr_noderef:
 		case attr_packed:
 		case attr_weak:
+		case attr_alias:
 		case attr_desig_init:
 		case attr_ucc_debug:
 		case attr_always_inline:
 		case attr_noinline:
+		case attr_no_stack_protector:
+		case attr_stack_protect:
 			/* equal */
 			break;
 	}

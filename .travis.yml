@@ -1,0 +1,18 @@
+language: c
+
+compiler:
+  - clang
+  - gcc
+
+script: ./configure CFLAGS=-fsanitize=address LDFLAGS=-fsanitize=address && make check
+
+env:
+  global:
+    - ASAN_OPTIONS=detect_leaks=0
+
+matrix:
+  include:
+    - os: linux
+  include:
+    - os: osx
+    #osx_image: xcode8

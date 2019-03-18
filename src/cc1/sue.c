@@ -19,7 +19,7 @@
 #include "parse_fold_error.h"
 #include "fold.h"
 
-static void sue_set_spel(struct_union_enum_st *sue, char *spel)
+static void set_spel(struct_union_enum_st *sue, char *spel)
 {
 	if(!spel){
 		int len = 6 + 6 + 3 + WHERE_BUF_SIZ + 1 + 1;
@@ -28,19 +28,23 @@ static void sue_set_spel(struct_union_enum_st *sue, char *spel)
 				sue_str(sue), where_str(&sue->where));
 	}
 
-	free(sue->spel);
+	assert(!sue->spel);
 	sue->spel = spel;
 }
 
 static struct_union_enum_st *sue_new(
 		enum type_primitive prim,
-		const where *loc)
+		const where *loc,
+		char *spel)
 {
 	struct_union_enum_st *sue = umalloc(sizeof *sue);
 
 	sue->primitive = prim;
 	sue->foldprog = SUE_FOLDED_NO;
 	memcpy_safe(&sue->where, loc);
+
+	sue->anon = !spel;
+	set_spel(sue, spel);
 
 	return sue;
 }
@@ -208,13 +212,10 @@ struct_union_enum_st *sue_predeclare(
 {
 	struct_union_enum_st *sue;
 
-	if(spel){
+	if(spel)
 		assert(!sue_find_this_scope(scope, spel));
-	}
 
-	sue = sue_new(prim, loc);
-	sue->anon = !spel;
-	sue_set_spel(sue, spel);
+	sue = sue_new(prim, loc, spel);
 
 	symtab_add_sue(scope, sue);
 
@@ -254,8 +255,9 @@ void sue_member_init_dup_check(sue_member **members)
 		{
 			char buf[WHERE_BUF_SIZ];
 
-			die_at(&d2->where, "duplicate member %s (from %s)",
+			warn_at_print_error(&d2->where, "duplicate member %s (from %s)",
 					d->spel, where_str_r(buf, &d->where));
+			fold_had_error = 1;
 		}
 	}
 

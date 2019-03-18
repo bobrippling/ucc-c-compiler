@@ -183,19 +183,30 @@ void fold_expr_if(expr *e, symtable *stab)
 	FOLD_EXPR(e->expr, stab);
 	const_fold(e->expr, &konst);
 
-	fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, desc);
+	if(fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, desc)){
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	if(e->lhs){
 		e->lhs = fold_expr_nonstructdecay(e->lhs, stab);
-		fold_check_expr(e->lhs,
+		if(fold_check_expr(e->lhs,
 				FOLD_CHK_ALLOW_VOID,
-				"?: left operand");
+				"?: left operand"))
+		{
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
+		}
 	}
 
 	e->rhs = fold_expr_nonstructdecay(e->rhs, stab);
-	fold_check_expr(e->rhs,
+	if(fold_check_expr(e->rhs,
 			FOLD_CHK_ALLOW_VOID,
-			"?: right operand");
+			"?: right operand"))
+	{
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	e->freestanding = (e->lhs ? e->lhs : e->expr)->freestanding || e->rhs->freestanding;
 

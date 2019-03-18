@@ -17,6 +17,9 @@
 #include "../fopt.h" /* fopt */
 #include "../cc1.h" /* fopt */
 
+#include "../cc1.h"
+#include "../fopt.h"
+
 #include "asm.h"
 #include "out.h"
 #include "val.h"
@@ -72,7 +75,7 @@ int out_dump_retained(out_ctx *octx, const char *desc)
 	out_val_list *l;
 	int done_desc = 0;
 
-	for(l = octx->val_head; l; l = l->next){
+	OCTX_ITER_VALS(octx, l){
 		if(l->val.retains == 0)
 			continue;
 
@@ -260,10 +263,14 @@ const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 			break;
 
 		case V_CONST_I:
+			if(!cc1_fopt.const_fold)
+				goto no_const_fold;
 			normalised->bits.val_i = !!normalised->bits.val_i;
 			break;
 
 		case V_CONST_F:
+			if(!cc1_fopt.const_fold)
+				goto no_const_fold;
 			normalised->bits.val_i = !!normalised->bits.val_f;
 			normalised->type = V_CONST_I;
 			/* float to int - change .t */
@@ -271,6 +278,7 @@ const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 			break;
 
 		default:
+no_const_fold:
 			normalised = (out_val *)v_to_reg(octx, normalised);
 			/* fall */
 

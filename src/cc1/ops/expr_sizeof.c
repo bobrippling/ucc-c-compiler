@@ -51,12 +51,16 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 	chosen = SIZEOF_WHAT(e);
 
-	fold_check_expr(e->expr,
+	if(fold_check_expr(e->expr,
 			FOLD_CHK_NO_BITFIELD
 			| (e->what_of == what_typeof || e->what_of == what_sizeof
 					? FOLD_CHK_ALLOW_VOID
 					: 0),
-			sizeof_what(e->what_of));
+			sizeof_what(e->what_of)))
+	{
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	switch(e->what_of){
 		case what_typeof:
@@ -84,13 +88,13 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 			if(!type_is_complete(chosen)){
 				if(type_is_void(chosen))
-					cc1_warn_at(&e->where, sizeof_void_or_func, "sizeof() on void type");
+					cc1_warn_at(&e->where, sizeof_void_or_func, "%s() on void type", sizeof_what(e->what_of));
 				else
-					die_at(&e->where, "sizeof incomplete type %s", type_to_str(chosen));
+					die_at(&e->where, "%s incomplete type %s", sizeof_what(e->what_of), type_to_str(chosen));
 			}
 
 			if(type_is(chosen, type_func))
-				cc1_warn_at(&e->where, sizeof_void_or_func, "sizeof() on function type");
+				cc1_warn_at(&e->where, sizeof_void_or_func, "%s() on function type", sizeof_what(e->what_of));
 
 			if((e->what_of == what_alignof || vla) && e->expr){
 				decl *d = expr_to_declref(e->expr, NULL);
