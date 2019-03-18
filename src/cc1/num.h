@@ -4,17 +4,26 @@
 #include <stdint.h>
 #include <limits.h>
 
+#include "../util/compiler.h"
+
 typedef struct numeric numeric;
 
 typedef unsigned long long integral_t;
-typedef   signed long long sintegral_t;
-typedef        double floating_t;
-#define ucc_strtold strtof
-/*#define UCC_USE_LDOUBLE*/
+typedef signed long long sintegral_t;
+
+#if COMPILER_SUPPORTS_LONG_DOUBLE
+typedef long double floating_t;
+#  define ucc_strtold strtold
+#  define NUMERIC_FMT_LD "Lf"
+#else
+typedef double floating_t;
+#  define ucc_strtold strtof
+#  define NUMERIC_FMT_LD "f"
+#endif
+
 #define NUMERIC_FMT_D "lld"
 #define NUMERIC_FMT_U "llu"
 #define NUMERIC_FMT_X "llx"
-#define NUMERIC_FMT_LD "f"
 #define NUMERIC_T_MAX ULLONG_MAX
 #define INTEGRAL_BITS (sizeof(integral_t) * CHAR_BIT)
 struct numeric

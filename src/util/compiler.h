@@ -42,4 +42,10 @@
 #define memcpy_safe(a, b) (*(a) = *(b))
 #define REMOVE_CONST(t, exp) ((t)(exp))
 
+#ifdef __UCC__
+#  define COMPILER_SUPPORTS_LONG_DOUBLE 0
+#else
+#  define COMPILER_SUPPORTS_LONG_DOUBLE 1
+#endif
+
 #endif
