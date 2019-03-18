@@ -1,22 +1,13 @@
 - reduce warning output
 - fix bootstrap errors (caused by -Werror=...)
-- fix test failures (not bootstrap specific, except debug/, which seem to be pointer-order based failures?)
-	test2/__attribute__/cleanup/typedef2.c
-	test2/__attribute__/weak/weak.c
-	test2/__builtin/choose_expr.c
-	test2/__builtin/choose_expr_addr.c
-	test2/__builtin/choose_expr_err.c
-	test2/builtin/init.c
-	test2/debug/bitfields.c
-	test2/debug/btypes.c
-	test2/debug/comp_lit_ty.c
-	test2/debug/const_void.c
-	test2/debug/gdb/scope.c
-	test2/debug/scope.c
-	test2/debug/single.c
-	test2/debug/struct.c
-	test2/debug/vari.c
-	test2/debug/void.c
-	test2/float/is_int.c
-	test2/ucc/assume.c
+
 - make all stage2 sources depend on stage1 compiler, etc
+
+- add tests for -Bprefix (and use in bootstrap)
+
+- fix existing test failures (not bootstrap specific):
+	test/__attribute__/cleanup/typedef2.c
+	test/__attribute__/weak/weak.c
+	test/float/is_int.c
+	test/float/nan/print.c
+	test/structs/function_passing/stret_large.c
