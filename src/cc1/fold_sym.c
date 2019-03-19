@@ -354,7 +354,11 @@ void symtab_fold_decls(symtable *tab)
 					"function declared static but not defined");
 		}
 
-		if(!tab->parent && decl_unused_and_internal(d)){
+		if(!tab->parent
+		&& d->spel
+		&& (d->store & STORE_MASK_STORE) != store_typedef /* unused global typedefs are fine */
+		&& decl_unused_and_internal(d))
+		{
 			int is_fn = !!type_is(d->ref, type_func);
 			unsigned char *pwarn = (is_fn
 					? &cc1_warning.unused_function
