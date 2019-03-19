@@ -132,11 +132,15 @@ int fold_type_chk_warn(
 				/* no warning, but still sign extend the zero */
 				return 1;
 			}
+
+			pwarn = &cc1_warning.compare_distinct_pointer_types;
 			goto warning;
 		}
 
 		case TYPE_QUAL_NESTED_CHANGE: /* char ** <- const char ** or vice versa */
 			detail = "nested ";
+			pwarn = &cc1_warning.compare_distinct_pointer_types;
+
 		case TYPE_QUAL_POINTED_SUB: /* char * <- const char * */
 			error = 0;
 			/* fallthru */
@@ -144,6 +148,7 @@ int fold_type_chk_warn(
 warning:
 		case TYPE_NOT_EQUAL:
 		{
+			const char *fmt = "mismatching %stypes, %s";
 			char buf[TYPE_STATIC_BUFSIZ];
 			int show_note = 1;
 
@@ -155,14 +160,18 @@ warning:
 				pwarn = &cc1_warning.mismatch_ptr;
 			}
 
-#define common_warning "mismatching %stypes, %s", detail, desc
+			if(pwarn == &cc1_warning.compare_distinct_pointer_types){
+				fmt = "comparison of distinct %spointer types, %s";
+				detail = "";
+			}
+
+
 			if(error){
-				warn_at_print_error(w, common_warning);
+				warn_at_print_error(w, fmt, detail, desc);
 				fold_had_error = 1;
 			}else{
-				show_note = cc1_warn_at_w(w, pwarn, common_warning);
+				show_note = cc1_warn_at_w(w, pwarn, fmt, detail, desc);
 			}
-#undef common_warning
 
 			if(show_note){
 				/* don't show line with this note */
