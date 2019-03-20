@@ -208,10 +208,10 @@ compile:
 			case 'i':
 				FILL_WITH_TMP(compile);
 				goto after_compile;
-assemb:
 			case 'S':
 				file->preproc_asm = 1;
 				FILL_WITH_TMP(preproc); /* preprocess .S assembly files by default */
+assemb:
 after_compile:
 			case 's':
 				FILL_WITH_TMP(assemb);
