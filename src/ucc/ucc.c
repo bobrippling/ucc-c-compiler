@@ -27,6 +27,7 @@ enum mode
 	mode_preproc,
 	mode_compile,
 	mode_assemb,
+	mode_assemb_with_cpp,
 	mode_link
 };
 #define MODE_ARG_CH(m) ("ESc\0"[m])
@@ -57,7 +58,7 @@ struct ucc
 {
 	/* be sure to update merge_states() */
 	char **inputs;
-	char **args[4];
+	char **args[5];
 	char **includes;
 	char *backend;
 	const char **isystems;
@@ -131,6 +132,7 @@ static char *expected_filename(const char *in, enum mode mode)
 			case mode_compile:
 				ext = 's';
 				break;
+			case mode_assemb_with_cpp:
 			case mode_assemb:
 				ext = 'o';
 				break;
@@ -193,6 +195,8 @@ static void create_file(
 			goto compile;
 		case mode_assemb:
 			goto assemb;
+		case mode_assemb_with_cpp:
+			goto assemb_with_cpp;
 		case mode_link:
 			goto assume_obj;
 	}
@@ -217,6 +221,7 @@ compile:
 				FILL_WITH_TMP(compile);
 				goto after_compile;
 			case 'S':
+assemb_with_cpp:
 				file->preproc_asm = 1;
 				FILL_WITH_TMP(preproc); /* preprocess .S assembly files by default */
 assemb:
@@ -319,6 +324,7 @@ static void rename_files(struct cc_file *files, int nfiles, const char *output, 
 
 				case mode_compile:
 				case mode_assemb:
+				case mode_assemb_with_cpp:
 					new = expected_filename(files[i].in.fname, mode);
 					break;
 			}
@@ -825,6 +831,8 @@ arg_ld:
 						*current_assumption = mode_compile;
 					else if(!strcmp(arg, "asm") || !strcmp(arg, "assembler"))
 						*current_assumption = mode_assemb;
+					else if(!strcmp(arg, "asm-with-cpp") || !strcmp(arg, "assembler-with-cpp"))
+						*current_assumption = mode_assemb_with_cpp;
 					else if(!strcmp(arg, "none"))
 						*current_assumption = -1; /* reset */
 					else
