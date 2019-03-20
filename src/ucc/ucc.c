@@ -125,10 +125,18 @@ static char *expected_filename(const char *in, enum mode mode)
 	if(len > 2 && new[len - 2] == '.'){
 		char ext;
 		switch(mode){
-			case mode_preproc: ext = 'i'; break;
-			case mode_compile: ext = 's'; break;
-			case mode_assemb: ext = 'o'; break;
-			case mode_link: ext = '?'; break;
+			case mode_preproc:
+				ext = 'i';
+				break;
+			case mode_compile:
+				ext = 's';
+				break;
+			case mode_assemb:
+				ext = 'o';
+				break;
+			case mode_link:
+				ext = '?';
+				break;
 		}
 
 		new[len - 1] = ext;
