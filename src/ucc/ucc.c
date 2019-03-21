@@ -19,16 +19,18 @@
 #include "../util/triple.h"
 #include "str.h"
 #include "warning.h"
+#include "filemodes.h"
 
 #define LINUX_LIBC_PREFIX "/usr/lib/"
 
 enum mode
 {
-	mode_preproc,
-	mode_compile,
-	mode_assemb,
-	mode_assemb_with_cpp,
-	mode_link
+#define X(mode, desc, suffix) mode_##mode,
+#define ALIAS(...)
+	FILEMODES
+#undef X
+#undef ALIAS
+		mode_link
 };
 #define MODE_ARG_CH(m) ("ESc\0"[m])
 
@@ -126,19 +128,13 @@ static char *expected_filename(const char *in, enum mode mode)
 	if(len > 2 && new[len - 2] == '.'){
 		char ext;
 		switch(mode){
-			case mode_preproc:
-				ext = 'i';
-				break;
-			case mode_compile:
-				ext = 's';
-				break;
-			case mode_assemb_with_cpp:
-			case mode_assemb:
-				ext = 'o';
-				break;
+#define X(mode, desc, suffix) case mode_##mode: ext = suffix; break;
+#define ALIAS(...)
+			FILEMODES
+#undef X
+#undef ALIAS
 			case mode_link:
-				ext = '?';
-				break;
+				assert(0 && "unreachable");
 		}
 
 		new[len - 1] = ext;
@@ -824,20 +820,23 @@ arg_ld:
 					else
 						arg = argv[i];
 
-					/* TODO: "asm-with-cpp"? */
-					if(!strcmp(arg, "c"))
-						*current_assumption = mode_preproc;
-					else if(!strcmp(arg, "cpp-output"))
-						*current_assumption = mode_compile;
-					else if(!strcmp(arg, "asm") || !strcmp(arg, "assembler"))
-						*current_assumption = mode_assemb;
-					else if(!strcmp(arg, "asm-with-cpp") || !strcmp(arg, "assembler-with-cpp"))
-						*current_assumption = mode_assemb_with_cpp;
+#define X(mode, desc, suffix) else if(!strcmp(arg, desc)) *current_assumption = mode_##mode;
+#define ALIAS(mode, desc) X(mode, desc, 0)
+					if(0);
+					FILEMODES
+#undef X
+#undef ALIAS
 					else if(!strcmp(arg, "none"))
 						*current_assumption = -1; /* reset */
-					else
-						die("-x accepts \"c\", \"cpp-output\", \"asm\", \"assembler\" "
+					else{
+#define X(mode, desc, suffix) #desc ", "
+#define ALIAS(mode, desc) X(mode, desc, 0)
+						die("-x accepts "
+								FILEMODES
 								"or \"none\", not \"%s\"", arg);
+#undef X
+#undef ALIAS
+					}
 					continue;
 				}
 
