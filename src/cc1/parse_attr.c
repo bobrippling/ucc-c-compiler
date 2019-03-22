@@ -150,7 +150,7 @@ static attribute *parse_attr_nonnull(symtable *symtab, const char *ident)
 					/* shouldn't ever be negative */
 					cc1_warn_at(NULL,
 							attr_nonnull_bad,
-							"%s nonnull argument ignored", n < 0 ? "negative" : "zero");
+							"%s nonnull argument ignored", (sintegral_t)n < 0 ? "negative" : "zero");
 					had_error = 1;
 				}else{
 					/* implicitly disallow functions with >32 args */
