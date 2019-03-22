@@ -17,17 +17,21 @@
 #include "../util/tmpfile.h"
 #include "../util/str.h"
 #include "../util/triple.h"
+#include "../util/macros.h"
 #include "str.h"
 #include "warning.h"
+#include "filemodes.h"
 
 #define LINUX_LIBC_PREFIX "/usr/lib/"
 
 enum mode
 {
-	mode_preproc,
-	mode_compile,
-	mode_assemb,
-	mode_link
+#define X(mode, desc, suffix) mode_##mode,
+#define ALIAS(...)
+	FILEMODES
+#undef X
+#undef ALIAS
+		mode_link
 };
 #define MODE_ARG_CH(m) ("ESc\0"[m])
 
@@ -57,7 +61,7 @@ struct ucc
 {
 	/* be sure to update merge_states() */
 	char **inputs;
-	char **args[4];
+	char **args[5];
 	char **includes;
 	char *backend;
 	const char **isystems;
@@ -125,10 +129,13 @@ static char *expected_filename(const char *in, enum mode mode)
 	if(len > 2 && new[len - 2] == '.'){
 		char ext;
 		switch(mode){
-			case mode_preproc: ext = 'i'; break;
-			case mode_compile: ext = 's'; break;
-			case mode_assemb: ext = 'o'; break;
-			case mode_link: ext = '?'; break;
+#define X(mode, desc, suffix) case mode_##mode: ext = suffix; break;
+#define ALIAS(...)
+			FILEMODES
+#undef X
+#undef ALIAS
+			case mode_link:
+				assert(0 && "unreachable");
 		}
 
 		new[len - 1] = ext;
@@ -185,6 +192,8 @@ static void create_file(
 			goto compile;
 		case mode_assemb:
 			goto assemb;
+		case mode_assemb_with_cpp:
+			goto assemb_with_cpp;
 		case mode_link:
 			goto assume_obj;
 	}
@@ -208,10 +217,11 @@ compile:
 			case 'i':
 				FILL_WITH_TMP(compile);
 				goto after_compile;
-assemb:
 			case 'S':
+assemb_with_cpp:
 				file->preproc_asm = 1;
 				FILL_WITH_TMP(preproc); /* preprocess .S assembly files by default */
+assemb:
 after_compile:
 			case 's':
 				FILL_WITH_TMP(assemb);
@@ -237,7 +247,7 @@ after_compile:
 }
 
 static void gen_obj_file(
-		struct cc_file *file, char **args[4], enum mode mode, const char *as)
+		struct cc_file *file, char **args[], enum mode mode, const char *as)
 {
 	char *in = file->in.fname;
 
@@ -311,6 +321,7 @@ static void rename_files(struct cc_file *files, int nfiles, const char *output, 
 
 				case mode_compile:
 				case mode_assemb:
+				case mode_assemb_with_cpp:
 					new = expected_filename(files[i].in.fname, mode);
 					break;
 			}
@@ -421,7 +432,7 @@ void ice(const char *f, int line, const char *fn, const char *fmt, ...)
 	abort();
 }
 
-static void pass_warning(char **args[4], const char *arg)
+static void pass_warning(char **args[], const char *arg)
 {
 	enum warning_owner owner;
 
@@ -810,18 +821,23 @@ arg_ld:
 					else
 						arg = argv[i];
 
-					/* TODO: "asm-with-cpp"? */
-					if(!strcmp(arg, "c"))
-						*current_assumption = mode_preproc;
-					else if(!strcmp(arg, "cpp-output"))
-						*current_assumption = mode_compile;
-					else if(!strcmp(arg, "asm") || !strcmp(arg, "assembler"))
-						*current_assumption = mode_assemb;
+#define X(mode, desc, suffix) else if(!strcmp(arg, desc)) *current_assumption = mode_##mode;
+#define ALIAS(mode, desc) X(mode, desc, 0)
+					if(0);
+					FILEMODES
+#undef X
+#undef ALIAS
 					else if(!strcmp(arg, "none"))
 						*current_assumption = -1; /* reset */
-					else
-						die("-x accepts \"c\", \"cpp-output\", \"asm\", \"assembler\" "
+					else{
+#define X(mode, desc, suffix) #desc ", "
+#define ALIAS(mode, desc) X(mode, desc, 0)
+						die("-x accepts "
+								FILEMODES
 								"or \"none\", not \"%s\"", arg);
+#undef X
+#undef ALIAS
+					}
 					continue;
 				}
 
@@ -957,10 +973,10 @@ input:
 
 static void merge_states(struct ucc *state, struct ucc *append)
 {
-	int i;
+	size_t i;
 	dynarray_add_tmparray(&state->inputs, append->inputs);
 
-	for(i = 0; i < 4; i++)
+	for(i = 0; i < countof(state->args); i++)
 		dynarray_add_tmparray(&state->args[i], append->args[i]);
 
 	dynarray_add_tmparray(&state->includes, append->includes);
@@ -1201,7 +1217,7 @@ static void usage(void)
 
 int main(int argc, char **argv)
 {
-	int i;
+	size_t i;
 	struct ucc state = { 0 };
 	struct ucc argstate = { 0 };
 	struct uccvars vars = { 0 };
@@ -1210,6 +1226,9 @@ int main(int argc, char **argv)
 	int output_given;
 	struct triple triple;
 	char **additional_argv = NULL;
+
+	ucc_static_assert(tag1, countof(argstate.args) == mode_link + 1);
+	(void)(check_tag1 *)0;
 
 	argv0 = argv[0];
 	if(argc <= 1){
@@ -1334,7 +1353,7 @@ usage:
 	/* got arguments, a mode, and files to link */
 	process_files(&state, assumptions, vars.output);
 
-	for(i = 0; i < 4; i++)
+	for(i = 0; i < countof(state.args); i++)
 		dynarray_free(char **, state.args[i], free);
 	dynarray_free(char **, state.inputs, NULL);
 	dynarray_free(char **, state.ldflags_pre_user, free);
