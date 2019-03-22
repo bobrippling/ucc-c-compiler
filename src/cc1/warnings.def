@@ -226,6 +226,7 @@ X("char-too-large", char_toolarge)
 
 X("nonstandard-array-size", nonstd_arraysz)
 X("nonstandard-init", nonstd_init)
+X("nonstandard-assert", nonstd_assert)
 
 X("null-zero-literal", null_zero_literal)
 

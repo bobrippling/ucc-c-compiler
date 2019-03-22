@@ -145,11 +145,24 @@ void symtab_check_static_asserts(symtable *stab)
 			continue;
 		}
 
+		if(k.nonstandard_const){
+			int warned = cc1_warn_at(
+					&sa->e->where,
+					nonstd_assert,
+					"static_assert expression isn't an integer constant expression");
+
+			if(warned){
+				note_at(&k.nonstandard_const->where, "non-standard expression here (%s)", expr_str_friendly(k.nonstandard_const));
+			}
+		}
+
 		if(!k.bits.num.val.i){
 			warn_at_print_error(&sa->e->where, "static assertion failure: %s", sa->s);
 			fold_had_error = 1;
+			continue;
+		}
 
-		}else if(cc1_fopt.show_static_asserts){
+		if(cc1_fopt.show_static_asserts){
 			fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
 					where_str(&sa->e->where), expr_str_friendly(sa->e), sa->s);
 		}
