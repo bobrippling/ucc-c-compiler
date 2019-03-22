@@ -29,7 +29,7 @@ char *func_mangle(const char *name, type *fnty)
 			case conv_stdcall:
 				snprintf(suff, sizeof suff,
 						"@%d",
-						dynarray_count(fa->arglist) * platform_word_size());
+						(int)(dynarray_count(fa->arglist) * platform_word_size()));
 
 			case conv_x64_sysv:
 			case conv_x64_ms:

@@ -542,14 +542,14 @@ static decl_init **decl_init_brace_up_array2(
 		type *next_type, const int limit,
 		const int allow_struct_copy)
 {
-	unsigned n = dynarray_count(current), i = 0;
+	size_t n = dynarray_count(current), i = 0;
 	decl_init *this;
 
 	(void)allow_struct_copy;
 
 	while((this = *iter->pos)){
 		desig *des;
-		unsigned j = i;
+		size_t j = i;
 
 		if((des = this->desig)){
 			consty k[2];
@@ -661,7 +661,7 @@ static decl_init **decl_init_brace_up_array2(
 			}
 
 			/* check for char[] init */
-			init_debug("array init [%d ... %d]: ", i, j);
+			init_debug("array init [%zu ... %zu]: ", i, j);
 			init_debug_dinit(iter, next_type);
 			braced = decl_init_brace_up_r(replacing, iter, next_type, stab);
 
@@ -791,7 +791,7 @@ static decl_init **decl_init_brace_up_sue2(
 		struct_union_enum_st *sue, const int is_anon,
 		const int allow_struct_copy)
 {
-	unsigned n = dynarray_count(current), i;
+	size_t n = dynarray_count(current), i;
 	unsigned sue_nmem;
 	int had_desig = 0;
 	where *first_non_desig = NULL;

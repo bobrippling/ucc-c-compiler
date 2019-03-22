@@ -327,7 +327,7 @@ static const char *check_and_ret_inline(
 		expr *maybe_call_expr, decl *maybe_decl,
 		out_ctx *octx,
 		const out_val *fnval,
-		struct inline_outs *iouts, int nargs)
+		struct inline_outs *iouts, size_t nargs)
 {
 	funcargs *fargs;
 	const char *why;
