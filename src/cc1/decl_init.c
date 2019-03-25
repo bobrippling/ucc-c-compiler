@@ -1743,9 +1743,8 @@ zero_init:
 		case decl_init_brace:
 		{
 			struct_union_enum_st *sue = type_is_s_or_u(tfor);
-			size_t n;
-			decl_init **i;
-			unsigned idx;
+			size_t n, idx_init, idx_logical;
+			decl_init **inits;
 
 			if(sue /* check for struct copy */
 			&& dynarray_count(init->bits.ar.inits) == 1
@@ -1794,6 +1793,8 @@ zero_init:
 
 			/* check union */
 			if(sue && sue->primitive == type_union){
+				size_t idx;
+				decl_init **i;
 				decl *smem;
 				expr *sue_base;
 
@@ -1819,21 +1820,29 @@ zero_init:
 				return;
 			}
 
-			for(idx = 0, i = init->bits.ar.inits; idx < n; (*i ? i++ : 0), idx++){
-				decl_init *di = *i;
+			inits = init->bits.ar.inits;
+			for(idx_init = idx_logical = 0; idx_logical < n; idx_logical++){
+				decl_init *di;
 				expr *new_base;
 				type *next_type = NULL;
+
+				if(inits && inits[idx_init]){
+					di = inits[idx_init];
+					idx_init++;
+				}else{
+					di = NULL;
+				}
 
 				if(di == DYNARRAY_NULL)
 					di = NULL;
 
 				if(sue){
-					decl *smem = sue->members[idx]->struct_member;
+					decl *smem = sue->members[idx_logical]->struct_member;
 
 					UCC_ASSERT(sue->primitive != type_union, "sneaky union");
 
 					new_base = sue_base_for_init_assignment(
-							sue, base, &smem, di ? &di->where : &init->where, idx, n,
+							sue, base, &smem, di ? &di->where : &init->where, idx_logical, n,
 							stab);
 
 					if(!new_base)
@@ -1844,7 +1853,7 @@ zero_init:
 				}else{
 					/* array case */
 					new_base = expr_set_where(
-							expr_new_array_idx(base, idx),
+							expr_new_array_idx(base, idx_logical),
 							&base->where);
 
 					fold_expr_nodecay(new_base, stab);
