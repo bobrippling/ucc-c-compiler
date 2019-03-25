@@ -150,3 +150,25 @@ void sanitize_shift(
 	*lhs = out_val_unphi(octx, *lhs);
 	*rhs = out_val_unphi(octx, *rhs);
 }
+
+void sanitize_nonnull(symtable *arg_symtab, out_ctx *octx)
+{
+	/* by this stage, any nonnull attribute will have been applied to each argument decl type */
+	decl **i;
+
+	if(!(cc1_sanitize & CC1_UBSAN))
+		return;
+
+	for(i = symtab_decls(arg_symtab); i && *i; i++){
+		decl *d = *i;
+		attribute *da = attribute_present(d, attr_nonnull);
+
+		if(!da)
+			continue;
+
+		sanitize_assert(
+				out_new_sym(octx, d->sym),
+				octx,
+				"nonnull argument");
+	}
+}
