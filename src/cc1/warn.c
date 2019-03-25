@@ -275,6 +275,7 @@ void warning_on(
 {
 	struct warn_str *p;
 	struct warn_str_group *p_group;
+	int found;
 
 #define SPECIAL(str, w)   \
 	if(!strcmp(warn, str)){ \
@@ -312,12 +313,16 @@ void warning_on(
 	}
 
 
+	found = 0;
 	for(p = warns; p->arg; p++){
 		if(!strcmp(warn, p->arg)){
 			*p->offset = to;
-			return;
+			found = 1;
+			/* keep going for more aliases */
 		}
 	}
+	if(found)
+		return;
 
 	for(p_group = warn_groups; p_group->arg; p_group++){
 		if(!strcmp(warn, p_group->arg)){
