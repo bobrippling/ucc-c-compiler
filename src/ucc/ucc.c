@@ -1215,6 +1215,32 @@ static void usage(void)
 	fprintf(stderr, "  -nostdinc: Don't include the standard header path\n");
 }
 
+static int infer_target_from_argv0(struct triple *triple, const char *argv0)
+{
+	char *slash;
+	char copy[64];
+	int i;
+
+	slash = strrchr(argv0, '/');
+	if(slash)
+		argv0 = slash + 1;
+
+	xsnprintf(copy, sizeof copy, "%s", argv0);
+
+	/* try with one trailing -, then with two (e.g. ucc-ar, etc), then give up */
+	for(i = 0; i < 2; i++){
+		const char *bad;
+		char *p = strrchr(copy, '-');
+		if(p)
+			*p = '\0';
+
+		if(triple_parse(copy, triple, &bad))
+			return 1;
+	}
+
+	return 0;
+}
+
 int main(int argc, char **argv)
 {
 	size_t i;
@@ -1277,6 +1303,8 @@ usage:
 			fprintf(stderr, "couldn't parse target triple: %s\n", bad);
 			return 1;
 		}
+	}else if(infer_target_from_argv0(&triple, argv[0])){
+		/* done */
 	}else{
 		if(!triple_default(&triple)){
 			fprintf(stderr, "couldn't get target triple\n");
