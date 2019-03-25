@@ -58,7 +58,12 @@ X("tenative-init", tenative_init)
 X("shadow-local", shadow_local)
 X("shadow-global", shadow_global_user)
 X("shadow-global-sysheaders", shadow_global_sysheaders)
+X("shadow-compatible-local", shadow_compatible_local)
 GROUP("shadow", &cc1_warning.shadow_global_user, &cc1_warning.shadow_local)
+ALIAS("shadow=global", shadow_global_user) /* -Wshadow=global is an alias for -Wshadow (aka a group) */
+ALIAS("shadow=global", shadow_local) /* ... so we do both */
+ALIAS("shadow=local", shadow_local)
+ALIAS("shadow=compatible-local", shadow_compatible_local)
 
 X("cast-qual", cast_qual)
 
