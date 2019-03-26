@@ -77,6 +77,7 @@ static int check_enum_cmp(
 
 int fold_type_chk_warn(
 		expr *maybe_lhs, type *tlhs, expr *rhs,
+		int allow_qual_addition,
 		where *w, const char *desc)
 {
 	unsigned char *const pwarn_mismatch = &cc1_warning.mismatching_types;
@@ -101,7 +102,6 @@ int fold_type_chk_warn(
 
 		case TYPE_QUAL_ADD: /* const int <- int */
 		case TYPE_QUAL_SUB: /* int <- const int */
-		case TYPE_QUAL_POINTED_ADD: /* const char * <- char * */
 		case TYPE_EQUAL_TYPEDEF:
 			return 0;
 
@@ -140,10 +140,18 @@ int fold_type_chk_warn(
 		case TYPE_QUAL_NESTED_CHANGE: /* char ** <- const char ** or vice versa */
 			detail = "nested ";
 			pwarn = &cc1_warning.compare_distinct_pointer_types;
+			error = 0;
+			goto warning;
+
+		case TYPE_QUAL_POINTED_ADD: /* const char * <- char * */
+			if(allow_qual_addition) /* allowed to assign, but not compare */
+				return 0;
+			error = 0;
+			goto warning;
 
 		case TYPE_QUAL_POINTED_SUB: /* char * <- const char * */
 			error = 0;
-			/* fallthru */
+			goto warning;
 
 warning:
 		case TYPE_NOT_EQUAL:
@@ -195,7 +203,7 @@ static void fold_type_chk_and_cast_common(
 		symtable *stab, where *w,
 		const char *desc)
 {
-	if(fold_type_chk_warn(lhs, tlhs, *prhs, w, desc))
+	if(fold_type_chk_warn(lhs, tlhs, *prhs, /*allow_qual_addition*/1, w, desc))
 		fold_insert_casts(tlhs ? tlhs : lhs->tree_type, prhs, stab);
 }
 
