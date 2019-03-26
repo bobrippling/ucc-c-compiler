@@ -2,9 +2,14 @@
 
 int const_only(char *a, const char *b)
 {
-	// ensure we detect this either way around
-	return a == b // CHECK: warning: mismatching types, comparison lacks a cast
-		|| b == a; // CHECK: warning: mismatching types, comparison lacks a cast
+	return a == b // no warning
+		|| b == a; // no warning
+}
+
+void assign(char *a, const char *b)
+{
+	a = b; // CHECK: warning: mismatching types, assignment
+	b = a;
 }
 
 int main()

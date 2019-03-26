@@ -47,7 +47,7 @@ int fold_type_chk_warn(
 		expr *maybe_lhs,
 		type *tlhs,
 		expr *rhs,
-		int allow_qual_addition,
+		int allow_qual_subtraction,
 		where *w, const char *desc);
 
 void fold_type_chk_and_cast_ty(
