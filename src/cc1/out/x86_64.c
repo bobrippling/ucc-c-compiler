@@ -1494,12 +1494,15 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	}
 
 	switch(op){
+		/* two-operand only touches mentions regs,
+		 * one-operand uses edx:eax, like idiv */
 		OP(multiply, "imul");
-		OP(plus,     "add");
-		OP(minus,    "sub");
-		OP(xor,      "xor");
-		OP(or,       "or");
-		OP(and,      "and");
+
+		OP(plus, "add");
+		OP(minus, "sub");
+		OP(xor, "xor");
+		OP(or, "or");
+		OP(and, "and");
 #undef OP
 
 		case op_bnot:
