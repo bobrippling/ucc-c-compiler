@@ -362,7 +362,7 @@ static void const_shortcircuit(
   assert(!CONST_AT_COMPILE_TIME(rhs->type));
 
 	collapse_const(&clhs, lhs);
-	truth = clhs.lbl ? 1 : clhs.offset;
+	truth = clhs.lbl ? 1 : !!clhs.offset;
 
 	if(e->bits.op.op == op_andsc){
 		if(truth){
