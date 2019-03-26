@@ -101,6 +101,13 @@ static void fold_switch_enum(
 			return;
 	}
 
+	/* warn if we switch on an enum bitmask */
+	if(expr_attr_present(sw->expr, attr_enum_bitmask)){
+		cc1_warn_at(&sw->where, switch_enum_bitmask,
+				"switch on enum with enum_bitmask attribute");
+		return;
+	}
+
 	nents = enum_nentries(enum_sue);
 
 	/* if there's no default case or we're on the even_when_default
@@ -110,11 +117,6 @@ static void fold_switch_enum(
 	{
 		marks = umalloc(nents * sizeof *marks);
 	}
-
-	/* warn if we switch on an enum bitmask */
-	if(expr_attr_present(sw->expr, attr_enum_bitmask))
-		cc1_warn_at(&sw->where, switch_enum_bitmask,
-				"switch on enum with enum_bitmask attribute");
 
 	/* for each case/default/case_range... */
 	ITER_SWITCH(sw, iter){

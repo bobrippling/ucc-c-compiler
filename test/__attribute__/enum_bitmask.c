@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check --only %s
 
 enum __attribute__((enum_bitmask)) e
 {
