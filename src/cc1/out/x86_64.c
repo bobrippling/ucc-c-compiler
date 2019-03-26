@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 #include <assert.h>
 
 #include "../../util/util.h"
@@ -29,6 +30,7 @@
 #include "asm.h"
 #include "impl.h"
 #include "impl_jmp.h"
+#include "impl_fp.h"
 #include "out.h"
 #include "lbl.h"
 #include "write.h"
@@ -2517,33 +2519,36 @@ void impl_set_nan(out_ctx *octx, out_val *v)
 
 	assert(v->retains == 1);
 
-	switch(type_size(ty, NULL)){
-		case 4:
-		{
-			const union
-			{
-				unsigned l;
-				float f;
-			} u = { 0x7fc00000u };
-			v->bits.val_f = u.f;
-			break;
-		}
-		case 8:
-		{
-			const union
-			{
-				unsigned long l;
-				double d;
-			} u = { 0x7ff8000000000000u };
-			v->bits.val_f = u.d;
-			break;
-		}
-		default:
-			ICE("TODO: long double nan");
-	}
+	/* representation can be host-side here,
+	 * we swap to native machine-side if/when
+	 * we save to a label */
+	v->bits.val_f = NAN;
 
 	v->type = V_CONST_F;
-	/*impl_load_fp(v);*/
+}
+
+void impl_fp_bits(char *buf, size_t bufsize, enum type_primitive prim, floating_t fp)
+{
+	switch(prim){
+		case type_float:
+		{
+			const float f = fp;
+			assert(bufsize >= sizeof f);
+			memcpy(buf, &f, sizeof f);
+			break;
+		}
+		case type_double:
+		{
+			const double f = fp;
+			assert(bufsize >= sizeof f);
+			memcpy(buf, &f, sizeof f);
+			break;
+		}
+		case type_ldouble:
+			ICE("TODO");
+		default:
+			assert(0 && "unreachable");
+	}
 }
 
 static void reserve_unreserve_retregs(out_ctx *octx, int reserve)

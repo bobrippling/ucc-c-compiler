@@ -18,6 +18,7 @@
 
 #include "asm.h"
 #include "out.h"
+#include "impl_fp.h"
 
 #include "../fopt.h"
 #include "../cc1.h"
@@ -226,22 +227,34 @@ static struct bitfield_val *bitfields_add(
 
 void asm_out_fp(const struct section *sec, type *ty, floating_t f)
 {
-	switch(type_primitive(ty)){
+	const enum type_primitive prim = type_primitive(ty);
+	char buf[sizeof(long double)] = { 0 };
+
+	impl_fp_bits(buf, sizeof(buf), prim, f);
+
+	switch(prim){
 		case type_float:
-			{
-				union { float f; unsigned u; } u;
-				u.f = f;
-				asm_out_section(sec, ".long %u # float %f\n", u.u, u.f);
-				break;
-			}
+		{
+			unsigned u;
+			UCC_STATIC_ASSERT(sizeof(float) == sizeof(u));
+
+			memcpy(&u, buf, sizeof(u));
+
+			asm_out_section(sec, ".long %u # float %f\n", u, (float)f);
+			break;
+		}
 
 		case type_double:
-			{
-				union { double d; unsigned long ul; } u;
-				u.d = f;
-				asm_out_section(sec, ".quad %lu # double %f\n", u.ul, u.d);
-				break;
-			}
+		{
+			unsigned long ul;
+			UCC_STATIC_ASSERT(sizeof(double) == sizeof(ul));
+
+			memcpy(&ul, buf, sizeof(ul));
+
+			asm_out_section(sec, ".quad %lu # double %f\n", ul, (double)f);
+			break;
+		}
+
 		case type_ldouble:
 			ICE("TODO");
 		default:

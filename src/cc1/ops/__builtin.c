@@ -904,6 +904,7 @@ static void const_nan(expr *e, consty *k)
 {
 	CONST_FOLD_LEAF(k);
 	k->type = CONST_NUM;
+	/* use native nan for calculations, switch to host-nan when writing out */
 	k->bits.num.val.f = NAN;
 
 	switch(e->bits.builtin_nantype){
