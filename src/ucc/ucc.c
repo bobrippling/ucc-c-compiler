@@ -1033,7 +1033,7 @@ static void state_from_triple(
 			const char *target = triple_to_str(triple, 0);
 			int is_pie = vars->pie != TRI_FALSE;
 
-			if(is_pie)
+			if(is_pie && !vars->shared)
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
 
 			if(vars->shared){
@@ -1139,14 +1139,16 @@ static void state_from_triple(
 				state->post_link = ustrprintf("dsymutil %s", vars->output);
 			}
 
-			switch(vars->pie){
-				case TRI_UNSET: /* default for 10.7 and later */
-				case TRI_TRUE:
-					dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
-					break;
-				case TRI_FALSE:
-					dynarray_add(&state->ldflags_pre_user, ustrdup("-no_pie"));
-					break;
+			if(!vars->shared){
+				switch(vars->pie){
+					case TRI_UNSET: /* default for 10.7 and later */
+					case TRI_TRUE:
+						dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
+						break;
+					case TRI_FALSE:
+						dynarray_add(&state->ldflags_pre_user, ustrdup("-no_pie"));
+						break;
+				}
 			}
 
 			paramshared = "-dylib";
