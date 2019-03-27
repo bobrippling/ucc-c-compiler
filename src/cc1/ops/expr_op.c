@@ -30,6 +30,13 @@
 #define BOOLEAN_TYPE type_int
 #define SHOW_CONST_OP 0
 
+typedef struct
+{
+	const char *lbl; /* null if not label */
+	integral_t offset;
+	int is_weak;
+} collapsed_consty;
+
 const char *str_expr_op()
 {
 	return "operator";
@@ -79,12 +86,6 @@ static void const_op_num_fp(
 		}
 	}
 }
-
-typedef struct
-{
-	const char *lbl; /* null if not label */
-	integral_t offset;
-} collapsed_consty;
 
 static void collapse_const(collapsed_consty *out, const consty *in)
 {
