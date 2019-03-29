@@ -559,7 +559,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				char buf[TYPE_STATIC_BUFSIZ];
 
 				cc1_warn_at(&e->where,
-						mismatch_ptr,
+						incompatible_pointer_types,
 						"%scast from %spointer to %spointer\n"
 						"%s <- %s",
 						IMPLICIT_STR(e),

@@ -209,9 +209,8 @@ X("unknown-attribute", attr_unknown)
 X("long-long", long_long)
 
 X("mismatch-conditional", mismatch_conditional)
-X("mismatch-ptr", mismatch_ptr)
-ALIAS("incompatible-pointer-types", mismatch_ptr)
 X("mismatching-types", mismatching_types)
+X("incompatible-pointer-types", incompatible_pointer_types)
 X("compare-distinct-pointer-types", compare_distinct_pointer_types)
 
 X("missing-empty-struct-brace-init", missing_empty_struct_brace_init)

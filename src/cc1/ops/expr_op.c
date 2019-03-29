@@ -540,7 +540,7 @@ type *op_required_promotion(
 			}else if(op_returns_bool(op)){
 ptr_relation:
 				if(op_is_comparison(op)){
-					if(fold_type_chk_warn(lhs, NULL, rhs, /*allow_qual_subtraction*/1, w,
+					if(fold_type_chk_warn(lhs, NULL, rhs, /*is_comparison*/1, w,
 							l_ptr && r_ptr
 							? "comparison lacks a cast"
 							: "comparison between pointer and integer"))
@@ -664,7 +664,7 @@ ptr_relation:
 			          r_rank = type_intrank(type_get_primitive(trhs));
 
 			/* want to warn regardless of checks - for enums */
-			fold_type_chk_warn(lhs, NULL, rhs, /*allow_qual_subtraction*/1, w, desc);
+			fold_type_chk_warn(lhs, NULL, rhs, /*is_comparison*/1, w, desc);
 
 			if(l_unsigned == r_unsigned){
 				enum { SAME, LEFT, RIGHT } larger = SAME;

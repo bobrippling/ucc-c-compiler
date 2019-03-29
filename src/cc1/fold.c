@@ -77,18 +77,28 @@ static int check_enum_cmp(
 
 int fold_type_chk_warn(
 		expr *maybe_lhs, type *tlhs, expr *rhs,
-		int allow_qual_subtraction,
+		int is_comparison,
 		where *w, const char *desc)
 {
-	unsigned char *const pwarn_mismatch = &cc1_warning.mismatching_types;
-	unsigned char *pwarn = pwarn_mismatch;
+	unsigned char *pwarn;
 	type *const trhs = rhs->tree_type;
 	int error = 1;
 	const char *detail = "";
+	const int allow_qual_subtraction = is_comparison;
 
 	assert(!!maybe_lhs ^ !!tlhs);
 	if(!tlhs)
 		tlhs = maybe_lhs->tree_type;
+
+	if(type_is_ptr_or_block(tlhs) && type_is_ptr_or_block(trhs)){
+		if(is_comparison){
+			pwarn = &cc1_warning.compare_distinct_pointer_types;
+		}else{
+			pwarn = &cc1_warning.incompatible_pointer_types;
+		}
+	}else{
+		pwarn = &cc1_warning.mismatching_types;
+	}
 
 	switch(type_cmp(tlhs, trhs, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
 		case TYPE_CONVERTIBLE_IMPLICIT:
@@ -133,13 +143,11 @@ int fold_type_chk_warn(
 				return 1;
 			}
 
-			pwarn = &cc1_warning.compare_distinct_pointer_types;
 			goto warning;
 		}
 
 		case TYPE_QUAL_NESTED_CHANGE: /* char ** <- const char ** or vice versa */
 			detail = "nested ";
-			pwarn = &cc1_warning.compare_distinct_pointer_types;
 			error = 0;
 			goto warning;
 
@@ -163,19 +171,10 @@ warning:
 			char buf[TYPE_STATIC_BUFSIZ];
 			int show_note = 1;
 
-			/* still default? -> change to mismatching pointers if pointer types */
-			if(pwarn == pwarn_mismatch
-			&& type_is_ptr_or_block(tlhs)
-			&& type_is_ptr_or_block(trhs))
-			{
-				pwarn = &cc1_warning.mismatch_ptr;
-			}
-
 			if(pwarn == &cc1_warning.compare_distinct_pointer_types){
-				fmt = "comparison of distinct %spointer types, %s";
+				fmt = "distinct %spointer types in %s";
 				detail = "";
 			}
-
 
 			if(error){
 				warn_at_print_error(w, fmt, detail, desc);
@@ -206,7 +205,7 @@ static void fold_type_chk_and_cast_common(
 		symtable *stab, where *w,
 		const char *desc)
 {
-	if(fold_type_chk_warn(lhs, tlhs, *prhs, /*allow_qual_subtraction*/0, w, desc))
+	if(fold_type_chk_warn(lhs, tlhs, *prhs, /*is_comparison*/0, w, desc))
 		fold_insert_casts(tlhs ? tlhs : lhs->tree_type, prhs, stab);
 }
 
