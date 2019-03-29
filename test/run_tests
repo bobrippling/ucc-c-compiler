@@ -95,9 +95,17 @@ sub file_status
 $SIG{INT} = \&interrupt;
 
 my $verbose = 0;
-my $quiet = !$ENV{CI};
+my $quiet;
 my $ign_file = undef;
 my @tests;
+
+if($ENV{CI}){
+	$quiet = 0;
+}elsif(-t 1){
+	$quiet = 1;
+}else{
+	$quiet = 0;
+}
 
 for(my $i = 0; $i < @ARGV; $i++){
 	if($ARGV[$i] eq '-v'){
