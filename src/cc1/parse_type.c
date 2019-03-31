@@ -540,6 +540,11 @@ enum parse_btype_flags
 	PARSE_BTYPE_DEFAULT_INT = 1 << 1
 };
 
+static void emit_duplicate_qual_warning(where *loc, enum type_qualifier qual)
+{
+	cc1_warn_at(loc, duplicate_declspec, "duplicate '%s' specifier", type_qual_to_str(qual, 0));
+}
+
 static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
 		int newdecl_context, symtable *scope,
@@ -573,9 +578,8 @@ static type *parse_btype(
 		if(curtok_is_type_qual()){
 			enum type_qualifier q = curtok_to_type_qualifier();
 
-			if(qual & q){
-				cc1_warn_at(NULL, duplicate_declspec, "duplicate '%s' specifier", type_qual_to_str(q, 0));
-			}
+			if(qual & q)
+				emit_duplicate_qual_warning(NULL, q);
 
 			qual |= q;
 			EAT(curtok);
@@ -909,6 +913,10 @@ static type *parse_btype(
 				fold_expr_nodecay(tdef_typeof, scope);
 
 				r = type_tdef_of(tdef_typeof, tdef_decl);
+
+				if(cc1_std <= STD_C89 && type_qual(r) & qual)
+					emit_duplicate_qual_warning(NULL, qual);
+
 				break;
 
 			case PRIMITIVE_NO_MORE:
