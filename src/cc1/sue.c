@@ -219,12 +219,14 @@ struct_union_enum_st *sue_predeclare(
 
 	symtab_add_sue(scope, sue);
 
+	sue->membs_progress = SUE_MEMBS_NO;
+
 	return sue;
 }
 
 void sue_define(struct_union_enum_st *sue, sue_member **members)
 {
-	sue->got_membs = 1;
+	sue->membs_progress = SUE_MEMBS_COMPLETE;
 
 	assert(!sue->members);
 	sue->members = members;

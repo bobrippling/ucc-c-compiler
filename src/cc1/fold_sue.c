@@ -447,7 +447,7 @@ static void check_sue_align_attr(struct_union_enum_st *sue, symtable *stab)
 
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
-	if(sue->foldprog != SUE_FOLDED_NO || !sue->got_membs)
+	if(sue->foldprog != SUE_FOLDED_NO || sue->membs_progress != SUE_MEMBS_COMPLETE)
 		return;
 	sue->foldprog = SUE_FOLDED_PARTIAL;
 
