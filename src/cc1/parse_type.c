@@ -352,7 +352,7 @@ static type *parse_type_sue(
 			if(!descended && prim_mismatch)
 				redecl_error = 1;
 			else if(prim_mismatch && !parse_token_creates_sue(curtok))
-					redecl_error = 1;
+				redecl_error = 1;
 
 			if(redecl_error){
 				emit_redef_sue_error(
