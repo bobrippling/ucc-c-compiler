@@ -12,7 +12,7 @@ OBJ_UTIL = \
 
 OBJ_REST = \
 	str.o num.o label.o strings.o \
-	warn.o fopt.o visibility.o pass1.o cc1_out_ctx.o target.o \
+	warn.o fopt.o visibility.o pass1.o cc1_out_ctx.o target.o sanitize_opt.o \
 	decl.o attribute.o decl_init.o funcargs.o expr.o stmt.o \
 	btype.o type.o type_is.o type_nav.o op.o c_types.o c_funcs.o \
 	tokconv.o tokenise.o pragma.o \

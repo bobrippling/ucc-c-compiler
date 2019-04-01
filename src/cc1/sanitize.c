@@ -3,7 +3,7 @@
 #include "expr.h"
 #include "type_is.h"
 #include "type_nav.h"
-#include "cc1.h"
+#include "sanitize_opt.h"
 #include "funcargs.h"
 #include "mangle.h"
 #include "out/ctrl.h"
