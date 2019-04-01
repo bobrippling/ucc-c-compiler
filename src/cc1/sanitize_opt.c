@@ -43,3 +43,9 @@ void sanitize_opt_set_error(const char *argv0, const char *handler)
 		exit(1);
 	}
 }
+
+void sanitize_opt_off(void)
+{
+	cc1_sanitize = 0;
+	cc1_fopt.trapv = 0;
+}

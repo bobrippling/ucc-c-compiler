@@ -440,6 +440,11 @@ static int parse_mf_equals(
 	int i;
 	int new_val;
 
+	if(invert && !strcmp(arg_substr, "sanitize=all")){
+		sanitize_opt_off();
+		return 1;
+	}
+
 	if(invert){
 		usage(argv0, "\"no-\" unexpected for value-argument\n");
 	}
