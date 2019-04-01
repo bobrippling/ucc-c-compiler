@@ -81,7 +81,7 @@ void sanitize_boundscheck(
 	consty sz;
 	const out_val *val;
 
-	if(!(cc1_sanitize & CC1_UBSAN))
+	if(!(cc1_sanitize & SAN_UBSAN))
 		return;
 
 	if(type_is_ptr(elhs->tree_type))
@@ -112,7 +112,7 @@ void sanitize_boundscheck(
 
 void sanitize_vlacheck(const out_val *vla_sz, out_ctx *octx)
 {
-	if(!(cc1_sanitize & CC1_UBSAN))
+	if(!(cc1_sanitize & SAN_UBSAN))
 		return;
 
 	sanitize_assert_order(vla_sz, op_gt, 0, uintptr_ty(), octx, "vla");
@@ -128,7 +128,7 @@ void sanitize_shift(
 	const unsigned max = CHAR_BIT * type_size(elhs->tree_type, NULL);
 	out_blk *current;
 
-	if(!(cc1_sanitize & CC1_UBSAN))
+	if(!(cc1_sanitize & SAN_UBSAN))
 		return;
 
 	current = out_ctx_current_blk(octx);
@@ -156,7 +156,7 @@ void sanitize_nonnull(symtable *arg_symtab, out_ctx *octx)
 	/* by this stage, any nonnull attribute will have been applied to each argument decl type */
 	decl **i;
 
-	if(!(cc1_sanitize & CC1_UBSAN))
+	if(!(cc1_sanitize & SAN_UBSAN))
 		return;
 
 	for(i = symtab_decls(arg_symtab); i && *i; i++){

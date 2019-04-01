@@ -15,7 +15,7 @@ char *cc1_sanitize_handler_fn;
 void sanitize_opt_add(const char *argv0, const char *san)
 {
 	if(!strcmp(san, "undefined")){
-		cc1_sanitize |= CC1_UBSAN;
+		cc1_sanitize |= SAN_UBSAN;
 		cc1_fopt.trapv = 1;
 	}else{
 		fprintf(stderr, "%s: unknown sanitize option '%s'\n", argv0, san);

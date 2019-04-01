@@ -3,7 +3,7 @@
 
 enum san_opts
 {
-	CC1_UBSAN = 1 << 0
+	SAN_UBSAN = 1 << 0
 };
 
 extern enum san_opts cc1_sanitize;
