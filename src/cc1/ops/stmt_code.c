@@ -98,9 +98,6 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 
 		fold_decl(d, stab);
 
-		/* block decls must be complete */
-		fold_check_decl_complete(d);
-
 		if((attr = attribute_present(d, attr_cleanup)))
 			cleanup_check(d, attr);
 
