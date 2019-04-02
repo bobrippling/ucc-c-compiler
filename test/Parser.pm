@@ -1,3 +1,5 @@
+package Parser;
+
 # exports:
 #   parse_warnings, which returns { file, line, col, msg }
 #   chomp_all
