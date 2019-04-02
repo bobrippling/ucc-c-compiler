@@ -4,7 +4,7 @@
 
 use warnings;
 
-my $timeout = 2;
+my $timeout = 5;
 
 sub apply_vars;
 sub die2;
