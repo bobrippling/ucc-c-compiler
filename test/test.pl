@@ -13,11 +13,6 @@ sub usage
 	die "Usage: $0 [--ucc=path] file\n";
 }
 
-sub wexitstatus
-{
-	return (shift >> 8) & 0xff
-}
-
 sub timeout
 {
 	system("../tools/timeout", $timeout, @_);
