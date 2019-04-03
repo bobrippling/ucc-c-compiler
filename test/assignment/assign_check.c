@@ -1,6 +1,7 @@
-// RUN: %ucc %s -o %t
-// RUN: %t
-// RUN: %check %s
+// RUN: %ocheck 0 %s
+// RUN: %check --only %s
+
+int printf();
 
 struct A
 {

@@ -1,13 +1,13 @@
-// RUN: %check %s -Wall
+// RUN: %check --only %s -Wall -Wno-ptr-int-conversion
 
 main()
 {
-#warning hello      // CHECK: /hello/
-	return (void *)5; // CHECK: /mismatching types, return type/
+#warning hello      // CHECK: #warning: hello
+	return (void *)5; // CHECK: mismatching types, return type
 }
 
-#warning timmy // CHECK: /timmy/
+#warning hello2 // CHECK: #warning: hello2
 
-f() // CHECK: /control reaches end of non-void function/
+f() // CHECK: control reaches end of non-void function f
 {
 }

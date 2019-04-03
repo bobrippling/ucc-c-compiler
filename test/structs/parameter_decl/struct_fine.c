@@ -1,10 +1,10 @@
-// RUN: %check %s
+// RUN: %check --only %s
 
 struct A;
 
 f(struct A *);
 
-test1()
+void test1()
 {
 	struct A
 	{
@@ -19,7 +19,7 @@ struct A
 	int i, j;
 };
 
-test2()
+void test2()
 {
 	struct A a;
 	f(&a); // CHECK: !/warning/

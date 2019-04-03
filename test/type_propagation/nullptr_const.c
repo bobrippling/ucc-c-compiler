@@ -1,5 +1,5 @@
-// RUN: %check --prefix=norm %s -Wall -Wextra
-// RUN: %check --prefix=with-warning %s -Wnull-zero-literal
+// RUN: %check --only --prefix=norm %s -Wall -Wextra
+// RUN: %check --only --prefix=with-warning %s -Wnull-zero-literal
 
 f(int *p)
 {

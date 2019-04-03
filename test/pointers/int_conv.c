@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check --only %s -Wno-int-ptr-conversion
 
 void *ptr(int a)
 {
