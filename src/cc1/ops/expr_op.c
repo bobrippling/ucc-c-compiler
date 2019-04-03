@@ -1343,6 +1343,9 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 			case op_shiftr:
 				sanitize_shift(e->lhs, e->rhs, e->bits.op.op, octx, &lhs, &rhs);
 				break;
+			case op_divide:
+				sanitize_divide(lhs, rhs, e->tree_type, octx);
+				break;
 			default:
 				break;
 		}

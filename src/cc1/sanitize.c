@@ -1,5 +1,7 @@
 #include <stdlib.h>
 
+#include "../util/limits.h"
+
 #include "expr.h"
 #include "type_is.h"
 #include "type_nav.h"
@@ -185,6 +187,22 @@ void sanitize_shift(
 
 	*lhs = out_val_unphi(octx, *lhs);
 	*rhs = out_val_unphi(octx, *rhs);
+}
+
+void sanitize_divide(const out_val *lhs, const out_val *rhs, type *ty, out_ctx *octx)
+{
+	const out_val *cmp;
+
+	if(!(cc1_sanitize & SAN_INTEGER_DIVIDE_BY_ZERO))
+		return;
+
+	cmp = out_op(octx, op_ne, out_val_retain(octx, rhs), out_new_l(octx, ty, 0));
+	sanitize_assert(cmp, octx, "divide by zero");
+
+	cmp = out_op(octx, op_or,
+			out_op(octx, op_ne, out_val_retain(octx, lhs), out_new_l(octx, ty, UCC_INT_MIN)),
+			out_op(octx, op_ne, out_val_retain(octx, rhs), out_new_l(octx, ty, -1)));
+	sanitize_assert(cmp, octx, "INT_MIN / -1");
 }
 
 void sanitize_nonnull(symtable *arg_symtab, out_ctx *octx)
