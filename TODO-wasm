@@ -1,0 +1,32 @@
+int global;
+static int private;
+int square(int a, int b) {
+    int x = 3;
+    return a + b * x + global + private;
+}
+
+// -target wasm32-unknown-unknown -O3 -fpie
+//
+// square:
+//         .functype       square (i32, i32) -> (i32)
+//         local.get       1
+//         i32.const       3
+//         i32.mul
+//         local.get       0
+//         i32.add
+//         global.get      __memory_base
+//         i32.const       global
+//         i32.add
+//         i32.load        0
+//         i32.add
+//         end_function
+// .Lfunc_end0:
+//         .size   square, .Lfunc_end0-square
+//         .hidden global
+//         .type   global,@object
+//         .section        .bss.global,"",@
+//         .globl  global
+//         .p2align        2
+// global:
+//         .int32  0
+//         .size   global, 4
