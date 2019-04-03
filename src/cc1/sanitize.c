@@ -7,6 +7,7 @@
 #include "funcargs.h"
 #include "mangle.h"
 #include "out/ctrl.h"
+#include "vla.h"
 
 #include "sanitize.h"
 
@@ -119,6 +120,26 @@ void sanitize_boundscheck(
 			/* force unsigned compare, which catches negative indexes */
 			sanitize_assert_order(val, op_le, sz.bits.num.val.i, uintptr_ty(), octx, "bounds");
 			break;
+
+		case CONST_NO:
+		{
+			/* vla */
+			const out_val *bytesize, *byteindex, *tsize;
+			type *tnext = type_is_array(array_decl->ref);
+
+			if(type_is_variably_modified(tnext))
+				tsize = vla_size(tnext, octx);
+			else
+				tsize = out_new_l(octx, uintptr_ty(), type_size(tnext, NULL));
+
+			out_val_retain(octx, val);
+			byteindex = out_op(octx, op_multiply, val, tsize);
+
+			bytesize = vla_size(array_decl->ref, octx);
+
+			sanitize_assert_order2(byteindex, op_le, bytesize, octx, "vla bounds");
+			break;
+		}
 
 		default:
 			break;
