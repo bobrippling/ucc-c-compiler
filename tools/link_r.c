@@ -89,7 +89,7 @@ static int link_r(char *src, char *target, int level)
 
 		snprintf(there, sizeof(there), "%s/%s", src, ent->d_name);
 		if(stat(there, &st)){
-			fprintf(stderr, "stat \"%s\": %s\n", there, strerror(errno), level);
+			fprintf(stderr, "stat \"%s\": %s\n", there, strerror(errno));
 			ret = 1;
 			goto out;
 		}
