@@ -146,12 +146,12 @@ void sanitize_boundscheck(
 	}
 }
 
-void sanitize_vlacheck(const out_val *vla_sz, out_ctx *octx)
+void sanitize_vlacheck(const out_val *vla_sz, type *sz_ty, out_ctx *octx)
 {
 	if(!(cc1_sanitize & SAN_VLA_BOUND))
 		return;
 
-	sanitize_assert_order(vla_sz, op_gt, 0, uintptr_ty(), octx, "vla");
+	sanitize_assert_order(vla_sz, op_gt, 0, sz_ty, octx, "vla");
 }
 
 void sanitize_shift(
