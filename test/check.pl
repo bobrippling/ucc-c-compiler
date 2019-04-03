@@ -2,6 +2,7 @@
 use warnings;
 use strict;
 
+unshift @INC, ".";
 require Parser;
 
 sub die2

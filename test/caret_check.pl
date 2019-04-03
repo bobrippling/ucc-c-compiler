@@ -7,6 +7,7 @@ use constant
 	GOT   => 1
 };
 
+unshift @INC, ".";
 require Parser;
 
 my $src = shift;
