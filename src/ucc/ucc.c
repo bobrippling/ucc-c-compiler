@@ -1097,7 +1097,7 @@ static void state_from_triple(
 					struct cmdpath dso;
 					char *resolved;
 
-					cmdpath_initrelative(&dso, "../../dsohandle.o", "../../dsohandle.o");
+					cmdpath_initrelative(&dso, "../rt/dsohandle.o", "../rt/dsohandle.o");
 					resolved = cmdpath_resolve(&dso, NULL);
 
 					dynarray_add(&state->ldflags_pre_user, resolved);

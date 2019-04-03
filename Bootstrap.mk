@@ -3,7 +3,7 @@ CONFIGURE_OUTPUT = src/config.custom.mk
 
 .PHONY: bootstrap clean-bootstrap clean-stage1 clean-stage2 clean-stage3
 
-bootstrap: dsohandle.o stage3
+bootstrap: stage3
 
 clean-bootstrap:
 	rm -rf bootstrap

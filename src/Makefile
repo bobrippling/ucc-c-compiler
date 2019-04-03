@@ -1,7 +1,6 @@
 MAKE_DIR = make -C $@
 
-
-all: cc1 cpp2 ucc
+all: cc1 cpp2 ucc rt
 
 ucc: util
 	$Q${MAKE_DIR}
@@ -15,10 +14,13 @@ cpp2: util
 util:
 	$Q${MAKE_DIR}
 
+rt:
+	$Q${MAKE_DIR}
+
 clean:
 	$Qmake -C cc1  $@
 	$Qmake -C cpp2 $@
 	$Qmake -C ucc  $@
 	$Qmake -C util $@
 
-.PHONY: cc1 cpp2 ucc util clean
+.PHONY: cc1 cpp2 ucc util rt clean
