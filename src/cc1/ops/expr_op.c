@@ -9,8 +9,9 @@
 #include "../out/asm.h"
 #include "../type_is.h"
 #include "../type_nav.h"
-#include "../sanitize.h"
 #include "../fopt.h"
+#include "../sanitize.h"
+#include "../sanitize_opt.h"
 
 #include "expr_cast.h"
 #include "expr_val.h"
@@ -1286,7 +1287,7 @@ void gen_op_trapv(
 		out_ctx *octx,
 		enum op_type op)
 {
-	if(!cc1_fopt.trapv)
+	if(!(cc1_sanitize & SAN_SIGNED_INTEGER_OVERFLOW))
 		return;
 
 	if(!type_is_integral(evaltt) || !type_is_signed(evaltt))

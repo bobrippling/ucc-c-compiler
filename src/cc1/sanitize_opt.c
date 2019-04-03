@@ -15,12 +15,26 @@ char *cc1_sanitize_handler_fn;
 void sanitize_opt_add(const char *argv0, const char *san)
 {
 	if(!strcmp(san, "undefined")){
-		cc1_sanitize |= SAN_UBSAN;
-		cc1_fopt.trapv = 1;
-	}else{
-		fprintf(stderr, "%s: unknown sanitize option '%s'\n", argv0, san);
-		exit(1);
+		/* alias for all except float checks */
+		cc1_sanitize |= ~0u;
+		cc1_sanitize &= ~(SAN_FLOAT_DIVIDE_BY_ZERO | SAN_FLOAT_CAST_OVERFLOW);
+		return;
+	}else if(!strcmp(san, "shift")){
+		/* alias for shifts */
+		cc1_sanitize |= (SAN_SHIFT_EXPONENT | SAN_SHIFT_BASE);
+		return;
 	}
+
+#define X(name, value, arg, desc) \
+	if(!strcmp(san, arg)){ \
+		cc1_sanitize |= name; \
+		return; \
+	}
+	SANITIZE_OPTS
+#undef X
+
+	fprintf(stderr, "%s: unknown sanitize option '%s'\n", argv0, san);
+	exit(1);
 }
 
 void sanitize_opt_set_error(const char *argv0, const char *handler)

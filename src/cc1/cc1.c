@@ -767,6 +767,8 @@ dbg_unknown:
 	}
 
 	show_current_line = cc1_fopt.show_line;
+	if(cc1_fopt.trapv)
+		cc1_sanitize |= SAN_SIGNED_INTEGER_OVERFLOW;
 
 	cc1_type_nav = type_nav_init();
 

@@ -1,9 +1,13 @@
 #ifndef SANITIZE_OPT
 #define SANITIZE_OPT
 
+#include "sanitize_opts.h"
+
 enum san_opts
 {
-	SAN_UBSAN = 1 << 0
+#define X(name, value, arg, desc) name = value,
+	SANITIZE_OPTS
+#undef X
 };
 
 extern enum san_opts cc1_sanitize;
