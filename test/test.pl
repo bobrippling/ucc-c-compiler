@@ -4,18 +4,13 @@
 
 use warnings;
 
-my $timeout = 2;
+my $timeout = 5;
 
 sub apply_vars;
 sub die2;
 sub usage
 {
 	die "Usage: $0 [--ucc=path] file\n";
-}
-
-sub wexitstatus
-{
-	return (shift >> 8) & 0xff
 }
 
 sub timeout

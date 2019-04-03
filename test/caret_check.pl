@@ -7,7 +7,8 @@ use constant
 	GOT   => 1
 };
 
-require './parser.pl';
+unshift @INC, ".";
+require Parser;
 
 my $src = shift;
 die "Usage: $0 source.c [ucc-args...]\n" unless $src;
@@ -107,6 +108,6 @@ sub find_warnings
 		offset => $_->{caret_spc},
 		msg    => $_->{msg},
 		lineno => $_->{line},
-	}, parse_warnings(chomp_all(
+	}, Parser::parse_warnings(Parser::chomp_all(
 			`$ENV{UCC} -fsyntax-only '$src' @args 2>&1`));
 }

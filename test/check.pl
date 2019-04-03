@@ -2,7 +2,8 @@
 use warnings;
 use strict;
 
-require './parser.pl';
+unshift @INC, ".";
+require Parser;
 
 sub die2
 {
@@ -58,7 +59,7 @@ my $nwarnings = 0;
 # ---------------------------
 # read warnings in
 
-for my $w (parse_warnings((<STDIN>))){
+for my $w (Parser::parse_warnings((<STDIN>))){
 	my $ln = $w->{line};
 
 	if($ln > 0){
@@ -71,7 +72,7 @@ for my $w (parse_warnings((<STDIN>))){
 # read checks in
 
 $line = 1;
-for(chomp_all(lines(shift))){
+for(Parser::chomp_all(lines(shift))){
 	if(m#// *CHECK(-[^:]+)?: *(\^*)? *(.*)#){
 		my($pre, $above_count, $check) = ($1, length($2), $3);
 		my $valid = 1;
