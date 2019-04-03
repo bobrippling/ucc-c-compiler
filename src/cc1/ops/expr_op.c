@@ -37,6 +37,13 @@ typedef struct
 	int is_weak;
 } collapsed_consty;
 
+enum eval_truth
+{
+	EVAL_FALSE,
+	EVAL_TRUE,
+	EVAL_UNKNOWN
+};
+
 const char *str_expr_op()
 {
 	return "operator";
@@ -89,6 +96,8 @@ static void const_op_num_fp(
 
 static void collapse_const(collapsed_consty *out, const consty *in)
 {
+	out->is_weak = 0;
+
 	switch(in->type){
 		case CONST_NO:
 			assert(0);
@@ -105,15 +114,72 @@ static void collapse_const(collapsed_consty *out, const consty *in)
 
 		case CONST_NEED_ADDR:
 		case CONST_ADDR:
-			if(in->bits.addr.is_lbl){
-				out->lbl = in->bits.addr.bits.lbl;
-				out->offset = in->offset;
-			}else{
-				out->lbl = NULL;
-				out->offset = in->bits.addr.bits.memaddr + in->offset;
+			switch(in->bits.addr.lbl_type){
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK:
+					out->lbl = in->bits.addr.bits.lbl;
+					out->offset = in->offset;
+					out->is_weak = (in->bits.addr.lbl_type == CONST_LBL_WEAK);
+					break;
+				case CONST_LBL_MEMADDR:
+					out->lbl = NULL;
+					out->offset = in->bits.addr.bits.memaddr + in->offset;
+					break;
 			}
 			break;
 	}
+}
+
+static enum eval_truth collapsed_consty_to_truth(const collapsed_consty *k)
+{
+	return k->is_weak ? EVAL_UNKNOWN : k->lbl || k->offset ? EVAL_TRUE : EVAL_FALSE;
+}
+
+static void eval_truth_to_consty(enum eval_truth t, consty *k, expr *e)
+{
+	switch(t){
+		case EVAL_TRUE:
+		case EVAL_FALSE:
+			k->type = CONST_NUM;
+			k->bits.num.val.i = t == EVAL_TRUE;
+			break;
+
+		case EVAL_UNKNOWN:
+			CONST_FOLD_NO(k, e);
+			break;
+	}
+}
+
+static enum eval_truth eval_shortcircuit(
+		enum op_type op,
+		enum eval_truth lhs,
+		enum eval_truth rhs)
+{
+	const enum { AND, OR } fixed_op = op == op_andsc ? AND : OR;
+	enum { SIDEEFFECT = 1 << 2 }; /* must be bitwise-or-able with EVAL_* */
+	static const enum eval_truth results[3][2][3] = {
+		[EVAL_FALSE]   [AND] [EVAL_FALSE]   = EVAL_FALSE,
+		[EVAL_FALSE]   [AND] [EVAL_TRUE]    = EVAL_FALSE,
+		[EVAL_FALSE]   [AND] [EVAL_UNKNOWN] = EVAL_FALSE,
+		[EVAL_FALSE]   [OR]  [EVAL_FALSE]   = EVAL_FALSE,
+		[EVAL_FALSE]   [OR]  [EVAL_TRUE]    = EVAL_TRUE,
+		[EVAL_FALSE]   [OR]  [EVAL_UNKNOWN] = EVAL_UNKNOWN,
+		[EVAL_TRUE]    [AND] [EVAL_FALSE]   = EVAL_FALSE,
+		[EVAL_TRUE]    [AND] [EVAL_TRUE]    = EVAL_TRUE,
+		[EVAL_TRUE]    [AND] [EVAL_UNKNOWN] = EVAL_UNKNOWN,
+		[EVAL_TRUE]    [OR]  [EVAL_FALSE]   = EVAL_TRUE,
+		[EVAL_TRUE]    [OR]  [EVAL_TRUE]    = EVAL_TRUE,
+		[EVAL_TRUE]    [OR]  [EVAL_UNKNOWN] = EVAL_TRUE,
+		[EVAL_UNKNOWN] [AND] [EVAL_FALSE]   = EVAL_UNKNOWN, /* sideeffect */
+		[EVAL_UNKNOWN] [AND] [EVAL_TRUE]    = EVAL_UNKNOWN,
+		[EVAL_UNKNOWN] [AND] [EVAL_UNKNOWN] = EVAL_UNKNOWN,
+		[EVAL_UNKNOWN] [OR]  [EVAL_FALSE]   = EVAL_UNKNOWN,
+		[EVAL_UNKNOWN] [OR]  [EVAL_TRUE]    = EVAL_UNKNOWN, /* sideeffect */
+		[EVAL_UNKNOWN] [OR]  [EVAL_UNKNOWN] = EVAL_UNKNOWN,
+		/* sideeffect entries could be a constant value, but other compilers
+		 * don't treat this as such, so we fail the const-eval */
+	};
+	return results[lhs][fixed_op][rhs];
 }
 
 static void const_op_num_int(
@@ -153,17 +219,43 @@ static void const_op_num_int(
 	}
 
 	CONST_FOLD_LEAF(k);
+
+	switch(e->bits.op.op){
+		case op_andsc:
+		case op_orsc:
+		{
+			enum eval_truth result = eval_shortcircuit(
+					e->bits.op.op,
+					collapsed_consty_to_truth(&l),
+					collapsed_consty_to_truth(&r));
+
+			eval_truth_to_consty(result, k, e);
+
+			/* early finish */
+			return;
+		}
+		default:
+			break;
+	}
+
 	switch(!!l.lbl + !!r.lbl){
 		default:
 			assert(0);
 
 		case 1:
 		{
-			collapsed_consty *num_side = NULL;
+			collapsed_consty *num_side = NULL, *lbl_side = NULL;
 			if(!l.lbl)
 				num_side = &l;
 			else if(!r.lbl)
 				num_side = &r;
+			else
+				assert(0 && "unreachable");
+
+			if(l.lbl)
+				lbl_side = &l;
+			else if(r.lbl)
+				lbl_side = &r;
 			else
 				assert(0 && "unreachable");
 
@@ -172,14 +264,19 @@ static void const_op_num_int(
 				case op_not:
 					/* !&lbl */
 					assert(!rhs);
-					k->type = CONST_NUM;
-					k->bits.num.val.i = 0;
+					assert(lbl_side);
+					if(lbl_side->is_weak){
+						CONST_FOLD_NO(k, e);
+					}else{
+						k->type = CONST_NUM;
+						k->bits.num.val.i = 0;
+					}
 					break;
 
 				case op_eq:
 				case op_ne:
 					assert(num_side && "binary two labels shouldn't be here");
-					if(num_side->offset == 0){
+					if(num_side->offset == 0 && !lbl_side->is_weak){
 						/* &x == 0, etc */
 						k->type = CONST_NUM;
 						k->bits.num.val.i = (e->bits.op.op != op_eq);
@@ -200,25 +297,13 @@ static void const_op_num_int(
 						break;
 					}
 
+					/* this is fine, we're simply adding to a maybe-weak label */
 					memcpy_safe(k, num_side == &l ? rhs : lhs);
 					if(e->bits.op.op == op_plus)
 						k->offset += num_side->offset;
 					else if(e->bits.op.op == op_minus)
 						k->offset -= num_side->offset;
 					break;
-
-				case op_andsc:
-				case op_orsc:
-				{
-					int bool_l = l.lbl || l.offset;
-					int bool_r = r.lbl || r.offset;
-
-					k->type = CONST_NUM;
-					k->bits.num.val.i = (e->bits.op.op == op_andsc
-							? bool_l && bool_r
-							: bool_l || bool_r);
-					break;
-				}
 			}
 			break;
 		}
@@ -297,9 +382,7 @@ static void const_op_num_int(
 
 				case op_orsc:
 				case op_andsc:
-					k->type = CONST_NUM;
-					k->bits.num.val.i = 1;
-					break;
+					assert(0 && "unreachable");
 
 				case op_eq:
 				case op_ne:
@@ -353,39 +436,27 @@ static void const_shortcircuit(
 		const consty *rhs)
 {
 	collapsed_consty clhs;
-	int truth;
+	enum eval_truth truth;
 
 	if(!CONST_AT_COMPILE_TIME(lhs->type))
 		return;
 
-	/* if we've got here, previous attempts at const-ing failed,
-	 * so we should have a non-constant rhs */
+	/* if we've got here, previous attempts at const-ing have failed,
+	 * which means lhs or rhs is not constant.
+	 *
+	 * if lhs is not constant, we can't decide, hence the above return
+	 *
+	 * otherwise, lhs is constant, rhs is not */
   assert(!CONST_AT_COMPILE_TIME(rhs->type));
 
 	collapse_const(&clhs, lhs);
-	truth = clhs.lbl ? 1 : !!clhs.offset;
 
-	if(e->bits.op.op == op_andsc){
-		if(truth){
-			/* &lbl && [not-constant] */
-		}else{
-			/* 0 && [not-constant] */
-			CONST_FOLD_LEAF(k);
-			k->type = CONST_NUM;
-			k->bits.num.val.i = 0;
-		}
-	}else if(e->bits.op.op == op_orsc){
-		if(truth){
-			/* &lbl || [not-constant] */
-			CONST_FOLD_LEAF(k);
-			k->type = CONST_NUM;
-			k->bits.num.val.i = 1;
-		}else{
-			/* 0 || [not-constant] */
-		}
-	}else{
-		assert(0);
-	}
+	truth = eval_shortcircuit(
+			e->bits.op.op,
+			collapsed_consty_to_truth(&clhs),
+			EVAL_UNKNOWN);
+
+	eval_truth_to_consty(truth, k, e);
 }
 
 static void fold_const_expr_op(expr *e, consty *k)
