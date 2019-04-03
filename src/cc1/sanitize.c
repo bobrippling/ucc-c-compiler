@@ -46,6 +46,17 @@ static void sanitize_assert(const out_val *cond, out_ctx *octx, const char *desc
 	out_current_blk(octx, land);
 }
 
+static void sanitize_assert_order2(
+		const out_val *test, enum op_type op, const out_val *against,
+		out_ctx *octx, const char *desc)
+{
+	const out_val *cmp;
+
+	cmp = out_op(octx, op, test, against);
+
+	sanitize_assert(cmp, octx, desc);
+}
+
 static void sanitize_assert_order(
 		const out_val *test, enum op_type op, long limit,
 		type *op_type, out_ctx *octx, const char *desc)
@@ -60,9 +71,7 @@ static void sanitize_assert_order(
 			out_val_retain(octx, test),
 			op_type);
 
-	const out_val *cmp = out_op(octx, op, lengthened_test, vlimit);
-
-	sanitize_assert(cmp, octx, desc);
+	sanitize_assert_order2(lengthened_test, op, vlimit, octx, desc);
 }
 
 static type *uintptr_ty(void)
