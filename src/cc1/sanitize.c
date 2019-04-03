@@ -109,14 +109,20 @@ void sanitize_boundscheck(
 		return;
 	const_fold(expr_sz, &sz);
 
-	if(sz.type != CONST_NUM)
-		return;
+	/* note that the comparison (op_le) allows one-past-the-end,
+	 * as we don't know at this point if we're addressing or indexing */
+	switch(sz.type){
+		case CONST_NUM:
+			if(!K_INTEGRAL(sz.bits.num))
+				return;
 
-	if(!K_INTEGRAL(sz.bits.num))
-		return;
+			/* force unsigned compare, which catches negative indexes */
+			sanitize_assert_order(val, op_le, sz.bits.num.val.i, uintptr_ty(), octx, "bounds");
+			break;
 
-	/* force unsigned compare, which catches negative indexes */
-	sanitize_assert_order(val, op_le, sz.bits.num.val.i, uintptr_ty(), octx, "bounds");
+		default:
+			break;
+	}
 }
 
 void sanitize_vlacheck(const out_val *vla_sz, out_ctx *octx)
