@@ -129,7 +129,7 @@ static void const_expr_addr(expr *e, consty *k)
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR;
 		k->offset = 0;
-		k->bits.addr.is_lbl = 1;
+		k->bits.addr.lbl_type = CONST_LBL_TRUE;
 
 		if(static_ctx){
 			e->bits.lbl.label->mustgen_spel = out_label_code("goto");

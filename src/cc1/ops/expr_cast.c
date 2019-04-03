@@ -260,25 +260,33 @@ static void check_addr_int_cast(consty *k, int l, expr *owner)
 
 		case CONST_NEED_ADDR:
 		case CONST_ADDR:
-			if(k->bits.addr.is_lbl){
-				CONST_FOLD_NO(k, owner); /* similar to strk case */
-			}else{
-				integral_t new = k->bits.addr.bits.memaddr;
-				const int pws = platform_word_size();
+			switch(k->bits.addr.lbl_type){
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK:
+					CONST_FOLD_NO(k, owner); /* similar to strk case */
+					break;
 
-				/* mask out bits so we have it truncated to `l' */
-				if(l < pws){
-					new = integral_truncate(new, l, NULL);
+				case CONST_LBL_MEMADDR:
+				{
+					integral_t new = k->bits.addr.bits.memaddr;
+					const int pws = platform_word_size();
 
-					if(k->bits.addr.bits.memaddr != new)
-						/* can't cast without losing value - not const */
+					/* mask out bits so we have it truncated to `l' */
+					if(l < pws){
+						new = integral_truncate(new, l, NULL);
+
+						if(k->bits.addr.bits.memaddr != new)
+							/* can't cast without losing value - not const */
+							CONST_FOLD_NO(k, owner);
+
+					}else{
+						/* what are you doing... */
 						CONST_FOLD_NO(k, owner);
-
-				}else{
-					/* what are you doing... */
-					CONST_FOLD_NO(k, owner);
+					}
+					break;
 				}
 			}
+			break;
 	}
 }
 

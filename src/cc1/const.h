@@ -34,7 +34,11 @@ typedef struct consty
 		stringlit_at *str; /* CONST_STRK */
 		struct
 		{
-			int is_lbl;
+			enum {
+				CONST_LBL_MEMADDR,
+				CONST_LBL_TRUE,
+				CONST_LBL_WEAK, /* may not be used in a constant expression, just an address expression */
+			} lbl_type;
 			union
 			{
 				const char *lbl;
