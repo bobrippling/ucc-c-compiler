@@ -50,7 +50,7 @@ static int parse_at_decl_spec(void);
 static int can_complete_existing_sue(
 		struct_union_enum_st *sue, enum type_primitive new_tag)
 {
-	return sue->primitive == new_tag && !sue->got_membs;
+	return sue->primitive == new_tag && sue->membs_progress == SUE_MEMBS_NO;
 }
 
 static void emit_redef_sue_error(
@@ -112,6 +112,8 @@ static struct_union_enum_st *parse_sue_definition(
 			predecl_sue = sue_predeclare(scope, NULL, prim, sue_loc);
 		}
 
+		predecl_sue->membs_progress = SUE_MEMBS_PARSING;
+
 		for(;;){
 			where w;
 			expr *e;
@@ -166,6 +168,9 @@ static struct_union_enum_st *parse_sue_definition(
 		 */
 		decl **dmembers = NULL;
 		decl **i;
+
+		if(predecl_sue)
+			predecl_sue->membs_progress = SUE_MEMBS_PARSING;
 
 		while(parse_decl_group(
 					DECL_MULTI_ACCEPT_FIELD_WIDTH
@@ -347,7 +352,7 @@ static type *parse_type_sue(
 			if(!descended && prim_mismatch)
 				redecl_error = 1;
 			else if(prim_mismatch && !parse_token_creates_sue(curtok))
-					redecl_error = 1;
+				redecl_error = 1;
 
 			if(redecl_error){
 				emit_redef_sue_error(
