@@ -30,6 +30,8 @@
 #include "../parse_expr.h"
 #include "../parse_type.h"
 #include "../cc1_out_ctx.h"
+#include "../sanitize_opt.h"
+#include "../sanitize.h"
 
 #include "../ops/expr_funcall.h"
 #include "../ops/expr_addr.h"
@@ -327,7 +329,12 @@ static void fold_unreachable(expr *e, symtable *stab)
 
 static const out_val *builtin_gen_unreachable(const expr *e, out_ctx *octx)
 {
-	return builtin_gen_undefined(e, octx);
+	if(!strcmp(BUILTIN_SPEL(e->expr), "__builtin_trap"))
+		return builtin_gen_undefined(e, octx);
+
+	if(cc1_sanitize & SAN_UNREACHABLE)
+		sanitize_fail(octx, "unreachable");
+	return out_new_noop(octx);
 }
 
 static expr *parse_unreachable(const char *ident, symtable *scope)
