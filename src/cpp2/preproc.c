@@ -404,7 +404,7 @@ static char *filter_macros(char *line)
 		if(parse_should_noop())
 			*line = '\0';
 		else
-			line = eval_expand_macros(line);
+			line = eval_expand_macros(line); /* need to pass multiple lines through here */
 		return line;
 	}
 }
@@ -427,7 +427,7 @@ void preprocess(void)
 			case NOT_IN_BLOCK:
 			case IN_BLOCK_BEGIN:
 			case IN_BLOCK_END:
-				line = filter_macros(line);
+				line = filter_macros(line, next_line);
 			case IN_BLOCK_FULL: /* no thanks */
 				break;
 		}

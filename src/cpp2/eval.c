@@ -372,8 +372,10 @@ static char *eval_macro_r(macro *m, char *start, char **pat)
 		}
 
 		close_b = strchr_nest(open_b, ')');
-		if(!close_b)
+		if(!close_b){
+			/* FIXME: bring in next line */
 			CPP_DIE("unterminated function-macro '%s'", m->nam);
+		}
 
 		{
 			char *all_args = ustrdup2(open_b + 1, close_b);
