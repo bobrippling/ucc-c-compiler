@@ -21,7 +21,7 @@ void sanitize_opt_add(const char *argv0, const char *san)
 		return;
 	}else if(!strcmp(san, "shift")){
 		/* alias for shifts */
-		cc1_sanitize |= (SAN_SHIFT_EXPONENT | SAN_SHIFT_BASE);
+		cc1_sanitize |= SAN_SHIFT_EXPONENT;
 		return;
 	}
 
