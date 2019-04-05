@@ -372,7 +372,7 @@ static int is_lvalue_pointerish(type *t)
 
 void const_ensure_num_or_memaddr(
 		consty *k, type *from, type *to,
-		expr *owner)
+		expr *owner, int set_nonstandard_const)
 {
 	const int from_ptr = is_lvalue_pointerish(from);
 	const int to_ptr = is_lvalue_pointerish(to);
@@ -391,6 +391,6 @@ void const_ensure_num_or_memaddr(
 	}
 
 	/* not a constant but we treat it as such, as an extension */
-	if(!k->nonstandard_const)
+	if(set_nonstandard_const && !k->nonstandard_const)
 		k->nonstandard_const = owner;
 }
