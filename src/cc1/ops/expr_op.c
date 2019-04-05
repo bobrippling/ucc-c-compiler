@@ -387,15 +387,20 @@ static void const_op_num_int(
 				case op_eq:
 				case op_ne:
 				{
-					int same = !strcmp(l.lbl, r.lbl);
-					k->type = CONST_NUM;
+					/* if one is weak, it may, or may not be the other */
+					if(l.is_weak || r.is_weak){
+						CONST_FOLD_NO(k, e);
+					}else{
+						int same = !strcmp(l.lbl, r.lbl);
+						k->type = CONST_NUM;
 
-					k->bits.num.val.i = ((e->bits.op.op == op_eq) == same);
+						k->bits.num.val.i = ((e->bits.op.op == op_eq) == same);
+					}
 					break;
 				}
 
 				case op_minus:
-					if(!strcmp(l.lbl, r.lbl)){
+					if(!l.is_weak && !r.is_weak && !strcmp(l.lbl, r.lbl)){
 						type *tnext = type_is_ptr(e->lhs->tree_type);
 						assert(tnext);
 

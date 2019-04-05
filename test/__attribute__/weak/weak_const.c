@@ -39,9 +39,9 @@ _Static_assert((0 == f) == false, "");
 ERROR(int arith_6 = 0 == w;) // CHECK: error: global scalar initialiser not constant
 _Static_assert(0 != f, "");
 ERROR(int arith_8 = 0 != w;) // CHECK: error: global scalar initialiser not constant
-_Static_assert((f == w) == false, "");
-_Static_assert(f != w, "");
-_Static_assert((f - f) == false, "");
-_Static_assert((w - w) == false, "");
+ERROR(int arith_9 = f == w;) // CHECK: error: global scalar initialiser not constant
+ERROR(int arith_10 = f != w;) // CHECK: error: global scalar initialiser not constant
+_Static_assert((f - f) == false, ""); // CHECK: warning: static_assert expression isn't an integer constant expression
+ERROR(int arith_12 = w - w;) // CHECK: error: global scalar initialiser not constant
 ERROR(int arith_13 = f - w;) // CHECK: error: global scalar initialiser not constant
 ERROR(int arith_14 = w - f;) // CHECK: error: global scalar initialiser not constant
