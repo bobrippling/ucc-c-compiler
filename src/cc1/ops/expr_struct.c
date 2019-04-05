@@ -67,7 +67,7 @@ err:
 			warn_at_print_error(
 					&e->lhs->where, "'%s' (%s-expr) is not a %sstruct or union (member %s)",
 					type_to_str(e->lhs->tree_type),
-					expr_str_friendly(e->lhs),
+					expr_str_friendly(e->lhs, 0),
 					ptr_expect ? "pointer to " : "",
 					spel);
 			fold_had_error = 1;

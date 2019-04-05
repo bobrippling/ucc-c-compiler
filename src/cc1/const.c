@@ -31,14 +31,16 @@ void const_fold(expr *e, consty *k)
 
 	if(e->f_const_fold){
 		if(!e->const_eval.const_folded){
+			int should_have_lbl;
+
 			e->const_eval.const_folded = 1;
 			e->f_const_fold(e, &e->const_eval.k);
 			e->const_eval.const_folded = 2;
 
-			if((e->const_eval.k.type == CONST_ADDR
-			|| e->const_eval.k.type == CONST_NEED_ADDR)
-			&& e->const_eval.k.bits.addr.is_lbl)
-			{
+			should_have_lbl = (e->const_eval.k.type == CONST_ADDR || e->const_eval.k.type == CONST_NEED_ADDR)
+				&& e->const_eval.k.bits.addr.lbl_type != CONST_LBL_MEMADDR;
+
+			if(should_have_lbl){
 				assert(e->const_eval.k.bits.addr.bits.lbl);
 			}
 		}else if(e->const_eval.const_folded == 1){
@@ -104,7 +106,13 @@ static int const_expr_zero(expr *e, int zero)
 			return !k.bits.num.val.i == zero;
 
 		case CONST_ADDR:
-			return !k.bits.addr.is_lbl && k.bits.addr.bits.memaddr == 0;
+			switch(k.bits.addr.lbl_type){
+				case CONST_LBL_MEMADDR:
+					return k.bits.addr.bits.memaddr == 0;
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK: /* might be zero, don't know. error caught elsewhere */
+					return 0;
+			}
 
 		case CONST_NEED_ADDR:
 		case CONST_STRK:
@@ -306,16 +314,20 @@ static void const_intify(consty *k, expr *owner)
 			break;
 
 		case CONST_STRK:
-			return;
+			break;
 
 		case CONST_NEED_ADDR:
 		case CONST_ADDR:
 		{
 			integral_t memaddr;
 
-			if(k->bits.addr.is_lbl){
-				/* can't do (int)&x */
-				return;
+			switch(k->bits.addr.lbl_type){
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK:
+					/* can't do (int)&x */
+					return;
+				case CONST_LBL_MEMADDR:
+					break;
 			}
 
 			memaddr = k->bits.addr.bits.memaddr + k->offset;
@@ -360,7 +372,7 @@ static int is_lvalue_pointerish(type *t)
 
 void const_ensure_num_or_memaddr(
 		consty *k, type *from, type *to,
-		expr *owner)
+		expr *owner, int set_nonstandard_const)
 {
 	const int from_ptr = is_lvalue_pointerish(from);
 	const int to_ptr = is_lvalue_pointerish(to);
@@ -379,6 +391,6 @@ void const_ensure_num_or_memaddr(
 	}
 
 	/* not a constant but we treat it as such, as an extension */
-	if(!k->nonstandard_const)
+	if(set_nonstandard_const && !k->nonstandard_const)
 		k->nonstandard_const = owner;
 }

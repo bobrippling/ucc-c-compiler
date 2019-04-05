@@ -260,25 +260,33 @@ static void check_addr_int_cast(consty *k, int l, expr *owner)
 
 		case CONST_NEED_ADDR:
 		case CONST_ADDR:
-			if(k->bits.addr.is_lbl){
-				CONST_FOLD_NO(k, owner); /* similar to strk case */
-			}else{
-				integral_t new = k->bits.addr.bits.memaddr;
-				const int pws = platform_word_size();
+			switch(k->bits.addr.lbl_type){
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK:
+					CONST_FOLD_NO(k, owner); /* similar to strk case */
+					break;
 
-				/* mask out bits so we have it truncated to `l' */
-				if(l < pws){
-					new = integral_truncate(new, l, NULL);
+				case CONST_LBL_MEMADDR:
+				{
+					integral_t new = k->bits.addr.bits.memaddr;
+					const int pws = platform_word_size();
 
-					if(k->bits.addr.bits.memaddr != new)
-						/* can't cast without losing value - not const */
+					/* mask out bits so we have it truncated to `l' */
+					if(l < pws){
+						new = integral_truncate(new, l, NULL);
+
+						if(k->bits.addr.bits.memaddr != new)
+							/* can't cast without losing value - not const */
+							CONST_FOLD_NO(k, owner);
+
+					}else{
+						/* what are you doing... */
 						CONST_FOLD_NO(k, owner);
-
-				}else{
-					/* what are you doing... */
-					CONST_FOLD_NO(k, owner);
+					}
+					break;
 				}
 			}
+			break;
 	}
 }
 
@@ -301,6 +309,7 @@ static void cast_addr(expr *e, consty *k)
 
 static void fold_const_expr_cast(expr *e, consty *k)
 {
+	int set_nonstandard_const;
 	int to_fp;
 
 	if(type_is_void(e->tree_type)){
@@ -308,12 +317,14 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		return;
 	}
 
+	set_nonstandard_const = !expr_cast_is_implicit(e);
+
 	const_fold(expr_cast_child(e), k);
 
 	if(expr_cast_is_lval2rval(e)){
 		/* if we're going from int to pointer or vice-versa,
 		 * change the const type */
-		const_ensure_num_or_memaddr(k, e->expr->tree_type, e->tree_type, e);
+		const_ensure_num_or_memaddr(k, e->expr->tree_type, e->tree_type, e, set_nonstandard_const);
 		return;
 	}
 
@@ -350,7 +361,9 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	if(k->type == CONST_NO)
 		return;
 
-	const_ensure_num_or_memaddr(k, e->expr->tree_type, e->tree_type, e);
+	const_ensure_num_or_memaddr(
+			k, e->expr->tree_type, e->tree_type, e,
+			set_nonstandard_const);
 }
 
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
