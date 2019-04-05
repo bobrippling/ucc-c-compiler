@@ -62,7 +62,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		/* can address: lvalues, arrays and functions */
 		if(!expr_is_addressable(e->lhs)){
 			warn_at_print_error(&e->where, "can't take the address of %s (%s)",
-					expr_str_friendly(e->lhs), type_to_str(e->lhs->tree_type));
+					expr_str_friendly(e->lhs, 0), type_to_str(e->lhs->tree_type));
 			fold_had_error = 1;
 			return;
 		}

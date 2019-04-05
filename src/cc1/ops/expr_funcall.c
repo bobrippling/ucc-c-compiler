@@ -403,7 +403,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	if(!type_is_callable(func_ty)){
 		warn_at_print_error(&e->expr->where,
 				"%s-expression (type '%s') not callable",
-				expr_str_friendly(e->expr),
+				expr_str_friendly(e->expr, 0),
 				type_to_str(func_ty));
 
 		fold_had_error = 1;
