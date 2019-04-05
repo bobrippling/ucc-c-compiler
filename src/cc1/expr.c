@@ -81,9 +81,19 @@ void expr_free_abi(void *e)
 	expr_free(e);
 }
 
-const char *expr_str_friendly(expr *e)
+const char *expr_str_friendly(expr *e, int show_implicit_casts)
 {
-	return expr_skip_generated_casts(e)->f_str();
+	if(show_implicit_casts){
+		e = expr_skip_lval2rval(e);
+
+		if(expr_kind(e, cast) && expr_cast_is_implicit(e))
+			return "implicit-cast";
+
+	}else{
+		e = expr_skip_generated_casts(e);
+	}
+
+	return e->f_str();
 }
 
 expr *expr_set_where(expr *e, where const *w)

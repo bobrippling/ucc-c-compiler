@@ -5,16 +5,16 @@ void  dynarray_nochk_add(    void ***, void *);
 void  dynarray_nochk_prepend(void ***, void *);
 void *dynarray_nochk_pop(    void ***);
 void  dynarray_nochk_rm(     void ***,  void *);
-int   dynarray_nochk_count(  void **);
+size_t dynarray_nochk_count(  void **);
 void  dynarray_nochk_free(   void ***par, void (*f)(void *));
 void  dynarray_nochk_add_array(void ***, void **);
 void  dynarray_nochk_add_tmparray(void ***, void **);
 
 void *dynarray_nochk_padinsert(void ***par,
-		unsigned i, unsigned *pn, void *ins);
+		size_t i, size_t *pn, void *ins);
 
 void dynarray_nochk_insert(
-		void ***par, unsigned i, void *to_insert);
+		void ***par, size_t i, void *to_insert);
 
 #define DYNARRAY_NULL (void *)1
 

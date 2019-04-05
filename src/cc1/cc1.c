@@ -141,7 +141,7 @@ static void dump_options(void)
 	fprintf(stderr, "  -W(no-)?(all|extra|everything|gnu|error(=...)|...)\n");
 	fprintf(stderr, "  -w\n");
 	fprintf(stderr, "  -std=(gnu|c)(99|90|89|11), -ansi\n");
-	fprintf(stderr, "  -f(sanitize=...|sanitize-error=...)\n");
+	fprintf(stderr, "  -f(sanitize=...|sanitize-error=...|sanitize-undefined-trap-on-error)\n");
 	fprintf(stderr, "  -fvisibility=default|hidden|protected\n");
 	fprintf(stderr, "  -fdebug-compilation-dir=...\n");
 	fprintf(stderr, "\n");
@@ -483,6 +483,11 @@ static int parse_mf_equals(
 	}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
 		set_sanitize_error(argv0, arg_substr + 15);
 		return 1;
+	}else if(!strcmp(arg_substr, "sanitize-undefined-trap-on-error")){
+		/* currently the choices are a noreturn function, or trap.
+		 * in the future, support could be added for linking with gcc or clang's libubsan,
+		 * and calling the runtime support functions therein */
+		set_sanitize_error(argv0, "trap");
 	}else if(!strncmp(arg_substr, "visibility=", 11)){
 		set_default_visibility(argv0, arg_substr + 11);
 		return 1;

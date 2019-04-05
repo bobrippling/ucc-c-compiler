@@ -11,6 +11,7 @@
 		NAME(warn_unused, 0)    \
 		NAME(section, 0)        \
 		NAME(enum_bitmask, 0)   \
+		EXTRA_ALIAS("flag_enum", enum_bitmask) /* clang */ \
 		NAME(noreturn, 1)       \
 		NAME(noderef, 1)        \
 		NAME(nonnull, 1)        \

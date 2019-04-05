@@ -1035,13 +1035,20 @@ static void const_offsetof(expr *e, consty *k)
 			/* fall */
 
 		case CONST_NEED_ADDR:
-			if(offset.bits.addr.is_lbl)
-				break;
+			switch(offset.bits.addr.lbl_type){
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK:
+					/* keep as &lbl + offset */
+					break;
 
-			CONST_FOLD_LEAF(k);
+				case CONST_LBL_MEMADDR:
+					/* convert to number */
+					CONST_FOLD_LEAF(k);
 
-			k->type = CONST_NUM;
-			k->bits.num.val.i = offset.bits.addr.bits.memaddr + offset.offset;
+					k->type = CONST_NUM;
+					k->bits.num.val.i = offset.bits.addr.bits.memaddr + offset.offset;
+					break;
+			}
 			break;
 
 		default:

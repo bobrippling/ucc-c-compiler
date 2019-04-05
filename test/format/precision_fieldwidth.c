@@ -11,11 +11,6 @@ typedef long intptr_t;
 
 int main()
 {
-	// TODO:
-	// [ ] test all these
-	// [ ] truncations part way
-	// [ ] bad length modifiers
-
 	// modifiers: "#0- +'"
 	// field width: 0-9 | *
 	// precision: . ( 0-9 | * )
@@ -53,4 +48,6 @@ int main()
 
 	printf("%.*f\n", (size_t)5, 3.2); // CHECK-linux: warning: %.*f expects a 'int' precision, not 'unsigned long'
 	printf("%*s", 2l, ""); // CHECK-linux: warning: %*s expects a 'int' field width, not 'long'
+
+	printf("%*.*s\n", 5, 3, "abcdefghijklmno");
 }

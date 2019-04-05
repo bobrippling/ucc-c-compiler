@@ -62,7 +62,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		/* can address: lvalues, arrays and functions */
 		if(!expr_is_addressable(e->lhs)){
 			warn_at_print_error(&e->where, "can't take the address of %s (%s)",
-					expr_str_friendly(e->lhs), type_to_str(e->lhs->tree_type));
+					expr_str_friendly(e->lhs, 0), type_to_str(e->lhs->tree_type));
 			fold_had_error = 1;
 			return;
 		}
@@ -129,7 +129,7 @@ static void const_expr_addr(expr *e, consty *k)
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR;
 		k->offset = 0;
-		k->bits.addr.is_lbl = 1;
+		k->bits.addr.lbl_type = CONST_LBL_TRUE;
 
 		if(static_ctx){
 			e->bits.lbl.label->mustgen_spel = out_label_code("goto");

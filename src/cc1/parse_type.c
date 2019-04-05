@@ -50,7 +50,7 @@ static int parse_at_decl_spec(void);
 static int can_complete_existing_sue(
 		struct_union_enum_st *sue, enum type_primitive new_tag)
 {
-	return sue->primitive == new_tag && !sue->got_membs;
+	return sue->primitive == new_tag && sue->membs_progress == SUE_MEMBS_NO;
 }
 
 static void emit_redef_sue_error(
@@ -112,6 +112,8 @@ static struct_union_enum_st *parse_sue_definition(
 			predecl_sue = sue_predeclare(scope, NULL, prim, sue_loc);
 		}
 
+		predecl_sue->membs_progress = SUE_MEMBS_PARSING;
+
 		for(;;){
 			where w;
 			expr *e;
@@ -166,6 +168,9 @@ static struct_union_enum_st *parse_sue_definition(
 		 */
 		decl **dmembers = NULL;
 		decl **i;
+
+		if(predecl_sue)
+			predecl_sue->membs_progress = SUE_MEMBS_PARSING;
 
 		while(parse_decl_group(
 					DECL_MULTI_ACCEPT_FIELD_WIDTH
@@ -347,7 +352,7 @@ static type *parse_type_sue(
 			if(!descended && prim_mismatch)
 				redecl_error = 1;
 			else if(prim_mismatch && !parse_token_creates_sue(curtok))
-					redecl_error = 1;
+				redecl_error = 1;
 
 			if(redecl_error){
 				emit_redef_sue_error(
@@ -540,6 +545,11 @@ enum parse_btype_flags
 	PARSE_BTYPE_DEFAULT_INT = 1 << 1
 };
 
+static void emit_duplicate_qual_warning(where *loc, enum type_qualifier qual)
+{
+	cc1_warn_at(loc, duplicate_declspec, "duplicate '%s' specifier", type_qual_to_str(qual, 0));
+}
+
 static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
 		int newdecl_context, symtable *scope,
@@ -573,9 +583,8 @@ static type *parse_btype(
 		if(curtok_is_type_qual()){
 			enum type_qualifier q = curtok_to_type_qualifier();
 
-			if(qual & q){
-				cc1_warn_at(NULL, duplicate_declspec, "duplicate '%s' specifier", type_qual_to_str(q, 0));
-			}
+			if(qual & q)
+				emit_duplicate_qual_warning(NULL, q);
 
 			qual |= q;
 			EAT(curtok);
@@ -909,6 +918,10 @@ static type *parse_btype(
 				fold_expr_nodecay(tdef_typeof, scope);
 
 				r = type_tdef_of(tdef_typeof, tdef_decl);
+
+				if(cc1_std <= STD_C89 && type_qual(r) & qual)
+					emit_duplicate_qual_warning(NULL, qual);
+
 				break;
 
 			case PRIMITIVE_NO_MORE:

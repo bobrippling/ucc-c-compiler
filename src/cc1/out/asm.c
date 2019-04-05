@@ -297,10 +297,15 @@ static void static_val(const struct section *sec, type *ty, expr *e)
 
 		case CONST_ADDR:
 			asm_declare_init_type(sec, ty);
-			if(k.bits.addr.is_lbl)
-				asm_out_section(sec, "%s", k.bits.addr.bits.lbl);
-			else
-				asm_out_section(sec, "%ld", k.bits.addr.bits.memaddr);
+			switch(k.bits.addr.lbl_type){
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK:
+					asm_out_section(sec, "%s", k.bits.addr.bits.lbl);
+					break;
+				case CONST_LBL_MEMADDR:
+					asm_out_section(sec, "%ld", k.bits.addr.bits.memaddr);
+					break;
+			}
 			break;
 
 		case CONST_STRK:
