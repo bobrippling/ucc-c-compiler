@@ -237,6 +237,7 @@ static attribute *parse_attr_cleanup(symtable *scope, const char *ident)
 	if(symtab_search(scope, sp, NULL, &ent) && ent.type == SYMTAB_ENT_DECL){
 		attr = attribute_new(attr_cleanup);
 		attr->bits.cleanup = ent.bits.decl;
+		decl_use(ent.bits.decl);
 	}else{
 		warn_at_print_error(&ident_loc, "function '%s' not found", sp);
 		fold_had_error = 1;
