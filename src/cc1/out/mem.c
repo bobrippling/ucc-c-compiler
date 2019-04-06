@@ -6,6 +6,9 @@
 #include "out.h"
 #include "val.h" /* for .t */
 
+#include "../fopt.h"
+#include "../cc1.h"
+
 static void out_memcpy_single(
 		out_ctx *octx,
 		const out_val **dst, const out_val **src)
@@ -45,6 +48,9 @@ const out_val *out_memcpy(
 	size_t i = nbytes;
 	type *tptr;
 	unsigned tptr_sz;
+
+	if(cc1_fopt.verbose_asm)
+		out_comment(octx, "generated memcpy of %zu bytes", nbytes);
 
 	if(i == 0){
 		out_val_consume(octx, src);
