@@ -21,6 +21,7 @@
 #include "stack_protector.h"
 
 #include "../cc1.h" /* mopt_mode */
+#include "../fopt.h"
 #include "../../util/platform.h"
 #include "../../util/dynarray.h"
 
@@ -101,6 +102,7 @@ static void callee_save_or_restore(
 
 void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *end_dbg_lbl)
 {
+	int clean_stack;
 	out_blk *call_save_spill_blk = NULL;
 	out_blk *flush_root;
 
@@ -231,18 +233,20 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 		octx->in_prologue = 0;
 	}
 
+	clean_stack = octx->used_stack || !cc1_fopt.omit_frame_pointer;
+
 	out_current_blk(octx, octx->epilogue_blk);
 	{
 		out_check_stack_canary(octx);
 
-		impl_func_epilogue(octx, ty, octx->used_stack);
+		impl_func_epilogue(octx, ty, clean_stack);
 		/* terminate here without an insn */
 		assert(octx->current_blk->type == BLK_UNINIT);
 		octx->current_blk->type = BLK_TERMINAL;
 	}
 
 	/* space for spills */
-	if(octx->used_stack){
+	if(clean_stack){
 		flush_root = octx->entry_blk;
 		out_current_blk(octx, octx->entry_blk);
 		out_ctrl_transfer_make_current(octx, octx->stacksub_blk);
