@@ -52,19 +52,16 @@ const out_val *out_memcpy(
 	if(cc1_fopt.verbose_asm)
 		out_comment(octx, "generated memcpy of %zu bytes", nbytes);
 
-	if(i == 0){
-		out_val_consume(octx, src);
-		return dest;
+	if(i > 0){
+		tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, nbytes, 0));
+		tptr_sz = type_size(tptr, NULL);
 	}
 
-	tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, nbytes, 0));
-	tptr_sz = type_size(tptr, NULL);
-
-	dest = out_change_type(octx, dest, tptr);
-	src = out_change_type(octx, src, tptr);
-
 	while(i > 0){
-		/* as many copies as we can at size tptr_sz, then half */
+		/* as many copies as we can */
+		dest = out_change_type(octx, dest, tptr);
+		src = out_change_type(octx, src, tptr);
+
 		while(i >= tptr_sz){
 			i -= tptr_sz;
 			out_memcpy_single(octx, &dest, &src);
