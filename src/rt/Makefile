@@ -1,6 +1,9 @@
 include ../config.mk
 
-CFLAGS += -fno-sanitize=all
+WARNINGS = -Wall -Wextra -pedantic -Werror=incompatible-pointer-types -Werror=implicit-function-declaration -Wmissing-prototypes -Wstrict-prototypes
+
+CC = ../ucc/ucc
+CFLAGS = -std=c11 ${WARNINGS}
 
 all: dsohandle.o
 

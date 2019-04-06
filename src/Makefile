@@ -14,7 +14,7 @@ cpp2: util
 util:
 	$Q${MAKE_DIR}
 
-rt:
+rt: ucc cc1 cpp2 util
 	$Q${MAKE_DIR}
 
 clean:
