@@ -14,5 +14,5 @@ void assign(char *a, const char *b)
 
 int main()
 {
-	return (char *)0 == (int *)5; // CHECK: warning: comparison of distinct pointer types, comparison lacks a cast
+	return (char *)0 == (int *)5; // CHECK: warning: distinct pointer types in comparison lacks a cast
 }
