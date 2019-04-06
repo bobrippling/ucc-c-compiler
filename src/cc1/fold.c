@@ -1449,6 +1449,15 @@ int fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 				}
 			}
 		}
+
+		/* if we're in a nonnull function and this expr is a nonnull expr,
+		 * warn about testing a nonnull expr */
+		if(expr_attr_present(REMOVE_CONST(expr *, e), attr_nonnull)){
+			/* this works because nonnull can be on the function type,
+			 * not just the decl, but those attributes are propagated
+			 * to the parameters */
+			cc1_warn_at(&e->where, attr_nonnull_tested, "testing a nonnull value");
+		}
 	}
 
 	if(chk & FOLD_CHK_CONST_I){

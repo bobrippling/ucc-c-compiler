@@ -116,6 +116,8 @@ X("attr-nonnull-noargs", attr_nonnull_noargs)
 X("attr-nonnull-nonptr", attr_nonnull_nonptr)
 X("attr-nonnull-noptrs", attr_nonnull_noptrs)
 X("attr-nonnull-oob", attr_nonnull_oob)
+X("attr-nonnull-tested", attr_nonnull_tested)
+ALIAS("pointer-bool-conversion", attr_nonnull_tested) /* clang */
 X("attr-section-badchar", attr_section_badchar)
 X("attr-sentinel", attr_sentinel)
 X("attr-sentinel-nonvariadic", attr_sentinel_nonvariadic)
