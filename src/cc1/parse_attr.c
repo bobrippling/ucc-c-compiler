@@ -278,6 +278,7 @@ static attribute *parse_ ## t(                  \
 }
 
 EMPTY(attr_unused)
+EMPTY(attr_used)
 EMPTY(attr_warn_unused)
 EMPTY(attr_enum_bitmask)
 EMPTY(attr_noreturn)
