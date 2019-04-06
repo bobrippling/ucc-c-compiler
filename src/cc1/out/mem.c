@@ -45,31 +45,22 @@ const out_val *out_memcpy(
 	lea_expr(e->lhs, stab);
 	out_call(3, e->tree_type, ctype);
 #else
-	size_t i = nbytes;
-	type *tptr;
-	unsigned tptr_sz;
+	size_t bytes_todo = nbytes;
 
 	if(cc1_fopt.verbose_asm)
 		out_comment(octx, "generated memcpy of %zu bytes", nbytes);
 
-	if(i > 0){
-		tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, nbytes, 0));
-		tptr_sz = type_size(tptr, NULL);
-	}
+	while(bytes_todo > 0){
+		type *step = type_nav_MAX_FOR(cc1_type_nav, bytes_todo, 0);
+		type *step_ptr = type_ptr_to(step);
+		unsigned step_sz = type_size(step, NULL);
 
-	while(i > 0){
-		/* as many copies as we can */
-		dest = out_change_type(octx, dest, tptr);
-		src = out_change_type(octx, src, tptr);
+		dest = out_change_type(octx, dest, step_ptr);
+		src = out_change_type(octx, src, step_ptr);
 
-		while(i >= tptr_sz){
-			i -= tptr_sz;
+		while(bytes_todo >= step_sz){
 			out_memcpy_single(octx, &dest, &src);
-		}
-
-		if(i > 0){
-			tptr_sz /= 2;
-			tptr = type_ptr_to(type_nav_MAX_FOR(cc1_type_nav, tptr_sz, 0));
+			bytes_todo -= step_sz;
 		}
 	}
 
