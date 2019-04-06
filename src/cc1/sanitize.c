@@ -167,7 +167,7 @@ void sanitize_nonnull(symtable *arg_symtab, out_ctx *octx)
 			continue;
 
 		sanitize_assert(
-				out_new_sym(octx, d->sym),
+				out_new_sym_val(octx, d->sym),
 				octx,
 				"nonnull argument");
 	}
