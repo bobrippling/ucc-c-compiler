@@ -1,5 +1,7 @@
 include ../config.mk
 
+CFLAGS += -fno-sanitize=all
+
 all: dsohandle.o
 
 clean:
