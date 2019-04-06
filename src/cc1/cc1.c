@@ -142,6 +142,7 @@ static void dump_options(void)
 	fprintf(stderr, "  -w\n");
 	fprintf(stderr, "  -std=(gnu|c)(99|90|89|11), -ansi\n");
 	fprintf(stderr, "  -f(sanitize=...|sanitize-error=...|sanitize-undefined-trap-on-error)\n");
+	fprintf(stderr, "  -fno-sanitize=all\n");
 	fprintf(stderr, "  -fvisibility=default|hidden|protected\n");
 	fprintf(stderr, "  -fdebug-compilation-dir=...\n");
 	fprintf(stderr, "\n");
@@ -472,6 +473,12 @@ static int parse_mf_equals(
 	int found = 0;
 	int i;
 	int new_val;
+
+	if(invert && !strcmp(arg_substr, "sanitize=all")){
+		cc1_sanitize = 0;
+		cc1_fopt.trapv = 0;
+		return 1;
+	}
 
 	if(invert){
 		usage(argv0, "\"no-\" unexpected for value-argument\n");
