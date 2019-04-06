@@ -218,11 +218,6 @@ int attribute_equal(attribute *a, attribute *b)
 				return 0;
 			}
 #undef NEQ
-			if(a->bits.format.fmt_idx != b->bits.format.fmt_idx
-			|| a->bits.format.var_idx != b->bits.format.var_idx)
-			{
-				return 0;
-			}
 			break;
 
 		case attr_cleanup:

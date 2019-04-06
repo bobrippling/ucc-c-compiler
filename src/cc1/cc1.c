@@ -49,14 +49,13 @@ struct version
 
 static struct
 {
-	char type;
 	const char *arg;
 	int mask;
 } mopts[] = {
-	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
-	{ 'm',  "align-is-p2", MOPT_ALIGN_IS_POW2 },
+	{ "stackrealign", MOPT_STACK_REALIGN },
+	{ "align-is-p2", MOPT_ALIGN_IS_POW2 },
 
-	{ 0,  NULL, 0 }
+	{ NULL, 0 }
 };
 
 static struct
@@ -643,7 +642,7 @@ int main(int argc, char **argv)
 
 				case '\0':
 					if(++i == argc)
-						usage(argv[0], "-emit needs an argument");
+						usage(argv[0], "-emit needs an argument\n");
 					emit = argv[i];
 					break;
 
@@ -659,7 +658,7 @@ int main(int argc, char **argv)
 			else if(!strcmp(emit, "style"))
 				cc1_backend = BACKEND_STYLE;
 			else
-				usage(argv[0], "unknown emit backend \"%s\"", emit);
+				usage(argv[0], "unknown emit backend \"%s\"\n", emit);
 
 		}else if(!strncmp(argv[i], "-g", 2)){
 			const char *mode = argv[i] + 2;
@@ -702,7 +701,7 @@ dbg_unknown:
 
 		}else if(!strcmp(argv[i], "-o")){
 			if(++i == argc)
-				usage(argv[0], "-o needs an argument");
+				usage(argv[0], "-o needs an argument\n");
 
 			if(strcmp(argv[i], "-"))
 				out_fname = argv[i];
@@ -751,7 +750,7 @@ dbg_unknown:
 		}else if(!in_fname){
 			in_fname = argv[i];
 		}else{
-			usage(argv[0], "unknown argument: '%s'", argv[i]);
+			usage(argv[0], "unknown argument: '%s'\n", argv[i]);
 		}
 	}
 
