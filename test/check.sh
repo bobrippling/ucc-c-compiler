@@ -52,7 +52,6 @@ usage(){
 	exit 1
 }
 
-ucc=../ucc
 e=/tmp/check.$$
 
 trap "rm -f $e" EXIT
@@ -61,7 +60,7 @@ trap "rm -f $e" EXIT
 f="$1"
 shift
 
-$ucc -fno-show-line $synonly "$@" "$f" 2>$e
+$UCC -fno-show-line $synonly "$@" "$f" 2>$e
 r=$?
 
 # check for abort
