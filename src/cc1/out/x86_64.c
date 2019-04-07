@@ -1702,7 +1702,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		}
 
 		ret_ty = l->t;
-		return v_dup_or_reuse(octx, min_retained(octx, l, r), ret_ty);
+		out_val_release(octx, r);
+		return v_dup_or_reuse(octx, l, ret_ty);
 	}
 }
 
