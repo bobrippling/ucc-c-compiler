@@ -226,3 +226,11 @@ void sanitize_nonnull_args(symtable *arg_symtab, out_ctx *octx)
 				"nonnull argument");
 	}
 }
+
+void sanitize_nonnull(
+		const out_val *v, out_ctx *octx, const char *desc)
+{
+	if(!(cc1_sanitize & SAN_NULL))
+		return;
+	sanitize_assert(out_val_retain(octx, v), octx, desc);
+}

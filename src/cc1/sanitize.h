@@ -1,6 +1,8 @@
 #ifndef SANITIZE_H
 #define SANITIZE_H
 
+/* sanitizer function don't affect a value's retainedness */
+
 void sanitize_fail(out_ctx *, const char *desc);
 
 void sanitize_boundscheck(
@@ -19,5 +21,8 @@ void sanitize_shift(
 void sanitize_nonnull_args(symtable *, out_ctx *);
 
 void sanitize_divide(const out_val *lhs, const out_val *rhs, type *, out_ctx *);
+
+void sanitize_nonnull(
+		const out_val *, out_ctx *, const char *desc);
 
 #endif
