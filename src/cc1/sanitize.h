@@ -16,7 +16,7 @@ void sanitize_shift(
 		out_ctx *octx,
 		const out_val **lhs, const out_val **rhs);
 
-void sanitize_nonnull(symtable *, out_ctx *);
+void sanitize_nonnull_args(symtable *, out_ctx *);
 
 void sanitize_divide(const out_val *lhs, const out_val *rhs, type *, out_ctx *);
 

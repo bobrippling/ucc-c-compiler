@@ -205,7 +205,7 @@ void sanitize_divide(const out_val *lhs, const out_val *rhs, type *ty, out_ctx *
 	sanitize_assert(cmp, octx, "INT_MIN / -1");
 }
 
-void sanitize_nonnull(symtable *arg_symtab, out_ctx *octx)
+void sanitize_nonnull_args(symtable *arg_symtab, out_ctx *octx)
 {
 	/* by this stage, any nonnull attribute will have been applied to each argument decl type */
 	decl **i;
