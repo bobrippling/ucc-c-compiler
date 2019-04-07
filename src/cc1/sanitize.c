@@ -191,13 +191,30 @@ void sanitize_shift(
 
 void sanitize_divide(const out_val *lhs, const out_val *rhs, type *ty, out_ctx *octx)
 {
-	const out_val *cmp;
+	const out_val *cmp, *zero;
+	const int is_fp = type_is_floating(ty);
 
-	if(!(cc1_sanitize & SAN_INTEGER_DIVIDE_BY_ZERO))
-		return;
+	if(is_fp){
+		numeric n;
+		if(!(cc1_sanitize & SAN_FLOAT_DIVIDE_BY_ZERO))
+			return;
 
-	cmp = out_op(octx, op_ne, out_val_retain(octx, rhs), out_new_l(octx, ty, 0));
+		n.suffix = VAL_FLOATING;
+		n.val.f = 0;
+
+		zero = out_new_num(octx, ty, &n);
+	}else{
+		if(!(cc1_sanitize & SAN_INTEGER_DIVIDE_BY_ZERO))
+			return;
+
+		zero = out_new_l(octx, ty, 0);
+	}
+
+	cmp = out_op(octx, op_ne, out_val_retain(octx, rhs), zero);
 	sanitize_assert(cmp, octx, "divide by zero");
+
+	if(is_fp)
+		return;
 
 	cmp = out_op(octx, op_or,
 			out_op(octx, op_ne, out_val_retain(octx, lhs), out_new_l(octx, ty, UCC_INT_MIN)),
