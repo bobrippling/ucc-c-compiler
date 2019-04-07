@@ -108,8 +108,13 @@ int cc1_warn_at_w(
 		where = where_cc1_current(&backup);
 
 	/* don't emit warnings from system headers */
-	if(!cc1_warning.system_headers && where_in_sysheader(where))
-		return 0;
+	if(!cc1_warning.system_headers && where_in_sysheader(where)){
+		if(warn_type == VWARN_ERR){
+			/* we always want this warning emitting */
+		}else{
+			return 0;
+		}
+	}
 
 	va_start(l, fmt);
 	vwarn(where, warn_type, fmt, l);
