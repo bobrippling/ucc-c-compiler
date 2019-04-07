@@ -603,8 +603,10 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 	casted = gen_expr(expr_cast_child(e), octx);
 
 	if(expr_cast_is_lval2rval(e)){
-		if(expr_kind(expr_cast_child(e), deref))
+		if(expr_kind(expr_cast_child(e), deref)){
 			sanitize_nonnull(casted, octx, "dereference");
+			sanitize_aligned(casted, octx, e->tree_type);
+		}
 
 		if(type_is_s_or_u(tfrom)){
 			/* either pass through as an LVALUE_STRUCT,

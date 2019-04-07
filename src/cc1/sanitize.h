@@ -25,4 +25,6 @@ void sanitize_divide(const out_val *lhs, const out_val *rhs, type *, out_ctx *);
 void sanitize_nonnull(
 		const out_val *, out_ctx *, const char *desc);
 
+void sanitize_aligned(const out_val *, out_ctx *, type *);
+
 #endif
