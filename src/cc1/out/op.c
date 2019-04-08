@@ -342,7 +342,7 @@ const out_val *out_op(
 			break;
 		case op_multiply:
 		case op_divide:
-			if(vconst && (cc1_sanitize & SAN_SIGNED_INTEGER_OVERFLOW))
+			if(vconst && !(cc1_sanitize & (SAN_SIGNED_INTEGER_OVERFLOW | SAN_POINTER_OVERFLOW)))
 				try_shift_conv(octx, &binop, &lhs, &rhs);
 			break;
 		default:

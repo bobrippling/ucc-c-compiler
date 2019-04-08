@@ -1287,11 +1287,15 @@ void gen_op_trapv(
 		out_ctx *octx,
 		enum op_type op)
 {
-	if(!(cc1_sanitize & SAN_SIGNED_INTEGER_OVERFLOW))
+	if(type_is_integral(evaltt) && type_is_signed(evaltt)){
+		if(!(cc1_sanitize & SAN_SIGNED_INTEGER_OVERFLOW))
+			return;
+	}else if(type_is_ptr(evaltt)){
+		if(!(cc1_sanitize & SAN_POINTER_OVERFLOW))
+			return;
+	}else{
 		return;
-
-	if(!type_is_integral(evaltt) || !type_is_signed(evaltt))
-		return;
+	}
 
 	if(op_is_comparison(op))
 		return;
