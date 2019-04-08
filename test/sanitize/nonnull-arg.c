@@ -1,4 +1,4 @@
-// RUN: %ucc -o %t %s -fsanitize=undefined -fsanitize-error=call=san_err
+// RUN: %ucc -o %t %s -fsanitize=nonnull-attribute -fsanitize-error=call=san_err
 // RUN: %ocheck 3 %t
 
 __attribute((nonnull(2)))
