@@ -27,4 +27,6 @@ void sanitize_nonnull(
 
 void sanitize_aligned(const out_val *, out_ctx *, type *);
 
+void sanitize_returns_nonnull(const out_val *, out_ctx *);
+
 #endif

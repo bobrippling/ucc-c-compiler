@@ -266,3 +266,10 @@ void sanitize_aligned(const out_val *v, out_ctx *octx, type *t)
 					out_new_l(octx, type_ptr_to(t), mask))),
 			octx, "alignment");
 }
+
+void sanitize_returns_nonnull(const out_val *v, out_ctx *octx)
+{
+	if(!(cc1_sanitize & SAN_RETURNS_NONNULL_ATTRIBUTE))
+		return;
+	sanitize_assert(out_val_retain(octx, v), octx, "returns_nonnull");
+}
