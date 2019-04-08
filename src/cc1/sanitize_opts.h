@@ -15,7 +15,6 @@
 	X(SAN_FLOAT_CAST_OVERFLOW,       1 << 10, "float-cast-overflow",       "catch overflow on floating pointer casts (not enabled by -fsanitize=undefined)") \
 	X(SAN_RETURNS_NONNULL_ATTRIBUTE, 1 << 11, "returns-nonnull-attribute", "catch null returned from __attribute__((returns_nonnull))") \
 	X(SAN_BOOL,                      1 << 12, "bool",                      "catch storing a value other than 0 or 1 in a _Bool") \
-	X(SAN_ENUM,                      1 << 13, "enum",                      "catch out-of-bounds enum stores") \
-	X(SAN_POINTER_OVERFLOW,          1 << 14, "pointer-overflow",          "catch overflow of pointer arithmetic")
+	X(SAN_POINTER_OVERFLOW,          1 << 13, "pointer-overflow",          "catch overflow of pointer arithmetic")
 
 #endif
