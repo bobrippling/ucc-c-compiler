@@ -3,7 +3,7 @@
 // RUN: %ucc -ftrapv -DCALL=notrapv -o %t %s
 // RUN: %t
 
-#define INT_MAX 2147483647
+#define INT_MAX __INT_MAX__
 
 trapv(int i)
 {
