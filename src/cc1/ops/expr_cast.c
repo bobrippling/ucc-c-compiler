@@ -638,6 +638,9 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 		}else{
 			/* primitive lval2rval */
 			casted = out_deref(octx, casted);
+
+			if(type_is_primitive(e->tree_type, type__Bool))
+				sanitize_bool(casted, octx);
 		}
 
 	}else{

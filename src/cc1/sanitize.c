@@ -273,3 +273,19 @@ void sanitize_returns_nonnull(const out_val *v, out_ctx *octx)
 		return;
 	sanitize_assert(out_val_retain(octx, v), octx, "returns_nonnull");
 }
+
+void sanitize_bool(const out_val *v, out_ctx *octx)
+{
+	type *tunsigned;
+
+	if(!(cc1_sanitize & SAN_BOOL))
+		return;
+
+	tunsigned = type_nav_btype(cc1_type_nav, type_uchar);
+
+	sanitize_assert(
+			out_op(octx, op_le,
+				out_cast(octx, out_val_retain(octx, v), tunsigned, 0),
+				out_new_l(octx, tunsigned, 1)),
+				octx, "bool load");
+}
