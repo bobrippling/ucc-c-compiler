@@ -157,6 +157,7 @@ void attribute_free(attribute *a)
 		case attr_section:
 		case attr_call_conv:
 		case attr_nonnull:
+		case attr_returns_nonnull:
 		case attr_sentinel:
 		case attr_aligned:
 		case attr_constructor:
@@ -239,6 +240,9 @@ int attribute_equal(attribute *a, attribute *b)
 		case attr_nonnull:
 			if(a->bits.nonnull_args != b->bits.nonnull_args)
 				return 0;
+			break;
+
+		case attr_returns_nonnull:
 			break;
 
 		case attr_sentinel:

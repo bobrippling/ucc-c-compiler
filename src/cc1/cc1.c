@@ -39,6 +39,7 @@
 #include "cc1_target.h"
 #include "cc1_out.h"
 #include "cc1_sections.h"
+#include "sanitize_opt.h"
 
 static const char **system_includes;
 
@@ -78,8 +79,6 @@ char *cc1_first_fname;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 enum mopt mopt_mode = 0;
-enum san_opts cc1_sanitize = 0;
-char *cc1_sanitize_handler_fn;
 
 enum visibility cc1_visibility_default;
 
@@ -421,38 +420,6 @@ unrecog:
 	return 1;
 }
 
-static void add_sanitize_option(const char *argv0, const char *san)
-{
-	if(!strcmp(san, "undefined")){
-		cc1_sanitize |= CC1_UBSAN;
-		cc1_fopt.trapv = 1;
-	}else{
-		fprintf(stderr, "%s: unknown sanitize option '%s'\n", argv0, san);
-		exit(1);
-	}
-}
-
-static void set_sanitize_error(const char *argv0, const char *handler)
-{
-	free(cc1_sanitize_handler_fn);
-	cc1_sanitize_handler_fn = NULL;
-
-	if(!strcmp(handler, "trap")){
-		/* fine */
-	}else if(!strncmp(handler, "call=", 5)){
-		cc1_sanitize_handler_fn = ustrdup(handler + 5);
-
-		if(!*cc1_sanitize_handler_fn){
-			fprintf(stderr, "%s: empty sanitize function handler\n", argv0);
-			exit(1);
-		}
-
-	}else{
-		fprintf(stderr, "%s: unknown sanitize handler '%s'\n", argv0, handler);
-		exit(1);
-	}
-}
-
 static void set_default_visibility(const char *argv0, const char *visibility)
 {
 	if(!visibility_parse(&cc1_visibility_default, visibility, cc1_target_details.as.supports_visibility_protected)){
@@ -472,21 +439,26 @@ static int parse_mf_equals(
 	int i;
 	int new_val;
 
+	if(invert && !strcmp(arg_substr, "sanitize=all")){
+		sanitize_opt_off();
+		return 1;
+	}
+
 	if(invert){
 		usage(argv0, "\"no-\" unexpected for value-argument\n");
 	}
 
 	if(!strncmp(arg_substr, "sanitize=", 9)){
-		add_sanitize_option(argv0, arg_substr + 9);
+		sanitize_opt_add(argv0, arg_substr + 9);
 		return 1;
 	}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
-		set_sanitize_error(argv0, arg_substr + 15);
+		sanitize_opt_set_error(argv0, arg_substr + 15);
 		return 1;
 	}else if(!strcmp(arg_substr, "sanitize-undefined-trap-on-error")){
 		/* currently the choices are a noreturn function, or trap.
 		 * in the future, support could be added for linking with gcc or clang's libubsan,
 		 * and calling the runtime support functions therein */
-		set_sanitize_error(argv0, "trap");
+		sanitize_opt_set_error(argv0, "trap");
 	}else if(!strncmp(arg_substr, "visibility=", 11)){
 		set_default_visibility(argv0, arg_substr + 11);
 		return 1;
@@ -794,6 +766,8 @@ dbg_unknown:
 	}
 
 	show_current_line = cc1_fopt.show_line;
+	if(cc1_fopt.trapv)
+		cc1_sanitize |= SAN_SIGNED_INTEGER_OVERFLOW;
 
 	cc1_type_nav = type_nav_init();
 

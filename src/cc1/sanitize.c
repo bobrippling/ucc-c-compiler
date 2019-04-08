@@ -1,12 +1,15 @@
 #include <stdlib.h>
 
+#include "../util/limits.h"
+
 #include "expr.h"
 #include "type_is.h"
 #include "type_nav.h"
-#include "cc1.h"
+#include "sanitize_opt.h"
 #include "funcargs.h"
 #include "mangle.h"
 #include "out/ctrl.h"
+#include "vla.h"
 
 #include "sanitize.h"
 
@@ -46,6 +49,17 @@ static void sanitize_assert(const out_val *cond, out_ctx *octx, const char *desc
 	out_current_blk(octx, land);
 }
 
+static void sanitize_assert_order2(
+		const out_val *test, enum op_type op, const out_val *against,
+		out_ctx *octx, const char *desc)
+{
+	const out_val *cmp;
+
+	cmp = out_op(octx, op, test, against);
+
+	sanitize_assert(cmp, octx, desc);
+}
+
 static void sanitize_assert_order(
 		const out_val *test, enum op_type op, long limit,
 		type *op_type, out_ctx *octx, const char *desc)
@@ -60,9 +74,7 @@ static void sanitize_assert_order(
 			out_val_retain(octx, test),
 			op_type);
 
-	const out_val *cmp = out_op(octx, op, lengthened_test, vlimit);
-
-	sanitize_assert(cmp, octx, desc);
+	sanitize_assert_order2(lengthened_test, op, vlimit, octx, desc);
 }
 
 static type *uintptr_ty(void)
@@ -81,7 +93,7 @@ void sanitize_boundscheck(
 	consty sz;
 	const out_val *val;
 
-	if(!(cc1_sanitize & CC1_UBSAN))
+	if(!(cc1_sanitize & SAN_BOUNDS))
 		return;
 
 	if(type_is_ptr(elhs->tree_type))
@@ -100,22 +112,48 @@ void sanitize_boundscheck(
 		return;
 	const_fold(expr_sz, &sz);
 
-	if(sz.type != CONST_NUM)
-		return;
+	/* note that the comparison (op_le) allows one-past-the-end,
+	 * as we don't know at this point if we're addressing or indexing */
+	switch(sz.type){
+		case CONST_NUM:
+			if(!K_INTEGRAL(sz.bits.num))
+				return;
 
-	if(!K_INTEGRAL(sz.bits.num))
-		return;
+			/* force unsigned compare, which catches negative indexes */
+			sanitize_assert_order(val, op_le, sz.bits.num.val.i, uintptr_ty(), octx, "bounds");
+			break;
 
-	/* force unsigned compare, which catches negative indexes */
-	sanitize_assert_order(val, op_le, sz.bits.num.val.i, uintptr_ty(), octx, "bounds");
+		case CONST_NO:
+		{
+			/* vla */
+			const out_val *bytesize, *byteindex, *tsize;
+			type *tnext = type_is_array(array_decl->ref);
+
+			if(type_is_variably_modified(tnext))
+				tsize = vla_size(tnext, octx);
+			else
+				tsize = out_new_l(octx, uintptr_ty(), type_size(tnext, NULL));
+
+			out_val_retain(octx, val);
+			byteindex = out_op(octx, op_multiply, val, tsize);
+
+			bytesize = vla_size(array_decl->ref, octx);
+
+			sanitize_assert_order2(byteindex, op_le, bytesize, octx, "vla bounds");
+			break;
+		}
+
+		default:
+			break;
+	}
 }
 
-void sanitize_vlacheck(const out_val *vla_sz, out_ctx *octx)
+void sanitize_vlacheck(const out_val *vla_sz, type *sz_ty, out_ctx *octx)
 {
-	if(!(cc1_sanitize & CC1_UBSAN))
+	if(!(cc1_sanitize & SAN_VLA_BOUND))
 		return;
 
-	sanitize_assert_order(vla_sz, op_gt, 0, uintptr_ty(), octx, "vla");
+	sanitize_assert_order(vla_sz, op_gt, 0, sz_ty, octx, "vla");
 }
 
 void sanitize_shift(
@@ -128,7 +166,7 @@ void sanitize_shift(
 	const unsigned max = CHAR_BIT * type_size(elhs->tree_type, NULL);
 	out_blk *current;
 
-	if(!(cc1_sanitize & CC1_UBSAN))
+	if(!(cc1_sanitize & SAN_SHIFT_EXPONENT))
 		return;
 
 	current = out_ctx_current_blk(octx);
@@ -151,12 +189,45 @@ void sanitize_shift(
 	*rhs = out_val_unphi(octx, *rhs);
 }
 
-void sanitize_nonnull(symtable *arg_symtab, out_ctx *octx)
+void sanitize_divide(const out_val *lhs, const out_val *rhs, type *ty, out_ctx *octx)
+{
+	const out_val *cmp, *zero;
+	const int is_fp = type_is_floating(ty);
+
+	if(is_fp){
+		numeric n;
+		if(!(cc1_sanitize & SAN_FLOAT_DIVIDE_BY_ZERO))
+			return;
+
+		n.suffix = VAL_FLOATING;
+		n.val.f = 0;
+
+		zero = out_new_num(octx, ty, &n);
+	}else{
+		if(!(cc1_sanitize & SAN_INTEGER_DIVIDE_BY_ZERO))
+			return;
+
+		zero = out_new_l(octx, ty, 0);
+	}
+
+	cmp = out_op(octx, op_ne, out_val_retain(octx, rhs), zero);
+	sanitize_assert(cmp, octx, "divide by zero");
+
+	if(is_fp)
+		return;
+
+	cmp = out_op(octx, op_or,
+			out_op(octx, op_ne, out_val_retain(octx, lhs), out_new_l(octx, ty, UCC_INT_MIN)),
+			out_op(octx, op_ne, out_val_retain(octx, rhs), out_new_l(octx, ty, -1)));
+	sanitize_assert(cmp, octx, "INT_MIN / -1");
+}
+
+void sanitize_nonnull_args(symtable *arg_symtab, out_ctx *octx)
 {
 	/* by this stage, any nonnull attribute will have been applied to each argument decl type */
 	decl **i;
 
-	if(!(cc1_sanitize & CC1_UBSAN))
+	if(!(cc1_sanitize & SAN_NONNULL_ATTRIBUTE))
 		return;
 
 	for(i = symtab_decls(arg_symtab); i && *i; i++){
@@ -171,4 +242,50 @@ void sanitize_nonnull(symtable *arg_symtab, out_ctx *octx)
 				octx,
 				"nonnull argument");
 	}
+}
+
+void sanitize_nonnull(
+		const out_val *v, out_ctx *octx, const char *desc)
+{
+	if(!(cc1_sanitize & SAN_NULL))
+		return;
+	sanitize_assert(out_val_retain(octx, v), octx, desc);
+}
+
+void sanitize_aligned(const out_val *v, out_ctx *octx, type *t)
+{
+	unsigned mask = type_align(t, NULL) - 1;
+
+	if(!(cc1_sanitize & SAN_ALIGNMENT))
+		return;
+
+	sanitize_assert(
+			out_op_unary(octx, op_not,
+				out_op(octx, op_and,
+					out_val_retain(octx, v),
+					out_new_l(octx, type_ptr_to(t), mask))),
+			octx, "alignment");
+}
+
+void sanitize_returns_nonnull(const out_val *v, out_ctx *octx)
+{
+	if(!(cc1_sanitize & SAN_RETURNS_NONNULL_ATTRIBUTE))
+		return;
+	sanitize_assert(out_val_retain(octx, v), octx, "returns_nonnull");
+}
+
+void sanitize_bool(const out_val *v, out_ctx *octx)
+{
+	type *tunsigned;
+
+	if(!(cc1_sanitize & SAN_BOOL))
+		return;
+
+	tunsigned = type_nav_btype(cc1_type_nav, type_uchar);
+
+	sanitize_assert(
+			out_op(octx, op_le,
+				out_cast(octx, out_val_retain(octx, v), tunsigned, 0),
+				out_new_l(octx, tunsigned, 1)),
+				octx, "bool load");
 }

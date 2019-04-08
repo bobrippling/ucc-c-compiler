@@ -277,7 +277,7 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 		if(cc1_gdebug == DEBUG_FULL)
 			out_dbg_emit_args_done(octx, type_funcargs(d->ref));
 
-		sanitize_nonnull(arg_symtab, octx);
+		sanitize_nonnull_args(arg_symtab, octx);
 
 		gen_func_stmt(d->bits.func.code, octx);
 

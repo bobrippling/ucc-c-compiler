@@ -12,8 +12,10 @@
 #include "../type_nav.h"
 #include "../out/dbg.h"
 #include "../fopt.h"
+#include "../sanitize.h"
 
 #include "expr_val.h"
+#include "expr_deref.h"
 
 #define IMPLICIT_STR(e) (expr_cast_is_implicit(e) ? "implicit " : "")
 
@@ -614,6 +616,11 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 	casted = gen_expr(expr_cast_child(e), octx);
 
 	if(expr_cast_is_lval2rval(e)){
+		if(expr_kind(expr_cast_child(e), deref)){
+			sanitize_nonnull(casted, octx, "dereference");
+			sanitize_aligned(casted, octx, e->tree_type);
+		}
+
 		if(type_is_s_or_u(tfrom)){
 			/* either pass through as an LVALUE_STRUCT,
 			 * or dereference here for cast-to-void, if volatile */
@@ -644,6 +651,9 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 		}else{
 			/* primitive lval2rval */
 			casted = out_deref(octx, casted);
+
+			if(type_is_primitive(e->tree_type, type__Bool))
+				sanitize_bool(casted, octx);
 		}
 
 	}else{

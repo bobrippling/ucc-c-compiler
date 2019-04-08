@@ -2,6 +2,7 @@
 #define CC1_WARN_H
 
 #include "../util/dynmap.h"
+#include "../util/where.h"
 
 enum warning_fatality
 {

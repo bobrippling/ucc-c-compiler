@@ -16,6 +16,7 @@
 		NAME(noreturn, 1)       \
 		NAME(noderef, 1)        \
 		NAME(nonnull, 1)        \
+		NAME(returns_nonnull, 1)\
 		NAME(packed, 1)         \
 		NAME(sentinel, 0)       \
 		NAME(aligned, 1)        \

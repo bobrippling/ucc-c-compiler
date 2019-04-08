@@ -9,8 +9,9 @@
 #include "../out/asm.h"
 #include "../type_is.h"
 #include "../type_nav.h"
-#include "../sanitize.h"
 #include "../fopt.h"
+#include "../sanitize.h"
+#include "../sanitize_opt.h"
 
 #include "expr_cast.h"
 #include "expr_val.h"
@@ -1363,11 +1364,15 @@ void gen_op_trapv(
 		out_ctx *octx,
 		enum op_type op)
 {
-	if(!cc1_fopt.trapv)
+	if(type_is_integral(evaltt) && type_is_signed(evaltt)){
+		if(!(cc1_sanitize & SAN_SIGNED_INTEGER_OVERFLOW))
+			return;
+	}else if(type_is_ptr(evaltt)){
+		if(!(cc1_sanitize & SAN_POINTER_OVERFLOW))
+			return;
+	}else{
 		return;
-
-	if(!type_is_integral(evaltt) || !type_is_signed(evaltt))
-		return;
+	}
 
 	if(op_is_comparison(op))
 		return;
@@ -1418,6 +1423,9 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 			case op_shiftl:
 			case op_shiftr:
 				sanitize_shift(e->lhs, e->rhs, e->bits.op.op, octx, &lhs, &rhs);
+				break;
+			case op_divide:
+				sanitize_divide(lhs, rhs, e->tree_type, octx);
 				break;
 			default:
 				break;

@@ -20,16 +20,9 @@ enum cc1_backend
 	BACKEND_STYLE,
 };
 
-enum san_opts
-{
-	CC1_UBSAN = 1 << 0
-};
-
 extern struct cc1_fopt cc1_fopt;
 extern enum mopt mopt_mode;
 extern enum cc1_backend cc1_backend;
-extern enum san_opts cc1_sanitize;
-extern char *cc1_sanitize_handler_fn;
 extern enum visibility cc1_visibility_default;
 
 extern enum c_std cc1_std;

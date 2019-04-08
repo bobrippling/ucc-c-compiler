@@ -1,6 +1,6 @@
 // RUN: %check -e %s -pedantic
 
-#define INT_MAX 2147483647
+#define INT_MAX __INT_MAX__
 
 enum fine
 {
