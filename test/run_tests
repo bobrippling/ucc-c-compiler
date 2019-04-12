@@ -125,6 +125,9 @@ for(my $i = 0; $i < @ARGV; $i++){
 		$ign_file = $f;
 
 	}else{
+		if(!-e $ARGV[$i]){
+			warn "$0: no file/dir '$ARGV[$i]'\n";
+		}
 		push @tests, $ARGV[$i];
 	}
 }
