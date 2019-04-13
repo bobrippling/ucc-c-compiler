@@ -959,19 +959,16 @@ static int op_check_precedence(expr *e)
 		case op_xor:
 			return msg_if_precedence(e->lhs, &e->where, e->bits.op.op, op_is_comparison)
 				||   msg_if_precedence(e->rhs, &e->where, e->bits.op.op, op_is_comparison);
-			break;
 
 		case op_andsc:
 		case op_orsc:
 			return msg_if_precedence(e->lhs, &e->where, e->bits.op.op, op_is_shortcircuit)
 				||   msg_if_precedence(e->rhs, &e->where, e->bits.op.op, op_is_shortcircuit);
-			break;
 
 		case op_shiftl:
 		case op_shiftr:
 			return msg_if_precedence(e->lhs, &e->where, e->bits.op.op, NULL)
 				|| msg_if_precedence(e->rhs, &e->where, e->bits.op.op, NULL);
-			break;
 
 		default:
 			return 0;
