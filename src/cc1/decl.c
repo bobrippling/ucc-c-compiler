@@ -31,7 +31,7 @@ decl *decl_new_w(const where *w)
 	return d;
 }
 
-decl *decl_new()
+decl *decl_new(void)
 {
 	where wtmp;
 	where_cc1_current(&wtmp);

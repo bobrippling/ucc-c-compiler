@@ -10,7 +10,7 @@
 #include "expr_cast.h"
 #include "__builtin.h"
 
-const char *str_stmt_expr()
+const char *str_stmt_expr(void)
 {
 	return "expression";
 }

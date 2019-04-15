@@ -44,7 +44,7 @@ enum eval_truth
 	EVAL_UNKNOWN
 };
 
-const char *str_expr_op()
+const char *str_expr_op(void)
 {
 	return "operator";
 }

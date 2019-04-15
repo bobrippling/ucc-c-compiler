@@ -24,7 +24,7 @@
 #include "../out/out.h"
 #include "../cc1_out_ctx.h"
 
-const char *str_stmt_code()
+const char *str_stmt_code(void)
 {
 	return "code";
 }

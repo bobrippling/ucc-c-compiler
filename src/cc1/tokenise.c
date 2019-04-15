@@ -506,7 +506,7 @@ void tokenise_set_mode(enum keyword_mode m)
 	keyword_mode = m | KW_ALL;
 }
 
-char *token_current_spel()
+char *token_current_spel(void)
 {
 	char *ret = currentspelling;
 	currentspelling = NULL;
@@ -1079,7 +1079,7 @@ static void read_number(const int first)
 	curtok = (currentval.suffix & VAL_FLOATING ? token_floater : token_integer);
 }
 
-void nexttoken()
+void nexttoken(void)
 {
 	int c;
 

@@ -23,7 +23,7 @@ static integral_t convert_integral_to_integral_warn(
 		int do_warn, where *w);
 
 
-const char *str_expr_cast()
+const char *str_expr_cast(void)
 {
 	return "cast";
 }

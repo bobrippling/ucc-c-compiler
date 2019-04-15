@@ -7,7 +7,7 @@
 #include "../out/lbl.h"
 #include "../decl_init.h"
 
-const char *str_stmt_for()
+const char *str_stmt_for(void)
 {
 	return "for";
 }

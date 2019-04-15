@@ -26,7 +26,7 @@
 			"argument %d to %s",        \
 			i + 1, sp ? sp : "function")
 
-const char *str_expr_funcall()
+const char *str_expr_funcall(void)
 {
 	return "function-call";
 }
@@ -541,7 +541,7 @@ int expr_func_passable(expr *e)
 	return !func_or_builtin_attr_present(e, attr_noreturn);
 }
 
-expr *expr_new_funcall()
+expr *expr_new_funcall(void)
 {
 	expr *e = expr_new_wrapper(funcall);
 	e->freestanding = !cc1_warning.unused_fnret;

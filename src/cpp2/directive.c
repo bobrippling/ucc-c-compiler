@@ -603,7 +603,7 @@ void parse_internal_directive(char *line)
 	no_output = 0;
 }
 
-void parse_end_validate()
+void parse_end_validate(void)
 {
 	if(if_idx){
 		char buf[WHERE_BUF_SIZ];

@@ -5,7 +5,7 @@
 #include "stmt_if.h"
 #include "../out/lbl.h"
 
-const char *str_stmt_while()
+const char *str_stmt_while(void)
 {
 	return "while";
 }

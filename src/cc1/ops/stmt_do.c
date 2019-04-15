@@ -4,7 +4,7 @@
 #include "stmt_do.h"
 #include "../out/lbl.h"
 
-const char *str_stmt_do()
+const char *str_stmt_do(void)
 {
 	return "do";
 }

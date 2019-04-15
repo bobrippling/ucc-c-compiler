@@ -12,7 +12,7 @@
 #include "expr_struct.h"
 #include "expr_funcall.h"
 
-const char *str_expr_assign()
+const char *str_expr_assign(void)
 {
 	return "assignment";
 }

@@ -11,7 +11,7 @@
 #include "../type_nav.h"
 #include "expr_identifier.h"
 
-const char *str_expr_addr()
+const char *str_expr_addr(void)
 {
 	return "address-of";
 }

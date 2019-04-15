@@ -11,7 +11,7 @@
 
 #include "expr_string.h"
 
-const char *str_expr_identifier()
+const char *str_expr_identifier(void)
 {
 	return "identifier";
 }

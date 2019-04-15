@@ -158,7 +158,7 @@ void dirname_push(char *d)
 	dynarray_add(&cd_stack, d);
 }
 
-char *dirname_pop()
+char *dirname_pop(void)
 {
 	return dynarray_pop(char *, &cd_stack);
 }

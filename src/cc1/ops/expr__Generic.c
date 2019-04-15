@@ -5,7 +5,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 
-const char *str_expr__Generic()
+const char *str_expr__Generic(void)
 {
 	return "_Generic";
 }

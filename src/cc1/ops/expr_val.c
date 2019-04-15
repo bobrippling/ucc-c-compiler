@@ -9,7 +9,7 @@
 
 #define DEBUG_VAL 0
 
-const char *str_expr_val()
+const char *str_expr_val(void)
 {
 	return "value";
 }

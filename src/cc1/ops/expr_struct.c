@@ -13,7 +13,7 @@
 	 (e)->bits.struct_mem.extra_off                     \
 	 )
 
-const char *str_expr_struct()
+const char *str_expr_struct(void)
 {
 	return "member-access";
 }

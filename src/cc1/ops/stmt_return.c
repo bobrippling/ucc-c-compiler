@@ -9,7 +9,7 @@
 #include "../cc1_out_ctx.h"
 #include "../inline.h"
 
-const char *str_stmt_return()
+const char *str_stmt_return(void)
 {
 	return "return";
 }
