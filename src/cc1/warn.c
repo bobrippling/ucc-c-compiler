@@ -203,6 +203,7 @@ static void warning_all(enum warning_fatality set)
 	cc1_warning.overlength_strings =
 	cc1_warning.aggregate_return =
 	cc1_warning.switch_enum_even_when_default_lbl =
+	cc1_warning.bitfield_promotion =
 		W_OFF;
 }
 
