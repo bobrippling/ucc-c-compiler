@@ -901,35 +901,87 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 
 static int op_unsigned_cmp_check(expr *e)
 {
+	consty k_lhs, k_rhs;
+	consty *k_side;
+	int unsigned_lhs, unsigned_rhs;
+	sintegral_t v;
+	int warn;
+	int expect;
+	const char *lhs_s, *rhs_s;
+
 	switch(e->bits.op.op){
-			int lhs;
-		/*case op_gt:*/
 		case op_ge:
 		case op_lt:
+		case op_gt:
 		case op_le:
-			if((lhs = !type_is_signed(e->lhs->tree_type))
-			||        !type_is_signed(e->rhs->tree_type))
-			{
-				consty k;
-
-				const_fold(lhs ? e->rhs : e->lhs, &k);
-
-				if(k.type == CONST_NUM && K_INTEGRAL(k.bits.num)){
-					const int v = k.bits.num.val.i;
-
-					if(v <= 0){
-						return cc1_warn_at(&e->where,
-								tautologic_unsigned,
-								"comparison of unsigned expression %s %d is always %s",
-								op_to_str(e->bits.op.op), v,
-								e->bits.op.op == op_lt || e->bits.op.op == op_le ? "false" : "true");
-					}
-				}
-			}
-
+			break;
 		default:
 			return 0;
 	}
+
+	unsigned_lhs = !type_is_signed(e->lhs->tree_type);
+	unsigned_rhs = !type_is_signed(e->rhs->tree_type);
+	if(!unsigned_lhs && !unsigned_rhs)
+		return 0;
+
+	const_fold(e->lhs, &k_lhs);
+	const_fold(e->rhs, &k_rhs);
+
+	k_side = k_lhs.type == CONST_NUM && K_INTEGRAL(k_lhs.bits.num)
+		? &k_lhs
+		: k_rhs.type == CONST_NUM && K_INTEGRAL(k_rhs.bits.num)
+		? &k_rhs
+		: NULL;
+
+	if(!k_side)
+		return 0;
+
+	v = k_side->bits.num.val.i;
+	if(v)
+		return 0;
+
+	warn = 0;
+	switch(e->bits.op.op){
+		case op_ge:
+			warn = k_side == &k_rhs; /* u >= 0 */
+			expect = 1;
+			break;
+
+		case op_le:
+			warn = k_side == &k_lhs; /* 0 <= u */
+			expect = 1;
+			break;
+
+		case op_gt:
+			warn = k_side == &k_lhs; /* 0 > u */;
+			expect = 0;
+			break;
+
+		case op_lt:
+			warn = k_side == &k_rhs; /* u < 0 */;
+			expect = 0;
+			break;
+
+		default:
+			assert(0 && "unreachable");
+	}
+
+	if(!warn)
+		return 0;
+
+	if(k_side == &k_lhs){
+		lhs_s = "0";
+		rhs_s = "unsigned expression";
+	}else{
+		lhs_s = "unsigned expression";
+		rhs_s = "0";
+	}
+
+	return cc1_warn_at(&e->where,
+			tautologic_unsigned,
+			"comparison of %s %s %s is always %s",
+			lhs_s, op_to_str(e->bits.op.op), rhs_s,
+			expect ? "true" : "false");
 }
 
 static int msg_if_precedence(expr *sub, where *w,
