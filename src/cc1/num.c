@@ -115,7 +115,7 @@ integral_t integral_truncate_bits(
 		/* implementation specific signed right shift.
 		 * this is to sign extend the value
 		 */
-		*signed_iv = (sintegral_t)val << shamt >> shamt;
+		*signed_iv = ((sintegral_t)val << shamt) >> shamt;
 	}
 
 	return truncated;
