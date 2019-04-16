@@ -31,3 +31,6 @@ stage3: stage2 bootstrap/stage3/${CONFIGURE_OUTPUT}
 
 tools/link_r: tools/link_r.c
 	${CC} -o $@ $<
+
+check-bootstrap: bootstrap
+	cd test; ./run_tests -i ignores --ucc=../bootstrap/stage3/src/ucc/ucc .
