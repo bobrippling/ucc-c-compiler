@@ -80,7 +80,7 @@ void style_stmt_while(const stmt *s, out_ctx *octx)
 int while_passable(stmt *s)
 {
 	if(const_expr_and_non_zero(s->expr))
-		return fold_code_escapable(s); /* while(1) */
+		return fold_code_escapable(s->lhs); /* while(1) */
 
 	return 1; /* fold_passable(s->lhs) - doesn't depend on this */
 }
