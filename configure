@@ -144,6 +144,8 @@ try_cflag -Wno-implicit-fallthrough
 try_cflag -Wsuggest-attribute=pure
 try_cflag -Wsuggest-attribute=const
 
+try_cflag -Wshadow-compatible-local
+
 try_cflag -Werror=incompatible-pointer-types
 
 if test $debug = 1
