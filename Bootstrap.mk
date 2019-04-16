@@ -8,22 +8,18 @@ bootstrap: stage3
 clean-bootstrap:
 	rm -rf bootstrap
 
-clean-stage1:
-	rm -rf bootstrap/stage1
+clean-stage1: clean
+
 clean-stage2:
 	rm -rf bootstrap/stage2
 clean-stage3:
 	rm -rf bootstrap/stage3
 
-bootstrap/stage1/${CONFIGURE_OUTPUT}: tools/link_r
-	mkdir -p bootstrap/stage1
-	cd bootstrap/stage1 && ../../configure
-stage1: bootstrap/stage1/${CONFIGURE_OUTPUT}
-	make -Cbootstrap/stage1/src
+stage1: src
 
-bootstrap/stage2/${CONFIGURE_OUTPUT}:
+bootstrap/stage2/${CONFIGURE_OUTPUT}: tools/link_r
 	mkdir -p bootstrap/stage2
-	cd bootstrap/stage2 && ../../configure CC=${PWD}/bootstrap/stage1/src/ucc/ucc\ -fuse-cpp=${PWD}/tools/syscpp
+	cd bootstrap/stage2 && ../../configure CC=${PWD}/src/ucc/ucc\ -fuse-cpp=${PWD}/tools/syscpp
 stage2: stage1 bootstrap/stage2/${CONFIGURE_OUTPUT}
 	make -Cbootstrap/stage2/src
 
