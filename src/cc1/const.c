@@ -402,7 +402,12 @@ void const_ensure_num_or_memaddr(
 		const_memify(k);
 	}
 
-	/* not a constant but we treat it as such, as an extension */
-	if(set_nonstandard_const && !k->nonstandard_const)
-		k->nonstandard_const = owner;
+	if(from_ptr
+	&& !to_ptr
+	&& type_size(from, NULL) > type_size(to, NULL))
+	{
+		/* not a constant but we treat it as such, as an extension */
+		if(set_nonstandard_const && !k->nonstandard_const)
+			k->nonstandard_const = owner;
+	}
 }
