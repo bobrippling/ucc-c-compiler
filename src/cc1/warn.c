@@ -253,7 +253,6 @@ static void warning_special(enum warning_special special, enum warning_fatality 
 		case W_EXTRA:
 			warning_all(fatality);
 			cc1_warning.implicit_int =
-			cc1_warning.shadow_global_user =
 			cc1_warning.cast_qual =
 			cc1_warning.init_missing_braces =
 			cc1_warning.init_missing_struct =
