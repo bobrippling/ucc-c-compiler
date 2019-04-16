@@ -1240,8 +1240,8 @@ void nexttoken(void)
 				in_comment = 1;
 
 				for(;;){
-					int c = rawnextchar();
-					if(c == '*' && *bufferpos == '/'){
+					int nextc = rawnextchar();
+					if(nextc == '*' && *bufferpos == '/'){
 						rawnextchar(); /* eat the / */
 						in_comment = 0; /* ensure we set this before parsing next token */
 						nexttoken();

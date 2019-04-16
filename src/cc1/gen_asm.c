@@ -268,9 +268,9 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 
 		arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
 		for(aiter = symtab_decls(arg_symtab); aiter && *aiter; aiter++){
-			decl *d = *aiter;
+			decl *arg = *aiter;
 
-			if(d->sym->type == sym_arg)
+			if(arg->sym->type == sym_arg)
 				nargs++;
 		}
 

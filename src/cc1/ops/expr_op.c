@@ -1303,8 +1303,6 @@ void fold_expr_op(expr *e, symtable *stab)
 		/* (except unary-not) can only have operations on integers,
 		 * promote to signed int
 		 */
-		const char *op_desc = op_to_str(e->bits.op.op);
-
 		expr_promote_int_if_smaller(&e->lhs, stab);
 
 		switch(e->bits.op.op){
