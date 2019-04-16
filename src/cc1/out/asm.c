@@ -91,7 +91,7 @@ FILE *asm_section_file(const struct section *sec)
 		f = tmpfile();
 		if(!f)
 			ICE("tmpfile: %s\n", strerror(errno));
-		dynmap_set(struct section *, FILE *, cc1_out_persection, secdup, f);
+		(void)dynmap_set(struct section *, FILE *, cc1_out_persection, secdup, f);
 	}
 
 	return f;
