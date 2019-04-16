@@ -97,7 +97,7 @@ static void fold_va_start(expr *e, symtable *stab)
 		sym *second = NULL;
 		decl **args = symtab_decls(symtab_func_root(stab));
 		sym *arg = args[dynarray_count(args) - 1]->sym;
-		expr *last_exp = expr_skip_lval2rval(e->funcargs[1]);
+		expr *last_exp = expr_skip_all_casts(e->funcargs[1]); /* e.g. enum -> int casts */
 
 		if(expr_kind(last_exp, identifier))
 			second = last_exp->bits.ident.bits.ident.sym;
@@ -105,8 +105,7 @@ static void fold_va_start(expr *e, symtable *stab)
 		if(second != arg)
 			cc1_warn_at(&last_exp->where,
 					builtin_va_start,
-					"second parameter to va_start "
-					"isn't last named argument");
+					"second parameter to va_start isn't last named argument");
 	}
 
 #ifndef UCC_VA_ABI
