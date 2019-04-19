@@ -39,8 +39,8 @@ bootstrap/stage3/${CONFIGURE_OUTPUT}:
 stage3: stage2 bootstrap/stage3/${CONFIGURE_OUTPUT}
 	make -Cbootstrap/stage3/src
 
-tools/link_r: tools/link_r.c
-	${CC} -o $@ $<
+tools/link_r: tools/link_r.c stage1
+	${CC_STAGE1} -o $@ $<
 
 check-bootstrap: bootstrap
 	cd test; ./run_tests -i ignores '--ucc=${CC_STAGE3}' .
