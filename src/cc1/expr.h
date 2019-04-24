@@ -263,9 +263,9 @@ expr *expr_compiler_generated(expr *);
 
 enum null_strictness
 {
-	NULL_STRICT_VOID_PTR,
-	NULL_STRICT_INT,
-	NULL_STRICT_ANY_PTR
+	NULL_STRICT_VOID_PTR = 0,
+	NULL_STRICT_INT = 1 << 0,
+	NULL_STRICT_ANY_PTR = 1 << 1
 };
 
 int expr_is_null_ptr(expr *, enum null_strictness);

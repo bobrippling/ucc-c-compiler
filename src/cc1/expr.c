@@ -140,9 +140,9 @@ int expr_is_null_ptr(expr *e, enum null_strictness ty)
 	&& type_is_primitive(pointed_ty, type_void))
 	{
 		b = 1;
-	}else if(ty == NULL_STRICT_INT && type_is_integral(e->tree_type)){
+	}else if(ty & NULL_STRICT_INT && type_is_integral(e->tree_type)){
 		b = 1;
-	}else if(ty == NULL_STRICT_ANY_PTR && type_is_ptr(e->tree_type)){
+	}else if(ty & NULL_STRICT_ANY_PTR && type_is_ptr(e->tree_type)){
 		b = 1;
 	}
 
