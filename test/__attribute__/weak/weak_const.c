@@ -17,14 +17,14 @@ _Static_assert(1 || w, "");
 ERROR(int shortcircuit_weak_8 = 0 || w;) // CHECK: error: global scalar initialiser not constant
 
 _Static_assert(f && 1, "");
-_Static_assert((f && 0) == false, "");
+_Static_assert((f && 0) == false, ""); // CHECK: warning: comparison of function with null is always false
 _Static_assert(1 && f, "");
-_Static_assert((0 && f) == false, "");
+_Static_assert((0 && f) == false, ""); // CHECK: warning: comparison of function with null is always false
 
 _Static_assert(f || 1, "");
-_Static_assert(f || 0, "");
+_Static_assert(f || 0, ""); // CHECK: warning: comparison of function with null is always false
 _Static_assert(1 || f, "");
-_Static_assert(0 || f, "");
+_Static_assert(0 || f, ""); // CHECK: warning: comparison of function with null is always false
 
 // ---------
 
@@ -35,9 +35,9 @@ _Static_assert(!&f == false, "");
 ERROR(int arith_2 = !&w;) // CHECK: error: global scalar initialiser not constant
 _Static_assert(!f == false, "");
 ERROR(int arith_4 = !w;) // CHECK: error: global scalar initialiser not constant
-_Static_assert((0 == f) == false, "");
+_Static_assert((0 == f) == false, ""); // CHECK: warning: comparison of function with null is always false
 ERROR(int arith_6 = 0 == w;) // CHECK: error: global scalar initialiser not constant
-_Static_assert(0 != f, "");
+_Static_assert(0 != f, ""); // CHECK: warning: comparison of function with null is always false
 ERROR(int arith_8 = 0 != w;) // CHECK: error: global scalar initialiser not constant
 ERROR(int arith_9 = f == w;) // CHECK: error: global scalar initialiser not constant
 ERROR(int arith_10 = f != w;) // CHECK: error: global scalar initialiser not constant

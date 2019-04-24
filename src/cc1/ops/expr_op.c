@@ -16,6 +16,7 @@
 #include "expr_cast.h"
 #include "expr_val.h"
 #include "expr_sizeof.h"
+#include "expr_identifier.h"
 
 /*
  * usual arithmetic conversions:
@@ -1198,6 +1199,44 @@ static int op_int_promotion_check(expr *e)
 	return 0;
 }
 
+static int tautological_pointer_check(expr *e)
+{
+	expr *other = NULL;
+	type *ty;
+	int is_array;
+	consty k;
+
+	if(!op_is_comparison(e->bits.op.op) && !op_is_shortcircuit(e->bits.op.op))
+		return 0;
+
+	if(expr_is_null_ptr(e->lhs, NULL_STRICT_INT | NULL_STRICT_ANY_PTR))
+		other = e->rhs;
+	else if(expr_is_null_ptr(e->rhs, NULL_STRICT_INT | NULL_STRICT_ANY_PTR))
+		other = e->lhs;
+
+	if(!other)
+		return 0;
+
+	ty = expr_skip_generated_casts(other)->tree_type;
+
+	if(!(is_array = !!type_is_array(ty)) && !type_is(ty, type_func))
+		return 0;
+
+	const_fold(other, &k);
+	switch(k.type){
+		case CONST_ADDR:
+		case CONST_NEED_ADDR:
+			if(k.bits.addr.lbl_type == CONST_LBL_WEAK)
+				return 0;
+		default:
+			break;
+	}
+
+	return cc1_warn_at(&e->where, tautologic_pointer_cmp,
+			"comparison of %s with null is always false",
+			is_array ? "array" : "function");
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	const char *op_desc = e->bits.op.array_notation
@@ -1249,7 +1288,8 @@ void fold_expr_op(expr *e, symtable *stab)
 				str_cmp_check(e) ||
 				op_sizeof_div_check(e) ||
 				array_subscript_tycheck(e) ||
-				op_int_promotion_check(e));
+				op_int_promotion_check(e) ||
+				tautological_pointer_check(e));
 
 	}else{
 		/* (except unary-not) can only have operations on integers,

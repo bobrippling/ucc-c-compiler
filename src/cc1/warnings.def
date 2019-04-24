@@ -266,6 +266,7 @@ X("sym-never-read", sym_never_read)
 X("sym-never-written", sym_never_written)
 
 X("tautologic-unsigned-op", tautologic_unsigned)
+X("tautological-pointer-compare", tautologic_pointer_cmp)
 X("tenative-array", tenative_array_1elem)
 
 X("typedef-function-impl", typedef_fnimpl)

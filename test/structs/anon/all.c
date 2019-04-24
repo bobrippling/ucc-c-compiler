@@ -1,4 +1,4 @@
-// RUN: %ocheck 0 %s -fplan9-extensions -Werror -Wno-microsoft-anon-tag -Wno-missing-braces
+// RUN: %ocheck 0 %s -fplan9-extensions -Werror -Wno-microsoft-anon-tag -Wno-missing-braces -Wno-tautological-pointer-compare
 // RUN: %check --only %s -fplan9-extensions
 
 extern int memcmp(const void *, const void *, unsigned long);
