@@ -1,5 +1,5 @@
 // RUN: %ocheck 0 %s -fplan9-extensions -Werror -Wno-microsoft-anon-tag -Wno-missing-braces
-// RUN: %check %s -fplan9-extensions
+// RUN: %check --only %s -fplan9-extensions
 
 extern int memcmp(const void *, const void *, unsigned long);
 _Noreturn void abort(void);
@@ -16,7 +16,7 @@ struct C99
 	{
 		int i;
 		char c;
-	};
+	}; // CHECK: /warning: tagged struct '.*' is a Microsoft\/Plan 9 extension/
 	int k;
 };
 
@@ -27,12 +27,12 @@ struct XY_or_WX
 		struct
 		{
 			char x, y;
-		};
+		}; // CHECK: /warning: tagged struct '.*' is a Microsoft\/Plan 9 extension/
 		struct
 		{
 			char w, h;
-		};
-	};
+		}; // CHECK: /warning: tagged struct '.*' is a Microsoft\/Plan 9 extension/
+	}; // CHECK: /warning: tagged struct '.*' is a Microsoft\/Plan 9 extension/
 };
 
 typedef struct { int xyz; } Untagged;
@@ -47,7 +47,7 @@ void test_c99()
 	const struct C99 same[] = {
 		{ .k = 1, .i = 3, },
 		{ { 3 }, 1 },
-		{ 3, 1 },
+		{ 3, 1 }, // CHECK: warning: missing braces for initialisation of sub-object 'union
 		{ .i = 3, 1 },
 	};
 
@@ -67,7 +67,7 @@ void test_c99()
 
 	struct
 	{
-		struct B{int i;};
+		struct B{int i;}; // CHECK: /warning: tagged struct '.*' is a Microsoft\/Plan 9 extension/
 	} untag;
 	untag.i = 3;
 }
@@ -88,21 +88,25 @@ typedef union
 struct B_A { int b_a; };
 struct B
 {
-	struct B_A;              // MS-extension, since struct has a tag
-	struct B_B { int abc; }; // MS-extension, since def has a tag
+	struct B_A; // CHECK: /warning: tagged struct '.*' is a Microsoft\/Plan 9 extension/
+	// ^MS-extension, since struct has a tag
+	struct B_B { int abc; }; // CHECK: /warning: tagged struct '.*' is a Microsoft\/Plan 9 extension/
+	// ^MS-extension, since def has a tag
 	int i;
 };
 
 struct C
 {
-	A; // Plan 9/MS-extension, since typedef
+	A; // CHECK: /warning: tagged struct '.*' is a Microsoft\/Plan 9 extension/
+	// ^Plan 9/MS-extension, since typedef
 	int i;
 };
 
 struct D
 {
 	int type;
-	U; // Plan 9/MS-extension, since typedef
+	U; // CHECK: /warning: tagged struct '.*' is a Microsoft\/Plan 9 extension/
+	// Plan 9/MS-extension, since typedef
 };
 
 int consume_int(int x)
@@ -119,7 +123,7 @@ void test_plan_9()
 {
 	struct D d = {
 		5,
-		3
+		3 // CHECK: warning: missing braces for initialisation of sub-object 'U
 	};
 	// converts to U *:
 	assert(consume_u(&d) == 3); // CHECK: !/warn/
@@ -128,10 +132,10 @@ void test_plan_9()
 	struct
 	{
 		int hello;
-		mem_alias;
+		mem_alias; // CHECK: /warning: tagged struct 'mem_alias .*' is a Microsoft/Plan 9 extension/
 	} st = {
 		6,
-		2
+		{ 2, },
 	};
 
 	assert(consume_int(st.mem_alias.k) == 2);
