@@ -187,7 +187,7 @@ static void handle_error_warning(token **tokens, int err)
 	warn_colour(1, err);
 
 	/* we're already on the next line */
-	where_current(&w);
+	cpp_where_current(&w);
 	w.fname = file_stack[file_stack_idx].fname;
 	w.line--;
 
@@ -307,7 +307,7 @@ static void if_push(int is_true)
 {
 	if_stack[if_idx].noop      = noop;
 	if_stack[if_idx].if_chosen = if_elif_chosen;
-	where_current(&if_stack[if_idx].loc);
+	cpp_where_current(&if_stack[if_idx].loc);
 	if_stack[if_idx].loc.line--;
 
 	if_idx++;

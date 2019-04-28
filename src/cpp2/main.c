@@ -88,6 +88,7 @@ static const struct
 
 struct loc loc_tok;
 char *current_fname;
+int current_fname_used;
 char *current_line_str;
 int show_current_line = 1;
 int no_output = 0;
@@ -163,12 +164,20 @@ char *dirname_pop(void)
 	return dynarray_pop(char *, &cd_stack);
 }
 
+void cpp_where_current(where *w)
+{
+  where_current(w);
+  current_fname_used = 1;
+}
+
 void set_current_fname(const char *new)
 {
 	if(current_fname == new)
 		return;
-	free(current_fname);
+	if(!current_fname_used)
+		free(current_fname);
 	current_fname = ustrdup(new);
+	current_fname_used = 0;
 }
 
 static struct tm *current_time(int *const using_env)
