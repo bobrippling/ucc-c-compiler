@@ -39,7 +39,7 @@
 #include "../ops/expr_funcall.h"
 #include "../ops/expr_cast.h"
 
-static void va_type_check(
+static int va_type_check(
 		expr *va_l, expr *in, symtable *stab, int expect_decay)
 {
 	/* we need to check decayed, since we may have
@@ -60,10 +60,12 @@ static void va_type_check(
 	cmp = type_cmp(va_l->tree_type, va_list_ty, 0);
 
 	if(!(cmp & TYPE_EQUAL_ANY)){
-		die_at(&va_l->where,
+		warn_at_print_error(&va_l->where,
 				"first argument to %s should be a va_list (not %s)",
 				BUILTIN_SPEL(in), type_to_str(va_l->tree_type));
+		return 0;
 	}
+	return 1;
 }
 
 static void va_ensure_variadic(expr *e, symtable *stab)
@@ -87,8 +89,11 @@ static void fold_va_start(expr *e, symtable *stab)
 	fold_expr_nodecay(e->funcargs[0], stab); /* prevent lval2rval */
 	FOLD_EXPR(e->funcargs[1], stab);
 
+	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
+
 	va_l = e->funcargs[0];
-	va_type_check(va_l, e->expr, stab, 0);
+	if(!va_type_check(va_l, e->expr, stab, 0))
+		return;
 
 	va_ensure_variadic(e, stab);
 
@@ -167,8 +172,6 @@ static void fold_va_start(expr *e, symtable *stab)
 #undef ADD_ASSIGN_VAL
 #undef W
 #endif
-
-	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
 static const out_val *builtin_gen_va_start(const expr *e, out_ctx *octx)
@@ -505,7 +508,10 @@ static void fold_va_arg(expr *e, symtable *stab)
 	FOLD_EXPR(e->lhs, stab);
 	fold_type(ty, stab);
 
-	va_type_check(e->lhs, e->expr, stab, 1);
+	if(!va_type_check(e->lhs, e->expr, stab, 1)){
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	if(type_is_promotable(ty, &to)){
 		warning = "";
@@ -561,15 +567,18 @@ static const out_val *builtin_gen_va_end(const expr *e, out_ctx *octx)
 
 static void fold_va_end(expr *e, symtable *stab)
 {
-	if(dynarray_count(e->funcargs) != 1)
-		die_at(&e->where, "%s requires one argument", BUILTIN_SPEL(e->expr));
+	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
+
+	if(dynarray_count(e->funcargs) != 1){
+		warn_at_print_error(&e->where, "%s requires one argument", BUILTIN_SPEL(e->expr));
+		return;
+	}
 
 	FOLD_EXPR(e->funcargs[0], stab);
-	va_type_check(e->funcargs[0], e->expr, stab, 1);
+	if(!va_type_check(e->funcargs[0], e->expr, stab, 1))
+		return;
 
 	/*va_ensure_variadic(e, stab); - va_end can be anywhere */
-
-	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
 expr *parse_va_end(const char *ident, symtable *scope)
@@ -591,12 +600,17 @@ static void fold_va_copy(expr *e, symtable *stab)
 {
 	int i;
 
-	if(dynarray_count(e->funcargs) != 2)
-		die_at(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
+	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
+
+	if(dynarray_count(e->funcargs) != 2){
+		warn_at_print_error(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
+		return;
+	}
 
 	for(i = 0; i < 2; i++){
 		FOLD_EXPR(e->funcargs[i], stab);
-		va_type_check(e->funcargs[i], e->expr, stab, 1);
+		if(!va_type_check(e->funcargs[i], e->expr, stab, 1))
+			return;
 	}
 
 	/* (*a) = (*b) */
@@ -606,8 +620,6 @@ static void fold_va_copy(expr *e, symtable *stab)
 			type_size(type_nav_va_list(cc1_type_nav, stab), &e->where));
 
 	FOLD_EXPR(e->lhs, stab);
-
-	e->tree_type = type_nav_btype(cc1_type_nav, type_void);
 }
 
 expr *parse_va_copy(const char *ident, symtable *scope)
