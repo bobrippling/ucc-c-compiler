@@ -4,7 +4,7 @@ Q = @
 
 %.o: %.c
 	@echo compile $<
-	$Q${CC} -c -o $@ $< ${CFLAGS}
+	$Q${CC} -c -o $@ $< ${CFLAGS} ${CPPFLAGS}
 
 tags: ${SRC}
 	@echo ctags

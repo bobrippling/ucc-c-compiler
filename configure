@@ -40,7 +40,7 @@ try_cflag(){
 
 usage(){
 	cat >&2 <<!
-Usage: $0 [OPTIONS...] [CC/CFLAGS/LDFLAGS=...]
+Usage: $0 [OPTIONS...] [CC/CFLAGS/CPPFLAGS/LDFLAGS=...]
 
 Options:
 	--target=..., --host=...    Build for target machine
@@ -48,7 +48,7 @@ Options:
 	--enable-debug              Build with debug symbols [enabled]
 	--enable-optimize           Build with optimisations
 
-CC, CFLAGS and LDFLAGS are pulled from the environment if not specified
+CC, CFLAGS, CPPFLAGS and LDFLAGS are pulled from the environment if not specified
 !
 	exit 1
 }
@@ -75,6 +75,7 @@ do
 
 		CC=*) CC=${arg#*=} ;;
 		CFLAGS=*) CFLAGS=${arg#*=} ;;
+		CPPFLAGS=*) CPPFLAGS=${arg#*=} ;;
 		LDFLAGS=*) LDFLAGS=${arg#*=} ;;
 
 		*)
@@ -105,14 +106,15 @@ done
 test -z "$tmpc" && exit 1
 trap "rm -f $tmpc" EXIT
 
-# set CC, CFLAGS and LDFLAGS if they don't exist
+# set CC, CFLAGS, CPPFLAGS and LDFLAGS if they don't exist
 set +u
 test -n "$CC" || CC=cc
 test -n "$CFLAGS" || CFLAGS=
+test -n "$CPPFLAGS" || CPPFLAGS=
 test -n "$LDFLAGS" || LDFLAGS=
 
-# CFLAGS_CONFIGURE inherits command-line CFLAGS and LDFLAGS
-CFLAGS_CONFIGURE="$CFLAGS_CONFIGURE $CFLAGS $LDFLAGS"
+# CFLAGS_CONFIGURE inherits command-line CFLAGS, CPPFLAGS and LDFLAGS
+CFLAGS_CONFIGURE="$CFLAGS_CONFIGURE $CFLAGS $CPPFLAGS $LDFLAGS"
 set -u
 
 printf 'checking target... '
@@ -181,6 +183,7 @@ cat > src/config.custom.mk <<!
 
 CC = ${CC}
 CFLAGS = ${CFLAGS_DISCOVERED} ${CFLAGS}
+CPPFLAGS = ${CPPFLAGS}
 LDFLAGS = ${LDFLAGS}
 !
 echo 'done'

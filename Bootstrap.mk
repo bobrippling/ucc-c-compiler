@@ -1,9 +1,11 @@
 PWD = $(shell pwd)
 CONFIGURE_OUTPUT = src/config.custom.mk
 
+CPPFLAGS_BOOTSTRAP = \
+		 -fuse-cpp=${PWD}/tools/syscpp
+
 # -Wno-return-undef: reachability depends on libc's _Noreturn/__GNUC__
 CFLAGS_BOOTSTRAP = \
-		 -fuse-cpp=${PWD}/tools/syscpp \
 		 -fshow-warning-option \
 		 -Wno-return-undef
 
@@ -29,18 +31,18 @@ stage1: src
 
 bootstrap/stage2/${CONFIGURE_OUTPUT}: tools/link_r
 	mkdir -p bootstrap/stage2
-	cd bootstrap/stage2 && ../../configure CC=${CC_STAGE1} 'CFLAGS=${CFLAGS_BOOTSTRAP}'
+	cd bootstrap/stage2 && ../../configure CC=${CC_STAGE1} 'CFLAGS=${CFLAGS_BOOTSTRAP}' 'CPPFLAGS=${CPPFLAGS_BOOTSTRAP}'
 stage2: stage1 bootstrap/stage2/${CONFIGURE_OUTPUT}
 	make -Cbootstrap/stage2/src
 
 bootstrap/stage3/${CONFIGURE_OUTPUT}:
 	mkdir -p bootstrap/stage3
-	cd bootstrap/stage3 && ../../configure CC=${CC_STAGE2} 'CFLAGS=${CFLAGS_BOOTSTRAP}'
+	cd bootstrap/stage3 && ../../configure CC=${CC_STAGE2} 'CFLAGS=${CFLAGS_BOOTSTRAP}' 'CPPFLAGS=${CPPFLAGS_BOOTSTRAP}'
 stage3: stage2 bootstrap/stage3/${CONFIGURE_OUTPUT}
 	make -Cbootstrap/stage3/src
 
 tools/link_r: tools/link_r.c stage1
-	${CC_STAGE1} -o $@ $<
+	${CC_STAGE1} -o $@ $< ${CFLAGS_BOOTSTRAP} ${CPPFLAGS_BOOTSTRAP}
 
 check-bootstrap: bootstrap
 	cd test; ./run_tests -i ignores '--ucc=${CC_STAGE3}' .
