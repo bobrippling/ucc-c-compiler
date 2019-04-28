@@ -1,9 +1,10 @@
-#include <sys/types.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <assert.h>
+
+#include <sys/types.h>
 
 #include "../util/util.h"
 #include "sym.h"
