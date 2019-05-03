@@ -35,9 +35,10 @@ There are some major additions, listed below:
   - `register` storage class
 - Common language extensions
 	- `__auto_type`
-	- GNU omitted middle operand in `?:`
-	- GNU keywords - `asm`, `inline` (in C89), `typeof`, `__extension__`, `__attribute__`, `__label__`, `__alignof__`, `__alignas__`
-	- GNU Array-range designated initialiser
+	- GNU extensions (see [below](#gnu-c-supported-extensions) for a complete list)
+		- GNU omitted middle operand in `?:`
+		- GNU keywords - `asm`, `inline` (in C89), `typeof`, `__extension__`, `__attribute__`, `__label__`, `__alignof__`, `__alignas__`
+		- GNU Array-range designated initialiser
 	- Computed `goto` / address-of-label (`&&label`)
 	- GCC/Clang builtins (not an exhaustive list):
 		- `__builtin_unreachable`, `__builtin_trap`
@@ -85,6 +86,80 @@ The result of the expression is a function block pointer (`T (^)(Args...)`), exp
 This ensures that any declarations after this `pragma` begin with `expr_`, allowing you to enforce a namespace exported by each translation unit (`.c` file).
 
 See [namespace.c](/test/pragma/namespace.c) for an example.
+
+
+GNU C Supported Extensions
+----------
+
+Summarised from the GNU C [Extensions page](https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html).
+
+Supported | Extension Name | Description
+--------- | -------------- | -----------
+✅ Yes | Statement Exprs | Putting statements and declarations inside expressions.
+✅ Yes | Local Labels | Labels local to a block.
+✅ Yes | Labels as Values | Getting pointers to labels, and computed gotos.
+❌ No | Nested Functions | Nested function in GNU C.
+✅ Yes | Nonlocal Gotos | Nonlocal gotos.
+❌ No | Constructing Calls | Dispatching a call to another function.
+✅ Yes | Typeof | typeof: referring to the type of an expression.
+✅ Yes | Conditionals | Omitting the middle operand of a `?:` expression.
+❌ No | __int128 | 128-bit integers-__int128.
+🖥️ 64-bit targets only | Long Long | Double-word integers-long long int.
+❌ No | Complex | Data types for complex numbers.
+❌ No | Floating Types | Additional Floating Types.
+❌ No | Half-Precision | Half-Precision Floating Point.
+❌ No | Decimal Float | Decimal Floating Types.
+✅ Yes | Hex Floats | Hexadecimal floating-point constants.
+❌ No | Fixed-Point | Fixed-Point Types.
+❌ No | Named Address Spaces | Named address spaces.
+✅ Yes | Zero Length | Zero-length arrays.
+✅ Yes | Empty Structures | Structures with no members.
+✅ Yes | Variable Length | Arrays whose length is computed at run time.
+❌ No | Variadic Macros | Macros with a variable number of arguments. `#define f(a, b...) ...`
+✅ Yes | Escaped Newlines | Slightly looser rules for escaped newlines.
+❌ No | Subscripting | Any array can be subscripted, even if not an lvalue. (This is intentionally not supported)
+✅ Yes | Pointer Arith | Arithmetic on void-pointers and function pointers.
+✅ Yes | Variadic Pointer Args | Pointer arguments to variadic functions.
+✅ Yes | Pointers to Arrays | Pointers to arrays with qualifiers work as expected.
+✅ Yes | Initializers | Non-constant initializers.
+✅ Yes | Compound Literals | Compound literals give structures, unions or arrays as values.
+✅ Yes | Designated Inits | Labeling elements of initializers.
+✅ Yes | Case Ranges | `case 1 ... 9` and such.
+❌ No | Cast to Union | Casting to union type from any member of the union.
+✅ Yes | Mixed Declarations | Mixing declarations and code.
+🔎 Partial | Function Attributes | Declaring that functions have no side effects, or that they can never return.
+🔎 Partial | Variable Attributes | Specifying attributes of variables.
+🔎 Partial | Type Attributes | Specifying attributes of types.
+✅ Yes | Label Attributes | Specifying attributes on labels.
+✅ Yes | Enumerator Attributes | Specifying attributes on enumerators.
+❌ No | Statement Attributes | Specifying attributes on statements. `__attribute__((fallthrough));`
+✅ Yes | Attribute Syntax | Formal syntax for attributes.
+✅ Yes | Function Prototypes | Prototype declarations and old-style definitions.
+✅ Yes | C++ Comments | C++ comments are recognized.
+✅ Yes | Dollar Signs | Dollar sign is allowed in identifiers.
+✅ Yes | Character Escapes | `\e` stands for the character ESC.
+✅ Yes | Alignment | Determining the alignment of a function, type or variable.
+✅ Yes | Inline | Defining inline functions (as fast as macros).
+✅ Yes | Volatiles | What constitutes an access to a volatile object.
+🛠️ [WIP](//github.com/bobrippling/ucc-c-compiler/tree/feature/asm) | Using Assembly Language with C | Instructions and extensions for interfacing C with assembler.
+✅ Yes | Alternate Keywords | `__const__`, `__asm__`, etc., for header files.
+✅ Yes | Incomplete Enums | `enum foo;`, with details to follow.
+✅ Yes | Function Names | Printable strings which are the name of the current function.
+✅ Yes | Return Address | Getting the return or frame address of a function.
+❌ No | Vector Extensions | Using vector instructions through built-in functions.
+✅ Yes | Offsetof | Special syntax for implementing offsetof.
+❌ No | __sync Builtins | Legacy built-in functions for atomic memory access.
+❌ No | __atomic Builtins | Atomic built-in functions with memory model.
+🔎 Partial | Integer Overflow Builtins | Built-in functions to perform arithmetics and arithmetic overflow checking.
+❌ No | x86 specific memory model extensions for transactional memory | x86 memory models.
+❌ No | Object Size Checking | Built-in functions for limited buffer overflow checking.
+🔎 Partial | Other Builtins | Other built-in functions.
+❌ No | Target Builtins | Built-in functions specific to particular targets.
+❌ No | Target Format Checks | Format checks specific to particular targets.
+❌ No | Pragmas | Pragmas accepted by GCC.
+✅ Yes | Unnamed Fields | Unnamed struct/union fields within structs/unions.
+🛠️ [WIP](//github.com/bobrippling/ucc-c-compiler/tree/feature/tls) | Thread-Local | Per-thread variables.
+✅ Yes | Binary constants | Binary constants using the `0b` prefix.
 
 Output/Targets
 --------------
