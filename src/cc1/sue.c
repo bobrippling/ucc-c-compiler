@@ -196,8 +196,16 @@ static void sue_get_decls(sue_member **mems, sue_member ***pds)
 			/* either an anonymous struct/union OR a bitfield */
 			struct_union_enum_st *sub = type_is_s_or_u(d->ref);
 
-			if(sub)
-				sue_get_decls(sub->members, pds);
+			if(!sub)
+				continue;
+
+			switch(sue_anonext_type(d, sub)){
+				case SUE_ANONEXT_ALLOW:
+				case SUE_ANONEXT_ALLOW_C11:
+					sue_get_decls(sub->members, pds);
+				case SUE_ANONEXT_DENY:
+					break;
+			}
 		}
 	}
 }
