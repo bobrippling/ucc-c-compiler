@@ -172,6 +172,19 @@ struct_union_enum_st *sue_find_descend(
 	return NULL;
 }
 
+enum sue_anonextkind sue_anonext_type(decl *d, struct_union_enum_st *sub_sue)
+{
+	if(FOPT_TAG_ANON_STRUCT_EXT(&cc1_fopt))
+		return SUE_ANONEXT_ALLOW;
+
+	if(!sub_sue->anon || type_is_tdef(d->ref)){
+		/* non-anonymous (i.e. non-C11) or plan9 attempted */
+		return SUE_ANONEXT_DENY;
+	}
+
+	return SUE_ANONEXT_ALLOW_C11;
+}
+
 static void sue_get_decls(sue_member **mems, sue_member ***pds)
 {
 	for(; mems && *mems; mems++){

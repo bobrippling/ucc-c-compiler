@@ -111,6 +111,15 @@ enum sue_szkind
 };
 enum sue_szkind sue_sizekind(struct_union_enum_st *);
 
+enum sue_anonextkind
+{
+	SUE_ANONEXT_ALLOW, /* -fms/plan9-extensions */
+	SUE_ANONEXT_DENY, /* ms/plan9 extension attempted without -fflag */
+	SUE_ANONEXT_ALLOW_C11, /* fine if in C11 */
+};
+
+enum sue_anonextkind sue_anonext_type(struct decl *, struct_union_enum_st *);
+
 ucc_wur
 int sue_incomplete_chk(struct_union_enum_st *st, const where *w);
 

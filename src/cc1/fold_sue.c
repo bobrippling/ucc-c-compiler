@@ -191,43 +191,49 @@ static int fold_sue_check_unnamed(
 			/* anon */
 			int drop_member = 0;
 
-			if(FOPT_TAG_ANON_STRUCT_EXT(&cc1_fopt)){
-				/*
-				 * cc -fms-extensions/-fplan9-extensions
-				 * struct A { ... };
-				 * struct B { struct A; }; // struct B contains all of struct A's members
-				 *            ^~~~~~~~
-				 */
-				cc1_warn_at(&d->where,
-						unnamed_struct_memb_ext_tagged,
-						"tagged struct '%s' is a Microsoft/Plan 9 extension",
-						decl_to_str(d));
+			switch(sue_anonext_type(d, sub_sue)){
+				case SUE_ANONEXT_ALLOW:
+					/*
+					 * cc -fms-extensions/-fplan9-extensions
+					 * struct A { ... };
+					 * struct B { struct A; }; // struct B contains all of struct A's members
+					 *            ^~~~~~~~
+					 */
+					cc1_warn_at(&d->where,
+							unnamed_struct_memb_ext_tagged,
+							"tagged struct '%s' is a Microsoft/Plan 9 extension",
+							decl_to_str(d));
+					break;
 
-			}else if(!sub_sue->anon || type_is_tdef(d->ref)){
-				/*
-				 * struct A { ... };
-				 * struct B { struct A; }; // declaration does not declare anything
-				 *            ^~~~~~~~
-				 */
-				drop_member = 1;
+				case SUE_ANONEXT_DENY:
+					/*
+					 * struct A { ... };
+					 * struct B { struct A; }; // declaration does not declare anything
+					 *            ^~~~~~~~
+					 */
+					drop_member = 1;
 
-				cc1_warn_at(&d->where,
-						unnamed_struct_memb_ignored,
-						"unnamed member '%s' ignored (untagged %swould be accepted in C11)",
-						decl_to_str(d),
-						type_is_tdef(d->ref) ? "and untypedef'd " : "");
+					cc1_warn_at(&d->where,
+							unnamed_struct_memb_ignored,
+							"unnamed member '%s' ignored (untagged %swould be accepted in C11)",
+							decl_to_str(d),
+							type_is_tdef(d->ref) ? "and untypedef'd " : "");
+					break;
 
-			}else if(cc1_std < STD_C11){
-				/*
-				 * struct B {
-				 *   struct { ... }; // struct B contains all of anon struct's members
-				 *          ^~~~~~~~
-				 * };
-				 */
-				cc1_warn_at(&d->where,
-						unnamed_struct_memb_ext_c11,
-						"unnamed member '%s' is a C11 extension",
-						decl_to_str(d));
+				case SUE_ANONEXT_ALLOW_C11:
+					if(cc1_std < STD_C11){
+						/*
+						 * struct B {
+						 *   struct { ... }; // struct B contains all of anon struct's members
+						 *          ^~~~~~~~
+						 * };
+						 */
+						cc1_warn_at(&d->where,
+								unnamed_struct_memb_ext_c11,
+								"unnamed member '%s' is a C11 extension",
+								decl_to_str(d));
+					}
+					break;
 			}
 
 			if(drop_member){
