@@ -189,7 +189,7 @@ static struct_union_enum_st *parse_sue_definition(
 			dynarray_free(decl **, dmembers, NULL);
 		}
 
-		sue_member_init_dup_check(*members);
+		sue_member_init_dup_check(*members, prim, *spel, sue_loc);
 	}
 
 	return predecl_sue;

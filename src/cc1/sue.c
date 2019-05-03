@@ -232,7 +232,20 @@ void sue_define(struct_union_enum_st *sue, sue_member **members)
 	sue->members = members;
 }
 
-void sue_member_init_dup_check(sue_member **members)
+static int sue_member_in_array(sue_member *m, sue_member **members)
+{
+	size_t i;
+	for(i = 0; members && members[i]; i++)
+		if(members[i] == m)
+			return 1;
+	return 0;
+}
+
+void sue_member_init_dup_check(
+		sue_member **members,
+		enum type_primitive prim,
+		const char *spel /* nullable */,
+		where *sue_location)
 {
 	sue_member **decls = NULL;
 	int i;
@@ -255,10 +268,30 @@ void sue_member_init_dup_check(sue_member **members)
 				&& (d2 = decls[i + 1]->struct_member,
 					!strcmp(d->spel, d2->spel)))
 		{
-			char buf[WHERE_BUF_SIZ];
+			const char *type = sue_str_type(prim);
 
-			warn_at_print_error(&d2->where, "duplicate member %s (from %s)",
-					d->spel, where_str_r(buf, &d->where));
+			if(!sue_member_in_array(decls[i], members)
+			|| !sue_member_in_array(decls[i+1], members))
+			{
+				/* we have a duplicate member from another struct */
+				warn_at_print_error(sue_location, "%s %s contains duplicate member \"%s\"",
+						spel ? type : "anonymous",
+						spel ? spel : type,
+						d->spel);
+
+				note_at(&d->where, "duplicate of this member, and ...");
+				note_at(&d2->where, "... this member");
+			}
+			else
+			{
+				warn_at_print_error(&d2->where, "%s %s contains duplicate member \"%s\"",
+						sue_str_type(prim),
+						spel ? type : "anonymous",
+						spel ? spel : type,
+						d->spel);
+				note_at(&d->where, "duplicate of this member");
+			}
+
 			fold_had_error = 1;
 		}
 	}

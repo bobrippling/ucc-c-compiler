@@ -77,7 +77,11 @@ struct_union_enum_st *sue_predeclare(
 void sue_define(struct_union_enum_st *sue, sue_member **members)
 	ucc_nonnull();
 
-void sue_member_init_dup_check(sue_member **members);
+void sue_member_init_dup_check(
+		sue_member **members,
+		enum type_primitive prim,
+		const char *spel /* nullable */,
+		where *sue_location);
 
 sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 
