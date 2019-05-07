@@ -77,7 +77,11 @@ struct_union_enum_st *sue_predeclare(
 void sue_define(struct_union_enum_st *sue, sue_member **members)
 	ucc_nonnull();
 
-void sue_member_init_dup_check(sue_member **members);
+void sue_member_init_dup_check(
+		sue_member **members,
+		enum type_primitive prim,
+		const char *spel /* nullable */,
+		where *sue_location);
 
 sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 
@@ -106,6 +110,15 @@ enum sue_szkind
 	SUE_NONAMED
 };
 enum sue_szkind sue_sizekind(struct_union_enum_st *);
+
+enum sue_anonextkind
+{
+	SUE_ANONEXT_ALLOW, /* -fms/plan9-extensions */
+	SUE_ANONEXT_DENY, /* ms/plan9 extension attempted without -fflag */
+	SUE_ANONEXT_ALLOW_C11, /* fine if in C11 */
+};
+
+enum sue_anonextkind sue_anonext_type(struct decl *, struct_union_enum_st *);
 
 ucc_wur
 int sue_incomplete_chk(struct_union_enum_st *st, const where *w);

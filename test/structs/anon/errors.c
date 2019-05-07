@@ -1,4 +1,4 @@
-// RUN: %check -e %s -fplan9-extensions
+// RUN: %check --only -e %s -fplan9-extensions
 
 struct A
 {
@@ -6,40 +6,40 @@ struct A
 };
 typedef struct A A;
 
-struct ambig_C11
+struct ambig_C11 // CHECK: error: struct ambig_C11 contains duplicate member "a_sub"
 {
 	struct {
 		int a_sub;
-	};
-	int a_sub; // CHECK: error: duplicate member a_sub
+	}; // CHECK: /warning: tagged struct 'struct <anon struct @ .*>' is a Microsoft/Plan 9 extension/
+	int a_sub;
 };
 
-struct ambig_plan9_1
+struct ambig_plan9_1 // CHECK: error: struct ambig_plan9_1 contains duplicate member "a_sub"
 {
-	struct A;
-	int a_sub; // CHECK: error: duplicate member a_sub
+	struct A; // CHECK: warning: tagged struct 'struct A' is a Microsoft/Plan 9 extension
+	int a_sub;
 };
 
-struct ambig_plan9_2
+struct ambig_plan9_2 // CHECK: error: struct ambig_plan9_2 contains duplicate member "a_sub"
 {
-	A;
-	int a_sub; // CHECK: error: duplicate member a_sub
+	A; // CHECK: warning: tagged struct 'A {aka 'struct A'}' is a Microsoft/Plan 9 extension
+	int a_sub;
 };
 
-struct bad_before
+struct bad_before // CHECK: error: struct bad_before contains duplicate member "a"
 {
 	int a;
 	struct
 	{
-		int b, a; // CHECK: error: duplicate member a
-	};
+		int b, a;
+	}; // CHECK: /warning: tagged struct 'struct <anon struct @ .*>' is a Microsoft/Plan 9 extension/
 };
 
-struct bad_after
+struct bad_after // CHECK: error: struct bad_after contains duplicate member "a"
 {
 	struct
 	{
 		int b, a;
-	};
-	int a; // CHECK: error: duplicate member a
+	}; // CHECK: /warning: tagged struct 'struct <anon struct @ .*>' is a Microsoft/Plan 9 extension/
+	int a;
 };
