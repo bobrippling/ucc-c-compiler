@@ -1618,7 +1618,7 @@ static void workaround_valist_typedef(decl *d, symtable *symtab)
 	if((d->store & STORE_MASK_STORE) != store_typedef)
 		return;
 
-	if(platform_sys() != SYS_darwin)
+	if(!cc1_fopt.force_valist_type)
 		return;
 
 	if(!where_in_sysheader(&d->where))

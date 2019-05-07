@@ -1159,6 +1159,7 @@ static void state_from_triple(
 
 			dynarray_add(&state->args[mode_compile], ustrdup("-mpreferred-stack-boundary=4"));
 			dynarray_add(&state->args[mode_compile], ustrdup("-malign-is-p2")); /* 2^4 = 16 byte aligned */
+			dynarray_add(&state->args[mode_compile], ustrdup("-fforce-va_list-type"));
 			dynarray_add(additional_argv, ustrdup("-fleading-underscore"));
 			dynarray_add(additional_argv, ustrdup("-fpic"));
 

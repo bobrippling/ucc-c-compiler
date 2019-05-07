@@ -1,5 +1,5 @@
-// TEST: target darwin
-// RUN: %ucc -x cpp-output -fsyntax-only %s
+// RUN: %ucc -target x86_64-darwin -x cpp-output -fsyntax-only %s
+// RUN: %ucc -target x86_64-linux -fforce-va_list-type -x cpp-output -fsyntax-only %s
 
 # 1 "variadic/darwin_workaround.c" 1
 
