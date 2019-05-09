@@ -63,6 +63,7 @@ static int va_type_check(
 		warn_at_print_error(&va_l->where,
 				"first argument to %s should be a va_list (not %s)",
 				BUILTIN_SPEL(in), type_to_str(va_l->tree_type));
+		fold_had_error = 1;
 		return 0;
 	}
 	return 1;
@@ -571,6 +572,7 @@ static void fold_va_end(expr *e, symtable *stab)
 
 	if(dynarray_count(e->funcargs) != 1){
 		warn_at_print_error(&e->where, "%s requires one argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
 		return;
 	}
 
@@ -604,6 +606,7 @@ static void fold_va_copy(expr *e, symtable *stab)
 
 	if(dynarray_count(e->funcargs) != 2){
 		warn_at_print_error(&e->where, "%s requires two arguments", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
 		return;
 	}
 
