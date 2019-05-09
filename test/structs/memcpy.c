@@ -21,6 +21,8 @@ int main()
 	typedef struct B { unsigned a, b, c, d, e; } B;
 	typedef struct C { unsigned a, b, c, d, e, f, g; } C;
 
+	/* the original bug caused an overflow by using word-pointers for
+	 * less-than-word trailing bytes, so packing these together exposes it */
 	A a[3] = { 0 };
 	B b[3] = { 0 };
 	C c[3] = { 0 };
