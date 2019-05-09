@@ -13,7 +13,7 @@
 	 (e)->bits.struct_mem.extra_off                     \
 	 )
 
-const char *str_expr_struct()
+const char *str_expr_struct(void)
 {
 	return "member-access";
 }
@@ -229,7 +229,7 @@ static void fold_const_expr_struct(expr *e, consty *k)
 	}
 }
 
-static enum lvalue_kind struct_is_lval(expr *e)
+static enum lvalue_kind struct_is_lval(const expr *e)
 {
 	if(e->expr_is_st_dot){
 		/* we're only an lvalue if our subexpression is a

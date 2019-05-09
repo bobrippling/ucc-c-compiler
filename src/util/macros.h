@@ -8,4 +8,10 @@
 
 #define countof(ar) (sizeof(ar) / sizeof((ar)[0]))
 
+#ifdef NDEBUG
+#  define UCC_DEBUG_BUILD 0
+#else
+#  define UCC_DEBUG_BUILD 1
+#endif
+
 #endif

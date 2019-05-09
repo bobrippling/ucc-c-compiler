@@ -1,24 +1,25 @@
-#define _POSIX_C_SOURCE 200112L
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
+#include <stdlib.h>
 #include <stdarg.h>
+
+#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
 #include <sys/time.h>
 #include <errno.h>
 
-#include "ucc_ext.h"
-#include "ucc.h"
-#include "umask.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
-#include "../util/str.h"
 #include "../util/io.h"
+
+#include "ucc.h"
+#include "ucc_ext.h"
+#include "ucc_path.h"
+#include "umask.h"
+
 #include "str.h"
 
-char **include_paths;
 int time_subcmds;
 
 static int show, noop;
@@ -29,73 +30,25 @@ void ucc_ext_cmds_show(int s)
 void ucc_ext_cmds_noop(int n)
 { noop = n; }
 
-
-static void
-bname(char *path)
-{
-	char *p = strrchr(path, '/');
-	if(p)
-		p[1] = '\0';
-}
-
-char *ucc_where(void)
-{
-	static char where[1024];
-
-	if(!where[0]){
-		char link[1024];
-		ssize_t nb;
-
-		if((nb = readlink(argv0, link, sizeof link)) == -1){
-			xsnprintf(where, sizeof where, "%s", argv0);
-		}else{
-			char *argv_dup;
-
-			link[nb] = '\0';
-			/* need to tag argv0's dirname onto the start */
-			argv_dup = ustrdup(argv0);
-
-			bname(argv_dup);
-
-			xsnprintf(where, sizeof where, "%s/%s", argv_dup, link);
-
-			free(argv_dup);
-		}
-
-		/* dirname */
-		bname(where);
-	}
-
-	return where;
-}
-
-char *actual_path(const char *prefix, const char *path)
-{
-	char *w = ucc_where();
-	char *buf;
-
-	buf = umalloc(strlen(w) + strlen(prefix) + strlen(path) + 2);
-
-	sprintf(buf, "%s/%s%s", w, prefix, path);
-
-	return buf;
-}
-
-static int runner(int local, const char *path, char **args, int return_ec, const char *to_remove)
+static int runner(struct cmdpath *path, char **args, int return_ec, const char *to_remove)
 {
 	pid_t pid;
 	struct timeval time_start, time_end;
 
 	if(show){
+		char *resolved = cmdpath_resolve(path, NULL);
 		int i;
 
 		if(wrapper)
 			fprintf(stderr, "WRAPPER='%s' ", wrapper);
 
-		fprintf(stderr, "%s ", path);
+		fprintf(stderr, "%s ", resolved);
 		for(i = 0; args[i]; i++)
 			fprintf(stderr, "%s ", args[i]);
+
 		fputc('\n', stderr);
+
+		free(resolved);
 	}
 
 	if(noop)
@@ -116,6 +69,7 @@ static int runner(int local, const char *path, char **args, int return_ec, const
 			int nargs = dynarray_count(args);
 			int i_in = 0, i_out = 0;
 			char **argv;
+			cmdpath_exec_fn *execfn;
 
 			/* -wrapper gdb,--args */
 			if(wrapper){
@@ -146,7 +100,7 @@ static int runner(int local, const char *path, char **args, int return_ec, const
 					argv[i_out++] = last;
 			}
 
-			argv[i_out++] = local ? actual_path("../", path) : (char *)path;
+			argv[i_out++] = cmdpath_resolve(path, &execfn);
 
 			while(args[i_in])
 				argv[i_out++] = args[i_in++];
@@ -159,12 +113,9 @@ static int runner(int local, const char *path, char **args, int return_ec, const
 				fprintf(stderr, "  [%d] = \"%s\",\n", i, argv[i]);
 #endif
 
-			if(wrapper)
-				local = 0;
-
 			umask(orig_umask);
 
-			(local ? execv : execvp)(argv[0], argv);
+			(*execfn)(argv[0], argv);
 			die("execv(\"%s\"):", argv[0]);
 		}
 
@@ -181,11 +132,11 @@ static int runner(int local, const char *path, char **args, int return_ec, const
 				if(to_remove)
 					remove(to_remove);
 				if(!return_ec)
-					die("%s returned %d", path, i);
+					die("%s returned %d", path->path, i);
 			}else if(WIFSIGNALED(status)){
 				int sig = WTERMSIG(status);
 
-				fprintf(stderr, "%s caught signal %d\n", path, sig);
+				fprintf(stderr, "%s caught signal %d\n", path->path, sig);
 
 				if(to_remove)
 					remove(to_remove);
@@ -203,7 +154,7 @@ static int runner(int local, const char *path, char **args, int return_ec, const
 					usecdiff += 1000000L;
 				}
 
-				printf("# %s %ld.%06ld\n", path, (long)secdiff, (long)usecdiff);
+				printf("# %s %ld.%06ld\n", path->path, (long)secdiff, (long)usecdiff);
 			}
 
 			return i;
@@ -213,7 +164,12 @@ static int runner(int local, const char *path, char **args, int return_ec, const
 
 void execute(char *path, char **args)
 {
-	runner(0, path, args, 0, NULL);
+	struct cmdpath cmdpath;
+
+	cmdpath.path = path;
+	cmdpath.type = USE_PATH;
+
+	runner(&cmdpath, args, 0, NULL);
 }
 
 void rename_or_move(char *old, char *new)
@@ -225,6 +181,7 @@ void rename_or_move(char *old, char *new)
 		"cat", old, ">", new, NULL
 	};
 	char *fixed[3];
+	struct cmdpath shpath;
 
 	if(!strcmp(old, new))
 		return;
@@ -241,7 +198,9 @@ void rename_or_move(char *old, char *new)
 	fixed[1] = cmd;
 	fixed[2] = NULL;
 
-	runner(0, "sh", fixed, 0, new);
+	shpath.path = "sh";
+	shpath.type = USE_PATH;
+	runner(&shpath, fixed, 0, new);
 
 	free(cmd);
 }
@@ -282,7 +241,12 @@ void cat_fnames(char *fnin, const char *fnout, int append)
 		die("close():");
 }
 
-static int runner_1(int local, const char *path, char *in, const char *out, char **args, int return_ec)
+static int runner_single_arg(
+		struct cmdpath *path,
+		char *in,
+		const char *out,
+		char **args,
+		int return_ec)
 {
 	int ret;
 	char **all = NULL;
@@ -295,7 +259,7 @@ static int runner_1(int local, const char *path, char *in, const char *out, char
 
 	dynarray_add(&all, in);
 
-	ret = runner(local, path, all, return_ec, out);
+	ret = runner(path, all, return_ec, out);
 
 	dynarray_free(char **, all, NULL);
 
@@ -306,32 +270,19 @@ int preproc(char *in, const char *out, char **args, int return_ec)
 {
 	int ret;
 	char **all = NULL;
-	char **i;
+	struct cmdpath pp_path;
 
 	if(args)
 		dynarray_add_array(&all, args);
 
-	for(i = include_paths; i && *i; i++){
-		char *this = *i, *inc;
-		int f_this = 1;
-
-		if(*this == '/'){
-			f_this = 0;
-		}else{
-			this = actual_path(this, "");
-		}
-
-		inc = ustrprintf("-I%s", this);
-
-		dynarray_add(&all, inc);
-		if(f_this)
-			free(this);
+	if(binpath_cpp){
+		pp_path.type = USE_PATH;
+		pp_path.path = binpath_cpp;
+	}else{
+		cmdpath_initrelative(&pp_path, "cpp", "../cpp2/cpp");
 	}
 
-	if(binpath_cpp)
-		ret = runner_1(0, binpath_cpp, in, out, all, return_ec);
-	else
-		ret = runner_1(1, "cpp2/cpp", in, out, all, return_ec);
+	ret = runner_single_arg(&pp_path, in, out, all, return_ec);
 
 	dynarray_free(char **, all, NULL);
 
@@ -340,17 +291,24 @@ int preproc(char *in, const char *out, char **args, int return_ec)
 
 int compile(char *in, const char *out, char **args, int return_ec)
 {
-	return runner_1(1, "cc1/cc1", in, out, args, return_ec);
+	struct cmdpath cc1path;
+
+	cmdpath_initrelative(&cc1path, "cc1", "../cc1/cc1");
+
+	return runner_single_arg(&cc1path, in, out, args, return_ec);
 }
 
 void assemble(char *in, const char *out, char **args, const char *as)
 {
 	char **copy = NULL;
+	struct cmdpath aspath;
 
 	if(args)
 		dynarray_add_array(&copy, args);
 
-	runner_1(0, as, in, out, copy, 0);
+	aspath.path = as;
+	aspath.type = USE_PATH;
+	runner_single_arg(&aspath, in, out, copy, 0);
 
 	dynarray_free(char **, copy, NULL);
 }
@@ -358,6 +316,7 @@ void assemble(char *in, const char *out, char **args, const char *as)
 void link_all(char **objs, const char *out, char **args, const char *ld)
 {
 	char **all = NULL;
+	struct cmdpath ldpath;
 
 	dynarray_add(&all, (char *)"-o");
 	dynarray_add(&all, (char *)out);
@@ -367,7 +326,10 @@ void link_all(char **objs, const char *out, char **args, const char *ld)
 	if(args)
 		dynarray_add_array(&all, args);
 
-	runner(0, ld, all, 0, out);
+	ldpath.path = ld;
+	ldpath.type = USE_PATH;
+
+	runner(&ldpath, all, 0, out);
 
 	dynarray_free(char **, all, NULL);
 }

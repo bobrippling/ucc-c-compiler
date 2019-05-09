@@ -1,5 +1,5 @@
-// RUN: %check -e %s
-extern int (*f)(struct A *);
+// RUN: %check --only -e %s
+extern int (*f)(struct A *); // CHECK: warning: declaration of 'struct A' only visible inside function
 
 main()
 {

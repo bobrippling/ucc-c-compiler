@@ -108,8 +108,13 @@ int cc1_warn_at_w(
 		where = where_cc1_current(&backup);
 
 	/* don't emit warnings from system headers */
-	if(!cc1_warning.system_headers && where_in_sysheader(where))
-		return 0;
+	if(!cc1_warning.system_headers && where_in_sysheader(where)){
+		if(warn_type == VWARN_ERR){
+			/* we always want this warning emitting */
+		}else{
+			return 0;
+		}
+	}
 
 	va_start(l, fmt);
 	vwarn(where, warn_type, fmt, l);
@@ -197,6 +202,8 @@ static void warning_all(enum warning_fatality set)
 	cc1_warning.int_op_promotion =
 	cc1_warning.overlength_strings =
 	cc1_warning.aggregate_return =
+	cc1_warning.switch_enum_even_when_default_lbl =
+	cc1_warning.bitfield_promotion =
 		W_OFF;
 }
 
@@ -245,7 +252,6 @@ static void warning_special(enum warning_special special, enum warning_fatality 
 		case W_EXTRA:
 			warning_all(fatality);
 			cc1_warning.implicit_int =
-			cc1_warning.shadow_global_user =
 			cc1_warning.cast_qual =
 			cc1_warning.init_missing_braces =
 			cc1_warning.init_missing_struct =

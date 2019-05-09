@@ -17,6 +17,7 @@ X("ms-extensions", ms_extensions)
 X("plan9-extensions", plan9_extensions)
 X("signed-char", signed_char)
 INVERT("unsigned-char", signed_char)
+X("force-va_list-type", force_valist_type)
 
 /* frontend output */
 X("dump-bblocks", dump_basic_blocks)

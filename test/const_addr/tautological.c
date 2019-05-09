@@ -1,4 +1,4 @@
-// RUN: %check --only %s -Wno-mismatch-ptr
+// RUN: %check --only %s -Wno-incompatible-pointer-types -Wno-compare-distinct-pointer-types
 
 g();
 f();

@@ -456,7 +456,7 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 			if(!glob->unrecog_attrs)
 				glob->unrecog_attrs = dynmap_new(char *, strcmp, dynmap_strhash);
 
-			dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
+			(void)dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
 
 			cc1_warn_at(&attrloc, attr_unknown,
 					"ignoring unrecognised attribute \"%s\"", ident);

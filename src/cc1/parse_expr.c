@@ -508,7 +508,7 @@ expr *parse_expr_unary(symtable *scope, int static_ctx)
 }
 
 static expr *parse_expr_generic(
-		expr *(*above)(symtable *, int static_ctx),
+		expr *(*above)(symtable *, int),
 		symtable *scope,
 		int static_ctx,
 		enum token t, ...)

@@ -5,6 +5,7 @@
 #include <ctype.h>
 #include <assert.h>
 
+#include "../util/macros.h"
 #include "../util/util.h"
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
@@ -53,6 +54,7 @@ void IGNORE_PRINTGEN(const out_val *v)
 const out_val *gen_expr(const expr *e, out_ctx *octx)
 {
 	consty k;
+	const out_val *generated;
 
 	/* always const_fold functions, i.e. builtins */
 	if(expr_kind(e, funcall) || cc1_fopt.const_fold)
@@ -65,14 +67,31 @@ const out_val *gen_expr(const expr *e, out_ctx *octx)
 	if(k.type == CONST_NUM){
 		/* -O0 skips this? */
 		if(cc1_backend == BACKEND_ASM){
-			return out_new_num(octx, e->tree_type, &k.bits.num);
+			generated = out_new_num(octx, e->tree_type, &k.bits.num);
 		}else{
 			stylef("%" NUMERIC_FMT_D, k.bits.num.val.i);
 			return NULL;
 		}
 	}else{
-		return e->f_gen(e, octx);
+		generated = e->f_gen(e, octx);
 	}
+
+	if(UCC_DEBUG_BUILD && 0/* this is too brittle and coupled to lval decay, etc */){
+		type *expected = e->tree_type;
+		if(expr_is_lval(e) != LVALUE_NO)
+			expected = type_decay(expected);
+
+		if(type_cmp(generated->t, expected, 0) & TYPE_NOT_EQUAL){
+			char buf[TYPE_STATIC_BUFSIZ];
+			ICE("%s: expected %s to generate '%s' value, got '%s'",
+					where_str(&e->where),
+					e->f_str(),
+					type_to_str(e->tree_type),
+					type_to_str_r(buf, generated->t));
+		}
+	}
+
+	return generated;
 }
 
 void gen_stmt(const stmt *t, out_ctx *octx)
@@ -249,9 +268,9 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 
 		arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
 		for(aiter = symtab_decls(arg_symtab); aiter && *aiter; aiter++){
-			decl *d = *aiter;
+			decl *arg = *aiter;
 
-			if(d->sym->type == sym_arg)
+			if(arg->sym->type == sym_arg)
 				nargs++;
 		}
 

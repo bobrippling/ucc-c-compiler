@@ -140,6 +140,7 @@ static void dump_options(void)
 	fprintf(stderr, "  -w\n");
 	fprintf(stderr, "  -std=(gnu|c)(99|90|89|11), -ansi\n");
 	fprintf(stderr, "  -f(sanitize=...|sanitize-error=...|sanitize-undefined-trap-on-error)\n");
+	fprintf(stderr, "  -fno-sanitize=all\n");
 	fprintf(stderr, "  -fvisibility=default|hidden|protected\n");
 	fprintf(stderr, "  -fdebug-compilation-dir=...\n");
 	fprintf(stderr, "\n");

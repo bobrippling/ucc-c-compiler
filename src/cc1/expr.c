@@ -149,7 +149,7 @@ int expr_is_null_ptr(expr *e, enum null_strictness ty)
 	return b && const_expr_and_zero(e);
 }
 
-enum lvalue_kind expr_is_lval(expr *e)
+enum lvalue_kind expr_is_lval(const expr *e)
 {
 	if(e->f_islval)
 		return e->f_islval(e);
@@ -157,13 +157,13 @@ enum lvalue_kind expr_is_lval(expr *e)
 	return LVALUE_NO;
 }
 
-enum lvalue_kind expr_is_lval_always(expr *e)
+enum lvalue_kind expr_is_lval_always(const expr *e)
 {
 	(void)e;
 	return LVALUE_USER_ASSIGNABLE;
 }
 
-enum lvalue_kind expr_is_lval_struct(expr *e)
+enum lvalue_kind expr_is_lval_struct(const expr *e)
 {
 	(void)e;
 	return LVALUE_STRUCT;

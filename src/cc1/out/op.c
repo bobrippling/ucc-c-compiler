@@ -152,11 +152,11 @@ static type *is_val_ptr(const out_val *v)
 {
 	type *pointee = type_is_ptr(v->t);
 	switch(v->type){
-		case V_REG_SPILT:
+		case V_SPILT:
 			if(pointee){
 				type *next = type_is_ptr(pointee);
 				if(next)
-					return next;
+					return pointee;
 			}
 			return NULL;
 
@@ -185,7 +185,7 @@ static void apply_ptr_step(
 		out_val *mut_incdec;
 		type *ptrty = l_ptr ? l_ptr : r_ptr;
 
-		*incdec = mut_incdec = v_dup_or_reuse(octx, *incdec, (*incdec)->t);
+		*incdec = mut_incdec = v_mutable_copy(octx, *incdec);
 
 		switch(mut_incdec->type){
 			case V_CONST_I:
@@ -207,7 +207,8 @@ static void apply_ptr_step(
 
 			case V_LBL:
 			case V_FLAG:
-			case V_REG_SPILT:
+			case V_REGOFF:
+			case V_SPILT:
 				assert(mut_incdec->retains == 1);
 				*incdec = (out_val *)v_to_reg(octx, *incdec);
 				assert((*incdec)->retains == 1);

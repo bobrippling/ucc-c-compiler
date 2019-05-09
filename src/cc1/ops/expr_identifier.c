@@ -11,7 +11,7 @@
 
 #include "expr_string.h"
 
-const char *str_expr_identifier()
+const char *str_expr_identifier(void)
 {
 	return "identifier";
 }
@@ -75,7 +75,7 @@ static int attempt_func_keyword(expr *expr_ident, symtable *stab)
 	const char *sp = expr_ident->bits.ident.bits.ident.spel;
 	int std = 1;
 
-	if(!strcmp(sp, "__func__") || (std = 0, !strcmp(sp, "__FUNCTION__"))){
+	if(!strcmp(sp, "__func__") || (std = 0, !strcmp(sp, "__FUNCTION__") || !strcmp(sp, "__PRETTY_FUNCTION__"))){
 		char *fnsp;
 		struct cstring *cstr;
 		decl *in_fn = symtab_func(stab);
@@ -83,7 +83,7 @@ static int attempt_func_keyword(expr *expr_ident, symtable *stab)
 		if(!std){
 			cc1_warn_at(
 					&expr_ident->where, gnu__function,
-					"use of GNU __FUNCTION__");
+					"use of GNU %s", sp);
 		}
 
 		if(!in_fn){

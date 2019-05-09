@@ -74,7 +74,7 @@ const out_val *out_bitfield_scalar_merge(out_ctx *octx,
 
 	/* load the pointer to the store, forgetting the bitfield */
 	pword = out_change_type(octx, pword, type_ptr_to(ty));
-	pword = mut_pword = v_dup_or_reuse(octx, pword, pword->t);
+	pword = mut_pword = v_mutable_copy(octx, pword);
 	mut_pword->bitfield.nbits = 0;
 
 	/* load the bitfield without using bitfield semantics */

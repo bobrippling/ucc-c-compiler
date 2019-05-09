@@ -24,7 +24,7 @@
 #include "../out/out.h"
 #include "../cc1_out_ctx.h"
 
-const char *str_stmt_code()
+const char *str_stmt_code(void)
 {
 	return "code";
 }
@@ -105,9 +105,6 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 		attribute *attr;
 
 		fold_decl(d, stab);
-
-		/* block decls must be complete */
-		fold_check_decl_complete(d);
 
 		if((attr = attribute_present(d, attr_cleanup)))
 			cleanup_check(d, attr);

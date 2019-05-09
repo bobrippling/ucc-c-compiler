@@ -328,9 +328,7 @@ static char *eval_macro_r(macro *m, char *start, char **pat)
 			free_val = 1;
 
 			if(!strcmp(m->nam, "__FILE__")){
-				char *q = str_quote(current_fname, 0);
-				val = ustrprintf("%s", q);
-				free(q);
+				val = str_quote(current_fname, 0);
 			}else if(!strcmp(m->nam, "__LINE__")){
 				val = ustrprintf("%d", current_line);
 			}else if(!strcmp(m->nam, "__COUNTER__")){

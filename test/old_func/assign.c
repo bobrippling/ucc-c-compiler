@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check --only %s -Wno-omitted-param-types
 
 f(a)
 	char *a;
@@ -12,7 +12,7 @@ char *h(a)
 	return a;
 }
 
-test()
+void test()
 {
 	int   (*ifp)(char *);
 	char *(*cpfp)(char *);

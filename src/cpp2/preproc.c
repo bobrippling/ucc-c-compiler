@@ -72,7 +72,7 @@ static void preproc_emit_line_info_top(enum lineinfo lineinfo)
 			lineinfo | (file_stack[file_stack_idx].is_sysh ? LINEINFO_SYSHEADER : 0));
 }
 
-int preproc_in_include()
+int preproc_in_include(void)
 {
 	return file_stack_idx > 0;
 }

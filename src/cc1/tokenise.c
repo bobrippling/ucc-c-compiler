@@ -506,7 +506,7 @@ void tokenise_set_mode(enum keyword_mode m)
 	keyword_mode = m | KW_ALL;
 }
 
-char *token_current_spel()
+char *token_current_spel(void)
 {
 	char *ret = currentspelling;
 	currentspelling = NULL;
@@ -1029,7 +1029,7 @@ static void read_number(const int first)
 		char *new;
 		int bad_prefix = 0;
 
-		currentval.val.f = strtold(num_start, &new);
+		currentval.val.f = ucc_strtold(num_start, &new);
 		currentval.suffix = VAL_FLOATING;
 		update_bufferpos(new);
 
@@ -1079,7 +1079,7 @@ static void read_number(const int first)
 	curtok = (currentval.suffix & VAL_FLOATING ? token_floater : token_integer);
 }
 
-void nexttoken()
+void nexttoken(void)
 {
 	int c;
 
@@ -1240,8 +1240,8 @@ void nexttoken()
 				in_comment = 1;
 
 				for(;;){
-					int c = rawnextchar();
-					if(c == '*' && *bufferpos == '/'){
+					int nextc = rawnextchar();
+					if(nextc == '*' && *bufferpos == '/'){
 						rawnextchar(); /* eat the / */
 						in_comment = 0; /* ensure we set this before parsing next token */
 						nexttoken();

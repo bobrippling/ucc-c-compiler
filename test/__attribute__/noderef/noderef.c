@@ -1,10 +1,10 @@
-// RUN: %check %s -w -Wattr-noderef -Wincompatible-pointer-types
+// RUN: %check --only %s -w -Wattr-noderef -Wincompatible-pointer-types
 
 #define userd(t) t __attribute((noderef))
 
 f(userd(int) *p)
 {
-	int *local = p; // CHECK: warning: mismatching nested types
+	int *local = p; // CHECK: warning: mismatching nested types, initialisation
 
 	int __attribute((noderef)) *x = p; // CHECK: !/warn/
 
@@ -31,7 +31,7 @@ struct A { int i; };
 
 void g(userd(struct A) *p)
 {
-	__auto_type st = *p;
+	__auto_type st = *p; // CHECK: warning: dereference of noderef expression
 
 	__auto_type x = &p->i;
 

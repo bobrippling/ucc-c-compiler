@@ -9,7 +9,7 @@
 
 #include "expr_op.h"
 
-const char *str_expr_deref()
+const char *str_expr_deref(void)
 {
 	return "dereference";
 }

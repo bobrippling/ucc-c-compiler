@@ -15,7 +15,7 @@
 #define ITER_SWITCH(sw, iter) \
 	for(iter = sw->bits.switch_.cases; iter && *iter; iter++)
 
-const char *str_stmt_switch()
+const char *str_stmt_switch(void)
 {
 	return "switch";
 }

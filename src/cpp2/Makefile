@@ -30,6 +30,7 @@ cpp: ${OBJ}
 	@echo link $@
 	$Q${CC} -o $@ ${OBJ} ${LDFLAGS}
 
+
 clean:
 	@echo clean cpp
 	$Qrm -f ${OBJ_CPP} cpp

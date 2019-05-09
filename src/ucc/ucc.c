@@ -9,6 +9,7 @@
 
 #include "ucc.h"
 #include "ucc_ext.h"
+#include "ucc_path.h"
 #include "umask.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
@@ -92,7 +93,8 @@ struct uccvars
 	const char *target;
 	const char *output;
 
-	int static_, shared, startfiles, stdlib, stdinc;
+	int static_, shared;
+	int stdlibinc, builtininc, defaultlibs, startfiles;
 	int debug, profile;
 	enum tristate pie;
 	int help, dumpmachine;
@@ -102,6 +104,7 @@ static char **remove_these;
 static int save_temps = 0;
 const char *argv0;
 char *wrapper;
+char *Bprefix;
 const char *binpath_cpp;
 mode_t orig_umask = 022;
 
@@ -154,6 +157,11 @@ static void tmpfilenam(
 	int fd;
 
 	if(save_temps){
+		/* this ignores any directories, e.g.
+		 * ucc -save-temps path/to/a.c
+		 * will generate ./a.[iso], not path/to/a.[iso]
+		 * (like gcc and clang)
+		 */
 		path = expected_filename(in, mode);
 		fd = FILE_UNINIT;
 		/* we don't create the temp files for -save-temps because there's no need
@@ -841,6 +849,21 @@ arg_ld:
 					continue;
 				}
 
+				case 'B':
+				{
+					size_t l;
+					if(Bprefix) /* not exactly gcc/clang compatible */
+						die("-Bprefix already given");
+
+					Bprefix = argv[i] + 2;
+					l = strlen(Bprefix);
+					if(l == 0)
+						die("need argument for -Bprefix");
+					if(Bprefix[l - 1] != '/')
+						Bprefix = ustrprintf("%s/", Bprefix); /* static data, no leak */
+					continue;
+				}
+
 				case '\0':
 					/* "-" aka stdin */
 					goto input;
@@ -856,12 +879,23 @@ word:
 					}
 					else if(!strcmp(argv[i], "-pedantic") || !strcmp(argv[i], "-pedantic-errors"))
 						ADD_ARG(mode_compile);
+
+					/* stdlib = startfiles and defaultlibs */
 					else if(!strcmp(argv[i], "-nostdlib"))
-						vars->stdlib = 0;
+						vars->startfiles = 0, vars->defaultlibs = 0;
 					else if(!strcmp(argv[i], "-nostartfiles"))
 						vars->startfiles = 0;
+					else if(!strcmp(argv[i], "-nodefaultlibs"))
+						vars->defaultlibs = 0;
+
+					/* stdinc = stdlibinc and builtininc */
 					else if(!strcmp(argv[i], "-nostdinc"))
-						vars->stdinc = 0;
+						vars->stdlibinc = 0, vars->builtininc = 0;
+					else if(!strcmp(argv[i], "-nostdlibinc"))
+						vars->stdlibinc = 0;
+					else if(!strcmp(argv[i], "-nobuiltininc"))
+						vars->builtininc = 0;
+
 					else if(!strcmp(argv[i], "-shared"))
 						vars->shared = 1;
 					else if(!strcmp(argv[i], "-static"))
@@ -999,8 +1033,9 @@ static void merge_states(struct ucc *state, struct ucc *append)
 
 static void vars_default(struct uccvars *vars)
 {
-	vars->stdinc = 1;
-	vars->stdlib = 1;
+	vars->stdlibinc = 1;
+	vars->builtininc = 1;
+	vars->defaultlibs = 1;
 	vars->startfiles = 1;
 	vars->pie = TRI_UNSET;
 }
@@ -1014,12 +1049,14 @@ static void state_from_triple(
 	const char *paramshared = "-shared";
 	const char *paramstatic = "-static";
 
-	if(vars->stdinc){
-		char *uccinc = actual_path("../../", "include");
+	if(vars->builtininc){
+		struct cmdpath uccinc;
+		cmdpath_initrelative(&uccinc, "include", "../include");
 
 		dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
-		dynarray_add(&state->args[mode_preproc], uccinc);
-
+		dynarray_add(&state->args[mode_preproc], cmdpath_resolve(&uccinc, NULL));
+	}
+	if(vars->stdlibinc){
 		dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
 		dynarray_add(&state->args[mode_preproc], ustrdup("/usr/include"));
 
@@ -1049,7 +1086,7 @@ static void state_from_triple(
 
 			dynarray_add(&state->ldflags_post_user, ustrdup("-L" LINUX_LIBC_PREFIX));
 
-			if(vars->stdlib){
+			if(vars->defaultlibs){
 				dynarray_add(&state->ldflags_post_user, ustrdup("-lc"));
 			}
 
@@ -1073,6 +1110,16 @@ static void state_from_triple(
 				}
 
 				{
+					struct cmdpath dso;
+					char *resolved;
+
+					cmdpath_initrelative(&dso, "../rt/dsohandle.o", "../rt/dsohandle.o");
+					resolved = cmdpath_resolve(&dso, NULL);
+
+					dynarray_add(&state->ldflags_pre_user, resolved);
+				}
+
+				{
 					char *dot;
 
 					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crti.o", target);
@@ -1086,7 +1133,7 @@ static void state_from_triple(
 				}
 			}
 
-			if(vars->stdinc){
+			if(vars->stdlibinc){
 				dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
 				dynarray_add(&state->args[mode_preproc], ustrprintf("/usr/include/%s", target));
 			}
@@ -1101,7 +1148,7 @@ static void state_from_triple(
 				dynarray_add(&state->ldflags_post_user, ustrdup("/usr/lib/crtend.o"));
 				dynarray_add(&state->ldflags_post_user, ustrdup("/usr/lib/crtn.o"));
 			}
-			if(vars->stdlib){
+			if(vars->defaultlibs){
 				dynarray_add(&state->ldflags_post_user, ustrdup("-lc"));
 			}
 			break;
@@ -1112,18 +1159,19 @@ static void state_from_triple(
 
 			dynarray_add(&state->args[mode_compile], ustrdup("-mpreferred-stack-boundary=4"));
 			dynarray_add(&state->args[mode_compile], ustrdup("-malign-is-p2")); /* 2^4 = 16 byte aligned */
+			dynarray_add(&state->args[mode_compile], ustrdup("-fforce-va_list-type"));
 			dynarray_add(additional_argv, ustrdup("-fleading-underscore"));
 			dynarray_add(additional_argv, ustrdup("-fpic"));
 
 			/* no startfiles */
-			if(vars->stdlib){
+			if(vars->defaultlibs){
 				dynarray_add(&state->ldflags_post_user, ustrdup("-lSystem"));
 
 				if(vars->profile){
 					dynarray_add(&state->ldflags_post_user, ustrdup("-lgcrt1.o"));
 				}
 			}
-			if(vars->stdinc && syslibroot){
+			if(vars->stdlibinc && syslibroot){
 				dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
 				dynarray_add(&state->args[mode_preproc], ustrprintf("%s/usr/include", syslibroot));
 			}
@@ -1199,22 +1247,25 @@ static void usage(void)
 	fprintf(stderr, "Output options\n");
 	fprintf(stderr, "  -o file: Output file\n");
 	fprintf(stderr, "  -shared: Output a shared library\n");
-	fprintf(stderr, "  -static: Output a staticly linked executable\n");
+	fprintf(stderr, "  -static: Only link with static libraries (may be used with -shared)\n");
 	fprintf(stderr, "  -pie/-no-pie: Tell the linker to emit a position independent executable (or not)\n");
 	fprintf(stderr, "  -###: Output what would be done, do nothing\n");
 	fprintf(stderr, "  -v: Output commands before invoking them\n");
 	fprintf(stderr, "  -save-temps: Save temporary files for each stage\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Argument passing\n");
-	fprintf(stderr, "  -Wp,... -Xpreprocessor: Pass to preprocessor\n");
-	fprintf(stderr, "  -Wc,...                 Pass to compiler\n");
-	fprintf(stderr, "  -Wa,... -Xassembler:    Pass to assembler\n");
-	fprintf(stderr, "  -Wl,... -Xlinker:       Pass to linker\n");
+	fprintf(stderr, "  -Wp,... -Xpreprocessor ...: Pass to preprocessor\n");
+	fprintf(stderr, "  -Wc,...:                    Pass to compiler\n");
+	fprintf(stderr, "  -Wa,... -Xassembler ...:    Pass to assembler\n");
+	fprintf(stderr, "  -Wl,... -Xlinker ...:       Pass to linker\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Disabling standard inputs\n");
-	fprintf(stderr, "  -nostdlib: Don't link with the standard libraries\n");
+	fprintf(stderr, "  -nostdlib: Don't link with the standard libraries or startup runtime\n");
 	fprintf(stderr, "  -nostartfiles: Don't link with the startup runtime\n");
-	fprintf(stderr, "  -nostdinc: Don't include the standard header path\n");
+	fprintf(stderr, "  -nodefaultlibs: Don't link with the standard libraries\n");
+	fprintf(stderr, "  -nostdinc: Don't include the builtin or standard header path\n");
+	fprintf(stderr, "  -nostdlibinc: Don't include the standard header path\n");
+	fprintf(stderr, "  -nobuiltininc: Don't include the builtin header path\n");
 }
 
 static int infer_target_from_argv0(struct triple *triple, const char *argv0)

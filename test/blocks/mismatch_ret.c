@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check --only %s -Wno-dead-code -Wno-int-ptr-conversion
 
 main()
 {

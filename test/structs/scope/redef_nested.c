@@ -1,4 +1,4 @@
-// RUN: %check -e %s
+// RUN: %check --only -e %s
 
 struct A; // CHECK: note: forward declared here
 

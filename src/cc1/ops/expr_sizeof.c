@@ -35,7 +35,7 @@ type *expr_sizeof_type(expr *e)
 	return SIZEOF_WHAT(e);
 }
 
-const char *str_expr_sizeof()
+const char *str_expr_sizeof(void)
 {
 	return "sizeof/typeof/alignof";
 }

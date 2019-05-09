@@ -32,7 +32,7 @@ const char *tok_last(void)
 	return tok_pos - 1;
 }
 
-void tok_next()
+void tok_next(void)
 {
 	if(!*tok_pos){
 		tok_cur = tok_eof;

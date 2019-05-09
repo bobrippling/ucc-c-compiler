@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <math.h>
 #include <assert.h>
 
 #include "../util/util.h"
@@ -286,8 +287,19 @@ floating_t const_op_exec_fp(
 			/* explicitly bad */
 			ICE("floating point %s", op_to_str(op));
 
+		case op_divide:
+			if(lv == 0 && *rv == 0){
+				/* Special case 0/0, as this is a common way of defining NaN in libcs
+				 * when GNU __builtin_nan support isn't detected.
+				 *
+				 * We explicitly return NAN here as this isn't affected by the rounding
+				 * mode, whereas performing the calculation could return -nan.
+				 */
+				return NAN;
+			}
+			return lv / *rv; /* safe - / 0.0f is inf */
+
 		case op_multiply: return lv * *rv;
-		case op_divide:   return lv / *rv; /* safe - / 0.0f is inf */
 		case op_plus:     return rv ? lv + *rv : +lv;
 		case op_minus:    return rv ? lv - *rv : -lv;
 		case op_eq:       return lv == *rv;
@@ -390,7 +402,12 @@ void const_ensure_num_or_memaddr(
 		const_memify(k);
 	}
 
-	/* not a constant but we treat it as such, as an extension */
-	if(set_nonstandard_const && !k->nonstandard_const)
-		k->nonstandard_const = owner;
+	if(from_ptr
+	&& !to_ptr
+	&& type_size(from, NULL) > type_size(to, NULL))
+	{
+		/* not a constant but we treat it as such, as an extension */
+		if(set_nonstandard_const && !k->nonstandard_const)
+			k->nonstandard_const = owner;
+	}
 }

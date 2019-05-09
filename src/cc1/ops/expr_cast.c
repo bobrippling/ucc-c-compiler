@@ -25,7 +25,7 @@ static integral_t convert_integral_to_integral_warn(
 		int do_warn, where *w);
 
 
-const char *str_expr_cast()
+const char *str_expr_cast(void)
 {
 	return "cast";
 }
@@ -65,7 +65,13 @@ static void fold_cast_num(expr *const e, numeric *const num)
 
 			TRUNC(float, float, VAL_FLOAT);
 			TRUNC(double, double, VAL_DOUBLE);
+#if COMPILER_SUPPORTS_LONG_DOUBLE
 			TRUNC(ldouble, long double, VAL_LDOUBLE);
+#else
+			case type_ldouble:
+				ICW("cannot truncate long double value - no compiler support");
+				break;
+#endif
 #undef TRUNC
 		}
 		return;
@@ -120,7 +126,7 @@ static void warn_value_changed_at(
 		}
 	}
 
-	cc1_warn_at(w, overflow, fmt, a, b);
+	cc1_warn_at(w, constant_conversion, fmt, a, b);
 	free(fmt);
 }
 
@@ -155,6 +161,7 @@ static integral_t convert_integral_to_integral_warn(
 	 */
 
 	const unsigned sz_out = type_size(tout, w);
+	const unsigned sz_in = type_size(tin, w);
 	const int signed_in = type_is_signed(tin);
 	const int signed_out = type_is_signed(tout);
 	sintegral_t to_iv_sign_ext;
@@ -162,7 +169,7 @@ static integral_t convert_integral_to_integral_warn(
 	integral_t ret;
 
 	if(!signed_out && signed_in){
-		const unsigned sz_in_bits = CHAR_BIT * type_size(tin, w);
+		const unsigned sz_in_bits = CHAR_BIT * sz_in;
 		const unsigned sz_out_bits = CHAR_BIT * sz_out;
 
 		/* e.g. "(unsigned)-1". Pick to_iv, i.e. the unsigned truncated repr
@@ -191,6 +198,11 @@ static integral_t convert_integral_to_integral_warn(
 	}else{
 		/* unsigned to unsigned */
 		ret = to_iv_sign_ext;
+	}
+
+	if(sz_in == sz_out){
+		/* representable, don't warn */
+		return ret;
 	}
 
 	if(do_warn){
@@ -568,7 +580,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				char buf[TYPE_STATIC_BUFSIZ];
 
 				cc1_warn_at(&e->where,
-						mismatch_ptr,
+						incompatible_pointer_types,
 						"%scast from %spointer to %spointer\n"
 						"%s <- %s",
 						IMPLICIT_STR(e),

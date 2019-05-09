@@ -88,6 +88,7 @@ static const struct
 
 struct loc loc_tok;
 char *current_fname;
+int current_fname_used;
 char *current_line_str;
 int show_current_line = 1;
 int no_output = 0;
@@ -158,17 +159,25 @@ void dirname_push(char *d)
 	dynarray_add(&cd_stack, d);
 }
 
-char *dirname_pop()
+char *dirname_pop(void)
 {
 	return dynarray_pop(char *, &cd_stack);
+}
+
+void cpp_where_current(where *w)
+{
+  where_current(w);
+  current_fname_used = 1;
 }
 
 void set_current_fname(const char *new)
 {
 	if(current_fname == new)
 		return;
-	free(current_fname);
+	if(!current_fname_used)
+		free(current_fname);
 	current_fname = ustrdup(new);
+	current_fname_used = 0;
 }
 
 static struct tm *current_time(int *const using_env)
@@ -348,9 +357,17 @@ int main(int argc, char **argv)
 
 	set_current_fname(FNAME_CMDLINE);
 
-	for(i = 1; i < argc && *argv[i] == '-'; i++){
-		if(!strcmp(argv[i]+1, "-"))
-			break;
+	for(i = 1; i < argc; i++){
+		if(argv[i][0] != '-' || !strcmp(argv[i]+1, "-")){
+			if(!infname)
+				infname = argv[i];
+			else if(!outfname)
+				outfname = argv[i];
+			else
+				goto usage;
+
+			continue;
+		}
 
 		switch(argv[i][1]){
 			case 'I':
@@ -588,18 +605,6 @@ defaul:
 		macro_add_func("__builtin_offsetof",
 				"(unsigned long)&((T *)0)->memb",
 				args, 0, 0);
-	}
-
-
-	if(i < argc){
-		infname = argv[i++];
-		if(i < argc){
-			if(outfname)
-				goto usage;
-			outfname = argv[i++];
-			if(i < argc)
-				goto usage;
-		}
 	}
 
 	calctime(infname);

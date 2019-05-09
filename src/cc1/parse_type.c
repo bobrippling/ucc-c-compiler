@@ -8,6 +8,7 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/platform.h"
 #include "decl_init.h"
 #include "funcargs.h"
 
@@ -1610,6 +1611,37 @@ static void parsed_decl(decl *d, symtable *scope, int is_arg)
 	fold_type_ondecl_w(d, scope, loc, is_arg);
 }
 
+static void workaround_valist_typedef(decl *d, symtable *symtab)
+{
+	type *pointee;
+
+	if((d->store & STORE_MASK_STORE) != store_typedef)
+		return;
+
+	if(!cc1_fopt.force_valist_type)
+		return;
+
+	if(!where_in_sysheader(&d->where))
+		return;
+
+	if(strcmp(d->spel, "va_list"))
+		return;
+
+	pointee = type_is_ptr(d->ref);
+	if(!pointee)
+		return;
+
+	if(!type_is_void(pointee))
+		return;
+
+	/* typedef void *va_list;
+	 * Without __GNUC__ >= 2 on Darwin, system headers use void*
+	 * as the type for va_list, conflicting with our defintion.
+	 *
+	 * Workaround this here. */
+	d->ref = type_nav_va_list(cc1_type_nav, symtab);
+}
+
 static decl *parse_decl_stored_aligned(
 		type *btype, enum decl_mode mode,
 		enum decl_storage store, struct decl_align *align,
@@ -1740,6 +1772,8 @@ static decl *parse_decl_stored_aligned(
 
 		fold_had_error = 1;
 	}
+
+	workaround_valist_typedef(d, scope);
 
 	/* copy all of d's attributes to the .ref, so that function
 	 * types get everything correctly. */

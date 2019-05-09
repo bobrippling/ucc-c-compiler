@@ -46,7 +46,7 @@ enum eval_truth
 	EVAL_UNKNOWN
 };
 
-const char *str_expr_op()
+const char *str_expr_op(void)
 {
 	return "operator";
 }
@@ -619,7 +619,7 @@ type *op_required_promotion(
 			}else if(op_returns_bool(op)){
 ptr_relation:
 				if(op_is_comparison(op)){
-					if(fold_type_chk_warn(lhs, NULL, rhs, w,
+					if(fold_type_chk_warn(lhs, NULL, rhs, /*is_comparison*/1, w,
 							l_ptr && r_ptr
 							? "comparison lacks a cast"
 							: "comparison between pointer and integer"))
@@ -743,7 +743,7 @@ ptr_relation:
 			          r_rank = type_intrank(type_get_primitive(trhs));
 
 			/* want to warn regardless of checks - for enums */
-			fold_type_chk_warn(lhs, NULL, rhs, w, desc);
+			fold_type_chk_warn(lhs, NULL, rhs, /*is_comparison*/1, w, desc);
 
 			if(l_unsigned == r_unsigned){
 				enum { SAME, LEFT, RIGHT } larger = SAME;
@@ -903,35 +903,87 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 
 static int op_unsigned_cmp_check(expr *e)
 {
+	consty k_lhs, k_rhs;
+	consty *k_side;
+	int unsigned_lhs, unsigned_rhs;
+	sintegral_t v;
+	int warn;
+	int expect;
+	const char *lhs_s, *rhs_s;
+
 	switch(e->bits.op.op){
-			int lhs;
-		/*case op_gt:*/
 		case op_ge:
 		case op_lt:
+		case op_gt:
 		case op_le:
-			if((lhs = !type_is_signed(e->lhs->tree_type))
-			||        !type_is_signed(e->rhs->tree_type))
-			{
-				consty k;
-
-				const_fold(lhs ? e->rhs : e->lhs, &k);
-
-				if(k.type == CONST_NUM && K_INTEGRAL(k.bits.num)){
-					const int v = k.bits.num.val.i;
-
-					if(v <= 0){
-						return cc1_warn_at(&e->where,
-								tautologic_unsigned,
-								"comparison of unsigned expression %s %d is always %s",
-								op_to_str(e->bits.op.op), v,
-								e->bits.op.op == op_lt || e->bits.op.op == op_le ? "false" : "true");
-					}
-				}
-			}
-
+			break;
 		default:
 			return 0;
 	}
+
+	unsigned_lhs = !type_is_signed(e->lhs->tree_type);
+	unsigned_rhs = !type_is_signed(e->rhs->tree_type);
+	if(!unsigned_lhs && !unsigned_rhs)
+		return 0;
+
+	const_fold(e->lhs, &k_lhs);
+	const_fold(e->rhs, &k_rhs);
+
+	k_side = k_lhs.type == CONST_NUM && K_INTEGRAL(k_lhs.bits.num)
+		? &k_lhs
+		: k_rhs.type == CONST_NUM && K_INTEGRAL(k_rhs.bits.num)
+		? &k_rhs
+		: NULL;
+
+	if(!k_side)
+		return 0;
+
+	v = k_side->bits.num.val.i;
+	if(v)
+		return 0;
+
+	warn = 0;
+	switch(e->bits.op.op){
+		case op_ge:
+			warn = k_side == &k_rhs; /* u >= 0 */
+			expect = 1;
+			break;
+
+		case op_le:
+			warn = k_side == &k_lhs; /* 0 <= u */
+			expect = 1;
+			break;
+
+		case op_gt:
+			warn = k_side == &k_lhs; /* 0 > u */;
+			expect = 0;
+			break;
+
+		case op_lt:
+			warn = k_side == &k_rhs; /* u < 0 */;
+			expect = 0;
+			break;
+
+		default:
+			assert(0 && "unreachable");
+	}
+
+	if(!warn)
+		return 0;
+
+	if(k_side == &k_lhs){
+		lhs_s = "0";
+		rhs_s = "unsigned expression";
+	}else{
+		lhs_s = "unsigned expression";
+		rhs_s = "0";
+	}
+
+	return cc1_warn_at(&e->where,
+			tautologic_unsigned,
+			"comparison of %s %s %s is always %s",
+			lhs_s, op_to_str(e->bits.op.op), rhs_s,
+			expect ? "true" : "false");
 }
 
 static int msg_if_precedence(expr *sub, where *w,
@@ -961,19 +1013,16 @@ static int op_check_precedence(expr *e)
 		case op_xor:
 			return msg_if_precedence(e->lhs, &e->where, e->bits.op.op, op_is_comparison)
 				||   msg_if_precedence(e->rhs, &e->where, e->bits.op.op, op_is_comparison);
-			break;
 
 		case op_andsc:
 		case op_orsc:
 			return msg_if_precedence(e->lhs, &e->where, e->bits.op.op, op_is_shortcircuit)
 				||   msg_if_precedence(e->rhs, &e->where, e->bits.op.op, op_is_shortcircuit);
-			break;
 
 		case op_shiftl:
 		case op_shiftr:
 			return msg_if_precedence(e->lhs, &e->where, e->bits.op.op, NULL)
 				|| msg_if_precedence(e->rhs, &e->where, e->bits.op.op, NULL);
-			break;
 
 		default:
 			return 0;
@@ -1295,8 +1344,6 @@ void fold_expr_op(expr *e, symtable *stab)
 		/* (except unary-not) can only have operations on integers,
 		 * promote to signed int
 		 */
-		const char *op_desc = op_to_str(e->bits.op.op);
-
 		expr_promote_int_if_smaller(&e->lhs, stab);
 
 		switch(e->bits.op.op){
@@ -1453,6 +1500,18 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 
 	if(!e->rhs){
 		eval = out_op_unary(octx, e->bits.op.op, lhs);
+
+		/* ensure flags, etc get extended up to our type */
+		eval = out_change_type(octx, eval, e->tree_type);
+
+		/* this doesn't do the extension here, but tags it with the type.
+		 * then when/if we come to do things like decaying a flag to a register,
+		 * we'll spot that the type isn't a 1-byte type, and extend then.
+		 *
+		 * this allows flags to propagate through and be optimised with subsequent
+		 * flag operations, without instantly promoting to int
+		 */
+
 	}else{
 		const out_val *rhs = gen_expr(e->rhs, octx);
 
