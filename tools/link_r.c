@@ -146,7 +146,7 @@ out:
 
 static int usage(const char *argv0)
 {
-	fprintf(stderr, "Usage: %s [-v] [-f] start-path target\n", argv0);
+	fprintf(stderr, "Usage: %s [-v] [--test] start-path target\n", argv0);
 	return 2;
 }
 
