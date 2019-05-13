@@ -60,7 +60,7 @@ trap "rm -f $e" EXIT
 f="$1"
 shift
 
-$UCC -fno-show-line $synonly "$@" "$f" 2>$e
+$UCC -fno-show-line -Werror=unknown-warning-option $synonly "$@" "$f" 2>$e
 r=$?
 
 # check for abort
