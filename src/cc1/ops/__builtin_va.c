@@ -77,6 +77,51 @@ static void va_ensure_variadic(expr *e, symtable *stab)
 		die_at(&e->where, "%s in non-variadic function", BUILTIN_SPEL(e->expr));
 }
 
+static void add_assignment(
+		char *member,
+		expr *e,
+		expr *va_l,
+		stmt *assigns,
+		where *w,
+		symtable *symtab)
+{
+	expr *assign = expr_set_where(
+			expr_new_assign(
+				expr_set_where(
+					expr_new_struct(
+						expr_new_deref(va_l),
+						1 /* -> since it's *(e) */,
+						expr_set_where(
+							expr_new_identifier(member),
+							w)),
+					w),
+				e),
+			w);
+	dynarray_add(
+			&assigns->bits.stmt_and_decls,
+			stmt_set_where(
+				expr_to_stmt(assign, symtab),
+				w));
+}
+
+static void add_assignment_value(
+		char *member,
+		size_t value,
+		expr *va_l,
+		stmt *assigns,
+		where *w,
+		symtable *symtab)
+{
+	add_assignment(member,
+			expr_set_where(
+				expr_new_val(value),
+				w),
+			va_l,
+			assigns,
+			w,
+			symtab);
+}
+
 static void fold_va_start(expr *e, symtable *stab)
 {
 	expr *va_l;
@@ -115,29 +160,11 @@ static void fold_va_start(expr *e, symtable *stab)
 	}
 
 #ifndef UCC_VA_ABI
+#define W(exp) expr_set_where((exp), &e->where)
 	{
 		stmt *assigns = stmt_set_where(
 				stmt_new_wrapper(code, symtab_new(stab, &e->where)),
 				&e->where);
-		expr *assign;
-
-#define W(exp) expr_set_where((exp), &e->where)
-
-#define ADD_ASSIGN(memb, exp)                     \
-		assign = W(expr_new_assign(                   \
-		        W(expr_new_struct(                    \
-		          expr_new_deref(va_l),               \
-		             1 /* ->  since it's *(exp) */,   \
-		            W(expr_new_identifier(memb)))),   \
-		        exp));                                \
-                                                  \
-		      dynarray_add(&assigns->bits.code.stmts, \
-		        stmt_set_where(                       \
-		          expr_to_stmt(assign, stab),         \
-		          &e->where))
-
-#define ADD_ASSIGN_VAL(memb, val) ADD_ASSIGN(memb, W(expr_new_val(val)))
-
 		const int ws = platform_word_size();
 		struct
 		{
@@ -150,20 +177,24 @@ static void fold_va_start(expr *e, symtable *stab)
 		/* need to set the offsets to act as if we've skipped over
 		 * n call regs, since we may already have some arguments used
 		 */
-		ADD_ASSIGN_VAL("gp_offset", nargs.gp * ws);
-		ADD_ASSIGN_VAL("fp_offset", (6 + nargs.fp) * ws);
+		add_assignment_value("gp_offset", nargs.gp * ws, va_l, assigns, &e->where, stab);
+		add_assignment_value("fp_offset", (6 + nargs.fp) * ws, va_l, assigns, &e->where, stab);
 		/* FIXME: x86_64::N_CALL_REGS_I reference above */
 
-		ADD_ASSIGN("reg_save_area", W(builtin_new_reg_save_area()));
+		add_assignment("reg_save_area", W(builtin_new_reg_save_area()), va_l, assigns, &e->where, stab);
 
-		ADD_ASSIGN("overflow_arg_area",
+		add_assignment("overflow_arg_area",
 				W(expr_new_op2(op_plus,
 					W(expr_new_cast(
 						W(builtin_new_frame_address(0)),
 						type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar)),
 						1)),
 					/* *2 to step over saved-rbp and saved-ret */
-					W(expr_new_val(ws * 2)))));
+					W(expr_new_val(ws * 2)))),
+				va_l,
+				assigns,
+				&e->where,
+				stab);
 
 
 		fold_stmt(assigns);
