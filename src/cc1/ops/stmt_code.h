@@ -4,7 +4,7 @@ STMT_DEFS(code);
 
 struct out_dbg_lbl;
 
-void gen_block_decls(
+void gen_symtab_decls(
 		symtable *,
 		struct out_dbg_lbl *[ucc_static_param 2],
 		out_ctx *);

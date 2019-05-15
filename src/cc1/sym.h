@@ -50,7 +50,7 @@ struct symtable
 
 	unsigned mark : 1; /* used for scope checking */
 	unsigned folded : 1, laidout : 1;
-	unsigned internal_nest : 1, are_params : 1;
+	unsigned are_params : 1;
 	unsigned transparent : 1;
 	/*
 	 * { int i; 5; int j; }
@@ -121,8 +121,6 @@ symtable *symtab_root(symtable *child);
 symtable *symtab_func_root(symtable *stab);
 #define symtab_func(st) symtab_func_root(st)->in_func
 symtable_global *symtab_global(symtable *);
-
-int symtab_nested_internal(symtable *parent, symtable *nest);
 
 unsigned symtab_decl_bytes(
 		symtable *,

@@ -139,16 +139,6 @@ symtable_global *symtab_global(symtable *stab)
 	return (symtable_global *)symtab_root(stab);
 }
 
-int symtab_nested_internal(symtable *parent, symtable *nest)
-{
-	while(nest && nest->internal_nest){
-		if(nest->parent == parent)
-			return 1;
-		nest = nest->parent;
-	}
-	return 0;
-}
-
 int symtab_search(
 		symtable *tab, const char *spel, decl *exclude, struct symtab_entry *ent)
 {

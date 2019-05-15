@@ -55,10 +55,11 @@ struct stmt
 		out_blk *case_blk;
 
 		/* for a code block */
-		struct
+		struct stmt_and_decl
 		{
-			stmt **stmts;
-		} code;
+			stmt *stmt;
+			decl **decls;
+		} **stmt_and_decls;
 
 		/* switch */
 		struct

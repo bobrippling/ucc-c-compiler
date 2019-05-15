@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/dynarray.h"
 #include "../util/util.h"
@@ -345,91 +346,77 @@ static void parse_local_labels(const struct stmt_ctx *const ctx)
 	}
 }
 
-static stmt *parse_stmt_and_decls(
-		const struct stmt_ctx *const ctx, int nested_scope)
+static stmt *parse_stmt_and_decls(const struct stmt_ctx *const ctx)
 {
 	stmt *code_stmt = stmt_new_wrapper(
 			code, symtab_new(ctx->scope, where_cc1_current(NULL)));
 	struct stmt_ctx subctx = *ctx;
-	int got_decls = 0;
-
-	code_stmt->symtab->internal_nest = nested_scope;
+	int had_stmt = 0;
 
 	subctx.scope = code_stmt->symtab;
 
 	parse_local_labels(&subctx);
 
-	parse_static_assert(subctx.scope);
+	for(;;){
+		stmt *s = NULL;
 
-	while(1){
-		int new_group = parse_decl_group(
-				DECL_MULTI_ACCEPT_FUNC_DECL
-				| DECL_MULTI_ALLOW_STORE
-				| DECL_MULTI_ALLOW_ALIGNAS,
-				/*newdecl_context:*/1,
-				subctx.scope,
-				subctx.scope, NULL);
+		parse_static_assert(subctx.scope);
 
-		if(new_group){
-			got_decls = 1;
-		}else{
+		/* check for a following colon, in the case of
+		 * typedef int x;
+		 * x:;
+		 *
+		 * we check this here, as in some contexts we we always want a type,
+		 * e.g. _Generic(expr, typedef_name: ...)
+		 *                     ^~~~~~~~~~~~~
+		 * labels are checked for in two places:
+		 * 1) here, to disambiguate from decls
+		 * 2) in parse_stmt() where we look for a standalone label and aren't
+		 *    bothered about decls
+		 */
+		if(curtok == token_identifier && tok_at_label()){
+			s = parse_label(&subctx);
+		}else if(curtok == token_close_block){
 			break;
-		}
-	}
+		}else if(parse_at_decl(subctx.scope, 1)){
+			struct stmt_and_decl *both;
+			decl **decls = NULL;
+			int parsed = parse_decl_group(
+					DECL_MULTI_ACCEPT_FUNC_DECL
+					| DECL_MULTI_ALLOW_STORE
+					| DECL_MULTI_ALLOW_ALIGNAS,
+					/*newdecl_context:*/1,
+					subctx.scope,
+					subctx.scope,
+					&decls);
 
-	if(got_decls)
-		fold_shadow_dup_check_block_decls(subctx.scope);
+			assert(parsed);
 
-	if(curtok != token_close_block){
-		/* fine with a normal statement */
-		int at_decl = 0;
+			fold_shadow_dup_check_block_decls(subctx.scope);
 
-		for(;;){
-			stmt *this;
-
-			parse_static_assert(subctx.scope);
-
-			/* check for a following colon, in the case of
-			 * typedef int x;
-			 * x:;
-			 *
-			 * we check this here, as in some contexts we we always want a type,
-			 * e.g. _Generic(expr, typedef_name: ...)
-			 *                     ^~~~~~~~~~~~~
-			 * labels are checked for in two places:
-			 * 1) here, to disambiguate from decls
-			 * 2) in parse_stmt() where we look for a standalone label and aren't
-			 *    bothered about decls
-			 */
-			if(curtok == token_identifier && tok_at_label())
-				this = parse_label(&subctx);
-			else if(curtok == token_close_block)
-				break;
-			else if((at_decl = parse_at_decl(subctx.scope, 1)))
-				break;
-			else
-				this = parse_stmt(&subctx);
-
-			dynarray_add(&code_stmt->bits.code.stmts, this);
-		}
-
-		if(at_decl){
-			if(code_stmt->bits.code.stmts){
-				stmt *nest = parse_stmt_and_decls(&subctx, 1);
-
-				if(cc1_std < STD_C99){
-					static int warned = 0;
-					if(!warned){
-						warned = 1;
-						cc1_warn_at(&nest->where, mixed_code_decls,
-								"mixed code and declarations");
-					}
+			if(had_stmt && cc1_std < STD_C99){
+				static int warned = 0;
+				if(!warned){
+					warned = 1;
+					cc1_warn_at(&decls[0]->where, mixed_code_decls,
+							"mixed code and declarations");
 				}
-
-				dynarray_add(&code_stmt->bits.code.stmts, nest);
-			}else{
-				ICE("got another decl - should've been handled already");
 			}
+
+			both = umalloc(sizeof *both);
+			both->decls = decls;
+
+			dynarray_add(&code_stmt->bits.stmt_and_decls, both);
+		}else{
+			s = parse_stmt(&subctx);
+		}
+
+		if(s){
+			struct stmt_and_decl *both = umalloc(sizeof *both);
+			both->stmt = s;
+			had_stmt = 1;
+
+			dynarray_add(&code_stmt->bits.stmt_and_decls, both);
 		}
 	}
 
@@ -494,7 +481,7 @@ stmt *parse_stmt_block(symtable *scope, const struct stmt_ctx *const ctx)
 
 	EAT(token_open_block);
 
-	t = parse_stmt_and_decls(&subctx, 0);
+	t = parse_stmt_and_decls(&subctx);
 
 	EAT(token_close_block);
 

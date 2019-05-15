@@ -90,10 +90,13 @@ static void stmt_walk2(stmt *base, stmt_walk_enter enter, stmt_walk_leave leave,
 	WALK_IF(base->lhs);
 	WALK_IF(base->rhs);
 
-	if(stmt_kind(base, code) && base->bits.code.stmts){
-		stmt **i;
-		for(i = base->bits.code.stmts; i && *i; i++){
-			stmt_walk2(*i, enter, leave, data, stop);
+	if(stmt_kind(base, code) && base->bits.stmt_and_decls){
+		struct stmt_and_decl **i;
+		for(i = base->bits.stmt_and_decls; i && *i; i++){
+			stmt *s = (*i)->stmt;
+			if(!s)
+				continue;
+			stmt_walk2(s, enter, leave, data, stop);
 			if(*stop)
 				break;
 		}

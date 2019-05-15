@@ -5,6 +5,8 @@
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
+#include "../../util/alloc.h"
+
 #include "../expr.h"
 #include "__builtin.h"
 #include "__builtin_va.h"
@@ -97,11 +99,14 @@ static void add_assignment(
 					w),
 				e),
 			w);
-	dynarray_add(
-			&assigns->bits.stmt_and_decls,
-			stmt_set_where(
+	stmt *s = stmt_set_where(
 				expr_to_stmt(assign, symtab),
-				w));
+				w);
+	struct stmt_and_decl *both = umalloc(sizeof *both);
+
+	both->stmt = s;
+
+	dynarray_add(&assigns->bits.stmt_and_decls, both);
 }
 
 static void add_assignment_value(

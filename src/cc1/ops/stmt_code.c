@@ -122,7 +122,6 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 		{
 			symtable *above_scope = ent.owning_symtab;
 			decl *found = ent.bits.decl;
-			char buf[WHERE_BUF_SIZ];
 			int both_func = is_func && type_is(found->ref, type_func);
 			int both_extern = decl_linkage(d) == linkage_external
 				&& decl_linkage(found) == linkage_external;
@@ -135,17 +134,9 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 				warn_at_print_error(&d->where, "incompatible redefinition of \"%s\"", d->spel);
 				note_at(&found->where, "previous definition");
 			}else{
-				const int same_scope = symtab_nested_internal(above_scope, stab);
 				unsigned char *pwarn = NULL;
 				const char *ty;
 				int compat_only = 0;
-
-				/* same scope? error unless they're both extern */
-				if(same_scope && !both_extern){
-					die_at(&d->where, "redefinition of \"%s\"\n"
-							"%s: note: previous definition here",
-							d->spel, where_str_r(buf, &found->where));
-				}
 
 				/* -Wshadow:
 				 * if it has a parent,
@@ -190,7 +181,7 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 
 void fold_stmt_code(stmt *s)
 {
-	stmt **siter;
+	struct stmt_and_decl **iter;
 	int warned = 0;
 	enum decl_storage func_store = store_default;
 	decl *in_func;
@@ -219,20 +210,26 @@ void fold_stmt_code(stmt *s)
 		}
 	}
 
-	for(siter = s->bits.code.stmts; siter && *siter; siter++){
-		stmt *const st = *siter;
+	for(iter = s->bits.stmt_and_decls; iter && *iter; iter++){
+		stmt *const st = (*iter)->stmt;
+		stmt *st_next;
+
+		if(!st)
+			continue;
 
 		fold_stmt(st);
 
+		st_next = iter[1] ? iter[1]->stmt : NULL;
+
 		if(!warned
 		&& st->kills_below_code
-		&& siter[1]
-		&& !stmt_kind(siter[1], label)
-		&& !stmt_kind(siter[1], case)
-		&& !stmt_kind(siter[1], case_range)
-		&& !stmt_kind(siter[1], default)
+		&& st_next
+		&& !stmt_kind(st_next, label)
+		&& !stmt_kind(st_next, case)
+		&& !stmt_kind(st_next, case_range)
+		&& !stmt_kind(st_next, default)
 		){
-			cc1_warn_at(&siter[1]->where, dead_code, "code will never be executed");
+			cc1_warn_at(&st_next->where, dead_code, "code will never be executed");
 			warned = 1;
 		}
 	}
@@ -292,33 +289,12 @@ static void gen_auto_decl(decl *d, out_ctx *octx)
 	}
 }
 
-void gen_block_decls(
-		symtable *stab,
-		struct out_dbg_lbl *pushed_lbls[2],
-		out_ctx *octx)
+static void gen_decls(decl **decls, out_ctx *octx)
 {
 	decl **diter;
 
-	if(cc1_gdebug != DEBUG_OFF && !stab->lbl_begin){
-		char *dbg_lbls[2];
-
-		dbg_lbls[0] = out_label_code("dbg_begin");
-		dbg_lbls[1] = out_label_code("dbg_end");
-
-		out_dbg_label_push(octx, dbg_lbls, &pushed_lbls[0], &pushed_lbls[1]);
-
-		stab->lbl_begin = pushed_lbls[0];
-		stab->lbl_end = pushed_lbls[1];
-
-	}else{
-		pushed_lbls[0] = pushed_lbls[1] = NULL;
-	}
-
-	if(cc1_gdebug != DEBUG_OFF)
-		out_dbg_scope_enter(octx, stab);
-
 	/* declare strings, extern functions, blocks and vlas */
-	for(diter = symtab_decls(stab); diter && *diter; diter++){
+	for(diter = decls; diter && *diter; diter++){
 		decl *d = *diter;
 		int func;
 
@@ -346,13 +322,56 @@ void gen_block_decls(
 	}
 }
 
+static void gen_dbg_labels_begin(
+		struct out_dbg_lbl *pushed_lbls[2],
+		out_ctx *octx,
+		symtable *symtab)
+{
+	char *dbg_lbls[2];
+
+	if(cc1_gdebug == DEBUG_OFF || symtab->lbl_begin){
+		pushed_lbls[0] = pushed_lbls[1] = NULL;
+		return;
+	}
+
+	dbg_lbls[0] = out_label_code("dbg_begin");
+	dbg_lbls[1] = out_label_code("dbg_end");
+
+	out_dbg_label_push(octx, dbg_lbls, &pushed_lbls[0], &pushed_lbls[1]);
+
+	symtab->lbl_begin = pushed_lbls[0];
+	symtab->lbl_end = pushed_lbls[1];
+}
+
+static void gen_dbg_labels_end(
+		struct out_dbg_lbl *pushed_lbls[2],
+		out_ctx *octx)
+{
+	int i;
+	for(i = 0; i < 2; i++)
+		if(pushed_lbls[i])
+			out_dbg_label_pop(octx, pushed_lbls[i]);
+}
+
+void gen_symtab_decls(
+		symtable *stab,
+		struct out_dbg_lbl *pushed_lbls[2],
+		out_ctx *octx)
+{
+	gen_dbg_labels_begin(pushed_lbls, octx, stab);
+
+	if(cc1_gdebug != DEBUG_OFF)
+		out_dbg_scope_enter(octx, stab);
+
+	gen_decls(symtab_decls(stab), octx);
+}
+
 void gen_block_decls_dealloca(
 		symtable *stab,
 		struct out_dbg_lbl *pushed_lbls[ucc_static_param 2],
 		out_ctx *octx)
 {
 	decl **diter;
-	int i;
 
 	for(diter = symtab_decls(stab); diter && *diter; diter++){
 		decl *d = *diter;
@@ -383,9 +402,7 @@ void gen_block_decls_dealloca(
 		sym_setoutval(d->sym, /*null*/v);
 	}
 
-	for(i = 0; i < 2; i++)
-		if(pushed_lbls[i])
-			out_dbg_label_pop(octx, pushed_lbls[i]);
+	gen_dbg_labels_end(pushed_lbls, octx);
 
 	if(cc1_gdebug != DEBUG_OFF)
 		out_dbg_scope_leave(octx, stab);
@@ -521,15 +538,18 @@ void gen_stmt_code_m1(
 		struct out_dbg_lbl *pushed_lbls[2],
 		out_ctx *octx)
 {
-	stmt **titer;
+	struct stmt_and_decl **iter;
 
-	/* stmt_for/if/while/do needs to do this too */
-	gen_block_decls(s->symtab, pushed_lbls, octx);
+	gen_dbg_labels_begin(pushed_lbls, octx, s->symtab);
 
-	for(titer = s->bits.code.stmts; titer && *titer; titer++){
-		if(m1 && !titer[1])
-			break;
-		gen_stmt(*titer, octx);
+	for(iter = s->bits.stmt_and_decls; iter && *iter; iter++){
+		if((*iter)->stmt){
+			if(m1 && !iter[1])
+				break;
+			gen_stmt((*iter)->stmt, octx);
+		}else{
+			gen_decls((*iter)->decls, octx);
+		}
 	}
 
 	if(!m1)
@@ -546,8 +566,7 @@ void gen_stmt_code(const stmt *s, out_ctx *octx)
 
 void dump_stmt_code(const stmt *s, dump *ctx)
 {
-	stmt **siter;
-	decl **di;
+	struct stmt_and_decl **iter;
 
 	dump_desc_stmt(ctx, "code", s);
 
@@ -562,38 +581,48 @@ void dump_stmt_code(const stmt *s, dump *ctx)
 			dump_printf(ctx, "__label__ %s\n", lbl->spel);
 	}
 
-	for(di = symtab_decls(s->symtab); di && *di; di++)
-		dump_decl(*di, ctx, NULL);
-
-	for(siter = s->bits.code.stmts; siter && *siter; siter++)
-		dump_stmt(*siter, ctx);
+	for(iter = s->bits.stmt_and_decls; iter && *iter; iter++){
+		if((*iter)->stmt){
+			dump_stmt((*iter)->stmt, ctx);
+		}else{
+			decl **di;
+			for(di = (*iter)->decls; di && *di; di++)
+				dump_decl(*di, ctx, NULL);
+		}
+	}
 	dump_dec(ctx);
 }
 
 void style_stmt_code(const stmt *s, out_ctx *octx)
 {
-	stmt **i_s;
-	decl **i_d;
+	struct stmt_and_decl **iter;
 
 	stylef("{\n");
 
-	for(i_d = symtab_decls(s->symtab); i_d && *i_d; i_d++)
-		gen_style_decl(*i_d);
-
-	for(i_s = s->bits.code.stmts; i_s && *i_s; i_s++)
-		gen_stmt(*i_s, octx);
+	for(iter = s->bits.stmt_and_decls; iter && *iter; iter++){
+		if((*iter)->stmt){
+			gen_stmt((*iter)->stmt, octx);
+		}else{
+			decl **di;
+			for(di = (*iter)->decls; di && *di; di++)
+				gen_style_decl(*di);
+		}
+	}
 
 	stylef("\n}\n");
 }
 
 static int code_passable(stmt *s)
 {
-	stmt **i;
+	struct stmt_and_decl **i;
 
 	/* note: this also checks for inits which call noreturn funcs */
 
-	for(i = s->bits.code.stmts; i && *i; i++){
-		stmt *sub = *i;
+	for(i = s->bits.stmt_and_decls; i && *i; i++){
+		stmt *sub = (*i)->stmt;
+		if(!sub)
+			continue; /* could check decl initialisers that call noreturn functions */
+
 		if(!fold_passable(sub))
 			return 0;
 	}

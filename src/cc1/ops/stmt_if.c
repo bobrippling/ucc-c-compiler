@@ -52,10 +52,10 @@ void flow_gen(
 		struct out_dbg_lbl *pushed_lbls[2][2],
 		out_ctx *octx)
 {
-	gen_block_decls(stab, pushed_lbls[0], octx);
+	gen_symtab_decls(stab, pushed_lbls[0], octx);
 
 	if(flow && stab != flow->for_init_symtab)
-		gen_block_decls(flow->for_init_symtab, pushed_lbls[1], octx);
+		gen_symtab_decls(flow->for_init_symtab, pushed_lbls[1], octx);
 }
 
 void flow_end(

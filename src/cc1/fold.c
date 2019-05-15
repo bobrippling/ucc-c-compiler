@@ -1351,10 +1351,12 @@ void fold_global_func(decl *func_decl)
 				/* hosted environment, in main. return 0 */
 				stmt *zret = stmt_new_wrapper(return,
 						func_decl->bits.func.code->symtab);
+				struct stmt_and_decl *both = umalloc(sizeof *both);
 
 				zret->expr = expr_set_where(expr_new_val(0), &zret->where);
 
-				dynarray_add(&func_decl->bits.func.code->bits.code.stmts, zret);
+				both->stmt = zret;
+				dynarray_add(&func_decl->bits.func.code->bits.stmt_and_decls, both);
 				fold_stmt(zret);
 
 			}else if(!type_is_void(func_ret)){
