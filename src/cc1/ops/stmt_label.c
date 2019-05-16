@@ -31,7 +31,7 @@ void fold_stmt_label(stmt *s)
 
 	l->unused = s->bits.lbl.unused;
 
-	fold_stmt(s->lhs); /* compound */
+	fold_stmt(stmt_label_sub(s)); /* compound */
 }
 
 void gen_stmt_label(const stmt *s, out_ctx *octx)
@@ -43,7 +43,7 @@ void gen_stmt_label(const stmt *s, out_ctx *octx)
 
 	/* explicit fall through */
 	out_ctrl_transfer_make_current(octx, thisblk);
-	gen_stmt(s->lhs, octx); /* the code-part of the compound statement */
+	gen_stmt(stmt_label_sub(s), octx); /* the code-part of the compound statement */
 }
 
 void dump_stmt_label(const stmt *s, dump *ctx)
@@ -52,19 +52,19 @@ void dump_stmt_label(const stmt *s, dump *ctx)
 	dump_printf_indent(ctx, 0, " %s\n", s->bits.lbl.spel);
 
 	dump_inc(ctx);
-	dump_stmt(s->lhs, ctx);
+	dump_stmt(stmt_label_sub(s), ctx);
 	dump_dec(ctx);
 }
 
 void style_stmt_label(const stmt *s, out_ctx *octx)
 {
 	stylef("\n%s: ", s->bits.lbl.spel);
-	gen_stmt(s->lhs, octx);
+	gen_stmt(stmt_label_sub(s), octx);
 }
 
 int label_passable(stmt *s)
 {
-	return fold_passable(s->lhs);
+	return fold_passable(stmt_label_sub(s));
 }
 
 void init_stmt_label(stmt *s)
