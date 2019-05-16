@@ -40,7 +40,6 @@ struct stmt
 
 	int freestanding;     /* if this is freestanding, non-freestanding expressions inside are allowed */
 	int kills_below_code; /* break, return, etc - for checking dead code */
-	int expr_no_pop;
 
 	struct
 	{

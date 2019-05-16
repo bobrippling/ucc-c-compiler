@@ -19,7 +19,6 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	if(last){
 		last_stmt = e->code->bits.code.stmts[last - 1];
 		last_stmt->freestanding = 1; /* allow the final to be freestanding */
-		last_stmt->expr_no_pop = 1;
 	}
 
 	fold_stmt(e->code); /* symtab should've been set by parse */
