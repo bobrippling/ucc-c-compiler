@@ -1,7 +1,7 @@
 // RUN: %ucc -S -o %t %s
-// RUN: grep > /dev/null cvttss2si %t
-// RUN: grep > /dev/null addss %t
-// RUN: grep > /dev/null addl %t; [ $? -ne 0 ]
+// RUN: grep cvttss2si %t >/dev/null
+// RUN: grep addss %t >/dev/null
+// RUN: ! grep addl %t >/dev/null
 
 main()
 {

@@ -1,4 +1,4 @@
-// RUN: %ucc -o %t %s && (%t; [ $? -eq 3 ])
+// RUN: %ocheck 3 %s
 
 long f(int i)
 {

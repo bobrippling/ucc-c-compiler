@@ -1,5 +1,4 @@
-// RUN: %ucc %s -o %t
-// RUN: %t; [ $? -eq 2 ]
+// RUN: %ocheck 2 %s
 
 int add(int x, int y) {
 	int a, b;

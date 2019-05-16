@@ -1,5 +1,5 @@
-// RUN: %ucc -o %t %s
-// RUN: %t; [ $? -eq 4 ]
+// RUN: %ocheck 4 %s
+
 plus(i)
 {
 	return i + 1;

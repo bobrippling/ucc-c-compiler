@@ -1,5 +1,5 @@
-// RUN: %ucc -o %t %s
-// RUN: %t; [ $? -eq 1 ]
+// RUN: %ocheck 1 %s
+
 main()
 {
 	typedef unsigned short ty;

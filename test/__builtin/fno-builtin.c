@@ -1,5 +1,5 @@
-// RUN: %ucc -fno-builtin %s -o %t; [ $? -ne 0 ]
-// RUN: %ucc              %s -o %t
+// RUN: ! %ucc %s -fno-builtin
+// RUN: %ucc %s
 
 main()
 {

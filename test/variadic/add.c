@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %t; [ $? -eq 10 ]
+// RUN: %ocheck 10 %s
 
 f(int a, ...)
 {

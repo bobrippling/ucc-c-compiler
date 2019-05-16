@@ -1,5 +1,5 @@
-// RUN: %ucc -o %t %s
-// RUN: %t; [ $? -eq 3 ]
+// RUN: %ocheck 3 %s
+
 main()
 {
 	int (^b)(void) = ^{

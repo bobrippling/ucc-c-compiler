@@ -1,5 +1,4 @@
-// RUN: %ucc %s -o %t
-// RUN: %t; [ $? -eq 3 ]
+// RUN: %ucc -fsyntax-only %s
 
 f() __attribute(());
 

@@ -1,7 +1,6 @@
-// RUN: %ucc -std=c99 -o %t %s
-// RUN: %t; [ $? -eq 4 ]
-// RUN: %ucc -std=c89 -o %t %s
-// RUN: %t; [ $? -eq 8 ]
+// RUN: %ocheck 4 %s -std=c99
+// RUN: %ocheck 8 %s -std=c89
+
 struct A
 {
 	int i;

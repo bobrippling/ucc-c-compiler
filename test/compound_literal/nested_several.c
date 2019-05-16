@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %t; [ $? -eq 20 ]
+// RUN: %ocheck 20 %s
 
 main()
 {

@@ -1,5 +1,7 @@
-// RUN: %ucc -S %s -o %t
-// RUN: %ucc -c -x __asm %t 2>&1 | grep '65536'; [ $? -ne 0 ]
+// RUN: %ucc -w -c %s >%t 2>&1
+// RUN: test $(wc -c %t) -eq 0
+// ^ should assemble, despite 65536 not fitting in a char
+//
 // RUN: %layout_check %s
 
 char x = 65536;

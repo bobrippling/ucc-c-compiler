@@ -1,7 +1,5 @@
-// RUN: %ucc -ftrapv -DCALL=trapv -o %t %s
-// RUN: %t; [ $? -ne 0 ]
-// RUN: %ucc -ftrapv -DCALL=notrapv -o %t %s
-// RUN: %t
+// RUN: %ocheck trap %s -ftrapv -DCALL=trapv
+// RUN: %ocheck 0 %s -ftrapv -DCALL=notrapv
 
 #define INT_MAX __INT_MAX__
 

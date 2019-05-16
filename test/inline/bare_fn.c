@@ -1,5 +1,7 @@
-// RUN: %ucc -o %t %s -O0 -DG= -DPRE=; [ $? -ne 0 ]
+// RUN: %ucc -S -o %t %s -O0 '-DG=g();' -DPRE=
+// RUN: grep 'call.*g' %t
 // RUN: %ucc -o %t %s -O0 '-DG=g(){}' -DPRE=inline
+// RUN: ! grep 'call.*g' %t
 
 G
 

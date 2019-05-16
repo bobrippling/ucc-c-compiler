@@ -1,5 +1,4 @@
-// RUN: %ucc -ftrapv -o %t %s
-// RUN: %t; [ $? -ne 0 ]
+// RUN: %ocheck trap %s -ftrapv
 
 #define INT64_MAX (-1ull / 2)
 #define INT64_MIN (-INT64_MAX - 1)

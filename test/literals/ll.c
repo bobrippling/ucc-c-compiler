@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %t; [ $? -eq 7 ]
+// RUN: %ocheck 7 %s
 
 long long l = 2;
 

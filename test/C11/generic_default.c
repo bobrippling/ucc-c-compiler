@@ -1,7 +1,3 @@
-// RUN: %ucc -o %t %s
-// RUN: %t; [ $? -eq 2 ]
+// RUN: %ucc -fsyntax-only %s
 
-main()
-{
-	return _Generic('a', default: 2, char: 5);
-}
+_Static_assert(_Generic('a', default: 2, char: 5) == 2, "");

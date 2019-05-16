@@ -1,9 +1,7 @@
-// RUN: %ucc %s -o %t
-// RUN: %t; [ $? -eq 12 ]
+// RUN: %ucc -fsyntax-only %s
 
-main()
-{
-	__typeof(int[]){1,2,3} a;
-
-	return sizeof a;
-}
+_Static_assert(
+		sizeof(__typeof(int[]){1,2,3})
+		==
+		12,
+		"");

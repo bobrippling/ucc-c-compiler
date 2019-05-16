@@ -1,6 +1,6 @@
 // RUN: %ucc -S -o %t %s
-// RUN: grep > /dev/null incl %t
-// RUN: grep > /dev/null addss %t; [ $? -ne 0 ]
+// RUN: grep incl %t >/dev/null
+// RUN: ! grep addss %t >/dev/null
 
 main()
 {

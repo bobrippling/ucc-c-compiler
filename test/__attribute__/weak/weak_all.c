@@ -5,7 +5,7 @@
 // RUN: grep '\.weak tdef' %t
 // RUN: grep '\.weak extern_weak' %t
 // RUN: grep '\.weak local' %t
-// RUN: grep 'globl' %t | grep -v main; [ $? -ne 0 ]
+// RUN: ! grep 'globl' %t | grep -v main
 
 __attribute((weak))
 void f();
