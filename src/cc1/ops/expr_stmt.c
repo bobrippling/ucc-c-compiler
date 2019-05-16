@@ -10,23 +10,15 @@ const char *str_expr_stmt(void)
 
 static expr *find_last_from_stmts(struct stmt_and_decl **entries)
 {
-	size_t n = dynarray_count(entries);
-	size_t lastindex;
+	const size_t n = dynarray_count(entries);
 	stmt *last_stmt;
 
 	if(n == 0)
 		return NULL;
 
-	lastindex = n - 1;
-	for(;;){
-		struct stmt_and_decl *entry = entries[lastindex];
-		last_stmt = entry->stmt;
-		if(last_stmt)
-			break;
-		if(lastindex == 0)
-			return NULL;
-		lastindex--;
-	}
+	last_stmt = entries[n - 1]->stmt;
+	if(!last_stmt)
+		return NULL;
 
 	if(stmt_kind(last_stmt, expr)){
 		last_stmt->freestanding = 1; /* allow the final to be freestanding */

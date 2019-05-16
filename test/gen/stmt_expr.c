@@ -76,4 +76,14 @@ int main()
 				})),
 				void),
 			"");
+
+	// ensure declarations at the end aren't skipped over
+	_Static_assert(
+			__builtin_types_compatible_p(
+				__typeof(({
+					3; // CHECK: warning: unused expression (value)
+					int q; // CHECK: warning: "q" never written to
+				})),
+				void),
+			"");
 }
