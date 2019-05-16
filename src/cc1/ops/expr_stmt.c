@@ -8,6 +8,16 @@ const char *str_expr_stmt(void)
 	return "statement";
 }
 
+static expr *unwrap_stmt_to_expr(stmt *s)
+{
+	if(stmt_kind(s, expr)){
+		s->freestanding = 1; /* allow the final to be freestanding */
+		return s->expr;
+	}
+
+	return NULL;
+}
+
 static expr *find_last_from_stmts(struct stmt_and_decl **entries)
 {
 	const size_t n = dynarray_count(entries);
@@ -20,11 +30,7 @@ static expr *find_last_from_stmts(struct stmt_and_decl **entries)
 	if(!last_stmt)
 		return NULL;
 
-	if(stmt_kind(last_stmt, expr)){
-		last_stmt->freestanding = 1; /* allow the final to be freestanding */
-		return last_stmt->expr;
-	}
-	return NULL;
+	return unwrap_stmt_to_expr(last_stmt);
 }
 
 static expr *find_last_from_expr(expr *e)
