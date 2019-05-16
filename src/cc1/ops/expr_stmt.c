@@ -15,6 +15,9 @@ static expr *unwrap_stmt_to_expr(stmt *s)
 		return s->expr;
 	}
 
+	if(stmt_kind(s, label))
+		return unwrap_stmt_to_expr(stmt_label_sub(s));
+
 	return NULL;
 }
 
@@ -72,6 +75,24 @@ void fold_expr_stmt(expr *e, symtable *stab)
 	e->freestanding = 1; /* ({ ... }) on its own is freestanding */
 }
 
+static const out_val *gen_through_labels(stmt *top, out_ctx *octx)
+{
+	if(stmt_kind(top, expr))
+		return gen_expr(top->expr, octx);
+
+	if(stmt_kind(top, label)){
+		gen_stmt_label_m1(top, octx, 1);
+
+		return gen_through_labels(
+				stmt_label_sub(top),
+				octx);
+	}
+
+	/* nothing to pluck out, generate and bail */
+	gen_stmt(top, octx);
+	return NULL;
+}
+
 const out_val *gen_expr_stmt(const expr *e, out_ctx *octx)
 {
 	size_t n;
@@ -85,12 +106,8 @@ const out_val *gen_expr_stmt(const expr *e, out_ctx *octx)
 	if(n > 0){
 		struct stmt_and_decl *last = stmt_and_decls[n-1];
 
-		if(last->stmt){
-			if(stmt_kind(last->stmt, expr))
-				ret = gen_expr(last->stmt->expr, octx);
-			else
-				gen_stmt(last->stmt, octx);
-		}
+		if(last->stmt)
+			ret = gen_through_labels(last->stmt, octx);
 	}
 
 	if(!ret)

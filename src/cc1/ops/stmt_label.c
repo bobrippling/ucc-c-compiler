@@ -34,7 +34,7 @@ void fold_stmt_label(stmt *s)
 	fold_stmt(stmt_label_sub(s)); /* compound */
 }
 
-void gen_stmt_label(const stmt *s, out_ctx *octx)
+void gen_stmt_label_m1(const stmt *s, out_ctx *octx, int m1)
 {
 	out_blk *thisblk = label_getblk(s->bits.lbl.label, octx);
 
@@ -43,7 +43,15 @@ void gen_stmt_label(const stmt *s, out_ctx *octx)
 
 	/* explicit fall through */
 	out_ctrl_transfer_make_current(octx, thisblk);
-	gen_stmt(stmt_label_sub(s), octx); /* the code-part of the compound statement */
+
+	if(m1)
+		return;
+	gen_stmt(stmt_label_sub(s), octx);
+}
+
+void gen_stmt_label(const stmt *s, out_ctx *octx)
+{
+	gen_stmt_label_m1(s, octx, 0);
 }
 
 void dump_stmt_label(const stmt *s, dump *ctx)

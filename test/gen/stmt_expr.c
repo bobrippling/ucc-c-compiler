@@ -86,4 +86,16 @@ int main()
 				})),
 				void),
 			"");
+
+	assert(
+			({
+				// test where the last statement is a label, not an expression
+				goto x;
+				y: // CHECK: warning: unused label 'y'
+				x:
+				z: // CHECK: warning: unused label 'z'
+				3;
+			})
+			==
+			3);
 }
