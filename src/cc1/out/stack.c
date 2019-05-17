@@ -16,17 +16,24 @@
 
 #include "stack.h"
 
-void v_stack_adj(out_ctx *octx, v_stackt amt, int sub)
+void v_stack_adj_val(out_ctx *octx, const out_val *amt, int sub)
 {
 	out_flush_volatile(
 			octx,
 			out_op(
 				octx, sub ? op_minus : op_plus,
 				v_new_sp(octx, NULL),
+				amt));
+}
+
+void v_stack_adj(out_ctx *octx, v_stackt amt, int sub)
+{
+	v_stack_adj_val(octx,
 				out_new_l(
 					octx,
 					type_nav_btype(cc1_type_nav, type_intptr_t),
-					amt)));
+					amt),
+				sub);
 }
 
 static void align_sz(unsigned *psz, unsigned align)

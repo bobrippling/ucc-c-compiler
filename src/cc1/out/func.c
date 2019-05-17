@@ -100,6 +100,83 @@ static void callee_save_or_restore(
 	out_val_release(octx, stack_locn);
 }
 
+static const out_val *emit_stack_probe_call(out_ctx *octx, const char *probefn, v_stackt adj)
+{
+	type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
+	funcargs *fargs = funcargs_new();
+	type *fnty_noptr;
+	type *fnty_ptr;
+	char *mangled;
+	const out_val *fn, *args[2], *newadj;
+
+	fargs->args_void = 1;
+	fnty_noptr = type_func_of(intptr_ty, fargs, NULL);
+	fnty_ptr = type_ptr_to(fnty_noptr);
+	mangled = func_mangle(probefn, fnty_noptr);
+
+	fn = out_new_lbl(octx, fnty_ptr, mangled, /* another module */OUT_LBL_PIC);
+	args[0] = out_new_l(octx, intptr_ty, adj);
+	args[1] = NULL;
+
+	newadj = out_call(octx, fn, args, fnty_ptr);
+
+	if(mangled != probefn)
+		free(mangled);
+
+	return newadj;
+}
+
+static void allocate_stack(out_ctx *octx, v_stackt adj)
+{
+	if(adj >= 4096){
+		const enum sys sys = platform_sys();
+
+		switch(sys){
+			case SYS_linux:
+			case SYS_freebsd:
+			case SYS_darwin:
+				break;
+			case SYS_cygwin:
+			{
+				// Emit stack probes for windows/cygwin/mingw targets.
+				// Windows => __chkstk
+				// cygwin/mingw => __alloca
+				const char *probefn;
+				int still_need_stack_adj;
+				const out_val *newadj;
+
+				if(platform_32bit()){
+					probefn = "_alloca"; /* cygwin and mingw */
+					still_need_stack_adj = 0;
+
+					/* probefn = "_chkstk"; // windows
+					 * still_need_stack_adj = 0;
+					 */
+				}else{
+					probefn = "__chkstk_ms"; /* cygwin and mingw */
+					still_need_stack_adj = 1;
+
+					/* probefn = "_chkstk"; // windows
+					 * still_need_stack_adj = 1;
+					 */
+				}
+
+				newadj = emit_stack_probe_call(octx, probefn, adj);
+
+				if(still_need_stack_adj){
+					v_stack_adj_val(octx, newadj, /*sub:*/1);
+				}else{
+					out_comment(octx, "stack adjusted by %s call", probefn);
+					out_val_release(octx, newadj);
+				}
+				return;
+			}
+		}
+	}
+
+	v_stack_adj(octx, adj, /*sub:*/1);
+}
+
 void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *end_dbg_lbl)
 {
 	int clean_stack;
@@ -274,7 +351,7 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 			}
 			stack_adj = octx->max_stack_sz - octx->stack_n_alloc;
 
-			v_stack_adj(octx, stack_adj, /*sub:*/1);
+			allocate_stack(octx, stack_adj);
 		}
 
 		out_ctrl_transfer(octx, octx->argspill_begin_blk, NULL, NULL, 0);
