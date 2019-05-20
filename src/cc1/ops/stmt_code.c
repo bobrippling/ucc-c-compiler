@@ -289,14 +289,27 @@ static void gen_auto_decl(decl *d, out_ctx *octx)
 	}
 }
 
-static void gen_decls(decl **decls, out_ctx *octx)
+static void gen_decls(decl **decls, symtable *symtab, out_ctx *octx)
 {
 	decl **diter;
+	decl *const last = decls[dynarray_count(decls)-1];
 
-	/* declare strings, extern functions, blocks and vlas */
-	for(diter = decls; diter && *diter; diter++){
+	/* find the start */
+	for(diter = symtab_decls(symtab); diter && *diter; diter++)
+		if(*diter == decls[0]){
+			fprintf(stderr, "start search %s\n", (*diter)->spel);
+			break;
+		}
+
+	for(; diter && *diter; diter++){
 		decl *d = *diter;
 		int func;
+
+		fprintf(stderr, "iter %s\n", (*diter)->spel);
+		if(d == last){
+			fprintf(stderr, "last %s\n", (*diter)->spel);
+			break;
+		}
 
 		/* we may need a '.extern fn...' for prototypes... */
 		if((func = !!type_is(d->ref, type_func))
@@ -353,17 +366,36 @@ static void gen_dbg_labels_end(
 			out_dbg_label_pop(octx, pushed_lbls[i]);
 }
 
+static void gen_dbg_begin(
+		struct out_dbg_lbl *pushed_lbls[2],
+		out_ctx *octx,
+		symtable *symtab)
+{
+	gen_dbg_labels_begin(pushed_lbls, octx, symtab);
+
+	if(cc1_gdebug != DEBUG_OFF)
+		out_dbg_scope_enter(octx, symtab);
+}
+
+static void gen_dbg_end(
+		struct out_dbg_lbl *pushed_lbls[2],
+		out_ctx *octx,
+		symtable *symtab)
+{
+	gen_dbg_labels_end(pushed_lbls, octx);
+
+	if(cc1_gdebug != DEBUG_OFF)
+		out_dbg_scope_leave(octx, symtab);
+}
+
 void gen_symtab_decls(
 		symtable *stab,
 		struct out_dbg_lbl *pushed_lbls[2],
 		out_ctx *octx)
 {
-	gen_dbg_labels_begin(pushed_lbls, octx, stab);
+	gen_dbg_begin(pushed_lbls, octx, stab);
 
-	if(cc1_gdebug != DEBUG_OFF)
-		out_dbg_scope_enter(octx, stab);
-
-	gen_decls(symtab_decls(stab), octx);
+	gen_decls(symtab_decls(stab), stab, octx);
 }
 
 void gen_block_decls_dealloca(
@@ -402,10 +434,7 @@ void gen_block_decls_dealloca(
 		sym_setoutval(d->sym, /*null*/v);
 	}
 
-	gen_dbg_labels_end(pushed_lbls, octx);
-
-	if(cc1_gdebug != DEBUG_OFF)
-		out_dbg_scope_leave(octx, stab);
+	gen_dbg_end(pushed_lbls, octx, stab);
 }
 
 static void gen_scope_destructors(symtable *scope, out_ctx *octx)
@@ -494,10 +523,7 @@ void gen_scope_leave(
 {
 	symtable *s_iter;
 
-	if(!s_to){ /* e.g. return */
-		gen_scope_destructors(s_from, octx);
-		return;
-	}
+	assert(s_to);
 
 	mark_symtabs(s_to, 1);
 
@@ -540,15 +566,18 @@ void gen_stmt_code_m1(
 {
 	struct stmt_and_decl **iter;
 
-	gen_dbg_labels_begin(pushed_lbls, octx, s->symtab);
+	gen_dbg_begin(pushed_lbls, octx, s->symtab);
 
+	fprintf(stderr, "HERE\n");
+
+	/* TODO: iterate over symtab decls and jump into stmt_and_decls later */
 	for(iter = s->bits.stmt_and_decls; iter && *iter; iter++){
 		if((*iter)->stmt){
 			if(m1 && !iter[1])
 				break;
 			gen_stmt((*iter)->stmt, octx);
 		}else{
-			gen_decls((*iter)->decls, octx);
+			gen_decls((*iter)->decls, s->symtab, octx);
 		}
 	}
 

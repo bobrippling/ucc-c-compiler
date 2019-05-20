@@ -27,8 +27,8 @@
 struct stmt_ctx
 {
 	stmt *continue_target,
-	     *break_target,
-	     *switch_target;
+	*break_target,
+	*switch_target;
 	symtable *scope;
 
 	int parsing_unbraced_if; /* dangling-else detection */
@@ -53,7 +53,7 @@ static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 
 	ctx->scope = t->symtab;
 
-  if(parse_at_decl(ctx->scope, 1)){
+	if(parse_at_decl(ctx->scope, 1)){
 		decl *d;
 
 		/* if we are at a type, push a scope for it, for
@@ -395,12 +395,8 @@ static stmt *parse_stmt_and_decls(const struct stmt_ctx *const ctx)
 			fold_shadow_dup_check_block_decls(subctx.scope);
 
 			if(had_stmt && cc1_std < STD_C99){
-				static int warned = 0;
-				if(!warned){
-					warned = 1;
-					cc1_warn_at(&decls[0]->where, mixed_code_decls,
-							"mixed code and declarations");
-				}
+				cc1_warn_at(&decls[0]->where, mixed_code_decls,
+						"mixed code and declarations");
 			}
 
 			both = umalloc(sizeof *both);
