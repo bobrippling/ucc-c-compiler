@@ -14,6 +14,11 @@
 #include "../const.h"
 #include "../type_nav.h"
 #include "../type_is.h"
+#include "../fopt.h" /* fopt */
+#include "../cc1.h" /* fopt */
+
+#include "../cc1.h"
+#include "../fopt.h"
 
 #include "asm.h"
 #include "out.h"
@@ -119,9 +124,11 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 			}
 			break;
 
-		case V_REG_SPILT:
+		case V_SPILT:
+		case V_REGOFF:
 			/* must load the value for a sensible conversion */
 			val = v_to_reg(octx, val);
+			from = val->t;
 			break;
 
 		default:
@@ -200,7 +207,8 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 
 const out_val *out_change_type(out_ctx *octx, const out_val *val, type *ty)
 {
-	return v_dup_or_reuse(octx, val, ty);
+	out_val *mut = v_mutable_copy(octx, val);
+	return v_dup_or_reuse(octx, mut, ty);
 }
 
 const out_val *out_deref(out_ctx *octx, const out_val *target)
@@ -218,7 +226,7 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 	|| type_is(tnext, type_func))
 	{
 		/* noop */
-		return v_dup_or_reuse(octx, target,
+		return out_change_type(octx, target,
 				type_dereference_decay(target->t));
 	}
 
@@ -231,6 +239,12 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 		target = out_cast(octx, target, type_ptr_to(bf.master_ty), 0);
 	}
 
+	if(target->type == V_SPILT){
+		if(cc1_fopt.verbose_asm)
+			out_comment(octx, "double-indir for spilt value");
+		target = impl_deref(octx, target, reg, NULL);
+	}
+
 	dval = impl_deref(octx, target, reg, &done_out_deref);
 
 	if(bf.nbits && !done_out_deref)
@@ -241,7 +255,7 @@ const out_val *out_deref(out_ctx *octx, const out_val *target)
 
 const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 {
-	out_val *normalised = v_dup_or_reuse(octx, unnormal, unnormal->t);
+	out_val *normalised = v_mutable_copy(octx, unnormal);
 
 	switch(normalised->type){
 		case V_FLAG:
@@ -249,10 +263,14 @@ const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 			break;
 
 		case V_CONST_I:
+			if(!cc1_fopt.const_fold)
+				goto no_const_fold;
 			normalised->bits.val_i = !!normalised->bits.val_i;
 			break;
 
 		case V_CONST_F:
+			if(!cc1_fopt.const_fold)
+				goto no_const_fold;
 			normalised->bits.val_i = !!normalised->bits.val_f;
 			normalised->type = V_CONST_I;
 			/* float to int - change .t */
@@ -260,6 +278,7 @@ const out_val *out_normalise(out_ctx *octx, const out_val *unnormal)
 			break;
 
 		default:
+no_const_fold:
 			normalised = (out_val *)v_to_reg(octx, normalised);
 			/* fall */
 
@@ -283,7 +302,7 @@ const out_val *out_set_bitfield(
 		unsigned off, unsigned nbits,
 		type *master_ty)
 {
-	out_val *mut = v_dup_or_reuse(octx, val, val->t);
+	out_val *mut = v_mutable_copy(octx, val);
 
 	mut->bitfield.off = off;
 	mut->bitfield.nbits = nbits;

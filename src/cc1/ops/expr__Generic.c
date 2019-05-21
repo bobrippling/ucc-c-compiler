@@ -5,12 +5,12 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 
-const char *str_expr__Generic()
+const char *str_expr__Generic(void)
 {
 	return "_Generic";
 }
 
-static enum lvalue_kind is_lval_generic(expr *e)
+static enum lvalue_kind is_lval_generic(const expr *e)
 {
 	return expr_is_lval(e->bits.generic.chosen->e);
 }

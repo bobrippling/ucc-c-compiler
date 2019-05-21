@@ -18,8 +18,10 @@ void fopt_default(struct cc1_fopt *opt)
 	opt->common = 1;
 	opt->const_fold = 1;
 	opt->integral_float_load = 1;
+	opt->omit_frame_pointer = 1;
 	opt->pic = 1;
 	opt->plt = 1;
+	opt->rounding_math = 0; /* default to no rounding math, aka float-const-folding/fenv-non-conforming */
 	opt->semantic_interposition = 1; /* default to -fsemantic-interposition to match gcc */
 	opt->symbol_arith = 1;
 	opt->thread_jumps = 1;

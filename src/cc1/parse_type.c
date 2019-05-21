@@ -8,6 +8,7 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/platform.h"
 #include "decl_init.h"
 #include "funcargs.h"
 
@@ -50,7 +51,7 @@ static int parse_at_decl_spec(void);
 static int can_complete_existing_sue(
 		struct_union_enum_st *sue, enum type_primitive new_tag)
 {
-	return sue->primitive == new_tag && !sue->got_membs;
+	return sue->primitive == new_tag && sue->membs_progress == SUE_MEMBS_NO;
 }
 
 static void emit_redef_sue_error(
@@ -112,6 +113,8 @@ static struct_union_enum_st *parse_sue_definition(
 			predecl_sue = sue_predeclare(scope, NULL, prim, sue_loc);
 		}
 
+		predecl_sue->membs_progress = SUE_MEMBS_PARSING;
+
 		for(;;){
 			where w;
 			expr *e;
@@ -167,9 +170,11 @@ static struct_union_enum_st *parse_sue_definition(
 		decl **dmembers = NULL;
 		decl **i;
 
+		if(predecl_sue)
+			predecl_sue->membs_progress = SUE_MEMBS_PARSING;
+
 		while(parse_decl_group(
-					DECL_MULTI_CAN_DEFAULT
-					| DECL_MULTI_ACCEPT_FIELD_WIDTH
+					DECL_MULTI_ACCEPT_FIELD_WIDTH
 					| DECL_MULTI_NAMELESS
 					| DECL_MULTI_IS_STRUCT_UN_MEMB
 					| DECL_MULTI_ALLOW_ALIGNAS,
@@ -185,7 +190,7 @@ static struct_union_enum_st *parse_sue_definition(
 			dynarray_free(decl **, dmembers, NULL);
 		}
 
-		sue_member_init_dup_check(*members);
+		sue_member_init_dup_check(*members, prim, *spel, sue_loc);
 	}
 
 	return predecl_sue;
@@ -348,7 +353,7 @@ static type *parse_type_sue(
 			if(!descended && prim_mismatch)
 				redecl_error = 1;
 			else if(prim_mismatch && !parse_token_creates_sue(curtok))
-					redecl_error = 1;
+				redecl_error = 1;
 
 			if(redecl_error){
 				emit_redef_sue_error(
@@ -541,6 +546,11 @@ enum parse_btype_flags
 	PARSE_BTYPE_DEFAULT_INT = 1 << 1
 };
 
+static void emit_duplicate_qual_warning(where *loc, enum type_qualifier qual)
+{
+	cc1_warn_at(loc, duplicate_declspec, "duplicate '%s' specifier", type_qual_to_str(qual, 0));
+}
+
 static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
 		int newdecl_context, symtable *scope,
@@ -574,9 +584,8 @@ static type *parse_btype(
 		if(curtok_is_type_qual()){
 			enum type_qualifier q = curtok_to_type_qualifier();
 
-			if(qual & q){
-				cc1_warn_at(NULL, duplicate_declspec, "duplicate '%s' specifier", type_qual_to_str(q, 0));
-			}
+			if(qual & q)
+				emit_duplicate_qual_warning(NULL, q);
 
 			qual |= q;
 			EAT(curtok);
@@ -910,6 +919,10 @@ static type *parse_btype(
 				fold_expr_nodecay(tdef_typeof, scope);
 
 				r = type_tdef_of(tdef_typeof, tdef_decl);
+
+				if(cc1_std <= STD_C89 && type_qual(r) & qual)
+					emit_duplicate_qual_warning(NULL, qual);
+
 				break;
 
 			case PRIMITIVE_NO_MORE:
@@ -1263,7 +1276,7 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 					 * (and we don't have the fold-const-vlas setting), then treat
 					 * as a vla */
 					if(k.type != CONST_NUM
-					|| (k.nonstandard_const && !(cc1_fopt.fold_const_vlas)))
+					|| (k.nonstandard_const && !cc1_fopt.fold_const_vlas))
 					{
 						is_vla = VLA;
 					}
@@ -1580,7 +1593,7 @@ static void parse_add_asm(decl *d)
 			d->spel_asm = rename;
 		}
 
-		if(proto && proto != d && proto->used){
+		if(proto && proto != d && proto->flags & DECL_FLAGS_USED){
 			warn_at_print_error(&d->where,
 					"cannot annotate \"%s\" with an asm() label after use",
 					d->spel);
@@ -1596,6 +1609,37 @@ static void parsed_decl(decl *d, symtable *scope, int is_arg)
 		loc = &d->where;
 
 	fold_type_ondecl_w(d, scope, loc, is_arg);
+}
+
+static void workaround_valist_typedef(decl *d, symtable *symtab)
+{
+	type *pointee;
+
+	if((d->store & STORE_MASK_STORE) != store_typedef)
+		return;
+
+	if(!cc1_fopt.force_valist_type)
+		return;
+
+	if(!where_in_sysheader(&d->where))
+		return;
+
+	if(strcmp(d->spel, "va_list"))
+		return;
+
+	pointee = type_is_ptr(d->ref);
+	if(!pointee)
+		return;
+
+	if(!type_is_void(pointee))
+		return;
+
+	/* typedef void *va_list;
+	 * Without __GNUC__ >= 2 on Darwin, system headers use void*
+	 * as the type for va_list, conflicting with our defintion.
+	 *
+	 * Workaround this here. */
+	d->ref = type_nav_va_list(cc1_type_nav, symtab);
 }
 
 static decl *parse_decl_stored_aligned(
@@ -1728,6 +1772,8 @@ static decl *parse_decl_stored_aligned(
 
 		fold_had_error = 1;
 	}
+
+	workaround_valist_typedef(d, scope);
 
 	/* copy all of d's attributes to the .ref, so that function
 	 * types get everything correctly. */
@@ -1901,12 +1947,10 @@ static void check_function_storage_redef(decl *new, decl *old)
 
 	/* can't redefine as static now */
 	if((new->store & STORE_MASK_STORE) == store_static){
-		char buf[WHERE_BUF_SIZ];
-
 		warn_at_print_error(&new->where,
-				"static redefinition of non-static \"%s\"\n"
-				"%s: note: previous definition",
-				new->spel, where_str_r(buf, &old->where));
+				"static redefinition of non-static \"%s\"",
+				new->spel);
+		note_at(&old->where, "previous definition here");
 		fold_had_error = 1;
 	}
 }

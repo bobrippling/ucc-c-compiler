@@ -11,7 +11,7 @@
 
 #include "expr_op.h"
 
-const char *str_expr_if()
+const char *str_expr_if(void)
 {
 	return "if";
 }

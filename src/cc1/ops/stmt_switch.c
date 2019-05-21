@@ -15,7 +15,7 @@
 #define ITER_SWITCH(sw, iter) \
 	for(iter = sw->bits.switch_.cases; iter && *iter; iter++)
 
-const char *str_stmt_switch()
+const char *str_stmt_switch(void)
 {
 	return "switch";
 }
@@ -101,6 +101,13 @@ static void fold_switch_enum(
 			return;
 	}
 
+	/* warn if we switch on an enum bitmask */
+	if(expr_attr_present(sw->expr, attr_enum_bitmask)){
+		cc1_warn_at(&sw->where, switch_enum_bitmask,
+				"switch on enum with enum_bitmask attribute");
+		return;
+	}
+
 	nents = enum_nentries(enum_sue);
 
 	/* if there's no default case or we're on the even_when_default
@@ -110,11 +117,6 @@ static void fold_switch_enum(
 	{
 		marks = umalloc(nents * sizeof *marks);
 	}
-
-	/* warn if we switch on an enum bitmask */
-	if(expr_attr_present(sw->expr, attr_enum_bitmask))
-		cc1_warn_at(&sw->where, switch_enum_bitmask,
-				"switch on enum with enum_bitmask attribute");
 
 	/* for each case/default/case_range... */
 	ITER_SWITCH(sw, iter){
@@ -199,8 +201,11 @@ void fold_stmt_and_add_to_curswitch(stmt *cse)
 
 	fold_stmt(cse->lhs); /* compound */
 
-	if(!sw)
-		die_at(&cse->where, "%s not inside switch", cse->f_str());
+	if(!sw){
+		warn_at_print_error(&cse->where, "%s not inside switch", cse->f_str());
+		fold_had_error = 1;
+		return;
+	}
 
 	if(cse->expr){
 		/* promote to the controlling statement */

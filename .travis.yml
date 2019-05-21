@@ -4,7 +4,10 @@ compiler:
   - clang
   - gcc
 
-script: ./configure CFLAGS=-fsanitize=address LDFLAGS=-fsanitize=address && make check
+script:
+  - ./configure CFLAGS=-fsanitize=address LDFLAGS=-fsanitize=address
+  - make bootstrap
+  - make check-bootstrap
 
 env:
   global:

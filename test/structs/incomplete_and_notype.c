@@ -7,6 +7,7 @@ struct A
 	struct A x; // CHECK: error: incomplete field 'struct A x'
 };
 
-main()
+struct B
 {
-}
+	x; // CHECK: error: expecting token '}', got identifier "x"
+};

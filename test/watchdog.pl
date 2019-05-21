@@ -16,7 +16,7 @@ sub killpid
 {
 	my($sig, $pid) = @_;
 
-	print "kill $pid\n" if $verbose;
+	print "kill -$sig $pid\n" if $verbose;
 
 	my $dead = kill($sig, $pid);
 

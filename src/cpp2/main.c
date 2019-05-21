@@ -78,6 +78,8 @@ static const struct
 	SPECIAL("__has_extension"),
 	SPECIAL("__has_attribute"),
 	SPECIAL("__has_builtin"),
+
+	/* here for defined(__has_include), then special cased to prevent expansion outside of #if */
 	SPECIAL("__has_include"),
 #undef SPECIAL
 
@@ -86,6 +88,7 @@ static const struct
 
 struct loc loc_tok;
 char *current_fname;
+int current_fname_used;
 char *current_line_str;
 int show_current_line = 1;
 int no_output = 0;
@@ -156,17 +159,25 @@ void dirname_push(char *d)
 	dynarray_add(&cd_stack, d);
 }
 
-char *dirname_pop()
+char *dirname_pop(void)
 {
 	return dynarray_pop(char *, &cd_stack);
+}
+
+void cpp_where_current(where *w)
+{
+  where_current(w);
+  current_fname_used = 1;
 }
 
 void set_current_fname(const char *new)
 {
 	if(current_fname == new)
 		return;
-	free(current_fname);
+	if(!current_fname_used)
+		free(current_fname);
 	current_fname = ustrdup(new);
+	current_fname_used = 0;
 }
 
 static struct tm *current_time(int *const using_env)
@@ -346,9 +357,17 @@ int main(int argc, char **argv)
 
 	set_current_fname(FNAME_CMDLINE);
 
-	for(i = 1; i < argc && *argv[i] == '-'; i++){
-		if(!strcmp(argv[i]+1, "-"))
-			break;
+	for(i = 1; i < argc; i++){
+		if(argv[i][0] != '-' || !strcmp(argv[i]+1, "-")){
+			if(!infname)
+				infname = argv[i];
+			else if(!outfname)
+				outfname = argv[i];
+			else
+				goto usage;
+
+			continue;
+		}
 
 		switch(argv[i][1]){
 			case 'I':
@@ -588,18 +607,6 @@ defaul:
 				args, 0, 0);
 	}
 
-
-	if(i < argc){
-		infname = argv[i++];
-		if(i < argc){
-			if(outfname)
-				goto usage;
-			outfname = argv[i++];
-			if(i < argc)
-				goto usage;
-		}
-	}
-
 	calctime(infname);
 
 #define CHECK_FILE(var, mode, target) \
@@ -649,18 +656,36 @@ usage:
 	fprintf(stderr, "Usage: %s [options] in-file out-file\n", *argv);
 	fputs(" Options:\n"
 				"  -Idir: Add search directory\n"
+				"  -isystem dir: Add system search directory\n"
 				"  -Dxyz[=abc]: Define xyz (to equal abc)\n"
 				"  -Uxyz: Undefine xyz\n"
 				"  -o output: output file\n"
 				"  -P: don't add #line directives\n"
-				"  -dM: debug output\n"
-				"  -dS: print macro usage stats\n"
-				"  -MM: generate Makefile dependencies\n"
-				"  -MG: ignore missing headers, count as dependency\n"
-				"  -C: don't discard comments, except in macros\n"
-				"  -CC: don't discard comments, even in macros\n"
 				"  -trigraphs: enable trigraphs\n"
 				"  -digraphs: enable digraphs\n"
+				"  -w: disable all warnings\n"
+				"\n"
+				"  -MM: generate Makefile dependencies\n"
+				"  -MG: ignore missing headers, count as dependency\n"
+				"  -MD: emit dependencies on standard out\n"
+				"  -MF: (with -MD) emit dependencies to given file\n"
+				"\n"
+				"  -f[no-]freestanding: control __STDC_HOSTED__\n"
+				"  -std=[standard]: control __STDC_VERSION__\n"
+				"  -fmessage-length=...: control warning message length\n"
+				"  -f[no-]cpp-offsetof: define __builtin_offsetof as a macro\n"
+				"\n"
+				"  -C: don't discard comments, except in macros\n"
+				"  -CC: don't discard comments, even in macros\n"
+				"\n"
+				"  -m32/-m64: control architecture specific definitions\n"
+				"  -O[opt]: control optimisation macro definitions\n"
+				"\n"
+				"  -dM: output macro debugging information\n"
+				"  -dS: output stats debugging information\n"
+				"  -dW: output macro location debugging information\n"
+				"  -d: output trace debugging information\n"
+				"\n"
 				, stderr);
 
 	{

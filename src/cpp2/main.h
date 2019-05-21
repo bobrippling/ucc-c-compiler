@@ -20,6 +20,9 @@ extern char cpp_time[16], cpp_date[16], cpp_timestamp[64], *cpp_basefile;
 extern int option_line_info;
 extern int option_trigraphs, option_digraphs;
 
+struct where;
+void cpp_where_current(struct where *);
+
 extern char *current_fname;
 extern int no_output;
 extern int missing_header_error;

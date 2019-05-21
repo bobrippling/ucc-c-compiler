@@ -9,7 +9,7 @@
 
 #include "expr_op.h"
 
-const char *str_expr_deref()
+const char *str_expr_deref(void)
 {
 	return "dereference";
 }
@@ -92,7 +92,7 @@ static void const_expr_deref(expr *e, consty *k)
 						/* need to preserve original string for lvalue-ness -> CONST_NEED_ADDR */
 						CONST_FOLD_LEAF(k);
 						k->type = CONST_NEED_ADDR;
-						k->bits.addr.is_lbl = 1;
+						k->bits.addr.lbl_type = CONST_LBL_TRUE;
 						k->bits.addr.bits.lbl = sv->lbl;
 						k->offset = offset;
 						break;
@@ -114,7 +114,7 @@ static void const_expr_deref(expr *e, consty *k)
 		{
 			integral_t num = k->bits.num.val.i;
 			CONST_FOLD_LEAF(k);
-			k->bits.addr.is_lbl = 0;
+			k->bits.addr.lbl_type = CONST_LBL_MEMADDR;
 			k->bits.addr.bits.memaddr = num;
 		} /* fall */
 		case CONST_ADDR:

@@ -5,7 +5,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 
-const char *str_stmt_break()
+const char *str_stmt_break(void)
 {
 	return "break";
 }

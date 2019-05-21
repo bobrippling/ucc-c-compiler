@@ -26,7 +26,7 @@
 			"argument %d to %s",        \
 			i + 1, sp ? sp : "function")
 
-const char *str_expr_funcall()
+const char *str_expr_funcall(void)
 {
 	return "function-call";
 }
@@ -146,7 +146,7 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **const psp)
 {
 	struct symtab_entry ent;
 	funcargs *args;
-	decl *df;
+	decl *df, *owning_func;
 	type *func_ty;
 
 	if(e->expr->in_parens
@@ -180,8 +180,10 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **const psp)
 			"implicit declaration of function \"%s\"", *psp);
 
 	df = decl_new();
+	memcpy_safe(&df->where, &e->where);
 	df->ref = func_ty;
 	df->spel = e->expr->bits.ident.bits.ident.spel;
+	df->flags |= DECL_FLAGS_IMPLICIT;
 
 	fold_decl(df, stab); /* update calling conv, for e.g. */
 
@@ -189,6 +191,12 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **const psp)
 
 	e->expr->bits.ident.bits.ident.sym = df->sym;
 	e->expr->tree_type = func_ty;
+
+	owning_func = symtab_func(stab);
+	if(owning_func)
+		symtab_insert_before(symtab_root(stab), owning_func, df);
+	else
+		symtab_add_to_scope(symtab_root(stab), df); /* function call at global scope */
 }
 
 static int check_arg_counts(
@@ -395,7 +403,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	if(!type_is_callable(func_ty)){
 		warn_at_print_error(&e->expr->where,
 				"%s-expression (type '%s') not callable",
-				expr_str_friendly(e->expr),
+				expr_str_friendly(e->expr, 0),
 				type_to_str(func_ty));
 
 		fold_had_error = 1;
@@ -457,7 +465,7 @@ void fold_expr_funcall(expr *e, symtable *stab)
 	if(func_or_builtin_attr_present(e, attr_warn_unused))
 		e->freestanding = 0; /* needs use */
 
-	if(sp && !(cc1_fopt.freestanding))
+	if(sp && !cc1_fopt.freestanding)
 		check_standard_funcs(sp, e->funcargs);
 }
 
@@ -533,7 +541,7 @@ int expr_func_passable(expr *e)
 	return !func_or_builtin_attr_present(e, attr_noreturn);
 }
 
-expr *expr_new_funcall()
+expr *expr_new_funcall(void)
 {
 	expr *e = expr_new_wrapper(funcall);
 	e->freestanding = !cc1_warning.unused_fnret;

@@ -1,8 +1,8 @@
-// RUN: %ocheck 5 %s -fsanitize=undefined -fsanitize-error=call=san_err -DCALL='toobig_1(sizeof(int) * 8)'
-// RUN: %ocheck 5 %s -fsanitize=undefined -fsanitize-error=call=san_err -DCALL='toobig_2(sizeof(int) * 8)'
-// RUN: %ocheck 5 %s -fsanitize=undefined -fsanitize-error=call=san_err -DCALL='neg_rhs_1(-1)'
-// RUN: %ocheck 5 %s -fsanitize=undefined -fsanitize-error=call=san_err -DCALL='neg_rhs_2(-1)'
-// RUN: %ocheck 5 %s -fsanitize=undefined -fsanitize-error=call=san_err -DCALL='neg_lhs(-10)'
+// RUN: %ocheck 5 %s -fsanitize=shift -fsanitize-error=call=san_err -DCALL='toobig_1(sizeof(int) * 8)'
+// RUN: %ocheck 5 %s -fsanitize=shift -fsanitize-error=call=san_err -DCALL='toobig_2(sizeof(int) * 8)'
+// RUN: %ocheck 5 %s -fsanitize=shift -fsanitize-error=call=san_err -DCALL='neg_rhs_1(-1)'
+// RUN: %ocheck 5 %s -fsanitize=shift -fsanitize-error=call=san_err -DCALL='neg_rhs_2(-1)'
+// RUN: %ocheck 5 %s -fsanitize=shift -fsanitize-error=call=san_err -DCALL='neg_lhs(-10)'
 
 void exit(int);
 

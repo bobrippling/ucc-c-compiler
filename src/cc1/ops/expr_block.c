@@ -100,7 +100,7 @@ static void const_expr_block(expr *e, consty *k)
 	CONST_FOLD_LEAF(k);
 
 	k->type = CONST_ADDR;
-	k->bits.addr.is_lbl = 1;
+	k->bits.addr.lbl_type = CONST_LBL_TRUE;
 	k->bits.addr.bits.lbl = decl_asm_spel(e->bits.block.sym->decl);
 }
 

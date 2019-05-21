@@ -144,6 +144,8 @@ static char *eval_func_macro(macro *m, char *args_str)
 
 		/* we don't want macro-substitution of the argument */
 		ret = has_func(m->nam, args[0]);
+		if(ret == -1)
+			CPP_DIE("unknown builtin macro \"%s\"", m->nam);
 
 		dynarray_free(char **, args, free);
 
@@ -326,9 +328,7 @@ static char *eval_macro_r(macro *m, char *start, char **pat)
 			free_val = 1;
 
 			if(!strcmp(m->nam, "__FILE__")){
-				char *q = str_quote(current_fname, 0);
-				val = ustrprintf("%s", q);
-				free(q);
+				val = str_quote(current_fname, 0);
 			}else if(!strcmp(m->nam, "__LINE__")){
 				val = ustrprintf("%d", current_line);
 			}else if(!strcmp(m->nam, "__COUNTER__")){
@@ -374,6 +374,11 @@ static char *eval_macro_r(macro *m, char *start, char **pat)
 		close_b = strchr_nest(open_b, ')');
 		if(!close_b)
 			CPP_DIE("unterminated function-macro '%s'", m->nam);
+
+		if(!strcmp(m->nam, HAS_INCLUDE_STR)){
+			/* noop - not in #if mode */
+			return start;
+		}
 
 		{
 			char *all_args = ustrdup2(open_b + 1, close_b);

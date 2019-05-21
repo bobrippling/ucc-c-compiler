@@ -39,6 +39,7 @@
 #include "cc1_target.h"
 #include "cc1_out.h"
 #include "cc1_sections.h"
+#include "sanitize_opt.h"
 
 static const char **system_includes;
 
@@ -49,14 +50,13 @@ struct version
 
 static struct
 {
-	char type;
 	const char *arg;
 	int mask;
 } mopts[] = {
-	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
-	{ 'm',  "align-is-p2", MOPT_ALIGN_IS_POW2 },
+	{ "stackrealign", MOPT_STACK_REALIGN },
+	{ "align-is-p2", MOPT_ALIGN_IS_POW2 },
 
-	{ 0,  NULL, 0 }
+	{ NULL, 0 }
 };
 
 static struct
@@ -79,8 +79,6 @@ char *cc1_first_fname;
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
 enum mopt mopt_mode = 0;
-enum san_opts cc1_sanitize = 0;
-char *cc1_sanitize_handler_fn;
 
 enum visibility cc1_visibility_default;
 
@@ -132,7 +130,7 @@ static void dump_options(void)
 	int i;
 
 	fprintf(stderr, "Output options\n");
-	fprintf(stderr, "  -g0, -gline-tables-only, -g[no-]column-info\n");
+	fprintf(stderr, "  -g[0|1|2|3], -gline-tables-only|mlt, -g[no-]column-info\n");
 	fprintf(stderr, "  -o output-file\n");
 	fprintf(stderr, "  -emit=(dump|print|asm|style)\n");
 	fprintf(stderr, "  -m(stringop-strategy=...|...)\n");
@@ -144,7 +142,8 @@ static void dump_options(void)
 	fprintf(stderr, "  -W(no-)?(all|extra|everything|gnu|error(=...)|...)\n");
 	fprintf(stderr, "  -w\n");
 	fprintf(stderr, "  -std=(gnu|c)(99|90|89|11), -ansi\n");
-	fprintf(stderr, "  -f(sanitize=...|sanitize-error=...)\n");
+	fprintf(stderr, "  -f(sanitize=...|sanitize-error=...|sanitize-undefined-trap-on-error)\n");
+	fprintf(stderr, "  -fno-sanitize=all\n");
 	fprintf(stderr, "  -fvisibility=default|hidden|protected\n");
 	fprintf(stderr, "  -fdebug-compilation-dir=...\n");
 	fprintf(stderr, "\n");
@@ -425,38 +424,6 @@ unrecog:
 	return 1;
 }
 
-static void add_sanitize_option(const char *argv0, const char *san)
-{
-	if(!strcmp(san, "undefined")){
-		cc1_sanitize |= CC1_UBSAN;
-		cc1_fopt.trapv = 1;
-	}else{
-		fprintf(stderr, "%s: unknown sanitize option '%s'\n", argv0, san);
-		exit(1);
-	}
-}
-
-static void set_sanitize_error(const char *argv0, const char *handler)
-{
-	free(cc1_sanitize_handler_fn);
-	cc1_sanitize_handler_fn = NULL;
-
-	if(!strcmp(handler, "trap")){
-		/* fine */
-	}else if(!strncmp(handler, "call=", 5)){
-		cc1_sanitize_handler_fn = ustrdup(handler + 5);
-
-		if(!*cc1_sanitize_handler_fn){
-			fprintf(stderr, "%s: empty sanitize function handler\n", argv0);
-			exit(1);
-		}
-
-	}else{
-		fprintf(stderr, "%s: unknown sanitize handler '%s'\n", argv0, handler);
-		exit(1);
-	}
-}
-
 static void set_default_visibility(const char *argv0, const char *visibility)
 {
 	if(!visibility_parse(&cc1_visibility_default, visibility, cc1_target_details.as.supports_visibility_protected)){
@@ -476,16 +443,26 @@ static int parse_mf_equals(
 	int i;
 	int new_val;
 
+	if(invert && !strcmp(arg_substr, "sanitize=all")){
+		sanitize_opt_off();
+		return 1;
+	}
+
 	if(invert){
 		usage(argv0, "\"no-\" unexpected for value-argument\n");
 	}
 
 	if(!strncmp(arg_substr, "sanitize=", 9)){
-		add_sanitize_option(argv0, arg_substr + 9);
+		sanitize_opt_add(argv0, arg_substr + 9);
 		return 1;
 	}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
-		set_sanitize_error(argv0, arg_substr + 15);
+		sanitize_opt_set_error(argv0, arg_substr + 15);
 		return 1;
+	}else if(!strcmp(arg_substr, "sanitize-undefined-trap-on-error")){
+		/* currently the choices are a noreturn function, or trap.
+		 * in the future, support could be added for linking with gcc or clang's libubsan,
+		 * and calling the runtime support functions therein */
+		sanitize_opt_set_error(argv0, "trap");
 	}else if(!strncmp(arg_substr, "visibility=", 11)){
 		set_default_visibility(argv0, arg_substr + 11);
 		return 1;
@@ -672,7 +649,7 @@ int main(int argc, char **argv)
 
 				case '\0':
 					if(++i == argc)
-						usage(argv[0], "-emit needs an argument");
+						usage(argv[0], "-emit needs an argument\n");
 					emit = argv[i];
 					break;
 
@@ -688,33 +665,50 @@ int main(int argc, char **argv)
 			else if(!strcmp(emit, "style"))
 				cc1_backend = BACKEND_STYLE;
 			else
-				usage(argv[0], "unknown emit backend \"%s\"", emit);
+				usage(argv[0], "unknown emit backend \"%s\"\n", emit);
 
 		}else if(!strncmp(argv[i], "-g", 2)){
-			if(argv[i][2] == '\0'){
+			const char *mode = argv[i] + 2;
+			int imode;
+			char *end;
+
+			if(!*mode){
 				cc1_gdebug = DEBUG_FULL;
-			}else if(!strcmp(argv[i], "-g0")){
-				cc1_gdebug = DEBUG_OFF;
-			}else if(!strcmp(argv[i], "-gline-tables-only")){
+			}else if((imode = (int)strtol(mode, &end, 0)), !*end){
+				switch(imode){
+					case 0:
+						cc1_gdebug = DEBUG_OFF;
+						break;
+					case 1:
+						cc1_gdebug = DEBUG_LINEONLY;
+						break;
+					case 2:
+					case 3:
+						cc1_gdebug = DEBUG_FULL;
+						break;
+					default:
+						goto dbg_unknown;
+				}
+			}else if(!strcmp(mode, "line-tables-only") || !strcmp(mode, "mlt")){
 				cc1_gdebug = DEBUG_LINEONLY;
 			}else{
-				const char *arg = argv[i] + 2;
 				int on = 1;
 
-				if(!strncmp(arg, "no-", 3)){
-					arg += 3;
+				if(!strncmp(mode, "no-", 3)){
+					mode += 3;
 					on = 0;
 				}
 
-				if(!strcmp(arg, "column-info"))
+				if(!strcmp(mode, "column-info"))
 					cc1_gdebug_columninfo = on;
 				else
+dbg_unknown:
 					ccdie("Unknown -g switch: \"%s\"", argv[i] + 2);
 			}
 
 		}else if(!strcmp(argv[i], "-o")){
 			if(++i == argc)
-				usage(argv[0], "-o needs an argument");
+				usage(argv[0], "-o needs an argument\n");
 
 			if(strcmp(argv[i], "-"))
 				out_fname = argv[i];
@@ -763,7 +757,7 @@ int main(int argc, char **argv)
 		}else if(!in_fname){
 			in_fname = argv[i];
 		}else{
-			usage(argv[0], "unknown argument: '%s'", argv[i]);
+			usage(argv[0], "unknown argument: '%s'\n", argv[i]);
 		}
 	}
 
@@ -807,6 +801,8 @@ int main(int argc, char **argv)
 	}
 
 	show_current_line = cc1_fopt.show_line;
+	if(cc1_fopt.trapv)
+		cc1_sanitize |= SAN_SIGNED_INTEGER_OVERFLOW;
 
 	cc1_type_nav = type_nav_init();
 

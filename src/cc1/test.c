@@ -7,6 +7,7 @@
 #include "cc1_where.h"
 #include "out/asm.h"
 #include "fopt.h"
+#include "sanitize_opt.h"
 #include "funcargs.h"
 #include "cc1_target.h"
 #include "cc1_out.h"

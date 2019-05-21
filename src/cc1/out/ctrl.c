@@ -188,7 +188,7 @@ out_val *out_val_blockphi_make(out_ctx *octx, const out_val *phi, out_blk *blk)
 	 * - phi-nodes
 	 * - __builtin_va_arg()'s reg-vs-stack branching
 	 */
-	out_val *mut = v_dup_or_reuse(octx, phi, phi->t);
+	out_val *mut = v_mutable_copy(octx, phi);
 
 	if(!blk)
 		blk = octx->current_blk;

@@ -143,7 +143,7 @@ static const out_val *vla_gen_size_ty(
 
 		case type_array:
 			if(t->bits.array.is_vla){
-				const out_val *sz;
+				const out_val *sz, *raw_size_val;
 				const out_val *new_stack_ent = NULL;
 
 				sz = vla_cached_size(t, octx);
@@ -163,12 +163,15 @@ static const out_val *vla_gen_size_ty(
 					new_stack_ent = out_change_type(octx, new_stack_ent, stack_ent->t);
 				}
 
+				raw_size_val = gen_expr(t->bits.array.size, octx);
+				sanitize_vlacheck(raw_size_val, t->bits.array.size->tree_type, octx);
+
 				sz = out_op(
 						octx, op_multiply,
 						vla_gen_size_ty(
 							type_next(t), octx, arith_ty, new_stack_ent),
 						out_cast(
-							octx, gen_expr(t->bits.array.size, octx),
+							octx, raw_size_val,
 							arith_ty, 0));
 
 				if(stack_ent){
@@ -234,7 +237,6 @@ void vla_typedef_init(decl *d, out_ctx *octx)
 	out_val_retain(octx, alloc_start);
 
 	vla_sz = vla_gen_size_ty(d->ref, octx, sizety, alloc_start);
-	sanitize_vlacheck(vla_sz, octx);
 	out_val_consume(octx, vla_sz);
 
 	assert(alloc_start->retains > 0);
@@ -280,8 +282,6 @@ void vla_decl_init(decl *d, out_ctx *octx)
 				stack_ent, out_new_l(octx, sizety, (1 + is_vla) * pws));
 
 		v_sz = vla_gen_size_ty(d->ref, octx, sizety, generated_sz_loc);
-
-		sanitize_vlacheck(v_sz, octx);
 	}
 
 	if(is_vla){

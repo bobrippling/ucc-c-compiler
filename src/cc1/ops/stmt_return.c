@@ -8,8 +8,9 @@
 
 #include "../cc1_out_ctx.h"
 #include "../inline.h"
+#include "../sanitize.h"
 
-const char *str_stmt_return()
+const char *str_stmt_return(void)
 {
 	return "return";
 }
@@ -92,6 +93,13 @@ void gen_stmt_return(const stmt *s, out_ctx *octx)
 
 	/* need to generate the ret expr before the scope leave code */
 	const out_val *ret_exp = s->expr ? gen_expr(s->expr, octx) : NULL;
+
+	if(s->expr
+	&& type_is_ptr_or_block(s->expr->tree_type)
+	&& attribute_present(symtab_func(s->symtab), attr_returns_nonnull))
+	{
+		sanitize_returns_nonnull(ret_exp, octx);
+	}
 
 	gen_scope_leave(s->symtab, symtab_root(s->symtab), octx);
 

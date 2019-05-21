@@ -65,13 +65,13 @@ static attribute *parse_attr_format(symtable *symtab, const char *ident)
 
 	EAT(token_comma);
 
-	da->bits.format.fmt_idx = currentval.val.i - 1;
-	EAT(token_integer);
+	da->bits.format.fmt_idx = PARSE_EXPR_NO_COMMA(symtab, 1);
+	FOLD_EXPR(da->bits.format.fmt_idx, symtab);
 
 	EAT(token_comma);
 
-	da->bits.format.var_idx = currentval.val.i - 1;
-	EAT(token_integer);
+	da->bits.format.var_idx = PARSE_EXPR_NO_COMMA(symtab, 1);
+	FOLD_EXPR(da->bits.format.var_idx, symtab);
 
 	EAT(token_close_paren);
 
@@ -133,23 +133,34 @@ static attribute *parse_attr_nonnull(symtable *symtab, const char *ident)
 
 	if(accept(token_open_paren)){
 		while(curtok != token_close_paren){
-			if(curtok == token_integer){
-				int n = currentval.val.i;
+			expr *e = PARSE_EXPR_NO_COMMA(symtab, 1);
+			consty k;
+
+			FOLD_EXPR(e, symtab);
+			const_fold(e, &k);
+
+			if(k.type != CONST_NUM || k.bits.num.suffix & VAL_FLOATING){
+				cc1_warn_at(NULL,
+						attr_nonnull_bad,
+						"nonnull argument not an integer constant");
+				had_error = 1;
+			}else{
+				integral_t n = k.bits.num.val.i;
 				if(n <= 0){
 					/* shouldn't ever be negative */
 					cc1_warn_at(NULL,
 							attr_nonnull_bad,
-							"%s nonnull argument ignored", n < 0 ? "negative" : "zero");
+							"%s nonnull argument ignored", (sintegral_t)n < 0 ? "negative" : "zero");
 					had_error = 1;
 				}else{
 					/* implicitly disallow functions with >32 args */
 					/* n-1, since we convert from 1-base to 0-base */
-					l |= 1 << (n - 1);
+					if(n < sizeof(l) * CHAR_BIT)
+						l |= 1 << (n - 1);
 				}
-			}else{
-				EAT(token_integer); /* raise error */
 			}
-			EAT(curtok);
+
+			expr_free(e);
 
 			if(accept(token_comma))
 				continue;
@@ -226,6 +237,7 @@ static attribute *parse_attr_cleanup(symtable *scope, const char *ident)
 	if(symtab_search(scope, sp, NULL, &ent) && ent.type == SYMTAB_ENT_DECL){
 		attr = attribute_new(attr_cleanup);
 		attr->bits.cleanup = ent.bits.decl;
+		decl_use(ent.bits.decl);
 	}else{
 		warn_at_print_error(&ident_loc, "function '%s' not found", sp);
 		fold_had_error = 1;
@@ -266,6 +278,7 @@ static attribute *parse_ ## t(                  \
 }
 
 EMPTY(attr_unused)
+EMPTY(attr_used)
 EMPTY(attr_warn_unused)
 EMPTY(attr_enum_bitmask)
 EMPTY(attr_noreturn)
@@ -278,6 +291,7 @@ EMPTY(attr_ucc_debug)
 EMPTY(attr_desig_init)
 EMPTY(attr_stack_protect)
 EMPTY(attr_no_stack_protector)
+EMPTY(attr_returns_nonnull)
 
 #undef EMPTY
 
@@ -442,7 +456,7 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 			if(!glob->unrecog_attrs)
 				glob->unrecog_attrs = dynmap_new(char *, strcmp, dynmap_strhash);
 
-			dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
+			(void)dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
 
 			cc1_warn_at(&attrloc, attr_unknown,
 					"ignoring unrecognised attribute \"%s\"", ident);

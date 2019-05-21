@@ -77,17 +77,28 @@ static int check_enum_cmp(
 
 int fold_type_chk_warn(
 		expr *maybe_lhs, type *tlhs, expr *rhs,
+		int is_comparison,
 		where *w, const char *desc)
 {
-	unsigned char *const pwarn_mismatch = &cc1_warning.mismatching_types;
-	unsigned char *pwarn = pwarn_mismatch;
+	unsigned char *pwarn;
 	type *const trhs = rhs->tree_type;
 	int error = 1;
 	const char *detail = "";
+	const int allow_qual_subtraction = is_comparison;
 
 	assert(!!maybe_lhs ^ !!tlhs);
 	if(!tlhs)
 		tlhs = maybe_lhs->tree_type;
+
+	if(type_is_ptr_or_block(tlhs) && type_is_ptr_or_block(trhs)){
+		if(is_comparison){
+			pwarn = &cc1_warning.compare_distinct_pointer_types;
+		}else{
+			pwarn = &cc1_warning.incompatible_pointer_types;
+		}
+	}else{
+		pwarn = &cc1_warning.mismatching_types;
+	}
 
 	switch(type_cmp(tlhs, trhs, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
 		case TYPE_CONVERTIBLE_IMPLICIT:
@@ -101,7 +112,6 @@ int fold_type_chk_warn(
 
 		case TYPE_QUAL_ADD: /* const int <- int */
 		case TYPE_QUAL_SUB: /* int <- const int */
-		case TYPE_QUAL_POINTED_ADD: /* const char * <- char * */
 		case TYPE_EQUAL_TYPEDEF:
 			return 0;
 
@@ -132,37 +142,46 @@ int fold_type_chk_warn(
 				/* no warning, but still sign extend the zero */
 				return 1;
 			}
+
 			goto warning;
 		}
 
 		case TYPE_QUAL_NESTED_CHANGE: /* char ** <- const char ** or vice versa */
 			detail = "nested ";
-		case TYPE_QUAL_POINTED_SUB: /* char * <- const char * */
 			error = 0;
-			/* fallthru */
+			goto warning;
+
+		case TYPE_QUAL_POINTED_ADD:
+			/* const char * <- char *
+			 * okay for both comparisons and assignments */
+			return 0;
+
+		case TYPE_QUAL_POINTED_SUB:
+			/* char * <- const char
+			 * okay for comparisons, but not assignments */
+			if(allow_qual_subtraction)
+				return 0;
+			error = 0;
+			goto warning;
 
 warning:
 		case TYPE_NOT_EQUAL:
 		{
+			const char *fmt = "mismatching %stypes, %s";
 			char buf[TYPE_STATIC_BUFSIZ];
 			int show_note = 1;
 
-			/* still default? -> change to mismatching pointers if pointer types */
-			if(pwarn == pwarn_mismatch
-			&& type_is_ptr_or_block(tlhs)
-			&& type_is_ptr_or_block(trhs))
-			{
-				pwarn = &cc1_warning.mismatch_ptr;
+			if(pwarn == &cc1_warning.compare_distinct_pointer_types){
+				fmt = "distinct %spointer types in %s";
+				detail = "";
 			}
 
-#define common_warning "mismatching %stypes, %s", detail, desc
 			if(error){
-				warn_at_print_error(w, common_warning);
+				warn_at_print_error(w, fmt, detail, desc);
 				fold_had_error = 1;
 			}else{
-				show_note = cc1_warn_at_w(w, pwarn, common_warning);
+				show_note = cc1_warn_at_w(w, pwarn, fmt, detail, desc);
 			}
-#undef common_warning
 
 			if(show_note){
 				/* don't show line with this note */
@@ -186,7 +205,7 @@ static void fold_type_chk_and_cast_common(
 		symtable *stab, where *w,
 		const char *desc)
 {
-	if(fold_type_chk_warn(lhs, tlhs, *prhs, w, desc))
+	if(fold_type_chk_warn(lhs, tlhs, *prhs, /*is_comparison*/0, w, desc))
 		fold_insert_casts(tlhs ? tlhs : lhs->tree_type, prhs, stab);
 }
 
@@ -449,7 +468,7 @@ static void fold_type_w_attr(
 						cc1_warn_at(&k.nonstandard_const->where,
 								nonstd_arraysz,
 								"%s-expr is a non-standard constant expression (for array size)",
-								expr_str_friendly(k.nonstandard_const));
+								expr_str_friendly(k.nonstandard_const, 1));
 					}
 				}
 			}
@@ -1206,7 +1225,7 @@ void fold_decl_global_init(decl *d, symtable *stab)
 				"%s %s initialiser contains non-standard constant expression",
 				type, decl_init_to_str(d->bits.var.init.dinit->type)))
 		{
-			note_at(&nonstd->where, "%s expression here", expr_str_friendly(nonstd));
+			note_at(&nonstd->where, "%s expression here", expr_str_friendly(nonstd, 1));
 		}
 	}
 }
@@ -1440,10 +1459,23 @@ int fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 			expr *addr_of = expr_addr_target(e);
 
 			if(addr_of && expr_is_lval(addr_of) == LVALUE_USER_ASSIGNABLE){
-				cc1_warn_at(&e->where, address_of_lvalue,
-						"address of lvalue (%s) is always true",
-						type_to_str(addr_of->tree_type));
+				decl *d = expr_to_declref(addr_of, NULL);
+
+				if(!d || !attribute_present(d, attr_weak)){
+					cc1_warn_at(&e->where, address_of_lvalue,
+							"address of lvalue (%s) is always true",
+							type_to_str(addr_of->tree_type));
+				}
 			}
+		}
+
+		/* if we're in a nonnull function and this expr is a nonnull expr,
+		 * warn about testing a nonnull expr */
+		if(expr_attr_present(REMOVE_CONST(expr *, e), attr_nonnull)){
+			/* this works because nonnull can be on the function type,
+			 * not just the decl, but those attributes are propagated
+			 * to the parameters */
+			cc1_warn_at(&e->where, attr_nonnull_tested, "testing a nonnull value");
 		}
 	}
 

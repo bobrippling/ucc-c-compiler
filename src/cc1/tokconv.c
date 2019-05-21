@@ -14,7 +14,7 @@
 extern enum token curtok;
 static enum token curtok_save = token_unknown;
 
-enum type_primitive curtok_to_type_primitive()
+enum type_primitive curtok_to_type_primitive(void)
 {
 	switch(curtok){
 		case token_void:  return type_void;
@@ -33,7 +33,7 @@ enum type_primitive curtok_to_type_primitive()
 	return type_unknown;
 }
 
-enum type_qualifier curtok_to_type_qualifier()
+enum type_qualifier curtok_to_type_qualifier(void)
 {
 	switch(curtok){
 		case token_const:    return qual_const;
@@ -43,7 +43,7 @@ enum type_qualifier curtok_to_type_qualifier()
 	}
 }
 
-enum decl_storage curtok_to_decl_storage()
+enum decl_storage curtok_to_decl_storage(void)
 {
 	switch(curtok){
 		case token_auto:     return store_auto;
@@ -55,7 +55,7 @@ enum decl_storage curtok_to_decl_storage()
 	}
 }
 
-enum op_type curtok_to_op()
+enum op_type curtok_to_op(void)
 {
 	switch(curtok){
 		/* multiply - op_deref is handled by the parser */
@@ -89,22 +89,22 @@ enum op_type curtok_to_op()
 	return op_unknown;
 }
 
-int curtok_is_type_primitive()
+int curtok_is_type_primitive(void)
 {
 	return curtok_to_type_primitive() != type_unknown;
 }
 
-int curtok_is_type_qual()
+int curtok_is_type_qual(void)
 {
 	return curtok_to_type_qualifier() != qual_none;
 }
 
-int curtok_is_decl_store()
+int curtok_is_decl_store(void)
 {
 	return curtok_to_decl_storage() != (enum decl_storage)-1;
 }
 
-enum op_type curtok_to_compound_op()
+enum op_type curtok_to_compound_op(void)
 {
 #define CASE(x) case token_ ## x ## _assign: return op_ ## x
 	switch(curtok){
@@ -127,7 +127,7 @@ enum op_type curtok_to_compound_op()
 #undef CASE
 }
 
-int curtok_is_compound_assignment()
+int curtok_is_compound_assignment(void)
 {
 	return curtok_to_compound_op() != op_unknown;
 }

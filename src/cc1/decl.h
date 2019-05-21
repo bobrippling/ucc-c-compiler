@@ -40,8 +40,11 @@ struct decl
 	attribute **attr;
 
 	char *spel, *spel_asm;
-	int used;
-	int addressed;
+	enum {
+		DECL_FLAGS_USED = 1 << 0,
+		DECL_FLAGS_ADDRESSED = 1 << 1,
+		DECL_FLAGS_IMPLICIT = 1 << 2
+	} flags;
 
 	union
 	{
@@ -161,7 +164,7 @@ const char *decl_store_spel_type_to_str_r(
 		const char *spel,
 		type *ty);
 
-#define decl_use(d) ((d)->used = 1)
+#define decl_use(d) ((d)->flags |= DECL_FLAGS_USED)
 
 #define DECL_FUNC_ARG_SYMTAB(d) ((d)->bits.func.code->symtab->parent)
 
@@ -169,7 +172,7 @@ const char *decl_store_spel_type_to_str_r(
 	((d)->bits.var.field_width && !(d)->spel)
 
 #define DECL_IS_HOSTED_MAIN(fdecl) \
-			((cc1_fopt.freestanding) == 0 \
+			(!cc1_fopt.freestanding \
 			&& !strcmp(fdecl->spel, "main"))
 
 #endif

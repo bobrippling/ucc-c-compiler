@@ -10,7 +10,7 @@
 #include "expr_cast.h"
 #include "__builtin.h"
 
-const char *str_stmt_expr()
+const char *str_stmt_expr(void)
 {
 	return "expression";
 }
@@ -48,7 +48,7 @@ void fold_stmt_expr(stmt *s)
 	&& unused_expr_type(s->expr))
 	{
 		cc1_warn_at(&s->expr->where, unused_expr,
-				"unused expression (%s)", expr_str_friendly(s->expr));
+				"unused expression (%s)", expr_str_friendly(s->expr, 0));
 	}
 }
 

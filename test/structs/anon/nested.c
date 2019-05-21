@@ -1,5 +1,7 @@
 // RUN: %ocheck 0 %s
 
+_Noreturn void abort(void);
+
 struct A
 {
 	int b;
@@ -26,9 +28,9 @@ f(struct A *p)
 
 main()
 {
-	struct A a;
-	f(&a);
-	if(a.i != *((int *)&a + 4))
-		return 1;
-	return a.i == 1 ? 0 : 1;
+	struct A a = { .i = 3 };
+	int ar[7] = { [4] = 3 };
+
+	if(memcmp(&a, ar, 7 * sizeof(int)) != 0)
+		abort();
 }

@@ -18,6 +18,7 @@
 
 #include "asm.h"
 #include "out.h"
+#include "impl_fp.h"
 
 #include "../fopt.h"
 #include "../cc1.h"
@@ -90,7 +91,7 @@ FILE *asm_section_file(const struct section *sec)
 		f = tmpfile();
 		if(!f)
 			ICE("tmpfile: %s\n", strerror(errno));
-		dynmap_set(struct section *, FILE *, cc1_out_persection, secdup, f);
+		(void)dynmap_set(struct section *, FILE *, cc1_out_persection, secdup, f);
 	}
 
 	return f;
@@ -226,22 +227,34 @@ static struct bitfield_val *bitfields_add(
 
 void asm_out_fp(const struct section *sec, type *ty, floating_t f)
 {
-	switch(type_primitive(ty)){
+	const enum type_primitive prim = type_primitive(ty);
+	char buf[sizeof(long double)] = { 0 };
+
+	impl_fp_bits(buf, sizeof(buf), prim, f);
+
+	switch(prim){
 		case type_float:
-			{
-				union { float f; unsigned u; } u;
-				u.f = f;
-				asm_out_section(sec, ".long %u # float %f\n", u.u, u.f);
-				break;
-			}
+		{
+			unsigned u;
+			UCC_STATIC_ASSERT(sizeof(float) == sizeof(u));
+
+			memcpy(&u, buf, sizeof(u));
+
+			asm_out_section(sec, ".long %u # float %f\n", u, (float)f);
+			break;
+		}
 
 		case type_double:
-			{
-				union { double d; unsigned long ul; } u;
-				u.d = f;
-				asm_out_section(sec, ".quad %lu # double %f\n", u.ul, u.d);
-				break;
-			}
+		{
+			unsigned long ul;
+			UCC_STATIC_ASSERT(sizeof(double) == sizeof(ul));
+
+			memcpy(&ul, buf, sizeof(ul));
+
+			asm_out_section(sec, ".quad %lu # double %f\n", ul, (double)f);
+			break;
+		}
+
 		case type_ldouble:
 			ICE("TODO");
 		default:
@@ -284,10 +297,15 @@ static void static_val(const struct section *sec, type *ty, expr *e)
 
 		case CONST_ADDR:
 			asm_declare_init_type(sec, ty);
-			if(k.bits.addr.is_lbl)
-				asm_out_section(sec, "%s", k.bits.addr.bits.lbl);
-			else
-				asm_out_section(sec, "%ld", k.bits.addr.bits.memaddr);
+			switch(k.bits.addr.lbl_type){
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK:
+					asm_out_section(sec, "%s", k.bits.addr.bits.lbl);
+					break;
+				case CONST_LBL_MEMADDR:
+					asm_out_section(sec, "%ld", k.bits.addr.bits.memaddr);
+					break;
+			}
 			break;
 
 		case CONST_STRK:
@@ -547,9 +565,8 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 
 static void asm_out_align(const struct section *sec, unsigned align)
 {
-	if(mopt_mode & MOPT_ALIGN_IS_POW2){
+	if(mopt_mode & MOPT_ALIGN_IS_POW2)
 		align = log2i(align);
-	}
 
 	if(align)
 		asm_out_section(sec, ".align %u\n", align);

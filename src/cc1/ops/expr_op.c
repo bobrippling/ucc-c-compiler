@@ -9,12 +9,14 @@
 #include "../out/asm.h"
 #include "../type_is.h"
 #include "../type_nav.h"
-#include "../sanitize.h"
 #include "../fopt.h"
+#include "../sanitize.h"
+#include "../sanitize_opt.h"
 
 #include "expr_cast.h"
 #include "expr_val.h"
 #include "expr_sizeof.h"
+#include "expr_identifier.h"
 
 /*
  * usual arithmetic conversions:
@@ -30,7 +32,21 @@
 #define BOOLEAN_TYPE type_int
 #define SHOW_CONST_OP 0
 
-const char *str_expr_op()
+typedef struct
+{
+	const char *lbl; /* null if not label */
+	integral_t offset;
+	int is_weak;
+} collapsed_consty;
+
+enum eval_truth
+{
+	EVAL_FALSE,
+	EVAL_TRUE,
+	EVAL_UNKNOWN
+};
+
+const char *str_expr_op(void)
 {
 	return "operator";
 }
@@ -43,6 +59,11 @@ static void const_op_num_fp(
 	floating_t fp_r;
 
 	assert(lhs->type == CONST_NUM && (!rhs || rhs->type == CONST_NUM));
+
+	if(cc1_fopt.rounding_math && rhs){ /* aka #pragma STDC FENV ACCESS ON (TODO) */
+		k->type = CONST_NO;
+		return;
+	}
 
 	fp_r = const_op_exec_fp(
 			lhs->bits.num.val.f,
@@ -75,14 +96,10 @@ static void const_op_num_fp(
 	}
 }
 
-typedef struct
-{
-	const char *lbl; /* null if not label */
-	integral_t offset;
-} collapsed_consty;
-
 static void collapse_const(collapsed_consty *out, const consty *in)
 {
+	out->is_weak = 0;
+
 	switch(in->type){
 		case CONST_NO:
 			assert(0);
@@ -99,15 +116,72 @@ static void collapse_const(collapsed_consty *out, const consty *in)
 
 		case CONST_NEED_ADDR:
 		case CONST_ADDR:
-			if(in->bits.addr.is_lbl){
-				out->lbl = in->bits.addr.bits.lbl;
-				out->offset = in->offset;
-			}else{
-				out->lbl = NULL;
-				out->offset = in->bits.addr.bits.memaddr + in->offset;
+			switch(in->bits.addr.lbl_type){
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK:
+					out->lbl = in->bits.addr.bits.lbl;
+					out->offset = in->offset;
+					out->is_weak = (in->bits.addr.lbl_type == CONST_LBL_WEAK);
+					break;
+				case CONST_LBL_MEMADDR:
+					out->lbl = NULL;
+					out->offset = in->bits.addr.bits.memaddr + in->offset;
+					break;
 			}
 			break;
 	}
+}
+
+static enum eval_truth collapsed_consty_to_truth(const collapsed_consty *k)
+{
+	return k->is_weak ? EVAL_UNKNOWN : k->lbl || k->offset ? EVAL_TRUE : EVAL_FALSE;
+}
+
+static void eval_truth_to_consty(enum eval_truth t, consty *k, expr *e)
+{
+	switch(t){
+		case EVAL_TRUE:
+		case EVAL_FALSE:
+			k->type = CONST_NUM;
+			k->bits.num.val.i = t == EVAL_TRUE;
+			break;
+
+		case EVAL_UNKNOWN:
+			CONST_FOLD_NO(k, e);
+			break;
+	}
+}
+
+static enum eval_truth eval_shortcircuit(
+		enum op_type op,
+		enum eval_truth lhs,
+		enum eval_truth rhs)
+{
+	const enum { AND, OR } fixed_op = op == op_andsc ? AND : OR;
+	enum { SIDEEFFECT = 1 << 2 }; /* must be bitwise-or-able with EVAL_* */
+	static const enum eval_truth results[3][2][3] = {
+		[EVAL_FALSE]   [AND] [EVAL_FALSE]   = EVAL_FALSE,
+		[EVAL_FALSE]   [AND] [EVAL_TRUE]    = EVAL_FALSE,
+		[EVAL_FALSE]   [AND] [EVAL_UNKNOWN] = EVAL_FALSE,
+		[EVAL_FALSE]   [OR]  [EVAL_FALSE]   = EVAL_FALSE,
+		[EVAL_FALSE]   [OR]  [EVAL_TRUE]    = EVAL_TRUE,
+		[EVAL_FALSE]   [OR]  [EVAL_UNKNOWN] = EVAL_UNKNOWN,
+		[EVAL_TRUE]    [AND] [EVAL_FALSE]   = EVAL_FALSE,
+		[EVAL_TRUE]    [AND] [EVAL_TRUE]    = EVAL_TRUE,
+		[EVAL_TRUE]    [AND] [EVAL_UNKNOWN] = EVAL_UNKNOWN,
+		[EVAL_TRUE]    [OR]  [EVAL_FALSE]   = EVAL_TRUE,
+		[EVAL_TRUE]    [OR]  [EVAL_TRUE]    = EVAL_TRUE,
+		[EVAL_TRUE]    [OR]  [EVAL_UNKNOWN] = EVAL_TRUE,
+		[EVAL_UNKNOWN] [AND] [EVAL_FALSE]   = EVAL_UNKNOWN, /* sideeffect */
+		[EVAL_UNKNOWN] [AND] [EVAL_TRUE]    = EVAL_UNKNOWN,
+		[EVAL_UNKNOWN] [AND] [EVAL_UNKNOWN] = EVAL_UNKNOWN,
+		[EVAL_UNKNOWN] [OR]  [EVAL_FALSE]   = EVAL_UNKNOWN,
+		[EVAL_UNKNOWN] [OR]  [EVAL_TRUE]    = EVAL_UNKNOWN, /* sideeffect */
+		[EVAL_UNKNOWN] [OR]  [EVAL_UNKNOWN] = EVAL_UNKNOWN,
+		/* sideeffect entries could be a constant value, but other compilers
+		 * don't treat this as such, so we fail the const-eval */
+	};
+	return results[lhs][fixed_op][rhs];
 }
 
 static void const_op_num_int(
@@ -147,17 +221,43 @@ static void const_op_num_int(
 	}
 
 	CONST_FOLD_LEAF(k);
+
+	switch(e->bits.op.op){
+		case op_andsc:
+		case op_orsc:
+		{
+			enum eval_truth result = eval_shortcircuit(
+					e->bits.op.op,
+					collapsed_consty_to_truth(&l),
+					collapsed_consty_to_truth(&r));
+
+			eval_truth_to_consty(result, k, e);
+
+			/* early finish */
+			return;
+		}
+		default:
+			break;
+	}
+
 	switch(!!l.lbl + !!r.lbl){
 		default:
 			assert(0);
 
 		case 1:
 		{
-			collapsed_consty *num_side = NULL;
+			collapsed_consty *num_side = NULL, *lbl_side = NULL;
 			if(!l.lbl)
 				num_side = &l;
 			else if(!r.lbl)
 				num_side = &r;
+			else
+				assert(0 && "unreachable");
+
+			if(l.lbl)
+				lbl_side = &l;
+			else if(r.lbl)
+				lbl_side = &r;
 			else
 				assert(0 && "unreachable");
 
@@ -166,14 +266,19 @@ static void const_op_num_int(
 				case op_not:
 					/* !&lbl */
 					assert(!rhs);
-					k->type = CONST_NUM;
-					k->bits.num.val.i = 0;
+					assert(lbl_side);
+					if(lbl_side->is_weak){
+						CONST_FOLD_NO(k, e);
+					}else{
+						k->type = CONST_NUM;
+						k->bits.num.val.i = 0;
+					}
 					break;
 
 				case op_eq:
 				case op_ne:
 					assert(num_side && "binary two labels shouldn't be here");
-					if(num_side->offset == 0){
+					if(num_side->offset == 0 && !lbl_side->is_weak){
 						/* &x == 0, etc */
 						k->type = CONST_NUM;
 						k->bits.num.val.i = (e->bits.op.op != op_eq);
@@ -194,25 +299,13 @@ static void const_op_num_int(
 						break;
 					}
 
+					/* this is fine, we're simply adding to a maybe-weak label */
 					memcpy_safe(k, num_side == &l ? rhs : lhs);
 					if(e->bits.op.op == op_plus)
 						k->offset += num_side->offset;
 					else if(e->bits.op.op == op_minus)
 						k->offset -= num_side->offset;
 					break;
-
-				case op_andsc:
-				case op_orsc:
-				{
-					int bool_l = l.lbl || l.offset;
-					int bool_r = r.lbl || r.offset;
-
-					k->type = CONST_NUM;
-					k->bits.num.val.i = (e->bits.op.op == op_andsc
-							? bool_l && bool_r
-							: bool_l || bool_r);
-					break;
-				}
 			}
 			break;
 		}
@@ -226,17 +319,28 @@ static void const_op_num_int(
 					e->bits.op.op, e->tree_type, &err);
 
 			if(SHOW_CONST_OP){
+				char tbufs[2][TYPE_STATIC_BUFSIZ];
+
 				if(rhs){
 					fprintf(stderr,
-							"const op: (%s) %lld %s %lld = %lld, is_signed=%d\n",
+							"const op: (%s)%lld %s (%s)%lld   -->   (%s)%lld, is_signed=%d\n",
+							type_to_str_r(tbufs[0], e->lhs->tree_type),
+							l.offset,
+							op_to_str(e->bits.op.op),
+							type_to_str_r(tbufs[1], e->rhs->tree_type),
+							r.offset,
 							type_to_str(e->tree_type),
-							l.offset, op_to_str(e->bits.op.op), r.offset,
-							int_r, is_signed);
+							int_r,
+							is_signed);
 				}else{
 					fprintf(stderr,
-							"const op: (%s) %s %lld = %lld, is_signed=%d\n",
+							"const op: (%s)%s%lld --> (%s)%lld, is_signed=%d\n",
+							type_to_str_r(tbufs[0], e->lhs->tree_type),
+							op_to_str(e->bits.op.op),
+							l.offset,
 							type_to_str(e->tree_type),
-							op_to_str(e->bits.op.op), l.offset, int_r, is_signed);
+							int_r,
+							is_signed);
 				}
 			}
 
@@ -280,22 +384,25 @@ static void const_op_num_int(
 
 				case op_orsc:
 				case op_andsc:
-					k->type = CONST_NUM;
-					k->bits.num.val.i = 1;
-					break;
+					assert(0 && "unreachable");
 
 				case op_eq:
 				case op_ne:
 				{
-					int same = !strcmp(l.lbl, r.lbl);
-					k->type = CONST_NUM;
+					/* if one is weak, it may, or may not be the other */
+					if(l.is_weak || r.is_weak){
+						CONST_FOLD_NO(k, e);
+					}else{
+						int same = !strcmp(l.lbl, r.lbl);
+						k->type = CONST_NUM;
 
-					k->bits.num.val.i = ((e->bits.op.op == op_eq) == same);
+						k->bits.num.val.i = ((e->bits.op.op == op_eq) == same);
+					}
 					break;
 				}
 
 				case op_minus:
-					if(!strcmp(l.lbl, r.lbl)){
+					if(!l.is_weak && !r.is_weak && !strcmp(l.lbl, r.lbl)){
 						type *tnext = type_is_ptr(e->lhs->tree_type);
 						assert(tnext);
 
@@ -336,39 +443,27 @@ static void const_shortcircuit(
 		const consty *rhs)
 {
 	collapsed_consty clhs;
-	int truth;
+	enum eval_truth truth;
 
 	if(!CONST_AT_COMPILE_TIME(lhs->type))
 		return;
 
-	/* if we've got here, previous attempts at const-ing failed,
-	 * so we should have a non-constant rhs */
+	/* if we've got here, previous attempts at const-ing have failed,
+	 * which means lhs or rhs is not constant.
+	 *
+	 * if lhs is not constant, we can't decide, hence the above return
+	 *
+	 * otherwise, lhs is constant, rhs is not */
   assert(!CONST_AT_COMPILE_TIME(rhs->type));
 
 	collapse_const(&clhs, lhs);
-	truth = clhs.lbl ? 1 : clhs.offset;
 
-	if(e->bits.op.op == op_andsc){
-		if(truth){
-			/* &lbl && [not-constant] */
-		}else{
-			/* 0 && [not-constant] */
-			CONST_FOLD_LEAF(k);
-			k->type = CONST_NUM;
-			k->bits.num.val.i = 0;
-		}
-	}else if(e->bits.op.op == op_orsc){
-		if(truth){
-			/* &lbl || [not-constant] */
-			CONST_FOLD_LEAF(k);
-			k->type = CONST_NUM;
-			k->bits.num.val.i = 1;
-		}else{
-			/* 0 || [not-constant] */
-		}
-	}else{
-		assert(0);
-	}
+	truth = eval_shortcircuit(
+			e->bits.op.op,
+			collapsed_consty_to_truth(&clhs),
+			EVAL_UNKNOWN);
+
+	eval_truth_to_consty(truth, k, e);
 }
 
 static void fold_const_expr_op(expr *e, consty *k)
@@ -524,7 +619,7 @@ type *op_required_promotion(
 			}else if(op_returns_bool(op)){
 ptr_relation:
 				if(op_is_comparison(op)){
-					if(fold_type_chk_warn(lhs, NULL, rhs, w,
+					if(fold_type_chk_warn(lhs, NULL, rhs, /*is_comparison*/1, w,
 							l_ptr && r_ptr
 							? "comparison lacks a cast"
 							: "comparison between pointer and integer"))
@@ -648,7 +743,7 @@ ptr_relation:
 			          r_rank = type_intrank(type_get_primitive(trhs));
 
 			/* want to warn regardless of checks - for enums */
-			fold_type_chk_warn(lhs, NULL, rhs, w, desc);
+			fold_type_chk_warn(lhs, NULL, rhs, /*is_comparison*/1, w, desc);
 
 			if(l_unsigned == r_unsigned){
 				enum { SAME, LEFT, RIGHT } larger = SAME;
@@ -808,35 +903,87 @@ int fold_check_bounds(expr *e, int chk_one_past_end)
 
 static int op_unsigned_cmp_check(expr *e)
 {
+	consty k_lhs, k_rhs;
+	consty *k_side;
+	int unsigned_lhs, unsigned_rhs;
+	sintegral_t v;
+	int warn;
+	int expect;
+	const char *lhs_s, *rhs_s;
+
 	switch(e->bits.op.op){
-			int lhs;
-		/*case op_gt:*/
 		case op_ge:
 		case op_lt:
+		case op_gt:
 		case op_le:
-			if((lhs = !type_is_signed(e->lhs->tree_type))
-			||        !type_is_signed(e->rhs->tree_type))
-			{
-				consty k;
-
-				const_fold(lhs ? e->rhs : e->lhs, &k);
-
-				if(k.type == CONST_NUM && K_INTEGRAL(k.bits.num)){
-					const int v = k.bits.num.val.i;
-
-					if(v <= 0){
-						return cc1_warn_at(&e->where,
-								tautologic_unsigned,
-								"comparison of unsigned expression %s %d is always %s",
-								op_to_str(e->bits.op.op), v,
-								e->bits.op.op == op_lt || e->bits.op.op == op_le ? "false" : "true");
-					}
-				}
-			}
-
+			break;
 		default:
 			return 0;
 	}
+
+	unsigned_lhs = !type_is_signed(e->lhs->tree_type);
+	unsigned_rhs = !type_is_signed(e->rhs->tree_type);
+	if(!unsigned_lhs && !unsigned_rhs)
+		return 0;
+
+	const_fold(e->lhs, &k_lhs);
+	const_fold(e->rhs, &k_rhs);
+
+	k_side = k_lhs.type == CONST_NUM && K_INTEGRAL(k_lhs.bits.num)
+		? &k_lhs
+		: k_rhs.type == CONST_NUM && K_INTEGRAL(k_rhs.bits.num)
+		? &k_rhs
+		: NULL;
+
+	if(!k_side)
+		return 0;
+
+	v = k_side->bits.num.val.i;
+	if(v)
+		return 0;
+
+	warn = 0;
+	switch(e->bits.op.op){
+		case op_ge:
+			warn = k_side == &k_rhs; /* u >= 0 */
+			expect = 1;
+			break;
+
+		case op_le:
+			warn = k_side == &k_lhs; /* 0 <= u */
+			expect = 1;
+			break;
+
+		case op_gt:
+			warn = k_side == &k_lhs; /* 0 > u */;
+			expect = 0;
+			break;
+
+		case op_lt:
+			warn = k_side == &k_rhs; /* u < 0 */;
+			expect = 0;
+			break;
+
+		default:
+			assert(0 && "unreachable");
+	}
+
+	if(!warn)
+		return 0;
+
+	if(k_side == &k_lhs){
+		lhs_s = "0";
+		rhs_s = "unsigned expression";
+	}else{
+		lhs_s = "unsigned expression";
+		rhs_s = "0";
+	}
+
+	return cc1_warn_at(&e->where,
+			tautologic_unsigned,
+			"comparison of %s %s %s is always %s",
+			lhs_s, op_to_str(e->bits.op.op), rhs_s,
+			expect ? "true" : "false");
 }
 
 static int msg_if_precedence(expr *sub, where *w,
@@ -866,19 +1013,16 @@ static int op_check_precedence(expr *e)
 		case op_xor:
 			return msg_if_precedence(e->lhs, &e->where, e->bits.op.op, op_is_comparison)
 				||   msg_if_precedence(e->rhs, &e->where, e->bits.op.op, op_is_comparison);
-			break;
 
 		case op_andsc:
 		case op_orsc:
 			return msg_if_precedence(e->lhs, &e->where, e->bits.op.op, op_is_shortcircuit)
 				||   msg_if_precedence(e->rhs, &e->where, e->bits.op.op, op_is_shortcircuit);
-			break;
 
 		case op_shiftl:
 		case op_shiftr:
 			return msg_if_precedence(e->lhs, &e->where, e->bits.op.op, NULL)
 				|| msg_if_precedence(e->rhs, &e->where, e->bits.op.op, NULL);
-			break;
 
 		default:
 			return 0;
@@ -1104,6 +1248,44 @@ static int op_int_promotion_check(expr *e)
 	return 0;
 }
 
+static int tautological_pointer_check(expr *e)
+{
+	expr *other = NULL;
+	type *ty;
+	int is_array;
+	consty k;
+
+	if(!op_is_comparison(e->bits.op.op) && !op_is_shortcircuit(e->bits.op.op))
+		return 0;
+
+	if(expr_is_null_ptr(e->lhs, NULL_STRICT_INT | NULL_STRICT_ANY_PTR))
+		other = e->rhs;
+	else if(expr_is_null_ptr(e->rhs, NULL_STRICT_INT | NULL_STRICT_ANY_PTR))
+		other = e->lhs;
+
+	if(!other)
+		return 0;
+
+	ty = expr_skip_generated_casts(other)->tree_type;
+
+	if(!(is_array = !!type_is_array(ty)) && !type_is(ty, type_func))
+		return 0;
+
+	const_fold(other, &k);
+	switch(k.type){
+		case CONST_ADDR:
+		case CONST_NEED_ADDR:
+			if(k.bits.addr.lbl_type == CONST_LBL_WEAK)
+				return 0;
+		default:
+			break;
+	}
+
+	return cc1_warn_at(&e->where, tautologic_pointer_cmp,
+			"comparison of %s with null is always false",
+			is_array ? "array" : "function");
+}
+
 void fold_expr_op(expr *e, symtable *stab)
 {
 	const char *op_desc = e->bits.op.array_notation
@@ -1155,14 +1337,13 @@ void fold_expr_op(expr *e, symtable *stab)
 				str_cmp_check(e) ||
 				op_sizeof_div_check(e) ||
 				array_subscript_tycheck(e) ||
-				op_int_promotion_check(e));
+				op_int_promotion_check(e) ||
+				tautological_pointer_check(e));
 
 	}else{
 		/* (except unary-not) can only have operations on integers,
 		 * promote to signed int
 		 */
-		const char *op_desc = op_to_str(e->bits.op.op);
-
 		expr_promote_int_if_smaller(&e->lhs, stab);
 
 		switch(e->bits.op.op){
@@ -1270,11 +1451,15 @@ void gen_op_trapv(
 		out_ctx *octx,
 		enum op_type op)
 {
-	if((cc1_fopt.trapv) == 0)
+	if(type_is_integral(evaltt) && type_is_signed(evaltt)){
+		if(!(cc1_sanitize & SAN_SIGNED_INTEGER_OVERFLOW))
+			return;
+	}else if(type_is_ptr(evaltt)){
+		if(!(cc1_sanitize & SAN_POINTER_OVERFLOW))
+			return;
+	}else{
 		return;
-
-	if(!type_is_integral(evaltt) || !type_is_signed(evaltt))
-		return;
+	}
 
 	if(op_is_comparison(op))
 		return;
@@ -1315,6 +1500,18 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 
 	if(!e->rhs){
 		eval = out_op_unary(octx, e->bits.op.op, lhs);
+
+		/* ensure flags, etc get extended up to our type */
+		eval = out_change_type(octx, eval, e->tree_type);
+
+		/* this doesn't do the extension here, but tags it with the type.
+		 * then when/if we come to do things like decaying a flag to a register,
+		 * we'll spot that the type isn't a 1-byte type, and extend then.
+		 *
+		 * this allows flags to propagate through and be optimised with subsequent
+		 * flag operations, without instantly promoting to int
+		 */
+
 	}else{
 		const out_val *rhs = gen_expr(e->rhs, octx);
 
@@ -1325,6 +1522,9 @@ const out_val *gen_expr_op(const expr *e, out_ctx *octx)
 			case op_shiftl:
 			case op_shiftr:
 				sanitize_shift(e->lhs, e->rhs, e->bits.op.op, octx, &lhs, &rhs);
+				break;
+			case op_divide:
+				sanitize_divide(lhs, rhs, e->tree_type, octx);
 				break;
 			default:
 				break;

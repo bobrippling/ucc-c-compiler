@@ -1,4 +1,5 @@
-// RUN: %check -e %s -Werror=incompatible-pointer-types
+// RUN: %check --only -e %s -Werror=incompatible-pointer-types -Werror=incompatible-pointer-types -Wno-cast-qual
+//
 
 struct A
 {
@@ -15,7 +16,7 @@ int g()
 {
 	int *p = (struct A *)0; // CHECK: error: mismatching types, initialisation
 
-	f(
+	return f(
 			(const struct A *)0, // CHECK: error: mismatching types, argument 1 to f
 			(int *)0); // CHECK: error: mismatching types, argument 2 to f
 }

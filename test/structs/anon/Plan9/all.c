@@ -1,5 +1,4 @@
-// RUN: %ucc -fplan9-extensions -o %t %s
-// RUN: %t
+// RUN: %ocheck 0 %s -fplan9-extensions
 
 /*
 3.3. Unnamed substructures

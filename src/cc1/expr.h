@@ -23,7 +23,7 @@ typedef void func_fold(struct expr *, struct symtable *);
 typedef void func_const(struct expr *, consty *);
 typedef const char *func_str(void);
 typedef void func_mutate_expr(struct expr *);
-typedef enum lvalue_kind func_is_lval(struct expr *);
+typedef enum lvalue_kind func_is_lval(const struct expr *);
 typedef int func_bool(const struct expr *);
 
 typedef ucc_wur const out_val *func_gen(const struct expr *, out_ctx *);
@@ -263,9 +263,9 @@ expr *expr_compiler_generated(expr *);
 
 enum null_strictness
 {
-	NULL_STRICT_VOID_PTR,
-	NULL_STRICT_INT,
-	NULL_STRICT_ANY_PTR
+	NULL_STRICT_VOID_PTR = 0,
+	NULL_STRICT_INT = 1 << 0,
+	NULL_STRICT_ANY_PTR = 1 << 1
 };
 
 int expr_is_null_ptr(expr *, enum null_strictness);
@@ -290,7 +290,7 @@ expr *expr_skip_lval2rval(expr *);
 expr *expr_skip_implicit_casts(expr *);
 expr *expr_skip_generated_casts(expr *);
 
-const char *expr_str_friendly(expr *);
+const char *expr_str_friendly(expr *, int show_implicit_casts);
 
 decl *expr_to_declref(expr *e, const char **whynot);
 sym *expr_to_symref(expr *e, symtable * /*optional, will search if given*/);

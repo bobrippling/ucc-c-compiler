@@ -28,7 +28,7 @@ struct struct_union_enum_st
 
 	char *spel; /* "<anon ...>" if anon */
 	unsigned anon : 1,
-	         got_membs : 1, /* true if we've had {} (optionally no members) */
+	         membs_progress : 2, /* see SUE_MEMBS_* */
 	         foldprog : 2,
 	         flexarr : 1,
 	         contains_const : 1;
@@ -36,6 +36,10 @@ struct struct_union_enum_st
 #define SUE_FOLDED_NO 0
 #define SUE_FOLDED_PARTIAL 1
 #define SUE_FOLDED_FULLY 2
+
+#define SUE_MEMBS_NO 0
+#define SUE_MEMBS_PARSING 1
+#define SUE_MEMBS_COMPLETE 2
 
 	unsigned align, size;
 
@@ -53,7 +57,7 @@ struct struct_union_enum_st
 #define sue_nmembers(x) dynarray_count((x)->members)
 
 #define sue_is_complete(sue) (\
-		(sue)->got_membs && (sue)->foldprog == SUE_FOLDED_FULLY)
+		(sue)->membs_progress == SUE_MEMBS_COMPLETE && (sue)->foldprog == SUE_FOLDED_FULLY)
 
 sue_member *sue_member_from_decl(struct decl *);
 
@@ -73,7 +77,11 @@ struct_union_enum_st *sue_predeclare(
 void sue_define(struct_union_enum_st *sue, sue_member **members)
 	ucc_nonnull();
 
-void sue_member_init_dup_check(sue_member **members);
+void sue_member_init_dup_check(
+		sue_member **members,
+		enum type_primitive prim,
+		const char *spel /* nullable */,
+		where *sue_location);
 
 sue_member *sue_drop(struct_union_enum_st *sue, sue_member **pos);
 
@@ -102,6 +110,15 @@ enum sue_szkind
 	SUE_NONAMED
 };
 enum sue_szkind sue_sizekind(struct_union_enum_st *);
+
+enum sue_anonextkind
+{
+	SUE_ANONEXT_ALLOW, /* -fms/plan9-extensions */
+	SUE_ANONEXT_DENY, /* ms/plan9 extension attempted without -fflag */
+	SUE_ANONEXT_ALLOW_C11, /* fine if in C11 */
+};
+
+enum sue_anonextkind sue_anonext_type(struct decl *, struct_union_enum_st *);
 
 ucc_wur
 int sue_incomplete_chk(struct_union_enum_st *st, const where *w);

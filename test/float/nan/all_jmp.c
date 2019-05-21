@@ -41,5 +41,8 @@ main()
 	if(nan <= nan)
 		return 12;
 
+	if(nan)
+		return 13;
+
 	return 0;
 }

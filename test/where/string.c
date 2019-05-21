@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check --only %s -Wno-int-ptr-conversion
 typedef long intptr_t;
 
 static struct

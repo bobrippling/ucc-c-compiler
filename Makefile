@@ -27,6 +27,8 @@ check: all lib
 ALL_SRC = $(shell find src -iname '*.[ch]')
 
 tags: ${ALL_SRC}
-	ctags '--exclude=_*' -R .
+	ctags '--exclude=_*' -R src lib
+
+include Bootstrap.mk
 
 .PHONY: all clean cleanall src

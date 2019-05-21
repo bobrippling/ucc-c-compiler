@@ -1,7 +1,7 @@
 #include "ops.h"
 #include "stmt_noop.h"
 
-const char *str_stmt_noop()
+const char *str_stmt_noop(void)
 {
 	return "noop";
 }

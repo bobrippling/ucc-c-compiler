@@ -58,12 +58,12 @@ static void test_canon(char *in, char *exp, int ln)
 
 static void test_canon_all(void)
 {
-	TEST_CANON(
-				"./hello///there//..//tim/./file.",
+	TEST_CANON( \
+				"./hello///there//..//tim/./file.", \
 				"hello/tim/file.");
 
-	TEST_CANON(
-				"./hello///there//..//tim/./file../.dir/",
+	TEST_CANON( \
+				"./hello///there//..//tim/./file../.dir/", \
 				"hello/tim/file../.dir/");
 
 	TEST_CANON("../", "../");
@@ -230,6 +230,49 @@ static void test_dynarray(void)
 		test(dynarray_count(ints) == 0);
 		test(ints == NULL);
 	}
+
+	typedef struct A { int i; } A;
+	A **as = NULL, *insert;
+	int i;
+
+	for(i = 0; i < 10; i++){
+		A *a = umalloc(sizeof *a);
+		a->i = i;
+		dynarray_add(&as, a);
+	}
+
+	test(dynarray_count(as) == 10);
+
+	test(as[3]->i == 3);
+	test(as[10] == NULL);
+
+	insert = umalloc(sizeof *insert);
+	insert->i = 53;
+	dynarray_insert(&as, 3, insert);
+
+	test(dynarray_count(as) == 11);
+	test(as[3]->i == 53);
+	test(as[4]->i == 3);
+	test(as[9]->i == 8);
+	test(as[10]->i == 9);
+	test(as[11] == NULL);
+
+	insert = umalloc(sizeof *insert);
+	insert->i = -1;
+	dynarray_insert(&as, 0, insert);
+
+	test(dynarray_count(as) == 12);
+	test(as[0]->i == -1);
+	test(as[1]->i == 0);
+	test(as[2]->i == 1);
+	test(as[4]->i == 53);
+	test(as[5]->i == 3);
+	test(as[10]->i == 8);
+	test(as[11]->i == 9);
+	test(as[12] == NULL);
+
+	dynarray_free(A **, as, free);
+	test(as == NULL);
 }
 
 static void test_math(void)

@@ -11,7 +11,7 @@
 
 #include "expr_string.h"
 
-const char *str_expr_identifier()
+const char *str_expr_identifier(void)
 {
 	return "identifier";
 }
@@ -34,14 +34,18 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 				decl *const d = sym->decl;
 
 				/* only a constant if global/static/extern */
-				if(decl_store_duration_is_static(d) && !attribute_present(d, attr_weak)){
+				if(decl_store_duration_is_static(d)){
+					/* weak identifiers are constant, but not necessarily true */
 					CONST_FOLD_LEAF(k);
 
 					k->type = CONST_ADDR_OR_NEED(d);
 
 					k->bits.addr.bits.lbl = decl_asm_spel(sym->decl);
 
-					k->bits.addr.is_lbl = 1;
+					k->bits.addr.lbl_type = attribute_present(d, attr_weak)
+						? CONST_LBL_WEAK
+						: CONST_LBL_TRUE;
+
 					k->offset = 0;
 
 					set_no = 0;
@@ -71,7 +75,7 @@ static int attempt_func_keyword(expr *expr_ident, symtable *stab)
 	const char *sp = expr_ident->bits.ident.bits.ident.spel;
 	int std = 1;
 
-	if(!strcmp(sp, "__func__") || (std = 0, !strcmp(sp, "__FUNCTION__"))){
+	if(!strcmp(sp, "__func__") || (std = 0, !strcmp(sp, "__FUNCTION__") || !strcmp(sp, "__PRETTY_FUNCTION__"))){
 		char *fnsp;
 		struct cstring *cstr;
 		decl *in_fn = symtab_func(stab);
@@ -79,7 +83,7 @@ static int attempt_func_keyword(expr *expr_ident, symtable *stab)
 		if(!std){
 			cc1_warn_at(
 					&expr_ident->where, gnu__function,
-					"use of GNU __FUNCTION__");
+					"use of GNU %s", sp);
 		}
 
 		if(!in_fn){

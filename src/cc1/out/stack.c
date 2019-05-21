@@ -48,8 +48,10 @@ void v_set_cur_stack_sz(out_ctx *octx, v_stackt new_sz)
 const out_val *out_aalloc(
 		out_ctx *octx, unsigned sz, unsigned align, type *in_ty)
 {
-	type *ty = type_ptr_to(in_ty
-		? in_ty : type_nav_btype(cc1_type_nav, type_nchar));
+	type *ty = type_ptr_to(
+			in_ty
+			? in_ty
+			: type_nav_btype(cc1_type_nav, type_nchar));
 
 	align_sz(&sz, align);
 

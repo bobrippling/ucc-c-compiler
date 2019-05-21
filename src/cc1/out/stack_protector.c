@@ -119,13 +119,12 @@ void out_check_stack_canary(out_ctx *octx)
 	out_current_blk(octx, bsmashed);
 	{
 		type *fnty;
-		char *tofree;
 		const out_val *fn = stack_check_fail_func(octx, &fnty, &tofree);
 
 		out_val_consume(octx, out_call(octx, fn, NULL, fnty));
 		out_ctrl_end_undefined(octx);
 
-		free(tofree);
+		free(tofree), tofree = NULL;
 	}
 
 	out_current_blk(octx, bok);

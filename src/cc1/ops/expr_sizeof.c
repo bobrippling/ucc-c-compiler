@@ -35,7 +35,7 @@ type *expr_sizeof_type(expr *e)
 	return SIZEOF_WHAT(e);
 }
 
-const char *str_expr_sizeof()
+const char *str_expr_sizeof(void)
 {
 	return "sizeof/typeof/alignof";
 }
@@ -88,13 +88,13 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 			if(!type_is_complete(chosen)){
 				if(type_is_void(chosen))
-					cc1_warn_at(&e->where, sizeof_void_or_func, "sizeof() on void type");
+					cc1_warn_at(&e->where, sizeof_void_or_func, "%s() on void type", sizeof_what(e->what_of));
 				else
-					die_at(&e->where, "sizeof incomplete type %s", type_to_str(chosen));
+					die_at(&e->where, "%s incomplete type %s", sizeof_what(e->what_of), type_to_str(chosen));
 			}
 
 			if(type_is(chosen, type_func))
-				cc1_warn_at(&e->where, sizeof_void_or_func, "sizeof() on function type");
+				cc1_warn_at(&e->where, sizeof_void_or_func, "%s() on function type", sizeof_what(e->what_of));
 
 			if((e->what_of == what_alignof || vla) && e->expr){
 				decl *d = expr_to_declref(e->expr, NULL);

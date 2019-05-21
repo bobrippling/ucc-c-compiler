@@ -1,4 +1,4 @@
-// RUN: %check %s -Woverride-init-side-effects
+// RUN: %check %s
 // RUN: %ocheck 0 %s
 
 void assert(_Bool b)

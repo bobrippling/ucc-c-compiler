@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %t
+// RUN: %ocheck 0 %s
 
 struct A
 {

@@ -272,7 +272,7 @@ static int heuristic_should_inline(
 
 	/* as with clang and gcc, -fno-inline-functions affects just the heuristic
 	 * __attribute((always_inline)) overrides it */
-	if((cc1_fopt.inline_functions) == 0)
+	if(!cc1_fopt.inline_functions)
 		return 0;
 
 	/* if it's marked inline, inline it
@@ -327,7 +327,7 @@ static const char *check_and_ret_inline(
 		expr *maybe_call_expr, decl *maybe_decl,
 		out_ctx *octx,
 		const out_val *fnval,
-		struct inline_outs *iouts, int nargs)
+		struct inline_outs *iouts, size_t nargs)
 {
 	funcargs *fargs;
 	const char *why;

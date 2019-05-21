@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check --only %s
 
 struct A { int i; };
 

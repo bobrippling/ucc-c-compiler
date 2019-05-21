@@ -30,6 +30,8 @@
 #include "../parse_expr.h"
 #include "../parse_type.h"
 #include "../cc1_out_ctx.h"
+#include "../sanitize_opt.h"
+#include "../sanitize.h"
 
 #include "../ops/expr_funcall.h"
 #include "../ops/expr_addr.h"
@@ -109,9 +111,11 @@ static builtin_table *builtin_find(const char *sp)
 	static unsigned prefix_len;
 	builtin_table *found;
 
-	found = builtin_table_search(no_prefix_builtins, sp);
-	if(found)
-		return found;
+	if(!cc1_fopt.freestanding){
+		found = builtin_table_search(no_prefix_builtins, sp);
+		if(found)
+			return found;
+	}
 
 	if(!prefix_len)
 		prefix_len = strlen(PREFIX);
@@ -134,7 +138,7 @@ expr *builtin_parse(const char *sp, symtable *scope)
 {
 	builtin_table *b;
 
-	if((cc1_fopt.builtin) && (b = builtin_find(sp))){
+	if(cc1_fopt.builtin && (b = builtin_find(sp))){
 		expr *(*f)(const char *, symtable *) = b->parser;
 
 		if(f)
@@ -198,7 +202,7 @@ static const out_val *builtin_gen_memset(const expr *e, out_ctx *octx)
 			e->bits.builtin_memset.ch,
 			e->bits.builtin_memset.len);
 
-	return addr;
+	return out_change_type(octx, addr, e->tree_type);
 }
 
 expr *builtin_new_memset(expr *p, int ch, size_t len)
@@ -218,13 +222,13 @@ expr *builtin_new_memset(expr *p, int ch, size_t len)
 }
 
 #ifdef BUILTIN_LIBC_FUNCTIONS
-static expr *parse_memset(void)
+static expr *parse_memset(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 
 	ICE("TODO: builtin memset parsing");
 
-	expr_mutate_builtin_gen(fcall, memset);
+	expr_mutate_builtin(fcall, memset);
 
 	return fcall;
 }
@@ -234,10 +238,50 @@ static expr *parse_memset(void)
 
 static void fold_memcpy(expr *e, symtable *stab)
 {
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+
+	if(!e->lhs){
+		consty k;
+		int i;
+
+		/* parsed a user call */
+		if(dynarray_count(e->funcargs) != 3){
+			warn_at_print_error(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+			fold_had_error = 1;
+			return;
+		}
+
+		for(i = 0; i < 3; i++)
+			FOLD_EXPR(e->funcargs[i], stab);
+
+		if(!type_is_ptr(e->funcargs[0]->tree_type)
+		|| !type_is_ptr(e->funcargs[1]->tree_type)
+		|| !type_is_integral(e->funcargs[2]->tree_type))
+		{
+			warn_at_print_error(&e->where, "TODO: BAD TYPE ERROR for %s %d%d%d",
+					BUILTIN_SPEL(e->expr),
+					!!type_is_ptr(e->funcargs[0]->tree_type),
+					!!type_is_ptr(e->funcargs[1]->tree_type),
+					!!type_is_integral(e->funcargs[2]->tree_type));
+			fold_had_error = 1;
+			return;
+		}
+
+		e->lhs = e->funcargs[0];
+		e->rhs = e->funcargs[1];
+
+		const_fold(e->funcargs[2], &k);
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num)){
+			warn_at_print_error(&e->where, "TODO: BAD CONST NUM ERROR for %s", BUILTIN_SPEL(e->expr));
+			fold_had_error = 1;
+			return;
+		}
+
+		e->bits.num.val.i = k.bits.num.val.i;
+	}
+
 	fold_expr_nodecay(e->lhs, stab);
 	fold_expr_nodecay(e->rhs, stab);
-
-	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
 
 static const out_val *builtin_gen_memcpy(const expr *e, out_ctx *octx)
@@ -247,7 +291,9 @@ static const out_val *builtin_gen_memcpy(const expr *e, out_ctx *octx)
 	dest = gen_expr(e->lhs, octx);
 	src = gen_expr(e->rhs, octx);
 
-	return out_memcpy(octx, dest, src, e->bits.num.val.i);
+	return out_change_type(octx,
+			out_memcpy(octx, dest, src, e->bits.num.val.i),
+			e->tree_type);
 }
 
 expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
@@ -266,13 +312,13 @@ expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
 }
 
 #ifdef BUILTIN_LIBC_FUNCTIONS
-static expr *parse_memcpy(void)
+static expr *parse_memcpy(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 
 	ICE("TODO: builtin memcpy parsing");
 
-	expr_mutate_builtin_gen(fcall, memcpy);
+	expr_mutate_builtin(fcall, memcpy);
 
 	return fcall;
 }
@@ -297,7 +343,12 @@ static void fold_unreachable(expr *e, symtable *stab)
 
 static const out_val *builtin_gen_unreachable(const expr *e, out_ctx *octx)
 {
-	return builtin_gen_undefined(e, octx);
+	if(!strcmp(BUILTIN_SPEL(e->expr), "__builtin_trap"))
+		return builtin_gen_undefined(e, octx);
+
+	if(cc1_sanitize & SAN_UNREACHABLE)
+		sanitize_fail(octx, "unreachable");
+	return out_new_noop(octx);
 }
 
 static expr *parse_unreachable(const char *ident, symtable *scope)
@@ -331,12 +382,17 @@ static void fold_compatible_p(expr *e, symtable *stab)
 static void const_compatible_p(expr *e, consty *k)
 {
 	type **types = e->bits.types;
+	/* allow const int and int to be compatible, or T *const and T* */
+	enum type_cmp mask = (TYPE_EQUAL_ANY | TYPE_QUAL_ADD | TYPE_QUAL_SUB);
+	enum type_cmp cmp;
 
 	CONST_FOLD_LEAF(k);
 
 	k->type = CONST_NUM;
 
-	k->bits.num.val.i = !!(type_cmp(types[0], types[1], 0) & TYPE_EQUAL_ANY);
+	cmp = type_cmp(types[0], types[1], 0);
+
+	k->bits.num.val.i = !!(cmp & mask);
 }
 
 static expr *expr_new_funcall_typelist(symtable *scope)
@@ -623,7 +679,7 @@ static expr *parse_expect(const char *ident, symtable *scope)
 
 #define CHOOSE_EXPR_CHOSEN(e) ((e)->funcargs[(e)->bits.num.val.i ? 1 : 2])
 
-static enum lvalue_kind is_lval_choose(expr *e)
+static enum lvalue_kind is_lval_choose(const expr *e)
 {
 	return expr_is_lval(CHOOSE_EXPR_CHOSEN(e));
 }
@@ -827,6 +883,7 @@ static void const_nan(expr *e, consty *k)
 {
 	CONST_FOLD_LEAF(k);
 	k->type = CONST_NUM;
+	/* use native nan for calculations, switch to host-nan when writing out */
 	k->bits.num.val.f = NAN;
 
 	switch(e->bits.builtin_nantype){
@@ -957,13 +1014,20 @@ static void const_offsetof(expr *e, consty *k)
 			/* fall */
 
 		case CONST_NEED_ADDR:
-			if(offset.bits.addr.is_lbl)
-				break;
+			switch(offset.bits.addr.lbl_type){
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK:
+					/* keep as &lbl + offset */
+					break;
 
-			CONST_FOLD_LEAF(k);
+				case CONST_LBL_MEMADDR:
+					/* convert to number */
+					CONST_FOLD_LEAF(k);
 
-			k->type = CONST_NUM;
-			k->bits.num.val.i = offset.bits.addr.bits.memaddr + offset.offset;
+					k->type = CONST_NUM;
+					k->bits.num.val.i = offset.bits.addr.bits.memaddr + offset.offset;
+					break;
+			}
 			break;
 
 		default:

@@ -16,6 +16,7 @@
 
 #include "../const.h"
 #include "../cc1.h" /* fopt_mode */
+#include "../sanitize_opt.h"
 #include "../vla.h"
 
 #include "../fopt.h"
@@ -67,7 +68,7 @@ static out_val *try_mem_offset(
 
 	/* if it's a minus, we enforce an order */
 	if((binop == op_plus || (binop == op_minus && vconst == rhs))
-	&& (vregp_or_lbl->type != V_LBL || (cc1_fopt.symbol_arith))
+	&& (vregp_or_lbl->type != V_LBL || cc1_fopt.symbol_arith)
 	&& (step = calc_ptr_step(vregp_or_lbl->t)) != -1)
 	{
 		out_val *mut_vregp_or_lbl = v_dup_or_reuse(
@@ -151,11 +152,11 @@ static type *is_val_ptr(const out_val *v)
 {
 	type *pointee = type_is_ptr(v->t);
 	switch(v->type){
-		case V_REG_SPILT:
+		case V_SPILT:
 			if(pointee){
 				type *next = type_is_ptr(pointee);
 				if(next)
-					return next;
+					return pointee;
 			}
 			return NULL;
 
@@ -184,7 +185,7 @@ static void apply_ptr_step(
 		out_val *mut_incdec;
 		type *ptrty = l_ptr ? l_ptr : r_ptr;
 
-		*incdec = mut_incdec = v_dup_or_reuse(octx, *incdec, (*incdec)->t);
+		*incdec = mut_incdec = v_mutable_copy(octx, *incdec);
 
 		switch(mut_incdec->type){
 			case V_CONST_I:
@@ -206,7 +207,8 @@ static void apply_ptr_step(
 
 			case V_LBL:
 			case V_FLAG:
-			case V_REG_SPILT:
+			case V_REGOFF:
+			case V_SPILT:
 				assert(mut_incdec->retains == 1);
 				*incdec = (out_val *)v_to_reg(octx, *incdec);
 				assert((*incdec)->retains == 1);
@@ -248,6 +250,9 @@ static void try_shift_conv(
 		enum op_type *binop,
 		const out_val **lhs, const out_val **rhs)
 {
+	if(type_is_signed((*lhs)->t))
+		return;
+
 	if(*binop == op_divide && (*rhs)->type == V_CONST_I){
 		integral_t k = (*rhs)->bits.val_i;
 		if((k & (k - 1)) == 0){
@@ -316,7 +321,7 @@ const out_val *out_op(
 		return consume_one(octx, vconst == lhs ? rhs : lhs, lhs, rhs);
 
 	/* constant folding */
-	if(vconst && (cc1_fopt.const_fold)){
+	if(vconst && cc1_fopt.const_fold){
 		const out_val *oconst = (vconst == lhs ? rhs : lhs);
 
 		if(oconst->type == V_CONST_I){
@@ -341,7 +346,7 @@ const out_val *out_op(
 			break;
 		case op_multiply:
 		case op_divide:
-			if(vconst && (cc1_fopt.trapv) == 0)
+			if(vconst && !(cc1_sanitize & (SAN_SIGNED_INTEGER_OVERFLOW | SAN_POINTER_OVERFLOW)))
 				try_shift_conv(octx, &binop, &lhs, &rhs);
 			break;
 		default:

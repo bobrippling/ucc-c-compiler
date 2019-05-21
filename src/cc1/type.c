@@ -100,6 +100,7 @@ static enum type_cmp type_cmp_r(
 	enum type_cmp ret;
 	type *a, *b;
 	int subchk = 1;
+	int skip_pointer_explicit_decay = 0;
 
 	if(!orig_a || !orig_b)
 		return orig_a == orig_b ? TYPE_EQUAL : TYPE_NOT_EQUAL;
@@ -195,36 +196,33 @@ static enum type_cmp type_cmp_r(
 	if(subchk)
 		ret = type_cmp_r(a->ref, b->ref, opts);
 
-	if(ret == TYPE_NOT_EQUAL
-	&& a->type == type_func)
-	{
-		/* "int (int)" and "void (int)" aren't equal - but castable */
-		ret = TYPE_CONVERTIBLE_EXPLICIT;
-	}
+	/* handle NOT_EQUAL fixups */
+	if(ret == TYPE_NOT_EQUAL){
+		if(a->type == type_func){
+			/* "int (int)" and "void (int)" aren't equal - but castable */
+			ret = TYPE_CONVERTIBLE_EXPLICIT;
 
-	if(ret == TYPE_NOT_EQUAL
-	&& a->type == type_ptr
-	&& cc1_fopt.plan9_extensions)
-	{
-		/* allow b to be an anonymous member of a, if pointers */
-		struct_union_enum_st *a_sue = type_is_s_or_u(a),
-		                     *b_sue = type_is_s_or_u(b);
+		}else if(a->type == type_ptr && cc1_fopt.plan9_extensions){
+			/* allow b to be an anonymous member of a, if pointers */
+			struct_union_enum_st *a_sue = type_is_s_or_u(a->ref),
+			                     *b_sue = type_is_s_or_u(b->ref);
 
-		if(a_sue && b_sue /* already know they aren't equal */){
-			/* b_sue has an a_sue,
-			 * the implicit cast adjusts to return said a_sue */
-			if(struct_union_member_find_sue(b_sue, a_sue))
-				return TYPE_CONVERTIBLE_IMPLICIT;
+			if(a_sue && b_sue /* already know they aren't equal */){
+				/* b_sue has an a_sue,
+				 * the implicit cast adjusts to return said a_sue */
+				if(struct_union_member_find_sue(b_sue, a_sue)){
+					ret = TYPE_CONVERTIBLE_IMPLICIT;
+					skip_pointer_explicit_decay = 1;
+				}
+			}
+		}else if(type_is_ptr(a) && type_is_ptr(b)){ /* allow ptr <-> ptr */
+			ret = TYPE_CONVERTIBLE_EXPLICIT;
 		}
 	}
 
-	/* allow ptr <-> ptr */
-	if(ret == TYPE_NOT_EQUAL && type_is_ptr(a) && type_is_ptr(b))
-		ret = TYPE_CONVERTIBLE_EXPLICIT;
-
 	/* char * and int * are explicitly conv.,
 	 * even though char and int are implicit */
-	if(ret == TYPE_CONVERTIBLE_IMPLICIT && a->type == type_ptr)
+	if(ret == TYPE_CONVERTIBLE_IMPLICIT && a->type == type_ptr && !skip_pointer_explicit_decay)
 		ret = TYPE_CONVERTIBLE_EXPLICIT;
 
 	if(a->type == type_ptr || a->type == type_block){
@@ -724,7 +722,7 @@ type *type_add_type_str(type *r,
 					/* e is always expr_sizeof() */
 					is_type ? "" : "expr: ",
 					is_type ? type_to_str_r_spel_opts(buf, e->tree_type, NULL, TY_STR_NOOPT)
-						: expr_str_friendly(e->expr));
+						: expr_str_friendly(e->expr, 0));
 
 			/* don't show aka for typeof types - it's there already */
 			of = is_type ? NULL : e->tree_type;
@@ -771,9 +769,9 @@ const char *type_to_str_r_spel_opts(
 	int sz = TYPE_STATIC_BUFSIZ;
 	enum type_str_opts local_opts = opts;
 
-	if((cc1_fopt.print_typedefs) == 0)
+	if(!cc1_fopt.print_typedefs)
 		local_opts |= TY_STR_NO_TDEF;
-	if((cc1_fopt.print_aka) == 0)
+	if(!cc1_fopt.print_aka)
 		local_opts &= ~TY_STR_AKA;
 
 	stop_at = type_add_type_str(r, &bufp, &sz, local_opts);

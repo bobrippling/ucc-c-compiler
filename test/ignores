@@ -33,5 +33,5 @@ __attribute__/function_attr.c
 # waiting for unicode literal support
 literals/unicode.c
 
-# waiting for the lvalue fixes merge from experimental/bootstrap
-code_gen/arg_addr.c
+# waiting for float/integer register mismatch bug
+#sanitize/divide.c // float part of test disabled
