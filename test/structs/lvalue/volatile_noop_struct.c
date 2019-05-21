@@ -1,12 +1,14 @@
-// RUN: %archgen %s 'x86_64:movq (%%rax), %%rcx'
-// RUN: %archgen %s 'x86_64:movq (%%rax), %%rcx' -DTO_VOID
+// RUN: %archgen %s 'x86_64:movq (%%rax), %%rcx' -ffreestanding
+// RUN: %archgen %s 'x86_64:movq (%%rax), %%rcx' -DTO_VOID -ffreestanding
+// RUN: %archgen %s 'x86_64:/call.*memcpy/' -fno-freestanding
+// RUN: %archgen %s 'x86_64:/call.*memcpy/' -DTO_VOID -fno-freestanding
 
 struct A
 {
 	long a, b, c, d;
 };
 
-f(volatile struct A *p)
+void f(volatile struct A *p)
 {
 #ifdef TO_VOID
 	(void)
@@ -14,7 +16,9 @@ f(volatile struct A *p)
 	*p;
 }
 
-main()
+int main()
 {
 	f(0);
+
+	return 0;
 }
