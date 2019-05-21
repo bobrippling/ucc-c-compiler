@@ -87,6 +87,9 @@ int cc1_profileg;
 enum debug_level cc1_gdebug = DEBUG_OFF;
 int cc1_gdebug_columninfo = 1;
 
+enum stringop_strategy cc1_mstringop_strategy = STRINGOP_STRATEGY_THRESHOLD;
+unsigned cc1_mstringop_threshold = 16;
+
 enum c_std cc1_std = STD_C99;
 
 int cc1_error_limit = 16;
@@ -465,6 +468,37 @@ static int parse_mf_equals(
 		return 1;
 	}else if(!strncmp(arg_substr, "debug-compilation-dir=", 22)){
 		debug_compilation_dir = arg_substr + 22;
+		return 1;
+	}
+
+	if(arg_ty == 'm' && !strncmp(arg_substr, "stringop-strategy=", 18)){
+		const char *strategy = arg_substr + 18;
+
+		/* gcc options are:
+		 * rep_byte, rep_4byte, rep_8byte
+		 * byte_loop, loop, unrolled_loop
+		 * libcall */
+
+		if(!strcmp(strategy, "libcall")){
+			cc1_mstringop_strategy = STRINGOP_STRATEGY_LIBCALL;
+		}else if(!strcmp(strategy, "loop")){
+			cc1_mstringop_strategy = STRINGOP_STRATEGY_LOOP;
+		}else if(!strncmp(strategy, "libcall-threshold=", 18)){
+			const char *threshold = strategy + 18;
+			char *end;
+
+			cc1_mstringop_strategy = STRINGOP_STRATEGY_THRESHOLD;
+			cc1_mstringop_threshold = strtol(threshold, &end, 0);
+			if(*end)
+				usage(argv0, "invalid number for -mmemcpy-strategy=libcall-threshold=..., \"%s\"\n", threshold);
+		}else{
+			usage(
+					argv0,
+					"invalid argument to for -mmemcpy-strategy=..., \"%s\", accepted values:\n"
+					"  libcall, loop, libcall-threshold=<number>\n"
+					, strategy);
+		}
+
 		return 1;
 	}
 
