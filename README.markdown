@@ -1,6 +1,6 @@
 A C Compiler written in C
 
-[![Build Status](https://travis-ci.org/bobrippling/ucc-c-compiler.svg?branch=master)](https://travis-ci.org/bobrippling/ucc-c-compiler)
+[![Build Status]](https://travis-ci.org/bobrippling/ucc-c-compiler)
 
 Dependencies
 ------------
@@ -91,7 +91,7 @@ See [namespace.c](/test/pragma/namespace.c) for an example.
 GNU C Supported Extensions
 ----------
 
-Summarised from the GNU C [Extensions page](https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html).
+Summarised from the GNU C [Extensions page].
 
 Supported | Extension Name | Description
 --------- | -------------- | -----------
@@ -141,7 +141,7 @@ Supported | Extension Name | Description
 ✅ Yes | Alignment | Determining the alignment of a function, type or variable.
 ✅ Yes | Inline | Defining inline functions (as fast as macros).
 ✅ Yes | Volatiles | What constitutes an access to a volatile object.
-🛠️ [WIP](//github.com/bobrippling/ucc-c-compiler/tree/feature/asm) | Using Assembly Language with C | Instructions and extensions for interfacing C with assembler.
+🛠️ [__asm__ WIP] | Using Assembly Language with C | Instructions and extensions for interfacing C with assembler.
 ✅ Yes | Alternate Keywords | `__const__`, `__asm__`, etc., for header files.
 ✅ Yes | Incomplete Enums | `enum foo;`, with details to follow.
 ✅ Yes | Function Names | Printable strings which are the name of the current function.
@@ -158,7 +158,7 @@ Supported | Extension Name | Description
 ❌ No | Target Format Checks | Format checks specific to particular targets.
 ❌ No | Pragmas | Pragmas accepted by GCC.
 ✅ Yes | Unnamed Fields | Unnamed struct/union fields within structs/unions.
-🛠️ [WIP](//github.com/bobrippling/ucc-c-compiler/tree/feature/tls) | Thread-Local | Per-thread variables.
+🛠️ [TLS WIP] | Thread-Local | Per-thread variables.
 ✅ Yes | Binary constants | Binary constants using the `0b` prefix.
 
 Output/Targets
@@ -241,3 +241,8 @@ Examples
 
 `./ucc a.o b.c -E`
 - preprocess b.c - a.o is ignored since it's not linked with
+
+[Build Status]: https://travis-ci.org/bobrippling/ucc-c-compiler.svg?branch=master
+[Extensions page]: https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html
+[__asm__ WIP]: //github.com/bobrippling/ucc-c-compiler/tree/feature/asm
+[TLS WIP]: //github.com/bobrippling/ucc-c-compiler/tree/feature/tls
