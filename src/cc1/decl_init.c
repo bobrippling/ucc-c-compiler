@@ -253,12 +253,14 @@ int decl_init_is_const(
 	return -1;
 }
 
-int decl_init_is_zero(decl_init *dinit)
+static int decl_init_is_zero_fold(decl_init *dinit, symtable *symtab)
 {
 	DINIT_NULL_CHECK(dinit, return 1);
 
 	switch(dinit->type){
 		case decl_init_scalar:
+			if(symtab)
+				fold_expr_nodecay(dinit->bits.expr, symtab);
 			return const_expr_and_zero(dinit->bits.expr);
 
 		case decl_init_brace:
@@ -266,7 +268,7 @@ int decl_init_is_zero(decl_init *dinit)
 			decl_init **i;
 
 			for(i = dinit->bits.ar.inits; i && *i; i++)
-				if(!decl_init_is_zero(*i))
+				if(!decl_init_is_zero_fold(*i, symtab))
 					return 0;
 
 			return 1;
@@ -275,12 +277,17 @@ int decl_init_is_zero(decl_init *dinit)
 		case decl_init_copy:
 		{
 			struct init_cpy *cpy = *dinit->bits.range_copy;
-			return decl_init_is_zero(cpy->range_init);
+			return decl_init_is_zero_fold(cpy->range_init, symtab);
 		}
 	}
 
 	ICE("bad decl init type %d", dinit->type);
 	return -1;
+}
+
+int decl_init_is_zero(decl_init *dinit)
+{
+	return decl_init_is_zero_fold(dinit, NULL);
 }
 
 int decl_init_has_sideeffects(decl_init *dinit)
@@ -1591,11 +1598,11 @@ void decl_init_create_assignments_base(
 		symtable *stab,
 		const int aggregate)
 {
-	if(!init || decl_init_is_zero(init)){
+	if(!init || decl_init_is_zero_fold(init, stab)){
 		expr *zero;
 
 zero_init:
-		if(type_is_incomplete_array(tfor)){
+		if(type_is_incomplete_array(tfor) || type_is_variably_modified(tfor)){
 			/* error caught elsewhere,
 			 * where we can print the location */
 			return;
