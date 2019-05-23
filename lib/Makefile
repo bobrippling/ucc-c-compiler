@@ -18,7 +18,7 @@ OBJ_CRT  = crt.o begin.o
 OBJ_LIBC = ${OBJ_LIBC_C} ${OBJ_LIBC_S}
 
 CPPFLAGS = -nostdinc
-CFLAGS = -g -Wmissing-forwards
+CFLAGS = -target ${TARGET} -g -Wmissing-forwards
 
 LIBDEPS = ${UCC_CC} ../src/cc1/cc1 ../src/cpp2/cpp
 
@@ -36,7 +36,7 @@ ${LIBC}: ${OBJ_LIBC}
 	${AR} rc ${LIBC} ${OBJ_LIBC}
 
 %.o: ${ARCH_DIR}/%.S
-	${UCC_CC} ${CPPFLAGS} -c -o $@ $<
+	${UCC_CC} -target ${TARGET} ${CPPFLAGS} -c -o $@ $<
 
 %.o: %.c
 	${UCC_CC} ${CPPFLAGS} ${CFLAGS} -c -o $@ $<
