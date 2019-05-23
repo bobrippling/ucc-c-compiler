@@ -176,6 +176,31 @@ char *triple_to_str(const struct triple *triple, int showvendor)
 	return buf;
 }
 
+int triple_arch_change_size(enum arch *const arch, int newsize)
+{
+	switch(*arch){
+		case ARCH_x86_64:
+			switch(newsize){
+				case 32:
+					*arch = ARCH_i386;
+					return 1;
+				case 64:
+					return 1;
+			}
+			break;
+		case ARCH_i386:
+			switch(newsize){
+				case 32:
+					return 1;
+				case 64:
+					*arch = ARCH_x86_64;
+					return 1;
+			}
+			break;
+	}
+	return 0;
+}
+
 static void filter_unam(struct utsname *unam)
 {
 	char *p;

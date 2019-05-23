@@ -87,4 +87,6 @@ int triple_parse(const char *str, struct triple *triple, const char **const bad)
 int triple_default(struct triple *);
 char *triple_to_str(const struct triple *, int showvendor);
 
+int triple_arch_change_size(/* in/out */ enum arch *, int newsize);
+
 #endif

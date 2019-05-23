@@ -98,6 +98,7 @@ struct uccvars
 	int debug, profile;
 	enum tristate pie;
 	int help, dumpmachine;
+	enum { M_UNSET, M_32, M_64 } m3264;
 };
 
 static char **remove_these;
@@ -686,9 +687,21 @@ static void parse_argv(
 					if(argv[i][2])
 						goto word; /* -wabc... */
 					ADD_ARG(mode_preproc); /* -w */
-				case 'm':
 					ADD_ARG(mode_compile);
 					continue;
+
+				case 'm':
+				{
+					const char *mopt = &argv[i][2];
+					if(!strcmp(mopt, "32")){
+						vars->m3264 = M_32;
+					}else if(!strcmp(mopt, "64")){
+						vars->m3264 = M_64;
+					}else{
+						ADD_ARG(mode_compile);
+					}
+					continue;
+				}
 
 				case 'D':
 				case 'U':
@@ -1361,6 +1374,14 @@ usage:
 	}else{
 		if(!triple_default(&triple)){
 			fprintf(stderr, "couldn't get target triple\n");
+			return 1;
+		}
+	}
+	/* -m32 / -m64 modify an existing target argument, or the default (clang compat) */
+	if(vars.m3264 != M_UNSET){
+		unsigned const newsize = vars.m3264 == M_32 ? 32 : 64;
+		if(!triple_arch_change_size(&triple.arch, newsize)){
+			fprintf(stderr, "can't apply -m%d to %s\n", newsize, triple_to_str(&triple, 0));
 			return 1;
 		}
 	}
