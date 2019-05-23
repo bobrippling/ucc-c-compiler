@@ -42,7 +42,7 @@ SYMBL(__syscall):
 #endif
 
 	syscall
-#ifdef __linux__
+#ifdef UCC_OS_LINUX
 	cmpq $-1, %rax
 	jg .fin
 	negq %rax # get positive errno

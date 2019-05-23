@@ -6,9 +6,11 @@
 #if defined(__linux__)
 #  define SECTION_NAME_TEXT .text
 #  define SECTION_NAME_BSS .bss
-#elif defined(__DARWIN__)
+#  define UCC_OS_LINUX
+#elif defined(__DARWIN__) || defined(__MACH__)
 #  define SECTION_NAME_TEXT __TEXT,__text
 #  define SECTION_NAME_BSS __BSS,__bss
+#  define UCC_OS_DARWIN
 #else
 #  error unknown target
 #endif
