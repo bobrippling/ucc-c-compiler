@@ -10,7 +10,6 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 #include "../../util/math.h"
-#include "../../util/str.h"
 
 #include "../type.h"
 #include "../type_nav.h"
@@ -710,29 +709,25 @@ void asm_declare_decl_init(const struct section *sec, decl *d)
 	}
 
 	nonzero_init = d->bits.var.init.dinit && !decl_init_is_zero(d->bits.var.init.dinit);
-
 	if(nonzero_init){
 		asm_nam_begin(sec, d);
 		asm_declare_init(sec, d->bits.var.init.dinit, d->ref);
 		asm_out_section(sec, "\n");
+		return;
+	}
 
-	}else if(section_is_builtin(sec)
-			&& d->bits.var.init.compiler_generated
-			&& cc1_fopt.common
-			&& !attribute_present(d, attr_weak) /* variables can't be weak and common */)
+	if(section_is_builtin(sec)
+	&& d->bits.var.init.compiler_generated
+	&& cc1_fopt.common
+	&& !attribute_present(d, attr_weak) /* variables can't be weak and common */)
 	{
-		char common_prefix[32] = "comm ";
 		unsigned align;
 
 		if(decl_linkage(d) == linkage_internal){
-			if(cc1_target_details.as.supports_local_common){
-				asm_out_section(sec, ".local %s\n", decl_asm_spel(d));
-			}else{
-				xsnprintf(
-						common_prefix, sizeof(common_prefix),
-						"zerofill %s,",
-						cc1_target_details.section_names.section_name_bss);
-			}
+			if(!cc1_target_details.as.supports_local_common)
+				goto fallback;
+
+			asm_out_section(sec, ".local %s\n", decl_asm_spel(d));
 		}
 
 		align = decl_align(d);
@@ -740,15 +735,15 @@ void asm_declare_decl_init(const struct section *sec, decl *d)
 			align = log2i(align);
 		}
 
-		asm_out_section(sec, ".%s%s,%u,%u\n",
-				common_prefix,
+		asm_out_section(sec, ".comm %s,%u,%u\n",
 				decl_asm_spel(d), decl_size(d), align);
-
-	}else{
-		/* always resB, since we use decl_size() */
-		asm_nam_begin(sec, d);
-		asm_reserve_bytes(sec, decl_size(d));
+		return;
 	}
+
+fallback:
+	/* always resB, since we use decl_size() */
+	asm_nam_begin(sec, d);
+	asm_reserve_bytes(sec, decl_size(d));
 }
 
 void asm_out_sectionv(const struct section *sec, const char *fmt, va_list l)
