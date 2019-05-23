@@ -761,11 +761,19 @@ static void type_dump_t(type *t, FILE *f, int indent)
 	for(i = 0; i < indent; i++)
 		fputc(' ', f);
 
-	fprintf(f, "%s %s%s\n",
+	fprintf(f, "%s %s%s",
 			type_kind_to_str(t->type),
 			type_to_str(t),
 			t->type == type_ptr && t->bits.ptr.decayed_from
 				? " [decayed]" : "");
+
+	if(t->type == type_attr){
+		attribute **iter;
+		for(iter = t->bits.attr; iter && *iter; iter++)
+			fprintf(f, " %s", attribute_to_str(*iter));
+	}
+
+	fputc('\n', f);
 
 	if(t->uptree){
 		indent++;
