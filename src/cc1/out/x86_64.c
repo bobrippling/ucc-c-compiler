@@ -194,7 +194,7 @@ static const char *x86_suffix(type *ty)
 		}
 	}
 
-	switch(ty ? type_size(ty, NULL) : 8){
+	switch(type_size(ty, NULL)){
 		case 1: return "b";
 		case 2: return "w";
 		case 4: return "l";
@@ -567,8 +567,11 @@ int impl_reg_savable(const struct vreg *r)
 
 void impl_func_prologue_save_fp(out_ctx *octx)
 {
-	out_asm(octx, "pushq %%rbp");
-	out_asm(octx, "movq %%rsp, %%rbp");
+	char reg = platform_32bit() ? 'e' : 'r';
+
+	out_asm(octx, "push %%%cbp", reg);
+	out_asm(octx, "mov %%%csp, %%%cbp", reg, reg);
+
 	/* a v_alloc_stack_n() is done later to align,
 	 * but not interfere with argument locations */
 }
@@ -1158,7 +1161,7 @@ lea:
 			/* just go with leaq for small sizes */
 			out_asm(octx, "%s%s %s, %%%s",
 					fp ? "mov" : "lea",
-					x86_suffix(NULL),
+					x86_suffix(type_nav_btype(cc1_type_nav, type_intptr_t)),
 					impl_val_str(from_new, 1),
 					x86_reg_str(reg, from_GOT ? NULL : chosen_ty));
 
@@ -1748,7 +1751,7 @@ static const out_val *pointer_to_GOT(
 		*hasoffset = offset != 0;
 
 	out_asm(octx, "mov%s %s, %%%s",
-			x86_suffix(NULL),
+			x86_suffix(type_nav_btype(cc1_type_nav, type_intptr_t)),
 			impl_val_str(vp, 1),
 			x86_reg_str(&gotreg, NULL));
 
@@ -2431,7 +2434,7 @@ const out_val *impl_call(
 						&r));
 		}
 
-		out_asm(octx, "callq %s%s", jtarget, use_plt ? "@PLT" : "");
+		out_asm(octx, "call %s%s", jtarget, use_plt ? "@PLT" : "");
 		if(is_alloc)
 			free(jtarget);
 	}
