@@ -715,7 +715,11 @@ void asm_declare_decl_init(const struct section *sec, decl *d)
 		asm_declare_init(sec, d->bits.var.init.dinit, d->ref);
 		asm_out_section(sec, "\n");
 
-	}else if(section_is_builtin(sec) && d->bits.var.init.compiler_generated && cc1_fopt.common){
+	}else if(section_is_builtin(sec)
+			&& d->bits.var.init.compiler_generated
+			&& cc1_fopt.common
+			&& !attribute_present(d, attr_weak) /* variables can't be weak and common */)
+	{
 		const char *common_prefix = "comm ";
 		unsigned align;
 
