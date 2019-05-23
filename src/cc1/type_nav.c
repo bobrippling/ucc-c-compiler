@@ -279,6 +279,9 @@ static int eq_attr(type *candidate, void *ctx)
 	attribute **cand = candidate->bits.attr;
 	attribute **other = ctx;
 
+	if(dynarray_count(cand) != dynarray_count(other))
+		return 0;
+
 	for(; *cand; cand++){
 		attribute **i;
 
