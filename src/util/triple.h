@@ -89,4 +89,6 @@ char *triple_to_str(const struct triple *, int showvendor);
 
 int triple_arch_change_size(/* in/out */ enum arch *, int newsize);
 
+const char *triple_arch_to_str(enum arch);
+
 #endif

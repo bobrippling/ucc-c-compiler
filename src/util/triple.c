@@ -162,6 +162,11 @@ static const char *abi_to_str(enum abi a)
 	return NULL;
 }
 
+const char *triple_arch_to_str(enum arch arch)
+{
+	return arch_to_str(arch);
+}
+
 char *triple_to_str(const struct triple *triple, int showvendor)
 {
 	static char buf[32];
