@@ -966,12 +966,7 @@ word:
 						vars->target = argv[i + 1];
 						if(!vars->target)
 							goto missing_arg;
-
-						ADD_ARG(mode_compile);
-						ADD_ARG(mode_preproc);
-						arg = argv[++i];
-						ADD_ARG(mode_compile);
-						ADD_ARG(mode_preproc);
+						i++;
 					}
 					else if(!strcmp(argv[i], "-time"))
 						time_subcmds = 1;
@@ -1401,6 +1396,13 @@ usage:
 	if(vars.dumpmachine){
 		printf("%s\n", triple_to_str(&triple, /* no vendor */0));
 		return 0;
+	}
+	{
+		const char *triple_str = triple_to_str(&triple, 0);
+		dynarray_add(&state.args[mode_preproc], ustrdup("-target"));
+		dynarray_add(&state.args[mode_preproc], ustrdup(triple_str));
+		dynarray_add(&state.args[mode_compile], ustrdup("-target"));
+		dynarray_add(&state.args[mode_compile], ustrdup(triple_str));
 	}
 
 	output_given = !!vars.output;
