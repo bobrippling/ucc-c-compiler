@@ -10,6 +10,7 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 #include "../../util/math.h"
+#include "../../util/str.h"
 
 #include "../type.h"
 #include "../type_nav.h"
@@ -720,14 +721,17 @@ void asm_declare_decl_init(const struct section *sec, decl *d)
 			&& cc1_fopt.common
 			&& !attribute_present(d, attr_weak) /* variables can't be weak and common */)
 	{
-		const char *common_prefix = "comm ";
+		char common_prefix[32] = "comm ";
 		unsigned align;
 
 		if(decl_linkage(d) == linkage_internal){
 			if(cc1_target_details.as.supports_local_common){
 				asm_out_section(sec, ".local %s\n", decl_asm_spel(d));
 			}else{
-				common_prefix = "zerofill __DATA,__bss,";
+				xsnprintf(
+						common_prefix, sizeof(common_prefix),
+						"zerofill %s,",
+						cc1_target_details.section_names.section_name_bss);
 			}
 		}
 
