@@ -1,4 +1,4 @@
-#include "defs.h"
+#include "../defs.h"
 .section SECTION_NAME_TEXT
 .globl alloca
 alloca:

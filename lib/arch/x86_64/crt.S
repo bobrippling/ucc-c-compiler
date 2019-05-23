@@ -1,4 +1,4 @@
-#include "defs.h"
+#include "../defs.h"
 .section SECTION_NAME_TEXT
 // start is special, since it's an asm-only symbol
 

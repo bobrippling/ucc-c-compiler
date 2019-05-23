@@ -1,4 +1,4 @@
-#include "defs.h"
+#include "../defs.h"
 .section SECTION_NAME_BSS
 	.globl SYMBL(errno)
 SYMBL(errno):
