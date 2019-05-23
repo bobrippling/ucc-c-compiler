@@ -787,7 +787,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 void impl_func_epilogue(out_ctx *octx, type *rf, int clean_stack)
 {
 	if(clean_stack)
-		out_asm(octx, "leaveq");
+		out_asm(octx, "leave");
 
 	if(cc1_fopt.verbose_asm)
 		out_comment(octx, "stack at %lu bytes", octx->cur_stack_sz);
@@ -796,9 +796,9 @@ void impl_func_epilogue(out_ctx *octx, type *rf, int clean_stack)
 	if(!x86_caller_cleanup(rf)){
 		const int nargs = x86_func_nargs(rf);
 
-		out_asm(octx, "retq $%d", nargs * platform_word_size());
+		out_asm(octx, "ret $%d", nargs * platform_word_size());
 	}else{
-		out_asm(octx, "retq");
+		out_asm(octx, "ret");
 	}
 }
 
