@@ -1176,6 +1176,9 @@ static void state_from_triple(
 			dynarray_add(additional_argv, ustrdup("-fleading-underscore"));
 			dynarray_add(additional_argv, ustrdup("-fpic"));
 
+			dynarray_add(&state->args[mode_assemb], ustrdup("-arch"));
+			dynarray_add(&state->args[mode_assemb], ustrdup(triple_arch_to_str(triple->arch)));
+
 			/* no startfiles */
 			if(vars->defaultlibs){
 				dynarray_add(&state->ldflags_post_user, ustrdup("-lSystem"));
@@ -1201,14 +1204,24 @@ static void state_from_triple(
 			}
 
 			if(!vars->shared){
-				switch(vars->pie){
-					case TRI_UNSET: /* default for 10.7 and later */
-					case TRI_TRUE:
-						dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
-						break;
-					case TRI_FALSE:
-						dynarray_add(&state->ldflags_pre_user, ustrdup("-no_pie"));
-						break;
+				enum tristate pie = vars->pie;
+
+				if(pie == TRI_UNSET){
+					switch(triple->arch){
+						case ARCH_x86_64:
+							/* default for 10.7 and later */
+							pie = TRI_TRUE;
+							break;
+						case ARCH_i386:
+							pie = TRI_FALSE;
+							break;
+					}
+				}
+
+				if(pie == TRI_TRUE){
+					dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
+				}else{
+					dynarray_add(&state->ldflags_pre_user, ustrdup("-no_pie"));
 				}
 			}
 
