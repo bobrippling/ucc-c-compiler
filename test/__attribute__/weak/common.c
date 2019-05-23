@@ -28,3 +28,13 @@ __attribute((alias("a1"))) extern int b1;
 
 __attribute((weak)) int a2;
 __attribute((weak, alias("a2"))) extern int b2;
+
+
+#ifdef COMMON_ALIAS_ERROR
+int common;
+__attribute((alias("common")))
+extern int common_alias;
+
+/* this is an error with -fcommon, but both clang and gcc generate erronenous
+ * code that causes the assembler to balk too, so we do nothing here */
+#endif
