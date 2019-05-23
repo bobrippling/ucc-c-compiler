@@ -1164,12 +1164,30 @@ static void state_from_triple(
 		case SYS_darwin:
 		{
 			char *syslibroot = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk";
+			enum tristate pie = vars->pie;
+			int default_pic;
+
+			switch(triple->arch){
+				case ARCH_x86_64:
+					/* default for 10.7 and later */
+					default_pic = 1;
+					if(pie == TRI_UNSET)
+						pie = TRI_TRUE;
+					break;
+				case ARCH_i386:
+					default_pic = 0;
+					if(pie == TRI_UNSET)
+						pie = TRI_FALSE;
+					break;
+			}
 
 			dynarray_add(&state->args[mode_compile], ustrdup("-mpreferred-stack-boundary=4"));
 			dynarray_add(&state->args[mode_compile], ustrdup("-malign-is-p2")); /* 2^4 = 16 byte aligned */
 			dynarray_add(&state->args[mode_compile], ustrdup("-fforce-va_list-type"));
 			dynarray_add(additional_argv, ustrdup("-fleading-underscore"));
-			dynarray_add(additional_argv, ustrdup("-fpic"));
+			dynarray_add(
+					additional_argv,
+					ustrdup(default_pic ? "-fpic" : "-fno-pic"));
 
 			dynarray_add(&state->args[mode_assemb], ustrdup("-arch"));
 			dynarray_add(&state->args[mode_assemb], ustrdup(triple_arch_to_str(triple->arch)));
@@ -1199,25 +1217,11 @@ static void state_from_triple(
 			}
 
 			if(!vars->shared){
-				enum tristate pie = vars->pie;
-
-				if(pie == TRI_UNSET){
-					switch(triple->arch){
-						case ARCH_x86_64:
-							/* default for 10.7 and later */
-							pie = TRI_TRUE;
-							break;
-						case ARCH_i386:
-							pie = TRI_FALSE;
-							break;
-					}
-				}
-
-				if(pie == TRI_TRUE){
-					dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
-				}else{
-					dynarray_add(&state->ldflags_pre_user, ustrdup("-no_pie"));
-				}
+				dynarray_add(
+						&state->ldflags_pre_user,
+						ustrdup(pie == TRI_TRUE
+							? "-pie"
+							: "-no_pie"));
 			}
 
 			paramshared = "-dylib";
