@@ -149,9 +149,6 @@ void attribute_free(attribute *a)
 			assert(0);
 
 		case attr_alias:
-			free(a->bits.alias);
-			break;
-
 		case attr_format:
 		case attr_cleanup:
 		case attr_section:
