@@ -29,7 +29,9 @@ static int v_unused_reg2(
 
 unsigned char *v_alloc_reg_reserve(out_ctx *octx, int *p)
 {
-	int n = N_SCRATCH_REGS_I + N_SCRATCH_REGS_F;
+	int ni, nf, n;
+	impl_regs(NULL, &ni, &nf);
+	n = ni + nf;
 	if(p)
 		*p = n;
 	return umalloc(n * sizeof *octx->reserved_regs);
@@ -262,6 +264,7 @@ static int v_unused_reg2(
 	out_val_list *it;
 	const out_val *first;
 	int i, begin, end;
+	int ni, nf;
 
 	/* if the value is in a register, we only need a new register
 	 * if we have other references to it */
@@ -276,14 +279,15 @@ static int v_unused_reg2(
 		return 1;
 	}
 
+	impl_regs(NULL, &ni, &nf);
 	used = v_alloc_reg_reserve(octx, &nused);
 	memcpy(used, octx->reserved_regs, nused * sizeof *used);
 
-	begin = fp ? N_SCRATCH_REGS_I : 0;
-	end = fp ? nused : N_SCRATCH_REGS_I;
+	begin = fp ? ni : 0;
+	end = fp ? nused : ni;
 	{
-		int obegin = fp ? 0 : N_SCRATCH_REGS_I;
-		int oend = fp ? N_SCRATCH_REGS_I : nused;
+		int obegin = fp ? 0 : ni;
+		int oend = fp ? ni : nused;
 		for(i = obegin; i < oend; i++)
 			used[i] = 1;
 	}

@@ -69,6 +69,7 @@ static const struct calling_conv_desc
 	int caller_cleanup;
 
 	unsigned n_call_regs;
+	unsigned n_call_regs_int;
 	struct vreg call_regs[6 + 8];
 
 	unsigned n_callee_save_regs;
@@ -76,6 +77,7 @@ static const struct calling_conv_desc
 } calling_convs[] = {
 	[conv_x64_sysv] = {
 		1,
+		6 + 8,
 		6,
 		{
 			{ X86_64_REG_RDI, 0 },
@@ -109,6 +111,7 @@ static const struct calling_conv_desc
 	[conv_x64_ms]   = {
 		1,
 		4,
+		4,
 		{
 			{ X86_64_REG_RCX, 0 },
 			{ X86_64_REG_RDX, 0 },
@@ -119,6 +122,7 @@ static const struct calling_conv_desc
 
 	[conv_cdecl] = {
 		1,
+		0,
 		0,
 		{
 			{ 0 }
@@ -131,10 +135,11 @@ static const struct calling_conv_desc
 		}
 	},
 
-	[conv_stdcall]  = { 0, 0 },
+	[conv_stdcall]  = { 0 },
 
 	[conv_fastcall] = {
 		0,
+		2,
 		2,
 		{
 			{ X86_64_REG_RCX, 0 },
@@ -153,14 +158,14 @@ static const char *x86_intreg_str(unsigned reg, type *r)
 		{ "dil",  "di", "edi", "rdi" },
 		{ "sil",  "si", "esi", "rsi" },
 
+		{  "bpl", "bp", "ebp", "rbp" },
+		{  "spl", "sp", "esp", "rsp" },
+
 		/* r[8 - 15] -> r8b, r8w, r8d,  r8 */
 #define REG(x) {  "r" #x "b",  "r" #x "w", "r" #x "d", "r" #x  }
 		REG(8),  REG(9),  REG(10), REG(11),
 		REG(12), REG(13), REG(14), REG(15),
 #undef REG
-
-		{  "bpl", "bp", "ebp", "rbp" },
-		{  "spl", "sp", "esp", "rsp" },
 	};
 
 	UCC_ASSERT(reg < countof(rnames), "invalid x86 int reg %d", reg);
@@ -288,6 +293,7 @@ static void x86_overlay_regpair_1(
 			break;
 
 		case FLOAT:
+			assert(!platform_32bit() && "TODO: 32-bit float return");
 			regs[*regpair_idx].is_float = 1;
 
 			regs[*regpair_idx].idx =
@@ -484,12 +490,90 @@ const char *impl_val_str_r(
 
 int impl_reg_to_idx(const struct vreg *r)
 {
-	return r->idx + (r->is_float ? N_SCRATCH_REGS_I : 0);
+	if(r->is_float){
+		int nints;
+		impl_regs(NULL, &nints, NULL);
+		return r->idx + nints;
+	}else{
+		return r->idx;
+	}
 }
 
 void impl_scratch_to_reg(int scratch, struct vreg *r)
 {
-	r->idx = scratch - (r->is_float ? N_SCRATCH_REGS_I : 0);
+	if(r->is_float){
+		int nints;
+		impl_regs(NULL, &nints, NULL);
+		r->idx = scratch - nints;
+	}else{
+		r->idx = scratch;
+	}
+}
+
+void impl_regs(
+		const struct vreg **const out_regs,
+		int *const nints,
+		int *const nfloats)
+{
+	if(platform_32bit()){
+		static const struct vreg regs[] = {
+			{ X86_64_REG_RAX, 0 },
+			{ X86_64_REG_RBX, 0 },
+			{ X86_64_REG_RCX, 0 },
+			{ X86_64_REG_RDX, 0 },
+
+			{ X86_64_REG_RDI, 0 },
+			{ X86_64_REG_RSI, 0 },
+
+			{ X86_64_REG_RBP, 0 },
+			{ X86_64_REG_RSP, 0 },
+		};
+
+		if(out_regs)
+			*out_regs = regs;
+		if(nints)
+			*nints = countof(regs);
+		if(nfloats)
+			*nfloats = 0;
+	}else{
+		static const struct vreg regs[] = {
+			{ X86_64_REG_RAX, 0 },
+			{ X86_64_REG_RBX, 0 },
+			{ X86_64_REG_RCX, 0 },
+			{ X86_64_REG_RDX, 0 },
+
+			{ X86_64_REG_RDI, 0 },
+			{ X86_64_REG_RSI, 0 },
+
+			{ X86_64_REG_R8 , 0 },
+			{ X86_64_REG_R9 , 0 },
+			{ X86_64_REG_R10, 0 },
+			{ X86_64_REG_R11, 0 },
+			{ X86_64_REG_R12, 0 },
+			{ X86_64_REG_R13, 0 },
+			{ X86_64_REG_R14, 0 },
+			{ X86_64_REG_R15, 0 },
+
+			{ X86_64_REG_RBP, 0 },
+			{ X86_64_REG_RSP, 0 },
+
+			{ X86_64_REG_XMM0, 1 },
+			{ X86_64_REG_XMM1, 1 },
+			{ X86_64_REG_XMM2, 1 },
+			{ X86_64_REG_XMM3, 1 },
+			{ X86_64_REG_XMM4, 1 },
+			{ X86_64_REG_XMM5, 1 },
+			{ X86_64_REG_XMM6, 1 },
+			{ X86_64_REG_XMM7, 1 },
+		};
+
+		if(out_regs)
+			*out_regs = regs;
+		if(nints)
+			*nints = 16;
+		if(nfloats)
+			*nfloats = 8;
+	}
 }
 
 static const struct calling_conv_desc *x86_conv_lookup(type *fr)
@@ -510,11 +594,14 @@ static int x86_caller_cleanup(type *fr)
 }
 
 static void x86_call_regs(
-		type *fr, unsigned *pn,
+		type *fr, unsigned *pints, unsigned *pfloats,
 		const struct vreg **par)
 {
 	const struct calling_conv_desc *ent = x86_conv_lookup(fr);
-	*pn = ent->n_call_regs;
+
+	*pints = ent->n_call_regs_int;
+	*pfloats = ent->n_call_regs - ent->n_call_regs_int;
+
 	if(par)
 		*par = ent->call_regs;
 }
@@ -604,8 +691,7 @@ void impl_func_prologue_save_call_regs(
 
 		retty = type_called(rf, &fa);
 
-		n_call_f = N_CALL_REGS_F;
-		x86_call_regs(rf, &n_call_i, &call_regs);
+		x86_call_regs(rf, &n_call_i, &n_call_f, &call_regs);
 
 		{
 			/* trim by the number of args */
@@ -638,7 +724,6 @@ void impl_func_prologue_save_call_regs(
 			{
 				type *ty;
 				const struct vreg *rp;
-				struct vreg vr;
 				const out_val **store;
 
 				if(is_stret && i_arg == 0){
@@ -654,9 +739,7 @@ void impl_func_prologue_save_call_regs(
 					if(i_f >= n_call_f)
 						goto pass_via_stack;
 
-					rp = &vr;
-					vr.is_float = 1;
-					vr.idx = i_f++;
+					rp = &call_regs[n_call_i + i_f++];
 				}else{
 					if(i_i >= n_call_i)
 						goto pass_via_stack;
@@ -704,7 +787,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 {
 	const unsigned pws = platform_word_size();
 
-	unsigned n_call_regs;
+	unsigned n_call_regs_i, n_call_regs_f;
 	const struct vreg *call_regs;
 
 	type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
@@ -716,28 +799,24 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	const out_val *stk_spill;
 	unsigned i;
 
-	x86_call_regs(rf, &n_call_regs, &call_regs);
+	x86_call_regs(rf, &n_call_regs_i, &n_call_regs_f, &call_regs);
 
 	funcargs_ty_calc(type_funcargs(rf), &n_int_args, &n_fp_args);
 
 	/* space for all call regs */
 	stk_spill = out_aalloc(octx,
-			(N_CALL_REGS_I + N_CALL_REGS_F * 2) * pws,
+			(n_int_args + n_fp_args * 2) * pws,
 			pws, ty_integral);
 
 	/* go backwards, as we want registers pushed in reverse
 	 * so we can iterate positively.
 	 *
 	 * note: we don't push call regs, just variadic ones after,
-	 * hence >= n_args
 	 */
-	for(i = n_int_args; i < n_call_regs; i++){
+	for(i = n_int_args; i < n_call_regs_i; i++){
 		/* intergral call regs go _below_ floating */
-		struct vreg vr;
+		const struct vreg *vr = &call_regs[i];
 		const out_val *stk_ptr;
-
-		vr.is_float = 0;
-		vr.idx = call_regs[i].idx;
 
 		out_val_retain(octx, stk_spill);
 		stk_ptr = out_op(octx, op_plus,
@@ -745,7 +824,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 				out_new_l(octx, ty_integral, i * pws));
 
 		/* integral args are at the lowest address */
-		out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr));
+		out_val_release(octx, v_reg_to_stack_mem(octx, vr, stk_ptr));
 	}
 
 	{
@@ -763,22 +842,21 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 		out_ctrl_branch(octx, eaxcond, va_shortcircuit_join, save_fp);
 
 		out_current_blk(octx, save_fp);
-		for(i = 0; i < N_CALL_REGS_F; i++){
-			struct vreg vr;
+		for(i = 0; i < n_call_regs_f; i++){
+			const struct vreg *vr;
 			const out_val *stk_ptr;
 
-			vr.is_float = 1;
-			vr.idx = i;
+			vr = &call_regs[n_call_regs_i + i];
 
 			out_val_retain(octx, stk_spill);
 			stk_ptr = out_op(octx, op_plus,
 					out_change_type(octx, stk_spill, arithty),
-					out_new_l(octx, arithty, (i * 2 + n_call_regs) * pws));
+					out_new_l(octx, arithty, (i * 2 + n_call_regs_i) * pws));
 
 			stk_ptr = out_change_type(octx, stk_ptr, ty_dbl);
 
 			/* we go above the integral regs */
-			out_val_release(octx, v_reg_to_stack_mem(octx, &vr, stk_ptr));
+			out_val_release(octx, v_reg_to_stack_mem(octx, vr, stk_ptr));
 		}
 
 		out_ctrl_transfer_make_current(octx, va_shortcircuit_join);
@@ -2185,8 +2263,8 @@ const out_val *impl_call(
 	const out_val *retval_stret;
 	const out_val *stret_spill;
 
-	const struct vreg *call_iregs;
-	unsigned n_call_iregs;
+	const struct vreg *call_regs;
+	unsigned n_call_regs_i, n_call_regs_f;
 
 	struct
 	{
@@ -2207,7 +2285,7 @@ const out_val *impl_call(
 
 	dynarray_add_array(&local_args, args);
 
-	x86_call_regs(fnty, &n_call_iregs, &call_iregs);
+	x86_call_regs(fnty, &n_call_regs_i, &n_call_regs_f, &call_regs);
 
 	/* pre-scan of arguments - eliminate flags
 	 * (should only be one, since we can only have one flag at a time)
@@ -2246,12 +2324,12 @@ const out_val *impl_call(
 	}
 
 	/* do we need to do any stacking? */
-	if(nints > n_call_iregs)
-		arg_stack.bytesz += pws * (nints - n_call_iregs);
+	if(nints > n_call_regs_i)
+		arg_stack.bytesz += pws * (nints - n_call_regs_i);
 
 
-	if(nfloats > N_CALL_REGS_F)
-		arg_stack.bytesz += pws * (nfloats - N_CALL_REGS_F);
+	if(nfloats > n_call_regs_f)
+		arg_stack.bytesz += pws * (nfloats - n_call_regs_f);
 
 	/* need to save regs before pushes/call */
 	v_save_regs(octx, fnty, local_args, fn);
@@ -2306,8 +2384,8 @@ const out_val *impl_call(
 		/* save in order */
 		for(i = 0; i < nargs; i++){
 			const int stack_this = float_arg[i]
-				? nfloats++ >= N_CALL_REGS_F
-				: nints++ >= n_call_iregs;
+				? nfloats++ >= n_call_regs_f
+				: nints++ >= n_call_regs_i;
 
 			if(stack_this){
 				type *storety = type_ptr_to(local_args[i]->t);
@@ -2334,7 +2412,7 @@ const out_val *impl_call(
 
 	/* setup hidden stret pointer argument */
 	if(stret_kind == stret_memcpy){
-		const struct vreg *stret_reg = &call_iregs[nints];
+		const struct vreg *stret_reg = &call_regs[nints];
 		nints++;
 
 		if(cc1_fopt.verbose_asm){
@@ -2354,26 +2432,15 @@ const out_val *impl_call(
 		/* we use float_arg[i] since vp->t may now be float *,
 		 * if it's been spilt */
 		const int is_float = float_arg[i];
-
 		const struct vreg *rp = NULL;
-		struct vreg r;
 
 		if(is_float){
-			if(nfloats < N_CALL_REGS_F){
-				/* NOTE: don't need to use call_regs_float,
-				 * since it's xmm0 ... 7 */
-				r.idx = nfloats;
-				r.is_float = 1;
-
-				rp = &r;
-			}
+			if(nfloats < n_call_regs_f)
+				rp = &call_regs[n_call_regs_i + i];
 			nfloats++;
-
 		}else{
-			/* integral */
-			if(nints < n_call_iregs)
-				rp = &call_iregs[nints];
-
+			if(nints < n_call_regs_i)
+				rp = &call_regs[nints];
 			nints++;
 		}
 
@@ -2430,7 +2497,7 @@ const out_val *impl_call(
 						out_new_l(
 							octx,
 							type_nav_btype(cc1_type_nav, type_nchar),
-							MIN(nfloats, N_CALL_REGS_F)),
+							MIN(nfloats, n_call_regs_f)),
 						&r));
 		}
 
