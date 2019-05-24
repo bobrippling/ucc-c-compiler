@@ -1,3 +1,5 @@
-// RUN: %ucc -fno-leading-underscore -S -o- %s | if uname|grep Darwin >/dev/null; then grep '\.zerofill .*common'; else grep '\.local common'; fi
+// RUN: %ucc -S -o- %s -target x86_64-linux  | grep -F '.local staticint'
+// RUN: %ucc -S -o- %s -target x86_64-linux  | grep -F '.comm staticint,4,4'
+// RUN: %ucc -S -o- %s -target x86_64-darwin | grep -F 'staticint:'
 
-static int common;
+static int staticint;
