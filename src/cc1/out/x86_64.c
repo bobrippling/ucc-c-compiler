@@ -405,17 +405,14 @@ const char *impl_val_str_r(
 		case V_CONST_I:
 		{
 			char *p = buf;
-			/* we should never get a 64-bit value here
-			 * since movabsq should load those in
-			 */
-			UCC_ASSERT(integral_high_bit(vs->bits.val_i, vs->t) < AS_MAX_MOV_BIT,
-					"can't load 64-bit constants here (0x%llx)", vs->bits.val_i);
+			size_t space = VAL_STR_SZ;
 
-			if(deref == 0)
+			if(deref == 0){
 				*p++ = '$';
+				space--;
+			}
 
-			integral_str(p, VAL_STR_SZ - (deref == 0 ? 1 : 0),
-					vs->bits.val_i, vs->t);
+			integral_str(p, space, vs->bits.val_i, vs->t);
 			break;
 		}
 
