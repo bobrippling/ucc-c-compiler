@@ -13,6 +13,8 @@
 #define FILE_FUN(f) ((f)->f_read || (f)->f_write)
 
 #define PRINTF_ENABLE_PADDING
+#define FLOAT_SUPPORT
+#define LONG_LONG_SUPPORT
 
 typedef __cleaned_va_list cleaned_va_list;
 
@@ -90,6 +92,7 @@ static void fprinto(FILE *f, uintmax_t n, int is_signed, unsigned ty_sz)
 	fprintn(f, n, 8, is_signed, ty_sz);
 }
 
+#ifdef FLOAT_SUPPORT
 static void fprintfp(FILE *f, double d)
 {
 	const int mantissa = d;
@@ -97,6 +100,7 @@ static void fprintfp(FILE *f, double d)
 
 	fprintf(f, "%d.%02d", mantissa, decimal_100);
 }
+#endif
 
 /* Public */
 int feof(FILE *f)
@@ -419,7 +423,12 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					const uintmax_t n =
 						lcount == 0 ? va_arg(ap, int)  :
 						lcount == 1 ? va_arg(ap, long) :
-						              va_arg(ap, long long);
+#ifdef LONG_LONG_SUPPORT
+						              va_arg(ap, long long)
+#else
+						              va_arg(ap, long)
+#endif
+													;
 
 #ifdef PRINTF_ENABLE_PADDING
 					if(pad){
@@ -458,6 +467,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 					break;
 				}
 				case 'f':
+#ifdef FLOAT_SUPPORT
 					switch(lcount){
 						case 0:
 							/* hacky float support, mainly for debugging */
@@ -472,6 +482,9 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 						case 2: /* 2 is max for lcount */
 							goto wat;
 					}
+#else
+					(void)va_arg(ap, long);
+#endif
 					break;
 
 				default:
