@@ -1078,6 +1078,19 @@ static void state_from_triple(
 			const char *target = triple_to_str(triple, 0);
 			int is_pie = vars->pie != TRI_FALSE;
 
+			switch(triple->arch){
+				case ARCH_i386:
+					dynarray_add(&state->args[mode_assemb], ustrdup("--32"));
+					dynarray_add(&state->args[mode_link], ustrdup("-m"));
+					dynarray_add(&state->args[mode_link], ustrdup("elf_i386"));
+					break;
+				case ARCH_x86_64:
+					dynarray_add(&state->args[mode_assemb], ustrdup("--64"));
+					dynarray_add(&state->args[mode_link], ustrdup("-m"));
+					dynarray_add(&state->args[mode_link], ustrdup("elf_x86_64"));
+					break;
+			}
+
 			if(is_pie && !vars->shared)
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
 
@@ -1085,8 +1098,18 @@ static void state_from_triple(
 				/* don't mention a dynamic linker - not used for generating a shared library */
 			}else{
 				if(!vars->static_){
+					const char *dyld;
+					switch(triple->arch){
+						case ARCH_i386:
+							dyld = "/lib/ld-linux.so.2";
+							break;
+						case ARCH_x86_64:
+							dyld = "/lib64/ld-linux-x86-64.so.2";
+							break;
+					}
+
 					dynarray_add(&state->ldflags_pre_user, ustrdup("-dynamic-linker"));
-					dynarray_add(&state->ldflags_pre_user, ustrdup("/lib64/ld-linux-x86-64.so.2"));
+					dynarray_add(&state->ldflags_pre_user, ustrdup(dyld));
 				}else{
 					dynarray_add(&state->ldflags_pre_user, ustrdup("-no-dynamic-linker"));
 				}
