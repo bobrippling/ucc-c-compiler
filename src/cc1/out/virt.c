@@ -59,7 +59,7 @@ const out_val *v_to_stack_mem(
 		out_ctx *octx, const out_val *val, const out_val *stk,
 		enum out_val_store type)
 {
-	out_val *spilt = v_dup_or_reuse(octx, stk, stk->t);
+	out_val *spilt = v_mutable_copy_reuse_sp(octx, stk); /* sp reuse is fine here */
 
 	val = v_to(octx, val, TO_CONST | TO_REG);
 

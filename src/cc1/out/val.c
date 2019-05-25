@@ -126,7 +126,7 @@ void v_decay_flags(out_ctx *octx)
 	v_decay_flags_except(octx, NULL);
 }
 
-static out_val *v_dup(out_ctx *octx, const out_val *from, type *ty)
+static out_val *v_dup_maybe_sp(out_ctx *octx, const out_val *from, type *ty, int reuse_sp)
 {
 	switch(from->type){
 		case V_CONST_I:
@@ -160,9 +160,10 @@ copy:
 		{
 			struct vreg r;
 			out_val *new;
+			const int can_reuse_sp = reuse_sp && (octx->alloca_count == 0);
 
 			/* if it's a frame constant we can just use the same register */
-			if(impl_reg_frame_const(&from->bits.regoff.reg, 0))
+			if(impl_reg_frame_const(&from->bits.regoff.reg, can_reuse_sp))
 				goto copy;
 
 			/* copy to a new register */
@@ -204,13 +205,13 @@ static out_val *v_reuse(out_ctx *octx, const out_val *from, type *ty)
 	return mut; /* reuse */
 }
 
-out_val *v_dup_or_reuse(out_ctx *octx, const out_val *from, type *ty)
+out_val *v_dup_or_reuse_maybe_sp(out_ctx *octx, const out_val *from, type *ty, int reuse_sp)
 {
 	assert(from);
 	assert(from->type != V_SPILT && "v_dup_or_reuse() on a V_SPILT - likely a bug");
 
 	if(from->retains > 1){
-		out_val *r = v_dup(octx, from, ty);
+		out_val *r = v_dup_maybe_sp(octx, from, ty, reuse_sp);
 		out_val_consume(octx, from);
 		return r;
 	}
@@ -218,7 +219,12 @@ out_val *v_dup_or_reuse(out_ctx *octx, const out_val *from, type *ty)
 	return v_reuse(octx, from, ty);
 }
 
-out_val *v_mutable_copy(out_ctx *octx, const out_val *val)
+out_val *v_dup_or_reuse(out_ctx *octx, const out_val *from, type *ty)
+{
+	return v_dup_or_reuse_maybe_sp(octx, from, ty, 0);
+}
+
+static out_val *v_mutable_copy_maybe_reuse_sp(out_ctx *octx, const out_val *val, int reuse_sp)
 {
 	if(val->type == V_SPILT){
 		/* A V_SPILT's type is a pointer to the value's real type, which is
@@ -231,7 +237,17 @@ out_val *v_mutable_copy(out_ctx *octx, const out_val *val)
 		val = v_to_reg(octx, val);
 	}
 
-	return v_dup_or_reuse(octx, val, val->t);
+	return v_dup_or_reuse_maybe_sp(octx, val, val->t, reuse_sp);
+}
+
+out_val *v_mutable_copy_reuse_sp(out_ctx *octx, const out_val *val)
+{
+	return v_mutable_copy_maybe_reuse_sp(octx, val, 1);
+}
+
+out_val *v_mutable_copy(out_ctx *octx, const out_val *val)
+{
+	return v_mutable_copy_maybe_reuse_sp(octx, val, 0);
 }
 
 out_val *v_new_flag(
