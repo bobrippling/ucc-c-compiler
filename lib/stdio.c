@@ -13,8 +13,8 @@
 #define FILE_FUN(f) ((f)->f_read || (f)->f_write)
 
 #define PRINTF_ENABLE_PADDING
-#define FLOAT_SUPPORT
-#define LONG_LONG_SUPPORT
+//#define FLOAT_SUPPORT
+//#define LONG_LONG_SUPPORT
 
 typedef __cleaned_va_list cleaned_va_list;
 
