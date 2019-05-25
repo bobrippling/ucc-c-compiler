@@ -8,12 +8,20 @@ SYMBL(errno):
 	.globl SYMBL(__syscall)
 SYMBL(__syscall):
 #if defined(UCC_OS_LINUX)
-	/* TODO */
-	movl %edi,%r8d
-	movl %ebp,%r9d
-	xchg %ecx,%esi
-	movl %ebx,%edi
-	movl %edx,%edx /* zero extension */
+
+	// callee saves:
+	push %edi
+	push %esi
+	push %ebx
+
+	mov  4(%ebp), %eax
+	mov  8(%ebp), %ebx
+	mov 12(%ebp), %ecx
+	mov 16(%ebp), %edx
+	mov 20(%ebp), %esi
+	mov 24(%ebp), %edi
+	mov 28(%ebp), %ebp
+
 #elif defined(UCC_OS_DARWIN)
 	/* arguments are on the stack like so:
 	 *
@@ -59,5 +67,10 @@ SYMBL(__syscall):
 	pop %ecx // return
 	push %ecx // dummy
 	push %ecx // restore return addr
+#else
+	// callee saves:
+	pop %ebx
+	pop %esi
+	pop %edi
 #endif
 	ret
