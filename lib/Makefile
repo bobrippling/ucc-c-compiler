@@ -41,6 +41,9 @@ ${LIBC}: ${OBJ_LIBC}
 %.o: %.c
 	${UCC_CC} ${CPPFLAGS} ${CFLAGS} -c -o $@ $<
 
+%.s: %.c
+	${UCC_CC} ${CPPFLAGS} ${CFLAGS} -S -o $@ $<
+
 string_strerrs: string_strerrs.c
 	${CC} -o $@ $<
 
