@@ -40,12 +40,6 @@
 #include "ctx.h"
 #include "blk.h"
 
-/* Darwin's `as' can only create movq:s with
- * immediate operands whose highest bit is bit
- * 31 or lower (i.e. up to UINT_MAX)
- */
-#define AS_MAX_MOV_BIT 31
-
 #define integral_high_bit_ABS(v, t) integral_high_bit(llabs(v), t)
 
 #define NUM_FMT "%lld"
@@ -986,7 +980,7 @@ static const out_val *x86_load_iv(
 	assert(from->type == V_CONST_I);
 	assert(!type_is_floating(from->t));
 
-	if(high_bit >= AS_MAX_MOV_BIT){
+	if(high_bit > 31){
 		char buf[INTEGRAL_BUF_SIZ];
 
 		if(!reg){
@@ -997,13 +991,10 @@ static const out_val *x86_load_iv(
 		/* TODO: 64-bit registers in general on 32-bit */
 		UCC_ASSERT(!IS_32_BIT(), "TODO: 32-bit 64-literal loads");
 
-		if(high_bit > 31 /* not necessarily AS_MAX_MOV_BIT */){
-			/* must be loading a long */
-			if(type_size(from->t, NULL) != 8){
-				/* FIXME: enums don't auto-size currently */
-				ICW("loading 64-bit literal (%lld) for non-8-byte type? (%s)",
-						from->bits.val_i, type_to_str(from->t));
-			}
+		/* must be loading a long */
+		if(type_size(from->t, NULL) != 8){
+			ICW("loading 64-bit literal (%lld) for non-8-byte type? (%s)",
+					from->bits.val_i, type_to_str(from->t));
 		}
 
 		integral_str(buf, sizeof buf, from->bits.val_i, NULL);
