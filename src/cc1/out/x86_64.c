@@ -2418,7 +2418,7 @@ const out_val *impl_call(
 
 		if(is_float){
 			if(nfloats < n_call_regs_f)
-				rp = &call_regs[n_call_regs_i + i];
+				rp = &call_regs[n_call_regs_i + nfloats];
 			nfloats++;
 		}else{
 			if(nints < n_call_regs_i)
