@@ -483,7 +483,7 @@ int impl_reg_to_idx(const struct vreg *r)
 {
 	if(r->is_float){
 		int nints;
-		impl_regs(NULL, &nints, NULL);
+		impl_scratch_regs(NULL, &nints, NULL);
 		return r->idx + nints;
 	}else{
 		return r->idx;
@@ -494,14 +494,14 @@ void impl_scratch_to_reg(int scratch, struct vreg *r)
 {
 	if(r->is_float){
 		int nints;
-		impl_regs(NULL, &nints, NULL);
+		impl_scratch_regs(NULL, &nints, NULL);
 		r->idx = scratch - nints;
 	}else{
 		r->idx = scratch;
 	}
 }
 
-void impl_regs(
+void impl_scratch_regs(
 		const struct vreg **const out_regs,
 		int *const nints,
 		int *const nfloats)

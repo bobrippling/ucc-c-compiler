@@ -30,7 +30,7 @@ static int v_unused_reg2(
 unsigned char *v_alloc_reg_reserve(out_ctx *octx, int *p)
 {
 	int ni, nf, n;
-	impl_regs(NULL, &ni, &nf);
+	impl_scratch_regs(NULL, &ni, &nf);
 	n = ni + nf;
 	if(p)
 		*p = n;
@@ -279,7 +279,7 @@ static int v_unused_reg2(
 		return 1;
 	}
 
-	impl_regs(NULL, &ni, &nf);
+	impl_scratch_regs(NULL, &ni, &nf);
 	used = v_alloc_reg_reserve(octx, &nused);
 	memcpy(used, octx->reserved_regs, nused * sizeof *used);
 

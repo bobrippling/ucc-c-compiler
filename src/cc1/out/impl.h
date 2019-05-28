@@ -64,7 +64,7 @@ int impl_reg_to_idx(const struct vreg *);
 void impl_scratch_to_reg(int scratch, struct vreg *);
 int impl_reg_frame_const(const struct vreg *, int sp);
 int impl_reg_savable(const struct vreg *);
-void impl_regs(
+void impl_scratch_regs(
 		const struct vreg **const out_regs,
 		int *const nints,
 		int *const nfloats);
