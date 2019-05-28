@@ -515,9 +515,6 @@ void impl_scratch_regs(
 
 			{ X86_64_REG_RDI, 0 },
 			{ X86_64_REG_RSI, 0 },
-
-			{ X86_64_REG_RBP, 0 },
-			{ X86_64_REG_RSP, 0 },
 		};
 
 		if(out_regs)
@@ -544,9 +541,6 @@ void impl_scratch_regs(
 			{ X86_64_REG_R13, 0 },
 			{ X86_64_REG_R14, 0 },
 			{ X86_64_REG_R15, 0 },
-
-			{ X86_64_REG_RBP, 0 },
-			{ X86_64_REG_RSP, 0 },
 
 			{ X86_64_REG_XMM0, 1 },
 			{ X86_64_REG_XMM1, 1 },
