@@ -1096,6 +1096,7 @@ static int dw_lang_from_c_std(enum c_std std)
 		case STD_C89: return DW_LANG_C89;
 		case STD_C99: return DW_LANG_C99;
 		case STD_C11: return DW_LANG_C11;
+		case STD_C18: return DW_LANG_C11; /* no DW_LANG_C17/18 exists yet */
 	}
 	abort();
 }

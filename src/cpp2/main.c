@@ -594,6 +594,10 @@ defaul:
 			break;
 		case STD_C11:
 			macro_add("__STDC_VERSION__", "201112L", 0);
+			break;
+		case STD_C18:
+			macro_add("__STDC_VERSION__", "201710L", 0);
+			break;
 	}
 
 	if(offsetof_macro){

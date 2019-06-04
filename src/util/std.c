@@ -32,6 +32,8 @@ std_c90:
 		*penu = STD_C89;
 	}else if(!strcmp(std, "11")){
 		*penu = STD_C11;
+	}else if(!strcmp(std, "17") || !strcmp(std, "18")){
+		*penu = STD_C18;
 	}else{
 		return 1;
 	}
