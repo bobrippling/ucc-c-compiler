@@ -129,14 +129,8 @@ const char *type_to_str_r(char buf[TYPE_STATIC_BUFSIZ], type *r);
 
 const char *type_to_str(type *r);
 
-/* char[] and char *, etc */
-enum type_str_type
-{
-	type_str_no,
-	type_str_char,
-	type_str_wchar
-};
-enum type_str_type type_str_type(type *);
+struct cstring;
+enum type_primitive type_from_cstring(const struct cstring *);
 
 integral_t type_max(type *r, where *from);
 

@@ -88,7 +88,9 @@ static void const_expr_deref(expr *e, consty *k)
 				const long offset = k->offset;
 
 				switch(sv->cstr->type){
-					case CSTRING_ASCII:
+					case CSTRING_RAW:
+						assert(0 && "raw string in code gen");
+					case CSTRING_u8:
 						/* need to preserve original string for lvalue-ness -> CONST_NEED_ADDR */
 						CONST_FOLD_LEAF(k);
 						k->type = CONST_NEED_ADDR;
@@ -96,9 +98,10 @@ static void const_expr_deref(expr *e, consty *k)
 						k->bits.addr.bits.lbl = sv->lbl;
 						k->offset = offset;
 						break;
-					case CSTRING_RAW:
-						assert(0 && "raw string in code gen");
+					case CSTRING_u16:
+					case CSTRING_u32:
 					case CSTRING_WIDE:
+						/* TODO */
 						assert(0 && "TODO: wide string gen");
 				}
 

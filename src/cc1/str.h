@@ -1,11 +1,14 @@
 #ifndef STR_H
 #define STR_H
 
+#include "../util/unicode.h" /* char_type */
+
 struct cstring
 {
 	union {
-		char *ascii;
-		int *wides;
+		char *u8;
+		short *u16;
+		int *u32;
 	} bits;
 
 	size_t count;
@@ -13,8 +16,10 @@ struct cstring
 	enum cstring_type
 	{
 		CSTRING_RAW, /* .bits.ascii active, but not escaped */
-		CSTRING_ASCII,
-		CSTRING_WIDE
+		CSTRING_u8, /* used in ordered comparisons */
+		CSTRING_u16,
+		CSTRING_u32,
+		CSTRING_WIDE,
 	} type;
 };
 
@@ -24,7 +29,7 @@ void cstring_init(struct cstring *, enum cstring_type, const char *start, size_t
 int cstring_char_at(const struct cstring *, size_t);
 
 void cstring_escape(
-		struct cstring *cstr, int is_wide,
+		struct cstring *cstr, enum char_type char_type,
 		void handle_escape_warn_err(int w, int e, int escape_offset, void *),
 		void *ctx);
 

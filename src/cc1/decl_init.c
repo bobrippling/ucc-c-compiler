@@ -1257,10 +1257,11 @@ static decl_init *is_char_init(
 		  1 == dynarray_count(this->bits.ar.inits) &&
 		  this->bits.ar.inits[0]->type == decl_init_scalar)))
 	{
-		enum type_str_type ty_expr, ty_decl;
-
+		const struct cstring *cstr;
 		decl_init *chosen = this->type == decl_init_scalar
 			? this : this->bits.ar.inits[0];
+		enum type_primitive cstr_type, expected_type;
+		type *t;
 
 		fold_expr_nodecay(chosen->bits.expr, stab);
 
@@ -1270,15 +1271,19 @@ static decl_init *is_char_init(
 		 */
 		if(!expr_kind(chosen->bits.expr, str))
 			return NULL;
+		cstr = chosen->bits.expr->bits.strlit.lit_at.lit->cstr;
+		cstr_type = type_from_cstring(cstr);
 
-		ty_expr = type_str_type(chosen->bits.expr->tree_type);
-		ty_decl = type_str_type(ty);
+		t = type_is_array(ty);
+		if(!t)
+			t = type_is_ptr(ty);
+		t = type_is_primitive(t, type_unknown);
+		assert(t && "couldn't destructure array init");
+		expected_type = t->bits.type->primitive;
 
-		if(ty_expr == type_str_no)
-			; /* fine - not a string init */
-		else if(ty_expr == ty_decl)
+		if(cstr_type == expected_type)
 			return chosen;
-		else if(mismatch)
+		if(mismatch)
 			*mismatch = 1;
 	}
 

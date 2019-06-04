@@ -443,8 +443,8 @@ not_string:
 			break;
 	}
 
-	if(fmt_str->cstr->type != CSTRING_WIDE){
-		const char *fmt = fmt_str->cstr->bits.ascii;
+	if(fmt_str->cstr->type == CSTRING_u8){
+		const char *fmt = fmt_str->cstr->bits.u8;
 		const size_t len = fmt_str->cstr->count - 1;
 
 		if(len == 0)
@@ -587,9 +587,9 @@ void format_check_decl(decl *d, attribute *da)
 		assert(var_idx > fmt_idx);
 	}
 
-	if(type_str_type(fargs->arglist[fmt_idx]->ref) != type_str_char){
+	if(!type_is_primitive(fargs->arglist[fmt_idx]->ref, type_nchar)){
 		cc1_warn_at(&da->where, attr_printf_bad,
-				"format argument not a string type");
+				"format argument isn't a 'char *' type");
 		goto invalid;
 	}
 

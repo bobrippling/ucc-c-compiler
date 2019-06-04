@@ -132,7 +132,6 @@ char *current_fname;
 static int current_fname_used;
 
 static char *buffer, *bufferpos;
-static int ungetch = EOF;
 
 static int in_comment;
 
@@ -837,7 +836,7 @@ static void handle_escape_warn_err(int warn, int err, int escape_offset, void *c
 	}
 }
 
-static struct cstring *read_string(int is_wide)
+static struct cstring *read_string(enum char_type char_type)
 {
 	const char *start = bufferpos;
 	const char *end = str_quotefin((char *)start);
@@ -863,60 +862,39 @@ static struct cstring *read_string(int is_wide)
 
 	update_bufferpos(bufferpos + len + 1);
 
-	cstring_escape(ret, is_wide, handle_escape_warn_err, NULL);
+	cstring_escape(ret, char_type, handle_escape_warn_err, NULL);
 
 	return ret;
 }
 
-static void ungetchar(char ch)
-{
-	if(ungetch != EOF)
-		ICE("ungetch");
-
-	ungetch = ch;
-}
-
-static int getungetchar(void)
-{
-	const int ch = ungetch;
-	ungetch = EOF;
-	return ch;
-}
-
-static void read_string_multiple(int is_wide)
+static void read_string_multiple(enum char_type char_type)
 {
 	struct cstring *cstr;
 	const unsigned max = cc1_std >= STD_C99 ? STD_LIMIT_STRLENGTH_C99 : STD_LIMIT_STRLENGTH_C89;
 
 	where_cc1_current(&currentstringwhere);
 
-	cstr = read_string(is_wide);
+	cstr = read_string(char_type);
 
 	curtok = token_string;
 
 	for(;;){
-		/* look for '"' or "L\"" */
-		int c = nextchar();
+		/* look for '"' or a unicode-prefixed string */
+		char *end;
+		enum char_type next_type = unicode_classify(bufferpos, &end);
+		struct cstring *appendstr;
 
-		if(c == '"' || (c == 'L' && *bufferpos == '"')){
-			/* "abc" "def"
-			 *       ^
-			 */
-			struct cstring *appendstr;
-
-			if(c == 'L'){
-				is_wide = 1;
-				bufferpos++;
-			}
-
-			appendstr = read_string(is_wide);
-
-			cstring_append(cstr, appendstr);
-			cstring_free(appendstr);
-		}else{
-			ungetchar(c);
+		if(*end != '"')
 			break;
-		}
+
+		update_bufferpos(end + 1);
+
+		/* "abc" "def"
+		 *       ^ */
+		appendstr = read_string(next_type);
+
+		cstring_append(cstr, appendstr);
+		cstring_free(appendstr);
 	}
 
 	currentstring = cstr;
@@ -931,12 +909,13 @@ static void read_string_multiple(int is_wide)
 	}
 }
 
-static void read_char(int is_wide)
+static void read_char(enum char_type char_type)
 {
 	char *begin = bufferpos;
 	char *end = char_quotefin(begin);
 	int ch = 0;
 	int multichar = 0;
+	const int is_wide = char_type > UNICODE_u8;
 
 	if(end){
 		const size_t len = (end - begin);
@@ -1079,6 +1058,35 @@ static void read_number(const int first)
 	curtok = (currentval.suffix & VAL_FLOATING ? token_floater : token_integer);
 }
 
+static int try_parse_str(void)
+{
+	char *new;
+	enum char_type char_type = unicode_classify(bufferpos - 1, &new);
+
+	switch(*new){
+		default:
+			/* not a string */
+			return 0;
+
+		case '"':
+			update_bufferpos(new + 1);
+			read_string_multiple(char_type);
+			break;
+
+		case '\'':
+			if(char_type == UNICODE_u8){
+				/* u8'x' doesn't exist */
+				return 0;
+			}
+
+			update_bufferpos(new + 1);
+			read_char(char_type);
+			break;
+	}
+
+	return 1;
+}
+
 void nexttoken(void)
 {
 	int c;
@@ -1098,15 +1106,11 @@ void nexttoken(void)
 		return;
 	}
 
-	if((c = getungetchar()) == EOF){
-		c = nextchar();
-
-		loc_tok.chr = loc_now.chr - 1;
-
-		if(c == EOF){
-			curtok = token_eof;
-			return;
-		}
+	c = nextchar();
+	loc_tok.chr = loc_now.chr - 1;
+	if(c == EOF){
+		curtok = token_eof;
+		return;
 	}
 
 	if(isdigit(c) || (c == '.' && isdigit(peeknextchar()))){
@@ -1129,17 +1133,8 @@ void nexttoken(void)
 		return;
 	}
 
-	switch(c == 'L' ? peeknextchar() : 0){
-		case '"':
-			/* wchar_t string */
-			nextchar();
-			read_string_multiple(1);
-			return;
-		case '\'':
-			nextchar();
-			read_char(1);
-			return;
-	}
+	if(try_parse_str())
+		return;
 
 	if(isalpha(c) || c == '_' || c == '$'){
 		unsigned int len = 1;
@@ -1195,14 +1190,6 @@ void nexttoken(void)
 	}
 
 	switch(c){
-		case '"':
-			read_string_multiple(0);
-			break;
-
-		case '\'':
-			read_char(0);
-			break;
-
 		case '(':
 			curtok = token_open_paren;
 			break;

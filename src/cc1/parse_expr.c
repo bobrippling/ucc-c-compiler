@@ -263,14 +263,14 @@ struct cstring *parse_asciz_str(void)
 		return NULL;
 	}
 
-	if(cstr->type == CSTRING_WIDE){
+	if(cstr->type != CSTRING_u8){
 		warn_at_print_error(NULL, "wide string not wanted");
 		parse_had_error = 1;
 		return NULL;
 	}
+	nul = memchr(cstr->bits.u8, '\0', cstr->count);
 
-	nul = memchr(cstr->bits.ascii, '\0', cstr->count);
-	if(nul && nul < cstr->bits.ascii + cstr->count - 1){
+	if(nul && nul < cstr->bits.u8 + cstr->count - 1){
 		cc1_warn_at(NULL, str_contain_nul, "nul-character terminates string early");
 	}
 

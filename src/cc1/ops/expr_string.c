@@ -1,4 +1,5 @@
 #include <string.h>
+#include <assert.h>
 
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
@@ -23,16 +24,19 @@ void fold_expr_str(expr *e, symtable *stab)
 {
 	const stringlit *const strlit = e->bits.strlit.lit_at.lit;
 	expr *sz;
+	enum type_primitive prim;
 
 	sz = expr_new_val(strlit->cstr->count);
 	FOLD_EXPR(sz, stab);
+
+	prim = type_from_cstring(strlit->cstr);
 
 	/* (const? char []) */
 	e->tree_type = type_array_of(
 			type_qualify(
 				type_nav_btype(
 					cc1_type_nav,
-					strlit->cstr->type == CSTRING_WIDE ? TYPE_WCHAR() : type_nchar),
+					prim),
 				e->bits.strlit.is_func ? qual_const : qual_none),
 			sz);
 }
@@ -57,13 +61,22 @@ const out_val *gen_expr_str(const expr *e, out_ctx *octx)
 void dump_expr_str(const expr *e, dump *ctx)
 {
 	stringlit *lit = e->bits.strlit.lit_at.lit;
+	const char *desc;
 
 	dump_desc_expr_newline(ctx, "string literal", e, 0);
 
+	switch(lit->cstr->type){
+		case CSTRING_RAW: desc = "raw"; break;
+		case CSTRING_WIDE: desc = "wide"; break;
+		case CSTRING_u8: desc = "u8"; break;
+		case CSTRING_u16: desc = "u16"; break;
+		case CSTRING_u32: desc = "u32"; break;
+	}
+
 	dump_printf_indent(
 			ctx, 0,
-			" %sstr ",
-			lit->cstr->type == CSTRING_WIDE ? "wide " : "");
+			" %s-str ",
+			desc);
 
 	dump_strliteral_indent(
 			ctx,

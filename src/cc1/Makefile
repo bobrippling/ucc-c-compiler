@@ -8,7 +8,7 @@ OBJ_UTIL = \
 	../util/alloc.o ../util/util.o ../util/io.o ../util/platform.o \
 	../util/dynarray.o ../util/dynmap.o ../util/where.o \
 	../util/str.o ../util/std.o ../util/escape.o ../util/warn.o \
-	../util/math.o ../util/tmpfile.o ../util/triple.o
+	../util/math.o ../util/tmpfile.o ../util/triple.o ../util/unicode.o
 
 OBJ_REST = \
 	str.o num.o label.o strings.o \

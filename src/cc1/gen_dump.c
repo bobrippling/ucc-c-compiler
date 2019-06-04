@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <assert.h>
+
 #include <unistd.h>
 
 #include "../util/dynarray.h"
@@ -161,18 +163,40 @@ void dump_desc_expr(dump *ctx, const char *desc, const expr *e)
 
 void dump_strliteral_indent(dump *ctx, int indent, struct cstring *str)
 {
+	const char *strtype;
+
 	if(indent)
 		dump_indent(ctx);
+
+	switch(str->type){
+		case CSTRING_RAW:
+			assert(0 && "unreachable");
+		case CSTRING_u8: strtype = "u8"; break;
+		case CSTRING_u16: strtype = "u"; break;
+		case CSTRING_WIDE: strtype = "L"; break;
+		case CSTRING_u32: strtype = "U"; break;
+	}
+
 	fprintf(ctx->fout, "%s%s\"",
 			maybe_colour(ctx->fout, col_strlit),
-			str->type == CSTRING_WIDE ? "L" : "");
+			strtype);
 
-	if(str->type == CSTRING_WIDE){
-		size_t i;
-		for(i = 0; i < str->count; i++)
-			fwrite(&str->bits.wides[i], sizeof(int), 1, ctx->fout);
-	}else{
-		literal_print(ctx->fout, str);
+	switch(str->type){
+		case CSTRING_RAW:
+		case CSTRING_u8:
+			literal_print(ctx->fout, str);
+			break;
+		case CSTRING_u16:
+		case CSTRING_u32:
+		case CSTRING_WIDE:
+		{
+			size_t i;
+			for(i = 0; i < str->count; i++){
+				int ch = cstring_char_at(str, i);
+				fwrite(&ch, sizeof(ch), 1, ctx->fout);
+			}
+			break;
+		}
 	}
 
 	fprintf(ctx->fout, "\"%s\n", maybe_colour(ctx->fout, col_off));
@@ -182,7 +206,7 @@ void dump_strliteral(dump *ctx, const char *str, size_t len)
 {
 	struct cstring cstr;
 
-	cstring_init(&cstr, CSTRING_ASCII, str, len, 0);
+	cstring_init(&cstr, CSTRING_u8, str, len, 0);
 
 	dump_strliteral_indent(ctx, 1, &cstr);
 

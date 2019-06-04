@@ -451,6 +451,7 @@ char *eval_expand_macros(char *line)
 
 		end = word_end(line);
 
+#warning FIXME
 		if(*end == '"' && line == end - 1 && *line == 'L'){
 			line = end;
 			continue;

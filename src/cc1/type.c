@@ -18,6 +18,7 @@
 #include "cc1.h" /* fopt_mode */
 #include "defs.h"
 #include "fopt.h"
+#include "str.h"
 
 #include "type_is.h"
 
@@ -832,25 +833,19 @@ const char *type_kind_to_str(enum type_kind k)
 	ucc_unreach(NULL);
 }
 
-enum type_str_type
-type_str_type(type *r)
+enum type_primitive type_from_cstring(const struct cstring *cstr)
 {
-	type *t = type_is_array(r);
-	if(!t)
-		t = type_is_ptr(r);
-	t = type_is_primitive(t, type_unknown);
-	switch(t ? t->bits.type->primitive : type_unknown){
-		case type_schar:
-		case type_nchar:
-		case type_uchar:
-			return type_str_char;
+	switch(cstr->type){
+		case CSTRING_RAW:
+			break;
 
-		case type_int:
-			return type_str_wchar;
-
-		default:
-			return type_str_no;
+		case CSTRING_WIDE: return TYPE_WCHAR(); /* FIXME: cygwin */
+		case CSTRING_u8: return type_nchar;
+		case CSTRING_u16: return type_ushort;
+		case CSTRING_u32: return type_uint;
 	}
+
+	assert(0 && "unreachable");
 }
 
 unsigned sue_hash(const struct_union_enum_st *sue)

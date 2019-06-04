@@ -24,12 +24,26 @@ stringlit *strings_lookup(dynmap **plit_tbl, struct cstring *cstr)
 	lit = dynmap_get(struct cstring *, stringlit *, lit_tbl, cstr);
 
 	if(!lit){
+		enum out_label_store store_type;
 		stringlit *prev;
 
 		lit = umalloc(sizeof *lit);
 		lit->cstr = cstr;
+
+		switch(cstr->type){
+			case CSTRING_u16:
+			case CSTRING_u32:
+			case CSTRING_WIDE:
+				store_type = STORE_P_WCHAR;
+				break;
+			case CSTRING_RAW:
+			case CSTRING_u8:
+				store_type = STORE_P_CHAR;
+				break;
+		}
+
 		/* create the label immediately - used in const folding */
-		lit->lbl = out_label_data_store(cstr->type == CSTRING_WIDE ? STORE_P_WCHAR : STORE_P_CHAR);
+		lit->lbl = out_label_data_store(store_type);
 
 		prev = dynmap_set(struct cstring *, stringlit *, lit_tbl, cstr, lit);
 		assert(!prev);

@@ -490,7 +490,7 @@ static void dwarf_attr(
 			char *s = data;
 			struct cstring local;
 
-			cstring_init(&local, CSTRING_ASCII, s, strlen(s), 0);
+			cstring_init(&local, CSTRING_u8, s, strlen(s), 0);
 
 			at->bits.str = str_add_escape(&local);
 
@@ -1718,7 +1718,7 @@ void dbg_out_filelist(
 		struct cstring local;
 		char *esc;
 
-		cstring_init(&local, CSTRING_ASCII, i->fname, strlen(i->fname), 0);
+		cstring_init(&local, CSTRING_u8, i->fname, strlen(i->fname), 0);
 
 		esc = str_add_escape(&local);
 

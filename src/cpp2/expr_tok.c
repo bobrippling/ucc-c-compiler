@@ -58,6 +58,7 @@ end_ty:
 		return;
 	}
 
+#warning FIXME
 	if(*tok_pos == '\''
 	|| (tok_pos[0] == 'L' && tok_pos[1] == '\''))
 	{

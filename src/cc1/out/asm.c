@@ -667,31 +667,44 @@ void asm_declare_destructor(decl *d)
 
 void asm_declare_stringlit(const struct section *sec, const stringlit *lit)
 {
+	const char *directive;
+
 	/* could be SECTION_RODATA */
 	asm_nam_begin3(sec, lit->lbl, /*align:*/1);
 
 	switch(lit->cstr->type){
-		case CSTRING_WIDE:
-		{
-			const char *join = "";
-			size_t i;
-			asm_out_section(sec, ".long ");
-			for(i = 0; i < lit->cstr->count; i++){
-				asm_out_section(sec, "%s%d", join, lit->cstr->bits.wides[i]);
-				join = ", ";
-			}
-			break;
-		}
-
 		case CSTRING_RAW:
 			assert(0 && "raw string in code gen");
 
-		case CSTRING_ASCII:
+		case CSTRING_u8:
 		{
 			FILE *f = asm_section_file(sec);
 			asm_out_section(sec, ".ascii \"");
 			literal_print(f, lit->cstr);
 			fputc('"', f);
+			break;
+		}
+
+		case CSTRING_WIDE:
+			if(TYPE_WCHAR() == type_int)
+				directive = "long";
+			else
+				directive = "word";
+			goto out_wide;
+
+		case CSTRING_u16: directive = "word"; goto out_wide;
+		case CSTRING_u32: directive = "long"; goto out_wide;
+out_wide:
+		{
+			const char *join = "";
+			size_t i;
+
+			asm_out_section(sec, ".%s ", directive);
+
+			for(i = 0; i < lit->cstr->count; i++){
+				asm_out_section(sec, "%s%d", join, cstring_char_at(lit->cstr, i));
+				join = ", ";
+			}
 			break;
 		}
 	}

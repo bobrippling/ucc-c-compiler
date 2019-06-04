@@ -941,9 +941,9 @@ static void const_strlen(expr *e, consty *k)
 
 			switch(lit->cstr->type){
 				case CSTRING_RAW:
-				case CSTRING_ASCII:
+				case CSTRING_u8:
 				{
-					const char *s = lit->cstr->bits.ascii;
+					const char *s = lit->cstr->bits.u8;
 					const char *p = memchr(s, '\0', lit->cstr->count);
 
 					if(p){
@@ -954,6 +954,8 @@ static void const_strlen(expr *e, consty *k)
 					}
 					break;
 				}
+				case CSTRING_u16:
+				case CSTRING_u32:
 				case CSTRING_WIDE:
 					break;
 			}
