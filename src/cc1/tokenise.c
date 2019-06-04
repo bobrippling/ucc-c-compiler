@@ -554,7 +554,7 @@ int tok_at_label(void)
 			buffer = urealloc1(buffer, len + 1);
 			p = buffer + poff;
 			memcpy(p, new, newlen + 1);
-			bufferpos = p;
+			update_bufferpos(p);
 			return tok_at_label();
 		}
 		return 0;
