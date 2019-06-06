@@ -15,9 +15,17 @@ char32_t h32 = U'h';
 
 int main()
 {
-    char s1[] = "a猫🍌"; // aka "a\u732B\U0001F34C"
-    char s2[] = u8"a猫🍌";
-    char16_t s3[] = u"a猫🍌";
-    char32_t s4[] = U"a猫🍌";
-    wchar_t s5[] = L"a猫🍌";
+	char s1[] = "a猫🍌"; // aka "a\u732B\U0001F34C"
+	char s2[] = u8"a猫🍌";
+	char16_t s3[] = u"a猫🍌";
+	char32_t s4[] = U"a猫🍌";
+	wchar_t s5[] = L"a猫🍌";
+
+	// "\u732b\u304c\u5927\u597d\u304d"
+
+	char a[] = u8"€";
+
+	for(int i = 0; i < sizeof(a); i++)
+		printf("%x", (unsigned char)a[i]);
+	putchar('\n');
 }
