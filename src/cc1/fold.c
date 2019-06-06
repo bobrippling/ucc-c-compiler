@@ -832,10 +832,15 @@ int fold_get_max_align_attribute(attribute **attribs, symtable *stab, const int 
 
 static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 {
-	const unsigned min = type_align_no_attr(d->ref, &d->where);
-	unsigned max = type_align(d->ref, &d->where); /* maybe with attr */
-
+	int min = type_align_no_attr(d->ref);
+	int max = type_align(d->ref); /* maybe with attr */
 	struct decl_align *i;
+
+	if(min == -1 || max == -1){
+		warn_at_print_error(&d->where, "alignment of incomplete type '%s'", type_to_str(d->ref));
+		fold_had_error = 1;
+		return 1;
+	}
 
 	if((d->store & STORE_MASK_STORE) == store_register
 	|| d->bits.var.field_width)
@@ -844,7 +849,7 @@ static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 	}
 
 	for(i = d->bits.var.align.first; i; i = i->next){
-		unsigned al;
+		int al;
 
 		if(i->as_int){
 			consty k;
@@ -861,12 +866,18 @@ static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 			al = k.bits.num.val.i;
 		}else{
 			type *ty = i->bits.align_ty;
+
 			UCC_ASSERT(ty, "no type");
 
 			fold_type_w_attr(ty, NULL, type_loc(d->ref),
 					stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
 
-			al = type_align(ty, &d->where);
+			al = type_align(ty);
+			if(al == -1){
+				warn_at_print_error(&d->where, "alignment of incomplete type '%s'", type_to_str(ty));
+				fold_had_error = 1;
+				continue;
+			}
 		}
 
 		check_valid_align_within_min(al, min, &attrib->where);
@@ -876,7 +887,7 @@ static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 
 	if(attrib){
 		attribute *stash[2];
-		unsigned attrib_max;
+		int attrib_max;
 
 		stash[0] = attrib;
 		stash[1] = NULL;
@@ -1022,8 +1033,17 @@ static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
 					"none-anonymous bitfield \"%s\" with 0-width",
 					d->spel);
 	}else{
-		const unsigned max = CHAR_BIT * type_size(d->ref, &d->where);
-		if(k.bits.num.val.i > max){
+		int max_bytes = type_size(d->ref);
+		int max;
+
+		if(max_bytes == -1){
+			warn_at_print_error(&d->where, "field width type is incomplete");
+			fold_had_error = 1;
+			return;
+		}
+		max = CHAR_BIT * max_bytes;
+
+		if(k.bits.num.val.i > (unsigned)max){
 			die_at(&d->where,
 					"bitfield too large for \"%s\" (%u bits)",
 					decl_to_str(d), max);

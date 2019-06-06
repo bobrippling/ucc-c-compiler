@@ -110,9 +110,14 @@ type_cmp(
 
 int type_eq_nontdef(type *, type *);
 
-unsigned type_size(type *r, where const *from);
-unsigned type_align(type *r, where const *from);
-unsigned type_align_no_attr(type *r, where const *from);
+int type_size(type *r); /* -1 on error */
+int type_align(type *r); /* -1 on error */
+int type_align_no_attr(type *r); /* -1 on error */
+
+unsigned type_size_assert(type *r); /* aborts on error */
+unsigned type_align_assert(type *r); /* aborts on error */
+
+int type_size_emitting_error(type *, const where *); /* -1 on error, error message emitted */
 
 const char *type_kind_to_str(enum type_kind);
 
@@ -138,7 +143,9 @@ enum type_str_type
 };
 enum type_str_type type_str_type(type *);
 
-integral_t type_max(type *r, where *from);
+integral_t type_max(type *r); /* -1 on error */
+integral_t type_max_assert(type *r); /* aborts on error */
+integral_t type_max_emitting_error(type *r, const where *); /* -1 on error, error emitted */
 
 where *type_loc(type *);
 where *type_has_loc(type *);

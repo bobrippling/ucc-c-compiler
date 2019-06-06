@@ -160,13 +160,18 @@ static integral_t convert_integral_to_integral_warn(
 	 * or conversion is unsigned -> signed and in < signed-max
 	 */
 
-	const unsigned sz_out = type_size(tout, w);
-	const unsigned sz_in = type_size(tin, w);
+	const int sz_out = type_size_emitting_error(tout, w);
+	const int sz_in = type_size_emitting_error(tin, w);
 	const int signed_in = type_is_signed(tin);
 	const int signed_out = type_is_signed(tout);
 	sintegral_t to_iv_sign_ext;
-	integral_t to_iv = integral_truncate(in, sz_out, &to_iv_sign_ext);
+	integral_t to_iv;
 	integral_t ret;
+
+	if(sz_out == -1 || sz_in == -1)
+		return in;
+
+	to_iv = integral_truncate(in, sz_out, &to_iv_sign_ext);
 
 	if(!signed_out && signed_in){
 		const unsigned sz_in_bits = CHAR_BIT * sz_in;
@@ -221,7 +226,13 @@ static integral_t convert_integral_to_integral_warn(
 		}else if(signed_out ? (sintegral_t)ret > 0 : 1){
 			/* ret > 0 - don't warn for -1 <-- -1L */
 			int in_high = integral_high_bit(in, tin);
-			int out_high = integral_high_bit(type_max(tout, w), tout);
+			int tmax = type_max_emitting_error(tout, w);
+			int out_high;
+
+			if(tmax == -1)
+				return ret;
+
+			out_high = integral_high_bit(tmax, tout);
 
 			if(in_high > out_high){
 				warn_value_changed_at(w,
@@ -310,12 +321,17 @@ static void cast_addr(expr *e, consty *k)
 	type *subtt = expr_cast_child(e)->tree_type;
 
 	/* allow if we're casting to a same-size type */
-	l = type_size(e->tree_type, &e->where);
+	l = type_size_emitting_error(e->tree_type, &e->where);
+	if(l == -1)
+		return;
 
-	if(type_decayable(subtt))
+	if(type_decayable(subtt)){
 		r = platform_word_size(); /* func-ptr or array->ptr */
-	else
-		r = type_size(subtt, &expr_cast_child(e)->where);
+	}else{
+		r = type_size_emitting_error(subtt, &expr_cast_child(e)->where);
+		if(r == -1)
+			return;
+	}
 
 	if(l < r)
 		check_addr_int_cast(k, l, e);
@@ -520,8 +536,10 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			}
 		}
 
-		size_lhs = type_size(tlhs, &e->where);
-		size_rhs = type_size(trhs, &expr_cast_child(e)->where);
+		size_lhs = type_size_emitting_error(tlhs, &e->where);
+		size_rhs = type_size_emitting_error(trhs, &expr_cast_child(e)->where);
+		if(size_lhs == -1 || size_rhs == -1)
+			return;
 
 		if(!!ptr_lhs ^ !!ptr_rhs){
 			consty k;

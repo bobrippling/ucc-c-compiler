@@ -620,7 +620,7 @@ static void fold_va_copy(expr *e, symtable *stab)
 	e->lhs = builtin_new_memcpy(
 			expr_new_deref(e->funcargs[0]),
 			expr_new_deref(e->funcargs[1]),
-			type_size(type_nav_va_list(cc1_type_nav, stab), &e->where));
+			type_size_assert(type_nav_va_list(cc1_type_nav, stab)));
 
 	FOLD_EXPR(e->lhs, stab);
 }

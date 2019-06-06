@@ -112,8 +112,16 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 			if(!set){
 				if(!vla){
-					SIZEOF_SIZE(e) = (e->what_of == what_sizeof
-							? type_size : type_align)(chosen, &e->where);
+					int tyamt = (e->what_of == what_sizeof
+							? type_size : type_align)(chosen);
+
+					if(tyamt == -1){
+						warn_at_print_error(&e->where, "incomplete type in '%s'", type_to_str(chosen));
+						fold_had_error = 1;
+						tyamt = 1;
+					}
+
+					SIZEOF_SIZE(e) = tyamt;
 				}
 			}
 

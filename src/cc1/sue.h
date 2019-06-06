@@ -100,8 +100,10 @@ int enum_has_value(struct_union_enum_st *, integral_t);
 #endif
 
 /* struct/union specific */
-unsigned sue_size(struct_union_enum_st *, const where *w);
-unsigned sue_align(struct_union_enum_st *, const where *w);
+int sue_size(struct_union_enum_st *); /* -1 on error */
+int sue_align(struct_union_enum_st *); /* -1 on error */
+
+unsigned sue_size_assert(struct_union_enum_st *); /* aborts on error */
 
 enum sue_szkind
 {
@@ -121,7 +123,7 @@ enum sue_anonextkind
 enum sue_anonextkind sue_anonext_type(struct decl *, struct_union_enum_st *);
 
 ucc_wur
-int sue_incomplete_chk(struct_union_enum_st *st, const where *w);
+int sue_emit_error_if_incomplete(struct_union_enum_st *st, const where *w);
 
 struct decl *struct_union_member_find(struct_union_enum_st *,
 		const char *spel, unsigned *extra_off,

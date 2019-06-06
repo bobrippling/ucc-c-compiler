@@ -112,8 +112,8 @@ decl        *decl_new_ty_sp(struct type *, char *);
 void         decl_replace_with(decl *, decl *);
 void         decl_free(decl *);
 
-unsigned decl_size(decl *);
-unsigned decl_align(decl *);
+int decl_size(decl *); /* -1 on error */
+unsigned decl_align(decl *); /* emits error message on error */
 void decl_size_align_inc_bitfield(decl *, unsigned *const sz, unsigned *const align);
 type *decl_type_for_bitfield(decl *);
 

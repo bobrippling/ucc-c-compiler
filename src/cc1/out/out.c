@@ -117,7 +117,7 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 	switch(val->type){
 		case V_REG:
 			if(val->bits.regoff.offset
-			&& type_size(val->t, NULL) != type_size(to, NULL))
+			&& type_size_assert(val->t) != type_size_assert(to))
 			{
 				/* must apply the offset in the current type */
 				val = v_reg_apply_offset(octx, val);
@@ -327,5 +327,5 @@ void out_force_read(out_ctx *octx, type *ty, const out_val *v)
 	const out_val *target = out_aalloct(octx, ty);
 
 	out_val_consume(octx,
-			out_memcpy(octx, target, v, type_size(ty, NULL)));
+			out_memcpy(octx, target, v, type_size_assert(ty)));
 }

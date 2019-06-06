@@ -1145,12 +1145,12 @@ static void fold_arith_overflow(expr *e, symtable *stab)
 static type *arith_overflow_largest_type(const expr *e)
 {
 	type *t = type_is_ptr(e->funcargs[2]->tree_type);
-	unsigned sz = type_size(t, NULL);
+	unsigned sz = type_size_assert(t);
 	int i;
 
 	for(i = 0; i < 2; i++){
 		type *t2 = e->funcargs[i]->tree_type;
-		unsigned sz2 = type_size(t2, NULL);
+		unsigned sz2 = type_size_assert(t2);
 
 		if(sz2 > sz){
 			t = t2;
@@ -1168,7 +1168,7 @@ static const out_val *gen_arith_overflow(const expr *e, out_ctx *octx)
 	const out_val *store;
 	type *largest = arith_overflow_largest_type(e);
 	type *storety = type_is_ptr(e->funcargs[2]->tree_type);
-	int smaller_than_int = type_size(storety, NULL) < type_primitive_size(type_int);
+	int smaller_than_int = type_size_assert(storety) < type_primitive_size(type_int);
 
 	lhs = gen_expr(e->funcargs[0], octx);
 	rhs = gen_expr(e->funcargs[1], octx);

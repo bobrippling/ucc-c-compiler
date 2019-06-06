@@ -134,7 +134,7 @@ static const out_val *vla_gen_size_ty(
 		case type_btype:
 			if(stack_ent)
 				out_val_release(octx, stack_ent);
-			return out_new_l(octx, arith_ty, type_size(t, NULL));
+			return out_new_l(octx, arith_ty, type_size_assert(t));
 
 		case type_ptr:
 		case type_block:
@@ -288,7 +288,7 @@ void vla_decl_init(decl *d, out_ctx *octx)
 		v_sz = out_cast(octx, v_sz, sizety, 0);
 
 		out_comment(octx, "alloca for %s", decl_to_str(d));
-		v_ptr = out_alloca_push(octx, v_sz, type_align(d->ref, NULL));
+		v_ptr = out_alloca_push(octx, v_sz, type_align_assert(d->ref));
 
 		out_comment(octx, "save ptr for %s", decl_to_str(d));
 		out_val_retain(octx, stack_ent);

@@ -35,7 +35,7 @@ const out_val *out_bitfield_to_scalar(
 	 * using a signed right shift to copy its MSB
 	 */
 	if(type_is_signed(ty)){
-		const unsigned ty_sz = type_size(ty, NULL);
+		const unsigned ty_sz = type_size_assert(ty);
 		const unsigned nshift = CHAR_BIT * ty_sz - bf->nbits;
 
 		scalar = out_op(

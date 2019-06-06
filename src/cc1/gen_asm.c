@@ -179,7 +179,7 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 
 		out_val_release(octx, sym_outval(d->sym));
 		gen_set_sym_outval(octx, d->sym, out_aalloc(
-					octx, vla_space, type_align(d->ref, NULL), d->ref));
+					octx, vla_space, type_align_assert(d->ref), d->ref));
 
 		dest = out_new_sym(octx, d->sym);
 		out_store(octx, dest, src);

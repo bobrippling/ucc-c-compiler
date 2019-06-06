@@ -76,40 +76,53 @@ int enum_nentries(struct_union_enum_st *e)
 	return dynarray_count(e->members);
 }
 
-int sue_incomplete_chk(struct_union_enum_st *st, const where *w)
+static int sue_is_complete_and_folded(struct_union_enum_st *st)
 {
-	if(!sue_is_complete(st)){
-		fold_had_error = 1;
-		warn_at_print_error(w, "%s %s is incomplete", sue_str(st), st->spel);
-		note_at(&st->where, "forward declared here");
-		return 1;
-	}
+	if(!sue_is_complete(st))
+		return 0;
 
-	if(st->foldprog != SUE_FOLDED_FULLY){
+	if(st->foldprog != SUE_FOLDED_FULLY)
 		assert(fold_had_error || parse_had_error); /* error emitted elsewhere */
-		return 1;
-	}
 
 	if(st->primitive == type_enum)
 		UCC_ASSERT(st->size > 0, "zero-sized enum");
 
-	return 0;
+	return 1;
 }
 
-unsigned sue_size(struct_union_enum_st *st, const where *w)
+int sue_size(struct_union_enum_st *st)
 {
-	if(sue_incomplete_chk(st, w))
-		return 1; /* dummy size */
-
+	if(!sue_is_complete_and_folded(st))
+		return -1;
 	return st->size; /* can be zero */
 }
 
-unsigned sue_align(struct_union_enum_st *st, const where *w)
+unsigned sue_size_assert(struct_union_enum_st *st)
 {
-	if(sue_incomplete_chk(st, w))
-		return 1; /* dummy align */
+	int sz = sue_size(st);
+	assert(sz != -1 && "incomplete sue");
+	return sz;
+}
 
+int sue_align(struct_union_enum_st *st)
+{
+	if(!sue_is_complete_and_folded(st))
+		return -1;
 	return st->align;
+}
+
+int sue_emit_error_if_incomplete(struct_union_enum_st *st, const where *w)
+{
+	int sz = sue_size(st);
+
+	if(sz == -1){
+		fold_had_error = 1;
+		warn_at_print_error(w, "%s %s is incomplete", sue_str(st), st->spel);
+		note_at(&st->where, "forward declared here");
+		return -1;
+	}
+
+	return sz;
 }
 
 enum sue_szkind sue_sizekind(struct_union_enum_st *sue)

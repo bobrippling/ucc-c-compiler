@@ -60,7 +60,7 @@ static void struct_pack_finish_bitfield(
 		unsigned long *offset, struct bitfield_state *bitfield)
 {
 	if(bitfield->master_ty){
-		unsigned master_ty_size = type_size(bitfield->master_ty, NULL);
+		unsigned master_ty_size = type_size_assert(bitfield->master_ty);
 
 		if(*offset % master_ty_size)
 			*offset += master_ty_size - *offset % master_ty_size;
@@ -169,8 +169,8 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 		contained_ty = type_nav_btype(cc1_type_nav, type_int);
 	}
 
-	en->size = type_size(contained_ty, NULL);
-	en->align = type_align(contained_ty, NULL);
+	en->size = type_size_assert(contained_ty);
+	en->align = type_align_assert(contained_ty);
 	round_size_to_align(&en->size, en->align);
 }
 
@@ -294,6 +294,8 @@ static void fold_sue_calc_fieldwidth(
 	|| !bitfield->current_off
 	|| bitfield->current_off + bits > bitfield->current_limit)
 	{
+		int tysz;
+
 		if(*realign_next || bitfield->current_off){
 			if(!*realign_next){
 				/* bitfield overflow - repad */
@@ -313,8 +315,12 @@ static void fold_sue_calc_fieldwidth(
 			}
 		}
 
+		tysz = type_size_emitting_error(d->ref, &d->where);
+		if(tysz == -1)
+			tysz = 1;
+
 		bitfield->master_ty = d->ref;
-		bitfield->current_limit = CHAR_BIT * type_size(d->ref, &d->where);
+		bitfield->current_limit = CHAR_BIT * tysz;
 
 		d->bits.var.bitfield_master_ty = bitfield->master_ty;
 
@@ -333,7 +339,7 @@ static void fold_sue_calc_fieldwidth(
 		/* now that we've done the struct packing w.r.t. bitfield size, we change
 		 * pack_state->align to the align of the declared member type itself, to
 		 * affect the struct's alignment (and also tail padding, etc) */
-		pack_state->align = type_align(d->ref, NULL);
+		pack_state->align = type_align_assert(d->ref);
 
 	}else{
 		/* mirror previous bitfields' offset in the struct
@@ -373,16 +379,21 @@ static void fold_sue_calc_normal(struct pack_state *const pack_state)
 	populate_size_align(pack_state);
 
 	if(type_is_incomplete_array(d->ref)){
-		if(pack_state->iter[1])
-			die_at(&d->where, "flexible array not at end of struct");
-		else if(pack_state->sue->primitive != type_struct)
-			die_at(&d->where, "flexible array in a %s", sue_str(pack_state->sue));
-		else if(pack_state->iter == pack_state->sue->members) /* nothing currently */
-			cc1_warn_at(&d->where, flexarr_only,
-					"struct with just a flex-array is an extension");
-
 		pack_state->sue->flexarr = 1;
 		pack_state->sz = 0; /* not counted in struct size */
+
+		if(pack_state->iter[1]){
+			warn_at_print_error(&d->where, "flexible array not at end of struct");
+			fold_had_error = 1;
+			pack_state->sz = -1;
+		}else if(pack_state->sue->primitive != type_struct){
+			warn_at_print_error(&d->where, "flexible array in a %s", sue_str(pack_state->sue));
+			fold_had_error = 1;
+			pack_state->sz = -1;
+		}else if(pack_state->iter == pack_state->sue->members){ /* nothing currently */
+			cc1_warn_at(&d->where, flexarr_only,
+					"struct with just a flex-array is an extension");
+		}
 	}
 }
 
@@ -514,6 +525,8 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 			}else{
 				fold_sue_calc_normal(&pack_state);
+				if((int)pack_state.sz == -1)
+					continue;
 			}
 
 			if(packed || attribute_present(d, attr_packed))
@@ -539,7 +552,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				fprintf(stderr, "| .%-10s", d->spel ? d->spel : "<anon>");
 				if(type_is_complete(d->ref)){
 					fprintf(stderr, " size=%u align=%u",
-						type_size(d->ref, NULL),
+						type_size_assert(d->ref),
 						decl_align(d));
 				}
 				fprintf(stderr, "\n");

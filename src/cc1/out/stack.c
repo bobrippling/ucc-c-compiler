@@ -73,8 +73,8 @@ const out_val *out_aalloc(
 const out_val *out_aalloct(out_ctx *octx, type *ty)
 {
 	return out_aalloc(octx,
-			type_size(ty, NULL),
-			type_align(ty, NULL),
+			type_size_assert(ty),
+			type_align_assert(ty),
 			ty);
 }
 

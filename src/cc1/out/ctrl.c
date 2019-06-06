@@ -99,7 +99,7 @@ const out_val *out_ctrl_merge_n(out_ctx *octx, out_blk **rets)
 
 		assert(phi);
 
-		this_sz = type_size(phi->t, NULL);
+		this_sz = type_size_assert(phi->t);
 		if(this_sz > max.sz){
 			max.sz = this_sz;
 			max.ty = phi->t;
@@ -132,7 +132,7 @@ const out_val *out_ctrl_merge_n(out_ctx *octx, out_blk **rets)
 		/* if we have mismatching sizes, we need to cast one side up,
 		 * so that we fill out all parts of the smaller size'd register,
 		 */
-		if(type_size(regged->t, NULL) < max.sz)
+		if(type_size_assert(regged->t) < max.sz)
 			regged = out_cast(octx, regged, max.ty, 0);
 
 

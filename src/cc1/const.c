@@ -247,7 +247,7 @@ integral_t const_op_exec(
 
 	if(!is_signed){
 		/* need to apply proper wrap-around */
-		integral_t max = type_max(arithty, NULL);
+		integral_t max = type_max_assert(arithty);
 
 		if(max == NUMERIC_T_MAX){
 			/* handling integral_t:s, already done */
@@ -404,7 +404,7 @@ void const_ensure_num_or_memaddr(
 
 	if(from_ptr
 	&& !to_ptr
-	&& type_size(from, NULL) > type_size(to, NULL))
+	&& type_size_assert(from) > type_size_assert(to))
 	{
 		/* not a constant but we treat it as such, as an extension */
 		if(set_nonstandard_const && !k->nonstandard_const)

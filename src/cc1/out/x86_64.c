@@ -194,7 +194,7 @@ static const char *x86_suffix(type *ty)
 		}
 	}
 
-	switch(ty ? type_size(ty, NULL) : 8){
+	switch(ty ? type_size_assert(ty) : 8){
 		case 1: return "b";
 		case 2: return "w";
 		case 4: return "l";
@@ -246,7 +246,7 @@ static enum stret x86_stret(type *ty, unsigned *stack_space)
 	if(IS_32_BIT())
 		ICE("TODO: 32-bit stret");
 
-	sz = type_size(ty, NULL);
+	sz = type_size_assert(ty);
 
 	/* We unconditionally want to spill rdx:rax to the stack on return.
 	 * This could be optimised in the future
@@ -352,7 +352,7 @@ static void x86_overlay_regpair(
 			current_size_bits += bits;
 
 		}else{
-			current_size_bits += CHAR_BIT * type_size(ty, NULL);
+			current_size_bits += CHAR_BIT * type_size_assert(ty);
 		}
 
 		/* if we pass 64... */
@@ -820,7 +820,7 @@ x86_func_ret_memcpy(
 	stret_p = out_deref(octx, stret_p);
 
 	out_flush_volatile(octx,
-			out_memcpy(octx, stret_p, from, type_size(called, NULL)));
+			out_memcpy(octx, stret_p, from, type_size_assert(called)));
 
 	/* return the stret pointer argument */
 	ret_reg->is_float = 0;
@@ -832,7 +832,7 @@ x86_func_ret_memcpy(
 static void x86_func_ret_regs(
 		out_ctx *octx, type *called, const out_val *from)
 {
-	const unsigned sz = type_size(called, NULL);
+	const unsigned sz = type_size_assert(called);
 	struct vreg regs[2];
 	int nregs;
 
@@ -921,7 +921,7 @@ static const out_val *x86_load_iv(
 
 		if(high_bit > 31 /* not necessarily AS_MAX_MOV_BIT */){
 			/* must be loading a long */
-			if(type_size(from->t, NULL) != 8){
+			if(type_size_assert(from->t) != 8){
 				/* FIXME: enums don't auto-size currently */
 				ICW("loading 64-bit literal (%lld) for non-8-byte type? (%s)",
 						from->bits.val_i, type_to_str(from->t));
@@ -982,7 +982,7 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 
 			memcpy_safe(&orig_section, &cc1_current_section_output);
 			{
-				asm_nam_begin3(&sec, lbl, type_align(from->t, NULL));
+				asm_nam_begin3(&sec, lbl, type_align_assert(from->t));
 				asm_out_fp(&sec, from->t, from->bits.val_f);
 			}
 			memcpy_safe(&cc1_current_section_output, &orig_section);
@@ -1100,7 +1100,7 @@ const out_val *impl_load(
 				out_asm(octx, "andb $1, %%%s", rstr);
 			}
 
-			if(type_size(from->t, NULL) != type_size(char_ty, NULL)){
+			if(type_size_assert(from->t) != type_size_assert(char_ty)){
 				/* need to promote, since we forced char type */
 				type *tto = from->t;
 
@@ -1207,7 +1207,7 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 
 		/* ensure we are storing the flag as an extended type */
 		dest_ty = type_is_ptr(to->t);
-		if(type_size(from->t, NULL) < type_size(dest_ty, NULL))
+		if(type_size_assert(from->t) < type_size_assert(dest_ty))
 			from = v_dup_or_reuse(octx, from, dest_ty);
 
 		/* mov %evalreg, (from) */
@@ -1317,7 +1317,7 @@ static const out_val *x86_idiv(
 
 		if(type_is_signed(r->t)){
 			const char *ext;
-			switch(type_size(r->t, NULL)){
+			switch(type_size_assert(r->t)){
 				default:
 					assert(0);
 
@@ -1423,8 +1423,8 @@ static void maybe_promote(out_ctx *octx, const out_val **pl, const out_val **pr)
 	const out_val *l = *pl;
 	const out_val *r = *pr;
 
-	unsigned sz_l = type_size(l->t, NULL);
-	unsigned sz_r = type_size(r->t, NULL);
+	unsigned sz_l = type_size_assert(l->t);
+	unsigned sz_r = type_size_assert(r->t);
 
 	if(sz_l == sz_r)
 		return;
@@ -1924,7 +1924,7 @@ static const out_val *x86_fp_conv(
 			/* if we're doing an int-float conversion,
 			 * see if we need to do 64 or 32 bit
 			 */
-			int_ty ? type_size(int_ty, NULL) == 8 ? "q" : "l" : "",
+			int_ty ? type_size_assert(int_ty) == 8 ? "q" : "l" : "",
 			impl_val_str_r(vbuf, vp, vp->type == V_REGOFF),
 			x86_reg_str(r, tto));
 
@@ -1953,7 +1953,7 @@ static const out_val *x86_xchg_fi(
 	vp = v_to(octx, vp, TO_REG | TO_MEM);
 
 	/* need to promote vp to int for cvtsi2ss */
-	if(type_size(ty_int, NULL) < type_primitive_size(type_int)){
+	if(type_size_assert(ty_int) < type_primitive_size(type_int)){
 		/* need to pretend we're using an int */
 		type *const ty = *(to_float ? &tfrom : &tto) = type_nav_btype(cc1_type_nav, type_int);
 
@@ -2237,7 +2237,7 @@ const out_val *impl_call(
 			nints++; /* only an extra pointer arg for stret_memcpy */
 			/* fall */
 		case stret_regs:
-			stret_spill = out_aalloc(octx, stret_stack, type_align(retty, NULL), retty);
+			stret_spill = out_aalloc(octx, stret_stack, type_align_assert(retty), retty);
 		case stret_scalar:
 			break;
 	}

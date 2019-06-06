@@ -164,11 +164,13 @@ void fold_expr_assign(expr *e, symtable *stab)
 	}
 
 	if(is_struct_cpy){
-		e->expr = builtin_new_memcpy(
-				e->lhs, e->rhs,
-				type_size(e->rhs->tree_type, &e->rhs->where));
+		int tysz = type_size_emitting_error(e->rhs->tree_type, &e->rhs->where);
 
-		FOLD_EXPR(e->expr, stab);
+		if(tysz >= 0){
+			e->expr = builtin_new_memcpy(e->lhs, e->rhs, tysz);
+
+			FOLD_EXPR(e->expr, stab);
+		}
 
 		/* set is_lval, so we can participate in struct-copy chains
 		 * - this isn't interpreted as an lvalue, e.g. (a = b) = c; */

@@ -120,7 +120,7 @@ int asm_table_lookup(type *r)
 		/* special case for funcs and arrays */
 		sz = platform_word_size();
 	else
-		sz = type_size(r, NULL);
+		sz = type_size_assert(r);
 
 	for(i = 0; i < ASM_TABLE_LEN; i++)
 		if(asm_type_table[i].sz == sz)
@@ -331,7 +331,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 	if(!init){
 		/* don't initialise flex-arrays */
 		if(!type_is_incomplete_array(tfor)){
-			asm_declare_pad(sec, type_size(tfor, NULL),
+			asm_declare_pad(sec, type_size_assert(tfor),
 					"null init"/*, type_to_str(tfor)*/);
 		}else{
 			asm_out_section(sec, ASM_COMMENT " flex array init skipped\n");
@@ -467,7 +467,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 
 		/* need to pad to struct size */
 		asm_declare_pad(sec,
-				sue_size(sue, NULL) - end_of_last,
+				sue_size_assert(sue) - end_of_last,
 				"struct tail");
 
 	}else if((r = type_is(tfor, type_array))){
@@ -533,11 +533,11 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 				asm_declare_init(sec, u_init, mem_r);
 			}
 
-			sub = type_size(mem_r, NULL);
+			sub = type_size_assert(mem_r);
 		} /* else null union init */
 
 		asm_declare_pad(sec,
-				type_size(r, NULL) - sub,
+				type_size_assert(r) - sub,
 				"union extra");
 
 	}else{
@@ -648,7 +648,7 @@ static void asm_declare_ctor_dtor(decl *d, enum section_builtin sec)
 	const char *directive = asm_type_directive(intptr_ty);
 
 	/*if(asm_section_empty(sec))
-		asm_out_align(sec, type_align(intptr_ty, NULL));
+		asm_out_align(sec, type_align_assert(intptr_ty));
 
 		// should be aligned by the linker, the above should be a no-op
 	*/

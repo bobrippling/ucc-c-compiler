@@ -132,7 +132,7 @@ void sanitize_boundscheck(
 			if(type_is_variably_modified(tnext))
 				tsize = vla_size(tnext, octx);
 			else
-				tsize = out_new_l(octx, uintptr_ty(), type_size(tnext, NULL));
+				tsize = out_new_l(octx, uintptr_ty(), type_size_assert(tnext));
 
 			out_val_retain(octx, val);
 			byteindex = out_op(octx, op_multiply, val, tsize);
@@ -163,7 +163,7 @@ void sanitize_shift(
 		const out_val **const lhs, const out_val **const rhs)
 {
 	/* rhs must be < bit-size of lhs' type */
-	const unsigned max = CHAR_BIT * type_size(elhs->tree_type, NULL);
+	const unsigned max = CHAR_BIT * type_size_assert(elhs->tree_type);
 	out_blk *current;
 
 	if(!(cc1_sanitize & SAN_SHIFT_EXPONENT))
@@ -254,7 +254,7 @@ void sanitize_nonnull(
 
 void sanitize_aligned(const out_val *v, out_ctx *octx, type *t)
 {
-	unsigned mask = type_align(t, NULL) - 1;
+	unsigned mask = type_align_assert(t) - 1;
 
 	if(!(cc1_sanitize & SAN_ALIGNMENT))
 		return;

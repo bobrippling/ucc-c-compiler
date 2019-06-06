@@ -129,7 +129,7 @@ static void impl_overlay_mem_reg(
 		}else{
 			this_ty = type_nav_MAX_FOR(cc1_type_nav, memsz, 0);
 		}
-		this_sz = type_size(this_ty, NULL);
+		this_sz = type_size_assert(this_ty);
 
 		UCC_ASSERT(this_sz <= memsz, "reading/writing too much memory");
 

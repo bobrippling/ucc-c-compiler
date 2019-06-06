@@ -86,8 +86,8 @@ int type_intrank(enum type_primitive);
 
 #define BTYPE_STATIC_BUFSIZ 128
 const char *btype_to_str(const btype *t);
-unsigned btype_size( const btype *, where const *from);
-unsigned btype_align(const btype *, where const *from);
+int btype_size(const btype *); /* -1 on error */
+int btype_align(const btype *); /* -1 on error */
 
 const char *type_primitive_to_str(const enum type_primitive);
 const char *type_qual_to_str(     const enum type_qualifier, int trailing_space);

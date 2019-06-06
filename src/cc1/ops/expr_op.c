@@ -210,7 +210,12 @@ static void const_op_num_int(
 		&& ((ptr = type_is_ptr(e->lhs->tree_type))
 			|| (ptr_r = 1, ptr = type_is_ptr(e->rhs->tree_type))))
 		{
-			unsigned step = type_size(ptr, &e->where);
+			int step = type_size_emitting_error(ptr, &e->where);
+
+			if(step == -1){
+				CONST_FOLD_LEAF(k);
+				return;
+			}
 
 			assert(!(ptr_r ? &l : &r)->lbl);
 
@@ -407,7 +412,7 @@ static void const_op_num_int(
 						assert(tnext);
 
 						k->type = CONST_NUM;
-						k->bits.num.val.i = (l.offset - r.offset) / type_size(tnext, NULL);
+						k->bits.num.val.i = (l.offset - r.offset) / type_size_assert(tnext);
 						k->nonstandard_const = e;
 					}
 					break;
@@ -755,8 +760,11 @@ ptr_relation:
 
 				if(l_rank == r_rank && l_rank == -1){
 					/* floating types come in here - default to larger */
-					const int l_sz = type_size(tlhs, &lhs->where),
-					          r_sz = type_size(trhs, &rhs->where);
+					const int l_sz = type_size_emitting_error(tlhs, &lhs->where),
+					          r_sz = type_size_emitting_error(trhs, &rhs->where);
+
+					if(l_sz == -1 || r_sz == -1)
+						return tlhs;
 
 					if(l_sz > r_sz)
 						larger = LEFT;
@@ -780,8 +788,11 @@ ptr_relation:
 				 * this is true if signed_type_size > unsigned_type_size
 				 * (for 2's complement, which we assume)
 				 * if so - convert unsigned to signed type */
-				const int l_sz = type_size(tlhs, &lhs->where),
-				          r_sz = type_size(trhs, &rhs->where);
+				const int l_sz = type_size_emitting_error(tlhs, &lhs->where),
+				          r_sz = type_size_emitting_error(trhs, &rhs->where);
+
+					if(l_sz == -1 || r_sz == -1)
+						return tlhs;
 
 				if(l_unsigned ? r_sz > l_sz : l_sz > r_sz){
 					if(l_unsigned)
@@ -1052,10 +1063,16 @@ static int op_shift_check(expr *e)
 		case op_shiftl:
 		case op_shiftr:
 		{
-			const unsigned ty_sz = CHAR_BIT * type_size(e->lhs->tree_type, &e->lhs->where);
+			const int tysz_or_m1 = type_size_emitting_error(e->lhs->tree_type, &e->lhs->where);
+			unsigned ty_sz;
 			int undefined = 0;
 			consty lhs, rhs;
 			int emitted = 0;
+
+			if(tysz_or_m1 == -1)
+				return 0;
+
+			ty_sz = CHAR_BIT * tysz_or_m1;
 
 			const_fold(e->lhs, &lhs);
 			const_fold(e->rhs, &rhs);
@@ -1236,8 +1253,8 @@ static int op_int_promotion_check(expr *e)
 	if(!type_is_integral(tlhs) || !type_is_integral(trhs))
 		return 0;
 
-	if(type_size(tlhs, NULL) < type_primitive_size(type_int)
-	&& type_size(trhs, NULL) < type_primitive_size(type_int))
+	if(type_size_assert(tlhs) < type_primitive_size(type_int)
+	&& type_size_assert(trhs) < type_primitive_size(type_int))
 	{
 		return cc1_warn_at(&e->where,
 				int_op_promotion,

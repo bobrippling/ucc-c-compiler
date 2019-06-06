@@ -153,18 +153,18 @@ int type_intrank(enum type_primitive p)
 	}
 }
 
-unsigned btype_size(const btype *t, const where *from)
+int btype_size(const btype *t)
 {
 	if(t->sue && t->primitive != type_int)
-		return sue_size(t->sue, from);
+		return sue_size(t->sue);
 
 	return type_primitive_size(t->primitive);
 }
 
-unsigned btype_align(const btype *t, const where *from)
+int btype_align(const btype *t)
 {
 	if(t->sue)
-		return sue_align(t->sue, from);
+		return sue_align(t->sue);
 
 	/* align to the size,
 	 * except for double and ldouble

@@ -792,7 +792,7 @@ int type_is_promotable(type *const t, type **pto)
 			sz_double = type_primitive_size(type_double);
 		}
 
-		rsz = type_size(test, type_loc(t)); /* may be enum-int */
+		rsz = type_size_assert(test); /* may be enum-int */
 
 		if(rsz < (fp ? sz_double : sz_int)){
 			if(pto)

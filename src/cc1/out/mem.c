@@ -97,7 +97,7 @@ const out_val *out_memcpy(
 		while(bytes_todo > 0){
 			type *step = type_nav_MAX_FOR(cc1_type_nav, bytes_todo, 0);
 			type *step_ptr = type_ptr_to(step);
-			unsigned step_sz = type_size(step, NULL);
+			unsigned step_sz = type_size_assert(step);
 
 			dest = out_change_type(octx, dest, step_ptr);
 			src = out_change_type(octx, src, step_ptr);
@@ -143,8 +143,8 @@ void out_memset(
 		if(!tzero)
 			tzero = type_nav_btype(cc1_type_nav, type_nchar);
 
-		n   = nbytes / type_size(tzero, NULL);
-		rem = nbytes % type_size(tzero, NULL);
+		n   = nbytes / type_size_assert(tzero);
+		rem = nbytes % type_size_assert(tzero);
 
 		if((textra = rem ? type_nav_MAX_FOR(cc1_type_nav, rem, 0) : NULL))
 			textrap = type_ptr_to(textra);

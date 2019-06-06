@@ -815,7 +815,7 @@ static struct DIE *dwarf_sue_header(
 		dwarf_attr(suedie, DW_AT_name, DW_FORM_string, sue->spel);
 
 	if(sue_is_complete(sue)){
-		form_data_t sz = sue_size(sue, NULL);
+		form_data_t sz = sue_size_assert(sue);
 
 		dwarf_attr(suedie, DW_AT_byte_size,
 				DW_FORM_data4, &sz);
@@ -921,7 +921,7 @@ static struct DIE *dwarf_suetype(
 				/* bitfield */
 				if(dmem->bits.var.field_width){
 					form_data_t width = const_fold_val_i(dmem->bits.var.field_width);
-					form_data_t whole_sz = type_size(current_bitfield->ref, NULL);
+					form_data_t whole_sz = type_size_assert(current_bitfield->ref);
 
 					/* address of top-end */
 					form_data_t off =

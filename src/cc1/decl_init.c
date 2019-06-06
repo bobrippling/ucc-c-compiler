@@ -1225,15 +1225,20 @@ static decl_init *decl_init_brace_up_aggregate(
 	}
 }
 
-static void emit_incomplete_error(init_iter *iter, type *tfor)
+static void emit_incomplete_error_message(where *where, type *tfor)
 {
 	struct_union_enum_st *sue = type_is_s_or_u_or_e(tfor);
 
-	if(sue && sue_incomplete_chk(sue, ITER_WHERE(iter, &sue->where)))
+	if(sue && sue_emit_error_if_incomplete(sue, &sue->where))
 		return;
 
-	warn_at_print_error(ITER_WHERE(iter, NULL),
+	warn_at_print_error(where,
 			"initialising incomplete type '%s'", type_to_str(tfor));
+}
+
+static void emit_incomplete_error(init_iter *iter, type *tfor)
+{
+	emit_incomplete_error_message(ITER_WHERE(iter, NULL), tfor);
 }
 
 static decl_init *decl_init_dummy(decl_init *current)
@@ -1576,10 +1581,18 @@ static void decl_init_create_assignment_from_copy(
 	/* memcpy from the previous init */
 	if(icpy->first_instance){
 		expr *last_base = icpy->first_instance;
+		expr *memcp;
+		int tysz = type_size(next_type);
 
-		expr *memcp = expr_compiler_generated(
+		if(tysz == -1){
+			emit_incomplete_error_message(&di->where, next_type);
+			fold_had_error = 1;
+			return;
+		}
+
+		memcp = expr_compiler_generated(
 				builtin_new_memcpy(
-					new_base, last_base, type_size(next_type, &di->where)));
+					new_base, last_base, tysz));
 
 		expr_init_add(pinit, memcp, stab);
 	}else{
@@ -1600,6 +1613,7 @@ void decl_init_create_assignments_base(
 {
 	if(!init || decl_init_is_zero_fold(init, stab)){
 		expr *zero;
+		int tysz;
 
 zero_init:
 		if(type_is_incomplete_array(tfor) || type_is_variably_modified(tfor)){
@@ -1608,15 +1622,16 @@ zero_init:
 			return;
 		}
 
+		tysz = type_size(tfor);
+		if(tysz == -1)
+			return;
+
 		/* this works for zeroing bitfields,
 		 * since we don't take the address
 		 * - builtin memset calls lea_expr()
 		 *   which can handle bitfields
 		 */
-		zero = builtin_new_memset(
-				base,
-				0,
-				type_size(tfor, &base->where));
+		zero = builtin_new_memset(base, 0, tysz);
 
 		memcpy_safe(&zero->where, &base->where);
 
@@ -1654,11 +1669,19 @@ zero_init:
 				expr *e = init->bits.ar.inits[0]->bits.expr;
 
 				if(type_is_s_or_u(e->tree_type) == sue){
+					int tysz = type_size(e->tree_type);
+
+					if(tysz == -1){
+						emit_incomplete_error_message(&e->where, e->tree_type);
+						fold_had_error = 1;
+						return;
+					}
+
 					decl_init_const_check(e, stab);
 
 					expr_init_add(pinit,
 							builtin_new_memcpy(
-								base, e, type_size(e->tree_type, &e->where)),
+								base, e, tysz),
 							stab);
 					return;
 				}

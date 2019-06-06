@@ -114,15 +114,15 @@ const char *decl_store_to_str(const enum decl_storage s)
 	return NULL;
 }
 
-unsigned decl_size(decl *d)
+int decl_size(decl *d)
 {
-	if(type_is_void(d->ref))
-		die_at(&d->where, "%s is void", d->spel);
+	if(!type_is(d->ref, type_func) && d->bits.var.field_width){
+		warn_at_print_error(&d->where, "can't take size of a bitfield");
+		fold_had_error = 1;
+		return -1;
+	}
 
-	if(!type_is(d->ref, type_func) && d->bits.var.field_width)
-		die_at(&d->where, "can't take size of a bitfield");
-
-	return type_size(d->ref, &d->where);
+	return type_size(d->ref);
 }
 
 type *decl_type_for_bitfield(decl *d)
@@ -148,18 +148,28 @@ void decl_size_align_inc_bitfield(decl *d, unsigned *const sz, unsigned *const a
 {
 	type *ty = decl_type_for_bitfield(d);
 
-	*sz = type_size(ty, NULL);
-	*align = type_align(ty, NULL);
+	/* this function is always called after a type_size() on d->ref */
+	*sz = type_size_assert(ty);
+	*align = type_align_assert(ty);
 }
 
 static unsigned decl_align1(decl *d)
 {
-	unsigned al = 0;
+	int maybe_al;
 
-	if(!type_is(d->ref, type_func) && d->bits.var.align.resolved)
-		al = d->bits.var.align.resolved;
+	if(!type_is(d->ref, type_func) && d->bits.var.align.resolved){
+		unsigned al = d->bits.var.align.resolved;
+		if(al)
+			return al;
+	}
 
-	return al ? al : type_align(d->ref, &d->where);
+	maybe_al = type_align(d->ref);
+	if(maybe_al == -1){
+		warn_at_print_error(&d->where, "type '%s' is incomplete", type_to_str(d->ref));
+		fold_had_error = 1;
+		return 1;
+	}
+	return maybe_al;
 }
 
 unsigned decl_align(decl *d)

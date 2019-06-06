@@ -74,7 +74,7 @@ static void callee_save_or_restore(
 
 	voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 	voidpp = type_ptr_to(voidp);
-	voidpsz = type_size(voidp, NULL);
+	voidpsz = type_size_assert(voidp);
 	arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 
 	for(i = octx->used_callee_saved; i && i->is_float != 2; i++)

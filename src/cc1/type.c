@@ -8,6 +8,7 @@
 #include "../util/platform.h"
 
 #include "macros.h"
+#include "parse_fold_error.h"
 
 #include "expr.h"
 #include "sue.h"
@@ -309,13 +310,20 @@ int type_eq_nontdef(type *a, type *b)
 	return cmp == TYPE_EQUAL ? 0 : 1;
 }
 
-integral_t type_max(type *r, where *from)
+integral_t type_max(type *r)
 {
-	unsigned sz = type_size(r, from);
-	unsigned bits = sz * CHAR_BIT;
-	int is_signed = type_is_signed(r);
+	int sz = type_size(r);
+	unsigned bits;
+	int is_signed;
+	integral_t max;
 
-	integral_t max = ~0ULL >> (INTEGRAL_BITS - bits);
+	if(sz == -1)
+		return -1;
+
+	bits = sz * CHAR_BIT;
+	is_signed = type_is_signed(r);
+
+	max = ~0ULL >> (INTEGRAL_BITS - bits);
 
 	if(is_signed)
 		max = max / 2 - 1;
@@ -323,14 +331,35 @@ integral_t type_max(type *r, where *from)
 	return max;
 }
 
-unsigned type_size(type *r, const where *from)
+integral_t type_max_assert(type *r)
+{
+	integral_t sz = type_max(r);
+	assert((sintegral_t)sz != -1 && "incomplete type");
+	return sz;
+}
+
+static void emit_incomplete_error(const where *w, type *t)
+{
+	warn_at_print_error(w, "type '%s' is incomplete", type_to_str(t));
+	fold_had_error = 1;
+}
+
+integral_t type_max_emitting_error(type *r, const where *w)
+{
+	integral_t m = type_max(r);
+	if((sintegral_t)m == -1)
+		emit_incomplete_error(w, r);
+	return m;
+}
+
+int type_size(type *r)
 {
 	switch(r->type){
 		case type_auto:
 			ICE("__auto_type");
 
 		case type_btype:
-			return btype_size(r->bits.type, from);
+			return btype_size(r->bits.type);
 
 		case type_tdef:
 		{
@@ -338,17 +367,17 @@ unsigned type_size(type *r, const where *from)
 			type *sub;
 
 			if(d)
-				return type_size(d->ref, from);
+				return type_size(d->ref);
 
 			sub = r->bits.tdef.type_of->tree_type;
 			UCC_ASSERT(sub, "type_size for unfolded typedef");
-			return type_size(sub, from);
+			return type_size(sub);
 		}
 
 		case type_attr:
 		case type_cast:
 		case type_where:
-			return type_size(r->ref, from);
+			return type_size(r->ref);
 
 		case type_ptr:
 		case type_block:
@@ -363,21 +392,21 @@ unsigned type_size(type *r, const where *from)
 			integral_t sz;
 
 			if(type_is_void(r->ref))
-				die_at(from, "array of void");
+				return 1;
 
 			if(!r->bits.array.size)
-				die_at(from, "array has an incomplete size");
+				return -1;
 
 			sz = const_fold_val_i(r->bits.array.size);
 
-			return sz * type_size(r->ref, from);
+			return sz * type_size(r->ref);
 		}
 	}
 
 	ucc_unreach(0);
 }
 
-static unsigned type_align_with_attr(type *r, const where *from, int with_attributes)
+static int type_align_with_attr(type *r, int with_attributes)
 {
 	struct_union_enum_st *sue;
 	type *test;
@@ -398,9 +427,11 @@ static unsigned type_align_with_attr(type *r, const where *from, int with_attrib
 	}
 
 	if((sue = type_is_s_or_u(r))){
-		/* safe - can't have an instance without a ->sue */
-		assert(sue->foldprog == SUE_FOLDED_FULLY);
-		return sue_align(sue, from);
+		if(sue->foldprog != SUE_FOLDED_FULLY){
+			assert(fold_had_error || parse_had_error);
+			return -1;
+		}
+		return sue_align(sue);
 	}
 
 	if(type_is(r, type_ptr)
@@ -410,22 +441,44 @@ static unsigned type_align_with_attr(type *r, const where *from, int with_attrib
 	}
 
 	if((test = type_is(r, type_btype)))
-		return btype_align(test->bits.type, from);
+		return btype_align(test->bits.type);
 
 	if((test = type_is(r, type_array)))
-		return type_align(test->ref, from /* attributes apply from here on */);
+		return type_align(test->ref);
 
 	return 1;
 }
 
-unsigned type_align_no_attr(type *r, where const *from)
+int type_align_no_attr(type *t)
 {
-	return type_align_with_attr(r, from, 0);
+	return type_align_with_attr(t, 0);
 }
 
-unsigned type_align(type *r, where const *from)
+int type_align(type *t)
 {
-	return type_align_with_attr(r, from, 1);
+	return type_align_with_attr(t, 1);
+}
+
+unsigned type_size_assert(type *t)
+{
+	const int sz = type_size(t);
+	assert(sz != -1 && "incomplete type");
+	return sz;
+}
+
+int type_size_emitting_error(type *t, const where *w)
+{
+	const int sz = type_size(t);
+	if(sz == -1)
+		emit_incomplete_error(w, t);
+	return sz;
+}
+
+unsigned type_align_assert(type *t)
+{
+	const int sz = type_align(t);
+	assert(sz != -1 && "incomplete type");
+	return sz;
 }
 
 where *type_loc(type *t)

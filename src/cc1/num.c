@@ -69,7 +69,7 @@ int integral_str(char *buf, size_t nbuf, integral_t v, type *ty)
 
 	if(ty){
 		sintegral_t sv;
-		v = integral_truncate(v, type_size(ty, NULL), &sv);
+		v = integral_truncate(v, type_size_assert(ty), &sv);
 		if(is_signed)
 			v = sv;
 	}
@@ -136,7 +136,7 @@ int integral_high_bit(integral_t val, type *ty)
 		const sintegral_t as_signed = val;
 
 		if(as_signed < 0)
-			val = integral_truncate(val, type_size(ty, NULL), NULL);
+			val = integral_truncate(val, type_size_assert(ty), NULL);
 	}
 
 	{
