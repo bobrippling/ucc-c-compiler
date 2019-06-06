@@ -52,6 +52,10 @@
 	if(INIT_DEBUG) fprintf(stderr, "\033[35m" s "\033[m\n", __VA_ARGS__); \
 }while(0)
 
+#define BITFIELD_DBG(...) do{ \
+	if(INIT_DEBUG) fprintf(stderr, __VA_ARGS__); \
+}while(0)
+
 struct bitfield_val
 {
 	integral_t val;
@@ -156,12 +160,11 @@ static void asm_declare_init_bitfields(
 		struct bitfield_val *vals, unsigned n,
 		type *ty)
 {
-#define BITFIELD_DBG(...) /*fprintf(stderr, __VA_ARGS__)*/
 	integral_t v = 0;
 	unsigned width = 0;
 	unsigned i;
 
-	BITFIELD_DBG("bitfield out -- new\n");
+	BITFIELD_DBG("bitfield out -- new (ty=%s)\n", type_to_str(ty));
 	for(i = 0; i < n; i++){
 		integral_t this = integral_truncate_bits(
 				vals[i].val, vals[i].width, NULL);
@@ -394,8 +397,10 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 				}
 			}
 
-			DEBUG("init for %ld/%s, %s",
-					mem - sue->members, d_mem->spel,
+			DEBUG("init for %s (%ld/%ld), init type: %s",
+					d_mem->spel,
+					mem - sue->members + 1,
+					dynarray_count(sue->members),
 					di_to_use && di_to_use->type == decl_init_scalar
 					? di_to_use->bits.expr->f_str()
 					: NULL);
@@ -430,6 +435,9 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 						first_bf = d_mem;
 				}
 
+				if(INIT_DEBUG)
+					asm_out_section(sec, "# bitfield member %s (accounted for)\n", d_mem->spel);
+
 				if(!zero_width){
 					bitfields = bitfields_add(
 							bitfields, &nbitfields,
@@ -443,6 +451,9 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 					bitfields_out(sec, bitfields, &nbitfields, decl_type_for_bitfield(first_bf));
 					first_bf = NULL;
 				}
+
+				if(INIT_DEBUG)
+					asm_out_section(sec, "# normal member %s\n", d_mem->spel);
 
 				DEBUG("normal init for %s:", d_mem->spel);
 				asm_declare_init(sec, di_to_use, d_mem->ref);
