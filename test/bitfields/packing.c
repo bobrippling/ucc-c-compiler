@@ -50,6 +50,14 @@ struct t7 {
 	char op_flags;
 };
 
+struct rose_between_thorns {
+	// this tests a non-bitfield between bitfields
+	int x : 1,
+		y,
+		z : 1;
+	// and also tests a bitfield at the end, after a non-bitfield
+};
+
 struct t1 t1 = { 1, 128 };
 struct t2 t2 = { 1, 244 };
 struct t3 t3 = { 0, 253 };
@@ -57,6 +65,9 @@ struct t4 t4 = { 134, { 9, 255, 251, 28, 3, 0, 123 } };
 struct t5 t5 = { 0x1, 0x2, 0x3, { 9,9,9,9,9,9,9 } };
 struct t6 t6 = { 0x1, { 0x2 } };
 struct t7 t7 = { 52, 73 };
+struct rose_between_thorns t8 = {
+	.z = 1
+};
 
 _Static_assert(__alignof__(t1) == __alignof__(char), "");
 _Static_assert(__alignof__(t2) == __alignof__(int), "");
@@ -65,6 +76,7 @@ _Static_assert(__alignof__(t4) == __alignof__(int), "");
 _Static_assert(__alignof__(t5) == __alignof__(int), "");
 _Static_assert(__alignof__(t6) == __alignof__(int), "");
 _Static_assert(__alignof__(t7) == __alignof__(int), "");
+_Static_assert(__alignof__(t8) == __alignof__(int), "");
 
 extern int ec;
 
@@ -153,6 +165,17 @@ void check_t7(struct t7 *t, int a, int b)
 ;
 #endif
 
+void check_t8(struct rose_between_thorns *t, int x, int y, int z)
+#ifdef IMPL
+{
+	assert(t->x == x);
+	assert(t->y == y);
+	assert(t->z == z);
+}
+#else
+;
+#endif
+
 #if defined(WITH_MAIN)
 int main()
 {
@@ -164,6 +187,7 @@ int main()
 		struct t5 t5 = { 0x1, 0x2, 0x3, { 9,9,9,9,9,9,9 } };
 		struct t6 t6 = { 0x1, { 0x2 } };
 		struct t7 t7 = { 52, 73 };
+		struct rose_between_thorns t8 = { .z = 1 };
 
 		// check stack init / code gen
 		check_t1(&t1, 1, 128);
@@ -173,6 +197,7 @@ int main()
 		check_t5(&t5, 0x1, 0x2, 0x3, (char[7]){ 9,9,9,9,9,9,9 });
 		check_t6(&t6, 1, 2);
 		check_t7(&t7, 52, 73);
+		check_t8(&t8, 0, 0, -1);
 	}
 
 	// check global ones / static layout gen
@@ -183,6 +208,7 @@ int main()
 	check_t5(&t5, 0x1, 0x2, 0x3, (char[7]){ 9,9,9,9,9,9,9 });
 	check_t6(&t6, 1, 2);
 	check_t7(&t7, 52, 73);
+	check_t8(&t8, 0, 0, -1);
 
 	return ec;
 }

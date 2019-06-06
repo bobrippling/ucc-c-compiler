@@ -41,3 +41,10 @@ t7:
 .word 52
 .byte 73
 .space 1
+
+t8:
+.byte 0
+.space 3
+.long 0
+.byte 1
+.space 3

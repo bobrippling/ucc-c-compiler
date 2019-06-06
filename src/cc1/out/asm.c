@@ -448,6 +448,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 				if(nbitfields){
 					DEBUG("at non-bitfield, prev-bitfield out:", 0);
 
+					/* note: this call is repeated below */
 					bitfields_out(sec, bitfields, &nbitfields, decl_type_for_bitfield(first_bf));
 					first_bf = NULL;
 				}
@@ -472,8 +473,10 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 			}
 		}
 
-		if(nbitfields)
-			bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
+		if(nbitfields){
+			/* note: this call is repeated above */
+			bitfields_out(sec, bitfields, &nbitfields, decl_type_for_bitfield(first_bf));
+		}
 		free(bitfields);
 
 		/* need to pad to struct size */
