@@ -85,7 +85,11 @@ int sue_incomplete_chk(struct_union_enum_st *st, const where *w)
 		return 1;
 	}
 
-	UCC_ASSERT(st->foldprog == SUE_FOLDED_FULLY, "sizeof unfolded sue");
+	if(st->foldprog != SUE_FOLDED_FULLY){
+		assert(fold_had_error || parse_had_error); /* error emitted elsewhere */
+		return 1;
+	}
+
 	if(st->primitive == type_enum)
 		UCC_ASSERT(st->size > 0, "zero-sized enum");
 
