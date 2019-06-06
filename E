@@ -1,0 +1,32 @@
+fail: ./bitfields/init/desig.c
+	./bitfields/init/desig.c:21:2: warning: implicit declaration of function "printf"
+	  "printf("%d\n", *(int *)&des);"
+	   ^~~~~~
+	bitfield out -- new (ty=short)
+	bitfield out: 0x0 << 0 gives 0x0
+	bitfield out: 0x1 << 16 gives 0x10000
+	bitfield done with 0x10000
+	bitfield out -- new (ty=signed char)
+	bitfield out: 0x3 << 0 gives 0x3
+	bitfield out: 0x2 << 2 gives 0xb
+	bitfield done with 0xb
+	/tmp/ucc.iE1G1D: Assembler messages:
+	/tmp/ucc.iE1G1D:87: Warning: value 0x10000 truncated to 0x0
+	mismatching lines [0]: '0' and '65536'
+	./test.pl: command './desig.out | ./stdoutcheck.pl '65536' '-1 -2' '11'' failed
+fail: ./bitfields/init/grouping.c
+	./bitfields/init/grouping.c:18:2: warning: implicit declaration of function "printf"
+	  "printf("0x%lx\n", *(long *)&pad);"
+	   ^~~~~~
+	bitfield out -- new (ty=int)
+	bitfield out: 0x1 << 0 gives 0x1
+	bitfield done with 0x1
+	bitfield out -- new (ty=signed char)
+	bitfield out: 0x2 << 0 gives 0x2
+	bitfield out: 0x0 << 3 gives 0x2
+	bitfield out: 0x3 << 7 gives 0x182
+	bitfield done with 0x182
+	/tmp/ucc.5077VO: Assembler messages:
+	/tmp/ucc.5077VO:37: Warning: value 0x182 truncated to 0x82
+	mismatching lines [0]: '0x8200000001' and '0x18200000001'
+	./test.pl: command './grouping.out | ./stdoutcheck.pl '0x18200000001'' failed

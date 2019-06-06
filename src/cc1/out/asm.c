@@ -46,7 +46,7 @@
 
 #define ASM_COMMENT "#"
 
-#define INIT_DEBUG 0
+#define INIT_DEBUG 1
 
 #define DEBUG(s, ...) do{ \
 	if(INIT_DEBUG) fprintf(stderr, "\033[35m" s "\033[m\n", __VA_ARGS__); \
@@ -183,7 +183,9 @@ static void asm_declare_init_bitfields(
 
 	if(width > 0){
 		asm_declare_init_type(sec, ty);
-		asm_out_section(sec, "%" NUMERIC_FMT_D "\n", v);
+		fprintf(stderr, "output: %lld (width %d --> %#llx & %#llx --> %#llx)\n",
+				v, width, v, ~(-1ull << width), v & ~(-1ull << (width - 1)));
+		asm_out_section(sec, "%" NUMERIC_FMT_D "\n", v & ~(-1ull << (width - 1)));
 	}else{
 		asm_out_section(sec,
 				ASM_COMMENT " skipping zero length bitfield%s init\n",
@@ -429,7 +431,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 						DEBUG("new bitfield group (%s is new boundary), old:",
 								d_mem->spel);
 						/* next bitfield group - store the current */
-						bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
+						bitfields_out(sec, bitfields, &nbitfields, decl_type_for_bitfield(first_bf));
 					}
 					if(!zero_width)
 						first_bf = d_mem;
