@@ -42,6 +42,7 @@ BACKEND_TARGETTED = \
 
 OBJ_TEST = test.o ${OBJ_REST} ${OBJ_UTIL}
 OBJ_CC1 = cc1.o ${OBJ_REST} ${OBJ_UTIL}
+OBJ_CLEAN = test.o cc1.o ${OBJ_REST}
 
 all: cc1 tags check
 
@@ -59,7 +60,7 @@ check: test
 
 clean:
 	@echo clean cc1
-	$Qrm -f cc1 test ${OBJ_CC1} ${OBJ_TEST}
+	$Qrm -f cc1 test ${OBJ_CLEAN}
 
 .PHONY: clean check
 
