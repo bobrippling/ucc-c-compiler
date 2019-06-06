@@ -36,6 +36,8 @@ static int escape_char1(int c)
 	};
 	unsigned int i;
 
+	/* TODO: https://github.com/maandree/json.h/blob/master/json.h#L154 */
+
 	for(i = 0; i < countof(escapechars); i++)
 		if(escapechars[i].from == c)
 			return escapechars[i].to;
