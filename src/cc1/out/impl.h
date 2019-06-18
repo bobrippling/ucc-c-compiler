@@ -68,7 +68,7 @@ int impl_reg_savable(const struct vreg *);
 /* callee save register bools */
 int impl_reg_is_scratch(type *fnty, const struct vreg *);
 int impl_reg_is_callee_save(type *fnty, const struct vreg *r);
-const int *impl_callee_save_regs(type *fnty, unsigned *pn);
+const struct vreg *impl_callee_save_regs(type *fnty, unsigned *pn);
 
 void impl_comment(out_ctx *, const char *fmt, va_list l);
 

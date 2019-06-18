@@ -72,7 +72,7 @@ static const struct calling_conv_desc
 	struct vreg call_regs[6 + 8];
 
 	unsigned n_callee_save_regs;
-	int callee_save_regs[6];
+	struct vreg callee_save_regs[9];
 } calling_convs[] = {
 	[conv_x64_sysv] = {
 		1,
@@ -96,13 +96,13 @@ static const struct calling_conv_desc
 		},
 		6,
 		{
-			X86_64_REG_RBX,
-			X86_64_REG_RBP,
+			{ X86_64_REG_RBX, 0 },
+			{ X86_64_REG_RBP, 0 },
 
-			X86_64_REG_R12,
-			X86_64_REG_R13,
-			X86_64_REG_R14,
-			X86_64_REG_R15
+			{ X86_64_REG_R12, 0 },
+			{ X86_64_REG_R13, 0 },
+			{ X86_64_REG_R14, 0 },
+			{ X86_64_REG_R15, 0 },
 		}
 	},
 
@@ -125,9 +125,9 @@ static const struct calling_conv_desc
 		},
 		3,
 		{
-			X86_64_REG_RBX,
-			X86_64_REG_RDI,
-			X86_64_REG_RSI
+			{ X86_64_REG_RBX, 0 },
+			{ X86_64_REG_RDI, 0 },
+			{ X86_64_REG_RSI, 0 },
 		}
 	},
 
@@ -524,7 +524,7 @@ static int x86_func_nargs(type *rf)
 	return dynarray_count(type_funcargs(rf)->arglist);
 }
 
-const int *impl_callee_save_regs(type *fnty, unsigned *pn)
+const struct vreg *impl_callee_save_regs(type *fnty, unsigned *pn)
 {
 	const struct calling_conv_desc *ent = x86_conv_lookup(fnty);
 
