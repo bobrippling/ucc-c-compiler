@@ -114,6 +114,11 @@ static const struct calling_conv_desc
 			{ X86_64_REG_RDX, 0 },
 			{ X86_64_REG_R8,  0 },
 			{ X86_64_REG_R9,  0 },
+
+			{ X86_64_REG_XMM0, 1 },
+			{ X86_64_REG_XMM1, 1 },
+			{ X86_64_REG_XMM2, 1 },
+			{ X86_64_REG_XMM3, 1 },
 		}
 	},
 
