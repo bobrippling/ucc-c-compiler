@@ -141,7 +141,7 @@ static void dump_options(void)
 	fprintf(stderr, "  -pedantic{,-errors}\n");
 	fprintf(stderr, "  -W(no-)?(all|extra|everything|gnu|error(=...)|...)\n");
 	fprintf(stderr, "  -w\n");
-	fprintf(stderr, "  -std=(gnu|c)(99|90|89|11), -ansi\n");
+	fprintf(stderr, "  -std=c89/c90/c99/c11/c17/c18 / -ansi / -std=gnu...\n");
 	fprintf(stderr, "  -f(sanitize=...|sanitize-error=...|sanitize-undefined-trap-on-error)\n");
 	fprintf(stderr, "  -fno-sanitize=all\n");
 	fprintf(stderr, "  -fvisibility=default|hidden|protected\n");
