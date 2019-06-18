@@ -4,8 +4,11 @@
 
 int std_from_str(const char *std, enum c_std *penu, int *gnu)
 {
-	if(!strcmp(std, "-ansi"))
+	if(!strcmp(std, "-ansi")){
+		if(gnu)
+			*gnu = 0;
 		goto std_c90;
+	}
 
 	if(strncmp(std, "-std=", 5))
 		return 1;
