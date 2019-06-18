@@ -107,6 +107,8 @@ static const struct calling_conv_desc
 	},
 
 	[conv_x64_ms]   = {
+		/* note this is currently broken - we need to allocate 32 bytes of shadow
+		 * space for the callee too */
 		1,
 		4,
 		{
@@ -119,7 +121,21 @@ static const struct calling_conv_desc
 			{ X86_64_REG_XMM1, 1 },
 			{ X86_64_REG_XMM2, 1 },
 			{ X86_64_REG_XMM3, 1 },
-		}
+		},
+		9,
+		{
+			{ X86_64_REG_RBX, 0 },
+			{ X86_64_REG_RDI, 0 },
+			{ X86_64_REG_RSI, 0 },
+			{ X86_64_REG_R12, 0 },
+			{ X86_64_REG_R13, 0 },
+			{ X86_64_REG_R14, 0 },
+			{ X86_64_REG_R15, 0 },
+
+			{ X86_64_REG_XMM6, 1 },
+			{ X86_64_REG_XMM7, 1 },
+			/* xmm8 - xmm15 are also callee saved, but we don't use them */
+		},
 	},
 
 	[conv_cdecl] = {
