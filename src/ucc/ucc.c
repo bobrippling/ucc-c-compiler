@@ -81,6 +81,13 @@ struct ucc
 	} spanning_fopt;
 };
 
+enum dyld
+{
+	DYLD_DEFAULT,
+	DYLD_GLIBC,
+	DYLD_MUSL
+};
+
 enum tristate
 {
 	TRI_UNSET,
@@ -98,6 +105,7 @@ struct uccvars
 	int debug, profile;
 	enum tristate pie;
 	enum tristate multilib;
+	enum dyld dyld;
 	int help, dumpmachine;
 };
 
@@ -698,6 +706,10 @@ static void parse_argv(
 						vars->multilib = *mopt == 'n' ? TRI_FALSE : TRI_TRUE;
 						continue;
 					}
+					if(!strcmp(mopt, "musl") || !strcmp(mopt, "glibc")){
+						vars->dyld = *mopt == 'm' ? DYLD_MUSL : DYLD_GLIBC;
+						continue;
+					}
 
 					ADD_ARG(mode_compile);
 					continue;
@@ -1101,6 +1113,9 @@ static void state_from_triple(
 		dynarray_add(&state->args[mode_preproc], ustrdup("/usr/local/include"));
 	}
 
+	if(triple->sys != SYS_linux && vars->dyld != DYLD_DEFAULT)
+		die("-mmusl/-mglibc given for non-linux system");
+
 	switch(triple->sys){
 		case SYS_linux:
 		{
@@ -1118,8 +1133,21 @@ static void state_from_triple(
 				/* don't mention a dynamic linker - not used for generating a shared library */
 			}else{
 				if(!vars->static_){
+					const char *dyld;
+
 					dynarray_add(&state->ldflags_pre_user, ustrdup("-dynamic-linker"));
-					dynarray_add(&state->ldflags_pre_user, ustrdup("/lib64/ld-linux-x86-64.so.2"));
+
+					switch(vars->dyld){
+						case DYLD_DEFAULT:
+						case DYLD_GLIBC:
+							dyld = "/lib64/ld-linux-x86-64.so.2";
+							break;
+						case DYLD_MUSL:
+							dyld = "/lib/ld-musl-x86_64.so.1";
+							break;
+					}
+					dynarray_add(&state->ldflags_pre_user, ustrdup(dyld));
+
 				}else{
 					dynarray_add(&state->ldflags_pre_user, ustrdup("-no-dynamic-linker"));
 				}
@@ -1281,6 +1309,7 @@ static void usage(void)
 	fprintf(stderr, "  -target target: Compile as-if for the given target (specified as a partial target-triple)\n");
 	fprintf(stderr, "  -dumpmachine: Display the current machine's detected target triple\n");
 	fprintf(stderr, "  -m[no-]multilib: Assume a multilib installation\n");
+	fprintf(stderr, "  -mmusl / -mglibc: Target the specified libc's dynamic linker\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Input options\n");
 	fprintf(stderr, "  -xc: Treat input as C\n");
