@@ -1274,11 +1274,13 @@ static void usage(void)
 	fprintf(stderr, "  -S: Only run preprocessor and compiler\n");
 	fprintf(stderr, "  -c: Only run preprocessor, compiler and assembler\n");
 	fprintf(stderr, "  -fuse-cpp=...: Specify a preprocessor executable to use\n");
-	fprintf(stderr, "  -m[no-]multilib: Assume a multilib installation\n");
 	fprintf(stderr, "  -time: Output time for each stage\n");
 	fprintf(stderr, "  -wrapper exe,arg1,...: Prefix stage commands with this executable and arguments\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Target options\n");
 	fprintf(stderr, "  -target target: Compile as-if for the given target (specified as a partial target-triple)\n");
 	fprintf(stderr, "  -dumpmachine: Display the current machine's detected target triple\n");
+	fprintf(stderr, "  -m[no-]multilib: Assume a multilib installation\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Input options\n");
 	fprintf(stderr, "  -xc: Treat input as C\n");
