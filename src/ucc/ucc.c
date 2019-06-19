@@ -1067,7 +1067,8 @@ static void state_from_triple(
 	switch(triple->sys){
 		case SYS_linux:
 		{
-			const char *target = triple_to_str(triple, 0);
+			const char *const target = triple_to_str(triple, 0);
+			const char *multilib_prefix = target;
 			int is_pie = vars->pie != TRI_FALSE;
 
 			if(is_pie && !vars->shared)
@@ -1097,14 +1098,14 @@ static void state_from_triple(
 					/* don't link to crt1 - don't want the startup files, just i[nit] and e[nd] */
 				}else{
 					if(vars->profile){
-						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/gcrt1.o", target);
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/gcrt1.o", multilib_prefix);
 					}else if(is_pie){
 						if(vars->static_)
-							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/rcrt1.o", target);
+							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/rcrt1.o", multilib_prefix);
 						else
-							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/Scrt1.o", target);
+							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/Scrt1.o", multilib_prefix);
 					}else{
-						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crt1.o", target);
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crt1.o", multilib_prefix);
 					}
 					dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
 				}
@@ -1122,7 +1123,7 @@ static void state_from_triple(
 				{
 					char *dot;
 
-					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crti.o", target);
+					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crti.o", multilib_prefix);
 					dot = strrchr(usrlib, '.');
 					assert(dot && dot > usrlib);
 
@@ -1135,7 +1136,7 @@ static void state_from_triple(
 
 			if(vars->stdlibinc){
 				dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
-				dynarray_add(&state->args[mode_preproc], ustrprintf("/usr/include/%s", target));
+				dynarray_add(&state->args[mode_preproc], ustrprintf("/usr/include/%s", multilib_prefix));
 			}
 			break;
 		}
