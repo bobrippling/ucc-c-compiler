@@ -97,6 +97,7 @@ struct uccvars
 	int stdlibinc, builtininc, defaultlibs, startfiles;
 	int debug, profile;
 	enum tristate pie;
+	enum tristate multilib;
 	int help, dumpmachine;
 };
 
@@ -686,9 +687,21 @@ static void parse_argv(
 					if(argv[i][2])
 						goto word; /* -wabc... */
 					ADD_ARG(mode_preproc); /* -w */
-				case 'm':
 					ADD_ARG(mode_compile);
 					continue;
+
+				case 'm':
+				{
+					const char *mopt = argv[i] + 2;
+
+					if(!strcmp(mopt, "multilib") || !strcmp(mopt, "no-multilib")){
+						vars->multilib = *mopt == 'n' ? TRI_FALSE : TRI_TRUE;
+						continue;
+					}
+
+					ADD_ARG(mode_compile);
+					continue;
+				}
 
 				case 'D':
 				case 'U':
@@ -1038,6 +1051,30 @@ static void vars_default(struct uccvars *vars)
 	vars->defaultlibs = 1;
 	vars->startfiles = 1;
 	vars->pie = TRI_UNSET;
+	vars->multilib = TRI_UNSET;
+}
+
+static int should_multilib(enum tristate multilib, const char *prefix)
+{
+	/*
+	 * decide whether we're on a multilib system
+	 * multilib: /usr/lib/x86_64-linux-gnu/crt1.o
+	 * normal:   /usr/lib/crt1.o
+	 */
+	char path[64];
+
+	switch(multilib){
+		case TRI_FALSE: return 0;
+		case TRI_TRUE: return 1;
+		case TRI_UNSET: break;
+	}
+
+	xsnprintf(path, sizeof(path), LINUX_LIBC_PREFIX "%s", prefix);
+
+	/* note that this ignores cross compiling
+	 * gcc and clang have this as a build-time option
+	 */
+	return access(path, F_OK) == 0;
 }
 
 static void state_from_triple(
@@ -1069,7 +1106,10 @@ static void state_from_triple(
 		{
 			const char *const target = triple_to_str(triple, 0);
 			const char *multilib_prefix = target;
-			int is_pie = vars->pie != TRI_FALSE;
+			const int is_pie = vars->pie != TRI_FALSE;
+
+			if(!should_multilib(vars->multilib, multilib_prefix))
+				multilib_prefix = "";
 
 			if(is_pie && !vars->shared)
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
@@ -1234,6 +1274,7 @@ static void usage(void)
 	fprintf(stderr, "  -S: Only run preprocessor and compiler\n");
 	fprintf(stderr, "  -c: Only run preprocessor, compiler and assembler\n");
 	fprintf(stderr, "  -fuse-cpp=...: Specify a preprocessor executable to use\n");
+	fprintf(stderr, "  -m[no-]multilib: Assume a multilib installation\n");
 	fprintf(stderr, "  -time: Output time for each stage\n");
 	fprintf(stderr, "  -wrapper exe,arg1,...: Prefix stage commands with this executable and arguments\n");
 	fprintf(stderr, "  -target target: Compile as-if for the given target (specified as a partial target-triple)\n");
