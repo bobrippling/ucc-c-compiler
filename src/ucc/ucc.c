@@ -605,6 +605,7 @@ static void parse_argv(
 		int *const assumptions,
 		int *const current_assumption)
 {
+#define ADD_ARG(to, arg) dynarray_add(&state->args[to], ustrdup(arg))
 	int had_MD = 0, had_MF = 0;
 	int i;
 	int seen_double_dash = 0;
@@ -619,8 +620,6 @@ static void parse_argv(
 			char *arg = argv[i];
 
 			switch(arg[1]){
-#define ADD_ARG(to) dynarray_add(&state->args[to], ustrdup(arg))
-
 				case 'W':
 				{
 					/* check for W%c, */
@@ -676,11 +675,11 @@ static void parse_argv(
 					|| !strncmp(argv[i], "-fmessage-length=", 17))
 					{
 						/* preproc gets this too */
-						ADD_ARG(mode_preproc);
+						ADD_ARG(mode_preproc, arg);
 					}
 
 					if(!strcmp(argv[i], "-fcpp-offsetof")){
-						ADD_ARG(mode_preproc);
+						ADD_ARG(mode_preproc, arg);
 						continue;
 					}
 
@@ -688,14 +687,14 @@ static void parse_argv(
 						die("-fsystem-cpp has been removed, use -fuse-cpp[=path/to/cpp] instead");
 
 					/* pass the rest onto cc1 */
-					ADD_ARG(mode_compile);
+					ADD_ARG(mode_compile, arg);
 					continue;
 
 				case 'w':
 					if(argv[i][2])
 						goto word; /* -wabc... */
-					ADD_ARG(mode_preproc); /* -w */
-					ADD_ARG(mode_compile);
+					ADD_ARG(mode_preproc, arg); /* -w */
+					ADD_ARG(mode_compile, arg);
 					continue;
 
 				case 'm':
@@ -711,7 +710,7 @@ static void parse_argv(
 						continue;
 					}
 
-					ADD_ARG(mode_compile);
+					ADD_ARG(mode_compile, arg);
 					continue;
 				}
 
@@ -720,7 +719,7 @@ static void parse_argv(
 					found = 1;
 				case 'P':
 arg_cpp:
-					ADD_ARG(mode_preproc);
+					ADD_ARG(mode_preproc, arg);
 					if(!strcmp(argv[i] + 1, "M")){
 						/* cc -M *.c implies -E -w */
 						state->mode = mode_preproc;
@@ -741,7 +740,7 @@ arg_cpp:
 						arg = argv[i];
 						if(!arg)
 							die("-MF needs an argument");
-						ADD_ARG(mode_preproc);
+						ADD_ARG(mode_preproc, arg);
 						had_MF = 1;
 						continue;
 					}
@@ -751,7 +750,7 @@ arg_cpp:
 							/* allow a space, e.g. "-D" "arg" */
 							if(!(arg = argv[++i]))
 								goto missing_arg;
-							ADD_ARG(mode_preproc);
+							ADD_ARG(mode_preproc, arg);
 						}
 					}
 					continue;
@@ -769,7 +768,7 @@ arg_cpp:
 				case 'l':
 				case 'L':
 arg_ld:
-					ADD_ARG(mode_link);
+					ADD_ARG(mode_link, arg);
 					continue;
 
 #define CHECK_1() if(argv[i][2]) goto unrec;
@@ -788,8 +787,8 @@ arg_ld:
 					continue;
 
 				case 'O':
-					ADD_ARG(mode_compile);
-					ADD_ARG(mode_preproc); /* __OPTIMIZE__, etc */
+					ADD_ARG(mode_compile, arg);
+					ADD_ARG(mode_preproc, arg); /* __OPTIMIZE__, etc */
 					continue;
 
 				case 'g':
@@ -806,7 +805,7 @@ arg_ld:
 						vars->debug = 1;
 					}
 
-					ADD_ARG(mode_compile);
+					ADD_ARG(mode_compile, arg);
 					/* don't pass to the assembler */
 					continue;
 				}
@@ -839,7 +838,7 @@ arg_ld:
 						goto missing_arg;
 
 					arg = argv[i];
-					ADD_ARG(target);
+					ADD_ARG(target, arg);
 					continue;
 				}
 
@@ -899,11 +898,11 @@ word:
 						goto arg_ld;
 
 					if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
-						ADD_ARG(mode_compile);
-						ADD_ARG(mode_preproc);
+						ADD_ARG(mode_compile, arg);
+						ADD_ARG(mode_preproc, arg);
 					}
 					else if(!strcmp(argv[i], "-pedantic") || !strcmp(argv[i], "-pedantic-errors"))
-						ADD_ARG(mode_compile);
+						ADD_ARG(mode_compile, arg);
 
 					/* stdlib = startfiles and defaultlibs */
 					else if(!strcmp(argv[i], "-nostdlib"))
@@ -938,7 +937,7 @@ word:
 					else if(!strcmp(argv[i], "-v"))
 						ucc_ext_cmds_show(1);
 					else if(!strcmp(argv[i], "-pg")){
-						ADD_ARG(mode_compile);
+						ADD_ARG(mode_compile, arg);
 						vars->profile = 1;
 					}
 					else if(!strncmp(argv[i], "-emit", 5)){
@@ -963,9 +962,9 @@ word:
 							goto missing_arg;
 					}
 					else if(!strcmp(argv[i], "-trigraphs"))
-						ADD_ARG(mode_preproc);
+						ADD_ARG(mode_preproc, arg);
 					else if(!strcmp(argv[i], "-digraphs"))
-						ADD_ARG(mode_preproc);
+						ADD_ARG(mode_preproc, arg);
 					else if(!strcmp(argv[i], "-save-temps"))
 						save_temps = 1;
 					else if(!strcmp(argv[i], "-isystem")){
@@ -979,11 +978,11 @@ word:
 						if(!vars->target)
 							goto missing_arg;
 
-						ADD_ARG(mode_compile);
-						ADD_ARG(mode_preproc);
+						ADD_ARG(mode_compile, arg);
+						ADD_ARG(mode_preproc, arg);
 						arg = argv[++i];
-						ADD_ARG(mode_compile);
-						ADD_ARG(mode_preproc);
+						ADD_ARG(mode_compile, arg);
+						ADD_ARG(mode_preproc, arg);
 					}
 					else if(!strcmp(argv[i], "-time"))
 						time_subcmds = 1;
@@ -1028,6 +1027,7 @@ input:
 		dynarray_add(&state->args[mode_preproc], ustrdup("-MF"));
 		dynarray_add(&state->args[mode_preproc], depfile);
 	}
+#undef ADD_ARG
 }
 
 static void merge_states(struct ucc *state, struct ucc *append)
