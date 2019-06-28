@@ -248,10 +248,9 @@ unsigned type_primitive_size(enum type_primitive tp)
 
 		case type_long:
 		case type_ulong:
-			/* 4 on 32-bit */
 			if(IS_32_BIT())
-				return 4; /* FIXME: 32-bit long */
-			return UCC_SZ_LONG;
+				return UCC_SZ_LONG_M32;
+			return UCC_SZ_LONG_M64;
 
 		case type_llong:
 		case type_ullong:
@@ -292,9 +291,9 @@ type_primitive_max(enum type_primitive p, int is_signed)
 			max = UCC_SCHAR_MAX;
 			break;
 
-		case type_short: max = UCC_SHRT_MAX;      break;
-		case type_int:   max = UCC_INT_MAX;       break;
-		case type_long:  max = UCC_LONG_MAX;      break;
+		case type_short: max = UCC_SHRT_MAX; break;
+		case type_int:   max = UCC_INT_MAX; break;
+		case type_long:  max = IS_32_BIT() ? UCC_LONG_MAX_M32 : UCC_LONG_MAX_M64; break;
 		case type_llong: max = UCC_LONG_LONG_MAX; break;
 
 		case type_float:
