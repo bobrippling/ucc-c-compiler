@@ -481,24 +481,34 @@ const char *impl_val_str_r(
 
 int impl_scratch_reg_to_idx(const struct vreg *r)
 {
+	int nints, nfloats;
+	int ret;
+	impl_scratch_regs(NULL, &nints, &nfloats);
+
 	if(r->is_float){
-		int nints;
-		impl_scratch_regs(NULL, &nints, NULL);
-		return r->idx + nints;
+		if(r->idx >= nfloats)
+			return -1;
+		ret = r->idx + nints;
 	}else{
-		return r->idx;
+		if(r->idx >= nints)
+			return -1;
+		ret = r->idx;
 	}
+
+	return ret;
 }
 
 void impl_scratch_idx_to_reg(int scratch, struct vreg *r)
 {
-	if(r->is_float){
-		int nints;
-		impl_scratch_regs(NULL, &nints, NULL);
+	int nints, nfloats;
+	impl_scratch_regs(NULL, &nints, &nfloats);
+
+	assert(scratch < nints + nfloats && "index isn't a scratch");
+
+	if(r->is_float)
 		r->idx = scratch - nints;
-	}else{
+	else
 		r->idx = scratch;
-	}
 }
 
 void impl_scratch_regs(
