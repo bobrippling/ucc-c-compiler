@@ -296,18 +296,22 @@ static int v_unused_reg2(
 
 	OCTX_ITER_VALS(octx, it){
 		const out_val *this = &it->val;
-		if(this->retains
+		if(this->retains == 0)
+			continue;
+		if(this->type != V_REG)
+			continue;
+		if(this->bits.regoff.reg.is_float != fp)
+			continue;
+
 		/*&& !out_val_is_blockphi(this, octx->current_blk)
 		 * we don't want to overwrite phiblock values (so check them in this loop),
 		 * even if we ignore them in other parts of the register liveness code */
-		&& this->type == V_REG
-		&& this->bits.regoff.reg.is_float == fp
-		&& regtest(octx->current_fnty, &this->bits.regoff.reg))
-		{
-			if(!first)
-				first = this;
-			used[impl_scratch_reg_to_idx(&this->bits.regoff.reg)] = 1;
-		}
+		if(!regtest(octx->current_fnty, &this->bits.regoff.reg))
+			continue;
+
+		if(!first)
+			first = this;
+		used[impl_scratch_reg_to_idx(&this->bits.regoff.reg)] = 1;
 	}
 
 	for(i = begin; i < end; i++){
