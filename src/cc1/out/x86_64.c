@@ -561,13 +561,14 @@ void impl_scratch_regs(
 			{ X86_64_REG_XMM6, 1 },
 			{ X86_64_REG_XMM7, 1 },
 		};
+		const int nf = 8;
 
 		if(out_regs)
 			*out_regs = regs;
 		if(nints)
-			*nints = 16;
+			*nints = countof(regs) - nf;
 		if(nfloats)
-			*nfloats = 8;
+			*nfloats = nf;
 	}
 }
 
