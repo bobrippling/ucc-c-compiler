@@ -32,6 +32,7 @@ int atoi(const char *s)
 	return i;
 }
 
+#ifdef __x86_64__
 div_t div(int n, int denom)
 {
 	/* TODO: __asm__ */
@@ -40,6 +41,9 @@ div_t div(int n, int denom)
 		.rem = n % denom,
 	};
 }
+#else
+#warning TODO: add stret support for this arch
+#endif
 
 void *malloc(size_t size)
 {
