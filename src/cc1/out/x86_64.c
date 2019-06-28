@@ -533,8 +533,8 @@ void impl_scratch_regs(
 			{ X86_64_REG_RDI, 0 },
 			{ X86_64_REG_RSI, 0 },
 
-			{ X86_64_REG_R8 , 0 },
-			{ X86_64_REG_R9 , 0 },
+			{ X86_64_REG_R8,  0 },
+			{ X86_64_REG_R9,  0 },
 			{ X86_64_REG_R10, 0 },
 			{ X86_64_REG_R11, 0 },
 			{ X86_64_REG_R12, 0 },
