@@ -132,16 +132,18 @@ integral_t integral_truncate(
 
 int integral_high_bit(integral_t val, type *ty)
 {
+	const int tysz = type_size(ty, NULL);
+
 	if(type_is_signed(ty)){
 		const sintegral_t as_signed = val;
 
 		if(as_signed < 0)
-			val = integral_truncate(val, type_size(ty, NULL), NULL);
+			val = integral_truncate(val, tysz, NULL);
 	}
 
 	{
 		int r;
 		for(r = -1; val; r++, val >>= 1);
-		return r;
+		return MIN(r, tysz * CHAR_BIT - 1);
 	}
 }
