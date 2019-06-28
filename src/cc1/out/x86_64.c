@@ -152,14 +152,15 @@ static const char *x86_intreg_str(unsigned reg, type *r)
 		{ "dil",  "di", "edi", "rdi" },
 		{ "sil",  "si", "esi", "rsi" },
 
-		{  "bpl", "bp", "ebp", "rbp" },
-		{  "spl", "sp", "esp", "rsp" },
-
 		/* r[8 - 15] -> r8b, r8w, r8d,  r8 */
 #define REG(x) {  "r" #x "b",  "r" #x "w", "r" #x "d", "r" #x  }
 		REG(8),  REG(9),  REG(10), REG(11),
 		REG(12), REG(13), REG(14), REG(15),
 #undef REG
+
+		{  "bpl", "bp", "ebp", "rbp" },
+		{  "spl", "sp", "esp", "rsp" },
+
 	};
 
 	UCC_ASSERT(reg < countof(rnames), "invalid x86 int reg %d", reg);

@@ -9,19 +9,30 @@
 #define X86_64_REG_RDI 4
 #define X86_64_REG_RSI 5
 
-#define X86_64_REG_RBP 6
-#define X86_64_REG_RSP 7
+/*
+ * The ordering here is important.
+ *
+ * All scratch registers must be listed from 0-N, followed
+ * by other registers (stack pointer, base pointer, etc).
+ *
+ * The scratch registers must be contiguous as they're used
+ * for indexing into an array marking them as used.
+ * Scratch register themselves are defined in
+ * impl_scratch_regs(), which allows flexibility in
+ * different targets / calling conventions.
+ */
 
-/* ensure these (not available on i386) come last,
- * for register indexing reasons */
-#define X86_64_REG_R8  8
-#define X86_64_REG_R9  9
-#define X86_64_REG_R10 10
-#define X86_64_REG_R11 11
-#define X86_64_REG_R12 12
-#define X86_64_REG_R13 13
-#define X86_64_REG_R14 14
-#define X86_64_REG_R15 15
+#define X86_64_REG_R8  6
+#define X86_64_REG_R9  7
+#define X86_64_REG_R10 8
+#define X86_64_REG_R11 9
+#define X86_64_REG_R12 10
+#define X86_64_REG_R13 11
+#define X86_64_REG_R14 12
+#define X86_64_REG_R15 13
+
+#define X86_64_REG_RBP 14
+#define X86_64_REG_RSP 15
 
 #define X86_64_REG_XMM0 0
 #define X86_64_REG_XMM1 1
