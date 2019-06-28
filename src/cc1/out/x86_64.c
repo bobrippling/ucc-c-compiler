@@ -479,7 +479,7 @@ const char *impl_val_str_r(
 	return buf;
 }
 
-int impl_reg_to_idx(const struct vreg *r)
+int impl_scratch_reg_to_idx(const struct vreg *r)
 {
 	if(r->is_float){
 		int nints;
@@ -490,7 +490,7 @@ int impl_reg_to_idx(const struct vreg *r)
 	}
 }
 
-void impl_scratch_to_reg(int scratch, struct vreg *r)
+void impl_scratch_idx_to_reg(int scratch, struct vreg *r)
 {
 	if(r->is_float){
 		int nints;

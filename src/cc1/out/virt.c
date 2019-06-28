@@ -306,7 +306,7 @@ static int v_unused_reg2(
 		{
 			if(!first)
 				first = this;
-			used[impl_reg_to_idx(&this->bits.regoff.reg)] = 1;
+			used[impl_scratch_reg_to_idx(&this->bits.regoff.reg)] = 1;
 		}
 	}
 
@@ -315,7 +315,7 @@ static int v_unused_reg2(
 			/* `i' should be in the `fp' range, since we're going
 			 * from `begin' to `end' */
 			out->is_float = fp;
-			impl_scratch_to_reg(i, out);
+			impl_scratch_idx_to_reg(i, out);
 
 			if(regtest(octx->current_fnty, out)){
 				free(used);
@@ -521,12 +521,12 @@ void v_save_regs(
 
 void v_reserve_reg(out_ctx *octx, const struct vreg *r)
 {
-	octx->reserved_regs[impl_reg_to_idx(r)]++;
+	octx->reserved_regs[impl_scratch_reg_to_idx(r)]++;
 }
 
 void v_unreserve_reg(out_ctx *octx, const struct vreg *r)
 {
-	octx->reserved_regs[impl_reg_to_idx(r)]--;
+	octx->reserved_regs[impl_scratch_reg_to_idx(r)]--;
 }
 
 #define CASE_SWAP(from, to) \
