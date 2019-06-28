@@ -321,8 +321,7 @@ static int v_unused_reg2(
 
 	for(i = begin; i < end; i++){
 		if(!used[i]){
-			/* `i' should be in the `fp' range, since we're going
-			 * from `begin' to `end' */
+			assert(begin <= i && i <= end);
 			out->is_float = fp;
 			impl_scratch_idx_to_reg(i, out);
 
