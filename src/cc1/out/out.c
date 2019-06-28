@@ -10,7 +10,6 @@
 
 #include "../../util/platform.h"
 #include "../pack.h"
-#include "../defs.h"
 #include "../const.h"
 #include "../type_nav.h"
 #include "../type_is.h"

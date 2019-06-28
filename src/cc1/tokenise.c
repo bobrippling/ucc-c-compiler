@@ -9,10 +9,12 @@
 #include <errno.h>
 
 #include "../util/util.h"
-#include "tokenise.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
 #include "../util/escape.h"
+#include "../util/limits.h"
+
+#include "tokenise.h"
 #include "str.h"
 #include "cc1.h"
 #include "cc1_where.h"
@@ -22,10 +24,6 @@
 #include "pragma.h"
 
 #define DEBUG_LINE_DIRECTIVE 0
-
-#ifndef CHAR_BIT
-#  define CHAR_BIT 8
-#endif
 
 #define KEYWORD(mode, x) { #x, token_ ## x, mode }
 
@@ -952,7 +950,7 @@ static void read_char(int is_wide)
 		}
 
 		if(multichar){
-			if(ch & (~0UL << (CHAR_BIT * type_primitive_size(type_int))))
+			if(ch & (~0UL << (UCC_CHAR_BIT * type_primitive_size(type_int))))
 				cc1_warn_at(NULL, char_toolarge, "multi-char constant too large");
 			else
 				cc1_warn_at(NULL, multichar, "multi-char constant");

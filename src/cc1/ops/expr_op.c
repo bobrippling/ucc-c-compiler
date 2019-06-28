@@ -2,9 +2,11 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "../defs.h"
+#include "../../util/limits.h"
+
 #include "ops.h"
 #include "expr_op.h"
+
 #include "../out/lbl.h"
 #include "../out/asm.h"
 #include "../type_is.h"
@@ -1052,7 +1054,7 @@ static int op_shift_check(expr *e)
 		case op_shiftl:
 		case op_shiftr:
 		{
-			const unsigned ty_sz = CHAR_BIT * type_size(e->lhs->tree_type, &e->lhs->where);
+			const unsigned ty_sz = UCC_CHAR_BIT * type_size(e->lhs->tree_type, &e->lhs->where);
 			int undefined = 0;
 			consty lhs, rhs;
 			int emitted = 0;

@@ -8,6 +8,7 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/limits.h"
 
 #include "parse_attr.h"
 
@@ -155,7 +156,7 @@ static attribute *parse_attr_nonnull(symtable *symtab, const char *ident)
 				}else{
 					/* implicitly disallow functions with >32 args */
 					/* n-1, since we convert from 1-base to 0-base */
-					if(n < sizeof(l) * CHAR_BIT)
+					if(n < sizeof(l) * UCC_CHAR_BIT)
 						l |= 1 << (n - 1);
 				}
 			}

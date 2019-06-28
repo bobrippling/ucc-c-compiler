@@ -25,7 +25,7 @@ typedef double floating_t;
 #define NUMERIC_FMT_U "llu"
 #define NUMERIC_FMT_X "llx"
 #define NUMERIC_T_MAX ULLONG_MAX
-#define INTEGRAL_BITS (sizeof(integral_t) * CHAR_BIT)
+#define INTEGRAL_BITS (sizeof(integral_t) * UCC_CHAR_BIT)
 struct numeric
 {
 	union

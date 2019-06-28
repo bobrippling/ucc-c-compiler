@@ -2,12 +2,13 @@
 #include <string.h>
 #include <stdarg.h>
 
-#include "ops.h"
 #include "../../util/alloc.h"
 #include "../../util/platform.h"
+#include "../../util/limits.h"
+
+#include "ops.h"
 #include "expr_cast.h"
 #include "../sue.h"
-#include "../defs.h"
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../out/dbg.h"
@@ -169,8 +170,8 @@ static integral_t convert_integral_to_integral_warn(
 	integral_t ret;
 
 	if(!signed_out && signed_in){
-		const unsigned sz_in_bits = CHAR_BIT * sz_in;
-		const unsigned sz_out_bits = CHAR_BIT * sz_out;
+		const unsigned sz_in_bits = UCC_CHAR_BIT * sz_in;
+		const unsigned sz_out_bits = UCC_CHAR_BIT * sz_out;
 
 		/* e.g. "(unsigned)-1". Pick to_iv, i.e. the unsigned truncated repr
 		 * this assumes that signed ints on the host machine we're run on
@@ -185,7 +186,7 @@ static integral_t convert_integral_to_integral_warn(
 			ret |= -1ULL << sz_in_bits;
 
 			/* need to unmask any top bits, e.g. int instead of long long */
-			if(sz_out_bits >= CHAR_BIT * sizeof(ret)){
+			if(sz_out_bits >= UCC_CHAR_BIT * sizeof(ret)){
 				/* shift would be a no-op (technically UB) */
 			}else{
 				ret &= -1ULL >> sz_out_bits;

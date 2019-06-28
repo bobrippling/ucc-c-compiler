@@ -6,6 +6,8 @@
 #include "../util/where.h"
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "../util/macros.h"
+#include "../util/limits.h"
 
 #include "macros.h"
 
@@ -16,7 +18,6 @@
 #include "const.h"
 #include "funcargs.h"
 #include "cc1.h" /* fopt_mode */
-#include "defs.h"
 #include "fopt.h"
 
 #include "type_is.h"
@@ -312,7 +313,7 @@ int type_eq_nontdef(type *a, type *b)
 integral_t type_max(type *r, where *from)
 {
 	unsigned sz = type_size(r, from);
-	unsigned bits = sz * CHAR_BIT;
+	unsigned bits = sz * UCC_CHAR_BIT;
 	int is_signed = type_is_signed(r);
 
 	integral_t max = ~0ULL >> (INTEGRAL_BITS - bits);

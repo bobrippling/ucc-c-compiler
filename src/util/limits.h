@@ -18,4 +18,6 @@
 #define UCC_INT_MIN  (-UCC_INT_MAX - 1)
 #define UCC_UINT_MAX ((UCC_INT_MAX + 1) * 2)
 
+#define UCC_CHAR_BIT 8
+
 #endif

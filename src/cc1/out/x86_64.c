@@ -11,6 +11,7 @@
 #include "../../util/platform.h"
 #include "../../util/macros.h"
 #include "../../util/str.h"
+#include "../../util/limits.h"
 
 #include "../op.h"
 #include "../decl.h"
@@ -18,7 +19,6 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "../funcargs.h"
-#include "../defs.h"
 #include "../pack.h"
 
 #include "../fopt.h"
@@ -34,7 +34,6 @@
 #include "out.h"
 #include "lbl.h"
 #include "write.h"
-#include "../defs.h"
 #include "virt.h"
 
 #include "ctx.h"
@@ -353,11 +352,11 @@ static void x86_overlay_regpair(
 			current_size_bits += bits;
 
 		}else{
-			current_size_bits += CHAR_BIT * type_size(ty, NULL);
+			current_size_bits += UCC_CHAR_BIT * type_size(ty, NULL);
 		}
 
 		/* if we pass 64... */
-		if(current_size_bits >= CHAR_BIT * 8){
+		if(current_size_bits >= UCC_CHAR_BIT * 8){
 			UCC_ASSERT(regpair_idx < 2, "too many regpairs");
 
 			/* hit one eightbyte, decide how we pass this group */
@@ -1733,7 +1732,9 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		}
 
 		if(need_swap){
-			SWAP(const out_val *, l, r);
+			const out_val *tmp = l;
+			l = r;
+			r = tmp;
 		}else if(!satisfied){
 			/* try to keep rhs as const */
 			l = v_to(octx, l, TO_REG | TO_MEM);

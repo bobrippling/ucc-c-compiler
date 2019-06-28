@@ -163,7 +163,7 @@ void sanitize_shift(
 		const out_val **const lhs, const out_val **const rhs)
 {
 	/* rhs must be < bit-size of lhs' type */
-	const unsigned max = CHAR_BIT * type_size(elhs->tree_type, NULL);
+	const unsigned max = UCC_CHAR_BIT * type_size(elhs->tree_type, NULL);
 	out_blk *current;
 
 	if(!(cc1_sanitize & SAN_SHIFT_EXPONENT))

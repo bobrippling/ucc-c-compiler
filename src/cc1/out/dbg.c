@@ -10,6 +10,7 @@
 #include "../../util/dynarray.h"
 #include "../../util/dynmap.h"
 #include "../../util/alloc.h"
+#include "../../util/limits.h"
 
 #include "../str.h"
 
@@ -26,8 +27,6 @@
 #include "../cc1_target.h"
 
 #include "../cc1_out.h"
-
-#include "../defs.h" /* CHAR_BIT */
 
 #include "leb.h" /* leb128 */
 
@@ -925,7 +924,7 @@ static struct DIE *dwarf_suetype(
 
 					/* address of top-end */
 					form_data_t off =
-						(whole_sz * CHAR_BIT)
+						(whole_sz * UCC_CHAR_BIT)
 						- (width + dmem->bits.var.struct_offset_bitfield);
 
 					dwarf_attr(memdie,

@@ -3,11 +3,13 @@
 #include <stdarg.h>
 #include <assert.h>
 
+#include "../util/macros.h"
+#include "../util/limits.h"
+
 #include "type.h"
 #include "type_is.h"
 
 #include "cc1.h"
-#include "defs.h"
 #include "fopt.h"
 
 #include "num.h"
@@ -95,7 +97,7 @@ integral_t integral_truncate_bits(
 	if(cc1_fopt.cast_w_builtin_types){
 		/* we use sizeof our types so our conversions match the target conversions */
 #define BUILTIN(type)                    \
-		if(bits == sizeof(type) * CHAR_BIT){ \
+		if(bits == sizeof(type) * UCC_CHAR_BIT){ \
 			if(signed_iv)                      \
 				*signed_iv = (signed type)val;   \
 			return (unsigned type)val;         \
@@ -110,7 +112,7 @@ integral_t integral_truncate_bits(
 
 	/* not builtin - bitfield, etc */
 	if(signed_iv){
-		const unsigned shamt = CHAR_BIT * sizeof(val) - bits;
+		const unsigned shamt = UCC_CHAR_BIT * sizeof(val) - bits;
 
 		/* implementation specific signed right shift.
 		 * this is to sign extend the value
@@ -126,7 +128,7 @@ integral_t integral_truncate(
 		sintegral_t *sign_extended)
 {
 	return integral_truncate_bits(
-			val, bytes * CHAR_BIT,
+			val, bytes * UCC_CHAR_BIT,
 			sign_extended);
 }
 
@@ -144,6 +146,6 @@ int integral_high_bit(integral_t val, type *ty)
 	{
 		int r;
 		for(r = -1; val; r++, val >>= 1);
-		return MIN(r, tysz * CHAR_BIT - 1);
+		return MIN(r, tysz * UCC_CHAR_BIT - 1);
 	}
 }

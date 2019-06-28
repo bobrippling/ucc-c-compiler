@@ -4,17 +4,18 @@
 #include <stdarg.h>
 #include <assert.h>
 
-#include "defs.h"
 #include "../util/util.h"
+#include "../util/dynmap.h"
+#include "../util/dynarray.h"
+#include "../util/alloc.h"
+#include "../util/platform.h"
+#include "../util/limits.h"
+
 #include "cc1.h"
 #include "fold.h"
 #include "fold_sym.h"
 #include "sym.h"
-#include "../util/platform.h"
 #include "const.h"
-#include "../util/alloc.h"
-#include "../util/dynarray.h"
-#include "../util/dynmap.h"
 #include "sue.h"
 #include "decl.h"
 #include "decl_init.h"
@@ -317,7 +318,7 @@ expr *fold_expr_lval2rval(expr *e, symtable *stab)
 			 */
 			decl *bitfield = orig_e->bits.struct_mem.d;
 			unsigned bf_nbits = const_fold_val_i(bitfield->bits.var.field_width);
-			unsigned uint_nbits = type_primitive_size(type_int) * CHAR_BIT;
+			unsigned uint_nbits = type_primitive_size(type_int) * UCC_CHAR_BIT;
 			unsigned sint_nbits = uint_nbits - 1; /* we assume 2's complement: */
 			type *prom;
 
@@ -1022,7 +1023,7 @@ static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
 					"none-anonymous bitfield \"%s\" with 0-width",
 					d->spel);
 	}else{
-		const unsigned max = CHAR_BIT * type_size(d->ref, &d->where);
+		const unsigned max = UCC_CHAR_BIT * type_size(d->ref, &d->where);
 		if(k.bits.num.val.i > max){
 			die_at(&d->where,
 					"bitfield too large for \"%s\" (%u bits)",

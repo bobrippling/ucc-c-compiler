@@ -17,7 +17,6 @@
 #include "fopt.h"
 
 #include "pack.h"
-#include "defs.h"
 
 #include "fold_sue.h"
 #include "type_is.h"
@@ -314,7 +313,7 @@ static void fold_sue_calc_fieldwidth(
 		}
 
 		bitfield->master_ty = d->ref;
-		bitfield->current_limit = CHAR_BIT * type_size(d->ref, &d->where);
+		bitfield->current_limit = UCC_CHAR_BIT * type_size(d->ref, &d->where);
 
 		d->bits.var.bitfield_master_ty = bitfield->master_ty;
 

@@ -8,6 +8,7 @@
 #include "../util/alloc.h"
 #include "../util/platform.h"
 #include "../util/dynarray.h"
+#include "../util/limits.h"
 
 #include "cc1_where.h"
 #include "fopt.h"
@@ -18,7 +19,6 @@
 #include "cc1.h"
 #include "fold.h"
 #include "funcargs.h"
-#include "defs.h"
 #include "mangle.h"
 
 #include "type_is.h"
@@ -132,10 +132,10 @@ type *decl_type_for_bitfield(decl *d)
 	if(d->bits.var.field_width){
 		const unsigned bits = const_fold_val_i(d->bits.var.field_width);
 		const int is_signed = type_is_signed(d->ref);
-		unsigned bytes = bits / CHAR_BIT;
+		unsigned bytes = bits / UCC_CHAR_BIT;
 
 		/* need to add on a byte for any leftovers */
-		if(bits % CHAR_BIT)
+		if(bits % UCC_CHAR_BIT)
 			bytes++;
 
 		return type_nav_MAX_FOR(cc1_type_nav, bytes, is_signed);

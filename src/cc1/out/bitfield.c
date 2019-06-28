@@ -1,10 +1,11 @@
 #include <stddef.h>
 #include <assert.h>
 
+#include "../../util/limits.h"
+
 #include "../type.h"
 #include "../type_is.h"
 #include "../type_nav.h"
-#include "../defs.h"
 
 #include "val.h"
 #include "out.h"
@@ -36,7 +37,7 @@ const out_val *out_bitfield_to_scalar(
 	 */
 	if(type_is_signed(ty)){
 		const unsigned ty_sz = type_size(ty, NULL);
-		const unsigned nshift = CHAR_BIT * ty_sz - bf->nbits;
+		const unsigned nshift = UCC_CHAR_BIT * ty_sz - bf->nbits;
 
 		scalar = out_op(
 				octx, op_shiftl,
