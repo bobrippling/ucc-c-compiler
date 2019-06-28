@@ -633,7 +633,10 @@ int impl_reg_frame_const(const struct vreg *r, int sp)
 
 int impl_reg_is_scratch(type *fnty, const struct vreg *r)
 {
-	return r->is_float || !impl_reg_is_callee_save(fnty, r);
+	if(impl_reg_is_callee_save(fnty, r))
+		return 0;
+
+	return impl_scratch_reg_to_idx(r) != -1;
 }
 
 int impl_reg_savable(const struct vreg *r)
