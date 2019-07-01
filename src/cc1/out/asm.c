@@ -246,12 +246,12 @@ void asm_out_fp(const struct section *sec, type *ty, floating_t f)
 
 		case type_double:
 		{
-			unsigned long ul;
+			unsigned long long ul;
 			UCC_STATIC_ASSERT(sizeof(double) == sizeof(ul));
 
 			memcpy(&ul, buf, sizeof(ul));
 
-			asm_out_section(sec, ".quad %lu # double %f\n", ul, (double)f);
+			asm_out_section(sec, ".quad %llu # double %f\n", ul, (double)f);
 			break;
 		}
 
