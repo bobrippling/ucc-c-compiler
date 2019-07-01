@@ -1432,8 +1432,10 @@ usage:
 	}else if(infer_target_from_argv0(&triple, argv[0])){
 		/* done */
 	}else{
-		if(!triple_default(&triple)){
-			fprintf(stderr, "couldn't get target triple\n");
+		const char *unparsed;
+		if(!triple_default(&triple, &unparsed)){
+			fprintf(stderr, "couldn't get target triple: %s\n",
+					unparsed ? unparsed : strerror(errno));
 			return 1;
 		}
 	}
