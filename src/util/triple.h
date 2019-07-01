@@ -31,7 +31,8 @@ Examples:
 #define TARGET_ARCHES \
 	X(ARCH, x86_64) \
 	X(ARCH, i386)   \
-	ALIAS(ARCH, amd64, x86_64)
+	ALIAS(ARCH, amd64, x86_64) \
+	ALIAS(ARCH, i686, i386)
 
 #define TARGET_VENDORS \
 	X(VENDOR, pc) \
