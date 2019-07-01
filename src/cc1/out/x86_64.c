@@ -1800,6 +1800,18 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	}
 }
 
+static void i386_populate_got_ptr(out_ctx *octx)
+{
+	(void)octx;
+#if 0
+	out_current_blk(entry);
+	// gen the call
+	// get the label
+	out_current_blk(orig);
+	octx->i386_got_lbl = label;
+#endif
+}
+
 static const out_val *pointer_to_GOT(
 		out_ctx *octx,
 		const out_val *vp,
@@ -1826,10 +1838,15 @@ static const out_val *pointer_to_GOT(
 	if(hasoffset)
 		*hasoffset = offset != 0;
 
-	out_asm(octx, "mov%s %s, %%%s",
-			x86_suffix(type_nav_btype(cc1_type_nav, type_intptr_t)),
-			impl_val_str(vp, 1),
-			x86_reg_str(&gotreg, NULL));
+	if(platform_32bit()){
+		assert(0 && "32-bit PIC not implemented yet");
+		i386_populate_got_ptr(octx); /* allow this to be moved, or v_reserve_reg? */
+	}else{
+		out_asm(octx, "mov%s %s, %%%s # got load",
+				x86_suffix(type_nav_btype(cc1_type_nav, type_intptr_t)),
+				impl_val_str(vp, 1),
+				x86_reg_str(&gotreg, NULL));
+	}
 
 	gotslot = v_new_reg(octx, vp, vp->t, &gotreg);
 	if(offset){
@@ -2499,7 +2516,7 @@ const out_val *impl_call(
 						&r));
 		}
 
-		out_asm(octx, "call %s%s", jtarget, use_plt ? "@PLT" : "");
+		out_asm(octx, "call %s%s%s", jtarget, use_plt ? "@PLT" : "", v_needs_GOT(fn) ? " # plt/got call" : "");
 		if(is_alloc)
 			free(jtarget);
 	}

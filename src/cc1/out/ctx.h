@@ -19,6 +19,7 @@ struct out_ctx
 	out_blk *last_used_blk; /* for appending debug labels */
 	out_blk **mustgen; /* goto *lbl; where lbl is otherwise unreachable */
 	struct out_dbg_lbl **pending_lbls; /* debug labels */
+	char *i386_got_lbl; /* called label for GOT calculation, null if unused */
 
 	/* memory management */
 	out_blk *mem_blk_head;
