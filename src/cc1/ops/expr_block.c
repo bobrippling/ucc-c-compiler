@@ -100,7 +100,7 @@ static void const_expr_block(expr *e, consty *k)
 	CONST_FOLD_LEAF(k);
 
 	k->type = CONST_ADDR;
-	k->bits.addr.is_lbl = 1;
+	k->bits.addr.lbl_type = CONST_LBL_TRUE;
 	k->bits.addr.bits.lbl = decl_asm_spel(e->bits.block.sym->decl);
 }
 
@@ -109,13 +109,12 @@ const out_val *gen_expr_block(const expr *e, out_ctx *octx)
 	return out_new_sym(octx, e->bits.block.sym);
 }
 
-const out_val *gen_expr_str_block(const expr *e, out_ctx *octx)
+void dump_expr_block(const expr *e, dump *ctx)
 {
-	idt_printf("block, type: %s, code:\n", type_to_str(e->tree_type));
-	gen_str_indent++;
-	print_stmt(e->code);
-	gen_str_indent--;
-	UNUSED_OCTX();
+	dump_desc_expr(ctx, "block", e);
+	dump_inc(ctx);
+	dump_stmt(e->code, ctx);
+	dump_dec(ctx);
 }
 
 const out_val *gen_expr_style_block(const expr *e, out_ctx *octx)

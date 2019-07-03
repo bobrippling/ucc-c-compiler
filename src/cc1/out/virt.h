@@ -25,7 +25,7 @@ const out_val *v_to_reg_given(
 		out_ctx *octx, const out_val *from,
 		const struct vreg *given) ucc_wur;
 
-const out_val *v_to_reg_given_freeup(
+const out_val *v_to_reg_given_freeup_no_off(
 		out_ctx *octx, const out_val *from,
 		const struct vreg *given);
 
@@ -33,9 +33,14 @@ const out_val *v_to_reg_out(out_ctx *octx, const out_val *conv, struct vreg *out
 const out_val *v_to_reg(out_ctx *octx, const out_val *conv) ucc_wur;
 const out_val *v_reg_apply_offset(out_ctx *octx, const out_val *vreg) ucc_wur;
 
+/* this functions allows us to either perform the opposite of a dereferencing
+ * (see v_reg_to_stack_mem()), or store a value, but record it as spilt */
 const out_val *v_to_stack_mem(
-		out_ctx *octx, const out_val *val, const out_val *stk);
+		out_ctx *octx, const out_val *val, const out_val *stk, enum out_val_store type);
 
+/* this functions assumes the outcome should be a V_REGOFF, not V_SPILT
+ * i.e. the opposite of dereferencing a value - we make a stack slot and save it there,
+ * returning the slot */
 const out_val *v_reg_to_stack_mem(
 		out_ctx *octx, struct vreg const *, const out_val *stk);
 
@@ -49,12 +54,14 @@ void v_save_regs(
 		const out_val *ignores[], const out_val *fnval);
 
 int v_is_const_reg(const out_val *);
+int v_needs_GOT(const out_val *);
 
 
 void v_reserve_reg(out_ctx *, const struct vreg *);
 void v_unreserve_reg(out_ctx *, const struct vreg *);
 
 /* util */
-enum flag_cmp v_inv_cmp(enum flag_cmp cmp, int invert_eq);
+enum flag_cmp v_not_cmp(enum flag_cmp);
+enum flag_cmp v_commute_cmp(enum flag_cmp);
 
 #endif

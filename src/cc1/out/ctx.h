@@ -7,7 +7,15 @@ typedef struct out_val_list out_val_list;
 
 struct out_ctx
 {
-	out_blk *first_blk, *second_blk, *current_blk, *epilogue_blk;
+	out_blk *entry_blk; /* has the function's name as its label */
+	out_blk *stacksub_blk; /* allocate stack space */
+	out_blk *argspill_begin_blk; /* spill the args + callee save, init stack protector, etc */
+	out_blk *argspill_done_blk; /* finished spilling args - post variadic branching, etc */
+	out_blk *postprologue_blk; /* after arg spill, etc - user code goes here */
+	out_blk *epilogue_blk; /* stack tidy, stack protector check, callee save, etc */
+
+	out_blk *current_blk; /* pointer to current */
+
 	out_blk *last_used_blk; /* for appending debug labels */
 	out_blk **mustgen; /* goto *lbl; where lbl is otherwise unreachable */
 	struct out_dbg_lbl **pending_lbls; /* debug labels */
@@ -23,6 +31,7 @@ struct out_ctx
 		struct out_val_list *next, *prev;
 	} *val_head, *val_tail;
 	const out_val *current_stret;
+	const out_val *stack_canary_ent;
 
 	type *current_fnty;
 
@@ -35,6 +44,8 @@ struct out_ctx
 	v_stackt cur_stack_sz;
 	v_stackt max_stack_sz;
 	v_stackt stack_n_alloc; /* just the alloc_n() part */
+	v_stackt stack_callspace; /* space used by extra call arguments */
+	v_stackt stack_calleesave_space; /* space used callee-save spills */
 	unsigned max_align;
 
 	unsigned check_flags : 1; /* decay flags? */
@@ -52,8 +63,11 @@ struct out_ctx
 		struct out_dbg_filelist *file_head;
 
 		where where;
-		int last_file, last_line;
+		unsigned last_file, last_line, last_col;
 	} dbg;
 };
+
+#define OCTX_ITER_VALS(octx, i) \
+	for(i = octx->val_head; i; i = i->next)
 
 #endif

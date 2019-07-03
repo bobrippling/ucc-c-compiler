@@ -4,8 +4,11 @@
 
 int std_from_str(const char *std, enum c_std *penu, int *gnu)
 {
-	if(!strcmp(std, "-ansi"))
+	if(!strcmp(std, "-ansi")){
+		if(gnu)
+			*gnu = 0;
 		goto std_c90;
+	}
 
 	if(strncmp(std, "-std=", 5))
 		return 1;
@@ -32,6 +35,8 @@ std_c90:
 		*penu = STD_C89;
 	}else if(!strcmp(std, "11")){
 		*penu = STD_C11;
+	}else if(!strcmp(std, "17") || !strcmp(std, "18")){
+		*penu = STD_C18;
 	}else{
 		return 1;
 	}

@@ -16,7 +16,10 @@
 
 #include "../const.h"
 #include "../cc1.h" /* fopt_mode */
+#include "../sanitize_opt.h"
 #include "../vla.h"
+
+#include "../fopt.h"
 
 static int calc_ptr_step(type *t)
 {
@@ -65,7 +68,7 @@ static out_val *try_mem_offset(
 
 	/* if it's a minus, we enforce an order */
 	if((binop == op_plus || (binop == op_minus && vconst == rhs))
-	&& (vregp_or_lbl->type != V_LBL || (fopt_mode & FOPT_SYMBOL_ARITH))
+	&& (vregp_or_lbl->type != V_LBL || cc1_fopt.symbol_arith)
 	&& (step = calc_ptr_step(vregp_or_lbl->t)) != -1)
 	{
 		out_val *mut_vregp_or_lbl = v_dup_or_reuse(
@@ -145,26 +148,44 @@ static out_val *try_const_fold(
 	return NULL;
 }
 
+static type *is_val_ptr(const out_val *v)
+{
+	type *pointee = type_is_ptr(v->t);
+	switch(v->type){
+		case V_SPILT:
+			if(pointee){
+				type *next = type_is_ptr(pointee);
+				if(next)
+					return pointee;
+			}
+			return NULL;
+
+		default:
+			return pointee ? v->t : NULL;
+	}
+}
+
 static void apply_ptr_step(
 		out_ctx *octx,
 		const out_val **lhs, const out_val **rhs,
 		const out_val **div_out)
 {
-	int l_ptr = !!type_is((*lhs)->t, type_ptr);
-	int r_ptr = !!type_is((*rhs)->t, type_ptr);
+	type *l_ptr = is_val_ptr(*lhs);
+	type *r_ptr = is_val_ptr(*rhs);
 	int ptr_step;
 
 	if(!l_ptr && !r_ptr)
 		return;
 
-	ptr_step = calc_ptr_step((l_ptr ? *lhs : *rhs)->t);
+	ptr_step = calc_ptr_step(l_ptr ? l_ptr : r_ptr);
 
-	if(l_ptr ^ r_ptr){
+	if(!!l_ptr ^ !!r_ptr){
 		/* ptr +/- int, adjust the non-ptr by sizeof *ptr */
 		const out_val **incdec = (l_ptr ? rhs : lhs);
 		out_val *mut_incdec;
+		type *ptrty = l_ptr ? l_ptr : r_ptr;
 
-		*incdec = mut_incdec = v_dup_or_reuse(octx, *incdec, (*incdec)->t);
+		*incdec = mut_incdec = v_mutable_copy(octx, *incdec);
 
 		switch(mut_incdec->type){
 			case V_CONST_I:
@@ -172,7 +193,7 @@ static void apply_ptr_step(
 					*incdec = out_op(octx, op_multiply,
 							*incdec,
 							vla_size(
-								type_next((l_ptr ? *lhs : *rhs)->t),
+								type_next(ptrty),
 								octx));
 
 					mut_incdec = NULL; /* safety */
@@ -186,16 +207,18 @@ static void apply_ptr_step(
 
 			case V_LBL:
 			case V_FLAG:
-			case V_REG_SPILT:
+			case V_REGOFF:
+			case V_SPILT:
 				assert(mut_incdec->retains == 1);
 				*incdec = (out_val *)v_to_reg(octx, *incdec);
+				assert((*incdec)->retains == 1);
 
 			case V_REG:
 			{
 				const out_val *n;
 				if(ptr_step == -1){
 					n = vla_size(
-							type_next((l_ptr ? *lhs : *rhs)->t),
+							type_next(ptrty),
 							octx);
 				}else{
 					n = out_new_l(
@@ -205,6 +228,7 @@ static void apply_ptr_step(
 				}
 
 				*incdec = (out_val *)out_op(octx, op_multiply, *incdec, n);
+				assert((*incdec)->retains == 1);
 				break;
 			}
 		}
@@ -212,7 +236,7 @@ static void apply_ptr_step(
 	}else if(l_ptr && r_ptr){
 		/* difference - divide afterwards */
 		if(ptr_step == -1){
-			*div_out = vla_size(type_next((*lhs)->t), octx);
+			*div_out = vla_size(type_next(l_ptr), octx);
 		}else{
 			*div_out = out_new_l(octx,
 					type_ptr_to(type_nav_btype(cc1_type_nav, type_void)),
@@ -226,6 +250,9 @@ static void try_shift_conv(
 		enum op_type *binop,
 		const out_val **lhs, const out_val **rhs)
 {
+	if(type_is_signed((*lhs)->t))
+		return;
+
 	if(*binop == op_divide && (*rhs)->type == V_CONST_I){
 		integral_t k = (*rhs)->bits.val_i;
 		if((k & (k - 1)) == 0){
@@ -294,7 +321,7 @@ const out_val *out_op(
 		return consume_one(octx, vconst == lhs ? rhs : lhs, lhs, rhs);
 
 	/* constant folding */
-	if(vconst && (fopt_mode & FOPT_CONST_FOLD)){
+	if(vconst && cc1_fopt.const_fold){
 		const out_val *oconst = (vconst == lhs ? rhs : lhs);
 
 		if(oconst->type == V_CONST_I){
@@ -319,7 +346,7 @@ const out_val *out_op(
 			break;
 		case op_multiply:
 		case op_divide:
-			if(vconst && (fopt_mode & FOPT_TRAPV) == 0)
+			if(vconst && !(cc1_sanitize & (SAN_SIGNED_INTEGER_OVERFLOW | SAN_POINTER_OVERFLOW)))
 				try_shift_conv(octx, &binop, &lhs, &rhs);
 			break;
 		default:
@@ -350,30 +377,32 @@ const out_val *out_op_unary(out_ctx *octx, enum op_type uop, const out_val *val)
 			if(uop == op_not){
 				out_val *reversed = v_dup_or_reuse(octx, val, val->t);
 
-				reversed->bits.flag.cmp = v_inv_cmp(reversed->bits.flag.cmp, 1);
+				reversed->bits.flag.cmp = v_not_cmp(reversed->bits.flag.cmp);
 
 				return reversed;
 			}
 			break;
 
 		case V_CONST_I:
-			switch(uop){
+			if(cc1_fopt.const_fold){
+				switch(uop){
 #define OP(op, tok) \
-				case op_ ## op: {                        \
-					out_val *dup = v_dup_or_reuse(         \
-							octx, val, val->t);                \
-					dup->bits.val_i = tok dup->bits.val_i; \
-					return dup;                            \
-				}
+					case op_ ## op: {                        \
+						out_val *dup = v_dup_or_reuse(         \
+								octx, val, val->t);                \
+						dup->bits.val_i = tok dup->bits.val_i; \
+						return dup;                            \
+					}
 
-				OP(not, !);
-				OP(minus, -);
-				OP(bnot, ~);
+					OP(not, !);
+					OP(minus, -);
+					OP(bnot, ~);
 
 #undef OP
 
-				default:
-				assert(0 && "invalid unary op");
+					default:
+					assert(0 && "invalid unary op");
+				}
 			}
 			break;
 

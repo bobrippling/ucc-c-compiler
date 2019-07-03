@@ -48,7 +48,7 @@ FILE *stdout = &_stdout;
 FILE *stderr = &_stderr;
 
 /* Private */
-static void fprintn_r(FILE *f, uintmax_t n, int base, int ty_sz)
+static void fprintn_r(FILE *f, uintmax_t n, int base, unsigned ty_sz)
 {
 	uintmax_t d = n / base;
 	if(d)
@@ -56,7 +56,7 @@ static void fprintn_r(FILE *f, uintmax_t n, int base, int ty_sz)
 	fwrite("0123456789abcdef" + n % base, sizeof(char), 1, f);
 }
 
-static void fprintn(FILE *f, uintmax_t n, int base, int is_signed, int ty_sz)
+static void fprintn(FILE *f, uintmax_t n, int base, int is_signed, unsigned ty_sz)
 {
 	if(is_signed){
 		// if we have an int/short/char, sign extend
@@ -75,17 +75,17 @@ static void fprintn(FILE *f, uintmax_t n, int base, int is_signed, int ty_sz)
 	fprintn_r(f, n, base, ty_sz);
 }
 
-static void fprintd(FILE *f, uintmax_t n, int is_signed, int ty_sz)
+static void fprintd(FILE *f, uintmax_t n, int is_signed, unsigned ty_sz)
 {
 	fprintn(f, n, 10, is_signed, ty_sz);
 }
 
-static void fprintx(FILE *f, uintmax_t n, int is_signed, int ty_sz)
+static void fprintx(FILE *f, uintmax_t n, int is_signed, unsigned ty_sz)
 {
 	fprintn(f, n, 16, is_signed, ty_sz);
 }
 
-static void fprinto(FILE *f, uintmax_t n, int is_signed, int ty_sz)
+static void fprinto(FILE *f, uintmax_t n, int is_signed, unsigned ty_sz)
 {
 	fprintn(f, n, 8, is_signed, ty_sz);
 }
@@ -409,7 +409,7 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 				case 'x':
 				case 'o':
 				{
-					static void (*printers[])(FILE *, uintmax_t, int, int) = {
+					static void (*printers[])(FILE *, uintmax_t, int, unsigned) = {
 						['u'] = fprintd,
 						['d'] = fprintd,
 						['x'] = fprintx,
@@ -542,7 +542,7 @@ int puts(const char *s)
 	return printf("%s\n", s) > 0 ? 1 : EOF;
 }
 
-int getchar()
+int getchar(void)
 {
 	return fgetc(stdin);
 }

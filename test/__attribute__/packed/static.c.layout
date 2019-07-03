@@ -1,0 +1,6 @@
+a_equal:
+main:
+a:
+.byte 1
+.word 2
+.long 3

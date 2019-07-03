@@ -2,7 +2,7 @@
 #include "stmt_continue.h"
 #include "stmt_break.h"
 
-const char *str_stmt_continue()
+const char *str_stmt_continue(void)
 {
 	return "continue";
 }
@@ -15,7 +15,12 @@ void fold_stmt_continue(stmt *t)
 void gen_stmt_continue(const stmt *s, out_ctx *octx)
 {
 	gen_scope_leave(s->symtab, s->parent->symtab, octx);
-	out_ctrl_transfer(octx, s->parent->blk_continue, NULL, NULL);
+	out_ctrl_transfer(octx, s->parent->blk_continue, NULL, NULL, 0);
+}
+
+void dump_stmt_continue(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "continue", s);
 }
 
 void style_stmt_continue(const stmt *s, out_ctx *octx)

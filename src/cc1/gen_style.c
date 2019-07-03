@@ -16,9 +16,10 @@
 
 void stylef(const char *fmt, ...)
 {
+	struct section sec = SECTION_INIT(SECTION_TEXT);
 	va_list l;
 	va_start(l, fmt);
-	asm_out_sectionv(SECTION_TEXT, fmt, l);
+	asm_out_sectionv(&sec, fmt, l);
 	va_end(l);
 }
 

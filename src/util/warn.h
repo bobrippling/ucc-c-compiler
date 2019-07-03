@@ -9,13 +9,14 @@ extern int warning_count;
 extern int warning_length; /* -fmessage-length */
 
 /* used by the *_had_error notification+continue code */
-void warn_at_print_error(const struct where *, const char *fmt, ...);
+void warn_at_print_error(const struct where *, const char *fmt, ...) ucc_printflike(2, 3);
 
 enum warn_type
 {
 	VWARN_NOTE,
 	VWARN_WARN,
-	VWARN_ERR
+	VWARN_ERR,
+	VWARN_OTHER
 };
 
 void note_at(const struct where *, const char *, ...) ucc_printflike(2, 3);

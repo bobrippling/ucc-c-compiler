@@ -4,7 +4,7 @@
 #include "stmt_default.h"
 #include "../out/lbl.h"
 
-const char *str_stmt_default()
+const char *str_stmt_default(void)
 {
 	return "default";
 }
@@ -18,6 +18,15 @@ void gen_stmt_default(const stmt *s, out_ctx *octx)
 {
 	out_ctrl_transfer_make_current(octx, s->bits.case_blk);
 	gen_stmt(s->lhs, octx);
+}
+
+void dump_stmt_default(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "default", s);
+
+	dump_inc(ctx);
+	dump_stmt(s->lhs, ctx);
+	dump_dec(ctx);
 }
 
 void style_stmt_default(const stmt *s, out_ctx *octx)

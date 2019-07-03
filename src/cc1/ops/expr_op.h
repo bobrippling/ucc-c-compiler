@@ -1,9 +1,4 @@
-func_fold    fold_expr_op;
-func_gen     gen_expr_op;
-func_str     str_expr_op;
-func_gen     gen_expr_str_op;
-func_mutate_expr mutate_expr_op;
-func_gen     gen_expr_style_op;
+EXPR_DEFS(op);
 
 #if defined(__GNUC__) && (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 4))
 #  define ucc_wur __attribute__((warn_unused_result))
@@ -40,4 +35,11 @@ int fold_check_bounds(expr *e, int chk_one_past_end);
 void expr_check_sign(const char *desc,
 		expr *lhs, expr *rhs, where *w);
 
-void gen_op_trapv(type *evaltt, const out_val **eval, out_ctx *octx);
+void gen_op_trapv(
+		type *evaltt,
+		const out_val **eval,
+		out_ctx *octx,
+		enum op_type op);
+
+expr *expr_new_op(enum op_type o);
+expr *expr_new_op2(enum op_type o, expr *l, expr *r);

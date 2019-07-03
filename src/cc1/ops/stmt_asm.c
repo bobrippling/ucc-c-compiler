@@ -218,6 +218,10 @@ void init_stmt_asm(stmt *s)
 	s->f_passable = fold_passable_yes;
 }
 
+void dump_stmt_asm(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "asm", s);
+}
 static void style_asm_bits(asm_param *param)
 {
 	stylef("\"%s\" (", param->constraints);

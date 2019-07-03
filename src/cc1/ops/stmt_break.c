@@ -5,7 +5,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 
-const char *str_stmt_break()
+const char *str_stmt_break(void)
 {
 	return "break";
 }
@@ -25,7 +25,12 @@ void gen_stmt_break(const stmt *s, out_ctx *octx)
 {
 	gen_scope_leave(s->symtab, s->parent->symtab, octx);
 
-	out_ctrl_transfer(octx, s->parent->blk_break, NULL, NULL);
+	out_ctrl_transfer(octx, s->parent->blk_break, NULL, NULL, 0);
+}
+
+void dump_stmt_break(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "break", s);
 }
 
 void style_stmt_break(const stmt *s, out_ctx *octx)

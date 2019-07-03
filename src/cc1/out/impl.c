@@ -20,9 +20,9 @@
 
 void impl_comment(out_ctx *octx, const char *fmt, va_list l)
 {
-	out_asm2(octx, SECTION_TEXT, P_NO_NL, "/* ");
-	out_asmv(octx, SECTION_TEXT, P_NO_INDENT | P_NO_NL, fmt, l);
-	out_asm2(octx, SECTION_TEXT, P_NO_INDENT, " */");
+	out_asm2(octx, P_NO_LIVEDUMP | P_NO_NL, "/* ");
+	out_asmv(octx, P_NO_LIVEDUMP | P_NO_INDENT | P_NO_NL, fmt, l);
+	out_asm2(octx, P_NO_LIVEDUMP | P_NO_INDENT, " */");
 }
 
 enum flag_cmp op_to_flag(enum op_type op)
@@ -63,15 +63,12 @@ const char *flag_cmp_to_str(enum flag_cmp cmp)
 int impl_reg_is_callee_save(type *fnty, const struct vreg *r)
 {
 	unsigned i, n;
-	const int *csaves;
-
-	if(r->is_float)
-		return 0;
+	const struct vreg *csaves;
 
 	csaves = impl_callee_save_regs(fnty, &n);
 
 	for(i = 0; i < n; i++)
-		if(r->idx == csaves[i])
+		if(vreg_eq(r, &csaves[i]))
 			return 1;
 	return 0;
 }
@@ -111,6 +108,9 @@ static void impl_overlay_mem_reg(
 	struct vreg *cur_reg = regs;
 	unsigned reg_i = 0;
 
+	if(ptr->type == V_SPILT)
+		ICW("possible mishandling of spilt register for mem/reg overlay");
+
 	if(memsz == 0){
 		out_val_release(octx, ptr);
 		return;
@@ -145,7 +145,7 @@ static void impl_overlay_mem_reg(
 					memsz > 4 ? type_double : type_float);
 
 		}else{
-			this_ty = type_nav_MAX_FOR(cc1_type_nav, memsz);
+			this_ty = type_nav_MAX_FOR(cc1_type_nav, memsz, 0);
 		}
 		this_sz = type_size(this_ty, NULL);
 
@@ -163,7 +163,7 @@ static void impl_overlay_mem_reg(
 			 *
 			 * this means we can load straight into the desired register
 			 */
-			fetched = impl_deref(octx, ptr, cur_reg);
+			fetched = impl_deref(octx, ptr, cur_reg, NULL);
 
 			UCC_ASSERT(reg_i < nregs, "reg oob");
 

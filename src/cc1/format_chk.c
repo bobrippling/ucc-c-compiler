@@ -3,10 +3,12 @@
 #include <stdarg.h>
 #include <string.h>
 #include <assert.h>
+#include <ctype.h>
 
 #include "../util/where.h"
 #include "../util/util.h"
 #include "../util/dynarray.h"
+#include "../util/platform.h"
 
 #include "expr.h"
 #include "decl.h"
@@ -14,109 +16,208 @@
 #include "funcargs.h"
 #include "type_is.h"
 #include "warn.h"
+#include "str.h"
+#include "type_nav.h"
 
 #include "format_chk.h"
 
-enum printf_attr
+#include "ops/expr_if.h"
+
+#define DEBUG_FORMAT_CHECK 0
+
+struct format_arg
 {
-	printf_attr_long = 1 << 0,
-	printf_attr_llong = 1 << 1,
-	printf_attr_size_t = 1 << 2
+	type *expected_type; /* NULL for "%%", "%m" */
+	int expected_field_width;
+	int expected_precision;
 };
 
-static const char *printf_attr_to_str(enum printf_attr attr)
-{
-	if(attr & printf_attr_size_t)
-		return "z";
-	if(attr & printf_attr_llong)
-		return "ll";
-	if(attr & printf_attr_long)
-		return "l";
-	return NULL;
-}
-
-static void warn_printf_attr(char fmt, where *w, enum printf_attr attr)
-{
-	cc1_warn_at(w, attr_printf_bad,
-			"unexpected printf modifier '%s' for %%%c",
-			printf_attr_to_str(attr), fmt);
-}
-
-static void format_check_printf_1(char fmt, type *const t_in,
-		where *loc_expr, where *loc_str, enum printf_attr attr)
+static void format_check_printf_arg_type(
+		const char *fmtbegin,
+		const size_t fmtlen,
+		const char *desc,
+		expr *e,
+		type *const t_expected,
+		where *loc_str)
 {
 	unsigned char *const default_warningp = &cc1_warning.attr_printf_bad;
 	unsigned char *warningp = default_warningp;
-	char expected[BTYPE_STATIC_BUFSIZ];
+	type *t_arg;
 
-	expected[0] = '\0';
+	if(type_is_promotable(t_expected, NULL))
+		e = expr_skip_implicit_casts(e);
 
-	switch(fmt){
-		enum type_primitive prim;
-		type *tt;
+	t_arg = e->tree_type;
 
-		case 'p':
-			prim = type_void;
-
-			/* emit the right warning flag */
+	if(t_expected == type_ptr_to(type_nav_btype(cc1_type_nav, type_void))){
+		if(cc1_warning.attr_printf_voidp){
+			/* strict %p / void* check - emitted with voidp flag */
 			warningp = &cc1_warning.attr_printf_voidp;
+		}else{
+			/* allow any* */
+			if(type_is_ptr(t_arg))
+				return;
 
-			if(cc1_warning.attr_printf_voidp){
-				/* strict %p / void* check */
+			/* not a pointer - emit with the default-warning flag */
+		}
+	}
+
+	if(!(type_cmp(t_arg, t_expected, 0) & TYPE_EQUAL_ANY)){
+		char buf1[TYPE_STATIC_BUFSIZ];
+		char buf2[TYPE_STATIC_BUFSIZ];
+
+		if(cc1_warn_at_w(loc_str, warningp,
+				"%.*s expects a '%s' %s, not '%s'",
+				(int)fmtlen,
+				fmtbegin,
+				type_to_str_r(buf1, t_expected),
+				desc,
+				type_to_str_r(buf2, t_arg)))
+		{
+			note_at(&e->where, "argument here");
+		}
+	}
+}
+
+static int increment_str(size_t *i, size_t len)
+{
+	return ++*i < len;
+}
+
+static int parse_digit(const char *fmt, size_t *const i, size_t const len, int *const got_asterisk)
+{
+	if(fmt[*i] == '*'){
+		*got_asterisk = 1;
+		return increment_str(i, len);
+	}
+
+	while(isdigit(fmt[*i])){
+		/* ignore the width itself */
+		if(!increment_str(i, len))
+			return 0;
+	}
+	return 1;
+}
+
+static const char *parse_format_arg(const char *fmt, size_t *const i, size_t const len, struct format_arg *const out)
+{
+	/*
+	 * 0-n of: '#' '0' '-' ' ' '+' '\'' for flags
+	 * 0-n of: [0-9] for field width OR \* for int arg
+	 * \.[0-9]* for precision OR \.\* for int arg
+	 * <length modifier> for length modifier
+	 * [diouxX]
+	 * [eEfFgGaA] - double
+	 * [c]  - int
+	 * [s]  - char*
+	 * [p]  - void*
+	 * [n]  - int*
+	 * [m]  - nothing <strerror(errno), linux only>
+	 * [%]  - nothing
+	 */
+	enum {
+		length_none,
+		length_h,
+		length_hh,
+		length_l,
+		length_ll,
+		length_L,
+		length_j,
+		length_t,
+		length_z
+	} lengthmod = length_none;
+
+	memset(out, 0, sizeof *out);
+
+	while(strchr("#0- +'", fmt[*i])){
+		/* ignore the modifier itself */
+		if(!increment_str(i, len))
+			return "invalid modifier character";
+	}
+
+	if(!parse_digit(fmt, i, len, &out->expected_field_width))
+		return "invalid field width";
+
+	if(fmt[*i] == '.'){
+		if(!increment_str(i, len))
+			return "incomplete format specifier (missing precision)";
+		if(!parse_digit(fmt, i, len, &out->expected_precision))
+			return "invalid precision";
+	}
+
+	/* length modifier */
+	switch(fmt[*i]){
+		case 'h':
+			if(*i + 1 < len && fmt[*i+1] == 'h'){
+				lengthmod = length_hh;
+				++*i;
 			}else{
-				/* allow any* */
-				if(type_is_ptr(t_in))
-					break;
-			}
-			goto ptr;
-
-		case 's': prim = type_nchar; goto ptr;
-		case 'n': prim = type_int;  goto ptr;
-ptr:
-			tt = type_is_primitive_anysign(type_is_ptr(t_in), prim);
-			if(!tt){
-				if(prim == type_unknown)
-					prim = type_void;
-
-				snprintf(expected, sizeof expected,
-						"'%s *'", type_primitive_to_str(prim));
-			}else if(attr){
-				warningp = default_warningp;
-				warn_printf_attr(fmt, loc_str, attr);
+				lengthmod = length_h;
 			}
 			break;
+		case 'l':
+			if(*i + 1 < len && fmt[*i+1] == 'l'){
+				lengthmod = length_ll;
+				++*i;
+			}else{
+				lengthmod = length_l;
+			}
+			break;
+		case 'L':
+			lengthmod = length_L;
+			break;
+		case 'j':
+			lengthmod = length_j;
+			break;
+		case 't':
+			lengthmod = length_t;
+			break;
+		case 'z':
+			lengthmod = length_z;
+			break;
+	}
+	if(lengthmod != length_none && !increment_str(i, len))
+		return "incomplete format specifier";
 
-		case 'x':
-		case 'X':
-		case 'u':
-		case 'o':
-			/* unsigned ... */
-		case '*':
-		case 'c':
+	switch(fmt[*i]){
+		enum type_primitive btype;
+
 		case 'd':
 		case 'i':
-			if(!type_is_integral(t_in)){
-				strcpy(expected, "integral");
-				break;
+		case 'o':
+		case 'u':
+		case 'x':
+		case 'X':
+		case 'n':
+			switch(lengthmod){
+				/* these types must all be the signed variants - converted below */
+				case length_none: btype = type_int; break;
+				case length_hh:   btype = type_schar; break;
+				case length_h:    btype = type_short; break;
+				case length_l:    btype = type_long; break;
+				case length_ll:   btype = type_llong; break;
+				case length_j:    btype = type_llong; /* intmax_t */ break;
+				case length_z:    btype = type_llong; /* size_t */ break;
+				case length_t:    btype = type_llong; /* ptrdiff_t */ break;
+				default:
+					return "invalid length modifier for integer format";
+			}
+			switch(fmt[*i]){
+				case 'd':
+				case 'i':
+					/* signed */
+					break;
+				case 'n':
+					/* pointerify done in a moment */
+					break;
+				default:
+					btype = TYPE_PRIMITIVE_TO_UNSIGNED(btype);
+					break;
 			}
 
-			if(attr & printf_attr_size_t){
-				if(!type_is_primitive_anysign(t_in, type_intptr_t))
-					strcpy(expected, "'size_t/intptr_t'");
-				break;
-			}
-
-#define ATTR_CHECK(suff, str)                             \
-			if(attr & printf_attr_##suff){                      \
-				if(!type_is_primitive_anysign(t_in, type_##suff)) \
-					strcpy(expected, str);                          \
-				break;                                            \
-			}
-
-			ATTR_CHECK(llong, "'long long'")
-			ATTR_CHECK(long, "'long'")
-
-#undef ATTR_CHECK
+			out->expected_type = type_nav_btype(cc1_type_nav, btype);
+			if(fmt[*i] == 'n')
+				out->expected_type = type_ptr_to(out->expected_type);
 			break;
 
 		case 'e':
@@ -127,139 +228,172 @@ ptr:
 		case 'G':
 		case 'a':
 		case 'A':
-			if(!type_is_floating(t_in))
-				strcpy(expected, "'double'");
-			else if(attr)
-				warn_printf_attr(fmt, loc_str, attr);
-			break;
+			switch(lengthmod){
+				case length_none:
+				case length_l:
+					btype = type_double;
+					break;
 
-		default:
-			if(fmt){
-				cc1_warn_at(loc_str, attr_printf_unknown,
-						"unknown conversion character '%c' (0x%x)",
-						fmt, fmt);
-			}else{
-				cc1_warn_at(loc_str, attr_printf_bad,
-						"missing conversion character");
+				case length_L:
+					btype = type_ldouble;
+					break;
+
+				default:
+					return "invalid length modifier for float format";
 			}
-			return;
-	}
-
-	if(*expected){
-		cc1_warn_at_w(loc_expr, warningp,
-				"format %%%s%c expects %s argument (got %s)",
-				attr & printf_attr_llong ? "ll" : attr & printf_attr_long ? "l" : "",
-				fmt, expected, type_to_str(t_in));
-	}
-}
-
-static enum printf_attr printf_modifiers(
-		const char *fmt, int *index)
-{
-	enum printf_attr attr = 0;
-
-	for(;;) switch(fmt[*index]){
-		case 'l':
-			if(attr & printf_attr_long)
-				attr |= printf_attr_llong;
-			else
-				attr |= printf_attr_long;
-
-		case '1': case '2': case '3':
-		case '4': case '5': case '6':
-		case '7': case '8': case '9':
-
-		case '0': case '#': case '-':
-		case ' ': case '+': case '.':
-
-		case 'h': case 'L':
-			++*index;
+			out->expected_type = type_nav_btype(cc1_type_nav, btype);
 			break;
 
-		case 'z':
-			attr |= printf_attr_size_t;
-			++*index;
+		case 'c':
+		case 's':
+			switch(lengthmod){
+				case length_none:
+					btype = type_nchar;
+					break;
+
+				case length_l:
+					btype = TYPE_WCHAR();
+					break;
+
+				default:
+					return fmt[*i] == 'c'
+						? "invalid length modifier for char format"
+						: "invalid length modifier for string format";
+			}
+			out->expected_type = type_nav_btype(cc1_type_nav, btype);
+			if(fmt[*i] == 's')
+				out->expected_type = type_ptr_to(out->expected_type);
+			break;
+
+		case 'p':
+			if(lengthmod != length_none)
+				return "invalid length modifier for pointer format";
+			out->expected_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+			break;
+
+		case 'm':
+			if(platform_sys() != SYS_linux)
+				return "%m used on non-linux system";
+			/* fallthrough */
+		case '%':
+			if(lengthmod != length_none)
+				return "invalid length modifier for '%%' format";
+			out->expected_type = NULL;
 			break;
 
 		default:
-			return attr;
+			return "invalid conversion character";
 	}
+
+	return NULL;
 }
 
 static void format_check_printf_arg(
-		char fmt,
+		const char *fmtbegin,
+		const size_t fmtlen,
 		where *strloc,
-		expr ***current_arg, enum printf_attr attr)
+		expr ***current_arg,
+		type *expected_type,
+		const char *desc)
 {
 	expr *e = **current_arg;
 
+	if(!expected_type)
+		return;
+
 	if(!e){
 		cc1_warn_at(strloc, attr_printf_bad,
-				"too few arguments for format (%%%c)", fmt);
+				"too few arguments for %s (%.*s)",
+				desc,
+				(int)fmtlen,
+				fmtbegin);
 		return;
 	}
 
-	/* place us on the format char */
-	strloc->chr++;
-
-	format_check_printf_1(fmt, e->tree_type, &e->where, strloc, attr);
+	format_check_printf_arg_type(
+			fmtbegin, fmtlen, desc,
+			e, expected_type, strloc);
 
 	++*current_arg;
 }
 
 static void format_check_printf_str(
 		expr **args,
-		const char *fmt, const int len,
+		const char *fmt, const size_t len,
 		const int var_idx,
 		where *quote_loc)
 {
 	expr **current_arg = args;
-	int i;
+	size_t i;
 
 	for(i = var_idx; *current_arg && i > 0; i--)
 		current_arg++;
 
 	for(i = 0; i < len && fmt[i];){
-		if(fmt[i++] == '%'){
-			where strloc = *quote_loc;
-			strloc.chr += i + 1; /* +1 since we start on the '"' */
+		const char *err;
+		where strloc;
+		struct format_arg parsed;
+		const size_t begin = i;
 
-			if(i == len){
-				cc1_warn_at(&strloc, attr_printf_bad, "incomplete format specifier");
-				return;
-			}
+		if(fmt[i++] != '%')
+			continue;
 
-			if(fmt[i] == '%'){
-				i++;
-				continue;
-			}
+		if(i == len)
+			err = "incomplete format specifier";
+		else
+			err = parse_format_arg(fmt, &i, len, &parsed);
 
-			/* don't check for format(printf, ..., 0) */
-			if(var_idx != -1){
-				enum printf_attr attr = printf_modifiers(fmt, &i);
+		strloc = *quote_loc;
+		strloc.chr += i + 1;
 
-				format_check_printf_arg(
-						fmt[i],
-						&strloc,
-						&current_arg,
-						attr);
-				i++;
-			}
-
-			if(fmt[i] == '*'){
-				if(var_idx != -1){
-					enum printf_attr attr = printf_modifiers(fmt, &i);
-
-					format_check_printf_arg(
-							fmt[i],
-							&strloc,
-							&current_arg,
-							attr);
-				}
-				i++;
-			}
+		if(DEBUG_FORMAT_CHECK && !err){
+			fprintf(stderr, "%s: format check: field-width=%d, precision=%d type=%s\n",
+					where_str(&strloc),
+					parsed.expected_field_width,
+					parsed.expected_precision,
+					parsed.expected_type ? type_to_str(parsed.expected_type) : "NULL");
 		}
+
+		if(err){
+			cc1_warn_at(&strloc, attr_printf_bad, "%s", err);
+			return;
+		}
+
+		if(var_idx == -1){
+			/* we don't have any arguments to check, done all we can do */
+			continue;
+		}
+
+		if(parsed.expected_field_width){
+			format_check_printf_arg(
+					&fmt[begin],
+					i - begin + 1,
+					&strloc,
+					&current_arg,
+					type_nav_btype(cc1_type_nav, type_int),
+					"field width");
+		}
+		if(parsed.expected_precision){
+			format_check_printf_arg(
+					&fmt[begin],
+					i - begin + 1,
+					&strloc,
+					&current_arg,
+					type_nav_btype(cc1_type_nav, type_int),
+					"precision");
+		}
+
+		format_check_printf_arg(
+				&fmt[begin],
+				i - begin + 1,
+				&strloc,
+				&current_arg,
+				parsed.expected_type,
+				"argument");
 	}
+
+	if(i > len)
+		i = len;
 
 	if(var_idx != -1 && (!fmt[i] || i == len) && *current_arg){
 		cc1_warn_at(&(*current_arg)->where, attr_printf_toomany,
@@ -309,13 +443,13 @@ not_string:
 			break;
 	}
 
-	{
-		const char *fmt = fmt_str->str;
-		const int   len = fmt_str->len - 1;
+	if(fmt_str->cstr->type != CSTRING_WIDE){
+		const char *fmt = fmt_str->cstr->bits.ascii;
+		const size_t len = fmt_str->cstr->count - 1;
 
-		if(len <= 0)
+		if(len == 0)
 			;
-		else if(k.offset >= len)
+		else if(k.offset < 0 || (size_t)k.offset >= len)
 			cc1_warn_at(&str_arg->where, attr_printf_bad,
 					"undefined printf-format argument");
 		else
@@ -343,8 +477,8 @@ void format_check_call(
 			break;
 	}
 
-	fmt_idx = attr->bits.format.fmt_idx;
-	var_idx = attr->bits.format.var_idx;
+	fmt_idx = const_fold_val_i(attr->bits.format.fmt_idx) - 1;
+	var_idx = const_fold_val_i(attr->bits.format.var_idx) - 1;
 
 	n = dynarray_count(args);
 
@@ -377,6 +511,19 @@ void format_check_call(
 	}
 }
 
+static int extract_const(expr *e, int *const out)
+{
+	consty k;
+
+	const_fold(e, &k);
+
+	if(k.type != CONST_NUM || k.bits.num.suffix & VAL_FLOATING)
+		return 0;
+
+	*out = k.bits.num.val.i;
+	return 1;
+}
+
 void format_check_decl(decl *d, attribute *da)
 {
 	type *r_func;
@@ -387,6 +534,16 @@ void format_check_decl(decl *d, attribute *da)
 		/* i.e. checked */
 		return;
 	}
+
+	if(!extract_const(da->bits.format.fmt_idx, &fmt_idx)
+	|| !extract_const(da->bits.format.var_idx, &var_idx))
+	{
+		cc1_warn_at(&da->where, attr_printf_bad,
+				"format/variadic argument indexes must be integer constant expressions");
+		goto invalid;
+	}
+	fmt_idx--;
+	var_idx--;
 
 	r_func = type_is_func_or_block(d->ref);
 	assert(r_func);
@@ -399,7 +556,7 @@ void format_check_decl(decl *d, attribute *da)
 		 *
 		 * (-1, not zero, since we subtract one for format indexes)
 		 */
-		if(da->bits.format.var_idx >= 0){
+		if(var_idx >= 0){
 			cc1_warn_at(&da->where, attr_printf_bad,
 					"variadic function required for format attribute");
 		}
@@ -407,8 +564,6 @@ void format_check_decl(decl *d, attribute *da)
 	}
 
 	nargs = dynarray_count(fargs->arglist);
-	fmt_idx = da->bits.format.fmt_idx;
-	var_idx = da->bits.format.var_idx;
 
 	/* format string index must be < nargs */
 	if(fmt_idx >= nargs){

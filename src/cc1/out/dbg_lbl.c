@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stddef.h>
 
 #include "../../util/dynarray.h"
@@ -15,12 +14,13 @@
 
 /* functions */
 #include "blk.h"
+#include "asm.h"
 
 static void add_lbl_to_blk(
 		struct out_dbg_lbl *lbl,
 		struct out_dbg_lbl ***parray)
 {
-	RETAIN(lbl);
+	(void)RETAIN(lbl);
 	dynarray_add(parray, lbl);
 }
 
@@ -91,23 +91,23 @@ int out_dbg_label_shouldemit(struct out_dbg_lbl *lbl, const char **out_lbl)
 	return !out_dbg_label_emitted(lbl, out_lbl);
 }
 
-static void emit_lbl(FILE *f, struct out_dbg_lbl *lbl)
+static void emit_lbl(struct out_dbg_lbl *lbl)
 {
 	/* if we haven't emitted the label yet, and its
 	 * pair start label/start block was emitted */
 	if(out_dbg_label_shouldemit(lbl, NULL)){
-		fprintf(f, "%s:\n", lbl->lbl);
+		asm_out_section(NULL, "%s:\n", lbl->lbl);
 		lbl->emitted = 1;
 	}
 	RELEASE(lbl);
 }
 
-void out_dbg_labels_emit_release_v(FILE *f, struct out_dbg_lbl ***pv)
+void out_dbg_labels_emit_release_v(struct out_dbg_lbl ***pv)
 {
 	struct out_dbg_lbl **v = *pv;
 
 	for(; v && *v; v++)
-		emit_lbl(f, *v);
+		emit_lbl(*v);
 
 	dynarray_free(struct out_dbg_lbl **, *pv, NULL);
 }

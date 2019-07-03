@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
@@ -18,4 +19,14 @@ char **strsplit(const char *s, const char *sep)
 	free(dup);
 
 	return ret;
+}
+
+void rtrim(char *s)
+{
+	size_t l = strlen(s);
+
+	while(l > 0 && isspace(s[l-1]))
+		l--;
+
+	s[l] = '\0';
 }

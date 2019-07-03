@@ -23,11 +23,11 @@
 #include "../type_is.h"
 #include "../vla.h"
 #include "../cc1_out_ctx.h"
+#include "../cc1_target.h"
 
-#include "asm.h" /* cc_out[] */
+#include "../cc1_out.h"
 
 #include "../defs.h" /* CHAR_BIT */
-#include "../../as_cfg.h" /* section names, private label */
 
 #include "leb.h" /* leb128 */
 
@@ -42,7 +42,6 @@
 #define DEBUG_TYPE_SKIP type_skip_non_tdefs_consts
 #define DEBUG_TYPE_HASH type_hash_skip_nontdefs_consts
 
-
 #define DW_TAGS                        \
 	X(DW_TAG_compile_unit, 0x11)         \
 	X(DW_TAG_subprogram, 0x2e)           \
@@ -52,6 +51,8 @@
 	X(DW_TAG_array_type, 0x1)            \
 	X(DW_TAG_subrange_type, 0x21)        \
 	X(DW_TAG_const_type, 0x26)           \
+	X(DW_TAG_volatile_type, 0x35)        \
+	X(DW_TAG_restrict_type, 0x37)        \
 	X(DW_TAG_subroutine_type, 0x15)      \
 	X(DW_TAG_enumeration_type, 0x4)      \
 	X(DW_TAG_enumerator, 0x28)           \
@@ -248,7 +249,8 @@ enum dwarf_misc
 	DW_INL_inlined = 1,
 
 	DW_LANG_C89 = 0x1,
-	DW_LANG_C99 = 0xc
+	DW_LANG_C99 = 0xc,
+	DW_LANG_C11 = 0x1d
 };
 
 enum dwarf_encoding
@@ -468,19 +470,33 @@ static void dwarf_attr(
 			at->bits.value = *(form_data_t *)data;
 
 			if(enc == DW_FORM_ULEB){
-				switch(leb128_length(at->bits.value, 0)){
-					case 1: at->enc = DW_FORM_data1; break;
-					case 2: at->enc = DW_FORM_data2; break;
-					case 4: at->enc = DW_FORM_data4; break;
-					case 8: at->enc = DW_FORM_data8; break;
-					default: ucc_unreach();
-				}
+				unsigned len = leb128_length(at->bits.value, 0);
+
+				if(len <= 1)
+					at->enc = DW_FORM_data1;
+				else if(len <= 2)
+					at->enc = DW_FORM_data2;
+				else if(len <= 4)
+					at->enc = DW_FORM_data4;
+				else if(len <= 8)
+					at->enc = DW_FORM_data8;
+				else
+					ucc_unreach();
 			}
 			break;
 
 		case DW_FORM_string:
-			at->bits.str = str_add_escape(data, strlen(data));
+		{
+			char *s = data;
+			struct cstring local;
+
+			cstring_init(&local, CSTRING_ASCII, s, strlen(s), 0);
+
+			at->bits.str = str_add_escape(&local);
+
+			cstring_deinit(&local);
 			break;
+		}
 	}
 }
 
@@ -496,7 +512,7 @@ static struct DIE *dwarf_basetype(struct DIE_compile_unit *cu, type *ty)
 			break;
 
 		case type_nchar:
-			if(type_primitive_is_signed(prim)){
+			if(type_primitive_is_signed(prim, 1)){
 		case type_schar:
 				enc = DW_ATE_signed_char;
 			}else{
@@ -757,14 +773,22 @@ static struct DIE *dwarf_type_die(
 
 		case type_cast:
 		{
+			/* due to how types map to tydies,
+			 * we can only have a single qualifier */
+			enum type_qualifier q = ty->bits.cast.qual;
+			enum dwarf_tag tag;
 
-			if(ty->bits.cast.is_signed_cast){
-				/* skip */
-				tydie = dwarf_type_die(cu, parent, ty->ref);
-			}else{
-				tydie = dwarf_tydie_new(cu, ty, DW_TAG_const_type);
-				dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
-			}
+			if(q & qual_const)
+				tag = DW_TAG_const_type;
+			else if(q & qual_volatile)
+				tag = DW_TAG_volatile_type;
+			else if(q & qual_restrict)
+				tag = DW_TAG_restrict_type;
+			else
+				ucc_unreach(NULL);
+
+			tydie = dwarf_tydie_new(cu, ty, tag);
+			dwarf_set_DW_AT_type(tydie, cu, parent, ty->ref);
 			break;
 		}
 
@@ -790,7 +814,7 @@ static struct DIE *dwarf_sue_header(
 	if(!sue->anon)
 		dwarf_attr(suedie, DW_AT_name, DW_FORM_string, sue->spel);
 
-	if(sue_complete(sue)){
+	if(sue_is_complete(sue)){
 		form_data_t sz = sue_size(sue, NULL);
 
 		dwarf_attr(suedie, DW_AT_byte_size,
@@ -840,6 +864,7 @@ static struct DIE *dwarf_suetype(
 		case type_struct:
 		{
 			sue_member **si;
+			decl *current_bitfield = NULL;
 
 			suedie = dwarf_sue_header(
 					cu,
@@ -857,8 +882,11 @@ static struct DIE *dwarf_suetype(
 				struct dwarf_block *offset;
 				struct dwarf_block_ent *blkents;
 
-				if(!dmem->spel){
-					/* skip, otherwise dwarf thinks we've a field and messes up */
+				if(dmem->bits.var.first_bitfield)
+					current_bitfield = dmem;
+
+				if(DECL_IS_ANON_BITFIELD(dmem)){
+					/* skip, otherwise dwarf thinks this decl's a field and messes up */
 					continue;
 				}
 
@@ -866,9 +894,12 @@ static struct DIE *dwarf_suetype(
 
 				dwarf_child(suedie, memdie);
 
-				dwarf_attr(memdie,
-						DW_AT_name, DW_FORM_string,
-						dmem->spel);
+				if(dmem->spel){
+					/* could be anonymous sub-struct/union */
+					dwarf_attr(memdie,
+							DW_AT_name, DW_FORM_string,
+							dmem->spel);
+				}
 
 				dwarf_set_DW_AT_type(memdie, cu, NULL, dmem->ref);
 
@@ -890,7 +921,7 @@ static struct DIE *dwarf_suetype(
 				/* bitfield */
 				if(dmem->bits.var.field_width){
 					form_data_t width = const_fold_val_i(dmem->bits.var.field_width);
-					form_data_t whole_sz = type_size(dmem->ref, NULL);
+					form_data_t whole_sz = type_size(current_bitfield->ref, NULL);
 
 					/* address of top-end */
 					form_data_t off =
@@ -916,7 +947,7 @@ static struct DIE *dwarf_suetype(
 static int dbg_get_val_location(const out_val *v, long *const offset)
 {
 	switch(v->type){
-		case V_REG_SPILT:
+		case V_REGOFF:
 		case V_REG:
 			if(v->bits.regoff.reg.idx == REG_BP){
 				*offset = v->bits.regoff.offset;
@@ -1058,9 +1089,22 @@ void out_dbg_emit_args_done(out_ctx *octx, funcargs *args)
 		dwarf_current_child(dbg, va);
 }
 
+static int dw_lang_from_c_std(enum c_std std)
+{
+	switch(std){
+		case STD_C90:
+		case STD_C89: return DW_LANG_C89;
+		case STD_C99: return DW_LANG_C99;
+		case STD_C11: return DW_LANG_C11;
+		case STD_C18: return DW_LANG_C11; /* no DW_LANG_C17/18 exists yet */
+	}
+	abort();
+}
+
 static struct DIE_compile_unit *dwarf_cu(
 		const char *fname, const char *compdir,
-		struct out_dbg_filelist **pfilelist)
+		struct out_dbg_filelist **pfilelist,
+		enum c_std lang)
 {
 	struct DIE_compile_unit *cu = umalloc(sizeof *cu);
 	form_data_t attrv;
@@ -1073,64 +1117,73 @@ static struct DIE_compile_unit *dwarf_cu(
 			"ucc development version");
 
 	dwarf_attr(&cu->die, DW_AT_language, DW_FORM_data2,
-			((attrv = DW_LANG_C99), &attrv));
+			((attrv = dw_lang_from_c_std(lang)), &attrv));
 
+	/* (char *) casts are purely to get through the void* parameter,
+	 * not to change the borrowed ownership of the strings */
 	dwarf_attr(&cu->die, DW_AT_name, DW_FORM_string, (char *)fname);
 
 	dwarf_attr(&cu->die, DW_AT_comp_dir, DW_FORM_string, (char *)compdir);
 
 	dwarf_attr(&cu->die, DW_AT_stmt_list,
 			DW_FORM_ADDR4,
-			DWARF_INDIRECT_SECTION_LINKS
+			cc1_target_details.dwarf_indirect_section_links
 				? NULL
 				: ustrprintf(
-						"%s%s",
+						"%s%s%s",
+						cc1_target_details.as.privatelbl_prefix,
 						SECTION_BEGIN,
-						sections[SECTION_DBG_LINE].desc));
+						SECTION_DESC_DBG_LINE));
 
 	dwarf_attr(&cu->die, DW_AT_low_pc, DW_FORM_addr,
-			ustrprintf("%s%s", SECTION_BEGIN,
-				sections[SECTION_TEXT].desc));
+			ustrprintf("%s%s%s",
+				cc1_target_details.as.privatelbl_prefix,
+				SECTION_BEGIN,
+				SECTION_DESC_TEXT));
 
 	dwarf_attr(&cu->die, DW_AT_high_pc, DW_FORM_addr,
-			ustrprintf("%s%s", SECTION_END,
-				sections[SECTION_TEXT].desc));
+			ustrprintf("%s%s%s",
+				cc1_target_details.as.privatelbl_prefix,
+				SECTION_END,
+				SECTION_DESC_TEXT));
 
 	return cu;
 }
 
-static long dwarf_info_header(FILE *f)
+static long dwarf_info_header(void)
 {
-#if DWARF_INDIRECT_SECTION_LINKS
-#  define VAR_LEN ASM_PLBL_PRE "info_len"
-#  define VAR_OFF ASM_PLBL_PRE "abrv_off"
+#define VAR_LEN "info_len"
+	const struct section section_dbg_info = SECTION_INIT(SECTION_DBG_INFO);
 
-	fprintf(f,
-			/* -4: don't include the length spec itself */
-			VAR_LEN " = %s%s - %s%s - 4\n"
-			VAR_OFF " = %s%s - %s%s\n"
-			"\t.long " VAR_LEN "\n"
-			"\t.short 2 # DWARF 2\n"
-			"\t.long " VAR_OFF "  # abbrev offset\n"
-			"\t.byte %d  # sizeof(void *)\n",
-			SECTION_END, sections[SECTION_DBG_INFO].desc,
-			SECTION_BEGIN, sections[SECTION_DBG_INFO].desc,
-			SECTION_BEGIN, sections[SECTION_DBG_ABBREV].desc,
-			SECTION_BEGIN, sections[SECTION_DBG_ABBREV].desc,
-			platform_word_size());
-#else
-	fprintf(f,
-			"\t.long %s%s - %s%s - 4\n"
-			"\t.short 2 # DWARF 2\n"
-			"\t.long %s%s  # abbrev offset\n"
-			"\t.byte %d  # sizeof(void *)\n",
-			SECTION_END, sections[SECTION_DBG_INFO].desc,
-			SECTION_BEGIN, sections[SECTION_DBG_INFO].desc,
-			SECTION_BEGIN, sections[SECTION_DBG_ABBREV].desc,
-			platform_word_size());
-#endif
+	if(cc1_target_details.dwarf_indirect_section_links){
+		asm_out_section(&section_dbg_info,
+				/* -4: don't include the length spec itself */
+				"%s" VAR_LEN " = %s%s%s - %s%s%s - 4\n"
+				"\t.long %s" VAR_LEN "\n"
+				"\t.short 2 # DWARF 2\n"
+				"\t.long 0  # abbrev offset\n"
+				"\t.byte %d  # sizeof(void *)\n",
+				cc1_target_details.as.privatelbl_prefix,
+				cc1_target_details.as.privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
+				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO
+				,
+				cc1_target_details.as.privatelbl_prefix
+				,
+				platform_word_size());
+	}else{
+		asm_out_section(&section_dbg_info,
+				"\t.long %s%s%s - %s%s%s - 4\n"
+				"\t.short 2 # DWARF 2\n"
+				"\t.long %s%s%s  # abbrev offset\n"
+				"\t.byte %d  # sizeof(void *)\n",
+				cc1_target_details.as.privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
+				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO,
+				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_ABBREV,
+				platform_word_size());
+	}
 
 	return 4 + 2 + 4 + 1;
+#undef VAR_LEN
 }
 
 static void dwarf_attr_decl(
@@ -1294,7 +1347,7 @@ struct DIE_flush
 {
 	struct DIE_flush_file
 	{
-		FILE *f;
+		const struct section *sec;
 		unsigned long byte_cnt;
 	} abbrev, info;
 };
@@ -1322,10 +1375,10 @@ static void ucc_printflike(3, 4)
 		case QUAD: ty = "quad"; break;
 	}
 
-	fprintf(f->f, "\t.%s ", ty);
+	asm_out_section(f->sec, "\t.%s ", ty);
 
 	va_start(l, fmt);
-	vfprintf(f->f, fmt, l);
+	asm_out_sectionv(f->sec, fmt, l);
 	va_end(l);
 
 	f->byte_cnt += sz;
@@ -1335,8 +1388,10 @@ static void dwarf_leb_printf(
 		struct DIE_flush_file *f,
 		unsigned long uleb, int is_sig)
 {
-	fprintf(f->f, "\t.byte ");
-	f->byte_cnt += leb128_out(f->f, uleb, is_sig);
+	FILE *file = asm_section_file(f->sec);
+
+	asm_out_section(f->sec, "\t.byte ");
+	f->byte_cnt += leb128_out(file, uleb, is_sig);
 }
 
 static void dwarf_flush_die_block(
@@ -1354,7 +1409,7 @@ static void dwarf_flush_die_block(
 			dwarf_leb_printf(&state->info,
 					e->bits.v, e->type == BLOCK_LEB128_S);
 
-			fprintf(state->info.f,
+			asm_out_section(state->info.sec,
 					" # DW_FORM_block, LEB%c 0x%lx\n",
 					"US"[e->type == BLOCK_LEB128_S],
 					e->bits.v);
@@ -1394,11 +1449,11 @@ static void dwarf_flush_die_1(
 			die->locn, state->info.byte_cnt);
 
 	dwarf_leb_printf(&state->abbrev, die->abbrev_code, 0),
-		fprintf(state->abbrev.f, "  # Abbrev. Code %lu\n",
+		asm_out_section(state->abbrev.sec, "  # Abbrev. Code %lu\n",
 				die->abbrev_code);
 
 	dwarf_leb_printf(&state->info, die->abbrev_code, 0),
-		fprintf(state->info.f, "  # Abbrev. Code %lu %s\n",
+		asm_out_section(state->info.sec, "  # Abbrev. Code %lu %s\n",
 				die->abbrev_code, die_tag_to_str(die->tag));
 
 	/* tags are technically ULEBs */
@@ -1449,7 +1504,7 @@ form_data:
 
 			case DW_FORM_ULEB:
 				dwarf_leb_printf(&state->info, a->bits.value, 0);
-				fputc('\n', state->info.f);
+				asm_out_section(state->info.sec, "\n");
 				break;
 
 			case DW_FORM_ADDR4: fty = LONG; goto addr;
@@ -1469,7 +1524,7 @@ addr:
 			}
 
 			case DW_FORM_string:
-				fprintf(state->info.f, "\t.ascii \"%s\"\n", a->bits.str);
+				asm_out_section(state->info.sec, "\t.ascii \"%s\"\n", a->bits.str);
 				state->info.byte_cnt += strlen(a->bits.str);
 
 				dwarf_printf(&state->info, BYTE, "0");
@@ -1521,15 +1576,15 @@ addr:
 				break;
 			}
 		}
-		fprintf(state->info.f, " # %s\n", s_attr);
+		asm_out_section(state->info.sec, " # %s\n", s_attr);
 	}
 
-	fprintf(state->abbrev.f,
+	asm_out_section(state->abbrev.sec,
 			"\t.byte 0, 0 # name/val abbrev %lu end\n\n",
 			die->abbrev_code);
 	state->abbrev.byte_cnt += 2;
 
-	fprintf(state->info.f, "\n");
+	asm_out_section(state->info.sec, "\n");
 }
 
 static void dwarf_flush_die(
@@ -1539,18 +1594,17 @@ static void dwarf_flush_die(
 	dwarf_flush_die_children(die, state);
 }
 
-static void dwarf_flush(struct DIE_compile_unit *cu,
-		FILE *abbrev, FILE *info, long initial_offset)
+static void dwarf_flush(struct DIE_compile_unit *cu, long initial_offset)
 {
 	struct DIE_flush flush = {{ 0 }};
 
 	flush.info.byte_cnt = initial_offset;
-	flush.info.f = info;
-	flush.abbrev.f = abbrev;
+	flush.info.sec = &section_dbg_info;
+	flush.abbrev.sec = &section_dbg_abbrev;
 
 	dwarf_flush_die(&cu->die, &flush);
 
-	fprintf(abbrev, "\t.byte 0 # end\n");
+	asm_out_section(&section_dbg_abbrev, "\t.byte 0 # end\n");
 }
 
 static unsigned long dwarf_offset_die(
@@ -1662,9 +1716,16 @@ void dbg_out_filelist(
 	unsigned idx;
 
 	for(i = head, idx = 1; i; i = i->next, idx++){
-		char *esc = str_add_escape(i->fname, strlen(i->fname));
+		struct cstring local;
+		char *esc;
+
+		cstring_init(&local, CSTRING_ASCII, i->fname, strlen(i->fname), 0);
+
+		esc = str_add_escape(&local);
 
 		fprintf(f, ".file %u \"%s\"\n", idx, esc);
+
+		cstring_deinit(&local);
 		free(esc);
 	}
 }
@@ -1673,9 +1734,10 @@ void out_dbg_begin(
 		out_ctx *octx,
 		struct out_dbg_filelist **pfilelist,
 		const char *fname,
-		const char *compdir)
+		const char *compdir,
+		enum c_std lang)
 {
-	struct DIE_compile_unit *cu = dwarf_cu(fname, compdir, pfilelist);
+	struct DIE_compile_unit *cu = dwarf_cu(fname, compdir, pfilelist, lang);
 	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
 
 	dbg->compile_unit = cu;
@@ -1684,7 +1746,7 @@ void out_dbg_begin(
 
 void out_dbg_end(out_ctx *octx)
 {
-	long info_offset = dwarf_info_header(cc_out[SECTION_DBG_INFO]);
+	long info_offset = dwarf_info_header();
 	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
 	struct DIE_compile_unit *compile_unit = dbg->compile_unit;
 	unsigned long abbrev = 0;
@@ -1704,10 +1766,7 @@ void out_dbg_end(out_ctx *octx)
 
 	dwarf_offset_die(&compile_unit->die, &abbrev, info_offset);
 
-	dwarf_flush(compile_unit,
-			cc_out[SECTION_DBG_ABBREV],
-			cc_out[SECTION_DBG_INFO],
-			info_offset);
+	dwarf_flush(compile_unit, info_offset);
 
 	/* no need to dwarf_die_free_1() type dies - they're children of the CU */
 	dynmap_free(compile_unit->types_to_dies);

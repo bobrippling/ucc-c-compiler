@@ -11,7 +11,10 @@ struct loc
 typedef struct where
 {
 	const char *fname, *line_str;
-	unsigned short line, chr, len;
+	unsigned line;
+	unsigned short chr, len;
+	unsigned char is_sysh;
+	/* space optimisation: move fname + is_sysh to a table of files */
 } where;
 #define WHERE_INIT(fnam, lstr, n, c) { fnam, lstr, n, c, 0 }
 

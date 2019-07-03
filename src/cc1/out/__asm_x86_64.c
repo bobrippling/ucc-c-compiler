@@ -11,12 +11,14 @@
 #include "../../util/dynvec.h"
 #include "../../util/dynmap.h"
 #include "../../util/alloc.h"
+#include "../../util/macros.h"
 
 #include "../type.h"
 #include "../type_nav.h"
 #include "../num.h"
 #include "../str.h" /* str_add_escape() */
-#include "../cc1.h" /* fopt_mode */
+#include "../fopt.h"
+#include "../cc1.h" /* cc1_fopt */
 
 #include "out.h" /* our (umbrella) header */
 
@@ -25,7 +27,6 @@
 #include "asm.h" /* section_type, for write.c: */
 #include "write.h"
 #include "ctx.h" /* var_stack_sz */
-#include "macros.h"
 #include "lbl.h"
 
 #include "virt.h" /* v_to* */
@@ -493,7 +494,7 @@ static void callback_gen_val(
 	if(cval->val)
 		return;
 
-	if(fopt_mode & FOPT_VERBOSE_ASM)
+	if(cc1_fopt.verbose_asm)
 		out_comment(setupstate->octx, "callback_gen_val()");
 
 	setupstate->gen_callback(
@@ -727,7 +728,11 @@ static void assign_constraint(
 						break;
 
 					case V_LBL:
-					case V_REG_SPILT:
+						cc->type = C_MEM;
+						break;
+
+					case V_REGOFF:
+					case V_SPILT:
 						cc->type = C_MEM;
 						break;
 				}
@@ -825,9 +830,10 @@ static void constrain_input_matching(
 					break;
 
 				case V_REG:
-				case V_REG_SPILT:
+				case V_REGOFF:
+				case V_SPILT:
 					out_val_retain(octx, v);
-					cval->val = v_to_stack_mem(setupstate->octx, cval->val, v);
+					cval->val = v_to_stack_mem(setupstate->octx, cval->val, v, V_SPILT);
 					break;
 			}
 			break;
@@ -849,7 +855,8 @@ static void constrain_input_matching(
 						ICE("bad register type");
 
 					case V_REG:
-					case V_REG_SPILT:
+					case V_REGOFF:
+					case V_SPILT:
 						cval->val = v_to_reg_given(
 								octx, cval->val, &out_temp->bits.regoff.reg);
 						break;
@@ -946,7 +953,8 @@ static const out_val *temporary_for_output(
 					break;
 				case V_REG:
 				case V_LBL:
-				case V_REG_SPILT:
+				case V_REGOFF:
+				case V_SPILT:
 					return NULL; /* matched */
 			}
 
@@ -1192,7 +1200,7 @@ static void format_single_percent(
 
 
 	if(!deref)
-		deref = (oval->type == V_REG_SPILT);
+		deref = (oval->type == V_SPILT);
 
 	{
 		const char *val_str;
@@ -1307,7 +1315,6 @@ void out_inline_asm_ext_begin(
 #define loc asm_params->where
 	size_t i;
 	struct regarray regs;
-	char *escaped_fname;
 	char *insn = NULL;
 	struct asm_setup_state setupstate;
 
@@ -1339,7 +1346,7 @@ void out_inline_asm_ext_begin(
 			st->constraints.outputs, st->constraints.inputs);
 	if(error->str) goto error;
 
-	if(fopt_mode & FOPT_VERBOSE_ASM)
+	if(cc1_fopt.verbose_asm)
 		debug_used_regs(octx, &regs);
 
 	constrain_values(
@@ -1363,12 +1370,20 @@ void out_inline_asm_ext_begin(
 	out_comment(octx, "### actual inline");
 
 	/* location information */
-	escaped_fname = str_add_escape(loc->fname, strlen(loc->fname));
-	out_asm2(octx, SECTION_TEXT, P_NO_INDENT, "# %d \"%s\"", loc->line, escaped_fname);
-	free(escaped_fname), escaped_fname = NULL;
+	{
+		char *escaped_fname;
+		struct cstring cstr;
 
-	out_asm(octx, "%s", insn ? insn : "");
-	out_asm2(octx, SECTION_TEXT, P_NO_INDENT, "# 0 \"\"");
+		cstring_init(&cstr, CSTRING_ASCII, loc->fname, strlen(loc->fname), 0);
+		escaped_fname = str_add_escape(&cstr);
+		cstring_deinit(&cstr);
+
+		out_asm2(octx, P_NO_INDENT, "# %d \"%s\"", loc->line, escaped_fname);
+		free(escaped_fname), escaped_fname = NULL;
+
+		out_asm(octx, "%s", insn ? insn : "");
+		out_asm2(octx, P_NO_INDENT, "# 0 \"\"");
+	}
 
 	/* consume inputs */
 	out_asm_release_valarray(octx, asm_params->inputs);

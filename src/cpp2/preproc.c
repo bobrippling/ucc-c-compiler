@@ -6,16 +6,17 @@
 #include <ctype.h>
 
 #include "../util/util.h"
+#include "../util/io.h"
 #include "../util/alloc.h"
 #include "../util/str.h"
+#include "../util/macros.h"
+#include "../util/math.h"
 
 #include "main.h"
 #include "preproc.h"
 #include "directive.h"
 #include "eval.h"
 #include "str.h"
-
-#define ARRAY_LEN(x) (sizeof(x) / sizeof(x[0]))
 
 static enum
 {
@@ -25,14 +26,10 @@ static enum
 	IN_BLOCK_FULL
 } strip_in_block = NOT_IN_BLOCK;
 
-struct
-{
-	FILE *file;
-	char *fname;
-	int line_no;
-} file_stack[64] = { { NULL, NULL, 0 } };
+struct file_stack file_stack[64];
 
 int file_stack_idx = -1;
+static int prev_newline;
 
 void include_bt(FILE *f)
 {
@@ -48,31 +45,46 @@ void include_bt(FILE *f)
 	}
 }
 
-void preproc_backtrace()
+void preproc_emit_line_info(int lineno, const char *fname, enum lineinfo lineinfo)
 {
-	include_bt(stderr);
-}
-
-static void preproc_out_info(void)
-{
+	unsigned lineinfobits = lineinfo;
 	/* output PP info */
-	if(!no_output && option_line_info)
-		printf("# %d \"%s\"\n", file_stack[file_stack_idx].line_no, file_stack[file_stack_idx].fname);
+	if(no_output || !option_line_info)
+		return;
+
+	printf("# %d \"%s\"", lineno, fname);
+
+	while(lineinfobits){
+		unsigned bit = extractbottombit(&lineinfobits);
+		int n = log2i(bit);
+
+		printf(" %d", n);
+	}
+
+	putchar('\n');
 }
 
-int preproc_in_include()
+static void preproc_emit_line_info_top(enum lineinfo lineinfo)
+{
+	preproc_emit_line_info(
+			file_stack[file_stack_idx].line_no,
+			file_stack[file_stack_idx].fname,
+			lineinfo | (file_stack[file_stack_idx].is_sysh ? LINEINFO_SYSHEADER : 0));
+}
+
+int preproc_in_include(void)
 {
 	return file_stack_idx > 0;
 }
 
-void preproc_push(FILE *f, const char *fname)
+void preproc_push(FILE *f, const char *fname, int is_sysh)
 {
 	if(file_stack_idx >= 0)
 		file_stack[file_stack_idx].line_no = current_line; /* save state */
 
 
 	file_stack_idx++;
-	if(file_stack_idx == ARRAY_LEN(file_stack))
+	if(file_stack_idx == countof(file_stack))
 		CPP_DIE("too many includes");
 
 #ifdef DO_CHDIR
@@ -91,11 +103,14 @@ void preproc_push(FILE *f, const char *fname)
 
 
 	/* setup new state */
+	set_current_fname(fname);
+
 	file_stack[file_stack_idx].file    = f;
 	file_stack[file_stack_idx].fname   = ustrdup(fname);
 	file_stack[file_stack_idx].line_no = current_line = 1;
+	file_stack[file_stack_idx].is_sysh = is_sysh;
 
-	preproc_out_info();
+	preproc_emit_line_info_top(LINEINFO_START_OF_FILE);
 }
 
 static void preproc_pop(void)
@@ -117,22 +132,23 @@ static void preproc_pop(void)
 
 	/* restore state */
 	current_line  = file_stack[file_stack_idx].line_no;
-	current_fname = file_stack[file_stack_idx].fname;
+	set_current_fname(file_stack[file_stack_idx].fname);
 
-	preproc_out_info();
+	preproc_emit_line_info_top(LINEINFO_RETURN_TO_FILE);
 }
 
 static char *read_line(void)
 {
 	FILE *f;
 	char *line;
+	int newline;
 
 re_read:
 	if(file_stack_idx < 0)
 		ICE("file stack idx = 0 on read()");
 	f = file_stack[file_stack_idx].file;
 
-	line = fline(f);
+	line = fline(f, &newline);
 
 	if(!line){
 		if(ferror(f))
@@ -143,11 +159,16 @@ re_read:
 			free(dirname_pop());
 			preproc_pop();
 			goto re_read;
+		}else{
+			if(!prev_newline){
+				CPP_WARN(WNEWLINE, "no newline at end-of-file");
+			}
 		}
 
 		return NULL;
 	}
 
+	prev_newline = newline;
 	current_line++;
 
 	return line;
@@ -245,7 +266,7 @@ static char *splice_lines(int *peof)
 	if(last_backslash){
 		char *i;
 		/* is this the end of the line? */
-		for(i = last_backslash + 1; isspace(*i); i++);
+		i = str_spc_skip(last_backslash + 1);
 		if(*i == '\0'){
 			splice = 1;
 
@@ -319,7 +340,7 @@ static char *strip_comment(char *line)
 			}
 
 		}else if(*s == '/'){
-			if(s[1] == '/'){
+			if(cpp_std >= STD_C99 && s[1] == '/'){
 				switch(strip_comments){
 					case STRIP_EXCEPT_DIRECTIVE:
 						if(is_directive)
@@ -393,7 +414,7 @@ void preprocess(void)
 	char *line;
 	int eof = 0;
 
-	preproc_push(stdin, current_fname);
+	preproc_push(stdin, current_fname, /*sysh:*/0);
 
 	while(!eof && (line = splice_lines(&eof))){
 		debug_push_line(line);

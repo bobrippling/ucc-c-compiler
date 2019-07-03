@@ -1,59 +1,44 @@
 #ifndef OUT_ASM_H
 #define OUT_ASM_H
 
-enum section_type
-{
-	SECTION_TEXT,
-	SECTION_DATA,
-	SECTION_BSS,
-	SECTION_RODATA,
-	SECTION_DBG_ABBREV,
-	SECTION_DBG_INFO,
-	SECTION_DBG_LINE,
-	NUM_SECTIONS
-};
+#include <stdio.h>
 
-#define SECTION_BEGIN ASM_PLBL_PRE "section_begin_"
-#define SECTION_END   ASM_PLBL_PRE "section_end_"
-#define QUOTE_(...) #__VA_ARGS__
-#define QUOTE(y) QUOTE_(y)
+#include "section.h"
 
-extern struct section
-{
-	const char *desc;
-	const char *name;
-} sections[];
+const char *asm_section_desc(enum section_builtin);
 
-extern FILE *cc_out[NUM_SECTIONS];
-extern FILE *cc1_out;
+FILE *asm_section_file(const struct section *);
 
-void asm_out_section(enum section_type, const char *fmt, ...);
-void asm_out_sectionv(enum section_type t, const char *fmt, va_list l);
+ucc_printflike(2, 3)
+void asm_out_section(const struct section *, const char *fmt, ...);
+void asm_out_sectionv(const struct section *, const char *fmt, va_list l);
+void asm_switch_section(const struct section *);
 
-int asm_section_empty(enum section_type);
+int asm_section_empty(const struct section *);
 
-void asm_nam_begin3(enum section_type sec, const char *lbl, unsigned align);
-
-void out_comment_sec(enum section_type sec, const char *fmt, ...);
+void asm_nam_begin3(const struct section *, const char *lbl, unsigned align);
 
 #ifdef TYPE_H
-void asm_out_fp(enum section_type sec, type *ty, floating_t f);
-void asm_out_fp(enum section_type sec, type *ty, floating_t f);
+void asm_out_fp(const struct section *, type *ty, floating_t f);
 #endif
 
 #ifdef STRINGS_H
-void asm_declare_stringlit(enum section_type, const stringlit *);
+void asm_declare_stringlit(const struct section *, const stringlit *);
 #endif
 
 #ifdef DECL_H
-void asm_declare_decl_init(decl *); /* x: .qword ... */
+void asm_declare_decl_init(const struct section *, decl *); /* x: .qword ... */
 
-void asm_predeclare_extern(decl *d);
-void asm_predeclare_global(decl *d);
-void asm_predeclare_weak(decl *d);
+void asm_declare_constructor(decl *d);
+void asm_declare_destructor(decl *d);
+
+void asm_predeclare_extern(const struct section *, decl *d);
+void asm_predeclare_global(const struct section *, decl *d);
+void asm_predeclare_weak(const struct section *, decl *d);
+void asm_predeclare_visibility(const struct section *, decl *d);
+void asm_declare_alias(const struct section *, decl *d, decl *alias);
 #endif
 
-/* in impl */
 extern const struct asm_type_table
 {
 	int sz;

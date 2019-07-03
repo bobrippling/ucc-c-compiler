@@ -10,8 +10,11 @@
 #include "../type_is.h"
 #include "../sym.h"
 #include "../vla.h"
+#include "../gen_asm.h"
 
 #include "../cc1_out_ctx.h"
+#include "../cc1.h" /* cc1_fopt */
+#include "../fopt.h"
 
 #include "out.h" /* this file defs */
 #include "val.h"
@@ -22,8 +25,9 @@
 out_val *out_new_blk_addr(out_ctx *octx, out_blk *blk)
 {
 	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+	out_blk_mustgen(octx, blk, 0);
 	dynarray_add(&octx->mustgen, blk);
-	return out_new_lbl(octx, voidp, blk->lbl, 1);
+	return out_new_lbl(octx, voidp, blk->lbl, OUT_LBL_PIC | OUT_LBL_PICLOCAL);
 }
 
 static out_val *out_new_bp_off(out_ctx *octx, long off)
@@ -32,22 +36,40 @@ static out_val *out_new_bp_off(out_ctx *octx, long off)
 	return v_new_bp3_below(octx, NULL, voidp, off);
 }
 
+static type *get_voidpp(void)
+{
+	return type_ptr_to(type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
+}
+
 out_val *out_new_frame_ptr(out_ctx *octx, int nframes)
 {
 	type *voidpp = NULL;
 	out_val *fp = out_new_bp_off(octx, 0);
 
 	for(; nframes > 1; nframes--){
-		if(!voidpp){
-			voidpp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
-			voidpp = type_ptr_to(voidpp);
-		}
+		if(!voidpp)
+			voidpp = get_voidpp();
 
 		assert(fp->retains == 1);
 		fp = (out_val *)out_deref(octx, out_change_type(octx, fp, voidpp));
 	}
 
 	return fp;
+}
+
+const out_val *out_new_return_addr(out_ctx *octx, int nframes)
+{
+	const out_val *nth_frame = out_new_frame_ptr(octx, nframes);
+	const out_val *ret_addr;
+	type *voidpp = get_voidpp();
+
+	nth_frame = out_change_type(octx, nth_frame, voidpp);
+	ret_addr = out_op(octx,
+			op_plus,
+			nth_frame,
+			out_new_l(octx, type_nav_btype(cc1_type_nav, type_intptr_t), 1));
+
+	return out_deref(octx, ret_addr);
 }
 
 out_val *out_new_reg_save_ptr(out_ctx *octx)
@@ -80,14 +102,22 @@ out_val *out_new_l(out_ctx *octx, type *ty, long val)
 	return out_new_num(octx, ty, &n);
 }
 
-out_val *out_new_lbl(out_ctx *octx, type *ty, const char *s, int pic)
+static enum out_pic_type picfilter(enum out_pic_type flags)
+{
+	return FOPT_PIC(&cc1_fopt) ? flags : OUT_LBL_NOPIC;
+}
+
+out_val *out_new_lbl(
+		out_ctx *octx, type *ty,
+		const char *s,
+		enum out_pic_type pic_type)
 {
 	out_val *v = v_new(octx, ty);
 
 	v->type = V_LBL;
 	v->bits.lbl.str = s;
-	v->bits.lbl.pic = pic;
 	v->bits.lbl.offset = 0;
+	v->bits.lbl.pic_type = picfilter(pic_type);
 
 	return v;
 }
@@ -135,12 +165,11 @@ static const out_val *sym_inline_val(out_ctx *octx, sym *sym)
 const out_val *out_new_sym(out_ctx *octx, sym *sym)
 {
 	/* this function shouldn't be in out/ */
-	type *ty = type_ptr_to(sym->decl->ref);
 
 	switch(sym->type){
 		case sym_global:
 label:
-			return out_new_lbl(octx, ty, decl_asm_spel(sym->decl), 1);
+			return gen_decl_addr(octx, sym->decl);
 
 		case sym_local:
 		{
@@ -188,10 +217,10 @@ const out_val *out_new_sym_val(out_ctx *octx, sym *sym)
 
 out_val *out_new_zero(out_ctx *octx, type *ty)
 {
-	numeric n;
+	numeric n = { 0 };
 
-	n.val.f = 0;
-	n.suffix = VAL_FLOATING; /* sufficient for V_CONST_F */
+	if(type_is_floating(ty))
+		n.suffix = VAL_FLOATING; /* sufficient for V_CONST_F */
 
 	return out_new_num(octx, ty, &n);
 }

@@ -1,4 +1,4 @@
-#include "../../../src/as_cfg.h"
+#include "defs.h"
 .section SECTION_NAME_TEXT
 .globl alloca
 alloca:

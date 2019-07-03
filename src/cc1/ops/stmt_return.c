@@ -8,8 +8,9 @@
 
 #include "../cc1_out_ctx.h"
 #include "../inline.h"
+#include "../sanitize.h"
 
-const char *str_stmt_return()
+const char *str_stmt_return(void)
 {
 	return "return";
 }
@@ -38,7 +39,7 @@ void fold_stmt_return(stmt *s)
 		if(!type_is_s_or_u(s->expr->tree_type))
 			FOLD_EXPR(s->expr, s->symtab);
 
-		fold_check_expr(s->expr, FOLD_CHK_ALLOW_VOID, s->f_str());
+		(void)!fold_check_expr(s->expr, FOLD_CHK_ALLOW_VOID, s->f_str());
 
 		void_return = type_is_void(s->expr->tree_type);
 
@@ -55,7 +56,7 @@ void fold_stmt_return(stmt *s)
 
 			}else{
 				/* void return handled implicitly with a cast to void */
-				fold_type_chk_and_cast(
+				fold_type_chk_and_cast_ty(
 						ret_ty, &s->expr,
 						s->symtab, &s->where, "return type");
 
@@ -93,6 +94,13 @@ void gen_stmt_return(const stmt *s, out_ctx *octx)
 	/* need to generate the ret expr before the scope leave code */
 	const out_val *ret_exp = s->expr ? gen_expr(s->expr, octx) : NULL;
 
+	if(s->expr
+	&& type_is_ptr_or_block(s->expr->tree_type)
+	&& attribute_present(symtab_func(s->symtab), attr_returns_nonnull))
+	{
+		sanitize_returns_nonnull(ret_exp, octx);
+	}
+
 	gen_scope_leave(s->symtab, symtab_root(s->symtab), octx);
 
 	pcc1_octx = cc1_out_ctx(octx);
@@ -100,6 +108,17 @@ void gen_stmt_return(const stmt *s, out_ctx *octx)
 		inline_ret_add(octx, ret_exp);
 	else
 		out_ctrl_end_ret(octx, ret_exp, s->expr ? s->expr->tree_type : NULL);
+}
+
+void dump_stmt_return(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "return", s);
+
+	if(s->expr){
+		dump_inc(ctx);
+		dump_expr(s->expr, ctx);
+		dump_dec(ctx);
+	}
 }
 
 void style_stmt_return(const stmt *s, out_ctx *octx)

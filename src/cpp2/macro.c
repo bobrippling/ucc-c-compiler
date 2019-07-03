@@ -41,13 +41,19 @@ static macro *macro_add_nodup(const char *nam, char *val, int depth)
 		if(!m->val)
 			CPP_DIE("redefining \"%s\"", m->nam);
 
-		/* only warn if they're different */
+		/* only warn if they're different
+		 * and if the override is in code (i.e. not cmdline) */
 		if(strcmp(val, m->val)){
+			where new_where;
 			char buf[WHERE_BUF_SIZ];
 
-			CPP_WARN(WREDEF, "redefining \"%s\"\n"
-					"%s: note: previous definition here",
-					nam, where_str_r(buf, &m->where));
+			cpp_where_current(&new_where);
+
+			if(strcmp(new_where.fname, FNAME_CMDLINE)){
+				CPP_WARN(WREDEF, "redefining \"%s\"\n"
+						"%s: note: previous definition here",
+						nam, where_str_r(buf, &m->where));
+			}
 		}
 
 		free(m->val);
@@ -58,7 +64,7 @@ static macro *macro_add_nodup(const char *nam, char *val, int depth)
 		m->nam = ustrdup(nam);
 	}
 
-	where_current(&m->where);
+	cpp_where_current(&m->where);
 	if(m->where.line_str){
 		/* keep a hold for after preproc */
 		m->where.line_str = ustrdup(m->where.line_str);
@@ -162,7 +168,6 @@ void macros_warn_unused(void)
 		&& m->include_depth == 0)
 		{
 			current_line--;
-			preproc_backtrace();
 			warn_at(&m->where, "unused macro \"%s\"", m->nam);
 			current_line++;
 		}

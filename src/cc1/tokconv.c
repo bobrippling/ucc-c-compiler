@@ -14,7 +14,7 @@
 extern enum token curtok;
 static enum token curtok_save = token_unknown;
 
-enum type_primitive curtok_to_type_primitive()
+enum type_primitive curtok_to_type_primitive(void)
 {
 	switch(curtok){
 		case token_void:  return type_void;
@@ -33,7 +33,7 @@ enum type_primitive curtok_to_type_primitive()
 	return type_unknown;
 }
 
-enum type_qualifier curtok_to_type_qualifier()
+enum type_qualifier curtok_to_type_qualifier(void)
 {
 	switch(curtok){
 		case token_const:    return qual_const;
@@ -43,7 +43,7 @@ enum type_qualifier curtok_to_type_qualifier()
 	}
 }
 
-enum decl_storage curtok_to_decl_storage()
+enum decl_storage curtok_to_decl_storage(void)
 {
 	switch(curtok){
 		case token_auto:     return store_auto;
@@ -55,7 +55,7 @@ enum decl_storage curtok_to_decl_storage()
 	}
 }
 
-enum op_type curtok_to_op()
+enum op_type curtok_to_op(void)
 {
 	switch(curtok){
 		/* multiply - op_deref is handled by the parser */
@@ -89,22 +89,22 @@ enum op_type curtok_to_op()
 	return op_unknown;
 }
 
-int curtok_is_type_primitive()
+int curtok_is_type_primitive(void)
 {
 	return curtok_to_type_primitive() != type_unknown;
 }
 
-int curtok_is_type_qual()
+int curtok_is_type_qual(void)
 {
 	return curtok_to_type_qualifier() != qual_none;
 }
 
-int curtok_is_decl_store()
+int curtok_is_decl_store(void)
 {
 	return curtok_to_decl_storage() != (enum decl_storage)-1;
 }
 
-enum op_type curtok_to_compound_op()
+enum op_type curtok_to_compound_op(void)
 {
 #define CASE(x) case token_ ## x ## _assign: return op_ ## x
 	switch(curtok){
@@ -127,7 +127,7 @@ enum op_type curtok_to_compound_op()
 #undef CASE
 }
 
-int curtok_is_compound_assignment()
+int curtok_is_compound_assignment(void)
 {
 	return curtok_to_compound_op() != op_unknown;
 }
@@ -191,15 +191,15 @@ char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  __builtin_va_list);
 
 		CASE_STR_PREFIX(token,  identifier);
-		CASE_STR_PREFIX(token,  integer);
 		CASE_STR_PREFIX(token,  character);
 		CASE_STR_PREFIX(token,  string);
 
 		CASE_STR_PREFIX(token,  __extension__);
 		CASE_STR_PREFIX(token,  __auto_type);
+		CASE_STR_PREFIX(token,  __label__);
 
-		case token_floater:
-			return "float";
+		case token_integer: return "integer-literal";
+		case token_floater: return "float-literal";
 
 #define MAP(t, s) case token_##t: return s
 		MAP(attribute,       "__attribute__");
@@ -308,6 +308,7 @@ char *curtok_to_identifier(int *alloc)
 		case token_attribute:
 		case token___extension__:
 		case token___auto_type:
+		case token___label__:
 			/* we can stringify these */
 			*alloc = 0;
 			return token_to_str(curtok);
@@ -439,41 +440,22 @@ void eat(enum token t, const char *fnam, int line)
 int curtok_in_list(va_list l)
 {
 	enum token t;
-	while((t = va_arg(l, enum token)) != token_unknown)
+	while((enum token)(t = va_arg(l, int)) != token_unknown)
 		if(curtok == t)
 			return 1;
 	return 0;
 }
 
-void token_get_current_str(
-		char **ps, size_t *pl, int *pwide, where *w)
+struct cstring *token_get_current_str(where *w)
 {
-	extern char *currentstring;
-	extern size_t currentstringlen;
-	extern int   currentstringwide;
-
-	*ps = currentstring;
-
-	if(pwide)
-		*pwide = currentstringwide;
-	else if(currentstringwide)
-		die_at(NULL, "wide string not wanted");
+	extern struct cstring *currentstring;
+	struct cstring *ret = currentstring;
 
 	if(w){
 		extern where currentstringwhere;
 		memcpy_safe(w, &currentstringwhere);
 	}
 
-	if(pl){
-		*pl = currentstringlen;
-	}else{
-		char *p = memchr(currentstring, '\0', currentstringlen);
-
-		if(p && p < currentstring + currentstringlen - 1)
-			cc1_warn_at(NULL, str_contain_nul,
-					"nul-character terminates string early (%s)", p + 1);
-	}
-
 	currentstring = NULL;
-	currentstringlen = 0;
+	return ret;
 }

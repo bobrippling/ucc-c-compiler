@@ -7,11 +7,14 @@
 #include "../util/util.h"
 #include "../util/where.h"
 #include "../util/limits.h"
+#include "../util/math.h"
+#include "../util/macros.h"
 
 #include "cc1.h"
 #include "fold.h"
 #include "sue.h"
 #include "const.h"
+#include "fopt.h"
 
 #include "pack.h"
 #include "defs.h"
@@ -20,9 +23,13 @@
 #include "type_is.h"
 #include "type_nav.h"
 
+#include "ops/expr_val.h"
+
 struct bitfield_state
 {
+	type *master_ty;
 	unsigned current_off, first_off;
+	unsigned current_limit;
 };
 
 struct pack_state
@@ -44,33 +51,20 @@ static void struct_pack(
 	d->bits.var.struct_offset = after_space;
 }
 
-static void struct_pack_finish_bitfield(
-		unsigned long *poffset, unsigned *pbitfield_current)
+static void round_size_to_align(unsigned *const size, unsigned align)
 {
-	/* gone from a bitfield to a normal field - pad by the overflow */
-	unsigned change = *pbitfield_current / CHAR_BIT;
-
-	*poffset = pack_to_align(*poffset + change, 1);
-
-	*pbitfield_current = 0;
+	*size = pack_to_align(*size, align);
 }
 
-static void bitfield_size_align(
-		type *tref, unsigned *psz, unsigned *palign, where *from)
+static void struct_pack_finish_bitfield(
+		unsigned long *offset, struct bitfield_state *bitfield)
 {
-	/* implementation defined if ty isn't one of:
-	 * unsigned, signed or _Bool.
-	 * We make it take that align,
-	 * and reserve a max. of that size for the bitfield
-	 */
-	const btype *ty;
-	tref = type_is_primitive(tref, type_unknown);
-	assert(tref);
+	if(bitfield->master_ty){
+		unsigned master_ty_size = type_size(bitfield->master_ty, NULL);
 
-	ty = tref->bits.type;
-
-	*psz = btype_size(ty, from);
-	*palign = btype_align(ty, from);
+		if(*offset % master_ty_size)
+			*offset += master_ty_size - *offset % master_ty_size;
+	}
 }
 
 static void fold_enum(struct_union_enum_st *en, symtable *stab)
@@ -78,11 +72,15 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 	const int has_bitmask = !!attr_present(en->attr, attr_enum_bitmask);
 	sue_member **i;
 	int defval = has_bitmask;
+	integral_t max = 0, min = 0;
+	type *contained_ty;
+	int is_signed = 0;
 
 	for(i = en->members; i && *i; i++){
 		enum_member *m = (*i)->enum_member;
 		expr *e = m->val;
 		integral_t v;
+		int negative = 0;
 
 		/* -1 because we can't do dynarray_add(..., 0) */
 		if(e == (expr *)-1){
@@ -94,17 +92,22 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 			FOLD_EXPR(m->val, stab);
 
 			v = defval;
+			if(negative && v == 0){
+				negative = 0;
+			}
 
 		}else{
 			numeric n;
 			int oob;
-			int negative;
 
 			m->val = FOLD_EXPR(e, stab);
 
-			fold_check_expr(e,
+			if(fold_check_expr(e,
 					FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
-					"enum member");
+					"enum member"))
+			{
+				continue;
+			}
 
 			const_fold_integral(e, &n);
 
@@ -138,11 +141,37 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 			fold_had_error = 1;
 		}
 
+		if(negative ?
+		(sintegral_t)v < (sintegral_t)min
+		: v > max)
+		{
+			if(negative)
+				min = v;
+			else
+				max = v;
+		}
+		is_signed |= negative;
+
 		defval = has_bitmask ? v << 1 : v + 1;
 	}
 
-	en->size = type_primitive_size(type_int);
-	en->align = type_align(type_nav_btype(cc1_type_nav, type_int), NULL);
+	if(cc1_fopt.short_enums){
+		unsigned bits = (MAX(log2ll(round2(-min + 1)), log2ll(round2(max + 1))));
+
+		/* bits needs to be a power of 2 since those are the only word sizes supported */
+		bits = round2(bits);
+
+		if(bits < 8)
+			bits = 8;
+
+		contained_ty = type_nav_MAX_FOR(cc1_type_nav, bits / 8, is_signed);
+	}else{
+		contained_ty = type_nav_btype(cc1_type_nav, type_int);
+	}
+
+	en->size = type_size(contained_ty, NULL);
+	en->align = type_align(contained_ty, NULL);
+	round_size_to_align(&en->size, en->align);
 }
 
 static int fold_sue_check_unnamed(
@@ -160,31 +189,60 @@ static int fold_sue_check_unnamed(
 			/* fine */
 		}else if(sub_sue){
 			/* anon */
-			char *prob = NULL;
-			int ignore = 0;
+			int drop_member = 0;
 
-			if(fopt_mode & FOPT_TAG_ANON_STRUCT_EXT){
-				/* fine */
-			}else if(!sub_sue->anon){
-				prob = "ignored - tagged";
-				ignore = 1;
-			}else if(cc1_std < STD_C11){
-				prob = "is a C11 extension";
+			switch(sue_anonext_type(d, sub_sue)){
+				case SUE_ANONEXT_ALLOW:
+					/*
+					 * cc -fms-extensions/-fplan9-extensions
+					 * struct A { ... };
+					 * struct B { struct A; }; // struct B contains all of struct A's members
+					 *            ^~~~~~~~
+					 */
+					cc1_warn_at(&d->where,
+							unnamed_struct_memb_ext_tagged,
+							"tagged struct '%s' is a Microsoft/Plan 9 extension",
+							decl_to_str(d));
+					break;
+
+				case SUE_ANONEXT_DENY:
+					/*
+					 * struct A { ... };
+					 * struct B { struct A; }; // declaration does not declare anything
+					 *            ^~~~~~~~
+					 */
+					drop_member = 1;
+
+					cc1_warn_at(&d->where,
+							unnamed_struct_memb_ignored,
+							"unnamed member '%s' ignored (untagged %swould be accepted in C11)",
+							decl_to_str(d),
+							type_is_tdef(d->ref) ? "and untypedef'd " : "");
+					break;
+
+				case SUE_ANONEXT_ALLOW_C11:
+					if(cc1_std < STD_C11){
+						/*
+						 * struct B {
+						 *   struct { ... }; // struct B contains all of anon struct's members
+						 *          ^~~~~~~~
+						 * };
+						 */
+						cc1_warn_at(&d->where,
+								unnamed_struct_memb_ext_c11,
+								"unnamed member '%s' is a C11 extension",
+								decl_to_str(d));
+					}
+					break;
 			}
 
-			if(prob){
-				cc1_warn_at(&d->where,
-						unnamed_struct_memb,
-						"unnamed member '%s' %s",
-						decl_to_str(d), prob);
-				if(ignore){
-					/* drop the decl */
-					sue_member *dropped = sue_drop(sue, *pi);
-					--*pi;
-					decl_free(dropped->struct_member);
-					free(dropped);
-					return 1;
-				}
+			if(drop_member){
+				/* drop the decl */
+				sue_member *dropped = sue_drop(sue, *pi);
+				--*pi;
+				decl_free(dropped->struct_member);
+				free(dropped);
+				return 1;
 			}
 		}
 	}
@@ -214,7 +272,6 @@ static void fold_sue_calc_fieldwidth(
 		struct pack_state *pack_state,
 		int *const realign_next,
 		unsigned long *const offset,
-		unsigned *const bf_cur_lim,
 		struct bitfield_state *const bitfield)
 {
 	const unsigned bits = const_fold_val_i(pack_state->d->bits.var.field_width);
@@ -235,7 +292,7 @@ static void fold_sue_calc_fieldwidth(
 
 	}else if(*realign_next
 	|| !bitfield->current_off
-	|| bitfield->current_off + bits > *bf_cur_lim)
+	|| bitfield->current_off + bits > bitfield->current_limit)
 	{
 		if(*realign_next || bitfield->current_off){
 			if(!*realign_next){
@@ -244,50 +301,76 @@ static void fold_sue_calc_fieldwidth(
 						bitfield_boundary,
 						"bitfield overflow (%d + %d > %d) - "
 						"moved to next boundary", bitfield->current_off, bits,
-						*bf_cur_lim);
-			}else{
-				*realign_next = 0;
+						bitfield->current_limit);
 			}
 
-			/* don't pay attention to the current bitfield offset */
+			*realign_next = 0;
 			bitfield->current_off = 0;
-			struct_pack_finish_bitfield(offset, &bitfield->current_off);
+
+			if(bitfield->master_ty){
+				/* round offset up to master_ty's size */
+				struct_pack_finish_bitfield(offset, bitfield);
+			}
 		}
 
-		*bf_cur_lim = CHAR_BIT * type_size(d->ref, &d->where);
+		bitfield->master_ty = d->ref;
+		bitfield->current_limit = CHAR_BIT * type_size(d->ref, &d->where);
+
+		d->bits.var.bitfield_master_ty = bitfield->master_ty;
 
 		/* Get some initial padding.
 		 * Note that we want to affect the align_max
 		 * of the struct and the size of this field
 		 */
-		bitfield_size_align(d->ref, &pack_state->sz, &pack_state->align, &d->where);
+		decl_size_align_inc_bitfield(d, &pack_state->sz, &pack_state->align);
+		round_size_to_align(&pack_state->sz, pack_state->align);
 
 		/* we are onto the beginning of a new group */
 		struct_pack(d, offset, pack_state->sz, pack_state->align);
 		bitfield->first_off = d->bits.var.struct_offset;
 		d->bits.var.first_bitfield = 1;
 
+		/* now that we've done the struct packing w.r.t. bitfield size, we change
+		 * pack_state->align to the align of the declared member type itself, to
+		 * affect the struct's alignment (and also tail padding, etc) */
+		pack_state->align = type_align(d->ref, NULL);
+
 	}else{
 		/* mirror previous bitfields' offset in the struct
 		 * difference is in .struct_offset_bitfield
 		 */
 		d->bits.var.struct_offset = bitfield->first_off;
+		d->bits.var.bitfield_master_ty = bitfield->master_ty;
 	}
 
 	d->bits.var.struct_offset_bitfield = bitfield->current_off;
 	bitfield->current_off += bits; /* allowed to go above sizeof(int) */
 
-	if(bitfield->current_off == *bf_cur_lim){
+	if(bitfield->current_off == bitfield->current_limit){
 		/* exactly reached the limit, reset bitfield indexing */
 		bitfield->current_off = 0;
+
+		struct_pack_finish_bitfield(offset, bitfield);
 	}
+}
+
+static void populate_size_align(struct pack_state *pack_state)
+{
+	decl *d = pack_state->d;
+	if(!type_is_incomplete_array(d->ref))
+		pack_state->sz = decl_size(d);
+	else
+		pack_state->sz = 0;
+
+	pack_state->align = decl_align(d);
+	/* don't round size up to align here, we're still packing inside a struct */
 }
 
 static void fold_sue_calc_normal(struct pack_state *const pack_state)
 {
 	decl *const d = pack_state->d;
 
-	pack_state->align = decl_align(d);
+	populate_size_align(pack_state);
 
 	if(type_is_incomplete_array(d->ref)){
 		if(pack_state->iter[1])
@@ -300,8 +383,6 @@ static void fold_sue_calc_normal(struct pack_state *const pack_state)
 
 		pack_state->sue->flexarr = 1;
 		pack_state->sz = 0; /* not counted in struct size */
-	}else{
-		pack_state->sz = decl_size(d);
 	}
 }
 
@@ -336,7 +417,16 @@ static void fold_sue_calc_substrut(
 		symtable *stab,
 		int *const submemb_const)
 {
-	if(sub_sue && sub_sue != pack_state->sue){
+	char desc[32];
+
+	snprintf(desc, sizeof desc, "nested in %s",
+			type_primitive_to_str(pack_state->sue->primitive));
+
+	fold_check_embedded_flexar(
+			sub_sue, &pack_state->d->where,
+			desc);
+
+	if(sub_sue != pack_state->sue){
 		fold_sue(sub_sue, stab);
 
 		if(sub_sue->contains_const)
@@ -352,13 +442,18 @@ static void fold_sue_calc_substrut(
 				"embedded struct with flex-array not final member");
 	}
 
-	pack_state->sz = sue_size(sub_sue, &pack_state->d->where);
-	pack_state->align = sub_sue->align;
+	populate_size_align(pack_state);
+}
+
+static void check_sue_align_attr(struct_union_enum_st *sue, symtable *stab)
+{
+	sue->align = fold_get_max_align_attribute(sue->attr, stab, sue->align);
+	round_size_to_align(&sue->size, sue->align);
 }
 
 void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 {
-	if(sue->foldprog != SUE_FOLDED_NO || !sue->got_membs)
+	if(sue->foldprog != SUE_FOLDED_NO || sue->membs_progress != SUE_MEMBS_COMPLETE)
 		return;
 	sue->foldprog = SUE_FOLDED_PARTIAL;
 
@@ -366,7 +461,6 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		fold_enum(sue, stab);
 
 	}else{
-		unsigned bf_cur_lim;
 		unsigned align_max = 1;
 		unsigned sz_max = 0;
 		unsigned long offset = 0;
@@ -377,6 +471,9 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 		const int packed = !!attr_present(sue->attr, attr_packed);
 
 		memset(&bitfield, 0, sizeof bitfield);
+
+		if(cc1_fopt.dump_layouts)
+			fprintf(stderr, "Record layout for %s:\n", sue->spel);
 
 		for(i = sue->members; i && *i; i++){
 			decl *d = (*i)->struct_member;
@@ -394,7 +491,9 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 			if(!type_is_complete(d->ref)
 			&& !type_is_incomplete_array(d->ref)) /* allow flexarrays */
 			{
-				die_at(&d->where, "incomplete field '%s'", decl_to_str(d));
+				warn_at_print_error(&d->where, "incomplete field '%s'", decl_to_str(d));
+				fold_had_error = 1;
+				continue;
 			}
 
 			if(type_is_const(d->ref))
@@ -411,7 +510,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				fold_sue_calc_fieldwidth(
 						&pack_state,
 						&realign_next, &offset,
-						&bf_cur_lim, &bitfield);
+						&bitfield);
 
 			}else{
 				fold_sue_calc_normal(&pack_state);
@@ -422,6 +521,28 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 
 			if(sue->primitive == type_struct && !d->bits.var.field_width){
 				fold_sue_apply_normal_offset(&pack_state, &offset, &bitfield);
+			}
+
+			if(cc1_fopt.dump_layouts){
+				fprintf(stderr, " %2u", d->bits.var.struct_offset);
+
+				if(d->bits.var.field_width){
+					const unsigned bits = const_fold_val_i(d->bits.var.field_width);
+
+					fprintf(stderr, ":%2u-%-2u",
+							d->bits.var.struct_offset_bitfield,
+							d->bits.var.struct_offset_bitfield + (bits == 0 ? 0 : bits - 1));
+				}else{
+					fprintf(stderr, "      ");
+				}
+
+				fprintf(stderr, "| .%-10s", d->spel ? d->spel : "<anon>");
+				if(type_is_complete(d->ref)){
+					fprintf(stderr, " size=%u align=%u",
+						type_size(d->ref, NULL),
+						decl_align(d));
+				}
+				fprintf(stderr, "\n");
 			}
 
 			if(pack_state.align > align_max)
@@ -449,6 +570,12 @@ warn:
 		sue->size = pack_to_align(
 				sue->primitive == type_struct ? offset : sz_max,
 				align_max);
+		round_size_to_align(&sue->size, sue->align);
+
+		check_sue_align_attr(sue, stab);
+
+		if(cc1_fopt.dump_layouts)
+			fprintf(stderr, "         | record size=%u align=%u\n", sue->size, sue->align);
 	}
 
 	sue->foldprog = SUE_FOLDED_FULLY;

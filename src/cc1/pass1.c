@@ -39,7 +39,9 @@ static int parse_add_gasms(symtable_gasm ***plast_gasms)
 {
 	int r = 0;
 	while(accept(token_asm)){
-		dynarray_add(plast_gasms, parse_gasm());
+		symtable_gasm *g = parse_gasm();
+		if(g)
+			dynarray_add(plast_gasms, g);
 		r = 1;
 	}
 	return r;
@@ -82,8 +84,10 @@ int parse_and_fold(symtable_global *globals)
 		cont |= parse_add_gasms(&last_gasms);
 		dynarray_add_array(&globals->gasms, last_gasms);
 
-		while(accept_where(token_semicolon, &semi))
+		while(accept_where(token_semicolon, &semi)){
 			cc1_warn_at(&semi, parse_extra_semi, "extra ';' at global scope");
+			cont = 1;
+		}
 
 		if(!cont)
 			break;

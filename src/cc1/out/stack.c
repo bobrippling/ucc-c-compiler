@@ -4,7 +4,7 @@
 #include "../type_nav.h"
 #include "../pack.h"
 
-#include "macros.h"
+#include "../../util/macros.h"
 
 #include "forwards.h"
 
@@ -16,17 +16,24 @@
 
 #include "stack.h"
 
-void v_stack_adj(out_ctx *octx, v_stackt amt, int sub)
+void v_stack_adj_val(out_ctx *octx, const out_val *amt, int sub)
 {
 	out_flush_volatile(
 			octx,
 			out_op(
 				octx, sub ? op_minus : op_plus,
 				v_new_sp(octx, NULL),
+				amt));
+}
+
+void v_stack_adj(out_ctx *octx, v_stackt amt, int sub)
+{
+	v_stack_adj_val(octx,
 				out_new_l(
 					octx,
 					type_nav_btype(cc1_type_nav, type_intptr_t),
-					amt)));
+					amt),
+				sub);
 }
 
 static void align_sz(unsigned *psz, unsigned align)
@@ -48,8 +55,10 @@ void v_set_cur_stack_sz(out_ctx *octx, v_stackt new_sz)
 const out_val *out_aalloc(
 		out_ctx *octx, unsigned sz, unsigned align, type *in_ty)
 {
-	type *ty = type_ptr_to(in_ty
-		? in_ty : type_nav_btype(cc1_type_nav, type_nchar));
+	type *ty = type_ptr_to(
+			in_ty
+			? in_ty
+			: type_nav_btype(cc1_type_nav, type_nchar));
 
 	align_sz(&sz, align);
 

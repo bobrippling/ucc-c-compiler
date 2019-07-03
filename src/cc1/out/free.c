@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 
 #include "../../util/dynmap.h"
 #include "../../util/dynarray.h"
@@ -58,10 +59,13 @@ static void out_wipe_blks(out_ctx *octx)
 		blk_free(b);
 	}
 
-	octx->first_blk =
-	octx->second_blk =
-	octx->current_blk =
+	octx->entry_blk =
+	octx->stacksub_blk =
+	octx->argspill_begin_blk =
+	octx->argspill_done_blk =
+	octx->postprologue_blk =
 	octx->epilogue_blk =
+	octx->current_blk =
 	octx->last_used_blk =
 	octx->mem_blk_head =
 		NULL;

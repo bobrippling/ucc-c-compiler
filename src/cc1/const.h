@@ -14,6 +14,8 @@ typedef struct stringlit_at
 	stringlit *lit;
 } stringlit_at;
 
+extern const char *constyness_strs[];
+
 typedef struct consty
 {
 	enum constyness
@@ -32,7 +34,11 @@ typedef struct consty
 		stringlit_at *str; /* CONST_STRK */
 		struct
 		{
-			int is_lbl;
+			enum {
+				CONST_LBL_MEMADDR,
+				CONST_LBL_TRUE,
+				CONST_LBL_WEAK, /* may not be used in a constant expression, just an address expression */
+			} lbl_type;
 			union
 			{
 				const char *lbl;
@@ -41,6 +47,7 @@ typedef struct consty
 		} addr;
 	} bits;
 	struct expr *nonstandard_const; /* e.g. (1, 2) is not strictly const */
+	struct expr *nonconst; /* non-constant sub-expression */
 } consty;
 #define CONST_AT_COMPILE_TIME(t) (t != CONST_NO && t != CONST_NEED_ADDR)
 
@@ -56,6 +63,17 @@ typedef struct consty
 #define K_INTEGRAL(num) !K_FLOATING(num)
 
 #define CONST_FOLD_LEAF(k) memset((k), 0, sizeof *(k))
+#define CONST_FOLD_NO(k, e) do{ \
+		(k)->type = CONST_NO;       \
+		if(!(k)->nonconst)          \
+			(k)->nonconst = (e);      \
+	}while(0)
+
+/* this is used to propagate the .nonconst member from two sub-exprs */
+void const_fold_no(
+		consty *k,
+		consty *ksub1, struct expr *sub1,
+		consty *ksub2, struct expr *sub2);
 
 void const_fold(struct expr *e, consty *);
 
@@ -63,7 +81,13 @@ int const_expr_and_zero(struct expr *e);
 int const_expr_and_non_zero(struct expr *e);
 
 void const_fold_integral(struct expr *e, numeric *);
+int const_fold_integral_try(struct expr *e, numeric *);
 integral_t const_fold_val_i(struct expr *e);
+
+void const_ensure_num_or_memaddr(
+		consty *k, struct type *from, struct type *to,
+		struct expr *owner, int set_nonstandard_const)
+	ucc_nonnull();
 
 integral_t const_op_exec(
 		/* rval is optional */

@@ -8,9 +8,13 @@ enum c_std
 	STD_C90,
 	STD_C99,
 	STD_C11,
+	STD_C18, /* -std=c17 aliases this, gcc compat */
 };
 
 /* returns 0 on success */
 int std_from_str(const char *, enum c_std *, int *gnu);
+
+#define STD_LIMIT_STRLENGTH_C89 509
+#define STD_LIMIT_STRLENGTH_C99 4095
 
 #endif

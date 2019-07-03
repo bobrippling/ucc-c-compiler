@@ -16,29 +16,47 @@ void fold_merge_tenatives(symtable *stab);
 void fold_decl_add_sym(decl *d, symtable *stab);
 
 void fold_decl(decl *d, symtable *stab);
+void fold_decl_maybe_member(decl *d, symtable *stab, int su_member);
+void fold_decl_alias(decl *d);
+
 void fold_check_decl_complete(decl *d);
 void fold_global_func(decl *);
 void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab);
 int fold_func_is_passable(decl *, type *, int warn);
 
+/* unadorned types, e.g. (int)..., _Generic(..., int: ...) */
 void fold_type(type *t, symtable *stab);
-void fold_type_w_attr(
-		type *, type *parent, where *,
-		symtable *stab, attribute *attr);
+
+/* type as part of something else, e.g. int x; */
+void fold_type_ondecl_w(decl *, symtable *, const where *, int is_arg);
 
 void fold_check_restrict(expr *lhs, expr *rhs, const char *desc, where *w);
 
-void fold_funcargs(funcargs *fargs, symtable *stab, attribute *);
+void fold_check_embedded_flexar(
+		struct struct_union_enum_st *, const where *, const char *desc);
+
+void fold_funcargs(funcargs *fargs, symtable *stab, attribute **);
+
+int fold_get_max_align_attribute(attribute **attribs, symtable *stab, const int min);
 
 /* cast insertion */
 void fold_insert_casts(type *tlhs, expr **prhs, symtable *stab);
 
 int fold_type_chk_warn(
-		type *lhs, type *rhs,
+		/* take exprs to check null-ptr-constants */
+		expr *maybe_lhs,
+		type *tlhs,
+		expr *rhs,
+		int is_comparison,
 		where *w, const char *desc);
 
+void fold_type_chk_and_cast_ty(
+		type *tlhs, expr **prhs,
+		symtable *stab, where *w,
+		const char *desc);
+
 void fold_type_chk_and_cast(
-		type *lhs, expr **prhs,
+		expr *lhs, expr **prhs,
 		symtable *stab, where *w,
 		const char *desc);
 
@@ -55,7 +73,9 @@ enum fold_chk
 	FOLD_CHK_ARITHMETIC = 1 << 7,
 	FOLD_CHK_NO_BITFIELD_WARN = 1 << 8, /* asm("" : "="(bit.field)) */
 };
-void fold_check_expr(const expr *e, enum fold_chk, const char *desc);
+
+ucc_wur
+int fold_check_expr(const expr *e, enum fold_chk, const char *desc);
 
 /* expression + statement folding */
 /*   decay */
@@ -74,6 +94,6 @@ int fold_passable(stmt *s);
 int fold_passable_yes(stmt *s);
 int fold_passable_no( stmt *s);
 
-extern int fold_had_error;
+#include "parse_fold_error.h"
 
 #endif

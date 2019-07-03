@@ -1,7 +1,7 @@
 #include "ops.h"
 #include "stmt_noop.h"
 
-const char *str_stmt_noop()
+const char *str_stmt_noop(void)
 {
 	return "noop";
 }
@@ -15,6 +15,11 @@ void gen_stmt_noop(const stmt *s, out_ctx *octx)
 {
 	(void)s;
 	(void)octx;
+}
+
+void dump_stmt_noop(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "no-op", s);
 }
 
 void style_stmt_noop(const stmt *s, out_ctx *octx)

@@ -18,6 +18,7 @@ stmt_flow *stmt_flow_new(symtable *parent)
 stmt *stmt_new(
 		func_fold_stmt *f_fold,
 		func_gen_stmt *f_gen,
+		func_dump_stmt *f_dump,
 		func_gen_stmt *f_gen_style,
 		func_str_stmt *f_str,
 		void (*init)(stmt *),
@@ -30,12 +31,15 @@ stmt *stmt_new(
 	s->symtab = stab;
 
 	s->f_fold = f_fold;
+	s->f_dump = f_dump;
 
 	switch(cc1_backend){
 		case BACKEND_ASM:
 			s->f_gen = f_gen;
 			break;
-		case BACKEND_PRINT:
+		case BACKEND_DUMP:
+			s->f_gen = NULL;
+			break;
 		case BACKEND_STYLE:
 			s->f_gen = f_gen_style;
 			break;

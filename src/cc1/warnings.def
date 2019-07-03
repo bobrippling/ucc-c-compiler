@@ -1,0 +1,296 @@
+/* -Wgnu could be a GROUP(), but currently the maximum
+ * size for a group is 3, and extending it just for
+ * -Wgnu is a bit excessively wasteful
+ */
+
+X("mismatch-arg", arg_mismatch)
+X("return-type", return_type)
+X("return-void", return_void)
+
+X("binary-literal", binary_literal)
+
+X("sign-compare", sign_compare)
+X("extern-assume", extern_assume)
+
+X("implicit-int", implicit_int)
+X("implicit-function-declaration", implicit_func)
+GROUP("implicit", &cc1_warning.implicit_func, &cc1_warning.implicit_int)
+
+X("escape-char", escape_char)
+
+/* switch on enum type without default label:
+ * warn on missing enum entry
+ * warn on case labels outside of range */
+X("switch", switch_enum)
+
+/* same as -Wswitch except default labels change nothing */
+X("switch-enum", switch_enum_even_when_default_lbl)
+
+/* missing default label */
+X("switch-default", switch_default)
+
+X("switch-enum-bitmask", switch_enum_bitmask)
+
+/* warn if default label in fully covered switch */
+X("covered-switch-default", switch_default_covered)
+
+X("enum-compare", enum_cmp)
+
+X("incomplete-use", incomplete_use)
+
+X("assign-in-test", test_assign)
+X("test-bool", test_bool)
+
+X("dead-code", dead_code)
+
+X("predecl-enum", predecl_enum)
+
+X("extra-semi", parse_extra_semi)
+
+X("mixed-code-decls", mixed_code_decls)
+
+X("truncation", truncation)
+
+X("pad", pad)
+
+X("tenative-init", tenative_init)
+
+X("shadow-local", shadow_local)
+X("shadow-global", shadow_global_user)
+X("shadow-global-sysheaders", shadow_global_sysheaders)
+X("shadow-compatible-local", shadow_compatible_local)
+GROUP("shadow", &cc1_warning.shadow_global_user, &cc1_warning.shadow_local)
+ALIAS("shadow=global", shadow_global_user) /* -Wshadow=global is an alias for -Wshadow (aka a group) */
+ALIAS("shadow=global", shadow_local) /* ... so we do both */
+ALIAS("shadow=local", shadow_local)
+ALIAS("shadow=compatible-local", shadow_compatible_local)
+
+X("cast-qual", cast_qual)
+
+X("unused-comma", unused_comma)
+X("unused-expression", unused_expr)
+X("unused-function", unused_function)
+X("unused-return-value", unused_fnret)
+X("unused-label", unused_label)
+X("unused-local-typedef", unused_local_typedef)
+ALIAS("unused-local-typedefs", unused_local_typedef) /* gcc compat */
+X("unused-parameter", unused_param)
+X("unused-variable", unused_var)
+
+GROUP("unused", &cc1_warning.unused_param, &cc1_warning.unused_var)
+
+X("uninitialised", uninitialised)
+
+X("int-ptr-conversion", int_ptr_conv)
+ALIAS("ptr-int-conversion", int_ptr_conv)
+
+X("arith-funcptr", arith_fnptr)
+X("arith-voidptr", arith_voidp)
+
+X("sizeof-void", sizeof_void_or_func)
+GROUP("pointer-arith", &cc1_warning.arith_fnptr, &cc1_warning.arith_voidp, &cc1_warning.sizeof_void_or_func)
+
+X("array-bounds", array_oob)
+X("char-subscripts", char_subscript)/* gcc/clang */
+X("asm-badchar", asm_badchar)
+
+X("attr-badcleanup", attr_badcleanup)
+
+X("attr-bad-ctor-dtor", attr_ctor_dtor_bad)
+
+X("attr-format-unknown", attr_format_unknown)
+X("attr-format-baddecl", attr_format_baddecl)
+X("attr-printf-bad", attr_printf_bad)
+X("attr-printf-toomany", attr_printf_toomany)
+X("attr-printf-unknown", attr_printf_unknown)
+X("attr-printf-voidptr", attr_printf_voidp)
+GROUP("format", &cc1_warning.attr_printf_bad, &cc1_warning.attr_printf_toomany, &cc1_warning.attr_printf_unknown)
+ALIAS("format-extra-args", attr_printf_toomany)/* gcc/clang */
+
+X("address-of-lvalue", address_of_lvalue)
+
+X("attr-noderef", attr_noderef)
+X("attr-nonnull", attr_nonnull)
+X("attr-nonnull-bad", attr_nonnull_bad)
+X("attr-nonnull-noargs", attr_nonnull_noargs)
+X("attr-nonnull-nonptr", attr_nonnull_nonptr)
+X("attr-nonnull-noptrs", attr_nonnull_noptrs)
+X("attr-nonnull-oob", attr_nonnull_oob)
+X("attr-nonnull-tested", attr_nonnull_tested)
+ALIAS("pointer-bool-conversion", attr_nonnull_tested) /* clang */
+X("attr-section-badchar", attr_section_badchar)
+X("attr-sentinel", attr_sentinel)
+X("attr-sentinel-nonvariadic", attr_sentinel_nonvariadic)
+X("attr-unknown-on-label", lbl_attr_unknown)
+X("attr-unused-used", attr_unused_used)
+X("attr-unused-voidfn", attr_unused_voidfn)
+
+X("qualified-fntype", bad_funcqual)
+X("inline-builtin-frame-addr", inline_builtin_frame_addr)
+X("frame-address", builtin_frame_addr)
+X("restrict-non-ptr", bad_restrict)
+
+X("bitfield-addr", bitfield_addr)
+X("bitfield-boundary", bitfield_boundary)
+X("bitfield-onebit-int", bitfield_onebit_int)
+X("bitfield-trunc", bitfield_trunc)
+X("bitfield-promotion", bitfield_promotion)
+
+X("builtin-expect-nonconst", builtin_expect_nonconst)
+X("builtin-memset-bad", builtin_memset_bad)
+X("builtin-va_arg-undefined", builtin_va_arg)
+X("builtin-va_start-2nd-param", builtin_va_start)
+
+X("c89-compound-literal", c89_compound_literal)
+X("c89-for-init", c89_for_init)
+X("c89-init-constexpr", c89_init_constexpr)
+X("c89-trailing-comma", c89_parse_trailingcomma)
+
+X("constant-large-unsigned", constant_large_unsigned)
+
+X("div-zero", constop_bad)
+X("declaration-noop", decl_nodecl)
+X("empty-struct", empty_struct)
+X("integer-op-promotion", int_op_promotion)
+
+X("empty-init", gnu_empty_init)
+
+X("enum-mismatch", enum_mismatch)
+X("assign-enum", enum_out_of_range) /* clang compat */
+X("enum-mismatch-int", enum_mismatch_int)
+ALIAS("enum-out-of-range", enum_out_of_range)
+
+X("excess-init", excess_init)
+X("extern-init", extern_init)
+
+X("embedded-flexarr", flexarr_embed)
+X("flexarr-single-member", flexarr_only)
+X("flexarr-init", flexarr_init)
+
+X("extended-offsetof", offsetof_extended)
+
+X("free-nonheap-object", free_nonheap)
+X("malloc-type-mismatch", malloc_type_mismatch)
+
+X("gcc-compat", gnu_gcc_compat)
+
+X("gnu-alignof-expression", gnu_alignof_expr)
+X("gnu-statement-expression", gnu_expr_stmt)
+X("gnu-label-as-value", gnu_addr_lbl)
+X("gnu-attribute", gnu_attribute)
+X("gnu-typeof", gnu_typeof)
+X("gnu-auto-type", gnu_autotype)
+ALIAS("gnu-autotype", gnu_autotype)
+X("gnu-function", gnu__function)
+X("gnu-case-range", gnu_case_range)
+X("gnu-designator", gnu_desig)
+
+X("call-argcount", funcall_argcount)
+
+X("cpp-line-parsing", cpp_line_parsing)
+X("unknown-pragmas", unknown_pragma)
+
+X("ignored-attributes", ignored_attribute)
+
+X("ignored-late-decl", ignored_late_decl)
+
+X("ignored-qualifiers", ignored_qualifiers)
+X("duplicate-decl-specifier", duplicate_declspec)
+
+X("implicit-old-func", implicit_old_func)
+
+X("missing-braces", init_missing_braces) /* clang/gcc */
+ALIAS("init-missing-braces", init_missing_braces)
+X("init-missing-struct", init_missing_struct)
+ALIAS("missing-field-initializers", init_missing_struct)/* gcc/clang */
+X("init-missing-struct-zero", init_missing_struct_zero)
+X("init-obj-discard", init_obj_discard)
+X("init-overlong-string", init_overlong_strliteral)
+X("overlength-strings", overlength_strings)
+X("init-override", init_override)
+X("designated-init", init_undesignated)
+X("init-array-range", gnu_init_array_range)
+X("initialiser-overrides", initialiser_overrides)
+
+X("unknown-attribute", attr_unknown)
+
+X("long-long", long_long)
+
+X("mismatch-conditional", mismatch_conditional)
+X("mismatching-types", mismatching_types)
+X("incompatible-pointer-types", incompatible_pointer_types)
+X("compare-distinct-pointer-types", compare_distinct_pointer_types)
+
+X("missing-empty-struct-brace-init", missing_empty_struct_brace_init)
+
+X("missing-prototypes", missing_prototype)
+X("missing-variable-declarations", missing_variable_decls)
+ALIAS("missing-declarations", missing_variable_decls)
+GROUP("missing-forwards", &cc1_warning.missing_variable_decls, &cc1_warning.missing_prototype)
+ALIAS("strict-prototypes", implicit_old_func)/* gcc/clang */
+
+X("multichar", multichar)
+X("char-too-large", char_toolarge)
+
+X("nonstandard-array-size", nonstd_arraysz)
+X("nonstandard-init", nonstd_init)
+X("nonstandard-assert", nonstd_assert)
+
+X("null-zero-literal", null_zero_literal)
+
+X("omitted-param-types", omitted_param_types)
+X("undefined-shift", op_shift_bad)
+X("overlarge-enumerator-bitfield", overlarge_enumerator_bitfield)
+X("overlarge-enumerator-int", overlarge_enumerator_int)
+
+X("overflow", overflow)
+X("constant-conversion", constant_conversion)
+
+X("operator-precedence", parse_precedence)
+X("visibility", private_struct)
+
+X("pure-inline", pure_inline)
+X("inline", inline_failed)
+X("restrict-ptrs", restrict_ptrs)
+X("return-undef", return_undef)
+X("aggregate-return", aggregate_return)
+X("sizeof-array-argument", sizeof_decayed)
+X("sizeof-ptr-divide", sizeof_ptr_div)
+X("sizeof-pointer-memaccess", sizeof_pointer_memaccess)
+X("static-array-size", static_array_bad)
+X("static-local-in-inline", static_local_in_inline)
+X("str-contain-nul", str_contain_nul)
+
+X("struct-noinstance-anon", struct_noinstance_anon)
+X("struct-noinstance-qualified", struct_noinstance_qualified)
+
+X("sym-never-read", sym_never_read)
+X("sym-never-written", sym_never_written)
+
+X("tautologic-unsigned-op", tautologic_unsigned)
+X("tautological-pointer-compare", tautologic_pointer_cmp)
+X("tenative-array", tenative_array_1elem)
+
+X("typedef-function-impl", typedef_fnimpl)
+X("typedef-redefinition", typedef_redef)
+
+X("undef-string-comparison", undef_strlitcmp)
+X("undefined-internal", undef_internal)
+
+X("anon-tagged-struct-extension", unnamed_struct_memb_ext_tagged)
+X("anon-tagged-struct-empty-decl", unnamed_struct_memb_ignored)
+X("anon-untagged-c11-struct", unnamed_struct_memb_ext_c11)
+ALIAS("microsoft-anon-tag", unnamed_struct_memb_ext_tagged)
+ALIAS("microsoft", unnamed_struct_memb_ext_tagged)
+
+X("dangling-else", dangling_else)
+
+X("vla", vla)
+X("c89-vla", c89_vla)
+
+X("__func__init", x__func__init)
+X("__func__outside-fn", x__func__outsidefn)
+
+X("unknown-warning-option", unknown_warning_option)
+
+X("system-headers", system_headers)

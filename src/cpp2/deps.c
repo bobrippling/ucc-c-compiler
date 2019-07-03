@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
+#include <errno.h>
 
 #include "../util/dynmap.h"
 #include "../util/alloc.h"
@@ -20,19 +21,30 @@ void deps_add(const char *d)
 	if(!depset)
 		depset = dynmap_new(char *, strcmp, dynmap_strhash);
 
-	dynmap_set(
+	(void)dynmap_set(
 			char *, void *,
 			depset,
 			/* not lost: */ustrdup(d), NULL);
 }
 
-void deps_dump(const char *file)
+void deps_dump(const char *file, const char *to)
 {
 	/* replace ext if present, otherwise tac ".o" on */
 	const char *basename = strrchr(file, '/');
 	const char *ext;
 	char *obj;
 	size_t i, len;
+	FILE *out;
+
+	if(to){
+		out = fopen(to, "w");
+		if(!out){
+			fprintf(stderr, "open: %s: %s\n", to, strerror(errno));
+			exit(1);
+		}
+	}else{
+		out = stdout;
+	}
 
 	if(!basename)
 		basename = file;
@@ -53,7 +65,7 @@ void deps_dump(const char *file)
 		obj = ustrprintf("%s.o", file);
 	}
 
-	printf("%s: %s", obj, file);
+	fprintf(out, "%s: %s", obj, file);
 	len = strlen(obj) + strlen(file) + 2;
 	free(obj);
 
@@ -62,11 +74,16 @@ void deps_dump(const char *file)
 
 		len += this_len;
 		if(len >= LINE_MAX){
-			printf(" \\\n");
+			fprintf(out, " \\\n");
 			len = this_len;
 		}
 
-		printf(" %s", obj);
+		fprintf(out, " %s", obj);
 	}
-	putchar('\n');
+	fputc('\n', out);
+
+	if(out != stdout && fclose(out)){
+		fprintf(stderr, "close: %s: %s\n", to, strerror(errno));
+		exit(1);
+	}
 }

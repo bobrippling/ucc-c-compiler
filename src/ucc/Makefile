@@ -1,25 +1,32 @@
-include ../src_config.mk
+include ../config.mk
 
 # mkstemp
 CFLAGS += -D_XOPEN_SOURCE=500
 
-OBJ = ucc.o ucc_ext.o ucc_lib.o str.o \
-			../util/alloc.o ../util/dynarray.o ../util/platform.o
+OBJ_UCC = ucc.o ucc_ext.o ucc_path.o str.o warning.o
+OBJ_DEP = ../util/alloc.o ../util/dynarray.o ../util/platform.o \
+		../util/tmpfile.o ../util/str.o ../util/io.o ../util/triple.o
+OBJ_TEST = test.o str.o ../util/alloc.o ../util/dynarray.o
+OBJ = ${OBJ_UCC} ${OBJ_DEP}
+SRC = ${OBJ_UCC:.o=.c}
+
+all: ucc tags check
 
 ucc: ${OBJ}
-	${CC} -o $@ ${OBJ} ${LDFLAGS}
+	@echo link $@
+	$Q${CC} -o $@ ${OBJ} ${LDFLAGS}
+
+test: ${OBJ_TEST}
+	@echo link $@
+	$Q${CC} -o $@ ${OBJ_TEST} ${LDFLAGS}
+
+check: test
+	@echo test ucc
+	$Q./test
 
 clean:
-	rm -f *.o ucc
+	@echo clean ucc
+	$Qrm -f ${OBJ_UCC} ucc
 
-.PHONY: clean
-
-str.o: str.c ../util/alloc.h ../util/compiler.h ../util/dynarray.h \
- ../util/dyn.h str.h
-ucc.o: ucc.c cfg.h ucc.h ucc_ext.h ucc_lib.h ../util/alloc.h \
- ../util/compiler.h ../util/dynarray.h ../util/dyn.h ../util/util.h \
- ../util/where.h ../util/platform.h str.h
-ucc_ext.o: ucc_ext.c cfg.h ucc_ext.h ucc.h ../util/alloc.h \
- ../util/compiler.h ../util/dynarray.h ../util/dyn.h str.h
-ucc_lib.o: ucc_lib.c ucc.h ucc_ext.h ucc_lib.h cfg.h str.h \
- ../util/alloc.h ../util/compiler.h ../util/dynarray.h ../util/dyn.h
+.PHONY: clean all
+include ../Makefile.common

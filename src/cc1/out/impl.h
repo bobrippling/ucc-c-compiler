@@ -19,8 +19,9 @@ ucc_wur const out_val *impl_op_unary(out_ctx *octx, enum op_type, const out_val 
 
 ucc_wur const out_val *impl_deref(
 		out_ctx *octx, const out_val *vp,
-		const struct vreg *reg)
-	ucc_nonnull();
+		const struct vreg *reg,
+		int *done_out_deref)
+	ucc_nonnull((1, 2, 3));
 
 void impl_branch(out_ctx *, const out_val *,
 		out_blk *bt, out_blk *bf, int unlikely);
@@ -70,7 +71,7 @@ int impl_regname_index(const char *);
 /* callee save register bools */
 int impl_reg_is_scratch(type *fnty, const struct vreg *);
 int impl_reg_is_callee_save(type *fnty, const struct vreg *r);
-const int *impl_callee_save_regs(type *fnty, unsigned *pn);
+const struct vreg *impl_callee_save_regs(type *fnty, unsigned *pn);
 
 void impl_use_callee_save(out_ctx *octx, const struct vreg *);
 
@@ -99,6 +100,9 @@ const char *impl_val_str(const out_val *vs, int deref);
 
 const char *impl_val_str_r(
 		char buf[], const out_val *vs, const int deref);
+
+void impl_reserve_retregs(out_ctx *);
+void impl_unreserve_retregs(out_ctx *);
 
 const char *impl_reg_str(const struct vreg *);
 

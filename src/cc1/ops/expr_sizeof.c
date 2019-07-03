@@ -30,7 +30,12 @@ static const char *sizeof_what(enum what_of wo)
 	return NULL;
 }
 
-const char *str_expr_sizeof()
+type *expr_sizeof_type(expr *e)
+{
+	return SIZEOF_WHAT(e);
+}
+
+const char *str_expr_sizeof(void)
 {
 	return "sizeof/typeof/alignof";
 }
@@ -46,12 +51,16 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 	chosen = SIZEOF_WHAT(e);
 
-	fold_check_expr(e->expr,
+	if(fold_check_expr(e->expr,
 			FOLD_CHK_NO_BITFIELD
-			| (e->what_of == what_typeof
+			| (e->what_of == what_typeof || e->what_of == what_sizeof
 					? FOLD_CHK_ALLOW_VOID
 					: 0),
-			sizeof_what(e->what_of));
+			sizeof_what(e->what_of)))
+	{
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	switch(e->what_of){
 		case what_typeof:
@@ -77,16 +86,18 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 			int set = 0; /* need this, since .bits can't be relied upon to be 0 */
 			int vla = NEED_RUNTIME_SIZEOF(chosen);
 
-			if(!type_is_complete(chosen))
-				die_at(&e->where, "sizeof incomplete type %s", type_to_str(chosen));
+			if(!type_is_complete(chosen)){
+				if(type_is_void(chosen))
+					cc1_warn_at(&e->where, sizeof_void_or_func, "%s() on void type", sizeof_what(e->what_of));
+				else
+					die_at(&e->where, "%s incomplete type %s", sizeof_what(e->what_of), type_to_str(chosen));
+			}
+
+			if(type_is(chosen, type_func))
+				cc1_warn_at(&e->where, sizeof_void_or_func, "%s() on function type", sizeof_what(e->what_of));
 
 			if((e->what_of == what_alignof || vla) && e->expr){
-				decl *d = NULL;
-
-				if(expr_kind(e->expr, identifier))
-					d = e->expr->bits.ident.bits.ident.sym->decl;
-				else if(expr_kind(e->expr, struct))
-					d = e->expr->bits.struct_mem.d;
+				decl *d = expr_to_declref(e->expr, NULL);
 
 				if(d){
 					if(e->what_of == what_alignof){
@@ -116,7 +127,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 static void const_expr_sizeof(expr *e, consty *k)
 {
 	if(NEED_RUNTIME_SIZEOF(SIZEOF_WHAT(e))){
-		k->type = CONST_NO;
+		CONST_FOLD_NO(k, e);
 		return;
 	}
 
@@ -173,19 +184,18 @@ const out_val *gen_expr_sizeof(const expr *e, out_ctx *octx)
 	return out_new_l(octx, e->tree_type, SIZEOF_SIZE(e));
 }
 
-const out_val *gen_expr_str_sizeof(const expr *e, out_ctx *octx)
+void dump_expr_sizeof(const expr *e, dump *ctx)
 {
+	dump_desc_expr_newline(ctx, sizeof_what(e->what_of), e, 0);
+
 	if(e->expr){
-		idt_printf("sizeof expr:\n");
-		print_expr(e->expr);
+		dump_printf(ctx, "\n");
+		dump_inc(ctx);
+		dump_expr(e->expr, ctx);
+		dump_dec(ctx);
 	}else{
-		idt_printf("sizeof %s\n", type_to_str(e->bits.size_of.of_type));
+		dump_printf(ctx, " %s\n", type_to_str(e->bits.size_of.of_type));
 	}
-
-	if(e->what_of == what_sizeof)
-		idt_printf("size = %d\n", SIZEOF_SIZE(e));
-
-	UNUSED_OCTX();
 }
 
 void mutate_expr_sizeof(expr *e)
