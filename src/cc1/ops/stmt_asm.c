@@ -19,7 +19,7 @@ const char *str_stmt_asm()
 	return "asm";
 }
 
-static void check_constraint(asm_param *param, symtable *stab)
+static int check_constraint(asm_param *param, symtable *stab)
 {
 	const char *desc = "__asm__() output";
 
@@ -32,7 +32,7 @@ static void check_constraint(asm_param *param, symtable *stab)
 		desc = "__asm__() input";
 	}
 
-	fold_check_expr(param->exp, FOLD_CHK_NO_ST_UN, desc);
+	return fold_check_expr(param->exp, FOLD_CHK_NO_ST_UN, desc);
 }
 
 void fold_stmt_asm(stmt *s)
@@ -43,13 +43,18 @@ void fold_stmt_asm(stmt *s)
 	for(it = s->bits.asm_args->params; it && *it; it++, n_inouts++){
 		asm_param *param = *it;
 
-		check_constraint(param, s->symtab);
+		if(check_constraint(param, s->symtab))
+			continue;
 
 		if(param->is_output){
-			if(!expr_is_lval(param->exp))
-				die_at(&param->exp->where, "asm output not an lvalue");
+			if(!expr_is_lval(param->exp)){
+				warn_at_print_error(&param->exp->where, "asm output not an lvalue");
+				fold_had_error = 1;
+				continue;
+			}
 
-			fold_check_expr(param->exp, FOLD_CHK_NO_BITFIELD_WARN, "asm output");
+			if(fold_check_expr(param->exp, FOLD_CHK_NO_BITFIELD_WARN, "asm output"))
+				continue; /* error */
 
 			fold_inc_writes_if_sym(param->exp, s->symtab);
 		}
