@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include <assert.h>
 
 #include "../../util/dynvec.h"
@@ -226,7 +227,34 @@ void init_stmt_asm(stmt *s)
 void dump_stmt_asm(const stmt *s, dump *ctx)
 {
 	dump_desc_stmt(ctx, "asm", s);
+
+	dump_inc(ctx);
+	{
+		asm_args *args = s->bits.asm_args;
+		char **si;
+		asm_param **i;
+
+		dump_strliteral(ctx, args->cmd, strlen(args->cmd));
+
+		dump_printf(ctx, "params:\n");
+		dump_inc(ctx);
+		for(i = args->params; i && *i; i++){
+			asm_param *p = *i;
+
+			dump_strliteral(ctx, p->constraints, strlen(p->constraints));
+			dump_expr(p->exp, ctx);
+		}
+		dump_dec(ctx);
+
+		dump_printf(ctx, "clobbers:\n");
+		dump_inc(ctx);
+		for(si = args->clobbers; si && *si; si++)
+			dump_strliteral(ctx, *si, strlen(*si));
+		dump_dec(ctx);
+	}
+	dump_dec(ctx);
 }
+
 static void style_asm_bits(asm_param *param)
 {
 	stylef("\"%s\" (", param->constraints);
