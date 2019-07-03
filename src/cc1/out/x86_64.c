@@ -164,74 +164,57 @@ static const struct calling_conv_desc
 	}
 };
 
-static const char *x86_intreg_str(unsigned reg, type *r)
-{
-	static const char *const rnames[][4] = {
-#define REG(x) {  #x "l",  #x "x", "e"#x"x", "r"#x"x" }
-		REG(a), REG(b), REG(c), REG(d),
+/* for indexing convenience, this table is:
+ * { [ah], al, ax, eax, rax } */
+static const char *const regnames[][5] = {
+#define REG(x) { #x "h",  #x "l",  #x "x", "e"#x"x", "r"#x"x" }
+	REG(a), REG(b), REG(c), REG(d),
 #undef REG
 
-		{ "dil",  "di", "edi", "rdi" },
-		{ "sil",  "si", "esi", "rsi" },
+	/* no way of accessing the high byte */
+	{ NULL, "dil", "di", "edi", "rdi" },
+	{ NULL, "sil", "si", "esi", "rsi" },
 
-		/* r[8 - 15] -> r8b, r8w, r8d,  r8 */
-#define REG(x) {  "r" #x "b",  "r" #x "w", "r" #x "d", "r" #x  }
-		REG(8),  REG(9),  REG(10), REG(11),
-		REG(12), REG(13), REG(14), REG(15),
+	/* r[8 - 15] -> r8b, r8w, r8d,  r8 */
+#define REG(x) { NULL, "r" #x "b", "r" #x "w", "r" #x "d", "r" #x }
+	REG(8),  REG(9),  REG(10), REG(11),
+	REG(12), REG(13), REG(14), REG(15),
 #undef REG
 
-		{  "bpl", "bp", "ebp", "rbp" },
-		{  "spl", "sp", "esp", "rsp" },
-	};
+	{ NULL, "bpl", "bp", "ebp", "rbp" },
+	{ NULL, "spl", "sp", "esp", "rsp" },
 
-	UCC_ASSERT(reg < countof(rnames), "invalid x86 int reg %d", reg);
+	{ 0 }
+};
 
-	return rnames[reg][asm_table_lookup(r)];
-}
-
-static const char *const fp_regnames[] = {
+static const char *const regnames_fp[] = {
 	"xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6", "xmm7", NULL
 };
 
+static const char *x86_intreg_str(unsigned reg, type *r)
+{
+	UCC_ASSERT(reg < countof(regnames), "invalid x86 int reg %d", reg);
+
+	return regnames[reg][1 + asm_table_lookup(r)];
+}
+
 static const char *x86_fpreg_str(unsigned i)
 {
-	UCC_ASSERT(i < sizeof fp_regnames/sizeof(*fp_regnames) - 1,
+	UCC_ASSERT(i < sizeof regnames_fp /sizeof(*regnames_fp) - 1,
 			"bad fp reg index %d", i);
 
-	return fp_regnames[i];
+	return regnames_fp[i];
 }
 
 int impl_regname_index(const char *rnam)
 {
-	/* can't reuse x86_intreg_str() since we need the high byte registers */
-	static const char *const regnames[][5] = {
-#define REG(x) { #x "h",  #x "l",  #x "x", "e"#x"x", "r"#x"x" }
-		REG(a), REG(b), REG(c), REG(d),
-#undef REG
-
-		/* no way of accessing this high byte */
-		{ "dil", "", "di", "edi", "rdi" },
-		{ "sil", "", "si", "esi", "rsi" },
-
-		/* r[8 - 15] -> r8b, r8w, r8d,  r8 */
-#define REG(x) { "r" #x "b",  "", "r" #x "w", "r" #x "d", "r" #x }
-		REG(8),  REG(9),  REG(10), REG(11),
-		REG(12), REG(13), REG(14), REG(15),
-#undef REG
-
-		{ "bpl", "", "bp", "ebp", "rbp" },
-		{ "spl", "", "sp", "esp", "rsp" },
-
-		{ 0 }
-	};
-	int i;
+	int i, j;
 
 	if(*rnam == '%')
 		rnam++;
 
-	for(i = 0; ; i++){
-		int j;
-		for(j = 0; j < 5; j++){
+	for(i = 0; regnames[i][1]; i++){
+		for(j = 0; j < (int)countof(regnames[0]); j++){
 			const char *entry = regnames[i][j];
 			if(!entry)
 				return -1;
