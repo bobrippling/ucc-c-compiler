@@ -11,3 +11,15 @@ tying an input to an early-clobber output
 	- no other input may share the same register as the input tied to the early-clobber
 	- the tied output must have a register constraint, not memory (or any other)
 	- only a single input may be tied to an output.
+
+mark outputs as written-to:
+	diff --git i/src/cc1/parse_stmt.c w/src/cc1/parse_stmt.c
+	--- i/src/cc1/parse_stmt.c
+	+++ w/src/cc1/parse_stmt.c
+	@@ -412,6 +412,7 @@ static stmt *parse_stmt_and_decls(
+				else
+					this = parse_stmt(&subctx);
+
+	+			fold_stmt(this); /* FIXME: only do this once (globally) */
+				dynarray_add(&code_stmt->bits.code.stmts, this);
+			}
