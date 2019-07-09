@@ -176,8 +176,14 @@ static void check_implicit_funcall(expr *e, symtable *stab, char **const psp)
 			args,
 			symtab_new(stab, &e->where) /*new symtable for args*/);
 
-	cc1_warn_at(&e->expr->where, implicit_func,
-			"implicit declaration of function \"%s\"", *psp);
+	if(cc1_std < STD_C99){
+		cc1_warn_at(&e->expr->where, implicit_func,
+				"implicit declaration of function \"%s\"", *psp);
+	}else{
+		warn_at_print_error(&e->expr->where,
+				"implicit declaration of function \"%s\"", *psp);
+		fold_had_error = 1;
+	}
 
 	df = decl_new();
 	memcpy_safe(&df->where, &e->where);
