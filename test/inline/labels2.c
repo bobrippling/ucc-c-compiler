@@ -1,5 +1,7 @@
 // RUN: %ucc -c -o %t %s -fno-semantic-interposition
 
+void g();
+
 __attribute((always_inline))
 int f(int i)
 {

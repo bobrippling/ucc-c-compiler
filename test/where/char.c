@@ -1,6 +1,4 @@
-// RUN: %caret_check %s
-
-g(int);
+// RUN: %caret_check %s -std=c89
 
 main()
 {

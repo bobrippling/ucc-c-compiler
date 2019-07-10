@@ -1,4 +1,7 @@
 // RUN: %check %s
+
+int f(int);
+
 main()
 {
 	int i = 0; // CHECK: /note: local declaration here/

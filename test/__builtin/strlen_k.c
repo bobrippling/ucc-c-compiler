@@ -3,6 +3,8 @@
 q(){}
 char *s = "";
 
+unsigned long strlen(const char *);
+
 main()
 {
 	strlen(s);

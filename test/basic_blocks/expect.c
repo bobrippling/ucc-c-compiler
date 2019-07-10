@@ -1,6 +1,7 @@
 // RUN: %jmpcheck %s
 
 void t(), f();
+int test();
 
 likely()
 {

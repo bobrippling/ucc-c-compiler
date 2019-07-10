@@ -1,5 +1,8 @@
 // RUN: %ucc -c %s
 
+void func(int, int, int, int, int, int, int, int);
+
+
 main()
 {
 	int a, b, c, d, e, f, g, h;

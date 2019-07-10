@@ -1,5 +1,7 @@
 // RUN: %ucc -g -o %t %s
 
+void f();
+
 void g()
 {
 	typedef struct A *P;
@@ -18,6 +20,6 @@ main()
 {
 }
 
-f()
+void f()
 {
 }

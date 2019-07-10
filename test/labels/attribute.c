@@ -1,7 +1,9 @@
-// RUN: %check %s
+// RUN: %check --only %s
+
 main()
 {
 	int test(void), test2(void);
+	int f();
 
 	if(test())
 		lbl: __attribute__((unused)) // CHECK: !/warn/

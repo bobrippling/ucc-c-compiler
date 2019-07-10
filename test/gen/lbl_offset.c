@@ -2,6 +2,8 @@
 
 int i;
 
+void f(int *);
+
 main()
 {
 	f(&i + 20);

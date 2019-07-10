@@ -1,4 +1,7 @@
 // RUN: %ucc -c %s
+
+void q(void *);
+
 main()
 {
 	int f();

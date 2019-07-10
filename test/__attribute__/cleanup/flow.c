@@ -39,10 +39,11 @@ f(i)
 	}
 }
 
+_Noreturn void abort();
+
 int *expected;
 order(int *p)
 {
-	_Noreturn void abort();
 	if(p != expected)
 		abort();
 	n++;

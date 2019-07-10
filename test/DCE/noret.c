@@ -3,6 +3,8 @@
 
 _Noreturn void abort(void);
 
+void g();
+
 main()
 {
 	int local = 5;

@@ -1,5 +1,7 @@
 // RUN: %ucc -g -o %t %s
 
+void g();
+
 main()
 {
 	goto a;

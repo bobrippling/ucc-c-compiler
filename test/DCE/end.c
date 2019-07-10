@@ -18,6 +18,7 @@ main()
 		__builtin_trap();
 	}
 
+	void g();
 	g(); // no undefined ref - DCE'd
 
 	return hello;

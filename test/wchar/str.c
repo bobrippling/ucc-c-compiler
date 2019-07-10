@@ -6,6 +6,8 @@ void abort(void) __attribute__((noreturn));
 //#include <wchar.h>
 typedef __WCHAR_TYPE__ wchar_t;
 
+int wprintf(const wchar_t *restrict, ...);
+
 main()
 {
 	const wchar_t *s = L"ABCDEF";
