@@ -1,4 +1,5 @@
 // RUN: %ocheck 0 %s -fplan9-extensions
+void abort(void) __attribute__((noreturn));
 
 typedef struct Animal Animal;
 

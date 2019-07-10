@@ -1,4 +1,5 @@
 // RUN: %ocheck 0 %s
+void abort(void) __attribute__((noreturn));
 typedef void any(int);
 typedef int ir(void);
 

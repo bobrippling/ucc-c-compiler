@@ -1,5 +1,6 @@
 // RUN: %archgen %s 'x86,x86_64:shll $1, %%eax' 'x86,x86_64:!/addl.*%%eax'
 // RUN: %ocheck 0 %s
+void abort(void) __attribute__((noreturn));
 
 f(unsigned i)
 {

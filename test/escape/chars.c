@@ -1,5 +1,6 @@
 // RUN: %ocheck 0 %s
 // RUN: %check %s
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 _Static_assert((char)'abc' == 'c', ""); // CHECK: /multi-char/
 _Static_assert(/*int*/'abc' == 0x616263, "");

@@ -1,4 +1,5 @@
 // RUN: %ocheck 0 %s
+void abort(void) __attribute__((noreturn));
 
 // bit width = 2 -> int
 // bit width = 4 -> long

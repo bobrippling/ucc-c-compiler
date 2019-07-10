@@ -1,5 +1,6 @@
 // RUN: %ocheck 0 %s
 // RUN: %ocheck 0 %s -fstack-protector-all
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 #define NULL (void *)0
 

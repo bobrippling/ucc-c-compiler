@@ -1,4 +1,5 @@
 // RUN: %ocheck 0 %s
+void abort(void) __attribute__((noreturn));
 struct A { int i, j; void *p; } f()
 {
 	return (struct A){ 1, 2, 0 };

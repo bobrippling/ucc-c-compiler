@@ -1,5 +1,6 @@
 // RUN: %ocheck 0 %s
 // RUN: %ocheck 0 %s -fstack-protector-all
+int strcmp(const char *s1, const char *s2);
 
 void abort();
 

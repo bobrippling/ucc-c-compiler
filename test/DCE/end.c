@@ -1,4 +1,5 @@
 // RUN: %ucc -o %t %s -g
+void exit(int) __attribute((noreturn));
 
 f(int *p)
 {

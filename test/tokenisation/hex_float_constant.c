@@ -1,4 +1,5 @@
 // RUN: %ocheck 0 %s
+void abort(void) __attribute__((noreturn));
 
 float f = 0x.1p1;
 double d = 0x0.3de31P3;

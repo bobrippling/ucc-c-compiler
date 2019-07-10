@@ -1,5 +1,6 @@
 // RUN: %ucc -o %t %s
 // RUN: %t | %output_check 'sts[0] = { 0, 0, 0 }' 'sts[1] = { 0, 0, 0 }' 'sts[2] = { 0, 0, 0 }' 'sts[3] = { 0, 0, 0 }' 'sts[4] = { 0, 0, 0 }' 'sts[5] = { 0, 1, 0 }'
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 main()
 {

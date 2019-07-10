@@ -1,4 +1,7 @@
 // RUN: %ocheck 0 %s
+int strcmp(const char *s1, const char *s2);
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
+void abort(void) __attribute__((noreturn));
 
 typedef int wchar_t;
 

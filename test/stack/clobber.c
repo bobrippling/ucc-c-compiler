@@ -1,5 +1,6 @@
 // RUN: %ucc %s -o %t
 // RUN: [ `%t | grep -c 753` -eq 3 ]
+long write(int fildes, const void *buf, unsigned long nbyte);
 
 wn(int n)
 {

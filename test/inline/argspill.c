@@ -1,4 +1,5 @@
 // RUN: %ocheck 0 %s -fno-semantic-interposition
+void abort(void) __attribute__((noreturn));
 
 extern __attribute((format(printf, 1, 2))) int printf(char *, ...);
 

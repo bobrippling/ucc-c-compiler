@@ -1,4 +1,5 @@
 // RUN: %ocheck 7 %s -finline-functions
+void abort(void) __attribute__((noreturn));
 
 int count;
 

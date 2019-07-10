@@ -1,4 +1,5 @@
 // RUN: %ocheck 0 %s
+void abort(void) __attribute__((noreturn));
 
 x = 56e5;
 

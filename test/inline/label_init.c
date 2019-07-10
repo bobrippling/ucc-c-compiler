@@ -1,4 +1,5 @@
 // RUN: %ocheck 0 %s
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 typedef int i;
 

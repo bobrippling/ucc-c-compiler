@@ -1,5 +1,6 @@
 // RUN: %ucc -fno-const-fold -funsigned-char %s -o %t
 // RUN: %t
+void abort(void) __attribute__((noreturn));
 
 main()
 {

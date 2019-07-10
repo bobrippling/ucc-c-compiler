@@ -1,5 +1,6 @@
 // RUN: %ucc %s -o %t
 // RUN: %t
+void abort(void) __attribute__((noreturn));
 
 typedef int td_val;
 

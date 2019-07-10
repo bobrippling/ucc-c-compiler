@@ -1,5 +1,6 @@
 // RUN: %ucc -o %t %s
 // RUN: %t | %output_check 2 7 5 hi
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 int the_i;
 
 int (^makeadder(int i))(int)

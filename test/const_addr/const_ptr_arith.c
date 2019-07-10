@@ -1,4 +1,5 @@
 // RUN: %ocheck 0 %s
+void abort(void) __attribute__((noreturn));
 
 // test cmp, addition and (int & ptr) subtraction
 

@@ -1,5 +1,6 @@
 // RUN: %ocheck 0 %s
 // RUN: %check %s
+void abort(void) __attribute__((noreturn));
 
 struct A
 {

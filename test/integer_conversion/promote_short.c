@@ -1,4 +1,6 @@
 // RUN: %ocheck 0 %s
+long write(int fildes, const void *buf, unsigned long nbyte);
+void abort(void) __attribute__((noreturn));
 
 typedef unsigned char uint8_t;
 

@@ -1,4 +1,5 @@
 // RUN: %check %s -fshow-inlined -finline-functions -fno-semantic-interposition
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 // inline
 int f(int x)

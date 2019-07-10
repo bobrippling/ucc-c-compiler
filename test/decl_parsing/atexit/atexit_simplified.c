@@ -1,6 +1,8 @@
 // RUN: %ucc -o %t %s
 // RUN: %t
 // RUN: %t | %output_check a b c
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
+void abort(void) __attribute__((noreturn));
 
 void (*fs[3])(void);
 int f_i;

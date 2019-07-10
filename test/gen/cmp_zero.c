@@ -1,4 +1,5 @@
 // RUN: %ocheck 1 %s
+void exit(int) __attribute((noreturn));
 
 f(_Bool x)
 {

@@ -1,6 +1,9 @@
 // RUN: %ucc -o %t %s
 // RUN: [ `%t | grep '^#' | wc -l` -eq 1 ]
 // RUN: %t | grep -F '# 35 53'
+char * strpbrk(const char *s, const char *charset);
+int snprintf(char * restrict str, unsigned long size, const char * restrict format, ...);
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 strcmpany(char *a, char *b)
 {

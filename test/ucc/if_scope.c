@@ -1,5 +1,6 @@
 // RUN: %check -e %s -DFAIL
 // RUN: %ocheck 0 %s
+void abort(void) __attribute__((noreturn));
 
 f()
 {
