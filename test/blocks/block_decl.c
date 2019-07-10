@@ -26,8 +26,10 @@ main()
 
 	dispatch(pc);
 
-	if(total != 357)
+	if(total != 357){
+		_Noreturn void abort();
 		abort();
+	}
 
 	return 0;
 }

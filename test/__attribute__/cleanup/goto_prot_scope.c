@@ -10,7 +10,10 @@ cleanup(void *p)
 	switch(n){
 		case 0: expected = pj; break;
 		case 1: expected = pi; break;
-		default: abort();
+		default:
+						;
+						_Noreturn void abort();
+						abort();
 	}
 
 	if(p != expected)

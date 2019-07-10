@@ -17,6 +17,8 @@ typedef union
 	};
 } Int;
 
+int printf();
+
 pInt(Int *p)
 {
 	printf("%d%d%d%d%d%d%d%d\n",

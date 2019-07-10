@@ -50,16 +50,26 @@ end:
 
 main()
 {
-	if(f(0) != 5 || skipped)
+	if(f(0) != 5 || skipped){
+		_Noreturn void abort(void);
 		abort();
-	if(f(1) != 10 || skipped)
+	}
+	if(f(1) != 10 || skipped){
+		_Noreturn void abort(void);
 		abort();
-	if(f(2) != 0 || skipped)
+	}
+	if(f(2) != 0 || skipped){
+		_Noreturn void abort(void);
 		abort();
-	if(f(3) != 12 || skipped)
+	}
+	if(f(3) != 12 || skipped){
+		_Noreturn void abort(void);
 		abort();
-	if(f(20) != 6 || !skipped)
+	}
+	if(f(20) != 6 || !skipped){
+		_Noreturn void abort(void);
 		abort();
+	}
 
 	return 0;
 }

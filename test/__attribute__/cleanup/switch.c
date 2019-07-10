@@ -27,6 +27,7 @@ f(int i)
 
 main()
 {
+	_Noreturn void abort();
 	f(0);
 	if(n) abort();
 	f(2);

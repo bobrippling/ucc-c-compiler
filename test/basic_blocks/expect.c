@@ -1,5 +1,7 @@
 // RUN: %jmpcheck %s
 
+void t(), f();
+
 likely()
 {
 	if(__builtin_expect(test(), 1))

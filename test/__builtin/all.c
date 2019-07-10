@@ -1,4 +1,5 @@
-// RUN: %ucc -o %t %s
+// RUN: %ucc -o %t %s -std=c89
+// C89 for implicit function decl
 // RUN: %t
 
 #define ASSERT_IS(n, exp) _Static_assert(n == (exp), #exp " failed")

@@ -7,8 +7,10 @@ struct A
 
 f(void *a, void *b)
 {
-	if(a != b)
+	if(a != b){
+		_Noreturn void abort();
 		abort();
+	}
 }
 
 main()

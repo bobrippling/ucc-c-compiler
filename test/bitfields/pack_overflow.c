@@ -1,6 +1,8 @@
 // RUN: %ocheck 0 %s
 // RUN: %check %s -Wbitfield-boundary
 
+void *memset(void *, int, unsigned long);
+
 main()
 {
 	struct

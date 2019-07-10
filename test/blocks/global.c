@@ -9,11 +9,15 @@ int (^b)(int) = ^(int i){
 
 int main()
 {
-	if(b(2) != 3)
+	if(b(2) != 3){
+		_Noreturn void abort();
 		abort();
+	}
 
-	if(x != 10)
+	if(x != 10){
+		_Noreturn void abort();
 		abort();
+	}
 
 	return 0;
 }

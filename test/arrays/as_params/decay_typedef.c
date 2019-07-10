@@ -10,8 +10,10 @@ f(A a)
 
 main()
 {
-	if( f((void *)0) != sizeof(void *) )
+	if( f((void *)0) != sizeof(void *) ){
+		_Noreturn void abort();
 		abort();
+	}
 
 	return 0;
 }

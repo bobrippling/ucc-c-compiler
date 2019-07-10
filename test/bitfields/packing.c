@@ -74,7 +74,7 @@ int ec;
 void assert(_Bool b, int line)
 {
 	if(!b){
-		printf("%s:%d: failed\n", __FILE__, line);
+		//printf("%s:%d: failed\n", __FILE__, line);
 		ec = 1;
 	}
 }

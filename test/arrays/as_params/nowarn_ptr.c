@@ -1,5 +1,7 @@
 // RUN: %check %s
 void *_new(int sz, int n);
+void free(void *);
+
 #define new(ty, n) (ty *)_new(sizeof(ty), n)
 #define delete(x) free(x)
 

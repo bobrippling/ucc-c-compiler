@@ -20,13 +20,17 @@ main()
 	double d = 2;
 
 	fp(&d);
-	if(d != 5)
+	if(d != 5){
+		_Noreturn void abort();
 		abort();
+	}
 
 	int i = 7;
 	inte(&i);
-	if(i != 10)
+	if(i != 10){
+		_Noreturn void abort();
 		abort();
+	}
 
 	return 0;
 }

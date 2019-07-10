@@ -16,6 +16,8 @@ static void dt()
 	_exit(2);
 }
 
+_Noreturn void abort();
+
 main()
 {
 	if(!inited)

@@ -4,6 +4,8 @@
 // RUN: %t | grep 'in main (2 = i)'
 // RUN: %t | grep 'IN main (2 = i)'
 
+int printf(const char *, ...);
+
 void
 q()
 {

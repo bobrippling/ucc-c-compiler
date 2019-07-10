@@ -42,6 +42,7 @@ f(i)
 int *expected;
 order(int *p)
 {
+	_Noreturn void abort();
 	if(p != expected)
 		abort();
 	n++;

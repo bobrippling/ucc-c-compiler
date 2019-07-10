@@ -9,6 +9,7 @@ cleanup(int *pint)
 
 assert(_Bool b)
 {
+	_Noreturn void abort();
 	if(!b)
 		abort();
 }

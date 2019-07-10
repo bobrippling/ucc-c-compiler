@@ -1,9 +1,9 @@
-// RUN: %ucc -o %t %s
-// RUN: %t | %output_check '3'
+// RUN: %ocheck 0 %s
+
 main()
 {
 	int i;
 	((int *)__builtin_frame_address(0))[-1] = 3;
 
-	printf("%d\n", i);
+	return i == 3 ? 0 : 1;
 }

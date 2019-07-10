@@ -1,4 +1,4 @@
-// RUN: %ucc %s -c
+// RUN: %ucc -c %s
 
 a(int a, int b)
 {
@@ -12,5 +12,5 @@ a(int a, int b)
 f(int a)
 {
 	if(a > 2)
-		q();
+		;
 }

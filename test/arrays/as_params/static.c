@@ -1,4 +1,3 @@
-// RUN: %ucc -o %t %s
 // RUN: %check %s
 
 int f(int x[static /*const*/ 10])
@@ -12,8 +11,10 @@ main()
 {
 	int x[5];
 	x[1] = 2;
-	if(f(x) != 2) // CHECK: /warning: array of size 5 passed where size 10 needed/
+	if(f(x) != 2){ // CHECK: /warning: array of size 5 passed where size 10 needed/
+		_Noreturn void abort();
 		abort();
+	}
 
 	g(x); // no warn
 

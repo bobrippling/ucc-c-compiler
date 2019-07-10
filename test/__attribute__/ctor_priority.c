@@ -21,6 +21,7 @@ static void check(const struct A *expect)
 	|| init.b != expect->b
 	|| init.c != expect->c)
 	{
+		_Noreturn void abort();
 		abort();
 	}
 }

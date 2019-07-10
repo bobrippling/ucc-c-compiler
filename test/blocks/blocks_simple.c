@@ -2,6 +2,8 @@
 // RUN: %t | %output_check 2 'inline call' hi
 // RUN: %t; [ $? -eq 3 ]
 
+int printf(const char *, ...);
+
 main()
 {
 	int (^b)();

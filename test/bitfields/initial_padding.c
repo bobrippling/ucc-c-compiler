@@ -1,7 +1,9 @@
-// RUN: %ucc -o %t %s
-// RUN: %t
+// RUN: %ocheck 0 %s
 
 // gcc and clang compatible - tcc isn't
+void *memset(void *, int, unsigned long);
+int printf();
+
 main()
 {
 	struct

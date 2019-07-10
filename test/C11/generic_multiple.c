@@ -19,6 +19,8 @@ typedef long ptrdiff_t;
 typedef unsigned long size_t;
 typedef long long intmax_t;
 
+int printf(const char *, ...);
+
 void test_typename(void)
 {
 	size_t s;

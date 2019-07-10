@@ -13,6 +13,8 @@ static struct
 	NULL, 7,
 };
 
+int printf();
+
 main()
 {
 	for(int i = 0; i < 3; i++)

@@ -48,7 +48,9 @@ g()
 main()
 {
 	g();
-	if(!freed)
+	if(!freed){
+		_Noreturn void abort();
 		abort();
+	}
 	return 0;
 }
