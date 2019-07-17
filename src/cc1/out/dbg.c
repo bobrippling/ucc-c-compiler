@@ -1240,6 +1240,9 @@ static struct DIE *dwarf_global_variable(
 		return NULL;
 	}
 
+	if(type_is(d->ref, type_func) && !decl_should_emit_code(d))
+		return NULL;
+
 	vardie = dwarf_die_new(is_tdef ? DW_TAG_typedef : DW_TAG_variable);
 
 	dwarf_attr_decl(cu, vardie, d, d->ref, !is_tdef);
