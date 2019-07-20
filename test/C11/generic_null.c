@@ -28,6 +28,8 @@ f()
 	return 3;
 }
 
+void abort();
+
 main()
 {
 	int do_eval = MAYBE_EVAL(f());

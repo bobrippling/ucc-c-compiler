@@ -18,6 +18,7 @@ main()
 	int j = 10;
 	_Generic(0, int: f)(&_Generic(5, int: j));
 
+	_Noreturn void abort();
 	if(j != 2)
 		abort();
 

@@ -13,6 +13,7 @@ f()
 
 main()
 {
+	_Noreturn void abort();
 	x_ = 0;
 	f();
 	if(nx != 1) abort();

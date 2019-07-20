@@ -1,5 +1,6 @@
 // RUN: %ucc %s -o %t
 // RUN: %t | diff -u - %s.ocheck
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 struct X
 {

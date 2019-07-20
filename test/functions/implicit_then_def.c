@@ -1,5 +1,6 @@
-// RUN: %check %s
-// RUN: %check --prefix=error -e %s -DERROR
+// RUN: %check %s -std=c89
+// RUN: %check --prefix=error -e %s -DERROR -std=c89
+// C89 for implicit function decl
 
 int f()
 {

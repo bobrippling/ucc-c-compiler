@@ -445,7 +445,7 @@
 	.byte 0 # DW_AT_name
 	.long 504 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
-	.byte 3 # DW_AT_decl_line
+	.byte 5 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
 	.byte 9 # block count
 	.byte 3 # DW_FORM_block DW_OP_addr
@@ -457,7 +457,7 @@
 	.byte 0 # DW_AT_name
 	.long 515 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
-	.byte 5 # DW_AT_decl_line
+	.byte 7 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
 	.quad f # DW_AT_low_pc
 	.quad .Lfuncend_f # DW_AT_high_pc
@@ -615,7 +615,7 @@
 	.byte 0 # DW_AT_name
 	.long 537 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
-	.byte 15 # DW_AT_decl_line
+	.byte 17 # DW_AT_decl_line
 
 	.byte 21  # Abbrev. Code 21 DW_TAG_lexical_block
 	.quad .Ldbg_begin.3 # DW_AT_low_pc
@@ -630,7 +630,7 @@
 	.byte 0 # DW_AT_name
 	.long 546 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
-	.byte 19 # DW_AT_decl_line
+	.byte 21 # DW_AT_decl_line
 
 	.byte 23  # Abbrev. Code 23 DW_TAG_lexical_block
 	.quad .Ldbg_begin.5 # DW_AT_low_pc
@@ -649,7 +649,7 @@
 	.byte 0 # DW_AT_name
 	.long 504 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
-	.byte 24 # DW_AT_decl_line
+	.byte 26 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
 	.byte 9 # block count
 	.byte 3 # DW_FORM_block DW_OP_addr
@@ -664,7 +664,7 @@
 	.byte 0 # DW_AT_name
 	.long 515 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
-	.byte 30 # DW_AT_decl_line
+	.byte 32 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
 	.quad main # DW_AT_low_pc
 	.quad .Lfuncend_main # DW_AT_high_pc
@@ -678,7 +678,7 @@
 	.byte 0 # DW_AT_name
 	.long 515 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
-	.byte 32 # DW_AT_decl_line
+	.byte 34 # DW_AT_decl_line
 
 	.byte 29  # Abbrev. Code 29 DW_TAG_lexical_block
 	.quad .Ldbg_begin.13 # DW_AT_low_pc
@@ -693,7 +693,7 @@
 	.byte 0 # DW_AT_name
 	.long 515 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
-	.byte 36 # DW_AT_decl_line
+	.byte 38 # DW_AT_decl_line
 
 	.byte 0 # end of children
 	.byte 0 # end of children

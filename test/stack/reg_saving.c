@@ -1,5 +1,6 @@
 // RUN: %ocheck 0 %s -DFLOAT=float
 // RUN: %ocheck 0 %s -DFLOAT=int
+void abort(void) __attribute__((noreturn));
 
 char gc;
 

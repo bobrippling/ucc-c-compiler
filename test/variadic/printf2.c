@@ -1,5 +1,6 @@
 // RUN: %ucc -o %t %s
 // RUN: %t | %output_check 'hi 3, yo'
+long write(int fildes, const void *buf, unsigned long nbyte);
 
 strlen2(char *s)
 {

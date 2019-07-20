@@ -3,9 +3,8 @@
 static void assert(_Bool b, int line, const char *s)
 {
 	if(!b){
-		//_Noreturn void abort(void);
-		//abort();
-		printf(__FILE__ ":%d: %s\n", line, s);
+		_Noreturn void abort(void);
+		abort();
 	}
 }
 #define assert(b) assert(b, __LINE__, #b)

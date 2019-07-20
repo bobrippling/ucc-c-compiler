@@ -1,4 +1,6 @@
 // RUN: %ocheck 0 %s
+void *memset(void *b, int c, unsigned long len);
+void abort(void) __attribute__((noreturn));
 
 f(int n)
 {

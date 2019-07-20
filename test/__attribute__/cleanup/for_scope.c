@@ -1,5 +1,7 @@
 // RUN: %ocheck 0 %s
 
+_Noreturn void abort();
+
 int i;
 
 void cint(int *p)

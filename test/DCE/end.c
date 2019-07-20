@@ -1,4 +1,5 @@
 // RUN: %ucc -o %t %s -g
+void exit(int) __attribute((noreturn));
 
 f(int *p)
 {
@@ -17,6 +18,7 @@ main()
 		__builtin_trap();
 	}
 
+	void g();
 	g(); // no undefined ref - DCE'd
 
 	return hello;

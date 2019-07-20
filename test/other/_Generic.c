@@ -1,6 +1,8 @@
 // RUN: %ucc -o %t %s
 // RUN: %t | grep 'yo'
 // RUN: %t | grep '5'
+int putchar(int c);
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 main()
 {

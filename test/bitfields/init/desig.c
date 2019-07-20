@@ -18,6 +18,7 @@ struct A
 
 main()
 {
+	int printf(const char *, ...);
 	printf("%d\n", *(int *)&des);
 
 	struct A st = { .y = 2, .x = 3 };

@@ -1,5 +1,6 @@
 // RUN: %ocheck 0 %s -fno-semantic-interposition
 // RUN: %check %s -fno-semantic-interposition
+void abort(void) __attribute__((noreturn));
 
 __attribute((always_inline))
 inline void *f(unsigned size)

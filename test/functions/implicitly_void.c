@@ -1,4 +1,6 @@
-// RUN: %check %s
+// RUN: %check %s -std=c89
+// C89 for implicit function decl
+
 f()
 {
 }

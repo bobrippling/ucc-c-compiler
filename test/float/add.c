@@ -1,6 +1,7 @@
 // RUN: %ucc -o %t %s
 // RUN: %t
 // RUN: %t | %output_check '4.5'
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 main()
 {

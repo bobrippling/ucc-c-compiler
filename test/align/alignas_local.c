@@ -1,5 +1,7 @@
 // RUN: %ucc -fsyntax-only %s
 
+g(int, int);
+
 f()
 {
 	// both x and y are 8-byte aligned

@@ -12,8 +12,10 @@ chk(struct bits *p)
 {
 	// check the bottom two bits
 	char v = 0x3 & *(char *)p;
-	if(v != 3)
+	if(v != 3){
+		_Noreturn void abort();
 		abort();
+	}
 }
 
 main()

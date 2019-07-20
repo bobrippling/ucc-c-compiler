@@ -1,5 +1,6 @@
 // RUN: %ucc -o %t %s
 // RUN: %t | %output_check '0 0 0 8'
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 struct A
 {

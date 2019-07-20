@@ -28,8 +28,10 @@ main()
 
 	f(&i);
 
-	if(i != 5)
+	if(i != 5){
+		void abort();
 		abort();
+	}
 
 	return 0;
 }

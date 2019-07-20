@@ -44,6 +44,8 @@ _Generic( typeof2(X, Y),     \
 
 int main()
 {
+	void abort();
+
 	if(pair_type(1, 2) != int_int)
 		abort();
 

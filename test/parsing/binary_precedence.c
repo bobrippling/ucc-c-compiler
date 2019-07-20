@@ -1,5 +1,6 @@
 // RUN: %check %s
 // RUN: %ocheck 0 %s
+void abort(void) __attribute__((noreturn));
 
 f(int i)
 {

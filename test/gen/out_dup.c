@@ -1,5 +1,6 @@
 // RUN: %ocheck 0 %s
 // shouldn't clobber the pointer with the sub operation
+void abort(void) __attribute__((noreturn));
 f(int *p)
 {
 	--*p;

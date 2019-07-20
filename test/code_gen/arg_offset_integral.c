@@ -2,6 +2,7 @@
 // RUN: %t | %output_check '1793'
 // RUN: %ucc -o %t %s -fstack-protector-all
 // RUN: %t | %output_check '1793'
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 f(a, b, c, d, e, f, g, h)
 {

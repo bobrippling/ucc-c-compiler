@@ -7,19 +7,23 @@ void chk(int *p)
 	static int i;
 
 	if(i == 0){
+		_Noreturn void abort();
 		if(cleanups++ != 0)
 			abort();
 	}else{
+		_Noreturn void abort();
 		if(i != 1)
 			abort();
 		if(cleanups++ != 2)
 			abort();
 	}
 
+	_Noreturn void abort();
 	if(*p != (int[]){ 7, 8 }[i++])
 		abort();
 }
 
+_Noreturn void abort();
 chk_vla(short (*pvla)[])
 {
 	if(cleanups++ != 1)

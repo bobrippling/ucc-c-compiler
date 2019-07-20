@@ -1,5 +1,7 @@
 // RUN: %jmpcheck %s
 
+void g();
+
 f(int a)
 {
 	if(0){

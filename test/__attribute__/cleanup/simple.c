@@ -3,6 +3,8 @@
 int *px, *pi;
 int cleans = 0;
 
+_Noreturn void abort();
+
 clean(int *p)
 {
 	int *target;

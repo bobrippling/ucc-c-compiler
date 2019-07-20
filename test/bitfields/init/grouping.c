@@ -15,5 +15,6 @@ struct Padded pad = {
 
 main()
 {
+	int printf();
 	printf("0x%lx\n", *(long *)&pad);
 }

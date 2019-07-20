@@ -13,6 +13,7 @@ main()
 	|| s.b != 46
 	|| s.c != 558)
 	{
+		_Noreturn void abort();
 		abort();
 	}
 

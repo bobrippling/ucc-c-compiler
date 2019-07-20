@@ -1,4 +1,5 @@
 // RUN: %ocheck 5 %s
+void abort(void) __attribute__((noreturn));
 
 u(){ return 1; }
 v(){ return 2; }

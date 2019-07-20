@@ -15,16 +15,26 @@ write_bf(struct A *p)
 
 chk_bf(struct A *p, int a, int b, int c, int d, int e)
 {
-	if(p->f_1 != a)
+	if(p->f_1 != a){
+		_Noreturn void abort();
 		abort();
-	if(p->bf_1 != b)
+	}
+	if(p->bf_1 != b){
+		_Noreturn void abort();
 		abort();
-	if(p->f_2 != c)
+	}
+	if(p->f_2 != c){
+		_Noreturn void abort();
 		abort();
-	if(p->bf_2 != d)
+	}
+	if(p->bf_2 != d){
+		_Noreturn void abort();
 		abort();
-	if(p->bf_3 != e)
+	}
+	if(p->bf_3 != e){
+		_Noreturn void abort();
 		abort();
+	}
 	return 0;
 }
 

@@ -3,6 +3,8 @@
 
 x(){}
 
+int printf(const char *, ...);
+
 main()
 {
 	for(int i = 0; i < 5; i++){

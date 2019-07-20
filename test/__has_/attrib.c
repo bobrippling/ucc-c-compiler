@@ -27,8 +27,10 @@ int not_present = __has_attribute(attr);
 
 main()
 {
-	if(not_present)
+	if(not_present){
+		_Noreturn void abort();
 		abort();
+	}
 
 	return 0;
 }

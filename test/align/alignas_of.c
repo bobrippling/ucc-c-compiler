@@ -1,4 +1,6 @@
-// RUN: %ucc -c %s
+// RUN: %ucc -fsyntax-only %s
+
+int printf();
 
 main()
 {

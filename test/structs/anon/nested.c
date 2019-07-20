@@ -1,4 +1,5 @@
 // RUN: %ocheck 0 %s
+int memcmp(const void *, const void *, unsigned long);
 
 _Noreturn void abort(void);
 

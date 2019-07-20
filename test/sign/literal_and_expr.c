@@ -1,5 +1,7 @@
 // RUN: %check %s -Wsign-compare
 
+int g(void);
+
 int f(int i)
 {
 	if(g())

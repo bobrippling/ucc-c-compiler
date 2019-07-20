@@ -37,6 +37,8 @@ e:
 	goto a;
 }
 
+int g(), a(), b();
+
 void infinite_loop_with_code()
 {
 	if(g())

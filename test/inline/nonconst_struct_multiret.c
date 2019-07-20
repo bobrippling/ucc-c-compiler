@@ -1,4 +1,5 @@
 // RUN: %ocheck 0 %s -fno-semantic-interposition
+void abort(void) __attribute__((noreturn));
 
 typedef struct A { long i, j, k; } A;
 

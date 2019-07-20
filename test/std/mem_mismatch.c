@@ -1,4 +1,8 @@
 // RUN: %check %s
+void *memset(void *b, int c, unsigned long len);
+void *memmove(void *, const void *, unsigned long);
+void *memcpy(void *, const void *, unsigned long);
+int memcmp(const void *, const void *, unsigned long);
 
 struct A
 {

@@ -1,5 +1,7 @@
 // RUN: %ucc -fsyntax-only %s
 
+void f(int, ...);
+
 main()
 {
 	struct A { int j; } *p;

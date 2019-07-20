@@ -1,4 +1,6 @@
-// RUN: %ucc -c %s
+// RUN: %ucc -fsyntax-only %s
+
+int f(), q(void);
 
 i = 1 || f();
 //j = 0 || q();

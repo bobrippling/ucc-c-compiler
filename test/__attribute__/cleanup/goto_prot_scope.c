@@ -6,6 +6,7 @@ int n;
 cleanup(void *p)
 {
 	int *expected;
+	_Noreturn void abort();
 
 	switch(n){
 		case 0: expected = pj; break;
@@ -36,6 +37,7 @@ after:
 
 main()
 {
+	void abort(void);
 	f();
 	if(n != 2)
 		abort();

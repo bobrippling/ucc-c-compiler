@@ -1,5 +1,6 @@
 // RUN: %ucc -fno-const-fold -o %t %s
 // RUN: %t
+void abort(void) __attribute__((noreturn));
 
 //#include <assert.h>
 #define assert(x) ((x) ? (void)0 : abort())

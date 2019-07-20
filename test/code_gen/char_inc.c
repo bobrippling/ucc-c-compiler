@@ -1,5 +1,6 @@
 // RUN: %ocheck 0 %s
 // RUN: %archgen %s 'x86,x86_64:/addl/' 'x86,x86_64:!/addb/'
+void abort(void) __attribute__((noreturn));
 
 main()
 {

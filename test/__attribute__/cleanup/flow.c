@@ -39,6 +39,8 @@ f(i)
 	}
 }
 
+_Noreturn void abort();
+
 int *expected;
 order(int *p)
 {

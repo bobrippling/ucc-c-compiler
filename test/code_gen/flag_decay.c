@@ -4,6 +4,7 @@
 
 f(int x)
 {
+	void g();
 	if(x < 0)
 		g();
 }

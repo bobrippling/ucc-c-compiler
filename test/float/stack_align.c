@@ -1,5 +1,6 @@
 // RUN: %ocheck 0 %s
 // RUN: %ocheck 0 %s -fstack-protector-all
+void abort(void) __attribute__((noreturn));
 
 #define __u __attribute__((unused))
 

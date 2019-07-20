@@ -1,4 +1,5 @@
 // RUN: %ucc -g %s -o %t
+void abort(void) __attribute__((noreturn));
 
 f()
 {

@@ -2,6 +2,8 @@
 // below ensures we link with the system libs
 // RUN: cc -o %t %t.o -fpic
 // RUN: %t | %output_check before 'hi 5 hello' after
+int vprintf(const char * restrict format, __builtin_va_list ap);
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 #define va_list __builtin_va_list
 #define va_start __builtin_va_start

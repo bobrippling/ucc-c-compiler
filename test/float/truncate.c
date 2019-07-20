@@ -1,5 +1,6 @@
 // RUN: %ucc -S -o- %s | grep 'cvtsd2ss'
 // RUN: %ocheck 0 %s
+void abort(void) __attribute__((noreturn));
 
 void fp_f(float f)
 {

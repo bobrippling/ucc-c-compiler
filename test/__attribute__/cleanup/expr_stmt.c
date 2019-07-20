@@ -5,6 +5,8 @@ reset(int *p)
   *p = -5;
 }
 
+void abort();
+
 main()
 {
   int x = ({

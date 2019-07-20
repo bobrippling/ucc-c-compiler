@@ -27,8 +27,10 @@ main()
 {
 	g();
 
-	if(dints != 4)
+	if(dints != 4){
+		_Noreturn void abort();
 		abort();
+	}
 
 	return 0;
 }

@@ -10,7 +10,9 @@ main()
 {
 	if(0){
 		int i;
+		int f();
 		f(); // shouldn't hit a linker error here - dead code
+		// (including linking from debug info)
 a:
 		i = 2;
 		return g(i);

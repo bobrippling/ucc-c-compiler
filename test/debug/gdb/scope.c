@@ -1,4 +1,6 @@
 // RUN: %debug_check %s
+int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
+void abort(void) __attribute__((noreturn));
 
 char a;
 

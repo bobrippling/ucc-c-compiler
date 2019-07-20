@@ -1,6 +1,7 @@
 // RUN: %ocheck 1 %s '-DNULL=(void *)0' -fno-fold-const-vlas
 // RUN: %ocheck 0 %s '-DNULL=0' -fno-fold-const-vlas
 // RUN: %check %s '-DNULL=(void *)0' -pedantic -ffold-const-vlas
+void abort(void) __attribute__((noreturn));
 
 int null_is_ptr_type()
 {

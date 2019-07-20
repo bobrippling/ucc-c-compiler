@@ -1,4 +1,5 @@
 // RUN: %ucc -o %t %s && %t
+void _Exit(int) __attribute((noreturn));
 
 #define false (_Bool)0
 

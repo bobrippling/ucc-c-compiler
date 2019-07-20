@@ -10,6 +10,8 @@ struct bits
 	unsigned second : 1;
 };
 
+void *memset(void *, int, unsigned long);
+
 main()
 {
 	struct bits bs;

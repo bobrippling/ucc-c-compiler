@@ -12,10 +12,14 @@ f()
 
 void check_printf(const char *a, int x, double y)
 {
-	if(x != 3)
+	if(x != 3){
+		_Noreturn void abort();
 		abort();
-	if(y != 1)
+	}
+	if(y != 1){
+		_Noreturn void abort();
 		abort();
+	}
 }
 
 /* Need sufficient nested-calls to get 3-callee save registers in action

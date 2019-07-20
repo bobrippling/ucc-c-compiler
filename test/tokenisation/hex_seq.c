@@ -1,5 +1,6 @@
 // RUN: %check -e %s -DFAIL
 // RUN: %ocheck 0 %s
+void abort(void) __attribute__((noreturn));
 
 const char *p = "\xff""f"; // CHECK: !/error/
 // ^ the literal is const char[3] holding {'\xff','f','\0'}

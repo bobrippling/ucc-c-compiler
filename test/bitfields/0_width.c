@@ -9,9 +9,13 @@ struct A
 
 chk(int a, int b)
 {
-	if(a != 3 || b != 5)
+	if(a != 3 || b != 5){
+		_Noreturn void abort();
 		abort();
+	}
 }
+
+void memset(void *, int, unsigned long);
 
 main()
 {

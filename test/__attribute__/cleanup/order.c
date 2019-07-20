@@ -4,6 +4,8 @@ int *expected[2];
 int expected_i;
 int dints;
 
+_Noreturn void abort();
+
 void dint(int *p)
 {
 	if(p != expected[expected_i++])
