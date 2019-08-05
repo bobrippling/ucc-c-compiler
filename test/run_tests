@@ -164,6 +164,8 @@ sub reap_test
 
 		print $colour{off};
 
+		print "\n";
+
 		my $output = $tasks{$pid}->{output};
 		if($failed != $should_fail){
 			$ec = 1;
@@ -232,7 +234,7 @@ for(my $i = 0; $i < @ARGV; $i++){
 }
 
 push @expected_fails, read_ignores($ign_file) if $ign_file;
-push @skips, split /,/, $ENV{UCC_CHECK_SKIP};
+push @skips, split /,/, ($ENV{UCC_CHECK_SKIP} or "");
 
 my @unlinks;
 push @unlinks, $tdir;
@@ -249,15 +251,14 @@ die "$0: no tests found\n" unless @test_files;
 $| = 1 if $progress;
 
 for(my $fi = 0; $fi < @test_files; $fi++){
+	my $f = $test_files[$fi];
+
+	next if file_status($f) eq 'skip';
+
 	reap_test() while keys %tasks >= $jobs;
 
-	next if file_status($f) == 'skip';
-
 	show_progress($fi + 1, scalar @test_files) if $progress;
-
-	my $f = $test_files[$fi];
 	launch_test('./bin/test.pl', $f);
-
 	show_progress($fi + 1, scalar @test_files) if $progress;
 }
 
