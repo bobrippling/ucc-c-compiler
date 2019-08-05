@@ -310,7 +310,9 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 		octx->in_prologue = 0;
 	}
 
-	clean_stack = octx->used_stack || !cc1_fopt.omit_frame_pointer;
+	clean_stack = octx->used_stack
+		|| !cc1_fopt.omit_frame_pointer
+		|| (cc1_profileg && mopt_mode & MOPT_FENTRY) /* simple way of keeping the call to __fentry__ */;
 
 	out_current_blk(octx, octx->epilogue_blk);
 	{
@@ -415,11 +417,7 @@ static void stack_realign(out_ctx *octx, unsigned align)
 	v_set_cur_stack_sz(octx, new_sz);
 }
 
-void out_func_prologue(
-		out_ctx *octx, const char *sp,
-		type *fnty,
-		int nargs, int variadic, int stack_protector,
-		const out_val *argvals[])
+void out_perfunc_init(out_ctx *octx, type *fnty, const char *sp)
 {
 	octx->current_fnty = fnty;
 
@@ -433,7 +431,13 @@ void out_func_prologue(
 	octx->argspill_begin_blk = out_blk_new(octx, "argspill");
 	octx->postprologue_blk = out_blk_new(octx, "post_prologue");
 	octx->epilogue_blk = out_blk_new(octx, "epilogue");
+}
 
+void out_func_prologue(
+		out_ctx *octx,
+		int nargs, int variadic, int stack_protector,
+		const out_val *argvals[])
+{
 	octx->in_prologue = 1;
 	{
 		const out_val *stack_prot_slot = NULL;
@@ -454,10 +458,10 @@ void out_func_prologue(
 
 		out_current_blk(octx, octx->argspill_begin_blk);
 		{
-			impl_func_prologue_save_call_regs(octx, fnty, nargs, argvals);
+			impl_func_prologue_save_call_regs(octx, octx->current_fnty, nargs, argvals);
 
 			if(variadic) /* save variadic call registers */
-				impl_func_prologue_save_variadic(octx, fnty);
+				impl_func_prologue_save_variadic(octx, octx->current_fnty);
 
 			octx->argspill_done_blk = octx->current_blk;
 

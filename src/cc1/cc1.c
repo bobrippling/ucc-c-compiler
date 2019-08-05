@@ -55,6 +55,7 @@ static struct
 } mopts[] = {
 	{ "stackrealign", MOPT_STACK_REALIGN },
 	{ "align-is-p2", MOPT_ALIGN_IS_POW2 },
+	{ "fentry", MOPT_FENTRY },
 
 	{ NULL, 0 }
 };

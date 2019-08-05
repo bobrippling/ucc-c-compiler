@@ -10,7 +10,8 @@
 
 out_ctx *out_ctx_new(void);
 void out_ctx_end(out_ctx *);
-void out_ctx_wipe(out_ctx *);
+void out_perfunc_init(out_ctx *, type *fnty, const char *sp);
+void out_perfunc_teardown(out_ctx *);
 
 void **out_user_ctx(out_ctx *);
 
@@ -109,6 +110,9 @@ ucc_wur out_blk *out_blk_new(out_ctx *, const char *desc);
 void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
 ucc_wur out_blk *out_ctx_current_blk(out_ctx *);
 
+out_blk *out_blk_entry(out_ctx *);
+out_blk *out_blk_postprologue(out_ctx *);
+
 void out_ctrl_end_undefined(out_ctx *);
 void out_ctrl_end_ret(out_ctx *, const out_val *, type *) ucc_nonnull((1));
 
@@ -142,8 +146,7 @@ ucc_wur const out_val *out_ctrl_merge_n(out_ctx *, out_blk **rets);
 
 /* function setup */
 void out_func_prologue(
-		out_ctx *, const char *sp,
-		type *fnty,
+		out_ctx *,
 		int nargs, int variadic, int stack_protector,
 		const out_val *argvals[]);
 

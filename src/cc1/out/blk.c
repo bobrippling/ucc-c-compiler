@@ -290,6 +290,16 @@ out_blk *out_blk_new(out_ctx *octx, const char *desc)
 	return blk_new_common(octx, out_label_bblock(octx->nblks++), desc);
 }
 
+out_blk *out_blk_entry(out_ctx *octx)
+{
+	return octx->entry_blk;
+}
+
+out_blk *out_blk_postprologue(out_ctx *octx)
+{
+	return octx->postprologue_blk;
+}
+
 void out_blk_mustgen(out_ctx *octx, out_blk *blk, char *force_lbl)
 {
 	if(force_lbl)

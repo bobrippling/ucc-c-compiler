@@ -221,20 +221,38 @@ static int should_stack_protect(decl *d)
 	return bytes >= 8 || addr_taken;
 }
 
-static void gen_profile(out_ctx *octx)
+static void gen_profile(out_ctx *octx, const char *fn)
 {
-	type *mcount_ty = type_ptr_to(
+	type *fnty = type_ptr_to(
 			type_func_of(
 				type_nav_btype(cc1_type_nav, type_void),
 				funcargs_new_void(),
 				NULL));
-	out_val *mcount = out_new_lbl(
+
+	out_val *fnv = out_new_lbl(
 			octx,
-			mcount_ty,
-			"mcount", /* not subject to mangling */
+			fnty,
+			fn, /* not subject to mangling */
 			OUT_LBL_PIC);
 
-	out_val_consume(octx, out_call(octx, mcount, NULL, mcount_ty));
+	out_val_consume(octx, out_call(octx, fnv, NULL, fnty));
+}
+
+static void gen_profile_mcount(out_ctx *octx)
+{
+	if(!cc1_profileg || mopt_mode & MOPT_FENTRY)
+		return;
+	gen_profile(octx, "mcount");
+}
+
+static void gen_profile_fentry(out_ctx *octx)
+{
+	if(!cc1_profileg || !(mopt_mode & MOPT_FENTRY))
+		return;
+
+	out_current_blk(octx, out_blk_entry(octx));
+	gen_profile(octx, "__fentry__");
+	out_current_blk(octx, out_blk_postprologue(octx));
 }
 
 static void gen_type_and_size(const struct section *section, decl *d)
@@ -280,15 +298,18 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 
 		is_vari = type_is_variadic_func(d->ref);
 
-		out_func_prologue(octx, sp, d->ref,
+		out_perfunc_init(octx, d->ref, sp);
+
+		gen_profile_fentry(octx);
+
+		out_func_prologue(octx,
 				nargs, is_vari,
 				should_stack_protect(d),
 				argvals);
 
 		assign_arg_vals(symtab_decls(arg_symtab), argvals, octx);
 
-		if(cc1_profileg)
-			gen_profile(octx);
+		gen_profile_mcount(octx);
 
 		allocate_vla_args(octx, arg_symtab);
 		free(argvals), argvals = NULL;
@@ -319,7 +340,7 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 		if(out_dump_retained(octx, d->spel))
 			gen_had_error = 1;
 
-		out_ctx_wipe(octx);
+		out_perfunc_teardown(octx);
 
 	}else{
 		/* asm takes care of .bss vs .data, etc */

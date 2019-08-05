@@ -10,6 +10,7 @@ enum mopt
 {
 	MOPT_STACK_REALIGN = 1 << 0,
 	MOPT_ALIGN_IS_POW2   = 1 << 1,
+	MOPT_FENTRY = 1 << 2,
 };
 #define IS_32_BIT() (platform_word_size() == 4)
 
