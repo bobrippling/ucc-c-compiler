@@ -65,7 +65,7 @@ $UCC -fno-show-line -Werror=unknown-warning-option $synonly "$@" "$f" 2>$e
 r=$?
 
 # check for abort
-if test $(expr $r '&' 127) -ne 0
+if test $r -gt 127
 then
 	echo >&2 "$0: ucc caught signal ($r)"
 	echo >&2 "invocation flags: $@ $f"

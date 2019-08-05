@@ -56,9 +56,12 @@ if @ARGV != 1;
 my $f = shift;
 my @annotations;
 for(file_contents($f)){
-	next unless /\b(STDOUT(-[A-Z]+)*(-.*)?: *(.+)$/;
-	my($tag, $thisprefix, $text) = ($1, $2, $3);
+	next unless /\b(STDOUT(-[A-Z]+)?)(-[^:]*)?: *(.+)$/;
+	my($tag, $thisprefix, $text) = ($1, $3, $4);
 
+	if(not defined($thisprefix)){
+		$thisprefix = "-";
+	}
 	next unless $thisprefix eq "-$prefix";
 
 	push @annotations, { tag => $1, text => $3 };
