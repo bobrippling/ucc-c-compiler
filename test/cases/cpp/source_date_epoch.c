@@ -1,5 +1,8 @@
 // RUN: SOURCE_DATE_EPOCH=0 %ucc -E -P -o %t %s
-// RUN: %output_check -w 'timestamp "Thu Jan 01 00:00:00 1970"' 'date "Jan 01 1970"' 'time "00:00:00"' <%t
+// RUN: %stdoutcheck %s < %t
+//      STDOUT: timestamp "Thu Jan 01 00:00:00 1970"
+// STDOUT-NEXT: date "Jan 01 1970"
+// STDOUT-NEXT: time "00:00:00"
 
 timestamp __TIMESTAMP__
 date __DATE__

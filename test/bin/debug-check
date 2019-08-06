@@ -1,26 +1,138 @@
-#!/bin/sh
+#!/usr/bin/perl
+use warnings;
+use strict;
 
-. "$(dirname "$0")/common.sh"
+my $ec;
 
-if test $# -ne 1
-then
-	echo "Usage: $0 path/to/file" >&2
-	exit 1
-fi
+sub filter
+{
+	my @lines = @_;
+	my @relevant;
+	my @files;
+	my $in_dbg = 0;
 
-require_env UCC
-require_env UCC_TESTDIR
+	for(@lines){
+		if(/\.file.*"/){
+			push @files, $_;
+			next;
+		}
 
-set -e
+		if(/section_(begin|end)_dbg/){
+			$in_dbg = ($1 eq 'begin');
+		}
 
-if test -n "$UCC_VERBOSE"
-then set -x
-fi
+		if($in_dbg){
+			push @relevant, $_;
+		}
+	}
 
-tmp="$UCC_TESTDIR/dbg.$$"
+	return (
+		files => \@files,
+		lines => \@relevant,
+	);
+}
 
-$UCC -g -fno-debug-emit-compdir -S -o- "$1" \
-	| awk '/section_begin.*dbg/,/section_end/' \
-	> "$tmp"
+sub read_file
+{
+	my $f = shift();
+	open(my $fh, '<', $f) or die "open $f: $!\n";
+	my @contents = map { chomp; $_ } <$fh>;
+	close($fh) or die "close $f: $!\n";
+	return @contents;
+}
 
-diff -u "$tmp" "$1".debug
+sub write_file
+{
+	my($f, @contents) = @_;
+	open(my $fh, '>', $f) or die "open $f: $!\n";
+	for(@contents){
+		print $fh "$_\n";
+	}
+	close($fh) or die "close $f: $!\n";
+}
+
+sub arrays_eq
+{
+	my($a, $b) = @_;
+
+	if(scalar(@$a) != scalar(@$b)){
+		return 0;
+	}
+
+	for(my $i = 0; $i < scalar(@$a); $i++){
+		if(!(${$a}[$i] eq ${$b}[$i])){
+			return 0;
+		}
+	}
+
+	return 1;
+}
+
+sub assert_arrays_eq
+{
+	my($got, $expected, $type) = @_;
+
+	if(!arrays_eq($got->{$type}, $expected->{$type})){
+		print STDERR "mismatching $type entries:\n";
+
+		my $f_got = "./debug_check_diff_got";
+		my $f_exp = "./debug_check_diff_expected";
+
+		write_file($f_got, @{$got->{$type}});
+		write_file($f_exp, @{$expected->{$type}});
+
+		system("diff", "-u", $f_exp, $f_got);
+		unlink($f_got, $f_exp);
+
+		$ec = 1;
+	}
+}
+
+sub usage
+{
+	die "Usage: $0 [--update] path/to/source\n";
+}
+
+my $in;
+my $update = 0;
+for(@ARGV){
+	if($_ eq '--update'){
+		$update = 1;
+	}elsif(!$in){
+		$in = $_;
+	}else{
+		usage();
+	}
+}
+
+my $expected = "$in.dwarf";
+my $ucc = $ENV{UCC} or die "no \$UCC";
+
+# format $in - remove any components up until dir/file.c
+$in =~ s;^\./;;;
+$in =~ s;//+;/;g;
+
+my @output = map { chomp; $_ } `'$ucc' -target x86_64-linux-gnu -fno-leading-underscore -fdebug-compilation-dir=/tmp/ -g -S -o- '$in'`;
+if($?){
+	die "$0: compile failed ($?)";
+}
+
+my %got = filter(@output);
+my %expected = filter(read_file($expected));
+$ec = 0;
+
+if($update){
+	open(my $out, '>', $expected) or die "open $expected: $!";
+
+	print $out "$_\n" for @{$got{files}};
+	print $out "$_\n" for @{$got{lines}};
+
+	close($out) or die "close $expected: $!";
+
+	print STDERR "\x1b[1;31mwrote $expected\x1b[0;0m\n";
+}else{
+	assert_arrays_eq(\%got, \%expected, "files");
+	assert_arrays_eq(\%got, \%expected, "lines");
+}
+
+exit($ec);

@@ -1,4 +1,4 @@
-// RUN: %debug_scope %s | %stdoutcheck %s
+// RUN: %debug_check %s
 
 int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
@@ -15,7 +15,3 @@ main()
 {
 	return f(2);
 }
-
-// STDOUT: arg 3 12
-// STDOUT: i 5 10
-// STDOUT: ret 3 12

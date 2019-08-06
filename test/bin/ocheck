@@ -35,10 +35,10 @@ if($expected =~ /^SIG[A-Z]+$/){
 	die "\"$expected\" not numeric, nor a signal";
 }
 
-if(!-x $ARGV[0]){
-	# we've been passed a source file
-	my($cmd, @args) = @ARGV;
+my($cmd, @args) = @ARGV;
 
+if(!-x $cmd){
+	# we've been passed a source file
 	my $ucc = $ENV{UCC};
 	die "$0: no \$UCC" unless $ucc;
 
@@ -47,10 +47,10 @@ if(!-x $ARGV[0]){
 	my @cmd = ($ucc, '-o', $tmp, $cmd, @args);
 	print "$0: run: @cmd\n" if exists $ENV{UCC_VERBOSE};
 	die "$0: couldn't compile\n" if system(@cmd);
-	$ARGV[0] = $tmp;
+	$cmd = $tmp;
 }
 
-my $r = system($ARGV[0]);
+my $r = system($cmd, @args);
 my $got_exitcode = $r >> 8;
 my $got_signal = $r & 127;
 if($got_signal){

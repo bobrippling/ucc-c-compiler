@@ -1,4 +1,4 @@
-// RUN: %ucc -E -o %t %s -nostdinc -isystem cpp/inc/
+// RUN: %ucc -E -o %t %s -nostdinc -isystem cases/cpp/inc/
 // RUN: ! grep '^no' %t
 // the following ensures we don't preproc __has_include outside of #if
 // RUN: printf '__has_include("has_inc.c")\n' | %ucc -E -P - | grep '__has_include'

@@ -6,6 +6,8 @@ struct A
 	const char c;
 };
 
+struct Y { int i; } const y1, y2;
+
 int main()
 {
 	struct A a = { 1, 2 };
@@ -16,4 +18,6 @@ int main()
 	struct A cpy;
 
 	cpy = a; // CHECK: error: can't assign struct - contains const member
+
+	y2.i = 2; // CHECK: error: can't modify const expression member-access
 }

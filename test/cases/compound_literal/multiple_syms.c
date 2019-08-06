@@ -1,10 +1,6 @@
-// RUN: %ucc %s
+// RUN: %ucc %s -c
 
 int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
-f(char *s)
-{
-	printf("f(\"%s\")\n", s);
-}
 
 f(char *s);
 g(char *p);

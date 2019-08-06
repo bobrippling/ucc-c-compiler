@@ -64,10 +64,10 @@ for(file_contents($f)){
 	}
 	next unless $thisprefix eq "-$prefix";
 
-	push @annotations, { tag => $1, text => $3 };
+	push @annotations, { tag => $tag, text => $text };
 }
 
-die "$0: no annotations\n" unless @annotations;
+die "$0: no annotations (with prefix \"$prefix\") in $f\n" unless @annotations;
 
 my $line = '';
 my @nots;
