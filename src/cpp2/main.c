@@ -605,6 +605,9 @@ defaul:
 		case STD_C18:
 			macro_add("__STDC_VERSION__", "201710L", 0);
 			break;
+		case STD_C2X:
+			macro_add("__STDC_VERSION__", "202000L", 0);
+			break;
 	}
 
 	if(offsetof_macro){

@@ -37,6 +37,8 @@ std_c90:
 		*penu = STD_C11;
 	}else if(!strcmp(std, "17") || !strcmp(std, "18")){
 		*penu = STD_C18;
+	}else if(!strcmp(std, "2x")){
+		*penu = STD_C2X;
 	}else{
 		return 1;
 	}

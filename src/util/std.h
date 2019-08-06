@@ -9,6 +9,7 @@ enum c_std
 	STD_C99,
 	STD_C11,
 	STD_C18, /* -std=c17 aliases this, gcc compat */
+	STD_C2X
 };
 
 /* returns 0 on success */

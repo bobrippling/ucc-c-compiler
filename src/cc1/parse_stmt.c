@@ -245,23 +245,29 @@ void parse_static_assert(symtable *scope)
 {
 	while(accept(token__Static_assert)){
 		static_assert *sa = umalloc(sizeof *sa);
-		struct cstring *str;
 
 		sa->scope = scope;
 
 		EAT(token_open_paren);
 		sa->e = PARSE_EXPR_NO_COMMA(scope, 0);
-		EAT(token_comma);
 
-		str = parse_asciz_str();
-		if(!str){
-			expr_free(sa->e);
-			free(sa);
-			continue;
+		if(accept(token_comma)){
+			struct cstring *str = parse_asciz_str();
+			if(!str){
+				expr_free(sa->e);
+				free(sa);
+				continue;
+			}
+			sa->s = cstring_detach(str);
+			EAT(token_string);
+		}else{
+			sa->s = NULL;
+			if(cc1_std < STD_C2X){
+				cc1_warn_at(&sa->e->where, static_assert_missing_string,
+						"Omitting the string argument of _Static_assert is a C2X extension");
+			}
 		}
-		sa->s = cstring_detach(str);
 
-		EAT(token_string);
 		EAT(token_close_paren);
 		EAT(token_semicolon);
 
@@ -330,7 +336,7 @@ static void parse_local_labels(const struct stmt_ctx *const ctx)
 			where_cc1_current(&loc);
 			EAT(token_identifier);
 
-			created = symtab_label_add_local(ctx->scope, spel, &loc); 
+			created = symtab_label_add_local(ctx->scope, spel, &loc);
 
 			if(!created){
 				warn_at_print_error(&loc, "local label \"%s\" already defined", spel);
