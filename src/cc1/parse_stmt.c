@@ -330,7 +330,7 @@ static void parse_local_labels(const struct stmt_ctx *const ctx)
 			where_cc1_current(&loc);
 			EAT(token_identifier);
 
-			created = symtab_label_add_local(ctx->scope, spel, &loc); 
+			created = symtab_label_add_local(ctx->scope, spel, &loc);
 
 			if(!created){
 				warn_at_print_error(&loc, "local label \"%s\" already defined", spel);
