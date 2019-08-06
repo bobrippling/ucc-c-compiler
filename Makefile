@@ -16,10 +16,6 @@ clean:
 cleanall: clean
 	./configure clean
 
-cleantest:
-	make -Ctest clean
-# no need to clean test
-
 check: all lib
 	cd test; ./run_tests -i ignores cases
 	# test/ pending
