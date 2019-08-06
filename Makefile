@@ -17,8 +17,7 @@ cleanall: clean
 	./configure clean
 
 check: all lib
-	cd test; ./run_tests -i ignores cases
-	# test/ pending
+	cd test && ./run_tests -i ignores -j4 cases
 
 ALL_SRC = $(shell find src -iname '*.[ch]')
 
