@@ -1,4 +1,4 @@
-.file 1 "debug/single.c"
+.file 1 "cases/debug/single.c"
 .Lsection_begin_dbg_abbrev:
 	.byte 1  # Abbrev. Code 1
 	.byte 17  # DW_TAG_compile_unit
@@ -338,7 +338,7 @@
 	.ascii "ucc development version"
 	.byte 0 # DW_AT_producer
 	.word 12 # DW_AT_language
-	.ascii "debug/single.c"
+	.ascii "cases/debug/single.c"
 	.byte 0 # DW_AT_name
 	.ascii "/tmp/"
 	.byte 0 # DW_AT_comp_dir
@@ -349,7 +349,7 @@
 	.byte 2  # Abbrev. Code 2 DW_TAG_variable
 	.ascii "glob_a"
 	.byte 0 # DW_AT_name
-	.long 402 # DW_AT_type
+	.long 408 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 7 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -361,7 +361,7 @@
 	.byte 3  # Abbrev. Code 3 DW_TAG_subprogram
 	.ascii "a"
 	.byte 0 # DW_AT_name
-	.long 375 # DW_AT_type
+	.long 381 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 9 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -371,7 +371,7 @@
 	.byte 4  # Abbrev. Code 4 DW_TAG_variable
 	.ascii "yo"
 	.byte 0 # DW_AT_name
-	.long 402 # DW_AT_type
+	.long 408 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 11 # DW_AT_decl_line
 	.byte 0 # DW_AT_external
@@ -384,7 +384,7 @@
 	.byte 5  # Abbrev. Code 5 DW_TAG_variable
 	.ascii "yo"
 	.byte 0 # DW_AT_name
-	.long 402 # DW_AT_type
+	.long 408 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 11 # DW_AT_decl_line
 	.byte 0 # DW_AT_external
@@ -396,7 +396,7 @@
 	.byte 6  # Abbrev. Code 6 DW_TAG_subprogram
 	.ascii "pa"
 	.byte 0 # DW_AT_name
-	.long 365 # DW_AT_type
+	.long 371 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 15 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -404,7 +404,7 @@
 	.quad .Lfuncend_pa # DW_AT_high_pc
 
 	.byte 7  # Abbrev. Code 7 DW_TAG_formal_parameter
-	.long 375 # DW_AT_type
+	.long 381 # DW_AT_type
 	.ascii "p"
 	.byte 0 # DW_AT_name
 	.byte 2 # block count
@@ -416,7 +416,7 @@
 	.byte 8  # Abbrev. Code 8 DW_TAG_subprogram
 	.ascii "main"
 	.byte 0 # DW_AT_name
-	.long 365 # DW_AT_type
+	.long 371 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 19 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -424,7 +424,7 @@
 	.quad .Lfuncend_main # DW_AT_high_pc
 
 	.byte 9  # Abbrev. Code 9 DW_TAG_formal_parameter
-	.long 365 # DW_AT_type
+	.long 371 # DW_AT_type
 	.ascii "argc"
 	.byte 0 # DW_AT_name
 	.byte 2 # block count
@@ -433,7 +433,7 @@
  # DW_AT_location
 
 	.byte 10  # Abbrev. Code 10 DW_TAG_formal_parameter
-	.long 384 # DW_AT_type
+	.long 390 # DW_AT_type
 	.ascii "argv"
 	.byte 0 # DW_AT_name
 	.byte 2 # block count
@@ -448,7 +448,7 @@
  # DW_AT_location
 	.ascii "hi"
 	.byte 0 # DW_AT_name
-	.long 365 # DW_AT_type
+	.long 371 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 21 # DW_AT_decl_line
 
@@ -463,7 +463,7 @@
  # DW_AT_location
 	.ascii "hi"
 	.byte 0 # DW_AT_name
-	.long 365 # DW_AT_type
+	.long 371 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 23 # DW_AT_decl_line
 
@@ -474,7 +474,7 @@
  # DW_AT_location
 	.ascii "f"
 	.byte 0 # DW_AT_name
-	.long 375 # DW_AT_type
+	.long 381 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 25 # DW_AT_decl_line
 
@@ -490,7 +490,7 @@
  # DW_AT_location
 	.ascii "hi"
 	.byte 0 # DW_AT_name
-	.long 365 # DW_AT_type
+	.long 371 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 31 # DW_AT_decl_line
 
@@ -510,15 +510,15 @@
 
 	.byte 19  # Abbrev. Code 19 DW_TAG_pointer_type
 	.long 8 # DW_AT_byte_size
-	.long 402 # DW_AT_type
+	.long 408 # DW_AT_type
 
 	.byte 20  # Abbrev. Code 20 DW_TAG_pointer_type
 	.long 8 # DW_AT_byte_size
-	.long 393 # DW_AT_type
+	.long 399 # DW_AT_type
 
 	.byte 21  # Abbrev. Code 21 DW_TAG_pointer_type
 	.long 8 # DW_AT_byte_size
-	.long 354 # DW_AT_type
+	.long 360 # DW_AT_type
 
 	.byte 22  # Abbrev. Code 22 DW_TAG_structure_type
 	.ascii "A"
@@ -528,7 +528,7 @@
 	.byte 23  # Abbrev. Code 23 DW_TAG_member
 	.ascii "i"
 	.byte 0 # DW_AT_name
-	.long 365 # DW_AT_type
+	.long 371 # DW_AT_type
 	.byte 2 # block count
 	.byte 35 # DW_FORM_block DW_OP_plus_uconst
 	.byte 0 # DW_FORM_block, LEBU 0x0
@@ -537,7 +537,7 @@
 	.byte 24  # Abbrev. Code 24 DW_TAG_member
 	.ascii "j"
 	.byte 0 # DW_AT_name
-	.long 365 # DW_AT_type
+	.long 371 # DW_AT_type
 	.byte 2 # block count
 	.byte 35 # DW_FORM_block DW_OP_plus_uconst
 	.byte 4 # DW_FORM_block, LEBU 0x4
@@ -546,7 +546,7 @@
 	.byte 25  # Abbrev. Code 25 DW_TAG_member
 	.ascii "next"
 	.byte 0 # DW_AT_name
-	.long 375 # DW_AT_type
+	.long 381 # DW_AT_type
 	.byte 2 # block count
 	.byte 35 # DW_FORM_block DW_OP_plus_uconst
 	.byte 8 # DW_FORM_block, LEBU 0x8
