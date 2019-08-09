@@ -21,11 +21,6 @@ int tmpfile_prefix_out(const char *prefix, char **const fname)
 	tmppath = ustrprintf("%s/%sXXXXXX", tmpdir, prefix);
 	fd = mkstemp(tmppath);
 
-	if(fd < 0){
-		free(tmppath);
-		tmppath = NULL;
-	}
-
 	if(fname)
 		*fname = tmppath;
 	else
