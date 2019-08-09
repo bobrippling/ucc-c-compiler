@@ -24,8 +24,9 @@ sub file_contents
 
 sub next_line
 {
+	my $text = shift();
 	my $line = <STDIN>;
-	die "$0: reached EOF\n" unless defined $line;
+	die "$0: reached EOF (while looking for $text)\n" unless defined $line;
 	chomp $line;
 	$line =~ s/\bSTDOUT.*//;
 	return $line;
@@ -86,7 +87,7 @@ for(my $annotation = 0; $annotation < @annotations; $annotation++){
 
 	if($tag eq 'STDOUT'){
 		while(1){
-			$line = next_line();
+			$line = next_line($text);
 			last if linematch($line, $text);
 
 			# didn't match - record a STDOUT-NOT if needed
@@ -99,7 +100,7 @@ for(my $annotation = 0; $annotation < @annotations; $annotation++){
 	if($tag eq 'STDOUT-NEXT' or $tag eq 'STDOUT-SAME-LINE'){
 		die "$0: STDOUT-NOT not followed by STDOUT\n" if $nots_active;
 
-		$line = next_line() if($tag =~ /NEXT/);
+		$line = next_line($text) if($tag =~ /NEXT/);
 
 		if(!linematch($line, $text)){
 			die "$0: $tag: \"$text\" not in \"$line\"\n";
