@@ -1,4 +1,4 @@
-.file 1 "debug/const_void.c"
+.file 1 "cases/debug/const_void.c"
 .Lsection_begin_dbg_abbrev:
 	.byte 1  # Abbrev. Code 1
 	.byte 17  # DW_TAG_compile_unit
@@ -187,7 +187,7 @@
 	.ascii "ucc development version"
 	.byte 0 # DW_AT_producer
 	.word 12 # DW_AT_language
-	.ascii "debug/const_void.c"
+	.ascii "cases/debug/const_void.c"
 	.byte 0 # DW_AT_name
 	.ascii "/tmp/"
 	.byte 0 # DW_AT_comp_dir
@@ -198,7 +198,7 @@
 	.byte 2  # Abbrev. Code 2 DW_TAG_variable
 	.ascii "p"
 	.byte 0 # DW_AT_name
-	.long 230 # DW_AT_type
+	.long 236 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 5 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -210,7 +210,7 @@
 	.byte 3  # Abbrev. Code 3 DW_TAG_variable
 	.ascii "a"
 	.byte 0 # DW_AT_name
-	.long 248 # DW_AT_type
+	.long 254 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 7 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -222,7 +222,7 @@
 	.byte 4  # Abbrev. Code 4 DW_TAG_variable
 	.ascii "x1"
 	.byte 0 # DW_AT_name
-	.long 239 # DW_AT_type
+	.long 245 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 9 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -234,7 +234,7 @@
 	.byte 5  # Abbrev. Code 5 DW_TAG_variable
 	.ascii "x2"
 	.byte 0 # DW_AT_name
-	.long 239 # DW_AT_type
+	.long 245 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 10 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -255,7 +255,7 @@
 	.byte 7  # Abbrev. Code 7 DW_TAG_subprogram
 	.ascii "main"
 	.byte 0 # DW_AT_name
-	.long 217 # DW_AT_type
+	.long 223 # DW_AT_type
 	.byte 1 # DW_AT_decl_file
 	.byte 16 # DW_AT_decl_line
 	.byte 1 # DW_AT_external
@@ -274,14 +274,14 @@
 
 	.byte 10  # Abbrev. Code 10 DW_TAG_pointer_type
 	.long 8 # DW_AT_byte_size
-	.long 227 # DW_AT_type
+	.long 233 # DW_AT_type
 
 	.byte 11  # Abbrev. Code 11 DW_TAG_pointer_type
 	.long 8 # DW_AT_byte_size
-	.long 259 # DW_AT_type
+	.long 265 # DW_AT_type
 
 	.byte 12  # Abbrev. Code 12 DW_TAG_array_type
-	.long 230 # DW_AT_type
+	.long 236 # DW_AT_type
 
 	.byte 13  # Abbrev. Code 13 DW_TAG_subrange_type
 	.long 0 # DW_AT_upper_bound
