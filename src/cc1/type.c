@@ -871,24 +871,24 @@ static unsigned type_hash2(
 			ICE("auto type");
 
 		case type_btype:
-			hash ^= (t->bits.type->primitive << 1) ^ sue_hash(t->bits.type->sue);
+			hash |= (t->bits.type->primitive << 1) | sue_hash(t->bits.type->sue);
 			break;
 
 		case type_tdef:
-			hash ^= nest_hash(t->bits.tdef.type_of->tree_type);
-			hash ^= 1 << 3;
+			hash |= nest_hash(t->bits.tdef.type_of->tree_type);
+			hash |= 1 << 3;
 			break;
 
 		case type_ptr:
 			if(t->bits.ptr.decayed_from)
-				hash ^= nest_hash(t->bits.ptr.decayed_from);
+				hash |= nest_hash(t->bits.ptr.decayed_from);
 			break;
 
 		case type_array:
 			if(t->bits.array.size)
-				hash ^= nest_hash(t->bits.array.size->tree_type);
-			hash ^= 1 << t->bits.array.is_static;
-			hash ^= 1 << t->bits.array.is_vla;
+				hash |= nest_hash(t->bits.array.size->tree_type);
+			hash |= 1 << t->bits.array.is_static;
+			hash |= 1 << t->bits.array.is_vla;
 			break;
 
 		case type_block:
@@ -902,12 +902,12 @@ static unsigned type_hash2(
 			size_t i;
 
 			for(i = 0; args && args[i]; i++)
-				hash ^= nest_hash(args[i]->ref) << (i % 8);
+				hash |= nest_hash(args[i]->ref) << (i % 8);
 			break;
 		}
 
 		case type_cast:
-			hash ^= t->bits.cast.qual;
+			hash |= t->bits.cast.qual;
 			break;
 
 		case type_attr:
