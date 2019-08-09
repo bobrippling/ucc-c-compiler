@@ -1,6 +1,3 @@
-// TEST: target !darwin
-// ^ times out on darwin
-//
 // RUN: %ucc -o %t %s
 // RUN: %ocheck 2 %t
 // RUN: %asmcheck %s

@@ -1,6 +1,3 @@
-# // TEST: target !darwin
-# // ^ times out on darwin
-
 # // RUN: sh %s
 
 ucc(){
