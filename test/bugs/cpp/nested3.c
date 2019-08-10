@@ -1,3 +1,21 @@
+#define f(a) f(x * (a))
+#define x 2
+#define g f
+#define t(a) a
+t(t(g)(0) + t)(1)
+
+/*
+which is required to expand to:
+f(2 * (0)) + t(1)
+
+from which we can infer that object-like macros _are_ considered for expansion
+of function-like invocations ("g(0)" is replaced by "f(2 * (0))", which can
+only happen if "g" is replaced by "f" first), while function like macros are
+_not_ considered for non-function-like invocations (that wouldn't make much
+sense anyway).
+*/
+
+#ifdef MORE
 #define _CONCAT(a, b) a##b
 #define CONCAT(a, b) _CONCAT(a, b)
 #define CONCAT2(a, b) _CONCAT(a, b)
@@ -160,3 +178,4 @@
 #define SQ(x) (x * x)
 
 int squares[] = FOR_EACH(SQ, 1, 2, 3, 4, 5, 6, 7, 8);
+#endif

@@ -92,3 +92,14 @@ int main()
 		printf("fib(%d) = %d\n", i, fib(i));
 	return 0;
 }
+
+#ifdef MORE
+double sqrt(double);
+
+main()
+{
+	typedef long long T;
+	for(T i = 0; i < sqrt(i); i++)
+		;
+}
+#endif
