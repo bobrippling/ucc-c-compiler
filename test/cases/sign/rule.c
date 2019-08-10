@@ -1,4 +1,7 @@
-// RUN: %asmcheck %s
+// RUN: %ucc -target x86_64-linux -S -o- %s | %stdoutcheck %s
+// STDOUT: movw $3
+// STDOUT: movb $2
+
 main()
 {
 	// rule #1 - diff type

@@ -11,7 +11,6 @@ my $verbose = 0;
 
 my %vars = (
 	'check'     => './bin/check.sh',
-	'asmcheck'  => './asmcheck.pl',
 	'stdoutcheck' => './bin/stdoutcheck',
 	'ocheck' => './bin/ocheck',
 	'layout_check' => './bin/layout_check.sh',
