@@ -11,5 +11,5 @@ QUOTE0(a, b)
 
 // STDOUT: "one" ""
 // STDOUT-NEXT: "a" "b, c, d"
-// STDOUT: ""
+// STDOUT-NEXT: ""
 // STDOUT-NEXT: "a, b"

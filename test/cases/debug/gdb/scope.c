@@ -41,28 +41,3 @@ main()
 		1,2,3,4,5,6,7,8,
 		&a, 3);
 }
-
-// global a:
-// STDOUT: a 5 41
-// args, locals, etc:
-// STDOUT: a<1> 5 30
-// STDOUT: a<2> 25 28
-// STDOUT: b 5 30
-// STDOUT: c 5 30
-// STDOUT: d 5 30
-// STDOUT: e 5 30
-// STDOUT: f 5 30
-// STDOUT: fp 5 30
-// STDOUT: g 5 30
-// STDOUT: h 5 30
-// STDOUT: i 5 30
-// STDOUT: j 5 30
-// STDOUT: k 5 30
-// STDOUT: l 5 30
-// STDOUT: local1 30 41
-// STDOUT: local5 32 41
-// STDOUT: m 5 30
-// STDOUT: n 5 30
-// STDOUT: pfp 15 28
-// STDOUT: pt 5 30
-// STDOUT: pt_local 5 30
