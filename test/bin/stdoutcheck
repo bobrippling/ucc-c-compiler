@@ -10,7 +10,7 @@ use strict;
 
 sub usage
 {
-	die "Usage: $0 file-with-annotations [< to-check]\n"
+	die "Usage: $0 [--prefix=...] file-with-annotations [< to-check]\n"
 }
 
 sub file_contents
@@ -44,13 +44,22 @@ sub linematch
 	}
 }
 
+my $prefix = "";
+if($ARGV[0] =~ /^--prefix=(.+)$/){
+	$prefix = $1;
+	shift;
+}
+
 usage()
 if @ARGV != 1;
 
 my $f = shift;
 my @annotations;
 for(file_contents($f)){
-	next unless /\b(STDOUT(-[A-Z]+)*): *(.+)$/;
+	next unless /\b(STDOUT(-[A-Z]+)*(-.*)?: *(.+)$/;
+	my($tag, $thisprefix, $text) = ($1, $2, $3);
+
+	next unless $thisprefix eq "-$prefix";
 
 	push @annotations, { tag => $1, text => $3 };
 }
