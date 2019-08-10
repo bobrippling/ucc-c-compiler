@@ -1,4 +1,7 @@
-// RUN: %archgen %s 'x86:subl $16, %%esp' 'x86:andl $15, %%esp' 'x86_64:subq $16, %%rsp' 'x86_64:andq $15, %%rsp' -mpreferred-stack-boundary=4 -mstackrealign
+// RUN: %ucc -target x86_64-linux -S -o- %s -mpreferred-stack-boundary=4 -mstackrealign | %stdoutcheck %s
+//
+//      STDOUT: /sub. \$16, %rsp/
+// STDOUT-NEXT: /and. \$15, %rsp/
 
 int g();
 

@@ -1,4 +1,4 @@
-// RUN: %archgen %s 'x86_64,x86:movl $13, %%eax' -finline-functions -fno-semantic-interposition
+// RUN: %ucc -S -o- -target x86_64-linux %s -finline-functions -fno-semantic-interposition | grep -F 'movl $13, %%eax'
 
 g(int i)
 {

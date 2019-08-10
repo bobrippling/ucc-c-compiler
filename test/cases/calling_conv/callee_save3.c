@@ -1,4 +1,11 @@
-// RUN: %archgen %s 'x86,x86_64:/movq %%rbx, -[0-9]+\(%%rbp\)/' 'x86,x86_64:/movq %%r12, -[0-9]+\(%%rbp\)/' 'x86,x86_64:/movq %%r13, -[0-9]+\(%%rbp\)/' 'x86,x86_64:/movq -[0-9]+\(%%rbp\), %%rbx/' 'x86,x86_64:/movq -[0-9]+\(%%rbp\), %%r12/' 'x86,x86_64:/movq -[0-9]+\(%%rbp\), %%r13/'
+// RUN: %ucc -target x86_64-linux -S -o- %s | %stdoutcheck %s
+
+// STDOUT: /movq %rbx, -[0-9]+\(%rbp\)/
+// STDOUT: /movq %r12, -[0-9]+\(%rbp\)/
+// STDOUT: /movq %r13, -[0-9]+\(%rbp\)/
+// STDOUT: /movq -[0-9]+\(%rbp\), %rbx/
+// STDOUT: /movq -[0-9]+\(%rbp\), %r12/
+// STDOUT: /movq -[0-9]+\(%rbp\), %r13/
 
 typedef int fn(void);
 

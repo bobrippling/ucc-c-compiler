@@ -1,6 +1,9 @@
-// RUN: %archgen %s 'x86_64,x86:movl $5, %%eax' '-DADDR=0' -finline-functions -fno-semantic-interposition
+// RUN: %ucc -S -o- -target x86_64-linux %s '-DADDR=0' -finline-functions -fno-semantic-interposition | grep 'movl $5, %%eax'
+// RUN: %ucc -S -o- -target x86_64-linux %s '-DADDR=1' -finline-functions -fno-semantic-interposition | %stdoutcheck %s
 
-// RUN: %archgen %s 'x86_64,x86:movl $3, -4(%%rbp)' 'x86_64,x86:movl -4(%%rbp), %%eax' 'x86_64,x86:addl $2, %%eax' '-DADDR=1' -finline-functions -fno-semantic-interposition
+//      STDOUT: movl $3, -4(%rbp)
+// STDOUT-NEXT: movl -4(%rbp), %eax
+//      STDOUT: addl $2, %eax
 
 f(int i)
 {

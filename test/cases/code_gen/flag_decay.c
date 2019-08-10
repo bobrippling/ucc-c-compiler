@@ -1,4 +1,4 @@
-// RUN: %archgen %s 'x86_64,x86:/jl .*Lblk/'
+// RUN: %ucc -target x86_64-linux -S -o- %s | grep 'jl .*Lblk'
 
 // ensure the jump instruction gets the flag
 

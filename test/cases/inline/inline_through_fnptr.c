@@ -1,4 +1,4 @@
-// RUN: %archgen %s 'x86_64,x86:movl $4, %%eax' -finline-functions -fno-semantic-interposition
+// RUN: %ucc -target x86_64-linux -S -o- %s -finline-functions -fno-semantic-interposition | grep 'movl $4, %%eax'
 
 apply(int fn(int, int), int a, int b)
 {

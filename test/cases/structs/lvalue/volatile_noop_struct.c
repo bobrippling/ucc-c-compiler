@@ -1,7 +1,7 @@
-// RUN: %archgen %s 'x86_64:movq (%%rax), %%rcx' -ffreestanding
-// RUN: %archgen %s 'x86_64:movq (%%rax), %%rcx' -DTO_VOID -ffreestanding
-// RUN: %archgen %s 'x86_64:/call.*memcpy/' -fno-freestanding
-// RUN: %archgen %s 'x86_64:/call.*memcpy/' -DTO_VOID -fno-freestanding
+// RUN: %ucc -target x86_64-linux -S -o- %s -ffreestanding | grep -F 'movq (%%rax), %%rcx'
+// RUN: %ucc -target x86_64-linux -S -o- %s -DTO_VOID -ffreestanding | grep -F 'movq (%%rax), %%rcx'
+// RUN: %ucc -target x86_64-linux -S -o- %s -fno-freestanding | grep 'call.*memcpy'
+// RUN: %ucc -target x86_64-linux -S -o- %s -DTO_VOID -fno-freestanding | grep 'call.*memcpy'
 
 struct A
 {

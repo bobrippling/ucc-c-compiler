@@ -19,7 +19,6 @@ my %vars = (
 	'debug_scope' => './debug_scope.sh',
 	'debug_check' => './bin/debug-check',
 	'jmpcheck' => './bin/jmpcheck.sh',
-	'archgen' => './archgen.pl',
 );
 
 sub require_env

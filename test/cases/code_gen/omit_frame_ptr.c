@@ -1,4 +1,5 @@
-// RUN: %archgen %s 'x86_64,x86:!/r[sb]p/'
+// RUN: %ucc -target x86_64-linux -S -o %t %s
+// RUN: ! grep '/r[sb]p/' %t
 
 f()
 {
