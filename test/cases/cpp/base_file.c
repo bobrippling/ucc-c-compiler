@@ -1,8 +1,8 @@
 // RUN: %ucc -P -E %s | %stdoutcheck %s
-//      STDOUT: cpp/base_file.c
-// STDOUT-NEXT: cpp/base_file.c
-// STDOUT-NEXT: cpp/base_file.c
-// STDOUT-NEXT: cpp/base_file.h
+//      STDOUT: "cases/cpp/base_file.c"
+// STDOUT-NEXT: "cases/cpp/base_file.c"
+//      STDOUT: "cases/cpp/base_file.c"
+// STDOUT-NEXT: "cases/cpp/base_file.h"
 
 __BASE_FILE__
 __FILE__
