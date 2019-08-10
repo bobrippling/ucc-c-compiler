@@ -16,6 +16,7 @@ clean:
 cleanall: clean
 	./configure clean
 
+# see also check-bootstrap
 check: all lib
 	cd test && ./run_tests -i ignores -j4 cases
 
