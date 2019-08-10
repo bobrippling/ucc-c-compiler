@@ -16,13 +16,9 @@ clean:
 cleanall: clean
 	./configure clean
 
-cleantest:
-	make -Ctest clean
-# no need to clean test
-
+# see also check-bootstrap
 check: all lib
-	cd test; ./run_tests -i ignores .
-	# test/ pending
+	cd test && ./run_tests -i ignores -j4 cases
 
 ALL_SRC = $(shell find src -iname '*.[ch]')
 

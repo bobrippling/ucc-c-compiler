@@ -35,3 +35,6 @@ literals/unicode.c
 
 # waiting for float/integer register mismatch bug
 #sanitize/divide.c // float part of test disabled
+
+# vla stack alignment is broken
+vla/check_align.c

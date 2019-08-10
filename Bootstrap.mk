@@ -45,4 +45,4 @@ tools/link_r: tools/link_r.c stage1
 	${CC_STAGE1} -o $@ $< ${CFLAGS_BOOTSTRAP} ${CPPFLAGS_BOOTSTRAP}
 
 check-bootstrap: bootstrap
-	cd test; ./run_tests -i ignores '--ucc=${CC_STAGE3}' .
+	cd test && ./run_tests -i ignores -j4 '--ucc=${CC_STAGE3}' cases
