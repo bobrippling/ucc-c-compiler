@@ -26,7 +26,7 @@ sub next_line
 {
 	my $text = shift();
 	my $line = <STDIN>;
-	die "$0: reached EOF (while looking for $text)\n" unless defined $line;
+	die "$0: reached EOF (while looking for '$text')\n" unless defined $line;
 	chomp $line;
 	$line =~ s/\bSTDOUT.*//;
 	return $line;
@@ -88,7 +88,12 @@ for(my $annotation = 0; $annotation < @annotations; $annotation++){
 	if($tag eq 'STDOUT'){
 		while(1){
 			$line = next_line($text);
-			last if linematch($line, $text);
+			if(linematch($line, $text)){
+				print STDERR "matched '$text' on line $.: '$line'\n" if $ENV{UCC_VERBOSE};
+				last;
+			}
+
+			print STDERR "text '$text' not matched on line $.: '$line'\n" if $ENV{UCC_VERBOSE};
 
 			# didn't match - record a STDOUT-NOT if needed
 			record_not($line);
@@ -105,6 +110,8 @@ for(my $annotation = 0; $annotation < @annotations; $annotation++){
 		if(!linematch($line, $text)){
 			die "$0: $tag: \"$text\" not in \"$line\"\n";
 		}
+
+		print STDERR "text '$text' matched on line $.: '$line' ($tag)\n" if $ENV{UCC_VERBOSE};
 		next;
 	}
 
