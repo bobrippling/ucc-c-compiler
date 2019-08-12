@@ -504,6 +504,7 @@ int main(int argc, char **argv)
 				int off;
 				unsigned j;
 				char *p = argv[i] + 2;
+				int found = 0;
 
 				off = !strncmp(p, "no-", 3);
 				if(off)
@@ -516,11 +517,13 @@ int main(int argc, char **argv)
 							wmode &= ~warns[j].or_mask;
 						else
 							wmode |= warns[j].or_mask;
+						found = 1;
 						break;
 					}
 				}
 
-				/* if not found, we ignore - it was intended for cc1 */
+				if(!found)
+					fprintf(stderr, "%s: unknown warning option '%s'\n", argv[0], argv[i]);
 				break;
 			}
 
