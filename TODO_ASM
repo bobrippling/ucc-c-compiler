@@ -1,3 +1,13 @@
 matching constraints
 named constraints
 operand modifiers (and opcode suffixes - see __asm/operand_modifier.c)
+
+tying an input to an early-clobber output
+	e.g.
+
+	int x;
+	__asm__("" : "&r"(x) : "0"(3));
+
+	- no other input may share the same register as the input tied to the early-clobber
+	- the tied output must have a register constraint, not memory (or any other)
+	- only a single input may be tied to an output.
