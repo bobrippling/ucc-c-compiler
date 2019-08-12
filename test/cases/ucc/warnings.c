@@ -1,8 +1,9 @@
-// RUN: %ucc -Wall -Wno-extra -Weverything -Wgnu -Werror -Wcpp -Wpaste -Wno-traditional -Wunused -Wno-implicit -Werror=overflow -Wno-error=vla -Werror=everything %s -'###' >%t 2>&1
+// RUN: %ucc -Wall -Wno-extra -W -Weverything -Wgnu -Werror -Wcpp -Wpaste -Wno-traditional -Wunused -Wno-implicit -Werror=overflow -Wno-error=vla -Werror=everything %s -'###' >%t 2>&1
 
 // true and false groups:
 // -Wall
 // -Wno-extra
+// -W
 // -Weverything
 // -Wgnu
 // -Werror
@@ -23,6 +24,7 @@
 
 // RUN:   grep -q "/cpp .*-Wall" %t
 // RUN: ! grep -q "/cpp .*-Wno-extra" %t
+// RUN: ! grep -q "/cpp .*-W " %t
 // RUN:   grep -q "/cpp .*-Weverything" %t
 // RUN: ! grep -q "/cpp .*-Wgnu" %t
 // RUN: ! grep -q "/cpp .*-Werror " %t
@@ -37,6 +39,7 @@
 
 // RUN:   grep -q "/cc1 .*-Wall" %t
 // RUN:   grep -q "/cc1 .*-Wno-extra" %t
+// RUN:   grep -q "/cc1 .*-W " %t
 // RUN:   grep -q "/cc1 .*-Weverything" %t
 // RUN:   grep -q "/cc1 .*-Wgnu" %t
 // RUN:   grep -q "/cc1 .*-Werror " %t

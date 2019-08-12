@@ -292,6 +292,7 @@ void warning_on(
 
 	SPECIAL("all", W_ALL)
 	SPECIAL("extra", W_EXTRA)
+	SPECIAL("", W_EXTRA)
 	SPECIAL("everything", W_EVERYTHING)
 	SPECIAL("gnu", W_GNU)
 

@@ -54,7 +54,8 @@ enum warning_owner warning_owner(const char *arg)
 	}
 
 	if(!strcmp(arg, "extra")
-	|| !strcmp(arg, "error"))
+	|| !strcmp(arg, "error")
+	|| !*arg /* -W */)
 	{
 		return W_OWNER_CC1;
 	}
