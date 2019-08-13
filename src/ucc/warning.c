@@ -45,11 +45,15 @@ enum warning_owner warning_owner(const char *arg)
 
 	/* handle all, extra and everything and error */
 	if(!strcmp(arg, "all")
-	|| !strcmp(arg, "extra")
-	|| !strcmp(arg, "everything")
-	|| !strcmp(arg, "error"))
+	|| !strcmp(arg, "everything"))
 	{
 		return W_OWNER_CC1 | W_OWNER_CPP;
+	}
+
+	if(!strcmp(arg, "extra")
+	|| !strcmp(arg, "error"))
+	{
+		return W_OWNER_CC1;
 	}
 
 	/* handle gnu */
