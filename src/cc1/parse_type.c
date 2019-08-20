@@ -123,31 +123,34 @@ static struct_union_enum_st *parse_sue_definition(
 
 			where_cc1_current(&w);
 			sp = token_current_spel();
-			EAT(token_identifier);
+			if(accept(token_identifier)){
+				/* guard this, so we skip adding a NULL spel to the enum list */
+				parse_add_attr(&en_attr, scope);
 
-			parse_add_attr(&en_attr, scope);
+				if(accept(token_assign)){
+					e = PARSE_EXPR_CONSTANT(scope, 0); /* no commas */
+					/* ensure we fold before this enum member is added to the scope,
+					 * e.g.
+					 * enum { A };
+					 * f()
+					 * {
+					 *   enum {
+					 *     A = A // the right-most A here resolves to the global A
+					 *   };
+					 * }
+					 */
 
-			if(accept(token_assign)){
-				e = PARSE_EXPR_CONSTANT(scope, 0); /* no commas */
-				/* ensure we fold before this enum member is added to the scope,
-				 * e.g.
-				 * enum { A };
-				 * f()
-				 * {
-				 *   enum {
-				 *     A = A // the right-most A here resolves to the global A
-				 *   };
-				 * }
-				 */
+					fold_expr_nodecay(e, scope);
+				}else{
+					e = NULL;
+				}
 
-				fold_expr_nodecay(e, scope);
+				enum_vals_add(members, &w, sp, e, /*released:*/en_attr);
+
+				predecl_sue->members = *members;
 			}else{
-				e = NULL;
+				EAT(token_identifier); /* error */
 			}
-
-			enum_vals_add(members, &w, sp, e, /*released:*/en_attr);
-
-			predecl_sue->members = *members;
 
 			if(!accept_where(token_comma, &w))
 				break;
