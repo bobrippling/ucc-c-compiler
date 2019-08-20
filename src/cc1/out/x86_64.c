@@ -2524,6 +2524,11 @@ void impl_undefined(out_ctx *octx)
 	blk_terminate_undef(octx->current_blk);
 }
 
+void impl_debugtrap(out_ctx *octx)
+{
+	out_asm(octx, "int3");
+}
+
 const out_val *impl_test_overflow(out_ctx *octx, const out_val **eval)
 {
 	/* whenever creating a V_FLAG we need to ensure instructions are flushed */

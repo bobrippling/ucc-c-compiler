@@ -57,6 +57,11 @@ void out_ctrl_end_undefined(out_ctx *octx)
 	octx->current_blk = NULL;
 }
 
+void out_ctrl_debugtrap(out_ctx *octx)
+{
+	impl_debugtrap(octx);
+}
+
 out_val *out_val_unphi(out_ctx *octx, const out_val *phi)
 {
 	out_val *mut = v_dup_or_reuse(octx, phi, phi->t);

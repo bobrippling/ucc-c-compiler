@@ -55,6 +55,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf);
 void impl_func_epilogue(out_ctx *, type *, int clean_stack);
 
 void impl_undefined(out_ctx *octx);
+void impl_debugtrap(out_ctx *octx);
 void impl_set_nan(out_ctx *, out_val *);
 ucc_wur const out_val *impl_test_overflow(
 		out_ctx *, const out_val **);

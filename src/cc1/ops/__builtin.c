@@ -47,6 +47,7 @@ typedef expr *func_builtin_parse(
 		const char *ident, symtable *);
 
 static func_builtin_parse parse_unreachable
+                          , parse_debugtrap
                           , parse_compatible_p
                           , parse_constant_p
                           , parse_frame_address
@@ -359,6 +360,36 @@ static expr *parse_unreachable(const char *ident, symtable *scope)
 	(void)scope;
 
 	expr_mutate_builtin(fcall, unreachable);
+
+	return fcall;
+}
+
+/* --- debugtrap */
+
+static void fold_debugtrap(expr *e, symtable *stab)
+{
+	(void)stab;
+
+	e->tree_type = type_nav_btype(cc1_type_nav , type_void);
+
+	wur_builtin(e);
+}
+
+static const out_val *builtin_gen_debugtrap(const expr *e, out_ctx *octx)
+{
+	(void)e;
+	out_ctrl_debugtrap(octx);
+	return out_new_noop(octx);
+}
+
+static expr *parse_debugtrap(const char *ident, symtable *scope)
+{
+	expr *fcall = expr_new_funcall();
+
+	(void)ident;
+	(void)scope;
+
+	expr_mutate_builtin(fcall, debugtrap);
 
 	return fcall;
 }

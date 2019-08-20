@@ -115,6 +115,7 @@ out_blk *out_blk_postprologue(out_ctx *);
 
 void out_ctrl_end_undefined(out_ctx *);
 void out_ctrl_end_ret(out_ctx *, const out_val *, type *) ucc_nonnull((1));
+void out_ctrl_debugtrap(out_ctx *);
 
 /* Will the value be used only in *mergee? (/ not immediately afterwards, in
  * the current block)
