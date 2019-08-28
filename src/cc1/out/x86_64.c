@@ -217,7 +217,7 @@ int impl_regname_index(const char *rnam)
 		for(j = 0; j < (int)countof(regnames[0]); j++){
 			const char *entry = regnames[i][j];
 			if(!entry)
-				return -1;
+				continue;
 
 			if(!strcmp(regnames[i][j], rnam))
 				return i;
