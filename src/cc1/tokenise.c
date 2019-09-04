@@ -746,8 +746,14 @@ out:
 
 static void read_suffix(void)
 {
-	const int fp = (currentval.suffix & VAL_FLOATING
-			|| tolower(peeknextchar()) == 'e');
+	int fp = currentval.suffix & VAL_FLOATING;
+
+	if((currentval.suffix & (VAL_HEX | VAL_BIN)) == 0
+	&& tolower(peeknextchar()) == 'e')
+	{
+		/* 'e' can only be applied to a float constant or a decimal sequence */
+		fp = 1;
+	}
 
 	/* handle floating XeY */
 	if(fp){
