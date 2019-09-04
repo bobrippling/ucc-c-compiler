@@ -44,14 +44,11 @@ struct numeric
 		VAL_LDOUBLE  = 1 << 8,
 		VAL_FLOATING = VAL_FLOAT | VAL_DOUBLE | VAL_LDOUBLE,
 
-		/* variable was read in as:
-		 * (decimal if neither of these set)
-		 */
+		/* variable was read in as decimal if none of these set */
 		VAL_OCTAL       = 1 << 3,
 		VAL_HEX         = 1 << 4,
 		VAL_BIN         = 1 << 5,
 		VAL_NON_DECIMAL = VAL_OCTAL | VAL_HEX | VAL_BIN,
-		VAL_PREFIX_MASK = VAL_NON_DECIMAL,
 		VAL_SUFFIXED_MASK = VAL_UNSIGNED | VAL_LONG | VAL_LLONG
 	} suffix;
 };
