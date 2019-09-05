@@ -2,11 +2,13 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/util.h"
+#include "../util/util.h"
+
 #include "tokenise.h"
 #include "tokconv.h"
-#include "../util/util.h"
 #include "macros.h"
 #include "cc1.h"
 #include "cc1_where.h"
@@ -259,7 +261,7 @@ char *token_to_str(enum token t)
 	return NULL;
 }
 
-char *curtok_to_identifier(int *alloc)
+char *eat_curtok_to_identifier(int *alloc, where *loc)
 {
 	switch(curtok){
 		case token_do:
@@ -309,12 +311,21 @@ char *curtok_to_identifier(int *alloc)
 		case token___extension__:
 		case token___auto_type:
 		case token___label__:
+		{
 			/* we can stringify these */
+			char *str = token_to_str(curtok);
 			*alloc = 0;
-			return token_to_str(curtok);
+
+			where_cc1_current(loc);
+			where_cc1_adj_identifier(loc, str);
+
+			nexttoken();
+			return str;
+		}
+
 		case token_identifier:
 			*alloc = 1;
-			return token_current_spel();
+			return token_eat_identifier(NULL, loc);
 
 		case token_integer:
 		case token_floater:
@@ -372,10 +383,14 @@ char *curtok_to_identifier(int *alloc)
 		case token_unknown:
 			break;
 	}
+
+	*alloc = 0;
+	where_cc1_current(loc);
+
 	return NULL;
 }
 
-void eat2(enum token t, const char *fnam, int line, int die)
+int eat2(enum token t, const char *fnam, int line, int die)
 {
 	if(t != curtok){
 		const int ident = curtok == token_identifier;
@@ -389,18 +404,23 @@ void eat2(enum token t, const char *fnam, int line, int die)
 				ident ? "\" " : "",
 				fnam, line);
 
+		if(die == 2)
+			assert(0 && "invalid token parse state");
 		if(die || --cc1_error_limit <= 0)
 			exit(1);
 
 		/* XXX: we continue here, assuming we had the token anyway */
-	}else{
-		if(curtok_save != token_unknown){
-			curtok = curtok_save;
-			curtok_save = token_unknown;
-		}else{
-			nexttoken();
-		}
+		return 0;
 	}
+
+	if(curtok_save != token_unknown){
+		curtok = curtok_save;
+		curtok_save = token_unknown;
+	}else{
+		nexttoken();
+	}
+
+	return 1;
 }
 
 int accept_where(enum token t, where *w)
@@ -432,9 +452,9 @@ void uneat(enum token t)
 	curtok = t;
 }
 
-void eat(enum token t, const char *fnam, int line)
+int eat(enum token t, const char *fnam, int line)
 {
-	eat2(t, fnam, line, 0);
+	return eat2(t, fnam, line, 0);
 }
 
 int curtok_in_list(va_list l)

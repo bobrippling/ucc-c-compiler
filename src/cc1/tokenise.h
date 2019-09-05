@@ -138,7 +138,9 @@ void tokenise_set_mode(enum keyword_mode);
 
 void nexttoken(void);
 
-char *token_current_spel(void);
+int token_accept_identifier(char **const, where *)
+	ucc_nonnull((1));
+char *token_eat_identifier(const char *fallback, where *w); /* nullable */
 char *token_current_spel_peek(void);
 
 int tok_at_label(void);

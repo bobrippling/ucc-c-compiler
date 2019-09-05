@@ -39,14 +39,7 @@ static attribute *parse_attr_format(symtable *symtab, const char *ident)
 
 	EAT(token_open_paren);
 
-	func = token_current_spel();
-	EAT(token_identifier);
-
-	/* TODO: token_current_spel()
-	 * and token_get_current_str(..,..)
-	 * checks everywhere */
-	if(!func)
-		return NULL;
+	func = token_eat_identifier(DUMMY_IDENTIFIER, NULL);
 
 #define CHECK(s) !strcmp(func, s) || !strcmp(func, "__" s "__")
 	if(CHECK("printf")){
@@ -230,9 +223,7 @@ static attribute *parse_attr_cleanup(symtable *scope, const char *ident)
 	if(curtok != token_identifier)
 		die_at(NULL, "identifier expected for cleanup function");
 
-	where_cc1_current(&ident_loc);
-	sp = token_current_spel();
-	EAT(token_identifier);
+	sp = token_eat_identifier(DUMMY_IDENTIFIER, &ident_loc);
 
 	if(symtab_search(scope, sp, NULL, &ent) && ent.type == SYMTAB_ENT_DECL){
 		attr = attribute_new(attr_cleanup);
@@ -484,7 +475,7 @@ attribute **parse_attr(symtable *scope)
 		if(curtok == token_close_paren)
 			break;
 
-		ident = curtok_to_identifier(&alloc);
+		ident = eat_curtok_to_identifier(&alloc, &w);
 
 		if(!ident){
 			parse_had_error = 1;
@@ -494,11 +485,6 @@ attribute **parse_attr(symtable *scope)
 			EAT(curtok);
 			goto comma;
 		}
-
-		where_cc1_current(&w);
-		where_cc1_adj_identifier(&w, ident);
-
-		EAT(curtok);
 
 		this = parse_attr_single(ident, scope);
 

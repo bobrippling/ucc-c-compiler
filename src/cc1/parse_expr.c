@@ -177,15 +177,22 @@ expr *parse_expr_identifier(void)
 {
 	expr *e;
 	char *sp;
+	where w;
 
-	if(curtok != token_identifier)
-		die_at(NULL, "identifier expected, got %s", token_to_str(curtok));
+	if(token_accept_identifier(&sp, &w)){
+		/* ok */
+	}else{
+		warn_at_print_error(NULL, "identifier expected, got %s", token_to_str(curtok));
+		parse_had_error = 1;
 
-	sp = token_current_spel();
+		sp = ustrdup(DUMMY_IDENTIFIER);
+		where_cc1_current(&w);
+	}
 
 	e = expr_new_identifier(sp);
+	memcpy_safe(&e->where, &w);
 	where_cc1_adj_identifier(&e->where, sp);
-	EAT(token_identifier);
+
 	return e;
 }
 
@@ -458,8 +465,10 @@ expr *parse_expr_unary(symtable *scope, int static_ctx)
 				/* GNU &&label */
 				cc1_warn_at(NULL, gnu_addr_lbl, "use of GNU address-of-label");
 				EAT(curtok);
-				e = expr_new_addr_lbl(token_current_spel(), static_ctx);
-				EAT(token_identifier);
+
+				e = expr_new_addr_lbl(token_eat_identifier("?", &w), static_ctx);
+				memcpy_safe(&e->where, &w);
+				set_w = 0;
 				break;
 
 			case token_and:

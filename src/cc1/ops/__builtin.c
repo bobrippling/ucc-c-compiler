@@ -869,9 +869,8 @@ static expr *parse_has_attribute(const char *ident, symtable *scope)
 
 	EAT(token_comma);
 
-	fcall->bits.builtin_ident.ident = curtok_to_identifier(&fcall->bits.builtin_ident.alloc);
-
-	EAT(token_identifier);
+	fcall->bits.builtin_ident.ident = eat_curtok_to_identifier(
+			&fcall->bits.builtin_ident.alloc, NULL);
 
 	expr_mutate_builtin_const(fcall, has_attribute);
 	return fcall;
