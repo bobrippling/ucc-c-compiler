@@ -150,7 +150,7 @@ int parse_had_error;
 
 numeric currentval = { { 0 } }; /* an integer literal */
 
-char *currentspelling = NULL; /* e.g. name of a variable */
+static char *currentspelling = NULL; /* e.g. name of a variable */
 
 struct cstring *currentstring = NULL; /* a string literal */
 where currentstringwhere;
