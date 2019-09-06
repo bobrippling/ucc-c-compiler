@@ -425,10 +425,19 @@ static void const_op_num(
 	};
 
 	if(rhs){
+		int valid;
+
 		fp[1] = type_is_floating(e->rhs->tree_type);
 
-		UCC_ASSERT(!(fp[0] ^ fp[1]),
-				"one float and one non-float?");
+		valid = fp[0] == fp[1];
+
+		if(!valid){
+			if(fold_had_error){
+				/* okay, ignore */
+				return;
+			}
+			assert(valid && "one float and one non-float?");
+		}
 	}
 
 	if(fp[0])

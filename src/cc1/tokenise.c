@@ -655,7 +655,7 @@ static void read_integer(const enum base mode)
 static void read_suffix_float_exp(void)
 {
 	numeric mantissa;
-	int powmul;
+	int powmul = 1;
 	int just_read = nextchar();
 
 	assert(tolower(just_read) == 'e');
@@ -666,9 +666,10 @@ static void read_suffix_float_exp(void)
 	}
 	mantissa = currentval;
 
-	powmul = (peeknextchar() == '-' ? -1 : 1);
-	if(powmul == -1)
-		nextchar();
+	switch(peeknextchar()){
+		case '+': powmul = +1; nextchar(); break;
+		case '-': powmul = -1; nextchar(); break;
+	}
 
 	if(!isdigit(peeknextchar())){
 		warn_at_print_error(NULL, "no digits in exponent");
@@ -745,8 +746,14 @@ out:
 
 static void read_suffix(void)
 {
-	const int fp = (currentval.suffix & VAL_FLOATING
-			|| tolower(peeknextchar()) == 'e');
+	int fp = currentval.suffix & VAL_FLOATING;
+
+	if((currentval.suffix & (VAL_HEX | VAL_BIN)) == 0
+	&& tolower(peeknextchar()) == 'e')
+	{
+		/* 'e' can only be applied to a float constant or a decimal sequence */
+		fp = 1;
+	}
 
 	/* handle floating XeY */
 	if(fp){
