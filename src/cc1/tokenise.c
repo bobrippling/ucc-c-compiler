@@ -150,7 +150,7 @@ int parse_had_error;
 
 numeric currentval = { { 0 } }; /* an integer literal */
 
-char *currentspelling = NULL; /* e.g. name of a variable */
+static char *currentspelling = NULL; /* e.g. name of a variable */
 
 struct cstring *currentstring = NULL; /* a string literal */
 where currentstringwhere;
@@ -506,10 +506,40 @@ void tokenise_set_mode(enum keyword_mode m)
 	keyword_mode = m | KW_ALL;
 }
 
-char *token_current_spel(void)
+int token_accept_identifier(char **const out, where *loc)
 {
-	char *ret = currentspelling;
+	char *sp;
+
+	if(curtok != token_identifier)
+		return 0;
+
+	sp = currentspelling;
 	currentspelling = NULL;
+
+	*out = sp;
+	if(loc){
+		where_cc1_current(loc);
+		where_cc1_adj_identifier(loc, sp);
+	}
+
+	nexttoken();
+
+	return 1;
+}
+
+char *token_eat_identifier(const char *fallback, where *w)
+{
+	char *ret = NULL;
+
+	if(token_accept_identifier(&ret, w)){
+		assert(ret);
+	}else{
+		EAT(token_identifier); /* emit error */
+
+		where_cc1_current(w);
+		ret = fallback ? ustrdup(fallback) : NULL;
+	}
+
 	return ret;
 }
 

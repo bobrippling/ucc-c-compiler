@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/dynarray.h"
 #include "../util/util.h"
@@ -299,10 +300,8 @@ static stmt *parse_label(const struct stmt_ctx *ctx)
 	stmt *lblstmt;
 
 	where_cc1_current(&w);
-	lbl = token_current_spel();
-	where_cc1_adj_identifier(&w, lbl);
+	lbl = token_eat_identifier("?", &w);
 
-	EAT(token_identifier);
 	EAT(token_colon);
 
 	lblstmt = stmt_new_wrapper(label, ctx->scope);
@@ -329,12 +328,13 @@ static void parse_local_labels(const struct stmt_ctx *const ctx)
 {
 	while(accept(token___label__)){
 		for(;;){
-			char *spel = token_current_spel();
+			char *spel;
 			where loc;
 			int created;
 
-			where_cc1_current(&loc);
-			EAT(token_identifier);
+			spel = token_eat_identifier(NULL, &loc);
+			if(!spel)
+				break;
 
 			created = symtab_label_add_local(ctx->scope, spel, &loc);
 
@@ -550,11 +550,16 @@ stmt *parse_stmt(const struct stmt_ctx *ctx)
 				if(accept(token_multiply)){
 					/* computed goto */
 					t->expr = parse_expr_exp(ctx->scope, 0);
-				}else if(curtok == token_identifier){
-					t->bits.lbl.spel = token_current_spel();
-					EAT(token_identifier);
 				}else{
-					die_at(NULL, "identifier or '*' expected for goto");
+					char *spel;
+					if(token_accept_identifier(&spel, NULL)){
+						assert(spel);
+					}else{
+						assert(!spel);
+						spel = ustrdup(DUMMY_IDENTIFIER);
+						warn_at_print_error(NULL, "identifier or '*' expected for goto");
+					}
+					t->bits.lbl.spel = spel;
 				}
 			}
 			EAT(token_semicolon);

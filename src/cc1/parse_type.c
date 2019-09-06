@@ -121,9 +121,8 @@ static struct_union_enum_st *parse_sue_definition(
 			char *sp;
 			attribute **en_attr = NULL;
 
-			where_cc1_current(&w);
-			sp = token_current_spel();
-			if(accept(token_identifier)){
+			sp = token_eat_identifier(NULL, &w);
+			if(sp){
 				/* guard this, so we skip adding a NULL spel to the enum list */
 				parse_add_attr(&en_attr, scope);
 
@@ -148,8 +147,6 @@ static struct_union_enum_st *parse_sue_definition(
 				enum_vals_add(members, &w, sp, e, /*released:*/en_attr);
 
 				predecl_sue->members = *members;
-			}else{
-				EAT(token_identifier); /* error */
 			}
 
 			if(!accept_where(token_comma, &w))
@@ -291,14 +288,8 @@ static type *parse_type_sue(
 	/* struct __attr__(()) name { ... } ... */
 	parse_add_attr(&this_sue_attr, scope);
 
-	if(curtok == token_identifier){
-		/* update location to be the name, since we have one */
+	if(!token_accept_identifier(&spel, &sue_loc))
 		where_cc1_current(&sue_loc);
-
-		spel = token_current_spel();
-		EAT(token_identifier);
-		where_cc1_adj_identifier(&sue_loc, spel);
-	}
 
 	if(accept(token_open_block)){
 		is_definition = 1;
@@ -775,7 +766,8 @@ static type *parse_btype(
 
 			primitive_mode = TYPEDEF;
 
-			EAT(token_identifier);
+			assert(curtok == token_identifier);
+			nexttoken();
 
 		}else if(curtok == token_attribute){
 			parse_add_attr(&attr, scope); /* __attr__ int ... */
@@ -1033,7 +1025,8 @@ funcargs *parse_func_arglist(symtable *scope)
 			if(curtok == token_close_paren)
 				break;
 
-			EAT_OR_DIE(token_comma);
+			if(!EAT(token_comma))
+				break;
 
 			if(accept(token_elipsis)){
 				args->variadic = 1;
@@ -1061,23 +1054,26 @@ fin:;
 		/* old func - list of idents */
 		do{
 			decl *d = decl_new();
-
-			if(curtok != token_identifier)
-				EAT(token_identifier); /* error */
+			char *spel;
 
 			d->ref = type_nav_btype(cc1_type_nav, type_int);
 
-			d->spel = token_current_spel();
-			dynarray_add(&args->arglist, d);
-
-			symtab_add_to_scope(scope, d);
-
-			EAT(token_identifier);
+			spel = token_eat_identifier(NULL, NULL);
+			if(spel){
+				d->spel = spel;
+				dynarray_add(&args->arglist, d);
+				symtab_add_to_scope(scope, d);
+			}else{
+				/* error emitted by EAT() */
+				decl_free(d);
+				break;
+			}
 
 			if(curtok == token_close_paren)
 				break;
 
-			EAT_OR_DIE(token_comma);
+			if(!EAT(token_comma))
+				break;
 		}while(1);
 
 		cc1_warn_at(NULL, omitted_param_types,
@@ -1162,6 +1158,9 @@ static type_parsed *type_parsed_new(
 static type_parsed *parsed_type_nest(
 		enum decl_mode mode, decl *dfor, type_parsed *base, symtable *scope)
 {
+	where spel_loc;
+	char *spel;
+
 	if(accept(token_open_paren)){
 		type_parsed *ret;
 		attribute **attr = NULL;
@@ -1206,21 +1205,24 @@ static type_parsed *parsed_type_nest(
 
 		return ret;
 
-	}else if(curtok == token_identifier){
-		if(!dfor)
-			die_at(NULL, "identifier unexpected");
+	}else if(token_accept_identifier(&spel, &spel_loc)){
+		if(!dfor){
+			warn_at_print_error(NULL, "identifier unexpected");
+			parse_had_error = 1;
+			goto error;
+		}
 
 		/* set spel + location info */
-		where_cc1_current(&dfor->where);
-		dfor->spel = token_current_spel();
-		where_cc1_adj_identifier(&dfor->where, dfor->spel);
-
-		EAT(token_identifier);
+		memcpy_safe(&dfor->where, &spel_loc);
+		dfor->spel = spel;
 
 	}else if(mode & DECL_SPEL_NEED){
-		die_at(NULL, "need identifier for decl");
+		warn_at_print_error(NULL, "need identifier for decl");
+		parse_had_error = 1;
+		goto error;
 	}
 
+error:
 	return base;
 }
 
@@ -1661,8 +1663,7 @@ static decl *parse_decl_stored_aligned(
 	parse_add_attr(&d->attr, scope);
 
 	if(is_autotype){
-		d->spel = token_current_spel();
-		EAT(token_identifier);
+		d->spel = token_eat_identifier(DUMMY_IDENTIFIER, NULL);
 
 	}else{
 		/* allow extra specifiers */
