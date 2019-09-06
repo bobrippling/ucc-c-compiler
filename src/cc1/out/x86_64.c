@@ -2306,8 +2306,9 @@ const out_val *impl_call(
 	}
 
 	if(arg_stack.bytesz > 0){
-		unsigned nfloats = 0, nints = 0; /* shadow */
 		const out_val *stack_iter;
+
+		nints = nfloats = 0;
 
 		/* Rather than spilling the registers based on %rbp, we spill
 		 * them based as offsets from %rsp, that way they're always
