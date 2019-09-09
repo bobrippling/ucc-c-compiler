@@ -775,7 +775,9 @@ dbg_unknown:
 	}else{
 		unsigned new = powf(2, cc1_mstack_align);
 		if(new < platform_word_size()){
-			ccdie("stack alignment must be >= platform word size (2^%d)",
+			ccdie("stack alignment (%d) must be >= %d (platform word size 2^%d)",
+					cc1_mstack_align,
+					platform_word_size(),
 					log2i(platform_word_size()));
 		}
 		cc1_mstack_align = new;
