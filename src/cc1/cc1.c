@@ -70,6 +70,9 @@ static struct
 	{ 'f', "message-length", &warning_length },
 
 	{ 'm', "preferred-stack-boundary", &cc1_mstack_align },
+	/* note this stores into cc1_mstack_align an invalid value,
+	 * that must be 2^n'd before being used */
+
 	{ 0, NULL, NULL }
 };
 
@@ -768,7 +771,7 @@ dbg_unknown:
 		return 1;
 
 	if(cc1_mstack_align == -1){
-		cc1_mstack_align = log2i(platform_word_size());
+		cc1_mstack_align = platform_word_size();
 	}else{
 		unsigned new = powf(2, cc1_mstack_align);
 		if(new < platform_word_size()){
