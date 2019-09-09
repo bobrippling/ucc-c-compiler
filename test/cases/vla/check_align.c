@@ -1,7 +1,7 @@
-// RUN-disabled: %ucc -o %t %s "$(dirname %s)"/check_align_asm.s
-// RUN-disabled: %t
-//
-// test disabled, passes on Darwin, fails on Linux - timeout was hiding the crash
+// RUN: %ucc -o %t %s "$(dirname %s)"/check_align_asm.s
+// RUN: %t
+
+// passes on Darwin, fails on Linux - timeout was hiding the crash
 
 extern void check_align() __asm("check_align");
 

@@ -43,7 +43,7 @@ extern enum c_std cc1_std;
 
 extern int cc1_error_limit;
 
-extern int cc1_mstack_align; /* 2^n */
+extern int cc1_mstack_align;
 extern int cc1_profileg; /* -pg */
 
 enum debug_level
