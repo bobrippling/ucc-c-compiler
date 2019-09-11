@@ -1,6 +1,5 @@
 matching constraints
 named constraints
-operand modifiers (and opcode suffixes - see __asm/operand_modifier.c)
 
 tying an input to an early-clobber output
 	e.g.
@@ -23,3 +22,18 @@ mark outputs as written-to:
 	+			fold_stmt(this); /* FIXME: only do this once (globally) */
 				dynarray_add(&code_stmt->bits.code.stmts, this);
 			}
+
+operand modifiers (and opcode suffixes - see __asm/operand_modifier.c):
+	a: Print an absolute memory reference.                                                                                      %A0  ->  *%rax
+	b: Print the QImode name of the register.                                                                                   %b0  ->  %al
+	c: Require a constant operand and print the constant expression with no punctuation.                                        %c1  ->  2
+	E: Print the address in Double Integer (DImode) mode (8 bytes) when the target is 64-bit. Otherwise mode is unspecified     %E1  ->  %(rax)
+	h: Print the QImode name for a 'high' register.                                                                             %h0  ->  %ah
+	H: Add 8 bytes to an offsettable memory reference. Useful when accessing the high 8 bytes of SSE values.                    %H0  ->  8(%rax)
+	k: Print the SImode name of the register.                                                                                   %k0  ->  %eax
+	l: Print the label name with no punctuation.                                                                                %l3  ->  .L3
+	p: Print raw symbol name (without syntax-specific prefixes).                                                                %p2  ->  42
+	P: If used for a function, print the PLT suffix and generate PIC code. For example, emit foo@PLT instead of 'foo'
+	q: Print the DImode name of the register.                                                                                   %q0  ->  %rax
+	w: Print the HImode name of the register.                                                                                   %w0  ->  %ax
+	z: Print the opcode suffix for the size of the current integer operand (one of b/w/l/q).                                    %z0  ->  l

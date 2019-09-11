@@ -1165,8 +1165,11 @@ static void format_single_percent(
 	const out_val *oval;
 	int deref = 0;
 
-	if(**p == '['){
-		ICE("TODO: named constraint");
+	switch(**p){
+		case '[':
+			ICE("TODO: named constraint");
+
+		/* TODO: operand modifiers (x86) */
 	}
 
 	this_index = strtol(*p, &end, 0);
