@@ -17,6 +17,13 @@ CC_STAGE3 = ${PWD}/bootstrap/stage3/src/ucc/ucc
 
 bootstrap: stage3
 
+bootstrap-compare: bootstrap compare
+
+compare: stage3
+	cmp ${CC_STAGE2} ${CC_STAGE3}
+	cmp ${PWD}/bootstrap/stage[23]/src/cpp2/cpp
+	cmp ${PWD}/bootstrap/stage[23]/src/cc1/cc1
+
 clean-bootstrap:
 	rm -rf bootstrap
 
@@ -44,5 +51,5 @@ stage3: stage2 bootstrap/stage3/${CONFIGURE_OUTPUT}
 tools/link_r: tools/link_r.c stage1
 	${CC_STAGE1} -o $@ $< ${CFLAGS_BOOTSTRAP} ${CPPFLAGS_BOOTSTRAP}
 
-check-bootstrap: bootstrap
+check-bootstrap: bootstrap-compare
 	cd test && ./run_tests -i ignores -j4 '--ucc=${CC_STAGE3}' cases
