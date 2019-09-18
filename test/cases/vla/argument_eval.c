@@ -11,7 +11,13 @@ static int b(){ bs++; return 2; }
 static int f(int p[a()][b()])
 {
 	fs++;
-	return p[0][0] + p[0][1] + p[1][0] + p[1][1];
+	return p[0][0] // 5
+		+ p[0][1] // 4
+		+ p[1][0] // 3
+		+ p[1][1] // 2
+		+ sizeof(p) // sizeof(T (*)[...]) = 8
+		+ sizeof(p[0]) // 2 * sizeof(int) = 8
+		+ sizeof(p[1][2]); // sizeof(int) = 4
 }
 
 static void assert(_Bool b)
@@ -37,7 +43,7 @@ int main()
 	assert(bs == 1);
 	assert(fs == 0);
 
-	assert(f(ar) == 14);
+	assert(f(ar) == 34);
 
 	assert(as == 2);
 	assert(bs == 2);
