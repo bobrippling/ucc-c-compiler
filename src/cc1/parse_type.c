@@ -1393,6 +1393,28 @@ static type_parsed *parsed_type_ptr(
 	}
 }
 
+static type *create_func_type_stripping_ret_quals(
+		type *retty,
+		struct funcargs *args,
+		struct symtable *arg_scope,
+		where const *where)
+{
+	enum type_qualifier qual = type_qual(retty);
+
+	if(qual){
+		cc1_warn_at(where, ignored_qualifiers,
+				type_is_void(type_skip_all(retty))
+				? "function has qualified void return type (%s)"
+				: "%s qualification on return type has no effect",
+				type_qual_to_str(qual, 0));
+
+		/* no top-level quals on function return types (C17 6.7.6.3p5 / DR 423) */
+		retty = type_unqualify(retty);
+	}
+
+	return type_func_of(retty, args, arg_scope);
+}
+
 static type *parse_type_declarator_to_type(
 		enum decl_mode mode, decl *dfor, type *base, symtable *scope)
 {
@@ -1438,10 +1460,11 @@ static type *parse_type_declarator_to_type(
 				}
 				break;
 			case PARSED_FUNC:
-				ty = type_func_of(
+				ty = create_func_type_stripping_ret_quals(
 						ty,
 						i->bits.func.arglist,
-						i->bits.func.scope);
+						i->bits.func.scope,
+						&i->where);
 				break;
 
 			case PARSED_ATTR:
