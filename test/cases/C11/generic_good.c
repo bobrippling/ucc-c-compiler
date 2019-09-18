@@ -7,6 +7,34 @@ int abort2()
 	abort();
 }
 
+void notcalled()
+{
+	const int f();
+	int g();
+
+	_Static_assert(_Generic(f(), const int: 0, int: 1) == 1);
+	_Static_assert(_Generic(g(), const int: 0, int: 1) == 1);
+}
+
+void array_len()
+{
+#define DOUBLE_LENGTH(A) (\
+		sizeof _Generic( \
+		  (A), \
+		  double*: (A)[0], \
+		  default: _Generic( \
+		             &(A)[0], \
+		             double*: (A)))) \
+		   / sizeof(double)
+
+	double a[3];
+	double *p;
+
+	_Static_assert(DOUBLE_LENGTH(a) == 3);
+	_Static_assert(DOUBLE_LENGTH(&(double){3}) == 1);
+	_Static_assert(DOUBLE_LENGTH(p) == 1);
+}
+
 main()
 {
 	if(_Generic(abort2(), int: 0))

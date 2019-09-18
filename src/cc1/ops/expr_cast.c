@@ -591,8 +591,11 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 		check_qual_rm(ptr_lhs, ptr_rhs, e);
 
-		/* removes cv-qualifiers:
-		 * (const int)3 has type int, not const int */
+		/*
+		 * C17 6.5.4p5 / DR 423
+		 * Casts convert to the unqualified version of the named type
+		 * i.e.
+		 * (const int)3 // type is 'int', not 'const int' */
 		e->tree_type = type_unqualify(e->tree_type);
 	}
 }

@@ -510,7 +510,9 @@ type *type_func_call(type *fp, funcargs **pfuncargs)
 				*pfuncargs = fp->bits.func.args;
 			fp = fp->ref;
 			UCC_ASSERT(fp, "no ref for func");
-			fp = type_skip_all(fp); /* no top-level quals */
+
+			/* no top-level quals (C17 6.7.6.3p5 / DR 423) */
+			fp = type_skip_all(fp);
 			break;
 
 		default:

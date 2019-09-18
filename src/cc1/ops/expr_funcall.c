@@ -418,6 +418,15 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		return;
 	}
 
+	/*
+	 * C17 6.7.6.3p5 / DR 423
+	 * The type [...] is [...] the unqualified version [...]
+	 * i.e.
+	 * const int g();
+	 * g() // type is 'int', not 'const int'
+	 *
+	 * type_func_call() handles this for us
+	 */
 	e->tree_type = type_func_call(func_ty, &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
