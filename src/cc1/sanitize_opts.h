@@ -17,4 +17,9 @@
 	X(SAN_BOOL,                      1 << 12, "bool",                      "catch storing a value other than 0 or 1 in a _Bool") \
 	X(SAN_POINTER_OVERFLOW,          1 << 13, "pointer-overflow",          "catch overflow of pointer arithmetic")
 
+// sanitize groups:
+// =integer: {un,}signed-integer-overflow, shift, integer-div-by-zero, implicit-{un,}signed-int-truncation, implicit-integer-sign-change
+// =nullability: nullability-arg, nullability-assign, nullability-return
+// =implicit-conversion: implicit-unsigned-integer-truncation, implicit-signed-integer-truncation, implicit-integer-sign-change<Paste>
+
 #endif
