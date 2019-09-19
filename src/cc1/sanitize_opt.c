@@ -17,7 +17,7 @@ void sanitize_opt_add(const char *argv0, const char *san)
 	if(!strcmp(san, "undefined")){
 		/* alias for all except float checks */
 		cc1_sanitize |= ~0u;
-		cc1_sanitize &= ~(SAN_FLOAT_DIVIDE_BY_ZERO | SAN_FLOAT_CAST_OVERFLOW);
+		cc1_sanitize &= ~SAN_FLOAT_CAST_OVERFLOW;
 		return;
 	}else if(!strcmp(san, "shift")){
 		/* alias for shifts */

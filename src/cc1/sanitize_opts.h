@@ -12,7 +12,7 @@
 	X(SAN_NULL,                      1 << 7,  "null",                      "ensure for *p, p->f(), p != NULL") \
 	X(SAN_ALIGNMENT,                 1 << 8,  "alignment",                 "ensure pointers are aligned for the lvalue type") \
 	X(SAN_FLOAT_DIVIDE_BY_ZERO,      1 << 9,  "float-divide-by-zero",      "catch floating pointer division-by-zero (not enabled by -fsanitize=undefined)") \
-	X(SAN_FLOAT_CAST_OVERFLOW,       1 << 10, "float-cast-overflow",       "catch overflow on floating pointer casts (not enabled by -fsanitize=undefined)") \
+	X(SAN_FLOAT_CAST_OVERFLOW,       1 << 10, "float-cast-overflow",       "catch overflow on floating pointer casts (float to integer)") \
 	X(SAN_RETURNS_NONNULL_ATTRIBUTE, 1 << 11, "returns-nonnull-attribute", "catch null returned from __attribute__((returns_nonnull))") \
 	X(SAN_BOOL,                      1 << 12, "bool",                      "catch storing a value other than 0 or 1 in a _Bool") \
 	X(SAN_POINTER_OVERFLOW,          1 << 13, "pointer-overflow",          "catch overflow of pointer arithmetic")
