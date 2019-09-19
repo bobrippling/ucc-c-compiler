@@ -714,6 +714,9 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 			out_force_read(octx, tfrom, casted);
 			casted = out_new_noop(octx); /* fine - cast_to_void */
 		}else{
+			if(type_is_integral(tfrom) && type_is_floating(tto))
+				sanitize_int2float(casted, tfrom, octx);
+
 			casted = out_cast(octx, casted, tto, /*normalise_bool:*/1);
 		}
 

@@ -22,6 +22,8 @@ void sanitize_nonnull_args(symtable *, out_ctx *);
 
 void sanitize_divide(const out_val *lhs, const out_val *rhs, type *, out_ctx *);
 
+void sanitize_int2float(const out_val *val, type *intty, out_ctx *);
+
 void sanitize_nonnull(
 		const out_val *, out_ctx *, const char *desc);
 
