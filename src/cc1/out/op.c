@@ -287,6 +287,34 @@ static void try_shift_conv(
 	}
 }
 
+static void try_trunc_conv(
+		out_ctx *octx,
+		enum op_type *binop,
+		const out_val **lhs, const out_val **rhs)
+{
+	integral_t k;
+	out_val *mut;
+
+	if(type_is_signed((*lhs)->t))
+		return;
+
+	assert(*binop == op_modulus);
+
+	if((*rhs)->type != V_CONST_I)
+		return;
+
+	k = (*rhs)->bits.val_i;
+	if(!ispow2(k))
+		return;
+
+	/* x % n == x & (n - 1) [when n is a power of 2] */
+
+	*binop = op_and;
+
+	*rhs = mut = v_dup_or_reuse(octx, *rhs, (*rhs)->t);
+	mut->bits.val_i = k - 1;
+}
+
 static const out_val *consume_one(
 		out_ctx *octx,
 		const out_val *const ret,
@@ -349,6 +377,10 @@ const out_val *out_op(
 		case op_divide:
 			if(vconst && !(cc1_sanitize & (SAN_SIGNED_INTEGER_OVERFLOW | SAN_POINTER_OVERFLOW)))
 				try_shift_conv(octx, &binop, &lhs, &rhs);
+			break;
+		case op_modulus:
+			if(vconst)
+				try_trunc_conv(octx, &binop, &lhs, &rhs);
 			break;
 		default:
 			break;
