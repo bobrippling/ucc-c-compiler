@@ -2,7 +2,8 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <assert.h>
-#include <math.h>
+
+#include "../../util/math.h"
 
 #include "../type.h"
 #include "../type_is.h"
@@ -255,26 +256,26 @@ static void try_shift_conv(
 
 	if(*binop == op_divide && (*rhs)->type == V_CONST_I){
 		integral_t k = (*rhs)->bits.val_i;
-		if((k & (k - 1)) == 0){
+		if(ispow2(k)){
 			/* power of two, can shift */
 			out_val *mut;
 
 			*binop = op_shiftr;
 
 			*rhs = mut = v_dup_or_reuse(octx, *rhs, (*rhs)->t);
-			mut->bits.val_i = log2(k);
+			mut->bits.val_i = log2ll(k);
 		}
 	}else if(*binop == op_multiply){
 		const out_val **vconst = (*lhs)->type == V_CONST_I ? lhs : rhs;
 		integral_t k = (*vconst)->bits.val_i;
 
-		if((k & (k - 1)) == 0){
+		if(ispow2(k)){
 			out_val *mut;
 
 			*binop = op_shiftl;
 
 			*vconst = mut = v_dup_or_reuse(octx, *vconst, (*vconst)->t);
-			mut->bits.val_i = log2(k);
+			mut->bits.val_i = log2ll(k);
 
 			if(vconst == lhs){
 				/* need to swap as shift expects the constant to be rhs */
