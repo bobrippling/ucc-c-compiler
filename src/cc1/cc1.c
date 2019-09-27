@@ -448,7 +448,7 @@ static int parse_mf_equals(
 	int i;
 	int new_val;
 
-	if(invert && !strcmp(arg_substr, "sanitize=all")){
+	if(invert && arg_ty == 'f' && !strcmp(arg_substr, "sanitize=all")){
 		sanitize_opt_off();
 		return 1;
 	}
@@ -457,54 +457,57 @@ static int parse_mf_equals(
 		usage(argv0, "\"no-\" unexpected for value-argument\n");
 	}
 
-	if(!strncmp(arg_substr, "sanitize=", 9)){
-		sanitize_opt_add(argv0, arg_substr + 9);
-		return 1;
-	}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
-		sanitize_opt_set_error(argv0, arg_substr + 15);
-		return 1;
-	}else if(!strcmp(arg_substr, "sanitize-undefined-trap-on-error")){
-		/* currently the choices are a noreturn function, or trap.
-		 * in the future, support could be added for linking with gcc or clang's libubsan,
-		 * and calling the runtime support functions therein */
-		sanitize_opt_set_error(argv0, "trap");
-	}else if(!strncmp(arg_substr, "visibility=", 11)){
-		set_default_visibility(argv0, arg_substr + 11);
-		return 1;
-	}else if(!strncmp(arg_substr, "debug-compilation-dir=", 22)){
-		debug_compilation_dir = arg_substr + 22;
-		return 1;
-	}
-
-	if(arg_ty == 'm' && !strncmp(arg_substr, "stringop-strategy=", 18)){
-		const char *strategy = arg_substr + 18;
-
-		/* gcc options are:
-		 * rep_byte, rep_4byte, rep_8byte
-		 * byte_loop, loop, unrolled_loop
-		 * libcall */
-
-		if(!strcmp(strategy, "libcall")){
-			cc1_mstringop_strategy = STRINGOP_STRATEGY_LIBCALL;
-		}else if(!strcmp(strategy, "loop")){
-			cc1_mstringop_strategy = STRINGOP_STRATEGY_LOOP;
-		}else if(!strncmp(strategy, "libcall-threshold=", 18)){
-			const char *threshold = strategy + 18;
-			char *end;
-
-			cc1_mstringop_strategy = STRINGOP_STRATEGY_THRESHOLD;
-			cc1_mstringop_threshold = strtol(threshold, &end, 0);
-			if(*end)
-				usage(argv0, "invalid number for -mmemcpy-strategy=libcall-threshold=..., \"%s\"\n", threshold);
-		}else{
-			usage(
-					argv0,
-					"invalid argument to for -mmemcpy-strategy=..., \"%s\", accepted values:\n"
-					"  libcall, loop, libcall-threshold=<number>\n"
-					, strategy);
+	if(arg_ty == 'f'){
+		if(!strncmp(arg_substr, "sanitize=", 9)){
+			sanitize_opt_add(argv0, arg_substr + 9);
+			return 1;
+		}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
+			sanitize_opt_set_error(argv0, arg_substr + 15);
+			return 1;
+		}else if(!strcmp(arg_substr, "sanitize-undefined-trap-on-error")){
+			/* currently the choices are a noreturn function, or trap.
+			 * in the future, support could be added for linking with gcc or clang's libubsan,
+			 * and calling the runtime support functions therein */
+			sanitize_opt_set_error(argv0, "trap");
+		}else if(!strncmp(arg_substr, "visibility=", 11)){
+			set_default_visibility(argv0, arg_substr + 11);
+			return 1;
+		}else if(!strncmp(arg_substr, "debug-compilation-dir=", 22)){
+			debug_compilation_dir = arg_substr + 22;
+			return 1;
 		}
 
-		return 1;
+	}else if(arg_ty == 'm'){
+		if(!strncmp(arg_substr, "stringop-strategy=", 18)){
+			const char *strategy = arg_substr + 18;
+
+			/* gcc options are:
+			 * rep_byte, rep_4byte, rep_8byte
+			 * byte_loop, loop, unrolled_loop
+			 * libcall */
+
+			if(!strcmp(strategy, "libcall")){
+				cc1_mstringop_strategy = STRINGOP_STRATEGY_LIBCALL;
+			}else if(!strcmp(strategy, "loop")){
+				cc1_mstringop_strategy = STRINGOP_STRATEGY_LOOP;
+			}else if(!strncmp(strategy, "libcall-threshold=", 18)){
+				const char *threshold = strategy + 18;
+				char *end;
+
+				cc1_mstringop_strategy = STRINGOP_STRATEGY_THRESHOLD;
+				cc1_mstringop_threshold = strtol(threshold, &end, 0);
+				if(*end)
+					usage(argv0, "invalid number for -mmemcpy-strategy=libcall-threshold=..., \"%s\"\n", threshold);
+			}else{
+				usage(
+						argv0,
+						"invalid argument to for -mmemcpy-strategy=..., \"%s\", accepted values:\n"
+						"  libcall, loop, libcall-threshold=<number>\n"
+						, strategy);
+			}
+
+			return 1;
+		}
 	}
 
 	if(sscanf(equal + 1, "%d", &new_val) != 1){
