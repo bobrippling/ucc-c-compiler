@@ -312,7 +312,7 @@ static char *next_line(void)
 	return s;
 }
 
-static void gen_backend(symtable_global *globs, const char *fname, FILE *out)
+static void gen_backend(symtable_global *globs, const char *fname, FILE *out, const char *producer)
 {
 	void (*gf)(symtable_global *) = NULL;
 
@@ -346,7 +346,8 @@ static void gen_backend(symtable_global *globs, const char *fname, FILE *out)
 			gen_asm(globs,
 					cc1_first_fname ? cc1_first_fname : fname,
 					compdir,
-					&filelist);
+					&filelist,
+					producer);
 
 			/* filelist needs to be output first */
 			if(filelist && cc1_gdebug != DEBUG_OFF)
@@ -830,7 +831,9 @@ dbg_unknown:
 	infile = NULL;
 
 	if(failure == 0 || /* attempt dump anyway */cc1_backend == BACKEND_DUMP){
-		gen_backend(globs, in_fname, outfile);
+		const char *producer = "ucc development version";
+
+		gen_backend(globs, in_fname, outfile, producer);
 		if(gen_had_error)
 			failure = 1;
 	}

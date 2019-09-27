@@ -1105,7 +1105,8 @@ static int dw_lang_from_c_std(enum c_std std)
 static struct DIE_compile_unit *dwarf_cu(
 		const char *fname, const char *compdir,
 		struct out_dbg_filelist **pfilelist,
-		enum c_std lang)
+		enum c_std lang,
+		const char *producer)
 {
 	struct DIE_compile_unit *cu = umalloc(sizeof *cu);
 	form_data_t attrv;
@@ -1114,8 +1115,7 @@ static struct DIE_compile_unit *dwarf_cu(
 
 	dwarf_die_new_at(&cu->die, DW_TAG_compile_unit);
 
-	dwarf_attr(&cu->die, DW_AT_producer, DW_FORM_string,
-			"ucc development version");
+	dwarf_attr(&cu->die, DW_AT_producer, DW_FORM_string, (void *)producer);
 
 	dwarf_attr(&cu->die, DW_AT_language, DW_FORM_data2,
 			((attrv = dw_lang_from_c_std(lang)), &attrv));
@@ -1739,9 +1739,10 @@ void out_dbg_begin(
 		struct out_dbg_filelist **pfilelist,
 		const char *fname,
 		const char *compdir,
-		enum c_std lang)
+		enum c_std lang,
+		const char *producer)
 {
-	struct DIE_compile_unit *cu = dwarf_cu(fname, compdir, pfilelist, lang);
+	struct DIE_compile_unit *cu = dwarf_cu(fname, compdir, pfilelist, lang, producer);
 	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
 
 	dbg->compile_unit = cu;

@@ -21,7 +21,8 @@ void out_dbg_begin(
 		struct out_dbg_filelist **pfilelist,
 		const char *fname,
 		const char *compdir,
-		enum c_std lang);
+		enum c_std lang,
+		const char *producer);
 
 void out_dbg_end(out_ctx *octx);
 #endif

@@ -576,7 +576,8 @@ out:
 void gen_asm(
 		symtable_global *globs,
 		const char *fname, const char *compdir,
-		struct out_dbg_filelist **pfilelist)
+		struct out_dbg_filelist **pfilelist,
+		const char *producer)
 {
 	decl **inits = NULL, **terms = NULL;
 	decl **diter;
@@ -586,7 +587,7 @@ void gen_asm(
 	*pfilelist = NULL;
 
 	if(cc1_gdebug != DEBUG_OFF)
-		out_dbg_begin(octx, &octx->dbg.file_head, fname, compdir, cc1_std);
+		out_dbg_begin(octx, &octx->dbg.file_head, fname, compdir, cc1_std, producer);
 
 	for(diter = symtab_decls(&globs->stab); diter && *diter; diter++){
 		decl *d = *diter;
