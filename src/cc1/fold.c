@@ -617,14 +617,19 @@ void fold_type_ondecl_w(decl *d, symtable *scope, where const *w, int is_arg)
 static void check_valid_align_within_min(int const al, int const min, where *w)
 {
 	/* allow zero */
-	if(al & (al - 1))
-		die_at(w, "alignment %d isn't a power of 2", al);
+	if(al & (al - 1)){
+		warn_at_print_error(w, "alignment %d isn't a power of 2", al);
+		fold_had_error = 1;
+		return;
+	}
 
 	if(al == 0) /* 0 ignored as special case */
 		return;
 
-	if(al < min)
-		die_at(w, "can't reduce alignment (%d -> %d)", min, al);
+	if(al < min){
+		warn_at_print_error(w, "can't reduce alignment (%d -> %d)", min, al);
+		fold_had_error = 1;
+	}
 }
 
 static void fold_ctor_dtor(
@@ -821,7 +826,9 @@ static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 	if((d->store & STORE_MASK_STORE) == store_register
 	|| d->bits.var.field_width)
 	{
-		die_at(&d->where, "can't align %s", decl_to_str(d));
+		warn_at_print_error(&d->where, "can't align %s", decl_to_str(d));
+		fold_had_error = 1;
+		return max;
 	}
 
 	for(i = d->bits.var.align.first; i; i = i->next){

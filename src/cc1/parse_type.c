@@ -942,7 +942,8 @@ static type *parse_btype(
 		&& STORE_IS_TYPEDEF(*store))
 		{
 			if(palign && *palign){
-				die_at(NULL, "typedefs can't be aligned");
+				warn_at_print_error(NULL, "typedefs can't be aligned");
+				fold_had_error = 1;
 			}
 			if(*store & store_inline){
 				warn_at_print_error(NULL, "typedef has inline specified");
