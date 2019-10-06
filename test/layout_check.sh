@@ -1,7 +1,7 @@
 #!/bin/sh
 
 usage(){
-	echo "Usage: $0 [-v] [--sections] A [B] -- [cc-args]\n" >&2
+	echo "Usage: $0 [-v] [--sections] [--layout=layout-file] test-file [cc-args]\n" >&2
 	exit 1
 }
 
@@ -26,6 +26,9 @@ do
 	elif test "$arg" = '--sections'
 	then
 		sec="$arg"
+	elif echo "$arg" | grep '^--layout=' >/dev/null
+	then
+		f_layout="$(echo "$arg" | sed 's/^--layout=//')"
 	elif test -z "$f"
 	then
 		f="$arg"
@@ -54,7 +57,9 @@ if test $r -ne 0
 then exit $r
 fi
 
-f_layout="$f.layout"
+if test -z "$f_layout"
+then f_layout="$f.layout"
+fi
 
 a="$UCC_TESTDIR"/$$.chk.a
 b="$UCC_TESTDIR"/$$.chk.b
