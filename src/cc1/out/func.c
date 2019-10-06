@@ -365,9 +365,7 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 		flush_root = octx->postprologue_blk;
 
 		/* need to attach the label to prologue_postjoin_blk */
-		free(flush_root->lbl);
-		flush_root->lbl = octx->entry_blk->lbl;
-		octx->entry_blk->lbl = NULL;
+		blk_transfer(octx->entry_blk, flush_root);
 	}
 	octx->current_blk = NULL;
 
@@ -417,8 +415,11 @@ static void stack_realign(out_ctx *octx, unsigned align)
 	v_set_cur_stack_sz(octx, new_sz);
 }
 
-void out_perfunc_init(out_ctx *octx, type *fnty, const char *sp)
+void out_perfunc_init(out_ctx *octx, decl *fndecl, const char *sp)
 {
+	type *const fnty = fndecl->ref;
+	attribute *alignment;
+
 	octx->current_fnty = fnty;
 
 	assert(octx->cur_stack_sz == 0 && "non-empty stack for new func");
@@ -431,6 +432,9 @@ void out_perfunc_init(out_ctx *octx, type *fnty, const char *sp)
 	octx->argspill_begin_blk = out_blk_new(octx, "argspill");
 	octx->postprologue_blk = out_blk_new(octx, "post_prologue");
 	octx->epilogue_blk = out_blk_new(octx, "epilogue");
+
+	if((alignment = attribute_present(fndecl, attr_aligned)))
+		octx->entry_blk->align = const_fold_val_i(alignment->bits.align);
 }
 
 void out_func_prologue(

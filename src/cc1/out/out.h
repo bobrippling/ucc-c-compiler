@@ -10,7 +10,7 @@
 
 out_ctx *out_ctx_new(void);
 void out_ctx_end(out_ctx *);
-void out_perfunc_init(out_ctx *, type *fnty, const char *sp);
+void out_perfunc_init(out_ctx *, decl *fndecl, const char *sp);
 void out_perfunc_teardown(out_ctx *);
 
 void **out_user_ctx(out_ctx *);

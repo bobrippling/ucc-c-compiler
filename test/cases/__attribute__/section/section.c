@@ -1,10 +1,10 @@
-// RUN: %layout_check --sections %s -target x86_64-linux
+// RUN: %layout_check --sections --layout=%s.layout-no-common %s -fno-common
+// RUN: %layout_check --sections --layout=%s.layout-common %s -fcommon
 
 int tenative;
 int initialised = 3;
 const int ro_tenative;
 const int ro_initialised = 4;
-
 
 __attribute((section("a")))
 int tenative2;
@@ -21,7 +21,8 @@ const int ro_initialised2 = 4;
 __attribute((section("e")))
 int f()
 {
-	return 3;
+	static int q = 5;
+	return q;
 }
 
 int main()

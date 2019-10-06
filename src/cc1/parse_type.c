@@ -545,6 +545,21 @@ static void emit_duplicate_qual_warning(where *loc, enum type_qualifier qual)
 	cc1_warn_at(loc, duplicate_declspec, "duplicate '%s' specifier", type_qual_to_str(qual, 0));
 }
 
+static void free_decl_align_all(struct decl_align *da)
+{
+	struct decl_align *next;
+	for(; da; da = next){
+		next = da->next;
+
+		if(da->as_int){
+			/* no need to free the type */
+		}else{
+			expr_free(da->bits.align_intk);
+		}
+		free(da);
+	}
+}
+
 static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
 		int newdecl_context, symtable *scope,
@@ -938,7 +953,10 @@ static type *parse_btype(
 		&& STORE_IS_TYPEDEF(*store))
 		{
 			if(palign && *palign){
-				die_at(NULL, "typedefs can't be aligned");
+				warn_at_print_error(NULL, "typedefs can't be aligned");
+				fold_had_error = 1;
+				free_decl_align_all(*palign);
+				*palign = NULL;
 			}
 			if(*store & store_inline){
 				warn_at_print_error(NULL, "typedef has inline specified");
