@@ -974,7 +974,6 @@ static void fold_decl_var(decl *d, symtable *stab)
 		fold_had_error = 1;
 	}
 
-	fold_decl_var_align(d, stab);
 	fold_decl_var_vm(d, stab, is_static_duration);
 	fold_decl_var_dinit(d, stab, is_static_duration);
 }
@@ -1139,6 +1138,9 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 			fold_decl_var(d, stab);
 		}
 	}
+
+	if(first_fold)
+		fold_decl_var_align(d, stab);
 }
 
 void fold_decl(decl *d, symtable *stab)
