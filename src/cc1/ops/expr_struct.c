@@ -130,6 +130,7 @@ err:
 const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 {
 	const out_val *struct_exp, *off;
+	out_blk *landing, *blk_cont;
 
 	/* cast for void* arithmetic */
 
@@ -137,6 +138,21 @@ const out_val *gen_expr_struct(const expr *e, out_ctx *octx)
 			octx,
 			gen_expr(e->lhs, octx),
 			type_ptr_to(type_nav_btype(cc1_type_nav, type_void)));
+
+	if(e->bits.struct_mem.q){
+		const out_val *is_null = out_op(
+				octx,
+				op_eq,
+				out_val_retain(octx, struct_exp),
+				out_new_l(octx, type_nav_btype(cc1_type_nav, type_intptr_t), /*null*/0));
+
+		landing = out_blk_new(octx, "struct_chain_end"),
+		cont = out_blk_new(octx, "struct_chain_lhs"),
+
+		out_ctrl_branch(octx, is_null, landing, cont);
+
+		out_current_blk(octx, cont);
+	}
 
 	off =
 		out_op(

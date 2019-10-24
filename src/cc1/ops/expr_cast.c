@@ -636,6 +636,12 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 			sanitize_aligned(casted, octx, e->tree_type);
 		}
 
+		if(expr_kind(expr_cast_child(e), struct)
+		&& expr_cast_child(e)->bits.struct_mem.q)
+		{
+
+		}
+
 		if(type_is_s_or_u(tfrom)){
 			/* either pass through as an LVALUE_STRUCT,
 			 * or dereference here for cast-to-void, if volatile */

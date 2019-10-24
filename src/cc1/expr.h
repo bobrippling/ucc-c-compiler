@@ -143,6 +143,7 @@ struct expr
 		{
 			decl *d;
 			unsigned extra_off;
+			int q;
 		} struct_mem;
 
 		struct

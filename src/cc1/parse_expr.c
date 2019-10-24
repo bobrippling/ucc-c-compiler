@@ -410,9 +410,13 @@ static expr *parse_expr_postfix_with(
 		}else if((flag = accept(token_dot)) || accept(token_ptr)){
 			where_cc1_current(&w);
 
+			const int q = accept(token_question);
+
 			e = expr_set_where(
 					expr_new_struct(e, flag, parse_expr_identifier()),
 					&w);
+
+			e->bits.struct_mem.q = q;
 
 		}else if((flag = accept_where(token_increment, &w))
 		||               accept_where(token_decrement, &w))
