@@ -137,7 +137,6 @@ static void dump_options(void)
 	fprintf(stderr, "  -g[0|1|2|3], -gline-tables-only|mlt, -g[no-]column-info\n");
 	fprintf(stderr, "  -o output-file\n");
 	fprintf(stderr, "  -emit=(dump|print|asm|style)\n");
-	fprintf(stderr, "  -m(stringop-strategy=...|...)\n");
 	fprintf(stderr, "  -O[0123s]\n");
 	fprintf(stderr, "  --help\n");
 	fprintf(stderr, "\n");
@@ -146,12 +145,12 @@ static void dump_options(void)
 	fprintf(stderr, "  -W(no-)?(all|extra|everything|gnu|error(=...)|...)\n");
 	fprintf(stderr, "  -w\n");
 	fprintf(stderr, "  -std=c89/c90/c99/c11/c17/c18 / -ansi / -std=gnu...\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Feature options\n");
 	fprintf(stderr, "  -f(sanitize=...|sanitize-error=...|sanitize-undefined-trap-on-error)\n");
 	fprintf(stderr, "  -fno-sanitize=all\n");
 	fprintf(stderr, "  -fvisibility=default|hidden|protected\n");
 	fprintf(stderr, "  -fdebug-compilation-dir=...\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, "Feature options\n");
 
 #define X(flag, memb) fprintf(stderr, "  -f[no-]" flag "\n");
 #define ALIAS X
@@ -167,11 +166,12 @@ static void dump_options(void)
 
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Machine options\n");
+	fprintf(stderr, "  -mstringop-strategy=(libcall|loop|libcall-threshold=<number>)\n");
 	for(i = 0; mopts[i].arg; i++)
 		fprintf(stderr, "  -m[no-]%s\n", mopts[i].arg);
 
 	fprintf(stderr, "\n");
-	fprintf(stderr, "Feature/machine values\n");
+	fprintf(stderr, "Feature/machine value options\n");
 	for(i = 0; val_args[i].arg; i++)
 		fprintf(stderr, "  -%c%s=value\n", val_args[i].pref, val_args[i].arg);
 }
