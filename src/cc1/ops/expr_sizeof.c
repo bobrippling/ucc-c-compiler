@@ -194,7 +194,7 @@ void dump_expr_sizeof(const expr *e, dump *ctx)
 		dump_expr(e->expr, ctx);
 		dump_dec(ctx);
 	}else{
-		dump_printf(ctx, " %s\n", type_to_str(e->bits.size_of.of_type));
+		dump_printf_indent(ctx, 0, " %s\n", type_to_str(e->bits.size_of.of_type));
 	}
 }
 
