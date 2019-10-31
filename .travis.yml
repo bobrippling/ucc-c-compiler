@@ -16,6 +16,16 @@ env:
 matrix:
   include:
     - os: linux
+      arch: amd64
+    - os: linux
+      arch: i386
+    #- os: linux
+    #  arch: arm64
   include:
     - os: osx
     #osx_image: xcode8
+      arch: amd64
+    - os: osx
+      arch: i386
+    #- os: osx
+    #  arch: arm64
