@@ -101,11 +101,34 @@ expr *parse_expr_sizeof_typeof_alignof(symtable *scope)
 			}
 
 		}else{
-			/* not a type - treat the open paren as part of the expression */
-			uneat(token_open_paren);
-			e = expr_new_sizeof_expr(
-					parse_expr_unary(scope, static_ctx),
-					what_of);
+			/*
+			 * If we're __typeof__
+			 *     Not a type - but don't treat the open paren as part of the
+			 *     expression. We want to limit how much we parse, i.e.
+			 *     (typeof(i)[]){ ... }
+			 *      ^~~~~~~~~~~ this is a valid type, but if we treat `(i)` as an
+			 *     expression, we'll try to parse `[]` as an expression too.
+			 *
+			 *     Instead, we parse `i`, chomp the brackets ourselves, and leave
+			 *     the `[]` parsing to what calls us, i.e. parse_type()
+			 *
+			 * If we're sizeof/__alignof__/_Alignof
+			 *     We should parse the brackets as an expression,
+			 *     since sizeof(a)->b is valid.
+			 */
+			if(what_of == what_typeof){
+				e = expr_new_sizeof_expr(
+						parse_expr_exp(scope, static_ctx),
+						what_of);
+
+				EAT(token_close_paren);
+			}else{
+				uneat(token_open_paren);
+
+				e = expr_new_sizeof_expr(
+						parse_expr_unary(scope, static_ctx),
+						what_of);
+			}
 		}
 
 	}else{
