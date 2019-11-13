@@ -14,5 +14,5 @@ int main()
 
 	(void)sizeof(p)->x;
 	(void)_Alignof(p)->x; // CHECK: _Alignof applied to expression is a GNU extension
-	(void)__alignof(p)->x; // CHECK: _Alignof applied to expression is a GNU extension
+	(void)__alignof(p)->x; // no warning for __alignof-expr
 }

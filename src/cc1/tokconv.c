@@ -163,6 +163,7 @@ char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  auto);
 		CASE_STR_PREFIX(token,  register);
 		CASE_STR_PREFIX(token, _Alignof);
+		CASE_STR_PREFIX(token, __alignof);
 		CASE_STR_PREFIX(token, _Alignas);
 
 		/* sort-of storage */
@@ -286,6 +287,7 @@ char *eat_curtok_to_identifier(int *alloc, where *loc)
 		case token_auto:
 		case token_register:
 		case token__Alignof:
+		case token___alignof:
 		case token__Alignas:
 		case token_inline:
 		case token__Noreturn:

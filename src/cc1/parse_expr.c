@@ -54,6 +54,7 @@ expr *parse_expr_sizeof_typeof_alignof(symtable *scope)
 	expr *e;
 	where w;
 	int is_expr = 1;
+	int alignof_c11 = 0;
 	enum what_of what_of;
 
 	where_cc1_current(&w);
@@ -63,6 +64,8 @@ expr *parse_expr_sizeof_typeof_alignof(symtable *scope)
 			assert(0 && "unreachable sizeof parse");
 
 		case token__Alignof:
+			alignof_c11 = 1;
+		case token___alignof:
 			what_of = what_alignof;
 			if(0)
 		case token_typeof:
@@ -142,7 +145,7 @@ expr *parse_expr_sizeof_typeof_alignof(symtable *scope)
 
 	e = expr_set_where_len(e, &w);
 
-	if(what_of == what_alignof && is_expr){
+	if(alignof_c11 && is_expr){
 		cc1_warn_at(&e->where, gnu_alignof_expr,
 				"_Alignof applied to expression is a GNU extension");
 	}
@@ -519,6 +522,7 @@ expr *parse_expr_unary(symtable *scope, int static_ctx)
 				break;
 
 			case token__Alignof:
+			case token___alignof:
 				set_w = 0;
 				e = parse_expr_sizeof_typeof_alignof(scope);
 				break;

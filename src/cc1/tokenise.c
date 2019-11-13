@@ -94,7 +94,7 @@ static const struct keyword
 	KEYWORD(KW_ALL, _Noreturn),
 
 	KEYWORD(KW_ALL, _Alignof),
-	KEYWORD__(alignof, token__Alignof),
+	KEYWORD__(alignof, token___alignof),
 	KEYWORD(KW_ALL, _Alignas),
 	KEYWORD__(alignas, token__Alignas),
 
