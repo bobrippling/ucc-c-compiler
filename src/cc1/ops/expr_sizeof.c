@@ -14,8 +14,6 @@
 
 #define NEED_RUNTIME_SIZEOF(ty) !!type_is_vla((ty), VLA_ANY_DIMENSION)
 
-#define sizeof_this tref
-
 static const char *sizeof_what(enum what_of wo)
 {
 	switch(wo){
