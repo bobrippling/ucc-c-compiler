@@ -15,6 +15,16 @@ g(int x)
 		+ sizeof buf; // 2 * 3 = 6
 }
 
+fatal(void)
+{
+	abort();
+}
+
+h()
+{
+	return __alignof(int [fatal()]);
+}
+
 main()
 {
 	if(f(3) != 3 * sizeof(short))
@@ -22,6 +32,9 @@ main()
 
 	if(g(3) != 3 * sizeof(short) + sizeof(long) * 4)
 		abort();
-	
+
+	if(h() != _Alignof(int))
+		abort();
+
 	return 0;
 }
