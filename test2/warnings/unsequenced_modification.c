@@ -30,6 +30,9 @@ int main()
 	i += i + 1; // CHECK: !/warn/
 
 	for(i = 0; i < 10; i++); // CHECK: !/warn/
+
+	char *x = "hi";
+	char *y = *(__typeof__(x)[]){ x, x = x + 1 }; // CHECK: warning: unsequenced modification of "x"
 }
 
 char *f2(char *a)
