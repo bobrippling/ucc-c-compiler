@@ -63,6 +63,7 @@ enum token
 	token_extern,
 	token_register,
 	token__Alignof,
+	token___alignof, /* gnu extension */
 	token__Alignas,
 	/**/
 	token_typedef,
