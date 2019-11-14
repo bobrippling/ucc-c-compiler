@@ -390,19 +390,18 @@ char *eat_curtok_to_identifier(int *alloc, where *loc)
 	return NULL;
 }
 
-int eat2(enum token t, const char *fnam, int line, int die)
+int eat2(enum token t, int die)
 {
 	if(t != curtok){
 		const int ident = curtok == token_identifier;
 		parse_had_error = 1;
 
 		warn_at_print_error(NULL,
-				"expecting token %s, got %s %s%s%s(%s:%d)",
+				"expecting token %s, got %s %s%s%s",
 				token_to_str(t), token_to_str(curtok),
 				ident ? "\"" : "",
 				ident ? token_current_spel_peek() : "",
-				ident ? "\" " : "",
-				fnam, line);
+				ident ? "\"" : "");
 
 		if(die == 2)
 			assert(0 && "invalid token parse state");
@@ -428,7 +427,7 @@ int accept_where(enum token t, where *w)
 	if(t == curtok){
 		if(w)
 			where_cc1_current(w);
-		eat(t, NULL, 0); /* can't fail */
+		eat(t); /* can't fail */
 		return 1;
 	}
 	return 0;
@@ -452,9 +451,9 @@ void uneat(enum token t)
 	curtok = t;
 }
 
-int eat(enum token t, const char *fnam, int line)
+int eat(enum token t)
 {
-	return eat2(t, fnam, line, 0);
+	return eat2(t, 0);
 }
 
 int curtok_in_list(va_list l)

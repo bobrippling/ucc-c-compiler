@@ -11,13 +11,13 @@ enum type_primitive curtok_to_type_primitive(void);
 enum type_qualifier curtok_to_type_qualifier(void);
 enum decl_storage   curtok_to_decl_storage(void);
 
-int eat(enum token t, const char *fnam, int line); /* returns 1 on success */
-int eat2(enum token t, const char *fnam, int line, int die);
+int eat(enum token t); /* returns 1 on success */
+int eat2(enum token t, int die);
 void uneat(enum token t);
 int accept(enum token t);
 int accept_where(enum token t, where *);
 
-#define EAT(t) eat((t), __FILE__, __LINE__)
+#define EAT(t) eat(t)
 #define DUMMY_IDENTIFIER "?"
 
 int curtok_is_type_primitive(void);
