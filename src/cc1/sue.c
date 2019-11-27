@@ -306,7 +306,6 @@ void sue_member_init_dup_check(
 			else
 			{
 				warn_at_print_error(&d2->where, "%s %s contains duplicate member \"%s\"",
-						sue_str_type(prim),
 						spel ? type : "anonymous",
 						spel ? spel : type,
 						d->spel);
