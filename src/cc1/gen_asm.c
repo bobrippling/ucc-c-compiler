@@ -473,6 +473,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 	struct section_output prev_section;
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
+	int emit_visibility = 0;
 	attribute *attr;
 
 	/* in map? */
@@ -534,6 +535,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		assert(attr->type == attr_alias);
 		assert(!decl_defined(d, 0));
 		asm_declare_alias(&section, d, attr->bits.alias);
+		emit_visibility = 1;
 	}
 
 	if(type_is(d->ref, type_func)){
@@ -541,6 +543,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			/* inline only gets extern emitted anyway */
 			if(!emitted_type)
 				asm_predeclare_extern(&section, d);
+
 			goto out;
 		}
 
@@ -562,14 +565,16 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			out_dbg_emit_global_var(octx, d);
 	}
 
-	asm_predeclare_visibility(&section, d);
-
 	if(!emitted_type && decl_linkage(d) == linkage_external)
 		asm_predeclare_global(&section, d);
 
 	gen_asm_global(&section, d, octx);
+	emit_visibility = 1;
 
 out:
+	if(emit_visibility)
+		asm_predeclare_visibility(&section, d);
+
 	memcpy_safe(&cc1_current_section_output, &prev_section);
 }
 
