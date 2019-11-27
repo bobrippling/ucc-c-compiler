@@ -480,7 +480,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 			struct_union_enum_st *sub_sue = type_is_s_or_u(d->ref);
 			struct pack_state pack_state;
 
-			fold_decl(d, stab);
+			fold_decl_maybe_member(d, stab, 1);
 
 			if(fold_sue_check_vm(d))
 				continue;

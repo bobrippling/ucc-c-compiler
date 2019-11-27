@@ -109,6 +109,7 @@ ALIAS("format-extra-args", attr_printf_toomany)/* gcc/clang */
 
 X("address-of-lvalue", address_of_lvalue)
 
+X("ignored-attributes", attr_ignored)
 X("attr-noderef", attr_noderef)
 X("attr-nonnull", attr_nonnull)
 X("attr-nonnull-bad", attr_nonnull_bad)
