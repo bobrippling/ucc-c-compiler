@@ -956,23 +956,6 @@ static void fold_decl_var_dinit(
 	}
 }
 
-void fold_decl_alias(decl *d)
-{
-	attribute *attr;
-
-	if((attr = attribute_present(d, attr_alias))){
-		if(decl_defined(d, 0)){
-			warn_at_print_error(&d->where, "alias \"%s\" cannot be a definition", d->spel);
-			fold_had_error = 1;
-		}
-
-		if(!type_is(d->ref, type_func) && !cc1_target_details.alias_variables){
-			warn_at_print_error(&d->where, "__attribute__((alias(...))) not supported on this target (for variables)");
-			fold_had_error = 1;
-		}
-	}
-}
-
 static void fold_decl_var(decl *d, symtable *stab)
 {
 	int is_static_duration = !stab->parent
@@ -1040,6 +1023,8 @@ static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
 static void fold_decl_check_ctor_dtor(decl *d, symtable *stab)
 {
 	attribute *ctor, *dtor;
+	const char *name;
+	where *w;
 
 	ctor = attribute_present(d, attr_constructor);
 	dtor = attribute_present(d, attr_destructor);
@@ -1048,17 +1033,69 @@ static void fold_decl_check_ctor_dtor(decl *d, symtable *stab)
 		return;
 
 	decl_use(d);
+	w = &(ctor ? ctor : dtor)->where;
+	name = ctor ? "constructor" : "destructor";
 
 	if(!type_is(d->ref, type_func)){
-		cc1_warn_at(&(ctor ? ctor : dtor)->where,
-				attr_ctor_dtor_bad,
-				"%s attribute on non-function",
-				ctor ? "constructor" : "destructor");
-	}else if(stab->parent){
-		cc1_warn_at(&(ctor ? ctor : dtor)->where,
-				attr_ctor_dtor_bad,
-				"%s attribute on non-global function",
-				ctor ? "constructor" : "destructor");
+		cc1_warn_at(w, attr_ctor_dtor_bad, "%s attribute on non-function", name);
+		return;
+	}
+
+	if(stab->parent){
+		cc1_warn_at(w, attr_ctor_dtor_bad, "%s attribute on non-global function", name);
+		return;
+	}
+}
+
+static void fold_decl_check_section_alias(decl *d, const int su_member)
+{
+	attribute *section;
+	attribute *alias;
+
+	section = attribute_present(d, attr_section);
+	alias = attribute_present(d, attr_alias);
+
+	if(su_member){
+		if(section)
+			cc1_warn_at(&section->where, attr_ignored, "section attribute on member");
+		if(alias)
+			cc1_warn_at(&alias->where, attr_ignored, "alias attribute on member");
+
+		if(alias || section)
+			return;
+	}
+
+	if(alias){
+		decl *target = alias->bits.alias;
+
+		if(!type_is(d->ref, type_func) && !cc1_target_details.alias_variables){
+			warn_at_print_error(&d->where, "__attribute__((alias(...))) not supported on this target (for variables)");
+			fold_had_error = 1;
+		}
+
+		if(decl_defined(d, 0)){
+			warn_at_print_error(&d->where, "alias \"%s\" cannot be a definition", d->spel);
+			fold_had_error = 1;
+
+		}else if(!decl_defined(target, 0)){
+			warn_at_print_error(&alias->where, "target \"%s\" of alias \"%s\" isn't a definition", target->spel, d->spel);
+			fold_had_error = 1;
+		}
+	}
+
+	if(alias && section){
+		const char *this_section = section->bits.section;
+
+		attribute *alias_section = attribute_present(alias->bits.alias, attr_section);
+		const char *target_section = alias_section
+			? alias_section->bits.section
+			: NULL;
+
+		if(!target_section || strcmp(target_section, this_section)){
+			warn_at_print_error(&section->where,
+					"alias and target have different sections");
+			fold_had_error = 1;
+		}
 	}
 }
 
@@ -1077,6 +1114,11 @@ static void fold_decl_attrs(decl *d, symtable *stab)
 	}
 
 	fold_decl_check_ctor_dtor(d, stab);
+}
+
+void fold_decl_attrs_requiring_fnbody(decl *d, const int su_member)
+{
+	fold_decl_check_section_alias(d, su_member);
 }
 
 void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
