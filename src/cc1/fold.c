@@ -1040,6 +1040,8 @@ static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
 static void fold_decl_check_ctor_dtor(decl *d, symtable *stab)
 {
 	attribute *ctor, *dtor;
+	const char *name;
+	where *w;
 
 	ctor = attribute_present(d, attr_constructor);
 	dtor = attribute_present(d, attr_destructor);
@@ -1048,17 +1050,17 @@ static void fold_decl_check_ctor_dtor(decl *d, symtable *stab)
 		return;
 
 	decl_use(d);
+	w = &(ctor ? ctor : dtor)->where;
+	name = ctor ? "constructor" : "destructor";
 
 	if(!type_is(d->ref, type_func)){
-		cc1_warn_at(&(ctor ? ctor : dtor)->where,
-				attr_ctor_dtor_bad,
-				"%s attribute on non-function",
-				ctor ? "constructor" : "destructor");
-	}else if(stab->parent){
-		cc1_warn_at(&(ctor ? ctor : dtor)->where,
-				attr_ctor_dtor_bad,
-				"%s attribute on non-global function",
-				ctor ? "constructor" : "destructor");
+		cc1_warn_at(w, attr_ctor_dtor_bad, "%s attribute on non-function", name);
+		return;
+	}
+
+	if(stab->parent){
+		cc1_warn_at(w, attr_ctor_dtor_bad, "%s attribute on non-global function", name);
+		return;
 	}
 }
 
