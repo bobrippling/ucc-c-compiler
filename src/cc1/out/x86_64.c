@@ -911,6 +911,9 @@ static const char *x86_cmp(const struct flag_opts *flag)
 		case flag_overflow: return "o";
 		case flag_no_overflow: return "no";
 
+		case flag_signbit: return "s";
+		case flag_no_signbit: return "ns";
+
 		/*case flag_z:  return "z";
 		case flag_nz: return "nz";*/
 	}
@@ -1556,6 +1559,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		case op_lt:
 		case op_ge:
 		case op_gt:
+		case op_signbit:
+		case op_no_signbit:
 			UCC_ASSERT(!type_is_floating(l->t),
 					"float cmp should be handled above");
 		{
@@ -1574,7 +1579,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				vconst = r;
 
 			/* if we have a CONST try a test instruction */
-			if((op == op_eq || op == op_ne)
+			if((op == op_eq || op == op_ne || op == op_signbit || op == op_no_signbit)
 			&& vconst && vconst->bits.val_i == 0)
 			{
 				const out_val *vother = vconst == l ? r : l;

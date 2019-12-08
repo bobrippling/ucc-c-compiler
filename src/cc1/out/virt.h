@@ -59,8 +59,7 @@ int v_needs_GOT(const out_val *);
 void v_reserve_reg(out_ctx *, const struct vreg *);
 void v_unreserve_reg(out_ctx *, const struct vreg *);
 
-/* util */
-enum flag_cmp v_not_cmp(enum flag_cmp);
-enum flag_cmp v_commute_cmp(enum flag_cmp);
+enum flag_cmp v_not_cmp(enum flag_cmp); /* !(a > b) --> a <= b */
+enum flag_cmp v_commute_cmp(enum flag_cmp); /* a > b --> b < a */
 
 #endif

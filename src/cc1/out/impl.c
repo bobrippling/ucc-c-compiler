@@ -33,6 +33,8 @@ enum flag_cmp op_to_flag(enum op_type op)
 		OP(lt);
 		OP(ge);
 		OP(gt);
+		OP(signbit);
+		OP(no_signbit);
 #undef OP
 
 		default:
@@ -54,6 +56,8 @@ const char *flag_cmp_to_str(enum flag_cmp cmp)
 		CASE_STR_PREFIX(flag, gt);
 		CASE_STR_PREFIX(flag, overflow);
 		CASE_STR_PREFIX(flag, no_overflow);
+		CASE_STR_PREFIX(flag, signbit);
+		CASE_STR_PREFIX(flag, no_signbit);
 	}
 	return NULL;
 }

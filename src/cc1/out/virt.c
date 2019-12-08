@@ -536,6 +536,7 @@ enum flag_cmp v_not_cmp(enum flag_cmp cmp)
 		CASE_SWAP(lt, ge);
 		CASE_SWAP(eq, ne);
 		CASE_SWAP(overflow, no_overflow);
+		CASE_SWAP(signbit, no_signbit);
 	}
 	assert(0 && "invalid op");
 }
@@ -551,7 +552,9 @@ enum flag_cmp v_commute_cmp(enum flag_cmp cmp)
 
 		case flag_overflow:
 		case flag_no_overflow:
-			assert(0 && "shouldn't be called for [no_]overflow");
+		case flag_signbit:
+		case flag_no_signbit:
+			assert(0 && "shouldn't be called for (no_)[overflow|signbit]");
 	}
 	assert(0 && "invalid op");
 }
