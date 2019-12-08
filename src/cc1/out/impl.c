@@ -37,7 +37,21 @@ enum flag_cmp op_to_flag(enum op_type op)
 		OP(no_signbit);
 #undef OP
 
-		default:
+		case op_multiply:
+		case op_divide:
+		case op_modulus:
+		case op_plus:
+		case op_minus:
+		case op_xor:
+		case op_or:
+		case op_and:
+		case op_orsc:
+		case op_andsc:
+		case op_shiftl:
+		case op_shiftr:
+		case op_not:
+		case op_bnot:
+		case op_unknown:
 			break;
 	}
 

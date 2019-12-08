@@ -1626,7 +1626,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		case op_andsc:
 			ICE("%s shouldn't get here", op_to_str(op));
 
-		default:
+		case op_unknown:
 			ICE("invalid op %s", op_to_str(op));
 	}
 
