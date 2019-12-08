@@ -1965,6 +1965,68 @@ static const out_val *x86_fp_conv(
 		type *int_ty,
 		const char *sfrom, const char *sto)
 {
+	if(int_ty
+	&& !type_is_signed(int_ty)
+	&& type_size(int_ty, NULL) >= type_primitive_size(type_llong))
+	{
+		/* If we're dealing with a large unsigned integer, we need to shift it
+		 * right, to avoid its top bit being interpreted by the fpu as a sign bit.
+		 * We then double the value in the fpu to undo this shift.
+		 *
+		 * Vice-versa, if the double is above 0x1p+63 (not unordered, i.e. `comisd`),
+		 * we subtract 0x1p+63, convert to int, then xor in 0x8000000000000000ull.
+		 */
+		const int to_integral = type_is_integral(tto);
+
+		if(to_integral){
+			out_comment(octx, "TODO: to_integral");
+		}else{
+			out_blk *blk_end, *blk_positive, *blk_negative;
+
+			const out_val *negative_bit_set = out_op(
+					octx, op_signbit,
+					out_val_retain(octx, vp),
+					out_new_l(octx, vp->t, 0) /* necessary to generate the `test` isn */);
+
+			blk_end = out_blk_new(octx, "sign_fin");
+			blk_negative = out_blk_new(octx, "signed");
+			blk_positive = out_blk_new(octx, "unsigned");
+
+			out_ctrl_branch(octx, negative_bit_set, blk_negative, blk_positive);
+
+			out_current_blk(octx, blk_negative);
+			{
+				const out_val *half = out_op(
+						octx, op_shiftr,
+						out_val_retain(octx, vp),
+						out_new_l(octx, vp->t, 1));
+
+				const out_val *vp_odd = out_op(
+						octx, op_and,
+						out_val_retain(octx, vp),
+						out_new_l(octx, vp->t, 1));
+
+				const out_val *merged = out_op(octx, op_or, half, vp_odd);
+
+				const out_val *converted = x86_fp_conv_signed(octx, merged, r, tto, int_ty, sfrom, sto);
+
+				const out_val *twice = out_op(octx, op_plus, converted, out_val_retain(octx, converted));
+
+				out_ctrl_transfer(octx, blk_end, twice, &blk_negative, 1);
+			}
+
+			out_current_blk(octx, blk_positive);
+			{
+				const out_val *converted = x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
+
+				out_ctrl_transfer(octx, blk_end, converted, &blk_positive, 1);
+			}
+
+			out_ctrl_transfer_make_current(octx, blk_end);
+			return out_ctrl_merge(octx, blk_positive, blk_negative);
+		}
+	}
+
 	return x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
 }
 
