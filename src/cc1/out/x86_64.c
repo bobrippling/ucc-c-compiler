@@ -1919,7 +1919,7 @@ const out_val *impl_cast_load(
 	}
 }
 
-static const out_val *x86_fp_conv(
+static const out_val *x86_fp_conv_signed(
 		out_ctx *octx,
 		const out_val *vp,
 		struct vreg *r, type *tto,
@@ -1927,7 +1927,8 @@ static const out_val *x86_fp_conv(
 		const char *sfrom, const char *sto)
 {
 	char vbuf[VAL_STR_SZ];
-	int truncate = type_is_integral(tto); /* going to int? */
+	const int to_integral = type_is_integral(tto);
+	const int truncate = to_integral;
 
 	switch(vp->type){
 		case V_CONST_F:
@@ -1955,6 +1956,16 @@ static const out_val *x86_fp_conv(
 			x86_reg_str(r, tto));
 
 	return v_new_reg(octx, vp, tto, r);
+}
+
+static const out_val *x86_fp_conv(
+		out_ctx *octx,
+		const out_val *vp,
+		struct vreg *r, type *tto,
+		type *int_ty,
+		const char *sfrom, const char *sto)
+{
+	return x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
 }
 
 static const out_val *x86_xchg_fi(
