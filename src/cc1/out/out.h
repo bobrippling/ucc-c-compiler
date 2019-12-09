@@ -175,4 +175,6 @@ unsigned out_current_stack(out_ctx *); /* used in inlining */
 void out_comment(out_ctx *, const char *, ...) ucc_printflike(2, 3);
 const char *out_val_str(const out_val *, int deref);
 
+void test_out_out(void);
+
 #endif

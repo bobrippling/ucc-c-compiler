@@ -412,3 +412,30 @@ const out_val *out_op_unary(out_ctx *octx, enum op_type uop, const out_val *val)
 
 	return impl_op_unary(octx, uop, val);
 }
+
+void test_out_out(void)
+{
+	out_val v = { 0 };
+	type *inner;
+
+	/* int */
+	v.type = V_REG;
+	v.t = type_nav_btype(cc1_type_nav, type_int);
+	assert(is_val_ptr(&v) == NULL);
+
+	/* int* */
+	v.type = V_REG;
+	v.t = type_ptr_to(type_nav_btype(cc1_type_nav, type_int));
+	assert(is_val_ptr(&v) == v.t);
+
+	/* int& */
+	v.type = V_SPILT;
+	v.t = type_ptr_to(type_nav_btype(cc1_type_nav, type_int));
+	assert(is_val_ptr(&v) == NULL);
+
+	/* int*& */
+	inner = type_ptr_to(type_nav_btype(cc1_type_nav, type_int));
+	v.type = V_SPILT;
+	v.t = type_ptr_to(inner);
+	assert(is_val_ptr(&v) == inner);
+}
