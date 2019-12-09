@@ -54,6 +54,8 @@
 
 #define REG_STR_SZ 8
 
+#define MOV_DEBUG(ch) /* " // " QUOTE(ch) */
+
 static const out_val *pointer_to_GOT(out_ctx *, const out_val *, const struct vreg *, int *hasoffset);
 
 const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
@@ -959,7 +961,7 @@ static const out_val *x86_load_iv(
 		if(!reg)
 			return from; /* V_CONST_I is fine */
 
-		out_asm(octx, "mov%s %s, %%%s",
+		out_asm(octx, "mov%s %s, %%%s" MOV_DEBUG(A),
 				x86_suffix(from->t),
 				impl_val_str(from, 0),
 				x86_reg_str(reg, from->t));
@@ -1180,7 +1182,7 @@ lea:
 			}
 
 			/* just go with leaq for small sizes */
-			out_asm(octx, "%s%s %s, %%%s",
+			out_asm(octx, "%s%s %s, %%%s" MOV_DEBUG(B),
 					fp ? "mov" : "lea",
 					x86_suffix(NULL),
 					impl_val_str(from_new, 1),
@@ -1271,7 +1273,7 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 		to = gotslot;
 	}
 
-	out_asm(octx, "mov%s %s, %s",
+	out_asm(octx, "mov%s %s, %s" MOV_DEBUG(C),
 			x86_suffix(from->t),
 			impl_val_str_r(vbuf, from, 0),
 			impl_val_str(to, 1));
@@ -1291,7 +1293,7 @@ static void x86_reg_cp(
 	if(vreg_eq(to, from))
 		return;
 
-	out_asm(octx, "mov%s %%%s, %%%s",
+	out_asm(octx, "mov%s %%%s, %%%s" MOV_DEBUG(D),
 			x86_suffix(typ),
 			x86_reg_str(from, typ),
 			x86_reg_str(to, typ));
@@ -1773,7 +1775,7 @@ static const out_val *pointer_to_GOT(
 	if(hasoffset)
 		*hasoffset = offset != 0;
 
-	out_asm(octx, "mov%s %s, %%%s",
+	out_asm(octx, "mov%s %s, %%%s" MOV_DEBUG(E),
 			x86_suffix(NULL),
 			impl_val_str(vp, 1),
 			x86_reg_str(&gotreg, NULL));
@@ -1803,7 +1805,7 @@ const out_val *impl_deref(
 		return out_deref(octx, gotslot);
 	}
 
-	out_asm(octx, "mov%s %s, %%%s",
+	out_asm(octx, "mov%s %s, %%%s" MOV_DEBUG(F),
 			x86_suffix(tpointed_to),
 			impl_val_str(vp, 1),
 			x86_reg_str(reg, tpointed_to));
