@@ -1470,7 +1470,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	l = x86_check_ivfp(octx, l);
 	r = x86_check_ivfp(octx, r);
 
-	if(type_is_floating(l->t)){
+	if(type_is_floating(v_get_type(l))){
 		if(op_is_comparison(op)){
 			/* ucomi%s reg_or_mem, reg */
 			char b1[VAL_STR_SZ], b2[VAL_STR_SZ];
@@ -1565,7 +1565,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		case op_gt:
 		case op_signbit:
 		case op_no_signbit:
-			UCC_ASSERT(!type_is_floating(l->t),
+			UCC_ASSERT(!type_is_floating(v_get_type(l))
+					&& !type_is_floating(v_get_type(r)),
 					"float cmp should be handled above");
 		{
 			const int is_signed = type_is_signed(l->t);
