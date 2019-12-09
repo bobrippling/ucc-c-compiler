@@ -381,11 +381,15 @@ const out_val *v_to_reg_out(out_ctx *octx, const out_val *conv, struct vreg *out
 {
 	if(conv->type != V_REG){
 		struct vreg chosen;
+		int is_float;
+
 		if(!out)
 			out = &chosen;
 
+		is_float = type_is_floating(v_get_type(conv));
+
 		/* get a register */
-		v_unused_reg(octx, 1, type_is_floating(conv->t), out, NULL);
+		v_unused_reg(octx, 1, is_float, out, NULL);
 
 		/* load into register */
 		return v_to_reg_given(octx, conv, out);
