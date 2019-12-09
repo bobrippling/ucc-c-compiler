@@ -1983,7 +1983,45 @@ static const out_val *x86_fp_conv(
 		const int to_integral = type_is_integral(tto);
 
 		if(to_integral){
-			out_comment(octx, "TODO: to_integral");
+			out_blk *blk_end, *blk_above, *blk_below;
+			numeric n_1p63;
+
+			n_1p63.val.f = 9223372036854775808.0; /* 0x1p63 aka 0x8000000000000000.0f */
+			n_1p63.suffix = VAL_DOUBLE;
+
+			const out_val *d_1p63 = out_new_num(octx, vp->t, &n_1p63);
+
+			const out_val *cmp = out_op(octx, op_gt, out_val_retain(octx, vp), out_val_retain(octx, d_1p63));
+
+			blk_end = out_blk_new(octx, "one_63_fin");
+			blk_above = out_blk_new(octx, "above_one_63");
+			blk_below = out_blk_new(octx, "below_one_63");
+
+			out_ctrl_branch(octx, cmp, blk_above, blk_below);
+
+			out_current_blk(octx, blk_above);
+			{
+				const out_val *less_1p63 = out_op(
+						octx, op_minus,
+						out_val_retain(octx, vp),
+						d_1p63);
+
+				const out_val *as_int = x86_fp_conv_signed(octx, less_1p63, r, tto, int_ty, sfrom, sto);
+
+				const out_val *top_bit_flipped = out_op(octx, op_xor, as_int, out_new_l(octx, as_int->t, 1ull << 63));
+
+				out_ctrl_transfer(octx, blk_end, top_bit_flipped, &blk_above, 1);
+			}
+
+			out_current_blk(octx, blk_below);
+			{
+				const out_val *converted = x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
+
+				out_ctrl_transfer(octx, blk_end, converted, &blk_below, 1);
+			}
+
+			out_ctrl_transfer_make_current(octx, blk_end);
+			return out_ctrl_merge(octx, blk_above, blk_below);
 		}else{
 			out_blk *blk_end, *blk_positive, *blk_negative;
 
