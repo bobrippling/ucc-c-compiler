@@ -54,7 +54,7 @@ void v_save_regs(
 
 int v_is_const_reg(const out_val *);
 int v_needs_GOT(const out_val *);
-
+type *v_get_type(const out_val *); /* handles V_SPILT types */
 
 void v_reserve_reg(out_ctx *, const struct vreg *);
 void v_unreserve_reg(out_ctx *, const struct vreg *);

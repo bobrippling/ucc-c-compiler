@@ -46,6 +46,14 @@ int v_is_const_reg(const out_val *v)
 		&& impl_reg_frame_const(&v->bits.regoff.reg, 0);
 }
 
+type *v_get_type(const out_val *v)
+{
+	if(v->type == V_SPILT)
+		return type_is_ptr(v->t);
+
+	return v->t;
+}
+
 int v_needs_GOT(const out_val *v)
 {
 	return v->type == V_LBL
