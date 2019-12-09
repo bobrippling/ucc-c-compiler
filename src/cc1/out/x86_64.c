@@ -407,6 +407,8 @@ static void x86_overlay_regpair(
 
 static const char *x86_reg_str(const struct vreg *reg, type *r)
 {
+	assert(type_is_floating(r) == reg->is_float);
+
 	/* must be sync'd with header */
 	if(reg->is_float){
 		return x86_fpreg_str(reg->idx);
