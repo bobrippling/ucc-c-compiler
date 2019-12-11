@@ -16,3 +16,13 @@ gcc:
 clang:
 	-mretpoline
 		see gcc's -mindirect-branch=thunk
+
+Meltdown: Cache reads from oob + segfault ignore, etc
+	- read the thing, then trap the exception
+Spectre v1: Conditional branch prediction + speculation + oob
+	- train branch predictor one way with our code
+	- bait + switch, oob read
+Spectre v2: Indirect branch prediction + speculation + oob (branch history/table buffer - BTB)
+	- get the kernel / another thread in the browser etc to speculatively branch to memory we control
+		- e.g. by using eBPF to allocate memory in kernel, etc
+	- our code is executed, we escape values via the cache sidechannel
