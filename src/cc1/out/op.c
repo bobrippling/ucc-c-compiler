@@ -150,9 +150,19 @@ static out_val *try_const_fold(
 
 static type *is_val_ptr(const out_val *v)
 {
-	type *ty = v_get_type(v);
+	type *pointee = type_is_ptr(v->t);
+	switch(v->type){
+		case V_SPILT:
+			if(pointee){
+				type *next = type_is_ptr(pointee);
+				if(next)
+					return pointee;
+			}
+			return NULL;
 
-	return type_is_ptr(ty) ? ty : NULL;
+		default:
+			return pointee ? v->t : NULL;
+	}
 }
 
 static void apply_ptr_step(
