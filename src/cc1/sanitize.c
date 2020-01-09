@@ -259,6 +259,9 @@ void sanitize_aligned(const out_val *v, out_ctx *octx, type *t)
 	if(!(cc1_sanitize & SAN_ALIGNMENT))
 		return;
 
+	if(!mask) /* i.e. char * */
+		return;
+
 	sanitize_assert(
 			out_op_unary(octx, op_not,
 				out_op(octx, op_and,
