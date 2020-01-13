@@ -15,7 +15,7 @@ void gen_asm(
 		symtable_global *globs,
 		const char *fname, const char *compdir,
 		struct out_dbg_filelist **pfilelist,
-		const char *producer);
+		const char *producer, const char *trap_func);
 #endif
 
 #include "parse_fold_error.h"

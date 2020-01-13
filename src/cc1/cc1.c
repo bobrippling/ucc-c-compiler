@@ -105,6 +105,7 @@ struct cc1_fopt cc1_fopt;
 struct target_details cc1_target_details;
 
 static const char *debug_compilation_dir;
+static const char *trap_func;
 
 static FILE *infile;
 
@@ -347,7 +348,8 @@ static void gen_backend(symtable_global *globs, const char *fname, FILE *out, co
 					cc1_first_fname ? cc1_first_fname : fname,
 					compdir,
 					&filelist,
-					producer);
+					producer,
+					trap_func);
 
 			/* filelist needs to be output first */
 			if(filelist && cc1_gdebug != DEBUG_OFF)
@@ -469,6 +471,9 @@ static int parse_mf_equals(
 			return 1;
 		}else if(!strncmp(arg_substr, "debug-compilation-dir=", 22)){
 			debug_compilation_dir = arg_substr + 22;
+			return 1;
+		}else if(!strncmp(arg_substr, "trap-function=", 14)){
+			trap_func = arg_substr + 14;
 			return 1;
 		}
 

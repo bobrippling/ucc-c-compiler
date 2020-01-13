@@ -34,6 +34,7 @@ struct out_ctx
 	const out_val *stack_canary_ent;
 
 	type *current_fnty;
+	const char *trap_func;
 
 	unsigned long nblks; /* used for unique label gen. */
 

@@ -14,6 +14,7 @@ void out_perfunc_init(out_ctx *, decl *fndecl, const char *sp);
 void out_perfunc_teardown(out_ctx *);
 
 void **out_user_ctx(out_ctx *);
+const char *out_trap_func(out_ctx *);
 
 int out_dump_retained(out_ctx *octx, const char *desc);
 

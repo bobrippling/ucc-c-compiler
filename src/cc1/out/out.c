@@ -70,6 +70,11 @@ void **out_user_ctx(out_ctx *octx)
 	return &octx->userctx;
 }
 
+const char *out_trap_func(out_ctx *octx)
+{
+	return octx->trap_func;
+}
+
 int out_dump_retained(out_ctx *octx, const char *desc)
 {
 	out_val_list *l;

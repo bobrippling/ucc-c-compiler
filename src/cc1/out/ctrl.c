@@ -4,6 +4,9 @@
 #include <assert.h>
 
 #include "../../util/dynarray.h"
+#include "../type_nav.h"
+#include "../funcargs.h"
+#include "../mangle.h"
 
 #include "forwards.h"
 #include "blk.h"
@@ -53,7 +56,23 @@ void out_ctrl_end_ret(out_ctx *octx, const out_val *ret, type *ty)
 
 void out_ctrl_end_undefined(out_ctx *octx)
 {
-	impl_undefined(octx);
+	const char *trap_func = out_trap_func(octx);
+
+	if(trap_func){
+		type *fnret = type_nav_voidptr(cc1_type_nav);
+		funcargs *fargs = funcargs_new();
+		type *fnty = type_func_of(fnret, fargs, /*scope*/NULL);
+		char *mangled = func_mangle(trap_func, fnty);
+		out_val *fn = out_new_lbl(octx, fnty, mangled, OUT_LBL_PIC);
+
+		const out_val *args[] = { 0 };
+
+		out_val_consume(octx, out_call(octx, fn, args, type_ptr_to(fnty)));
+		blk_terminate_undef(octx->current_blk);
+	}else{
+		impl_undefined(octx);
+	}
+
 	octx->current_blk = NULL;
 }
 

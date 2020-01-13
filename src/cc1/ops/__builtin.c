@@ -32,6 +32,7 @@
 #include "../cc1_out_ctx.h"
 #include "../sanitize_opt.h"
 #include "../sanitize.h"
+#include "../mangle.h"
 
 #include "../ops/expr_funcall.h"
 #include "../ops/expr_addr.h"

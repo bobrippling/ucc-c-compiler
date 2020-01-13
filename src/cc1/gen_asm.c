@@ -582,7 +582,7 @@ void gen_asm(
 		symtable_global *globs,
 		const char *fname, const char *compdir,
 		struct out_dbg_filelist **pfilelist,
-		const char *producer)
+		const char *producer, const char *trap_func)
 {
 	decl **inits = NULL, **terms = NULL;
 	decl **diter;
@@ -590,6 +590,7 @@ void gen_asm(
 	out_ctx *octx = out_ctx_new();
 
 	*pfilelist = NULL;
+	octx->trap_func = trap_func;
 
 	if(cc1_gdebug != DEBUG_OFF)
 		out_dbg_begin(octx, &octx->dbg.file_head, fname, compdir, cc1_std, producer);
