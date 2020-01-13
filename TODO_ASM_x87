@@ -1,0 +1,40 @@
+from https://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html
+
+6.47.2.9 x86 Floating-Point asm Operands
+
+On x86 targets, there are several rules on the usage of stack-like registers in the operands of an asm. These rules apply only to the operands that are stack-like registers:
+
+    Given a set of input registers that die in an asm, it is necessary to know which are implicitly popped by the asm, and which must be explicitly popped by GCC.
+
+    An input register that is implicitly popped by the asm must be explicitly clobbered, unless it is constrained to match an output operand.
+    For any input register that is implicitly popped by an asm, it is necessary to know how to adjust the stack to compensate for the pop. If any non-popped input is closer to the top of the reg-stack than the implicitly popped register, it would not be possible to know what the stack looked like—it’s not clear how the rest of the stack “slides up”.
+
+    All implicitly popped input registers must be closer to the top of the reg-stack than any input that is not implicitly popped.
+
+    It is possible that if an input dies in an asm, the compiler might use the input register for an output reload. Consider this example:
+
+    asm ("foo" : "=t" (a) : "f" (b));
+
+    This code says that input b is not popped by the asm, and that the asm pushes a result onto the reg-stack, i.e., the stack is one deeper after the asm than it was before. But, it is possible that reload may think that it can use the same register for both the input and the output.
+
+    To prevent this from happening, if any input operand uses the ‘f’ constraint, all output register constraints must use the ‘&’ early-clobber modifier.
+
+    The example above is correctly written as:
+
+    asm ("foo" : "=&t" (a) : "f" (b));
+
+    Some operands need to be in particular places on the stack. All output operands fall in this category—GCC has no other way to know which registers the outputs appear in unless you indicate this in the constraints.
+
+    Output operands must specifically indicate which register an output appears in after an asm. ‘=f’ is not allowed: the operand constraints must select a class with a single register.
+    Output operands may not be “inserted” between existing stack registers. Since no 387 opcode uses a read/write operand, all output operands are dead before the asm, and are pushed by the asm. It makes no sense to push anywhere but the top of the reg-stack.
+
+    Output operands must start at the top of the reg-stack: output operands may not “skip” a register.
+    Some asm statements may need extra stack space for internal calculations. This can be guaranteed by clobbering stack registers unrelated to the inputs and outputs.
+
+This asm takes one input, which is internally popped, and produces two outputs.
+
+asm ("fsincos" : "=t" (cos), "=u" (sin) : "0" (inp));
+
+This asm takes two inputs, which are popped by the fyl2xp1 opcode, and replaces them with one output. The st(1) clobber is necessary for the compiler to know that fyl2xp1 pops both inputs.
+
+asm ("fyl2xp1" : "=t" (result) : "0" (x), "u" (y) : "st(1)");
