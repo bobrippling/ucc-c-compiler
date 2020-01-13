@@ -464,11 +464,6 @@ static int parse_mf_equals(
 		}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
 			sanitize_opt_set_error(argv0, arg_substr + 15);
 			return 1;
-		}else if(!strcmp(arg_substr, "sanitize-undefined-trap-on-error")){
-			/* currently the choices are a noreturn function, or trap.
-			 * in the future, support could be added for linking with gcc or clang's libubsan,
-			 * and calling the runtime support functions therein */
-			sanitize_opt_set_error(argv0, "trap");
 		}else if(!strncmp(arg_substr, "visibility=", 11)){
 			set_default_visibility(argv0, arg_substr + 11);
 			return 1;
@@ -581,6 +576,15 @@ static void parse_Wmf_option(
 	}
 
 	if(arg_ty == 'f'){
+		/* special case this since it's an alias */
+		if(!strcmp(arg_substr, "sanitize-undefined-trap-on-error")){
+			/* currently the choices are a noreturn function, or trap.
+			 * in the future, support could be added for linking with gcc or clang's libubsan,
+			 * and calling the runtime support functions therein */
+			sanitize_opt_set_error(argv0, "trap");
+			return;
+		}
+
 		if(fopt_on(&cc1_fopt, arg_substr, invert))
 			return;
 		goto unknown;
