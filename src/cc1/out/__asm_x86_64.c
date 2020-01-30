@@ -71,6 +71,7 @@ struct chosen_constraint
 	enum constraint_type
 	{
 		C_REG,
+		C_REG_2, /* e.g. edx:eax */
 		C_MEM,
 		C_CONST,
 		C_TO_REG_OR_MEM,
@@ -80,6 +81,7 @@ struct chosen_constraint
 	union
 	{
 		struct vreg reg;
+		struct vreg regs[2];
 		struct
 		{
 			struct constrained_val *cval;
@@ -133,6 +135,7 @@ enum constraint_x86
 	CONSTRAINT_REG_d = 'd',
 	CONSTRAINT_REG_D = 'D',
 	CONSTRAINT_REG_S = 'S',
+	CONSTRAINT_REG_AD = 'A',
 
 	CONSTRAINT_memory = 'm',
 	CONSTRAINT_int = 'n',
@@ -179,9 +182,12 @@ enum constraint_mask
 	CONSTRAINT_MASK_0123 = 1 << 18,
 	CONSTRAINT_MASK_8bit_unsigned = 1 << 19,
 
-	CONSTRAINT_MASK_any = 1 << 20,
+	CONSTRAINT_MASK_REG_AD = 1 << 20,
 
-	/* 9 = 1001, 4 bits to encode a match-constraint.
+	CONSTRAINT_MASK_any = 1 << 31,
+
+	/* Maximum number of matches is 9.
+	 * 9 = 1001, so 4 bits to encode a match-constraint.
 	 * match-constraint encoded as match+1, since we
 	 * can't tell if 0 is present
 	 *
@@ -278,6 +284,7 @@ done_mods:;
 			MAP(REG_d);
 			MAP(REG_S);
 			MAP(REG_D);
+			MAP(REG_AD);
 			MAP(REG_float);
 			MAP(REG_abcd);
 			MAP(REG_any);
@@ -391,6 +398,7 @@ static int prioritise_mask(enum constraint_mask mask)
 		case CONSTRAINT_MASK_REG_d:
 		case CONSTRAINT_MASK_REG_D:
 		case CONSTRAINT_MASK_REG_S:
+		case CONSTRAINT_MASK_REG_AD:
 			return PRIORITY_FIXED_REG;
 
 		case CONSTRAINT_MASK_REG_abcd:
@@ -640,6 +648,20 @@ static void assign_constraint(
 				break;
 			}
 
+			case CONSTRAINT_MASK_REG_AD:
+				if(regs->arr[X86_64_REG_RAX] || regs->arr[X86_64_REG_RDX])
+					continue; /* try again */
+
+				regs->arr[X86_64_REG_RAX] |= regmask;
+				regs->arr[X86_64_REG_RDX] |= regmask;
+
+				cc->type = C_REG_2;
+				cc->bits.regs[0].idx = X86_64_REG_RAX;
+				cc->bits.regs[0].is_float = 0;
+				cc->bits.regs[1].idx = X86_64_REG_RDX;
+				cc->bits.regs[1].is_float = 0;
+				break;
+
 			case CONSTRAINT_MASK_REG_any:
 			case CONSTRAINT_MASK_REG_abcd:
 			{
@@ -867,6 +889,9 @@ static void constrain_input_matching(
 			}
 			break;
 		}
+
+		case C_REG_2:
+			ICE("TODO: output to two out_val:s");
 
 		case C_CONST:
 			ICE("matching C_CONST output - can't output to const");
