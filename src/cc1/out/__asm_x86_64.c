@@ -204,9 +204,9 @@ enum constraint_mask
 
 enum modifier
 {
-	MODIFIER_preclobber = '&',
-	MODIFIER_write_only = '=',
-	MODIFIER_readwrite = '+',
+	MODIFIER_preclobber = '&', /* out */
+	MODIFIER_write_only = '=', /* lateout */
+	MODIFIER_readwrite = '+',  /* inout */
 	MODIFIER_COUNT = 3
 };
 enum modifier_mask
