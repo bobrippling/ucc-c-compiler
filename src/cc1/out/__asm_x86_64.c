@@ -143,7 +143,8 @@ enum constraint_x86
 	CONSTRAINT_REG_any = 'r',
 	CONSTRAINT_REG_abcd = 'q',
 	CONSTRAINT_REG_float = 'f',
-	CONSTRAINT_any = 'g',
+	CONSTRAINT_any_greg_mem_imm = 'g', /* any reg, mem or immediate, except for non-general regs */
+	CONSTRAINT_any = 'X', /* any reg, mem or immediate, including non-general regs, i.e. float/sse */
 
 	CONSTRAINT_0_to_31 = 'I',
 	CONSTRAINT_0_to_63 = 'J',
@@ -184,6 +185,7 @@ enum constraint_mask
 
 	CONSTRAINT_MASK_REG_AD = 1 << 20,
 
+	CONSTRAINT_MASK_any_greg_mem_imm = 1 << 30,
 	CONSTRAINT_MASK_any = 1 << 31,
 
 	/* Maximum number of matches is 9.
@@ -297,6 +299,7 @@ done_mods:;
 			MAP(0123);
 			MAP(8bit_unsigned);
 			MAP(any);
+			MAP(any_greg_mem_imm);
 #undef MAP
 
 			case '0': case '1': case '2':
@@ -423,6 +426,7 @@ static int prioritise_mask(enum constraint_mask mask)
 			ICE("TODO: float");
 
 		case CONSTRAINT_MASK_any:
+		case CONSTRAINT_MASK_any_greg_mem_imm:
 			return PRIORITY_ANY;
 	}
 
@@ -710,10 +714,17 @@ static void assign_constraint(
 			case CONSTRAINT_MASK_REG_float:
 				ICE("TODO: float");
 
+			case CONSTRAINT_MASK_any_greg_mem_imm:
 			case CONSTRAINT_MASK_any:
+			{
+				const int only_greg_mem_imm = (constraint_attempt == CONSTRAINT_MASK_any_greg_mem_imm);
+
 				callback_gen_val(setupstate, cval);
 				switch(cval->val->type){
 					case V_CONST_F:
+						if(only_greg_mem_imm)
+							continue;
+
 						ICE("TODO: float");
 
 					case V_CONST_I:
@@ -731,6 +742,9 @@ static void assign_constraint(
 						int found = 1;
 						int i = cval->val->bits.regoff.reg.idx;
 
+						if(only_greg_mem_imm && cval->val->bits.regoff.reg.is_float)
+							continue;
+
 						/* any - attempt to use current register */
 						if((regs->arr[i] & regmask) == 0){
 							cc->type = C_REG;
@@ -746,10 +760,14 @@ static void assign_constraint(
 					} /* fall */
 
 					case V_FLAG:
+						if(only_greg_mem_imm)
+							continue;
 						cc->type = C_TO_REG_OR_MEM;
 						break;
 
 					case V_LBL:
+						if(only_greg_mem_imm)
+							continue;
 						cc->type = C_MEM;
 						break;
 
@@ -759,6 +777,7 @@ static void assign_constraint(
 						break;
 				}
 				break;
+			}
 		}
 
 		break; /* constraint met */
@@ -926,6 +945,9 @@ static void constrain_input_val(
 		case C_CONST:
 			break;
 
+		case C_REG_2:
+			ICE("TODO: output to two out_val:s");
+
 		case C_REG:
 			if(cval->val->type != V_REG
 			|| cval->val->bits.regoff.reg.idx != constraint->bits.reg.idx)
@@ -964,6 +986,9 @@ static const out_val *temporary_for_output(
 			 * mov $5, (%rax) which doesn't match the "r" constraint.
 			 */
 			return v_new_reg(octx, NULL, ty, &constraint->bits.reg);
+
+		case C_REG_2:
+			ICE("TODO: generate two out_val:s");
 
 		case C_TO_REG_OR_MEM:
 		case C_MEM:
@@ -1029,6 +1054,9 @@ static const out_val *initialise_output_temporary(
 
 		case C_CONST:
 			assert(0 && "output temporary const?");
+
+		case C_REG_2:
+			ICE("TODO: temporary for two out_val:s");
 
 		case C_REG:
 		{
