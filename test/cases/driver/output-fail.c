@@ -1,1 +1,1 @@
-// RUN: %ucc -c -o /doesnotexist/somename %s; [ $? -ne 0 ]
+// RUN: ! %ucc -c -o /dev/null/hi %s
