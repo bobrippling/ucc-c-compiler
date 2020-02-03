@@ -578,6 +578,12 @@ static int handle_spanning_fopt(const char *fopt, struct ucc *const state)
 		return 1;
 	}
 
+	if(!strcmp(name, "fast-math")){
+		dynarray_add(&state->args[mode_preproc], ustrprintf("-%c__FAST_MATH__", no ? 'U' : 'D'));
+		dynarray_add(&state->args[mode_compile], ustrdup(fopt));
+		return 1;
+	}
+
 	return 0;
 }
 
