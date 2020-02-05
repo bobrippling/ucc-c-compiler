@@ -9,7 +9,7 @@
 #include "fopt.h"
 #include "cc1.h"
 
-enum san_opts cc1_sanitize = 0;
+static enum san_opts cc1_sanitize = 0;
 char *cc1_sanitize_handler_fn;
 
 void sanitize_opt_add(const char *argv0, const char *san)
@@ -25,7 +25,7 @@ void sanitize_opt_add(const char *argv0, const char *san)
 		return;
 	}
 
-#define X(name, value, arg, desc) \
+#define X(name, value, disable, arg, desc) \
 	if(!strcmp(san, arg)){ \
 		cc1_sanitize |= name; \
 		return; \
@@ -62,4 +62,15 @@ void sanitize_opt_off(void)
 {
 	cc1_sanitize = 0;
 	cc1_fopt.trapv = 0;
+}
+
+int sanitize_enabled(enum san_opts opt, enum no_sanitize disabled)
+{
+	switch(opt){
+#define X(name, value, disable, arg, desc) case name:  if(disabled & (disable)) return 0; break;
+	SANITIZE_OPTS
+#undef X
+	}
+
+	return cc1_sanitize & opt;
 }

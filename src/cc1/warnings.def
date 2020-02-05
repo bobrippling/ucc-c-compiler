@@ -213,6 +213,7 @@ X("init-array-range", gnu_init_array_range)
 X("initialiser-overrides", initialiser_overrides)
 
 X("unknown-attribute", attr_unknown)
+X("unknown-sanitizers", attr_unknown_sanitizer)
 
 X("long-long", long_long)
 

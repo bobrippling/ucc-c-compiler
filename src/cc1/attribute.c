@@ -130,12 +130,14 @@ const char *attribute_to_str(attribute *da)
 {
 	switch(da->type){
 #define NAME(x, typrop) case attr_ ## x: return #x;
-#define ALIAS(s, x, typrop) case attr_ ## x: return s;
-#define EXTRA_ALIAS(s, x)
+#define RENAME(s, x, typrop) case attr_ ## x: return s;
+#define ALIAS(s, x)
+#define COMPLEX_ALIAS(s, x)
 		ATTRIBUTES
 #undef NAME
+#undef RENAME
 #undef ALIAS
-#undef EXTRA_ALIAS
+#undef COMPLEX_ALIAS
 		case attr_LAST:
 			break;
 	}
@@ -174,6 +176,7 @@ void attribute_free(attribute *a)
 		case attr_noinline:
 		case attr_no_stack_protector:
 		case attr_stack_protect:
+		case attr_no_sanitize:
 			break;
 	}
 
@@ -265,6 +268,11 @@ int attribute_equal(attribute *a, attribute *b)
 				return 0;
 			break;
 
+		case attr_no_sanitize:
+			if(a->bits.no_sanitize != b->bits.no_sanitize)
+				return 0;
+			break;
+
 		case attr_unused:
 		case attr_used:
 		case attr_warn_unused:
@@ -291,12 +299,14 @@ int attribute_is_typrop(attribute *attr)
 {
 	switch(attr->type){
 #define NAME(nam, typrop) case attr_ ## nam: return typrop;
-#define ALIAS(str, nam, typrop) case attr_ ## nam: return typrop;
-#define EXTRA_ALIAS(str, nam)
+#define RENAME(str, nam, typrop) case attr_ ## nam: return typrop;
+#define ALIAS(str, nam)
+#define COMPLEX_ALIAS(str, nam)
 		ATTRIBUTES
 #undef NAME
+#undef RENAME
 #undef ALIAS
-#undef EXTRA_ALIAS
+#undef COMPLEX_ALIAS
 		case attr_LAST:
 			break;
 	}

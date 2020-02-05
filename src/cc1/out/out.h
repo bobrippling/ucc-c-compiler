@@ -5,6 +5,7 @@
 #include "../num.h"
 #include "../sym.h"
 #include "../op.h"
+#include "../sanitize_opt.h"
 
 #include "forwards.h"
 
@@ -112,6 +113,8 @@ ucc_wur out_blk *out_ctx_current_blk(out_ctx *);
 
 out_blk *out_blk_entry(out_ctx *);
 out_blk *out_blk_postprologue(out_ctx *);
+
+int out_sanitize_enabled(out_ctx *, enum san_opts opt);
 
 void out_ctrl_end_undefined(out_ctx *);
 void out_ctrl_end_ret(out_ctx *, const out_val *, type *) ucc_nonnull((1));

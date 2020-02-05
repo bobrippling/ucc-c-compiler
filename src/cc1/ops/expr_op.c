@@ -1461,10 +1461,10 @@ void gen_op_trapv(
 		enum op_type op)
 {
 	if(type_is_integral(evaltt) && type_is_signed(evaltt)){
-		if(!(cc1_sanitize & SAN_SIGNED_INTEGER_OVERFLOW))
+		if(!out_sanitize_enabled(octx, SAN_SIGNED_INTEGER_OVERFLOW))
 			return;
 	}else if(type_is_ptr(evaltt)){
-		if(!(cc1_sanitize & SAN_POINTER_OVERFLOW))
+		if(!out_sanitize_enabled(octx, SAN_POINTER_OVERFLOW))
 			return;
 	}else{
 		return;

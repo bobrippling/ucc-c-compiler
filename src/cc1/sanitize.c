@@ -93,7 +93,7 @@ void sanitize_boundscheck(
 	consty sz;
 	const out_val *val;
 
-	if(!(cc1_sanitize & SAN_BOUNDS))
+	if(!out_sanitize_enabled(octx, SAN_BOUNDS))
 		return;
 
 	if(type_is_ptr(elhs->tree_type))
@@ -150,7 +150,7 @@ void sanitize_boundscheck(
 
 void sanitize_vlacheck(const out_val *vla_sz, type *sz_ty, out_ctx *octx)
 {
-	if(!(cc1_sanitize & SAN_VLA_BOUND))
+	if(!out_sanitize_enabled(octx, SAN_VLA_BOUND))
 		return;
 
 	sanitize_assert_order(vla_sz, op_gt, 0, sz_ty, octx, "vla");
@@ -166,7 +166,7 @@ void sanitize_shift(
 	const unsigned max = CHAR_BIT * type_size(elhs->tree_type, NULL);
 	out_blk *current;
 
-	if(!(cc1_sanitize & SAN_SHIFT_EXPONENT))
+	if(!out_sanitize_enabled(octx, SAN_SHIFT_EXPONENT))
 		return;
 
 	current = out_ctx_current_blk(octx);
@@ -196,7 +196,7 @@ void sanitize_divide(const out_val *lhs, const out_val *rhs, type *ty, out_ctx *
 
 	if(is_fp){
 		numeric n;
-		if(!(cc1_sanitize & SAN_FLOAT_DIVIDE_BY_ZERO))
+		if(!out_sanitize_enabled(octx, SAN_FLOAT_DIVIDE_BY_ZERO))
 			return;
 
 		n.suffix = VAL_FLOATING;
@@ -204,7 +204,7 @@ void sanitize_divide(const out_val *lhs, const out_val *rhs, type *ty, out_ctx *
 
 		zero = out_new_num(octx, ty, &n);
 	}else{
-		if(!(cc1_sanitize & SAN_INTEGER_DIVIDE_BY_ZERO))
+		if(!out_sanitize_enabled(octx, SAN_INTEGER_DIVIDE_BY_ZERO))
 			return;
 
 		zero = out_new_l(octx, ty, 0);
@@ -227,7 +227,7 @@ void sanitize_nonnull_args(symtable *arg_symtab, out_ctx *octx)
 	/* by this stage, any nonnull attribute will have been applied to each argument decl type */
 	decl **i;
 
-	if(!(cc1_sanitize & SAN_NONNULL_ATTRIBUTE))
+	if(!out_sanitize_enabled(octx, SAN_NONNULL_ATTRIBUTE))
 		return;
 
 	for(i = symtab_decls(arg_symtab); i && *i; i++){
@@ -247,7 +247,7 @@ void sanitize_nonnull_args(symtable *arg_symtab, out_ctx *octx)
 void sanitize_nonnull(
 		const out_val *v, out_ctx *octx, const char *desc)
 {
-	if(!(cc1_sanitize & SAN_NULL))
+	if(!out_sanitize_enabled(octx, SAN_NULL))
 		return;
 	sanitize_assert(out_val_retain(octx, v), octx, desc);
 }
@@ -256,7 +256,7 @@ void sanitize_aligned(const out_val *v, out_ctx *octx, type *t)
 {
 	unsigned mask = type_align(t, NULL) - 1;
 
-	if(!(cc1_sanitize & SAN_ALIGNMENT))
+	if(!out_sanitize_enabled(octx, SAN_ALIGNMENT))
 		return;
 
 	sanitize_assert(
@@ -269,7 +269,7 @@ void sanitize_aligned(const out_val *v, out_ctx *octx, type *t)
 
 void sanitize_returns_nonnull(const out_val *v, out_ctx *octx)
 {
-	if(!(cc1_sanitize & SAN_RETURNS_NONNULL_ATTRIBUTE))
+	if(!out_sanitize_enabled(octx, SAN_RETURNS_NONNULL_ATTRIBUTE))
 		return;
 	sanitize_assert(out_val_retain(octx, v), octx, "returns_nonnull");
 }
@@ -278,7 +278,7 @@ void sanitize_bool(const out_val *v, out_ctx *octx)
 {
 	type *tunsigned;
 
-	if(!(cc1_sanitize & SAN_BOOL))
+	if(!out_sanitize_enabled(octx, SAN_BOOL))
 		return;
 
 	tunsigned = type_nav_btype(cc1_type_nav, type_uchar);

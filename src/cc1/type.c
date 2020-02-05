@@ -80,14 +80,15 @@ static int type_attribute_missing(type *ta, type *tb)
 			return 1;                                     \
 	}
 
-#define ALIAS(s, x, typrop) NAME(x, typrop)
-#define EXTRA_ALIAS(s, x)
+#define RENAME(s, x, typrop) NAME(x, typrop)
+#define ALIAS(s, x)
+#define COMPLEX_ALIAS(s, x)
 
 	ATTRIBUTES
 
 #undef NAME
 #undef ALIAS
-#undef EXTRA_ALIAS
+#undef COMPLEX_ALIAS
 
 		return 0;
 }

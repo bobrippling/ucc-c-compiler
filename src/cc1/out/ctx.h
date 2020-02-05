@@ -2,6 +2,7 @@
 #define CTX_H
 
 #include "vstack_t.h"
+#include "../enum_no_sanitize.h"
 
 typedef struct out_val_list out_val_list;
 
@@ -51,6 +52,9 @@ struct out_ctx
 	unsigned check_flags : 1; /* decay flags? */
 	unsigned in_prologue : 1, used_stack : 1;
 	unsigned alloca_count;
+
+	/* for current function */
+	enum no_sanitize no_sanitize_flags;
 
 	/* we won't reserve it more than 255 times */
 	unsigned char *reserved_regs;
