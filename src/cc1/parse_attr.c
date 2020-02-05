@@ -8,6 +8,7 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/str.h"
 
 #include "parse_attr.h"
 
@@ -382,6 +383,58 @@ static attribute *parse_attr_alias(symtable *scope, const char *ident)
 	}
 
 	free(str);
+
+	return attr;
+}
+
+static attribute *parse_attr_no_sanitize(symtable *scope, const char *ident)
+{
+	attribute *attr = NULL;
+	enum no_sanitize opts = 0;
+
+	(void)scope;
+
+	if(!strcmp(ident, "no_sanitize_undefined")){
+		opts = NO_SANITIZE_UNDEFINED;
+	}else{
+		EAT(token_open_paren);
+
+		while(curtok == token_string){
+			where str_loc;
+			struct cstring *asciz;
+			char *str;
+
+			where_cc1_current(&str_loc);
+			asciz = parse_asciz_str();
+
+			EAT(token_string);
+
+			str = asciz ? cstring_detach(asciz) : NULL;
+
+			if(str){
+				char *tok, *state;
+
+				for(tok = str_split(str, ',', &state); tok; tok = str_split(NULL, ',', &state)){
+					if(!strcmp(tok, "undefined"))
+						opts |= NO_SANITIZE_UNDEFINED;
+					else
+						cc1_warn_at(&str_loc, attr_unknown_sanitizer, "unknown sanitizer \"%s\"", tok);
+				}
+
+				free(str);
+			}
+
+			if(!accept(token_comma))
+				break;
+		}
+
+		EAT(token_close_paren);
+	}
+
+	if(opts){
+		attr = attribute_new(attr_no_sanitize);
+		attr->bits.no_sanitize = opts;
+	}
 
 	return attr;
 }

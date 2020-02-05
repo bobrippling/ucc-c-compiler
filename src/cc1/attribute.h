@@ -5,6 +5,7 @@
 #include "retain.h"
 #include "attributes.h"
 #include "visibility.h"
+#include "enum_no_sanitize.h"
 
 typedef struct attribute attribute;
 struct attribute
@@ -61,6 +62,7 @@ struct attribute
 		int ucc_debugged;
 		enum visibility visibility;
 		struct decl *alias;
+		enum no_sanitize no_sanitize;
 	} bits;
 };
 

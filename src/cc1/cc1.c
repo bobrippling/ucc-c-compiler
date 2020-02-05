@@ -814,7 +814,7 @@ dbg_unknown:
 
 	show_current_line = cc1_fopt.show_line;
 	if(cc1_fopt.trapv)
-		cc1_sanitize |= SAN_SIGNED_INTEGER_OVERFLOW;
+		sanitize_opt_add(argv[0], "signed-integer-overflow");
 
 	cc1_type_nav = type_nav_init();
 

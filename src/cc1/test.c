@@ -26,7 +26,6 @@ struct section_output cc1_current_section_output;
 struct cc1_fopt cc1_fopt;
 enum mopt mopt_mode;
 int show_current_line;
-enum san_opts cc1_sanitize;
 char *cc1_sanitize_handler_fn;
 enum visibility cc1_visibility_default;
 struct target_details cc1_target_details;

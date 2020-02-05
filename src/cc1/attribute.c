@@ -176,6 +176,7 @@ void attribute_free(attribute *a)
 		case attr_noinline:
 		case attr_no_stack_protector:
 		case attr_stack_protect:
+		case attr_no_sanitize:
 			break;
 	}
 
@@ -264,6 +265,11 @@ int attribute_equal(attribute *a, attribute *b)
 
 		case attr_visibility:
 			if(a->bits.visibility != b->bits.visibility)
+				return 0;
+			break;
+
+		case attr_no_sanitize:
+			if(a->bits.no_sanitize != b->bits.no_sanitize)
 				return 0;
 			break;
 

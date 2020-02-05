@@ -417,6 +417,7 @@ static void stack_realign(out_ctx *octx, unsigned align)
 
 void out_perfunc_init(out_ctx *octx, decl *fndecl, const char *sp)
 {
+	attribute *attr;
 	type *const fnty = fndecl->ref;
 	attribute *alignment;
 
@@ -432,6 +433,9 @@ void out_perfunc_init(out_ctx *octx, decl *fndecl, const char *sp)
 	octx->argspill_begin_blk = out_blk_new(octx, "argspill");
 	octx->postprologue_blk = out_blk_new(octx, "post_prologue");
 	octx->epilogue_blk = out_blk_new(octx, "epilogue");
+
+	attr = attribute_present(fndecl, attr_no_sanitize);
+	octx->no_sanitize_flags = attr ? attr->bits.no_sanitize : 0;
 
 	if((alignment = attribute_present(fndecl, attr_aligned)))
 		octx->entry_blk->align = const_fold_val_i(alignment->bits.align);

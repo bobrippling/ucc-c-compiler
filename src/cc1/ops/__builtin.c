@@ -347,7 +347,7 @@ static const out_val *builtin_gen_unreachable(const expr *e, out_ctx *octx)
 	if(!strcmp(BUILTIN_SPEL(e->expr), "__builtin_trap"))
 		return builtin_gen_undefined(e, octx);
 
-	if(cc1_sanitize & SAN_UNREACHABLE)
+	if(out_sanitize_enabled(octx, SAN_UNREACHABLE))
 		sanitize_fail(octx, "unreachable");
 	return out_new_noop(octx);
 }
