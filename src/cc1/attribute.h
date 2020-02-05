@@ -16,12 +16,14 @@ struct attribute
 	enum attribute_type
 	{
 #define NAME(x, typrop) attr_ ## x,
-#define ALIAS(s, x, typrop) attr_ ## x,
-#define EXTRA_ALIAS(s, x)
+#define RENAME(s, x, typrop) attr_ ## x,
+#define ALIAS(s, x)
+#define COMPLEX_ALIAS(s, x)
 		ATTRIBUTES
 #undef NAME
+#undef RENAME
 #undef ALIAS
-#undef EXTRA_ALIAS
+#undef COMPLEX_ALIAS
 		attr_LAST
 		/*
 		 * TODO: warning

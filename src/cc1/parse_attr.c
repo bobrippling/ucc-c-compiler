@@ -392,12 +392,13 @@ static const struct
 	attribute *(*parser)(symtable *, const char *ident);
 } attrs[] = {
 #define NAME(x, typrop) { #x, parse_attr_ ## x },
-#define ALIAS(s, x, typrop) { s, parse_attr_ ## x },
-#define EXTRA_ALIAS(s, x) { s, parse_attr_ ## x},
+#define RENAME(s, x, typrop) { s, parse_attr_ ## x },
+#define ALIAS(s, x) { s, parse_attr_ ## x },
+#define COMPLEX_ALIAS(s, x) { s, parse_attr_ ## x},
 	ATTRIBUTES
 #undef NAME
 #undef ALIAS
-#undef EXTRA_ALIAS
+#undef COMPLEX_ALIAS
 
 	{ NULL, NULL },
 };
