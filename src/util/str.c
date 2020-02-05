@@ -60,3 +60,25 @@ int xsnprintf(char *buf, size_t len, const char *fmt, ...)
 
 	return desired_space;
 }
+
+char *str_split(char *haystack, char on, char **const state)
+{
+	char *begin = haystack ? haystack : *state;
+	char *anchor;
+
+	if(!begin || !*begin){
+		*state = NULL;
+		return NULL;
+	}
+
+	for(anchor = begin; *anchor && *anchor != on; anchor++);
+
+	if(*anchor){
+		*anchor = '\0';
+		*state = anchor + 1;
+	}else{
+		*state = NULL;
+	}
+
+	return begin;
+}

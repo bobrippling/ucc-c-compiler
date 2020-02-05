@@ -9,6 +9,7 @@
 #include "dynmap.h"
 #include "dynarray.h"
 #include "math.h"
+#include "str.h"
 
 #define DIE() ice(__FILE__, __LINE__, __func__, NULL)
 
@@ -286,12 +287,68 @@ static void test_math(void)
 	test(x == 0x50);
 }
 
+static void test_str(void)
+{
+	{
+		const char *words[] = {
+			"hello", "there",
+		};
+		char buf[] = "hello,there";
+		char *tok, *state;
+		int i = 0;
+
+		for(tok = str_split(buf, ',', &state);
+				tok;
+				tok = str_split(NULL, ',', &state), i++
+			 ){
+			test(!strcmp(tok, words[i]));
+		}
+		test(i == 2);
+	}
+
+	{
+		const char *words[] = {
+			"hello", "there", "!", "", NULL,
+		};
+		char buf[] = "hello there ! ";
+		char *tok, *state;
+		int i = 0;
+
+		for(tok = str_split(buf, ' ', &state);
+				tok;
+				tok = str_split(NULL, ' ', &state), i++
+			 ){
+			test(!strcmp(tok, words[i]));
+		}
+		test(i == 3);
+	}
+
+	{
+		char *tok, *state;
+		char empty[] = "";
+		tok = str_split(empty, ',', &state);
+		test(!tok);
+		tok = str_split(NULL, ',', &state); /* again, shouldn't error */
+		test(!tok);
+	}
+
+	{
+		char *tok, *state;
+		char no_sep[] = "hello";
+		tok = str_split(no_sep, ',', &state);
+		test(!strcmp(tok, "hello"));
+		tok = str_split(NULL, ',', &state);
+		test(!tok);
+	}
+}
+
 int main(void)
 {
 	test_dynmap();
 	test_dynarray();
 	test_canon_all();
 	test_math();
+	test_str();
 
 	return ec;
 }

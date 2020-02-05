@@ -14,4 +14,6 @@ int str_endswith(const char *, const char *);
 ucc_printflike(3, 4)
 int xsnprintf(char *, size_t, const char *, ...);
 
+char *str_split(char *haystack, char on, char **state);
+
 #endif

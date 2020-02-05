@@ -251,6 +251,7 @@ static void handle_line_file_directive(char *fnam /*owned by us*/, int lno, char
 	enum { SOF = 1, RTF = 2, SYSH = 4 } iflag = 0;
 	struct fnam_stack *top = NULL;
 	int free_fnam = 1;
+	char *state;
 
 	if(current_fname_stack_cnt)
 		top = &current_fname_stack[current_fname_stack_cnt - 1];
@@ -258,7 +259,7 @@ static void handle_line_file_directive(char *fnam /*owned by us*/, int lno, char
 	if(DEBUG_LINE_DIRECTIVE)
 		fprintf(stderr, "line directive: fnam=\"%s\", lno=%d, flags=\"%s\"\n", fnam, lno, flags);
 
-	for(tok = strtok(flags, " "); tok; tok = strtok(NULL, " ")){
+	for(tok = str_split(flags, ' ', &state); tok; tok = str_split(NULL, ' ', &state)){
 #define START_OF_FILE "1"
 #define RETURN_TO_FILE "2"
 #define SYSHEADER "3"
