@@ -1,17 +1,17 @@
 all: src
 
 src:
-	make -C src
+	${MAKE} -C src
 
 lib: lib/config.mk
-	make -C lib
+	${MAKE} -C lib
 
 deps:
-	make -Csrc deps
+	${MAKE} -Csrc deps
 
 clean:
-	make -C src clean
-	make -C lib clean
+	${MAKE} -C src clean
+	${MAKE} -C lib clean
 
 cleanall: clean
 	./configure clean

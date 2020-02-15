@@ -1,6 +1,6 @@
 JOBS = 4
 
-MAKE_DIR = make -C $@ -j${JOBS}
+MAKE_DIR = ${MAKE} -C $@ -j${JOBS}
 
 all: cc1 cpp2 ucc rt
 
