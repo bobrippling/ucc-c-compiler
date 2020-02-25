@@ -981,8 +981,11 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			ICE("load int into float?");
 
 		case V_CONST_F:
-			/* if it's an int-const, we can load without a label */
+			/* if it's an int-const, we can load without a label
+			 * ... unless it's greater than 0x1p63, in which case,
+			 * we can't create it from an integer. */
 			if(from->bits.val_f == (integral_t)from->bits.val_f
+			&& ucc_fabs(from->bits.val_f) < 9223372036854775808.0 /* 0x1p63 */
 			&& cc1_fopt.integral_float_load)
 			{
 				type *const ty_fp = from->t;
