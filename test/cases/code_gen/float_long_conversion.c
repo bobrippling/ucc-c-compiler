@@ -1,18 +1,18 @@
-// RUN: %ocheck 0 %s
-// RUN: %ucc -target x86_64-linux -S -o- %s -DFOR_ASM | %stdoutcheck %s
+// RUN: %ocheck 0 %s -lm
+// RUN: %ucc -target x86_64-linux -S -o %t %s -DFOR_ASM
+// RUN: %stdoutcheck %s <%t
+// RUN: %stdoutcheck --prefix=constants %s <%t
 
 #ifdef FOR_ASM
 unsigned long long to_ull(double d)
 {
 	// STDOUT:      /^to_ull:/
 
-	// STDOUT:      movabsq $9223372036854775808, %rax
-	// STDOUT-NEXT: cvtsi2sdq %rax, %xmm1
+	// STDOUT:      movsd float.1(%rip), %xmm1
 	// STDOUT-NEXT: ucomisd %xmm1, %xmm0
-	// STDOUT:      /ja \.Lblk\.[0-9]+/
+	// STDOUT:      /jae \.Lblk\.[0-9]+/
 
-	// STDOUT:      movabsq $9223372036854775808, %rax
-	// STDOUT-NEXT: cvtsi2sdq %rax, %xmm0
+	// STDOUT:      movsd float.2(%rip), %xmm0
 	// STDOUT-NEXT: /movsd -[0-9]+\(%rbp\), %xmm1/
 	// STDOUT-NEXT: subsd %xmm0, %xmm1
 	// STDOUT-NEXT: cvttsd2siq %xmm1, %rax
@@ -98,6 +98,11 @@ double from_u(T x)
 	return x;
 }
 
+// STDOUT-constants:      float.1:
+// STDOUT-NEXT-constants: /\.quad 4890909195324358656/
+// STDOUT-constants:      float.2:
+// STDOUT-NEXT-constants: /\.quad 4890909195324358656/
+
 #else // ----------------------------------------
 
 int eq_thru_unsigned(double d)
@@ -112,16 +117,58 @@ int eq_thru_signed(double d)
 
 // ----------------------------------------
 
-void assert(_Bool b)
+int printf(const char *, ...);
+
+void assert(_Bool b, int l)
 {
 	void abort(void) __attribute((noreturn));
-	if(!b)
-		abort();
+	if(!b){
+		printf("fail %d\n", l);
+		//abort();
+	}
 }
+#define assert(c) assert((c), __LINE__)
+
+void assert_to_double(unsigned long long l, double expected, int line)
+{
+	double d = l;
+	//printf("got %a\n", d);
+	(assert)(d == expected, line);
+}
+#define assert_to_double(...) assert_to_double(__VA_ARGS__, __LINE__)
+
+void assert_to_ull(double d, unsigned long long expected, int line)
+{
+	unsigned long long x = d;
+	//printf("got %#llx\n", x);
+	(assert)(x == expected, line);
+}
+#define assert_to_ull(...) assert_to_ull(__VA_ARGS__, __LINE__)
+
+double nextafter(double, double);
 
 int main()
 {
+	// some of this invokes UB, but we define it as so:
 	assert(!eq_thru_unsigned(-1));
 	assert(eq_thru_signed(-1));
+
+	// test all cases:
+	// < 1p63, >= 1p63, negative
+	assert_to_double(3, 3);
+	assert_to_double(1ULL << 63, 0x1p63);
+	assert_to_double(1ULL << 62, 0x1p62);
+	assert_to_double(-3, 0x1p64);
+	assert_to_double(-1ULL << 63, 0x1p63);
+	assert_to_double(-1ULL << 62, 0x1.8p+63);
+
+	assert_to_ull(3, 3);
+	assert_to_ull(0x1p63, 1ULL << 63);
+	assert_to_ull(0x2p63, 0);
+	assert_to_ull(nextafter(0x1p63, 0), 0x7ffffffffffffc00);
+	assert_to_ull(-3, -3);
+	assert_to_ull(-0x1p63, -1ULL << 63);
+	assert_to_ull(-0x2p63, 0x8000000000000000);
+	assert_to_ull(nextafter(-0x1p63, 0), 0x8000000000000400);
 }
 #endif
