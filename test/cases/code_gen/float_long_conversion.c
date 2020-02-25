@@ -10,7 +10,7 @@ unsigned long long to_ull(double d)
 
 	// STDOUT:      movsd float.1(%rip), %xmm1
 	// STDOUT-NEXT: ucomisd %xmm1, %xmm0
-	// STDOUT:      /jae \.Lblk\.[0-9]+/
+	// STDOUT:      /ja \.Lblk\.[0-9]+/
 
 	// STDOUT:      movsd float.2(%rip), %xmm0
 	// STDOUT-NEXT: /movsd -[0-9]+\(%rbp\), %xmm1/

@@ -1995,7 +1995,7 @@ static const out_val *x86_fp_conv(
 
 			const out_val *d_1p63 = out_new_num(octx, vp->t, &n_1p63);
 
-			const out_val *cmp = out_op(octx, op_ge, out_val_retain(octx, vp), out_val_retain(octx, d_1p63));
+			const out_val *cmp = out_op(octx, op_gt, out_val_retain(octx, vp), out_val_retain(octx, d_1p63));
 
 			blk_end = out_blk_new(octx, "one_63_fin");
 			blk_above = out_blk_new(octx, "above_one_63");
