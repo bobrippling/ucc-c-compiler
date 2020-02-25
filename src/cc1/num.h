@@ -14,10 +14,12 @@ typedef signed long long sintegral_t;
 #if COMPILER_SUPPORTS_LONG_DOUBLE
 typedef long double floating_t;
 #  define ucc_strtold strtold
+#  define ucc_fabs fabsl
 #  define NUMERIC_FMT_LD "Lf"
 #else
 typedef double floating_t;
 #  define ucc_strtold strtof
+#  define ucc_fabs fabs
 #  define NUMERIC_FMT_LD "f"
 #endif
 
