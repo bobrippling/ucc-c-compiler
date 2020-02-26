@@ -35,8 +35,9 @@
 
 #include "__asm.h"
 
-
 #define CONSTRAINT_DEBUG(...)
+
+#define UNIMPLEMENTED(desc) ICE("TODO: " #desc)
 
 enum
 {
@@ -395,7 +396,7 @@ static int prioritise_mask(enum constraint_mask mask)
 			return PRIORITY_REG;
 
 		case CONSTRAINT_MASK_REG_float:
-			ICE("TODO: float");
+			UNIMPLEMENTED("float");
 
 		case CONSTRAINT_MASK_any:
 		case CONSTRAINT_MASK_any_greg_mem_imm:
@@ -684,7 +685,7 @@ static void assign_constraint(
 				break;
 
 			case CONSTRAINT_MASK_REG_float:
-				ICE("TODO: float");
+				UNIMPLEMENTED("float");
 
 			case CONSTRAINT_MASK_any_greg_mem_imm:
 			case CONSTRAINT_MASK_any:
@@ -697,7 +698,7 @@ static void assign_constraint(
 						if(only_greg_mem_imm)
 							continue;
 
-						ICE("TODO: float");
+						UNIMPLEMENTED("float");
 
 					case V_CONST_I:
 						/* if we're an output, need to drop to reg or memory */
@@ -1193,7 +1194,7 @@ static void format_single_percent(
 
 	switch(**p){
 		case '[':
-			ICE("TODO: named constraint");
+			UNIMPLEMENTED("named constraint");
 
 		/* TODO: operand modifiers (x86) */
 	}
