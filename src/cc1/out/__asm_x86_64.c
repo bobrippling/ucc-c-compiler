@@ -101,48 +101,22 @@ struct asm_setup_state
 	struct out_asm_error *error;
 };
 
-#if 0
-+---+--------------------+
-| r |    Register(s)     |
-+---+--------------------+
-| a |   %eax, %ax, %al   |
-| b |   %ebx, %bx, %bl   |
-| c |   %ecx, %cx, %cl   |
-| d |   %edx, %dx, %dl   |
-| S |   %esi, %si        |
-| D |   %edi, %di        |
-+---+--------------------+
-
-  m |   memory
-  i |   integral
-  r |   any reg
-  q |   reg [abcd]
-  f |   fp reg
-  & |   pre-clobber
-
-
-  = | write-only - needed in output
-
-http://www.ibiblio.org/gferg/ldp/GCC-Inline-Assembly-HOWTO.html#s4
-
-#endif
-
 enum constraint_x86
 {
-	CONSTRAINT_REG_a = 'a',
-	CONSTRAINT_REG_b = 'b',
-	CONSTRAINT_REG_c = 'c',
-	CONSTRAINT_REG_d = 'd',
-	CONSTRAINT_REG_D = 'D',
-	CONSTRAINT_REG_S = 'S',
-	CONSTRAINT_REG_AD = 'A',
+	CONSTRAINT_REG_a = 'a', /* %eax */
+	CONSTRAINT_REG_b = 'b', /* %ebx */
+	CONSTRAINT_REG_c = 'c', /* %ecx */
+	CONSTRAINT_REG_d = 'd', /* %edx */
+	CONSTRAINT_REG_D = 'D', /* %edi */
+	CONSTRAINT_REG_S = 'S', /* %esi */
+	CONSTRAINT_REG_AD = 'A', /* %edx:%eax */
 
 	CONSTRAINT_memory = 'm',
 	CONSTRAINT_int = 'n',
-	CONSTRAINT_int_asm = 'i',
+	CONSTRAINT_int_asm = 'i', /* immediate integer, including symbolic constants only known as asm-time */
 	CONSTRAINT_REG_any = 'r',
 	CONSTRAINT_REG_abcd = 'q',
-	CONSTRAINT_REG_float = 'f',
+	CONSTRAINT_REG_float = 'f', /* fp reg */
 	CONSTRAINT_any_greg_mem_imm = 'g', /* any reg, mem or immediate, except for non-general regs */
 	CONSTRAINT_any = 'X', /* any reg, mem or immediate, including non-general regs, i.e. float/sse */
 
@@ -156,9 +130,8 @@ enum constraint_x86
 	CONSTRAINT_3 = '3', CONSTRAINT_4 = '4', CONSTRAINT_5 = '5',
 	CONSTRAINT_6 = '6', CONSTRAINT_7 = '7', CONSTRAINT_8 = '8',
 	CONSTRAINT_9 = '9',
-
-	/* TODO: o, V, E, F, X */
 };
+
 enum constraint_mask
 {
 	/* start after modifier mask */
@@ -301,12 +274,12 @@ done_mods:;
 			MAP(any_greg_mem_imm);
 #undef MAP
 
-			case '0': case '1': case '2':
-			case '3': case '4': case '5':
-			case '6': case '7': case '8':
-			case '9':
+			case CONSTRAINT_0: case CONSTRAINT_1: case CONSTRAINT_2:
+			case CONSTRAINT_3: case CONSTRAINT_4: case CONSTRAINT_5:
+			case CONSTRAINT_6: case CONSTRAINT_7: case CONSTRAINT_8:
+			case CONSTRAINT_9:
 			{
-				const size_t idx = *iter - '0';
+				const size_t idx = *iter - CONSTRAINT_0;
 				found = 1;
 				if(finalmask & MATCHING_CONSTRAINT_MASK_SHIFTED){
 					error->str = ustrprintf(
