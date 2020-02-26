@@ -157,8 +157,7 @@ enum constraint_x86
 	CONSTRAINT_6 = '6', CONSTRAINT_7 = '7', CONSTRAINT_8 = '8',
 	CONSTRAINT_9 = '9',
 
-	/* TODO: o, V, E, F, X
-	 * TODO: matching: 0-9 */
+	/* TODO: o, V, E, F, X */
 };
 enum constraint_mask
 {
