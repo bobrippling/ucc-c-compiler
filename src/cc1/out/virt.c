@@ -46,6 +46,14 @@ int v_is_const_reg(const out_val *v)
 		&& impl_reg_frame_const(&v->bits.regoff.reg, 0);
 }
 
+type *v_get_type(const out_val *v)
+{
+	if(v->type == V_SPILT)
+		return type_is_ptr(v->t);
+
+	return v->t;
+}
+
 int v_needs_GOT(const out_val *v)
 {
 	return v->type == V_LBL
@@ -373,11 +381,15 @@ const out_val *v_to_reg_out(out_ctx *octx, const out_val *conv, struct vreg *out
 {
 	if(conv->type != V_REG){
 		struct vreg chosen;
+		int is_float;
+
 		if(!out)
 			out = &chosen;
 
+		is_float = type_is_floating(v_get_type(conv));
+
 		/* get a register */
-		v_unused_reg(octx, 1, type_is_floating(conv->t), out, NULL);
+		v_unused_reg(octx, 1, is_float, out, NULL);
 
 		/* load into register */
 		return v_to_reg_given(octx, conv, out);
@@ -536,6 +548,7 @@ enum flag_cmp v_not_cmp(enum flag_cmp cmp)
 		CASE_SWAP(lt, ge);
 		CASE_SWAP(eq, ne);
 		CASE_SWAP(overflow, no_overflow);
+		CASE_SWAP(signbit, no_signbit);
 	}
 	assert(0 && "invalid op");
 }
@@ -551,7 +564,9 @@ enum flag_cmp v_commute_cmp(enum flag_cmp cmp)
 
 		case flag_overflow:
 		case flag_no_overflow:
-			assert(0 && "shouldn't be called for [no_]overflow");
+		case flag_signbit:
+		case flag_no_signbit:
+			assert(0 && "shouldn't be called for (no_)[overflow|signbit]");
 	}
 	assert(0 && "invalid op");
 }

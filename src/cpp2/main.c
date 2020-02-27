@@ -244,8 +244,6 @@ static void calctime(const char *fname)
 
 static void macro_add_limits(void)
 {
-#define QUOTE_(x) #x
-#define QUOTE(x) QUOTE_(x)
 #define MACRO_ADD_LIM(m) macro_add("__" #m "__", QUOTE(__ ## m ## __), 0)
 	MACRO_ADD_LIM(SCHAR_MAX);
 	MACRO_ADD_LIM(SHRT_MAX);
@@ -253,8 +251,6 @@ static void macro_add_limits(void)
 	MACRO_ADD_LIM(LONG_MAX);
 	MACRO_ADD_LIM(LONG_LONG_MAX);
 #undef MACRO_ADD_LIM
-#undef QUOTE
-#undef QUOTE_
 }
 
 static void add_platform_dependant_macros(void)

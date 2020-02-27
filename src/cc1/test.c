@@ -12,6 +12,9 @@
 #include "cc1_target.h"
 #include "cc1_out.h"
 
+/* builtin tests */
+#include "out/out.h"
+
 enum cc1_backend cc1_backend = BACKEND_ASM;
 int cc1_error_limit = 16;
 char *cc1_first_fname;
@@ -316,6 +319,9 @@ int main(void)
 	test_quals();
 	test_decl_interposability();
 	test_decl_needs_GOTPLT();
+
+	/* builtin tests */
+	test_out_out();
 
 	return ec;
 }

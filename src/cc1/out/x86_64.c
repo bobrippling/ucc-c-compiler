@@ -54,6 +54,8 @@
 
 #define REG_STR_SZ 8
 
+#define MOV_DEBUG(ch) /* " // " QUOTE(ch) */
+
 static const out_val *pointer_to_GOT(out_ctx *, const out_val *, const struct vreg *, int *hasoffset);
 
 const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
@@ -405,6 +407,8 @@ static void x86_overlay_regpair(
 
 static const char *x86_reg_str(const struct vreg *reg, type *r)
 {
+	assert(type_is_floating(r) == reg->is_float);
+
 	/* must be sync'd with header */
 	if(reg->is_float){
 		return x86_fpreg_str(reg->idx);
@@ -911,6 +915,9 @@ static const char *x86_cmp(const struct flag_opts *flag)
 		case flag_overflow: return "o";
 		case flag_no_overflow: return "no";
 
+		case flag_signbit: return "s";
+		case flag_no_signbit: return "ns";
+
 		/*case flag_z:  return "z";
 		case flag_nz: return "nz";*/
 	}
@@ -956,7 +963,7 @@ static const out_val *x86_load_iv(
 		if(!reg)
 			return from; /* V_CONST_I is fine */
 
-		out_asm(octx, "mov%s %s, %%%s",
+		out_asm(octx, "mov%s %s, %%%s" MOV_DEBUG(A),
 				x86_suffix(from->t),
 				impl_val_str(from, 0),
 				x86_reg_str(reg, from->t));
@@ -974,8 +981,11 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			ICE("load int into float?");
 
 		case V_CONST_F:
-			/* if it's an int-const, we can load without a label */
+			/* if it's an int-const, we can load without a label
+			 * ... unless it's greater than 0x1p63, in which case,
+			 * we can't create it from an integer. */
 			if(from->bits.val_f == (integral_t)from->bits.val_f
+			&& ucc_fabs(from->bits.val_f) < 9223372036854775808.0 /* 0x1p63 */
 			&& cc1_fopt.integral_float_load)
 			{
 				type *const ty_fp = from->t;
@@ -1177,7 +1187,7 @@ lea:
 			}
 
 			/* just go with leaq for small sizes */
-			out_asm(octx, "%s%s %s, %%%s",
+			out_asm(octx, "%s%s %s, %%%s" MOV_DEBUG(B),
 					fp ? "mov" : "lea",
 					x86_suffix(NULL),
 					impl_val_str(from_new, 1),
@@ -1268,7 +1278,7 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 		to = gotslot;
 	}
 
-	out_asm(octx, "mov%s %s, %s",
+	out_asm(octx, "mov%s %s, %s" MOV_DEBUG(C),
 			x86_suffix(from->t),
 			impl_val_str_r(vbuf, from, 0),
 			impl_val_str(to, 1));
@@ -1288,7 +1298,7 @@ static void x86_reg_cp(
 	if(vreg_eq(to, from))
 		return;
 
-	out_asm(octx, "mov%s %%%s, %%%s",
+	out_asm(octx, "mov%s %%%s, %%%s" MOV_DEBUG(D),
 			x86_suffix(typ),
 			x86_reg_str(from, typ),
 			x86_reg_str(to, typ));
@@ -1463,7 +1473,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	l = x86_check_ivfp(octx, l);
 	r = x86_check_ivfp(octx, r);
 
-	if(type_is_floating(l->t)){
+	if(type_is_floating(v_get_type(l))){
 		if(op_is_comparison(op)){
 			/* ucomi%s reg_or_mem, reg */
 			char b1[VAL_STR_SZ], b2[VAL_STR_SZ];
@@ -1556,7 +1566,10 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		case op_lt:
 		case op_ge:
 		case op_gt:
-			UCC_ASSERT(!type_is_floating(l->t),
+		case op_signbit:
+		case op_no_signbit:
+			UCC_ASSERT(!type_is_floating(v_get_type(l))
+					&& !type_is_floating(v_get_type(r)),
 					"float cmp should be handled above");
 		{
 			const int is_signed = type_is_signed(l->t);
@@ -1574,7 +1587,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				vconst = r;
 
 			/* if we have a CONST try a test instruction */
-			if((op == op_eq || op == op_ne)
+			if((op == op_eq || op == op_ne || op == op_signbit || op == op_no_signbit)
 			&& vconst && vconst->bits.val_i == 0)
 			{
 				const out_val *vother = vconst == l ? r : l;
@@ -1621,7 +1634,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		case op_andsc:
 			ICE("%s shouldn't get here", op_to_str(op));
 
-		default:
+		case op_unknown:
 			ICE("invalid op %s", op_to_str(op));
 	}
 
@@ -1768,7 +1781,7 @@ static const out_val *pointer_to_GOT(
 	if(hasoffset)
 		*hasoffset = offset != 0;
 
-	out_asm(octx, "mov%s %s, %%%s",
+	out_asm(octx, "mov%s %s, %%%s" MOV_DEBUG(E),
 			x86_suffix(NULL),
 			impl_val_str(vp, 1),
 			x86_reg_str(&gotreg, NULL));
@@ -1798,7 +1811,7 @@ const out_val *impl_deref(
 		return out_deref(octx, gotslot);
 	}
 
-	out_asm(octx, "mov%s %s, %%%s",
+	out_asm(octx, "mov%s %s, %%%s" MOV_DEBUG(F),
 			x86_suffix(tpointed_to),
 			impl_val_str(vp, 1),
 			x86_reg_str(reg, tpointed_to));
@@ -1914,7 +1927,7 @@ const out_val *impl_cast_load(
 	}
 }
 
-static const out_val *x86_fp_conv(
+static const out_val *x86_fp_conv_signed(
 		out_ctx *octx,
 		const out_val *vp,
 		struct vreg *r, type *tto,
@@ -1922,7 +1935,8 @@ static const out_val *x86_fp_conv(
 		const char *sfrom, const char *sto)
 {
 	char vbuf[VAL_STR_SZ];
-	int truncate = type_is_integral(tto); /* going to int? */
+	const int to_integral = type_is_integral(tto);
+	const int truncate = to_integral;
 
 	switch(vp->type){
 		case V_CONST_F:
@@ -1950,6 +1964,116 @@ static const out_val *x86_fp_conv(
 			x86_reg_str(r, tto));
 
 	return v_new_reg(octx, vp, tto, r);
+}
+
+static const out_val *x86_fp_conv(
+		out_ctx *octx,
+		const out_val *vp,
+		struct vreg *r, type *tto,
+		type *int_ty,
+		const char *sfrom, const char *sto)
+{
+	if(int_ty
+	&& !type_is_signed(int_ty)
+	&& type_size(int_ty, NULL) >= type_primitive_size(type_llong))
+	{
+		/* If we're dealing with a large unsigned integer, we need to shift it
+		 * right, to avoid its top bit being interpreted by the fpu as a sign bit.
+		 * We then double the value in the fpu to undo this shift.
+		 *
+		 * Vice-versa, if the double is above 0x1p+63 (not unordered, i.e. `comisd`),
+		 * we subtract 0x1p+63, convert to int, then xor in 0x8000000000000000ull.
+		 */
+		const int to_integral = type_is_integral(tto);
+
+		if(to_integral){
+			out_blk *blk_end, *blk_above, *blk_below;
+			numeric n_1p63;
+
+			n_1p63.val.f = 9223372036854775808.0; /* 0x1p63 aka 0x8000000000000000.0f */
+			n_1p63.suffix = VAL_DOUBLE;
+
+			const out_val *d_1p63 = out_new_num(octx, vp->t, &n_1p63);
+
+			const out_val *cmp = out_op(octx, op_gt, out_val_retain(octx, vp), out_val_retain(octx, d_1p63));
+
+			blk_end = out_blk_new(octx, "one_63_fin");
+			blk_above = out_blk_new(octx, "above_one_63");
+			blk_below = out_blk_new(octx, "below_one_63");
+
+			out_ctrl_branch(octx, cmp, blk_above, blk_below);
+
+			out_current_blk(octx, blk_above);
+			{
+				const out_val *less_1p63 = out_op(
+						octx, op_minus,
+						out_val_retain(octx, vp),
+						d_1p63);
+
+				const out_val *as_int = x86_fp_conv_signed(octx, less_1p63, r, tto, int_ty, sfrom, sto);
+
+				const out_val *top_bit_flipped = out_op(octx, op_xor, as_int, out_new_l(octx, as_int->t, 1ull << 63));
+
+				out_ctrl_transfer(octx, blk_end, top_bit_flipped, &blk_above, 1);
+			}
+
+			out_current_blk(octx, blk_below);
+			{
+				const out_val *converted = x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
+
+				out_ctrl_transfer(octx, blk_end, converted, &blk_below, 1);
+			}
+
+			out_ctrl_transfer_make_current(octx, blk_end);
+			return out_ctrl_merge(octx, blk_above, blk_below);
+		}else{
+			out_blk *blk_end, *blk_positive, *blk_negative;
+
+			const out_val *negative_bit_set = out_op(
+					octx, op_signbit,
+					out_val_retain(octx, vp),
+					out_new_l(octx, vp->t, 0) /* necessary to generate the `test` isn */);
+
+			blk_end = out_blk_new(octx, "sign_fin");
+			blk_negative = out_blk_new(octx, "signed");
+			blk_positive = out_blk_new(octx, "unsigned");
+
+			out_ctrl_branch(octx, negative_bit_set, blk_negative, blk_positive);
+
+			out_current_blk(octx, blk_negative);
+			{
+				const out_val *half = out_op(
+						octx, op_shiftr,
+						out_val_retain(octx, vp),
+						out_new_l(octx, vp->t, 1));
+
+				const out_val *vp_odd = out_op(
+						octx, op_and,
+						out_val_retain(octx, vp),
+						out_new_l(octx, vp->t, 1));
+
+				const out_val *merged = out_op(octx, op_or, half, vp_odd);
+
+				const out_val *converted = x86_fp_conv_signed(octx, merged, r, tto, int_ty, sfrom, sto);
+
+				const out_val *twice = out_op(octx, op_plus, converted, out_val_retain(octx, converted));
+
+				out_ctrl_transfer(octx, blk_end, twice, &blk_negative, 1);
+			}
+
+			out_current_blk(octx, blk_positive);
+			{
+				const out_val *converted = x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
+
+				out_ctrl_transfer(octx, blk_end, converted, &blk_positive, 1);
+			}
+
+			out_ctrl_transfer_make_current(octx, blk_end);
+			return out_ctrl_merge(octx, blk_positive, blk_negative);
+		}
+	}
+
+	return x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
 }
 
 static const out_val *x86_xchg_fi(
@@ -2233,18 +2357,12 @@ const out_val *impl_call(
 	 * also count floats and ints
 	 */
 	for(i = 0; i < nargs; i++){
-		type *argty;
-
 		assert(local_args[i]->retains > 0);
 
 		if(local_args[i]->type == V_FLAG)
 			local_args[i] = v_to_reg(octx, local_args[i]);
 
-		argty = local_args[i]->t;
-		if(local_args[i]->type == V_SPILT)
-			argty = type_dereference_decay(argty);
-
-		float_arg[i] = type_is_floating(argty);
+		float_arg[i] = type_is_floating(v_get_type(local_args[i]));
 
 		if(float_arg[i])
 			nfloats++;
@@ -2530,13 +2648,18 @@ void impl_debugtrap(out_ctx *octx)
 	out_asm(octx, "int3");
 }
 
-const out_val *impl_test_overflow(out_ctx *octx, const out_val **eval)
+static const out_val *impl_test(out_ctx *octx, const out_val **eval, enum flag_cmp flag)
 {
 	/* whenever creating a V_FLAG we need to ensure instructions are flushed */
 	*eval = v_reg_apply_offset(octx, v_to_reg(octx, *eval));
 
 	out_val_retain(octx, *eval);
-	return v_new_flag(octx, *eval, flag_overflow, /*mod:*/0);
+	return v_new_flag(octx, *eval, flag, /*mod:*/0);
+}
+
+const out_val *impl_test_overflow(out_ctx *octx, const out_val **eval)
+{
+	return impl_test(octx, eval, flag_overflow);
 }
 
 void impl_set_nan(out_ctx *octx, out_val *v)
