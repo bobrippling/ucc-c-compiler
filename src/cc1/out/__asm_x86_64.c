@@ -1076,11 +1076,21 @@ static void parse_clobbers(
 			/* same for V_FLAG:s */
 		}else{
 			/* same for registers - just do a validity check on the string */
+			struct vreg vreg;
 			int regi = impl_regname_index(clob);
+			vreg.idx = regi;
+			vreg.is_float = 0;
 
 			if(regi == -1){
 				error->str = ustrprintf(
 						"unknown entry in clobber: \"%s\"",
+						clob);
+				error->operand = NULL;
+				break;
+			}
+			if(impl_reg_frame_const(&vreg, 1)){
+				error->str = ustrprintf(
+						"can't clobber frame-constant register \"%s\"",
 						clob);
 				error->operand = NULL;
 				break;
