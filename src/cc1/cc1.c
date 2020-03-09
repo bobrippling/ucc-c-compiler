@@ -56,6 +56,7 @@ static struct
 	{ "stackrealign", MOPT_STACK_REALIGN },
 	{ "align-is-p2", MOPT_ALIGN_IS_POW2 },
 	{ "fentry", MOPT_FENTRY },
+	{ "red-zone", MOPT_RED_ZONE },
 
 	{ NULL, 0 }
 };
@@ -82,7 +83,7 @@ char *cc1_first_fname;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
-enum mopt mopt_mode = 0;
+enum mopt mopt_mode = MOPT_RED_ZONE;
 
 enum visibility cc1_visibility_default;
 

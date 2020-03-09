@@ -33,6 +33,7 @@ const out_val *out_call(out_ctx *octx,
 	 * since the stack must be aligned correctly for a call
 	 * (i.e. at least a pushq %rbp to bring it up to 16) */
 	octx->used_stack = 1;
+	octx->had_call = 1;
 
 	return impl_call(octx, fn, args, fnty);
 }
@@ -310,9 +311,21 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 		octx->in_prologue = 0;
 	}
 
-	clean_stack = octx->used_stack
-		|| !cc1_fopt.omit_frame_pointer
-		|| (cc1_profileg && mopt_mode & MOPT_FENTRY) /* simple way of keeping the call to __fentry__ */;
+	if(cc1_profileg && mopt_mode & MOPT_FENTRY){ /* stack frame required */
+		clean_stack = 1;
+
+	}else if(!octx->used_stack){ /* stack unused - try to omit frame pointer */
+		clean_stack = !cc1_fopt.omit_frame_pointer;
+
+	}else{ /* stack used - can we red-zone it? */
+		const int redzone =
+			(mopt_mode & MOPT_RED_ZONE) &&
+			octx->max_stack_sz < REDZONE_BYTES &&
+			!octx->had_call &&
+			!octx->stack_ptr_manipulated;
+
+		clean_stack = !redzone;
+	}
 
 	out_current_blk(octx, octx->epilogue_blk);
 	{
@@ -426,6 +439,8 @@ void out_perfunc_init(out_ctx *octx, decl *fndecl, const char *sp)
 	assert(octx->cur_stack_sz == 0 && "non-empty stack for new func");
 	assert(octx->alloca_count == 0 && "allocas left over?");
 	octx->check_flags = 1;
+	octx->had_call = 0;
+	octx->stack_ptr_manipulated = 0;
 
 	assert(!octx->current_blk);
 	octx->entry_blk = out_blk_new_lbl(octx, sp);

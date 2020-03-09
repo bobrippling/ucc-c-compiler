@@ -274,6 +274,7 @@ static out_val *v_new_spbp(out_ctx *octx, const out_val *from, unsigned short re
 
 out_val *v_new_sp(out_ctx *octx, const out_val *from)
 {
+	octx->stack_ptr_manipulated = 1;
 	return v_new_spbp(octx, from, REG_SP);
 }
 
