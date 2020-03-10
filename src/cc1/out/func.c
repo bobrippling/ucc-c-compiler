@@ -359,6 +359,15 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 					octx->stack_calleesave_space,
 					octx->max_align);
 
+			if(cc1_fopt.verbose_asm){
+				out_comment(octx,
+						"red-zone %s (stack @ %zu bytes, had_call: %d, stack_ptr_manipulated: %d)",
+						redzone ? "active" : "inactive",
+						octx->max_stack_sz,
+						octx->had_call,
+						octx->stack_ptr_manipulated);
+			}
+
 			if(octx->max_align){
 				/* must align max_stack_sz,
 				 * not the resultant after subtracting stack_n_alloc */
