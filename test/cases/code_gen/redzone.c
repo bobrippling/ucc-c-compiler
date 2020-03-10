@@ -1,4 +1,4 @@
-// RUN: %ucc -target x86_64-linux -S -o %t %s
+// RUN: %ucc -target x86_64-linux -S -o %t %s -fstack-protector-all
 // RUN: %stdoutcheck %s <%t
 //
 // RUN: %ucc -target x86_64-linux -S -o %t %s -mstackrealign
