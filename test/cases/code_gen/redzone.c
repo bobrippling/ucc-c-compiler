@@ -33,8 +33,7 @@ int f2(void)
 	return buf[0];
 
 	// STDOUT:     /^f2:/
-	// STDOUT-NOT: sp
-	// STDOUT-NOT: leave
+	// STDOUT-NOT: sub.*sp
 	// STDOUT:     ret
 
 	// STDOUT-noredzone: /^f2:/

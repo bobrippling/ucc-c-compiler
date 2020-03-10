@@ -180,7 +180,7 @@ static void allocate_stack(out_ctx *octx, v_stackt adj)
 
 void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *end_dbg_lbl)
 {
-	int clean_stack;
+	int clean_stack, redzone = 0;
 	out_blk *call_save_spill_blk = NULL;
 	out_blk *flush_root;
 
@@ -318,13 +318,13 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 		clean_stack = !cc1_fopt.omit_frame_pointer;
 
 	}else{ /* stack used - can we red-zone it? */
-		const int redzone =
+		redzone =
 			(mopt_mode & MOPT_RED_ZONE) &&
 			octx->max_stack_sz < REDZONE_BYTES &&
 			!octx->had_call &&
 			!octx->stack_ptr_manipulated;
 
-		clean_stack = !redzone;
+		clean_stack = 1;
 	}
 
 	out_current_blk(octx, octx->epilogue_blk);
@@ -366,7 +366,8 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 			}
 			stack_adj = octx->max_stack_sz - octx->stack_n_alloc;
 
-			allocate_stack(octx, stack_adj);
+			if(!redzone)
+				allocate_stack(octx, stack_adj);
 		}
 
 		out_ctrl_transfer(octx, octx->argspill_begin_blk, NULL, NULL, 0);
