@@ -41,6 +41,8 @@
 #define REG_SP            X86_64_REG_RSP
 #define REG_BP            X86_64_REG_RBP
 
+#define REDZONE_BYTES 128
+
 #define VAL_STR_SZ 128
 
 #endif

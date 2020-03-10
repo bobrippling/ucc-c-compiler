@@ -260,16 +260,22 @@ out_val *v_new_reg(
 	return v;
 }
 
-out_val *v_new_sp(out_ctx *octx, const out_val *from)
+static out_val *v_new_spbp(out_ctx *octx, const out_val *from, unsigned short reg)
 {
 	struct vreg r;
 
 	r.is_float = 0;
-	r.idx = REG_SP;
+	r.idx = reg;
 
 	octx->used_stack = 1;
 
 	return v_new_reg(octx, from, type_nav_voidptr(cc1_type_nav), &r);
+}
+
+out_val *v_new_sp(out_ctx *octx, const out_val *from)
+{
+	octx->stack_ptr_manipulated = 1;
+	return v_new_spbp(octx, from, REG_SP);
 }
 
 out_val *v_new_sp3(
@@ -286,8 +292,9 @@ static out_val *v_new_bp3(
 		out_ctx *octx, const out_val *from,
 		type *ty, long stack_pos)
 {
-	out_val *v = v_new_sp3(octx, from, ty, stack_pos);
-	v->bits.regoff.reg.idx = REG_BP;
+	out_val *v = v_new_spbp(octx, from, REG_BP);
+	v->t = ty;
+	v->bits.regoff.offset = stack_pos;
 	return v;
 }
 

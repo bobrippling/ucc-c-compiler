@@ -33,6 +33,7 @@ const out_val *out_call(out_ctx *octx,
 	 * since the stack must be aligned correctly for a call
 	 * (i.e. at least a pushq %rbp to bring it up to 16) */
 	octx->used_stack = 1;
+	octx->had_call = 1;
 
 	return impl_call(octx, fn, args, fnty);
 }
@@ -179,7 +180,7 @@ static void allocate_stack(out_ctx *octx, v_stackt adj)
 
 void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *end_dbg_lbl)
 {
-	int clean_stack;
+	int clean_stack, redzone = 0;
 	out_blk *call_save_spill_blk = NULL;
 	out_blk *flush_root;
 
@@ -310,9 +311,21 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 		octx->in_prologue = 0;
 	}
 
-	clean_stack = octx->used_stack
-		|| !cc1_fopt.omit_frame_pointer
-		|| (cc1_profileg && mopt_mode & MOPT_FENTRY) /* simple way of keeping the call to __fentry__ */;
+	if(cc1_profileg && mopt_mode & MOPT_FENTRY){ /* stack frame required */
+		clean_stack = 1;
+
+	}else if(!octx->used_stack){ /* stack unused - try to omit frame pointer */
+		clean_stack = !cc1_fopt.omit_frame_pointer;
+
+	}else{ /* stack used - can we red-zone it? */
+		redzone =
+			(mopt_mode & MOPT_RED_ZONE) &&
+			octx->max_stack_sz < REDZONE_BYTES &&
+			!octx->had_call &&
+			!octx->stack_ptr_manipulated;
+
+		clean_stack = 1;
+	}
 
 	out_current_blk(octx, octx->epilogue_blk);
 	{
@@ -346,6 +359,15 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 					octx->stack_calleesave_space,
 					octx->max_align);
 
+			if(cc1_fopt.verbose_asm){
+				out_comment(octx,
+						"red-zone %s (stack @ %zu bytes, had_call: %d, stack_ptr_manipulated: %d)",
+						redzone ? "active" : "inactive",
+						octx->max_stack_sz,
+						octx->had_call,
+						octx->stack_ptr_manipulated);
+			}
+
 			if(octx->max_align){
 				/* must align max_stack_sz,
 				 * not the resultant after subtracting stack_n_alloc */
@@ -353,7 +375,8 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 			}
 			stack_adj = octx->max_stack_sz - octx->stack_n_alloc;
 
-			allocate_stack(octx, stack_adj);
+			if(!redzone)
+				allocate_stack(octx, stack_adj);
 		}
 
 		out_ctrl_transfer(octx, octx->argspill_begin_blk, NULL, NULL, 0);
@@ -426,6 +449,8 @@ void out_perfunc_init(out_ctx *octx, decl *fndecl, const char *sp)
 	assert(octx->cur_stack_sz == 0 && "non-empty stack for new func");
 	assert(octx->alloca_count == 0 && "allocas left over?");
 	octx->check_flags = 1;
+	octx->had_call = 0;
+	octx->stack_ptr_manipulated = 0;
 
 	assert(!octx->current_blk);
 	octx->entry_blk = out_blk_new_lbl(octx, sp);

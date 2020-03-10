@@ -50,7 +50,7 @@ struct out_ctx
 	unsigned max_align;
 
 	unsigned check_flags : 1; /* decay flags? */
-	unsigned in_prologue : 1, used_stack : 1;
+	unsigned in_prologue : 1, used_stack : 1, had_call : 1, stack_ptr_manipulated : 1;
 	unsigned alloca_count;
 
 	/* for current function */
