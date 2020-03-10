@@ -99,9 +99,9 @@ double from_u(T x)
 }
 
 // STDOUT-constants:      float.1:
-// STDOUT-NEXT-constants: /\.quad 4890909195324358656/
+// STDOUT-NEXT-constants: /\.quad 4890909195324358656 /
 // STDOUT-constants:      float.2:
-// STDOUT-NEXT-constants: /\.quad 4890909195324358656/
+// STDOUT-NEXT-constants: /\.quad 4890909195324358656 /
 
 #else // ----------------------------------------
 
@@ -117,14 +117,13 @@ int eq_thru_signed(double d)
 
 // ----------------------------------------
 
-int printf(const char *, ...);
+//int printf(const char *, ...);
 
 void assert(_Bool b, int l)
 {
 	void abort(void) __attribute((noreturn));
 	if(!b){
-		printf("fail %d\n", l);
-		//abort();
+		abort();
 	}
 }
 #define assert(c) assert((c), __LINE__)
