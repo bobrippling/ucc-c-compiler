@@ -1229,8 +1229,6 @@ static void constrain_values(
 		struct constrained_pri_val *sorted,
 		struct constrained_val_array *outputs,
 		struct constrained_val_array *inputs,
-		struct chosen_constraint *coutputs,
-		struct chosen_constraint *cinputs,
 		const out_val *output_temporaries[])
 {
 	size_t const total = outputs->n + inputs->n;
@@ -1509,8 +1507,6 @@ void out_inline_asm_ext_begin(
 			sorted,
 			asm_params->outputs,
 			asm_params->inputs,
-			st->constraints.outputs,
-			st->constraints.inputs,
 			st->output_temporaries);
 	if(error->str) goto error;
 
