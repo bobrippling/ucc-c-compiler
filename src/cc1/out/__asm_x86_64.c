@@ -13,6 +13,8 @@
 #include "../../util/alloc.h"
 #include "../../util/macros.h"
 
+#include "../macros.h"
+
 #include "../type.h"
 #include "../type_nav.h"
 #include "../num.h"
@@ -35,7 +37,9 @@
 
 #include "__asm.h"
 
-#define CONSTRAINT_DEBUG(...)
+#define CONSTRAINT_DEBUG(...) do \
+	if(0) fprintf(stderr, __VA_ARGS__); \
+while(0)
 
 #define UNIMPLEMENTED(desc) ICE("TODO: " #desc)
 
@@ -191,6 +195,56 @@ enum modifier_mask
 	MODIFIER_MASK_write_only = 1 << 1,
 	MODIFIER_MASK_rw = 1 << 2
 };
+
+static const char *constraint_type_to_str(enum constraint_type c)
+{
+	switch(c){
+		CASE_STR(C_REG);
+		CASE_STR(C_REG_2);
+		CASE_STR(C_MEM);
+		CASE_STR(C_CONST);
+		CASE_STR(C_TO_REG_OR_MEM);
+		CASE_STR(C_MATCH);
+	}
+	return NULL;
+}
+
+static const char *constraint_mask_to_str(enum constraint_mask mask)
+{
+	switch(mask){
+		case CONSTRAINT_MASK_REG_a: return "reg-a";
+		case CONSTRAINT_MASK_REG_b: return "reg-b";
+		case CONSTRAINT_MASK_REG_c: return "reg-c";
+		case CONSTRAINT_MASK_REG_d: return "reg-d";
+		case CONSTRAINT_MASK_REG_D: return "reg-D";
+		case CONSTRAINT_MASK_REG_S: return "reg-S";
+		case CONSTRAINT_MASK_REG_AD: return "reg-AD";
+
+		case CONSTRAINT_MASK_REG_abcd: return "reg-abcd";
+
+		case CONSTRAINT_MASK_memory: return "memory";
+
+		case CONSTRAINT_MASK_0_to_31: return "const-0-31";
+		case CONSTRAINT_MASK_0_to_63: return "const-0-63";
+		case CONSTRAINT_MASK_8bit_signed: return "const-8bit-signed";
+		case CONSTRAINT_MASK_0123: return "const-0123";
+		case CONSTRAINT_MASK_8bit_unsigned: return "const-8bit-unsigned";
+		case CONSTRAINT_MASK_int: return "const-int";
+		case CONSTRAINT_MASK_int_asm: return "const-asmint";
+
+		case CONSTRAINT_MASK_REG_any: return "reg-any";
+
+		case CONSTRAINT_MASK_REG_float: return "reg-float";
+
+		case CONSTRAINT_MASK_any: return "any";
+		case CONSTRAINT_MASK_any_greg_mem_imm: return "any-greg-mem-imm";
+	}
+
+	if(mask & MATCHING_CONSTRAINT_MASK_SHIFTED)
+		return "matching-constraint";
+
+	return NULL;
+}
 
 unsigned out_asm_calculate_constraint(
 		const char *const constraint,
@@ -531,13 +585,19 @@ static void assign_constraint(
 	int retry_count;
 	enum constraint_mask whole_constraint = cval->calculated_constraint;
 
-	if(cval->calculated_constraint & (MODIFIER_MASK_preclob | MODIFIER_MASK_rw))
+	if(cval->calculated_constraint & (MODIFIER_MASK_preclob | MODIFIER_MASK_rw)){
+		CONSTRAINT_DEBUG("  preclobber/rw, adding REG_USED_IN to regmask\n");
 		regmask |= REG_USED_IN;
+	}
+
+	CONSTRAINT_DEBUG("  initial priority %d\n", priority);
 
 	for(retry_count = 0;; retry_count++){
 		const int min_priority = priority + retry_count;
 		unsigned constraint_i;
 		enum constraint_mask constraint_attempt = -1;
+
+		CONSTRAINT_DEBUG("    min priority %d\n", min_priority);
 
 		if(min_priority > PRIORITY_ANY){
 			setupstate->error->operand = cval;
@@ -546,8 +606,6 @@ static void assign_constraint(
 					is_output ? "output" : "input");
 			return;
 		}
-
-		CONSTRAINT_DEBUG("min_priority=%d\n", min_priority);
 
 		/* find the constraint with the lowest priority that we
 		 * haven't already tried */
@@ -563,21 +621,29 @@ static void assign_constraint(
 
 					/* don't try again later */
 					whole_constraint &= ~onebit;
+
+					CONSTRAINT_DEBUG("    trying constraint %s (priority %d)\n",
+							constraint_mask_to_str(constraint_attempt), this_pri);
 					break;
+				}else{
+					CONSTRAINT_DEBUG("    constraint %#x applicable but not below min priority (%d > %d)\n",
+							onebit, this_pri, min_priority);
 				}
 			}
 		}
 
-		if((int)constraint_attempt == -1)
+		if((int)constraint_attempt == -1){
+			CONSTRAINT_DEBUG("    no constraints applicable (min priority %d)\n", min_priority);
 			continue;
-
-		CONSTRAINT_DEBUG("trying constraint '%c'\n", constraint_attempt);
+		}
 
 		if(constraint_attempt & MATCHING_CONSTRAINT_MASK_SHIFTED){
 			/* matching constraint */
 			const unsigned shift = MATCHING_CONSTRAINT_SHIFT;
 			const unsigned mask = MATCHING_CONSTRAINT_MASK;
 			unsigned match = ((cval->calculated_constraint >> shift) & mask) - 1;
+
+			CONSTRAINT_DEBUG("    constraint is a matching constraint, matching %u\n", match);
 
 			setupstate->error->operand = cval;
 
@@ -600,9 +666,6 @@ static void assign_constraint(
 			cc->bits.match.constraint = entries[match].cchosen;
 			cc->bits.match.idx = match;
 			break; /* constraint met */
-
-		}else{
-			/* non-matching constraint - switch: */
 		}
 
 		switch(constraint_attempt){
@@ -616,9 +679,12 @@ static void assign_constraint(
 			case CONSTRAINT_MASK_REG_S: chosen_reg = X86_64_REG_RSI; goto reg;
 	reg:
 			{
-				if(regs->arr[chosen_reg] & regmask)
+				if(regs->arr[chosen_reg] & regmask){
+					CONSTRAINT_DEBUG("    register %d already used\n", chosen_reg);
 					continue; /* try again */
+				}
 
+				CONSTRAINT_DEBUG("    matched register %d\n", chosen_reg);
 				regs->arr[chosen_reg] |= regmask;
 				cc->type = C_REG;
 				cc->bits.reg.idx = chosen_reg;
@@ -627,8 +693,12 @@ static void assign_constraint(
 			}
 
 			case CONSTRAINT_MASK_REG_AD:
-				if(regs->arr[X86_64_REG_RAX] || regs->arr[X86_64_REG_RDX])
+				if(regs->arr[X86_64_REG_RAX] || regs->arr[X86_64_REG_RDX]){
+					CONSTRAINT_DEBUG("    register A/D in used\n");
 					continue; /* try again */
+				}
+
+				CONSTRAINT_DEBUG("    matched register A/D\n");
 
 				regs->arr[X86_64_REG_RAX] |= regmask;
 				regs->arr[X86_64_REG_RDX] |= regmask;
@@ -652,13 +722,20 @@ static void assign_constraint(
 				int found_reg = assign_constraint_pick_reg(
 						cc, regs, regmask, lim, setupstate->fnty);
 
-				if(!found_reg)
+				if(!found_reg){
+					CONSTRAINT_DEBUG("    no applicable register found\n");
 					continue; /* try again */
+				}
+
+				CONSTRAINT_DEBUG("    matched any register, chose %d [is_float=%d]\n",
+						cc->bits.reg.idx,
+						cc->bits.reg.is_float);
 				break;
 			}
 
 			case CONSTRAINT_MASK_memory:
 				cc->type = C_MEM;
+				CONSTRAINT_DEBUG("    matched memory\n");
 				break;
 
 			case CONSTRAINT_MASK_int_asm:
@@ -669,20 +746,26 @@ static void assign_constraint(
 					case V_CONST_I:
 						break; /* fall */
 					default:
+						CONSTRAINT_DEBUG("    invalid int_asm constant generated\n");
 						continue; /* try again */
 				}
-				if(0){
+				CONSTRAINT_DEBUG("    generated int_asm constant\n");
+				cc->type = C_CONST;
+				break;
+
 			case CONSTRAINT_MASK_0_to_31:
 			case CONSTRAINT_MASK_0_to_63:
 			case CONSTRAINT_MASK_8bit_signed:
 			case CONSTRAINT_MASK_0123:
 			case CONSTRAINT_MASK_8bit_unsigned:
 			case CONSTRAINT_MASK_int:
-					callback_gen_val(setupstate, cval);
-					if(!valid_int_constraint(constraint_attempt, cval->val))
-						continue;
+				callback_gen_val(setupstate, cval);
+				if(!valid_int_constraint(constraint_attempt, cval->val)){
+					CONSTRAINT_DEBUG("    invalid constant constant generated for this round\n");
+					continue;
 				}
 				cc->type = C_CONST;
+				CONSTRAINT_DEBUG("    generated valid constant\n");
 				break;
 
 			case CONSTRAINT_MASK_REG_float:
@@ -696,8 +779,10 @@ static void assign_constraint(
 				callback_gen_val(setupstate, cval);
 				switch(cval->val->type){
 					case V_CONST_F:
-						if(only_greg_mem_imm)
+						if(only_greg_mem_imm){
+							CONSTRAINT_DEBUG("    generated float, wanted only_greg_mem_imm\n");
 							continue;
+						}
 
 						UNIMPLEMENTED("float");
 
@@ -707,6 +792,7 @@ static void assign_constraint(
 							ICE("TODO");
 						}else{
 							/* input can be const */
+							CONSTRAINT_DEBUG("    generated V_CONST_I\n");
 							cc->type = C_CONST;
 						}
 						break;
@@ -716,17 +802,32 @@ static void assign_constraint(
 						int found = 1;
 						int i = cval->val->bits.regoff.reg.idx;
 
-						if(only_greg_mem_imm && cval->val->bits.regoff.reg.is_float)
+						if(only_greg_mem_imm && cval->val->bits.regoff.reg.is_float){
+							CONSTRAINT_DEBUG("    register is float, only_greg_mem_imm wanted\n");
 							continue;
+						}
 
 						/* any - attempt to use current register */
 						if((regs->arr[i] & regmask) == 0){
 							cc->type = C_REG;
 							memcpy_safe(&cc->bits.reg, &cval->val->bits.regoff.reg);
+							CONSTRAINT_DEBUG("    any register, reusing existing value's register\n");
 						}else{
 							const int lim = N_SCRATCH_REGS_I; /* no floats */
+							if(cval->val->bits.regoff.reg.is_float)
+								UNIMPLEMENTED("float");
+
+							CONSTRAINT_DEBUG("    value's register (%d [is_float=%d]) in mask/clobbers/etc, picking another\n",
+									cval->val->bits.regoff.reg.idx, cval->val->bits.regoff.reg.is_float);
+
 							found = assign_constraint_pick_reg(
 									cc, regs, regmask, lim, setupstate->fnty);
+
+							if(found){
+								CONSTRAINT_DEBUG("    chose register %d [is_float=%d]\n",
+										cc->bits.reg.idx,
+										cc->bits.reg.is_float);
+							}
 						}
 
 						if(found)
@@ -734,20 +835,27 @@ static void assign_constraint(
 					} /* fall */
 
 					case V_FLAG:
-						if(only_greg_mem_imm)
+						if(only_greg_mem_imm){
+							CONSTRAINT_DEBUG("    value is flag, wanted only_greg_mem_imm\n");
 							continue;
+						}
+						CONSTRAINT_DEBUG("    matched against flag value\n");
 						cc->type = C_TO_REG_OR_MEM;
 						break;
 
 					case V_LBL:
-						if(only_greg_mem_imm)
+						if(only_greg_mem_imm){
+							CONSTRAINT_DEBUG("    value is label, wanted only_greg_mem_imm\n");
 							continue;
+						}
 						cc->type = C_MEM;
+						CONSTRAINT_DEBUG("    matched label against memory constraint\n");
 						break;
 
 					case V_REGOFF:
 					case V_SPILT:
 						cc->type = C_MEM;
+						CONSTRAINT_DEBUG("    matched V_REGOFF/V_SPILT against memory constraint\n");
 						break;
 				}
 				break;
@@ -764,6 +872,7 @@ static void assign_constraints(
 		size_t nentries)
 {
 	size_t i;
+	CONSTRAINT_DEBUG("starting constraint assignment\n");
 	for(i = 0; i < nentries; i++){
 		/* pick the highest satisfiable constraint */
 		assign_constraint(setupstate, entries, i);
@@ -771,6 +880,7 @@ static void assign_constraints(
 		if(setupstate->error->str)
 			break;
 	}
+	CONSTRAINT_DEBUG("finished constraint assignment\n");
 }
 
 static struct constrained_pri_val *
@@ -878,7 +988,7 @@ static void constrain_input_matching(
 						break;
 				}
 			}else{
-				ICE("no output temporary for c_reg/c_to_reg_or_mem");
+				ICE("no output temporary for C_REG/C_TO_REG_OR_MEM [%zu]", match_idx);
 			}
 			break;
 		}
@@ -1043,7 +1153,7 @@ static const out_val *initialise_output_temporary(
 			 */
 			memcpy_safe(&temporary_reg, &out_temporary->bits.regoff.reg);
 
-			out_comment(octx, "temp_reg = %s", impl_reg_str(&temporary_reg));
+			out_comment(octx, "temp reg %s", impl_reg_str(&temporary_reg));
 
 			out_val_retain(octx, with_val);
 			out_val_release(octx, out_temporary);
@@ -1164,6 +1274,8 @@ static void constrain_values(
 						break;
 
 				assert(output < outputs->n && "couldn't find unsorted entry");
+				if(cc1_fopt.verbose_asm)
+					out_comment(setupstate->octx, "using temporary for output %zu", output);
 				output_temporaries[output] = out_temporary;
 			}
 
@@ -1327,6 +1439,7 @@ static void init_used_regs(out_ctx *octx, struct regarray *regs)
 static void debug_used_regs(out_ctx *octx, struct regarray *regs)
 {
 	int i;
+	out_comment(octx, "used regs:");
 	for(i = 0; i < regs->n; i++){
 		if(regs->arr[i]){
 			struct vreg reg;
@@ -1340,7 +1453,7 @@ static void debug_used_regs(out_ctx *octx, struct regarray *regs)
 			reg.idx = i;
 			reg.is_float = 0;
 
-			out_comment(octx, "regs[%s] = %s", impl_reg_str(&reg), desc);
+			out_comment(octx, "  regs[%s] = %s", impl_reg_str(&reg), desc);
 		}
 	}
 }
