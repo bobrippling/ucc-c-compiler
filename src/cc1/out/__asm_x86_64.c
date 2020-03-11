@@ -196,6 +196,24 @@ enum modifier_mask
 	MODIFIER_MASK_rw = 1 << 2
 };
 
+enum operand_modifier
+{
+	OP_MODIFIER_reg_64bit = 'q', /* rax */
+	OP_MODIFIER_reg_32bit = 'k', /* eax */
+	OP_MODIFIER_reg_16bit = 'w', /* ax */
+	OP_MODIFIER_reg_lobyte = 'b', /* al */
+	OP_MODIFIER_reg_hibyte = 'h', /* ah */
+
+	OP_MODIFIER_const_absmem = 'a', /* reg: (%rax), const: lbl(%rip) [non-pic only] */
+	OP_MODIFIER_const_nopunct = 'c', /* lbl (as opposed to $lbl, lbl(%rip), etc */
+
+	/*OP_MODIFIER_const_label = 'l', asm goto ("..." :::: lbl) --> .Lbl (as opposed to $.Lbl) */
+	OP_MODIFIER_const_symnam = 'p', /* "m"(glob) --> "glob" (as opposed to "glob(%rip)" */
+	OP_MODIFIER_const_plt = 'P',
+
+	OP_MODIFIER_opcode_suffix = 'z', /* b, w, l or q, depending on operand size */
+};
+
 static const char *constraint_type_to_str(enum constraint_type c)
 {
 	switch(c){
@@ -1312,13 +1330,31 @@ static void format_single_percent(
 	char *end;
 	const out_val *oval;
 	int deref = 0;
+	const char *op_str;
 
-	switch(**p){
-		case '[':
+	for(op_str = *p; *op_str; op_str++){
+		if(*op_str == '[')
 			UNIMPLEMENTED("named constraint");
+		else switch((enum operand_modifier)*op_str){
+			case OP_MODIFIER_reg_64bit: /* rax */
+			case OP_MODIFIER_reg_32bit: /* eax */
+			case OP_MODIFIER_reg_16bit: /* ax */
+			case OP_MODIFIER_reg_lobyte: /* al */
+			case OP_MODIFIER_reg_hibyte: /* ah */
 
-		/* TODO: operand modifiers (x86) */
+			case OP_MODIFIER_const_absmem: /* reg: (%rax), const: lbl(%rip) [non-pic only] */
+			case OP_MODIFIER_const_nopunct: /* lbl (as opposed to $lbl, lbl(%rip), etc */
+			case OP_MODIFIER_const_symnam: /* "m"(glob) --> "glob" (as opposed to "glob(%rip)" */
+			case OP_MODIFIER_const_plt: /* ? */
+
+			case OP_MODIFIER_opcode_suffix: /* b, w, l or q, depending on operand size */
+				UNIMPLEMENTED("operand modifier");
+
+			default:
+				goto done_op; /* break out for-loop */
+		}
 	}
+done_op:
 
 	this_index = strtol(*p, &end, 0);
 	if(end == *p){
