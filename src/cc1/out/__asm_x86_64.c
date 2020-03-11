@@ -158,8 +158,9 @@ enum constraint_mask
 
 	CONSTRAINT_MASK_REG_AD = 1 << 20,
 
-	CONSTRAINT_MASK_any_greg_mem_imm = 1 << 30,
-	CONSTRAINT_MASK_any = 1 << 31,
+	CONSTRAINT_MASK_any_greg_mem_imm = 1 << 21,
+	CONSTRAINT_MASK_any = 1 << 22,
+#define CONSTRAINT_MASK_LAST 22
 
 	/* Maximum number of matches is 9.
 	 * 9 = 1001, so 4 bits to encode a match-constraint.
@@ -167,11 +168,11 @@ enum constraint_mask
 	 * can't tell if 0 is present
 	 *
 	 * 1<<21 to 1<<25 are reserved */
-#define MATCHING_CONSTRAINT_SHIFT 21
+#define MATCHING_CONSTRAINT_SHIFT (CONSTRAINT_MASK_LAST + 1)
 #define MATCHING_CONSTRAINT_MASK  15 /* 1111 */
 #define MATCHING_CONSTRAINT_MASK_SHIFTED (MATCHING_CONSTRAINT_MASK << MATCHING_CONSTRAINT_SHIFT)
 
-#define CONSTRAINT_MAX_BIT (20 + 4) /* include matching bits */
+#define CONSTRAINT_MAX_BIT (CONSTRAINT_MASK_LAST + 4) /* include matching bits */
 };
 
 #define CONSTRAINT_ITER(i) \
