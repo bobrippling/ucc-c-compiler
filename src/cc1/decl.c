@@ -572,8 +572,12 @@ int decl_needs_GOTPLT(decl *d)
 		/* gcc acts as if variables are always local/accessible without the GOT in pie-code */
 		int is_var = 0; /* !type_is(d->ref, type_func) */
 
-		if((is_var || decl_defined(d, 0)) && !attribute_present(d, attr_weak))
-			return 0;
+		if((is_var || decl_defined(d, 0)) && !attribute_present(d, attr_weak)){
+			/* decl is local to the current TU, we don't need GOT/PLT
+			 * ... unless it's pure-inline */
+			if(!(type_is(d->ref, type_func) && decl_is_pure_inline(d)))
+				return 0;
+		}
 	}
 
 	switch(decl_visibility(d)){
