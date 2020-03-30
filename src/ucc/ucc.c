@@ -1374,6 +1374,33 @@ static int infer_target_from_argv0(struct triple *triple, const char *argv0)
 	return 0;
 }
 
+static void add_library_path(struct ucc *const state)
+{
+	const char *library_path = getenv("LIBRARY_PATH");
+	const char *p, *colon;
+
+	if(!library_path)
+		return;
+
+	for(p = library_path; *p; p = colon + 1){
+		char *dir;
+
+		colon = strchr(p, ':');
+
+		if(*p == ':')
+			continue;
+
+		dir = colon
+			? ustrprintf("-L%.*s", (int)(colon - p), p)
+			: ustrprintf("-L%s", p);
+
+		dynarray_add(&state->args[mode_link], dir);
+
+		if(!colon)
+			break;
+	}
+}
+
 int main(int argc, char **argv)
 {
 	size_t i;
@@ -1467,6 +1494,8 @@ usage:
 	}
 
 	merge_states(&state, &argstate);
+	if(state.mode >= mode_link)
+		add_library_path(&state);
 
 	{
 		const int ninputs = dynarray_count(state.inputs);
