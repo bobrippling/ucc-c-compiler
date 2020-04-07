@@ -107,6 +107,11 @@ struct uccvars
 	enum tristate multilib;
 	enum dyld dyld;
 	int help, dumpmachine;
+
+	struct ld_zoptions
+	{
+		int text;
+	} ld_z;
 };
 
 static char **remove_these;
@@ -938,6 +943,7 @@ word:
 					else if(!strcmp(argv[i], "-static-pie")){
 						vars->static_ = 1;
 						vars->pie = TRI_TRUE;
+						vars->ld_z.text = 1; /* disallow text-relocs */
 					}
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
@@ -1212,6 +1218,11 @@ static void state_from_triple(
 			if(vars->stdlibinc){
 				dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
 				dynarray_add(&state->args[mode_preproc], ustrprintf("/usr/include/%s", multilib_prefix));
+			}
+
+			if(vars->ld_z.text){
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-z"));
+				dynarray_add(&state->ldflags_pre_user, ustrdup("text"));
 			}
 			break;
 		}
