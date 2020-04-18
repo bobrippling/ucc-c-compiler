@@ -109,10 +109,19 @@
 	X(DW_FORM_flag, 0xc)     \
 	X(DW_FORM_block1, 0xa)
 
+/**
+ * fbreg - use value from DW_AT_frame_base (hardcoded, cfi, etc)
+ * breg - &(register + signed leb128 offset)
+ * reg - register contents
+ */
 #define DW_OPS               \
 	X(DW_OP_plus_uconst, 0x23) \
 	X(DW_OP_addr, 0x3)         \
+	X(DW_OP_fbreg, 0x91)       \
+	X(DW_OP_breg4, 0x74)       \
+	X(DW_OP_breg5, 0x75)       \
 	X(DW_OP_breg6, 0x76)       \
+	X(DW_OP_breg7, 0x77)       \
 	X(DW_OP_deref, 0x6)
 
 enum dwarf_tag
@@ -958,6 +967,19 @@ static int dbg_get_val_location(const out_val *v, long *const offset)
 	}
 }
 
+static int base_reg(void)
+{
+	if(platform_32bit()){
+		/* ebp => breg5
+		 * esp => breg4 */
+		return DW_OP_breg5;
+	}else{
+		/* ebp => breg6
+		 * esp => breg7 */
+		return DW_OP_breg6;
+	}
+}
+
 static void dbg_add_sym_location(struct DIE *param, const out_val *v)
 {
 	struct dwarf_block *locn;
@@ -971,7 +993,7 @@ static void dbg_add_sym_location(struct DIE *param, const out_val *v)
 	locn_data = umalloc(2 * sizeof *locn_data);
 
 	locn_data[0].type = BLOCK_HEADER;
-	locn_data[0].bits.v = DW_OP_breg6; /* rbp */
+	locn_data[0].bits.v = base_reg();
 	locn_data[1].type = BLOCK_LEB128_S;
 	locn_data[1].bits.v = offset;
 
@@ -1020,7 +1042,7 @@ static struct DIE *dbg_create_decl_die_local(
 		switch(d->sym->type){
 			case sym_local:
 				locn_ents[0].type = BLOCK_HEADER;
-				locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
+				locn_ents[0].bits.v = base_reg();
 
 				locn_ents[1].type = BLOCK_LEB128_S;
 				locn_ents[1].bits.v = offset;
