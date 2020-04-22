@@ -1,4 +1,4 @@
-// RUN: %ucc -fsyntax-only %s
+// RUN: %check --only %s
 
 #define packed __attribute((packed))
 
@@ -16,4 +16,23 @@ struct A
 			"offsetof(" #s ", " #m ") != " #n)
 
 assert_offset(struct A, c, 0);
-assert_offset(struct A, i, 1);
+assert_offset(struct A, i, 1); // CHECK: warning: taking the address
+
+
+// warning checks:
+
+struct B {
+	packed int x; // CHECK: note: declared here
+};
+
+struct packed C { // CHECK: note: declared here
+	int x;
+};
+
+void f(struct B *p){
+	(void)&p->x; // CHECK: warning: taking the address of a packed member
+}
+
+void g(struct C *p){
+	(void)&(*p).x; // CHECK: warning: taking the address of a packed member
+}
