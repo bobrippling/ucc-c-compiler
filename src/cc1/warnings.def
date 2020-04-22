@@ -108,6 +108,7 @@ GROUP("format", &cc1_warning.attr_printf_bad, &cc1_warning.attr_printf_toomany, 
 ALIAS("format-extra-args", attr_printf_toomany)/* gcc/clang */
 
 X("address-of-lvalue", address_of_lvalue)
+X("address-of-packed-member", address_of_packed)
 
 X("ignored-attributes", attr_ignored)
 X("attr-noderef", attr_noderef)

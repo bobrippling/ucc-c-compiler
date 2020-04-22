@@ -10,6 +10,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "expr_identifier.h"
+#include "expr_struct.h"
 
 const char *str_expr_addr(void)
 {
@@ -78,6 +79,20 @@ void fold_expr_addr(expr *e, symtable *stab)
 				}
 
 				d->flags |= DECL_FLAGS_ADDRESSED;
+			}
+		}else if(expr_kind(e->lhs, struct)){
+			decl *d = e->lhs->bits.struct_mem.d;
+			type *suty = e->lhs->lhs->tree_type;
+			struct_union_enum_st *su = type_is_s_or_u(
+					type_is_ptr(suty) ? type_is_ptr(suty) : suty);
+			int attr_on_decl;
+
+			assert(su);
+			if((attr_on_decl = !!attribute_present(d, attr_packed)) || attr_present(su->attr, attr_packed)){
+				const int warned = cc1_warn_at(&e->where, address_of_packed, "taking the address of a packed member");
+
+				if(warned)
+					note_at((attr_on_decl ? &d->where : &su->where), "declared here");
 			}
 		}
 
