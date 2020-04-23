@@ -1076,20 +1076,45 @@ static void state_from_triple(
 		case SYS_linux:
 		{
 			const char *target = triple_to_str(triple, 0);
-			int is_pie = vars->pie != TRI_FALSE;
+			int is_pie;
+			int default_pic;
+
+			switch(vars->pie){
+				case TRI_FALSE:
+					is_pie = 0;
+					break;
+				case TRI_TRUE:
+					is_pie = 1;
+					break;
+				case TRI_UNSET:
+					switch(triple->arch){
+						case ARCH_x86_64:
+							is_pie = 1;
+							break;
+						case ARCH_i386:
+							is_pie = 0;
+							break;
+					}
+			}
 
 			switch(triple->arch){
 				case ARCH_i386:
 					dynarray_add(&state->args[mode_assemb], ustrdup("--32"));
 					dynarray_add(&state->args[mode_link], ustrdup("-m"));
 					dynarray_add(&state->args[mode_link], ustrdup("elf_i386"));
+					default_pic = 0;
 					break;
 				case ARCH_x86_64:
 					dynarray_add(&state->args[mode_assemb], ustrdup("--64"));
 					dynarray_add(&state->args[mode_link], ustrdup("-m"));
 					dynarray_add(&state->args[mode_link], ustrdup("elf_x86_64"));
+					default_pic = 1;
 					break;
 			}
+
+			dynarray_add(
+					additional_argv,
+					ustrdup(default_pic ? "-fpic" : "-fno-pic"));
 
 			if(is_pie && !vars->shared)
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
