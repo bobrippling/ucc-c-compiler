@@ -56,6 +56,9 @@ static const struct
 	{ "__ORDER_BIG_ENDIAN__",    "4321", 0 },
 	{ "__ORDER_PDP_ENDIAN__",    "3412", 0 },
 
+	/* default */
+	{ "__USER_LABEL_PREFIX__", "", 0 },
+
 	/* non-standard */
 	{ "__BLOCKS__",     "1", 0 },
 
