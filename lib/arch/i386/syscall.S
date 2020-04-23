@@ -8,19 +8,20 @@ SYMBL(errno):
 	.globl SYMBL(__syscall)
 SYMBL(__syscall):
 #if defined(UCC_OS_LINUX)
+	push %ebp
 
 	// callee saves:
 	push %edi
 	push %esi
 	push %ebx
 
-	mov  4(%ebp), %eax
-	mov  8(%ebp), %ebx
-	mov 12(%ebp), %ecx
-	mov 16(%ebp), %edx
-	mov 20(%ebp), %esi
-	mov 24(%ebp), %edi
-	mov 28(%ebp), %ebp
+	mov ((4 + 1) * 4)(%esp), %eax
+	mov ((4 + 2) * 4)(%esp), %ebx
+	mov ((4 + 3) * 4)(%esp), %ecx
+	mov ((4 + 4) * 4)(%esp), %edx
+	mov ((4 + 5) * 4)(%esp), %esi
+	mov ((4 + 6) * 4)(%esp), %edi
+	mov ((4 + 6) * 4)(%esp), %ebp
 
 #elif defined(UCC_OS_DARWIN)
 	/* arguments are on the stack like so:
@@ -72,5 +73,6 @@ SYMBL(__syscall):
 	pop %ebx
 	pop %esi
 	pop %edi
+	pop %ebp
 #endif
 	ret
