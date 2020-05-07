@@ -14,7 +14,7 @@ MACRO = IMPL
 .PHONY: T tcheck clean
 
 T: tcheck
-	make -f abi.mk ${TARGETS}
+	make -f $(abspath $(lastword $(MAKEFILE_LIST))) ${TARGETS}
 
 run: T
 	for t in ${TARGETS}; \
