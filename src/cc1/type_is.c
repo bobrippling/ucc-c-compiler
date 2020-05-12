@@ -287,17 +287,21 @@ attribute **type_get_attrs_toplvl(type *t)
 	return attrs;
 }
 
-int type_is_bool_ish(type *r)
+enum type_boolish type_bool_category(type *t)
 {
-	if(type_is_ptr_or_block(r))
-		return 1;
+	if(type_is_ptr_or_block(t))
+		return TYPE_BOOLISH_OK;
 
-	r = type_is(r, type_btype);
+	t = type_is(t, type_btype);
+	if(t){
+		if(type_is_integral(t))
+			return TYPE_BOOLISH_OK;
 
-	if(!r)
-		return 0;
+		if(type_is_floating(t))
+			return TYPE_BOOLISH_CONV;
+	}
 
-	return type_is_integral(r);
+	return TYPE_BOOLISH_NO;
 }
 
 int type_is_fptr(type *r)

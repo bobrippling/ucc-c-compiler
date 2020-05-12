@@ -1483,10 +1483,22 @@ int fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 	}
 
 	if(chk & FOLD_CHK_BOOL){
-		if(!type_is_bool_ish(e->tree_type)){
-			cc1_warn_at(&e->where, test_bool,
-					"testing a non-boolean expression (%s), in %s",
-					type_to_str(e->tree_type), desc);
+		switch(type_bool_category(e->tree_type)){
+			case TYPE_BOOLISH_OK:
+				break;
+
+			case TYPE_BOOLISH_CONV:
+				cc1_warn_at(&e->where, test_bool,
+						"testing a non-boolean expression (%s), in %s",
+						type_to_str(e->tree_type), desc);
+				break;
+
+			case TYPE_BOOLISH_NO:
+				fold_had_error = 1;
+				warn_at_print_error(&e->where,
+						"%s-condition requires scalar type (not '%s')",
+						desc, type_to_str(e->tree_type));
+				break;
 		}
 
 		if(expr_kind(e, addr)){

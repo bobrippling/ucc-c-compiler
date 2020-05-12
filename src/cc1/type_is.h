@@ -35,7 +35,6 @@ type *type_next_1(type *r);
 
 int type_is_arith(type *);
 int type_is_autotype(type *);
-int type_is_bool_ish(type *);
 int type_is_callable(type *);
 int type_is_complete(type *);
 int type_is_const(type *);
@@ -52,6 +51,15 @@ int type_is_void(type *);
 int type_is_void_ptr(type *);
 int type_is_variably_modified(type *);
 int type_is_variably_modified_vla(type *, int *vla);
+
+enum type_boolish
+{
+	TYPE_BOOLISH_NO,
+	TYPE_BOOLISH_OK, /* int */
+	TYPE_BOOLISH_CONV, /* float */
+};
+
+enum type_boolish type_bool_category(type *);
 
 struct decl *type_is_tdef(type *);
 struct struct_union_enum_st *type_is_s_or_u(type *);
