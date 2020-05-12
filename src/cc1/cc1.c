@@ -104,6 +104,7 @@ int show_current_line;
 struct cc1_fopt cc1_fopt;
 
 struct target_details cc1_target_details;
+static const char *requested_default_visibility;
 
 static const char *debug_compilation_dir;
 
@@ -471,7 +472,7 @@ static int parse_mf_equals(
 			 * and calling the runtime support functions therein */
 			sanitize_opt_set_error(argv0, "trap");
 		}else if(!strncmp(arg_substr, "visibility=", 11)){
-			set_default_visibility(argv0, arg_substr + 11);
+			requested_default_visibility = arg_substr + 11;
 			return 1;
 		}else if(!strncmp(arg_substr, "debug-compilation-dir=", 22)){
 			debug_compilation_dir = arg_substr + 22;
@@ -787,6 +788,9 @@ dbg_unknown:
 		}
 		cc1_mstack_align = new;
 	}
+
+	if(requested_default_visibility)
+		set_default_visibility(argv[0], requested_default_visibility);
 
 	if(werror)
 		warnings_upgrade();
