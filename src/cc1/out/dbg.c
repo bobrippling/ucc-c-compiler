@@ -1600,7 +1600,7 @@ static void dwarf_flush_die(
 
 static void dwarf_flush(struct DIE_compile_unit *cu, long initial_offset)
 {
-	struct DIE_flush flush = {{ 0 }};
+	struct DIE_flush flush = { { 0 }, { 0 } };
 
 	flush.info.byte_cnt = initial_offset;
 	flush.info.sec = &section_dbg_info;

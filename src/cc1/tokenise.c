@@ -148,7 +148,7 @@ static int in_sysh;
 enum token curtok, curtok_uneat;
 int parse_had_error;
 
-numeric currentval = { { 0 } }; /* an integer literal */
+numeric currentval = { { 0 }, 0 }; /* an integer literal */
 
 static char *currentspelling = NULL; /* e.g. name of a variable */
 

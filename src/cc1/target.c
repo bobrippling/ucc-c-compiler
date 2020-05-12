@@ -61,6 +61,8 @@ static const struct target_as asconfig[] = {
 		1, /* visibility protected */
 		1, /* local common */
 		1, /* stackprotector via tls */
+		1, /* supports_type_and_size */
+		1, /* supports_section_flags */
 	},
 	{
 		{
@@ -71,6 +73,8 @@ static const struct target_as asconfig[] = {
 		1, /* visibility protected */
 		1, /* local common */
 		1, /* stackprotector via tls */
+		1, /* supports_type_and_size */
+		1, /* supports_section_flags */
 	},
 	{
 		{
@@ -81,6 +85,8 @@ static const struct target_as asconfig[] = {
 		0, /* visibility protected */
 		0, /* local common */
 		0, /* stackprotector via tls */
+		0, /* supports_type_and_size */
+		0, /* supports_section_flags */
 	},
 	{
 		{
@@ -91,6 +97,8 @@ static const struct target_as asconfig[] = {
 		1, /* visibility protected */
 		1, /* local common */
 		1, /* stackprotector via tls */
+		1, /* supports_type_and_size */
+		1, /* supports_section_flags */
 	},
 };
 
@@ -115,13 +123,6 @@ static const int alias_variables[] = {
 	1,
 };
 
-static const int supports_type_and_size_and_section_flags[] = {
-	1,
-	1,
-	0,
-	1,
-};
-
 ucc_unused
 static char syses[] = {
 #define X(pre, post) 0,
@@ -136,7 +137,6 @@ ucc_static_assert(size_match2, countof(syses) == countof(asconfig));
 ucc_static_assert(size_match3, countof(syses) == countof(dwarf_indirect_section_linkss));
 ucc_static_assert(size_match4, countof(syses) == countof(ld_indirect_call_via_plts));
 ucc_static_assert(size_match5, countof(syses) == countof(alias_variables));
-ucc_static_assert(size_match6, countof(syses) == countof(supports_type_and_size_and_section_flags));
 
 void target_details_from_triple(const struct triple *triple, struct target_details *details)
 {
@@ -146,6 +146,4 @@ void target_details_from_triple(const struct triple *triple, struct target_detai
 	details->dwarf_indirect_section_links = dwarf_indirect_section_linkss[triple->sys];
 	details->ld_indirect_call_via_plt = ld_indirect_call_via_plts[triple->sys];
 	details->alias_variables = alias_variables[triple->sys];
-	details->as.supports_type_and_size = supports_type_and_size_and_section_flags[triple->sys];
-	details->as.supports_section_flags = supports_type_and_size_and_section_flags[triple->sys];
 }

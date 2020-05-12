@@ -154,7 +154,7 @@ static const struct calling_conv_desc
 		}
 	},
 
-	[conv_stdcall]  = { 0, 0 },
+	[conv_stdcall]  = { 0, 0, { 0 }, 0, { 0 } },
 
 	[conv_fastcall] = {
 		0,
@@ -162,6 +162,10 @@ static const struct calling_conv_desc
 		{
 			{ X86_64_REG_RCX, 0 },
 			{ X86_64_REG_RDX, 0 }
+		},
+		0,
+		{
+			0
 		}
 	}
 };
