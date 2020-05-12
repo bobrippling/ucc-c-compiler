@@ -83,7 +83,9 @@ static void parse_test_init_expr(stmt *t, struct stmt_ctx *ctx)
 			t->expr = parse_expr_exp(ctx->scope, 0);
 		}else{
 			/* if(int i = 5) -> if(i) */
-			t->expr = expr_new_identifier(d->spel);
+			t->expr = expr_set_where(
+					expr_new_identifier(d->spel),
+					&d->where);
 		}
 	}else{
 		t->expr = parse_expr_exp(t->symtab, 0);
