@@ -16,6 +16,6 @@ main()
 	if(char *p = "DDD") // if-stmt has a new symbol table
 		;
 
-	if(char *p = "EEE", p[1]) // also new symtable here
+	if(char *p = "EEE"; p[1]) // also new symtable here
 		;
 }

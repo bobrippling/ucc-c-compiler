@@ -10,14 +10,14 @@ f()
 t_if()
 {
 	// if can define _one_ variable
-	if(int i = f(), i > 5){
+	if(int i = f(); i > 5){
 		if(i != 7)
 			abort();
 	}else{
 		abort();
 	}
 
-	if(int i = f(), i > 8){
+	if(int i = f(); i > 8){
 		abort();
 	}else{
 		i;
@@ -27,21 +27,21 @@ t_if()
 #ifdef FAIL
 t_if2()
 {
-	if(int i = f(), j = 2) // CHECK: error: undeclared identifier "j"
+	if(int i = f(), j = 3; j = 2) // CHECK: error: expecting token ')', got ','
 		;
 }
 #endif
 
 t_while()
 {
-	while(int i = f(), i > 5){
+	while(int i = f(); i > 5){
 		break;
 	}
 }
 
 t_switch()
 {
-	switch(int i = f(), i++)
+	switch(int i = f(); i++)
 		break;
 }
 
