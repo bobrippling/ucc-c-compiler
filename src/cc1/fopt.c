@@ -13,6 +13,7 @@ void fopt_default(struct cc1_fopt *opt)
 	opt->print_typedefs = 1;
 	opt->show_line = 1;
 	opt->track_initial_fnam = 1;
+	opt->colour_diagnostics = 1;
 
 	opt->cast_w_builtin_types = 1;
 	opt->common = 1;

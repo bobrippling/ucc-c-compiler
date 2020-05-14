@@ -19,6 +19,7 @@
 #include "../util/tmpfile.h"
 #include "../util/alloc.h"
 #include "../util/macros.h"
+#include "../util/colour.h"
 
 #include "tokenise.h"
 #include "cc1.h"
@@ -584,8 +585,12 @@ static void parse_Wmf_option(
 
 	if(arg_ty == 'f'){
 		unsigned char *opt = fopt_on(&cc1_fopt, arg_substr, invert);
-		if(opt)
+		if(opt){
+			if(opt == &cc1_fopt.colour_diagnostics)
+				colour_enable(*opt);
+
 			return;
+		}
 		goto unknown;
 	}
 
