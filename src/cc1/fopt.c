@@ -27,16 +27,16 @@ void fopt_default(struct cc1_fopt *opt)
 	opt->thread_jumps = 1;
 }
 
-int fopt_on(struct cc1_fopt *fopt, const char *argument, int invert)
+unsigned char *fopt_on(struct cc1_fopt *fopt, const char *argument, int invert)
 {
-#define X(arg, memb) else if(!strcmp(argument, arg)){ fopt->memb = !invert; return 1; }
+#define X(arg, memb) else if(!strcmp(argument, arg)){ fopt->memb = !invert; return &fopt->memb; }
 #define ALIAS(arg, memb) X(arg, memb)
-#define INVERT(arg, memb) else if(!strcmp(argument, arg)){ fopt->memb = invert; return 1; }
+#define INVERT(arg, memb) else if(!strcmp(argument, arg)){ fopt->memb = invert; return &fopt->memb; }
 #define EXCLUSIVE(arg, memb, excl) \
 	else if(!strcmp(argument, arg)){ \
 		fopt->memb = !invert;          \
 		fopt->excl = 0;                \
-		return 1;                      \
+		return &fopt->memb;            \
 	} /* -fpic -fno-pie is equivalent to -fno-pie - any prior pic options are overwritten */
 #define ALIAS_EXCLUSIVE(arg, memb, excl) EXCLUSIVE(arg, memb, excl)
 
@@ -48,5 +48,5 @@ int fopt_on(struct cc1_fopt *fopt, const char *argument, int invert)
 #undef EXCLUSIVE
 #undef ALIAS_EXCLUSIVE
 
-	return 0;
+	return NULL;
 }

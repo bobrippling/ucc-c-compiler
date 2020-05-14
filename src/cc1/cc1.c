@@ -583,7 +583,8 @@ static void parse_Wmf_option(
 	}
 
 	if(arg_ty == 'f'){
-		if(fopt_on(&cc1_fopt, arg_substr, invert))
+		unsigned char *opt = fopt_on(&cc1_fopt, arg_substr, invert);
+		if(opt)
 			return;
 		goto unknown;
 	}
