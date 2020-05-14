@@ -33,7 +33,7 @@ int fopt_on(struct cc1_fopt *fopt, const char *argument, int invert)
 #define ALIAS(arg, memb) X(arg, memb)
 #define INVERT(arg, memb) else if(!strcmp(argument, arg)){ fopt->memb = invert; return 1; }
 #define EXCLUSIVE(arg, memb, excl) \
-	if(!strcmp(argument, arg)){      \
+	else if(!strcmp(argument, arg)){ \
 		fopt->memb = !invert;          \
 		fopt->excl = 0;                \
 		return 1;                      \
