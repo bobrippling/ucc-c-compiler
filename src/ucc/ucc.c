@@ -19,6 +19,7 @@
 #include "../util/str.h"
 #include "../util/triple.h"
 #include "../util/macros.h"
+#include "../util/tristate.h"
 #include "str.h"
 #include "warning.h"
 #include "filemodes.h"
@@ -86,13 +87,6 @@ enum dyld
 	DYLD_DEFAULT,
 	DYLD_GLIBC,
 	DYLD_MUSL
-};
-
-enum tristate
-{
-	TRI_UNSET,
-	TRI_FALSE,
-	TRI_TRUE
 };
 
 struct uccvars
