@@ -7,6 +7,7 @@
 
 #include "../util/dynarray.h"
 #include "../util/alloc.h"
+#include "../util/colour.h"
 
 #include "sym.h"
 #include "str.h"
@@ -54,7 +55,7 @@ static void dump_newline(dump *ctx, int newline)
 
 static const char *maybe_colour(FILE *f, const char *col)
 {
-	return isatty(fileno(f)) ? col : "";
+	return colour_enabled(fileno(f)) ? col : "";
 }
 
 static void dump_desc_colour_newline(

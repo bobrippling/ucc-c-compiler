@@ -35,6 +35,7 @@ X("show-warning-option", show_warning_option)
 ALIAS("diagnostics-show-option", show_warning_option)
 X("track-initial-fname", track_initial_fnam)
 X("verbose-asm", verbose_asm)
+X("color-diagnostics", colour_diagnostics)
 
 /* codegen */
 X("cast-with-builtin-types", cast_w_builtin_types)

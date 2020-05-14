@@ -13,6 +13,7 @@
 #include "../util/platform.h"
 #include "../util/limits.h"
 #include "../util/macros.h"
+#include "../util/colour.h"
 
 #include "main.h"
 #include "macro.h"
@@ -483,17 +484,30 @@ int main(int argc, char **argv)
 				break;
 
 			case 'f':
-				if(!strcmp(argv[i]+2, "freestanding")){
-					freestanding = 1;
-				}else if(!strncmp(argv[i]+2, "message-length=", 15)){
-					const char *p = argv[i] + 17;
+			{
+				const int off = !strncmp(argv[i]+2, "no-", 3);
+				const char *arg = argv[i] + 2 + (off ? 3 : 0);
+
+				if(!strcmp(arg, "color-diagnostics")){
+					colour_enable(!off);
+
+				}else if(!strcmp(arg, "freestanding")){
+					freestanding = !off;
+
+				}else if(!strncmp(arg, "message-length=", 15)){
+					const char *p = arg + 17;
 					warning_length = atoi(p);
-				}else if(!strcmp(argv[i]+2, "cpp-offsetof")){
-					offsetof_macro = 1;
+					if(off)
+						goto usage;
+
+				}else if(!strcmp(arg, "cpp-offsetof")){
+					offsetof_macro = !off;
+
 				}else{
 					goto usage;
 				}
 				break;
+			}
 
 			case 'W':
 			{
