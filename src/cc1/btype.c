@@ -246,6 +246,9 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_float:
 			return 4;
 
+		case type_double:
+			return 8;
+
 		case type_long:
 		case type_ulong:
 			if(IS_32_BIT())
@@ -255,9 +258,6 @@ unsigned type_primitive_size(enum type_primitive tp)
 		case type_llong:
 		case type_ullong:
 			return UCC_SZ_LONG_LONG;
-
-		case type_double:
-			return IS_32_BIT() ? 4 : 8;
 
 		case type_ldouble:
 			/* 80-bit float */
