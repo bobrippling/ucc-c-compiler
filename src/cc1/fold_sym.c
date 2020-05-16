@@ -157,7 +157,10 @@ void symtab_check_static_asserts(symtable *stab)
 		}
 
 		if(!k.bits.num.val.i){
-			warn_at_print_error(&sa->e->where, "static assertion failure: %s", sa->s);
+			warn_at_print_error(
+					&sa->e->where,
+					sa->s ? "static assertion failure: %s" : "static assertion failure",
+					sa->s);
 			fold_had_error = 1;
 			continue;
 		}
