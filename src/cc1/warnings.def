@@ -52,6 +52,7 @@ X("mixed-code-decls", mixed_code_decls)
 X("truncation", truncation)
 
 X("pad", pad)
+ALIAS("padded", pad)
 
 X("tenative-init", tenative_init)
 
