@@ -529,11 +529,11 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 				if(d->bits.var.field_width){
 					const unsigned bits = const_fold_val_i(d->bits.var.field_width);
 
-					fprintf(stderr, ":%2u-%-2u",
+					fprintf(stderr, ":%2u-%-2u ",
 							d->bits.var.struct_offset_bitfield,
 							d->bits.var.struct_offset_bitfield + (bits == 0 ? 0 : bits - 1));
 				}else{
-					fprintf(stderr, "      ");
+					fprintf(stderr, "       ");
 				}
 
 				fprintf(stderr, "| .%-10s", d->spel ? d->spel : "<anon>");
@@ -575,7 +575,7 @@ warn:
 		check_sue_align_attr(sue, stab);
 
 		if(cc1_fopt.dump_layouts)
-			fprintf(stderr, "         | record size=%u align=%u\n", sue->size, sue->align);
+			fprintf(stderr, "          | record size=%u align=%u\n", sue->size, sue->align);
 	}
 
 	sue->foldprog = SUE_FOLDED_FULLY;
