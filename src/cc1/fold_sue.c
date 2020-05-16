@@ -280,6 +280,10 @@ static void fold_sue_calc_fieldwidth(
 	/* don't affect sz_max or align_max */
 	pack_state->sz = pack_state->align = 0;
 
+	d->bits.var.first_bitfield = bitfield->current_off == 0;
+	if(d->bits.var.first_bitfield)
+		assert(bitfield->current_limit == 0);
+
 	if(bits == 0){
 		/* align next field / treat as new bitfield
 		 * note we don't pad here - we don't want to
@@ -292,7 +296,7 @@ static void fold_sue_calc_fieldwidth(
 
 	}else if(*realign_next
 	|| !bitfield->current_off
-	|| bitfield->current_off + bits > bitfield->current_limit)
+	|| (bitfield->current_limit && bitfield->current_off + bits > bitfield->current_limit))
 	{
 		if(*realign_next || bitfield->current_off){
 			if(!*realign_next){
@@ -328,7 +332,6 @@ static void fold_sue_calc_fieldwidth(
 		/* we are onto the beginning of a new group */
 		struct_pack(d, offset, pack_state->sz, pack_state->align);
 		bitfield->first_off = d->bits.var.struct_offset;
-		d->bits.var.first_bitfield = 1;
 
 		/* now that we've done the struct packing w.r.t. bitfield size, we change
 		 * pack_state->align to the align of the declared member type itself, to
