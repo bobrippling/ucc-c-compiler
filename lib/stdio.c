@@ -390,8 +390,11 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 #endif
 
 			int lcount = 0;
+			int is_z = 0;
 			while(*fmt == 'l')
 				lcount++, fmt++;
+			if(*fmt == 'z')
+				is_z = 1, fmt++;
 
 			if(lcount > 2)
 				goto wat;
@@ -420,15 +423,20 @@ int vfprintf(FILE *file, const char *fmt, va_list ap)
 						['o'] = fprinto,
 					};
 
-					const uintmax_t n =
-						lcount == 0 ? va_arg(ap, int)  :
-						lcount == 1 ? va_arg(ap, long) :
+					uintmax_t n;
+					if(is_z || lcount == 1){
+						n = va_arg(ap, long);
+					}else if(lcount == 0){
+						n = va_arg(ap, int);
+					}else{
+						n =
 #ifdef LONG_LONG_SUPPORT
-						              va_arg(ap, long long)
+							va_arg(ap, long long)
 #else
-						              va_arg(ap, long)
+							va_arg(ap, long)
 #endif
-													;
+							;
+					}
 
 #ifdef PRINTF_ENABLE_PADDING
 					if(pad){
