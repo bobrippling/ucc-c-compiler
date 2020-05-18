@@ -1001,10 +1001,15 @@ funcargs *parse_func_arglist(symtable *scope)
 	funcargs *args = funcargs_new();
 
 	if(curtok == token_close_paren){
-		args->args_old_proto = 1;
-		cc1_warn_at(NULL, implicit_old_func,
-				"old-style function declaration (needs \"(void)\")");
-		goto empty_func;
+		if(cc1_std >= STD_C2X){
+			funcargs_empty_void(args);
+		}else{
+			args->args_old_proto = 1;
+			cc1_warn_at(NULL, implicit_old_func,
+					"old-style function declaration (needs \"(void)\")");
+		}
+
+		return args;
 	}
 
 	/* we allow default-to-int here, but need to make
@@ -1014,6 +1019,8 @@ funcargs *parse_func_arglist(symtable *scope)
 	 *
 	 * f( <here>  (int)) = f(int (int)) = f(int (*)(int))
 	 * f( <here> ident) -> old function
+	 *
+	 * ... or if we're >C20, we ignore K&R functions
 	 */
 	if(curtok != token_identifier || parse_at_tdef(scope)){
 		decl *argdecl = parse_arg_decl(scope);
@@ -1025,12 +1032,10 @@ funcargs *parse_func_arglist(symtable *scope)
 		&& ty_v->bits.type->primitive == type_void
 		&& !argdecl->spel)
 		{
-			/* x(void); */
-			funcargs_empty(args);
-			args->args_void = 1; /* (void) vs () */
+			funcargs_empty_void(args);
 
 			/* argdecl isn't leaked - it remains in scope, but nameless */
-			goto fin;
+			return args;
 		}
 
 		for(;;){
@@ -1066,8 +1071,6 @@ funcargs *parse_func_arglist(symtable *scope)
 			argdecl = parse_arg_decl(scope);
 		}
 
-fin:;
-
 	}else{
 		/* old func - list of idents */
 		do{
@@ -1094,12 +1097,16 @@ fin:;
 				break;
 		}while(1);
 
-		cc1_warn_at(NULL, omitted_param_types,
-				"old-style function declaration");
+		if(cc1_std >= STD_C2X){
+			warn_at_print_error(NULL, "old-style functions have been removed in C2X and later");
+			fold_had_error = 1;
+		}else{
+			cc1_warn_at(NULL, omitted_param_types,
+					"old-style function declaration");
+		}
 		args->args_old_proto = 1;
 	}
 
-empty_func:
 	return args;
 }
 

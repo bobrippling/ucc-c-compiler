@@ -38,6 +38,13 @@ void funcargs_empty(funcargs *func)
 	func->args_void = 0;
 }
 
+void funcargs_empty_void(funcargs *func)
+{
+	/* x(void); */
+	funcargs_empty(func);
+	func->args_void = 1; /* (void) vs () */
+}
+
 enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 {
 	int count_to;
