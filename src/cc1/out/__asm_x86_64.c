@@ -58,6 +58,7 @@ struct constrained_pri_val
 {
 	struct constrained_val *cval;
 	struct chosen_constraint *cchosen;
+	size_t original_index;
 	int is_output;
 	enum
 	{
@@ -67,7 +68,9 @@ struct constrained_pri_val
 		PRIORITY_FIXED_CHOOSE_REG,
 		PRIORITY_REG,
 		PRIORITY_MEM,
-		PRIORITY_ANY
+		PRIORITY_ANY,
+		PRIORITY_MATCHING /* not sure if this is a good idea */
+#define PRIORITY_LAST PRIORITY_MATCHING
 	} pri;
 };
 
@@ -476,6 +479,9 @@ static int prioritise_mask(enum constraint_mask mask)
 			return PRIORITY_ANY;
 	}
 
+	if(mask & MATCHING_CONSTRAINT_MASK_SHIFTED)
+		return PRIORITY_MATCHING;
+
 	return -1;
 }
 
@@ -617,7 +623,7 @@ static void assign_constraint(
 
 		CONSTRAINT_DEBUG("    min priority %d\n", min_priority);
 
-		if(min_priority > PRIORITY_ANY){
+		if(min_priority >= PRIORITY_LAST){
 			setupstate->error->operand = cval;
 			setupstate->error->str = ustrprintf(
 					"%s constraint unsatisfiable",
@@ -929,6 +935,7 @@ calculate_constraints(
 			p->is_output = 1;
 		}
 
+		p->original_index = i;
 		p->cval = from_val;
 		p->cchosen = from_cc;
 		p->pri = prioritise(from_val->calculated_constraint);
@@ -936,6 +943,16 @@ calculate_constraints(
 
 	/* order them */
 	qsort(entries, nentries, sizeof *entries, constrained_pri_val_cmp);
+
+	fprintf(stderr, "sorted constraints:\n");
+	for(i = 0; i < nentries; i++){
+		struct constrained_pri_val *p = &entries[i];
+
+		fprintf(stderr, "  %s pri=%d (asm argument %d)\n",
+				p->is_output ? "output" : "input",
+				p->pri,
+				(int)p->original_index);
+	}
 
 	/* assign values */
 	assign_constraints(setupstate, entries, nentries);
@@ -990,6 +1007,8 @@ static void constrain_input_matching(
 			const size_t match_idx = constraint->bits.match.idx;
 			const out_val *out_temp;
 
+			fprintf(stderr, "matching constraint, matching [%d]\n", (int)match_idx);
+
 			if((out_temp = output_temporaries[match_idx])){
 				switch(out_temp->type){
 					case V_CONST_I:
@@ -1007,6 +1026,7 @@ static void constrain_input_matching(
 				}
 			}else{
 				ICE("no output temporary for C_REG/C_TO_REG_OR_MEM [%zu]", match_idx);
+				//cval->val = (octx, constraint->bits.match.cval->val->t, 0);
 			}
 			break;
 		}
@@ -1252,10 +1272,16 @@ static void constrain_values(
 	size_t const total = outputs->n + inputs->n;
 	size_t forward_i;
 
+	fprintf(stderr, "constraining values...\n");
+
 	for(forward_i = 0; forward_i < total; forward_i++){
 		size_t i_sort = total - forward_i - 1;
 		struct chosen_constraint *constraint = sorted[i_sort].cchosen;
 
+
+		fprintf(stderr, "%s constraint %d\n",
+				sorted[i_sort].is_output ? "output" : "input",
+				(int)i_sort);
 
 		if(sorted[i_sort].is_output){
 			const out_val *out_temporary;
@@ -1268,12 +1294,14 @@ static void constrain_values(
 			/* may return null - in which case we reuse lvalue memory */
 
 			if(out_temporary){
+				fprintf(stderr, "  using temporary storage\n");
 				out_comment(setupstate->octx,
 						"using out-temp %s",
 						impl_val_str(out_temporary,0));
 			}
 
 			if(out_temporary && init_temporary){
+				fprintf(stderr, "  initialising temporary storage (rw constraint)\n");
 				callback_gen_val(setupstate, sorted[i_sort].cval);
 
 				out_temporary = initialise_output_temporary(
@@ -1284,20 +1312,21 @@ static void constrain_values(
 			}
 
 			if(out_temporary){
-				size_t output;
-				for(output = 0; output < outputs->n; output++)
-					if(&outputs->arr[output] == sorted[i_sort].cval)
-						break;
+				size_t output = sorted[i_sort].original_index;
 
 				assert(output < outputs->n && "couldn't find unsorted entry");
 				if(cc1_fopt.verbose_asm)
 					out_comment(setupstate->octx, "using temporary for output %zu", output);
+
+				fprintf(stderr, "  temporary storage, index %d\n", (int)output);
+
 				output_temporaries[output] = out_temporary;
 			}
 
 		}else{
 			/* get this input into the memory/register/constant
 			 * for the asm. if we can't, hard error */
+			fprintf(stderr, "  constraining input val\n");
 			constrain_input_val(
 					setupstate, constraint,
 					sorted[i_sort].cval,
@@ -1315,6 +1344,8 @@ static void constrain_values(
 			impl_use_callee_save(setupstate->octx, &constraint->bits.reg);
 		}
 	}
+
+	fprintf(stderr, "generation complete\n");
 }
 
 static void format_single_percent(
