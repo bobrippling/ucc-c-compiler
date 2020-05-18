@@ -596,7 +596,7 @@ type *op_required_promotion(
 #endif
 
 	if(type_is_void(tlhs) || type_is_void(trhs))
-		die_at(w, "use of void expression");
+		warn_at_print_error(w, "use of void expression");
 
 	{
 		const int l_ptr = !!type_is(tlhs, type_ptr);
@@ -611,8 +611,11 @@ type *op_required_promotion(
 					case TYPE_CONVERTIBLE_IMPLICIT:
 					case TYPE_CONVERTIBLE_EXPLICIT:
 					case TYPE_NOT_EQUAL:
-						die_at(w, "subtraction of distinct pointer types %s and %s",
+						warn_at_print_error(w, "subtraction of distinct pointer types %s and %s",
 								type_to_str(tlhs), type_to_str_r(buf, trhs));
+						fold_had_error = 1;
+						break;
+
 					case TYPE_QUAL_ADD:
 					case TYPE_QUAL_SUB:
 					case TYPE_QUAL_POINTED_ADD:
@@ -666,11 +669,16 @@ ptr_relation:
 
 			switch(op){
 				default:
-					die_at(w, "operation between pointer and integer must be + or -");
+					warn_at_print_error(w, "operation between pointer and integer must be + or -");
+					fold_had_error = 1;
+					break;
 
 				case op_minus:
-					if(!l_ptr)
-						die_at(w, "subtraction of pointer from integer");
+					if(!l_ptr){
+						warn_at_print_error(w, "subtraction of pointer from integer");
+						fold_had_error = 1;
+					}
+					break;
 
 				case op_plus:
 					break;
