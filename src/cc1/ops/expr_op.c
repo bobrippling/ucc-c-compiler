@@ -599,14 +599,14 @@ type *op_required_promotion(
 		warn_at_print_error(w, "use of void expression");
 
 	{
-		const int l_ptr = !!type_is(tlhs, type_ptr);
+		type *l_pointee = type_is_ptr(tlhs);
+		const int l_ptr = !!l_pointee;
 		const int r_ptr = !!type_is(trhs, type_ptr);
 
 		if(l_ptr && r_ptr){
 			char buf[TYPE_STATIC_BUFSIZ];
 
 			if(op == op_minus){
-				/* don't allow void * */
 				switch(type_cmp(tlhs, trhs, 0)){
 					case TYPE_CONVERTIBLE_IMPLICIT:
 					case TYPE_CONVERTIBLE_EXPLICIT:
@@ -623,6 +623,8 @@ type *op_required_promotion(
 					case TYPE_QUAL_NESTED_CHANGE:
 					case TYPE_EQUAL:
 					case TYPE_EQUAL_TYPEDEF:
+						if(type_is_void(l_pointee))
+							cc1_warn_at(w, arith_voidp, "arithmetic on void pointer");
 						break;
 				}
 
