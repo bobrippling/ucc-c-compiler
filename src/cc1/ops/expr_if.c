@@ -157,9 +157,21 @@ static void try_pointer_propagate(
 
 			cc1_warn_at(&e->where,
 					mismatch_conditional,
-					"conditional type mismatch (%s vs %s)",
+					"pointer type mismatch (%s vs %s)",
 					type_to_str(tt_l), type_to_str_r(buf, tt_r));
 		}
+	}
+
+	/* gcc/clang allow pointer-int mixing here */
+	if(!e->tree_type && (l_ptr || r_ptr)){
+		char buf[TYPE_STATIC_BUFSIZ];
+
+		e->tree_type = l_ptr ? tt_l : tt_r;
+
+		cc1_warn_at(&e->where,
+				mismatch_conditional,
+				"pointer/integer type mismatch (%s vs %s)",
+				type_to_str(tt_l), type_to_str_r(buf, tt_r));
 	}
 
 	if(!e->tree_type){

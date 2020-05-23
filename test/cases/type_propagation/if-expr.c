@@ -52,6 +52,10 @@ fptr()
 
 __auto_type null_and_int = 3 ? (void*)0 : 0;
 
+// ------------ ptr & int
+
+TY_EQ(unsigned char *, 1 ? 3 : (unsigned char *)5);
+
 // ------------ structs
 
 structs()
