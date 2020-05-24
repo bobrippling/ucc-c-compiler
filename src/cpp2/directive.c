@@ -121,6 +121,9 @@ static void handle_define(token **tokens)
 						case TOKEN_CLOSE_PAREN:
 							i++;
 							goto for_fin;
+						case TOKEN_ELIPSIS:
+							CPP_DIE("GNU-variadic macros aren't supported");
+
 						default:
 							CPP_DIE("expected: comma or close paren");
 					}
