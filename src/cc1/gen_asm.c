@@ -30,6 +30,7 @@
 #include "gen_style.h"
 #include "out/val.h"
 #include "out/ctx.h"
+#include "out/write.h"
 #include "cc1_out_ctx.h"
 #include "inline.h"
 #include "type_nav.h"
@@ -100,6 +101,23 @@ void gen_stmt(const stmt *t, out_ctx *octx)
 		out_dbg_where(octx, &t->where);
 
 	t->f_gen(t, octx);
+
+	if(octx){
+		/* this aids in debugging loops with no body or no test/increment, where
+		 * the debugger would otherwise only see a single line, and so continue
+		 * until the loop completed.
+		 *
+		 * for(;;){
+		 *   v++
+		 * } // we emit this location before the jump to the body
+		 *
+		 * for(i = 0; i < n; i++) {
+		 *   ;
+		 * } // we emit this location before the jump to the test
+		 */
+		out_dbg_where(octx, &t->where_cbrace);
+		out_dbg_flush(octx);
+	}
 }
 
 static void assign_arg_vals(decl **decls, const out_val *argvals[], out_ctx *octx)

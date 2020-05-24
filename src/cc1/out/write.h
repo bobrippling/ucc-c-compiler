@@ -25,7 +25,7 @@ void out_asm2(
 		enum p_opts opts,
 		const char *fmt, ...) ucc_printflike(3, 4);
 
-void out_dbg_flush(out_ctx *, out_blk *);
+void out_dbg_flush(out_ctx *);
 
 unsigned dbg_add_file(struct out_dbg_filelist **files, const char *nam);
 
