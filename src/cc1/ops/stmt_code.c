@@ -328,8 +328,11 @@ void gen_block_decls(
 		{
 			/* if it's a string, go,
 			 * if it's the most-unnested func. prototype, go */
-			if(!func || !d->proto)
-				gen_asm_global_w_store(d, 1, octx);
+			if(!func || !d->proto){
+				const int emit_tenatives = (d->store & STORE_MASK_STORE) != store_extern;
+
+				gen_asm_global_w_store(d, emit_tenatives, octx);
+			}
 			continue;
 		}
 
