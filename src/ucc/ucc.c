@@ -1140,9 +1140,8 @@ static void state_from_triple(
 				}
 			}
 
-			dynarray_add(&state->ldflags_post_user, ustrdup("-L" LINUX_LIBC_PREFIX));
-
 			if(vars->defaultlibs){
+				dynarray_add(&state->ldflags_post_user, ustrdup("-L" LINUX_LIBC_PREFIX));
 				dynarray_add(&state->ldflags_post_user, ustrdup("-lc"));
 			}
 
