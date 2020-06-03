@@ -1194,7 +1194,7 @@ static int op_sizeof_div_check(expr *e)
 	if(lhs->expr && type_is_ptr(lhs->expr->tree_type)){
 		return cc1_warn_at(&e->where,
 				sizeof_ptr_div,
-				"division of sizeof(%s) - did you mean sizoef(array)?",
+				"division of sizeof(%s) - did you mean sizeof(array)?",
 				type_to_str(lhs->expr->tree_type));
 	}
 
