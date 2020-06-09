@@ -105,6 +105,8 @@ for(@ARGV){
 	}
 }
 
+usage() unless $in;
+
 my $expected = "$in.dwarf";
 my $ucc = $ENV{UCC} or die "no \$UCC";
 
