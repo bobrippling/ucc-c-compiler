@@ -148,7 +148,7 @@ static enum type_cmp type_cmp_r(
 			break;
 
 		case type_array:
-			if(a->bits.array.is_vla || b->bits.array.is_vla){
+			if(a->bits.array.vla_kind || b->bits.array.vla_kind){
 				/* fine, pretend they're equal even if different expressions */
 				ret = TYPE_EQUAL_TYPEDEF;
 
@@ -644,7 +644,7 @@ static void type_add_str(
 			const char *sz_space = "";
 
 			BUF_ADD("[");
-			if(r->bits.array.is_vla == 0 && r->bits.array.is_static){
+			if(r->bits.array.vla_kind == VLA_NO && r->bits.array.is_static){
 				BUF_ADD("static");
 				sz_space = " ";
 			}
@@ -655,8 +655,8 @@ static void type_add_str(
 				sz_space = " ";
 			}
 
-			switch(r->bits.array.is_vla){
-				case 0:
+			switch(r->bits.array.vla_kind){
+				case VLA_NO:
 					if(r->bits.array.size){
 						BUF_ADD(
 								"%s%" NUMERIC_FMT_D,
@@ -889,7 +889,7 @@ static unsigned type_hash2(
 			if(t->bits.array.size)
 				hash ^= nest_hash(t->bits.array.size->tree_type);
 			hash ^= 1 << t->bits.array.is_static;
-			hash ^= 1 << t->bits.array.is_vla;
+			hash ^= 1 << t->bits.array.vla_kind;
 			break;
 
 		case type_block:

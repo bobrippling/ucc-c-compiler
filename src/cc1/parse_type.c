@@ -1158,7 +1158,8 @@ struct type_parsed
 		{
 			expr *size;
 			enum type_qualifier qual;
-			unsigned is_static : 1, is_vla : 2;
+			enum vla_kind vla_kind;
+			unsigned is_static : 1;
 		} array;
 	} bits;
 
@@ -1256,7 +1257,8 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 	while(accept(token_open_square)){
 		expr *size = NULL;
 		enum type_qualifier q = qual_none;
-		int is_static = 0, is_vla = 0;
+		int is_static = 0;
+		enum vla_kind vla_kind = VLA_NO;
 
 		/* parse int x[restrict|static ...] */
 		for(;;){
@@ -1308,7 +1310,7 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 					if(k.type != CONST_NUM
 					|| (k.nonstandard_const && !cc1_fopt.fold_const_vlas))
 					{
-						is_vla = VLA;
+						vla_kind = VLA;
 					}
 					else if(!K_INTEGRAL(k.bits.num))
 					{
@@ -1316,7 +1318,7 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 					}
 				}
 			}else{
-				is_vla = VLA_STAR;
+				vla_kind = VLA_STAR;
 			}
 		}
 
@@ -1327,7 +1329,7 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 		base->bits.array.size = size;
 		base->bits.array.qual = q;
 		base->bits.array.is_static = is_static;
-		base->bits.array.is_vla = is_vla;
+		base->bits.array.vla_kind = vla_kind;
 	}
 
 	return base;
@@ -1458,25 +1460,29 @@ static type *parse_type_declarator_to_type(
 			case PARSED_ARRAY:
 				qual = i->bits.array.qual;
 
-				if(i->bits.array.is_vla){
-					if(i->bits.array.is_static){
-						warn_at_print_error(&i->where,
-								"'static' can't be used with a star-modified array");
-						fold_had_error = 1;
-					}
+				switch(i->bits.array.vla_kind){
+					case VLA_STAR:
+						if(i->bits.array.is_static){
+							warn_at_print_error(&i->where,
+									"'static' can't be used with a star-modified array");
+							fold_had_error = 1;
+						}
+						/* fall */
 
+					case VLA:
 					ty = type_vla_of(
 							ty, i->bits.array.size,
-							i->bits.array.is_vla);
+							i->bits.array.vla_kind);
+						break;
 
-				}else{
-					ty = type_array_of_static(
-							ty,
-							i->bits.array.size,
-							i->bits.array.is_static);
+					case VLA_NO:
+						ty = type_array_of_static(
+								ty,
+								i->bits.array.size,
+								i->bits.array.is_static);
 				}
 				assert(ty->type == type_array);
-				assert(ty->bits.array.is_vla == i->bits.array.is_vla);
+				assert(ty->bits.array.vla_kind == i->bits.array.vla_kind);
 
 				if(i->bits.array.is_static && i->prev){
 					fold_had_error = 1;
@@ -2216,7 +2222,7 @@ static int warn_for_unused_typename(
 static int check_star_modifier_1(type *t, where *w)
 {
 	assert(t->type == type_array);
-	if(t->bits.array.is_vla == VLA_STAR){
+	if(t->bits.array.vla_kind == VLA_STAR){
 		warn_at_print_error(w,
 				"star modifier can only appear on prototypes");
 		fold_had_error = 1;

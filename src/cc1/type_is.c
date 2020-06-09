@@ -395,7 +395,7 @@ int type_is_complete(type *r)
 		}
 
 		case type_array:
-			return (r->bits.array.is_vla || r->bits.array.size)
+			return (r->bits.array.vla_kind || r->bits.array.size)
 				&& type_is_complete(r->ref);
 
 		case type_func:
@@ -414,10 +414,10 @@ int type_is_complete(type *r)
 	return 1;
 }
 
-type *type_is_vla(type *ty, enum vla_kind kind)
+type *type_is_vla(type *ty, enum vla_dimension kind)
 {
 	for(; (ty = type_is(ty, type_array)); ty = ty->ref){
-		if(ty->bits.array.is_vla)
+		if(ty->bits.array.vla_kind)
 			return ty;
 
 		if(kind == VLA_TOP_DIMENSION)
@@ -439,7 +439,7 @@ int type_is_variably_modified_vla(type *const ty, int *vla)
 	for(ti = ty; ti; first = 0, ti = type_next(ti)){
 		type *test = type_is(ti, type_array);
 
-		if(test && test->bits.array.is_vla){
+		if(test && test->bits.array.vla_kind){
 			if(vla && first)
 				*vla = 1;
 			return 1;

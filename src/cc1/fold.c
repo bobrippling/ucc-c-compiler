@@ -436,7 +436,7 @@ static void fold_type_w_attr(
 
 				FOLD_EXPR(r->bits.array.size, stab);
 
-				if(r->bits.array.is_vla){
+				if(r->bits.array.vla_kind){
 					if(cc1_std < STD_C99){
 						cc1_warn_at(
 								&r->bits.array.size->where,

@@ -1,4 +1,4 @@
-// RUN: %check -e %s
+// RUN: %check --only -e %s
 
 int bad(char ch[static *]); // CHECK: error: 'static' can't be used with a star-modified array
 

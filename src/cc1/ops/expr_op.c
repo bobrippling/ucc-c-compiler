@@ -860,7 +860,7 @@ static expr *expr_is_nonvla_casted_array(expr *e)
 		array = array->expr;
 
 	if((test = type_is(array->tree_type, type_array))
-	&& !test->bits.array.is_vla)
+	&& !test->bits.array.vla_kind)
 	{
 		return array;
 	}
