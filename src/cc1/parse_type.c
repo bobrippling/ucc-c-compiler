@@ -1460,7 +1460,7 @@ static type *parse_type_declarator_to_type(
 
 				if(i->bits.array.is_vla){
 					if(i->bits.array.is_static){
-						warn_at_print_error(NULL,
+						warn_at_print_error(&i->where,
 								"'static' can't be used with a star-modified array");
 						fold_had_error = 1;
 					}
