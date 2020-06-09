@@ -292,12 +292,22 @@ static void gen_auto_decl(decl *d, out_ctx *octx)
 	}
 }
 
+static void new_block_for_scope(out_ctx *octx, const char *desc)
+{
+	if(out_ctx_current_blk_is_empty(octx))
+		return;
+
+	out_ctrl_transfer_make_current(octx, out_blk_new(octx, desc));
+}
+
 void gen_block_decls(
 		symtable *stab,
 		struct out_dbg_lbl *pushed_lbls[2],
 		out_ctx *octx)
 {
 	decl **diter;
+
+	new_block_for_scope(octx, "scope_enter");
 
 	if(cc1_gdebug != DEBUG_OFF && !stab->lbl_begin){
 		char *dbg_lbls[2];
@@ -392,6 +402,8 @@ void gen_block_decls_dealloca(
 
 	if(cc1_gdebug != DEBUG_OFF)
 		out_dbg_scope_leave(octx, stab);
+
+	new_block_for_scope(octx, "scope_leave");
 }
 
 static void gen_scope_destructors(symtable *scope, out_ctx *octx)

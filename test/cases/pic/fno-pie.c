@@ -5,7 +5,7 @@
 // RUN: grep 'callq __stack_chk_fail$' %t
 // RUN: grep 'callq abort2$' %t
 // RUN: grep 'leaq str.1,' %t
-// RUN: grep 'leaq .Lblk.10,' %t
+// RUN: grep 'leaq .Lblk.11,' %t
 //
 // and again with PIC:
 //
@@ -13,7 +13,7 @@
 // RUN: grep 'callq __stack_chk_fail@PLT' %t
 // RUN: grep 'callq abort2@PLT' %t
 // RUN: grep 'leaq str.1(%%rip),' %t
-// RUN: grep 'leaq .Lblk.10(%%rip),' %t
+// RUN: grep 'leaq .Lblk.11(%%rip),' %t
 
 void f(const char *s, void *p)
 {

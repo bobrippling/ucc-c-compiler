@@ -110,6 +110,7 @@ ucc_wur const out_val *out_call(out_ctx *,
 ucc_wur out_blk *out_blk_new(out_ctx *, const char *desc);
 void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
 ucc_wur out_blk *out_ctx_current_blk(out_ctx *);
+ucc_wur int out_ctx_current_blk_is_empty(out_ctx *);
 
 out_blk *out_blk_entry(out_ctx *);
 out_blk *out_blk_postprologue(out_ctx *);

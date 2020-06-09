@@ -69,4 +69,7 @@ void blk_transfer(out_blk *from, out_blk *to);
 #define blk_add_insn(blk, insn) \
 	dynarray_add(&(blk)->insns, (insn))
 
+#define blk_is_empty(blk) \
+	(!(blk)->insns)
+
 #endif
