@@ -33,7 +33,9 @@ static int check_constraint(asm_param *param, symtable *stab)
 		desc = "__asm__() input";
 	}
 
-	return fold_check_expr(param->exp, FOLD_CHK_NO_ST_UN, desc);
+	/* struct/unions are permitted, since we treat them as lvalues and it's
+	 * the asm itself that dereferences. e.g. x86's fxsave */
+	return fold_check_expr(param->exp, 0, desc);
 }
 
 void fold_stmt_asm(stmt *s)
