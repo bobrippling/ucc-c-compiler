@@ -296,6 +296,7 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 		const char *sp;
 		const out_val **argvals;
 		symtable *arg_symtab;
+		int bail = 0;
 
 		if(!d->bits.func.code)
 			return;
@@ -305,10 +306,22 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 		arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
 		for(aiter = symtab_decls(arg_symtab); aiter && *aiter; aiter++){
 			decl *arg = *aiter;
+			struct_union_enum_st *su;
 
 			if(arg->sym->type == sym_arg)
 				nargs++;
+
+			if((su = type_is_s_or_u(arg->ref))){
+				warn_at_print_error(
+						&arg->where,
+						"%s arguments are not yet implemented",
+						sue_str_type(su->primitive));
+				gen_had_error = 1;
+				bail = 1;
+			}
 		}
+		if(bail)
+			return;
 
 		argvals = nargs ? umalloc(nargs * sizeof *argvals) : NULL;
 
