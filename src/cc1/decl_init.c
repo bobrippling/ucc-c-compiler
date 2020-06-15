@@ -873,6 +873,7 @@ static decl_init **decl_init_brace_up_sue2(
 			if(!mem){
 				/* if we're an anonymous struct, return out */
 				if(is_anon){
+					/* ??? dirty hack for lower recursion? */
 					this->desig = des;
 					break;
 				}
@@ -902,6 +903,7 @@ static decl_init **decl_init_brace_up_sue2(
 						if(replacing && decl_init_has_sideeffects(replacing))
 							replaced_sideeffects_location = &replacing->where;
 
+						/* this call needs to handle anon-inserted-members-from-union init? */
 						braced_sub = decl_init_brace_up_aggregate(
 								replacing, iter, stab, jmem->ref,
 								(aggregate_brace_f *)&decl_init_brace_up_sue2, in,
