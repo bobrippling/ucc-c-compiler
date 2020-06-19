@@ -30,6 +30,8 @@ void expr_block_got_params(
 
 	df->spel = out_label_block("globl");
 	df->block_expr = e;
+	df->store = store_static;
+	decl_use(df);
 
 	fold_funcargs(args, symtab, NULL);
 
