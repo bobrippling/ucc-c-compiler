@@ -1125,12 +1125,29 @@ static const out_val *temporary_for_output(
 				case V_CONST_F:
 					break;
 				case V_REG:
-				case V_LBL:
 				case V_REGOFF:
 				case V_SPILT:
 					return NULL; /* matched */
+
+				case V_LBL:
+					if(cval->val->bits.lbl.pic_type & OUT_LBL_PIC && !(cval->val->bits.lbl.pic_type & OUT_LBL_PICLOCAL)){
+						/* it's PIC, we need to get its address and use that */
+						const out_val *addr;
+						struct vreg reg;
+
+						v_unused_reg(octx, 1, 0, &reg, NULL);
+						/* FIXME: need a register that's not clobbered already */
+
+						addr = impl_load(octx, out_val_retain(octx, cval->val), &reg);
+						/* FIXME: need to get this to be mentioned in the inline asm as `(%reg)`, not `%reg` */
+
+						return addr;
+					}else{
+						break;
+					}
 			}
 
+			/* is this valid? we shouldn't be creating new mem just for this - not an lval, abort instead */
 			spill = out_aalloc(octx, type_size(ty, NULL), type_align(ty, NULL), ty);
 
 			return spill;
