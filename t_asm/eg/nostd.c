@@ -1,6 +1,8 @@
 //#include <unistd.h>
 //#include <sys/syscall.h>
 
+#define SYSCALL_CLOBBERS "rcx", "r11"
+
 void start() //asm("start")
 {
 	//register int    syscall_no  asm("rax") = 1;
@@ -15,6 +17,7 @@ void start() //asm("start")
 			, "D"(1)
 			, "S"("hello\n")
 			, "d"(6)
+			: SYSCALL_CLOBBERS
 	);
 
 	asm(
@@ -24,6 +27,7 @@ void start() //asm("start")
 			:
 			: "a"(33554433)
 			, "D"(61)
+			: SYSCALL_CLOBBERS
 		 );
 }
 
