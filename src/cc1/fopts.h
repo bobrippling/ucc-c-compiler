@@ -18,6 +18,7 @@ X("plan9-extensions", plan9_extensions)
 X("signed-char", signed_char)
 INVERT("unsigned-char", signed_char)
 X("force-va_list-type", force_valist_type)
+X("strict-aliasing", strict_aliasing) /* ignored, just for compat */
 
 /* frontend output */
 X("dump-bblocks", dump_basic_blocks)
