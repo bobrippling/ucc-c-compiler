@@ -66,9 +66,6 @@ int parse_and_fold(symtable_global *globals)
 				&globals->stab,
 				&globals->stab, &new);
 
-		/* global struct layout-ing */
-		symtab_fold_sues(&globals->stab);
-
 		if(new){
 			link_gasms(&last_gasms, *new);
 
@@ -95,8 +92,6 @@ int parse_and_fold(symtable_global *globals)
 
 	EAT(token_eof);
 
-	symtab_fold_sues(&globals->stab); /* superflous except for empty
-	                                  * files/trailing struct defs */
 	symtab_fold_decls(&globals->stab); /* check for dups */
 	symtab_check_rw(&globals->stab); /* basic static analysis */
 	symtab_check_static_asserts(&globals->stab);

@@ -478,7 +478,6 @@ static void fold_type_w_attr(
 			/* necessary for struct-scope checks when there's no {} body */
 			r->bits.func.arg_scope->are_params = 1;
 
-			symtab_fold_sues(r->bits.func.arg_scope);
 			fold_funcargs(r->bits.func.args, r->bits.func.arg_scope, attr);
 			fold_calling_conv(r);
 			break;
@@ -510,7 +509,7 @@ static void fold_type_w_attr(
 			struct_union_enum_st *sue = type_is_s_or_u_or_e(r);
 
 			if(sue){
-				fold_sue(sue, stab);
+				assert(sue->foldprog == SUE_FOLDED_FULLY);
 
 				if(stab->are_params){
 					struct_union_enum_st *above = sue_find_descend(

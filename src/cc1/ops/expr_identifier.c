@@ -54,6 +54,7 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 			break;
 		}
 		case IDENT_ENUM:
+			/* FIXME: delete all -1 comparisons with enum members */
 			if(e->bits.ident.bits.enum_mem->val == (void *)-1){
 				/* part-way through processing an enum, we reference one in the
 				 * future that hasn't had its value set. invalid, error caught later

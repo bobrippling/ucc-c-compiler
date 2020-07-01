@@ -195,9 +195,6 @@ void fold_stmt_code(stmt *s)
 	enum decl_storage func_store = store_default;
 	decl *in_func;
 
-	/* local struct layout-ing */
-	symtab_fold_sues(s->symtab);
-
 	in_func = symtab_func(s->symtab);
 
 	if(in_func)

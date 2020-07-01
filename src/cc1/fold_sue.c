@@ -67,6 +67,7 @@ static void struct_pack_finish_bitfield(
 	}
 }
 
+/* FIXME: merge this into parse_type.c:parse_enum_members() */
 static void fold_enum(struct_union_enum_st *en, symtable *stab)
 {
 	const int has_bitmask = !!attr_present(en->attr, attr_enum_bitmask);
@@ -458,7 +459,7 @@ void fold_sue(struct_union_enum_st *const sue, symtable *stab)
 	sue->foldprog = SUE_FOLDED_PARTIAL;
 
 	if(sue->primitive == type_enum){
-		fold_enum(sue, stab);
+		assert(sue->foldprog == SUE_FOLDED_FULLY);
 
 	}else{
 		unsigned align_max = 1;

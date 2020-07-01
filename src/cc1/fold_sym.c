@@ -566,16 +566,7 @@ void symtab_chk_labels(symtable *stab)
 	}
 }
 
-void symtab_fold_sues(symtable *stab)
-{
-	struct_union_enum_st **sit;
-
-	for(sit = stab->sues; sit && *sit; sit++)
-		fold_sue(*sit, stab);
-}
-
 void symtab_fold_decls_sues(symtable *stab)
 {
-	symtab_fold_sues(stab);
 	symtab_fold_decls(stab);
 }

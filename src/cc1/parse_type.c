@@ -74,6 +74,69 @@ static void emit_redef_sue_error(
 	note_at(&already_existing->where, "previous definition here");
 }
 
+static void parse_enum_members(
+		struct_union_enum_st **const predecl_sue,
+		sue_member ***members,
+		const char *spel,
+		enum type_primitive prim,
+		symtable *scope,
+		where *const sue_loc)
+{
+	if(!*predecl_sue){
+		assert(!spel);
+		*predecl_sue = sue_predeclare(scope, NULL, prim, sue_loc);
+	}
+
+	(*predecl_sue)->membs_progress = SUE_MEMBS_PARSING;
+
+	for(;;){
+		where w;
+		expr *e;
+		char *sp;
+		attribute **en_attr = NULL;
+
+		sp = token_eat_identifier(NULL, &w);
+		if(sp){
+			/* guard this, so we skip adding a NULL spel to the enum list */
+			parse_add_attr(&en_attr, scope);
+
+			if(accept(token_assign)){
+				e = PARSE_EXPR_CONSTANT(scope, 0); /* no commas */
+				/* ensure we fold before this enum member is added to the scope,
+				 * e.g.
+				 * enum { A };
+				 * f()
+				 * {
+				 *   enum {
+				 *     A = A // the right-most A here resolves to the global A
+				 *   };
+				 * }
+				 */
+
+				fold_expr_nodecay(e, scope);
+			}else{
+				e = NULL;
+			}
+
+			enum_vals_add(members, &w, sp, e, /*released:*/en_attr);
+
+			(*predecl_sue)->members = *members;
+		}
+
+		if(!accept_where(token_comma, &w))
+			break;
+
+		if(curtok != token_identifier){
+			if(cc1_std < STD_C99)
+				cc1_warn_at(&w, c89_parse_trailingcomma,
+						"trailing comma in enum definition");
+			break;
+		}
+	}
+
+	(*predecl_sue)->members = NULL;
+}
+
 static struct_union_enum_st *parse_sue_definition(
 		sue_member ***members,
 		char **const spel,
@@ -108,59 +171,7 @@ static struct_union_enum_st *parse_sue_definition(
 
 	/* sue is now in scope, but incomplete */
 	if(prim == type_enum){
-		if(!predecl_sue){
-			assert(!*spel);
-			predecl_sue = sue_predeclare(scope, NULL, prim, sue_loc);
-		}
-
-		predecl_sue->membs_progress = SUE_MEMBS_PARSING;
-
-		for(;;){
-			where w;
-			expr *e;
-			char *sp;
-			attribute **en_attr = NULL;
-
-			sp = token_eat_identifier(NULL, &w);
-			if(sp){
-				/* guard this, so we skip adding a NULL spel to the enum list */
-				parse_add_attr(&en_attr, scope);
-
-				if(accept(token_assign)){
-					e = PARSE_EXPR_CONSTANT(scope, 0); /* no commas */
-					/* ensure we fold before this enum member is added to the scope,
-					 * e.g.
-					 * enum { A };
-					 * f()
-					 * {
-					 *   enum {
-					 *     A = A // the right-most A here resolves to the global A
-					 *   };
-					 * }
-					 */
-
-					fold_expr_nodecay(e, scope);
-				}else{
-					e = NULL;
-				}
-
-				enum_vals_add(members, &w, sp, e, /*released:*/en_attr);
-
-				predecl_sue->members = *members;
-			}
-
-			if(!accept_where(token_comma, &w))
-				break;
-
-			if(curtok != token_identifier){
-				if(cc1_std < STD_C99)
-					cc1_warn_at(&w, c89_parse_trailingcomma,
-							"trailing comma in enum definition");
-				break;
-			}
-		}
-
-		predecl_sue->members = NULL;
+		parse_enum_members();
 
 	}else{
 		/* always allow nameless structs (C11)
@@ -229,7 +240,7 @@ static type *parse_sue_finish(
 		}
 	}
 
-	fold_sue(sue, scope);
+	assert(sue->foldprog == SUE_FOLDED_FULLY);
 
 	return type_attributed(
 			type_nav_suetype(cc1_type_nav, sue),
