@@ -395,7 +395,8 @@ void dump_decl(decl *d, dump *ctx, const char *desc)
 			dump_dec(ctx);
 		}
 
-		if(!d->spel){
+		/* typedef enum <anon> { ... } <spel>; - dump its members */
+		if(!d->spel || (d->store & STORE_MASK_STORE) == store_typedef){
 			dump_sue(ctx, d->ref);
 		}else if(d->bits.var.init.dinit){
 			dump_inc(ctx);
