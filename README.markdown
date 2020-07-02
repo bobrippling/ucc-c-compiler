@@ -141,7 +141,7 @@ Supported | Extension Name | Description
 ✅ Yes | Alignment | Determining the alignment of a function, type or variable.
 ✅ Yes | Inline | Defining inline functions (as fast as macros).
 ✅ Yes | Volatiles | What constitutes an access to a volatile object.
-🛠️ [__asm__ WIP] | Using Assembly Language with C | Instructions and extensions for interfacing C with assembler.
+✅ Yes | Using Assembly Language with C | Instructions and extensions for interfacing C with assembler.
 ✅ Yes | Alternate Keywords | `__const__`, `__asm__`, etc., for header files.
 ✅ Yes | Incomplete Enums | `enum foo;`, with details to follow.
 ✅ Yes | Function Names | Printable strings which are the name of the current function.
