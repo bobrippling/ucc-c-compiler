@@ -1,0 +1,21 @@
+name: ucc ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: configure
+      run: ./configure CFLAGS=-fsanitize=address LDFLAGS=-fsanitize=address
+    - name: bootstrap
+      run: make bootstrap
+      env:
+        ASAN_OPTIONS: detect_leaks=0
+    - name: test
+      run: make check-bootstrap
+      env:
+        ASAN_OPTIONS: detect_leaks=0
