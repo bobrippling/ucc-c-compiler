@@ -39,7 +39,7 @@ typedef struct { int xyz; } Untagged;
 struct WithUntagged
 {
 	int type;
-	Untagged; // CHECK: /warning: tagged struct 'Untagged {aka 'struct <anon struct @ .*>'}' is a Microsoft\/Plan 9 extension/
+	Untagged; // CHECK: /warning: tagged struct 'Untagged \{aka 'struct <anon struct @ .*>'\}' is a Microsoft\/Plan 9 extension/
 };
 
 void test_c99()
