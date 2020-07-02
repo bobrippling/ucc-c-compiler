@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  test:
+  test-linux:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -19,3 +19,21 @@ jobs:
       run: make check-bootstrap
       env:
         ASAN_OPTIONS: detect_leaks=0
+  test-darwin:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: configure
+      run: ./configure CFLAGS=-fsanitize=address LDFLAGS=-fsanitize=address
+    - name: bootstrap
+      run: make bootstrap
+      env:
+        ASAN_OPTIONS: detect_leaks=0
+    - name: test
+      run: make check-bootstrap
+      env:
+        ASAN_OPTIONS: detect_leaks=0
+  #test-windows:
+  #  runs-on: windows-latest
+  #  steps:
+  #   <nothing for now>
