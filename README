@@ -70,3 +70,5 @@ becomes:
 
 ./ucc a.o b.c -E
 - preprocess b.c - a.o is ignored since it's not linked with
+
+# TODO(on merge with master): update atomic extension checkbox
