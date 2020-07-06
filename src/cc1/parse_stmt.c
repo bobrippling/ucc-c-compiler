@@ -351,6 +351,142 @@ static void parse_local_labels(const struct stmt_ctx *const ctx)
 	}
 }
 
+stmt *parse_stmt(const struct stmt_ctx *ctx)
+{
+	stmt *t;
+
+	switch(curtok){
+		case token_semicolon:
+			t = stmt_new_wrapper(noop, ctx->scope);
+			EAT(token_semicolon);
+			break;
+
+		case token_break:
+		case token_continue:
+		case token_goto:
+		case token_return:
+		{
+			if(accept(token_break)){
+				t = stmt_new_wrapper(break, ctx->scope);
+				t->parent = ctx->break_target;
+
+			}else if(accept(token_continue)){
+				t = stmt_new_wrapper(continue, ctx->scope);
+				t->parent = ctx->continue_target;
+
+			}else if(accept(token_return)){
+				t = stmt_new_wrapper(return, ctx->scope);
+
+				if(curtok != token_semicolon){
+					t->expr = parse_expr_exp(ctx->scope, 0);
+					fold_expr_nodecay(t->expr, ctx->scope);
+				}
+			}else{
+				t = stmt_new_wrapper(goto, ctx->scope);
+
+				EAT(token_goto);
+
+				if(accept(token_multiply)){
+					/* computed goto */
+					t->expr = parse_expr_exp(ctx->scope, 0);
+				}else{
+					char *spel;
+					if(token_accept_identifier(&spel, NULL)){
+						assert(spel);
+					}else{
+						assert(!spel);
+						spel = ustrdup(DUMMY_IDENTIFIER);
+						warn_at_print_error(NULL, "identifier or '*' expected for goto");
+					}
+					t->bits.lbl.spel = spel;
+				}
+			}
+			EAT(token_semicolon);
+			break;
+		}
+
+		{
+			stmt *(*parse_f)(const struct stmt_ctx *);
+
+		case token_if:
+			parse_f = parse_if;
+			goto flow;
+		case token_while:
+			parse_f = parse_while;
+			goto flow;
+		case token_do:
+			parse_f = parse_do;
+			goto flow;
+		case token_for:
+			parse_f = parse_for;
+			goto flow;
+
+flow:
+			t = parse_f(ctx);
+			break;
+		}
+
+		case token_open_block:
+		{
+			struct stmt_ctx subctx = *ctx;
+
+			/* we're in a block - if we find an else in here, it's unambiguous */
+			subctx.parsing_unbraced_if = 0;
+
+			t = parse_stmt_block(ctx->scope, &subctx);
+			break;
+		}
+
+		case token_switch:
+			t = parse_switch(ctx);
+			break;
+
+		case token_default:
+			t = stmt_new_wrapper(default, ctx->scope);
+			EAT(token_default);
+			EAT(token_colon);
+			t->parent = ctx->switch_target;
+			t = parse_label_next(t, ctx);
+			break;
+
+		case token_case:
+		{
+			expr *a;
+			where cse_loc;
+			where_cc1_current(&cse_loc);
+
+			EAT(token_case);
+			a = PARSE_EXPR_CONSTANT(ctx->scope, 0);
+			if(accept(token_elipsis)){
+				t = stmt_new_wrapper(case_range, ctx->scope);
+				t->parent = ctx->switch_target;
+				t->expr  = a;
+				t->expr2 = PARSE_EXPR_CONSTANT(ctx->scope, 0);
+			}else{
+				t = stmt_new_wrapper(case, ctx->scope);
+				t->expr = a;
+				t->parent = ctx->switch_target;
+			}
+
+			EAT(token_colon);
+			t = stmt_set_where(parse_label_next(t, ctx), &cse_loc);
+			break;
+		}
+
+		default:
+			if(curtok == token_identifier && tok_at_label()){
+				t = parse_label(ctx);
+			}else{
+				t = expr_to_stmt(parse_expr_exp(ctx->scope, 0), ctx->scope);
+				fold_stmt(t);
+				EAT(token_semicolon);
+			}
+			break;
+	}
+
+	return t;
+}
+
 static stmt *parse_stmt_and_decls(
 		const struct stmt_ctx *const ctx, int nested_scope)
 {
@@ -508,142 +644,6 @@ stmt *parse_stmt_block(symtable *scope, const struct stmt_ctx *const ctx)
 	fprintf(stderr, "Parsed statement block:\n");
 	print_stmt_and_decls(t);
 #endif
-
-	return t;
-}
-
-stmt *parse_stmt(const struct stmt_ctx *ctx)
-{
-	stmt *t;
-
-	switch(curtok){
-		case token_semicolon:
-			t = stmt_new_wrapper(noop, ctx->scope);
-			EAT(token_semicolon);
-			break;
-
-		case token_break:
-		case token_continue:
-		case token_goto:
-		case token_return:
-		{
-			if(accept(token_break)){
-				t = stmt_new_wrapper(break, ctx->scope);
-				t->parent = ctx->break_target;
-
-			}else if(accept(token_continue)){
-				t = stmt_new_wrapper(continue, ctx->scope);
-				t->parent = ctx->continue_target;
-
-			}else if(accept(token_return)){
-				t = stmt_new_wrapper(return, ctx->scope);
-
-				if(curtok != token_semicolon){
-					t->expr = parse_expr_exp(ctx->scope, 0);
-					fold_expr_nodecay(t->expr, ctx->scope);
-				}
-			}else{
-				t = stmt_new_wrapper(goto, ctx->scope);
-
-				EAT(token_goto);
-
-				if(accept(token_multiply)){
-					/* computed goto */
-					t->expr = parse_expr_exp(ctx->scope, 0);
-				}else{
-					char *spel;
-					if(token_accept_identifier(&spel, NULL)){
-						assert(spel);
-					}else{
-						assert(!spel);
-						spel = ustrdup(DUMMY_IDENTIFIER);
-						warn_at_print_error(NULL, "identifier or '*' expected for goto");
-					}
-					t->bits.lbl.spel = spel;
-				}
-			}
-			EAT(token_semicolon);
-			break;
-		}
-
-		{
-			stmt *(*parse_f)(const struct stmt_ctx *);
-
-		case token_if:
-			parse_f = parse_if;
-			goto flow;
-		case token_while:
-			parse_f = parse_while;
-			goto flow;
-		case token_do:
-			parse_f = parse_do;
-			goto flow;
-		case token_for:
-			parse_f = parse_for;
-			goto flow;
-
-flow:
-			t = parse_f(ctx);
-			break;
-		}
-
-		case token_open_block:
-		{
-			struct stmt_ctx subctx = *ctx;
-
-			/* we're in a block - if we find an else in here, it's unambiguous */
-			subctx.parsing_unbraced_if = 0;
-
-			t = parse_stmt_block(ctx->scope, &subctx);
-			break;
-		}
-
-		case token_switch:
-			t = parse_switch(ctx);
-			break;
-
-		case token_default:
-			t = stmt_new_wrapper(default, ctx->scope);
-			EAT(token_default);
-			EAT(token_colon);
-			t->parent = ctx->switch_target;
-			t = parse_label_next(t, ctx);
-			break;
-
-		case token_case:
-		{
-			expr *a;
-			where cse_loc;
-			where_cc1_current(&cse_loc);
-
-			EAT(token_case);
-			a = PARSE_EXPR_CONSTANT(ctx->scope, 0);
-			if(accept(token_elipsis)){
-				t = stmt_new_wrapper(case_range, ctx->scope);
-				t->parent = ctx->switch_target;
-				t->expr  = a;
-				t->expr2 = PARSE_EXPR_CONSTANT(ctx->scope, 0);
-			}else{
-				t = stmt_new_wrapper(case, ctx->scope);
-				t->expr = a;
-				t->parent = ctx->switch_target;
-			}
-
-			EAT(token_colon);
-			t = stmt_set_where(parse_label_next(t, ctx), &cse_loc);
-			break;
-		}
-
-		default:
-			if(curtok == token_identifier && tok_at_label()){
-				t = parse_label(ctx);
-			}else{
-				t = expr_to_stmt(parse_expr_exp(ctx->scope, 0), ctx->scope);
-				fold_stmt(t);
-				EAT(token_semicolon);
-			}
-			break;
-	}
 
 	return t;
 }
