@@ -177,6 +177,7 @@ void attribute_free(attribute *a)
 		case attr_no_stack_protector:
 		case attr_stack_protect:
 		case attr_no_sanitize:
+		case attr_fallthrough:
 			break;
 	}
 
@@ -288,6 +289,7 @@ int attribute_equal(attribute *a, attribute *b)
 		case attr_noinline:
 		case attr_no_stack_protector:
 		case attr_stack_protect:
+		case attr_fallthrough:
 			/* equal */
 			break;
 	}
