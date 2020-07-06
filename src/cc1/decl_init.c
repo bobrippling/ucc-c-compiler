@@ -1442,7 +1442,7 @@ static decl_init *decl_init_brace_up_start(
 				warn_at_print_error(&init->where,
 						str_mismatch
 							? "incorrect string literal initialiser for %s"
-							: "%s must be initialised with an initialiser list",
+							: "%s must be initialised with an initialiser list or copy-assignment",
 						type_to_str(tfor));
 				return init;
 			}else{
