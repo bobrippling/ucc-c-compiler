@@ -351,9 +351,58 @@ static void parse_local_labels(const struct stmt_ctx *const ctx)
 	}
 }
 
-stmt *parse_stmt(const struct stmt_ctx *ctx)
+static void apply_stmt_attrs(stmt *s, attribute ***const attrs)
+{
+	attribute **i;
+	int have_fallthrough = 0;
+
+	if(!attrs)
+		return;
+
+	for(i = *attrs; i && *i; i++){
+		attribute *attr = *i;
+		if(attr->type == attr_fallthrough)
+			have_fallthrough = 1;
+		else
+			cc1_warn_at(&attr->where, attr_ignored, "non-fallthrough attribute on statement");
+	}
+	attribute_array_release(attrs);
+	*attrs = NULL;
+
+	if(!have_fallthrough)
+		return;
+
+	if(!stmt_kind(s, noop)){
+		warn_at_print_error(
+				&s->where,
+				"fallthrough attribute on %s statement",
+				s->f_str());
+		fold_had_error = 1;
+		return;
+	}
+
+	s->bits.noop.is_fallthrough = 1;
+
+	switch(curtok){
+		case token_case:
+		case token_default:
+			break;
+		default:
+			if(tok_at_label())
+				break;
+
+			warn_at_print_error(&s->where, "fallthrough statement not directly before switch label");
+			fold_had_error = 1;
+			break;
+	}
+}
+
+ucc_nonnull()
+static stmt *parse_stmt_with_attrs(const struct stmt_ctx *ctx, attribute ***attrs)
 {
 	stmt *t;
+
+	parse_add_attr(attrs, ctx->scope);
 
 	switch(curtok){
 		case token_semicolon:
@@ -484,7 +533,15 @@ flow:
 			break;
 	}
 
+	apply_stmt_attrs(t, attrs);
+
 	return t;
+}
+
+stmt *parse_stmt(const struct stmt_ctx *ctx)
+{
+	attribute **attrs = NULL;
+	return parse_stmt_with_attrs(ctx, &attrs);
 }
 
 static stmt *parse_stmt_and_decls(
@@ -494,6 +551,7 @@ static stmt *parse_stmt_and_decls(
 			code, symtab_new(ctx->scope, where_cc1_current(NULL)));
 	struct stmt_ctx subctx = *ctx;
 	int got_decls = 0;
+	attribute **attr = NULL;
 
 	code_stmt->symtab->internal_nest = nested_scope;
 
@@ -503,20 +561,42 @@ static stmt *parse_stmt_and_decls(
 
 	parse_static_assert(subctx.scope);
 
-	while(1){
-		int new_group = parse_decl_group(
-				DECL_MULTI_ACCEPT_FUNC_DECL
-				| DECL_MULTI_ALLOW_STORE
-				| DECL_MULTI_ALLOW_ALIGNAS,
-				/*newdecl_context:*/1,
-				subctx.scope,
-				subctx.scope, NULL);
+	/* look for statement attributes first */
+	parse_add_attr(&attr, ctx->scope);
 
-		if(new_group){
-			got_decls = 1;
-		}else{
-			break;
+	/* statement, or decl? */
+	if(parse_at_decl(ctx->scope, /*include_attribute:*/ 0)){
+		while(1){
+			decl **decls = NULL;
+			int new_group = parse_decl_group(
+					DECL_MULTI_ACCEPT_FUNC_DECL
+					| DECL_MULTI_ALLOW_STORE
+					| DECL_MULTI_ALLOW_ALIGNAS,
+					/*newdecl_context:*/1,
+					subctx.scope,
+					subctx.scope,
+					attr ? &decls : NULL);
+
+			if(decls){
+				decl **i;
+				for(i = decls; *i; i++){
+					decl *d = *i;
+
+					attribute_array_retain(attr);
+					dynarray_add_array(&d->attr, attr);
+				}
+			}
+
+			if(new_group){
+				got_decls = 1;
+			}else{
+				break;
+			}
 		}
+
+		/* passed attrs onto decls */
+		attribute_array_release(&attr);
+		attr = NULL;
 	}
 
 	if(got_decls)
@@ -543,14 +623,20 @@ static stmt *parse_stmt_and_decls(
 			 * 2) in parse_stmt() where we look for a standalone label and aren't
 			 *    bothered about decls
 			 */
-			if(curtok == token_identifier && tok_at_label())
+			if(curtok == token_identifier && tok_at_label()){
+				if(attr){
+					/* TODO: error + free */
+				}
 				this = parse_label(&subctx);
-			else if(curtok == token_close_block)
+			}else if(curtok == token_close_block){
+				assert(!attr);
 				break;
-			else if((at_decl = parse_at_decl(subctx.scope, 1)))
+			}else if((at_decl = parse_at_decl(subctx.scope, 1))){
+				assert(!attr);
 				break;
-			else
-				this = parse_stmt(&subctx);
+			}else{
+				this = parse_stmt_with_attrs(&subctx, &attr);
+			}
 
 			dynarray_add(&code_stmt->bits.code.stmts, this);
 		}

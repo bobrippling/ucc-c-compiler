@@ -65,6 +65,11 @@ struct stmt
 		{
 			stmt **cases, *default_case;
 		} switch_;
+
+		struct
+		{
+			int is_fallthrough;
+		} noop;
 	} bits;
 
 	symtable *symtab; /* block definitions, e.g. { int i... } */
