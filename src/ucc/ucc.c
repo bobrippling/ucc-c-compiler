@@ -602,6 +602,33 @@ static void resolve_spanning_fopts(struct ucc *const state)
 	}
 }
 
+static int add_normalised_arg(
+		struct ucc *const state,
+		enum mode mode,
+		char **argv,
+		int *const pi)
+{
+	const char *arg = argv[*pi];
+
+	if(arg[2]){
+		dynarray_add(&state->args[mode], ustrdup(arg));
+
+	}else{
+		char *joined;
+		int i;
+
+		/* allow a space, e.g. "-D" "arg" */
+		if(!(arg = argv[++*pi]))
+			return 0;
+
+		i = *pi;
+		joined = ustrprintf("%s%s", argv[i - 1], argv[i]);
+		dynarray_add(&state->args[mode], joined);
+	}
+
+	return 1;
+}
+
 static void parse_argv(
 		int argc,
 		char **argv,
@@ -621,7 +648,6 @@ static void parse_argv(
 			goto input;
 
 		}else if(*argv[i] == '-'){
-			int found = 0;
 			char *arg = argv[i];
 
 			switch(arg[1]){
@@ -721,7 +747,10 @@ static void parse_argv(
 
 				case 'D':
 				case 'U':
-					found = 1;
+					if(!add_normalised_arg(state, mode_preproc, argv, &i))
+						goto missing_arg;
+					continue;
+
 				case 'H':
 				case 'P':
 arg_cpp:
@@ -748,18 +777,9 @@ arg_cpp:
 							die("-MF needs an argument");
 						ADD_ARG(mode_preproc, arg);
 						had_MF = 1;
-						continue;
-					}
-
-					if(found){
-						if(!arg[2]){
-							/* allow a space, e.g. "-D" "arg" */
-							if(!(arg = argv[++i]))
-								goto missing_arg;
-							ADD_ARG(mode_preproc, arg);
-						}
 					}
 					continue;
+
 				case 'I':
 					if(arg[2]){
 						dynarray_add(&state->includes, ustrdup(arg));
@@ -773,8 +793,8 @@ arg_cpp:
 
 				case 'l':
 				case 'L':
-arg_ld:
-					ADD_ARG(mode_link, arg);
+					if(!add_normalised_arg(state, mode_link, argv, &i))
+						goto missing_arg;
 					continue;
 
 #define CHECK_1() if(argv[i][2]) goto unrec;
@@ -900,10 +920,10 @@ arg_ld:
 
 word:
 				default:
-					if(!strcmp(argv[i], "-s"))
-						goto arg_ld;
-
-					if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
+					if(!strcmp(argv[i], "-s")){
+						ADD_ARG(mode_link, arg);
+					}
+					else if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
 						ADD_ARG(mode_compile, arg);
 						ADD_ARG(mode_preproc, arg);
 					}
