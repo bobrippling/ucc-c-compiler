@@ -242,8 +242,10 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 	return s;
 }
 
-void parse_static_assert(symtable *scope)
+where *parse_static_assert(symtable *scope)
 {
+	where *found = NULL;
+
 	while(accept(token__Static_assert)){
 		static_assert *sa = umalloc(sizeof *sa);
 
@@ -273,7 +275,9 @@ void parse_static_assert(symtable *scope)
 		EAT(token_semicolon);
 
 		dynarray_add(&scope->static_asserts, sa);
+		found = &sa->e->where;
 	}
+	return found;
 }
 
 static stmt *parse_label_next(stmt *lbl, const struct stmt_ctx *ctx)
@@ -545,13 +549,14 @@ stmt *parse_stmt(const struct stmt_ctx *ctx)
 }
 
 static stmt *parse_stmt_and_decls(
-		const struct stmt_ctx *const ctx, int nested_scope)
+		const struct stmt_ctx *const ctx,
+		int nested_scope,
+		attribute ***const attr)
 {
 	stmt *code_stmt = stmt_new_wrapper(
 			code, symtab_new(ctx->scope, where_cc1_current(NULL)));
 	struct stmt_ctx subctx = *ctx;
 	int got_decls = 0;
-	attribute **attr = NULL;
 
 	code_stmt->symtab->internal_nest = nested_scope;
 
@@ -562,7 +567,7 @@ static stmt *parse_stmt_and_decls(
 	parse_static_assert(subctx.scope);
 
 	/* look for statement attributes first */
-	parse_add_attr(&attr, ctx->scope);
+	parse_add_attr(attr, ctx->scope);
 
 	/* statement, or decl? */
 	if(parse_at_decl(ctx->scope, /*include_attribute:*/ 0)){
@@ -575,15 +580,15 @@ static stmt *parse_stmt_and_decls(
 					/*newdecl_context:*/1,
 					subctx.scope,
 					subctx.scope,
-					attr ? &decls : NULL);
+					*attr ? &decls : NULL);
 
 			if(decls){
 				decl **i;
 				for(i = decls; *i; i++){
 					decl *d = *i;
 
-					attribute_array_retain(attr);
-					dynarray_add_array(&d->attr, attr);
+					attribute_array_retain(*attr);
+					dynarray_add_array(&d->attr, *attr);
 				}
 			}
 
@@ -595,8 +600,8 @@ static stmt *parse_stmt_and_decls(
 		}
 
 		/* passed attrs onto decls */
-		attribute_array_release(&attr);
-		attr = NULL;
+		attribute_array_release(attr);
+		*attr = NULL;
 	}
 
 	if(got_decls)
@@ -608,8 +613,20 @@ static stmt *parse_stmt_and_decls(
 
 		for(;;){
 			stmt *this;
+			where *static_asserts;
 
-			parse_static_assert(subctx.scope);
+			parse_add_attr(attr, ctx->scope);
+
+			static_asserts = parse_static_assert(subctx.scope);
+			if(static_asserts && *attr){
+				warn_at_print_error(static_asserts, "fallthrough attribute on static-assert");
+				fold_had_error = 1;
+
+				attribute_array_release(attr);
+				*attr = NULL;
+			}
+
+			parse_add_attr(attr, ctx->scope);
 
 			/* check for a following colon, in the case of
 			 * typedef int x;
@@ -624,18 +641,26 @@ static stmt *parse_stmt_and_decls(
 			 *    bothered about decls
 			 */
 			if(curtok == token_identifier && tok_at_label()){
-				if(attr){
-					/* TODO: error + free */
-				}
 				this = parse_label(&subctx);
+
+				if(*attr){
+					warn_at_print_error(&this->where, "fallthrough attribute on %s", this->f_str());
+					fold_had_error = 1;
+
+					attribute_array_release(attr);
+					*attr = NULL;
+				}
 			}else if(curtok == token_close_block){
-				assert(!attr);
-				break;
-			}else if((at_decl = parse_at_decl(subctx.scope, 1))){
-				assert(!attr);
+				assert(!*attr);
 				break;
 			}else{
-				this = parse_stmt_with_attrs(&subctx, &attr);
+				if((at_decl = parse_at_decl(subctx.scope, /*include_attribute:*/0))){
+					assert(!*attr);
+					break;
+				}else{
+					this = parse_stmt_with_attrs(&subctx, attr);
+					assert(!*attr);
+				}
 			}
 
 			dynarray_add(&code_stmt->bits.code.stmts, this);
@@ -643,7 +668,7 @@ static stmt *parse_stmt_and_decls(
 
 		if(at_decl){
 			if(code_stmt->bits.code.stmts){
-				stmt *nest = parse_stmt_and_decls(&subctx, 1);
+				stmt *nest = parse_stmt_and_decls(&subctx, 1, attr);
 
 				if(cc1_std < STD_C99){
 					static int warned = 0;
@@ -662,6 +687,9 @@ static stmt *parse_stmt_and_decls(
 	}
 
 	where_cc1_current(&code_stmt->where_cbrace);
+
+	attribute_array_release(attr);
+	*attr = NULL;
 
 	return code_stmt;
 }
@@ -712,6 +740,7 @@ stmt *parse_stmt_block(symtable *scope, const struct stmt_ctx *const ctx)
 {
 	stmt *t;
 	struct stmt_ctx subctx;
+	attribute **attrs = NULL;
 
 	if(ctx){
 		subctx = *ctx;
@@ -722,7 +751,7 @@ stmt *parse_stmt_block(symtable *scope, const struct stmt_ctx *const ctx)
 
 	EAT(token_open_block);
 
-	t = parse_stmt_and_decls(&subctx, 0);
+	t = parse_stmt_and_decls(&subctx, 0, &attrs);
 
 	EAT(token_close_block);
 

@@ -9,7 +9,7 @@ struct stmt_ctx;
 stmt *parse_stmt_block(symtable *, const struct stmt_ctx *const ctx);
 stmt *parse_stmt(const struct stmt_ctx *ctx) ucc_nonnull();
 
-void parse_static_assert(symtable *scope);
+where *parse_static_assert(symtable *scope);
 
 symtable_gasm *parse_gasm(void);
 
