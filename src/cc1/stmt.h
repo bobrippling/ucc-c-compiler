@@ -147,6 +147,7 @@ void stmt_walk(stmt *base, stmt_walk_enter, stmt_walk_leave, void *data);
 
 stmt *stmt_set_where(stmt *, where const *);
 
+stmt *stmt_label_leaf(stmt *);
 int stmt_is_switchlabel(const stmt *);
 int stmt_kills_below_code(stmt *);
 

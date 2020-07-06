@@ -233,6 +233,26 @@ void fold_stmt_code(stmt *s)
 			cc1_warn_at(&siter[1]->where, dead_code, "code will never be executed");
 			warned = 1;
 		}
+
+		if(siter > s->bits.code.stmts && stmt_is_switchlabel(st)){
+			stmt *prev = siter[-1];
+
+			/*
+			 * permit labels/switchlabels, since we allow:
+			 *   case 1:
+			 *   case 2:
+			 *   case 3:
+			 *     <code>
+			 */
+			if(stmt_kills_below_code(s))
+				continue;
+
+			prev = stmt_label_leaf(prev);
+			if(stmt_kind(prev, noop) && prev->bits.noop.is_fallthrough)
+				continue;
+
+			cc1_warn_at(&st->where, implicit_fallthrough, "implicit fallthrough between switch labels");
+		}
 	}
 }
 

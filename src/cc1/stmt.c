@@ -67,7 +67,7 @@ stmt *stmt_set_where(stmt *s, where const *w)
 	return s;
 }
 
-static stmt *stmt_label_leaf(stmt *s)
+stmt *stmt_label_leaf(stmt *s)
 {
 	while(stmt_kind(s, label)
 	|| stmt_kind(s, case)
