@@ -225,12 +225,10 @@ void fold_stmt_code(stmt *s)
 		fold_stmt(st);
 
 		if(!warned
-		&& st->kills_below_code
+		&& stmt_kills_below_code(st)
 		&& siter[1]
 		&& !stmt_kind(siter[1], label)
-		&& !stmt_kind(siter[1], case)
-		&& !stmt_kind(siter[1], case_range)
-		&& !stmt_kind(siter[1], default)
+		&& !stmt_is_switchlabel(siter[1])
 		){
 			cc1_warn_at(&siter[1]->where, dead_code, "code will never be executed");
 			warned = 1;

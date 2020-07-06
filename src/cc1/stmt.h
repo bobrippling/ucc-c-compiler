@@ -39,7 +39,6 @@ struct stmt
 	out_blk *blk_break, *blk_continue;
 
 	int freestanding;     /* if this is freestanding, non-freestanding expressions inside are allowed */
-	int kills_below_code; /* break, return, etc - for checking dead code */
 	int expr_no_pop;
 
 	struct
@@ -142,6 +141,9 @@ stmt_walk_enter stmts_count;
 void stmt_walk(stmt *base, stmt_walk_enter, stmt_walk_leave, void *data);
 
 stmt *stmt_set_where(stmt *, where const *);
+
+int stmt_is_switchlabel(const stmt *);
+int stmt_kills_below_code(stmt *);
 
 void stmt_init_blks(const stmt *ks, out_blk *con, out_blk *bbreak);
 
