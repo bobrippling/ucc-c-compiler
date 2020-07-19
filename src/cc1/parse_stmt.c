@@ -556,7 +556,7 @@ static stmt *parse_stmt_and_decls(
 	stmt *code_stmt = stmt_new_wrapper(
 			code, symtab_new(ctx->scope, where_cc1_current(NULL)));
 	struct stmt_ctx subctx = *ctx;
-	int got_decls = 0;
+	int got_decls = 0, got_attribute;
 
 	code_stmt->symtab->internal_nest = nested_scope;
 
@@ -567,16 +567,19 @@ static stmt *parse_stmt_and_decls(
 	parse_static_assert(subctx.scope);
 
 	/* look for statement attributes first */
-	parse_add_attr(attr, ctx->scope);
+	parse_add_attr_out(attr, ctx->scope, &got_attribute);
 
 	/* statement, or decl? */
-	if(parse_at_decl(ctx->scope, /*include_attribute:*/ 0)){
+	if(parse_at_decl(ctx->scope, /*include_attribute:*/ 0)
+	|| (got_attribute && curtok != token_semicolon)
+	){
 		while(1){
 			decl **decls = NULL;
 			int new_group = parse_decl_group(
 					DECL_MULTI_ACCEPT_FUNC_DECL
 					| DECL_MULTI_ALLOW_STORE
-					| DECL_MULTI_ALLOW_ALIGNAS,
+					| DECL_MULTI_ALLOW_ALIGNAS
+					| (got_attribute ? DECL_MULTI_CAN_DEFAULT : 0),
 					/*newdecl_context:*/1,
 					subctx.scope,
 					subctx.scope,
@@ -597,11 +600,12 @@ static stmt *parse_stmt_and_decls(
 			}else{
 				break;
 			}
-		}
 
-		/* passed attrs onto decls */
-		attribute_array_release(attr);
-		*attr = NULL;
+			/* passed attrs onto decls, reset */
+			got_attribute = 0;
+			attribute_array_release(attr);
+			*attr = NULL;
+		}
 	}
 
 	if(got_decls)
@@ -615,10 +619,10 @@ static stmt *parse_stmt_and_decls(
 			stmt *this;
 			where *static_asserts;
 
-			parse_add_attr(attr, ctx->scope);
+			parse_add_attr_out(attr, ctx->scope, &got_attribute);
 
 			static_asserts = parse_static_assert(subctx.scope);
-			if(static_asserts && *attr){
+			if(static_asserts && got_attribute){
 				warn_at_print_error(static_asserts, "fallthrough attribute on static-assert");
 				fold_had_error = 1;
 
@@ -626,7 +630,7 @@ static stmt *parse_stmt_and_decls(
 				*attr = NULL;
 			}
 
-			parse_add_attr(attr, ctx->scope);
+			parse_add_attr_out(attr, ctx->scope, &got_attribute);
 
 			/* check for a following colon, in the case of
 			 * typedef int x;
@@ -643,7 +647,7 @@ static stmt *parse_stmt_and_decls(
 			if(curtok == token_identifier && tok_at_label()){
 				this = parse_label(&subctx);
 
-				if(*attr){
+				if(got_attribute){
 					warn_at_print_error(&this->where, "fallthrough attribute on %s", this->f_str());
 					fold_had_error = 1;
 
@@ -651,11 +655,11 @@ static stmt *parse_stmt_and_decls(
 					*attr = NULL;
 				}
 			}else if(curtok == token_close_block){
-				assert(!*attr);
+				assert(!got_attribute);
 				break;
 			}else{
 				if((at_decl = parse_at_decl(subctx.scope, /*include_attribute:*/0))){
-					assert(!*attr);
+					assert(!got_attribute);
 					break;
 				}else{
 					this = parse_stmt_with_attrs(&subctx, attr);
