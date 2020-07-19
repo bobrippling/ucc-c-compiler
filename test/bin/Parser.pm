@@ -22,7 +22,7 @@ sub parse_warnings
 				line => $2,
 				col => $4 || 0,
 				msg => $5,
-				quote => undef,
+				quote => 0,
 				caret_spc => -1,
 			};
 			push @warnings, $w;
