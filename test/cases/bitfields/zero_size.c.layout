@@ -1,0 +1,21 @@
+a:
+b:
+c:
+e:
+
+d:
+.quad c
+
+f:
+.long 0
+.long 6
+.long 3
+
+e1:
+.byte 1
+.byte 2
+
+e2:
+.byte 5
+.space 3
+.byte 9

@@ -114,7 +114,8 @@ void         decl_free(decl *);
 
 unsigned decl_size(decl *);
 unsigned decl_align(decl *);
-void decl_size_align_inc_bitfield(decl *, unsigned *const sz, unsigned *const align);
+void decl_size_align_inc_bitfield( /* may give 0,1 as a result */
+		decl *, unsigned *const sz, unsigned *const align);
 type *decl_type_for_bitfield(decl *);
 
 enum type_cmp decl_cmp(decl *a, decl *b, enum type_cmp_opts opts);

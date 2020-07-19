@@ -294,6 +294,15 @@ static void fold_sue_calc_fieldwidth(
 		/* also set struct_offset for 0-len bf, for pad reasons */
 		d->bits.var.struct_offset = *offset;
 
+		/* properly pad to align here (via struct_pack_finish_bitfield),
+		 * by affecting the current bitfield type, e.g.
+		 * struct A { char a; int : 0; char b; };
+		 * struct B { char a; char : 0; char b; };
+		 *
+		 * have different sizes because of where .b is placed
+		 */
+		bitfield->master_ty = d->ref;
+
 	}else if(*realign_next
 	|| !bitfield->current_off
 	|| (bitfield->current_limit && bitfield->current_off + bits > bitfield->current_limit))
@@ -402,6 +411,7 @@ static void fold_sue_apply_normal_offset(
 		/* we automatically pad on the next struct_pack,
 		 * don't struct_pack() here */
 		bitfield->current_off = 0;
+		bitfield->current_limit = 0;
 	}
 
 	struct_pack(d, offset, pack_state->sz, pack_state->align);

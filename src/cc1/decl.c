@@ -146,10 +146,15 @@ type *decl_type_for_bitfield(decl *d)
 
 void decl_size_align_inc_bitfield(decl *d, unsigned *const sz, unsigned *const align)
 {
-	type *ty = decl_type_for_bitfield(d);
+	if(d->bits.var.field_width && const_fold_val_i(d->bits.var.field_width) == 0){
+		*sz = 0;
+		*align = 1;
+	}else{
+		type *ty = decl_type_for_bitfield(d);
 
-	*sz = type_size(ty, NULL);
-	*align = type_align(ty, NULL);
+		*sz = type_size(ty, NULL);
+		*align = type_align(ty, NULL);
+	}
 }
 
 static unsigned decl_align1(decl *d)
