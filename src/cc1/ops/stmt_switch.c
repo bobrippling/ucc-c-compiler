@@ -222,10 +222,6 @@ void fold_stmt_and_add_to_curswitch(stmt *cse)
 		}
 		sw->bits.switch_.default_case = cse;
 	}
-
-	/* we are compound, copy some attributes */
-	cse->kills_below_code = cse->lhs->kills_below_code;
-	/* TODO: copy ->freestanding? */
 }
 
 static void fold_switch_scopechecks(stmt *sw)

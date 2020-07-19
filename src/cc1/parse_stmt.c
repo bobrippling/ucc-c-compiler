@@ -244,8 +244,10 @@ static stmt *parse_for(const struct stmt_ctx *const ctx)
 	return s;
 }
 
-void parse_static_assert(symtable *scope)
+where *parse_static_assert(symtable *scope)
 {
+	where *found = NULL;
+
 	while(accept(token__Static_assert)){
 		static_assert *sa = umalloc(sizeof *sa);
 
@@ -275,7 +277,9 @@ void parse_static_assert(symtable *scope)
 		EAT(token_semicolon);
 
 		dynarray_add(&scope->static_asserts, sa);
+		found = &sa->e->where;
 	}
+	return found;
 }
 
 static stmt *parse_label_next(stmt *lbl, const struct stmt_ctx *ctx)
@@ -353,170 +357,58 @@ static void parse_local_labels(const struct stmt_ctx *const ctx)
 	}
 }
 
-static stmt *parse_stmt_and_decls(
-		const struct stmt_ctx *const ctx, int nested_scope)
+static void apply_stmt_attrs(stmt *s, attribute ***const attrs)
 {
-	stmt *code_stmt = stmt_new_wrapper(
-			code, symtab_new(ctx->scope, where_cc1_current(NULL)));
-	struct stmt_ctx subctx = *ctx;
-	int got_decls = 0;
+	attribute **i;
+	int have_fallthrough = 0;
 
-	code_stmt->symtab->internal_nest = nested_scope;
+	if(!attrs)
+		return;
 
-	subctx.scope = code_stmt->symtab;
+	for(i = *attrs; i && *i; i++){
+		attribute *attr = *i;
+		if(attr->type == attr_fallthrough)
+			have_fallthrough = 1;
+		else
+			cc1_warn_at(&attr->where, attr_ignored, "non-fallthrough attribute on statement");
+	}
+	attribute_array_release(attrs);
+	*attrs = NULL;
 
-	parse_local_labels(&subctx);
+	if(!have_fallthrough)
+		return;
 
-	parse_static_assert(subctx.scope);
+	if(!stmt_kind(s, noop)){
+		warn_at_print_error(
+				&s->where,
+				"fallthrough attribute on %s statement",
+				s->f_str());
+		fold_had_error = 1;
+		return;
+	}
 
-	while(1){
-		int new_group = parse_decl_group(
-				DECL_MULTI_ACCEPT_FUNC_DECL
-				| DECL_MULTI_ALLOW_STORE
-				| DECL_MULTI_ALLOW_ALIGNAS,
-				/*newdecl_context:*/1,
-				subctx.scope,
-				subctx.scope, NULL);
+	s->bits.noop.is_fallthrough = 1;
 
-		if(new_group){
-			got_decls = 1;
-		}else{
+	switch(curtok){
+		case token_case:
+		case token_default:
 			break;
-		}
-	}
-
-	if(got_decls)
-		fold_shadow_dup_check_block_decls(subctx.scope);
-
-	if(curtok != token_close_block){
-		/* fine with a normal statement */
-		int at_decl = 0;
-
-		for(;;){
-			stmt *this;
-
-			parse_static_assert(subctx.scope);
-
-			/* check for a following colon, in the case of
-			 * typedef int x;
-			 * x:;
-			 *
-			 * we check this here, as in some contexts we we always want a type,
-			 * e.g. _Generic(expr, typedef_name: ...)
-			 *                     ^~~~~~~~~~~~~
-			 * labels are checked for in two places:
-			 * 1) here, to disambiguate from decls
-			 * 2) in parse_stmt() where we look for a standalone label and aren't
-			 *    bothered about decls
-			 */
-			if(curtok == token_identifier && tok_at_label())
-				this = parse_label(&subctx);
-			else if(curtok == token_close_block)
+		default:
+			if(tok_at_label())
 				break;
-			else if((at_decl = parse_at_decl(subctx.scope, 1)))
-				break;
-			else
-				this = parse_stmt(&subctx);
 
-			dynarray_add(&code_stmt->bits.code.stmts, this);
-		}
-
-		if(at_decl){
-			if(code_stmt->bits.code.stmts){
-				stmt *nest = parse_stmt_and_decls(&subctx, 1);
-
-				if(cc1_std < STD_C99){
-					static int warned = 0;
-					if(!warned){
-						warned = 1;
-						cc1_warn_at(&nest->where, mixed_code_decls,
-								"mixed code and declarations");
-					}
-				}
-
-				dynarray_add(&code_stmt->bits.code.stmts, nest);
-			}else{
-				ICE("got another decl - should've been handled already");
-			}
-		}
-	}
-
-	where_cc1_current(&code_stmt->where_cbrace);
-
-	return code_stmt;
-}
-
-#ifdef SYMTAB_DEBUG
-static int print_indent = 0;
-
-#define INDENT(...) indent(), fprintf(stderr, __VA_ARGS__)
-
-static void indent(const struct stmt_ctx *const ctx)
-{
-	for(int c = print_indent; c; c--)
-		fputc('\t', stderr);
-}
-
-static void print_stmt_and_decls(stmt *t)
-{
-	INDENT("decls: (symtab %p, parent %p)\n", t->symtab, t->symtab->parent);
-
-	print_indent++;
-	for(decl **i = t->symtab->decls; i && *i; i++)
-		INDENT("%s\n", (*i)->spel);
-	print_indent--;
-
-	INDENT("codes:\n");
-	for(stmt **i = t->bits.code.stmts; i && *i; i++){
-		stmt *s = *i;
-		if(stmt_kind(s, code)){
-			print_indent++;
-			INDENT("more-codes:\n");
-			print_indent++;
-			print_stmt_and_decls(s);
-			print_indent -= 2;
-		}else{
-			print_indent++;
-			INDENT("%s%s%s (symtab %p)\n",
-					s->f_str(),
-					stmt_kind(s, expr) ? ": " : "",
-					stmt_kind(s, expr) ? s->expr->f_str() : "",
-					s->symtab);
-			print_indent--;
-		}
+			warn_at_print_error(&s->where, "fallthrough statement not directly before switch label");
+			fold_had_error = 1;
+			break;
 	}
 }
-#endif
 
-stmt *parse_stmt_block(symtable *scope, const struct stmt_ctx *const ctx)
+ucc_nonnull()
+static stmt *parse_stmt_with_attrs(const struct stmt_ctx *ctx, attribute ***attrs)
 {
 	stmt *t;
-	struct stmt_ctx subctx;
 
-	if(ctx){
-		subctx = *ctx;
-	}else{
-		memset(&subctx, 0, sizeof subctx);
-		subctx.scope = scope;
-	}
-
-	EAT(token_open_block);
-
-	t = parse_stmt_and_decls(&subctx, 0);
-
-	EAT(token_close_block);
-
-#ifdef SYMTAB_DEBUG
-	fprintf(stderr, "Parsed statement block:\n");
-	print_stmt_and_decls(t);
-#endif
-
-	return t;
-}
-
-stmt *parse_stmt(const struct stmt_ctx *ctx)
-{
-	stmt *t;
+	parse_add_attr(attrs, ctx->scope);
 
 	switch(curtok){
 		case token_semicolon:
@@ -646,6 +538,233 @@ flow:
 			}
 			break;
 	}
+
+	apply_stmt_attrs(t, attrs);
+
+	return t;
+}
+
+stmt *parse_stmt(const struct stmt_ctx *ctx)
+{
+	attribute **attrs = NULL;
+	return parse_stmt_with_attrs(ctx, &attrs);
+}
+
+static stmt *parse_stmt_and_decls(
+		const struct stmt_ctx *const ctx,
+		int nested_scope,
+		attribute ***const attr)
+{
+	stmt *code_stmt = stmt_new_wrapper(
+			code, symtab_new(ctx->scope, where_cc1_current(NULL)));
+	struct stmt_ctx subctx = *ctx;
+	int got_decls = 0, got_attribute;
+
+	code_stmt->symtab->internal_nest = nested_scope;
+
+	subctx.scope = code_stmt->symtab;
+
+	parse_local_labels(&subctx);
+
+	parse_static_assert(subctx.scope);
+
+	/* look for statement attributes first */
+	parse_add_attr_out(attr, ctx->scope, &got_attribute);
+
+	/* statement, or decl? */
+	if(parse_at_decl(ctx->scope, /*include_attribute:*/ 0)
+	|| (got_attribute && curtok != token_semicolon)
+	){
+		while(1){
+			decl **decls = NULL;
+			int new_group = parse_decl_group(
+					DECL_MULTI_ACCEPT_FUNC_DECL
+					| DECL_MULTI_ALLOW_STORE
+					| DECL_MULTI_ALLOW_ALIGNAS
+					| (got_attribute ? DECL_MULTI_CAN_DEFAULT : 0),
+					/*newdecl_context:*/1,
+					subctx.scope,
+					subctx.scope,
+					*attr ? &decls : NULL);
+
+			if(decls){
+				decl **i;
+				for(i = decls; *i; i++){
+					decl *d = *i;
+
+					attribute_array_retain(*attr);
+					dynarray_add_array(&d->attr, *attr);
+				}
+			}
+
+			if(new_group){
+				got_decls = 1;
+			}else{
+				break;
+			}
+
+			/* passed attrs onto decls, reset */
+			got_attribute = 0;
+			attribute_array_release(attr);
+			*attr = NULL;
+		}
+	}
+
+	if(got_decls)
+		fold_shadow_dup_check_block_decls(subctx.scope);
+
+	if(curtok != token_close_block){
+		/* fine with a normal statement */
+		int at_decl = 0;
+
+		for(;;){
+			stmt *this;
+			where *static_asserts;
+
+			parse_add_attr_out(attr, ctx->scope, &got_attribute);
+
+			static_asserts = parse_static_assert(subctx.scope);
+			if(static_asserts && got_attribute){
+				warn_at_print_error(static_asserts, "fallthrough attribute on static-assert");
+				fold_had_error = 1;
+
+				attribute_array_release(attr);
+				*attr = NULL;
+			}
+
+			parse_add_attr_out(attr, ctx->scope, &got_attribute);
+
+			/* check for a following colon, in the case of
+			 * typedef int x;
+			 * x:;
+			 *
+			 * we check this here, as in some contexts we we always want a type,
+			 * e.g. _Generic(expr, typedef_name: ...)
+			 *                     ^~~~~~~~~~~~~
+			 * labels are checked for in two places:
+			 * 1) here, to disambiguate from decls
+			 * 2) in parse_stmt() where we look for a standalone label and aren't
+			 *    bothered about decls
+			 */
+			if(curtok == token_identifier && tok_at_label()){
+				this = parse_label(&subctx);
+
+				if(got_attribute){
+					warn_at_print_error(&this->where, "fallthrough attribute on %s", this->f_str());
+					fold_had_error = 1;
+
+					attribute_array_release(attr);
+					*attr = NULL;
+				}
+			}else if(curtok == token_close_block){
+				assert(!got_attribute);
+				break;
+			}else{
+				if((at_decl = parse_at_decl(subctx.scope, /*include_attribute:*/0))){
+					assert(!got_attribute);
+					break;
+				}else{
+					this = parse_stmt_with_attrs(&subctx, attr);
+					assert(!*attr);
+				}
+			}
+
+			dynarray_add(&code_stmt->bits.code.stmts, this);
+		}
+
+		if(at_decl){
+			if(code_stmt->bits.code.stmts){
+				stmt *nest = parse_stmt_and_decls(&subctx, 1, attr);
+
+				if(cc1_std < STD_C99){
+					static int warned = 0;
+					if(!warned){
+						warned = 1;
+						cc1_warn_at(&nest->where, mixed_code_decls,
+								"mixed code and declarations");
+					}
+				}
+
+				dynarray_add(&code_stmt->bits.code.stmts, nest);
+			}else{
+				ICE("got another decl - should've been handled already");
+			}
+		}
+	}
+
+	where_cc1_current(&code_stmt->where_cbrace);
+
+	attribute_array_release(attr);
+	*attr = NULL;
+
+	return code_stmt;
+}
+
+#ifdef SYMTAB_DEBUG
+static int print_indent = 0;
+
+#define INDENT(...) indent(), fprintf(stderr, __VA_ARGS__)
+
+static void indent(const struct stmt_ctx *const ctx)
+{
+	for(int c = print_indent; c; c--)
+		fputc('\t', stderr);
+}
+
+static void print_stmt_and_decls(stmt *t)
+{
+	INDENT("decls: (symtab %p, parent %p)\n", t->symtab, t->symtab->parent);
+
+	print_indent++;
+	for(decl **i = t->symtab->decls; i && *i; i++)
+		INDENT("%s\n", (*i)->spel);
+	print_indent--;
+
+	INDENT("codes:\n");
+	for(stmt **i = t->bits.code.stmts; i && *i; i++){
+		stmt *s = *i;
+		if(stmt_kind(s, code)){
+			print_indent++;
+			INDENT("more-codes:\n");
+			print_indent++;
+			print_stmt_and_decls(s);
+			print_indent -= 2;
+		}else{
+			print_indent++;
+			INDENT("%s%s%s (symtab %p)\n",
+					s->f_str(),
+					stmt_kind(s, expr) ? ": " : "",
+					stmt_kind(s, expr) ? s->expr->f_str() : "",
+					s->symtab);
+			print_indent--;
+		}
+	}
+}
+#endif
+
+stmt *parse_stmt_block(symtable *scope, const struct stmt_ctx *const ctx)
+{
+	stmt *t;
+	struct stmt_ctx subctx;
+	attribute **attrs = NULL;
+
+	if(ctx){
+		subctx = *ctx;
+	}else{
+		memset(&subctx, 0, sizeof subctx);
+		subctx.scope = scope;
+	}
+
+	EAT(token_open_block);
+
+	t = parse_stmt_and_decls(&subctx, 0, &attrs);
+
+	EAT(token_close_block);
+
+#ifdef SYMTAB_DEBUG
+	fprintf(stderr, "Parsed statement block:\n");
+	print_stmt_and_decls(t);
+#endif
 
 	return t;
 }

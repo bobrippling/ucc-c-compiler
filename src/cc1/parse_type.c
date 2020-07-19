@@ -397,7 +397,7 @@ static type *parse_type_sue(
 	return retty;
 }
 
-static void parse_add_attr_out(
+void parse_add_attr_out(
 		attribute ***append, symtable *scope, int *got_kw)
 {
 	if(got_kw)

@@ -1,6 +1,8 @@
 #ifndef UTIL_STR_H
 #define UTIL_STR_H
 
+#include <stddef.h> /* size_t */
+
 #include "compiler.h"
 
 char *str_quotefin2(char *s, char q);

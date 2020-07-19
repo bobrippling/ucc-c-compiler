@@ -132,7 +132,7 @@ Supported | Extension Name | Description
 🔎 Partial | Type Attributes | Specifying attributes of types.
 ✅ Yes | Label Attributes | Specifying attributes on labels.
 ✅ Yes | Enumerator Attributes | Specifying attributes on enumerators.
-❌ No | Statement Attributes | Specifying attributes on statements. `__attribute__((fallthrough));`
+✅ Yes | Statement Attributes | Specifying attributes on statements. `__attribute__((fallthrough));`
 ✅ Yes | Attribute Syntax | Formal syntax for attributes.
 ✅ Yes | Function Prototypes | Prototype declarations and old-style definitions.
 ✅ Yes | C++ Comments | C++ comments are recognized.

@@ -51,12 +51,6 @@ stmt *stmt_new(
 
 	init(s);
 
-	s->kills_below_code =
-		   stmt_kind(s, break)
-		|| stmt_kind(s, return)
-		|| stmt_kind(s, goto)
-		|| stmt_kind(s, continue);
-
 	return s;
 }
 
@@ -71,6 +65,39 @@ stmt *stmt_set_where(stmt *s, where const *w)
 {
 	memcpy_safe(&s->where, w);
 	return s;
+}
+
+stmt *stmt_label_leaf(stmt *s)
+{
+	while(stmt_kind(s, label)
+	|| stmt_kind(s, case)
+	|| stmt_kind(s, case_range)
+	|| stmt_kind(s, default))
+	{
+		s = s->lhs;
+	}
+	return s;
+}
+
+int stmt_is_switchlabel(const stmt *s)
+{
+	return stmt_kind(s, case) || stmt_kind(s, case_range) || stmt_kind(s, default);
+}
+
+int stmt_kills_below_code(stmt *s)
+{
+	if(stmt_kind(s, break)
+	|| stmt_kind(s, continue)
+	|| stmt_kind(s, return)
+	|| stmt_kind(s, goto))
+	{
+		return 1;
+	}
+
+	if(stmt_is_switchlabel(s) || stmt_kind(s, label))
+		return stmt_kills_below_code(stmt_label_leaf(s));
+
+	return 0;
 }
 
 static void stmt_walk2(stmt *base, stmt_walk_enter enter, stmt_walk_leave leave, void *data, int *stop)

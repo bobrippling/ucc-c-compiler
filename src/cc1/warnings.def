@@ -34,6 +34,8 @@ X("switch-enum-bitmask", switch_enum_bitmask)
 /* warn if default label in fully covered switch */
 X("covered-switch-default", switch_default_covered)
 
+X("implicit-fallthrough", implicit_fallthrough)
+
 X("enum-compare", enum_cmp)
 
 X("incomplete-use", incomplete_use)

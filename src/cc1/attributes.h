@@ -37,6 +37,7 @@
 		NAME(stack_protect, 0) /* gcc */ \
 		NAME(no_stack_protector, 0) /* clang */ \
 		NAME(no_sanitize, 0) \
+		NAME(fallthrough, 0) \
 		\
 		/* like NAME() but the enumerator is different to the spel */ \
 		RENAME("designated_init", desig_init, 0)     \
