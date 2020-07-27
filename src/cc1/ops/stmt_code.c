@@ -237,6 +237,8 @@ void fold_stmt_code(stmt *s)
 		if(siter > s->bits.code.stmts && stmt_is_switchlabel(st)){
 			stmt *prev = siter[-1];
 
+			prev = stmt_label_leaf(prev);
+
 			/*
 			 * permit labels/switchlabels, since we allow:
 			 *   case 1:
@@ -244,10 +246,9 @@ void fold_stmt_code(stmt *s)
 			 *   case 3:
 			 *     <code>
 			 */
-			if(stmt_kills_below_code(s))
+			if(stmt_kills_below_code(prev))
 				continue;
 
-			prev = stmt_label_leaf(prev);
 			if(stmt_kind(prev, noop) && prev->bits.noop.is_fallthrough)
 				continue;
 
