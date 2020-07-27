@@ -372,19 +372,29 @@ void style_stmt_switch(const stmt *s, out_ctx *octx)
 	gen_stmt(s->lhs, octx);
 }
 
-static int switch_passable(stmt *s)
+static int switch_passable(stmt *sw)
 {
-	stmt **iter;
+	/*stmt *s;*/
+	size_t n;
 
-	/* this isn't perfect - gotos may jump into s->lhs */
-	for(iter = s->bits.switch_.cases; iter && *iter; iter++){
-		/* if any of the entry points (i.e. cases) is passable, we're passable */
-		if(fold_passable(*iter))
-			return 1;
-	}
+	/* this isn't perfect - gotos may jump into s->lhs
+	 *
+	 * but: if the last entry points is passable, we're passable, since we fall off the end of the switch
+	 */
 
-	if(s->bits.switch_.default_case)
-		return fold_passable(s->bits.switch_.default_case);
+	n = dynarray_count(sw->bits.switch_.cases);
+	if(n == 0)
+		return 1;
+
+#if 0
+	/* the below two tests would have to be &&'d with each other and all other flows through the switch */
+	s = sw->bits.switch_.cases[n-1];
+	if(!fold_passable(s))
+		return 0;
+
+	if(s->bits.switch_.default_case && !fold_passable(s->bits.switch_.default_case))
+		return 0;
+#endif
 
 	/* no default case, assume switch is passable */
 	return 1;
