@@ -7,6 +7,7 @@
 #include "cc1.h"
 #include "cc1_where.h"
 #include "expr.h"
+#include "fold.h"
 
 stmt_flow *stmt_flow_new(symtable *parent)
 {
@@ -86,13 +87,8 @@ int stmt_is_switchlabel(const stmt *s)
 
 int stmt_kills_below_code(stmt *s)
 {
-	if(stmt_kind(s, break)
-	|| stmt_kind(s, continue)
-	|| stmt_kind(s, return)
-	|| stmt_kind(s, goto))
-	{
+	if(!fold_passable(s))
 		return 1;
-	}
 
 	if(stmt_is_switchlabel(s) || stmt_kind(s, label))
 		return stmt_kills_below_code(stmt_label_leaf(s));
