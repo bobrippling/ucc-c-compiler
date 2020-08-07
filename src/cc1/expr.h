@@ -277,6 +277,7 @@ func_is_lval expr_is_lval_struct;
 func_bool expr_is_struct_bitfield; /* a->b where b is bitfield */
 
 func_bool expr_has_sideeffects;
+func_bool expr_requires_relocation;
 func_bool expr_bool_always;
 
 void expr_set_const(expr *, consty *);
@@ -292,7 +293,7 @@ expr *expr_skip_generated_casts(expr *);
 
 const char *expr_str_friendly(expr *, int show_implicit_casts);
 
-decl *expr_to_declref(expr *e, const char **whynot);
-sym *expr_to_symref(expr *e, symtable * /*optional, will search if given*/);
+decl *expr_to_declref(const expr *e, const char **whynot);
+sym *expr_to_symref(const expr *e, symtable * /*optional, will search if given*/);
 
 #endif

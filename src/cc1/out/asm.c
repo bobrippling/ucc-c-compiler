@@ -66,6 +66,7 @@ const char *asm_section_desc(enum section_builtin sec)
 		case SECTION_DATA: return SECTION_DESC_DATA;
 		case SECTION_BSS: return SECTION_DESC_BSS;
 		case SECTION_RODATA: return SECTION_DESC_RODATA;
+		case SECTION_RELRO: return SECTION_DESC_RELRO;
 		case SECTION_CTORS: return SECTION_DESC_CTORS;
 		case SECTION_DTORS: return SECTION_DESC_DTORS;
 		case SECTION_DBG_ABBREV: return SECTION_DESC_DBG_ABBREV;

@@ -11,6 +11,7 @@ struct target_details
 		const char *section_name_data;
 		const char *section_name_bss;
 		const char *section_name_rodata;
+		const char *section_name_relro;
 		const char *section_name_ctors;
 		const char *section_name_dtors;
 		const char *section_name_dbg_abbrev;

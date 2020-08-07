@@ -486,6 +486,14 @@ static void infer_decl_section(decl *d, struct section *sec)
 
 	/* prefer rodata over bss */
 	if(type_is_const(d->ref)){
+		if(FOPT_PIC(&cc1_fopt)
+		&& d->bits.var.init.dinit
+		&& decl_init_requires_relocation(d->bits.var.init.dinit))
+		{
+			SECTION_FROM_BUILTIN(sec, SECTION_RELRO, flags);
+			return;
+		}
+
 		SECTION_FROM_BUILTIN(sec, SECTION_RODATA, flags);
 		return;
 	}
