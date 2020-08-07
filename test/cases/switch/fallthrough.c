@@ -2,6 +2,8 @@
 
 int f(void);
 
+_Noreturn void noreturn(void);
+
 int main()
 {
 	switch(f()){
@@ -59,6 +61,10 @@ int main()
 		case 50: goto hello; case 51: break;
 		case 53 ... 57: goto hello; case 58: break;
 		hello5: goto hello; case 59: break;
+
+		// shouldn't warn for noreturn func, etc
+		case 60: noreturn(); case 70: break;
+		case 61: __builtin_unreachable(); case 71: break;
 	}
 
 	__attribute((fallthrough))
