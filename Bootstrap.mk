@@ -9,8 +9,8 @@ CFLAGS_BOOTSTRAP = \
 		 -fshow-warning-option \
 		 -Wno-return-undef
 
-# turn off debugging for bootstrap comparison
-CFLAGS_BOOTSTRAP += -g0
+################### turn off debugging for bootstrap comparison
+CFLAGS_BOOTSTRAP += -g -fdebug-compilation-dir=/tmp/
 
 CC_STAGE1 = ${PWD}/src/ucc/ucc
 CC_STAGE2 = ${PWD}/bootstrap/stage2/src/ucc/ucc
