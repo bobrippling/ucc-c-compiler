@@ -50,6 +50,14 @@ X("inline-functions", inline_functions)
 X("integral-float-load", integral_float_load)
 X("leading-underscore", leading_underscore)
 X("omit-frame-pointer", omit_frame_pointer)
+/* relocation models:
+ *   static
+ *   pic
+ *   dynamic-no-pic ???
+ *   ropi           ???
+ *   rwpi           ???
+ *   ropi-rwpi      ???
+ */
 EXCLUSIVE("pic", pic, pie)
 ALIAS_EXCLUSIVE("PIC", pic, pie)
 EXCLUSIVE("pie", pie, pic)
