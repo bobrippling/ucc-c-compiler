@@ -234,6 +234,7 @@ static int should_stack_protect(decl *d)
 	if(attribute_present(d, attr_stack_protect))
 		return 1;
 
+	// TODO
 	/* calls alloca() [TODO] or has an array, or local variable whose address is taken */
 	bytes = symtab_decl_bytes(d->bits.func.code->symtab, 8, 1, &addr_taken);
 	return bytes >= 8 || addr_taken;
