@@ -51,7 +51,9 @@ struct out_ctx
 
 	unsigned check_flags : 1; /* decay flags? */
 	unsigned in_prologue : 1, used_stack : 1, had_call : 1, stack_ptr_manipulated : 1;
-	unsigned alloca_count;
+
+	unsigned alloca_count; /* number of allocas, i.e. VLAs + __builtin_alloca */
+	unsigned alloca_user_count; /* number of __builtin_alloca calls that we need to free during epilogue */
 
 	/* for current function */
 	enum no_sanitize no_sanitize_flags;

@@ -187,6 +187,9 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 	if(octx->current_blk && octx->current_blk->type == BLK_UNINIT)
 		out_ctrl_transfer(octx, octx->epilogue_blk, NULL, NULL, 0);
 
+	while(octx->alloca_user_count > 0)
+		out_alloca_pop(octx, 1);
+
 	assert(octx->alloca_count == 0 && "allocas after func gen?");
 
 	/* must generate callee saves/restores before the

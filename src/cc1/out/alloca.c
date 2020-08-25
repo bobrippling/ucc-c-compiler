@@ -35,7 +35,8 @@ static const out_val *alloca_stack_adj(
 const out_val *out_alloca_push(
 		out_ctx *octx,
 		const out_val *sz,
-		unsigned align)
+		unsigned align,
+		int is_user)
 {
 	type *arith_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 	const out_val *adjusted_sp;
@@ -44,6 +45,8 @@ const out_val *out_alloca_push(
 		align = cc1_mstack_align;
 
 	octx->alloca_count++;
+	if(is_user)
+		octx->alloca_user_count++;
 
 	if(align == 1)
 		return alloca_stack_adj(octx, op_minus, sz);
@@ -71,8 +74,11 @@ void out_alloca_restore(out_ctx *octx, const out_val *ptr)
 	out_flush_volatile(octx, v_to_reg_given(octx, ptr, &sp));
 }
 
-void out_alloca_pop(out_ctx *octx)
+void out_alloca_pop(out_ctx *octx, int is_user)
 {
 	assert(octx->alloca_count > 0);
 	octx->alloca_count--;
+
+	if(is_user)
+		octx->alloca_user_count--;
 }

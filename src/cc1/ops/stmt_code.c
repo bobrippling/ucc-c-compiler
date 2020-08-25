@@ -409,7 +409,7 @@ void gen_block_decls_dealloca(
 			continue;
 
 		if(!is_typedef && type_is_vla(d->ref, VLA_ANY_DIMENSION))
-			out_alloca_pop(octx);
+			out_alloca_pop(octx, /*__builtin_alloca*/0);
 
 		out_adealloc(octx, &v);
 		sym_setoutval(d->sym, /*null*/v);

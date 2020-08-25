@@ -53,6 +53,7 @@ static func_builtin_parse parse_unreachable
                           , parse_frame_address
                           , parse_return_address
                           , parse_extract_return_addr
+                          , parse_alloca
                           , parse_expect
                           , parse_strlen
                           , parse_is_signed
@@ -622,6 +623,52 @@ static expr *parse_extract_return_addr(const char *ident, symtable *scope)
 	expr_mutate_builtin(fcall, extract_return_addr);
 
 	return fcall;
+}
+
+/* --- alloca */
+
+static void fold_alloca(expr *e, symtable *stab)
+{
+	type *t_sizet = type_nav_btype(cc1_type_nav, type_uintptr_t);
+
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+
+	if(dynarray_count(e->funcargs) != 1){
+		warn_at_print_error(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
+	}
+
+	FOLD_EXPR(e->funcargs[0], stab);
+
+	if(!(type_cmp(e->funcargs[0]->tree_type, t_sizet, 0) & (TYPE_EQUAL_ANY | TYPE_CONVERTIBLE_IMPLICIT))){
+		warn_at_print_error(&e->where, "%s expects a 'size_t' argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
+	}
+
+	wur_builtin(e);
+}
+
+static const out_val *builtin_gen_alloca(const expr *e, out_ctx *octx)
+{
+	const out_val *sz;
+
+	out_comment(octx, "user alloca");
+	sz = gen_expr(e->funcargs[0], octx);
+
+	return out_alloca_push(octx, sz, /*align*/1, /*user*/1);
+}
+
+expr *parse_alloca(const char *ident, symtable *scope)
+{
+	expr *e = parse_any_args(scope);
+
+	(void)ident;
+
+	expr_mutate_builtin(e, alloca);
+
+	return e;
 }
 
 /* --- reg_save_area (a basic wrapper around out_push_reg_save_ptr()) */

@@ -288,7 +288,7 @@ void vla_decl_init(decl *d, out_ctx *octx)
 		v_sz = out_cast(octx, v_sz, sizety, 0);
 
 		out_comment(octx, "alloca for %s", decl_to_str(d));
-		v_ptr = out_alloca_push(octx, v_sz, type_align(d->ref, NULL));
+		v_ptr = out_alloca_push(octx, v_sz, type_align(d->ref, NULL), /*__builtin_alloca*/0);
 
 		out_comment(octx, "save ptr for %s", decl_to_str(d));
 		out_val_retain(octx, stack_ent);
