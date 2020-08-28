@@ -94,7 +94,7 @@ struct uccvars
 	const char *target;
 	const char *output;
 
-	int static_, shared;
+	int static_, shared, rdynamic;
 	int stdlibinc, builtininc, defaultlibs, startfiles;
 	int debug, profile;
 	enum tristate pie;
@@ -950,6 +950,8 @@ word:
 						vars->shared = 1;
 					else if(!strcmp(argv[i], "-static"))
 						vars->static_ = 1;
+					else if(!strcmp(argv[i], "-rdynamic"))
+						vars->rdynamic = 1;
 					else if(!strcmp(argv[i], "-pie"))
 						vars->pie = TRI_TRUE;
 					else if(!strcmp(argv[i], "-no-pie"))
@@ -1143,6 +1145,9 @@ static void state_from_triple(
 	if(triple->sys != SYS_linux && vars->dyld != DYLD_DEFAULT)
 		die("-mmusl/-mglibc given for non-linux system");
 
+	if(triple->sys != SYS_linux && triple->sys != SYS_darwin && vars->rdynamic)
+		die("-rdynamic given for non-linux/darwin system");
+
 	switch(triple->sys){
 		case SYS_linux:
 		{
@@ -1155,6 +1160,9 @@ static void state_from_triple(
 
 			if(is_pie && !vars->shared)
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
+
+			if(vars->rdynamic)
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-export-dynamic"));
 
 			if(vars->shared){
 				/* don't mention a dynamic linker - not used for generating a shared library */
@@ -1299,6 +1307,9 @@ static void state_from_triple(
 						break;
 				}
 			}
+
+			if(vars->rdynamic)
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-export_dynamic"));
 
 			paramshared = "-dylib";
 			break;
