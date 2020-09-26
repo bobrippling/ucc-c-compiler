@@ -1,0 +1,62 @@
+.section .rodata
+ki:
+.long 3
+
+p3:
+.space 8
+
+p:
+.space 8
+
+str.2:
+.ascii "hi\000"
+
+
+
+.section .data.rel.ro
+p1:
+.quad ki
+
+p2:
+.quad data.1
+
+str:
+.quad str.2
+
+wrap_p1:
+.quad array
+
+wrap_p2:
+.quad array
+
+wrap_p3:
+.quad array + 4
+
+r:
+.quad arrays + 36
+.quad arrays + 60
+
+
+
+.section .data
+data.1:
+.long 3
+
+i:
+.long 3
+
+q:
+.quad i
+
+
+
+.section .bss
+array:
+.space 12
+
+arrays:
+.space 60
+
+
+
+.section .note.GNU-stack,"",@progbits
