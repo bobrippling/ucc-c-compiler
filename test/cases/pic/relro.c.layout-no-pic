@@ -20,16 +20,30 @@ r:
 .quad arrays + 60
 p:
 .space 8
+pv1:
+.quad arrays + 44
+pv2:
+.quad data.3
+bp:
+.quad globl.block_2
 str.2:
 .ascii "hi\000"
 
+.section .text
+globl.block_2:
+globl.block_1:
+
 .section .data
+data.3:
+.long 3
 data.1:
 .long 3
 i:
 .long 3
 q:
 .quad i
+bpmut:
+.quad globl.block_1
 
 .section .bss
 array:

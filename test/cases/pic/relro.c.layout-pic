@@ -13,6 +13,12 @@ str.2:
 
 
 
+.section .text
+globl.block_2:
+globl.block_1:
+
+
+
 .section .data.rel.ro
 p1:
 .quad ki
@@ -36,9 +42,21 @@ r:
 .quad arrays + 36
 .quad arrays + 60
 
+pv1:
+.quad arrays + 44
+
+pv2:
+.quad data.3
+
+bp:
+.quad globl.block_2
+
 
 
 .section .data
+data.3:
+.long 3
+
 data.1:
 .long 3
 
@@ -47,6 +65,9 @@ i:
 
 q:
 .quad i
+
+bpmut:
+.quad globl.block_1
 
 
 

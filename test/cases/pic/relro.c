@@ -41,3 +41,20 @@ const Ref r = { // relro
 typedef struct { int x, y; } Int;
 
 int *const p = &((Int *)0)->y; // ro
+
+// -----------------------
+
+void *const pv1 = _Generic(
+		0,
+		int: arrays[3].x + 2,
+		char: 3);
+
+void *const pv2 = _Generic(
+		0,
+		char: &(*r.ar2)[3].x[1], /* not a constant expr, never mind relocatable */
+		int: (int[]){ 3 });
+
+// -----------------------
+
+void (^bpmut)(void) = ^{};
+void (^const bp)(void) = ^{};
