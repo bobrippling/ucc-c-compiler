@@ -242,8 +242,14 @@ decl *expr_to_declref(const expr *e, const char **whynot)
 	}else if(expr_kind(e, addr)){
 		return expr_to_declref(expr_addr_target(e), whynot);
 
-	}else if(expr_kind(e, compound_lit)){
-		return e->bits.complit.decl;
+	/*}else if(expr_kind(e, compound_lit)){
+		decl *d = e->bits.complit.decl;
+		assert(!d->sym);
+		return d;
+
+		We can't shortcircuit a compound literal like this,
+		because its gen-code also generates the initialiser too.
+		*/
 
 	}else if(whynot){
 		*whynot = "not an identifier, member or block";
