@@ -290,5 +290,8 @@ int expr_has_sideeffects(const expr *e)
 
 int expr_requires_relocation(const expr *e)
 {
+	/* can't use expr_to_declref because it doesn't cover cases
+	 * that don't have decls but still require relocs, such as strings,
+	 * _Generic()s of those, etc */
 	return e->f_requires_relocation && e->f_requires_relocation(e);
 }
