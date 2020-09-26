@@ -1566,10 +1566,16 @@ static int expr_op_has_sideeffects(const expr *e)
 	return expr_has_sideeffects(e->lhs) || (e->rhs && expr_has_sideeffects(e->rhs));
 }
 
+static int expr_op_requires_relocation(const expr *e)
+{
+	return expr_requires_relocation(e->lhs) || (e->rhs && expr_requires_relocation(e->rhs));
+}
+
 void mutate_expr_op(expr *e)
 {
 	e->f_const_fold = fold_const_expr_op;
 	e->f_has_sideeffects = expr_op_has_sideeffects;
+	e->f_requires_relocation = expr_op_requires_relocation;
 }
 
 expr *expr_new_op(enum op_type op)

@@ -6,6 +6,9 @@ usage(){
 }
 
 verbose=$UCC_VERBOSE
+if test -z "$verbose"
+then verbose=0
+fi
 
 rmfiles(){
 	test -z "$rmfiles" || rm -f $rmfiles

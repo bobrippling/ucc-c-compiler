@@ -22,6 +22,8 @@
 #include "ops/expr_identifier.h"
 #include "ops/expr_struct.h"
 #include "ops/expr_block.h"
+#include "ops/expr_compound_lit.h"
+#include "ops/expr_addr.h"
 
 void expr_mutate(expr *e, func_mutate_expr *f,
 		func_fold *f_fold,
@@ -217,9 +219,9 @@ expr *expr_skip_generated_casts(expr *e)
 	return e;
 }
 
-decl *expr_to_declref(expr *e, const char **whynot)
+decl *expr_to_declref(const expr *e, const char **whynot)
 {
-	e = expr_skip_all_casts(e);
+	e = expr_skip_all_casts(REMOVE_CONST(expr *, e));
 
 	if(expr_kind(e, identifier)){
 		if(whynot)
@@ -237,6 +239,18 @@ decl *expr_to_declref(expr *e, const char **whynot)
 	}else if(expr_kind(e, block)){
 		return e->bits.block.sym->decl;
 
+	}else if(expr_kind(e, addr)){
+		return expr_to_declref(expr_addr_target(e), whynot);
+
+	/*}else if(expr_kind(e, compound_lit)){
+		decl *d = e->bits.complit.decl;
+		assert(!d->sym);
+		return d;
+
+		We can't shortcircuit a compound literal like this,
+		because its gen-code also generates the initialiser too.
+		*/
+
 	}else if(whynot){
 		*whynot = "not an identifier, member or block";
 	}
@@ -244,7 +258,7 @@ decl *expr_to_declref(expr *e, const char **whynot)
 	return NULL;
 }
 
-sym *expr_to_symref(expr *e, symtable *stab)
+sym *expr_to_symref(const expr *e, symtable *stab)
 {
 	if(expr_kind(e, identifier)){
 		struct symtab_entry ent;
@@ -278,4 +292,12 @@ int expr_bool_always(const expr *e)
 int expr_has_sideeffects(const expr *e)
 {
 	return e->f_has_sideeffects && e->f_has_sideeffects(e);
+}
+
+int expr_requires_relocation(const expr *e)
+{
+	/* can't use expr_to_declref because it doesn't cover cases
+	 * that don't have decls but still require relocs, such as strings,
+	 * _Generic()s of those, etc */
+	return e->f_requires_relocation && e->f_requires_relocation(e);
 }

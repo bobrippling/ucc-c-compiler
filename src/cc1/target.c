@@ -10,6 +10,7 @@ static const struct target_section_names section_names[] = {
 		".data",
 		".bss",
 		".rodata",
+		".data.rel.ro", /* .data.rel.ro[.local] */
 		".init_array,\"aw\"",
 		".fini_array,\"aw\"",
 		".debug_abbrev",
@@ -21,6 +22,7 @@ static const struct target_section_names section_names[] = {
 		".data",
 		".bss",
 		".rodata",
+		".data.rel.ro", /* .data.rel.ro[.local] */
 		".init_array,\"aw\"",
 		".fini_array,\"aw\"",
 		".debug_abbrev",
@@ -31,7 +33,8 @@ static const struct target_section_names section_names[] = {
 		"__TEXT,__text",
 		"__DATA,__data",
 		"__BSS,__bss",
-		"__DATA,__const",
+		"__TEXT,__const", /* no relocs required (oddly text) */
+		"__DATA,__const", /* relocs required */
 		"__DATA,__mod_init_func,mod_init_funcs",
 		"__DATA,__mod_term_func,mod_term_funcs",
 		"__DWARF,__debug_abbrev,regular,debug",
@@ -43,6 +46,7 @@ static const struct target_section_names section_names[] = {
 		".data",
 		".bss",
 		".rodata",
+		".data.rel.ro",
 		".ctors,\"w\"",
 		".dtors,\"w\"",
 		".debug_abbrev",

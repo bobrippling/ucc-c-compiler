@@ -56,11 +56,12 @@ char *section_name(const struct section *sec, int *const allocated)
 		return (char *)sec->name;
 
 	assert(section_is_builtin(sec));
-	switch(sec->builtin){
+	switch((enum section_builtin)sec->builtin){
 		case SECTION_TEXT: return (char *)cc1_target_details.section_names.section_name_text;
 		case SECTION_DATA: return (char *)cc1_target_details.section_names.section_name_data;
 		case SECTION_BSS: return (char *)cc1_target_details.section_names.section_name_bss;
 		case SECTION_RODATA: return (char *)cc1_target_details.section_names.section_name_rodata;
+		case SECTION_RELRO: return (char *)cc1_target_details.section_names.section_name_relro;
 		case SECTION_CTORS: return (char *)cc1_target_details.section_names.section_name_ctors;
 		case SECTION_DTORS: return (char *)cc1_target_details.section_names.section_name_dtors;
 		case SECTION_DBG_ABBREV: return (char *)cc1_target_details.section_names.section_name_dbg_abbrev;

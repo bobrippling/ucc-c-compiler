@@ -747,10 +747,16 @@ static int expr_cast_has_sideeffects(const expr *e)
 	return expr_has_sideeffects(expr_cast_child(e));
 }
 
+static int expr_cast_requires_relocation(const expr *e)
+{
+	return expr_requires_relocation(expr_cast_child(e));
+}
+
 void mutate_expr_cast(expr *e)
 {
 	e->f_const_fold = fold_const_expr_cast;
 	e->f_has_sideeffects = expr_cast_has_sideeffects;
+	e->f_requires_relocation = expr_cast_requires_relocation;
 }
 
 expr *expr_new_cast(expr *what, type *to, int implicit)

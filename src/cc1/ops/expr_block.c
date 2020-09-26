@@ -129,6 +129,7 @@ const out_val *gen_expr_style_block(const expr *e, out_ctx *octx)
 void mutate_expr_block(expr *e)
 {
 	e->f_const_fold = const_expr_block;
+	e->f_requires_relocation = expr_bool_always;
 }
 
 expr *expr_new_block(type *rt, funcargs *args)
