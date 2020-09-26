@@ -195,13 +195,17 @@ void fold_expr_if(expr *e, symtable *stab)
 	FOLD_EXPR(e->expr, stab);
 	const_fold(e->expr, &konst);
 
+	/* get all the folding out the way so we're valid for later passes */
+	if(e->lhs)
+		e->lhs = fold_expr_nonstructdecay(e->lhs, stab);
+	e->rhs = fold_expr_nonstructdecay(e->rhs, stab);
+
 	if(fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, desc)){
 		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
 		return;
 	}
 
 	if(e->lhs){
-		e->lhs = fold_expr_nonstructdecay(e->lhs, stab);
 		if(fold_check_expr(e->lhs,
 				FOLD_CHK_ALLOW_VOID,
 				"?: left operand"))
@@ -211,7 +215,6 @@ void fold_expr_if(expr *e, symtable *stab)
 		}
 	}
 
-	e->rhs = fold_expr_nonstructdecay(e->rhs, stab);
 	if(fold_check_expr(e->rhs,
 			FOLD_CHK_ALLOW_VOID,
 			"?: right operand"))

@@ -1315,13 +1315,17 @@ void fold_expr_op(expr *e, symtable *stab)
 			where_str(&e->where));
 
 	FOLD_EXPR(e->lhs, stab);
+	/* ensure we fold the rhs before returning in case of errors,
+	 * so it has a tree_type for future things like const_fold */
+	if(e->rhs)
+		FOLD_EXPR(e->rhs, stab);
+
 	if(fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_desc)){
 		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
 		return;
 	}
 
 	if(e->rhs){
-		FOLD_EXPR(e->rhs, stab);
 		if(fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_desc)){
 			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
 			return;
