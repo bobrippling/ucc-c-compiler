@@ -249,11 +249,17 @@ static int expr_struct_has_sideeffects(const expr *e)
 	return expr_has_sideeffects(e->lhs);
 }
 
+static int expr_struct_requires_relocation(const expr *e)
+{
+	return expr_requires_relocation(e->lhs);
+}
+
 void mutate_expr_struct(expr *e)
 {
 	e->f_const_fold = fold_const_expr_struct;
 	e->f_islval = struct_is_lval;
 	e->f_has_sideeffects = expr_struct_has_sideeffects;
+	e->f_requires_relocation = expr_struct_requires_relocation;
 
 	/* zero out the union/rhs if we're mutating */
 	e->bits.struct_mem.d = NULL;

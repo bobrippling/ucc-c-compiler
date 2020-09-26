@@ -44,6 +44,7 @@ struct expr
 	func_str *f_str;
 	func_is_lval *f_islval;
 	func_bool *f_has_sideeffects; /* optional */
+	func_bool *f_requires_relocation; /* optional */
 
 	func_const *f_const_fold; /* optional, used in static/global init */
 

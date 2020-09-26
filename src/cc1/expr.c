@@ -290,6 +290,5 @@ int expr_has_sideeffects(const expr *e)
 
 int expr_requires_relocation(const expr *e)
 {
-	decl *d = expr_to_declref(e, NULL);
-	return !!d;
+	return e->f_requires_relocation && e->f_requires_relocation(e);
 }
