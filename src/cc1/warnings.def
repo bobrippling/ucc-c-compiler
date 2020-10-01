@@ -70,6 +70,7 @@ ALIAS("shadow=compatible-local", shadow_compatible_local)
 
 X("cast-qual", cast_qual)
 
+X("comma", unused_comma_all)
 X("unused-comma", unused_comma)
 X("unused-expression", unused_expr)
 X("unused-function", unused_function)

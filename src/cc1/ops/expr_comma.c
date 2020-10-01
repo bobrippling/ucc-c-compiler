@@ -50,9 +50,12 @@ void fold_expr_comma(expr *e, symtable *stab)
 		return;
 	}
 
-	if(!e->lhs->freestanding
-	&& !e->expr_comma_synthesized
-	&& !type_is_void(e->lhs->tree_type))
+	if(cc1_warning.unused_comma_all
+	|| (
+		!e->lhs->freestanding
+		&& !e->expr_comma_synthesized
+		&& !type_is_void(e->lhs->tree_type)
+	))
 	{
 		cc1_warn_at(&e->lhs->where, unused_comma,
 				"left hand side of comma is unused");
