@@ -726,6 +726,7 @@ static void parse_argv(
 						goto word; /* -wabc... */
 					ADD_ARG(mode_preproc, arg); /* -w */
 					ADD_ARG(mode_compile, arg);
+					ADD_ARG(mode_assemb, "-W");
 					continue;
 
 				case 'm':
