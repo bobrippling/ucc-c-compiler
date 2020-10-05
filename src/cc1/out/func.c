@@ -507,10 +507,10 @@ void out_func_prologue(
 				out_init_stack_canary(octx, stack_prot_slot);
 			}
 		}
+
+		octx->used_stack = !!stack_prot_slot;
 	}
 	octx->in_prologue = 0;
-
-	octx->used_stack = 0;
 
 	out_current_blk(octx, octx->postprologue_blk);
 }
