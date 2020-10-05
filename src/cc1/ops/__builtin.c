@@ -111,6 +111,7 @@ static builtin_table *builtin_find(const char *sp)
 {
 	static unsigned prefix_len;
 	builtin_table *found;
+	int has_builtin_prefix;
 
 	if(!cc1_fopt.freestanding){
 		found = builtin_table_search(no_prefix_builtins, sp);
@@ -124,13 +125,20 @@ static builtin_table *builtin_find(const char *sp)
 	if(strlen(sp) < prefix_len)
 		return NULL;
 
-	if(!strncmp(sp, PREFIX, prefix_len))
+	has_builtin_prefix = !strncmp(sp, PREFIX, prefix_len);
+	if(has_builtin_prefix)
 		found = builtin_table_search(builtins, sp + prefix_len);
 	else
 		found = NULL;
 
-	if(!found) /* look for __builtin_strlen, etc */
+	if(!found){ /* look for __builtin_strlen, etc */
 		found = builtin_table_search(no_prefix_builtins, sp + prefix_len);
+
+		if(!found && has_builtin_prefix){
+			warn_at_print_error(NULL, "unknown builtin '%s'", sp);
+			fold_had_error = 1;
+		}
+	}
 
 	return found;
 }
