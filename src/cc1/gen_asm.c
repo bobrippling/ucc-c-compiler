@@ -364,7 +364,7 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
-			out_func_epilogue(octx, d->ref, &d->bits.func.code->where, end);
+			out_func_epilogue(octx, d->ref, &d->bits.func.code->where, end, section);
 			free(end);
 		}
 
@@ -379,7 +379,7 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 	}
 
 	if(cc1_target_details.as->supports_type_and_size)
-			gen_type_and_size(section, d);
+		gen_type_and_size(section, d);
 }
 
 const out_val *gen_call(
@@ -509,7 +509,6 @@ static void infer_decl_section(decl *d, struct section *sec)
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
 	struct section section;
-	struct section_output prev_section;
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
 	const int attr_used_present = !!attribute_present(d, attr_used);
@@ -555,7 +554,6 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			break;
 	}
 
-	memcpy_safe(&prev_section, &cc1_current_section_output);
 	infer_decl_section(d, &section);
 	asm_switch_section(&section);
 	if(cc1_fopt.dump_decl_sections){
@@ -617,8 +615,6 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 out:
 	if(emit_visibility)
 		asm_predeclare_visibility(&section, d);
-
-	memcpy_safe(&cc1_current_section_output, &prev_section);
 }
 
 void gen_asm(

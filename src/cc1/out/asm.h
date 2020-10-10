@@ -7,11 +7,13 @@
 
 const char *asm_section_desc(enum section_builtin);
 
-FILE *asm_section_file(const struct section *);
-
 ucc_printflike(2, 3)
+ucc_nonnull()
 void asm_out_section(const struct section *, const char *fmt, ...);
+
+ucc_nonnull()
 void asm_out_sectionv(const struct section *, const char *fmt, va_list l);
+
 void asm_switch_section(const struct section *);
 
 int asm_section_empty(const struct section *);

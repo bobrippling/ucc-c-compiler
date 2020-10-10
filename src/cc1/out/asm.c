@@ -10,6 +10,7 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 #include "../../util/math.h"
+#include "../../util/io.h"
 
 #include "../type.h"
 #include "../type_nav.h"
@@ -35,7 +36,6 @@
 #include "../str.h"
 #include "../cc1_target.h"
 #include "../cc1_out.h"
-#include "../cc1_sections.h"
 #include "../mangle.h"
 
 #include "../ops/expr_compound_lit.h"
@@ -76,38 +76,48 @@ const char *asm_section_desc(enum section_builtin sec)
 	return NULL;
 }
 
-FILE *asm_section_file(const struct section *sec)
+static void switch_section_emit(const struct section *section)
 {
-	FILE *f;
+	const char *desc = NULL;
+	char *name;
+	int allocated;
+	const int is_builtin = section_is_builtin(section);
+	int firsttime;
 
-	if(!cc1_out_persection)
-		cc1_out_persection = dynmap_new(struct section *, section_cmp, section_hash);
+	if(is_builtin)
+		desc = asm_section_desc(section->builtin);
 
-	f = dynmap_get(const struct section *, FILE *, cc1_out_persection, sec);
-	if(!f){
-		struct section *secdup = umalloc(sizeof *secdup);
+	name = section_name(section, &allocated);
+	xfprintf(cc1_output.file, ".section %s", name);
+	if(allocated)
+		free(name), name = NULL;
 
-		memcpy_safe(secdup, sec);
+	firsttime = cc1_outsections_add(section);
+	if(firsttime){
+		if(cc1_target_details.as->supports_section_flags && !is_builtin){
+			const int is_code = section->flags & SECTION_FLAG_EXECUTABLE;
+			const int is_rw = !(section->flags & SECTION_FLAG_RO);
 
-		f = tmpfile();
-		if(!f)
-			ICE("tmpfile: %s\n", strerror(errno));
-		(void)dynmap_set(struct section *, FILE *, cc1_out_persection, secdup, f);
+			xfprintf(cc1_output.file, ",\"a%s\",@progbits", is_code ? "x" : is_rw ? "w" : "");
+		}
 	}
+	xfprintf(cc1_output.file, "\n");
 
-	return f;
+	if(firsttime && desc)
+		xfprintf(cc1_output.file, "%s%s%s:\n", cc1_target_details.as->privatelbl_prefix, SECTION_BEGIN, desc);
 }
 
 void asm_switch_section(const struct section *section)
 {
-	if(cc1_current_section_output.sec.builtin != -1
-	&& section_eq(&cc1_current_section_output.sec, section))
+	if(cc1_output.section.builtin != -1
+	&& section_eq(&cc1_output.section, section))
 	{
 		return;
 	}
 
-	memcpy_safe(&cc1_current_section_output.sec, section);
-	cc1_current_section_output.file = asm_section_file(section);
+	memcpy_safe(&cc1_output.section, section);
+
+	switch_section_emit(section);
 }
 
 int asm_table_lookup(type *r)
@@ -575,7 +585,6 @@ void asm_out_align(const struct section *sec, unsigned align)
 
 void asm_nam_begin3(const struct section *sec, const char *lbl, unsigned align)
 {
-	asm_switch_section(sec);
 	asm_out_align(sec, align);
 	asm_out_section(sec, "%s:\n", lbl);
 }
@@ -695,7 +704,7 @@ void asm_declare_stringlit(const struct section *sec, const stringlit *lit)
 
 		case CSTRING_ASCII:
 		{
-			FILE *f = asm_section_file(sec);
+			FILE *f = cc1_output.file;
 			asm_out_section(sec, ".ascii \"");
 			literal_print(f, lit->cstr);
 			fputc('"', f);
@@ -755,8 +764,9 @@ fallback:
 
 void asm_out_sectionv(const struct section *sec, const char *fmt, va_list l)
 {
-	FILE *f = sec ? asm_section_file(sec) : cc1_current_section_output.file;
-	vfprintf(f, fmt, l);
+	asm_switch_section(sec);
+
+	vfprintf(cc1_output.file, fmt, l);
 }
 
 void asm_out_section(const struct section *sec, const char *fmt, ...)

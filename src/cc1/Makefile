@@ -12,7 +12,7 @@ OBJ_UTIL = \
 
 OBJ_REST = \
 	str.o num.o label.o strings.o \
-	warn.o fopt.o visibility.o pass1.o cc1_out_ctx.o target.o sanitize_opt.o \
+	warn.o fopt.o visibility.o pass1.o cc1_out_ctx.o cc1_out.o target.o sanitize_opt.o \
 	decl.o attribute.o decl_init.o funcargs.o expr.o stmt.o \
 	btype.o type.o type_is.o type_nav.o op.o c_types.o c_funcs.o \
 	tokconv.o tokenise.o pragma.o \
@@ -23,6 +23,7 @@ OBJ_REST = \
 	out/out.o out/asm.o out/lbl.o out/impl.o out/write.o out/dbg.o out/leb.o \
 	out/virt.o out/ctrl.o out/func.o out/new.o out/val.o out/blk.o out/op.o \
 	out/bitfield.o out/free.o out/alloca.o out/stack.o out/dbg_lbl.o out/mem.o \
+	out/dbg_file.o \
 	out/stack_protector.o out/section.o \
 	ops/expr_addr.o ops/expr_assign.o ops/expr_cast.o ops/expr_comma.o \
 	ops/expr_funcall.o ops/expr_identifier.o ops/expr_if.o ops/expr_op.o \

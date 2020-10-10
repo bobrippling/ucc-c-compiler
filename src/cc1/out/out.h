@@ -155,7 +155,13 @@ void out_func_prologue(
 		int nargs, int variadic, int stack_protector,
 		const out_val *argvals[]);
 
-void out_func_epilogue(out_ctx *, type *, const where *func_begin, char *end_dbg_lbl);
+struct section;
+void out_func_epilogue(
+	out_ctx *,
+	type *,
+	const where *func_begin,
+	char *end_dbg_lbl,
+	const struct section *section);
 
 
 /* returns a pointer to allocated storage: */
