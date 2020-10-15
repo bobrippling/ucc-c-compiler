@@ -584,19 +584,33 @@ static stmt *parse_asm(symtable *scope)
 	enum type_qualifier qual = qual_none;
 	enum { GOTO_NONE, GOTO_IS, GOTO_HAD } goto_ty = GOTO_NONE;
 	struct cstring *cstr;
+	where loc;
 
 	asm_st = stmt_new_wrapper(asm, scope);
 	bits = asm_st->bits.asm_args = umalloc(sizeof *asm_st->bits.asm_args);
 
 	EAT(token_asm);
+
+	where_cc1_current(&loc);
 	while(curtok_is_type_qual()){
-		qual |= curtok_to_type_qualifier();
+		enum type_qualifier q = curtok_to_type_qualifier();
+
+		if(q & qual){
+			warn_at_print_error(&loc, "Duplicate qualification after asm (%s)",
+					type_qual_to_str(q, 0));
+			fold_had_error = 1;
+		}
+
+		qual |= q;
 		EAT(curtok);
+		where_cc1_current(&loc);
 	}
 
 	if(qual & ~qual_volatile){
-		warn_at(&asm_st->where, "Ignoring extra qualifiers after asm (%s)",
+		/* used to be warnings in gcc/clang, now errors */
+		warn_at_print_error(&loc, "Non-volatile qualification after asm (%s)",
 				type_qual_to_str(qual & ~qual_volatile, 0));
+		fold_had_error = 1;
 	}
 	bits->is_volatile = (qual & qual_volatile) == qual_volatile;
 
@@ -783,6 +797,26 @@ flow:
 	return t;
 }
 
+static void error_on_gasm_quals(void)
+{
+	enum type_qualifier qual = qual_none;
+	where loc;
+
+	where_cc1_current(&loc);
+
+	while(curtok_is_type_qual()){
+		qual |= curtok_to_type_qualifier();
+		EAT(curtok);
+	}
+
+	if(qual){
+		/* used to be warnings in gcc/clang (for volatile), now errors */
+		warn_at_print_error(&loc, "Qualification after global asm (%s)",
+				type_qual_to_str(qual, 0));
+		fold_had_error = 1;
+	}
+}
+
 symtable_gasm *parse_gasm(void)
 {
 	symtable_gasm *g;
@@ -790,6 +824,8 @@ symtable_gasm *parse_gasm(void)
 	where w;
 
 	where_cc1_current(&w);
+
+	error_on_gasm_quals();
 
 	EAT(token_open_paren);
 
