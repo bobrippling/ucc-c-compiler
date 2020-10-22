@@ -401,6 +401,11 @@ int decl_should_emit_code(decl *d)
 	return 1;
 }
 
+int decl_should_emit_var(decl *d)
+{
+	return !decl_unused_and_internal(d);
+}
+
 int decl_unused_and_internal(decl *d)
 {
 	/* need to check every clone of the decl */

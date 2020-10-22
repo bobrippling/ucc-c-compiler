@@ -549,13 +549,9 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		case store_typedef:
 			return;
 
-		case store_static:
-			if(d->sym && !d->sym->nreads && !d->sym->nwrites && !attr_used_present)
-				return;
-			break;
-
 		case store_extern:
 		case store_default:
+		case store_static:
 			break;
 	}
 
@@ -599,7 +595,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		 *
 		 * unless we're told to emit tenatives, e.g. local scope
 		 */
-		if(!emit_tenatives && !d->bits.var.init.dinit){
+		if((!emit_tenatives && !d->bits.var.init.dinit) || !decl_should_emit_var(d)){
 			if(!emitted_type)
 				asm_predeclare_extern(&section, d);
 			goto out;
