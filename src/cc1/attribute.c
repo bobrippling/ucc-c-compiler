@@ -109,7 +109,7 @@ attribute *expr_attr_present(expr *e, enum attribute_type t)
 	attribute *da;
 
 	if(expr_kind(e, cast)){
-		da = expr_attr_present(e->expr, t);
+		da = expr_attr_present(expr_cast_child(e), t);
 		if(da)
 			return da;
 	}
