@@ -168,6 +168,13 @@ const char *decl_store_spel_type_to_str_r(
 
 #define decl_use(d) ((d)->flags |= DECL_FLAGS_USED)
 
+/* compound-literals and block-expressions force
+ * their dependants to be generated, even if we don't
+ * use them themselves - this macro is used to tag
+ * these cases for possible recursive use checks in
+ * the future */
+#define decl_use_ignoredeps decl_use
+
 #define DECL_FUNC_ARG_SYMTAB(d) ((d)->bits.func.code->symtab->parent)
 
 #define DECL_IS_ANON_BITFIELD(d) \

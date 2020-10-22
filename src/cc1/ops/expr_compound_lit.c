@@ -170,6 +170,7 @@ static decl *compound_lit_decl(type *t, decl_init *init)
 
 	d->ref = t;
 	d->bits.var.init.dinit = init;
+	decl_use_ignoredeps(d);
 
 	return d;
 }
