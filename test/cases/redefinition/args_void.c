@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check --only %s
 
 any(); // any args, can't determine
 one();
@@ -11,7 +11,7 @@ any2()
 	return 0;
 }
 
-one(i)
+one(i) // CHECK: warning: old-style function declaration
 	int i;
 {
 	return i;
@@ -19,8 +19,8 @@ one(i)
 
 main()
 {
-	any(5);  // CHECK: !/warn/
-	one(1);  // CHECK: !/warn/
+	any(5);
+	one(1);
 	any2(2); // CHECK: /warning: too many arguments to implicitly \(void\)-function/
 	one(1, 2); // CHECK: /warning: too many arguments/
 }
