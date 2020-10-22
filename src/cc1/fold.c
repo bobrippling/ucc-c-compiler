@@ -731,6 +731,16 @@ void fold_decl_add_sym(decl *d, symtable *stab)
 	/* must be before fold*, since sym lookups are done */
 	if(d->sym){
 		/* ignore */
+	}else if(0 && d->proto){
+		/* this links things too tightly and we end up with
+		 * decls sharing funcargs (which are mutated, breaking
+		 * the type_nav guarantees - easiest to not link here for now */
+		decl *proto;
+
+		for(proto = d; proto->proto; proto = proto->proto);
+
+		d->sym = proto->sym;
+
 	}else{
 		enum sym_type ty;
 

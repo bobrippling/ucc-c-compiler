@@ -25,7 +25,7 @@ struct __FILE
 	*/
 };
 
-FILE static stdin = {
+FILE __attribute((used)) static stdin = {
 	.status = file_status_fine,
 	.fd = 1
 };

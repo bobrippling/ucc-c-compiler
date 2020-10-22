@@ -60,6 +60,7 @@ static const struct target_as asconfig[] = {
 		{
 			"weak",
 			"hidden",
+			NULL,
 		},
 		".L",
 		1, /* visibility protected */
@@ -72,6 +73,7 @@ static const struct target_as asconfig[] = {
 		{
 			"weak",
 			"hidden",
+			NULL,
 		},
 		".L",
 		1, /* visibility protected */
@@ -84,6 +86,7 @@ static const struct target_as asconfig[] = {
 		{
 			"weak_reference", /* Darwin also needs "-flat_namespace -undefined suppress" */
 			"private_extern",
+			"no_dead_strip",
 		},
 		"L",
 		0, /* visibility protected */
@@ -96,6 +99,7 @@ static const struct target_as asconfig[] = {
 		{
 			"weak",
 			"hidden",
+			NULL,
 		},
 		".L",
 		1, /* visibility protected */

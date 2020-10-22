@@ -25,6 +25,7 @@ struct target_details
 		{
 			const char *weak;
 			const char *visibility_hidden;
+			const char *no_dead_strip;
 		} directives;
 
 		const char *privatelbl_prefix;

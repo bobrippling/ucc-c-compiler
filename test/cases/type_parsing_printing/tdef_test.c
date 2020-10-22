@@ -9,4 +9,5 @@ tdef_int2 i = 3;
 typedef int *intptr;
 intptr p = (void *)0;
 
+__attribute((used))
 static intptr x;

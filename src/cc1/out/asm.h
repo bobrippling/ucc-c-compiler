@@ -36,6 +36,7 @@ void asm_declare_destructor(decl *d);
 void asm_predeclare_extern(const struct section *, decl *d);
 void asm_predeclare_global(const struct section *, decl *d);
 void asm_predeclare_weak(const struct section *, decl *d);
+void asm_predeclare_used(const struct section *, decl *d);
 void asm_predeclare_visibility(const struct section *, decl *d);
 void asm_declare_alias(const struct section *, decl *d, decl *alias);
 #endif

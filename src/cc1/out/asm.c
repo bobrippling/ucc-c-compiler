@@ -614,6 +614,12 @@ void asm_predeclare_global(const struct section *sec, decl *d)
 	asm_predecl(sec, "globl", d);
 }
 
+void asm_predeclare_used(const struct section *sec, decl *d)
+{
+	if(cc1_target_details.as.directives.no_dead_strip)
+		asm_predecl(sec, cc1_target_details.as.directives.no_dead_strip, d);
+}
+
 void asm_predeclare_weak(const struct section *sec, decl *d)
 {
 	asm_predecl(sec, cc1_target_details.as.directives.weak, d);

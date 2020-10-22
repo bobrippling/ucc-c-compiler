@@ -21,7 +21,7 @@ int f_impl()
 
 extern __typeof(f_impl) f __attribute__((alias("f_impl")));
 
-__attribute__((alias("f_impl")))
+__attribute__((alias("f_impl"), used))
 static int static_f();
 
 // -------------------------------

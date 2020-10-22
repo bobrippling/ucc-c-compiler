@@ -512,6 +512,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 	struct section_output prev_section;
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
+	const int attr_used_present = !!attribute_present(d, attr_used);
 	int emit_visibility = 0;
 	attribute *attr;
 
@@ -594,7 +595,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		 *
 		 * unless we're told to emit tenatives, e.g. local scope
 		 */
-		if(!emit_tenatives && !d->bits.var.init.dinit){
+		if((!emit_tenatives && !d->bits.var.init.dinit) || !decl_should_emit_var(d)){
 			if(!emitted_type)
 				asm_predeclare_extern(&section, d);
 			goto out;
@@ -603,6 +604,9 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		if(cc1_gdebug == DEBUG_FULL)
 			out_dbg_emit_global_var(octx, d);
 	}
+
+	if(attr_used_present)
+		asm_predeclare_used(&section, d);
 
 	if(!emitted_type && decl_linkage(d) == linkage_external)
 		asm_predeclare_global(&section, d);
