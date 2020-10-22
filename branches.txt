@@ -1,0 +1,103 @@
+WIP/in-dev:
+	backends:
+		backend/armv7
+		backend/i386
+		backend/wasm
+		experimental/32-bit
+		feature/ir
+		feature/ir.next
+
+  language features:
+		feature/1st-class-struct-args
+		feature/asm
+		feature/atomic
+		feature/lvalue-stmt-expr
+		feature/nullability
+		feature/unicode-strings
+		feature/relocation-models
+		feature/builtin-alloca
+		feature/int128
+
+  runtime:
+		feature/asan
+		feature/spectre
+		sanitizers:
+			feature/sanitize-float-cast-overflow
+			feature/sanitize-trap-func
+			fix/sanitize-good-path
+
+  diagnostics/analysis:
+		feature/attribute-warnings
+		feature/pointer-escape (lifetimes)
+		feature/reserved-warn (__abc)
+
+	debugging:
+		feature/split-dwarf
+
+	optimisation:
+		optimisation/var-in-reg
+		optimisation/tail-call
+
+	bugs:
+		fix/struct-in-union-init
+		fix/bootstrap-debug-line-numbering
+
+WIP/investigate:
+	merge-to-master:
+		feature/gc-static
+		feature/simplify-dwarf-config
+	delete:
+		feature/checked-memcpy (already present on master)
+		fix/cpp/memory
+		fix/preprocessor-line
+	rebase (trivial) + move-to-WIP:
+		feature/-pipe
+		feature/better-lval-deref
+		feature/cpp/multiline
+		feature/include-next
+		feature/make-install
+		feature/tls
+	rebase on master + test:
+		feature/bitfield-test
+		feature/improved-copy-init
+		feature/sequence-point-warnings
+		feature/test-debug-scope
+		fix/cpp/conformance
+		fix/debug-locations
+		fix/esoteric
+		fix/nested-expr-spill-bug
+		fix/old-function-scoping
+		fix/old-function-type-prop
+		fix/stmt-expr
+		fix/type-align-ice
+		fix/ucc-c89
+	bring into master under test/bugs/:
+		fix/cpp/expand
+		fix/funcarg-name-in-type
+		fix/funcarg-symbol-clash
+	join branches:
+		feature/long-double + experimental/x87 (merged with long-double, and exp*/32-bit cherry-picks)
+	investigate:
+		feature/funcptr-ptr-warning-separation
+		feature/wconversion
+		fix/_Generic-tests
+		fix/enum-scoping
+		fix/function-attribute-parsing
+		fix/stret-cleanup
+		fix/zero-size-bitfield
+		optimisation/movabs
+		fix/float-optimise-ice
+
+archive:
+	archaeology/basic-block-frontend
+	archaeology/ir-backend
+	archaeology/last-nasm-backend
+	archaeology/op-oo
+	abandoned/backend/6052
+	abandoned/backend/chip-8
+	abandoned/backend/last-multiple
+	abandoned/feature/lambda
+	abandoned/feature/namespace
+	abandoned/feature/overloadable
+	abandoned/lib/malloc
+	abandoned/feature/optional-chain
