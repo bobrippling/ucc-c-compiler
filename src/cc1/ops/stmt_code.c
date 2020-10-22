@@ -24,7 +24,7 @@
 #include "../out/out.h"
 #include "../cc1_out_ctx.h"
 
-const char *str_stmt_code()
+const char *str_stmt_code(void)
 {
 	return "code";
 }
@@ -80,6 +80,14 @@ static void cleanup_check(decl *d, attribute *cleanup)
 	}
 }
 
+static int shadow_warning_enabled(void)
+{
+	return cc1_warning.shadow_local
+		|| cc1_warning.shadow_global_user
+		|| cc1_warning.shadow_global_sysheaders
+		|| cc1_warning.shadow_compatible_local;
+}
+
 void fold_shadow_dup_check_block_decls(symtable *stab)
 {
 	/* must iterate using an index, since the array may
@@ -98,9 +106,6 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 
 		fold_decl(d, stab);
 
-		/* block decls must be complete */
-		fold_check_decl_complete(d);
-
 		if((attr = attribute_present(d, attr_cleanup)))
 			cleanup_check(d, attr);
 
@@ -111,10 +116,7 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 
 		if((is_func = !!type_is(d->ref, type_func))){
 			chk_shadow = 1;
-		}else if(cc1_warning.shadow_local
-				|| cc1_warning.shadow_global_user
-				|| cc1_warning.shadow_global_sysheaders)
-		{
+		}else if(shadow_warning_enabled()){
 			chk_shadow = 1;
 		}
 
@@ -141,6 +143,7 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 				const int same_scope = symtab_nested_internal(above_scope, stab);
 				unsigned char *pwarn = NULL;
 				const char *ty;
+				int compat_only = 0;
 
 				/* same scope? error unless they're both extern */
 				if(same_scope && !both_extern){
@@ -155,17 +158,24 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 				 * and vice versa
 				 */
 				if(where_in_sysheader(&found->where)){
-					/* system headers are included */
+					/* system headers are included. not local, don't check compatible */
 					pwarn = &cc1_warning.shadow_global_sysheaders;
 
 				}else if(above_scope->parent){
-					pwarn = &cc1_warning.shadow_local;
-
-				}else if(cc1_warning.shadow_global_user){
-					pwarn = &cc1_warning.shadow_global_user;
+					if(cc1_warning.shadow_compatible_local){
+						pwarn = &cc1_warning.shadow_compatible_local;
+						compat_only = 1;
+					}else{
+						pwarn = &cc1_warning.shadow_local;
+					}
 
 				}else{
-					pwarn = &cc1_warning.shadow_global_sysheaders;
+					pwarn = &cc1_warning.shadow_global_user;
+				}
+
+				if(compat_only && !(type_cmp(d->ref, found->ref, 0) & TYPE_EQUAL_ANY)){
+					/* we want a warning just for compatible types - they're not compatible, so skip */
+					continue;
 				}
 
 				ty = above_scope->parent ? "local" : "global";
@@ -220,15 +230,34 @@ void fold_stmt_code(stmt *s)
 		fold_stmt(st);
 
 		if(!warned
-		&& st->kills_below_code
+		&& stmt_kills_below_code(st)
 		&& siter[1]
 		&& !stmt_kind(siter[1], label)
-		&& !stmt_kind(siter[1], case)
-		&& !stmt_kind(siter[1], case_range)
-		&& !stmt_kind(siter[1], default)
+		&& !stmt_is_switchlabel(siter[1])
 		){
 			cc1_warn_at(&siter[1]->where, dead_code, "code will never be executed");
 			warned = 1;
+		}
+
+		if(siter > s->bits.code.stmts && stmt_is_switchlabel(st)){
+			stmt *prev = siter[-1];
+
+			prev = stmt_label_leaf(prev);
+
+			/*
+			 * permit labels/switchlabels, since we allow:
+			 *   case 1:
+			 *   case 2:
+			 *   case 3:
+			 *     <code>
+			 */
+			if(stmt_kills_below_code(prev))
+				continue;
+
+			if(stmt_kind(prev, noop) && prev->bits.noop.is_fallthrough)
+				continue;
+
+			cc1_warn_at(&st->where, implicit_fallthrough, "implicit fallthrough between switch labels");
 		}
 	}
 }
@@ -287,12 +316,22 @@ static void gen_auto_decl(decl *d, out_ctx *octx)
 	}
 }
 
+static void new_block_for_scope(out_ctx *octx, const char *desc)
+{
+	if(out_ctx_current_blk_is_empty(octx))
+		return;
+
+	out_ctrl_transfer_make_current(octx, out_blk_new(octx, desc));
+}
+
 void gen_block_decls(
 		symtable *stab,
 		struct out_dbg_lbl *pushed_lbls[2],
 		out_ctx *octx)
 {
 	decl **diter;
+
+	new_block_for_scope(octx, "scope_enter");
 
 	if(cc1_gdebug != DEBUG_OFF && !stab->lbl_begin){
 		char *dbg_lbls[2];
@@ -323,8 +362,11 @@ void gen_block_decls(
 		{
 			/* if it's a string, go,
 			 * if it's the most-unnested func. prototype, go */
-			if(!func || !d->proto)
-				gen_asm_global_w_store(d, 1, octx);
+			if(!func || !d->proto){
+				const int emit_tenatives = (d->store & STORE_MASK_STORE) != store_extern;
+
+				gen_asm_global_w_store(d, emit_tenatives, octx);
+			}
 			continue;
 		}
 
@@ -384,6 +426,8 @@ void gen_block_decls_dealloca(
 
 	if(cc1_gdebug != DEBUG_OFF)
 		out_dbg_scope_leave(octx, stab);
+
+	new_block_for_scope(octx, "scope_leave");
 }
 
 static void gen_scope_destructors(symtable *scope, out_ctx *octx)

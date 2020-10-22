@@ -108,8 +108,13 @@ int cc1_warn_at_w(
 		where = where_cc1_current(&backup);
 
 	/* don't emit warnings from system headers */
-	if(!cc1_warning.system_headers && where_in_sysheader(where))
-		return 0;
+	if(!cc1_warning.system_headers && where_in_sysheader(where)){
+		if(warn_type == VWARN_ERR){
+			/* we always want this warning emitting */
+		}else{
+			return 0;
+		}
+	}
 
 	va_start(l, fmt);
 	vwarn(where, warn_type, fmt, l);
@@ -173,6 +178,7 @@ static void warning_all(enum warning_fatality set)
 	cc1_warning.tenative_init =
 	cc1_warning.shadow_global_user =
 	cc1_warning.shadow_global_sysheaders =
+	cc1_warning.shadow_compatible_local =
 	cc1_warning.implicit_old_func =
 	cc1_warning.bitfield_boundary =
 	cc1_warning.vla =
@@ -195,6 +201,10 @@ static void warning_all(enum warning_fatality set)
 	cc1_warning.system_headers =
 	cc1_warning.int_op_promotion =
 	cc1_warning.overlength_strings =
+	cc1_warning.aggregate_return =
+	cc1_warning.switch_enum_even_when_default_lbl =
+	cc1_warning.bitfield_promotion =
+	cc1_warning.unused_comma_all =
 		W_OFF;
 }
 
@@ -207,7 +217,9 @@ void warning_init(void)
 	/* but with warnings about std compatability on too */
 	cc1_warning.typedef_redef =
 	cc1_warning.c89_parse_trailingcomma =
-	cc1_warning.unnamed_struct_memb =
+	cc1_warning.unnamed_struct_memb_ext_tagged =
+	cc1_warning.unnamed_struct_memb_ignored =
+	cc1_warning.unnamed_struct_memb_ext_c11 =
 	cc1_warning.c89_for_init =
 	cc1_warning.mixed_code_decls =
 	cc1_warning.c89_init_constexpr =
@@ -241,7 +253,6 @@ static void warning_special(enum warning_special special, enum warning_fatality 
 		case W_EXTRA:
 			warning_all(fatality);
 			cc1_warning.implicit_int =
-			cc1_warning.shadow_global_user =
 			cc1_warning.cast_qual =
 			cc1_warning.init_missing_braces =
 			cc1_warning.init_missing_struct =
@@ -272,6 +283,7 @@ void warning_on(
 {
 	struct warn_str *p;
 	struct warn_str_group *p_group;
+	int found;
 
 #define SPECIAL(str, w)   \
 	if(!strcmp(warn, str)){ \
@@ -281,6 +293,7 @@ void warning_on(
 
 	SPECIAL("all", W_ALL)
 	SPECIAL("extra", W_EXTRA)
+	SPECIAL("", W_EXTRA)
 	SPECIAL("everything", W_EVERYTHING)
 	SPECIAL("gnu", W_GNU)
 
@@ -309,12 +322,16 @@ void warning_on(
 	}
 
 
+	found = 0;
 	for(p = warns; p->arg; p++){
 		if(!strcmp(warn, p->arg)){
 			*p->offset = to;
-			return;
+			found = 1;
+			/* keep going for more aliases */
 		}
 	}
+	if(found)
+		return;
 
 	for(p_group = warn_groups; p_group->arg; p_group++){
 		if(!strcmp(warn, p_group->arg)){

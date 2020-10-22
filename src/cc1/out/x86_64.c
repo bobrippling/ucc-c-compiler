@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
+#include <math.h>
 #include <assert.h>
 
 #include "../../util/util.h"
@@ -23,11 +24,13 @@
 #include "../fopt.h"
 #include "../cc1.h"
 #include "../cc1_target.h"
+#include "../cc1_out.h"
 
 #include "val.h"
 #include "asm.h"
 #include "impl.h"
 #include "impl_jmp.h"
+#include "impl_fp.h"
 #include "out.h"
 #include "lbl.h"
 #include "write.h"
@@ -51,6 +54,8 @@
 
 #define REG_STR_SZ 8
 
+#define MOV_DEBUG(ch) /* " // " QUOTE(ch) */
+
 static const out_val *pointer_to_GOT(out_ctx *, const out_val *, const struct vreg *, int *hasoffset);
 
 const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
@@ -69,7 +74,7 @@ static const struct calling_conv_desc
 	struct vreg call_regs[6 + 8];
 
 	unsigned n_callee_save_regs;
-	int callee_save_regs[6];
+	struct vreg callee_save_regs[9];
 } calling_convs[] = {
 	[conv_x64_sysv] = {
 		1,
@@ -93,17 +98,19 @@ static const struct calling_conv_desc
 		},
 		6,
 		{
-			X86_64_REG_RBX,
-			X86_64_REG_RBP,
+			{ X86_64_REG_RBX, 0 },
+			{ X86_64_REG_RBP, 0 },
 
-			X86_64_REG_R12,
-			X86_64_REG_R13,
-			X86_64_REG_R14,
-			X86_64_REG_R15
+			{ X86_64_REG_R12, 0 },
+			{ X86_64_REG_R13, 0 },
+			{ X86_64_REG_R14, 0 },
+			{ X86_64_REG_R15, 0 },
 		}
 	},
 
 	[conv_x64_ms]   = {
+		/* note this is currently broken - we need to allocate 32 bytes of shadow
+		 * space for the callee too */
 		1,
 		4,
 		{
@@ -111,7 +118,26 @@ static const struct calling_conv_desc
 			{ X86_64_REG_RDX, 0 },
 			{ X86_64_REG_R8,  0 },
 			{ X86_64_REG_R9,  0 },
-		}
+
+			{ X86_64_REG_XMM0, 1 },
+			{ X86_64_REG_XMM1, 1 },
+			{ X86_64_REG_XMM2, 1 },
+			{ X86_64_REG_XMM3, 1 },
+		},
+		9,
+		{
+			{ X86_64_REG_RBX, 0 },
+			{ X86_64_REG_RDI, 0 },
+			{ X86_64_REG_RSI, 0 },
+			{ X86_64_REG_R12, 0 },
+			{ X86_64_REG_R13, 0 },
+			{ X86_64_REG_R14, 0 },
+			{ X86_64_REG_R15, 0 },
+
+			{ X86_64_REG_XMM6, 1 },
+			{ X86_64_REG_XMM7, 1 },
+			/* xmm8 - xmm15 are also callee saved, but we don't use them */
+		},
 	},
 
 	[conv_cdecl] = {
@@ -122,13 +148,13 @@ static const struct calling_conv_desc
 		},
 		3,
 		{
-			X86_64_REG_RBX,
-			X86_64_REG_RDI,
-			X86_64_REG_RSI
+			{ X86_64_REG_RBX, 0 },
+			{ X86_64_REG_RDI, 0 },
+			{ X86_64_REG_RSI, 0 },
 		}
 	},
 
-	[conv_stdcall]  = { 0, 0 },
+	[conv_stdcall]  = { 0, 0, { 0 }, 0, { 0 } },
 
 	[conv_fastcall] = {
 		0,
@@ -136,6 +162,10 @@ static const struct calling_conv_desc
 		{
 			{ X86_64_REG_RCX, 0 },
 			{ X86_64_REG_RDX, 0 }
+		},
+		0,
+		{
+			0
 		}
 	}
 };
@@ -280,8 +310,8 @@ static void x86_overlay_regpair_1(
 
 			regs[*regpair_idx].idx =
 				(*regpair_idx == 0 || regs[0].is_float)
-				? X86_64_REG_RAX
-				: X86_64_REG_RDX;
+				? REG_RET_I_1
+				: REG_RET_I_2;
 			break;
 
 		case FLOAT:
@@ -289,8 +319,8 @@ static void x86_overlay_regpair_1(
 
 			regs[*regpair_idx].idx =
 				(*regpair_idx == 0 || !regs[0].is_float)
-				? X86_64_REG_XMM0
-				: X86_64_REG_XMM1;
+				? REG_RET_F_1
+				: REG_RET_F_2;
 			break;
 	}
 
@@ -381,6 +411,8 @@ static void x86_overlay_regpair(
 
 static const char *x86_reg_str(const struct vreg *reg, type *r)
 {
+	assert(type_is_floating(r) == reg->is_float);
+
 	/* must be sync'd with header */
 	if(reg->is_float){
 		return x86_fpreg_str(reg->idx);
@@ -444,7 +476,8 @@ const char *impl_val_str_r(
 		}
 
 		case V_REG:
-		case V_REG_SPILT:
+		case V_REGOFF:
+		case V_SPILT:
 		{
 			long off = vs->bits.regoff.offset;
 			const char *rstr = x86_reg_str(
@@ -520,7 +553,7 @@ static int x86_func_nargs(type *rf)
 	return dynarray_count(type_funcargs(rf)->arglist);
 }
 
-const int *impl_callee_save_regs(type *fnty, unsigned *pn)
+const struct vreg *impl_callee_save_regs(type *fnty, unsigned *pn)
 {
 	const struct calling_conv_desc *ent = x86_conv_lookup(fnty);
 
@@ -618,7 +651,7 @@ void impl_func_prologue_save_call_regs(
 		 * each argument takes a full word for now - subject to change
 		 * (e.g. long double, struct/union args, etc)
 		 */
-		if(n_call_f){
+		{
 			unsigned i_arg, i_arg_stk, i_i, i_f;
 			const out_val *stack_loc;
 			type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
@@ -681,42 +714,6 @@ pass_via_stack:
 			 * we're still in the prologue */
 			assert(octx->in_prologue);
 			out_adealloc(octx, &stack_loc);
-		}else{
-			long i;
-			for(i = 0; i < nargs; i++){
-				long off;
-				const out_val **store;
-				type *ty;
-
-				if(i < n_call_i){
-					out_asm(octx, "push%s %%%s",
-							x86_suffix(NULL),
-							x86_reg_str(&call_regs[i], NULL));
-
-					/* +1 to step over saved rbp */
-					off = -(i + 1) * ws;
-				}else{
-					/* +2 to step back over saved rbp and saved rip */
-					off = (i - n_call_i + 2) * ws;
-				}
-
-				if(is_stret && i == 0){
-					ty = type_ptr_to(retty);
-					assert(!octx->current_stret);
-					store = &octx->current_stret;
-				}else{
-					ty = fa->arglist[i - is_stret]->ref;
-					store = &arg_vals[i - is_stret];
-				}
-
-				*store = v_new_bp3_above(octx, NULL, type_ptr_to(ty), off);
-			}
-
-			/* this aligns the stack too */
-			v_aalloc_noop(octx,
-					n_call_i * ws,
-					ws,
-					"save call regs push-version");
 		}
 
 		if(octx->current_stret && cc1_fopt.verbose_asm){
@@ -856,7 +853,7 @@ x86_func_ret_memcpy(
 
 	/* return the stret pointer argument */
 	ret_reg->is_float = 0;
-	ret_reg->idx = REG_RET_I;
+	ret_reg->idx = REG_RET_I_1;
 
 	return out_deref(octx, out_val_retain(octx, octx->current_stret));
 }
@@ -887,7 +884,7 @@ void impl_to_retreg(out_ctx *octx, const out_val *val, type *called)
 
 		case stret_scalar:
 			r.is_float = type_is_floating(called);
-			r.idx = r.is_float ? REG_RET_F : REG_RET_I;
+			r.idx = r.is_float ? REG_RET_F_1 : REG_RET_I_1;
 			break;
 
 		case stret_regs:
@@ -921,6 +918,9 @@ static const char *x86_cmp(const struct flag_opts *flag)
 
 		case flag_overflow: return "o";
 		case flag_no_overflow: return "no";
+
+		case flag_signbit: return "s";
+		case flag_no_signbit: return "ns";
 
 		/*case flag_z:  return "z";
 		case flag_nz: return "nz";*/
@@ -967,7 +967,7 @@ static const out_val *x86_load_iv(
 		if(!reg)
 			return from; /* V_CONST_I is fine */
 
-		out_asm(octx, "mov%s %s, %%%s",
+		out_asm(octx, "mov%s %s, %%%s" MOV_DEBUG(A),
 				x86_suffix(from->t),
 				impl_val_str(from, 0),
 				x86_reg_str(reg, from->t));
@@ -985,8 +985,11 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			ICE("load int into float?");
 
 		case V_CONST_F:
-			/* if it's an int-const, we can load without a label */
+			/* if it's an int-const, we can load without a label
+			 * ... unless it's greater than 0x1p63, in which case,
+			 * we can't create it from an integer. */
 			if(from->bits.val_f == (integral_t)from->bits.val_f
+			&& ucc_fabs(from->bits.val_f) < 9223372036854775808.0 /* 0x1p63 */
 			&& cc1_fopt.integral_float_load)
 			{
 				type *const ty_fp = from->t;
@@ -1009,9 +1012,15 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			char *lbl = out_label_data_store(STORE_FLOAT);
 			struct vreg r;
 			out_val *mut;
+			struct section sec = SECTION_INIT(SECTION_DATA);
+			struct section_output orig_section;
 
-			asm_nam_begin3(SECTION_DATA, lbl, type_align(from->t, NULL));
-			asm_out_fp(SECTION_DATA, from->t, from->bits.val_f);
+			memcpy_safe(&orig_section, &cc1_current_section_output);
+			{
+				asm_nam_begin3(&sec, lbl, type_align(from->t, NULL));
+				asm_out_fp(&sec, from->t, from->bits.val_f);
+			}
+			memcpy_safe(&cc1_current_section_output, &orig_section);
 
 			from = mut = v_dup_or_reuse(octx, from, from->t);
 
@@ -1038,6 +1047,8 @@ static int x86_need_fp_parity_p(
 		struct flag_opts const *fopt, int *flip_result)
 {
 	if(!(fopt->mods & flag_mod_float))
+		return 0;
+	if(cc1_fopt.finite_math_only)
 		return 0;
 
 	*flip_result = 0;
@@ -1137,22 +1148,23 @@ const out_val *impl_load(
 			break;
 		}
 
-		case V_REG_SPILT:
-			/* actually a pointer to T */
+		case V_SPILT: /* actually a pointer to T, impl_deref() handles this */
 			return impl_deref(octx, from, reg, NULL);
 
 		case V_REG:
-			if(from->bits.regoff.offset)
-				goto lea;
-
-			impl_reg_cp_no_off(octx, from, reg);
-			break;
+			if(from->bits.regoff.offset == 0){
+				/* optimisation: */
+				impl_reg_cp_no_off(octx, from, reg);
+				break;
+			}
+			goto lea;
 
 		case V_CONST_I:
 			from = x86_load_iv(octx, from, reg);
 			break;
 
 lea:
+		case V_REGOFF:
 		case V_LBL:
 		{
 			const int fp = type_is_floating(from->t);
@@ -1179,7 +1191,7 @@ lea:
 			}
 
 			/* just go with leaq for small sizes */
-			out_asm(octx, "%s%s %s, %%%s",
+			out_asm(octx, "%s%s %s, %%%s" MOV_DEBUG(B),
 					fp ? "mov" : "lea",
 					x86_suffix(NULL),
 					impl_val_str(from_new, 1),
@@ -1247,7 +1259,15 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 		case V_CONST_F:
 			ICE("invalid store lvalue 0x%x", to->type);
 
-		case V_REG_SPILT:
+		case V_SPILT:
+		{
+			struct vreg reg;
+			v_unused_reg(octx, 1, 0, &reg, to);
+			to = impl_load(octx, to, &reg);
+			break;
+		}
+
+		case V_REGOFF:
 		case V_REG:
 		case V_LBL:
 			break;
@@ -1262,7 +1282,7 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 		to = gotslot;
 	}
 
-	out_asm(octx, "mov%s %s, %s",
+	out_asm(octx, "mov%s %s, %s" MOV_DEBUG(C),
 			x86_suffix(from->t),
 			impl_val_str_r(vbuf, from, 0),
 			impl_val_str(to, 1));
@@ -1282,7 +1302,7 @@ static void x86_reg_cp(
 	if(vreg_eq(to, from))
 		return;
 
-	out_asm(octx, "mov%s %%%s, %%%s",
+	out_asm(octx, "mov%s %%%s, %%%s" MOV_DEBUG(D),
 			x86_suffix(typ),
 			x86_reg_str(from, typ),
 			x86_reg_str(to, typ));
@@ -1321,7 +1341,8 @@ static const out_val *x86_idiv(
 	{
 		/* need to move 'l' into eax
 		 * then sign extended later - cqto */
-		l = v_to_reg_given_freeup(octx, l, &rax);
+		l = v_to_reg_given_freeup_no_off(octx, l, &rax);
+		l = v_reg_apply_offset(octx, l);
 
 		/* idiv takes either a reg or memory address */
 		r = v_to(octx, r, TO_REG | TO_MEM);
@@ -1394,8 +1415,7 @@ static const out_val *x86_shift(
 		cl.is_float = 0;
 		cl.idx = X86_64_REG_RCX;
 
-		r = v_to_reg_given_freeup(octx, r, &cl);
-
+		r = v_to_reg_given_freeup_no_off(octx, r, &cl);
 		r = v_reg_apply_offset(octx, r);
 	}
 
@@ -1457,7 +1477,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	l = x86_check_ivfp(octx, l);
 	r = x86_check_ivfp(octx, r);
 
-	if(type_is_floating(l->t)){
+	if(type_is_floating(v_get_type(l))){
 		if(op_is_comparison(op)){
 			/* ucomi%s reg_or_mem, reg */
 			char b1[VAL_STR_SZ], b2[VAL_STR_SZ];
@@ -1521,12 +1541,15 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	}
 
 	switch(op){
+		/* two-operand only touches mentions regs,
+		 * one-operand uses edx:eax, like idiv */
 		OP(multiply, "imul");
-		OP(plus,     "add");
-		OP(minus,    "sub");
-		OP(xor,      "xor");
-		OP(or,       "or");
-		OP(and,      "and");
+
+		OP(plus, "add");
+		OP(minus, "sub");
+		OP(xor, "xor");
+		OP(or, "or");
+		OP(and, "and");
 #undef OP
 
 		case op_bnot:
@@ -1547,7 +1570,10 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		case op_lt:
 		case op_ge:
 		case op_gt:
-			UCC_ASSERT(!type_is_floating(l->t),
+		case op_signbit:
+		case op_no_signbit:
+			UCC_ASSERT(!type_is_floating(v_get_type(l))
+					&& !type_is_floating(v_get_type(r)),
 					"float cmp should be handled above");
 		{
 			const int is_signed = type_is_signed(l->t);
@@ -1565,7 +1591,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				vconst = r;
 
 			/* if we have a CONST try a test instruction */
-			if((op == op_eq || op == op_ne)
+			if((op == op_eq || op == op_ne || op == op_signbit || op == op_no_signbit)
 			&& vconst && vconst->bits.val_i == 0)
 			{
 				const out_val *vother = vconst == l ? r : l;
@@ -1612,7 +1638,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		case op_andsc:
 			ICE("%s shouldn't get here", op_to_str(op));
 
-		default:
+		case op_unknown:
 			ICE("invalid op %s", op_to_str(op));
 	}
 
@@ -1635,13 +1661,13 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			/* XXX: currently implicit here that V_REG means w/no offset */
 			{ V_REG, V_CONST_I },
 			{ V_LBL, V_CONST_I },
-			{ V_REG_SPILT, V_CONST_I },
+			{ V_SPILT, V_CONST_I },
 
 			{ V_REG, V_LBL },
 			{ V_LBL, V_REG },
 
-			{ V_REG_SPILT, V_REG },
-			{ V_REG, V_REG_SPILT },
+			{ V_SPILT, V_REG },
+			{ V_REG, V_SPILT },
 
 			{ V_REG, V_REG },
 		};
@@ -1650,7 +1676,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 #define OP_MATCH(vp, op) (   \
 		vp->type == ops[i].op && \
-		((vp->type != V_REG && vp->type != V_REG_SPILT) || !vp->bits.regoff.offset))
+		((vp->type != V_REG && vp->type != V_SPILT) || !vp->bits.regoff.offset))
 
 		for(i = 0; i < countof(ops); i++){
 			if(OP_MATCH(l, l) && OP_MATCH(r, r)){
@@ -1673,8 +1699,10 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			l = v_to(octx, l, TO_REG | TO_MEM);
 			r = v_to(octx, r, TO_REG | TO_MEM | TO_CONST);
 
+#define V_IS_MEM(ty) ((ty) == V_SPILT || (ty) == V_LBL)
 			if(V_IS_MEM(l->type) && V_IS_MEM(r->type))
 				r = v_to_reg(octx, r);
+#undef V_IS_MEM
 		}
 
 		if(FOPT_PIC(&cc1_fopt)){
@@ -1726,7 +1754,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		}
 
 		ret_ty = l->t;
-		return v_dup_or_reuse(octx, min_retained(octx, l, r), ret_ty);
+		out_val_release(octx, r);
+		return v_dup_or_reuse(octx, l, ret_ty);
 	}
 }
 
@@ -1756,7 +1785,7 @@ static const out_val *pointer_to_GOT(
 	if(hasoffset)
 		*hasoffset = offset != 0;
 
-	out_asm(octx, "mov%s %s, %%%s",
+	out_asm(octx, "mov%s %s, %%%s" MOV_DEBUG(E),
 			x86_suffix(NULL),
 			impl_val_str(vp, 1),
 			x86_reg_str(&gotreg, NULL));
@@ -1786,7 +1815,7 @@ const out_val *impl_deref(
 		return out_deref(octx, gotslot);
 	}
 
-	out_asm(octx, "mov%s %s, %%%s",
+	out_asm(octx, "mov%s %s, %%%s" MOV_DEBUG(F),
 			x86_suffix(tpointed_to),
 			impl_val_str(vp, 1),
 			x86_reg_str(reg, tpointed_to));
@@ -1856,7 +1885,8 @@ const out_val *impl_cast_load(
 
 		case V_CONST_I:
 		case V_LBL:
-		case V_REG_SPILT: /* could do something like movslq -8(%rbp), %rax */
+		case V_REGOFF:
+		case V_SPILT: /* could do something like movslq -8(%rbp), %rax */
 		case V_FLAG:
 			vp = v_to_reg(octx, vp);
 		case V_REG:
@@ -1901,7 +1931,7 @@ const out_val *impl_cast_load(
 	}
 }
 
-static const out_val *x86_fp_conv(
+static const out_val *x86_fp_conv_signed(
 		out_ctx *octx,
 		const out_val *vp,
 		struct vreg *r, type *tto,
@@ -1909,10 +1939,23 @@ static const out_val *x86_fp_conv(
 		const char *sfrom, const char *sto)
 {
 	char vbuf[VAL_STR_SZ];
-	int truncate = type_is_integral(tto); /* going to int? */
+	const int to_integral = type_is_integral(tto);
+	const int truncate = to_integral;
 
-	if(vp->type == V_CONST_F)
-		vp = x86_load_fp(octx, vp);
+	switch(vp->type){
+		case V_CONST_F:
+			vp = x86_load_fp(octx, vp);
+			break;
+		case V_SPILT:
+			vp = v_to_reg(octx, vp);
+			break;
+		case V_CONST_I:
+		case V_REG:
+		case V_REGOFF:
+		case V_LBL:
+		case V_FLAG:
+			break;
+	}
 
 	out_asm(octx, "cvt%s%s2%s%s %s, %%%s",
 			truncate ? "t" : "",
@@ -1921,10 +1964,120 @@ static const out_val *x86_fp_conv(
 			 * see if we need to do 64 or 32 bit
 			 */
 			int_ty ? type_size(int_ty, NULL) == 8 ? "q" : "l" : "",
-			impl_val_str_r(vbuf, vp, vp->type == V_REG_SPILT),
+			impl_val_str_r(vbuf, vp, vp->type == V_REGOFF),
 			x86_reg_str(r, tto));
 
 	return v_new_reg(octx, vp, tto, r);
+}
+
+static const out_val *x86_fp_conv(
+		out_ctx *octx,
+		const out_val *vp,
+		struct vreg *r, type *tto,
+		type *int_ty,
+		const char *sfrom, const char *sto)
+{
+	if(int_ty
+	&& !type_is_signed(int_ty)
+	&& type_size(int_ty, NULL) >= type_primitive_size(type_llong))
+	{
+		/* If we're dealing with a large unsigned integer, we need to shift it
+		 * right, to avoid its top bit being interpreted by the fpu as a sign bit.
+		 * We then double the value in the fpu to undo this shift.
+		 *
+		 * Vice-versa, if the double is above 0x1p+63 (not unordered, i.e. `comisd`),
+		 * we subtract 0x1p+63, convert to int, then xor in 0x8000000000000000ull.
+		 */
+		const int to_integral = type_is_integral(tto);
+
+		if(to_integral){
+			out_blk *blk_end, *blk_above, *blk_below;
+			numeric n_1p63;
+
+			n_1p63.val.f = 9223372036854775808.0; /* 0x1p63 aka 0x8000000000000000.0f */
+			n_1p63.suffix = VAL_DOUBLE;
+
+			const out_val *d_1p63 = out_new_num(octx, vp->t, &n_1p63);
+
+			const out_val *cmp = out_op(octx, op_gt, out_val_retain(octx, vp), out_val_retain(octx, d_1p63));
+
+			blk_end = out_blk_new(octx, "one_63_fin");
+			blk_above = out_blk_new(octx, "above_one_63");
+			blk_below = out_blk_new(octx, "below_one_63");
+
+			out_ctrl_branch(octx, cmp, blk_above, blk_below);
+
+			out_current_blk(octx, blk_above);
+			{
+				const out_val *less_1p63 = out_op(
+						octx, op_minus,
+						out_val_retain(octx, vp),
+						d_1p63);
+
+				const out_val *as_int = x86_fp_conv_signed(octx, less_1p63, r, tto, int_ty, sfrom, sto);
+
+				const out_val *top_bit_flipped = out_op(octx, op_xor, as_int, out_new_l(octx, as_int->t, 1ull << 63));
+
+				out_ctrl_transfer(octx, blk_end, top_bit_flipped, &blk_above, 1);
+			}
+
+			out_current_blk(octx, blk_below);
+			{
+				const out_val *converted = x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
+
+				out_ctrl_transfer(octx, blk_end, converted, &blk_below, 1);
+			}
+
+			out_ctrl_transfer_make_current(octx, blk_end);
+			return out_ctrl_merge(octx, blk_above, blk_below);
+		}else{
+			out_blk *blk_end, *blk_positive, *blk_negative;
+
+			const out_val *negative_bit_set = out_op(
+					octx, op_signbit,
+					out_val_retain(octx, vp),
+					out_new_l(octx, vp->t, 0) /* necessary to generate the `test` isn */);
+
+			blk_end = out_blk_new(octx, "sign_fin");
+			blk_negative = out_blk_new(octx, "signed");
+			blk_positive = out_blk_new(octx, "unsigned");
+
+			out_ctrl_branch(octx, negative_bit_set, blk_negative, blk_positive);
+
+			out_current_blk(octx, blk_negative);
+			{
+				const out_val *half = out_op(
+						octx, op_shiftr,
+						out_val_retain(octx, vp),
+						out_new_l(octx, vp->t, 1));
+
+				const out_val *vp_odd = out_op(
+						octx, op_and,
+						out_val_retain(octx, vp),
+						out_new_l(octx, vp->t, 1));
+
+				const out_val *merged = out_op(octx, op_or, half, vp_odd);
+
+				const out_val *converted = x86_fp_conv_signed(octx, merged, r, tto, int_ty, sfrom, sto);
+
+				const out_val *twice = out_op(octx, op_plus, converted, out_val_retain(octx, converted));
+
+				out_ctrl_transfer(octx, blk_end, twice, &blk_negative, 1);
+			}
+
+			out_current_blk(octx, blk_positive);
+			{
+				const out_val *converted = x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
+
+				out_ctrl_transfer(octx, blk_end, converted, &blk_positive, 1);
+			}
+
+			out_ctrl_transfer_make_current(octx, blk_end);
+			return out_ctrl_merge(octx, blk_positive, blk_negative);
+		}
+	}
+
+	return x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
 }
 
 static const out_val *x86_xchg_fi(
@@ -2026,7 +2179,8 @@ static char *x86_call_jmp_target(
 			snprintf(buf, sizeof buf, "*%s", impl_val_str((*pvp), 1));
 			return buf;
 
-		case V_REG_SPILT: /* load, then jmp */
+		case V_SPILT: /* load, then jmp */
+		case V_REGOFF: /* load, then jmp */
 		case V_REG: /* jmp *%rax */
 			*pvp = v_reg_apply_offset(octx, v_to_reg(octx, *pvp));
 
@@ -2052,9 +2206,9 @@ static char *x86_call_jmp_target(
 	return NULL;
 }
 
-void impl_jmp(enum section_builtin sec, const char *lbl)
+void impl_jmp(const char *lbl)
 {
-	asm_out_section(sec, "\tjmp %s\n", lbl);
+	asm_out_section(&section_text, "\tjmp %s\n", lbl);
 }
 
 void impl_jmp_expr(out_ctx *octx, const out_val *v)
@@ -2150,11 +2304,12 @@ void impl_branch(
 			break;
 
 		case V_LBL:
-		case V_REG_SPILT:
+		case V_REGOFF:
+		case V_SPILT:
 			cond = v_to_reg(octx, cond);
 
-			UCC_ASSERT(cond->type != V_REG_SPILT,
-					"normalise remained as spilt reg");
+			UCC_ASSERT(cond->type == V_REG,
+					"normalise remained as spilt/stack/mem reg");
 
 			cond = out_normalise(octx, cond);
 			impl_branch(octx, cond, bt, bf, unlikely);
@@ -2206,18 +2361,12 @@ const out_val *impl_call(
 	 * also count floats and ints
 	 */
 	for(i = 0; i < nargs; i++){
-		type *argty;
-
 		assert(local_args[i]->retains > 0);
 
 		if(local_args[i]->type == V_FLAG)
 			local_args[i] = v_to_reg(octx, local_args[i]);
 
-		argty = local_args[i]->t;
-		if(local_args[i]->type == V_REG_SPILT)
-			argty = type_dereference_decay(argty);
-
-		float_arg[i] = type_is_floating(argty);
+		float_arg[i] = type_is_floating(v_get_type(local_args[i]));
 
 		if(float_arg[i])
 			nfloats++;
@@ -2279,8 +2428,9 @@ const out_val *impl_call(
 	}
 
 	if(arg_stack.bytesz > 0){
-		unsigned nfloats = 0, nints = 0; /* shadow */
 		const out_val *stack_iter;
+
+		nints = nfloats = 0;
 
 		/* Rather than spilling the registers based on %rbp, we spill
 		 * them based as offsets from %rsp, that way they're always
@@ -2307,7 +2457,7 @@ const out_val *impl_call(
 
 				stack_iter = out_change_type(octx, stack_iter, storety);
 				out_val_retain(octx, stack_iter);
-				local_args[i] = v_to_stack_mem(octx, local_args[i], stack_iter);
+				local_args[i] = v_to_stack_mem(octx, local_args[i], stack_iter, V_REGOFF);
 
 				assert(local_args[i]->retains > 0);
 
@@ -2482,7 +2632,7 @@ const out_val *impl_call(
 		/* rax / xmm0, otherwise the return has
 		 * been set to a local stack address */
 		const int fp = type_is_floating(retty);
-		struct vreg rr = VREG_INIT(fp ? REG_RET_F : REG_RET_I, fp);
+		struct vreg rr = VREG_INIT(fp ? REG_RET_F_1 : REG_RET_I_1, fp);
 
 		return v_new_reg(octx, fn, retty, &rr);
 	}else{
@@ -2497,13 +2647,23 @@ void impl_undefined(out_ctx *octx)
 	blk_terminate_undef(octx->current_blk);
 }
 
-const out_val *impl_test_overflow(out_ctx *octx, const out_val **eval)
+void impl_debugtrap(out_ctx *octx)
+{
+	out_asm(octx, "int3");
+}
+
+static const out_val *impl_test(out_ctx *octx, const out_val **eval, enum flag_cmp flag)
 {
 	/* whenever creating a V_FLAG we need to ensure instructions are flushed */
 	*eval = v_reg_apply_offset(octx, v_to_reg(octx, *eval));
 
 	out_val_retain(octx, *eval);
-	return v_new_flag(octx, *eval, flag_overflow, /*mod:*/0);
+	return v_new_flag(octx, *eval, flag, /*mod:*/0);
+}
+
+const out_val *impl_test_overflow(out_ctx *octx, const out_val **eval)
+{
+	return impl_test(octx, eval, flag_overflow);
 }
 
 void impl_set_nan(out_ctx *octx, out_val *v)
@@ -2517,31 +2677,63 @@ void impl_set_nan(out_ctx *octx, out_val *v)
 
 	assert(v->retains == 1);
 
-	switch(type_size(ty, NULL)){
-		case 4:
-		{
-			const union
-			{
-				unsigned l;
-				float f;
-			} u = { 0x7fc00000u };
-			v->bits.val_f = u.f;
-			break;
-		}
-		case 8:
-		{
-			const union
-			{
-				unsigned long l;
-				double d;
-			} u = { 0x7ff8000000000000u };
-			v->bits.val_f = u.d;
-			break;
-		}
-		default:
-			ICE("TODO: long double nan");
-	}
+	/* representation can be host-side here,
+	 * we swap to native machine-side if/when
+	 * we save to a label */
+	v->bits.val_f = NAN;
 
 	v->type = V_CONST_F;
-	/*impl_load_fp(v);*/
+}
+
+void impl_fp_bits(char *buf, size_t bufsize, enum type_primitive prim, floating_t fp)
+{
+	switch(prim){
+		case type_float:
+		{
+			const float f = fp;
+			assert(bufsize >= sizeof f);
+			memcpy(buf, &f, sizeof f);
+			break;
+		}
+		case type_double:
+		{
+			const double f = fp;
+			assert(bufsize >= sizeof f);
+			memcpy(buf, &f, sizeof f);
+			break;
+		}
+		case type_ldouble:
+			ICE("TODO");
+		default:
+			assert(0 && "unreachable");
+	}
+}
+
+static void reserve_unreserve_retregs(out_ctx *octx, int reserve)
+{
+	static const struct vreg retregs[] = {
+		{ REG_RET_I_1, 0 },
+		{ REG_RET_I_2, 0 },
+		{ REG_RET_F_1, 1 },
+		{ REG_RET_F_2, 1 },
+	};
+	unsigned i;
+
+	for(i = 0; i < countof(retregs); i++){
+		const struct vreg *r = &retregs[i];
+		if(reserve)
+			v_reserve_reg(octx, r);
+		else
+			v_unreserve_reg(octx, r);
+	}
+}
+
+void impl_reserve_retregs(out_ctx *octx)
+{
+	reserve_unreserve_retregs(octx, 1);
+}
+
+void impl_unreserve_retregs(out_ctx *octx)
+{
+	reserve_unreserve_retregs(octx, 0);
 }

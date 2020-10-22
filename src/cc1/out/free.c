@@ -60,10 +60,12 @@ static void out_wipe_blks(out_ctx *octx)
 	}
 
 	octx->entry_blk =
-	octx->prologue_prejoin_blk =
-	octx->prologue_postjoin_blk =
-	octx->current_blk =
+	octx->stacksub_blk =
+	octx->argspill_begin_blk =
+	octx->argspill_done_blk =
+	octx->postprologue_blk =
 	octx->epilogue_blk =
+	octx->current_blk =
 	octx->last_used_blk =
 	octx->mem_blk_head =
 		NULL;
@@ -84,7 +86,7 @@ static void out_wipe_vals(out_ctx *octx)
 	octx->val_head = octx->val_tail = NULL;
 }
 
-void out_ctx_wipe(out_ctx *octx)
+void out_perfunc_teardown(out_ctx *octx)
 {
 	out_wipe_blks(octx);
 	out_wipe_vals(octx);
@@ -92,7 +94,7 @@ void out_ctx_wipe(out_ctx *octx)
 
 void out_ctx_end(out_ctx *octx)
 {
-	out_ctx_wipe(octx);
+	out_perfunc_teardown(octx);
 	free(octx->reserved_regs);
 	free(octx);
 }

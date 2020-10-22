@@ -18,6 +18,8 @@
 #include "cc1_where.h"
 #include "btype.h"
 #include "fopt.h"
+#include "tokconv.h"
+#include "pragma.h"
 
 #define DEBUG_LINE_DIRECTIVE 0
 
@@ -92,7 +94,7 @@ static const struct keyword
 	KEYWORD(KW_ALL, _Noreturn),
 
 	KEYWORD(KW_ALL, _Alignof),
-	KEYWORD__(alignof, token__Alignof),
+	KEYWORD__(alignof, token___alignof),
 	KEYWORD(KW_ALL, _Alignas),
 	KEYWORD__(alignas, token__Alignas),
 
@@ -146,9 +148,9 @@ static int in_sysh;
 enum token curtok, curtok_uneat;
 int parse_had_error;
 
-numeric currentval = { { 0 } }; /* an integer literal */
+numeric currentval = { { 0 }, 0 }; /* an integer literal */
 
-char *currentspelling = NULL; /* e.g. name of a variable */
+static char *currentspelling = NULL; /* e.g. name of a variable */
 
 struct cstring *currentstring = NULL; /* a string literal */
 where currentstringwhere;
@@ -249,6 +251,7 @@ static void handle_line_file_directive(char *fnam /*owned by us*/, int lno, char
 	enum { SOF = 1, RTF = 2, SYSH = 4 } iflag = 0;
 	struct fnam_stack *top = NULL;
 	int free_fnam = 1;
+	char *state;
 
 	if(current_fname_stack_cnt)
 		top = &current_fname_stack[current_fname_stack_cnt - 1];
@@ -256,7 +259,7 @@ static void handle_line_file_directive(char *fnam /*owned by us*/, int lno, char
 	if(DEBUG_LINE_DIRECTIVE)
 		fprintf(stderr, "line directive: fnam=\"%s\", lno=%d, flags=\"%s\"\n", fnam, lno, flags);
 
-	for(tok = strtok(flags, " "); tok; tok = strtok(NULL, " ")){
+	for(tok = str_split(flags, ' ', &state); tok; tok = str_split(NULL, ' ', &state)){
 #define START_OF_FILE "1"
 #define RETURN_TO_FILE "2"
 #define SYSHEADER "3"
@@ -351,6 +354,19 @@ static void parse_line_directive(char *l)
 	char *ep;
 
 	l = str_spc_skip(l + 1);
+
+	if(!strncmp(l, "pragma", 6)){
+		where loc;
+
+		where_cc1_current(&loc);
+		loc.line_str = NULL;
+
+		l = str_spc_skip(l + 6);
+		pragma_handle(l, &loc);
+		return;
+	}
+
+	/* # line */
 	if(!strncmp(l, "line", 4))
 		l += 4;
 
@@ -457,7 +473,7 @@ static void tokenise_next_line(void)
 		SET_CURRENT_LINE_STR(ustrdup(new));
 
 	if(buffer){
-		if((cc1_fopt.show_line) == 0)
+		if(!cc1_fopt.show_line)
 			free(buffer);
 	}
 
@@ -491,10 +507,40 @@ void tokenise_set_mode(enum keyword_mode m)
 	keyword_mode = m | KW_ALL;
 }
 
-char *token_current_spel()
+int token_accept_identifier(char **const out, where *loc)
 {
-	char *ret = currentspelling;
+	char *sp;
+
+	if(curtok != token_identifier)
+		return 0;
+
+	sp = currentspelling;
 	currentspelling = NULL;
+
+	*out = sp;
+	if(loc){
+		where_cc1_current(loc);
+		where_cc1_adj_identifier(loc, sp);
+	}
+
+	nexttoken();
+
+	return 1;
+}
+
+char *token_eat_identifier(const char *fallback, where *w)
+{
+	char *ret = NULL;
+
+	if(token_accept_identifier(&ret, w)){
+		assert(ret);
+	}else{
+		EAT(token_identifier); /* emit error */
+
+		where_cc1_current(w);
+		ret = fallback ? ustrdup(fallback) : NULL;
+	}
+
 	return ret;
 }
 
@@ -539,7 +585,7 @@ int tok_at_label(void)
 			buffer = urealloc1(buffer, len + 1);
 			p = buffer + poff;
 			memcpy(p, new, newlen + 1);
-			bufferpos = p;
+			update_bufferpos(p);
 			return tok_at_label();
 		}
 		return 0;
@@ -640,7 +686,7 @@ static void read_integer(const enum base mode)
 static void read_suffix_float_exp(void)
 {
 	numeric mantissa;
-	int powmul;
+	int powmul = 1;
 	int just_read = nextchar();
 
 	assert(tolower(just_read) == 'e');
@@ -651,9 +697,10 @@ static void read_suffix_float_exp(void)
 	}
 	mantissa = currentval;
 
-	powmul = (peeknextchar() == '-' ? -1 : 1);
-	if(powmul == -1)
-		nextchar();
+	switch(peeknextchar()){
+		case '+': powmul = +1; nextchar(); break;
+		case '-': powmul = -1; nextchar(); break;
+	}
 
 	if(!isdigit(peeknextchar())){
 		warn_at_print_error(NULL, "no digits in exponent");
@@ -730,8 +777,14 @@ out:
 
 static void read_suffix(void)
 {
-	const int fp = (currentval.suffix & VAL_FLOATING
-			|| tolower(peeknextchar()) == 'e');
+	int fp = currentval.suffix & VAL_FLOATING;
+
+	if((currentval.suffix & (VAL_HEX | VAL_BIN)) == 0
+	&& tolower(peeknextchar()) == 'e')
+	{
+		/* 'e' can only be applied to a float constant or a decimal sequence */
+		fp = 1;
+	}
 
 	/* handle floating XeY */
 	if(fp){
@@ -1014,7 +1067,7 @@ static void read_number(const int first)
 		char *new;
 		int bad_prefix = 0;
 
-		currentval.val.f = strtold(num_start, &new);
+		currentval.val.f = ucc_strtold(num_start, &new);
 		currentval.suffix = VAL_FLOATING;
 		update_bufferpos(new);
 
@@ -1064,9 +1117,17 @@ static void read_number(const int first)
 	curtok = (currentval.suffix & VAL_FLOATING ? token_floater : token_integer);
 }
 
-void nexttoken()
+void nexttoken(void)
 {
 	int c;
+
+	if(curtok == token_string){
+		/* finished processing the string. i.e. token_current_spel() called,
+		 * parse code won't need (implicity - warn_at(NULL, ...)) the location of
+		 * the string any more */
+		memcpy_safe(&loc_tok, &loc_now);
+		loc_tok.chr--;
+	}
 
 	if(buffereof){
 		/* delay this until we are asked for token_eof */
@@ -1139,6 +1200,27 @@ void nexttoken()
 				return;
 			}
 
+		if(len == 7 && !strncmp("_Pragma", start, len)){
+			struct cstring *pragma;
+			where loc;
+
+			nexttoken();
+			EAT(token_open_paren);
+			pragma = token_get_current_str(&loc);
+			nexttoken();
+			EAT(token_close_paren);
+
+			if(pragma){
+				char *s = cstring_converting_detach(pragma);
+				pragma_handle(s, &loc);
+				free(s);
+
+			}else{
+				warn_at_print_error(&loc, "string expected for _Pragma");
+				parse_had_error = 1;
+			}
+			return;
+		}
 
 		/* not found, wap into currentspelling */
 		free(currentspelling);
@@ -1196,12 +1278,11 @@ void nexttoken()
 				in_comment = 1;
 
 				for(;;){
-					int c = rawnextchar();
-					if(c == '*' && *bufferpos == '/'){
+					int nextc = rawnextchar();
+					if(nextc == '*' && *bufferpos == '/'){
 						rawnextchar(); /* eat the / */
+						in_comment = 0; /* ensure we set this before parsing next token */
 						nexttoken();
-
-						in_comment = 0;
 						return;
 					}
 				}

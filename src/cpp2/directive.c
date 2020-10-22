@@ -121,6 +121,9 @@ static void handle_define(token **tokens)
 						case TOKEN_CLOSE_PAREN:
 							i++;
 							goto for_fin;
+						case TOKEN_ELIPSIS:
+							CPP_DIE("GNU-variadic macros aren't supported");
+
 						default:
 							CPP_DIE("expected: comma or close paren");
 					}
@@ -187,7 +190,7 @@ static void handle_error_warning(token **tokens, int err)
 	warn_colour(1, err);
 
 	/* we're already on the next line */
-	where_current(&w);
+	cpp_where_current(&w);
 	w.fname = file_stack[file_stack_idx].fname;
 	w.line--;
 
@@ -291,6 +294,14 @@ static void handle_include(char *include_arg)
 	/* successfully opened */
 	canonicalise_path(final_path);
 
+	if(option_show_include_nesting){
+		int i;
+		for(i = file_stack_idx + 1; i > 0; i--)
+			fputc('.', stderr);
+
+		fprintf(stderr, " %s\n", final_path);
+	}
+
 	if(!is_angle)
 		deps_add(final_path);
 
@@ -307,7 +318,7 @@ static void if_push(int is_true)
 {
 	if_stack[if_idx].noop      = noop;
 	if_stack[if_idx].if_chosen = if_elif_chosen;
-	where_current(&if_stack[if_idx].loc);
+	cpp_where_current(&if_stack[if_idx].loc);
 	if_stack[if_idx].loc.line--;
 
 	if_idx++;
@@ -459,7 +470,10 @@ static void handle_endif(token **tokens)
 
 static void handle_pragma(token **tokens)
 {
-	(void)tokens;
+	/* pass to cc1 */
+	char *out = tokens_join(tokens);
+	printf("#pragma %s\n", out);
+	free(out);
 }
 
 static int handle_line_directive(char *line)
@@ -600,7 +614,7 @@ void parse_internal_directive(char *line)
 	no_output = 0;
 }
 
-void parse_end_validate()
+void parse_end_validate(void)
 {
 	if(if_idx){
 		char buf[WHERE_BUF_SIZ];

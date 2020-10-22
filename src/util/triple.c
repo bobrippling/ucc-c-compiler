@@ -180,26 +180,40 @@ static void filter_unam(struct utsname *unam)
 {
 	char *p;
 
-	if(!strcmp(unam->machine, "amd64"))
-		strcpy(unam->machine, "x86_64");
+#define X(pre, name)
+#define ALIAS(pre, from, to) \
+	if(!strcmp(unam->machine, #from)) \
+		strcpy(unam->machine, #to);
+	TARGET_ARCHES
+#undef ALIAS
+#undef X
 
 	for(p = unam->sysname; *p; p++)
 		*p = tolower(*p);
 }
 
-int triple_default(struct triple *triple)
+int triple_default(struct triple *triple, const char **const unparsed)
 {
 	struct utsname unam;
+
+	if(unparsed)
+		*unparsed = NULL;
 
 	if(uname(&unam))
 		return 0;
 
 	filter_unam(&unam);
 
-	if(!parse_arch(unam.machine, &triple->arch))
+	if(!parse_arch(unam.machine, &triple->arch)){
+		if(unparsed)
+			*unparsed = unam.machine;
 		return 0;
-	if(!parse_sys(unam.sysname, &triple->sys))
+	}
+	if(!parse_sys(unam.sysname, &triple->sys)){
+		if(unparsed)
+			*unparsed = unam.sysname;
 		return 0;
+	}
 
 	triple->vendor = infer_vendor(triple->sys);
 	triple->abi = infer_abi(triple->sys);

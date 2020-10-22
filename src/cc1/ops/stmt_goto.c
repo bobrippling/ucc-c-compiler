@@ -7,7 +7,7 @@
 #include "../out/lbl.h"
 #include "../label.h"
 
-const char *str_stmt_goto()
+const char *str_stmt_goto(void)
 {
 	return "goto";
 }

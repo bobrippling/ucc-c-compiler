@@ -28,6 +28,7 @@ static const struct has_tbl
 	HAS(extension),
 	HAS(attribute),
 	HAS(builtin),
+	/* no __has_include - dealt with like defined() */
 #undef HAS
 	{ NULL, NULL }
 };
@@ -43,7 +44,7 @@ int has_func(const char *fn, const char *arg1)
 		if(!strcmp(p->nam, fn))
 			return p->handler(arg1);
 
-	return 0;
+	return -1;
 }
 
 static int has_feat_ext(const char *nam, int as_ext)
@@ -103,12 +104,14 @@ static int has_feature(const char *nam)
 static int has_attribute(const char *nam)
 {
 #define NAME(x, t) if(!strcmp(nam, #x) || !strcmp("__" #x "__", nam)) return 1;
-#define ALIAS(s, x, t) if(!strcmp(nam, s) || !strcmp("__" s "__", nam)) return 1;
-#define EXTRA_ALIAS(s, x) ALIAS(s, x, 0)
+#define RENAME(s, x, t) if(!strcmp(nam, s) || !strcmp("__" s "__", nam)) return 1;
+#define ALIAS(s, x) if(!strcmp(nam, s) || !strcmp("__" s "__", nam)) return 1;
+#define COMPLEX_ALIAS(s, x) if(!strcmp(nam, s) || !strcmp("__" s "__", nam)) return 1;
 	ATTRIBUTES
 #undef NAME
+#undef RENAME
 #undef ALIAS
-#undef EXTRA_ALIAS
+#undef COMPLEX_ALIAS
 	return 0;
 }
 

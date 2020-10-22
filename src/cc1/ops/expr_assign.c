@@ -12,7 +12,7 @@
 #include "expr_struct.h"
 #include "expr_funcall.h"
 
-const char *str_expr_assign()
+const char *str_expr_assign(void)
 {
 	return "assignment";
 }
@@ -78,7 +78,7 @@ void expr_assign_const_check(expr *e, where *w)
 	if(type_is_const(e->tree_type)){
 		fold_had_error = 1;
 		warn_at_print_error(w, "can't modify const expression %s",
-				expr_str_friendly(e));
+				expr_str_friendly(e, 0));
 	}else if((su = type_is_s_or_u(e->tree_type)) && su->contains_const){
 		fold_had_error = 1;
 		warn_at_print_error(w, "can't assign struct - contains const member");

@@ -24,6 +24,8 @@ type *c_types_make_va_list(symtable *symtab)
 
 	expr *e_one = expr_compiler_generated(expr_new_val(1));
 
+	symtab = symtab_root(symtab); /* always introduce __va_list_struct in the root scope */
+
 	FOLD_EXPR(e_one, symtab);
 
 	/*

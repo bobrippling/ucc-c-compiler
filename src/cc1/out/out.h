@@ -5,12 +5,14 @@
 #include "../num.h"
 #include "../sym.h"
 #include "../op.h"
+#include "../sanitize_opt.h"
 
 #include "forwards.h"
 
 out_ctx *out_ctx_new(void);
 void out_ctx_end(out_ctx *);
-void out_ctx_wipe(out_ctx *);
+void out_perfunc_init(out_ctx *, decl *fndecl, const char *sp);
+void out_perfunc_teardown(out_ctx *);
 
 void **out_user_ctx(out_ctx *);
 
@@ -44,6 +46,7 @@ const out_val *out_new_sym_val(out_ctx *, sym *) ucc_wur;
 const out_val *out_new_overflow(out_ctx *, const out_val **) ucc_wur;
 
 out_val *out_new_frame_ptr(out_ctx *, int nframes) ucc_wur;
+const out_val *out_new_return_addr(out_ctx *octx, int nframes) ucc_wur;
 out_val *out_new_reg_save_ptr(out_ctx *) ucc_wur;
 out_val *out_new_nan(out_ctx *, type *ty) ucc_wur;
 
@@ -107,9 +110,16 @@ ucc_wur const out_val *out_call(out_ctx *,
 ucc_wur out_blk *out_blk_new(out_ctx *, const char *desc);
 void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
 ucc_wur out_blk *out_ctx_current_blk(out_ctx *);
+ucc_wur int out_ctx_current_blk_is_empty(out_ctx *);
+
+out_blk *out_blk_entry(out_ctx *);
+out_blk *out_blk_postprologue(out_ctx *);
+
+int out_sanitize_enabled(out_ctx *, enum san_opts opt);
 
 void out_ctrl_end_undefined(out_ctx *);
 void out_ctrl_end_ret(out_ctx *, const out_val *, type *) ucc_nonnull((1));
+void out_ctrl_debugtrap(out_ctx *);
 
 /* Will the value be used only in *mergee? (/ not immediately afterwards, in
  * the current block)
@@ -141,9 +151,8 @@ ucc_wur const out_val *out_ctrl_merge_n(out_ctx *, out_blk **rets);
 
 /* function setup */
 void out_func_prologue(
-		out_ctx *, const char *sp,
-		type *fnty,
-		int nargs, int variadic,
+		out_ctx *,
+		int nargs, int variadic, int stack_protector,
 		const out_val *argvals[]);
 
 void out_func_epilogue(out_ctx *, type *, const where *func_begin, char *end_dbg_lbl);
@@ -169,5 +178,7 @@ unsigned out_current_stack(out_ctx *); /* used in inlining */
 /* commenting */
 void out_comment(out_ctx *, const char *, ...) ucc_printflike(2, 3);
 const char *out_val_str(const out_val *, int deref);
+
+void test_out_out(void);
 
 #endif

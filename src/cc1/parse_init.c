@@ -48,8 +48,7 @@ decl_init *parse_init(symtable *scope, int static_ctx)
 					if(is_label){
 						where colon_loc;
 						d->type = desig_struct;
-						d->bits.member = token_current_spel();
-						EAT(token_identifier);
+						d->bits.member = token_eat_identifier(DUMMY_IDENTIFIER, NULL);
 						where_cc1_current(&colon_loc);
 						EAT(token_colon);
 						cc1_warn_at(&colon_loc, gnu_desig, "use of old-style GNU designator");
@@ -59,8 +58,7 @@ decl_init *parse_init(symtable *scope, int static_ctx)
 
 					if(accept(token_dot)){
 						d->type = desig_struct;
-						d->bits.member = token_current_spel();
-						EAT(token_identifier);
+						d->bits.member = token_eat_identifier(DUMMY_IDENTIFIER, NULL);
 
 					}else if(accept(token_open_square)){
 						d->type = desig_ar;

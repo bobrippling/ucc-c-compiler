@@ -10,7 +10,7 @@ static enum arch arch;
 static enum sys sys;
 static int init;
 
-unsigned platform_word_size()
+unsigned platform_word_size(void)
 {
 	assert(init);
 	switch(arch){
@@ -25,7 +25,7 @@ int platform_32bit(void)
 	return platform_word_size() == 4;
 }
 
-unsigned platform_align_max()
+unsigned platform_align_max(void)
 {
 	switch(platform_word_size()){
 		case 4:
@@ -36,13 +36,13 @@ unsigned platform_align_max()
 	abort();
 }
 
-enum arch platform_type()
+enum arch platform_type(void)
 {
 	assert(init);
 	return arch;
 }
 
-enum sys platform_sys()
+enum sys platform_sys(void)
 {
 	assert(init);
 	return sys;

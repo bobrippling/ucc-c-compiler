@@ -2,7 +2,7 @@
 #include "stmt_continue.h"
 #include "stmt_break.h"
 
-const char *str_stmt_continue()
+const char *str_stmt_continue(void)
 {
 	return "continue";
 }

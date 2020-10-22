@@ -1,0 +1,13 @@
+.section .rodata
+ro:
+.zero 4
+
+.comm ro_common,4,4
+
+.section .bss
+rw:
+.zero 4
+
+.comm rw_common,4,4
+
+.section .note.GNU-stack,"",@progbits

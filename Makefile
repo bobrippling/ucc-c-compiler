@@ -1,32 +1,30 @@
 all: src
 
 src:
-	make -C src
+	${MAKE} -C src
 
 lib: lib/config.mk
-	make -C lib
+	${MAKE} -C lib
 
 deps:
-	make -Csrc deps
+	${MAKE} -Csrc deps
 
 clean:
-	make -C src clean
-	make -C lib clean
+	${MAKE} -C src clean
+	${MAKE} -C lib clean
 
 cleanall: clean
 	./configure clean
 
-cleantest:
-	make -Ctest clean
-# no need to clean test
-
+# see also check-bootstrap
 check: all lib
-	cd test; ./run_tests -q -i ignores .
-	# test/ pending
+	cd test && ./run_tests -i ignores -j4 cases
 
-ALL_SRC = $(shell find . -iname '*.[ch]')
+ALL_SRC = $(shell find src -iname '*.[ch]')
 
 tags: ${ALL_SRC}
-	ctags '--exclude=_*' -R .
+	ctags '--exclude=_*' -R src lib
+
+include Bootstrap.mk
 
 .PHONY: all clean cleanall src

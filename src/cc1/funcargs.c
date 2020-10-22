@@ -38,6 +38,13 @@ void funcargs_empty(funcargs *func)
 	func->args_void = 0;
 }
 
+void funcargs_empty_void(funcargs *func)
+{
+	/* x(void); */
+	funcargs_empty(func);
+	func->args_void = 1; /* (void) vs () */
+}
+
 enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 {
 	int count_to;
@@ -88,12 +95,19 @@ enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 	return FUNCARGS_EXACT_EQUAL;
 }
 
-funcargs *funcargs_new()
+funcargs *funcargs_new(void)
 {
 	funcargs *r = umalloc(sizeof *funcargs_new());
 	where_cc1_current(&r->where);
 	r->retains = 1;
 	return r;
+}
+
+funcargs *funcargs_new_void(void)
+{
+	funcargs *args = funcargs_new();
+	args->args_void = 1;
+	return args;
 }
 
 void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)

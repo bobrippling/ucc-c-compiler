@@ -7,6 +7,8 @@
 #include "../type_nav.h"
 #include "../type_is.h"
 #include "../pack.h"
+#include "../mangle.h"
+#include "../funcargs.h"
 
 #include "val.h"
 #include "out.h" /* this file defs */
@@ -16,8 +18,10 @@
 #include "virt.h"
 #include "blk.h"
 #include "dbg.h"
+#include "stack_protector.h"
 
 #include "../cc1.h" /* mopt_mode */
+#include "../fopt.h"
 #include "../../util/platform.h"
 #include "../../util/dynarray.h"
 
@@ -29,6 +33,7 @@ const out_val *out_call(out_ctx *octx,
 	 * since the stack must be aligned correctly for a call
 	 * (i.e. at least a pushq %rbp to bring it up to 16) */
 	octx->used_stack = 1;
+	octx->had_call = 1;
 
 	return impl_call(octx, fn, args, fnty);
 }
@@ -96,10 +101,88 @@ static void callee_save_or_restore(
 	out_val_release(octx, stack_locn);
 }
 
+static const out_val *emit_stack_probe_call(out_ctx *octx, const char *probefn, v_stackt adj)
+{
+	type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
+	funcargs *fargs = funcargs_new();
+	type *fnty_noptr;
+	type *fnty_ptr;
+	char *mangled;
+	const out_val *fn, *args[2], *newadj;
+
+	fargs->args_void = 1;
+	fnty_noptr = type_func_of(intptr_ty, fargs, NULL);
+	fnty_ptr = type_ptr_to(fnty_noptr);
+	mangled = func_mangle(probefn, fnty_noptr);
+
+	fn = out_new_lbl(octx, fnty_ptr, mangled, /* another module */OUT_LBL_PIC);
+	args[0] = out_new_l(octx, intptr_ty, adj);
+	args[1] = NULL;
+
+	newadj = out_call(octx, fn, args, fnty_ptr);
+
+	if(mangled != probefn)
+		free(mangled);
+
+	return newadj;
+}
+
+static void allocate_stack(out_ctx *octx, v_stackt adj)
+{
+	if(adj >= 4096){
+		const enum sys sys = platform_sys();
+
+		switch(sys){
+			case SYS_linux:
+			case SYS_freebsd:
+			case SYS_darwin:
+				break;
+			case SYS_cygwin:
+			{
+				// Emit stack probes for windows/cygwin/mingw targets.
+				// Windows => __chkstk
+				// cygwin/mingw => __alloca
+				const char *probefn;
+				int still_need_stack_adj;
+				const out_val *newadj;
+
+				if(platform_32bit()){
+					probefn = "_alloca"; /* cygwin and mingw */
+					still_need_stack_adj = 0;
+
+					/* probefn = "_chkstk"; // windows
+					 * still_need_stack_adj = 0;
+					 */
+				}else{
+					probefn = "__chkstk_ms"; /* cygwin and mingw */
+					still_need_stack_adj = 1;
+
+					/* probefn = "_chkstk"; // windows
+					 * still_need_stack_adj = 1;
+					 */
+				}
+
+				newadj = emit_stack_probe_call(octx, probefn, adj);
+
+				if(still_need_stack_adj){
+					v_stack_adj_val(octx, newadj, /*sub:*/1);
+				}else{
+					out_comment(octx, "stack adjusted by %s call", probefn);
+					out_val_release(octx, newadj);
+				}
+				return;
+			}
+		}
+	}
+
+	v_stack_adj(octx, adj, /*sub:*/1);
+}
+
 void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *end_dbg_lbl)
 {
+	int clean_stack, redzone = 0;
 	out_blk *call_save_spill_blk = NULL;
-	out_blk *to_flush;
+	out_blk *flush_root;
 
 	if(octx->current_blk && octx->current_blk->type == BLK_UNINIT)
 		out_ctrl_transfer(octx, octx->epilogue_blk, NULL, NULL, 0);
@@ -228,18 +311,37 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 		octx->in_prologue = 0;
 	}
 
+	if(cc1_profileg && mopt_mode & MOPT_FENTRY){ /* stack frame required */
+		clean_stack = 1;
+
+	}else if(!octx->used_stack){ /* stack unused - try to omit frame pointer */
+		clean_stack = !cc1_fopt.omit_frame_pointer;
+
+	}else{ /* stack used - can we red-zone it? */
+		redzone =
+			(mopt_mode & MOPT_RED_ZONE) &&
+			octx->max_stack_sz < REDZONE_BYTES &&
+			!octx->had_call &&
+			!octx->stack_ptr_manipulated;
+
+		clean_stack = 1;
+	}
+
 	out_current_blk(octx, octx->epilogue_blk);
 	{
-		impl_func_epilogue(octx, ty, octx->used_stack);
+		out_check_stack_canary(octx);
+
+		impl_func_epilogue(octx, ty, clean_stack);
 		/* terminate here without an insn */
 		assert(octx->current_blk->type == BLK_UNINIT);
 		octx->current_blk->type = BLK_TERMINAL;
 	}
 
 	/* space for spills */
-	if(octx->used_stack){
-		to_flush = octx->entry_blk;
-		out_current_blk(octx, octx->prologue_prejoin_blk);
+	if(clean_stack){
+		flush_root = octx->entry_blk;
+		out_current_blk(octx, octx->entry_blk);
+		out_ctrl_transfer_make_current(octx, octx->stacksub_blk);
 		{
 			v_stackt stack_adj;
 
@@ -257,6 +359,15 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 					octx->stack_calleesave_space,
 					octx->max_align);
 
+			if(cc1_fopt.verbose_asm){
+				out_comment(octx,
+						"red-zone %s (stack @ %zu bytes, had_call: %d, stack_ptr_manipulated: %d)",
+						redzone ? "active" : "inactive",
+						octx->max_stack_sz,
+						octx->had_call,
+						octx->stack_ptr_manipulated);
+			}
+
 			if(octx->max_align){
 				/* must align max_stack_sz,
 				 * not the resultant after subtracting stack_n_alloc */
@@ -264,24 +375,24 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 			}
 			stack_adj = octx->max_stack_sz - octx->stack_n_alloc;
 
-			v_stack_adj(octx, stack_adj, /*sub:*/1);
-
-			if(call_save_spill_blk){
-				out_ctrl_transfer_make_current(octx, call_save_spill_blk);
-			}
-			out_ctrl_transfer(octx, octx->prologue_postjoin_blk, NULL, NULL, 0);
+			if(!redzone)
+				allocate_stack(octx, stack_adj);
 		}
+
+		out_ctrl_transfer(octx, octx->argspill_begin_blk, NULL, NULL, 0);
+		out_current_blk(octx, octx->argspill_done_blk);
+		if(call_save_spill_blk)
+			out_ctrl_transfer_make_current(octx, call_save_spill_blk);
+		out_ctrl_transfer(octx, octx->postprologue_blk, NULL, NULL, 0);
 	}else{
-		to_flush = octx->prologue_postjoin_blk;
+		flush_root = octx->postprologue_blk;
 
 		/* need to attach the label to prologue_postjoin_blk */
-		free(to_flush->lbl);
-		to_flush->lbl = octx->entry_blk->lbl;
-		octx->entry_blk->lbl = NULL;
+		blk_transfer(octx->entry_blk, flush_root);
 	}
 	octx->current_blk = NULL;
 
-	blk_flushall(octx, to_flush, end_dbg_lbl);
+	blk_flushall(octx, flush_root, end_dbg_lbl);
 
 	free(octx->used_callee_saved), octx->used_callee_saved = NULL;
 
@@ -327,54 +438,81 @@ static void stack_realign(out_ctx *octx, unsigned align)
 	v_set_cur_stack_sz(octx, new_sz);
 }
 
-void out_func_prologue(
-		out_ctx *octx, const char *sp,
-		type *fnty,
-		int nargs, int variadic,
-		const out_val *argvals[])
+void out_perfunc_init(out_ctx *octx, decl *fndecl, const char *sp)
 {
+	attribute *attr;
+	type *const fnty = fndecl->ref;
+	attribute *alignment;
+
 	octx->current_fnty = fnty;
 
 	assert(octx->cur_stack_sz == 0 && "non-empty stack for new func");
 	assert(octx->alloca_count == 0 && "allocas left over?");
-
 	octx->check_flags = 1;
+	octx->had_call = 0;
+	octx->stack_ptr_manipulated = 0;
 
+	assert(!octx->current_blk);
+	octx->entry_blk = out_blk_new_lbl(octx, sp);
+	octx->stacksub_blk = out_blk_new(octx, "stacksub");
+	octx->argspill_begin_blk = out_blk_new(octx, "argspill");
+	octx->postprologue_blk = out_blk_new(octx, "post_prologue");
+	octx->epilogue_blk = out_blk_new(octx, "epilogue");
+
+	attr = attribute_present(fndecl, attr_no_sanitize);
+	octx->no_sanitize_flags = attr ? attr->bits.no_sanitize : 0;
+
+	if((alignment = attribute_present(fndecl, attr_aligned)))
+		octx->entry_blk->align = const_fold_val_i(alignment->bits.align);
+}
+
+void out_func_prologue(
+		out_ctx *octx,
+		int nargs, int variadic, int stack_protector,
+		const out_val *argvals[])
+{
 	octx->in_prologue = 1;
 	{
-		assert(!octx->current_blk);
-		octx->entry_blk = out_blk_new_lbl(octx, sp);
-		octx->epilogue_blk = out_blk_new(octx, "epilogue");
+		const out_val *stack_prot_slot = NULL;
 
 		out_current_blk(octx, octx->entry_blk);
+		{
+			impl_func_prologue_save_fp(octx);
 
-		impl_func_prologue_save_fp(octx);
+			if(stack_protector){
+				type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 
-		if(mopt_mode & MOPT_STACK_REALIGN)
-			stack_realign(octx, cc1_mstack_align);
+				stack_prot_slot = out_aalloct(octx, type_ptr_to(type_ptr_to(intptr_ty)));
+			}
 
-		impl_func_prologue_save_call_regs(octx, fnty, nargs, argvals);
+			if(mopt_mode & MOPT_STACK_REALIGN)
+				stack_realign(octx, cc1_mstack_align);
+		}
 
-		if(variadic) /* save variadic call registers */
-			impl_func_prologue_save_variadic(octx, fnty);
+		out_current_blk(octx, octx->argspill_begin_blk);
+		{
+			impl_func_prologue_save_call_regs(octx, octx->current_fnty, nargs, argvals);
 
-		/* need to definitely be on a BLK_UNINIT block after
-		 * prologue setup (in prologue_blk) */
-		octx->prologue_prejoin_blk = out_blk_new(octx, "prologue");
-		out_ctrl_transfer_make_current(octx, octx->prologue_prejoin_blk);
+			if(variadic) /* save variadic call registers */
+				impl_func_prologue_save_variadic(octx, octx->current_fnty);
 
-		/* setup "pointers" to the right place in the stack */
-		octx->stack_variadic_offset = octx->cur_stack_sz;
-		octx->initial_stack_sz = octx->cur_stack_sz;
+			octx->argspill_done_blk = octx->current_blk;
+
+			/* setup "pointers" to the right place in the stack */
+			octx->stack_variadic_offset = octx->cur_stack_sz;
+			octx->initial_stack_sz = octx->cur_stack_sz;
+
+			if(stack_prot_slot){
+				/* now all registers are safe, init stack protector */
+				out_init_stack_canary(octx, stack_prot_slot);
+			}
+		}
+
+		octx->used_stack = !!stack_prot_slot;
 	}
 	octx->in_prologue = 0;
 
-	octx->used_stack = 0;
-
-	/* keep the end of the prologue block clear for a stack pointer adjustment,
-	 * in case any spills are needed */
-	octx->prologue_postjoin_blk = out_blk_new(octx, "post_prologue");
-	out_current_blk(octx, octx->prologue_postjoin_blk);
+	out_current_blk(octx, octx->postprologue_blk);
 }
 
 unsigned out_current_stack(out_ctx *octx)

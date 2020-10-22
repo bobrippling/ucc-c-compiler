@@ -3,7 +3,7 @@
 #include "../../util/dynarray.h"
 #include "../type_nav.h"
 
-const char *str_expr_stmt()
+const char *str_expr_stmt(void)
 {
 	return "statement";
 }

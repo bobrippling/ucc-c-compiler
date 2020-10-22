@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/util.h"
 #include "../util/alloc.h"
@@ -47,15 +48,21 @@
               }                       \
             }while(0)
 
+#define DECL_HAS_FUNC_CODE(d) (type_is(d->ref, type_func) && (d)->bits.func.code)
+
+static void dump_indent(int indent)
+{
+	int i;
+	for(i = 0; i < indent; i++)
+		fputs("  ", stderr);
+}
+
 static void dump_symtab(symtable *st, unsigned indent)
 {
 	symtable **si;
 	decl **di;
-	unsigned i;
 
-#define STAB_INDENT() for(i = 0; i < indent; i++) fputs("  ", stderr)
-	STAB_INDENT();
-
+	dump_indent(indent);
 	fprintf(stderr, "symtab %p = { .are_params=%d, .in_func=%s }\n",
 			(void *)st,
 			st->are_params,
@@ -64,7 +71,7 @@ static void dump_symtab(symtable *st, unsigned indent)
 	for(di = st->decls; di && *di; di++){
 		decl *d = *di;
 
-		STAB_INDENT();
+		dump_indent(indent);
 		fprintf(stderr, "  %s, %s %p",
 				d->sym ? sym_to_str(d->sym->type) : "<nosym>",
 				decl_to_str(d),
@@ -76,11 +83,11 @@ static void dump_symtab(symtable *st, unsigned indent)
 			fprintf(stderr, ", next %p", (void *)d->impl);
 
 		if(type_is(d->ref, type_func)){
-			decl *impl = decl_impl(d);
+			decl *impl = decl_impl(d, 0);
 			if(impl && impl != d)
 				fprintf(stderr, ", impl %p", (void *)impl);
 		}else{
-			decl *init = decl_impl(d);
+			decl *init = decl_with_init(d, 0);
 			if(init && init != d)
 				fprintf(stderr, ", init-decl %p", (void *)init);
 		}
@@ -88,9 +95,13 @@ static void dump_symtab(symtable *st, unsigned indent)
 		fputc('\n', stderr);
 	}
 
+	if(st->decls && st->children){
+		dump_indent(indent);
+		fputs("  ---\n", stderr);
+	}
+
 	for(si = st->children; si && *si; si++)
 		dump_symtab(*si, indent + 1);
-#undef STAB_INDENT
 }
 
 static void symtab_iter_children(symtable *stab, void f(symtable *))
@@ -119,7 +130,7 @@ void symtab_check_static_asserts(symtable *stab)
 		if(!type_is_integral(sa->e->tree_type)){
 			warn_at_print_error(&sa->e->where,
 					"static assert: not an integral expression (%s)",
-					expr_str_friendly(sa->e));
+					expr_str_friendly(sa->e, 1));
 			fold_had_error = 1;
 			continue;
 		}
@@ -129,18 +140,31 @@ void symtab_check_static_asserts(symtable *stab)
 		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num)){
 			warn_at_print_error(&sa->e->where,
 					"static assert: not an integer constant expression (%s)",
-					expr_str_friendly(sa->e));
+					expr_str_friendly(sa->e, 1));
 			fold_had_error = 1;
 			continue;
+		}
+
+		if(k.nonstandard_const){
+			int warned = cc1_warn_at(
+					&sa->e->where,
+					nonstd_assert,
+					"static_assert expression isn't an integer constant expression");
+
+			if(warned){
+				note_at(&k.nonstandard_const->where, "non-standard expression here (%s)", expr_str_friendly(k.nonstandard_const, 1));
+			}
 		}
 
 		if(!k.bits.num.val.i){
 			warn_at_print_error(&sa->e->where, "static assertion failure: %s", sa->s);
 			fold_had_error = 1;
+			continue;
+		}
 
-		}else if(cc1_fopt.show_static_asserts){
+		if(cc1_fopt.show_static_asserts){
 			fprintf(stderr, "%s: static assert passed: %s-expr, msg: %s\n",
-					where_str(&sa->e->where), expr_str_friendly(sa->e), sa->s);
+					where_str(&sa->e->where), expr_str_friendly(sa->e, 1), sa->s);
 		}
 	}
 }
@@ -216,6 +240,9 @@ struct ident_loc
 	((il)->has_decl          \
 	 ? (il)->bits.decl->spel \
 	 : (il)->bits.spel)
+
+#define IDENT_LOC_IS_IMPLICIT(il) \
+	((il)->has_decl && (il)->bits.decl->flags & DECL_FLAGS_IMPLICIT)
 
 static int strcmp_or_null(const char *a, const char *b)
 {
@@ -334,13 +361,17 @@ void symtab_fold_decls(symtable *tab)
 		/* direct check for static - only warn on the one instance */
 		if((d->store & STORE_MASK_STORE) == store_static
 		&& type_is(d->ref, type_func)
-		&& !decl_impl(d)->bits.func.code)
+		&& !decl_defined(d, DECL_INCLUDE_ALIAS))
 		{
 			cc1_warn_at(&d->where, undef_internal,
 					"function declared static but not defined");
 		}
 
-		if(!tab->parent && decl_unused_and_internal(d)){
+		if(!tab->parent
+		&& d->spel
+		&& (d->store & STORE_MASK_STORE) != store_typedef /* unused global typedefs are fine */
+		&& decl_unused_and_internal(d))
+		{
 			int is_fn = !!type_is(d->ref, type_func);
 			unsigned char *pwarn = (is_fn
 					? &cc1_warning.unused_function
@@ -468,6 +499,7 @@ void symtab_fold_decls(symtable *tab)
 									}
 								}else{
 									if(a_func){
+										assert(type_is(db->ref, type_func));
 										if(DECL_HAS_FUNC_CODE(da) && DECL_HAS_FUNC_CODE(db)){
 											clash = "duplicate";
 										}
@@ -487,8 +519,15 @@ void symtab_fold_decls(symtable *tab)
 			}
 
 			if(clash){
+				if(IDENT_LOC_IS_IMPLICIT(b) && !IDENT_LOC_IS_IMPLICIT(a)){
+					struct ident_loc *tmp = a;
+					a = b;
+					b = tmp;
+				}
+
 				warn_at_print_error(b->w, "%s definitions of \"%s\"", clash, IDENT_LOC_SPEL(a));
-				note_at(a->w, "previous definition");
+				note_at(a->w, "previous %sdefinition",
+						IDENT_LOC_IS_IMPLICIT(a) ? "implicit " : "");
 				fold_had_error = 1;
 			}
 		}

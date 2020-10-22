@@ -28,7 +28,8 @@ const char *v_store_to_str(enum out_val_store store)
 	switch(store){
 		CASE_STR(V_CONST_I);
 		CASE_STR(V_REG);
-		CASE_STR(V_REG_SPILT);
+		CASE_STR(V_REGOFF);
+		CASE_STR(V_SPILT);
 		CASE_STR(V_LBL);
 		CASE_STR(V_CONST_F);
 		CASE_STR(V_FLAG);
@@ -90,7 +91,7 @@ void v_decay_flags_except(out_ctx *octx, const out_val *except[])
 	{
 		out_val_list *iter;
 
-		for(iter = octx->val_head; iter; iter = iter->next){
+		OCTX_ITER_VALS(octx, iter){
 			out_val *v = &iter->val;
 
 			if(v->retains > 0 && v->type == V_FLAG && !out_val_is_blockphi(v, octx->current_blk)){
@@ -152,7 +153,9 @@ copy:
 			/* fall */
 		}
 
-		case V_REG_SPILT:
+		case V_SPILT:
+			/* fall */
+		case V_REGOFF:
 		case V_REG:
 		{
 			struct vreg r;
@@ -204,6 +207,7 @@ static out_val *v_reuse(out_ctx *octx, const out_val *from, type *ty)
 out_val *v_dup_or_reuse(out_ctx *octx, const out_val *from, type *ty)
 {
 	assert(from);
+	assert(from->type != V_SPILT && "v_dup_or_reuse() on a V_SPILT - likely a bug");
 
 	if(from->retains > 1){
 		out_val *r = v_dup(octx, from, ty);
@@ -212,6 +216,22 @@ out_val *v_dup_or_reuse(out_ctx *octx, const out_val *from, type *ty)
 	}
 
 	return v_reuse(octx, from, ty);
+}
+
+out_val *v_mutable_copy(out_ctx *octx, const out_val *val)
+{
+	if(val->type == V_SPILT){
+		/* A V_SPILT's type is a pointer to the value's real type, which is
+		 * unexpected in a lot of places where we assume the value is immediately
+		 * usable. Here we bring it into a register so we can make the type change
+		 * without having to think about keeping the double-indirection, or how
+		 * callers will handle a value that doesn't have the type they request
+		 * (when this is used in a out_change_type() or v_dup_or_reuse() context).
+		 */
+		val = v_to_reg(octx, val);
+	}
+
+	return v_dup_or_reuse(octx, val, val->t);
 }
 
 out_val *v_new_flag(
@@ -240,16 +260,22 @@ out_val *v_new_reg(
 	return v;
 }
 
-out_val *v_new_sp(out_ctx *octx, const out_val *from)
+static out_val *v_new_spbp(out_ctx *octx, const out_val *from, unsigned short reg)
 {
 	struct vreg r;
 
 	r.is_float = 0;
-	r.idx = REG_SP;
+	r.idx = reg;
 
 	octx->used_stack = 1;
 
 	return v_new_reg(octx, from, type_nav_voidptr(cc1_type_nav), &r);
+}
+
+out_val *v_new_sp(out_ctx *octx, const out_val *from)
+{
+	octx->stack_ptr_manipulated = 1;
+	return v_new_spbp(octx, from, REG_SP);
 }
 
 out_val *v_new_sp3(
@@ -266,8 +292,9 @@ static out_val *v_new_bp3(
 		out_ctx *octx, const out_val *from,
 		type *ty, long stack_pos)
 {
-	out_val *v = v_new_sp3(octx, from, ty, stack_pos);
-	v->bits.regoff.reg.idx = REG_BP;
+	out_val *v = v_new_spbp(octx, from, REG_BP);
+	v->t = ty;
+	v->bits.regoff.offset = stack_pos;
 	return v;
 }
 
@@ -297,14 +324,15 @@ void v_try_stack_reclaim(out_ctx *octx)
 		return;
 
 	/* only reclaim if we have an empty val list */
-	for(iter = octx->val_head; iter; iter = iter->next){
+	OCTX_ITER_VALS(octx, iter){
 		if(iter->val.retains == 0)
 			continue;
 		if(iter->val.phiblock)
 			continue;
 		switch(iter->val.type){
 			case V_REG:
-			case V_REG_SPILT:
+			case V_REGOFF:
+			case V_SPILT:
 				if(!impl_reg_frame_const(&iter->val.bits.regoff.reg, 0))
 					return;
 				if(iter->val.bits.regoff.offset < lowest)
@@ -386,9 +414,10 @@ int out_is_nonconst_temporary(const out_val *v)
 		case V_CONST_I:
 		case V_CONST_F:
 		case V_LBL:
+		case V_SPILT:
 			break;
 		case V_REG:
-		case V_REG_SPILT:
+		case V_REGOFF:
 		case V_FLAG:
 			return 1;
 	}

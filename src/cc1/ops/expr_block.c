@@ -30,6 +30,8 @@ void expr_block_got_params(
 
 	df->spel = out_label_block("globl");
 	df->block_expr = e;
+	df->store = store_static;
+	decl_use(df);
 
 	fold_funcargs(args, symtab, NULL);
 
@@ -100,7 +102,7 @@ static void const_expr_block(expr *e, consty *k)
 	CONST_FOLD_LEAF(k);
 
 	k->type = CONST_ADDR;
-	k->bits.addr.is_lbl = 1;
+	k->bits.addr.lbl_type = CONST_LBL_TRUE;
 	k->bits.addr.bits.lbl = decl_asm_spel(e->bits.block.sym->decl);
 }
 
@@ -127,6 +129,7 @@ const out_val *gen_expr_style_block(const expr *e, out_ctx *octx)
 void mutate_expr_block(expr *e)
 {
 	e->f_const_fold = const_expr_block;
+	e->f_requires_relocation = expr_bool_always;
 }
 
 expr *expr_new_block(type *rt, funcargs *args)

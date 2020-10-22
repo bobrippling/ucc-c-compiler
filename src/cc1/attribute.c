@@ -130,12 +130,14 @@ const char *attribute_to_str(attribute *da)
 {
 	switch(da->type){
 #define NAME(x, typrop) case attr_ ## x: return #x;
-#define ALIAS(s, x, typrop) case attr_ ## x: return s;
-#define EXTRA_ALIAS(s, x)
+#define RENAME(s, x, typrop) case attr_ ## x: return s;
+#define ALIAS(s, x)
+#define COMPLEX_ALIAS(s, x)
 		ATTRIBUTES
 #undef NAME
+#undef RENAME
 #undef ALIAS
-#undef EXTRA_ALIAS
+#undef COMPLEX_ALIAS
 		case attr_LAST:
 			break;
 	}
@@ -144,6 +146,41 @@ const char *attribute_to_str(attribute *da)
 
 void attribute_free(attribute *a)
 {
+	switch(a->type){
+		case attr_LAST:
+			assert(0);
+
+		case attr_alias:
+		case attr_format:
+		case attr_cleanup:
+		case attr_section:
+		case attr_call_conv:
+		case attr_nonnull:
+		case attr_returns_nonnull:
+		case attr_sentinel:
+		case attr_aligned:
+		case attr_constructor:
+		case attr_destructor:
+		case attr_visibility:
+		case attr_unused:
+		case attr_used:
+		case attr_warn_unused:
+		case attr_enum_bitmask:
+		case attr_noreturn:
+		case attr_noderef:
+		case attr_packed:
+		case attr_weak:
+		case attr_desig_init:
+		case attr_ucc_debug:
+		case attr_always_inline:
+		case attr_noinline:
+		case attr_no_stack_protector:
+		case attr_stack_protect:
+		case attr_no_sanitize:
+		case attr_fallthrough:
+			break;
+	}
+
 	free(a);
 }
 
@@ -184,11 +221,6 @@ int attribute_equal(attribute *a, attribute *b)
 				return 0;
 			}
 #undef NEQ
-			if(a->bits.format.fmt_idx != b->bits.format.fmt_idx
-			|| a->bits.format.var_idx != b->bits.format.var_idx)
-			{
-				return 0;
-			}
 			break;
 
 		case attr_cleanup:
@@ -209,6 +241,9 @@ int attribute_equal(attribute *a, attribute *b)
 		case attr_nonnull:
 			if(a->bits.nonnull_args != b->bits.nonnull_args)
 				return 0;
+			break;
+
+		case attr_returns_nonnull:
 			break;
 
 		case attr_sentinel:
@@ -234,18 +269,27 @@ int attribute_equal(attribute *a, attribute *b)
 				return 0;
 			break;
 
+		case attr_no_sanitize:
+			if(a->bits.no_sanitize != b->bits.no_sanitize)
+				return 0;
+			break;
+
 		case attr_unused:
-		case attr_warn_unused:
 		case attr_used:
+		case attr_warn_unused:
 		case attr_enum_bitmask:
 		case attr_noreturn:
 		case attr_noderef:
 		case attr_packed:
 		case attr_weak:
+		case attr_alias:
 		case attr_desig_init:
 		case attr_ucc_debug:
 		case attr_always_inline:
 		case attr_noinline:
+		case attr_no_stack_protector:
+		case attr_stack_protect:
+		case attr_fallthrough:
 			/* equal */
 			break;
 	}
@@ -257,12 +301,14 @@ int attribute_is_typrop(attribute *attr)
 {
 	switch(attr->type){
 #define NAME(nam, typrop) case attr_ ## nam: return typrop;
-#define ALIAS(str, nam, typrop) case attr_ ## nam: return typrop;
-#define EXTRA_ALIAS(str, nam)
+#define RENAME(str, nam, typrop) case attr_ ## nam: return typrop;
+#define ALIAS(str, nam)
+#define COMPLEX_ALIAS(str, nam)
 		ATTRIBUTES
 #undef NAME
+#undef RENAME
 #undef ALIAS
-#undef EXTRA_ALIAS
+#undef COMPLEX_ALIAS
 		case attr_LAST:
 			break;
 	}

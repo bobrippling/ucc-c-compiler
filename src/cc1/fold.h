@@ -17,6 +17,7 @@ void fold_decl_add_sym(decl *d, symtable *stab);
 
 void fold_decl(decl *d, symtable *stab);
 void fold_decl_maybe_member(decl *d, symtable *stab, int su_member);
+void fold_decl_attrs_requiring_fnbody(decl *d, int su_member);
 
 void fold_check_decl_complete(decl *d);
 void fold_global_func(decl *);
@@ -46,6 +47,7 @@ int fold_type_chk_warn(
 		expr *maybe_lhs,
 		type *tlhs,
 		expr *rhs,
+		int is_comparison,
 		where *w, const char *desc);
 
 void fold_type_chk_and_cast_ty(

@@ -17,6 +17,7 @@ struct out_blk
 
 	out_blk **merge_preds;
 	out_blk *next;
+	unsigned align;
 	unsigned reachable : 1, emitted : 1;
 
 	enum
@@ -63,7 +64,12 @@ void blk_terminate_condjmp(
 void blk_terminate_jmp(out_blk *, char *jmpinsn);
 void blk_terminate_undef(out_blk *);
 
+void blk_transfer(out_blk *from, out_blk *to);
+
 #define blk_add_insn(blk, insn) \
 	dynarray_add(&(blk)->insns, (insn))
+
+#define blk_is_empty(blk) \
+	(!(blk)->insns)
 
 #endif

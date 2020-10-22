@@ -18,7 +18,7 @@ int main(int argc, const char *argv[])
 		err = strerror(i);
 		if(!err || errno){
 			if(errno != EINVAL){
-				perror("strerror()");
+				fprintf(stderr, "strerror(), errno=%d, desc=\"%s\"\n", errno, strerror(errno));
 				return 1;
 			}
 			break;

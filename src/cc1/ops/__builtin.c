@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <math.h>
 
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
@@ -29,6 +30,8 @@
 #include "../parse_expr.h"
 #include "../parse_type.h"
 #include "../cc1_out_ctx.h"
+#include "../sanitize_opt.h"
+#include "../sanitize.h"
 
 #include "../ops/expr_funcall.h"
 #include "../ops/expr_addr.h"
@@ -44,9 +47,12 @@ typedef expr *func_builtin_parse(
 		const char *ident, symtable *);
 
 static func_builtin_parse parse_unreachable
+                          , parse_debugtrap
                           , parse_compatible_p
                           , parse_constant_p
                           , parse_frame_address
+                          , parse_return_address
+                          , parse_extract_return_addr
                           , parse_expect
                           , parse_strlen
                           , parse_is_signed
@@ -105,10 +111,13 @@ static builtin_table *builtin_find(const char *sp)
 {
 	static unsigned prefix_len;
 	builtin_table *found;
+	int has_builtin_prefix;
 
-	found = builtin_table_search(no_prefix_builtins, sp);
-	if(found)
-		return found;
+	if(!cc1_fopt.freestanding){
+		found = builtin_table_search(no_prefix_builtins, sp);
+		if(found)
+			return found;
+	}
 
 	if(!prefix_len)
 		prefix_len = strlen(PREFIX);
@@ -116,13 +125,20 @@ static builtin_table *builtin_find(const char *sp)
 	if(strlen(sp) < prefix_len)
 		return NULL;
 
-	if(!strncmp(sp, PREFIX, prefix_len))
+	has_builtin_prefix = !strncmp(sp, PREFIX, prefix_len);
+	if(has_builtin_prefix)
 		found = builtin_table_search(builtins, sp + prefix_len);
 	else
 		found = NULL;
 
-	if(!found) /* look for __builtin_strlen, etc */
+	if(!found){ /* look for __builtin_strlen, etc */
 		found = builtin_table_search(no_prefix_builtins, sp + prefix_len);
+
+		if(!found && has_builtin_prefix){
+			warn_at_print_error(NULL, "unknown builtin '%s'", sp);
+			fold_had_error = 1;
+		}
+	}
 
 	return found;
 }
@@ -131,7 +147,7 @@ expr *builtin_parse(const char *sp, symtable *scope)
 {
 	builtin_table *b;
 
-	if((cc1_fopt.builtin) && (b = builtin_find(sp))){
+	if(cc1_fopt.builtin && (b = builtin_find(sp))){
 		expr *(*f)(const char *, symtable *) = b->parser;
 
 		if(f)
@@ -195,7 +211,7 @@ static const out_val *builtin_gen_memset(const expr *e, out_ctx *octx)
 			e->bits.builtin_memset.ch,
 			e->bits.builtin_memset.len);
 
-	return addr;
+	return out_change_type(octx, addr, e->tree_type);
 }
 
 expr *builtin_new_memset(expr *p, int ch, size_t len)
@@ -215,13 +231,13 @@ expr *builtin_new_memset(expr *p, int ch, size_t len)
 }
 
 #ifdef BUILTIN_LIBC_FUNCTIONS
-static expr *parse_memset(void)
+static expr *parse_memset(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 
 	ICE("TODO: builtin memset parsing");
 
-	expr_mutate_builtin_gen(fcall, memset);
+	expr_mutate_builtin(fcall, memset);
 
 	return fcall;
 }
@@ -231,48 +247,62 @@ static expr *parse_memset(void)
 
 static void fold_memcpy(expr *e, symtable *stab)
 {
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+
+	if(!e->lhs){
+		consty k;
+		int i;
+
+		/* parsed a user call */
+		if(dynarray_count(e->funcargs) != 3){
+			warn_at_print_error(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+			fold_had_error = 1;
+			return;
+		}
+
+		for(i = 0; i < 3; i++)
+			FOLD_EXPR(e->funcargs[i], stab);
+
+		if(!type_is_ptr(e->funcargs[0]->tree_type)
+		|| !type_is_ptr(e->funcargs[1]->tree_type)
+		|| !type_is_integral(e->funcargs[2]->tree_type))
+		{
+			warn_at_print_error(&e->where, "TODO: BAD TYPE ERROR for %s %d%d%d",
+					BUILTIN_SPEL(e->expr),
+					!!type_is_ptr(e->funcargs[0]->tree_type),
+					!!type_is_ptr(e->funcargs[1]->tree_type),
+					!!type_is_integral(e->funcargs[2]->tree_type));
+			fold_had_error = 1;
+			return;
+		}
+
+		e->lhs = e->funcargs[0];
+		e->rhs = e->funcargs[1];
+
+		const_fold(e->funcargs[2], &k);
+		if(k.type != CONST_NUM || !K_INTEGRAL(k.bits.num)){
+			warn_at_print_error(&e->where, "TODO: BAD CONST NUM ERROR for %s", BUILTIN_SPEL(e->expr));
+			fold_had_error = 1;
+			return;
+		}
+
+		e->bits.num.val.i = k.bits.num.val.i;
+	}
+
 	fold_expr_nodecay(e->lhs, stab);
 	fold_expr_nodecay(e->rhs, stab);
-
-	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
 }
-
-#ifdef BUILTIN_USE_LIBC
-static decl *decl_new_tref(char *sp, type *ref)
-{
-	decl *d = decl_new();
-	d->ref = ref;
-	d->spel = sp;
-	return d;
-}
-#endif
 
 static const out_val *builtin_gen_memcpy(const expr *e, out_ctx *octx)
 {
-#ifdef BUILTIN_USE_LIBC
-	/* TODO - also with memset */
-	funcargs *fargs = funcargs_new();
-
-	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_cached_VOID_PTR()));
-	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_cached_VOID_PTR()));
-	dynarray_add(&fargs->arglist, decl_new_tref(NULL, type_cached_INTPTR_T()));
-
-	type *ctype = type_new_func(
-			e->tree_type, fargs);
-
-	out_push_lbl("memcpy", 0);
-	out_push_l(type_cached_INTPTR_T(), e->bits.num.val);
-	lea_expr(e->rhs, stab);
-	lea_expr(e->lhs, stab);
-	out_call(3, e->tree_type, ctype);
-#else
 	const out_val *dest, *src;
 
 	dest = gen_expr(e->lhs, octx);
 	src = gen_expr(e->rhs, octx);
 
-	return out_memcpy(octx, dest, src, e->bits.num.val.i);
-#endif
+	return out_change_type(octx,
+			out_memcpy(octx, dest, src, e->bits.num.val.i),
+			e->tree_type);
 }
 
 expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
@@ -291,13 +321,13 @@ expr *builtin_new_memcpy(expr *to, expr *from, size_t len)
 }
 
 #ifdef BUILTIN_LIBC_FUNCTIONS
-static expr *parse_memcpy(void)
+static expr *parse_memcpy(const char *ident, symtable *scope)
 {
-	expr *fcall = parse_any_args();
+	expr *fcall = parse_any_args(scope);
 
 	ICE("TODO: builtin memcpy parsing");
 
-	expr_mutate_builtin_gen(fcall, memcpy);
+	expr_mutate_builtin(fcall, memcpy);
 
 	return fcall;
 }
@@ -322,7 +352,12 @@ static void fold_unreachable(expr *e, symtable *stab)
 
 static const out_val *builtin_gen_unreachable(const expr *e, out_ctx *octx)
 {
-	return builtin_gen_undefined(e, octx);
+	if(!strcmp(BUILTIN_SPEL(e->expr), "__builtin_trap"))
+		return builtin_gen_undefined(e, octx);
+
+	if(out_sanitize_enabled(octx, SAN_UNREACHABLE))
+		sanitize_fail(octx, "unreachable");
+	return out_new_noop(octx);
 }
 
 static expr *parse_unreachable(const char *ident, symtable *scope)
@@ -333,6 +368,36 @@ static expr *parse_unreachable(const char *ident, symtable *scope)
 	(void)scope;
 
 	expr_mutate_builtin(fcall, unreachable);
+
+	return fcall;
+}
+
+/* --- debugtrap */
+
+static void fold_debugtrap(expr *e, symtable *stab)
+{
+	(void)stab;
+
+	e->tree_type = type_nav_btype(cc1_type_nav , type_void);
+
+	wur_builtin(e);
+}
+
+static const out_val *builtin_gen_debugtrap(const expr *e, out_ctx *octx)
+{
+	(void)e;
+	out_ctrl_debugtrap(octx);
+	return out_new_noop(octx);
+}
+
+static expr *parse_debugtrap(const char *ident, symtable *scope)
+{
+	expr *fcall = expr_new_funcall();
+
+	(void)ident;
+	(void)scope;
+
+	expr_mutate_builtin(fcall, debugtrap);
 
 	return fcall;
 }
@@ -356,12 +421,17 @@ static void fold_compatible_p(expr *e, symtable *stab)
 static void const_compatible_p(expr *e, consty *k)
 {
 	type **types = e->bits.types;
+	/* allow const int and int to be compatible, or T *const and T* */
+	enum type_cmp mask = (TYPE_EQUAL_ANY | TYPE_QUAL_ADD | TYPE_QUAL_SUB);
+	enum type_cmp cmp;
 
 	CONST_FOLD_LEAF(k);
 
 	k->type = CONST_NUM;
 
-	k->bits.num.val.i = !!(type_cmp(types[0], types[1], 0) & TYPE_EQUAL_ANY);
+	cmp = type_cmp(types[0], types[1], 0);
+
+	k->bits.num.val.i = !!(cmp & mask);
 }
 
 static expr *expr_new_funcall_typelist(symtable *scope)
@@ -426,8 +496,13 @@ static void fold_frame_address(expr *e, symtable *stab)
 {
 	consty k;
 
-	if(dynarray_count(e->funcargs) != 1)
-		die_at(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+
+	if(dynarray_count(e->funcargs) != 1){
+		warn_at_print_error(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
+	}
 
 	FOLD_EXPR(e->funcargs[0], stab);
 
@@ -436,26 +511,35 @@ static void fold_frame_address(expr *e, symtable *stab)
 	|| (K_FLOATING(k.bits.num))
 	|| (sintegral_t)k.bits.num.val.i < 0)
 	{
-		die_at(&e->where, "%s needs a positive integral constant value argument", BUILTIN_SPEL(e->expr));
+		warn_at_print_error(&e->where, "%s needs a positive integral constant value argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
 	}
 
-	memcpy_safe(&e->bits.num, &k.bits.num);
+	if(k.bits.num.val.i > 0)
+		cc1_warn_at(&e->where, builtin_frame_addr, "calling '%s' with a non-zero argument is unsafe", BUILTIN_SPEL(e->expr));
 
-	e->tree_type = type_ptr_to(type_nav_btype(cc1_type_nav, type_nchar));
+	memcpy_safe(&e->bits.num, &k.bits.num);
 
 	wur_builtin(e);
 }
 
-static const out_val *builtin_gen_frame_address(const expr *e, out_ctx *octx)
+static void warn_inlining_frame_ret_addr(out_ctx *octx, const expr *e)
 {
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
-	const int depth = e->bits.num.val.i;
 
 	if(cc1_octx && cc1_octx->inline_.depth){
 		cc1_warn_at(&e->where, inline_builtin_frame_addr,
 				"inlining function with call to %s",
 				BUILTIN_SPEL(e->expr));
 	}
+}
+
+static const out_val *builtin_gen_frame_address(const expr *e, out_ctx *octx)
+{
+	const int depth = e->bits.num.val.i;
+
+	warn_inlining_frame_ret_addr(octx, e);
 
 	return out_new_frame_ptr(octx, depth + 1);
 }
@@ -480,6 +564,72 @@ expr *builtin_new_frame_address(int depth)
 	dynarray_add(&e->funcargs, expr_compiler_generated(expr_new_val(depth)));
 
 	return builtin_frame_address_mutate(e);
+}
+
+/* --- return_address */
+
+static const out_val *builtin_gen_return_address(const expr *e, out_ctx *octx)
+{
+	const int depth = e->bits.num.val.i;
+
+	warn_inlining_frame_ret_addr(octx, e);
+
+	return out_new_return_addr(octx, depth + 1);
+}
+
+static expr *parse_return_address(const char *ident, symtable *scope)
+{
+	expr *fcall = parse_any_args(scope);
+
+	(void)ident;
+
+	fcall->f_fold = fold_frame_address;
+	fcall->f_gen = builtin_gen_return_address;
+	fcall->f_str = str_expr_builtin;
+
+	return fcall;
+}
+
+/* --- extract_return_addr */
+
+static void fold_extract_return_addr(expr *e, symtable *stab)
+{
+	type *voidp = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+
+	e->tree_type = voidp;
+
+	if(dynarray_count(e->funcargs) != 1){
+		warn_at_print_error(&e->where, "%s takes a single argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
+	}
+
+	FOLD_EXPR(e->funcargs[0], stab);
+
+	if(!(type_cmp(e->funcargs[0]->tree_type, voidp, 0) & TYPE_EQUAL_ANY)){
+		warn_at_print_error(&e->where, "%s expects a 'void *' argument", BUILTIN_SPEL(e->expr));
+		fold_had_error = 1;
+		return;
+	}
+
+	wur_builtin(e);
+}
+
+static const out_val *builtin_gen_extract_return_addr(const expr *e, out_ctx *octx)
+{
+	/* no translation needed */
+	return gen_expr(e->funcargs[0], octx);
+}
+
+static expr *parse_extract_return_addr(const char *ident, symtable *scope)
+{
+	expr *fcall = parse_any_args(scope);
+
+	(void)ident;
+
+	expr_mutate_builtin(fcall, extract_return_addr);
+
+	return fcall;
 }
 
 /* --- reg_save_area (a basic wrapper around out_push_reg_save_ptr()) */
@@ -568,7 +718,7 @@ static expr *parse_expect(const char *ident, symtable *scope)
 
 #define CHOOSE_EXPR_CHOSEN(e) ((e)->funcargs[(e)->bits.num.val.i ? 1 : 2])
 
-static enum lvalue_kind is_lval_choose(expr *e)
+static enum lvalue_kind is_lval_choose(const expr *e)
 {
 	return expr_is_lval(CHOOSE_EXPR_CHOSEN(e));
 }
@@ -694,12 +844,17 @@ static void const_has_attribute(expr *e, consty *k)
 	enum attribute_type attr;
 	const char *spel = e->bits.builtin_ident.ident;
 
-#define NAME(x, tprop)      else if(!strcmp(spel, #x)) attr = attr_ ## x;
-#define ALIAS(s, x, typrop) else if(!strcmp(spel, s))  attr = attr_ ## x;
-#define EXTRA_ALIAS(s, x)   else if(!strcmp(spel, s))  attr = attr_ ## x;
+#define NAME(x, tprop)       else if(!strcmp(spel, #x)) attr = attr_ ## x;
+#define RENAME(s, x, typrop) else if(!strcmp(spel, s))  attr = attr_ ## x;
+#define ALIAS(s, x)          else if(!strcmp(spel, s))  attr = attr_ ## x;
+#define COMPLEX_ALIAS(s, x)  else if(!strcmp(spel, s))  attr = attr_ ## x;
 	if(0)
 		;
 	ATTRIBUTES
+#undef NAME
+#undef RENAME
+#undef ALIAS
+#undef COMPLEX_ALIAS
 	else{
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_NO;
@@ -727,9 +882,8 @@ static expr *parse_has_attribute(const char *ident, symtable *scope)
 
 	EAT(token_comma);
 
-	fcall->bits.builtin_ident.ident = curtok_to_identifier(&fcall->bits.builtin_ident.alloc);
-
-	EAT(token_identifier);
+	fcall->bits.builtin_ident.ident = eat_curtok_to_identifier(
+			&fcall->bits.builtin_ident.alloc, NULL);
 
 	expr_mutate_builtin_const(fcall, has_attribute);
 	return fcall;
@@ -768,6 +922,20 @@ need_char_p:
 	wur_builtin(e);
 }
 
+static void const_nan(expr *e, consty *k)
+{
+	CONST_FOLD_LEAF(k);
+	k->type = CONST_NUM;
+	/* use native nan for calculations, switch to host-nan when writing out */
+	k->bits.num.val.f = NAN;
+
+	switch(e->bits.builtin_nantype){
+		case builtin_nanf: k->bits.num.suffix = VAL_FLOAT; break;
+		case builtin_nan:  k->bits.num.suffix = VAL_DOUBLE; break;
+		case builtin_nanl: k->bits.num.suffix = VAL_LDOUBLE; break;
+	}
+}
+
 static const out_val *builtin_gen_nan(const expr *e, out_ctx *octx)
 {
 	return out_new_nan(octx, e->tree_type);
@@ -776,6 +944,7 @@ static const out_val *builtin_gen_nan(const expr *e, out_ctx *octx)
 static expr *builtin_nan_mutate(expr *e)
 {
 	expr_mutate_builtin(e, nan);
+	e->f_const_fold = const_nan;
 	return e;
 }
 
@@ -888,13 +1057,20 @@ static void const_offsetof(expr *e, consty *k)
 			/* fall */
 
 		case CONST_NEED_ADDR:
-			if(offset.bits.addr.is_lbl)
-				break;
+			switch(offset.bits.addr.lbl_type){
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK:
+					/* keep as &lbl + offset */
+					break;
 
-			CONST_FOLD_LEAF(k);
+				case CONST_LBL_MEMADDR:
+					/* convert to number */
+					CONST_FOLD_LEAF(k);
 
-			k->type = CONST_NUM;
-			k->bits.num.val.i = offset.bits.addr.bits.memaddr + offset.offset;
+					k->type = CONST_NUM;
+					k->bits.num.val.i = offset.bits.addr.bits.memaddr + offset.offset;
+					break;
+			}
 			break;
 
 		default:

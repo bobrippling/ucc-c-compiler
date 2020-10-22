@@ -6,7 +6,7 @@
 
 #include "../type_nav.h"
 
-const char *str_expr_assign_compound()
+const char *str_expr_assign_compound(void)
 {
 	return "compound-assignment";
 }

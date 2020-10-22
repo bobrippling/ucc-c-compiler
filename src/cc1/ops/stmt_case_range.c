@@ -4,7 +4,7 @@
 #include "stmt_case_range.h"
 #include "../out/lbl.h"
 
-const char *str_stmt_case_range()
+const char *str_stmt_case_range(void)
 {
 	return "case-range";
 }

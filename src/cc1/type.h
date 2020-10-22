@@ -6,9 +6,11 @@
 
 typedef struct type type;
 
-enum
+enum vla_kind
 {
-	VLA = 1, VLA_STAR = 2
+	VLA_NO,
+	VLA,
+	VLA_STAR
 };
 
 struct type
@@ -61,13 +63,13 @@ struct type
 		/* type_array */
 		struct
 		{
-			unsigned is_static : 1;
-			unsigned is_vla : 2;
 			struct expr *size;
 			/* when we decay
 			 * f(int x[2]) -> f(int *x)
 			 * we save the size + is_static
 			 */
+			unsigned is_static : 1;
+			enum vla_kind vla_kind;
 		} array;
 
 		struct

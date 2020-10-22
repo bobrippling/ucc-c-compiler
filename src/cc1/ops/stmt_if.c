@@ -9,7 +9,7 @@
 #include "../out/dbg.h"
 #include "../out/dbg_lbl.h"
 
-const char *str_stmt_if()
+const char *str_stmt_if(void)
 {
 	return "if";
 }

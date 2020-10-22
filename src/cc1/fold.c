@@ -26,6 +26,7 @@
 #include "type_is.h"
 #include "type_nav.h"
 #include "fopt.h"
+#include "cc1_target.h"
 
 #include "ops/expr_cast.h"
 #include "ops/expr_identifier.h"
@@ -76,17 +77,28 @@ static int check_enum_cmp(
 
 int fold_type_chk_warn(
 		expr *maybe_lhs, type *tlhs, expr *rhs,
+		int is_comparison,
 		where *w, const char *desc)
 {
-	unsigned char *const pwarn_mismatch = &cc1_warning.mismatching_types;
-	unsigned char *pwarn = pwarn_mismatch;
+	unsigned char *pwarn;
 	type *const trhs = rhs->tree_type;
 	int error = 1;
 	const char *detail = "";
+	const int allow_qual_subtraction = is_comparison;
 
 	assert(!!maybe_lhs ^ !!tlhs);
 	if(!tlhs)
 		tlhs = maybe_lhs->tree_type;
+
+	if(type_is_ptr_or_block(tlhs) && type_is_ptr_or_block(trhs)){
+		if(is_comparison){
+			pwarn = &cc1_warning.compare_distinct_pointer_types;
+		}else{
+			pwarn = &cc1_warning.incompatible_pointer_types;
+		}
+	}else{
+		pwarn = &cc1_warning.mismatching_types;
+	}
 
 	switch(type_cmp(tlhs, trhs, TYPE_CMP_ALLOW_TENATIVE_ARRAY)){
 		case TYPE_CONVERTIBLE_IMPLICIT:
@@ -100,7 +112,6 @@ int fold_type_chk_warn(
 
 		case TYPE_QUAL_ADD: /* const int <- int */
 		case TYPE_QUAL_SUB: /* int <- const int */
-		case TYPE_QUAL_POINTED_ADD: /* const char * <- char * */
 		case TYPE_EQUAL_TYPEDEF:
 			return 0;
 
@@ -131,37 +142,46 @@ int fold_type_chk_warn(
 				/* no warning, but still sign extend the zero */
 				return 1;
 			}
+
 			goto warning;
 		}
 
 		case TYPE_QUAL_NESTED_CHANGE: /* char ** <- const char ** or vice versa */
 			detail = "nested ";
-		case TYPE_QUAL_POINTED_SUB: /* char * <- const char * */
 			error = 0;
-			/* fallthru */
+			goto warning;
+
+		case TYPE_QUAL_POINTED_ADD:
+			/* const char * <- char *
+			 * okay for both comparisons and assignments */
+			return 0;
+
+		case TYPE_QUAL_POINTED_SUB:
+			/* char * <- const char
+			 * okay for comparisons, but not assignments */
+			if(allow_qual_subtraction)
+				return 0;
+			error = 0;
+			goto warning;
 
 warning:
 		case TYPE_NOT_EQUAL:
 		{
+			const char *fmt = "mismatching %stypes, %s";
 			char buf[TYPE_STATIC_BUFSIZ];
 			int show_note = 1;
 
-			/* still default? -> change to mismatching pointers if pointer types */
-			if(pwarn == pwarn_mismatch
-			&& type_is_ptr_or_block(tlhs)
-			&& type_is_ptr_or_block(trhs))
-			{
-				pwarn = &cc1_warning.mismatch_ptr;
+			if(pwarn == &cc1_warning.compare_distinct_pointer_types){
+				fmt = "distinct %spointer types in %s";
+				detail = "";
 			}
 
-#define common_warning "mismatching %stypes, %s", detail, desc
 			if(error){
-				warn_at_print_error(w, common_warning);
+				warn_at_print_error(w, fmt, detail, desc);
 				fold_had_error = 1;
 			}else{
-				show_note = cc1_warn_at_w(w, pwarn, common_warning);
+				show_note = cc1_warn_at_w(w, pwarn, fmt, detail, desc);
 			}
-#undef common_warning
 
 			if(show_note){
 				/* don't show line with this note */
@@ -185,7 +205,7 @@ static void fold_type_chk_and_cast_common(
 		symtable *stab, where *w,
 		const char *desc)
 {
-	if(fold_type_chk_warn(lhs, tlhs, *prhs, w, desc))
+	if(fold_type_chk_warn(lhs, tlhs, *prhs, /*is_comparison*/0, w, desc))
 		fold_insert_casts(tlhs ? tlhs : lhs->tree_type, prhs, stab);
 }
 
@@ -416,7 +436,7 @@ static void fold_type_w_attr(
 
 				FOLD_EXPR(r->bits.array.size, stab);
 
-				if(r->bits.array.is_vla){
+				if(r->bits.array.vla_kind){
 					if(cc1_std < STD_C99){
 						cc1_warn_at(
 								&r->bits.array.size->where,
@@ -448,7 +468,7 @@ static void fold_type_w_attr(
 						cc1_warn_at(&k.nonstandard_const->where,
 								nonstd_arraysz,
 								"%s-expr is a non-standard constant expression (for array size)",
-								expr_str_friendly(k.nonstandard_const));
+								expr_str_friendly(k.nonstandard_const, 1));
 					}
 				}
 			}
@@ -616,14 +636,19 @@ void fold_type_ondecl_w(decl *d, symtable *scope, where const *w, int is_arg)
 static void check_valid_align_within_min(int const al, int const min, where *w)
 {
 	/* allow zero */
-	if(al & (al - 1))
-		die_at(w, "alignment %d isn't a power of 2", al);
+	if(al & (al - 1)){
+		warn_at_print_error(w, "alignment %d isn't a power of 2", al);
+		fold_had_error = 1;
+		return;
+	}
 
 	if(al == 0) /* 0 ignored as special case */
 		return;
 
-	if(al < min)
-		die_at(w, "can't reduce alignment (%d -> %d)", min, al);
+	if(al < min){
+		warn_at_print_error(w, "can't reduce alignment (%d -> %d)", min, al);
+		fold_had_error = 1;
+	}
 }
 
 static void fold_ctor_dtor(
@@ -738,21 +763,6 @@ void fold_decl_add_sym(decl *d, symtable *stab)
 	}
 }
 
-static void fold_decl_func_retty(decl *d)
-{
-	type *retty = type_called(d->ref, NULL);
-
-	enum type_qualifier qual = type_qual(retty);
-
-	if(qual){
-		cc1_warn_at(&d->where, ignored_qualifiers,
-				type_is_void(type_skip_all(retty))
-				? "function has qualified void return type (%s)"
-				: "%s qualification on return type has no effect",
-				type_qual_to_str(qual, 0));
-	}
-}
-
 static void fold_decl_func(decl *d, symtable *stab)
 {
 	/* allow:
@@ -777,8 +787,6 @@ static void fold_decl_func(decl *d, symtable *stab)
 		warn_at_print_error(&d->where, "function with variably modified type");
 		fold_had_error = 1;
 	}
-
-	fold_decl_func_retty(d);
 
 	if(stab->parent){
 		if(d->bits.func.code)
@@ -827,7 +835,9 @@ static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 	if((d->store & STORE_MASK_STORE) == store_register
 	|| d->bits.var.field_width)
 	{
-		die_at(&d->where, "can't align %s", decl_to_str(d));
+		warn_at_print_error(&d->where, "can't align %s", decl_to_str(d));
+		fold_had_error = 1;
+		return max;
 	}
 
 	for(i = d->bits.var.align.first; i; i = i->next){
@@ -963,7 +973,6 @@ static void fold_decl_var(decl *d, symtable *stab)
 		fold_had_error = 1;
 	}
 
-	fold_decl_var_align(d, stab);
 	fold_decl_var_vm(d, stab, is_static_duration);
 	fold_decl_var_dinit(d, stab, is_static_duration);
 }
@@ -1021,6 +1030,8 @@ static void fold_decl_var_fieldwidth(decl *d, symtable *stab)
 static void fold_decl_check_ctor_dtor(decl *d, symtable *stab)
 {
 	attribute *ctor, *dtor;
+	const char *name;
+	where *w;
 
 	ctor = attribute_present(d, attr_constructor);
 	dtor = attribute_present(d, attr_destructor);
@@ -1029,18 +1040,92 @@ static void fold_decl_check_ctor_dtor(decl *d, symtable *stab)
 		return;
 
 	decl_use(d);
+	w = &(ctor ? ctor : dtor)->where;
+	name = ctor ? "constructor" : "destructor";
 
 	if(!type_is(d->ref, type_func)){
-		cc1_warn_at(&(ctor ? ctor : dtor)->where,
-				attr_ctor_dtor_bad,
-				"%s attribute on non-function",
-				ctor ? "constructor" : "destructor");
-	}else if(stab->parent){
-		cc1_warn_at(&(ctor ? ctor : dtor)->where,
-				attr_ctor_dtor_bad,
-				"%s attribute on non-global function",
-				ctor ? "constructor" : "destructor");
+		cc1_warn_at(w, attr_ctor_dtor_bad, "%s attribute on non-function", name);
+		return;
 	}
+
+	if(stab->parent){
+		cc1_warn_at(w, attr_ctor_dtor_bad, "%s attribute on non-global function", name);
+		return;
+	}
+}
+
+static void fold_decl_check_section_alias(decl *d, const int su_member)
+{
+	attribute *section;
+	attribute *alias;
+
+	section = attribute_present(d, attr_section);
+	alias = attribute_present(d, attr_alias);
+
+	if(su_member){
+		if(section)
+			cc1_warn_at(&section->where, attr_ignored, "section attribute on member");
+		if(alias)
+			cc1_warn_at(&alias->where, attr_ignored, "alias attribute on member");
+
+		if(alias || section)
+			return;
+	}
+
+	if(alias){
+		decl *target = alias->bits.alias;
+
+		if(!type_is(d->ref, type_func) && !cc1_target_details.alias_variables){
+			warn_at_print_error(&d->where, "__attribute__((alias(...))) not supported on this target (for variables)");
+			fold_had_error = 1;
+		}
+
+		if(decl_defined(d, 0)){
+			warn_at_print_error(&d->where, "alias \"%s\" cannot be a definition", d->spel);
+			fold_had_error = 1;
+
+		}else if(!decl_defined(target, 0)){
+			warn_at_print_error(&alias->where, "target \"%s\" of alias \"%s\" isn't a definition", target->spel, d->spel);
+			fold_had_error = 1;
+		}
+	}
+
+	if(alias && section){
+		const char *this_section = section->bits.section;
+
+		attribute *alias_section = attribute_present(alias->bits.alias, attr_section);
+		const char *target_section = alias_section
+			? alias_section->bits.section
+			: NULL;
+
+		if(!target_section || strcmp(target_section, this_section)){
+			warn_at_print_error(&section->where,
+					"alias and target have different sections");
+			fold_had_error = 1;
+		}
+	}
+}
+
+static void fold_decl_attrs(decl *d, symtable *stab)
+{
+	attribute *attr;
+
+	if(((d->store & STORE_MASK_STORE) != store_typedef)
+	/* __attribute__((weak)) is allowed on typedefs */
+	&& (attr = attribute_present(d, attr_weak))
+	&& decl_linkage(d) != linkage_external)
+	{
+		warn_at_print_error(&d->where,
+				"weak attribute on declaration without external linkage");
+		fold_had_error = 1;
+	}
+
+	fold_decl_check_ctor_dtor(d, stab);
+}
+
+void fold_decl_attrs_requiring_fnbody(decl *d, const int su_member)
+{
+	fold_decl_check_section_alias(d, su_member);
 }
 
 void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
@@ -1068,8 +1153,6 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 	first_fold = !just_init;
 
 	if(first_fold){
-		attribute *attr;
-
 		fold_type_w_attr(d->ref, NULL, type_loc(d->ref),
 				stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
 
@@ -1080,17 +1163,7 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 			fold_decl_add_sym(d, stab);
 		}
 
-		if(((d->store & STORE_MASK_STORE) != store_typedef)
-		/* __attribute__((weak)) is allowed on typedefs */
-		&& (attr = attribute_present(d, attr_weak))
-		&& decl_linkage(d) != linkage_external)
-		{
-			warn_at_print_error(&d->where,
-					"weak attribute on declaration without external linkage");
-			fold_had_error = 1;
-		}
-
-		fold_decl_check_ctor_dtor(d, stab);
+		fold_decl_attrs(d, stab);
 	}
 
 	/* name static decls - do this before handling init,
@@ -1123,6 +1196,9 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 			fold_decl_var(d, stab);
 		}
 	}
+
+	if(first_fold)
+		fold_decl_var_align(d, stab);
 }
 
 void fold_decl(decl *d, symtable *stab)
@@ -1185,17 +1261,14 @@ void fold_decl_global_init(decl *d, symtable *stab)
 				nonconst->f_str());
 		}
 	}else if(nonstd){
-		char wbuf[WHERE_BUF_SIZ];
-
-		cc1_warn_at(&d->bits.var.init.dinit->where,
+		if(cc1_warn_at(&d->bits.var.init.dinit->where,
 				nonstd_init,
-				"%s %s initialiser contains non-standard constant expression\n"
-				"%s: note: %s expression here",
-				type, decl_init_to_str(d->bits.var.init.dinit->type),
-				where_str_r(wbuf, &nonstd->where),
-				expr_str_friendly(nonstd));
+				"%s %s initialiser contains non-standard constant expression",
+				type, decl_init_to_str(d->bits.var.init.dinit->type)))
+		{
+			note_at(&nonstd->where, "%s expression here", expr_str_friendly(nonstd, 1));
+		}
 	}
-
 }
 
 static void warn_passable_func(decl *d)
@@ -1296,6 +1369,12 @@ void fold_global_func(decl *func_decl)
 			cc1_warn_at(&func_decl->where,
 					typedef_fnimpl,
 					"typedef function implementation is an extension");
+
+		if(type_is_s_or_u(func_ret))
+			cc1_warn_at(&func_decl->where,
+					aggregate_return,
+					"function returns aggregate (%s)",
+					type_to_str(func_ret));
 
 		if(!type_is_void(func_ret) && !type_is_complete(func_ret)){
 			warn_at_print_error(&func_decl->where, "incomplete return type");
@@ -1411,20 +1490,45 @@ int fold_check_expr(const expr *e, enum fold_chk chk, const char *desc)
 	}
 
 	if(chk & FOLD_CHK_BOOL){
-		if(!type_is_bool_ish(e->tree_type)){
-			cc1_warn_at(&e->where, test_bool,
-					"testing a non-boolean expression (%s), in %s",
-					type_to_str(e->tree_type), desc);
+		switch(type_bool_category(e->tree_type)){
+			case TYPE_BOOLISH_OK:
+				break;
+
+			case TYPE_BOOLISH_CONV:
+				cc1_warn_at(&e->where, test_bool,
+						"testing a non-boolean expression (%s), in %s",
+						type_to_str(e->tree_type), desc);
+				break;
+
+			case TYPE_BOOLISH_NO:
+				fold_had_error = 1;
+				warn_at_print_error(&e->where,
+						"%s-condition requires scalar type (not '%s')",
+						desc, type_to_str(e->tree_type));
+				break;
 		}
 
 		if(expr_kind(e, addr)){
 			expr *addr_of = expr_addr_target(e);
 
 			if(addr_of && expr_is_lval(addr_of) == LVALUE_USER_ASSIGNABLE){
-				cc1_warn_at(&e->where, address_of_lvalue,
-						"address of lvalue (%s) is always true",
-						type_to_str(addr_of->tree_type));
+				decl *d = expr_to_declref(addr_of, NULL);
+
+				if(!d || !attribute_present(d, attr_weak)){
+					cc1_warn_at(&e->where, address_of_lvalue,
+							"address of lvalue (%s) is always true",
+							type_to_str(addr_of->tree_type));
+				}
 			}
+		}
+
+		/* if we're in a nonnull function and this expr is a nonnull expr,
+		 * warn about testing a nonnull expr */
+		if(expr_attr_present(REMOVE_CONST(expr *, e), attr_nonnull)){
+			/* this works because nonnull can be on the function type,
+			 * not just the decl, but those attributes are propagated
+			 * to the parameters */
+			cc1_warn_at(&e->where, attr_nonnull_tested, "testing a nonnull value");
 		}
 	}
 

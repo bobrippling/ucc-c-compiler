@@ -4,7 +4,7 @@
 #include "stmt_case.h"
 #include "../out/lbl.h"
 
-const char *str_stmt_case()
+const char *str_stmt_case(void)
 {
 	return "case";
 }

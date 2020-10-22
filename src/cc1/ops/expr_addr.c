@@ -10,8 +10,9 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "expr_identifier.h"
+#include "expr_struct.h"
 
-const char *str_expr_addr()
+const char *str_expr_addr(void)
 {
 	return "address-of";
 }
@@ -62,7 +63,7 @@ void fold_expr_addr(expr *e, symtable *stab)
 		/* can address: lvalues, arrays and functions */
 		if(!expr_is_addressable(e->lhs)){
 			warn_at_print_error(&e->where, "can't take the address of %s (%s)",
-					expr_str_friendly(e->lhs), type_to_str(e->lhs->tree_type));
+					expr_str_friendly(e->lhs, 0), type_to_str(e->lhs->tree_type));
 			fold_had_error = 1;
 			return;
 		}
@@ -76,6 +77,22 @@ void fold_expr_addr(expr *e, symtable *stab)
 					warn_at_print_error(&e->lhs->where, "can't take the address of register");
 					fold_had_error = 1;
 				}
+
+				d->flags |= DECL_FLAGS_ADDRESSED;
+			}
+		}else if(expr_kind(e->lhs, struct)){
+			decl *d = e->lhs->bits.struct_mem.d;
+			type *suty = e->lhs->lhs->tree_type;
+			struct_union_enum_st *su = type_is_s_or_u(
+					type_is_ptr(suty) ? type_is_ptr(suty) : suty);
+			int attr_on_decl;
+
+			assert(su);
+			if((attr_on_decl = !!attribute_present(d, attr_packed)) || attr_present(su->attr, attr_packed)){
+				const int warned = cc1_warn_at(&e->where, address_of_packed, "taking the address of a packed member");
+
+				if(warned)
+					note_at((attr_on_decl ? &d->where : &su->where), "declared here");
 			}
 		}
 
@@ -127,7 +144,7 @@ static void const_expr_addr(expr *e, consty *k)
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR;
 		k->offset = 0;
-		k->bits.addr.is_lbl = 1;
+		k->bits.addr.lbl_type = CONST_LBL_TRUE;
 
 		if(static_ctx){
 			e->bits.lbl.label->mustgen_spel = out_label_code("goto");
@@ -166,6 +183,11 @@ static int expr_addr_has_sideeffects(const expr *e)
 	return e->lhs && expr_has_sideeffects(e->lhs);
 }
 
+static int expr_addr_requires_relocation(const expr *e)
+{
+	return e->lhs && expr_requires_relocation(e->lhs);
+}
+
 expr *expr_new_addr(expr *sub)
 {
 	expr *e = expr_new_wrapper(addr);
@@ -185,6 +207,7 @@ void mutate_expr_addr(expr *e)
 {
 	e->f_const_fold = const_expr_addr;
 	e->f_has_sideeffects = expr_addr_has_sideeffects;
+	e->f_requires_relocation = expr_addr_requires_relocation;
 }
 
 const out_val *gen_expr_style_addr(const expr *e, out_ctx *octx)

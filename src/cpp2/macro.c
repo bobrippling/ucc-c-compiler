@@ -47,7 +47,7 @@ static macro *macro_add_nodup(const char *nam, char *val, int depth)
 			where new_where;
 			char buf[WHERE_BUF_SIZ];
 
-			where_current(&new_where);
+			cpp_where_current(&new_where);
 
 			if(strcmp(new_where.fname, FNAME_CMDLINE)){
 				CPP_WARN(WREDEF, "redefining \"%s\"\n"
@@ -64,7 +64,7 @@ static macro *macro_add_nodup(const char *nam, char *val, int depth)
 		m->nam = ustrdup(nam);
 	}
 
-	where_current(&m->where);
+	cpp_where_current(&m->where);
 	if(m->where.line_str){
 		/* keep a hold for after preproc */
 		m->where.line_str = ustrdup(m->where.line_str);

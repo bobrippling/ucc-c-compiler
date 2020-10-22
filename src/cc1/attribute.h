@@ -5,6 +5,7 @@
 #include "retain.h"
 #include "attributes.h"
 #include "visibility.h"
+#include "enum_no_sanitize.h"
 
 typedef struct attribute attribute;
 struct attribute
@@ -16,12 +17,14 @@ struct attribute
 	enum attribute_type
 	{
 #define NAME(x, typrop) attr_ ## x,
-#define ALIAS(s, x, typrop) attr_ ## x,
-#define EXTRA_ALIAS(s, x)
+#define RENAME(s, x, typrop) attr_ ## x,
+#define ALIAS(s, x)
+#define COMPLEX_ALIAS(s, x)
 		ATTRIBUTES
 #undef NAME
+#undef RENAME
 #undef ALIAS
-#undef EXTRA_ALIAS
+#undef COMPLEX_ALIAS
 		attr_LAST
 		/*
 		 * TODO: warning
@@ -38,11 +41,11 @@ struct attribute
 			{
 				attr_fmt_printf, attr_fmt_scanf
 			} fmt_func;
-			int fmt_idx, var_idx;
 			enum
 			{
 				fmt_unchecked, fmt_valid, fmt_invalid
 			} validity;
+			struct expr  *fmt_idx, *var_idx;
 		} format;
 		char *section;
 		enum calling_conv
@@ -58,6 +61,8 @@ struct attribute
 		struct decl *cleanup;
 		int ucc_debugged;
 		enum visibility visibility;
+		struct decl *alias;
+		enum no_sanitize no_sanitize;
 	} bits;
 };
 

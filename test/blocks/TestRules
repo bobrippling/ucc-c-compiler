@@ -1,2 +1,0 @@
-exit=5: blocks_args.c, nest.c
-compile-error: block_const.c

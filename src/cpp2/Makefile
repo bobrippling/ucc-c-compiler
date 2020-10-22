@@ -18,7 +18,8 @@ OBJ_DEP = ../util/util.o ../util/alloc.o \
       ../util/warn.o                 \
       ../util/io.o                   \
       ../util/path.o                 \
-      ../util/triple.o
+      ../util/triple.o               \
+      ../util/colour.o
 
 OBJ = ${OBJ_CPP} ${OBJ_DEP}
 
@@ -29,6 +30,7 @@ all: cpp tags
 cpp: ${OBJ}
 	@echo link $@
 	$Q${CC} -o $@ ${OBJ} ${LDFLAGS}
+
 
 clean:
 	@echo clean cpp

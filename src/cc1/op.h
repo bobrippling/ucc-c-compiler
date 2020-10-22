@@ -18,6 +18,9 @@ enum op_type
 	op_le, op_lt,
 	op_ge, op_gt,
 
+	/* internal */
+	op_signbit, op_no_signbit,
+
 	op_unknown
 };
 

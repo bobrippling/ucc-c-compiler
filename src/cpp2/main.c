@@ -13,6 +13,7 @@
 #include "../util/platform.h"
 #include "../util/limits.h"
 #include "../util/macros.h"
+#include "../util/colour.h"
 
 #include "main.h"
 #include "macro.h"
@@ -21,6 +22,7 @@
 #include "directive.h"
 #include "deps.h"
 #include "feat.h"
+#include "str.h"
 
 static const struct
 {
@@ -55,6 +57,9 @@ static const struct
 	{ "__ORDER_BIG_ENDIAN__",    "4321", 0 },
 	{ "__ORDER_PDP_ENDIAN__",    "3412", 0 },
 
+	/* default */
+	{ "__USER_LABEL_PREFIX__", "", 0 },
+
 	/* non-standard */
 	{ "__BLOCKS__",     "1", 0 },
 
@@ -69,6 +74,7 @@ static const struct
 	SPECIAL("__DATE__"),
 	SPECIAL("__TIME__"),
 	SPECIAL("__TIMESTAMP__"),
+	SPECIAL("__BASE_FILE__"),
 
 #undef SPECIAL
 #define SPECIAL(x) { x, NULL, 1 }
@@ -76,6 +82,8 @@ static const struct
 	SPECIAL("__has_extension"),
 	SPECIAL("__has_attribute"),
 	SPECIAL("__has_builtin"),
+
+	/* here for defined(__has_include), then special cased to prevent expansion outside of #if */
 	SPECIAL("__has_include"),
 #undef SPECIAL
 
@@ -84,12 +92,14 @@ static const struct
 
 struct loc loc_tok;
 char *current_fname;
+int current_fname_used;
 char *current_line_str;
 int show_current_line = 1;
 int no_output = 0;
 int missing_header_error = 1;
 
 char cpp_time[16], cpp_date[16], cpp_timestamp[64];
+char *cpp_basefile;
 
 char **cd_stack = NULL;
 
@@ -111,6 +121,7 @@ enum wmode wmode =
 	| WBACKSLASH_SPACE_NEWLINE;
 
 enum comment_strip strip_comments = STRIP_ALL;
+int option_show_include_nesting;
 
 static const struct
 {
@@ -153,15 +164,25 @@ void dirname_push(char *d)
 	dynarray_add(&cd_stack, d);
 }
 
-char *dirname_pop()
+char *dirname_pop(void)
 {
 	return dynarray_pop(char *, &cd_stack);
 }
 
+void cpp_where_current(where *w)
+{
+  where_current(w);
+  current_fname_used = 1;
+}
+
 void set_current_fname(const char *new)
 {
-	free(current_fname);
+	if(current_fname == new)
+		return;
+	if(!current_fname_used)
+		free(current_fname);
 	current_fname = ustrdup(new);
+	current_fname_used = 0;
 }
 
 static struct tm *current_time(int *const using_env)
@@ -227,8 +248,6 @@ static void calctime(const char *fname)
 
 static void macro_add_limits(void)
 {
-#define QUOTE_(x) #x
-#define QUOTE(x) QUOTE_(x)
 #define MACRO_ADD_LIM(m) macro_add("__" #m "__", QUOTE(__ ## m ## __), 0)
 	MACRO_ADD_LIM(SCHAR_MAX);
 	MACRO_ADD_LIM(SHRT_MAX);
@@ -236,8 +255,6 @@ static void macro_add_limits(void)
 	MACRO_ADD_LIM(LONG_MAX);
 	MACRO_ADD_LIM(LONG_LONG_MAX);
 #undef MACRO_ADD_LIM
-#undef QUOTE
-#undef QUOTE_
 }
 
 static void add_platform_dependant_macros(void)
@@ -299,8 +316,10 @@ static int init_target(const char *target)
 			return 0;
 		}
 	}else{
-		if(!triple_default(&triple)){
-			fprintf(stderr, "couldn't get target triple\n");
+		const char *unparsed;
+		if(!triple_default(&triple, &unparsed)){
+			fprintf(stderr, "couldn't get target triple: %s\n",
+					unparsed ? unparsed : strerror(errno));
 			return 0;
 		}
 	}
@@ -341,9 +360,17 @@ int main(int argc, char **argv)
 
 	set_current_fname(FNAME_CMDLINE);
 
-	for(i = 1; i < argc && *argv[i] == '-'; i++){
-		if(!strcmp(argv[i]+1, "-"))
-			break;
+	for(i = 1; i < argc; i++){
+		if(argv[i][0] != '-' || !strcmp(argv[i]+1, "-")){
+			if(!infname)
+				infname = argv[i];
+			else if(!outfname)
+				outfname = argv[i];
+			else
+				goto usage;
+
+			continue;
+		}
 
 		switch(argv[i][1]){
 			case 'I':
@@ -367,6 +394,10 @@ int main(int argc, char **argv)
 
 			case 'P':
 				option_line_info = 0;
+				break;
+
+			case 'H':
+				option_show_include_nesting = 1;
 				break;
 
 			case 'C':
@@ -456,23 +487,37 @@ int main(int argc, char **argv)
 				break;
 
 			case 'f':
-				if(!strcmp(argv[i]+2, "freestanding")){
-					freestanding = 1;
-				}else if(!strncmp(argv[i]+2, "message-length=", 15)){
-					const char *p = argv[i] + 17;
+			{
+				const int off = !strncmp(argv[i]+2, "no-", 3);
+				const char *arg = argv[i] + 2 + (off ? 3 : 0);
+
+				if(!strcmp(arg, "color-diagnostics")){
+					colour_enable(!off);
+
+				}else if(!strcmp(arg, "freestanding")){
+					freestanding = !off;
+
+				}else if(!strncmp(arg, "message-length=", 15)){
+					const char *p = arg + 17;
 					warning_length = atoi(p);
-				}else if(!strcmp(argv[i]+2, "cpp-offsetof")){
-					offsetof_macro = 1;
+					if(off)
+						goto usage;
+
+				}else if(!strcmp(arg, "cpp-offsetof")){
+					offsetof_macro = !off;
+
 				}else{
 					goto usage;
 				}
 				break;
+			}
 
 			case 'W':
 			{
 				int off;
 				unsigned j;
 				char *p = argv[i] + 2;
+				int found = 0;
 
 				off = !strncmp(p, "no-", 3);
 				if(off)
@@ -485,11 +530,13 @@ int main(int argc, char **argv)
 							wmode &= ~warns[j].or_mask;
 						else
 							wmode |= warns[j].or_mask;
+						found = 1;
 						break;
 					}
 				}
 
-				/* if not found, we ignore - it was intended for cc1 */
+				if(!found)
+					fprintf(stderr, "%s: unknown warning option '%s'\n", argv[0], argv[i]);
 				break;
 			}
 
@@ -497,6 +544,8 @@ int main(int argc, char **argv)
 			{
 				switch(argv[i][2]){
 					case '0':
+						macro_remove("__OPTIMIZE_SIZE__");
+						macro_remove("__OPTIMIZE__");
 						break;
 					case 's':
 						macro_add("__OPTIMIZE_SIZE__",  "1", 0);
@@ -568,6 +617,13 @@ defaul:
 			break;
 		case STD_C11:
 			macro_add("__STDC_VERSION__", "201112L", 0);
+			break;
+		case STD_C18:
+			macro_add("__STDC_VERSION__", "201710L", 0);
+			break;
+		case STD_C2X:
+			macro_add("__STDC_VERSION__", "202000L", 0);
+			break;
 	}
 
 	if(offsetof_macro){
@@ -579,18 +635,6 @@ defaul:
 		macro_add_func("__builtin_offsetof",
 				"(unsigned long)&((T *)0)->memb",
 				args, 0, 0);
-	}
-
-
-	if(i < argc){
-		infname = argv[i++];
-		if(i < argc){
-			if(outfname)
-				goto usage;
-			outfname = argv[i++];
-			if(i < argc)
-				goto usage;
-		}
 	}
 
 	calctime(infname);
@@ -615,6 +659,7 @@ defaul:
 	}
 
 	set_current_fname(infname);
+	cpp_basefile = str_quote(infname, 0);
 
 	preprocess();
 
@@ -629,6 +674,7 @@ defaul:
 		deps_dump(infname, depfname);
 
 	free(dirname_pop());
+	free(cpp_basefile);
 
 	errno = 0;
 	fclose(stdout);
@@ -637,21 +683,40 @@ defaul:
 
 	return ret;
 usage:
-	fprintf(stderr, "Usage: %s [options] files...\n", *argv);
+	fprintf(stderr, "Usage: %s [options] in-file out-file\n", *argv);
 	fputs(" Options:\n"
 				"  -Idir: Add search directory\n"
+				"  -isystem dir: Add system search directory\n"
 				"  -Dxyz[=abc]: Define xyz (to equal abc)\n"
 				"  -Uxyz: Undefine xyz\n"
 				"  -o output: output file\n"
 				"  -P: don't add #line directives\n"
-				"  -dM: debug output\n"
-				"  -dS: print macro usage stats\n"
-				"  -MM: generate Makefile dependencies\n"
-				"  -MG: ignore missing headers, count as dependency\n"
-				"  -C: don't discard comments, except in macros\n"
-				"  -CC: don't discard comments, even in macros\n"
 				"  -trigraphs: enable trigraphs\n"
 				"  -digraphs: enable digraphs\n"
+				"  -w: disable all warnings\n"
+				"\n"
+				"  -MM: generate Makefile dependencies\n"
+				"  -MG: ignore missing headers, count as dependency\n"
+				"  -MD: emit dependencies on standard out\n"
+				"  -MF: (with -MD) emit dependencies to given file\n"
+				"\n"
+				"  -f[no-]freestanding: control __STDC_HOSTED__\n"
+				"  -std=[standard]: control __STDC_VERSION__\n"
+				"  -fmessage-length=...: control warning message length\n"
+				"  -f[no-]cpp-offsetof: define __builtin_offsetof as a macro\n"
+				"\n"
+				"  -C: don't discard comments, except in macros\n"
+				"  -CC: don't discard comments, even in macros\n"
+				"\n"
+				"  -m32/-m64: control architecture specific definitions\n"
+				"  -O[opt]: control optimisation macro definitions\n"
+				"\n"
+				"  -dM: output macro debugging information\n"
+				"  -dS: output stats debugging information\n"
+				"  -dW: output macro location debugging information\n"
+				"  -d: output trace debugging information\n"
+				"  -H: show header includes and nesting depth\n"
+				"\n"
 				, stderr);
 
 	{

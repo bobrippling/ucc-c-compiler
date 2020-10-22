@@ -4,7 +4,7 @@
 #include "stmt_do.h"
 #include "../out/lbl.h"
 
-const char *str_stmt_do()
+const char *str_stmt_do(void)
 {
 	return "do";
 }
@@ -62,7 +62,22 @@ void style_stmt_do(const stmt *s, out_ctx *octx)
 	stylef(");");
 }
 
+static int do_passable(stmt *s)
+{
+	if(!fold_passable(s->lhs))
+		return 0;
+
+	if(const_expr_and_non_zero(s->expr)){
+		/* do { cantescape(); } while(1) */
+		return 0;
+	}
+
+	/* do { cantescape(); } while(0)
+	 * do { cantescape(); } while(x) */
+	return 1;
+}
+
 void init_stmt_do(stmt *s)
 {
-	s->f_passable = while_passable;
+	s->f_passable = do_passable;
 }

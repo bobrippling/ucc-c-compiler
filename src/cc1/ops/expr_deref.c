@@ -9,7 +9,7 @@
 
 #include "expr_op.h"
 
-const char *str_expr_deref()
+const char *str_expr_deref(void)
 {
 	return "dereference";
 }
@@ -92,7 +92,7 @@ static void const_expr_deref(expr *e, consty *k)
 						/* need to preserve original string for lvalue-ness -> CONST_NEED_ADDR */
 						CONST_FOLD_LEAF(k);
 						k->type = CONST_NEED_ADDR;
-						k->bits.addr.is_lbl = 1;
+						k->bits.addr.lbl_type = CONST_LBL_TRUE;
 						k->bits.addr.bits.lbl = sv->lbl;
 						k->offset = offset;
 						break;
@@ -114,7 +114,7 @@ static void const_expr_deref(expr *e, consty *k)
 		{
 			integral_t num = k->bits.num.val.i;
 			CONST_FOLD_LEAF(k);
-			k->bits.addr.is_lbl = 0;
+			k->bits.addr.lbl_type = CONST_LBL_MEMADDR;
 			k->bits.addr.bits.memaddr = num;
 		} /* fall */
 		case CONST_ADDR:
@@ -131,12 +131,18 @@ static int expr_deref_has_sideeffects(const expr *e)
 	return expr_has_sideeffects(expr_deref_what(e));
 }
 
+static int expr_deref_requires_relocation(const expr *e)
+{
+	return expr_requires_relocation(expr_deref_what(e));
+}
+
 void mutate_expr_deref(expr *e)
 {
 	e->f_const_fold = const_expr_deref;
 
 	e->f_islval = expr_is_lval_always;
 	e->f_has_sideeffects = expr_deref_has_sideeffects;
+	e->f_requires_relocation = expr_deref_requires_relocation;
 }
 
 expr *expr_new_deref(expr *of)

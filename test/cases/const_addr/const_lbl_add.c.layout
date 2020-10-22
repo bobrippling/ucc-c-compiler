@@ -1,0 +1,11 @@
+a:
+.long 0
+
+x:
+.quad a + 1
+
+y:
+.quad str.1 + 2
+
+str.1:
+.ascii "hi\000"
