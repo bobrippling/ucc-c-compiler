@@ -985,6 +985,21 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			ICE("load int into float?");
 
 		case V_CONST_F:
+			if(from->bits.val_f == 0){
+				type *const ty_fp = from->t;
+				out_val *mut = v_dup_or_reuse(octx, from, from->t);
+				struct vreg r;
+				const char *rstr;
+
+				v_unused_reg(octx, 1, 1, &r, NULL);
+				rstr = x86_reg_str(&r, ty_fp);
+
+				out_asm(octx, "xorp%c %%%s, %%%s", x86_suffix(ty_fp)[1], rstr, rstr);
+				/* "fldz" */
+
+				return v_new_reg(octx, mut, ty_fp, &r);
+			}
+
 			/* if it's an int-const, we can load without a label
 			 * ... unless it's greater than 0x1p63, in which case,
 			 * we can't create it from an integer. */
