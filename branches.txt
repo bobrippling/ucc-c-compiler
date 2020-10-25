@@ -43,9 +43,6 @@ WIP/in-dev:
 		fix/bootstrap-debug-line-numbering
 
 WIP/investigate:
-	merge-to-master:
-		feature/gc-static
-		feature/simplify-dwarf-config
 	delete:
 		feature/checked-memcpy (already present on master)
 		fix/cpp/memory
