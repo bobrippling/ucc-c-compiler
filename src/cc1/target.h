@@ -17,7 +17,7 @@ struct target_details
 		const char *section_name_dbg_abbrev;
 		const char *section_name_dbg_info;
 		const char *section_name_dbg_line;
-	} section_names;
+	} const *section_names;
 
 	struct target_as
 	{
@@ -35,9 +35,10 @@ struct target_details
 		int stack_protector_via_tls;
 		int supports_type_and_size;
 		int supports_section_flags;
-	} as;
+		int expr_inline;
+	} const *as;
 
-	int dwarf_indirect_section_links;
+	int dwarf_link_stmt_list;
 	int ld_indirect_call_via_plt;
 	int alias_variables;
 };

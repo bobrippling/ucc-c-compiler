@@ -345,7 +345,7 @@ static attribute *parse_attr_visibility(symtable *symtab, const char *ident)
 	if(!str)
 		return NULL;
 
-	if(visibility_parse(&v, str, cc1_target_details.as.supports_visibility_protected)){
+	if(visibility_parse(&v, str, cc1_target_details.as->supports_visibility_protected)){
 		attr = attribute_new(attr_visibility);
 		attr->bits.visibility = v;
 	}else{

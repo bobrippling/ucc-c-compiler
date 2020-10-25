@@ -17,13 +17,16 @@ sub filter
 			next;
 		}
 
-		if(/section_(begin|end)_dbg/){
-			$in_dbg = ($1 eq 'begin');
+		my $new_in_dbg = $in_dbg;
+		if(/^\S*Lsection_(begin|end)_dbg/){
+			$new_in_dbg = ($1 eq 'begin');
 		}
 
-		if($in_dbg){
+		if($new_in_dbg || $in_dbg){
 			push @relevant, $_;
 		}
+
+		$in_dbg = $new_in_dbg;
 	}
 
 	return (

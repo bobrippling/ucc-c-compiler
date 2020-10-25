@@ -243,7 +243,7 @@ static void io_fin_section(FILE *section, FILE *out, const struct section *sec)
 	if(allocated)
 		free(name);
 
-	if(cc1_target_details.as.supports_section_flags && !is_builtin){
+	if(cc1_target_details.as->supports_section_flags && !is_builtin){
 		const int is_code = sec->flags & SECTION_FLAG_EXECUTABLE;
 		const int is_rw = !(sec->flags & SECTION_FLAG_RO);
 
@@ -252,13 +252,13 @@ static void io_fin_section(FILE *section, FILE *out, const struct section *sec)
 	xfprintf(out, "\n");
 
 	if(desc)
-		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, desc);
+		xfprintf(out, "%s%s%s:\n", cc1_target_details.as->privatelbl_prefix, SECTION_BEGIN, desc);
 
 	if(cat(section, out))
 		ccdie("concatenating section tmpfile:");
 
 	if(desc)
-		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_END, desc);
+		xfprintf(out, "%s%s%s:\n", cc1_target_details.as->privatelbl_prefix, SECTION_END, desc);
 
 	if(fclose(section))
 		ccdie("closing section tmpfile:");
@@ -434,7 +434,7 @@ unrecog:
 
 static void set_default_visibility(const char *argv0, const char *visibility)
 {
-	if(!visibility_parse(&cc1_visibility_default, visibility, cc1_target_details.as.supports_visibility_protected)){
+	if(!visibility_parse(&cc1_visibility_default, visibility, cc1_target_details.as->supports_visibility_protected)){
 		fprintf(stderr, "%s: unknown/unsupported visibility \"%s\"\n", argv0, visibility);
 		exit(1);
 	}

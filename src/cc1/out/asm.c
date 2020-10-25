@@ -616,13 +616,13 @@ void asm_predeclare_global(const struct section *sec, decl *d)
 
 void asm_predeclare_used(const struct section *sec, decl *d)
 {
-	if(cc1_target_details.as.directives.no_dead_strip)
-		asm_predecl(sec, cc1_target_details.as.directives.no_dead_strip, d);
+	if(cc1_target_details.as->directives.no_dead_strip)
+		asm_predecl(sec, cc1_target_details.as->directives.no_dead_strip, d);
 }
 
 void asm_predeclare_weak(const struct section *sec, decl *d)
 {
-	asm_predecl(sec, cc1_target_details.as.directives.weak, d);
+	asm_predecl(sec, cc1_target_details.as->directives.weak, d);
 }
 
 void asm_declare_alias(const struct section *sec, decl *d, decl *alias)
@@ -639,10 +639,10 @@ void asm_predeclare_visibility(const struct section *sec, decl *d)
 		case VISIBILITY_DEFAULT:
 			break;
 		case VISIBILITY_HIDDEN:
-			asm_predecl(sec, cc1_target_details.as.directives.visibility_hidden, d);
+			asm_predecl(sec, cc1_target_details.as->directives.visibility_hidden, d);
 			break;
 		case VISIBILITY_PROTECTED:
-			assert(cc1_target_details.as.supports_visibility_protected);
+			assert(cc1_target_details.as->supports_visibility_protected);
 			asm_predecl(sec, "protected", d);
 			break;
 	}
@@ -731,7 +731,7 @@ void asm_declare_decl_init(const struct section *sec, decl *d)
 		unsigned align;
 
 		if(decl_linkage(d) == linkage_internal){
-			if(!cc1_target_details.as.supports_local_common)
+			if(!cc1_target_details.as->supports_local_common)
 				goto fallback;
 
 			asm_out_section(sec, ".local %s\n", decl_asm_spel(d));

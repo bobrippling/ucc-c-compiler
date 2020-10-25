@@ -378,7 +378,7 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 		asm_declare_decl_init(section, d);
 	}
 
-	if(cc1_target_details.as.supports_type_and_size)
+	if(cc1_target_details.as->supports_type_and_size)
 			gen_type_and_size(section, d);
 }
 

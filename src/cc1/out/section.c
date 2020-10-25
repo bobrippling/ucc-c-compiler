@@ -47,8 +47,8 @@ char *section_name(const struct section *sec, int *const allocated)
 		return ustrprintf(
 				"%s.%s",
 				sec->builtin == SECTION_FUNCDATA_FUNC
-				? cc1_target_details.section_names.section_name_text
-				: cc1_target_details.section_names.section_name_data,
+				? cc1_target_details.section_names->section_name_text
+				: cc1_target_details.section_names->section_name_data,
 				sec->name);
 	}
 
@@ -57,16 +57,16 @@ char *section_name(const struct section *sec, int *const allocated)
 
 	assert(section_is_builtin(sec));
 	switch((enum section_builtin)sec->builtin){
-		case SECTION_TEXT: return (char *)cc1_target_details.section_names.section_name_text;
-		case SECTION_DATA: return (char *)cc1_target_details.section_names.section_name_data;
-		case SECTION_BSS: return (char *)cc1_target_details.section_names.section_name_bss;
-		case SECTION_RODATA: return (char *)cc1_target_details.section_names.section_name_rodata;
-		case SECTION_RELRO: return (char *)cc1_target_details.section_names.section_name_relro;
-		case SECTION_CTORS: return (char *)cc1_target_details.section_names.section_name_ctors;
-		case SECTION_DTORS: return (char *)cc1_target_details.section_names.section_name_dtors;
-		case SECTION_DBG_ABBREV: return (char *)cc1_target_details.section_names.section_name_dbg_abbrev;
-		case SECTION_DBG_INFO: return (char *)cc1_target_details.section_names.section_name_dbg_info;
-		case SECTION_DBG_LINE: return (char *)cc1_target_details.section_names.section_name_dbg_line;
+		case SECTION_TEXT: return (char *)cc1_target_details.section_names->section_name_text;
+		case SECTION_DATA: return (char *)cc1_target_details.section_names->section_name_data;
+		case SECTION_BSS: return (char *)cc1_target_details.section_names->section_name_bss;
+		case SECTION_RODATA: return (char *)cc1_target_details.section_names->section_name_rodata;
+		case SECTION_RELRO: return (char *)cc1_target_details.section_names->section_name_relro;
+		case SECTION_CTORS: return (char *)cc1_target_details.section_names->section_name_ctors;
+		case SECTION_DTORS: return (char *)cc1_target_details.section_names->section_name_dtors;
+		case SECTION_DBG_ABBREV: return (char *)cc1_target_details.section_names->section_name_dbg_abbrev;
+		case SECTION_DBG_INFO: return (char *)cc1_target_details.section_names->section_name_dbg_info;
+		case SECTION_DBG_LINE: return (char *)cc1_target_details.section_names->section_name_dbg_line;
 	}
 
 	assert(0 && "unreachable");
