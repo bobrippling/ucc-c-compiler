@@ -55,9 +55,9 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf);
 void impl_func_epilogue(out_ctx *, type *, int clean_stack);
 
 void impl_undefined(out_ctx *octx);
+void impl_debugtrap(out_ctx *octx);
 void impl_set_nan(out_ctx *, out_val *);
-ucc_wur const out_val *impl_test_overflow(
-		out_ctx *, const out_val **);
+ucc_wur const out_val *impl_test_overflow(out_ctx *, const out_val **);
 
 /* scratch register indexing */
 int impl_reg_to_idx(const struct vreg *);
@@ -68,7 +68,7 @@ int impl_reg_savable(const struct vreg *);
 /* callee save register bools */
 int impl_reg_is_scratch(type *fnty, const struct vreg *);
 int impl_reg_is_callee_save(type *fnty, const struct vreg *r);
-const int *impl_callee_save_regs(type *fnty, unsigned *pn);
+const struct vreg *impl_callee_save_regs(type *fnty, unsigned *pn);
 
 void impl_comment(out_ctx *, const char *fmt, va_list l);
 
@@ -95,6 +95,9 @@ const char *impl_val_str(const out_val *vs, int deref);
 
 const char *impl_val_str_r(
 		char buf[], const out_val *vs, const int deref);
+
+void impl_reserve_retregs(out_ctx *);
+void impl_unreserve_retregs(out_ctx *);
 
 /* can't do this for gen_deps.sh */
 #include "backend.h"

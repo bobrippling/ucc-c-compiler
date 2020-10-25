@@ -287,17 +287,21 @@ attribute **type_get_attrs_toplvl(type *t)
 	return attrs;
 }
 
-int type_is_bool_ish(type *r)
+enum type_boolish type_bool_category(type *t)
 {
-	if(type_is(r, type_ptr))
-		return 1;
+	if(type_is_ptr_or_block(t))
+		return TYPE_BOOLISH_OK;
 
-	r = type_is(r, type_btype);
+	t = type_is(t, type_btype);
+	if(t){
+		if(type_is_integral(t))
+			return TYPE_BOOLISH_OK;
 
-	if(!r)
-		return 0;
+		if(type_is_floating(t))
+			return TYPE_BOOLISH_CONV;
+	}
 
-	return type_is_integral(r);
+	return TYPE_BOOLISH_NO;
 }
 
 int type_is_fptr(type *r)
@@ -391,7 +395,7 @@ int type_is_complete(type *r)
 		}
 
 		case type_array:
-			return (r->bits.array.is_vla || r->bits.array.size)
+			return (r->bits.array.vla_kind || r->bits.array.size)
 				&& type_is_complete(r->ref);
 
 		case type_func:
@@ -410,10 +414,10 @@ int type_is_complete(type *r)
 	return 1;
 }
 
-type *type_is_vla(type *ty, enum vla_kind kind)
+type *type_is_vla(type *ty, enum vla_dimension kind)
 {
 	for(; (ty = type_is(ty, type_array)); ty = ty->ref){
-		if(ty->bits.array.is_vla)
+		if(ty->bits.array.vla_kind)
 			return ty;
 
 		if(kind == VLA_TOP_DIMENSION)
@@ -435,7 +439,7 @@ int type_is_variably_modified_vla(type *const ty, int *vla)
 	for(ti = ty; ti; first = 0, ti = type_next(ti)){
 		type *test = type_is(ti, type_array);
 
-		if(test && test->bits.array.is_vla){
+		if(test && test->bits.array.vla_kind){
 			if(vla && first)
 				*vla = 1;
 			return 1;
@@ -510,7 +514,9 @@ type *type_func_call(type *fp, funcargs **pfuncargs)
 				*pfuncargs = fp->bits.func.args;
 			fp = fp->ref;
 			UCC_ASSERT(fp, "no ref for func");
-			fp = type_skip_all(fp); /* no top-level quals */
+
+			/* no top-level quals (C17 6.7.6.3p5 / DR 423) */
+			fp = type_skip_all(fp);
 			break;
 
 		default:
@@ -795,7 +801,8 @@ int type_is_promotable(type *const t, type **pto)
 		rsz = type_size(test, type_loc(t)); /* may be enum-int */
 
 		if(rsz < (fp ? sz_double : sz_int)){
-			*pto = type_nav_btype(cc1_type_nav, fp ? type_double : type_int);
+			if(pto)
+				*pto = type_nav_btype(cc1_type_nav, fp ? type_double : type_int);
 			return 1;
 		}
 	}

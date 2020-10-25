@@ -9,9 +9,18 @@
 enum mopt
 {
 	MOPT_STACK_REALIGN = 1 << 0,
-	MOPT_ALIGN_IS_POW2   = 1 << 1,
+	MOPT_ALIGN_IS_POW2 = 1 << 1,
+	MOPT_FENTRY = 1 << 2,
+	MOPT_RED_ZONE = 1 << 3,
 };
 #define IS_32_BIT() (platform_word_size() == 4)
+
+enum stringop_strategy
+{
+	STRINGOP_STRATEGY_LIBCALL,
+	STRINGOP_STRATEGY_LOOP,
+	STRINGOP_STRATEGY_THRESHOLD,
+};
 
 enum cc1_backend
 {
@@ -20,17 +29,13 @@ enum cc1_backend
 	BACKEND_STYLE,
 };
 
-enum san_opts
-{
-	CC1_UBSAN = 1 << 0
-};
-
 extern struct cc1_fopt cc1_fopt;
 extern enum mopt mopt_mode;
 extern enum cc1_backend cc1_backend;
-extern enum san_opts cc1_sanitize;
-extern char *cc1_sanitize_handler_fn;
 extern enum visibility cc1_visibility_default;
+
+extern enum stringop_strategy cc1_mstringop_strategy;
+extern unsigned cc1_mstringop_threshold;
 
 extern enum c_std cc1_std;
 #define C99_LONGLONG() \
@@ -39,7 +44,8 @@ extern enum c_std cc1_std;
 
 extern int cc1_error_limit;
 
-extern int cc1_mstack_align; /* 2^n */
+extern int cc1_mstack_align;
+extern int cc1_profileg; /* -pg */
 
 enum debug_level
 {

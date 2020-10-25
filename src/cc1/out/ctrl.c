@@ -57,6 +57,11 @@ void out_ctrl_end_undefined(out_ctx *octx)
 	octx->current_blk = NULL;
 }
 
+void out_ctrl_debugtrap(out_ctx *octx)
+{
+	impl_debugtrap(octx);
+}
+
 out_val *out_val_unphi(out_ctx *octx, const out_val *phi)
 {
 	out_val *mut = v_dup_or_reuse(octx, phi, phi->t);
@@ -171,6 +176,11 @@ out_blk *out_ctx_current_blk(out_ctx *octx)
 	return octx->current_blk;
 }
 
+int out_ctx_current_blk_is_empty(out_ctx *octx)
+{
+	return !octx->current_blk || blk_is_empty(octx->current_blk);
+}
+
 out_val *out_val_blockphi_make(out_ctx *octx, const out_val *phi, out_blk *blk)
 {
 	/*
@@ -188,7 +198,7 @@ out_val *out_val_blockphi_make(out_ctx *octx, const out_val *phi, out_blk *blk)
 	 * - phi-nodes
 	 * - __builtin_va_arg()'s reg-vs-stack branching
 	 */
-	out_val *mut = v_dup_or_reuse(octx, phi, phi->t);
+	out_val *mut = v_mutable_copy(octx, phi);
 
 	if(!blk)
 		blk = octx->current_blk;

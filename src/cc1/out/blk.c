@@ -54,10 +54,10 @@ static void blk_jmpthread(struct flush_state *st)
 		}
 
 		if(lim && cc1_fopt.verbose_asm)
-			asm_out_section(SECTION_TEXT, "\t# jump threaded through %d blocks\n", lim);
+			asm_out_section(NULL, "\t# jump threaded through %d blocks\n", lim);
 	}
 
-	impl_jmp(SECTION_TEXT, to->lbl);
+	impl_jmp(to->lbl);
 }
 
 static void blk_codegen(out_blk *blk, struct flush_state *st)
@@ -71,20 +71,23 @@ static void blk_codegen(out_blk *blk, struct flush_state *st)
 		if(st->jmpto != blk)
 			blk_jmpthread(st);
 		else if(cc1_fopt.verbose_asm)
-			asm_out_section(SECTION_TEXT, "\t# implicit jump to next line\n");
+			asm_out_section(NULL, "\t# implicit jump to next line\n");
 		st->jmpto = NULL;
 	}
 
-	asm_out_section(SECTION_TEXT, "%s: # %s\n", blk->lbl, blk->desc);
-	if(blk->force_lbl)
-		asm_out_section(SECTION_TEXT, "%s: # mustgen_spel\n", blk->force_lbl);
+	if(blk->align)
+		asm_out_align(NULL, blk->align);
 
-	out_dbg_labels_emit_release_v(SECTION_TEXT, &blk->labels.start);
+	asm_out_section(NULL, "%s: # %s\n", blk->lbl, blk->desc);
+	if(blk->force_lbl)
+		asm_out_section(NULL, "%s: # mustgen_spel\n", blk->force_lbl);
+
+	out_dbg_labels_emit_release_v(&blk->labels.start);
 
 	for(i = blk->insns; i && *i; i++)
-		asm_out_section(SECTION_TEXT, "%s", *i);
+		asm_out_section(NULL, "%s", *i);
 
-	out_dbg_labels_emit_release_v(SECTION_TEXT, &blk->labels.end);
+	out_dbg_labels_emit_release_v(&blk->labels.end);
 }
 
 static void bfs_block(out_blk *blk, struct flush_state *st)
@@ -117,7 +120,7 @@ static void bfs_block(out_blk *blk, struct flush_state *st)
 
 		case BLK_COND:
 			blk_codegen(blk, st);
-			asm_out_section(SECTION_TEXT, "\t%s\n", blk->bits.cond.insn);
+			asm_out_section(NULL, "\t%s\n", blk->bits.cond.insn);
 
 			/* we always jump to the true block if the conditional failed */
 			blk_jmpnext(blk->bits.cond.if_1_blk, st);
@@ -173,11 +176,11 @@ void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl)
 		bfs_block(*must_i, &st);
 
 	if(st.jmpto)
-		impl_jmp(SECTION_TEXT, st.jmpto->lbl);
+		impl_jmp(st.jmpto->lbl);
 
-	asm_out_section(SECTION_TEXT, "%s:\n", end_dbg_lbl);
+	asm_out_section(NULL, "%s:\n", end_dbg_lbl);
 
-	out_dbg_labels_emit_release_v(SECTION_TEXT, &octx->pending_lbls);
+	out_dbg_labels_emit_release_v(&octx->pending_lbls);
 }
 
 static void dot_replace(char *lbl)
@@ -280,6 +283,15 @@ static out_blk *blk_new_common(out_ctx *octx, char *lbl, const char *desc)
 	return blk;
 }
 
+void blk_transfer(out_blk *from, out_blk *to)
+{
+	free(to->lbl);
+	to->lbl = from->lbl;
+	to->align = from->align;
+	from->lbl = NULL;
+	from->align = 0;
+}
+
 out_blk *out_blk_new_lbl(out_ctx *octx, const char *lbl)
 {
 	return blk_new_common(octx, ustrdup(lbl), lbl);
@@ -288,6 +300,16 @@ out_blk *out_blk_new_lbl(out_ctx *octx, const char *lbl)
 out_blk *out_blk_new(out_ctx *octx, const char *desc)
 {
 	return blk_new_common(octx, out_label_bblock(octx->nblks++), desc);
+}
+
+out_blk *out_blk_entry(out_ctx *octx)
+{
+	return octx->entry_blk;
+}
+
+out_blk *out_blk_postprologue(out_ctx *octx)
+{
+	return octx->postprologue_blk;
 }
 
 void out_blk_mustgen(out_ctx *octx, out_blk *blk, char *force_lbl)

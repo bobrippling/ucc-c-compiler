@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <string.h>
+#include <math.h>
 #include <assert.h>
 
 #include "../util/util.h"
@@ -31,14 +32,16 @@ void const_fold(expr *e, consty *k)
 
 	if(e->f_const_fold){
 		if(!e->const_eval.const_folded){
+			int should_have_lbl;
+
 			e->const_eval.const_folded = 1;
 			e->f_const_fold(e, &e->const_eval.k);
 			e->const_eval.const_folded = 2;
 
-			if((e->const_eval.k.type == CONST_ADDR
-			|| e->const_eval.k.type == CONST_NEED_ADDR)
-			&& e->const_eval.k.bits.addr.is_lbl)
-			{
+			should_have_lbl = (e->const_eval.k.type == CONST_ADDR || e->const_eval.k.type == CONST_NEED_ADDR)
+				&& e->const_eval.k.bits.addr.lbl_type != CONST_LBL_MEMADDR;
+
+			if(should_have_lbl){
 				assert(e->const_eval.k.bits.addr.bits.lbl);
 			}
 		}else if(e->const_eval.const_folded == 1){
@@ -104,7 +107,13 @@ static int const_expr_zero(expr *e, int zero)
 			return !k.bits.num.val.i == zero;
 
 		case CONST_ADDR:
-			return !k.bits.addr.is_lbl && k.bits.addr.bits.memaddr == 0;
+			switch(k.bits.addr.lbl_type){
+				case CONST_LBL_MEMADDR:
+					return k.bits.addr.bits.memaddr == 0;
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK: /* might be zero, don't know. error caught elsewhere */
+					return 0;
+			}
 
 		case CONST_NEED_ADDR:
 		case CONST_STRK:
@@ -115,16 +124,25 @@ static int const_expr_zero(expr *e, int zero)
 	return 0;
 }
 
-void const_fold_integral(expr *e, numeric *piv)
+int const_fold_integral_try(expr *e, numeric *piv)
 {
 	consty k;
 	const_fold(e, &k);
 
-	UCC_ASSERT(k.type == CONST_NUM, "not const");
-	UCC_ASSERT(k.offset == 0, "got offset for val?");
-	UCC_ASSERT(K_INTEGRAL(k.bits.num), "fp?");
+	if(k.type != CONST_NUM)
+		return 0;
+	if(k.offset != 0)
+		return 0;
+	if(!K_INTEGRAL(k.bits.num))
+		return 0;
 
 	memcpy_safe(piv, &k.bits.num);
+	return 1;
+}
+
+void const_fold_integral(expr *e, numeric *piv)
+{
+	UCC_ASSERT(const_fold_integral_try(e, piv), "not an integer constant");
 }
 
 integral_t const_fold_val_i(expr *e)
@@ -222,6 +240,10 @@ integral_t const_op_exec(
 		case op_not:  result = !lval; break;
 		case op_bnot: result = ~lval; break;
 
+		case op_signbit:
+		case op_no_signbit:
+			ucc_unreach(0);
+
 		case op_unknown:
 			ICE("unhandled type");
 			break;
@@ -266,11 +288,24 @@ floating_t const_op_exec_fp(
 		case op_shiftl:
 		case op_shiftr:
 		case op_bnot:
+		case op_signbit:
+		case op_no_signbit:
 			/* explicitly bad */
 			ICE("floating point %s", op_to_str(op));
 
+		case op_divide:
+			if(lv == 0 && *rv == 0){
+				/* Special case 0/0, as this is a common way of defining NaN in libcs
+				 * when GNU __builtin_nan support isn't detected.
+				 *
+				 * We explicitly return NAN here as this isn't affected by the rounding
+				 * mode, whereas performing the calculation could return -nan.
+				 */
+				return NAN;
+			}
+			return lv / *rv; /* safe - / 0.0f is inf */
+
 		case op_multiply: return lv * *rv;
-		case op_divide:   return lv / *rv; /* safe - / 0.0f is inf */
 		case op_plus:     return rv ? lv + *rv : +lv;
 		case op_minus:    return rv ? lv - *rv : -lv;
 		case op_eq:       return lv == *rv;
@@ -297,16 +332,20 @@ static void const_intify(consty *k, expr *owner)
 			break;
 
 		case CONST_STRK:
-			return;
+			break;
 
 		case CONST_NEED_ADDR:
 		case CONST_ADDR:
 		{
 			integral_t memaddr;
 
-			if(k->bits.addr.is_lbl){
-				/* can't do (int)&x */
-				return;
+			switch(k->bits.addr.lbl_type){
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK:
+					/* can't do (int)&x */
+					return;
+				case CONST_LBL_MEMADDR:
+					break;
 			}
 
 			memaddr = k->bits.addr.bits.memaddr + k->offset;
@@ -344,12 +383,17 @@ static void const_memify(consty *k)
 	}
 }
 
+static int is_lvalue_pointerish(type *t)
+{
+	return type_is_ptr(t) || type_is_array(t) || type_is_func_or_block(t);
+}
+
 void const_ensure_num_or_memaddr(
 		consty *k, type *from, type *to,
-		expr *owner)
+		expr *owner, int set_nonstandard_const)
 {
-	const int from_ptr = type_is_ptr(from) || type_is_array(from);
-	const int to_ptr = type_is_ptr(to) || type_is_array(to);
+	const int from_ptr = is_lvalue_pointerish(from);
+	const int to_ptr = is_lvalue_pointerish(to);
 
 	if(from_ptr == to_ptr)
 		return;
@@ -364,7 +408,12 @@ void const_ensure_num_or_memaddr(
 		const_memify(k);
 	}
 
-	/* not a constant but we treat it as such, as an extension */
-	if(!k->nonstandard_const)
-		k->nonstandard_const = owner;
+	if(from_ptr
+	&& !to_ptr
+	&& type_size(from, NULL) > type_size(to, NULL))
+	{
+		/* not a constant but we treat it as such, as an extension */
+		if(set_nonstandard_const && !k->nonstandard_const)
+			k->nonstandard_const = owner;
+	}
 }

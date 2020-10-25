@@ -46,6 +46,14 @@ int v_is_const_reg(const out_val *v)
 		&& impl_reg_frame_const(&v->bits.regoff.reg, 0);
 }
 
+type *v_get_type(const out_val *v)
+{
+	if(v->type == V_SPILT)
+		return type_is_ptr(v->t);
+
+	return v->t;
+}
+
 int v_needs_GOT(const out_val *v)
 {
 	return v->type == V_LBL
@@ -54,7 +62,8 @@ int v_needs_GOT(const out_val *v)
 }
 
 const out_val *v_to_stack_mem(
-		out_ctx *octx, const out_val *val, const out_val *stk)
+		out_ctx *octx, const out_val *val, const out_val *stk,
+		enum out_val_store type)
 {
 	out_val *spilt = v_dup_or_reuse(octx, stk, stk->t);
 
@@ -63,7 +72,14 @@ const out_val *v_to_stack_mem(
 	out_val_retain(octx, spilt);
 	out_store(octx, spilt, val);
 
-	spilt->type = V_REG_SPILT;
+	switch(type){
+		case V_SPILT:
+		case V_REGOFF:
+			spilt->type = type;
+			break;
+		default:
+			assert(0 && "can only store to stack mem for spill or regoff");
+	}
 
 	return spilt;
 }
@@ -72,12 +88,13 @@ const out_val *v_reg_to_stack_mem(
 		out_ctx *octx, struct vreg const *vr, const out_val *stk)
 {
 	const out_val *reg = v_new_reg(octx, NULL, stk->t, vr);
-	return v_to_stack_mem(octx, reg, stk);
+	return v_to_stack_mem(octx, reg, stk, V_REGOFF);
 }
 
 static int v_in(const out_val *vp, enum vto to)
 {
 	switch(vp->type){
+		case V_SPILT:
 		case V_FLAG:
 			break;
 
@@ -88,7 +105,7 @@ static int v_in(const out_val *vp, enum vto to)
 		case V_REG:
 			return (to & TO_REG) && vp->bits.regoff.offset == 0;
 
-		case V_REG_SPILT:
+		case V_REGOFF:
 		case V_LBL:
 			return !!(to & TO_MEM);
 	}
@@ -105,7 +122,7 @@ static ucc_wur const out_val *v_spill_reg(
 
 	{
 		const out_val *spilt = v_to_stack_mem(
-				octx, v_reg, stack_pos);
+				octx, v_reg, stack_pos, V_SPILT);
 
 		out_val_overwrite((out_val *)v_reg, spilt);
 
@@ -113,6 +130,25 @@ static ucc_wur const out_val *v_spill_reg(
 	}
 
 	return v_reg;
+}
+
+static void mark_callee_save_reg_as_used(out_ctx *octx, const struct vreg *reg)
+{
+	struct vreg *p;
+	size_t current;
+
+	for(p = octx->used_callee_saved; p && p->is_float != 2; p++)
+		if(vreg_eq(p, reg))
+			return;
+
+	current = p ? p - octx->used_callee_saved : 0;
+
+	octx->used_callee_saved = urealloc1(
+			octx->used_callee_saved,
+			(current + 2) * sizeof *octx->used_callee_saved);
+
+	memcpy_safe(&octx->used_callee_saved[current], reg);
+	octx->used_callee_saved[current + 1].is_float = 2;
 }
 
 static ucc_wur const out_val *v_save_reg(
@@ -130,29 +166,10 @@ static ucc_wur const out_val *v_save_reg(
 				&cs_reg, NULL, impl_reg_is_callee_save);
 
 		if(got_reg){
-			struct vreg *p;
-			int already_used = 0;
-
 			impl_reg_cp_no_off(octx, vp, &cs_reg);
 			memcpy_safe(&((out_val *)vp)->bits.regoff.reg, &cs_reg);
 
-			for(p = octx->used_callee_saved; p && p->is_float != 2; p++){
-				if(vreg_eq(p, &cs_reg)){
-					already_used = 1;
-					break;
-				}
-			}
-
-			if(!already_used){
-				size_t current = p ? p - octx->used_callee_saved : 0;
-
-				octx->used_callee_saved = urealloc1(
-						octx->used_callee_saved,
-						(current + 2) * sizeof *octx->used_callee_saved);
-
-				memcpy_safe(&octx->used_callee_saved[current], &cs_reg);
-				octx->used_callee_saved[current + 1].is_float = 2;
-			}
+			mark_callee_save_reg_as_used(octx, &cs_reg);
 
 			return vp;
 		}
@@ -216,7 +233,7 @@ static const out_val *v_find_reg(out_ctx *octx, const struct vreg *reg)
 {
 	out_val_list *i;
 
-	for(i = octx->val_head; i; i = i->next){
+	OCTX_ITER_VALS(octx, i){
 		const out_val *v = &i->val;
 
 		if(!v->retains)
@@ -281,7 +298,7 @@ static int v_unused_reg2(
 
 	first = NULL;
 
-	for(it = octx->val_head; it; it = it->next){
+	OCTX_ITER_VALS(octx, it){
 		const out_val *this = &it->val;
 		if(this->retains
 		/*&& !out_val_is_blockphi(this, octx->current_blk)
@@ -346,7 +363,7 @@ const out_val *v_to_reg_given(
 	return impl_load(octx, from, given);
 }
 
-const out_val *v_to_reg_given_freeup(
+const out_val *v_to_reg_given_freeup_no_off(
 		out_ctx *octx, const out_val *from,
 		const struct vreg *given)
 {
@@ -364,11 +381,15 @@ const out_val *v_to_reg_out(out_ctx *octx, const out_val *conv, struct vreg *out
 {
 	if(conv->type != V_REG){
 		struct vreg chosen;
+		int is_float;
+
 		if(!out)
 			out = &chosen;
 
+		is_float = type_is_floating(v_get_type(conv));
+
 		/* get a register */
-		v_unused_reg(octx, 1, type_is_floating(conv->t), out, NULL);
+		v_unused_reg(octx, 1, is_float, out, NULL);
 
 		/* load into register */
 		return v_to_reg_given(octx, conv, out);
@@ -393,7 +414,7 @@ const out_val *v_reg_apply_offset(out_ctx *octx, const out_val *const orig)
 
 	switch(orig->type){
 		case V_REG:
-		case V_REG_SPILT:
+		case V_REGOFF:
 			break;
 		default:
 			assert(0 && "not a reg");
@@ -450,7 +471,13 @@ void v_save_regs(
 		}
 
 		switch(v->type){
-			case V_REG_SPILT:
+			case V_SPILT:
+				/* this is analogous to the V_REGOFF and V_REG cases */
+				assert(!impl_reg_savable(&v->bits.regoff.reg));
+				save = 0;
+				break;
+
+			case V_REGOFF:
 			case V_REG:
 				if(!impl_reg_savable(&v->bits.regoff.reg)){
 					/* don't save stack references */
@@ -510,31 +537,37 @@ void v_unreserve_reg(out_ctx *octx, const struct vreg *r)
 	octx->reserved_regs[impl_reg_to_idx(r)]--;
 }
 
-enum flag_cmp v_inv_cmp(enum flag_cmp cmp, int invert_eq)
+#define CASE_SWAP(from, to) \
+		case flag_ ## from: return flag_ ## to; \
+		case flag_ ## to: return flag_ ## from
+
+enum flag_cmp v_not_cmp(enum flag_cmp cmp)
 {
 	switch(cmp){
-#define OPPOSITE2(from, to)    \
-		case flag_ ## from:        \
-			return flag_ ## to; \
-
-#define OPPOSITE(from, to) \
-		OPPOSITE2(from, to);   \
-		OPPOSITE2(to, from)
-
-		OPPOSITE(le, gt);
-		OPPOSITE(lt, ge);
-		OPPOSITE(overflow, no_overflow);
-
-		/*OPPOSITE(z, nz);
-		OPPOSITE(nz, z);*/
-#undef OPPOSITE
-#undef OPPOSITE2
-
-		case flag_eq:
-		case flag_ne:
-			if(invert_eq)
-				return (cmp == flag_eq ? flag_ne : flag_eq);
-			return cmp;
+		CASE_SWAP(le, gt);
+		CASE_SWAP(lt, ge);
+		CASE_SWAP(eq, ne);
+		CASE_SWAP(overflow, no_overflow);
+		CASE_SWAP(signbit, no_signbit);
 	}
 	assert(0 && "invalid op");
 }
+
+enum flag_cmp v_commute_cmp(enum flag_cmp cmp)
+{
+	switch(cmp){
+		CASE_SWAP(le, ge);
+		CASE_SWAP(lt, gt);
+
+		case flag_eq: return flag_eq;
+		case flag_ne: return flag_ne;
+
+		case flag_overflow:
+		case flag_no_overflow:
+		case flag_signbit:
+		case flag_no_signbit:
+			assert(0 && "shouldn't be called for (no_)[overflow|signbit]");
+	}
+	assert(0 && "invalid op");
+}
+#undef CASE_SWAP

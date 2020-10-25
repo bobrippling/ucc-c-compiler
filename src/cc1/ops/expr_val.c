@@ -9,7 +9,7 @@
 
 #define DEBUG_VAL 0
 
-const char *str_expr_val()
+const char *str_expr_val(void)
 {
 	return "value";
 }
@@ -67,7 +67,7 @@ void fold_expr_val(expr *e, symtable *stab)
 		else if(num->suffix & VAL_DOUBLE)
 			p = type_double, num->val.f = (double)num->val.f;
 		else if(num->suffix & VAL_LDOUBLE)
-			p = type_ldouble, num->val.f = (long double)num->val.f;
+			p = type_ldouble, num->val.f = (floating_t)num->val.f;
 		else
 			ICE("floating?");
 

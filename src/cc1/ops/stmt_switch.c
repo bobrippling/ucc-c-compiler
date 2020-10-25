@@ -15,7 +15,7 @@
 #define ITER_SWITCH(sw, iter) \
 	for(iter = sw->bits.switch_.cases; iter && *iter; iter++)
 
-const char *str_stmt_switch()
+const char *str_stmt_switch(void)
 {
 	return "switch";
 }
@@ -45,12 +45,15 @@ static void fold_switch_dups(stmt *sw)
 
 		vals[i].cse = cse;
 
-		const_fold_integral(cse->expr, &vals[i].start);
+		if(!const_fold_integral_try(cse->expr, &vals[i].start))
+			goto out;
 
-		if(stmt_kind(cse, case_range))
-			const_fold_integral(cse->expr2, &vals[i].end);
-		else
+		if(stmt_kind(cse, case_range)){
+			if(!const_fold_integral_try(cse->expr2, &vals[i].end))
+				goto out;
+		}else{
 			memcpy(&vals[i].end, &vals[i].start, sizeof vals[i].end);
+		}
 
 		i++;
 	}
@@ -78,6 +81,7 @@ static void fold_switch_dups(stmt *sw)
 		}
 	}
 
+out:
 	free(vals);
 }
 
@@ -97,6 +101,13 @@ static void fold_switch_enum(
 			return;
 	}
 
+	/* warn if we switch on an enum bitmask */
+	if(expr_attr_present(sw->expr, attr_enum_bitmask)){
+		cc1_warn_at(&sw->where, switch_enum_bitmask,
+				"switch on enum with enum_bitmask attribute");
+		return;
+	}
+
 	nents = enum_nentries(enum_sue);
 
 	/* if there's no default case or we're on the even_when_default
@@ -107,25 +118,26 @@ static void fold_switch_enum(
 		marks = umalloc(nents * sizeof *marks);
 	}
 
-	/* warn if we switch on an enum bitmask */
-	if(expr_attr_present(sw->expr, attr_enum_bitmask))
-		cc1_warn_at(&sw->where, switch_enum_bitmask,
-				"switch on enum with enum_bitmask attribute");
-
 	/* for each case/default/case_range... */
 	ITER_SWITCH(sw, iter){
 		stmt *cse = *iter;
 		integral_t v, w;
 
-		fold_check_expr(cse->expr,
+		if(fold_check_expr(cse->expr,
 				FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
-				"case value");
+				"case value"))
+		{
+			continue;
+		}
 		v = const_fold_val_i(cse->expr);
 
 		if(stmt_kind(cse, case_range)){
-			fold_check_expr(cse->expr2,
+			if(fold_check_expr(cse->expr2,
 					FOLD_CHK_INTEGRAL | FOLD_CHK_CONST_I,
-					"case range value");
+					"case range value"))
+			{
+				continue;
+			}
 
 			w =  const_fold_val_i(cse->expr2);
 		}else{
@@ -189,8 +201,11 @@ void fold_stmt_and_add_to_curswitch(stmt *cse)
 
 	fold_stmt(cse->lhs); /* compound */
 
-	if(!sw)
-		die_at(&cse->where, "%s not inside switch", cse->f_str());
+	if(!sw){
+		warn_at_print_error(&cse->where, "%s not inside switch", cse->f_str());
+		fold_had_error = 1;
+		return;
+	}
 
 	if(cse->expr){
 		/* promote to the controlling statement */
@@ -207,10 +222,6 @@ void fold_stmt_and_add_to_curswitch(stmt *cse)
 		}
 		sw->bits.switch_.default_case = cse;
 	}
-
-	/* we are compound, copy some attributes */
-	cse->kills_below_code = cse->lhs->kills_below_code;
-	/* TODO: copy ->freestanding? */
 }
 
 static void fold_switch_scopechecks(stmt *sw)
@@ -228,7 +239,8 @@ void fold_stmt_switch(stmt *s)
 {
 	FOLD_EXPR(s->expr, s->symtab);
 
-	fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch");
+	if(fold_check_expr(s->expr, FOLD_CHK_INTEGRAL, "switch"))
+		return;
 
 	/* default integer promotions */
 	expr_promote_default(&s->expr, s->symtab);
@@ -360,9 +372,32 @@ void style_stmt_switch(const stmt *s, out_ctx *octx)
 	gen_stmt(s->lhs, octx);
 }
 
-static int switch_passable(stmt *s)
+static int switch_passable(stmt *sw)
 {
-	return fold_passable(s->lhs);
+	/*stmt *s;*/
+	size_t n;
+
+	/* this isn't perfect - gotos may jump into s->lhs
+	 *
+	 * but: if the last entry points is passable, we're passable, since we fall off the end of the switch
+	 */
+
+	n = dynarray_count(sw->bits.switch_.cases);
+	if(n == 0)
+		return 1;
+
+#if 0
+	/* the below two tests would have to be &&'d with each other and all other flows through the switch */
+	s = sw->bits.switch_.cases[n-1];
+	if(!fold_passable(s))
+		return 0;
+
+	if(s->bits.switch_.default_case && !fold_passable(s->bits.switch_.default_case))
+		return 0;
+#endif
+
+	/* no default case, assume switch is passable */
+	return 1;
 }
 
 void init_stmt_switch(stmt *s)

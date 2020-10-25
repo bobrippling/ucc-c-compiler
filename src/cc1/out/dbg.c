@@ -42,7 +42,6 @@
 #define DEBUG_TYPE_SKIP type_skip_non_tdefs_consts
 #define DEBUG_TYPE_HASH type_hash_skip_nontdefs_consts
 
-
 #define DW_TAGS                        \
 	X(DW_TAG_compile_unit, 0x11)         \
 	X(DW_TAG_subprogram, 0x2e)           \
@@ -756,7 +755,7 @@ static struct DIE *dwarf_type_die(
 
 			szdie = dwarf_die_new(DW_TAG_subrange_type);
 			if(have_sz){
-				form_data_t sz = ty->bits.array.is_vla
+				form_data_t sz = ty->bits.array.vla_kind
 					? 0 : const_fold_val_i(ty->bits.array.size);
 
 				/*dwarf_attr(szdie, DW_AT_lower_bound, DW_FORM_data4, 0);*/
@@ -948,7 +947,7 @@ static struct DIE *dwarf_suetype(
 static int dbg_get_val_location(const out_val *v, long *const offset)
 {
 	switch(v->type){
-		case V_REG_SPILT:
+		case V_REGOFF:
 		case V_REG:
 			if(v->bits.regoff.reg.idx == REG_BP){
 				*offset = v->bits.regoff.offset;
@@ -1097,6 +1096,8 @@ static int dw_lang_from_c_std(enum c_std std)
 		case STD_C89: return DW_LANG_C89;
 		case STD_C99: return DW_LANG_C99;
 		case STD_C11: return DW_LANG_C11;
+		case STD_C18: return DW_LANG_C11; /* no DW_LANG_C17/18 exists yet */
+		case STD_C2X: return DW_LANG_C11; /* no DW_LANG_C2X exists yet */
 	}
 	abort();
 }
@@ -1104,7 +1105,8 @@ static int dw_lang_from_c_std(enum c_std std)
 static struct DIE_compile_unit *dwarf_cu(
 		const char *fname, const char *compdir,
 		struct out_dbg_filelist **pfilelist,
-		enum c_std lang)
+		enum c_std lang,
+		const char *producer)
 {
 	struct DIE_compile_unit *cu = umalloc(sizeof *cu);
 	form_data_t attrv;
@@ -1113,8 +1115,7 @@ static struct DIE_compile_unit *dwarf_cu(
 
 	dwarf_die_new_at(&cu->die, DW_TAG_compile_unit);
 
-	dwarf_attr(&cu->die, DW_AT_producer, DW_FORM_string,
-			"ucc development version");
+	dwarf_attr(&cu->die, DW_AT_producer, DW_FORM_string, (void *)producer);
 
 	dwarf_attr(&cu->die, DW_AT_language, DW_FORM_data2,
 			((attrv = dw_lang_from_c_std(lang)), &attrv));
@@ -1130,20 +1131,20 @@ static struct DIE_compile_unit *dwarf_cu(
 			cc1_target_details.dwarf_link_stmt_list
 				? ustrprintf(
 						"%s%s%s",
-						cc1_target_details.as.privatelbl_prefix,
+						cc1_target_details.as->privatelbl_prefix,
 						SECTION_BEGIN,
 						SECTION_DESC_DBG_LINE)
 				: NULL);
 
 	dwarf_attr(&cu->die, DW_AT_low_pc, DW_FORM_addr,
 			ustrprintf("%s%s%s",
-				cc1_target_details.as.privatelbl_prefix,
+				cc1_target_details.as->privatelbl_prefix,
 				SECTION_BEGIN,
 				SECTION_DESC_TEXT));
 
 	dwarf_attr(&cu->die, DW_AT_high_pc, DW_FORM_addr,
 			ustrprintf("%s%s%s",
-				cc1_target_details.as.privatelbl_prefix,
+				cc1_target_details.as->privatelbl_prefix,
 				SECTION_END,
 				SECTION_DESC_TEXT));
 
@@ -1152,28 +1153,34 @@ static struct DIE_compile_unit *dwarf_cu(
 
 static long dwarf_info_header(void)
 {
-	if(cc1_target_details.as.expr_inline){
-		asm_out_section(SECTION_DBG_INFO,
+	if(cc1_target_details.as->expr_inline){
+		asm_out_section(&section_dbg_info,
 				/* -4: don't include the length spec itself */
 				"\t.long %s%s%s - %s%s%s - 4\n",
-				cc1_target_details.as.privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
-				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO);
+				cc1_target_details.as->privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
+				cc1_target_details.as->privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO);
 	}else{
-		asm_out_section(SECTION_DBG_INFO,
+		asm_out_section(&section_dbg_info,
 				/* -4: don't include the length spec itself */
 				"%sinfo_len = %s%s%s - %s%s%s - 4\n"
 				"\t.long %sinfo_len" "\n",
-				cc1_target_details.as.privatelbl_prefix,
-				cc1_target_details.as.privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
-				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO,
-				cc1_target_details.as.privatelbl_prefix);
+				cc1_target_details.as->privatelbl_prefix,
+				cc1_target_details.as->privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
+				cc1_target_details.as->privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO,
+				cc1_target_details.as->privatelbl_prefix);
 	}
 
-	asm_out_section(SECTION_DBG_INFO,
-			"\t.short 2 # DWARF 2\n"
-			"\t.long 0  # abbrev offset\n"
-			"\t.byte %d  # sizeof(void *)\n",
-			platform_word_size());
+	asm_out_section(&section_dbg_info, "\t.short 2 # DWARF 2\n");
+
+	if(cc1_target_details.dwarf_link_stmt_list){
+		asm_out_section(&section_dbg_info,
+				"\t.long %s%s%s  # abbrev offset\n",
+				cc1_target_details.as->privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_ABBREV);
+	 }else{
+		 asm_out_section(&section_dbg_info, "\t.long 0  # abbrev offset\n");
+	 }
+
+	asm_out_section(&section_dbg_info, "\t.byte %d  # sizeof(void *)\n", platform_word_size());
 
 	return 4 + 2 + 4 + 1;
 }
@@ -1231,6 +1238,9 @@ static struct DIE *dwarf_global_variable(
 	{
 		return NULL;
 	}
+
+	if(type_is(d->ref, type_func) && !decl_should_emit_code(d))
+		return NULL;
 
 	vardie = dwarf_die_new(is_tdef ? DW_TAG_typedef : DW_TAG_variable);
 
@@ -1339,7 +1349,7 @@ struct DIE_flush
 {
 	struct DIE_flush_file
 	{
-		enum section_builtin sec;
+		const struct section *sec;
 		unsigned long byte_cnt;
 	} abbrev, info;
 };
@@ -1588,15 +1598,15 @@ static void dwarf_flush_die(
 
 static void dwarf_flush(struct DIE_compile_unit *cu, long initial_offset)
 {
-	struct DIE_flush flush = {{ 0 }};
+	struct DIE_flush flush = { { 0 }, { 0 } };
 
 	flush.info.byte_cnt = initial_offset;
-	flush.info.sec = SECTION_DBG_INFO;
-	flush.abbrev.sec = SECTION_DBG_ABBREV;
+	flush.info.sec = &section_dbg_info;
+	flush.abbrev.sec = &section_dbg_abbrev;
 
 	dwarf_flush_die(&cu->die, &flush);
 
-	asm_out_section(SECTION_DBG_ABBREV, "\t.byte 0 # end\n");
+	asm_out_section(&section_dbg_abbrev, "\t.byte 0 # end\n");
 }
 
 static unsigned long dwarf_offset_die(
@@ -1727,9 +1737,10 @@ void out_dbg_begin(
 		struct out_dbg_filelist **pfilelist,
 		const char *fname,
 		const char *compdir,
-		enum c_std lang)
+		enum c_std lang,
+		const char *producer)
 {
-	struct DIE_compile_unit *cu = dwarf_cu(fname, compdir, pfilelist, lang);
+	struct DIE_compile_unit *cu = dwarf_cu(fname, compdir, pfilelist, lang, producer);
 	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
 
 	dbg->compile_unit = cu;

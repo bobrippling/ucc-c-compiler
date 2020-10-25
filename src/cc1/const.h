@@ -34,7 +34,11 @@ typedef struct consty
 		stringlit_at *str; /* CONST_STRK */
 		struct
 		{
-			int is_lbl;
+			enum {
+				CONST_LBL_MEMADDR,
+				CONST_LBL_TRUE,
+				CONST_LBL_WEAK, /* may not be used in a constant expression, just an address expression */
+			} lbl_type;
 			union
 			{
 				const char *lbl;
@@ -77,11 +81,12 @@ int const_expr_and_zero(struct expr *e);
 int const_expr_and_non_zero(struct expr *e);
 
 void const_fold_integral(struct expr *e, numeric *);
+int const_fold_integral_try(struct expr *e, numeric *);
 integral_t const_fold_val_i(struct expr *e);
 
 void const_ensure_num_or_memaddr(
 		consty *k, struct type *from, struct type *to,
-		struct expr *owner)
+		struct expr *owner, int set_nonstandard_const)
 	ucc_nonnull();
 
 integral_t const_op_exec(

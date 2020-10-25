@@ -30,7 +30,7 @@ do
 		log "$hash" "make failure"
 		continue
 	fi
-	if ! (cd test2; ./run_tests -i ignores .) >>"$thislog" 2>&1
+	if ! (cd test; ./run_tests -i ignores .) >>"$thislog" 2>&1
 	then
 		log "$hash" "test failure"
 		continue

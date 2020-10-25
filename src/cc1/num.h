@@ -4,15 +4,28 @@
 #include <stdint.h>
 #include <limits.h>
 
+#include "../util/compiler.h"
+
 typedef struct numeric numeric;
 
 typedef unsigned long long integral_t;
-typedef   signed long long sintegral_t;
-typedef        long double floating_t;
+typedef signed long long sintegral_t;
+
+#if COMPILER_SUPPORTS_LONG_DOUBLE
+typedef long double floating_t;
+#  define ucc_strtold strtold
+#  define ucc_fabs fabsl
+#  define NUMERIC_FMT_LD "Lf"
+#else
+typedef double floating_t;
+#  define ucc_strtold strtof
+#  define ucc_fabs fabs
+#  define NUMERIC_FMT_LD "f"
+#endif
+
 #define NUMERIC_FMT_D "lld"
 #define NUMERIC_FMT_U "llu"
 #define NUMERIC_FMT_X "llx"
-#define NUMERIC_FMT_LD "Lf"
 #define NUMERIC_T_MAX ULLONG_MAX
 #define INTEGRAL_BITS (sizeof(integral_t) * CHAR_BIT)
 struct numeric
@@ -33,14 +46,11 @@ struct numeric
 		VAL_LDOUBLE  = 1 << 8,
 		VAL_FLOATING = VAL_FLOAT | VAL_DOUBLE | VAL_LDOUBLE,
 
-		/* variable was read in as:
-		 * (decimal if neither of these set)
-		 */
+		/* variable was read in as decimal if none of these set */
 		VAL_OCTAL       = 1 << 3,
 		VAL_HEX         = 1 << 4,
 		VAL_BIN         = 1 << 5,
 		VAL_NON_DECIMAL = VAL_OCTAL | VAL_HEX | VAL_BIN,
-		VAL_PREFIX_MASK = VAL_NON_DECIMAL,
 		VAL_SUFFIXED_MASK = VAL_UNSIGNED | VAL_LONG | VAL_LLONG
 	} suffix;
 };

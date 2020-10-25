@@ -2,7 +2,7 @@
 #include "expr_comma.h"
 #include "../type_is.h"
 
-const char *str_expr_comma()
+const char *str_expr_comma(void)
 {
 	return "comma";
 }
@@ -31,22 +31,31 @@ static void fold_const_expr_comma(expr *e, consty *k)
 void fold_expr_comma(expr *e, symtable *stab)
 {
 	e->lhs = fold_expr_nonstructdecay(e->lhs, stab);
-	fold_check_expr(
-			e->lhs,
-			FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
-			"comma-expr");
-
 	e->rhs = fold_expr_nonstructdecay(e->rhs, stab);
-	fold_check_expr(
-			e->rhs,
-			FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
-			"comma-expr");
-
 	e->tree_type = e->rhs->tree_type;
 
-	if(!e->lhs->freestanding
-	&& !e->expr_comma_synthesized
-	&& !type_is_void(e->lhs->tree_type))
+	if(fold_check_expr(
+			e->lhs,
+			FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
+			"comma-expr"))
+	{
+		return;
+	}
+
+	if(fold_check_expr(
+			e->rhs,
+			FOLD_CHK_ALLOW_VOID | FOLD_CHK_NOWARN_ASSIGN,
+			"comma-expr"))
+	{
+		return;
+	}
+
+	if(cc1_warning.unused_comma_all
+	|| (
+		!e->lhs->freestanding
+		&& !e->expr_comma_synthesized
+		&& !type_is_void(e->lhs->tree_type)
+	))
 	{
 		cc1_warn_at(&e->lhs->where, unused_comma,
 				"left hand side of comma is unused");
@@ -99,10 +108,16 @@ static int expr_comma_has_sideeffects(const expr *e)
 	return expr_has_sideeffects(e->lhs) || expr_has_sideeffects(e->rhs);
 }
 
+static int expr_comma_requires_relocation(const expr *e)
+{
+	return expr_requires_relocation(e->lhs) || expr_requires_relocation(e->rhs);
+}
+
 void mutate_expr_comma(expr *e)
 {
 	e->f_const_fold = fold_const_expr_comma;
 	e->f_has_sideeffects = expr_comma_has_sideeffects;
+	e->f_requires_relocation = expr_comma_requires_relocation;
 }
 
 const out_val *gen_expr_style_comma(const expr *e, out_ctx *octx)

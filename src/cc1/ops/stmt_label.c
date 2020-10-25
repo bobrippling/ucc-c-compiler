@@ -3,7 +3,7 @@
 #include "../label.h"
 #include "../out/lbl.h"
 
-const char *str_stmt_label()
+const char *str_stmt_label(void)
 {
 	return "label";
 }

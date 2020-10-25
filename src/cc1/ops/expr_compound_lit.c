@@ -111,7 +111,7 @@ static void const_expr_compound_lit(expr *e, consty *k)
 	{
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_ADDR_OR_NEED(d);
-		k->bits.addr.is_lbl = 1;
+		k->bits.addr.lbl_type = CONST_LBL_TRUE;
 		k->bits.addr.bits.lbl = decl_asm_spel(d);
 		k->offset = 0;
 		if(!k->nonstandard_const)
@@ -161,6 +161,7 @@ void mutate_expr_compound_lit(expr *e)
 	e->f_islval = expr_is_lval_always;
 	e->f_const_fold = const_expr_compound_lit;
 	e->f_has_sideeffects = expr_compound_lit_has_sideeffects;
+	e->f_requires_relocation = expr_bool_always;
 }
 
 static decl *compound_lit_decl(type *t, decl_init *init)
@@ -169,6 +170,7 @@ static decl *compound_lit_decl(type *t, decl_init *init)
 
 	d->ref = t;
 	d->bits.var.init.dinit = init;
+	decl_use_ignoredeps(d);
 
 	return d;
 }

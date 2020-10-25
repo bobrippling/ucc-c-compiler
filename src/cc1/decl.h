@@ -40,7 +40,11 @@ struct decl
 	attribute **attr;
 
 	char *spel, *spel_asm;
-	int used;
+	enum {
+		DECL_FLAGS_USED = 1 << 0,
+		DECL_FLAGS_ADDRESSED = 1 << 1,
+		DECL_FLAGS_IMPLICIT = 1 << 2
+	} flags;
 
 	union
 	{
@@ -110,6 +114,7 @@ void         decl_free(decl *);
 
 unsigned decl_size(decl *);
 unsigned decl_align(decl *);
+#define decl_check_size(d) (void)decl_size(d)
 void decl_size_align_inc_bitfield(decl *, unsigned *const sz, unsigned *const align);
 type *decl_type_for_bitfield(decl *);
 
@@ -131,13 +136,21 @@ int decl_needs_GOTPLT(decl *d);
 int decl_conv_array_func_to_ptr(decl *d);
 struct type *decl_is_decayed_array(decl *);
 
+enum decl_impl_flags
+{
+	DECL_INCLUDE_ALIAS = 1 << 0,
+};
+
 decl *decl_proto(decl *); /* rewinds to the proto */
-decl *decl_impl(decl *); /* fast-forwards to the impl */
+decl *decl_impl(decl *, enum decl_impl_flags); /* fast-forwards to the impl */
+decl *decl_with_init(decl *, enum decl_impl_flags);
 
 int decl_is_pure_inline(decl *);
 int decl_should_emit_code(decl *);
+int decl_should_emit_var(decl *);
 int decl_unused_and_internal(decl *);
 enum visibility decl_visibility(decl *);
+int decl_defined(decl *, enum decl_impl_flags);
 
 int decl_is_bitfield(decl *);
 
@@ -153,16 +166,22 @@ const char *decl_store_spel_type_to_str_r(
 		const char *spel,
 		type *ty);
 
-#define decl_use(d) ((d)->used = 1)
+#define decl_use(d) ((d)->flags |= DECL_FLAGS_USED)
+
+/* compound-literals and block-expressions force
+ * their dependants to be generated, even if we don't
+ * use them themselves - this macro is used to tag
+ * these cases for possible recursive use checks in
+ * the future */
+#define decl_use_ignoredeps decl_use
 
 #define DECL_FUNC_ARG_SYMTAB(d) ((d)->bits.func.code->symtab->parent)
-#define DECL_HAS_FUNC_CODE(d) (type_is(d->ref, type_func) && d->bits.func.code)
 
 #define DECL_IS_ANON_BITFIELD(d) \
 	((d)->bits.var.field_width && !(d)->spel)
 
 #define DECL_IS_HOSTED_MAIN(fdecl) \
-			((cc1_fopt.freestanding) == 0 \
+			(!cc1_fopt.freestanding \
 			&& !strcmp(fdecl->spel, "main"))
 
 #endif

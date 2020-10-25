@@ -72,7 +72,7 @@ static void preproc_emit_line_info_top(enum lineinfo lineinfo)
 			lineinfo | (file_stack[file_stack_idx].is_sysh ? LINEINFO_SYSHEADER : 0));
 }
 
-int preproc_in_include()
+int preproc_in_include(void)
 {
 	return file_stack_idx > 0;
 }
@@ -103,6 +103,8 @@ void preproc_push(FILE *f, const char *fname, int is_sysh)
 
 
 	/* setup new state */
+	set_current_fname(fname);
+
 	file_stack[file_stack_idx].file    = f;
 	file_stack[file_stack_idx].fname   = ustrdup(fname);
 	file_stack[file_stack_idx].line_no = current_line = 1;

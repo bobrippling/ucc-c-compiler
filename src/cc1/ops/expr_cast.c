@@ -12,8 +12,10 @@
 #include "../type_nav.h"
 #include "../out/dbg.h"
 #include "../fopt.h"
+#include "../sanitize.h"
 
 #include "expr_val.h"
+#include "expr_deref.h"
 
 #define IMPLICIT_STR(e) (expr_cast_is_implicit(e) ? "implicit " : "")
 
@@ -23,7 +25,7 @@ static integral_t convert_integral_to_integral_warn(
 		int do_warn, where *w);
 
 
-const char *str_expr_cast()
+const char *str_expr_cast(void)
 {
 	return "cast";
 }
@@ -63,7 +65,13 @@ static void fold_cast_num(expr *const e, numeric *const num)
 
 			TRUNC(float, float, VAL_FLOAT);
 			TRUNC(double, double, VAL_DOUBLE);
+#if COMPILER_SUPPORTS_LONG_DOUBLE
 			TRUNC(ldouble, long double, VAL_LDOUBLE);
+#else
+			case type_ldouble:
+				ICW("cannot truncate long double value - no compiler support");
+				break;
+#endif
 #undef TRUNC
 		}
 		return;
@@ -118,7 +126,7 @@ static void warn_value_changed_at(
 		}
 	}
 
-	cc1_warn_at(w, overflow, fmt, a, b);
+	cc1_warn_at(w, constant_conversion, fmt, a, b);
 	free(fmt);
 }
 
@@ -153,6 +161,7 @@ static integral_t convert_integral_to_integral_warn(
 	 */
 
 	const unsigned sz_out = type_size(tout, w);
+	const unsigned sz_in = type_size(tin, w);
 	const int signed_in = type_is_signed(tin);
 	const int signed_out = type_is_signed(tout);
 	sintegral_t to_iv_sign_ext;
@@ -160,7 +169,7 @@ static integral_t convert_integral_to_integral_warn(
 	integral_t ret;
 
 	if(!signed_out && signed_in){
-		const unsigned sz_in_bits = CHAR_BIT * type_size(tin, w);
+		const unsigned sz_in_bits = CHAR_BIT * sz_in;
 		const unsigned sz_out_bits = CHAR_BIT * sz_out;
 
 		/* e.g. "(unsigned)-1". Pick to_iv, i.e. the unsigned truncated repr
@@ -189,6 +198,11 @@ static integral_t convert_integral_to_integral_warn(
 	}else{
 		/* unsigned to unsigned */
 		ret = to_iv_sign_ext;
+	}
+
+	if(sz_in == sz_out){
+		/* representable, don't warn */
+		return ret;
 	}
 
 	if(do_warn){
@@ -260,25 +274,33 @@ static void check_addr_int_cast(consty *k, int l, expr *owner)
 
 		case CONST_NEED_ADDR:
 		case CONST_ADDR:
-			if(k->bits.addr.is_lbl){
-				CONST_FOLD_NO(k, owner); /* similar to strk case */
-			}else{
-				integral_t new = k->bits.addr.bits.memaddr;
-				const int pws = platform_word_size();
+			switch(k->bits.addr.lbl_type){
+				case CONST_LBL_TRUE:
+				case CONST_LBL_WEAK:
+					CONST_FOLD_NO(k, owner); /* similar to strk case */
+					break;
 
-				/* mask out bits so we have it truncated to `l' */
-				if(l < pws){
-					new = integral_truncate(new, l, NULL);
+				case CONST_LBL_MEMADDR:
+				{
+					integral_t new = k->bits.addr.bits.memaddr;
+					const int pws = platform_word_size();
 
-					if(k->bits.addr.bits.memaddr != new)
-						/* can't cast without losing value - not const */
+					/* mask out bits so we have it truncated to `l' */
+					if(l < pws){
+						new = integral_truncate(new, l, NULL);
+
+						if(k->bits.addr.bits.memaddr != new)
+							/* can't cast without losing value - not const */
+							CONST_FOLD_NO(k, owner);
+
+					}else{
+						/* what are you doing... */
 						CONST_FOLD_NO(k, owner);
-
-				}else{
-					/* what are you doing... */
-					CONST_FOLD_NO(k, owner);
+					}
+					break;
 				}
 			}
+			break;
 	}
 }
 
@@ -301,6 +323,7 @@ static void cast_addr(expr *e, consty *k)
 
 static void fold_const_expr_cast(expr *e, consty *k)
 {
+	int set_nonstandard_const;
 	int to_fp;
 
 	if(type_is_void(e->tree_type)){
@@ -308,12 +331,14 @@ static void fold_const_expr_cast(expr *e, consty *k)
 		return;
 	}
 
+	set_nonstandard_const = !expr_cast_is_implicit(e);
+
 	const_fold(expr_cast_child(e), k);
 
 	if(expr_cast_is_lval2rval(e)){
 		/* if we're going from int to pointer or vice-versa,
 		 * change the const type */
-		const_ensure_num_or_memaddr(k, e->expr->tree_type, e->tree_type, e);
+		const_ensure_num_or_memaddr(k, e->expr->tree_type, e->tree_type, e, set_nonstandard_const);
 		return;
 	}
 
@@ -350,7 +375,9 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	if(k->type == CONST_NO)
 		return;
 
-	const_ensure_num_or_memaddr(k, e->expr->tree_type, e->tree_type, e);
+	const_ensure_num_or_memaddr(
+			k, e->expr->tree_type, e->tree_type, e,
+			set_nonstandard_const);
 }
 
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
@@ -414,9 +441,11 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			return;
 		}
 
-		fold_check_expr(expr_cast_child(e), check_flags, "cast");
+		if(fold_check_expr(expr_cast_child(e), check_flags, "cast"))
+			return;
 
-		fold_check_expr(e, check_flags, "cast-target");
+		if(fold_check_expr(e, check_flags, "cast-target"))
+			return;
 
 		if(!type_is_complete(tlhs)){
 			die_at(&e->where, "%scast to incomplete type %s",
@@ -424,8 +453,8 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 					type_to_str(tlhs));
 		}
 
-		ptr_lhs = type_is_ptr(tlhs);
-		ptr_rhs = type_is_ptr(trhs);
+		ptr_lhs = type_is_ptr_or_block(tlhs);
+		ptr_rhs = type_is_ptr_or_block(trhs);
 
 
 		if((flag = !!type_is(tlhs, type_func))
@@ -551,7 +580,7 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 				char buf[TYPE_STATIC_BUFSIZ];
 
 				cc1_warn_at(&e->where,
-						mismatch_ptr,
+						incompatible_pointer_types,
 						"%scast from %spointer to %spointer\n"
 						"%s <- %s",
 						IMPLICIT_STR(e),
@@ -562,8 +591,11 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 		check_qual_rm(ptr_lhs, ptr_rhs, e);
 
-		/* removes cv-qualifiers:
-		 * (const int)3 has type int, not const int */
+		/*
+		 * C17 6.5.4p5 / DR 423
+		 * Casts convert to the unqualified version of the named type
+		 * i.e.
+		 * (const int)3 // type is 'int', not 'const int' */
 		e->tree_type = type_unqualify(e->tree_type);
 	}
 }
@@ -599,6 +631,11 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 	casted = gen_expr(expr_cast_child(e), octx);
 
 	if(expr_cast_is_lval2rval(e)){
+		if(expr_kind(expr_cast_child(e), deref)){
+			sanitize_nonnull(casted, octx, "dereference");
+			sanitize_aligned(casted, octx, e->tree_type);
+		}
+
 		if(type_is_s_or_u(tfrom)){
 			/* either pass through as an LVALUE_STRUCT,
 			 * or dereference here for cast-to-void, if volatile */
@@ -629,6 +666,9 @@ const out_val *gen_expr_cast(const expr *e, out_ctx *octx)
 		}else{
 			/* primitive lval2rval */
 			casted = out_deref(octx, casted);
+
+			if(type_is_primitive(e->tree_type, type__Bool))
+				sanitize_bool(casted, octx);
 		}
 
 	}else{
@@ -707,10 +747,16 @@ static int expr_cast_has_sideeffects(const expr *e)
 	return expr_has_sideeffects(expr_cast_child(e));
 }
 
+static int expr_cast_requires_relocation(const expr *e)
+{
+	return expr_requires_relocation(expr_cast_child(e));
+}
+
 void mutate_expr_cast(expr *e)
 {
 	e->f_const_fold = fold_const_expr_cast;
 	e->f_has_sideeffects = expr_cast_has_sideeffects;
+	e->f_requires_relocation = expr_cast_requires_relocation;
 }
 
 expr *expr_new_cast(expr *what, type *to, int implicit)

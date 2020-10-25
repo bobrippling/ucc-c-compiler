@@ -8,4 +8,13 @@
 
 #define countof(ar) (sizeof(ar) / sizeof((ar)[0]))
 
+#define QUOTE_(x) #x
+#define QUOTE(x) QUOTE_(x)
+
+#ifdef NDEBUG
+#  define UCC_DEBUG_BUILD 0
+#else
+#  define UCC_DEBUG_BUILD 1
+#endif
+
 #endif

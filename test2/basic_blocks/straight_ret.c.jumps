@@ -1,7 +1,0 @@
-main:
-	jmp Lblk.5
-Lblk.4:
-Lblk.5:
-Lblk.0:
-Lblk.3:
-	jmp .Lblk.4

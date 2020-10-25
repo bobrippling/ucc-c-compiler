@@ -1,7 +1,9 @@
+#include "../../util/str.h"
+
 #include "ops.h"
 #include "stmt_noop.h"
 
-const char *str_stmt_noop()
+const char *str_stmt_noop(void)
 {
 	return "noop";
 }
@@ -19,7 +21,11 @@ void gen_stmt_noop(const stmt *s, out_ctx *octx)
 
 void dump_stmt_noop(const stmt *s, dump *ctx)
 {
-	dump_desc_stmt(ctx, "no-op", s);
+	char buf[24];
+	xsnprintf(
+			buf, sizeof(buf),
+			"no-op%s", s->bits.noop.is_fallthrough ? " <fallthrough>" : "");
+	dump_desc_stmt(ctx, buf, s);
 }
 
 void style_stmt_noop(const stmt *s, out_ctx *octx)

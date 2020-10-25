@@ -11,7 +11,7 @@
 
 #include "expr_op.h"
 
-const char *str_expr_if()
+const char *str_expr_if(void)
 {
 	return "if";
 }
@@ -157,9 +157,21 @@ static void try_pointer_propagate(
 
 			cc1_warn_at(&e->where,
 					mismatch_conditional,
-					"conditional type mismatch (%s vs %s)",
+					"pointer type mismatch (%s vs %s)",
 					type_to_str(tt_l), type_to_str_r(buf, tt_r));
 		}
+	}
+
+	/* gcc/clang allow pointer-int mixing here */
+	if(!e->tree_type && (l_ptr || r_ptr)){
+		char buf[TYPE_STATIC_BUFSIZ];
+
+		e->tree_type = l_ptr ? tt_l : tt_r;
+
+		cc1_warn_at(&e->where,
+				mismatch_conditional,
+				"pointer/integer type mismatch (%s vs %s)",
+				type_to_str(tt_l), type_to_str_r(buf, tt_r));
 	}
 
 	if(!e->tree_type){
@@ -183,19 +195,33 @@ void fold_expr_if(expr *e, symtable *stab)
 	FOLD_EXPR(e->expr, stab);
 	const_fold(e->expr, &konst);
 
-	fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, desc);
-
-	if(e->lhs){
+	/* get all the folding out the way so we're valid for later passes */
+	if(e->lhs)
 		e->lhs = fold_expr_nonstructdecay(e->lhs, stab);
-		fold_check_expr(e->lhs,
-				FOLD_CHK_ALLOW_VOID,
-				"?: left operand");
+	e->rhs = fold_expr_nonstructdecay(e->rhs, stab);
+
+	if(fold_check_expr(e->expr, FOLD_CHK_NO_ST_UN, desc)){
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
 	}
 
-	e->rhs = fold_expr_nonstructdecay(e->rhs, stab);
-	fold_check_expr(e->rhs,
+	if(e->lhs){
+		if(fold_check_expr(e->lhs,
+				FOLD_CHK_ALLOW_VOID,
+				"?: left operand"))
+		{
+			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+			return;
+		}
+	}
+
+	if(fold_check_expr(e->rhs,
 			FOLD_CHK_ALLOW_VOID,
-			"?: right operand");
+			"?: right operand"))
+	{
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	e->freestanding = (e->lhs ? e->lhs : e->expr)->freestanding || e->rhs->freestanding;
 
@@ -302,10 +328,18 @@ static int expr_if_has_sideeffects(const expr *e)
 		|| expr_has_sideeffects(e->rhs);
 }
 
+static int expr_if_requires_relocation(const expr *e)
+{
+	return expr_requires_relocation(e->expr)
+		|| (e->lhs && expr_requires_relocation(e->expr))
+		|| expr_requires_relocation(e->rhs);
+}
+
 void mutate_expr_if(expr *e)
 {
 	e->f_const_fold = fold_const_expr_if;
 	e->f_has_sideeffects = expr_if_has_sideeffects;
+	e->f_requires_relocation = expr_if_requires_relocation;
 }
 
 expr *expr_new_if(expr *test)

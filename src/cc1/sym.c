@@ -1,9 +1,10 @@
-#include <sys/types.h>
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <assert.h>
+
+#include <sys/types.h>
 
 #include "../util/util.h"
 #include "sym.h"
@@ -38,6 +39,25 @@ static void symtab_add_to_scope2(
 void symtab_add_to_scope(symtable *symtab, decl *d)
 {
 	symtab_add_to_scope2(symtab, d, 0);
+}
+
+void symtab_insert_before(symtable *symtab, decl *at, decl *to_insert)
+{
+	size_t i;
+	int found = 0;
+
+	symtab = symtab_add_target(symtab);
+
+	for(i = 0; i < dynarray_count(symtab->decls); i++){
+		if(symtab->decls[i] == at){
+			found = 1;
+			break;
+		}
+	}
+
+	UCC_ASSERT(found, "can't find insert location");
+
+	dynarray_insert(&symtab->decls, i, to_insert);
 }
 
 void symtab_add_sue(symtable *symtab, struct_union_enum_st *sue)
@@ -264,7 +284,11 @@ int symtab_is_transparent(symtable const *stab)
 		|| (stab->parent && stab->parent->are_params);
 }
 
-unsigned symtab_decl_bytes(symtable *stab, unsigned const vla_cost)
+unsigned symtab_decl_bytes(
+		symtable *stab,
+		unsigned const vla_cost,
+		int array_only,
+		int *const addr_taken)
 {
 	unsigned total = 0;
 	symtable **si;
@@ -273,6 +297,12 @@ unsigned symtab_decl_bytes(symtable *stab, unsigned const vla_cost)
 	for(di = stab->decls; di && *di; di++){
 		decl *d = *di;
 
+		if((d->flags & DECL_FLAGS_ADDRESSED) && addr_taken)
+			*addr_taken = 1;
+
+		if(array_only && !type_is_array(d->ref))
+			continue;
+
 		if(type_is_variably_modified(d->ref))
 			total += vla_cost;
 		else
@@ -280,7 +310,7 @@ unsigned symtab_decl_bytes(symtable *stab, unsigned const vla_cost)
 	}
 
 	for(si = stab->children; si && *si; si++)
-		total += symtab_decl_bytes(*si, vla_cost);
+		total += symtab_decl_bytes(*si, vla_cost, array_only, addr_taken);
 
 	return total;
 }

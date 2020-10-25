@@ -5,7 +5,7 @@
 #include "stmt_if.h"
 #include "../out/lbl.h"
 
-const char *str_stmt_while()
+const char *str_stmt_while(void)
 {
 	return "while";
 }
@@ -14,7 +14,7 @@ void fold_stmt_while(stmt *s)
 {
 	FOLD_EXPR(s->expr, s->symtab);
 
-	fold_check_expr(
+	(void)!fold_check_expr(
 			s->expr,
 			FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
 			s->f_str());
@@ -80,7 +80,7 @@ void style_stmt_while(const stmt *s, out_ctx *octx)
 int while_passable(stmt *s)
 {
 	if(const_expr_and_non_zero(s->expr))
-		return fold_code_escapable(s); /* while(1) */
+		return fold_code_escapable(s->lhs); /* while(1) */
 
 	return 1; /* fold_passable(s->lhs) - doesn't depend on this */
 }

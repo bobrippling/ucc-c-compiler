@@ -4,7 +4,7 @@
 #include "stmt_default.h"
 #include "../out/lbl.h"
 
-const char *str_stmt_default()
+const char *str_stmt_default(void)
 {
 	return "default";
 }

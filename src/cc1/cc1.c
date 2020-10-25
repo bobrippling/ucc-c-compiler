@@ -19,6 +19,7 @@
 #include "../util/tmpfile.h"
 #include "../util/alloc.h"
 #include "../util/macros.h"
+#include "../util/colour.h"
 
 #include "tokenise.h"
 #include "cc1.h"
@@ -39,6 +40,7 @@
 #include "cc1_target.h"
 #include "cc1_out.h"
 #include "cc1_sections.h"
+#include "sanitize_opt.h"
 
 static const char **system_includes;
 
@@ -49,14 +51,15 @@ struct version
 
 static struct
 {
-	char type;
 	const char *arg;
 	int mask;
 } mopts[] = {
-	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
-	{ 'm',  "align-is-p2", MOPT_ALIGN_IS_POW2 },
+	{ "stackrealign", MOPT_STACK_REALIGN },
+	{ "align-is-p2", MOPT_ALIGN_IS_POW2 },
+	{ "fentry", MOPT_FENTRY },
+	{ "red-zone", MOPT_RED_ZONE },
 
-	{ 0,  NULL, 0 }
+	{ NULL, 0 }
 };
 
 static struct
@@ -69,25 +72,29 @@ static struct
 	{ 'f', "message-length", &warning_length },
 
 	{ 'm', "preferred-stack-boundary", &cc1_mstack_align },
+	/* note this stores into cc1_mstack_align an invalid value,
+	 * that must be 2^n'd before being used */
+
 	{ 0, NULL, NULL }
 };
 
-dynmap *cc1_out_persection; /* char* => FILE* */
-enum section_builtin cc1_current_section = -1;
-FILE *cc1_current_section_file;
+dynmap *cc1_out_persection;
+struct section_output cc1_current_section_output = SECTION_OUTPUT_UNINIT;
 char *cc1_first_fname;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
-enum mopt mopt_mode = 0;
-enum san_opts cc1_sanitize = 0;
-char *cc1_sanitize_handler_fn;
+enum mopt mopt_mode = MOPT_RED_ZONE;
 
 enum visibility cc1_visibility_default;
 
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
+int cc1_profileg;
 enum debug_level cc1_gdebug = DEBUG_OFF;
 int cc1_gdebug_columninfo = 1;
+
+enum stringop_strategy cc1_mstringop_strategy = STRINGOP_STRATEGY_THRESHOLD;
+unsigned cc1_mstringop_threshold = 16;
 
 enum c_std cc1_std = STD_C99;
 
@@ -98,6 +105,7 @@ int show_current_line;
 struct cc1_fopt cc1_fopt;
 
 struct target_details cc1_target_details;
+static const char *requested_default_visibility;
 
 static const char *debug_compilation_dir;
 
@@ -129,10 +137,9 @@ static void dump_options(void)
 	int i;
 
 	fprintf(stderr, "Output options\n");
-	fprintf(stderr, "  -g0, -gline-tables-only, -g[no-]column-info\n");
+	fprintf(stderr, "  -g[0|1|2|3], -gline-tables-only|mlt, -g[no-]column-info\n");
 	fprintf(stderr, "  -o output-file\n");
 	fprintf(stderr, "  -emit=(dump|print|asm|style)\n");
-	fprintf(stderr, "  -m(stringop-strategy=...|...)\n");
 	fprintf(stderr, "  -O[0123s]\n");
 	fprintf(stderr, "  --help\n");
 	fprintf(stderr, "\n");
@@ -140,12 +147,13 @@ static void dump_options(void)
 	fprintf(stderr, "  -pedantic{,-errors}\n");
 	fprintf(stderr, "  -W(no-)?(all|extra|everything|gnu|error(=...)|...)\n");
 	fprintf(stderr, "  -w\n");
-	fprintf(stderr, "  -std=(gnu|c)(99|90|89|11), -ansi\n");
-	fprintf(stderr, "  -f(sanitize=...|sanitize-error=...)\n");
-	fprintf(stderr, "  -fvisibility=default|hidden|protected\n");
-	fprintf(stderr, "  -fdebug-compilation-dir=...\n");
+	fprintf(stderr, "  -std=c89/c90/c99/c11/c17/c18 / -ansi / -std=gnu...\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Feature options\n");
+	fprintf(stderr, "  -f(sanitize=...|sanitize-error=...|sanitize-undefined-trap-on-error)\n");
+	fprintf(stderr, "  -fno-sanitize=all\n");
+	fprintf(stderr, "  -fvisibility=default|hidden|protected\n");
+	fprintf(stderr, "  -fdebug-compilation-dir=...\n");
 
 #define X(flag, memb) fprintf(stderr, "  -f[no-]" flag "\n");
 #define ALIAS X
@@ -161,11 +169,12 @@ static void dump_options(void)
 
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Machine options\n");
+	fprintf(stderr, "  -mstringop-strategy=(libcall|loop|libcall-threshold=<number>)\n");
 	for(i = 0; mopts[i].arg; i++)
 		fprintf(stderr, "  -m[no-]%s\n", mopts[i].arg);
 
 	fprintf(stderr, "\n");
-	fprintf(stderr, "Feature/machine values\n");
+	fprintf(stderr, "Feature/machine value options\n");
 	for(i = 0; val_args[i].arg; i++)
 		fprintf(stderr, "  -%c%s=value\n", val_args[i].pref, val_args[i].arg);
 }
@@ -216,27 +225,40 @@ static void io_fin_macosx_version(FILE *out)
 	}
 }
 
-static void io_fin_section(FILE *section, FILE *out, const char *name)
+static void io_fin_section(FILE *section, FILE *out, const struct section *sec)
 {
-	enum section_builtin sec = asm_builtin_section_from_str(name);
 	const char *desc = NULL;
+	char *name;
+	int allocated;
+	const int is_builtin = section_is_builtin(sec);
 
-	if((int)sec != -1)
-		desc = asm_section_desc(sec);
+	if(is_builtin)
+		desc = asm_section_desc(sec->builtin);
 
 	if(fseek(section, 0, SEEK_SET))
 		ccdie("seeking in section tmpfile:");
 
-	xfprintf(out, ".section %s\n", name);
+	name = section_name(sec, &allocated);
+	xfprintf(out, ".section %s", name);
+	if(allocated)
+		free(name);
+
+	if(cc1_target_details.as->supports_section_flags && !is_builtin){
+		const int is_code = sec->flags & SECTION_FLAG_EXECUTABLE;
+		const int is_rw = !(sec->flags & SECTION_FLAG_RO);
+
+		xfprintf(out, ",\"a%s\",@progbits", is_code ? "x" : is_rw ? "w" : "");
+	}
+	xfprintf(out, "\n");
 
 	if(desc)
-		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, desc);
+		xfprintf(out, "%s%s%s:\n", cc1_target_details.as->privatelbl_prefix, SECTION_BEGIN, desc);
 
 	if(cat(section, out))
 		ccdie("concatenating section tmpfile:");
 
 	if(desc)
-		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_END, desc);
+		xfprintf(out, "%s%s%s:\n", cc1_target_details.as->privatelbl_prefix, SECTION_END, desc);
 
 	if(fclose(section))
 		ccdie("closing section tmpfile:");
@@ -252,15 +274,16 @@ static void io_fin_sections(FILE *out)
 
 	if(cc1_gdebug){
 		/* ensure we have text and debug-line sections for the debug to reference */
-		(void)asm_section_file(SECTION_TEXT);
-		(void)asm_section_file(SECTION_DBG_LINE);
+		(void)asm_section_file(&section_text);
+		(void)asm_section_file(&section_dbg_line);
 	}
 
 	for(i = 0; (section = dynmap_value(FILE *, cc1_out_persection, i)); i++){
-		char *name = dynmap_key(char *, cc1_out_persection, i);
+		struct section *sec = dynmap_key(struct section *, cc1_out_persection, i);
 
-		io_fin_section(section, out, name);
-		free(name);
+		io_fin_section(section, out, sec);
+
+		free(sec);
 	}
 
 	dynmap_free(cc1_out_persection);
@@ -292,7 +315,7 @@ static char *next_line(void)
 	return s;
 }
 
-static void gen_backend(symtable_global *globs, const char *fname, FILE *out)
+static void gen_backend(symtable_global *globs, const char *fname, FILE *out, const char *producer)
 {
 	void (*gf)(symtable_global *) = NULL;
 
@@ -326,7 +349,8 @@ static void gen_backend(symtable_global *globs, const char *fname, FILE *out)
 			gen_asm(globs,
 					cc1_first_fname ? cc1_first_fname : fname,
 					compdir,
-					&filelist);
+					&filelist,
+					producer);
 
 			/* filelist needs to be output first */
 			if(filelist && cc1_gdebug != DEBUG_OFF)
@@ -408,41 +432,9 @@ unrecog:
 	return 1;
 }
 
-static void add_sanitize_option(const char *argv0, const char *san)
-{
-	if(!strcmp(san, "undefined")){
-		cc1_sanitize |= CC1_UBSAN;
-		cc1_fopt.trapv = 1;
-	}else{
-		fprintf(stderr, "%s: unknown sanitize option '%s'\n", argv0, san);
-		exit(1);
-	}
-}
-
-static void set_sanitize_error(const char *argv0, const char *handler)
-{
-	free(cc1_sanitize_handler_fn);
-	cc1_sanitize_handler_fn = NULL;
-
-	if(!strcmp(handler, "trap")){
-		/* fine */
-	}else if(!strncmp(handler, "call=", 5)){
-		cc1_sanitize_handler_fn = ustrdup(handler + 5);
-
-		if(!*cc1_sanitize_handler_fn){
-			fprintf(stderr, "%s: empty sanitize function handler\n", argv0);
-			exit(1);
-		}
-
-	}else{
-		fprintf(stderr, "%s: unknown sanitize handler '%s'\n", argv0, handler);
-		exit(1);
-	}
-}
-
 static void set_default_visibility(const char *argv0, const char *visibility)
 {
-	if(!visibility_parse(&cc1_visibility_default, visibility, cc1_target_details.as.supports_visibility_protected)){
+	if(!visibility_parse(&cc1_visibility_default, visibility, cc1_target_details.as->supports_visibility_protected)){
 		fprintf(stderr, "%s: unknown/unsupported visibility \"%s\"\n", argv0, visibility);
 		exit(1);
 	}
@@ -459,22 +451,66 @@ static int parse_mf_equals(
 	int i;
 	int new_val;
 
+	if(invert && arg_ty == 'f' && !strcmp(arg_substr, "sanitize=all")){
+		sanitize_opt_off();
+		return 1;
+	}
+
 	if(invert){
 		usage(argv0, "\"no-\" unexpected for value-argument\n");
 	}
 
-	if(!strncmp(arg_substr, "sanitize=", 9)){
-		add_sanitize_option(argv0, arg_substr + 9);
-		return 1;
-	}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
-		set_sanitize_error(argv0, arg_substr + 15);
-		return 1;
-	}else if(!strncmp(arg_substr, "visibility=", 11)){
-		set_default_visibility(argv0, arg_substr + 11);
-		return 1;
-	}else if(!strncmp(arg_substr, "debug-compilation-dir=", 22)){
-		debug_compilation_dir = arg_substr + 22;
-		return 1;
+	if(arg_ty == 'f'){
+		if(!strncmp(arg_substr, "sanitize=", 9)){
+			sanitize_opt_add(argv0, arg_substr + 9);
+			return 1;
+		}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
+			sanitize_opt_set_error(argv0, arg_substr + 15);
+			return 1;
+		}else if(!strcmp(arg_substr, "sanitize-undefined-trap-on-error")){
+			/* currently the choices are a noreturn function, or trap.
+			 * in the future, support could be added for linking with gcc or clang's libubsan,
+			 * and calling the runtime support functions therein */
+			sanitize_opt_set_error(argv0, "trap");
+		}else if(!strncmp(arg_substr, "visibility=", 11)){
+			requested_default_visibility = arg_substr + 11;
+			return 1;
+		}else if(!strncmp(arg_substr, "debug-compilation-dir=", 22)){
+			debug_compilation_dir = arg_substr + 22;
+			return 1;
+		}
+
+	}else if(arg_ty == 'm'){
+		if(!strncmp(arg_substr, "stringop-strategy=", 18)){
+			const char *strategy = arg_substr + 18;
+
+			/* gcc options are:
+			 * rep_byte, rep_4byte, rep_8byte
+			 * byte_loop, loop, unrolled_loop
+			 * libcall */
+
+			if(!strcmp(strategy, "libcall")){
+				cc1_mstringop_strategy = STRINGOP_STRATEGY_LIBCALL;
+			}else if(!strcmp(strategy, "loop")){
+				cc1_mstringop_strategy = STRINGOP_STRATEGY_LOOP;
+			}else if(!strncmp(strategy, "libcall-threshold=", 18)){
+				const char *threshold = strategy + 18;
+				char *end;
+
+				cc1_mstringop_strategy = STRINGOP_STRATEGY_THRESHOLD;
+				cc1_mstringop_threshold = strtol(threshold, &end, 0);
+				if(*end)
+					usage(argv0, "invalid number for -mmemcpy-strategy=libcall-threshold=..., \"%s\"\n", threshold);
+			}else{
+				usage(
+						argv0,
+						"invalid argument to for -mmemcpy-strategy=..., \"%s\", accepted values:\n"
+						"  libcall, loop, libcall-threshold=<number>\n"
+						, strategy);
+			}
+
+			return 1;
+		}
 	}
 
 	if(sscanf(equal + 1, "%d", &new_val) != 1){
@@ -548,8 +584,13 @@ static void parse_Wmf_option(
 	}
 
 	if(arg_ty == 'f'){
-		if(fopt_on(&cc1_fopt, arg_substr, invert))
+		unsigned char *opt = fopt_on(&cc1_fopt, arg_substr, invert);
+		if(opt){
+			if(opt == &cc1_fopt.colour_diagnostics)
+				colour_enable(*opt);
+
 			return;
+		}
 		goto unknown;
 	}
 
@@ -574,8 +615,10 @@ static int init_target(const char *target)
 			return 0;
 		}
 	}else{
-		if(!triple_default(&triple)){
-			fprintf(stderr, "couldn't get target triple\n");
+		const char *unparsed;
+		if(!triple_default(&triple, &unparsed)){
+			fprintf(stderr, "couldn't get target triple: %s\n",
+					unparsed ? unparsed : strerror(errno));
 			return 0;
 		}
 	}
@@ -624,7 +667,7 @@ int main(int argc, char **argv)
 
 				case '\0':
 					if(++i == argc)
-						usage(argv[0], "-emit needs an argument");
+						usage(argv[0], "-emit needs an argument\n");
 					emit = argv[i];
 					break;
 
@@ -640,33 +683,50 @@ int main(int argc, char **argv)
 			else if(!strcmp(emit, "style"))
 				cc1_backend = BACKEND_STYLE;
 			else
-				usage(argv[0], "unknown emit backend \"%s\"", emit);
+				usage(argv[0], "unknown emit backend \"%s\"\n", emit);
 
 		}else if(!strncmp(argv[i], "-g", 2)){
-			if(argv[i][2] == '\0'){
+			const char *mode = argv[i] + 2;
+			int imode;
+			char *end;
+
+			if(!*mode){
 				cc1_gdebug = DEBUG_FULL;
-			}else if(!strcmp(argv[i], "-g0")){
-				cc1_gdebug = DEBUG_OFF;
-			}else if(!strcmp(argv[i], "-gline-tables-only")){
+			}else if((imode = (int)strtol(mode, &end, 0)), !*end){
+				switch(imode){
+					case 0:
+						cc1_gdebug = DEBUG_OFF;
+						break;
+					case 1:
+						cc1_gdebug = DEBUG_LINEONLY;
+						break;
+					case 2:
+					case 3:
+						cc1_gdebug = DEBUG_FULL;
+						break;
+					default:
+						goto dbg_unknown;
+				}
+			}else if(!strcmp(mode, "line-tables-only") || !strcmp(mode, "mlt")){
 				cc1_gdebug = DEBUG_LINEONLY;
 			}else{
-				const char *arg = argv[i] + 2;
 				int on = 1;
 
-				if(!strncmp(arg, "no-", 3)){
-					arg += 3;
+				if(!strncmp(mode, "no-", 3)){
+					mode += 3;
 					on = 0;
 				}
 
-				if(!strcmp(arg, "column-info"))
+				if(!strcmp(mode, "column-info"))
 					cc1_gdebug_columninfo = on;
 				else
+dbg_unknown:
 					ccdie("Unknown -g switch: \"%s\"", argv[i] + 2);
 			}
 
 		}else if(!strcmp(argv[i], "-o")){
 			if(++i == argc)
-				usage(argv[0], "-o needs an argument");
+				usage(argv[0], "-o needs an argument\n");
 
 			if(strcmp(argv[i], "-"))
 				out_fname = argv[i];
@@ -709,10 +769,13 @@ int main(int argc, char **argv)
 			dump_options();
 			usage(argv[0], NULL);
 
+		}else if(!strcmp(argv[i], "-pg")){
+			cc1_profileg = 1;
+
 		}else if(!in_fname){
 			in_fname = argv[i];
 		}else{
-			usage(argv[0], "unknown argument: '%s'", argv[i]);
+			usage(argv[0], "unknown argument: '%s'\n", argv[i]);
 		}
 	}
 
@@ -720,15 +783,20 @@ int main(int argc, char **argv)
 		return 1;
 
 	if(cc1_mstack_align == -1){
-		cc1_mstack_align = log2i(platform_word_size());
+		cc1_mstack_align = platform_word_size();
 	}else{
 		unsigned new = powf(2, cc1_mstack_align);
 		if(new < platform_word_size()){
-			ccdie("stack alignment must be >= platform word size (2^%d)",
+			ccdie("stack alignment (%d) must be >= %d (platform word size 2^%d)",
+					cc1_mstack_align,
+					platform_word_size(),
 					log2i(platform_word_size()));
 		}
 		cc1_mstack_align = new;
 	}
+
+	if(requested_default_visibility)
+		set_default_visibility(argv[0], requested_default_visibility);
 
 	if(werror)
 		warnings_upgrade();
@@ -756,6 +824,8 @@ int main(int argc, char **argv)
 	}
 
 	show_current_line = cc1_fopt.show_line;
+	if(cc1_fopt.trapv)
+		sanitize_opt_add(argv[0], "signed-integer-overflow");
 
 	cc1_type_nav = type_nav_init();
 
@@ -775,7 +845,9 @@ int main(int argc, char **argv)
 	infile = NULL;
 
 	if(failure == 0 || /* attempt dump anyway */cc1_backend == BACKEND_DUMP){
-		gen_backend(globs, in_fname, outfile);
+		const char *producer = "ucc development version";
+
+		gen_backend(globs, in_fname, outfile, producer);
 		if(gen_had_error)
 			failure = 1;
 	}

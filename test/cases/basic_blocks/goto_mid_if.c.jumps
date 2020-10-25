@@ -1,0 +1,15 @@
+f:
+Lblk.0:
+Lblk.1:
+Lblk.2:
+	/* constant jmp condition not taken */
+Lblk.5:
+	jmp Lblk.6
+Lblk.8:
+Lblk.7:
+	jmp Lblk.3
+Lblk.9:
+Lblk.10:
+Lblk.3:
+Lblk.6:
+	jmp Lblk.8

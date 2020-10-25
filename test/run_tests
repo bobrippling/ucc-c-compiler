@@ -1,0 +1,269 @@
+#!/usr/bin/perl
+use warnings;
+use strict;
+
+my @expected_fails;
+my @skips;
+my %colour = (
+	green => "\x1b[32m",
+	red => "\x1b[31m",
+	off => "\x1b[0m",
+);
+my $ec = 0;
+my %tasks; # pid => { output, testfile }
+my $env_tmpdir = $ENV{TMPDIR} || '/tmp';
+my $tdir = "$env_tmpdir/ucc.test/";
+my $ign_file = undef;
+my $quiet;
+my $jobs = 1;
+my $progress = 0;
+my @tests;
+
+if(not -d $tdir and not mkdir($tdir)){
+	die "$0: mkdir $tdir: $!\n";
+}
+
+sub usage
+{
+	print STDERR "Usage: $0 [-q | -v] [-p] [-i ignore-file] [--ucc=...] [tests...]\n";
+	print STDERR "Specify UCC_CHECK_SKIP=path1,path2,... to skip paths\n";
+	exit 2;
+}
+
+sub read_ignores
+{
+	my $f = shift;
+	open F, '<', $f or die "open $f: $!";
+
+	my @f =
+		grep { length }
+		map { s/ *#.*//; $_ }
+		map { chomp $_; $_ } <F>;
+
+	close F;
+	return @f;
+}
+
+sub launch_test
+{
+	my($cmd, $file) = @_;
+
+	my $pid = fork();
+	die "$0: fork: $!\n" if $pid < 0;
+
+	if($pid == 0){
+		my $output = "$tdir/$$.all";
+		open STDIN, '</dev/null' or die;
+		open STDOUT, '>', $output or die;
+		open STDERR, '>&STDOUT' or die;
+
+		exec($cmd, $file);
+		die "exec: $!";
+	}
+	my $output = "$tdir/$pid.all";
+
+	$tasks{$pid} = {
+		output => $output,
+		testfile => $file,
+	};
+}
+
+sub cat_indent_file
+{
+	my $f = shift;
+	open F, '<', $f or die "open $f: $!\n";
+	print "\t$_" while <F>;
+	close F;
+}
+
+sub in_array
+{
+	my $f = shift;
+	for(@_){
+		if(index($f, $_) != -1){
+			return 1;
+		}
+	}
+	return 0;
+}
+
+sub file_status
+{
+	my $f = shift;
+
+	return "skip" if in_array($f, @skips);
+	return "fail" if in_array($f, @expected_fails);
+
+	return "pass";
+}
+
+sub colour_init
+{
+	my $force_off = shift;
+	if($force_off or not -t STDOUT){
+		for(keys %colour){
+			$colour{$_} = "";
+		}
+	}
+}
+
+sub find_tests
+{
+	# DFS
+	my @found;
+	for my $ent (@_){
+		if(-d $ent){
+			push @found, find_tests(glob "$ent/*");
+		}elsif($ent =~ /\.c$/){
+			push @found, $ent;
+		}
+	}
+	return @found;
+}
+
+sub reap_all_tests
+{
+	reap_test() while keys %tasks;
+}
+
+sub reap_test
+{
+	my $pid = wait();
+	my $rc = $?;
+
+	if(!exists $tasks{$pid}){
+		warn "$0: unknown child $pid\n";
+		for(keys %tasks){
+			warn "pid: $_, testfile: $tasks{$_}->{testfile}\n";
+		}
+		exit 1;
+	}
+
+	if($rc & 127){
+		die "test $tasks{$pid}->{testfile} caught signal " . ($rc & 127) . "\n";
+	}
+	$rc >>= 8;
+
+	my $f = $tasks{$pid}->{testfile};
+	my $status = file_status($f);
+	my $should_fail = ($status eq 'fail');
+
+	my $failed = !!$rc;
+
+	if(not $quiet or ($failed != $should_fail)){
+		if($failed != $should_fail){
+			print $colour{red};
+		}else{
+			print $colour{green};
+		}
+
+		my $desc = $failed ? "fail" : "pass";
+		print "$desc"
+		. ($should_fail ? ' (fail expected)' : '')
+		. ": $f";
+
+		print $colour{off};
+
+		print "\n";
+
+		my $output = $tasks{$pid}->{output};
+		if($failed != $should_fail){
+			$ec = 1;
+			cat_indent_file($output);
+		}
+	}
+
+	delete $tasks{$pid};
+}
+
+sub show_progress
+{
+	my($i, $n) = @_;
+
+	printf "%d%% (%d/%d)\r", $i / $n * 100, $i, $n;
+}
+
+if($ENV{CI}){
+	$quiet = 0;
+}elsif(-t 1){
+	$quiet = 1;
+}else{
+	$quiet = 0;
+}
+$ENV{UCC} = '../ucc';
+$ENV{UCC_TESTDIR} = $tdir;
+
+for(my $i = 0; $i < @ARGV; $i++){
+	if($ARGV[$i] eq '-v'){
+		$ENV{UCC_VERBOSE} = 1;
+		$quiet = 0;
+	}elsif($ARGV[$i] eq '-q'){
+		$quiet = 1;
+		delete $ENV{UCC_VERBOSE};
+	}elsif($ARGV[$i] eq '-i'){
+		my $f = $ARGV[++$i];
+		usage() unless $f;
+		$ign_file = $f;
+	}elsif($ARGV[$i] eq '-p'){
+		$progress = 1;
+	}elsif($ARGV[$i] =~ /^--ucc=(.+)$/){
+		$ENV{UCC} = $1;
+
+	}elsif($ARGV[$i] =~ /^-j(.*)$/){
+		my $n = $1;
+		if($n eq ''){
+			$i++;
+			die "$0: need number for -j\n" if $i == @ARGV;
+			$n = $ARGV[$i];
+		}
+		die "$0: '$n' not a number\n" if $n !~ /^[0-9]+$/;
+		die "$0: '$n' less than 1\n" if $n < 1;
+
+		$jobs = $n;
+
+	}else{
+		my $f = $ARGV[$i];
+		if($f =~ /^-/){
+			usage();
+		}
+		if(!-e $f){
+			warn "$0: no file/dir '$f'\n";
+		}
+		push @tests, $f;
+	}
+}
+
+push @expected_fails, read_ignores($ign_file) if $ign_file;
+push @skips, split /,/, ($ENV{UCC_CHECK_SKIP} or "");
+
+my @unlinks;
+push @unlinks, $tdir;
+if(not -d $tdir and not mkdir($tdir)){
+	die "mkdir: $!";
+}
+$ENV{UCC_TESTDIR} = $tdir;
+
+colour_init($quiet);
+
+my @test_files = find_tests(@tests);
+die "$0: no tests found\n" unless @test_files;
+
+$| = 1 if $progress;
+
+for(my $fi = 0; $fi < @test_files; $fi++){
+	my $f = $test_files[$fi];
+
+	next if file_status($f) eq 'skip';
+
+	reap_test() while keys %tasks >= $jobs;
+
+	show_progress($fi + 1, scalar @test_files) if $progress;
+	launch_test('./bin/test.pl', $f);
+	show_progress($fi + 1, scalar @test_files) if $progress;
+}
+
+reap_all_tests();
+
+system('rm', '-rf', $tdir);
+
+exit $ec;

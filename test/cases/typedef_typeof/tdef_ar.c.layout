@@ -1,0 +1,15 @@
+ent1:
+.long 1, 2
+
+ent2:
+.long 3, 4, 5
+
+error:
+ok:
+ok.static1_x:
+.word 5
+.zero 2
+.long 1
+.long 2
+.long 3
+.zero 2

@@ -29,7 +29,7 @@ struct sym
 	type *owning_func; /* only for sym_arg */
 
 	/* static analysis */
-	int nreads, nwrites;
+	unsigned nreads, nwrites;
 };
 
 typedef struct static_assert static_assert;
@@ -62,7 +62,6 @@ struct symtable
 	 * transparent marks C99 for-statements creating a new scope
 	 * - see symtab_new_transparent()
 	 */
-	unsigned stack_used : 1; /* function symtab - used stack? */
 
 	decl *in_func; /* for r/w checks on args and return-type checks */
 
@@ -125,9 +124,14 @@ symtable_global *symtab_global(symtable *);
 
 int symtab_nested_internal(symtable *parent, symtable *nest);
 
-unsigned symtab_decl_bytes(symtable *, unsigned const vla_cost);
+unsigned symtab_decl_bytes(
+		symtable *,
+		unsigned const vla_cost,
+		int array_only,
+		int *const addr_taken);
 
 void symtab_add_to_scope(symtable *, decl *);
+void symtab_insert_before(symtable *, decl *at, decl *to_insert);
 void symtab_add_sue(symtable *, struct struct_union_enum_st *);
 #define symtab_decls(stab) ((stab)->decls)
 

@@ -51,6 +51,36 @@ static void cstring_char_set(struct cstring *cstr, size_t i, int to)
 		cstr->bits.ascii[i] = to;
 }
 
+static void cstring_widen(struct cstring *cstr)
+{
+	int *wides = umalloc(sizeof(*wides) * (cstr->count + 1));
+	size_t i;
+
+	assert(cstr->type == CSTRING_RAW || cstr->type == CSTRING_ASCII);
+
+	for(i = 0; i < cstr->count + 1; i++)
+		wides[i] = cstr->bits.ascii[i];
+
+	free(cstr->bits.ascii);
+	cstr->bits.wides = wides;
+	cstr->type = CSTRING_WIDE;
+}
+
+static void cstring_asciify(struct cstring *cstr)
+{
+	char *ascii = umalloc(cstr->count + 1);
+	size_t i;
+
+	assert(cstr->type == CSTRING_WIDE);
+
+	for(i = 0; i < cstr->count + 1; i++)
+		ascii[i] = cstr->bits.wides[i];
+
+	free(cstr->bits.wides);
+	cstr->bits.ascii = ascii;
+	cstr->type = CSTRING_ASCII;
+}
+
 void cstring_escape(
 		struct cstring *cstr, int is_wide,
 		void handle_escape_warn_err(int w, int e, int escape_offset, void *),
@@ -118,6 +148,17 @@ char *cstring_detach(struct cstring *cstr)
 	return r;
 }
 
+char *cstring_converting_detach(struct cstring *cstr)
+{
+	switch(cstr->type){
+		case CSTRING_WIDE:
+			cstring_asciify(cstr);
+			/* fallthrough */
+		default:
+			return cstring_detach(cstr);
+	}
+}
+
 void cstring_deinit(struct cstring *cstr)
 {
 	if(cstr->type == CSTRING_WIDE)
@@ -171,21 +212,6 @@ unsigned cstring_hash(const struct cstring *cstr)
 		hash = ((hash << 5) + hash) + cstring_char_at(cstr, i);
 
 	return hash;
-}
-
-static void cstring_widen(struct cstring *cstr)
-{
-	int *wides = umalloc(sizeof(*wides) * (cstr->count + 1));
-	size_t i;
-
-	assert(cstr->type == CSTRING_RAW || cstr->type == CSTRING_ASCII);
-
-	for(i = 0; i < cstr->count + 1; i++)
-		wides[i] = cstr->bits.ascii[i];
-
-	free(cstr->bits.ascii);
-	cstr->bits.wides = wides;
-	cstr->type = CSTRING_WIDE;
 }
 
 void cstring_append(struct cstring *out, struct cstring *addend)

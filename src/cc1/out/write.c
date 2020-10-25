@@ -61,8 +61,7 @@ static void add_live_vals(out_ctx *octx)
 }
 
 void out_asmv(
-		out_ctx *octx,
-		enum section_builtin sec, enum p_opts opts,
+		out_ctx *octx, enum p_opts opts,
 		const char *fmt, va_list l)
 {
 	char *insn;
@@ -70,12 +69,7 @@ void out_asmv(
 	if(!octx->current_blk)
 		return;
 
-	if(sec != SECTION_TEXT){
-		fprintf(stderr, "%s:%d: TODO: out_asmv() with section 0x%x",
-				__FILE__, __LINE__, sec);
-	}
-
-	out_dbg_flush(octx, octx->current_blk);
+	out_dbg_flush(octx);
 
 	insn = ustrvprintf(fmt, l);
 
@@ -103,18 +97,19 @@ void out_asm(out_ctx *octx, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(octx, SECTION_TEXT, 0, fmt, l);
+	out_asmv(octx, 0, fmt, l);
 	va_end(l);
 }
 
 void out_asm2(
 		out_ctx *octx,
-		enum section_builtin sec, enum p_opts opts,
-		const char *fmt, ...)
+		enum p_opts opts,
+		const char *fmt,
+		...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(octx, sec, opts, fmt, l);
+	out_asmv(octx, opts, fmt, l);
 	va_end(l);
 }
 
@@ -145,7 +140,7 @@ static int update_dbg_location(out_ctx *octx, unsigned fileidx, unsigned lineno,
 	return 1;
 }
 
-void out_dbg_flush(out_ctx *octx, out_blk *blk)
+void out_dbg_flush(out_ctx *octx)
 {
 	/* .file <fileidx> "<name>"
 	 * .loc <fileidx> <line> <col>
@@ -153,8 +148,12 @@ void out_dbg_flush(out_ctx *octx, out_blk *blk)
 	unsigned idx;
 	char *location;
 
-	if(!octx->dbg.where.fname || cc1_gdebug == DEBUG_OFF)
+	if(!octx->dbg.where.fname
+	|| cc1_gdebug == DEBUG_OFF
+	|| !octx->current_blk)
+	{
 		return;
+	}
 
 	/* .file is output later */
 	idx = dbg_add_file(&octx->dbg.file_head, octx->dbg.where.fname);
@@ -168,7 +167,7 @@ void out_dbg_flush(out_ctx *octx, out_blk *blk)
 	else
 		location = ustrprintf(".loc %d %d\n", idx, octx->dbg.where.line);
 
-	blk_add_insn(blk, location);
+	blk_add_insn(octx->current_blk, location);
 }
 
 void out_dbg_where(out_ctx *octx, const where *w)

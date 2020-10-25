@@ -8,6 +8,7 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/platform.h"
 #include "decl_init.h"
 #include "funcargs.h"
 
@@ -27,6 +28,7 @@
 #include "parse_attr.h"
 #include "parse_init.h"
 #include "parse_stmt.h"
+#include "pragma.h"
 
 #include "expr.h"
 #include "type_nav.h"
@@ -49,7 +51,7 @@ static int parse_at_decl_spec(void);
 static int can_complete_existing_sue(
 		struct_union_enum_st *sue, enum type_primitive new_tag)
 {
-	return sue->primitive == new_tag && !sue->got_membs;
+	return sue->primitive == new_tag && sue->membs_progress == SUE_MEMBS_NO;
 }
 
 static void emit_redef_sue_error(
@@ -111,39 +113,41 @@ static struct_union_enum_st *parse_sue_definition(
 			predecl_sue = sue_predeclare(scope, NULL, prim, sue_loc);
 		}
 
+		predecl_sue->membs_progress = SUE_MEMBS_PARSING;
+
 		for(;;){
 			where w;
 			expr *e;
 			char *sp;
 			attribute **en_attr = NULL;
 
-			where_cc1_current(&w);
-			sp = token_current_spel();
-			EAT(token_identifier);
+			sp = token_eat_identifier(NULL, &w);
+			if(sp){
+				/* guard this, so we skip adding a NULL spel to the enum list */
+				parse_add_attr(&en_attr, scope);
 
-			parse_add_attr(&en_attr, scope);
+				if(accept(token_assign)){
+					e = PARSE_EXPR_CONSTANT(scope, 0); /* no commas */
+					/* ensure we fold before this enum member is added to the scope,
+					 * e.g.
+					 * enum { A };
+					 * f()
+					 * {
+					 *   enum {
+					 *     A = A // the right-most A here resolves to the global A
+					 *   };
+					 * }
+					 */
 
-			if(accept(token_assign)){
-				e = PARSE_EXPR_CONSTANT(scope, 0); /* no commas */
-				/* ensure we fold before this enum member is added to the scope,
-				 * e.g.
-				 * enum { A };
-				 * f()
-				 * {
-				 *   enum {
-				 *     A = A // the right-most A here resolves to the global A
-				 *   };
-				 * }
-				 */
+					fold_expr_nodecay(e, scope);
+				}else{
+					e = NULL;
+				}
 
-				fold_expr_nodecay(e, scope);
-			}else{
-				e = NULL;
+				enum_vals_add(members, &w, sp, e, /*released:*/en_attr);
+
+				predecl_sue->members = *members;
 			}
-
-			enum_vals_add(members, &w, sp, e, /*released:*/en_attr);
-
-			predecl_sue->members = *members;
 
 			if(!accept_where(token_comma, &w))
 				break;
@@ -166,9 +170,11 @@ static struct_union_enum_st *parse_sue_definition(
 		decl **dmembers = NULL;
 		decl **i;
 
+		if(predecl_sue)
+			predecl_sue->membs_progress = SUE_MEMBS_PARSING;
+
 		while(parse_decl_group(
-					DECL_MULTI_CAN_DEFAULT
-					| DECL_MULTI_ACCEPT_FIELD_WIDTH
+					DECL_MULTI_ACCEPT_FIELD_WIDTH
 					| DECL_MULTI_NAMELESS
 					| DECL_MULTI_IS_STRUCT_UN_MEMB
 					| DECL_MULTI_ALLOW_ALIGNAS,
@@ -184,7 +190,7 @@ static struct_union_enum_st *parse_sue_definition(
 			dynarray_free(decl **, dmembers, NULL);
 		}
 
-		sue_member_init_dup_check(*members);
+		sue_member_init_dup_check(*members, prim, *spel, sue_loc);
 	}
 
 	return predecl_sue;
@@ -282,14 +288,8 @@ static type *parse_type_sue(
 	/* struct __attr__(()) name { ... } ... */
 	parse_add_attr(&this_sue_attr, scope);
 
-	if(curtok == token_identifier){
-		/* update location to be the name, since we have one */
+	if(!token_accept_identifier(&spel, &sue_loc))
 		where_cc1_current(&sue_loc);
-
-		spel = token_current_spel();
-		EAT(token_identifier);
-		where_cc1_adj_identifier(&sue_loc, spel);
-	}
 
 	if(accept(token_open_block)){
 		is_definition = 1;
@@ -347,7 +347,7 @@ static type *parse_type_sue(
 			if(!descended && prim_mismatch)
 				redecl_error = 1;
 			else if(prim_mismatch && !parse_token_creates_sue(curtok))
-					redecl_error = 1;
+				redecl_error = 1;
 
 			if(redecl_error){
 				emit_redef_sue_error(
@@ -397,7 +397,7 @@ static type *parse_type_sue(
 	return retty;
 }
 
-static void parse_add_attr_out(
+void parse_add_attr_out(
 		attribute ***append, symtable *scope, int *got_kw)
 {
 	if(got_kw)
@@ -540,6 +540,26 @@ enum parse_btype_flags
 	PARSE_BTYPE_DEFAULT_INT = 1 << 1
 };
 
+static void emit_duplicate_qual_warning(where *loc, enum type_qualifier qual)
+{
+	cc1_warn_at(loc, duplicate_declspec, "duplicate '%s' specifier", type_qual_to_str(qual, 0));
+}
+
+static void free_decl_align_all(struct decl_align *da)
+{
+	struct decl_align *next;
+	for(; da; da = next){
+		next = da->next;
+
+		if(da->as_int){
+			/* no need to free the type */
+		}else{
+			expr_free(da->bits.align_intk);
+		}
+		free(da);
+	}
+}
+
 static type *parse_btype(
 		enum decl_storage *store, struct decl_align **palign,
 		int newdecl_context, symtable *scope,
@@ -573,9 +593,8 @@ static type *parse_btype(
 		if(curtok_is_type_qual()){
 			enum type_qualifier q = curtok_to_type_qualifier();
 
-			if(qual & q){
-				cc1_warn_at(NULL, duplicate_declspec, "duplicate '%s' specifier", type_qual_to_str(q, 0));
-			}
+			if(qual & q)
+				emit_duplicate_qual_warning(NULL, q);
 
 			qual |= q;
 			EAT(curtok);
@@ -762,7 +781,8 @@ static type *parse_btype(
 
 			primitive_mode = TYPEDEF;
 
-			EAT(token_identifier);
+			assert(curtok == token_identifier);
+			nexttoken();
 
 		}else if(curtok == token_attribute){
 			parse_add_attr(&attr, scope); /* __attr__ int ... */
@@ -909,6 +929,10 @@ static type *parse_btype(
 				fold_expr_nodecay(tdef_typeof, scope);
 
 				r = type_tdef_of(tdef_typeof, tdef_decl);
+
+				if(cc1_std <= STD_C89 && type_qual(r) & qual)
+					emit_duplicate_qual_warning(NULL, qual);
+
 				break;
 
 			case PRIMITIVE_NO_MORE:
@@ -929,7 +953,10 @@ static type *parse_btype(
 		&& STORE_IS_TYPEDEF(*store))
 		{
 			if(palign && *palign){
-				die_at(NULL, "typedefs can't be aligned");
+				warn_at_print_error(NULL, "typedefs can't be aligned");
+				fold_had_error = 1;
+				free_decl_align_all(*palign);
+				*palign = NULL;
 			}
 			if(*store & store_inline){
 				warn_at_print_error(NULL, "typedef has inline specified");
@@ -974,10 +1001,15 @@ funcargs *parse_func_arglist(symtable *scope)
 	funcargs *args = funcargs_new();
 
 	if(curtok == token_close_paren){
-		args->args_old_proto = 1;
-		cc1_warn_at(NULL, implicit_old_func,
-				"old-style function declaration (needs \"(void)\")");
-		goto empty_func;
+		if(cc1_std >= STD_C2X){
+			funcargs_empty_void(args);
+		}else{
+			args->args_old_proto = 1;
+			cc1_warn_at(NULL, implicit_old_func,
+					"old-style function declaration (needs \"(void)\")");
+		}
+
+		return args;
 	}
 
 	/* we allow default-to-int here, but need to make
@@ -987,6 +1019,8 @@ funcargs *parse_func_arglist(symtable *scope)
 	 *
 	 * f( <here>  (int)) = f(int (int)) = f(int (*)(int))
 	 * f( <here> ident) -> old function
+	 *
+	 * ... or if we're >C20, we ignore K&R functions
 	 */
 	if(curtok != token_identifier || parse_at_tdef(scope)){
 		decl *argdecl = parse_arg_decl(scope);
@@ -998,12 +1032,10 @@ funcargs *parse_func_arglist(symtable *scope)
 		&& ty_v->bits.type->primitive == type_void
 		&& !argdecl->spel)
 		{
-			/* x(void); */
-			funcargs_empty(args);
-			args->args_void = 1; /* (void) vs () */
+			funcargs_empty_void(args);
 
 			/* argdecl isn't leaked - it remains in scope, but nameless */
-			goto fin;
+			return args;
 		}
 
 		for(;;){
@@ -1016,7 +1048,8 @@ funcargs *parse_func_arglist(symtable *scope)
 			if(curtok == token_close_paren)
 				break;
 
-			EAT_OR_DIE(token_comma);
+			if(!EAT(token_comma))
+				break;
 
 			if(accept(token_elipsis)){
 				args->variadic = 1;
@@ -1038,37 +1071,42 @@ funcargs *parse_func_arglist(symtable *scope)
 			argdecl = parse_arg_decl(scope);
 		}
 
-fin:;
-
 	}else{
 		/* old func - list of idents */
 		do{
 			decl *d = decl_new();
-
-			if(curtok != token_identifier)
-				EAT(token_identifier); /* error */
+			char *spel;
 
 			d->ref = type_nav_btype(cc1_type_nav, type_int);
 
-			d->spel = token_current_spel();
-			dynarray_add(&args->arglist, d);
-
-			symtab_add_to_scope(scope, d);
-
-			EAT(token_identifier);
+			spel = token_eat_identifier(NULL, NULL);
+			if(spel){
+				d->spel = spel;
+				dynarray_add(&args->arglist, d);
+				symtab_add_to_scope(scope, d);
+			}else{
+				/* error emitted by EAT() */
+				decl_free(d);
+				break;
+			}
 
 			if(curtok == token_close_paren)
 				break;
 
-			EAT_OR_DIE(token_comma);
+			if(!EAT(token_comma))
+				break;
 		}while(1);
 
-		cc1_warn_at(NULL, omitted_param_types,
-				"old-style function declaration");
+		if(cc1_std >= STD_C2X){
+			warn_at_print_error(NULL, "old-style functions have been removed in C2X and later");
+			fold_had_error = 1;
+		}else{
+			cc1_warn_at(NULL, omitted_param_types,
+					"old-style function declaration");
+		}
 		args->args_old_proto = 1;
 	}
 
-empty_func:
 	return args;
 }
 
@@ -1120,7 +1158,8 @@ struct type_parsed
 		{
 			expr *size;
 			enum type_qualifier qual;
-			unsigned is_static : 1, is_vla : 2;
+			enum vla_kind vla_kind;
+			unsigned is_static : 1;
 		} array;
 	} bits;
 
@@ -1145,6 +1184,9 @@ static type_parsed *type_parsed_new(
 static type_parsed *parsed_type_nest(
 		enum decl_mode mode, decl *dfor, type_parsed *base, symtable *scope)
 {
+	where spel_loc;
+	char *spel;
+
 	if(accept(token_open_paren)){
 		type_parsed *ret;
 		attribute **attr = NULL;
@@ -1189,21 +1231,24 @@ static type_parsed *parsed_type_nest(
 
 		return ret;
 
-	}else if(curtok == token_identifier){
-		if(!dfor)
-			die_at(NULL, "identifier unexpected");
+	}else if(token_accept_identifier(&spel, &spel_loc)){
+		if(!dfor){
+			warn_at_print_error(NULL, "identifier unexpected");
+			parse_had_error = 1;
+			goto error;
+		}
 
 		/* set spel + location info */
-		where_cc1_current(&dfor->where);
-		dfor->spel = token_current_spel();
-		where_cc1_adj_identifier(&dfor->where, dfor->spel);
-
-		EAT(token_identifier);
+		memcpy_safe(&dfor->where, &spel_loc);
+		dfor->spel = spel;
 
 	}else if(mode & DECL_SPEL_NEED){
-		die_at(NULL, "need identifier for decl");
+		warn_at_print_error(NULL, "need identifier for decl");
+		parse_had_error = 1;
+		goto error;
 	}
 
+error:
 	return base;
 }
 
@@ -1212,7 +1257,8 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 	while(accept(token_open_square)){
 		expr *size = NULL;
 		enum type_qualifier q = qual_none;
-		int is_static = 0, is_vla = 0;
+		int is_static = 0;
+		enum vla_kind vla_kind = VLA_NO;
 
 		/* parse int x[restrict|static ...] */
 		for(;;){
@@ -1262,9 +1308,9 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 					 * (and we don't have the fold-const-vlas setting), then treat
 					 * as a vla */
 					if(k.type != CONST_NUM
-					|| (k.nonstandard_const && !(cc1_fopt.fold_const_vlas)))
+					|| (k.nonstandard_const && !cc1_fopt.fold_const_vlas))
 					{
-						is_vla = VLA;
+						vla_kind = VLA;
 					}
 					else if(!K_INTEGRAL(k.bits.num))
 					{
@@ -1272,7 +1318,7 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 					}
 				}
 			}else{
-				is_vla = VLA_STAR;
+				vla_kind = VLA_STAR;
 			}
 		}
 
@@ -1283,7 +1329,7 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 		base->bits.array.size = size;
 		base->bits.array.qual = q;
 		base->bits.array.is_static = is_static;
-		base->bits.array.is_vla = is_vla;
+		base->bits.array.vla_kind = vla_kind;
 	}
 
 	return base;
@@ -1374,6 +1420,28 @@ static type_parsed *parsed_type_ptr(
 	}
 }
 
+static type *create_func_type_stripping_ret_quals(
+		type *retty,
+		struct funcargs *args,
+		struct symtable *arg_scope,
+		where const *where)
+{
+	enum type_qualifier qual = type_qual(retty);
+
+	if(qual){
+		cc1_warn_at(where, ignored_qualifiers,
+				type_is_void(type_skip_all(retty))
+				? "function has qualified void return type (%s)"
+				: "%s qualification on return type has no effect",
+				type_qual_to_str(qual, 0));
+
+		/* no top-level quals on function return types (C17 6.7.6.3p5 / DR 423) */
+		retty = type_unqualify(retty);
+	}
+
+	return type_func_of(retty, args, arg_scope);
+}
+
 static type *parse_type_declarator_to_type(
 		enum decl_mode mode, decl *dfor, type *base, symtable *scope)
 {
@@ -1392,25 +1460,29 @@ static type *parse_type_declarator_to_type(
 			case PARSED_ARRAY:
 				qual = i->bits.array.qual;
 
-				if(i->bits.array.is_vla){
-					if(i->bits.array.is_static){
-						warn_at_print_error(NULL,
-								"'static' can't be used with a star-modified array");
-						fold_had_error = 1;
-					}
+				switch(i->bits.array.vla_kind){
+					case VLA_STAR:
+						if(i->bits.array.is_static){
+							warn_at_print_error(&i->where,
+									"'static' can't be used with a star-modified array");
+							fold_had_error = 1;
+						}
+						/* fall */
 
+					case VLA:
 					ty = type_vla_of(
 							ty, i->bits.array.size,
-							i->bits.array.is_vla);
+							i->bits.array.vla_kind);
+						break;
 
-				}else{
-					ty = type_array_of_static(
-							ty,
-							i->bits.array.size,
-							i->bits.array.is_static);
+					case VLA_NO:
+						ty = type_array_of_static(
+								ty,
+								i->bits.array.size,
+								i->bits.array.is_static);
 				}
 				assert(ty->type == type_array);
-				assert(ty->bits.array.is_vla == i->bits.array.is_vla);
+				assert(ty->bits.array.vla_kind == i->bits.array.vla_kind);
 
 				if(i->bits.array.is_static && i->prev){
 					fold_had_error = 1;
@@ -1419,10 +1491,11 @@ static type *parse_type_declarator_to_type(
 				}
 				break;
 			case PARSED_FUNC:
-				ty = type_func_of(
+				ty = create_func_type_stripping_ret_quals(
 						ty,
 						i->bits.func.arglist,
-						i->bits.func.scope);
+						i->bits.func.scope,
+						&i->where);
 				break;
 
 			case PARSED_ATTR:
@@ -1579,7 +1652,7 @@ static void parse_add_asm(decl *d)
 			d->spel_asm = rename;
 		}
 
-		if(proto && proto != d && proto->used){
+		if(proto && proto != d && proto->flags & DECL_FLAGS_USED){
 			warn_at_print_error(&d->where,
 					"cannot annotate \"%s\" with an asm() label after use",
 					d->spel);
@@ -1595,6 +1668,37 @@ static void parsed_decl(decl *d, symtable *scope, int is_arg)
 		loc = &d->where;
 
 	fold_type_ondecl_w(d, scope, loc, is_arg);
+}
+
+static void workaround_valist_typedef(decl *d, symtable *symtab)
+{
+	type *pointee;
+
+	if((d->store & STORE_MASK_STORE) != store_typedef)
+		return;
+
+	if(!cc1_fopt.force_valist_type)
+		return;
+
+	if(!where_in_sysheader(&d->where))
+		return;
+
+	if(strcmp(d->spel, "va_list"))
+		return;
+
+	pointee = type_is_ptr(d->ref);
+	if(!pointee)
+		return;
+
+	if(!type_is_void(pointee))
+		return;
+
+	/* typedef void *va_list;
+	 * Without __GNUC__ >= 2 on Darwin, system headers use void*
+	 * as the type for va_list, conflicting with our defintion.
+	 *
+	 * Workaround this here. */
+	d->ref = type_nav_va_list(cc1_type_nav, symtab);
 }
 
 static decl *parse_decl_stored_aligned(
@@ -1613,8 +1717,7 @@ static decl *parse_decl_stored_aligned(
 	parse_add_attr(&d->attr, scope);
 
 	if(is_autotype){
-		d->spel = token_current_spel();
-		EAT(token_identifier);
+		d->spel = token_eat_identifier(DUMMY_IDENTIFIER, NULL);
 
 	}else{
 		/* allow extra specifiers */
@@ -1727,6 +1830,8 @@ static decl *parse_decl_stored_aligned(
 
 		fold_had_error = 1;
 	}
+
+	workaround_valist_typedef(d, scope);
 
 	/* copy all of d's attributes to the .ref, so that function
 	 * types get everything correctly. */
@@ -1900,12 +2005,10 @@ static void check_function_storage_redef(decl *new, decl *old)
 
 	/* can't redefine as static now */
 	if((new->store & STORE_MASK_STORE) == store_static){
-		char buf[WHERE_BUF_SIZ];
-
 		warn_at_print_error(&new->where,
-				"static redefinition of non-static \"%s\"\n"
-				"%s: note: previous definition",
-				new->spel, where_str_r(buf, &old->where));
+				"static redefinition of non-static \"%s\"",
+				new->spel);
+		note_at(&old->where, "previous definition here");
 		fold_had_error = 1;
 	}
 }
@@ -1989,8 +2092,6 @@ static void check_var_storage_redef(decl *new, decl *old)
 
 static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 {
-	char wbuf[WHERE_BUF_SIZ];
-
 	if(!type_is(d_prev->ref, type_func))
 		return; /* error caught later */
 
@@ -2013,12 +2114,13 @@ static void decl_pull_to_func(decl *const d_this, decl *const d_prev)
 			 * type errors are caught later on in the decl folding stage
 			 */
 		}else{
-			cc1_warn_at(&d_this->where,
+			int warned = cc1_warn_at(&d_this->where,
 					ignored_late_decl,
-					"declaration of \"%s\" after definition is ignored\n"
-					"%s: note: definition here",
-					d_this->spel,
-					where_str_r(wbuf, &d_prev->where));
+					"declaration of \"%s\" after definition is ignored",
+					d_this->spel);
+
+			if(warned)
+				note_at(&d_prev->where, "definition here");
 			return;
 		}
 	}
@@ -2120,7 +2222,7 @@ static int warn_for_unused_typename(
 static int check_star_modifier_1(type *t, where *w)
 {
 	assert(t->type == type_array);
-	if(t->bits.array.is_vla == VLA_STAR){
+	if(t->bits.array.vla_kind == VLA_STAR){
 		warn_at_print_error(w,
 				"star modifier can only appear on prototypes");
 		fold_had_error = 1;
@@ -2224,6 +2326,24 @@ static void parse_post_func(decl *d, symtable *in_scope, int had_post_attr)
 		if(STORE_IS_TYPEDEF(d->store)){
 			warn_at_print_error(&d->where, "typedef storage on function");
 			fold_had_error = 1;
+		}
+	}
+}
+
+static void parse_post(decl *d, int su_member)
+{
+	/* must do this here, where we have d.code / d.init */
+	fold_decl_attrs_requiring_fnbody(d, su_member);
+
+	if(!su_member && (d->store & STORE_MASK_STORE) != store_static){
+		if(ucc_namespace && strncmp(
+					d->spel,
+					ucc_namespace,
+					strlen(ucc_namespace)))
+		{
+			warn_at(&d->where,
+					"non-static function not in \"%s\" namespace",
+					ucc_namespace);
 		}
 	}
 }
@@ -2464,8 +2584,6 @@ int parse_decl_group(
 				unused_attributes(d, attributed->bits.attr);
 		}
 
-		attribute_array_release(&decl_attr);
-
 		fold_type_ondecl_w(d, in_scope, NULL, 0);
 
 		if(!d->spel && !had_field_width){
@@ -2494,6 +2612,7 @@ int parse_decl_group(
 		/* now we have the function in scope we parse its code */
 		if(type_is(d->ref, type_func))
 			parse_post_func(d, in_scope, attr_post_decl);
+		parse_post(d, !!(mode & DECL_MULTI_IS_STRUCT_UN_MEMB));
 
 		if(!in_scope->parent && !found_prev_proto && !(mode & DECL_MULTI_IS_OLD_ARGS))
 			check_missing_proto_extern(d);
@@ -2511,7 +2630,6 @@ int parse_decl_group(
 		if(done)
 			break;
 	}while(accept(token_comma));
-
 
 	if(last && (!type_is(last->ref, type_func) || !last->bits.func.code)){
 		/* end of type, if we have an identifier,

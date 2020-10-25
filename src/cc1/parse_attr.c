@@ -8,6 +8,7 @@
 #include "../util/util.h"
 #include "../util/alloc.h"
 #include "../util/dynarray.h"
+#include "../util/str.h"
 
 #include "parse_attr.h"
 
@@ -39,14 +40,7 @@ static attribute *parse_attr_format(symtable *symtab, const char *ident)
 
 	EAT(token_open_paren);
 
-	func = token_current_spel();
-	EAT(token_identifier);
-
-	/* TODO: token_current_spel()
-	 * and token_get_current_str(..,..)
-	 * checks everywhere */
-	if(!func)
-		return NULL;
+	func = token_eat_identifier(DUMMY_IDENTIFIER, NULL);
 
 #define CHECK(s) !strcmp(func, s) || !strcmp(func, "__" s "__")
 	if(CHECK("printf")){
@@ -65,13 +59,13 @@ static attribute *parse_attr_format(symtable *symtab, const char *ident)
 
 	EAT(token_comma);
 
-	da->bits.format.fmt_idx = currentval.val.i - 1;
-	EAT(token_integer);
+	da->bits.format.fmt_idx = PARSE_EXPR_NO_COMMA(symtab, 1);
+	FOLD_EXPR(da->bits.format.fmt_idx, symtab);
 
 	EAT(token_comma);
 
-	da->bits.format.var_idx = currentval.val.i - 1;
-	EAT(token_integer);
+	da->bits.format.var_idx = PARSE_EXPR_NO_COMMA(symtab, 1);
+	FOLD_EXPR(da->bits.format.var_idx, symtab);
 
 	EAT(token_close_paren);
 
@@ -133,23 +127,34 @@ static attribute *parse_attr_nonnull(symtable *symtab, const char *ident)
 
 	if(accept(token_open_paren)){
 		while(curtok != token_close_paren){
-			if(curtok == token_integer){
-				int n = currentval.val.i;
+			expr *e = PARSE_EXPR_NO_COMMA(symtab, 1);
+			consty k;
+
+			FOLD_EXPR(e, symtab);
+			const_fold(e, &k);
+
+			if(k.type != CONST_NUM || k.bits.num.suffix & VAL_FLOATING){
+				cc1_warn_at(NULL,
+						attr_nonnull_bad,
+						"nonnull argument not an integer constant");
+				had_error = 1;
+			}else{
+				integral_t n = k.bits.num.val.i;
 				if(n <= 0){
 					/* shouldn't ever be negative */
 					cc1_warn_at(NULL,
 							attr_nonnull_bad,
-							"%s nonnull argument ignored", n < 0 ? "negative" : "zero");
+							"%s nonnull argument ignored", (sintegral_t)n < 0 ? "negative" : "zero");
 					had_error = 1;
 				}else{
 					/* implicitly disallow functions with >32 args */
 					/* n-1, since we convert from 1-base to 0-base */
-					l |= 1 << (n - 1);
+					if(n < sizeof(l) * CHAR_BIT)
+						l |= 1 << (n - 1);
 				}
-			}else{
-				EAT(token_integer); /* raise error */
 			}
-			EAT(curtok);
+
+			expr_free(e);
 
 			if(accept(token_comma))
 				continue;
@@ -219,13 +224,12 @@ static attribute *parse_attr_cleanup(symtable *scope, const char *ident)
 	if(curtok != token_identifier)
 		die_at(NULL, "identifier expected for cleanup function");
 
-	where_cc1_current(&ident_loc);
-	sp = token_current_spel();
-	EAT(token_identifier);
+	sp = token_eat_identifier(DUMMY_IDENTIFIER, &ident_loc);
 
 	if(symtab_search(scope, sp, NULL, &ent) && ent.type == SYMTAB_ENT_DECL){
 		attr = attribute_new(attr_cleanup);
 		attr->bits.cleanup = ent.bits.decl;
+		decl_use(ent.bits.decl);
 	}else{
 		warn_at_print_error(&ident_loc, "function '%s' not found", sp);
 		fold_had_error = 1;
@@ -266,6 +270,7 @@ static attribute *parse_ ## t(                  \
 }
 
 EMPTY(attr_unused)
+EMPTY(attr_used)
 EMPTY(attr_warn_unused)
 EMPTY(attr_enum_bitmask)
 EMPTY(attr_noreturn)
@@ -276,6 +281,10 @@ EMPTY(attr_always_inline)
 EMPTY(attr_noinline)
 EMPTY(attr_ucc_debug)
 EMPTY(attr_desig_init)
+EMPTY(attr_stack_protect)
+EMPTY(attr_no_stack_protector)
+EMPTY(attr_returns_nonnull)
+EMPTY(attr_fallthrough)
 
 #undef EMPTY
 
@@ -297,57 +306,153 @@ static attribute *parse_attr_call_conv(symtable *symtab, const char *ident)
 	return a;
 }
 
-static attribute *parse_attr_visibility(symtable *symtab, const char *ident)
+static char *parse_single_string_attr(const char *desc, where *str_loc)
 {
-	attribute *attr = NULL;
-	enum visibility v = VISIBILITY_DEFAULT;
 	struct cstring *asciz;
-	where str_loc;
-
-	(void)symtab;
-	(void)ident;
+	char *str = NULL;
 
 	EAT(token_open_paren);
 
-	if(curtok != token_string)
-		die_at(NULL, "string expected for visibility");
+	if(curtok != token_string){
+		warn_at_print_error(NULL, "string expected for %s", desc);
+		parse_had_error = 1;
+		return str;
+	}
 
-	where_cc1_current(&str_loc);
+	where_cc1_current(str_loc);
 	asciz = parse_asciz_str();
 
 	EAT(token_string);
 
-	if(asciz){
-		char *str = cstring_detach(asciz);
-
-		if(visibility_parse(&v, str, cc1_target_details.as.supports_visibility_protected)){
-			attr = attribute_new(attr_visibility);
-			attr->bits.visibility = v;
-		}else{
-			warn_at_print_error(&str_loc, "unknown/unsupported visibility \"%s\"", str);
-			fold_had_error = 1;
-		}
-
-		free(str);
-	}
+	if(asciz)
+		str = cstring_detach(asciz);
 
 	EAT(token_close_paren);
+
+	return str;
+}
+
+static attribute *parse_attr_visibility(symtable *symtab, const char *ident)
+{
+	where str_loc;
+	char *str = parse_single_string_attr("visibility", &str_loc);
+	attribute *attr = NULL;
+	enum visibility v;
+
+	(void)symtab;
+	(void)ident;
+
+	if(!str)
+		return NULL;
+
+	if(visibility_parse(&v, str, cc1_target_details.as->supports_visibility_protected)){
+		attr = attribute_new(attr_visibility);
+		attr->bits.visibility = v;
+	}else{
+		warn_at_print_error(&str_loc, "unknown/unsupported visibility \"%s\"", str);
+		fold_had_error = 1;
+	}
+
+	free(str);
 
 	return attr;
 }
 
-static struct
+static attribute *parse_attr_alias(symtable *scope, const char *ident)
+{
+	where str_loc;
+	char *str = parse_single_string_attr("alias", &str_loc);
+	attribute *attr = NULL;
+	struct symtab_entry ent;
+
+	(void)ident;
+
+	if(!str)
+		return NULL;
+
+	if(symtab_search(scope, str, NULL, &ent)){
+		if(ent.type == SYMTAB_ENT_DECL){
+			attr = attribute_new(attr_alias);
+			attr->bits.alias = ent.bits.decl;
+		}else{
+			warn_at_print_error(&str_loc, "alias \"%s\" references an enum member", str);
+			fold_had_error = 1;
+		}
+	}else{
+		warn_at_print_error(&str_loc, "alias \"%s\" doesn't exist", str);
+		fold_had_error = 1;
+	}
+
+	free(str);
+
+	return attr;
+}
+
+static attribute *parse_attr_no_sanitize(symtable *scope, const char *ident)
+{
+	attribute *attr = NULL;
+	enum no_sanitize opts = 0;
+
+	(void)scope;
+
+	if(!strcmp(ident, "no_sanitize_undefined")){
+		opts = NO_SANITIZE_UNDEFINED;
+	}else{
+		EAT(token_open_paren);
+
+		while(curtok == token_string){
+			where str_loc;
+			struct cstring *asciz;
+			char *str;
+
+			where_cc1_current(&str_loc);
+			asciz = parse_asciz_str();
+
+			EAT(token_string);
+
+			str = asciz ? cstring_detach(asciz) : NULL;
+
+			if(str){
+				char *tok, *state;
+
+				for(tok = str_split(str, ',', &state); tok; tok = str_split(NULL, ',', &state)){
+					if(!strcmp(tok, "undefined"))
+						opts |= NO_SANITIZE_UNDEFINED;
+					else
+						cc1_warn_at(&str_loc, attr_unknown_sanitizer, "unknown sanitizer \"%s\"", tok);
+				}
+
+				free(str);
+			}
+
+			if(!accept(token_comma))
+				break;
+		}
+
+		EAT(token_close_paren);
+	}
+
+	if(opts){
+		attr = attribute_new(attr_no_sanitize);
+		attr->bits.no_sanitize = opts;
+	}
+
+	return attr;
+}
+
+static const struct
 {
 	const char *ident;
 	attribute *(*parser)(symtable *, const char *ident);
 } attrs[] = {
 #define NAME(x, typrop) { #x, parse_attr_ ## x },
-#define ALIAS(s, x, typrop) { s, parse_attr_ ## x },
-#define EXTRA_ALIAS(s, x) { s, parse_attr_ ## x},
+#define RENAME(s, x, typrop) { s, parse_attr_ ## x },
+#define ALIAS(s, x) { s, parse_attr_ ## x },
+#define COMPLEX_ALIAS(s, x) { s, parse_attr_ ## x},
 	ATTRIBUTES
 #undef NAME
 #undef ALIAS
-#undef EXTRA_ALIAS
+#undef COMPLEX_ALIAS
 
 	{ NULL, NULL },
 };
@@ -397,7 +502,7 @@ static attribute *parse_attr_single(const char *ident, symtable *scope)
 			if(!glob->unrecog_attrs)
 				glob->unrecog_attrs = dynmap_new(char *, strcmp, dynmap_strhash);
 
-			dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
+			(void)dynmap_set(char *, void *, glob->unrecog_attrs, dup, NULL);
 
 			cc1_warn_at(&attrloc, attr_unknown,
 					"ignoring unrecognised attribute \"%s\"", ident);
@@ -425,7 +530,7 @@ attribute **parse_attr(symtable *scope)
 		if(curtok == token_close_paren)
 			break;
 
-		ident = curtok_to_identifier(&alloc);
+		ident = eat_curtok_to_identifier(&alloc, &w);
 
 		if(!ident){
 			parse_had_error = 1;
@@ -435,11 +540,6 @@ attribute **parse_attr(symtable *scope)
 			EAT(curtok);
 			goto comma;
 		}
-
-		where_cc1_current(&w);
-		where_cc1_adj_identifier(&w, ident);
-
-		EAT(curtok);
 
 		this = parse_attr_single(ident, scope);
 

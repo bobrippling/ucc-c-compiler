@@ -12,9 +12,9 @@
 #define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->bits.size_of.of_type)
 #define SIZEOF_SIZE(e)  (e)->bits.size_of.sz
 
-#define NEED_RUNTIME_SIZEOF(ty) !!type_is_vla((ty), VLA_ANY_DIMENSION)
-
-#define sizeof_this tref
+#define NEED_RUNTIME_SIZEOF(e) \
+	(e->what_of == what_sizeof \
+	 && !!type_is_vla(SIZEOF_WHAT(e), VLA_ANY_DIMENSION))
 
 static const char *sizeof_what(enum what_of wo)
 {
@@ -35,7 +35,7 @@ type *expr_sizeof_type(expr *e)
 	return SIZEOF_WHAT(e);
 }
 
-const char *str_expr_sizeof()
+const char *str_expr_sizeof(void)
 {
 	return "sizeof/typeof/alignof";
 }
@@ -51,12 +51,16 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 	chosen = SIZEOF_WHAT(e);
 
-	fold_check_expr(e->expr,
+	if(fold_check_expr(e->expr,
 			FOLD_CHK_NO_BITFIELD
 			| (e->what_of == what_typeof || e->what_of == what_sizeof
 					? FOLD_CHK_ALLOW_VOID
 					: 0),
-			sizeof_what(e->what_of));
+			sizeof_what(e->what_of)))
+	{
+		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
+		return;
+	}
 
 	switch(e->what_of){
 		case what_typeof:
@@ -80,17 +84,17 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 		case what_alignof:
 		{
 			int set = 0; /* need this, since .bits can't be relied upon to be 0 */
-			int vla = NEED_RUNTIME_SIZEOF(chosen);
+			int vla = NEED_RUNTIME_SIZEOF(e);
 
 			if(!type_is_complete(chosen)){
 				if(type_is_void(chosen))
-					cc1_warn_at(&e->where, sizeof_void_or_func, "sizeof() on void type");
+					cc1_warn_at(&e->where, sizeof_void_or_func, "%s() on void type", sizeof_what(e->what_of));
 				else
-					die_at(&e->where, "sizeof incomplete type %s", type_to_str(chosen));
+					die_at(&e->where, "%s incomplete type %s", sizeof_what(e->what_of), type_to_str(chosen));
 			}
 
 			if(type_is(chosen, type_func))
-				cc1_warn_at(&e->where, sizeof_void_or_func, "sizeof() on function type");
+				cc1_warn_at(&e->where, sizeof_void_or_func, "%s() on function type", sizeof_what(e->what_of));
 
 			if((e->what_of == what_alignof || vla) && e->expr){
 				decl *d = expr_to_declref(e->expr, NULL);
@@ -122,7 +126,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 static void const_expr_sizeof(expr *e, consty *k)
 {
-	if(NEED_RUNTIME_SIZEOF(SIZEOF_WHAT(e))){
+	if(NEED_RUNTIME_SIZEOF(e)){
 		CONST_FOLD_NO(k, e);
 		return;
 	}
@@ -137,7 +141,7 @@ const out_val *gen_expr_sizeof(const expr *e, out_ctx *octx)
 {
 	type *ty = SIZEOF_WHAT(e);
 
-	if(NEED_RUNTIME_SIZEOF(ty)){
+	if(NEED_RUNTIME_SIZEOF(e)){
 		/* if it's an expression, we want eval, e.g.
 		 *   short ar[1][f()];
 		 *   return sizeof ar[g()]; // want f() and g()
@@ -190,7 +194,7 @@ void dump_expr_sizeof(const expr *e, dump *ctx)
 		dump_expr(e->expr, ctx);
 		dump_dec(ctx);
 	}else{
-		dump_printf(ctx, " %s\n", type_to_str(e->bits.size_of.of_type));
+		dump_printf_indent(ctx, 0, " %s\n", type_to_str(e->bits.size_of.of_type));
 	}
 }
 

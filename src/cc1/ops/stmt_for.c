@@ -7,7 +7,7 @@
 #include "../out/lbl.h"
 #include "../decl_init.h"
 
-const char *str_stmt_for()
+const char *str_stmt_for(void)
 {
 	return "for";
 }
@@ -20,7 +20,7 @@ void stmt_for_got_decls(stmt *s)
 void fold_stmt_for(stmt *s)
 {
 	if(s->flow->for_while){
-		fold_check_expr(
+		(void)!fold_check_expr(
 				s->flow->for_while,
 				FOLD_CHK_NO_ST_UN | FOLD_CHK_BOOL,
 				"for-test");
@@ -167,7 +167,7 @@ int fold_code_escapable(stmt *s)
 
 	memset(&wi, 0, sizeof wi);
 
-	stmt_walk(s->lhs, stmt_walk_first_break_goto, stmt_walk_switch_leave, &wi);
+	stmt_walk(s, stmt_walk_first_break_goto, stmt_walk_switch_leave, &wi);
 
 	/* we only return if we find a break or goto statement */
 	return !!wi.escape;
@@ -192,7 +192,7 @@ static int for_passable(stmt *s)
 		/* need to check - break */
 	}
 
-	return fold_code_escapable(s);
+	return fold_code_escapable(s->lhs);
 }
 
 void init_stmt_for(stmt *s)
