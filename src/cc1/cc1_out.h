@@ -12,6 +12,7 @@ extern struct cc1_output
 #define SECTION_OUTPUT_UNINIT { { NULL, SECTION_UNINIT, 0 }, NULL }
 
 /* returns true if added (i.e. not present already) */
+ucc_wur
 int cc1_outsections_add(const struct section *);
 
 #endif

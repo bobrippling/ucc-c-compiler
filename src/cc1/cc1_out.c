@@ -5,6 +5,8 @@
 
 #include "cc1_out.h"
 
+/* note: this should just be called by asm_switch_section()/switch_section_emit(),
+ * to ensure we make use of the return code */
 int cc1_outsections_add(const struct section *sec)
 {
 	extern dynmap *cc1_outsections; /* struct section* => (int*)1 [truthy] */

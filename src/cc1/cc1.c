@@ -231,8 +231,8 @@ static void io_fin_sections(FILE *out)
 
 	if(cc1_gdebug){
 		/* ensure we have text and debug-line sections for the debug to reference */
-		cc1_outsections_add(&section_text);
-		cc1_outsections_add(&section_dbg_line);
+		asm_switch_section(&section_text);
+		asm_switch_section(&section_dbg_line);
 	}
 
 	for(i = 0; (section = dynmap_key(const struct section *, cc1_outsections, i)); i++){
