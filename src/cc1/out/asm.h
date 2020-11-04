@@ -18,6 +18,7 @@ void asm_switch_section(const struct section *);
 
 int asm_section_empty(const struct section *);
 
+ucc_nonnull()
 void asm_out_align(const struct section *sec, unsigned align);
 void asm_nam_begin3(const struct section *, const char *lbl, unsigned align);
 

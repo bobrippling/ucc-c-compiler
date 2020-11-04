@@ -76,7 +76,7 @@ static void blk_codegen(out_blk *blk, struct flush_state *st)
 	}
 
 	if(blk->align)
-		asm_out_align(NULL, blk->align);
+		asm_out_align(&section_text, blk->align);
 
 	asm_out_section(&section_text, "%s: # %s\n", blk->lbl, blk->desc);
 	if(blk->force_lbl)
