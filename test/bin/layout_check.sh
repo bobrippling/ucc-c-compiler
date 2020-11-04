@@ -1,7 +1,7 @@
 #!/bin/sh
 
 usage(){
-	echo "Usage: $0 [-v] [--sections] [--layout=layout-file] test-file [cc-args]\n" >&2
+	echo "Usage: $0 [-v] [--sections] [--layout=layout-file] [--update] test-file [cc-args]\n" >&2
 	exit 1
 }
 
@@ -19,6 +19,7 @@ trap rmfiles EXIT
 sec=
 args=
 f=
+update=0
 for arg
 do
 	if test "$arg" = '--help'
@@ -27,6 +28,9 @@ do
 	elif test "$arg" = '--sections'
 	then
 		sec="$arg"
+	elif test "$arg" = '--update'
+	then
+		update=1
 	elif echo "$arg" | grep '^--layout=' >/dev/null
 	then
 		f_layout="$(echo "$arg" | sed 's/^--layout=//')"
@@ -79,4 +83,10 @@ else
 	bin/layout_normalise.pl $sec "$f_layout" > $b
 fi
 
-exec diff -u $b $a
+if test $update -ne 0
+then
+	cat "$a" >"$f_layout"
+	echo >&2 "updated $f_layout"
+else
+	exec diff -u $b $a
+fi
