@@ -1413,15 +1413,15 @@ done_op:
 	}
 	*p = end - 1; /* ready for ++ */
 
+	if(this_index >= outputs->n + inputs->n){
+		error->str = ustrprintf(
+				"invalid register index %%%d",
+				(int)this_index);
+		return;
+	}
+
 	if(this_index >= outputs->n){
 		this_index -= outputs->n;
-
-		if(this_index > inputs->n){
-			error->str = ustrprintf(
-					"invalid register index %d",
-					(int)this_index);
-			return;
-		}
 
 		oval = inputs->arr[this_index].val;
 	}else{
