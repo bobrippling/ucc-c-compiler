@@ -97,7 +97,7 @@ sub usage
 }
 
 my $in;
-my $update = 0;
+my $update = $ENV{UCC_UPDATE_SNAPSHOTS} or 0;
 for(@ARGV){
 	if($_ eq '--update'){
 		$update = 1;

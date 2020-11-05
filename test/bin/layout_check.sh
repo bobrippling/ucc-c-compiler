@@ -19,7 +19,7 @@ trap rmfiles EXIT
 sec=
 args=
 f=
-update=0
+update=$UCC_UPDATE_SNAPSHOTS
 for arg
 do
 	if test "$arg" = '--help'
@@ -83,7 +83,7 @@ else
 	bin/layout_normalise.pl $sec "$f_layout" > $b
 fi
 
-if test $update -ne 0
+if test $update = 1
 then
 	cat "$a" >"$f_layout"
 	echo >&2 "updated $f_layout"
