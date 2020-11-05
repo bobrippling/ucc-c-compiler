@@ -63,14 +63,14 @@ struct constrained_pri_val
 	enum
 	{
 		/* order matters */
+		PRIORITY_MATCHING, /* we have the matching priority first, need to instantly match their output */
 		PRIORITY_INT,
 		PRIORITY_FIXED_REG,
 		PRIORITY_FIXED_CHOOSE_REG,
 		PRIORITY_REG,
 		PRIORITY_MEM,
 		PRIORITY_ANY,
-		PRIORITY_MATCHING /* not sure if this is a good idea */
-#define PRIORITY_LAST PRIORITY_MATCHING
+#define PRIORITY_LAST PRIORITY_ANY
 	} pri;
 };
 
@@ -181,6 +181,9 @@ enum constraint_mask
 
 #define CONSTRAINT_MAX_BIT (CONSTRAINT_MASK_LAST + 4) /* include matching bits */
 };
+
+#define MATCH_FROM_CONSTRAINEDVAL(cval) \
+	((((cval)->calculated_constraint >> MATCHING_CONSTRAINT_SHIFT) & MATCHING_CONSTRAINT_MASK) - 1)
 
 #define CONSTRAINT_ITER(i) \
 	for(i = MODIFIER_COUNT; i <= CONSTRAINT_MAX_BIT; i++)
@@ -597,7 +600,8 @@ static int valid_int_constraint(
 static void assign_constraint(
 		struct asm_setup_state *setupstate,
 		struct constrained_pri_val *const entries,
-		const size_t this_entry_i)
+		const size_t this_entry_i,
+		struct constrained_val_array *outputs)
 {
 	struct constrained_val *const cval = entries[this_entry_i].cval;
 	struct chosen_constraint *const cc = entries[this_entry_i].cchosen;
@@ -614,7 +618,8 @@ static void assign_constraint(
 		regmask |= REG_USED_IN;
 	}
 
-	CONSTRAINT_DEBUG("  initial priority %d\n", priority);
+	CONSTRAINT_DEBUG("  asm argument %d, initial priority %d\n",
+			(int)entries[this_entry_i].original_index, priority);
 
 	for(retry_count = 0;; retry_count++){
 		const int min_priority = priority + retry_count;
@@ -623,7 +628,7 @@ static void assign_constraint(
 
 		CONSTRAINT_DEBUG("    min priority %d\n", min_priority);
 
-		if(min_priority >= PRIORITY_LAST){
+		if(min_priority > PRIORITY_LAST){
 			setupstate->error->operand = cval;
 			setupstate->error->str = ustrprintf(
 					"%s constraint unsatisfiable",
@@ -650,8 +655,8 @@ static void assign_constraint(
 							constraint_mask_to_str(constraint_attempt), this_pri);
 					break;
 				}else{
-					CONSTRAINT_DEBUG("    constraint %#x applicable but not below min priority (%d > %d)\n",
-							onebit, this_pri, min_priority);
+					CONSTRAINT_DEBUG("    constraint '%s' applicable but not below min priority (%d > %d)\n",
+							constraint_mask_to_str(onebit), this_pri, min_priority);
 				}
 			}
 		}
@@ -663,9 +668,8 @@ static void assign_constraint(
 
 		if(constraint_attempt & MATCHING_CONSTRAINT_MASK_SHIFTED){
 			/* matching constraint */
-			const unsigned shift = MATCHING_CONSTRAINT_SHIFT;
-			const unsigned mask = MATCHING_CONSTRAINT_MASK;
-			unsigned match = ((cval->calculated_constraint >> shift) & mask) - 1;
+			unsigned match = MATCH_FROM_CONSTRAINEDVAL(cval);
+			size_t i;
 
 			CONSTRAINT_DEBUG("    constraint is a matching constraint, matching %u\n", match);
 
@@ -677,18 +681,55 @@ static void assign_constraint(
 				return;
 			}
 
-			assert(match < this_entry_i);
-
-			if(!entries[match].is_output){
+			if(match >= outputs->n){
 				setupstate->error->str = ustrprintf(
 						"matching constraint target is not an input");
 				return;
 			}
 
-			cc->type = C_MATCH;
-			cc->bits.match.cval = entries[match].cval;
-			cc->bits.match.constraint = entries[match].cchosen;
-			cc->bits.match.idx = match;
+			for(i = 0; i < outputs->n; i++){
+				struct constrained_pri_val *const entry = &entries[i];
+
+				if(entry->original_index == match){
+					cc->type = C_MATCH;
+					cc->bits.match.cval = entry->cval;
+					cc->bits.match.constraint = entry->cchosen;
+					cc->bits.match.idx = i;
+
+					switch(entry->cchosen->type){
+						case C_REG:
+						{
+							int chosen_reg = entry->cchosen->bits.reg.idx;
+							assert(!entry->cchosen->bits.reg.is_float);
+
+							assert((regs->arr[chosen_reg] & regmask) == 0
+									&& "can't match - register already taken by another input");
+							regs->arr[chosen_reg] |= regmask;
+							break;
+						}
+
+						case C_TO_REG_OR_MEM:
+							UNIMPLEMENTED("match of C_TO_REG_OR_MEM");
+
+						case C_REG_2:
+							UNIMPLEMENTED("match of a C_REG_2");
+
+						case C_MEM:
+						case C_CONST:
+							/* no bookkeeping required */
+							break;
+
+						case C_MATCH:
+							assert(0 && "match of a match");
+					}
+
+					CONSTRAINT_DEBUG("    matching constraint anchored to %d (sorted index %d)\n",
+							match, (int)i);
+					break;
+				}
+			}
+			assert(i < outputs->n && "couldn't find match");
+
 			break; /* constraint met */
 		}
 
@@ -893,13 +934,14 @@ static void assign_constraint(
 static void assign_constraints(
 		struct asm_setup_state *setupstate,
 		struct constrained_pri_val *entries,
-		size_t nentries)
+		size_t nentries,
+		struct constrained_val_array *outputs)
 {
 	size_t i;
 	CONSTRAINT_DEBUG("starting constraint assignment\n");
 	for(i = 0; i < nentries; i++){
 		/* pick the highest satisfiable constraint */
-		assign_constraint(setupstate, entries, i);
+		assign_constraint(setupstate, entries, i, outputs);
 
 		if(setupstate->error->str)
 			break;
@@ -918,6 +960,7 @@ calculate_constraints(
 	size_t const nentries = outputs->n + inputs->n;
 	struct constrained_pri_val *entries;
 	size_t i;
+	unsigned char *resorted = umalloc(nentries);
 
 	entries = umalloc(nentries * sizeof *entries);
 	for(i = 0; i < nentries; i++){
@@ -944,6 +987,43 @@ calculate_constraints(
 	/* order them */
 	qsort(entries, nentries, sizeof *entries, constrained_pri_val_cmp);
 
+	/* move any matching constraints to just below their match */
+	for(i = 0; i < nentries; i++){
+		struct constrained_pri_val *p = &entries[i];
+		unsigned match;
+		size_t j;
+		int found = 0;
+
+		if(p->pri != PRIORITY_MATCHING)
+			continue;
+
+		if(resorted[p->original_index]){
+			/* already shuffled this into place, next */
+			continue;
+		}
+		resorted[p->original_index] = 1;
+
+		match = MATCH_FROM_CONSTRAINEDVAL(p->cval);
+
+		/* find matchee - should be after current, since matches have higher priority */
+		for(j = i + 1; j < nentries; j++){
+			struct constrained_pri_val *q = &entries[j];
+			if(q->original_index == match){
+				struct constrained_pri_val tmp;
+
+				memcpy_safe(&tmp, p);
+				memmove(p, p + 1, sizeof(*p) * (j - i));
+				memcpy_safe(q, &tmp);
+
+				found = 1;
+				break;
+			}
+		}
+		assert(found && "couldn't find match target to shuffle match below");
+	}
+	free(resorted);
+	resorted = NULL;
+
 	fprintf(stderr, "sorted constraints:\n");
 	for(i = 0; i < nentries; i++){
 		struct constrained_pri_val *p = &entries[i];
@@ -955,7 +1035,7 @@ calculate_constraints(
 	}
 
 	/* assign values */
-	assign_constraints(setupstate, entries, nentries);
+	assign_constraints(setupstate, entries, nentries, outputs);
 
 	return entries;
 }
@@ -964,6 +1044,7 @@ static void constrain_input_matching(
 		struct asm_setup_state *setupstate,
 		struct chosen_constraint *constraint,
 		struct constrained_val *cval,
+		struct constrained_val_array *outputs,
 		const out_val *output_temporaries[])
 {
 	out_ctx *octx = setupstate->octx;
@@ -1008,26 +1089,6 @@ static void constrain_input_matching(
 			const out_val *out_temp;
 
 			fprintf(stderr, "matching constraint, matching [%d]\n", (int)match_idx);
-
-			if((out_temp = output_temporaries[match_idx])){
-				switch(out_temp->type){
-					case V_CONST_I:
-					case V_LBL:
-					case V_CONST_F:
-					case V_FLAG:
-						ICE("bad register type");
-
-					case V_REG:
-					case V_REGOFF:
-					case V_SPILT:
-						cval->val = v_to_reg_given(
-								octx, cval->val, &out_temp->bits.regoff.reg);
-						break;
-				}
-			}else{
-				ICE("no output temporary for C_REG/C_TO_REG_OR_MEM [%zu]", match_idx);
-				//cval->val = (octx, constraint->bits.match.cval->val->t, 0);
-			}
 			break;
 		}
 
@@ -1043,6 +1104,7 @@ static void constrain_input_val(
 		struct asm_setup_state *setupstate,
 		struct chosen_constraint *constraint,
 		struct constrained_val *cval,
+		struct constrained_val_array *outputs,
 		const out_val *output_temporaries[])
 {
 	enum vto to_flags = TO_MEM;
@@ -1054,7 +1116,7 @@ static void constrain_input_val(
 		case C_MATCH:
 			constrain_input_matching(
 					setupstate, constraint,
-					cval, output_temporaries);
+					cval, outputs, output_temporaries);
 			break;
 
 		case C_TO_REG_OR_MEM:
@@ -1347,6 +1409,7 @@ static void constrain_values(
 			constrain_input_val(
 					setupstate, constraint,
 					sorted[i_sort].cval,
+					outputs,
 					output_temporaries);
 
 			if(setupstate->error->str){
@@ -1677,3 +1740,4 @@ void out_inline_asm(out_ctx *octx, const char *insn)
 {
 	out_asm(octx, "%s", insn);
 }
+
