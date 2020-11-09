@@ -39,6 +39,8 @@ struct section
 
 #define SECTION_INIT(builtin) { NULL, builtin, -1 }
 
+#define section_is_uninit(sec) ((sec)->builtin == SECTION_UNINIT)
+
 #define SECTION_FROM_BUILTIN(sec, sbuiltin, flags) do{ \
 	(sec)->builtin = (sbuiltin); \
 	(sec)->name = NULL; \

@@ -397,8 +397,7 @@ void out_func_epilogue(
 	}
 	octx->current_blk = NULL;
 
-	asm_switch_section(section);
-	blk_flushall(octx, flush_root, end_dbg_lbl);
+	blk_flushall(octx, flush_root, end_dbg_lbl, section);
 
 	free(octx->used_callee_saved), octx->used_callee_saved = NULL;
 

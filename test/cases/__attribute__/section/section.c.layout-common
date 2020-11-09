@@ -25,7 +25,6 @@ f.static1_q:
 .long 5
 .section e
 f:
-.section e
 .section .text
 main:
 .section .rodata
