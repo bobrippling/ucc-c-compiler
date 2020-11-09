@@ -1,92 +1,37 @@
-.section .rodata
-.Lsection_begin_rodata:
-.globl ro_tenative
-.align 4
-ro_tenative:
-.space 4 # object space
-.type ro_tenative,@object
-.size ro_tenative, 4
-.globl ro_initialised
-.align 4
-ro_initialised:
-.long 4
-
-.type ro_initialised,@object
-.size ro_initialised, 4
-.Lsection_end_rodata:
-.section .text
-.Lsection_begin_text:
-.globl main
-main: # post_prologue
-	movl $0, %eax
-.Lblk.7: # epilogue
-	retq
-.Lfuncend_main:
-.type main,@function
-.size main, .-main
-.Lsection_end_text:
-.section a,"aw",@progbits
-.globl tenative2
-.align 4
-tenative2:
-.space 4 # object space
-.type tenative2,@object
-.size tenative2, 4
-.section b,"aw",@progbits
-.globl initialised2
-.align 4
-initialised2:
-.long 3
-
-.type initialised2,@object
-.size initialised2, 4
+.section .bss
+tenative:
+.zero 4
 .section .data
-.Lsection_begin_data:
-.globl initialised
-.align 4
 initialised:
 .long 3
-
-.type initialised,@object
-.size initialised, 4
-.align 4
-f.static1_q:
-.long 5
-
-.type f.static1_q,@object
-.size f.static1_q, 4
-.Lsection_end_data:
-.section e,"ax",@progbits
-.globl f
-f: # post_prologue
-	movl f.static1_q(%rip), %eax
-.Lblk.3: # epilogue
-	retq
-.Lfuncend_f:
-.type f,@function
-.size f, .-f
+.section .rodata
+ro_tenative:
+.zero 4
+ro_initialised:
+.long 4
+.section a,"aw",@progbits
+tenative2:
+.zero 4
+.section b,"aw",@progbits
+initialised2:
+.long 3
 .section c,"a",@progbits
-.globl ro_tenative2
-.align 4
 ro_tenative2:
-.space 4 # object space
-.type ro_tenative2,@object
-.size ro_tenative2, 4
+.zero 4
 .section d,"a",@progbits
-.globl ro_initialised2
-.align 4
 ro_initialised2:
 .long 4
-
-.type ro_initialised2,@object
-.size ro_initialised2, 4
+.section e,"ax",@progbits
+.section .data
+f.static1_q:
+.long 5
+.section e
+f:
+.section e
+.section .text
+main:
+.section .rodata
+.section .text
+.section .data
 .section .bss
-.Lsection_begin_bss:
-.globl tenative
-.align 4
-tenative:
-.space 4 # object space
-.type tenative,@object
-.size tenative, 4
-.Lsection_end_bss:
 .section .note.GNU-stack,"",@progbits
