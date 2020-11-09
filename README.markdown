@@ -1,6 +1,6 @@
 A C Compiler written in C
 
-[![Build Status]](https://travis-ci.org/bobrippling/ucc-c-compiler)
+![Github Build] ![Travis Build]
 
 Dependencies
 ------------
@@ -242,7 +242,8 @@ Examples
 `./ucc a.o b.c -E`
 - preprocess b.c - a.o is ignored since it's not linked with
 
-[Build Status]: https://travis-ci.org/bobrippling/ucc-c-compiler.svg?branch=master
+[Github Build]: https://github.com/bobrippling/ucc-c-compiler/workflows/ucc%20ci/badge.svg
+[Travis Build]: https://travis-ci.org/bobrippling/ucc-c-compiler.svg?branch=master
 [Extensions page]: https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html
 [__asm__ WIP]: //github.com/bobrippling/ucc-c-compiler/tree/feature/asm
 [TLS WIP]: //github.com/bobrippling/ucc-c-compiler/tree/feature/tls
