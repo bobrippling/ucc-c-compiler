@@ -1390,10 +1390,8 @@ static void dwarf_leb_printf(
 		struct DIE_flush_file *f,
 		unsigned long uleb, int is_sig)
 {
-	FILE *file = asm_section_file(f->sec);
-
 	asm_out_section(f->sec, "\t.byte ");
-	f->byte_cnt += leb128_out(file, uleb, is_sig);
+	f->byte_cnt += leb128_out(cc1_output.file, uleb, is_sig);
 }
 
 static void dwarf_flush_die_block(
@@ -1709,27 +1707,6 @@ void out_dbg_emit_global_decl_scoped(out_ctx *octx, decl *d)
 
 	if(global_scoped)
 		dwarf_current_child(dbg, global_scoped);
-}
-
-void dbg_out_filelist(
-		struct out_dbg_filelist *head, FILE *f)
-{
-	struct out_dbg_filelist *i;
-	unsigned idx;
-
-	for(i = head, idx = 1; i; i = i->next, idx++){
-		struct cstring local;
-		char *esc;
-
-		cstring_init(&local, CSTRING_ASCII, i->fname, strlen(i->fname), 0);
-
-		esc = str_add_escape(&local);
-
-		fprintf(f, ".file %u \"%s\"\n", idx, esc);
-
-		cstring_deinit(&local);
-		free(esc);
-	}
 }
 
 void out_dbg_begin(

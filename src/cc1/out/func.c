@@ -178,7 +178,12 @@ static void allocate_stack(out_ctx *octx, v_stackt adj)
 	v_stack_adj(octx, adj, /*sub:*/1);
 }
 
-void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *end_dbg_lbl)
+void out_func_epilogue(
+	out_ctx *octx,
+	type *ty,
+	const where *func_begin,
+	char *end_dbg_lbl,
+	const struct section *section)
 {
 	int clean_stack, redzone = 0;
 	out_blk *call_save_spill_blk = NULL;
@@ -392,7 +397,7 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 	}
 	octx->current_blk = NULL;
 
-	blk_flushall(octx, flush_root, end_dbg_lbl);
+	blk_flushall(octx, flush_root, end_dbg_lbl, section);
 
 	free(octx->used_callee_saved), octx->used_callee_saved = NULL;
 

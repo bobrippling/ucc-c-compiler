@@ -39,7 +39,6 @@
 #include "fopt.h"
 #include "cc1_target.h"
 #include "cc1_out.h"
-#include "cc1_sections.h"
 #include "sanitize_opt.h"
 
 static const char **system_includes;
@@ -78,8 +77,8 @@ static struct
 	{ 0, NULL, NULL }
 };
 
-dynmap *cc1_out_persection;
-struct section_output cc1_current_section_output = SECTION_OUTPUT_UNINIT;
+struct cc1_output cc1_output = SECTION_OUTPUT_UNINIT;
+dynmap *cc1_outsections;
 char *cc1_first_fname;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
@@ -225,68 +224,26 @@ static void io_fin_macosx_version(FILE *out)
 	}
 }
 
-static void io_fin_section(FILE *section, FILE *out, const struct section *sec)
-{
-	const char *desc = NULL;
-	char *name;
-	int allocated;
-	const int is_builtin = section_is_builtin(sec);
-
-	if(is_builtin)
-		desc = asm_section_desc(sec->builtin);
-
-	if(fseek(section, 0, SEEK_SET))
-		ccdie("seeking in section tmpfile:");
-
-	name = section_name(sec, &allocated);
-	xfprintf(out, ".section %s", name);
-	if(allocated)
-		free(name);
-
-	if(cc1_target_details.as->supports_section_flags && !is_builtin){
-		const int is_code = sec->flags & SECTION_FLAG_EXECUTABLE;
-		const int is_rw = !(sec->flags & SECTION_FLAG_RO);
-
-		xfprintf(out, ",\"a%s\",@progbits", is_code ? "x" : is_rw ? "w" : "");
-	}
-	xfprintf(out, "\n");
-
-	if(desc)
-		xfprintf(out, "%s%s%s:\n", cc1_target_details.as->privatelbl_prefix, SECTION_BEGIN, desc);
-
-	if(cat(section, out))
-		ccdie("concatenating section tmpfile:");
-
-	if(desc)
-		xfprintf(out, "%s%s%s:\n", cc1_target_details.as->privatelbl_prefix, SECTION_END, desc);
-
-	if(fclose(section))
-		ccdie("closing section tmpfile:");
-}
-
 static void io_fin_sections(FILE *out)
 {
-	FILE *section;
+	const struct section *section;
 	size_t i;
-
-	if(!cc1_out_persection)
-		return;
 
 	if(cc1_gdebug){
 		/* ensure we have text and debug-line sections for the debug to reference */
-		(void)asm_section_file(&section_text);
-		(void)asm_section_file(&section_dbg_line);
+		asm_switch_section(&section_text);
+		asm_switch_section(&section_dbg_line);
 	}
 
-	for(i = 0; (section = dynmap_value(FILE *, cc1_out_persection, i)); i++){
-		struct section *sec = dynmap_key(struct section *, cc1_out_persection, i);
-
-		io_fin_section(section, out, sec);
-
-		free(sec);
+	for(i = 0; (section = dynmap_key(const struct section *, cc1_outsections, i)); i++){
+		if(section_is_builtin(section)){
+			const char *desc = asm_section_desc(section->builtin);
+			if(desc){
+				asm_switch_section(section);
+				xfprintf(out, "%s%s%s:\n", cc1_target_details.as->privatelbl_prefix, SECTION_END, desc);
+			}
+		}
 	}
-
-	dynmap_free(cc1_out_persection);
 }
 
 static void io_fin(FILE *out)
@@ -352,9 +309,11 @@ static void gen_backend(symtable_global *globs, const char *fname, FILE *out, co
 					&filelist,
 					producer);
 
-			/* filelist needs to be output first */
-			if(filelist && cc1_gdebug != DEBUG_OFF)
-				dbg_out_filelist(filelist, out);
+			/* FIXME: don't take filelist out-param, and free it in gem_asm() */
+			/* filelist needs to be output first
+			if(0 && filelist && cc1_gdebug != DEBUG_OFF)
+				dbg_out_filelist(filelist);
+			*/
 
 			io_fin(out);
 
@@ -638,6 +597,35 @@ static int init_target(const char *target)
 	return 1;
 }
 
+static void output_init(const char *fname)
+{
+	if(fname){
+		cc1_output.file = fopen(fname, "w");
+		if(!cc1_output.file)
+			ccdie("open %s:", fname);
+	}else{
+		cc1_output.file = stdout;
+	}
+
+	cc1_outsections = dynmap_new(struct section *, section_cmp, section_hash);
+}
+
+static void output_term(const char *fname)
+{
+	struct section *section;
+	size_t i;
+
+	for(i = 0; (section = dynmap_key(struct section *, cc1_outsections, i)); i++)
+		free(section);
+
+	dynmap_free(cc1_outsections);
+	cc1_outsections = NULL;
+
+	if(fclose(cc1_output.file))
+		ccdie("close output (%s):", fname);
+	cc1_output.file = NULL;
+}
+
 int main(int argc, char **argv)
 {
 	int failure;
@@ -645,7 +633,6 @@ int main(int argc, char **argv)
 	static symtable_global *globs;
 	const char *in_fname = NULL;
 	const char *out_fname = NULL;
-	FILE *outfile;
 	const char *target = NULL;
 	int i;
 	int werror = 0;
@@ -815,13 +802,7 @@ dbg_unknown:
 		in_fname = "-";
 	}
 
-	if(out_fname){
-		outfile = fopen(out_fname, "w");
-		if(!outfile)
-			ccdie("open %s:", out_fname);
-	}else{
-		outfile = stdout;
-	}
+	output_init(out_fname);
 
 	show_current_line = cc1_fopt.show_line;
 	if(cc1_fopt.trapv)
@@ -847,7 +828,7 @@ dbg_unknown:
 	if(failure == 0 || /* attempt dump anyway */cc1_backend == BACKEND_DUMP){
 		const char *producer = "ucc development version";
 
-		gen_backend(globs, in_fname, outfile, producer);
+		gen_backend(globs, in_fname, cc1_output.file, producer);
 		if(gen_had_error)
 			failure = 1;
 	}
@@ -855,8 +836,7 @@ dbg_unknown:
 	if(cc1_fopt.dump_type_tree)
 		type_nav_dump(cc1_type_nav);
 
-	if(fclose(outfile))
-		ccdie("close output (%s):", out_fname);
+	output_term(out_fname);
 
 out:
 	dynarray_free(const char **, system_includes, NULL);

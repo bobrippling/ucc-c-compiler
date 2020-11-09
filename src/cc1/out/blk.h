@@ -3,6 +3,8 @@
 
 #include "forwards.h"
 
+struct section;
+
 struct out_blk
 {
 	/* all blocks: */
@@ -54,7 +56,7 @@ struct out_blk
 
 out_blk *out_blk_new_lbl(out_ctx *, const char *lbl);
 
-void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl);
+void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl, const struct section *sec);
 
 void blk_terminate_condjmp(
 		out_ctx *octx, char *condinsn,
