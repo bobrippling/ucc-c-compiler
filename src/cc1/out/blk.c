@@ -57,7 +57,7 @@ static void blk_jmpthread(struct flush_state *st, const struct section *sec)
 			asm_out_section(sec, "\t# jump threaded through %d blocks\n", lim);
 	}
 
-	impl_jmp(to->lbl);
+	impl_jmp(to->lbl, sec);
 }
 
 static void blk_codegen(out_blk *blk, struct flush_state *st, const struct section *sec)
@@ -82,12 +82,12 @@ static void blk_codegen(out_blk *blk, struct flush_state *st, const struct secti
 	if(blk->force_lbl)
 		asm_out_section(sec, "%s: # mustgen_spel\n", blk->force_lbl);
 
-	out_dbg_labels_emit_release_v(&blk->labels.start);
+	out_dbg_labels_emit_release_v(&blk->labels.start, sec);
 
 	for(i = blk->insns; i && *i; i++)
 		asm_out_section(sec, "%s", *i);
 
-	out_dbg_labels_emit_release_v(&blk->labels.end);
+	out_dbg_labels_emit_release_v(&blk->labels.end, sec);
 }
 
 static void bfs_block(out_blk *blk, struct flush_state *st, const struct section *sec)
@@ -176,11 +176,11 @@ void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl, const struct
 		bfs_block(*must_i, &st, sec);
 
 	if(st.jmpto)
-		impl_jmp(st.jmpto->lbl);
+		impl_jmp(st.jmpto->lbl, sec);
 
 	asm_out_section(sec, "%s:\n", end_dbg_lbl);
 
-	out_dbg_labels_emit_release_v(&octx->pending_lbls);
+	out_dbg_labels_emit_release_v(&octx->pending_lbls, sec);
 }
 
 static void dot_replace(char *lbl)

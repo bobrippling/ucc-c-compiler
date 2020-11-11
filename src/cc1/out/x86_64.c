@@ -2225,9 +2225,9 @@ static char *x86_call_jmp_target(
 	return NULL;
 }
 
-void impl_jmp(const char *lbl)
+void impl_jmp(const char *lbl, const struct section *sec)
 {
-	asm_out_section(&section_text, "\tjmp %s\n", lbl);
+	asm_out_section(sec, "\tjmp %s\n", lbl);
 }
 
 void impl_jmp_expr(out_ctx *octx, const out_val *v)

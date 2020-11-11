@@ -91,23 +91,23 @@ int out_dbg_label_shouldemit(struct out_dbg_lbl *lbl, const char **out_lbl)
 	return !out_dbg_label_emitted(lbl, out_lbl);
 }
 
-static void emit_lbl(struct out_dbg_lbl *lbl)
+static void emit_lbl(struct out_dbg_lbl *lbl, const struct section *sec)
 {
 	/* if we haven't emitted the label yet, and its
 	 * pair start label/start block was emitted */
 	if(out_dbg_label_shouldemit(lbl, NULL)){
-		asm_out_section(&section_text, "%s:\n", lbl->lbl);
+		asm_out_section(sec, "%s:\n", lbl->lbl);
 		lbl->emitted = 1;
 	}
 	RELEASE(lbl);
 }
 
-void out_dbg_labels_emit_release_v(struct out_dbg_lbl ***pv)
+void out_dbg_labels_emit_release_v(struct out_dbg_lbl ***pv, const struct section *sec)
 {
 	struct out_dbg_lbl **v = *pv;
 
 	for(; v && *v; v++)
-		emit_lbl(*v);
+		emit_lbl(*v, sec);
 
 	dynarray_free(struct out_dbg_lbl **, *pv, NULL);
 }
