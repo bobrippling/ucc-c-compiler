@@ -270,6 +270,9 @@ static int heuristic_should_inline(
 	unsigned nstmts = 0;
 	unsigned new_stack;
 
+	if(attribute_present(fndecl, attr_always_inline))
+		return 1;
+
 	/* as with clang and gcc, -fno-inline-functions affects just the heuristic
 	 * __attribute((always_inline)) overrides it */
 	if(!cc1_fopt.inline_functions)
@@ -409,9 +412,7 @@ static const char *check_and_ret_inline(
 		return "recursion too deep";
 	}
 
-	if(!attribute_present(iouts->fndecl, attr_always_inline)
-	&& !heuristic_should_inline(iouts->fndecl, iouts->fncode, iouts->arg_symtab, octx))
-	{
+	if(!heuristic_should_inline(iouts->fndecl, iouts->fncode, iouts->arg_symtab, octx)){
 		return "heuristic denied";
 	}
 
