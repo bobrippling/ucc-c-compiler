@@ -25,8 +25,9 @@ if(not -d $tdir and not mkdir($tdir)){
 
 sub usage
 {
-	print STDERR "Usage: $0 [-q | -v] [-p] [-i ignore-file] [--ucc=...] [--update-snapshots] [tests...]\n";
+	print STDERR "Usage: $0 [-q | -v [-v]] [-p] [-i ignore-file] [--ucc=...] [--update-snapshots] [tests...]\n";
 	print STDERR "Specify UCC_CHECK_SKIP=path1,path2,... to skip paths\n";
+	print STDERR "Give a second -v argument to force output, for passing tests\n";
 	exit 2;
 }
 
@@ -167,8 +168,9 @@ sub reap_test
 		print "\n";
 
 		my $output = $tasks{$pid}->{output};
-		if($failed != $should_fail){
-			$ec = 1;
+		my $is_unexpected = $failed != $should_fail;
+		if($is_unexpected or $ENV{UCC_VERBOSE} > 1){
+			$ec = 1 if $is_unexpected;
 			cat_indent_file($output);
 		}
 	}
@@ -196,7 +198,14 @@ $ENV{UCC_UPDATE_SNAPSHOTS} = 0;
 
 for(my $i = 0; $i < @ARGV; $i++){
 	if($ARGV[$i] eq '-v'){
-		$ENV{UCC_VERBOSE} = 1;
+		if($ENV{UCC_VERBOSE}){
+			$ENV{UCC_VERBOSE} = 2;
+		}else{
+			$ENV{UCC_VERBOSE} = 1;
+		}
+		$quiet = 0;
+	}elsif($ARGV[$i] eq '-vv'){
+		$ENV{UCC_VERBOSE} = 2;
 		$quiet = 0;
 	}elsif($ARGV[$i] eq '-q'){
 		$quiet = 1;
