@@ -285,6 +285,7 @@ EMPTY(attr_stack_protect)
 EMPTY(attr_no_stack_protector)
 EMPTY(attr_returns_nonnull)
 EMPTY(attr_fallthrough)
+EMPTY(attr_flatten)
 
 #undef EMPTY
 

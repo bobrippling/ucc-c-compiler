@@ -31,6 +31,7 @@
 		NAME(cleanup, 0)        \
 		NAME(always_inline, 0)  \
 		NAME(noinline, 0)       \
+		NAME(flatten, 0)        \
 		NAME(constructor, 0)    \
 		NAME(destructor, 0)     \
 		NAME(visibility, 0)     \

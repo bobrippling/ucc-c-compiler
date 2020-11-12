@@ -509,6 +509,7 @@ static void infer_decl_section(decl *d, struct section *sec)
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
 	struct section section;
+	decl *old_decl;
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
 	const int attr_used_present = !!attribute_present(d, attr_used);
@@ -553,6 +554,9 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		case store_static:
 			break;
 	}
+
+	old_decl = cc1_octx->current_decl;
+	cc1_octx->current_decl = d;
 
 	infer_decl_section(d, &section);
 	asm_switch_section(&section);
@@ -615,6 +619,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 out:
 	if(emit_visibility)
 		asm_predeclare_visibility(&section, d);
+	cc1_octx->current_decl = old_decl;
 }
 
 void gen_asm(
