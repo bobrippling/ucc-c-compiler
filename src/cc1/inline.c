@@ -267,14 +267,19 @@ void inline_ret_add(out_ctx *octx, const out_val *v)
 static int heuristic_should_inline(
 		decl *fndecl, stmt *fncode, symtable *symtab, out_ctx *octx)
 {
+	struct cc1_out_ctx *cc1_octx = cc1_out_ctx_or_new(octx);
 	unsigned nstmts = 0;
 	unsigned new_stack;
 
 	if(attribute_present(fndecl, attr_always_inline))
 		return 1;
 
+	assert(cc1_octx->current_decl);
+	if(attribute_present(cc1_octx->current_decl, attr_flatten))
+		return 1;
+
 	/* as with clang and gcc, -fno-inline-functions affects just the heuristic
-	 * __attribute((always_inline)) overrides it */
+	 * __attribute((always_inline / flatten)) overrides it */
 	if(!cc1_fopt.inline_functions)
 		return 0;
 
