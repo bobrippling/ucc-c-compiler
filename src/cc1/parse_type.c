@@ -1453,6 +1453,8 @@ static type *parse_type_declarator_to_type(
 	type_parsed *parsed = parsed_type_declarator(mode, dfor, NULL, scope);
 	type_parsed *i, *tofree;
 	type *ty = base;
+	where last_qual;
+	int have_last_qual = 0;
 
 	for(i = parsed; i; tofree = i, i = i->prev, free(tofree)){
 		enum type_qualifier qual = qual_none;
@@ -1461,9 +1463,15 @@ static type *parse_type_declarator_to_type(
 			case PARSED_PTR:
 				ty = i->bits.ptr.maker(ty);
 				qual = i->bits.ptr.qual;
+
+				have_last_qual = 1;
+				memcpy_safe(&last_qual, &i->where);
 				break;
 			case PARSED_ARRAY:
 				qual = i->bits.array.qual;
+
+				have_last_qual = 1;
+				memcpy_safe(&last_qual, &i->where);
 
 				switch(i->bits.array.vla_kind){
 					case VLA_STAR:
@@ -1500,7 +1508,7 @@ static type *parse_type_declarator_to_type(
 						ty,
 						i->bits.func.arglist,
 						i->bits.func.scope,
-						&i->where);
+						have_last_qual ? &last_qual : &i->where);
 				break;
 
 			case PARSED_ATTR:
