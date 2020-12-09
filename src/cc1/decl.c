@@ -451,7 +451,7 @@ int decl_defined(decl *d, enum decl_impl_flags flags)
 		int explicitly_initialised;
 
 		d = decl_with_init(d, flags);
-		explicitly_initialised = d->bits.var.init.dinit && !d->bits.var.init.compiler_generated;
+		explicitly_initialised = d->bits.var.init.dinit && !DECL_INIT_COMPILER_GENERATED(d->bits.var.init);
 
 		if(explicitly_initialised)
 			return 1;

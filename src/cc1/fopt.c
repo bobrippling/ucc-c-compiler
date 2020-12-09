@@ -26,6 +26,7 @@ void fopt_default(struct cc1_fopt *opt)
 	opt->semantic_interposition = 1; /* default to -fsemantic-interposition to match gcc */
 	opt->symbol_arith = 1;
 	opt->thread_jumps = 1;
+	opt->zero_init_in_bss = 1;
 }
 
 unsigned char *fopt_on(struct cc1_fopt *fopt, const char *argument, int invert)
