@@ -1528,8 +1528,8 @@ void decl_init_brace_up_fold(decl *d, symtable *stab)
 	init_debug("top level: %s\n", decl_to_str(d));
 
 	assert(!type_is(d->ref, type_func));
-	if(!d->bits.var.init.normalised){
-		d->bits.var.init.normalised = 1;
+	if((d->bits.var.init.flags & DECL_INIT_EXPR_FLAGS_BRACE_NORMALIZED) == 0){
+		d->bits.var.init.flags |= DECL_INIT_EXPR_FLAGS_BRACE_NORMALIZED;
 
 		if(type_is_vla(d->ref, VLA_ANY_DIMENSION)){
 			warn_at_print_error(
@@ -1824,6 +1824,6 @@ void decl_default_init(decl *d, symtable *stab)
 	}
 
 	d->bits.var.init.dinit = decl_init_new_w(decl_init_brace, &d->where);
-	d->bits.var.init.compiler_generated = 1;
+	d->bits.var.init.flags |= DECL_INIT_EXPR_FLAGS_COMPILED_GENERATED;
 	decl_init_brace_up_fold(d, stab);
 }

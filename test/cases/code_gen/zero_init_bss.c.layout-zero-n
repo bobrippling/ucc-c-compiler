@@ -1,0 +1,14 @@
+.section .bss
+tenative:
+.zero 4
+
+explicit:
+.zero 4
+
+tenative_s:
+.zero 4
+
+explicit_s:
+.zero 4
+
+.section .note.GNU-stack,"",@progbits

@@ -20,14 +20,20 @@ enum decl_storage
 
 #define STORE_IS_TYPEDEF(s) (((s) & STORE_MASK_STORE) == store_typedef)
 
+enum decl_init_expr_flags
+{
+	DECL_INIT_EXPR_FLAGS_BRACE_NORMALIZED,
+	DECL_INIT_EXPR_FLAGS_COMPILED_GENERATED,
+};
+
 struct decl_init_expr
 {
 	struct decl_init *dinit;
 	struct expr *expr;
 
-	int normalised;
-	int compiler_generated;
+	enum decl_init_expr_flags flags;
 };
+#define DECL_INIT_COMPILER_GENERATED(di) ((di).flags & DECL_INIT_EXPR_FLAGS_COMPILED_GENERATED)
 
 typedef struct decl decl;
 struct decl

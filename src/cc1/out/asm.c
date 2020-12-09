@@ -724,7 +724,9 @@ void asm_declare_decl_init(const struct section *sec, decl *d)
 		return;
 	}
 
-	nonzero_init = d->bits.var.init.dinit && !decl_init_is_zero(d->bits.var.init.dinit);
+	assert(d->bits.var.init.dinit && "should've been at least compiler-generated");
+	nonzero_init = !DECL_INIT_COMPILER_GENERATED(d->bits.var.init)
+		&& !decl_init_is_zero(d->bits.var.init.dinit);
 	if(nonzero_init){
 		asm_nam_begin(sec, d);
 		asm_declare_init(sec, d->bits.var.init.dinit, d->ref);
@@ -733,7 +735,7 @@ void asm_declare_decl_init(const struct section *sec, decl *d)
 	}
 
 	if(section_is_builtin(sec)
-	&& d->bits.var.init.compiler_generated
+	&& DECL_INIT_COMPILER_GENERATED(d->bits.var.init)
 	&& cc1_fopt.common
 	&& !attribute_present(d, attr_weak) /* variables can't be weak and common */)
 	{

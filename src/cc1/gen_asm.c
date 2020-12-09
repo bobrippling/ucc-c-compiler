@@ -386,7 +386,6 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 		out_perfunc_teardown(octx);
 
 	}else{
-		/* asm takes care of .bss vs .data, etc */
 		asm_declare_decl_init(section, d);
 	}
 
@@ -510,7 +509,10 @@ static void infer_decl_section(decl *d, struct section *sec)
 		return;
 	}
 
-	if(!d->bits.var.init.dinit || decl_init_is_zero(d->bits.var.init.dinit)){
+	assert(d->bits.var.init.dinit && "should've been at least compiler-generated");
+	if(DECL_INIT_COMPILER_GENERATED(d->bits.var.init)
+	|| (cc1_fopt.zero_init_in_bss && decl_init_is_zero(d->bits.var.init.dinit)))
+	{
 		SECTION_FROM_BUILTIN(sec, SECTION_BSS, flags);
 		return;
 	}
