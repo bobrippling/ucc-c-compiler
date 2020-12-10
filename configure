@@ -149,6 +149,8 @@ try_cflag -Wshadow-compatible-local
 
 try_cflag -Werror=incompatible-pointer-types
 
+try_cflag -fno-common
+
 if test $debug = 1
 then
 	try_cflag -g
