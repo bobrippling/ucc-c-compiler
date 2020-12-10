@@ -195,6 +195,7 @@ if($ENV{CI}){
 $ENV{UCC} = '../ucc';
 $ENV{UCC_TESTDIR} = $tdir;
 $ENV{UCC_UPDATE_SNAPSHOTS} = 0;
+$ENV{UCC_VERBOSE} = 0;
 
 for(my $i = 0; $i < @ARGV; $i++){
 	if($ARGV[$i] eq '-v'){
