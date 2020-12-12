@@ -7,7 +7,8 @@ CPPFLAGS_BOOTSTRAP = \
 # -Wno-return-undef: reachability depends on libc's _Noreturn/__GNUC__
 CFLAGS_BOOTSTRAP = \
 		 -fshow-warning-option \
-		 -Wno-return-undef
+		 -Wno-return-undef \
+		 -Werror
 
 # turn off debugging for bootstrap comparison
 CFLAGS_BOOTSTRAP += -g0
