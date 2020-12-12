@@ -30,6 +30,7 @@ WIP/in-dev:
 		feature/attribute-warnings
 		feature/pointer-escape (lifetimes)
 		feature/reserved-warn (__abc)
+		fix/bootstrap-werror
 
 	debugging:
 		feature/split-dwarf
