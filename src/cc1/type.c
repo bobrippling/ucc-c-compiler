@@ -707,7 +707,7 @@ type *type_add_type_str(type *r,
 		return NULL;
 
 	if(ty->type == type_tdef){
-		char buf[BTYPE_STATIC_BUFSIZ];
+		char buf[TYPE_STATIC_BUFSIZ];
 		decl *d = ty->bits.tdef.decl;
 		type *of;
 
