@@ -6,6 +6,10 @@
 // RUN: test 1 -eq $(grep -cF '.section .data.j' %t)
 // RUN: test 1 -eq $(grep -cF '.section .data.k' %t)
 
+// FIXME: asmcheck, /^f:/ .. /^Lfuncend_f/
+//                        ^~ CHECK-NOT: /\.section/
+// RUN: %layout_check
+
 i = 3, j = 4, k = 5;
 
 f(int a)
@@ -13,10 +17,12 @@ f(int a)
 	return a ? 2 : 4;
 }
 
-g()
+void g(int a)
 {
+	if(a)
+		f();
 }
 
-main()
+int main()
 {
 }

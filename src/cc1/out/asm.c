@@ -717,21 +717,22 @@ void asm_declare_stringlit(const struct section *sec, const stringlit *lit)
 
 void asm_declare_decl_init(const struct section *sec, decl *d)
 {
-	int nonzero_init;
-
 	if((d->store & STORE_MASK_STORE) == store_extern){
 		asm_predeclare_extern(sec, d);
 		return;
 	}
 
-	assert(d->bits.var.init.dinit && "should've been at least compiler-generated");
-	nonzero_init = !DECL_INIT_COMPILER_GENERATED(d->bits.var.init)
-		&& !decl_init_is_zero(d->bits.var.init.dinit);
-	if(nonzero_init){
-		asm_nam_begin(sec, d);
-		asm_declare_init(sec, d->bits.var.init.dinit, d->ref);
-		asm_out_section(sec, "\n");
-		return;
+	/* d->bits.var.init.dinit may be null for extern decls */
+	if(d->bits.var.init.dinit){
+		int nonzero_init = !DECL_INIT_COMPILER_GENERATED(d->bits.var.init)
+			&& !decl_init_is_zero(d->bits.var.init.dinit);
+
+		if(nonzero_init){
+			asm_nam_begin(sec, d);
+			asm_declare_init(sec, d->bits.var.init.dinit, d->ref);
+			asm_out_section(sec, "\n");
+			return;
+		}
 	}
 
 	if(section_is_builtin(sec)
