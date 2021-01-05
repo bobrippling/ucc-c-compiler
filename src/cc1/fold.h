@@ -89,9 +89,9 @@ void fold_stmt(stmt *t);
 sym *fold_inc_writes_if_sym(expr *e, symtable *stab);
 
 /* flow */
-int fold_passable(stmt *s);
-int fold_passable_yes(stmt *s);
-int fold_passable_no( stmt *s);
+int fold_passable(stmt *s, int break_means_passable);
+int fold_passable_yes(stmt *s, int break_means_passable);
+int fold_passable_no( stmt *s, int break_means_passable);
 
 #include "parse_fold_error.h"
 

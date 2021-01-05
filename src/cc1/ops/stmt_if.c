@@ -144,9 +144,9 @@ void style_stmt_if(const stmt *s, out_ctx *octx)
 	}
 }
 
-static int if_passable(stmt *s)
+static int if_passable(stmt *s, int break_means_passable)
 {
-	return (s->rhs ? fold_passable(s->rhs) : 1) || fold_passable(s->lhs);
+	return (s->rhs ? fold_passable(s->rhs, break_means_passable) : 1) || fold_passable(s->lhs, break_means_passable);
 }
 
 void init_stmt_if(stmt *s)

@@ -77,10 +77,12 @@ void style_stmt_while(const stmt *s, out_ctx *octx)
 	gen_stmt(s->lhs, octx);
 }
 
-int while_passable(stmt *s)
+static int while_passable(stmt *s, int break_means_passable)
 {
+	(void)break_means_passable;
+
 	if(const_expr_and_non_zero(s->expr))
-		return fold_code_escapable(s->lhs); /* while(1) */
+		return fold_infinite_loop_has_break_goto(s->lhs); /* while(1) */
 
 	return 1; /* fold_passable(s->lhs) - doesn't depend on this */
 }
