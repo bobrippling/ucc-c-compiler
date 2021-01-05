@@ -641,13 +641,18 @@ ptr_relation:
 						int void_lhs;
 						/* not equal - ptr-A vs ptr-B */
 
-						/* special case - if comparing against void*, cast the void*
-						 * to the target type */
 						if((void_lhs = type_is_void_ptr(tlhs)) || type_is_void_ptr(trhs)){
+							/* special case - if comparing against void*,
+							 * cast the void* to the target type */
 							*(void_lhs ? plhs : prhs) = (void_lhs ? trhs : tlhs);
 						}else{
-							*plhs = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
-							*prhs = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+							/* At least one is a pointer, cast the other to it.
+							 * This matches gcc & clang, with clang giving priority
+							 * to the lhs, in the case that both are pointers */
+							if(type_is_ptr(tlhs))
+								*prhs = tlhs;
+							else
+								*plhs = trhs;
 						}
 					}
 				}
