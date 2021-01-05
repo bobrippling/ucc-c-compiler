@@ -97,6 +97,7 @@ struct uccvars
 	int static_, shared, rdynamic;
 	int stdlibinc, builtininc, defaultlibs, startfiles;
 	int debug, profile;
+	int pthread;
 	enum tristate pie;
 	enum tristate multilib;
 	enum dyld dyld;
@@ -962,6 +963,8 @@ word:
 						vars->pie = TRI_TRUE;
 						vars->ld_z.text = 1; /* disallow text-relocs */
 					}
+					else if(!strcmp(argv[i], "-pthread"))
+						vars->pthread = 1;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
@@ -1438,6 +1441,12 @@ static void add_library_path(struct ucc *const state)
 	}
 }
 
+static void add_pthread(struct ucc *const state)
+{
+	dynarray_add(&state->args[mode_preproc], ustrdup("-D_REENTRANT=1"));
+	dynarray_add(&state->args[mode_link], ustrdup("-lpthread"));
+}
+
 int main(int argc, char **argv)
 {
 	size_t i;
@@ -1533,6 +1542,8 @@ usage:
 	merge_states(&state, &argstate);
 	if(state.mode >= mode_link)
 		add_library_path(&state);
+	if(vars.pthread)
+		add_pthread(&state);
 
 	{
 		const int ninputs = dynarray_count(state.inputs);
