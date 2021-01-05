@@ -62,18 +62,22 @@ void style_stmt_do(const stmt *s, out_ctx *octx)
 	stylef(");");
 }
 
-static int do_passable(stmt *s)
+static int do_passable(stmt *s, int break_means_passable)
 {
-	if(!fold_passable(s->lhs))
-		return 0;
+	(void)break_means_passable;
 
-	if(const_expr_and_non_zero(s->expr)){
-		/* do { cantescape(); } while(1) */
+	if(!fold_passable(s->lhs, /* break */1)){
+		/* do { cantpass(); } while(doesntmatter) */
 		return 0;
 	}
 
-	/* do { cantescape(); } while(0)
-	 * do { cantescape(); } while(x) */
+	if(const_expr_and_non_zero(s->expr)){
+		/* do { no_break_or_goto(); } while(1) */
+		return fold_infinite_loop_has_break_goto(s);
+	}
+
+	/* do { ... } while(0)
+	 * do { ... } while(x) */
 	return 1;
 }
 

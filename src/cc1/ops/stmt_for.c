@@ -161,11 +161,9 @@ stmt_walk_switch_leave(stmt *current, void *extra)
 	}
 }
 
-int fold_code_escapable(stmt *s)
+int fold_infinite_loop_has_break_goto(stmt *s)
 {
-	struct walk_info wi;
-
-	memset(&wi, 0, sizeof wi);
+	struct walk_info wi = { 0 };
 
 	stmt_walk(s, stmt_walk_first_break_goto, stmt_walk_switch_leave, &wi);
 
@@ -173,8 +171,9 @@ int fold_code_escapable(stmt *s)
 	return !!wi.escape;
 }
 
-static int for_passable(stmt *s)
+static int for_passable(stmt *s, int break_means_passable)
 {
+	(void)break_means_passable;
 	/* if we don't have a condition, it's an infinite loop;
 	 * check for breaks, etc
 	 *
@@ -184,15 +183,15 @@ static int for_passable(stmt *s)
 
 	if(s->flow->for_while){
 		if(const_expr_and_non_zero(s->flow->for_while)){
-			/* need to check */
+			/* need to check body */
 		}else{
 			return 1; /* non-constant expr or zero-expr - passable */
 		}
 	}else{
-		/* need to check - break */
+		/* infinite loop, need to check body */
 	}
 
-	return fold_code_escapable(s->lhs);
+	return fold_infinite_loop_has_break_goto(s->lhs);
 }
 
 void init_stmt_for(stmt *s)

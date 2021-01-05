@@ -12,7 +12,7 @@ struct dump;
 typedef void func_dump_stmt(const struct stmt *, struct dump *);
 
 /* non-critical */
-typedef int         func_passable_stmt(struct stmt *);
+typedef int         func_passable_stmt(struct stmt *, int break_means_passable);
 
 typedef struct stmt stmt;
 struct stmt

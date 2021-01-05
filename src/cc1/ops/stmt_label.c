@@ -62,9 +62,9 @@ void style_stmt_label(const stmt *s, out_ctx *octx)
 	gen_stmt(s->lhs, octx);
 }
 
-int label_passable(stmt *s)
+int label_passable(stmt *s, int break_means_passable)
 {
-	return fold_passable(s->lhs);
+	return fold_passable(s->lhs, break_means_passable);
 }
 
 void init_stmt_label(stmt *s)

@@ -39,7 +39,13 @@ void style_stmt_break(const stmt *s, out_ctx *octx)
 	gen_stmt(s->lhs, octx);
 }
 
+static int break_passable(stmt *s, int break_means_passable)
+{
+	(void)s;
+	return break_means_passable;
+}
+
 void init_stmt_break(stmt *s)
 {
-	s->f_passable = fold_passable_no;
+	s->f_passable = break_passable;
 }

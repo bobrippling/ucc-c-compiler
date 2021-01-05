@@ -1302,7 +1302,7 @@ int fold_func_is_passable(decl *func_decl, type *func_ret, int warn)
 		}
 
 
-		if(fold_passable(func_decl->bits.func.code)){
+		if(fold_passable(func_decl->bits.func.code, 0)){
 			/* if we reach the end, it's bad */
 			the_return.extra = "implicitly ";
 			the_return.where = &func_decl->where;
@@ -1328,7 +1328,7 @@ int fold_func_is_passable(decl *func_decl, type *func_ret, int warn)
 
 	}else if(!type_is_void(func_ret)){
 		/* non-void func - check it doesn't return */
-		if(fold_passable(func_decl->bits.func.code)){
+		if(fold_passable(func_decl->bits.func.code, 0)){
 			passable = 1;
 			if(warn)
 				warn_passable_func(func_decl);
@@ -1670,15 +1670,15 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute **attr)
 	}
 }
 
-int fold_passable_yes(stmt *s)
-{ (void)s; return 1; }
+int fold_passable_yes(stmt *s, int break_means_passable)
+{ (void)s; (void)break_means_passable; return 1; }
 
-int fold_passable_no(stmt *s)
-{ (void)s; return 0; }
+int fold_passable_no(stmt *s, int break_means_passable)
+{ (void)s; (void)break_means_passable; return 0; }
 
-int fold_passable(stmt *s)
+int fold_passable(stmt *s, int break_means_passable)
 {
-	return s->f_passable(s);
+	return s->f_passable(s, break_means_passable);
 }
 
 void fold_merge_tenatives(symtable *stab)

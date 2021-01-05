@@ -77,7 +77,7 @@ void style_stmt_goto(const stmt *s, out_ctx *octx)
 	stylef(";");
 }
 
-static int goto_passable(stmt *s)
+static int goto_passable(stmt *s, int break_means_passable)
 {
 	struct label *lbl;
 	int passable;
@@ -109,7 +109,7 @@ static int goto_passable(stmt *s)
 	 */
 
 	lbl->doing_passable_check = 1;
-	passable = fold_passable(lbl->next_stmt);
+	passable = fold_passable(lbl->next_stmt, break_means_passable);
 	lbl->doing_passable_check = 0;
 	return passable;
 }

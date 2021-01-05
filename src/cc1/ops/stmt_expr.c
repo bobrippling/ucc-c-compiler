@@ -89,8 +89,9 @@ void style_stmt_expr(const stmt *s, out_ctx *octx)
 	stylef(";\n");
 }
 
-static int expr_passable(stmt *s)
+static int expr_passable(stmt *s, int break_means_passable)
 {
+	(void)break_means_passable;
 	/*
 	 * TODO: ({}) - return inside?
 	 * if we have a funcall marked noreturn, we're not passable
@@ -99,7 +100,7 @@ static int expr_passable(stmt *s)
 		return expr_func_passable(s->expr);
 
 	if(expr_kind(s->expr, stmt))
-		return fold_passable(s->expr->code);
+		return fold_passable(s->expr->code, 0);
 
 	if(expr_kind(s->expr, builtin))
 		return !func_or_builtin_attr_present(s->expr, attr_noreturn);

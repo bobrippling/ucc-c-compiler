@@ -87,7 +87,7 @@ int stmt_is_switchlabel(const stmt *s)
 
 int stmt_kills_below_code(stmt *s)
 {
-	if(!fold_passable(s))
+	if(!fold_passable(s, 0))
 		return 1;
 
 	if(stmt_is_switchlabel(s) || stmt_kind(s, label))
@@ -118,7 +118,7 @@ static void stmt_walk2(stmt *base, stmt_walk_enter enter, stmt_walk_leave leave,
 		for(i = base->bits.code.stmts; i && *i; i++){
 			stmt_walk2(*i, enter, leave, data, stop);
 			if(*stop)
-				break;
+				return;
 		}
 	}
 
