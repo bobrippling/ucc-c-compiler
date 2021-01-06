@@ -643,8 +643,11 @@ ptr_relation:
 
 						if((void_lhs = type_is_void_ptr(tlhs)) || type_is_void_ptr(trhs)){
 							/* special case - if comparing against void*,
-							 * cast the void* to the target type */
-							*(void_lhs ? plhs : prhs) = (void_lhs ? trhs : tlhs);
+							 * cast the void* to the (qualified) target type */
+							enum type_qualifier q = type_qual(type_is_ptr(void_lhs ? trhs : tlhs));
+							fprintf(stderr, "q(%s): %s\n", type_to_str(void_lhs ? trhs : tlhs), type_qual_to_str(q, 0));
+
+							*(void_lhs ? plhs : prhs) = type_qualify(void_lhs ? trhs : tlhs, q);
 						}else{
 							/* At least one is a pointer, cast the other to it.
 							 * This matches gcc & clang, with clang giving priority
