@@ -27,3 +27,13 @@ void f(const void *p)
 
 	(void)(&c == &(int){3}); // CHECK: warning: distinct pointer types in comparison lacks a cast
 }
+
+typedef union A { const void *v; } A;
+
+extern const char *s[];
+
+void g(const A *a)
+{
+	(void)(a->v == s); // no warnings
+	(void)(s == a->v);
+}
