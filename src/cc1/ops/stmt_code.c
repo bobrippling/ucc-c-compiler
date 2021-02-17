@@ -292,24 +292,18 @@ static void gen_auto_decl(decl *d, out_ctx *octx)
 static void gen_decls(decl **decls, symtable *symtab, out_ctx *octx)
 {
 	decl **diter;
-	decl *const last = decls[dynarray_count(decls)-1];
+	decl *last;
+
+	last = decls ? decls[dynarray_count(decls)-1] : NULL;
 
 	/* find the start */
 	for(diter = symtab_decls(symtab); diter && *diter; diter++)
-		if(*diter == decls[0]){
-			fprintf(stderr, "start search %s\n", (*diter)->spel);
+		if(*diter == decls[0])
 			break;
-		}
 
 	for(; diter && *diter; diter++){
 		decl *d = *diter;
 		int func;
-
-		fprintf(stderr, "iter %s\n", (*diter)->spel);
-		if(d == last){
-			fprintf(stderr, "last %s\n", (*diter)->spel);
-			break;
-		}
 
 		/* we may need a '.extern fn...' for prototypes... */
 		if((func = !!type_is(d->ref, type_func))
@@ -332,6 +326,9 @@ static void gen_decls(decl **decls, symtable *symtab, out_ctx *octx)
 			out_val_consume(octx,
 					gen_expr(d->bits.var.init.expr, octx));
 		}
+
+		if(d == last)
+			break;
 	}
 }
 
@@ -568,9 +565,6 @@ void gen_stmt_code_m1(
 
 	gen_dbg_begin(pushed_lbls, octx, s->symtab);
 
-	fprintf(stderr, "HERE\n");
-
-	/* TODO: iterate over symtab decls and jump into stmt_and_decls later */
 	for(iter = s->bits.stmt_and_decls; iter && *iter; iter++){
 		if((*iter)->stmt){
 			if(m1 && !iter[1])
