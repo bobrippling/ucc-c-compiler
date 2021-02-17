@@ -1,7 +1,8 @@
 // RUN: %check --only %s
+// RUN: %check -e --only %s -DWITH_ERROR
 // RUN: %ocheck 0 %s
 
-f(int i)
+int f(int i)
 {
 	({
 	 (void)0;
@@ -16,6 +17,39 @@ static void assert(char c)
 	void abort(void);
 	if(c == 0)
 		abort();
+}
+
+int via_goto()
+{
+  int r = 3;
+
+	r = ({
+    int x = 1;
+    goto label; // should work
+    x;
+  });
+
+label:
+  return r;
+}
+
+void on_cleanup(int *p)
+{
+	*p = 1;
+}
+
+void q(int *p)
+{
+	*p = 2;
+}
+
+int via_cleanup()
+{
+	return ({
+		int x __attribute((cleanup(on_cleanup)));
+		q(&x);
+		x;
+	}) + 3;
 }
 
 int main()
@@ -98,4 +132,7 @@ int main()
 			})
 			==
 			3);
+
+	assert(via_cleanup() == 5);
+	assert(via_goto() == 3);
 }
