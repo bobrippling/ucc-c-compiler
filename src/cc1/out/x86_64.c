@@ -1339,6 +1339,8 @@ static const out_val *x86_idiv(
 	v_freeup_reg(octx, &rdx);
 	v_reserve_reg(octx, &rdx);
 	{
+		const int is_signed = type_is_signed(r->t);
+
 		/* need to move 'l' into eax
 		 * then sign extended later - cqto */
 		l = v_to_reg_given_freeup_no_off(octx, l, &rax);
@@ -1350,7 +1352,7 @@ static const out_val *x86_idiv(
 		assert(r->type != V_REG
 				|| r->bits.regoff.reg.idx != X86_64_REG_RDX);
 
-		if(type_is_signed(r->t)){
+		if(is_signed){
 			const char *ext;
 			switch(type_size(r->t, NULL)){
 				default:
@@ -1382,7 +1384,10 @@ static const out_val *x86_idiv(
 						octx, out_new_zero(octx, r->t), &rdx));
 		}
 
-		out_asm(octx, "idiv%s %s",
+		/* idiv is signed, div isn't:
+		 * if the result of a signed (128-bit) divide doesn't fit in 64-bits, we catch a SIGFPE */
+		out_asm(octx, "%sdiv%s %s",
+				is_signed ? "i" : "",
 				x86_suffix(r->t),
 				impl_val_str(r, 0));
 
