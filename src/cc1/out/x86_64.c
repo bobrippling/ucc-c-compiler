@@ -1840,6 +1840,21 @@ const out_val *impl_deref(
 	return v_new_reg(octx, vp, tpointed_to, reg);
 }
 
+static const out_val *x86_negate_fp(out_ctx *octx, const out_val *val)
+{
+	enum type_primitive prim = type_primitive(/*FIXME: spilt?*/val->t);
+
+	assert(!platform_bigendian());
+
+	/* if ldouble, `fchs` */
+
+	/* flip bit */
+	return out_op(
+			octx, op_minus,
+			out_new_zero(octx, val->t),
+			val);
+}
+
 const out_val *impl_op_unary(out_ctx *octx, enum op_type op, const out_val *val)
 {
 	const char *opc;
@@ -1853,12 +1868,8 @@ const out_val *impl_op_unary(out_ctx *octx, enum op_type op, const out_val *val)
 			return val;
 
 		case op_minus:
-			if(type_is_floating(val->t)){
-				return out_op(
-						octx, op_minus,
-						out_new_zero(octx, val->t),
-						val);
-			}
+			if(type_is_floating(val->t))
+				return x86_negate_fp(octx, val);
 			opc = "neg";
 			break;
 
