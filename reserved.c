@@ -1,3 +1,5 @@
+// see https://reviews.llvm.org/rGb83b23275b74
+
 int main() // no warning
 {
 	__yo(); // warning
