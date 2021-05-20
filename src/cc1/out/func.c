@@ -84,7 +84,7 @@ static void callee_save_or_restore(
 	if(!stack_n)
 		return;
 
-	stack_locn = out_aalloc(octx, stack_n, /*align*/voidpsz, voidp);
+	stack_locn = out_aalloc(octx, stack_n, /*align*/voidpsz, voidp, NULL);
 
 	stack_locn = out_change_type(octx, stack_locn, voidp);
 
@@ -355,16 +355,16 @@ void out_func_epilogue(
 			 * and that same value (minus padding) to stack_n_alloc */
 			assert(octx->max_stack_sz >= octx->stack_n_alloc);
 
-			out_comment(octx,
-					"stack_sz{cur=%lu,max=%lu} n_alloc=%lu call_spc=%lu calleesve=%lu max_align=%u",
-					octx->cur_stack_sz,
-					octx->max_stack_sz,
-					octx->stack_n_alloc,
-					octx->stack_callspace,
-					octx->stack_calleesave_space,
-					octx->max_align);
-
 			if(cc1_fopt.verbose_asm){
+				out_comment(octx,
+						"stack_sz{cur=%lu,max=%lu} n_alloc=%lu call_spc=%lu calleesve=%lu max_align=%u",
+						octx->cur_stack_sz,
+						octx->max_stack_sz,
+						octx->stack_n_alloc,
+						octx->stack_callspace,
+						octx->stack_calleesave_space,
+						octx->max_align);
+
 				out_comment(octx,
 						"red-zone %s (stack @ %zu bytes, had_call: %d, stack_ptr_manipulated: %d)",
 						redzone ? "active" : "inactive",

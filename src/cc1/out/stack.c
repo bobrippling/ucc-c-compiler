@@ -53,7 +53,12 @@ void v_set_cur_stack_sz(out_ctx *octx, v_stackt new_sz)
 }
 
 const out_val *out_aalloc(
-		out_ctx *octx, unsigned sz, unsigned align, type *in_ty)
+	out_ctx *octx,
+	unsigned sz,
+	unsigned align,
+	type *in_ty,
+	long *const offset
+)
 {
 	type *ty = type_ptr_to(
 			in_ty
@@ -67,6 +72,9 @@ const out_val *out_aalloc(
 
 	v_set_cur_stack_sz(octx, octx->cur_stack_sz);
 
+	if(offset)
+		*offset = octx->cur_stack_sz;
+
 	return v_new_bp3_below(octx, NULL, ty, octx->cur_stack_sz);
 }
 
@@ -75,7 +83,8 @@ const out_val *out_aalloct(out_ctx *octx, type *ty)
 	return out_aalloc(octx,
 			type_size(ty, NULL),
 			type_align(ty, NULL),
-			ty);
+			ty,
+			NULL);
 }
 
 void out_adealloc(out_ctx *octx, const out_val **val)

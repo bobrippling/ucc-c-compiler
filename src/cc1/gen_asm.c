@@ -130,10 +130,12 @@ static void assign_arg_vals(decl **decls, const out_val *argvals[], out_ctx *oct
 		if(s && s->type == sym_arg){
 			gen_set_sym_outval(octx, s, argvals[j++]);
 
-			if(cc1_fopt.verbose_asm){
-				out_comment(octx, "arg %s @ %s",
-						decls[i]->spel,
-						out_val_str(sym_outval(s), 1));
+			if(cc1_fopt.dump_frame_layout){
+				const char *loc = out_val_str(sym_outval(s), 1);
+
+				fprintf(stderr, "frame: % 9s: %s (argument)\n",
+						loc,
+						decls[i]->spel);
 			}
 		}
 	}
@@ -172,6 +174,7 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 		const out_val *dest, *src;
 		decl *d = *i;
 		unsigned vla_space;
+		long offset;
 
 		/* generate side-effects even if it's decayed, e.g.
 		 * f(int p[E1][E2])
@@ -196,8 +199,17 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 		vla_space = vla_decl_space(d);
 
 		out_val_release(octx, sym_outval(d->sym));
-		gen_set_sym_outval(octx, d->sym, out_aalloc(
-					octx, vla_space, type_align(d->ref, NULL), d->ref));
+		gen_set_sym_outval(
+			octx,
+			d->sym,
+			out_aalloc(
+				octx,
+				vla_space,
+				type_align(d->ref, NULL),
+				d->ref,
+				&offset
+			)
+		);
 
 		dest = out_new_sym(octx, d->sym);
 		out_store(octx, dest, src);

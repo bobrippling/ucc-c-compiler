@@ -23,6 +23,8 @@
 /* out_alloca_fixed() */
 #include "../out/out.h"
 #include "../cc1_out_ctx.h"
+#include "../cc1.h" /* fopt */
+#include "../fopt.h" /* fopt */
 
 const char *str_stmt_code(void)
 {
@@ -276,6 +278,8 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 			unsigned siz;
 			unsigned align;
 			const int vm = type_is_variably_modified(s->decl->ref);
+			const out_val *place;
+			long offset;
 
 			if(vm){
 				siz = vla_decl_space(s->decl);
@@ -288,7 +292,15 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 				align = decl_align(s->decl);
 			}
 
-			gen_set_sym_outval(octx, s, out_aalloc(octx, siz, align, s->decl->ref));
+			place = out_aalloc(octx, siz, align, s->decl->ref, &offset);
+			gen_set_sym_outval(octx, s, place);
+
+			if(cc1_fopt.dump_frame_layout){
+				fprintf(stderr, "frame: %-4ld-% 4ld: %s%s\n",
+						offset - siz,
+						offset,
+						s->decl->spel, vm ? " (variably-modified)" : "");
+			}
 			break;
 		}
 

@@ -656,7 +656,7 @@ void impl_func_prologue_save_call_regs(
 			const out_val *stack_loc;
 			type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 
-			stack_loc = out_aalloc(octx, (n_call_f + n_call_i) * ws, ws, arithty);
+			stack_loc = out_aalloc(octx, (n_call_f + n_call_i) * ws, ws, arithty, NULL);
 
 			for(i_arg = i_i = i_f = i_arg_stk = 0;
 					i_arg < nargs;
@@ -749,7 +749,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	/* space for all call regs */
 	stk_spill = out_aalloc(octx,
 			(N_CALL_REGS_I + N_CALL_REGS_F * 2) * pws,
-			pws, ty_integral);
+			pws, ty_integral, NULL);
 
 	/* go backwards, as we want registers pushed in reverse
 	 * so we can iterate positively.
@@ -2399,7 +2399,7 @@ const out_val *impl_call(
 			nints++; /* only an extra pointer arg for stret_memcpy */
 			/* fall */
 		case stret_regs:
-			stret_spill = out_aalloc(octx, stret_stack, type_align(retty, NULL), retty);
+			stret_spill = out_aalloc(octx, stret_stack, type_align(retty, NULL), retty, NULL);
 		case stret_scalar:
 			break;
 	}
@@ -2439,7 +2439,7 @@ const out_val *impl_call(
 
 		}else{
 			/* this aligns the stack-ptr and returns arg_stack padded */
-			arg_stack.vptr = out_aalloc(octx, arg_stack.bytesz, pws, arithty);
+			arg_stack.vptr = out_aalloc(octx, arg_stack.bytesz, pws, arithty, NULL);
 
 			if(octx->stack_callspace < arg_stack.bytesz)
 				octx->stack_callspace = arg_stack.bytesz;
