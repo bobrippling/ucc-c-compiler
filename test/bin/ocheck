@@ -19,6 +19,31 @@ sub signame
 	return "<unknown signal>";
 }
 
+sub env_append
+{
+	my($name, $obj) = @_;
+
+	if($ENV{$name}){
+		$ENV{$name} .= ":$obj";
+	}else{
+		$ENV{$name} = "$obj";
+	}
+}
+
+sub randstack_to_env
+{
+	my $obj = $ENV{UCC_RANDSTACK_LIB};
+	if(!$obj){
+		return;
+	}
+	if(!-e $obj){
+		die "$0: \$UCC_RANDSTACK_LIB doesn't exist";
+	}
+
+	env_append('LD_PRELOAD', $obj);
+	env_append('DYLD_INSERT_LIBRARIES', $obj);
+}
+
 die "Usage: $0 exit-code program [args...]\n"
 unless @ARGV;
 
@@ -50,7 +75,9 @@ if(!-x $cmd){
 	$cmd = $tmp;
 }
 
-my $r = system($cmd, @args);
+randstack_to_env();
+print "$0: run: $cmd\n" if exists $ENV{UCC_VERBOSE};
+my $r = system($cmd);
 my $got_exitcode = $r >> 8;
 my $got_signal = $r & 127;
 if($got_signal){
