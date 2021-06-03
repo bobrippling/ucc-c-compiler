@@ -28,6 +28,7 @@ int strcmp(const char *, const char *);
 
 int main(int argc, const char **argv)
 {
+#include <ocheck-init.c>
 	if(!strcmp(argv[1], "normal"))
 		return f(INT_MIN,-2);
 	if(!strcmp(argv[1], "div0"))

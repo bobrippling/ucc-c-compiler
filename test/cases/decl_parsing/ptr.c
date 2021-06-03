@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %ocheck 5 %t
+// RUN: %ocheck 5 %s
 
 int i;
 
@@ -10,6 +9,7 @@ int *x()
 
 main()
 {
+#include <ocheck-init.c>
 	*x() = 5;
 
 	return i;

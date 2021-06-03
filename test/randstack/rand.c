@@ -1,7 +1,7 @@
 #include "asm.h"
 
 __attribute__((constructor))
-static void randomise_stack(void)
+void randomise_stack(void)
 {
 	typedef unsigned long T;
 	T *p = get_rsp();

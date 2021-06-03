@@ -17,14 +17,20 @@ assert(_Bool b)
 
 f(int n)
 {
-	short (*p)[n] = 0;
+#define INIT (void*)0
+	short (*p)[n] = INIT;
 
-	assert(p == 0);
-	assert((int)(p + 1) == 3 * sizeof(short));
+	assert(p == INIT);
+
+	__auto_type a = (int)(p + 1);
+	__auto_type b = 3 * sizeof(short);
+	if(a != b)
+		abort();
 }
 
 main()
 {
+#include <ocheck-init.c>
 	f(3);
 
 	return 0;

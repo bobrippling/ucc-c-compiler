@@ -34,14 +34,35 @@ sub randstack_to_env
 {
 	my $obj = $ENV{UCC_RANDSTACK_LIB};
 	if(!$obj){
-		return;
+		return 0;
 	}
 	if(!-e $obj){
 		die "$0: \$UCC_RANDSTACK_LIB doesn't exist";
 	}
 
+	print "$0: randstack on\n" if exists $ENV{UCC_VERBOSE};
+
 	env_append('LD_PRELOAD', $obj);
 	env_append('DYLD_INSERT_LIBRARIES', $obj);
+	return 1;
+}
+
+sub randstack_init
+{
+	# randstack is run pre-startup (to catch __attribute__((constructor)) functions
+	# and during main() (checked here) to cover startup code that might zero part
+	# of the stack, so we re-randomise it
+
+	my $on = randstack_to_env();
+	if($on){
+		my $src = shift();
+		open(my $fh, '<', $src) or die "open $src: $!";
+		my @contents = <$fh>;
+		close($fh);
+
+		die "$0: refusing to run $src, no randstack init\n"
+		unless grep /#\s*include.*ocheck/, @contents;
+	}
 }
 
 die "Usage: $0 exit-code program [args...]\n"
@@ -61,6 +82,7 @@ if($expected =~ /^SIG[A-Z]+$/){
 }
 
 my($cmd, @args) = @ARGV;
+my $src;
 
 if(!-x $cmd){
 	# we've been passed a source file
@@ -69,13 +91,15 @@ if(!-x $cmd){
 
 	my $tmp = "$ENV{UCC_TESTDIR}/$$.retcheck-exe";
 
-	my @cmd = ($ucc, '-o', $tmp, $cmd, @args);
+	my @cmd = ($ucc, '-o', $tmp, '-I', 'cases/', $cmd, @args);
+	($src = $cmd) =~ s/ .*//;
+
 	print "$0: run: @cmd\n" if exists $ENV{UCC_VERBOSE};
 	die "$0: couldn't compile\n" if system(@cmd);
 	$cmd = $tmp;
 }
 
-randstack_to_env();
+randstack_init($src);
 print "$0: run: $cmd\n" if exists $ENV{UCC_VERBOSE};
 my $r = system($cmd);
 my $got_exitcode = $r >> 8;
