@@ -749,8 +749,11 @@ void fold_decl_add_sym(decl *d, symtable *stab)
 		}else{
 			/* no decl_store_duration_is_static() checks here:
 			 * we haven't given it a sym yet */
-			ty = !stab->parent || decl_store_static_or_extern(d->store)
-				? sym_global : sym_local;
+			const int global = !stab->parent
+				|| decl_store_static_or_extern(d->store)
+				|| type_is(d->ref, type_func);
+
+			ty = global ? sym_global : sym_local;
 		}
 
 		d->sym = sym_new(d, ty);
