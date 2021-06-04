@@ -25,5 +25,6 @@ f(int n)
 
 main()
 {
+#include "../ocheck-init.c"
 	return f(2);
 }

@@ -28,6 +28,7 @@ single2(a) // CHECK: warning: old-style function declaration
 
 main()
 {
+#include "../ocheck-init.c"
 	return single(5) + single2(1); // 2
 }
 
@@ -43,6 +44,7 @@ void empty();
 
 int main()
 {
+#include "../ocheck-init.c"
 	empty(1, 2); // CHECK-C2X: error: too many arguments to function empty (got 2, need 0)
 }
 #endif

@@ -5,6 +5,7 @@ typedef __WCHAR_TYPE__ wchar_t;
 
 main()
 {
+#include "../ocheck-init.c"
 	wchar_t c = L'a';
 	wchar_t s[] = {
 		'a', // extended

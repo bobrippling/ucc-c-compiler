@@ -9,6 +9,7 @@ const char *f()
 
 main()
 {
+#include "../ocheck-init.c"
 	char *p = g;
 	if(f() != p + 7)
 		abort();

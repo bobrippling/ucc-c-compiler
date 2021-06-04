@@ -10,5 +10,6 @@ extern int f(void);
 
 int main()
 {
+#include "../ocheck-init.c"
 	return f();
 }

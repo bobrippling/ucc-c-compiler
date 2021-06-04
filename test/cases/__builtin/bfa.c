@@ -11,6 +11,7 @@ void *func(int x)
 
 int main()
 {
+#include "../ocheck-init.c"
 	void *fp0 = __builtin_frame_address(0);
 	void *fp1 = func(0);
 

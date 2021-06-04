@@ -21,6 +21,7 @@ clean(int *p)
 
 main()
 {
+#include "../../ocheck-init.c"
 	int x __attribute__((cleanup(clean))) = 3;
 
 	px = &x;

@@ -17,6 +17,7 @@ ASM_DECL(after_main);
 ASM_LABEL(before_main);
 int main()
 {
+#include "../ocheck-init.c"
 	void *p = call_location();
 
 	if(before_main < p && p < after_main)

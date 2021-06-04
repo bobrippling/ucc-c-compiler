@@ -7,5 +7,6 @@ _Bool f(float f)
 
 main()
 {
+#include "../../ocheck-init.c"
 	return f(0);
 }

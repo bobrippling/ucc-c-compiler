@@ -3,6 +3,7 @@ void abort(void) __attribute__((noreturn));
 
 main()
 {
+#include "../ocheck-init.c"
 	char c = 5;
 
 	c <<= 1;

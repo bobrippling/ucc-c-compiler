@@ -20,6 +20,7 @@ int another()
 
 main()
 {
+#include "../ocheck-init.c"
 	if(another() != 2)
 		abort();
 

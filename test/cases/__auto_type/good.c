@@ -7,6 +7,7 @@ int f(void)
 
 main()
 {
+#include "../ocheck-init.c"
 	__auto_type x = f();
 
 	// this puts us into parse_btype()

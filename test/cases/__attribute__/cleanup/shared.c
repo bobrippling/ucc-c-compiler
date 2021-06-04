@@ -47,6 +47,7 @@ g()
 
 main()
 {
+#include "../../ocheck-init.c"
 	g();
 	if(!freed){
 		_Noreturn void abort();

@@ -53,6 +53,7 @@ t_for()
 
 main()
 {
+#include "../ocheck-init.c"
 	t_if();
 	t_while();
 	t_switch();

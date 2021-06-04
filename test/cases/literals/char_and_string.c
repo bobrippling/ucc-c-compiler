@@ -6,6 +6,7 @@ char b = '';
 
 main()
 {
+#include "../ocheck-init.c"
 	if(b != 22)
 		abort();
 	if(s[0] != 22)

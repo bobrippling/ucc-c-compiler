@@ -10,6 +10,7 @@ f(A a)
 
 main()
 {
+#include "../../ocheck-init.c"
 	if( f((void *)0) != sizeof(void *) ){
 		_Noreturn void abort();
 		abort();

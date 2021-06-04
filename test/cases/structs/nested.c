@@ -12,5 +12,6 @@ struct A
 
 main()
 {
+#include "../ocheck-init.c"
 	return sizeof(struct A) == 24 && sizeof(struct B) == 16 ? 0 : 1;
 }

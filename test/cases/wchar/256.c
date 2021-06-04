@@ -3,6 +3,7 @@ void abort(void) __attribute__((noreturn));
 
 main()
 {
+#include "../ocheck-init.c"
 	volatile int x = L'\x0000000100';
 
 	if(x != 0x100)

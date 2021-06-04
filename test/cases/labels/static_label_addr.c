@@ -22,6 +22,7 @@ L:
 
 main()
 {
+#include "../ocheck-init.c"
 	static void *p = &&L;
 
 	goto *p;

@@ -9,6 +9,7 @@ h(){}
 
 main()
 {
+#include "../ocheck-init.c"
 	long l = 3; // use a long to ensure we take up the entire stack line
 	f(g(), h());
 

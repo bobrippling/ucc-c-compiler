@@ -27,6 +27,7 @@ f(int i)
 
 main()
 {
+#include "../../ocheck-init.c"
 	_Noreturn void abort();
 	f(0);
 	if(n) abort();

@@ -38,6 +38,7 @@ void g_without_lvaluestruct_logic()
 
 int main()
 {
+#include "../ocheck-init.c"
 	int memcmp(const void *, const void *, unsigned long);
 	g();
 	_Noreturn void abort();

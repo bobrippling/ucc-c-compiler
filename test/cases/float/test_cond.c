@@ -10,6 +10,7 @@ f()
 
 main()
 {
+#include "../ocheck-init.c"
 	float x = 5;
 	if(x)
 		f();

@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	int i;
 	((int *)__builtin_frame_address(0))[-1] = 3;
 

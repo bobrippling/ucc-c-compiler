@@ -12,6 +12,7 @@ f(int i)
 
 main()
 {
+#include "../ocheck-init.c"
 	// (1 && 0) || 0
 	if(1 && 0 || 0)
 		abort();

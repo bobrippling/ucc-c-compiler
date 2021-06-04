@@ -30,6 +30,7 @@ f(int n)
 
 main()
 {
+#include "../ocheck-init.c"
 	if(f(3) != 28)
 		abort();
 

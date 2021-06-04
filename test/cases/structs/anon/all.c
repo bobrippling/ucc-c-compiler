@@ -143,6 +143,7 @@ void test_plan_9()
 
 int main()
 {
+#include "../../ocheck-init.c"
 	test_c99();
 	test_plan_9();
 

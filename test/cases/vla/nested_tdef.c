@@ -45,6 +45,7 @@ tdef_artype()
 
 main()
 {
+#include "../ocheck-init.c"
 	tdef_btype();
 	if(xs != 1)
 		abort();

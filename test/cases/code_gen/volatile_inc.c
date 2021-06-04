@@ -12,6 +12,7 @@ static void assert(_Bool b)
 
 int main()
 {
+#include "../ocheck-init.c"
 	int r = i++;
 	i++;
 	assert(r == 0);

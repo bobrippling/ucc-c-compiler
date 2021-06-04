@@ -19,6 +19,7 @@ struct A *current(struct A *p)
 
 main()
 {
+#include "../ocheck-init.c"
 	struct A self = { &self };
 	struct A a = { 0 }, b = { &a };
 

@@ -18,6 +18,7 @@ q(a, b, c, d, e, f, g, h, j)
 
 main()
 {
+#include "../ocheck-init.c"
 	int (*f)() = p;
 	if(q(1, 2, 3, 4, 5, 6, 7, 8, 9) != 45){
 		_Noreturn void abort();

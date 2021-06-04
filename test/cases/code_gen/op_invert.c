@@ -9,6 +9,7 @@ extern void abort();
 
 main()
 {
+#include "../ocheck-init.c"
 	int expr = constant;
 
 	// there was a problem where if we had a constant

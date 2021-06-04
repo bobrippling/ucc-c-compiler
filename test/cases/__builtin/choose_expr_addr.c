@@ -5,6 +5,7 @@ int *p = &__builtin_choose_expr(0, (void)0, g);
 
 main()
 {
+#include "../ocheck-init.c"
 	int k = 5, *i;
 
 	i = &__builtin_choose_expr(1, k, (void)0);

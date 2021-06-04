@@ -9,6 +9,7 @@ assert(x)
 
 main()
 {
+#include "../ocheck-init.c"
 	assert('"' + '\"' == 68);
 
 	assert('/*' == 12074);

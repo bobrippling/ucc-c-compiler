@@ -28,6 +28,7 @@ static void g(char a)
 
 int main()
 {
+#include "../ocheck-init.c"
 	expected = 1;
 	f(2);
 

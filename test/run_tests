@@ -1,6 +1,7 @@
 #!/usr/bin/perl
 use warnings;
 use strict;
+use Cwd qw(cwd);
 
 my @expected_fails;
 my @skips;
@@ -9,12 +10,13 @@ my %colour = (
 	red => "\x1b[31m",
 	off => "\x1b[0m",
 );
-my $ec = 0;
+my $exitcode = 0;
 my %tasks; # pid => { output, testfile }
 my $env_tmpdir = $ENV{TMPDIR} || '/tmp';
 my $tdir = "$env_tmpdir/ucc.test/";
 my $ign_file = undef;
 my $quiet;
+my $with_randstack = 1;
 my $jobs = 1;
 my $progress = 0;
 my @tests;
@@ -140,16 +142,16 @@ sub reap_test
 		exit 1;
 	}
 
-	if($rc & 127){
-		die "test $tasks{$pid}->{testfile} caught signal " . ($rc & 127) . "\n";
+	my ($signal, $ec) = interpret_exitcode($rc);
+	if($signal){
+		die "test $tasks{$pid}->{testfile} caught signal $signal\n";
 	}
-	$rc >>= 8;
 
 	my $f = $tasks{$pid}->{testfile};
 	my $status = file_status($f);
 	my $should_fail = ($status eq 'fail');
 
-	my $failed = !!$rc;
+	my $failed = !!$ec;
 
 	if(not $quiet or ($failed != $should_fail)){
 		if($failed != $should_fail){
@@ -170,7 +172,7 @@ sub reap_test
 		my $output = $tasks{$pid}->{output};
 		my $is_unexpected = $failed != $should_fail;
 		if($is_unexpected or $ENV{UCC_VERBOSE} > 1){
-			$ec = 1 if $is_unexpected;
+			$exitcode = 1 if $is_unexpected;
 			cat_indent_file($output);
 		}
 	}
@@ -178,11 +180,32 @@ sub reap_test
 	delete $tasks{$pid};
 }
 
+sub interpret_exitcode
+{
+	my $rc = shift();
+	return ($rc & 127, $rc >> 8);
+}
+
 sub show_progress
 {
 	my($i, $n) = @_;
 
 	printf "%d%% (%d/%d)\r", $i / $n * 100, $i, $n;
+}
+
+sub randstack_build
+{
+	my $rc = system("make", "--no-print-directory", "-C", "randstack/");
+	my ($signal, $ec) = interpret_exitcode($rc);
+	if($signal or $ec){
+		die "randstack build failed";
+	}
+}
+
+sub randstack_export
+{
+	my $here = cwd();
+	$ENV{UCC_RANDSTACK_LIB} = "$here/randstack/randstack.so";
 }
 
 if($ENV{CI}){
@@ -220,8 +243,11 @@ for(my $i = 0; $i < @ARGV; $i++){
 	}elsif($ARGV[$i] =~ /^--ucc=(.+)$/){
 		$ENV{UCC} = $1;
 
-	}elsif($ARGV[$i] =~ '--update-snapshots'){
+	}elsif($ARGV[$i] eq '--update-snapshots'){
 		$ENV{UCC_UPDATE_SNAPSHOTS} = 1;
+
+	}elsif($ARGV[$i] eq '--no-randstack'){
+		$with_randstack = 0;
 
 	}elsif($ARGV[$i] =~ /^-j(.*)$/){
 		my $n = $1;
@@ -259,6 +285,11 @@ $ENV{UCC_TESTDIR} = $tdir;
 
 colour_init($quiet);
 
+if($with_randstack){
+	randstack_build();
+	randstack_export();
+}
+
 my @test_files = find_tests(@tests);
 die "$0: no tests found\n" unless @test_files;
 
@@ -280,4 +311,4 @@ reap_all_tests();
 
 system('rm', '-rf', $tdir);
 
-exit $ec;
+exit $exitcode;

@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	int i = 1;
 
 	return

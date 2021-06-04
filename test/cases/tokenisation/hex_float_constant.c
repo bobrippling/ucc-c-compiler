@@ -7,6 +7,7 @@ double g = 0xDE.488631p0;
 
 main()
 {
+#include "../ocheck-init.c"
 	if(f != 0.125f)
 		abort();
 

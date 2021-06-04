@@ -7,5 +7,6 @@ fadd(float a, float b, float c, float d)
 
 main()
 {
+#include "../../ocheck-init.c"
 	return 10 == (int)fadd(1, 2, 3, 4);
 }

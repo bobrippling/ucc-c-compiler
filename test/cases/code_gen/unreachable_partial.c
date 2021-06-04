@@ -4,6 +4,7 @@ _Noreturn void abort(void);
 
 int main(int argc, char *argv[]) {
 	char *x = (0 ? (abort(), 0) : 0);
+#include "../ocheck-init.c"
 
 	// 0 ? abort() : xyz()
 	// would cause out_ctrl_merge_n() to try to merge the following blocks:

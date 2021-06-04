@@ -2,6 +2,7 @@
 f(){return 3;}
 main()
 {
+#include "../ocheck-init.c"
 	int d = 0;
 	int x = 0x5;
 	int o = 05;

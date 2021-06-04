@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s -fsanitize=nonnull-attribute -fsanitize-error=call=san_err
-// RUN: %ocheck 3 %t
+// RUN: %ocheck 3 %s -fsanitize=nonnull-attribute -fsanitize-error=call=san_err
 
 __attribute((nonnull(2)))
 void f(int *a, int *b, int *c)
@@ -18,6 +17,7 @@ void san_err(void)
 
 int main()
 {
+#include "../ocheck-init.c"
 	ec = 1;
 
 	f(0, 1, 0);

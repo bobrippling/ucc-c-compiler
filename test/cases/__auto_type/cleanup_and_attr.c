@@ -25,6 +25,7 @@ void g()
 
 main()
 {
+#include "../ocheck-init.c"
 	g();
 
 	if(dints != 4){

@@ -38,6 +38,7 @@ MOD(unsigned i)
 
 main()
 {
+#include "../ocheck-init.c"
 	if(MUL(2) != 4)
 		abort();
 

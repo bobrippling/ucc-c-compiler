@@ -69,6 +69,7 @@ union_init()
 
 main()
 {
+#include "../../ocheck-init.c"
 	union_init();
 	union_full_zero();
 	union_ar();

@@ -3,6 +3,7 @@
 
 int main()
 {
+#include "../ocheck-init.c"
 	float a = __builtin_nanf("");
 
 	return a == a;

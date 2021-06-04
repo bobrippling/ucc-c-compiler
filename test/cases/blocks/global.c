@@ -9,6 +9,7 @@ int (^b)(int) = ^(int i){
 
 int main()
 {
+#include "../ocheck-init.c"
 	if(b(2) != 3){
 		_Noreturn void abort();
 		abort();

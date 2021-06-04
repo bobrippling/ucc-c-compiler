@@ -42,6 +42,7 @@ neg_lhs(int i)
 
 main()
 {
+#include "../ocheck-init.c"
 	CALL;
 
 	return 0;

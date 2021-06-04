@@ -32,6 +32,7 @@ g(struct B *p)
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct A a;
 	struct B b;
 	f(&a);

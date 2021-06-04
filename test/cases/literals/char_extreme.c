@@ -19,6 +19,7 @@ void assert(int x)
 
 int main()
 {
+#include "../ocheck-init.c"
 	assert(x[0] == -1);
 	return 0;
 }

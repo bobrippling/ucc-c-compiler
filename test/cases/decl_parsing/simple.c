@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %ocheck 5 %t
+// RUN: %ocheck 5 %s
 
 void set_to_3(int *p)
 {
@@ -13,6 +12,7 @@ void set_to_5(int **p)
 
 main()
 {
+#include "../ocheck-init.c"
 	int i;
 	int *const p = &i;
 	int **pp;

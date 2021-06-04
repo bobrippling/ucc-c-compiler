@@ -13,6 +13,7 @@ f(uint64_t x)
 
 main()
 {
+#include "../ocheck-init.c"
 	f(-(uint64_t)LARGE_NEGATIVE);
 	return 0;
 }

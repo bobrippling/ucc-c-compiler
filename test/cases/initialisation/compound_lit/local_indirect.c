@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../../ocheck-init.c"
 	/* compound literal indirectly referenced in local scope wasn't code-gen'd,
 	 * so p ends up not pointing to anything valid */
 	static int *p = &(int){ 7 };

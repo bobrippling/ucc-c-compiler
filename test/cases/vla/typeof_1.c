@@ -17,6 +17,7 @@ f()
 
 main()
 {
+#include "../ocheck-init.c"
 	__typeof(  (short (**)[][f()]) g()  ) x;
 
 	if(sizeof(x) != sizeof(short **))

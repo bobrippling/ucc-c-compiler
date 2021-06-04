@@ -17,6 +17,7 @@ sub = &((int *)0)[10] - (int *)8;
 
 main()
 {
+#include "../ocheck-init.c"
 	if(cmp != 1) abort();
 	if(add != 20) abort();
 	if(dif != 8) abort();

@@ -19,6 +19,7 @@ f()
 
 main()
 {
+#include "../ocheck-init.c"
 	f();
 	if(calls != 1)
 		abort();

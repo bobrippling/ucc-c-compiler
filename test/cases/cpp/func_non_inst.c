@@ -10,5 +10,6 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	return (f)(2); // CHECK: /warning: ignoring non-function instance of f/
 }

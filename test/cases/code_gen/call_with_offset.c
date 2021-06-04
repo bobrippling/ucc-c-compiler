@@ -21,6 +21,7 @@ f(pt *pt)
 
 main()
 {
+#include "../ocheck-init.c"
 	pt xy = { 0 };
 
 	f(&xy);

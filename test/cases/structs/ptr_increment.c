@@ -1,6 +1,7 @@
 // RUN: %ocheck 5 %s
 main()
 {
+#include "../ocheck-init.c"
 	struct A
 	{
 		int i;

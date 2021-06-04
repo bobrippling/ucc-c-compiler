@@ -5,6 +5,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	if(!is_int_good(_Bool)) return 1;
 	if(!is_int_good(char)) return 2;
 	if(!is_int_good(short)) return 3;

@@ -62,6 +62,7 @@ for_order()
 
 main()
 {
+#include "../../ocheck-init.c"
 	f(3);
 	if(n != 22)
 		abort();

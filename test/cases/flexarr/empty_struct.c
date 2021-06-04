@@ -8,5 +8,6 @@ struct A
 
 main()
 {
+#include "../ocheck-init.c"
 	return sizeof(struct A);
 }

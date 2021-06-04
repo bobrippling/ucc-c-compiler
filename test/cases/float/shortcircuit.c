@@ -18,6 +18,7 @@ a(float a, float b)
 
 main()
 {
+#include "../ocheck-init.c"
 	assert( o(1, 2));
 	assert( o(0, 2));
 	assert( o(1, 0));

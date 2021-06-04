@@ -40,6 +40,7 @@ h()
 
 main()
 {
+#include "../ocheck-init.c"
 	f();
 	g();
 	h();

@@ -19,6 +19,7 @@ _Noreturn void abort(void);
 
 main()
 {
+#include "../ocheck-init.c"
 	struct A a = {
 		.p = f(&a.before, &a.after)
 	};

@@ -15,6 +15,7 @@ test()
 
 main()
 {
+#include "../ocheck-init.c"
 	test();
 
 	if(fs != 1)

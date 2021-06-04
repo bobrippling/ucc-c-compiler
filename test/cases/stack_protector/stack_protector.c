@@ -30,6 +30,7 @@ int f(char *s)
 #ifdef MAIN
 int main(int argc, char **argv)
 {
+#include "../ocheck-init.c"
 	return f(argv[1]);
 }
 #endif

@@ -18,6 +18,7 @@ float f(int a, ...)
 
 main()
 {
+#include "../../ocheck-init.c"
 	float x = f(2, (double)5);
 
 	if(x != 5)

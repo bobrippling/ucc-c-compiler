@@ -1,6 +1,7 @@
 // RUN: %ocheck 8 %s
 main()
 {
+#include "../../ocheck-init.c"
 	int *p = (int[]){1,2,3};
 	struct A { int i, j, k[2]; } a = {
 		.k[1] = 3,

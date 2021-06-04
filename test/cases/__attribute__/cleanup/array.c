@@ -11,6 +11,7 @@ clean(int (*p)[2])
 
 main()
 {
+#include "../../ocheck-init.c"
 	int x[2] __attribute((cleanup(clean))) = { 1, 2 };
 
 	return 0;

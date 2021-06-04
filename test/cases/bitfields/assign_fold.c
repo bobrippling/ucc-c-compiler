@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	struct
 	{
 		unsigned a : 3, b : 8, c : 10;

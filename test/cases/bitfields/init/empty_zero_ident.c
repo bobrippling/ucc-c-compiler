@@ -15,6 +15,7 @@ f(void *a, void *b)
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct A x[10];
 
 	f(&x[2], &x[5]);

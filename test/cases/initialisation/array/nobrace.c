@@ -3,6 +3,7 @@ void abort(void) __attribute__((noreturn));
 
 main()
 {
+#include "../../ocheck-init.c"
 	int y[][2] = {
 		1, 2,
 		3, 4

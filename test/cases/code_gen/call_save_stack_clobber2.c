@@ -76,6 +76,7 @@ int h(void)
 
 int main()
 {
+#include "../ocheck-init.c"
 	// do something to cause us to require callee-save registers, so we can check
 	// they're not clobbered by impl_val_str_r()'s save/restore of them
 	f(g(), impl_val_str_r(), h());

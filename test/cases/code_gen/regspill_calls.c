@@ -20,6 +20,7 @@ g(u, v, w, x, y, z)
 
 main()
 {
+#include "../ocheck-init.c"
 	long local = 5;
 	g(u(), v(), w(), x(), y(), z());
 	g(u(), v(), w(), x(), y(), z());

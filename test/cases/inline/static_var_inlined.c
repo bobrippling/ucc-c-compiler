@@ -16,6 +16,7 @@ inline void *f(unsigned size)
 
 main()
 {
+#include "../ocheck-init.c"
 	char *a = f(2);
 	char *b = f(1);
 

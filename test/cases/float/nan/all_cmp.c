@@ -25,6 +25,7 @@ five(float a, float b)
 
 main()
 {
+#include "../../ocheck-init.c"
  float nan = __builtin_nanf("");
 
  if(five(nan, nan)) return 1;

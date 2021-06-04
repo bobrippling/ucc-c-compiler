@@ -31,6 +31,7 @@ void check_printf(const char *a, int x, double y)
  */
 main(int argc)
 {
+#include "../ocheck-init.c"
 	int i = 5;
 	check_printf("%d %.1f\n", f(a(), b(), c(), d(), i), 1.0);
 

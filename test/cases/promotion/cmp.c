@@ -3,6 +3,7 @@ void abort(void) __attribute__((noreturn));
 
 main()
 {
+#include "../ocheck-init.c"
 	signed   int a = -1;
 	unsigned int b = 2;
 	signed   short c = -1;

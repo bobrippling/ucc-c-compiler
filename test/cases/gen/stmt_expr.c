@@ -7,6 +7,7 @@ f(int i)
 
 main()
 {
+#include "../ocheck-init.c"
 	return ({
 			int i = 5;
 			3 + f(i + 1);

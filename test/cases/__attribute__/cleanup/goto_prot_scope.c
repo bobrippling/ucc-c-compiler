@@ -37,6 +37,7 @@ after:
 
 main()
 {
+#include "../../ocheck-init.c"
 	void abort(void);
 	f();
 	if(n != 2)

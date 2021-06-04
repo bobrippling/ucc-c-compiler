@@ -14,6 +14,7 @@ int r(int x)
 
 int main()
 {
+#include "../ocheck-init.c"
 	int ret = r(3);
 
 	if(count != 6)

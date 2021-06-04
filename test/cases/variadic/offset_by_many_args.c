@@ -30,6 +30,7 @@ void print_str(
 
 main()
 {
+#include "../ocheck-init.c"
 	print_str(1, 2, 3, "hi\n", "yo\n");
 	return 0;
 }

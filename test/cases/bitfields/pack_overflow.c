@@ -5,6 +5,7 @@ void *memset(void *, int, unsigned long);
 
 main()
 {
+#include "../ocheck-init.c"
 	struct
 	{
 		int a : 16;

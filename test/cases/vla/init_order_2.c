@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	int i = 5;
 	int x[i][++i];
 

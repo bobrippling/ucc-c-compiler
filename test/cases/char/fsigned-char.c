@@ -1,14 +1,14 @@
-// RUN: %ucc -o %t %s -fsigned-char      && %ocheck 1 %t
-// RUN: %ucc -o %t %s -fno-signed-char   && %ocheck 0 %t
-// RUN: %ucc -o %t %s -fno-unsigned-char && %ocheck 1 %t
-// RUN: %ucc -o %t %s -funsigned-char    && %ocheck 0 %t
+// RUN: %ocheck 1 %s -fsigned-char
+// RUN: %ocheck 0 %s -fno-signed-char
+// RUN: %ocheck 1 %s -fno-unsigned-char
+// RUN: %ocheck 0 %s -funsigned-char
 
 // check with no constant folding
 
-// RUN: %ucc -o %t %s -fno-const-fold -fsigned-char      && %ocheck 1 %t
-// RUN: %ucc -o %t %s -fno-const-fold -fno-signed-char   && %ocheck 0 %t
-// RUN: %ucc -o %t %s -fno-const-fold -fno-unsigned-char && %ocheck 1 %t
-// RUN: %ucc -o %t %s -fno-const-fold -funsigned-char    && %ocheck 0 %t
+// RUN: %ocheck 1 %s -fno-const-fold -fsigned-char
+// RUN: %ocheck 0 %s -fno-const-fold -fno-signed-char
+// RUN: %ocheck 1 %s -fno-const-fold -fno-unsigned-char
+// RUN: %ocheck 0 %s -fno-const-fold -funsigned-char
 
 
 // signed by default - may change when ported
@@ -18,6 +18,7 @@ extern _Noreturn void abort(void);
 
 main()
 {
+#include "../ocheck-init.c"
 	int bis = __builtin_is_signed(char);
 	int is;
 

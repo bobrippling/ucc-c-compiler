@@ -16,6 +16,7 @@ f()
 
 main()
 {
+#include "../ocheck-init.c"
 	volatile int i = f();
 	return __builtin_offsetof(struct A, ar[i].z);
 }

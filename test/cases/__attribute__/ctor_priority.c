@@ -49,6 +49,7 @@ INIT()
 
 main()
 {
+#include "../ocheck-init.c"
 	check(&final);
 
 	return 0;

@@ -14,6 +14,7 @@ f(unsigned long long ull)
 
 main()
 {
+#include "../ocheck-init.c"
 	switch(7){
 		case sizeof(int):
 			;

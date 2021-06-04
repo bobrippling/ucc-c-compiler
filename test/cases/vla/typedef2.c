@@ -22,6 +22,7 @@ g()
 
 main()
 {
+#include "../ocheck-init.c"
 	typedef unsigned short buf[f()];
 
 	for(int i = 0; i < 10; i++){

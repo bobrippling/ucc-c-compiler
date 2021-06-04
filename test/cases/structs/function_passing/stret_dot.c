@@ -10,5 +10,6 @@ struct A
 
 main()
 {
+#include "../../ocheck-init.c"
 	return f().j + f().i;
 }

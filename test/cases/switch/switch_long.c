@@ -20,6 +20,7 @@ assert(_Bool b)
 
 main()
 {
+#include "../ocheck-init.c"
 	assert(f(-1) == 3);
 	assert(f(0) == 3);
 	assert(f(1) == 3);

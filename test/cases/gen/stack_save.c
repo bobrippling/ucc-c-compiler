@@ -19,6 +19,7 @@ int fseek(int a, int b, int c)
 
 main()
 {
+#include "../ocheck-init.c"
 	fseek(1, 2, 3);
 	return 0;
 }

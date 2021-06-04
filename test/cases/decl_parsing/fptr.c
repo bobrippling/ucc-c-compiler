@@ -9,6 +9,7 @@ void inst(int i)
 
 main()
 {
+#include "../ocheck-init.c"
 
 	void (*f)(int);
 	void (**pf)(int);

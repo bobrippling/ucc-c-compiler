@@ -55,6 +55,7 @@ DECL(uL, long long, unsigned long long);
 
 main()
 {
+#include "../ocheck-init.c"
 	if(!(__builtin_is_signed(char) ? (sc == -1) : (sc == 255)))
 		abort();
 

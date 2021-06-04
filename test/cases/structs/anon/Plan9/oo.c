@@ -17,6 +17,7 @@ sum_weight(struct Animal *a)
 
 main()
 {
+#include "../../../ocheck-init.c"
 	struct Dog
 	{
 		int nlegs;

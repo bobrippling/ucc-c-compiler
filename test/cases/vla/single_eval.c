@@ -24,6 +24,7 @@ test_nodecl()
 
 main()
 {
+#include "../ocheck-init.c"
 	int sz = test();
 
 	if(sz != 32)

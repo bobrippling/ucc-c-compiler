@@ -27,6 +27,7 @@ int not_present = __has_attribute(attr);
 
 main()
 {
+#include "../ocheck-init.c"
 	if(not_present){
 		_Noreturn void abort();
 		abort();

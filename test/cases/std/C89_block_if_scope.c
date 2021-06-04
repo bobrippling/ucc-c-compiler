@@ -15,6 +15,7 @@ g()
 
 main()
 {
+#include "../ocheck-init.c"
 	int i = g();
 
 	if(i != 1)

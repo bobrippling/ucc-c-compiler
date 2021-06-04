@@ -6,6 +6,7 @@ struct Basic
 
 main()
 {
+#include "../../ocheck-init.c"
 	if(bas.x != 1)
 		return 1;
 	if(bas.y != 2)

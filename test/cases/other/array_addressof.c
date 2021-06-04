@@ -14,6 +14,7 @@ set(int *p, int v)
 
 main()
 {
+#include "../ocheck-init.c"
 	int x[2];
 
 	x[1] = 5;

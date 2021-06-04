@@ -14,6 +14,7 @@ typedef struct {
 
 int main(void)
 {
+#include "../ocheck-init.c"
 	T t = { 0 };
 	t.y = 1;
 

@@ -6,6 +6,7 @@ char (**a)[] = &(char (*)[]){&""};
 
 main()
 {
+#include "../ocheck-init.c"
 	if(p != *a)
 		return 1;
 	return 0;
