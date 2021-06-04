@@ -1631,7 +1631,7 @@ void decl_init_create_assignments_base(
 		expr *zero;
 
 zero_init:
-		if(type_is_incomplete_array(tfor) || type_is_variably_modified(tfor)){
+		if(type_is_incomplete_array(tfor) || type_is_vla(tfor, VLA_ANY_DIMENSION)){
 			/* error caught elsewhere,
 			 * where we can print the location */
 			return;

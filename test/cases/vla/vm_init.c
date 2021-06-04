@@ -17,10 +17,12 @@ assert(_Bool b)
 
 f(int n)
 {
-#define INIT (void*)0
-	short (*p)[n] = INIT;
+#define NULL (void*)0
+	short (*p)[n] = NULL;
+	assert(p == NULL);
 
-	assert(p == INIT);
+	short (*q)[n] = (void *)3;
+	assert(q == (void *)3);
 
 	__auto_type a = (int)(p + 1);
 	__auto_type b = 3 * sizeof(short);
