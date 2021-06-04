@@ -13,6 +13,7 @@ inc(int i)
 
 main()
 {
+#include "../ocheck-init.c"
 	int (*f)(int) = inc;
 	return call_for_me(f, 5);
 }

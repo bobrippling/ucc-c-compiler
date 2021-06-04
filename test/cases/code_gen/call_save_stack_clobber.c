@@ -60,6 +60,7 @@ void verify(int a, int b, int x, int c, int d)
 
 main()
 {
+#include "../ocheck-init.c"
 	// ensure use of callee-save
 	verify(a(), b(), machine_proc_display_line_default(&(struct myproc){ 0 }), c(), d());
 }

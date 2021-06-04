@@ -11,6 +11,7 @@ void assert(_Bool b)
 
 int main()
 {
+#include "../ocheck-init.c"
 	int x = 1, y = 1, z = 1;
 
 	int a[] = {

@@ -28,6 +28,7 @@ static void f(void)
 
 int main()
 {
+#include "../../ocheck-init.c"
 	f();
 	if(i != 3)
 		abort();

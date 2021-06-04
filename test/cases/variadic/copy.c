@@ -31,6 +31,7 @@ int maths(int a, ...)
 
 int main()
 {
+#include "../ocheck-init.c"
 	if(maths(1, 2, 3, 0) != 9)
 		abort();
 	return 0;

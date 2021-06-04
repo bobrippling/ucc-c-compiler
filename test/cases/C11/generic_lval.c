@@ -14,6 +14,7 @@ f(int *p)
 
 main()
 {
+#include "../ocheck-init.c"
 	// test address for auto storage duration - f_lea() check
 	int j = 10;
 	_Generic(0, int: f)(&_Generic(5, int: j));

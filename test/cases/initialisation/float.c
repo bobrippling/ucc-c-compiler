@@ -12,5 +12,6 @@ struct
 
 main()
 {
+#include "../ocheck-init.c"
 	return a[1].d + a[2].c + a->f;
 }

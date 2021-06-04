@@ -45,6 +45,7 @@ struct A *make(int first, ...)
 
 main()
 {
+#include "../ocheck-init.c"
 	if(a.length != 2 || a.vals[0] != 1 || a.vals[1] != 2)
 		abort();
 

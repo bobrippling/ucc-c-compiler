@@ -10,5 +10,6 @@ extern int b(); // causes b to be emitted externally
 
 main()
 {
+#include "../ocheck-init.c"
 	return b();
 }

@@ -9,5 +9,6 @@ call(func ^p)
 
 main()
 {
+#include "../ocheck-init.c"
 	return call(^{ return 3; });
 }

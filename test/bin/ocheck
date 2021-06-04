@@ -91,7 +91,7 @@ if(!-x $cmd){
 
 	my $tmp = "$ENV{UCC_TESTDIR}/$$.retcheck-exe";
 
-	my @cmd = ($ucc, '-o', $tmp, '-I', 'cases/', $cmd, @args);
+	my @cmd = ($ucc, '-o', $tmp, $cmd, @args);
 	($src = $cmd) =~ s/ .*//;
 
 	print "$0: run: @cmd\n" if exists $ENV{UCC_VERBOSE};

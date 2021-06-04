@@ -8,6 +8,7 @@ struct A
 
 main()
 {
+#include "../ocheck-init.c"
 	struct A a = {};
 
 	if(a.x[0] || a.x[1])

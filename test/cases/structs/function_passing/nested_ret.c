@@ -17,6 +17,7 @@ struct A f(void)
 
 int main()
 {
+#include "../../ocheck-init.c"
 	// this currently works, but doesn't match the platform ABI
 	struct A a = f();
 

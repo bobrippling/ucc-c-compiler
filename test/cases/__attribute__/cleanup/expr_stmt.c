@@ -9,6 +9,7 @@ void abort();
 
 main()
 {
+#include "../../ocheck-init.c"
   int x = ({
     int n __attribute((cleanup(reset))) = 0;
 		// scope leave / destructors were generated here

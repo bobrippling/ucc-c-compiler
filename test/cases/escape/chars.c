@@ -43,6 +43,7 @@ static void assert(int x, int lno)
 
 int main()
 {
+#include "../ocheck-init.c"
 	unsigned char x[] = "\037\213"; // check \213 sign-ext
 
 	assert(x[0] == 037);

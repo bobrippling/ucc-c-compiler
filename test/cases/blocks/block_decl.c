@@ -16,6 +16,7 @@ pc(char c)
 
 main()
 {
+#include "../ocheck-init.c"
 	int (^x)(char) = ^int(char tim){ total += tim; return 0; };
 	int (^(*y))(char) = &x;
 	void (^z)(void) = 0;

@@ -8,6 +8,7 @@ assert(int cond)
 
 main()
 {
+#include "../ocheck-init.c"
 	_Bool x = 1;
 	assert(x == 1);
 

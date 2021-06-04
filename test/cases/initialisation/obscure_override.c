@@ -26,6 +26,7 @@ f()
 
 main()
 {
+#include "../ocheck-init.c"
 	if(f() != 0)
 		abort();
 	return 0;

@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	void *p = &&x;
 
 rejmp:

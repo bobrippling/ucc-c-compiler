@@ -14,6 +14,7 @@ assert(x)
 
 main()
 {
+#include "../ocheck-init.c"
 	assert(f(1, 2, 3) == 0);
 	assert(f(1, 1, 3) == 0);
 	assert(f(1, 1, 1) == 1);

@@ -40,6 +40,7 @@ void use(int *p){ (void)p; }
 
 main()
 {
+#include "../ocheck-init.c"
 	f(2);
 
 	g(1, 2, 3, 4, 5, 6, 7, 8);

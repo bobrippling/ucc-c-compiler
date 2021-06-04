@@ -12,6 +12,7 @@ struct A f(void)
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct A a = f();
 	return a.a + a.b + a.c;
 }

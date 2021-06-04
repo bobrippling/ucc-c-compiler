@@ -15,6 +15,7 @@ void f(int vla[2][g()])
 
 main()
 {
+#include "../ocheck-init.c"
 	f(0);
 
 	if(!called)

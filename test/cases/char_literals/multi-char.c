@@ -11,6 +11,7 @@ enum {
 
 main()
 {
+#include "../ocheck-init.c"
 	// check escapes inside m-char constants
 	if('a\'' != 24871) // CHECK: /warning: multi-char constant/
 		abort();

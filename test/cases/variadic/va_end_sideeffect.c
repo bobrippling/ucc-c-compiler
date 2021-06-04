@@ -15,6 +15,7 @@ void f()
 
 int main()
 {
+#include "../ocheck-init.c"
 	f();
 	return x;
 }

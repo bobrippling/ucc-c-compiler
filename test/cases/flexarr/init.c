@@ -11,6 +11,7 @@ struct F b = { 8, { 1 }}; // CHECK: /warning: initialisation of flexible array/
 
 main()
 {
+#include "../ocheck-init.c"
 	static struct F c = { 2, { 5, 6 } }; // CHECK: /warning: initialisation of flexible array/
 	struct F local = { 9 };
 

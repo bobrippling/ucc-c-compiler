@@ -3,6 +3,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	return - ^int (int x)
 	{ // CHECK: note: function inlined
 		return ^__attribute((noinline)) (int x) // CHECK: !/inline/

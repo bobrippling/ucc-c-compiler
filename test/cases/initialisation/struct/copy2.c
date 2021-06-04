@@ -31,6 +31,7 @@ g(struct Pt *pt)
 
 main()
 {
+#include "../../ocheck-init.c"
 	g((struct Pt[]){ 1, 2 });
 	return 0;
 }

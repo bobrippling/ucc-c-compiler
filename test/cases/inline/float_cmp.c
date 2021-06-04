@@ -9,5 +9,6 @@ inline ge(float a, float b)
 
 main()
 {
+#include "../ocheck-init.c"
 	return ge(3, 5);
 }

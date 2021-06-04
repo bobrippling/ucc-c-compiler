@@ -4,5 +4,6 @@ enum { A };
 
 main()
 {
+#include "../ocheck-init.c"
 	return A;
 }

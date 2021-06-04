@@ -15,6 +15,7 @@ f(int p)
 
 main()
 {
+#include "../ocheck-init.c"
 	void abort();
 
 	if(f(0) != 0) abort();

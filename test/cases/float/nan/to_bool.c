@@ -8,6 +8,7 @@ _Bool f(float nan)
 
 main()
 {
+#include "../../ocheck-init.c"
 	union
 	{
 		unsigned char bytes[4];

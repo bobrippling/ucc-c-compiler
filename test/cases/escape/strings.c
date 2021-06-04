@@ -37,6 +37,7 @@ static void assert(_Bool x, int l, const char *exp)
 
 int main()
 {
+#include "../ocheck-init.c"
 	assert(s[0] == 27);
 	assert(s[1] == 27);
 	assert(s[2] == 10);

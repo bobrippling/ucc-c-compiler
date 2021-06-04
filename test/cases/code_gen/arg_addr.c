@@ -23,5 +23,6 @@ void f(int a)
 
 int main()
 {
+#include "../ocheck-init.c"
 	f(-1);
 }

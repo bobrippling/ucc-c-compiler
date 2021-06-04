@@ -13,5 +13,6 @@ call(int (*p)(int), int arg)
 
 main()
 {
+#include "../ocheck-init.c"
 	return call(inc, 2); // CHECK: note: function inlined
 }

@@ -7,6 +7,7 @@ f(int x[])
 
 main()
 {
+#include "../../ocheck-init.c"
 	int x[] = { 1, 2, 3 };
 	return f(x);
 }

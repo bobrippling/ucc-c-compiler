@@ -21,6 +21,7 @@ check(const struct A *p, int a, int b, int c)
 
 main()
 {
+#include "../../../ocheck-init.c"
 	struct A x[] = {
 		{ 1, 2, 3 },
 		{ 1, 2, 3 },

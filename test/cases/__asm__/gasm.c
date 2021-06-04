@@ -11,6 +11,7 @@ __asm("a: .long 2");
 
 main()
 {
+#include "../ocheck-init.c"
 	extern int q __asm("a");
 	return q;
 }

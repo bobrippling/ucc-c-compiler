@@ -37,6 +37,7 @@ void h()
 
 main()
 {
+#include "../ocheck-init.c"
 #ifdef ERROR
 	/* section 6.1.2.2 */
 	extern int bad; // CHECK: error: incompatible redefinition of "bad"

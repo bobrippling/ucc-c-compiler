@@ -23,6 +23,7 @@ check(struct Ent *p, char *s, int n)
 
 main()
 {
+#include "../ocheck-init.c"
 	static struct A x = {
 		2,
 		{

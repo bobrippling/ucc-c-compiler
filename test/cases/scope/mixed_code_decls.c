@@ -3,6 +3,7 @@ f(){}
 
 main()
 {
+#include "../ocheck-init.c"
 	int j;
 
 	f();

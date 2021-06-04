@@ -19,6 +19,7 @@ a:;
 
 main()
 {
+#include "../ocheck-init.c"
 	goto a;
 a: f();
 	 return 0;

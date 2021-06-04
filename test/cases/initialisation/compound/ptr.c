@@ -8,6 +8,7 @@ f()
 
 main()
 {
+#include "../../ocheck-init.c"
 	int (*p)[2] = (int[][2]){ 1, 2, { 3, 4, f() } };
 
 	if(p[0][0] != 1

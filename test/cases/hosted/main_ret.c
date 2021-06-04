@@ -4,4 +4,5 @@
 
 main()
 {
+#include "../ocheck-init.c"
 }

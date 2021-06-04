@@ -8,6 +8,7 @@ f(int *p)
 
 main()
 {
+#include "../ocheck-init.c"
 	int i = 5;
 	f(&i);
 	if(i != 4)

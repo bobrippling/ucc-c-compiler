@@ -12,6 +12,6 @@ struct A
 
 main()
 {
-#include <ocheck-init.c>
+#include "../../../ocheck-init.c"
 	return a.b.i + a.b.j;
 }

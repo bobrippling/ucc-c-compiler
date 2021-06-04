@@ -11,6 +11,7 @@ a:
 
 main()
 {
+#include "../ocheck-init.c"
 	goto a;
 b:
 	printf("hi\n");

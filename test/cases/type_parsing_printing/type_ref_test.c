@@ -13,7 +13,7 @@ init(struct A *p)
 
 main()
 {
-#include <ocheck-init.c>
+#include "../ocheck-init.c"
 	struct A b;
 
 	init(&b);

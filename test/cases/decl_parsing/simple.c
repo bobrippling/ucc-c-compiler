@@ -12,7 +12,7 @@ void set_to_5(int **p)
 
 main()
 {
-#include <ocheck-init.c>
+#include "../ocheck-init.c"
 	int i;
 	int *const p = &i;
 	int **pp;

@@ -10,7 +10,7 @@ int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
 
 main()
 {
-#include <ocheck-init.c>
+#include "../../ocheck-init.c"
 	printf("Hello %d %.1f\n"
 			"%.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f\n",
 			5,

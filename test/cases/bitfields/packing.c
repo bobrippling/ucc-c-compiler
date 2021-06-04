@@ -156,6 +156,7 @@ void check_t7(struct t7 *t, int a, int b)
 #if defined(WITH_MAIN)
 int main()
 {
+#include "../ocheck-init.c"
 	{
 		struct t1 t1 = { 1, 128 };
 		struct t2 t2 = { 1, 244 };

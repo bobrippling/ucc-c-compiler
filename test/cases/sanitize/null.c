@@ -8,6 +8,7 @@ void san_err(void)
 
 main()
 {
+#include "../ocheck-init.c"
 	int *p = 0;
 
 	return *p;

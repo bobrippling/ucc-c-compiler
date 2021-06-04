@@ -8,5 +8,6 @@ inline or(float a)
 
 main()
 {
+#include "../ocheck-init.c"
 	return or(1);
 }

@@ -27,6 +27,7 @@ assert(int c)
 
 main()
 {
+#include "../ocheck-init.c"
 	assert(f(0) == 5);
 	assert(f(1) == 4);
 	assert(f(2) == 3);

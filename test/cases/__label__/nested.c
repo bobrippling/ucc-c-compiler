@@ -3,6 +3,7 @@
 main()
 {
 	__label__ x;
+#include "../ocheck-init.c"
 	void *outer_x = &&x;
 
 	int i = 0;

@@ -29,6 +29,7 @@ f(struct A *p)
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct A a = { .i = 3 };
 	int ar[7] = { [4] = 3 };
 

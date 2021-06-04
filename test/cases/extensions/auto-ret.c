@@ -12,5 +12,6 @@ auto f_ret_f() -> int (*)()
 
 auto main() -> int
 {
+#include "../ocheck-init.c"
 	return f_ret_f()();
 }

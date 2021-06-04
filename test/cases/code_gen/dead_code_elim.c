@@ -8,6 +8,7 @@ g()
 
 main()
 {
+#include "../ocheck-init.c"
 	if(0){
 		int i;
 		int f();

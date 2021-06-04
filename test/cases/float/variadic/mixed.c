@@ -18,6 +18,7 @@ float f(int a, ...)
 
 main()
 {
+#include "../../ocheck-init.c"
 	float t = f(1,        // int
 			(float)2, // cast to double
 			3.2,      // double

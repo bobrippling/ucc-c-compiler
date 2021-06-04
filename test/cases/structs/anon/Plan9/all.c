@@ -80,6 +80,7 @@ address()
 
 main()
 {
+#include "../../../ocheck-init.c"
 	assign();
 	call();
 	address();

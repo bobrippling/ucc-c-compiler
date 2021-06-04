@@ -25,6 +25,7 @@ void f()
 
 main()
 {
+#include "../../ocheck-init.c"
 	// 'y' should be cleaned up, then 'x'
 	__attribute((cleanup(dint))) __auto_type x = 3;
 	__attribute((cleanup(dint))) __auto_type y = 4;

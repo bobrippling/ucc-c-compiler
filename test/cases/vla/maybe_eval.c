@@ -19,6 +19,7 @@ void f(size_t n)
 
 main()
 {
+#include "../ocheck-init.c"
 	f(2);
 
 	return 0;

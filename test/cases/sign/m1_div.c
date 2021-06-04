@@ -9,6 +9,7 @@ unsigned long foo()
 
 main()
 {
+#include "../ocheck-init.c"
 	if(foo() == 0)
 		abort();
 	return 0;

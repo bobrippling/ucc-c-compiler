@@ -21,5 +21,6 @@ g(int i, struct A *p)
 
 main()
 {
+#include "../ocheck-init.c"
 	return g(1, (struct A []){ 1, 2 });
 }

@@ -30,7 +30,7 @@ f(int n)
 
 main()
 {
-#include <ocheck-init.c>
+#include "../ocheck-init.c"
 	f(3);
 
 	return 0;

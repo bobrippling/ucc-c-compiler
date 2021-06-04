@@ -31,6 +31,7 @@ void assert(_Bool cond)
 
 main()
 {
+#include "../ocheck-init.c"
 	Both b = getboth();
 
 	assert(b.a.x == 5);

@@ -17,7 +17,7 @@ void san_err(void)
 
 int main()
 {
-#include <ocheck-init.c>
+#include "../ocheck-init.c"
 	ec = 1;
 
 	f(0, 1, 0);

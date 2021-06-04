@@ -12,6 +12,7 @@ void assert(int x)
 
 int main()
 {
+#include "../ocheck-init.c"
 	assert(a[0] == 'a');
 	assert(a[1] == 'b');
 	assert(a[2] == 'c');

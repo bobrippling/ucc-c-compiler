@@ -9,7 +9,7 @@ int *x()
 
 main()
 {
-#include <ocheck-init.c>
+#include "../ocheck-init.c"
 	*x() = 5;
 
 	return i;

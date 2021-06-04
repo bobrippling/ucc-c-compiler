@@ -40,6 +40,7 @@ assert(_Bool b)
 
 main()
 {
+#include "../../ocheck-init.c"
 	assert(gs == 0);
 
 	assert(a(5) == 2);

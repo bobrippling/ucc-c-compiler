@@ -14,6 +14,7 @@ f()
 
 main()
 {
+#include "../ocheck-init.c"
 	f();
 	if(x != 5)
 		abort();

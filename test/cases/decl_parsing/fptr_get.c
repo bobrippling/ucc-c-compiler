@@ -14,6 +14,7 @@ int (*f(void))()
 
 main()
 {
+#include "../ocheck-init.c"
 	f()();
 	return called ? 0 : 1;
 }

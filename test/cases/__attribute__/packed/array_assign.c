@@ -15,6 +15,7 @@ void assert(_Bool b)
 
 main()
 {
+#include "../../ocheck-init.c"
 	char bytes[1 + sizeof(int)] = {
 		1, 2, 0, 0, 0
 	};

@@ -21,6 +21,7 @@ p(char *p
 
 main()
 {
+#include "../ocheck-init.c"
 	p("abc"
 #ifdef WITH_ALIGN
 			, "def"

@@ -24,6 +24,7 @@ void f(FLOAT fp, char *src, int line, char *fname, char *func)
 
 main()
 {
+#include "../ocheck-init.c"
 	f(0, &gc, 7, &gc + 1, &gc + 2);
 	return 0;
 }

@@ -15,6 +15,7 @@ P(4)
 
 main()
 {
+#include "../ocheck-init.c"
 	f[0] = p1;
 	f[1] = p2;
 	f[2] = p3;

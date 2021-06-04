@@ -4,6 +4,7 @@ void abort(void) __attribute__((noreturn));
 
 main()
 {
+#include "../ocheck-init.c"
 	const int i = 5;
 	const int x[] = { 1, 2, 3 };
 	const struct

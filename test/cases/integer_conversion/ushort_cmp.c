@@ -6,6 +6,7 @@ _Static_assert((uint16_t)-1 != (short)-1, "");
 
 int main()
 {
+#include "../ocheck-init.c"
 	uint16_t a = -1; // zext to int
 	short b = -1; // sext to int
 

@@ -23,6 +23,7 @@ int f(__u int a, __u int b, __u int c, __u int d, __u int e, __u int f, int seve
 
 int main()
 {
+#include "../ocheck-init.c"
 	f(0x98765432,
 	  0x98765432,
 	  0x98765432,

@@ -20,6 +20,7 @@ f()
 
 main()
 {
+#include "../../ocheck-init.c"
 	f();
 
 	struct

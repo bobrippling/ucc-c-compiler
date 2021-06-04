@@ -17,6 +17,7 @@ inline void iterate(int *begin, int *const end)
 
 int main()
 {
+#include "../ocheck-init.c"
 	int ar[] = {
 		1, 2
 	};

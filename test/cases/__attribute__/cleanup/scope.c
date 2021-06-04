@@ -39,6 +39,7 @@ f()
 
 main()
 {
+#include "../../ocheck-init.c"
 	f();
 	assert(x == 3);
 

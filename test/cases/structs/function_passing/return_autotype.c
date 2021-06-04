@@ -12,6 +12,7 @@ A f()
 
 main()
 {
+#include "../../ocheck-init.c"
 	__auto_type a = f();
 
 	if(a.a != 1 || a.b != 2)

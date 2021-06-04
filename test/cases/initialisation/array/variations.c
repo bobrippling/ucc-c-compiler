@@ -12,6 +12,7 @@ chk(int (*p)[2], int a, int b, int c, int d)
 
 main()
 {
+#include "../../ocheck-init.c"
 	int a[][2] = { 0, 1, 2, 3 };
 	int b[][2] = { {1}, {2} };
 	int c[][2] = { {1}, 2, 3 };

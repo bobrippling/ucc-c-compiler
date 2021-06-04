@@ -26,6 +26,7 @@ _Static_assert(__alignof(g) == 32, "");
 
 int main(void)
 {
+#include "../ocheck-init.c"
 	assert_zero((unsigned long)f & 0b111);
 	assert_zero((unsigned long)g & 0b11111);
 	return 0;

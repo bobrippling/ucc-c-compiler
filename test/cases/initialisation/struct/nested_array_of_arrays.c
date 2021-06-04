@@ -5,6 +5,7 @@ void abort(void) __attribute__((noreturn));
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct { int i, j, k; } a[][2] = {
 		{ { 1, 2, 3 }, { 4, 5, 6 } },
 		{ { 7, 8, 9 }, { 10, 11, 12 } },

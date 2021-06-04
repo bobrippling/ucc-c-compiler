@@ -78,6 +78,7 @@ shared()
 
 main()
 {
+#include "../ocheck-init.c"
 	f(1, 1);
 	shared();
 	f(0, 0);

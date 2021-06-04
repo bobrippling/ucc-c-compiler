@@ -9,6 +9,7 @@ void check(int result)
 
 main()
 {
+#include "../ocheck-init.c"
 	int i = -5;
 
 	check((char)i % (char)2);

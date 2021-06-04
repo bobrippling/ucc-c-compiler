@@ -14,6 +14,7 @@ int f(int *p)
 
 int main()
 {
+#include "../ocheck-init.c"
 	int a = 3;
 	f((char *)&a + 2);
 };

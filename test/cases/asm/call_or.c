@@ -13,6 +13,7 @@ f()
 
 main()
 {
+#include "../ocheck-init.c"
 	_Noreturn void abort();
 	x_ = 0;
 	f();

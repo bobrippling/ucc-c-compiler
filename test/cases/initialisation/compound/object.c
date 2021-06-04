@@ -24,6 +24,7 @@ run(User *u)
 
 main()
 {
+#include "../../ocheck-init.c"
 	run((User[]){{ .name = "Norm" }});
 	run(&(User){ .name = "Tim" });
 	return 0;

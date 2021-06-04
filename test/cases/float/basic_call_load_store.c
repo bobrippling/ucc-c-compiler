@@ -9,6 +9,7 @@ f(float *p, float v)
 
 main()
 {
+#include "../ocheck-init.c"
 	float v, w;
 
 	w = v = 5;

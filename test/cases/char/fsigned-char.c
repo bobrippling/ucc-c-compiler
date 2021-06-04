@@ -17,8 +17,8 @@
 extern _Noreturn void abort(void);
 
 main()
-#include <ocheck-init.c>
 {
+#include "../ocheck-init.c"
 	int bis = __builtin_is_signed(char);
 	int is;
 

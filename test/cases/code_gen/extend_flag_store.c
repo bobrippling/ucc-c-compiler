@@ -12,6 +12,7 @@ void abort(void);
 
 main()
 {
+#include "../ocheck-init.c"
 	volatile INT_TY i;
 
 	// write non-zero bits to 'i'

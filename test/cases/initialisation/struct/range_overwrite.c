@@ -3,6 +3,7 @@ void abort(void) __attribute__((noreturn));
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct { int i, j; } x[] = {
 		[0 ... 5] = { 5, 6 },
 		[3] = 1,

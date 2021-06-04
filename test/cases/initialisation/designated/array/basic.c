@@ -6,7 +6,7 @@ int x[] = {
 
 main()
 {
-#include <ocheck-init.c>
+#include "../../../ocheck-init.c"
 	return
 		x[0] +
 		x[1] +

@@ -3,6 +3,7 @@
 main()
 {
 	__label__ z;
+#include "../ocheck-init.c"
 	void *y = &&z;
 	void *p;
 	int i = 0;

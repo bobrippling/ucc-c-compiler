@@ -35,6 +35,7 @@ static inline int f(int n, int vla[g()][h()])
 
 int main()
 {
+#include "../ocheck-init.c"
 	int vla[g()][h()];
 
 	int r = f(5, vla);

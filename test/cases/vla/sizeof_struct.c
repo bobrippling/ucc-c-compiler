@@ -14,6 +14,7 @@ f(int n)
 
 main()
 {
+#include "../ocheck-init.c"
 	if(f(2) != 5 * 2 * sizeof(int))
 		abort();
 

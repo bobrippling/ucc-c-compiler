@@ -10,6 +10,7 @@ enum
 // this is UB, but defined in ucc as 2's complement wrapping
 main()
 {
+#include "../ocheck-init.c"
 	int under = INT_MIN - 1;
 	int over = INT_MAX + 1;
 

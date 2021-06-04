@@ -6,6 +6,7 @@ int printf();
 
 main()
 {
+#include "../ocheck-init.c"
 	struct
 	{
 			int : 3;

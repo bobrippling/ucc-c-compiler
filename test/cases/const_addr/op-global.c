@@ -32,6 +32,7 @@ yo(char *name, int x)
 
 main()
 {
+#include "../ocheck-init.c"
 	assert(!zero);
 	assert(!fals);
 	assert(!fals2);

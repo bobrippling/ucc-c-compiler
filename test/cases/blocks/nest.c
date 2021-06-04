@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	return ^(int i){
 		int (^b)(int);
 

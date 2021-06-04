@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	float a, b;
 
 	a = 1.3f, b = 3.2f;

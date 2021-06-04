@@ -11,6 +11,7 @@ int wprintf(const wchar_t *restrict, ...);
 
 main()
 {
+#include "../ocheck-init.c"
 	const wchar_t *s = L"ABCDEF";
 
 	wprintf(L"Yo\n");

@@ -72,6 +72,7 @@ test_dec()
 
 main()
 {
+#include "../ocheck-init.c"
 	test_pinc();
 	test_pdec();
 	test_inc();

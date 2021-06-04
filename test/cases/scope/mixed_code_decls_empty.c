@@ -14,6 +14,7 @@ no_stmts()
 
 main()
 {
+#include "../ocheck-init.c"
 	no_stmts();
 	return r;
 }

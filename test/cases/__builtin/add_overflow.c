@@ -53,6 +53,7 @@ _Static_assert(_Generic(__builtin_add_overflow(1, 2, &(int){0}), int: 1, _Bool: 
 
 int main()
 {
+#include "../ocheck-init.c"
 	long longmax = ~0ul / 2;
 	int intmax = ~0u / 2;
 	int intmin = -intmax - 1;

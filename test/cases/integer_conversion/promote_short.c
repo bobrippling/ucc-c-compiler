@@ -35,6 +35,7 @@ good()
 
 main()
 {
+#include "../ocheck-init.c"
 	bad();
 	good();
 

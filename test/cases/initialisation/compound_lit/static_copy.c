@@ -55,6 +55,7 @@ void check_n(struct Nested *p, int e[static 6])
 
 int main()
 {
+#include "../../ocheck-init.c"
 	check_a(&a, 1, 2);
 
 	check_n(&n, (int[]){ 1, 2, 3, 4, 5, 6 });

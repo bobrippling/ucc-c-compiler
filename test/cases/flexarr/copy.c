@@ -12,6 +12,7 @@ copy(struct F *to, struct F *from)
 
 main()
 {
+#include "../ocheck-init.c"
 	struct F a, b;
 
 	a.n = 5;

@@ -20,6 +20,7 @@ char *prev(char ***pa, int n)
 
 int main()
 {
+#include "../ocheck-init.c"
 	char buf[32] = "hello";;
 
 	*f(buf + 4, 0) = '\0';

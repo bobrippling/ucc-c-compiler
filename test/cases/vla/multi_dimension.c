@@ -39,6 +39,7 @@ f(int n)
 
 main()
 {
+#include "../ocheck-init.c"
 	int sz = f(3);
 
 	if(sz != 72)

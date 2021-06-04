@@ -19,6 +19,7 @@ void memset(void *, int, unsigned long);
 
 main()
 {
+#include "../ocheck-init.c"
 	struct A a;
 
 	memset(&a, 0, sizeof a);

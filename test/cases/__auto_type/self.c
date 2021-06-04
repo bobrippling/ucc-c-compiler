@@ -7,6 +7,7 @@ int fn(int i)
 
 main()
 {
+#include "../ocheck-init.c"
 	int i = i;
 	i = 0;
 	__auto_type x = i;

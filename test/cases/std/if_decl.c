@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	if((struct A {int i;} *)0, 1){
 		struct A a;
 		a.i = 2;

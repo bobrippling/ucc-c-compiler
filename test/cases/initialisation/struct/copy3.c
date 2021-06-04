@@ -14,6 +14,7 @@ f(struct A *p)
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct A x;
 	x.i = 5;
 	x.j = 2;

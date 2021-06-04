@@ -9,6 +9,7 @@ void exit(int);
 
 int main()
 {
+#include "../ocheck-init.c"
 	__auto_type b = ^{ exit(5); };
 	f(&b);
 

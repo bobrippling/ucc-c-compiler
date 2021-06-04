@@ -25,6 +25,7 @@ f(int a, int b)
 
 main()
 {
+#include "../ocheck-init.c"
 	f(5, 0);
 }
 
@@ -61,6 +62,7 @@ id f(id self, SEL _cmd, id arg)
 
 main()
 {
+#include "../ocheck-init.c"
 	f(3, "hi", 42);
 }
 */
