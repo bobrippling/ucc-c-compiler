@@ -163,22 +163,21 @@ type *type_is(type *r, enum type_kind t)
 	return r;
 }
 
-type *type_is_primitive(type *r, enum type_primitive p)
+type *type_is_primitive(type *t, enum type_primitive p)
 {
-	r = type_is(r, type_btype);
+	type *r = type_is(t, type_btype);
+	assert(p != type_unknown);
 
-	/* extra checks for a type */
-	if(r && (p == type_unknown || r->bits.type->primitive == p))
+	if(r && r->bits.type->primitive == p)
 		return r;
 
 	return NULL;
 }
 
-type *type_is_primitive_anysign(type *ty, enum type_primitive p)
+type *type_is_primitive_anysign(type *t, enum type_primitive p)
 {
 	enum type_primitive a, b;
-
-	ty = type_is(ty, type_btype);
+	type *ty = type_is(t, type_btype);
 
 	if(!ty)
 		return NULL;
@@ -719,7 +718,7 @@ enum type_qualifier type_qual(const type *r)
 
 enum type_primitive type_primitive(type *ty)
 {
-	ty = type_is_primitive(ty, type_unknown);
+	ty = type_is(ty, type_btype);
 	UCC_ASSERT(ty, "not primitive?");
 	return ty->bits.type->primitive;
 }
