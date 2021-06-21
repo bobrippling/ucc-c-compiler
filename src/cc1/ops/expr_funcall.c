@@ -454,6 +454,13 @@ void fold_expr_funcall(expr *e, symtable *stab)
 				type_to_str(e->tree_type));
 	}
 
+	if(!type_is_complete(e->tree_type) && !type_is_void(e->tree_type)){
+		fold_had_error = 1;
+		warn_at_print_error(&e->where,
+				"function call returns incomplete type '%s'",
+				type_to_str(e->tree_type));
+	}
+
 	/* attr */
 	{
 		type *fnty = e->expr->tree_type;
