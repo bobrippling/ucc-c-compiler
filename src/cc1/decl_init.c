@@ -1631,9 +1631,12 @@ void decl_init_create_assignments_base(
 		expr *zero;
 
 zero_init:
-		if(type_is_incomplete_array(tfor) || type_is_vla(tfor, VLA_ANY_DIMENSION)){
-			/* error caught elsewhere,
-			 * where we can print the location */
+		if(type_is_incomplete_array(tfor))
+			return; /* permitted sometimes, flexinit */
+
+		if(type_is_vla(tfor, VLA_ANY_DIMENSION)){
+			/* error caught elsewhere, where we can print the location */
+			fold_expect_error = 1;
 			return;
 		}
 

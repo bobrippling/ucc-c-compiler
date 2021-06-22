@@ -41,6 +41,7 @@ enum fold_type_chk
 };
 
 int fold_had_error;
+int fold_expect_error;
 
 void fold_insert_casts(type *tlhs, expr **prhs, symtable *stab)
 {
