@@ -65,49 +65,93 @@ sub randstack_init
 	}
 }
 
-die "Usage: $0 exit-code program [args...]\n"
-unless @ARGV;
+sub parse_args
+{
+	die "Usage: $0 exit-code program [args...]\n" unless @_;
 
-my $expected = shift();
-my $expected_signal = 0;
-my @unlinks;
+	my $expected = shift();
+	my $expected_signal = 0;
 
-if($expected =~ /^SIG[A-Z]+$/){
-	$expected_signal = 1;
-	$expected =~ s/^SIG//;
-}elsif($expected =~ /^[0-9]+$/){
-	# fine
-}else{
-	die "\"$expected\" not numeric, nor a signal";
+	if($expected =~ /^SIG[A-Z]+$/){
+		$expected_signal = 1;
+		$expected =~ s/^SIG//;
+	}elsif($expected =~ /^[0-9]+$/){
+		# fine
+	}else{
+		die "\"$expected\" not numeric, nor a signal";
+	}
+
+	my $cmd = shift();
+
+	my(@args_ucc, @args_cmd);
+	my $in_prog_args = 0;
+	for my $arg (@_){
+		if($arg eq "--"){
+			$in_prog_args = 1;
+		}elsif($in_prog_args){
+			push @args_cmd, $arg;
+		}else{
+			push @args_ucc, $arg;
+		}
+	}
+
+	return (
+		cmd => $cmd,
+		expected => $expected,
+		expected_signal => $expected_signal,
+		args_ucc => \@args_ucc,
+		args_cmd => \@args_cmd,
+	);
 }
 
-my($cmd, @args) = @ARGV;
-my $src;
-
-if(!-x $cmd){
-	# we've been passed a source file
+sub build
+{
+	my($cmd, @args) = @_;
 	my $ucc = $ENV{UCC};
 	die "$0: no \$UCC" unless $ucc;
 
-	my $tmp = "$ENV{UCC_TESTDIR}/$$.retcheck-exe";
+	my $exe = "$ENV{UCC_TESTDIR}/$$.retcheck-exe";
 
-	my @cmd = ($ucc, '-o', $tmp, $cmd, @args);
-	($src = $cmd) =~ s/ .*//;
+	my @build_cmd = ($ucc, '-o', $exe, $cmd, @args);
+	(my $src = $cmd) =~ s/ .*//;
 
-	print "$0: run: @cmd\n" if exists $ENV{UCC_VERBOSE};
-	die "$0: couldn't compile\n" if system(@cmd);
-	$cmd = $tmp;
+	print "$0: run: @build_cmd\n" if exists $ENV{UCC_VERBOSE};
+	die "$0: couldn't compile\n" if system(@build_cmd);
+
+	return ($src, $exe);
+}
+
+my %config = parse_args(@ARGV);
+my $cmd = $config{cmd};
+
+my $src;
+if(!-x $cmd){
+	# we've been passed a source file
+	($src, $cmd) = build($cmd, @{$config{args_ucc}});
+}elsif(@{$config{args_ucc}}){
+	die "$0: compilation arguments given, but nothing to compile";
+}
+
+if($ENV{UCC_VERBOSE} > 1){
+	print STDERR "$0 --- config ---\n";
+	print STDERR "$0: src = " . (defined($src) ? $src : "<undef>") . "\n";
+	print STDERR "$0: cmd = $cmd\n";
+	print STDERR "$0: args_cmd = @{$config{args_cmd}}\n";
+	print STDERR "$0: args_ucc = @{$config{args_ucc}}\n";
 }
 
 randstack_init($src);
-print "$0: run: $cmd\n" if exists $ENV{UCC_VERBOSE};
-my $r = system($cmd);
+print "$0: run: $cmd @{$config{args_cmd}}\n" if exists $ENV{UCC_VERBOSE};
+my $r = system($cmd, @{$config{args_cmd}});
 my $got_exitcode = $r >> 8;
 my $got_signal = $r & 127;
 if($got_signal){
 	my $SAVE = $got_signal;
 	$got_signal = signame($got_signal);
 }
+
+my $expected = $config{expected};
+my $expected_signal = $config{expected_signal};
 
 if($expected_signal){
 	if(!$got_signal){

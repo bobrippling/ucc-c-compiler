@@ -9,7 +9,7 @@
 //
 // RUN: %ucc -o %t %s -fstack-protector-all -DN=8 -DMAIN
 // RUN: %t 1234567
-// RUN: %ocheck SIGABRT %t 123456789AAAAAAAAA
+// RUN: %ocheck SIGABRT %t -- 123456789AAAAAAAAA
 
 #ifndef ATTR
 #define ATTR

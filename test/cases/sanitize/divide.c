@@ -1,8 +1,8 @@
 // RUN: %ucc -o %t %s -fsanitize=float-divide-by-zero -fsanitize=integer-divide-by-zero -fsanitize-error=call=san_fail
-// RUN: %ocheck 0 %t normal
-// RUN: %ocheck 2 %t div0
-// RUN: %ocheck 2 %t intmin
-// (disabled) RUN %ocheck 2 %t floatdiv0
+// RUN: %ocheck 0 %t -- normal
+// RUN: %ocheck 2 %t -- div0
+// RUN: %ocheck 2 %t -- intmin
+// (disabled) RUN %ocheck 2 %t -- floatdiv0
 
 #define INT_MIN (-__INT_MAX__ - 1)
 
