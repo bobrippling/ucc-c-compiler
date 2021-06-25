@@ -160,17 +160,17 @@ sub reap_test
 			print $colour{green};
 		}
 
+		my $is_unexpected = $failed != $should_fail;
+
 		my $desc = $failed ? "fail" : "pass";
-		print "$desc"
+		my $fh = $is_unexpected ? \*STDERR : \*STDOUT;
+		print $fh "$desc"
 		. ($should_fail ? ' (fail expected)' : '')
 		. ": $f";
 
-		print $colour{off};
-
-		print "\n";
+		print "$colour{off}\n";
 
 		my $output = $tasks{$pid}->{output};
-		my $is_unexpected = $failed != $should_fail;
 		if($is_unexpected or $ENV{UCC_VERBOSE} > 1){
 			$exitcode = 1 if $is_unexpected;
 			cat_indent_file($output);
