@@ -30,7 +30,7 @@ static int calc_ptr_step(type *t)
 	if(type_is_primitive(type_is_ptr(t), type_void))
 		return type_primitive_size(type_void);
 
-	if(type_is_primitive(t, type_unknown))
+	if(type_is_arith(t))
 		return 1;
 
 	tnext = type_next(t);

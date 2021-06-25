@@ -731,7 +731,7 @@ type *type_add_type_str(type *r,
 
 		if((opts & TY_STR_AKA) && of){
 			/* descend to the type if it's next */
-			type *t_ref = type_is_primitive(of, type_unknown);
+			type *t_ref = type_is(of, type_btype);
 			const btype *t = t_ref ? t_ref->bits.type : NULL;
 
 			BUF_ADD(" {aka '%s'}",
@@ -839,7 +839,7 @@ type_str_type(type *r)
 	type *t = type_is_array(r);
 	if(!t)
 		t = type_is_ptr(r);
-	t = type_is_primitive(t, type_unknown);
+	t = type_is(t, type_btype);
 	switch(t ? t->bits.type->primitive : type_unknown){
 		case type_schar:
 		case type_nchar:
