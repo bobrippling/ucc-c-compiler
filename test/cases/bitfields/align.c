@@ -1,4 +1,4 @@
-// RUN: %ucc -fsyntax-only %s
+// RUN: %ucc -fsyntax-only %s -std=c11
 
 struct A {
 	char a;

@@ -1,5 +1,5 @@
-// RUN: %ucc -o %t %s
-// RUN: %t | grep '^0x18200000001$'
+// RUN: %layout_check %s
+
 struct Padded
 {
 	int i : 2;
@@ -12,9 +12,3 @@ struct Padded
 struct Padded pad = {
 	1, 2, 3 // should initialise i, j and k, skipping unnamed fields
 };
-
-main()
-{
-	int printf();
-	printf("0x%lx\n", *(long *)&pad);
-}

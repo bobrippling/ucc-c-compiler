@@ -1,0 +1,16 @@
+another:
+.word 1
+.byte 2
+.byte 9
+# next boundary:
+.byte 5
+.zero 3
+
+bas:
+.long 33
+.zero 3
+
+bas2:
+.byte 33
+
+main:
