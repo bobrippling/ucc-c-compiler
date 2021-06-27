@@ -1286,7 +1286,7 @@ void nexttoken(void)
 						return;
 					}
 				}
-				die_at(NULL, "No end to comment");
+				die_at(NULL, "no end to comment");
 				return;
 			}else if(peeknextchar() == '/'){
 				tokenise_next_line();

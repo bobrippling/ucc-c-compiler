@@ -25,6 +25,8 @@
 
 #include "ops/expr_val.h"
 
+#define VERBOSE_DEBUG 1
+
 struct bitfield_state
 {
 	type *master_ty;
@@ -268,6 +270,25 @@ static int fold_sue_check_vm(decl *d)
 	return 0;
 }
 
+static unsigned space_for_bitfield(decl *d, unsigned long offset)
+{
+	unsigned tsz = type_size(d->ref, &d->where);
+	unsigned space = tsz;
+
+	/* struct {
+   *   int flip:1;   // 0, 0-0
+   *   int nybble:4; // 0, 1-4
+   *   int septet:7; // 1: 0-6
+	 *   //         ^ we only have 1 byte of space above,
+	 *   //           this overflows into the next boundary
+	 * };
+	 */
+	if(offset % tsz)
+		space -= offset % tsz;
+
+	return CHAR_BIT * space;
+}
+
 static void fold_sue_calc_fieldwidth(
 		struct pack_state *pack_state,
 		int *const realign_next,
@@ -281,8 +302,6 @@ static void fold_sue_calc_fieldwidth(
 	pack_state->sz = pack_state->align = 0;
 
 	d->bits.var.first_bitfield = bitfield->current_off == 0;
-	if(d->bits.var.first_bitfield)
-		assert(bitfield->current_limit == 0);
 
 	if(bits == 0){
 		/* align next field / treat as new bitfield
@@ -302,6 +321,7 @@ static void fold_sue_calc_fieldwidth(
 		 * have different sizes because of where .b is placed
 		 */
 		bitfield->master_ty = d->ref;
+		d->bits.var.first_bitfield = 1;
 
 	}else if(*realign_next
 	|| !bitfield->current_off
@@ -319,6 +339,7 @@ static void fold_sue_calc_fieldwidth(
 
 			*realign_next = 0;
 			bitfield->current_off = 0;
+			d->bits.var.first_bitfield = 1;
 
 			if(bitfield->master_ty){
 				/* round offset up to master_ty's size */
@@ -327,7 +348,8 @@ static void fold_sue_calc_fieldwidth(
 		}
 
 		bitfield->master_ty = d->ref;
-		bitfield->current_limit = CHAR_BIT * type_size(d->ref, &d->where);
+		// FIXME? truncate master_ty here:
+		bitfield->current_limit = space_for_bitfield(d, *offset);
 
 		d->bits.var.bitfield_master_ty = bitfield->master_ty;
 
@@ -339,8 +361,17 @@ static void fold_sue_calc_fieldwidth(
 		round_size_to_align(&pack_state->sz, pack_state->align);
 
 		/* we are onto the beginning of a new group */
+		if(VERBOSE_DEBUG){
+			fprintf(stderr, "  // new group, offset=%ld. %s={sz: %d, al: %d}",
+					*offset, d->spel, pack_state->sz, pack_state->align);
+		}
+
 		struct_pack(d, offset, pack_state->sz, pack_state->align);
 		bitfield->first_off = d->bits.var.struct_offset;
+
+		if(VERBOSE_DEBUG){
+			fprintf(stderr, ". given struct_offset of %d\n", d->bits.var.struct_offset);
+		}
 
 		/* now that we've done the struct packing w.r.t. bitfield size, we change
 		 * pack_state->align to the align of the declared member type itself, to

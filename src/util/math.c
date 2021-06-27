@@ -1,7 +1,7 @@
 #include <strings.h>
 #include "math.h"
 
-static unsigned long long pow2i(unsigned v)
+unsigned long long pow2i(unsigned v)
 {
 	unsigned long long out = 1;
 

@@ -267,7 +267,7 @@ void parse_static_assert(symtable *scope)
 			sa->s = NULL;
 			if(cc1_std < STD_C2X){
 				cc1_warn_at(&sa->e->where, static_assert_missing_string,
-						"Omitting the string argument of _Static_assert is a C2X extension");
+						"omitting the string argument of _Static_assert is a C2X extension");
 			}
 		}
 

@@ -7,7 +7,7 @@ another:
 .zero 3
 
 bas:
-.long 33
+.byte 33
 .zero 3
 
 bas2:

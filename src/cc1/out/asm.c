@@ -46,11 +46,13 @@
 
 #define ASM_COMMENT "#"
 
-#define INIT_DEBUG 0
+#define INIT_DEBUG 1
 
 #define DEBUG(s, ...) do{ \
 	if(INIT_DEBUG) fprintf(stderr, "\033[35m" s "\033[m\n", __VA_ARGS__); \
 }while(0)
+
+#define BITFIELD_DBG(...) fprintf(stderr, __VA_ARGS__)
 
 struct bitfield_val
 {
@@ -156,36 +158,94 @@ static void asm_declare_init_bitfields(
 		struct bitfield_val *vals, unsigned n,
 		type *ty)
 {
-#define BITFIELD_DBG(...) /*fprintf(stderr, __VA_ARGS__)*/
 	integral_t v = 0;
+	unsigned bitsize = type_size(ty, NULL) * CHAR_BIT;
+	unsigned offset_adj = 0;
 	unsigned width = 0;
+	unsigned emitted_width = 0;
 	unsigned i;
 
-	BITFIELD_DBG("bitfield out -- new\n");
+	BITFIELD_DBG("bitfield out -- new (%u bitfields)\n", n);
 	for(i = 0; i < n; i++){
 		integral_t this = integral_truncate_bits(
 				vals[i].val, vals[i].width, NULL);
 
+		BITFIELD_DBG("bitfield [%u] { val=%" NUMERIC_FMT_X ", off=%u, width=%u }\n",
+				i,
+				vals[i].val,
+				vals[i].offset,
+				vals[i].width);
+
+		if(width + vals[i].width > bitsize){
+			if(width == 0){
+				/* vals[i] is too large, split and emit */
+				unsigned j;
+				assert(v == 0);
+				assert(bitsize == 8);
+				BITFIELD_DBG("splitting up %" NUMERIC_FMT_X "\n", this);
+
+				/* FIXME: do we need to do this for all cases? otherwise we miss off trailing bits */
+				for(j = 0; j < bitsize; j += 8){
+					asm_declare_init_type(sec, ty);
+					asm_out_section(sec, "%" NUMERIC_FMT_D "\n",
+							integral_truncate_bits(this, 8, NULL));
+
+					this >>= bitsize;
+				}
+				emitted_width += bitsize;
+
+				continue;
+			}else{
+				BITFIELD_DBG("bitfield overflow for bitsize=%u, next\n", bitsize);
+				asm_declare_init_type(sec, ty);
+				asm_out_section(sec, "%" NUMERIC_FMT_D "\n", v);
+				emitted_width += bitsize;
+			}
+
+			/* now emit per byte, for simplicity */
+			ty = type_nav_btype(cc1_type_nav, type_uchar);
+			bitsize = 8;
+
+			/* reset emission state */
+			v = 0;
+			offset_adj += width;
+			width = 0;
+		}
+
 		width += vals[i].width;
 
-		BITFIELD_DBG("bitfield out: 0x%llx << %u gives ",
-				this, vals[i].offset);
+		BITFIELD_DBG("bitfield out: 0x%llx << %u - %u gives ",
+				this, vals[i].offset, offset_adj);
 
-		v |= this << vals[i].offset;
+		v |= this << (vals[i].offset - offset_adj);
 
 		BITFIELD_DBG("0x%llx\n", v);
 	}
 
-	BITFIELD_DBG("bitfield done with 0x%llx\n", v);
+	BITFIELD_DBG("bitfield or'd up, v=%#llx, width=%u\n", v, width);
 
 	if(width > 0){
+		unsigned padding;
+
 		asm_declare_init_type(sec, ty);
 		asm_out_section(sec, "%" NUMERIC_FMT_D "\n", v);
+
+		emitted_width += type_size(ty, NULL);
 	}else{
 		asm_out_section(sec,
 				ASM_COMMENT " skipping zero length bitfield%s init\n",
 				n == 1 ? "" : "s");
 	}
+
+	/*
+	if(emitted_width < type_siz){
+		padding = pack_to_align(padding, 8);
+		BITFIELD_DBG("bitfield need %u bits of padding (width=%u)\n", padding, width);
+
+		asm_declare_init_type(sec, type_nav_MAX_FOR(cc1_type_nav, padding / 8, 0));
+		asm_out_section(sec, "%" NUMERIC_FMT_D "\n", (integral_t)0);
+	}
+	*/
 }
 
 static void bitfields_out(
@@ -344,6 +404,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 		struct_union_enum_st *const sue = r->bits.type->sue;
 		sue_member **mem;
 		decl_init **i;
+		decl *d_mem = NULL;
 		unsigned end_of_last = 0;
 		struct bitfield_val *bitfields = NULL;
 		unsigned nbitfields = 0;
@@ -376,8 +437,8 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 				mem && *mem;
 				mem++)
 		{
-			decl *d_mem = (*mem)->struct_member;
 			decl_init *di_to_use = NULL;
+			d_mem = (*mem)->struct_member;
 
 			if(i){
 				int inc = 1;
@@ -394,11 +455,11 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 				}
 			}
 
-			DEBUG("init for %ld/%s, %s",
+			DEBUG("init for [%ld] / .%s <-- %s",
 					mem - sue->members, d_mem->spel,
 					di_to_use && di_to_use->type == decl_init_scalar
 					? di_to_use->bits.expr->f_str()
-					: NULL);
+					: "<non-scalar>");
 
 			/* only pad if we're not on a bitfield or we're on the first bitfield */
 			if(!d_mem->bits.var.field_width || !first_bf){
@@ -424,7 +485,8 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 						DEBUG("new bitfield group (%s is new boundary), old:",
 								d_mem->spel);
 						/* next bitfield group - store the current */
-						bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
+						// FIXME? use decl_type_for_bitfield() here? or do we want to use full first_bf->ty ?
+						bitfields_out(sec, bitfields, &nbitfields, decl_type_for_bitfield(first_bf));
 					}
 					if(!zero_width)
 						first_bf = d_mem;
@@ -461,9 +523,28 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 			}
 		}
 
-		if(nbitfields)
-			bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
+		if(nbitfields){
+			unsigned sz, align;
+
+			bitfields_out(sec, bitfields, &nbitfields, decl_type_for_bitfield(first_bf));
+
+			/* ensure final padding isn't excessive: */
+			d_mem = first_bf; /* FIXME: remove d_mem */
+			assert(d_mem);
+			decl_size_align_inc_bitfield(d_mem, &sz, &align);
+
+			/*FIXME: add all bitfield's sizes on here, if we're calculating them with decl_size_align_inc_bitfield() */
+			sz = type_size(d_mem->ref, NULL);
+
+			end_of_last = d_mem->bits.var.struct_offset + sz;
+			DEBUG("trailing bitfield (%s), end_of_last=%u, struct_offset=%d, sz=%d",
+					decl_to_str(d_mem), end_of_last, d_mem->bits.var.struct_offset, sz);
+		}
 		free(bitfields);
+
+		DEBUG("end_of_last=%d, padding up to %u",
+				end_of_last,
+				sue_size(sue, NULL));
 
 		/* need to pad to struct size */
 		asm_declare_pad(sec,

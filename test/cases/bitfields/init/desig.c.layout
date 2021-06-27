@@ -1,0 +1,8 @@
+des:
+.word 0
+.byte 1
+.space 1
+
+yo:
+.byte 11
+.space 3
