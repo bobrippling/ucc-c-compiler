@@ -453,8 +453,8 @@ const char *impl_val_str_r(
 			const char *pre = deref ? "" : "$";
 			const char *picstr = "";
 
-			if(deref && (vs->bits.lbl.pic_type & OUT_LBL_PIC)){
-				int local_sym = vs->bits.lbl.pic_type & OUT_LBL_PICLOCAL;
+			if(deref && (vs->bits.lbl.lbl_type & OUT_LBL_PIC)){
+				int local_sym = vs->bits.lbl.lbl_type & OUT_LBL_PICLOCAL;
 
 				/* if it's local, we can access the symbol at a fixed offset.
 				 * otherwise it's in another module, so we need the GOT to access it
@@ -1047,7 +1047,7 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			 * as we currently don't have V_LBL_SPILT, for e.g. */
 			mut->type = V_LBL;
 			mut->bits.lbl.str = lbl;
-			mut->bits.lbl.pic_type = OUT_LBL_PIC | OUT_LBL_PICLOCAL;
+			mut->bits.lbl.lbl_type = OUT_LBL_PIC | OUT_LBL_PICLOCAL;
 			mut->bits.lbl.offset = 0;
 			mut->t = type_ptr_to(mut->t);
 
@@ -1184,8 +1184,8 @@ lea:
 			const int fp = type_is_floating(from->t);
 			type *chosen_ty = fp ? from->t : NULL;
 			const int from_GOT = from->type == V_LBL
-				&& (from->bits.lbl.pic_type & OUT_LBL_PIC)
-				&& !(from->bits.lbl.pic_type & OUT_LBL_PICLOCAL);
+				&& (from->bits.lbl.lbl_type & OUT_LBL_PIC)
+				&& !(from->bits.lbl.lbl_type & OUT_LBL_PICLOCAL);
 			const out_val *from_new;
 
 			if(from_GOT){

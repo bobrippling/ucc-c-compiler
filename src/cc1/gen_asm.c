@@ -436,12 +436,13 @@ const out_val *gen_call(
 const out_val *gen_decl_addr(out_ctx *octx, decl *d)
 {
 	const int via_got = decl_needs_GOTPLT(d);
+	const int tls = d->store & store_thread;
 
 	return out_new_lbl(
 			octx,
 			type_ptr_to(d->ref),
 			decl_asm_spel(d),
-			OUT_LBL_PIC | (via_got ? 0 : OUT_LBL_PICLOCAL));
+			OUT_LBL_PIC | (via_got ? 0 : OUT_LBL_PICLOCAL) | (tls ? OUT_LBL_THREAD : 0));
 }
 
 static void gen_gasm(char *asm_str)

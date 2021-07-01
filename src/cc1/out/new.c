@@ -102,22 +102,24 @@ out_val *out_new_l(out_ctx *octx, type *ty, long val)
 	return out_new_num(octx, ty, &n);
 }
 
-static enum out_pic_type picfilter(enum out_pic_type flags)
+static enum out_lbl_type lblfilter(enum out_lbl_type flags)
 {
-	return FOPT_PIC(&cc1_fopt) ? flags : OUT_LBL_NOPIC;
+	return FOPT_PIC(&cc1_fopt)
+		? flags
+		: flags & ~(OUT_LBL_PIC | OUT_LBL_PICLOCAL);
 }
 
 out_val *out_new_lbl(
 		out_ctx *octx, type *ty,
 		const char *s,
-		enum out_pic_type pic_type)
+		enum out_lbl_type lbl_type)
 {
 	out_val *v = v_new(octx, ty);
 
 	v->type = V_LBL;
 	v->bits.lbl.str = s;
 	v->bits.lbl.offset = 0;
-	v->bits.lbl.pic_type = picfilter(pic_type);
+	v->bits.lbl.lbl_type = lblfilter(lbl_type);
 
 	return v;
 }
