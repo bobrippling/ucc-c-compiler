@@ -39,7 +39,7 @@ static const out_val *stack_canary_address_tls(out_ctx *octx)
 			octx,
 			type_ptr_to(type_ptr_to(intptr_ty)),
 			tlsent,
-			OUT_LBL_NOPIC);
+			OUT_LBL_NONE);
 }
 
 static const out_val *stack_canary_address(out_ctx *octx, char **const tofree)

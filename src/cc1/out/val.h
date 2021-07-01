@@ -58,7 +58,7 @@ struct out_val
 		{
 			const char *str;
 			long offset;
-			enum out_pic_type pic_type;
+			enum out_lbl_type lbl_type;
 		} lbl;
 	} bits;
 
