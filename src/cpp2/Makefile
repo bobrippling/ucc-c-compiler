@@ -5,7 +5,7 @@ CFLAGS += -Wmissing-prototypes
 OBJ_CPP = preproc.o main.o macro.o str.o \
       directive.o tokenise.o eval.o  \
       snapshot.o include.o deps.o    \
-      expr.o expr_tok.o has.o
+      expr.o expr_tok.o has.o feat.o
 
 OBJ_DEP = ../util/util.o ../util/alloc.o \
       ../util/math.o                 \

@@ -37,9 +37,6 @@ static const struct
 #if !UCC_HAS_ATOMICS
 	{ "__STDC_NO_ATOMICS__" , "1", 0 }, /* _Atomic */
 #endif
-#if !UCC_HAS_THREADS
-	{ "__STDC_NO_THREADS__" , "1", 0 }, /* _Thread_local */
-#endif
 #if !UCC_HAS_COMPLEX
 	{ "__STDC_NO_COMPLEX__", "1", 0 }, /* _Complex */
 #endif
@@ -303,6 +300,9 @@ static void add_platform_dependant_macros(void)
 		/*case PLATFORM_mipsel_32:
 			macro_add("__MIPS__", "1", 0);*/
 	}
+
+	if(!ucc_has_threads())
+		macro_add("__STDC_NO_THREADS__", "1", 0);
 }
 
 static int init_target(const char *target)

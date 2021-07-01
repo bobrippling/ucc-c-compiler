@@ -1,6 +1,17 @@
-// RUN: %check --only -e %s
+// RUN: %check -e --only          %s -target x86_64-linux
+// RUN: %check -e --prefix=darwin %s -target x86_64-darwin
 
-_Thread_local int a;
+#ifdef __DARWIN__
+#  ifndef __STDC_NO_THREADS__
+#    error expected __STDC_NO_THREADS__ to be defined for this target
+#  endif
+#else
+#  ifdef __STDC_NO_THREADS__
+#    error expected __STDC_NO_THREADS__ to not be defined for this target
+#  endif
+#endif
+
+_Thread_local int a; // CHECK-darwin: thread-local storage is unsupported on this target
 
 _Thread_local void f() // CHECK: error: _Thread_local on non-variable
 {

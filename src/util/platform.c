@@ -25,6 +25,19 @@ int platform_32bit(void)
 	return platform_word_size() == 4;
 }
 
+int platform_supports_threads(void)
+{
+	switch(platform_sys()){
+		case SYS_linux:
+		case SYS_freebsd:
+			return 1;
+		case SYS_darwin:
+		case SYS_cygwin:
+			break;
+	}
+	return 0;
+}
+
 unsigned platform_align_max(void)
 {
 	switch(platform_word_size()){

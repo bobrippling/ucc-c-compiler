@@ -602,8 +602,13 @@ static type *parse_btype(
 			EAT(curtok);
 
 		}else if(curtok_is_decl_store()){
+			enum decl_storage new = curtok_to_decl_storage();
 
-			btype_set_store(store, &store_set, curtok_to_decl_storage());
+			btype_set_store(store, &store_set, new);
+			if(new & store_thread && !platform_supports_threads()){
+				warn_at_print_error(NULL, "thread-local storage is unsupported on this target");
+				fold_had_error = 1;
+			}
 			EAT(curtok);
 
 		}else if(curtok_is_type_primitive()){

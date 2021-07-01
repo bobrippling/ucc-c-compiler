@@ -60,7 +60,6 @@ static int has_feat_ext(const char *nam, int as_ext)
 		{ STD_C11, "c_generic_selections", 1 },
 		{ STD_C11, "c_static_assert", 1 },
 		{ STD_C11, "c_atomic", UCC_HAS_ATOMICS },
-		{ STD_C11, "c_thread_local", UCC_HAS_THREADS },
 		{ STD_C11, "c_complex", UCC_HAS_COMPLEX },
 
 		{ STD_C99, "c_vla", UCC_HAS_VLA },
@@ -74,9 +73,19 @@ static int has_feat_ext(const char *nam, int as_ext)
 		{ STD_C89, NULL, 0 }
 	};
 	const struct c_tbl *p;
+	struct c_tbl threads;
+
+	if(!strcmp(nam, "c_thread_local")){
+		threads.std = STD_C11;
+		threads.nam = NULL;
+		threads.has = ucc_has_threads();
+		p = &threads;
+		goto found;
+	}
 
 	for(p = tbl; p->nam; p++){
 		if(!strcmp(p->nam, nam)){
+found:
 			/* always have a name as an extension, or at least,
 			 * we don't depend on the C standard version */
 			if(as_ext)

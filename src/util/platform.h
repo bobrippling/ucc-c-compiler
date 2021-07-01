@@ -7,6 +7,7 @@
 enum arch platform_type(void);
 enum sys platform_sys(void);
 int platform_32bit(void);
+int platform_supports_threads(void);
 
 unsigned platform_word_size(void) ucc_const;
 unsigned platform_align_max(void) ucc_const;
