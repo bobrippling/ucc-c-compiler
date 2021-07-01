@@ -6,6 +6,8 @@ enum section_builtin
 	SECTION_TEXT,
 	SECTION_DATA,
 	SECTION_BSS,
+	SECTION_TDATA,
+	SECTION_TBSS,
 	SECTION_RODATA,
 	SECTION_RELRO,
 	SECTION_CTORS,
@@ -30,6 +32,7 @@ struct section
 	enum section_flags {
 		SECTION_FLAG_EXECUTABLE = 1 << 0,
 		SECTION_FLAG_RO = 1 << 1,
+		SECTION_FLAG_TLS = 1 << 2,
 	} flags;
 };
 
@@ -70,6 +73,8 @@ struct section
 #define SECTION_DESC_TEXT "text"
 #define SECTION_DESC_DATA "data"
 #define SECTION_DESC_BSS "bss"
+#define SECTION_DESC_TDATA "tdata"
+#define SECTION_DESC_TBSS "tbss"
 #define SECTION_DESC_RODATA "rodata"
 #define SECTION_DESC_RELRO "relro"
 #define SECTION_DESC_CTORS "ctors"
@@ -85,10 +90,13 @@ int section_hash(const struct section *);
 int section_cmp(const struct section *, const struct section *);
 
 int section_is_builtin(const struct section *);
+int section_is_zero(const struct section *);
 
 extern const struct section section_text;
 extern const struct section section_data;
 extern const struct section section_bss;
+/*extern const struct section section_tdata; - unneeded */
+/*extern const struct section section_tbss; - unneeded */
 extern const struct section section_rodata;
 extern const struct section section_relro;
 extern const struct section section_ctors;

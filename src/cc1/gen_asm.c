@@ -473,7 +473,11 @@ static void infer_decl_section(decl *d, struct section *sec)
 {
 	const int is_code = !!type_is(d->ref, type_func);
 	const int is_ro = is_code || type_is_const(d->ref);
-	const enum section_flags flags = (is_code ? SECTION_FLAG_EXECUTABLE : 0) | (is_ro ? SECTION_FLAG_RO : 0);
+	const int is_tls = d->store & store_thread;
+	const enum section_flags flags =
+		(is_code ? SECTION_FLAG_EXECUTABLE : 0) |
+		(is_ro ? SECTION_FLAG_RO : 0) |
+		(is_tls ? SECTION_FLAG_TLS : 0);
 	attribute *attr;
 
 	if((attr = attribute_present(d, attr_section))){
@@ -496,8 +500,9 @@ static void infer_decl_section(decl *d, struct section *sec)
 		return;
 	}
 
+	/* thread takes priority, `const` doesn't affect it */
 	/* prefer rodata over bss */
-	if(type_is_const(d->ref)){
+	if(!is_tls && type_is_const(d->ref)){
 		if(FOPT_PIC(&cc1_fopt)
 		&& d->bits.var.init.dinit
 		&& decl_init_requires_relocation(d->bits.var.init.dinit))
@@ -511,11 +516,11 @@ static void infer_decl_section(decl *d, struct section *sec)
 	}
 
 	if(!d->bits.var.init.dinit || decl_init_is_zero(d->bits.var.init.dinit)){
-		SECTION_FROM_BUILTIN(sec, SECTION_BSS, flags);
+		SECTION_FROM_BUILTIN(sec, is_tls ? SECTION_TBSS : SECTION_BSS, flags);
 		return;
 	}
 
-	SECTION_FROM_BUILTIN(sec, SECTION_DATA, flags);
+	SECTION_FROM_BUILTIN(sec, is_tls ? SECTION_TDATA : SECTION_DATA, flags);
 }
 
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)

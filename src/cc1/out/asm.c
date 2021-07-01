@@ -65,6 +65,8 @@ const char *asm_section_desc(enum section_builtin sec)
 		case SECTION_TEXT: return SECTION_DESC_TEXT;
 		case SECTION_DATA: return SECTION_DESC_DATA;
 		case SECTION_BSS: return SECTION_DESC_BSS;
+		case SECTION_TDATA: return SECTION_DESC_TDATA;
+		case SECTION_TBSS: return SECTION_DESC_TBSS;
 		case SECTION_RODATA: return SECTION_DESC_RODATA;
 		case SECTION_RELRO: return SECTION_DESC_RELRO;
 		case SECTION_CTORS: return SECTION_DESC_CTORS;
@@ -94,11 +96,18 @@ static void switch_section_emit(const struct section *section)
 
 	firsttime = cc1_outsections_add(section);
 	if(firsttime){
-		if(cc1_target_details.as->supports_section_flags && !is_builtin){
+		const int is_tls = (section->flags & SECTION_FLAG_TLS);
+
+		if(cc1_target_details.as->supports_section_flags && (!is_builtin || is_tls)){
 			const int is_code = section->flags & SECTION_FLAG_EXECUTABLE;
 			const int is_rw = !(section->flags & SECTION_FLAG_RO);
+			const int just_zeros = section_is_zero(section);
 
-			xfprintf(cc1_output.file, ",\"a%s\",@progbits", is_code ? "x" : is_rw ? "w" : "");
+			xfprintf(cc1_output.file,
+					",\"a%s%s\",@%s",
+					is_code ? "x" : is_rw ? "w" : "",
+					is_tls ? "T" : "",
+					just_zeros ? "nobits" : "progbits");
 		}
 	}
 	xfprintf(cc1_output.file, "\n");
@@ -735,7 +744,8 @@ void asm_declare_decl_init(const struct section *sec, decl *d)
 	if(section_is_builtin(sec)
 	&& d->bits.var.init.compiler_generated
 	&& cc1_fopt.common
-	&& !attribute_present(d, attr_weak) /* variables can't be weak and common */)
+	&& !attribute_present(d, attr_weak) /* variables can't be weak and common */
+	&& !(d->store & store_thread) /* tls can't be common */)
 	{
 		unsigned align;
 

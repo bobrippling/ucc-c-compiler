@@ -36,6 +36,18 @@ int section_is_builtin(const struct section *sec)
 	}
 }
 
+int section_is_zero(const struct section *sec)
+{
+	assert(sec->builtin != SECTION_UNINIT);
+	switch(sec->builtin){
+		case SECTION_BSS:
+		case SECTION_TBSS:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
 char *section_name(const struct section *sec, int *const allocated)
 {
 	*allocated = 0;
@@ -60,6 +72,8 @@ char *section_name(const struct section *sec, int *const allocated)
 		case SECTION_TEXT: return (char *)cc1_target_details.section_names->section_name_text;
 		case SECTION_DATA: return (char *)cc1_target_details.section_names->section_name_data;
 		case SECTION_BSS: return (char *)cc1_target_details.section_names->section_name_bss;
+		case SECTION_TDATA: return (char *)cc1_target_details.section_names->section_name_tdata;
+		case SECTION_TBSS: return (char *)cc1_target_details.section_names->section_name_tbss;
 		case SECTION_RODATA: return (char *)cc1_target_details.section_names->section_name_rodata;
 		case SECTION_RELRO: return (char *)cc1_target_details.section_names->section_name_relro;
 		case SECTION_CTORS: return (char *)cc1_target_details.section_names->section_name_ctors;

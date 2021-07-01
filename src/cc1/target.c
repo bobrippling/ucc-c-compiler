@@ -9,6 +9,8 @@ static const struct target_section_names section_names[] = {
 		".text",
 		".data",
 		".bss",
+		".tdata",
+		".tbss",
 		".rodata",
 		".data.rel.ro", /* .data.rel.ro[.local] */
 		".init_array,\"aw\"",
@@ -21,6 +23,8 @@ static const struct target_section_names section_names[] = {
 		".text",
 		".data",
 		".bss",
+		".tdata",
+		".tbss",
 		".rodata",
 		".data.rel.ro", /* .data.rel.ro[.local] */
 		".init_array,\"aw\"",
@@ -33,6 +37,8 @@ static const struct target_section_names section_names[] = {
 		"__TEXT,__text",
 		"__DATA,__data",
 		"__BSS,__bss",
+		NULL, /* unsupported tls */
+		NULL,
 		"__TEXT,__const", /* no relocs required (oddly text) */
 		"__DATA,__const", /* relocs required */
 		"__DATA,__mod_init_func,mod_init_funcs",
@@ -45,6 +51,8 @@ static const struct target_section_names section_names[] = {
 		".text",
 		".data",
 		".bss",
+		".tdata",
+		".tbss",
 		".rodata",
 		".data.rel.ro",
 		".ctors,\"w\"",

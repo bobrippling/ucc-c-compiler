@@ -10,6 +10,8 @@ struct target_details
 		const char *section_name_text;
 		const char *section_name_data;
 		const char *section_name_bss;
+		const char *section_name_tdata;
+		const char *section_name_tbss;
 		const char *section_name_rodata;
 		const char *section_name_relro;
 		const char *section_name_ctors;
