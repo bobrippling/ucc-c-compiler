@@ -158,7 +158,7 @@ Supported | Extension Name | Description
 ❌ No | Target Format Checks | Format checks specific to particular targets.
 ❌ No | Pragmas | Pragmas accepted by GCC.
 ✅ Yes | Unnamed Fields | Unnamed struct/union fields within structs/unions.
-🛠️ [TLS WIP] | Thread-Local | Per-thread variables.
+✅ Yes | Thread-Local | Per-thread variables.
 ✅ Yes | Binary constants | Binary constants using the `0b` prefix.
 
 Output/Targets
