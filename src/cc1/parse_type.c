@@ -501,20 +501,22 @@ static int parse_at_decl_spec(void)
 static void btype_set_store(
 		enum decl_storage *store, int *pstore_set, enum decl_storage st)
 {
+	const int is_store = !!(st & STORE_MASK_STORE);
+
 	if(!store){
 		warn_at_print_error(NULL, "storage unwanted (%s)", decl_store_to_str(st));
 		fold_had_error = 1;
 		return;
 	}
 
-	if(*pstore_set){
+	if(*pstore_set && is_store){
 		warn_at_print_error(NULL, "second store %s", decl_store_to_str(st));
 		fold_had_error = 1;
 		return;
 	}
 
 	*store |= st;
-	*pstore_set = 1;
+	*pstore_set = is_store;
 }
 
 static type *parse_btype_end(
@@ -572,7 +574,7 @@ static type *parse_btype(
 	enum type_qualifier qual = qual_none;
 	enum type_primitive primitive = type_int;
 	int may_default_type = !!(flags & PARSE_BTYPE_DEFAULT_INT);
-	int is_signed = 1, is_inline = 0, is_noreturn = 0, is_va_list = 0;
+	int is_signed = 1, is_noreturn = 0, is_va_list = 0;
 	int store_set = 0, signed_set = 0;
 	decl *tdef_decl = NULL;
 	enum
@@ -675,15 +677,6 @@ static type *parse_btype(
 				die_at(NULL, "unwanted second \"%ssigned\"", is_signed ? "" : "un");
 
 			signed_set = 1;
-			EAT(curtok);
-
-		}else if(curtok == token_inline){
-			if(store)
-				*store |= store_inline;
-			else
-				die_at(NULL, "inline not wanted");
-
-			is_inline = 1;
 			EAT(curtok);
 
 		}else if(curtok == token__Noreturn){
@@ -834,10 +827,10 @@ static type *parse_btype(
 
 	if(qual != qual_none
 	|| store_set
+	|| (store && *store & (store_inline | store_thread))
 	|| primitive_mode != NONE
 	|| signed_set
 	|| tdef_typeof
-	|| is_inline
 	|| may_default_type
 	|| is_noreturn
 	|| (palign && *palign))
@@ -949,6 +942,7 @@ static type *parse_btype(
 				break;
 		}
 
+		/* typedef checks */
 		if(store
 		&& STORE_IS_TYPEDEF(*store))
 		{
@@ -958,8 +952,9 @@ static type *parse_btype(
 				free_decl_align_all(*palign);
 				*palign = NULL;
 			}
-			if(*store & store_inline){
-				warn_at_print_error(NULL, "typedef has inline specified");
+			if(*store & (store_inline | store_thread)){
+				warn_at_print_error(NULL, "typedef has %s specified",
+						*store & store_inline ? "inline" : "thread-local");
 				fold_had_error = 1;
 			}
 		}

@@ -6,14 +6,15 @@
 
 enum decl_storage
 {
-  /* auto or external-linkage depending on scope + other defs */
-  store_default   = 0,
-  store_auto      ,
-  store_static    ,
-  store_extern    ,
-  store_register  ,
-  store_typedef   , /* 5 - next power of two is 8 */
-  store_inline = 1 << 3
+	/* auto or external-linkage depending on scope + other defs */
+	store_default,
+	store_auto,
+	store_static,
+	store_extern,
+	store_register,
+	store_typedef, /* 5 - next power of two is 8 */
+	store_inline = 1 << 3,
+	store_thread = 1 << 4
 };
 #define STORE_MASK_STORE 0x00007 /* include all below 4 */
 #define STORE_MASK_EXTRA 0xfff38 /* exclude  ^ */

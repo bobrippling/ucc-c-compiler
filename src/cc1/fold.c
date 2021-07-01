@@ -975,9 +975,20 @@ static void fold_decl_var(decl *d, symtable *stab)
 	int is_static_duration = !stab->parent
 		|| (d->store & STORE_MASK_STORE) == store_static;
 
-	if((d->store & STORE_MASK_EXTRA) == store_inline){
+	if(d->store & store_inline){
 		warn_at_print_error(&d->where, "inline on non-function");
 		fold_had_error = 1;
+	}
+	if(stab->parent && d->store & store_thread){
+		switch(d->store & STORE_MASK_STORE){
+			case store_static:
+			case store_extern:
+				break; /* ok */
+			default:
+				warn_at_print_error(&d->where, "static or extern required on non-global thread variable");
+				fold_had_error = 1;
+				break;
+		}
 	}
 
 	fold_decl_var_vm(d, stab, is_static_duration);
@@ -1228,6 +1239,7 @@ void fold_check_decl_complete(decl *d)
 		case store_auto:
 			break;
 		case store_inline:
+		case store_thread:
 			assert(0);
 	}
 
@@ -1421,7 +1433,8 @@ void fold_decl_global(decl *d, symtable *stab)
 			break;
 
 		case store_inline: /* allowed, but not accessible via STORE_MASK_STORE */
-			ICE("inline");
+		case store_thread:
+			ICE("inline/thread");
 		case store_typedef: /* global typedef */
 			break;
 
@@ -1604,7 +1617,6 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute **attr)
 				case store_static:
 				case store_extern:
 				case store_typedef:
-				case store_inline:
 				{
 					const char *spel = d->spel, *quote = "\"";
 
@@ -1621,6 +1633,10 @@ void fold_funcargs(funcargs *fargs, symtable *stab, attribute **attr)
 					fold_had_error = 1;
 					continue;
 				}
+
+				case store_inline:
+				case store_thread:
+					ICE("inline/thread");
 
 				case store_register:
 				case store_default:

@@ -552,6 +552,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 
 	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		case store_inline:
+		case store_thread:
 		case store_auto:
 		case store_register:
 			ICE("%s storage on global %s",

@@ -53,6 +53,9 @@ enum decl_storage curtok_to_decl_storage(void)
 		case token_static:   return store_static;
 		case token_typedef:  return store_typedef;
 		case token_register: return store_register;
+		case token_inline:   return store_inline;
+		case token___thread: return store_thread;
+		case token__Thread_local: return store_thread;
 		default:             return -1;
 	}
 }
@@ -162,6 +165,8 @@ char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  static);
 		CASE_STR_PREFIX(token,  auto);
 		CASE_STR_PREFIX(token,  register);
+		CASE_STR_PREFIX(token,  _Thread_local);
+		CASE_STR_PREFIX(token,  __thread);
 		CASE_STR_PREFIX(token, _Alignof);
 		CASE_STR_PREFIX(token, __alignof);
 		CASE_STR_PREFIX(token, _Alignas);
@@ -305,6 +310,8 @@ char *eat_curtok_to_identifier(int *alloc, where *loc)
 		case token_signed:
 		case token_unsigned:
 		case token_typedef:
+		case token__Thread_local:
+		case token___thread:
 		case token_struct:
 		case token_union:
 		case token_enum:

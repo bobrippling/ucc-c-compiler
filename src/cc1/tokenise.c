@@ -74,6 +74,8 @@ static const struct keyword
 	KEYWORD(KW_ALL, static),
 	KEYWORD(KW_ALL, extern),
 	KEYWORD(KW_ALL, register),
+	KEYWORD(KW_ALL, _Thread_local),
+	KEYWORD(KW_ALL, __thread),
 
 	KEYWORD__ALL(KW_EXT, asm),
 	KEYWORD__ALL(KW_EXT | KW_C99, inline),

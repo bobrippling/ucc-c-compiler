@@ -81,15 +81,20 @@ void decl_free(decl *d)
 
 const char *decl_store_to_str(const enum decl_storage s)
 {
-	static char buf[16]; /* "inline register" is the longest - just a fit */
+	static char buf[32]; /* "inline _Thread_local register" is the longest */
 
 	if(s & STORE_MASK_EXTRA){
 		char *trail_space = NULL;
 		*buf = '\0';
 
-		if((s & STORE_MASK_EXTRA) == store_inline){
+		if(s & store_inline){
 			strcpy(buf, "inline ");
 			trail_space = buf + strlen("inline");
+		}
+
+		if(s & store_thread){
+			strcpy(buf, "_Thread_local ");
+			trail_space = buf + strlen("_Thread_local");
 		}
 
 		strcpy(buf + strlen(buf), decl_store_to_str(s & STORE_MASK_STORE));
@@ -102,7 +107,8 @@ const char *decl_store_to_str(const enum decl_storage s)
 
 	switch(s){
 		case store_inline:
-			ICE("inline");
+		case store_thread:
+			ICE("inline/thread");
 		case store_default:
 			return "";
 		CASE_STR_PREFIX(store, auto);
@@ -249,11 +255,16 @@ enum linkage decl_linkage(decl *d)
 			return linkage_none;
 
 		case store_inline:
-			ICE("bad store");
+		case store_thread:
+			ICE("inline/thread");
 
 		case store_default:
+			if(p->store & store_thread)
+				return linkage_external; /* _Thread_local int x; // external */
 			break;
 	}
+
+	assert((p->store & store_thread) == 0);
 
 	/* either global non-static or local */
 	return d->sym && d->sym->type == sym_global

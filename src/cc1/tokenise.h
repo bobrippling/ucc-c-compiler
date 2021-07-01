@@ -65,6 +65,8 @@ enum token
 	token__Alignof,
 	token___alignof, /* gnu extension */
 	token__Alignas,
+	token___thread,
+	token__Thread_local,
 	/**/
 	token_typedef,
 	token_struct,

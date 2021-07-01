@@ -205,8 +205,10 @@ void symtab_check_rw(symtable *tab)
 							break;
 						case store_extern:
 						case store_typedef:
-						case store_inline:
 							break;
+						case store_inline:
+						case store_thread:
+							ICE("inline/thread");
 					}
 				}
 

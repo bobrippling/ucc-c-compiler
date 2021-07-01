@@ -307,6 +307,7 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 		case store_static:
 		case store_extern:
 		case store_inline:
+		case store_thread:
 			break;
 	}
 }
