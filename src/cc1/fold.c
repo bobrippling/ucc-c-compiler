@@ -778,7 +778,7 @@ static void fold_decl_func(decl *d, symtable *stab)
 	 *   register int   f();
 	 *   register int  *f();
 	 */
-	switch(d->store & STORE_MASK_STORE){
+	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		/* typedef handled elsewhere, since
 		 * we may fold before we have .func.code */
 		case store_register:
@@ -788,6 +788,18 @@ static void fold_decl_func(decl *d, symtable *stab)
 					"%s storage for function",
 					decl_store_to_str(d->store));
 			break;
+		case store_default:
+		case store_static:
+		case store_extern:
+		case store_typedef:
+			break;
+		case store_inline:
+		case store_thread:
+			ICE("inline/thread");
+	}
+	if(d->store & store_thread){
+		warn_at_print_error(&d->where, "_Thread_local on non-variable");
+		fold_had_error = 1;
 	}
 
 	if(type_is_variably_modified(d->ref)){
@@ -980,7 +992,7 @@ static void fold_decl_var(decl *d, symtable *stab)
 		fold_had_error = 1;
 	}
 	if(stab->parent && d->store & store_thread){
-		switch(d->store & STORE_MASK_STORE){
+		switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 			case store_static:
 			case store_extern:
 				break; /* ok */

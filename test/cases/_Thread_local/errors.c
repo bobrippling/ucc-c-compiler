@@ -2,7 +2,7 @@
 
 _Thread_local int a;
 
-void f()
+_Thread_local void f() // CHECK: error: _Thread_local on non-variable
 {
 	_Thread_local int b; // CHECK: error: static or extern required on non-global thread variable
 	b = 3;
