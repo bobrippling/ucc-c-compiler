@@ -20,3 +20,10 @@ int f()
 	return tls_local;
 // STDOUT: f:
 }
+
+__thread int array[10];
+
+int g()
+{
+	return g[3];
+}
