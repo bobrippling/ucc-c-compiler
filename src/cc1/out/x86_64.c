@@ -450,27 +450,39 @@ const char *impl_val_str_r(
 
 		case V_LBL:
 		{
+			const char *seg = "";
 			const char *pre = deref ? "" : "$";
-			const char *picstr = "";
+			const char *extra = "";
 
-			if(deref && (vs->bits.lbl.lbl_type & OUT_LBL_PIC)){
+			if(deref){
+				enum out_lbl_type t = vs->bits.lbl.lbl_type;
 				int local_sym = vs->bits.lbl.lbl_type & OUT_LBL_PICLOCAL;
 
-				/* if it's local, we can access the symbol at a fixed offset.
-				 * otherwise it's in another module, so we need the GOT to access it
-				 */
-				picstr = local_sym ? "(%rip)" : "@GOTPCREL(%rip)";
+				if(t & OUT_LBL_THREAD){
+					if(local_sym){
+						seg = "fs:";
+						extra = "@tpoff";
+					}else{
+						assert(0 && "unreachable");
+					}
+				}else if(t & OUT_LBL_PIC){
+					/* if it's local, we can access the symbol at a fixed offset.
+					 * otherwise it's in another module, so we need the GOT to access it
+					 */
+					extra = local_sym ? "(%rip)" : "@GOTPCREL(%rip)";
+				}
 			}
 
 			if(vs->bits.lbl.offset){
-				xsnprintf(buf, VAL_STR_SZ, "%s%s+%ld%s",
+				xsnprintf(buf, VAL_STR_SZ, "%s%s%s+%ld%s",
+						seg,
 						pre,
 						vs->bits.lbl.str,
 						vs->bits.lbl.offset,
-						picstr);
+						extra);
 			}else{
-				xsnprintf(buf, VAL_STR_SZ, "%s%s%s",
-						pre, vs->bits.lbl.str, picstr);
+				xsnprintf(buf, VAL_STR_SZ, "%s%s%s%s",
+						seg, pre, vs->bits.lbl.str, extra);
 			}
 			break;
 		}
