@@ -1123,6 +1123,22 @@ static int should_multilib(enum tristate multilib, const char *prefix)
 	return access(path, F_OK) == 0;
 }
 
+static const char *get_multilib_prefix(const struct triple *triple)
+{
+	static char buf[32];
+
+	switch(triple->arch){
+		case ARCH_armv7l:
+			xsnprintf(
+					buf, sizeof(buf), "arm-%s-%s",
+					triple_sys_to_str(triple->sys),
+					triple_abi_to_str(triple->abi));
+			return buf;
+		default:
+			return triple_to_str(triple, 0);
+	}
+}
+
 static void state_from_triple(
 		struct ucc *state,
 		char ***additional_argv,
@@ -1156,8 +1172,7 @@ static void state_from_triple(
 	switch(triple->sys){
 		case SYS_linux:
 		{
-			const char *const target = triple_to_str(triple, 0);
-			const char *multilib_prefix = target;
+			const char *multilib_prefix = get_multilib_prefix(triple);
 			const int is_pie = vars->pie != TRI_FALSE;
 
 			if(!should_multilib(vars->multilib, multilib_prefix))
@@ -1173,21 +1188,39 @@ static void state_from_triple(
 				/* don't mention a dynamic linker - not used for generating a shared library */
 			}else{
 				if(!vars->static_){
-					const char *dyld;
+					char *dyld;
 
 					dynarray_add(&state->ldflags_pre_user, ustrdup("-dynamic-linker"));
 
 					switch(vars->dyld){
 						case DYLD_DEFAULT:
 						case DYLD_GLIBC:
-							dyld = "/lib64/ld-linux-x86-64.so.2";
+							switch(triple->arch){
+								case ARCH_i386:
+									ICE("TODO: dyld for i386");
+									break;
+								case ARCH_x86_64:
+									dyld = ustrdup("/lib64/ld-linux-x86-64.so.2");
+									break;
+								case ARCH_armv7l:
+									dyld = ustrdup("/lib/ld-linux-armhf.so.3");
+									break;
+							}
 							break;
 						case DYLD_MUSL:
-							dyld = "/lib/ld-musl-x86_64.so.1";
+							switch(triple->arch){
+								case ARCH_x86_64:
+									dyld = ustrdup("/lib/ld-musl-x86_64.so.1");
+									break;
+								case ARCH_i386:
+								case ARCH_armv7l:
+									ICE("TODO: dyld for musl on this arch");
+									break;
+							}
 							break;
 					}
-					dynarray_add(&state->ldflags_pre_user, ustrdup(dyld));
 
+					dynarray_add(&state->ldflags_pre_user, dyld);
 				}else{
 					dynarray_add(&state->ldflags_pre_user, ustrdup("-no-dynamic-linker"));
 				}

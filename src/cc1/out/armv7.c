@@ -3,18 +3,21 @@
 
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
+#include "../../util/platform.h"
 
 #include "../type.h"
 #include "../type_nav.h"
 #include "../type_is.h"
 #include "../op.h"
 #include "../num.h"
+#include "../funcargs.h"
 
 #include "forwards.h"
 #include "val.h"
 #include "asm.h"
 #include "impl.h"
 #include "impl_jmp.h"
+#include "impl_fp.h"
 #include "virt.h"
 #include "write.h"
 #include "out.h"
@@ -56,9 +59,18 @@ static const char *arm_reg_to_str(int i)
 	return rnames[i];
 }
 
-int impl_reg_frame_const(const struct vreg *r)
+int impl_reg_frame_const(const struct vreg *r, int sp)
 {
-	return !r->is_float && r->idx == REG_BP;
+	if(r->is_float)
+		return 0;
+
+	switch(r->idx){
+		case REG_BP:
+			return 1;
+		case REG_SP:
+			return sp;
+	}
+	return 0;
 }
 
 int impl_reg_savable(const struct vreg *r)
@@ -80,7 +92,8 @@ static void arm_jmp(out_ctx *octx, const out_val *target, const char *pre)
 			ICE("call float");
 
 		case V_FLAG:
-		case V_REG_SPILT:
+		case V_SPILT:
+		case V_REGOFF:
 		case V_CONST_I:
 			target = v_to_reg(octx, target);
 		case V_REG:
@@ -92,12 +105,16 @@ static void arm_jmp(out_ctx *octx, const out_val *target, const char *pre)
 	}
 }
 
-void impl_branch(out_ctx *octx, const out_val *cond, out_blk *bt, out_blk *bf)
+void impl_branch(
+		out_ctx *octx, const out_val *cond,
+		out_blk *bt, out_blk *bf,
+		int unlikely)
 {
 	UNUSED_ARG(octx);
 	UNUSED_ARG(cond);
 	UNUSED_ARG(bt);
 	UNUSED_ARG(bf);
+	UNUSED_ARG(unlikely);
 	ICW("TODO");
 }
 
@@ -109,9 +126,9 @@ void impl_jmp_expr(out_ctx *octx, const out_val *v)
 	out_val_consume(octx, v);
 }
 
-void impl_jmp(FILE *f, const char *lbl)
+void impl_jmp(const char *lbl, const struct section *sec)
 {
-	fprintf(f, "\tb %s\n", lbl);
+	asm_out_section(sec, "\tb %s\n", lbl);
 }
 
 const out_val *impl_call(
@@ -122,7 +139,7 @@ const out_val *impl_call(
 	const int nargs = dynarray_count(args);
 	int i;
 
-	(void)fnty;
+	UNUSED_ARG(fnty);
 
 	for(i = 0; i < nargs; i++){
 		struct vreg call_reg = VREG_INIT(i, 0);
@@ -163,13 +180,17 @@ const out_val *impl_cast_load(
 	return vp;
 }
 
-const out_val *impl_deref(
-		out_ctx *octx, const out_val *vp, const struct vreg *reg)
+ucc_wur const out_val *impl_deref(
+		out_ctx *octx, const out_val *vp,
+		const struct vreg *reg,
+		int *done_out_deref)
 {
 	// TODO: merge with x86
-	type *tpointed_to = vp->type == V_REG_SPILT
+	type *tpointed_to = vp->type == V_SPILT
 		? vp->t
 		: type_dereference_decay(vp->t);
+
+	UNUSED_ARG(done_out_deref);
 
 	vp = v_to_reg(octx, vp);
 	out_asm(octx, "mov %s, [%s]",
@@ -217,18 +238,35 @@ void impl_func_prologue_save_fp(out_ctx *octx)
 
 void impl_func_prologue_save_call_regs(
 		out_ctx *octx,
-		type *rf, unsigned nargs,
-		int arg_offsets[/*nargs*/])
+		type *fnty, unsigned nargs,
+		const out_val *arg_offsets[/*nargs*/])
 {
+	funcargs *fa = type_funcargs(fnty);
 	unsigned i;
-
-	UNUSED_ARG(rf);
+	unsigned ws = platform_word_size();
 
 	for(i = 0; i < nargs; i++){
+		type *ty = fa->arglist[i]->ref;
+
 		out_asm(octx, "push { %s }", arm_reg_to_str(i));
 
-		arg_offsets[i] = i * 4;
+		arg_offsets[i] = v_new_bp3_above(
+				octx, NULL, type_ptr_to(ty), (i * 4) * ws);
+
+		/*
+		*store = out_change_type(octx,
+				v_reg_to_stack_mem(octx, rp, stack_loc),
+				type_ptr_to(ty));
+		*/
 	}
+}
+
+const struct vreg *impl_callee_save_regs(type *fnty, unsigned *pn)
+{
+	UNUSED_ARG(fnty);
+	ICW("TODO");
+	*pn = 0;
+	return NULL;
 }
 
 void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
@@ -238,11 +276,15 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	ICW("TODO");
 }
 
-void impl_func_epilogue(out_ctx *octx, type *ty)
+void impl_func_epilogue(out_ctx *octx, type *ty, int clean_stack)
 {
 	UNUSED_ARG(ty);
-	out_asm(octx, "mov sp, fp");
-	out_asm(octx, "pop { fp, pc }");
+	if(clean_stack){
+		out_asm(octx, "mov sp, fp");
+		out_asm(octx, "pop { fp, pc }");
+	}else{
+		out_asm(octx, "bx lr");
+	}
 }
 
 const out_val *impl_load(
@@ -257,11 +299,13 @@ const out_val *impl_load(
 					(int)from->bits.val_i);
 			break;
 
-		case V_REG_SPILT:
+		case V_SPILT:
 			out_asm(octx, "mov %s, [%s]",
 					arm_reg_to_str(reg->idx),
 					arm_reg_to_str(reg->idx));
 			break;
+		case V_REGOFF:
+			ICE("TODO: V_REGOFF");
 		case V_REG:
 			if(reg->idx == from->bits.regoff.reg.idx)
 				break;
@@ -301,11 +345,13 @@ void impl_store(out_ctx *octx, const out_val *from, const out_val *to)
 					(int)to->bits.val_i);
 			break;
 
-		case V_REG_SPILT:
+		case V_SPILT:
 			out_asm(octx, "str %s, [%s]",
 					arm_reg_to_str(reg->idx),
 					arm_reg_to_str(to->bits.regoff.reg.idx));
 			break;
+		case V_REGOFF:
+			ICE("TODO: V_REGOFF");
 		case V_REG:
 			out_asm(octx, "str %s, %s",
 					arm_reg_to_str(reg->idx),
@@ -383,6 +429,11 @@ op:
 			ICW("TODO: setCOND");
 			break;
 
+		case op_signbit:
+		case op_no_signbit:
+			ICE("TODO: op_signbit");
+			ICE("TODO: op_no_signbit");
+
 		case op_unknown:
 			ICE("unknown op");
 	}
@@ -441,16 +492,9 @@ void impl_reg_cp_no_off(
 			arm_reg_to_str(from->bits.regoff.reg.idx));
 }
 
-int impl_reg_is_callee_save(const struct vreg *r, type *fr)
+int impl_reg_is_scratch(type *fnty, const struct vreg *reg)
 {
-	(void)r;
-	(void)fr;
-	ICW("TODO");
-	return 0;
-}
-
-int impl_reg_is_scratch(const struct vreg *reg)
-{
+	UNUSED_ARG(fnty);
 	return (/*ARM_REG_R0 <= reg->idx &&*/ reg->idx < ARM_REG_R3)
 		|| ARM_REG_R12 == reg->idx;
 }
@@ -493,4 +537,31 @@ void impl_undefined(out_ctx *octx)
 {
 	UNUSED_ARG(octx);
 	ICE("TODO");
+}
+
+void impl_debugtrap(out_ctx *octx)
+{
+	UNUSED_ARG(octx);
+	ICE("TODO");
+}
+
+void impl_fp_bits(char *buf, size_t bufsize, enum type_primitive prim, floating_t fp)
+{
+	UNUSED_ARG(buf);
+	UNUSED_ARG(bufsize);
+	UNUSED_ARG(prim);
+	UNUSED_ARG(fp);
+	ICE("TODO");
+}
+
+void impl_reserve_retregs(out_ctx *octx)
+{
+	UNUSED_ARG(octx);
+	ICW("TODO");
+}
+
+void impl_unreserve_retregs(out_ctx *octx)
+{
+	UNUSED_ARG(octx);
+	ICW("TODO");
 }

@@ -140,7 +140,7 @@ static const char *vendor_to_str(enum vendor v)
 	return NULL;
 }
 
-static const char *sys_to_str(enum sys s)
+const char *triple_sys_to_str(enum sys s)
 {
 	switch(s){
 #define X(pre, name) case pre ## _ ## name: return #name;
@@ -152,7 +152,7 @@ static const char *sys_to_str(enum sys s)
 	return NULL;
 }
 
-static const char *abi_to_str(enum abi a)
+const char *triple_abi_to_str(enum abi a)
 {
 	switch(a){
 #define X(pre, name) case pre ## _ ## name: return #name;
@@ -170,8 +170,8 @@ char *triple_to_str(const struct triple *triple, int showvendor)
 			arch_to_str(triple->arch),
 			showvendor ? "-" : "",
 			showvendor ? vendor_to_str(triple->vendor) : "",
-			sys_to_str(triple->sys),
-			abi_to_str(triple->abi));
+			triple_sys_to_str(triple->sys),
+			triple_abi_to_str(triple->abi));
 
 	return buf;
 }

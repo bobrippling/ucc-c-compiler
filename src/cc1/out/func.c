@@ -323,11 +323,15 @@ void out_func_epilogue(
 		clean_stack = !cc1_fopt.omit_frame_pointer;
 
 	}else{ /* stack used - can we red-zone it? */
+#ifdef REDZONE_BYTES
 		redzone =
 			(mopt_mode & MOPT_RED_ZONE) &&
 			octx->max_stack_sz < REDZONE_BYTES &&
 			!octx->had_call &&
 			!octx->stack_ptr_manipulated;
+#else
+		redzone = 0;
+#endif
 
 		clean_stack = 1;
 	}

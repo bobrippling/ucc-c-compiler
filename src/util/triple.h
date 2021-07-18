@@ -89,4 +89,7 @@ int triple_parse(const char *str, struct triple *triple, const char **const bad)
 int triple_default(struct triple *, const char **unparsed);
 char *triple_to_str(const struct triple *, int showvendor);
 
+const char *triple_sys_to_str(enum sys);
+const char *triple_abi_to_str(enum abi);
+
 #endif
