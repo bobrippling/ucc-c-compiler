@@ -193,7 +193,7 @@ ucc_wur const out_val *impl_deref(
 	UNUSED_ARG(done_out_deref);
 
 	vp = v_to_reg(octx, vp);
-	out_asm(octx, "mov %s, [%s]",
+	out_asm(octx, "mov %s, [%s] # FIXME: recursive handling",
 			arm_reg_to_str(reg->idx),
 			arm_reg_to_str(vp->bits.regoff.reg.idx));
 

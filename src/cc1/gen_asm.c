@@ -289,9 +289,11 @@ static void gen_type_and_size(const struct section *section, decl *d)
 {
 	const int is_code = !!type_is(d->ref, type_func);
 	const char *spel = decl_asm_spel(d);
+	int is_arm = 1;
 
-	asm_out_section(section, ".type %s,@%s\n",
+	asm_out_section(section, ".type %s,%c%s\n",
 			spel,
+			is_arm ? '%' : '@', /* FIXME: target specific */
 			is_code ? "function" : "object");
 
 	if(is_code)

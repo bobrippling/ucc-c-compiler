@@ -1132,7 +1132,7 @@ static const char *get_multilib_prefix(const struct triple *triple)
 			xsnprintf(
 					buf, sizeof(buf), "arm-%s-%s",
 					triple_sys_to_str(triple->sys),
-					triple_abi_to_str(triple->abi));
+					"gnueabihf"); // triple_abi_to_str(triple->abi)
 			return buf;
 		default:
 			return triple_to_str(triple, 0);
@@ -1251,7 +1251,7 @@ static void state_from_triple(
 					dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
 				}
 
-				{
+				if(0){
 					struct cmdpath dso;
 					char *resolved;
 

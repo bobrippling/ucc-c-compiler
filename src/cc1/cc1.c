@@ -202,11 +202,13 @@ static int should_emit_macosx_version_min(struct version *const min)
 static void io_fin_gnustack(FILE *out)
 {
 	const int execstack = 0;
+	int is_arm = 1;
 
 	if(should_emit_gnu_stack_note()
 	&& fprintf(out,
-			".section .note.GNU-stack,\"%s\",@progbits\n",
-			execstack ? "x" : "") < 0)
+			".section .note.GNU-stack,\"%s\",%cprogbits\n",
+			execstack ? "x" : "",
+			is_arm ? '%' : '@') /* FIXME: target specific */ < 0)
 	{
 		ccdie("write to cc1 output:");
 	}
@@ -584,11 +586,10 @@ static int init_target(const char *target)
 	}
 
 	switch(triple.arch){
-		case ARCH_x86_64:
-		case ARCH_i386:
+		case ARCH_armv7l:
 			break;
 		default:
-			fprintf(stderr, "Only x86_64 architecture is compiled in\n");
+			fprintf(stderr, "Only armv7l architecture is compiled in\n");
 			return 0;
 	}
 

@@ -92,8 +92,9 @@ int impl_reg_is_callee_save(type *fnty, const struct vreg *r)
 
 const char *impl_val_str(const out_val *vs, int deref)
 {
-	static char buf[VAL_STR_SZ];
-	return impl_val_str_r(buf, vs, deref);
+	//static char buf[VAL_STR_SZ];
+	//return impl_val_str_r(buf, vs, deref);
+	return "?";
 }
 
 static void impl_overlay_mem_reg(
