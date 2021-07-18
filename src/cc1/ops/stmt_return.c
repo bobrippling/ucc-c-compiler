@@ -6,7 +6,11 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 
-const char *str_stmt_return()
+#include "../cc1_out_ctx.h"
+#include "../inline.h"
+#include "../sanitize.h"
+
+const char *str_stmt_return(void)
 {
 	return "return";
 }
@@ -29,18 +33,37 @@ void fold_stmt_return(stmt *s)
 	}
 
 	if(s->expr){
-		FOLD_EXPR(s->expr, s->symtab);
-		fold_check_expr(s->expr, 0, s->f_str());
+		int void_return;
+
+		fold_expr_nodecay(s->expr, s->symtab);
+		if(!type_is_s_or_u(s->expr->tree_type))
+			FOLD_EXPR(s->expr, s->symtab);
+
+		(void)!fold_check_expr(s->expr, FOLD_CHK_ALLOW_VOID, s->f_str());
+
+		void_return = type_is_void(s->expr->tree_type);
+
+		if(void_return)
+			cc1_warn_at(&s->where, return_void,
+					"void function returns void expression");
 
 		if(ret_ty){
-			/* void return handled implicitly with a cast to void */
-			fold_type_chk_and_cast(
-					ret_ty, &s->expr,
-					s->symtab, &s->where, "return type");
+			if(void_return){
+				if(!void_func){
+					cc1_warn_at(&s->where, return_type,
+							"void return in non-void function %s", in_func->spel);
+				}
 
-			if(void_func){
-				cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
-						"return with a value in void function %s", in_func->spel);
+			}else{
+				/* void return handled implicitly with a cast to void */
+				fold_type_chk_and_cast_ty(
+						ret_ty, &s->expr,
+						s->symtab, &s->where, "return type");
+
+				if(void_func){
+					cc1_warn_at(&s->where, return_type,
+							"return with a value in void function %s", in_func->spel);
+				}
 			}
 		}else{
 			/* in a block */
@@ -52,7 +75,7 @@ void fold_stmt_return(stmt *s)
 			/* in a void block */
 			void_func = 1;
 		}else if(!void_func){
-			cc1_warn_at(&s->where, 0, WARN_RETURN_TYPE,
+			cc1_warn_at(&s->where, return_type,
 					"empty return in non-void function %s", in_func->spel);
 		}
 	}
@@ -64,15 +87,41 @@ void fold_stmt_return(stmt *s)
 	}
 }
 
-void gen_stmt_return(stmt *s, out_ctx *octx)
+void gen_stmt_return(const stmt *s, out_ctx *octx)
 {
-	out_ctrl_end_ret(
-			octx,
-			s->expr ? gen_expr(s->expr, octx) : NULL,
-			s->expr ? s->expr->tree_type : NULL);
+	struct cc1_out_ctx **pcc1_octx, *cc1_octx;
+
+	/* need to generate the ret expr before the scope leave code */
+	const out_val *ret_exp = s->expr ? gen_expr(s->expr, octx) : NULL;
+
+	if(s->expr
+	&& type_is_ptr_or_block(s->expr->tree_type)
+	&& attribute_present(symtab_func(s->symtab), attr_returns_nonnull))
+	{
+		sanitize_returns_nonnull(ret_exp, octx);
+	}
+
+	gen_scope_leave(s->symtab, symtab_root(s->symtab), octx);
+
+	pcc1_octx = cc1_out_ctx(octx);
+	if((cc1_octx = *pcc1_octx) && cc1_octx->inline_.depth)
+		inline_ret_add(octx, ret_exp);
+	else
+		out_ctrl_end_ret(octx, ret_exp, s->expr ? s->expr->tree_type : NULL);
 }
 
-void style_stmt_return(stmt *s, out_ctx *octx)
+void dump_stmt_return(const stmt *s, dump *ctx)
+{
+	dump_desc_stmt(ctx, "return", s);
+
+	if(s->expr){
+		dump_inc(ctx);
+		dump_expr(s->expr, ctx);
+		dump_dec(ctx);
+	}
+}
+
+void style_stmt_return(const stmt *s, out_ctx *octx)
 {
 	stylef("return ");
 	IGNORE_PRINTGEN(gen_expr(s->expr, octx));

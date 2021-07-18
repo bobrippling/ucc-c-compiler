@@ -15,6 +15,9 @@
 
 void funcargs_free(funcargs *args, int free_decls)
 {
+	if(--args->retains > 0)
+		return;
+
 	if(free_decls && args){
 		int i;
 		for(i = 0; args->arglist[i]; i++)
@@ -33,6 +36,13 @@ void funcargs_empty(funcargs *func)
 		func->arglist = NULL;
 	}
 	func->args_void = 0;
+}
+
+void funcargs_empty_void(funcargs *func)
+{
+	/* x(void); */
+	funcargs_empty(func);
+	func->args_void = 1; /* (void) vs () */
 }
 
 enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
@@ -85,11 +95,19 @@ enum funcargs_cmp funcargs_cmp(funcargs *args_to, funcargs *args_from)
 	return FUNCARGS_EXACT_EQUAL;
 }
 
-funcargs *funcargs_new()
+funcargs *funcargs_new(void)
 {
 	funcargs *r = umalloc(sizeof *funcargs_new());
 	where_cc1_current(&r->where);
+	r->retains = 1;
 	return r;
+}
+
+funcargs *funcargs_new_void(void)
+{
+	funcargs *args = funcargs_new();
+	args->args_void = 1;
+	return args;
 }
 
 void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)
@@ -103,4 +121,10 @@ void funcargs_ty_calc(funcargs *fa, unsigned *n_int, unsigned *n_fp)
 			++*n_fp;
 		else
 			++*n_int;
+}
+
+int funcargs_is_old_func(funcargs *fa)
+{
+	/* don't treat int f(); as an old function */
+	return fa->args_old_proto && fa->arglist;
 }

@@ -16,9 +16,10 @@
 
 void stylef(const char *fmt, ...)
 {
+	struct section sec = SECTION_INIT(SECTION_TEXT);
 	va_list l;
 	va_start(l, fmt);
-	asm_out_sectionv(SECTION_TEXT, fmt, l);
+	asm_out_sectionv(&sec, fmt, l);
 	va_end(l);
 }
 
@@ -68,9 +69,9 @@ void gen_style_decl(decl *d)
 		return;
 	}
 
-	if(d->bits.var.init){
+	if(d->bits.var.init.dinit){
 		stylef(" = ");
-		gen_style_dinit(d->bits.var.init);
+		gen_style_dinit(d->bits.var.init.dinit);
 	}
 	stylef(";\n");
 }
@@ -79,6 +80,6 @@ void gen_style(symtable_global *stab)
 {
 	decl **i;
 
-	for(i = stab->stab.decls; i && *i; i++)
+	for(i = symtab_decls(&stab->stab); i && *i; i++)
 		gen_style_decl(*i);
 }

@@ -1,8 +1,0 @@
-platform.o: platform.c platform.h
-util.o: util.c util.h where.h compiler.h alloc.h
-alloc.o: alloc.c ../util/util.h ../util/where.h ../util/compiler.h \
- alloc.h
-dynarray.o: dynarray.c alloc.h dynarray.h dyn.h util.h where.h compiler.h
-dynmap.o: dynmap.c dynmap.h dyn.h alloc.h
-where.o: where.c where.h compiler.h
-str.o: str.c str.h

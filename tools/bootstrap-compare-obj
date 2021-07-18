@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if test $# -ne 2
+then
+	echo "Usage: $0 dir-a dir-b" >&2
+	exit 2
+fi
+
+for f in "$1"/*.o
+do
+	base="$(basename "$f")"
+
+	cmp "$f" "$2/$base"
+done

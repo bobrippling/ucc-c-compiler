@@ -1,5 +1,0 @@
-ent1:
-.long 1, 2
-
-ent2:
-.long 3, 4, 5

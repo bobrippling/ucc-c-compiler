@@ -1,9 +1,9 @@
-func_fold    fold_expr_addr;
-func_gen     gen_expr_addr;
-func_str     str_expr_addr;
-func_gen     gen_expr_str_addr;
-func_mutate_expr mutate_expr_addr;
-func_gen     gen_expr_style_addr;
+EXPR_DEFS(addr);
 
 /* differs from lvalue - allows arrays and functions */
 int expr_is_addressable(expr *e);
+
+expr *expr_addr_target(const expr *);
+
+expr *expr_new_addr_lbl(char *lbl, int static_ctx);
+expr *expr_new_addr(expr *);

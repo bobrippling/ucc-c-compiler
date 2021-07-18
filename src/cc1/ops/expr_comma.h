@@ -1,6 +1,4 @@
-func_fold    fold_expr_comma;
-func_gen     gen_expr_comma;
-func_str     str_expr_comma;
-func_gen     gen_expr_str_comma;
-func_mutate_expr mutate_expr_comma;
-func_gen     gen_expr_style_comma;
+EXPR_DEFS(comma);
+
+expr *expr_new_comma2(expr *lhs, expr *rhs, int compiler_gen);
+#define expr_new_comma() expr_new_wrapper(comma)

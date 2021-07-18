@@ -1,0 +1,43 @@
+t1:
+.byte 1
+.byte 128
+
+t2:
+.byte 1
+.byte 244
+.space 2
+
+t3:
+.byte 0
+.byte -3
+.space 2
+
+t4:
+.byte 134
+.byte 9
+.byte -1
+.byte -5
+.byte 28
+.byte 3
+.byte 0
+.byte 123
+
+t5:
+.byte 105
+.byte 9
+.byte 9
+.byte 9
+.byte 9
+.byte 9
+.byte 9
+.byte 9
+
+t6:
+.byte 1
+.byte 2
+.space 2
+
+t7:
+.word 52
+.byte 73
+.space 1

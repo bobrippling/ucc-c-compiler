@@ -6,7 +6,7 @@ typedef struct dynmap dynmap;
 typedef int dynmap_cmp_f(void *, void *);
 typedef unsigned dynmap_hash_f(const void *);
 
-dynmap *dynmap_new(dynmap_cmp_f, dynmap_hash_f);
+dynmap *dynmap_nochk_new(dynmap_cmp_f, dynmap_hash_f);
 void    dynmap_free(dynmap *);
 
 void *dynmap_nochk_get(dynmap *, void *key);
@@ -24,9 +24,18 @@ void *dynmap_nochk_rm(dynmap *, void *key);
 void dynmap_dump(dynmap *);
 
 /* handy */
-dynmap_hash_f dynmap_strhash;
+unsigned dynmap_strhash(const char *);
 
 #include "dyn.h"
+
+#define NO_EVAL(expr) (void)(0 ? (expr) : 0)
+
+/* don't eval the hash functions, but put a call to it for warning's sake
+ * can't call the cmpf, since it may be NULL and we get a compile time error
+ */
+#define dynmap_new(type_k, cmpf, hashf)                              \
+	((NO_EVAL(hashf((type_k)0))),                                      \
+	 dynmap_nochk_new((dynmap_cmp_f *)cmpf, (dynmap_hash_f *)hashf))
 
 #define dynmap_get(type_k, type_v, map, key)   \
 	(UCC_TYPECHECK(type_k, key),                 \

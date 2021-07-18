@@ -1,0 +1,15 @@
+.align 2
+s1:
+.space 4 # object space
+
+.align 2
+s2:
+.space 4 # object space
+
+.align 2
+s3:
+.space 4 # object space
+
+.align 2
+s4:
+.space 4 # object space

@@ -1,6 +1,0 @@
-glob:
-.byte 1
-.zero 15
-.byte 2
-.byte 3
-.zero 14

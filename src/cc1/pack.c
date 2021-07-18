@@ -3,34 +3,36 @@
 #include "pack.h"
 #include "../util/platform.h"
 
-int pack_to_align(int o, int align)
+typedef unsigned long pack_t;
+
+pack_t pack_to_align(pack_t sz, unsigned align)
 {
 	assert(align > 0);
 
 #ifdef SLOW
-	if(o % align)
-		o += align - o % align;
+	if(sz % align)
+		sz += align - sz % align;
 
-	return o;
+	return sz;
 #else
-	return (o + align - 1) & -align;
+	return (sz + align - 1) & -align;
 #endif
 }
 
-int pack_to_word(int o)
+pack_t pack_to_word(pack_t o)
 {
-	static int pws;
+	static unsigned pws;
 	if(!pws)
 		pws = platform_word_size();
 	return pack_to_align(o, pws);
 }
 
 void pack_next(
-		unsigned *poffset, unsigned *after_space,
+		unsigned long *poffset, unsigned long *after_space,
 		unsigned sz, unsigned align)
 {
 	/* insert space as necessary */
-	int offset = pack_to_align(*poffset, align);
+	unsigned long offset = pack_to_align(*poffset, align);
 
 	if(after_space)
 		*after_space = offset;

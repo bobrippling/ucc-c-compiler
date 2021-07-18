@@ -10,16 +10,17 @@ struct out_val
 		V_CONST_I, /* constant integer */
 
 		V_REG, /* value in a register, possibly offset */
-		V_REG_SPILT, /* value in memory pointed to by register */
+		V_SPILT, /* spilt value that needs restoring before use */
+		V_REGOFF, /* value in memory pointed to by register */
 		V_LBL, /* value at a memory address */
 
 		V_CONST_F, /* constant float */
 		V_FLAG, /* cpu flag */
-#define V_IS_MEM(ty) ((ty) == V_REG_SPILT || (ty) == V_LBL)
 	} type;
 	unsigned retains;
 
 	type *t;
+	out_blk *phiblock; /* nonnull only for phi values, reference to originating block */
 
 	union
 	{
@@ -44,11 +45,12 @@ struct out_val
 				flag_eq, flag_ne,
 				flag_le, flag_lt,
 				flag_ge, flag_gt,
-				flag_overflow, flag_no_overflow
+				flag_overflow, flag_no_overflow,
+				flag_signbit, flag_no_signbit
 			} cmp;
 			enum flag_mod
 			{
-				flag_mod_signed = 1 << 0,
+				flag_mod_signed = 1 << 0, /* greater than vs. above */
 				flag_mod_float  = 1 << 1 /* e.g. unordered/nan */
 			} mods;
 		} flag;
@@ -56,14 +58,22 @@ struct out_val
 		{
 			const char *str;
 			long offset;
-			int pic;
+			enum out_pic_type pic_type;
 		} lbl;
 	} bits;
 
 	struct vbitfield
 	{
-		unsigned off, nbits;
+		type *master_ty;
+		unsigned short off, nbits;
 	} bitfield; /* !!width iif bitfield */
+	unsigned char flags;
+};
+
+enum
+{
+	VAL_FLAG_LIKELY = 1 << 0,
+	VAL_FLAG_UNLIKELY = 1 << 1,
 };
 
 const char *v_store_to_str(enum out_val_store);
@@ -73,6 +83,7 @@ int vreg_eq(const struct vreg *, const struct vreg *);
 out_val *v_new(out_ctx *octx, type *);
 
 out_val *v_dup_or_reuse(out_ctx *octx, const out_val *from, type *ty);
+out_val *v_mutable_copy(out_ctx *octx, const out_val *val);
 
 out_val *v_new_flag(
 		out_ctx *octx, const out_val *from,
@@ -82,12 +93,20 @@ out_val *v_new_sp(out_ctx *octx, const out_val *from /* void* */);
 
 out_val *v_new_sp3(out_ctx *octx, const out_val *from, type *ty,
 		long stack_pos);
-out_val *v_new_bp3(out_ctx *octx, const out_val *from, type *ty,
+out_val *v_new_bp3_above(out_ctx *octx, const out_val *from, type *ty,
+		long stack_pos);
+out_val *v_new_bp3_below(out_ctx *octx, const out_val *from, type *ty,
 		long stack_pos);
 
 out_val *v_new_reg(out_ctx *octx, const out_val *from, type *ty,
 		const struct vreg *reg);
 
 void out_val_overwrite(out_val *d, const out_val *s);
+
+void v_decay_flags_except(out_ctx *octx, const out_val *except[]);
+void v_decay_flags_except1(out_ctx *octx, const out_val *except);
+void v_decay_flags(out_ctx *octx);
+
+void v_try_stack_reclaim(out_ctx *octx);
 
 #endif

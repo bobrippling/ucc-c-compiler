@@ -14,17 +14,55 @@
 #include "asm.h"
 #include "write.h"
 #include "dbg.h"
+#include "dbg_file.h"
 #include "lbl.h"
 #include "val.h"
 #include "ctx.h"
 #include "blk.h"
+#include "out.h"
 
 #include "../cc1.h" /* cc_out */
-#include "../str.h" /* str_add_escape */
+
+#define DUMP_LIVE_VALS 0
+
+static void add_live_vals(out_ctx *octx)
+{
+	out_val_list *l;
+	int at_least_one = 0;
+	char *buf;
+	const char *sep;
+
+	for(l = octx->val_head; l; l = l->next){
+		if(l->val.retains > 0){
+			at_least_one = 1;
+			break;
+		}
+	}
+	if(!at_least_one)
+		return;
+
+	buf = umalloc(1);
+	sep = "";
+	for(l = octx->val_head; l; l = l->next){
+		char *old = buf;
+
+		if(l->val.retains == 0)
+			continue;
+
+		buf = ustrprintf("%s%s%s", buf, sep, out_val_str(&l->val, 0));
+		sep = ", ";
+		free(old);
+	}
+
+	char *old = buf;
+	buf = ustrprintf("\t/* live: %s */\n", buf);
+	free(old);
+
+	dynarray_add(&octx->current_blk->insns, buf);
+}
 
 void out_asmv(
-		out_ctx *octx,
-		enum section_type sec, enum p_opts opts,
+		out_ctx *octx, enum p_opts opts,
 		const char *fmt, va_list l)
 {
 	char *insn;
@@ -32,12 +70,7 @@ void out_asmv(
 	if(!octx->current_blk)
 		return;
 
-	if(sec != SECTION_TEXT){
-		fprintf(stderr, "%s:%d: TODO: out_asmv() with section 0x%x",
-				__FILE__, __LINE__, sec);
-	}
-
-	out_dbg_flush(octx, octx->current_blk);
+	out_dbg_flush(octx);
 
 	insn = ustrvprintf(fmt, l);
 
@@ -55,6 +88,9 @@ void out_asmv(
 		insn = new;
 	}
 
+	if((opts & P_NO_LIVEDUMP) == 0 && DUMP_LIVE_VALS)
+		add_live_vals(octx);
+
 	dynarray_add(&octx->current_blk->insns, insn);
 }
 
@@ -62,79 +98,18 @@ void out_asm(out_ctx *octx, const char *fmt, ...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(octx, SECTION_TEXT, 0, fmt, l);
+	out_asmv(octx, 0, fmt, l);
 	va_end(l);
 }
 
 void out_asm2(
 		out_ctx *octx,
-		enum section_type sec, enum p_opts opts,
-		const char *fmt, ...)
+		enum p_opts opts,
+		const char *fmt,
+		...)
 {
 	va_list l;
 	va_start(l, fmt);
-	out_asmv(octx, sec, opts, fmt, l);
+	out_asmv(octx, opts, fmt, l);
 	va_end(l);
-}
-
-/* -- dbg -- */
-
-int dbg_add_file(struct out_dbg_filelist **files, const char *nam, int *new)
-{
-	struct out_dbg_filelist **p;
-	int i = 1; /* indexes start at 1 */
-
-	if(new)
-		*new = 0;
-
-	for(p = files; *p; p = &(*p)->next, i++)
-		if(!strcmp(nam, (*p)->fname))
-			return i;
-
-	if(new)
-		*new = 1;
-	*p = umalloc(sizeof **p);
-	(*p)->fname = nam;
-	return i;
-}
-
-void out_dbg_flush(out_ctx *octx, out_blk *blk)
-{
-	/* .file <fileidx> "<name>"
-	 * .loc <fileidx> <line> <col>
-	 */
-	int idx, new;
-
-	if(!octx->dbg.where.fname || !cc1_gdebug)
-		return;
-
-	idx = dbg_add_file(&octx->dbg.file_head, octx->dbg.where.fname, &new);
-
-	if(octx->dbg.last_file == idx && octx->dbg.last_line == octx->dbg.where.line)
-		return;
-	/* XXX: prevents recursion as well as collapsing multiples */
-	octx->dbg.last_file = idx;
-	octx->dbg.last_line = octx->dbg.where.line;
-
-	/* TODO: escape w->fname */
-	if(new){
-		char *esc = str_add_escape(
-				octx->dbg.where.fname, strlen(octx->dbg.where.fname));
-
-		blk_add_insn(blk, ustrprintf(".file %d \"%s\"\n", idx, esc));
-		free(esc);
-	}
-
-	blk_add_insn(
-			blk,
-			ustrprintf(".loc %d %d %d\n",
-				idx,
-				octx->dbg.where.line,
-				octx->dbg.where.chr,
-				octx->dbg.where.fname));
-}
-
-void out_dbg_where(out_ctx *octx, where *w)
-{
-	memcpy_safe(&octx->dbg.where, w);
 }

@@ -27,6 +27,8 @@ const char *op_to_str(const enum op_type o)
 		case op_bnot:     return "~";
 		case op_shiftl:   return "<<";
 		case op_shiftr:   return ">>";
+		case op_signbit:   return "SIGNBIT";
+		case op_no_signbit: return "NOSIGNBIT";
 		CASE_STR_PREFIX(op, unknown);
 	}
 	return NULL;
@@ -80,6 +82,8 @@ int op_is_commutative(enum op_type o)
 		case op_and:
 		case op_eq:
 		case op_ne:
+		case op_signbit:
+		case op_no_signbit:
 			return 1;
 
 		case op_unknown:
@@ -132,4 +136,45 @@ int op_is_shortcircuit(enum op_type o)
 int op_returns_bool(enum op_type o)
 {
 	return o == op_not || op_is_comparison(o) || op_is_shortcircuit(o);
+}
+
+int op_increases(enum op_type o)
+{
+	switch(o){
+		case op_unknown:
+			break;
+
+		case op_multiply:
+		case op_plus:
+		case op_or:
+		case op_shiftl:
+			return 1;
+
+			/* decrease */
+		case op_divide:
+		case op_modulus:
+		case op_minus:
+		case op_shiftr:
+		case op_and:
+			return 0;
+
+			/* neither */
+		case op_xor:
+		case op_orsc:
+		case op_andsc:
+		case op_not:
+		case op_bnot:
+		case op_eq:
+		case op_ne:
+		case op_le:
+		case op_lt:
+		case op_ge:
+		case op_gt:
+		case op_signbit:
+		case op_no_signbit:
+			return 0;
+	}
+
+	assert(0);
+	return 0;
 }

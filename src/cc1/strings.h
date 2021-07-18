@@ -12,15 +12,13 @@ typedef struct stringlit stringlit;
 struct stringlit
 {
 	char *lbl;
-	const char *str;
-	size_t len;
-	int wide;
+	struct cstring *cstr;
 	unsigned use_cnt;
 };
 
 stringlit *strings_lookup(
 		dynmap **lit_tbl,
-		char *, size_t len, int wide);
+		struct cstring *);
 
 void stringlit_use(stringlit *);
 

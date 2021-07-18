@@ -1,0 +1,5 @@
+a:
+.long 0
+.long 1
+.long 0
+.long 3

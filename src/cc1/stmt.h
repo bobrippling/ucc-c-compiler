@@ -5,8 +5,11 @@
 #include "out/out.h"
 
 typedef void        func_fold_stmt(struct stmt *);
-typedef void        func_gen_stmt(struct stmt *, struct out_ctx *);
+typedef void        func_gen_stmt(const struct stmt *, struct out_ctx *);
 typedef const char *func_str_stmt(void);
+
+struct dump;
+typedef void func_dump_stmt(const struct stmt *, struct dump *);
 
 /* non-critical */
 typedef int         func_passable_stmt(struct stmt *);
@@ -19,6 +22,7 @@ struct stmt
 
 	func_fold_stmt     *f_fold;
 	func_gen_stmt      *f_gen;
+	func_dump_stmt     *f_dump;
 	func_str_stmt      *f_str;
 	func_passable_stmt *f_passable; /* can code get past this statement:
 	                                   no for return + things containing return, etc */
@@ -30,11 +34,11 @@ struct stmt
 	struct stmt_flow *flow; /* for, switch (do and while are simple enough for ->[lr]hs) */
 
 	/* specific data */
+#define stmt_is_default val
 	int val;
 	out_blk *blk_break, *blk_continue;
 
 	int freestanding;     /* if this is freestanding, non-freestanding expressions inside are allowed */
-	int kills_below_code; /* break, return, etc - for checking dead code */
 	int expr_no_pop;
 
 	struct
@@ -61,6 +65,11 @@ struct stmt
 		{
 			stmt **cases, *default_case;
 		} switch_;
+
+		struct
+		{
+			int is_fallthrough;
+		} noop;
 	} bits;
 
 	symtable *symtab; /* block definitions, e.g. { int i... } */
@@ -73,7 +82,6 @@ typedef struct stmt_flow stmt_flow;
 struct stmt_flow
 {
 	symtable *for_init_symtab; /* for(int b;;){} - symtab for b */
-	stmt *init_blk;
 
 	/* for specific */
 	struct expr *for_init, *for_while, *for_inc;
@@ -84,6 +92,7 @@ struct stmt_flow
 	func_str_stmt    str_stmt_ ## ty;    \
 	func_gen_stmt    style_stmt_ ## ty;  \
 	func_gen_stmt    gen_stmt_ ## ty;    \
+	func_dump_stmt   dump_stmt_ ## ty;   \
 	void   init_stmt_ ## ty(stmt *)
 
 #include "ops/stmt_break.h"
@@ -103,18 +112,22 @@ struct stmt_flow
 #include "ops/stmt_while.h"
 #include "ops/stmt_continue.h"
 
-#define stmt_new_wrapper(type, stab) stmt_new(                \
-                                        fold_stmt_ ## type,   \
-                                        gen_stmt_ ## type,    \
-                                        style_stmt_ ## type,  \
-                                        str_stmt_ ## type,    \
-                                        init_stmt_ ## type,   \
-                                        stab)
+#define stmt_new_wrapper(type, stab) \
+	stmt_new(               \
+		fold_stmt_ ## type,   \
+		gen_stmt_ ## type,    \
+		dump_stmt_ ## type,   \
+		style_stmt_ ## type,  \
+		str_stmt_ ## type,    \
+		init_stmt_ ## type,   \
+		stab)
 
 #define stmt_kind(st, kind) ((st)->f_fold == fold_stmt_ ## kind)
 
-stmt *stmt_new(func_fold_stmt *,
+stmt *stmt_new(
+		func_fold_stmt *,
 		func_gen_stmt *g_asm,
+		func_dump_stmt *g_dump,
 		func_gen_stmt *g_style,
 		func_str_stmt *,
 		void (*init)(stmt *),
@@ -128,9 +141,16 @@ typedef void stmt_walk_enter(stmt *current, int *stop, int *descend, void *);
 typedef void stmt_walk_leave(stmt *current, void *);
 
 stmt_walk_enter stmt_walk_first_return; /* completes after the first return statement is found */
+stmt_walk_enter stmts_count;
 
 void stmt_walk(stmt *base, stmt_walk_enter, stmt_walk_leave, void *data);
 
 stmt *stmt_set_where(stmt *, where const *);
+
+stmt *stmt_label_leaf(stmt *);
+int stmt_is_switchlabel(const stmt *);
+int stmt_kills_below_code(stmt *);
+
+void stmt_init_blks(const stmt *ks, out_blk *con, out_blk *bbreak);
 
 #endif

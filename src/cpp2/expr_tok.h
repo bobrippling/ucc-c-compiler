@@ -25,28 +25,28 @@ extern enum tok
 	tok_xor      = '^',
 	tok_or       = '|',
 	tok_and      = '&',
-	tok_orsc     = -1,
-	tok_andsc    = -2,
-	tok_shiftl   = -3,
-	tok_shiftr   = -4,
+	tok_orsc     = -3,
+	tok_andsc    = -4,
+	tok_shiftl   = -5,
+	tok_shiftr   = -6,
 
 	/* unary - TODO */
 	tok_not      = '!',
 	tok_bnot     = '~',
 
 	/* comparison */
-	tok_eq       = -5,
-	tok_ne       = -6,
-	tok_le       = -7,
+	tok_eq       = -7,
+	tok_ne       = -8,
+	tok_le       = -9,
 	tok_lt       = '<',
-	tok_ge       = -8,
+	tok_ge       = -10,
 	tok_gt       = '>',
 
 	/* ternary */
 	tok_question = '?',
 	tok_colon    = ':',
 
-#define MIN_OP -8
+#define MIN_OP -10
 } tok_cur;
 
 void tok_next(void);

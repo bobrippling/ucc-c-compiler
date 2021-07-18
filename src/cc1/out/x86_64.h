@@ -30,13 +30,19 @@
 #define X86_64_REG_XMM6 6
 #define X86_64_REG_XMM7 7
 
-#define N_SCRATCH_REGS_I  14 /* ax-dx, di-si, r8-r15 */
+#define N_SCRATCH_REGS_I  14 /* best-case. ax-dx, di-si, r8-r15 */
 #define N_CALL_REGS_I     6
 #define N_SCRATCH_REGS_F  8 /* xmm0-xmm7 */
 #define N_CALL_REGS_F     8 /* xmm0-xmm7 */
-#define REG_RET_I         X86_64_REG_RAX
-#define REG_RET_F         X86_64_REG_XMM0
+#define REG_RET_I_1       X86_64_REG_RAX
+#define REG_RET_I_2       X86_64_REG_RDX
+#define REG_RET_F_1       X86_64_REG_XMM0
+#define REG_RET_F_2       X86_64_REG_XMM1
 #define REG_SP            X86_64_REG_RSP
 #define REG_BP            X86_64_REG_RBP
+
+#define REDZONE_BYTES 128
+
+#define VAL_STR_SZ 128
 
 #endif

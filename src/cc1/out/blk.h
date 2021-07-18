@@ -3,20 +3,24 @@
 
 #include "forwards.h"
 
+struct section;
+
 struct out_blk
 {
 	/* all blocks: */
 	const char *desc;
-	char *lbl;
+	char *lbl, *force_lbl;
 	char **insns;
 
-	out_blk **merge_preds;
-	int flush_in_prog;
+	struct
+	{
+		struct out_dbg_lbl **start, **end;
+	} labels;
 
-#define BLK_IS_MERGE(b) ( \
-		b->merge_preds        \
-		&& b->merge_preds[0]  \
-		&& b->merge_preds[1])
+	out_blk **merge_preds;
+	out_blk *next;
+	unsigned align;
+	unsigned reachable : 1, emitted : 1;
 
 	enum
 	{
@@ -28,7 +32,7 @@ struct out_blk
 	} type;
 
 	/* phi terminators: */
-	const out_val *phi_val;
+	out_val *phi_val;
 
 	union
 	{
@@ -45,22 +49,29 @@ struct out_blk
 		{
 			char *insn;
 			out_blk *if_0_blk, *if_1_blk;
+			char unlikely;
 		} cond;
 	} bits;
 };
 
 out_blk *out_blk_new_lbl(out_ctx *, const char *lbl);
 
-void blk_flushall(out_ctx *octx, char *end_dbg_lbl);
+void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl, const struct section *sec);
 
 void blk_terminate_condjmp(
 		out_ctx *octx, char *condinsn,
-		out_blk *bpass, out_blk *bfail);
+		out_blk *bpass, out_blk *bfail,
+		int unlikely);
 
 void blk_terminate_jmp(out_blk *, char *jmpinsn);
 void blk_terminate_undef(out_blk *);
 
+void blk_transfer(out_blk *from, out_blk *to);
+
 #define blk_add_insn(blk, insn) \
 	dynarray_add(&(blk)->insns, (insn))
+
+#define blk_is_empty(blk) \
+	(!(blk)->insns)
 
 #endif

@@ -1,8 +1,6 @@
-func_fold    fold_expr_funcall;
-func_gen     gen_expr_funcall;
-func_str     str_expr_funcall;
-func_gen     gen_expr_str_funcall;
-func_mutate_expr mutate_expr_funcall;
-func_gen     gen_expr_style_funcall;
+EXPR_DEFS(funcall);
 
 int expr_func_passable(expr *e);
+attribute *func_or_builtin_attr_present(expr *, enum attribute_type);
+
+expr *expr_new_funcall(void);

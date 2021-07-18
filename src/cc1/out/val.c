@@ -7,6 +7,7 @@
 
 #include "../type.h"
 #include "../type_nav.h"
+#include "../fopt.h"
 
 #include "../macros.h"
 
@@ -18,6 +19,7 @@
 #include "asm.h"
 #include "impl.h"
 #include "out.h" /* retain/release prototypes */
+#include "ctrl.h"
 
 #include "../cc1.h" /* cc1_type_nav */
 
@@ -26,7 +28,8 @@ const char *v_store_to_str(enum out_val_store store)
 	switch(store){
 		CASE_STR(V_CONST_I);
 		CASE_STR(V_REG);
-		CASE_STR(V_REG_SPILT);
+		CASE_STR(V_REGOFF);
+		CASE_STR(V_SPILT);
 		CASE_STR(V_LBL);
 		CASE_STR(V_CONST_F);
 		CASE_STR(V_FLAG);
@@ -68,6 +71,61 @@ out_val *v_new(out_ctx *octx, type *ty)
 	return v;
 }
 
+static void v_decay_flag(out_ctx *octx, const out_val *flag)
+{
+	const out_val *regged = v_to_reg(octx, flag);
+
+	if(regged == flag)
+		return;
+
+	out_val_overwrite((out_val *)flag, regged);
+	out_val_release(octx, regged);
+	out_val_retain(octx, flag);
+}
+
+void v_decay_flags_except(out_ctx *octx, const out_val *except[])
+{
+	if(!octx->check_flags)
+		return;
+	octx->check_flags = 0;
+	{
+		out_val_list *iter;
+
+		OCTX_ITER_VALS(octx, iter){
+			out_val *v = &iter->val;
+
+			if(v->retains > 0 && v->type == V_FLAG && !out_val_is_blockphi(v, octx->current_blk)){
+				const out_val **vi;
+				int found = 0;
+
+				for(vi = except; vi && *vi; vi++){
+					if(v == *vi){
+						found = 1;
+						break;
+					}
+				}
+
+				if(!found){
+					out_comment(octx, "saving flag");
+					v_decay_flag(octx, v);
+				}
+			}
+		}
+	}
+	octx->check_flags = 1;
+}
+
+void v_decay_flags_except1(out_ctx *octx, const out_val *except)
+{
+	const out_val *ar[] = { except, NULL };
+	v_decay_flags_except(octx, ar);
+}
+
+void v_decay_flags(out_ctx *octx)
+{
+	v_decay_flags_except(octx, NULL);
+}
+
 static out_val *v_dup(out_ctx *octx, const out_val *from, type *ty)
 {
 	switch(from->type){
@@ -95,13 +153,16 @@ copy:
 			/* fall */
 		}
 
-		case V_REG_SPILT:
+		case V_SPILT:
+			/* fall */
+		case V_REGOFF:
 		case V_REG:
 		{
 			struct vreg r;
 			out_val *new;
 
-			if(impl_reg_frame_const(&from->bits.regoff.reg))
+			/* if it's a frame constant we can just use the same register */
+			if(impl_reg_frame_const(&from->bits.regoff.reg, 0))
 				goto copy;
 
 			/* copy to a new register */
@@ -146,6 +207,7 @@ static out_val *v_reuse(out_ctx *octx, const out_val *from, type *ty)
 out_val *v_dup_or_reuse(out_ctx *octx, const out_val *from, type *ty)
 {
 	assert(from);
+	assert(from->type != V_SPILT && "v_dup_or_reuse() on a V_SPILT - likely a bug");
 
 	if(from->retains > 1){
 		out_val *r = v_dup(octx, from, ty);
@@ -154,6 +216,22 @@ out_val *v_dup_or_reuse(out_ctx *octx, const out_val *from, type *ty)
 	}
 
 	return v_reuse(octx, from, ty);
+}
+
+out_val *v_mutable_copy(out_ctx *octx, const out_val *val)
+{
+	if(val->type == V_SPILT){
+		/* A V_SPILT's type is a pointer to the value's real type, which is
+		 * unexpected in a lot of places where we assume the value is immediately
+		 * usable. Here we bring it into a register so we can make the type change
+		 * without having to think about keeping the double-indirection, or how
+		 * callers will handle a value that doesn't have the type they request
+		 * (when this is used in a out_change_type() or v_dup_or_reuse() context).
+		 */
+		val = v_to_reg(octx, val);
+	}
+
+	return v_dup_or_reuse(octx, val, val->t);
 }
 
 out_val *v_new_flag(
@@ -182,14 +260,22 @@ out_val *v_new_reg(
 	return v;
 }
 
-out_val *v_new_sp(out_ctx *octx, const out_val *from)
+static out_val *v_new_spbp(out_ctx *octx, const out_val *from, unsigned short reg)
 {
 	struct vreg r;
 
 	r.is_float = 0;
-	r.idx = REG_SP;
+	r.idx = reg;
+
+	octx->used_stack = 1;
 
 	return v_new_reg(octx, from, type_nav_voidptr(cc1_type_nav), &r);
+}
+
+out_val *v_new_sp(out_ctx *octx, const out_val *from)
+{
+	octx->stack_ptr_manipulated = 1;
+	return v_new_spbp(octx, from, REG_SP);
 }
 
 out_val *v_new_sp3(
@@ -202,45 +288,83 @@ out_val *v_new_sp3(
 	return v;
 }
 
-out_val *v_new_bp3(
+static out_val *v_new_bp3(
 		out_ctx *octx, const out_val *from,
 		type *ty, long stack_pos)
 {
-	out_val *v = v_new_sp3(octx, from, ty, stack_pos);
-	v->bits.regoff.reg.idx = REG_BP;
+	out_val *v = v_new_spbp(octx, from, REG_BP);
+	v->t = ty;
+	v->bits.regoff.offset = stack_pos;
 	return v;
 }
 
-static void try_stack_reclaim(out_ctx *octx)
+out_val *v_new_bp3_above(
+		out_ctx *octx, const out_val *from,
+		type *ty, long stack_pos)
+{
+	return v_new_bp3(octx, from, ty, stack_pos);
+}
+
+out_val *v_new_bp3_below(
+		out_ctx *octx, const out_val *from,
+		type *ty, long stack_pos)
+{
+	return v_new_bp3(octx, from, ty, -stack_pos);
+}
+
+void v_try_stack_reclaim(out_ctx *octx)
 {
 	/* if we have no out_vals on the stack,
 	 * we can reclaim stack-spill space.
 	 * this is a simple algorithm for reclaiming */
 	out_val_list *iter;
+	long lowest = 0;
 
-	if(octx->in_prologue)
+	if(octx->in_prologue || octx->alloca_count)
 		return;
 
 	/* only reclaim if we have an empty val list */
-	for(iter = octx->val_head; iter; iter = iter->next)
-		if(iter->val.retains > 0)
-			return;
+	OCTX_ITER_VALS(octx, iter){
+		if(iter->val.retains == 0)
+			continue;
+		if(iter->val.phiblock)
+			continue;
+		switch(iter->val.type){
+			case V_REG:
+			case V_REGOFF:
+			case V_SPILT:
+				if(!impl_reg_frame_const(&iter->val.bits.regoff.reg, 0))
+					return;
+				if(iter->val.bits.regoff.offset < lowest)
+					lowest = iter->val.bits.regoff.offset;
+				break;
+			case V_CONST_I:
+			case V_LBL:
+			case V_CONST_F:
+			case V_FLAG:
+				break;
+		}
+	}
 
-	unsigned reclaim = octx->var_stack_sz - octx->stack_sz_initial;
-	if(reclaim){
-		if(fopt_mode & FOPT_VERBOSE_ASM)
-			out_comment(octx, "reclaim %u", reclaim);
+	lowest = -lowest;
 
-		octx->var_stack_sz = octx->stack_sz_initial;
+	v_stackt reclaim = octx->cur_stack_sz - lowest;
+	if(reclaim > 0){
+		if(cc1_fopt.verbose_asm)
+			out_comment(octx, "reclaim %ld (%ld start %ld lowest)",
+					reclaim, octx->initial_stack_sz, lowest);
+
+		octx->cur_stack_sz = lowest;
 	}
 }
 
 const out_val *out_val_release(out_ctx *octx, const out_val *v)
 {
 	out_val *mut = (out_val *)v;
+	assert(v && "release NULL out_val");
 	assert(mut->retains > 0 && "double release");
 	if(--mut->retains == 0){
-		try_stack_reclaim(octx);
+		v_try_stack_reclaim(octx);
 
 		return NULL;
 	}
@@ -250,6 +374,7 @@ const out_val *out_val_release(out_ctx *octx, const out_val *v)
 const out_val *out_val_retain(out_ctx *octx, const out_val *v)
 {
 	(void)octx;
+	assert(v->retains > 0);
 	((out_val *)v)->retains++;
 	return v;
 }
@@ -263,7 +388,38 @@ void out_val_overwrite(out_val *d, const out_val *s)
 	d->bits = s->bits;
 }
 
+const out_val *out_annotate_likely(
+		out_ctx *octx, const out_val *val, int unlikely)
+{
+	out_val *mut = v_dup_or_reuse(octx, val, val->t);
+
+	mut->flags |= unlikely ? VAL_FLAG_UNLIKELY : VAL_FLAG_LIKELY;
+
+	return mut;
+}
+
 int vreg_eq(const struct vreg *a, const struct vreg *b)
 {
 	return a->idx == b->idx && a->is_float == b->is_float;
+}
+
+const char *out_get_lbl(const out_val *v)
+{
+	return v->type == V_LBL ? v->bits.lbl.str : NULL;
+}
+
+int out_is_nonconst_temporary(const out_val *v)
+{
+	switch(v->type){
+		case V_CONST_I:
+		case V_CONST_F:
+		case V_LBL:
+		case V_SPILT:
+			break;
+		case V_REG:
+		case V_REGOFF:
+		case V_FLAG:
+			return 1;
+	}
+	return 0;
 }

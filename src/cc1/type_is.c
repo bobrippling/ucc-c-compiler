@@ -1,10 +1,12 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "../util/where.h"
 #include "../util/util.h"
 #include "../util/platform.h"
+#include "../util/dynarray.h"
 
 #include "expr.h"
 #include "sue.h"
@@ -16,7 +18,7 @@
 
 #include "type_is.h"
 
-static type *type_next_1(type *r)
+type *type_next_1(type *r)
 {
 	if(r->type == type_tdef){
 		/* typedef - jump to its typeof */
@@ -37,8 +39,9 @@ enum type_skippage
 {
 	STOP_AT_TDEF = 1 << 0,
 	STOP_AT_CAST = 1 << 1,
-	STOP_AT_ATTR = 1 << 2,
-	STOP_AT_WHERE = 1 << 3,
+	STOP_AT_QUAL_CASTS = 1 << 2,
+	STOP_AT_ATTR = 1 << 3,
+	STOP_AT_WHERE = 1 << 4,
 };
 static type *type_skip(type *t, enum type_skippage skippage)
 {
@@ -50,6 +53,8 @@ static type *type_skip(type *t, enum type_skippage skippage)
 				break;
 			case type_cast:
 				if(skippage & STOP_AT_CAST)
+					goto fin;
+				if(skippage & STOP_AT_QUAL_CASTS)
 					goto fin;
 				break;
 			case type_attr:
@@ -88,6 +93,16 @@ type *type_skip_non_casts(type *t)
 type *type_skip_wheres(type *t)
 {
 	return type_skip(t, ~0 & ~STOP_AT_WHERE);
+}
+
+type *type_skip_tdefs(type *t)
+{
+	return type_skip(t, ~STOP_AT_TDEF & ~STOP_AT_WHERE & ~STOP_AT_ATTR);
+}
+
+type *type_skip_non_tdefs_consts(type *t)
+{
+	return type_skip(t, STOP_AT_TDEF | STOP_AT_QUAL_CASTS);
 }
 
 type *type_skip_non_wheres(type *t)
@@ -148,15 +163,42 @@ type *type_is(type *r, enum type_kind t)
 	return r;
 }
 
-type *type_is_primitive(type *r, enum type_primitive p)
+type *type_is_primitive(type *t, enum type_primitive p)
 {
-	r = type_is(r, type_btype);
+	type *r = type_is(t, type_btype);
+	assert(p != type_unknown);
 
-	/* extra checks for a type */
-	if(r && (p == type_unknown || r->bits.type->primitive == p))
+	if(r && r->bits.type->primitive == p)
 		return r;
 
 	return NULL;
+}
+
+type *type_is_primitive_anysign(type *t, enum type_primitive p)
+{
+	enum type_primitive a, b;
+	type *ty = type_is(t, type_btype);
+
+	if(!ty)
+		return NULL;
+
+	if(p == type_unknown)
+		return ty;
+
+	a = p;
+	b = ty->bits.type->primitive;
+
+	if(TYPE_PRIMITIVE_IS_CHAR(a))
+		a = type_nchar;
+	else
+		a = type_primitive_is_signed(a, 0) ? TYPE_PRIMITIVE_TO_UNSIGNED(a) : a;
+
+	if(TYPE_PRIMITIVE_IS_CHAR(b))
+		b = type_nchar;
+	else
+		b = type_primitive_is_signed(b, 0) ? TYPE_PRIMITIVE_TO_UNSIGNED(b) : b;
+
+	return a == b ? ty : NULL;
 }
 
 type *type_is_ptr(type *r)
@@ -213,17 +255,52 @@ const btype *type_get_type(type *t)
 	return t && t->type == type_btype ? t->bits.type : NULL;
 }
 
-int type_is_bool(type *r)
+enum type_primitive type_get_primitive(type *t)
 {
-	if(type_is(r, type_ptr))
-		return 1;
+	const btype *bt = type_get_type(t);
 
-	r = type_is(r, type_btype);
+	return bt ? bt->primitive : type_unknown;
+}
 
-	if(!r)
-		return 0;
+attribute **type_get_attrs_toplvl(type *t)
+{
+	attribute **attrs = NULL;
+	type *const end = type_next(t);
 
-	return type_is_integral(r);
+	for(; t && t != end; t = type_next_1(t)){
+		attribute **i;
+
+		if(t->type != type_attr)
+			continue;
+
+		for(i = t->bits.attr; i && *i; i++){
+			attribute *this_attr = *i;
+
+			if(!attribute_is_typrop(this_attr))
+				continue;
+
+			dynarray_add(&attrs, RETAIN(this_attr));
+		}
+	}
+
+	return attrs;
+}
+
+enum type_boolish type_bool_category(type *t)
+{
+	if(type_is_ptr_or_block(t))
+		return TYPE_BOOLISH_OK;
+
+	t = type_is(t, type_btype);
+	if(t){
+		if(type_is_integral(t))
+			return TYPE_BOOLISH_OK;
+
+		if(type_is_floating(t))
+			return TYPE_BOOLISH_CONV;
+	}
+
+	return TYPE_BOOLISH_NO;
 }
 
 int type_is_fptr(type *r)
@@ -308,7 +385,7 @@ int type_is_complete(type *r)
 				case type_struct:
 				case type_union:
 				case type_enum:
-					return sue_complete(t->sue);
+					return sue_is_complete(t->sue);
 
 				default:break;
 			}
@@ -317,7 +394,8 @@ int type_is_complete(type *r)
 		}
 
 		case type_array:
-			return r->bits.array.size && type_is_complete(r->ref);
+			return (r->bits.array.vla_kind || r->bits.array.size)
+				&& type_is_complete(r->ref);
 
 		case type_func:
 		case type_ptr:
@@ -335,17 +413,44 @@ int type_is_complete(type *r)
 	return 1;
 }
 
-int type_is_variably_modified(type *r)
+type *type_is_vla(type *ty, enum vla_dimension kind)
 {
-	/* vlas not implemented yet */
-#if 0
-	if(type_is_array(r)){
-		/* ... */
+	for(; (ty = type_is(ty, type_array)); ty = ty->ref){
+		if(ty->bits.array.vla_kind)
+			return ty;
+
+		if(kind == VLA_TOP_DIMENSION)
+			break;
 	}
-#else
-	(void)r;
-#endif
+
+	return NULL;
+}
+
+int type_is_variably_modified_vla(type *const ty, int *vla)
+{
+	type *ti;
+	int first = 1;
+
+	if(vla)
+		*vla = 0;
+
+	/* need to check all the way down to the btype */
+	for(ti = ty; ti; first = 0, ti = type_next(ti)){
+		type *test = type_is(ti, type_array);
+
+		if(test && test->bits.array.vla_kind){
+			if(vla && first)
+				*vla = 1;
+			return 1;
+		}
+	}
+
 	return 0;
+}
+
+int type_is_variably_modified(type *ty)
+{
+	return type_is_variably_modified_vla(ty, NULL);
 }
 
 int type_is_incomplete_array(type *r)
@@ -374,7 +479,15 @@ struct_union_enum_st *type_is_s_or_u_or_e(type *r)
 	if(!test)
 		return NULL;
 
+	/* see comment in type_is_enum() */
 	return test->bits.type->sue; /* NULL if not s/u/e */
+}
+
+struct_union_enum_st *type_is_enum(type *t)
+{
+	/* this depends heavily on type_is_s_or_u_or_e returning regardless of .primitive */
+	struct_union_enum_st *sue = type_is_s_or_u_or_e(t);
+	return sue && sue->primitive == type_enum ? sue : NULL;
 }
 
 struct_union_enum_st *type_is_s_or_u(type *r)
@@ -400,6 +513,9 @@ type *type_func_call(type *fp, funcargs **pfuncargs)
 				*pfuncargs = fp->bits.func.args;
 			fp = fp->ref;
 			UCC_ASSERT(fp, "no ref for func");
+
+			/* no top-level quals (C17 6.7.6.3p5 / DR 423) */
+			fp = type_skip_all(fp);
 			break;
 
 		default:
@@ -420,20 +536,24 @@ int type_decayable(type *r)
 	}
 }
 
-static type *type_keep_w_attr(type *t, where *loc, attribute *attr)
+static type *type_keep_w_attr(type *t, where *loc, attribute **attr)
 {
+	t = type_attributed(t, attr);
+
 	if(loc && !type_has_loc(t))
 		t = type_at_where(t, loc);
 
-	return type_attributed(t, RETAIN(attr));
+	return t;
 }
 
 type *type_decay(type *const ty)
 {
 	/* f(int x[][5]) decays to f(int (*x)[5]), not f(int **x) */
 	where *loc = NULL;
-	attribute *attr = NULL;
+	attribute **attr = NULL;
 	type *test;
+	type *ret = ty;
+	enum type_qualifier last_qual = qual_none;
 
 	for(test = ty; test; test = type_next_1(test)){
 		switch(test->type){
@@ -446,11 +566,18 @@ type *type_decay(type *const ty)
 				break;
 
 			case type_attr:
-				if(!attr)
-					attr = test->bits.attr;
+				attribute_array_retain(test->bits.attr);
+				dynarray_add_array(&attr, test->bits.attr);
 				break;
 
 			case type_cast:
+				/* fine to unconditionally collect - we stop at the top
+				 * level array or function, so there's no need to reset
+				 * last_qual when meeting a type-category such as array,
+				 * ptr, func or block */
+				last_qual |= test->bits.cast.qual;
+				break;
+
 			case type_tdef:
 				/* skip */
 				break;
@@ -459,21 +586,67 @@ type *type_decay(type *const ty)
 			case type_ptr:
 			case type_block:
 				/* nothing to decay */
-				return ty;
+				goto out;
 
 			case type_array:
-				return type_keep_w_attr(
-						type_decayed_ptr_to(test->ref, test),
+				ret = type_keep_w_attr(
+						type_qualify(
+							type_decayed_ptr_to(test->ref, test),
+							last_qual),
 						loc, attr);
+				goto out;
 
 			case type_func:
-				return type_keep_w_attr(
+				ret = type_keep_w_attr(
 						type_ptr_to(test),
 						loc, attr);
+				goto out;
 		}
 	}
 
-	return ty;
+out:
+	attribute_array_release(&attr);
+	return ret;
+}
+
+type *type_unattribute(type *t)
+{
+	type *i;
+	where *loc = NULL;
+	enum type_qualifier last_qual = qual_none;
+
+	for(i = t; i; i = type_next_1(i)){
+		switch(i->type){
+			case type_auto:
+				ICE("__auto_type");
+
+			case type_where:
+				if(!loc)
+					loc = &i->bits.where;
+				break;
+
+			case type_cast:
+				last_qual |= i->bits.cast.qual;
+				break;
+
+			case type_attr:
+			case type_tdef:
+				break;
+
+			case type_btype:
+			case type_ptr:
+			case type_block:
+			case type_array:
+			case type_func:
+				goto out;
+		}
+	}
+
+out:
+	assert(i);
+	return type_keep_w_attr(
+			type_qualify(i, last_qual),
+			loc, NULL);
 }
 
 int type_is_void(type *r)
@@ -492,11 +665,6 @@ int type_is_signed(type *r)
 			case type_ptr:
 				/* "unspecified" */
 				return 1;
-
-			case type_cast:
-				if(r->bits.cast.is_signed_cast)
-					return r->bits.cast.signed_true;
-				/* fall */
 
 			default:
 				r = type_next_1(r);
@@ -524,13 +692,6 @@ enum type_qualifier type_qual(const type *r)
 
 	switch(r->type){
 		case type_btype:
-			if(r->bits.type->primitive == type_struct
-			|| r->bits.type->primitive == type_union)
-			{
-				if(r->bits.type->sue->contains_const)
-					return qual_const;
-			}
-
 		case type_auto:
 		case type_func:
 		case type_array:
@@ -542,8 +703,6 @@ enum type_qualifier type_qual(const type *r)
 
 		case type_cast:
 			/* descend */
-			if(r->bits.cast.is_signed_cast)
-				return type_qual(r->ref);
 			return r->bits.cast.qual | type_qual(r->ref);
 
 		case type_ptr:
@@ -559,28 +718,38 @@ enum type_qualifier type_qual(const type *r)
 
 enum type_primitive type_primitive(type *ty)
 {
-	ty = type_is_primitive(ty, type_unknown);
+	ty = type_is(ty, type_btype);
 	UCC_ASSERT(ty, "not primitive?");
 	return ty->bits.type->primitive;
 }
 
-funcargs *type_funcargs(type *r)
+static type *type_resolve_func(type *t)
 {
 	type *test;
 
-	r = type_skip_all(r);
+	t = type_skip_all(t);
 
-	if((test = type_is(r, type_ptr))
-	|| (test = type_is(r, type_block)))
+	if((test = type_is(t, type_ptr))
+	|| (test = type_is(t, type_block)))
 	{
-		r = type_skip_all(test->ref); /* jump down past the (*)() */
+		t = type_skip_all(test->ref); /* jump down past the (*)() */
 	}
 
-	UCC_ASSERT(r && r->type == type_func,
+	UCC_ASSERT(t && t->type == type_func,
 			"not a function type - %s",
-			type_kind_to_str(r->type));
+			type_kind_to_str(t->type));
 
-	return r->bits.func.args;
+	return t;
+}
+
+funcargs *type_funcargs(type *r)
+{
+	return type_resolve_func(r)->bits.func.args;
+}
+
+symtable *type_funcsymtable(type *t)
+{
+	return type_resolve_func(t)->bits.func.arg_scope;
 }
 
 int type_is_callable(type *r)
@@ -595,10 +764,14 @@ int type_is_callable(type *r)
 	return 0;
 }
 
-int type_is_const(type *r)
+int type_is_const(type *const ty)
 {
-	/* const char *x is not const. char *const x is */
-	return !!(type_qual(r) & qual_const);
+	/* const int x[3] - const, despite being array->const->int */
+	type *nonarray = type_is_array(ty);
+	if(!nonarray)
+		nonarray = ty;
+
+	return !!(type_qual(nonarray) & qual_const);
 }
 
 unsigned type_array_len(type *r)
@@ -611,24 +784,21 @@ unsigned type_array_len(type *r)
 	return const_fold_val_i(r->bits.array.size);
 }
 
-int type_is_promotable(type *r, type **pto)
+int type_is_promotable(type *const t, type **pto)
 {
-	if((r = type_is_primitive(r, type_unknown))){
-		static unsigned sz_int, sz_double;
-		const int fp = type_floating(r->bits.type->primitive);
-		unsigned rsz;
+	enum type_primitive prim;
+	unsigned sz;
 
-		if(!sz_int){
-			sz_int = type_primitive_size(type_int);
-			sz_double = type_primitive_size(type_double);
-		}
+	if(!type_is_arith(t))
+		return 0;
 
-		rsz = type_primitive_size(r->bits.type->primitive);
+	prim = type_is_floating(t) ? type_double : type_int;
 
-		if(rsz < (fp ? sz_double : sz_int)){
-			*pto = type_nav_btype(cc1_type_nav, fp ? type_double : type_int);
-			return 1;
-		}
+	sz = type_size(t, type_loc(t)); /* may be enum-int */
+	if(sz < type_primitive_size(prim)){
+		if(pto)
+			*pto = type_nav_btype(cc1_type_nav, prim);
+		return 1;
 	}
 
 	return 0;
@@ -647,8 +817,7 @@ int type_is_autotype(type *t)
 
 type *type_is_decayed_array(type *r)
 {
-	if((r = type_is(r, type_ptr)) && r->bits.ptr.decayed)
-		return r;
-
+	if((r = type_is(r, type_ptr)))
+		return r->bits.ptr.decayed_from;
 	return NULL;
 }

@@ -1,0 +1,17 @@
+a:
+.long	1
+.long	3
+
+b:
+.long	6
+.long	5
+
+as:
+.long	1
+.long	3
+
+bs:
+.long 0
+.long 0
+.long	6
+.long	5

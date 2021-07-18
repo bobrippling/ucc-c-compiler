@@ -1,0 +1,36 @@
+.section .bss
+tenative:
+.zero 4
+.section .data
+initialised:
+.long 3
+.section .rodata
+ro_tenative:
+.zero 4
+ro_initialised:
+.long 4
+.section a,"aw",@progbits
+tenative2:
+.zero 4
+.section b,"aw",@progbits
+initialised2:
+.long 3
+.section c,"a",@progbits
+ro_tenative2:
+.zero 4
+.section d,"a",@progbits
+ro_initialised2:
+.long 4
+.section e,"ax",@progbits
+.section .data
+f.static1_q:
+.long 5
+.section e
+f:
+.section .text
+main:
+.section .rodata
+.section .text
+.section .data
+.section .bss
+.section .note.GNU-stack,"",@progbits

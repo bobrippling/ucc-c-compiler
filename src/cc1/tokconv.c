@@ -2,11 +2,13 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/util.h"
+#include "../util/util.h"
+
 #include "tokenise.h"
 #include "tokconv.h"
-#include "../util/util.h"
 #include "macros.h"
 #include "cc1.h"
 #include "cc1_where.h"
@@ -14,7 +16,7 @@
 extern enum token curtok;
 static enum token curtok_save = token_unknown;
 
-enum type_primitive curtok_to_type_primitive()
+enum type_primitive curtok_to_type_primitive(void)
 {
 	switch(curtok){
 		case token_void:  return type_void;
@@ -33,7 +35,7 @@ enum type_primitive curtok_to_type_primitive()
 	return type_unknown;
 }
 
-enum type_qualifier curtok_to_type_qualifier()
+enum type_qualifier curtok_to_type_qualifier(void)
 {
 	switch(curtok){
 		case token_const:    return qual_const;
@@ -43,7 +45,7 @@ enum type_qualifier curtok_to_type_qualifier()
 	}
 }
 
-enum decl_storage curtok_to_decl_storage()
+enum decl_storage curtok_to_decl_storage(void)
 {
 	switch(curtok){
 		case token_auto:     return store_auto;
@@ -55,7 +57,7 @@ enum decl_storage curtok_to_decl_storage()
 	}
 }
 
-enum op_type curtok_to_op()
+enum op_type curtok_to_op(void)
 {
 	switch(curtok){
 		/* multiply - op_deref is handled by the parser */
@@ -89,22 +91,22 @@ enum op_type curtok_to_op()
 	return op_unknown;
 }
 
-int curtok_is_type_primitive()
+int curtok_is_type_primitive(void)
 {
 	return curtok_to_type_primitive() != type_unknown;
 }
 
-int curtok_is_type_qual()
+int curtok_is_type_qual(void)
 {
 	return curtok_to_type_qualifier() != qual_none;
 }
 
-int curtok_is_decl_store()
+int curtok_is_decl_store(void)
 {
 	return curtok_to_decl_storage() != (enum decl_storage)-1;
 }
 
-enum op_type curtok_to_compound_op()
+enum op_type curtok_to_compound_op(void)
 {
 #define CASE(x) case token_ ## x ## _assign: return op_ ## x
 	switch(curtok){
@@ -127,7 +129,7 @@ enum op_type curtok_to_compound_op()
 #undef CASE
 }
 
-int curtok_is_compound_assignment()
+int curtok_is_compound_assignment(void)
 {
 	return curtok_to_compound_op() != op_unknown;
 }
@@ -161,6 +163,7 @@ char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  auto);
 		CASE_STR_PREFIX(token,  register);
 		CASE_STR_PREFIX(token, _Alignof);
+		CASE_STR_PREFIX(token, __alignof);
 		CASE_STR_PREFIX(token, _Alignas);
 
 		/* sort-of storage */
@@ -191,15 +194,15 @@ char *token_to_str(enum token t)
 		CASE_STR_PREFIX(token,  __builtin_va_list);
 
 		CASE_STR_PREFIX(token,  identifier);
-		CASE_STR_PREFIX(token,  integer);
 		CASE_STR_PREFIX(token,  character);
 		CASE_STR_PREFIX(token,  string);
 
 		CASE_STR_PREFIX(token,  __extension__);
 		CASE_STR_PREFIX(token,  __auto_type);
+		CASE_STR_PREFIX(token,  __label__);
 
-		case token_floater:
-			return "float";
+		case token_integer: return "integer-literal";
+		case token_floater: return "float-literal";
 
 #define MAP(t, s) case token_##t: return s
 		MAP(attribute,       "__attribute__");
@@ -259,7 +262,7 @@ char *token_to_str(enum token t)
 	return NULL;
 }
 
-char *curtok_to_identifier(int *alloc)
+char *eat_curtok_to_identifier(int *alloc, where *loc)
 {
 	switch(curtok){
 		case token_do:
@@ -284,6 +287,7 @@ char *curtok_to_identifier(int *alloc)
 		case token_auto:
 		case token_register:
 		case token__Alignof:
+		case token___alignof:
 		case token__Alignas:
 		case token_inline:
 		case token__Noreturn:
@@ -308,12 +312,22 @@ char *curtok_to_identifier(int *alloc)
 		case token_attribute:
 		case token___extension__:
 		case token___auto_type:
+		case token___label__:
+		{
 			/* we can stringify these */
+			char *str = token_to_str(curtok);
 			*alloc = 0;
-			return token_to_str(curtok);
+
+			where_cc1_current(loc);
+			where_cc1_adj_identifier(loc, str);
+
+			nexttoken();
+			return str;
+		}
+
 		case token_identifier:
 			*alloc = 1;
-			return token_current_spel();
+			return token_eat_identifier(NULL, loc);
 
 		case token_integer:
 		case token_floater:
@@ -371,35 +385,43 @@ char *curtok_to_identifier(int *alloc)
 		case token_unknown:
 			break;
 	}
+
+	*alloc = 0;
+	where_cc1_current(loc);
+
 	return NULL;
 }
 
-void eat2(enum token t, const char *fnam, int line, int die)
+int eat2(enum token t, int die)
 {
 	if(t != curtok){
 		const int ident = curtok == token_identifier;
 		parse_had_error = 1;
 
 		warn_at_print_error(NULL,
-				"expecting token %s, got %s %s%s%s(%s:%d)",
+				"expecting token %s, got %s %s%s%s",
 				token_to_str(t), token_to_str(curtok),
 				ident ? "\"" : "",
 				ident ? token_current_spel_peek() : "",
-				ident ? "\" " : "",
-				fnam, line);
+				ident ? "\"" : "");
 
+		if(die == 2)
+			assert(0 && "invalid token parse state");
 		if(die || --cc1_error_limit <= 0)
 			exit(1);
 
 		/* XXX: we continue here, assuming we had the token anyway */
-	}else{
-		if(curtok_save != token_unknown){
-			curtok = curtok_save;
-			curtok_save = token_unknown;
-		}else{
-			nexttoken();
-		}
+		return 0;
 	}
+
+	if(curtok_save != token_unknown){
+		curtok = curtok_save;
+		curtok_save = token_unknown;
+	}else{
+		nexttoken();
+	}
+
+	return 1;
 }
 
 int accept_where(enum token t, where *w)
@@ -407,7 +429,7 @@ int accept_where(enum token t, where *w)
 	if(t == curtok){
 		if(w)
 			where_cc1_current(w);
-		eat(t, NULL, 0); /* can't fail */
+		eat(t); /* can't fail */
 		return 1;
 	}
 	return 0;
@@ -431,47 +453,30 @@ void uneat(enum token t)
 	curtok = t;
 }
 
-void eat(enum token t, const char *fnam, int line)
+int eat(enum token t)
 {
-	eat2(t, fnam, line, 0);
+	return eat2(t, 0);
 }
 
 int curtok_in_list(va_list l)
 {
 	enum token t;
-	while((t = va_arg(l, int)) != token_unknown)
+	while((enum token)(t = va_arg(l, int)) != token_unknown)
 		if(curtok == t)
 			return 1;
 	return 0;
 }
 
-void token_get_current_str(
-		char **ps, size_t *pl, int *pwide, where *w)
+struct cstring *token_get_current_str(where *w)
 {
-	extern char *currentstring;
-	extern size_t currentstringlen;
-	extern int   currentstringwide;
-
-	*ps = currentstring;
-
-	if(pwide)
-		*pwide = currentstringwide;
-	else if(currentstringwide)
-		die_at(NULL, "wide string not wanted");
+	extern struct cstring *currentstring;
+	struct cstring *ret = currentstring;
 
 	if(w){
 		extern where currentstringwhere;
 		memcpy_safe(w, &currentstringwhere);
 	}
 
-	if(pl){
-		*pl = currentstringlen;
-	}else{
-		char *p = memchr(currentstring, '\0', currentstringlen);
-
-		if(p && p < currentstring + currentstringlen - 1)
-			warn_at(NULL, "nul-character terminates string early (%s)", p + 1);
-	}
-
 	currentstring = NULL;
+	return ret;
 }

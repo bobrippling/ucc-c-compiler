@@ -30,13 +30,15 @@ void expr_block_got_params(
 
 	df->spel = out_label_block("globl");
 	df->block_expr = e;
+	df->store = store_static;
+	decl_use_ignoredeps(df);
 
 	fold_funcargs(args, symtab, NULL);
 
 	symtab->in_func = df;
 
 	/* add a global symbol for the block */
-	e->bits.block.sym = sym_new_stab(
+	e->bits.block.sym = sym_new_and_prepend_decl(
 			symtab_root(symtab), df, sym_global);
 }
 
@@ -85,7 +87,7 @@ void fold_expr_block(expr *e, symtable *scope_stab)
 		expr_block_set_ty(df, type_nav_btype(cc1_type_nav, type_void), scope_stab);
 
 	/* said decl: */
-	fold_decl(df, sym_root, /*pinitcode:*/NULL);
+	fold_decl(df, sym_root);
 
 	/* block pointer to the function */
 	e->tree_type = type_block_of(df->ref);
@@ -100,25 +102,24 @@ static void const_expr_block(expr *e, consty *k)
 	CONST_FOLD_LEAF(k);
 
 	k->type = CONST_ADDR;
-	k->bits.addr.is_lbl = 1;
+	k->bits.addr.lbl_type = CONST_LBL_TRUE;
 	k->bits.addr.bits.lbl = decl_asm_spel(e->bits.block.sym->decl);
 }
 
-const out_val *gen_expr_block(expr *e, out_ctx *octx)
+const out_val *gen_expr_block(const expr *e, out_ctx *octx)
 {
 	return out_new_sym(octx, e->bits.block.sym);
 }
 
-const out_val *gen_expr_str_block(expr *e, out_ctx *octx)
+void dump_expr_block(const expr *e, dump *ctx)
 {
-	idt_printf("block, type: %s, code:\n", type_to_str(e->tree_type));
-	gen_str_indent++;
-	print_stmt(e->code);
-	gen_str_indent--;
-	UNUSED_OCTX();
+	dump_desc_expr(ctx, "block", e);
+	dump_inc(ctx);
+	dump_stmt(e->code, ctx);
+	dump_dec(ctx);
 }
 
-const out_val *gen_expr_style_block(expr *e, out_ctx *octx)
+const out_val *gen_expr_style_block(const expr *e, out_ctx *octx)
 {
 	stylef("^%s", type_to_str(e->tree_type));
 	gen_stmt(e->code, octx);
@@ -128,6 +129,7 @@ const out_val *gen_expr_style_block(expr *e, out_ctx *octx)
 void mutate_expr_block(expr *e)
 {
 	e->f_const_fold = const_expr_block;
+	e->f_requires_relocation = expr_bool_always;
 }
 
 expr *expr_new_block(type *rt, funcargs *args)

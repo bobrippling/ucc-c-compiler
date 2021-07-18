@@ -10,7 +10,7 @@
 void dynarray_nochk_add(void ***par, void *new)
 {
 	void **ar = *par;
-	int idx = 0;
+	size_t idx = 0;
 
 	UCC_ASSERT(new, "dynarray_nochk_add(): adding NULL");
 
@@ -28,10 +28,10 @@ void dynarray_nochk_add(void ***par, void *new)
 }
 
 void *dynarray_nochk_padinsert(
-		void ***par, unsigned i, unsigned *pn, void *ins)
+		void ***par, size_t i, size_t *pn, void *ins)
 {
 	void **ar = *par;
-	unsigned n = *pn;
+	size_t n = *pn;
 
 	if(i < n){
 		/* already have one, replace */
@@ -43,7 +43,7 @@ void *dynarray_nochk_padinsert(
 		return out == DYNARRAY_NULL ? NULL : out;
 	}else{
 		/* pad up to it */
-		unsigned j;
+		size_t j;
 		for(j = i - n; j > 0; j--){
 			dynarray_add(par, DYNARRAY_NULL);
 			n++;
@@ -58,11 +58,31 @@ void *dynarray_nochk_padinsert(
 	}
 }
 
+void dynarray_nochk_insert(
+		void ***par, size_t i, void *to_insert)
+{
+	void **ar = *par;
+	size_t n = dynarray_nochk_count(ar);
+
+	UCC_ASSERT(i <= n, "oob dynarray insert");
+	if(i == n){
+		dynarray_nochk_add(par, to_insert);
+		return;
+	}
+
+	dynarray_nochk_add(par, to_insert); /* make space */
+	n++;
+
+	ar = *par;
+	memmove(&ar[i+1], &ar[i], (n - i - 1) * sizeof(void *));
+	ar[i] = to_insert;
+}
+
 void *dynarray_nochk_pop(void ***par)
 {
 	void **ar = *par;
 	void *r;
-	int n;
+	size_t n;
 
 	n = dynarray_nochk_count(ar);
 	UCC_ASSERT(n > 0, "dynarray_nochk_pop(): empty array");
@@ -81,7 +101,7 @@ void *dynarray_nochk_pop(void ***par)
 void dynarray_nochk_prepend(void ***par, void *new)
 {
 	void **ar;
-	int i;
+	size_t i;
 
 	dynarray_nochk_add(par, new);
 
@@ -102,7 +122,7 @@ void dynarray_nochk_prepend(void ***par, void *new)
 
 void dynarray_nochk_rm(void ***par, void *x)
 {
-	int i, n;
+	size_t i, n;
 	void **ar = *par;
 
 	if(!ar)
@@ -122,9 +142,9 @@ void dynarray_nochk_rm(void ***par, void *x)
 		}
 }
 
-int dynarray_nochk_count(void **ar)
+size_t dynarray_nochk_count(void **ar)
 {
-	int len = 0;
+	size_t len = 0;
 
 	if(!ar)
 		return 0;
@@ -153,7 +173,7 @@ void dynarray_nochk_free(void ***par, void (*f)(void *))
 void dynarray_nochk_add_array(void ***par, void **ar2)
 {
 	void **ar = *par;
-	int n, n2, total;
+	size_t n, n2, total;
 
 	if(!ar2)
 		return;

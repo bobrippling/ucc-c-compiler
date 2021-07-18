@@ -2,7 +2,7 @@
 #include "../syscalls.h"
 #include "../unistd.h"
 
-int fork()
+int fork(void)
 {
 	return __syscall(SYS_fork);
 }

@@ -9,7 +9,7 @@ struct retain
 	retain_free_f *pfree;
 };
 
-#define RETAIN(x) (x ? (++((x)->rc).retains) : 0, (x))
+#define RETAIN(x) ((x ? (void)(++((x)->rc).retains) : (void)0), (x))
 
 #define RELEASE(x)                   \
 	do{                                \

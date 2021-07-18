@@ -19,7 +19,7 @@ void *ucalloc(size_t n, size_t sz)
 {
 	void *p = calloc(n, sz);
 	if(!p)
-		ICE("calloc(%ld, %ld):", n, sz);
+		ICE("calloc(%ld, %ld):", (long)n, (long)sz);
 	return p;
 }
 

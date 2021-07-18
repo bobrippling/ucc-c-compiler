@@ -18,6 +18,9 @@ enum op_type
 	op_le, op_lt,
 	op_ge, op_gt,
 
+	/* internal */
+	op_signbit, op_no_signbit,
+
 	op_unknown
 };
 
@@ -29,5 +32,7 @@ int op_is_comparison(enum op_type o);
 int op_returns_bool(enum op_type o); /* comparison or short circuit */
 int op_can_compound(enum op_type o);
 int op_can_float(enum op_type o);
+
+int op_increases(enum op_type);
 
 #endif

@@ -7,10 +7,7 @@
 // int_least[0-9]_t
 // int_fast[0-9]_t
 
-typedef int       intptr_t;
-typedef unsigned uintptr_t;
-
-typedef int       intmax_t;
-typedef unsigned uintmax_t;
+typedef long intptr_t;
+typedef unsigned long uintptr_t;
 
 #endif

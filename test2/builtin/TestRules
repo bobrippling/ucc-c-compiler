@@ -1,3 +1,0 @@
-exit=8: sizeof.c
-exit=3: all.c, expect.c
-exit=1: propagation.c

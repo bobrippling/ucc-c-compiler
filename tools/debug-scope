@@ -1,0 +1,53 @@
+#!/bin/sh
+
+if [ $# -lt 2 ]
+then
+	echo >&2 "Usage: $0 src a.out [ucc-args...]"
+	exit 1
+fi
+
+if [ -z "$UCC" ]
+then UCC=./ucc
+fi
+
+f="$1"
+e="$2"
+shift; shift
+
+"$UCC" -g -o "$e" "$f" "$@"
+r=$?
+if [ $r -ne 0 ]
+then exit $r
+fi
+
+emit_syms(){
+	if [ -n "$syms" ]
+	then
+		printf '/* scope = %s*/ %s\n' "$syms" "$(sed -n "${cur_line_no}p" "$f")"
+		syms=
+	fi
+}
+
+for i in $(seq 1 $(wc -l "$f" | awk '{print $1}'))
+do
+	echo i scope $f:$i
+done \
+	| gdb "$e" 2>/dev/null \
+	| grep '^\((gdb) Scope\|Symbol\)' \
+	| while read line
+do
+	line_no=$(echo "$line" | sed -n 's/.*Scope for \(.*\):\(.*\):/\2/p')
+
+	if echo "$line" | grep 'contains no' >/dev/null
+	then
+		emit_syms
+	elif [ -z "$line_no" ]
+	then
+		sym=$(echo "$line" | sed -n 's/Symbol \([a-zA-Z0-9_]*\) is.*/\1/p')
+		syms="$syms$sym "
+	else
+		emit_syms
+		cur_line_no="$line_no"
+	fi
+done
+emit_syms

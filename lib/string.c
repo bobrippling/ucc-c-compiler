@@ -1,8 +1,9 @@
 #include "string.h"
 #include "limits.h"
 #include "stdlib.h" // MIN
+#include "errno.h"
 
-static const char *_errs[] = {
+static const char *errs[] = {
 #include "string_strerrs.h"
 };
 
@@ -23,8 +24,11 @@ size_t strlen(const char *s)
 
 const char *strerror(int eno)
 {
-	// TODO: bounds check + snprintf
-	return _errs[eno - 1];
+	if(eno > sizeof(errs) / sizeof(errs[0])){
+		errno = EINVAL;
+		return NULL;
+	}
+	return errs[eno - 1];
 }
 
 int memcmp(const void *va, const void *vb, size_t n)
@@ -92,7 +96,8 @@ void *memcpy(void *v_to, const void *v_from, size_t count)
 {
 	/* TODO: repnz movsb */
 	/* thank you duff */
-	char *to = v_to, *from = v_from;
+	char *to = v_to;
+	const char *from = v_from;
 	char *const ret = to;
 	size_t n = (count + 7) / 8;
 

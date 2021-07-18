@@ -1,19 +1,9 @@
 #ifndef VIRT_H
 #define VIRT_H
 
+#include "stack.h"
+
 unsigned char *v_alloc_reg_reserve(out_ctx *octx, int *n);
-
-/* stack */
-void v_stack_adj(out_ctx *octx, unsigned amt, int sub);
-
-unsigned v_alloc_stack2(out_ctx *octx,
-		const unsigned sz_initial, int noop, const char *desc);
-
-unsigned v_alloc_stack_n(out_ctx *octx, unsigned sz, const char *desc);
-
-unsigned v_alloc_stack(out_ctx *octx, unsigned sz, const char *desc);
-
-unsigned v_stack_align(out_ctx *octx, unsigned const align, int force_mask);
 
 /* register allocation */
 int v_unused_reg(
@@ -35,7 +25,7 @@ const out_val *v_to_reg_given(
 		out_ctx *octx, const out_val *from,
 		const struct vreg *given) ucc_wur;
 
-const out_val *v_to_reg_given_freeup(
+const out_val *v_to_reg_given_freeup_no_off(
 		out_ctx *octx, const out_val *from,
 		const struct vreg *given);
 
@@ -43,13 +33,16 @@ const out_val *v_to_reg_out(out_ctx *octx, const out_val *conv, struct vreg *out
 const out_val *v_to_reg(out_ctx *octx, const out_val *conv) ucc_wur;
 const out_val *v_reg_apply_offset(out_ctx *octx, const out_val *vreg) ucc_wur;
 
-const out_val *v_to_stack_mem(out_ctx *octx, const out_val *vp, long stack_pos) ucc_wur;
+/* this functions allows us to either perform the opposite of a dereferencing
+ * (see v_reg_to_stack_mem()), or store a value, but record it as spilt */
+const out_val *v_to_stack_mem(
+		out_ctx *octx, const out_val *val, const out_val *stk, enum out_val_store type);
 
-void v_reg_to_stack(
-		out_ctx *octx,
-		const struct vreg *vr,
-		type *ty, long where);
-
+/* this functions assumes the outcome should be a V_REGOFF, not V_SPILT
+ * i.e. the opposite of dereferencing a value - we make a stack slot and save it there,
+ * returning the slot */
+const out_val *v_reg_to_stack_mem(
+		out_ctx *octx, struct vreg const *, const out_val *stk);
 
 /* register saving */
 void v_freeup_reg(out_ctx *, const struct vreg *r);
@@ -60,12 +53,13 @@ void v_save_regs(
 		const out_val *ignores[], const out_val *fnval);
 
 int v_is_const_reg(const out_val *);
-
+int v_needs_GOT(const out_val *);
+type *v_get_type(const out_val *); /* handles V_SPILT types */
 
 void v_reserve_reg(out_ctx *, const struct vreg *);
 void v_unreserve_reg(out_ctx *, const struct vreg *);
 
-/* util */
-enum flag_cmp v_inv_cmp(enum flag_cmp cmp, int invert_eq);
+enum flag_cmp v_not_cmp(enum flag_cmp); /* !(a > b) --> a <= b */
+enum flag_cmp v_commute_cmp(enum flag_cmp); /* a > b --> b < a */
 
 #endif

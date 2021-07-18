@@ -1,0 +1,172 @@
+#!/usr/bin/perl
+use warnings;
+use strict;
+
+use Config '%Config';
+
+my $verbose = 0;
+my %sigmap;
+my @signames = split " ", $Config{sig_name};
+for my $n (split " ", $Config{sig_num}){
+	$sigmap{$n} = $signames[$n];
+}
+
+sub signame
+{
+	my $n = shift();
+	my $name = $sigmap{$n};
+	return $name if $name;
+	return "<unknown signal>";
+}
+
+sub env_append
+{
+	my($name, $obj) = @_;
+
+	if($ENV{$name}){
+		$ENV{$name} .= ":$obj";
+	}else{
+		$ENV{$name} = "$obj";
+	}
+}
+
+sub randstack_to_env
+{
+	my $obj = $ENV{UCC_RANDSTACK_LIB};
+	if(!$obj){
+		return 0;
+	}
+	if(!-e $obj){
+		die "$0: \$UCC_RANDSTACK_LIB doesn't exist";
+	}
+
+	print "$0: randstack on\n" if exists $ENV{UCC_VERBOSE};
+
+	env_append('LD_PRELOAD', $obj);
+	env_append('DYLD_INSERT_LIBRARIES', $obj);
+	return 1;
+}
+
+sub randstack_init
+{
+	# randstack is run pre-startup (to catch __attribute__((constructor)) functions
+	# and during main() (checked here) to cover startup code that might zero part
+	# of the stack, so we re-randomise it
+
+	my $on = randstack_to_env();
+	my $src = shift();
+	if($on && defined($src)){
+		open(my $fh, '<', $src) or die "open $src: $!";
+		my @contents = <$fh>;
+		close($fh);
+
+		die "$0: refusing to run $src, no randstack init\n"
+		unless grep /#\s*include.*ocheck/, @contents;
+	}
+}
+
+sub parse_args
+{
+	die "Usage: $0 exit-code program [args...]\n" unless @_;
+
+	my $expected = shift();
+	my $expected_signal = 0;
+
+	if($expected =~ /^SIG[A-Z]+$/){
+		$expected_signal = 1;
+		$expected =~ s/^SIG//;
+	}elsif($expected =~ /^[0-9]+$/){
+		# fine
+	}else{
+		die "\"$expected\" not numeric, nor a signal";
+	}
+
+	my $cmd = shift();
+
+	my(@args_ucc, @args_cmd);
+	my $in_prog_args = 0;
+	for my $arg (@_){
+		if($arg eq "--"){
+			$in_prog_args = 1;
+		}elsif($in_prog_args){
+			push @args_cmd, $arg;
+		}else{
+			push @args_ucc, $arg;
+		}
+	}
+
+	return (
+		cmd => $cmd,
+		expected => $expected,
+		expected_signal => $expected_signal,
+		args_ucc => \@args_ucc,
+		args_cmd => \@args_cmd,
+	);
+}
+
+sub build
+{
+	my($cmd, @args) = @_;
+	my $ucc = $ENV{UCC};
+	die "$0: no \$UCC" unless $ucc;
+
+	my $exe = "$ENV{UCC_TESTDIR}/$$.retcheck-exe";
+
+	my @build_cmd = ($ucc, '-o', $exe, $cmd, @args);
+	(my $src = $cmd) =~ s/ .*//;
+
+	print "$0: run: @build_cmd\n" if exists $ENV{UCC_VERBOSE};
+	die "$0: couldn't compile\n" if system(@build_cmd);
+
+	return ($src, $exe);
+}
+
+my %config = parse_args(@ARGV);
+my $cmd = $config{cmd};
+
+my $src;
+if(!-x $cmd){
+	# we've been passed a source file
+	($src, $cmd) = build($cmd, @{$config{args_ucc}});
+}elsif(@{$config{args_ucc}}){
+	die "$0: compilation arguments given, but nothing to compile";
+}
+
+if($ENV{UCC_VERBOSE} > 1){
+	print STDERR "$0 --- config ---\n";
+	print STDERR "$0: src = " . (defined($src) ? $src : "<undef>") . "\n";
+	print STDERR "$0: cmd = $cmd\n";
+	print STDERR "$0: args_cmd = @{$config{args_cmd}}\n";
+	print STDERR "$0: args_ucc = @{$config{args_ucc}}\n";
+}
+
+randstack_init($src);
+print "$0: run: $cmd @{$config{args_cmd}}\n" if exists $ENV{UCC_VERBOSE};
+my $r = system($cmd, @{$config{args_cmd}});
+my $got_exitcode = $r >> 8;
+my $got_signal = $r & 127;
+if($got_signal){
+	my $SAVE = $got_signal;
+	$got_signal = signame($got_signal);
+}
+
+my $expected = $config{expected};
+my $expected_signal = $config{expected_signal};
+
+if($expected_signal){
+	if(!$got_signal){
+		die "$0: expected signal $expected, got exit code $got_exitcode, from @ARGV\n";
+	}
+
+	if(!($got_signal eq $expected)){
+		die "$0: expected signal $expected, got signal $got_signal, from @ARGV\n";
+	}
+}else{
+	if($got_signal){
+		die "$0: expected exit code $expected, got signal $got_signal, from @ARGV\n";
+	}
+
+	if($expected != $got_exitcode){
+		die "$0: expected exit code $expected, got exit code $got_exitcode, from @ARGV\n";
+	}
+}

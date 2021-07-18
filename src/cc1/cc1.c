@@ -1,3 +1,4 @@
+#define _POSIX_SOURCE 1 /* fdopen */
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -5,143 +6,63 @@
 #include <stdlib.h>
 #include <math.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include <unistd.h>
 #include <signal.h>
 
 #include "../util/util.h"
+#include "../util/io.h"
 #include "../util/platform.h"
 #include "../util/path.h"
+#include "../util/math.h"
+#include "../util/dynarray.h"
+#include "../util/tmpfile.h"
+#include "../util/alloc.h"
+#include "../util/macros.h"
+#include "../util/colour.h"
+
 #include "tokenise.h"
 #include "cc1.h"
 #include "fold.h"
+#include "out/asm.h" /* NUM_SECTIONS */
+#include "out/dbg.h" /* dbg_out_filelist() */
 #include "gen_asm.h"
-#include "gen_str.h"
+#include "gen_dump.h"
 #include "gen_style.h"
 #include "sym.h"
 #include "fold_sym.h"
 #include "ops/__builtin.h"
 #include "out/asm.h" /* NUM_SECTIONS */
-#include "opt.h"
 #include "pass1.h"
 #include "type_nav.h"
 #include "cc1_where.h"
+#include "fopt.h"
+#include "cc1_target.h"
+#include "cc1_out.h"
+#include "sanitize_opt.h"
 
-#include "../as_cfg.h"
+static const char **system_includes;
 
-struct opt_flags cc1_opts;
-
-struct
+struct version
 {
-	char type;
-	const char *arg;
-	int mask;
-} args[] = {
-	/* TODO - wall picks sensible, extra = more, everything = ~0 */
-	{ 'W',  "all",             ~0 },
-	{ 'W',  "extra",            0 },
-	{ 'W',  "everything",      ~0 },
-
-
-	{ 'W',  "mismatch-arg",    WARN_ARG_MISMATCH                      },
-	{ 'W',  "array-comma",     WARN_ARRAY_COMMA                       },
-	{ 'W',  "mismatch-assign", WARN_ASSIGN_MISMATCH | WARN_COMPARE_MISMATCH | WARN_RETURN_TYPE },
-	{ 'W',  "return-type",     WARN_RETURN_TYPE                       },
-
-	{ 'W',  "sign-compare",    WARN_SIGN_COMPARE                      },
-	{ 'W',  "extern-assume",   WARN_EXTERN_ASSUME                     },
-
-	{ 'W',  "implicit-int",    WARN_IMPLICIT_INT                      },
-	{ 'W',  "implicit-func",   WARN_IMPLICIT_FUNC                     },
-	{ 'W',  "implicit",        WARN_IMPLICIT_FUNC | WARN_IMPLICIT_INT },
-
-	{ 'W',  "switch-enum",     WARN_SWITCH_ENUM                       },
-	{ 'W',  "enum-compare",    WARN_ENUM_CMP                          },
-
-	{ 'W',  "incomplete-use",  WARN_INCOMPLETE_USE                    },
-
-	{ 'W',  "unused-expr",     WARN_UNUSED_EXPR                       },
-
-	{ 'W',  "test-in-assign",  WARN_TEST_ASSIGN                       },
-	{ 'W',  "test-bool",       WARN_TEST_BOOL                         },
-
-	{ 'W',  "dead-code",       WARN_DEAD_CODE                         },
-
-	{ 'W',  "predecl-enum",    WARN_PREDECL_ENUM,                     },
-
-
-	{ 'W', "mixed-code-decls", WARN_MIXED_CODE_DECLS                  },
-
-	{ 'W', "loss-of-precision", WARN_LOSS_PRECISION                   },
-
-	{ 'W', "pad",               WARN_PAD },
-
-	{ 'W', "tenative-init",     WARN_TENATIVE_INIT },
-
-	{ 'W', "shadow-local",      WARN_SHADOW_LOCAL },
-	{ 'W', "shadow-global",     WARN_SHADOW_GLOBAL },
-	{ 'W', "shadow",            WARN_SHADOW_GLOBAL | WARN_SHADOW_LOCAL },
-
-	/* TODO: W_QUAL (ops/expr_cast) */
-
-#if 0
-	/* TODO */
-	{ 'W',  "unused-parameter", WARN_UNUSED_PARAM },
-	{ 'W',  "unused-variable",  WARN_UNUSED_VAR   },
-	{ 'W',  "unused-value",     WARN_UNUSED_VAL   },
-	{ 'W',  "unused",           WARN_UNUSED_PARAM | WARN_UNUSED_VAR | WARN_UNUSED_VAL },
-
-	/* TODO */
-	{ 'W',  "uninitialised",    WARN_UNINITIALISED },
-
-	/* TODO */
-	{ 'W',  "array-bounds",     WARN_ARRAY_BOUNDS },
-
-	/* TODO */
-	{ 'W',  "shadow",           WARN_SHADOW },
-
-	/* TODO */
-	{ 'W',  "format",           WARN_FORMAT },
-
-	/* TODO */
-	{ 'W',  "pointer-arith",    WARN_PTR_ARITH  }, /* void *x; x++; */
-	{ 'W',  "int-ptr-cast",     WARN_INT_TO_PTR },
-#endif
-
-	{ 'W',  "optimisation",     WARN_OPT_POSSIBLE },
-
-
-/* --- options --- */
-
-	{ 'f',  "enable-asm",    FOPT_ENABLE_ASM      },
-	{ 'f',  "const-fold",    FOPT_CONST_FOLD      },
-	{ 'f',  "english",       FOPT_ENGLISH         },
-	{ 'f',  "show-line",     FOPT_SHOW_LINE       },
-	{ 'f',  "pic",           FOPT_PIC             },
-	{ 'f',  "pic-pcrel",     FOPT_PIC_PCREL       },
-	{ 'f',  "builtin",       FOPT_BUILTIN         },
-	{ 'f',  "ms-extensions",    FOPT_MS_EXTENSIONS    },
-	{ 'f',  "plan9-extensions", FOPT_PLAN9_EXTENSIONS },
-	{ 'f',  "leading-underscore", FOPT_LEADING_UNDERSCORE },
-	{ 'f',  "trapv",              FOPT_TRAPV },
-	{ 'f',  "track-initial-fname", FOPT_TRACK_INITIAL_FNAM },
-	{ 'f',  "freestanding",        FOPT_FREESTANDING },
-	{ 'f',  "show-static-asserts", FOPT_SHOW_STATIC_ASSERTS },
-	{ 'f',  "verbose-asm",         FOPT_VERBOSE_ASM },
-	{ 'f',  "integral-float-load", FOPT_INTEGRAL_FLOAT_LOAD },
-	{ 'f',  "symbol-arith",        FOPT_SYMBOL_ARITH },
-	{ 'f',  "signed-char",         FOPT_SIGNED_CHAR },
-	{ 'f',  "unsigned-char",      ~FOPT_SIGNED_CHAR },
-	{ 'f',  "cast-with-builtin-types", FOPT_CAST_W_BUILTIN_TYPES },
-	{ 'f',  "dump-type-tree", FOPT_DUMP_TYPE_TREE },
-	{ 'f',  "asm", FOPT_EXT_KEYWORDS },
-
-	{ 'm',  "stackrealign", MOPT_STACK_REALIGN },
-
-	{ 0,  NULL, 0 }
+	int maj, min;
 };
 
-struct
+static struct
+{
+	const char *arg;
+	int mask;
+} mopts[] = {
+	{ "stackrealign", MOPT_STACK_REALIGN },
+	{ "align-is-p2", MOPT_ALIGN_IS_POW2 },
+	{ "fentry", MOPT_FENTRY },
+	{ "red-zone", MOPT_RED_ZONE },
+
+	{ NULL, 0 }
+};
+
+static struct
 {
 	char pref;
 	const char *arg;
@@ -149,71 +70,50 @@ struct
 } val_args[] = {
 	{ 'f', "error-limit", &cc1_error_limit },
 	{ 'f', "message-length", &warning_length },
+
 	{ 'm', "preferred-stack-boundary", &cc1_mstack_align },
+	/* note this stores into cc1_mstack_align an invalid value,
+	 * that must be 2^n'd before being used */
+
 	{ 0, NULL, NULL }
 };
 
-FILE *cc_out[NUM_SECTIONS];     /* temporary section files */
-char  fnames[NUM_SECTIONS][32]; /* duh */
-FILE *cc1_out;                  /* final output */
+struct cc1_output cc1_output = SECTION_OUTPUT_UNINIT;
+dynmap *cc1_outsections;
 char *cc1_first_fname;
-
-enum warning warn_mode = ~(
-		  WARN_VOID_ARITH
-		| WARN_IMPLICIT_INT
-		| WARN_LOSS_PRECISION
-		| WARN_SIGN_COMPARE
-		| WARN_PAD
-		| WARN_TENATIVE_INIT
-		| WARN_SHADOW_GLOBAL
-		| WARN_IMPLICIT_OLD_FUNC
-		);
-
-enum fopt fopt_mode = FOPT_CONST_FOLD
-                    | FOPT_SHOW_LINE
-                    | FOPT_PIC
-                    | FOPT_BUILTIN
-										| FOPT_TRACK_INITIAL_FNAM
-										| FOPT_INTEGRAL_FLOAT_LOAD
-										| FOPT_SYMBOL_ARITH
-										| FOPT_SIGNED_CHAR
-                    | FOPT_CAST_W_BUILTIN_TYPES;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
-enum mopt mopt_mode = 0;
+enum mopt mopt_mode = MOPT_RED_ZONE;
+
+enum visibility cc1_visibility_default;
 
 int cc1_mstack_align; /* align stack to n, platform_word_size by default */
-int cc1_gdebug;
+int cc1_profileg;
+enum debug_level cc1_gdebug = DEBUG_OFF;
+int cc1_gdebug_columninfo = 1;
+
+enum stringop_strategy cc1_mstringop_strategy = STRINGOP_STRATEGY_THRESHOLD;
+unsigned cc1_mstringop_threshold = 16;
 
 enum c_std cc1_std = STD_C99;
 
 int cc1_error_limit = 16;
 
-int caught_sig = 0;
-
 int show_current_line;
 
-struct section sections[NUM_SECTIONS] = {
-	{ "text", QUOTE(SECTION_NAME_TEXT) },
-	{ "data", QUOTE(SECTION_NAME_DATA) },
-	{ "bss",  QUOTE(SECTION_NAME_BSS) },
-	{ "rodata", QUOTE(SECTION_NAME_RODATA) },
-	{ "dbg_abrv", QUOTE(SECTION_NAME_DBG_ABBREV) },
-	{ "dbg_info", QUOTE(SECTION_NAME_DBG_INFO) },
-	{ "dbg_line", QUOTE(SECTION_NAME_DBG_LINE) },
-};
+struct cc1_fopt cc1_fopt;
+
+struct target_details cc1_target_details;
+static const char *requested_default_visibility;
+
+static const char *debug_compilation_dir;
 
 static FILE *infile;
 
-/* compile time check for enum <-> int compat */
-#define COMP_CHECK(pre, test) \
-struct unused_ ## pre { char check[test ? -1 : 1]; }
-COMP_CHECK(a, sizeof warn_mode != sizeof(int));
-COMP_CHECK(b, sizeof fopt_mode != sizeof(int));
-
-
-static void ccdie(int verbose, const char *fmt, ...)
+ucc_printflike(1, 2)
+ucc_noreturn
+static void ccdie(const char *fmt, ...)
 {
 	int i = strlen(fmt);
 	va_list l;
@@ -229,124 +129,141 @@ static void ccdie(int verbose, const char *fmt, ...)
 		fputc('\n', stderr);
 	}
 
-	if(verbose){
-		fputs("warnings + options:\n", stderr);
-		for(i = 0; args[i].arg; i++)
-			fprintf(stderr, "  -%c%s\n", args[i].type, args[i].arg);
-		for(i = 0; val_args[i].arg; i++)
-			fprintf(stderr, "  -%c%s=value\n", val_args[i].pref, val_args[i].arg);
-	}
-
 	exit(1);
 }
 
-void cc1_warn_atv(struct where *where, int die, enum warning w, const char *fmt, va_list l)
-{
-	if(!die && (w & warn_mode) == 0)
-		return;
-
-	vwarn(where, die, fmt, l);
-
-	if(die)
-		exit(1);
-}
-
-void cc1_warn_at(struct where *where, int die, enum warning w, const char *fmt, ...)
-{
-	va_list l;
-
-	va_start(l, fmt);
-	cc1_warn_atv(where, die, w, fmt, l);
-	va_end(l);
-}
-
-static void io_cleanup(void)
+static void dump_options(void)
 {
 	int i;
-	for(i = 0; i < NUM_SECTIONS; i++){
-		if(!cc_out[i])
-			continue;
 
-		if(fclose(cc_out[i]) == EOF && !caught_sig)
-			fprintf(stderr, "close %s: %s\n", fnames[i], strerror(errno));
-		if(remove(fnames[i]) && !caught_sig)
-			fprintf(stderr, "remove %s: %s\n", fnames[i], strerror(errno));
+	fprintf(stderr, "Output options\n");
+	fprintf(stderr, "  -g[0|1|2|3], -gline-tables-only|mlt, -g[no-]column-info\n");
+	fprintf(stderr, "  -o output-file\n");
+	fprintf(stderr, "  -emit=(dump|print|asm|style)\n");
+	fprintf(stderr, "  -O[0123s]\n");
+	fprintf(stderr, "  --help\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Input options\n");
+	fprintf(stderr, "  -pedantic{,-errors}\n");
+	fprintf(stderr, "  -W(no-)?(all|extra|everything|gnu|error(=...)|...)\n");
+	fprintf(stderr, "  -w\n");
+	fprintf(stderr, "  -std=c89/c90/c99/c11/c17/c18 / -ansi / -std=gnu...\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Feature options\n");
+	fprintf(stderr, "  -f(sanitize=...|sanitize-error=...|sanitize-undefined-trap-on-error)\n");
+	fprintf(stderr, "  -fno-sanitize=all\n");
+	fprintf(stderr, "  -fvisibility=default|hidden|protected\n");
+	fprintf(stderr, "  -fdebug-compilation-dir=...\n");
+
+#define X(flag, memb) fprintf(stderr, "  -f[no-]" flag "\n");
+#define ALIAS X
+#define INVERT X
+#define EXCLUSIVE(flag, name, excl) X(flag, name)
+#define ALIAS_EXCLUSIVE(flag, name, excl) X(flag, name)
+#include "fopts.h"
+#undef X
+#undef ALIAS
+#undef INVERT
+#undef EXCLUSIVE
+#undef ALIAS_EXCLUSIVE
+
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Machine options\n");
+	fprintf(stderr, "  -mstringop-strategy=(libcall|loop|libcall-threshold=<number>)\n");
+	for(i = 0; mopts[i].arg; i++)
+		fprintf(stderr, "  -m[no-]%s\n", mopts[i].arg);
+
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Feature/machine value options\n");
+	for(i = 0; val_args[i].arg; i++)
+		fprintf(stderr, "  -%c%s=value\n", val_args[i].pref, val_args[i].arg);
+}
+
+int where_in_sysheader(const where *w)
+{
+	return w->is_sysh;
+}
+
+static int should_emit_gnu_stack_note(void)
+{
+	return platform_sys() == SYS_linux;
+}
+
+static int should_emit_macosx_version_min(struct version *const min)
+{
+	if(platform_sys() != SYS_darwin)
+		return 0;
+
+	min->maj = 10;
+	min->min = 5;
+	return 1;
+}
+
+static void io_fin_gnustack(FILE *out)
+{
+	const int execstack = 0;
+
+	if(should_emit_gnu_stack_note()
+	&& fprintf(out,
+			".section .note.GNU-stack,\"%s\",@progbits\n",
+			execstack ? "x" : "") < 0)
+	{
+		ccdie("write to cc1 output:");
 	}
 }
 
-static void io_setup(void)
+static void io_fin_macosx_version(FILE *out)
 {
-	int i;
-	const char *tmpdir = ucc_tmpdir();
-
-	if(!cc1_out)
-		cc1_out = stdout;
-
-	for(i = 0; i < NUM_SECTIONS; i++){
-		snprintf(fnames[i], sizeof fnames[i], "%s.cc1_%d%d", tmpdir, getpid(), i);
-
-		cc_out[i] = fopen(fnames[i], "w+"); /* need to seek */
-		if(!cc_out[i])
-			ccdie(0, "open \"%s\":", fnames[i]);
+	struct version macosx_version_min;
+	if(should_emit_macosx_version_min(&macosx_version_min)
+	&& fprintf(out,
+		".macosx_version_min %d, %d\n",
+		macosx_version_min.maj,
+		macosx_version_min.min) < 0)
+	{
+		ccdie("write to cc1 output:");
 	}
-
-	atexit(io_cleanup);
 }
 
-static void io_fin(int do_sections, const char *fname)
+static void io_fin_sections(FILE *out)
 {
-	int i;
+	const struct section *section;
+	size_t i;
 
-	(void)fname;
+	if(cc1_gdebug){
+		/* ensure we have text and debug-line sections for the debug to reference */
+		asm_switch_section(&section_text);
+		asm_switch_section(&section_dbg_line);
+	}
 
-	for(i = 0; i < NUM_SECTIONS; i++){
-		/* cat cc_out[i] to cc1_out, with section headers */
-		if(do_sections){
-			char buf[256];
-			long last = ftell(cc_out[i]);
-
-			if(last == -1 || fseek(cc_out[i], 0, SEEK_SET) == -1)
-				ccdie(0, "seeking on section file %d:", i);
-
-			if(fprintf(cc1_out, ".section %s\n", sections[i].name) < 0
-			|| fprintf(cc1_out, "%s%s:\n", SECTION_BEGIN, sections[i].desc) < 0)
-			{
-				ccdie(0, "write to cc1 output:");
+	for(i = 0; (section = dynmap_key(const struct section *, cc1_outsections, i)); i++){
+		if(section_is_builtin(section)){
+			const char *desc = asm_section_desc(section->builtin);
+			if(desc){
+				asm_switch_section(section);
+				xfprintf(out, "%s%s%s:\n", cc1_target_details.as->privatelbl_prefix, SECTION_END, desc);
 			}
-
-			while(fgets(buf, sizeof buf, cc_out[i]))
-				if(fputs(buf, cc1_out) == EOF)
-					ccdie(0, "write to cc1 output:");
-
-			if(ferror(cc_out[i]))
-				ccdie(0, "read from section file %d:", i);
-
-			if(fprintf(cc1_out, "%s%s:\n", SECTION_END, sections[i].desc) < 0)
-				ccdie(0, "terminating section %d:", i);
 		}
 	}
-
-	if(fclose(cc1_out))
-		ccdie(0, "close cc1 output");
 }
 
-static void sigh(int sig)
+static void io_fin(FILE *out)
 {
-	(void)sig;
-	caught_sig = 1;
-	io_cleanup();
+	io_fin_sections(out);
+	io_fin_gnustack(out);
+	io_fin_macosx_version(out);
 }
 
-static char *next_line()
+static char *next_line(void)
 {
-	char *s = fline(infile);
+	char *s = fline(infile, NULL);
 	char *p;
 
 	if(!s){
 		if(feof(infile))
 			return NULL;
 		else
-			die("read():");
+			ccdie("read():");
 	}
 
 	for(p = s; *p; p++)
@@ -356,234 +273,16 @@ static char *next_line()
 	return s;
 }
 
-int main(int argc, char **argv)
+static void gen_backend(symtable_global *globs, const char *fname, FILE *out, const char *producer)
 {
-	where loc_start;
-	static symtable_global *globs;
 	void (*gf)(symtable_global *) = NULL;
-	const char *fname;
-	int i;
-	int werror = 0;
-
-	/* TODO: -O[0-3] parsing and
-	 * -fremain-stack, etc */
-	cc1_opts.opt_remain_stack = 1;
-
-	/*signal(SIGINT , sigh);*/
-	signal(SIGQUIT, sigh);
-	signal(SIGTERM, sigh);
-	signal(SIGABRT, sigh);
-	signal(SIGSEGV, sigh);
-
-	fname = NULL;
-
-	/* defaults */
-	cc1_mstack_align = log2f(platform_word_size());
-
-	for(i = 1; i < argc; i++){
-		if(!strcmp(argv[i], "-X")){
-			if(++i == argc)
-				goto usage;
-
-			if(!strcmp(argv[i], "print"))
-				cc1_backend = BACKEND_PRINT;
-			else if(!strcmp(argv[i], "asm"))
-				cc1_backend = BACKEND_ASM;
-			else if(!strcmp(argv[i], "style"))
-				cc1_backend = BACKEND_STYLE;
-			else
-				goto usage;
-
-		}else if(!strcmp(argv[i], "-g")){
-			cc1_gdebug = 1;
-
-		}else if(!strcmp(argv[i], "-o")){
-			if(++i == argc)
-				goto usage;
-
-			if(strcmp(argv[i], "-")){
-				cc1_out = fopen(argv[i], "w");
-				if(!cc1_out){
-					ccdie(0, "open %s:", argv[i]);
-					return 1;
-				}
-			}
-
-		}else if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
-			int gnu;
-
-			if(std_from_str(argv[i], &cc1_std, &gnu))
-				ccdie(0, "-std argument \"%s\" not recognised", argv[i]);
-
-			if(gnu)
-				fopt_mode |= FOPT_EXT_KEYWORDS;
-			else
-				fopt_mode &= ~FOPT_EXT_KEYWORDS;
-
-		}else if(!strcmp(argv[i], "-w")){
-			warn_mode = WARN_NONE;
-
-		}else if(!strcmp(argv[i], "-Werror")){
-			werror = 1;
-
-		}else if(argv[i][0] == '-'
-		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
-			const char arg_ty = argv[i][1];
-			char *arg = argv[i] + 2;
-			int *mask;
-			int j, found, rev;
-
-			rev = found = 0;
-
-			if(!strncmp(arg, "no-", 3)){
-				arg += 3;
-				rev = 1;
-			}
-
-			if(arg_ty != 'W'){
-				char *equal = strchr(arg, '=');
-
-				if(equal){
-					int new_val;
-
-					if(rev){
-						fprintf(stderr, "\"no-\" unexpected for value-argument\n");
-						goto usage;
-					}
-
-					*equal = '\0';
-					if(sscanf(equal + 1, "%d", &new_val) != 1){
-						fprintf(stderr, "need number for %s\n", arg);
-						goto usage;
-					}
-
-					for(j = 0; val_args[j].arg; j++)
-						if(val_args[j].pref == arg_ty && !strcmp(arg, val_args[j].arg)){
-							*val_args[j].pval = new_val;
-							found = 1;
-							break;
-						}
-
-					if(!found)
-						goto unrecognised;
-					continue;
-				}
-			}
-
-			switch(arg_ty){
-				case 'W':
-					mask = (int *)&warn_mode;
-					break;
-				case 'f':
-					mask = (int *)&fopt_mode;
-					break;
-				case 'm':
-					mask = (int *)&mopt_mode;
-					break;
-				default:
-					ucc_unreach(1);
-			}
-
-			for(j = 0; args[j].arg; j++)
-				if(args[j].type == arg_ty && !strcmp(arg, args[j].arg)){
-					/* if the mask isn't a single bit, treat it as
-					 * an unmask, e.g. -funsigned-char unmasks FOPT_SIGNED_CHAR
-					 *
-					 * special case where we don't - warnings
-					 */
-					const int unmask = args[j].type != 'W'
-						&& args[j].mask & (args[j].mask - 1);
-
-					if(rev){
-						if(unmask)
-							*mask |= ~args[j].mask;
-						else
-							*mask &= ~args[j].mask;
-					}else{
-						if(unmask)
-							*mask &= args[j].mask;
-						else
-							*mask |= args[j].mask;
-					}
-					found = 1;
-					break;
-				}
-
-			if(!found){
-unrecognised:
-				fprintf(stderr, "\"%s\" unrecognised\n", argv[i]);
-				goto usage;
-			}
-
-		}else if(!strncmp(argv[i], "-m", 2)){
-			int n;
-
-			if(sscanf(argv[i] + 2, "%d", &n) != 1 || (n != 32 && n != 64)){
-				fprintf(stderr, "-m needs either 32 or 64\n");
-				goto usage;
-			}
-
-			if(n == 32)
-				mopt_mode |= MOPT_32;
-			else
-				mopt_mode &= ~MOPT_32;
-
-		}else if(!fname){
-			fname = argv[i];
-		}else{
-usage:
-			ccdie(1, "Usage: %s [-W[no-]warning] [-f[no-]option] [-X backend] [-m[32|64]] [-o output] file", *argv);
-		}
-	}
-
-	/* sanity checks */
-	{
-		const unsigned new = powf(2, cc1_mstack_align);
-		if(new < platform_word_size())
-			ccdie(0, "stack alignment must be >= platform word size (2^%d)",
-					(int)log2f(platform_word_size()));
-
-		cc1_mstack_align = new;
-	}
-
-	if(fname && strcmp(fname, "-")){
-		infile = fopen(fname, "r");
-		if(!infile)
-			ccdie(0, "open %s:", fname);
-	}else{
-		infile = stdin;
-		fname = "-";
-	}
-
-	io_setup();
-
-	show_current_line = fopt_mode & FOPT_SHOW_LINE;
-
-	cc1_type_nav = type_nav_init();
-
-	tokenise_set_mode(
-			(fopt_mode & FOPT_EXT_KEYWORDS ? KW_EXT : 0) |
-			(cc1_std >= STD_C99 ? KW_C99 : 0));
-
-	tokenise_set_input(next_line, fname);
-
-	where_cc1_current(&loc_start);
-	globs = symtabg_new(&loc_start);
-
-	parse_and_fold(globs);
-
-	if(infile != stdin)
-		fclose(infile), infile = NULL;
-
-	if(werror && warning_count)
-		ccdie(0, "%s: Treating warnings as errors", *argv);
 
 	switch(cc1_backend){
 		case BACKEND_STYLE:
 			gf = gen_style;
 			if(0){
-		case BACKEND_PRINT:
-				gf = gen_str;
+		case BACKEND_DUMP:
+				gf = gen_dump;
 			}
 			gf(globs);
 			break;
@@ -592,31 +291,563 @@ usage:
 		{
 			char buf[4096];
 			char *compdir;
+			struct out_dbg_filelist *filelist;
 
-			compdir = getcwd(NULL, 0);
+			compdir = (char *)debug_compilation_dir;
+			if(!compdir)
+				compdir = getcwd(NULL, 0);
 			if(!compdir){
 				/* no auto-malloc */
 				compdir = getcwd(buf, sizeof(buf)-1);
 				/* PATH_MAX may not include the  ^ nul byte */
 				if(!compdir)
-					die("getcwd():");
+					ccdie("getcwd():");
 			}
 
 			gen_asm(globs,
 					cc1_first_fname ? cc1_first_fname : fname,
-					compdir);
+					compdir,
+					&filelist,
+					producer);
 
-			if(compdir != buf)
+			/* FIXME: don't take filelist out-param, and free it in gem_asm() */
+			/* filelist needs to be output first
+			if(0 && filelist && cc1_gdebug != DEBUG_OFF)
+				dbg_out_filelist(filelist);
+			*/
+
+			io_fin(out);
+
+			if(compdir != buf && compdir != debug_compilation_dir)
 				free(compdir);
 			break;
 		}
 	}
+}
 
+ucc_printflike(2, 3)
+ucc_noreturn
+static void usage(const char *argv0, const char *fmt, ...)
+{
+	if(fmt){
+		va_list l;
+		va_start(l, fmt);
+		vfprintf(stderr, fmt, l);
+		va_end(l);
+	}
 
-	io_fin(gf == NULL, fname);
+	ccdie(
+			"Usage: %s [-W[no-]warning] [-f[no-]option] [-m[no-]machine] [-o output] file",
+			argv0);
+}
 
-	if(fopt_mode & FOPT_DUMP_TYPE_TREE)
-		type_nav_dump(cc1_type_nav);
+static int optimise(const char *argv0, const char *arg)
+{
+	/* TODO: -fdce, -fthread-jumps, -falign-{functions,jumps,loops,labels}
+	 * -fdelete-null-pointer-checks, -freorder-blocks
+	 */
+	enum { O0, O1, O2, O3, Os } opt = O0;
+
+	if(!*arg){
+		/* -O means -O2 */
+		opt = O2;
+	}else if(arg[1]){
+		goto unrecog;
+	}else switch(arg[0]){
+		default:
+			goto unrecog;
+
+		case '0': opt = O0; break;
+		case '1': opt = O1; break;
+		case '2': opt = O2; break;
+		case '3': opt = O3; break;
+		case 's': opt = Os; break;
+	}
+
+	switch(opt){
+		case O0:
+			cc1_fopt.thread_jumps = 0;
+			break;
+
+		case Os:
+			/* same as -O2 but disable inlining and int-float-load */
+			cc1_fopt.fold_const_vlas = 1;
+			cc1_fopt.inline_functions = 0;
+			cc1_fopt.integral_float_load = 0;
+			break;
+
+		case O1:
+		case O2:
+		case O3:
+			cc1_fopt.fold_const_vlas = 1;
+			cc1_fopt.inline_functions = 1;
+			cc1_fopt.integral_float_load = 1;
+			cc1_fopt.thread_jumps = 1;
+			break;
+	}
 
 	return 0;
+unrecog:
+	fprintf(stderr, "%s: unrecognised optimisation flag -O%c\n", argv0, arg[0]);
+	return 1;
+}
+
+static void set_default_visibility(const char *argv0, const char *visibility)
+{
+	if(!visibility_parse(&cc1_visibility_default, visibility, cc1_target_details.as->supports_visibility_protected)){
+		fprintf(stderr, "%s: unknown/unsupported visibility \"%s\"\n", argv0, visibility);
+		exit(1);
+	}
+}
+
+static int parse_mf_equals(
+		const char *argv0,
+		char arg_ty,
+		const char *arg_substr,
+		char *equal,
+		int invert)
+{
+	int found = 0;
+	int i;
+	int new_val;
+
+	if(invert && arg_ty == 'f' && !strcmp(arg_substr, "sanitize=all")){
+		sanitize_opt_off();
+		return 1;
+	}
+
+	if(invert){
+		usage(argv0, "\"no-\" unexpected for value-argument\n");
+	}
+
+	if(arg_ty == 'f'){
+		if(!strncmp(arg_substr, "sanitize=", 9)){
+			sanitize_opt_add(argv0, arg_substr + 9);
+			return 1;
+		}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
+			sanitize_opt_set_error(argv0, arg_substr + 15);
+			return 1;
+		}else if(!strcmp(arg_substr, "sanitize-undefined-trap-on-error")){
+			/* currently the choices are a noreturn function, or trap.
+			 * in the future, support could be added for linking with gcc or clang's libubsan,
+			 * and calling the runtime support functions therein */
+			sanitize_opt_set_error(argv0, "trap");
+		}else if(!strncmp(arg_substr, "visibility=", 11)){
+			requested_default_visibility = arg_substr + 11;
+			return 1;
+		}else if(!strncmp(arg_substr, "debug-compilation-dir=", 22)){
+			debug_compilation_dir = arg_substr + 22;
+			return 1;
+		}
+
+	}else if(arg_ty == 'm'){
+		if(!strncmp(arg_substr, "stringop-strategy=", 18)){
+			const char *strategy = arg_substr + 18;
+
+			/* gcc options are:
+			 * rep_byte, rep_4byte, rep_8byte
+			 * byte_loop, loop, unrolled_loop
+			 * libcall */
+
+			if(!strcmp(strategy, "libcall")){
+				cc1_mstringop_strategy = STRINGOP_STRATEGY_LIBCALL;
+			}else if(!strcmp(strategy, "loop")){
+				cc1_mstringop_strategy = STRINGOP_STRATEGY_LOOP;
+			}else if(!strncmp(strategy, "libcall-threshold=", 18)){
+				const char *threshold = strategy + 18;
+				char *end;
+
+				cc1_mstringop_strategy = STRINGOP_STRATEGY_THRESHOLD;
+				cc1_mstringop_threshold = strtol(threshold, &end, 0);
+				if(*end)
+					usage(argv0, "invalid number for -mmemcpy-strategy=libcall-threshold=..., \"%s\"\n", threshold);
+			}else{
+				usage(
+						argv0,
+						"invalid argument to for -mmemcpy-strategy=..., \"%s\", accepted values:\n"
+						"  libcall, loop, libcall-threshold=<number>\n"
+						, strategy);
+			}
+
+			return 1;
+		}
+	}
+
+	if(sscanf(equal + 1, "%d", &new_val) != 1){
+		usage(argv0, "need number for %s\n", arg_substr);
+	}
+
+	*equal = '\0';
+	for(i = 0; val_args[i].arg; i++){
+		if(val_args[i].pref == arg_ty && !strcmp(arg_substr, val_args[i].arg)){
+			*val_args[i].pval = new_val;
+			found = 1;
+			break;
+		}
+	}
+
+	return found;
+}
+
+static int mopt_on(const char *argument, int invert)
+{
+	int i;
+	for(i = 0; mopts[i].arg; i++){
+		if(!strcmp(argument, mopts[i].arg)){
+			/* if the mask isn't a single bit, treat it as an unmask */
+			const int unmask = mopts[i].mask & (mopts[i].mask - 1);
+
+			if(invert){
+				if(unmask)
+					mopt_mode |= ~mopts[i].mask;
+				else
+					mopt_mode &= ~mopts[i].mask;
+			}else{
+				if(unmask)
+					mopt_mode &= mopts[i].mask;
+				else
+					mopt_mode |= mopts[i].mask;
+			}
+			return 1;
+		}
+	}
+	return 0;
+}
+
+static void parse_Wmf_option(
+		const char *argv0,
+		char *argument,
+		int *const werror,
+		dynmap *unknown_warnings)
+{
+	const char arg_ty = argument[1];
+	const char *arg_substr = argument + 2;
+	int invert = 0;
+	char *equal;
+
+	if(!strncmp(arg_substr, "no-", 3)){
+		arg_substr += 3;
+		invert = 1;
+	}
+
+	/* -f and -m may accept values. -W doesn't, so check that first */
+	if(arg_ty == 'W'){
+		warning_on(arg_substr, invert ? W_OFF : W_WARN, werror, unknown_warnings);
+		return;
+	}
+
+	equal = strchr(argument, '=');
+	if(equal){
+		if(!parse_mf_equals(argv0, arg_ty, arg_substr, equal, invert))
+			goto unknown;
+		return;
+	}
+
+	if(arg_ty == 'f'){
+		unsigned char *opt = fopt_on(&cc1_fopt, arg_substr, invert);
+		if(opt){
+			if(opt == &cc1_fopt.colour_diagnostics)
+				colour_enable(*opt);
+
+			return;
+		}
+		goto unknown;
+	}
+
+	if(arg_ty == 'm'){
+		if(mopt_on(arg_substr, invert))
+			return;
+		goto unknown;
+	}
+
+unknown:
+	usage(argv0, "unrecognised warning/feature/machine option \"%s\"\n", argument);
+}
+
+static int init_target(const char *target)
+{
+	struct triple triple;
+
+	if(target){
+		const char *bad;
+		if(!triple_parse(target, &triple, &bad)){
+			fprintf(stderr, "Couldn't parse triple: %s\n", bad);
+			return 0;
+		}
+	}else{
+		const char *unparsed;
+		if(!triple_default(&triple, &unparsed)){
+			fprintf(stderr, "couldn't get target triple: %s\n",
+					unparsed ? unparsed : strerror(errno));
+			return 0;
+		}
+	}
+
+	switch(triple.arch){
+		case ARCH_x86_64:
+		case ARCH_i386:
+			break;
+		default:
+			fprintf(stderr, "Only x86_64 architecture is compiled in\n");
+			return 0;
+	}
+
+	platform_init(triple.arch, triple.sys);
+	target_details_from_triple(&triple, &cc1_target_details);
+
+	return 1;
+}
+
+static void output_init(const char *fname)
+{
+	if(fname){
+		cc1_output.file = fopen(fname, "w");
+		if(!cc1_output.file)
+			ccdie("open %s:", fname);
+	}else{
+		cc1_output.file = stdout;
+	}
+
+	cc1_outsections = dynmap_new(struct section *, section_cmp, section_hash);
+}
+
+static void output_term(const char *fname)
+{
+	struct section *section;
+	size_t i;
+
+	for(i = 0; (section = dynmap_key(struct section *, cc1_outsections, i)); i++)
+		free(section);
+
+	dynmap_free(cc1_outsections);
+	cc1_outsections = NULL;
+
+	if(fclose(cc1_output.file))
+		ccdie("close output (%s):", fname);
+	cc1_output.file = NULL;
+}
+
+int main(int argc, char **argv)
+{
+	int failure;
+	where loc_start;
+	static symtable_global *globs;
+	const char *in_fname = NULL;
+	const char *out_fname = NULL;
+	const char *target = NULL;
+	int i;
+	int werror = 0;
+	dynmap *unknown_warnings = dynmap_new(char *, strcmp, dynmap_strhash);
+
+	/* defaults */
+	cc1_mstack_align = -1;
+	warning_init();
+	fopt_default(&cc1_fopt);
+
+	for(i = 1; i < argc; i++){
+		if(!strncmp(argv[i], "-emit", 5)){
+			const char *emit;
+
+			switch(argv[i][5]){
+				case '=':
+					emit = argv[i] + 6;
+					break;
+
+				case '\0':
+					if(++i == argc)
+						usage(argv[0], "-emit needs an argument\n");
+					emit = argv[i];
+					break;
+
+				default:
+					usage(argv[0], "unrecognised argument \"%s\" (did you mean -emit=...?)\n", argv[i]);
+			}
+
+
+			if(!strcmp(emit, "dump") || !strcmp(emit, "print"))
+				cc1_backend = BACKEND_DUMP;
+			else if(!strcmp(emit, "asm"))
+				cc1_backend = BACKEND_ASM;
+			else if(!strcmp(emit, "style"))
+				cc1_backend = BACKEND_STYLE;
+			else
+				usage(argv[0], "unknown emit backend \"%s\"\n", emit);
+
+		}else if(!strncmp(argv[i], "-g", 2)){
+			const char *mode = argv[i] + 2;
+			int imode;
+			char *end;
+
+			if(!*mode){
+				cc1_gdebug = DEBUG_FULL;
+			}else if((imode = (int)strtol(mode, &end, 0)), !*end){
+				switch(imode){
+					case 0:
+						cc1_gdebug = DEBUG_OFF;
+						break;
+					case 1:
+						cc1_gdebug = DEBUG_LINEONLY;
+						break;
+					case 2:
+					case 3:
+						cc1_gdebug = DEBUG_FULL;
+						break;
+					default:
+						goto dbg_unknown;
+				}
+			}else if(!strcmp(mode, "line-tables-only") || !strcmp(mode, "mlt")){
+				cc1_gdebug = DEBUG_LINEONLY;
+			}else{
+				int on = 1;
+
+				if(!strncmp(mode, "no-", 3)){
+					mode += 3;
+					on = 0;
+				}
+
+				if(!strcmp(mode, "column-info"))
+					cc1_gdebug_columninfo = on;
+				else
+dbg_unknown:
+					ccdie("Unknown -g switch: \"%s\"", argv[i] + 2);
+			}
+
+		}else if(!strcmp(argv[i], "-o")){
+			if(++i == argc)
+				usage(argv[0], "-o needs an argument\n");
+
+			if(strcmp(argv[i], "-"))
+				out_fname = argv[i];
+
+		}else if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
+			int gnu;
+
+			if(std_from_str(argv[i], &cc1_std, &gnu))
+				ccdie("-std argument \"%s\" not recognised", argv[i]);
+
+			if(gnu)
+				cc1_fopt.ext_keywords = 1;
+			else
+				cc1_fopt.ext_keywords = 0;
+
+		}else if(!strcmp(argv[i], "-w")){
+			warnings_set(W_OFF);
+
+		}else if(!strcmp(argv[i], "-pedantic") || !strcmp(argv[i], "-pedantic-errors")){
+			const int errors = (argv[i][9] != '\0');
+
+			warning_pedantic(errors ? W_ERROR : W_WARN);
+
+		}else if(argv[i][0] == '-'
+		&& (argv[i][1] == 'W' || argv[i][1] == 'f' || argv[i][1] == 'm')){
+			parse_Wmf_option(*argv, argv[i], &werror, unknown_warnings);
+
+		}else if(!strncmp(argv[i], "-O", 2)){
+			if(optimise(*argv, argv[i] + 2))
+				exit(1);
+
+		}else if(!strcmp(argv[i], "-target")){
+			i++;
+			if(!argv[i]){
+				usage(argv[0], "-target requires an argument");
+			}
+			target = argv[i];
+
+		}else if(!strcmp(argv[i], "--help")){
+			dump_options();
+			usage(argv[0], NULL);
+
+		}else if(!strcmp(argv[i], "-pg")){
+			cc1_profileg = 1;
+
+		}else if(!in_fname){
+			in_fname = argv[i];
+		}else{
+			usage(argv[0], "unknown argument: '%s'\n", argv[i]);
+		}
+	}
+
+	if(!init_target(target))
+		return 1;
+
+	if(cc1_mstack_align == -1){
+		cc1_mstack_align = platform_word_size();
+	}else{
+		unsigned new = powf(2, cc1_mstack_align);
+		if(new < platform_word_size()){
+			ccdie("stack alignment (%d) must be >= %d (platform word size 2^%d)",
+					cc1_mstack_align,
+					platform_word_size(),
+					log2i(platform_word_size()));
+		}
+		cc1_mstack_align = new;
+	}
+
+	if(requested_default_visibility)
+		set_default_visibility(argv[0], requested_default_visibility);
+
+	if(werror)
+		warnings_upgrade();
+
+	if(warnings_check_unknown(unknown_warnings)){
+		failure = 1;
+		goto out;
+	}
+
+	if(in_fname && strcmp(in_fname, "-")){
+		infile = fopen(in_fname, "r");
+		if(!infile)
+			ccdie("open %s:", in_fname);
+	}else{
+		infile = stdin;
+		in_fname = "-";
+	}
+
+	output_init(out_fname);
+
+	show_current_line = cc1_fopt.show_line;
+	if(cc1_fopt.trapv)
+		sanitize_opt_add(argv[0], "signed-integer-overflow");
+
+	cc1_type_nav = type_nav_init();
+
+	tokenise_set_mode(
+			(cc1_fopt.ext_keywords ? KW_EXT : 0) |
+			(cc1_std >= STD_C99 ? KW_C99 : 0));
+
+	tokenise_set_input(next_line, in_fname);
+
+	where_cc1_current(&loc_start);
+	globs = symtabg_new(&loc_start);
+
+	failure = parse_and_fold(globs);
+
+	if(fclose(infile))
+		ccdie("close input (%s):", in_fname);
+	infile = NULL;
+
+	if(failure == 0 || /* attempt dump anyway */cc1_backend == BACKEND_DUMP){
+		const char *producer = "ucc development version";
+
+		gen_backend(globs, in_fname, cc1_output.file, producer);
+		if(gen_had_error)
+			failure = 1;
+	}
+
+	if(cc1_fopt.dump_type_tree)
+		type_nav_dump(cc1_type_nav);
+
+	output_term(out_fname);
+
+out:
+	dynarray_free(const char **, system_includes, NULL);
+	{
+		size_t i;
+		char *key;
+		for(i = 0; (key = dynmap_key(char *, unknown_warnings, i)); i++)
+			free(key);
+		dynmap_free(unknown_warnings);
+	}
+
+	return failure;
 }

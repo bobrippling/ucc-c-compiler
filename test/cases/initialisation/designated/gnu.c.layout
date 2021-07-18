@@ -1,0 +1,6 @@
+x:
+.long 1
+.long 3
+ints:
+.zero 12
+.long 2

@@ -1,0 +1,15 @@
+// RUN: %ocheck 1 %s
+typedef double f_t;
+
+gt(f_t a, f_t b)
+{
+	return a > b;
+}
+
+main()
+{
+#include "../ocheck-init.c"
+	float a = 2, b = 1;
+
+	return gt(a, b);
+}

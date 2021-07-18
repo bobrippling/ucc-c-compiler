@@ -1,9 +1,4 @@
-func_mutate_expr mutate_expr_struct;
-func_str         str_expr_struct;
+EXPR_DEFS(struct);
 
-func_fold        fold_expr_struct;
-
-func_gen         gen_expr_struct;
-
-func_gen         gen_expr_str_struct;
-func_gen         gen_expr_style_struct;
+expr *expr_new_struct(expr *sub, int dot, expr *ident);
+expr *expr_new_struct_mem(expr *sub, int dot, decl *);

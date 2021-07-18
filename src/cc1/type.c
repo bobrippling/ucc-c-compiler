@@ -17,8 +17,16 @@
 #include "funcargs.h"
 #include "cc1.h" /* fopt_mode */
 #include "defs.h"
+#include "fopt.h"
 
 #include "type_is.h"
+
+enum type_str_opts
+{
+	TY_STR_NOOPT = 0,
+	TY_STR_AKA = 1 << 0,
+	TY_STR_NO_TDEF = 1 << 1
+};
 
 static int type_qual_cmp_1(
 		enum type_qualifier a,
@@ -59,6 +67,32 @@ static int type_qual_cmp(enum type_qualifier a, enum type_qualifier b)
 	return 0;
 }
 
+static int type_attribute_missing1(type *ta, type *tb, enum attribute_type attr)
+{
+	return type_attr_present(tb, attr) && !type_attr_present(ta, attr);
+}
+
+static int type_attribute_missing(type *ta, type *tb)
+{
+#define NAME(x, typrop)                             \
+	if(typrop){                                       \
+		if(type_attribute_missing1(ta, tb, attr_ ## x)) \
+			return 1;                                     \
+	}
+
+#define RENAME(s, x, typrop) NAME(x, typrop)
+#define ALIAS(s, x)
+#define COMPLEX_ALIAS(s, x)
+
+	ATTRIBUTES
+
+#undef NAME
+#undef ALIAS
+#undef COMPLEX_ALIAS
+
+		return 0;
+}
+
 static enum type_cmp type_cmp_r(
 		type *const orig_a,
 		type *const orig_b,
@@ -67,6 +101,7 @@ static enum type_cmp type_cmp_r(
 	enum type_cmp ret;
 	type *a, *b;
 	int subchk = 1;
+	int skip_pointer_explicit_decay = 0;
 
 	if(!orig_a || !orig_b)
 		return orig_a == orig_b ? TYPE_EQUAL : TYPE_NOT_EQUAL;
@@ -80,9 +115,11 @@ static enum type_cmp type_cmp_r(
 		if(type_is_primitive(a, type__Bool) && type_is_ptr(b))
 			return TYPE_CONVERTIBLE_IMPLICIT;
 
-		/* allow int <-> ptr */
-		if((type_is_ptr(a) && type_is_integral(b))
-		|| (type_is_ptr(b) && type_is_integral(a)))
+		/* allow int <-> ptr (or block)
+		 * note: this allows enum <--> pointers and vice versa
+		 */
+		if((type_is_ptr_or_block(a) && type_is_integral(b))
+		|| (type_is_ptr_or_block(b) && type_is_integral(a)))
 		{
 			return TYPE_CONVERTIBLE_EXPLICIT;
 		}
@@ -111,24 +148,28 @@ static enum type_cmp type_cmp_r(
 			break;
 
 		case type_array:
-		{
-			const int a_complete = !!a->bits.array.size,
-			          b_complete = !!b->bits.array.size;
+			if(a->bits.array.vla_kind || b->bits.array.vla_kind){
+				/* fine, pretend they're equal even if different expressions */
+				ret = TYPE_EQUAL_TYPEDEF;
 
-			if(a_complete && b_complete){
-				const integral_t av = const_fold_val_i(a->bits.array.size),
-				                 bv = const_fold_val_i(b->bits.array.size);
+			}else{
+				const int a_has_sz = !!a->bits.array.size;
+				const int b_has_sz = !!b->bits.array.size;
 
-				if(av != bv)
-					return TYPE_NOT_EQUAL;
-			}else if(a_complete != b_complete){
-				if((opts & TYPE_CMP_ALLOW_TENATIVE_ARRAY) == 0)
-					return TYPE_NOT_EQUAL;
+				if(a_has_sz && b_has_sz){
+					integral_t av = const_fold_val_i(a->bits.array.size);
+					integral_t bv = const_fold_val_i(b->bits.array.size);
+
+					if(av != bv)
+						return TYPE_NOT_EQUAL;
+				}else if(a_has_sz != b_has_sz){
+					if((opts & TYPE_CMP_ALLOW_TENATIVE_ARRAY) == 0)
+						return TYPE_NOT_EQUAL;
+				}
 			}
 
 			/* next */
 			break;
-		}
 
 		case type_block:
 		case type_ptr:
@@ -156,36 +197,33 @@ static enum type_cmp type_cmp_r(
 	if(subchk)
 		ret = type_cmp_r(a->ref, b->ref, opts);
 
-	if(ret == TYPE_NOT_EQUAL
-	&& a->type == type_func)
-	{
-		/* "int (int)" and "void (int)" aren't equal - but castable */
-		ret = TYPE_CONVERTIBLE_EXPLICIT;
-	}
+	/* handle NOT_EQUAL fixups */
+	if(ret == TYPE_NOT_EQUAL){
+		if(a->type == type_func){
+			/* "int (int)" and "void (int)" aren't equal - but castable */
+			ret = TYPE_CONVERTIBLE_EXPLICIT;
 
-	if(ret == TYPE_NOT_EQUAL
-	&& a->type == type_ptr
-	&& fopt_mode & FOPT_PLAN9_EXTENSIONS)
-	{
-		/* allow b to be an anonymous member of a, if pointers */
-		struct_union_enum_st *a_sue = type_is_s_or_u(a),
-		                     *b_sue = type_is_s_or_u(b);
+		}else if(a->type == type_ptr && cc1_fopt.plan9_extensions){
+			/* allow b to be an anonymous member of a, if pointers */
+			struct_union_enum_st *a_sue = type_is_s_or_u(a->ref),
+			                     *b_sue = type_is_s_or_u(b->ref);
 
-		if(a_sue && b_sue /* already know they aren't equal */){
-			/* b_sue has an a_sue,
-			 * the implicit cast adjusts to return said a_sue */
-			if(struct_union_member_find_sue(b_sue, a_sue))
-				return TYPE_CONVERTIBLE_IMPLICIT;
+			if(a_sue && b_sue /* already know they aren't equal */){
+				/* b_sue has an a_sue,
+				 * the implicit cast adjusts to return said a_sue */
+				if(struct_union_member_find_sue(b_sue, a_sue)){
+					ret = TYPE_CONVERTIBLE_IMPLICIT;
+					skip_pointer_explicit_decay = 1;
+				}
+			}
+		}else if(type_is_ptr(a) && type_is_ptr(b)){ /* allow ptr <-> ptr */
+			ret = TYPE_CONVERTIBLE_EXPLICIT;
 		}
 	}
 
-	/* allow ptr <-> ptr */
-	if(ret == TYPE_NOT_EQUAL && type_is_ptr(a) && type_is_ptr(b))
-		ret = TYPE_CONVERTIBLE_EXPLICIT;
-
 	/* char * and int * are explicitly conv.,
 	 * even though char and int are implicit */
-	if(ret == TYPE_CONVERTIBLE_IMPLICIT && a->type == type_ptr)
+	if(ret == TYPE_CONVERTIBLE_IMPLICIT && a->type == type_ptr && !skip_pointer_explicit_decay)
 		ret = TYPE_CONVERTIBLE_EXPLICIT;
 
 	if(a->type == type_ptr || a->type == type_block){
@@ -223,6 +261,13 @@ static enum type_cmp type_cmp_r(
 		} /* else neither are casts */
 	}
 
+	/* check attributes */
+	if(ret & TYPE_EQUAL_ANY
+	&& type_attribute_missing(orig_a, orig_b))
+	{
+		ret = TYPE_QUAL_POINTED_SUB;
+	}
+
 	if(ret == TYPE_EQUAL){
 		int at = orig_a->type == type_tdef;
 		int bt = orig_b->type == type_tdef;
@@ -258,14 +303,28 @@ enum type_cmp type_cmp(type *a, type *b, enum type_cmp_opts opts)
 	return cmp;
 }
 
+int type_eq_nontdef(type *a, type *b)
+{
+	enum type_cmp cmp = type_cmp(a, b, 0);
+
+	return cmp == TYPE_EQUAL ? 0 : 1;
+}
+
 integral_t type_max(type *r, where *from)
 {
 	unsigned sz = type_size(r, from);
+	unsigned bits = sz * CHAR_BIT;
+	int is_signed = type_is_signed(r);
 
-	return 1ULL << (sz * CHAR_BIT - 1);
+	integral_t max = ~0ULL >> (INTEGRAL_BITS - bits);
+
+	if(is_signed)
+		max = max / 2 - 1;
+
+	return max;
 }
 
-unsigned type_size(type *r, where *from)
+unsigned type_size(type *r, const where *from)
 {
 	switch(r->type){
 		case type_auto:
@@ -319,15 +378,13 @@ unsigned type_size(type *r, where *from)
 	ucc_unreach(0);
 }
 
-unsigned type_align(type *r, where *from)
+static unsigned type_align_with_attr(type *r, const where *from, int with_attributes)
 {
 	struct_union_enum_st *sue;
 	type *test;
 	attribute *align;
 
-	align = type_attr_present(r, attr_aligned);
-
-	if(align){
+	if(with_attributes && (align = type_attr_present(r, attr_aligned))){
 		if(align->bits.align){
 			consty k;
 
@@ -341,9 +398,11 @@ unsigned type_align(type *r, where *from)
 		return platform_align_max();
 	}
 
-	if((sue = type_is_s_or_u(r)))
+	if((sue = type_is_s_or_u(r))){
 		/* safe - can't have an instance without a ->sue */
-		return sue->align;
+		assert(sue->foldprog == SUE_FOLDED_FULLY);
+		return sue_align(sue, from);
+	}
 
 	if(type_is(r, type_ptr)
 	|| type_is(r, type_block))
@@ -355,18 +414,29 @@ unsigned type_align(type *r, where *from)
 		return btype_align(test->bits.type, from);
 
 	if((test = type_is(r, type_array)))
-		return type_align(test->ref, from);
+		return type_align(test->ref, from /* attributes apply from here on */);
 
 	return 1;
+}
+
+unsigned type_align_no_attr(type *r, where const *from)
+{
+	return type_align_with_attr(r, from, 0);
+}
+
+unsigned type_align(type *r, where const *from)
+{
+	return type_align_with_attr(r, from, 1);
 }
 
 where *type_loc(type *t)
 {
 	static where fallback;
+	where *w;
 
-	t = type_skip_non_wheres(t);
-	if(t && t->type == type_where)
-		return &t->bits.where;
+	w = type_has_loc(t);
+	if(w)
+		return w;
 
 	if(!fallback.fname)
 		fallback.fname = "<unknown>";
@@ -374,10 +444,40 @@ where *type_loc(type *t)
 	return &fallback;
 }
 
-int type_has_loc(type *t)
+where *type_has_loc(type *t)
 {
 	t = type_skip_non_wheres(t);
-	return t && t->type == type_where;
+	if(!t)
+		return NULL;
+
+	switch(t->type){
+		case type_ptr:
+			if(t->bits.ptr.decayed_from){
+				where *w = type_has_loc(t->bits.ptr.decayed_from);
+				if(w)
+					return w;
+			}
+			break;
+
+		case type_array:
+			if(t->bits.array.size)
+				return &t->bits.array.size->where;
+			break;
+
+		case type_where:
+			return &t->bits.where;
+
+		case type_btype:
+		case type_tdef:
+		case type_block:
+		case type_func:
+		case type_auto:
+		case type_cast:
+		case type_attr:
+			break;
+	}
+
+	return NULL;
 }
 
 #define BUF_ADD(...) \
@@ -395,7 +495,11 @@ static void type_add_funcargs(
 	BUF_ADD("(");
 	for(i = args->arglist; i && *i; i++){
 		char tmp_buf[DECL_STATIC_BUFSIZ];
-		BUF_ADD("%s%s", comma, decl_to_str_r(tmp_buf, *i));
+		decl *d = *i;
+
+		BUF_ADD("%s%s", comma,
+				decl_store_spel_type_to_str_r(tmp_buf, d->store, NULL, d->ref));
+
 		comma = ", ";
 	}
 	BUF_ADD("%s)", args->variadic ? ", ..." : args->args_void ? "void" : "");
@@ -438,18 +542,27 @@ static void type_add_str_pre(
 			break;
 
 		case type_cast:
-			if(r->bits.cast.is_signed_cast){
-				ADD_SPC();
-				BUF_ADD(r->bits.cast.signed_true ? "signed" : "unsigned");
-			}else{
-				q = r->bits.cast.qual;
-			}
+			q = r->bits.cast.qual;
 			break;
 
 		case type_block:
 			ADD_SPC();
 			BUF_ADD("^");
 			break;
+
+		case type_attr:
+		{
+			attribute **i;
+			for(i = r->bits.attr; i && *i; i++){
+				if(attribute_is_typrop(*i)){
+					ADD_SPC();
+					BUF_ADD("__attribute__((%s))", attribute_to_str(*i));
+					*need_spc = 1;
+					/* space after pseudo-qualifier */
+				}
+			}
+			break;
+		}
 
 		default:break;
 	}
@@ -468,12 +581,13 @@ static void type_add_str_pre(
 }
 
 static void type_add_str(
-		type *r, char *spel,
+		type *r, const char *spel,
 		int *need_spc,
 		char **bufp, int *sz,
 		type *stop_at)
 {
 	int need_paren;
+	type *array_qual = NULL, *next_ty;
 
 	if(!r){
 		/* reached the bottom/end - spel */
@@ -492,7 +606,13 @@ static void type_add_str(
 
 	type_add_str_pre(r, &need_paren, need_spc, bufp, sz);
 
-	type_add_str(r->tmp, spel, need_spc, bufp, sz, stop_at);
+	next_ty = r->tmp;
+	if(r->type == type_array && r->tmp && r->tmp->type == type_cast){
+		array_qual = r->tmp;
+		next_ty = array_qual->tmp;
+	}
+
+	type_add_str(next_ty, spel, need_spc, bufp, sz, stop_at);
 
 	switch(r->type){
 		case type_auto:
@@ -520,33 +640,40 @@ static void type_add_str(
 				break;
 			/* fall */
 		case type_array:
+		{
+			const char *sz_space = "";
+
 			BUF_ADD("[");
-			if(r->bits.array.size){
-				int spc = 0;
+			if(r->bits.array.vla_kind == VLA_NO && r->bits.array.is_static){
+				BUF_ADD("static");
+				sz_space = " ";
+			}
 
-				if(r->bits.array.is_static){
-					BUF_ADD("static");
-					spc = 1;
-				}
+			if(array_qual){
+				BUF_ADD("%s%s", sz_space,
+						type_qual_to_str(array_qual->bits.cast.qual, 0));
+				sz_space = " ";
+			}
 
-#if 0
-				if(r->bits.array.qual){
-					BUF_ADD(
-							"%s%s",
-							spc ? " " : "",
-							type_qual_to_str(r->bits.array.qual, 0));
-					spc = 1;
-				}
-#endif
-
-				BUF_ADD(
-						"%s%" NUMERIC_FMT_D,
-						spc ? " " : "",
-						const_fold_val_i(r->bits.array.size));
+			switch(r->bits.array.vla_kind){
+				case VLA_NO:
+					if(r->bits.array.size){
+						BUF_ADD(
+								"%s%" NUMERIC_FMT_D,
+								sz_space,
+								const_fold_val_i(r->bits.array.size));
+					}
+					break;
+				case VLA:
+					BUF_ADD("vla");
+					break;
+				case VLA_STAR:
+					BUF_ADD("*");
+					break;
 			}
 			BUF_ADD("]");
-
 			break;
+		}
 	}
 
 	if(need_paren)
@@ -555,22 +682,26 @@ static void type_add_str(
 }
 
 static
-const char *type_to_str_r_spel_aka(
+const char *type_to_str_r_spel_opts(
 		char buf[BTYPE_STATIC_BUFSIZ], type *r,
-		char *spel, const int aka);
+		const char *spel, enum type_str_opts);
 
 static
 type *type_add_type_str(type *r,
 		char **bufp, int *sz,
-		const int aka)
+		enum type_str_opts const opts)
 {
 	/* go down to the first type or typedef, print it and then its descriptions */
 	type *ty;
 
 	**bufp = '\0';
 	for(ty = r;
-			ty && ty->type != type_btype && ty->type != type_tdef;
-			ty = ty->ref);
+			ty && ty->type != type_btype;
+			ty = ty->ref)
+	{
+		if((opts & TY_STR_NO_TDEF) == 0 && ty->type == type_tdef)
+			break;
+	}
 
 	if(!ty)
 		return NULL;
@@ -591,21 +722,21 @@ type *type_add_type_str(type *r,
 			BUF_ADD("typeof(%s%s)",
 					/* e is always expr_sizeof() */
 					is_type ? "" : "expr: ",
-					is_type ? type_to_str_r_spel_aka(buf, e->tree_type, NULL, 0)
-						: e->expr->f_str());
+					is_type ? type_to_str_r_spel_opts(buf, e->tree_type, NULL, TY_STR_NOOPT)
+						: expr_str_friendly(e->expr, 0));
 
 			/* don't show aka for typeof types - it's there already */
 			of = is_type ? NULL : e->tree_type;
 		}
 
-		if(aka && of){
+		if((opts & TY_STR_AKA) && of){
 			/* descend to the type if it's next */
-			type *t_ref = type_is_primitive(of, type_unknown);
+			type *t_ref = type_is(of, type_btype);
 			const btype *t = t_ref ? t_ref->bits.type : NULL;
 
-			BUF_ADD(" (aka '%s')",
+			BUF_ADD(" {aka '%s'}",
 					t ? btype_to_str(t)
-					: type_to_str_r_spel_aka(buf, of, NULL, 0));
+					: type_to_str_r_spel_opts(buf, type_skip_tdefs(of), NULL, TY_STR_NOOPT));
 		}
 
 		return ty;
@@ -629,16 +760,22 @@ static type *type_set_parent(type *r, type *parent)
 }
 
 static
-const char *type_to_str_r_spel_aka(
+const char *type_to_str_r_spel_opts(
 		char buf[TYPE_STATIC_BUFSIZ], type *r,
-		char *spel, const int aka)
+		const char *spel, enum type_str_opts const opts)
 {
 	char *bufp = buf;
 	int spc = 1;
 	type *stop_at;
 	int sz = TYPE_STATIC_BUFSIZ;
+	enum type_str_opts local_opts = opts;
 
-	stop_at = type_add_type_str(r, &bufp, &sz, aka);
+	if(!cc1_fopt.print_typedefs)
+		local_opts |= TY_STR_NO_TDEF;
+	if(!cc1_fopt.print_aka)
+		local_opts &= ~TY_STR_AKA;
+
+	stop_at = type_add_type_str(r, &bufp, &sz, local_opts);
 
 	assert(sz == (TYPE_STATIC_BUFSIZ - (bufp - buf)));
 
@@ -654,9 +791,9 @@ const char *type_to_str_r_spel_aka(
 	return buf;
 }
 
-const char *type_to_str_r_spel(char buf[TYPE_STATIC_BUFSIZ], type *r, char *spel)
+const char *type_to_str_r_spel(char buf[TYPE_STATIC_BUFSIZ], type *r, const char *spel)
 {
-	return type_to_str_r_spel_aka(buf, r, spel, 1);
+	return type_to_str_r_spel_opts(buf, r, spel, TY_STR_AKA);
 }
 
 const char *type_to_str_r(char buf[TYPE_STATIC_BUFSIZ], type *r)
@@ -666,19 +803,11 @@ const char *type_to_str_r(char buf[TYPE_STATIC_BUFSIZ], type *r)
 
 const char *type_to_str_r_show_decayed(char buf[TYPE_STATIC_BUFSIZ], struct type *r)
 {
-	const char *s;
-	enum type_kind restore;
-
 	r = type_skip_all(r);
-	restore = r->type;
-	if(r->type == type_ptr)
-		r->type = type_array;
+	if(r->type == type_ptr && r->bits.ptr.decayed_from)
+		r = r->bits.ptr.decayed_from;
 
-	s = type_to_str_r(buf, r);
-
-	r->type = restore;
-
-	return s;
+	return type_to_str_r(buf, r);
 }
 
 const char *type_to_str(type *r)
@@ -710,7 +839,7 @@ type_str_type(type *r)
 	type *t = type_is_array(r);
 	if(!t)
 		t = type_is_ptr(r);
-	t = type_is_primitive(t, type_unknown);
+	t = type_is(t, type_btype);
 	switch(t ? t->bits.type->primitive : type_unknown){
 		case type_schar:
 		case type_nchar:
@@ -725,25 +854,42 @@ type_str_type(type *r)
 	}
 }
 
-unsigned type_hash(const type *t)
+unsigned sue_hash(const struct_union_enum_st *sue)
 {
-	unsigned hash = t->type << 20 | (unsigned)(unsigned long)t;
+	if(!sue)
+		return 5;
+
+	return sue->primitive ^ dynmap_strhash(sue->spel);
+}
+
+static unsigned type_hash2(
+		const type *t, unsigned nest_hash(const type *))
+{
+	unsigned hash = t->type << 20;
 
 	switch(t->type){
 		case type_auto:
 			ICE("auto type");
 
 		case type_btype:
-			hash |= t->bits.type->primitive;
+			hash ^= (t->bits.type->primitive << 1) ^ sue_hash(t->bits.type->sue);
 			break;
 
 		case type_tdef:
-			hash |= type_hash(t->bits.tdef.type_of->tree_type);
+			hash ^= nest_hash(t->bits.tdef.type_of->tree_type);
+			hash ^= 1 << 3;
 			break;
 
 		case type_ptr:
+			if(t->bits.ptr.decayed_from)
+				hash ^= nest_hash(t->bits.ptr.decayed_from);
+			break;
+
 		case type_array:
-			hash |= type_hash(t->bits.ptr.size->tree_type);
+			if(t->bits.array.size)
+				hash ^= nest_hash(t->bits.array.size->tree_type);
+			hash ^= 1 << t->bits.array.is_static;
+			hash ^= 1 << t->bits.array.vla_kind;
 			break;
 
 		case type_block:
@@ -753,24 +899,66 @@ unsigned type_hash(const type *t)
 
 		case type_func:
 		{
-			decl **i;
+			decl **const args = t->bits.func.args->arglist;
+			size_t i;
 
-			for(i = t->bits.func.args->arglist; i && *i; i++)
-				hash |= type_hash((*i)->ref);
-
+			for(i = 0; args && args[i]; i++)
+				hash ^= nest_hash(args[i]->ref) << (i % 8);
 			break;
 		}
 
 		case type_cast:
-			hash |= t->bits.cast.is_signed_cast
-				| t->bits.cast.signed_true << 2
-				| t->bits.cast.qual << 4;
+			hash ^= t->bits.cast.qual;
 			break;
 
 		case type_attr:
-			hash |= t->bits.attr->type;
+		{
+			attribute **const attr = t->bits.attr;
+			size_t i;
+
+			for(i = 0; attr && attr[i]; i++)
+				hash ^= attr[i]->type << (i % 8);
 			break;
+		}
 	}
 
 	return hash;
+}
+
+unsigned type_hash(const type *t)
+{
+	return type_hash2(t, type_hash);
+}
+
+unsigned type_hash_skip_nontdefs_consts(const type *t)
+{
+	return type_hash2(
+			type_skip_non_tdefs_consts((type *)t),
+			type_hash_skip_nontdefs_consts);
+}
+
+enum type_primitive type_primitive_not_less_than_size(unsigned sz, int is_signed)
+{
+	static const enum type_primitive prims[] = {
+		type_ulong, type_uint, type_ushort, type_uchar
+	};
+
+	unsigned i;
+
+	for(i = 0; i < countof(prims); i++){
+		if(sz >= type_primitive_size(prims[i])){
+			enum type_primitive prim = prims[i];
+
+			if(is_signed){
+				if(TYPE_PRIMITIVE_IS_CHAR(prim))
+					prim = type_schar;
+				else
+					prim = TYPE_PRIMITIVE_TO_SIGNED(prim);
+			}
+
+			return prim;
+		}
+	}
+
+	return type_unknown;
 }

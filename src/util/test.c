@@ -7,6 +7,9 @@
 #include "path.h"
 #include "alloc.h"
 #include "dynmap.h"
+#include "dynarray.h"
+#include "math.h"
+#include "str.h"
 
 #define DIE() ice(__FILE__, __LINE__, __func__, NULL)
 
@@ -33,6 +36,15 @@ void icw(const char *f, int line, const char *fn, const char *fmt, ...)
 	ec = 1;
 }
 
+static void test(int cond, const char *expr)
+{
+	if(!cond){
+		ec = 1;
+		fprintf(stderr, "test failed: %s\n", expr);
+	}
+}
+#define test(exp) test((exp), #exp)
+
 static void test_canon(char *in, char *exp, int ln)
 {
 	char *dup = ustrdup(in);
@@ -47,12 +59,12 @@ static void test_canon(char *in, char *exp, int ln)
 
 static void test_canon_all(void)
 {
-	TEST_CANON(
-				"./hello///there//..//tim/./file.",
+	TEST_CANON( \
+				"./hello///there//..//tim/./file.", \
 				"hello/tim/file.");
 
-	TEST_CANON(
-				"./hello///there//..//tim/./file../.dir/",
+	TEST_CANON( \
+				"./hello///there//..//tim/./file../.dir/", \
 				"hello/tim/file../.dir/");
 
 	TEST_CANON("../", "../");
@@ -64,6 +76,9 @@ static void test_canon_all(void)
 	TEST_CANON("hi/../../", "../");
 
 	TEST_CANON("../../hi/../..//../", "../../../../");
+
+	TEST_CANON("/usr/include/hi", "/usr/include/hi");
+	TEST_CANON("///usr/include/hi", "/usr/include/hi");
 }
 
 static int *new_int(int v)
@@ -75,7 +90,7 @@ static int *new_int(int v)
 
 static void test_dynmap_normal(void)
 {
-	dynmap *map = dynmap_new((dynmap_cmp_f *)strcmp, dynmap_strhash);
+	dynmap *map = dynmap_new(char *, strcmp, dynmap_strhash);
 	int i;
 	char *key;
 	int *removed;
@@ -132,7 +147,7 @@ static void test_dynmap_normal(void)
 	dynmap_free(map);
 }
 
-static unsigned eq_hash(const void *p)
+static unsigned eq_hash(const char *p)
 {
 	(void)p;
 	return 5;
@@ -140,7 +155,7 @@ static unsigned eq_hash(const void *p)
 
 static void test_dynmap_collision(void)
 {
-	dynmap *map = dynmap_new(/*ref*/NULL, eq_hash);
+	dynmap *map = dynmap_new(char *, /*ref*/NULL, eq_hash);
 	int i;
 	char *key;
 
@@ -167,10 +182,173 @@ static void test_dynmap(void)
 	test_dynmap_collision();
 }
 
-int main()
+static void test_dynarray(void)
+{
+	int **ints = NULL;
+
+	dynarray_add(&ints, (int *)3);
+	dynarray_add(&ints, (int *)2);
+	dynarray_add(&ints, (int *)1);
+
+	test(dynarray_count(ints) == 3);
+	test(ints[0] == (int *)3);
+	test(ints[1] == (int *)2);
+	test(ints[2] == (int *)1);
+	test(ints[3] == NULL);
+
+	dynarray_rm(&ints, (int *)2);
+	{
+		test(dynarray_count(ints) == 2);
+		test(ints[0] == (int *)3);
+		test(ints[1] == (int *)1);
+		test(ints[2] == NULL);
+	}
+
+	test(dynarray_pop(int *, &ints) == (int *)1);
+	{
+		test(dynarray_count(ints) == 1);
+		test(ints[0] == (int *)3);
+		test(ints[1] == NULL);
+	}
+
+	dynarray_prepend(&ints, (int *)9);
+	{
+		test(dynarray_count(ints) == 2);
+		test(ints[0] == (int *)9);
+		test(ints[1] == (int *)3);
+		test(ints[2] == NULL);
+	}
+
+	dynarray_rm(&ints, (int *)3);
+	{
+		test(dynarray_count(ints) == 1);
+		test(ints[0] == (int *)9);
+		test(ints[1] == NULL);
+	}
+
+	dynarray_rm(&ints, (int *)9);
+	{
+		test(dynarray_count(ints) == 0);
+		test(ints == NULL);
+	}
+
+	typedef struct A { int i; } A;
+	A **as = NULL, *insert;
+	int i;
+
+	for(i = 0; i < 10; i++){
+		A *a = umalloc(sizeof *a);
+		a->i = i;
+		dynarray_add(&as, a);
+	}
+
+	test(dynarray_count(as) == 10);
+
+	test(as[3]->i == 3);
+	test(as[10] == NULL);
+
+	insert = umalloc(sizeof *insert);
+	insert->i = 53;
+	dynarray_insert(&as, 3, insert);
+
+	test(dynarray_count(as) == 11);
+	test(as[3]->i == 53);
+	test(as[4]->i == 3);
+	test(as[9]->i == 8);
+	test(as[10]->i == 9);
+	test(as[11] == NULL);
+
+	insert = umalloc(sizeof *insert);
+	insert->i = -1;
+	dynarray_insert(&as, 0, insert);
+
+	test(dynarray_count(as) == 12);
+	test(as[0]->i == -1);
+	test(as[1]->i == 0);
+	test(as[2]->i == 1);
+	test(as[4]->i == 53);
+	test(as[5]->i == 3);
+	test(as[10]->i == 8);
+	test(as[11]->i == 9);
+	test(as[12] == NULL);
+
+	dynarray_free(A **, as, free);
+	test(as == NULL);
+}
+
+static void test_math(void)
+{
+	/* 0b1011010 */
+	unsigned x = 0x5a;
+	test(extractbottombit(&x) == 0x2);
+	test(x == 0x58);
+
+	test(log2i(extractbottombit(&x)) == 3);
+	test(x == 0x50);
+}
+
+static void test_str(void)
+{
+	{
+		const char *words[] = {
+			"hello", "there",
+		};
+		char buf[] = "hello,there";
+		char *tok, *state;
+		int i = 0;
+
+		for(tok = str_split(buf, ',', &state);
+				tok;
+				tok = str_split(NULL, ',', &state), i++
+			 ){
+			test(!strcmp(tok, words[i]));
+		}
+		test(i == 2);
+	}
+
+	{
+		const char *words[] = {
+			"hello", "there", "!", "", NULL,
+		};
+		char buf[] = "hello there ! ";
+		char *tok, *state;
+		int i = 0;
+
+		for(tok = str_split(buf, ' ', &state);
+				tok;
+				tok = str_split(NULL, ' ', &state), i++
+			 ){
+			test(!strcmp(tok, words[i]));
+		}
+		test(i == 3);
+	}
+
+	{
+		char *tok, *state;
+		char empty[] = "";
+		tok = str_split(empty, ',', &state);
+		test(!tok);
+		tok = str_split(NULL, ',', &state); /* again, shouldn't error */
+		test(!tok);
+	}
+
+	{
+		char *tok, *state;
+		char no_sep[] = "hello";
+		tok = str_split(no_sep, ',', &state);
+		test(!strcmp(tok, "hello"));
+		tok = str_split(NULL, ',', &state);
+		test(!tok);
+	}
+}
+
+int main(void)
 {
 	test_dynmap();
+	test_dynarray();
 	test_canon_all();
+	test_math();
+	test_str();
 
 	return ec;
 }

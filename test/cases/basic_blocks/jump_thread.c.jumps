@@ -1,0 +1,40 @@
+gotos:
+	jmp Lblk.5
+Lblk.5:
+Lblk.6:
+Lblk.4:
+	jmp Lblk.5
+
+infinite_loop_simple:
+Lblk.11:
+	jmp Lblk.11
+
+infinite_loop_complex:
+	jmp Lblk.18
+Lblk.18:
+Lblk.17:
+Lblk.16:
+	jmp Lblk.18
+
+infinite_loop_complex_straightline:
+	jmp Lblk.23
+Lblk.24:
+Lblk.25:
+Lblk.26:
+Lblk.27:
+Lblk.23:
+	jmp Lblk.24
+
+infinite_loop_with_code:
+Lblk.28:
+Lblk.29:
+Lblk.30:
+Lblk.32:
+	jmp Lblk.35
+Lblk.33:
+Lblk.34:
+	jmp Lblk.37
+Lblk.37:
+Lblk.36:
+Lblk.35:
+	jmp Lblk.37

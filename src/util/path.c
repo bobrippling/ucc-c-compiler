@@ -36,6 +36,7 @@ char *canonicalise_path(char *path)
 	char *p, *last = path, *dest;
 	char **i;
 	int trailing_slash = 0;
+	const int begin_slash = *path == '/';
 
 	for(p = path; *p; p++){
 		if(*p == '/'){
@@ -51,6 +52,8 @@ char *canonicalise_path(char *path)
 		trailing_slash = 1;
 
 	dest = path;
+	if(begin_slash)
+		*dest++ = '/';
 	for(i = ents; i && *i; i++){
 		/* don't use sprintf,
 		 * we want to avoid the \0
@@ -64,7 +67,7 @@ char *canonicalise_path(char *path)
 
 	dest[trailing_slash ? 0 : -1] = '\0';
 
-	dynarray_free(char **, &ents, NULL);
+	dynarray_free(char **, ents, NULL);
 
 	return path;
 }

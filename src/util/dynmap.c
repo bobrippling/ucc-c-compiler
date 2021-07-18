@@ -28,9 +28,8 @@ struct dynmap
 	} pairs[HASH_TBL_CNT];
 };
 
-unsigned dynmap_strhash(const void *v)
+unsigned dynmap_strhash(const char *s)
 {
-	const char *s = v;
 	unsigned hash = 5381;
 
 	for(; *s; s++)
@@ -40,7 +39,7 @@ unsigned dynmap_strhash(const void *v)
 }
 
 dynmap *
-dynmap_new(dynmap_cmp_f cmp, dynmap_hash_f hash)
+dynmap_nochk_new(dynmap_cmp_f cmp, dynmap_hash_f hash)
 {
 	dynmap *m = umalloc(sizeof *m);
 	m->cmp = cmp;
