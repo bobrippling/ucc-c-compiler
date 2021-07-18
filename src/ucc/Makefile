@@ -26,7 +26,7 @@ check: test
 
 clean:
 	@echo clean ucc
-	$Qrm -f ${OBJ_UCC} ucc
+	$Qrm -f ${OBJ_UCC} ${OBJ_TEST} ucc
 
 .PHONY: clean all
 include ../Makefile.common
