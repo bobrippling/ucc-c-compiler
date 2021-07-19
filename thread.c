@@ -27,3 +27,7 @@ int *addr() {
 void set(int x) {
 	tls1 = x;
 }
+
+// todo:
+// - debugging
+// - lib/errno update - make thread_local
