@@ -1,5 +1,7 @@
-// RUN: %check --only -e %s
+// RUN: %check --only -e %s -DERRORS
+// RUN: %ucc -target x86_64-linux -S -o- %s -fshort-enums | %stdoutcheck %s
 
+#ifdef ERRORS
 void f(int, ...);
 
 void g(void);
@@ -12,3 +14,37 @@ int main()
 
 	f(1, g()); // CHECK: error: argument 2 to f requires non-void expression
 }
+
+#else
+
+enum E {
+	A, B, C = 256,
+};
+
+enum E second(enum E *p) {
+	// STDOUT: second:
+	// STDOUT: movw 4(
+	// STDOUT: movzwl
+	return p[2];
+}
+
+void promote(int);
+
+int main() {
+	// STDOUT: main:
+
+	enum E e = C;
+	// STDOUT: movl $256,
+	// STDOUT: movzwl
+	// STDOUT: /call.*promote/
+	promote(e); // -fshort-enums, we should promote here
+
+	enum E es[] = {
+		A, B, C,
+	};
+	// STDOUT: movl $256,
+
+	// STDOUT: /call.*second/
+	return second(es) == B ? 0 : 1;
+}
+#endif
