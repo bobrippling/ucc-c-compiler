@@ -34,7 +34,7 @@ int main() {
 	// STDOUT: main:
 
 	enum E e = C;
-	// STDOUT: movl $256,
+	// STDOUT: movw $256,
 	// STDOUT: movzwl
 	// STDOUT: /call.*promote/
 	promote(e); // -fshort-enums, we should promote here
@@ -42,7 +42,7 @@ int main() {
 	enum E es[] = {
 		A, B, C,
 	};
-	// STDOUT: movl $256,
+	// STDOUT: movw $256,
 
 	// STDOUT: /call.*second/
 	return second(es) == B ? 0 : 1;
