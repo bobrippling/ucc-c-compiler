@@ -1,0 +1,1 @@
+test/cases/variadic/stret.c

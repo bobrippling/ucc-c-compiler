@@ -1,0 +1,1 @@
+test/bugs/parsing/enum_shift.c
