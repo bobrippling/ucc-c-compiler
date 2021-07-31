@@ -4,6 +4,7 @@
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
+#include "../../util/str.h"
 
 #include "../type.h"
 #include "../type_nav.h"
@@ -57,6 +58,40 @@ static const char *arm_reg_to_str(int i)
 			"reg idx oob %d", i);
 
 	return rnames[i];
+}
+
+const char *impl_val_str_r(char buf[VAL_STR_SZ], const out_val *vs, int deref)
+{
+	/* just for debugging */
+	UNUSED_ARG(deref);
+
+	switch(vs->type){
+		case V_CONST_I:
+			xsnprintf(buf, VAL_STR_SZ, "#%" NUMERIC_FMT_D, vs->bits.val_i);
+			break;
+		case V_CONST_F:
+			xsnprintf(buf, VAL_STR_SZ, "#%" NUMERIC_FMT_LD, vs->bits.val_f);
+			break;
+		case V_REG:
+		case V_REGOFF:
+		case V_SPILT:
+			if(vs->bits.regoff.offset)
+				xsnprintf(buf, VAL_STR_SZ, "%s+%ld", arm_reg_to_str(vs->bits.regoff.reg.idx), vs->bits.regoff.offset);
+			else
+				xsnprintf(buf, VAL_STR_SZ, "%s", arm_reg_to_str(vs->bits.regoff.reg.idx));
+			break;
+		case V_LBL:
+			if(vs->bits.lbl.offset)
+				xsnprintf(buf, VAL_STR_SZ, "%s+%ld", vs->bits.lbl.str, vs->bits.lbl.offset);
+			else
+				xsnprintf(buf, VAL_STR_SZ, "%s", vs->bits.lbl.str);
+			break;
+		case V_FLAG:
+			xsnprintf(buf, VAL_STR_SZ, "%s", flag_cmp_to_str(vs->bits.flag.cmp));
+			break;
+	}
+
+	return buf;
 }
 
 int impl_reg_frame_const(const struct vreg *r, int sp)

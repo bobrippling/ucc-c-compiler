@@ -38,4 +38,6 @@
 #define REG_RET_F 0 /*TODO*/
 #define REG_RET_I ARM_REG_R0
 
+#define VAL_STR_SZ 128
+
 #endif
