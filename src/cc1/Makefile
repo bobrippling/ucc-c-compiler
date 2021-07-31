@@ -82,6 +82,7 @@ cc1.o : \
 
 # extra deps
 out/impl.h: out/x86_64.h out/mipsel_32.h out/arm.h
+${BACKEND_TARGETTED:.c=.o}: out/${ARCH}.h
 
 SRC = cc1.c test.c ${OBJ_REST:.o=.c} # not util - we don't want dependencies for util/
 include ../Makefile.common
