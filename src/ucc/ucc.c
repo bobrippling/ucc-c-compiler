@@ -1128,7 +1128,7 @@ static const char *get_multilib_prefix(const struct triple *triple)
 	static char buf[32];
 
 	switch(triple->arch){
-		case ARCH_armv7l:
+		case ARCH_arm:
 			xsnprintf(
 					buf, sizeof(buf), "arm-%s-%s",
 					triple_sys_to_str(triple->sys),
@@ -1202,7 +1202,7 @@ static void state_from_triple(
 								case ARCH_x86_64:
 									dyld = ustrdup("/lib64/ld-linux-x86-64.so.2");
 									break;
-								case ARCH_armv7l:
+								case ARCH_arm:
 									dyld = ustrdup("/lib/ld-linux-armhf.so.3");
 									break;
 							}
@@ -1213,7 +1213,7 @@ static void state_from_triple(
 									dyld = ustrdup("/lib/ld-musl-x86_64.so.1");
 									break;
 								case ARCH_i386:
-								case ARCH_armv7l:
+								case ARCH_arm:
 									ICE("TODO: dyld for musl on this arch");
 									break;
 							}

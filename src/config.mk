@@ -3,4 +3,4 @@
 
 CFLAGS += -std=c99
 
-ARCH = x86_64
+ARCH = arm

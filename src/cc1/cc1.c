@@ -25,7 +25,7 @@
 #include "tokenise.h"
 #include "cc1.h"
 #include "fold.h"
-#include "out/asm.h" /* NUM_SECTIONS */
+#include "out/asm.h" /* NUM_SECTIONS, comment char */
 #include "out/dbg.h" /* dbg_out_filelist() */
 #include "gen_asm.h"
 #include "gen_dump.h"
@@ -33,7 +33,6 @@
 #include "sym.h"
 #include "fold_sym.h"
 #include "ops/__builtin.h"
-#include "out/asm.h" /* NUM_SECTIONS */
 #include "pass1.h"
 #include "type_nav.h"
 #include "cc1_where.h"
@@ -583,13 +582,9 @@ static int init_target(const char *target)
 		}
 	}
 
-	switch(triple.arch){
-		case ARCH_x86_64:
-		case ARCH_i386:
-			break;
-		default:
-			fprintf(stderr, "Only x86_64 architecture is compiled in\n");
-			return 0;
+	if(triple.arch != JOIN(ARCH_, ARCH)){
+		fprintf(stderr, "Only " QUOTE(ARCH) " architecture is compiled in\n");
+		return 0;
 	}
 
 	platform_init(triple.arch, triple.sys);

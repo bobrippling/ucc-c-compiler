@@ -22,7 +22,7 @@
 #include "write.h"
 #include "out.h"
 
-#include "armv7.h"
+#include "arm.h"
 
 #define UNUSED_ARG(a) (void)a
 

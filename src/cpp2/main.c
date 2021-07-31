@@ -308,7 +308,7 @@ static void add_platform_dependant_macros(void)
 			break;
 			*/
 
-		case ARCH_armv7l:
+		case ARCH_arm:
 			macro_add("__arm__", "1", 0);
 			break;
 	}

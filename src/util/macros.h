@@ -11,6 +11,9 @@
 #define QUOTE_(x) #x
 #define QUOTE(x) QUOTE_(x)
 
+#define JOIN_(a, b) a ## b
+#define JOIN(a, b) JOIN_(a, b)
+
 #ifdef NDEBUG
 #  define UCC_DEBUG_BUILD 0
 #else

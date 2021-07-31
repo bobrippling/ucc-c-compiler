@@ -40,7 +40,7 @@ OBJ_REST = \
 BACKEND_TARGETTED = \
 		out/alloca.c out/ctrl.c out/func.c out/impl.c out/new.c out/op.c out/out.c \
 		out/val.c out/virt.c out/vm.c out/dbg.c out/stack_protector.c \
-		out/mipsel_32.c out/x86_64.c out/armv7.c
+		out/mipsel_32.c out/x86_64.c out/arm.c
 
 OBJ_TEST = test.o ${OBJ_REST} ${OBJ_UTIL}
 OBJ_CC1 = cc1.o ${OBJ_REST} ${OBJ_UTIL}
@@ -78,7 +78,7 @@ ${BACKEND_TARGETTED:.c=.d} : \
 	CPPFLAGS += -DCC1_IMPL_FNAME=\"${ARCH}.h\"
 
 # extra deps
-out/impl.h: out/x86_64.h out/mipsel_32.h out/armv7.h
+out/impl.h: out/x86_64.h out/mipsel_32.h out/arm.h
 
 SRC = cc1.c test.c ${OBJ_REST:.o=.c} # not util - we don't want dependencies for util/
 include ../Makefile.common
