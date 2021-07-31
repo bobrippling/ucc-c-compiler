@@ -122,9 +122,11 @@ static const char *arch_to_str(enum arch a)
 {
 	switch(a){
 #define X(pre, name) case pre ## _ ## name: return #name;
+#define X_ncmp(pre, post, n) X(pre, post)
 #define ALIAS(...)
 		TARGET_ARCHES
 #undef ALIAS
+#undef X_ncmp
 #undef X
 	}
 	return NULL;
@@ -184,7 +186,9 @@ static void filter_unam(struct utsname *unam)
 #define ALIAS(pre, from, to) \
 	if(!strcmp(unam->machine, #from)) \
 		strcpy(unam->machine, #to);
+#define X_ncmp(pre, post, n)
 	TARGET_ARCHES
+#undef X_ncmp
 #undef ALIAS
 #undef X
 

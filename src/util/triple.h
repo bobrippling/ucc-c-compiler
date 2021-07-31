@@ -33,7 +33,7 @@ Examples:
 	X(ARCH, i386)   \
 	ALIAS(ARCH, amd64, x86_64) \
 	ALIAS(ARCH, i686, i386) \
-	X(ARCH, arm)
+	X_ncmp(ARCH, arm, 3)
 
 #define TARGET_VENDORS \
 	X(VENDOR, pc) \
