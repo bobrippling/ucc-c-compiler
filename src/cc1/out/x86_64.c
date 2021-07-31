@@ -516,9 +516,9 @@ int impl_reg_to_idx(const struct vreg *r)
 	return r->idx + (r->is_float ? N_SCRATCH_REGS_I : 0);
 }
 
-void impl_scratch_to_reg(int scratch, struct vreg *r)
+void impl_idx_to_reg(int i, struct vreg *r)
 {
-	r->idx = scratch - (r->is_float ? N_SCRATCH_REGS_I : 0);
+	r->idx = i - (r->is_float ? N_SCRATCH_REGS_I : 0);
 }
 
 static const struct calling_conv_desc *x86_conv_lookup(type *fr)

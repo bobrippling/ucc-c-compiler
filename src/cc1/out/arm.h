@@ -1,7 +1,9 @@
 #ifndef ARMV7_H
 #define ARMV7_H
 
-/* r0-r3 are the argument and scratch registers; r0-r1 are also the result
+/*
+ * eabi:
+ * r0-r3 are the argument and scratch registers; r0-r1 are also the result
  * registers
  *
  * r4-r8 are callee-save registers
@@ -29,11 +31,11 @@
 #define ARM_REG_R14 14 /* lr */
 #define ARM_REG_R15 15 /* pc */
 
-#define N_SCRATCH_REGS_I 5 /* 0-3, 12 */
+#define N_SCRATCH_REGS_I 10 /* 0-3, 4-8, 12 */
 #define N_SCRATCH_REGS_F 0 /*TODO*/
 
 #define REG_SP ARM_REG_R13
-#define REG_BP ARM_REG_R15
+#define REG_BP ARM_REG_R11
 
 #define REG_RET_F 0 /*TODO*/
 #define REG_RET_I ARM_REG_R0

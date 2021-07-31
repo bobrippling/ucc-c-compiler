@@ -298,10 +298,16 @@ void impl_func_prologue_save_call_regs(
 
 const struct vreg *impl_callee_save_regs(type *fnty, unsigned *pn)
 {
+	static const struct vreg saves[] = {
+		{ ARM_REG_R4, 0 },
+		{ ARM_REG_R5, 0 },
+		{ ARM_REG_R6, 0 },
+		{ ARM_REG_R7, 0 },
+		{ ARM_REG_R8, 0 },
+	};
 	UNUSED_ARG(fnty);
-	ICW("TODO");
-	*pn = 0;
-	return NULL;
+	*pn = countof(saves);
+	return saves;
 }
 
 void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
@@ -530,27 +536,29 @@ void impl_reg_cp_no_off(
 int impl_reg_is_scratch(type *fnty, const struct vreg *reg)
 {
 	UNUSED_ARG(fnty);
+	UCC_ASSERT(!reg->is_float, "TODO");
 	return (/*ARM_REG_R0 <= reg->idx &&*/ reg->idx < ARM_REG_R3)
 		|| ARM_REG_R12 == reg->idx;
 }
 
-int impl_reg_to_idx(const struct vreg *reg)
+ucc_static_assert(maths, ARM_REG_R0 == 0);
+int impl_reg_to_scratch(const struct vreg *reg)
 {
-	if(/*ARM_REG_R0 <= reg->idx &&*/ reg->idx < ARM_REG_R3)
+	if(/*ARM_REG_R0 <= reg->idx &&*/ reg->idx <= ARM_REG_R8)
 		return reg->idx;
 
 	UCC_ASSERT(reg->idx == ARM_REG_R12, "bad scratch reg");
-	return ARM_REG_R3 + 1;
+	return ARM_REG_R8 + 1;
 }
 
-void impl_scratch_to_reg(int scratch, struct vreg *reg)
+void impl_scratch_to_reg(int idx, struct vreg *reg)
 {
-	if(scratch == ARM_REG_R3 + 1)
+	if(idx == ARM_REG_R8 + 1)
 		reg->idx = ARM_REG_R12;
-	else if(scratch > ARM_REG_R3 + 1)
-		ICE("bad arm scratch reg %d", scratch);
+	else if(idx > ARM_REG_R8)
+		ICE("bad arm idx reg %d", idx);
 	else
-		reg->idx = scratch;
+		reg->idx = idx;
 }
 
 void impl_set_nan(out_ctx *octx, out_val *val)

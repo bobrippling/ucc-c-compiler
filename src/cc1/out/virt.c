@@ -310,7 +310,7 @@ static int v_unused_reg2(
 		{
 			if(!first)
 				first = this;
-			used[impl_reg_to_idx(&this->bits.regoff.reg)] = 1;
+			used[impl_reg_to_scratch(&this->bits.regoff.reg)] = 1;
 		}
 	}
 
@@ -529,12 +529,12 @@ void v_save_regs(
 
 void v_reserve_reg(out_ctx *octx, const struct vreg *r)
 {
-	octx->reserved_regs[impl_reg_to_idx(r)]++;
+	octx->reserved_regs[impl_reg_to_scratch(r)]++;
 }
 
 void v_unreserve_reg(out_ctx *octx, const struct vreg *r)
 {
-	octx->reserved_regs[impl_reg_to_idx(r)]--;
+	octx->reserved_regs[impl_reg_to_scratch(r)]--;
 }
 
 #define CASE_SWAP(from, to) \
