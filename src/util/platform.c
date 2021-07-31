@@ -16,7 +16,7 @@ unsigned platform_word_size(void)
 	switch(arch){
 		case ARCH_i386: return 4;
 		case ARCH_x86_64: return 8;
-		case ARCH_arm: return 8;
+		case ARCH_arm: return 4;
 	}
 	abort();
 }
