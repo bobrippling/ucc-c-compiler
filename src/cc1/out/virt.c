@@ -63,10 +63,21 @@ void out_flush_volatile(out_ctx *octx, const out_val *val)
 
 	if(got_reg){
 		assert(result->type == V_REG);
-		impl_reg_cp_no_off(octx, result, &reg);
+		v_reg_cp_no_off(octx, result, &reg);
 	}
 
 	out_val_consume(octx, result);
+}
+
+void v_reg_cp_no_off(
+		out_ctx *octx, const out_val *from, const struct vreg *to_reg)
+{
+	assert(from->type == V_REG && "reg_cp on non register type");
+
+	if(!from->bits.regoff.offset && vreg_eq(&from->bits.regoff.reg, to_reg))
+		return;
+
+	impl_reg_cp_no_off(octx, from, to_reg);
 }
 
 int v_is_const_reg(const out_val *v)
@@ -195,7 +206,7 @@ static ucc_wur const out_val *v_save_reg(
 				&cs_reg, NULL, impl_reg_is_callee_save);
 
 		if(got_reg){
-			impl_reg_cp_no_off(octx, vp, &cs_reg);
+			v_reg_cp_no_off(octx, vp, &cs_reg);
 			memcpy_safe(&((out_val *)vp)->bits.regoff.reg, &cs_reg);
 
 			mark_callee_save_reg_as_used(octx, &cs_reg);
@@ -244,7 +255,7 @@ static ucc_wur const out_val *v_freeup_regp(out_ctx *octx, const out_val *vp)
 
 	if(got_reg){
 		/* move 'vp' into the fresh reg */
-		impl_reg_cp_no_off(octx, vp, &r);
+		v_reg_cp_no_off(octx, vp, &r);
 
 		/* change vp's register to 'r', so that vp's original register is free */
 		REMOVE_CONST(out_val *, vp)->bits.regoff.reg = r;

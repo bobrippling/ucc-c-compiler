@@ -33,6 +33,9 @@ const out_val *v_to_reg_out(out_ctx *octx, const out_val *conv, struct vreg *out
 const out_val *v_to_reg(out_ctx *octx, const out_val *conv) ucc_wur;
 const out_val *v_reg_apply_offset(out_ctx *octx, const out_val *vreg) ucc_wur;
 
+void v_reg_cp_no_off(
+		out_ctx *octx, const out_val *from, const struct vreg *to_reg);
+
 /* this functions allows us to either perform the opposite of a dereferencing
  * (see v_reg_to_stack_mem()), or store a value, but record it as spilt */
 const out_val *v_to_stack_mem(

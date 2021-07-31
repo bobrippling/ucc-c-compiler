@@ -1168,7 +1168,7 @@ const out_val *impl_load(
 		case V_REG:
 			if(from->bits.regoff.offset == 0){
 				/* optimisation: */
-				impl_reg_cp_no_off(octx, from, reg);
+				v_reg_cp_no_off(octx, from, reg);
 				break;
 			}
 			goto lea;
@@ -1302,34 +1302,14 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 			impl_val_str(to, 1));
 }
 
-static void x86_reg_cp(
-		out_ctx *octx,
-		const struct vreg *to,
-		const struct vreg *from,
-		type *typ)
+void impl_reg_cp_no_off(
+		out_ctx *octx, const out_val *from, const struct vreg *to_reg)
 {
-	assert(!impl_reg_frame_const(to, /*disallow sp: alloca_pop needs this*/0));
-
-	if(vreg_eq(to, from))
-		return;
-
+	/* offset normalisation isn't handled here - caller's responsibility */
 	out_asm(octx, "mov%s %%%s, %%%s" MOV_DEBUG(D),
 			x86_suffix(typ),
 			x86_reg_str(from, typ),
 			x86_reg_str(to, typ));
-}
-
-void impl_reg_cp_no_off(
-		out_ctx *octx, const out_val *from, const struct vreg *to_reg)
-{
-	UCC_ASSERT(from->type == V_REG,
-			"reg_cp on non register type 0x%x", from->type);
-
-	if(!from->bits.regoff.offset && vreg_eq(&from->bits.regoff.reg, to_reg))
-		return;
-
-	/* offset normalisation isn't handled here - caller's responsibility */
-	x86_reg_cp(octx, to_reg, &from->bits.regoff.reg, from->t);
 }
 
 static const out_val *x86_idiv(
@@ -1740,7 +1720,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			v_unused_reg(octx, 1, 0, &new_reg, l);
 			l = v_new_reg(octx, l, l->t, &new_reg);
 
-			x86_reg_cp(octx, &new_reg, &old_reg, l->t);
+			v_reg_cp_no_off(octx, &new_reg, &old_reg, l->t);
 		}
 
 		/* ensure types match - may have upgraded from V_FLAG / _Bool */
@@ -2206,7 +2186,7 @@ static char *x86_call_jmp_target(
 				struct vreg r;
 
 				v_unused_reg(octx, 1, 0, &r, /*don't want rax:*/NULL);
-				impl_reg_cp_no_off(octx, *pvp, &r);
+				v_reg_cp_no_off(octx, *pvp, &r);
 
 				assert((*pvp)->retains == 1);
 				memcpy_safe(&((out_val *)*pvp)->bits.regoff.reg, &r);

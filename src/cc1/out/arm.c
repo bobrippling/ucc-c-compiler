@@ -542,19 +542,13 @@ void impl_to_retreg(out_ctx *octx, const out_val *val, type *retty)
 	UCC_ASSERT(!type_is_floating(retty), "TODO: float return");
 
 	val = v_to_reg(octx, val);
-	impl_reg_cp_no_off(octx, val, &reg);
+	v_reg_cp_no_off(octx, val, &reg);
 	out_val_consume(octx, val);
 }
 
 void impl_reg_cp_no_off(
 		out_ctx *octx, const out_val *from, const struct vreg *to_reg)
 {
-	UCC_ASSERT(from->type == V_REG, "reg cp non reg?");
-
-	/* FIXME: share with x86 */
-	if(vreg_eq(to_reg, &from->bits.regoff.reg))
-		return;
-
 	out_asm(octx, "mov %s, %s",
 			arm_reg_to_str(to_reg->idx),
 			arm_reg_to_str(from->bits.regoff.reg.idx));

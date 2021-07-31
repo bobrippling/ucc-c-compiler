@@ -172,7 +172,7 @@ copy:
 						NULL);
 
 			/* dup */
-			impl_reg_cp_no_off(octx, from, &r);
+			v_reg_cp_no_off(octx, from, &r);
 
 			new = v_new(octx, ty);
 			new->type = from->type;
