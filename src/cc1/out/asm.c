@@ -98,7 +98,7 @@ static void switch_section_emit(const struct section *section)
 			const int is_code = section->flags & SECTION_FLAG_EXECUTABLE;
 			const int is_rw = !(section->flags & SECTION_FLAG_RO);
 
-			xfprintf(cc1_output.file, ",\"a%s\",@progbits", is_code ? "x" : is_rw ? "w" : "");
+			xfprintf(cc1_output.file, ",\"a%s\",%cprogbits", is_code ? "x" : is_rw ? "w" : "", asm_separator_char());
 		}
 	}
 	xfprintf(cc1_output.file, "\n");
