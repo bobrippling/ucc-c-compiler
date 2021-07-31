@@ -551,6 +551,10 @@ void impl_reg_cp_no_off(
 {
 	UCC_ASSERT(from->type == V_REG, "reg cp non reg?");
 
+	/* FIXME: share with x86 */
+	if(vreg_eq(to_reg, &from->bits.regoff.reg))
+		return;
+
 	out_asm(octx, "mov %s, %s",
 			arm_reg_to_str(to_reg->idx),
 			arm_reg_to_str(from->bits.regoff.reg.idx));

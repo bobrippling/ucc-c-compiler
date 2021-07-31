@@ -37,7 +37,36 @@ unsigned char *v_alloc_reg_reserve(out_ctx *octx, int *p)
 
 void out_flush_volatile(out_ctx *octx, const out_val *val)
 {
-	out_val_consume(octx, v_reg_apply_offset(octx, v_to_reg(octx, val)));
+	/* if it's in a register already, ensure we keep the result in that register
+	 * (e.g. stack pointer, argument register, return register, machine regs (idiv), etc */
+	struct vreg reg;
+	int got_reg = 0;
+	const out_val *result;
+
+	switch(val->type){
+		case V_SPILT:
+		case V_FLAG:
+		case V_CONST_I:
+		case V_CONST_F:
+		case V_LBL:
+			break;
+
+		case V_REG:
+		case V_REGOFF:
+			/* make sure we get this before we start any v_to_reg() shenanigans */
+			memcpy_safe(&reg, &val->bits.regoff.reg);
+			got_reg = 1;
+			break;
+	}
+
+	result = v_reg_apply_offset(octx, v_to_reg(octx, val));
+
+	if(got_reg){
+		assert(result->type == V_REG);
+		impl_reg_cp_no_off(octx, result, &reg);
+	}
+
+	out_val_consume(octx, result);
 }
 
 int v_is_const_reg(const out_val *v)
