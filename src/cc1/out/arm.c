@@ -5,6 +5,7 @@
 #include "../../util/dynarray.h"
 #include "../../util/platform.h"
 #include "../../util/str.h"
+#include "../../util/macros.h"
 
 #include "../type.h"
 #include "../type_nav.h"
@@ -215,6 +216,26 @@ const out_val *impl_cast_load(
 	return vp;
 }
 
+static void arm_ldr_str(
+	out_ctx *octx,
+	const char *isn,
+	int reg,
+	const struct vreg_off *regoff)
+{
+	if(regoff->offset){
+		out_asm(octx, "%s %s, [%s, #%ld]",
+				isn,
+				arm_reg_to_str(reg),
+				arm_reg_to_str(regoff->reg.idx),
+				regoff->offset);
+	}else{
+		out_asm(octx, "%s %s, [%s]",
+				isn,
+				arm_reg_to_str(reg),
+				arm_reg_to_str(regoff->reg.idx));
+	}
+}
+
 ucc_wur const out_val *impl_deref(
 		out_ctx *octx, const out_val *vp,
 		const struct vreg *reg,
@@ -225,12 +246,15 @@ ucc_wur const out_val *impl_deref(
 		? vp->t
 		: type_dereference_decay(vp->t);
 
-	UNUSED_ARG(done_out_deref);
-
 	vp = v_to_reg(octx, vp);
-	out_asm(octx, "mov %s, [%s]",
-			arm_reg_to_str(reg->idx),
-			arm_reg_to_str(vp->bits.regoff.reg.idx));
+	arm_ldr_str(
+			octx,
+			"ldr",
+			reg->idx,
+			&vp->bits.regoff);
+
+	if(done_out_deref)
+		*done_out_deref = 0;
 
 	return v_new_reg(octx, vp, tpointed_to, reg);
 }
@@ -341,9 +365,11 @@ const out_val *impl_load(
 			break;
 
 		case V_SPILT:
-			out_asm(octx, "mov %s, [%s]",
-					arm_reg_to_str(reg->idx),
-					arm_reg_to_str(reg->idx));
+			arm_ldr_str(
+					octx,
+					"ldr",
+					reg->idx,
+					&from->bits.regoff);
 			break;
 		case V_REGOFF:
 			ICE("TODO: V_REGOFF");
@@ -372,37 +398,34 @@ const out_val *impl_load(
 	return v_new_reg(octx, from, from->t, reg);
 }
 
-void impl_store(out_ctx *octx, const out_val *from, const out_val *to)
+void impl_store(out_ctx *octx, const out_val *dest, const out_val *val)
 {
 	const struct vreg *reg;
 
-	from = v_to(octx, from, TO_REG);
-	reg = &from->bits.regoff.reg;
+	val = v_to(octx, val, TO_REG);
+	reg = &val->bits.regoff.reg;
 
-	switch(to->type){
+	switch(dest->type){
 		case V_CONST_I:
-			out_asm(octx, "str %s, #%d",
+			ICE("store to int - needs moving to reg");
+			out_asm(octx, "mov r0, #0 ; str %s, [r0, #%d] @ ... for e.g.",
 					arm_reg_to_str(reg->idx),
-					(int)to->bits.val_i);
+					(int)val->bits.val_i);
 			break;
 
 		case V_SPILT:
-			out_asm(octx, "str %s, [%s]",
-					arm_reg_to_str(reg->idx),
-					arm_reg_to_str(to->bits.regoff.reg.idx));
+			arm_ldr_str(octx, "str", reg->idx, &dest->bits.regoff);
 			break;
 		case V_REGOFF:
 			ICE("TODO: V_REGOFF");
 		case V_REG:
-			out_asm(octx, "str %s, %s",
-					arm_reg_to_str(reg->idx),
-					arm_reg_to_str(to->bits.regoff.reg.idx));
+			arm_ldr_str(octx, "str", reg->idx, &dest->bits.regoff);
 			break;
 
 		case V_LBL:
 			out_asm(octx, "str %s, =%s",
 					arm_reg_to_str(reg->idx),
-					to->bits.lbl.str);
+					dest->bits.lbl.str);
 			break;
 
 		case V_CONST_F:
