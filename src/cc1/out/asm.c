@@ -151,6 +151,18 @@ int asm_type_size(type *r)
 	return asm_type_table[asm_table_lookup(r)].sz;
 }
 
+char asm_separator_char(void)
+{
+	switch(platform_type()){
+		case ARCH_x86_64:
+		case ARCH_i386:
+			return '@';
+		case ARCH_arm:
+			return '%';
+	}
+	ucc_unreach(0);
+}
+
 static void asm_declare_pad(const struct section *sec, unsigned pad, const char *why)
 {
 	if(pad)

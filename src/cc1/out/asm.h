@@ -57,4 +57,6 @@ int         asm_type_size(type *);
 const char *asm_type_directive(type *);
 #endif
 
+char asm_separator_char(void);
+
 #endif

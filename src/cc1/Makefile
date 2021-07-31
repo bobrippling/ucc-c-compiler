@@ -77,6 +77,9 @@ ${BACKEND_TARGETTED:.c=.o} : \
 ${BACKEND_TARGETTED:.c=.d} : \
 	CPPFLAGS += -DCC1_IMPL_FNAME=\"${ARCH}.h\"
 
+cc1.o : \
+	CPPFLAGS += -DARCH=${ARCH}
+
 # extra deps
 out/impl.h: out/x86_64.h out/mipsel_32.h out/arm.h
 

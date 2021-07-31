@@ -204,8 +204,9 @@ static void io_fin_gnustack(FILE *out)
 
 	if(should_emit_gnu_stack_note()
 	&& fprintf(out,
-			".section .note.GNU-stack,\"%s\",@progbits\n",
-			execstack ? "x" : "") < 0)
+			".section .note.GNU-stack,\"%s\",%cprogbits\n",
+			execstack ? "x" : "",
+			asm_separator_char()) < 0)
 	{
 		ccdie("write to cc1 output:");
 	}
