@@ -583,7 +583,7 @@ static int init_target(const char *target)
 		}
 	}
 
-	if(triple.arch != JOIN(ARCH_, ARCH)){
+	if(triple.arch != JOIN(ARCH_, UCC_ARCH)){
 		fprintf(stderr, "Only " QUOTE(ARCH) " architecture is compiled in\n");
 		return 0;
 	}
