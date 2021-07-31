@@ -1300,9 +1300,6 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 			x86_suffix(from->t),
 			impl_val_str_r(vbuf, from, 0),
 			impl_val_str(to, 1));
-
-	out_val_consume(octx, from);
-	out_val_consume(octx, to);
 }
 
 static void x86_reg_cp(
