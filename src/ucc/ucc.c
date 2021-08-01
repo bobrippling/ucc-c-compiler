@@ -24,7 +24,7 @@
 #include "warning.h"
 #include "filemodes.h"
 
-#define LINUX_LIBC_PREFIX "/usr/lib/"
+#define LINUX_LIBC_PREFIX "/usr/lib"
 
 enum mode
 {
@@ -1103,12 +1103,21 @@ static void vars_default(struct uccvars *vars)
 	vars->multilib = TRI_UNSET;
 }
 
+// FIXME
+// needs to be:
+// ./ucc -o jim -m32 -v -nostdlib /usr/lib32/crt1.o /usr/lib32/crti.o jim.o -lc /usr/lib32/crtn.o
+//                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
 static int should_multilib(enum tristate multilib, const char *prefix)
 {
 	/*
 	 * decide whether we're on a multilib system
-	 * multilib: /usr/lib/x86_64-linux-gnu/crt1.o
-	 * normal:   /usr/lib/crt1.o
+	 * multilib:
+	 *   /usr/lib/x86_64-linux-gnu/crt1.o
+	 *   /usr/lib/i386-linux-gnu/crt1.o
+	 * normal:
+	 *   /usr/lib/crt1.o
+	 *   /usr/lib32/crt1.o
 	 */
 	char path[64];
 
@@ -1118,7 +1127,7 @@ static int should_multilib(enum tristate multilib, const char *prefix)
 		case TRI_UNSET: break;
 	}
 
-	xsnprintf(path, sizeof(path), LINUX_LIBC_PREFIX "%s", prefix);
+	xsnprintf(path, sizeof(path), LINUX_LIBC_PREFIX "/%s", prefix);
 
 	/* note that this ignores cross compiling
 	 * gcc and clang have this as a build-time option
@@ -1261,14 +1270,14 @@ static void state_from_triple(
 					/* don't link to crt1 - don't want the startup files, just i[nit] and e[nd] */
 				}else{
 					if(vars->profile){
-						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/gcrt1.o", multilib_prefix);
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "/%s/gcrt1.o", multilib_prefix);
 					}else if(is_pie){
 						if(vars->static_)
-							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/rcrt1.o", multilib_prefix);
+							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "/%s/rcrt1.o", multilib_prefix);
 						else
-							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/Scrt1.o", multilib_prefix);
+							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "/%s/Scrt1.o", multilib_prefix);
 					}else{
-						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crt1.o", multilib_prefix);
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "/%s/crt1.o", multilib_prefix);
 					}
 					dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
 				}
@@ -1286,7 +1295,7 @@ static void state_from_triple(
 				{
 					char *dot;
 
-					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crti.o", multilib_prefix);
+					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "/%s/crti.o", multilib_prefix);
 					dot = strrchr(usrlib, '.');
 					assert(dot && dot > usrlib);
 
