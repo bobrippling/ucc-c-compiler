@@ -8,6 +8,11 @@ use strict;
 # STDOUT-SAME-LINE: ... # occurs exactly on the same line
 # STDOUT-NOT: ...       # doesn't occur between here and the next match hitting
 
+my $line = '';
+my @nots;
+my @nevers;
+my $nots_active = 0;
+
 sub usage
 {
 	die "Usage: $0 [--prefix=...] file-with-annotations [< to-check]\n"
@@ -30,6 +35,14 @@ sub next_line
 	die "$0:$lineno: reached EOF (while looking for '$text')\n" unless defined $line;
 	chomp $line;
 	$line =~ s/\bSTDOUT.*//;
+
+	for(@nevers){
+		my $text = $_->{text};
+		if(linematch($line, $text)){
+			die "$0:$lineno: STDOUT-NEVER: \"$text\" found in \"$line\"\n";
+		}
+	}
+
 	return $line;
 }
 
@@ -74,10 +87,6 @@ for(file_contents($f)){
 }
 
 die "$0: no annotations (with prefix \"$prefix\") in $f\n" unless @annotations;
-
-my $line = '';
-my @nots;
-my $nots_active = 0;
 
 sub record_not
 {
@@ -124,6 +133,11 @@ for(my $annotation = 0; $annotation < @annotations; $annotation++){
 	if($tag eq 'STDOUT-NOT'){
 		push @nots, { text => $text, lines => [], lineno => $lineno };
 		$nots_active = 1;
+		next;
+	}
+
+	if($tag eq 'STDOUT-NEVER'){
+		push @nevers, { text => $text, lineno => $lineno };
 		next;
 	}
 

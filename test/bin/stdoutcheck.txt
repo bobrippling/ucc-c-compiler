@@ -3,6 +3,7 @@
 # STDOUT-NEXT: /^[h-j]{3}$/
 # STDOUT-SAME-LINE: ij
 # STDOUT-NOT: 123
+# STDOUT-NEVER: 321
 # STDOUT: klm
 # STDOUT: 789
 
