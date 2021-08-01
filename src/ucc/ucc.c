@@ -1450,8 +1450,11 @@ usage:
 	}
 	{
 		const char *triple_str = triple_to_str(&triple, 0);
-		dynarray_add(&state.args[mode_preproc], ustrdup("-target"));
-		dynarray_add(&state.args[mode_preproc], ustrdup(triple_str));
+		if(!binpath_cpp){
+			/* only give cpp "-target ..." if it's not overridden */
+			dynarray_add(&state.args[mode_preproc], ustrdup("-target"));
+			dynarray_add(&state.args[mode_preproc], ustrdup(triple_str));
+		}
 		dynarray_add(&state.args[mode_compile], ustrdup("-target"));
 		dynarray_add(&state.args[mode_compile], ustrdup(triple_str));
 	}
