@@ -1,0 +1,7 @@
+tests for i386:
+  automatic:
+    layout_check: s/quad/long/, probably need a per-arch layout file though
+    ocheck: run as all architectures, using -m32/etc if possible, otherwise qemu
+  manual:
+    %ucc -target ...: duplicate per arch
+    %stdoutcheck: duplicate per arch
