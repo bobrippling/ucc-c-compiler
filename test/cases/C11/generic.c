@@ -1,4 +1,4 @@
-// RUN: %ocheck 0 %s
+// RUN: %ucc -fsyntax-only %s
 
 // generic lib
 typedef struct { int _; } types_dd;
@@ -42,22 +42,7 @@ _Generic( typeof2(X, Y),     \
     types_di: double_int,    \
     default: unknown)
 
-int main()
-{
-#include "../ocheck-init.c"
-	void abort();
-
-	if(pair_type(1, 2) != int_int)
-		abort();
-
-	if(pair_type(1, 2.0) != int_double)
-		abort();
-
-	if(pair_type(1.0, 2.0) != double_double)
-		abort();
-
-	if(pair_type(1.0, 2) != double_int)
-		abort();
-
-	return 0;
-}
+_Static_assert(pair_type(1, 2) == int_int, "");
+_Static_assert(pair_type(1, 2.0) == int_double, "");
+_Static_assert(pair_type(1.0, 2.0) == double_double, "");
+_Static_assert(pair_type(1.0, 2) == double_int, "");

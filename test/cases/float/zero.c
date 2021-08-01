@@ -1,5 +1,4 @@
-// RUN: %ucc -target x86_64-linux -S -o %t %s
-// RUN: %stdoutcheck %s <%t
+// RUN: %ucc -target x86_64-linux -S -o- %s | %stdoutcheck %s
 
 float f()
 {

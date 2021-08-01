@@ -9,7 +9,7 @@ my $file = undef;
 my $verbose = 0;
 
 my %vars = (
-	'check'     => './bin/check.sh',
+	'check' => './bin/check.sh',
 	'stdoutcheck' => './bin/stdoutcheck',
 	'ocheck' => './bin/ocheck',
 	'layout_check' => './bin/layout_check.sh',

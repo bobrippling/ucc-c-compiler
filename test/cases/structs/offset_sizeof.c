@@ -1,6 +1,4 @@
-// RUN: %ucc %s -o %t
-// RUN: %t | diff -u - %s.ocheck
-int printf(const char *, ...) __attribute__((format(printf, 1, 2)));
+// RUN: %ucc -fsyntax-only %s
 
 struct X
 {
@@ -17,22 +15,18 @@ struct X
 	} b;
 };
 
-main()
-{
-#include "../ocheck-init.c"
 #define offsetof(s, m) (unsigned long)&((struct s *)0)->m
-#define P(x) printf(#x " = %u\n", x)
+#define CHK(val, expected) _Static_assert(val == expected, "")
 
-	P(offsetof(Y, i));
-	P(offsetof(Y, j));
-	P(offsetof(Y, k));
-	P(sizeof(struct Y));
+CHK(offsetof(Y, i), 0);
+CHK(offsetof(Y, j), 4);
+CHK(offsetof(Y, k), 8);
+CHK(sizeof(struct Y), 12);
 
-	P(offsetof(Z, p));
-	P(sizeof(struct Z));
+CHK(offsetof(Z, p), 0);
+CHK(sizeof(struct Z), 4);
 
-	P(offsetof(X, a));
-	P(offsetof(X, middle));
-	P(offsetof(X, b));
-	P(sizeof(struct X));
-}
+CHK(offsetof(X, a), 0);
+CHK(offsetof(X, middle), 12);
+CHK(offsetof(X, b), 16);
+CHK(sizeof(struct X), 20);

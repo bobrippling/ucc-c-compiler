@@ -1,17 +1,17 @@
 // RUN: %ocheck 2 %s
-// RUN: %ucc -target x86_64-linux -S -o %t %s
-// RUN: grep -F '.globl a' %t
-// RUN: grep -F 'a: .long 2' %t
-// RUN: grep '.globl _\?main' %t
-// RUN: grep 'mov.* a' %t
-// RUN: ! grep 'mov.* q' %t
+// RUN: %ucc -target x86_64-linux -S -o- %s | %stdoutcheck %s
 
-__asm(".globl a");
-__asm("a: .long 2");
+__asm(".globl a");   // STDOUT: .globl a
+__asm("a: .long 2"); // STDOUT: a: .long 2
 
 main()
 {
 #include "../ocheck-init.c"
 	extern int q __asm("a");
+
+	// STDOUT: /.globl _?main/
+	// STDOUT-NEVER: /mov.* q/
+	// STDOUT: /mov.* a/
+
 	return q;
 }

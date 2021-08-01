@@ -1,5 +1,5 @@
-// RUN: %ucc -E %s | grep 'is_64'
-// RUN: %ucc -E %s | grep 'BAD'; [ $? -ne 0 ]
+// RUN:   %ucc -E %s | grep 'is_64'
+// RUN: ! %ucc -E %s | grep 'BAD'
 
 #if defined __x86_64__
 # define __WORDSIZE  64
