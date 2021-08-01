@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
-#include <unistd.h>
 #include <limits.h>
 
 #include "warn.h"
 #include "alloc.h"
+#include "colour.h"
 
 #ifndef MIN
 #  define MIN(x, y) ((x) > (y) ? (y) : (x))
@@ -59,7 +59,7 @@ void warn_colour(int on, enum warn_type ty)
 	static enum { f = 0, t = 1, need_init = 2 } is_tty = need_init;
 
 	if(is_tty == need_init)
-		is_tty = isatty(2);
+		is_tty = colour_enabled(2);
 
 	if(is_tty){
 		if(on)

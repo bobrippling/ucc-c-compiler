@@ -64,7 +64,9 @@ enum type_cmp btype_cmp(const btype *a, const btype *b)
 			ICE("type unknown in %s", __func__);
 
 		case type_enum:
-			if(a->sue == b->sue)
+			/* the other type must be an enum for these to be equal,
+			 * otherwise we're comparing an enum-as-int to an enum */
+			if(b->primitive == type_enum && a->sue == b->sue)
 				return TYPE_EQUAL;
 			break; /* convertible check */
 

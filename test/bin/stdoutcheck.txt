@@ -1,0 +1,16 @@
+# STDOUT: abc
+# STDOUT: def
+# STDOUT-NEXT: /^[h-j]{3}$/
+# STDOUT-SAME-LINE: ij
+# STDOUT-NOT: 123
+# STDOUT: klm
+# STDOUT: 789
+
+abc
+def
+hij
+should be in the nots
+as should this
+klm
+123
+789

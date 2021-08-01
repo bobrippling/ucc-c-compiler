@@ -81,14 +81,15 @@ static int type_attribute_missing(type *ta, type *tb)
 			return 1;                                     \
 	}
 
-#define ALIAS(s, x, typrop) NAME(x, typrop)
-#define EXTRA_ALIAS(s, x)
+#define RENAME(s, x, typrop) NAME(x, typrop)
+#define ALIAS(s, x)
+#define COMPLEX_ALIAS(s, x)
 
 	ATTRIBUTES
 
 #undef NAME
 #undef ALIAS
-#undef EXTRA_ALIAS
+#undef COMPLEX_ALIAS
 
 		return 0;
 }
@@ -148,7 +149,7 @@ static enum type_cmp type_cmp_r(
 			break;
 
 		case type_array:
-			if(a->bits.array.is_vla || b->bits.array.is_vla){
+			if(a->bits.array.vla_kind || b->bits.array.vla_kind){
 				/* fine, pretend they're equal even if different expressions */
 				ret = TYPE_EQUAL_TYPEDEF;
 
@@ -644,7 +645,7 @@ static void type_add_str(
 			const char *sz_space = "";
 
 			BUF_ADD("[");
-			if(r->bits.array.is_vla == 0 && r->bits.array.is_static){
+			if(r->bits.array.vla_kind == VLA_NO && r->bits.array.is_static){
 				BUF_ADD("static");
 				sz_space = " ";
 			}
@@ -655,8 +656,8 @@ static void type_add_str(
 				sz_space = " ";
 			}
 
-			switch(r->bits.array.is_vla){
-				case 0:
+			switch(r->bits.array.vla_kind){
+				case VLA_NO:
 					if(r->bits.array.size){
 						BUF_ADD(
 								"%s%" NUMERIC_FMT_D,
@@ -707,7 +708,7 @@ type *type_add_type_str(type *r,
 		return NULL;
 
 	if(ty->type == type_tdef){
-		char buf[BTYPE_STATIC_BUFSIZ];
+		char buf[TYPE_STATIC_BUFSIZ];
 		decl *d = ty->bits.tdef.decl;
 		type *of;
 
@@ -731,7 +732,7 @@ type *type_add_type_str(type *r,
 
 		if((opts & TY_STR_AKA) && of){
 			/* descend to the type if it's next */
-			type *t_ref = type_is_primitive(of, type_unknown);
+			type *t_ref = type_is(of, type_btype);
 			const btype *t = t_ref ? t_ref->bits.type : NULL;
 
 			BUF_ADD(" {aka '%s'}",
@@ -839,7 +840,7 @@ type_str_type(type *r)
 	type *t = type_is_array(r);
 	if(!t)
 		t = type_is_ptr(r);
-	t = type_is_primitive(t, type_unknown);
+	t = type_is(t, type_btype);
 	switch(t ? t->bits.type->primitive : type_unknown){
 		case type_schar:
 		case type_nchar:
@@ -872,24 +873,24 @@ static unsigned type_hash2(
 			ICE("auto type");
 
 		case type_btype:
-			hash |= (t->bits.type->primitive << 1) | sue_hash(t->bits.type->sue);
+			hash ^= (t->bits.type->primitive << 1) ^ sue_hash(t->bits.type->sue);
 			break;
 
 		case type_tdef:
-			hash |= nest_hash(t->bits.tdef.type_of->tree_type);
-			hash |= 1 << 3;
+			hash ^= nest_hash(t->bits.tdef.type_of->tree_type);
+			hash ^= 1 << 3;
 			break;
 
 		case type_ptr:
 			if(t->bits.ptr.decayed_from)
-				hash |= nest_hash(t->bits.ptr.decayed_from);
+				hash ^= nest_hash(t->bits.ptr.decayed_from);
 			break;
 
 		case type_array:
 			if(t->bits.array.size)
-				hash |= nest_hash(t->bits.array.size->tree_type);
-			hash |= 1 << t->bits.array.is_static;
-			hash |= 1 << t->bits.array.is_vla;
+				hash ^= nest_hash(t->bits.array.size->tree_type);
+			hash ^= 1 << t->bits.array.is_static;
+			hash ^= 1 << t->bits.array.vla_kind;
 			break;
 
 		case type_block:
@@ -903,12 +904,12 @@ static unsigned type_hash2(
 			size_t i;
 
 			for(i = 0; args && args[i]; i++)
-				hash |= nest_hash(args[i]->ref) << (i % 8);
+				hash ^= nest_hash(args[i]->ref) << (i % 8);
 			break;
 		}
 
 		case type_cast:
-			hash |= t->bits.cast.qual;
+			hash ^= t->bits.cast.qual;
 			break;
 
 		case type_attr:

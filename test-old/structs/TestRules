@@ -1,2 +1,0 @@
-noop: just_pad.c
-compile-error: enum_redecl.c

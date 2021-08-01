@@ -18,7 +18,7 @@ static int label_last    = 1,
 char *out_label_bblock(unsigned long n)
 {
 	char *buf = umalloc(16);
-	xsnprintf(buf, 16, "%sblk.%lu", cc1_target_details.as.privatelbl_prefix, (unsigned long)n);
+	xsnprintf(buf, 16, "%sblk.%lu", cc1_target_details.as->privatelbl_prefix, (unsigned long)n);
 	return buf;
 }
 
@@ -43,7 +43,7 @@ char *out_label_code(const char *fmt)
 	len = strlen(fmt) + 10;
 	ret = umalloc(len + 1);
 
-	xsnprintf(ret, len, "%s%s.%d", cc1_target_details.as.privatelbl_prefix, fmt, label_last++);
+	xsnprintf(ret, len, "%s%s.%d", cc1_target_details.as->privatelbl_prefix, fmt, label_last++);
 
 	return ret;
 }
@@ -79,7 +79,7 @@ char *out_label_goto(char *func, char *lbl)
 {
 	int len = strlen(func) + strlen(lbl) + 6;
 	char *ret = umalloc(len);
-	xsnprintf(ret, len, "%s%s.%s", cc1_target_details.as.privatelbl_prefix, func, lbl);
+	xsnprintf(ret, len, "%s%s.%s", cc1_target_details.as->privatelbl_prefix, func, lbl);
 	return ret;
 }
 
@@ -89,7 +89,7 @@ char *out_label_case(enum out_label_type lbltype, int val)
 	char *ret = umalloc(len = 15 + 32);
 	switch(lbltype){
 		case CASE_DEF:
-			xsnprintf(ret, len, "%scase_%d_default", cc1_target_details.as.privatelbl_prefix, switch_last);
+			xsnprintf(ret, len, "%scase_%d_default", cc1_target_details.as->privatelbl_prefix, switch_last);
 			break;
 
 		case CASE_CASE:
@@ -100,7 +100,7 @@ char *out_label_case(enum out_label_type lbltype, int val)
 				val = -val;
 				extra = "m";
 			}
-			xsnprintf(ret, len, "%scase%s_%d_%s%d", lbltype == CASE_RANGE ? "_rng" : "", cc1_target_details.as.privatelbl_prefix, switch_last, extra, val);
+			xsnprintf(ret, len, "%scase%s_%d_%s%d", lbltype == CASE_RANGE ? "_rng" : "", cc1_target_details.as->privatelbl_prefix, switch_last, extra, val);
 			break;
 		}
 	}
@@ -113,11 +113,11 @@ char *out_label_flow(const char *fmt)
 {
 	int len = 16 + strlen(fmt);
 	char *ret = umalloc(len);
-	xsnprintf(ret, len, "%sflow_%s_%d", cc1_target_details.as.privatelbl_prefix, fmt, flow_last++);
+	xsnprintf(ret, len, "%sflow_%s_%d", cc1_target_details.as->privatelbl_prefix, fmt, flow_last++);
 	return ret;
 }
 
 char *out_dbg_func_end(const char *fn)
 {
-	return ustrprintf("%sfuncend_%s", cc1_target_details.as.privatelbl_prefix, fn);
+	return ustrprintf("%sfuncend_%s", cc1_target_details.as->privatelbl_prefix, fn);
 }

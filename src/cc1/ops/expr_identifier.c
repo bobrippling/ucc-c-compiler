@@ -246,6 +246,7 @@ void mutate_expr_identifier(expr *e)
 {
 	e->f_const_fold  = fold_const_expr_identifier;
 	e->f_islval = expr_is_lval_always;
+	e->f_requires_relocation = expr_bool_always;
 }
 
 expr *expr_new_identifier(char *sp)

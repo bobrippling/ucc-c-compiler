@@ -44,7 +44,7 @@ static const out_val *stack_canary_address_tls(out_ctx *octx)
 
 static const out_val *stack_canary_address(out_ctx *octx, char **const tofree)
 {
-	if(cc1_target_details.as.stack_protector_via_tls){
+	if(cc1_target_details.as->stack_protector_via_tls){
 		*tofree = NULL;
 		return stack_canary_address_tls(octx);
 	}

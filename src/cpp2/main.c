@@ -13,6 +13,7 @@
 #include "../util/platform.h"
 #include "../util/limits.h"
 #include "../util/macros.h"
+#include "../util/colour.h"
 
 #include "main.h"
 #include "macro.h"
@@ -120,6 +121,7 @@ enum wmode wmode =
 	| WBACKSLASH_SPACE_NEWLINE;
 
 enum comment_strip strip_comments = STRIP_ALL;
+int option_show_include_nesting;
 
 static const struct
 {
@@ -246,8 +248,6 @@ static void calctime(const char *fname)
 
 static void macro_add_limits(void)
 {
-#define QUOTE_(x) #x
-#define QUOTE(x) QUOTE_(x)
 #define MACRO_ADD_LIM(m) macro_add("__" #m "__", QUOTE(__ ## m ## __), 0)
 	MACRO_ADD_LIM(SCHAR_MAX);
 	MACRO_ADD_LIM(SHRT_MAX);
@@ -255,8 +255,6 @@ static void macro_add_limits(void)
 	MACRO_ADD_LIM(LONG_MAX);
 	MACRO_ADD_LIM(LONG_LONG_MAX);
 #undef MACRO_ADD_LIM
-#undef QUOTE
-#undef QUOTE_
 }
 
 static void add_platform_dependant_macros(void)
@@ -318,8 +316,10 @@ static int init_target(const char *target)
 			return 0;
 		}
 	}else{
-		if(!triple_default(&triple)){
-			fprintf(stderr, "couldn't get target triple\n");
+		const char *unparsed;
+		if(!triple_default(&triple, &unparsed)){
+			fprintf(stderr, "couldn't get target triple: %s\n",
+					unparsed ? unparsed : strerror(errno));
 			return 0;
 		}
 	}
@@ -394,6 +394,10 @@ int main(int argc, char **argv)
 
 			case 'P':
 				option_line_info = 0;
+				break;
+
+			case 'H':
+				option_show_include_nesting = 1;
 				break;
 
 			case 'C':
@@ -483,23 +487,37 @@ int main(int argc, char **argv)
 				break;
 
 			case 'f':
-				if(!strcmp(argv[i]+2, "freestanding")){
-					freestanding = 1;
-				}else if(!strncmp(argv[i]+2, "message-length=", 15)){
-					const char *p = argv[i] + 17;
+			{
+				const int off = !strncmp(argv[i]+2, "no-", 3);
+				const char *arg = argv[i] + 2 + (off ? 3 : 0);
+
+				if(!strcmp(arg, "color-diagnostics")){
+					colour_enable(!off);
+
+				}else if(!strcmp(arg, "freestanding")){
+					freestanding = !off;
+
+				}else if(!strncmp(arg, "message-length=", 15)){
+					const char *p = arg + 17;
 					warning_length = atoi(p);
-				}else if(!strcmp(argv[i]+2, "cpp-offsetof")){
-					offsetof_macro = 1;
+					if(off)
+						goto usage;
+
+				}else if(!strcmp(arg, "cpp-offsetof")){
+					offsetof_macro = !off;
+
 				}else{
 					goto usage;
 				}
 				break;
+			}
 
 			case 'W':
 			{
 				int off;
 				unsigned j;
 				char *p = argv[i] + 2;
+				int found = 0;
 
 				off = !strncmp(p, "no-", 3);
 				if(off)
@@ -512,11 +530,13 @@ int main(int argc, char **argv)
 							wmode &= ~warns[j].or_mask;
 						else
 							wmode |= warns[j].or_mask;
+						found = 1;
 						break;
 					}
 				}
 
-				/* if not found, we ignore - it was intended for cc1 */
+				if(!found)
+					fprintf(stderr, "%s: unknown warning option '%s'\n", argv[0], argv[i]);
 				break;
 			}
 
@@ -597,6 +617,13 @@ defaul:
 			break;
 		case STD_C11:
 			macro_add("__STDC_VERSION__", "201112L", 0);
+			break;
+		case STD_C18:
+			macro_add("__STDC_VERSION__", "201710L", 0);
+			break;
+		case STD_C2X:
+			macro_add("__STDC_VERSION__", "202000L", 0);
+			break;
 	}
 
 	if(offsetof_macro){
@@ -688,6 +715,7 @@ usage:
 				"  -dS: output stats debugging information\n"
 				"  -dW: output macro location debugging information\n"
 				"  -d: output trace debugging information\n"
+				"  -H: show header includes and nesting depth\n"
 				"\n"
 				, stderr);
 

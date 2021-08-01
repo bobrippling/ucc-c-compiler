@@ -127,7 +127,7 @@ struct ctx_array
 	expr *sz;
 	integral_t sz_i;
 	int is_static;
-	int is_vla;
+	enum vla_kind vla_kind;
 };
 
 static int eq_array(type *candidate, void *ctx)
@@ -140,7 +140,7 @@ static int eq_array(type *candidate, void *ctx)
 	if(candidate->bits.array.is_static != c->is_static)
 		return 0;
 
-	if(candidate->bits.array.is_vla != c->is_vla)
+	if(candidate->bits.array.vla_kind != c->vla_kind)
 		return 0;
 
 	if(candidate->bits.array.size == c->sz){
@@ -166,18 +166,18 @@ static void init_array(type *ty, void *ctx)
 	struct ctx_array *c = ctx;
 	ty->bits.array.size = c->sz;
 	ty->bits.array.is_static = c->is_static;
-	ty->bits.array.is_vla = c->is_vla;
+	ty->bits.array.vla_kind = c->vla_kind;
 }
 
 static void ctx_array_init(
 		struct ctx_array *ctx,
 		expr *sz,
-		int is_static, int is_vla)
+		int is_static, int vla_kind)
 {
 	ctx->sz_i = 0;
 	ctx->sz = sz;
 	ctx->is_static = is_static;
-	ctx->is_vla = is_vla;
+	ctx->vla_kind = vla_kind;
 
 	if(sz){
 		consty k;
@@ -279,6 +279,9 @@ static int eq_attr(type *candidate, void *ctx)
 	attribute **cand = candidate->bits.attr;
 	attribute **other = ctx;
 
+	if(dynarray_count(cand) != dynarray_count(other))
+		return 0;
+
 	for(; *cand; cand++){
 		attribute **i;
 
@@ -376,7 +379,7 @@ type *type_decayed_ptr_to(type *pointee, type *array_from)
 			&ctx.array,
 			array_from->bits.array.size,
 			array_from->bits.array.is_static,
-			array_from->bits.array.is_vla);
+			array_from->bits.array.vla_kind);
 
 	ctx.decayed_from = array_from;
 
@@ -758,11 +761,19 @@ static void type_dump_t(type *t, FILE *f, int indent)
 	for(i = 0; i < indent; i++)
 		fputc(' ', f);
 
-	fprintf(f, "%s %s%s\n",
+	fprintf(f, "%s %s%s",
 			type_kind_to_str(t->type),
 			type_to_str(t),
 			t->type == type_ptr && t->bits.ptr.decayed_from
 				? " [decayed]" : "");
+
+	if(t->type == type_attr){
+		attribute **iter;
+		for(iter = t->bits.attr; iter && *iter; iter++)
+			fprintf(f, " %s", attribute_to_str(*iter));
+	}
+
+	fputc('\n', f);
 
 	if(t->uptree){
 		indent++;

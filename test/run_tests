@@ -1,7 +1,8 @@
 #!/usr/bin/perl
+use warnings;
 use strict;
+use Cwd qw(cwd);
 
-my $ucc = undef;
 my @expected_fails;
 my @skips;
 my %colour = (
@@ -9,23 +10,26 @@ my %colour = (
 	red => "\x1b[31m",
 	off => "\x1b[0m",
 );
+my $exitcode = 0;
+my %tasks; # pid => { output, testfile }
+my $env_tmpdir = $ENV{TMPDIR} || '/tmp';
+my $tdir = "$env_tmpdir/ucc.test/";
+my $ign_file = undef;
+my $quiet;
+my $with_randstack = 1;
+my $jobs = 1;
+my $progress = 0;
+my @tests;
 
-sub interrupt
-{
-	exit 25
-}
-
-sub basename
-{
-	my $f = shift;
-	return $1 if $f =~ m;/([^/]+)$;;
-	return $f;
+if(not -d $tdir and not mkdir($tdir)){
+	die "$0: mkdir $tdir: $!\n";
 }
 
 sub usage
 {
-	print STDERR "Usage: $0 [-q | -v] [-i ignore-file] [--ucc=...] [tests...]\n";
+	print STDERR "Usage: $0 [-q | -v [-v]] [-p] [-i ignore-file] [--ucc=...] [--update-snapshots] [tests...]\n";
 	print STDERR "Specify UCC_CHECK_SKIP=path1,path2,... to skip paths\n";
+	print STDERR "Give a second -v argument to force output, for passing tests\n";
 	exit 2;
 }
 
@@ -43,29 +47,28 @@ sub read_ignores
 	return @f;
 }
 
-sub test
+sub launch_test
 {
-	my %args = @_; # keys = file, output, verbose
+	my($cmd, $file) = @_;
 
 	my $pid = fork();
+	die "$0: fork: $!\n" if $pid < 0;
+
 	if($pid == 0){
-		# ./test.pl -v "$1" < /dev/null > "$2" 2>&1
+		my $output = "$tdir/$$.all";
 		open STDIN, '</dev/null' or die;
-		open STDOUT, '>', $args{output} or die;
+		open STDOUT, '>', $output or die;
 		open STDERR, '>&STDOUT' or die;
 
-		my @args = @args{file};
-		unshift @args, '-v' if $args{verbose};
-		unshift @args, "--ucc=$ucc" if defined($ucc);
-		exec './test.pl', @args;
+		exec($cmd, $file);
 		die "exec: $!";
 	}
-	if(wait() != $pid){
-		die "bad wait return? $!";
-	}
+	my $output = "$tdir/$pid.all";
 
-	my $r = $?;
-	return $r;
+	$tasks{$pid} = {
+		output => $output,
+		testfile => $file,
+	};
 }
 
 sub cat_indent_file
@@ -107,12 +110,103 @@ sub colour_init
 	}
 }
 
-$SIG{INT} = \&interrupt;
+sub find_tests
+{
+	# DFS
+	my @found;
+	for my $ent (@_){
+		if(-d $ent){
+			push @found, find_tests(glob "$ent/*");
+		}elsif($ent =~ /\.c$/){
+			push @found, $ent;
+		}
+	}
+	return @found;
+}
 
-my $verbose = 0;
-my $quiet;
-my $ign_file = undef;
-my @tests;
+sub reap_all_tests
+{
+	reap_test() while keys %tasks;
+}
+
+sub reap_test
+{
+	my $pid = wait();
+	my $rc = $?;
+
+	if(!exists $tasks{$pid}){
+		warn "$0: unknown child $pid\n";
+		for(keys %tasks){
+			warn "pid: $_, testfile: $tasks{$_}->{testfile}\n";
+		}
+		exit 1;
+	}
+
+	my ($signal, $ec) = interpret_exitcode($rc);
+	if($signal){
+		die "test $tasks{$pid}->{testfile} caught signal $signal\n";
+	}
+
+	my $f = $tasks{$pid}->{testfile};
+	my $status = file_status($f);
+	my $should_fail = ($status eq 'fail');
+
+	my $failed = !!$ec;
+
+	if(not $quiet or ($failed != $should_fail)){
+		if($failed != $should_fail){
+			print $colour{red};
+		}else{
+			print $colour{green};
+		}
+
+		my $is_unexpected = $failed != $should_fail;
+
+		my $desc = $failed ? "fail" : "pass";
+		my $fh = $is_unexpected ? \*STDERR : \*STDOUT;
+		print $fh "$desc"
+		. ($should_fail ? ' (fail expected)' : '')
+		. ": $f";
+
+		print "$colour{off}\n";
+
+		my $output = $tasks{$pid}->{output};
+		if($is_unexpected or $ENV{UCC_VERBOSE} > 1){
+			$exitcode = 1 if $is_unexpected;
+			cat_indent_file($output);
+		}
+	}
+
+	delete $tasks{$pid};
+}
+
+sub interpret_exitcode
+{
+	my $rc = shift();
+	return ($rc & 127, $rc >> 8);
+}
+
+sub show_progress
+{
+	my($i, $n) = @_;
+
+	printf "%d%% (%d/%d)\r", $i / $n * 100, $i, $n;
+}
+
+sub randstack_build
+{
+	my $rc = system("make", "--no-print-directory", "-C", "randstack/");
+	my ($signal, $ec) = interpret_exitcode($rc);
+	if($signal or $ec){
+		die "randstack build failed";
+	}
+}
+
+sub randstack_export
+{
+	my $here = cwd();
+	$ENV{UCC_RANDSTACK_LIB} = "$here/randstack/randstack.so";
+}
 
 if($ENV{CI}){
 	$quiet = 0;
@@ -121,128 +215,100 @@ if($ENV{CI}){
 }else{
 	$quiet = 0;
 }
+$ENV{UCC} = '../ucc';
+$ENV{UCC_TESTDIR} = $tdir;
+$ENV{UCC_UPDATE_SNAPSHOTS} = 0;
+$ENV{UCC_VERBOSE} = 0;
 
 for(my $i = 0; $i < @ARGV; $i++){
 	if($ARGV[$i] eq '-v'){
-		$verbose = 1;
+		if($ENV{UCC_VERBOSE}){
+			$ENV{UCC_VERBOSE} = 2;
+		}else{
+			$ENV{UCC_VERBOSE} = 1;
+		}
+		$quiet = 0;
+	}elsif($ARGV[$i] eq '-vv'){
+		$ENV{UCC_VERBOSE} = 2;
 		$quiet = 0;
 	}elsif($ARGV[$i] eq '-q'){
 		$quiet = 1;
-		$verbose = 0;
+		delete $ENV{UCC_VERBOSE};
 	}elsif($ARGV[$i] eq '-i'){
 		my $f = $ARGV[++$i];
 		usage() unless $f;
 		$ign_file = $f;
+	}elsif($ARGV[$i] eq '-p'){
+		$progress = 1;
 	}elsif($ARGV[$i] =~ /^--ucc=(.+)$/){
-		$ucc = $1;
+		$ENV{UCC} = $1;
+
+	}elsif($ARGV[$i] eq '--update-snapshots'){
+		$ENV{UCC_UPDATE_SNAPSHOTS} = 1;
+
+	}elsif($ARGV[$i] eq '--no-randstack'){
+		$with_randstack = 0;
+
+	}elsif($ARGV[$i] =~ /^-j(.*)$/){
+		my $n = $1;
+		if($n eq ''){
+			$i++;
+			die "$0: need number for -j\n" if $i == @ARGV;
+			$n = $ARGV[$i];
+		}
+		die "$0: '$n' not a number\n" if $n !~ /^[0-9]+$/;
+		die "$0: '$n' less than 1\n" if $n < 1;
+
+		$jobs = $n;
 
 	}else{
-		if(!-e $ARGV[$i]){
-			warn "$0: no file/dir '$ARGV[$i]'\n";
+		my $f = $ARGV[$i];
+		if($f =~ /^-/){
+			usage();
 		}
-		push @tests, $ARGV[$i];
+		if(!-e $f){
+			warn "$0: no file/dir '$f'\n";
+		}
+		push @tests, $f;
 	}
 }
 
 push @expected_fails, read_ignores($ign_file) if $ign_file;
-push @skips, split /,/, $ENV{UCC_CHECK_SKIP};
+push @skips, split /,/, ($ENV{UCC_CHECK_SKIP} or "");
 
-my $env_tmpdir = $ENV{TMPDIR} || '/tmp';
-my $tdir = "$env_tmpdir/ucc.test/";
 my @unlinks;
 push @unlinks, $tdir;
 if(not -d $tdir and not mkdir($tdir)){
 	die "mkdir: $!";
 }
 $ENV{UCC_TESTDIR} = $tdir;
+
 colour_init($quiet);
 
-my $ec = 0;
-
-sub find_tests
-{
-	# DFS
-	my @found;
-	for(my $i = 0; $i < @_; $i++){
-		$_ = $_[$i];
-		if(-d $_){
-			push @found, find_tests(glob "$_/*");
-		}elsif($_ =~ /\.c$/){
-			push @found, $_;
-		}
-	}
-	return @found;
+if($with_randstack){
+	randstack_build();
+	randstack_export();
 }
 
 my @test_files = find_tests(@tests);
-die "$0: no tests\n" unless @test_files;
+die "$0: no tests found\n" unless @test_files;
 
-for my $f (@test_files){
-	chomp($f);
+$| = 1 if $progress;
 
-	print "$0: $f\n" if $verbose;
+for(my $fi = 0; $fi < @test_files; $fi++){
+	my $f = $test_files[$fi];
 
-	my %args = (
-		file => $f,
-		output => "$tdir/" . basename($f),
-		verbose => $verbose
-	);
+	next if file_status($f) eq 'skip';
 
-	my $status = file_status($f);
-	my $rc = 2;
-	if(!($status eq 'skip')){
-		$rc = test(%args);
+	reap_test() while keys %tasks >= $jobs;
 
-		if($rc & 127){
-			die "test caught signal " . ($rc & 127) . "\n";
-		}
-		$rc >>= 8; # exit code
-	}
-
-	my $desc;
-	my $failed = 0;
-
-	if($rc == 1){
-		$desc = 'fail';
-		$failed = 1;
-	}elsif($rc == 2){
-		$desc = 'skip';
-	}else{
-		$desc = 'pass';
-	}
-
-	my $should_fail = ($status eq 'fail');
-
-	if($failed != $should_fail){
-		print $colour{red};
-	}else{
-		print $colour{green};
-	}
-
-	print "$desc"
-	. ($should_fail ? ' (fail expected)' : '')
-	. ": $f";
-
-	if($failed != $should_fail){
-		print "\n";
-
-		$ec = 1;
-		# dump output
-		cat_indent_file($args{output});
-	}elsif($quiet){
-		# clear to eol, move cursor to start
-		print "\e[K\r";
-	}else{
-		print "\n";
-	}
-	print $colour{off};
+	show_progress($fi + 1, scalar @test_files) if $progress;
+	launch_test('./bin/test.pl', $f);
+	show_progress($fi + 1, scalar @test_files) if $progress;
 }
 
-END
-{
-	my $r = $?;
-	system('rm', '-r', @unlinks) if @unlinks;
-	$? = $r;
-}
+reap_all_tests();
 
-exit $ec;
+system('rm', '-rf', $tdir);
+
+exit $exitcode;

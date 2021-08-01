@@ -1,0 +1,67 @@
+.section .text
+globl.block_2:
+globl.block_1:
+.section .data
+data.3:
+.long 3
+data.1:
+.long 3
+.section .rodata
+ki:
+.long 3
+.section .data
+i:
+.long 3
+.section .data.rel.ro
+p1:
+.quad ki
+p2:
+.quad data.1
+.section .rodata
+p3:
+.zero 8
+.section .data
+q:
+.quad i
+.section .data.rel.ro
+str:
+.quad str.2
+.section .bss
+array:
+.zero 12
+.section .data.rel.ro
+wrap_p1:
+.quad array
+wrap_p2:
+.quad array
+wrap_p3:
+.quad array + 4
+.section .bss
+arrays:
+.zero 60
+.section .data.rel.ro
+r:
+.quad arrays + 36
+.quad arrays + 60
+.section .rodata
+p:
+.zero 8
+.section .data.rel.ro
+pv1:
+.quad arrays + 44
+pv2:
+.quad data.3
+.section .data
+bpmut:
+.quad globl.block_1
+.section .data.rel.ro
+bp:
+.quad globl.block_2
+.section .rodata
+str.2:
+.ascii "hi\000"
+.section .text
+.section .data.rel.ro
+.section .data
+.section .bss
+.section .note.GNU-stack,"",@progbits

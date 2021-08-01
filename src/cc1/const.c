@@ -240,6 +240,10 @@ integral_t const_op_exec(
 		case op_not:  result = !lval; break;
 		case op_bnot: result = ~lval; break;
 
+		case op_signbit:
+		case op_no_signbit:
+			ucc_unreach(0);
+
 		case op_unknown:
 			ICE("unhandled type");
 			break;
@@ -284,6 +288,8 @@ floating_t const_op_exec_fp(
 		case op_shiftl:
 		case op_shiftr:
 		case op_bnot:
+		case op_signbit:
+		case op_no_signbit:
 			/* explicitly bad */
 			ICE("floating point %s", op_to_str(op));
 

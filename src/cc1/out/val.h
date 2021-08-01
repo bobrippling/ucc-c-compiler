@@ -45,11 +45,12 @@ struct out_val
 				flag_eq, flag_ne,
 				flag_le, flag_lt,
 				flag_ge, flag_gt,
-				flag_overflow, flag_no_overflow
+				flag_overflow, flag_no_overflow,
+				flag_signbit, flag_no_signbit
 			} cmp;
 			enum flag_mod
 			{
-				flag_mod_signed = 1 << 0,
+				flag_mod_signed = 1 << 0, /* greater than vs. above */
 				flag_mod_float  = 1 << 1 /* e.g. unordered/nan */
 			} mods;
 		} flag;

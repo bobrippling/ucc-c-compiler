@@ -5,6 +5,7 @@
 	BUILTIN("offsetof", offsetof)                 \
 	BUILTIN("unreachable", unreachable)           \
 	BUILTIN("trap", unreachable)                  \
+	BUILTIN("debugtrap", debugtrap)               \
 	BUILTIN("types_compatible_p", compatible_p)   \
 	BUILTIN("constant_p", constant_p)             \
 	BUILTIN("frame_address", frame_address)       \

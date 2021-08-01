@@ -4,24 +4,16 @@
 #include "../../util/compiler.h"
 #include "../../util/std.h"
 
-struct out_dbg_filelist
-{
-	const char *fname;
-	struct out_dbg_filelist *next;
-};
-
-/* debug output */
-void out_dbg_where(out_ctx *octx, const where *w);
-
-void dbg_out_filelist(struct out_dbg_filelist *head, FILE *f);
-
 #ifdef SYM_H /* symtab_global */
+#include "dbg_file.h"
+
 void out_dbg_begin(
 		out_ctx *octx,
 		struct out_dbg_filelist **pfilelist,
 		const char *fname,
 		const char *compdir,
-		enum c_std lang);
+		enum c_std lang,
+		const char *producer);
 
 void out_dbg_end(out_ctx *octx);
 #endif

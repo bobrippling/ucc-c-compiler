@@ -3,6 +3,8 @@
 
 #include "out/forwards.h"
 
+struct decl;
+
 struct cc1_out_ctx
 {
 	struct dynmap *vlamap;
@@ -26,6 +28,8 @@ struct cc1_out_ctx
 	} dbg;
 
 	struct dynmap *label_to_blk;
+
+	struct decl *current_decl;
 };
 
 #define cc1_out_ctx(octx) ((struct cc1_out_ctx **)out_user_ctx(octx))

@@ -121,6 +121,9 @@ static void handle_define(token **tokens)
 						case TOKEN_CLOSE_PAREN:
 							i++;
 							goto for_fin;
+						case TOKEN_ELIPSIS:
+							CPP_DIE("GNU-variadic macros aren't supported");
+
 						default:
 							CPP_DIE("expected: comma or close paren");
 					}
@@ -290,6 +293,14 @@ static void handle_include(char *include_arg)
 
 	/* successfully opened */
 	canonicalise_path(final_path);
+
+	if(option_show_include_nesting){
+		int i;
+		for(i = file_stack_idx + 1; i > 0; i--)
+			fputc('.', stderr);
+
+		fprintf(stderr, " %s\n", final_path);
+	}
 
 	if(!is_angle)
 		deps_add(final_path);

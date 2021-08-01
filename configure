@@ -139,7 +139,6 @@ try_cflag -Wstrict-prototypes
 try_cflag -Wno-char-subscripts
 try_cflag -Wno-format-extra-args
 try_cflag -Wno-missing-braces
-try_cflag -Wno-missing-field-initializers
 try_cflag -Wno-logical-not-parentheses
 try_cflag -Wno-implicit-fallthrough
 
@@ -149,6 +148,8 @@ try_cflag -Wsuggest-attribute=const
 try_cflag -Wshadow-compatible-local
 
 try_cflag -Werror=incompatible-pointer-types
+
+try_cflag -fno-common
 
 if test $debug = 1
 then
@@ -172,7 +173,7 @@ then
 	ln -sf "$srcdir"/Makefile
 
 	# we don't want the new config definitions to write through the links:
-	rm src/config.custom.mk
+	rm -f src/config.custom.mk
 	echo 'done'
 fi
 

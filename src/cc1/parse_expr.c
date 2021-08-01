@@ -54,6 +54,7 @@ expr *parse_expr_sizeof_typeof_alignof(symtable *scope)
 	expr *e;
 	where w;
 	int is_expr = 1;
+	int alignof_c11 = 0;
 	enum what_of what_of;
 
 	where_cc1_current(&w);
@@ -63,6 +64,8 @@ expr *parse_expr_sizeof_typeof_alignof(symtable *scope)
 			assert(0 && "unreachable sizeof parse");
 
 		case token__Alignof:
+			alignof_c11 = 1;
+		case token___alignof:
 			what_of = what_alignof;
 			if(0)
 		case token_typeof:
@@ -101,11 +104,34 @@ expr *parse_expr_sizeof_typeof_alignof(symtable *scope)
 			}
 
 		}else{
-			/* not a type - treat the open paren as part of the expression */
-			uneat(token_open_paren);
-			e = expr_new_sizeof_expr(
-					parse_expr_unary(scope, static_ctx),
-					what_of);
+			/*
+			 * If we're __typeof__
+			 *     Not a type - but don't treat the open paren as part of the
+			 *     expression. We want to limit how much we parse, i.e.
+			 *     (typeof(i)[]){ ... }
+			 *      ^~~~~~~~~~~ this is a valid type, but if we treat `(i)` as an
+			 *     expression, we'll try to parse `[]` as an expression too.
+			 *
+			 *     Instead, we parse `i`, chomp the brackets ourselves, and leave
+			 *     the `[]` parsing to what calls us, i.e. parse_type()
+			 *
+			 * If we're sizeof/__alignof__/_Alignof
+			 *     We should parse the brackets as an expression,
+			 *     since sizeof(a)->b is valid.
+			 */
+			if(what_of == what_typeof){
+				e = expr_new_sizeof_expr(
+						parse_expr_exp(scope, static_ctx),
+						what_of);
+
+				EAT(token_close_paren);
+			}else{
+				uneat(token_open_paren);
+
+				e = expr_new_sizeof_expr(
+						parse_expr_unary(scope, static_ctx),
+						what_of);
+			}
 		}
 
 	}else{
@@ -119,7 +145,7 @@ expr *parse_expr_sizeof_typeof_alignof(symtable *scope)
 
 	e = expr_set_where_len(e, &w);
 
-	if(what_of == what_alignof && is_expr){
+	if(alignof_c11 && is_expr){
 		cc1_warn_at(&e->where, gnu_alignof_expr,
 				"_Alignof applied to expression is a GNU extension");
 	}
@@ -177,15 +203,22 @@ expr *parse_expr_identifier(void)
 {
 	expr *e;
 	char *sp;
+	where w;
 
-	if(curtok != token_identifier)
-		die_at(NULL, "identifier expected, got %s", token_to_str(curtok));
+	if(token_accept_identifier(&sp, &w)){
+		/* ok */
+	}else{
+		warn_at_print_error(NULL, "identifier expected, got %s", token_to_str(curtok));
+		parse_had_error = 1;
 
-	sp = token_current_spel();
+		sp = ustrdup(DUMMY_IDENTIFIER);
+		where_cc1_current(&w);
+	}
 
 	e = expr_new_identifier(sp);
+	memcpy_safe(&e->where, &w);
 	where_cc1_adj_identifier(&e->where, sp);
-	EAT(token_identifier);
+
 	return e;
 }
 
@@ -458,8 +491,10 @@ expr *parse_expr_unary(symtable *scope, int static_ctx)
 				/* GNU &&label */
 				cc1_warn_at(NULL, gnu_addr_lbl, "use of GNU address-of-label");
 				EAT(curtok);
-				e = expr_new_addr_lbl(token_current_spel(), static_ctx);
-				EAT(token_identifier);
+
+				e = expr_new_addr_lbl(token_eat_identifier("?", &w), static_ctx);
+				memcpy_safe(&e->where, &w);
+				set_w = 0;
 				break;
 
 			case token_and:
@@ -487,6 +522,7 @@ expr *parse_expr_unary(symtable *scope, int static_ctx)
 				break;
 
 			case token__Alignof:
+			case token___alignof:
 				set_w = 0;
 				e = parse_expr_sizeof_typeof_alignof(scope);
 				break;

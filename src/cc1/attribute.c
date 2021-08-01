@@ -109,7 +109,7 @@ attribute *expr_attr_present(expr *e, enum attribute_type t)
 	attribute *da;
 
 	if(expr_kind(e, cast)){
-		da = expr_attr_present(e->expr, t);
+		da = expr_attr_present(expr_cast_child(e), t);
 		if(da)
 			return da;
 	}
@@ -130,12 +130,14 @@ const char *attribute_to_str(attribute *da)
 {
 	switch(da->type){
 #define NAME(x, typrop) case attr_ ## x: return #x;
-#define ALIAS(s, x, typrop) case attr_ ## x: return s;
-#define EXTRA_ALIAS(s, x)
+#define RENAME(s, x, typrop) case attr_ ## x: return s;
+#define ALIAS(s, x)
+#define COMPLEX_ALIAS(s, x)
 		ATTRIBUTES
 #undef NAME
+#undef RENAME
 #undef ALIAS
-#undef EXTRA_ALIAS
+#undef COMPLEX_ALIAS
 		case attr_LAST:
 			break;
 	}
@@ -149,9 +151,6 @@ void attribute_free(attribute *a)
 			assert(0);
 
 		case attr_alias:
-			free(a->bits.alias);
-			break;
-
 		case attr_format:
 		case attr_cleanup:
 		case attr_section:
@@ -175,8 +174,11 @@ void attribute_free(attribute *a)
 		case attr_ucc_debug:
 		case attr_always_inline:
 		case attr_noinline:
+		case attr_flatten:
 		case attr_no_stack_protector:
 		case attr_stack_protect:
+		case attr_no_sanitize:
+		case attr_fallthrough:
 			break;
 	}
 
@@ -268,6 +270,11 @@ int attribute_equal(attribute *a, attribute *b)
 				return 0;
 			break;
 
+		case attr_no_sanitize:
+			if(a->bits.no_sanitize != b->bits.no_sanitize)
+				return 0;
+			break;
+
 		case attr_unused:
 		case attr_used:
 		case attr_warn_unused:
@@ -281,8 +288,10 @@ int attribute_equal(attribute *a, attribute *b)
 		case attr_ucc_debug:
 		case attr_always_inline:
 		case attr_noinline:
+		case attr_flatten:
 		case attr_no_stack_protector:
 		case attr_stack_protect:
+		case attr_fallthrough:
 			/* equal */
 			break;
 	}
@@ -294,12 +303,14 @@ int attribute_is_typrop(attribute *attr)
 {
 	switch(attr->type){
 #define NAME(nam, typrop) case attr_ ## nam: return typrop;
-#define ALIAS(str, nam, typrop) case attr_ ## nam: return typrop;
-#define EXTRA_ALIAS(str, nam)
+#define RENAME(str, nam, typrop) case attr_ ## nam: return typrop;
+#define ALIAS(str, nam)
+#define COMPLEX_ALIAS(str, nam)
 		ATTRIBUTES
 #undef NAME
+#undef RENAME
 #undef ALIAS
-#undef EXTRA_ALIAS
+#undef COMPLEX_ALIAS
 		case attr_LAST:
 			break;
 	}

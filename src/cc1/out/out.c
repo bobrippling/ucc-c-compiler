@@ -328,3 +328,8 @@ void out_force_read(out_ctx *octx, type *ty, const out_val *v)
 	out_val_consume(octx,
 			out_memcpy(octx, target, v, type_size(ty, NULL)));
 }
+
+int out_sanitize_enabled(out_ctx *octx, enum san_opts opt)
+{
+	return sanitize_enabled(opt, octx->no_sanitize_flags);
+}

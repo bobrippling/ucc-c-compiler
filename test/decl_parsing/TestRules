@@ -1,4 +1,0 @@
-compiles: parse_test.c
-exit=4: ar.c
-exit=6: fptr_arg.c, add_or_sub.c
-exit=5: ptr.c

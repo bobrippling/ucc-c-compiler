@@ -2,7 +2,8 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <assert.h>
-#include <math.h>
+
+#include "../../util/math.h"
 
 #include "../type.h"
 #include "../type_is.h"
@@ -29,7 +30,7 @@ static int calc_ptr_step(type *t)
 	if(type_is_primitive(type_is_ptr(t), type_void))
 		return type_primitive_size(type_void);
 
-	if(type_is_primitive(t, type_unknown))
+	if(type_is_arith(t))
 		return 1;
 
 	tnext = type_next(t);
@@ -255,26 +256,26 @@ static void try_shift_conv(
 
 	if(*binop == op_divide && (*rhs)->type == V_CONST_I){
 		integral_t k = (*rhs)->bits.val_i;
-		if((k & (k - 1)) == 0){
+		if(ispow2(k)){
 			/* power of two, can shift */
 			out_val *mut;
 
 			*binop = op_shiftr;
 
 			*rhs = mut = v_dup_or_reuse(octx, *rhs, (*rhs)->t);
-			mut->bits.val_i = log2(k);
+			mut->bits.val_i = log2ll(k);
 		}
 	}else if(*binop == op_multiply){
 		const out_val **vconst = (*lhs)->type == V_CONST_I ? lhs : rhs;
 		integral_t k = (*vconst)->bits.val_i;
 
-		if((k & (k - 1)) == 0){
+		if(ispow2(k)){
 			out_val *mut;
 
 			*binop = op_shiftl;
 
 			*vconst = mut = v_dup_or_reuse(octx, *vconst, (*vconst)->t);
-			mut->bits.val_i = log2(k);
+			mut->bits.val_i = log2ll(k);
 
 			if(vconst == lhs){
 				/* need to swap as shift expects the constant to be rhs */
@@ -284,6 +285,34 @@ static void try_shift_conv(
 			}
 		}
 	}
+}
+
+static void try_trunc_conv(
+		out_ctx *octx,
+		enum op_type *binop,
+		const out_val **lhs, const out_val **rhs)
+{
+	integral_t k;
+	out_val *mut;
+
+	if(type_is_signed((*lhs)->t))
+		return;
+
+	assert(*binop == op_modulus);
+
+	if((*rhs)->type != V_CONST_I)
+		return;
+
+	k = (*rhs)->bits.val_i;
+	if(!ispow2(k))
+		return;
+
+	/* x % n == x & (n - 1) [when n is a power of 2] */
+
+	*binop = op_and;
+
+	*rhs = mut = v_dup_or_reuse(octx, *rhs, (*rhs)->t);
+	mut->bits.val_i = k - 1;
 }
 
 static const out_val *consume_one(
@@ -317,9 +346,6 @@ const out_val *out_op(
 			return result;
 	}
 
-	if(vconst && const_is_noop(binop, vconst, vconst == lhs))
-		return consume_one(octx, vconst == lhs ? rhs : lhs, lhs, rhs);
-
 	/* constant folding */
 	if(vconst && cc1_fopt.const_fold){
 		const out_val *oconst = (vconst == lhs ? rhs : lhs);
@@ -336,6 +362,10 @@ const out_val *out_op(
 				if(consted)
 					return consted;
 			}
+		}else if(const_is_noop(binop, vconst, vconst == lhs)){
+			/* handle non-const with const, where the result is clear
+			 * e.g. x | 0 */
+			return consume_one(octx, vconst == lhs ? rhs : lhs, lhs, rhs);
 		}
 	}
 
@@ -346,8 +376,12 @@ const out_val *out_op(
 			break;
 		case op_multiply:
 		case op_divide:
-			if(vconst && !(cc1_sanitize & (SAN_SIGNED_INTEGER_OVERFLOW | SAN_POINTER_OVERFLOW)))
+			if(vconst && !out_sanitize_enabled(octx, SAN_SIGNED_INTEGER_OVERFLOW | SAN_POINTER_OVERFLOW))
 				try_shift_conv(octx, &binop, &lhs, &rhs);
+			break;
+		case op_modulus:
+			if(vconst)
+				try_trunc_conv(octx, &binop, &lhs, &rhs);
 			break;
 		default:
 			break;
@@ -411,4 +445,31 @@ const out_val *out_op_unary(out_ctx *octx, enum op_type uop, const out_val *val)
 	}
 
 	return impl_op_unary(octx, uop, val);
+}
+
+void test_out_out(void)
+{
+	out_val v = { 0 };
+	type *inner;
+
+	/* int */
+	v.type = V_REG;
+	v.t = type_nav_btype(cc1_type_nav, type_int);
+	assert(is_val_ptr(&v) == NULL);
+
+	/* int* */
+	v.type = V_REG;
+	v.t = type_ptr_to(type_nav_btype(cc1_type_nav, type_int));
+	assert(is_val_ptr(&v) == v.t);
+
+	/* int& */
+	v.type = V_SPILT;
+	v.t = type_ptr_to(type_nav_btype(cc1_type_nav, type_int));
+	assert(is_val_ptr(&v) == NULL);
+
+	/* int*& */
+	inner = type_ptr_to(type_nav_btype(cc1_type_nav, type_int));
+	v.type = V_SPILT;
+	v.t = type_ptr_to(inner);
+	assert(is_val_ptr(&v) == inner);
 }

@@ -27,6 +27,8 @@ const char *op_to_str(const enum op_type o)
 		case op_bnot:     return "~";
 		case op_shiftl:   return "<<";
 		case op_shiftr:   return ">>";
+		case op_signbit:   return "SIGNBIT";
+		case op_no_signbit: return "NOSIGNBIT";
 		CASE_STR_PREFIX(op, unknown);
 	}
 	return NULL;
@@ -80,6 +82,8 @@ int op_is_commutative(enum op_type o)
 		case op_and:
 		case op_eq:
 		case op_ne:
+		case op_signbit:
+		case op_no_signbit:
 			return 1;
 
 		case op_unknown:
@@ -166,6 +170,8 @@ int op_increases(enum op_type o)
 		case op_lt:
 		case op_ge:
 		case op_gt:
+		case op_signbit:
+		case op_no_signbit:
 			return 0;
 	}
 

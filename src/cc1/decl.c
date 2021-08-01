@@ -396,9 +396,14 @@ int decl_should_emit_code(decl *d)
 		return 0;
 	if(decl_is_pure_inline(d))
 		return 0;
-	if(decl_unused_and_internal(d) && !attribute_present(d, attr_used))
+	if(decl_unused_and_internal(d))
 		return 0;
 	return 1;
+}
+
+int decl_should_emit_var(decl *d)
+{
+	return !decl_unused_and_internal(d);
 }
 
 int decl_unused_and_internal(decl *d)
@@ -406,6 +411,9 @@ int decl_unused_and_internal(decl *d)
 	/* need to check every clone of the decl */
 	decl *i;
 	int used = 0;
+
+	if(attribute_present(d, attr_used))
+		return 0;
 
 	for(i = d; i; i = i->proto){
 		if(i->flags & DECL_FLAGS_USED){
@@ -572,8 +580,12 @@ int decl_needs_GOTPLT(decl *d)
 		/* gcc acts as if variables are always local/accessible without the GOT in pie-code */
 		int is_var = 0; /* !type_is(d->ref, type_func) */
 
-		if((is_var || decl_defined(d, 0)) && !attribute_present(d, attr_weak))
-			return 0;
+		if((is_var || decl_defined(d, 0)) && !attribute_present(d, attr_weak)){
+			/* decl is local to the current TU, we don't need GOT/PLT
+			 * ... unless it's pure-inline */
+			if(!(type_is(d->ref, type_func) && decl_is_pure_inline(d)))
+				return 0;
+		}
 	}
 
 	switch(decl_visibility(d)){

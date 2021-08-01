@@ -19,6 +19,7 @@
 #include "../util/tmpfile.h"
 #include "../util/alloc.h"
 #include "../util/macros.h"
+#include "../util/colour.h"
 
 #include "tokenise.h"
 #include "cc1.h"
@@ -38,7 +39,6 @@
 #include "fopt.h"
 #include "cc1_target.h"
 #include "cc1_out.h"
-#include "cc1_sections.h"
 #include "sanitize_opt.h"
 
 static const char **system_includes;
@@ -55,6 +55,8 @@ static struct
 } mopts[] = {
 	{ "stackrealign", MOPT_STACK_REALIGN },
 	{ "align-is-p2", MOPT_ALIGN_IS_POW2 },
+	{ "fentry", MOPT_FENTRY },
+	{ "red-zone", MOPT_RED_ZONE },
 
 	{ NULL, 0 }
 };
@@ -69,16 +71,19 @@ static struct
 	{ 'f', "message-length", &warning_length },
 
 	{ 'm', "preferred-stack-boundary", &cc1_mstack_align },
+	/* note this stores into cc1_mstack_align an invalid value,
+	 * that must be 2^n'd before being used */
+
 	{ 0, NULL, NULL }
 };
 
-dynmap *cc1_out_persection;
-struct section_output cc1_current_section_output = SECTION_OUTPUT_UNINIT;
+struct cc1_output cc1_output = SECTION_OUTPUT_UNINIT;
+dynmap *cc1_outsections;
 char *cc1_first_fname;
 
 enum cc1_backend cc1_backend = BACKEND_ASM;
 
-enum mopt mopt_mode = 0;
+enum mopt mopt_mode = MOPT_RED_ZONE;
 
 enum visibility cc1_visibility_default;
 
@@ -99,6 +104,7 @@ int show_current_line;
 struct cc1_fopt cc1_fopt;
 
 struct target_details cc1_target_details;
+static const char *requested_default_visibility;
 
 static const char *debug_compilation_dir;
 
@@ -133,7 +139,6 @@ static void dump_options(void)
 	fprintf(stderr, "  -g[0|1|2|3], -gline-tables-only|mlt, -g[no-]column-info\n");
 	fprintf(stderr, "  -o output-file\n");
 	fprintf(stderr, "  -emit=(dump|print|asm|style)\n");
-	fprintf(stderr, "  -m(stringop-strategy=...|...)\n");
 	fprintf(stderr, "  -O[0123s]\n");
 	fprintf(stderr, "  --help\n");
 	fprintf(stderr, "\n");
@@ -141,13 +146,13 @@ static void dump_options(void)
 	fprintf(stderr, "  -pedantic{,-errors}\n");
 	fprintf(stderr, "  -W(no-)?(all|extra|everything|gnu|error(=...)|...)\n");
 	fprintf(stderr, "  -w\n");
-	fprintf(stderr, "  -std=(gnu|c)(99|90|89|11), -ansi\n");
+	fprintf(stderr, "  -std=c89/c90/c99/c11/c17/c18 / -ansi / -std=gnu...\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Feature options\n");
 	fprintf(stderr, "  -f(sanitize=...|sanitize-error=...|sanitize-undefined-trap-on-error)\n");
 	fprintf(stderr, "  -fno-sanitize=all\n");
 	fprintf(stderr, "  -fvisibility=default|hidden|protected\n");
 	fprintf(stderr, "  -fdebug-compilation-dir=...\n");
-	fprintf(stderr, "\n");
-	fprintf(stderr, "Feature options\n");
 
 #define X(flag, memb) fprintf(stderr, "  -f[no-]" flag "\n");
 #define ALIAS X
@@ -163,11 +168,12 @@ static void dump_options(void)
 
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Machine options\n");
+	fprintf(stderr, "  -mstringop-strategy=(libcall|loop|libcall-threshold=<number>)\n");
 	for(i = 0; mopts[i].arg; i++)
 		fprintf(stderr, "  -m[no-]%s\n", mopts[i].arg);
 
 	fprintf(stderr, "\n");
-	fprintf(stderr, "Feature/machine values\n");
+	fprintf(stderr, "Feature/machine value options\n");
 	for(i = 0; val_args[i].arg; i++)
 		fprintf(stderr, "  -%c%s=value\n", val_args[i].pref, val_args[i].arg);
 }
@@ -218,68 +224,26 @@ static void io_fin_macosx_version(FILE *out)
 	}
 }
 
-static void io_fin_section(FILE *section, FILE *out, const struct section *sec)
-{
-	const char *desc = NULL;
-	char *name;
-	int allocated;
-	const int is_builtin = section_is_builtin(sec);
-
-	if(is_builtin)
-		desc = asm_section_desc(sec->builtin);
-
-	if(fseek(section, 0, SEEK_SET))
-		ccdie("seeking in section tmpfile:");
-
-	name = section_name(sec, &allocated);
-	xfprintf(out, ".section %s", name);
-	if(allocated)
-		free(name);
-
-	if(cc1_target_details.as.supports_section_flags && !is_builtin){
-		const int is_code = sec->flags & SECTION_FLAG_EXECUTABLE;
-		const int is_rw = !(sec->flags & SECTION_FLAG_RO);
-
-		xfprintf(out, ",\"a%s\",@progbits", is_code ? "x" : is_rw ? "w" : "");
-	}
-	xfprintf(out, "\n");
-
-	if(desc)
-		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, desc);
-
-	if(cat(section, out))
-		ccdie("concatenating section tmpfile:");
-
-	if(desc)
-		xfprintf(out, "%s%s%s:\n", cc1_target_details.as.privatelbl_prefix, SECTION_END, desc);
-
-	if(fclose(section))
-		ccdie("closing section tmpfile:");
-}
-
 static void io_fin_sections(FILE *out)
 {
-	FILE *section;
+	const struct section *section;
 	size_t i;
-
-	if(!cc1_out_persection)
-		return;
 
 	if(cc1_gdebug){
 		/* ensure we have text and debug-line sections for the debug to reference */
-		(void)asm_section_file(&section_text);
-		(void)asm_section_file(&section_dbg_line);
+		asm_switch_section(&section_text);
+		asm_switch_section(&section_dbg_line);
 	}
 
-	for(i = 0; (section = dynmap_value(FILE *, cc1_out_persection, i)); i++){
-		struct section *sec = dynmap_key(struct section *, cc1_out_persection, i);
-
-		io_fin_section(section, out, sec);
-
-		free(sec);
+	for(i = 0; (section = dynmap_key(const struct section *, cc1_outsections, i)); i++){
+		if(section_is_builtin(section)){
+			const char *desc = asm_section_desc(section->builtin);
+			if(desc){
+				asm_switch_section(section);
+				xfprintf(out, "%s%s%s:\n", cc1_target_details.as->privatelbl_prefix, SECTION_END, desc);
+			}
+		}
 	}
-
-	dynmap_free(cc1_out_persection);
 }
 
 static void io_fin(FILE *out)
@@ -308,7 +272,7 @@ static char *next_line(void)
 	return s;
 }
 
-static void gen_backend(symtable_global *globs, const char *fname, FILE *out)
+static void gen_backend(symtable_global *globs, const char *fname, FILE *out, const char *producer)
 {
 	void (*gf)(symtable_global *) = NULL;
 
@@ -342,11 +306,14 @@ static void gen_backend(symtable_global *globs, const char *fname, FILE *out)
 			gen_asm(globs,
 					cc1_first_fname ? cc1_first_fname : fname,
 					compdir,
-					&filelist);
+					&filelist,
+					producer);
 
-			/* filelist needs to be output first */
-			if(filelist && cc1_gdebug != DEBUG_OFF)
-				dbg_out_filelist(filelist, out);
+			/* FIXME: don't take filelist out-param, and free it in gem_asm() */
+			/* filelist needs to be output first
+			if(0 && filelist && cc1_gdebug != DEBUG_OFF)
+				dbg_out_filelist(filelist);
+			*/
 
 			io_fin(out);
 
@@ -426,7 +393,7 @@ unrecog:
 
 static void set_default_visibility(const char *argv0, const char *visibility)
 {
-	if(!visibility_parse(&cc1_visibility_default, visibility, cc1_target_details.as.supports_visibility_protected)){
+	if(!visibility_parse(&cc1_visibility_default, visibility, cc1_target_details.as->supports_visibility_protected)){
 		fprintf(stderr, "%s: unknown/unsupported visibility \"%s\"\n", argv0, visibility);
 		exit(1);
 	}
@@ -443,7 +410,7 @@ static int parse_mf_equals(
 	int i;
 	int new_val;
 
-	if(invert && !strcmp(arg_substr, "sanitize=all")){
+	if(invert && arg_ty == 'f' && !strcmp(arg_substr, "sanitize=all")){
 		sanitize_opt_off();
 		return 1;
 	}
@@ -452,54 +419,57 @@ static int parse_mf_equals(
 		usage(argv0, "\"no-\" unexpected for value-argument\n");
 	}
 
-	if(!strncmp(arg_substr, "sanitize=", 9)){
-		sanitize_opt_add(argv0, arg_substr + 9);
-		return 1;
-	}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
-		sanitize_opt_set_error(argv0, arg_substr + 15);
-		return 1;
-	}else if(!strcmp(arg_substr, "sanitize-undefined-trap-on-error")){
-		/* currently the choices are a noreturn function, or trap.
-		 * in the future, support could be added for linking with gcc or clang's libubsan,
-		 * and calling the runtime support functions therein */
-		sanitize_opt_set_error(argv0, "trap");
-	}else if(!strncmp(arg_substr, "visibility=", 11)){
-		set_default_visibility(argv0, arg_substr + 11);
-		return 1;
-	}else if(!strncmp(arg_substr, "debug-compilation-dir=", 22)){
-		debug_compilation_dir = arg_substr + 22;
-		return 1;
-	}
-
-	if(arg_ty == 'm' && !strncmp(arg_substr, "stringop-strategy=", 18)){
-		const char *strategy = arg_substr + 18;
-
-		/* gcc options are:
-		 * rep_byte, rep_4byte, rep_8byte
-		 * byte_loop, loop, unrolled_loop
-		 * libcall */
-
-		if(!strcmp(strategy, "libcall")){
-			cc1_mstringop_strategy = STRINGOP_STRATEGY_LIBCALL;
-		}else if(!strcmp(strategy, "loop")){
-			cc1_mstringop_strategy = STRINGOP_STRATEGY_LOOP;
-		}else if(!strncmp(strategy, "libcall-threshold=", 18)){
-			const char *threshold = strategy + 18;
-			char *end;
-
-			cc1_mstringop_strategy = STRINGOP_STRATEGY_THRESHOLD;
-			cc1_mstringop_threshold = strtol(threshold, &end, 0);
-			if(*end)
-				usage(argv0, "invalid number for -mmemcpy-strategy=libcall-threshold=..., \"%s\"\n", threshold);
-		}else{
-			usage(
-					argv0,
-					"invalid argument to for -mmemcpy-strategy=..., \"%s\", accepted values:\n"
-					"  libcall, loop, libcall-threshold=<number>\n"
-					, strategy);
+	if(arg_ty == 'f'){
+		if(!strncmp(arg_substr, "sanitize=", 9)){
+			sanitize_opt_add(argv0, arg_substr + 9);
+			return 1;
+		}else if(!strncmp(arg_substr, "sanitize-error=", 15)){
+			sanitize_opt_set_error(argv0, arg_substr + 15);
+			return 1;
+		}else if(!strcmp(arg_substr, "sanitize-undefined-trap-on-error")){
+			/* currently the choices are a noreturn function, or trap.
+			 * in the future, support could be added for linking with gcc or clang's libubsan,
+			 * and calling the runtime support functions therein */
+			sanitize_opt_set_error(argv0, "trap");
+		}else if(!strncmp(arg_substr, "visibility=", 11)){
+			requested_default_visibility = arg_substr + 11;
+			return 1;
+		}else if(!strncmp(arg_substr, "debug-compilation-dir=", 22)){
+			debug_compilation_dir = arg_substr + 22;
+			return 1;
 		}
 
-		return 1;
+	}else if(arg_ty == 'm'){
+		if(!strncmp(arg_substr, "stringop-strategy=", 18)){
+			const char *strategy = arg_substr + 18;
+
+			/* gcc options are:
+			 * rep_byte, rep_4byte, rep_8byte
+			 * byte_loop, loop, unrolled_loop
+			 * libcall */
+
+			if(!strcmp(strategy, "libcall")){
+				cc1_mstringop_strategy = STRINGOP_STRATEGY_LIBCALL;
+			}else if(!strcmp(strategy, "loop")){
+				cc1_mstringop_strategy = STRINGOP_STRATEGY_LOOP;
+			}else if(!strncmp(strategy, "libcall-threshold=", 18)){
+				const char *threshold = strategy + 18;
+				char *end;
+
+				cc1_mstringop_strategy = STRINGOP_STRATEGY_THRESHOLD;
+				cc1_mstringop_threshold = strtol(threshold, &end, 0);
+				if(*end)
+					usage(argv0, "invalid number for -mmemcpy-strategy=libcall-threshold=..., \"%s\"\n", threshold);
+			}else{
+				usage(
+						argv0,
+						"invalid argument to for -mmemcpy-strategy=..., \"%s\", accepted values:\n"
+						"  libcall, loop, libcall-threshold=<number>\n"
+						, strategy);
+			}
+
+			return 1;
+		}
 	}
 
 	if(sscanf(equal + 1, "%d", &new_val) != 1){
@@ -573,8 +543,13 @@ static void parse_Wmf_option(
 	}
 
 	if(arg_ty == 'f'){
-		if(fopt_on(&cc1_fopt, arg_substr, invert))
+		unsigned char *opt = fopt_on(&cc1_fopt, arg_substr, invert);
+		if(opt){
+			if(opt == &cc1_fopt.colour_diagnostics)
+				colour_enable(*opt);
+
 			return;
+		}
 		goto unknown;
 	}
 
@@ -599,8 +574,10 @@ static int init_target(const char *target)
 			return 0;
 		}
 	}else{
-		if(!triple_default(&triple)){
-			fprintf(stderr, "couldn't get target triple\n");
+		const char *unparsed;
+		if(!triple_default(&triple, &unparsed)){
+			fprintf(stderr, "couldn't get target triple: %s\n",
+					unparsed ? unparsed : strerror(errno));
 			return 0;
 		}
 	}
@@ -620,6 +597,35 @@ static int init_target(const char *target)
 	return 1;
 }
 
+static void output_init(const char *fname)
+{
+	if(fname){
+		cc1_output.file = fopen(fname, "w");
+		if(!cc1_output.file)
+			ccdie("open %s:", fname);
+	}else{
+		cc1_output.file = stdout;
+	}
+
+	cc1_outsections = dynmap_new(struct section *, section_cmp, section_hash);
+}
+
+static void output_term(const char *fname)
+{
+	struct section *section;
+	size_t i;
+
+	for(i = 0; (section = dynmap_key(struct section *, cc1_outsections, i)); i++)
+		free(section);
+
+	dynmap_free(cc1_outsections);
+	cc1_outsections = NULL;
+
+	if(fclose(cc1_output.file))
+		ccdie("close output (%s):", fname);
+	cc1_output.file = NULL;
+}
+
 int main(int argc, char **argv)
 {
 	int failure;
@@ -627,7 +633,6 @@ int main(int argc, char **argv)
 	static symtable_global *globs;
 	const char *in_fname = NULL;
 	const char *out_fname = NULL;
-	FILE *outfile;
 	const char *target = NULL;
 	int i;
 	int werror = 0;
@@ -765,15 +770,20 @@ dbg_unknown:
 		return 1;
 
 	if(cc1_mstack_align == -1){
-		cc1_mstack_align = log2i(platform_word_size());
+		cc1_mstack_align = platform_word_size();
 	}else{
 		unsigned new = powf(2, cc1_mstack_align);
 		if(new < platform_word_size()){
-			ccdie("stack alignment must be >= platform word size (2^%d)",
+			ccdie("stack alignment (%d) must be >= %d (platform word size 2^%d)",
+					cc1_mstack_align,
+					platform_word_size(),
 					log2i(platform_word_size()));
 		}
 		cc1_mstack_align = new;
 	}
+
+	if(requested_default_visibility)
+		set_default_visibility(argv[0], requested_default_visibility);
 
 	if(werror)
 		warnings_upgrade();
@@ -792,17 +802,11 @@ dbg_unknown:
 		in_fname = "-";
 	}
 
-	if(out_fname){
-		outfile = fopen(out_fname, "w");
-		if(!outfile)
-			ccdie("open %s:", out_fname);
-	}else{
-		outfile = stdout;
-	}
+	output_init(out_fname);
 
 	show_current_line = cc1_fopt.show_line;
 	if(cc1_fopt.trapv)
-		cc1_sanitize |= SAN_SIGNED_INTEGER_OVERFLOW;
+		sanitize_opt_add(argv[0], "signed-integer-overflow");
 
 	cc1_type_nav = type_nav_init();
 
@@ -822,7 +826,9 @@ dbg_unknown:
 	infile = NULL;
 
 	if(failure == 0 || /* attempt dump anyway */cc1_backend == BACKEND_DUMP){
-		gen_backend(globs, in_fname, outfile);
+		const char *producer = "ucc development version";
+
+		gen_backend(globs, in_fname, cc1_output.file, producer);
 		if(gen_had_error)
 			failure = 1;
 	}
@@ -830,8 +836,7 @@ dbg_unknown:
 	if(cc1_fopt.dump_type_tree)
 		type_nav_dump(cc1_type_nav);
 
-	if(fclose(outfile))
-		ccdie("close output (%s):", out_fname);
+	output_term(out_fname);
 
 out:
 	dynarray_free(const char **, system_includes, NULL);

@@ -40,6 +40,8 @@ static int should_use_libc(unsigned long nbytes)
 		case STRINGOP_STRATEGY_THRESHOLD:
 			return nbytes >= cc1_mstringop_threshold;
 	}
+
+	assert(0 && "unreachable");
 }
 
 static const out_val *emit_libc_call(

@@ -592,8 +592,11 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 		check_qual_rm(ptr_lhs, ptr_rhs, e);
 
-		/* removes cv-qualifiers:
-		 * (const int)3 has type int, not const int */
+		/*
+		 * C17 6.5.4p5 / DR 423
+		 * Casts convert to the unqualified version of the named type
+		 * i.e.
+		 * (const int)3 // type is 'int', not 'const int' */
 		e->tree_type = type_unqualify(e->tree_type);
 	}
 }
@@ -745,10 +748,16 @@ static int expr_cast_has_sideeffects(const expr *e)
 	return expr_has_sideeffects(expr_cast_child(e));
 }
 
+static int expr_cast_requires_relocation(const expr *e)
+{
+	return expr_requires_relocation(expr_cast_child(e));
+}
+
 void mutate_expr_cast(expr *e)
 {
 	e->f_const_fold = fold_const_expr_cast;
 	e->f_has_sideeffects = expr_cast_has_sideeffects;
+	e->f_requires_relocation = expr_cast_requires_relocation;
 }
 
 expr *expr_new_cast(expr *what, type *to, int implicit)

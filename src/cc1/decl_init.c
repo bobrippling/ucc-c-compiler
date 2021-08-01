@@ -319,6 +319,35 @@ int decl_init_has_sideeffects(decl_init *dinit)
 	return 0;
 }
 
+int decl_init_requires_relocation(decl_init *dinit)
+{
+	DINIT_NULL_CHECK(dinit, return 0);
+
+	switch(dinit->type){
+		case decl_init_scalar:
+			return expr_requires_relocation(dinit->bits.expr);
+
+		case decl_init_brace:
+		{
+			decl_init **i;
+
+			for(i = dinit->bits.ar.inits; i && *i; i++)
+				if(decl_init_requires_relocation(*i))
+					return 1;
+
+			return 0;
+		}
+
+		case decl_init_copy:
+		{
+			struct init_cpy *cpy = *dinit->bits.range_copy;
+			return decl_init_requires_relocation(cpy->range_init);
+		}
+	}
+
+	return 0;
+}
+
 decl_init *decl_init_new_w(enum decl_init_type t, where *w)
 {
 	decl_init *di = umalloc(sizeof *di);
@@ -1442,7 +1471,7 @@ static decl_init *decl_init_brace_up_start(
 				warn_at_print_error(&init->where,
 						str_mismatch
 							? "incorrect string literal initialiser for %s"
-							: "%s must be initialised with an initialiser list",
+							: "%s must be initialised with an initialiser list or copy-assignment",
 						type_to_str(tfor));
 				return init;
 			}else{
@@ -1602,9 +1631,12 @@ void decl_init_create_assignments_base(
 		expr *zero;
 
 zero_init:
-		if(type_is_incomplete_array(tfor) || type_is_variably_modified(tfor)){
-			/* error caught elsewhere,
-			 * where we can print the location */
+		if(type_is_incomplete_array(tfor))
+			return; /* permitted sometimes, flexinit */
+
+		if(type_is_vla(tfor, VLA_ANY_DIMENSION)){
+			/* error caught elsewhere, where we can print the location */
+			fold_expect_error = 1;
 			return;
 		}
 

@@ -1,0 +1,16 @@
+.section .rodata
+main:
+.long 195
+.section .bss
+x:
+.zero 4
+.section .data
+y:
+.long 1
+.section .text
+f:
+.section .rodata
+.section .text
+.section .data
+.section .bss
+.section .note.GNU-stack,"",@progbits

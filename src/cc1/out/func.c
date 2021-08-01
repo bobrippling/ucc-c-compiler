@@ -33,6 +33,7 @@ const out_val *out_call(out_ctx *octx,
 	 * since the stack must be aligned correctly for a call
 	 * (i.e. at least a pushq %rbp to bring it up to 16) */
 	octx->used_stack = 1;
+	octx->had_call = 1;
 
 	return impl_call(octx, fn, args, fnty);
 }
@@ -83,7 +84,7 @@ static void callee_save_or_restore(
 	if(!stack_n)
 		return;
 
-	stack_locn = out_aalloc(octx, stack_n, /*align*/voidpsz, voidp);
+	stack_locn = out_aalloc(octx, stack_n, /*align*/voidpsz, voidp, NULL);
 
 	stack_locn = out_change_type(octx, stack_locn, voidp);
 
@@ -177,9 +178,14 @@ static void allocate_stack(out_ctx *octx, v_stackt adj)
 	v_stack_adj(octx, adj, /*sub:*/1);
 }
 
-void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *end_dbg_lbl)
+void out_func_epilogue(
+	out_ctx *octx,
+	type *ty,
+	const where *func_begin,
+	char *end_dbg_lbl,
+	const struct section *section)
 {
-	int clean_stack;
+	int clean_stack, redzone = 0;
 	out_blk *call_save_spill_blk = NULL;
 	out_blk *flush_root;
 
@@ -310,7 +316,21 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 		octx->in_prologue = 0;
 	}
 
-	clean_stack = octx->used_stack || !cc1_fopt.omit_frame_pointer;
+	if(cc1_profileg && mopt_mode & MOPT_FENTRY){ /* stack frame required */
+		clean_stack = 1;
+
+	}else if(!octx->used_stack){ /* stack unused - try to omit frame pointer */
+		clean_stack = !cc1_fopt.omit_frame_pointer;
+
+	}else{ /* stack used - can we red-zone it? */
+		redzone =
+			(mopt_mode & MOPT_RED_ZONE) &&
+			octx->max_stack_sz < REDZONE_BYTES &&
+			!octx->had_call &&
+			!octx->stack_ptr_manipulated;
+
+		clean_stack = 1;
+	}
 
 	out_current_blk(octx, octx->epilogue_blk);
 	{
@@ -335,14 +355,23 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 			 * and that same value (minus padding) to stack_n_alloc */
 			assert(octx->max_stack_sz >= octx->stack_n_alloc);
 
-			out_comment(octx,
-					"stack_sz{cur=%lu,max=%lu} n_alloc=%lu call_spc=%lu calleesve=%lu max_align=%u",
-					octx->cur_stack_sz,
-					octx->max_stack_sz,
-					octx->stack_n_alloc,
-					octx->stack_callspace,
-					octx->stack_calleesave_space,
-					octx->max_align);
+			if(cc1_fopt.verbose_asm){
+				out_comment(octx,
+						"stack_sz{cur=%lu,max=%lu} n_alloc=%lu call_spc=%lu calleesve=%lu max_align=%u",
+						octx->cur_stack_sz,
+						octx->max_stack_sz,
+						octx->stack_n_alloc,
+						octx->stack_callspace,
+						octx->stack_calleesave_space,
+						octx->max_align);
+
+				out_comment(octx,
+						"red-zone %s (stack @ %zu bytes, had_call: %d, stack_ptr_manipulated: %d)",
+						redzone ? "active" : "inactive",
+						octx->max_stack_sz,
+						octx->had_call,
+						octx->stack_ptr_manipulated);
+			}
 
 			if(octx->max_align){
 				/* must align max_stack_sz,
@@ -351,7 +380,8 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 			}
 			stack_adj = octx->max_stack_sz - octx->stack_n_alloc;
 
-			allocate_stack(octx, stack_adj);
+			if(!redzone)
+				allocate_stack(octx, stack_adj);
 		}
 
 		out_ctrl_transfer(octx, octx->argspill_begin_blk, NULL, NULL, 0);
@@ -363,13 +393,11 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 		flush_root = octx->postprologue_blk;
 
 		/* need to attach the label to prologue_postjoin_blk */
-		free(flush_root->lbl);
-		flush_root->lbl = octx->entry_blk->lbl;
-		octx->entry_blk->lbl = NULL;
+		blk_transfer(octx->entry_blk, flush_root);
 	}
 	octx->current_blk = NULL;
 
-	blk_flushall(octx, flush_root, end_dbg_lbl);
+	blk_flushall(octx, flush_root, end_dbg_lbl, section);
 
 	free(octx->used_callee_saved), octx->used_callee_saved = NULL;
 
@@ -415,17 +443,19 @@ static void stack_realign(out_ctx *octx, unsigned align)
 	v_set_cur_stack_sz(octx, new_sz);
 }
 
-void out_func_prologue(
-		out_ctx *octx, const char *sp,
-		type *fnty,
-		int nargs, int variadic, int stack_protector,
-		const out_val *argvals[])
+void out_perfunc_init(out_ctx *octx, decl *fndecl, const char *sp)
 {
+	attribute *attr;
+	type *const fnty = fndecl->ref;
+	attribute *alignment;
+
 	octx->current_fnty = fnty;
 
 	assert(octx->cur_stack_sz == 0 && "non-empty stack for new func");
 	assert(octx->alloca_count == 0 && "allocas left over?");
 	octx->check_flags = 1;
+	octx->had_call = 0;
+	octx->stack_ptr_manipulated = 0;
 
 	assert(!octx->current_blk);
 	octx->entry_blk = out_blk_new_lbl(octx, sp);
@@ -434,6 +464,18 @@ void out_func_prologue(
 	octx->postprologue_blk = out_blk_new(octx, "post_prologue");
 	octx->epilogue_blk = out_blk_new(octx, "epilogue");
 
+	attr = attribute_present(fndecl, attr_no_sanitize);
+	octx->no_sanitize_flags = attr ? attr->bits.no_sanitize : 0;
+
+	if((alignment = attribute_present(fndecl, attr_aligned)))
+		octx->entry_blk->align = const_fold_val_i(alignment->bits.align);
+}
+
+void out_func_prologue(
+		out_ctx *octx,
+		int nargs, int variadic, int stack_protector,
+		const out_val *argvals[])
+{
 	octx->in_prologue = 1;
 	{
 		const out_val *stack_prot_slot = NULL;
@@ -454,10 +496,10 @@ void out_func_prologue(
 
 		out_current_blk(octx, octx->argspill_begin_blk);
 		{
-			impl_func_prologue_save_call_regs(octx, fnty, nargs, argvals);
+			impl_func_prologue_save_call_regs(octx, octx->current_fnty, nargs, argvals);
 
 			if(variadic) /* save variadic call registers */
-				impl_func_prologue_save_variadic(octx, fnty);
+				impl_func_prologue_save_variadic(octx, octx->current_fnty);
 
 			octx->argspill_done_blk = octx->current_blk;
 
@@ -470,10 +512,10 @@ void out_func_prologue(
 				out_init_stack_canary(octx, stack_prot_slot);
 			}
 		}
+
+		octx->used_stack = !!stack_prot_slot;
 	}
 	octx->in_prologue = 0;
-
-	octx->used_stack = 0;
 
 	out_current_blk(octx, octx->postprologue_blk);
 }

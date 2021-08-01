@@ -47,6 +47,7 @@ typedef expr *func_builtin_parse(
 		const char *ident, symtable *);
 
 static func_builtin_parse parse_unreachable
+                          , parse_debugtrap
                           , parse_compatible_p
                           , parse_constant_p
                           , parse_frame_address
@@ -110,6 +111,7 @@ static builtin_table *builtin_find(const char *sp)
 {
 	static unsigned prefix_len;
 	builtin_table *found;
+	int has_builtin_prefix;
 
 	if(!cc1_fopt.freestanding){
 		found = builtin_table_search(no_prefix_builtins, sp);
@@ -123,13 +125,20 @@ static builtin_table *builtin_find(const char *sp)
 	if(strlen(sp) < prefix_len)
 		return NULL;
 
-	if(!strncmp(sp, PREFIX, prefix_len))
+	has_builtin_prefix = !strncmp(sp, PREFIX, prefix_len);
+	if(has_builtin_prefix)
 		found = builtin_table_search(builtins, sp + prefix_len);
 	else
 		found = NULL;
 
-	if(!found) /* look for __builtin_strlen, etc */
+	if(!found){ /* look for __builtin_strlen, etc */
 		found = builtin_table_search(no_prefix_builtins, sp + prefix_len);
+
+		if(!found && has_builtin_prefix){
+			warn_at_print_error(NULL, "unknown builtin '%s'", sp);
+			fold_had_error = 1;
+		}
+	}
 
 	return found;
 }
@@ -346,7 +355,7 @@ static const out_val *builtin_gen_unreachable(const expr *e, out_ctx *octx)
 	if(!strcmp(BUILTIN_SPEL(e->expr), "__builtin_trap"))
 		return builtin_gen_undefined(e, octx);
 
-	if(cc1_sanitize & SAN_UNREACHABLE)
+	if(out_sanitize_enabled(octx, SAN_UNREACHABLE))
 		sanitize_fail(octx, "unreachable");
 	return out_new_noop(octx);
 }
@@ -359,6 +368,36 @@ static expr *parse_unreachable(const char *ident, symtable *scope)
 	(void)scope;
 
 	expr_mutate_builtin(fcall, unreachable);
+
+	return fcall;
+}
+
+/* --- debugtrap */
+
+static void fold_debugtrap(expr *e, symtable *stab)
+{
+	(void)stab;
+
+	e->tree_type = type_nav_btype(cc1_type_nav , type_void);
+
+	wur_builtin(e);
+}
+
+static const out_val *builtin_gen_debugtrap(const expr *e, out_ctx *octx)
+{
+	(void)e;
+	out_ctrl_debugtrap(octx);
+	return out_new_noop(octx);
+}
+
+static expr *parse_debugtrap(const char *ident, symtable *scope)
+{
+	expr *fcall = expr_new_funcall();
+
+	(void)ident;
+	(void)scope;
+
+	expr_mutate_builtin(fcall, debugtrap);
 
 	return fcall;
 }
@@ -805,12 +844,17 @@ static void const_has_attribute(expr *e, consty *k)
 	enum attribute_type attr;
 	const char *spel = e->bits.builtin_ident.ident;
 
-#define NAME(x, tprop)      else if(!strcmp(spel, #x)) attr = attr_ ## x;
-#define ALIAS(s, x, typrop) else if(!strcmp(spel, s))  attr = attr_ ## x;
-#define EXTRA_ALIAS(s, x)   else if(!strcmp(spel, s))  attr = attr_ ## x;
+#define NAME(x, tprop)       else if(!strcmp(spel, #x)) attr = attr_ ## x;
+#define RENAME(s, x, typrop) else if(!strcmp(spel, s))  attr = attr_ ## x;
+#define ALIAS(s, x)          else if(!strcmp(spel, s))  attr = attr_ ## x;
+#define COMPLEX_ALIAS(s, x)  else if(!strcmp(spel, s))  attr = attr_ ## x;
 	if(0)
 		;
 	ATTRIBUTES
+#undef NAME
+#undef RENAME
+#undef ALIAS
+#undef COMPLEX_ALIAS
 	else{
 		CONST_FOLD_LEAF(k);
 		k->type = CONST_NO;
@@ -838,9 +882,8 @@ static expr *parse_has_attribute(const char *ident, symtable *scope)
 
 	EAT(token_comma);
 
-	fcall->bits.builtin_ident.ident = curtok_to_identifier(&fcall->bits.builtin_ident.alloc);
-
-	EAT(token_identifier);
+	fcall->bits.builtin_ident.ident = eat_curtok_to_identifier(
+			&fcall->bits.builtin_ident.alloc, NULL);
 
 	expr_mutate_builtin_const(fcall, has_attribute);
 	return fcall;

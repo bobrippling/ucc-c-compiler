@@ -10,6 +10,7 @@
 #include "../type_is.h"
 #include "../type_nav.h"
 #include "expr_identifier.h"
+#include "expr_struct.h"
 
 const char *str_expr_addr(void)
 {
@@ -78,6 +79,20 @@ void fold_expr_addr(expr *e, symtable *stab)
 				}
 
 				d->flags |= DECL_FLAGS_ADDRESSED;
+			}
+		}else if(expr_kind(e->lhs, struct)){
+			decl *d = e->lhs->bits.struct_mem.d;
+			type *suty = e->lhs->lhs->tree_type;
+			struct_union_enum_st *su = type_is_s_or_u(
+					type_is_ptr(suty) ? type_is_ptr(suty) : suty);
+			int attr_on_decl;
+
+			assert(su);
+			if((attr_on_decl = !!attribute_present(d, attr_packed)) || attr_present(su->attr, attr_packed)){
+				const int warned = cc1_warn_at(&e->where, address_of_packed, "taking the address of a packed member");
+
+				if(warned)
+					note_at((attr_on_decl ? &d->where : &su->where), "declared here");
 			}
 		}
 
@@ -168,6 +183,11 @@ static int expr_addr_has_sideeffects(const expr *e)
 	return e->lhs && expr_has_sideeffects(e->lhs);
 }
 
+static int expr_addr_requires_relocation(const expr *e)
+{
+	return e->lhs && expr_requires_relocation(e->lhs);
+}
+
 expr *expr_new_addr(expr *sub)
 {
 	expr *e = expr_new_wrapper(addr);
@@ -187,6 +207,7 @@ void mutate_expr_addr(expr *e)
 {
 	e->f_const_fold = const_expr_addr;
 	e->f_has_sideeffects = expr_addr_has_sideeffects;
+	e->f_requires_relocation = expr_addr_requires_relocation;
 }
 
 const out_val *gen_expr_style_addr(const expr *e, out_ctx *octx)

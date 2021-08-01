@@ -7,6 +7,9 @@
 #  define SECTION_NAME_TEXT .text
 #  define SECTION_NAME_BSS .bss
 #  define UCC_OS_LINUX
+
+.section .note.GNU-stack,"",@progbits
+
 #elif defined(__DARWIN__) || defined(__MACH__)
 #  define SECTION_NAME_TEXT __TEXT,__text
 #  define SECTION_NAME_BSS __BSS,__bss

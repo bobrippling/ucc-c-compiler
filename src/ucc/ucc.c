@@ -19,6 +19,7 @@
 #include "../util/str.h"
 #include "../util/triple.h"
 #include "../util/macros.h"
+#include "../util/tristate.h"
 #include "str.h"
 #include "warning.h"
 #include "filemodes.h"
@@ -81,11 +82,11 @@ struct ucc
 	} spanning_fopt;
 };
 
-enum tristate
+enum dyld
 {
-	TRI_UNSET,
-	TRI_FALSE,
-	TRI_TRUE
+	DYLD_DEFAULT,
+	DYLD_GLIBC,
+	DYLD_MUSL
 };
 
 struct uccvars
@@ -93,12 +94,20 @@ struct uccvars
 	const char *target;
 	const char *output;
 
-	int static_, shared;
+	int static_, shared, rdynamic;
 	int stdlibinc, builtininc, defaultlibs, startfiles;
 	int debug, profile;
+	int pthread;
 	enum tristate pie;
+	enum tristate multilib;
+	enum dyld dyld;
 	int help, dumpmachine;
 	enum { M_UNSET, M_32, M_64 } m3264;
+
+	struct ld_zoptions
+	{
+		int text;
+	} ld_z;
 };
 
 static char **remove_these;
@@ -570,6 +579,12 @@ static int handle_spanning_fopt(const char *fopt, struct ucc *const state)
 		return 1;
 	}
 
+	if(!strcmp(name, "fast-math")){
+		dynarray_add(&state->args[mode_preproc], ustrprintf("-%c__FAST_MATH__", no ? 'U' : 'D'));
+		dynarray_add(&state->args[mode_compile], ustrdup(fopt));
+		return 1;
+	}
+
 	return 0;
 }
 
@@ -589,6 +604,33 @@ static void resolve_spanning_fopts(struct ucc *const state)
 	}
 }
 
+static int add_normalised_arg(
+		struct ucc *const state,
+		enum mode mode,
+		char **argv,
+		int *const pi)
+{
+	const char *arg = argv[*pi];
+
+	if(arg[2]){
+		dynarray_add(&state->args[mode], ustrdup(arg));
+
+	}else{
+		char *joined;
+		int i;
+
+		/* allow a space, e.g. "-D" "arg" */
+		if(!(arg = argv[++*pi]))
+			return 0;
+
+		i = *pi;
+		joined = ustrprintf("%s%s", argv[i - 1], argv[i]);
+		dynarray_add(&state->args[mode], joined);
+	}
+
+	return 1;
+}
+
 static void parse_argv(
 		int argc,
 		char **argv,
@@ -597,6 +639,7 @@ static void parse_argv(
 		int *const assumptions,
 		int *const current_assumption)
 {
+#define ADD_ARG(to, arg) dynarray_add(&state->args[to], ustrdup(arg))
 	int had_MD = 0, had_MF = 0;
 	int i;
 	int seen_double_dash = 0;
@@ -607,12 +650,9 @@ static void parse_argv(
 			goto input;
 
 		}else if(*argv[i] == '-'){
-			int found = 0;
 			char *arg = argv[i];
 
 			switch(arg[1]){
-#define ADD_ARG(to) dynarray_add(&state->args[to], ustrdup(arg))
-
 				case 'W':
 				{
 					/* check for W%c, */
@@ -668,11 +708,11 @@ static void parse_argv(
 					|| !strncmp(argv[i], "-fmessage-length=", 17))
 					{
 						/* preproc gets this too */
-						ADD_ARG(mode_preproc);
+						ADD_ARG(mode_preproc, arg);
 					}
 
 					if(!strcmp(argv[i], "-fcpp-offsetof")){
-						ADD_ARG(mode_preproc);
+						ADD_ARG(mode_preproc, arg);
 						continue;
 					}
 
@@ -680,35 +720,52 @@ static void parse_argv(
 						die("-fsystem-cpp has been removed, use -fuse-cpp[=path/to/cpp] instead");
 
 					/* pass the rest onto cc1 */
-					ADD_ARG(mode_compile);
+					ADD_ARG(mode_compile, arg);
 					continue;
 
 				case 'w':
 					if(argv[i][2])
 						goto word; /* -wabc... */
-					ADD_ARG(mode_preproc); /* -w */
-					ADD_ARG(mode_compile);
+					ADD_ARG(mode_preproc, arg); /* -w */
+					ADD_ARG(mode_compile, arg);
+					ADD_ARG(mode_assemb, "-W");
 					continue;
 
 				case 'm':
 				{
 					const char *mopt = &argv[i][2];
+
+					if(!strcmp(mopt, "multilib") || !strcmp(mopt, "no-multilib")){
+						vars->multilib = *mopt == 'n' ? TRI_FALSE : TRI_TRUE;
+						continue;
+					}
+					if(!strcmp(mopt, "musl") || !strcmp(mopt, "glibc")){
+						vars->dyld = *mopt == 'm' ? DYLD_MUSL : DYLD_GLIBC;
+						continue;
+					}
 					if(!strcmp(mopt, "32")){
 						vars->m3264 = M_32;
-					}else if(!strcmp(mopt, "64")){
-						vars->m3264 = M_64;
-					}else{
-						ADD_ARG(mode_compile);
+						continue;
 					}
+					if(!strcmp(mopt, "64")){
+						vars->m3264 = M_64;
+						continue;
+					}
+
+					ADD_ARG(mode_compile, arg);
 					continue;
 				}
 
 				case 'D':
 				case 'U':
-					found = 1;
+					if(!add_normalised_arg(state, mode_preproc, argv, &i))
+						goto missing_arg;
+					continue;
+
+				case 'H':
 				case 'P':
 arg_cpp:
-					ADD_ARG(mode_preproc);
+					ADD_ARG(mode_preproc, arg);
 					if(!strcmp(argv[i] + 1, "M")){
 						/* cc -M *.c implies -E -w */
 						state->mode = mode_preproc;
@@ -729,20 +786,11 @@ arg_cpp:
 						arg = argv[i];
 						if(!arg)
 							die("-MF needs an argument");
-						ADD_ARG(mode_preproc);
+						ADD_ARG(mode_preproc, arg);
 						had_MF = 1;
-						continue;
-					}
-
-					if(found){
-						if(!arg[2]){
-							/* allow a space, e.g. "-D" "arg" */
-							if(!(arg = argv[++i]))
-								goto missing_arg;
-							ADD_ARG(mode_preproc);
-						}
 					}
 					continue;
+
 				case 'I':
 					if(arg[2]){
 						dynarray_add(&state->includes, ustrdup(arg));
@@ -756,8 +804,8 @@ arg_cpp:
 
 				case 'l':
 				case 'L':
-arg_ld:
-					ADD_ARG(mode_link);
+					if(!add_normalised_arg(state, mode_link, argv, &i))
+						goto missing_arg;
 					continue;
 
 #define CHECK_1() if(argv[i][2]) goto unrec;
@@ -776,8 +824,8 @@ arg_ld:
 					continue;
 
 				case 'O':
-					ADD_ARG(mode_compile);
-					ADD_ARG(mode_preproc); /* __OPTIMIZE__, etc */
+					ADD_ARG(mode_compile, arg);
+					ADD_ARG(mode_preproc, arg); /* __OPTIMIZE__, etc */
 					continue;
 
 				case 'g':
@@ -794,7 +842,7 @@ arg_ld:
 						vars->debug = 1;
 					}
 
-					ADD_ARG(mode_compile);
+					ADD_ARG(mode_compile, arg);
 					/* don't pass to the assembler */
 					continue;
 				}
@@ -827,7 +875,7 @@ arg_ld:
 						goto missing_arg;
 
 					arg = argv[i];
-					ADD_ARG(target);
+					ADD_ARG(target, arg);
 					continue;
 				}
 
@@ -883,15 +931,15 @@ arg_ld:
 
 word:
 				default:
-					if(!strcmp(argv[i], "-s"))
-						goto arg_ld;
-
-					if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
-						ADD_ARG(mode_compile);
-						ADD_ARG(mode_preproc);
+					if(!strcmp(argv[i], "-s")){
+						ADD_ARG(mode_link, arg);
+					}
+					else if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
+						ADD_ARG(mode_compile, arg);
+						ADD_ARG(mode_preproc, arg);
 					}
 					else if(!strcmp(argv[i], "-pedantic") || !strcmp(argv[i], "-pedantic-errors"))
-						ADD_ARG(mode_compile);
+						ADD_ARG(mode_compile, arg);
 
 					/* stdlib = startfiles and defaultlibs */
 					else if(!strcmp(argv[i], "-nostdlib"))
@@ -913,6 +961,8 @@ word:
 						vars->shared = 1;
 					else if(!strcmp(argv[i], "-static"))
 						vars->static_ = 1;
+					else if(!strcmp(argv[i], "-rdynamic"))
+						vars->rdynamic = 1;
 					else if(!strcmp(argv[i], "-pie"))
 						vars->pie = TRI_TRUE;
 					else if(!strcmp(argv[i], "-no-pie"))
@@ -920,13 +970,16 @@ word:
 					else if(!strcmp(argv[i], "-static-pie")){
 						vars->static_ = 1;
 						vars->pie = TRI_TRUE;
+						vars->ld_z.text = 1; /* disallow text-relocs */
 					}
+					else if(!strcmp(argv[i], "-pthread"))
+						vars->pthread = 1;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
 						ucc_ext_cmds_show(1);
 					else if(!strcmp(argv[i], "-pg")){
-						ADD_ARG(mode_compile);
+						ADD_ARG(mode_compile, arg);
 						vars->profile = 1;
 					}
 					else if(!strncmp(argv[i], "-emit", 5)){
@@ -951,9 +1004,9 @@ word:
 							goto missing_arg;
 					}
 					else if(!strcmp(argv[i], "-trigraphs"))
-						ADD_ARG(mode_preproc);
+						ADD_ARG(mode_preproc, arg);
 					else if(!strcmp(argv[i], "-digraphs"))
-						ADD_ARG(mode_preproc);
+						ADD_ARG(mode_preproc, arg);
 					else if(!strcmp(argv[i], "-save-temps"))
 						save_temps = 1;
 					else if(!strcmp(argv[i], "-isystem")){
@@ -1011,6 +1064,7 @@ input:
 		dynarray_add(&state->args[mode_preproc], ustrdup("-MF"));
 		dynarray_add(&state->args[mode_preproc], depfile);
 	}
+#undef ADD_ARG
 }
 
 static void merge_states(struct ucc *state, struct ucc *append)
@@ -1046,6 +1100,30 @@ static void vars_default(struct uccvars *vars)
 	vars->defaultlibs = 1;
 	vars->startfiles = 1;
 	vars->pie = TRI_UNSET;
+	vars->multilib = TRI_UNSET;
+}
+
+static int should_multilib(enum tristate multilib, const char *prefix)
+{
+	/*
+	 * decide whether we're on a multilib system
+	 * multilib: /usr/lib/x86_64-linux-gnu/crt1.o
+	 * normal:   /usr/lib/crt1.o
+	 */
+	char path[64];
+
+	switch(multilib){
+		case TRI_FALSE: return 0;
+		case TRI_TRUE: return 1;
+		case TRI_UNSET: break;
+	}
+
+	xsnprintf(path, sizeof(path), LINUX_LIBC_PREFIX "%s", prefix);
+
+	/* note that this ignores cross compiling
+	 * gcc and clang have this as a build-time option
+	 */
+	return access(path, F_OK) == 0;
 }
 
 static void state_from_triple(
@@ -1072,10 +1150,17 @@ static void state_from_triple(
 		dynarray_add(&state->args[mode_preproc], ustrdup("/usr/local/include"));
 	}
 
+	if(triple->sys != SYS_linux && vars->dyld != DYLD_DEFAULT)
+		die("-mmusl/-mglibc given for non-linux system");
+
+	if(triple->sys != SYS_linux && triple->sys != SYS_darwin && vars->rdynamic)
+		die("-rdynamic given for non-linux/darwin system");
+
 	switch(triple->sys){
 		case SYS_linux:
 		{
-			const char *target = triple_to_str(triple, 0);
+			const char *const target = triple_to_str(triple, 0);
+			const char *multilib_prefix = target;
 			int is_pie;
 			int default_pic;
 
@@ -1116,24 +1201,48 @@ static void state_from_triple(
 					additional_argv,
 					ustrdup(default_pic ? "-fpic" : "-fno-pic"));
 
+			if(!should_multilib(vars->multilib, multilib_prefix))
+				multilib_prefix = "";
+
 			if(is_pie && !vars->shared)
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
+
+			if(vars->rdynamic)
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-export-dynamic"));
 
 			if(vars->shared){
 				/* don't mention a dynamic linker - not used for generating a shared library */
 			}else{
 				if(!vars->static_){
 					const char *dyld;
+
+					dynarray_add(&state->ldflags_pre_user, ustrdup("-dynamic-linker"));
+
 					switch(triple->arch){
 						case ARCH_i386:
-							dyld = "/lib/ld-linux.so.2";
+							switch(vars->dyld){
+								case DYLD_DEFAULT:
+								case DYLD_GLIBC:
+									dyld = "/lib/ld-linux.so.2";
+									break;
+								case DYLD_MUSL:
+									dyld = "/lib/ld-musl-i386.so.1";
+									break;
+							}
 							break;
 						case ARCH_x86_64:
-							dyld = "/lib64/ld-linux-x86-64.so.2";
+							switch(vars->dyld){
+								case DYLD_DEFAULT:
+								case DYLD_GLIBC:
+									dyld = "/lib64/ld-linux-x86-64.so.2";
+									break;
+								case DYLD_MUSL:
+									dyld = "/lib/ld-musl-x86_64.so.1";
+									break;
+							}
 							break;
 					}
 
-					dynarray_add(&state->ldflags_pre_user, ustrdup("-dynamic-linker"));
 					dynarray_add(&state->ldflags_pre_user, ustrdup(dyld));
 				}else{
 					dynarray_add(&state->ldflags_pre_user, ustrdup("-no-dynamic-linker"));
@@ -1152,14 +1261,14 @@ static void state_from_triple(
 					/* don't link to crt1 - don't want the startup files, just i[nit] and e[nd] */
 				}else{
 					if(vars->profile){
-						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/gcrt1.o", target);
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/gcrt1.o", multilib_prefix);
 					}else if(is_pie){
 						if(vars->static_)
-							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/rcrt1.o", target);
+							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/rcrt1.o", multilib_prefix);
 						else
-							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/Scrt1.o", target);
+							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/Scrt1.o", multilib_prefix);
 					}else{
-						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crt1.o", target);
+						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crt1.o", multilib_prefix);
 					}
 					dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
 				}
@@ -1177,7 +1286,7 @@ static void state_from_triple(
 				{
 					char *dot;
 
-					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crti.o", target);
+					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "%s/crti.o", multilib_prefix);
 					dot = strrchr(usrlib, '.');
 					assert(dot && dot > usrlib);
 
@@ -1190,7 +1299,12 @@ static void state_from_triple(
 
 			if(vars->stdlibinc){
 				dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
-				dynarray_add(&state->args[mode_preproc], ustrprintf("/usr/include/%s", target));
+				dynarray_add(&state->args[mode_preproc], ustrprintf("/usr/include/%s", multilib_prefix));
+			}
+
+			if(vars->ld_z.text){
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-z"));
+				dynarray_add(&state->ldflags_pre_user, ustrdup("text"));
 			}
 			break;
 		}
@@ -1271,6 +1385,9 @@ static void state_from_triple(
 							: "-no_pie"));
 			}
 
+			if(vars->rdynamic)
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-export_dynamic"));
+
 			paramshared = "-dylib";
 			break;
 		}
@@ -1307,8 +1424,12 @@ static void usage(void)
 	fprintf(stderr, "  -fuse-cpp=...: Specify a preprocessor executable to use\n");
 	fprintf(stderr, "  -time: Output time for each stage\n");
 	fprintf(stderr, "  -wrapper exe,arg1,...: Prefix stage commands with this executable and arguments\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Target options\n");
 	fprintf(stderr, "  -target target: Compile as-if for the given target (specified as a partial target-triple)\n");
 	fprintf(stderr, "  -dumpmachine: Display the current machine's detected target triple\n");
+	fprintf(stderr, "  -m[no-]multilib: Assume a multilib installation\n");
+	fprintf(stderr, "  -mmusl / -mglibc: Target the specified libc's dynamic linker\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Input options\n");
 	fprintf(stderr, "  -xc: Treat input as C\n");
@@ -1364,6 +1485,39 @@ static int infer_target_from_argv0(struct triple *triple, const char *argv0)
 	}
 
 	return 0;
+}
+
+static void add_library_path(struct ucc *const state)
+{
+	const char *library_path = getenv("LIBRARY_PATH");
+	const char *p, *colon;
+
+	if(!library_path)
+		return;
+
+	for(p = library_path; *p; p = colon + 1){
+		char *dir;
+
+		colon = strchr(p, ':');
+
+		if(*p == ':')
+			continue;
+
+		dir = colon
+			? ustrprintf("-L%.*s", (int)(colon - p), p)
+			: ustrprintf("-L%s", p);
+
+		dynarray_add(&state->args[mode_link], dir);
+
+		if(!colon)
+			break;
+	}
+}
+
+static void add_pthread(struct ucc *const state)
+{
+	dynarray_add(&state->args[mode_preproc], ustrdup("-D_REENTRANT=1"));
+	dynarray_add(&state->args[mode_link], ustrdup("-lpthread"));
 }
 
 int main(int argc, char **argv)
@@ -1431,8 +1585,10 @@ usage:
 	}else if(infer_target_from_argv0(&triple, argv[0])){
 		/* done */
 	}else{
-		if(!triple_default(&triple)){
-			fprintf(stderr, "couldn't get target triple\n");
+		const char *unparsed;
+		if(!triple_default(&triple, &unparsed)){
+			fprintf(stderr, "couldn't get target triple: %s\n",
+					unparsed ? unparsed : strerror(errno));
 			return 1;
 		}
 	}
@@ -1475,6 +1631,10 @@ usage:
 	}
 
 	merge_states(&state, &argstate);
+	if(state.mode >= mode_link)
+		add_library_path(&state);
+	if(vars.pthread)
+		add_pthread(&state);
 
 	{
 		const int ninputs = dynarray_count(state.inputs);

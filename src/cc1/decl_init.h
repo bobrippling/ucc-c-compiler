@@ -71,6 +71,8 @@ int decl_init_is_const(
 int decl_init_is_zero(decl_init *dinit);
 int decl_init_has_sideeffects(decl_init *dinit);
 
+int decl_init_requires_relocation(decl_init *dinit);
+
 struct struct_union_enum_st;
 struct expr *decl_init_is_struct_copy(
 		decl_init *,

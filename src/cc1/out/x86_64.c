@@ -47,6 +47,8 @@
 
 #define REG_STR_SZ 8
 
+#define MOV_DEBUG(ch) /* " // " QUOTE(ch) */
+
 static const out_val *pointer_to_GOT(out_ctx *, const out_val *, const struct vreg *, int *hasoffset);
 
 const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
@@ -66,7 +68,7 @@ static const struct calling_conv_desc
 	struct vreg call_regs[6 + 8];
 
 	unsigned n_callee_save_regs;
-	int callee_save_regs[6];
+	struct vreg callee_save_regs[9];
 } calling_convs[] = {
 	[conv_x64_sysv] = {
 		1,
@@ -91,17 +93,19 @@ static const struct calling_conv_desc
 		},
 		6,
 		{
-			X86_64_REG_RBX,
-			X86_64_REG_RBP,
+			{ X86_64_REG_RBX, 0 },
+			{ X86_64_REG_RBP, 0 },
 
-			X86_64_REG_R12,
-			X86_64_REG_R13,
-			X86_64_REG_R14,
-			X86_64_REG_R15
+			{ X86_64_REG_R12, 0 },
+			{ X86_64_REG_R13, 0 },
+			{ X86_64_REG_R14, 0 },
+			{ X86_64_REG_R15, 0 },
 		}
 	},
 
 	[conv_x64_ms]   = {
+		/* note this is currently broken - we need to allocate 32 bytes of shadow
+		 * space for the callee too */
 		1,
 		4,
 		4,
@@ -110,7 +114,26 @@ static const struct calling_conv_desc
 			{ X86_64_REG_RDX, 0 },
 			{ X86_64_REG_R8,  0 },
 			{ X86_64_REG_R9,  0 },
-		}
+
+			{ X86_64_REG_XMM0, 1 },
+			{ X86_64_REG_XMM1, 1 },
+			{ X86_64_REG_XMM2, 1 },
+			{ X86_64_REG_XMM3, 1 },
+		},
+		9,
+		{
+			{ X86_64_REG_RBX, 0 },
+			{ X86_64_REG_RDI, 0 },
+			{ X86_64_REG_RSI, 0 },
+			{ X86_64_REG_R12, 0 },
+			{ X86_64_REG_R13, 0 },
+			{ X86_64_REG_R14, 0 },
+			{ X86_64_REG_R15, 0 },
+
+			{ X86_64_REG_XMM6, 1 },
+			{ X86_64_REG_XMM7, 1 },
+			/* xmm8 - xmm15 are also callee saved, but we don't use them */
+		},
 	},
 
 	[conv_cdecl] = {
@@ -122,13 +145,13 @@ static const struct calling_conv_desc
 		},
 		3,
 		{
-			X86_64_REG_RBX,
-			X86_64_REG_RDI,
-			X86_64_REG_RSI
+			{ X86_64_REG_RBX, 0 },
+			{ X86_64_REG_RDI, 0 },
+			{ X86_64_REG_RSI, 0 },
 		}
 	},
 
-	[conv_stdcall]  = { 0 },
+	[conv_stdcall]  = { 0, 0, { 0 }, 0, { 0 } },
 
 	[conv_fastcall] = {
 		0,
@@ -137,6 +160,10 @@ static const struct calling_conv_desc
 		{
 			{ X86_64_REG_RCX, 0 },
 			{ X86_64_REG_RDX, 0 }
+		},
+		0,
+		{
+			0
 		}
 	}
 };
@@ -384,6 +411,8 @@ static void x86_overlay_regpair(
 
 static const char *x86_reg_str(const struct vreg *reg, type *r)
 {
+	assert(type_is_floating(r) == reg->is_float);
+
 	/* must be sync'd with header */
 	if(reg->is_float){
 		return x86_fpreg_str(reg->idx);
@@ -607,7 +636,7 @@ static int x86_func_nargs(type *rf)
 	return dynarray_count(type_funcargs(rf)->arglist);
 }
 
-const int *impl_callee_save_regs(type *fnty, unsigned *pn)
+const struct vreg *impl_callee_save_regs(type *fnty, unsigned *pn)
 {
 	const struct calling_conv_desc *ent = x86_conv_lookup(fnty);
 
@@ -715,7 +744,7 @@ void impl_func_prologue_save_call_regs(
 			const out_val *stack_loc;
 			type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 
-			stack_loc = out_aalloc(octx, (n_call_f + n_call_i) * ws, ws, arithty);
+			stack_loc = out_aalloc(octx, (n_call_f + n_call_i) * ws, ws, arithty, NULL);
 
 			for(i_arg = i_i = i_f = i_arg_stk = 0;
 					i_arg < nargs;
@@ -805,7 +834,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	/* space for all call regs */
 	stk_spill = out_aalloc(octx,
 			(n_int_args + n_fp_args * 2) * pws,
-			pws, ty_integral);
+			pws, ty_integral, NULL);
 
 	/* go backwards, as we want registers pushed in reverse
 	 * so we can iterate positively.
@@ -970,6 +999,9 @@ static const char *x86_cmp(const struct flag_opts *flag)
 		case flag_overflow: return "o";
 		case flag_no_overflow: return "no";
 
+		case flag_signbit: return "s";
+		case flag_no_signbit: return "ns";
+
 		/*case flag_z:  return "z";
 		case flag_nz: return "nz";*/
 	}
@@ -1012,7 +1044,7 @@ static const out_val *x86_load_iv(
 		if(!reg)
 			return from; /* V_CONST_I is fine */
 
-		out_asm(octx, "mov%s %s, %%%s",
+		out_asm(octx, "mov%s %s, %%%s" MOV_DEBUG(A),
 				x86_suffix(from->t),
 				impl_val_str(from, 0),
 				x86_reg_str(reg, from->t));
@@ -1030,8 +1062,26 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			ICE("load int into float?");
 
 		case V_CONST_F:
-			/* if it's an int-const, we can load without a label */
+			if(from->bits.val_f == 0){
+				type *const ty_fp = from->t;
+				out_val *mut = v_dup_or_reuse(octx, from, from->t);
+				struct vreg r;
+				const char *rstr;
+
+				v_unused_reg(octx, 1, 1, &r, NULL);
+				rstr = x86_reg_str(&r, ty_fp);
+
+				out_asm(octx, "xorp%c %%%s, %%%s", x86_suffix(ty_fp)[1], rstr, rstr);
+				/* "fldz" */
+
+				return v_new_reg(octx, mut, ty_fp, &r);
+			}
+
+			/* if it's an int-const, we can load without a label
+			 * ... unless it's greater than 0x1p63, in which case,
+			 * we can't create it from an integer. */
 			if(from->bits.val_f == (integral_t)from->bits.val_f
+			&& ucc_fabs(from->bits.val_f) < 9223372036854775808.0 /* 0x1p63 */
 			&& cc1_fopt.integral_float_load)
 			{
 				type *const ty_fp = from->t;
@@ -1054,15 +1104,14 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			char *lbl = out_label_data_store(STORE_FLOAT);
 			struct vreg r;
 			out_val *mut;
-			struct section sec = SECTION_INIT(SECTION_DATA);
-			struct section_output orig_section;
+			struct section sec = SECTION_INIT(SECTION_DATA), orig_section;
 
-			memcpy_safe(&orig_section, &cc1_current_section_output);
+			memcpy_safe(&orig_section, &cc1_output.section);
 			{
 				asm_nam_begin3(&sec, lbl, type_align(from->t, NULL));
 				asm_out_fp(&sec, from->t, from->bits.val_f);
 			}
-			memcpy_safe(&cc1_current_section_output, &orig_section);
+			asm_switch_section(&orig_section);
 
 			from = mut = v_dup_or_reuse(octx, from, from->t);
 
@@ -1233,7 +1282,7 @@ lea:
 			}
 
 			/* just go with leaq for small sizes */
-			out_asm(octx, "%s%s %s, %%%s",
+			out_asm(octx, "%s%s %s, %%%s" MOV_DEBUG(B),
 					fp ? "mov" : "lea",
 					x86_suffix(type_nav_btype(cc1_type_nav, type_intptr_t)),
 					impl_val_str(from_new, 1),
@@ -1324,7 +1373,7 @@ void impl_store(out_ctx *octx, const out_val *to, const out_val *from)
 		to = gotslot;
 	}
 
-	out_asm(octx, "mov%s %s, %s",
+	out_asm(octx, "mov%s %s, %s" MOV_DEBUG(C),
 			x86_suffix(from->t),
 			impl_val_str_r(vbuf, from, 0),
 			impl_val_str(to, 1));
@@ -1344,7 +1393,7 @@ static void x86_reg_cp(
 	if(vreg_eq(to, from))
 		return;
 
-	out_asm(octx, "mov%s %%%s, %%%s",
+	out_asm(octx, "mov%s %%%s, %%%s" MOV_DEBUG(D),
 			x86_suffix(typ),
 			x86_reg_str(from, typ),
 			x86_reg_str(to, typ));
@@ -1381,6 +1430,8 @@ static const out_val *x86_idiv(
 	v_freeup_reg(octx, &rdx);
 	v_reserve_reg(octx, &rdx);
 	{
+		const int is_signed = type_is_signed(r->t);
+
 		/* need to move 'l' into eax
 		 * then sign extended later - cqto */
 		l = v_to_reg_given_freeup_no_off(octx, l, &rax);
@@ -1392,7 +1443,7 @@ static const out_val *x86_idiv(
 		assert(r->type != V_REG
 				|| r->bits.regoff.reg.idx != X86_64_REG_RDX);
 
-		if(type_is_signed(r->t)){
+		if(is_signed){
 			const char *ext;
 			switch(type_size(r->t, NULL)){
 				default:
@@ -1424,7 +1475,10 @@ static const out_val *x86_idiv(
 						octx, out_new_zero(octx, r->t), &rdx));
 		}
 
-		out_asm(octx, "idiv%s %s",
+		/* idiv is signed, div isn't:
+		 * if the result of a signed (128-bit) divide doesn't fit in 64-bits, we catch a SIGFPE */
+		out_asm(octx, "%sdiv%s %s",
+				is_signed ? "i" : "",
 				x86_suffix(r->t),
 				impl_val_str(r, 0));
 
@@ -1519,7 +1573,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	l = x86_check_ivfp(octx, l);
 	r = x86_check_ivfp(octx, r);
 
-	if(type_is_floating(l->t)){
+	if(type_is_floating(v_get_type(l))){
 		if(op_is_comparison(op)){
 			/* ucomi%s reg_or_mem, reg */
 			char b1[VAL_STR_SZ], b2[VAL_STR_SZ];
@@ -1612,7 +1666,10 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		case op_lt:
 		case op_ge:
 		case op_gt:
-			UCC_ASSERT(!type_is_floating(l->t),
+		case op_signbit:
+		case op_no_signbit:
+			UCC_ASSERT(!type_is_floating(v_get_type(l))
+					&& !type_is_floating(v_get_type(r)),
 					"float cmp should be handled above");
 		{
 			const int is_signed = type_is_signed(l->t);
@@ -1630,7 +1687,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 				vconst = r;
 
 			/* if we have a CONST try a test instruction */
-			if((op == op_eq || op == op_ne)
+			if((op == op_eq || op == op_ne || op == op_signbit || op == op_no_signbit)
 			&& vconst && vconst->bits.val_i == 0)
 			{
 				const out_val *vother = vconst == l ? r : l;
@@ -1677,7 +1734,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		case op_andsc:
 			ICE("%s shouldn't get here", op_to_str(op));
 
-		default:
+		case op_unknown:
 			ICE("invalid op %s", op_to_str(op));
 	}
 
@@ -1842,7 +1899,7 @@ static const out_val *pointer_to_GOT(
 		assert(0 && "32-bit PIC not implemented yet");
 		i386_populate_got_ptr(octx); /* allow this to be moved, or v_reserve_reg? */
 	}else{
-		out_asm(octx, "mov%s %s, %%%s # got load",
+		out_asm(octx, "mov%s %s, %%%s # got load" MOV_DEBUG(E),
 				x86_suffix(type_nav_btype(cc1_type_nav, type_intptr_t)),
 				impl_val_str(vp, 1),
 				x86_reg_str(&gotreg, NULL));
@@ -1873,7 +1930,7 @@ const out_val *impl_deref(
 		return out_deref(octx, gotslot);
 	}
 
-	out_asm(octx, "mov%s %s, %%%s",
+	out_asm(octx, "mov%s %s, %%%s" MOV_DEBUG(F),
 			x86_suffix(tpointed_to),
 			impl_val_str(vp, 1),
 			x86_reg_str(reg, tpointed_to));
@@ -1989,7 +2046,7 @@ const out_val *impl_cast_load(
 	}
 }
 
-static const out_val *x86_fp_conv(
+static const out_val *x86_fp_conv_signed(
 		out_ctx *octx,
 		const out_val *vp,
 		struct vreg *r, type *tto,
@@ -1997,7 +2054,8 @@ static const out_val *x86_fp_conv(
 		const char *sfrom, const char *sto)
 {
 	char vbuf[VAL_STR_SZ];
-	int truncate = type_is_integral(tto); /* going to int? */
+	const int to_integral = type_is_integral(tto);
+	const int truncate = to_integral;
 
 	switch(vp->type){
 		case V_CONST_F:
@@ -2025,6 +2083,116 @@ static const out_val *x86_fp_conv(
 			x86_reg_str(r, tto));
 
 	return v_new_reg(octx, vp, tto, r);
+}
+
+static const out_val *x86_fp_conv(
+		out_ctx *octx,
+		const out_val *vp,
+		struct vreg *r, type *tto,
+		type *int_ty,
+		const char *sfrom, const char *sto)
+{
+	if(int_ty
+	&& !type_is_signed(int_ty)
+	&& type_size(int_ty, NULL) >= type_primitive_size(type_llong))
+	{
+		/* If we're dealing with a large unsigned integer, we need to shift it
+		 * right, to avoid its top bit being interpreted by the fpu as a sign bit.
+		 * We then double the value in the fpu to undo this shift.
+		 *
+		 * Vice-versa, if the double is above 0x1p+63 (not unordered, i.e. `comisd`),
+		 * we subtract 0x1p+63, convert to int, then xor in 0x8000000000000000ull.
+		 */
+		const int to_integral = type_is_integral(tto);
+
+		if(to_integral){
+			out_blk *blk_end, *blk_above, *blk_below;
+			numeric n_1p63;
+
+			n_1p63.val.f = 9223372036854775808.0; /* 0x1p63 aka 0x8000000000000000.0f */
+			n_1p63.suffix = VAL_DOUBLE;
+
+			const out_val *d_1p63 = out_new_num(octx, vp->t, &n_1p63);
+
+			const out_val *cmp = out_op(octx, op_gt, out_val_retain(octx, vp), out_val_retain(octx, d_1p63));
+
+			blk_end = out_blk_new(octx, "one_63_fin");
+			blk_above = out_blk_new(octx, "above_one_63");
+			blk_below = out_blk_new(octx, "below_one_63");
+
+			out_ctrl_branch(octx, cmp, blk_above, blk_below);
+
+			out_current_blk(octx, blk_above);
+			{
+				const out_val *less_1p63 = out_op(
+						octx, op_minus,
+						out_val_retain(octx, vp),
+						d_1p63);
+
+				const out_val *as_int = x86_fp_conv_signed(octx, less_1p63, r, tto, int_ty, sfrom, sto);
+
+				const out_val *top_bit_flipped = out_op(octx, op_xor, as_int, out_new_l(octx, as_int->t, 1ull << 63));
+
+				out_ctrl_transfer(octx, blk_end, top_bit_flipped, &blk_above, 1);
+			}
+
+			out_current_blk(octx, blk_below);
+			{
+				const out_val *converted = x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
+
+				out_ctrl_transfer(octx, blk_end, converted, &blk_below, 1);
+			}
+
+			out_ctrl_transfer_make_current(octx, blk_end);
+			return out_ctrl_merge(octx, blk_above, blk_below);
+		}else{
+			out_blk *blk_end, *blk_positive, *blk_negative;
+
+			const out_val *negative_bit_set = out_op(
+					octx, op_signbit,
+					out_val_retain(octx, vp),
+					out_new_l(octx, vp->t, 0) /* necessary to generate the `test` isn */);
+
+			blk_end = out_blk_new(octx, "sign_fin");
+			blk_negative = out_blk_new(octx, "signed");
+			blk_positive = out_blk_new(octx, "unsigned");
+
+			out_ctrl_branch(octx, negative_bit_set, blk_negative, blk_positive);
+
+			out_current_blk(octx, blk_negative);
+			{
+				const out_val *half = out_op(
+						octx, op_shiftr,
+						out_val_retain(octx, vp),
+						out_new_l(octx, vp->t, 1));
+
+				const out_val *vp_odd = out_op(
+						octx, op_and,
+						out_val_retain(octx, vp),
+						out_new_l(octx, vp->t, 1));
+
+				const out_val *merged = out_op(octx, op_or, half, vp_odd);
+
+				const out_val *converted = x86_fp_conv_signed(octx, merged, r, tto, int_ty, sfrom, sto);
+
+				const out_val *twice = out_op(octx, op_plus, converted, out_val_retain(octx, converted));
+
+				out_ctrl_transfer(octx, blk_end, twice, &blk_negative, 1);
+			}
+
+			out_current_blk(octx, blk_positive);
+			{
+				const out_val *converted = x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
+
+				out_ctrl_transfer(octx, blk_end, converted, &blk_positive, 1);
+			}
+
+			out_ctrl_transfer_make_current(octx, blk_end);
+			return out_ctrl_merge(octx, blk_positive, blk_negative);
+		}
+	}
+
+	return x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
 }
 
 static const out_val *x86_xchg_fi(
@@ -2153,9 +2321,9 @@ static char *x86_call_jmp_target(
 	return NULL;
 }
 
-void impl_jmp(const char *lbl)
+void impl_jmp(const char *lbl, const struct section *sec)
 {
-	asm_out_section(&section_text, "\tjmp %s\n", lbl);
+	asm_out_section(sec, "\tjmp %s\n", lbl);
 }
 
 void impl_jmp_expr(out_ctx *octx, const out_val *v)
@@ -2308,18 +2476,12 @@ const out_val *impl_call(
 	 * also count floats and ints
 	 */
 	for(i = 0; i < nargs; i++){
-		type *argty;
-
 		assert(local_args[i]->retains > 0);
 
 		if(local_args[i]->type == V_FLAG)
 			local_args[i] = v_to_reg(octx, local_args[i]);
 
-		argty = local_args[i]->t;
-		if(local_args[i]->type == V_SPILT)
-			argty = type_dereference_decay(argty);
-
-		float_arg[i] = type_is_floating(argty);
+		float_arg[i] = type_is_floating(v_get_type(local_args[i]));
 
 		if(float_arg[i])
 			nfloats++;
@@ -2333,7 +2495,7 @@ const out_val *impl_call(
 			nints++; /* only an extra pointer arg for stret_memcpy */
 			/* fall */
 		case stret_regs:
-			stret_spill = out_aalloc(octx, stret_stack, type_align(retty, NULL), retty);
+			stret_spill = out_aalloc(octx, stret_stack, type_align(retty, NULL), retty, NULL);
 		case stret_scalar:
 			break;
 	}
@@ -2373,7 +2535,7 @@ const out_val *impl_call(
 
 		}else{
 			/* this aligns the stack-ptr and returns arg_stack padded */
-			arg_stack.vptr = out_aalloc(octx, arg_stack.bytesz, pws, arithty);
+			arg_stack.vptr = out_aalloc(octx, arg_stack.bytesz, pws, arithty, NULL);
 
 			if(octx->stack_callspace < arg_stack.bytesz)
 				octx->stack_callspace = arg_stack.bytesz;
@@ -2381,8 +2543,9 @@ const out_val *impl_call(
 	}
 
 	if(arg_stack.bytesz > 0){
-		unsigned nfloats = 0, nints = 0; /* shadow */
 		const out_val *stack_iter;
+
+		nints = nfloats = 0;
 
 		/* Rather than spilling the registers based on %rbp, we spill
 		 * them based as offsets from %rsp, that way they're always
@@ -2588,13 +2751,23 @@ void impl_undefined(out_ctx *octx)
 	blk_terminate_undef(octx->current_blk);
 }
 
-const out_val *impl_test_overflow(out_ctx *octx, const out_val **eval)
+void impl_debugtrap(out_ctx *octx)
+{
+	out_asm(octx, "int3");
+}
+
+static const out_val *impl_test(out_ctx *octx, const out_val **eval, enum flag_cmp flag)
 {
 	/* whenever creating a V_FLAG we need to ensure instructions are flushed */
 	*eval = v_reg_apply_offset(octx, v_to_reg(octx, *eval));
 
 	out_val_retain(octx, *eval);
-	return v_new_flag(octx, *eval, flag_overflow, /*mod:*/0);
+	return v_new_flag(octx, *eval, flag, /*mod:*/0);
+}
+
+const out_val *impl_test_overflow(out_ctx *octx, const out_val **eval)
+{
+	return impl_test(octx, eval, flag_overflow);
 }
 
 void impl_set_nan(out_ctx *octx, out_val *v)

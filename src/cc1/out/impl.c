@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "../../util/util.h"
 #include "../../util/platform.h"
@@ -33,9 +34,25 @@ enum flag_cmp op_to_flag(enum op_type op)
 		OP(lt);
 		OP(ge);
 		OP(gt);
+		OP(signbit);
+		OP(no_signbit);
 #undef OP
 
-		default:
+		case op_multiply:
+		case op_divide:
+		case op_modulus:
+		case op_plus:
+		case op_minus:
+		case op_xor:
+		case op_or:
+		case op_and:
+		case op_orsc:
+		case op_andsc:
+		case op_shiftl:
+		case op_shiftr:
+		case op_not:
+		case op_bnot:
+		case op_unknown:
 			break;
 	}
 
@@ -54,6 +71,8 @@ const char *flag_cmp_to_str(enum flag_cmp cmp)
 		CASE_STR_PREFIX(flag, gt);
 		CASE_STR_PREFIX(flag, overflow);
 		CASE_STR_PREFIX(flag, no_overflow);
+		CASE_STR_PREFIX(flag, signbit);
+		CASE_STR_PREFIX(flag, no_signbit);
 	}
 	return NULL;
 }
@@ -61,15 +80,12 @@ const char *flag_cmp_to_str(enum flag_cmp cmp)
 int impl_reg_is_callee_save(type *fnty, const struct vreg *r)
 {
 	unsigned i, n;
-	const int *csaves;
-
-	if(r->is_float)
-		return 0;
+	const struct vreg *csaves;
 
 	csaves = impl_callee_save_regs(fnty, &n);
 
 	for(i = 0; i < n; i++)
-		if(r->idx == csaves[i])
+		if(vreg_eq(r, &csaves[i]))
 			return 1;
 	return 0;
 }
@@ -90,8 +106,7 @@ static void impl_overlay_mem_reg(
 	struct vreg *cur_reg = regs;
 	unsigned reg_i = 0;
 
-	if(ptr->type == V_SPILT)
-		ICW("possible mishandling of spilt register for mem/reg overlay");
+	assert(ptr->type != V_SPILT && "possible mishandling of spilt register for mem/reg overlay");
 
 	if(memsz == 0){
 		out_val_release(octx, ptr);

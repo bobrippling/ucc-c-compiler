@@ -10,6 +10,7 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 #include "../../util/math.h"
+#include "../../util/io.h"
 
 #include "../type.h"
 #include "../type_nav.h"
@@ -35,7 +36,6 @@
 #include "../str.h"
 #include "../cc1_target.h"
 #include "../cc1_out.h"
-#include "../cc1_sections.h"
 #include "../mangle.h"
 
 #include "../ops/expr_compound_lit.h"
@@ -66,6 +66,7 @@ const char *asm_section_desc(enum section_builtin sec)
 		case SECTION_DATA: return SECTION_DESC_DATA;
 		case SECTION_BSS: return SECTION_DESC_BSS;
 		case SECTION_RODATA: return SECTION_DESC_RODATA;
+		case SECTION_RELRO: return SECTION_DESC_RELRO;
 		case SECTION_CTORS: return SECTION_DESC_CTORS;
 		case SECTION_DTORS: return SECTION_DESC_DTORS;
 		case SECTION_DBG_ABBREV: return SECTION_DESC_DBG_ABBREV;
@@ -75,38 +76,48 @@ const char *asm_section_desc(enum section_builtin sec)
 	return NULL;
 }
 
-FILE *asm_section_file(const struct section *sec)
+static void switch_section_emit(const struct section *section)
 {
-	FILE *f;
+	const char *desc = NULL;
+	char *name;
+	int allocated;
+	const int is_builtin = section_is_builtin(section);
+	int firsttime;
 
-	if(!cc1_out_persection)
-		cc1_out_persection = dynmap_new(struct section *, section_cmp, section_hash);
+	if(is_builtin)
+		desc = asm_section_desc(section->builtin);
 
-	f = dynmap_get(const struct section *, FILE *, cc1_out_persection, sec);
-	if(!f){
-		struct section *secdup = umalloc(sizeof *secdup);
+	name = section_name(section, &allocated);
+	xfprintf(cc1_output.file, ".section %s", name);
+	if(allocated)
+		free(name), name = NULL;
 
-		memcpy_safe(secdup, sec);
+	firsttime = cc1_outsections_add(section);
+	if(firsttime){
+		if(cc1_target_details.as->supports_section_flags && !is_builtin){
+			const int is_code = section->flags & SECTION_FLAG_EXECUTABLE;
+			const int is_rw = !(section->flags & SECTION_FLAG_RO);
 
-		f = tmpfile();
-		if(!f)
-			ICE("tmpfile: %s\n", strerror(errno));
-		(void)dynmap_set(struct section *, FILE *, cc1_out_persection, secdup, f);
+			xfprintf(cc1_output.file, ",\"a%s\",@progbits", is_code ? "x" : is_rw ? "w" : "");
+		}
 	}
+	xfprintf(cc1_output.file, "\n");
 
-	return f;
+	if(firsttime && desc)
+		xfprintf(cc1_output.file, "%s%s%s:\n", cc1_target_details.as->privatelbl_prefix, SECTION_BEGIN, desc);
 }
 
 void asm_switch_section(const struct section *section)
 {
-	if(cc1_current_section_output.sec.builtin != -1
-	&& section_eq(&cc1_current_section_output.sec, section))
+	if(cc1_output.section.builtin != -1
+	&& section_eq(&cc1_output.section, section))
 	{
 		return;
 	}
 
-	memcpy_safe(&cc1_current_section_output.sec, section);
-	cc1_current_section_output.file = asm_section_file(section);
+	memcpy_safe(&cc1_output.section, section);
+
+	switch_section_emit(section);
 }
 
 int asm_table_lookup(type *r)
@@ -246,12 +257,12 @@ void asm_out_fp(const struct section *sec, type *ty, floating_t f)
 
 		case type_double:
 		{
-			unsigned long ul;
+			unsigned long long ul;
 			UCC_STATIC_ASSERT(sizeof(double) == sizeof(ul));
 
 			memcpy(&ul, buf, sizeof(ul));
 
-			asm_out_section(sec, ".quad %lu # double %f\n", ul, (double)f);
+			asm_out_section(sec, ".quad %llu # double %f\n", ul, (double)f);
 			break;
 		}
 
@@ -563,7 +574,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 	}
 }
 
-static void asm_out_align(const struct section *sec, unsigned align)
+void asm_out_align(const struct section *sec, unsigned align)
 {
 	if(mopt_mode & MOPT_ALIGN_IS_POW2)
 		align = log2i(align);
@@ -574,7 +585,6 @@ static void asm_out_align(const struct section *sec, unsigned align)
 
 void asm_nam_begin3(const struct section *sec, const char *lbl, unsigned align)
 {
-	asm_switch_section(sec);
 	asm_out_align(sec, align);
 	asm_out_section(sec, "%s:\n", lbl);
 }
@@ -613,9 +623,15 @@ void asm_predeclare_global(const struct section *sec, decl *d)
 	asm_predecl(sec, "globl", d);
 }
 
+void asm_predeclare_used(const struct section *sec, decl *d)
+{
+	if(cc1_target_details.as->directives.no_dead_strip)
+		asm_predecl(sec, cc1_target_details.as->directives.no_dead_strip, d);
+}
+
 void asm_predeclare_weak(const struct section *sec, decl *d)
 {
-	asm_predecl(sec, cc1_target_details.as.directives.weak, d);
+	asm_predecl(sec, cc1_target_details.as->directives.weak, d);
 }
 
 void asm_declare_alias(const struct section *sec, decl *d, decl *alias)
@@ -632,10 +648,10 @@ void asm_predeclare_visibility(const struct section *sec, decl *d)
 		case VISIBILITY_DEFAULT:
 			break;
 		case VISIBILITY_HIDDEN:
-			asm_predecl(sec, cc1_target_details.as.directives.visibility_hidden, d);
+			asm_predecl(sec, cc1_target_details.as->directives.visibility_hidden, d);
 			break;
 		case VISIBILITY_PROTECTED:
-			assert(cc1_target_details.as.supports_visibility_protected);
+			assert(cc1_target_details.as->supports_visibility_protected);
 			asm_predecl(sec, "protected", d);
 			break;
 	}
@@ -688,7 +704,7 @@ void asm_declare_stringlit(const struct section *sec, const stringlit *lit)
 
 		case CSTRING_ASCII:
 		{
-			FILE *f = asm_section_file(sec);
+			FILE *f = cc1_output.file;
 			asm_out_section(sec, ".ascii \"");
 			literal_print(f, lit->cstr);
 			fputc('"', f);
@@ -709,22 +725,25 @@ void asm_declare_decl_init(const struct section *sec, decl *d)
 	}
 
 	nonzero_init = d->bits.var.init.dinit && !decl_init_is_zero(d->bits.var.init.dinit);
-
 	if(nonzero_init){
 		asm_nam_begin(sec, d);
 		asm_declare_init(sec, d->bits.var.init.dinit, d->ref);
 		asm_out_section(sec, "\n");
+		return;
+	}
 
-	}else if(section_is_builtin(sec) && d->bits.var.init.compiler_generated && cc1_fopt.common){
-		const char *common_prefix = "comm ";
+	if(section_is_builtin(sec)
+	&& d->bits.var.init.compiler_generated
+	&& cc1_fopt.common
+	&& !attribute_present(d, attr_weak) /* variables can't be weak and common */)
+	{
 		unsigned align;
 
 		if(decl_linkage(d) == linkage_internal){
-			if(cc1_target_details.as.supports_local_common){
-				asm_out_section(sec, ".local %s\n", decl_asm_spel(d));
-			}else{
-				common_prefix = "zerofill __DATA,__bss,";
-			}
+			if(!cc1_target_details.as->supports_local_common)
+				goto fallback;
+
+			asm_out_section(sec, ".local %s\n", decl_asm_spel(d));
 		}
 
 		align = decl_align(d);
@@ -732,21 +751,22 @@ void asm_declare_decl_init(const struct section *sec, decl *d)
 			align = log2i(align);
 		}
 
-		asm_out_section(sec, ".%s%s,%u,%u\n",
-				common_prefix,
+		asm_out_section(sec, ".comm %s,%u,%u\n",
 				decl_asm_spel(d), decl_size(d), align);
-
-	}else{
-		/* always resB, since we use decl_size() */
-		asm_nam_begin(sec, d);
-		asm_reserve_bytes(sec, decl_size(d));
+		return;
 	}
+
+fallback:
+	/* always resB, since we use decl_size() */
+	asm_nam_begin(sec, d);
+	asm_reserve_bytes(sec, decl_size(d));
 }
 
 void asm_out_sectionv(const struct section *sec, const char *fmt, va_list l)
 {
-	FILE *f = sec ? asm_section_file(sec) : cc1_current_section_output.file;
-	vfprintf(f, fmt, l);
+	asm_switch_section(sec);
+
+	vfprintf(cc1_output.file, fmt, l);
 }
 
 void asm_out_section(const struct section *sec, const char *fmt, ...)

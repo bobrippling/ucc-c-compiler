@@ -2,7 +2,8 @@
 
 exec cc -E \
 	-U__GNUC__ -D__UCC__ \
+	-U__PIC__ -U__pic__ \
 	-D_Nullable= -D_Nonnull= '-Davailability(...)=' \
 	-nostdinc \
-	-U__PIC__ -U__pic__ \
+	'-D__DARWIN_OS_INLINE=static __inline__' \
 	"$@"

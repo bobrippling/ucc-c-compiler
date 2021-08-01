@@ -7,6 +7,7 @@ enum section_builtin
 	SECTION_DATA,
 	SECTION_BSS,
 	SECTION_RODATA,
+	SECTION_RELRO,
 	SECTION_CTORS,
 	SECTION_DTORS,
 	SECTION_DBG_ABBREV,
@@ -38,6 +39,8 @@ struct section
 
 #define SECTION_INIT(builtin) { NULL, builtin, -1 }
 
+#define section_is_uninit(sec) ((sec)->builtin == SECTION_UNINIT)
+
 #define SECTION_FROM_BUILTIN(sec, sbuiltin, flags) do{ \
 	(sec)->builtin = (sbuiltin); \
 	(sec)->name = NULL; \
@@ -68,6 +71,7 @@ struct section
 #define SECTION_DESC_DATA "data"
 #define SECTION_DESC_BSS "bss"
 #define SECTION_DESC_RODATA "rodata"
+#define SECTION_DESC_RELRO "relro"
 #define SECTION_DESC_CTORS "ctors"
 #define SECTION_DESC_DTORS "dtors"
 #define SECTION_DESC_DBG_ABBREV "dbg_abbrev"
@@ -86,6 +90,7 @@ extern const struct section section_text;
 extern const struct section section_data;
 extern const struct section section_bss;
 extern const struct section section_rodata;
+extern const struct section section_relro;
 extern const struct section section_ctors;
 extern const struct section section_dtors;
 extern const struct section section_dbg_abbrev;

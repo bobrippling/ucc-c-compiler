@@ -166,10 +166,18 @@ static int expr__Generic_has_sideeffects(const expr *e)
 	return expr_has_sideeffects(sub->e);
 }
 
+static int expr__Generic_requires_relocation(const expr *e)
+{
+	struct generic_lbl *sub = e->bits.generic.chosen;
+	assert(sub);
+	return expr_requires_relocation(sub->e);
+}
+
 void mutate_expr__Generic(expr *e)
 {
 	e->f_const_fold = const_expr__Generic;
 	e->f_has_sideeffects = expr__Generic_has_sideeffects;
+	e->f_requires_relocation = expr__Generic_requires_relocation;
 }
 
 expr *expr_new__Generic(expr *test, struct generic_lbl **lbls)

@@ -427,10 +427,19 @@ static void const_op_num(
 	};
 
 	if(rhs){
+		int valid;
+
 		fp[1] = type_is_floating(e->rhs->tree_type);
 
-		UCC_ASSERT(!(fp[0] ^ fp[1]),
-				"one float and one non-float?");
+		valid = fp[0] == fp[1];
+
+		if(!valid){
+			if(fold_had_error){
+				/* okay, ignore */
+				return;
+			}
+			assert(valid && "one float and one non-float?");
+		}
 	}
 
 	if(fp[0])
@@ -589,23 +598,26 @@ type *op_required_promotion(
 #endif
 
 	if(type_is_void(tlhs) || type_is_void(trhs))
-		die_at(w, "use of void expression");
+		warn_at_print_error(w, "use of void expression");
 
 	{
-		const int l_ptr = !!type_is(tlhs, type_ptr);
+		type *l_pointee = type_is_ptr(tlhs);
+		const int l_ptr = !!l_pointee;
 		const int r_ptr = !!type_is(trhs, type_ptr);
 
 		if(l_ptr && r_ptr){
 			char buf[TYPE_STATIC_BUFSIZ];
 
 			if(op == op_minus){
-				/* don't allow void * */
 				switch(type_cmp(tlhs, trhs, 0)){
 					case TYPE_CONVERTIBLE_IMPLICIT:
 					case TYPE_CONVERTIBLE_EXPLICIT:
 					case TYPE_NOT_EQUAL:
-						die_at(w, "subtraction of distinct pointer types %s and %s",
+						warn_at_print_error(w, "subtraction of distinct pointer types %s and %s",
 								type_to_str(tlhs), type_to_str_r(buf, trhs));
+						fold_had_error = 1;
+						break;
+
 					case TYPE_QUAL_ADD:
 					case TYPE_QUAL_SUB:
 					case TYPE_QUAL_POINTED_ADD:
@@ -613,6 +625,8 @@ type *op_required_promotion(
 					case TYPE_QUAL_NESTED_CHANGE:
 					case TYPE_EQUAL:
 					case TYPE_EQUAL_TYPEDEF:
+						if(type_is_void(l_pointee))
+							cc1_warn_at(w, arith_voidp, "arithmetic on void pointer");
 						break;
 				}
 
@@ -629,13 +643,18 @@ ptr_relation:
 						int void_lhs;
 						/* not equal - ptr-A vs ptr-B */
 
-						/* special case - if comparing against void*, cast the void*
-						 * to the target type */
 						if((void_lhs = type_is_void_ptr(tlhs)) || type_is_void_ptr(trhs)){
+							/* special case - if comparing against void*,
+							 * cast the void* to the target type */
 							*(void_lhs ? plhs : prhs) = (void_lhs ? trhs : tlhs);
 						}else{
-							*plhs = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
-							*prhs = type_ptr_to(type_nav_btype(cc1_type_nav, type_void));
+							/* At least one is a pointer, cast the other to it.
+							 * This matches gcc & clang, with clang giving priority
+							 * to the lhs, in the case that both are pointers */
+							if(type_is_ptr(tlhs))
+								*prhs = tlhs;
+							else
+								*plhs = trhs;
 						}
 					}
 				}
@@ -659,11 +678,16 @@ ptr_relation:
 
 			switch(op){
 				default:
-					die_at(w, "operation between pointer and integer must be + or -");
+					warn_at_print_error(w, "operation between pointer and integer must be + or -");
+					fold_had_error = 1;
+					break;
 
 				case op_minus:
-					if(!l_ptr)
-						die_at(w, "subtraction of pointer from integer");
+					if(!l_ptr){
+						warn_at_print_error(w, "subtraction of pointer from integer");
+						fold_had_error = 1;
+					}
+					break;
 
 				case op_plus:
 					break;
@@ -843,7 +867,7 @@ static expr *expr_is_nonvla_casted_array(expr *e)
 		array = array->expr;
 
 	if((test = type_is(array->tree_type, type_array))
-	&& !test->bits.array.is_vla)
+	&& !test->bits.array.vla_kind)
 	{
 		return array;
 	}
@@ -1177,7 +1201,7 @@ static int op_sizeof_div_check(expr *e)
 	if(lhs->expr && type_is_ptr(lhs->expr->tree_type)){
 		return cc1_warn_at(&e->where,
 				sizeof_ptr_div,
-				"division of sizeof(%s) - did you mean sizoef(array)?",
+				"division of sizeof(%s) - did you mean sizeof(array)?",
 				type_to_str(lhs->expr->tree_type));
 	}
 
@@ -1298,13 +1322,17 @@ void fold_expr_op(expr *e, symtable *stab)
 			where_str(&e->where));
 
 	FOLD_EXPR(e->lhs, stab);
+	/* ensure we fold the rhs before returning in case of errors,
+	 * so it has a tree_type for future things like const_fold */
+	if(e->rhs)
+		FOLD_EXPR(e->rhs, stab);
+
 	if(fold_check_expr(e->lhs, FOLD_CHK_NO_ST_UN, op_desc)){
 		e->tree_type = type_nav_btype(cc1_type_nav, type_int);
 		return;
 	}
 
 	if(e->rhs){
-		FOLD_EXPR(e->rhs, stab);
 		if(fold_check_expr(e->rhs, FOLD_CHK_NO_ST_UN, op_desc)){
 			e->tree_type = type_nav_btype(cc1_type_nav, type_int);
 			return;
@@ -1454,10 +1482,10 @@ void gen_op_trapv(
 		enum op_type op)
 {
 	if(type_is_integral(evaltt) && type_is_signed(evaltt)){
-		if(!(cc1_sanitize & SAN_SIGNED_INTEGER_OVERFLOW))
+		if(!out_sanitize_enabled(octx, SAN_SIGNED_INTEGER_OVERFLOW))
 			return;
 	}else if(type_is_ptr(evaltt)){
-		if(!(cc1_sanitize & SAN_POINTER_OVERFLOW))
+		if(!out_sanitize_enabled(octx, SAN_POINTER_OVERFLOW))
 			return;
 	}else{
 		return;
@@ -1549,10 +1577,16 @@ static int expr_op_has_sideeffects(const expr *e)
 	return expr_has_sideeffects(e->lhs) || (e->rhs && expr_has_sideeffects(e->rhs));
 }
 
+static int expr_op_requires_relocation(const expr *e)
+{
+	return expr_requires_relocation(e->lhs) || (e->rhs && expr_requires_relocation(e->rhs));
+}
+
 void mutate_expr_op(expr *e)
 {
 	e->f_const_fold = fold_const_expr_op;
 	e->f_has_sideeffects = expr_op_has_sideeffects;
+	e->f_requires_relocation = expr_op_requires_relocation;
 }
 
 expr *expr_new_op(enum op_type op)

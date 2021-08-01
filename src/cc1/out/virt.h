@@ -54,13 +54,12 @@ void v_save_regs(
 
 int v_is_const_reg(const out_val *);
 int v_needs_GOT(const out_val *);
-
+type *v_get_type(const out_val *); /* handles V_SPILT types */
 
 void v_reserve_reg(out_ctx *, const struct vreg *);
 void v_unreserve_reg(out_ctx *, const struct vreg *);
 
-/* util */
-enum flag_cmp v_not_cmp(enum flag_cmp);
-enum flag_cmp v_commute_cmp(enum flag_cmp);
+enum flag_cmp v_not_cmp(enum flag_cmp); /* !(a > b) --> a <= b */
+enum flag_cmp v_commute_cmp(enum flag_cmp); /* a > b --> b < a */
 
 #endif

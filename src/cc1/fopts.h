@@ -18,6 +18,7 @@ X("plan9-extensions", plan9_extensions)
 X("signed-char", signed_char)
 INVERT("unsigned-char", signed_char)
 X("force-va_list-type", force_valist_type)
+X("strict-aliasing", strict_aliasing) /* ignored, just for compat */
 
 /* frontend output */
 X("dump-bblocks", dump_basic_blocks)
@@ -26,6 +27,7 @@ X("dump-record-layouts", dump_layouts)
 X("dump-symtab", dump_symtab)
 X("dump-type-tree", dump_type_tree)
 X("dump-decl-sections", dump_decl_sections)
+X("dump-frame-layout", dump_frame_layout)
 X("print-aka", print_aka)
 X("print-typedefs", print_typedefs)
 X("show-inlined", show_inlined)
@@ -35,6 +37,7 @@ X("show-warning-option", show_warning_option)
 ALIAS("diagnostics-show-option", show_warning_option)
 X("track-initial-fname", track_initial_fnam)
 X("verbose-asm", verbose_asm)
+X("color-diagnostics", colour_diagnostics)
 
 /* codegen */
 X("cast-with-builtin-types", cast_w_builtin_types)

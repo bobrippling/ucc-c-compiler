@@ -412,6 +412,15 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		return;
 	}
 
+	/*
+	 * C17 6.7.6.3p5 / DR 423
+	 * The type [...] is [...] the unqualified version [...]
+	 * i.e.
+	 * const int g();
+	 * g() // type is 'int', not 'const int'
+	 *
+	 * type_func_call() handles this for us
+	 */
 	e->tree_type = type_func_call(func_ty, &args_from_decl);
 
 	/* func count comparison, only if the func has arg-decls, or the func is f(void) */
@@ -442,6 +451,13 @@ void fold_expr_funcall(expr *e, symtable *stab)
 		cc1_warn_at(&e->expr->where,
 				aggregate_return,
 				"called function returns aggregate (%s)",
+				type_to_str(e->tree_type));
+	}
+
+	if(!type_is_complete(e->tree_type) && !type_is_void(e->tree_type)){
+		fold_had_error = 1;
+		warn_at_print_error(&e->where,
+				"function call returns incomplete type '%s'",
 				type_to_str(e->tree_type));
 	}
 

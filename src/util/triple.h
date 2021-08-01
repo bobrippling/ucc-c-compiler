@@ -31,7 +31,8 @@ Examples:
 #define TARGET_ARCHES \
 	X(ARCH, x86_64) \
 	X(ARCH, i386)   \
-	ALIAS(ARCH, amd64, x86_64)
+	ALIAS(ARCH, amd64, x86_64) \
+	ALIAS(ARCH, i686, i386)
 
 #define TARGET_VENDORS \
 	X(VENDOR, pc) \
@@ -84,7 +85,7 @@ struct triple
 
 int triple_parse(const char *str, struct triple *triple, const char **const bad);
 
-int triple_default(struct triple *);
+int triple_default(struct triple *, const char **unparsed);
 char *triple_to_str(const struct triple *, int showvendor);
 
 int triple_arch_change_size(/* in/out */ enum arch *, int newsize);

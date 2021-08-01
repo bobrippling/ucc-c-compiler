@@ -9,7 +9,9 @@
 enum mopt
 {
 	MOPT_STACK_REALIGN = 1 << 0,
-	MOPT_ALIGN_IS_POW2   = 1 << 1,
+	MOPT_ALIGN_IS_POW2 = 1 << 1,
+	MOPT_FENTRY = 1 << 2,
+	MOPT_RED_ZONE = 1 << 3,
 };
 #define IS_32_BIT() (platform_word_size() == 4)
 
@@ -42,7 +44,7 @@ extern enum c_std cc1_std;
 
 extern int cc1_error_limit;
 
-extern int cc1_mstack_align; /* 2^n */
+extern int cc1_mstack_align;
 extern int cc1_profileg; /* -pg */
 
 enum debug_level

@@ -204,6 +204,7 @@ static void warning_all(enum warning_fatality set)
 	cc1_warning.aggregate_return =
 	cc1_warning.switch_enum_even_when_default_lbl =
 	cc1_warning.bitfield_promotion =
+	cc1_warning.unused_comma_all =
 		W_OFF;
 }
 
@@ -292,6 +293,7 @@ void warning_on(
 
 	SPECIAL("all", W_ALL)
 	SPECIAL("extra", W_EXTRA)
+	SPECIAL("", W_EXTRA)
 	SPECIAL("everything", W_EVERYTHING)
 	SPECIAL("gnu", W_GNU)
 

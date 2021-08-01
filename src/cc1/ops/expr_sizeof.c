@@ -12,9 +12,9 @@
 #define SIZEOF_WHAT(e) ((e)->expr ? (e)->expr->tree_type : (e)->bits.size_of.of_type)
 #define SIZEOF_SIZE(e)  (e)->bits.size_of.sz
 
-#define NEED_RUNTIME_SIZEOF(ty) !!type_is_vla((ty), VLA_ANY_DIMENSION)
-
-#define sizeof_this tref
+#define NEED_RUNTIME_SIZEOF(e) \
+	(e->what_of == what_sizeof \
+	 && !!type_is_vla(SIZEOF_WHAT(e), VLA_ANY_DIMENSION))
 
 static const char *sizeof_what(enum what_of wo)
 {
@@ -84,7 +84,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 		case what_alignof:
 		{
 			int set = 0; /* need this, since .bits can't be relied upon to be 0 */
-			int vla = NEED_RUNTIME_SIZEOF(chosen);
+			int vla = NEED_RUNTIME_SIZEOF(e);
 
 			if(!type_is_complete(chosen)){
 				if(type_is_void(chosen))
@@ -126,7 +126,7 @@ void fold_expr_sizeof(expr *e, symtable *stab)
 
 static void const_expr_sizeof(expr *e, consty *k)
 {
-	if(NEED_RUNTIME_SIZEOF(SIZEOF_WHAT(e))){
+	if(NEED_RUNTIME_SIZEOF(e)){
 		CONST_FOLD_NO(k, e);
 		return;
 	}
@@ -141,7 +141,7 @@ const out_val *gen_expr_sizeof(const expr *e, out_ctx *octx)
 {
 	type *ty = SIZEOF_WHAT(e);
 
-	if(NEED_RUNTIME_SIZEOF(ty)){
+	if(NEED_RUNTIME_SIZEOF(e)){
 		/* if it's an expression, we want eval, e.g.
 		 *   short ar[1][f()];
 		 *   return sizeof ar[g()]; // want f() and g()
@@ -194,7 +194,7 @@ void dump_expr_sizeof(const expr *e, dump *ctx)
 		dump_expr(e->expr, ctx);
 		dump_dec(ctx);
 	}else{
-		dump_printf(ctx, " %s\n", type_to_str(e->bits.size_of.of_type));
+		dump_printf_indent(ctx, 0, " %s\n", type_to_str(e->bits.size_of.of_type));
 	}
 }
 

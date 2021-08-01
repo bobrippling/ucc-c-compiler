@@ -41,7 +41,7 @@ static void blk_jmpnext(out_blk *to, struct flush_state *st)
 	st->jmpto = to;
 }
 
-static void blk_jmpthread(struct flush_state *st)
+static void blk_jmpthread(struct flush_state *st, const struct section *sec)
 {
 	out_blk *to = st->jmpto;
 
@@ -54,13 +54,13 @@ static void blk_jmpthread(struct flush_state *st)
 		}
 
 		if(lim && cc1_fopt.verbose_asm)
-			asm_out_section(NULL, "\t# jump threaded through %d blocks\n", lim);
+			asm_out_section(sec, "\t# jump threaded through %d blocks\n", lim);
 	}
 
-	impl_jmp(to->lbl);
+	impl_jmp(to->lbl, sec);
 }
 
-static void blk_codegen(out_blk *blk, struct flush_state *st)
+static void blk_codegen(out_blk *blk, struct flush_state *st, const struct section *sec)
 {
 	char **i;
 
@@ -69,25 +69,28 @@ static void blk_codegen(out_blk *blk, struct flush_state *st)
 	 * block with a jump to said jmpto */
 	if(st->jmpto){
 		if(st->jmpto != blk)
-			blk_jmpthread(st);
+			blk_jmpthread(st, sec);
 		else if(cc1_fopt.verbose_asm)
-			asm_out_section(NULL, "\t# implicit jump to next line\n");
+			asm_out_section(sec, "\t# implicit jump to next line\n");
 		st->jmpto = NULL;
 	}
 
-	asm_out_section(NULL, "%s: # %s\n", blk->lbl, blk->desc);
-	if(blk->force_lbl)
-		asm_out_section(NULL, "%s: # mustgen_spel\n", blk->force_lbl);
+	if(blk->align)
+		asm_out_align(sec, blk->align);
 
-	out_dbg_labels_emit_release_v(&blk->labels.start);
+	asm_out_section(sec, "%s: # %s\n", blk->lbl, blk->desc);
+	if(blk->force_lbl)
+		asm_out_section(sec, "%s: # mustgen_spel\n", blk->force_lbl);
+
+	out_dbg_labels_emit_release_v(&blk->labels.start, sec);
 
 	for(i = blk->insns; i && *i; i++)
-		asm_out_section(NULL, "%s", *i);
+		asm_out_section(sec, "%s", *i);
 
-	out_dbg_labels_emit_release_v(&blk->labels.end);
+	out_dbg_labels_emit_release_v(&blk->labels.end, sec);
 }
 
-static void bfs_block(out_blk *blk, struct flush_state *st)
+static void bfs_block(out_blk *blk, struct flush_state *st, const struct section *sec)
 {
 	if(blk->emitted || !blk->reachable)
 		return;
@@ -96,7 +99,7 @@ static void bfs_block(out_blk *blk, struct flush_state *st)
 	if(blk->merge_preds){
 		out_blk **i;
 		for(i = blk->merge_preds; *i; i++){
-			bfs_block(*i, st);
+			bfs_block(*i, st, sec);
 		}
 	}
 
@@ -107,28 +110,28 @@ static void bfs_block(out_blk *blk, struct flush_state *st)
 		case BLK_TERMINAL:
 		case BLK_NEXT_EXPR:
 		case BLK_NEXT_BLOCK:
-			blk_codegen(blk, st);
+			blk_codegen(blk, st, sec);
 
 			if(blk->type == BLK_NEXT_BLOCK){
 				blk_jmpnext(blk->bits.next, st);
-				bfs_block(blk->bits.next, st);
+				bfs_block(blk->bits.next, st, sec);
 			}
 			break;
 
 		case BLK_COND:
-			blk_codegen(blk, st);
-			asm_out_section(NULL, "\t%s\n", blk->bits.cond.insn);
+			blk_codegen(blk, st, sec);
+			asm_out_section(sec, "\t%s\n", blk->bits.cond.insn);
 
 			/* we always jump to the true block if the conditional failed */
 			blk_jmpnext(blk->bits.cond.if_1_blk, st);
 
 			/* if it's unlikely, we want the false block already in the pipeline */
 			if(blk->bits.cond.unlikely){
-				bfs_block(blk->bits.cond.if_0_blk, st);
-				bfs_block(blk->bits.cond.if_1_blk, st);
+				bfs_block(blk->bits.cond.if_0_blk, st, sec);
+				bfs_block(blk->bits.cond.if_1_blk, st, sec);
 			}else{
-				bfs_block(blk->bits.cond.if_1_blk, st);
-				bfs_block(blk->bits.cond.if_0_blk, st);
+				bfs_block(blk->bits.cond.if_1_blk, st, sec);
+				bfs_block(blk->bits.cond.if_0_blk, st, sec);
 			}
 			break;
 	}
@@ -155,7 +158,7 @@ static void mark_reachable_blocks(out_blk *blk)
 	}
 }
 
-void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl)
+void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl, const struct section *sec)
 {
 	struct flush_state st = { 0 };
 	out_blk **must_i;
@@ -167,17 +170,17 @@ void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl)
 	for(must_i = octx->mustgen; must_i && *must_i; must_i++)
 		mark_reachable_blocks(*must_i);
 
-	bfs_block(first, &st);
+	bfs_block(first, &st, sec);
 
 	for(must_i = octx->mustgen; must_i && *must_i; must_i++)
-		bfs_block(*must_i, &st);
+		bfs_block(*must_i, &st, sec);
 
 	if(st.jmpto)
-		impl_jmp(st.jmpto->lbl);
+		impl_jmp(st.jmpto->lbl, sec);
 
-	asm_out_section(NULL, "%s:\n", end_dbg_lbl);
+	asm_out_section(sec, "%s:\n", end_dbg_lbl);
 
-	out_dbg_labels_emit_release_v(&octx->pending_lbls);
+	out_dbg_labels_emit_release_v(&octx->pending_lbls, sec);
 }
 
 static void dot_replace(char *lbl)
@@ -280,6 +283,15 @@ static out_blk *blk_new_common(out_ctx *octx, char *lbl, const char *desc)
 	return blk;
 }
 
+void blk_transfer(out_blk *from, out_blk *to)
+{
+	free(to->lbl);
+	to->lbl = from->lbl;
+	to->align = from->align;
+	from->lbl = NULL;
+	from->align = 0;
+}
+
 out_blk *out_blk_new_lbl(out_ctx *octx, const char *lbl)
 {
 	return blk_new_common(octx, ustrdup(lbl), lbl);
@@ -288,6 +300,16 @@ out_blk *out_blk_new_lbl(out_ctx *octx, const char *lbl)
 out_blk *out_blk_new(out_ctx *octx, const char *desc)
 {
 	return blk_new_common(octx, out_label_bblock(octx->nblks++), desc);
+}
+
+out_blk *out_blk_entry(out_ctx *octx)
+{
+	return octx->entry_blk;
+}
+
+out_blk *out_blk_postprologue(out_ctx *octx)
+{
+	return octx->postprologue_blk;
 }
 
 void out_blk_mustgen(out_ctx *octx, out_blk *blk, char *force_lbl)
