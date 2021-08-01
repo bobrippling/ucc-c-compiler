@@ -37,3 +37,5 @@ jobs:
   #  runs-on: windows-latest
   #  steps:
   #   <nothing for now>
+
+# i386: apt install libc6-i386
