@@ -27,7 +27,7 @@ if(not -d $tdir and not mkdir($tdir)){
 
 sub usage
 {
-	print STDERR "Usage: $0 [-q | -v [-v]] [-p] [-i ignore-file] [--ucc=...] [--update-snapshots] [tests...]\n";
+	print STDERR "Usage: $0 [-q | -v [-v]] [-p] [-i ignore-file] [--ucc=...] [--targets=...] [--update-snapshots] [tests...]\n";
 	print STDERR "Specify UCC_CHECK_SKIP=path1,path2,... to skip paths\n";
 	print STDERR "Give a second -v argument to force output, for passing tests\n";
 	exit 2;
@@ -219,6 +219,7 @@ $ENV{UCC} = '../ucc';
 $ENV{UCC_TESTDIR} = $tdir;
 $ENV{UCC_UPDATE_SNAPSHOTS} = 0;
 $ENV{UCC_VERBOSE} = 0;
+$ENV{UCC_TARGETS} = '';
 
 for(my $i = 0; $i < @ARGV; $i++){
 	if($ARGV[$i] eq '-v'){
@@ -245,6 +246,9 @@ for(my $i = 0; $i < @ARGV; $i++){
 
 	}elsif($ARGV[$i] eq '--update-snapshots'){
 		$ENV{UCC_UPDATE_SNAPSHOTS} = 1;
+
+	}elsif($ARGV[$i] =~ /^--targets=(.+)$/){
+		$ENV{UCC_TARGETS} = $1;
 
 	}elsif($ARGV[$i] eq '--no-randstack'){
 		$with_randstack = 0;

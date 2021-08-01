@@ -3,6 +3,7 @@ use warnings;
 use strict;
 
 use Config '%Config';
+use POSIX qw(uname);
 
 my $verbose = 0;
 my %sigmap;
@@ -106,13 +107,19 @@ sub parse_args
 
 sub build
 {
-	my($cmd, @args) = @_;
+	my($cmd, $target, @args) = @_;
 	my $ucc = $ENV{UCC};
 	die "$0: no \$UCC" unless $ucc;
 
 	my $exe = "$ENV{UCC_TESTDIR}/$$.retcheck-exe";
 
-	my @build_cmd = ($ucc, '-o', $exe, $cmd, @args);
+	my @build_cmd = (
+		$ucc,
+		'-o', $exe,
+		'-target', $target,
+		$cmd,
+		@args
+	);
 	(my $src = $cmd) =~ s/ .*//;
 
 	print "$0: run: @build_cmd\n" if exists $ENV{UCC_VERBOSE};
@@ -122,51 +129,79 @@ sub build
 }
 
 my %config = parse_args(@ARGV);
-my $cmd = $config{cmd};
 
-my $src;
-if(!-x $cmd){
-	# we've been passed a source file
-	($src, $cmd) = build($cmd, @{$config{args_ucc}});
-}elsif(@{$config{args_ucc}}){
-	die "$0: compilation arguments given, but nothing to compile";
-}
+sub test_target
+{
+	my $target = shift();
 
-if($ENV{UCC_VERBOSE} > 1){
-	print STDERR "$0 --- config ---\n";
-	print STDERR "$0: src = " . (defined($src) ? $src : "<undef>") . "\n";
-	print STDERR "$0: cmd = $cmd\n";
-	print STDERR "$0: args_cmd = @{$config{args_cmd}}\n";
-	print STDERR "$0: args_ucc = @{$config{args_ucc}}\n";
-}
-
-randstack_init($src);
-print "$0: run: $cmd @{$config{args_cmd}}\n" if exists $ENV{UCC_VERBOSE};
-my $r = system($cmd, @{$config{args_cmd}});
-my $got_exitcode = $r >> 8;
-my $got_signal = $r & 127;
-if($got_signal){
-	my $SAVE = $got_signal;
-	$got_signal = signame($got_signal);
-}
-
-my $expected = $config{expected};
-my $expected_signal = $config{expected_signal};
-
-if($expected_signal){
-	if(!$got_signal){
-		die "$0: expected signal $expected, got exit code $got_exitcode, from @ARGV\n";
+	my $cmd = $config{cmd};
+	my $src;
+	if(!-x $cmd){
+		# we've been passed a source file
+		($src, $cmd) = build($cmd, $target, @{$config{args_ucc}});
+	}elsif(@{$config{args_ucc}}){
+		die "$0: compilation arguments given, but nothing to compile";
 	}
 
-	if(!($got_signal eq $expected)){
-		die "$0: expected signal $expected, got signal $got_signal, from @ARGV\n";
+	if($ENV{UCC_VERBOSE} > 1){
+		print STDERR "$0 --- config ---\n";
+		print STDERR "$0: src = " . (defined($src) ? $src : "<undef>") . "\n";
+		print STDERR "$0: cmd = $cmd\n";
+		print STDERR "$0: args_cmd = @{$config{args_cmd}}\n";
+		print STDERR "$0: args_ucc = @{$config{args_ucc}}\n";
 	}
-}else{
+
+	randstack_init($src);
+	print "$0: run: $cmd @{$config{args_cmd}}\n" if exists $ENV{UCC_VERBOSE};
+	my $r = system($cmd, @{$config{args_cmd}});
+	my $got_exitcode = $r >> 8;
+	my $got_signal = $r & 127;
 	if($got_signal){
-		die "$0: expected exit code $expected, got signal $got_signal, from @ARGV\n";
+		my $SAVE = $got_signal;
+		$got_signal = signame($got_signal);
 	}
 
-	if($expected != $got_exitcode){
-		die "$0: expected exit code $expected, got exit code $got_exitcode, from @ARGV\n";
+	my $expected = $config{expected};
+	my $expected_signal = $config{expected_signal};
+
+	if($expected_signal){
+		if(!$got_signal){
+			die "$0: expected signal $expected, got exit code $got_exitcode, from @ARGV\n";
+		}
+
+		if(!($got_signal eq $expected)){
+			die "$0: expected signal $expected, got signal $got_signal, from @ARGV\n";
+		}
+	}else{
+		if($got_signal){
+			die "$0: expected exit code $expected, got signal $got_signal, from @ARGV\n";
+		}
+
+		if($expected != $got_exitcode){
+			die "$0: expected exit code $expected, got exit code $got_exitcode, from @ARGV\n";
+		}
 	}
+}
+
+sub get_targets
+{
+	if($ENV{UCC_TARGETS}){
+		return split /,/, $ENV{UCC_TARGETS};
+	}
+
+	my @uname = uname();
+
+	my @default = qw(x86_64 i386);
+	my $current = $uname[4];
+	my $os = lc($uname[0]);
+
+	my %h;
+	for(@default, $current){
+		$h{"$_-$os"} = 1;
+	}
+	return keys %h;
+}
+
+for my $target (get_targets()) {
+	test_target($target);
 }
