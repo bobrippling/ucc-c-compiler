@@ -466,30 +466,49 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 	switch(op){
 		case op_multiply: opc = "mul"; goto op;
-		case op_minus: opc = "sub"; goto op; //
-		case op_divide: opc = "div"; goto op; //
-		case op_modulus: opc = "mod"; goto op; //
-		case op_plus: opc = "add"; goto op; //
-		case op_xor: opc = "or"; goto op; //
-		case op_or: opc = "or"; goto op; //
-		case op_and: opc = "and"; goto op; //
+		case op_minus: opc = "sub"; goto op;
+		case op_divide: opc = "div"; goto op;
+		case op_modulus: opc = "mod"; goto op;
+		case op_plus: opc = "add"; goto op;
+		case op_xor: opc = "or"; goto op;
+		case op_or: opc = "or"; goto op;
+		case op_and: opc = "and"; goto op;
 op:
 		{
-			// TODO: similar to x86
-			const char *rA, *rB;
+			/*
+			 * rhs can be a constant (0-4080) or register w/shift
+			 * if lhs is a 1-retained register, we reuse it, otherwise we pick another
+			 */
+			struct vreg result_reg;
+			const char *rhs;
+			char numbuf[8];
 
-			l = v_to_reg(octx, l);
-			r = v_to_reg(octx, r);
+			if(l->type == V_REG && impl_reg_frame_const(&l->bits.regoff.reg, 0)){
+				/* can't reuse fp/sp */
+				v_unused_reg(octx, 1, 0, &result_reg, NULL);
+			}else{
+				v_unused_reg(octx, 1, 0, &result_reg, l);
+			}
 
-			rA = arm_reg_to_str(l->bits.regoff.reg.idx);
-			rB = arm_reg_to_str(r->bits.regoff.reg.idx);
+			if(r->type == V_CONST_I && 0 <= (sintegral_t)r->bits.val_i && (sintegral_t)r->bits.val_i <= 4080){
+				snprintf(numbuf, sizeof(numbuf), "#%d", (int)r->bits.val_i);
+				rhs = numbuf;
+			}else{
+				r = v_to_reg(octx, r);
+				rhs = arm_reg_to_str(r->bits.regoff.reg.idx);
+			}
 
-			/* put the result in vtop-1's reg */
-			out_asm(octx, "%s %s, %s, %s", opc, rB, rA, rB);
+			out_asm(
+					octx,
+					"%s %s, %s, %s",
+					opc,
+					arm_reg_to_str(result_reg.idx),
+					arm_reg_to_str(l->bits.regoff.reg.idx),
+					rhs);
 
-			/* return 'r' since we use it's register as the result */
-			out_val_consume(octx, l);
-			return v_dup_or_reuse(octx, r, r->t);
+			/* return 'l' since we use it's register as the result */
+			out_val_consume(octx, r);
+			return v_new_reg(octx, l, l->t, &result_reg);
 		}
 
 		case op_orsc:
