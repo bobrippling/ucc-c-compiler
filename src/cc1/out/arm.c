@@ -564,9 +564,7 @@ void impl_to_retreg(out_ctx *octx, const out_val *val, type *retty)
 
 	UCC_ASSERT(!type_is_floating(retty), "TODO: float return");
 
-	val = v_to_reg(octx, val);
-	v_reg_cp_no_off(octx, val, &reg);
-	out_val_consume(octx, val);
+	out_val_consume(octx, v_to_reg_given(octx, val, &reg));
 }
 
 void impl_reg_cp_no_off(
