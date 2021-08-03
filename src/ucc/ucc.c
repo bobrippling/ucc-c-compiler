@@ -508,6 +508,18 @@ static void remove_macro(struct ucc *const state, const char *a)
 	dynarray_add(&state->args[mode_preproc], ustrprintf("-U%s", a));
 }
 
+static void set_signed_char(struct ucc *state, int is_signed)
+{
+	dynarray_add(&state->args[mode_preproc], ustrprintf(
+				"-%c__CHAR_UNSIGNED__%s",
+				is_signed ? 'U' : 'D',
+				is_signed ? "" : "=1"));
+
+	dynarray_add(
+		&state->args[mode_compile],
+		ustrdup(is_signed ? "-fsigned-char" : "-funsigned-char"));
+}
+
 static int handle_spanning_fopt(const char *fopt, struct ucc *const state)
 {
 	const char *name;
@@ -561,12 +573,7 @@ static int handle_spanning_fopt(const char *fopt, struct ucc *const state)
 	if(!strcmp(name, "signed-char") || !strcmp(name, "unsigned-char")){
 		const int is_signed = (fopt[2] == 's' || fopt[5] == 'u');
 
-		dynarray_add(&state->args[mode_preproc], ustrprintf(
-					"-%c__CHAR_UNSIGNED__%s",
-					is_signed ? 'U' : 'D',
-					is_signed ? "" : "=1"));
-
-		dynarray_add(&state->args[mode_compile], ustrdup(fopt));
+		set_signed_char(state, is_signed);
 		return 1;
 	}
 
