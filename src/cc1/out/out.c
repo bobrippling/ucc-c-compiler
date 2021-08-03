@@ -314,9 +314,6 @@ void out_store(out_ctx *octx, const out_val *dest, const out_val *val)
 	}
 
 	impl_store(octx, dest, val);
-
-	out_val_consume(octx, dest);
-	out_val_consume(octx, val);
 }
 
 void out_force_read(out_ctx *octx, type *ty, const out_val *v)

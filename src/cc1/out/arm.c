@@ -455,6 +455,9 @@ void impl_store(out_ctx *octx, const out_val *dest, const out_val *val)
 		case V_FLAG:
 			ICW("TODO: setCOND");
 	}
+
+	out_val_consume(octx, dest);
+	out_val_consume(octx, val);
 }
 
 const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const out_val *r)
