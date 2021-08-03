@@ -111,7 +111,7 @@ const char *out_val_str(const out_val *v, int deref)
 
 const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normalise_bool)
 {
-	type *from = val->t;
+	type *from;
 	char fp[2];
 
 	switch(val->type){
@@ -128,7 +128,6 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 		case V_REGOFF:
 			/* must load the value for a sensible conversion */
 			val = v_to_reg(octx, val);
-			from = val->t;
 			break;
 
 		default:
@@ -145,12 +144,9 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 			out_comment(octx, "out_cast done via normalise");
 			return val;
 		}
-
-		/* val may have changed type, e.g. float -> _Bool.
-		 * update `from' */
-		from = val->t;
 	}
 
+	from = val->t;
 	fp[0] = type_is_floating(from);
 	fp[1] = type_is_floating(to);
 
@@ -158,7 +154,7 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 		if(fp[0] && fp[1]){
 
 			if(type_primitive(from) != type_primitive(to))
-				val = impl_f2f(octx, val, from, to);
+				val = impl_f2f(octx, val, to);
 			/* else no-op cast */
 
 		}else if(fp[0]){
@@ -166,14 +162,14 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 			UCC_ASSERT(type_is_integral(to),
 					"fp to %s?", type_to_str(to));
 
-			val = impl_f2i(octx, val, from, to);
+			val = impl_f2i(octx, val, to);
 
 		}else{
 			/* int -> float */
 			UCC_ASSERT(type_is_integral(from),
 					"%s to fp?", type_to_str(from));
 
-			val = impl_i2f(octx, val, from, to);
+			val = impl_i2f(octx, val, to);
 		}
 
 	}else{
@@ -189,8 +185,7 @@ const out_val *out_cast(out_ctx *octx, const out_val *val, type *to, int normali
 				 * sign extends the int to an int64_t, then changes
 				 * the type
 				 */
-				val = impl_cast_load(octx, val, from, to,
-						type_is_signed(from));
+				val = impl_cast_extend(octx, val, to);
 			}else{
 				char buf[TYPE_STATIC_BUFSIZ];
 

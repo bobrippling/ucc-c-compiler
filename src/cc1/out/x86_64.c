@@ -1864,15 +1864,14 @@ const out_val *impl_op_unary(out_ctx *octx, enum op_type op, const out_val *val)
 	return v_dup_or_reuse(octx, val, val->t);
 }
 
-const out_val *impl_cast_load(
-		out_ctx *octx, const out_val *vp,
-		type *small, type *big,
-		int is_signed)
+const out_val *impl_cast_extend(out_ctx *octx, const out_val *vp, type *big_to)
 {
 	/* we are always up-casting here, i.e. int -> long */
+	type *from = vp->t;
+	const int is_signed = type_is_signed(from);
 	char buf_small[VAL_STR_SZ];
 
-	UCC_ASSERT(!type_is_floating(small) && !type_is_floating(big),
+	UCC_ASSERT(!type_is_floating(small_from) && !type_is_floating(big_to),
 			"we don't cast-load floats");
 
 	switch(vp->type){
@@ -1888,12 +1887,12 @@ const out_val *impl_cast_load(
 		case V_REG:
 			snprintf(buf_small, sizeof buf_small,
 					"%%%s",
-					x86_reg_str(&vp->bits.regoff.reg, small));
+					x86_reg_str(&vp->bits.regoff.reg, small_from));
 	}
 
 	{
-		const char *suffix_big = x86_suffix(big),
-		           *suffix_small = x86_suffix(small);
+		const char *suffix_big = x86_suffix(big_to),
+		           *suffix_small = x86_suffix(small_from);
 		struct vreg r;
 		out_val *vp_mut;
 
@@ -1910,7 +1909,7 @@ const out_val *impl_cast_load(
 			out_comment(octx, "movzlq:");
 			out_asm(octx, "movl %s, %%%s",
 					buf_small,
-					x86_reg_str(&r, small));
+					x86_reg_str(&r, small_from));
 
 		}else{
 			out_asm(octx, "mov%c%s%s %s, %%%s",
@@ -1918,10 +1917,10 @@ const out_val *impl_cast_load(
 					suffix_small,
 					suffix_big,
 					buf_small,
-					x86_reg_str(&r, big));
+					x86_reg_str(&r, big_to));
 		}
 
-		vp_mut->t = big;
+		vp_mut->t = big_to;
 
 		return vp;
 	}
@@ -2076,10 +2075,9 @@ static const out_val *x86_fp_conv(
 	return x86_fp_conv_signed(octx, vp, r, tto, int_ty, sfrom, sto);
 }
 
-static const out_val *x86_xchg_fi(
-		out_ctx *octx, const out_val *vp,
-		type *tfrom, type *tto)
+static const out_val *x86_xchg_fi(out_ctx *octx, const out_val *vp, type *tto)
 {
+	type *tfrom = vp->t;
 	struct vreg r;
 	int to_float;
 	const char *fp_s;
@@ -2119,17 +2117,17 @@ static const out_val *x86_xchg_fi(
 			to_float ? fp_s : "si");
 }
 
-const out_val *impl_i2f(out_ctx *octx, const out_val *vp, type *t_i, type *t_f)
+const out_val *impl_i2f(out_ctx *octx, const out_val *vp, type *t_f)
 {
-	return x86_xchg_fi(octx, vp, t_i, t_f);
+	return x86_xchg_fi(octx, vp, t_f);
 }
 
-const out_val *impl_f2i(out_ctx *octx, const out_val *vp, type *t_f, type *t_i)
+const out_val *impl_f2i(out_ctx *octx, const out_val *vp, type *t_i)
 {
-	return x86_xchg_fi(octx, vp, t_f, t_i);
+	return x86_xchg_fi(octx, vp, t_i);
 }
 
-const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *from, type *to)
+const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *to)
 {
 	struct vreg r;
 
@@ -2137,7 +2135,7 @@ const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *from, type *to)
 	assert(r.is_float);
 
 	return x86_fp_conv(octx, vp, &r, to, NULL,
-			x86_suffix(from),
+			x86_suffix(vp->t),
 			x86_suffix(to));
 }
 

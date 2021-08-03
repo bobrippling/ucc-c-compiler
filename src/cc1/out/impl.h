@@ -27,14 +27,11 @@ void impl_branch(out_ctx *, const out_val *,
 		out_blk *bt, out_blk *bf, int unlikely);
 void impl_jmp_expr(out_ctx *, const out_val *);
 
-ucc_wur const out_val *impl_i2f(out_ctx *octx, const out_val *, type *t_i, type *t_f);
-ucc_wur const out_val *impl_f2i(out_ctx *octx, const out_val *, type *t_f, type *t_i);
-ucc_wur const out_val *impl_f2f(out_ctx *octx, const out_val *, type *from, type *to);
+ucc_wur const out_val *impl_i2f(out_ctx *octx, const out_val *, type *t_f);
+ucc_wur const out_val *impl_f2i(out_ctx *octx, const out_val *, type *t_i);
+ucc_wur const out_val *impl_f2f(out_ctx *octx, const out_val *, type *to);
 
-ucc_wur const out_val *impl_cast_load(
-		out_ctx *octx, const out_val *vp,
-		type *small, type *big,
-		int is_signed);
+ucc_wur const out_val *impl_cast_extend(out_ctx *octx, const out_val *vp, type *big);
 
 void impl_change_type(type *t);
 

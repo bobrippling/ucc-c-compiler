@@ -202,35 +202,56 @@ const out_val *impl_call(
 	}
 }
 
-const out_val *impl_cast_load(
-		out_ctx *octx, const out_val *vp,
-		type *small, type *big,
-		int is_signed)
+const out_val *impl_cast_extend(out_ctx *octx, const out_val *val, type *big_to)
 {
-	UNUSED_ARG(octx);
-	UNUSED_ARG(vp);
-	UNUSED_ARG(small);
-	UNUSED_ARG(big);
-	UNUSED_ARG(is_signed);
-	out_asm(octx, "TODO: cast load");
-	return vp;
+	if(val->type != V_REG)
+		val = v_to_reg(octx, val);
+
+	/* fully extended */
+	return out_change_type(octx, val, big_to);
 }
+
+enum LDR_STR {
+	LDR,
+	STR
+};
 
 static void arm_ldr_str(
 	out_ctx *octx,
-	const char *isn,
+	enum LDR_STR isn_enum,
+	type *ty,
 	int reg,
 	const struct vreg_off *regoff)
 {
+	const char *isn = isn_enum == LDR ? "ldr" : "str";
+	const int is_signed = type_is_signed(ty);
+	const char *width;
+
+	switch(type_size(ty, NULL)){
+		case 1:
+			width = isn_enum == LDR && is_signed ? "sb" : "b";
+			break;
+		case 2:
+			width = isn_enum == LDR && is_signed ? "sh" : "h";
+			break;
+		case 4:
+			width = "";
+			break;
+		default:
+			ICE("invalid load size");
+	}
+
 	if(regoff->offset){
-		out_asm(octx, "%s %s, [%s, #%ld]",
+		out_asm(octx, "%s%s %s, [%s, #%ld]",
 				isn,
+				width,
 				arm_reg_to_str(reg),
 				arm_reg_to_str(regoff->reg.idx),
 				regoff->offset);
 	}else{
-		out_asm(octx, "%s %s, [%s]",
+		out_asm(octx, "%s%s %s, [%s]",
 				isn,
+				width,
 				arm_reg_to_str(reg),
 				arm_reg_to_str(regoff->reg.idx));
 	}
@@ -249,7 +270,8 @@ ucc_wur const out_val *impl_deref(
 	vp = v_to_reg(octx, vp);
 	arm_ldr_str(
 			octx,
-			"ldr",
+			LDR,
+			type_is_ptr(vp->t),
 			reg->idx,
 			&vp->bits.regoff);
 
@@ -259,31 +281,28 @@ ucc_wur const out_val *impl_deref(
 	return v_new_reg(octx, vp, tpointed_to, reg);
 }
 
-const out_val *impl_i2f(out_ctx *octx, const out_val *vp, type *t_i, type *t_f)
+const out_val *impl_i2f(out_ctx *octx, const out_val *vp, type *t_f)
 {
 	UNUSED_ARG(octx);
 	UNUSED_ARG(vp);
-	UNUSED_ARG(t_i);
 	UNUSED_ARG(t_f);
 	ICW("TODO");
 	return NULL;
 }
 
-const out_val *impl_f2i(out_ctx *octx, const out_val *vp, type *t_f, type *t_i)
+const out_val *impl_f2i(out_ctx *octx, const out_val *vp, type *t_i)
 {
 	UNUSED_ARG(octx);
 	UNUSED_ARG(vp);
 	UNUSED_ARG(t_i);
-	UNUSED_ARG(t_f);
 	ICW("TODO");
 	return NULL;
 }
 
-const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *from, type *to)
+const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *to)
 {
 	UNUSED_ARG(octx);
 	UNUSED_ARG(vp);
-	UNUSED_ARG(from);
 	UNUSED_ARG(to);
 	ICW("TODO");
 	return NULL;
@@ -367,7 +386,8 @@ const out_val *impl_load(
 		case V_SPILT:
 			arm_ldr_str(
 					octx,
-					"ldr",
+					LDR,
+					type_is_ptr(from->t),
 					reg->idx,
 					&from->bits.regoff);
 			break;
@@ -414,12 +434,12 @@ void impl_store(out_ctx *octx, const out_val *dest, const out_val *val)
 			break;
 
 		case V_SPILT:
-			arm_ldr_str(octx, "str", reg->idx, &dest->bits.regoff);
+			arm_ldr_str(octx, STR, val->t, reg->idx, &dest->bits.regoff);
 			break;
 		case V_REGOFF:
 			ICE("TODO: V_REGOFF");
 		case V_REG:
-			arm_ldr_str(octx, "str", reg->idx, &dest->bits.regoff);
+			arm_ldr_str(octx, STR, val->t, reg->idx, &dest->bits.regoff);
 			break;
 
 		case V_LBL:

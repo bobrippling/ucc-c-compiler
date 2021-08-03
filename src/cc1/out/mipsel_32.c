@@ -423,7 +423,7 @@ void impl_op_unary(enum op_type op)
 	}
 }
 
-void impl_cast_load(type *small, type *big, int is_signed)
+void impl_cast_extend(type *small, type *big, int is_signed)
 {
 	if(vtop->type != REG){
 		out_comment("// mips cast to %s - loading to register",
