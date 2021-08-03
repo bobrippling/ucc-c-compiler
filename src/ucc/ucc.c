@@ -1370,16 +1370,15 @@ static void state_from_triple(
 	if(vars->static_)
 		dynarray_add(&state->ldflags_pre_user, ustrdup(paramstatic));
 
-	/*
 	switch(triple->arch){
 		case ARCH_x86_64:
 		case ARCH_i386:
 			break;
 		case ARCH_arm:
-			ucc_initflags="-fshort-enums $ucc_initflags";
+			set_signed_char(state, 0);
+			dynarray_add(&state->args[mode_compile], ustrdup("-fshort-enums"));
 			break;
 	}
-	*/
 }
 
 static void usage(void)
