@@ -327,17 +327,25 @@ void impl_func_prologue_save_call_regs(
 	for(i = 0; i < nargs; i++){
 		type *ty = fa->arglist[i]->ref;
 
-		out_asm(octx, "push { %s }", arm_reg_to_str(i));
+		assert(!type_is_floating(ty));
+		assert(!type_is_s_or_u(ty));
 
-		arg_offsets[i] = v_new_bp3_above(
-				octx, NULL, type_ptr_to(ty), (i * 4) * ws);
-
-		/*
-		*store = out_change_type(octx,
-				v_reg_to_stack_mem(octx, rp, stack_loc),
-				type_ptr_to(ty));
-		*/
+		if(i < 4){
+			/* numerical order, lowest regno at lowest address
+			 * e.g. push {r0,r4-r7} */
+			arg_offsets[i] = v_new_bp3_below(
+					octx, NULL, type_ptr_to(ty), (4 - i) * ws);
+		}else{
+			/* +2 to skip over saved fp & lr */
+			arg_offsets[i] = v_new_bp3_above(
+					octx, NULL, type_ptr_to(ty), (i - 4 + 2) * ws);
+		}
 	}
+
+	if(nargs > 1)
+		out_asm(octx, "push { r0-%s }", arm_reg_to_str(ARM_REG_R0 + MIN(3, nargs - 1)));
+	else if(nargs)
+		out_asm(octx, "push { r0 }");
 }
 
 const struct vreg *impl_callee_save_regs(type *fnty, unsigned *pn)
