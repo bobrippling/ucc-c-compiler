@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "../../util/util.h"
 #include "../../util/dynarray.h"
@@ -371,6 +372,35 @@ void impl_func_epilogue(out_ctx *octx, type *ty, int clean_stack)
 	}
 }
 
+static void arm_op(
+	out_ctx *octx,
+	const char *opc,
+	const struct vreg *result_reg,
+	const out_val *l,
+	const out_val *r)
+{
+	const char *rhs;
+	char numbuf[8];
+
+	assert(l->type == V_REG);
+
+	if(r->type == V_CONST_I && 0 <= (sintegral_t)r->bits.val_i && (sintegral_t)r->bits.val_i <= 4080){
+		snprintf(numbuf, sizeof(numbuf), "#%d", (int)r->bits.val_i);
+		rhs = numbuf;
+	}else{
+		r = v_to_reg(octx, r);
+		rhs = arm_reg_to_str(r->bits.regoff.reg.idx);
+	}
+
+	out_asm(
+			octx,
+			"%s %s, %s, %s",
+			opc,
+			arm_reg_to_str(result_reg->idx),
+			arm_reg_to_str(l->bits.regoff.reg.idx),
+			rhs);
+}
+
 const out_val *impl_load(
 		out_ctx *octx, const out_val *from,
 		const struct vreg *reg)
@@ -391,11 +421,27 @@ const out_val *impl_load(
 					reg->idx,
 					&from->bits.regoff);
 			break;
+
 		case V_REGOFF:
 			ICE("TODO: V_REGOFF");
 		case V_REG:
+			if(from->bits.regoff.offset){
+				const out_val *add = out_new_l(octx, from->t, from->bits.regoff.offset);
+
+				arm_op(
+						octx,
+						"add",
+						reg,
+						from,
+						add);
+
+				out_val_consume(octx, add);
+				break;
+			}
+
 			if(reg->idx == from->bits.regoff.reg.idx)
 				break;
+
 			out_asm(octx, "mov %s, %s",
 					arm_reg_to_str(reg->idx),
 					arm_reg_to_str(from->bits.regoff.reg.idx));
@@ -480,31 +526,16 @@ op:
 			 * if lhs is a 1-retained register, we reuse it, otherwise we pick another
 			 */
 			struct vreg result_reg;
-			const char *rhs;
-			char numbuf[8];
 
 			if(l->type == V_REG && impl_reg_frame_const(&l->bits.regoff.reg, 0)){
 				/* can't reuse fp/sp */
 				v_unused_reg(octx, 1, 0, &result_reg, NULL);
 			}else{
+				l = v_to_reg(octx, l);
 				v_unused_reg(octx, 1, 0, &result_reg, l);
 			}
 
-			if(r->type == V_CONST_I && 0 <= (sintegral_t)r->bits.val_i && (sintegral_t)r->bits.val_i <= 4080){
-				snprintf(numbuf, sizeof(numbuf), "#%d", (int)r->bits.val_i);
-				rhs = numbuf;
-			}else{
-				r = v_to_reg(octx, r);
-				rhs = arm_reg_to_str(r->bits.regoff.reg.idx);
-			}
-
-			out_asm(
-					octx,
-					"%s %s, %s, %s",
-					opc,
-					arm_reg_to_str(result_reg.idx),
-					arm_reg_to_str(l->bits.regoff.reg.idx),
-					rhs);
+			arm_op(octx, opc, &result_reg, l, r);
 
 			/* return 'l' since we use it's register as the result */
 			out_val_consume(octx, r);
