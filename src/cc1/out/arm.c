@@ -27,6 +27,8 @@
 
 #include "arm.h"
 
+#define N_CALL_REGS_I 4
+
 #define UNUSED_ARG(a) (void)a
 
 const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
@@ -179,27 +181,40 @@ const out_val *impl_call(
 	UNUSED_ARG(fnty);
 
 	for(i = 0; i < nargs; i++){
-		struct vreg call_reg = VREG_INIT(i, 0);
+		type *ty = args[i]->t;
 
-		v_freeup_reg(octx, &call_reg);
+		assert(!type_is_floating(ty) && "TODO");
+		assert(!type_is_s_or_u(ty) && "TODO");
 
-		out_flush_volatile(octx,
-				v_to_reg_given(octx, args[i], &call_reg));
+		if(i < N_CALL_REGS_I){
+			struct vreg call_reg = VREG_INIT(ARM_REG_R0 + i, 0);
 
-		v_reserve_reg(octx, &call_reg);
+			v_freeup_reg(octx, &call_reg);
+
+			out_flush_volatile(octx,
+					v_to_reg_given(octx, args[i], &call_reg));
+
+			v_reserve_reg(octx, &call_reg);
+		}else{
+			ICE("TODO: push, merge with x86");
+		}
 	}
 
 	arm_jmp(octx, fn, "bl");
 
-	for(i = 0; i < nargs; i++){
-		struct vreg call_reg = VREG_INIT(i, 0);
+	for(i = 0; i < MIN(N_CALL_REGS_I, nargs); i++){
+		struct vreg call_reg = VREG_INIT(ARM_REG_R0 + i, 0);
 		v_unreserve_reg(octx, &call_reg);
 	}
 
 	{
 		struct vreg retreg = VREG_INIT(REG_RET_I, 0);
+		type *ty = type_called(type_is_ptr_or_block(fnty), NULL);
 
-		return v_new_reg(octx, fn, type_called(fn->t, NULL), &retreg);
+		assert(!type_is_floating(ty) && "TODO");
+		assert(!type_is_s_or_u(ty) && "TODO");
+
+		return v_new_reg(octx, fn, ty, &retreg);
 	}
 }
 
@@ -330,7 +345,7 @@ void impl_func_prologue_save_call_regs(
 		assert(!type_is_floating(ty));
 		assert(!type_is_s_or_u(ty));
 
-		if(i < 4){
+		if(i < N_CALL_REGS_I){
 			/* numerical order, lowest regno at lowest address
 			 * e.g. push {r0,r4-r7} */
 			arg_offsets[i] = v_new_bp3_below(
