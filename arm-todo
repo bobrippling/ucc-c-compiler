@@ -1,0 +1,10 @@
+[ ] stret.c
+[ ] -fpic & -fropi/-frwpi for granular pic
+
+[ ] load-store.c
+[ ] call-ret.c
+[ ] computed-goto.c
+[ ] cond.c
+[ ] literal.c
+[ ] prologue.c
+[ ] regsave.c
