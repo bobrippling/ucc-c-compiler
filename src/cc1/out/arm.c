@@ -346,10 +346,21 @@ void impl_func_prologue_save_call_regs(
 		assert(!type_is_s_or_u(ty));
 
 		if(i < N_CALL_REGS_I){
-			/* numerical order, lowest regno at lowest address
-			 * e.g. push {r0,r4-r7} */
+			/* numerical order, lowest regno at lowest address */
+			/*
+			 * 3-4 args:
+			 *   arg 3 => fp - 4
+			 *   arg 2 => fp - 8
+			 *   arg 1 => fp - 12
+			 *   arg 0 => fp - 16
+			 * 1-2 args:
+			 *   arg 1 => fp - 4
+			 *   arg 0 => fp - 8
+			 */
+			int const bottom = nargs <= 2 ? 2 : 4;
+
 			arg_offsets[i] = v_new_bp3_below(
-					octx, NULL, type_ptr_to(ty), (4 - i) * ws);
+					octx, NULL, type_ptr_to(ty), (bottom - i) * ws);
 		}else{
 			/* +2 to skip over saved fp & lr */
 			arg_offsets[i] = v_new_bp3_above(
@@ -357,10 +368,14 @@ void impl_func_prologue_save_call_regs(
 		}
 	}
 
-	if(nargs > 1)
-		out_asm(octx, "push { r0-%s }", arm_reg_to_str(ARM_REG_R0 + MIN(3, nargs - 1)));
-	else if(nargs)
-		out_asm(octx, "push { r0 }");
+	if(nargs){
+		/* maintain stack alignment with even number of pushes */
+		int lastreg = MIN(nargs - 1, 3);
+		if((lastreg & 1) == 0)
+			lastreg++;
+
+		out_asm(octx, "push { r0-%s }", arm_reg_to_str(ARM_REG_R0 + lastreg));
+	}
 }
 
 const struct vreg *impl_callee_save_regs(type *fnty, unsigned *pn)
