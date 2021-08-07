@@ -159,6 +159,18 @@ static const char *arch_to_str(enum arch a)
 	return NULL;
 }
 
+static const char *subarch_to_str(enum subarch s)
+{
+	switch(s){
+#define X(pre, arch, sub) case pre ## _ ## arch ## sub: return #sub;
+#define NONE(pre)  case pre ## _ ## none: return "";
+		TARGET_SUBARCHES
+#undef X
+#undef NONE
+	}
+	return NULL;
+}
+
 static const char *vendor_to_str(enum vendor v)
 {
 	switch(v){
@@ -195,8 +207,9 @@ char *triple_to_str(const struct triple *triple, int showvendor)
 {
 	static char buf[32];
 
-	snprintf(buf, sizeof(buf), "%s%s%s-%s-%s",
+	snprintf(buf, sizeof(buf), "%s%s%s%s-%s-%s",
 			arch_to_str(triple->arch),
+			subarch_to_str(triple->subarch),
 			showvendor ? "-" : "",
 			showvendor ? vendor_to_str(triple->vendor) : "",
 			triple_sys_to_str(triple->sys),
