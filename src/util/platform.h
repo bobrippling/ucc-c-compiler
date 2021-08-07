@@ -5,6 +5,7 @@
 #include "triple.h"
 
 enum arch platform_type(void);
+enum subarch platform_subarch(void);
 enum sys platform_sys(void);
 int platform_32bit(void);
 
@@ -14,6 +15,6 @@ unsigned platform_align_max(void) ucc_const;
 /* no big endian support */
 #define platform_bigendian() 0
 
-void platform_init(enum arch, enum sys);
+void platform_init(enum arch, enum subarch, enum sys);
 
 #endif

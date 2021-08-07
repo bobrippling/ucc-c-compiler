@@ -7,6 +7,7 @@
 #include "platform.h"
 
 static enum arch arch;
+static enum subarch subarch;
 static enum sys sys;
 static int init;
 
@@ -43,15 +44,22 @@ enum arch platform_type(void)
 	return arch;
 }
 
+enum subarch platform_subarch(void)
+{
+	assert(init);
+	return subarch;
+}
+
 enum sys platform_sys(void)
 {
 	assert(init);
 	return sys;
 }
 
-void platform_init(enum arch a, enum sys s)
+void platform_init(enum arch a, enum subarch sa, enum sys s)
 {
 	arch = a;
+	subarch = sa;
 	sys = s;
 	init = 1;
 }

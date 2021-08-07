@@ -333,7 +333,7 @@ static int init_target(const char *target)
 		}
 	}
 
-	platform_init(triple.arch, triple.sys);
+	platform_init(triple.arch, triple.subarch, triple.sys);
 	return 1;
 }
 

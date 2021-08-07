@@ -588,7 +588,7 @@ static int init_target(const char *target)
 		return 0;
 	}
 
-	platform_init(triple.arch, triple.sys);
+	platform_init(triple.arch, triple.subarch, triple.sys);
 	target_details_from_triple(&triple, &cc1_target_details);
 
 	return 1;
