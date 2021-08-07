@@ -25,7 +25,7 @@
 		return 1;                \
 	}
 
-static int parse_arch(const char *in, enum arch *out)
+static int parse_mainarch(const char *in, enum arch *out)
 {
 	TARGET_ARCHES
 	return 0;
@@ -74,6 +74,16 @@ static int parse_subarch(
 	return 0;
 }
 
+static int parse_arch(const char *in, enum arch *arch, enum subarch *subarch)
+{
+	if(!parse_mainarch(in, arch))
+		return 0;
+
+	if(!parse_subarch(in, *arch, subarch))
+		*subarch = SUBARCH_none;
+	return 1;
+}
+
 static enum vendor infer_vendor(enum sys sys)
 {
 	switch(sys){
@@ -107,11 +117,8 @@ int triple_parse(const char *str, struct triple *triple, const char **const bad)
 	enum abi abi = -1;
 
 	for(tok = strtok(dup, "-"); tok; tok = strtok(NULL, "-")){
-		if(parse_arch(tok, &arch)){
-			if(!parse_subarch(tok, arch, &subarch))
-				subarch = SUBARCH_none;
+		if(parse_arch(tok, &arch, &subarch))
 			continue;
-		}
 		if(parse_vendor(tok, &vendor))
 			continue;
 		if(parse_sys(tok, &sys))
@@ -248,7 +255,7 @@ int triple_default(struct triple *triple, const char **const unparsed)
 
 	filter_unam(&unam);
 
-	if(!parse_arch(unam.machine, &triple->arch)){
+	if(!parse_arch(unam.machine, &triple->arch, &triple->subarch)){
 		if(unparsed)
 			*unparsed = unam.machine;
 		return 0;
