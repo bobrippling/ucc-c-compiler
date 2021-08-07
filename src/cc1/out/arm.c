@@ -446,14 +446,35 @@ const out_val *impl_load(
 	switch(from->type){
 		case V_CONST_I:
 		{
-			out_asm(octx, "movw %s, #%d",
-					arm_reg_to_str(reg->idx),
-					(int)(from->bits.val_i & 0x0000ffff));
+			/*
+			 * if we have an 8-bit value (rotated an even number of bits, 0 <= b <= 30:
+			 * 	 mov reg, #constant
+			 * if we have armv7:
+			 *   movw reg, #constant & 0xffff
+			 *   movt reg, #constant >> 16
+			 * else:
+			 *   ldr reg, =constant
+			 */
+			const integral_t val = from->bits.val_i;
+			const char *regstr = arm_reg_to_str(reg->idx);
 
-			if(from->bits.val_i & 0xffff0000){
-				out_asm(octx, "movt %s, #%d",
+			if(is_8bit_rotated(val)){
+				out_asm(octx, "mov %s, #%ld", regstr, val);
+
+			}else if(is_armv7_or_above){
+				out_asm(octx, "movw %s, #%d",
 						arm_reg_to_str(reg->idx),
-						(int)((from->bits.val_i & 0xffff0000) >> 16));
+						(int)(val & 0x0000ffff));
+
+				if(from->bits.val_i & 0xffff0000){
+					out_asm(octx, "movt %s, #%d",
+							arm_reg_to_str(reg->idx),
+							(int)((val & 0xffff0000) >> 16));
+				}
+
+			}else{
+				out_asm(octx, "ldr %s, =%ld", regstr, val);
+
 			}
 			break;
 		}
