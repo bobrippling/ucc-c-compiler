@@ -445,11 +445,18 @@ const out_val *impl_load(
 {
 	switch(from->type){
 		case V_CONST_I:
-			/* TODO: >16 bit numbers? */
-			out_asm(octx, "mov %s, #%d",
+		{
+			out_asm(octx, "movw %s, #%d",
 					arm_reg_to_str(reg->idx),
-					(int)from->bits.val_i);
+					(int)(from->bits.val_i & 0x0000ffff));
+
+			if(from->bits.val_i & 0xffff0000){
+				out_asm(octx, "movt %s, #%d",
+						arm_reg_to_str(reg->idx),
+						(int)((from->bits.val_i & 0xffff0000) >> 16));
+			}
 			break;
+		}
 
 		case V_SPILT:
 			arm_ldr_str(
