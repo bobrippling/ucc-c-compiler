@@ -52,6 +52,28 @@ static int parse_abi(const char *in, enum abi *out)
 #undef X_ncmp
 #undef ALIAS
 
+static int parse_subarch(
+		const char *in,
+		const enum arch chosen_arch,
+		enum subarch *out)
+{
+	const size_t in_len = strlen(in);
+
+#define X(pre, arch, sub) \
+	if(chosen_arch == ARCH_ ## arch \
+			&& in_len > strlen(#arch) \
+			&& !strncmp(in + strlen(#arch), #sub, strlen(#sub))) \
+	{ \
+		*out = pre ## _ ## arch ## sub; \
+		return 1; \
+	}
+#define NONE(pre)
+	TARGET_SUBARCHES
+#undef X
+#undef NONE
+	return 0;
+}
+
 static enum vendor infer_vendor(enum sys sys)
 {
 	switch(sys){
@@ -79,13 +101,17 @@ int triple_parse(const char *str, struct triple *triple, const char **const bad)
 	char *dup = ustrdup(str);
 	char *tok;
 	enum arch arch = -1;
+	enum subarch subarch = -1;
 	enum vendor vendor = -1;
 	enum sys sys = -1;
 	enum abi abi = -1;
 
 	for(tok = strtok(dup, "-"); tok; tok = strtok(NULL, "-")){
-		if(parse_arch(tok, &arch))
+		if(parse_arch(tok, &arch)){
+			if(!parse_subarch(tok, arch, &subarch))
+				subarch = SUBARCH_none;
 			continue;
+		}
 		if(parse_vendor(tok, &vendor))
 			continue;
 		if(parse_sys(tok, &sys))
@@ -112,6 +138,7 @@ int triple_parse(const char *str, struct triple *triple, const char **const bad)
 		abi = infer_abi(sys);
 
 	triple->arch = arch;
+	triple->subarch = subarch;
 	triple->vendor = vendor;
 	triple->sys = sys;
 	triple->abi = abi;

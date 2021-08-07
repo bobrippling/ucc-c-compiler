@@ -10,6 +10,7 @@
 #include "dynarray.h"
 #include "math.h"
 #include "str.h"
+#include "triple.h"
 
 #define DIE() ice(__FILE__, __LINE__, __func__, NULL)
 
@@ -36,14 +37,14 @@ void icw(const char *f, int line, const char *fn, const char *fmt, ...)
 	ec = 1;
 }
 
-static void test(int cond, const char *expr)
+static void test(int cond, const char *expr, int lno)
 {
 	if(!cond){
 		ec = 1;
-		fprintf(stderr, "test failed: %s\n", expr);
+		fprintf(stderr, __FILE__ ":%d: test failed: %s\n", lno, expr);
 	}
 }
-#define test(exp) test((exp), #exp)
+#define test(exp) test((exp), #exp, __LINE__)
 
 static void test_canon(char *in, char *exp, int ln)
 {
@@ -342,6 +343,47 @@ static void test_str(void)
 	}
 }
 
+static void test_triple(void)
+{
+	const char *err = NULL;
+	struct triple triple = { 0 };
+
+	test(triple_parse("armv6-linux", &triple, &err));
+	test(!err);
+	test(triple.arch == ARCH_arm);
+	test(triple.subarch == SUBARCH_armv6);
+	test(triple.vendor == VENDOR_pc);
+	test(triple.sys == SYS_linux);
+	test(triple.abi == ABI_gnu);
+
+	memset(&triple, 0, sizeof(triple));
+	test(!err);
+	test(triple_parse("armv7l-linux", &triple, &err));
+	test(triple.arch == ARCH_arm);
+	test(triple.subarch == SUBARCH_armv7);
+	test(triple.vendor == VENDOR_pc);
+	test(triple.sys == SYS_linux);
+	test(triple.abi == ABI_gnu);
+
+	memset(&triple, 0, sizeof(triple));
+	test(!err);
+	test(triple_parse("x86_64-linux", &triple, &err));
+	test(triple.arch == ARCH_x86_64);
+	test(triple.subarch == SUBARCH_none);
+	test(triple.vendor == VENDOR_pc);
+	test(triple.sys == SYS_linux);
+	test(triple.abi == ABI_gnu);
+
+	memset(&triple, 0, sizeof(triple));
+	test(!err);
+	test(triple_parse("x86_64-darwin", &triple, &err));
+	test(triple.arch == ARCH_x86_64);
+	test(triple.subarch == SUBARCH_none);
+	test(triple.vendor == VENDOR_apple);
+	test(triple.sys == SYS_darwin);
+	test(triple.abi == ABI_macho);
+}
+
 int main(void)
 {
 	test_dynmap();
@@ -349,6 +391,7 @@ int main(void)
 	test_canon_all();
 	test_math();
 	test_str();
+	test_triple();
 
 	return ec;
 }

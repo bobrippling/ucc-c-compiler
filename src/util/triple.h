@@ -35,6 +35,11 @@ Examples:
 	ALIAS(ARCH, i686, i386) \
 	X_ncmp(ARCH, arm, 3)
 
+#define TARGET_SUBARCHES \
+	X(SUBARCH, arm, v6) \
+	X(SUBARCH, arm, v7) \
+	NONE(SUBARCH)
+
 #define TARGET_VENDORS \
 	X(VENDOR, pc) \
 	X(VENDOR, apple)
@@ -76,9 +81,19 @@ enum abi
 #undef X_ncmp
 #undef ALIAS
 
+#define X(pre, arch, sub) pre ## _ ## arch ## sub,
+#define NONE(pre) pre ## _ ## none
+enum subarch
+{
+	TARGET_SUBARCHES
+};
+#undef X
+#undef NONE
+
 struct triple
 {
 	enum arch arch;
+	enum subarch subarch;
 	enum vendor vendor;
 	enum sys sys;
 	enum abi abi;

@@ -4,7 +4,8 @@ OBJ = platform.o util.o alloc.o dynarray.o dynmap.o where.o str.o \
 			std.o escape.o math.o warn.o path.o tmpfile.o io.o triple.o \
 			colour.o
 
-OBJ_TEST = test.o path.o dynarray.o alloc.o dynmap.o math.o str.o
+OBJ_TEST = test.o path.o dynarray.o alloc.o dynmap.o math.o str.o \
+		triple.o
 
 SRC = ${OBJ:.o=.c} ${OBJ_TEST:.o=.c}
 
