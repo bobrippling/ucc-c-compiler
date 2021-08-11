@@ -37,6 +37,38 @@ const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 4, "long" },
 };
 
+static int is_armv7_or_above(void)
+{
+	switch(platform_subarch()){
+		case SUBARCH_none:
+		case SUBARCH_armv6:
+			break;
+		case SUBARCH_armv7:
+			return 1;
+	}
+	return 0;
+}
+
+static int is_8bit_rotated_or_zero(unsigned x)
+{
+	/* see if one byte is set, and no others */
+	unsigned i;
+
+	if(!x)
+		return 1;
+
+	for(i = 0; i < sizeof(x); i++){
+		integral_t mask = 0xff << (i * 8);
+		if((x & mask) && (x & ~mask) == 0)
+			return 1;
+	}
+
+	if(x & 0xf000000f && (x & 0x0ffffff0) == 0) /* split byte */
+		return 1;
+
+	return 0;
+}
+
 static const char *arm_reg_to_str(int i)
 {
 	static const char *rnames[] = {
@@ -457,25 +489,30 @@ const out_val *impl_load(
 			 */
 			const integral_t val = from->bits.val_i;
 			const char *regstr = arm_reg_to_str(reg->idx);
+			int done = 0;
 
-			if(is_8bit_rotated(val)){
-				out_asm(octx, "mov %s, #%ld", regstr, val);
+			if(val < ((integral_t)1 << 32)){
+				if(is_8bit_rotated_or_zero((unsigned)val)){
+					done = 1;
+					out_asm(octx, "mov %s, #%" NUMERIC_FMT_D, regstr, val);
 
-			}else if(is_armv7_or_above){
-				out_asm(octx, "movw %s, #%d",
-						arm_reg_to_str(reg->idx),
-						(int)(val & 0x0000ffff));
+				}else if(is_armv7_or_above()){
+					done = 1;
 
-				if(from->bits.val_i & 0xffff0000){
-					out_asm(octx, "movt %s, #%d",
+					out_asm(octx, "movw %s, #%d",
 							arm_reg_to_str(reg->idx),
-							(int)((val & 0xffff0000) >> 16));
+							(int)(val & 0x0000ffff));
+
+					if(from->bits.val_i & 0xffff0000){
+						out_asm(octx, "movt %s, #%d",
+								arm_reg_to_str(reg->idx),
+								(int)((val & 0xffff0000) >> 16));
+					}
 				}
-
-			}else{
-				out_asm(octx, "ldr %s, =%ld", regstr, val);
-
 			}
+
+			if(!done)
+				out_asm(octx, "ldr %s, =%" NUMERIC_FMT_D, regstr, val);
 			break;
 		}
 
