@@ -115,7 +115,8 @@ static void impl_overlay_mem_reg(
 
 	UCC_ASSERT(
 			nregs * pws >= memsz,
-			"not enough registers for memory overlay");
+			"not enough registers for memory overlay (%u regs, %u bytes of memory)",
+			nregs, memsz);
 
 	out_comment(octx,
 			"overlay, %s2%s(%u)",

@@ -39,6 +39,7 @@
 
 #include "ctx.h"
 #include "blk.h"
+#include "func.h"
 
 /* Darwin's `as' can only create movq:s with
  * immediate operands whose highest bit is bit
@@ -230,14 +231,7 @@ static const char *x86_suffix(type *ty)
 	ICE("no suffix for %s", type_to_str(ty));
 }
 
-enum stret
-{
-	stret_scalar,
-	stret_regs,
-	stret_memcpy
-};
-
-static enum stret x86_stret(type *ty, unsigned *stack_space)
+enum stret impl_func_stret(type *, unsigned *stack_space)
 {
 	/*
 	 * in short:
@@ -327,7 +321,7 @@ static void x86_overlay_regpair_1(
 	++*regpair_idx;
 }
 
-static void x86_overlay_regpair(
+void impl_func_overlay_regpair(
 		struct vreg regpair[/*2*/], int *const nregs, type *retty)
 {
 	/* if we have two floats at either 0-1 or 2-3, then we can do
@@ -528,7 +522,7 @@ static const struct calling_conv_desc *x86_conv_lookup(type *fr)
 	return &calling_convs[fa->conv];
 }
 
-static int x86_caller_cleanup(type *fr)
+int impl_func_caller_cleanup(type *fr)
 {
 	const int cr_clean = x86_conv_lookup(fr)->caller_cleanup;
 
@@ -538,7 +532,7 @@ static int x86_caller_cleanup(type *fr)
 	return cr_clean;
 }
 
-static void x86_call_regs(
+void impl_func_call_regs(
 		type *fr, unsigned *pn,
 		const struct vreg **par)
 {
@@ -822,7 +816,7 @@ void impl_func_epilogue(out_ctx *octx, type *rf, int clean_stack)
 		out_comment(octx, "stack at %lu bytes", octx->cur_stack_sz);
 
 	/* callee cleanup */
-	if(!x86_caller_cleanup(rf)){
+	if(!impl_func_caller_cleanup(rf)){
 		const int nargs = x86_func_nargs(rf);
 
 		out_asm(octx, "retq $%d", nargs * platform_word_size());
@@ -2129,9 +2123,9 @@ const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *to)
 			x86_suffix(to));
 }
 
-static char *x86_call_jmp_target(
+char *x86_call_jmp_target(
 		out_ctx *octx, const out_val **pvp,
-		int prevent_rax,
+		int may_clobber_retreg,
 		int *const use_plt, int *const is_alloc)
 {
 	static char buf[VAL_STR_SZ + 2];
@@ -2170,7 +2164,7 @@ static char *x86_call_jmp_target(
 
 			UCC_ASSERT(!(*pvp)->bits.regoff.reg.is_float, "jmp float?");
 
-			if(prevent_rax && (*pvp)->bits.regoff.reg.idx == X86_64_REG_RAX){
+			if(!may_clobber_retreg && (*pvp)->bits.regoff.reg.idx == X86_64_REG_RAX){
 				struct vreg r;
 
 				v_unused_reg(octx, 1, 0, &r, /*don't want rax:*/NULL);
@@ -2275,328 +2269,49 @@ void impl_branch(
 	}
 }
 
-const out_val *impl_call(
-		out_ctx *octx,
-		const out_val *fn, const out_val **args,
-		type *fnty)
+void impl_func_alignstack(out_ctx *octx)
 {
-	type *const retty = type_called(type_is_ptr_or_block(fnty), NULL);
-	type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
-	const unsigned pws = platform_word_size();
-	const unsigned nargs = dynarray_count(args);
-	char *const float_arg = umalloc(nargs);
-	const out_val **local_args = NULL;
-	const out_val *retval_stret;
-	const out_val *stret_spill;
-
-	const struct vreg *call_iregs;
-	unsigned n_call_iregs;
-
-	struct
-	{
-		v_stackt bytesz;
-		const out_val *vptr;
-		enum
-		{
-			CLEANUP_NO,
-			CLEANUP_RESTORE_PUSHBACK = 1 << 0,
-			CLEANUP_POP = 1 << 1
-		} need_cleanup;
-	} arg_stack = { 0 };
-
-	unsigned nfloats = 0, nints = 0;
-	unsigned i;
-	enum stret stret_kind;
-	unsigned stret_stack;
-
-	dynarray_add_array(&local_args, args);
-
-	x86_call_regs(fnty, &n_call_iregs, &call_iregs);
-
-	/* pre-scan of arguments - eliminate flags
-	 * (should only be one, since we can only have one flag at a time)
-	 *
-	 * also count floats and ints
-	 */
-	for(i = 0; i < nargs; i++){
-		assert(local_args[i]->retains > 0);
-
-		if(local_args[i]->type == V_FLAG)
-			local_args[i] = v_to_reg(octx, local_args[i]);
-
-		float_arg[i] = type_is_floating(v_get_type(local_args[i]));
-
-		if(float_arg[i])
-			nfloats++;
-		else
-			nints++;
-	}
-
-	/* hidden stret argument */
-	switch((stret_kind = x86_stret(retty, &stret_stack))){
-		case stret_memcpy:
-			nints++; /* only an extra pointer arg for stret_memcpy */
-			/* fall */
-		case stret_regs:
-			stret_spill = out_aalloc(octx, stret_stack, type_align(retty, NULL), retty, NULL);
-		case stret_scalar:
-			break;
-	}
-
-	/* do we need to do any stacking? */
-	if(nints > n_call_iregs)
-		arg_stack.bytesz += pws * (nints - n_call_iregs);
-
-
-	if(nfloats > N_CALL_REGS_F)
-		arg_stack.bytesz += pws * (nfloats - N_CALL_REGS_F);
-
-	/* need to save regs before pushes/call */
-	v_save_regs(octx, fnty, local_args, fn);
-
 	/* 16 byte for SSE - special case here as mstack_align may be less */
 	if(!IS_32_BIT())
 		v_stack_needalign(octx, 16);
+}
 
-	if(arg_stack.bytesz > 0){
-		out_comment(octx, "stack space for %lu arguments",
-				arg_stack.bytesz / pws);
+void impl_func_call(
+		out_ctx *octx, type *fnty, funcargs *args,
+		const out_val *fn, int nfloats)
+{
+	funcargs *args = type_funcargs(fnty);
+	int need_float_count =
+		args->variadic
+		|| FUNCARGS_EMPTY_NOVOID(args);
+	/* jtarget must be assigned before "movb $0, %al" */
+	int use_plt, is_alloc;
+	char *jtarget = x86_call_jmp_target(octx, &fn, need_float_count, &use_plt, &is_alloc);
 
-		if(x86_caller_cleanup(fnty))
-			arg_stack.need_cleanup = CLEANUP_NO;
-		else
-			arg_stack.need_cleanup |= CLEANUP_RESTORE_PUSHBACK;
-
-		/* see comment about stack_iter below */
-		if(octx->alloca_count){
-			arg_stack.bytesz = pack_to_align(arg_stack.bytesz, octx->max_align);
-
-			v_stack_adj(octx, arg_stack.bytesz, /*sub:*/1);
-			arg_stack.vptr = NULL;
-
-			arg_stack.need_cleanup |= CLEANUP_POP;
-
-		}else{
-			/* this aligns the stack-ptr and returns arg_stack padded */
-			arg_stack.vptr = out_aalloc(octx, arg_stack.bytesz, pws, arithty, NULL);
-
-			if(octx->stack_callspace < arg_stack.bytesz)
-				octx->stack_callspace = arg_stack.bytesz;
-		}
-	}
-
-	if(arg_stack.bytesz > 0){
-		const out_val *stack_iter;
-
-		nints = nfloats = 0;
-
-		/* Rather than spilling the registers based on %rbp, we spill
-		 * them based as offsets from %rsp, that way they're always
-		 * at the bottom of the stack, regardless of future changes
-		 * to octx->cur_stack_sz
-		 *
-		 * VLAs (and alloca()) unfortunately break this.
-		 * For this we special case and don't reuse existing stack.
-		 * Instead, we allocate stack explicitly, use it for the call,
-		 * then free it (done above).
-		 */
-		stack_iter = v_new_sp(octx, NULL);
-
-		/* save in order */
-		for(i = 0; i < nargs; i++){
-			const int stack_this = float_arg[i]
-				? nfloats++ >= N_CALL_REGS_F
-				: nints++ >= n_call_iregs;
-
-			if(stack_this){
-				type *storety = type_ptr_to(local_args[i]->t);
-
-				assert(stack_iter->retains > 0);
-
-				stack_iter = out_change_type(octx, stack_iter, storety);
-				out_val_retain(octx, stack_iter);
-				local_args[i] = v_to_stack_mem(octx, local_args[i], stack_iter, V_REGOFF);
-
-				assert(local_args[i]->retains > 0);
-
-				stack_iter = out_op(octx, op_plus,
-						out_change_type(octx, stack_iter, arithty),
-						out_new_l(octx, arithty, pws));
-			}
-		}
-
-		out_val_release(octx, stack_iter);
-	}
-
-	/* must be set before stret pointer argument */
-	nints = nfloats = 0;
-
-	/* setup hidden stret pointer argument */
-	if(stret_kind == stret_memcpy){
-		const struct vreg *stret_reg = &call_iregs[nints];
-		nints++;
-
-		if(cc1_fopt.verbose_asm){
-			out_comment(octx, "stret spill space '%s' @ %s, %u bytes",
-					type_to_str(stret_spill->t),
-					out_val_str(stret_spill, 1),
-					stret_stack);
-		}
-
-		out_val_retain(octx, stret_spill);
-		v_freeup_reg(octx, stret_reg);
-		out_flush_volatile(octx, v_to_reg_given(octx, stret_spill, stret_reg));
-	}
-
-	for(i = 0; i < nargs; i++){
-		const out_val *const vp = local_args[i];
-		/* we use float_arg[i] since vp->t may now be float *,
-		 * if it's been spilt */
-		const int is_float = float_arg[i];
-
-		const struct vreg *rp = NULL;
+	/* if x(...) or x() */
+	if(need_float_count){
+		/* movb $nfloats, %al */
 		struct vreg r;
 
-		if(is_float){
-			if(nfloats < N_CALL_REGS_F){
-				/* NOTE: don't need to use call_regs_float,
-				 * since it's xmm0 ... 7 */
-				r.idx = nfloats;
-				r.is_float = 1;
+		r.idx = X86_64_REG_RAX;
+		r.is_float = 0;
 
-				rp = &r;
-			}
-			nfloats++;
-
-		}else{
-			/* integral */
-			if(nints < n_call_iregs)
-				rp = &call_iregs[nints];
-
-			nints++;
-		}
-
-		if(rp){
-			/* only bother if it's not already in the register */
-			if(vp->type != V_REG || !vreg_eq(rp, &vp->bits.regoff.reg)){
-				/* need to free it up, as v_to_reg_given doesn't clobber check */
-				v_freeup_reg(octx, rp);
-
-#if 0
-				/* argument retainedness doesn't matter here -
-				 * local arguments and autos are held onto, and
-				 * inline functions hold onto their arguments one extra
-				 */
-				UCC_ASSERT(local_args[i]->retains == 1,
-						"incorrectly retained arg %d: %d",
-						i, local_args[i]->retains);
-#endif
-
-
-				local_args[i] = v_to_reg_given(octx, local_args[i], rp);
-			}
-			if(local_args[i]->type == V_REG && local_args[i]->bits.regoff.offset){
-				/* need to ensure offsets are flushed */
-				local_args[i] = v_reg_apply_offset(octx, local_args[i]);
-			}
-		}
-		/* else already pushed */
-	}
-
-	{
-		funcargs *args = type_funcargs(fnty);
-		int need_float_count =
-			args->variadic
-			|| FUNCARGS_EMPTY_NOVOID(args);
-		/* jtarget must be assigned before "movb $0, %al" */
-		int use_plt, is_alloc;
-		char *jtarget = x86_call_jmp_target(octx, &fn, need_float_count, &use_plt, &is_alloc);
-
-		/* if x(...) or x() */
-		if(need_float_count){
-			/* movb $nfloats, %al */
-			struct vreg r;
-
-			r.idx = X86_64_REG_RAX;
-			r.is_float = 0;
-
-			/* only the register arguments - glibc's printf of x86_64 linux
-			 * segfaults if this is 9 or greater */
-			out_flush_volatile(
+		/* only the register arguments - glibc's printf of x86_64 linux
+		 * segfaults if this is 9 or greater */
+		out_flush_volatile(
+				octx,
+				v_to_reg_given(
 					octx,
-					v_to_reg_given(
+					out_new_l(
 						octx,
-						out_new_l(
-							octx,
-							type_nav_btype(cc1_type_nav, type_nchar),
-							MIN(nfloats, N_CALL_REGS_F)),
-						&r));
-		}
-
-		out_asm(octx, "callq %s%s", jtarget, use_plt ? "@PLT" : "");
-		if(is_alloc)
-			free(jtarget);
+						type_nav_btype(cc1_type_nav, type_nchar),
+						MIN(nfloats, N_CALL_REGS_F)),
+					&r));
 	}
 
-	if(arg_stack.bytesz){
-		if(arg_stack.need_cleanup & CLEANUP_RESTORE_PUSHBACK){
-			/* callee cleanup - the callee will have popped
-			 * args from the stack, so we need a stack alloc
-			 * to restore what we expect */
-
-			if(arg_stack.need_cleanup & CLEANUP_POP){
-				/* we wanted to pop anyway - callee did it for us */
-			}else{
-				v_stack_adj(octx, arg_stack.bytesz, /*sub:*/1);
-			}
-
-		}else if(arg_stack.need_cleanup & CLEANUP_POP){
-			/* caller cleanup - we reuse the stack for other purposes */
-				v_stack_adj(octx, arg_stack.bytesz, /*sub:*/0);
-		}
-
-		if(arg_stack.vptr)
-			out_adealloc(octx, &arg_stack.vptr);
-	}
-
-	for(i = 0; i < nargs; i++)
-		out_val_consume(octx, local_args[i]);
-	dynarray_free(const out_val **, local_args, NULL);
-
-	if(stret_kind != stret_scalar){
-		if(stret_kind == stret_regs){
-			/* we behave the same as stret_memcpy(),
-			 * but we must spill the regs out */
-			struct vreg regpair[2];
-			int nregs;
-
-			x86_overlay_regpair(regpair, &nregs, retty);
-
-			retval_stret = out_val_retain(octx, stret_spill);
-			out_val_retain(octx, retval_stret);
-
-			/* spill from registers to the stack */
-			impl_overlay_regs2mem(octx, stret_stack, nregs, regpair, retval_stret);
-		}
-
-		assert(stret_spill);
-		out_val_release(octx, stret_spill);
-	}
-
-	/* return type */
-	free(float_arg);
-
-	if(stret_kind != stret_regs){
-		/* rax / xmm0, otherwise the return has
-		 * been set to a local stack address */
-		const int fp = type_is_floating(retty);
-		struct vreg rr = VREG_INIT(fp ? REG_RET_F_1 : REG_RET_I_1, fp);
-
-		return v_new_reg(octx, fn, retty, &rr);
-	}else{
-		out_val_consume(octx, fn);
-		return retval_stret;
-	}
+	out_asm(octx, "callq %s%s", jtarget, use_plt ? "@PLT" : "");
+	if(is_alloc)
+		free(jtarget);
 }
 
 void impl_undefined(out_ctx *octx)

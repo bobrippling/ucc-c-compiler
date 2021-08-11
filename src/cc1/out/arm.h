@@ -40,6 +40,12 @@
 #define REG_RET_F 0 /*TODO*/
 #define REG_RET_I ARM_REG_R0
 
+/* FIXME */
+#define REG_RET_F_1 REG_RET_F
+#define REG_RET_I_1 REG_RET_I
+#define N_CALL_REGS_F 0
+/* end FIXME */
+
 #define VAL_STR_SZ 128
 
 #endif

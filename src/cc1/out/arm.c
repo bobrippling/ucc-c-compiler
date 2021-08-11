@@ -26,6 +26,7 @@
 #include "write.h"
 #include "out.h"
 #include "blk.h"
+#include "func.h"
 
 #include "arm.h"
 
@@ -258,52 +259,72 @@ void impl_jmp(const char *lbl, const struct section *sec)
 	asm_out_section(sec, "\tb %s\n", lbl);
 }
 
-const out_val *impl_call(
-		out_ctx *octx,
-		const out_val *fn, const out_val **args,
-		type *fnty)
+void impl_func_call(
+		out_ctx *octx, type *fnty, int nfloats,
+		const out_val *fn, const out_val **args)
 {
-	const int nargs = dynarray_count(args);
-	int i;
-
 	UNUSED_ARG(fnty);
-
-	for(i = 0; i < nargs; i++){
-		type *ty = args[i]->t;
-
-		assert(!type_is_floating(ty) && "TODO");
-		assert(!type_is_s_or_u(ty) && "TODO");
-
-		if(i < N_CALL_REGS_I){
-			struct vreg call_reg = VREG_INIT(ARM_REG_R0 + i, 0);
-
-			v_freeup_reg(octx, &call_reg);
-
-			out_flush_volatile(octx,
-					v_to_reg_given(octx, args[i], &call_reg));
-
-			v_reserve_reg(octx, &call_reg);
-		}else{
-			ICE("TODO: push, merge with x86");
-		}
-	}
+	UNUSED_ARG(nfloats);
+	UNUSED_ARG(args);
 
 	arm_jmp(octx, fn, "bl");
+}
 
-	for(i = 0; i < MIN(N_CALL_REGS_I, nargs); i++){
-		struct vreg call_reg = VREG_INIT(ARM_REG_R0 + i, 0);
-		v_unreserve_reg(octx, &call_reg);
+void impl_func_alignstack(out_ctx *octx)
+{
+	v_stack_needalign(octx, 8);
+}
+
+void impl_func_call_regs(type *retty, unsigned *pn, const struct vreg **regs)
+{
+	static const struct vreg callregs[] = {
+		{ ARM_REG_R0, 0 },
+		{ ARM_REG_R1, 0 },
+		{ ARM_REG_R2, 0 },
+		{ ARM_REG_R3, 0 }
+	};
+
+	UNUSED_ARG(retty);
+
+	*pn = 4;
+	*regs = callregs;
+}
+
+enum stret impl_func_stret(type *ty, unsigned *stack_space)
+{
+	struct_union_enum_st *su = type_is_s_or_u(ty);
+	unsigned sz;
+
+	if(stack_space)
+		*stack_space = 0;
+
+	if(!su)
+		return stret_scalar;
+
+	sz = type_size(ty, NULL);
+	if(sz <= type_primitive_size(type_int)){
+		if(stack_space)
+			*stack_space = sz;
+		return stret_regs;
 	}
 
-	{
-		struct vreg retreg = VREG_INIT(REG_RET_I, 0);
-		type *ty = type_called(type_is_ptr_or_block(fnty), NULL);
+	return stret_memcpy;
+}
 
-		assert(!type_is_floating(ty) && "TODO");
-		assert(!type_is_s_or_u(ty) && "TODO");
+int impl_func_caller_cleanup(type *ty)
+{
+	UNUSED_ARG(ty);
+	return 1;
+}
 
-		return v_new_reg(octx, fn, ty, &retreg);
-	}
+void impl_func_overlay_regpair(
+		struct vreg regpair[/*2*/], int *const nregs, type *retty)
+{
+	(void)retty;
+
+	*nregs = 1;
+	regpair[0].idx = ARM_REG_R0;
+	regpair[0].is_float = 0;
 }
 
 const out_val *impl_cast_extend(out_ctx *octx, const out_val *val, type *big_to)
