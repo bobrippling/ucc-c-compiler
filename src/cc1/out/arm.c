@@ -509,6 +509,16 @@ const out_val *impl_load(
 								(int)((val & 0xffff0000) >> 16));
 					}
 				}
+			}else if((sintegral_t)val < 0){
+				integral_t flipped = ~val;
+
+				if(is_8bit_rotated_or_zero((unsigned)flipped)){
+					done = 1;
+
+					out_asm(octx, "mvn %s, #%d",
+							arm_reg_to_str(reg->idx),
+							(int)flipped);
+				}
 			}
 
 			if(!done)
