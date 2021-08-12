@@ -302,12 +302,11 @@ enum stret impl_func_stret(type *ty, unsigned *stack_space)
 		return stret_scalar;
 
 	sz = type_size(ty, NULL);
-	if(sz <= type_primitive_size(type_int)){
-		if(stack_space)
-			*stack_space = sz;
-		return stret_regs;
-	}
+	if(stack_space)
+		*stack_space = sz;
 
+	if(sz <= type_primitive_size(type_int))
+		return stret_regs;
 	return stret_memcpy;
 }
 
