@@ -46,7 +46,8 @@ void impl_func_prologue_save_fp(out_ctx *octx);
 void impl_func_prologue_save_call_regs(
 		out_ctx *,
 		type *rf, unsigned nargs,
-		const out_val *arg_offsets[/*nargs*/]);
+		const out_val *arg_offsets[/*nargs*/],
+		const out_val **const stret_ptr);
 
 void impl_func_prologue_save_variadic(out_ctx *octx, type *rf);
 void impl_func_epilogue(out_ctx *, type *, int clean_stack);

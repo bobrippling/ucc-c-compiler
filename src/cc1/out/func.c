@@ -336,6 +336,76 @@ const out_val *out_call(out_ctx *octx,
 	}
 }
 
+static ucc_wur const out_val *
+impl_func_ret_memcpy(
+		out_ctx *octx,
+		struct vreg *ret_reg,
+		type *called,
+		const out_val *from)
+{
+	const out_val *stret_p;
+
+	/* copy from *%rax to *%rdi (first argument) */
+	out_comment(octx, "stret copy");
+
+	stret_p = octx->current_stret;
+
+	out_val_retain(octx, stret_p);
+	stret_p = out_deref(octx, stret_p);
+
+	out_flush_volatile(octx,
+			out_memcpy(octx, stret_p, from, type_size(called, NULL)));
+
+	/* return the stret pointer argument */
+	ret_reg->is_float = 0;
+	ret_reg->idx = REG_RET_I_1;
+
+	return out_deref(octx, out_val_retain(octx, octx->current_stret));
+}
+
+static void impl_func_ret_regs(
+		out_ctx *octx, type *called, const out_val *from)
+{
+	const unsigned sz = type_size(called, NULL);
+	struct vreg regs[2];
+	int nregs;
+
+	impl_func_overlay_regpair(regs, &nregs, called);
+
+	/* read from the stack to registers */
+	impl_overlay_mem2regs(octx, sz, nregs, regs, from);
+}
+
+void impl_to_retreg(out_ctx *octx, const out_val *val, type *called)
+{
+	struct vreg r;
+
+	switch(impl_func_stret(called)){
+		case stret_memcpy:
+			/* this function is responsible for memcpy()ing
+			 * the struct back */
+			val = impl_func_ret_memcpy(octx, &r, called, val);
+			break;
+
+		case stret_scalar:
+			r.is_float = type_is_floating(called);
+			r.idx = r.is_float ? REG_RET_F_1 : REG_RET_I_1;
+			break;
+
+		case stret_regs:
+			/* this function returns in regs, the caller is
+			 * responsible doing what it wants,
+			 * i.e. memcpy()ing the regs into stack space */
+			impl_func_ret_regs(octx, called, val);
+			return;
+	}
+
+	/* not done for stret_regs: */
+
+	/* v_to_reg since we don't handle lea/load ourselves */
+	out_flush_volatile(octx, v_to_reg_given(octx, val, &r));
+}
+
 static void callee_save_or_restore_1(
 		out_ctx *octx, out_blk *in_blk,
 		struct vreg *cs, const out_val *stack_pos,
@@ -773,6 +843,41 @@ void out_perfunc_init(out_ctx *octx, decl *fndecl, const char *sp)
 		octx->entry_blk->align = const_fold_val_i(alignment->bits.align);
 }
 
+static void prologue_save_call_regs(out_ctx *octx, int nargs, const out_val *argvals[])
+{
+	type *fnty = octx->current_fnty;
+	int is_stret = 0;
+	const out_val *stret_ptr = NULL;
+
+	/* save the stret hidden argument */
+	switch(impl_func_stret(type_func_call(fnty, NULL))){
+		case stret_regs:
+		case stret_scalar:
+			break;
+		case stret_memcpy:
+			nargs++;
+			is_stret = 1;
+	}
+
+	impl_func_prologue_save_call_regs(
+		octx,
+		fnty,
+		nargs,
+		argvals,
+		is_stret ? &stret_ptr : NULL);
+
+	if(is_stret){
+		octx->current_stret = stret_ptr;
+
+		if(cc1_fopt.verbose_asm){
+			const out_val *stret = octx->current_stret;
+
+			out_comment(octx, "stret pointer '%s' @ %s",
+					type_to_str(stret->t), out_val_str(stret, 1));
+		}
+	}
+}
+
 void out_func_prologue(
 		out_ctx *octx,
 		int nargs, int variadic, int stack_protector,
@@ -798,7 +903,7 @@ void out_func_prologue(
 
 		out_current_blk(octx, octx->argspill_begin_blk);
 		{
-			impl_func_prologue_save_call_regs(octx, octx->current_fnty, nargs, argvals);
+			prologue_save_call_regs(octx, nargs, argvals);
 
 			if(variadic) /* save variadic call registers */
 				impl_func_prologue_save_variadic(octx, octx->current_fnty);

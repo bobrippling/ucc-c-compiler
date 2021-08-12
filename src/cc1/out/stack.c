@@ -95,13 +95,11 @@ void out_adealloc(out_ctx *octx, const out_val **val)
 	v_try_stack_reclaim(octx);
 }
 
-void v_aalloc_noop(out_ctx *octx, unsigned sz, unsigned align, const char *why)
+void v_aalloc_noop(out_ctx *octx, unsigned sz, unsigned align)
 {
-	(void)why;
-
 	align_sz(&sz, align);
 
-	octx->stack_n_alloc += sz;
+	octx->stack_n_alloc += sz; /* FIXME: delete */
 	v_set_cur_stack_sz(octx, octx->cur_stack_sz + sz);
 }
 

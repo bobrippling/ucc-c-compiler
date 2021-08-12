@@ -438,21 +438,25 @@ void impl_func_prologue_save_fp(out_ctx *octx)
 void impl_func_prologue_save_call_regs(
 		out_ctx *octx,
 		type *fnty, unsigned nargs,
-		const out_val *arg_offsets[/*nargs*/])
+		const out_val *arg_offsets[/*nargs*/],
+		const out_val **const stret_ptr)
 {
+	const int is_stret = !!stret_ptr;
 	funcargs *fa = type_funcargs(fnty);
 	unsigned i;
 	unsigned ws = platform_word_size();
+	unsigned total_space = 0;
 
 	for(i = 0; i < nargs; i++){
-		type *ty = fa->arglist[i]->ref;
+		type *ty = is_stret && i == 0
+			? type_ptr_to(type_called(fnty, NULL))
+			: fa->arglist[i - is_stret]->ref;
 
-		assert(!type_is_floating(ty));
-		assert(!type_is_s_or_u(ty));
+		assert(type_is_integral(ty) || type_is_ptr(ty));
 
 		if(i < N_CALL_REGS_I){
-			/* numerical order, lowest regno at lowest address */
-			/*
+			/* numerical order, lowest regno at lowest address
+			 *
 			 * 3-4 args:
 			 *   arg 3 => fp - 4
 			 *   arg 2 => fp - 8
@@ -463,23 +467,37 @@ void impl_func_prologue_save_call_regs(
 			 *   arg 0 => fp - 8
 			 */
 			int const bottom = nargs <= 2 ? 2 : 4;
-
-			arg_offsets[i] = v_new_bp3_below(
+			const out_val *store = v_new_bp3_below(
 					octx, NULL, type_ptr_to(ty), (bottom - i) * ws);
+
+			if(is_stret && i == 0){
+				*stret_ptr = store;
+			}else{
+				arg_offsets[i - is_stret] = store;
+			}
 		}else{
 			/* +2 to skip over saved fp & lr */
-			arg_offsets[i] = v_new_bp3_above(
+			arg_offsets[i - is_stret] = v_new_bp3_above(
 					octx, NULL, type_ptr_to(ty), (i - 4 + 2) * ws);
 		}
+
+		total_space += ws;
 	}
 
 	if(nargs){
 		/* maintain stack alignment with even number of pushes */
+		const out_val *stack_space;
+		type *arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 		int lastreg = MIN(nargs - 1, 3);
+
 		if((lastreg & 1) == 0)
 			lastreg++;
 
 		out_asm(octx, "push { r0-%s }", arm_reg_to_str(ARM_REG_R0 + lastreg));
+
+		v_aalloc_noop(octx, total_space, ws);
+		/*stack_space = out_aalloc(octx, total_space, ws, arithty, NULL);
+		out_adealloc(octx, &stack_space);*/
 	}
 }
 
@@ -893,15 +911,6 @@ const out_val *impl_op_unary(out_ctx *octx, enum op_type op, const out_val *val)
 		case op_not:
 			return out_op(octx, op_eq, out_new_zero(octx, val->t), val);
 	}
-}
-
-void impl_to_retreg(out_ctx *octx, const out_val *val, type *retty)
-{
-	struct vreg reg = VREG_INIT(REG_RET_I, 0);
-
-	UCC_ASSERT(!type_is_floating(retty), "TODO: float return");
-
-	out_val_consume(octx, v_to_reg_given(octx, val, &reg));
 }
 
 void impl_reg_cp_no_off(
