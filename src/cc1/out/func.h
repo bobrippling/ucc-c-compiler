@@ -9,7 +9,7 @@ enum stret
 };
 
 void impl_func_call_regs(type *, unsigned *pn, const struct vreg **);
-enum stret impl_func_stret(type *, unsigned *stack_space);
+enum stret impl_func_stret(type *);
 void impl_func_alignstack(out_ctx *);
 int impl_func_caller_cleanup(type *);
 

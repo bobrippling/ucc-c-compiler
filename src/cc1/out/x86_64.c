@@ -231,7 +231,7 @@ static const char *x86_suffix(type *ty)
 	ICE("no suffix for %s", type_to_str(ty));
 }
 
-enum stret impl_func_stret(type *, unsigned *stack_space)
+enum stret impl_func_stret(type *ty)
 {
 	/*
 	 * in short:
@@ -258,27 +258,13 @@ enum stret impl_func_stret(type *, unsigned *stack_space)
 	unsigned sz;
 	struct_union_enum_st *su = type_is_s_or_u(ty);
 
-	if(!su){
-		if(stack_space)
-			*stack_space = 0;
+	if(!su)
 		return stret_scalar;
-	}
 
 	if(IS_32_BIT())
 		ICE("TODO: 32-bit stret");
 
 	sz = type_size(ty, NULL);
-
-	/* We unconditionally want to spill rdx:rax to the stack on return.
-	 * This could be optimised in the future
-	 * (in a similar vein as long long on x86/32-bit)
-	 * so that we can handle vtops with structure/union type
-	 * and multiple registers.
-	 *
-	 * Hence, space needed for both reg and memcpy returns
-	 */
-	if(stack_space)
-		*stack_space = sz;
 
 	/* rdx:rax? */
 	if(sz > 2 * platform_word_size())

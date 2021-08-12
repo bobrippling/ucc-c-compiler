@@ -290,21 +290,15 @@ void impl_func_call_regs(type *retty, unsigned *pn, const struct vreg **regs)
 	*regs = callregs;
 }
 
-enum stret impl_func_stret(type *ty, unsigned *stack_space)
+enum stret impl_func_stret(type *ty)
 {
 	struct_union_enum_st *su = type_is_s_or_u(ty);
 	unsigned sz;
-
-	if(stack_space)
-		*stack_space = 0;
 
 	if(!su)
 		return stret_scalar;
 
 	sz = type_size(ty, NULL);
-	if(stack_space)
-		*stack_space = sz;
-
 	if(sz <= type_primitive_size(type_int))
 		return stret_regs;
 	return stret_memcpy;

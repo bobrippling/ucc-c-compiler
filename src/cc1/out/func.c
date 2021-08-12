@@ -58,7 +58,7 @@ const out_val *out_call(out_ctx *octx,
 	unsigned nfloats = 0, nints = 0;
 	unsigned i;
 	enum stret stret_kind;
-	unsigned stret_stack;
+	unsigned stret_stack = 0;
 
 	/* must generate a prologue/epilogue if we aren't a leaf function,
 	 * since the stack must be aligned correctly for a call
@@ -90,12 +90,22 @@ const out_val *out_call(out_ctx *octx,
 	}
 
 	/* hidden stret argument */
-	switch((stret_kind = impl_func_stret(retty, &stret_stack))){
+	switch((stret_kind = impl_func_stret(retty))){
 		case stret_memcpy:
 			nints++; /* only an extra pointer arg for stret_memcpy */
 			/* fall */
 		case stret_regs:
+			/* We unconditionally want to spill rdx:rax to the stack on return.
+			 * This could be optimised in the future
+			 * (in a similar vein as long long on x86/32-bit)
+			 * so that we can handle vtops with structure/union type
+			 * and multiple registers.
+			 *
+			 * Hence, space needed for both reg and memcpy returns
+			 */
+			stret_stack = type_size(retty, NULL);
 			stret_spill = out_aalloc(octx, stret_stack, type_align(retty, NULL), retty, NULL);
+
 		case stret_scalar:
 			break;
 	}
