@@ -538,7 +538,7 @@ const out_val *impl_load(
 		case V_REGOFF:
 			ICE("TODO: V_REGOFF");
 		case V_REG:
-			if(from->bits.regoff.offset){
+			if(from->bits.regoff.offset > 0){
 				const out_val *add = out_new_l(octx, from->t, from->bits.regoff.offset);
 
 				arm_op(
@@ -549,6 +549,19 @@ const out_val *impl_load(
 						add);
 
 				out_val_consume(octx, add);
+				break;
+			}
+			if(from->bits.regoff.offset < 0){
+				const out_val *sub = out_new_l(octx, from->t, -from->bits.regoff.offset);
+
+				arm_op(
+						octx,
+						"sub",
+						reg,
+						from,
+						sub);
+
+				out_val_consume(octx, sub);
 				break;
 			}
 
@@ -635,7 +648,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 op:
 		{
 			/*
-			 * rhs can be a constant (0-4080) or register w/shift
+			 * rhs can be a byte-constant or register, either w/shift
 			 * if lhs is a 1-retained register, we reuse it, otherwise we pick another
 			 */
 			struct vreg result_reg;
