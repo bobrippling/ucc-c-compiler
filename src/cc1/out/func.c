@@ -716,9 +716,11 @@ void out_func_epilogue(
 
 	/* space for spills */
 	if(clean_stack){
+		const int argspill_before_stacksub = 1;
+
 		flush_root = octx->entry_blk;
-		out_current_blk(octx, octx->entry_blk);
-		out_ctrl_transfer_make_current(octx, octx->stacksub_blk);
+
+		out_current_blk(octx, octx->stacksub_blk);
 		{
 			v_stackt stack_adj;
 
@@ -756,10 +758,21 @@ void out_func_epilogue(
 				allocate_stack(octx, stack_adj);
 		}
 
-		out_ctrl_transfer(octx, octx->argspill_begin_blk, NULL, NULL, 0);
-		out_current_blk(octx, octx->argspill_done_blk);
-		if(call_save_spill_blk)
-			out_ctrl_transfer_make_current(octx, call_save_spill_blk);
+		out_current_blk(octx, octx->entry_blk);
+		if(argspill_before_stacksub){
+			out_ctrl_transfer_make_current(octx, octx->argspill_begin_blk);
+
+			out_ctrl_transfer_make_current(octx, octx->stacksub_blk);
+		}else{
+			out_ctrl_transfer_make_current(octx, octx->stacksub_blk);
+
+			/* need this because stacksub clobbers $r0, want to do argspill first (for arm only) */
+			out_ctrl_transfer(octx, octx->argspill_begin_blk, NULL, NULL, 0);
+			out_current_blk(octx, octx->argspill_done_blk);
+			if(call_save_spill_blk)
+				out_ctrl_transfer_make_current(octx, call_save_spill_blk);
+		}
+
 		out_ctrl_transfer(octx, octx->postprologue_blk, NULL, NULL, 0);
 	}else{
 		flush_root = octx->postprologue_blk;

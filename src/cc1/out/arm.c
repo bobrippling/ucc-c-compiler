@@ -445,7 +445,6 @@ void impl_func_prologue_save_call_regs(
 	funcargs *fa = type_funcargs(fnty);
 	unsigned i;
 	unsigned ws = platform_word_size();
-	unsigned total_space = 0;
 
 	for(i = 0; i < nargs; i++){
 		type *ty = is_stret && i == 0
@@ -480,8 +479,6 @@ void impl_func_prologue_save_call_regs(
 			arg_offsets[i - is_stret] = v_new_bp3_above(
 					octx, NULL, type_ptr_to(ty), (i - 4 + 2) * ws);
 		}
-
-		total_space += ws;
 	}
 
 	if(nargs){
@@ -489,15 +486,28 @@ void impl_func_prologue_save_call_regs(
 		const out_val *stack_space;
 		type *arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 		int lastreg = MIN(nargs - 1, 3);
+		unsigned total_space;
 
 		if((lastreg & 1) == 0)
 			lastreg++;
 
-		out_asm(octx, "push { r0-%s }", arm_reg_to_str(ARM_REG_R0 + lastreg));
+		/* stm/ldb<xy>
+		 *   ia: increment after
+		 *   ib: increment before
+		 *   da: decrement after
+		 *   db: decrement before
+		 *   fd: full,  descending - aka stmdb / ldmia
+		 *   ed: empty, descending - aka stmda / ldmib
+		 *   fa: full,  ascending  - aka stmib / ldmda
+		 *   ea: empty, ascending  - aka stmia / ldmdb
+		 */
+		out_asm(octx,
+				"stmfd fp, { r0-%s }",
+				arm_reg_to_str(ARM_REG_R0 + lastreg));
 
-		v_aalloc_noop(octx, total_space, ws);
-		/*stack_space = out_aalloc(octx, total_space, ws, arithty, NULL);
-		out_adealloc(octx, &stack_space);*/
+		total_space = (lastreg + 1) * ws;
+		stack_space = out_aalloc(octx, total_space, ws, arithty, NULL);
+		out_adealloc(octx, &stack_space);
 	}
 }
 
@@ -816,7 +826,7 @@ op:
 			 */
 			struct vreg result_reg;
 
-			if(l->type == V_REG && impl_reg_frame_const(&l->bits.regoff.reg, 0)){
+			if(l->type == V_REG && impl_reg_frame_const(&l->bits.regoff.reg, 1)){
 				/* can't reuse fp/sp */
 				v_unused_reg(octx, 1, 0, &result_reg, NULL);
 			}else{

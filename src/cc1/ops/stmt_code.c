@@ -296,7 +296,7 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 			gen_set_sym_outval(octx, s, place);
 
 			if(cc1_fopt.dump_frame_layout){
-				fprintf(stderr, "frame: %-4ld-% 4ld: %s%s\n",
+				fprintf(stderr, "frame: %-4ld-% 4ld: local, %s%s\n",
 						offset - siz,
 						offset,
 						s->decl->spel, vm ? " (variably-modified)" : "");
