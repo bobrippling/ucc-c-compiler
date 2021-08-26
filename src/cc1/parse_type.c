@@ -1891,11 +1891,11 @@ static void move_typrop_attrs(attribute ***const decl_attr, type **const ty)
 	for(i = *decl_attr; i && *i; i++){
 		attribute *a = *i;
 		switch(a->type){
-#define NAME(n, typrop) \
+#define NAME(n, typrop, tymismatch) \
 			case attr_##n: \
 				dynarray_add(typrop ? &typrops : &for_decl, RETAIN(a)); \
 				break;
-#define RENAME(str, name, typrop) NAME(name, typrop)
+#define RENAME(str, name, typrop, tymismatch) NAME(name, typrop, tymismatch)
 #define ALIAS(str, name)
 #define COMPLEX_ALIAS(name, x)
 			ATTRIBUTES

@@ -50,6 +50,11 @@ static void fold_const_expr_identifier(expr *e, consty *k)
 
 					set_no = 0;
 				}
+				/*
+				if(type_attr_present(d->ref, attr_nonnull) || attribute_present(d->attr, attr_nonnull)){
+					we could tag this as never-null, to aid an optimiser
+				}
+				*/
 			}
 			break;
 		}

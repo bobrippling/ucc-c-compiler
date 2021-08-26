@@ -74,13 +74,11 @@ static int type_attribute_missing1(type *ta, type *tb, enum attribute_type attr)
 
 static int type_attribute_missing(type *ta, type *tb)
 {
-#define NAME(x, typrop)                             \
-	if(typrop){                                       \
-		if(type_attribute_missing1(ta, tb, attr_ ## x)) \
-			return 1;                                     \
-	}
+#define NAME(x, typrop, tymismatch) \
+	if(tymismatch && type_attribute_missing1(ta, tb, attr_ ## x)) \
+			return 1;
 
-#define RENAME(s, x, typrop) NAME(x, typrop)
+#define RENAME(s, x, typrop, tymismatch) NAME(x, typrop, tymismatch)
 #define ALIAS(s, x)
 #define COMPLEX_ALIAS(s, x)
 
