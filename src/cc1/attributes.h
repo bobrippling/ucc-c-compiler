@@ -21,8 +21,8 @@
 		COMPLEX_ALIAS("flag_enum", enum_bitmask) /* clang */ \
 		NAME(noreturn, 1)       \
 		NAME(noderef, 1)        \
-		NAME(nonnull, 1)        \
-		NAME(returns_nonnull, 1)\
+		NAME(nonnull, 0)        \
+		NAME(returns_nonnull, 0)\
 		NAME(packed, 1)         \
 		NAME(sentinel, 0)       \
 		NAME(aligned, 1)        \

@@ -2031,7 +2031,7 @@ static void check_and_replace_old_func(decl *d, decl **old_args, symtable *scope
 	 * { ... }
 	 * will decay the implicit "int i", but now it's been replaced with "int i[]"
 	 */
-	fold_funcargs(dfuncargs, scope, NULL);
+	fold_funcargs(dfuncargs, scope, d->attr);
 }
 
 static void check_function_storage_redef(decl *new, decl *old)
