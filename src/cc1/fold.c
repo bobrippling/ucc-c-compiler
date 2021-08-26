@@ -895,7 +895,18 @@ static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 
 static void fold_decl_var_align(decl *d, symtable *stab)
 {
-	attribute *attrib = attribute_present(d, attr_aligned);
+	attribute *attrib;
+
+	if(!d->spel){
+		/* we ignore these, alignment only applies to decls, not types
+		 * i.e.
+		 * __attribute((aligned(..))) enum E { ... };
+		 * ^~~~~~~~~~~~~~~~~~~~~~~~~~ ignored
+		 */
+		return;
+	}
+
+	attrib = attribute_present(d, attr_aligned);
 
 	if(d->bits.var.align.first || attrib){
 		d->bits.var.align.resolved = fold_decl_resolve_align(d, stab, attrib);
