@@ -461,15 +461,14 @@ int type_is_incomplete_array(type *r)
 	return 0;
 }
 
-type *type_complete_array(type *r, expr *sz)
+type *type_complete_array(type *const orig, expr *sz)
 {
-	r = type_is(r, type_array);
+	attribute **attrs = type_get_attrs_toplvl(orig);
+	type *t = type_is(orig, type_array);
 
-	UCC_ASSERT(r, "not an array");
+	UCC_ASSERT(t, "not an array");
 
-	r = type_array_of(r->ref, sz);
-
-	return r;
+	return type_attributed(type_array_of(t->ref, sz), attrs);
 }
 
 struct_union_enum_st *type_is_s_or_u_or_e(type *r)
