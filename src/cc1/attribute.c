@@ -129,8 +129,8 @@ attribute *expr_attr_present(expr *e, enum attribute_type t)
 const char *attribute_to_str(attribute *da)
 {
 	switch(da->type){
-#define NAME(x, typrop) case attr_ ## x: return #x;
-#define RENAME(s, x, typrop) case attr_ ## x: return s;
+#define NAME(x, typrop, tymismatch) case attr_ ## x: return #x;
+#define RENAME(s, x, typrop, tymismatch) case attr_ ## x: return s;
 #define ALIAS(s, x)
 #define COMPLEX_ALIAS(s, x)
 		ATTRIBUTES
@@ -302,8 +302,8 @@ int attribute_equal(attribute *a, attribute *b)
 int attribute_is_typrop(attribute *attr)
 {
 	switch(attr->type){
-#define NAME(nam, typrop) case attr_ ## nam: return typrop;
-#define RENAME(str, nam, typrop) case attr_ ## nam: return typrop;
+#define NAME(nam, typrop, tymismatch) case attr_ ## nam: return typrop;
+#define RENAME(str, nam, typrop, tymismatch) case attr_ ## nam: return typrop;
 #define ALIAS(str, nam)
 #define COMPLEX_ALIAS(str, nam)
 		ATTRIBUTES

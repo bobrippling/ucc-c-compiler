@@ -42,6 +42,7 @@
 static decl *parse_decl_stored_aligned(
 		type *btype, enum decl_mode mode,
 		enum decl_storage store, struct decl_align *align,
+		attribute **attrs,
 		symtable *scope, symtable *add_to_scope,
 		int is_arg);
 
@@ -985,10 +986,14 @@ static decl *parse_arg_decl(symtable *scope)
 	/* don't use parse_decl() - we don't want it folding yet,
 	 * things like inits are caught later */
 	argdecl = parse_decl_stored_aligned(
-			btype, flags,
+			btype,
+			flags,
 			store /* register is a valid argument store */,
-			/*align:*/NULL,
-			scope, NULL, /*is_arg*/1);
+			/*align:*/ NULL,
+			/*attrs:*/ NULL,
+			scope,
+			NULL,
+			/*is_arg:*/ 1);
 
 	if(!argdecl)
 		die_at(NULL, "type expected (got %s)", token_to_str(curtok));
@@ -1704,6 +1709,7 @@ static void workaround_valist_typedef(decl *d, symtable *symtab)
 static decl *parse_decl_stored_aligned(
 		type *btype, enum decl_mode mode,
 		enum decl_storage store, struct decl_align *align,
+		attribute **attrs,
 		symtable *scope, symtable *add_to_scope,
 		int is_arg)
 {
@@ -1712,6 +1718,8 @@ static decl *parse_decl_stored_aligned(
 	int is_autotype = type_is_autotype(btype);
 
 	d->store = store; /* set early for parse_type_declarator() */
+
+	dynarray_add_array(&d->attr, attribute_array_retain(attrs));
 
 	/* int __attr__ spel, __attr__ spel2, ... */
 	parse_add_attr(&d->attr, scope);
@@ -1874,6 +1882,39 @@ static void unused_attributes(decl *dfor, attribute **attr)
 			"attribute ignored - no declaration%s", buf);
 }
 
+static void move_typrop_attrs(attribute ***const decl_attr, type **const ty)
+{
+	attribute **i;
+	attribute **typrops = NULL;
+	attribute **for_decl = NULL;
+
+	for(i = *decl_attr; i && *i; i++){
+		attribute *a = *i;
+		switch(a->type){
+#define NAME(n, typrop, tymismatch) \
+			case attr_##n: \
+				dynarray_add(typrop ? &typrops : &for_decl, RETAIN(a)); \
+				break;
+#define RENAME(str, name, typrop, tymismatch) NAME(name, typrop, tymismatch)
+#define ALIAS(str, name)
+#define COMPLEX_ALIAS(name, x)
+			ATTRIBUTES
+#undef NAME
+#undef RENAME
+#undef ALIAS
+#undef COMPLEX_ALIAS
+			case attr_LAST:
+				break;
+		}
+	}
+
+	*ty = type_attributed(type_skip_attrs(*ty), typrops);
+	attribute_array_release(&typrops);
+
+	attribute_array_release(decl_attr);
+	*decl_attr = for_decl;
+}
+
 decl *parse_decl(
 		enum decl_mode mode, int newdecl,
 		symtable *scope, symtable *add_to_scope)
@@ -1907,10 +1948,11 @@ decl *parse_decl(
 		prevent_typedef(store);
 	}
 
+	move_typrop_attrs(&decl_attr, &bt);
+
 	d = parse_decl_stored_aligned(
-			type_attributed(bt, decl_attr),
-			mode,
-			store, NULL /* align */,
+			bt, mode,
+			store, /* align */ NULL, decl_attr,
 			scope, add_to_scope, 0);
 
 	attribute_array_release(&decl_attr);
@@ -1989,7 +2031,7 @@ static void check_and_replace_old_func(decl *d, decl **old_args, symtable *scope
 	 * { ... }
 	 * will decay the implicit "int i", but now it's been replaced with "int i[]"
 	 */
-	fold_funcargs(dfuncargs, scope, NULL);
+	fold_funcargs(dfuncargs, scope, d->attr);
 }
 
 static void check_function_storage_redef(decl *new, decl *old)
@@ -2547,6 +2589,8 @@ int parse_decl_group(
 		this_ref = default_type();
 	}
 
+	move_typrop_attrs(&decl_attr, &this_ref);
+
 	do{
 		int found_prev_proto = 1;
 		int had_field_width = 0;
@@ -2557,7 +2601,7 @@ int parse_decl_group(
 
 		d = parse_decl_stored_aligned(
 				this_ref, parse_flag,
-				store, align,
+				store, align, decl_attr,
 				in_scope, add_to_scope, 0);
 
 		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH)
@@ -2571,9 +2615,7 @@ int parse_decl_group(
 		/* need to parse __attribute__ before folding the type */
 		attr_post_decl = parse_decl_attr(d, in_scope);
 
-		if(d->spel){
-			d->ref = type_attributed(d->ref, decl_attr);
-		}else{
+		if(!d->spel){
 			type *attributed;
 
 			unused_attributes(d, decl_attr);

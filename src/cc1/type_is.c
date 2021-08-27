@@ -100,6 +100,11 @@ type *type_skip_tdefs(type *t)
 	return type_skip(t, ~STOP_AT_TDEF & ~STOP_AT_WHERE & ~STOP_AT_ATTR);
 }
 
+type *type_skip_attrs(type *t)
+{
+	return type_skip(t, ~0 & ~STOP_AT_ATTR);
+}
+
 type *type_skip_non_tdefs_consts(type *t)
 {
 	return type_skip(t, STOP_AT_TDEF | STOP_AT_QUAL_CASTS);
@@ -461,15 +466,14 @@ int type_is_incomplete_array(type *r)
 	return 0;
 }
 
-type *type_complete_array(type *r, expr *sz)
+type *type_complete_array(type *const orig, expr *sz)
 {
-	r = type_is(r, type_array);
+	attribute **attrs = type_get_attrs_toplvl(orig);
+	type *t = type_is(orig, type_array);
 
-	UCC_ASSERT(r, "not an array");
+	UCC_ASSERT(t, "not an array");
 
-	r = type_array_of(r->ref, sz);
-
-	return r;
+	return type_attributed(type_array_of(t->ref, sz), attrs);
 }
 
 struct_union_enum_st *type_is_s_or_u_or_e(type *r)
