@@ -445,25 +445,48 @@ void impl_func_epilogue(out_ctx *octx, type *ty, int clean_stack)
 	}
 }
 
+ucc_nonnull((1, 2, 4, 5, 6))
 static void arm_op(
 	out_ctx *octx,
 	const char *opc,
+	const char *opc_neg, /* nullable */
 	const struct vreg *result_reg,
 	const out_val *l,
 	const out_val *r)
 {
-	const char *rhs;
-	char numbuf[8];
-
 	assert(l->type == V_REG);
 
-	if(r->type == V_CONST_I && 0 <= (sintegral_t)r->bits.val_i && (sintegral_t)r->bits.val_i <= 4080){
-		snprintf(numbuf, sizeof(numbuf), "#%d", (int)r->bits.val_i);
-		rhs = numbuf;
-	}else{
-		r = v_to_reg(octx, r);
-		rhs = arm_reg_to_str(r->bits.regoff.reg.idx);
+	if(r->type == V_CONST_I){
+		const integral_t val = r->bits.val_i;
+
+		if(val < ((integral_t)1 << 32)){
+			if(is_8bit_rotated_or_zero((unsigned)val)){
+				out_asm(
+						octx,
+						"%s %s, %s, #%" NUMERIC_FMT_D,
+						opc,
+						arm_reg_to_str(result_reg->idx),
+						arm_reg_to_str(l->bits.regoff.reg.idx),
+						val);
+				return;
+			}
+		}else if(opc_neg && (sintegral_t)val < 0){
+			integral_t flipped = ~val;
+
+			if(is_8bit_rotated_or_zero((unsigned)flipped)){
+				out_asm(
+						octx,
+						"%s %s, %s, #%" NUMERIC_FMT_D,
+						opc_neg,
+						arm_reg_to_str(result_reg->idx),
+						arm_reg_to_str(l->bits.regoff.reg.idx),
+						val);
+				return;
+			}
+		}
 	}
+
+	r = v_to_reg(octx, r);
 
 	out_asm(
 			octx,
@@ -471,7 +494,7 @@ static void arm_op(
 			opc,
 			arm_reg_to_str(result_reg->idx),
 			arm_reg_to_str(l->bits.regoff.reg.idx),
-			rhs);
+			arm_reg_to_str(r->bits.regoff.reg.idx));
 }
 
 const out_val *impl_load(
@@ -547,6 +570,7 @@ const out_val *impl_load(
 				arm_op(
 						octx,
 						"add",
+						NULL,
 						reg,
 						from,
 						add);
@@ -560,6 +584,7 @@ const out_val *impl_load(
 				arm_op(
 						octx,
 						"sub",
+						NULL,
 						reg,
 						from,
 						sub);
@@ -664,7 +689,11 @@ op:
 				v_unused_reg(octx, 1, 0, &result_reg, l);
 			}
 
-			arm_op(octx, opc, &result_reg, l, r);
+			// TODO: swap opc_neg/NULL for:
+			// and --> bics
+			// add <--> sub
+			// etc
+			arm_op(octx, opc, NULL, &result_reg, l, r);
 
 			/* return 'l' since we use it's register as the result */
 			out_val_consume(octx, r);
