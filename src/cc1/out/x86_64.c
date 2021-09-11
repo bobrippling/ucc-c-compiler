@@ -1439,19 +1439,6 @@ static const out_val *x86_shift(
 	return v_dup_or_reuse(octx, l, l->t);
 }
 
-static const out_val *min_retained(
-		out_ctx *octx,
-		const out_val *a, const out_val *b)
-{
-	if(a->retains > b->retains){
-		out_val_consume(octx, a);
-		return b;
-	}else{
-		out_val_consume(octx, b);
-		return a;
-	}
-}
-
 static void maybe_promote(out_ctx *octx, const out_val **pl, const out_val **pr)
 {
 	const out_val *l = *pl;
@@ -1491,7 +1478,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 
 			/* not flag_mod_signed - we want seta, not setgt */
 			return v_new_flag(
-					octx, min_retained(octx, l, r),
+					octx, impl_min_retained(octx, l, r),
 					op_to_flag(op), flag_mod_float);
 		}
 
@@ -1629,7 +1616,7 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 			}
 
 			return v_new_flag(
-					octx, min_retained(octx, l, r),
+					octx, impl_min_retained(octx, l, r),
 					cmp, is_signed ? flag_mod_signed : 0);
 		}
 

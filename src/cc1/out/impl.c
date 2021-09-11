@@ -222,3 +222,16 @@ void impl_overlay_regs2mem(
 {
 	impl_overlay_mem_reg(octx, memsz, nregs, regs, 0, ptr);
 }
+
+const out_val *impl_min_retained(
+		out_ctx *octx,
+		const out_val *a, const out_val *b)
+{
+	if(a->retains > b->retains){
+		out_val_consume(octx, a);
+		return b;
+	}else{
+		out_val_consume(octx, b);
+		return a;
+	}
+}

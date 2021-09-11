@@ -96,6 +96,10 @@ const char *impl_val_str_r(
 void impl_reserve_retregs(out_ctx *);
 void impl_unreserve_retregs(out_ctx *);
 
+const out_val *impl_min_retained(
+		out_ctx *octx,
+		const out_val *, const out_val *);
+
 /* can't do this for gen_deps.sh */
 #include "backend.h"
 
