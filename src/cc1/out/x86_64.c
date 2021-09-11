@@ -2211,8 +2211,6 @@ void impl_branch(
 		out_blk *bt, out_blk *bf,
 		int unlikely)
 {
-	int flag;
-
 	switch(cond->type){
 		case V_REG:
 		{
@@ -2272,32 +2270,8 @@ void impl_branch(
 			break;
 		}
 
-		case V_CONST_F:
-			flag = !!cond->bits.val_f;
-			if(0){
-		case V_CONST_I:
-				flag = !!cond->bits.val_i;
-			}
-			out_comment(octx,
-					"constant jmp condition %staken",
-					flag ? "" : "not ");
-
-			out_val_consume(octx, cond);
-
-			out_ctrl_transfer(octx, flag ? bt : bf, NULL, NULL, 0);
-			break;
-
-		case V_LBL:
-		case V_REGOFF:
-		case V_SPILT:
-			cond = v_to_reg(octx, cond);
-
-			UCC_ASSERT(cond->type == V_REG,
-					"normalise remained as spilt/stack/mem reg");
-
-			cond = out_normalise(octx, cond);
-			impl_branch(octx, cond, bt, bf, unlikely);
-			break;
+		default
+			ucc_unreach();
 	}
 }
 

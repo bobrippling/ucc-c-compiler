@@ -36,9 +36,44 @@ void out_ctrl_branch(
 	v_decay_flags_except1(octx, cond);
 	v_transfer_spill(octx, cond);
 
-	impl_branch(octx,
-			cond, if_true, if_false,
-			!!(cond->flags & VAL_FLAG_LIKELY));
+	for(;;){
+		switch(cond->type){
+				int flag;
+			case V_CONST_F:
+				flag = !!cond->bits.val_f;
+				if(0){
+			case V_CONST_I:
+					flag = !!cond->bits.val_i;
+				}
+				out_comment(octx,
+						"constant jmp condition %staken",
+						flag ? "" : "not ");
+
+				out_val_consume(octx, cond);
+
+				out_ctrl_transfer(octx, flag ? if_true : if_false, NULL, NULL, 0);
+				break;
+
+			case V_LBL:
+			case V_REGOFF:
+			case V_SPILT:
+				cond = v_to_reg(octx, cond);
+
+				assert(cond->type == V_REG
+						&& "normalise remained as spilt/stack/mem reg");
+
+				cond = out_normalise(octx, cond);
+				continue;
+
+			case V_FLAG:
+			case V_REG:
+				impl_branch(octx,
+						cond, if_true, if_false,
+						!!(cond->flags & VAL_FLAG_LIKELY));
+				break;
+		}
+		break;
+	}
 
 	out_current_blk(octx, if_true);
 }
