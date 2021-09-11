@@ -96,6 +96,36 @@ static const char *arm_reg_to_str(int i)
 	return rnames[i];
 }
 
+static const char *arm_cmp(const struct flag_opts *flag, int flip)
+{
+	enum flag_cmp cmp = flag->cmp;
+	if(flip)
+		cmp = v_not_cmp(cmp);
+
+	switch(cmp){
+#define OP(e, s, u)  \
+		case flag_ ## e: \
+			return flag->mods & flag_mod_signed ? s : u
+
+		OP(eq, "eq", "eq");
+		OP(ne, "ne", "ne");
+		OP(le, "le", "ls"); /* signed-less-equal, unsigned-lower-same */
+		OP(lt, "lt", "lo");
+		OP(ge, "ge", "hs");
+		OP(gt, "gt", "hi");
+
+		OP(overflow, "vs", NULL);
+		OP(no_overflow, "vc", NULL);
+
+		OP(signbit, "mi", NULL);
+		OP(no_signbit, "pl", NULL);
+#undef OP
+	}
+
+	assert(0 && "unreachable");
+	return NULL;
+}
+
 const char *impl_val_str_r(char buf[VAL_STR_SZ], const out_val *vs, int deref)
 {
 	/* just for debugging */
@@ -445,12 +475,12 @@ void impl_func_epilogue(out_ctx *octx, type *ty, int clean_stack)
 	}
 }
 
-ucc_nonnull((1, 2, 4, 5, 6))
+ucc_nonnull((1, 2, 5, 6))
 static void arm_op(
 	out_ctx *octx,
 	const char *opc,
 	const char *opc_neg, /* nullable */
-	const struct vreg *result_reg,
+	const struct vreg *result_reg, /* null means two-args, e.g. cmp */
 	const out_val *l,
 	const out_val *r)
 {
@@ -461,26 +491,42 @@ static void arm_op(
 
 		if(val < ((integral_t)1 << 32)){
 			if(is_8bit_rotated_or_zero((unsigned)val)){
-				out_asm(
-						octx,
-						"%s %s, %s, #%" NUMERIC_FMT_D,
-						opc,
-						arm_reg_to_str(result_reg->idx),
-						arm_reg_to_str(l->bits.regoff.reg.idx),
-						val);
+				if(result_reg)
+					out_asm(
+							octx,
+							"%s %s, %s, #%" NUMERIC_FMT_D,
+							opc,
+							arm_reg_to_str(result_reg->idx),
+							arm_reg_to_str(l->bits.regoff.reg.idx),
+							val);
+				else
+					out_asm(
+							octx,
+							"%s %s, #%" NUMERIC_FMT_D,
+							opc,
+							arm_reg_to_str(l->bits.regoff.reg.idx),
+							val);
 				return;
 			}
 		}else if(opc_neg && (sintegral_t)val < 0){
 			integral_t flipped = ~val;
 
 			if(is_8bit_rotated_or_zero((unsigned)flipped)){
-				out_asm(
-						octx,
-						"%s %s, %s, #%" NUMERIC_FMT_D,
-						opc_neg,
-						arm_reg_to_str(result_reg->idx),
-						arm_reg_to_str(l->bits.regoff.reg.idx),
-						val);
+				if(result_reg)
+					out_asm(
+							octx,
+							"%s %s, %s, #%" NUMERIC_FMT_D,
+							opc_neg,
+							arm_reg_to_str(result_reg->idx),
+							arm_reg_to_str(l->bits.regoff.reg.idx),
+							val);
+				else
+					out_asm(
+							octx,
+							"%s %s, #%" NUMERIC_FMT_D,
+							opc_neg,
+							arm_reg_to_str(l->bits.regoff.reg.idx),
+							val);
 				return;
 			}
 		}
@@ -488,13 +534,21 @@ static void arm_op(
 
 	r = v_to_reg(octx, r);
 
-	out_asm(
-			octx,
-			"%s %s, %s, %s",
-			opc,
-			arm_reg_to_str(result_reg->idx),
-			arm_reg_to_str(l->bits.regoff.reg.idx),
-			arm_reg_to_str(r->bits.regoff.reg.idx));
+	if(result_reg)
+		out_asm(
+				octx,
+				"%s %s, %s, %s",
+				opc,
+				arm_reg_to_str(result_reg->idx),
+				arm_reg_to_str(l->bits.regoff.reg.idx),
+				arm_reg_to_str(r->bits.regoff.reg.idx));
+	else
+		out_asm(
+				octx,
+				"%s %s, %s",
+				opc,
+				arm_reg_to_str(l->bits.regoff.reg.idx),
+				arm_reg_to_str(r->bits.regoff.reg.idx));
 }
 
 const out_val *impl_load(
@@ -612,7 +666,20 @@ const out_val *impl_load(
 			break;
 
 		case V_FLAG:
-			ICW("TODO: setCOND");
+		{
+			out_asm(
+				octx,
+				"mov%s %s, #1",
+				arm_cmp(&from->bits.flag, 0),
+				arm_reg_to_str(reg->idx));
+
+			out_asm(
+				octx,
+				"mov%s %s, #0",
+				arm_cmp(&from->bits.flag, 1),
+				arm_reg_to_str(reg->idx));
+			break;
+		}
 	}
 
 	return v_new_reg(octx, from, from->t, reg);
@@ -662,7 +729,7 @@ void impl_store(out_ctx *octx, const out_val *dest, const out_val *val)
 
 const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const out_val *r)
 {
-	const char *opc;
+	const char *opc, *opc_neg = NULL;
 
 	switch(op){
 		case op_multiply: opc = "mul"; goto op;
@@ -673,6 +740,16 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		case op_xor: opc = "or"; goto op;
 		case op_or: opc = "or"; goto op;
 		case op_and: opc = "and"; goto op;
+
+		case op_eq:
+		case op_ne:
+		case op_le:
+		case op_lt:
+		case op_ge:
+		case op_gt:
+			opc = "cmp";
+			opc_neg = "cmn";
+			goto cond;
 op:
 		{
 			/*
@@ -693,11 +770,26 @@ op:
 			// and --> bics
 			// add <--> sub
 			// etc
-			arm_op(octx, opc, NULL, &result_reg, l, r);
+			arm_op(octx, opc, opc_neg, &result_reg, l, r);
 
 			/* return 'l' since we use it's register as the result */
 			out_val_consume(octx, r);
 			return v_new_reg(octx, l, l->t, &result_reg);
+		}
+
+cond:
+		{
+			const int is_signed = type_is_signed(l->t);
+			enum flag_cmp cmp = op_to_flag(op);
+
+			/*if(inverted)
+				cmp = v_commute_cmp(cmp);*/
+
+			arm_op(octx, opc, opc_neg, NULL, l, r);
+
+			return v_new_flag(
+					octx, impl_min_retained(octx, l, r),
+					cmp, is_signed ? flag_mod_signed : 0);
 		}
 
 		case op_orsc:
@@ -713,15 +805,6 @@ op:
 		case op_not:
 		case op_bnot:
 			ICW("TODO: not");
-			break;
-
-		case op_eq:
-		case op_ne:
-		case op_le:
-		case op_lt:
-		case op_ge:
-		case op_gt:
-			ICW("TODO: setCOND");
 			break;
 
 		case op_signbit:
