@@ -7,6 +7,7 @@
 #include "../../util/platform.h"
 #include "../../util/str.h"
 #include "../../util/macros.h"
+#include "../../util/alloc.h"
 
 #include "../type.h"
 #include "../type_nav.h"
@@ -24,6 +25,7 @@
 #include "virt.h"
 #include "write.h"
 #include "out.h"
+#include "blk.h"
 
 #include "arm.h"
 
@@ -211,12 +213,36 @@ void impl_branch(
 		out_blk *bt, out_blk *bf,
 		int unlikely)
 {
-	UNUSED_ARG(octx);
-	UNUSED_ARG(cond);
-	UNUSED_ARG(bt);
-	UNUSED_ARG(bf);
-	UNUSED_ARG(unlikely);
-	ICW("TODO");
+	char *branch;
+
+	for(;;){
+		switch(cond->type){
+			case V_FLAG:
+				branch = ustrprintf(
+					"b%s %s",
+					arm_cmp(&cond->bits.flag, 0),
+					bt->lbl);
+
+				out_val_consume(octx, cond);
+				break;
+
+			case V_REG:
+			{
+				const out_val *flag = out_op(
+						octx, op_ne, cond, out_new_l(octx, cond->t, 0));
+
+				assert(flag->type == V_FLAG);
+				cond = flag;
+				continue;
+			}
+
+			default:
+				ucc_unreach();
+		}
+		break;
+	}
+
+	blk_terminate_condjmp(octx, branch, bt, bf, unlikely);
 }
 
 void impl_jmp_expr(out_ctx *octx, const out_val *v)
