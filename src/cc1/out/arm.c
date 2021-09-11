@@ -785,6 +785,8 @@ cond:
 			/*if(inverted)
 				cmp = v_commute_cmp(cmp);*/
 
+			l = v_to_reg(octx, l);
+
 			arm_op(octx, opc, opc_neg, NULL, l, r);
 
 			return v_new_flag(
