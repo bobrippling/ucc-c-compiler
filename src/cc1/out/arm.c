@@ -782,8 +782,12 @@ cond:
 			const int is_signed = type_is_signed(l->t);
 			enum flag_cmp cmp = op_to_flag(op);
 
-			/*if(inverted)
-				cmp = v_commute_cmp(cmp);*/
+			/* if we have a const and reg in the wrong order... */
+			if(l->type == V_CONST_I && r->type != V_CONST_I){
+				const out_val *tmp = l;
+				l = r, r = tmp;
+				cmp = v_commute_cmp(cmp);
+			}
 
 			l = v_to_reg(octx, l);
 
