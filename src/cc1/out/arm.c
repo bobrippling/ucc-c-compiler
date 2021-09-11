@@ -114,8 +114,8 @@ static const char *arm_cmp(const struct flag_opts *flag, int flip)
 		OP(ge, "ge", "hs");
 		OP(gt, "gt", "hi");
 
-		OP(overflow, "vs", NULL);
-		OP(no_overflow, "vc", NULL);
+		OP(overflow, "vs", "cs");
+		OP(no_overflow, "vc", "cc");
 
 		OP(signbit, "mi", NULL);
 		OP(no_signbit, "pl", NULL);
