@@ -447,19 +447,19 @@ const out_val *gen_decl_addr(out_ctx *octx, decl *d)
 
 static void gen_gasm(char *asm_str)
 {
-	struct section sec = SECTION_INIT(SECTION_TEXT); /* no option for global asm, always text */
-	asm_out_section(&sec, "%s\n", asm_str);
+	/* no option for global asm, always text */
+	asm_out_section(&section_text, "%s\n", asm_str);
 }
 
 static void gen_stringlits(dynmap *litmap)
 {
 	const stringlit *lit;
 	size_t i;
-	struct section sec = SECTION_INIT(SECTION_RODATA);
+	const struct section *const sec = &section_rodata;
 
 	for(i = 0; (lit = dynmap_value(stringlit *, litmap, i)); i++)
 		if(lit->use_cnt > 0)
-			asm_declare_stringlit(&sec, lit);
+			asm_declare_stringlit(sec, lit);
 }
 
 void gen_asm_emit_type(out_ctx *octx, type *ty)

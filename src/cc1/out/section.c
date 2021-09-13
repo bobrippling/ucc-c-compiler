@@ -14,15 +14,17 @@ enum section_cmp_type
 	NAMED
 };
 
-const struct section section_text = SECTION_INIT(SECTION_TEXT);
-const struct section section_data = SECTION_INIT(SECTION_DATA);
-const struct section section_bss = SECTION_INIT(SECTION_BSS);
-const struct section section_rodata = SECTION_INIT(SECTION_RODATA);
-const struct section section_ctors = SECTION_INIT(SECTION_CTORS);
-const struct section section_dtors = SECTION_INIT(SECTION_DTORS);
-const struct section section_dbg_abbrev = SECTION_INIT(SECTION_DBG_ABBREV);
-const struct section section_dbg_info = SECTION_INIT(SECTION_DBG_INFO);
-const struct section section_dbg_line = SECTION_INIT(SECTION_DBG_LINE);
+#define SECTION_INIT(builtin, flags) { NULL, builtin, flags }
+
+const struct section section_text = SECTION_INIT(SECTION_TEXT, SECTION_FLAG_EXECUTABLE | SECTION_FLAG_RO);
+const struct section section_data = SECTION_INIT(SECTION_DATA, 0);
+const struct section section_bss = SECTION_INIT(SECTION_BSS, 0);
+const struct section section_rodata = SECTION_INIT(SECTION_RODATA, SECTION_FLAG_RO);
+const struct section section_ctors = SECTION_INIT(SECTION_CTORS, 0);
+const struct section section_dtors = SECTION_INIT(SECTION_DTORS, 0);
+const struct section section_dbg_abbrev = SECTION_INIT(SECTION_DBG_ABBREV, 0);
+const struct section section_dbg_info = SECTION_INIT(SECTION_DBG_INFO, 0);
+const struct section section_dbg_line = SECTION_INIT(SECTION_DBG_LINE, 0);
 
 int section_is_builtin(const struct section *sec)
 {

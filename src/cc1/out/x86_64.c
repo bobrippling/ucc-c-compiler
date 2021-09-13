@@ -1039,12 +1039,13 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			char *lbl = out_label_data_store(STORE_FLOAT);
 			struct vreg r;
 			out_val *mut;
-			struct section sec = SECTION_INIT(SECTION_DATA), orig_section;
+			const struct section *const sec = &section_data;
+			struct section orig_section;
 
 			memcpy_safe(&orig_section, &cc1_output.section);
 			{
-				asm_nam_begin3(&sec, lbl, type_align(from->t, NULL));
-				asm_out_fp(&sec, from->t, from->bits.val_f);
+				asm_nam_begin3(sec, lbl, type_align(from->t, NULL));
+				asm_out_fp(sec, from->t, from->bits.val_f);
 			}
 			asm_switch_section(&orig_section);
 

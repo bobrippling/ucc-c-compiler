@@ -40,8 +40,6 @@ struct section
 #define SECTION_FUNCDATA_FUNC -2
 #define SECTION_FUNCDATA_DATA -3
 
-#define SECTION_INIT(builtin) { NULL, builtin, -1 }
-
 #define section_is_uninit(sec) ((sec)->builtin == SECTION_UNINIT)
 
 #define SECTION_FROM_BUILTIN(sec, sbuiltin, flags) do{ \

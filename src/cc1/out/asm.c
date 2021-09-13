@@ -666,9 +666,8 @@ void asm_predeclare_visibility(const struct section *sec, decl *d)
 	}
 }
 
-static void asm_declare_ctor_dtor(decl *d, enum section_builtin sec)
+static void asm_declare_ctor_dtor(decl *d, const struct section *sec)
 {
-	const struct section section = SECTION_INIT(sec);
 	type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 	const char *directive = asm_type_directive(intptr_ty);
 
@@ -677,17 +676,17 @@ static void asm_declare_ctor_dtor(decl *d, enum section_builtin sec)
 
 		// should be aligned by the linker, the above should be a no-op
 	*/
-	asm_out_section(&section, ".%s %s\n", directive, decl_asm_spel(d));
+	asm_out_section(sec, ".%s %s\n", directive, decl_asm_spel(d));
 }
 
 void asm_declare_constructor(decl *d)
 {
-	asm_declare_ctor_dtor(d, SECTION_CTORS);
+	asm_declare_ctor_dtor(d, &section_ctors);
 }
 
 void asm_declare_destructor(decl *d)
 {
-	asm_declare_ctor_dtor(d, SECTION_DTORS);
+	asm_declare_ctor_dtor(d, &section_dtors);
 }
 
 void asm_declare_stringlit(const struct section *sec, const stringlit *lit)
