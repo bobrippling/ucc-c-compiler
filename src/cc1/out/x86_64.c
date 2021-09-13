@@ -460,7 +460,7 @@ const char *impl_val_str_r(
 
 				if(t & OUT_LBL_THREAD){
 					if(local_sym){
-						seg = "fs:";
+						seg = "%fs:";
 						extra = "@tpoff";
 					}else{
 						assert(0 && "unreachable");
