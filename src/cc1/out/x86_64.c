@@ -1106,6 +1106,23 @@ static int x86_need_fp_parity_p(
 	}
 }
 
+static void lea_tls(out_ctx *octx, const out_val *from, const struct vreg *reg)
+{
+	const char *rstr = x86_reg_str(reg, NULL);
+
+	/*
+	 * local-exec (-fno-pic / -fpie)
+	 * initial-exec
+	 * local-dynamic
+	 * global-dynamic
+	 *
+	 * TODO
+	 */
+
+	out_asm(octx, "mov %%fs:0, %%%s", rstr);
+	out_asm(octx, "lea $%s@tpoff(%s), %%%s", from->bits.lbl.str, rstr, rstr);
+}
+
 const out_val *impl_load(
 		out_ctx *octx,
 		const out_val *from,
@@ -1201,28 +1218,33 @@ lea:
 				&& !(from->bits.lbl.lbl_type & OUT_LBL_PICLOCAL);
 			const out_val *from_new;
 
-			if(from_GOT){
-				struct vreg gotreg = *reg;
-				const out_val *gotslot;
-				int hasoffset;
-
-				gotslot = pointer_to_GOT(octx, from, &gotreg, &hasoffset);
-
-				/* optimisation for [movq lbl@GOTPCREL(%rip), %rax;] lea (%rax), %rax */
-				if(!hasoffset && vreg_eq(&gotreg, reg))
-					return gotslot;
-
-				from_new = gotslot;
-			}else{
+			if(from->bits.lbl.lbl_type & OUT_LBL_THREAD){
+				lea_tls(octx, from, reg);
 				from_new = from;
-			}
+			}else{
+				if(from_GOT){
+					struct vreg gotreg = *reg;
+					const out_val *gotslot;
+					int hasoffset;
 
-			/* just go with leaq for small sizes */
-			out_asm(octx, "%s%s %s, %%%s" MOV_DEBUG(B),
-					fp ? "mov" : "lea",
-					x86_suffix(NULL),
-					impl_val_str(from_new, 1),
-					x86_reg_str(reg, from_GOT ? NULL : chosen_ty));
+					gotslot = pointer_to_GOT(octx, from, &gotreg, &hasoffset);
+
+					/* optimisation for [movq lbl@GOTPCREL(%rip), %rax;] lea (%rax), %rax */
+					if(!hasoffset && vreg_eq(&gotreg, reg))
+						return gotslot;
+
+					from_new = gotslot;
+				}else{
+					from_new = from;
+				}
+
+				/* just go with leaq for small sizes */
+				out_asm(octx, "%s%s %s, %%%s" MOV_DEBUG(B),
+						fp ? "mov" : "lea",
+						x86_suffix(NULL),
+						impl_val_str(from_new, 1),
+						x86_reg_str(reg, from_GOT ? NULL : chosen_ty));
+			}
 
 			return v_new_reg(octx, from_new, from_new->t, reg);
 		}
