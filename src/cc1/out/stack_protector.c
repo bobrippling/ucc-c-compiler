@@ -32,6 +32,7 @@ static const out_val *stack_canary_address_lbl(out_ctx *octx, char **const tofre
 
 static const out_val *stack_canary_address_tls(out_ctx *octx)
 {
+#warning todo
 	const char *tlsent = "%fs:40"; /* XXX: hack until tls support is available */
 	type *intptr_ty = type_nav_btype(cc1_type_nav, type_intptr_t);
 
