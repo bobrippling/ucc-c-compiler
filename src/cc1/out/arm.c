@@ -40,6 +40,13 @@ const struct asm_type_table asm_type_table[ASM_TABLE_LEN] = {
 	{ 4, "long" },
 };
 
+static const struct vreg callregs[] = {
+	{ ARM_REG_R0, 0 },
+	{ ARM_REG_R1, 0 },
+	{ ARM_REG_R2, 0 },
+	{ ARM_REG_R3, 0 }
+};
+
 static int is_armv7_or_above(void)
 {
 	switch(platform_subarch()){
@@ -277,13 +284,6 @@ void impl_func_alignstack(out_ctx *octx)
 
 void impl_func_call_regs(type *retty, unsigned *pn, const struct vreg **regs)
 {
-	static const struct vreg callregs[] = {
-		{ ARM_REG_R0, 0 },
-		{ ARM_REG_R1, 0 },
-		{ ARM_REG_R2, 0 },
-		{ ARM_REG_R3, 0 }
-	};
-
 	UNUSED_ARG(retty);
 
 	*pn = countof(callregs);
@@ -504,7 +504,7 @@ void impl_func_prologue_save_call_regs(
 		 */
 		out_asm(octx,
 				"stmfd fp, { r0-%s }",
-				arm_reg_to_str(ARM_REG_R0 + lastreg));
+				arm_reg_to_str(callregs[0].idx + lastreg));
 
 		total_space = (lastreg + 1) * ws;
 		stack_space = out_aalloc(octx, total_space, ws, arithty, NULL);
