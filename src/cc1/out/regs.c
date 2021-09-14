@@ -1,7 +1,14 @@
-#include "../util/macros.h"
+#include "../../util/macros.h"
 
+#include "../type.h"
+
+#include "blk.h"
+#include "val.h"
 #include "ctx.h"
 #include "regs.h"
+#include "backend.h"
+
+#include "virt.h"
 
 /* ret regs we can hardcode here for now
  * arg regs we need to make dependant on the call type
@@ -37,35 +44,30 @@ static void reserve_unreserve_regs(
 	}
 }
 
-void impl_regs_reserve_rets(out_ctx *octx)
+void impl_regs_reserve_rets(out_ctx *octx, type *fnty)
 {
+	(void)fnty;
 	reserve_unreserve_regs(octx, 1, retregs, countof(retregs));
 }
 
-void impl_regs_unreserve_rets(out_ctx *octx)
+void impl_regs_unreserve_rets(out_ctx *octx, type *fnty)
 {
+	(void)fnty;
 	reserve_unreserve_regs(octx, 0, retregs, countof(retregs));
 }
 
-static const struct vreg *lookup_argregs(type *fnty, size_t *const n)
-{
-	funcargs *fa = type_funcargs(fnty);
-
-	return &calling_convs[fa->conv];
-}
-
-void impl_regs_reserve_args(out_ctx *octx)
+void impl_regs_reserve_args(out_ctx *octx, type *fnty)
 {
 	size_t n;
-	const struct vreg *regs = lookup_argregs(fnty, &n);
+	const struct vreg *regs = impl_regs_for_args(fnty, &n);
 
 	reserve_unreserve_regs(octx, 1, regs, n);
 }
 
-void impl_regs_unreserve_args(out_ctx *octx)
+void impl_regs_unreserve_args(out_ctx *octx, type *fnty)
 {
 	size_t n;
-	const struct vreg *regs = lookup_argregs(fnty, &n);
+	const struct vreg *regs = impl_regs_for_args(fnty, &n);
 
 	reserve_unreserve_regs(octx, 0, regs, n);
 }

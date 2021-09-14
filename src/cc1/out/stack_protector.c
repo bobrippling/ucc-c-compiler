@@ -6,6 +6,7 @@
 #include "blk.h"
 #include "ctx.h"
 #include "stack_protector.h"
+#include "regs.h"
 
 #include "../mangle.h"
 #include "../type_nav.h"
@@ -96,7 +97,7 @@ void out_check_stack_canary(out_ctx *octx)
 	if(!octx->stack_canary_ent)
 		return;
 
-	impl_regs_reserve_rets(octx);
+	impl_regs_reserve_rets(octx, octx->current_fnty);
 
 	bok = out_blk_new(octx, "stack_prot_ok");
 	bsmashed = out_blk_new(octx, "stack_prot_fail");
@@ -111,7 +112,7 @@ void out_check_stack_canary(out_ctx *octx)
 				out_deref(octx, stack_canary_address(octx, &tofree))),
 			0);
 
-	impl_regs_unreserve_rets(octx);
+	impl_regs_unreserve_rets(octx, octx->current_fnty);
 
 	free(tofree), tofree = NULL;
 	out_ctrl_branch(octx, cond, bok, bsmashed);

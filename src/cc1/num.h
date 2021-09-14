@@ -2,6 +2,7 @@
 #define NUM_H
 
 #include <stdint.h>
+#include <stddef.h>
 #include <limits.h>
 
 #include "../util/compiler.h"

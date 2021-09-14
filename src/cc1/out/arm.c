@@ -27,6 +27,7 @@
 #include "out.h"
 #include "blk.h"
 #include "func.h"
+#include "regs.h"
 
 #include "arm.h"
 
@@ -996,4 +997,15 @@ void impl_fp_bits(char *buf, size_t bufsize, enum type_primitive prim, floating_
 	UNUSED_ARG(prim);
 	UNUSED_ARG(fp);
 	ICE("TODO");
+}
+
+const struct vreg *impl_regs_for_args(type *fnty, size_t *const n)
+{
+	funcargs *fa = type_funcargs(fnty);
+	size_t nargs = fa->variadic
+		? countof(callregs)
+		: dynarray_count(fa->arglist);
+
+	*n = nargs;
+	return callregs;
 }

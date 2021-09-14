@@ -2279,3 +2279,11 @@ void impl_fp_bits(char *buf, size_t bufsize, enum type_primitive prim, floating_
 			assert(0 && "unreachable");
 	}
 }
+
+const struct vreg *impl_regs_for_args(type *fnty, size_t *const n)
+{
+	const struct calling_conv_desc *p = x86_conv_lookup(fnty);
+
+	*n = p->n_call_regs;
+	return p->call_regs;
+}

@@ -20,6 +20,7 @@
 #include "dbg.h"
 #include "stack_protector.h"
 #include "func.h"
+#include "regs.h"
 
 #include "../cc1.h" /* mopt_mode */
 #include "../fopt.h"
