@@ -1535,6 +1535,17 @@ static void add_pthread(struct ucc *const state)
 	dynarray_add(&state->args[mode_link], ustrdup("-lpthread"));
 }
 
+/*
+ * Need a way of switching to a local-lib version,
+ * maybe an environment variable that swaps us onto:
+ *
+ * ./ucc \
+ *   -static \
+ *   -nostdinc -isystem lib/
+ *   -nostdlib -Llib lib/crt.a -lc \
+ *   ...
+ */
+
 int main(int argc, char **argv)
 {
 	size_t i;
