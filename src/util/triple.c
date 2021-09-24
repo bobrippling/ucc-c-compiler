@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include <sys/utsname.h>
 
@@ -165,6 +166,15 @@ static const char *abi_to_str(enum abi a)
 const char *triple_arch_to_str(enum arch arch)
 {
 	return arch_to_str(arch);
+}
+
+int triple_arch_bits(enum arch arch)
+{
+	switch(arch){
+		case ARCH_x86_64: return 64;
+		case ARCH_i386: return 32;
+	}
+	assert(0);
 }
 
 char *triple_to_str(const struct triple *triple, int showvendor)

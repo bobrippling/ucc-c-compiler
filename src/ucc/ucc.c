@@ -24,8 +24,6 @@
 #include "warning.h"
 #include "filemodes.h"
 
-#define LINUX_LIBC_PREFIX "/usr/lib"
-
 enum mode
 {
 #define X(mode, desc, suffix) mode_##mode,
@@ -99,7 +97,6 @@ struct uccvars
 	int debug, profile;
 	int pthread;
 	enum tristate pie;
-	enum tristate multilib;
 	enum dyld dyld;
 	int help, dumpmachine;
 	enum { M_UNSET, M_32, M_64 } m3264;
@@ -735,10 +732,6 @@ static void parse_argv(
 				{
 					const char *mopt = &argv[i][2];
 
-					if(!strcmp(mopt, "multilib") || !strcmp(mopt, "no-multilib")){
-						vars->multilib = *mopt == 'n' ? TRI_FALSE : TRI_TRUE;
-						continue;
-					}
 					if(!strcmp(mopt, "musl") || !strcmp(mopt, "glibc")){
 						vars->dyld = *mopt == 'm' ? DYLD_MUSL : DYLD_GLIBC;
 						continue;
@@ -1100,39 +1093,52 @@ static void vars_default(struct uccvars *vars)
 	vars->defaultlibs = 1;
 	vars->startfiles = 1;
 	vars->pie = TRI_UNSET;
-	vars->multilib = TRI_UNSET;
 }
 
-// FIXME
-// needs to be:
-// ./ucc -o jim -m32 -v -nostdlib /usr/lib32/crt1.o /usr/lib32/crti.o jim.o -lc /usr/lib32/crtn.o
-//                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-static int should_multilib(enum tristate multilib, const char *prefix)
+static void infer_lib_path(
+	const struct triple *triple,
+	char **const libpath,
+	char **const incpath)
 {
 	/*
 	 * decide whether we're on a multilib system
 	 * multilib:
-	 *   /usr/lib/x86_64-linux-gnu/crt1.o
-	 *   /usr/lib/i386-linux-gnu/crt1.o
+	 *   libs:
+	 *     /usr/lib/x86_64-linux-gnu/crt1.o
+	 *     /usr/lib/i386-linux-gnu/crt1.o
+	 *   inc:
+	 *     /usr/include/x86_64-linux-gnu/
 	 * normal:
-	 *   /usr/lib/crt1.o
-	 *   /usr/lib32/crt1.o
+	 *   libs:
+	 *     /usr/lib/crt1.o
+	 *     /usr/lib32/crt1.o
+	 *     /usr/lib64/crt1.o
+	 *   inc:
+	 *     /usr/include/
 	 */
+	const char *const target = triple_to_str(triple, 0);
 	char path[64];
 
-	switch(multilib){
-		case TRI_FALSE: return 0;
-		case TRI_TRUE: return 1;
-		case TRI_UNSET: break;
-	}
-
-	xsnprintf(path, sizeof(path), LINUX_LIBC_PREFIX "/%s", prefix);
+	xsnprintf(path, sizeof(path), "/usr/include/%s", target);
 
 	/* note that this ignores cross compiling
 	 * gcc and clang have this as a build-time option
 	 */
-	return access(path, F_OK) == 0;
+	if(access(path, F_OK) == 0){
+		/* multilib */
+		*incpath = ustrdup(path);
+		*libpath = ustrprintf("/usr/lib/%s", target);
+		return;
+	}
+
+	*incpath = ustrdup("/usr/include");
+
+	xsnprintf(path, sizeof(path), "/usr/lib%d/crt1.o", triple_arch_bits(triple->arch));
+	if(access(path, F_OK) == 0){
+		*libpath = ustrprintf("/usr/lib%d", triple_arch_bits(triple->arch));
+		return;
+	}
+	*libpath = ustrdup("/usr/lib");
 }
 
 static void state_from_triple(
@@ -1168,10 +1174,11 @@ static void state_from_triple(
 	switch(triple->sys){
 		case SYS_linux:
 		{
-			const char *const target = triple_to_str(triple, 0);
-			const char *multilib_prefix = target;
+			char *libpath, *incpath;
 			int is_pie;
 			int default_pic;
+
+			infer_lib_path(triple, &libpath, &incpath);
 
 			switch(vars->pie){
 				case TRI_FALSE:
@@ -1209,9 +1216,6 @@ static void state_from_triple(
 			dynarray_add(
 					additional_argv,
 					ustrdup(default_pic ? "-fpic" : "-fno-pic"));
-
-			if(!should_multilib(vars->multilib, multilib_prefix))
-				multilib_prefix = "";
 
 			if(is_pie && !vars->shared)
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
@@ -1259,7 +1263,7 @@ static void state_from_triple(
 			}
 
 			if(vars->defaultlibs){
-				dynarray_add(&state->ldflags_post_user, ustrdup("-L" LINUX_LIBC_PREFIX));
+				dynarray_add(&state->ldflags_post_user, ustrprintf("-L%s", libpath));
 				dynarray_add(&state->ldflags_post_user, ustrdup("-lc"));
 			}
 
@@ -1270,14 +1274,14 @@ static void state_from_triple(
 					/* don't link to crt1 - don't want the startup files, just i[nit] and e[nd] */
 				}else{
 					if(vars->profile){
-						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "/%s/gcrt1.o", multilib_prefix);
+						xsnprintf(usrlib, sizeof(usrlib), "%s/gcrt1.o", libpath);
 					}else if(is_pie){
 						if(vars->static_)
-							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "/%s/rcrt1.o", multilib_prefix);
+							xsnprintf(usrlib, sizeof(usrlib), "%s/rcrt1.o", libpath);
 						else
-							xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "/%s/Scrt1.o", multilib_prefix);
+							xsnprintf(usrlib, sizeof(usrlib), "%s/Scrt1.o", libpath);
 					}else{
-						xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "/%s/crt1.o", multilib_prefix);
+						xsnprintf(usrlib, sizeof(usrlib), "%s/crt1.o", libpath);
 					}
 					dynarray_add(&state->ldflags_pre_user, ustrdup(usrlib));
 				}
@@ -1295,7 +1299,7 @@ static void state_from_triple(
 				{
 					char *dot;
 
-					xsnprintf(usrlib, sizeof(usrlib), LINUX_LIBC_PREFIX "/%s/crti.o", multilib_prefix);
+					xsnprintf(usrlib, sizeof(usrlib), "%s/crti.o", libpath);
 					dot = strrchr(usrlib, '.');
 					assert(dot && dot > usrlib);
 
@@ -1308,13 +1312,16 @@ static void state_from_triple(
 
 			if(vars->stdlibinc){
 				dynarray_add(&state->args[mode_preproc], ustrdup("-isystem"));
-				dynarray_add(&state->args[mode_preproc], ustrprintf("/usr/include/%s", multilib_prefix));
+				dynarray_add(&state->args[mode_preproc], ustrdup(incpath));
 			}
 
 			if(vars->ld_z.text){
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-z"));
 				dynarray_add(&state->ldflags_pre_user, ustrdup("text"));
 			}
+
+			free(libpath);
+			free(incpath);
 			break;
 		}
 
@@ -1437,7 +1444,6 @@ static void usage(void)
 	fprintf(stderr, "Target options\n");
 	fprintf(stderr, "  -target target: Compile as-if for the given target (specified as a partial target-triple)\n");
 	fprintf(stderr, "  -dumpmachine: Display the current machine's detected target triple\n");
-	fprintf(stderr, "  -m[no-]multilib: Assume a multilib installation\n");
 	fprintf(stderr, "  -mmusl / -mglibc: Target the specified libc's dynamic linker\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Input options\n");

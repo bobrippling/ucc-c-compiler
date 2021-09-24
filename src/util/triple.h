@@ -92,4 +92,6 @@ int triple_arch_change_size(/* in/out */ enum arch *, int newsize);
 
 const char *triple_arch_to_str(enum arch);
 
+int triple_arch_bits(enum arch);
+
 #endif
