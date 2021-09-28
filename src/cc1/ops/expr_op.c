@@ -1369,8 +1369,12 @@ void fold_expr_op(expr *e, symtable *stab)
 				tautological_pointer_check(e));
 
 	}else{
-		/* (except unary-not) can only have operations on integers,
-		 * promote to signed int
+		/* 6.5.3.3
+		 * unary
+		 * +: arithmetic type
+		 * -: arithmetic type
+		 * ~: integer type
+		 * !: scalar type
 		 */
 		expr_promote_int_if_smaller(&e->lhs, stab);
 
