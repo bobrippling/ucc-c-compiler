@@ -286,7 +286,7 @@ void impl_func_call_regs(type *retty, unsigned *pn, const struct vreg **regs)
 
 	UNUSED_ARG(retty);
 
-	*pn = 4;
+	*pn = countof(callregs);
 	*regs = callregs;
 }
 
@@ -325,8 +325,8 @@ const out_val *impl_cast_extend(out_ctx *octx, const out_val *val, type *big_to)
 	if(val->type != V_REG)
 		val = v_to_reg(octx, val);
 
-	if(type_size(val->t, NULL) < type_primitive_size(type_int))
-		ICW("TODO: extend from %s", type_to_str(val->t));
+	if(type_size(val->t, NULL) != type_primitive_size(type_int))
+		ICW("TODO: cast from %s", type_to_str(val->t));
 
 	/* fully extended */
 	return out_change_type(octx, val, big_to);
@@ -996,16 +996,4 @@ void impl_fp_bits(char *buf, size_t bufsize, enum type_primitive prim, floating_
 	UNUSED_ARG(prim);
 	UNUSED_ARG(fp);
 	ICE("TODO");
-}
-
-void impl_reserve_retregs(out_ctx *octx)
-{
-	UNUSED_ARG(octx);
-	ICW("TODO");
-}
-
-void impl_unreserve_retregs(out_ctx *octx)
-{
-	UNUSED_ARG(octx);
-	ICW("TODO");
 }

@@ -2279,32 +2279,3 @@ void impl_fp_bits(char *buf, size_t bufsize, enum type_primitive prim, floating_
 			assert(0 && "unreachable");
 	}
 }
-
-static void reserve_unreserve_retregs(out_ctx *octx, int reserve)
-{
-	static const struct vreg retregs[] = {
-		{ REG_RET_I_1, 0 },
-		{ REG_RET_I_2, 0 },
-		{ REG_RET_F_1, 1 },
-		{ REG_RET_F_2, 1 },
-	};
-	unsigned i;
-
-	for(i = 0; i < countof(retregs); i++){
-		const struct vreg *r = &retregs[i];
-		if(reserve)
-			v_reserve_reg(octx, r);
-		else
-			v_unreserve_reg(octx, r);
-	}
-}
-
-void impl_reserve_retregs(out_ctx *octx)
-{
-	reserve_unreserve_retregs(octx, 1);
-}
-
-void impl_unreserve_retregs(out_ctx *octx)
-{
-	reserve_unreserve_retregs(octx, 0);
-}

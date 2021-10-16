@@ -174,10 +174,11 @@ static ucc_wur const out_val *v_spill_reg(
 
 static void mark_callee_save_reg_as_used(out_ctx *octx, const struct vreg *reg)
 {
+	enum { END_SENTINEL = 2 };
 	struct vreg *p;
 	size_t current;
 
-	for(p = octx->used_callee_saved; p && p->is_float != 2; p++)
+	for(p = octx->used_callee_saved; p && p->is_float != END_SENTINEL; p++)
 		if(vreg_eq(p, reg))
 			return;
 
@@ -188,7 +189,7 @@ static void mark_callee_save_reg_as_used(out_ctx *octx, const struct vreg *reg)
 			(current + 2) * sizeof *octx->used_callee_saved);
 
 	memcpy_safe(&octx->used_callee_saved[current], reg);
-	octx->used_callee_saved[current + 1].is_float = 2;
+	octx->used_callee_saved[current + 1].is_float = END_SENTINEL;
 }
 
 static ucc_wur const out_val *v_save_reg(

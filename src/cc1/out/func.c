@@ -495,8 +495,10 @@ static const out_val *emit_stack_probe_call(out_ctx *octx, const char *probefn, 
 	return newadj;
 }
 
-static void allocate_stack(out_ctx *octx, v_stackt adj)
+static void allocate_stack(out_ctx *octx, v_stackt adj, type *fnty)
 {
+	impl_regs_reserve_args(octx, fnty);
+
 	if(adj >= 4096){
 		const enum sys sys = platform_sys();
 
@@ -544,6 +546,8 @@ static void allocate_stack(out_ctx *octx, v_stackt adj)
 	}
 
 	v_stack_adj(octx, adj, /*sub:*/1);
+
+	impl_regs_unreserve_args(octx, fnty);
 }
 
 void out_func_epilogue(
@@ -716,8 +720,6 @@ void out_func_epilogue(
 
 	/* space for spills */
 	if(clean_stack){
-		const int argspill_before_stacksub = 1;
-
 		flush_root = octx->entry_blk;
 
 		out_current_blk(octx, octx->stacksub_blk);
@@ -755,23 +757,19 @@ void out_func_epilogue(
 			stack_adj = octx->max_stack_sz - octx->stack_n_alloc;
 
 			if(!redzone)
-				allocate_stack(octx, stack_adj);
+				allocate_stack(octx, stack_adj, ty);
 		}
 
+		/* entry_blk -> stacksub_blk -> argspill_begin_blk -> [implicitly] argspill_done_blk */
 		out_current_blk(octx, octx->entry_blk);
-		if(argspill_before_stacksub){
-			out_ctrl_transfer_make_current(octx, octx->argspill_begin_blk);
+		out_ctrl_transfer_make_current(octx, octx->stacksub_blk);
+		/* stacksub code written */
+		out_ctrl_transfer(octx, octx->argspill_begin_blk, NULL, NULL, 0);
+		/* argspill code written */
+		out_current_blk(octx, octx->argspill_done_blk);
 
-			out_ctrl_transfer_make_current(octx, octx->stacksub_blk);
-		}else{
-			out_ctrl_transfer_make_current(octx, octx->stacksub_blk);
-
-			/* need this because stacksub clobbers $r0, want to do argspill first (for arm only) */
-			out_ctrl_transfer(octx, octx->argspill_begin_blk, NULL, NULL, 0);
-			out_current_blk(octx, octx->argspill_done_blk);
-			if(call_save_spill_blk)
-				out_ctrl_transfer_make_current(octx, call_save_spill_blk);
-		}
+		if(call_save_spill_blk)
+			out_ctrl_transfer_make_current(octx, call_save_spill_blk);
 
 		out_ctrl_transfer(octx, octx->postprologue_blk, NULL, NULL, 0);
 	}else{

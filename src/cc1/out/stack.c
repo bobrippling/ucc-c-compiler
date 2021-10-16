@@ -97,6 +97,7 @@ void out_adealloc(out_ctx *octx, const out_val **val)
 
 void v_aalloc_noop(out_ctx *octx, unsigned sz, unsigned align)
 {
+	// FIXME: ditch this, unused(?)
 	align_sz(&sz, align);
 
 	octx->stack_n_alloc += sz; /* FIXME: delete */
