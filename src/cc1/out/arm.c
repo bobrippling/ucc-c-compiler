@@ -431,6 +431,7 @@ const out_val *impl_f2f(out_ctx *octx, const out_val *vp, type *to)
 
 void impl_func_prologue_save_fp(out_ctx *octx)
 {
+	/* FIXME: need to have fp point at lr, but here it doesn't (?) */
 	out_asm(octx, "push { fp, lr }");
 	out_asm(octx, "mov fp, sp");
 }
