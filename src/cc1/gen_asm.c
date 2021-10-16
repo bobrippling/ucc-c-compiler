@@ -133,7 +133,7 @@ static void assign_arg_vals(decl **decls, const out_val *argvals[], out_ctx *oct
 			if(cc1_fopt.dump_frame_layout){
 				const char *loc = out_val_str(sym_outval(s), 1);
 
-				fprintf(stderr, "frame: % 9s: %s (argument)\n",
+				fprintf(stderr, "frame: % 9s: argument, %s\n",
 						loc,
 						decls[i]->spel);
 			}
