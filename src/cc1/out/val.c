@@ -62,6 +62,7 @@ static void v_init(out_val *v, type *ty)
 
 out_val *v_new(out_ctx *octx, type *ty)
 {
+	/* FIXME: look for 0-retained one in octx->val_head/tail */
 	out_val_list *l = umalloc(sizeof *l);
 	out_val *v = &l->val;
 
