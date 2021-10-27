@@ -1268,7 +1268,22 @@ static void state_from_triple(
 
 		case SYS_darwin:
 		{
-			char *syslibroot = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk";
+			static const char *const roots[] = {
+				"/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+				"/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+				NULL
+			};
+			const char *const *i;
+			const char *syslibroot = NULL;
+
+			for(i = roots; *i; i++){
+				if(access(*i, F_OK) == 0){
+					syslibroot = *i;
+					break;
+				}
+			}
+			if(!syslibroot)
+				fprintf(stderr, "couldn't find syslibroot\n");
 
 			dynarray_add(&state->args[mode_compile], ustrdup("-mpreferred-stack-boundary=4"));
 			dynarray_add(&state->args[mode_compile], ustrdup("-malign-is-p2")); /* 2^4 = 16 byte aligned */
