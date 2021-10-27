@@ -457,6 +457,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 
 					if(zero_width){
 						DEBUG_BITFIELD_INIT("  .%s is zero width - not marking as anchor for this group\n", d_mem->spel);
+						first_bf = NULL;
 					}else{
 						first_bf = d_mem;
 					}
