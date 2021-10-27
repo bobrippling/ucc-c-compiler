@@ -46,10 +46,9 @@
 
 #define ASM_COMMENT "#"
 
-#define INIT_DEBUG 0
-
-#define DEBUG(s, ...) do{ \
-	if(INIT_DEBUG) fprintf(stderr, "\033[35m" s "\033[m\n", __VA_ARGS__); \
+#define DEBUG_BITFIELD_INIT(...) do{ \
+	if(cc1_fopt.dump_bitfield_init) \
+		fprintf(stderr, "  " __VA_ARGS__); \
 }while(0)
 
 struct bitfield_val
@@ -167,27 +166,26 @@ static void asm_declare_init_bitfields(
 		struct bitfield_val *vals, unsigned n,
 		type *ty)
 {
-#define BITFIELD_DBG(...) /*fprintf(stderr, __VA_ARGS__)*/
 	integral_t v = 0;
 	unsigned width = 0;
 	unsigned i;
 
-	BITFIELD_DBG("bitfield out -- new\n");
+	DEBUG_BITFIELD_INIT("    bitfield out -- new\n");
 	for(i = 0; i < n; i++){
 		integral_t this = integral_truncate_bits(
 				vals[i].val, vals[i].width, NULL);
 
 		width += vals[i].width;
 
-		BITFIELD_DBG("bitfield out: 0x%llx << %u gives ",
+		DEBUG_BITFIELD_INIT("    bitfield out: 0x%llx << %u gives",
 				this, vals[i].offset);
 
 		v |= this << vals[i].offset;
 
-		BITFIELD_DBG("0x%llx\n", v);
+		DEBUG_BITFIELD_INIT("\t0x%llx\n", v);
 	}
 
-	BITFIELD_DBG("bitfield done with 0x%llx\n", v);
+	DEBUG_BITFIELD_INIT("    bitfield done as (%s)0x%llx\n", type_to_str(ty), v);
 
 	if(width > 0){
 		asm_declare_init_type(sec, ty);
@@ -382,6 +380,24 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 			i = copy_from_init->bits.ar.inits;
 		}
 
+		if(cc1_fopt.dump_bitfield_init ){
+			int has_bf = 0;
+
+			for(mem = sue->members;
+					mem && *mem;
+					mem++)
+			{
+				decl *d_mem = (*mem)->struct_member;
+				if(d_mem->bits.var.field_width){
+					has_bf = 1;
+					break;
+				}
+			}
+
+			if(has_bf)
+				fprintf(stderr, "Initialising %s %s...\n", sue_str(sue), sue->spel);
+		}
+
 		/* iterate using members, not inits */
 		for(mem = sue->members;
 				mem && *mem;
@@ -405,22 +421,19 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 				}
 			}
 
-			DEBUG("init for %ld/%s, %s",
-					mem - sue->members, d_mem->spel,
-					di_to_use && di_to_use->type == decl_init_scalar
-					? di_to_use->bits.expr->f_str()
-					: NULL);
+			DEBUG_BITFIELD_INIT("current offset=%d, end of last field=%d\n",
+					d_mem->bits.var.struct_offset, end_of_last);
 
 			/* only pad if we're not on a bitfield or we're on the first bitfield */
 			if(!d_mem->bits.var.field_width || !first_bf){
-				DEBUG("prev padding, offset=%d, end_of_last=%d",
-						d_mem->bits.var.struct_offset, end_of_last);
-
 				UCC_ASSERT(
 						d_mem->bits.var.struct_offset >= end_of_last,
 						"negative struct pad, %s::%s @ %u >= end_of_last @ %u",
 						sue->spel, decl_to_str(d_mem),
 						d_mem->bits.var.struct_offset, end_of_last);
+
+				DEBUG_BITFIELD_INIT("  adding %u bytes of padding\n",
+						d_mem->bits.var.struct_offset - end_of_last);
 
 				asm_declare_pad(sec,
 						d_mem->bits.var.struct_offset - end_of_last,
@@ -430,18 +443,34 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 			if(d_mem->bits.var.field_width){
 				const int zero_width = const_fold_val_i(d_mem->bits.var.field_width) == 0;
 
+				/* we aren't in a BF at the mo, and this is set as first_bitfield */
 				if(!first_bf || d_mem->bits.var.first_bitfield){
-					if(first_bf){
-						DEBUG("new bitfield group (%s is new boundary), old:",
+					if(!first_bf){
+						DEBUG_BITFIELD_INIT("  new bitfield group (at .%s)\n", d_mem->spel);
+					}else{
+						DEBUG_BITFIELD_INIT("  new bitfield group (at .%s) after current bitfield group - flushing\n",
 								d_mem->spel);
+
 						/* next bitfield group - store the current */
 						bitfields_out(sec, bitfields, &nbitfields, first_bf->ref);
 					}
-					if(!zero_width)
+
+					if(zero_width){
+						DEBUG_BITFIELD_INIT("  .%s is zero width - not marking as anchor for this group\n", d_mem->spel);
+						first_bf = NULL;
+					}else{
 						first_bf = d_mem;
+					}
 				}
 
-				if(!zero_width){
+				if(zero_width){
+					DEBUG_BITFIELD_INIT("  .%s is zero width, ignored\n", d_mem->spel);
+				}else{
+					DEBUG_BITFIELD_INIT("  adding .%s to bitfield group, offset %d, width %" NUMERIC_FMT_D "\n",
+							d_mem->spel,
+							d_mem->bits.var.struct_offset_bitfield,
+							const_fold_val_i(d_mem->bits.var.field_width));
+
 					bitfields = bitfields_add(
 							bitfields, &nbitfields,
 							d_mem, di_to_use);
@@ -449,13 +478,13 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 
 			}else{
 				if(nbitfields){
-					DEBUG("at non-bitfield, prev-bitfield out:", 0);
+					DEBUG_BITFIELD_INIT("  at non-bitfield, flushing current\n");
 
 					bitfields_out(sec, bitfields, &nbitfields, decl_type_for_bitfield(first_bf));
 					first_bf = NULL;
 				}
 
-				DEBUG("normal init for %s:", d_mem->spel);
+				DEBUG_BITFIELD_INIT("  normal init for .%s\n", d_mem->spel);
 				asm_declare_init(sec, di_to_use, d_mem->ref);
 			}
 
@@ -467,8 +496,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 				decl_size_align_inc_bitfield(d_mem, &sz, &align);
 
 				end_of_last = d_mem->bits.var.struct_offset + sz;
-				DEBUG("done with member \"%s\", end_of_last = %d",
-						d_mem->spel, end_of_last);
+				DEBUG_BITFIELD_INIT("  %d byte(s) initialised so far\n", end_of_last);
 			}
 		}
 
@@ -569,7 +597,6 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 		}
 
 		/* use tfor, since "abc" has type (char[]){(int)'a', (int)'b', ...} */
-		DEBUG("  scalar init for %s:", type_to_str(tfor));
 		static_val(sec, tfor, exp);
 	}
 }

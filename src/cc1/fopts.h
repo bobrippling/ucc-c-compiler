@@ -23,6 +23,7 @@ X("strict-aliasing", strict_aliasing) /* ignored, just for compat */
 /* frontend output */
 X("dump-bblocks", dump_basic_blocks)
 X("dump-init", dump_init)
+X("dump-bitfield-init", dump_bitfield_init)
 X("dump-record-layouts", dump_layouts)
 X("dump-symtab", dump_symtab)
 X("dump-type-tree", dump_type_tree)
