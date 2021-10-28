@@ -1,6 +1,6 @@
-// RUN: %ucc -c %s
 // RUN: %layout_check %s
 // RUN: %check %s
+
 struct A
 {
 	int : 0;

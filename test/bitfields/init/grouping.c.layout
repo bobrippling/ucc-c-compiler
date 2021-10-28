@@ -1,0 +1,29 @@
+pad:
+.long 1
+.long 386
+.space 3
+
+two_ints:
+
+# ---------------------
+
+pad:
+	.byte	1                               ## 0x1
+	.space	3
+	.byte	130                             ## 0x82
+	.byte	1                               ## 0x1
+	.byte	0                               ## 0x0
+	.space	1
+
+two_ints:
+.byte 0
+# TODO
+# .long    0xaaaaaaaa
+# .byte    0xbb
+# .byte    0xcc
+# .byte    0xc
+# .space   1
+# .byte    0xdd
+# .byte    0xd
+# .space   2
+# .long    0xeeeeeeee
