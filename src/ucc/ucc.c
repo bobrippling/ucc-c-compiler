@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <dlfcn.h>
 
 #include "ucc.h"
 #include "ucc_ext.h"
@@ -1122,6 +1123,44 @@ static int should_multilib(enum tristate multilib, const char *prefix)
 	return access(path, F_OK) == 0;
 }
 
+static const char *darwin_syslibroot(int *const alloc)
+{
+	/* /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/xcselect.h */
+	enum { XCSELECT_HOST_SDK_POLICY_MATCHING_PREFERRED = 1 };
+
+	static const char *const roots[] = {
+		"/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+		"/Applications/Xcode.app/Developer/SDKs/MacOSX.sdk",
+		"/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+		NULL
+	};
+	const char *const *i;
+	const char *syslibroot = NULL;
+	char *sdk_path;
+	void *dl;
+	typedef int xcselect_host_sdk_path_ty(unsigned, char **);
+	xcselect_host_sdk_path_ty *xcselect_host_sdk_path;
+
+	*alloc = 0;
+	for(i = roots; *i; i++)
+		if(access(*i, F_OK) == 0)
+			return *i;
+
+	dl = dlopen("libxcselect.dylib", RTLD_GLOBAL | RTLD_LAZY);
+	if(!dl)
+		return NULL;
+
+	xcselect_host_sdk_path = (xcselect_host_sdk_path_ty *)dlsym(dl, "xcselect_host_sdk_path");
+	if(!xcselect_host_sdk_path)
+		return NULL;
+
+	if(xcselect_host_sdk_path(XCSELECT_HOST_SDK_POLICY_MATCHING_PREFERRED, &sdk_path) != 0)
+		return NULL;
+
+	*alloc = 1;
+	return sdk_path;
+}
+
 static void state_from_triple(
 		struct ucc *state,
 		char ***additional_argv,
@@ -1268,20 +1307,8 @@ static void state_from_triple(
 
 		case SYS_darwin:
 		{
-			static const char *const roots[] = {
-				"/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
-				"/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
-				NULL
-			};
-			const char *const *i;
-			const char *syslibroot = NULL;
-
-			for(i = roots; *i; i++){
-				if(access(*i, F_OK) == 0){
-					syslibroot = *i;
-					break;
-				}
-			}
+			int syslibroot_alloc;
+			const char *syslibroot = darwin_syslibroot(&syslibroot_alloc);
 			if(!syslibroot)
 				fprintf(stderr, "couldn't find syslibroot\n");
 
@@ -1331,6 +1358,8 @@ static void state_from_triple(
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-export_dynamic"));
 
 			paramshared = "-dylib";
+			if(syslibroot_alloc)
+				free((char *)syslibroot);
 			break;
 		}
 

@@ -572,8 +572,11 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 			warned_about_size = 1;
 		}
 
-		if((flag = (type_is_fptr(tlhs) && type_is_nonfptr(trhs)))
-		||         (type_is_fptr(trhs) && type_is_nonfptr(tlhs)))
+		if(expr_cast_is_implicit(e)
+		&& (
+			(flag = (type_is_fptr(tlhs) && type_is_nonfptr(trhs)))
+		|| (type_is_fptr(trhs) && type_is_nonfptr(tlhs))
+		))
 		{
 			/* allow cast from NULL to func ptr */
 			if(!expr_is_null_ptr(expr_cast_child(e), NULL_STRICT_VOID_PTR)){
@@ -581,9 +584,8 @@ void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
 
 				cc1_warn_at(&e->where,
 						incompatible_pointer_types,
-						"%scast from %spointer to %spointer\n"
+						"implicit cast from %spointer to %spointer\n"
 						"%s <- %s",
-						IMPLICIT_STR(e),
 						flag ? "" : "function-", flag ? "function-" : "",
 						type_to_str(tlhs), type_to_str_r(buf, trhs));
 			}
