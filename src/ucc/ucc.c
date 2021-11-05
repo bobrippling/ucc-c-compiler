@@ -1291,6 +1291,31 @@ static void state_from_triple(
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-z"));
 				dynarray_add(&state->ldflags_pre_user, ustrdup("text"));
 			}
+
+			switch(triple->arch){
+				case ARCH_x86_64:
+				case ARCH_i386:
+					break;
+				case ARCH_arm:
+				{
+					const char *arg;
+
+					switch(triple->subarch){
+						case SUBARCH_none:
+						case SUBARCH_armv6:
+							arg = "armv6";
+							break;
+						case SUBARCH_armv7:
+							arg = "armv7";
+							break;
+					}
+
+					dynarray_add(
+						&state->args[mode_assemb],
+						ustrprintf("-march=%s", arg));
+					break;
+				}
+			}
 			break;
 		}
 
