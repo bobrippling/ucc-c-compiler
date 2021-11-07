@@ -270,6 +270,9 @@ static enum stret x86_stret(type *ty, unsigned *stack_space)
 		return stret_scalar;
 	}
 
+	if(cc1_fopt.pcc_struct_return)
+		return stret_memcpy;
+
 	if(IS_32_BIT())
 		ICE("TODO: 32-bit stret");
 
