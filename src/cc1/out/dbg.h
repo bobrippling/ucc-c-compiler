@@ -15,7 +15,7 @@ void out_dbg_begin(
 		enum c_std lang,
 		const char *producer);
 
-void out_dbg_end(out_ctx *octx);
+void out_dbg_end(out_ctx *octx, unsigned ptr_size);
 #endif
 
 void out_dbg_emit_func(out_ctx *, struct decl *);

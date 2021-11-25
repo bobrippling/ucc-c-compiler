@@ -681,7 +681,9 @@ void gen_asm(
 	dynarray_free(decl **, terms, NULL);
 
 	if(cc1_gdebug != DEBUG_OFF){
-		out_dbg_end(octx);
+		out_dbg_end(
+				octx,
+				type_size(type_ptr_to(type_nav_btype(cc1_type_nav, type_int)), NULL));
 
 		*pfilelist = octx->dbg.file_head;
 	}

@@ -1345,6 +1345,14 @@ static struct DIE *dwarf_subprogram_func(
 	return subprog;
 }
 
+enum flush_type
+{
+	BYTE = 1,
+	WORD = 2,
+	LONG = 4,
+	QUAD = 8
+};
+
 struct DIE_flush
 {
 	struct DIE_flush_file
@@ -1352,14 +1360,7 @@ struct DIE_flush
 		const struct section *sec;
 		unsigned long byte_cnt;
 	} abbrev, info;
-};
-
-enum flush_type
-{
-	BYTE = 1,
-	WORD = 2,
-	LONG = 4,
-	QUAD = 8
+	enum flush_type addr_size;
 };
 
 static void ucc_printflike(3, 4)
@@ -1508,7 +1509,7 @@ form_data:
 				break;
 
 			case DW_FORM_ADDR4: fty = LONG; goto addr;
-			case DW_FORM_addr: fty = QUAD; goto addr;
+			case DW_FORM_addr: fty = state->addr_size; goto addr;
 addr:
 				dwarf_printf(&state->info, fty, "%s",
 						a->bits.str ?  a->bits.str : "0");
@@ -1519,7 +1520,7 @@ addr:
 				const char *lbl;
 				int emit = out_dbg_label_emitted(a->bits.lbl, &lbl);
 				assert(emit);
-				dwarf_printf(&state->info, QUAD, "%s", lbl);
+				dwarf_printf(&state->info, state->addr_size, "%s", lbl);
 				break;
 			}
 
@@ -1594,13 +1595,17 @@ static void dwarf_flush_die(
 	dwarf_flush_die_children(die, state);
 }
 
-static void dwarf_flush(struct DIE_compile_unit *cu, long initial_offset)
+static void dwarf_flush(
+		struct DIE_compile_unit *cu,
+		long initial_offset,
+		enum flush_type addr_size)
 {
 	struct DIE_flush flush = { { 0 }, { 0 } };
 
 	flush.info.byte_cnt = initial_offset;
 	flush.info.sec = &section_dbg_info;
 	flush.abbrev.sec = &section_dbg_abbrev;
+	flush.addr_size = addr_size;
 
 	dwarf_flush_die(&cu->die, &flush);
 
@@ -1609,7 +1614,8 @@ static void dwarf_flush(struct DIE_compile_unit *cu, long initial_offset)
 
 static unsigned long dwarf_offset_die(
 		struct DIE *die,
-		unsigned long *abbrev, unsigned long off)
+		unsigned long *abbrev, unsigned long off,
+		unsigned addr_size)
 {
 	struct DIE_attr **at;
 
@@ -1631,7 +1637,7 @@ static unsigned long dwarf_offset_die(
 					break;
 				/* fall */
 
-			case DW_FORM_addr:  off += QUAD; break;
+			case DW_FORM_addr:  off += addr_size; break;
 			case DW_FORM_ADDR4: off += LONG; break;
 
 			case DW_FORM_data1: off += BYTE; break;
@@ -1672,7 +1678,7 @@ static unsigned long dwarf_offset_die(
 									e->type == BLOCK_LEB128_S);
 							break;
 						case BLOCK_ADDR_STR:
-							off += QUAD;
+							off += addr_size;
 							break;
 					}
 				}
@@ -1684,7 +1690,7 @@ static unsigned long dwarf_offset_die(
 	if(die->children){
 		struct DIE **i;
 		for(i = die->children; *i; i++)
-			off = dwarf_offset_die(*i, abbrev, off);
+			off = dwarf_offset_die(*i, abbrev, off, addr_size);
 
 		off++; /* end of children mark */
 	}
@@ -1724,7 +1730,7 @@ void out_dbg_begin(
 	dbg->current_scope = NULL;
 }
 
-void out_dbg_end(out_ctx *octx)
+void out_dbg_end(out_ctx *octx, unsigned ptr_size)
 {
 	long info_offset = dwarf_info_header();
 	struct cc1_dbg_ctx *dbg = octx2dbg(octx);
@@ -1732,6 +1738,13 @@ void out_dbg_end(out_ctx *octx)
 	unsigned long abbrev = 0;
 	size_t i;
 	struct DIE *tydie;
+	enum flush_type addr_size;
+
+	switch(ptr_size){
+		case 4: addr_size = LONG; break;
+		case 8: addr_size = QUAD; break;
+		default: ucc_unreach(); break;
+	}
 
 	/* current_scope should be a direct child of the compile unit */
 	if(dbg->current_scope && dbg->current_scope->parent != &compile_unit->die)
@@ -1744,9 +1757,9 @@ void out_dbg_end(out_ctx *octx)
 		dwarf_child(&compile_unit->die, tydie);
 	}
 
-	dwarf_offset_die(&compile_unit->die, &abbrev, info_offset);
+	dwarf_offset_die(&compile_unit->die, &abbrev, info_offset, addr_size);
 
-	dwarf_flush(compile_unit, info_offset);
+	dwarf_flush(compile_unit, info_offset, addr_size);
 
 	/* no need to dwarf_die_free_1() type dies - they're children of the CU */
 	dynmap_free(compile_unit->types_to_dies);
