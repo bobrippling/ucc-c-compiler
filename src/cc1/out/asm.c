@@ -20,6 +20,7 @@
 #include "asm.h"
 #include "out.h"
 #include "impl_fp.h"
+#include "comment.h"
 
 #include "../fopt.h"
 #include "../cc1.h"
@@ -43,8 +44,6 @@
 #define ASSERT_SCALAR(di)                  \
 	UCC_ASSERT(di->type == decl_init_scalar, \
 			"scalar expected for bitfield init")
-
-#define ASM_COMMENT "#"
 
 #define INIT_DEBUG 0
 
@@ -166,7 +165,7 @@ char asm_separator_char(void)
 static void asm_declare_pad(const struct section *sec, unsigned pad, const char *why)
 {
 	if(pad)
-		asm_out_section(sec, ".space %u " ASM_COMMENT " %s\n", pad, why);
+		asm_out_section(sec, ".space %u %s %s\n", pad, out_asm_comment(), why);
 }
 
 static void asm_declare_init_type(const struct section *sec, type *ty)
@@ -206,7 +205,8 @@ static void asm_declare_init_bitfields(
 		asm_out_section(sec, "%" NUMERIC_FMT_D "\n", v);
 	}else{
 		asm_out_section(sec,
-				ASM_COMMENT " skipping zero length bitfield%s init\n",
+				"%s skipping zero length bitfield%s init\n",
+				out_asm_comment(),
 				n == 1 ? "" : "s");
 	}
 }
@@ -357,7 +357,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 			asm_declare_pad(sec, type_size(tfor, NULL),
 					"null init"/*, type_to_str(tfor)*/);
 		}else{
-			asm_out_section(sec, ASM_COMMENT " flex array init skipped\n");
+			asm_out_section(sec, "%s flex array init skipped\n", out_asm_comment());
 		}
 
 	}else if((r = type_is_primitive(tfor, type_struct))){

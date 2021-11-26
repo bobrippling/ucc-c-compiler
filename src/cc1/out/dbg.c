@@ -38,6 +38,7 @@
 #include "backend.h" /* REG_BP */
 #include "blk.h" /* .lbl */
 #include "dbg_lbl.h"
+#include "comment.h"
 
 #define DEBUG_TYPE_SKIP type_skip_non_tdefs_consts
 #define DEBUG_TYPE_HASH type_hash_skip_nontdefs_consts
@@ -1170,17 +1171,20 @@ static long dwarf_info_header(void)
 				cc1_target_details.as->privatelbl_prefix);
 	}
 
-	asm_out_section(&section_dbg_info, "\t.short 2 # DWARF 2\n");
+	asm_out_section(&section_dbg_info, "\t.short 2 %s DWARF 2\n", out_asm_comment());
 
 	if(cc1_target_details.dwarf_link_stmt_list){
 		asm_out_section(&section_dbg_info,
-				"\t.long %s%s%s  # abbrev offset\n",
-				cc1_target_details.as->privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_ABBREV);
-	 }else{
-		 asm_out_section(&section_dbg_info, "\t.long 0  # abbrev offset\n");
-	 }
+				"\t.long %s%s%s %s abbrev offset\n",
+				cc1_target_details.as->privatelbl_prefix,
+				SECTION_BEGIN,
+				SECTION_DESC_DBG_ABBREV,
+				out_asm_comment());
+	}else{
+		asm_out_section(&section_dbg_info, "\t.long 0  %s abbrev offset\n", out_asm_comment());
+	}
 
-	asm_out_section(&section_dbg_info, "\t.byte %d  # sizeof(void *)\n", platform_word_size());
+	asm_out_section(&section_dbg_info, "\t.byte %d  %s sizeof(void *)\n", platform_word_size(), out_asm_comment());
 
 	return 4 + 2 + 4 + 1;
 }
@@ -1401,8 +1405,10 @@ static void dwarf_flush_die_block(
 	switch(e->type){
 		case BLOCK_HEADER:
 			dwarf_printf(&state->info, BYTE,
-					"%d # DW_FORM_block %s\n",
-					(int)e->bits.v, die_op_to_str(e->bits.v));
+					"%d %s DW_FORM_block %s\n",
+					(int)e->bits.v,
+					out_asm_comment(),
+					die_op_to_str(e->bits.v));
 			break;
 
 		case BLOCK_LEB128_S:
@@ -1411,14 +1417,14 @@ static void dwarf_flush_die_block(
 					e->bits.v, e->type == BLOCK_LEB128_S);
 
 			asm_out_section(state->info.sec,
-					" # DW_FORM_block, LEB%c 0x%lx\n",
+					" %s DW_FORM_block, LEB%c 0x%lx\n", out_asm_comment(),
 					"US"[e->type == BLOCK_LEB128_S],
 					e->bits.v);
 			break;
 
 		case BLOCK_ADDR_STR:
-			dwarf_printf(&state->info, QUAD,
-					"%s # DW_FORM_block, address\n",
+			dwarf_printf(&state->info, state->addr_size,
+					"%s %s DW_FORM_block, address\n", out_asm_comment(),
 					e->bits.str);
 			break;
 	}
@@ -1435,7 +1441,7 @@ static void dwarf_flush_die_children(
 		for(i = die->children; *i; i++)
 			dwarf_flush_die(*i, state);
 
-		dwarf_printf(&state->info, BYTE, "0 # end of children\n");
+		dwarf_printf(&state->info, BYTE, "0 %s end of children\n", out_asm_comment());
 	}
 }
 
@@ -1450,19 +1456,23 @@ static void dwarf_flush_die_1(
 			die->locn, state->info.byte_cnt);
 
 	dwarf_leb_printf(&state->abbrev, die->abbrev_code, 0),
-		asm_out_section(state->abbrev.sec, "  # Abbrev. Code %lu\n",
+		asm_out_section(state->abbrev.sec, "  %s Abbrev. Code %lu\n", out_asm_comment(),
 				die->abbrev_code);
 
 	dwarf_leb_printf(&state->info, die->abbrev_code, 0),
-		asm_out_section(state->info.sec, "  # Abbrev. Code %lu %s\n",
+		asm_out_section(state->info.sec, "  %s Abbrev. Code %lu %s\n", out_asm_comment(),
 				die->abbrev_code, die_tag_to_str(die->tag));
 
 	/* tags are technically ULEBs */
-	dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
-			die->tag, die_tag_to_str(die->tag));
+	dwarf_printf(&state->abbrev, BYTE, "%d  %s %s\n",
+			die->tag,
+			out_asm_comment(),
+			die_tag_to_str(die->tag));
 
-	dwarf_printf(&state->abbrev, BYTE, "%d  # DW_CHILDREN_%s\n",
-			!!die->children, die->children ? "yes" : "no");
+	dwarf_printf(&state->abbrev, BYTE, "%d  %s DW_CHILDREN_%s\n",
+			!!die->children,
+			out_asm_comment(),
+			die->children ? "yes" : "no");
 
 
 	for(at = die->attrs; at && *at; at++){
@@ -1487,11 +1497,15 @@ static void dwarf_flush_die_1(
 				break;
 		}
 
-		dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
-				a->attr, s_attr);
+		dwarf_printf(&state->abbrev, BYTE, "%d  %s %s\n",
+				a->attr,
+				out_asm_comment(),
+				s_attr);
 
-		dwarf_printf(&state->abbrev, BYTE, "%d  # %s\n",
-				enc, s_enc);
+		dwarf_printf(&state->abbrev, BYTE, "%d  %s %s\n",
+				enc,
+				out_asm_comment(),
+				s_enc);
 
 		switch(a->enc){
 				enum flush_type fty;
@@ -1567,8 +1581,9 @@ addr:
 				}
 
 				UCC_ASSERT(len > 0, "zero length block, count %d", a->bits.blk->cnt);
-				dwarf_printf(&state->info, BYTE, "%d # block count\n",
-						len);
+				dwarf_printf(&state->info, BYTE, "%d %s block count\n",
+						len,
+						out_asm_comment());
 
 				for(i = 0; i < a->bits.blk->cnt; i++)
 					dwarf_flush_die_block(
@@ -1577,11 +1592,11 @@ addr:
 				break;
 			}
 		}
-		asm_out_section(state->info.sec, " # %s\n", s_attr);
+		asm_out_section(state->info.sec, " %s %s\n", out_asm_comment(), s_attr);
 	}
 
 	asm_out_section(state->abbrev.sec,
-			"\t.byte 0, 0 # name/val abbrev %lu end\n\n",
+			"\t.byte 0, 0 %s name/val abbrev %lu end\n\n", out_asm_comment(),
 			die->abbrev_code);
 	state->abbrev.byte_cnt += 2;
 
@@ -1609,7 +1624,7 @@ static void dwarf_flush(
 
 	dwarf_flush_die(&cu->die, &flush);
 
-	asm_out_section(&section_dbg_abbrev, "\t.byte 0 # end\n");
+	asm_out_section(&section_dbg_abbrev, "\t.byte 0 %s end\n", out_asm_comment());
 }
 
 static unsigned long dwarf_offset_die(

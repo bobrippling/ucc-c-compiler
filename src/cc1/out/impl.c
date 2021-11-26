@@ -16,12 +16,12 @@
 #include "write.h"
 #include "out.h"
 #include "virt.h"
+#include "comment.h"
 
 void impl_comment(out_ctx *octx, const char *fmt, va_list l)
 {
-	out_asm2(octx, P_NO_LIVEDUMP | P_NO_NL, "/* ");
+	out_asm2(octx, P_NO_LIVEDUMP | P_NO_NL, out_asm_comment());
 	out_asmv(octx, P_NO_LIVEDUMP | P_NO_INDENT | P_NO_NL, fmt, l);
-	out_asm2(octx, P_NO_LIVEDUMP | P_NO_INDENT, " */");
 }
 
 enum flag_cmp op_to_flag(enum op_type op)

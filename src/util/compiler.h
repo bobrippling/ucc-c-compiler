@@ -1,6 +1,12 @@
 #ifndef COMPILER_H
 #define COMPILER_H
 
+#ifdef __STDC__
+#  define ucc_inline inline
+#else
+#  define ucc_inline
+#endif
+
 #if __STDC__ >= 201112L
 #  define ucc_noreturn _Noreturn
 #  define ucc_static_assert(tag, test) _Static_assert(test, #test " (" #tag ")")
