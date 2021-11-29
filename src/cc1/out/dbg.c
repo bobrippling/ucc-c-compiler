@@ -281,7 +281,8 @@ static struct DIE *dwarf_tydie_new(
 static struct DIE *dbg_create_decl_die(
 		struct DIE_compile_unit *cu, decl *, const out_val *val);
 
-static void dwarf_location_addr(struct dwarf_block_ent *locn_ents, decl *d);
+static void dwarf_location_addr(
+		struct dwarf_block_ent *locn_ents, size_t count, decl *d);
 
 static void dwarf_attr_decl(
 		struct DIE_compile_unit *cu,
@@ -1034,7 +1035,7 @@ static struct DIE *dbg_create_decl_die_local(
 				break;
 
 			case sym_global:
-				dwarf_location_addr(locn_ents, d);
+				dwarf_location_addr(locn_ents, locn->cnt, d);
 				break;
 
 			case sym_arg:
@@ -1215,8 +1216,10 @@ static void dwarf_attr_decl(
 	}
 }
 
-static void dwarf_location_addr(struct dwarf_block_ent *locn_ents, decl *d)
+static void dwarf_location_addr(
+		struct dwarf_block_ent *locn_ents, size_t count, decl *d)
 {
+	assert(count == 2);
 	locn_ents[0].type = BLOCK_HEADER;
 	locn_ents[0].bits.v = DW_OP_addr;
 
@@ -1258,7 +1261,7 @@ static struct DIE *dwarf_global_variable(
 		locn = umalloc(sizeof *locn);
 		locn_ents = umalloc(2 * sizeof *locn_ents);
 
-		dwarf_location_addr(locn_ents, d);
+		dwarf_location_addr(locn_ents, 2, d);
 
 		locn->cnt = 2;
 		locn->ents = locn_ents;
