@@ -1380,7 +1380,7 @@ static void ucc_printflike(3, 4)
 	const char *ty = NULL;
 	switch(sz){
 		case BYTE: ty = "byte"; break;
-		case WORD: ty = "word"; break;
+		case WORD: ty = "short"; break;
 		case LONG: ty = "long"; break;
 		case QUAD: ty = "quad"; break;
 	}
