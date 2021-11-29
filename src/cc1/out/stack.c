@@ -95,15 +95,6 @@ void out_adealloc(out_ctx *octx, const out_val **val)
 	v_try_stack_reclaim(octx);
 }
 
-void v_aalloc_noop(out_ctx *octx, unsigned sz, unsigned align)
-{
-	// FIXME: ditch this, unused(?)
-	align_sz(&sz, align);
-
-	octx->stack_n_alloc += sz; /* FIXME: delete */
-	v_set_cur_stack_sz(octx, octx->cur_stack_sz + sz);
-}
-
 void v_stack_needalign(out_ctx *octx, unsigned align)
 {
 	/* aligning the stack isn't sufficient here - if the stack is adjusted after,

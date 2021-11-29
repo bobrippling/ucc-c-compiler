@@ -510,8 +510,6 @@ void impl_func_prologue_save_call_regs(
 		total_space = (lastreg + 1) * ws;
 		stack_space = out_aalloc(octx, total_space, ws, arithty, NULL);
 		out_adealloc(octx, &stack_space);
-		/*out_comment(octx, "n-alloc %u", total_space);*/
-		/*v_aalloc_noop(octx, total_space, ws);*/
 	}
 }
 

@@ -727,17 +727,11 @@ void out_func_epilogue(
 		{
 			v_stackt stack_adj;
 
-			/* must have more or equal stack to the alloc_n, because alloc_n will
-			 * always add to {var,max}_stack_sz with possible padding,
-			 * and that same value (minus padding) to stack_n_alloc */
-			assert(octx->max_stack_sz >= octx->stack_n_alloc);
-
 			if(cc1_fopt.verbose_asm){
 				out_comment(octx,
-						"stack_sz{cur=%lu,max=%lu} n_alloc=%lu call_spc=%lu calleesve=%lu max_align=%u",
+						"stack_sz{cur=%lu,max=%lu} call_spc=%lu calleesve=%lu max_align=%u",
 						octx->cur_stack_sz,
 						octx->max_stack_sz,
-						octx->stack_n_alloc,
 						octx->stack_callspace,
 						octx->stack_calleesave_space,
 						octx->max_align);
@@ -755,7 +749,7 @@ void out_func_epilogue(
 				 * not the resultant after subtracting stack_n_alloc */
 				octx->max_stack_sz = pack_to_align(octx->max_stack_sz, octx->max_align);
 			}
-			stack_adj = octx->max_stack_sz - octx->stack_n_alloc;
+			stack_adj = octx->max_stack_sz;
 
 			if(!redzone)
 				allocate_stack(octx, stack_adj, ty);
@@ -800,8 +794,7 @@ void out_func_epilogue(
 		octx->max_stack_sz =
 		octx->max_align =
 		octx->stack_callspace =
-		octx->stack_calleesave_space =
-		octx->stack_n_alloc = 0;
+		octx->stack_calleesave_space = 0;
 }
 
 static void stack_realign(out_ctx *octx, unsigned align)
