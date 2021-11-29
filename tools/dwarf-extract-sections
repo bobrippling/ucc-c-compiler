@@ -1,0 +1,22 @@
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my(@abbrev, @info);
+my $cur;
+
+while(<>){
+  if(/^\.section \.debug_(.*)/){
+    $cur = $1 eq 'abbrev' ? \@abbrev : \@info;
+    next;
+  }
+
+  next unless $cur;
+
+  push @{$cur}, $_;
+}
+
+print "abbrev:\n";
+print $_ for @abbrev;
+print "info:\n";
+print $_ for @info;
