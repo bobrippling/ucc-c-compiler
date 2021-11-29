@@ -7,12 +7,20 @@ sub asmstrlen
 	return length $1;
 }
 
+sub itemcount
+{
+  my $x = shift;
+  $x =~ s/[@#].*//;
+  $x =~ s/[^,]//g;
+  return 1 + length $x;
+}
+
 my %types = (
-	"byte" => sub { return 1 },
-	"word" => sub { return 2 },
-	"short" => sub { return 2 },
-	"long" => sub { return 4 },
-	"quad" => sub { return 8 },
+	"byte" => sub { return 1 * itemcount shift },
+	"word" => sub { return 2 * itemcount shift },
+	"short" => sub { return 2 * itemcount shift },
+	"long" => sub { return 4 * itemcount shift },
+	"quad" => sub { return 8 * itemcount shift },
 	"ascii" => sub { return asmstrlen shift },
 	"asciz" => sub { return 1 + asmstrlen shift },
 );
