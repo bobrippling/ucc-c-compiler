@@ -6,6 +6,7 @@
 #include "cc1.h"
 #include "cc1_where.h"
 #include "out/asm.h"
+#include "out/leb.h"
 #include "fopt.h"
 #include "sanitize_opt.h"
 #include "funcargs.h"
@@ -380,6 +381,39 @@ static void test_decl_needs_GOTPLT(void)
 	cc1_visibility_default = VISIBILITY_DEFAULT;
 }
 
+#define test_leb128_len(leb, is_signed, expected) \
+  if(leb128_length(leb, is_signed) != expected){ \
+    fprintf(stderr, "got %u\n", leb128_length(leb, is_signed)); \
+    (test)(0, #leb " LEB length isn't " #expected, __LINE__); \
+  }
+
+static void test_leb(void)
+{
+  // TODO: verify these on an x86_64 machine
+  test_leb128_len(0x0, 0, 1);
+  test_leb128_len(0x1, 0, 1);
+  test_leb128_len(0x12, 0, 1);
+  test_leb128_len(0x1234, 0, 2);
+  test_leb128_len(0x123456, 0, 3);
+  test_leb128_len(0x1221122, 0, 4);
+  test_leb128_len(0x11221122, 0, 5);
+  test_leb128_len(0x1234567812L, 0, 6);
+  test_leb128_len(0x123456781234L, 0, 7);
+  test_leb128_len(0x12345678123456L, 0, 8);
+  test_leb128_len(0x1234567812345678L, 0, 9);
+
+  test_leb128_len(0x1, 1, 1);
+  test_leb128_len(0x12, 1, 1);
+  test_leb128_len(0x1234, 1, 2);
+  test_leb128_len(0x123456, 1, 3);
+  test_leb128_len(0x1221122, 1, 4);
+  test_leb128_len(0x11221122, 1, 5);
+  test_leb128_len(0x1234567812L, 1, 6);
+  test_leb128_len(0x123456781234L, 1, 7);
+  test_leb128_len(0x12345678123456L, 1, 8);
+  test_leb128_len(0x1234567812345678L, 1, 9);
+}
+
 int main(void)
 {
 	cc1_type_nav = type_nav_init();
@@ -387,6 +421,8 @@ int main(void)
 	test_quals();
 	test_decl_interposability();
 	test_decl_needs_GOTPLT();
+
+	test_leb();
 
 	/* builtin tests */
 	test_out_out();
