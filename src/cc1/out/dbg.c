@@ -1396,7 +1396,7 @@ static void ucc_printflike(3, 4)
 
 static void dwarf_leb_printf(
 		struct DIE_flush_file *f,
-		unsigned long uleb, int is_sig)
+		unsigned long long uleb, int is_sig)
 {
 	asm_out_section(f->sec, "\t.byte ");
 	f->byte_cnt += leb128_out(cc1_output.file, uleb, is_sig);
