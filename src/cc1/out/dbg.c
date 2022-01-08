@@ -1763,6 +1763,7 @@ void out_dbg_end(out_ctx *octx, unsigned ptr_size)
 		case 8: addr_size = QUAD; break;
 		default: ucc_unreach(); break;
 	}
+	assert(platform_word_size() == addr_size);
 
 	/* current_scope should be a direct child of the compile unit */
 	if(dbg->current_scope && dbg->current_scope->parent != &compile_unit->die)
