@@ -1298,6 +1298,8 @@ static void state_from_triple(
 					break;
 				case ARCH_arm:
 				{
+          fprintf(stderr, "%s:%d: skipping -march=... `as` argument\n", __FILE__, __LINE__);
+          /*
 					const char *arg;
 
 					switch(triple->subarch){
@@ -1313,6 +1315,7 @@ static void state_from_triple(
 					dynarray_add(
 						&state->args[mode_assemb],
 						ustrprintf("-march=%s", arg));
+          */
 					break;
 				}
 			}
