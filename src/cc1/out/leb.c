@@ -34,12 +34,15 @@ unsigned leb128_length(unsigned long long value, int is_signed)
 	return len;
 }
 
-unsigned leb128_out(FILE *f, unsigned long long v, int sig)
+unsigned leb128_emit(
+		unsigned long long v,
+		int is_signed,
+		void emit_byte(unsigned char, void *),
+		void *ctx)
 {
-	const char *join = "";
 	unsigned len = 1;
 
-	if(sig){
+	if(is_signed){
 		signed long long sv = v;
 
 		for(;;){
@@ -60,8 +63,7 @@ unsigned leb128_out(FILE *f, unsigned long long v, int sig)
 				len++;
 			}
 
-			fprintf(f, "%s%d", join, byte);
-			join = ", ";
+			emit_byte(byte, ctx);
 
 			if(done)
 				break;
@@ -76,8 +78,7 @@ unsigned leb128_out(FILE *f, unsigned long long v, int sig)
 				byte |= 0x80; /* 0b_1000_0000 */
 			}
 
-			fprintf(f, "%s%d", join, byte);
-			join = ", ";
+			emit_byte(byte, ctx);
 
 			if(byte & 0x80){
 				len++;
@@ -88,4 +89,26 @@ unsigned leb128_out(FILE *f, unsigned long long v, int sig)
 	}
 
 	return len;
+}
+
+struct emit_ctx
+{
+	FILE *f;
+	const char *join;
+};
+
+static void emit_byte(unsigned char byte, void *vctx)
+{
+	struct emit_ctx *ctx = vctx;
+	fprintf(ctx->f, "%s%d", ctx->join, byte);
+	ctx->join = ", ";
+}
+
+unsigned leb128_out(FILE *f, unsigned long long v, int is_signed)
+{
+	struct emit_ctx ctx;
+	ctx.f = f;
+	ctx.join = "";
+
+	return leb128_emit(v, is_signed, emit_byte, &ctx);
 }

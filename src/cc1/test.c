@@ -387,6 +387,12 @@ static void test_decl_needs_GOTPLT(void)
     (test)(0, #leb " LEB length isn't " #expected, __LINE__); \
   }
 
+static void emit_byte(unsigned char byte, void *vctx)
+{
+  (void)byte;
+  (void)vctx;
+}
+
 static void test_leb(void)
 {
   // TODO: verify these on an x86_64 machine
@@ -405,13 +411,23 @@ static void test_leb(void)
   test_leb128_len(0x1, 1, 1);
   test_leb128_len(0x12, 1, 1);
   test_leb128_len(0x1234, 1, 2);
-  test_leb128_len(0x123456, 1, 3);
+  test_leb128_len(0x123456, 1, 4);
   test_leb128_len(0x1221122, 1, 4);
   test_leb128_len(0x11221122, 1, 5);
   test_leb128_len(0x1234567812L, 1, 6);
   test_leb128_len(0x123456781234L, 1, 7);
   test_leb128_len(0x12345678123456L, 1, 8);
   test_leb128_len(0x1234567812345678L, 1, 9);
+
+  test(leb128_emit(5, 1, emit_byte, NULL) == 1);
+
+  unsigned long long sleb = 0xfffffffc;
+  test_leb128_len(sleb, 1, 5);
+  test(leb128_emit(sleb, 1, emit_byte, NULL) == 5);
+
+  sleb = -4;
+  test_leb128_len(sleb, 1, 1);
+  test(leb128_emit(sleb, 1, emit_byte, NULL) == 1);
 }
 
 int main(void)
