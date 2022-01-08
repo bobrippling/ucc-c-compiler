@@ -225,7 +225,7 @@ struct DIE
 			struct dwarf_block *blk;
 			struct DIE *die_xref;
 			char *str;
-			long value;
+			integral_t value; /* may be LEB - need 64 bits for consistency */
 			struct out_dbg_lbl *lbl;
 		} bits;
 	} **attrs;
@@ -1517,7 +1517,7 @@ static void dwarf_flush_die_1(
 			case DW_FORM_data4: fty = LONG; goto form_data;
 			case DW_FORM_data8: fty = QUAD; goto form_data;
 form_data:
-				dwarf_printf(&state->info, fty, "%ld", a->bits.value);
+				dwarf_printf(&state->info, fty, "%" NUMERIC_FMT_D, a->bits.value);
 				break;
 
 			case DW_FORM_ULEB:
