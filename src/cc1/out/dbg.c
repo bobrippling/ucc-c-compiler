@@ -115,6 +115,7 @@
 	X(DW_OP_plus_uconst, 0x23) \
 	X(DW_OP_addr, 0x3)         \
 	X(DW_OP_breg6, 0x76)       \
+	X(DW_OP_breg11, 0x7b)      \
 	X(DW_OP_deref, 0x6)
 
 enum dwarf_tag
@@ -961,6 +962,18 @@ static int dbg_get_val_location(const out_val *v, long *const offset)
 	}
 }
 
+static int dbg_base_reg(void)
+{
+	switch(platform_type()){
+		case ARCH_i386:
+		case ARCH_x86_64:
+			return DW_OP_breg6; /* rbp */
+		case ARCH_arm:
+			return DW_OP_breg11; /* fp */
+	}
+	ucc_unreach(-1);
+}
+
 static void dbg_add_sym_location(struct DIE *param, const out_val *v)
 {
 	struct dwarf_block *locn;
@@ -974,7 +987,7 @@ static void dbg_add_sym_location(struct DIE *param, const out_val *v)
 	locn_data = umalloc(2 * sizeof *locn_data);
 
 	locn_data[0].type = BLOCK_HEADER;
-	locn_data[0].bits.v = DW_OP_breg6; /* rbp */
+	locn_data[0].bits.v = dbg_base_reg();
 	locn_data[1].type = BLOCK_LEB128_S;
 	locn_data[1].bits.v = offset;
 
@@ -1023,7 +1036,7 @@ static struct DIE *dbg_create_decl_die_local(
 		switch(d->sym->type){
 			case sym_local:
 				locn_ents[0].type = BLOCK_HEADER;
-				locn_ents[0].bits.v = DW_OP_breg6; /* rbp */
+				locn_ents[0].bits.v = dbg_base_reg();
 
 				locn_ents[1].type = BLOCK_LEB128_S;
 				locn_ents[1].bits.v = offset;
