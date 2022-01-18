@@ -254,6 +254,24 @@ static void io_fin(FILE *out)
 	io_fin_macosx_version(out);
 }
 
+static void io_start_arch_specific(FILE *out)
+{
+	switch(platform_type()){
+		case ARCH_arm:
+			xfprintf(out, ".syntax unified\n");
+			break;
+
+		case ARCH_x86_64:
+		case ARCH_i386:
+			break;
+	}
+}
+
+static void io_start(FILE *out)
+{
+	io_start_arch_specific(out);
+}
+
 static char *next_line(void)
 {
 	char *s = fline(infile, NULL);
@@ -303,6 +321,8 @@ static void gen_backend(symtable_global *globs, const char *fname, FILE *out, co
 				if(!compdir)
 					ccdie("getcwd():");
 			}
+
+			io_start(out);
 
 			gen_asm(globs,
 					cc1_first_fname ? cc1_first_fname : fname,
