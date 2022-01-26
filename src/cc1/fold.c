@@ -1175,7 +1175,7 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 				stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
 
 		if(!su_member
-		&& d->spel
+		&& (d->spel || stab->are_params)
 		&& (!STORE_IS_TYPEDEF(d->store) || type_is_variably_modified(d->ref)))
 		{
 			fold_decl_add_sym(d, stab);
@@ -1357,11 +1357,13 @@ void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab)
 		decl *d = *i;
 
 		if(!d->spel){
-			warn_at_print_error(w,
+			if(cc1_std < STD_C2X){
+				warn_at_print_error(w,
 					"argument %ld in \"%s\" is unnamed",
 					i - start + 1, sp);
 
-			fold_had_error = 1;
+				fold_had_error = 1;
+			}
 		}
 
 		if(!type_is_complete(d->ref))
