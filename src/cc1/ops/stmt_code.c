@@ -500,16 +500,18 @@ void fold_check_scope_entry(where *w, const char *desc,
 		if(s_iter->mark)
 			break;
 
+		if(s_iter->stmt_expr){
+			fold_had_error = 1;
+			warn_at_print_error(w, "%s statement expression", desc);
+			note_at(&s_iter->where, "statement expression here");
+		}
+
 		for(i = symtab_decls(s_iter); i && *i; i++){
 			decl *d = *i;
 			if(type_is_variably_modified(d->ref)){
-				char buf[WHERE_BUF_SIZ];
-
 				fold_had_error = 1;
-				warn_at_print_error(w,
-						"%s scope of variably modified declaration\n"
-						"%s: note: variable \"%s\"",
-						desc, where_str_r(buf, &d->where), d->spel);
+				warn_at_print_error(w, "%s scope of variably modified declaration", desc);
+				note_at(&d->where, "variable \"%s\"", d->spel);
 			}
 		}
 	}

@@ -555,7 +555,7 @@ static stmt *parse_stmt_and_decls(
 		int nested_scope,
 		attribute ***const attr)
 {
-	stmt *code_stmt = stmt_new_wrapper(
+	stmt *const code_stmt = stmt_new_wrapper(
 			code, symtab_new(ctx->scope, where_cc1_current(NULL)));
 	struct stmt_ctx subctx = *ctx;
 	int got_decls = 0, got_attribute;
