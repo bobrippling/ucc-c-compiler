@@ -647,6 +647,7 @@ static void check_valid_align_within_min(int const al, int const min, where *w)
 		return;
 
 	if(al < min){
+		/* gcc and clang allow this in some cases and will generate unaligned loads */
 		warn_at_print_error(w, "can't reduce alignment (%d -> %d)", min, al);
 		fold_had_error = 1;
 	}
