@@ -43,7 +43,7 @@ typedef decl_init **aggregate_brace_f(
 		decl_init **current, struct init_cpy ***range_store,
 		init_iter *,
 		symtable *,
-		void *arg1, int arg2, int allow_struct_copy);
+		void *arg1, int arg2, int allow_struct_copy, int nested);
 
 static decl_init *decl_init_brace_up_aggregate(
 		decl_init *current,
@@ -51,7 +51,7 @@ static decl_init *decl_init_brace_up_aggregate(
 		symtable *stab,
 		type *tfor,
 		aggregate_brace_f *,
-		void *arg1, int arg2);
+		void *arg1, int arg2, int nested);
 
 static void decl_init_create_assignments_base(
 		decl_init *init,
@@ -428,8 +428,12 @@ const char *decl_init_to_str(enum decl_init_type t)
  * -------------
  */
 
-static decl_init *decl_init_brace_up_r(decl_init *current, init_iter *,
-		type *, symtable *stab);
+static decl_init *decl_init_brace_up_r(
+	decl_init *current,
+	init_iter *,
+	type *,
+	symtable *stab,
+	int nested);
 
 static void override_warn(
 		type *tfor, where *old, where *new, int whole)
@@ -499,7 +503,7 @@ static decl_init *decl_init_brace_up_scalar(
 		if(n > 1)
 			excess_init(&first_init->where, tfor);
 
-		ret = decl_init_brace_up_r(current, &it, tfor, stab);
+		ret = decl_init_brace_up_r(current, &it, tfor, stab, /*nested*/0);
 
 		init_debug_indent(--);
 
@@ -576,12 +580,13 @@ static decl_init **decl_init_brace_up_array2(
 		init_iter *iter,
 		symtable *stab,
 		type *next_type, const int limit,
-		const int allow_struct_copy)
+		const int allow_struct_copy, int nested)
 {
 	size_t n = dynarray_count(current), i = 0;
 	decl_init *this;
 
 	(void)allow_struct_copy;
+	(void)nested;
 
 	while((this = *iter->pos)){
 		desig *des;
@@ -699,7 +704,7 @@ static decl_init **decl_init_brace_up_array2(
 			/* check for char[] init */
 			init_debug("array init [%zu ... %zu]: ", i, j);
 			init_debug_dinit(iter, next_type);
-			braced = decl_init_brace_up_r(replacing, iter, next_type, stab);
+			braced = decl_init_brace_up_r(replacing, iter, next_type, stab, /*nested*/1);
 
 			dynarray_padinsert(&current, i, &n, braced);
 
@@ -826,7 +831,7 @@ static decl_init **decl_init_brace_up_sue2(
 		init_iter *iter,
 		symtable *stab,
 		struct_union_enum_st *sue, const int is_anon,
-		const int allow_struct_copy)
+		const int allow_struct_copy, const int nested)
 {
 	size_t n = dynarray_count(current), i;
 	unsigned sue_nmem;
@@ -935,7 +940,7 @@ static decl_init **decl_init_brace_up_sue2(
 						braced_sub = decl_init_brace_up_aggregate(
 								replacing, iter, stab, jmem->ref,
 								(aggregate_brace_f *)&decl_init_brace_up_sue2, in,
-								/*anon:*/1);
+								/*anon:*/1, /*nested*/1);
 
 						if(replaced_sideeffects_location)
 							warn_replacing_with_sideeffects(replaced_sideeffects_location, braced_sub);
@@ -1009,14 +1014,21 @@ static decl_init **decl_init_brace_up_sue2(
 			}
 
 			if(type_is_incomplete_array(d_mem->ref)){
-				cc1_warn_at(&this->where, flexarr_init,
+				if(nested){
+					warn_at_print_error(&this->where,
+						"initialisation of nested flexible array");
+					fold_had_error = 1;
+
+				}else{
+					cc1_warn_at(&this->where, flexarr_init,
 						"initialisation of flexible array (GNU)");
+				}
 			}
 
 			if(!braced_sub){
 				braced_sub = decl_init_brace_up_r(
 						replacing, iter,
-						d_mem->ref, stab);
+						d_mem->ref, stab, /*nested:*/1);
 			}
 
 			if(replaced_sideeffects_location)
@@ -1110,7 +1122,7 @@ static decl_init *decl_init_brace_up_aggregate(
 		init_iter *iter,
 		symtable *stab, type *tfor,
 		aggregate_brace_f *brace_up_f,
-		void *arg1, int arg2)
+		void *arg1, int arg2, int nested)
 {
 	/* we don't pass through iter in the case that:
 	 * we are brace or next is a designator, i.e.
@@ -1195,7 +1207,7 @@ static decl_init *decl_init_brace_up_aggregate(
 					 */
 					&first->bits.ar.range_inits,
 					&it,
-					stab, arg1, arg2, allow_struct_copy);
+					stab, arg1, arg2, allow_struct_copy, nested);
 
 			if(it.pos[0]){
 				/* we know we're in a brace,
@@ -1222,7 +1234,7 @@ static decl_init *decl_init_brace_up_aggregate(
 		ret->bits.ar.inits = brace_up_f(
 				current ? current->bits.ar.inits : NULL,
 				&ret->bits.ar.range_inits,
-				&it, stab, arg1, arg2, allow_struct_copy);
+				&it, stab, arg1, arg2, allow_struct_copy, /*nested*/1);
 
 		iter->pos[desig_index] = saved;
 
@@ -1239,7 +1251,7 @@ static decl_init *decl_init_brace_up_aggregate(
 		r->bits.ar.inits = brace_up_f(
 				current ? current->bits.ar.inits : NULL,
 				&r->bits.ar.range_inits,
-				iter, stab, arg1, arg2, allow_struct_copy);
+				iter, stab, arg1, arg2, allow_struct_copy, /*nested*/1);
 
 		/* only warn if it's not designated
 		 * and it's not a struct copy */
@@ -1316,7 +1328,8 @@ static decl_init *is_char_init(
 
 static decl_init *decl_init_brace_up_array_chk_char(
 		decl_init *current, init_iter *iter,
-		type *const next_type, symtable *stab)
+		type *const next_type, symtable *stab,
+		int nested)
 {
 	int limit;
 	type *array_of = type_next(next_type);
@@ -1390,13 +1403,14 @@ static decl_init *decl_init_brace_up_array_chk_char(
 	return decl_init_brace_up_aggregate(
 			current, iter, stab, next_type,
 			(aggregate_brace_f *)&decl_init_brace_up_array2,
-			array_of, limit);
+			array_of, limit, nested);
 }
 
 
 static decl_init *decl_init_brace_up_r(
 		decl_init *current, init_iter *iter,
-		type *tfor, symtable *stab)
+		type *tfor, symtable *stab,
+		int nested)
 {
 	struct_union_enum_st *sue;
 	decl_init *ret;
@@ -1409,7 +1423,7 @@ static decl_init *decl_init_brace_up_r(
 
 	if(type_is(tfor, type_array)){
 		ret = decl_init_brace_up_array_chk_char(
-				current, iter, tfor, stab);
+				current, iter, tfor, stab, nested);
 	}else{
 		/* incomplete check _after_ array, since we allow T x[] */
 		if(!type_is_complete(tfor)){
@@ -1422,7 +1436,7 @@ static decl_init *decl_init_brace_up_r(
 			ret = decl_init_brace_up_aggregate(
 					current, iter, stab, tfor,
 					(aggregate_brace_f *)&decl_init_brace_up_sue2,
-					sue, 0 /* is anon */);
+					sue, 0 /* is anon */, nested);
 		}else{
 			ret = decl_init_brace_up_scalar(current, iter, tfor, stab);
 		}
@@ -1490,7 +1504,7 @@ static decl_init *decl_init_brace_up_start(
 		/* else struct copy init */
 	}
 
-	ret = decl_init_brace_up_r(NULL, &it, tfor, stab);
+	ret = decl_init_brace_up_r(NULL, &it, tfor, stab, /*nested:*/0);
 
 	if(type_is_incomplete_array(tfor)){
 		/* complete it */
@@ -1708,8 +1722,11 @@ zero_init:
 				n = dynarray_count(init->bits.ar.inits);
 
 				/* it's fine if there's nothing for it */
-				if(n > 0)
-					die_at(&init->where, "non-static initialisation of flexible array");
+				if(n > 0){
+					warn_at_print_error(&init->where, "non-static initialisation of flexible array");
+					fold_had_error = 1;
+					return;
+				}
 			}else if(type_is_variably_modified(tfor)){
 				/* error already emitted */
 				return;
