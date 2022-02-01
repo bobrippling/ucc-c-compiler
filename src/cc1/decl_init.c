@@ -1318,12 +1318,14 @@ static decl_init *decl_init_brace_up_array_chk_char(
 		decl_init *current, init_iter *iter,
 		type *const next_type, symtable *stab)
 {
-	const int limit = type_is_incomplete_array(next_type)
-		? -1 : (signed)type_array_len(next_type);
-
+	int limit;
 	type *array_of = type_next(next_type);
-
 	decl_init *strk;
+
+	/* vla errors are emitted elsewhere */
+	limit = type_is_incomplete_array(next_type) || type_is_variably_modified(next_type)
+		? -1
+		: (signed)type_array_len(next_type);
 
 	init_debug("brace-up-array: of=%s\n", type_to_str(next_type));
 
