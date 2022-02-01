@@ -67,11 +67,11 @@ static int check_enum_cmp(
 	if(sl == sr)
 		return 0;
 
-	cc1_warn_at(w, enum_mismatch,
-			"enum type mismatch in %s\n"
-			"%s: note: 'enum %s' vs 'enum %s'",
-			desc, where_str(w),
+	if(cc1_warn_at(w, enum_mismatch, "enum type mismatch in %s", desc)){
+		note_at(w,
+			"'enum %s' vs 'enum %s'",
 			sl->spel, sr->spel);
+	}
 
 	return 1;
 }
@@ -1724,10 +1724,9 @@ void fold_merge_tenatives(symtable *stab)
 			/* look for an explicit init */
 			if(!type_is(d->ref, type_func) && d->bits.var.init.dinit){
 				if(init){
-					char wbuf[WHERE_BUF_SIZ];
-					die_at(&init->where, "multiple definitions of \"%s\"\n"
-							"%s: note: other definition here", init->spel,
-							where_str_r(wbuf, &d->where));
+					warn_at_print_error(&init->where, "multiple definitions of \"%s\"", init->spel);
+					note_at(&d->where, "other definition here");
+					fold_had_error = 1;
 				}
 				init = d;
 			}else if(!init /* no explicit init - complete array? */

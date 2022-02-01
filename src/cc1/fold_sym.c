@@ -286,13 +286,13 @@ static void warn_c11_retypedef(decl *a, decl *b)
 {
 	/* repeated typedefs are allowed in C11 - 6.7.3 */
 	if(cc1_std < STD_C11){
-		char buf[WHERE_BUF_SIZ];
-
-		cc1_warn_at(&b->where,
+		if(cc1_warn_at(&b->where,
 				typedef_redef,
-				"typedef '%s' redefinition is a C11 extension\n"
-				"%s: note: other definition here",
-				a->spel, where_str_r(buf, &a->where));
+				"typedef '%s' redefinition is a C11 extension",
+				a->spel))
+		{
+			    note_at(&a->where, "other definition here");
+		}
 	}
 }
 

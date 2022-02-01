@@ -124,7 +124,6 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 		{
 			symtable *above_scope = ent.owning_symtab;
 			decl *found = ent.bits.decl;
-			char buf[WHERE_BUF_SIZ];
 			int both_func = is_func && type_is(found->ref, type_func);
 			int both_extern = decl_linkage(d) == linkage_external
 				&& decl_linkage(found) == linkage_external;
@@ -144,9 +143,10 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 
 				/* same scope? error unless they're both extern */
 				if(same_scope && !both_extern){
-					die_at(&d->where, "redefinition of \"%s\"\n"
-							"%s: note: previous definition here",
-							d->spel, where_str_r(buf, &found->where));
+					warn_at_print_error(&d->where, "redefinition of \"%s\"\n", d->spel);
+					note_at(&found->where, "previous definition here");
+					fold_had_error = 1;
+					continue;
 				}
 
 				/* -Wshadow:

@@ -2122,12 +2122,12 @@ static void check_var_storage_redef(decl *new, decl *old)
 	}
 
 	if(error){
-		char buf[WHERE_BUF_SIZ];
 		warn_at_print_error(&new->where,
-				"static redefinition as non-static\n"
-				"%s: note: previous definition",
-				new->spel,
-				where_str_r(buf, &old->where));
+			"static redefinition as non-static",
+			new->spel);
+
+		note_at(&old->where, "previous definition");
+
 		fold_had_error = 1;
 	}
 }

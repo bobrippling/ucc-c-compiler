@@ -795,13 +795,14 @@ static void maybe_warn_missing_init(
 		if(i == 1 && decl_init_is_zero(su_inits[0]))
 			warningp = &cc1_warning.init_missing_struct_zero;
 
-		cc1_warn_at_w(loc,
+		if(cc1_warn_at_w(loc,
 				warningp,
-				"%u missing initialiser%s for '%s %s'\n"
-				"%s: note: starting at \"%s\"",
+				"%u missing initialiser%s for '%s %s'",
 				diff, diff == 1 ? "" : "s",
-				sue_str(sue), sue->spel,
-				where_str(loc), last_memb->spel);
+				sue_str(sue), sue->spel))
+		{
+			note_at(loc, "starting at \"%s\"", last_memb->spel);
+		}
 	}
 }
 
@@ -1053,13 +1054,12 @@ static decl_init **decl_init_brace_up_sue2(
 		attribute *desig_attr;
 
 		if((desig_attr = attr_present(sue->attr, attr_desig_init))){
-			char buf[WHERE_BUF_SIZ];
-
-			cc1_warn_at(first_non_desig, init_undesignated,
-				"positional initialisation of %s\n"
-				"%s: note: attribute here",
-				sue_str(sue),
-				where_str_r(buf, &desig_attr->where));
+			if(cc1_warn_at(first_non_desig, init_undesignated,
+				"positional initialisation of %s",
+				sue_str(sue)))
+			{
+				note_at(&desig_attr->where, "attribute here");
+			}
 		}
 	}
 
