@@ -7,6 +7,12 @@
 #include "../util/util.h"
 #include "alloc.h"
 
+/*
+#ifndef __STDC_IEC_559__
+#  warning zeroing via memset may not be equivalent to NULL / 0.0f
+#endif
+*/
+
 void *umalloc(size_t l)
 {
 	void *p = calloc(1, l);

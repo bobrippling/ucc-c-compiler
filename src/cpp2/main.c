@@ -47,6 +47,8 @@ static const struct
 	{ "__STDC_NO_VLA__", "1", 0 },
 #endif
 
+	{ "__STDC_IEC_559__", "1", 0 }, /* memset(..., 0, ...) == NULL / 0.0f */
+
 #define TYPE(ty, c) { "__" #ty "_TYPE__", #c, 0 }
 
 	TYPE(SIZE, unsigned long),
