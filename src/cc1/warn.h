@@ -32,6 +32,9 @@ struct cc1_warning
 
 extern struct cc1_warning cc1_warning;
 
+/* for testing */
+int cc1_warn_type(const struct where *where, const unsigned char *pwarn);
+
 /* returns 1 if a warning was emitted */
 int cc1_warn_at_w(
 		const struct where *where,

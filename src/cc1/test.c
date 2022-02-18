@@ -3,6 +3,7 @@
 #include <stdarg.h>
 
 #include "../util/where.h"
+#include "../util/warn.h"
 #include "cc1.h"
 #include "cc1_where.h"
 #include "out/asm.h"
@@ -11,6 +12,7 @@
 #include "funcargs.h"
 #include "cc1_target.h"
 #include "cc1_out.h"
+#include "warn.h"
 
 /* builtin tests */
 #include "out/out.h"
@@ -380,6 +382,38 @@ static void test_decl_needs_GOTPLT(void)
 	cc1_visibility_default = VISIBILITY_DEFAULT;
 }
 
+static void test_warnings(void)
+{
+	enum warning_fatality fatality;
+	where w = { 0 };
+
+	w.fname = "dummy";
+
+	/* -Wxyz shouldn't be emitted for a sysheader */
+	cc1_warning.system_headers = 0;
+	fatality = W_WARN;
+	w.is_sysh = 1;
+	test(cc1_warn_type(&w, (unsigned char *)&fatality) == -1);
+
+	/* -Werror=xyz shouldn't be emitted for a sysheader */
+	cc1_warning.system_headers = 0;
+	fatality = W_ERROR;
+	w.is_sysh = 1;
+	test(cc1_warn_type(&w, (unsigned char *)&fatality) == -1);
+
+	/* -Wxyz -Wsystem-headers should be emitted for a sysheader */
+	cc1_warning.system_headers = 1;
+	fatality = W_WARN;
+	w.is_sysh = 1;
+	test(cc1_warn_type(&w, (unsigned char *)&fatality) == VWARN_WARN);
+
+	/* -Werror=xyz -Wsystem-headers should be emitted for a sysheader */
+	cc1_warning.system_headers = 1;
+	fatality = W_ERROR;
+	w.is_sysh = 1;
+	test(cc1_warn_type(&w, (unsigned char *)&fatality) == VWARN_ERR);
+}
+
 int main(void)
 {
 	cc1_type_nav = type_nav_init();
@@ -387,6 +421,7 @@ int main(void)
 	test_quals();
 	test_decl_interposability();
 	test_decl_needs_GOTPLT();
+	test_warnings();
 
 	/* builtin tests */
 	test_out_out();
