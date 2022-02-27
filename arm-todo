@@ -1,4 +1,4 @@
-[ ] stret.c
+[x] stret.c
 [ ] -fpic & -fropi/-frwpi for granular pic
 
 [ ] load-store.c
@@ -8,3 +8,5 @@
 [ ] literal.c
 [ ] prologue.c
 [ ] regsave.c
+
+[ ] literal2.c
