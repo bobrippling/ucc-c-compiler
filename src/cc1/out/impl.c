@@ -21,7 +21,7 @@
 void impl_comment(out_ctx *octx, const char *fmt, va_list l)
 {
 	out_asm2(octx, P_NO_LIVEDUMP | P_NO_NL, out_asm_comment());
-	out_asmv(octx, P_NO_LIVEDUMP | P_NO_INDENT | P_NO_NL, fmt, l);
+	out_asmv(octx, P_NO_LIVEDUMP | P_NO_INDENT, fmt, l);
 }
 
 enum flag_cmp op_to_flag(enum op_type op)
