@@ -258,6 +258,8 @@ enum stret impl_func_stret(type *ty)
 	unsigned sz;
 	struct_union_enum_st *su = type_is_s_or_u(ty);
 
+	assert(!type_is(ty, type_func) && "impl_func_stret should be called on the returned type");
+
 	if(!su)
 		return stret_scalar;
 

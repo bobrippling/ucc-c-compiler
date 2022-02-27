@@ -296,6 +296,8 @@ enum stret impl_func_stret(type *ty)
 	struct_union_enum_st *su = type_is_s_or_u(ty);
 	unsigned sz;
 
+	assert(!type_is(ty, type_func) && "impl_func_stret should be called on the returned type");
+
 	if(!su)
 		return stret_scalar;
 
@@ -999,11 +1001,7 @@ void impl_fp_bits(char *buf, size_t bufsize, enum type_primitive prim, floating_
 
 const struct vreg *impl_regs_for_args(type *fnty, size_t *const n)
 {
-	funcargs *fa = type_funcargs(fnty);
-	size_t nargs = fa->variadic
-		? countof(callregs)
-		: dynarray_count(fa->arglist);
-
-	*n = nargs;
+	(void)fnty;
+	*n = countof(callregs);
 	return callregs;
 }
