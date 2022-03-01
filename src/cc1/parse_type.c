@@ -2014,7 +2014,9 @@ static void check_and_replace_old_func(decl *d, decl **old_args, symtable *scope
 		}
 
 		for(j = 0; j < n_proto_decls; j++){
-			if(!strcmp(old_args[i]->spel, dfuncargs->arglist[j]->spel)){
+			const char *o = old_args[i]->spel;
+			const char *n = dfuncargs->arglist[j]->spel;
+			if(o && n && !strcmp(o, n)){
 
 				/* replace the old implicit int arg's type
 				 *
