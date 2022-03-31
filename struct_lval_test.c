@@ -3,25 +3,28 @@ printf();
 main()
 {
 	struct A {
-		int x, y;
+		int x;
 	};
+
+	struct Flags {
+		int flags;
+	};
+
 	struct C {
 		struct A a, b, r;
-		struct {
-			int flags;
-		} *rkp;
+		struct Flags *rkp;
 	} c = {
-		.a = { 1, 2 },
-		.b = { 3, 4 },
-	}, *pc = &c;
+		.a = { 1 },
+		.b = { 3 },
+	};
+	struct C *pc = &c;
 
-	int cond = 3;
+	pc->r = (pc->rkp && pc->rkp->flags) ? pc->a : pc->b;
+	//       ^~~~~~~ we have some pointer stored as (&pc + N)
+	//               we then do a non-zero check on pc->rkp,
+	//               then spill (&pc + N), and in doing so eval `&pc + N`,
+	//               which clobbers the CPU flags, meaning we go into the wrong branch
+	//               and boom
 
-#define FL_ISSET(l, f) ((l) & (f))
-#define F_ISSET(p, f)  FL_ISSET((p)->flags, (f))
-#define IS_MOTION(vp) ((vp)->rkp != 0 && F_ISSET((vp)->rkp, 5))
-
-	pc->r = IS_MOTION(pc) ? pc->a : pc->b;
-
-	printf("{ %d, %d }\n", pc->r.x, pc->r.y);
+	//printf("{ %d, %d }\n", pc->r.x, pc->r.y);
 }

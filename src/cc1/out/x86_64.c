@@ -1495,6 +1495,13 @@ static void maybe_promote(out_ctx *octx, const out_val **pl, const out_val **pr)
 const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const out_val *r)
 {
 	const char *opc;
+	const out_val *allow[3];
+
+	/* need to decay any flags before we start doing any maths */
+	allow[0] = l;
+	allow[1] = r;
+	allow[2] = NULL;
+	v_decay_flags_except(octx, allow);
 
 	l = x86_check_ivfp(octx, l);
 	r = x86_check_ivfp(octx, r);
