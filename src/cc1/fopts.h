@@ -19,6 +19,7 @@ X("signed-char", signed_char)
 INVERT("unsigned-char", signed_char)
 X("force-va_list-type", force_valist_type)
 X("strict-aliasing", strict_aliasing) /* ignored, just for compat */
+X("knr-functions", knr_functions)
 
 /* frontend output */
 X("dump-bblocks", dump_basic_blocks)

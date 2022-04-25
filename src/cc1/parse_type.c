@@ -1001,7 +1001,7 @@ funcargs *parse_func_arglist(symtable *scope)
 	funcargs *args = funcargs_new();
 
 	if(curtok == token_close_paren){
-		if(cc1_std >= STD_C2X){
+		if(cc1_std >= STD_C2X || !cc1_fopt.knr_functions){
 			funcargs_empty_void(args);
 		}else{
 			args->args_old_proto = 1;

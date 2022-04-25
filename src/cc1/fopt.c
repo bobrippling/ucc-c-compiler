@@ -8,6 +8,8 @@ void fopt_default(struct cc1_fopt *opt)
 
 	opt->builtin = 1;
 	opt->signed_char = 1;
+	/* default to () meaning (...), -std=c2x or -fno-knr-functions will mean (void) */
+	opt->knr_functions = 1;
 
 	opt->print_aka = 1;
 	opt->print_typedefs = 1;
