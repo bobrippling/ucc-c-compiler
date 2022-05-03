@@ -255,7 +255,12 @@ int triple_default(struct triple *triple, const char **const unparsed)
 
 	filter_unam(&unam);
 
-	if(!parse_arch(unam.machine, &triple->arch, &triple->subarch)){
+	if(parse_arch(unam.machine, &triple->arch, &triple->subarch)){
+		if(triple->arch == ARCH_arm && triple->subarch == SUBARCH_armv7){
+			/* since we're defaulting, pick armv6 for compatability */
+			triple->subarch = SUBARCH_armv6;
+		}
+	}else{
 		if(unparsed)
 			*unparsed = unam.machine;
 		return 0;

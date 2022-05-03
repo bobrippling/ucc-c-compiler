@@ -258,8 +258,29 @@ static void io_start_arch_specific(FILE *out)
 {
 	switch(platform_type()){
 		case ARCH_arm:
-			xfprintf(out, ".syntax unified\n");
+		{
+			const char *sub;
+			switch(platform_subarch()){
+				case SUBARCH_armv6:
+					sub = "armv6";
+					break;
+				case SUBARCH_armv7:
+					ICW("armv7 asm generation is incomplete");
+					sub = "armv7";
+					break;
+				case SUBARCH_none:
+					ucc_unreach();
+			}
+
+			xfprintf(
+					out,
+					".syntax unified\n"
+					".arch %s\n"
+					".arm\n",
+					sub
+				);
 			break;
+		}
 
 		case ARCH_x86_64:
 		case ARCH_i386:
