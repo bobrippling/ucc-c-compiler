@@ -62,20 +62,17 @@ static int is_armv7_or_above(void)
 
 static int is_8bit_rotated_or_zero(unsigned x)
 {
-	/* see if one byte is set, and no others */
+	/* see if one byte is set, and no others - rotate by even pow-of-2 */
 	unsigned i;
 
 	if(!x)
 		return 1;
 
-	for(i = 0; i < sizeof(x); i++){
+	for(i = 0; i < sizeof(x); i += 2){
 		integral_t mask = 0xff << (i * 8);
 		if((x & mask) && (x & ~mask) == 0)
 			return 1;
 	}
-
-	if(x & 0xf000000f && (x & 0x0ffffff0) == 0) /* split byte */
-		return 1;
 
 	return 0;
 }
