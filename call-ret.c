@@ -1,9 +1,7 @@
-struct A {
-	char c;
-	signed char sc;
-	unsigned char uc;
-	int i;
-};
+void g(const char *p)
+{
+	printf("g(\"%s\")\n", p);
+}
 
 int f(int a, int b, int c, int d, int e)
 {

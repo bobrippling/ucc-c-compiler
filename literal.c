@@ -1,5 +1,9 @@
-void f(unsigned);
-void g(int);
+void f(unsigned u){
+  printf("%#x\n", u);
+}
+void g(int i){
+  printf("%d\n", i);
+}
 
 int main()
 {

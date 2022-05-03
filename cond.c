@@ -10,6 +10,16 @@ main()
 	for(int i = 10; i; i--)
 		f(i);
 
+  printf("---\n");
+
+	for(int i = 0; i < 10; i++)
+		f(i);
+
+  printf("---\n");
+
+	for(int i = 0; i <= 10; i++)
+		f(i);
+
 	// TODO: try to convert
 	//   sub r0, r0, #1
 	//   cmp r0, #0
