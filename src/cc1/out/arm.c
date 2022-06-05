@@ -809,8 +809,6 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 	switch(op){
 		case op_multiply: opc = "mul"; goto op;
 		case op_minus: opc = "sub"; goto op;
-		case op_divide: opc = "div"; goto op;
-		case op_modulus: opc = "mod"; goto op;
 		case op_plus: opc = "add"; goto op;
 		case op_xor: opc = "or"; goto op;
 		case op_or: opc = "or"; goto op;
@@ -887,6 +885,25 @@ cond:
 			return v_new_flag(
 					octx, impl_min_retained(octx, l, r),
 					cmp, is_signed ? flag_mod_signed : 0);
+		}
+
+		case op_divide: opc = type_is_signed(l->t) ? "__aeabi_idiv" : "__aeabi_uidiv"; goto divmod;
+		case op_modulus: opc = type_is_signed(l->t) ? "__aeabi_idivmod" : "__aeabi_uidivmod"; goto divmod;
+divmod:
+		{
+			type *btype = l->t;
+			type *fnty = type_ptr_to(
+					type_func_of(
+						btype,
+						funcargs_new_void(),
+						NULL));
+
+			const out_val *fn = out_new_lbl(octx, fnty, opc, OUT_LBL_PIC);
+			const out_val *args[3] = { NULL };
+			args[0] = l;
+			args[1] = r;
+
+			return out_call(octx, fn, args, fnty);
 		}
 
 		case op_orsc:

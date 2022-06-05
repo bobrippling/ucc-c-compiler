@@ -1402,7 +1402,35 @@ static void state_from_triple(
 		case ARCH_arm:
 			set_signed_char(state, 0);
 			dynarray_add(&state->args[mode_compile], ustrdup("-fshort-enums"));
-			break;
+
+      {
+        static const char *libgcc_versions[] = {
+          "8",
+          "6",
+          "6.5.0",
+          "5",
+          "5.5.0",
+          "4.9",
+          "4.9.4"
+        };
+        int found = 0;
+
+        for(size_t i = 0; i < countof(libgcc_versions); i++){
+          char buf[64];
+          xsnprintf(buf, sizeof(buf), "/usr/lib/gcc/arm-linux-gnueabihf/%s", libgcc_versions[i]);
+
+          if(access(buf, F_OK) == 0){
+            dynarray_add(&state->args[mode_link], ustrprintf("-L%s", buf));
+            dynarray_add(&state->args[mode_link], ustrdup("-lgcc"));
+            found = 1;
+            break;
+          }
+        }
+
+        if(!found)
+          fprintf(stderr, "couldn't find a libgcc directory\n");
+      }
+      break;
 	}
 }
 
