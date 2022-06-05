@@ -786,9 +786,8 @@ void impl_store(out_ctx *octx, const out_val *dest, const out_val *val)
 			break;
 
 		case V_LBL:
-			out_asm(octx, "str %s, =%s",
-					arm_reg_to_str(reg->idx),
-					dest->bits.lbl.str);
+			dest = v_to_reg(octx, dest);
+			arm_ldr_str(octx, STR, val->t, reg->idx, &dest->bits.regoff);
 			break;
 
 		case V_CONST_F:
