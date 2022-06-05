@@ -554,6 +554,7 @@ static void arm_op(
 	const out_val *r)
 {
 	assert(l->type == V_REG);
+	assert(l->bits.regoff.offset == 0);
 
 	if(r->type == V_CONST_I){
 		const integral_t val = r->bits.val_i;
@@ -602,6 +603,7 @@ static void arm_op(
 	}
 
 	r = v_to_reg(octx, r);
+	assert(r->bits.regoff.offset == 0);
 
 	if(result_reg)
 		out_asm(
@@ -689,6 +691,10 @@ const out_val *impl_load(
 		case V_REG:
 			if(from->bits.regoff.offset > 0){
 				const out_val *add = out_new_l(octx, from->t, from->bits.regoff.offset);
+				out_val *f;
+
+				from = f = v_dup_or_reuse(octx, from, from->t);
+				f->bits.regoff.offset = 0;
 
 				arm_op(
 						octx,
@@ -703,6 +709,10 @@ const out_val *impl_load(
 			}
 			if(from->bits.regoff.offset < 0){
 				const out_val *sub = out_new_l(octx, from->t, -from->bits.regoff.offset);
+				out_val *f;
+
+				from = f = v_dup_or_reuse(octx, from, from->t);
+				f->bits.regoff.offset = 0;
 
 				arm_op(
 						octx,
@@ -835,6 +845,11 @@ op:
 				v_unused_reg(octx, 1, 0, &result_reg, l);
 			}
 
+			if(l->type == V_REG || l->type == V_REGOFF)
+				l = v_reg_apply_offset(octx, l);
+			if(r->type == V_REG || r->type == V_REGOFF)
+				r = v_reg_apply_offset(octx, r);
+
 			// TODO: swap opc_neg/NULL for:
 			// and --> bics
 			// add <--> sub
@@ -859,6 +874,10 @@ cond:
 			}
 
 			l = v_to_reg(octx, l);
+			if(l->type == V_REG || l->type == V_REGOFF)
+				l = v_reg_apply_offset(octx, l);
+			if(r->type == V_REG || r->type == V_REGOFF)
+				r = v_reg_apply_offset(octx, r);
 
 			arm_op(octx, opc, opc_neg, NULL, l, r);
 
