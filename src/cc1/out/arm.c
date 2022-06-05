@@ -539,6 +539,9 @@ void impl_func_epilogue(out_ctx *octx, type *ty, int clean_stack)
 	}else{
 		out_asm(octx, "bx lr");
 	}
+
+	/* dump literal pool to keep proximity to code */
+	out_asm(octx, ".ltorg");
 }
 
 ucc_nonnull((1, 2, 5, 6))
