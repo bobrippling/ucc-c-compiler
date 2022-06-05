@@ -10,7 +10,8 @@
 #include "../type_is.h"
 #include "../pack.h"
 
-#include "../cc1.h" /* cc1_mstack_align */
+#include "../fopt.h"
+#include "../cc1.h" /* cc1_mstack_align, fopt */
 
 #include "val.h"
 #include "out.h"
@@ -527,8 +528,10 @@ void v_save_regs(
 				&& impl_reg_is_callee_save(octx->current_fnty, &v->bits.regoff.reg))
 				{
 					/* only comment for non-const regs */
-					out_comment(octx, "not saving reg %d - callee save",
-							v->bits.regoff.reg.idx);
+					if(cc1_fopt.verbose_asm){
+						out_comment(octx, "not saving reg %d - callee save",
+								v->bits.regoff.reg.idx);
+					}
 
 				}else{
 					out_comment(octx, "saving register %d", v->bits.regoff.reg.idx);
