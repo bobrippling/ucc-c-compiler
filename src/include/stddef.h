@@ -7,7 +7,11 @@
 
 typedef long ptrdiff_t;
 typedef unsigned long size_t;
+#if __LP64__
 typedef long ssize_t;
+#else
+typedef int ssize_t;
+#endif
 
 typedef int wchar_t;
 
