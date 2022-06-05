@@ -323,10 +323,7 @@ void impl_func_overlay_regpair(
 const out_val *impl_cast_extend(out_ctx *octx, const out_val *val, type *big_to)
 {
 	if(val->type != V_REG)
-		val = v_to_reg(octx, val);
-
-	if(type_size(val->t, NULL) != type_primitive_size(type_int))
-		ICW("TODO: cast from %s", type_to_str(val->t));
+		val = v_to_reg(octx, val); /* this does a ldrsb / ldrsh, etc */
 
 	/* fully extended */
 	return out_change_type(octx, val, big_to);
