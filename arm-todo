@@ -4,8 +4,8 @@
 [x] call-ret.c
 [x] cond.c
 [x] literal.c
-[.] prologue.c
-[ ] regsave.c
+[x] prologue.c
+[x] regsave.c
 [ ] computed-goto.c
 
 [ ] -fpic & -fropi/-frwpi for granular pic
