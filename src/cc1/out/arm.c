@@ -819,6 +819,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		case op_xor: opc = "or"; goto op;
 		case op_or: opc = "or"; goto op;
 		case op_and: opc = "and"; goto op;
+		case op_shiftl: opc = "lsl"; goto op;
+		case op_shiftr: opc = "lsr"; goto op;
 
 		case op_eq:
 		case op_ne:
@@ -896,14 +898,9 @@ cond:
 			ICE("sc op");
 			break;
 
-		case op_shiftl:
-		case op_shiftr:
-			ICW("TODO: shift");
-			break;
-
 		case op_not:
 		case op_bnot:
-			ICW("TODO: not");
+			ICE("binary not");
 			break;
 
 		case op_signbit:
