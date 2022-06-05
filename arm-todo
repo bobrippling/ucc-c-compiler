@@ -1,15 +1,13 @@
 [x] stret.c
-
 [x] load-store.c
 [x] call-ret.c
 [x] cond.c
 [x] literal.c
 [x] prologue.c
 [x] regsave.c
-[ ] computed-goto.c
+[x] computed-goto.c
+[x] literal2.c
 
 [ ] -fpic & -fropi/-frwpi for granular pic
-
-[ ] literal2.c
 
 [ ] convert the above into tests
