@@ -837,6 +837,11 @@ op:
 			 */
 			struct vreg result_reg;
 
+			if(op == op_multiply){
+				/* mul doens't support flexible 3rd operand */
+				r = v_to_reg(octx, r);
+			}
+
 			if(l->type == V_REG && impl_reg_frame_const(&l->bits.regoff.reg, 1)){
 				/* can't reuse fp/sp */
 				v_unused_reg(octx, 1, 0, &result_reg, NULL);
