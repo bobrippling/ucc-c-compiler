@@ -813,8 +813,8 @@ const out_val *impl_op(out_ctx *octx, enum op_type op, const out_val *l, const o
 		case op_multiply: opc = "mul"; goto op;
 		case op_minus: opc = "sub"; goto op;
 		case op_plus: opc = "add"; goto op;
-		case op_xor: opc = "or"; goto op;
-		case op_or: opc = "or"; goto op;
+		case op_xor: opc = "eor"; goto op;
+		case op_or: opc = "orr"; goto op;
 		case op_and: opc = "and"; goto op;
 		case op_shiftl: opc = "lsl"; goto op;
 		case op_shiftr: opc = "lsr"; goto op;
