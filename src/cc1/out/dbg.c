@@ -1440,8 +1440,9 @@ static void dwarf_flush_die_block(
 
 		case BLOCK_ADDR_STR:
 			dwarf_printf(&state->info, state->addr_size,
-					"%s %s DW_FORM_block, address\n", out_asm_comment(),
-					e->bits.str);
+					"%s %s DW_FORM_block, address\n",
+					e->bits.str,
+					out_asm_comment());
 			break;
 	}
 }
