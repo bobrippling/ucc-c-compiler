@@ -162,6 +162,7 @@ void gen_vla_arg_sideeffects(decl *d, out_ctx *octx)
 	if((decayed = type_is_decayed_array(d->ref))
 	&& (decayed = type_is_vla(decayed, VLA_TOP_DIMENSION)))
 	{
+		out_comment(octx, "vla arg side-effect");
 		out_val_consume(octx, gen_expr(decayed->bits.array.size, octx));
 	}
 }
