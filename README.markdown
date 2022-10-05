@@ -87,6 +87,42 @@ This ensures that any declarations after this `pragma` begin with `expr_`, allow
 
 See [namespace.c](/test/pragma/namespace.c) for an example.
 
+C23 Support
+----------
+
+[C23 draft](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3047.pdf)
+
+Supported                   | Link                                                                | Description
+--------------------------- | ------------------------------------------------------------------- | -----------
+❌ No                       | [n2969](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2969.htm) | Bit precise bit fields, i.e. (unsigned) `_BitInt(<8)`, `unsigned long : N`
+✅ Needs warnings adjusting | [n2899](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2899.htm) | Add `typeof(...)`
+✅ Needs warnings adjusting |                                                                     | Add binary constants 0b10101010, and printf("%b", ...)
+❌ No                       |                                                                     | Add `'` digit separator
+❌ No                       |                                                                     | Add `[[attributes]]`: `deprecated`, `fallthrough`, `maybe_unused,` `nodiscard`, `noreturn`, `reproducible`, `unsequenced`
+❌ No                       | [n2956](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2956.htm) | Unsequenced functions
+❌ No                       |                                                                     | Add identical cvr-qualifications for arrays and their elements
+❌ No                       |                                                                     | Add single argument `static_assert`
+❌ No                       | [n3042](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3042.htm) | Add `nullptr`
+❌ No                       |                                                                     | Add keywords: true/false, alignas, alignof, bool, true, false, `static_assert,` `thread_local`
+❌ No                       |                                                                     | Add `#elifdef`, `#elifndef`, `#warning` and `#embed`
+❌ No                       |                                                                     | Add `u8` char constants
+❌ No                       |                                                                     | Add `u8` string literal type change
+✅ Needs warnings adjusting |                                                                     | Allow empty init `= {}`
+❌ No                       |                                                                     | Allow unnamed parameters
+❌ No                       |                                                                     | Allow declarations and `}` after labels
+❌ No                       |                                                                     | Remove mixed wide string literal concatenation
+❌ No                       |                                                                     | Remove K&R functions
+❌ No                       |                                                                     | Change `static_assert` and `thread_local` to keywords
+✅ Yes                      |                                                                     | Make variably-modified types mandatory
+❌ No                       | [n2975](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n2975.pdf) | Relax requirements for variadic parameter lists
+❌ No                       | [n3007](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3007.htm) | (`auto`) N3007 - type Inference for object definitions
+❌ No                       | [n3017](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3017.htm) | #embed
+❌ No                       | [n3018](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3018.htm) | constexpr for Object Definitions
+❌ No                       | [n3029](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3029.htm) | Improved Normal Enumerations
+❌ No                       | [n3030](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3030.htm) | Enhanced Enumerations
+❌ No                       | [n3033](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3033.htm) | Comma Omission and Deletion (__VA_OPT__)
+❌ No                       | [n3038](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n3038.htm) | Introduce Storage Classes for Compound Literals
+
 
 GNU C Supported Extensions
 ----------
