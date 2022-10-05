@@ -193,8 +193,8 @@ static int should_emit_macosx_version_min(struct version *const min)
 	if(platform_sys() != SYS_darwin)
 		return 0;
 
-	min->maj = 10;
-	min->min = 5;
+	min->maj = MACOS_VERSION_MAJ;
+	min->min = MACOS_VERSION_MIN;
 	return 1;
 }
 

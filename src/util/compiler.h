@@ -48,4 +48,7 @@
 #  define COMPILER_SUPPORTS_LONG_DOUBLE 1
 #endif
 
+#define MACOS_VERSION_MAJ 10
+#define MACOS_VERSION_MIN 8
+
 #endif

@@ -27,6 +27,9 @@
 
 #define LINUX_LIBC_PREFIX "/usr/lib/"
 
+#define STRINGIFY_(x) #x
+#define STRINGIFY(x) STRINGIFY_(x)
+
 enum mode
 {
 #define X(mode, desc, suffix) mode_##mode,
@@ -1336,7 +1339,14 @@ static void state_from_triple(
 				dynarray_add(&state->ldflags_pre_user, ustrdup(syslibroot));
 			}
 			dynarray_add(&state->ldflags_pre_user, ustrdup("-macosx_version_min"));
-			dynarray_add(&state->ldflags_pre_user, ustrdup("10.8"));
+			dynarray_add(
+				&state->ldflags_pre_user,
+				ustrdup(
+					STRINGIFY(MACOS_VERSION_MAJ)
+					"."
+					STRINGIFY(MACOS_VERSION_MIN)
+				)
+			);
 
 			if(vars->debug && vars->output){
 				state->post_link = ustrprintf("dsymutil %s", vars->output);
