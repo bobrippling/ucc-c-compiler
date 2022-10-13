@@ -19,6 +19,12 @@
 		return 1;                 \
 	}
 
+#define X_ncmp_alias(pre, target, alias, n) \
+	if(!strncmp(in, #alias, n)){ \
+		*out = pre ## _ ## target; \
+		return 1;                  \
+	}
+
 #define ALIAS(pre, from, to) \
 	if(!strcmp(in, #from)){    \
 		*out = pre ## _ ## to;   \
@@ -50,6 +56,7 @@ static int parse_abi(const char *in, enum abi *out)
 }
 #undef X
 #undef X_ncmp
+#undef X_ncmp_alias
 #undef ALIAS
 
 static enum vendor infer_vendor(enum sys sys)
@@ -145,7 +152,9 @@ static const char *sys_to_str(enum sys s)
 	switch(s){
 #define X(pre, name) case pre ## _ ## name: return #name;
 #define X_ncmp(pre, name, n) X(pre, name)
+#define X_ncmp_alias(pre, target, alias, n)
 		TARGET_SYSES
+#undef X_ncmp_alias
 #undef X_ncmp
 #undef X
 	}

@@ -124,9 +124,11 @@ ucc_unused
 static char syses[] = {
 #define X(pre, post) 0,
 #define X_ncmp(pre, post, n) X(pre, post)
+#define X_ncmp_alias(pre, target, alias, n)
 	TARGET_SYSES
 #undef X
 #undef X_ncmp
+#undef X_ncmp_alias
 };
 
 ucc_static_assert(size_match1, countof(syses) == countof(section_names));
