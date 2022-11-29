@@ -1,28 +1,70 @@
-//#include <stdio.h>
-
-extern int func(void);
-// the definition of func is written in assembly language
-__asm__(".globl func\n\t"
-        ".type func, @function\n\t"
-        "func:\n\t"
-        ".cfi_startproc\n\t"
-        "movl $7, %eax\n\t"
-        "ret\n\t"
-        ".cfi_endproc");
-
-int main(void)
+void match_constraint_priority()
 {
-    int n = func();
-    // gcc's extended inline assembly
-    __asm__ ("leal (%0,%0,4),%0"
-           : "=r" (n)
-           : "0" (n));
+	int n = 21;
+	int discard0, discard1;
 
-    //printf("7*5 = %d\n", n);
-    //fflush(stdout); // flush is intentional
+	// gcc's extended inline assembly
+	__asm__(
+			/* n *= 5 */
+			"leal (%0,%0,4),%0\n"
+			"\t# 0=%0 1=%1 2=%2 3=%3 4=%4"
+			: "=r" (n)
+			, "=r" (discard0)
+			, "=r" (discard1)
+			: "0" (n) // we should prioritise the matching constraint first,
+			// so we get its register before any other inputs take
+			// the (input-slot) register
+			, "r" (3)
+	);
+}
 
-    // standard inline assembly in C++
-    __asm__ ("movq $60, %rax\n\t"
-             "movq $2,  %rdi\n\t"
-             "syscall");
+int copy_var()
+{
+	int discard0, discard1;
+	int to, from = 3;
+
+	__asm__(
+			"# 0=%0 1=%1 2=%2 3=%3 4=%4"
+			: "=r" (to)
+			, "=r" (discard0)
+			, "=r" (discard1)
+			: "r" (99)
+			, "0" (from)
+	);
+
+	return to;
+}
+
+int copy_var2()
+{
+	int discard0, discard1;
+	int to, from = 3;
+
+	__asm__(
+			"# 0=%0 1=%1 2=%2 3=%3 4=%4"
+			: "=&r" (to)
+			, "=r" (discard0)
+			, "=r" (discard1)
+			: "r" (99)
+			, "0" (from)
+	);
+
+	return to;
+}
+
+int copy_var3()
+{
+	int discard0, discard1;
+	int to, from = 3;
+
+	__asm__(
+			"# 0=%0 1=%1 2=%2 3=%3 4=%4"
+			: "+r" (to)
+			, "=r" (discard0)
+			, "=r" (discard1)
+			: "r" (99)
+			, "0" (from) // error, can't match a r/w output (the read specifically)
+	);
+
+	return to;
 }
