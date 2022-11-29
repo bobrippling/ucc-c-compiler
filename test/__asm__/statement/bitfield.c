@@ -1,4 +1,4 @@
-// RUN: %check %s
+// RUN: %check --only %s
 // RUN: %ocheck 0 %s
 
 struct A

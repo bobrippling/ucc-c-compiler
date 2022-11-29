@@ -1,4 +1,4 @@
-// RUN: %ucc -fsyntax-only %s
+// RUN: %ucc -S -o- %s | grep 'call.*hi'
 
 int main()
 {

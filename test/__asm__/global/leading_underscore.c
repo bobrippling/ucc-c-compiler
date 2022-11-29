@@ -1,6 +1,7 @@
 // RUN: %ucc -c -fleading-underscore %s
-// RUN: ! %ucc -S -o- -fleading-underscore %s | grep '_no_leading'
-// RUN: %ucc -S -o- -fleading-underscore %s | grep '_main'
+// RUN: %ucc -S -fleading-underscore %s -o %t
+// RUN: ! grep _no_leading %t
+// RUN:   grep _main %t
 
 int g_i __asm("no_leading"), g_j;
 

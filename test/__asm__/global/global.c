@@ -1,10 +1,13 @@
-// RUN: %ucc -S -o- %s
+// RUN: %ucc -fsyntax-only %s
 
 __asm("hi");
 main()
 {
-	return ({extern timmay __asm("yo"); timmay;});
+	return ({
+		extern ev __asm("yo");
+		ev;
+	});
 }
 
 x __asm("yo");
-__asm(".globl x\\nhai");
+__asm(".globl x\\nabc");

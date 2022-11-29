@@ -1,7 +1,6 @@
-// RUN: %ucc -S -o- %s
-// RUN: %check %s -fsyntax-only
+// RUN: %check --only %s -fsyntax-only
 
-// may error, may not - depends on the assembler. hence -S/-fsyntax-only
+// may error, may not - depends on the assembler. hence -fsyntax-only (%check)
 
-x __asm("0new\nli\rne"); // CHECK: /warning: asm name contains character 0xa/
+x __asm("0new\nli\rne"); // CHECK: warning: asm name contains character 0xa
 __asm("hi\nthere");
