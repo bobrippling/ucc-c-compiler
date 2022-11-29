@@ -691,6 +691,8 @@ static void assign_constraint(
 				struct constrained_pri_val *const entry = &entries[i];
 
 				if(entry->original_index == match){
+					if(entry->
+
 					cc->type = C_MATCH;
 					cc->bits.match.cval = entry->cval;
 					cc->bits.match.constraint = entry->cchosen;
@@ -1089,6 +1091,41 @@ static void constrain_input_matching(
 			const out_val *out_temp;
 
 			fprintf(stderr, "matching constraint, matching [%d]\n", (int)match_idx);
+
+			/* we can use the matched constraint value in code-gen, here we
+			 * just mark the constraint as also using up the input slot */
+
+
+
+			/*
+			 * FIXME: delete this / test with an output that needs an output_temp
+			if((out_temp = output_temporaries[match_idx])){
+				switch(out_temp->type){
+					case V_CONST_I:
+					case V_LBL:
+					case V_CONST_F:
+					case V_FLAG:
+						ICE("bad register type");
+
+					case V_REG:
+					case V_REGOFF:
+					case V_SPILT:
+						cval->val = v_to_reg_given(
+								octx, cval->val, &out_temp->bits.regoff.reg);
+						break;
+				}
+			}else{
+				const out_val *matched_val;
+
+				assert(match_idx < outputs->n);
+				matched_val = outputs->arr[match_idx].val;
+				assert(matched_val);
+
+				cval->val = out_val_retain(octx, matched_val);
+				ICE("no output temporary for C_REG/C_TO_REG_OR_MEM [%zu]", match_idx);
+				//cval->val = (octx, constraint->bits.match.cval->val->t, 0);
+			}
+			*/
 			break;
 		}
 
@@ -1357,6 +1394,8 @@ static void constrain_values(
 		size_t i_sort = total - forward_i - 1;
 		struct chosen_constraint *constraint = sorted[i_sort].cchosen;
 
+		out_comment(setupstate->octx, "--- sorted constraint %zu: %s ---",
+				i_sort, constraint_type_to_str(constraint->type));
 
 		fprintf(stderr, "%s constraint %d\n",
 				sorted[i_sort].is_output ? "output" : "input",
@@ -1423,6 +1462,9 @@ static void constrain_values(
 		{
 			impl_use_callee_save(setupstate->octx, &constraint->bits.reg);
 		}
+
+		out_comment(setupstate->octx, "--- done sorted constraint %zu ---",
+				i_sort);
 	}
 
 	fprintf(stderr, "generation complete\n");
