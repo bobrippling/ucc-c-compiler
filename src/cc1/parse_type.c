@@ -1389,6 +1389,9 @@ static type_parsed *parsed_type_ptr(
 
 		enum type_qualifier qual = qual_none;
 
+		/* create here so we capture good location info */
+		r_ptr = type_parsed_new(PARSED_PTR, NULL);
+
 		while(curtok_is_type_qual() || curtok == token_attribute){
 			if(curtok == token_attribute){
 				parse_add_attr(&attr, scope);
@@ -1398,7 +1401,6 @@ static type_parsed *parsed_type_ptr(
 			}
 		}
 
-		r_ptr = type_parsed_new(PARSED_PTR, NULL);
 		r_ptr->bits.ptr.maker = maker;
 		r_ptr->bits.ptr.attr = attr; /* pass ownership */ attr = NULL;
 		r_ptr->bits.ptr.qual = qual;
