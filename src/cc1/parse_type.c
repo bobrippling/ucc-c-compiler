@@ -1265,6 +1265,9 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 		int is_static = 0;
 		enum vla_kind vla_kind = VLA_NO;
 
+		/* create here so we capture good location info */
+		base = type_parsed_new(PARSED_ARRAY, base);
+
 		/* parse int x[restrict|static ...] */
 		for(;;){
 			if(curtok_is_type_qual())
@@ -1330,7 +1333,6 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 		if(is_static > 1)
 			die_at(NULL, "multiple static specifiers in array size");
 
-		base = type_parsed_new(PARSED_ARRAY, base);
 		base->bits.array.size = size;
 		base->bits.array.qual = q;
 		base->bits.array.is_static = is_static;
