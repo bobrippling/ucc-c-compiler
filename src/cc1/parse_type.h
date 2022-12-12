@@ -47,6 +47,7 @@ struct funcargs *parse_func_arglist(symtable *);
 int parse_at_decl(symtable *scope, int include_attribute);
 
 void parse_add_attr(attribute ***append, symtable *scope);
+void parse_add_attr_out(attribute ***append, symtable *scope, int *got_kw);
 
 type **parse_type_list(symtable *scope);
 

@@ -3,6 +3,7 @@ void abort(void) __attribute__((noreturn));
 
 int main()
 {
+#include "../ocheck-init.c"
 	unsigned x = (unsigned char)-5;
 
 	if(x != 251)

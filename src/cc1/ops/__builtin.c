@@ -111,6 +111,7 @@ static builtin_table *builtin_find(const char *sp)
 {
 	static unsigned prefix_len;
 	builtin_table *found;
+	int has_builtin_prefix;
 
 	if(!cc1_fopt.freestanding){
 		found = builtin_table_search(no_prefix_builtins, sp);
@@ -124,13 +125,20 @@ static builtin_table *builtin_find(const char *sp)
 	if(strlen(sp) < prefix_len)
 		return NULL;
 
-	if(!strncmp(sp, PREFIX, prefix_len))
+	has_builtin_prefix = !strncmp(sp, PREFIX, prefix_len);
+	if(has_builtin_prefix)
 		found = builtin_table_search(builtins, sp + prefix_len);
 	else
 		found = NULL;
 
-	if(!found) /* look for __builtin_strlen, etc */
+	if(!found){ /* look for __builtin_strlen, etc */
 		found = builtin_table_search(no_prefix_builtins, sp + prefix_len);
+
+		if(!found && has_builtin_prefix){
+			warn_at_print_error(NULL, "unknown builtin '%s'", sp);
+			fold_had_error = 1;
+		}
+	}
 
 	return found;
 }
@@ -836,10 +844,10 @@ static void const_has_attribute(expr *e, consty *k)
 	enum attribute_type attr;
 	const char *spel = e->bits.builtin_ident.ident;
 
-#define NAME(x, tprop)       else if(!strcmp(spel, #x)) attr = attr_ ## x;
-#define RENAME(s, x, typrop) else if(!strcmp(spel, s))  attr = attr_ ## x;
-#define ALIAS(s, x)          else if(!strcmp(spel, s))  attr = attr_ ## x;
-#define COMPLEX_ALIAS(s, x)  else if(!strcmp(spel, s))  attr = attr_ ## x;
+#define NAME(x, tprop, tymismatch)       else if(!strcmp(spel, #x)) attr = attr_ ## x;
+#define RENAME(s, x, typrop, tymismatch) else if(!strcmp(spel, s))  attr = attr_ ## x;
+#define ALIAS(s, x)                      else if(!strcmp(spel, s))  attr = attr_ ## x;
+#define COMPLEX_ALIAS(s, x)              else if(!strcmp(spel, s))  attr = attr_ ## x;
 	if(0)
 		;
 	ATTRIBUTES

@@ -6,5 +6,6 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	return 0;
 }

@@ -21,7 +21,7 @@ double zero()
 	return sub(one(), one());
 }
 
-double nan()
+double nan_()
 {
 	return one() / zero();
 }
@@ -32,7 +32,7 @@ double add(double a, ...)
 	va_start(l, a);
 
 	double x;
-	while((x = va_arg(l, double)) != nan()){
+	while((x = va_arg(l, double)) != nan_()){
 		a += x;
 	}
 
@@ -63,8 +63,8 @@ bool equal(double a, double b)
 
 double phi()
 {
-	return div(add(one(), sqrt(add(one(), one(), one(), one(), one(), nan())), nan()),
-			add(one(), one(), nan()));
+	return div(add(one(), sqrt(add(one(), one(), one(), one(), one(), nan_())), nan_()),
+			add(one(), one(), nan_()));
 }
 
 double psi()
@@ -72,18 +72,18 @@ double psi()
 	return sub(one(), phi());
 }
 
-double exp(double a, double b)
+double exp_(double a, double b)
 {
 	if(equal(b, zero())){
 		return one();
 	}else{
-		return mul(a, exp(a, sub(b, one())));
+		return mul(a, exp_(a, sub(b, one())));
 	}
 }
 
 int fib(int n)
 {
-	return div(sub(exp(phi(), n), exp(psi(), n)), sub(phi(), psi()));
+	return div(sub(exp_(phi(), n), exp_(psi(), n)), sub(phi(), psi()));
 }
 
 int main()

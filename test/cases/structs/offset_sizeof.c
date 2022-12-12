@@ -19,6 +19,7 @@ struct X
 
 main()
 {
+#include "../ocheck-init.c"
 #define offsetof(s, m) (unsigned long)&((struct s *)0)->m
 #define P(x) printf(#x " = %u\n", x)
 

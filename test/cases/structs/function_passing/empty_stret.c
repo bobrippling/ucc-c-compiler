@@ -11,6 +11,7 @@ struct A f()
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct A a = f();
 
 	return sizeof a;

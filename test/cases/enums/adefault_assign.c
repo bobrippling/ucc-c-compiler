@@ -14,6 +14,7 @@ enum
 
 main()
 {
+#include "../ocheck-init.c"
 	assert(a == 0);
 	assert(b == 1);
 	assert(c == 2);

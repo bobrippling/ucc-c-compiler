@@ -12,6 +12,7 @@ inline f(int x)
 
 main()
 {
+#include "../ocheck-init.c"
 	int added = 5;
 
 	added = f(2);

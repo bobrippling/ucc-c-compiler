@@ -284,6 +284,8 @@ EMPTY(attr_desig_init)
 EMPTY(attr_stack_protect)
 EMPTY(attr_no_stack_protector)
 EMPTY(attr_returns_nonnull)
+EMPTY(attr_fallthrough)
+EMPTY(attr_flatten)
 
 #undef EMPTY
 
@@ -344,7 +346,7 @@ static attribute *parse_attr_visibility(symtable *symtab, const char *ident)
 	if(!str)
 		return NULL;
 
-	if(visibility_parse(&v, str, cc1_target_details.as.supports_visibility_protected)){
+	if(visibility_parse(&v, str, cc1_target_details.as->supports_visibility_protected)){
 		attr = attribute_new(attr_visibility);
 		attr->bits.visibility = v;
 	}else{
@@ -444,8 +446,8 @@ static const struct
 	const char *ident;
 	attribute *(*parser)(symtable *, const char *ident);
 } attrs[] = {
-#define NAME(x, typrop) { #x, parse_attr_ ## x },
-#define RENAME(s, x, typrop) { s, parse_attr_ ## x },
+#define NAME(x, typrop, tymismatch) { #x, parse_attr_ ## x },
+#define RENAME(s, x, typrop, tymismatch) { s, parse_attr_ ## x },
 #define ALIAS(s, x) { s, parse_attr_ ## x },
 #define COMPLEX_ALIAS(s, x) { s, parse_attr_ ## x},
 	ATTRIBUTES

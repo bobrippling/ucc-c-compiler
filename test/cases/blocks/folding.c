@@ -7,6 +7,7 @@ typedef ComparisonResult (^Comparator)(Ptr obj1, Ptr obj2);
 
 main()
 {
+#include "../ocheck-init.c"
 	Ptr a, b;
 	Comparator x = ^(Ptr arg_a, Ptr arg_b){
 		return arg_a == arg_b;

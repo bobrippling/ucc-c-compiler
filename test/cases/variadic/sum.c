@@ -21,5 +21,6 @@ sum(int a, ...)
 
 main()
 {
+#include "../ocheck-init.c"
 	return sum(1, 2, 3, 0);
 }

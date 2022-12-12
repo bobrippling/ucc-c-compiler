@@ -9,6 +9,22 @@ f()
 	return i;
 }
 
+g(int x)
+{
+}
+
+shadow()
+{
+	int local = 6;
+	g(local);
+
+	{
+		g(local);
+		int local = 7;
+		g(local);
+	}
+}
+
 main()
 {
 	int i = 1;

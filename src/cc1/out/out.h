@@ -110,6 +110,7 @@ ucc_wur const out_val *out_call(out_ctx *,
 ucc_wur out_blk *out_blk_new(out_ctx *, const char *desc);
 void out_current_blk(out_ctx *, out_blk *) ucc_nonnull((1));
 ucc_wur out_blk *out_ctx_current_blk(out_ctx *);
+ucc_wur int out_ctx_current_blk_is_empty(out_ctx *);
 
 out_blk *out_blk_entry(out_ctx *);
 out_blk *out_blk_postprologue(out_ctx *);
@@ -154,7 +155,13 @@ void out_func_prologue(
 		int nargs, int variadic, int stack_protector,
 		const out_val *argvals[]);
 
-void out_func_epilogue(out_ctx *, type *, const where *func_begin, char *end_dbg_lbl);
+struct section;
+void out_func_epilogue(
+	out_ctx *,
+	type *,
+	const where *func_begin,
+	char *end_dbg_lbl,
+	const struct section *section);
 
 
 /* returns a pointer to allocated storage: */
@@ -164,7 +171,7 @@ const out_val *out_alloca_push(out_ctx *, const out_val *sz, unsigned align);
 void out_alloca_restore(out_ctx *octx, const out_val *ptr);
 void out_alloca_pop(out_ctx *octx);
 
-const out_val *out_aalloc(out_ctx *, unsigned sz, unsigned align, type *);
+const out_val *out_aalloc(out_ctx *, unsigned sz, unsigned align, type *, long *offset);
 const out_val *out_aalloct(out_ctx *, type *);
 void out_adealloc(out_ctx *, const out_val **);
 

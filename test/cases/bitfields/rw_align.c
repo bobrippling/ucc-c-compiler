@@ -20,6 +20,7 @@ chk(struct bits *p)
 
 main()
 {
+#include "../ocheck-init.c"
 	struct bits two_bit;
 
 	two_bit.first = 1;

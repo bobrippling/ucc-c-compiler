@@ -13,5 +13,6 @@ g(int i)
 
 main()
 {
+#include "../ocheck-init.c"
 	return g(7); // CHECK: note: function inlined
 }

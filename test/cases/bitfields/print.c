@@ -26,6 +26,7 @@ chk_bf(struct half_bytes *p)
 
 main()
 {
+#include "../ocheck-init.c"
 	struct half_bytes a;
 
 	a.f_1 = -1UL;

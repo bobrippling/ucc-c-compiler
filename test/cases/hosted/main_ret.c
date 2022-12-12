@@ -1,7 +1,8 @@
 // RUN: %ocheck 0 %s -std=c99
-// RUN: %ucc -std=c89 %s -fsyntax-only 2>&1 | grep 'reaches end of'
-// RUN: %ucc -std=c99 %s -fsyntax-only 2>&1 | grep 'reaches end of'; [ $? -ne 0 ]
+// RUN: %check --only --prefix=c89 %s -std=c89
+// RUN: %check --only --prefix=c99 %s -std=c99
 
-main()
+main() // CHECK-c89: warning: control reaches end of
 {
+#include "../ocheck-init.c"
 }

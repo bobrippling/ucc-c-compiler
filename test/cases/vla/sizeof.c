@@ -27,6 +27,7 @@ h()
 
 main()
 {
+#include "../ocheck-init.c"
 	if(f(3) != 3 * sizeof(short))
 		abort();
 

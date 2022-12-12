@@ -14,6 +14,7 @@ inline A f(int cond)
 
 main()
 {
+#include "../ocheck-init.c"
 	int c = 5;
 
 	if(f(c).i != 7)

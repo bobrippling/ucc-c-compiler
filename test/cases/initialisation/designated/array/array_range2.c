@@ -17,6 +17,7 @@ q()
 
 main()
 {
+#include "../../../ocheck-init.c"
 	char x[20] = {
 		[4] = q(),
 		[5 ... 9] = f(),

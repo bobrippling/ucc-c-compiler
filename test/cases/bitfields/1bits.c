@@ -1,6 +1,7 @@
 // RUN: %ocheck 9 %s
 main()
 {
+#include "../ocheck-init.c"
 	struct
 	{
 #define BF(x) unsigned b ## x : 1

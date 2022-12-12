@@ -5,6 +5,7 @@ typedef unsigned long long uint64_t;
 
 main()
 {
+#include "../ocheck-init.c"
 	// sign extend - negative so it becomes 0xffffffff80000000
 	uint64_t x = (signed)0x80000000;
 

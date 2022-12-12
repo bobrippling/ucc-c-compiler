@@ -44,6 +44,7 @@ _Generic( typeof2(X, Y),     \
 
 int main()
 {
+#include "../ocheck-init.c"
 	void abort();
 
 	if(pair_type(1, 2) != int_int)

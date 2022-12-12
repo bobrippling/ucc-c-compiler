@@ -15,6 +15,7 @@ g()
 
 main()
 {
+#include "../ocheck-init.c"
 	f();
 	if(a || b)
 		abort();

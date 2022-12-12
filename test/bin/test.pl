@@ -6,7 +6,6 @@ my $ran = 0;
 my $want_check = 0;
 my $had_check = 0;
 my $file = undef;
-my $log = undef;
 my $verbose = 0;
 
 my %vars = (
@@ -51,11 +50,6 @@ sub system_loud_on_failure
 	}
 
 	if($pid == 0){
-		# $args < /dev/null > "$2" 2>&1
-		open STDIN, '</dev/null' or die;
-		open STDOUT, '>', $log or die;
-		open STDERR, '>&STDOUT' or die;
-
 		exec @_;
 		die "exec: $!";
 	}
@@ -65,11 +59,6 @@ sub system_loud_on_failure
 	}
 
 	my $r = $?;
-
-	if($r >> 8){
-		system('sed', 's/^/	/', $log);
-	}
-
 	return $r;
 }
 
@@ -83,7 +72,6 @@ if(@ARGV != 1){
 $file = shift;
 
 my $target = "$tmpdir/$$.tmp";
-$log = "$tmpdir/$$.log";
 # don't unlink target - leave for parent tools / user to cleanup
 
 $vars{s} = $file;

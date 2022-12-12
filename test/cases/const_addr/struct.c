@@ -28,5 +28,6 @@ int *f(struct ST *s)
 
 main()
 {
+#include "../ocheck-init.c"
 	return f((void *)0) == 1296;
 }

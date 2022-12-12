@@ -10,6 +10,7 @@ f()
 
 main()
 {
+#include "../ocheck-init.c"
 	if(f() != -2)
 		abort();
 

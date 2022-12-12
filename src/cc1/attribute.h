@@ -16,8 +16,8 @@ struct attribute
 
 	enum attribute_type
 	{
-#define NAME(x, typrop) attr_ ## x,
-#define RENAME(s, x, typrop) attr_ ## x,
+#define NAME(x, typrop, tymismatch) attr_ ## x,
+#define RENAME(s, x, typrop, tymismatch) attr_ ## x,
 #define ALIAS(s, x)
 #define COMPLEX_ALIAS(s, x)
 		ATTRIBUTES

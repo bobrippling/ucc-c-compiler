@@ -84,7 +84,7 @@ static void callee_save_or_restore(
 	if(!stack_n)
 		return;
 
-	stack_locn = out_aalloc(octx, stack_n, /*align*/voidpsz, voidp);
+	stack_locn = out_aalloc(octx, stack_n, /*align*/voidpsz, voidp, NULL);
 
 	stack_locn = out_change_type(octx, stack_locn, voidp);
 
@@ -178,7 +178,12 @@ static void allocate_stack(out_ctx *octx, v_stackt adj)
 	v_stack_adj(octx, adj, /*sub:*/1);
 }
 
-void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *end_dbg_lbl)
+void out_func_epilogue(
+	out_ctx *octx,
+	type *ty,
+	const where *func_begin,
+	char *end_dbg_lbl,
+	const struct section *section)
 {
 	int clean_stack, redzone = 0;
 	out_blk *call_save_spill_blk = NULL;
@@ -350,16 +355,16 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 			 * and that same value (minus padding) to stack_n_alloc */
 			assert(octx->max_stack_sz >= octx->stack_n_alloc);
 
-			out_comment(octx,
-					"stack_sz{cur=%lu,max=%lu} n_alloc=%lu call_spc=%lu calleesve=%lu max_align=%u",
-					octx->cur_stack_sz,
-					octx->max_stack_sz,
-					octx->stack_n_alloc,
-					octx->stack_callspace,
-					octx->stack_calleesave_space,
-					octx->max_align);
-
 			if(cc1_fopt.verbose_asm){
+				out_comment(octx,
+						"stack_sz{cur=%lu,max=%lu} n_alloc=%lu call_spc=%lu calleesve=%lu max_align=%u",
+						octx->cur_stack_sz,
+						octx->max_stack_sz,
+						octx->stack_n_alloc,
+						octx->stack_callspace,
+						octx->stack_calleesave_space,
+						octx->max_align);
+
 				out_comment(octx,
 						"red-zone %s (stack @ %zu bytes, had_call: %d, stack_ptr_manipulated: %d)",
 						redzone ? "active" : "inactive",
@@ -392,7 +397,7 @@ void out_func_epilogue(out_ctx *octx, type *ty, const where *func_begin, char *e
 	}
 	octx->current_blk = NULL;
 
-	blk_flushall(octx, flush_root, end_dbg_lbl);
+	blk_flushall(octx, flush_root, end_dbg_lbl, section);
 
 	free(octx->used_callee_saved), octx->used_callee_saved = NULL;
 
@@ -507,10 +512,10 @@ void out_func_prologue(
 				out_init_stack_canary(octx, stack_prot_slot);
 			}
 		}
+
+		octx->used_stack = !!stack_prot_slot;
 	}
 	octx->in_prologue = 0;
-
-	octx->used_stack = 0;
 
 	out_current_blk(octx, octx->postprologue_blk);
 }

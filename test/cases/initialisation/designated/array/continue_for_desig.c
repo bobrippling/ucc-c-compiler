@@ -7,5 +7,6 @@ int x[3] = {
 
 main()
 {
+#include "../../../ocheck-init.c"
 	return x[0] == 1 && x[1] == 0 && x[2] == 5;
 }

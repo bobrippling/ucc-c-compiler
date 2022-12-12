@@ -4,6 +4,7 @@ void abort(void) __attribute__((noreturn));
 
 main()
 {
+#include "../ocheck-init.c"
 	static struct
 	{
 		int n;

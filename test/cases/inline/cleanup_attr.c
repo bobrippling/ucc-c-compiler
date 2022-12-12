@@ -15,6 +15,7 @@ inline void clean_int_ai(int *p)
 
 main()
 {
+#include "../ocheck-init.c"
 	__attribute((cleanup(clean_int_ai))) int i = 5; // CHECK: note: function inlined
 	__attribute((cleanup(clean_int_ni))) int j = 5; // CHECK: !/inline/
 

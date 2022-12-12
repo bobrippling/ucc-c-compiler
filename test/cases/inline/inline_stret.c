@@ -15,6 +15,7 @@ inline A f(int k, int cond)
 
 main()
 {
+#include "../ocheck-init.c"
 	if(f(1, 1).i != 99)
 		abort();
 

@@ -755,7 +755,7 @@ static struct DIE *dwarf_type_die(
 
 			szdie = dwarf_die_new(DW_TAG_subrange_type);
 			if(have_sz){
-				form_data_t sz = ty->bits.array.is_vla
+				form_data_t sz = ty->bits.array.vla_kind
 					? 0 : const_fold_val_i(ty->bits.array.size);
 
 				/*dwarf_attr(szdie, DW_AT_lower_bound, DW_FORM_data4, 0);*/
@@ -1128,23 +1128,23 @@ static struct DIE_compile_unit *dwarf_cu(
 
 	dwarf_attr(&cu->die, DW_AT_stmt_list,
 			DW_FORM_ADDR4,
-			cc1_target_details.dwarf_indirect_section_links
-				? NULL
-				: ustrprintf(
+			cc1_target_details.dwarf_link_stmt_list
+				? ustrprintf(
 						"%s%s%s",
-						cc1_target_details.as.privatelbl_prefix,
+						cc1_target_details.as->privatelbl_prefix,
 						SECTION_BEGIN,
-						SECTION_DESC_DBG_LINE));
+						SECTION_DESC_DBG_LINE)
+				: NULL);
 
 	dwarf_attr(&cu->die, DW_AT_low_pc, DW_FORM_addr,
 			ustrprintf("%s%s%s",
-				cc1_target_details.as.privatelbl_prefix,
+				cc1_target_details.as->privatelbl_prefix,
 				SECTION_BEGIN,
 				SECTION_DESC_TEXT));
 
 	dwarf_attr(&cu->die, DW_AT_high_pc, DW_FORM_addr,
 			ustrprintf("%s%s%s",
-				cc1_target_details.as.privatelbl_prefix,
+				cc1_target_details.as->privatelbl_prefix,
 				SECTION_END,
 				SECTION_DESC_TEXT));
 
@@ -1153,38 +1153,36 @@ static struct DIE_compile_unit *dwarf_cu(
 
 static long dwarf_info_header(void)
 {
-#define VAR_LEN "info_len"
-	const struct section section_dbg_info = SECTION_INIT(SECTION_DBG_INFO);
-
-	if(cc1_target_details.dwarf_indirect_section_links){
+	if(cc1_target_details.as->expr_inline){
 		asm_out_section(&section_dbg_info,
 				/* -4: don't include the length spec itself */
-				"%s" VAR_LEN " = %s%s%s - %s%s%s - 4\n"
-				"\t.long %s" VAR_LEN "\n"
-				"\t.short 2 # DWARF 2\n"
-				"\t.long 0  # abbrev offset\n"
-				"\t.byte %d  # sizeof(void *)\n",
-				cc1_target_details.as.privatelbl_prefix,
-				cc1_target_details.as.privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
-				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO
-				,
-				cc1_target_details.as.privatelbl_prefix
-				,
-				platform_word_size());
+				"\t.long %s%s%s - %s%s%s - 4\n",
+				cc1_target_details.as->privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
+				cc1_target_details.as->privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO);
 	}else{
 		asm_out_section(&section_dbg_info,
-				"\t.long %s%s%s - %s%s%s - 4\n"
-				"\t.short 2 # DWARF 2\n"
-				"\t.long %s%s%s  # abbrev offset\n"
-				"\t.byte %d  # sizeof(void *)\n",
-				cc1_target_details.as.privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
-				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO,
-				cc1_target_details.as.privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_ABBREV,
-				platform_word_size());
+				/* -4: don't include the length spec itself */
+				"%sinfo_len = %s%s%s - %s%s%s - 4\n"
+				"\t.long %sinfo_len" "\n",
+				cc1_target_details.as->privatelbl_prefix,
+				cc1_target_details.as->privatelbl_prefix, SECTION_END, SECTION_DESC_DBG_INFO,
+				cc1_target_details.as->privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_INFO,
+				cc1_target_details.as->privatelbl_prefix);
 	}
 
+	asm_out_section(&section_dbg_info, "\t.short 2 # DWARF 2\n");
+
+	if(cc1_target_details.dwarf_link_stmt_list){
+		asm_out_section(&section_dbg_info,
+				"\t.long %s%s%s  # abbrev offset\n",
+				cc1_target_details.as->privatelbl_prefix, SECTION_BEGIN, SECTION_DESC_DBG_ABBREV);
+	 }else{
+		 asm_out_section(&section_dbg_info, "\t.long 0  # abbrev offset\n");
+	 }
+
+	asm_out_section(&section_dbg_info, "\t.byte %d  # sizeof(void *)\n", platform_word_size());
+
 	return 4 + 2 + 4 + 1;
-#undef VAR_LEN
 }
 
 static void dwarf_attr_decl(
@@ -1392,10 +1390,8 @@ static void dwarf_leb_printf(
 		struct DIE_flush_file *f,
 		unsigned long uleb, int is_sig)
 {
-	FILE *file = asm_section_file(f->sec);
-
 	asm_out_section(f->sec, "\t.byte ");
-	f->byte_cnt += leb128_out(file, uleb, is_sig);
+	f->byte_cnt += leb128_out(cc1_output.file, uleb, is_sig);
 }
 
 static void dwarf_flush_die_block(
@@ -1711,27 +1707,6 @@ void out_dbg_emit_global_decl_scoped(out_ctx *octx, decl *d)
 
 	if(global_scoped)
 		dwarf_current_child(dbg, global_scoped);
-}
-
-void dbg_out_filelist(
-		struct out_dbg_filelist *head, FILE *f)
-{
-	struct out_dbg_filelist *i;
-	unsigned idx;
-
-	for(i = head, idx = 1; i; i = i->next, idx++){
-		struct cstring local;
-		char *esc;
-
-		cstring_init(&local, CSTRING_ASCII, i->fname, strlen(i->fname), 0);
-
-		esc = str_add_escape(&local);
-
-		fprintf(f, ".file %u \"%s\"\n", idx, esc);
-
-		cstring_deinit(&local);
-		free(esc);
-	}
 }
 
 void out_dbg_begin(

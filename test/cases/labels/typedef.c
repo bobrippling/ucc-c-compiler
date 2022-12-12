@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	typedef int int_t;
 	goto int_t;
 

@@ -23,6 +23,7 @@ assert(_Bool b)
 
 main()
 {
+#include "../ocheck-init.c"
 	assert(map(1) == 1);
 	assert(map(2) == 1);
 	assert(map(3) == 1);

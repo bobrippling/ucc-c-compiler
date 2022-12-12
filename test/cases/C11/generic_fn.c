@@ -9,6 +9,7 @@ funcs()
 
 main()
 {
+#include "../ocheck-init.c"
 	funcs();
 	return 0;
 }

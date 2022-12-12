@@ -8,6 +8,7 @@ static void f(int const *p)
 
 int main()
 {
+#include "../ocheck-init.c"
 	int i;
 	f(&i); // CHECK: note: function inlined
 	return i;

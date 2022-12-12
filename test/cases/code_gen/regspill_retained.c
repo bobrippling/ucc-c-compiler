@@ -13,6 +13,7 @@ void f(int *p)
 
 main()
 {
+#include "../ocheck-init.c"
 	int i = 3;
 	f(&i);
 	return i;

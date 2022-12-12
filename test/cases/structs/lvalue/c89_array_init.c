@@ -20,6 +20,7 @@ struct A
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct A a = f();
 
 	if(a.x[0] != 1)

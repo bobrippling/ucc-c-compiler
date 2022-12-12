@@ -18,6 +18,7 @@ struct A f(void)
 
 int main()
 {
+#include "../../ocheck-init.c"
 	struct A a;
 
 	a = f();

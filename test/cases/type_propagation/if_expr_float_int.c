@@ -8,6 +8,7 @@ f(int b)
 
 main()
 {
+#include "../ocheck-init.c"
 	if(f(0) != 2)
 		abort();
 	if(f(1) != 5)

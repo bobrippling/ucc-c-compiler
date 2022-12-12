@@ -148,6 +148,7 @@ double nextafter(double, double);
 
 int main()
 {
+#include "../ocheck-init.c"
 	// some of this invokes UB, but we define it as so:
 	assert(!eq_thru_unsigned(-1));
 	assert(eq_thru_signed(-1));

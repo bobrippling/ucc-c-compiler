@@ -27,6 +27,11 @@ compare: stage3
 	cmp ${PWD}/bootstrap/stage[23]/src/cpp2/cpp
 	cmp ${PWD}/bootstrap/stage[23]/src/cc1/cc1
 
+compare-obj: stage3
+	tools/bootstrap-compare-obj ${PWD}/bootstrap/stage[23]/src/cpp2
+	tools/bootstrap-compare-obj ${PWD}/bootstrap/stage[23]/src/cc1
+	tools/bootstrap-compare-obj ${PWD}/bootstrap/stage[23]/src/ucc
+
 clean-bootstrap:
 	rm -rf bootstrap
 

@@ -11,6 +11,7 @@ void g()
 
 main()
 {
+#include "../ocheck-init.c"
 	// contains a vla but isn't evaluated
 	int sz = sizeof *( 0 ? 0 : (int(*)[f()]) 0 );
 

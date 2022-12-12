@@ -48,6 +48,7 @@ f(int n)
 
 main()
 {
+#include "../../ocheck-init.c"
 	f(3);
 	if(cleanups != 3)
 		abort();

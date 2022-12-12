@@ -31,6 +31,7 @@ _Static_assert(
 
 main()
 {
+#include "../ocheck-init.c"
 	if((unsigned long)(&((struct B *)0)->i) != 4)
 		abort();
 

@@ -21,6 +21,7 @@ struct A a[] =
 
 int main()
 {
+#include "../../ocheck-init.c"
 	struct B *pt3 = (struct B *)a[0].b;
 	return pt3->b == (char *)1 ? 0 : 1;
 }

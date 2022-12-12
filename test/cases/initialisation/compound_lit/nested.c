@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../../ocheck-init.c"
 	int (*p)[2] = (int[][2]){
 		1, 2,
 		{ 3, 4, 5 }

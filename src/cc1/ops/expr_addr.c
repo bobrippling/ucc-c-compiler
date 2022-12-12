@@ -183,6 +183,11 @@ static int expr_addr_has_sideeffects(const expr *e)
 	return e->lhs && expr_has_sideeffects(e->lhs);
 }
 
+static int expr_addr_requires_relocation(const expr *e)
+{
+	return e->lhs && expr_requires_relocation(e->lhs);
+}
+
 expr *expr_new_addr(expr *sub)
 {
 	expr *e = expr_new_wrapper(addr);
@@ -202,6 +207,7 @@ void mutate_expr_addr(expr *e)
 {
 	e->f_const_fold = const_expr_addr;
 	e->f_has_sideeffects = expr_addr_has_sideeffects;
+	e->f_requires_relocation = expr_addr_requires_relocation;
 }
 
 const out_val *gen_expr_style_addr(const expr *e, out_ctx *octx)

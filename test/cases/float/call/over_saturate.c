@@ -34,6 +34,7 @@ fin:
 
 main()
 {
+#include "../../ocheck-init.c"
 	double x = f(
 			INT, 1,
 			FP,  1.0,

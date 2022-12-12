@@ -17,13 +17,16 @@ sub filter
 			next;
 		}
 
-		if(/section_(begin|end)_dbg/){
-			$in_dbg = ($1 eq 'begin');
+		my $new_in_dbg = $in_dbg;
+		if(/^\S*Lsection_(begin|end)_dbg/){
+			$new_in_dbg = ($1 eq 'begin');
 		}
 
-		if($in_dbg){
+		if($new_in_dbg || $in_dbg){
 			push @relevant, $_;
 		}
+
+		$in_dbg = $new_in_dbg;
 	}
 
 	return (
@@ -94,7 +97,7 @@ sub usage
 }
 
 my $in;
-my $update = 0;
+my $update = $ENV{UCC_UPDATE_SNAPSHOTS} or 0;
 for(@ARGV){
 	if($_ eq '--update'){
 		$update = 1;
@@ -104,6 +107,8 @@ for(@ARGV){
 		usage();
 	}
 }
+
+usage() unless $in;
 
 my $expected = "$in.dwarf";
 my $ucc = $ENV{UCC} or die "no \$UCC";

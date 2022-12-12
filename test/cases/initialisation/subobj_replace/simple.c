@@ -13,6 +13,7 @@ struct A
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct B b = { 1, 2 };
 	struct A a = {
 		.b = b,  // CHECK: note: previous initialisation

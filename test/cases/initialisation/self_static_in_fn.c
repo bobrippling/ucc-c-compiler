@@ -9,6 +9,7 @@ struct A
 
 main()
 {
+#include "../ocheck-init.c"
 	static struct A a = {
 		// ensure &a.how uses the correctly mangled name of 'a' (static)
 		.p = &a.how

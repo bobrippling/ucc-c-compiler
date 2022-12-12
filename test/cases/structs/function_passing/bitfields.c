@@ -61,6 +61,7 @@ struct B g()
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct A a = f();
 
 	if(a.a != 1

@@ -7,6 +7,7 @@ unsigned long strlen(const char *);
 
 main()
 {
+#include "../ocheck-init.c"
 	strlen(s);
 
 	q(strlen("yo"));

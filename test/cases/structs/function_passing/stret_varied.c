@@ -27,6 +27,7 @@ struct C2 { double d; int i, j; } h2()
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct A f_ = f();
 	if(f_.i != 1 || f_.j != 2 || f_.p != 0) abort();
 	struct B g_ = g();

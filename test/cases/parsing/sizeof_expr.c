@@ -8,6 +8,7 @@ typedef struct
 
 main()
 {
+#include "../ocheck-init.c"
 	int sz = sizeof((A *)0)->x;
 	if(sz != sizeof(int))
 		abort();

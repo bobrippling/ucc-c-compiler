@@ -25,6 +25,7 @@ int c()
 
 main()
 {
+#include "../ocheck-init.c"
 	// should be initialised before the vla is created
 	int a_ = a();
 	short ar[b()];

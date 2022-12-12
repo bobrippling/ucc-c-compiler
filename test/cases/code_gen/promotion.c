@@ -5,6 +5,7 @@ void abort(void) __attribute__((noreturn));
 
 main()
 {
+#include "../ocheck-init.c"
 	char c = 3;
 
 	c += 2;

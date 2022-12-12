@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %ocheck 5 %t
+// RUN: %ocheck 5 %s
 
 struct A
 {
@@ -13,5 +12,6 @@ struct A
 
 main()
 {
+#include "../../../ocheck-init.c"
 	return a.b.i + a.b.j;
 }

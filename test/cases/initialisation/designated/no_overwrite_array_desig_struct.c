@@ -31,5 +31,6 @@ f(int x, int y)
 
 main()
 {
+#include "../../ocheck-init.c"
 	return f(1, 2);
 }

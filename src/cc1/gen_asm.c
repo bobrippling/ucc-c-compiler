@@ -30,6 +30,7 @@
 #include "gen_style.h"
 #include "out/val.h"
 #include "out/ctx.h"
+#include "out/write.h"
 #include "cc1_out_ctx.h"
 #include "inline.h"
 #include "type_nav.h"
@@ -100,6 +101,23 @@ void gen_stmt(const stmt *t, out_ctx *octx)
 		out_dbg_where(octx, &t->where);
 
 	t->f_gen(t, octx);
+
+	if(octx){
+		/* this aids in debugging loops with no body or no test/increment, where
+		 * the debugger would otherwise only see a single line, and so continue
+		 * until the loop completed.
+		 *
+		 * for(;;){
+		 *   v++
+		 * } // we emit this location before the jump to the body
+		 *
+		 * for(i = 0; i < n; i++) {
+		 *   ;
+		 * } // we emit this location before the jump to the test
+		 */
+		out_dbg_where(octx, &t->where_cbrace);
+		out_dbg_flush(octx);
+	}
 }
 
 static void assign_arg_vals(decl **decls, const out_val *argvals[], out_ctx *octx)
@@ -112,10 +130,12 @@ static void assign_arg_vals(decl **decls, const out_val *argvals[], out_ctx *oct
 		if(s && s->type == sym_arg){
 			gen_set_sym_outval(octx, s, argvals[j++]);
 
-			if(cc1_fopt.verbose_asm){
-				out_comment(octx, "arg %s @ %s",
-						decls[i]->spel,
-						out_val_str(sym_outval(s), 1));
+			if(cc1_fopt.dump_frame_layout){
+				const char *loc = out_val_str(sym_outval(s), 1);
+
+				fprintf(stderr, "frame: %9s: %s (argument)\n",
+						loc,
+						decls[i]->spel);
 			}
 		}
 	}
@@ -142,6 +162,7 @@ void gen_vla_arg_sideeffects(decl *d, out_ctx *octx)
 	if((decayed = type_is_decayed_array(d->ref))
 	&& (decayed = type_is_vla(decayed, VLA_TOP_DIMENSION)))
 	{
+		out_comment(octx, "vla arg side-effect");
 		out_val_consume(octx, gen_expr(decayed->bits.array.size, octx));
 	}
 }
@@ -154,6 +175,7 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 		const out_val *dest, *src;
 		decl *d = *i;
 		unsigned vla_space;
+		long offset;
 
 		/* generate side-effects even if it's decayed, e.g.
 		 * f(int p[E1][E2])
@@ -178,8 +200,17 @@ static void allocate_vla_args(out_ctx *octx, symtable *arg_symtab)
 		vla_space = vla_decl_space(d);
 
 		out_val_release(octx, sym_outval(d->sym));
-		gen_set_sym_outval(octx, d->sym, out_aalloc(
-					octx, vla_space, type_align(d->ref, NULL), d->ref));
+		gen_set_sym_outval(
+			octx,
+			d->sym,
+			out_aalloc(
+				octx,
+				vla_space,
+				type_align(d->ref, NULL),
+				d->ref,
+				&offset
+			)
+		);
 
 		dest = out_new_sym(octx, d->sym);
 		out_store(octx, dest, src);
@@ -278,6 +309,7 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 		const char *sp;
 		const out_val **argvals;
 		symtable *arg_symtab;
+		int bail = 0;
 
 		if(!d->bits.func.code)
 			return;
@@ -287,10 +319,22 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 		arg_symtab = DECL_FUNC_ARG_SYMTAB(d);
 		for(aiter = symtab_decls(arg_symtab); aiter && *aiter; aiter++){
 			decl *arg = *aiter;
+			struct_union_enum_st *su;
 
 			if(arg->sym->type == sym_arg)
 				nargs++;
+
+			if((su = type_is_s_or_u(arg->ref))){
+				warn_at_print_error(
+						&arg->where,
+						"%s arguments are not yet implemented",
+						sue_str_type(su->primitive));
+				gen_had_error = 1;
+				bail = 1;
+			}
 		}
+		if(bail)
+			return;
 
 		argvals = nargs ? umalloc(nargs * sizeof *argvals) : NULL;
 
@@ -333,7 +377,7 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 
 		{
 			char *end = out_dbg_func_end(decl_asm_spel(d));
-			out_func_epilogue(octx, d->ref, &d->bits.func.code->where, end);
+			out_func_epilogue(octx, d->ref, &d->bits.func.code->where, end, section);
 			free(end);
 		}
 
@@ -347,8 +391,8 @@ static void gen_asm_global(const struct section *section, decl *d, out_ctx *octx
 		asm_declare_decl_init(section, d);
 	}
 
-	if(cc1_target_details.as.supports_type_and_size)
-			gen_type_and_size(section, d);
+	if(cc1_target_details.as->supports_type_and_size)
+		gen_type_and_size(section, d);
 }
 
 const out_val *gen_call(
@@ -455,6 +499,14 @@ static void infer_decl_section(decl *d, struct section *sec)
 
 	/* prefer rodata over bss */
 	if(type_is_const(d->ref)){
+		if(FOPT_PIC(&cc1_fopt)
+		&& d->bits.var.init.dinit
+		&& decl_init_requires_relocation(d->bits.var.init.dinit))
+		{
+			SECTION_FROM_BUILTIN(sec, SECTION_RELRO, flags);
+			return;
+		}
+
 		SECTION_FROM_BUILTIN(sec, SECTION_RODATA, flags);
 		return;
 	}
@@ -470,9 +522,10 @@ static void infer_decl_section(decl *d, struct section *sec)
 void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 {
 	struct section section;
-	struct section_output prev_section;
+	decl *old_decl;
 	struct cc1_out_ctx *cc1_octx = *cc1_out_ctx(octx);
 	int emitted_type = 0;
+	const int attr_used_present = !!attribute_present(d, attr_used);
 	int emit_visibility = 0;
 	attribute *attr;
 
@@ -486,17 +539,17 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		cc1_octx->generated_decls = dynmap_new(decl *, /*ref*/NULL, decl_hash);
 	(void)dynmap_set(decl *, int *, cc1_octx->generated_decls, d, (int *)NULL);
 
-	if(decl_asm_spel(d)){
-		if(!cc1_octx->spel_to_fndecl){
-			cc1_octx->spel_to_fndecl = dynmap_new(
-					const char *, strcmp, dynmap_strhash);
-		}
+	if(!decl_asm_spel(d))
+		return; /* struct A { ... }; */
 
-		(void)dynmap_set(
-				const char *, decl *,
-				cc1_octx->spel_to_fndecl,
-				decl_asm_spel(d), d);
+	if(!cc1_octx->spel_to_fndecl){
+		cc1_octx->spel_to_fndecl = dynmap_new(
+				const char *, strcmp, dynmap_strhash);
 	}
+	(void)dynmap_set(
+			const char *, decl *,
+			cc1_octx->spel_to_fndecl,
+			decl_asm_spel(d), d);
 
 	switch((enum decl_storage)(d->store & STORE_MASK_STORE)){
 		case store_inline:
@@ -515,7 +568,9 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 			break;
 	}
 
-	memcpy_safe(&prev_section, &cc1_current_section_output);
+	old_decl = cc1_octx->current_decl;
+	cc1_octx->current_decl = d;
+
 	infer_decl_section(d, &section);
 	asm_switch_section(&section);
 	if(cc1_fopt.dump_decl_sections){
@@ -555,7 +610,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		 *
 		 * unless we're told to emit tenatives, e.g. local scope
 		 */
-		if(!emit_tenatives && !d->bits.var.init.dinit){
+		if((!emit_tenatives && !d->bits.var.init.dinit) || !decl_should_emit_var(d)){
 			if(!emitted_type)
 				asm_predeclare_extern(&section, d);
 			goto out;
@@ -564,6 +619,9 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 		if(cc1_gdebug == DEBUG_FULL)
 			out_dbg_emit_global_var(octx, d);
 	}
+
+	if(attr_used_present)
+		asm_predeclare_used(&section, d);
 
 	if(!emitted_type && decl_linkage(d) == linkage_external)
 		asm_predeclare_global(&section, d);
@@ -574,8 +632,7 @@ void gen_asm_global_w_store(decl *d, int emit_tenatives, out_ctx *octx)
 out:
 	if(emit_visibility)
 		asm_predeclare_visibility(&section, d);
-
-	memcpy_safe(&cc1_current_section_output, &prev_section);
+	cc1_octx->current_decl = old_decl;
 }
 
 void gen_asm(
@@ -619,7 +676,7 @@ void gen_asm(
 
 	gen_stringlits(globs->literals);
 
-	gen_inits_terms(inits, terms);
+	gen_inits_terms(inits, terms, octx);
 	dynarray_free(decl **, inits, NULL);
 	dynarray_free(decl **, terms, NULL);
 

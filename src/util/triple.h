@@ -42,6 +42,7 @@ Examples:
 	X(SYS, linux) \
 	X(SYS, freebsd) \
 	X_ncmp(SYS, darwin, 6) \
+	X_ncmp_alias(SYS, darwin, macos, 5) \
 	X_ncmp(SYS, cygwin, 6)
 
 #define TARGET_ABIS \
@@ -51,6 +52,7 @@ Examples:
 
 #define X(pre, post) pre ## _ ## post,
 #define X_ncmp(pre, post, n) X(pre, post)
+#define X_ncmp_alias(pre, target, alias, len)
 #define ALIAS(...)
 enum arch
 {
@@ -73,6 +75,7 @@ enum abi
 };
 #undef X
 #undef X_ncmp
+#undef X_ncmp_alias
 #undef ALIAS
 
 struct triple

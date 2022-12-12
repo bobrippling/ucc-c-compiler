@@ -42,6 +42,7 @@
 static decl *parse_decl_stored_aligned(
 		type *btype, enum decl_mode mode,
 		enum decl_storage store, struct decl_align *align,
+		attribute **attrs,
 		symtable *scope, symtable *add_to_scope,
 		int is_arg);
 
@@ -397,7 +398,7 @@ static type *parse_type_sue(
 	return retty;
 }
 
-static void parse_add_attr_out(
+void parse_add_attr_out(
 		attribute ***append, symtable *scope, int *got_kw)
 {
 	if(got_kw)
@@ -985,10 +986,14 @@ static decl *parse_arg_decl(symtable *scope)
 	/* don't use parse_decl() - we don't want it folding yet,
 	 * things like inits are caught later */
 	argdecl = parse_decl_stored_aligned(
-			btype, flags,
+			btype,
+			flags,
 			store /* register is a valid argument store */,
-			/*align:*/NULL,
-			scope, NULL, /*is_arg*/1);
+			/*align:*/ NULL,
+			/*attrs:*/ NULL,
+			scope,
+			NULL,
+			/*is_arg:*/ 1);
 
 	if(!argdecl)
 		die_at(NULL, "type expected (got %s)", token_to_str(curtok));
@@ -1001,10 +1006,15 @@ funcargs *parse_func_arglist(symtable *scope)
 	funcargs *args = funcargs_new();
 
 	if(curtok == token_close_paren){
-		args->args_old_proto = 1;
-		cc1_warn_at(NULL, implicit_old_func,
-				"old-style function declaration (needs \"(void)\")");
-		goto empty_func;
+		if(cc1_std >= STD_C2X){
+			funcargs_empty_void(args);
+		}else{
+			args->args_old_proto = 1;
+			cc1_warn_at(NULL, implicit_old_func,
+					"old-style function declaration (needs \"(void)\")");
+		}
+
+		return args;
 	}
 
 	/* we allow default-to-int here, but need to make
@@ -1014,6 +1024,8 @@ funcargs *parse_func_arglist(symtable *scope)
 	 *
 	 * f( <here>  (int)) = f(int (int)) = f(int (*)(int))
 	 * f( <here> ident) -> old function
+	 *
+	 * ... or if we're >C20, we ignore K&R functions
 	 */
 	if(curtok != token_identifier || parse_at_tdef(scope)){
 		decl *argdecl = parse_arg_decl(scope);
@@ -1025,12 +1037,10 @@ funcargs *parse_func_arglist(symtable *scope)
 		&& ty_v->bits.type->primitive == type_void
 		&& !argdecl->spel)
 		{
-			/* x(void); */
-			funcargs_empty(args);
-			args->args_void = 1; /* (void) vs () */
+			funcargs_empty_void(args);
 
 			/* argdecl isn't leaked - it remains in scope, but nameless */
-			goto fin;
+			return args;
 		}
 
 		for(;;){
@@ -1066,8 +1076,6 @@ funcargs *parse_func_arglist(symtable *scope)
 			argdecl = parse_arg_decl(scope);
 		}
 
-fin:;
-
 	}else{
 		/* old func - list of idents */
 		do{
@@ -1094,12 +1102,16 @@ fin:;
 				break;
 		}while(1);
 
-		cc1_warn_at(NULL, omitted_param_types,
-				"old-style function declaration");
+		if(cc1_std >= STD_C2X){
+			warn_at_print_error(NULL, "old-style functions have been removed in C2X and later");
+			fold_had_error = 1;
+		}else{
+			cc1_warn_at(NULL, omitted_param_types,
+					"old-style function declaration");
+		}
 		args->args_old_proto = 1;
 	}
 
-empty_func:
 	return args;
 }
 
@@ -1151,7 +1163,8 @@ struct type_parsed
 		{
 			expr *size;
 			enum type_qualifier qual;
-			unsigned is_static : 1, is_vla : 2;
+			enum vla_kind vla_kind;
+			unsigned is_static : 1;
 		} array;
 	} bits;
 
@@ -1249,7 +1262,11 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 	while(accept(token_open_square)){
 		expr *size = NULL;
 		enum type_qualifier q = qual_none;
-		int is_static = 0, is_vla = 0;
+		int is_static = 0;
+		enum vla_kind vla_kind = VLA_NO;
+
+		/* create here so we capture good location info */
+		base = type_parsed_new(PARSED_ARRAY, base);
 
 		/* parse int x[restrict|static ...] */
 		for(;;){
@@ -1301,7 +1318,7 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 					if(k.type != CONST_NUM
 					|| (k.nonstandard_const && !cc1_fopt.fold_const_vlas))
 					{
-						is_vla = VLA;
+						vla_kind = VLA;
 					}
 					else if(!K_INTEGRAL(k.bits.num))
 					{
@@ -1309,18 +1326,17 @@ static type_parsed *parsed_type_array(type_parsed *base, symtable *scope)
 					}
 				}
 			}else{
-				is_vla = VLA_STAR;
+				vla_kind = VLA_STAR;
 			}
 		}
 
 		if(is_static > 1)
 			die_at(NULL, "multiple static specifiers in array size");
 
-		base = type_parsed_new(PARSED_ARRAY, base);
 		base->bits.array.size = size;
 		base->bits.array.qual = q;
 		base->bits.array.is_static = is_static;
-		base->bits.array.is_vla = is_vla;
+		base->bits.array.vla_kind = vla_kind;
 	}
 
 	return base;
@@ -1375,6 +1391,9 @@ static type_parsed *parsed_type_ptr(
 
 		enum type_qualifier qual = qual_none;
 
+		/* create here so we capture good location info */
+		r_ptr = type_parsed_new(PARSED_PTR, NULL);
+
 		while(curtok_is_type_qual() || curtok == token_attribute){
 			if(curtok == token_attribute){
 				parse_add_attr(&attr, scope);
@@ -1384,7 +1403,6 @@ static type_parsed *parsed_type_ptr(
 			}
 		}
 
-		r_ptr = type_parsed_new(PARSED_PTR, NULL);
 		r_ptr->bits.ptr.maker = maker;
 		r_ptr->bits.ptr.attr = attr; /* pass ownership */ attr = NULL;
 		r_ptr->bits.ptr.qual = qual;
@@ -1439,6 +1457,8 @@ static type *parse_type_declarator_to_type(
 	type_parsed *parsed = parsed_type_declarator(mode, dfor, NULL, scope);
 	type_parsed *i, *tofree;
 	type *ty = base;
+	where last_qual;
+	int have_last_qual = 0;
 
 	for(i = parsed; i; tofree = i, i = i->prev, free(tofree)){
 		enum type_qualifier qual = qual_none;
@@ -1447,29 +1467,39 @@ static type *parse_type_declarator_to_type(
 			case PARSED_PTR:
 				ty = i->bits.ptr.maker(ty);
 				qual = i->bits.ptr.qual;
+
+				have_last_qual = 1;
+				memcpy_safe(&last_qual, &i->where);
 				break;
 			case PARSED_ARRAY:
 				qual = i->bits.array.qual;
 
-				if(i->bits.array.is_vla){
-					if(i->bits.array.is_static){
-						warn_at_print_error(NULL,
-								"'static' can't be used with a star-modified array");
-						fold_had_error = 1;
-					}
+				have_last_qual = 1;
+				memcpy_safe(&last_qual, &i->where);
 
+				switch(i->bits.array.vla_kind){
+					case VLA_STAR:
+						if(i->bits.array.is_static){
+							warn_at_print_error(&i->where,
+									"'static' can't be used with a star-modified array");
+							fold_had_error = 1;
+						}
+						/* fall */
+
+					case VLA:
 					ty = type_vla_of(
 							ty, i->bits.array.size,
-							i->bits.array.is_vla);
+							i->bits.array.vla_kind);
+						break;
 
-				}else{
-					ty = type_array_of_static(
-							ty,
-							i->bits.array.size,
-							i->bits.array.is_static);
+					case VLA_NO:
+						ty = type_array_of_static(
+								ty,
+								i->bits.array.size,
+								i->bits.array.is_static);
 				}
 				assert(ty->type == type_array);
-				assert(ty->bits.array.is_vla == i->bits.array.is_vla);
+				assert(ty->bits.array.vla_kind == i->bits.array.vla_kind);
 
 				if(i->bits.array.is_static && i->prev){
 					fold_had_error = 1;
@@ -1482,7 +1512,7 @@ static type *parse_type_declarator_to_type(
 						ty,
 						i->bits.func.arglist,
 						i->bits.func.scope,
-						&i->where);
+						have_last_qual ? &last_qual : &i->where);
 				break;
 
 			case PARSED_ATTR:
@@ -1691,6 +1721,7 @@ static void workaround_valist_typedef(decl *d, symtable *symtab)
 static decl *parse_decl_stored_aligned(
 		type *btype, enum decl_mode mode,
 		enum decl_storage store, struct decl_align *align,
+		attribute **attrs,
 		symtable *scope, symtable *add_to_scope,
 		int is_arg)
 {
@@ -1699,6 +1730,8 @@ static decl *parse_decl_stored_aligned(
 	int is_autotype = type_is_autotype(btype);
 
 	d->store = store; /* set early for parse_type_declarator() */
+
+	dynarray_add_array(&d->attr, attribute_array_retain(attrs));
 
 	/* int __attr__ spel, __attr__ spel2, ... */
 	parse_add_attr(&d->attr, scope);
@@ -1861,6 +1894,39 @@ static void unused_attributes(decl *dfor, attribute **attr)
 			"attribute ignored - no declaration%s", buf);
 }
 
+static void move_typrop_attrs(attribute ***const decl_attr, type **const ty)
+{
+	attribute **i;
+	attribute **typrops = NULL;
+	attribute **for_decl = NULL;
+
+	for(i = *decl_attr; i && *i; i++){
+		attribute *a = *i;
+		switch(a->type){
+#define NAME(n, typrop, tymismatch) \
+			case attr_##n: \
+				dynarray_add(typrop ? &typrops : &for_decl, RETAIN(a)); \
+				break;
+#define RENAME(str, name, typrop, tymismatch) NAME(name, typrop, tymismatch)
+#define ALIAS(str, name)
+#define COMPLEX_ALIAS(name, x)
+			ATTRIBUTES
+#undef NAME
+#undef RENAME
+#undef ALIAS
+#undef COMPLEX_ALIAS
+			case attr_LAST:
+				break;
+		}
+	}
+
+	*ty = type_attributed(type_skip_attrs(*ty), typrops);
+	attribute_array_release(&typrops);
+
+	attribute_array_release(decl_attr);
+	*decl_attr = for_decl;
+}
+
 decl *parse_decl(
 		enum decl_mode mode, int newdecl,
 		symtable *scope, symtable *add_to_scope)
@@ -1894,10 +1960,11 @@ decl *parse_decl(
 		prevent_typedef(store);
 	}
 
+	move_typrop_attrs(&decl_attr, &bt);
+
 	d = parse_decl_stored_aligned(
-			type_attributed(bt, decl_attr),
-			mode,
-			store, NULL /* align */,
+			bt, mode,
+			store, /* align */ NULL, decl_attr,
 			scope, add_to_scope, 0);
 
 	attribute_array_release(&decl_attr);
@@ -1947,7 +2014,9 @@ static void check_and_replace_old_func(decl *d, decl **old_args, symtable *scope
 		}
 
 		for(j = 0; j < n_proto_decls; j++){
-			if(!strcmp(old_args[i]->spel, dfuncargs->arglist[j]->spel)){
+			const char *o = old_args[i]->spel;
+			const char *n = dfuncargs->arglist[j]->spel;
+			if(o && n && !strcmp(o, n)){
 
 				/* replace the old implicit int arg's type
 				 *
@@ -1976,7 +2045,7 @@ static void check_and_replace_old_func(decl *d, decl **old_args, symtable *scope
 	 * { ... }
 	 * will decay the implicit "int i", but now it's been replaced with "int i[]"
 	 */
-	fold_funcargs(dfuncargs, scope, NULL);
+	fold_funcargs(dfuncargs, scope, d->attr);
 }
 
 static void check_function_storage_redef(decl *new, decl *old)
@@ -2067,12 +2136,12 @@ static void check_var_storage_redef(decl *new, decl *old)
 	}
 
 	if(error){
-		char buf[WHERE_BUF_SIZ];
 		warn_at_print_error(&new->where,
-				"static redefinition as non-static\n"
-				"%s: note: previous definition",
-				new->spel,
-				where_str_r(buf, &old->where));
+			"static redefinition as non-static",
+			new->spel);
+
+		note_at(&old->where, "previous definition");
+
 		fold_had_error = 1;
 	}
 }
@@ -2209,7 +2278,7 @@ static int warn_for_unused_typename(
 static int check_star_modifier_1(type *t, where *w)
 {
 	assert(t->type == type_array);
-	if(t->bits.array.is_vla == VLA_STAR){
+	if(t->bits.array.vla_kind == VLA_STAR){
 		warn_at_print_error(w,
 				"star modifier can only appear on prototypes");
 		fold_had_error = 1;
@@ -2534,6 +2603,8 @@ int parse_decl_group(
 		this_ref = default_type();
 	}
 
+	move_typrop_attrs(&decl_attr, &this_ref);
+
 	do{
 		int found_prev_proto = 1;
 		int had_field_width = 0;
@@ -2544,7 +2615,7 @@ int parse_decl_group(
 
 		d = parse_decl_stored_aligned(
 				this_ref, parse_flag,
-				store, align,
+				store, align, decl_attr,
 				in_scope, add_to_scope, 0);
 
 		if((mode & DECL_MULTI_ACCEPT_FIELD_WIDTH)
@@ -2558,9 +2629,7 @@ int parse_decl_group(
 		/* need to parse __attribute__ before folding the type */
 		attr_post_decl = parse_decl_attr(d, in_scope);
 
-		if(d->spel){
-			d->ref = type_attributed(d->ref, decl_attr);
-		}else{
+		if(!d->spel){
 			type *attributed;
 
 			unused_attributes(d, decl_attr);

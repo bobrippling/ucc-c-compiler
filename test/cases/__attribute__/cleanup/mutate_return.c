@@ -7,6 +7,7 @@ void clean(int *p)
 
 main()
 {
+#include "../../ocheck-init.c"
 	int x __attribute((cleanup(clean))) = 5;
 	return x;
 }

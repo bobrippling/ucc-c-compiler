@@ -16,6 +16,7 @@ typedef struct
 
 main()
 {
+#include "../../ocheck-init.c"
 	T t = { 1, 2, { 3, 4 } };
 
 	S s = { .t = t, .t.k = 1 };

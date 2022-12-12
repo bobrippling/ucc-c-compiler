@@ -24,6 +24,7 @@ void a_equal(struct A *a, struct A *b)
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct A b = { 1, 2, 3 };
 	struct A c = { .i = 3, .c = 1, .s = 2 };
 

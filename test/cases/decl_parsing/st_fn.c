@@ -9,6 +9,7 @@ int p1()
 
 main()
 {
+#include "../ocheck-init.c"
 	struct
 	{
 		const char *n;

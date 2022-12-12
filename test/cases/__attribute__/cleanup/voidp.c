@@ -11,6 +11,7 @@ clean_any(void *p)
 
 main()
 {
+#include "../../ocheck-init.c"
 
 	{
 		cleanup struct A { int i, j, k; } a; // CHECK: !/warn/

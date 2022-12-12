@@ -14,6 +14,7 @@ fp_d(double d)
 
 main()
 {
+#include "../ocheck-init.c"
 	volatile float fp = 1.61803;
 	int x = fp;
 

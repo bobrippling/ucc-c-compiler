@@ -1,0 +1,6 @@
+#!/bin/sh
+
+d=${0%/*}
+
+set -x
+exec "$d/ucc" -fuse-cpp="$d/tools/syscpp" "$@"

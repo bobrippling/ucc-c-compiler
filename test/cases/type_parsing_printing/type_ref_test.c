@@ -1,5 +1,5 @@
-// RUN: %ucc -o %t %s
-// RUN: %ocheck 4 %t
+// RUN: %ocheck 4 %s
+
 struct A
 {
 	int i, j;
@@ -13,6 +13,7 @@ init(struct A *p)
 
 main()
 {
+#include "../ocheck-init.c"
 	struct A b;
 
 	init(&b);

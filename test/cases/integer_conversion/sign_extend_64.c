@@ -8,6 +8,7 @@ typedef unsigned long long uint64_t;
 
 int main()
 {
+#include "../ocheck-init.c"
 	uint64_t x = 1 << 31; // (int)1 << 31 = -1, sign extend up
 	uint64_t y = (uint64_t)1 << 31; // -1ULL << 31 = 0x8000.., zextend up
 

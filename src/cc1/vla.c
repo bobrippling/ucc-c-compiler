@@ -142,7 +142,7 @@ static const out_val *vla_gen_size_ty(
 			break;
 
 		case type_array:
-			if(t->bits.array.is_vla){
+			if(t->bits.array.vla_kind){
 				const out_val *sz, *raw_size_val;
 				const out_val *new_stack_ent = NULL;
 

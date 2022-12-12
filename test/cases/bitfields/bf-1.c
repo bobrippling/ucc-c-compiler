@@ -7,6 +7,7 @@ struct single_signed
 
 main()
 {
+#include "../ocheck-init.c"
 	struct single_signed a;
 
 	a.bf = 1;

@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	int (^add_2)(int) = ^(int a){
 		return a + 2;
 	};

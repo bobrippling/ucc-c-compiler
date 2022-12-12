@@ -3,6 +3,7 @@ void abort(void) __attribute__((noreturn));
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct { int i, j; } x[] = {
 		[1 ... 5] = { 1, 2 } // a memcpy is performed for these structs
 	};

@@ -176,6 +176,11 @@ out_blk *out_ctx_current_blk(out_ctx *octx)
 	return octx->current_blk;
 }
 
+int out_ctx_current_blk_is_empty(out_ctx *octx)
+{
+	return !octx->current_blk || blk_is_empty(octx->current_blk);
+}
+
 out_val *out_val_blockphi_make(out_ctx *octx, const out_val *phi, out_blk *blk)
 {
 	/*

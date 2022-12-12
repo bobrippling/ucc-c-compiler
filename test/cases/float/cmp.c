@@ -8,6 +8,7 @@ gt(f_t a, f_t b)
 
 main()
 {
+#include "../ocheck-init.c"
 	float a = 2, b = 1;
 
 	return gt(a, b);

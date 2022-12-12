@@ -28,6 +28,7 @@ static void assert(_Bool b)
 
 int main()
 {
+#include "../ocheck-init.c"
 	int ar[a()][b()];
 
 	assert(as == 1);

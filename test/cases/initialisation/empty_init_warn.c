@@ -5,6 +5,7 @@ void abort(void);
 
 main()
 {
+#include "../ocheck-init.c"
 	int i = {}; // CHECK: warning: use of GNU empty initialiser
 	struct A { int i; } a = {}; // CHECK: warning: use of GNU empty initialiser
 	struct B { int i, j; } b = {}; // CHECK: warning: use of GNU empty initialiser

@@ -12,6 +12,7 @@ type *type_skip_wheres(type *);
 type *type_skip_non_wheres(type *);
 type *type_skip_non_tdefs_consts(type *);
 type *type_skip_tdefs(type *);
+type *type_skip_attrs(type *);
 
 const btype *type_get_type(type *r);
 enum type_primitive type_get_primitive(type *);
@@ -76,11 +77,11 @@ type *type_is_ptr(type *); /* returns r->ref iff ptr */
 type *type_is_ptr_or_block(type *);
 type *type_is_scalar(type *);
 
-enum vla_kind
+enum vla_dimension
 {
 	VLA_ANY_DIMENSION,
 	VLA_TOP_DIMENSION
 };
-type *type_is_vla(type *, enum vla_kind);
+type *type_is_vla(type *, enum vla_dimension);
 
 #endif

@@ -9,6 +9,7 @@ g()
 
 main()
 {
+#include "../ocheck-init.c"
 	int n = 5; // an unaligned value
 	int vla[n];
 

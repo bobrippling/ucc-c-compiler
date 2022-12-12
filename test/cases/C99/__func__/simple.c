@@ -13,6 +13,7 @@ const char (*g())[]
 
 main()
 {
+#include "../../ocheck-init.c"
 	const char *s = f();
 	if(s[0] != 'f' || s[1])
 		abort();

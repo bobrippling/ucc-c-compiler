@@ -16,5 +16,6 @@ int *f()
 
 int main()
 {
+#include "../ocheck-init.c"
 	f();
 }

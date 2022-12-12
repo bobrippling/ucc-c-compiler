@@ -161,6 +161,7 @@ void mutate_expr_compound_lit(expr *e)
 	e->f_islval = expr_is_lval_always;
 	e->f_const_fold = const_expr_compound_lit;
 	e->f_has_sideeffects = expr_compound_lit_has_sideeffects;
+	e->f_requires_relocation = expr_bool_always;
 }
 
 static decl *compound_lit_decl(type *t, decl_init *init)
@@ -169,6 +170,7 @@ static decl *compound_lit_decl(type *t, decl_init *init)
 
 	d->ref = t;
 	d->bits.var.init.dinit = init;
+	decl_use_ignoredeps(d);
 
 	return d;
 }

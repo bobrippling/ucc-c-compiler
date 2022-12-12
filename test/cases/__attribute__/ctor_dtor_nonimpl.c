@@ -5,5 +5,6 @@ __attribute((constructor(103))) int x();
 
 int main()
 {
+#include "../ocheck-init.c"
 	return 0;
 }

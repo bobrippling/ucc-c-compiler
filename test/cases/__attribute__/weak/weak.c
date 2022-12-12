@@ -1,8 +1,8 @@
 // don't run this test - only certain targets support weak variables
 
 // RUN: %ucc -S -o- -target x86_64-darwin %s | grep weak | %stdoutcheck --prefix=darwin %s
-// STDOUT-darwin: .weak_reference _w
 // STDOUT-darwin: .weak_reference _f
+// STDOUT-darwin: .weak_reference _w
 
 // RUN: %ucc -S -o- -target x86_64-linux %s | grep weak | %stdoutcheck --prefix=linux %s
 // STDOUT-linux: .weak f

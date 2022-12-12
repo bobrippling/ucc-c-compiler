@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../../ocheck-init.c"
 	float const nan = __builtin_nanf("");
 	float const abc = 5;
 

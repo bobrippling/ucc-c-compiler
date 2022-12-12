@@ -10,6 +10,7 @@
 #include "../../util/alloc.h"
 #include "../../util/dynarray.h"
 #include "../../util/math.h"
+#include "../../util/io.h"
 
 #include "../type.h"
 #include "../type_nav.h"
@@ -35,7 +36,6 @@
 #include "../str.h"
 #include "../cc1_target.h"
 #include "../cc1_out.h"
-#include "../cc1_sections.h"
 #include "../mangle.h"
 
 #include "../ops/expr_compound_lit.h"
@@ -46,13 +46,14 @@
 
 #define ASM_COMMENT "#"
 
-#define INIT_DEBUG 1
-
-#define DEBUG(s, ...) do{ \
-	if(INIT_DEBUG) fprintf(stderr, "\033[35m" s "\033[m\n", __VA_ARGS__); \
+#define DEBUG_BITFIELD_INIT(...) do{ \
+	if(cc1_fopt.dump_bitfield_init) \
+		fprintf(stderr, "  " __VA_ARGS__); \
 }while(0)
 
-#define BITFIELD_DBG(...) fprintf(stderr, __VA_ARGS__)
+#define BITFIELD_DBG(...) do{ \
+	/* fprintf(stderr, __VA_ARGS__); */ \
+}while(0)
 
 struct bitfield_val
 {
@@ -68,6 +69,7 @@ const char *asm_section_desc(enum section_builtin sec)
 		case SECTION_DATA: return SECTION_DESC_DATA;
 		case SECTION_BSS: return SECTION_DESC_BSS;
 		case SECTION_RODATA: return SECTION_DESC_RODATA;
+		case SECTION_RELRO: return SECTION_DESC_RELRO;
 		case SECTION_CTORS: return SECTION_DESC_CTORS;
 		case SECTION_DTORS: return SECTION_DESC_DTORS;
 		case SECTION_DBG_ABBREV: return SECTION_DESC_DBG_ABBREV;
@@ -77,38 +79,48 @@ const char *asm_section_desc(enum section_builtin sec)
 	return NULL;
 }
 
-FILE *asm_section_file(const struct section *sec)
+static void switch_section_emit(const struct section *section)
 {
-	FILE *f;
+	const char *desc = NULL;
+	char *name;
+	int allocated;
+	const int is_builtin = section_is_builtin(section);
+	int firsttime;
 
-	if(!cc1_out_persection)
-		cc1_out_persection = dynmap_new(struct section *, section_cmp, section_hash);
+	if(is_builtin)
+		desc = asm_section_desc(section->builtin);
 
-	f = dynmap_get(const struct section *, FILE *, cc1_out_persection, sec);
-	if(!f){
-		struct section *secdup = umalloc(sizeof *secdup);
+	name = section_name(section, &allocated);
+	xfprintf(cc1_output.file, ".section %s", name);
+	if(allocated)
+		free(name), name = NULL;
 
-		memcpy_safe(secdup, sec);
+	firsttime = cc1_outsections_add(section);
+	if(firsttime){
+		if(cc1_target_details.as->supports_section_flags && !is_builtin){
+			const int is_code = section->flags & SECTION_FLAG_EXECUTABLE;
+			const int is_rw = !(section->flags & SECTION_FLAG_RO);
 
-		f = tmpfile();
-		if(!f)
-			ICE("tmpfile: %s\n", strerror(errno));
-		(void)dynmap_set(struct section *, FILE *, cc1_out_persection, secdup, f);
+			xfprintf(cc1_output.file, ",\"a%s\",@progbits", is_code ? "x" : is_rw ? "w" : "");
+		}
 	}
+	xfprintf(cc1_output.file, "\n");
 
-	return f;
+	if(firsttime && desc)
+		xfprintf(cc1_output.file, "%s%s%s:\n", cc1_target_details.as->privatelbl_prefix, SECTION_BEGIN, desc);
 }
 
 void asm_switch_section(const struct section *section)
 {
-	if(cc1_current_section_output.sec.builtin != -1
-	&& section_eq(&cc1_current_section_output.sec, section))
+	if(cc1_output.section.builtin != -1
+	&& section_eq(&cc1_output.section, section))
 	{
 		return;
 	}
 
-	memcpy_safe(&cc1_current_section_output.sec, section);
-	cc1_current_section_output.file = asm_section_file(section);
+	memcpy_safe(&cc1_output.section, section);
+
+	switch_section_emit(section);
 }
 
 int asm_table_lookup(type *r)
@@ -162,7 +174,7 @@ static void asm_declare_init_bitfields(
 	unsigned bitsize = type_size(ty, NULL) * CHAR_BIT;
 	unsigned offset_adj = 0;
 	unsigned width = 0;
-	unsigned emitted_width = 0;
+	/* unsigned emitted_width = 0; */
 	unsigned i;
 
 	BITFIELD_DBG("bitfield out -- new (%u bitfields)\n", n);
@@ -192,14 +204,14 @@ static void asm_declare_init_bitfields(
 
 					this >>= bitsize;
 				}
-				emitted_width += bitsize;
+				/* emitted_width += bitsize; */
 
 				continue;
 			}else{
 				BITFIELD_DBG("bitfield overflow for bitsize=%u, next\n", bitsize);
 				asm_declare_init_type(sec, ty);
 				asm_out_section(sec, "%" NUMERIC_FMT_D "\n", v);
-				emitted_width += bitsize;
+				/* emitted_width += bitsize; */
 			}
 
 			/* now emit per byte, for simplicity */
@@ -214,23 +226,20 @@ static void asm_declare_init_bitfields(
 
 		width += vals[i].width;
 
-		BITFIELD_DBG("bitfield out: 0x%llx << %u - %u gives ",
-				this, vals[i].offset, offset_adj);
+		BITFIELD_DBG(       "    bitfield out: 0x%llx << %u - %u gives ", this, vals[i].offset, offset_adj);
 
 		v |= this << (vals[i].offset - offset_adj);
 
-		BITFIELD_DBG("0x%llx\n", v);
+		DEBUG_BITFIELD_INIT("\t0x%llx\n", v);
 	}
 
-	BITFIELD_DBG("bitfield or'd up, v=%#llx, width=%u\n", v, width);
+	BITFIELD_DBG("bitfield or'd up, v=%#llx, width=%u, ty=%s\n", v, width, type_to_str(ty));
 
 	if(width > 0){
-		unsigned padding;
-
 		asm_declare_init_type(sec, ty);
 		asm_out_section(sec, "%" NUMERIC_FMT_D "\n", v);
 
-		emitted_width += type_size(ty, NULL);
+		/* emitted_width += type_size(ty, NULL); */
 	}else{
 		asm_out_section(sec,
 				ASM_COMMENT " skipping zero length bitfield%s init\n",
@@ -238,7 +247,7 @@ static void asm_declare_init_bitfields(
 	}
 
 	/*
-	if(emitted_width < type_siz){
+	if(emitted_width < bitsize){
 		padding = pack_to_align(padding, 8);
 		BITFIELD_DBG("bitfield need %u bits of padding (width=%u)\n", padding, width);
 
@@ -432,6 +441,24 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 			i = copy_from_init->bits.ar.inits;
 		}
 
+		if(cc1_fopt.dump_bitfield_init ){
+			int has_bf = 0;
+
+			for(mem = sue->members;
+					mem && *mem;
+					mem++)
+			{
+				decl *d_mem = (*mem)->struct_member;
+				if(d_mem->bits.var.field_width){
+					has_bf = 1;
+					break;
+				}
+			}
+
+			if(has_bf)
+				fprintf(stderr, "Initialising %s %s...\n", sue_str(sue), sue->spel);
+		}
+
 		/* iterate using members, not inits */
 		for(mem = sue->members;
 				mem && *mem;
@@ -455,22 +482,24 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 				}
 			}
 
-			DEBUG("init for [%ld] / .%s <-- %s",
-					mem - sue->members, d_mem->spel,
+			DEBUG_BITFIELD_INIT("init at offset=%d for [%ld] / .%s <-- %s (end of last field=%d)",
+					d_mem->bits.var.struct_offset,
+					(long)(mem - sue->members), d_mem->spel,
 					di_to_use && di_to_use->type == decl_init_scalar
 					? di_to_use->bits.expr->f_str()
-					: "<non-scalar>");
+					: "<non-scalar>",
+					end_of_last);
 
 			/* only pad if we're not on a bitfield or we're on the first bitfield */
 			if(!d_mem->bits.var.field_width || !first_bf){
-				DEBUG("prev padding, offset=%d, end_of_last=%d",
-						d_mem->bits.var.struct_offset, end_of_last);
-
 				UCC_ASSERT(
 						d_mem->bits.var.struct_offset >= end_of_last,
 						"negative struct pad, %s::%s @ %u >= end_of_last @ %u",
 						sue->spel, decl_to_str(d_mem),
 						d_mem->bits.var.struct_offset, end_of_last);
+
+				DEBUG_BITFIELD_INIT("  adding %u bytes of padding\n",
+						d_mem->bits.var.struct_offset - end_of_last);
 
 				asm_declare_pad(sec,
 						d_mem->bits.var.struct_offset - end_of_last,
@@ -480,19 +509,35 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 			if(d_mem->bits.var.field_width){
 				const int zero_width = const_fold_val_i(d_mem->bits.var.field_width) == 0;
 
+				/* we aren't in a BF at the mo, and this is set as first_bitfield */
 				if(!first_bf || d_mem->bits.var.first_bitfield){
-					if(first_bf){
-						DEBUG("new bitfield group (%s is new boundary), old:",
+					if(!first_bf){
+						DEBUG_BITFIELD_INIT("  new bitfield group (at .%s)\n", d_mem->spel);
+					}else{
+						DEBUG_BITFIELD_INIT("  new bitfield group (at .%s) after current bitfield group - flushing\n",
 								d_mem->spel);
+
 						/* next bitfield group - store the current */
 						// FIXME? use decl_type_for_bitfield() here? or do we want to use full first_bf->ty ?
 						bitfields_out(sec, bitfields, &nbitfields, decl_type_for_bitfield(first_bf));
 					}
-					if(!zero_width)
+
+					if(zero_width){
+						DEBUG_BITFIELD_INIT("  .%s is zero width - not marking as anchor for this group\n", d_mem->spel);
+						first_bf = NULL;
+					}else{
 						first_bf = d_mem;
+					}
 				}
 
-				if(!zero_width){
+				if(zero_width){
+					DEBUG_BITFIELD_INIT("  .%s is zero width, ignored\n", d_mem->spel);
+				}else{
+					DEBUG_BITFIELD_INIT("  adding .%s to bitfield group, offset %d, width %" NUMERIC_FMT_D "\n",
+							d_mem->spel,
+							d_mem->bits.var.struct_offset_bitfield,
+							const_fold_val_i(d_mem->bits.var.field_width));
+
 					bitfields = bitfields_add(
 							bitfields, &nbitfields,
 							d_mem, di_to_use);
@@ -500,13 +545,13 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 
 			}else{
 				if(nbitfields){
-					DEBUG("at non-bitfield, prev-bitfield out:", 0);
+					DEBUG_BITFIELD_INIT("  at non-bitfield, flushing current\n");
 
 					bitfields_out(sec, bitfields, &nbitfields, decl_type_for_bitfield(first_bf));
 					first_bf = NULL;
 				}
 
-				DEBUG("normal init for %s:", d_mem->spel);
+				DEBUG_BITFIELD_INIT("  normal init for .%s\n", d_mem->spel);
 				asm_declare_init(sec, di_to_use, d_mem->ref);
 			}
 
@@ -518,8 +563,7 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 				decl_size_align_inc_bitfield(d_mem, &sz, &align);
 
 				end_of_last = d_mem->bits.var.struct_offset + sz;
-				DEBUG("done with member \"%s\", end_of_last = %d",
-						d_mem->spel, end_of_last);
+				DEBUG_BITFIELD_INIT("  %d byte(s) initialised so far\n", end_of_last);
 			}
 		}
 
@@ -537,12 +581,12 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 			sz = type_size(d_mem->ref, NULL);
 
 			end_of_last = d_mem->bits.var.struct_offset + sz;
-			DEBUG("trailing bitfield (%s), end_of_last=%u, struct_offset=%d, sz=%d",
+			DEBUG_BITFIELD_INIT("trailing bitfield (%s), end_of_last=%u, struct_offset=%d, sz=%d",
 					decl_to_str(d_mem), end_of_last, d_mem->bits.var.struct_offset, sz);
 		}
 		free(bitfields);
 
-		DEBUG("end_of_last=%d, padding up to %u",
+		DEBUG_BITFIELD_INIT("end_of_last=%d, padding up to %u",
 				end_of_last,
 				sue_size(sue, NULL));
 
@@ -639,7 +683,6 @@ static void asm_declare_init(const struct section *sec, decl_init *init, type *t
 		}
 
 		/* use tfor, since "abc" has type (char[]){(int)'a', (int)'b', ...} */
-		DEBUG("  scalar init for %s:", type_to_str(tfor));
 		static_val(sec, tfor, exp);
 	}
 }
@@ -655,7 +698,6 @@ void asm_out_align(const struct section *sec, unsigned align)
 
 void asm_nam_begin3(const struct section *sec, const char *lbl, unsigned align)
 {
-	asm_switch_section(sec);
 	asm_out_align(sec, align);
 	asm_out_section(sec, "%s:\n", lbl);
 }
@@ -694,9 +736,15 @@ void asm_predeclare_global(const struct section *sec, decl *d)
 	asm_predecl(sec, "globl", d);
 }
 
+void asm_predeclare_used(const struct section *sec, decl *d)
+{
+	if(cc1_target_details.as->directives.no_dead_strip)
+		asm_predecl(sec, cc1_target_details.as->directives.no_dead_strip, d);
+}
+
 void asm_predeclare_weak(const struct section *sec, decl *d)
 {
-	asm_predecl(sec, cc1_target_details.as.directives.weak, d);
+	asm_predecl(sec, cc1_target_details.as->directives.weak, d);
 }
 
 void asm_declare_alias(const struct section *sec, decl *d, decl *alias)
@@ -713,10 +761,10 @@ void asm_predeclare_visibility(const struct section *sec, decl *d)
 		case VISIBILITY_DEFAULT:
 			break;
 		case VISIBILITY_HIDDEN:
-			asm_predecl(sec, cc1_target_details.as.directives.visibility_hidden, d);
+			asm_predecl(sec, cc1_target_details.as->directives.visibility_hidden, d);
 			break;
 		case VISIBILITY_PROTECTED:
-			assert(cc1_target_details.as.supports_visibility_protected);
+			assert(cc1_target_details.as->supports_visibility_protected);
 			asm_predecl(sec, "protected", d);
 			break;
 	}
@@ -769,7 +817,7 @@ void asm_declare_stringlit(const struct section *sec, const stringlit *lit)
 
 		case CSTRING_ASCII:
 		{
-			FILE *f = asm_section_file(sec);
+			FILE *f = cc1_output.file;
 			asm_out_section(sec, ".ascii \"");
 			literal_print(f, lit->cstr);
 			fputc('"', f);
@@ -805,7 +853,7 @@ void asm_declare_decl_init(const struct section *sec, decl *d)
 		unsigned align;
 
 		if(decl_linkage(d) == linkage_internal){
-			if(!cc1_target_details.as.supports_local_common)
+			if(!cc1_target_details.as->supports_local_common)
 				goto fallback;
 
 			asm_out_section(sec, ".local %s\n", decl_asm_spel(d));
@@ -829,8 +877,9 @@ fallback:
 
 void asm_out_sectionv(const struct section *sec, const char *fmt, va_list l)
 {
-	FILE *f = sec ? asm_section_file(sec) : cc1_current_section_output.file;
-	vfprintf(f, fmt, l);
+	asm_switch_section(sec);
+
+	vfprintf(cc1_output.file, fmt, l);
 }
 
 void asm_out_section(const struct section *sec, const char *fmt, ...)

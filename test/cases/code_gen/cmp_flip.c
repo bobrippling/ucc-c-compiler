@@ -20,6 +20,7 @@ static void assert(int b)
 
 int main()
 {
+#include "../ocheck-init.c"
 	assert(!is_ge_0('0'-1));
 	assert(is_ge_0('0'));
 	assert(is_ge_0('1'));

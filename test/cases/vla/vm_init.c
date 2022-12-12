@@ -17,14 +17,22 @@ assert(_Bool b)
 
 f(int n)
 {
-	short (*p)[n] = 0;
+#define NULL (void*)0
+	short (*p)[n] = NULL;
+	assert(p == NULL);
 
-	assert(p == 0);
-	assert((int)(p + 1) == 3 * sizeof(short));
+	short (*q)[n] = (void *)3;
+	assert(q == (void *)3);
+
+	__auto_type a = (int)(p + 1);
+	__auto_type b = 3 * sizeof(short);
+	if(a != b)
+		abort();
 }
 
 main()
 {
+#include "../ocheck-init.c"
 	f(3);
 
 	return 0;

@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <dlfcn.h>
 
 #include "ucc.h"
 #include "ucc_ext.h"
@@ -25,6 +26,9 @@
 #include "filemodes.h"
 
 #define LINUX_LIBC_PREFIX "/usr/lib/"
+
+#define STRINGIFY_(x) #x
+#define STRINGIFY(x) STRINGIFY_(x)
 
 enum mode
 {
@@ -94,9 +98,10 @@ struct uccvars
 	const char *target;
 	const char *output;
 
-	int static_, shared;
+	int static_, shared, rdynamic;
 	int stdlibinc, builtininc, defaultlibs, startfiles;
 	int debug, profile;
+	int pthread;
 	enum tristate pie;
 	enum tristate multilib;
 	enum dyld dyld;
@@ -602,6 +607,33 @@ static void resolve_spanning_fopts(struct ucc *const state)
 	}
 }
 
+static int add_normalised_arg(
+		struct ucc *const state,
+		enum mode mode,
+		char **argv,
+		int *const pi)
+{
+	const char *arg = argv[*pi];
+
+	if(arg[2]){
+		dynarray_add(&state->args[mode], ustrdup(arg));
+
+	}else{
+		char *joined;
+		int i;
+
+		/* allow a space, e.g. "-D" "arg" */
+		if(!(arg = argv[++*pi]))
+			return 0;
+
+		i = *pi;
+		joined = ustrprintf("%s%s", argv[i - 1], argv[i]);
+		dynarray_add(&state->args[mode], joined);
+	}
+
+	return 1;
+}
+
 static void parse_argv(
 		int argc,
 		char **argv,
@@ -621,7 +653,6 @@ static void parse_argv(
 			goto input;
 
 		}else if(*argv[i] == '-'){
-			int found = 0;
 			char *arg = argv[i];
 
 			switch(arg[1]){
@@ -700,6 +731,7 @@ static void parse_argv(
 						goto word; /* -wabc... */
 					ADD_ARG(mode_preproc, arg); /* -w */
 					ADD_ARG(mode_compile, arg);
+					ADD_ARG(mode_assemb, "-W");
 					continue;
 
 				case 'm':
@@ -721,7 +753,10 @@ static void parse_argv(
 
 				case 'D':
 				case 'U':
-					found = 1;
+					if(!add_normalised_arg(state, mode_preproc, argv, &i))
+						goto missing_arg;
+					continue;
+
 				case 'H':
 				case 'P':
 arg_cpp:
@@ -748,18 +783,9 @@ arg_cpp:
 							die("-MF needs an argument");
 						ADD_ARG(mode_preproc, arg);
 						had_MF = 1;
-						continue;
-					}
-
-					if(found){
-						if(!arg[2]){
-							/* allow a space, e.g. "-D" "arg" */
-							if(!(arg = argv[++i]))
-								goto missing_arg;
-							ADD_ARG(mode_preproc, arg);
-						}
 					}
 					continue;
+
 				case 'I':
 					if(arg[2]){
 						dynarray_add(&state->includes, ustrdup(arg));
@@ -773,8 +799,8 @@ arg_cpp:
 
 				case 'l':
 				case 'L':
-arg_ld:
-					ADD_ARG(mode_link, arg);
+					if(!add_normalised_arg(state, mode_link, argv, &i))
+						goto missing_arg;
 					continue;
 
 #define CHECK_1() if(argv[i][2]) goto unrec;
@@ -900,10 +926,10 @@ arg_ld:
 
 word:
 				default:
-					if(!strcmp(argv[i], "-s"))
-						goto arg_ld;
-
-					if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
+					if(!strcmp(argv[i], "-s")){
+						ADD_ARG(mode_link, arg);
+					}
+					else if(!strncmp(argv[i], "-std=", 5) || !strcmp(argv[i], "-ansi")){
 						ADD_ARG(mode_compile, arg);
 						ADD_ARG(mode_preproc, arg);
 					}
@@ -930,6 +956,8 @@ word:
 						vars->shared = 1;
 					else if(!strcmp(argv[i], "-static"))
 						vars->static_ = 1;
+					else if(!strcmp(argv[i], "-rdynamic"))
+						vars->rdynamic = 1;
 					else if(!strcmp(argv[i], "-pie"))
 						vars->pie = TRI_TRUE;
 					else if(!strcmp(argv[i], "-no-pie"))
@@ -939,6 +967,8 @@ word:
 						vars->pie = TRI_TRUE;
 						vars->ld_z.text = 1; /* disallow text-relocs */
 					}
+					else if(!strcmp(argv[i], "-pthread"))
+						vars->pthread = 1;
 					else if(!strcmp(argv[i], "-###"))
 						ucc_ext_cmds_show(1), ucc_ext_cmds_noop(1);
 					else if(!strcmp(argv[i], "-v"))
@@ -1096,6 +1126,44 @@ static int should_multilib(enum tristate multilib, const char *prefix)
 	return access(path, F_OK) == 0;
 }
 
+static const char *darwin_syslibroot(int *const alloc)
+{
+	/* /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/xcselect.h */
+	enum { XCSELECT_HOST_SDK_POLICY_MATCHING_PREFERRED = 1 };
+
+	static const char *const roots[] = {
+		"/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk",
+		"/Applications/Xcode.app/Developer/SDKs/MacOSX.sdk",
+		"/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk",
+		NULL
+	};
+	const char *const *i;
+	const char *syslibroot = NULL;
+	char *sdk_path;
+	void *dl;
+	typedef int xcselect_host_sdk_path_ty(unsigned, char **);
+	xcselect_host_sdk_path_ty *xcselect_host_sdk_path;
+
+	*alloc = 0;
+	for(i = roots; *i; i++)
+		if(access(*i, F_OK) == 0)
+			return *i;
+
+	dl = dlopen("libxcselect.dylib", RTLD_GLOBAL | RTLD_LAZY);
+	if(!dl)
+		return NULL;
+
+	xcselect_host_sdk_path = (xcselect_host_sdk_path_ty *)dlsym(dl, "xcselect_host_sdk_path");
+	if(!xcselect_host_sdk_path)
+		return NULL;
+
+	if(xcselect_host_sdk_path(XCSELECT_HOST_SDK_POLICY_MATCHING_PREFERRED, &sdk_path) != 0)
+		return NULL;
+
+	*alloc = 1;
+	return sdk_path;
+}
+
 static void state_from_triple(
 		struct ucc *state,
 		char ***additional_argv,
@@ -1123,6 +1191,9 @@ static void state_from_triple(
 	if(triple->sys != SYS_linux && vars->dyld != DYLD_DEFAULT)
 		die("-mmusl/-mglibc given for non-linux system");
 
+	if(triple->sys != SYS_linux && triple->sys != SYS_darwin && vars->rdynamic)
+		die("-rdynamic given for non-linux/darwin system");
+
 	switch(triple->sys){
 		case SYS_linux:
 		{
@@ -1135,6 +1206,9 @@ static void state_from_triple(
 
 			if(is_pie && !vars->shared)
 				dynarray_add(&state->ldflags_pre_user, ustrdup("-pie"));
+
+			if(vars->rdynamic)
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-export-dynamic"));
 
 			if(vars->shared){
 				/* don't mention a dynamic linker - not used for generating a shared library */
@@ -1236,7 +1310,10 @@ static void state_from_triple(
 
 		case SYS_darwin:
 		{
-			char *syslibroot = "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk";
+			int syslibroot_alloc;
+			const char *syslibroot = darwin_syslibroot(&syslibroot_alloc);
+			if(!syslibroot)
+				fprintf(stderr, "couldn't find syslibroot\n");
 
 			dynarray_add(&state->args[mode_compile], ustrdup("-mpreferred-stack-boundary=4"));
 			dynarray_add(&state->args[mode_compile], ustrdup("-malign-is-p2")); /* 2^4 = 16 byte aligned */
@@ -1262,7 +1339,14 @@ static void state_from_triple(
 				dynarray_add(&state->ldflags_pre_user, ustrdup(syslibroot));
 			}
 			dynarray_add(&state->ldflags_pre_user, ustrdup("-macosx_version_min"));
-			dynarray_add(&state->ldflags_pre_user, ustrdup("10.8"));
+			dynarray_add(
+				&state->ldflags_pre_user,
+				ustrdup(
+					STRINGIFY(MACOS_VERSION_MAJ)
+					"."
+					STRINGIFY(MACOS_VERSION_MIN)
+				)
+			);
 
 			if(vars->debug && vars->output){
 				state->post_link = ustrprintf("dsymutil %s", vars->output);
@@ -1280,7 +1364,12 @@ static void state_from_triple(
 				}
 			}
 
+			if(vars->rdynamic)
+				dynarray_add(&state->ldflags_pre_user, ustrdup("-export_dynamic"));
+
 			paramshared = "-dylib";
+			if(syslibroot_alloc)
+				free((char *)syslibroot);
 			break;
 		}
 
@@ -1406,6 +1495,12 @@ static void add_library_path(struct ucc *const state)
 	}
 }
 
+static void add_pthread(struct ucc *const state)
+{
+	dynarray_add(&state->args[mode_preproc], ustrdup("-D_REENTRANT=1"));
+	dynarray_add(&state->args[mode_link], ustrdup("-lpthread"));
+}
+
 int main(int argc, char **argv)
 {
 	size_t i;
@@ -1501,6 +1596,8 @@ usage:
 	merge_states(&state, &argstate);
 	if(state.mode >= mode_link)
 		add_library_path(&state);
+	if(vars.pthread)
+		add_pthread(&state);
 
 	{
 		const int ninputs = dynarray_count(state.inputs);

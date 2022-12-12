@@ -17,6 +17,7 @@ void inte(int *p)
 
 main()
 {
+#include "../ocheck-init.c"
 	double d = 2;
 
 	fp(&d);

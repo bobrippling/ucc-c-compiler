@@ -37,6 +37,7 @@ void array_len()
 
 main()
 {
+#include "../ocheck-init.c"
 	if(_Generic(abort2(), int: 0))
 		abort();
 

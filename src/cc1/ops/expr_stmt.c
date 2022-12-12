@@ -86,6 +86,7 @@ void mutate_expr_stmt(expr *e)
 expr *expr_new_stmt(stmt *code)
 {
 	expr *e = expr_new_wrapper(stmt);
+	code->symtab->stmt_expr = 1;
 	e->code = code;
 	return e;
 }

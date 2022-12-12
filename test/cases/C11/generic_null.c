@@ -32,6 +32,7 @@ void abort();
 
 main()
 {
+#include "../ocheck-init.c"
 	int do_eval = MAYBE_EVAL(f());
 
 	if(do_eval != 3)

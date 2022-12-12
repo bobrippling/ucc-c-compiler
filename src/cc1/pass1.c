@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
+#include <assert.h>
 
 #include "../util/where.h"
 #include "../util/dynarray.h"
@@ -106,6 +107,9 @@ int parse_and_fold(symtable_global *globals)
 	dynarray_free(symtable_gasm **, last_gasms, NULL);
 
 	UCC_ASSERT(!globals->stab.parent, "scope leak during parse");
+
+	if(fold_expect_error)
+		assert(fold_had_error);
 
 	return parse_had_error || fold_had_error;
 }

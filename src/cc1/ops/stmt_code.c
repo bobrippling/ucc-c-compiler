@@ -23,6 +23,8 @@
 /* out_alloca_fixed() */
 #include "../out/out.h"
 #include "../cc1_out_ctx.h"
+#include "../cc1.h" /* fopt */
+#include "../fopt.h" /* fopt */
 
 const char *str_stmt_code(void)
 {
@@ -122,7 +124,6 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 		{
 			symtable *above_scope = ent.owning_symtab;
 			decl *found = ent.bits.decl;
-			char buf[WHERE_BUF_SIZ];
 			int both_func = is_func && type_is(found->ref, type_func);
 			int both_extern = decl_linkage(d) == linkage_external
 				&& decl_linkage(found) == linkage_external;
@@ -142,9 +143,10 @@ void fold_shadow_dup_check_block_decls(symtable *stab)
 
 				/* same scope? error unless they're both extern */
 				if(same_scope && !both_extern){
-					die_at(&d->where, "redefinition of \"%s\"\n"
-							"%s: note: previous definition here",
-							d->spel, where_str_r(buf, &found->where));
+					warn_at_print_error(&d->where, "redefinition of \"%s\"\n", d->spel);
+					note_at(&found->where, "previous definition here");
+					fold_had_error = 1;
+					continue;
 				}
 
 				/* -Wshadow:
@@ -225,15 +227,34 @@ void fold_stmt_code(stmt *s)
 		fold_stmt(st);
 
 		if(!warned
-		&& st->kills_below_code
+		&& stmt_kills_below_code(st)
 		&& siter[1]
 		&& !stmt_kind(siter[1], label)
-		&& !stmt_kind(siter[1], case)
-		&& !stmt_kind(siter[1], case_range)
-		&& !stmt_kind(siter[1], default)
+		&& !stmt_is_switchlabel(siter[1])
 		){
 			cc1_warn_at(&siter[1]->where, dead_code, "code will never be executed");
 			warned = 1;
+		}
+
+		if(siter > s->bits.code.stmts && stmt_is_switchlabel(st)){
+			stmt *prev = siter[-1];
+
+			prev = stmt_label_leaf(prev);
+
+			/*
+			 * permit labels/switchlabels, since we allow:
+			 *   case 1:
+			 *   case 2:
+			 *   case 3:
+			 *     <code>
+			 */
+			if(stmt_kills_below_code(prev))
+				continue;
+
+			if(stmt_kind(prev, noop) && prev->bits.noop.is_fallthrough)
+				continue;
+
+			cc1_warn_at(&st->where, implicit_fallthrough, "implicit fallthrough between switch labels");
 		}
 	}
 }
@@ -257,6 +278,8 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 			unsigned siz;
 			unsigned align;
 			const int vm = type_is_variably_modified(s->decl->ref);
+			const out_val *place;
+			long offset;
 
 			if(vm){
 				siz = vla_decl_space(s->decl);
@@ -269,7 +292,15 @@ static void gen_auto_decl_alloc(decl *d, out_ctx *octx)
 				align = decl_align(s->decl);
 			}
 
-			gen_set_sym_outval(octx, s, out_aalloc(octx, siz, align, s->decl->ref));
+			place = out_aalloc(octx, siz, align, s->decl->ref, &offset);
+			gen_set_sym_outval(octx, s, place);
+
+			if(cc1_fopt.dump_frame_layout){
+				fprintf(stderr, "frame: %-4ld-% 4ld: %s%s\n",
+						offset - siz,
+						offset,
+						s->decl->spel, vm ? " (variably-modified)" : "");
+			}
 			break;
 		}
 
@@ -292,12 +323,22 @@ static void gen_auto_decl(decl *d, out_ctx *octx)
 	}
 }
 
+static void new_block_for_scope(out_ctx *octx, const char *desc)
+{
+	if(out_ctx_current_blk_is_empty(octx))
+		return;
+
+	out_ctrl_transfer_make_current(octx, out_blk_new(octx, desc));
+}
+
 void gen_block_decls(
 		symtable *stab,
 		struct out_dbg_lbl *pushed_lbls[2],
 		out_ctx *octx)
 {
 	decl **diter;
+
+	new_block_for_scope(octx, "scope_enter");
 
 	if(cc1_gdebug != DEBUG_OFF && !stab->lbl_begin){
 		char *dbg_lbls[2];
@@ -328,8 +369,11 @@ void gen_block_decls(
 		{
 			/* if it's a string, go,
 			 * if it's the most-unnested func. prototype, go */
-			if(!func || !d->proto)
-				gen_asm_global_w_store(d, 1, octx);
+			if(!func || !d->proto){
+				const int emit_tenatives = (d->store & STORE_MASK_STORE) != store_extern;
+
+				gen_asm_global_w_store(d, emit_tenatives, octx);
+			}
 			continue;
 		}
 
@@ -389,6 +433,8 @@ void gen_block_decls_dealloca(
 
 	if(cc1_gdebug != DEBUG_OFF)
 		out_dbg_scope_leave(octx, stab);
+
+	new_block_for_scope(octx, "scope_leave");
 }
 
 static void gen_scope_destructors(symtable *scope, out_ctx *octx)
@@ -454,16 +500,18 @@ void fold_check_scope_entry(where *w, const char *desc,
 		if(s_iter->mark)
 			break;
 
+		if(s_iter->stmt_expr){
+			fold_had_error = 1;
+			warn_at_print_error(w, "%s statement expression", desc);
+			note_at(&s_iter->where, "statement expression here");
+		}
+
 		for(i = symtab_decls(s_iter); i && *i; i++){
 			decl *d = *i;
 			if(type_is_variably_modified(d->ref)){
-				char buf[WHERE_BUF_SIZ];
-
 				fold_had_error = 1;
-				warn_at_print_error(w,
-						"%s scope of variably modified declaration\n"
-						"%s: note: variable \"%s\"",
-						desc, where_str_r(buf, &d->where), d->spel);
+				warn_at_print_error(w, "%s scope of variably modified declaration", desc);
+				note_at(&d->where, "variable \"%s\"", d->spel);
 			}
 		}
 	}

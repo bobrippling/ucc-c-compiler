@@ -29,6 +29,7 @@ f(int n)
 
 main()
 {
+#include "../ocheck-init.c"
 	f(10);
 
 	return 0;

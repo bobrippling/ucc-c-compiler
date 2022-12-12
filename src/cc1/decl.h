@@ -114,6 +114,7 @@ void         decl_free(decl *);
 
 unsigned decl_size(decl *);
 unsigned decl_align(decl *);
+#define decl_check_size(d) (void)decl_size(d)
 void decl_size_align_inc_bitfield( /* may give 0,1 as a result */
 		decl *, unsigned *const sz, unsigned *const align);
 type *decl_type_for_bitfield(decl *);
@@ -147,6 +148,7 @@ decl *decl_with_init(decl *, enum decl_impl_flags);
 
 int decl_is_pure_inline(decl *);
 int decl_should_emit_code(decl *);
+int decl_should_emit_var(decl *);
 int decl_unused_and_internal(decl *);
 enum visibility decl_visibility(decl *);
 int decl_defined(decl *, enum decl_impl_flags);
@@ -166,6 +168,13 @@ const char *decl_store_spel_type_to_str_r(
 		type *ty);
 
 #define decl_use(d) ((d)->flags |= DECL_FLAGS_USED)
+
+/* compound-literals and block-expressions force
+ * their dependants to be generated, even if we don't
+ * use them themselves - this macro is used to tag
+ * these cases for possible recursive use checks in
+ * the future */
+#define decl_use_ignoredeps decl_use
 
 #define DECL_FUNC_ARG_SYMTAB(d) ((d)->bits.func.code->symtab->parent)
 

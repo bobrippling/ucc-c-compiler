@@ -15,5 +15,9 @@ struct A
 g(struct A);
 
 g(const struct A a)
+#ifdef STRUCT_ARG
 {
 }
+#else
+	;
+#endif

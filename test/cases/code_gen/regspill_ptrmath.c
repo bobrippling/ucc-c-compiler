@@ -8,6 +8,7 @@ static inline int f(void)
 
 main()
 {
+#include "../ocheck-init.c"
 	volatile int stash = 0;
 	return stash + f() + stash; // force register spill before jumps for inlining
 }

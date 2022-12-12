@@ -12,6 +12,7 @@ f(struct A *p)
 
 main()
 {
+#include "../ocheck-init.c"
 	struct A a;
 	a.x = 1;
 	f(&a);

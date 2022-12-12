@@ -5,6 +5,7 @@ void abort(void) __attribute__((noreturn));
 
 main()
 {
+#include "../ocheck-init.c"
 	for(unsigned char c = 1; c > 0; c++)
 		;
 

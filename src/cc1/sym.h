@@ -29,7 +29,7 @@ struct sym
 	type *owning_func; /* only for sym_arg */
 
 	/* static analysis */
-	int nreads, nwrites;
+	unsigned nreads, nwrites;
 };
 
 typedef struct static_assert static_assert;
@@ -62,6 +62,8 @@ struct symtable
 	 * transparent marks C99 for-statements creating a new scope
 	 * - see symtab_new_transparent()
 	 */
+	unsigned stmt_expr : 1;
+	/* stmt_expr: if we're inside a ({ ... }) - used for goto detection */
 
 	decl *in_func; /* for r/w checks on args and return-type checks */
 

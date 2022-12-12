@@ -14,6 +14,7 @@ f(int x)
 
 main()
 {
+#include "../ocheck-init.c"
 	int stash[] = { 1, 2 };
 
 	// 1 + 9 + 2

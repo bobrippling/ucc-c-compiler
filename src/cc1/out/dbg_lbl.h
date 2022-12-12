@@ -5,6 +5,8 @@
 #include "../retain.h"
 #include "../../util/compiler.h"
 
+struct section;
+
 struct out_dbg_lbl
 {
 	struct retain rc;
@@ -25,6 +27,6 @@ void out_dbg_label_pop(out_ctx *octx, struct out_dbg_lbl *);
 int out_dbg_label_emitted(struct out_dbg_lbl *, const char **out_lbl);
 int out_dbg_label_shouldemit(struct out_dbg_lbl *, const char **out_lbl);
 
-void out_dbg_labels_emit_release_v(struct out_dbg_lbl ***);
+void out_dbg_labels_emit_release_v(struct out_dbg_lbl ***, const struct section *sec);
 
 #endif

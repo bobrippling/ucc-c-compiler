@@ -8,6 +8,7 @@ f(_Bool x)
 
 main()
 {
+#include "../ocheck-init.c"
 	int x = 3 - (2 + 1);
 	f(0 == x);
 }

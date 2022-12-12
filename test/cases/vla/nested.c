@@ -26,6 +26,7 @@ void test()
 
 main()
 {
+#include "../ocheck-init.c"
 	test();
 
 	return 0;

@@ -41,5 +41,5 @@ void style_stmt_break(const stmt *s, out_ctx *octx)
 
 void init_stmt_break(stmt *s)
 {
-	s->f_passable = fold_passable_yes;
+	s->f_passable = fold_passable_no;
 }

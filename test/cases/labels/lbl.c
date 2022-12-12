@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	goto a; // forward decl in nested scope
 
 	{ b: goto c; } // forward decl

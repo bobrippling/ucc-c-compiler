@@ -54,6 +54,7 @@ int f(int i)
 
 int main(int argc, char **argv)
 {
+#include "../ocheck-init.c"
 	f(argc);
 	//f(5); // pass
 	//f(4); // pass
@@ -69,6 +70,7 @@ int f(int i)
 
 int main()
 {
+#include "../ocheck-init.c"
 	// currently array[N] is allowed since its address may be taken
 	f(5);
 }

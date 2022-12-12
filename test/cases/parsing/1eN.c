@@ -11,6 +11,7 @@ float q = 1e3f;
 
 main()
 {
+#include "../ocheck-init.c"
 	if(x != 5600000)
 		abort();
 	if(y != 1200)

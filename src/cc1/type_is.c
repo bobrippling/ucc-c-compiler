@@ -100,6 +100,11 @@ type *type_skip_tdefs(type *t)
 	return type_skip(t, ~STOP_AT_TDEF & ~STOP_AT_WHERE & ~STOP_AT_ATTR);
 }
 
+type *type_skip_attrs(type *t)
+{
+	return type_skip(t, ~0 & ~STOP_AT_ATTR);
+}
+
 type *type_skip_non_tdefs_consts(type *t)
 {
 	return type_skip(t, STOP_AT_TDEF | STOP_AT_QUAL_CASTS);
@@ -163,22 +168,21 @@ type *type_is(type *r, enum type_kind t)
 	return r;
 }
 
-type *type_is_primitive(type *r, enum type_primitive p)
+type *type_is_primitive(type *t, enum type_primitive p)
 {
-	r = type_is(r, type_btype);
+	type *r = type_is(t, type_btype);
+	assert(p != type_unknown);
 
-	/* extra checks for a type */
-	if(r && (p == type_unknown || r->bits.type->primitive == p))
+	if(r && r->bits.type->primitive == p)
 		return r;
 
 	return NULL;
 }
 
-type *type_is_primitive_anysign(type *ty, enum type_primitive p)
+type *type_is_primitive_anysign(type *t, enum type_primitive p)
 {
 	enum type_primitive a, b;
-
-	ty = type_is(ty, type_btype);
+	type *ty = type_is(t, type_btype);
 
 	if(!ty)
 		return NULL;
@@ -395,7 +399,7 @@ int type_is_complete(type *r)
 		}
 
 		case type_array:
-			return (r->bits.array.is_vla || r->bits.array.size)
+			return (r->bits.array.vla_kind || r->bits.array.size)
 				&& type_is_complete(r->ref);
 
 		case type_func:
@@ -414,10 +418,10 @@ int type_is_complete(type *r)
 	return 1;
 }
 
-type *type_is_vla(type *ty, enum vla_kind kind)
+type *type_is_vla(type *ty, enum vla_dimension kind)
 {
 	for(; (ty = type_is(ty, type_array)); ty = ty->ref){
-		if(ty->bits.array.is_vla)
+		if(ty->bits.array.vla_kind)
 			return ty;
 
 		if(kind == VLA_TOP_DIMENSION)
@@ -439,7 +443,7 @@ int type_is_variably_modified_vla(type *const ty, int *vla)
 	for(ti = ty; ti; first = 0, ti = type_next(ti)){
 		type *test = type_is(ti, type_array);
 
-		if(test && test->bits.array.is_vla){
+		if(test && test->bits.array.vla_kind){
 			if(vla && first)
 				*vla = 1;
 			return 1;
@@ -462,15 +466,14 @@ int type_is_incomplete_array(type *r)
 	return 0;
 }
 
-type *type_complete_array(type *r, expr *sz)
+type *type_complete_array(type *const orig, expr *sz)
 {
-	r = type_is(r, type_array);
+	attribute **attrs = type_get_attrs_toplvl(orig);
+	type *t = type_is(orig, type_array);
 
-	UCC_ASSERT(r, "not an array");
+	UCC_ASSERT(t, "not an array");
 
-	r = type_array_of(r->ref, sz);
-
-	return r;
+	return type_attributed(type_array_of(t->ref, sz), attrs);
 }
 
 struct_union_enum_st *type_is_s_or_u_or_e(type *r)
@@ -719,7 +722,7 @@ enum type_qualifier type_qual(const type *r)
 
 enum type_primitive type_primitive(type *ty)
 {
-	ty = type_is_primitive(ty, type_unknown);
+	ty = type_is(ty, type_btype);
 	UCC_ASSERT(ty, "not primitive?");
 	return ty->bits.type->primitive;
 }
@@ -787,24 +790,19 @@ unsigned type_array_len(type *r)
 
 int type_is_promotable(type *const t, type **pto)
 {
-	type *test;
-	if((test = type_is_primitive(t, type_unknown))){
-		static unsigned sz_int, sz_double;
-		const int fp = type_floating(test->bits.type->primitive);
-		unsigned rsz;
+	enum type_primitive prim;
+	unsigned sz;
 
-		if(!sz_int){
-			sz_int = type_primitive_size(type_int);
-			sz_double = type_primitive_size(type_double);
-		}
+	if(!type_is_arith(t))
+		return 0;
 
-		rsz = type_size(test, type_loc(t)); /* may be enum-int */
+	prim = type_is_floating(t) ? type_double : type_int;
 
-		if(rsz < (fp ? sz_double : sz_int)){
-			if(pto)
-				*pto = type_nav_btype(cc1_type_nav, fp ? type_double : type_int);
-			return 1;
-		}
+	sz = type_size(t, type_loc(t)); /* may be enum-int */
+	if(sz < type_primitive_size(prim)){
+		if(pto)
+			*pto = type_nav_btype(cc1_type_nav, prim);
+		return 1;
 	}
 
 	return 0;

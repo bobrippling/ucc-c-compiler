@@ -7,5 +7,6 @@ struct A
 
 main()
 {
+#include "../ocheck-init.c"
 	return _Alignof(struct A) + sizeof(struct A);
 }

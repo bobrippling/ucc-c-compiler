@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../../ocheck-init.c"
 	struct
 	{
 		int x : 4, y : 4;

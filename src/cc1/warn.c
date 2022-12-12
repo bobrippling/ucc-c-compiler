@@ -84,17 +84,15 @@ static void show_warn_options(const unsigned char *pwarn)
 	}
 }
 
-int cc1_warn_at_w(
-		const struct where *where, const unsigned char *pwarn,
-		const char *fmt, ...)
+int cc1_warn_type(const struct where *where, const unsigned char *pwarn)
 {
-	va_list l;
 	struct where backup;
 	enum warn_type warn_type = VWARN_WARN;
+	const enum warning_fatality fatality = *pwarn;
 
-	switch((enum warning_fatality)*pwarn){
+	switch(fatality){
 		case W_OFF:
-			return 0;
+			return -1;
 		case W_ERROR:
 			fold_had_error = parse_had_error = 1;
 			warn_type = VWARN_ERR;
@@ -109,12 +107,30 @@ int cc1_warn_at_w(
 
 	/* don't emit warnings from system headers */
 	if(!cc1_warning.system_headers && where_in_sysheader(where)){
-		if(warn_type == VWARN_ERR){
+		if(fatality == W_ERROR){
+			/* -Werror shouldn't cause system headers to emit errors */
+			return -1;
+		}else if(warn_type == VWARN_ERR){
 			/* we always want this warning emitting */
 		}else{
-			return 0;
+			return -1;
 		}
 	}
+
+	return warn_type;
+}
+
+int cc1_warn_at_w(
+		const struct where *where, const unsigned char *pwarn,
+		const char *fmt, ...)
+{
+	va_list l;
+	int warn_type_i = cc1_warn_type(where, pwarn);
+	enum warn_type warn_type;
+
+	if(warn_type_i == -1)
+		return 0;
+	warn_type = warn_type_i;
 
 	va_start(l, fmt);
 	vwarn(where, warn_type, fmt, l);
@@ -204,6 +220,7 @@ static void warning_all(enum warning_fatality set)
 	cc1_warning.aggregate_return =
 	cc1_warning.switch_enum_even_when_default_lbl =
 	cc1_warning.bitfield_promotion =
+	cc1_warning.unused_comma_all =
 		W_OFF;
 }
 

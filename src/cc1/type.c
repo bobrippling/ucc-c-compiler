@@ -74,13 +74,11 @@ static int type_attribute_missing1(type *ta, type *tb, enum attribute_type attr)
 
 static int type_attribute_missing(type *ta, type *tb)
 {
-#define NAME(x, typrop)                             \
-	if(typrop){                                       \
-		if(type_attribute_missing1(ta, tb, attr_ ## x)) \
-			return 1;                                     \
-	}
+#define NAME(x, typrop, tymismatch) \
+	if(tymismatch && type_attribute_missing1(ta, tb, attr_ ## x)) \
+			return 1;
 
-#define RENAME(s, x, typrop) NAME(x, typrop)
+#define RENAME(s, x, typrop, tymismatch) NAME(x, typrop, tymismatch)
 #define ALIAS(s, x)
 #define COMPLEX_ALIAS(s, x)
 
@@ -148,7 +146,7 @@ static enum type_cmp type_cmp_r(
 			break;
 
 		case type_array:
-			if(a->bits.array.is_vla || b->bits.array.is_vla){
+			if(a->bits.array.vla_kind || b->bits.array.vla_kind){
 				/* fine, pretend they're equal even if different expressions */
 				ret = TYPE_EQUAL_TYPEDEF;
 
@@ -644,7 +642,7 @@ static void type_add_str(
 			const char *sz_space = "";
 
 			BUF_ADD("[");
-			if(r->bits.array.is_vla == 0 && r->bits.array.is_static){
+			if(r->bits.array.vla_kind == VLA_NO && r->bits.array.is_static){
 				BUF_ADD("static");
 				sz_space = " ";
 			}
@@ -655,8 +653,8 @@ static void type_add_str(
 				sz_space = " ";
 			}
 
-			switch(r->bits.array.is_vla){
-				case 0:
+			switch(r->bits.array.vla_kind){
+				case VLA_NO:
 					if(r->bits.array.size){
 						BUF_ADD(
 								"%s%" NUMERIC_FMT_D,
@@ -707,7 +705,7 @@ type *type_add_type_str(type *r,
 		return NULL;
 
 	if(ty->type == type_tdef){
-		char buf[BTYPE_STATIC_BUFSIZ];
+		char buf[TYPE_STATIC_BUFSIZ];
 		decl *d = ty->bits.tdef.decl;
 		type *of;
 
@@ -731,7 +729,7 @@ type *type_add_type_str(type *r,
 
 		if((opts & TY_STR_AKA) && of){
 			/* descend to the type if it's next */
-			type *t_ref = type_is_primitive(of, type_unknown);
+			type *t_ref = type_is(of, type_btype);
 			const btype *t = t_ref ? t_ref->bits.type : NULL;
 
 			BUF_ADD(" {aka '%s'}",
@@ -839,7 +837,7 @@ type_str_type(type *r)
 	type *t = type_is_array(r);
 	if(!t)
 		t = type_is_ptr(r);
-	t = type_is_primitive(t, type_unknown);
+	t = type_is(t, type_btype);
 	switch(t ? t->bits.type->primitive : type_unknown){
 		case type_schar:
 		case type_nchar:
@@ -889,7 +887,7 @@ static unsigned type_hash2(
 			if(t->bits.array.size)
 				hash ^= nest_hash(t->bits.array.size->tree_type);
 			hash ^= 1 << t->bits.array.is_static;
-			hash ^= 1 << t->bits.array.is_vla;
+			hash ^= 1 << t->bits.array.vla_kind;
 			break;
 
 		case type_block:

@@ -17,6 +17,7 @@ int load_bool(_Bool *p)
 
 int main()
 {
+#include "../ocheck-init.c"
 	load_bool(&(_Bool){ false });
 	load_bool(&(_Bool){ true });
 

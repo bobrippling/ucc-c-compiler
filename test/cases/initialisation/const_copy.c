@@ -16,6 +16,7 @@ void check(A *p)
 
 main()
 {
+#include "../ocheck-init.c"
 	A a = { 1 };
 	const A b = a; // init const
 	A c = b; // init from const

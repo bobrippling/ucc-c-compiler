@@ -18,6 +18,7 @@ int (*f(int a[g()]))[] // called once
 
 main()
 {
+#include "../ocheck-init.c"
 	int a[2][g()];
 
 	a[0][0] = 0;

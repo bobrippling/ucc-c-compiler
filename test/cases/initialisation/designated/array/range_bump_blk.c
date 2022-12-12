@@ -23,6 +23,7 @@ void (^blks[])() = {
 
 int main()
 {
+#include "../../../ocheck-init.c"
 	for(int i = 0; i <= 100; i++){
 		void (^b)() = blks[i];
 

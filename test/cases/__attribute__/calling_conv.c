@@ -32,6 +32,7 @@ void assert_eq(int a, int b)
 
 int main()
 {
+#include "../ocheck-init.c"
 	assert_eq(before(1,2,3,4,5,6,7), 28);
 	assert_eq(attributed(1,2,3,4,5,6,7), 28);
 	assert_eq(after(1,2,3,4,5,6,7), 28);

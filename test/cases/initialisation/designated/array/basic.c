@@ -1,5 +1,4 @@
-// RUN: %ucc -o %t %s
-// RUN: %ocheck 2 %t
+// RUN: %ocheck 2 %s
 
 int x[] = {
 	[5] = 2
@@ -7,6 +6,7 @@ int x[] = {
 
 main()
 {
+#include "../../../ocheck-init.c"
 	return
 		x[0] +
 		x[1] +

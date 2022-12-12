@@ -70,6 +70,7 @@ extern void abort(void);
 
 int main()
 {
+#include "../../ocheck-init.c"
 	struct A a = af();
 	CHECK(a);
 

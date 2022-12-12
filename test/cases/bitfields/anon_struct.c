@@ -14,6 +14,7 @@ void *memset(void *, int, unsigned long);
 
 main()
 {
+#include "../ocheck-init.c"
 	struct bits bs;
 
 	memset(&bs, 0, sizeof bs);

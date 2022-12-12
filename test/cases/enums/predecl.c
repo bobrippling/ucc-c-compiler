@@ -12,6 +12,7 @@ enum A
 
 main()
 {
+#include "../ocheck-init.c"
 	return f(Z);
 }
 

@@ -50,6 +50,7 @@ end:
 
 main()
 {
+#include "../../ocheck-init.c"
 	if(f(0) != 5 || skipped){
 		_Noreturn void abort(void);
 		abort();

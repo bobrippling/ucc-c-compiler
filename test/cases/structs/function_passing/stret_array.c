@@ -13,6 +13,7 @@ A f(void)
 
 int main()
 {
+#include "../../ocheck-init.c"
 	A a = f();
 	if(a.buf[0] != 1
 	|| a.buf[1] != 2

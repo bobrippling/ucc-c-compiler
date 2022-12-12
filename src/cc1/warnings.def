@@ -34,6 +34,8 @@ X("switch-enum-bitmask", switch_enum_bitmask)
 /* warn if default label in fully covered switch */
 X("covered-switch-default", switch_default_covered)
 
+X("implicit-fallthrough", implicit_fallthrough)
+
 X("enum-compare", enum_cmp)
 
 X("incomplete-use", incomplete_use)
@@ -68,6 +70,7 @@ ALIAS("shadow=compatible-local", shadow_compatible_local)
 
 X("cast-qual", cast_qual)
 
+X("comma", unused_comma_all)
 X("unused-comma", unused_comma)
 X("unused-expression", unused_expr)
 X("unused-function", unused_function)

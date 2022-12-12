@@ -16,6 +16,7 @@ static void check_pattern(void *mem, size_t nmem, unsigned char pattern)
 
 int main()
 {
+#include "../ocheck-init.c"
 	// size mustn't be a multiple of the word size __builtin_memcpy() uses to copy
 	typedef struct A { unsigned a, b, c; } A;
 	typedef struct B { unsigned a, b, c, d, e; } B;

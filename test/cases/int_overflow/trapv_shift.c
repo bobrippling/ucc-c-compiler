@@ -5,6 +5,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	// test with T being both int and long, to check how truncations are dealt with
 	T x;
 

@@ -1,4 +1,4 @@
-// RUN: %ucc -c %s -o %t
+// RUN: %ucc -fsyntax-only %s
 
 int f(int x, int y[*]);
 void g(int (*y)[*]);

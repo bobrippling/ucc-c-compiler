@@ -17,6 +17,7 @@ unsigned char b = '\xff'; // CHECK: !/error/
 
 int main()
 {
+#include "../ocheck-init.c"
 	if(p[0] != -1 || p[1] != 'f' || p[2] != '\0')
 		abort();
 	return 0;

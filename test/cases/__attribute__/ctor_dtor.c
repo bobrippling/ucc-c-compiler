@@ -20,6 +20,7 @@ _Noreturn void abort();
 
 main()
 {
+#include "../ocheck-init.c"
 	if(!inited)
 		abort();
 

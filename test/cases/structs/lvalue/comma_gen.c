@@ -7,6 +7,7 @@ struct A
 
 int main()
 {
+#include "../../ocheck-init.c"
 	struct A a = { .i = 1 };
 
 	return a, 1;

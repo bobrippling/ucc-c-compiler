@@ -2,6 +2,7 @@
 void abort(void) __attribute__((noreturn));
 main()
 {
+#include "../../ocheck-init.c"
 	int ent1[] = {
 		[0 ... 5] = 5,
 		[3] = 1,

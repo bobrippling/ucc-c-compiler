@@ -10,6 +10,7 @@ void san_fail(void)
 
 main()
 {
+#include "../ocheck-init.c"
 	int *max = (int *)(LONG_MAX - sizeof(int) + 1);
 
 	max++;

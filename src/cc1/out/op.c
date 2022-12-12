@@ -30,7 +30,7 @@ static int calc_ptr_step(type *t)
 	if(type_is_primitive(type_is_ptr(t), type_void))
 		return type_primitive_size(type_void);
 
-	if(type_is_primitive(t, type_unknown))
+	if(type_is_arith(t))
 		return 1;
 
 	tnext = type_next(t);
@@ -346,9 +346,6 @@ const out_val *out_op(
 			return result;
 	}
 
-	if(vconst && const_is_noop(binop, vconst, vconst == lhs))
-		return consume_one(octx, vconst == lhs ? rhs : lhs, lhs, rhs);
-
 	/* constant folding */
 	if(vconst && cc1_fopt.const_fold){
 		const out_val *oconst = (vconst == lhs ? rhs : lhs);
@@ -365,6 +362,10 @@ const out_val *out_op(
 				if(consted)
 					return consted;
 			}
+		}else if(const_is_noop(binop, vconst, vconst == lhs)){
+			/* handle non-const with const, where the result is clear
+			 * e.g. x | 0 */
+			return consume_one(octx, vconst == lhs ? rhs : lhs, lhs, rhs);
 		}
 	}
 

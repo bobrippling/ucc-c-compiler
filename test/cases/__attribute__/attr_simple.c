@@ -1,9 +1,9 @@
-// RUN: %check %s
+// RUN: %check --only %s
 
-f(){}
+int f(){return 3;}
 
-main()
+int main()
 {
-	int f() __attribute__((warn_unused));
-	f(); // CHECK: /warning: unused expression/
+	int f() __attribute__((warn_unused_result)); // CHECK: warning: declaration of "f" after definition is ignored
+	f(); // CHECK: warning: unused expression
 }

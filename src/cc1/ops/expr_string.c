@@ -83,6 +83,7 @@ void mutate_expr_str(expr *e)
 {
 	e->f_const_fold = const_expr_string;
 	e->f_islval = expr_is_lval_always;
+	e->f_requires_relocation = expr_bool_always;
 }
 
 void expr_mutate_str(

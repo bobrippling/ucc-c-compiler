@@ -270,6 +270,9 @@ static enum stret x86_stret(type *ty, unsigned *stack_space)
 		return stret_scalar;
 	}
 
+	if(cc1_fopt.pcc_struct_return)
+		return stret_memcpy;
+
 	if(IS_32_BIT())
 		ICE("TODO: 32-bit stret");
 
@@ -656,7 +659,7 @@ void impl_func_prologue_save_call_regs(
 			const out_val *stack_loc;
 			type *const arithty = type_nav_btype(cc1_type_nav, type_intptr_t);
 
-			stack_loc = out_aalloc(octx, (n_call_f + n_call_i) * ws, ws, arithty);
+			stack_loc = out_aalloc(octx, (n_call_f + n_call_i) * ws, ws, arithty, NULL);
 
 			for(i_arg = i_i = i_f = i_arg_stk = 0;
 					i_arg < nargs;
@@ -749,7 +752,7 @@ void impl_func_prologue_save_variadic(out_ctx *octx, type *rf)
 	/* space for all call regs */
 	stk_spill = out_aalloc(octx,
 			(N_CALL_REGS_I + N_CALL_REGS_F * 2) * pws,
-			pws, ty_integral);
+			pws, ty_integral, NULL);
 
 	/* go backwards, as we want registers pushed in reverse
 	 * so we can iterate positively.
@@ -985,6 +988,21 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			ICE("load int into float?");
 
 		case V_CONST_F:
+			if(from->bits.val_f == 0){
+				type *const ty_fp = from->t;
+				out_val *mut = v_dup_or_reuse(octx, from, from->t);
+				struct vreg r;
+				const char *rstr;
+
+				v_unused_reg(octx, 1, 1, &r, NULL);
+				rstr = x86_reg_str(&r, ty_fp);
+
+				out_asm(octx, "xorp%c %%%s, %%%s", x86_suffix(ty_fp)[1], rstr, rstr);
+				/* "fldz" */
+
+				return v_new_reg(octx, mut, ty_fp, &r);
+			}
+
 			/* if it's an int-const, we can load without a label
 			 * ... unless it's greater than 0x1p63, in which case,
 			 * we can't create it from an integer. */
@@ -1012,15 +1030,14 @@ static const out_val *x86_load_fp(out_ctx *octx, const out_val *from)
 			char *lbl = out_label_data_store(STORE_FLOAT);
 			struct vreg r;
 			out_val *mut;
-			struct section sec = SECTION_INIT(SECTION_DATA);
-			struct section_output orig_section;
+			struct section sec = SECTION_INIT(SECTION_DATA), orig_section;
 
-			memcpy_safe(&orig_section, &cc1_current_section_output);
+			memcpy_safe(&orig_section, &cc1_output.section);
 			{
 				asm_nam_begin3(&sec, lbl, type_align(from->t, NULL));
 				asm_out_fp(&sec, from->t, from->bits.val_f);
 			}
-			memcpy_safe(&cc1_current_section_output, &orig_section);
+			asm_switch_section(&orig_section);
 
 			from = mut = v_dup_or_reuse(octx, from, from->t);
 
@@ -1339,6 +1356,8 @@ static const out_val *x86_idiv(
 	v_freeup_reg(octx, &rdx);
 	v_reserve_reg(octx, &rdx);
 	{
+		const int is_signed = type_is_signed(r->t);
+
 		/* need to move 'l' into eax
 		 * then sign extended later - cqto */
 		l = v_to_reg_given_freeup_no_off(octx, l, &rax);
@@ -1350,7 +1369,7 @@ static const out_val *x86_idiv(
 		assert(r->type != V_REG
 				|| r->bits.regoff.reg.idx != X86_64_REG_RDX);
 
-		if(type_is_signed(r->t)){
+		if(is_signed){
 			const char *ext;
 			switch(type_size(r->t, NULL)){
 				default:
@@ -1382,7 +1401,10 @@ static const out_val *x86_idiv(
 						octx, out_new_zero(octx, r->t), &rdx));
 		}
 
-		out_asm(octx, "idiv%s %s",
+		/* idiv is signed, div isn't:
+		 * if the result of a signed (128-bit) divide doesn't fit in 64-bits, we catch a SIGFPE */
+		out_asm(octx, "%sdiv%s %s",
+				is_signed ? "i" : "",
 				x86_suffix(r->t),
 				impl_val_str(r, 0));
 
@@ -2206,9 +2228,9 @@ static char *x86_call_jmp_target(
 	return NULL;
 }
 
-void impl_jmp(const char *lbl)
+void impl_jmp(const char *lbl, const struct section *sec)
 {
-	asm_out_section(&section_text, "\tjmp %s\n", lbl);
+	asm_out_section(sec, "\tjmp %s\n", lbl);
 }
 
 void impl_jmp_expr(out_ctx *octx, const out_val *v)
@@ -2380,7 +2402,7 @@ const out_val *impl_call(
 			nints++; /* only an extra pointer arg for stret_memcpy */
 			/* fall */
 		case stret_regs:
-			stret_spill = out_aalloc(octx, stret_stack, type_align(retty, NULL), retty);
+			stret_spill = out_aalloc(octx, stret_stack, type_align(retty, NULL), retty, NULL);
 		case stret_scalar:
 			break;
 	}
@@ -2420,7 +2442,7 @@ const out_val *impl_call(
 
 		}else{
 			/* this aligns the stack-ptr and returns arg_stack padded */
-			arg_stack.vptr = out_aalloc(octx, arg_stack.bytesz, pws, arithty);
+			arg_stack.vptr = out_aalloc(octx, arg_stack.bytesz, pws, arithty, NULL);
 
 			if(octx->stack_callspace < arg_stack.bytesz)
 				octx->stack_callspace = arg_stack.bytesz;

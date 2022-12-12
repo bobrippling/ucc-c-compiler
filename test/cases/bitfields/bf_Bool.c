@@ -2,6 +2,7 @@
 
 main()
 {
+#include "../ocheck-init.c"
 	struct
 	{
 		_Bool x : 5;

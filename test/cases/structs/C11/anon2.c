@@ -12,6 +12,7 @@ struct nest {
 
 int main()
 {
+#include "../../ocheck-init.c"
 	struct nest n = {
 		.i = 2
 	};

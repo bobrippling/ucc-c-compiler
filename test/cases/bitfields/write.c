@@ -40,6 +40,7 @@ chk_bf(struct A *p, int a, int b, int c, int d, int e)
 
 main()
 {
+#include "../ocheck-init.c"
 	struct A a;
 
 

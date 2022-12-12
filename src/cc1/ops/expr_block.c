@@ -30,6 +30,8 @@ void expr_block_got_params(
 
 	df->spel = out_label_block("globl");
 	df->block_expr = e;
+	df->store = store_static;
+	decl_use_ignoredeps(df);
 
 	fold_funcargs(args, symtab, NULL);
 
@@ -127,6 +129,7 @@ const out_val *gen_expr_style_block(const expr *e, out_ctx *octx)
 void mutate_expr_block(expr *e)
 {
 	e->f_const_fold = const_expr_block;
+	e->f_requires_relocation = expr_bool_always;
 }
 
 expr *expr_new_block(type *rt, funcargs *args)

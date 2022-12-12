@@ -127,6 +127,7 @@ static void check_E()
 
 int main()
 {
+#include "../../ocheck-init.c"
 	check_comma();
 	check_dot();
 	check_C_variants();

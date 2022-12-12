@@ -41,6 +41,7 @@ enum fold_type_chk
 };
 
 int fold_had_error;
+int fold_expect_error;
 
 void fold_insert_casts(type *tlhs, expr **prhs, symtable *stab)
 {
@@ -66,11 +67,11 @@ static int check_enum_cmp(
 	if(sl == sr)
 		return 0;
 
-	cc1_warn_at(w, enum_mismatch,
-			"enum type mismatch in %s\n"
-			"%s: note: 'enum %s' vs 'enum %s'",
-			desc, where_str(w),
+	if(cc1_warn_at(w, enum_mismatch, "enum type mismatch in %s", desc)){
+		note_at(w,
+			"'enum %s' vs 'enum %s'",
 			sl->spel, sr->spel);
+	}
 
 	return 1;
 }
@@ -436,7 +437,7 @@ static void fold_type_w_attr(
 
 				FOLD_EXPR(r->bits.array.size, stab);
 
-				if(r->bits.array.is_vla){
+				if(r->bits.array.vla_kind){
 					if(cc1_std < STD_C99){
 						cc1_warn_at(
 								&r->bits.array.size->where,
@@ -646,6 +647,7 @@ static void check_valid_align_within_min(int const al, int const min, where *w)
 		return;
 
 	if(al < min){
+		/* gcc and clang allow this in some cases and will generate unaligned loads */
 		warn_at_print_error(w, "can't reduce alignment (%d -> %d)", min, al);
 		fold_had_error = 1;
 	}
@@ -731,6 +733,16 @@ void fold_decl_add_sym(decl *d, symtable *stab)
 	/* must be before fold*, since sym lookups are done */
 	if(d->sym){
 		/* ignore */
+	}else if(0 && d->proto){
+		/* this links things too tightly and we end up with
+		 * decls sharing funcargs (which are mutated, breaking
+		 * the type_nav guarantees - easiest to not link here for now */
+		decl *proto;
+
+		for(proto = d; proto->proto; proto = proto->proto);
+
+		d->sym = proto->sym;
+
 	}else{
 		enum sym_type ty;
 
@@ -739,8 +751,11 @@ void fold_decl_add_sym(decl *d, symtable *stab)
 		}else{
 			/* no decl_store_duration_is_static() checks here:
 			 * we haven't given it a sym yet */
-			ty = !stab->parent || decl_store_static_or_extern(d->store)
-				? sym_global : sym_local;
+			const int global = !stab->parent
+				|| decl_store_static_or_extern(d->store)
+				|| type_is(d->ref, type_func);
+
+			ty = global ? sym_global : sym_local;
 		}
 
 		d->sym = sym_new(d, ty);
@@ -881,7 +896,18 @@ static int fold_decl_resolve_align(decl *d, symtable *stab, attribute *attrib)
 
 static void fold_decl_var_align(decl *d, symtable *stab)
 {
-	attribute *attrib = attribute_present(d, attr_aligned);
+	attribute *attrib;
+
+	if(!d->spel){
+		/* we ignore these, alignment only applies to decls, not types
+		 * i.e.
+		 * __attribute((aligned(..))) enum E { ... };
+		 * ^~~~~~~~~~~~~~~~~~~~~~~~~~ ignored
+		 */
+		return;
+	}
+
+	attrib = attribute_present(d, attr_aligned);
 
 	if(d->bits.var.align.first || attrib){
 		d->bits.var.align.resolved = fold_decl_resolve_align(d, stab, attrib);
@@ -1150,7 +1176,7 @@ void fold_decl_maybe_member(decl *d, symtable *stab, int su_member)
 				stab, d->attr, FOLD_TYPE_NO_ARRAYQUAL);
 
 		if(!su_member
-		&& d->spel
+		&& (d->spel || stab->are_params)
 		&& (!STORE_IS_TYPEDEF(d->store) || type_is_variably_modified(d->ref)))
 		{
 			fold_decl_add_sym(d, stab);
@@ -1332,11 +1358,13 @@ void fold_func_code(stmt *code, where *w, char *sp, symtable *arg_symtab)
 		decl *d = *i;
 
 		if(!d->spel){
-			warn_at_print_error(w,
+			if(cc1_std < STD_C2X){
+				warn_at_print_error(w,
 					"argument %ld in \"%s\" is unnamed",
 					i - start + 1, sp);
 
-			fold_had_error = 1;
+				fold_had_error = 1;
+			}
 		}
 
 		if(!type_is_complete(d->ref))
@@ -1697,10 +1725,9 @@ void fold_merge_tenatives(symtable *stab)
 			/* look for an explicit init */
 			if(!type_is(d->ref, type_func) && d->bits.var.init.dinit){
 				if(init){
-					char wbuf[WHERE_BUF_SIZ];
-					die_at(&init->where, "multiple definitions of \"%s\"\n"
-							"%s: note: other definition here", init->spel,
-							where_str_r(wbuf, &d->where));
+					warn_at_print_error(&init->where, "multiple definitions of \"%s\"", init->spel);
+					note_at(&d->where, "other definition here");
+					fold_had_error = 1;
 				}
 				init = d;
 			}else if(!init /* no explicit init - complete array? */
