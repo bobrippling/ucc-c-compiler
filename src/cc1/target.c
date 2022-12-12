@@ -113,6 +113,13 @@ static const int alias_variables[] = {
 	1, /* cygwin */
 };
 
+static const int dtor_via_ctor_atexit[] = {
+	0, /* linux */
+	0, /* freebsd */
+	1, /* darwin */
+	0, /* cygwin */
+};
+
 ucc_unused
 static char syses[] = {
 #define X(pre, post) 0,
@@ -136,4 +143,5 @@ void target_details_from_triple(const struct triple *triple, struct target_detai
 	details->dwarf_link_stmt_list = dwarf_link_stmt_list[triple->sys];
 	details->ld_indirect_call_via_plt = ld_indirect_call_via_plts[triple->sys];
 	details->alias_variables = alias_variables[triple->sys];
+	details->dtor_via_ctor_atexit = dtor_via_ctor_atexit[triple->sys];
 }

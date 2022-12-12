@@ -178,7 +178,8 @@ void blk_flushall(out_ctx *octx, out_blk *first, char *end_dbg_lbl, const struct
 	if(st.jmpto)
 		impl_jmp(st.jmpto->lbl, sec);
 
-	asm_out_section(sec, "%s:\n", end_dbg_lbl);
+	if(end_dbg_lbl)
+		asm_out_section(sec, "%s:\n", end_dbg_lbl);
 
 	out_dbg_labels_emit_release_v(&octx->pending_lbls, sec);
 }
