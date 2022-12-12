@@ -155,18 +155,18 @@ my $expected_signal = $config{expected_signal};
 
 if($expected_signal){
 	if(!$got_signal){
-		die "$0: expected signal $expected, got exit code $got_exitcode, from @ARGV\n";
+		die "$0: expected signal $expected, got exit code $got_exitcode, from \`@ARGV\`\n";
 	}
 
 	if(!($got_signal eq $expected)){
-		die "$0: expected signal $expected, got signal $got_signal, from @ARGV\n";
+		die "$0: expected signal $expected, got signal $got_signal, from \`@ARGV\`\n";
 	}
 }else{
 	if($got_signal){
-		die "$0: expected exit code $expected, got signal $got_signal, from @ARGV\n";
+		die "$0: expected exit code $expected, got signal $got_signal, from \`@ARGV\`\n";
 	}
 
 	if($expected != $got_exitcode){
-		die "$0: expected exit code $expected, got exit code $got_exitcode, from @ARGV\n";
+		die "$0: expected exit code $expected, got exit code $got_exitcode, from \`@ARGV\`\n";
 	}
 }

@@ -3,6 +3,7 @@
 
 #include "vstack_t.h"
 #include "../enum_no_sanitize.h"
+#include "val.h"
 
 typedef struct out_val_list out_val_list;
 

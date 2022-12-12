@@ -41,6 +41,7 @@ struct target_details
 	int dwarf_link_stmt_list;
 	int ld_indirect_call_via_plt;
 	int alias_variables;
+	int dtor_via_ctor_atexit;
 };
 
 void target_details_from_triple(const struct triple *, struct target_details *);

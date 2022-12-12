@@ -676,7 +676,7 @@ void gen_asm(
 
 	gen_stringlits(globs->literals);
 
-	gen_inits_terms(inits, terms);
+	gen_inits_terms(inits, terms, octx);
 	dynarray_free(decl **, inits, NULL);
 	dynarray_free(decl **, terms, NULL);
 
