@@ -86,31 +86,31 @@ static const struct target_as toolchain_darwin = {
 };
 
 static const struct target_as *const asconfig[] = {
-	&toolchain_gnu,
-	&toolchain_gnu,
-	&toolchain_darwin,
-	&toolchain_gnu,
+	&toolchain_gnu,    /* linux */
+	&toolchain_gnu,    /* freebsd */
+	&toolchain_darwin, /* darwin */
+	&toolchain_gnu,    /* cygwin */
 };
 
 static const int dwarf_link_stmt_list[] = {
-	1,
-	1,
-	0,
-	1,
+	1, /* linux */
+	1, /* freebsd */
+	0, /* darwin */
+	1, /* cygwin */
 };
 
 static const int ld_indirect_call_via_plts[] = {
-	1,
-	1,
-	0,
-	1,
+	1, /* linux */
+	1, /* freebsd */
+	0, /* darwin */
+	1, /* cygwin */
 };
 
 static const int alias_variables[] = {
-	1,
-	1,
-	0,
-	1,
+	1, /* linux */
+	1, /* freebsd */
+	0, /* darwin */
+	1, /* cygwin */
 };
 
 ucc_unused
