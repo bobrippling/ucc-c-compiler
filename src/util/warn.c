@@ -25,7 +25,7 @@ enum
 	colour_err  = colour_red,
 	colour_warn = colour_orange,
 	colour_note = colour_blue,
-	colour_other = colour_white
+	colour_other = colour_green
 };
 
 static const char *const colour_strs[] = {
