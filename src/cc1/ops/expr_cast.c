@@ -321,9 +321,14 @@ static void cast_addr(expr *e, consty *k)
 		check_addr_int_cast(k, l, e);
 }
 
+static int is_cast_to_non_integral(expr *e)
+{
+	return !type_is_integral(e->tree_type);
+}
+
 static void fold_const_expr_cast(expr *e, consty *k)
 {
-	int set_nonstandard_const;
+	int set_nonstandard_const; /* i.e. is this user code? */
 	int to_fp;
 
 	if(type_is_void(e->tree_type)){
@@ -378,6 +383,9 @@ static void fold_const_expr_cast(expr *e, consty *k)
 	const_ensure_num_or_memaddr(
 			k, e->expr->tree_type, e->tree_type, e,
 			set_nonstandard_const);
+
+	if(!k->nonstandard_const && is_cast_to_non_integral(e))
+		k->nonstandard_const = e;
 }
 
 void fold_expr_cast_descend(expr *e, symtable *stab, int descend)
