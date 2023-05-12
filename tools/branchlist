@@ -1,0 +1,16 @@
+#!/bin/sh
+
+branches_sorted_by_date(){
+	git branch -a \
+		| grep origin/ \
+		| grep -v HEAD  \
+		| xargs -n1 git log -1 --format='%ct %D' \
+		| sort -n \
+		| while read when rest
+		do echo "$(date -jf %s "$when" +%Y-%m-%d) $rest"
+		done
+}
+
+#after_date=$(date -jf '%Y-%m-%d_%H:%M' 2019-01-01_12:00 +%s)
+
+branches_sorted_by_date
