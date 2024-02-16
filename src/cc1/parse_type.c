@@ -206,6 +206,7 @@ static type *parse_sue_finish(
 		attribute ***this_sue_attr,
 		attribute ***this_type_attr,
 		int const already_exists,
+		type *enum_backing,
 		symtable *const scope,
 		where *const sue_loc)
 {
@@ -215,6 +216,11 @@ static type *parse_sue_finish(
 		assert(!spel);
 		sue = sue_predeclare(scope, NULL, prim, sue_loc);
 	}
+
+	if(prim == type_enum)
+		sue->enum_backing = enum_backing;
+	else
+		assert(!enum_backing);
 
 	if(got_membs)
 		sue_define(sue, members);
@@ -282,6 +288,7 @@ static type *parse_type_sue(
 	sue_member **members = NULL;
 	attribute **this_sue_attr = NULL, **this_type_attr = NULL;
 	where sue_loc;
+	type *backing = NULL;
 
 	/* location is the tag, by default */
 	where_cc1_current(&sue_loc);
@@ -291,6 +298,9 @@ static type *parse_type_sue(
 
 	if(!token_accept_identifier(&spel, &sue_loc))
 		where_cc1_current(&sue_loc);
+
+	if(prim == type_enum && accept(token_colon))
+		backing = parse_type(newdecl_context, scope);
 
 	if(accept(token_open_block)){
 		is_definition = 1;
@@ -390,6 +400,7 @@ static type *parse_type_sue(
 			&this_sue_attr,
 			&this_type_attr,
 			already_exists,
+			backing,
 			scope, &sue_loc);
 
 	attribute_array_release(&this_sue_attr);
