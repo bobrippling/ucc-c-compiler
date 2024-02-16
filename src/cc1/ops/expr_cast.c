@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <assert.h>
 
 #include "ops.h"
 #include "../../util/alloc.h"
@@ -165,8 +166,13 @@ static integral_t convert_integral_to_integral_warn(
 	const int signed_in = type_is_signed(tin);
 	const int signed_out = type_is_signed(tout);
 	sintegral_t to_iv_sign_ext;
-	integral_t to_iv = integral_truncate(in, sz_out, &to_iv_sign_ext);
+	integral_t to_iv;
 	integral_t ret;
+
+	assert(type_is_integral(tin));
+	assert(type_is_integral(tout));
+
+	to_iv = integral_truncate(in, sz_out, &to_iv_sign_ext);
 
 	if(!signed_out && signed_in){
 		const unsigned sz_in_bits = CHAR_BIT * sz_in;
@@ -349,7 +355,8 @@ static void fold_const_expr_cast(expr *e, consty *k)
 			break;
 
 		case CONST_NUM:
-			fold_cast_num(e, &k->bits.num);
+			if(type_is_integral(e->tree_type))
+				fold_cast_num(e, &k->bits.num);
 			break;
 
 		case CONST_NEED_ADDR:
