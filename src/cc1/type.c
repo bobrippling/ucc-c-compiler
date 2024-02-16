@@ -313,8 +313,14 @@ integral_t type_max(type *r, where *from)
 	unsigned sz = type_size(r, from);
 	unsigned bits = sz * CHAR_BIT;
 	int is_signed = type_is_signed(r);
+	type *t;
 
 	integral_t max = ~0ULL >> (INTEGRAL_BITS - bits);
+
+	t = type_is(r, type_btype);
+	assert(t);
+	if(t->bits.type->primitive == type__Bool)
+		return 1;
 
 	if(is_signed)
 		max = max / 2 - 1;
