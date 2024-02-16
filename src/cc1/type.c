@@ -681,7 +681,7 @@ static void type_add_str(
 
 static
 const char *type_to_str_r_spel_opts(
-		char buf[BTYPE_STATIC_BUFSIZ], type *r,
+		char buf[TYPE_STATIC_BUFSIZ], type *r,
 		const char *spel, enum type_str_opts);
 
 static
