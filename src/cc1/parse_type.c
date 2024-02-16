@@ -206,6 +206,7 @@ static type *parse_sue_finish(
 		attribute ***this_sue_attr,
 		attribute ***this_type_attr,
 		int const already_exists,
+		type *enum_backing,
 		symtable *const scope,
 		where *const sue_loc)
 {
@@ -214,6 +215,17 @@ static type *parse_sue_finish(
 	if(!sue){
 		assert(!spel);
 		sue = sue_predeclare(scope, NULL, prim, sue_loc);
+	}
+
+	if(prim == type_enum){
+		sue->enum_backing = enum_backing;
+		if(enum_backing){
+			where *w = type_has_loc(enum_backing);
+			if(!w) w = sue_loc;
+			cc1_warn_at(w, enum_fixed_type, "enums with a backing type are an extension");
+		}
+	}else{
+		assert(!enum_backing);
 	}
 
 	if(got_membs)
@@ -282,6 +294,8 @@ static type *parse_type_sue(
 	sue_member **members = NULL;
 	attribute **this_sue_attr = NULL, **this_type_attr = NULL;
 	where sue_loc;
+	type *backing = NULL;
+	where backing_loc;
 
 	/* location is the tag, by default */
 	where_cc1_current(&sue_loc);
@@ -291,6 +305,16 @@ static type *parse_type_sue(
 
 	if(!token_accept_identifier(&spel, &sue_loc))
 		where_cc1_current(&sue_loc);
+
+	if(prim == type_enum && accept_where(token_colon, &backing_loc)){
+		backing = parse_type(newdecl_context, scope);
+		if(backing){
+			backing = type_at_where(backing, &backing_loc);
+		}else{
+			warn_at_print_error(&backing_loc, "no backing type given for enum");
+			parse_had_error = 1;
+		}
+	}
 
 	if(accept(token_open_block)){
 		is_definition = 1;
@@ -390,6 +414,7 @@ static type *parse_type_sue(
 			&this_sue_attr,
 			&this_type_attr,
 			already_exists,
+			backing,
 			scope, &sue_loc);
 
 	attribute_array_release(&this_sue_attr);

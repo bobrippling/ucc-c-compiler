@@ -2,6 +2,7 @@
 #define STRUCT_ENUM_H
 
 #include "btype.h"
+#include "type.h"
 
 struct symtable;
 
@@ -44,6 +45,7 @@ struct struct_union_enum_st
 	unsigned align, size;
 
 	sue_member **members;
+	type *enum_backing;
 };
 
 #define sue_str_type(t) (t == type_struct \
