@@ -322,6 +322,22 @@ integral_t type_max(type *r, where *from)
 	return max;
 }
 
+sintegral_t type_min(type *r, where *from)
+{
+	unsigned sz = type_size(r, from);
+	unsigned bits = sz * CHAR_BIT;
+	int is_signed = type_is_signed(r);
+	sintegral_t max;
+
+	if(!is_signed)
+		return 0;
+
+	max = ~0ULL >> (INTEGRAL_BITS - bits);
+	max -= 1;
+
+	return -max / 2;
+}
+
 unsigned type_size(type *r, const where *from)
 {
 	switch(r->type){
