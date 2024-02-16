@@ -75,6 +75,24 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 	integral_t max = 0, min = 0;
 	type *contained_ty;
 	int is_signed = 0;
+	int backing_err = 0;
+	integral_t backing_max;
+	sintegral_t backing_min;
+
+	if(en->enum_backing){
+		if(type_is_integral(en->enum_backing)){
+			contained_ty = en->enum_backing;
+			backing_max = type_max(en->enum_backing, &en->where);
+			backing_min = type_min(en->enum_backing, &en->where);
+
+		}else{
+			warn_at_print_error(&en->where, "non-integral backing type '%s' for enum", type_to_str(en->enum_backing));
+			fold_had_error = 1;
+
+			backing_err = 1;
+			contained_ty = type_nav_btype(cc1_type_nav, type_int);
+		}
+	}
 
 	for(i = en->members; i && *i; i++){
 		enum_member *m = (*i)->enum_member;
@@ -153,9 +171,28 @@ static void fold_enum(struct_union_enum_st *en, symtable *stab)
 		is_signed |= negative;
 
 		defval = has_bitmask ? v << 1 : v + 1;
+
+		if(!backing_err && en->enum_backing){
+			int representable = negative ? (sintegral_t)v <= (sintegral_t)backing_max : v <= backing_max;
+
+			if(representable)
+				representable = (sintegral_t)v >= backing_min;
+
+			if(!representable){
+				warn_at_print_error(
+					&m->where,
+					"underlying type '%s' cannot represent all enumerator values",
+					type_to_str(en->enum_backing));
+
+				fold_had_error = 1;
+			}
+		}
 	}
 
-	if(cc1_fopt.short_enums){
+	if(en->enum_backing){
+		/* already set */
+
+	}else if(cc1_fopt.short_enums){
 		unsigned bits = (MAX(log2ll(round2(-min + 1)), log2ll(round2(max + 1))));
 
 		/* bits needs to be a power of 2 since those are the only word sizes supported */
