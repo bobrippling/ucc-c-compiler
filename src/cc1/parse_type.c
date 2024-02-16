@@ -217,10 +217,16 @@ static type *parse_sue_finish(
 		sue = sue_predeclare(scope, NULL, prim, sue_loc);
 	}
 
-	if(prim == type_enum)
+	if(prim == type_enum){
 		sue->enum_backing = enum_backing;
-	else
+		if(enum_backing){
+			where *w = type_has_loc(enum_backing);
+			if(!w) w = sue_loc;
+			cc1_warn_at(w, enum_fixed_type, "enums with a backing type are an extension");
+		}
+	}else{
 		assert(!enum_backing);
+	}
 
 	if(got_membs)
 		sue_define(sue, members);
