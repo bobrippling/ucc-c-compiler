@@ -1700,7 +1700,7 @@ static void workaround_valist_typedef(decl *d, symtable *symtab)
 	if(!where_in_sysheader(&d->where))
 		return;
 
-	if(strcmp(d->spel, "va_list"))
+	if(!d->spel || strcmp(d->spel, "va_list"))
 		return;
 
 	pointee = type_is_ptr(d->ref);
