@@ -164,6 +164,7 @@ X("enum-mismatch", enum_mismatch)
 X("assign-enum", enum_out_of_range) /* clang compat */
 X("enum-mismatch-int", enum_mismatch_int)
 ALIAS("enum-out-of-range", enum_out_of_range)
+X("fixed-enum-extension", enum_fixed_type)
 
 X("excess-init", excess_init)
 X("extern-init", extern_init)
