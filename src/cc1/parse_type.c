@@ -305,8 +305,13 @@ static type *parse_type_sue(
 	if(!token_accept_identifier(&spel, &sue_loc))
 		where_cc1_current(&sue_loc);
 
-	if(prim == type_enum && accept(token_colon))
+	if(prim == type_enum && accept(token_colon)){
 		backing = parse_type(newdecl_context, scope);
+		if(!backing){
+			warn_at_print_error(&backing_loc, "no backing type given for enum");
+			parse_had_error = 1;
+		}
+	}
 
 	if(accept(token_open_block)){
 		is_definition = 1;
