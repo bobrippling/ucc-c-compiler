@@ -295,6 +295,7 @@ static type *parse_type_sue(
 	attribute **this_sue_attr = NULL, **this_type_attr = NULL;
 	where sue_loc;
 	type *backing = NULL;
+	where backing_loc;
 
 	/* location is the tag, by default */
 	where_cc1_current(&sue_loc);
@@ -305,9 +306,11 @@ static type *parse_type_sue(
 	if(!token_accept_identifier(&spel, &sue_loc))
 		where_cc1_current(&sue_loc);
 
-	if(prim == type_enum && accept(token_colon)){
+	if(prim == type_enum && accept_where(token_colon, &backing_loc)){
 		backing = parse_type(newdecl_context, scope);
-		if(!backing){
+		if(backing){
+			backing = type_at_where(backing, &backing_loc);
+		}else{
 			warn_at_print_error(&backing_loc, "no backing type given for enum");
 			parse_had_error = 1;
 		}
