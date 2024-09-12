@@ -115,11 +115,27 @@ attribute *expr_attr_present(expr *e, enum attribute_type t)
 	}
 
 	if(expr_kind(e, identifier)){
-		sym *s = e->bits.ident.bits.ident.sym;
-		if(s){
-			da = attribute_present(s->decl, t);
-			if(da)
-				return da;
+		switch(e->bits.ident.type){
+			case IDENT_NORM:
+			{
+				sym *s = e->bits.ident.bits.ident.sym;
+				if(s){
+					da = attribute_present(s->decl, t);
+					if(da)
+						return da;
+				}
+				break;
+			}
+			case IDENT_ENUM:
+			{
+				enum_member *enu = e->bits.ident.bits.enum_mem;
+				da = attr_present(enu->attr, t);
+				if(da)
+					return da;
+				if(enu->val != (expr *)-1 && (da = expr_attr_present(enu->val, t)))
+					return da;
+				break;
+			}
 		}
 	}
 
