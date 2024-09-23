@@ -20,7 +20,7 @@ jobs:
       env:
         ASAN_OPTIONS: detect_leaks=0
   test-darwin:
-    runs-on: macos-latest
+    runs-on: macos-12 # x86_64 arch
     steps:
     - uses: actions/checkout@v2
     - name: configure
