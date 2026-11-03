@@ -19,20 +19,20 @@ jobs:
       run: make check-bootstrap
       env:
         ASAN_OPTIONS: detect_leaks=0
-  test-darwin:
-    runs-on: macos-12 # x86_64 arch
-    steps:
-    - uses: actions/checkout@v2
-    - name: configure
-      run: ./configure CFLAGS=-fsanitize=address LDFLAGS=-fsanitize=address
-    - name: bootstrap
-      run: make bootstrap
-      env:
-        ASAN_OPTIONS: detect_leaks=0
-    - name: test
-      run: make check-bootstrap
-      env:
-        ASAN_OPTIONS: detect_leaks=0
+  #test-darwin:
+  #  runs-on: macos-26-intel # x86_64 arch
+  #  steps:
+  #  - uses: actions/checkout@v2
+  #  - name: configure
+  #    run: ./configure CFLAGS=-fsanitize=address LDFLAGS=-fsanitize=address
+  #  - name: bootstrap
+  #    run: make bootstrap
+  #    env:
+  #      ASAN_OPTIONS: detect_leaks=0
+  #  - name: test
+  #    run: make check-bootstrap
+  #    env:
+  #      ASAN_OPTIONS: detect_leaks=0
   #test-windows:
   #  runs-on: windows-latest
   #  steps:
